@@ -33,6 +33,8 @@ The personas are ordered by **priority for Phase 1 onboarding**. We optimize the
 - `"export all orders from last month as CSV"`
 - `"add a field called 'plan' to users, default 'free'"`
 
+**Real-life use case.** Maya is building a meal-planning side project on a Friday night. She runs `nlq db create mealplan`, drops the connection string into her Next.js app, and by Sunday has real users signing up. Monday morning she types `"how many signups this weekend, grouped by referrer"` into the chat instead of opening psql. Two weeks in she needs a `trial_ends_at` column — says so in chat, reviews the diff, approves. She never writes a migration file, never runs `pg_dump`, never logs into a cloud console.
+
 **Phase 1 success for this persona.** They deploy something real with nlqdb as its actual DB, not just the admin layer.
 
 ---
@@ -60,6 +62,8 @@ The personas are ordered by **priority for Phase 1 onboarding**. We optimize the
 - Agent does: `nlqdb_query("kb", "find articles mentioning shipping delays in the last 30 days")`
 - Agent does: `nlqdb_create_database("session_abc123")` at session start, drops it at session end.
 - Developer does: `"show me every query the agent ran today that returned zero rows"` (agent debugging)
+
+**Real-life use case.** Jordan is building a personal research agent that browses the web and drafts memos. Before nlqdb the agent dumped facts into a messy `notes.json` and forgot things between sessions. Now at session start the agent calls `nlqdb_create_database("session_<id>")` and stores claims, sources, and user corrections as structured rows it designs itself. At session end the agent either persists the DB (if the user liked the output) or drops it. Jordan's entire memory layer is ~40 lines of glue code instead of a bespoke vector store + metadata service.
 
 **Phase 1 success for this persona.** The MCP server is installed in 3+ agent products (Claude Desktop, Cursor, Zed, homegrown) and the #1 use case in our logs is "agent giving itself memory."
 
@@ -90,6 +94,8 @@ The personas are ordered by **priority for Phase 1 onboarding**. We optimize the
 - `"churn rate by acquisition channel, last 6 months"`
 - `"send me this as a weekly email every Monday"` (scheduled queries — Phase 2 feature)
 
+**Real-life use case.** Priya is a growth PM at a 30-person SaaS. Thursday afternoon a conference vendor emails a 12k-row CSV of leads. She drops it in the chat: `"load this as conference_leads_q2"`. Then: `"how many of these are already in our users table, and which plan are they on"` — the chat joins her upload with a read-only mirror of prod. She has the numbers for her 4pm exec sync without opening a data-request ticket, and shares a result link in Slack.
+
 **Phase 1 success for this persona.** A non-engineer completes a real analysis that would have required a 3-day engineering ticket, using only chat + CSV upload. We do need CSV upload in Phase 1 for this to work.
 
 **Note.** This persona stretches Phase 1 scope. If we must cut something, CSV upload is the first thing on the chopping block — but it's cheap to ship and opens this whole segment. Keep it in.
@@ -118,6 +124,8 @@ The personas are ordered by **priority for Phase 1 onboarding**. We optimize the
 - `"users who signed up via the iOS promo link in March"`
 - `"migrate users from plan 'starter' to 'basic'"` (with diff preview, per §1.2 of PLAN.md)
 
+**Real-life use case.** Dmitri is on-call at a 20-person startup. Support escalates: a pricing bug double-charged ~180 customers between 11pm and midnight. Instead of writing a one-off refund script, he opens the team workspace pointed at their existing Postgres, types the refund in plain English, and reviews the generated diff (183 rows, $2,104 total) before approving. The audit log captures who ran it, and the Retool page he would've had to build doesn't need to exist. *(Requires Phase 2 "bring your own Postgres" mode — aspirational for this persona in Phase 1.)*
+
 **Phase 1 treatment.** This persona needs "bring your own Postgres" mode, which is explicitly a Phase 2 feature (it punches a hole in the auto-migration story). **Park for Phase 1.** Tell them "we'll email you" and we will.
 
 ---
@@ -137,6 +145,8 @@ The personas are ordered by **priority for Phase 1 onboarding**. We optimize the
 - The chat teaches them as they go ("I added a `users` table with columns `id`, `email`, `name` — here's the SQL I ran, if you're curious").
 
 **Willingness to pay.** $0 now. Graduates to P1 when their project gets real.
+
+**Real-life use case.** Aarav is doing the CS50 web track. Instead of spending day one fighting `brew install postgresql` and password errors, he runs `nlq db create cs50_final` and types `"i need a table for blog posts with title, body, and author"`. The chat creates it and shows him the SQL it ran, which he pastes into his notes for the write-up. He ships the assignment by Wednesday and actually understands what a foreign key is by the end of it.
 
 **Phase 1 treatment.** Served by the free tier. No special product work.
 
