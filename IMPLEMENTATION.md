@@ -221,8 +221,14 @@ Cloud for Startups / Modal startup credits.
 - [ ] **GitHub OAuth app** → `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`.
       Redirect URIs: `app.nlqdb.com/auth/callback/github`,
       `nlqdb.com/device/approve` (device-code flow).
-- [ ] **Google OAuth client** → `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`
-      (same redirect set).
+- [x] **Google OAuth client** → `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`
+      (same redirect set). GCP project: `nlqdb`. OAuth consent screen
+      in **Testing** mode; publishing-to-production (and therefore
+      verification) deferred until Phase 1 public launch. Scopes:
+      `openid`, `/auth/userinfo.email`, `/auth/userinfo.profile` —
+      all non-sensitive, so verification when submitted will be fast
+      (days, not weeks). Client name: `nlqdb-web`. Redirect URIs and
+      JS origins enumerated in [`RUNBOOK.md §5`](./RUNBOOK.md).
 - [ ] CLI build dep: `github.com/zalando/go-keyring` (OS keychain).
 - [ ] **Resend** → `RESEND_API_KEY`; configure SPF/DKIM/DMARC for `nlqdb.com`.
 - [ ] **AWS SES** (fallback) → `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`.
