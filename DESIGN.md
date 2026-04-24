@@ -535,6 +535,7 @@ have paying customers.
 | User DBs (Postgres) | Neon | 0.5GB, scale-to-zero |
 | User DBs (Redis) | Upstash | 10k cmds/day, 256MB |
 | Object storage | Cloudflare R2 | 10GB, 1M Class A ops/mo, **zero egress** |
+| Inbound email (forwarding) | Cloudflare Email Routing | Unlimited volume, 200 rules/zone (Free plan feature) |
 | Transactional email | Resend | 3k/mo, 100/day |
 | Marketing email | Listmonk (self-hosted) → SES | Unlimited send via SES |
 | Email fallback | AWS SES | 62k/mo free from EC2 |
