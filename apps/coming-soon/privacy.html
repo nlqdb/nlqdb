@@ -1,0 +1,239 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="color-scheme" content="dark light" />
+    <meta name="theme-color" content="#0b0b10" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#fafaf7" media="(prefers-color-scheme: light)" />
+
+    <title>Privacy Policy · nlqdb</title>
+    <meta name="description" content="How nlqdb collects, uses, and protects your information." />
+    <meta property="og:title" content="Privacy Policy · nlqdb" />
+    <meta property="og:url" content="https://nlqdb.com/privacy" />
+
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <main class="legal">
+      <p class="top-nav"><a href="/">← nlqdb</a></p>
+
+      <h1>Privacy Policy</h1>
+      <p class="effective">Effective: 24 April 2026</p>
+
+      <div class="draft">
+        <strong>Pre-alpha notice.</strong> nlqdb is a pre-alpha project
+        run by an individual developer. This policy reflects our
+        current, narrow data practices and will be expanded before
+        public launch. If you are considering entrusting production
+        data to nlqdb today, please contact us first so we can give
+        you a clear picture of what&rsquo;s in scope.
+      </div>
+
+      <h2>1. Who we are</h2>
+      <p>
+        <strong>nlqdb</strong> (&ldquo;we&rdquo;, &ldquo;us&rdquo;, or
+        &ldquo;the service&rdquo;) is operated by the nlqdb team.
+        You can reach us at
+        <a href="mailto:hello@nlqdb.com">hello@nlqdb.com</a>.
+      </p>
+
+      <h2>2. What this policy covers</h2>
+      <p>
+        This policy applies to
+        <a href="https://nlqdb.com">nlqdb.com</a>,
+        <a href="https://nlqdb.ai">nlqdb.ai</a>, any subdomain of
+        either (e.g. <code>app.nlqdb.com</code>,
+        <code>docs.nlqdb.com</code>), the <code>nlq</code> command-line
+        tool, the nlqdb MCP server, and any SDKs or embeddable
+        components we publish. We refer to all of these collectively
+        as &ldquo;the service.&rdquo;
+      </p>
+
+      <h2>3. Information we collect</h2>
+
+      <h3>3.1 Information you provide</h3>
+      <ul>
+        <li>
+          <strong>Email correspondence.</strong> If you email
+          <code>hello@nlqdb.com</code> or another
+          <code>*@nlqdb.com</code> address, we receive the email
+          itself (sender, subject, body, any attachments). Inbound
+          email is forwarded via Cloudflare Email Routing to a private
+          mailbox and is not stored by the service.
+        </li>
+        <li>
+          <strong>Account information</strong> (Phase 1 onward). When
+          account sign-in launches, we&rsquo;ll collect the identity
+          information you provide through your sign-in method &mdash;
+          typically an email address and display name from GitHub,
+          Google, or a magic-link flow. We will never ask for your
+          password.
+        </li>
+        <li>
+          <strong>Data you entrust to nlqdb</strong> (Phase 1 onward).
+          Databases you create and the queries you run against them
+          are stored so the service can return the correct answer. We
+          treat this data as yours.
+        </li>
+      </ul>
+
+      <h3>3.2 Information collected automatically</h3>
+      <ul>
+        <li>
+          <strong>Request metadata.</strong> Our edge (Cloudflare)
+          records standard server logs: IP address, user agent,
+          requested URL, response status, and timing. These are used
+          to run and secure the service and are retained for a short
+          period at Cloudflare&rsquo;s discretion.
+        </li>
+        <li>
+          <strong>Error reports.</strong> When the service
+          encounters a bug it sends a structured error report to
+          Sentry, our error-tracking provider. Error reports do not
+          intentionally include your query contents or credentials;
+          we scrub known-sensitive fields before sending.
+        </li>
+        <li>
+          <strong>Analytics.</strong> We do not use third-party
+          tracking or advertising cookies. Product analytics (once we
+          wire them up) will run on Plausible, a privacy-respecting
+          analytics platform that does not use cookies and does not
+          collect personally identifying information.
+        </li>
+      </ul>
+
+      <h3>3.3 Cookies and local storage</h3>
+      <p>
+        The service uses cookies and browser local storage only for
+        functional purposes: session identification, CSRF protection,
+        anonymous-mode continuity, and remembering your preferences.
+        We do not use cookies for advertising or cross-site tracking.
+      </p>
+
+      <h2>4. How we use information</h2>
+      <p>We use the information above to:</p>
+      <ul>
+        <li>Provide the service you asked for (create databases, run queries, return answers).</li>
+        <li>Respond to your emails.</li>
+        <li>Operate and secure the service, including abuse detection and rate limiting.</li>
+        <li>Fix bugs and improve reliability.</li>
+        <li>Comply with legal obligations.</li>
+      </ul>
+      <p>
+        We do not sell your information. We do not use your data to
+        train general-purpose models on behalf of third parties.
+        Query contents are not used to improve third-party AI
+        services.
+      </p>
+
+      <h2>5. How we share information</h2>
+      <p>We share information only with service providers we rely on to run nlqdb, and only as necessary:</p>
+      <ul>
+        <li><strong>Cloudflare</strong> &mdash; edge, CDN, DNS, email routing, storage (KV, D1, R2).</li>
+        <li><strong>Neon</strong> &mdash; serverless Postgres for user databases.</li>
+        <li><strong>Upstash</strong> &mdash; serverless Redis (Phase 3).</li>
+        <li><strong>Resend</strong> &mdash; transactional outbound email (Phase 1).</li>
+        <li><strong>Sentry</strong> &mdash; application error reporting.</li>
+        <li>
+          <strong>LLM providers</strong> &mdash; to translate your
+          natural-language question into a query plan, we send the
+          question and the relevant schema summary to one of
+          Google (Gemini), Groq, Cloudflare Workers AI, or OpenRouter.
+          Plans are cached so the same question isn&rsquo;t re-sent.
+          We do not send your row data to these providers.
+        </li>
+      </ul>
+      <p>
+        We may also disclose information if required by law, to
+        protect the rights or safety of the service or its users, or
+        in the course of a business transfer. We will not share your
+        information for any other purpose without your consent.
+      </p>
+
+      <h2>6. Where your data is processed</h2>
+      <p>
+        The service is operated on Cloudflare&rsquo;s global edge
+        network. Tenant Postgres databases currently live in AWS
+        <code>us-east-1</code> via Neon. Some processing occurs in
+        additional regions as traffic is routed to the nearest edge.
+        By using the service you acknowledge that your information
+        may be processed in the United States, Switzerland, and
+        other countries that may have different data-protection laws
+        than your own.
+      </p>
+
+      <h2>7. Data retention</h2>
+      <p>
+        We retain information only as long as necessary to provide
+        the service and meet legal obligations. In practice:
+      </p>
+      <ul>
+        <li>Email correspondence: retained in the founder&rsquo;s mailbox unless you ask us to delete it.</li>
+        <li>Account data (Phase 1+): retained while your account is active; deleted within 30 days of account deletion.</li>
+        <li>Databases you create: retained while your account is active or until you delete them.</li>
+        <li>Edge logs and error reports: retained according to provider defaults (typically 7&ndash;90 days).</li>
+      </ul>
+
+      <h2>8. Your rights</h2>
+      <p>Depending on where you live, you may have the right to:</p>
+      <ul>
+        <li>Access the information we hold about you.</li>
+        <li>Correct information that is inaccurate.</li>
+        <li>Delete your information (&ldquo;right to be forgotten&rdquo;).</li>
+        <li>Export your data in a portable format.</li>
+        <li>Object to or restrict how we process your information.</li>
+        <li>Withdraw consent at any time (where we rely on consent).</li>
+      </ul>
+      <p>
+        To exercise any of these, email
+        <a href="mailto:hello@nlqdb.com">hello@nlqdb.com</a>. We will
+        respond within 30 days. If you are in the EEA, UK, or
+        California, you also have the right to lodge a complaint with
+        your data protection authority.
+      </p>
+
+      <h2>9. Security</h2>
+      <p>
+        We design the service to minimize the sensitive data it
+        holds. API keys are stored in hashed form (Argon2id). Traffic
+        is encrypted end-to-end with TLS. Internal service-to-service
+        calls are signed. No system is perfectly secure; we will
+        notify affected users without undue delay if we discover a
+        breach that affects their information.
+      </p>
+
+      <h2>10. Children</h2>
+      <p>
+        The service is not directed to children under 13 (or 16 in
+        the EEA). If you believe a child has provided us with
+        information, please contact us and we will delete it.
+      </p>
+
+      <h2>11. Changes to this policy</h2>
+      <p>
+        We may update this policy as the service evolves. We will
+        post the updated version at this URL and update the
+        &ldquo;Effective&rdquo; date at the top. For material
+        changes we will make a reasonable effort to notify active
+        users via email.
+      </p>
+
+      <h2>12. Contact</h2>
+      <p>
+        Questions, requests, or concerns?
+        <a href="mailto:hello@nlqdb.com">hello@nlqdb.com</a>.
+      </p>
+    </main>
+
+    <footer>
+      <p>
+        <a href="/">Home</a> &middot;
+        <a href="/privacy">Privacy</a> &middot;
+        <a href="/terms">Terms</a> &middot;
+        <a href="https://github.com/nlqdb/nlqdb" rel="noopener">GitHub</a>
+      </p>
+    </footer>
+  </body>
+</html>
