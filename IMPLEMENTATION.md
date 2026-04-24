@@ -70,6 +70,24 @@ buys us (and its limits) — copied directly from the plan card at
 - Requiring business-hour support SLA — Enterprise only; revisit at
   Phase 4.
 
+**DNS migration from GoDaddy (both zones):** `nlqdb.com` and `nlqdb.ai`
+are registered at GoDaddy. Cloudflare's *Add a site* wizard scans the
+registrar and imports existing records. For our starting state **we
+delete every imported record** before hitting *Continue*:
+
+| Record (as imported) | Action | Why |
+| :------------------- | :----- | :-- |
+| `A @ → 13.248.243.5` / `76.223.105.230` | delete | GoDaddy parking-page IPs; Phase 0 points apex at Cloudflare Pages. |
+| `CNAME _domainconnect → …gd.domaincontrol.com` | delete | GoDaddy Domain Connect; useless off GoDaddy DNS. |
+| `CNAME www → nlqdb.com`                  | delete | Re-add cleanly when Pages is wired. |
+| `TXT _dmarc → rua=…onsecureserver.net`   | delete | GoDaddy's DMARC aggregator; we set a real SPF/DKIM/DMARC when Resend lands in Phase 1. |
+
+At GoDaddy (once, per zone): `dcc.godaddy.com` → *My Products* →
+`<zone>` → *DNS* → *Nameservers* → *Change* → *"I'll use my own
+nameservers"* → paste the two Cloudflare-assigned NS → Save. The
+parked-page shows until NS propagation completes (5–30 min typical);
+no other GoDaddy-side cleanup is required.
+
 ### 2.2 Identity / source / distribution
 
 - [ ] GitHub org `nlqdb` — branch protection, required reviews, secret
