@@ -166,6 +166,28 @@ else
   skip "GOOGLE_CLIENT_SECRET"
 fi
 
+say "Grafana Cloud"
+# Grafana Cloud OTLP auth: Basic <base64(instanceId:accessPolicyToken)>
+# Smoke test: POST an empty OTLP metrics envelope; valid auth returns
+# HTTP 4xx (bad-request on empty body) or 200; invalid auth returns 401.
+if [[ -n "${GRAFANA_CLOUD_INSTANCE_ID:-}" && -n "${GRAFANA_CLOUD_API_KEY:-}" && -n "${GRAFANA_OTLP_ENDPOINT:-}" ]]; then
+  grafana_auth=$(printf '%s:%s' "$GRAFANA_CLOUD_INSTANCE_ID" "$GRAFANA_CLOUD_API_KEY" | base64 | tr -d '\n')
+  body=$(curl -s -o /dev/null -w '%{http_code}' -m 10 \
+    -H "Authorization: Basic ${grafana_auth}" \
+    -H "Content-Type: application/x-protobuf" \
+    --data-binary '' \
+    "${GRAFANA_OTLP_ENDPOINT%/}/v1/metrics" 2>&1)
+  case "$body" in
+    200|400|415) ok "GRAFANA_CLOUD_API_KEY (HTTP $body, auth accepted)";;
+    401|403)    fail "GRAFANA_CLOUD_API_KEY" "HTTP $body — token rejected";;
+    *)          fail "GRAFANA_CLOUD_API_KEY" "HTTP $body (unexpected)";;
+  esac
+else
+  [[ -z "${GRAFANA_OTLP_ENDPOINT:-}"    ]] && skip "GRAFANA_OTLP_ENDPOINT"
+  [[ -z "${GRAFANA_CLOUD_INSTANCE_ID:-}" ]] && skip "GRAFANA_CLOUD_INSTANCE_ID"
+  [[ -z "${GRAFANA_CLOUD_API_KEY:-}"    ]] && skip "GRAFANA_CLOUD_API_KEY"
+fi
+
 say "Observability"
 # Sentry DSN format:
 #   https://<public-key>@o<org-id>.ingest.sentry.io/<project-id>
