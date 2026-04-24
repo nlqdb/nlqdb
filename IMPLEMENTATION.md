@@ -186,7 +186,10 @@ outbound (Resend) are aligned — premature DMARC breaks mail flow.
 - [ ] **Cloudflare** — Pages, Workers, KV, D1, R2, Queues, Workers AI,
       Durable Objects. Capture `CLOUDFLARE_ACCOUNT_ID`,
       `CLOUDFLARE_API_TOKEN` (scoped), `CF_AI_TOKEN`.
-- [ ] **Neon** — `NEON_API_KEY`.
+- [ ] **Neon** — `NEON_API_KEY`. Every Neon project uses
+      **Postgres 17** (GA). Postgres 18 is in preview on Neon as of
+      Feb 2026; we move to 18 via in-place upgrade once Neon promotes
+      it GA.
 - [ ] **Upstash** — `UPSTASH_REDIS_REST_TOKEN`.
 - [ ] **Fly.io** — `FLY_API_TOKEN` (for Listmonk / Plausible / Lago).
 
