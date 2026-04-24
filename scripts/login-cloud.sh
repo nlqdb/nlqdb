@@ -47,7 +47,13 @@ else
   echo "If you don't have a Fly account, this starts signup. Otherwise it logs in."
   fly auth login || fly auth signup
 fi
-echo "Mint FLY_API_TOKEN: fly tokens create deploy"
+# `fly tokens create deploy` is *per-app* and fails before any Fly app
+# exists. We want an *org-scoped* token so future Phase 2 apps
+# (Listmonk, Plausible, Lago) can deploy off the same key without
+# re-minting per app.
+echo "Mint FLY_API_TOKEN: fly tokens create org --name nlqdb-phase0-token"
+echo "(If you have >1 org, add '-o <org-slug>' — 'personal' is the default for new accounts.)"
+echo "Paste the FULL output including the 'FlyV1' prefix into .envrc."
 pause
 
 # --- 4. Stripe -----------------------------------------------------------
