@@ -54,6 +54,10 @@ fi
 echo "Mint FLY_API_TOKEN: fly tokens create org --name nlqdb-phase0-token"
 echo "(If you have >1 org, add '-o <org-slug>' — 'personal' is the default for new accounts.)"
 echo "Paste the FULL output including the 'FlyV1' prefix into .envrc."
+echo ""
+echo "Verify the token works (after pasting + direnv reload):"
+echo "  curl -sH \"Authorization: Bearer \$FLY_API_TOKEN\" https://api.machines.dev/v1/apps | jq ."
+echo "Expected: HTTP 200 with {\"apps\": []} or {\"apps\": null}. 401 = bad token or 'FlyV1 ' prefix dropped."
 pause
 
 # --- 4. Stripe -----------------------------------------------------------
