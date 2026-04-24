@@ -139,6 +139,55 @@ check_http OPENROUTER_API_KEY \
   "https://openrouter.ai/api/v1/auth/key" \
   --match '"data"'
 
+say "OAuth providers"
+# Google OAuth web-app client credentials don't support a
+# client_credentials grant, so a live "is this secret valid?" probe
+# needs a user-driven auth handshake. Format-check instead; catches
+# the common paste mistakes (fields swapped, partial copy).
+#
+#   client_id:     <numeric>-<hash>.apps.googleusercontent.com
+#   client_secret: starts with GOCSPX- (format since 2021)
+if [[ -n "${GOOGLE_CLIENT_ID:-}" ]]; then
+  if [[ "$GOOGLE_CLIENT_ID" == *.apps.googleusercontent.com ]]; then
+    ok "GOOGLE_CLIENT_ID (format looks right, ${#GOOGLE_CLIENT_ID} chars)"
+  else
+    fail "GOOGLE_CLIENT_ID" "doesn't end with .apps.googleusercontent.com"
+  fi
+else
+  skip "GOOGLE_CLIENT_ID"
+fi
+if [[ -n "${GOOGLE_CLIENT_SECRET:-}" ]]; then
+  if [[ "$GOOGLE_CLIENT_SECRET" == GOCSPX-* ]]; then
+    ok "GOOGLE_CLIENT_SECRET (format looks right, ${#GOOGLE_CLIENT_SECRET} chars)"
+  else
+    fail "GOOGLE_CLIENT_SECRET" "doesn't start with GOCSPX-"
+  fi
+else
+  skip "GOOGLE_CLIENT_SECRET"
+fi
+
+say "Grafana Cloud"
+# Grafana Cloud OTLP auth: Basic <base64(instanceId:accessPolicyToken)>
+# Smoke test: POST an empty OTLP metrics envelope; valid auth returns
+# HTTP 4xx (bad-request on empty body) or 200; invalid auth returns 401.
+if [[ -n "${GRAFANA_CLOUD_INSTANCE_ID:-}" && -n "${GRAFANA_CLOUD_API_KEY:-}" && -n "${GRAFANA_OTLP_ENDPOINT:-}" ]]; then
+  grafana_auth=$(printf '%s:%s' "$GRAFANA_CLOUD_INSTANCE_ID" "$GRAFANA_CLOUD_API_KEY" | base64 | tr -d '\n')
+  body=$(curl -s -o /dev/null -w '%{http_code}' -m 10 \
+    -H "Authorization: Basic ${grafana_auth}" \
+    -H "Content-Type: application/x-protobuf" \
+    --data-binary '' \
+    "${GRAFANA_OTLP_ENDPOINT%/}/v1/metrics" 2>&1)
+  case "$body" in
+    200|400|415) ok "GRAFANA_CLOUD_API_KEY (HTTP $body, auth accepted)";;
+    401|403)    fail "GRAFANA_CLOUD_API_KEY" "HTTP $body — token rejected";;
+    *)          fail "GRAFANA_CLOUD_API_KEY" "HTTP $body (unexpected)";;
+  esac
+else
+  [[ -z "${GRAFANA_OTLP_ENDPOINT:-}"    ]] && skip "GRAFANA_OTLP_ENDPOINT"
+  [[ -z "${GRAFANA_CLOUD_INSTANCE_ID:-}" ]] && skip "GRAFANA_CLOUD_INSTANCE_ID"
+  [[ -z "${GRAFANA_CLOUD_API_KEY:-}"    ]] && skip "GRAFANA_CLOUD_API_KEY"
+fi
+
 say "Observability"
 # Sentry DSN format:
 #   https://<public-key>@o<org-id>.ingest.sentry.io/<project-id>
