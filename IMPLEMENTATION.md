@@ -88,6 +88,45 @@ nameservers"* → paste the two Cloudflare-assigned NS → Save. The
 parked-page shows until NS propagation completes (5–30 min typical);
 no other GoDaddy-side cleanup is required.
 
+**Safe-flip sequencing:** don't switch nameservers until a holding
+page exists. Pending Cloudflare zones cost nothing and wait
+indefinitely for NS. Build `apps/coming-soon/` (static HTML), deploy
+to Cloudflare Pages, pre-populate `CNAME @` / `CNAME www` in the
+pending Cloudflare zone pointing at the `*.pages.dev` URL, **then**
+flip GoDaddy NS. This turns the propagation window into
+`parking-page → coming-soon-page` instead of
+`parking-page → "This domain is not configured"`.
+
+### 2.1.1 Inbound email — Cloudflare Email Routing (free)
+
+Both zones use **Cloudflare Email Routing** (Free plan feature;
+included with the zone, no extra SKU) for `hello@`, `security@`,
+`contact@`, `abuse@` etc. Forwards inbound to the founder's existing
+inbox; up to 200 addresses per zone, unlimited volume, no card.
+
+| Capability              | Email Routing                         |
+| :---------------------- | :------------------------------------ |
+| Inbound forwarding      | ✅ Yes, unlimited volume              |
+| Outbound ("send as")    | ❌ No — use Resend (§2.5)             |
+| Mailbox hosting         | ❌ No — forwards only                 |
+| Custom addresses        | Up to 200 rules per zone              |
+| Catch-all               | ✅ Yes                                |
+| MX / SPF auto-setup     | ✅ Cloudflare auto-writes the records |
+
+**DKIM / DMARC:** Resend's DKIM is set up when outbound email lands in
+Phase 1 (§2.5). DMARC is set after both inbound (Email Routing) and
+outbound (Resend) are aligned — premature DMARC breaks mail flow.
+
+**Setup sequence (per zone, once NS are flipped):**
+1. Dashboard → the zone → *Email* → *Email Routing* → *Get started*.
+2. Cloudflare writes MX + SPF records automatically.
+3. Add the destination email (founder's real inbox); Cloudflare sends
+   a one-time verification link — click it.
+4. Create forwarding rules: `hello@` → `$FOUNDER_EMAIL`, catch-all
+   `*@` → `$FOUNDER_EMAIL`.
+5. Update the coming-soon page's `mailto:` link from the placeholder
+   to `hello@nlqdb.com`.
+
 ### 2.2 Identity / source / distribution
 
 - [ ] GitHub org `nlqdb` — branch protection, required reviews, secret
