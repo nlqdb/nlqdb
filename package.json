@@ -25,6 +25,8 @@
     "hooks:run": "lefthook run pre-commit"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.0.0"
+    "@biomejs/biome": "^2.0.0",
+    "bun-types": "latest",
+    "typescript": "^5.6.0"
   }
 }
