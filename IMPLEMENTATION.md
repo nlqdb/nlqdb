@@ -88,6 +88,27 @@ nameservers"* → paste the two Cloudflare-assigned NS → Save. The
 parked-page shows until NS propagation completes (5–30 min typical);
 no other GoDaddy-side cleanup is required.
 
+**Assigned nameservers** (Cloudflare picks 2 at zone creation; these
+are permanent for the life of the zone, not rotated):
+
+| Zone         | NS 1                       | NS 2                     |
+| :----------- | :------------------------- | :----------------------- |
+| `nlqdb.com`  | `jeremy.ns.cloudflare.com` | `kiki.ns.cloudflare.com` |
+| `nlqdb.ai`   | _(assigned on add-a-site)_ | _(assigned on add-a-site)_ |
+
+**DNSSEC kill-switch (CRITICAL).** If DNSSEC is enabled on the domain
+at GoDaddy, switching NS without disabling it first **breaks the
+domain** (resolvers return SERVFAIL because the DS records no longer
+match). Ordered steps:
+
+1. GoDaddy → the domain → *DNSSEC* → **Disable / Off**. Wait 1–2 min
+   for GoDaddy's DS records to clear from `.com` TLD.
+2. GoDaddy → *Nameservers* → *Change* → paste Cloudflare NS → Save.
+3. Optionally, after the zone is active on Cloudflare, re-enable
+   DNSSEC from the Cloudflare dashboard (*DNS* → *Settings* →
+   *DNSSEC*), then copy the DS record Cloudflare gives you back to
+   GoDaddy's *DNSSEC* page.
+
 **Safe-flip sequencing:** don't switch nameservers until a holding
 page exists. Pending Cloudflare zones cost nothing and wait
 indefinitely for NS. Build `apps/coming-soon/` (static HTML), deploy
