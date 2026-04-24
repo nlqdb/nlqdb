@@ -39,13 +39,21 @@ ok "Cloudflare auth: $(wrangler whoami 2>&1 | grep -E '^ You are logged in|email
 
 # --- 2. Ensure Pages project exists ------------------------------------
 
-if wrangler pages project list 2>/dev/null | awk 'NR>2 {print $1}' | grep -qx "$PROJECT"; then
+# wrangler pages project list outputs a Unicode-bordered table which
+# is fragile to parse. Safer: attempt create, tolerate "already
+# exists", and proceed to deploy regardless. First-run creates,
+# re-runs are no-ops.
+say "Ensuring Pages project '$PROJECT' exists"
+create_out=$(wrangler pages project create "$PROJECT" \
+  --production-branch main \
+  --compatibility-date "$(date -u +%Y-%m-%d)" 2>&1 || true)
+if echo "$create_out" | grep -q "Successfully created"; then
+  ok "Pages project '$PROJECT' created"
+elif echo "$create_out" | grep -qi "already exists"; then
   ok "Pages project '$PROJECT' already exists"
 else
-  say "Creating Pages project '$PROJECT' (production branch: main)"
-  wrangler pages project create "$PROJECT" \
-    --production-branch main \
-    --compatibility-date "$(date -u +%Y-%m-%d)"
+  warn "Unexpected wrangler output; continuing anyway"
+  echo "$create_out" | head -3
 fi
 
 # --- 3. Deploy ----------------------------------------------------------
