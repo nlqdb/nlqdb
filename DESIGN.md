@@ -527,6 +527,7 @@ have paying customers.
 
 | Concern | Tool | Free tier (Apr 2026) |
 |---|---|---|
+| Zone (DNS, CDN, SSL, L7 DDoS, WAF) | Cloudflare **Free plan**, per zone | Unmetered DNS + CDN + DDoS; 5 custom rules, 5 WAF rules, 70 page rules; common-bot challenge only. Upgrade triggers in IMPLEMENTATION §2.1. |
 | Marketing site | Cloudflare Pages | Unlimited requests, 500 builds/mo |
 | Edge compute | Cloudflare Workers | 100k req/day, 10ms CPU/req |
 | Session / plan cache | Cloudflare KV | 100k reads/day, 1k writes/day |

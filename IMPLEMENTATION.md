@@ -29,8 +29,46 @@ rationale.
 
 ### 2.1 Domains (owned)
 
-- [ ] `nlqdb.com` on Cloudflare DNS.
+- [ ] `nlqdb.com` on Cloudflare DNS — **Cloudflare Free plan** (see below).
 - [ ] `nlqdb.ai` on Cloudflare DNS; apex 301 → `nlqdb.com` (§2.1 design).
+      **Cloudflare Free plan** for this zone too.
+
+**Cloudflare plan per zone: Free ($0/mo/zone).** Both `nlqdb.com` and
+`nlqdb.ai` run on Cloudflare's Free tier through Phase 2. What that
+buys us (and its limits) — copied directly from the plan card at
+`dash.cloudflare.com` → *Add a site* → Free:
+
+| Capability                              | Free tier                           |
+| :-------------------------------------- | :---------------------------------- |
+| DNS                                     | Fast, unlimited queries             |
+| Global CDN                              | Unlimited bandwidth, full coverage  |
+| Universal SSL                           | Edge + origin (ECC)                 |
+| Application-layer DDoS                  | Unmetered                           |
+| Rate limiting                           | IP-based only                       |
+| WAF                                     | High-severity / widespread vulns    |
+| Bot management                          | Common bots only                    |
+| Page / transform / origin rules         | 70 total                            |
+| Custom Cloudflare Rules                 | 5                                   |
+| Custom WAF Rules                        | 5                                   |
+| Support                                 | Community + docs                    |
+
+**Why Free suffices through Phase 2:**
+- No SLA or managed-WAF rules needed pre-PMF.
+- 5 custom rules are enough for the two gates we care about: block
+  POSTs outside `/v1/*` at the edge, and cache all `GET /v1/ask` by
+  `(schema_hash, query_hash)` (§4.4 DESIGN).
+- Workers / KV / D1 / R2 / Queues / Workers AI / Durable Objects are
+  priced per-request, not per-zone — Free plan doesn't cap them (see
+  §2.3).
+- Custom embed domains (Phase 2) use **Cloudflare for SaaS**, whose
+  first 100 zones are free independent of the plan on `nlqdb.com`.
+
+**Upgrade triggers (re-evaluate per `IMPLEMENTATION §8`):**
+- Sustained L7 attack that the free WAF doesn't classify → Pro ($25/mo).
+- Needing more than 5 custom Cloudflare Rules or 5 custom WAF Rules.
+- Needing Argo Smart Routing or Load Balancing (unlikely pre-Phase 3).
+- Requiring business-hour support SLA — Enterprise only; revisit at
+  Phase 4.
 
 ### 2.2 Identity / source / distribution
 
