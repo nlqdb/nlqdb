@@ -3,7 +3,7 @@
 ## Setup (clean machine)
 
 ```bash
-git clone git@github.com:omerhochman/nlqdb.git && cd nlqdb
+git clone git@github.com:nlqdb/nlqdb.git && cd nlqdb
 scripts/bootstrap-dev.sh   # installs every tool, pulls Ollama models, seeds .envrc, wires hooks
 scripts/login-cloud.sh     # CLI-based cloud provider logins + checklist for browser-only flows
 ```
