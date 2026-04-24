@@ -139,6 +139,33 @@ check_http OPENROUTER_API_KEY \
   "https://openrouter.ai/api/v1/auth/key" \
   --match '"data"'
 
+say "OAuth providers"
+# Google OAuth web-app client credentials don't support a
+# client_credentials grant, so a live "is this secret valid?" probe
+# needs a user-driven auth handshake. Format-check instead; catches
+# the common paste mistakes (fields swapped, partial copy).
+#
+#   client_id:     <numeric>-<hash>.apps.googleusercontent.com
+#   client_secret: starts with GOCSPX- (format since 2021)
+if [[ -n "${GOOGLE_CLIENT_ID:-}" ]]; then
+  if [[ "$GOOGLE_CLIENT_ID" == *.apps.googleusercontent.com ]]; then
+    ok "GOOGLE_CLIENT_ID (format looks right, ${#GOOGLE_CLIENT_ID} chars)"
+  else
+    fail "GOOGLE_CLIENT_ID" "doesn't end with .apps.googleusercontent.com"
+  fi
+else
+  skip "GOOGLE_CLIENT_ID"
+fi
+if [[ -n "${GOOGLE_CLIENT_SECRET:-}" ]]; then
+  if [[ "$GOOGLE_CLIENT_SECRET" == GOCSPX-* ]]; then
+    ok "GOOGLE_CLIENT_SECRET (format looks right, ${#GOOGLE_CLIENT_SECRET} chars)"
+  else
+    fail "GOOGLE_CLIENT_SECRET" "doesn't start with GOCSPX-"
+  fi
+else
+  skip "GOOGLE_CLIENT_SECRET"
+fi
+
 say "Observability"
 # Sentry DSN format:
 #   https://<public-key>@o<org-id>.ingest.sentry.io/<project-id>
