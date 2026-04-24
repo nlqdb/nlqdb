@@ -179,7 +179,13 @@ outbound (Resend) are aligned — premature DMARC breaks mail flow.
       scanning, Dependabot.
 - [ ] npm org `nlqdb` (reserves `@nlqdb/*`).
 - [ ] `nlqdb/homebrew-tap` (GitHub repo).
-- [ ] Docker Hub org `nlqdb` (optional self-host image).
+- [ ] ~~Docker Hub org `nlqdb`~~ → **skipped**. Docker removed the
+      free-org tier (Team plan now starts at $15/seat/mo = ~$180/yr),
+      which conflicts with the strict-$0 budget. Self-host images
+      (if/when we ship them in Phase 3+) publish to **GitHub
+      Container Registry** under `ghcr.io/nlqdb/<image>` — free for
+      public images, integrated with the existing `nlqdb` GH org,
+      no extra account.
 
 ### 2.3 Hosting / runtime (§7 design)
 
