@@ -428,6 +428,11 @@ Workload Analyzer.
 - **Self-hosted classifier** on single A10G Modal once ~50k queries/day.
 - **Continuous backups** to R2 with PITR (7d free, 30d Hobby+).
 - **Team workspaces** (Owner/Member/Public).
+- **Self-host container image** published to `ghcr.io/nlqdb/api`
+  (and `ghcr.io/nlqdb/cli` if demand exists) — free public registry
+  under the `nlqdb` GH org (§2.2). Docker Hub is off-limits due to
+  the paid-org-only tier change; GHCR is the canonical distribution
+  point for any OCI image we ship.
 
 **Exit gate:** ≥100 successful auto-migrations with zero user-visible
 downtime; Workload Analyzer beats a hand-tuned baseline on a held-out
