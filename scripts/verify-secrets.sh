@@ -79,10 +79,13 @@ check_present CLOUDFLARE_ACCOUNT_ID 20
 check_present CF_AI_TOKEN 20
 
 say "Neon"
+# /api/v2/users/me works for both personal and org-scoped API keys
+# without needing an `org_id` query param. /api/v2/projects requires
+# org_id when the key is org-scoped, which errors with HTTP 400.
 check_http NEON_API_KEY \
   -H "Authorization: Bearer ${NEON_API_KEY:-MISSING}" \
-  "https://console.neon.tech/api/v2/projects" \
-  --match '"projects"'
+  "https://console.neon.tech/api/v2/users/me" \
+  --match '"email"|"id"|"name"'
 
 if command -v psql >/dev/null 2>&1; then
   if [[ -n "${DATABASE_URL:-}" ]]; then
