@@ -39,6 +39,11 @@ every tool we ship. If a change violates one of these, it doesn't ship.
 - **Fast.** First paint of the marketing site < 600ms on a 4G phone. Lighthouse 100/100/100/100.
 - **Fast.** CLI binary < 8MB, starts in < 30ms. `nlq query` returns first byte in < 200ms
   on cache hit.
+- **Goal-first, not DB-first.** No persona ever woke up wanting to "create a
+  database." They want a meal-planner, a research agent, a one-off answer for
+  the 4pm exec sync, a CS50 final. The DB is plumbing. The on-ramp must lead
+  with **the user's goal**, and create the DB silently as a side effect of
+  pursuing it. See §0.1.
 - **Bullet-proof by design, not by handling.** We avoid edge cases by **constraining
   inputs**, not by branching on them. Concretely:
   - Schema is inferred and **widened-only** — never narrowed. There is no "schema
@@ -54,6 +59,57 @@ every tool we ship. If a change violates one of these, it doesn't ship.
     silent overflow.
   - Secrets are scoped per-DB; there is no "wrong tenant" branch because tenants
     don't share routing.
+
+---
+
+## 0.1 On-ramp inversion (the most important design principle)
+
+Re-reading [`PERSONAS.md`](./PERSONAS.md) carefully: **none of our top personas
+have "create a database" as a goal.** Maya wants a meal-planner shipped by
+Sunday. Jordan wants an agent that remembers things between sessions. Priya
+wants the conference-leads number for her 4pm sync. Aarav wants to pass CS50.
+The database is a *side effect of the thing they're trying to do*. If the
+on-ramp asks "name your database" first, we have already failed the values in
+§0 even if every byte after that is perfect.
+
+**The inversion:** every surface is reframed so the user's first action is
+**stating their goal**, and the database materializes as a consequence.
+
+| Surface | Old framing (DB-first) | New framing (goal-first) |
+|---|---|---|
+| Marketing hero | "Name your database" | "What are you building?" *(or: "Ask anything.")* |
+| Platform first run | Empty dashboard, "Create database" button | Single chat input, no concept of "DB" until needed |
+| CLI first command | `nlq db create orders` | `nlq new "an orders tracker"` (creates the DB silently) |
+| MCP first call | `nlqdb_create_database("memory")` | `nlqdb_query("memory", "remember that...")` *(DB autocreated on first reference)* |
+| `<nlq-data>` first attribute | `db="orders"` is required | `goal="..."` is the lead; `db` is optional and inferred from the goal on first call |
+| HTTP API | `POST /v1/databases` then `POST /v1/db/{id}/query` | `POST /v1/ask { "goal": "..." }` returns a session that includes the DB it created |
+
+**Mechanism** (one rule, applied everywhere): every entry point accepts a
+**goal** in plain English. The first call materializes a DB derived from the
+goal (slug + short hash for collision resistance), persists it under the
+caller's identity (or anonymous token), and returns a session object that
+*also contains* the DB handle for power users. The caller never has to ask
+for the DB. They get one anyway.
+
+**Why this is structurally simpler, not just nicer copy:**
+- The "create DB" endpoint becomes an internal function, not a public verb.
+  One fewer concept in the public surface.
+- Auto-named DBs eliminate the "what should I call it" decision — the #1
+  abandonment point in our 60-second test (per the validation plan in
+  [`PERSONAS.md`](./PERSONAS.md)).
+- The CLI, MCP, and embed element all converge on **one verb** (`ask` /
+  `query` / `goal`). The four surfaces stop drifting.
+- Anonymous-mode (the 72h adoption window from [`PLAN.md` §1.1](./PLAN.md))
+  becomes the default path, not a footnote.
+
+**The DB never disappears as a concept** — it is always one click / one flag
+away. Power users can still `nlq db create exact-name`, still set `db="orders"`
+explicitly, still hit the legacy two-endpoint path. Goal-first is the
+**default**, not the only way. (Per §0: escape hatches are first-class.)
+
+The rest of this doc is rewritten or annotated to reflect this inversion.
+Sections that currently still read DB-first (notably parts of §3) are flagged
+inline.
 
 ---
 
@@ -138,8 +194,14 @@ default; Next.js ships React. We pay no React tax for a page that doesn't need R
 We use React/Svelte/Vue islands (`client:visible`) for the interactive demo only.
 
 **Pages**:
-- `/` — hero with a **live, in-page demo** of the chat. Type a query against a public
-  example DB, see streamed results. No signup wall.
+- `/` — hero is **a single input box that asks "What are you building?"** (per
+  §0.1). Placeholder cycles: *"a meal-planner for my partner"*, *"an agent
+  that remembers my preferences"*, *"answer for the 4pm sync from this CSV"*,
+  *"my CS50 final project"*. Pressing Enter does not navigate — the page
+  morphs in place into a working chat (View Transitions API), the user's
+  first reply streams in, and a DB has been silently created in the
+  background. No "create your database" copy appears anywhere on this page.
+  No signup wall.
 - `/docs` — MDX, full-text searchable, 100% offline-capable PWA.
 - `/pricing` — see §6.
 - `/manifesto` — the values from §0, rewritten for humans.
@@ -226,16 +288,36 @@ need npm distribution as the primary channel).
 - Every command takes a DB positional. `nlq use orders` writes
   `~/.config/nlqdb/config.toml` and is visible.
 
-**Surface** (see [`PLAN.md` §1.4](./PLAN.md) for the full list):
+**Surface (goal-first; see §0.1):**
+
 ```
-nlq login                    # opens browser → Better Auth device-code flow
-nlq db create orders
+nlq                                    # bare command → opens an interactive prompt:
+                                       #   "What are you working on?" → creates DB silently,
+                                       #   drops into chat REPL.
+
+nlq new "an orders tracker"            # one-liner: creates DB derived from goal,
+                                       # opens chat with the goal as the first message.
+
+nlq "how many signups today"           # bare query against the *current* DB
+                                       # (the most-recently-used; explicit and visible).
+
+nlq login                              # device-code flow via Better Auth (browser).
+nlq mcp install claude                 # one-click MCP config for Claude Desktop.
+```
+
+**Power-user surface (escape hatches, always available):**
+```
+nlq db create orders                   # explicit name when the user cares.
 nlq db list
-nlq query orders "how many signups today"
-nlq chat orders              # interactive REPL, streams
-nlq connection orders        # prints the raw Postgres URL (escape hatch)
-nlq mcp install claude       # installs the MCP config into Claude Desktop
+nlq query orders "..."                 # explicit DB targeting.
+nlq chat orders                        # interactive REPL pinned to a DB.
+nlq use orders                         # set default DB; visible in ~/.config/nlqdb/config.toml.
+nlq connection orders                  # raw Postgres URL (escape hatch from §0).
 ```
+
+The default-path commands (top block) cover ~95% of usage. The explicit-path
+commands (bottom block) exist because power users are first-class — but they
+are not the on-ramp.
 
 ### 3.4 MCP server — `@nlqdb/mcp`
 
@@ -257,12 +339,21 @@ into static HTML. Distributed as `@nlqdb/elements` (one CDN URL: `https://elemen
 ```html
 <script src="https://elements.nlqdb.sh/v1.js" type="module"></script>
 
+<!-- Goal-first form (default; per §0.1). DB is auto-created from the goal
+     on the first call and remembered server-side per api-key. -->
+<nlq-data
+  goal="the 5 most-loved coffee shops in Berlin, with photos"
+  api-key="pk_live_..."
+  template="card-grid"
+  refresh="60s"
+></nlq-data>
+
+<!-- Power-user form (explicit DB; same element, opt-in). -->
 <nlq-data
   db="coffee-shops"
   query="the 5 most-loved coffee shops in Berlin, with photos"
   api-key="pk_live_..."
   template="card-grid"
-  refresh="60s"
 ></nlq-data>
 ```
 
@@ -643,6 +734,609 @@ To avoid scope creep, things we are deliberately not doing in v1:
   `<nlq-stream>` then.)
 - A GraphQL API. (REST + the embed element + MCP are enough surfaces.)
 - A "Sign in with nlqdb" identity provider. (Possible Phase 2; not now.)
+
+---
+
+## 13. Reusable CI/CD — GitHub Actions
+
+We are an OSS-first dev-tools company shipping multiple repos on the same
+release cadence (web, platform, CLI, MCP, elements, SDKs, infra). Every repo
+needs the same handful of jobs: lint, type-check, test, build, security
+scan, release. We refuse to copy-paste workflow YAML into 8 repos.
+
+**Design choice:** **one** repo (`nlqdb/.github` — actually a normal
+`nlqdb-actions` repo because GitHub's `.github` repo can't host reusable
+workflows for a private org) owns:
+
+1. A **reusable workflow** (`.github/workflows/ci.yml`) callable from any repo
+   via `uses: nlqdb/actions/.github/workflows/ci.yml@v1`. This handles the
+   full pipeline (lint → typecheck → test → build → scan → optional release).
+2. A small set of **composite actions** (`actions/setup-node`, `actions/setup-go`,
+   `actions/cache-restore`, `actions/llm-changelog`) for steps that vary
+   across language stacks but follow the same pattern.
+
+**Why reusable workflows instead of just composite actions:** reusable
+workflows can carry their own `permissions:`, `concurrency:`, matrix, and
+secrets — composites cannot. We get one source of truth for the *whole*
+pipeline, not just steps.
+
+**Why one tag (`@v1`), not `@main`:** a moving target across 8 repos breaks
+8 repos at once. We tag (`v1`, `v1.1`, …) and only `@v1` major-bump on
+intentional breaking changes.
+
+### 13.1 Repository layout (`nlqdb/actions`)
+
+```
+nlqdb/actions/
+├── .github/
+│   └── workflows/
+│       ├── ci.yml              # the reusable CI pipeline
+│       └── release.yml         # the reusable release pipeline (semver, npm, brew, GH releases)
+├── actions/
+│   ├── setup/
+│   │   └── action.yml          # auto-detects node/go/python; installs + caches
+│   ├── llm-changelog/
+│   │   └── action.yml          # composes a changelog using a tiered LLM call
+│   └── deploy-cloudflare/
+│       └── action.yml          # wraps wrangler deploy with our conventions
+├── README.md
+└── CHANGELOG.md
+```
+
+### 13.2 The reusable CI workflow
+
+Per [§0 core values] this must be: simple, fast, bullet-proof by design.
+Concretely:
+
+- **One file**, one entry point.
+- **Auto-detects** the language from the consumer repo (presence of
+  `package.json`, `go.mod`, `pyproject.toml`). No manual `language:` input.
+- **Concurrency-safe**: cancels in-progress runs on the same ref so PR
+  pushes don't queue.
+- **Cached aggressively**: pnpm store, Go build cache, Turborepo remote
+  cache (free tier on Vercel, but optional).
+- **Matrix is implicit**: only one OS (Ubuntu) and one runtime version per
+  language by default. We do not waste minutes on matrix combinatorics
+  unless the consumer opts in via `matrix-os:` and `matrix-versions:`.
+- **Fast-fail order**: lint < typecheck < test < build < scan. Cheapest
+  signal first.
+- **Free-tier compliant**: GitHub Actions is free for public repos (which
+  ours are), so this costs $0/month — see §7.
+
+```yaml
+# nlqdb/actions/.github/workflows/ci.yml
+name: nlqdb-reusable-ci
+
+on:
+  workflow_call:
+    inputs:
+      package-manager:
+        description: "pnpm | npm | yarn | bun | go | uv (auto-detected if blank)"
+        required: false
+        type: string
+      run-release:
+        description: "Run the release job on push to main if this repo is publishable"
+        required: false
+        default: false
+        type: boolean
+      matrix-os:
+        required: false
+        default: '["ubuntu-latest"]'
+        type: string
+      matrix-versions:
+        required: false
+        default: '[""]'   # blank = use repo's lockfile / go.mod / .python-version
+        type: string
+    secrets:
+      NPM_TOKEN:           { required: false }
+      CLOUDFLARE_API_TOKEN:{ required: false }
+      ANTHROPIC_API_KEY:   { required: false }   # used by llm-changelog
+      CODECOV_TOKEN:       { required: false }
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: write
+  id-token: write          # for OIDC publish to npm / Cloudflare
+
+jobs:
+  detect:
+    runs-on: ubuntu-latest
+    outputs:
+      lang: ${{ steps.detect.outputs.lang }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: detect
+        uses: nlqdb/actions/actions/setup@v1
+        with:
+          package-manager: ${{ inputs.package-manager }}
+
+  lint:
+    needs: detect
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: nlqdb/actions/actions/setup@v1
+      - run: |
+          case "${{ needs.detect.outputs.lang }}" in
+            node) pnpm lint ;;
+            go)   golangci-lint run ./... ;;
+            py)   ruff check . ;;
+          esac
+
+  typecheck:
+    needs: detect
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: nlqdb/actions/actions/setup@v1
+      - run: |
+          case "${{ needs.detect.outputs.lang }}" in
+            node) pnpm typecheck ;;
+            go)   go vet ./... ;;
+            py)   pyright ;;
+          esac
+
+  test:
+    needs: [detect, lint, typecheck]
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: true
+      matrix:
+        os: ${{ fromJSON(inputs.matrix-os) }}
+        version: ${{ fromJSON(inputs.matrix-versions) }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: nlqdb/actions/actions/setup@v1
+        with:
+          version: ${{ matrix.version }}
+      - run: |
+          case "${{ needs.detect.outputs.lang }}" in
+            node) pnpm test --coverage ;;
+            go)   go test -race -coverprofile=coverage.out ./... ;;
+            py)   pytest --cov ;;
+          esac
+      - if: secrets.CODECOV_TOKEN != ''
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+
+  build:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: nlqdb/actions/actions/setup@v1
+      - run: |
+          case "${{ needs.detect.outputs.lang }}" in
+            node) pnpm build ;;
+            go)   go build ./... ;;
+            py)   python -m build ;;
+          esac
+      - uses: actions/upload-artifact@v4
+        with:
+          name: build-${{ github.sha }}
+          path: dist/
+          retention-days: 7
+
+  scan:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: fs
+          exit-code: '1'
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+      - uses: github/codeql-action/init@v3
+      - uses: github/codeql-action/analyze@v3
+
+  release:
+    if: inputs.run-release && github.ref == 'refs/heads/main' && github.event_name == 'push'
+    needs: scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - uses: nlqdb/actions/actions/setup@v1
+      - uses: nlqdb/actions/actions/llm-changelog@v1
+        with:
+          model: claude-sonnet-4.6      # per §8 cost-control
+          anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
+      - run: pnpm changeset publish
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+```
+
+### 13.3 Consumer usage (every repo, one file each)
+
+```yaml
+# nlqdb/cli/.github/workflows/ci.yml      ← copy-paste this 4-line file into every repo
+name: ci
+on: { push: { branches: [main] }, pull_request: {} }
+jobs:
+  ci:
+    uses: nlqdb/actions/.github/workflows/ci.yml@v1
+    with:
+      run-release: true
+    secrets: inherit
+```
+
+That's the entire CI for any nlqdb repo. Four lines. Per §0: simple, fast,
+bullet-proof by design.
+
+### 13.4 Release pipeline (separate reusable workflow)
+
+We keep CI and release in the same file when small (above). For the
+platform repo, which deploys a website on every merge, we additionally call
+`nlqdb/actions/.github/workflows/deploy-cloudflare.yml@v1` from a
+`deploy.yml` workflow. Same pattern: four-line consumer, all logic
+upstream.
+
+### 13.5 Conventions enforced by CI (so they don't need a docs page)
+
+- Conventional Commits required (enforced by a commit-lint job in `lint:`).
+- `CHANGELOG.md` is generated, not hand-written (via `llm-changelog` action,
+  which uses Sonnet 4.6 per §8).
+- Semver: `changesets` for npm packages; tag-driven for Go binaries; auto
+  PR for version bumps.
+- Every PR gets a sticky comment with: build size delta, test coverage
+  delta, p95 benchmark delta (where applicable), and a link to the preview
+  deploy.
+
+---
+
+## 14. Usage by surface — the happy path for each tool
+
+This section answers "what does it actually look like to use this." Every
+block is the **goal-first default** (per §0.1). Power-user variants are
+shown only when materially different.
+
+### 14.1 Marketing site (`nlqdb.sh`)
+
+```
+1. User lands on nlqdb.sh.
+2. Sees ONE input: "What are you building?"
+3. Types: "an orders tracker for my coffee shop"
+4. Hits Enter.
+5. The page morphs in place into a chat. The first reply streams:
+     "Set up. Tell me about an order — what should I track?"
+6. User types: "customer name, what they ordered, time, total"
+7. The chat replies with the inferred schema, a sample row, and an embed snippet.
+   Total elapsed: 22 seconds. No sign-in. No pricing dialog. No "create your
+   first database" button.
+```
+
+### 14.2 Platform web app (`app.nlqdb.sh`)
+
+```
+- After step 7 above, a slim bar appears: "Save this — sign in with GitHub."
+- User clicks; GitHub OAuth pops; back to the same chat, signed in, DB adopted.
+- The left rail now shows one entry: `orders-tracker-a4f` (auto-named).
+- User keeps chatting. Cmd+K opens the palette. Cmd+/ toggles the SQL trace.
+- Settings → API keys → "Reveal pk_live_..." (publishable, browser-safe).
+```
+
+### 14.3 CLI (`nlq`)
+
+**Default path** (one line, no setup):
+
+```bash
+$ nlq new "an orders tracker"
+✓ Ready. Try: nlq "add an order: alice, latte, $5.50, just now"
+
+$ nlq "add an order: alice, latte, $5.50, just now"
+✓ Added. orders-tracker-a4f now has 1 row.
+```
+
+That's it. The DB exists. There is no `nlq db create` step the user had to know about.
+
+**Day-2 ops** (still one line each):
+
+```bash
+$ nlq "how many orders today, by drink"
+latte    ████████████  12
+flat-white ██████      6
+mocha    ██            2
+
+$ nlq "export today's orders as csv > today.csv"
+✓ Wrote 20 rows to today.csv
+```
+
+**Power-user path** (explicit, when the user cares):
+
+```bash
+$ nlq db create finance --engine postgres --region us-east
+$ nlq query finance "monthly revenue last 12 months"
+$ nlq connection finance     # raw Postgres URL — drop into your own app
+```
+
+### 14.4 MCP server (`@nlqdb/mcp`)
+
+**Install** (one line per host):
+
+```bash
+$ nlq mcp install claude     # patches Claude Desktop's config
+$ nlq mcp install cursor     # same for Cursor
+$ nlq mcp install zed        # same for Zed
+```
+
+**Usage from inside the host LLM** (the agent doesn't need to know about
+"databases"):
+
+```
+[Claude Desktop, after install]
+User:  "Remember that I prefer metric units and I'm vegetarian."
+Claude → calls tool: nlqdb_query("preferences", "remember: metric units, vegetarian")
+       → tool returns: { ok, db: "preferences-93b" }
+Claude:  "Got it. I'll remember."
+
+[next session, hours later]
+User:  "Plan me a Berlin food trip."
+Claude → calls tool: nlqdb_query("preferences", "what do you remember about me?")
+       → returns: "metric units, vegetarian"
+Claude:  "Here's a vegetarian itinerary in km..."
+```
+
+The agent never called `nlqdb_create_database`. The DB materialized on
+first reference. The agent's prompt has one tool, not two.
+
+### 14.5 `<nlq-data>` HTML element
+
+**Default (goal-first, the whole "backend"):**
+
+```html
+<script src="https://elements.nlqdb.sh/v1.js" type="module"></script>
+
+<nlq-data
+  goal="the 5 newest orders, with customer and item"
+  api-key="pk_live_xxx"
+  template="table"
+  refresh="10s"
+></nlq-data>
+```
+
+That's the entire backend for a live order list. There is no API to write,
+no schema to define, no JSON to parse, no React to render. The element
+fetches, renders the table template, and refreshes every 10 seconds.
+
+**Day-2 (still no backend):**
+
+```html
+<form>
+  <input name="customer" />
+  <input name="drink" />
+  <input name="total" />
+  <nlq-action
+    goal="add an order from this form"
+    api-key="pk_live_xxx"
+    on-success="reload"
+  >Submit</nlq-action>
+</form>
+```
+
+`<nlq-action>` is the write counterpart. Same template-registry safety
+model as `<nlq-data>` (§3.5). The form's field names are inferred into
+columns automatically.
+
+### 14.6 HTTP API (when none of the above fit)
+
+**Default (one endpoint):**
+
+```bash
+curl https://api.nlqdb.sh/v1/ask \
+  -H "Authorization: Bearer sk_live_..." \
+  -H "Idempotency-Key: $(uuidgen)" \
+  -d '{"goal": "an orders tracker", "ask": "how many orders today"}'
+
+→ 200 {
+  "answer": "12 today",
+  "data": [{"count": 12}],
+  "session": { "db": "orders-tracker-a4f", "key": "pk_live_..." },
+  "trace": { "engine": "postgres", "sql": "...", "ms": 41 }
+}
+```
+
+The `session.db` and `session.key` come back so the caller *can* go
+DB-explicit on subsequent calls if they want. They don't have to.
+
+**Power-user path** (the two-endpoint API from [`PLAN.md` §1.3](./PLAN.md))
+remains available unchanged for callers who already think in DBs.
+
+---
+
+## 15. Persona walkthroughs — from zero to shipped
+
+Each persona's actual goal, not a feature tour. Every step is what the
+user does (left) and what nlqdb does in response (right). Nothing about
+"first, create a database."
+
+### 15.1 P1 — Maya, the Solo Builder
+
+**Goal:** ship a meal-planner side project this weekend.
+
+| Time | Maya does | nlqdb does |
+|---|---|---|
+| Fri 9:01pm | Lands on `nlqdb.sh`, types *"a meal planner — dishes, ingredients, plans for the week"* | Materializes `meal-planner-7c2`, replies with inferred schema in NL, streams a `<nlq-data>` snippet for "this week's plan" |
+| 9:03pm | Pastes the snippet into her existing Next.js project's `page.tsx`. Adds her publishable key. | Element fetches, renders an empty table, refreshes every 30s |
+| 9:08pm | Types into the chat: *"add 12 sample dishes with realistic ingredients"* | Inserts 12 rows, returns the IDs and a preview |
+| 9:15pm | Adds a `<nlq-action>` form to add new dishes from the UI | Inferred new columns where the form has new fields |
+| 11:30pm | Deploys to Vercel. Site is live. | — |
+| Sat 10am | Sister tests it. Maya types: *"who used the planner today, and which dishes were added"* | Replies in prose + table |
+| Sun 6pm | *"add a `trial_ends_at` field to users, default 14 days from signup"* | Diff preview shown; Maya hits Enter; column added; existing rows backfilled |
+| Mon 9am | Signs in to the platform; adopts the anonymous DB; adds a card; switches to Hobby ($10) | DB unpaused, 30-day backups on |
+
+**What Maya never did:** wrote a migration file, opened psql, picked a
+region, configured Prisma, set up an admin panel, configured backups, wrote
+a single SQL statement.
+
+**Setup time, old way:** ~1 day. **Setup time, nlqdb:** ~2 minutes.
+
+### 15.2 P2 — Jordan, the Agent Builder
+
+**Goal:** ship a research-agent that remembers things between sessions.
+
+| Step | Jordan does | nlqdb does |
+|---|---|---|
+| 1 | `npx -y @nlqdb/mcp` once, sets `NLQDB_API_KEY` env | MCP server registers, exposes `nlqdb_query` to the agent |
+| 2 | In the agent's system prompt: *"You have a tool `nlqdb_query`. Call it with a `db` and a `q` in plain English. The `db` can be any string — it'll be created if new."* | — |
+| 3 | Agent runs first session. On a fact: `nlqdb_query("research-memory", "remember: the user is researching solar panels in Berlin")` | DB `research-memory-...` materialized, row inserted |
+| 4 | Agent ends session, reopens hours later: `nlqdb_query("research-memory", "what do I know about the user's research topic?")` | Returns the stored fact |
+| 5 | Jordan watches the platform: clicks `research-memory`, sees every query the agent ran today, including the ones that returned zero rows | Trace + query log per [`PLAN.md` §2.2](./PLAN.md) |
+| 6 | Ships the agent on Modal. Anonymous → adopted on Jordan's sign-in. | — |
+
+**What Jordan never wrote:** a vector-store glue layer, a schema for memory,
+a session-lifecycle service, a per-agent provisioning script, a metadata
+DB sidecar.
+
+**Code Jordan wrote:** ~40 lines of glue. ~95% reduction from a hand-rolled
+memory layer.
+
+### 15.3 P3 — Priya, the Data-Curious PM
+
+**Goal:** answer the conference-leads question for the 4pm exec sync.
+
+| Time | Priya does | nlqdb does |
+|---|---|---|
+| 2:15pm | Drags the vendor's CSV onto `nlqdb.sh`. Types *"how many of these are already in our users table"* | Uploads CSV as `conference-leads-q2`, joins against the read-only mirror of prod (already permissioned), returns the count and a preview |
+| 2:18pm | *"…and which plan are they on"* | Adds the join, returns table |
+| 2:20pm | *"break it down by acquisition channel"* | Adds the group-by, returns chart-ready data |
+| 2:22pm | Clicks "Share result" on the answer | Generates a permalinkable, redacted-by-default link to drop in Slack |
+| 4:00pm | Walks into the meeting with the answer | — |
+
+**What Priya never did:** opened a data-request ticket, pinged an engineer,
+opened Excel, learned SQL, installed a BI tool, got prod credentials.
+
+**Time saved on this one task:** ~1.5 days of waiting on engineering, plus
+~30 minutes of Excel work.
+
+### 15.4 P5 — Aarav, the Student
+
+**Goal:** finish the CS50 final project (a blog).
+
+| Step | Aarav does | nlqdb does |
+|---|---|---|
+| 1 | `nlq new "a blog with posts and authors"` | DB created, schema inferred, replies with the SQL it ran ("…in case you're curious — your assignment asks for it") |
+| 2 | Pastes the SQL into his write-up | — |
+| 3 | Types *"add a sample post by 'Aarav' titled 'hello world'"* | Inserts the row |
+| 4 | Drops `<nlq-data goal="latest 5 posts" template="card-grid" ...>` into his static-HTML assignment | Renders the blog feed |
+| 5 | Submits the assignment | — |
+
+**What Aarav never did:** ran `brew install postgresql`, dealt with a port
+conflict, learned what `pg_hba.conf` is, gave up on day 1.
+
+The chat **also taught him** the SQL it generated, so he understands what
+his own project does. The free tier costs us cents and produces a future
+P1.
+
+### 15.5 The pattern across all four
+
+Across every persona, the **first action is stating a goal**. The DB is a
+silent consequence. The product surfaces (chat, CLI, MCP, embed) are four
+projections of the same one verb: *ask, in plain English, against the
+data you care about*. Sections of the design that fight this rule are
+flagged in §0.1 and amended above.
+
+---
+
+## 16. Hello-world e2e fullstack tutorial — the 1-pager
+
+This is the tutorial we publish at `nlqdb.sh/hello-world`. It is short on
+purpose. If a reader has to scroll twice, we failed.
+
+> ### Build a working orders tracker, end-to-end, in one HTML file.
+>
+> No backend code. No database setup. No build step. No framework.
+>
+> **1. Get a key (10 seconds, no card):**
+>
+> Go to `nlqdb.sh`. Type *"an orders tracker"* in the box. Sign in with GitHub.
+> Copy your `pk_live_...` key from the top-right.
+>
+> **2. Save this as `index.html`:**
+>
+> ```html
+> <!doctype html>
+> <html>
+>   <head>
+>     <script src="https://elements.nlqdb.sh/v1.js" type="module"></script>
+>     <title>Orders</title>
+>   </head>
+>   <body>
+>     <h1>Today's orders</h1>
+>
+>     <nlq-data
+>       goal="today's orders, newest first"
+>       api-key="pk_live_REPLACE_ME"
+>       template="table"
+>       refresh="5s"
+>     ></nlq-data>
+>
+>     <h2>Add one</h2>
+>     <form>
+>       <input name="customer" placeholder="customer" required />
+>       <input name="drink"    placeholder="drink"    required />
+>       <input name="total"    placeholder="total"    required type="number" step="0.01" />
+>       <nlq-action
+>         goal="add an order from this form"
+>         api-key="pk_live_REPLACE_ME"
+>         on-success="reload"
+>       >Add order</nlq-action>
+>     </form>
+>   </body>
+> </html>
+> ```
+>
+> **3. Open it in a browser.**
+>
+> The table is empty. Submit one order. The table updates in 5 seconds.
+> Submit another. It updates again. Open a second tab — same data.
+>
+> **4. Ship it.**
+>
+> Drop `index.html` on Cloudflare Pages, GitHub Pages, your own VPS,
+> anywhere. There is nothing else to deploy.
+>
+> **What just happened:**
+>
+> - You did not write a database schema. nlqdb inferred `customer`,
+>   `drink`, `total` from your form fields.
+> - You did not write an API. The two custom elements *are* the API.
+> - You did not write SQL. The chat translated your goals into queries
+>   against an auto-provisioned Postgres.
+> - You did not configure a backend. There isn't one of your own.
+> - You did not pay anything.
+>
+> **What used to take a tutorial:**
+>
+> A typical "fullstack hello-world" in 2024 needed: a `package.json`, a
+> framework (Next/Remix/Nuxt), an ORM (Prisma/Drizzle), a migrations
+> folder, a Postgres provisioned somewhere, environment variables, two
+> API routes, two React components, deployment config for both frontend
+> and backend, and roughly 200 lines of code across 8 files. Total time:
+> 1–3 hours for an experienced dev, a full day for a beginner.
+>
+> **This tutorial:** 1 file, ~25 lines, no setup, ~3 minutes.
+>
+> **Want to see what it actually ran?** Type *"show me the queries you
+> ran for the orders form"* in your chat. Every request is traced.
+>
+> **Want to keep going?**
+>
+> ```html
+> <nlq-data
+>   goal="top 3 drinks today by revenue, with totals"
+>   template="card-grid"
+>   api-key="pk_live_..."
+> ></nlq-data>
+> ```
+>
+> Drop that anywhere in your HTML. New "endpoint", zero new code.
 
 ---
 
