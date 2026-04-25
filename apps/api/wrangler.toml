@@ -6,5 +6,21 @@ compatibility_flags = ["nodejs_compat"]
 [observability]
 enabled = true
 
-# Future bindings (Slice 2): KV / D1 / R2.
+# Resources provisioned by `scripts/provision-cf-resources.sh`. The
+# script fills in resolved IDs idempotently — IDs are public identifiers
+# (account-scoped), not secrets, and are committed for deterministic
+# `wrangler dev` + CI builds.
+#
+# R2 (`nlqdb-assets`) is deferred — needs a one-time click to enable on
+# the Cloudflare dashboard. Will land when blob storage is exercised.
+
+[[kv_namespaces]]
+binding = "KV"
+id = "5b086b03ead54f508271f31fc421bbaa"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "nlqdb-app"
+database_id = "98767eb0-65df-4787-87bf-c3952d851b29"
+
 # Future routes (post-domain mapping): app.nlqdb.com/v1/*.

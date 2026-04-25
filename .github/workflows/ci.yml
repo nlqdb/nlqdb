@@ -4,6 +4,11 @@
 # CI is the backstop. Jobs are ordered cheapest-signal-first so a
 # broken Biome rule fails in 10s, not after a full test run.
 #
+# `hashFiles()` is intentionally NOT used at job-level `if:` — GitHub
+# Actions only allows it in step-level expressions, not job-level
+# conditionals. Where a job is gated on a file existing, we run a
+# `precheck` step that sets an output, then guard later steps on it.
+#
 # Eventually this file becomes a 4-line consumer of `nlqdb/actions@v1`
 # (DESIGN §13) once that repo exists. Until then the workflow is
 # inlined here.
@@ -45,19 +50,30 @@ jobs:
     name: Go (gofumpt + vet + golangci-lint + test)
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    if: hashFiles('cli/go.mod') != ''
     defaults:
       run:
         working-directory: cli
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-go@v5
+      - id: precheck
+        working-directory: ${{ github.workspace }}
+        run: |
+          if [ -f cli/go.mod ]; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::cli/go.mod not present — Go toolchain hasn't landed yet, skipping."
+          fi
+
+      - if: steps.precheck.outputs.exists == 'true'
+        uses: actions/setup-go@v5
         with:
           go-version-file: cli/go.mod
           cache-dependency-path: cli/go.sum
 
       - name: gofumpt
+        if: steps.precheck.outputs.exists == 'true'
         run: |
           go install mvdan.cc/gofumpt@latest
           diff <(gofumpt -d .) <(echo -n) || {
@@ -66,40 +82,53 @@ jobs:
           }
 
       - name: go vet
+        if: steps.precheck.outputs.exists == 'true'
         run: go vet ./...
 
       - name: golangci-lint
+        if: steps.precheck.outputs.exists == 'true'
         uses: golangci/golangci-lint-action@v7
         with:
           working-directory: cli
           version: latest
 
       - name: go test
+        if: steps.precheck.outputs.exists == 'true'
         run: go test ./... -race -count=1
 
   lint-py:
     name: ruff (format + lint)
     runs-on: ubuntu-latest
     timeout-minutes: 5
-    if: hashFiles('pyproject.toml') != ''
     steps:
       - uses: actions/checkout@v4
 
-      - uses: astral-sh/setup-uv@v5
+      - id: precheck
+        run: |
+          if [ -f pyproject.toml ]; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::pyproject.toml not present — Python toolchain hasn't landed yet, skipping."
+          fi
+
+      - if: steps.precheck.outputs.exists == 'true'
+        uses: astral-sh/setup-uv@v5
         with:
           enable-cache: true
 
       - name: ruff format --check
+        if: steps.precheck.outputs.exists == 'true'
         run: uv run ruff format --check
 
       - name: ruff check
+        if: steps.precheck.outputs.exists == 'true'
         run: uv run ruff check
 
   test-api:
     name: apps/api (typecheck + vitest + wrangler dry-run)
     runs-on: ubuntu-latest
     timeout-minutes: 5
-    if: hashFiles('apps/api/src/**/*.ts') != ''
     steps:
       - uses: actions/checkout@v4
 
