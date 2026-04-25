@@ -42,3 +42,5 @@ Or use anonymous mode (DESIGN §3.3): no sign-in, DB lives 72 h, adopt later via
 ## Contributing a new example
 
 PRs welcome — especially for stacks not yet here (SolidStart, TanStack Start, Qwik, React Native, Expo, Tauri, etc.) and creative use-cases (Discord bot, GitHub Action, browser extension, weekly digest cron). Keep each example to one source file plus a 10-line README. Same `<nlq-data>` snippet across all of them — that's the point.
+
+The full target list — every framework, mobile platform, server middleware, IDE extension, no-code platform, iPaaS, analytics tool, and chat integration we plan to ship into — lives in [`IMPLEMENTATION.md` §10](../IMPLEMENTATION.md#10-platform-integrations--the-matrix). Each row there is a future 1st-party or 3rd-party integration; this folder is where the templated 2nd-party versions live.

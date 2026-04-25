@@ -90,4 +90,7 @@ bun run hooks:run    # run pre-commit hooks against staged files
 
 ## License
 
-TBD.
+[FSL-1.1-ALv2](./LICENSE) — Functional Source License, Apache 2.0 future
+license. Source-available for any non-competing use; auto-converts to
+Apache 2.0 two years after each release. (Pattern used by Sentry,
+Convex, and others.)
