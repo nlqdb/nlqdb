@@ -13,7 +13,7 @@
 import { metrics, trace } from "@opentelemetry/api";
 import { OTLPMetricExporter } from "@opentelemetry/exporter-metrics-otlp-http";
 import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-http";
-import { resourceFromAttributes } from "@opentelemetry/resources";
+import { type Resource, resourceFromAttributes } from "@opentelemetry/resources";
 import {
   MeterProvider,
   type MetricReader,
@@ -21,7 +21,7 @@ import {
 } from "@opentelemetry/sdk-metrics";
 import {
   BasicTracerProvider,
-  SimpleSpanProcessor,
+  BatchSpanProcessor,
   type SpanProcessor,
 } from "@opentelemetry/sdk-trace-base";
 import { ATTR_SERVICE_NAME, ATTR_SERVICE_VERSION } from "@opentelemetry/semantic-conventions";
@@ -55,21 +55,22 @@ export function setupTelemetry(opts: TelemetryOptions): TelemetryHandle {
     [ATTR_SERVICE_VERSION]: opts.serviceVersion,
   });
   const headers = opts.authorization ? { authorization: opts.authorization } : undefined;
+  const base = opts.otlpEndpoint.replace(/\/$/, "");
 
-  const traceExporter = new OTLPTraceExporter({
-    url: `${opts.otlpEndpoint.replace(/\/$/, "")}/v1/traces`,
-    headers,
-  });
+  const traceExporter = new OTLPTraceExporter({ url: `${base}/v1/traces`, headers });
+  // BatchSpanProcessor batches spans before exporting — `SimpleSpanProcessor`
+  // POSTs synchronously per `span.end()`, which OTel docs flag as
+  // "for testing/debugging only" and would burn through the Workers
+  // Free-tier 50 subrequests/request limit fast. We rely on
+  // `forceFlush()` (called from `ctx.waitUntil` in the Worker handler)
+  // to drain the buffer at request end.
   const tracerProvider = new BasicTracerProvider({
     resource,
-    spanProcessors: [new SimpleSpanProcessor(traceExporter)],
+    spanProcessors: [new BatchSpanProcessor(traceExporter)],
   });
   trace.setGlobalTracerProvider(tracerProvider);
 
-  const metricExporter = new OTLPMetricExporter({
-    url: `${opts.otlpEndpoint.replace(/\/$/, "")}/v1/metrics`,
-    headers,
-  });
+  const metricExporter = new OTLPMetricExporter({ url: `${base}/v1/metrics`, headers });
   // Workers don't reliably tick setInterval across requests, so we
   // rely on per-request `forceFlush()` from the Worker handler. The
   // periodic interval is kept long enough to be a no-op in practice.
@@ -91,6 +92,11 @@ export function setupTelemetry(opts: TelemetryOptions): TelemetryHandle {
     },
     async shutdown() {
       await Promise.all([tracerProvider.shutdown(), meterProvider.shutdown()]);
+      // Unregister globals so subsequent `metrics.getMeter(...)` /
+      // `trace.getTracer(...)` calls don't return the now-disabled
+      // providers. Mirrors what `installTelemetryForTest` does up-front.
+      trace.disable();
+      metrics.disable();
       active = undefined;
     },
   };
@@ -107,15 +113,18 @@ export function setupTelemetry(opts: TelemetryOptions): TelemetryHandle {
 export function installTelemetryForTest(opts: {
   spanProcessors: SpanProcessor[];
   metricReaders: MetricReader[];
+  resource?: Resource;
 }): TelemetryHandle {
   trace.disable();
   metrics.disable();
 
   const tracerProvider = new BasicTracerProvider({
+    resource: opts.resource,
     spanProcessors: opts.spanProcessors,
   });
   trace.setGlobalTracerProvider(tracerProvider);
   const meterProvider = new MeterProvider({
+    resource: opts.resource,
     readers: opts.metricReaders,
   });
   metrics.setGlobalMeterProvider(meterProvider);

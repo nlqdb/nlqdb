@@ -1,11 +1,17 @@
 // Test helpers — keep production bundle free of in-memory exporters.
+//
+// Tests deliberately use SimpleSpanProcessor (not BatchSpanProcessor as
+// production does) — it exports each span synchronously so assertions
+// can read finished spans without round-tripping through batch timers.
 
+import { resourceFromAttributes } from "@opentelemetry/resources";
 import {
   AggregationTemporality,
   InMemoryMetricExporter,
   PeriodicExportingMetricReader,
 } from "@opentelemetry/sdk-metrics";
 import { InMemorySpanExporter, SimpleSpanProcessor } from "@opentelemetry/sdk-trace-base";
+import { ATTR_SERVICE_NAME, ATTR_SERVICE_VERSION } from "@opentelemetry/semantic-conventions";
 import {
   installTelemetryForTest,
   resetInstrumentsForTest,
@@ -22,10 +28,19 @@ export type TestTelemetry = {
   reset(): void;
 };
 
-export function createTestTelemetry(): TestTelemetry {
+export type CreateTestTelemetryOptions = {
+  serviceName?: string;
+  serviceVersion?: string;
+};
+
+export function createTestTelemetry(opts: CreateTestTelemetryOptions = {}): TestTelemetry {
   resetInstrumentsForTest();
   resetTelemetryForTest();
 
+  const resource = resourceFromAttributes({
+    [ATTR_SERVICE_NAME]: opts.serviceName ?? "nlqdb-test",
+    [ATTR_SERVICE_VERSION]: opts.serviceVersion ?? "0.0.0-test",
+  });
   const spanExporter = new InMemorySpanExporter();
   const metricExporter = new InMemoryMetricExporter(AggregationTemporality.CUMULATIVE);
   const metricReader = new PeriodicExportingMetricReader({
@@ -36,6 +51,7 @@ export function createTestTelemetry(): TestTelemetry {
   const handle = installTelemetryForTest({
     spanProcessors: [new SimpleSpanProcessor(spanExporter)],
     metricReaders: [metricReader],
+    resource,
   });
 
   return {
