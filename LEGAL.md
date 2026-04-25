@@ -41,7 +41,7 @@ Symbols:
 | ✅ | All `*@nlqdb.com` emails forward to founder inbox | Cloudflare Email Routing |
 | ✅ | GitHub Private Vulnerability Reporting enabled | Repo Settings → Code security |
 | ✅ | `nlqdb/cla-signatures` private repo created | https://github.com/nlqdb/cla-signatures |
-| 🆓 | **Generate `CLA_PAT` and add to repo Actions secrets** | See "Action items left for the founder" below — this is the only piece I can't do |
+| ✅ | `CLA_PAT` fine-grained token generated and added as Actions secret | Founder, 2026-04-25. CLA bot now fully self-serve on next PR. |
 
 ---
 
@@ -236,23 +236,18 @@ Set these in whatever calendar app you use.
 
 These are things only you can do, by browsing in your account:
 
-1. **Generate the `CLA_PAT`** — repo Settings → Developer settings →
-   Personal access tokens → Fine-grained → repo scope `nlqdb/cla-signatures`,
-   `Contents: Read and write`. Add to `nlqdb/nlqdb` repo Settings →
-   Secrets and variables → Actions as `CLA_PAT`. Estimated time: **2 minutes**.
-
-2. **Reserve free social handles & package registrations** in a single
+1. **Reserve free social handles & package registrations** in a single
    sitting (~30 minutes). Order by likelihood of impersonation:
    BlueSky → LinkedIn company page → YouTube → Threads → Mastodon →
    HuggingFace org → Docker Hub user → crates.io → RubyGems → Maven
    Central groupId.
 
-3. **Cloudflare Email Routing entries** confirmed catch-all-to-founder
+2. **Cloudflare Email Routing entries** confirmed catch-all-to-founder
    already. Spot-check that `security@`, `conduct@`, `trademarks@`,
    `licensing@`, `legal@`, `dpo@`, `privacy@`, `subprocessors@` all
    resolve.
 
-4. **Run the four free trademark searches** for `nlqdb` — links in the
+3. **Run the four free trademark searches** for `nlqdb` — links in the
    Trademark section above. ~10 minutes total. If anything blocks,
    surface it in the next session.
 
