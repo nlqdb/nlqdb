@@ -249,8 +249,13 @@ Cloud for Startups / Modal startup credits.
       live-verified via `verify-secrets.sh`. Domain verification for
       `nlqdb.com` (SPF/DKIM/DMARC) deferred to Phase 1 — no outbound
       mail until magic-link sign-in lands.
-- [ ] **AWS SES** (fallback) → `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`.
-      Phase 1 — needs an AWS account.
+- [ ] ~~**AWS SES** (fallback)~~ → **dropped from Phase 0/1**.
+      AWS account creation requires a credit card — violates strict-$0.
+      Resend free tier (3k emails/mo, 100/day) is overkill for
+      pre-PMF traffic; a fallback is only worth provisioning if/when
+      we hit the Resend ceiling or experience an outage. When that
+      happens, prefer card-free alternatives (Postmark / MailerSend /
+      Loops) over AWS SES.
 - [x] **Stripe** (test mode) → `STRIPE_SECRET_KEY`,
       `STRIPE_PUBLISHABLE_KEY`. Both live-verified (`sk_test_…` /
       `pk_test_…`). Merchant: Switzerland / CHF; statement descriptor

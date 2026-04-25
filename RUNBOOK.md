@@ -82,10 +82,14 @@ re-enable via Cloudflare later).
 | Grafana Cloud    | `omer.hochman@gmail.com`  | Free                              | Stack `nlqdb` on `us-east-2`, instance `1609127`, access policy `nlqdb-phase0-telemetry` |
 | Docker Hub       | **SKIPPED**               | —                                 | Using `ghcr.io/nlqdb` instead (paid-only org tier) |
 
-**Not yet provisioned** — pending Phase 1+:
+**Not yet provisioned**:
 
-- AWS SES — email fallback (Phase 1; needs AWS account).
 - Stripe webhook secret — needs `apps/api` (Phase 0 §3) to host the endpoint.
+
+**Explicitly skipped** (re-evaluate post-PMF):
+
+- AWS SES — card-required; Resend free tier (3k/mo) is enough pre-PMF.
+  When/if a fallback is needed, prefer Postmark / MailerSend / Loops.
 
 ---
 
@@ -245,7 +249,7 @@ When it does, it'll deploy via `wrangler deploy` from `apps/api/`.
 | 2.5  | GitHub OAuth app — `nlqdb-web-dev`     | ⏳ (Phase 0 §3 with auth code) |
 | 2.5  | Google OAuth client                | ✅ (Testing)  |
 | 2.5  | Resend API key                     | ✅ (domain verification ⏳ Phase 1) |
-| 2.5  | AWS SES fallback                   | ⏳ (Phase 1)  |
+| 2.5  | ~~AWS SES fallback~~               | ⏭ dropped — card-required; Resend free tier suffices pre-PMF |
 | 2.5  | Stripe (test mode) — sk + pk       | ✅            |
 | 2.5  | Stripe webhook secret              | ⏳ (Phase 0 §3 with `apps/api`) |
 | 2.6  | Sentry DSN                         | ✅            |
