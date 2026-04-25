@@ -115,7 +115,7 @@ describe("createLLMRouter — happy path", () => {
     await router.summarize({ goal: "g", rows: [] });
     await telemetry.collectMetrics();
     const calls = metric(telemetry, "nlqdb.llm.calls.total");
-    expect(calls?.dataPoints[0]?.attributes["status"]).toBe("ok");
+    expect(calls?.dataPoints[0]?.attributes.status).toBe("ok");
     expect(metric(telemetry, "nlqdb.llm.duration_ms")).toBeDefined();
   });
 });
@@ -152,9 +152,9 @@ describe("createLLMRouter — failover", () => {
     expect(failover, "nlqdb.llm.failover.total not emitted").toBeDefined();
     const point = failover?.dataPoints[0];
     expect(point?.value).toBe(1);
-    expect(point?.attributes["from_provider"]).toBe("gemini");
-    expect(point?.attributes["to_provider"]).toBe("groq");
-    expect(point?.attributes["reason"]).toBe("http_5xx");
+    expect(point?.attributes.from_provider).toBe("gemini");
+    expect(point?.attributes.to_provider).toBe("groq");
+    expect(point?.attributes.reason).toBe("http_5xx");
   });
 
   it("emits one span per attempt — failed attempt has ERROR status", async () => {
@@ -186,7 +186,7 @@ describe("createLLMRouter — failover", () => {
     await router.plan({ goal: "g", schema: "s", dialect: "postgres" });
     await telemetry.collectMetrics();
     const failover = metric(telemetry, "nlqdb.llm.failover.total");
-    expect(failover?.dataPoints[0]?.attributes["reason"]).toBe("unknown");
+    expect(failover?.dataPoints[0]?.attributes.reason).toBe("unknown");
   });
 
   it("provider listed in chain but unregistered → reason=not_configured", async () => {
@@ -198,7 +198,7 @@ describe("createLLMRouter — failover", () => {
     await router.plan({ goal: "g", schema: "s", dialect: "postgres" });
     await telemetry.collectMetrics();
     const failover = metric(telemetry, "nlqdb.llm.failover.total");
-    expect(failover?.dataPoints[0]?.attributes["reason"]).toBe("not_configured");
+    expect(failover?.dataPoints[0]?.attributes.reason).toBe("not_configured");
   });
 
   it("all providers fail → throws AllProvidersFailedError with attempts", async () => {
@@ -265,7 +265,7 @@ describe("createLLMRouter — timeouts", () => {
     expect(result.sql).toBe("-- groq");
     await telemetry.collectMetrics();
     const failover = metric(telemetry, "nlqdb.llm.failover.total");
-    expect(failover?.dataPoints[0]?.attributes["reason"]).toBe("timeout");
+    expect(failover?.dataPoints[0]?.attributes.reason).toBe("timeout");
   });
 
   it("propagates the per-call signal so providers can wire it to fetch", async () => {
