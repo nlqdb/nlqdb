@@ -258,10 +258,24 @@ Cloud for Startups / Modal startup credits.
 
 ### 2.7 Secret management
 
-Store all above in **GitHub Actions secrets** (org + repo) and
-**Cloudflare Workers secrets** (runtime). Local dev via `direnv` +
-per-dev `.envrc` (gitignored). Every repo has one `.env.example` listing
-variable names — no values, ever.
+Three concentric scopes:
+
+1. **Local dev** — `.envrc` (gitignored), loaded by `direnv`. Encrypted
+   backup at `~/Library/Mobile Documents/.../nlqdb-backups/.envrc.age`
+   (out of repo, see `RUNBOOK §8`).
+2. **CI (GitHub Actions)** — mirrored from `.envrc` via
+   `scripts/mirror-secrets-gha.sh` (idempotent; values read via
+   `--body -` so they never reach argv / ps / shell history). Names are
+   1:1 with `.env.example` *minus* `BETTER_AUTH_SECRET` +
+   `INTERNAL_JWT_SECRET` (CI generates ephemeral values per run; sharing
+   dev values to CI would let CI compromise live dev sessions). Re-run
+   the script whenever a credential rotates.
+3. **Runtime (Cloudflare Workers)** — Phase 0 §3 pending; will mirror
+   from `.envrc` via `wrangler secret put` once `apps/api` exists.
+
+`.env.example` is the canonical name list — adding a secret requires
+updating `.env.example` AND the `SECRETS=` array in
+`scripts/mirror-secrets-gha.sh` simultaneously.
 
 ### 2.8 Dev toolchain (zero-config — `scripts/bootstrap-dev.sh`)
 
