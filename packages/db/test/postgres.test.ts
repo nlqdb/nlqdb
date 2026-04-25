@@ -42,10 +42,33 @@ describe("createPostgresAdapter", () => {
   });
 
   it.each([
+    // DML
     ["INSERT INTO t (a) VALUES (1)", "INSERT"],
     ["update t SET a = 1", "UPDATE"],
     ["DELETE FROM t WHERE a = 1", "DELETE"],
-    ["WITH cte AS (SELECT 1) SELECT * FROM cte", "OTHER"],
+    ["MERGE INTO t USING s ON t.id = s.id WHEN MATCHED THEN UPDATE SET a = s.a", "MERGE"],
+    // CTEs / set ops keep their actual leading keyword (OTel convention).
+    ["WITH cte AS (SELECT 1) SELECT * FROM cte", "WITH"],
+    // DDL — pair the verb with its target noun.
+    ["CREATE TABLE foo (id INT)", "CREATE TABLE"],
+    ["create  index idx_foo ON foo (id)", "CREATE INDEX"],
+    ["DROP INDEX IF EXISTS idx_foo", "DROP INDEX"],
+    ["ALTER TABLE foo ADD COLUMN b INT", "ALTER TABLE"],
+    ["TRUNCATE TABLE foo", "TRUNCATE TABLE"],
+    // Diagnostics + TCL + DCL.
+    ["EXPLAIN ANALYZE SELECT * FROM foo", "EXPLAIN"],
+    ["BEGIN", "BEGIN"],
+    ["COMMIT", "COMMIT"],
+    ["ROLLBACK", "ROLLBACK"],
+    ["GRANT SELECT ON foo TO alice", "GRANT"],
+    ["SHOW search_path", "SHOW"],
+    ["SET search_path TO public", "SET"],
+    // Comments and whitespace are stripped before tokenising.
+    ["-- planner hint\n  SELECT 1", "SELECT"],
+    ["/* leading block */ DROP TABLE foo", "DROP TABLE"],
+    // Empty / non-keyword input falls back to UNKNOWN, not crash.
+    ["", "UNKNOWN"],
+    ["   ", "UNKNOWN"],
   ])("classifies %s as %s", async (sql, expected) => {
     const db = createPostgresAdapter({ query: okQuery });
     await db.execute(sql);

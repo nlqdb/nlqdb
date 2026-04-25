@@ -67,14 +67,24 @@ function buildNeonQuery(connectionString: string | undefined): PostgresQueryFn {
   };
 }
 
-// First whitespace-stripped keyword decides the operation. Anything
-// outside the standard CRUD set rolls up to OTHER — keeps metric
-// cardinality bounded (PERFORMANCE §3.3).
+// Extract the SQL command name per OTel `db.operation.name` semantic
+// convention — first keyword for DML / TCL / DCL, "VERB NOUN" pair for
+// DDL (e.g. CREATE TABLE, DROP INDEX). Mirrors the approach in the
+// official `@opentelemetry/instrumentation-pg`, which we can't reuse
+// here because it hooks into the `pg` client, not Neon's HTTP driver.
+//
+// Cardinality is naturally bounded: SQL keywords are a finite set
+// (~30) and DDL noun phrases add ~10 more — well within PERFORMANCE
+// §3.3 limits.
+const DDL_VERBS = new Set(["CREATE", "DROP", "ALTER", "TRUNCATE"]);
+
 function detectOperation(sql: string): string {
-  const head = sql.trimStart().slice(0, 16).toUpperCase();
-  if (head.startsWith("SELECT")) return "SELECT";
-  if (head.startsWith("INSERT")) return "INSERT";
-  if (head.startsWith("UPDATE")) return "UPDATE";
-  if (head.startsWith("DELETE")) return "DELETE";
-  return "OTHER";
+  // Strip leading whitespace + line/block comments before tokenising.
+  const stripped = sql.replace(/^(?:\s+|--[^\n]*\n?|\/\*[\s\S]*?\*\/)+/, "");
+  const verbMatch = stripped.match(/^[A-Za-z]+/);
+  if (!verbMatch) return "UNKNOWN";
+  const verb = verbMatch[0].toUpperCase();
+  if (!DDL_VERBS.has(verb)) return verb;
+  const nounMatch = stripped.slice(verbMatch[0].length).match(/^\s+([A-Za-z]+)/);
+  return nounMatch?.[1] ? `${verb} ${nounMatch[1].toUpperCase()}` : verb;
 }
