@@ -99,6 +99,7 @@ bun run hooks:run    # run pre-commit hooks against staged files
 - [TRADEMARKS.md](./TRADEMARKS.md) — what you can and can't do with the nlqdb name and logo.
 - [SUBPROCESSORS.md](./SUBPROCESSORS.md) — third-party services that may process personal data on our behalf.
 - [IMPRESSUM.md](./IMPRESSUM.md) — Swiss UWG-mandated operator disclosures.
+- [LEGAL.md](./LEGAL.md) — running checklist of every legal-housekeeping item, what's done vs pending, free-only path documented.
 - Privacy policy and terms of service: [nlqdb.com/privacy](https://nlqdb.com/privacy) · [nlqdb.com/terms](https://nlqdb.com/terms).
 
 ## License
