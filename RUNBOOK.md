@@ -156,22 +156,25 @@ prereq (waiting on product stability).
 
 ## 5b. GitHub OAuth — what's configured
 
-Classic **OAuth App** under the `nlqdb` GitHub org (not a GitHub App
-— we need sign-in only, no installation/permission semantics).
+Classic **OAuth App** under the `nlqdb` GitHub org (not a GitHub App —
+we need sign-in only, no installation/permission semantics). nlqdb is
+**engine-agnostic** — describe its sign-in to the user as "Sign in to
+nlqdb." rather than naming a specific backend.
 
 - **Org settings page:** `https://github.com/organizations/nlqdb/settings/applications`
-- **App name:** `nlqdb-web`
+- **App name:** `nlqdb-web` (production sign-in).
 - **Homepage URL:** `https://nlqdb.com`
-- **Application description (optional):** `Sign in to nlqdb — natural-language Postgres.`
-- **Authorization callback URLs** — one per line in the GitHub UI
-  (OAuth Apps support multiple since 2022):
-  - `https://app.nlqdb.com/auth/callback/github`
-  - `https://nlqdb.com/device/approve`
-  - `http://localhost:4321/auth/callback/github` (Astro dev)
-  - `http://localhost:8787/auth/callback/github` (Wrangler dev)
+- **Authorization callback URL** — exactly **one** URL per OAuth App.
+  GitHub OAuth Apps **do not support** multiple callback URLs (that
+  capability is for GitHub Apps, a different product). The strategy:
+  - `nlqdb-web` (this app) → `https://app.nlqdb.com/auth/callback/github`
+  - separate `nlqdb-web-dev` → `http://localhost:8787/auth/callback/github`
+    (created when local auth code lands in Phase 0 §3).
+  - `https://nlqdb.com/device/approve` is the **device-flow user-prompt
+    page**, not an OAuth redirect — device flow polls and never invokes
+    the callback URL, so it doesn't need to be registered.
 - **Enable Device Flow:** ✅ — CLI uses device-code flow (`nlq login`)
   per [DESIGN.md §3.3](./DESIGN.md#33-cli-and-device-code-flow).
-  Device flow doesn't use redirect URIs; toggle is independent.
 - **Webhook URL:** _none_ — auth-only, no webhook.
 - **Credentials in `.envrc`** as `GITHUB_CLIENT_ID` +
   `GITHUB_CLIENT_SECRET`. Refresh `.envrc.age` via
@@ -179,8 +182,9 @@ Classic **OAuth App** under the `nlqdb` GitHub org (not a GitHub App
 
 **Verification:** `./scripts/verify-secrets.sh` does a live probe of
 `POST /applications/{client_id}/token` with the secret pair as Basic
-auth. Expected HTTP **422** = pair accepted, deliberately-bogus token
-rejected. Anything else (401 / 404) is a real failure.
+auth and a deliberately-bogus token in the body. Expected HTTP **404**
+= Basic auth accepted, the bogus token correctly not-found. **401** is
+the failure path (Basic auth rejected = wrong id or secret).
 
 ---
 
