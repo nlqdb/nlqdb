@@ -11,8 +11,16 @@
 // - development (wrangler dev): `OAUTH_GITHUB_*_DEV`
 // Google has a single OAuth client (one consent screen) — no _DEV split.
 //
-// Tests mock `cloudflare:workers` via `vi.mock` so this module loads
-// against a stub env (apps/api/test/auth.test.ts).
+// Tests mock this module entirely (`vi.mock("../src/auth.ts", …)` in
+// apps/api/test/setup.ts) so the real instance never loads under
+// vitest — `cloudflare:workers` doesn't resolve there.
+//
+// `session.cookieCache` is intentionally NOT enabled here: the only
+// session-aware endpoint right now is `/api/auth/get-session`, with
+// no /v1/* consumers yet. Cookie cache pairs with the KV revocation
+// set (DESIGN §4.3, §4.5) — both land together in Slice 6 alongside
+// `/v1/ask`. Enabling cache without the revocation hook would
+// regress DESIGN §4.5's "≤2s revocation" guarantee.
 
 import { env } from "cloudflare:workers";
 import { betterAuth } from "better-auth";
@@ -26,12 +34,21 @@ const githubClientSecret = isDev
   : env.OAUTH_GITHUB_CLIENT_SECRET;
 
 export const auth = betterAuth({
+  // baseURL is documentation + defense against future proxy / preview
+  // edge cases. Cloudflare Workers preserves Host so request introspection
+  // works today — explicit beats inferred.
+  baseURL: isDev ? "http://localhost:8787" : "https://app.nlqdb.com",
   basePath: "/api/auth",
   secret: env.BETTER_AUTH_SECRET,
   database: {
     dialect: new D1Dialect({ database: env.DB }),
     type: "sqlite",
   },
+  // DESIGN §4.1: "No passwords, ever." Better Auth's email-password
+  // is opt-in (not on by default), but we lock it explicitly so a
+  // future contributor can't enable it without removing this line
+  // and confronting the design choice.
+  emailAndPassword: { enabled: false },
   socialProviders: {
     github: {
       clientId: githubClientId,
