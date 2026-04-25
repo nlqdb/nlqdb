@@ -217,9 +217,24 @@ the failure path (Basic auth rejected = wrong id or secret).
   Shortcut: `bun --cwd apps/coming-soon run deploy`.
 - Custom domains: `nlqdb.com`, `www.nlqdb.com`.
 
-### Nothing else — Phase 0 `apps/api` hasn't shipped
+### `apps/api` (Phase 0 §3 — in progress)
 
-When it does, it'll deploy via `wrangler deploy` from `apps/api/`.
+Cloudflare Worker `nlqdb-api`. Slice 1 shipped `/v1/health`; Slice 2
+adds KV + D1 bindings (R2 deferred). Deploys via `wrangler deploy`
+from `apps/api/`. Resource IDs are committed in
+`apps/api/wrangler.toml` (account-scoped, not secret).
+
+**Cloudflare resources** (provisioned by
+`scripts/provision-cf-resources.sh`, idempotent):
+
+| Resource | Name           | Binding   | ID/Reference                            |
+| :------- | :------------- | :-------- | :-------------------------------------- |
+| KV       | `nlqdb-cache`  | `KV`      | `5b086b03ead54f508271f31fc421bbaa`       |
+| D1       | `nlqdb-app`    | `DB`      | `98767eb0-65df-4787-87bf-c3952d851b29`   |
+| R2       | _deferred_     | `ASSETS`  | needs one-time dashboard opt-in; not on `/v1/ask` critical path |
+
+Re-running the provision script is safe — existing resources are
+detected by name and skipped.
 
 ---
 
@@ -256,6 +271,10 @@ When it does, it'll deploy via `wrangler deploy` from `apps/api/`.
 | 2.6  | Grafana Cloud OTLP                 | ✅            |
 | 2.7  | Mirror `.envrc` → GHA secrets      | ✅ via `scripts/mirror-secrets-gha.sh` |
 | 2.7  | Mirror `.envrc` → Workers secrets  | ⏳ (Phase 0 §3 — needs `apps/api`) |
+| 3    | `apps/api` Worker skeleton + `/v1/health` | ✅ (Slice 1 — PR #21) |
+| 3    | KV namespace `nlqdb-cache` (binding `KV`) | ✅ (Slice 2) |
+| 3    | D1 database `nlqdb-app` (binding `DB`)    | ✅ (Slice 2) |
+| 3    | R2 bucket `nlqdb-assets` (binding `ASSETS`) | ⏳ deferred — needs dashboard opt-in |
 
 ---
 
