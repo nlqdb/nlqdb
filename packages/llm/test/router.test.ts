@@ -1,21 +1,29 @@
 import { createTestTelemetry, type TestTelemetry } from "@nlqdb/otel/test";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { AllProvidersFailedError, createLLMRouter, NoProviderError } from "../src/router.ts";
 import {
-  type ClassifyRequest,
+  AllProvidersFailedError,
+  createLLMRouter,
+  NoConfiguredProvidersError,
+  NoProviderError,
+} from "../src/router.ts";
+import {
+  type CallOpts,
   type ClassifyResponse,
-  type PlanRequest,
   type PlanResponse,
   type Provider,
   ProviderError,
   type ProviderName,
-  type SummarizeRequest,
   type SummarizeResponse,
 } from "../src/types.ts";
 
 // Fake provider — every operation returns or throws what the test
-// stubs. Keeps router tests synchronous and free of HTTP mocks.
-type Stub<R> = R | ProviderError | Error;
+// stubs. Keeps router tests synchronous and free of HTTP mocks. Stubs
+// can also be a function so tests exercise the CallOpts threading.
+type Stub<R> =
+  | R
+  | ProviderError
+  | Error
+  | ((req: unknown, opts: CallOpts | undefined) => Promise<R>);
 
 function fakeProvider(
   name: ProviderName,
@@ -24,9 +32,16 @@ function fakeProvider(
     plan?: Stub<PlanResponse>;
     summarize?: Stub<SummarizeResponse>;
   } = {},
-): Provider & { calls: { op: string; req: unknown }[] } {
-  const calls: { op: string; req: unknown }[] = [];
-  function maybeThrow<T>(stub: Stub<T> | undefined, fallback: T): T {
+): Provider & { calls: { op: string; req: unknown; opts: CallOpts | undefined }[] } {
+  const calls: { op: string; req: unknown; opts: CallOpts | undefined }[] = [];
+  async function resolve<T>(
+    stub: Stub<T> | undefined,
+    fallback: T,
+    req: unknown,
+    opts: CallOpts | undefined,
+  ): Promise<T> {
+    if (typeof stub === "function")
+      return (stub as (r: unknown, o: CallOpts | undefined) => Promise<T>)(req, opts);
     if (stub instanceof Error) throw stub;
     return stub ?? fallback;
   }
@@ -34,17 +49,17 @@ function fakeProvider(
     name,
     calls,
     model: () => `${name}-model`,
-    async classify(req: ClassifyRequest) {
-      calls.push({ op: "classify", req });
-      return maybeThrow(stubs.classify, { intent: "data_query", confidence: 1 });
+    async classify(req, opts) {
+      calls.push({ op: "classify", req, opts });
+      return resolve(stubs.classify, { intent: "data_query", confidence: 1 }, req, opts);
     },
-    async plan(req: PlanRequest) {
-      calls.push({ op: "plan", req });
-      return maybeThrow(stubs.plan, { sql: `-- ${name}` });
+    async plan(req, opts) {
+      calls.push({ op: "plan", req, opts });
+      return resolve(stubs.plan, { sql: `-- ${name}` }, req, opts);
     },
-    async summarize(req: SummarizeRequest) {
-      calls.push({ op: "summarize", req });
-      return maybeThrow(stubs.summarize, { summary: name });
+    async summarize(req, opts) {
+      calls.push({ op: "summarize", req, opts });
+      return resolve(stubs.summarize, { summary: name }, req, opts);
     },
   };
 }
@@ -159,7 +174,9 @@ describe("createLLMRouter — failover", () => {
     expect(spans[1]?.attributes["llm.provider"]).toBe("groq");
   });
 
-  it("non-ProviderError exceptions are classified reason=network", async () => {
+  it("non-ProviderError exceptions are classified reason=unknown", async () => {
+    // Programmer-error throws (e.g. our parser blowing up) get tagged
+    // `unknown`, not `network` — dashboards must distinguish them.
     const a = fakeProvider("gemini", { plan: new Error("random") });
     const b = fakeProvider("groq");
     const router = createLLMRouter({
@@ -169,7 +186,7 @@ describe("createLLMRouter — failover", () => {
     await router.plan({ goal: "g", schema: "s", dialect: "postgres" });
     await telemetry.collectMetrics();
     const failover = metric(telemetry, "nlqdb.llm.failover.total");
-    expect(failover?.dataPoints[0]?.attributes["reason"]).toBe("network");
+    expect(failover?.dataPoints[0]?.attributes["reason"]).toBe("unknown");
   });
 
   it("provider listed in chain but unregistered → reason=not_configured", async () => {
@@ -185,12 +202,10 @@ describe("createLLMRouter — failover", () => {
   });
 
   it("all providers fail → throws AllProvidersFailedError with attempts", async () => {
-    const a = fakeProvider("gemini", {
-      classify: new ProviderError("a", "http_5xx"),
-    });
-    const b = fakeProvider("groq", {
-      classify: new ProviderError("b", "http_4xx"),
-    });
+    const aErr = new ProviderError("a", "http_5xx");
+    const bErr = new ProviderError("b", "http_4xx");
+    const a = fakeProvider("gemini", { classify: aErr });
+    const b = fakeProvider("groq", { classify: bErr });
     const router = createLLMRouter({
       providers: [a, b],
       chains: { classify: ["gemini", "groq"] },
@@ -203,11 +218,95 @@ describe("createLLMRouter — failover", () => {
     } catch (err) {
       const e = err as AllProvidersFailedError;
       expect(e.attempts.map((x) => x.reason)).toEqual(["http_5xx", "http_4xx"]);
+      // EH-3: AttemptRecord carries the underlying error for debuggability.
+      expect(e.attempts[0]?.error).toBe(aErr);
+      expect(e.attempts[1]?.error).toBe(bErr);
     }
   });
 
   it("empty chain → throws NoProviderError", async () => {
     const router = createLLMRouter({ providers: [], chains: {} });
     await expect(router.classify({ utterance: "u" })).rejects.toBeInstanceOf(NoProviderError);
+  });
+
+  it("chain with no registered provider → NoConfiguredProvidersError before any attempt", async () => {
+    // Dashboards should distinguish "every entry's API key is unset"
+    // (config bug) from "every entry returned errors" (provider outage).
+    const router = createLLMRouter({
+      providers: [],
+      chains: { plan: ["gemini", "groq"] },
+    });
+    await expect(
+      router.plan({ goal: "g", schema: "s", dialect: "postgres" }),
+    ).rejects.toBeInstanceOf(NoConfiguredProvidersError);
+  });
+});
+
+describe("createLLMRouter — timeouts", () => {
+  it("aborts a hung provider after the per-op timeout and falls through", async () => {
+    // Provider hangs forever unless its signal aborts.
+    const a = fakeProvider("gemini", {
+      plan: (_req, opts) =>
+        new Promise((_resolve, reject) => {
+          opts?.signal?.addEventListener("abort", () => {
+            const err = new Error("aborted");
+            err.name = "AbortError";
+            reject(err);
+          });
+        }),
+    });
+    const b = fakeProvider("groq");
+    const router = createLLMRouter({
+      providers: [a, b],
+      chains: { plan: ["gemini", "groq"] },
+      timeouts: { plan: 30 },
+    });
+    const result = await router.plan({ goal: "g", schema: "s", dialect: "postgres" });
+    expect(result.sql).toBe("-- groq");
+    await telemetry.collectMetrics();
+    const failover = metric(telemetry, "nlqdb.llm.failover.total");
+    expect(failover?.dataPoints[0]?.attributes["reason"]).toBe("timeout");
+  });
+
+  it("propagates the per-call signal so providers can wire it to fetch", async () => {
+    let captured: AbortSignal | undefined;
+    const a = fakeProvider("groq", {
+      classify: async (_req, opts) => {
+        captured = opts?.signal;
+        return { intent: "meta", confidence: 1 };
+      },
+    });
+    const router = createLLMRouter({
+      providers: [a],
+      chains: { classify: ["groq"] },
+    });
+    await router.classify({ utterance: "u" });
+    expect(captured).toBeDefined();
+    expect(captured).toBeInstanceOf(AbortSignal);
+  });
+});
+
+describe("createLLMRouter — caller cancellation", () => {
+  it("when caller's signal aborts mid-chain, propagates instead of falling through", async () => {
+    const ctrl = new AbortController();
+    const a = fakeProvider("gemini", {
+      plan: async () => {
+        // Caller cancels while the first provider is in flight; the
+        // router must not start the next provider.
+        ctrl.abort(new Error("user cancelled"));
+        const err = new Error("aborted");
+        err.name = "AbortError";
+        throw err;
+      },
+    });
+    const b = fakeProvider("groq");
+    const router = createLLMRouter({
+      providers: [a, b],
+      chains: { plan: ["gemini", "groq"] },
+    });
+    await expect(
+      router.plan({ goal: "g", schema: "s", dialect: "postgres" }, { signal: ctrl.signal }),
+    ).rejects.toThrow();
+    expect(b.calls).toHaveLength(0);
   });
 });

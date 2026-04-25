@@ -6,10 +6,17 @@ export type { OpenRouterProviderOptions } from "./providers/openrouter.ts";
 export { createOpenRouterProvider } from "./providers/openrouter.ts";
 export type { WorkersAIProviderOptions } from "./providers/workers-ai.ts";
 export { createWorkersAIProvider } from "./providers/workers-ai.ts";
-export type { LLMChains, LLMRouter, LLMRouterOptions } from "./router.ts";
+export type {
+  AttemptRecord,
+  LLMChains,
+  LLMRouter,
+  LLMRouterOptions,
+} from "./router.ts";
 export {
   AllProvidersFailedError,
   createLLMRouter,
+  DEFAULT_TIMEOUTS_MS,
+  NoConfiguredProvidersError,
   NoProviderError,
 } from "./router.ts";
 

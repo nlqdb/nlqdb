@@ -13,13 +13,19 @@ export type LLMOperation = "classify" | "plan" | "summarize";
 // never registered (e.g. `OPENROUTER_API_KEY` unset at boot) — the
 // router still falls through to the next entry, so it's a real
 // failover from the dashboards' point of view.
+//
+// `unknown` covers non-ProviderError exceptions surfacing through the
+// chain (programmer errors, unexpected throws). Tagged separately so
+// dashboards don't lie that we had a network failure when in fact our
+// own code threw.
 export type FailoverReason =
   | "http_5xx"
   | "http_4xx"
   | "network"
   | "timeout"
   | "parse"
-  | "not_configured";
+  | "not_configured"
+  | "unknown";
 
 export type ClassifyIntent = "data_query" | "meta" | "destructive";
 

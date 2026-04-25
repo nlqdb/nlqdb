@@ -8,6 +8,7 @@
 import { llmCallsTotal, llmDurationMs, llmFailoverTotal } from "@nlqdb/otel";
 import { SpanStatusCode, trace } from "@opentelemetry/api";
 import {
+  type CallOpts,
   type ClassifyRequest,
   type ClassifyResponse,
   type FailoverReason,
@@ -23,15 +24,36 @@ import {
 
 export type LLMChains = Partial<Record<LLMOperation, ProviderName[]>>;
 
+// Per-attempt timeouts. Aligned with PERFORMANCE §2.2 stage budgets at
+// roughly 3-4× p99 — long enough that healthy providers always finish,
+// short enough that a hung provider is detected before the Worker's
+// wall-clock budget burns out.
+export const DEFAULT_TIMEOUTS_MS: Record<LLMOperation, number> = {
+  classify: 1500,
+  plan: 5000,
+  summarize: 3000,
+};
+
 export type LLMRouterOptions = {
   providers: Provider[];
   chains: LLMChains;
+  // Override per-operation attempt timeout in ms. Falls back to
+  // DEFAULT_TIMEOUTS_MS for any operation not set here.
+  timeouts?: Partial<Record<LLMOperation, number>>;
 };
 
 export type LLMRouter = {
-  classify(req: ClassifyRequest): Promise<ClassifyResponse>;
-  plan(req: PlanRequest): Promise<PlanResponse>;
-  summarize(req: SummarizeRequest): Promise<SummarizeResponse>;
+  classify(req: ClassifyRequest, opts?: CallOpts): Promise<ClassifyResponse>;
+  plan(req: PlanRequest, opts?: CallOpts): Promise<PlanResponse>;
+  summarize(req: SummarizeRequest, opts?: CallOpts): Promise<SummarizeResponse>;
+};
+
+export type AttemptRecord = {
+  provider: ProviderName;
+  reason: FailoverReason;
+  // The thrown value carried for debuggability. `undefined` for the
+  // `not_configured` case where no work was attempted.
+  error: unknown;
 };
 
 export class NoProviderError extends Error {
@@ -41,19 +63,48 @@ export class NoProviderError extends Error {
   }
 }
 
+// Distinguished from AllProvidersFailedError so dashboards / operators
+// can tell "every chain entry is missing its API key" (a config bug)
+// from "every chain entry returned errors" (a provider outage).
+export class NoConfiguredProvidersError extends Error {
+  constructor(
+    message: string,
+    public readonly chain: ProviderName[],
+  ) {
+    super(message);
+    this.name = "NoConfiguredProvidersError";
+  }
+}
+
 export class AllProvidersFailedError extends Error {
   constructor(
     message: string,
-    public readonly attempts: { provider: ProviderName; reason: FailoverReason }[],
+    public readonly attempts: AttemptRecord[],
   ) {
     super(message);
     this.name = "AllProvidersFailedError";
   }
 }
 
+function asError(err: unknown): Error {
+  return err instanceof Error ? err : new Error(String(err));
+}
+
+// Caller signal + per-attempt timeout, combined. AbortSignal.any is
+// stable in Workers + Bun + Node ≥19; AbortSignal.timeout same.
+function buildSignal(callerSignal: AbortSignal | undefined, timeoutMs: number): AbortSignal {
+  const t = AbortSignal.timeout(timeoutMs);
+  return callerSignal ? AbortSignal.any([callerSignal, t]) : t;
+}
+
+type AttemptResult<Res> =
+  | { ok: true; value: Res }
+  | { ok: false; reason: FailoverReason; error: unknown };
+
 export function createLLMRouter(opts: LLMRouterOptions): LLMRouter {
   const byName = new Map<ProviderName, Provider>();
   for (const p of opts.providers) byName.set(p.name, p);
+  const timeouts = { ...DEFAULT_TIMEOUTS_MS, ...opts.timeouts };
 
   const tracer = trace.getTracer("@nlqdb/llm");
 
@@ -61,8 +112,10 @@ export function createLLMRouter(opts: LLMRouterOptions): LLMRouter {
     op: LLMOperation,
     provider: Provider,
     req: Req,
-    call: (p: Provider, r: Req) => Promise<Res>,
-  ): Promise<{ ok: true; value: Res } | { ok: false; reason: FailoverReason; error: unknown }> {
+    call: (p: Provider, r: Req, o: CallOpts) => Promise<Res>,
+    callerOpts: CallOpts | undefined,
+    timeoutMs: number,
+  ): Promise<AttemptResult<Res>> {
     return tracer.startActiveSpan(
       `llm.${op}`,
       {
@@ -73,33 +126,32 @@ export function createLLMRouter(opts: LLMRouterOptions): LLMRouter {
       },
       async (span) => {
         const startedAt = performance.now();
+        let outcome: "ok" | "error" = "error";
+        const signal = buildSignal(callerOpts?.signal, timeoutMs);
         try {
-          const value = await call(provider, req);
-          llmDurationMs().record(performance.now() - startedAt, {
-            provider: provider.name,
-            operation: op,
+          const value = await call(provider, req, {
+            fetch: callerOpts?.fetch,
+            signal,
           });
-          llmCallsTotal().add(1, {
-            provider: provider.name,
-            operation: op,
-            status: "ok",
-          });
+          outcome = "ok";
           return { ok: true as const, value };
         } catch (err) {
-          llmDurationMs().record(performance.now() - startedAt, {
+          const reason = classifyError(err, signal);
+          const wrapped = asError(err);
+          span.recordException(wrapped);
+          span.setStatus({ code: SpanStatusCode.ERROR, message: wrapped.message });
+          return { ok: false as const, reason, error: err };
+        } finally {
+          const elapsed = performance.now() - startedAt;
+          llmDurationMs().record(elapsed, {
             provider: provider.name,
             operation: op,
           });
-          const reason: FailoverReason = err instanceof ProviderError ? err.reason : "network";
           llmCallsTotal().add(1, {
             provider: provider.name,
             operation: op,
-            status: "error",
+            status: outcome,
           });
-          span.recordException(err as Error);
-          span.setStatus({ code: SpanStatusCode.ERROR });
-          return { ok: false as const, reason, error: err };
-        } finally {
           span.end();
         }
       },
@@ -109,14 +161,22 @@ export function createLLMRouter(opts: LLMRouterOptions): LLMRouter {
   async function route<Req, Res>(
     op: LLMOperation,
     req: Req,
-    call: (p: Provider, r: Req) => Promise<Res>,
+    call: (p: Provider, r: Req, o: CallOpts) => Promise<Res>,
+    callerOpts: CallOpts | undefined,
   ): Promise<Res> {
     const chain = opts.chains[op] ?? [];
     if (chain.length === 0) {
       throw new NoProviderError(`llm: no chain configured for "${op}"`);
     }
+    if (!chain.some((name) => byName.has(name))) {
+      throw new NoConfiguredProvidersError(
+        `llm.${op}: no provider in chain [${chain.join(",")}] is registered`,
+        [...chain],
+      );
+    }
 
-    const attempts: { provider: ProviderName; reason: FailoverReason }[] = [];
+    const attempts: AttemptRecord[] = [];
+    const timeoutMs = timeouts[op];
 
     for (let i = 0; i < chain.length; i++) {
       const name = chain[i];
@@ -125,7 +185,7 @@ export function createLLMRouter(opts: LLMRouterOptions): LLMRouter {
       const next = chain[i + 1];
 
       if (!provider) {
-        attempts.push({ provider: name, reason: "not_configured" });
+        attempts.push({ provider: name, reason: "not_configured", error: undefined });
         if (next) {
           llmFailoverTotal().add(1, {
             from_provider: name,
@@ -136,11 +196,18 @@ export function createLLMRouter(opts: LLMRouterOptions): LLMRouter {
         continue;
       }
 
-      const result = await attempt(op, provider, req, call);
+      const result = await attempt(op, provider, req, call, callerOpts, timeoutMs);
       if (result.ok) {
         return result.value;
       }
-      attempts.push({ provider: name, reason: result.reason });
+
+      // Caller-initiated cancel — propagate, don't keep walking the chain
+      // and burning budget the caller no longer wants spent.
+      if (callerOpts?.signal?.aborted) {
+        throw asError(result.error);
+      }
+
+      attempts.push({ provider: name, reason: result.reason, error: result.error });
       if (next) {
         llmFailoverTotal().add(1, {
           from_provider: name,
@@ -157,14 +224,37 @@ export function createLLMRouter(opts: LLMRouterOptions): LLMRouter {
   }
 
   return {
-    classify(req) {
-      return route<ClassifyRequest, ClassifyResponse>("classify", req, (p, r) => p.classify(r));
+    classify(req, callerOpts) {
+      return route<ClassifyRequest, ClassifyResponse>(
+        "classify",
+        req,
+        (p, r, o) => p.classify(r, o),
+        callerOpts,
+      );
     },
-    plan(req) {
-      return route<PlanRequest, PlanResponse>("plan", req, (p, r) => p.plan(r));
+    plan(req, callerOpts) {
+      return route<PlanRequest, PlanResponse>("plan", req, (p, r, o) => p.plan(r, o), callerOpts);
     },
-    summarize(req) {
-      return route<SummarizeRequest, SummarizeResponse>("summarize", req, (p, r) => p.summarize(r));
+    summarize(req, callerOpts) {
+      return route<SummarizeRequest, SummarizeResponse>(
+        "summarize",
+        req,
+        (p, r, o) => p.summarize(r, o),
+        callerOpts,
+      );
     },
   };
+}
+
+function classifyError(err: unknown, signal: AbortSignal): FailoverReason {
+  if (err instanceof ProviderError) return err.reason;
+  // The combined signal aborting via our timeout surfaces here as an
+  // AbortError-like throw the provider couldn't catch (or any subtle
+  // code path that bypasses the provider's own ProviderError wrap).
+  if (signal.aborted && err instanceof Error && err.name === "AbortError") {
+    return "timeout";
+  }
+  // Anything else — programmer error, unexpected exception. Tagged
+  // distinct from `network` so dashboards don't lie.
+  return "unknown";
 }
