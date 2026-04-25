@@ -18,6 +18,11 @@ export type LLMOperation = "classify" | "plan" | "summarize";
 // chain (programmer errors, unexpected throws). Tagged separately so
 // dashboards don't lie that we had a network failure when in fact our
 // own code threw.
+//
+// `provider_error` covers application-level failure on a 2xx — e.g.
+// Cloudflare Workers AI returns HTTP 200 with `{success:false}`. It's
+// not an HTTP-class error, but it's not a transport or parse problem
+// either, so it gets its own bucket.
 export type FailoverReason =
   | "http_5xx"
   | "http_4xx"
@@ -25,6 +30,7 @@ export type FailoverReason =
   | "timeout"
   | "parse"
   | "not_configured"
+  | "provider_error"
   | "unknown";
 
 export type ClassifyIntent = "data_query" | "meta" | "destructive";

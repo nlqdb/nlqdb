@@ -67,6 +67,20 @@ describe("createGroqProvider", () => {
     } satisfies Partial<ProviderError>);
   });
 
+  it("error message contains the URL and a slice of the upstream body", async () => {
+    const provider = createGroqProvider({ apiKey });
+    const fetch = mockFetch([
+      {
+        match: /api\.groq\.com/,
+        respond: () =>
+          new Response(JSON.stringify({ error: { message: "invalid_api_key" } }), { status: 401 }),
+      },
+    ]);
+    await expect(provider.classify({ utterance: "x" }, { fetch })).rejects.toThrow(
+      /api\.groq\.com.*chat\/completions.*401.*invalid_api_key/,
+    );
+  });
+
   it("5xx becomes ProviderError reason=http_5xx", async () => {
     const provider = createGroqProvider({ apiKey });
     const fetch = mockFetch([

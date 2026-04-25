@@ -61,7 +61,7 @@ describe("createWorkersAIProvider", () => {
     expect(captured).toContain(`/accounts/${accountId}/ai/run/@cf/meta/llama-3.1-8b-instruct`);
   });
 
-  it("success:false in body becomes ProviderError reason=http_4xx", async () => {
+  it("success:false in body becomes ProviderError reason=provider_error", async () => {
     const provider = createWorkersAIProvider({ accountId, apiToken });
     const fetch = mockFetch([
       {
@@ -74,7 +74,24 @@ describe("createWorkersAIProvider", () => {
       },
     ]);
     await expect(provider.classify({ utterance: "x" }, { fetch })).rejects.toMatchObject({
-      reason: "http_4xx",
+      reason: "provider_error",
     } satisfies Partial<ProviderError>);
+  });
+
+  it("error message includes URL and the upstream errors[0].message", async () => {
+    const provider = createWorkersAIProvider({ accountId, apiToken });
+    const fetch = mockFetch([
+      {
+        match: /api\.cloudflare\.com/,
+        respond: () =>
+          jsonResponse({
+            success: false,
+            errors: [{ code: 7000, message: "no route for that path" }],
+          }),
+      },
+    ]);
+    await expect(provider.classify({ utterance: "x" }, { fetch })).rejects.toThrow(
+      /no route for that path/,
+    );
   });
 });

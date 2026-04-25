@@ -4,27 +4,10 @@
 // providers) rather than the `AI` Worker binding — keeps the package
 // runtime-agnostic and easy to test.
 
-import {
-  buildClassifyUser,
-  buildPlanUser,
-  buildSummarizeUser,
-  CLASSIFY_SYSTEM,
-  PLAN_SYSTEM,
-  SUMMARIZE_SYSTEM,
-} from "../prompts.ts";
-import {
-  type CallOpts,
-  type ClassifyRequest,
-  type ClassifyResponse,
-  type LLMOperation,
-  type PlanRequest,
-  type PlanResponse,
-  type Provider,
-  ProviderError,
-  type SummarizeRequest,
-  type SummarizeResponse,
-} from "../types.ts";
-import { type ChatMessage, parseJsonResponse } from "./openai-compatible.ts";
+import { type CallOpts, type LLMOperation, type Provider, ProviderError } from "../types.ts";
+import { createChatProvider } from "./_chat-provider.ts";
+import { httpReason, readBodySafe, truncate } from "./_shared.ts";
+import type { ChatMessage } from "./openai-compatible.ts";
 
 const DEFAULT_MODELS: Record<LLMOperation, string> = {
   classify: "@cf/meta/llama-3.1-8b-instruct",
@@ -44,14 +27,14 @@ type WorkersAIResponse = {
   errors?: Array<{ code: number; message: string }>;
 };
 
-async function workersAICall(
+async function workersAIChat(
   accountId: string,
   apiToken: string,
   model: string,
   messages: ChatMessage[],
-  callOpts?: CallOpts,
+  opts: CallOpts,
 ): Promise<string> {
-  const fetchFn = callOpts?.fetch ?? globalThis.fetch;
+  const fetchFn = opts.fetch ?? globalThis.fetch;
   const url = `https://api.cloudflare.com/client/v4/accounts/${encodeURIComponent(
     accountId,
   )}/ai/run/${model}`;
@@ -65,80 +48,53 @@ async function workersAICall(
         authorization: `Bearer ${apiToken}`,
       },
       body: JSON.stringify({ messages }),
-      signal: callOpts?.signal,
+      signal: opts.signal,
     });
   } catch (err) {
     const e = err as Error;
-    if (e.name === "AbortError") throw new ProviderError("aborted", "timeout");
-    throw new ProviderError(`fetch failed: ${e.message}`, "network");
+    if (e.name === "AbortError") throw new ProviderError(`POST workers-ai aborted`, "timeout");
+    throw new ProviderError(`POST workers-ai failed: ${e.message}`, "network");
   }
 
   if (!res.ok) {
-    const reason = res.status >= 500 ? "http_5xx" : "http_4xx";
-    throw new ProviderError(`http ${res.status}`, reason, res.status);
+    const bodySnippet = await readBodySafe(res);
+    throw new ProviderError(
+      `POST ${url} → ${res.status}: ${bodySnippet}`,
+      httpReason(res.status),
+      res.status,
+    );
   }
 
   let parsed: WorkersAIResponse;
   try {
     parsed = (await res.json()) as WorkersAIResponse;
   } catch {
-    throw new ProviderError("response not JSON", "parse");
+    throw new ProviderError(`POST ${url} → 200 but body not JSON`, "parse");
   }
+  // 2xx with success:false is application-level failure — distinct
+  // bucket so dashboards can tell it apart from transport errors.
   if (parsed.success === false) {
     const msg = parsed.errors?.[0]?.message ?? "workers-ai returned success=false";
-    throw new ProviderError(msg, "http_4xx");
+    throw new ProviderError(
+      `POST ${url} → 200 success=false: ${truncate(msg, 200)}`,
+      "provider_error",
+    );
   }
   const text = parsed.result?.response;
   if (typeof text !== "string") {
-    throw new ProviderError("response missing result.response", "parse");
+    throw new ProviderError(
+      `POST ${url} → 200 missing result.response (got ${truncate(JSON.stringify(parsed), 120)})`,
+      "parse",
+    );
   }
   return text;
 }
 
 export function createWorkersAIProvider(opts: WorkersAIProviderOptions): Provider {
-  const models = { ...DEFAULT_MODELS, ...opts.models };
-
-  return {
+  return createChatProvider({
     name: "workers-ai",
-    model: (op) => models[op],
-    async classify(req: ClassifyRequest, callOpts?: CallOpts): Promise<ClassifyResponse> {
-      const raw = await workersAICall(
-        opts.accountId,
-        opts.apiToken,
-        models.classify,
-        [
-          { role: "system", content: CLASSIFY_SYSTEM },
-          { role: "user", content: buildClassifyUser(req) },
-        ],
-        callOpts,
-      );
-      return parseJsonResponse<ClassifyResponse>(raw);
-    },
-    async plan(req: PlanRequest, callOpts?: CallOpts): Promise<PlanResponse> {
-      const raw = await workersAICall(
-        opts.accountId,
-        opts.apiToken,
-        models.plan,
-        [
-          { role: "system", content: PLAN_SYSTEM },
-          { role: "user", content: buildPlanUser(req) },
-        ],
-        callOpts,
-      );
-      return parseJsonResponse<PlanResponse>(raw);
-    },
-    async summarize(req: SummarizeRequest, callOpts?: CallOpts): Promise<SummarizeResponse> {
-      const raw = await workersAICall(
-        opts.accountId,
-        opts.apiToken,
-        models.summarize,
-        [
-          { role: "system", content: SUMMARIZE_SYSTEM },
-          { role: "user", content: buildSummarizeUser(req) },
-        ],
-        callOpts,
-      );
-      return { summary: raw.trim() };
-    },
-  };
+    models: { ...DEFAULT_MODELS, ...opts.models },
+    callChat: ({ model, messages, opts: callOpts }) =>
+      workersAIChat(opts.accountId, opts.apiToken, model, messages, callOpts),
+  });
 }
