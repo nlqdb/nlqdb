@@ -1,0 +1,10 @@
+name = "nlqdb-api"
+main = "src/index.ts"
+compatibility_date = "2026-04-25"
+compatibility_flags = ["nodejs_compat"]
+
+[observability]
+enabled = true
+
+# Future bindings (Slice 2): KV / D1 / R2.
+# Future routes (post-domain mapping): app.nlqdb.com/v1/*.
