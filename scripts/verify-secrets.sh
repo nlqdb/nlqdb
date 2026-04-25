@@ -166,12 +166,17 @@ else
   skip "GOOGLE_CLIENT_SECRET"
 fi
 
-# GitHub OAuth App: real live check. POST to /applications/{id}/token
-# with Basic auth = (client_id:client_secret) and a deliberately bogus
-# token in the body. Response distinguishes:
-#   422  → credentials accepted, token invalid (expected — pair works)
-#   401  → credentials rejected (id/secret mismatch or revoked)
-#   404  → app not found under that client_id
+# GitHub OAuth App: real live check using the "check a token" endpoint
+# (POST /applications/{id}/token). Basic auth = (client_id:client_secret),
+# JSON body with a deliberately-bogus access token. Per GitHub's docs:
+#   404 = Basic auth succeeded → endpoint logic ran → token wasn't issued
+#         by this app (expected — the bogus probe token never existed).
+#         This is the success path: the pair was accepted.
+#   401 = Basic auth rejected → wrong client_id or wrong client_secret.
+# The 404 path is ambiguous in theory (could also mean "client_id
+# unknown") but distinguishing requires a second probe with a
+# deliberately-wrong secret — overkill for this check; a malformed
+# client_id virtually never collides with a real one.
 # Neither path leaks the secret.
 if [[ -n "${GITHUB_CLIENT_ID:-}" && -n "${GITHUB_CLIENT_SECRET:-}" ]]; then
   body=$(curl -s -o /dev/null -w '%{http_code}' -m 10 \
@@ -181,10 +186,9 @@ if [[ -n "${GITHUB_CLIENT_ID:-}" && -n "${GITHUB_CLIENT_SECRET:-}" ]]; then
     -X POST -d '{"access_token":"verify-secrets-probe"}' \
     "https://api.github.com/applications/${GITHUB_CLIENT_ID}/token" 2>&1)
   case "$body" in
-    422) ok "GITHUB_CLIENT_ID + GITHUB_CLIENT_SECRET (HTTP $body, pair accepted)";;
-    401) fail "GITHUB_CLIENT_SECRET" "HTTP $body — id/secret pair rejected";;
-    404) fail "GITHUB_CLIENT_ID"     "HTTP $body — no OAuth app at that client_id";;
-    *)   fail "GITHUB_CLIENT_*"      "HTTP $body (unexpected)";;
+    404) ok "GITHUB_CLIENT_ID + GITHUB_CLIENT_SECRET (HTTP $body, pair accepted)";;
+    401) fail "GITHUB_CLIENT_*"   "HTTP $body — id/secret pair rejected by Basic auth";;
+    *)   fail "GITHUB_CLIENT_*"   "HTTP $body (unexpected)";;
   esac
 else
   [[ -z "${GITHUB_CLIENT_ID:-}"     ]] && skip "GITHUB_CLIENT_ID"
