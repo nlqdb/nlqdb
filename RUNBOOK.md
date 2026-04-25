@@ -154,6 +154,47 @@ prereq (waiting on product stability).
 
 ---
 
+## 5b. GitHub OAuth — what's configured
+
+Classic **OAuth App** under the `nlqdb` GitHub org (not a GitHub App —
+we need sign-in only, no installation/permission semantics). nlqdb is
+**engine-agnostic** — describe its sign-in to the user as "Sign in to
+nlqdb." rather than naming a specific backend.
+
+- **Org settings page:** `https://github.com/organizations/nlqdb/settings/applications`
+- **App name:** `nlqdb-web` (production sign-in).
+- **Homepage URL:** `https://nlqdb.com`
+- **Authorization callback URL** — exactly **one** URL per OAuth App.
+  GitHub OAuth Apps **do not support** multiple callback URLs (that
+  capability is for GitHub Apps, a different product). Multi-env
+  strategy:
+  - **`nlqdb-web` (this app, prod):** `https://app.nlqdb.com/auth/callback/github` ✅
+  - **`nlqdb-web-dev` (deferred — Phase 0 §3):** a *separate* OAuth
+    App under the same `nlqdb` org, callback
+    `http://localhost:8787/auth/callback/github`, credentials
+    populated into `.envrc` under `GITHUB_CLIENT_ID_DEV` /
+    `GITHUB_CLIENT_SECRET_DEV` (or `.dev.vars` per Wrangler
+    convention — TBD when the auth code lands). Provision this
+    when implementing the Better Auth scaffold so devs can sign in
+    against `wrangler dev`.
+  - `https://nlqdb.com/device/approve` is the **device-flow user-prompt
+    page**, not an OAuth redirect — device flow polls and never invokes
+    the callback URL, so it doesn't need to be registered.
+- **Enable Device Flow:** ✅ — CLI uses device-code flow (`nlq login`)
+  per [DESIGN.md §3.3](./DESIGN.md#33-cli-and-device-code-flow).
+- **Webhook URL:** _none_ — auth-only, no webhook.
+- **Credentials in `.envrc`** as `GITHUB_CLIENT_ID` +
+  `GITHUB_CLIENT_SECRET`. Refresh `.envrc.age` via
+  `scripts/backup-envrc.sh` after pasting.
+
+**Verification:** `./scripts/verify-secrets.sh` does a live probe of
+`POST /applications/{client_id}/token` with the secret pair as Basic
+auth and a deliberately-bogus token in the body. Expected HTTP **404**
+= Basic auth accepted, the bogus token correctly not-found. **401** is
+the failure path (Basic auth rejected = wrong id or secret).
+
+---
+
 ## 6. Deployments
 
 ### Coming-soon page
@@ -193,7 +234,8 @@ When it does, it'll deploy via `wrangler deploy` from `apps/api/`.
 | 2.4  | Gemini / Groq / OpenRouter keys    | ✅            |
 | 2.5  | `BETTER_AUTH_SECRET` (self-gen)    | ✅            |
 | 2.5  | `INTERNAL_JWT_SECRET` (self-gen)   | ✅            |
-| 2.5  | GitHub OAuth app (nlqdb org)       | ⏳            |
+| 2.5  | GitHub OAuth app — `nlqdb-web` (prod)  | ✅            |
+| 2.5  | GitHub OAuth app — `nlqdb-web-dev`     | ⏳ (Phase 0 §3 with auth code) |
 | 2.5  | Google OAuth client                | ✅ (Testing)  |
 | 2.5  | Resend + domain verification       | ⏳            |
 | 2.5  | AWS SES fallback                   | ⏳ (Phase 1)  |
