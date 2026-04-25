@@ -77,15 +77,15 @@ re-enable via Cloudflare later).
 | Groq             | Existing                  | Free                              | —                                                  |
 | OpenRouter       | Existing                  | Free (fallback)                   | —                                                  |
 | Google Cloud     | `omer.hochman@gmail.com`  | Free                              | Project `nlqdb`, OAuth consent screen **Testing**  |
+| Resend           | `omer.hochman@gmail.com`  | Free (3k emails/mo)               | API key `nlqdb-phase0`; domain verification ⏳ Phase 1 |
+| Stripe           | `omer.hochman@gmail.com`  | Test mode (no card)               | Merchant: Switzerland / CHF; descriptor `NLQDB.COM`; webhook secret ⏳ Phase 0 §3 |
+| Grafana Cloud    | `omer.hochman@gmail.com`  | Free                              | Stack `nlqdb` on `us-east-2`, instance `1609127`, access policy `nlqdb-phase0-telemetry` |
 | Docker Hub       | **SKIPPED**               | —                                 | Using `ghcr.io/nlqdb` instead (paid-only org tier) |
 
-**Not yet provisioned** — pending §2.5 / §2.6:
+**Not yet provisioned** — pending Phase 1+:
 
-- Resend — transactional email
-- AWS SES — email fallback (Phase 1)
-- Stripe — test mode first
-- GitHub OAuth app under `nlqdb` org
-- Grafana Cloud
+- AWS SES — email fallback (Phase 1; needs AWS account).
+- Stripe webhook secret — needs `apps/api` (Phase 0 §3) to host the endpoint.
 
 ---
 
@@ -105,9 +105,10 @@ Every credential's canonical name lives in
   pending (needs `apps/api` to exist).
 
 **Live verification:** `./scripts/verify-secrets.sh`. Current baseline
-is 12/12 (BETTER_AUTH_SECRET, INTERNAL_JWT_SECRET, CLOUDFLARE_*×3,
-NEON_API_KEY, DATABASE_URL, FLY_API_TOKEN, UPSTASH_REDIS_REST_TOKEN,
-GEMINI, GROQ, OPENROUTER, SENTRY_DSN).
+is 20 ✅ across self-generated, Cloudflare ×3, Neon ×2, Fly, Upstash,
+LLM ×3, OAuth ×3 (Google ×2 + GitHub pair), Resend, Stripe ×2 (sk + pk),
+Grafana, Sentry. AWS ×2 + Stripe webhook secret skip cleanly until
+provisioned.
 
 **Values never echoed** — all checks are length/HTTP-status based.
 
@@ -243,11 +244,12 @@ When it does, it'll deploy via `wrangler deploy` from `apps/api/`.
 | 2.5  | GitHub OAuth app — `nlqdb-web` (prod)  | ✅            |
 | 2.5  | GitHub OAuth app — `nlqdb-web-dev`     | ⏳ (Phase 0 §3 with auth code) |
 | 2.5  | Google OAuth client                | ✅ (Testing)  |
-| 2.5  | Resend + domain verification       | ⏳            |
+| 2.5  | Resend API key                     | ✅ (domain verification ⏳ Phase 1) |
 | 2.5  | AWS SES fallback                   | ⏳ (Phase 1)  |
-| 2.5  | Stripe (test mode)                 | ⏳            |
+| 2.5  | Stripe (test mode) — sk + pk       | ✅            |
+| 2.5  | Stripe webhook secret              | ⏳ (Phase 0 §3 with `apps/api`) |
 | 2.6  | Sentry DSN                         | ✅            |
-| 2.6  | Grafana Cloud                      | ⏳            |
+| 2.6  | Grafana Cloud OTLP                 | ✅            |
 | 2.7  | Mirror `.envrc` → GHA secrets      | ✅ via `scripts/mirror-secrets-gha.sh` |
 | 2.7  | Mirror `.envrc` → Workers secrets  | ⏳ (Phase 0 §3 — needs `apps/api`) |
 

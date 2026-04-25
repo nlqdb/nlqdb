@@ -245,16 +245,31 @@ Cloud for Startups / Modal startup credits.
       (days, not weeks). Client name: `nlqdb-web`. Redirect URIs and
       JS origins enumerated in [`RUNBOOK.md §5`](./RUNBOOK.md).
 - [ ] CLI build dep: `github.com/zalando/go-keyring` (OS keychain).
-- [ ] **Resend** → `RESEND_API_KEY`; configure SPF/DKIM/DMARC for `nlqdb.com`.
+- [x] **Resend** → `RESEND_API_KEY` (free tier, 3k emails/mo). API key
+      live-verified via `verify-secrets.sh`. Domain verification for
+      `nlqdb.com` (SPF/DKIM/DMARC) deferred to Phase 1 — no outbound
+      mail until magic-link sign-in lands.
 - [ ] **AWS SES** (fallback) → `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`.
-- [ ] **Stripe** (test mode until Phase 2) → `STRIPE_SECRET_KEY`,
-      `STRIPE_PUBLISHABLE_KEY`, `STRIPE_WEBHOOK_SECRET`; enable Stripe Tax.
+      Phase 1 — needs an AWS account.
+- [x] **Stripe** (test mode) → `STRIPE_SECRET_KEY`,
+      `STRIPE_PUBLISHABLE_KEY`. Both live-verified (`sk_test_…` /
+      `pk_test_…`). Merchant: Switzerland / CHF; statement descriptor
+      `NLQDB.COM`. Stripe Tax to enable when going live in Phase 2.
+- [ ] **Stripe webhook secret** → `STRIPE_WEBHOOK_SECRET`. Phase 0 §3
+      — needs `apps/api` to host the webhook endpoint before the
+      signing secret can be minted.
 
 ### 2.6 Observability
 
-- [ ] Sentry → `SENTRY_DSN` (5k errors/mo free).
-- [ ] Plausible — self-hosted on Fly (no SaaS key).
-- [ ] Grafana Cloud → `GRAFANA_CLOUD_API_KEY`, `GRAFANA_OTLP_ENDPOINT`.
+- [x] **Sentry** → `SENTRY_DSN` (5k errors/mo free). Live-verified.
+- [ ] **Plausible** — self-hosted on Fly (no SaaS key). Phase 1.
+- [x] **Grafana Cloud OTLP** →
+      `GRAFANA_CLOUD_API_KEY`,
+      `GRAFANA_CLOUD_INSTANCE_ID`,
+      `GRAFANA_OTLP_ENDPOINT`. Stack `nlqdb` on `us-east-2`,
+      instance `1609127`, access policy `nlqdb-phase0-telemetry` with
+      `metrics:write` + `logs:write` + `traces:write`. Live-verified
+      via empty OTLP envelope POST (HTTP 200/400/415 = auth accepted).
 
 ### 2.7 Secret management
 
