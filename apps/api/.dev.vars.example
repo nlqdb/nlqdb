@@ -1,0 +1,29 @@
+# apps/api — local Wrangler dev overrides.
+#
+# Copy to `.dev.vars` (gitignored) and fill from .envrc. wrangler dev
+# automatically loads this file, overlaying [vars] from wrangler.toml.
+# Production deploys read these via `wrangler secret put` (Slice 7 lands
+# the mirror script — until then, run `wrangler secret put <NAME>` per
+# secret manually).
+
+# Switch Better Auth to the *_DEV OAuth credential pair at module load.
+NODE_ENV=development
+
+# Better Auth — required.
+BETTER_AUTH_SECRET=
+
+# GitHub OAuth — Slice 5 uses the `_DEV` pair when NODE_ENV=development
+# (RUNBOOK §5b).
+OAUTH_GITHUB_CLIENT_ID=
+OAUTH_GITHUB_CLIENT_SECRET=
+OAUTH_GITHUB_CLIENT_ID_DEV=
+OAUTH_GITHUB_CLIENT_SECRET_DEV=
+
+# Google OAuth — single client, redirects flip per RUNBOOK §5.
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
+
+# Telemetry — leave blank locally to skip OTLP export. Tests use the
+# in-memory exporter (@nlqdb/otel/test).
+GRAFANA_OTLP_ENDPOINT=
+GRAFANA_OTLP_AUTHORIZATION=

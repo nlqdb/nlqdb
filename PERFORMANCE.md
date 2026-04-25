@@ -22,7 +22,7 @@ state of provisioned infra (see [RUNBOOK.md](./RUNBOOK.md)).
 | `GET /v1/health`                 | < 5 ms   | < 50 ms  | Pure JSON serialize, no I/O.              |
 | `POST /v1/ask` — **cache hit**   | < 200 ms | < 500 ms | Plan in KV, just execute SQL.             |
 | `POST /v1/ask` — **cache miss**  | < 1.5 s  | < 3.5 s  | Full LLM plan + execute + (opt) summarize. |
-| `GET /v1/auth/callback/github`   | < 200 ms | < 1.0 s  | OAuth code exchange + DB user upsert.     |
+| `GET /api/auth/callback/github`  | < 200 ms | < 1.0 s  | OAuth code exchange + DB user upsert.     |
 | `POST /v1/auth/device`           | < 50 ms  | < 200 ms | DB write only.                            |
 | `POST /v1/auth/device/token`     | < 100 ms | < 500 ms | DB read + write + JWT sign.               |
 | `POST /v1/auth/refresh`          | < 50 ms  | < 200 ms | KV/DB read + JWT sign.                    |
@@ -84,7 +84,7 @@ above a threshold (default 5) or when the intent classifier flagged
 the query as conversational. Most fact-lookup queries return raw rows
 and skip stage 10 entirely.
 
-### 2.3 `POST /v1/auth/callback/github`
+### 2.3 `GET /api/auth/callback/github`
 
 | Stage                                  | p50    | p99    |
 | :------------------------------------- | :----- | :----- |
@@ -135,7 +135,7 @@ Canonical names. Every slice MUST use these — no one-off variants.
 | `llm.summarize`               | Result summarization (conditional).            |
 | `nlqdb.sql.validate`          | SQL parse + schema-fit check.                  |
 | `db.query`                    | Neon HTTP execute — standard OTel `db.*`.      |
-| `nlqdb.auth.oauth.callback`   | `/v1/auth/callback/github` flow.               |
+| `nlqdb.auth.oauth.callback`   | `/api/auth/callback/{github,google}` flow.     |
 | `nlqdb.webhook.stripe`        | Stripe webhook handler.                        |
 | `nlqdb.events.emit`           | Product-event sink dispatch (LogSnag; PostHog optional Phase 2). Wrapped in `ctx.waitUntil` so it runs **after** the response is returned — zero user-facing latency. Server-side only; no client SDK on the marketing site. |
 
