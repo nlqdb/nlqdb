@@ -219,18 +219,23 @@ Cloud for Startups / Modal startup credits.
 - [ ] `BETTER_AUTH_SECRET` (self-generated). §4.3 design is the full spec.
 - [ ] `INTERNAL_JWT_SECRET` — Workers-only; signs 30s internal JWTs (§4.4).
 - [x] **GitHub OAuth app — `nlqdb-web` (prod)** →
-      `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`. Single callback URL
-      per OAuth App: `https://app.nlqdb.com/auth/callback/github`.
-      Device flow enabled (CLI `nlq login` per §3.3 design); device
-      code flow polls and never invokes the callback. Configured
-      details in [`RUNBOOK §5b`](./RUNBOOK.md#5b-github-oauth--whats-configured).
+      `OAUTH_GITHUB_CLIENT_ID`, `OAUTH_GITHUB_CLIENT_SECRET`. The
+      `OAUTH_*` prefix avoids GitHub Actions' reserved `GITHUB_*`
+      namespace (repo/org secrets prefixed `GITHUB_` are rejected),
+      keeping local + CI + Workers names 1:1 for clean mirroring.
+      Single callback URL per OAuth App:
+      `https://app.nlqdb.com/auth/callback/github`. Device flow
+      enabled (CLI `nlq login` per §3.3 design); device-code flow
+      polls and never invokes the callback. Configured details in
+      [`RUNBOOK §5b`](./RUNBOOK.md#5b-github-oauth--whats-configured).
 - [ ] **GitHub OAuth app — `nlqdb-web-dev`** (Phase 0 §3 with auth
       code) → second OAuth App under the `nlqdb` org with callback
       `http://localhost:8787/auth/callback/github`. Credentials
-      populate `GITHUB_CLIENT_ID_DEV` / `GITHUB_CLIENT_SECRET_DEV`
-      in `.envrc` (or `.dev.vars` per Wrangler convention — TBD when
-      the auth code lands). Required because GitHub OAuth Apps
-      support exactly one callback URL each.
+      populate `OAUTH_GITHUB_CLIENT_ID_DEV` /
+      `OAUTH_GITHUB_CLIENT_SECRET_DEV` in `.envrc` (or `.dev.vars`
+      per Wrangler convention — TBD when the auth code lands).
+      Required because GitHub OAuth Apps support exactly one
+      callback URL each.
 - [x] **Google OAuth client** → `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`
       (same redirect set). GCP project: `nlqdb`. OAuth consent screen
       in **Testing** mode; publishing-to-production (and therefore
