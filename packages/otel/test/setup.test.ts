@@ -22,7 +22,7 @@ describe("createTestTelemetry", () => {
     });
     const spans = telemetry.spanExporter.getFinishedSpans();
     expect(spans.map((s) => s.name)).toEqual(["test.span"]);
-    expect(spans[0]?.attributes.k).toBe("v");
+    expect(spans[0]?.attributes["k"]).toBe("v");
   });
 
   it("attaches the configured resource so spans carry service.name", async () => {
@@ -49,7 +49,7 @@ describe("createTestTelemetry", () => {
       .flatMap((rm) => rm.scopeMetrics.flatMap((sm) => sm.metrics));
     const found = all.find((m) => m.descriptor.name === "test.duration_ms");
     expect(found).toBeDefined();
-    expect(found?.dataPoints[0]?.attributes.route).toBe("/v1/test");
+    expect(found?.dataPoints[0]?.attributes["route"]).toBe("/v1/test");
   });
 
   it("dbDurationMs() returns the canonical histogram bound to the global meter", async () => {

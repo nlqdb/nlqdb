@@ -86,7 +86,7 @@ describe("createPostgresAdapter", () => {
     expect(histogram, "histogram nlqdb.db.duration_ms not found").toBeDefined();
     expect(histogram?.descriptor.unit).toBe("ms");
     const point = histogram?.dataPoints[0];
-    expect(point?.attributes.operation).toBe("SELECT");
+    expect(point?.attributes["operation"]).toBe("SELECT");
   });
 
   it("marks span ERROR and rethrows when the query rejects", async () => {
