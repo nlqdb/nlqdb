@@ -87,6 +87,19 @@ bun run hooks:run    # run pre-commit hooks against staged files
 - CLI — single static binary: `nlq new`, `nlq login`, `nlq "..."`.
 - MCP server — so agents can use it too.
 - `<nlq-data>` / `<nlq-action>` HTML elements — the embeddable backend.
+- Plus the platform integrations matrix in [IMPLEMENTATION §10](./IMPLEMENTATION.md#10-platform-integrations--the-matrix) — Nuxt, Next, SvelteKit, Astro, mobile, server middleware, IDE extensions, no-code, iPaaS, analytics tooling, chat platforms.
+
+## Community + legal
+
+- [CONTRIBUTING.md](./CONTRIBUTING.md) — dev setup, branch naming, commits, CLA flow.
+- [CODE_OF_CONDUCT.md](./CODE_OF_CONDUCT.md) — Contributor Covenant 2.1. Reports to `conduct@nlqdb.com`.
+- [SECURITY.md](./SECURITY.md) — vulnerability disclosure (`security@nlqdb.com`, GitHub PVR, Signal). 90-day fix target, credit-only Hall of Fame.
+- [SUPPORT.md](./SUPPORT.md) — where to ask questions and what we don't (yet) offer.
+- [CLA.md](./CLA.md) — Contributor License Agreement, signed once via the bot on your first PR.
+- [TRADEMARKS.md](./TRADEMARKS.md) — what you can and can't do with the nlqdb name and logo.
+- [SUBPROCESSORS.md](./SUBPROCESSORS.md) — third-party services that may process personal data on our behalf.
+- [IMPRESSUM.md](./IMPRESSUM.md) — Swiss UWG-mandated operator disclosures.
+- Privacy policy and terms of service: [nlqdb.com/privacy](https://nlqdb.com/privacy) · [nlqdb.com/terms](https://nlqdb.com/terms).
 
 ## License
 
@@ -94,3 +107,5 @@ bun run hooks:run    # run pre-commit hooks against staged files
 license. Source-available for any non-competing use; auto-converts to
 Apache 2.0 two years after each release. (Pattern used by Sentry,
 Convex, and others.)
+
+`nlqdb`™ is an unregistered trademark of the project's licensor. See [TRADEMARKS.md](./TRADEMARKS.md) for usage guidelines.
