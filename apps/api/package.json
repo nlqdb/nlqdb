@@ -13,7 +13,8 @@
     "migrate:remote": "../../scripts/migrate-d1.sh remote"
   },
   "dependencies": {
-    "@nlqdb/otel": "workspace:*"
+    "@nlqdb/otel": "workspace:*",
+    "hono": "^4.12.15"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "latest",
