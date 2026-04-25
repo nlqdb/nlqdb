@@ -166,6 +166,31 @@ else
   skip "GOOGLE_CLIENT_SECRET"
 fi
 
+# GitHub OAuth App: real live check. POST to /applications/{id}/token
+# with Basic auth = (client_id:client_secret) and a deliberately bogus
+# token in the body. Response distinguishes:
+#   422  → credentials accepted, token invalid (expected — pair works)
+#   401  → credentials rejected (id/secret mismatch or revoked)
+#   404  → app not found under that client_id
+# Neither path leaks the secret.
+if [[ -n "${GITHUB_CLIENT_ID:-}" && -n "${GITHUB_CLIENT_SECRET:-}" ]]; then
+  body=$(curl -s -o /dev/null -w '%{http_code}' -m 10 \
+    -u "${GITHUB_CLIENT_ID}:${GITHUB_CLIENT_SECRET}" \
+    -H "Accept: application/vnd.github+json" \
+    -H "X-GitHub-Api-Version: 2022-11-28" \
+    -X POST -d '{"access_token":"verify-secrets-probe"}' \
+    "https://api.github.com/applications/${GITHUB_CLIENT_ID}/token" 2>&1)
+  case "$body" in
+    422) ok "GITHUB_CLIENT_ID + GITHUB_CLIENT_SECRET (HTTP $body, pair accepted)";;
+    401) fail "GITHUB_CLIENT_SECRET" "HTTP $body — id/secret pair rejected";;
+    404) fail "GITHUB_CLIENT_ID"     "HTTP $body — no OAuth app at that client_id";;
+    *)   fail "GITHUB_CLIENT_*"      "HTTP $body (unexpected)";;
+  esac
+else
+  [[ -z "${GITHUB_CLIENT_ID:-}"     ]] && skip "GITHUB_CLIENT_ID"
+  [[ -z "${GITHUB_CLIENT_SECRET:-}" ]] && skip "GITHUB_CLIENT_SECRET"
+fi
+
 say "Grafana Cloud"
 # Grafana Cloud OTLP auth: Basic <base64(instanceId:accessPolicyToken)>
 # Smoke test: POST an empty OTLP metrics envelope; valid auth returns

@@ -154,6 +154,36 @@ prereq (waiting on product stability).
 
 ---
 
+## 5b. GitHub OAuth — what's configured
+
+Classic **OAuth App** under the `nlqdb` GitHub org (not a GitHub App
+— we need sign-in only, no installation/permission semantics).
+
+- **Org settings page:** `https://github.com/organizations/nlqdb/settings/applications`
+- **App name:** `nlqdb-web`
+- **Homepage URL:** `https://nlqdb.com`
+- **Application description (optional):** `Sign in to nlqdb — natural-language Postgres.`
+- **Authorization callback URLs** — one per line in the GitHub UI
+  (OAuth Apps support multiple since 2022):
+  - `https://app.nlqdb.com/auth/callback/github`
+  - `https://nlqdb.com/device/approve`
+  - `http://localhost:4321/auth/callback/github` (Astro dev)
+  - `http://localhost:8787/auth/callback/github` (Wrangler dev)
+- **Enable Device Flow:** ✅ — CLI uses device-code flow (`nlq login`)
+  per [DESIGN.md §3.3](./DESIGN.md#33-cli-and-device-code-flow).
+  Device flow doesn't use redirect URIs; toggle is independent.
+- **Webhook URL:** _none_ — auth-only, no webhook.
+- **Credentials in `.envrc`** as `GITHUB_CLIENT_ID` +
+  `GITHUB_CLIENT_SECRET`. Refresh `.envrc.age` via
+  `scripts/backup-envrc.sh` after pasting.
+
+**Verification:** `./scripts/verify-secrets.sh` does a live probe of
+`POST /applications/{client_id}/token` with the secret pair as Basic
+auth. Expected HTTP **422** = pair accepted, deliberately-bogus token
+rejected. Anything else (401 / 404) is a real failure.
+
+---
+
 ## 6. Deployments
 
 ### Coming-soon page
