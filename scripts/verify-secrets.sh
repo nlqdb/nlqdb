@@ -178,22 +178,27 @@ fi
 # deliberately-wrong secret — overkill for this check; a malformed
 # client_id virtually never collides with a real one.
 # Neither path leaks the secret.
-if [[ -n "${OAUTH_GITHUB_CLIENT_ID:-}" && -n "${OAUTH_GITHUB_CLIENT_SECRET:-}" ]]; then
+check_github_oauth_pair() {
+  local id_var="$1" secret_var="$2"
+  local id="${!id_var:-}" secret="${!secret_var:-}"
+  if [[ -z "$id" && -z "$secret" ]]; then skip "$id_var"; skip "$secret_var"; return; fi
+  if [[ -z "$id" ]]; then skip "$id_var"; return; fi
+  if [[ -z "$secret" ]]; then skip "$secret_var"; return; fi
+  local body
   body=$(curl -s -o /dev/null -w '%{http_code}' -m 10 \
-    -u "${OAUTH_GITHUB_CLIENT_ID}:${OAUTH_GITHUB_CLIENT_SECRET}" \
+    -u "${id}:${secret}" \
     -H "Accept: application/vnd.github+json" \
     -H "X-GitHub-Api-Version: 2022-11-28" \
     -X POST -d '{"access_token":"verify-secrets-probe"}' \
-    "https://api.github.com/applications/${OAUTH_GITHUB_CLIENT_ID}/token" 2>&1)
+    "https://api.github.com/applications/${id}/token" 2>&1)
   case "$body" in
-    404) ok "OAUTH_GITHUB_CLIENT_ID + OAUTH_GITHUB_CLIENT_SECRET (HTTP $body, pair accepted)";;
-    401) fail "OAUTH_GITHUB_CLIENT_*"   "HTTP $body — id/secret pair rejected by Basic auth";;
-    *)   fail "OAUTH_GITHUB_CLIENT_*"   "HTTP $body (unexpected)";;
+    404) ok "$id_var + $secret_var (HTTP $body, pair accepted)";;
+    401) fail "${id_var%_ID*}_*" "HTTP $body — id/secret pair rejected by Basic auth";;
+    *)   fail "${id_var%_ID*}_*" "HTTP $body (unexpected)";;
   esac
-else
-  [[ -z "${OAUTH_GITHUB_CLIENT_ID:-}"     ]] && skip "OAUTH_GITHUB_CLIENT_ID"
-  [[ -z "${OAUTH_GITHUB_CLIENT_SECRET:-}" ]] && skip "OAUTH_GITHUB_CLIENT_SECRET"
-fi
+}
+check_github_oauth_pair OAUTH_GITHUB_CLIENT_ID     OAUTH_GITHUB_CLIENT_SECRET
+check_github_oauth_pair OAUTH_GITHUB_CLIENT_ID_DEV OAUTH_GITHUB_CLIENT_SECRET_DEV
 
 say "Email (Resend)"
 # Resend API: GET /domains lists configured sending domains. Smallest

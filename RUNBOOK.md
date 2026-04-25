@@ -109,10 +109,10 @@ Every credential's canonical name lives in
   pending (needs `apps/api` to exist).
 
 **Live verification:** `./scripts/verify-secrets.sh`. Current baseline
-is 20 ✅ across self-generated, Cloudflare ×3, Neon ×2, Fly, Upstash,
-LLM ×3, OAuth ×3 (Google ×2 + GitHub pair), Resend, Stripe ×2 (sk + pk),
-Grafana, Sentry. AWS ×2 + Stripe webhook secret skip cleanly until
-provisioned.
+is 21 ✅ across self-generated, Cloudflare ×3, Neon ×2, Fly, Upstash,
+LLM ×3, OAuth ×4 (Google ×2 + GitHub prod pair + GitHub dev pair),
+Resend, Stripe ×2 (sk + pk), Grafana, Sentry. Stripe webhook secret
+skips cleanly until `apps/api` exists (Phase 0 §3).
 
 **Values never echoed** — all checks are length/HTTP-status based.
 
@@ -177,15 +177,15 @@ nlqdb." rather than naming a specific backend.
   GitHub OAuth Apps **do not support** multiple callback URLs (that
   capability is for GitHub Apps, a different product). Multi-env
   strategy:
-  - **`nlqdb-web` (this app, prod):** `https://app.nlqdb.com/auth/callback/github` ✅
-  - **`nlqdb-web-dev` (deferred — Phase 0 §3):** a *separate* OAuth
-    App under the same `nlqdb` org, callback
-    `http://localhost:8787/auth/callback/github`, credentials
-    populated into `.envrc` under `OAUTH_GITHUB_CLIENT_ID_DEV` /
-    `OAUTH_GITHUB_CLIENT_SECRET_DEV` (or `.dev.vars` per Wrangler
-    convention — TBD when the auth code lands). Provision this
-    when implementing the Better Auth scaffold so devs can sign in
-    against `wrangler dev`.
+  - **`nlqdb-web` (prod):** homepage `https://nlqdb.com`, callback
+    `https://app.nlqdb.com/auth/callback/github`. Credentials in
+    `.envrc` as `OAUTH_GITHUB_CLIENT_ID` + `_SECRET`.
+  - **`nlqdb-web-dev`:** homepage `http://localhost:4321` (Astro
+    dev), callback `http://localhost:8787/auth/callback/github`
+    (Wrangler dev — Better Auth lives in Workers per DESIGN §4).
+    Credentials in `.envrc` as `OAUTH_GITHUB_CLIENT_ID_DEV` +
+    `_SECRET_DEV`. Better Auth picks based on `NODE_ENV` /
+    Wrangler env when the auth code lands in Phase 0 §3.
   - `https://nlqdb.com/device/approve` is the **device-flow user-prompt
     page**, not an OAuth redirect — device flow polls and never invokes
     the callback URL, so it doesn't need to be registered.
@@ -246,7 +246,7 @@ When it does, it'll deploy via `wrangler deploy` from `apps/api/`.
 | 2.5  | `BETTER_AUTH_SECRET` (self-gen)    | ✅            |
 | 2.5  | `INTERNAL_JWT_SECRET` (self-gen)   | ✅            |
 | 2.5  | GitHub OAuth app — `nlqdb-web` (prod)  | ✅            |
-| 2.5  | GitHub OAuth app — `nlqdb-web-dev`     | ⏳ (Phase 0 §3 with auth code) |
+| 2.5  | GitHub OAuth app — `nlqdb-web-dev`     | ✅            |
 | 2.5  | Google OAuth client                | ✅ (Testing)  |
 | 2.5  | Resend API key                     | ✅ (domain verification ⏳ Phase 1) |
 | 2.5  | ~~AWS SES fallback~~               | ⏭ dropped — card-required; Resend free tier suffices pre-PMF |

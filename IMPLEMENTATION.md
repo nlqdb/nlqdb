@@ -228,14 +228,16 @@ Cloud for Startups / Modal startup credits.
       enabled (CLI `nlq login` per §3.3 design); device-code flow
       polls and never invokes the callback. Configured details in
       [`RUNBOOK §5b`](./RUNBOOK.md#5b-github-oauth--whats-configured).
-- [ ] **GitHub OAuth app — `nlqdb-web-dev`** (Phase 0 §3 with auth
-      code) → second OAuth App under the `nlqdb` org with callback
-      `http://localhost:8787/auth/callback/github`. Credentials
-      populate `OAUTH_GITHUB_CLIENT_ID_DEV` /
-      `OAUTH_GITHUB_CLIENT_SECRET_DEV` in `.envrc` (or `.dev.vars`
-      per Wrangler convention — TBD when the auth code lands).
-      Required because GitHub OAuth Apps support exactly one
-      callback URL each.
+- [x] **GitHub OAuth app — `nlqdb-web-dev`** →
+      `OAUTH_GITHUB_CLIENT_ID_DEV`, `OAUTH_GITHUB_CLIENT_SECRET_DEV`.
+      Second OAuth App under the `nlqdb` org with callback
+      `http://localhost:8787/auth/callback/github` (Wrangler dev —
+      Better Auth lives in Workers per §4 design). Required because
+      GitHub OAuth Apps support exactly one callback URL each.
+      Live-verified via the same `/applications/{id}/token` probe as
+      prod (HTTP 404 = pair accepted). Better Auth will pick prod vs
+      dev credentials based on `NODE_ENV` / Wrangler env when the
+      auth code lands in Phase 0 §3.
 - [x] **Google OAuth client** → `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`
       (same redirect set). GCP project: `nlqdb`. OAuth consent screen
       in **Testing** mode; publishing-to-production (and therefore
