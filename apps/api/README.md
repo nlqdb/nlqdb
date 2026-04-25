@@ -65,18 +65,21 @@ Better Auth singleton (the real instance loads `cloudflare:workers` at
 module scope). Migrating to `@cloudflare/vitest-pool-workers` /
 Miniflare lands when a handler exercises D1 / KV directly — Slice 6.
 
-For local dev, copy `.dev.vars.example` → `.dev.vars` and fill in the
-auth secrets (Better Auth, OAuth pairs). `wrangler dev` overlays
-`.dev.vars` on top of `[vars]`, flipping `NODE_ENV` to `development`
-so Better Auth picks the `*_DEV` GitHub credentials.
+For local dev, run `bun run secrets:local` to generate
+`apps/api/.dev.vars` from `.envrc` (gitignored; auto-overwritten on
+re-run). `wrangler dev` overlays it on top of `[vars]`, flipping
+`NODE_ENV` to `development` so Better Auth picks the `*_DEV` GitHub
+credentials. Production deploys mirror via `bun run secrets:remote`
+(`wrangler secret bulk`, atomic).
 
 ## Local dev
 
 ```bash
-bun --cwd apps/api run dev        # wrangler dev — http://localhost:8787
-bun --cwd apps/api run test       # vitest
+bun --cwd apps/api run secrets:local  # writes .dev.vars from .envrc (one-time / on rotation)
+bun --cwd apps/api run dev            # wrangler dev — http://localhost:8787
+bun --cwd apps/api run test           # vitest
 bun --cwd apps/api run typecheck
-bun --cwd apps/api run build      # wrangler deploy --dry-run
+bun --cwd apps/api run build          # wrangler deploy --dry-run
 ```
 
 ## Provisioning Cloudflare resources
@@ -103,10 +106,11 @@ SQL file.
 ## Deploy
 
 ```bash
-bun --cwd apps/api run deploy     # uses CLOUDFLARE_API_TOKEN + _ACCOUNT_ID
+bun --cwd apps/api run secrets:remote  # wrangler secret bulk from .envrc
+bun --cwd apps/api run deploy          # uses CLOUDFLARE_API_TOKEN + _ACCOUNT_ID
 ```
 
 ## Coming up
 
 - Slice 6: `/v1/ask` end-to-end — wires `@nlqdb/llm` + `@nlqdb/db` + the KV plan cache.
-- Slice 7: Workers-secret mirror + Stripe webhook + R2 enable.
+- Slice 7: Stripe webhook + R2 enable.

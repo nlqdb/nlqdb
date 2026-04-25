@@ -294,11 +294,21 @@ via `import { env } from "cloudflare:workers"`. Reads
 when `NODE_ENV !== "production"`), `GOOGLE_CLIENT_{ID,SECRET}` at
 module load. Persists to D1 via `kysely-d1`. `basePath: "/api/auth"`
 (Better Auth's default; matches the OAuth Apps registered in §5b
-and the Google client redirect URIs in §5). For local dev, secrets
-go in `apps/api/.dev.vars` (gitignored; template at `.dev.vars.example`)
-— `wrangler dev` overlays them on top of `[vars]`. Production
-deploys still need `wrangler secret put` per secret until Slice 7
-ships the workers-secret mirror script.
+and the Google client redirect URIs in §5).
+
+Secrets mirror — single source of truth is `.envrc`:
+
+```bash
+bun --cwd apps/api run secrets:local    # writes apps/api/.dev.vars (wrangler dev)
+bun --cwd apps/api run secrets:remote   # wrangler secret bulk → deployed Worker
+```
+
+Both modes filter to the Worker-runtime subset (BETTER_AUTH_SECRET,
+OAUTH_GITHUB_*, GOOGLE_CLIENT_*, LLM keys, DATABASE_URL, GRAFANA_*).
+`GRAFANA_OTLP_AUTHORIZATION` is computed from the
+`GRAFANA_CLOUD_INSTANCE_ID:GRAFANA_CLOUD_API_KEY` pair so rotation
+stays on the pair (IMPLEMENTATION §2.6). Re-run after any `.envrc`
+rotation; idempotent.
 
 ---
 
@@ -336,7 +346,7 @@ ships the workers-secret mirror script.
 | 2.6  | LogSnag (`LOGSNAG_TOKEN` + `LOGSNAG_PROJECT`) | ⏳ (Phase 1 — single product-event sink) |
 | 2.6  | PostHog Cloud (`POSTHOG_API_KEY`, `POSTHOG_HOST`) | ⏭ optional Phase 2 (only if SQL on D1/Neon stops being enough) |
 | 2.7  | Mirror `.envrc` → GHA secrets      | ✅ via `scripts/mirror-secrets-gha.sh` |
-| 2.7  | Mirror `.envrc` → Workers secrets  | ⏳ (Phase 0 §3 — needs `apps/api`) |
+| 2.7  | Mirror `.envrc` → Workers secrets  | ✅ via `scripts/mirror-secrets-workers.sh local`/`remote` |
 | 3    | `apps/api` Worker skeleton + `/v1/health` | ✅ (Slice 1 — PR #21) |
 | 3    | KV namespace `nlqdb-cache` (binding `KV`) | ✅ (Slice 2) |
 | 3    | D1 database `nlqdb-app` (binding `DB`)    | ✅ (Slice 2) |
