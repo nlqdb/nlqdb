@@ -8,7 +8,12 @@
     "build": "wrangler deploy --dry-run",
     "deploy": "wrangler deploy",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "migrate:local": "../../scripts/migrate-d1.sh local",
+    "migrate:remote": "../../scripts/migrate-d1.sh remote"
+  },
+  "dependencies": {
+    "@nlqdb/otel": "workspace:*"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "latest",
