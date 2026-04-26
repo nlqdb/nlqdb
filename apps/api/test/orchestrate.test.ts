@@ -1,13 +1,13 @@
 // Orchestrator unit tests with stubbed deps. Asserts the full Slice 6
-// flow: resolve-DB → hash → plan-cache → LLM plan → sql.validate →
-// exec → summarize. Telemetry assertions (cache hit/miss counters,
-// span tree) live in the integration suite.
+// flow: rate-limit → resolve-DB → hash → plan-cache → LLM plan →
+// sql.validate → exec → summarize → emit-then-commit first-query.
 
 import type { LLMRouter } from "@nlqdb/llm";
 import { describe, expect, it, vi } from "vitest";
 import { type OrchestrateDeps, orchestrateAsk } from "../src/ask/orchestrate.ts";
 import type { PlanCache } from "../src/ask/plan-cache.ts";
 import type { CachedPlan, DbRecord, OrchestrateEvent, QueryResult } from "../src/ask/types.ts";
+import { DbConfigError } from "../src/ask/types.ts";
 
 function stubDb(overrides: Partial<DbRecord> = {}): DbRecord {
   return {
@@ -49,7 +49,7 @@ function stubLLM(
   } as unknown as LLMRouter;
 }
 
-function stubExec(result: QueryResult | Error | null = { rows: [{ x: 1 }], rowCount: 1 }) {
+function stubExec(result: QueryResult | Error = { rows: [{ x: 1 }], rowCount: 1 }) {
   return vi.fn(async () => {
     if (result instanceof Error) throw result;
     return result;
@@ -60,8 +60,11 @@ function stubRateLimiter(allowed = true, count = 1, limit = 60) {
   return { check: vi.fn(async () => ({ allowed, count, limit })) };
 }
 
-function stubFirstQuery(isFirst = false) {
-  return { markIfFirst: vi.fn(async () => isFirst) };
+function stubFirstQuery(notFiredYet = false) {
+  return {
+    notFiredYet: vi.fn(async () => notFiredYet),
+    commit: vi.fn(async () => {}),
+  };
 }
 
 function makeDeps(overrides: Partial<OrchestrateDeps> = {}): OrchestrateDeps {
@@ -162,7 +165,7 @@ describe("orchestrateAsk", () => {
     });
   });
 
-  it("returns db_unreachable when exec throws", async () => {
+  it("returns db_unreachable when exec throws a generic error", async () => {
     const exec = stubExec(new Error("connection refused"));
     const out = await orchestrateAsk(makeDeps({ exec }), {
       goal: "select",
@@ -172,6 +175,24 @@ describe("orchestrateAsk", () => {
     expect(out).toEqual({
       ok: false,
       error: { status: "db_unreachable", message: "connection refused" },
+    });
+  });
+
+  it("returns db_misconfigured when exec throws DbConfigError", async () => {
+    const exec = stubExec(
+      new DbConfigError('connection_secret_ref "DATABASE_URL" did not resolve'),
+    );
+    const out = await orchestrateAsk(makeDeps({ exec }), {
+      goal: "select",
+      dbId: "db_1",
+      userId: "user_1",
+    });
+    expect(out).toEqual({
+      ok: false,
+      error: {
+        status: "db_misconfigured",
+        message: 'connection_secret_ref "DATABASE_URL" did not resolve',
+      },
     });
   });
 
@@ -242,7 +263,7 @@ describe("orchestrateAsk", () => {
     expect(exec).not.toHaveBeenCalled();
   });
 
-  it("marks the user's first query exactly once via the tracker", async () => {
+  it("commits first-query AFTER emit (emit-then-commit, UX > strict-once)", async () => {
     const firstQuery = stubFirstQuery(true);
     const out = await orchestrateAsk(makeDeps({ firstQuery }), {
       goal: "first ever",
@@ -250,16 +271,82 @@ describe("orchestrateAsk", () => {
       userId: "user_new",
     });
     expect(out.ok).toBe(true);
-    expect(firstQuery.markIfFirst).toHaveBeenCalledWith("user_new");
+    expect(firstQuery.notFiredYet).toHaveBeenCalledWith("user_new");
+    expect(firstQuery.commit).toHaveBeenCalledWith("user_new");
   });
 
-  it("does NOT mark first-query when execution fails (no event burned on a failed call)", async () => {
+  it("does NOT check first-query when execution fails (event not burned on failed call)", async () => {
     const firstQuery = stubFirstQuery(true);
     const out = await orchestrateAsk(
       makeDeps({ exec: stubExec(new Error("connection refused")), firstQuery }),
       { goal: "anything", dbId: "db_1", userId: "user_1" },
     );
     expect(out.ok).toBe(false);
-    expect(firstQuery.markIfFirst).not.toHaveBeenCalled();
+    expect(firstQuery.notFiredYet).not.toHaveBeenCalled();
+    expect(firstQuery.commit).not.toHaveBeenCalled();
+  });
+
+  it("first-query commit failure is non-fatal — request still succeeds", async () => {
+    const firstQuery = {
+      notFiredYet: vi.fn(async () => true),
+      commit: vi.fn(async () => {
+        throw new Error("KV down");
+      }),
+    };
+    const out = await orchestrateAsk(makeDeps({ firstQuery }), {
+      goal: "first ever",
+      dbId: "db_1",
+      userId: "user_new",
+    });
+    expect(out.ok).toBe(true);
+    expect(firstQuery.commit).toHaveBeenCalledTimes(1);
+  });
+
+  it("first-query notFiredYet failure is conservative — no emit, no commit", async () => {
+    const firstQuery = {
+      notFiredYet: vi.fn(async () => {
+        throw new Error("KV down");
+      }),
+      commit: vi.fn(async () => {}),
+    };
+    const out = await orchestrateAsk(makeDeps({ firstQuery }), {
+      goal: "first ever",
+      dbId: "db_1",
+      userId: "user_new",
+    });
+    expect(out.ok).toBe(true);
+    expect(firstQuery.commit).not.toHaveBeenCalled();
+  });
+
+  it("plan-cache write failure is non-fatal — request returns the fresh plan", async () => {
+    const cache = {
+      lookup: vi.fn(async () => null),
+      write: vi.fn(async () => {
+        throw new Error("KV write blocked");
+      }),
+    };
+    const llm = stubLLM({ plan: { sql: "SELECT 1" } });
+    const out = await orchestrateAsk(makeDeps({ planCache: cache, llm }), {
+      goal: "anything",
+      dbId: "db_1",
+      userId: "user_1",
+    });
+    expect(out.ok).toBe(true);
+    if (!out.ok) throw new Error("unreachable");
+    expect(out.result.sql).toBe("SELECT 1");
+    expect(cache.write).toHaveBeenCalledTimes(1);
+  });
+
+  it("onEvent failure is swallowed — request continues to a successful outcome", async () => {
+    const onEvent = vi.fn(async () => {
+      throw new Error("client disconnected");
+    });
+    const out = await orchestrateAsk(
+      makeDeps(),
+      { goal: "anything", dbId: "db_1", userId: "user_1" },
+      { onEvent },
+    );
+    expect(out.ok).toBe(true);
+    expect(onEvent).toHaveBeenCalled();
   });
 });

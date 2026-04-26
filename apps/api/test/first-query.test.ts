@@ -1,5 +1,6 @@
 // First-query tracker tests with a stub Storage. Asserts the
-// "fire once per user" contract.
+// notFiredYet / commit split contract used by the orchestrator's
+// emit-then-commit pattern.
 
 import { describe, expect, it } from "vitest";
 import { type FirstQueryStore, makeFirstQueryTracker } from "../src/ask/first-query.ts";
@@ -18,17 +19,24 @@ function makeStore(): FirstQueryStore & { data: Map<string, string> } {
 }
 
 describe("makeFirstQueryTracker", () => {
-  it("returns true on the first call for a user, false thereafter", async () => {
+  it("notFiredYet returns true for an unknown user, false after commit", async () => {
     const tracker = makeFirstQueryTracker(makeStore());
-    expect(await tracker.markIfFirst("u_1")).toBe(true);
-    expect(await tracker.markIfFirst("u_1")).toBe(false);
-    expect(await tracker.markIfFirst("u_1")).toBe(false);
+    expect(await tracker.notFiredYet("u_1")).toBe(true);
+    await tracker.commit("u_1");
+    expect(await tracker.notFiredYet("u_1")).toBe(false);
+  });
+
+  it("commit is idempotent", async () => {
+    const tracker = makeFirstQueryTracker(makeStore());
+    await tracker.commit("u_1");
+    await tracker.commit("u_1");
+    expect(await tracker.notFiredYet("u_1")).toBe(false);
   });
 
   it("isolates flags per userId", async () => {
     const tracker = makeFirstQueryTracker(makeStore());
-    expect(await tracker.markIfFirst("u_1")).toBe(true);
-    expect(await tracker.markIfFirst("u_2")).toBe(true);
-    expect(await tracker.markIfFirst("u_1")).toBe(false);
+    await tracker.commit("u_1");
+    expect(await tracker.notFiredYet("u_1")).toBe(false);
+    expect(await tracker.notFiredYet("u_2")).toBe(true);
   });
 });

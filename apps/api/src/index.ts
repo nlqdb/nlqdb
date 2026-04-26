@@ -8,7 +8,7 @@ import { makeFirstQueryTracker } from "./ask/first-query.ts";
 import { orchestrateAsk } from "./ask/orchestrate.ts";
 import { makePlanCache } from "./ask/plan-cache.ts";
 import { makeRateLimiter } from "./ask/rate-limit.ts";
-import type { DbRecord, OrchestrateEvent } from "./ask/types.ts";
+import { DbConfigError, type DbRecord, type OrchestrateEvent } from "./ask/types.ts";
 import { auth, REVOCATION_KEY_PREFIX } from "./auth.ts";
 import { resolveDb } from "./db-registry.ts";
 import { getLLMRouter } from "./llm-router.ts";
@@ -154,11 +154,16 @@ app.post("/v1/ask", requireSession, async (c) => {
 
 // Resolves the DB row's `connection_secret_ref` to a connection URL
 // from env. Phase 0 ships one shared Postgres (PLAN line 87), so the
-// ref is typically "DATABASE_URL". Returns null if unresolvable; the
-// orchestrator surfaces this as a `db_unreachable` error.
+// ref is typically "DATABASE_URL". Throws `DbConfigError` if the ref
+// doesn't resolve — operator config bug, distinct from a transient
+// "Neon is down" failure.
 async function buildExec(db: DbRecord, sql: string) {
   const url = (env as unknown as Record<string, string | undefined>)[db.connectionSecretRef];
-  if (!url) return null;
+  if (!url) {
+    throw new DbConfigError(
+      `connection_secret_ref ${JSON.stringify(db.connectionSecretRef)} did not resolve in env (db_id=${db.id})`,
+    );
+  }
   const adapter = createPostgresAdapter({ connectionString: url });
   return adapter.execute(sql);
 }
@@ -170,7 +175,9 @@ function serializeEvent(event: OrchestrateEvent): string {
 function errorStatus(status: string): 400 | 404 | 429 | 502 {
   if (status === "db_not_found") return 404;
   if (status === "rate_limited") return 429;
-  if (status === "db_unreachable" || status === "llm_failed") return 502;
+  if (status === "db_unreachable" || status === "db_misconfigured" || status === "llm_failed") {
+    return 502;
+  }
   return 400;
 }
 

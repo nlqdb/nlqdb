@@ -37,10 +37,25 @@ export type AskResult = {
 export type AskError =
   | { status: "db_not_found" }
   | { status: "schema_unavailable" }
+  | { status: "db_misconfigured"; message: string }
   | { status: "db_unreachable"; message: string }
   | { status: "sql_rejected"; reason: string }
   | { status: "llm_failed"; message: string }
   | { status: "rate_limited"; limit: number; count: number };
+
+// Thrown by `exec` callbacks when a DB row's `connection_secret_ref`
+// doesn't resolve to anything in env (operator config error, not a
+// transient infra issue). Orchestrator distinguishes from generic
+// throws so the handler can return a clearer error to the caller —
+// "your nlqdb deploy is missing a secret" reads differently than
+// "couldn't reach Neon right now".
+export class DbConfigError extends Error {
+  readonly code = "db_misconfigured" as const;
+  constructor(message: string) {
+    super(message);
+    this.name = "DbConfigError";
+  }
+}
 
 // Streaming events for the SSE response path. Sent in order:
 //   `plan` → `rows` → `summary` (last is omitted in JSON-no-summary).

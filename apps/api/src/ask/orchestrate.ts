@@ -12,29 +12,30 @@
 
 import type { LLMRouter } from "@nlqdb/llm";
 import { cachePlanHitsTotal, cachePlanMissesTotal } from "@nlqdb/otel";
-import { trace } from "@opentelemetry/api";
+import { type Span, SpanStatusCode, trace } from "@opentelemetry/api";
 import type { FirstQueryTracker } from "./first-query.ts";
 import { hashGoal, type PlanCache } from "./plan-cache.ts";
 import type { RateLimiter } from "./rate-limit.ts";
 import { validateSql } from "./sql-validate.ts";
-import type {
-  AskError,
-  AskRequest,
-  AskResult,
-  CachedPlan,
-  DbRecord,
-  OrchestrateEvent,
-  QueryResult,
+import {
+  type AskError,
+  type AskRequest,
+  type AskResult,
+  type CachedPlan,
+  DbConfigError,
+  type DbRecord,
+  type OrchestrateEvent,
+  type QueryResult,
 } from "./types.ts";
 
 export type OrchestrateDeps = {
   resolveDb(id: string, tenantId: string): Promise<DbRecord | null>;
   planCache: PlanCache;
   llm: LLMRouter;
-  // Returns null when the DB row's `connection_secret_ref` doesn't
-  // resolve to anything in env. Tests pass a stub that returns rows
-  // directly; prod constructs a Postgres adapter.
-  exec(db: DbRecord, sql: string): Promise<QueryResult | null>;
+  // Throws `DbConfigError` if the DB row's `connection_secret_ref`
+  // doesn't resolve in env (operator config bug); other throws are
+  // treated as transient `db_unreachable`.
+  exec(db: DbRecord, sql: string): Promise<QueryResult>;
   rateLimiter: RateLimiter;
   firstQuery: FirstQueryTracker;
 };
@@ -56,6 +57,19 @@ export async function orchestrateAsk(
   opts: OrchestrateOptions = {},
 ): Promise<OrchestrateOutcome> {
   const tracer = trace.getTracer("@nlqdb/api");
+
+  // SSE consumer disconnect mid-stream (browser closes tab) is the
+  // most likely throw site for `onEvent`. We don't want that to abort
+  // a request that already produced rows — swallow.
+  async function safeEmit(event: OrchestrateEvent): Promise<void> {
+    if (!opts.onEvent) return;
+    try {
+      await opts.onEvent(event);
+    } catch {
+      // intentional: client disconnected or handler threw — request
+      // continues so the caller sees a final outcome (or DC quietly).
+    }
+  }
 
   // Rate-limit check first — fail fast on overlimit before any DB
   // work or LLM call. PERFORMANCE §4 row 6 nlqdb.ratelimit.check span.
@@ -80,6 +94,8 @@ export async function orchestrateAsk(
     // does (post-Phase-0). For now, require a populated schema.
     return { ok: false, error: { status: "schema_unavailable" } };
   }
+  // TS narrows db.schemaHash to string after the guard above.
+  const schemaHash = db.schemaHash;
 
   const queryHash = await tracer.startActiveSpan("nlqdb.ask.hash", async (span) => {
     try {
@@ -91,7 +107,7 @@ export async function orchestrateAsk(
 
   const cached = await tracer.startActiveSpan("nlqdb.cache.plan.lookup", async (span) => {
     try {
-      return await deps.planCache.lookup(db.schemaHash as string, queryHash);
+      return await deps.planCache.lookup(schemaHash, queryHash);
     } finally {
       span.end();
     }
@@ -108,7 +124,7 @@ export async function orchestrateAsk(
     try {
       const plan = await deps.llm.plan({
         goal: req.goal,
-        schema: db.schemaHash,
+        schema: schemaHash,
         dialect: "postgres",
       });
       planSql = plan.sql;
@@ -120,12 +136,17 @@ export async function orchestrateAsk(
     }
     const fresh: CachedPlan = {
       sql: planSql,
-      schemaHash: db.schemaHash,
+      schemaHash,
       createdAt: Date.now(),
     };
+    // Cache write is non-fatal — we have a valid plan in `planSql`,
+    // so a KV blip shouldn't 500 the request. Span captures the
+    // exception for trace-level visibility.
     await tracer.startActiveSpan("nlqdb.cache.plan.write", async (span) => {
       try {
-        await deps.planCache.write(db.schemaHash as string, queryHash, fresh);
+        await deps.planCache.write(schemaHash, queryHash, fresh);
+      } catch (err) {
+        recordSwallowedException(span, err);
       } finally {
         span.end();
       }
@@ -147,12 +168,15 @@ export async function orchestrateAsk(
     return { ok: false, error: { status: "sql_rejected", reason: validation.reason } };
   }
 
-  await opts.onEvent?.({ type: "plan", sql: planSql, cached: cacheHit });
+  await safeEmit({ type: "plan", sql: planSql, cached: cacheHit });
 
-  let result: QueryResult | null;
+  let result: QueryResult;
   try {
     result = await deps.exec(db, planSql);
   } catch (err) {
+    if (err instanceof DbConfigError) {
+      return { ok: false, error: { status: "db_misconfigured", message: err.message } };
+    }
     return {
       ok: false,
       error: {
@@ -161,21 +185,15 @@ export async function orchestrateAsk(
       },
     };
   }
-  if (!result) {
-    return {
-      ok: false,
-      error: { status: "db_unreachable", message: "no exec adapter for this DB" },
-    };
-  }
 
-  await opts.onEvent?.({ type: "rows", rows: result.rows, rowCount: result.rowCount });
+  await safeEmit({ type: "rows", rows: result.rows, rowCount: result.rowCount });
 
   let summary: string | undefined;
   if (!opts.skipSummary) {
     try {
       const out = await deps.llm.summarize({ goal: req.goal, rows: result.rows });
       summary = out.summary;
-      await opts.onEvent?.({ type: "summary", summary });
+      await safeEmit({ type: "summary", summary });
     } catch {
       // Summary failure is non-fatal — return rows + sql, just no
       // narration. Caller can show "summary unavailable" UI hint.
@@ -183,17 +201,33 @@ export async function orchestrateAsk(
     }
   }
 
-  // First-query tracking — fires AFTER successful execution so a
-  // user who hits sql_rejected / db_unreachable doesn't burn their
-  // first-query event on a failed call. PERFORMANCE §4 row 6
-  // nlqdb.events.emit span (the LogSnag sink lives in packages/events,
-  // not yet shipped).
-  const isFirst = await deps.firstQuery.markIfFirst(req.userId);
-  if (isFirst) {
-    await tracer.startActiveSpan("nlqdb.events.emit", async (span) => {
+  // First-query: emit-then-commit. Span fires immediately on the
+  // observability path; the KV commit is a separate, non-fatal step.
+  // If the commit fails, the next request re-emits — slight over-
+  // count is preferred to a 500 on a working query (UX > strict-once,
+  // per review).
+  let shouldEmitFirstQuery = false;
+  try {
+    shouldEmitFirstQuery = await deps.firstQuery.notFiredYet(req.userId);
+  } catch {
+    // KV read failure: conservative default — don't emit. Avoids
+    // the worst case (emit without ever committing → re-emit forever).
+    shouldEmitFirstQuery = false;
+  }
+  if (shouldEmitFirstQuery) {
+    tracer.startActiveSpan("nlqdb.events.emit", (span) => {
       span.setAttribute("nlqdb.event.type", "user.first_query");
       span.setAttribute("nlqdb.user.id", req.userId);
       span.end();
+    });
+    await tracer.startActiveSpan("nlqdb.cache.first_query.commit", async (span) => {
+      try {
+        await deps.firstQuery.commit(req.userId);
+      } catch (err) {
+        recordSwallowedException(span, err);
+      } finally {
+        span.end();
+      }
     });
   }
 
@@ -208,4 +242,13 @@ export async function orchestrateAsk(
       ...(summary !== undefined ? { summary } : {}),
     },
   };
+}
+
+// Records the exception on the span and marks it ERROR, but doesn't
+// re-throw. Used for non-fatal failures where the request should
+// still return a successful outcome (cache writes, first-query commit).
+function recordSwallowedException(span: Span, err: unknown): void {
+  const error = err instanceof Error ? err : new Error(String(err));
+  span.recordException(error);
+  span.setStatus({ code: SpanStatusCode.ERROR, message: error.message });
 }
