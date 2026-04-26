@@ -290,8 +290,8 @@ scripts/migrate-d1.sh remote   # production D1 (needs CLOUDFLARE_*)
 ```
 
 The first migration (`0001_init.sql`) creates the `databases` table —
-the tenant → Neon connection registry that `/v1/ask` will read in
-Slice 6.
+the tenant → Neon connection registry `/v1/ask` reads to pick a
+backend per request.
 
 **Telemetry**: `apps/api`'s Worker installs the OTel SDK on every
 request (idempotent) when `GRAFANA_OTLP_ENDPOINT` and
@@ -302,11 +302,11 @@ secrets the Worker is a no-op telemetry-wise — fine for local dev.
 **LLM provider chain**: `packages/llm` reads four secrets at
 request time — `GROQ_API_KEY`, `GEMINI_API_KEY`, `CF_AI_TOKEN`
 (+ `CLOUDFLARE_ACCOUNT_ID`), `OPENROUTER_API_KEY`. Per-operation
-chains are baked in as defaults (DESIGN §8.1) and will become
-env-overridable when the router is wired into `/v1/ask` in Slice 6.
-A provider listed in a chain but missing its key is simply skipped
-and increments `nlqdb.llm.failover.total{reason="not_configured"}`
-— the next provider in the chain handles the call.
+chains are baked in as defaults (DESIGN §8.1); env overrides are
+deferred until a real reason to override appears. A provider listed
+in a chain but missing its key is simply skipped and increments
+`nlqdb.llm.failover.total{reason="not_configured"}` — the next
+provider in the chain handles the call.
 
 **Better Auth** (`apps/api/src/auth.ts`): top-level singleton, wired
 via `import { env } from "cloudflare:workers"`. Reads
@@ -393,7 +393,7 @@ The `nlqdb-events` queue is created/updated by
 | 2.5  | Resend API key                     | ✅ (domain verification ⏳ Phase 1) |
 | 2.5  | ~~AWS SES fallback~~               | ⏭ dropped — card-required; Resend free tier suffices pre-PMF |
 | 2.5  | Stripe (test mode) — sk + pk       | ✅            |
-| 2.5  | Stripe webhook secret              | ⏳ (Phase 0 §3 with `apps/api`) |
+| 2.5  | Stripe webhook secret              | ✅ (Slice 7 — PR #33) |
 | 2.6  | Sentry DSN                         | ✅            |
 | 2.6  | Grafana Cloud OTLP                 | ✅            |
 | 2.6  | LogSnag (`LOGSNAG_TOKEN` + `LOGSNAG_PROJECT`) | ⏳ (Phase 1 — single product-event sink) |
@@ -405,8 +405,11 @@ The `nlqdb-events` queue is created/updated by
 | 3    | D1 database `nlqdb-app` (binding `DB`)    | ✅ (Slice 2) |
 | 3    | Neon adapter + OTel SDK + first D1 migration | ✅ (Slice 3 — PR #24) |
 | 3    | LLM router with strict-$0 provider chain  | ✅ (Slice 4 — PR #25) |
-| 3    | Better Auth at `/api/auth/*` + D1 0002    | ✅ (Slice 5)          |
-| 3    | R2 bucket `nlqdb-assets` (binding `ASSETS`) | ⏳ deferred — needs dashboard opt-in |
+| 3    | Better Auth at `/api/auth/*` + D1 0002    | ✅ (Slice 5 — PR #27) |
+| 3    | `POST /v1/ask` end-to-end                 | ✅ (Slice 6 — PR #31) |
+| 3    | Events queue + `apps/events-worker`       | ✅ (PR #32)           |
+| 3    | Stripe webhook + `customers` + R2 archive | ✅ (Slice 7 — PR #33) |
+| 3    | R2 bucket `nlqdb-assets` (binding `ASSETS`) | ⚠ binding declared (PR #33); dashboard opt-in still required before `provision-cf-resources.sh` succeeds |
 
 ---
 
