@@ -1,11 +1,14 @@
-// Test-only env augmentation. The `cloudflare:test` virtual module's
-// `env` is typed as `ProvidedEnv`; we extend it with our production
-// bindings + the `TEST_MIGRATIONS` array fed in via `vitest.config.ts`.
+// Test-only env augmentation. `cloudflare:test`'s `env` is typed as
+// `Cloudflare.Env`, so we extend that global interface with the
+// test-injected `TEST_MIGRATIONS` from `vitest.config.ts`. Marked
+// optional so production code can't accidentally rely on it.
 
-import type { D1Migration } from "@cloudflare/vitest-pool-workers/config";
+import type { D1Migration } from "@cloudflare/vitest-pool-workers";
 
-declare module "cloudflare:test" {
-  interface ProvidedEnv extends Cloudflare.Env {
-    TEST_MIGRATIONS: D1Migration[];
+declare global {
+  namespace Cloudflare {
+    interface Env {
+      TEST_MIGRATIONS?: D1Migration[];
+    }
   }
 }
