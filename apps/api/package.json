@@ -23,9 +23,10 @@
     "kysely-d1": "^0.4.0"
   },
   "devDependencies": {
+    "@cloudflare/vitest-pool-workers": "latest",
     "@cloudflare/workers-types": "latest",
     "typescript": "^5.6.0",
-    "vitest": "^3.2.0",
+    "vitest": "^4.1.0",
     "wrangler": "^4.0.0"
   }
 }
