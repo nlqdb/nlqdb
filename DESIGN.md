@@ -515,25 +515,17 @@ Three layers, kept distinct:
    separate consumer Worker [`apps/events-worker`](./apps/events-worker)
    drains the queue and fans out to sinks. **One sink today: LogSnag**
    (free tier 2,500 events/mo — plenty if we fire only one-shot events:
-   `user.registered`, `user.first_query`, `subscription.created`,
-   `subscription.canceled`, `trial.expired`; never per-sign-in).
-   LogSnag forwards to Slack/Discord/email itself, so the founder-ping
-   channel is one less thing to wire.
+   `user.registered`, `user.first_query`, `billing.subscription_created`,
+   `billing.subscription_canceled`; never per-sign-in. **No `trial.*`
+   events** — PLAN §5.3 rules out a Stripe-side trial period; the free
+   tier *is* the trial). LogSnag forwards to Slack/Discord/email itself,
+   so the founder-ping channel is one less thing to wire.
 
-   The producer/consumer split means three things: (a) `apps/api`'s
-   `/v1/ask` hot path doesn't import a LogSnag client, doesn't pay
-   network round-trips on event-emit, and stays inside its p50 budget;
-   (b) Cloudflare Queues gives us free at-least-once retries with a
-   3-attempt cap; (c) future sinks (PostHog Phase 2, Resend emails,
-   outbound user webhooks) plug in as additional handlers in
-   `apps/events-worker/src/sinks/` — producer call-sites never change.
-
-   Free-tier ops budget on Workers Free is 10K queue ops/day = ~3.3K
-   msgs/day (3 ops per write+read+delete cycle), comfortable through
-   Phase 1 even with Stripe webhook fan-out added in Slice 7. Retry
-   exhaustion drops the message; a dead-letter queue can be wired by
-   adding `dead_letter_queue = "nlqdb-events-dlq"` to the consumer
-   subscription if production traffic ever shows DLQ-worthy failures.
+   The producer/consumer split keeps `apps/api`'s `/v1/ask` hot path
+   clean — no LogSnag client, no network round-trips on event-emit,
+   the p50 budget stays intact. Quotas, retry behavior, and the DLQ
+   wiring live in [`IMPLEMENTATION.md §2.6`](./IMPLEMENTATION.md) and
+   [`apps/events-worker/README.md`](./apps/events-worker/README.md).
 
 A second sink — **PostHog Cloud** for funnels / cohorts / retention —
 is held in reserve for Phase 2, *only* if a real cohort question lands

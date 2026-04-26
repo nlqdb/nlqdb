@@ -319,14 +319,17 @@ queue gives 3 free retries on consumer-thrown errors), batching
 all live out-of-process from the request hot path on `apps/api`,
 keeping the `/v1/ask` p50 budget intact). Free-tier ops budget on
 Workers Free is 10K/day = ~3.3K msgs/day at 3 ops/msg, comfortable
-through Phase 1. See [`DESIGN.md §15.6`](./DESIGN.md) for the
+through Phase 1. See [`DESIGN.md §11`](./DESIGN.md) for the
 delivery-architecture rationale and the dead-letter / retry-
 exhaustion plan.
 
-Canonical event names (snake_dot, lowercase): `user.registered`,
-`user.first_query`, `subscription.created`, `subscription.canceled`,
-`trial.expired`. **Sign-ins are deliberately not emitted** — they
-would dominate the 2,500/mo LogSnag quota and add no founder signal.
+Canonical event names follow `<domain>.<verb_noun>` (snake_dot,
+lowercase): `user.registered`, `user.first_query`,
+`billing.subscription_created`, `billing.subscription_canceled`.
+**Sign-ins are deliberately not emitted** — they would dominate the
+2,500/mo LogSnag quota and add no founder signal. **No `trial.*`
+events** — `PLAN.md §5.3` rules out a Stripe-side trial period; the
+free tier is the trial.
 Adding a new event: extend the union in
 [`packages/events/src/types.ts`](./packages/events/src/types.ts), add
 a case to the LogSnag `buildPayload()` switch in
@@ -531,9 +534,10 @@ Workload Analyzer.
 - **CSV upload** in the chat (unlocks P3 per `PERSONAS.md`).
 - **Custom domains for embed** via Cloudflare for SaaS (first 100 zones free).
 - **Stripe** live (Hobby $10; pricing page). Webhook handler at
-  `/v1/stripe/webhook` calls `events.emit` for `subscription.created`
-  / `subscription.canceled` / `trial.expired` after signature verify
-  (per `PERFORMANCE.md §4` Slice 7) — landing in LogSnag.
+  `/v1/stripe/webhook` calls `events.emit` for
+  `billing.subscription_created` / `billing.subscription_canceled`
+  after signature verify (per `PERFORMANCE.md §4` Slice 7) — landing
+  in LogSnag.
 - **PostHog Cloud sink** — *only* turn this on if a cohort / funnel /
   retention question lands that SQL on D1/Neon can't answer. Wires
   into `packages/events` alongside LogSnag; call sites unchanged.

@@ -360,10 +360,8 @@ wrangler queues info nlqdb-events
 # Expect: 1 producer (worker:nlqdb-api), 1 consumer (worker:nlqdb-events-worker)
 ```
 
-Queue resource lives on the Cloudflare side; created by either
-`wrangler queues create nlqdb-events` (one-shot) or by re-running
-`scripts/provision-cf-resources.sh` (idempotent — adds the queue if
-absent, skips if present).
+The `nlqdb-events` queue is created/updated by
+`scripts/provision-cf-resources.sh` (idempotent).
 
 ---
 

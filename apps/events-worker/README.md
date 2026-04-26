@@ -3,12 +3,9 @@
 Drains the `nlqdb-events` Cloudflare Queue and dispatches each event to
 its sink(s). Phase 0 has one sink: **LogSnag**.
 
-## Why a separate Worker
-
-Keeps `apps/api`'s request hot path clean — no LogSnag client, no
-event-fan-out logic, no per-sink retry budget. Producers fire-and-
-forget through the `EVENTS_QUEUE` binding; this Worker handles the
-delivery side.
+Architecture rationale lives in [`DESIGN.md §11`](../../DESIGN.md) and
+[`IMPLEMENTATION.md §2.6`](../../IMPLEMENTATION.md). This README covers
+the operational surface only.
 
 ## Adding a new event type
 
