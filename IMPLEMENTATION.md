@@ -278,14 +278,15 @@ Cloud for Startups / Modal startup credits.
       instance `1609127`, access policy `nlqdb-phase0-telemetry` with
       `metrics:write` + `logs:write` + `traces:write`. Live-verified
       via empty OTLP envelope POST (HTTP 200/400/415 = auth accepted).
-- [ ] **LogSnag** → `LOGSNAG_TOKEN`, `LOGSNAG_PROJECT`. Phase 1 —
-      sole product-event sink. Free tier 2,500 events/mo (Apr 2026)
-      covers pre-PMF easily because `packages/events` only fires
-      one-shot events (signup / first-query / sub lifecycle), never
-      per-sign-in. LogSnag forwards to Slack / Discord / email itself,
-      so we don't run a separate channel. If `LOGSNAG_TOKEN` is absent
-      at runtime, the sink no-ops (unit-tested) so dev + CI never need
-      the real token.
+- [x] **LogSnag** → `LOGSNAG_TOKEN`, `LOGSNAG_PROJECT`. Live-verified
+      via `user.first_query` round-trip. Sole product-event sink for
+      now. Free tier 2,500 events/mo (Apr 2026) covers pre-PMF easily
+      because `packages/events` only fires one-shot events (signup /
+      first-query / sub lifecycle), never per-sign-in. LogSnag forwards
+      to Slack / Discord / email itself, so we don't run a separate
+      channel. If `LOGSNAG_TOKEN` / `LOGSNAG_PROJECT` is absent on the
+      consumer Worker, the sink ack-and-drops (unit-tested) so dev +
+      CI never need real credentials.
 - [ ] **PostHog Cloud** → `POSTHOG_API_KEY`, `POSTHOG_HOST`.
       **Phase 2, optional** — only if a cohort / funnel / retention
       question lands that SQL on D1/Neon can't answer. 1M events/mo
@@ -300,18 +301,37 @@ and the slice-by-slice instrumentation hooks live in
 first slice that emits OTel spans — it must ship the SDK + exporter
 wiring per `PERFORMANCE.md §4`.
 
-**`packages/events` — product event sink (distinct from OTel).**
-A ~30-line module exposing `events.emit(name, props)`. Fire-and-forget
-via `ctx.waitUntil` — never blocks the request hot path. The single
-Phase 1 sink is LogSnag; PostHog plugs in as a second sink in Phase 2
-without touching call sites. A missing secret silently drops events
-for that sink. Canonical event names (snake_dot, lowercase):
-`user.registered`, `user.first_query`, `subscription.created`,
-`subscription.canceled`, `trial.expired`. **Sign-ins are deliberately
-not emitted** — they would dominate the 2,500/mo LogSnag quota and
-add no founder signal. Adding a new event requires updating this
-list AND a test asserting the sink call. See
-[`DESIGN.md §5.4`](./DESIGN.md) for the rationale.
+**`packages/events` — product event producer (distinct from OTel).**
+Exposes `events.emit(event)` — a discriminated-union payload, not a
+free-form `(name, props)` pair, so consumer dispatch is type-checked.
+Producer writes to the `EVENTS_QUEUE` Cloudflare Queues binding;
+fire-and-forget by contract, errors are swallowed and tracked via the
+`nlqdb.events.enqueue` span. The drain side is **`apps/events-worker`**
+— a queue-only Worker (no HTTP, no `workers_dev`) that fans out to
+sinks. Phase 0 has one sink: LogSnag. PostHog plugs in as a second
+sink later by adding a handler in `apps/events-worker/src/sinks/`;
+producer call-sites stay unchanged.
+
+**Why a separate Worker over inline `ctx.waitUntil`:** retries (the
+queue gives 3 free retries on consumer-thrown errors), batching
+(consumer pulls up to 10 events per invocation), and sink isolation
+(LogSnag SDK / Stripe-aftermath logic / Resend / outbound webhooks
+all live out-of-process from the request hot path on `apps/api`,
+keeping the `/v1/ask` p50 budget intact). Free-tier ops budget on
+Workers Free is 10K/day = ~3.3K msgs/day at 3 ops/msg, comfortable
+through Phase 1. See [`DESIGN.md §15.6`](./DESIGN.md) for the
+delivery-architecture rationale and the dead-letter / retry-
+exhaustion plan.
+
+Canonical event names (snake_dot, lowercase): `user.registered`,
+`user.first_query`, `subscription.created`, `subscription.canceled`,
+`trial.expired`. **Sign-ins are deliberately not emitted** — they
+would dominate the 2,500/mo LogSnag quota and add no founder signal.
+Adding a new event: extend the union in
+[`packages/events/src/types.ts`](./packages/events/src/types.ts), add
+a case to the LogSnag `buildPayload()` switch in
+[`apps/events-worker/src/sinks/logsnag.ts`](./apps/events-worker/src/sinks/logsnag.ts),
+and add a test asserting the dispatch call.
 
 ### 2.7 Secret management
 

@@ -24,6 +24,7 @@ WRANGLER_TOML="apps/api/wrangler.toml"
 
 KV_NAMESPACE="nlqdb-cache"
 D1_DATABASE="nlqdb-app"
+EVENTS_QUEUE="nlqdb-events"
 
 # --- display helpers ----------------------------------------------------
 
@@ -68,6 +69,16 @@ get_d1_id() {
     | head -n1
 }
 
+# queue_exists <name>  → exit 0 if found, 1 otherwise. `wrangler queues
+# list` returns a human-formatted table on stdout (no `--json` flag in
+# wrangler 4.x), so we grep its output. The grep is anchored on the
+# expected name token to avoid matching prefixes (`nlqdb-events` won't
+# false-match if a future `nlqdb-events-dlq` lands).
+queue_exists() {
+  wrangler queues list 2>/dev/null \
+    | grep -E "(^|[[:space:]│|])$1([[:space:]│|]|$)" >/dev/null
+}
+
 ensure_kv() {
   local name="$1" id
   id=$(get_kv_id "$name")
@@ -94,6 +105,21 @@ ensure_d1() {
     info "$name created ($id)"
   fi
   echo "$id"
+}
+
+# Queues don't have a separate ID — the queue name IS the binding.
+# `wrangler queues create` is idempotent in newer wrangler versions but
+# still returns non-zero when the queue exists, so we gate creation on
+# our own list check.
+ensure_queue() {
+  local name="$1"
+  if queue_exists "$name"; then
+    info "$name already exists"
+  else
+    wrangler queues create "$name" >/dev/null
+    queue_exists "$name" || fail "$name" "created but list still doesn't show it"
+    info "$name created"
+  fi
 }
 
 # --- update wrangler.toml id field for a given binding ------------------
@@ -125,10 +151,11 @@ PY
 
 # --- main ---------------------------------------------------------------
 
-say "Provisioning Cloudflare resources for apps/api"
+say "Provisioning Cloudflare resources for apps/api + apps/events-worker"
 
 KV_ID=$(ensure_kv "$KV_NAMESPACE")
 D1_ID=$(ensure_d1 "$D1_DATABASE")
+ensure_queue "$EVENTS_QUEUE"
 
 say "Updating $WRANGLER_TOML"
 
@@ -137,5 +164,6 @@ update_toml_id "d1_databases"   "DB"     "database_id" "$D1_ID"
 
 ok "kv_namespaces.KV.id          → $KV_ID"
 ok "d1_databases.DB.database_id  → $D1_ID"
+ok "queues.producers.EVENTS_QUEUE → $EVENTS_QUEUE (no id; name-bound)"
 
-say "Verify with: bun --cwd apps/api run build"
+say "Verify with: bun --cwd apps/api run build && bun --cwd apps/events-worker run build"

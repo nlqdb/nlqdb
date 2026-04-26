@@ -10,6 +10,7 @@
 // Spans / metrics per PERFORMANCE §4 row 6 emitted under the
 // `nlqdb.ask` parent span set in the handler.
 
+import type { EventEmitter } from "@nlqdb/events";
 import type { LLMRouter } from "@nlqdb/llm";
 import { cachePlanHitsTotal, cachePlanMissesTotal } from "@nlqdb/otel";
 import { type Span, SpanStatusCode, trace } from "@opentelemetry/api";
@@ -38,6 +39,10 @@ export type OrchestrateDeps = {
   exec(db: DbRecord, sql: string): Promise<QueryResult>;
   rateLimiter: RateLimiter;
   firstQuery: FirstQueryTracker;
+  // Product events. Producer hides whether the underlying transport
+  // is the EVENTS_QUEUE binding or a no-op (tests / dev without the
+  // binding). `emit()` is fire-and-forget — never throws.
+  events: EventEmitter;
 };
 
 export type OrchestrateOptions = {
@@ -211,10 +216,22 @@ export async function orchestrateAsk(
     { onError: false },
   );
   if (shouldEmitFirstQuery) {
-    tracer.startActiveSpan("nlqdb.events.emit", (span) => {
+    // Span around the emit so a producer-side failure (queue.send
+    // rejection) shows up in traces. The emitter itself swallows the
+    // error — emit is fire-and-forget by contract — but the span
+    // closes with ERROR status so operators can see it.
+    await tracer.startActiveSpan("nlqdb.events.emit", async (span) => {
       span.setAttribute("nlqdb.event.type", "user.first_query");
       span.setAttribute("nlqdb.user.id", req.userId);
-      span.end();
+      try {
+        await deps.events.emit({
+          name: "user.first_query",
+          userId: req.userId,
+          dbId: req.dbId,
+        });
+      } finally {
+        span.end();
+      }
     });
     await withSpan("nlqdb.cache.first_query.commit", () => deps.firstQuery.commit(req.userId), {
       onError: undefined,

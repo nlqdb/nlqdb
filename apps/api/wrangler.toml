@@ -31,6 +31,14 @@ database_name = "nlqdb-app"
 database_id = "98767eb0-65df-4787-87bf-c3952d851b29"
 migrations_dir = "migrations"
 
+# Producer-side binding for product events (`@nlqdb/events`). The drain
+# side lives in `apps/events-worker` (consumer-only worker subscribed
+# to the same queue). Free-tier ops budget: 10K/day on Workers Free,
+# ~3.3K msgs/day at 3 ops/msg — comfortable through Phase 1.
+[[queues.producers]]
+binding = "EVENTS_QUEUE"
+queue = "nlqdb-events"
+
 # `custom_domain = true` (vs `pattern + zone_name`) gives the worker
 # exclusive ownership of `app.nlqdb.com` and lets wrangler create the
 # DNS record + provision the cert on first deploy. OAuth callbacks in

@@ -510,16 +510,30 @@ Three layers, kept distinct:
 2. **Ops telemetry** — **Sentry** (5k errors/mo free) + **OpenTelemetry**
    → **Grafana Cloud** free for traces / metrics / logs. Drives the
    "fast" promise.
-3. **Product events** — a thin in-house `events.emit(name, props)`
-   ([`packages/events`](./packages/events)) called from auth + the
-   Stripe webhook. **One sink: LogSnag** (free tier 2,500 events/mo —
-   plenty if we fire only one-shot events: `user.registered`,
-   `user.first_query`, `subscription.created`, `subscription.canceled`,
-   `trial.expired`; never per-sign-in). LogSnag forwards to
-   Slack/Discord/email itself, so the founder-ping channel is one less
-   thing to wire. The `events.emit` abstraction exists so we can swap
-   or add sinks without touching call sites — a property worth keeping
-   even with one sink today.
+3. **Product events** — an in-house [`packages/events`](./packages/events)
+   producer that writes to a **Cloudflare Queue** (`nlqdb-events`); a
+   separate consumer Worker [`apps/events-worker`](./apps/events-worker)
+   drains the queue and fans out to sinks. **One sink today: LogSnag**
+   (free tier 2,500 events/mo — plenty if we fire only one-shot events:
+   `user.registered`, `user.first_query`, `subscription.created`,
+   `subscription.canceled`, `trial.expired`; never per-sign-in).
+   LogSnag forwards to Slack/Discord/email itself, so the founder-ping
+   channel is one less thing to wire.
+
+   The producer/consumer split means three things: (a) `apps/api`'s
+   `/v1/ask` hot path doesn't import a LogSnag client, doesn't pay
+   network round-trips on event-emit, and stays inside its p50 budget;
+   (b) Cloudflare Queues gives us free at-least-once retries with a
+   3-attempt cap; (c) future sinks (PostHog Phase 2, Resend emails,
+   outbound user webhooks) plug in as additional handlers in
+   `apps/events-worker/src/sinks/` — producer call-sites never change.
+
+   Free-tier ops budget on Workers Free is 10K queue ops/day = ~3.3K
+   msgs/day (3 ops per write+read+delete cycle), comfortable through
+   Phase 1 even with Stripe webhook fan-out added in Slice 7. Retry
+   exhaustion drops the message; a dead-letter queue can be wired by
+   adding `dead_letter_queue = "nlqdb-events-dlq"` to the consumer
+   subscription if production traffic ever shows DLQ-worthy failures.
 
 A second sink — **PostHog Cloud** for funnels / cohorts / retention —
 is held in reserve for Phase 2, *only* if a real cohort question lands

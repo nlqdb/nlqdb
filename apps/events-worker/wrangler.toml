@@ -1,0 +1,35 @@
+name = "nlqdb-events-worker"
+main = "src/index.ts"
+compatibility_date = "2026-04-25"
+compatibility_flags = ["nodejs_compat"]
+
+# Queue-only worker: no HTTP route, no public URL. `workers_dev = false`
+# suppresses the `*.workers.dev` URL wrangler defaults to; `preview_urls
+# = false` disables per-deployment preview URLs likewise. Both would
+# 404 on every request anyway since `export default { queue }` exposes
+# no `fetch` handler — disabling them is cleaner than serving 404s.
+workers_dev = false
+preview_urls = false
+
+[observability]
+enabled = true
+
+# `nlqdb-events` is the only product-event queue today. Producers
+# (apps/api, eventually apps/web) write via the EVENTS_QUEUE binding;
+# this Worker drains.
+#
+# Tuning notes:
+#   max_batch_size = 10   — small batches keep p95 dispatch latency
+#                           low; LogSnag's free tier doesn't support
+#                           bulk submission so each event is its own
+#                           HTTP call regardless.
+#   max_retries = 3       — Cloudflare default. After exhaustion the
+#                           message is dropped (no DLQ configured —
+#                           add `dead_letter_queue = "nlqdb-events-dlq"`
+#                           and a corresponding queue when retry-
+#                           exhaustion starts appearing in metrics).
+[[queues.consumers]]
+queue = "nlqdb-events"
+max_batch_size = 10
+max_batch_timeout = 30
+max_retries = 3
