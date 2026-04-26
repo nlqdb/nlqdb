@@ -56,12 +56,22 @@ function stubExec(result: QueryResult | Error | null = { rows: [{ x: 1 }], rowCo
   });
 }
 
+function stubRateLimiter(allowed = true, count = 1, limit = 60) {
+  return { check: vi.fn(async () => ({ allowed, count, limit })) };
+}
+
+function stubFirstQuery(isFirst = false) {
+  return { markIfFirst: vi.fn(async () => isFirst) };
+}
+
 function makeDeps(overrides: Partial<OrchestrateDeps> = {}): OrchestrateDeps {
   return {
     resolveDb: vi.fn(async () => stubDb()),
     planCache: stubPlanCache(),
     llm: stubLLM(),
     exec: stubExec(),
+    rateLimiter: stubRateLimiter(),
+    firstQuery: stubFirstQuery(),
     ...overrides,
   };
 }
@@ -213,5 +223,43 @@ describe("orchestrateAsk", () => {
     if (!out.ok) throw new Error("unreachable");
     expect(out.result.summary).toBeUndefined();
     expect(out.result.rowCount).toBe(1);
+  });
+
+  it("returns rate_limited and skips DB / LLM when the limiter denies", async () => {
+    const llm = stubLLM();
+    const exec = stubExec();
+    const rateLimiter = stubRateLimiter(false, 60, 60);
+    const out = await orchestrateAsk(makeDeps({ llm, exec, rateLimiter }), {
+      goal: "anything",
+      dbId: "db_1",
+      userId: "user_1",
+    });
+    expect(out).toEqual({
+      ok: false,
+      error: { status: "rate_limited", limit: 60, count: 60 },
+    });
+    expect(llm.plan).not.toHaveBeenCalled();
+    expect(exec).not.toHaveBeenCalled();
+  });
+
+  it("marks the user's first query exactly once via the tracker", async () => {
+    const firstQuery = stubFirstQuery(true);
+    const out = await orchestrateAsk(makeDeps({ firstQuery }), {
+      goal: "first ever",
+      dbId: "db_1",
+      userId: "user_new",
+    });
+    expect(out.ok).toBe(true);
+    expect(firstQuery.markIfFirst).toHaveBeenCalledWith("user_new");
+  });
+
+  it("does NOT mark first-query when execution fails (no event burned on a failed call)", async () => {
+    const firstQuery = stubFirstQuery(true);
+    const out = await orchestrateAsk(
+      makeDeps({ exec: stubExec(new Error("connection refused")), firstQuery }),
+      { goal: "anything", dbId: "db_1", userId: "user_1" },
+    );
+    expect(out.ok).toBe(false);
+    expect(firstQuery.markIfFirst).not.toHaveBeenCalled();
   });
 });

@@ -13,7 +13,9 @@
 import type { LLMRouter } from "@nlqdb/llm";
 import { cachePlanHitsTotal, cachePlanMissesTotal } from "@nlqdb/otel";
 import { trace } from "@opentelemetry/api";
+import type { FirstQueryTracker } from "./first-query.ts";
 import { hashGoal, type PlanCache } from "./plan-cache.ts";
+import type { RateLimiter } from "./rate-limit.ts";
 import { validateSql } from "./sql-validate.ts";
 import type {
   AskError,
@@ -33,6 +35,8 @@ export type OrchestrateDeps = {
   // resolve to anything in env. Tests pass a stub that returns rows
   // directly; prod constructs a Postgres adapter.
   exec(db: DbRecord, sql: string): Promise<QueryResult | null>;
+  rateLimiter: RateLimiter;
+  firstQuery: FirstQueryTracker;
 };
 
 export type OrchestrateOptions = {
@@ -52,6 +56,22 @@ export async function orchestrateAsk(
   opts: OrchestrateOptions = {},
 ): Promise<OrchestrateOutcome> {
   const tracer = trace.getTracer("@nlqdb/api");
+
+  // Rate-limit check first — fail fast on overlimit before any DB
+  // work or LLM call. PERFORMANCE §4 row 6 nlqdb.ratelimit.check span.
+  const decision = await tracer.startActiveSpan("nlqdb.ratelimit.check", async (span) => {
+    try {
+      return await deps.rateLimiter.check(req.userId);
+    } finally {
+      span.end();
+    }
+  });
+  if (!decision.allowed) {
+    return {
+      ok: false,
+      error: { status: "rate_limited", limit: decision.limit, count: decision.count },
+    };
+  }
 
   const db = await deps.resolveDb(req.dbId, req.userId);
   if (!db) return { ok: false, error: { status: "db_not_found" } };
@@ -161,6 +181,20 @@ export async function orchestrateAsk(
       // narration. Caller can show "summary unavailable" UI hint.
       summary = undefined;
     }
+  }
+
+  // First-query tracking — fires AFTER successful execution so a
+  // user who hits sql_rejected / db_unreachable doesn't burn their
+  // first-query event on a failed call. PERFORMANCE §4 row 6
+  // nlqdb.events.emit span (the LogSnag sink lives in packages/events,
+  // not yet shipped).
+  const isFirst = await deps.firstQuery.markIfFirst(req.userId);
+  if (isFirst) {
+    await tracer.startActiveSpan("nlqdb.events.emit", async (span) => {
+      span.setAttribute("nlqdb.event.type", "user.first_query");
+      span.setAttribute("nlqdb.user.id", req.userId);
+      span.end();
+    });
   }
 
   return {

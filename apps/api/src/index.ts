@@ -4,8 +4,10 @@ import { authEventsTotal, setupTelemetry } from "@nlqdb/otel";
 import { trace } from "@opentelemetry/api";
 import { Hono } from "hono";
 import { streamSSE } from "hono/streaming";
+import { makeFirstQueryTracker } from "./ask/first-query.ts";
 import { orchestrateAsk } from "./ask/orchestrate.ts";
 import { makePlanCache } from "./ask/plan-cache.ts";
+import { makeRateLimiter } from "./ask/rate-limit.ts";
 import type { DbRecord, OrchestrateEvent } from "./ask/types.ts";
 import { auth, REVOCATION_KEY_PREFIX } from "./auth.ts";
 import { resolveDb } from "./db-registry.ts";
@@ -117,6 +119,8 @@ app.post("/v1/ask", requireSession, async (c) => {
       planCache: makePlanCache(c.env.KV),
       llm: getLLMRouter(),
       exec: buildExec,
+      rateLimiter: makeRateLimiter(c.env.KV),
+      firstQuery: makeFirstQueryTracker(c.env.KV),
     };
     const orchestrateReq = { goal: body.goal, dbId: body.dbId, userId: session.user.id };
 
@@ -163,8 +167,9 @@ function serializeEvent(event: OrchestrateEvent): string {
   return JSON.stringify(event);
 }
 
-function errorStatus(status: string): 400 | 404 | 502 {
+function errorStatus(status: string): 400 | 404 | 429 | 502 {
   if (status === "db_not_found") return 404;
+  if (status === "rate_limited") return 429;
   if (status === "db_unreachable" || status === "llm_failed") return 502;
   return 400;
 }

@@ -39,7 +39,8 @@ export type AskError =
   | { status: "schema_unavailable" }
   | { status: "db_unreachable"; message: string }
   | { status: "sql_rejected"; reason: string }
-  | { status: "llm_failed"; message: string };
+  | { status: "llm_failed"; message: string }
+  | { status: "rate_limited"; limit: number; count: number };
 
 // Streaming events for the SSE response path. Sent in order:
 //   `plan` → `rows` → `summary` (last is omitted in JSON-no-summary).
