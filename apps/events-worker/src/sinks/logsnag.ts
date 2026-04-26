@@ -55,6 +55,36 @@ export function buildPayload(project: string, event: ProductEvent): LogSnagPaylo
         user_id: event.userId,
         tags: { email: event.email },
       };
+    case "billing.subscription_created":
+      return {
+        project,
+        channel: "billing",
+        event: "Subscription Created",
+        description: `${event.userId} subscribed (price ${event.priceId})`,
+        icon: "💳",
+        notify: true,
+        user_id: event.userId,
+        tags: {
+          "customer-id": event.customerId,
+          "subscription-id": event.subscriptionId,
+          "price-id": event.priceId,
+        },
+      };
+    case "billing.subscription_canceled":
+      return {
+        project,
+        channel: "billing",
+        event: "Subscription Canceled",
+        description: `${event.userId} canceled (price ${event.priceId})`,
+        icon: "🚫",
+        notify: true,
+        user_id: event.userId,
+        tags: {
+          "customer-id": event.customerId,
+          "subscription-id": event.subscriptionId,
+          "price-id": event.priceId,
+        },
+      };
     default: {
       const _exhaustive: never = event;
       throw new Error(`unhandled event: ${JSON.stringify(_exhaustive)}`);

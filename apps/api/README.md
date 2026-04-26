@@ -4,28 +4,45 @@ Phase 0 §3. Houses `POST /v1/ask` (DESIGN §4.1), auth endpoints
 (`/v1/auth/{device, device/token, refresh, logout}`, DESIGN §4.3), and
 key-management endpoints (DESIGN §4.5).
 
-## Current state — through Slice 5
+## Current state — through Slice 7
 
 `GET /v1/health` returns `{status, version, timestamp, bindings}` —
-binding presence is reflected as booleans. Bindings are typed but
-not yet exercised by handler code; they'll be hit when `/v1/ask`
-lands in Slice 6.
+binding presence is reflected as booleans for `KV`, `DB`,
+`EVENTS_QUEUE`, and `ASSETS`.
+
+`POST /v1/ask` (Slice 6) is mounted under `requireSession` middleware
+and orchestrates the full pipeline: rate-limit → DB resolve → plan
+cache → LLM router → SQL allow-list → Postgres exec → optional
+summary → first-query event emit. Spans + metrics per
+[`PERFORMANCE.md`](../../PERFORMANCE.md) §4 row 6.
+
+`POST /v1/stripe/webhook` (Slice 7) is unauthenticated by middleware
+— Stripe authenticates via HMAC signature against
+`STRIPE_WEBHOOK_SECRET`. The handler verifies the signature, inserts
+into `stripe_events` with `ON CONFLICT DO NOTHING RETURNING` for
+idempotency, dispatches `checkout.session.completed` /
+`customer.subscription.{created,updated,deleted}` to update the
+`customers` table and emit `billing.subscription_created` /
+`billing.subscription_canceled` events, and archives the raw payload
+to R2 at `stripe-events/YYYY/MM/DD/{event_id}.json` via
+`ctx.waitUntil`. No `trial.*` events — PLAN §5.3 has no Stripe trial
+period.
 
 The Worker's `fetch` handler installs OpenTelemetry on every
 request when `GRAFANA_OTLP_ENDPOINT` + `GRAFANA_OTLP_AUTHORIZATION`
 are set, and flushes via `ctx.waitUntil(forceFlush())` before the
 isolate ends. Setup is idempotent — see [`@nlqdb/otel`](../../packages/otel/README.md).
 
-The Postgres adapter ([`@nlqdb/db`](../../packages/db/README.md)) is
-ready to be called from a future handler. It emits a `db.query` span
-and records into the `nlqdb.db.duration_ms` histogram per
+The Postgres adapter ([`@nlqdb/db`](../../packages/db/README.md))
+is wired into `/v1/ask`'s exec step. It emits a `db.query` span and
+records into the `nlqdb.db.duration_ms` histogram per
 [PERFORMANCE §3](../../PERFORMANCE.md#3-span--metric--label-catalog).
 
-The LLM router ([`@nlqdb/llm`](../../packages/llm/README.md)) ships
-the strict-$0 provider chain: Groq + Gemini + Cloudflare Workers AI
-+ OpenRouter, with cost-ordered failover and the `llm.<op>` /
-`nlqdb.llm.*` telemetry from PERFORMANCE §3. Slice 6 will wire it
-into `/v1/ask`.
+The LLM router ([`@nlqdb/llm`](../../packages/llm/README.md)) is
+wired into `/v1/ask`'s plan + summarize steps. Strict-$0 provider
+chain: Groq + Gemini + Cloudflare Workers AI + OpenRouter, with
+cost-ordered failover and the `llm.<op>` / `nlqdb.llm.*` telemetry
+from PERFORMANCE §3.
 
 **Better Auth** is mounted at `/api/auth/*` ([`src/auth.ts`](./src/auth.ts))
 with GitHub + Google social providers — backed by D1 (4 tables in
@@ -50,20 +67,23 @@ refresh, logout}`), the keys table (`pk_live_` / `sk_live_` /
 
 **Bindings:**
 
-| Binding | Resource     | Type            | ID / name                                |
-| :------ | :----------- | :-------------- | :--------------------------------------- |
-| `KV`    | `nlqdb-cache`| KV namespace    | `5b086b03ead54f508271f31fc421bbaa`        |
-| `DB`    | `nlqdb-app`  | D1 database     | `98767eb0-65df-4787-87bf-c3952d851b29`    |
+| Binding         | Resource         | Type           | ID / name                                              |
+| :-------------- | :--------------- | :------------- | :----------------------------------------------------- |
+| `KV`            | `nlqdb-cache`    | KV namespace   | `5b086b03ead54f508271f31fc421bbaa`                     |
+| `DB`            | `nlqdb-app`      | D1 database    | `98767eb0-65df-4787-87bf-c3952d851b29`                 |
+| `EVENTS_QUEUE`  | `nlqdb-events`   | Queue producer | name-bound; consumer is [`apps/events-worker`](../events-worker/README.md) |
+| `ASSETS`        | `nlqdb-assets`   | R2 bucket      | name-bound; Stripe-event archive + future blob surfaces |
 
-R2 (`ASSETS` → `nlqdb-assets`) is deferred — needs a one-time click on
-the Cloudflare dashboard to enable the R2 service, and isn't on
-`/v1/ask`'s critical path. Lands when blob storage is exercised.
+R2 service requires a one-time dashboard opt-in (account → R2 → Get
+Started). Once enabled, `scripts/provision-cf-resources.sh` creates
+the bucket idempotently.
 
-Tests use plain Vitest 3 importing the worker handler directly with
-mock binding objects, and `vi.mock("../src/auth.ts", …)` to stub the
-Better Auth singleton (the real instance loads `cloudflare:workers` at
-module scope). Migrating to `@cloudflare/vitest-pool-workers` /
-Miniflare lands when a handler exercises D1 / KV directly — Slice 6.
+Tests run as two Vitest projects (see `vitest.config.ts`): a fast
+**unit** project for pure-function modules with stubbed deps (~1s),
+and an **integration** project under `@cloudflare/vitest-pool-workers`
+for handlers that exercise real D1 / KV / `SELF.fetch` (~25s of
+Miniflare boot). Iterate with `bun x vitest run --project unit`;
+`bun run test` runs both at PR-finalization time.
 
 For local dev, run `bun run secrets:local` to generate
 `apps/api/.dev.vars` from `.envrc` (gitignored; auto-overwritten on
@@ -85,7 +105,7 @@ bun --cwd apps/api run build          # wrangler deploy --dry-run
 ## Provisioning Cloudflare resources
 
 ```bash
-./scripts/provision-cf-resources.sh   # idempotent: creates KV/D1, fills wrangler.toml IDs
+./scripts/provision-cf-resources.sh   # idempotent: creates KV / D1 / Queue / R2 bucket, fills wrangler.toml IDs
 ```
 
 ## D1 migrations
@@ -112,8 +132,6 @@ bun --cwd apps/api run deploy          # uses CLOUDFLARE_API_TOKEN + _ACCOUNT_ID
 
 ## Coming up
 
-- Slice 6: `/v1/ask` end-to-end — wires `@nlqdb/llm` + `@nlqdb/db` + the KV plan cache.
-- Slice 7: Stripe webhook + R2 enable.
 - **Phase 1 (`apps/web`, Astro):** opens this auth surface to end users —
   sign-in page (`/sign-in?return_to=…` per DESIGN §4.3), post-callback
   landing, anonymous-mode → adoption flow (DESIGN §14). Until then,

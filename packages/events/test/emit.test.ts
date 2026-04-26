@@ -16,6 +16,36 @@ describe("makeQueueEmitter", () => {
     expect(typeof env.ts).toBe("number");
   });
 
+  it("uses subscriptionId for billing.subscription_created defaultId", async () => {
+    const queue = makeFakeQueue();
+    const emitter = makeQueueEmitter(queue);
+
+    await emitter.emit({
+      name: "billing.subscription_created",
+      userId: "u_1",
+      customerId: "cus_x",
+      subscriptionId: "sub_abc",
+      priceId: "price_pro",
+    });
+
+    expect(queue.sent[0]?.id).toBe("billing.subscription_created.sub_abc");
+  });
+
+  it("uses subscriptionId for billing.subscription_canceled defaultId", async () => {
+    const queue = makeFakeQueue();
+    const emitter = makeQueueEmitter(queue);
+
+    await emitter.emit({
+      name: "billing.subscription_canceled",
+      userId: "u_1",
+      customerId: "cus_x",
+      subscriptionId: "sub_abc",
+      priceId: "price_pro",
+    });
+
+    expect(queue.sent[0]?.id).toBe("billing.subscription_canceled.sub_abc");
+  });
+
   it("respects an explicit id override", async () => {
     const queue = makeFakeQueue();
     const emitter = makeQueueEmitter(queue);

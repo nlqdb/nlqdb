@@ -48,6 +48,16 @@ declare global {
 
       GRAFANA_OTLP_ENDPOINT?: string;
       GRAFANA_OTLP_AUTHORIZATION?: string;
+
+      // Stripe webhook signature verification (Slice 7). Required for
+      // POST /v1/stripe/webhook — when absent, the route returns 503.
+      STRIPE_WEBHOOK_SECRET?: string;
+
+      // R2 bucket for Stripe-event payload archives (and future blob
+      // surfaces). Optional at type level so unit tests / wrangler dev
+      // without --remote can run; the webhook handler skips archive
+      // writes when undefined.
+      ASSETS?: R2Bucket;
     }
   }
 }

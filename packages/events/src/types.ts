@@ -13,7 +13,21 @@
 
 export type ProductEvent =
   | { name: "user.first_query"; userId: string; dbId: string }
-  | { name: "user.registered"; userId: string; email: string };
+  | { name: "user.registered"; userId: string; email: string }
+  | {
+      name: "billing.subscription_created";
+      userId: string;
+      customerId: string;
+      subscriptionId: string;
+      priceId: string;
+    }
+  | {
+      name: "billing.subscription_canceled";
+      userId: string;
+      customerId: string;
+      subscriptionId: string;
+      priceId: string;
+    };
 
 // Envelope wrapping the event with producer-side metadata. The consumer
 // reads `id` for idempotency keys (passed to LogSnag) and `ts` for late-

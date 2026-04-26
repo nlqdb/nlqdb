@@ -14,16 +14,20 @@ import { auth, REVOCATION_KEY_PREFIX } from "./auth.ts";
 import { resolveDb } from "./db-registry.ts";
 import { getLLMRouter } from "./llm-router.ts";
 import { makeRequireSession, type RequireSessionVariables } from "./middleware.ts";
+import { cryptoProvider, stripe as stripeClient } from "./stripe/client.ts";
+import { processWebhook } from "./stripe/webhook.ts";
 
 type Bindings = {
   KV: KVNamespace;
   DB: D1Database;
   EVENTS_QUEUE?: Queue;
+  ASSETS?: R2Bucket;
   // Telemetry: both must be set to ship to Grafana Cloud OTLP.
   // Locally these are empty, so setup is skipped — the test suite
   // installs an in-memory exporter instead (see @nlqdb/otel/test).
   GRAFANA_OTLP_ENDPOINT?: string;
   GRAFANA_OTLP_AUTHORIZATION?: string;
+  STRIPE_WEBHOOK_SECRET?: string;
 };
 
 const SERVICE_VERSION = "0.1.0";
@@ -49,21 +53,28 @@ const requireSession = makeRequireSession({
   },
 });
 
-// Per-request telemetry install + flush. Idempotent — first request
-// wins, subsequent calls return the cached handle. Skipped locally
-// when either secret is unset.
+// Per-request telemetry install + flush. setupTelemetry is idempotent
+// — first call per isolate wins; later calls return the cached handle.
+// Setup MUST happen before `next()` so handlers' `startActiveSpan` calls
+// have a registered global provider. forceFlush MUST happen after
+// `next()` so spans created during handler execution are in the
+// BatchSpanProcessor buffer when the export fires. Skipped entirely
+// when either OTLP secret is unset (local dev / tests).
 app.use("*", async (c, next) => {
   const { GRAFANA_OTLP_ENDPOINT, GRAFANA_OTLP_AUTHORIZATION } = c.env;
-  if (GRAFANA_OTLP_ENDPOINT && GRAFANA_OTLP_AUTHORIZATION) {
-    const telemetry = setupTelemetry({
-      serviceName: "nlqdb-api",
-      serviceVersion: SERVICE_VERSION,
-      otlpEndpoint: GRAFANA_OTLP_ENDPOINT,
-      authorization: GRAFANA_OTLP_AUTHORIZATION,
-    });
+  const telemetry =
+    GRAFANA_OTLP_ENDPOINT && GRAFANA_OTLP_AUTHORIZATION
+      ? setupTelemetry({
+          serviceName: "nlqdb-api",
+          serviceVersion: SERVICE_VERSION,
+          otlpEndpoint: GRAFANA_OTLP_ENDPOINT,
+          authorization: GRAFANA_OTLP_AUTHORIZATION,
+        })
+      : undefined;
+  await next();
+  if (telemetry) {
     c.executionCtx.waitUntil(telemetry.forceFlush());
   }
-  await next();
 });
 
 app.get("/v1/health", (c) =>
@@ -74,6 +85,8 @@ app.get("/v1/health", (c) =>
     bindings: {
       kv: typeof c.env.KV !== "undefined",
       db: typeof c.env.DB !== "undefined",
+      events_queue: typeof c.env.EVENTS_QUEUE !== "undefined",
+      assets: typeof c.env.ASSETS !== "undefined",
     },
   }),
 );
@@ -153,6 +166,46 @@ app.post("/v1/ask", requireSession, async (c) => {
     }
     return c.json(outcome.result);
   });
+});
+
+// `POST /v1/stripe/webhook` (Slice 7).
+//
+// No `requireSession` — Stripe authenticates via signature, not cookies.
+// Raw body must be read with `c.req.text()` (NOT `c.req.json()`); the
+// parser would normalize whitespace and break HMAC verification.
+//
+// 503 vs 400 vs 200:
+//   - 503 if `STRIPE_WEBHOOK_SECRET` isn't configured at all (deployment
+//     misconfig — Stripe retries land here too, which lets us see drops)
+//   - 400 if signature is missing or invalid (no retry helps — secret
+//     rotation, replay-window expiry, body tamper)
+//   - 200 once the event is recorded in `stripe_events` (idempotent)
+//
+// R2 archive runs in `ctx.waitUntil` so 200 ships before the put completes.
+app.post("/v1/stripe/webhook", async (c) => {
+  if (!c.env.STRIPE_WEBHOOK_SECRET) {
+    return c.json({ error: "secret_unconfigured" }, 503);
+  }
+  const rawBody = await c.req.text();
+  const signature = c.req.header("stripe-signature") ?? null;
+
+  const result = await processWebhook(
+    {
+      signer: stripeClient.webhooks,
+      cryptoProvider,
+      webhookSecret: c.env.STRIPE_WEBHOOK_SECRET,
+      db: c.env.DB,
+      r2: c.env.ASSETS,
+      events: buildEventEmitter(c.env.EVENTS_QUEUE),
+    },
+    rawBody,
+    signature,
+  );
+
+  if (result.status === 200 && result.archive) {
+    c.executionCtx.waitUntil(result.archive);
+  }
+  return c.json(result.body, result.status);
 });
 
 // Resolves the DB row's `connection_secret_ref` to a connection URL

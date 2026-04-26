@@ -18,8 +18,10 @@ NODE_ENV = "production"
 # (account-scoped), not secrets, and are committed for deterministic
 # `wrangler dev` + CI builds.
 #
-# R2 (`nlqdb-assets`) is deferred — needs a one-time click to enable on
-# the Cloudflare dashboard. Will land when blob storage is exercised.
+# R2 service requires a one-time opt-in click on the Cloudflare dashboard
+# (account → R2 → Get Started). Once enabled, the provisioning script
+# creates `nlqdb-assets` idempotently. The webhook handler at
+# `/v1/stripe/webhook` writes raw event payloads here for audit/replay.
 
 [[kv_namespaces]]
 binding = "KV"
@@ -38,6 +40,14 @@ migrations_dir = "migrations"
 [[queues.producers]]
 binding = "EVENTS_QUEUE"
 queue = "nlqdb-events"
+
+# R2 bucket for blob surfaces. Phase 0 use: Stripe-event raw-payload
+# archive at `stripe-events/YYYY/MM/DD/{event_id}.json`. Future surfaces
+# (logos, query exports, plan snapshots) share the bucket via prefix.
+# Bucket names are account-scoped — `bucket_name` is the only identifier.
+[[r2_buckets]]
+binding = "ASSETS"
+bucket_name = "nlqdb-assets"
 
 # `custom_domain = true` (vs `pattern + zone_name`) gives the worker
 # exclusive ownership of `app.nlqdb.com` and lets wrangler create the

@@ -32,6 +32,7 @@ export default defineConfig(async () => {
               "test/sql-validate.test.ts",
               "test/middleware.test.ts",
               "test/first-query.test.ts",
+              "test/stripe-webhook.test.ts",
             ],
           },
         },

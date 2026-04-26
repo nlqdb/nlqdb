@@ -82,6 +82,10 @@ function defaultId(event: ProductEvent): string {
       return `${event.name}.${event.userId}`;
     case "user.registered":
       return `${event.name}.${event.userId}`;
+    case "billing.subscription_created":
+      return `${event.name}.${event.subscriptionId}`;
+    case "billing.subscription_canceled":
+      return `${event.name}.${event.subscriptionId}`;
     default: {
       const _exhaustive: never = event;
       return `evt.${crypto.randomUUID()}`;

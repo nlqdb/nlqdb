@@ -12,12 +12,12 @@ describe("/v1/health", () => {
       status: string;
       version: string;
       timestamp: string;
-      bindings: { kv: boolean; db: boolean };
+      bindings: { kv: boolean; db: boolean; events_queue: boolean; assets: boolean };
     };
     expect(body.status).toBe("ok");
     expect(body.version).toBe("0.1.0");
     expect(body.timestamp).toMatch(/^\d{4}-\d{2}-\d{2}T/);
-    expect(body.bindings).toEqual({ kv: true, db: true });
+    expect(body.bindings).toEqual({ kv: true, db: true, events_queue: true, assets: true });
   });
 
   it("returns 404 for unknown paths", async () => {
