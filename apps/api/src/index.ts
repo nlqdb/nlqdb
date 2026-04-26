@@ -2,7 +2,11 @@ import { env } from "cloudflare:workers";
 import { authEventsTotal, setupTelemetry } from "@nlqdb/otel";
 import { trace } from "@opentelemetry/api";
 import { Hono } from "hono";
+import { orchestrateAsk } from "./ask/orchestrate.ts";
+import { makePlanCache } from "./ask/plan-cache.ts";
 import { auth, REVOCATION_KEY_PREFIX } from "./auth.ts";
+import { resolveDb } from "./db-registry.ts";
+import { getLLMRouter } from "./llm-router.ts";
 import { makeRequireSession, type RequireSessionVariables } from "./middleware.ts";
 
 type Bindings = {
@@ -67,11 +71,11 @@ app.get("/v1/health", (c) =>
   }),
 );
 
-// `POST /v1/ask` skeleton (Slice 6 commit 3). Auth-gated stub; the
-// plan cache + LLM router + execution + summarize land in commits
-// 4-6. Parent `nlqdb.ask` span is here from day one (PERFORMANCE §4
-// row 6) so the trace tree is already in place when the children
-// arrive.
+// `POST /v1/ask` (Slice 6).
+//
+// Commit 3: skeleton + auth gate. Commit 4 (here): plan cache + LLM
+// router wire. Commits 5-6 add query execution, sql.validate,
+// summarize, rate limit, first-query event.
 //
 // JWT plug-in point: when the plan cache or query execution moves
 // to a separate service (Fly machine, Hyperdrive), mint a 30s
@@ -84,11 +88,33 @@ app.post("/v1/ask", requireSession, async (c) => {
     const session = c.var.session;
     span.setAttribute("nlqdb.user.id", session.user.id);
     try {
-      return c.json({
-        status: "stub",
-        userId: session.user.id,
-        message: "/v1/ask not yet implemented — Slice 6 commits 4-6 land the orchestration",
-      });
+      let body: { goal?: unknown; dbId?: unknown };
+      try {
+        body = (await c.req.json()) as typeof body;
+      } catch {
+        return c.json({ error: "invalid_json" }, 400);
+      }
+      if (typeof body.goal !== "string" || body.goal.trim().length === 0) {
+        return c.json({ error: "goal_required" }, 400);
+      }
+      if (typeof body.dbId !== "string" || body.dbId.length === 0) {
+        return c.json({ error: "dbId_required" }, 400);
+      }
+
+      const outcome = await orchestrateAsk(
+        {
+          resolveDb: (id, tenantId) => resolveDb(c.env.DB, id, tenantId),
+          planCache: makePlanCache(c.env.KV),
+          llm: getLLMRouter(),
+        },
+        { goal: body.goal, dbId: body.dbId, userId: session.user.id },
+      );
+
+      if (!outcome.ok) {
+        const status = outcome.error.status === "db_not_found" ? 404 : 400;
+        return c.json({ error: outcome.error.status }, status);
+      }
+      return c.json(outcome.result);
     } finally {
       span.end();
     }

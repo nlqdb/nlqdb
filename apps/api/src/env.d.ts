@@ -27,6 +27,19 @@ declare global {
       GOOGLE_CLIENT_ID: string;
       GOOGLE_CLIENT_SECRET: string;
 
+      // LLM router (DESIGN §8.1). Optional at type level — providers
+      // whose key is missing at boot still construct, then fail their
+      // first call with `not_configured` so the router can skip them.
+      GROQ_API_KEY?: string;
+      GEMINI_API_KEY?: string;
+      CF_AI_TOKEN?: string;
+      CLOUDFLARE_ACCOUNT_ID?: string;
+      OPENROUTER_API_KEY?: string;
+
+      // Default Neon database URL — used when a `databases` row's
+      // `connection_secret_ref` resolves to the shared free-tier DB.
+      DATABASE_URL?: string;
+
       GRAFANA_OTLP_ENDPOINT?: string;
       GRAFANA_OTLP_AUTHORIZATION?: string;
     }

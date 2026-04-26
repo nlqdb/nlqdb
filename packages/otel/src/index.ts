@@ -205,10 +205,36 @@ export function authEventsTotal(): Counter {
   return _authEventsTotal;
 }
 
+let _cachePlanHitsTotal: Counter | undefined;
+export function cachePlanHitsTotal(): Counter {
+  if (!_cachePlanHitsTotal) {
+    _cachePlanHitsTotal = metrics
+      .getMeter("@nlqdb/api")
+      .createCounter("nlqdb.cache.plan.hits.total", {
+        description: "/v1/ask plan-cache hits (KV lookup returned a cached plan).",
+      });
+  }
+  return _cachePlanHitsTotal;
+}
+
+let _cachePlanMissesTotal: Counter | undefined;
+export function cachePlanMissesTotal(): Counter {
+  if (!_cachePlanMissesTotal) {
+    _cachePlanMissesTotal = metrics
+      .getMeter("@nlqdb/api")
+      .createCounter("nlqdb.cache.plan.misses.total", {
+        description: "/v1/ask plan-cache misses (LLM router invoked, KV write follows).",
+      });
+  }
+  return _cachePlanMissesTotal;
+}
+
 export function resetInstrumentsForTest(): void {
   _dbDurationMs = undefined;
   _llmCallsTotal = undefined;
   _llmDurationMs = undefined;
   _llmFailoverTotal = undefined;
   _authEventsTotal = undefined;
+  _cachePlanHitsTotal = undefined;
+  _cachePlanMissesTotal = undefined;
 }
