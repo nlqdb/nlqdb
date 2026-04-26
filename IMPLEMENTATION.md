@@ -492,16 +492,16 @@ Workload Analyzer.
   - **Silent refresh** middleware; 401 → refresh-and-retry once; refresh
     fail → re-run device flow in-place.
   - **CI mode:** `NLQDB_API_KEY` short-circuits everything above.
-- **MCP server `@nlqdb/mcp`** (npm). Tools: `nlqdb_query`,
-  `nlqdb_list_databases`, `nlqdb_describe`.
-  - **`nlq mcp install`** (no-arg default, §3.4 design): auto-detect
-    Claude Desktop / Cursor / Zed / Windsurf / VS Code / Continue; print
-    what was found; sign in if needed; mint `sk_mcp_<host>_<device>_…`;
-    write host config; restart Claude Desktop when running; self-check.
-    Flags `--all`, `--dry-run`. Explicit `<host>` is the power-user
-    override.
-  - **Website one-click** `app.nlqdb.com/mcp` (server-side key + deep
-    link; short-lived helper binary when CLI missing).
+- **MCP server — two transports** (§3.4 design). Tools:
+  `nlqdb_query`, `nlqdb_list_databases`, `nlqdb_describe`.
+  - **Hosted (default): `mcp.nlqdb.com`** — Cloudflare Worker via the
+    `McpAgent` class on Workers Free + Durable Objects.
+    OAuth-authenticated; user pastes the URL into their host's
+    MCP-connector config; no install. Same `/v1/ask` orchestration.
+  - **npm `@nlqdb/mcp`** (local stdio fallback). `nlq mcp install`
+    (no-arg auto-detect: Claude Desktop / Cursor / Zed / Windsurf /
+    VS Code / Continue), website one-click at `app.nlqdb.com/mcp`
+    (server-side key + deep link), explicit `<host>` override.
   - **Per-host DB isolation** — DBs tagged `(mcp_host, device_id)` in
     D1; promote-to-account via one-click dashboard action.
   - **CI invariant:** `@nlqdb/mcp`'s lockfile must contain zero DB

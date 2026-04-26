@@ -264,13 +264,26 @@ nlq mcp install              # auto-detects MCP host(s) and sets them up (§3.4)
 ### 3.4 MCP server — `@nlqdb/mcp`
 
 Thin adapter over the HTTP API (same code path; never talks to Postgres,
-never holds a DB credential). Distributed via `npx -y @nlqdb/mcp`.
+never holds a DB credential). Two transports — **hosted at
+`mcp.nlqdb.com`** (default; Cloudflare Worker via the `McpAgent` class
+on Workers Free + Durable Objects; OAuth-authenticated; zero install)
+and **npm `@nlqdb/mcp`** (local stdio fallback for offline /
+privacy-sensitive / CLI-everything workflows).
 
 **Tools:** `nlqdb_query(db, q)` (creates DB on first reference per §0.1;
 no public `nlqdb_create_database` tool), `nlqdb_list_databases()`,
 `nlqdb_describe(db)`.
 
 **Install paths** (per §0 "Seamless auth"; full spec §4.3, §4.4):
+
+0. **Connector URL** *(default — hosted transport).* User pastes
+   `mcp.nlqdb.com` into the host's MCP-connector config (Claude Desktop
+   *Connectors*, Cursor / Zed / Windsurf MCP settings). First tool call
+   opens an OAuth window; on consent the host receives a session-bound
+   token. No file written, no key on disk, no `npx` to keep updated.
+
+The remaining paths target the npm transport — for the local stdio
+flavour:
 
 1. **`nlq mcp install`** *(default, no arg).* Scans known host configs for
    Claude Desktop, Cursor, Zed, Windsurf, VS Code, Continue; prints what
@@ -300,9 +313,10 @@ no public `nlqdb_create_database` tool), `nlqdb_list_databases()`,
   the server surfaces *"Sign in again: run `nlq mcp install`."* to the
   host LLM. Re-install auto-detects the original host.
 
-**Transport:** MCP over stdio to the host process only. No network
-listener on the user's machine. Downstream the server sends its scoped
-key to `api.nlqdb.com`; Postgres credentials never leave Cloudflare (§4.4).
+**Transport:** Streamable-HTTP (hosted) or stdio to the host process
+(npm). Both share the same `/v1/ask` orchestration; neither holds DB
+credentials (§4.4). Local npm has no network listener on the user's
+machine. Postgres credentials never leave Cloudflare in either case.
 
 ### 3.5 The embeddable HTML element — `<nlq-data>`
 
