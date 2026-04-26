@@ -715,7 +715,7 @@ To avoid scope creep, things we are deliberately not doing in v1:
 
 - A visual schema editor. (The schema is invisible.)
 - A query builder. (You type English.)
-- A migrations tool. (Schemas only widen. There are no migrations.)
+- A migrations tool. (Schemas only widen. There are no migrations — for a schema break, `nlq new` makes a fresh DB; the old one stays untouched.)
 - A team management UI beyond invite/remove. (Bigger orgs = enterprise.)
 - A mobile app. (The web app is responsive; that's enough.)
 - A "low-code" workflow builder. (`<nlq-data>` is the workflow builder.)
