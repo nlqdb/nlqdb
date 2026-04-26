@@ -2,6 +2,7 @@
 // flow: rate-limit → resolve-DB → hash → plan-cache → LLM plan →
 // sql.validate → exec → summarize → emit-then-commit first-query.
 
+import { makeNoopEmitter } from "@nlqdb/events";
 import type { LLMRouter } from "@nlqdb/llm";
 import { describe, expect, it, vi } from "vitest";
 import { type OrchestrateDeps, orchestrateAsk } from "../src/ask/orchestrate.ts";
@@ -75,6 +76,7 @@ function makeDeps(overrides: Partial<OrchestrateDeps> = {}): OrchestrateDeps {
     exec: stubExec(),
     rateLimiter: stubRateLimiter(),
     firstQuery: stubFirstQuery(),
+    events: makeNoopEmitter(),
     ...overrides,
   };
 }
@@ -265,14 +267,38 @@ describe("orchestrateAsk", () => {
 
   it("commits first-query AFTER emit (emit-then-commit, UX > strict-once)", async () => {
     const firstQuery = stubFirstQuery(true);
-    const out = await orchestrateAsk(makeDeps({ firstQuery }), {
+    const events = { emit: vi.fn(async () => {}) };
+    const out = await orchestrateAsk(makeDeps({ firstQuery, events }), {
       goal: "first ever",
       dbId: "db_1",
       userId: "user_new",
     });
     expect(out.ok).toBe(true);
     expect(firstQuery.notFiredYet).toHaveBeenCalledWith("user_new");
+    expect(events.emit).toHaveBeenCalledWith({
+      name: "user.first_query",
+      userId: "user_new",
+      dbId: "db_1",
+    });
     expect(firstQuery.commit).toHaveBeenCalledWith("user_new");
+    // Emit MUST precede commit — the contract is "show on the
+    // observability path before persisting the seen-flag".
+    const emitOrder = events.emit.mock.invocationCallOrder[0]!;
+    const commitOrder = firstQuery.commit.mock.invocationCallOrder[0]!;
+    expect(emitOrder).toBeLessThan(commitOrder);
+  });
+
+  it("does NOT emit when first-query has already fired", async () => {
+    const firstQuery = stubFirstQuery(false);
+    const events = { emit: vi.fn(async () => {}) };
+    const out = await orchestrateAsk(makeDeps({ firstQuery, events }), {
+      goal: "second time",
+      dbId: "db_1",
+      userId: "user_seen",
+    });
+    expect(out.ok).toBe(true);
+    expect(events.emit).not.toHaveBeenCalled();
+    expect(firstQuery.commit).not.toHaveBeenCalled();
   });
 
   it("does NOT check first-query when execution fails (event not burned on failed call)", async () => {

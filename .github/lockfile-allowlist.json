@@ -64,6 +64,40 @@
         "better-sqlite3",
         "@neondatabase/serverless"
       ]
+    },
+    {
+      "name": "@nlqdb/events",
+      "path": "packages/events",
+      "forbidden": [
+        "pg",
+        "postgres",
+        "mysql",
+        "mongodb",
+        "redis",
+        "ioredis",
+        "sqlite3",
+        "better-sqlite3",
+        "@neondatabase/serverless",
+        "logsnag"
+      ]
+    },
+    {
+      "name": "@nlqdb/events-worker",
+      "path": "apps/events-worker",
+      "forbidden": [
+        "pg",
+        "postgres",
+        "mysql",
+        "mysql2",
+        "mariadb",
+        "mongodb",
+        "mongoose",
+        "redis",
+        "ioredis",
+        "sqlite3",
+        "better-sqlite3",
+        "@neondatabase/serverless"
+      ]
     }
   ]
 }

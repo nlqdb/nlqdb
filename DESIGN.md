@@ -510,16 +510,22 @@ Three layers, kept distinct:
 2. **Ops telemetry** — **Sentry** (5k errors/mo free) + **OpenTelemetry**
    → **Grafana Cloud** free for traces / metrics / logs. Drives the
    "fast" promise.
-3. **Product events** — a thin in-house `events.emit(name, props)`
-   ([`packages/events`](./packages/events)) called from auth + the
-   Stripe webhook. **One sink: LogSnag** (free tier 2,500 events/mo —
-   plenty if we fire only one-shot events: `user.registered`,
-   `user.first_query`, `subscription.created`, `subscription.canceled`,
-   `trial.expired`; never per-sign-in). LogSnag forwards to
-   Slack/Discord/email itself, so the founder-ping channel is one less
-   thing to wire. The `events.emit` abstraction exists so we can swap
-   or add sinks without touching call sites — a property worth keeping
-   even with one sink today.
+3. **Product events** — an in-house [`packages/events`](./packages/events)
+   producer that writes to a **Cloudflare Queue** (`nlqdb-events`); a
+   separate consumer Worker [`apps/events-worker`](./apps/events-worker)
+   drains the queue and fans out to sinks. **One sink today: LogSnag**
+   (free tier 2,500 events/mo — plenty if we fire only one-shot events:
+   `user.registered`, `user.first_query`, `billing.subscription_created`,
+   `billing.subscription_canceled`; never per-sign-in. **No `trial.*`
+   events** — PLAN §5.3 rules out a Stripe-side trial period; the free
+   tier *is* the trial). LogSnag forwards to Slack/Discord/email itself,
+   so the founder-ping channel is one less thing to wire.
+
+   The producer/consumer split keeps `apps/api`'s `/v1/ask` hot path
+   clean — no LogSnag client, no network round-trips on event-emit,
+   the p50 budget stays intact. Quotas, retry behavior, and the DLQ
+   wiring live in [`IMPLEMENTATION.md §2.6`](./IMPLEMENTATION.md) and
+   [`apps/events-worker/README.md`](./apps/events-worker/README.md).
 
 A second sink — **PostHog Cloud** for funnels / cohorts / retention —
 is held in reserve for Phase 2, *only* if a real cohort question lands

@@ -1,5 +1,6 @@
 import { env } from "cloudflare:workers";
 import { createPostgresAdapter } from "@nlqdb/db";
+import { type EventEmitter, makeNoopEmitter, makeQueueEmitter } from "@nlqdb/events";
 import { authEventsTotal, setupTelemetry } from "@nlqdb/otel";
 import { trace } from "@opentelemetry/api";
 import { Hono } from "hono";
@@ -17,6 +18,7 @@ import { makeRequireSession, type RequireSessionVariables } from "./middleware.t
 type Bindings = {
   KV: KVNamespace;
   DB: D1Database;
+  EVENTS_QUEUE?: Queue;
   // Telemetry: both must be set to ship to Grafana Cloud OTLP.
   // Locally these are empty, so setup is skipped — the test suite
   // installs an in-memory exporter instead (see @nlqdb/otel/test).
@@ -121,6 +123,7 @@ app.post("/v1/ask", requireSession, async (c) => {
       exec: buildExec,
       rateLimiter: makeRateLimiter(c.env.DB),
       firstQuery: makeFirstQueryTracker(c.env.KV),
+      events: buildEventEmitter(c.env.EVENTS_QUEUE),
     };
     const orchestrateReq = { goal: body.goal, dbId: body.dbId, userId: session.user.id };
 
@@ -170,6 +173,14 @@ async function buildExec(db: DbRecord, sql: string) {
 
 function serializeEvent(event: OrchestrateEvent): string {
   return JSON.stringify(event);
+}
+
+// Returns the production queue-backed emitter when the binding is
+// present (always in deployed Workers + `wrangler dev --remote`). Falls
+// back to a no-op for unit/integration tests and any environment where
+// the binding is unset, so tests don't need to mock a queue.
+function buildEventEmitter(queue: Queue | undefined): EventEmitter {
+  return queue ? makeQueueEmitter(queue) : makeNoopEmitter();
 }
 
 function errorStatus(status: string): 400 | 404 | 429 | 502 {

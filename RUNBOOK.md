@@ -270,11 +270,12 @@ thereafter.
 **Cloudflare resources** (provisioned by
 `scripts/provision-cf-resources.sh`, idempotent):
 
-| Resource | Name           | Binding   | ID/Reference                            |
-| :------- | :------------- | :-------- | :-------------------------------------- |
-| KV       | `nlqdb-cache`  | `KV`      | `5b086b03ead54f508271f31fc421bbaa`       |
-| D1       | `nlqdb-app`    | `DB`      | `98767eb0-65df-4787-87bf-c3952d851b29`   |
-| R2       | _deferred_     | `ASSETS`  | needs one-time dashboard opt-in; not on `/v1/ask` critical path |
+| Resource | Name             | Binding         | ID/Reference                                                    |
+| :------- | :--------------- | :-------------- | :-------------------------------------------------------------- |
+| KV       | `nlqdb-cache`    | `KV`            | `5b086b03ead54f508271f31fc421bbaa`                              |
+| D1       | `nlqdb-app`      | `DB`            | `98767eb0-65df-4787-87bf-c3952d851b29`                          |
+| Queue    | `nlqdb-events`   | `EVENTS_QUEUE`  | name-bound (no separate ID); producer = `apps/api`, consumer = `apps/events-worker` |
+| R2       | _deferred_       | `ASSETS`        | needs one-time dashboard opt-in; not on `/v1/ask` critical path |
 
 Re-running the provision script is safe — existing resources are
 detected by name and skipped.
@@ -328,6 +329,39 @@ OAUTH_GITHUB_*, GOOGLE_CLIENT_*, LLM keys, DATABASE_URL, GRAFANA_*).
 `GRAFANA_CLOUD_INSTANCE_ID:GRAFANA_CLOUD_API_KEY` pair so rotation
 stays on the pair (IMPLEMENTATION §2.6). Re-run after any `.envrc`
 rotation; idempotent.
+
+### `apps/events-worker` (queue-only consumer)
+
+A separate Worker `nlqdb-events-worker` that drains the `nlqdb-events`
+Cloudflare Queue and dispatches each event to its sink(s). Phase 0 has
+one sink: **LogSnag**. The producer side is `@nlqdb/events`, called
+from `apps/api`'s orchestrator; this Worker is the only thing that
+talks to external sinks. See [`apps/events-worker/README.md`](./apps/events-worker/README.md)
+for the architecture and "adding a new event/sink" recipe.
+
+No HTTP route, no public URL (`workers_dev = false` /
+`preview_urls = false`). Two-step deploy (no D1 migrations of its
+own, so `migrate:remote` is skipped):
+
+```bash
+(cd apps/events-worker && bun run secrets:remote)   # mirror LogSnag + GRAFANA_*
+(cd apps/events-worker && bun run deploy)           # wrangler deploy
+```
+
+Secrets pushed: `LOGSNAG_TOKEN`, `LOGSNAG_PROJECT`,
+`GRAFANA_OTLP_ENDPOINT`, computed `GRAFANA_OTLP_AUTHORIZATION`. If
+both LogSnag secrets are absent the consumer ack-and-drops every
+message — useful for `wrangler dev` without real credentials.
+
+Verify the wire end-to-end:
+
+```bash
+wrangler queues info nlqdb-events
+# Expect: 1 producer (worker:nlqdb-api), 1 consumer (worker:nlqdb-events-worker)
+```
+
+The `nlqdb-events` queue is created/updated by
+`scripts/provision-cf-resources.sh` (idempotent).
 
 ---
 

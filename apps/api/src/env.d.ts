@@ -17,6 +17,12 @@ declare global {
       DB: D1Database;
       KV: KVNamespace;
 
+      // Product-event queue (drained by apps/events-worker). Optional
+      // at type level so unit tests / `wrangler dev` without --remote
+      // can run without the binding; the orchestrator falls back to
+      // `makeNoopEmitter()` when undefined.
+      EVENTS_QUEUE?: Queue;
+
       BETTER_AUTH_SECRET: string;
 
       OAUTH_GITHUB_CLIENT_ID: string;

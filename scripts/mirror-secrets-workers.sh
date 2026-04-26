@@ -1,17 +1,20 @@
 #!/usr/bin/env bash
-# nlqdb — mirror credentials from .envrc to the apps/api Cloudflare
-# Worker runtime. Two modes:
+# nlqdb — mirror credentials from .envrc to a Cloudflare Worker
+# runtime. Two modes × per-app secret subsets:
 #
-#   local   → write apps/api/.dev.vars from .envrc (gitignored,
+#   $0 local|remote <app>
+#
+# where <app> is one of:
+#   api            → apps/api          (Worker nlqdb-api)
+#   events-worker  → apps/events-worker (Worker nlqdb-events-worker)
+#
+# Each app declares its own runtime-secret subset in select_secrets()
+# below. Adding a new app is one case-arm there + a worker dir on disk.
+#
+#   local   → write apps/<app>/.dev.vars from .envrc (gitignored,
 #              read by `wrangler dev`).
 #   remote  → push to the deployed Worker via `wrangler secret bulk`
 #              (one atomic call, idempotent — overwrites on re-run).
-#
-# Filters .envrc to the Worker-runtime subset — what apps/api actually
-# reads at request time today (Slices 4 + 5). Secrets for slices not
-# yet shipped (Stripe webhook, Resend, Upstash, etc.) are intentionally
-# skipped here AND the canonical SECRETS array stays in sync with
-# scripts/mirror-secrets-gha.sh as those slices land.
 #
 # Never logs values; only secret names + lengths + OK/skip status.
 #
@@ -25,12 +28,23 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$REPO_ROOT"
 
 MODE="${1:-}"
+APP="${2:-}"
 case "$MODE" in
   local|remote) ;;
   *)
-    echo "Usage: $0 local|remote" >&2
-    echo "  local   write apps/api/.dev.vars from .envrc (for wrangler dev)" >&2
+    echo "Usage: $0 local|remote <api|events-worker>" >&2
+    echo "  local   write apps/<app>/.dev.vars from .envrc (for wrangler dev)" >&2
     echo "  remote  push to deployed Worker via wrangler secret bulk" >&2
+    exit 2
+    ;;
+esac
+
+case "$APP" in
+  api)            APP_DIR="apps/api";           WORKER_NAME="nlqdb-api" ;;
+  events-worker)  APP_DIR="apps/events-worker"; WORKER_NAME="nlqdb-events-worker" ;;
+  *)
+    echo "Usage: $0 local|remote <api|events-worker>" >&2
+    echo "  unknown app: '$APP'" >&2
     exit 2
     ;;
 esac
@@ -42,6 +56,7 @@ skip() { printf '  \033[2m· skip %s (not set in .envrc)\033[0m\n' "$*"; }
 
 # --- preflight ----------------------------------------------------------
 [[ -f .envrc ]] || { fail "preflight" ".envrc not found at $REPO_ROOT — run scripts/bootstrap-dev.sh first"; exit 1; }
+[[ -d "$APP_DIR" ]] || { fail "preflight" "$APP_DIR not found"; exit 1; }
 command -v jq >/dev/null 2>&1 || { fail "preflight" "jq not installed — brew install jq"; exit 1; }
 command -v base64 >/dev/null 2>&1 || { fail "preflight" "base64 not installed (should be in coreutils)"; exit 1; }
 if [[ "$MODE" == "remote" ]]; then
@@ -54,31 +69,46 @@ set -a
 source .envrc
 set +a
 
-# --- Worker-runtime subset ----------------------------------------------
-# What apps/api reads from c.env today. Add new entries here AND in
-# apps/api/src/env.d.ts simultaneously so types and runtime stay aligned.
-# Order matches .env.example for easy diff.
-SECRETS=(
-  BETTER_AUTH_SECRET
-  CLOUDFLARE_ACCOUNT_ID
-  CF_AI_TOKEN
-  DATABASE_URL
-  GEMINI_API_KEY
-  GROQ_API_KEY
-  OPENROUTER_API_KEY
-  OAUTH_GITHUB_CLIENT_ID
-  OAUTH_GITHUB_CLIENT_SECRET
-  OAUTH_GITHUB_CLIENT_ID_DEV
-  OAUTH_GITHUB_CLIENT_SECRET_DEV
-  GOOGLE_CLIENT_ID
-  GOOGLE_CLIENT_SECRET
-  GRAFANA_OTLP_ENDPOINT
-)
+# --- per-app Worker-runtime subset --------------------------------------
+# What each app reads from c.env / Cloudflare.Env at request time. Keep
+# in sync with the corresponding `apps/<app>/src/env.d.ts`. Secrets for
+# slices not yet shipped are deliberately omitted until the slice that
+# adds the runtime read.
+select_secrets() {
+  case "$APP" in
+    api)
+      SECRETS=(
+        BETTER_AUTH_SECRET
+        CLOUDFLARE_ACCOUNT_ID
+        CF_AI_TOKEN
+        DATABASE_URL
+        GEMINI_API_KEY
+        GROQ_API_KEY
+        OPENROUTER_API_KEY
+        OAUTH_GITHUB_CLIENT_ID
+        OAUTH_GITHUB_CLIENT_SECRET
+        OAUTH_GITHUB_CLIENT_ID_DEV
+        OAUTH_GITHUB_CLIENT_SECRET_DEV
+        GOOGLE_CLIENT_ID
+        GOOGLE_CLIENT_SECRET
+        GRAFANA_OTLP_ENDPOINT
+      )
+      ;;
+    events-worker)
+      SECRETS=(
+        LOGSNAG_TOKEN
+        LOGSNAG_PROJECT
+        GRAFANA_OTLP_ENDPOINT
+      )
+      ;;
+  esac
+}
+select_secrets
 
 # Compute GRAFANA_OTLP_AUTHORIZATION from the instance + key pair.
 # .envrc stores them separately for rotation independence; the Worker
 # reads the assembled Basic-auth header. Empty string if either half
-# is missing — Worker skips OTel install in that case (apps/api/src/index.ts).
+# is missing — Worker skips OTel install in that case.
 GRAFANA_OTLP_AUTHORIZATION=""
 if [[ -n "${GRAFANA_CLOUD_INSTANCE_ID:-}" && -n "${GRAFANA_CLOUD_API_KEY:-}" ]]; then
   encoded=$(printf '%s:%s' "$GRAFANA_CLOUD_INSTANCE_ID" "$GRAFANA_CLOUD_API_KEY" | base64 | tr -d '\n')
@@ -107,12 +137,12 @@ done
 
 # --- local mode ---------------------------------------------------------
 if [[ "$MODE" == "local" ]]; then
-  say "Writing apps/api/.dev.vars from .envrc"
-  out="apps/api/.dev.vars"
+  say "Writing $APP_DIR/.dev.vars from .envrc"
+  out="$APP_DIR/.dev.vars"
   tmp=$(mktemp)
   trap 'rm -f "$tmp"' EXIT
   {
-    echo "# Generated by scripts/mirror-secrets-workers.sh local"
+    echo "# Generated by scripts/mirror-secrets-workers.sh local $APP"
     echo "# DO NOT EDIT — re-run the script after .envrc rotation."
     echo "# Gitignored. wrangler dev overlays this on top of [vars] in wrangler.toml."
     echo "NODE_ENV=development"
@@ -128,15 +158,15 @@ if [[ "$MODE" == "local" ]]; then
   done
   echo ""
   say "Done"
-  ok "$set_count secrets written to apps/api/.dev.vars (NODE_ENV=development)"
+  ok "$set_count secrets written to $out (NODE_ENV=development)"
   [[ $skip_count -gt 0 ]] && printf '  \033[2m· %d skipped (empty in .envrc — provision later)\033[0m\n' "$skip_count"
   echo ""
-  echo "Run: bun --cwd apps/api run dev"
+  echo "Run: bun --cwd $APP_DIR run dev"
 fi
 
 # --- remote mode --------------------------------------------------------
 if [[ "$MODE" == "remote" ]]; then
-  say "Pushing to Cloudflare Workers (nlqdb-api) via wrangler secret bulk"
+  say "Pushing to Cloudflare Workers ($WORKER_NAME) via wrangler secret bulk"
   # Build JSON via jq's $ARGS.named — values arrive through fd-passed
   # --arg, never through argv. One wrangler call atomically updates all
   # secrets; partial failures roll back as a unit.
@@ -145,17 +175,17 @@ if [[ "$MODE" == "remote" ]]; then
     jq_args+=(--arg "${names[$i]}" "${values[$i]}")
   done
   json=$(jq -n "${jq_args[@]}" '$ARGS.named')
-  if printf '%s' "$json" | (cd apps/api && wrangler secret bulk) >/dev/null; then
+  if printf '%s' "$json" | (cd "$APP_DIR" && wrangler secret bulk) >/dev/null; then
     for name in "${names[@]}"; do
       val="${!name}"
       ok "$name (${#val} chars)"
     done
     echo ""
     say "Done"
-    ok "$set_count secrets pushed to Worker nlqdb-api"
+    ok "$set_count secrets pushed to Worker $WORKER_NAME"
     [[ $skip_count -gt 0 ]] && printf '  \033[2m· %d skipped (empty in .envrc — provision later)\033[0m\n' "$skip_count"
     echo ""
-    echo "Verify with: (cd apps/api && wrangler secret list)"
+    echo "Verify with: (cd $APP_DIR && wrangler secret list)"
   else
     fail "wrangler secret bulk" "see error above; check CLOUDFLARE_API_TOKEN scope + wrangler login"
     exit 1

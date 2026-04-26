@@ -13,6 +13,7 @@
       "name": "@nlqdb/api",
       "version": "0.0.0",
       "dependencies": {
+        "@nlqdb/events": "workspace:*",
         "@nlqdb/otel": "workspace:*",
         "@opentelemetry/api": "^1.9.0",
         "better-auth": "^1.6.9",
@@ -32,6 +33,22 @@
       "name": "@nlqdb/coming-soon",
       "version": "0.0.0",
     },
+    "apps/events-worker": {
+      "name": "@nlqdb/events-worker",
+      "version": "0.0.0",
+      "dependencies": {
+        "@nlqdb/events": "workspace:*",
+        "@nlqdb/otel": "workspace:*",
+        "@opentelemetry/api": "^1.9.0",
+      },
+      "devDependencies": {
+        "@cloudflare/vitest-pool-workers": "latest",
+        "@cloudflare/workers-types": "latest",
+        "typescript": "^5.6.0",
+        "vitest": "^4.1.0",
+        "wrangler": "^4.0.0",
+      },
+    },
     "packages/db": {
       "name": "@nlqdb/db",
       "version": "0.0.0",
@@ -41,6 +58,18 @@
         "@opentelemetry/api": "^1.9.0",
       },
       "devDependencies": {
+        "typescript": "^5.6.0",
+        "vitest": "^4.1.0",
+      },
+    },
+    "packages/events": {
+      "name": "@nlqdb/events",
+      "version": "0.0.0",
+      "dependencies": {
+        "@opentelemetry/api": "^1.9.0",
+      },
+      "devDependencies": {
+        "@cloudflare/workers-types": "latest",
         "typescript": "^5.6.0",
         "vitest": "^4.1.0",
       },
@@ -249,6 +278,10 @@
     "@nlqdb/coming-soon": ["@nlqdb/coming-soon@workspace:apps/coming-soon"],
 
     "@nlqdb/db": ["@nlqdb/db@workspace:packages/db"],
+
+    "@nlqdb/events": ["@nlqdb/events@workspace:packages/events"],
+
+    "@nlqdb/events-worker": ["@nlqdb/events-worker@workspace:apps/events-worker"],
 
     "@nlqdb/llm": ["@nlqdb/llm@workspace:packages/llm"],
 

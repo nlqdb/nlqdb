@@ -1,5 +1,5 @@
 {
-  "name": "@nlqdb/api",
+  "name": "@nlqdb/events-worker",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -9,19 +9,13 @@
     "deploy": "wrangler deploy",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
-    "migrate:local": "../../scripts/migrate-d1.sh local",
-    "migrate:remote": "../../scripts/migrate-d1.sh remote",
-    "secrets:local": "../../scripts/mirror-secrets-workers.sh local api",
-    "secrets:remote": "../../scripts/mirror-secrets-workers.sh remote api"
+    "secrets:local": "../../scripts/mirror-secrets-workers.sh local events-worker",
+    "secrets:remote": "../../scripts/mirror-secrets-workers.sh remote events-worker"
   },
   "dependencies": {
     "@nlqdb/events": "workspace:*",
     "@nlqdb/otel": "workspace:*",
-    "@opentelemetry/api": "^1.9.0",
-    "better-auth": "^1.6.9",
-    "hono": "^4.12.15",
-    "kysely": "^0.28.16",
-    "kysely-d1": "^0.4.0"
+    "@opentelemetry/api": "^1.9.0"
   },
   "devDependencies": {
     "@cloudflare/vitest-pool-workers": "latest",
