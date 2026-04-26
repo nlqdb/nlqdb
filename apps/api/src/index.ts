@@ -1,7 +1,9 @@
+import { env } from "cloudflare:workers";
 import { authEventsTotal, setupTelemetry } from "@nlqdb/otel";
 import { trace } from "@opentelemetry/api";
 import { Hono } from "hono";
-import { auth } from "./auth.ts";
+import { auth, REVOCATION_KEY_PREFIX } from "./auth.ts";
+import { makeRequireSession, type RequireSessionVariables } from "./middleware.ts";
 
 type Bindings = {
   KV: KVNamespace;
@@ -15,7 +17,26 @@ type Bindings = {
 
 const SERVICE_VERSION = "0.1.0";
 
-const app = new Hono<{ Bindings: Bindings }>();
+const app = new Hono<{ Bindings: Bindings; Variables: RequireSessionVariables }>();
+
+// Session gate for `/v1/*` routes. Captures `auth.api.getSession`
+// (cookieCache fast path → secondaryStorage → D1) + the KV revocation
+// lookup at module load; the callbacks fire per request. See
+// src/middleware.ts and PERFORMANCE §4 row 6.
+const requireSession = makeRequireSession({
+  getSession: async (req) => {
+    const result = await auth.api.getSession({ headers: req.headers });
+    if (!result) return null;
+    return {
+      user: { id: result.user.id, email: result.user.email },
+      session: { token: result.session.token, userId: result.session.userId },
+    };
+  },
+  isRevoked: async (token) => {
+    const hit = await env.KV.get(`${REVOCATION_KEY_PREFIX}${token}`);
+    return hit !== null;
+  },
+});
 
 // Per-request telemetry install + flush. Idempotent — first request
 // wins, subsequent calls return the cached handle. Skipped locally
@@ -45,6 +66,34 @@ app.get("/v1/health", (c) =>
     },
   }),
 );
+
+// `POST /v1/ask` skeleton (Slice 6 commit 3). Auth-gated stub; the
+// plan cache + LLM router + execution + summarize land in commits
+// 4-6. Parent `nlqdb.ask` span is here from day one (PERFORMANCE §4
+// row 6) so the trace tree is already in place when the children
+// arrive.
+//
+// JWT plug-in point: when the plan cache or query execution moves
+// to a separate service (Fly machine, Hyperdrive), mint a 30s
+// internal JWT here (DESIGN §4.4) and verify it on the receiving
+// end. In-isolate today, so signing would be cargo-culting (see
+// commit 1a body for the rationale).
+app.post("/v1/ask", requireSession, async (c) => {
+  const tracer = trace.getTracer("@nlqdb/api");
+  return tracer.startActiveSpan("nlqdb.ask", async (span) => {
+    const session = c.var.session;
+    span.setAttribute("nlqdb.user.id", session.user.id);
+    try {
+      return c.json({
+        status: "stub",
+        userId: session.user.id,
+        message: "/v1/ask not yet implemented — Slice 6 commits 4-6 land the orchestration",
+      });
+    } finally {
+      span.end();
+    }
+  });
+});
 
 // Better Auth catch-all (DESIGN §4.1, PERFORMANCE §4 row 5).
 //
