@@ -188,3 +188,11 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y shellcheck
           shellcheck scripts/*.sh
+
+  lockfile-guard:
+    name: lockfile guard (forbidden direct deps)
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - uses: actions/checkout@v4
+      - run: ./scripts/lockfile-guard.sh

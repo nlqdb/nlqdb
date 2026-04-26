@@ -1,0 +1,69 @@
+{
+  "_comment": "Per-workspace forbidden DIRECT dependencies. CI fails if any listed name appears in a workspace's dependencies or devDependencies. Bounds the blast radius of accidental imports + supply-chain shifts. Direct deps only — transitive auditing is a future tightening (track when a real incident motivates the cost).",
+  "workspaces": [
+    {
+      "name": "@nlqdb/llm",
+      "path": "packages/llm",
+      "forbidden": [
+        "pg",
+        "postgres",
+        "mysql",
+        "mysql2",
+        "mariadb",
+        "mongodb",
+        "mongoose",
+        "redis",
+        "ioredis",
+        "sqlite3",
+        "better-sqlite3",
+        "@neondatabase/serverless"
+      ]
+    },
+    {
+      "name": "@nlqdb/db",
+      "path": "packages/db",
+      "forbidden": [
+        "mysql",
+        "mysql2",
+        "mariadb",
+        "mongodb",
+        "mongoose",
+        "redis",
+        "ioredis",
+        "sqlite3",
+        "better-sqlite3"
+      ]
+    },
+    {
+      "name": "@nlqdb/otel",
+      "path": "packages/otel",
+      "forbidden": [
+        "pg",
+        "postgres",
+        "mysql",
+        "mongodb",
+        "redis",
+        "ioredis",
+        "@neondatabase/serverless"
+      ]
+    },
+    {
+      "name": "@nlqdb/api",
+      "path": "apps/api",
+      "forbidden": [
+        "pg",
+        "postgres",
+        "mysql",
+        "mysql2",
+        "mariadb",
+        "mongodb",
+        "mongoose",
+        "redis",
+        "ioredis",
+        "sqlite3",
+        "better-sqlite3",
+        "@neondatabase/serverless"
+      ]
+    }
+  ]
+}
