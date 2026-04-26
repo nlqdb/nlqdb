@@ -1,9 +1,12 @@
 import { env } from "cloudflare:workers";
+import { createPostgresAdapter } from "@nlqdb/db";
 import { authEventsTotal, setupTelemetry } from "@nlqdb/otel";
 import { trace } from "@opentelemetry/api";
 import { Hono } from "hono";
+import { streamSSE } from "hono/streaming";
 import { orchestrateAsk } from "./ask/orchestrate.ts";
 import { makePlanCache } from "./ask/plan-cache.ts";
+import type { DbRecord, OrchestrateEvent } from "./ask/types.ts";
 import { auth, REVOCATION_KEY_PREFIX } from "./auth.ts";
 import { resolveDb } from "./db-registry.ts";
 import { getLLMRouter } from "./llm-router.ts";
@@ -73,9 +76,10 @@ app.get("/v1/health", (c) =>
 
 // `POST /v1/ask` (Slice 6).
 //
-// Commit 3: skeleton + auth gate. Commit 4 (here): plan cache + LLM
-// router wire. Commits 5-6 add query execution, sql.validate,
-// summarize, rate limit, first-query event.
+// Content negotiation (DESIGN §14.6 / line 624):
+//   - Accept: text/event-stream → SSE { plan → rows → summary }
+//   - Accept: application/json → JSON without summary (skips an LLM hop)
+//   - Default → JSON with summary
 //
 // JWT plug-in point: when the plan cache or query execution moves
 // to a separate service (Fly machine, Hyperdrive), mint a 30s
@@ -87,39 +91,83 @@ app.post("/v1/ask", requireSession, async (c) => {
   return tracer.startActiveSpan("nlqdb.ask", async (span) => {
     const session = c.var.session;
     span.setAttribute("nlqdb.user.id", session.user.id);
+
+    let body: { goal?: unknown; dbId?: unknown };
     try {
-      let body: { goal?: unknown; dbId?: unknown };
-      try {
-        body = (await c.req.json()) as typeof body;
-      } catch {
-        return c.json({ error: "invalid_json" }, 400);
-      }
-      if (typeof body.goal !== "string" || body.goal.trim().length === 0) {
-        return c.json({ error: "goal_required" }, 400);
-      }
-      if (typeof body.dbId !== "string" || body.dbId.length === 0) {
-        return c.json({ error: "dbId_required" }, 400);
-      }
-
-      const outcome = await orchestrateAsk(
-        {
-          resolveDb: (id, tenantId) => resolveDb(c.env.DB, id, tenantId),
-          planCache: makePlanCache(c.env.KV),
-          llm: getLLMRouter(),
-        },
-        { goal: body.goal, dbId: body.dbId, userId: session.user.id },
-      );
-
-      if (!outcome.ok) {
-        const status = outcome.error.status === "db_not_found" ? 404 : 400;
-        return c.json({ error: outcome.error.status }, status);
-      }
-      return c.json(outcome.result);
-    } finally {
+      body = (await c.req.json()) as typeof body;
+    } catch {
       span.end();
+      return c.json({ error: "invalid_json" }, 400);
     }
+    if (typeof body.goal !== "string" || body.goal.trim().length === 0) {
+      span.end();
+      return c.json({ error: "goal_required" }, 400);
+    }
+    if (typeof body.dbId !== "string" || body.dbId.length === 0) {
+      span.end();
+      return c.json({ error: "dbId_required" }, 400);
+    }
+
+    const accept = c.req.header("accept") ?? "";
+    const wantsSse = accept.includes("text/event-stream");
+    const wantsJsonOnly = accept.includes("application/json") && !accept.includes("*/*");
+
+    const deps = {
+      resolveDb: (id: string, tenantId: string) => resolveDb(c.env.DB, id, tenantId),
+      planCache: makePlanCache(c.env.KV),
+      llm: getLLMRouter(),
+      exec: buildExec,
+    };
+    const orchestrateReq = { goal: body.goal, dbId: body.dbId, userId: session.user.id };
+
+    if (wantsSse) {
+      return streamSSE(c, async (stream) => {
+        const outcome = await orchestrateAsk(deps, orchestrateReq, {
+          onEvent: async (event) => {
+            await stream.writeSSE({ event: event.type, data: serializeEvent(event) });
+          },
+        });
+        if (!outcome.ok) {
+          await stream.writeSSE({ event: "error", data: JSON.stringify(outcome.error) });
+        } else {
+          await stream.writeSSE({ event: "done", data: JSON.stringify({ status: "ok" }) });
+        }
+        span.end();
+      });
+    }
+
+    const outcome = await orchestrateAsk(deps, orchestrateReq, {
+      skipSummary: wantsJsonOnly,
+    });
+    span.end();
+    if (!outcome.ok) {
+      const status = errorStatus(outcome.error.status);
+      return c.json({ error: outcome.error }, status);
+    }
+    return c.json(outcome.result);
   });
 });
+
+// Resolves the DB row's `connection_secret_ref` to a connection URL
+// from env. Phase 0 ships one shared Postgres (PLAN line 87), so the
+// ref is typically "DATABASE_URL". Returns null if unresolvable; the
+// orchestrator surfaces this as a `db_unreachable` error.
+async function buildExec(db: DbRecord, sql: string) {
+  const url = (env as unknown as Record<string, string | undefined>)[db.connectionSecretRef];
+  if (!url) return null;
+  const adapter = createPostgresAdapter({ connectionString: url });
+  return adapter.execute(sql);
+}
+
+function serializeEvent(event: OrchestrateEvent): string {
+  return JSON.stringify(event);
+}
+
+function errorStatus(status: string): 400 | 404 | 502 {
+  if (status === "db_not_found") return 404;
+  if (status === "db_unreachable" || status === "llm_failed") return 502;
+  return 400;
+}
 
 // Better Auth catch-all (DESIGN §4.1, PERFORMANCE §4 row 5).
 //
