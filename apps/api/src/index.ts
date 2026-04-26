@@ -119,7 +119,7 @@ app.post("/v1/ask", requireSession, async (c) => {
       planCache: makePlanCache(c.env.KV),
       llm: getLLMRouter(),
       exec: buildExec,
-      rateLimiter: makeRateLimiter(c.env.KV),
+      rateLimiter: makeRateLimiter(c.env.DB),
       firstQuery: makeFirstQueryTracker(c.env.KV),
     };
     const orchestrateReq = { goal: body.goal, dbId: body.dbId, userId: session.user.id };

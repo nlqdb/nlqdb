@@ -1,21 +1,20 @@
-// KV-backed per-user rate limiter for `/v1/ask` (DESIGN §4.2 /
+// D1-backed per-user rate limiter for `/v1/ask` (DESIGN §4.2 /
 // IMPLEMENTATION §8 / PLAN §11.5 — "per-IP + per-account rate limits
-// Day 1"). Fixed-window counter: each user gets N requests per W
-// seconds, keyed by `ratelimit:<userId>:<windowStart>`.
+// Day 1"). Fixed-window counter, atomic UPSERT-with-RETURNING.
 //
-// Why fixed window vs token bucket: KV's eventual consistency makes a
-// real token bucket fragile, and we don't need burst-smoothness for
-// /v1/ask — the bound is "stop a single user from exhausting the
-// daily LLM RPD on their own". A leaky-bucket implementation can
-// land if the metric ever shows users hitting the cap legitimately.
+// Why D1 not KV: KV writes are 1k/day on Free; one rate-limit `put`
+// per `/v1/ask` exhausts that at ~1k requests total. D1 writes are
+// 100k/day on Free — 100× headroom — and SQLite UPSERT lets us
+// increment + read the resulting count in a single atomic round-trip,
+// avoiding the read-then-write race the KV version had.
+//
+// Per-IP rate-limit (companion to per-account, per IMPLEMENTATION §8)
+// lands when anonymous mode does — that's the surface that needs it.
+// Until then, every request is gated by `requireSession` so per-account
+// is sufficient.
 
 const DEFAULT_LIMIT = 60;
 const DEFAULT_WINDOW_SECONDS = 60;
-
-export type RateLimitStore = {
-  get(key: string): Promise<string | null>;
-  put(key: string, value: string, opts?: { expirationTtl?: number }): Promise<void>;
-};
 
 export type RateLimitDecision = {
   allowed: boolean;
@@ -34,24 +33,32 @@ export type RateLimiter = {
   check(userId: string): Promise<RateLimitDecision>;
 };
 
-export function makeRateLimiter(store: RateLimitStore, opts: RateLimitOptions = {}): RateLimiter {
+// Atomically increments the (user_id, window_start) counter and
+// returns the new count. SQLite UPSERT semantics: insert with count=1
+// on first hit, increment on conflict. RETURNING surfaces the post-
+// increment count so the caller can decide allow/deny.
+//
+// Over-limit requests still increment — the second over-limit hit
+// just bumps the count from N+1 to N+2, both deny. Harmless; avoids
+// a conditional UPDATE that'd require a second SELECT to read state.
+const UPSERT_SQL = `
+  INSERT INTO rate_limit_buckets (user_id, window_start, count)
+  VALUES (?, ?, 1)
+  ON CONFLICT(user_id, window_start)
+  DO UPDATE SET count = count + 1
+  RETURNING count
+`;
+
+export function makeRateLimiter(d1: D1Database, opts: RateLimitOptions = {}): RateLimiter {
   const limit = opts.limit ?? DEFAULT_LIMIT;
   const windowSeconds = opts.windowSeconds ?? DEFAULT_WINDOW_SECONDS;
 
   return {
     async check(userId) {
       const windowStart = Math.floor(Date.now() / 1000 / windowSeconds) * windowSeconds;
-      const key = `ratelimit:${userId}:${windowStart}`;
-      const raw = await store.get(key);
-      const current = raw ? Number.parseInt(raw, 10) || 0 : 0;
-      if (current >= limit) {
-        return { allowed: false, count: current, limit };
-      }
-      // Cloudflare KV minimum TTL is 60s. Set the entry's TTL to the
-      // window length (or 60, whichever is greater) so it auto-expires.
-      const expirationTtl = Math.max(windowSeconds, 60);
-      await store.put(key, String(current + 1), { expirationTtl });
-      return { allowed: true, count: current + 1, limit };
+      const row = await d1.prepare(UPSERT_SQL).bind(userId, windowStart).first<{ count: number }>();
+      const count = row?.count ?? 1;
+      return { allowed: count <= limit, count, limit };
     },
   };
 }
