@@ -28,6 +28,27 @@ to R2 at `stripe-events/YYYY/MM/DD/{event_id}.json` via
 `ctx.waitUntil`. No `trial.*` events — PLAN §5.3 has no Stripe trial
 period.
 
+### Registering the webhook in the Stripe Dashboard
+
+- **Endpoint URL:** `https://app.nlqdb.com/v1/stripe/webhook`
+- **API version:** `2026-04-22.dahlia` — pinned by
+  [`STRIPE_API_VERSION`](./src/stripe/client.ts) and the
+  `stripe@22.1.0` SDK; both must move together. Pinning the dashboard
+  endpoint to the same version is what guarantees payload shapes
+  match the SDK types we read in `extractSubscriptionFields`
+  (`current_period_end` lives on `SubscriptionItem`, not Subscription).
+- **Events to subscribe to** — exactly these four (anything else lands
+  in `stripe_events` for audit but isn't dispatched, so subscribing
+  generates noise without value):
+  - `checkout.session.completed`
+  - `customer.subscription.created`
+  - `customer.subscription.updated`
+  - `customer.subscription.deleted`
+- After saving, copy the signing secret into `.envrc` as
+  `STRIPE_WEBHOOK_SECRET=whsec_…`, then `bun run secrets:remote`. The
+  secret is the only thing the handler reads; rotating it = re-running
+  `secrets:remote` after pasting the new value.
+
 The Worker's `fetch` handler installs OpenTelemetry on every
 request when `GRAFANA_OTLP_ENDPOINT` + `GRAFANA_OTLP_AUTHORIZATION`
 are set, and flushes via `ctx.waitUntil(forceFlush())` before the

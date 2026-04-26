@@ -47,7 +47,7 @@ export type WebhookSigner = {
     header: string,
     secret: string,
     tolerance?: number,
-    cryptoProvider?: Stripe.CryptoProvider,
+    cryptoProvider?: InstanceType<typeof Stripe.CryptoProvider>,
   ): Promise<Stripe.Event>;
 };
 
@@ -56,7 +56,7 @@ export type StripeWebhookDeps = {
   // Web Crypto provider — required on Workers since Node `crypto` isn't
   // available. Production = singleton; tests can pass `undefined` and
   // the SDK uses the default (which works under Node-the-test-runtime).
-  cryptoProvider?: Stripe.CryptoProvider;
+  cryptoProvider?: InstanceType<typeof Stripe.CryptoProvider>;
   webhookSecret: string;
   db: D1Database;
   // R2 binding — optional. When undefined, archive step is skipped
@@ -437,10 +437,10 @@ type SubscriptionFields = {
   priceId: string | null;
 };
 
-// Pulls fields we persist to `customers` from a Subscription. Stripe
-// 2025-09 moved `current_period_end` from the Subscription object to
-// SubscriptionItem; reading items.data[0].current_period_end is the
-// canonical post-2025-09 location.
+// Pulls fields we persist to `customers` from a Subscription.
+// `current_period_end` lives on `SubscriptionItem` (moved off the
+// Subscription object in 2025-09 and still there in
+// 2026-04-22.dahlia, the version pinned in src/stripe/client.ts).
 function extractSubscriptionFields(sub: Stripe.Subscription): SubscriptionFields {
   const item = sub.items.data[0];
   return {

@@ -409,7 +409,28 @@ The `nlqdb-events` queue is created/updated by
 | 3    | `POST /v1/ask` end-to-end                 | ✅ (Slice 6 — PR #31) |
 | 3    | Events queue + `apps/events-worker`       | ✅ (PR #32)           |
 | 3    | Stripe webhook + `customers` + R2 archive | ✅ (Slice 7 — PR #33) |
-| 3    | R2 bucket `nlqdb-assets` (binding `ASSETS`) | ⚠ binding declared (PR #33); dashboard opt-in still required before `provision-cf-resources.sh` succeeds |
+| 3    | R2 bucket `nlqdb-assets` (binding `ASSETS`) | ✅ enabled — billing footnote below |
+
+**R2 billing footnote.** Cloudflare requires a payment method on file
+to enable R2 even if usage stays inside the always-free monthly
+allowance (10 GB storage, 1 M Class A ops, 10 M Class B ops, free
+egress). The R2 line item on the account was added 2026-04-26 to
+unblock provisioning, then cancelled the same day — the cancellation
+takes effect at the end of the billing period.
+
+What we don't yet know with confidence: whether the bucket keeps
+serving under the free tier after the R2 subscription line ends, or
+whether the cancellation revokes API access account-wide. Cloudflare's
+public docs don't give a definitive answer for this exact path
+(enable + cancel without ever exceeding free tier), and community
+threads suggest suspended subscriptions block bucket access. So the
+cancellation date is a known unknown — calendar a check ~28 days out
+and decide then between (a) re-subscribing, (b) draining R2 onto a
+different store. Slice 7's only R2 use is fire-and-forget archival
+of Stripe webhook payloads (Stripe Dashboard "Resend webhook" is the
+canonical replay path; R2 is belt-and-braces), so an R2 outage is not
+data-loss for `customers` or `stripe_events` — only the raw payload
+audit trail.
 
 ---
 
