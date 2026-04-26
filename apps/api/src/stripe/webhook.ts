@@ -31,7 +31,10 @@
 // trial→active transition either; updated is pure state sync.
 
 import type { EventEmitter } from "@nlqdb/events";
-import { webhookStripeIdempotencyErrorsTotal } from "@nlqdb/otel";
+import {
+  webhookStripeArchiveFailuresTotal,
+  webhookStripeIdempotencyErrorsTotal,
+} from "@nlqdb/otel";
 import { type Span, SpanStatusCode, trace } from "@opentelemetry/api";
 import type Stripe from "stripe";
 
@@ -158,10 +161,15 @@ export async function processWebhook(
       // Dispatch. Failures here don't 5xx — the event is already
       // recorded in stripe_events, so Stripe retrying would just hit
       // the duplicate path. Operator replays via Dashboard if needed.
+      // The `dispatchOk` flag gates the processed_at UPDATE below so
+      // a failed dispatch leaves processed_at = NULL — that's the
+      // queryable signal a stuck-event sweeper (or operator) can find.
+      let dispatchOk = true;
       if (HANDLED_EVENT_TYPES.has(event.type)) {
         try {
           await dispatchEvent(deps, event);
         } catch (err) {
+          dispatchOk = false;
           recordSpanError(span, err);
           console.error(
             JSON.stringify({
@@ -175,42 +183,43 @@ export async function processWebhook(
         }
       }
 
-      // Mark processed (non-fatal — the row already exists with NULL
-      // processed_at, which is queryable as "stuck" if needed).
-      try {
-        await deps.db
-          .prepare("UPDATE stripe_events SET processed_at = unixepoch() WHERE event_id = ?")
-          .bind(event.id)
-          .run();
-      } catch (err) {
-        recordSpanError(span, err);
+      // Mark processed only when dispatch succeeded (or wasn't needed
+      // for an unhandled event type — those are recorded for audit
+      // and that's all we promise).
+      if (dispatchOk) {
+        try {
+          await deps.db
+            .prepare("UPDATE stripe_events SET processed_at = unixepoch() WHERE event_id = ?")
+            .bind(event.id)
+            .run();
+        } catch (err) {
+          recordSpanError(span, err);
+        }
       }
 
       // Archive: caller decides scheduling. The R2 binding's put returns
       // a promise we hand back; the route handler does
       // `c.executionCtx.waitUntil(result.archive)` so 200 ships first.
+      // Failure visibility is via the counter + warn log — span
+      // attributes can't be set here because the parent span has
+      // already ended by the time this promise resolves.
       const archive = deps.r2
         ? deps.r2
             .put(r2Key, rawBody, {
               httpMetadata: { contentType: "application/json" },
             })
-            .then(
-              () => {
-                span.setAttribute("nlqdb.webhook.archived", true);
-              },
-              (err) => {
-                span.setAttribute("nlqdb.webhook.archived", false);
-                console.warn(
-                  JSON.stringify({
-                    level: "warn",
-                    msg: "stripe_r2_archive_failed",
-                    event_id: event.id,
-                    r2_key: r2Key,
-                    error: err instanceof Error ? err.message : String(err),
-                  }),
-                );
-              },
-            )
+            .then(undefined, (err) => {
+              webhookStripeArchiveFailuresTotal().add(1);
+              console.warn(
+                JSON.stringify({
+                  level: "warn",
+                  msg: "stripe_r2_archive_failed",
+                  event_id: event.id,
+                  r2_key: r2Key,
+                  error: err instanceof Error ? err.message : String(err),
+                }),
+              );
+            })
         : undefined;
 
       return {

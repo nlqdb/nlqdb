@@ -53,21 +53,28 @@ const requireSession = makeRequireSession({
   },
 });
 
-// Per-request telemetry install + flush. Idempotent — first request
-// wins, subsequent calls return the cached handle. Skipped locally
-// when either secret is unset.
+// Per-request telemetry install + flush. setupTelemetry is idempotent
+// — first call per isolate wins; later calls return the cached handle.
+// Setup MUST happen before `next()` so handlers' `startActiveSpan` calls
+// have a registered global provider. forceFlush MUST happen after
+// `next()` so spans created during handler execution are in the
+// BatchSpanProcessor buffer when the export fires. Skipped entirely
+// when either OTLP secret is unset (local dev / tests).
 app.use("*", async (c, next) => {
   const { GRAFANA_OTLP_ENDPOINT, GRAFANA_OTLP_AUTHORIZATION } = c.env;
-  if (GRAFANA_OTLP_ENDPOINT && GRAFANA_OTLP_AUTHORIZATION) {
-    const telemetry = setupTelemetry({
-      serviceName: "nlqdb-api",
-      serviceVersion: SERVICE_VERSION,
-      otlpEndpoint: GRAFANA_OTLP_ENDPOINT,
-      authorization: GRAFANA_OTLP_AUTHORIZATION,
-    });
+  const telemetry =
+    GRAFANA_OTLP_ENDPOINT && GRAFANA_OTLP_AUTHORIZATION
+      ? setupTelemetry({
+          serviceName: "nlqdb-api",
+          serviceVersion: SERVICE_VERSION,
+          otlpEndpoint: GRAFANA_OTLP_ENDPOINT,
+          authorization: GRAFANA_OTLP_AUTHORIZATION,
+        })
+      : undefined;
+  await next();
+  if (telemetry) {
     c.executionCtx.waitUntil(telemetry.forceFlush());
   }
-  await next();
 });
 
 app.get("/v1/health", (c) =>

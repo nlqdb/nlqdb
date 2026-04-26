@@ -242,6 +242,19 @@ export function webhookStripeIdempotencyErrorsTotal(): Counter {
   return _webhookStripeIdempotencyErrorsTotal;
 }
 
+let _webhookStripeArchiveFailuresTotal: Counter | undefined;
+export function webhookStripeArchiveFailuresTotal(): Counter {
+  if (!_webhookStripeArchiveFailuresTotal) {
+    _webhookStripeArchiveFailuresTotal = metrics
+      .getMeter("@nlqdb/api")
+      .createCounter("nlqdb.webhook.stripe.archive_failures.total", {
+        description:
+          "Stripe webhook R2 archive failures (post-response, fire-and-forget). Best-effort — the event itself is already recorded in the stripe_events D1 table; this counter just exposes drop visibility.",
+      });
+  }
+  return _webhookStripeArchiveFailuresTotal;
+}
+
 export function resetInstrumentsForTest(): void {
   _dbDurationMs = undefined;
   _llmCallsTotal = undefined;
@@ -251,4 +264,5 @@ export function resetInstrumentsForTest(): void {
   _cachePlanHitsTotal = undefined;
   _cachePlanMissesTotal = undefined;
   _webhookStripeIdempotencyErrorsTotal = undefined;
+  _webhookStripeArchiveFailuresTotal = undefined;
 }

@@ -355,6 +355,45 @@ describe("processWebhook — idempotency", () => {
     expect(queue.sent).toHaveLength(1); // still 1 — no re-emit
   });
 
+  it("leaves processed_at NULL when dispatch throws (queryable as 'stuck')", async () => {
+    const sub = makeSubscription({ id: "sub_disp_fail", customer: "cus_disp_fail" });
+    const event = makeEventStub({
+      id: "evt_disp_fail",
+      type: "customer.subscription.updated",
+      object: sub,
+    });
+    const signer: WebhookSigner = {
+      constructEventAsync: vi.fn().mockResolvedValue(event),
+    };
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    const db = makeFakeD1({
+      customers: [
+        {
+          user_id: "u_disp_fail",
+          stripe_customer_id: "cus_disp_fail",
+          stripe_subscription_id: null,
+          status: "active",
+          current_period_end: null,
+          cancel_at_period_end: 0,
+          price_id: "price_pro",
+        },
+      ],
+    });
+    // Simulate D1 outage on the dispatch's customer UPDATE.
+    db.failNext = {
+      matcher: /UPDATE customers SET[\s\S]*stripe_subscription_id/i,
+      error: new Error("d1 outage during dispatch"),
+    };
+    const { deps } = makeDeps({ signer, db });
+    const result = await processWebhook(deps, "{}", "sig");
+    // 200 — dispatch errors don't 5xx (the row is recorded).
+    expect(result.status).toBe(200);
+    // The row exists, but processed_at stays NULL so it surfaces as
+    // 'stuck' in `WHERE processed_at IS NULL` queries / future sweeper.
+    expect(db.stripeEvents.get("evt_disp_fail")?.processed_at).toBeNull();
+    error.mockRestore();
+  });
+
   it("returns 500 + records counter on genuine D1 INSERT failure", async () => {
     const event = makeEventStub({
       id: "evt_fail",
