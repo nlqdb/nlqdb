@@ -77,7 +77,7 @@ re-enable via Cloudflare later).
 | Google AI Studio | Existing                  | Free                              | Gemini API key                                     |
 | Groq             | Existing                  | Free                              | —                                                  |
 | OpenRouter       | Existing                  | Free (fallback)                   | —                                                  |
-| Google Cloud     | `omer.hochman@gmail.com`  | Free                              | Project `nlqdb`, OAuth consent screen **Testing**  |
+| Google Cloud     | `omer.hochman@gmail.com`  | Free                              | Project `nlqdb`, OAuth consent screen **In production** |
 | Resend           | `omer.hochman@gmail.com`  | Free (3k emails/mo)               | API key `nlqdb-phase0`; domain verification ⏳ Phase 1 |
 | Stripe           | `omer.hochman@gmail.com`  | Test mode (no card)               | Merchant: Switzerland / CHF; descriptor `NLQDB.COM`; webhook secret ⏳ Phase 0 §3 |
 | Grafana Cloud    | `omer.hochman@gmail.com`  | Free                              | Stack `nlqdb` on `us-east-2`, instance `1609127`, access policy `nlqdb-phase0-telemetry` |
@@ -132,9 +132,11 @@ skips cleanly until `apps/api` exists (Phase 0 §3).
 
 ## 5. Google OAuth — what's configured
 
-Google has a long verification review, so we opened the project early.
-Currently in **Testing** mode; verification submission is a Phase 1
-prereq (waiting on product stability).
+Currently **In production** — anyone with a Google account can sign in.
+Verification only needed if we add sensitive/restricted scopes; the
+`openid` + `userinfo.{email,profile}` set we use is non-sensitive, so
+the consent screen ships unverified-but-public (Google shows an
+"unverified app" warning the first time but allows the flow).
 
 - **GCP project:** `nlqdb`
 - **OAuth consent screen** (Branding tab):
@@ -145,11 +147,11 @@ prereq (waiting on product stability).
   - Privacy policy: https://nlqdb.com/privacy
   - Terms of service: https://nlqdb.com/terms
   - Authorized domain: `nlqdb.com`
-- **Audience:** External, Testing status.
-  - Test users: `omer.hochman@gmail.com` (add more as needed, up to 100)
+- **Audience:** External, Production status.
 - **Data access (scopes):** `openid`, `/auth/userinfo.email`,
-  `/auth/userinfo.profile` — all non-sensitive, no long review needed
-  when we submit for verification.
+  `/auth/userinfo.profile` — all non-sensitive, so the app stays
+  unverified-but-public; verification submission only needed if we
+  later request sensitive scopes (Drive / Gmail / Calendar / etc.).
 - **OAuth 2.0 Client** — Web application named `nlqdb-web`:
   - Authorized JavaScript origins:
     - `https://app.nlqdb.com`
@@ -166,15 +168,12 @@ prereq (waiting on product stability).
   device/token, refresh, logout}` in a later slice (different paths,
   different ownership) — Google's redirect URI list above is OAuth-only.
 
-**Verification submission TODO** (Phase 1):
-
-1. Publish Privacy Policy + Terms (done — PR #12 merged).
-2. Verify domain ownership of `nlqdb.com` via Google Search Console
-   (DNS TXT record in Cloudflare — 2 min).
-3. Add an app logo (min 120×120 PNG).
-4. Switch publishing status from Testing → In Production.
-5. Google reviews; with only non-sensitive scopes it's usually days,
-   not weeks.
+**Re-verification trigger.** Stay in production with the current
+non-sensitive scope set indefinitely. The moment we add a sensitive
+or restricted scope (Drive / Gmail / Calendar / fitness / health), we
+need to submit for verification — Google reviews can take weeks for
+sensitive scopes, longer for restricted. Do not roll a sensitive
+scope into production without budgeting that timeline.
 
 ---
 
@@ -372,7 +371,7 @@ The `nlqdb-events` queue is created/updated by
 | 2.1  | `nlqdb.com` zone + Pages + SSL     | ✅            |
 | 2.1  | `nlqdb.com` Email Routing          | ✅            |
 | 2.1  | `nlqdb.ai` zone + 301 redirect     | ✅            |
-| 2.1  | `nlqdb.ai` Email Routing           | ⏳ (optional) |
+| 2.1  | `nlqdb.ai` Email Routing           | ✅            |
 | 2.2  | GitHub org `nlqdb`                 | ✅            |
 | 2.2  | Repo transfer to `nlqdb/nlqdb`     | ✅            |
 | 2.2  | Secret scanning + Dependabot       | ✅            |
@@ -389,7 +388,7 @@ The `nlqdb-events` queue is created/updated by
 | 2.5  | `INTERNAL_JWT_SECRET` (self-gen)   | ✅            |
 | 2.5  | GitHub OAuth app — `nlqdb-web` (prod)  | ✅            |
 | 2.5  | GitHub OAuth app — `nlqdb-web-dev`     | ✅            |
-| 2.5  | Google OAuth client                | ✅ (Testing)  |
+| 2.5  | Google OAuth client                | ✅ (In production) |
 | 2.5  | Resend API key                     | ✅ (domain verification ⏳ Phase 1) |
 | 2.5  | ~~AWS SES fallback~~               | ⏭ dropped — card-required; Resend free tier suffices pre-PMF |
 | 2.5  | Stripe (test mode) — sk + pk       | ✅            |
