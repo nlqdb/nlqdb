@@ -229,6 +229,19 @@ export function cachePlanMissesTotal(): Counter {
   return _cachePlanMissesTotal;
 }
 
+let _webhookStripeIdempotencyErrorsTotal: Counter | undefined;
+export function webhookStripeIdempotencyErrorsTotal(): Counter {
+  if (!_webhookStripeIdempotencyErrorsTotal) {
+    _webhookStripeIdempotencyErrorsTotal = metrics
+      .getMeter("@nlqdb/api")
+      .createCounter("nlqdb.webhook.stripe.idempotency_errors.total", {
+        description:
+          "Stripe webhook idempotency-insert errors, labelled by stripe_event_type. Genuine D1 failures only — duplicates (ON CONFLICT) are recorded on the span as nlqdb.webhook.duplicate=true, not here.",
+      });
+  }
+  return _webhookStripeIdempotencyErrorsTotal;
+}
+
 export function resetInstrumentsForTest(): void {
   _dbDurationMs = undefined;
   _llmCallsTotal = undefined;
@@ -237,4 +250,5 @@ export function resetInstrumentsForTest(): void {
   _authEventsTotal = undefined;
   _cachePlanHitsTotal = undefined;
   _cachePlanMissesTotal = undefined;
+  _webhookStripeIdempotencyErrorsTotal = undefined;
 }

@@ -31,6 +31,48 @@ describe("buildPayload", () => {
       tags: { email: "x@y.com" },
     });
   });
+
+  it("maps billing.subscription_created into the LogSnag shape", () => {
+    const out = buildPayload("nlqdb", {
+      name: "billing.subscription_created",
+      userId: "u_3",
+      customerId: "cus_x",
+      subscriptionId: "sub_abc",
+      priceId: "price_pro",
+    });
+    expect(out).toMatchObject({
+      project: "nlqdb",
+      channel: "billing",
+      event: "Subscription Created",
+      user_id: "u_3",
+      tags: {
+        "customer-id": "cus_x",
+        "subscription-id": "sub_abc",
+        "price-id": "price_pro",
+      },
+    });
+  });
+
+  it("maps billing.subscription_canceled into the LogSnag shape", () => {
+    const out = buildPayload("nlqdb", {
+      name: "billing.subscription_canceled",
+      userId: "u_4",
+      customerId: "cus_y",
+      subscriptionId: "sub_def",
+      priceId: "price_pro",
+    });
+    expect(out).toMatchObject({
+      project: "nlqdb",
+      channel: "billing",
+      event: "Subscription Canceled",
+      user_id: "u_4",
+      tags: {
+        "customer-id": "cus_y",
+        "subscription-id": "sub_def",
+        "price-id": "price_pro",
+      },
+    });
+  });
 });
 
 describe("publishToLogSnag", () => {

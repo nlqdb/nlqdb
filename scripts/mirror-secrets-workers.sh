@@ -92,6 +92,7 @@ select_secrets() {
         GOOGLE_CLIENT_ID
         GOOGLE_CLIENT_SECRET
         GRAFANA_OTLP_ENDPOINT
+        STRIPE_WEBHOOK_SECRET
       )
       ;;
     events-worker)

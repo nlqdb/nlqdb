@@ -3,12 +3,14 @@
 # IDs into apps/api/wrangler.toml. Idempotent: safe to re-run.
 #
 # Resources (all on free tier through Phase 0):
-#   KV namespace  : `nlqdb-cache`   → binding `KV`     (plan + session cache)
-#   D1 database   : `nlqdb-app`     → binding `DB`     (users, audit log, app state)
+#   KV namespace  : `nlqdb-cache`   → binding `KV`           (plan + session cache)
+#   D1 database   : `nlqdb-app`     → binding `DB`           (users, audit log, app state)
+#   Queue         : `nlqdb-events`  → binding `EVENTS_QUEUE` (product events)
+#   R2 bucket     : `nlqdb-assets`  → binding `ASSETS`       (Stripe payload archive + future blobs)
 #
-# R2 (`nlqdb-assets`) is deferred — requires a one-time click to enable
-# on the Cloudflare dashboard and isn't on `/v1/ask`'s critical path.
-# Will land in a later slice when blob storage is actually exercised.
+# R2 service requires a one-time dashboard opt-in (account → R2 → Get
+# Started). The script fails with a clear message if R2 hasn't been
+# enabled yet; bucket creation is idempotent once the service is on.
 #
 # Reads CLOUDFLARE_API_TOKEN + CLOUDFLARE_ACCOUNT_ID from .envrc.
 # Writes resolved IDs back into wrangler.toml in place — those IDs
@@ -25,6 +27,7 @@ WRANGLER_TOML="apps/api/wrangler.toml"
 KV_NAMESPACE="nlqdb-cache"
 D1_DATABASE="nlqdb-app"
 EVENTS_QUEUE="nlqdb-events"
+R2_BUCKET="nlqdb-assets"
 
 # --- display helpers ----------------------------------------------------
 
@@ -122,6 +125,23 @@ ensure_queue() {
   fi
 }
 
+# R2 buckets are name-bound (no ID). `wrangler r2 bucket info` returns
+# non-zero when the bucket doesn't exist OR when R2 isn't enabled on the
+# account. We try `info` first; on miss, attempt `create`; if that fails
+# too, the operator hasn't done the one-time R2 opt-in.
+ensure_r2() {
+  local name="$1"
+  if wrangler r2 bucket info "$name" >/dev/null 2>&1; then
+    info "$name already exists"
+    return
+  fi
+  if wrangler r2 bucket create "$name" >/dev/null 2>&1; then
+    info "$name created"
+    return
+  fi
+  fail "$name" "R2 not enabled on account — open https://dash.cloudflare.com → R2 → Get Started (one-time click), then re-run this script"
+}
+
 # --- update wrangler.toml id field for a given binding ------------------
 # Replaces `id = "<old>"` (or empty) inside the [[<block>]] block whose
 # `binding = "<binding>"` matches. No-op if the field is already set to
@@ -156,6 +176,7 @@ say "Provisioning Cloudflare resources for apps/api + apps/events-worker"
 KV_ID=$(ensure_kv "$KV_NAMESPACE")
 D1_ID=$(ensure_d1 "$D1_DATABASE")
 ensure_queue "$EVENTS_QUEUE"
+ensure_r2 "$R2_BUCKET"
 
 say "Updating $WRANGLER_TOML"
 
@@ -165,5 +186,6 @@ update_toml_id "d1_databases"   "DB"     "database_id" "$D1_ID"
 ok "kv_namespaces.KV.id          → $KV_ID"
 ok "d1_databases.DB.database_id  → $D1_ID"
 ok "queues.producers.EVENTS_QUEUE → $EVENTS_QUEUE (no id; name-bound)"
+ok "r2_buckets.ASSETS.bucket_name → $R2_BUCKET (no id; name-bound)"
 
 say "Verify with: bun --cwd apps/api run build && bun --cwd apps/events-worker run build"
