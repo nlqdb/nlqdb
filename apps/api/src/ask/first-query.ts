@@ -9,15 +9,12 @@
 // is preferred to 500-ing a query the user already paid for in LLM
 // tokens.
 
+import type { KVStore } from "../kv-store.ts";
+
 const KEY_PREFIX = "first_query:";
 // One year — long enough that we're not re-firing the event every 60s
 // when a user goes quiet. KV maximum TTL is well above this.
 const FLAG_TTL_SECONDS = 365 * 24 * 60 * 60;
-
-export type FirstQueryStore = {
-  get(key: string): Promise<string | null>;
-  put(key: string, value: string, opts?: { expirationTtl?: number }): Promise<void>;
-};
 
 export type FirstQueryTracker = {
   // True if the flag is absent — i.e. the caller should emit the event
@@ -28,7 +25,7 @@ export type FirstQueryTracker = {
   commit(userId: string): Promise<void>;
 };
 
-export function makeFirstQueryTracker(store: FirstQueryStore): FirstQueryTracker {
+export function makeFirstQueryTracker(store: KVStore): FirstQueryTracker {
   return {
     async notFiredYet(userId) {
       const seen = await store.get(`${KEY_PREFIX}${userId}`);

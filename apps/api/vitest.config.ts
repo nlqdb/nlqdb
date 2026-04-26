@@ -5,46 +5,78 @@ import { defineConfig } from "vitest/config";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 
-// Tests run inside the Workers runtime (Miniflare) so D1 + KV behave
-// like production. `wrangler.toml` supplies KV/D1 bindings; the
-// `bindings` block below overrides `[vars] NODE_ENV` and supplies
-// placeholder secrets — Better Auth stores them as strings at module
-// load without validation, so real OAuth round-trips never fire here.
+// Two projects so iterating on a single unit-test file doesn't pay
+// the Miniflare-boot cost (>30s of `setup` per file).
 //
-// Pool API note (vitest 4 + @cloudflare/vitest-pool-workers ≥0.13):
-// the older `defineWorkersProject` helper was replaced by the
-// `cloudflareTest()` Vite plugin. Same options shape, different entry.
+//   unit        — pure functions with stubbed deps. Runs in node.
+//                 Files: orchestrate, plan-cache, sql-validate,
+//                 middleware, first-query.
+//   integration — needs real D1 / KV / SELF. Runs inside Workers
+//                 runtime via Miniflare. Files: health, auth, ask,
+//                 rate-limit.
+//
+// Total runtime today: 30-45s for the integration suite, 1-2s for
+// units. Single-file vitest invocations short-circuit to one project.
 export default defineConfig(async () => {
   const migrations = await readD1Migrations(path.join(here, "migrations"));
   return {
-    plugins: [
-      cloudflareTest({
-        // `main` makes the worker run in the same isolate as the tests
-        // so `vi.mock(...)` of modules imported by the worker
-        // entrypoint propagates to SELF.fetch (per Cloudflare docs:
-        // "main Worker runs in the same isolate/context as tests so
-        // any global mocks will apply to it too").
-        main: "./src/index.ts",
-        singleWorker: true,
-        isolatedStorage: true,
-        wrangler: { configPath: "./wrangler.toml" },
-        miniflare: {
-          bindings: {
-            NODE_ENV: "test",
-            BETTER_AUTH_SECRET: "test-better-auth-secret-placeholder-please-do-not-use-in-prod",
-            OAUTH_GITHUB_CLIENT_ID: "test-gh-prod-id",
-            OAUTH_GITHUB_CLIENT_SECRET: "test-gh-prod-secret",
-            OAUTH_GITHUB_CLIENT_ID_DEV: "test-gh-dev-id",
-            OAUTH_GITHUB_CLIENT_SECRET_DEV: "test-gh-dev-secret",
-            GOOGLE_CLIENT_ID: "test-google-id",
-            GOOGLE_CLIENT_SECRET: "test-google-secret",
-            TEST_MIGRATIONS: migrations,
+    test: {
+      projects: [
+        {
+          extends: true,
+          test: {
+            name: "unit",
+            include: [
+              "test/orchestrate.test.ts",
+              "test/plan-cache.test.ts",
+              "test/sql-validate.test.ts",
+              "test/middleware.test.ts",
+              "test/first-query.test.ts",
+            ],
           },
         },
-      }),
-    ],
-    test: {
-      setupFiles: ["./test/apply-migrations.ts"],
+        {
+          extends: true,
+          plugins: [
+            cloudflareTest({
+              // `main` makes the worker run in the same isolate as
+              // the tests so vi.mock of modules imported by the
+              // worker entrypoint propagates through SELF.fetch (per
+              // Cloudflare docs). Worker-module mocking is still
+              // partially broken upstream — `cloudflare/workers-sdk
+              // #10201` — see auth.test.ts coverage trade-off.
+              main: "./src/index.ts",
+              singleWorker: true,
+              isolatedStorage: true,
+              wrangler: { configPath: "./wrangler.toml" },
+              miniflare: {
+                bindings: {
+                  NODE_ENV: "test",
+                  BETTER_AUTH_SECRET:
+                    "test-better-auth-secret-placeholder-please-do-not-use-in-prod",
+                  OAUTH_GITHUB_CLIENT_ID: "test-gh-prod-id",
+                  OAUTH_GITHUB_CLIENT_SECRET: "test-gh-prod-secret",
+                  OAUTH_GITHUB_CLIENT_ID_DEV: "test-gh-dev-id",
+                  OAUTH_GITHUB_CLIENT_SECRET_DEV: "test-gh-dev-secret",
+                  GOOGLE_CLIENT_ID: "test-google-id",
+                  GOOGLE_CLIENT_SECRET: "test-google-secret",
+                  TEST_MIGRATIONS: migrations,
+                },
+              },
+            }),
+          ],
+          test: {
+            name: "integration",
+            include: [
+              "test/health.test.ts",
+              "test/auth.test.ts",
+              "test/ask.test.ts",
+              "test/rate-limit.test.ts",
+            ],
+            setupFiles: ["./test/apply-migrations.ts"],
+          },
+        },
+      ],
     },
   };
 });

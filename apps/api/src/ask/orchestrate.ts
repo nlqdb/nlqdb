@@ -58,6 +58,29 @@ export async function orchestrateAsk(
 ): Promise<OrchestrateOutcome> {
   const tracer = trace.getTracer("@nlqdb/api");
 
+  // Wrap a step in a child span. `swallow` flag turns the catch
+  // path into a recordException + ERROR-status (used for non-fatal
+  // bookkeeping — cache writes, first-query commit).
+  async function withSpan<T>(
+    name: string,
+    fn: (span: Span) => Promise<T>,
+    swallow?: { onError: T },
+  ): Promise<T> {
+    return tracer.startActiveSpan(name, async (span) => {
+      try {
+        return await fn(span);
+      } catch (err) {
+        if (swallow) {
+          recordSwallowedException(span, err);
+          return swallow.onError;
+        }
+        throw err;
+      } finally {
+        span.end();
+      }
+    });
+  }
+
   // SSE consumer disconnect mid-stream (browser closes tab) is the
   // most likely throw site for `onEvent`. We don't want that to abort
   // a request that already produced rows — swallow.
@@ -73,13 +96,9 @@ export async function orchestrateAsk(
 
   // Rate-limit check first — fail fast on overlimit before any DB
   // work or LLM call. PERFORMANCE §4 row 6 nlqdb.ratelimit.check span.
-  const decision = await tracer.startActiveSpan("nlqdb.ratelimit.check", async (span) => {
-    try {
-      return await deps.rateLimiter.check(req.userId);
-    } finally {
-      span.end();
-    }
-  });
+  const decision = await withSpan("nlqdb.ratelimit.check", () =>
+    deps.rateLimiter.check(req.userId),
+  );
   if (!decision.allowed) {
     return {
       ok: false,
@@ -97,21 +116,14 @@ export async function orchestrateAsk(
   // TS narrows db.schemaHash to string after the guard above.
   const schemaHash = db.schemaHash;
 
-  const queryHash = await tracer.startActiveSpan("nlqdb.ask.hash", async (span) => {
-    try {
-      return await hashGoal(req.goal);
-    } finally {
-      span.end();
-    }
-  });
+  // SHA-256 over a short string is microseconds — folding into the
+  // parent span instead of its own (the dedicated `nlqdb.ask.hash`
+  // span emission cost more than the work it described).
+  const queryHash = await hashGoal(req.goal);
 
-  const cached = await tracer.startActiveSpan("nlqdb.cache.plan.lookup", async (span) => {
-    try {
-      return await deps.planCache.lookup(schemaHash, queryHash);
-    } finally {
-      span.end();
-    }
-  });
+  const cached = await withSpan("nlqdb.cache.plan.lookup", () =>
+    deps.planCache.lookup(schemaHash, queryHash),
+  );
 
   let planSql: string;
   let cacheHit: boolean;
@@ -134,36 +146,21 @@ export async function orchestrateAsk(
         error: { status: "llm_failed", message: err instanceof Error ? err.message : String(err) },
       };
     }
-    const fresh: CachedPlan = {
-      sql: planSql,
-      schemaHash,
-      createdAt: Date.now(),
-    };
+    const fresh: CachedPlan = { sql: planSql, schemaHash };
     // Cache write is non-fatal — we have a valid plan in `planSql`,
-    // so a KV blip shouldn't 500 the request. Span captures the
-    // exception for trace-level visibility.
-    await tracer.startActiveSpan("nlqdb.cache.plan.write", async (span) => {
-      try {
-        await deps.planCache.write(schemaHash, queryHash, fresh);
-      } catch (err) {
-        recordSwallowedException(span, err);
-      } finally {
-        span.end();
-      }
-    });
+    // so a KV blip shouldn't 500 the request.
+    await withSpan(
+      "nlqdb.cache.plan.write",
+      () => deps.planCache.write(schemaHash, queryHash, fresh),
+      { onError: undefined },
+    );
     cacheHit = false;
   }
 
   // SQL allow-list. DESIGN §0.1 / §12 — no DROP / TRUNCATE / DELETE-
   // without-WHERE / ALTER…DROP / etc. The user's escape for an
   // incompatible schema is `nlq new`, not destructive SQL.
-  const validation = await tracer.startActiveSpan("nlqdb.sql.validate", async (span) => {
-    try {
-      return validateSql(planSql);
-    } finally {
-      span.end();
-    }
-  });
+  const validation = await withSpan("nlqdb.sql.validate", async () => validateSql(planSql));
   if (!validation.ok) {
     return { ok: false, error: { status: "sql_rejected", reason: validation.reason } };
   }
@@ -206,28 +203,21 @@ export async function orchestrateAsk(
   // If the commit fails, the next request re-emits — slight over-
   // count is preferred to a 500 on a working query (UX > strict-once,
   // per review).
-  let shouldEmitFirstQuery = false;
-  try {
-    shouldEmitFirstQuery = await deps.firstQuery.notFiredYet(req.userId);
-  } catch {
-    // KV read failure: conservative default — don't emit. Avoids
-    // the worst case (emit without ever committing → re-emit forever).
-    shouldEmitFirstQuery = false;
-  }
+  const shouldEmitFirstQuery = await withSpan(
+    "nlqdb.cache.first_query.lookup",
+    // Read failure → false. Avoids the worst case: emit without ever
+    // committing, which would re-emit forever.
+    () => deps.firstQuery.notFiredYet(req.userId),
+    { onError: false },
+  );
   if (shouldEmitFirstQuery) {
     tracer.startActiveSpan("nlqdb.events.emit", (span) => {
       span.setAttribute("nlqdb.event.type", "user.first_query");
       span.setAttribute("nlqdb.user.id", req.userId);
       span.end();
     });
-    await tracer.startActiveSpan("nlqdb.cache.first_query.commit", async (span) => {
-      try {
-        await deps.firstQuery.commit(req.userId);
-      } catch (err) {
-        recordSwallowedException(span, err);
-      } finally {
-        span.end();
-      }
+    await withSpan("nlqdb.cache.first_query.commit", () => deps.firstQuery.commit(req.userId), {
+      onError: undefined,
     });
   }
 
@@ -245,8 +235,7 @@ export async function orchestrateAsk(
 }
 
 // Records the exception on the span and marks it ERROR, but doesn't
-// re-throw. Used for non-fatal failures where the request should
-// still return a successful outcome (cache writes, first-query commit).
+// re-throw. Used by `withSpan({ onError })` for non-fatal failures.
 function recordSwallowedException(span: Span, err: unknown): void {
   const error = err instanceof Error ? err : new Error(String(err));
   span.recordException(error);

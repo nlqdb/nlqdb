@@ -7,6 +7,7 @@
 // module is pure storage so it stays unit-testable against a plain
 // Storage stub.
 
+import type { KVStore } from "../kv-store.ts";
 import type { CachedPlan } from "./types.ts";
 
 // Min Cloudflare KV TTL is 60s; the plan cache is intentionally
@@ -17,11 +18,6 @@ export const PLAN_CACHE_TTL_SECONDS = 30 * 24 * 60 * 60;
 
 const KEY_PREFIX = "plan:";
 
-export type PlanCacheStore = {
-  get(key: string): Promise<string | null>;
-  put(key: string, value: string, opts?: { expirationTtl?: number }): Promise<void>;
-};
-
 export type PlanCache = {
   lookup(schemaHash: string, queryHash: string): Promise<CachedPlan | null>;
   write(schemaHash: string, queryHash: string, plan: CachedPlan): Promise<void>;
@@ -31,7 +27,7 @@ function key(schemaHash: string, queryHash: string): string {
   return `${KEY_PREFIX}${schemaHash}:${queryHash}`;
 }
 
-export function makePlanCache(store: PlanCacheStore): PlanCache {
+export function makePlanCache(store: KVStore): PlanCache {
   return {
     async lookup(schemaHash, queryHash) {
       const raw = await store.get(key(schemaHash, queryHash));

@@ -14,7 +14,6 @@ export type DbRecord = {
 export type CachedPlan = {
   sql: string;
   schemaHash: string;
-  createdAt: number;
 };
 
 export type AskRequest = {

@@ -3,9 +3,10 @@
 // emit-then-commit pattern.
 
 import { describe, expect, it } from "vitest";
-import { type FirstQueryStore, makeFirstQueryTracker } from "../src/ask/first-query.ts";
+import { makeFirstQueryTracker } from "../src/ask/first-query.ts";
+import type { KVStore } from "../src/kv-store.ts";
 
-function makeStore(): FirstQueryStore & { data: Map<string, string> } {
+function makeStore(): KVStore & { data: Map<string, string> } {
   const data = new Map<string, string>();
   return {
     data,

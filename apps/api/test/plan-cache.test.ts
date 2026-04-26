@@ -3,15 +3,11 @@
 // TTL pass-through, and corrupted-entry recovery.
 
 import { beforeEach, describe, expect, it } from "vitest";
-import {
-  hashGoal,
-  makePlanCache,
-  PLAN_CACHE_TTL_SECONDS,
-  type PlanCacheStore,
-} from "../src/ask/plan-cache.ts";
+import { hashGoal, makePlanCache, PLAN_CACHE_TTL_SECONDS } from "../src/ask/plan-cache.ts";
 import type { CachedPlan } from "../src/ask/types.ts";
+import type { KVStore } from "../src/kv-store.ts";
 
-function makeStubStore(): PlanCacheStore & {
+function makeStubStore(): KVStore & {
   data: Map<string, string>;
   puts: { key: string; value: string; ttl?: number }[];
 } {
@@ -44,22 +40,22 @@ describe("plan cache", () => {
 
   it("write() then lookup() round-trips a plan", async () => {
     const cache = makePlanCache(store);
-    const plan: CachedPlan = { sql: "SELECT 1", schemaHash: "schema_a", createdAt: 1234 };
+    const plan: CachedPlan = { sql: "SELECT 1", schemaHash: "schema_a" };
     await cache.write("schema_a", "query_a", plan);
     expect(await cache.lookup("schema_a", "query_a")).toEqual(plan);
   });
 
   it("write() applies the long TTL so the cache survives multi-day idle", async () => {
     const cache = makePlanCache(store);
-    await cache.write("s", "q", { sql: "x", schemaHash: "s", createdAt: 0 });
+    await cache.write("s", "q", { sql: "x", schemaHash: "s" });
     expect(store.puts).toHaveLength(1);
     expect(store.puts[0]?.ttl).toBe(PLAN_CACHE_TTL_SECONDS);
   });
 
   it("keys are scoped by both schemaHash AND queryHash (no collisions across schemas)", async () => {
     const cache = makePlanCache(store);
-    await cache.write("schema_a", "q", { sql: "A", schemaHash: "schema_a", createdAt: 0 });
-    await cache.write("schema_b", "q", { sql: "B", schemaHash: "schema_b", createdAt: 0 });
+    await cache.write("schema_a", "q", { sql: "A", schemaHash: "schema_a" });
+    await cache.write("schema_b", "q", { sql: "B", schemaHash: "schema_b" });
     expect((await cache.lookup("schema_a", "q"))?.sql).toBe("A");
     expect((await cache.lookup("schema_b", "q"))?.sql).toBe("B");
   });
