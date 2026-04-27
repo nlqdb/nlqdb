@@ -36,6 +36,7 @@ export default defineConfig(async () => {
               "test/chat-orchestrate.test.ts",
               "test/email.test.ts",
               "test/demo.test.ts",
+              "test/chat-demo-shortcut.test.ts",
             ],
           },
         },
