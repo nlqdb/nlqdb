@@ -87,6 +87,25 @@ export const auth = betterAuth({
     type: "sqlite",
   },
   secondaryStorage,
+  // Per-IP rate limit. Better Auth's default in production is 100/min
+  // global; the explicit override pins it for visibility and tightens
+  // `/sign-in/magic-link` to 5/min — that endpoint is unauthenticated
+  // and triggers a Resend send per call, so 100/min would let one IP
+  // burn ~6000 emails/hour on our domain reputation. Per-email
+  // throttling would close the remaining loophole (one IP, many
+  // target inboxes) but Better Auth's built-in is per-IP only;
+  // revisit if abuse signal appears. Counters live in our shared KV
+  // (`secondary-storage`) so limits are global across Worker isolates,
+  // not per-instance.
+  rateLimit: {
+    enabled: true,
+    window: 60,
+    max: 100,
+    storage: "secondary-storage",
+    customRules: {
+      "/sign-in/magic-link": { window: 60, max: 5 },
+    },
+  },
   session: {
     cookieCache: {
       enabled: true,
