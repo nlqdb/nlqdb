@@ -54,18 +54,6 @@ jobs:
     name: wrangler versions upload
     runs-on: ubuntu-latest
     timeout-minutes: 5
-    env:
-      # `cloudflare/wrangler-action@v3` doesn't populate the
-      # `deployment-url` step output for `versions upload`
-      # (cloudflare/wrangler-action#343). The supported machine-readable
-      # hook is `WRANGLER_OUTPUT_FILE_PATH` — wrangler writes an ND-JSON
-      # event log to this file, including a `version-upload` entry with
-      # `preview_url`. We parse that in the comment step.
-      #
-      # `github.workspace` not `runner.temp` — `runner` context isn't
-      # available at job-level env. See
-      # https://docs.github.com/en/actions/learn-github-actions/contexts#context-availability
-      WRANGLER_OUTPUT_FILE_PATH: ${{ github.workspace }}/wrangler-output.ndjson
     steps:
       - uses: actions/checkout@v4
 
@@ -76,6 +64,13 @@ jobs:
       - name: Install workspace deps
         run: bun install --frozen-lockfile
 
+      # The action sets `WRANGLER_OUTPUT_DIR` to a UUID-named temp dir
+      # *inside* its own step (cloudflare/wrangler-action#343 — the
+      # action's own logic only extracts URLs from `deploy` events,
+      # not from `version-upload`). `postCommands` runs after wrangler
+      # but still inside the action's step, so `$WRANGLER_OUTPUT_DIR`
+      # is in scope; we parse the ND-JSON ourselves and surface the
+      # preview URL via `$GITHUB_ENV` for the comment step.
       - name: Upload preview version
         id: deploy
         uses: cloudflare/wrangler-action@v3
@@ -84,6 +79,19 @@ jobs:
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           workingDirectory: apps/api
           command: versions upload --message "PR #${{ github.event.number }} @ ${{ github.event.pull_request.head.sha }}"
+          postCommands: |
+            if [ -d "$WRANGLER_OUTPUT_DIR" ]; then
+              URL=$(cat "$WRANGLER_OUTPUT_DIR"/wrangler-output-*.json 2>/dev/null \
+                | jq -rs 'map(select(.type=="version-upload")) | first | .preview_url // .preview_alias_url // empty')
+              if [ -n "$URL" ]; then
+                echo "PREVIEW_URL=$URL" >> "$GITHUB_ENV"
+                echo "Captured preview URL: $URL"
+              else
+                echo "No version-upload event found in $WRANGLER_OUTPUT_DIR"
+              fi
+            else
+              echo "WRANGLER_OUTPUT_DIR not set or missing"
+            fi
 
       # Sticky comment — looks up an existing preview comment by a
       # hidden marker and edits it in place. Keeps the PR conversation
@@ -93,28 +101,7 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
-            const fs = require('node:fs');
-            const outputPath = process.env.WRANGLER_OUTPUT_FILE_PATH;
-            // Parse the ND-JSON wrangler wrote during upload. Schema
-            // documented at developers.cloudflare.com/workers/wrangler/
-            // system-environment-variables/.
-            let url = '';
-            try {
-              const text = fs.readFileSync(outputPath, 'utf8');
-              for (const line of text.split('\n')) {
-                const trimmed = line.trim();
-                if (!trimmed) continue;
-                try {
-                  const evt = JSON.parse(trimmed);
-                  if (evt.type === 'version-upload') {
-                    url = evt.preview_url || evt.preview_alias_url || '';
-                    if (url) break;
-                  }
-                } catch { /* skip malformed lines */ }
-              }
-            } catch (err) {
-              core.warning(`Could not read wrangler output: ${err.message}`);
-            }
+            const url = process.env.PREVIEW_URL ?? '';
 
             const sha = context.sha.slice(0, 7);
             const marker = '<!-- preview-api-sticky -->';
