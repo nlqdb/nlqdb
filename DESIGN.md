@@ -177,27 +177,76 @@ unavoidable recurring cost; see §7).
 ### 3.1 Marketing site — `nlqdb.com`
 
 Static-first **Astro** (0KB JS by default; islands where needed). Hosted on
-Cloudflare Pages. Lighthouse 100/100/100/100.
+Cloudflare Pages. Lighthouse 100/100/100/100. Implementation: [`apps/web`](./apps/web).
 
-**Pages:** `/` (the hero goal-first input), `/docs`, `/pricing` (§6),
-`/manifesto` (§0 humanized), `/blog`, `/showcase`.
+**The message: 0 to 1 with no backend.** The home page is built the way
+we say users should build — `<nlq-data>` and `<nlq-action>` (§3.5) render
+real data on the page itself. No screenshots of code; the code is on the
+page, and it works. Marketing copy is *under* the fold; runnable code is
+*above* it.
 
-**Hero:** one input — *"What are you building?"* — cycling placeholders from
-real persona goals. Enter morphs the page into chat (View Transitions), DB
-created silently, no signup wall.
+**Above the fold** (in this order, vertically):
+
+1. **Goal-first input** — *"What are you building?"* (§14.1). Enter morphs
+   into chat via View Transitions, DB created silently, no signup wall.
+   On chat completion the page inlines an embed snippet (the same one in
+   the code panel below) with the user's `pk_live_` already filled in
+   (§14.5 "Copy snippet").
+2. **Tabbed code-example panel** — one snippet per surface, ≤10 lines each,
+   all rendering against the *same* demo DB:
+   `HTML` (default, shortest) · `React` · `Vue` · `Agent (MCP)` · `curl`.
+   Each has a copy button; switching tabs swaps the surface that the live
+   embed beneath the panel renders through. **The contrast IS the
+   message** — every snippet is the entire backend.
+3. **"What this replaces" strip** — DB / schema / ORM / endpoint / auth /
+   cache / migration / deploy boxes that visually collapse on scroll into
+   a single `<nlq-data>` line. One animation, scroll-driven, not on hover.
+4. **Live evidence** — anonymized query ticker (real, sampled from the
+   product); GitHub star count (when the repo is public).
+
+Below the fold is allowed to be longer, comparative, or technical:
+manifesto excerpt, persona vignettes, blog teasers, docs link. Above the
+fold must be either a working snippet or proof that snippets work — no
+feature bullets, no logo grids, no "trusted by".
+
+**Code surfaces we promise on the home page** (full integration matrix in
+[`IMPLEMENTATION §10.1`](./IMPLEMENTATION.md)):
+
+| Surface | Package | Status |
+|---|---|---|
+| HTML / web component | `@nlqdb/elements` (`<nlq-data>` / `<nlq-action>`) | Phase 1 v0 (§3.5, §14.5) |
+| Typed JS/TS client | `@nlqdb/sdk` | Phase 1 v0 |
+| React / Next | `@nlqdb/next` (thin wrapper over the element) | Phase 2 |
+| Vue / Nuxt | `@nlqdb/nuxt` (thin wrapper over the element) | Phase 2 |
+| Agent (MCP) | `@nlqdb/mcp` + hosted `mcp.nlqdb.com` | Phase 2 (§3.4) |
+| HTTP / curl | `POST /v1/ask` | Phase 0 (Slice 6) |
+
+Snippets for surfaces not yet shipped carry an honest "Phase 2" badge —
+never a fake working claim. Framework wrappers are thin (≤200 LOC each)
+and reuse the same web component under the hood; no parallel
+implementations across React / Vue / Nuxt / Next.
+
+**Pages.** `/` (hero + code panel + "replaces" strip + manifesto excerpt),
+`/pricing` (§6), `/manifesto` (§0 humanized), `/docs`, `/blog`,
+`/showcase`. Every page leads with a definition-first sentence per AEO.
 
 **Creative direction** (anti-template): neo-brutalist + terminal — thick
 borders, hard shadows, JetBrains Mono headlines, one accent (Acid Lime
-`#C6F432` on near-black `#0B0F0A`). Live query ticker at the top (real,
-anonymized). Scroll-driven story where a DB builds itself alongside the
-copy. Kinetic typography on "talk". Real-time GitHub star count. No stock
-photos. No cookie banner (Plausible, self-hosted).
+`#C6F432` on near-black `#0B0F0A`). Live query ticker, kinetic typography
+on "talk", real-time GitHub star count (post-private), no stock photos,
+no cookie banner (Plausible, self-hosted). Code-panel tabs swap with View
+Transitions. Each copy-button click emits `home.snippet_copied` to
+LogSnag (PERFORMANCE §3.1) for funnel signal — which surface visitors
+copy first is a leading indicator of where to invest framework-wrapper
+effort next.
 
-**AEO/GEO:** Definition-lead sentence on every page; `FAQPage` / `HowTo` /
-`SoftwareApplication` / `Article` JSON-LD; direct-answer block in first
-150 words; `llms.txt`; sitemap + AI-crawler-permissive `robots.txt`;
-transcripts on every video. Goal: citations from Perplexity / ChatGPT /
-Gemini / Claude.
+**AEO/GEO.** Definition-lead sentence on every page; `FAQPage` / `HowTo`
+/ `SoftwareApplication` / `Article` JSON-LD; direct-answer block in
+first 150 words; `llms.txt`; sitemap + AI-crawler-permissive
+`robots.txt`; transcripts on every video. Home-page snippets are also
+mirrored in `/code-samples.txt` (text, no JS) so non-JS crawlers see the
+same proof points. Goal: citations from Perplexity / ChatGPT / Gemini /
+Claude.
 
 ### 3.2 Platform web app — `app.nlqdb.com`
 
