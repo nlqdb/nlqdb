@@ -53,9 +53,7 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           preCommands: |
-            wrangler pages project create nlqdb-elements \
-              --production-branch main \
-              --compatibility-date "$(date -u +%Y-%m-%d)" || true
+            pages project create nlqdb-elements --production-branch main --compatibility-date "$(date -u +%Y-%m-%d)" || true
           command: pages deploy packages/elements/dist --project-name=nlqdb-elements --branch=pr-${{ github.event.number }} --commit-dirty=true
 
       - name: Sticky preview comment

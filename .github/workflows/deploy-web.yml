@@ -53,7 +53,5 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           preCommands: |
-            wrangler pages project create nlqdb-web \
-              --production-branch main \
-              --compatibility-date "$(date -u +%Y-%m-%d)" || true
+            pages project create nlqdb-web --production-branch main --compatibility-date "$(date -u +%Y-%m-%d)" || true
           command: pages deploy apps/web/dist --project-name=nlqdb-web --branch=main --commit-dirty=true
