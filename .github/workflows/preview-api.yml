@@ -87,7 +87,7 @@ jobs:
 
             const urlLine = url
               ? `- URL: <${url}>`
-              : `- URL: \`https://nlqdb-api-preview.<your-subdomain>.workers.dev\` (Cloudflare account subdomain — visible once on the dashboard)`;
+              : `- URL: <https://nlqdb-api-preview.omer-hochman.workers.dev>`;
 
             const body = [
               marker,
