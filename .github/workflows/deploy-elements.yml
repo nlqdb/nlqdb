@@ -53,5 +53,5 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           preCommands: |
-            pages project create nlqdb-elements --production-branch main --compatibility-date "$(date -u +%Y-%m-%d)" || true
+            bunx wrangler pages project create nlqdb-elements --production-branch main --compatibility-date "$(date -u +%Y-%m-%d)" || true
           command: pages deploy packages/elements/dist --project-name=nlqdb-elements --branch=main --commit-dirty=true

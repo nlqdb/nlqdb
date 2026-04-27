@@ -63,7 +63,7 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           preCommands: |
-            pages project create nlqdb-web --production-branch main --compatibility-date "$(date -u +%Y-%m-%d)" || true
+            bunx wrangler pages project create nlqdb-web --production-branch main --compatibility-date "$(date -u +%Y-%m-%d)" || true
           command: pages deploy apps/web/dist --project-name=nlqdb-web --branch=pr-${{ github.event.number }} --commit-dirty=true
 
       - name: Sticky preview comment
