@@ -2,9 +2,17 @@
 #
 # Workers Versions: each PR push uploads a non-production version of
 # the apps/web Worker (Static Assets bundle inherited from the prod
-# config). CF assigns a stable `<id>-nlqdb-web.<account>.workers.dev`
-# URL per version. The promoted version (and nlqdb.com) stay untouched
-# until merge runs `wrangler deploy` via deploy-web.yml.
+# config). CF assigns a stable per-version URL; the promoted prod
+# version (and nlqdb.com) stay untouched until merge runs
+# `wrangler deploy` via deploy-web.yml.
+#
+# URL extraction: cloudflare/wrangler-action@v3 does NOT populate the
+# `deployment-url` step output for the `versions upload` command —
+# tracked at cloudflare/wrangler-action#343. The official machine-
+# readable hook is `WRANGLER_OUTPUT_FILE_PATH`: wrangler writes an
+# ND-JSON event log we parse for the `version-upload` entry, which
+# carries `preview_url`. Documented at
+# https://developers.cloudflare.com/workers/wrangler/system-environment-variables/.
 
 name: Preview web
 
@@ -30,6 +38,10 @@ jobs:
     name: astro build + wrangler versions upload
     runs-on: ubuntu-latest
     timeout-minutes: 6
+    env:
+      # Job-scoped so the action AND the comment step both see the
+      # same file path. `runner.temp` is unique per job invocation.
+      WRANGLER_OUTPUT_FILE_PATH: ${{ runner.temp }}/wrangler-output.ndjson
     steps:
       - uses: actions/checkout@v4
 
@@ -54,29 +66,43 @@ jobs:
 
       - name: Sticky preview comment
         uses: actions/github-script@v7
-        env:
-          # Pass wrangler output via env, not GitHub interpolation —
-          # multi-line stdout/stderr breaks the JS template-string
-          # interpolation `${{ ... }}` produces. Search both since
-          # wrangler emits the per-version URL on stderr in some
-          # versions and stdout in others.
-          WRANGLER_STDOUT: ${{ steps.deploy.outputs.command-output }}
-          WRANGLER_STDERR: ${{ steps.deploy.outputs.command-stderr }}
         with:
           script: |
-            const all = `${process.env.WRANGLER_STDOUT ?? ''}\n${process.env.WRANGLER_STDERR ?? ''}`;
-            // `wrangler versions upload` prints the per-version URL as
-            // `https://<id>-nlqdb-web.<subdomain>.workers.dev`. Match
-            // any *.workers.dev URL with the worker name in the host.
-            const match = all.match(/https:\/\/[a-z0-9-]+-nlqdb-web\.[a-z0-9.-]+\.workers\.dev/i);
-            const url = match ? match[0] : '';
+            const fs = require('node:fs');
+            const outputPath = process.env.WRANGLER_OUTPUT_FILE_PATH;
+
+            // Parse the ND-JSON event log wrangler wrote during upload.
+            // Each non-blank line is one event; we want the first
+            // `version-upload` entry's `preview_url` (or its alias
+            // form). Schema:
+            //   { version: 1, type: "version-upload",
+            //     worker_name, worker_tag, version_id,
+            //     preview_url, preview_alias_url, timestamp }
+            let url = '';
+            try {
+              const text = fs.readFileSync(outputPath, 'utf8');
+              for (const line of text.split('\n')) {
+                const trimmed = line.trim();
+                if (!trimmed) continue;
+                try {
+                  const evt = JSON.parse(trimmed);
+                  if (evt.type === 'version-upload') {
+                    url = evt.preview_url || evt.preview_alias_url || '';
+                    if (url) break;
+                  }
+                } catch { /* skip malformed lines */ }
+              }
+            } catch (err) {
+              core.warning(`Could not read wrangler output: ${err.message}`);
+            }
+
             const sha = context.sha.slice(0, 7);
             const marker = '<!-- preview-web-sticky -->';
             const ts = new Date().toISOString().replace('T', ' ').slice(0, 19) + ' UTC';
 
             const urlLine = url
               ? `- URL: <${url}>`
-              : '- URL: `<id>-nlqdb-web.omer-hochman.workers.dev` (latest version visible in the dashboard → `nlqdb-web` → Versions)';
+              : '- URL: latest version visible in the dashboard → `nlqdb-web` → Versions';
 
             const body = [
               marker,

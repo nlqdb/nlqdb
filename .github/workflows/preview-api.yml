@@ -54,6 +54,14 @@ jobs:
     name: wrangler versions upload
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    env:
+      # `cloudflare/wrangler-action@v3` doesn't populate the
+      # `deployment-url` step output for the `versions upload` command
+      # (cloudflare/wrangler-action#343). The supported machine-readable
+      # hook is `WRANGLER_OUTPUT_FILE_PATH` — wrangler writes an ND-JSON
+      # event log to this file, including a `version-upload` entry with
+      # `preview_url`. We parse that in the comment step.
+      WRANGLER_OUTPUT_FILE_PATH: ${{ runner.temp }}/wrangler-output.ndjson
     steps:
       - uses: actions/checkout@v4
 
@@ -79,29 +87,38 @@ jobs:
       # new comment per deploy.
       - name: Sticky preview comment
         uses: actions/github-script@v7
-        env:
-          # Pass wrangler output via env, not GitHub interpolation —
-          # multi-line stdout/stderr breaks `${{ ... }}` injected into
-          # a JS template string. Search both stdout + stderr because
-          # wrangler emits the per-version URL on stderr in some
-          # versions and stdout in others.
-          WRANGLER_STDOUT: ${{ steps.deploy.outputs.command-output }}
-          WRANGLER_STDERR: ${{ steps.deploy.outputs.command-stderr }}
         with:
           script: |
-            const all = `${process.env.WRANGLER_STDOUT ?? ''}\n${process.env.WRANGLER_STDERR ?? ''}`;
-            const match = all.match(/https:\/\/[a-z0-9-]+-nlqdb-api\.[a-z0-9.-]+\.workers\.dev/i);
-            const url = match ? match[0] : '';
+            const fs = require('node:fs');
+            const outputPath = process.env.WRANGLER_OUTPUT_FILE_PATH;
+            // Parse the ND-JSON wrangler wrote during upload. Schema
+            // documented at developers.cloudflare.com/workers/wrangler/
+            // system-environment-variables/.
+            let url = '';
+            try {
+              const text = fs.readFileSync(outputPath, 'utf8');
+              for (const line of text.split('\n')) {
+                const trimmed = line.trim();
+                if (!trimmed) continue;
+                try {
+                  const evt = JSON.parse(trimmed);
+                  if (evt.type === 'version-upload') {
+                    url = evt.preview_url || evt.preview_alias_url || '';
+                    if (url) break;
+                  }
+                } catch { /* skip malformed lines */ }
+              }
+            } catch (err) {
+              core.warning(`Could not read wrangler output: ${err.message}`);
+            }
+
             const sha = context.sha.slice(0, 7);
             const marker = '<!-- preview-api-sticky -->';
             const ts = new Date().toISOString().replace('T', ' ').slice(0, 19) + ' UTC';
 
-            // Fallback when wrangler-action didn't surface the per-
-            // version URL — `<id>` is the 8-char prefix CF assigns;
-            // visible in the Versions tab of the worker dashboard.
             const urlLine = url
               ? `- URL: <${url}>`
-              : '- URL: `<id>-nlqdb-api.omer-hochman.workers.dev` (latest version visible in the dashboard → `nlqdb-api` → Versions)';
+              : '- URL: latest version visible in the dashboard → `nlqdb-api` → Versions';
 
             const body = [
               marker,
