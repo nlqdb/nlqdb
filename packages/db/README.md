@@ -25,7 +25,7 @@ never branch on engine.
 ## Tests
 
 ```bash
-bun --cwd packages/db run test
+bun run --cwd packages/db test
 ```
 
 Tests inject a fake driver — no live Neon required for unit tests.

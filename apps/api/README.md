@@ -116,11 +116,11 @@ credentials. Production deploys mirror via `bun run secrets:remote`
 ## Local dev
 
 ```bash
-bun --cwd apps/api run secrets:local  # writes .dev.vars from .envrc (one-time / on rotation)
-bun --cwd apps/api run dev            # wrangler dev — http://localhost:8787
-bun --cwd apps/api run test           # vitest
-bun --cwd apps/api run typecheck
-bun --cwd apps/api run build          # wrangler deploy --dry-run
+bun run --cwd apps/api secrets:local  # writes .dev.vars from .envrc (one-time / on rotation)
+bun run --cwd apps/api dev            # wrangler dev — http://localhost:8787
+bun run --cwd apps/api test           # vitest
+bun run --cwd apps/api typecheck
+bun run --cwd apps/api build          # wrangler deploy --dry-run
 ```
 
 ## Provisioning Cloudflare resources
@@ -136,8 +136,8 @@ wrangler in the `d1_migrations` table inside the D1 database itself
 (idempotent — re-running is a no-op on already-applied migrations).
 
 ```bash
-bun --cwd apps/api run migrate:local    # local SQLite under .wrangler/
-bun --cwd apps/api run migrate:remote   # production D1 — needs CLOUDFLARE_*
+bun run --cwd apps/api migrate:local    # local SQLite under .wrangler/
+bun run --cwd apps/api migrate:remote   # production D1 — needs CLOUDFLARE_*
 ```
 
 Add a new migration with `wrangler d1 migrations create nlqdb-app <name>`
@@ -150,9 +150,9 @@ All three steps are required — skipping `migrate:remote` 500s the
 auth + DB routes silently against an unmigrated D1 (PR #30 incident).
 
 ```bash
-bun --cwd apps/api run secrets:remote  # wrangler secret bulk from .envrc
-bun --cwd apps/api run migrate:remote  # apply unapplied D1 migrations
-bun --cwd apps/api run deploy          # uses CLOUDFLARE_API_TOKEN + _ACCOUNT_ID
+bun run --cwd apps/api secrets:remote  # wrangler secret bulk from .envrc
+bun run --cwd apps/api migrate:remote  # apply unapplied D1 migrations
+bun run --cwd apps/api deploy          # uses CLOUDFLARE_API_TOKEN + _ACCOUNT_ID
 ```
 
 ## Coming up

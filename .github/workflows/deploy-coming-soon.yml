@@ -6,7 +6,7 @@
 # on main, so unrelated merges don't churn the Pages deployment list.
 #
 # Manual re-deploy: workflow_dispatch button on the Actions tab, or
-# `bun --cwd apps/coming-soon run deploy` from a dev machine.
+# `bun run --cwd apps/coming-soon deploy` from a dev machine.
 
 name: Deploy coming-soon
 
@@ -33,6 +33,15 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
+
+      # wrangler-action auto-detects bun.lock at the repo root and
+      # tries to install wrangler with bun. Without setup-bun the
+      # action fails: "Unable to locate executable file: bun" (ran
+      # 24982411375). Setting up bun first keeps the action's
+      # auto-detection happy.
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: package.json
 
       - name: Deploy to Cloudflare Pages
         uses: cloudflare/wrangler-action@v3

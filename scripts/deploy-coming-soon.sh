@@ -85,6 +85,6 @@ Then, and only then, perform the GoDaddy NS flip (see IMPLEMENTATION
 kiki.ns.cloudflare.com, save. Cloudflare provisions the cert and the
 site is live in 5-30 min.
 
-Re-deploy any time with:  bun --cwd apps/coming-soon run deploy
+Re-deploy any time with:  bun run --cwd apps/coming-soon deploy
 ===========================================================================
 NEXT

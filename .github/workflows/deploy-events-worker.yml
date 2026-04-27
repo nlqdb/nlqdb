@@ -1,0 +1,50 @@
+# nlqdb — auto-deploy apps/events-worker (queue consumer Worker) on
+# merge. Drains `nlqdb-events` and posts to LogSnag; no D1 / KV /
+# secrets:remote sequence needed beyond what wrangler does, so the
+# workflow is a single-step deploy.
+#
+# Manual re-deploy: workflow_dispatch on the Actions tab, or
+# `bun run --cwd apps/events-worker deploy` from a dev machine.
+
+name: Deploy events-worker
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "apps/events-worker/**"
+      - "packages/events/**"
+      - "packages/otel/**"
+      - ".github/workflows/deploy-events-worker.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-events-worker
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  deployments: write
+
+jobs:
+  deploy:
+    name: wrangler deploy
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: package.json
+
+      - name: Install workspace deps
+        run: bun install --frozen-lockfile
+
+      - name: Deploy
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: apps/events-worker
+          command: deploy

@@ -44,7 +44,7 @@ has no D1 schema):
 Unit-only for now (no Miniflare-backed queue test):
 
 ```bash
-bun --cwd apps/events-worker test
+bun run --cwd apps/events-worker test
 ```
 
 ## Failure handling

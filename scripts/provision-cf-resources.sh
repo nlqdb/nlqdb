@@ -188,4 +188,4 @@ ok "d1_databases.DB.database_id  → $D1_ID"
 ok "queues.producers.EVENTS_QUEUE → $EVENTS_QUEUE (no id; name-bound)"
 ok "r2_buckets.ASSETS.bucket_name → $R2_BUCKET (no id; name-bound)"
 
-say "Verify with: bun --cwd apps/api run build && bun --cwd apps/events-worker run build"
+say "Verify with: bun run --cwd apps/api build && bun run --cwd apps/events-worker build"
