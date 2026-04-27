@@ -503,23 +503,26 @@ the preview URL on the PR (sticky — same comment is updated on each
 push). The preview is reachable on a `*.workers.dev` URL; the prod
 custom domain `app.nlqdb.com` stays bound to `nlqdb-api`.
 
-**First-time bootstrap (one-time, before the first preview run
-succeeds):** `wrangler deploy --env preview` 404s on a brand-new
-worker name — wrangler v4 in `--env` mode hits the Workers
-Services API to diff existing config, and that endpoint can't route
-to a service that hasn't been created yet (failure mode logs as
-`code: 7003` + `code: 7000`). Bootstrap once from a dev box — the
-local `wrangler login` OAuth session has create permissions and
-falls through cleanly:
+**First-time bootstrap (one-time, dashboard-only).** `wrangler
+deploy --env preview` 404s on a brand-new worker name — wrangler
+v4 in `--env` mode always hits the Workers Services API to diff
+existing config, and that endpoint can't route to a service that
+hasn't been created yet (failure logs as `code: 7003` +
+`code: 7000`). Both CI and a local CLI run hit the same wrangler
+code path, so the CLI is **not** a workaround. Create the Worker
+once via the dashboard:
 
-```bash
-bun run --cwd apps/api deploy:preview
-```
+1. Cloudflare dashboard → Workers & Pages → **Create** → **Create
+   Worker**.
+2. Name: `nlqdb-api-preview`.
+3. Click **Deploy** with the default Hello-World code (no
+   bindings, no config — placeholder only).
 
-After this single local deploy, the `nlqdb-api-preview` Worker
-exists on Cloudflare and CI's `wrangler deploy --env preview`
-updates it on every PR push. Same one-time-bootstrap requirement
-will apply to any future preview env you split off (per-PR named
+That's it. The service now exists, and the next CI run of
+`preview-api.yml` updates it cleanly: `services/nlqdb-api-preview`
+routes, wrangler diffs / uploads, your real `[env.preview]` config
+overwrites the placeholder. The same one-click bootstrap will
+apply to any future preview Worker you split off (per-PR named
 workers, separate D1, etc.).
 
 **Shared bindings.** The preview Worker uses the same KV / D1 /
