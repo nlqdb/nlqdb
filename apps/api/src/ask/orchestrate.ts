@@ -126,6 +126,12 @@ export async function orchestrateAsk(
   // span emission cost more than the work it described).
   const queryHash = await hashGoal(req.goal);
 
+  // Heartbeat before any plan work. Always fires (cache hit OR miss) so
+  // SSE clients can render "Thinking…" against a stable event order
+  // (`plan_pending → plan → rows → summary`). On a cache hit the `plan`
+  // event lands immediately after; on a miss it covers the LLM latency.
+  await safeEmit({ type: "plan_pending" });
+
   const cached = await withSpan("nlqdb.cache.plan.lookup", () =>
     deps.planCache.lookup(schemaHash, queryHash),
   );
@@ -138,10 +144,6 @@ export async function orchestrateAsk(
     cacheHit = true;
   } else {
     cachePlanMissesTotal().add(1);
-    // Heartbeat before the LLM call. Lets the SSE client render
-    // "Thinking…" instead of staring at a frozen connection during
-    // a cache miss + cold provider (multi-second latency).
-    await safeEmit({ type: "plan_pending" });
     try {
       const plan = await deps.llm.plan({
         goal: req.goal,

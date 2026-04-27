@@ -235,6 +235,26 @@ describe("orchestrateAsk", () => {
     expect(events[3]).toMatchObject({ type: "summary", summary: "ok" });
   });
 
+  it("emits plan_pending unconditionally — cache hit still fires the heartbeat", async () => {
+    // Pre-seed the cache so the second call lands on a hit. Clients
+    // depend on the documented `plan_pending → plan → …` order; the
+    // heartbeat must fire even when there's no LLM call to cover.
+    const cache = stubPlanCache();
+    const llm = stubLLM({ plan: { sql: "SELECT 99" }, summary: { summary: "ok" } });
+    const deps = makeDeps({ planCache: cache, llm });
+    await orchestrateAsk(deps, { goal: "warm-up", dbId: "db_1", userId: "user_1" });
+
+    const events: OrchestrateEvent[] = [];
+    const out = await orchestrateAsk(
+      deps,
+      { goal: "warm-up", dbId: "db_1", userId: "user_1" },
+      { onEvent: (e) => void events.push(e) },
+    );
+    expect(out.ok && out.result.cached).toBe(true);
+    expect(events.map((e) => e.type)).toEqual(["plan_pending", "plan", "rows", "summary"]);
+    expect(events[1]).toMatchObject({ type: "plan", sql: "SELECT 99", cached: true });
+  });
+
   it("summary failure is non-fatal — returns rows + sql, omits summary", async () => {
     const out = await orchestrateAsk(
       makeDeps({

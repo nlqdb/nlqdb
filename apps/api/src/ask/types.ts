@@ -59,10 +59,11 @@ export class DbConfigError extends Error {
 // Streaming events for the SSE response path. Sent in order:
 //   `plan_pending` → `plan` → `rows` → `summary`
 //
-// `plan_pending` is the heartbeat fired before the LLM call so a slow
-// plan (cache miss + cold provider) doesn't appear frozen to the
-// client. Token-level chunks land in a follow-up slice — providers
-// need streamPlan support first.
+// `plan_pending` is an unconditional heartbeat fired before the cache
+// lookup so SSE clients see a stable event order regardless of cache
+// hit/miss. On a cache hit the `plan` event lands immediately after;
+// on a miss it covers the multi-second LLM latency. Token-level chunks
+// land in a follow-up slice — providers need streamPlan support first.
 //
 // `summary` is omitted in JSON-no-summary mode.
 export type OrchestrateEvent =
