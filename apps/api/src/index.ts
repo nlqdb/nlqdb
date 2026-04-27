@@ -6,11 +6,13 @@ import { trace } from "@opentelemetry/api";
 import { Hono } from "hono";
 import { streamSSE } from "hono/streaming";
 import { makeFirstQueryTracker } from "./ask/first-query.ts";
-import { orchestrateAsk } from "./ask/orchestrate.ts";
+import { type OrchestrateDeps, orchestrateAsk } from "./ask/orchestrate.ts";
 import { makePlanCache } from "./ask/plan-cache.ts";
 import { makeRateLimiter } from "./ask/rate-limit.ts";
 import { type AskError, DbConfigError, type DbRecord, type OrchestrateEvent } from "./ask/types.ts";
 import { auth, REVOCATION_KEY_PREFIX } from "./auth.ts";
+import { postChatMessage } from "./chat/orchestrate.ts";
+import { makeChatStore } from "./chat/store.ts";
 import { resolveDb } from "./db-registry.ts";
 import { getLLMRouter } from "./llm-router.ts";
 import { makeRequireSession, type RequireSessionVariables } from "./middleware.ts";
@@ -119,15 +121,7 @@ app.post("/v1/ask", requireSession, async (c) => {
     const wantsSse = accept.includes("text/event-stream");
     const wantsJsonOnly = accept.includes("application/json") && !accept.includes("*/*");
 
-    const deps = {
-      resolveDb: (id: string, tenantId: string) => resolveDb(c.env.DB, id, tenantId),
-      planCache: makePlanCache(c.env.KV),
-      llm: getLLMRouter(),
-      exec: buildExec,
-      rateLimiter: makeRateLimiter(c.env.DB),
-      firstQuery: makeFirstQueryTracker(c.env.KV),
-      events: buildEventEmitter(c.env.EVENTS_QUEUE),
-    };
+    const deps = buildAskDeps(c.env);
     const orchestrateReq = { goal: body.goal, dbId: body.dbId, userId: session.user.id };
 
     if (wantsSse) {
@@ -198,6 +192,60 @@ app.post("/v1/stripe/webhook", async (c) => {
   return c.json(result.body, result.status);
 });
 
+// Chat surface (Slice 10 — DESIGN §3.2 "Signed-in surface").
+//
+// Two endpoints, both `requireSession`-gated. Stateless — every call
+// re-reads from D1, no in-isolate caching. The chat is one rolling
+// conversation per user; multi-thread / per-DB scoping is deferred
+// to Phase 1 alongside the anonymous-DB-adoption flow.
+//
+// `POST /v1/chat/messages` validates input → calls `postChatMessage`
+// (which writes the user row, runs `orchestrateAsk`, writes the
+// assistant row) → returns both rows. The orchestrator covers
+// rate-limiting, plan caching, exec, summarization — same surface
+// as `/v1/ask`. The chat handler is a persistence + history wrapper
+// over that, not a parallel pipeline.
+app.get("/v1/chat/messages", requireSession, async (c) => {
+  const session = c.var.session;
+  const store = makeChatStore(c.env.DB);
+  const messages = await store.list(session.user.id);
+  return c.json({ messages });
+});
+
+app.post("/v1/chat/messages", requireSession, async (c) => {
+  const session = c.var.session;
+
+  let body: { goal?: unknown; dbId?: unknown };
+  try {
+    body = (await c.req.json()) as typeof body;
+  } catch {
+    return c.json({ error: "invalid_json" }, 400);
+  }
+  if (typeof body.goal !== "string" || body.goal.trim().length === 0) {
+    return c.json({ error: "goal_required" }, 400);
+  }
+  if (typeof body.dbId !== "string" || body.dbId.length === 0) {
+    return c.json({ error: "dbId_required" }, 400);
+  }
+
+  const askDeps = buildAskDeps(c.env);
+  const result = await postChatMessage(
+    {
+      store: makeChatStore(c.env.DB),
+      // Production wires the real orchestrator. The chat orchestrator
+      // takes `ask` as a dep so unit tests can stub it without
+      // standing up rate-limiter / plan-cache / LLM router seams.
+      // TODO(slice 11): swap to streaming once SSE chat lands; for
+      // now the response shape is request/response.
+      ask: (req) => orchestrateAsk(askDeps, req),
+      now: () => Date.now(),
+      newId: () => crypto.randomUUID(),
+    },
+    { userId: session.user.id, goal: body.goal, dbId: body.dbId },
+  );
+  return c.json(result);
+});
+
 // Resolves the DB row's `connection_secret_ref` to a connection URL
 // from env. Phase 0 ships one shared Postgres (PLAN line 87), so the
 // ref is typically "DATABASE_URL". Throws `DbConfigError` if the ref
@@ -224,6 +272,21 @@ function serializeEvent(event: OrchestrateEvent): string {
 // the binding is unset, so tests don't need to mock a queue.
 function buildEventEmitter(queue: Queue | undefined): EventEmitter {
   return queue ? makeQueueEmitter(queue) : makeNoopEmitter();
+}
+
+// Production deps for `orchestrateAsk`. Shared between `POST /v1/ask`
+// and `POST /v1/chat/messages` so a future seam (e.g. swapping the
+// rate limiter, replacing the LLM router) lands in one place.
+function buildAskDeps(envBindings: Cloudflare.Env): OrchestrateDeps {
+  return {
+    resolveDb: (id, tenantId) => resolveDb(envBindings.DB, id, tenantId),
+    planCache: makePlanCache(envBindings.KV),
+    llm: getLLMRouter(),
+    exec: buildExec,
+    rateLimiter: makeRateLimiter(envBindings.DB),
+    firstQuery: makeFirstQueryTracker(envBindings.KV),
+    events: buildEventEmitter(envBindings.EVENTS_QUEUE),
+  };
 }
 
 // Typed over `AskError["status"]` so adding a new error variant fails

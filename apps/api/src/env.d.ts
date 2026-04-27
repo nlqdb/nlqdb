@@ -58,6 +58,21 @@ declare global {
       // without --remote can run; the webhook handler skips archive
       // writes when undefined.
       ASSETS?: R2Bucket;
+
+      // Resend API key for transactional email (Slice 10 — magic-link
+      // sign-in). Optional at type level: when unset, `makeEmailSender`
+      // returns a console-logging stub so `wrangler dev` and tests
+      // exercise the magic-link flow without a Resend account.
+      RESEND_API_KEY?: string;
+      // From-address override. Defaults to `nlqdb <hello@nlqdb.com>` in
+      // src/auth.ts; override in .dev.vars when sending from Resend's
+      // sandbox (`onboarding@resend.dev`) before the production
+      // sender domain is verified.
+      RESEND_FROM?: string;
+      // Post-verify landing page for magic-link clicks. Defaults to
+      // `https://nlqdb.com/app` in prod / `http://localhost:4321/app`
+      // in dev. Override per environment if the chat surface moves.
+      MAGIC_LINK_REDIRECT_URL?: string;
     }
   }
 }
