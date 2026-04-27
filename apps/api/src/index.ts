@@ -8,6 +8,7 @@ import { buildAskDeps, buildEventEmitter } from "./ask/build-deps.ts";
 import { orchestrateAsk } from "./ask/orchestrate.ts";
 import type { AskError, OrchestrateEvent } from "./ask/types.ts";
 import { auth, REVOCATION_KEY_PREFIX } from "./auth.ts";
+import { askFnFromDemoFixtures, DEMO_DB_ID } from "./chat/demo-shortcut.ts";
 import { postChatMessage } from "./chat/orchestrate.ts";
 import { makeChatStore } from "./chat/store.ts";
 import { buildDemoResult, makeRateLimiter as makeDemoRateLimiter } from "./demo.ts";
@@ -315,7 +316,16 @@ app.post("/v1/chat/messages", requireSession, async (c) => {
       return c.json(parsed.error.body, parsed.error.status);
     }
 
-    const askDeps = buildAskDeps(c.env);
+    // TEMPORARY (Slice 11 retires): `dbId="demo"` short-circuits to
+    // canned fixtures so signed-in users with zero DBs aren't stuck
+    // hitting `db_not_found` on every chat send. See
+    // `chat/demo-shortcut.ts` for the rationale.
+    const isDemo = parsed.body.dbId === DEMO_DB_ID;
+    const askFn = isDemo
+      ? askFnFromDemoFixtures()
+      : (req: Parameters<Parameters<typeof postChatMessage>[0]["ask"]>[0]) =>
+          orchestrateAsk(buildAskDeps(c.env), req);
+
     const outcome = await postChatMessage(
       {
         store: makeChatStore(c.env.DB),
@@ -324,12 +334,13 @@ app.post("/v1/chat/messages", requireSession, async (c) => {
         // standing up rate-limiter / plan-cache / LLM router seams.
         // TODO(slice 11): swap to streaming once SSE chat lands; for
         // now the response shape is request/response.
-        ask: (req) => orchestrateAsk(askDeps, req),
+        ask: askFn,
         now: () => Date.now(),
         newId: () => crypto.randomUUID(),
       },
       { userId: session.user.id, goal: parsed.body.goal, dbId: parsed.body.dbId },
     );
+    if (isDemo) span.setAttribute("nlqdb.chat.demo_shortcut", true);
 
     if (!outcome.ok) {
       span.setAttribute("nlqdb.chat.outcome", "rejected");
