@@ -16,12 +16,12 @@ if (typeof customElements !== "undefined" && !customElements.get("nlq-data")) {
 
 export { NlqDataElement, type NlqDataErrorDetail, type NlqDataLoadDetail } from "./element.ts";
 export {
-  ABORT_SENTINEL,
   type ApiErrorBody,
   type AskFailure,
   type AskOutcome,
   type AskParams,
   type AskSuccess,
+  type FetchLike,
   fetchAsk,
 } from "./fetch.ts";
 export { errorHtml, type NlqState, renderState } from "./render.ts";

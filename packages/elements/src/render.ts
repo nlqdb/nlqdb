@@ -39,9 +39,9 @@ export function errorHtml(failure: AskFailure): string {
 function errorMessage(failure: AskFailure): string {
   if (failure.kind === "network") return `Network error: ${failure.message}`;
   if (failure.kind === "auth") return "Authentication required.";
-  // api: surface the API's `status` slug (db_not_found, rate_limited, …)
-  // so the embedding page can branch on it; structured detail is on
-  // the `nlq-data:error` event, not the visible text.
-  if (typeof failure.error === "string") return `Error: ${failure.error}`;
-  return `Error: ${failure.error.status}`;
+  // api: include the HTTP status + the API's `status` slug
+  // (db_not_found, rate_limited, …) so the embedding page can branch
+  // on either; full structured detail is on the `nlq-data:error` event.
+  const slug = typeof failure.error === "string" ? failure.error : failure.error.status;
+  return `Error ${failure.status}: ${slug}`;
 }

@@ -1,10 +1,13 @@
 // `POST /v1/ask` client. Pure network layer — no DOM, no state.
 // `element.ts` wraps it with attribute reads + render swaps.
 //
-// Auth: cookie-based session today (Better Auth, `credentials: "include"`),
-// `pk_live_*` Authorization Bearer once Slice 11 lands. Both are sent
-// when present so this client is forward-compatible — the API just
-// ignores Authorization in Slice 10.
+// Auth: cookie-based session (Better Auth `__Host-session`) only
+// works same-origin to `app.nlqdb.com` — cross-origin embeds need
+// `pk_live_*` keys (Slice 11). Today the API ignores the Bearer
+// header but it's sent forward-compat when `api-key` is set.
+//
+// Aborts propagate as DOMException("AbortError"); callers `try/catch`
+// or check the signal. `fetchAsk` never invents an "aborted" sentinel.
 
 export type AskSuccess = {
   status: "ok";
@@ -36,19 +39,24 @@ export type AskParams = {
   endpoint: string;
   goal: string;
   dbId: string;
-  apiKey: string | null;
+  apiKey?: string;
   signal?: AbortSignal;
   // Override the default `fetch` — used in tests so they don't have
   // to monkey-patch a global.
   fetchImpl?: FetchLike;
 };
 
-export const ABORT_SENTINEL = Symbol("nlq-data:aborted");
+export async function fetchAsk(p: AskParams): Promise<AskOutcome> {
+  // Authorization to a non-https endpoint would expose `pk_live_*` /
+  // session bearers in plaintext on the wire. Warn (don't block —
+  // test harnesses + localhost dev are valid). Console spam from
+  // refresh polling here is a feature: misuse should be loud.
+  if (p.apiKey && !/^https:\/\//i.test(p.endpoint)) {
+    console.warn(
+      `[nlq-data] sending api-key to non-https endpoint ${p.endpoint} — possible credential leak.`,
+    );
+  }
 
-// Returns `ABORT_SENTINEL` when the caller aborts mid-flight, so the
-// element knows to stop processing without surfacing a fake "network
-// error" placeholder in the DOM.
-export async function fetchAsk(p: AskParams): Promise<AskOutcome | typeof ABORT_SENTINEL> {
   const fetchImpl = p.fetchImpl ?? fetch;
   const headers: Record<string, string> = {
     "content-type": "application/json",
@@ -62,14 +70,16 @@ export async function fetchAsk(p: AskParams): Promise<AskOutcome | typeof ABORT_
       method: "POST",
       headers,
       body: JSON.stringify({ goal: p.goal, dbId: p.dbId }),
-      // Cookie-bearing same-site / cross-site session is the v0 auth
-      // path (Better Auth `__Host-session`); harmless when caller has
-      // no cookie set.
+      // Same-origin cookie session (Better Auth `__Host-session`)
+      // only — host-only cookies are not sent cross-origin even with
+      // `include`. Harmless when no cookie is set.
       credentials: "include",
       signal: p.signal,
     });
   } catch (err) {
-    if (p.signal?.aborted) return ABORT_SENTINEL;
+    // AbortError propagates — callers (element.ts) early-return
+    // rather than rendering a fake "network error" placeholder.
+    if (err instanceof Error && err.name === "AbortError") throw err;
     return {
       ok: false,
       failure: { kind: "network", message: err instanceof Error ? err.message : String(err) },
@@ -84,9 +94,12 @@ export async function fetchAsk(p: AskParams): Promise<AskOutcome | typeof ABORT_
   try {
     body = await response.json();
   } catch {
+    // Response landed but the body wasn't JSON — likely an HTML
+    // error page from a CDN / proxy. Surface as an api failure with
+    // the actual HTTP status so devs can correlate, not as "network".
     return {
       ok: false,
-      failure: { kind: "network", message: "invalid_json_response" },
+      failure: { kind: "api", status: response.status, error: "invalid_json_response" },
     };
   }
 

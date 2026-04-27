@@ -75,7 +75,7 @@ describe("renderState — error", () => {
     expect(html).not.toContain("401");
   });
 
-  it("renders structured API errors using the error status slug", () => {
+  it("renders structured 4xx api errors with status + slug", () => {
     const html = renderState(
       {
         kind: "error",
@@ -88,15 +88,31 @@ describe("renderState — error", () => {
       "table",
     );
     expect(html).toContain('data-kind="api"');
-    expect(html).toContain("rate_limited");
+    expect(html).toContain("Error 429: rate_limited");
   });
 
-  it("renders bare-string API errors (e.g. goal_required) verbatim", () => {
+  it("renders structured 5xx api errors (db_unreachable) with status + slug", () => {
+    const html = renderState(
+      {
+        kind: "error",
+        failure: {
+          kind: "api",
+          status: 502,
+          error: { status: "db_unreachable", message: "connect ECONNREFUSED" },
+        },
+      },
+      "table",
+    );
+    expect(html).toContain('data-kind="api"');
+    expect(html).toContain("Error 502: db_unreachable");
+  });
+
+  it("renders bare-string api errors with status + slug", () => {
     const html = renderState(
       { kind: "error", failure: { kind: "api", status: 400, error: "goal_required" } },
       "table",
     );
-    expect(html).toContain("goal_required");
+    expect(html).toContain("Error 400: goal_required");
   });
 
   it("escapes hostile error messages structurally", () => {

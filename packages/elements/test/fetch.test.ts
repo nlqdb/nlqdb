@@ -1,5 +1,5 @@
-import { describe, expect, it, vi } from "vitest";
-import { ABORT_SENTINEL, type FetchLike, fetchAsk } from "../src/fetch.ts";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { type FetchLike, fetchAsk } from "../src/fetch.ts";
 
 // Minimal `Response`-shaped object — `fetchAsk` only ever touches
 // `ok`, `status`, and `.json()`, so we don't bother fabricating
@@ -42,7 +42,6 @@ describe("fetchAsk", () => {
       endpoint: "https://api.example/v1/ask",
       goal: "the most-loved coffee shops",
       dbId: "coffee",
-      apiKey: null,
       fetchImpl,
     });
 
@@ -83,7 +82,6 @@ describe("fetchAsk", () => {
       endpoint: "https://api.example/v1/ask",
       goal: "x",
       dbId: "d",
-      apiKey: null,
       fetchImpl,
     });
     expect(outcome).toEqual({
@@ -92,21 +90,22 @@ describe("fetchAsk", () => {
     });
   });
 
-  it("returns ABORT_SENTINEL when the caller aborts", async () => {
+  it("re-throws AbortError so callers can early-return", async () => {
     const ac = new AbortController();
+    const abortErr = Object.assign(new Error("aborted"), { name: "AbortError" });
     const fetchImpl = vi.fn<FetchLike>(async () => {
       ac.abort();
-      throw new DOMException("aborted", "AbortError");
+      throw abortErr;
     });
-    const outcome = await fetchAsk({
-      endpoint: "https://api.example/v1/ask",
-      goal: "x",
-      dbId: "d",
-      apiKey: null,
-      signal: ac.signal,
-      fetchImpl,
-    });
-    expect(outcome).toBe(ABORT_SENTINEL);
+    await expect(
+      fetchAsk({
+        endpoint: "https://api.example/v1/ask",
+        goal: "x",
+        dbId: "d",
+        signal: ac.signal,
+        fetchImpl,
+      }),
+    ).rejects.toBe(abortErr);
   });
 
   it("returns auth failure for 401", async () => {
@@ -114,10 +113,9 @@ describe("fetchAsk", () => {
       jsonResponse({ error: "unauthorized" }, { status: 401 }),
     );
     const outcome = await fetchAsk({
-      endpoint: "x",
+      endpoint: "https://api.example/v1/ask",
       goal: "x",
       dbId: "d",
-      apiKey: null,
       fetchImpl,
     });
     expect(outcome).toEqual({ ok: false, failure: { kind: "auth", status: 401 } });
@@ -126,24 +124,22 @@ describe("fetchAsk", () => {
   it("returns auth failure for 403", async () => {
     const fetchImpl = vi.fn<FetchLike>(async () => jsonResponse({}, { status: 403 }));
     const outcome = await fetchAsk({
-      endpoint: "x",
+      endpoint: "https://api.example/v1/ask",
       goal: "x",
       dbId: "d",
-      apiKey: null,
       fetchImpl,
     });
     expect(outcome).toEqual({ ok: false, failure: { kind: "auth", status: 403 } });
   });
 
-  it("surfaces the API's structured error for non-2xx responses", async () => {
+  it("surfaces structured 4xx errors (rate_limited)", async () => {
     const fetchImpl = vi.fn<FetchLike>(async () =>
       jsonResponse({ error: { status: "rate_limited", limit: 10, count: 11 } }, { status: 429 }),
     );
     const outcome = await fetchAsk({
-      endpoint: "x",
+      endpoint: "https://api.example/v1/ask",
       goal: "x",
       dbId: "d",
-      apiKey: null,
       fetchImpl,
     });
     expect(outcome).toEqual({
@@ -156,15 +152,37 @@ describe("fetchAsk", () => {
     });
   });
 
+  it("surfaces structured 5xx errors (db_unreachable)", async () => {
+    const fetchImpl = vi.fn<FetchLike>(async () =>
+      jsonResponse(
+        { error: { status: "db_unreachable", message: "connect ECONNREFUSED" } },
+        { status: 502 },
+      ),
+    );
+    const outcome = await fetchAsk({
+      endpoint: "https://api.example/v1/ask",
+      goal: "x",
+      dbId: "d",
+      fetchImpl,
+    });
+    expect(outcome).toEqual({
+      ok: false,
+      failure: {
+        kind: "api",
+        status: 502,
+        error: { status: "db_unreachable", message: "connect ECONNREFUSED" },
+      },
+    });
+  });
+
   it("preserves bare-string error bodies (goal_required / invalid_json)", async () => {
     const fetchImpl = vi.fn<FetchLike>(async () =>
       jsonResponse({ error: "goal_required" }, { status: 400 }),
     );
     const outcome = await fetchAsk({
-      endpoint: "x",
+      endpoint: "https://api.example/v1/ask",
       goal: "x",
       dbId: "d",
-      apiKey: null,
       fetchImpl,
     });
     expect(outcome).toEqual({
@@ -173,27 +191,80 @@ describe("fetchAsk", () => {
     });
   });
 
-  it("treats a non-JSON body as a network failure", async () => {
-    const fetchImpl = vi.fn<FetchLike>(
-      async () =>
-        ({
-          ok: true,
-          status: 200,
-          json: async () => {
-            throw new SyntaxError("Unexpected token");
-          },
-        }) as unknown as Response,
+  it("falls back to unknown_error when the error body shape is unfamiliar", async () => {
+    const fetchImpl = vi.fn<FetchLike>(async () =>
+      jsonResponse({ totally: "unexpected" }, { status: 500 }),
     );
     const outcome = await fetchAsk({
-      endpoint: "x",
+      endpoint: "https://api.example/v1/ask",
       goal: "x",
       dbId: "d",
-      apiKey: null,
       fetchImpl,
     });
     expect(outcome).toEqual({
       ok: false,
-      failure: { kind: "network", message: "invalid_json_response" },
+      failure: { kind: "api", status: 500, error: "unknown_error" },
+    });
+  });
+
+  it("treats a non-JSON body as an api failure with the response status", async () => {
+    const fetchImpl = vi.fn<FetchLike>(
+      async () =>
+        ({
+          ok: false,
+          status: 502,
+          json: async () => {
+            throw new SyntaxError("Unexpected token <");
+          },
+        }) as unknown as Response,
+    );
+    const outcome = await fetchAsk({
+      endpoint: "https://api.example/v1/ask",
+      goal: "x",
+      dbId: "d",
+      fetchImpl,
+    });
+    expect(outcome).toEqual({
+      ok: false,
+      failure: { kind: "api", status: 502, error: "invalid_json_response" },
+    });
+  });
+
+  describe("non-https + api-key", () => {
+    let warnSpy: ReturnType<typeof vi.spyOn>;
+
+    beforeEach(() => {
+      warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    });
+
+    afterEach(() => {
+      warnSpy.mockRestore();
+    });
+
+    it("warns when an api-key is sent to a non-https endpoint", async () => {
+      const fetchImpl = vi.fn<FetchLike>(async () => jsonResponse(successBody));
+      await fetchAsk({
+        endpoint: "http://insecure.example/v1/ask",
+        goal: "x",
+        dbId: "d",
+        apiKey: "pk_live_leakme",
+        fetchImpl,
+      });
+      expect(warnSpy).toHaveBeenCalled();
+      const message = warnSpy.mock.calls[0]?.[0] ?? "";
+      expect(message).toContain("non-https");
+      expect(message).toContain("api-key");
+    });
+
+    it("does not warn when no api-key is set", async () => {
+      const fetchImpl = vi.fn<FetchLike>(async () => jsonResponse(successBody));
+      await fetchAsk({
+        endpoint: "http://insecure.example/v1/ask",
+        goal: "x",
+        dbId: "d",
+        fetchImpl,
+      });
+      expect(warnSpy).not.toHaveBeenCalled();
     });
   });
 });

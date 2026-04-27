@@ -9,24 +9,51 @@
 - `<nlq-data>` custom element with `goal`, `db`, `query`, `api-key`,
   `endpoint`, `template`, `refresh` attributes.
 - Live `POST /v1/ask` integration. Default endpoint
-  `https://app.nlqdb.com/v1/ask`; override with the `endpoint` attr
-  for self-hosted / preview deploys.
+  `https://app.nlqdb.com/v1/ask`; override with `endpoint=` for
+  self-hosted / preview deploys.
 - Three client-side templates: `table`, `list`, `kv`.
-- Single-file ESM build at `dist/v1.js` for CDN distribution.
+- Public `el.refresh()` for imperative reload.
 - Events: `nlq-data:load` on success, `nlq-data:error` on failure
-  (network / auth / api). Both bubble + compose.
+  (`network` / `auth` / `api`). Both bubble + compose.
+- Default `aria-live="polite"` on the host so state transitions
+  are announced; opt out by setting your own value.
+- Single-file ESM build at `dist/v1.js` for CDN distribution.
+
+## Authentication
+
+Two paths:
+
+1. **`pk_live_*` publishable key** (Slice 11, the path real embeds
+   should use). Sent as `Authorization: Bearer <key>`. Read-only,
+   per-DB, origin-pinned, rate-limited.
+2. **Same-origin cookie session** (Better Auth `__Host-session`).
+   Only works when the page that hosts `<nlq-data>` is on
+   `app.nlqdb.com` itself — host-only cookies are not transmitted
+   cross-origin even with `credentials: include`. Useful for
+   internal tools, not for marketing pages.
+
+Until Slice 11 lands `pk_live_*` issuance, cross-origin embeds will
+401 — the bearer is sent but the API ignores it today. The element's
+markup states this honestly via the `nlq-data:error` event +
+`data-kind="auth"` placeholder.
+
+> [!WARNING]
+> Never bind `endpoint=` to user-controlled input (URL params, CMS
+> fields, etc.). The element sends your `api-key` as `Authorization:
+> Bearer …` to whatever URL the attribute resolves to. The element
+> warns to console when an api-key is sent over plain http, but only
+> the developer can prevent injection.
 
 ## What's NOT in v0.1 (Slice 11+)
 
-- `pk_live_*` publishable keys (origin-pinned, rate-limited). Today
-  the element sends the `api-key` attribute as `Authorization: Bearer`
-  and relies on `credentials: include` for cookie sessions; the API
-  ignores the Bearer header until Slice 11.
+- `pk_live_*` publishable key issuance + origin-pinning.
 - `<nlq-action>` writes counterpart.
 - Server-side template rendering (the `render: "html"` API path
   from DESIGN §3.5).
 - `card-grid` and `chart` templates.
 - SSE auto-upgrade.
+- Error backoff during refresh polling (today: hammers at the
+  configured cadence regardless of failure).
 
 ## Usage
 
@@ -56,13 +83,23 @@ The first import on a page registers `<nlq-data>` on
 ### Events
 
 ```js
-document.querySelector("nlq-data").addEventListener("nlq-data:load", (e) => {
+const el = document.querySelector("nlq-data");
+el.addEventListener("nlq-data:load", (e) => {
   // e.detail = { rows: number, cached: boolean }
 });
-document.querySelector("nlq-data").addEventListener("nlq-data:error", (e) => {
+el.addEventListener("nlq-data:error", (e) => {
   // e.detail.kind = "network" | "auth" | "api"
+  // for "api": e.detail.status (HTTP), e.detail.error (slug or { status, … })
 });
 ```
+
+### Imperative reload
+
+```js
+document.querySelector("nlq-data").refresh();
+```
+
+Coalesces with any pending attribute change (one fetch per microtask).
 
 ## Local dev
 
