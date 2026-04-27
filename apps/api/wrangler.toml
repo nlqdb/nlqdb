@@ -56,3 +56,52 @@ bucket_name = "nlqdb-assets"
 [[routes]]
 pattern = "app.nlqdb.com"
 custom_domain = true
+
+# Preview environment — deployed by `.github/workflows/preview-api.yml`
+# on every PR push to `nlqdb-api-preview` Worker. Reachable only via
+# the `*.workers.dev` URL: `routes = []` keeps `app.nlqdb.com` bound
+# to the prod Worker.
+#
+# Bindings are duplicated (rather than relied on for inheritance) so
+# wrangler v4's env-mode applies them unambiguously. The IDs match
+# the top-level block exactly: preview shares prod KV / D1 / Queue /
+# R2. Contamination risk is acceptable while nlqdb is pre-alpha and
+# traffic is single-digit; most PRs do not write to D1.
+#
+# Schema-changing PRs are NOT covered: preview shares prod D1, and
+# the workflow deliberately does NOT run `migrate:remote` (applying
+# an unmerged migration to prod defeats the point of "preview").
+# Test schema changes locally with `migrate:local` + `wrangler dev`
+# before opening the PR.
+#
+# Splitting into a dedicated preview D1 + KV is the upgrade path
+# when shared bindings start to bite. See RUNBOOK §6 "Preview
+# environments".
+
+[env.preview]
+name = "nlqdb-api-preview"
+routes = []
+
+[env.preview.vars]
+NODE_ENV = "production"
+
+[env.preview.observability]
+enabled = true
+
+[[env.preview.kv_namespaces]]
+binding = "KV"
+id = "5b086b03ead54f508271f31fc421bbaa"
+
+[[env.preview.d1_databases]]
+binding = "DB"
+database_name = "nlqdb-app"
+database_id = "98767eb0-65df-4787-87bf-c3952d851b29"
+migrations_dir = "migrations"
+
+[[env.preview.queues.producers]]
+binding = "EVENTS_QUEUE"
+queue = "nlqdb-events"
+
+[[env.preview.r2_buckets]]
+binding = "ASSETS"
+bucket_name = "nlqdb-assets"

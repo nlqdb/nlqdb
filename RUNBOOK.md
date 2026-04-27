@@ -227,13 +227,13 @@ the failure path (Basic auth rejected = wrong id or secret).
 
 **Strategy** (per surface):
 
-| Surface              | Hosting                  | Production deploy                                      | Branch / PR previews |
-| :------------------- | :----------------------- | :----------------------------------------------------- | :------------------- |
-| `apps/api`           | Cloudflare Workers       | GH Actions — `.github/workflows/deploy-api.yml`        | n/a (single env)     |
-| `apps/events-worker` | Cloudflare Workers       | GH Actions — `.github/workflows/deploy-events-worker.yml` | n/a (single env)  |
-| `apps/coming-soon`   | Cloudflare Pages         | GH Actions — `.github/workflows/deploy-coming-soon.yml`| via the same Pages project |
-| `apps/web`           | Cloudflare Pages         | **Cloudflare Pages git integration** (recommended; setup below) | automatic on every push to non-main branches |
-| `packages/elements`  | Cloudflare Pages         | **Cloudflare Pages git integration** (recommended; setup below) | automatic on every push to non-main branches |
+| Surface              | Hosting             | Production deploy                                          | PR preview                                                    |
+| :------------------- | :------------------ | :--------------------------------------------------------- | :------------------------------------------------------------ |
+| `apps/api`           | Cloudflare Workers  | GH Actions — `.github/workflows/deploy-api.yml`            | GH Actions — `.github/workflows/preview-api.yml` (single shared `nlqdb-api-preview` worker) |
+| `apps/events-worker` | Cloudflare Workers  | GH Actions — `.github/workflows/deploy-events-worker.yml`  | n/a (queue-only; nothing visible to preview)                  |
+| `apps/coming-soon`   | Cloudflare Pages    | GH Actions — `.github/workflows/deploy-coming-soon.yml`    | available via the Pages project (push branch + Pages emits a preview URL) |
+| `apps/web`           | Cloudflare Pages    | **Cloudflare Pages git integration** (one-time dashboard) | automatic per-branch + PR comment with the URL                |
+| `packages/elements`  | Cloudflare Pages    | **Cloudflare Pages git integration** (one-time dashboard) | automatic per-branch + PR comment with the URL                |
 
 Workers stay on GH Actions because they need pre-deploy migrations
 (`migrate:remote`) and the secrets-mirror sequence — those are
@@ -464,6 +464,84 @@ wrangler pages deploy packages/elements/dist --project-name=nlqdb-elements --bra
 
 CI bundle-size budget: < 6 KB gzipped (DESIGN §3.5). Enforced by
 `.github/workflows/ci.yml` job `build-elements`.
+
+### Preview environments
+
+What you see in a PR before merging, by surface:
+
+#### Pages — `apps/web`, `packages/elements`
+
+Free per-branch preview deploys come from Cloudflare Pages's git
+integration (one-time dashboard setup per project, documented above
+in the `apps/web` and `packages/elements` sections). After setup,
+every push to a non-`main` branch produces a preview URL of the form
+`<commit-sha>.<project>.pages.dev`, and Cloudflare comments the URL
+on the PR. No GH Actions YAML needed for previews — the integration
+handles everything.
+
+If preview deploys aren't appearing on PRs, the integration isn't
+wired yet. Re-do the dashboard setup steps for the affected project.
+
+#### Pages — `apps/coming-soon`
+
+The current GH Action only deploys on merge to `main`. To get
+branch previews, either:
+
+1. Switch coming-soon to Cloudflare Pages git integration (same
+   one-time dashboard setup as `nlqdb-web`); the GH Action becomes
+   redundant and can be removed.
+2. Or live without previews on coming-soon — the page is on its way
+   out once `apps/web` takes over `nlqdb.com`.
+
+Default recommendation: option (2). Coming-soon is short-lived.
+
+#### Workers — `apps/api`
+
+`.github/workflows/preview-api.yml` triggers on every PR push and
+deploys to a single shared `nlqdb-api-preview` Worker. It comments
+the preview URL on the PR (sticky — same comment is updated on each
+push). The preview is reachable on a `*.workers.dev` URL; the prod
+custom domain `app.nlqdb.com` stays bound to `nlqdb-api`.
+
+**Shared bindings.** The preview Worker uses the same KV / D1 /
+Queue / R2 as prod. This is intentional for v0 — most PRs don't
+write to D1, and the contamination risk is acceptable while traffic
+is single-digit. The configuration is in
+`apps/api/wrangler.toml` `[env.preview]`.
+
+**Schema-changing PRs are NOT covered.** The workflow deliberately
+skips `migrate:remote`: applying an unmerged migration to prod D1
+defeats the point. If a PR adds a migration, test locally with
+`migrate:local` + `wrangler dev` and call it out on the PR; the
+preview will 5xx routes that depend on the new schema until the
+PR merges and the production deploy runs migrations.
+
+**Concurrency.** Single shared preview means each PR push overwrites
+the previous Worker code. Two PRs in flight will see each other's
+code on the preview URL, last push wins. When that becomes
+disruptive, the upgrade path is per-PR named workers
+(e.g. `nlqdb-api-pr-${number}`) with a matching cleanup workflow on
+PR close — defer until needed.
+
+**Upgrade to fully-isolated previews** (separate D1 + KV) when
+shared bindings start to bite — typically when schema changes are
+common or when PR review needs production-grade fidelity:
+
+1. Provision `nlqdb-app-preview` D1 + `nlqdb-cache-preview` KV via
+   `scripts/provision-cf-resources.sh` (extend the script to take a
+   `preview` mode).
+2. Update `apps/api/wrangler.toml` `[env.preview]` to point bindings
+   at the new IDs.
+3. Add `bun run --cwd apps/api migrate:remote -- --env preview` (or
+   equivalent flag) to `preview-api.yml` `preCommands`. The
+   migration script needs an extension for the preview database
+   name.
+
+#### Workers — `apps/events-worker`
+
+Queue-only consumer with no public URL. Preview adds little
+visible value — defer until there's a clear reason to test
+unmerged consumer code against the preview queue.
 
 ---
 

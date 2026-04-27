@@ -1,0 +1,116 @@
+# nlqdb — preview deploys for apps/api on every PR push.
+#
+# Deploys the PR's HEAD as the `nlqdb-api-preview` Worker (defined in
+# `apps/api/wrangler.toml` `[env.preview]`). Reachable via the
+# Cloudflare `*.workers.dev` URL only — `app.nlqdb.com` stays bound
+# to prod.
+#
+# Single shared preview Worker: each PR push overwrites the previous
+# deployment. Concurrency keyed by PR number so only one deploy per
+# PR runs at a time, but DIFFERENT PRs share the same Worker (last
+# push wins). When parallel PR previews become useful, switch to
+# per-PR named workers (e.g. `nlqdb-api-pr-${number}`) with a
+# matching cleanup workflow on PR close.
+#
+# Bindings are shared with prod (KV / D1 / Queue / R2). The
+# workflow does NOT run `migrate:remote`: applying an unmerged
+# migration to prod D1 would defeat the point. Schema-changing PRs
+# need local testing — see RUNBOOK §6 "Preview environments".
+
+name: Preview API
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - "apps/api/**"
+      - "packages/auth-internal/**"
+      - "packages/db/**"
+      - "packages/events/**"
+      - "packages/llm/**"
+      - "packages/otel/**"
+      - ".github/workflows/preview-api.yml"
+
+concurrency:
+  group: preview-api-pr-${{ github.event.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: write
+  deployments: write
+
+jobs:
+  preview:
+    name: wrangler deploy --env preview
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: package.json
+
+      - name: Install workspace deps
+        run: bun install --frozen-lockfile
+
+      - name: Deploy preview
+        id: deploy
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: apps/api
+          command: deploy --env preview
+
+      # Sticky comment — looks up an existing preview comment by a
+      # hidden marker and edits it in place. Keeps the PR conversation
+      # clean: one comment per PR, updated on every push, instead of a
+      # new comment per deploy.
+      - name: Sticky preview comment
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const url = `${{ steps.deploy.outputs.deployment-url }}`;
+            const sha = context.sha.slice(0, 7);
+            const marker = '<!-- preview-api-sticky -->';
+            const ts = new Date().toISOString().replace('T', ' ').slice(0, 19) + ' UTC';
+
+            const urlLine = url
+              ? `- URL: <${url}>`
+              : `- URL: \`https://nlqdb-api-preview.<your-subdomain>.workers.dev\` (Cloudflare account subdomain — visible once on the dashboard)`;
+
+            const body = [
+              marker,
+              '🚀 **Preview API deployed**',
+              '',
+              urlLine,
+              `- Worker: \`nlqdb-api-preview\``,
+              `- Commit: \`${sha}\``,
+              `- Updated: ${ts}`,
+              '',
+              `Bindings are shared with prod (KV / D1 / Queue / R2). The preview workflow does **not** run \`migrate:remote\` — schema-changing PRs need local testing. See [RUNBOOK §6](../blob/main/RUNBOOK.md).`,
+            ].join('\n');
+
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            const existing = comments.find((c) => c.body?.includes(marker));
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body,
+              });
+            }
