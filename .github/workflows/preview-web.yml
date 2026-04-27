@@ -39,9 +39,11 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 6
     env:
-      # Job-scoped so the action AND the comment step both see the
-      # same file path. `runner.temp` is unique per job invocation.
-      WRANGLER_OUTPUT_FILE_PATH: ${{ runner.temp }}/wrangler-output.ndjson
+      # Job-scoped so the upload step AND the comment step both see
+      # the same path. `github.workspace` (not `runner.temp`) — `runner`
+      # context isn't available at job-level env per
+      # https://docs.github.com/en/actions/learn-github-actions/contexts#context-availability
+      WRANGLER_OUTPUT_FILE_PATH: ${{ github.workspace }}/wrangler-output.ndjson
     steps:
       - uses: actions/checkout@v4
 

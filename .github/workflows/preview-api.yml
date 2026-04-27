@@ -56,12 +56,16 @@ jobs:
     timeout-minutes: 5
     env:
       # `cloudflare/wrangler-action@v3` doesn't populate the
-      # `deployment-url` step output for the `versions upload` command
+      # `deployment-url` step output for `versions upload`
       # (cloudflare/wrangler-action#343). The supported machine-readable
       # hook is `WRANGLER_OUTPUT_FILE_PATH` — wrangler writes an ND-JSON
       # event log to this file, including a `version-upload` entry with
       # `preview_url`. We parse that in the comment step.
-      WRANGLER_OUTPUT_FILE_PATH: ${{ runner.temp }}/wrangler-output.ndjson
+      #
+      # `github.workspace` not `runner.temp` — `runner` context isn't
+      # available at job-level env. See
+      # https://docs.github.com/en/actions/learn-github-actions/contexts#context-availability
+      WRANGLER_OUTPUT_FILE_PATH: ${{ github.workspace }}/wrangler-output.ndjson
     steps:
       - uses: actions/checkout@v4
 
