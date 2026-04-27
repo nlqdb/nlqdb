@@ -18,16 +18,20 @@
 
 set -eu
 
-if [ -z "${WRANGLER_OUTPUT_DIR:-}" ] || [ ! -d "$WRANGLER_OUTPUT_DIR" ]; then
-  echo "WRANGLER_OUTPUT_DIR not set or missing — skipping preview-URL capture"
+# Source the directory from `WRANGLER_OUTPUT_FILE_DIRECTORY` (the
+# wrangler CLI env var we set ourselves) with a fallback to
+# `WRANGLER_OUTPUT_DIR` (the wrangler-action's internal name, kept for
+# back-compat in case this script is ever invoked from postCommands).
+DIR="${WRANGLER_OUTPUT_FILE_DIRECTORY:-${WRANGLER_OUTPUT_DIR:-}}"
+if [ -z "$DIR" ] || [ ! -d "$DIR" ]; then
+  echo "wrangler output dir not set or missing — skipping preview-URL capture"
   exit 0
 fi
 
-# `cat` returns 0 even with no matches because the glob expands to an
-# empty arg list when nothing matches and `cat` reads stdin; redirect
-# stdin from /dev/null defensively. `jq -rs` slurps every event into
-# an array; `select(.type==...)` filters; `first` takes the head.
-URL=$(cat "$WRANGLER_OUTPUT_DIR"/wrangler-output-*.json </dev/null 2>/dev/null \
+# `cat` reads stdin if the glob doesn't match; redirect stdin from
+# /dev/null defensively. `jq -rs` slurps every event into an array;
+# `select(.type==...)` filters; `first` takes the head.
+URL=$(cat "$DIR"/wrangler-output-*.json </dev/null 2>/dev/null \
   | jq -rs 'map(select(.type=="version-upload")) | first | .preview_url // .preview_alias_url // empty' \
   || true)
 

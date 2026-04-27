@@ -64,25 +64,27 @@ jobs:
       - name: Install workspace deps
         run: bun install --frozen-lockfile
 
-      # The action sets `WRANGLER_OUTPUT_DIR` to a UUID-named temp dir
-      # *inside* its own step (cloudflare/wrangler-action#343 — the
-      # action's own logic only extracts URLs from `deploy` events,
-      # not from `version-upload`). `postCommands` runs after wrangler
-      # but still inside the action's step, so `$WRANGLER_OUTPUT_DIR`
-      # is in scope; we parse the ND-JSON ourselves and surface the
-      # preview URL via `$GITHUB_ENV` for the comment step.
+      # Run wrangler directly. wrangler-action@v3's `postCommands`
+      # doesn't see `WRANGLER_OUTPUT_DIR` (set only in the wrangler
+      # subprocess env), and its `deployment-url` output is broken for
+      # `versions upload` (cloudflare/wrangler-action#343). Direct
+      # invocation lets us pin `WRANGLER_OUTPUT_FILE_DIRECTORY` to a
+      # known path and parse the ND-JSON in a follow-up step.
       - name: Upload preview version
         id: deploy
-        uses: cloudflare/wrangler-action@v3
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          workingDirectory: apps/api
-          command: versions upload --message "PR #${{ github.event.number }} @ ${{ github.event.pull_request.head.sha }}"
-          # `postCommands` runs each newline as its own `sh -c`, so a
-          # multi-line if/fi block is invalid here. Delegate to a
-          # single-line script invocation; logic lives in the .sh file.
-          postCommands: sh ${{ github.workspace }}/scripts/extract-wrangler-preview-url.sh
+        working-directory: apps/api
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          WRANGLER_OUTPUT_FILE_DIRECTORY: ${{ github.workspace }}/wrangler-out
+        run: |
+          mkdir -p "$WRANGLER_OUTPUT_FILE_DIRECTORY"
+          bunx wrangler versions upload --message "PR #${{ github.event.number }} @ ${{ github.event.pull_request.head.sha }}"
+
+      - name: Extract preview URL
+        env:
+          WRANGLER_OUTPUT_FILE_DIRECTORY: ${{ github.workspace }}/wrangler-out
+        run: sh "$GITHUB_WORKSPACE/scripts/extract-wrangler-preview-url.sh"
 
       # Sticky comment — looks up an existing preview comment by a
       # hidden marker and edits it in place. Keeps the PR conversation
