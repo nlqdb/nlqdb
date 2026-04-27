@@ -217,15 +217,17 @@ jobs:
         working-directory: packages/elements
         run: bun run build
 
-      # DESIGN §3.5 caps the bundle at < 6 KB gzipped. Failing CI on
-      # regression is cheaper than discovering it after a release.
+      # DESIGN §3.5 caps the bundle at < 6 KB gzipped (strict). 6144
+      # bytes is exactly 6 KB, so the failure threshold is `>= 6144`.
+      # Failing CI on regression is cheaper than discovering it after
+      # a release.
       - name: Bundle-size budget
         working-directory: packages/elements
         run: |
           size=$(gzip -c dist/v1.js | wc -c)
-          echo "::notice::elements/v1.js gzipped: ${size} bytes"
-          if [ "$size" -gt 6144 ]; then
-            echo "::error::Bundle exceeds 6 KB gzipped budget (DESIGN §3.5)"
+          echo "::notice::elements/v1.js gzipped: ${size} bytes (cap: 6144)"
+          if [ "$size" -ge 6144 ]; then
+            echo "::error::Bundle reached or exceeded 6 KB gzipped budget (DESIGN §3.5)"
             exit 1
           fi
 

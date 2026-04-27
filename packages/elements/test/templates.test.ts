@@ -34,6 +34,13 @@ describe("formatValue", () => {
     expect(formatValue({ a: 1 })).toBe('{"a":1}');
     expect(formatValue([1, 2])).toBe("[1,2]");
   });
+
+  it("degrades to '[circular]' on circular references rather than throwing", () => {
+    type Circ = { self?: Circ };
+    const circular: Circ = {};
+    circular.self = circular;
+    expect(formatValue(circular)).toBe("[circular]");
+  });
 });
 
 describe("tableTemplate", () => {
@@ -115,5 +122,33 @@ describe("renderTemplate", () => {
   it("treats non-array data as empty", () => {
     expect(renderTemplate("table", "not an array")).toContain("nlq-empty");
     expect(renderTemplate("list", null)).toContain("nlq-empty");
+  });
+});
+
+describe("template hostile-input resilience", () => {
+  // Real APIs (and especially LLM-generated payloads) occasionally
+  // mix shapes. Templates must skip non-row entries instead of
+  // throwing, otherwise one bad record blanks the whole render.
+  it("filters null / primitive / array entries from row data", () => {
+    const messy = [{ name: "Maya" }, null, "string", 42, [1, 2], { name: "Jordan" }];
+    const html = tableTemplate(messy);
+    expect(html).toContain("<td>Maya</td>");
+    expect(html).toContain("<td>Jordan</td>");
+    // 2 rows of <tr> in tbody (Maya + Jordan, no null/string/array/number)
+    expect(html.match(/<tr>/g)?.length).toBe(3); // 1 thead + 2 tbody
+  });
+
+  it("returns the empty placeholder when every row is invalid", () => {
+    expect(tableTemplate([null, "x", 1])).toContain("nlq-empty");
+    expect(listTemplate([null, "x", 1])).toContain("nlq-empty");
+    expect(kvTemplate([null, "x", 1])).toContain("nlq-empty");
+  });
+
+  it("survives circular references in cell values without throwing", () => {
+    type Circ = { self?: Circ };
+    const circular: Circ = {};
+    circular.self = circular;
+    const html = tableTemplate([{ payload: circular }]);
+    expect(html).toContain("[circular]");
   });
 });

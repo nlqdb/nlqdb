@@ -321,7 +321,11 @@ h3 {
   padding: 6px 10px;
   border-bottom: 1px solid var(--border);
   text-align: left;
-  white-space: nowrap;
+  vertical-align: top;
+  /* `anywhere` only kicks in for content that won't fit; normal text
+   * still wraps at word boundaries. Long URLs / IDs no longer blow
+   * out the viewport. */
+  overflow-wrap: anywhere;
 }
 
 .nlq-table th {

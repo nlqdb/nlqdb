@@ -1,6 +1,6 @@
 // Single entry point. Importing this module:
 //   - registers `<nlq-data>` on `customElements` (idempotent)
-//   - re-exports the class + template registry for programmatic use
+//   - re-exports the class + template helpers for programmatic use
 //
 // Usage modes:
 //   1. CDN script tag — `<script src="https://elements.nlqdb.com/v1.js" type="module">`
@@ -14,5 +14,13 @@ if (typeof customElements !== "undefined" && !customElements.get("nlq-data")) {
   customElements.define("nlq-data", NlqDataElement);
 }
 
-export { NlqDataElement } from "./element.ts";
-export { type Row, type TemplateName, templates } from "./templates.ts";
+export { NlqDataElement, type NlqDataLoadDetail } from "./element.ts";
+export {
+  escapeHtml,
+  formatValue,
+  type Row,
+  renderTemplate,
+  type TemplateFn,
+  type TemplateName,
+  templates,
+} from "./templates.ts";
