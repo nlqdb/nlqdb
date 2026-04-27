@@ -229,7 +229,10 @@ the failure path (Basic auth rejected = wrong id or secret).
 
 - Source: `apps/coming-soon/` (HTML + CSS, no build step).
 - Hosting: Cloudflare Pages project `nlqdb-coming-soon`.
-- Deploy: `./scripts/deploy-coming-soon.sh` (idempotent — creates the
+- Deploy: auto on merge to `main` when `apps/coming-soon/**` changes
+  (`.github/workflows/deploy-coming-soon.yml`, uses
+  `CLOUDFLARE_API_TOKEN` + `CLOUDFLARE_ACCOUNT_ID` GHA secrets).
+  Manual: `./scripts/deploy-coming-soon.sh` (idempotent — creates the
   project on first run, pushes a new deployment on re-runs).
   Shortcut: `bun --cwd apps/coming-soon run deploy`.
 - Custom domains: `nlqdb.com`, `www.nlqdb.com`.
