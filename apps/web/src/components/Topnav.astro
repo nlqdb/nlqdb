@@ -1,0 +1,19 @@
+---
+interface Props {
+  current?: "manifesto";
+}
+const { current } = Astro.props;
+---
+
+<header class="topnav">
+  <a class="topnav__brand" href="/">nlqdb</a>
+  <nav class="topnav__links" aria-label="Primary">
+    <a
+      href="/manifesto"
+      aria-current={current === "manifesto" ? "page" : undefined}
+    >
+      Manifesto
+    </a>
+    <a href="mailto:hello@nlqdb.com">Contact</a>
+  </nav>
+</header>

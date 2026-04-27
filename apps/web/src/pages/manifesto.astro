@@ -1,82 +1,13 @@
 ---
+import Footer from "../components/Footer.astro";
+import Topnav from "../components/Topnav.astro";
+import { inversion, tenets } from "../data/manifesto";
 import Base from "../layouts/Base.astro";
 
 // Long-form manifesto: §0 of DESIGN.md, written for humans rather
 // than spec-readers. AEO-friendly: definition lead in the first 150
-// words; one direct-answer block; FAQ JSON-LD via the Base layout.
-
-const tenets = [
-  {
-    n: "01",
-    title: "Free. Forever.",
-    body: [
-      "You can sign up, build a thing, and ship it to production without a credit card. That isn't a trial. That's the product.",
-      "Every cost upgrade is gated on a real signal — usually that someone is paying us for the thing they shipped. Until then the bill is zero, the limits are honest, and the free tier is the same engine paying customers run on.",
-    ],
-  },
-  {
-    n: "02",
-    title: "Open source. By default.",
-    body: [
-      "The engine, the CLI, the MCP server, the SDK — all under FSL-1.1-ALv2. Source-available now, Apache 2.0 in two years. The cloud is a convenience, not a moat. If we ever try to wall something off, you can fork the engine and run it yourself.",
-    ],
-  },
-  {
-    n: "03",
-    title: "Simple. One way to do each thing.",
-    body: [
-      "Two endpoints. Two CLI verbs. One chat box. No config files in the first 60 seconds. No “pick a region.” No schema. fetch is the SDK.",
-      "Every error is one sentence with the next action. If a feature needs a tutorial to use, it failed. If two engineers disagree on a design, we ship the simpler one.",
-    ],
-  },
-  {
-    n: "04",
-    title: "Effortless UX.",
-    body: [
-      "Zero modals. Zero “are you sure?” except for destructive actions. Keyboard-first. The chat is the product; everything else is a disclosure that you opt into when you actually need it.",
-    ],
-  },
-  {
-    n: "05",
-    title: "Seamless auth — one identity, four surfaces, zero friction.",
-    body: [
-      "No login wall before first value. Every surface produces a working answer before asking who you are. The DB you create before signing in adopts to your account when you do.",
-      "One sign-in covers everything. Web, CLI, every MCP host — same identity. Tokens refresh silently. You will never see a 401.",
-      "Credentials live in the OS keychain. Revocation is instant and visible. Every token on every device, listed with last-used; one click revokes it.",
-    ],
-  },
-  {
-    n: "06",
-    title: "Goal-first, not DB-first.",
-    body: [
-      "Nobody woke up wanting to create a database. They woke up wanting a meal-planner, an agent that remembers them, the number for the 4pm sync. The database is plumbing.",
-      "Every surface starts with a goal. The DB materialises as a side effect, named after the thing you described, ready to query. You can always reach the raw Postgres URL — it’s one click away — but you almost never need to.",
-    ],
-  },
-  {
-    n: "07",
-    title: "Bullet-proof by design — not by handling.",
-    body: [
-      "We make bad states unreachable, not branched on. Schemas only widen, so there is no “schema mismatch” code path. Every mutating call carries an idempotency key, so retries are safe by construction. Plans are content-addressed, so cache invalidation has nothing to invalidate.",
-      "Destructive operations require a diff preview and a second confirm. Numeric inputs are bounded, so there is no NaN, no overflow. Secrets are scoped per-DB, so there is no “wrong tenant” branch to write a test for.",
-    ],
-  },
-  {
-    n: "08",
-    title: "Creative. By policy.",
-    body: [
-      "The product looks and feels nothing like a Tailwind template. Personality is required. Acid lime on near-black, JetBrains Mono headlines, hard shadows, kinetic typography on the words that matter. Stock photos are forbidden. Logo grids are forbidden. “Trusted by” is forbidden.",
-    ],
-  },
-  {
-    n: "09",
-    title: "Fast. Measured.",
-    body: [
-      "p50 query under 400ms on cache hit. p95 under 1.5s on cache miss. Cold start under 800ms. CLI binary under 8MB, starts in under 30ms.",
-      "Marketing site: Lighthouse 100 on every metric. First paint under 600ms on 4G. Numbers exist so we can fail them in CI, not so we can quote them in a deck.",
-    ],
-  },
-];
+// words; one direct-answer block; tenet content sourced from
+// `data/manifesto`.
 ---
 
 <Base
@@ -85,13 +16,7 @@ const tenets = [
   canonical="/manifesto"
 >
   <div class="page">
-    <header class="topnav">
-      <a class="topnav__brand" href="/">nlqdb</a>
-      <nav class="topnav__links" aria-label="Primary">
-        <a href="/manifesto" aria-current="page">Manifesto</a>
-        <a href="mailto:hello@nlqdb.com">Contact</a>
-      </nav>
-    </header>
+    <Topnav current="manifesto" />
 
     <main class="manifesto">
       <header class="manifesto__head">
@@ -127,17 +52,21 @@ const tenets = [
       </section>
 
       <ol class="tenets">
-        {tenets.map((t) => (
-          <li class="tenet">
-            <div class="tenet__head">
-              <span class="tenet__num" aria-hidden="true">{t.n}</span>
-              <h2 class="tenet__title">{t.title}</h2>
-            </div>
-            <div class="tenet__body">
-              {t.body.map((p) => <p>{p}</p>)}
-            </div>
-          </li>
-        ))}
+        {
+          tenets.map((t) => (
+            <li class="tenet">
+              <div class="tenet__head">
+                <span class="tenet__num">{t.n}</span>
+                <h2 class="tenet__title">{t.title}</h2>
+              </div>
+              <div class="tenet__body">
+                {t.body.map((p) => (
+                  <p>{p}</p>
+                ))}
+              </div>
+            </li>
+          ))
+        }
       </ol>
 
       <section class="manifesto__inversion" aria-labelledby="inversion-title">
@@ -150,37 +79,30 @@ const tenets = [
           reframed.
         </p>
 
-        <div class="inversion-table">
-          <div class="inversion-row inversion-row--head">
-            <div>Surface</div>
-            <div>Old &mdash; DB-first</div>
-            <div>New &mdash; goal-first</div>
-          </div>
-          <div class="inversion-row">
-            <div>Marketing hero</div>
-            <div>&ldquo;Name your database&rdquo;</div>
-            <div>&ldquo;What are you building?&rdquo;</div>
-          </div>
-          <div class="inversion-row">
-            <div>Platform first run</div>
-            <div>&ldquo;Create database&rdquo; button</div>
-            <div>One chat input; DB created silently</div>
-          </div>
-          <div class="inversion-row">
-            <div>CLI first command</div>
-            <div><code>nlq db create orders</code></div>
-            <div><code>nlq new "an orders tracker"</code></div>
-          </div>
-          <div class="inversion-row">
-            <div>MCP first call</div>
-            <div><code>nlqdb_create_database("memory")</code></div>
-            <div><code>nlqdb_query("memory", "remember&hellip;")</code></div>
-          </div>
-          <div class="inversion-row">
-            <div>HTML element</div>
-            <div><code>db="orders"</code> required</div>
-            <div><code>goal="&hellip;"</code> leads; <code>db</code> inferred</div>
-          </div>
+        <div class="inversion-table-wrap">
+          <table class="inversion-table">
+            <caption class="inversion-table__caption">
+              Surface-by-surface inversion of the first action.
+            </caption>
+            <thead>
+              <tr>
+                <th scope="col">Surface</th>
+                <th scope="col">Old &mdash; DB-first</th>
+                <th scope="col">New &mdash; goal-first</th>
+              </tr>
+            </thead>
+            <tbody>
+              {
+                inversion.map((row) => (
+                  <tr>
+                    <th scope="row">{row.surface}</th>
+                    <td set:html={row.oldHtml} />
+                    <td set:html={row.newHtml} />
+                  </tr>
+                ))
+              }
+            </tbody>
+          </table>
         </div>
       </section>
 
@@ -214,15 +136,259 @@ const tenets = [
       </p>
     </main>
 
-    <footer class="foot">
-      <span>&copy; nlqdb &middot; Pre-alpha</span>
-      <span>
-        <a href="/manifesto">Manifesto</a>
-        &middot;
-        <a href="https://nlqdb.com/privacy">Privacy</a>
-        &middot;
-        <a href="https://nlqdb.com/terms">Terms</a>
-      </span>
-    </footer>
+    <Footer />
   </div>
 </Base>
+
+<style is:global>
+  .manifesto {
+    padding: clamp(48px, 8vw, 96px) 0 clamp(48px, 6vw, 80px);
+    max-width: 760px;
+    margin: 0 auto;
+  }
+
+  .manifesto__head {
+    margin-bottom: clamp(40px, 6vw, 64px);
+  }
+
+  .manifesto__kicker {
+    margin: 0 0 16px;
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+
+  .manifesto__title {
+    font-size: clamp(36px, 6vw, 64px);
+    letter-spacing: -0.03em;
+    line-height: 0.96;
+    margin: 0 0 24px;
+  }
+
+  .manifesto__lede {
+    font-family: var(--mono);
+    font-size: clamp(16px, 2vw, 19px);
+    color: var(--fg);
+    margin: 0 0 16px;
+    line-height: 1.5;
+    max-width: 56ch;
+  }
+
+  .manifesto__sub {
+    margin: 0;
+    color: var(--fg-dim);
+    font-size: clamp(14px, 1.6vw, 16px);
+    max-width: 60ch;
+  }
+
+  .manifesto__answer {
+    margin: 0 0 clamp(32px, 5vw, 48px);
+    padding: clamp(20px, 3vw, 28px);
+    border: 2px solid var(--accent);
+    background: var(--bg-elev);
+    font-size: clamp(15px, 1.6vw, 16px);
+    color: var(--fg);
+  }
+
+  .manifesto__answer p {
+    margin: 0;
+  }
+
+  .manifesto__answer strong {
+    color: var(--accent);
+    font-weight: 700;
+  }
+
+  /* Tenet list. The <ol>'s native numbers are suppressed visually,
+     but the explicit numeric span IS announced (no aria-hidden) so
+     screen readers still hear "01 Free. Forever." in order. */
+  .tenets {
+    list-style: none;
+    margin: 0 0 clamp(40px, 6vw, 64px);
+    padding: 0;
+    display: grid;
+    gap: clamp(20px, 3vw, 28px);
+  }
+
+  .tenet {
+    border: 2px solid var(--border-strong);
+    padding: clamp(20px, 3vw, 28px);
+    background: var(--bg-elev);
+  }
+
+  .tenet__head {
+    display: flex;
+    align-items: baseline;
+    gap: 16px;
+    margin-bottom: 14px;
+    flex-wrap: wrap;
+  }
+
+  .tenet__num {
+    font-family: var(--mono);
+    font-size: clamp(14px, 1.5vw, 15px);
+    color: var(--accent);
+    font-weight: 700;
+    letter-spacing: 0.04em;
+  }
+
+  .tenet__title {
+    font-family: var(--mono);
+    font-size: clamp(18px, 2.4vw, 22px);
+    letter-spacing: -0.01em;
+    margin: 0;
+    line-height: 1.2;
+  }
+
+  .tenet__body p {
+    margin: 0 0 12px;
+    font-size: clamp(15px, 1.6vw, 16px);
+    color: var(--fg-dim);
+    line-height: 1.7;
+  }
+
+  .tenet__body p:last-child {
+    margin-bottom: 0;
+  }
+
+  .manifesto__h2 {
+    font-family: var(--mono);
+    font-size: clamp(20px, 3vw, 28px);
+    letter-spacing: -0.02em;
+    margin: 0 0 16px;
+  }
+
+  .manifesto__inversion {
+    margin: 0 0 clamp(40px, 6vw, 64px);
+  }
+
+  .manifesto__inversion p {
+    color: var(--fg-dim);
+    margin: 0 0 20px;
+    font-size: clamp(15px, 1.6vw, 16px);
+  }
+
+  /* Real <table> — gives screen-reader users row/col navigation. */
+  .inversion-table-wrap {
+    border: 2px solid var(--border-strong);
+    background: var(--bg-elev);
+    overflow-x: auto;
+  }
+
+  .inversion-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: var(--mono);
+    font-size: 13px;
+    text-align: left;
+  }
+
+  .inversion-table__caption {
+    caption-side: top;
+    text-align: left;
+    padding: 12px 16px;
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--accent);
+    background: var(--bg);
+    border-bottom: 2px solid var(--border-strong);
+  }
+
+  .inversion-table th,
+  .inversion-table td {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+    font-weight: normal;
+  }
+
+  .inversion-table thead th {
+    color: var(--accent);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-size: 11px;
+    background: var(--bg);
+  }
+
+  .inversion-table tbody tr:last-child th,
+  .inversion-table tbody tr:last-child td {
+    border-bottom: none;
+  }
+
+  .inversion-table th[scope="row"] {
+    color: var(--fg);
+  }
+
+  .inversion-table code {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--fg);
+  }
+
+  @media (max-width: 640px) {
+    .inversion-table thead {
+      display: none;
+    }
+    .inversion-table,
+    .inversion-table tbody,
+    .inversion-table tr {
+      display: block;
+    }
+    .inversion-table tr {
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border);
+    }
+    .inversion-table tr:last-child {
+      border-bottom: none;
+    }
+    .inversion-table th[scope="row"] {
+      display: block;
+      padding: 0 0 4px;
+      border-bottom: none;
+      color: var(--accent);
+    }
+    .inversion-table td {
+      display: block;
+      padding: 2px 0;
+      border-bottom: none;
+    }
+  }
+
+  .manifesto__not {
+    margin: 0 0 clamp(40px, 6vw, 64px);
+  }
+
+  .not-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: grid;
+    gap: 12px;
+  }
+
+  .not-list li {
+    padding: 14px 18px;
+    border: 1px solid var(--border);
+    font-size: 15px;
+    color: var(--fg-dim);
+    line-height: 1.5;
+  }
+
+  .not-list strong {
+    color: var(--accent);
+    font-family: var(--mono);
+    font-size: 13px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    margin-right: 6px;
+  }
+
+  .manifesto__cta {
+    margin: 0;
+    padding-top: clamp(20px, 3vw, 28px);
+    border-top: 1px solid var(--border);
+  }
+</style>

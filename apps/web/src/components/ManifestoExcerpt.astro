@@ -1,21 +1,9 @@
 ---
-// Below-the-fold excerpt from the manifesto (DESIGN §0). Three
-// non-negotiables, lifted directly. Full thesis lives at /manifesto.
+// Below-the-fold manifesto teaser. Three loudest tenets — content
+// sourced from `data/manifesto` so the home page and /manifesto stay
+// editable from one file.
 
-const tenets = [
-  {
-    title: "Free, forever",
-    body: "Sign up, build, ship to production without a credit card. The free tier isn't a trial — it's the product. Every cost upgrade is gated on a real signal: paying customers, not theoretical scale.",
-  },
-  {
-    title: "No login wall before first value",
-    body: "Every surface produces a working answer before asking who you are. Anonymous-mode is the default. The DB you create before signing in adopts to your account when you do — one row update, no migration prompt.",
-  },
-  {
-    title: "Goal-first, not DB-first",
-    body: "Nobody woke up wanting to create a database. They want a meal-planner, an agent that remembers, the number for the 4pm sync. The DB materialises as a side effect of the goal.",
-  },
-];
+import { excerpt } from "../data/manifesto";
 ---
 
 <section class="manifesto-excerpt" aria-labelledby="manifesto-excerpt-title">
@@ -27,13 +15,17 @@ const tenets = [
   </header>
 
   <ol class="manifesto-excerpt__list">
-    {tenets.map((t, i) => (
-      <li class="manifesto-excerpt__item">
-        <span class="manifesto-excerpt__num">{String(i + 1).padStart(2, "0")}</span>
-        <h3 class="manifesto-excerpt__itemTitle">{t.title}</h3>
-        <p class="manifesto-excerpt__body">{t.body}</p>
-      </li>
-    ))}
+    {
+      excerpt.map((t, i) => (
+        <li class="manifesto-excerpt__item">
+          <span class="manifesto-excerpt__num">
+            {String(i + 1).padStart(2, "0")}
+          </span>
+          <h3 class="manifesto-excerpt__item-title">{t.title}</h3>
+          <p class="manifesto-excerpt__body">{t.body}</p>
+        </li>
+      ))
+    }
   </ol>
 
   <p class="manifesto-excerpt__more">
@@ -42,3 +34,93 @@ const tenets = [
     </a>
   </p>
 </section>
+
+<style is:global>
+  .manifesto-excerpt {
+    padding: clamp(48px, 8vw, 96px) 0;
+    border-top: 1px solid var(--border);
+  }
+
+  .manifesto-excerpt__head {
+    margin-bottom: clamp(28px, 4vw, 40px);
+  }
+
+  .manifesto-excerpt__kicker {
+    margin: 0 0 12px;
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+
+  .manifesto-excerpt__title {
+    font-family: var(--mono);
+    font-size: clamp(24px, 3.6vw, 36px);
+    letter-spacing: -0.02em;
+    max-width: 22ch;
+  }
+
+  .manifesto-excerpt__list {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 clamp(24px, 4vw, 32px);
+    display: grid;
+    gap: 16px;
+  }
+
+  @media (min-width: 720px) {
+    .manifesto-excerpt__list {
+      grid-template-columns: repeat(3, 1fr);
+      gap: 24px;
+    }
+  }
+
+  .manifesto-excerpt__item {
+    padding: clamp(20px, 2.5vw, 28px);
+    border: 2px solid var(--border-strong);
+    background: var(--bg-elev);
+    box-shadow: var(--shadow-hard);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .manifesto-excerpt__num {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.16em;
+    color: var(--accent);
+  }
+
+  .manifesto-excerpt__item-title {
+    font-family: var(--mono);
+    font-size: clamp(15px, 1.7vw, 17px);
+    letter-spacing: -0.01em;
+    color: var(--fg);
+    line-height: 1.25;
+  }
+
+  .manifesto-excerpt__body {
+    margin: 0;
+    font-size: 14px;
+    color: var(--fg-dim);
+    line-height: 1.6;
+  }
+
+  .manifesto-excerpt__more {
+    margin: 0;
+    font-family: var(--mono);
+    font-size: 14px;
+  }
+
+  .manifesto-excerpt__link {
+    text-decoration: none;
+    border-bottom: 2px solid var(--accent);
+    padding-bottom: 2px;
+  }
+
+  .manifesto-excerpt__link:hover {
+    color: var(--accent);
+  }
+</style>
