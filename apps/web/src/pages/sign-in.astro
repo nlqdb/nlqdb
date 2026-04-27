@@ -26,6 +26,19 @@ import Base from "../layouts/Base.astro";
       <h1 class="signin__title">Sign in</h1>
       <p class="signin__lede">A magic link, no passwords. Expires in 15 minutes.</p>
 
+      <div class="signin__social">
+        <button type="button" data-social="github" class="btn signin__social-btn">
+          <span aria-hidden="true">●</span> Continue with GitHub
+        </button>
+        <button type="button" data-social="google" class="btn signin__social-btn">
+          <span aria-hidden="true">●</span> Continue with Google
+        </button>
+      </div>
+
+      <div class="signin__divider" role="separator" aria-label="or with email">
+        <span>or</span>
+      </div>
+
       <form id="signin-form" class="signin__form">
         <label class="signin__label" for="email">Email</label>
         <input
@@ -149,6 +162,41 @@ import Base from "../layouts/Base.astro";
       if (!email) return;
       send(email, resendBtnState, { showSent: false });
     });
+
+    // Social sign-in (GitHub, Google). Better Auth's
+    // `POST /api/auth/sign-in/social` returns `{ url }` — we follow
+    // it via a top-level navigation so the OAuth flow lands on
+    // <provider> with a real referrer. The provider then redirects
+    // back to `/api/auth/callback/<provider>`, which sets the
+    // session cookie and 302s to `callbackURL`.
+    for (const btn of document.querySelectorAll<HTMLButtonElement>("[data-social]")) {
+      btn.addEventListener("click", async () => {
+        const provider = btn.dataset.social;
+        if (!provider) return;
+        errorEl.hidden = true;
+        btn.disabled = true;
+        const idle = btn.textContent ?? "";
+        btn.textContent = "Redirecting…";
+        try {
+          const body = await postJson<{ url?: string; redirect?: boolean }>(
+            "/api/auth/sign-in/social",
+            { provider, callbackURL },
+            { redirectOn401: false },
+          );
+          if (body.url) {
+            location.href = body.url;
+            return;
+          }
+          throw new Error("No redirect URL returned.");
+        } catch (err) {
+          errorEl.textContent =
+            err instanceof Error && err.message ? err.message : "Couldn't start sign-in.";
+          errorEl.hidden = false;
+          btn.disabled = false;
+          btn.textContent = idle;
+        }
+      });
+    }
   </script>
 
   <style>
@@ -168,6 +216,46 @@ import Base from "../layouts/Base.astro";
       font-size: 14px;
       color: var(--fg-dim);
       margin: 0 0 32px;
+    }
+    .signin__social {
+      display: grid;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    .signin__social-btn {
+      width: 100%;
+      justify-content: center;
+      gap: 10px;
+      background: var(--bg-elev);
+      border: 2px solid var(--border-strong);
+      padding: 12px 16px;
+      font-family: var(--mono);
+      font-size: 14px;
+    }
+    .signin__social-btn:hover:not(:disabled) {
+      border-color: var(--accent);
+    }
+    .signin__social-btn:disabled {
+      opacity: 0.6;
+      cursor: progress;
+    }
+    .signin__divider {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin: 0 0 20px;
+      font-family: var(--mono);
+      font-size: 11px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--fg-muted);
+    }
+    .signin__divider::before,
+    .signin__divider::after {
+      content: "";
+      flex: 1;
+      height: 1px;
+      background: var(--border);
     }
     .signin__form {
       display: grid;
