@@ -621,14 +621,25 @@ NLQDB_BACKUP_DIR=/path/to/private/folder scripts/backup-envrc.sh
 >   silently corrupted the value (likely whitespace on copy);
 >   `code: 6111 Invalid Authorization header` on D1, `code: 7003
 >   Could not route` on Workers Versions. Mirror script writes via
->   `gh secret set --body -` (stdin) so the byte-exact `.envrc`
->   value is what gets stored.
+>   `gh secret set` reading stdin so the byte-exact `.envrc` value
+>   is what gets stored.
 > - **2026-04-27 — `RESEND_API_KEY` only mirrored to GH, not to
 >   Worker.** GH Actions had it (CI workflows happy) but the
 >   deployed Worker didn't, so `email.ts` fell through to the dev
 >   stub that just `console.log`s and returns. Magic-link sends
 >   reported HTTP 200 but no email ever reached Resend. Diagnosed
 >   via `wrangler secret list | grep RESEND_API_KEY` — empty.
+> - **2026-04-27 — `gh secret set --body -` wrote literal `"-"`.**
+>   `gh` v2.x interprets `--body -` as `--body` with value `"-"`,
+>   not "read stdin". Mirror script ran, reported "29 secrets
+>   mirrored ✓ each with their length", but every secret it touched
+>   was actually set to a single dash character. CI failed with
+>   `code: 6111` and `code: 7003` on every Pages and Workers call
+>   that needed `CLOUDFLARE_API_TOKEN`. Fixed in
+>   `mirror-secrets-gha.sh` by omitting the `--body` flag entirely
+>   (per the CLI doc: "reads from standard input if not specified").
+>   Both mirror scripts now also refuse to push values shorter than
+>   4 chars and the GHA script self-verifies CF token after pushing.
 >
 > Checklist for every PR that adds a new secret name:
 >
