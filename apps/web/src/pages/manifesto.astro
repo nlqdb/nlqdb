@@ -1,0 +1,394 @@
+---
+import Footer from "../components/Footer.astro";
+import Topnav from "../components/Topnav.astro";
+import { inversion, tenets } from "../data/manifesto";
+import Base from "../layouts/Base.astro";
+
+// Long-form manifesto: §0 of DESIGN.md, written for humans rather
+// than spec-readers. AEO-friendly: definition lead in the first 150
+// words; one direct-answer block; tenet content sourced from
+// `data/manifesto`.
+---
+
+<Base
+  title="Manifesto — nlqdb"
+  description="Nine non-negotiables that decide every nlqdb design choice. A database you talk to, with a backend that doesn't exist."
+  canonical="/manifesto"
+>
+  <div class="page">
+    <Topnav current="manifesto" />
+
+    <main class="manifesto">
+      <header class="manifesto__head">
+        <p class="manifesto__kicker">Manifesto</p>
+        <h1 class="manifesto__title">
+          A database you talk to,<br />
+          with a backend that doesn&rsquo;t exist.
+        </h1>
+        <p class="manifesto__lede">
+          nlqdb is a natural-language database: you create one with a name,
+          you query it in English, and the schema, the engine, the indexes,
+          the migrations and the cache are all background concerns you
+          never have to see.
+        </p>
+        <p class="manifesto__sub">
+          What follows is the bar every change is judged against. If a
+          change violates one of these, it doesn&rsquo;t ship. Not as
+          guidelines &mdash; as acceptance criteria.
+        </p>
+      </header>
+
+      <section class="manifesto__answer" aria-label="Direct answer">
+        <p>
+          <strong>What is nlqdb?</strong> A database that accepts natural
+          language as its query language, picks the right engine for your
+          workload (Postgres, Redis, DuckDB, pgvector, &hellip;), and
+          exposes itself through five surfaces &mdash; an HTML element, a
+          typed SDK, a CLI, an MCP server, and a chat web app &mdash; all
+          backed by the same engine. The free tier is the same engine
+          paying customers run on; the escape hatch to raw SQL stays one
+          click away, always.
+        </p>
+      </section>
+
+      <ol class="tenets">
+        {
+          tenets.map((t) => (
+            <li class="tenet">
+              <div class="tenet__head">
+                <span class="tenet__num">{t.n}</span>
+                <h2 class="tenet__title">{t.title}</h2>
+              </div>
+              <div class="tenet__body">
+                {t.body.map((p) => (
+                  <p>{p}</p>
+                ))}
+              </div>
+            </li>
+          ))
+        }
+      </ol>
+
+      <section class="manifesto__inversion" aria-labelledby="inversion-title">
+        <h2 class="manifesto__h2" id="inversion-title">
+          The on-ramp inversion.
+        </h2>
+        <p>
+          The single most important design decision: every entry point
+          accepts <em>a goal</em>, not a database name. Every surface,
+          reframed.
+        </p>
+
+        <div class="inversion-table-wrap">
+          <table class="inversion-table">
+            <caption class="inversion-table__caption">
+              Surface-by-surface inversion of the first action.
+            </caption>
+            <thead>
+              <tr>
+                <th scope="col">Surface</th>
+                <th scope="col">Old &mdash; DB-first</th>
+                <th scope="col">New &mdash; goal-first</th>
+              </tr>
+            </thead>
+            <tbody>
+              {
+                inversion.map((row) => (
+                  <tr>
+                    <th scope="row">{row.surface}</th>
+                    <td set:html={row.oldHtml} />
+                    <td set:html={row.newHtml} />
+                  </tr>
+                ))
+              }
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="manifesto__not" aria-labelledby="not-title">
+        <h2 class="manifesto__h2" id="not-title">What this isn&rsquo;t.</h2>
+        <ul class="not-list">
+          <li>
+            <strong>Not</strong> a SQL builder. There is no &ldquo;here is
+            your generated SQL, paste it into your ORM&rdquo; step.
+          </li>
+          <li>
+            <strong>Not</strong> a vector store with a wrapper. Postgres
+            with pgvector is one of the engines under the hood, not the
+            product.
+          </li>
+          <li>
+            <strong>Not</strong> a chat-on-top-of-your-warehouse layer.
+            We own the storage too. Otherwise schema, indexes and
+            migrations leak back into the user&rsquo;s brain.
+          </li>
+          <li>
+            <strong>Not</strong> a no-code tool. The whole point is that
+            developers stay in their editor, in their language, against
+            their build. nlqdb is a backend, not a GUI.
+          </li>
+        </ul>
+      </section>
+
+      <p class="manifesto__cta">
+        <a class="btn btn--accent" href="/">&larr; Back to the snippet</a>
+      </p>
+    </main>
+
+    <Footer />
+  </div>
+</Base>
+
+<style is:global>
+  .manifesto {
+    padding: clamp(48px, 8vw, 96px) 0 clamp(48px, 6vw, 80px);
+    max-width: 760px;
+    margin: 0 auto;
+  }
+
+  .manifesto__head {
+    margin-bottom: clamp(40px, 6vw, 64px);
+  }
+
+  .manifesto__kicker {
+    margin: 0 0 16px;
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+
+  .manifesto__title {
+    font-size: clamp(36px, 6vw, 64px);
+    letter-spacing: -0.03em;
+    line-height: 0.96;
+    margin: 0 0 24px;
+  }
+
+  .manifesto__lede {
+    font-family: var(--mono);
+    font-size: clamp(16px, 2vw, 19px);
+    color: var(--fg);
+    margin: 0 0 16px;
+    line-height: 1.5;
+    max-width: 56ch;
+  }
+
+  .manifesto__sub {
+    margin: 0;
+    color: var(--fg-dim);
+    font-size: clamp(14px, 1.6vw, 16px);
+    max-width: 60ch;
+  }
+
+  .manifesto__answer {
+    margin: 0 0 clamp(32px, 5vw, 48px);
+    padding: clamp(20px, 3vw, 28px);
+    border: 2px solid var(--accent);
+    background: var(--bg-elev);
+    font-size: clamp(15px, 1.6vw, 16px);
+    color: var(--fg);
+  }
+
+  .manifesto__answer p {
+    margin: 0;
+  }
+
+  .manifesto__answer strong {
+    color: var(--accent);
+    font-weight: 700;
+  }
+
+  /* Tenet list. The <ol>'s native numbers are suppressed visually,
+     but the explicit numeric span IS announced (no aria-hidden) so
+     screen readers still hear "01 Free. Forever." in order. */
+  .tenets {
+    list-style: none;
+    margin: 0 0 clamp(40px, 6vw, 64px);
+    padding: 0;
+    display: grid;
+    gap: clamp(20px, 3vw, 28px);
+  }
+
+  .tenet {
+    border: 2px solid var(--border-strong);
+    padding: clamp(20px, 3vw, 28px);
+    background: var(--bg-elev);
+  }
+
+  .tenet__head {
+    display: flex;
+    align-items: baseline;
+    gap: 16px;
+    margin-bottom: 14px;
+    flex-wrap: wrap;
+  }
+
+  .tenet__num {
+    font-family: var(--mono);
+    font-size: clamp(14px, 1.5vw, 15px);
+    color: var(--accent);
+    font-weight: 700;
+    letter-spacing: 0.04em;
+  }
+
+  .tenet__title {
+    font-family: var(--mono);
+    font-size: clamp(18px, 2.4vw, 22px);
+    letter-spacing: -0.01em;
+    margin: 0;
+    line-height: 1.2;
+  }
+
+  .tenet__body p {
+    margin: 0 0 12px;
+    font-size: clamp(15px, 1.6vw, 16px);
+    color: var(--fg-dim);
+    line-height: 1.7;
+  }
+
+  .tenet__body p:last-child {
+    margin-bottom: 0;
+  }
+
+  .manifesto__h2 {
+    font-family: var(--mono);
+    font-size: clamp(20px, 3vw, 28px);
+    letter-spacing: -0.02em;
+    margin: 0 0 16px;
+  }
+
+  .manifesto__inversion {
+    margin: 0 0 clamp(40px, 6vw, 64px);
+  }
+
+  .manifesto__inversion p {
+    color: var(--fg-dim);
+    margin: 0 0 20px;
+    font-size: clamp(15px, 1.6vw, 16px);
+  }
+
+  /* Real <table> — gives screen-reader users row/col navigation. */
+  .inversion-table-wrap {
+    border: 2px solid var(--border-strong);
+    background: var(--bg-elev);
+    overflow-x: auto;
+  }
+
+  .inversion-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: var(--mono);
+    font-size: 13px;
+    text-align: left;
+  }
+
+  .inversion-table__caption {
+    caption-side: top;
+    text-align: left;
+    padding: 12px 16px;
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--accent);
+    background: var(--bg);
+    border-bottom: 2px solid var(--border-strong);
+  }
+
+  .inversion-table th,
+  .inversion-table td {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+    font-weight: normal;
+  }
+
+  .inversion-table thead th {
+    color: var(--accent);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-size: 11px;
+    background: var(--bg);
+  }
+
+  .inversion-table tbody tr:last-child th,
+  .inversion-table tbody tr:last-child td {
+    border-bottom: none;
+  }
+
+  .inversion-table th[scope="row"] {
+    color: var(--fg);
+  }
+
+  .inversion-table code {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--fg);
+  }
+
+  @media (max-width: 640px) {
+    .inversion-table thead {
+      display: none;
+    }
+    .inversion-table,
+    .inversion-table tbody,
+    .inversion-table tr {
+      display: block;
+    }
+    .inversion-table tr {
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border);
+    }
+    .inversion-table tr:last-child {
+      border-bottom: none;
+    }
+    .inversion-table th[scope="row"] {
+      display: block;
+      padding: 0 0 4px;
+      border-bottom: none;
+      color: var(--accent);
+    }
+    .inversion-table td {
+      display: block;
+      padding: 2px 0;
+      border-bottom: none;
+    }
+  }
+
+  .manifesto__not {
+    margin: 0 0 clamp(40px, 6vw, 64px);
+  }
+
+  .not-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: grid;
+    gap: 12px;
+  }
+
+  .not-list li {
+    padding: 14px 18px;
+    border: 1px solid var(--border);
+    font-size: 15px;
+    color: var(--fg-dim);
+    line-height: 1.5;
+  }
+
+  .not-list strong {
+    color: var(--accent);
+    font-family: var(--mono);
+    font-size: 13px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    margin-right: 6px;
+  }
+
+  .manifesto__cta {
+    margin: 0;
+    padding-top: clamp(20px, 3vw, 28px);
+    border-top: 1px solid var(--border);
+  }
+</style>

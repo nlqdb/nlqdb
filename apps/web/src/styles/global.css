@@ -1,13 +1,21 @@
 /* Design tokens — neo-brutalist + terminal (DESIGN §3.1).
  * Acid Lime on near-black, thick borders, hard shadows, JetBrains
- * Mono for headlines + UI chrome, system sans for prose. */
+ * Mono for headlines + UI chrome, system sans for prose.
+ *
+ * Per-component styles live in <style is:global> blocks inside the
+ * component's .astro file. This file holds tokens + base typography
+ * + the chrome shared across every page (page wrapper, topnav,
+ * footer, btn, hero, demo panel, <nlq-data> output defaults). */
 
 :root {
   --bg: #0b0f0a;
   --bg-elev: #131811;
   --fg: #f4f4f0;
   --fg-dim: #a8a8a0;
-  --fg-muted: #5e5e5a;
+  /* --fg-muted bumped from #5e5e5a so 11–13px text passes WCAG AA
+     4.5:1 against both --bg and --bg-elev. Anything dimmer needs a
+     dedicated decorative-only role. */
+  --fg-muted: #8b8b85;
 
   --accent: #c6f432;
   --accent-fg: #0b0f0a;
@@ -17,6 +25,13 @@
 
   --shadow-hard: 6px 6px 0 0 var(--border-strong);
   --shadow-hard-accent: 6px 6px 0 0 var(--accent);
+
+  /* Syntax-highlighter palette. Picked for AA contrast on --bg-elev
+     where the code blocks render. Used by CodeBlock.astro. */
+  --tk-keyword: #f0a4ff;
+  --tk-function: #8be9fd;
+  --tk-tag: #f0a4ff;
+  --tk-attr: #8be9fd;
 
   --mono:
     ui-monospace, "JetBrains Mono", SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
@@ -82,6 +97,8 @@ h3 {
   margin: 0 auto;
 }
 
+/* Topnav (Topnav.astro) */
+
 .topnav {
   display: flex;
   justify-content: space-between;
@@ -103,6 +120,27 @@ h3 {
   gap: 20px;
   align-items: center;
 }
+
+/* Footer (Footer.astro) */
+
+.foot {
+  padding: 32px 0;
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--fg-muted);
+  border-top: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.foot a {
+  color: var(--fg-dim);
+}
+
+/* Hero (Hero.astro — Agent A's territory; styles live here so the
+ * component file stays single-concern). */
 
 .hero {
   display: flex;
@@ -392,22 +430,6 @@ h3 {
   padding: 1px 5px;
   background: var(--bg);
   border: 1px solid var(--border);
-  color: var(--fg-dim);
-}
-
-.foot {
-  padding: 32px 0;
-  font-family: var(--mono);
-  font-size: 12px;
-  color: var(--fg-muted);
-  border-top: 1px solid var(--border);
-  display: flex;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 16px;
-}
-
-.foot a {
   color: var(--fg-dim);
 }
 

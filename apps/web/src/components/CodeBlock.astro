@@ -1,0 +1,195 @@
+---
+// Generic code block: language chrome, copy button, pre-rendered
+// highlighted markup. Pair with `lib/highlight.ts` to keep tokenizing
+// at build time.
+//
+// Emits a bubbling `nlqdb:snippet-copied` CustomEvent on successful
+// copy. Pages that care about analytics relay to whatever channel
+// they need (the home page maps it to `home.snippet_copied`).
+
+interface Props {
+  id: string;
+  lang: string;
+  highlightedHtml: string;
+  copyLabel?: string;
+}
+
+const { id, lang, highlightedHtml, copyLabel } = Astro.props;
+---
+
+<div class="codeblock">
+  <div class="codeblock__chrome">
+    <span class="codeblock__lang" aria-hidden="true">{lang}</span>
+    <button
+      type="button"
+      class="codeblock__copy"
+      data-copy-source={id}
+      aria-label={copyLabel ?? `Copy ${lang} snippet`}
+    >
+      <span class="codeblock__copy-text">Copy</span>
+    </button>
+  </div>
+  <pre class="codeblock__pre"><code id={id} set:html={highlightedHtml} /></pre>
+</div>
+
+<script>
+  // Selects the contents of an element so the OS copy shortcut works
+  // even when the Clipboard API is unavailable (insecure context,
+  // permissions denied, etc.).
+  function selectElement(el: Element) {
+    const range = document.createRange();
+    range.selectNodeContents(el);
+    const sel = window.getSelection();
+    if (!sel) return;
+    sel.removeAllRanges();
+    sel.addRange(range);
+  }
+
+  function initCopy(btn: HTMLButtonElement) {
+    if (btn.dataset.wired === "true") return;
+    btn.dataset.wired = "true";
+
+    btn.addEventListener("click", async () => {
+      const id = btn.getAttribute("data-copy-source");
+      const src = id ? document.getElementById(id) : null;
+      if (!src) return;
+
+      const label = btn.querySelector<HTMLElement>(".codeblock__copy-text");
+      const prev = label?.textContent ?? "Copy";
+      const text = src.innerText;
+
+      let succeeded = false;
+      try {
+        await navigator.clipboard.writeText(text);
+        succeeded = true;
+      } catch {
+        // Fall back to selecting the text — user finishes with ⌘/Ctrl+C.
+        selectElement(src);
+      }
+
+      if (label) {
+        // navigator.platform is deprecated; userAgent is the
+        // documented replacement for cheap macOS sniffing.
+        const isMac = /Mac|iPhone|iPad|iPod/.test(navigator.userAgent);
+        label.textContent = succeeded
+          ? "Copied"
+          : isMac
+            ? "Press ⌘C"
+            : "Press Ctrl+C";
+      }
+      btn.setAttribute("data-copied", succeeded ? "ok" : "select");
+
+      if (succeeded) {
+        btn.dispatchEvent(
+          new CustomEvent("nlqdb:snippet-copied", {
+            bubbles: true,
+            detail: { id },
+          }),
+        );
+      }
+
+      window.setTimeout(() => {
+        if (label) label.textContent = prev;
+        btn.removeAttribute("data-copied");
+      }, 1800);
+    });
+  }
+
+  for (const btn of document.querySelectorAll<HTMLButtonElement>(
+    ".codeblock__copy",
+  )) {
+    initCopy(btn);
+  }
+</script>
+
+<style is:global>
+  .codeblock {
+    display: block;
+  }
+
+  .codeblock__chrome {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 14px;
+    background: var(--bg);
+    border-bottom: 1px solid var(--border);
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--fg-muted);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  .codeblock__copy {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--fg-dim);
+    background: transparent;
+    border: 1px solid var(--border);
+    padding: 4px 10px;
+    cursor: pointer;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  .codeblock__copy:hover {
+    color: var(--accent);
+    border-color: var(--accent);
+  }
+
+  .codeblock__copy:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  .codeblock__copy[data-copied] {
+    color: var(--accent);
+    border-color: var(--accent);
+  }
+
+  .codeblock__pre {
+    margin: 0;
+    padding: clamp(16px, 2.5vw, 22px);
+    background: var(--bg-elev);
+    font-family: var(--mono);
+    font-size: clamp(12px, 1.4vw, 14px);
+    line-height: 1.65;
+    color: var(--fg);
+    overflow-x: auto;
+    white-space: pre;
+  }
+
+  .codeblock__pre code {
+    font-family: inherit;
+  }
+
+  /* Token colors — promoted from inline magic literals so the
+     palette lives next to the rest of the design tokens. */
+  .tk-c {
+    color: var(--fg-muted);
+    font-style: italic;
+  }
+  .tk-s {
+    color: var(--accent);
+  }
+  .tk-k {
+    color: var(--tk-keyword);
+  }
+  .tk-fn {
+    color: var(--tk-function);
+    font-weight: 600;
+  }
+  .tk-pn {
+    color: var(--fg-muted);
+  }
+  .tk-t {
+    color: var(--tk-tag);
+  }
+  .tk-a {
+    color: var(--tk-attr);
+  }
+  .tk-v {
+    color: var(--fg);
+  }
+</style>

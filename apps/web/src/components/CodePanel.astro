@@ -1,0 +1,146 @@
+---
+import { snippets } from "../data/snippets";
+import { highlight } from "../lib/highlight";
+import CodeBlock from "./CodeBlock.astro";
+import Tabs from "./Tabs.astro";
+
+// Tabbed code-example panel (DESIGN §3.1). Three install methods,
+// content sourced from `data/snippets`, highlighted at build time.
+// Each copy click bubbles `nlqdb:snippet-copied`; we relay to the
+// DESIGN-spec'd `home.snippet_copied` for the analytics funnel.
+
+const tabs = snippets.map(({ id, label, sub }) => ({ id, label, sub }));
+
+const rendered = Object.fromEntries(
+  snippets.map((s) => [
+    s.id,
+    {
+      lang: s.lang,
+      label: s.label,
+      domId: `src-${s.id}`,
+      highlightedHtml: highlight(s.lang, s.source),
+    },
+  ]),
+);
+
+// Static slot names below — Astro forbids dynamic `slot={…}` in
+// JSX, so we list one Fragment per tab id. The data still drives
+// the content (lang, label, highlighted markup) via `rendered`.
+---
+
+<section class="codepanel" aria-labelledby="codepanel-title">
+  <header class="codepanel__head">
+    <h2 class="codepanel__title" id="codepanel-title">
+      Three ways in. Same backend &mdash; the one that doesn&rsquo;t exist.
+    </h2>
+    <p class="codepanel__lede">
+      Each snippet is the entire integration. No boilerplate omitted, no
+      &ldquo;configure your client&rdquo; step elided. The contrast is
+      the message.
+    </p>
+  </header>
+
+  <Tabs tabs={tabs} ariaLabel="Install methods">
+    <Fragment slot="cli">
+      <CodeBlock
+        id={rendered.cli.domId}
+        lang={rendered.cli.lang}
+        highlightedHtml={rendered.cli.highlightedHtml}
+        copyLabel={`Copy ${rendered.cli.label} snippet`}
+      />
+    </Fragment>
+    <Fragment slot="html">
+      <CodeBlock
+        id={rendered.html.domId}
+        lang={rendered.html.lang}
+        highlightedHtml={rendered.html.highlightedHtml}
+        copyLabel={`Copy ${rendered.html.label} snippet`}
+      />
+    </Fragment>
+    <Fragment slot="sdk">
+      <CodeBlock
+        id={rendered.sdk.domId}
+        lang={rendered.sdk.lang}
+        highlightedHtml={rendered.sdk.highlightedHtml}
+        copyLabel={`Copy ${rendered.sdk.label} snippet`}
+      />
+    </Fragment>
+  </Tabs>
+
+  <p class="codepanel__matrix">
+    Coming next:
+    <span class="badge">React</span>
+    <span class="badge">Vue / Nuxt</span>
+    <span class="badge">MCP (agent)</span>
+    <span class="badge">curl</span>
+    <span class="codepanel__matrix-note">
+      &mdash; each one is a thin wrapper over the same element, &le;200 LOC.
+    </span>
+  </p>
+</section>
+
+<script>
+  // Relay the generic `nlqdb:snippet-copied` event up to the
+  // DESIGN §3.1 analytics name. `surface` is the snippet id (cli /
+  // html / sdk) — leading indicator for which framework wrapper to
+  // ship next.
+  for (const root of document.querySelectorAll<HTMLElement>(".codepanel")) {
+    root.addEventListener("nlqdb:snippet-copied", (e) => {
+      const detail = (e as CustomEvent<{ id: string | null }>).detail;
+      const surface = detail?.id?.replace(/^src-/, "") ?? "unknown";
+      document.dispatchEvent(
+        new CustomEvent("home.snippet_copied", { detail: { surface } }),
+      );
+    });
+  }
+</script>
+
+<style is:global>
+  .codepanel {
+    padding: clamp(48px, 8vw, 96px) 0 clamp(32px, 5vw, 56px);
+    border-top: 1px solid var(--border);
+  }
+
+  .codepanel__head {
+    margin-bottom: clamp(24px, 4vw, 40px);
+  }
+
+  .codepanel__title {
+    font-family: var(--mono);
+    font-size: clamp(24px, 3.6vw, 36px);
+    letter-spacing: -0.02em;
+    max-width: 22ch;
+  }
+
+  .codepanel__lede {
+    margin: 12px 0 0;
+    color: var(--fg-dim);
+    max-width: 60ch;
+    font-size: clamp(15px, 1.6vw, 16px);
+  }
+
+  .codepanel__matrix {
+    margin: clamp(20px, 3vw, 28px) 0 0;
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--fg-dim);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .badge {
+    display: inline-block;
+    padding: 3px 10px;
+    border: 1px solid var(--border);
+    font-size: 11px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--fg-dim);
+  }
+
+  .codepanel__matrix-note {
+    color: var(--fg-muted);
+  }
+</style>

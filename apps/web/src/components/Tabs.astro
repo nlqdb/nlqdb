@@ -1,0 +1,219 @@
+---
+// Generic tab strip. Pass tabs[]; render each panel as a named slot:
+//
+//   <Tabs tabs={[{id:"cli", label:"CLI"}]} ariaLabel="Install methods">
+//     <Fragment slot="cli">…panel content…</Fragment>
+//   </Tabs>
+//
+// JS is bundled (not is:inline) so it runs once per page even with
+// multiple <Tabs/> instances. Each instance is wired idempotently.
+// With JS disabled the <noscript> override stacks every panel
+// vertically and hides the tab strip — so every snippet stays visible.
+
+export interface TabDef {
+  id: string;
+  label: string;
+  sub?: string;
+}
+
+interface Props {
+  tabs: readonly TabDef[];
+  ariaLabel?: string;
+}
+
+const { tabs, ariaLabel = "Tabs" } = Astro.props;
+
+// Render each tab's slot in advance — Astro's JSX `<slot name={…} />`
+// only accepts static strings, so we use the runtime API and inject
+// the resulting HTML with `set:html`.
+const panels = await Promise.all(tabs.map((t) => Astro.slots.render(t.id)));
+---
+
+<div class="tabs" data-tabs>
+  <div class="tabs__list" role="tablist" aria-label={ariaLabel}>
+    {
+      tabs.map((t, i) => (
+        <button
+          type="button"
+          role="tab"
+          id={`tab-${t.id}`}
+          class="tabs__tab"
+          data-tab-target={t.id}
+          aria-selected={i === 0 ? "true" : "false"}
+          aria-controls={`panel-${t.id}`}
+          tabindex={i === 0 ? 0 : -1}
+        >
+          <span class="tabs__label">{t.label}</span>
+          {t.sub && <span class="tabs__sub">{t.sub}</span>}
+        </button>
+      ))
+    }
+  </div>
+
+  {
+    tabs.map((t, i) => (
+      <div
+        class="tabs__panel"
+        role="tabpanel"
+        id={`panel-${t.id}`}
+        aria-labelledby={`tab-${t.id}`}
+        data-tab-panel={t.id}
+        data-active={i === 0 ? "" : null}
+        set:html={panels[i]}
+      />
+    ))
+  }
+</div>
+
+<noscript>
+  <style>
+    /* No-JS: stack every panel under the tab strip; hide the strip. */
+    .tabs[data-tabs] [data-tab-panel] {
+      display: block !important;
+      border-top: 2px solid var(--border-strong);
+    }
+    .tabs[data-tabs] > [data-tab-panel]:first-of-type {
+      border-top: 0;
+    }
+    .tabs[data-tabs] .tabs__list {
+      display: none;
+    }
+  </style>
+</noscript>
+
+<script>
+  // Idempotent — safe if Astro injects the bundle multiple times
+  // (or if a partial hydration framework re-mounts the page).
+  function initTabs(root: HTMLElement) {
+    if (root.dataset.wired === "true") return;
+    root.dataset.wired = "true";
+
+    const tabs = Array.from(
+      root.querySelectorAll<HTMLButtonElement>("[role=tab]"),
+    );
+    const panels = Array.from(
+      root.querySelectorAll<HTMLElement>("[data-tab-panel]"),
+    );
+    if (tabs.length === 0 || panels.length === 0) return;
+
+    const select = (target: string, opts: { focus?: boolean } = {}) => {
+      for (const t of tabs) {
+        const on = t.getAttribute("data-tab-target") === target;
+        t.setAttribute("aria-selected", on ? "true" : "false");
+        t.setAttribute("tabindex", on ? "0" : "-1");
+        if (on && opts.focus) t.focus({ preventScroll: true });
+      }
+      for (const p of panels) {
+        const on = p.getAttribute("data-tab-panel") === target;
+        if (on) p.setAttribute("data-active", "");
+        else p.removeAttribute("data-active");
+      }
+      root.dispatchEvent(
+        new CustomEvent("tabs:change", {
+          bubbles: true,
+          detail: { target },
+        }),
+      );
+    };
+
+    tabs.forEach((tab, i) => {
+      const id = tab.getAttribute("data-tab-target") ?? "";
+      tab.addEventListener("click", () => select(id));
+      tab.addEventListener("keydown", (e) => {
+        const last = tabs.length - 1;
+        let next = -1;
+        if (e.key === "ArrowRight") next = (i + 1) % tabs.length;
+        else if (e.key === "ArrowLeft") next = (i - 1 + tabs.length) % tabs.length;
+        else if (e.key === "Home") next = 0;
+        else if (e.key === "End") next = last;
+        if (next === -1) return;
+        e.preventDefault();
+        const nextId = tabs[next].getAttribute("data-tab-target") ?? "";
+        select(nextId, { focus: true });
+      });
+    });
+  }
+
+  for (const root of document.querySelectorAll<HTMLElement>("[data-tabs]")) {
+    initTabs(root);
+  }
+</script>
+
+<style is:global>
+  /* JS-driven: only the panel marked [data-active] is shown. The
+     <noscript> override above flips this for users with JS off. */
+  [data-tab-panel] {
+    display: none;
+  }
+  [data-tab-panel][data-active] {
+    display: block;
+  }
+
+  .tabs {
+    border: 2px solid var(--border-strong);
+    background: var(--bg-elev);
+    box-shadow: var(--shadow-hard);
+  }
+
+  .tabs__list {
+    display: flex;
+    flex-wrap: wrap;
+    border-bottom: 2px solid var(--border-strong);
+    background: var(--bg);
+  }
+
+  .tabs__tab {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+    padding: 14px 20px;
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--fg-dim);
+    background: transparent;
+    border: 0;
+    border-right: 2px solid var(--border-strong);
+    cursor: pointer;
+    text-align: left;
+    min-width: 0;
+    flex: 0 0 auto;
+  }
+
+  .tabs__tab:last-child {
+    border-right: 0;
+  }
+
+  .tabs__tab:hover {
+    color: var(--fg);
+  }
+
+  .tabs__tab[aria-selected="true"] {
+    background: var(--bg-elev);
+    color: var(--accent);
+  }
+
+  .tabs__tab:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: -4px;
+  }
+
+  .tabs__label {
+    font-weight: 700;
+    letter-spacing: 0.02em;
+  }
+
+  .tabs__sub {
+    font-size: 11px;
+    color: var(--fg-muted);
+    letter-spacing: 0;
+  }
+
+  .tabs__tab[aria-selected="true"] .tabs__sub {
+    color: var(--fg-dim);
+  }
+
+  .tabs__panel {
+    padding: 0;
+  }
+</style>
