@@ -231,22 +231,25 @@ the failure path (Basic auth rejected = wrong id or secret).
 | :------------------- | :------------------ | :--------------------------------------------------------- | :------------------------------------------------------------ |
 | `apps/api`           | Cloudflare Workers  | GH Actions — `.github/workflows/deploy-api.yml`            | GH Actions — `.github/workflows/preview-api.yml` (Workers Versions on `nlqdb-api`; per-PR URL) |
 | `apps/events-worker` | Cloudflare Workers  | GH Actions — `.github/workflows/deploy-events-worker.yml`  | n/a (queue-only; nothing visible to preview)                  |
-| `apps/coming-soon`   | Cloudflare Pages    | GH Actions — `.github/workflows/deploy-coming-soon.yml`    | available via the Pages project (push branch + Pages emits a preview URL) |
-| `apps/web`           | Cloudflare Pages    | **Cloudflare Pages git integration** (one-time dashboard) | automatic per-branch + PR comment with the URL                |
-| `packages/elements`  | Cloudflare Pages    | **Cloudflare Pages git integration** (one-time dashboard) | automatic per-branch + PR comment with the URL                |
+| `apps/coming-soon`   | Cloudflare Pages    | GH Actions — `.github/workflows/deploy-coming-soon.yml`    | n/a (short-lived; retires when `apps/web` takes over `nlqdb.com`) |
+| `apps/web`           | Cloudflare Pages    | GH Actions — `.github/workflows/deploy-web.yml`            | GH Actions — `.github/workflows/preview-web.yml` (sticky `pr-<N>.nlqdb-web.pages.dev`) |
+| `packages/elements`  | Cloudflare Pages    | GH Actions — `.github/workflows/deploy-elements.yml`       | GH Actions — `.github/workflows/preview-elements.yml` (sticky `pr-<N>.nlqdb-elements.pages.dev/v1.js`) |
 
-Workers stay on GH Actions because they need pre-deploy migrations
-(`migrate:remote`) and the secrets-mirror sequence — those are
-naturally scripted in YAML. Pages projects move to Cloudflare's
-git integration because (a) it deploys every branch automatically,
-giving free PR previews and dashboard-managed previews per commit,
-(b) the YAML for a static-site deploy adds zero value over what
-Cloudflare gives us out of the box.
+Every surface deploys via GH Actions. Reasons we don't use
+Cloudflare Pages git integration for the static surfaces:
 
-`apps/coming-soon` keeps its GH Action for now (it pre-dates this
-strategy and still works). When `apps/web` ships content-complete and
-takes over `nlqdb.com`, retire the coming-soon GH Action with the
-project.
+- **Uniformity** — one mechanism, one set of logs, one place to
+  look when a deploy breaks.
+- **Pre-deploy gating** — biome / typecheck / tests in `ci.yml`
+  run on the same PR before the deploy workflow fires. Pages git
+  integration doesn't gate on the rest of the repo's CI.
+- **Code-driven config** — the 2026-04-27 secret-mirror incident
+  showed that anything dashboard-driven on CF risks invisible
+  state divergence. Workflows checked into git are auditable.
+
+Per-branch preview URLs are achieved via `wrangler pages deploy
+--branch=pr-<N>`; CF assigns a stable alias
+`pr-<N>.<project>.pages.dev` per branch.
 
 ### Coming-soon page
 
@@ -403,67 +406,31 @@ The `nlqdb-events` queue is created/updated by
 ### `apps/web` (Phase 1 marketing site)
 
 Astro static site that builds to `apps/web/dist/`. Hosted on
-Cloudflare Pages project `nlqdb-web`. Currently lives on the
-`*.pages.dev` URL only; the DNS flip from `apps/coming-soon` to this
-project is a future operational step (see DESIGN §3.1).
+Cloudflare Pages project `nlqdb-web`. Currently on the `*.pages.dev`
+URL only; DNS flip from `apps/coming-soon` to this project is a
+future operational step (see DESIGN §3.1).
 
-**Recommended: Cloudflare Pages git integration** (one-time setup,
-done in dashboard — gives free per-branch preview deploys + PR
-comments with preview URLs). Once configured, every push to any
-branch deploys; `main` becomes the production deployment.
+Deploys via `.github/workflows/deploy-web.yml` on merge to main when
+`apps/web/**` or `packages/elements/**` changes. The workflow runs
+`wrangler pages project create` idempotently, so first-run is
+automatic — no human bootstrap step.
 
-One-time dashboard setup:
-
-1. Cloudflare dashboard → Workers & Pages → `nlqdb-web` → Settings →
-   Builds & deployments → connect GitHub repo `nlqdb/nlqdb`.
-2. Production branch: `main`.
-3. Build configuration:
-   - **Framework preset:** Astro
-   - **Build command:** `bun install --frozen-lockfile && bun run --cwd apps/web build`
-   - **Build output directory:** `apps/web/dist`
-   - **Root directory** (project): leave blank (repo root)
-   - **Environment variables:** `BUN_VERSION=1.3.13` (or match `package.json` `engines.bun`)
-4. Save. The next push to any branch triggers a deploy; PRs get a
-   comment with the preview URL.
-
-Manual deploy (rarely needed once git integration is on):
-
-```bash
-bun run --cwd apps/web deploy   # wrangler pages deploy dist --project-name=nlqdb-web
-```
+Manual re-deploy: workflow_dispatch on the Actions tab, or
+`bun run --cwd apps/web deploy` from a dev machine.
 
 ### `packages/elements` (CDN bundle)
 
 The `<nlq-data>` runtime built to a single ESM at
 `packages/elements/dist/v1.js`. Hosted on Cloudflare Pages project
-`nlqdb-elements` so it's reachable at `nlqdb-elements.pages.dev/v1.js`
+`nlqdb-elements`, reachable at `nlqdb-elements.pages.dev/v1.js`
 (eventual DNS: `elements.nlqdb.com/v1.js`).
 
-**Recommended: Cloudflare Pages git integration** (same pattern as
-`apps/web`). Per-branch preview URLs are useful here — third parties
-can pin a specific bundle version while we iterate on `main`.
+Deploys via `.github/workflows/deploy-elements.yml` on merge to main
+when `packages/elements/**` changes. Bundle-size budget (< 6 KB
+gzipped, DESIGN §3.5) is enforced upstream by
+`.github/workflows/ci.yml` job `packages/elements (esbuild + bundle-size)`.
 
-One-time dashboard setup:
-
-1. Cloudflare dashboard → Workers & Pages → Create → Pages → Connect
-   to Git → repo `nlqdb/nlqdb` → project name `nlqdb-elements`.
-2. Production branch: `main`.
-3. Build configuration:
-   - **Framework preset:** None
-   - **Build command:** `bun install --frozen-lockfile && bun run --cwd packages/elements build`
-   - **Build output directory:** `packages/elements/dist`
-   - **Environment variables:** `BUN_VERSION=1.3.13`
-4. Save.
-
-Manual deploy:
-
-```bash
-bun run --cwd packages/elements build
-wrangler pages deploy packages/elements/dist --project-name=nlqdb-elements --branch=main --commit-dirty=true
-```
-
-CI bundle-size budget: < 6 KB gzipped (DESIGN §3.5). Enforced by
-`.github/workflows/ci.yml` job `build-elements`.
+Manual re-deploy: workflow_dispatch on the Actions tab.
 
 ### Preview environments
 
@@ -471,29 +438,21 @@ What you see in a PR before merging, by surface:
 
 #### Pages — `apps/web`, `packages/elements`
 
-Free per-branch preview deploys come from Cloudflare Pages's git
-integration (one-time dashboard setup per project, documented above
-in the `apps/web` and `packages/elements` sections). After setup,
-every push to a non-`main` branch produces a preview URL of the form
-`<commit-sha>.<project>.pages.dev`, and Cloudflare comments the URL
-on the PR. No GH Actions YAML needed for previews — the integration
-handles everything.
+`.github/workflows/preview-web.yml` and `preview-elements.yml`
+trigger on every PR push touching their respective paths. Each
+deploys to its Pages project with `--branch=pr-<N>`, giving a
+sticky alias URL (`pr-<N>.<project>.pages.dev`) that survives
+across pushes within the same PR. Sticky comment on the PR carries
+the URL. Production branch (`main`) is untouched.
 
-If preview deploys aren't appearing on PRs, the integration isn't
-wired yet. Re-do the dashboard setup steps for the affected project.
+Why GH Actions and not Pages git integration: see the strategy
+table earlier in this section.
 
 #### Pages — `apps/coming-soon`
 
-The current GH Action only deploys on merge to `main`. To get
-branch previews, either:
-
-1. Switch coming-soon to Cloudflare Pages git integration (same
-   one-time dashboard setup as `nlqdb-web`); the GH Action becomes
-   redundant and can be removed.
-2. Or live without previews on coming-soon — the page is on its way
-   out once `apps/web` takes over `nlqdb.com`.
-
-Default recommendation: option (2). Coming-soon is short-lived.
+No preview workflow. Coming-soon is a static placeholder retiring
+when `apps/web` takes over `nlqdb.com` — branch previews would add
+no value during its remaining lifetime.
 
 #### Workers — `apps/api`
 

@@ -1,0 +1,57 @@
+# nlqdb — auto-deploy packages/elements to Cloudflare Pages on merge.
+#
+# Production deploy of the <nlq-data> CDN bundle to Pages project
+# `nlqdb-elements`. Single ESM file at dist/v1.js (esbuild). Pages
+# serves it at `nlqdb-elements.pages.dev/v1.js`; eventual DNS is
+# `elements.nlqdb.com/v1.js`.
+#
+# `wrangler pages project create` is idempotent — first-run safe.
+# Bundle-size budget (< 6 KB gzipped, DESIGN §3.5) is enforced
+# upstream by ci.yml `packages/elements (esbuild + bundle-size)`.
+#
+# Manual re-deploy: workflow_dispatch on the Actions tab.
+
+name: Deploy elements
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "packages/elements/**"
+      - ".github/workflows/deploy-elements.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-elements
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  deployments: write
+
+jobs:
+  deploy:
+    name: esbuild + wrangler pages deploy
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: package.json
+
+      - name: Install workspace deps
+        run: bun install --frozen-lockfile
+
+      - name: Build bundle
+        run: bun run --cwd packages/elements build
+
+      - name: Deploy to Cloudflare Pages
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          preCommands: |
+            bunx wrangler pages project create nlqdb-elements --production-branch main --compatibility-date "$(date -u +%Y-%m-%d)" || true
+          command: pages deploy packages/elements/dist --project-name=nlqdb-elements --branch=main --commit-dirty=true
