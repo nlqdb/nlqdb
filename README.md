@@ -241,14 +241,13 @@ bun run check:all    # biome + golangci-lint + ruff (what CI runs)
 bun run hooks:run    # run pre-commit hooks against staged files
 ```
 
-## Surfaces (planned, Phase 1)
+## Surfaces
 
-- Web chat UI — single page, 60 seconds from landing to first query, no card required.
-- HTTP API — two endpoints: create DB, query DB.
-- CLI — single static binary: `nlq new`, `nlq login`, `nlq "..."`.
-- MCP server — so agents can use it too.
-- `<nlq-data>` / `<nlq-action>` HTML elements — the embeddable backend.
-- Plus the platform integrations matrix in [IMPLEMENTATION §10](./IMPLEMENTATION.md#10-platform-integrations--the-matrix) — Nuxt, Next, SvelteKit, Astro, mobile, server middleware, IDE extensions, no-code, iPaaS, analytics tooling, chat platforms.
+Every way to talk to nlqdb — CLI, `<nlq-data>`, SDKs, MCP, framework
+wrappers, IDE extensions, chat bots — lives in
+[SURFACES.md](./SURFACES.md) with status (Shipped / Phase 1 / Phase 2
+/ Wishlist) and implementation pointers. The badge row on the
+homepage mirrors that file.
 
 ## Community + legal
 

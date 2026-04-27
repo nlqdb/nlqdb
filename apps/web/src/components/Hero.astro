@@ -1,7 +1,10 @@
 ---
 // Goal-first hero (DESIGN §0.1, §3.1, §14.1). The input cycles real
-// persona placeholders. Enter is a no-op until the chat surface at
-// app.nlqdb.com lands — no broken promises while we ship the rest.
+// persona placeholders. Enter routes to /sign-in with the goal
+// preserved through the magic-link round-trip:
+//   /sign-in?return_to=/app?goal=<encoded>
+// After verify, /app reads ?goal= and pre-fills the composer so the
+// user lands in the chat with their original intent already typed.
 
 const placeholders = [
   "an orders tracker for my coffee shop",
@@ -54,14 +57,13 @@ const placeholders = [
       <pre class="demo__code"><code>{`<script src="https://elements.nlqdb.com/v1.js" type="module"></script>
 <nlq-data
   goal="orders from this morning, by drink"
-  db="demo"
+  endpoint="https://app.nlqdb.com/v1/demo/ask"
   template="table"
 ></nlq-data>`}</code></pre>
       <div class="demo__rendered">
         <nlq-data
           goal="orders from this morning, by drink"
-          db="demo"
-          endpoint="https://app.nlqdb.com/v1/ask"
+          endpoint="https://app.nlqdb.com/v1/demo/ask"
           template="table"
         ></nlq-data>
       </div>
@@ -91,7 +93,16 @@ const placeholders = [
     }
   }
 
-  if (form instanceof HTMLFormElement) {
-    form.addEventListener("submit", (e) => e.preventDefault());
+  if (form instanceof HTMLFormElement && input instanceof HTMLInputElement) {
+    form.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const goal = input.value.trim();
+      // Empty submit: send to plain /sign-in (still useful — auth + /app
+      // empty-state guides them). Non-empty: thread the goal through
+      // sign-in's `return_to` so /app pre-fills it after the magic-link
+      // verify round-trips back.
+      const returnTo = goal ? `/app?goal=${encodeURIComponent(goal)}` : "/app";
+      location.href = `/sign-in?return_to=${encodeURIComponent(returnTo)}`;
+    });
   }
 </script>

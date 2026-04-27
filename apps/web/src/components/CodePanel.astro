@@ -67,16 +67,40 @@ const rendered = Object.fromEntries(
     </Fragment>
   </Tabs>
 
-  <p class="codepanel__matrix">
-    Coming next:
-    <span class="badge">React</span>
-    <span class="badge">Vue / Nuxt</span>
-    <span class="badge">MCP (agent)</span>
-    <span class="badge">curl</span>
-    <span class="codepanel__matrix-note">
-      &mdash; each one is a thin wrapper over the same element, &le;200 LOC.
-    </span>
-  </p>
+  <div class="codepanel__matrix">
+    <p class="codepanel__matrix-row">
+      <span class="codepanel__matrix-label">Shipped</span>
+      <span class="badge badge--shipped">CLI</span>
+      <span class="badge badge--shipped">&lt;nlq-data&gt;</span>
+      <span class="badge badge--shipped">TS SDK</span>
+    </p>
+    <p class="codepanel__matrix-row">
+      <span class="codepanel__matrix-label">Phase 1</span>
+      <span class="badge">React</span>
+      <span class="badge">Vue / Nuxt</span>
+      <span class="badge">MCP server</span>
+      <span class="badge">curl recipes</span>
+    </p>
+    <p class="codepanel__matrix-row">
+      <span class="codepanel__matrix-label">Phase 2</span>
+      <span class="badge">Python</span>
+      <span class="badge">Go</span>
+      <span class="badge">Rust</span>
+      <span class="badge">CLI auth helpers</span>
+    </p>
+    <p class="codepanel__matrix-row">
+      <span class="codepanel__matrix-label">Wishlist</span>
+      <a class="badge badge--wishlist" data-wishlist="vscode" href="mailto:hello@nlqdb.com?subject=Surface%20wishlist%3A%20VSCode%20extension">VSCode</a>
+      <a class="badge badge--wishlist" data-wishlist="jetbrains" href="mailto:hello@nlqdb.com?subject=Surface%20wishlist%3A%20JetBrains%20plugin">JetBrains</a>
+      <a class="badge badge--wishlist" data-wishlist="slack" href="mailto:hello@nlqdb.com?subject=Surface%20wishlist%3A%20Slack%20bot">Slack</a>
+      <a class="badge badge--wishlist" data-wishlist="discord" href="mailto:hello@nlqdb.com?subject=Surface%20wishlist%3A%20Discord%20bot">Discord</a>
+    </p>
+    <p class="codepanel__matrix-note">
+      Each one is a thin wrapper over the same element &mdash; full matrix in
+      <a href="https://github.com/nlqdb/nlqdb/blob/main/SURFACES.md">SURFACES.md</a>.
+      Tap a wishlist surface to nudge it up the list.
+    </p>
+  </div>
 </section>
 
 <script>
@@ -90,6 +114,18 @@ const rendered = Object.fromEntries(
       const surface = detail?.id?.replace(/^src-/, "") ?? "unknown";
       document.dispatchEvent(
         new CustomEvent("home.snippet_copied", { detail: { surface } }),
+      );
+    });
+  }
+
+  // Wishlist nudge: each click is a `home.surface_wishlist` event
+  // before navigation. Default mailto: action runs as well — analytics
+  // is the leading indicator for which surface to ship next, the
+  // mailto is the user telling us directly.
+  for (const el of document.querySelectorAll<HTMLAnchorElement>("[data-wishlist]")) {
+    el.addEventListener("click", () => {
+      document.dispatchEvent(
+        new CustomEvent("home.surface_wishlist", { detail: { surface: el.dataset.wishlist ?? "unknown" } }),
       );
     });
   }
@@ -121,26 +157,66 @@ const rendered = Object.fromEntries(
 
   .codepanel__matrix {
     margin: clamp(20px, 3vw, 28px) 0 0;
-    font-family: var(--mono);
-    font-size: 13px;
-    color: var(--fg-dim);
+    display: grid;
+    gap: 10px;
+  }
+
+  .codepanel__matrix-row {
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
     align-items: center;
+    margin: 0;
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--fg-dim);
+  }
+
+  .codepanel__matrix-label {
+    min-width: 72px;
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--fg-muted);
   }
 
   .badge {
     display: inline-block;
     padding: 3px 10px;
     border: 1px solid var(--border);
+    font-family: var(--mono);
     font-size: 11px;
     letter-spacing: 0.04em;
     text-transform: uppercase;
     color: var(--fg-dim);
+    text-decoration: none;
+  }
+
+  .badge--shipped {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  .badge--wishlist {
+    border-style: dashed;
+    cursor: pointer;
+  }
+
+  .badge--wishlist:hover,
+  .badge--wishlist:focus-visible {
+    border-color: var(--accent);
+    color: var(--accent);
   }
 
   .codepanel__matrix-note {
+    margin: 8px 0 0;
+    font-family: var(--mono);
+    font-size: 12px;
     color: var(--fg-muted);
+  }
+
+  .codepanel__matrix-note a {
+    color: var(--fg-dim);
+    text-decoration: underline;
   }
 </style>

@@ -2,6 +2,7 @@ import { env } from "cloudflare:workers";
 import { authEventsTotal, setupTelemetry } from "@nlqdb/otel";
 import { trace } from "@opentelemetry/api";
 import { Hono } from "hono";
+import { cors } from "hono/cors";
 import { streamSSE } from "hono/streaming";
 import { buildAskDeps, buildEventEmitter } from "./ask/build-deps.ts";
 import { orchestrateAsk } from "./ask/orchestrate.ts";
@@ -9,6 +10,7 @@ import type { AskError, OrchestrateEvent } from "./ask/types.ts";
 import { auth, REVOCATION_KEY_PREFIX } from "./auth.ts";
 import { postChatMessage } from "./chat/orchestrate.ts";
 import { makeChatStore } from "./chat/store.ts";
+import { buildDemoResult, makeRateLimiter as makeDemoRateLimiter } from "./demo.ts";
 import { parseGoalDbBody } from "./http.ts";
 import { makeRequireSession, type RequireSessionVariables } from "./middleware.ts";
 import { cryptoProvider, stripe as stripeClient } from "./stripe/client.ts";
@@ -138,6 +140,42 @@ app.post("/v1/ask", requireSession, async (c) => {
       return c.json({ error: outcome.error }, status);
     }
     return c.json(outcome.result);
+  });
+});
+
+// `POST /v1/demo/ask` — public, unauthenticated, canned fixtures.
+// Backs the live `<nlq-data>` on the marketing homepage (and any
+// third-party `endpoint=".../v1/demo/ask"` embed). CORS-permissive
+// so cross-origin embeds work; per-IP rate-limited so it can't be
+// abused as a free LLM stand-in. See src/demo.ts for fixtures +
+// limiter.
+app.use("/v1/demo/*", cors({ origin: "*", allowMethods: ["POST", "OPTIONS"], maxAge: 86400 }));
+
+app.post("/v1/demo/ask", async (c) => {
+  const tracer = trace.getTracer("@nlqdb/api");
+  return tracer.startActiveSpan("nlqdb.demo.ask", async (span) => {
+    const clientIp = c.req.header("cf-connecting-ip") ?? "unknown";
+    const limiter = makeDemoRateLimiter(c.env.KV);
+    const verdict = await limiter.hit(clientIp);
+    if (!verdict.ok) {
+      span.setAttribute("nlqdb.demo.outcome", "rate_limited");
+      span.end();
+      c.header("Retry-After", String(verdict.retryAfter));
+      return c.json({ error: { status: "rate_limited" } }, 429);
+    }
+
+    const parsed = await parseGoalDbBody(c);
+    if (!parsed.ok) {
+      span.setAttribute("nlqdb.demo.outcome", "invalid_request");
+      span.end();
+      return c.json(parsed.error.body, parsed.error.status);
+    }
+
+    const result = buildDemoResult(parsed.body.goal);
+    span.setAttribute("nlqdb.demo.outcome", "ok");
+    span.setAttribute("nlqdb.demo.goal_length", parsed.body.goal.length);
+    span.end();
+    return c.json(result);
   });
 });
 
