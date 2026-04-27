@@ -7,7 +7,6 @@
     "dev": "wrangler dev",
     "build": "wrangler deploy --dry-run",
     "deploy": "wrangler deploy",
-    "deploy:preview": "wrangler deploy --env preview",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "migrate:local": "../../scripts/migrate-d1.sh local",

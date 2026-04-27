@@ -1,29 +1,30 @@
 # nlqdb — preview deploys for apps/api on every PR push.
 #
-# Deploys the PR's HEAD as the `nlqdb-api-preview` Worker (defined in
-# `apps/api/wrangler.toml` `[env.preview]`). Reachable via the
-# Cloudflare `*.workers.dev` URL only — `app.nlqdb.com` stays bound
-# to prod.
+# Uploads the PR's HEAD as a non-production *version* of the prod
+# `nlqdb-api` Worker (`wrangler versions upload`). Each push gets a
+# unique URL of the form
+# `<version-prefix>-nlqdb-api.omer-hochman.workers.dev`; the
+# promoted production version (and `app.nlqdb.com`) are untouched
+# until merge runs `wrangler deploy` via deploy-api.yml.
 #
-# Single shared preview Worker: each PR push overwrites the previous
-# deployment. Concurrency keyed by PR number so only one deploy per
-# PR runs at a time, but DIFFERENT PRs share the same Worker (last
-# push wins). When parallel PR previews become useful, switch to
-# per-PR named workers (e.g. `nlqdb-api-pr-${number}`) with a
-# matching cleanup workflow on PR close.
+# Why this and not `--env preview` against a separate worker:
+# Workers Versions gives a unique URL per push, so two open PRs
+# never overwrite each other's preview. No bootstrap dance needed —
+# CF generates the per-version URL automatically the first time.
+# Preview URLs must be enabled on the `nlqdb-api` worker in the
+# dashboard (one-time, already done).
 #
-# Bindings are shared with prod (KV / D1 / Queue / R2). The
-# workflow does NOT run `migrate:remote`: applying an unmerged
-# migration to prod D1 would defeat the point. Schema-changing PRs
-# need local testing — see RUNBOOK §6 "Preview environments".
+# Versions inherit the prod worker's bindings (KV / D1 / Queue /
+# R2) — same shared-bindings model we had with --env preview, just
+# with a saner URL story. Schema-changing PRs still need local
+# testing: this workflow does NOT run `migrate:remote` (uploading a
+# version doesn't apply migrations, and the PR may not be merge-
+# ready for a prod migration).
 #
-# First-time bootstrap (dashboard-only, one click): wrangler v4's
-# `deploy --env preview` 404s against a never-deployed worker name
-# (`code: 7003` + `code: 7000`). Local CLI hits the same path, so
-# the fix is dashboard-side: Workers & Pages → Create → Create
-# Worker → name `nlqdb-api-preview` → Deploy with the default
-# Hello-World code. After the placeholder exists, CI updates work.
-# Documented in RUNBOOK §6.
+# Concurrency: keyed by PR number with `cancel-in-progress: true`
+# so only the latest push for each PR is in flight; older versions
+# stay reachable on their own URLs in the dashboard until a future
+# cleanup pass garbage-collects them.
 
 name: Preview API
 
@@ -50,7 +51,7 @@ permissions:
 
 jobs:
   preview:
-    name: wrangler deploy --env preview
+    name: wrangler versions upload
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -63,14 +64,14 @@ jobs:
       - name: Install workspace deps
         run: bun install --frozen-lockfile
 
-      - name: Deploy preview
+      - name: Upload preview version
         id: deploy
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           workingDirectory: apps/api
-          command: deploy --env preview
+          command: versions upload --message "PR #${{ github.event.number }} @ ${{ github.event.pull_request.head.sha }}"
 
       # Sticky comment — looks up an existing preview comment by a
       # hidden marker and edits it in place. Keeps the PR conversation
@@ -85,20 +86,24 @@ jobs:
             const marker = '<!-- preview-api-sticky -->';
             const ts = new Date().toISOString().replace('T', ' ').slice(0, 19) + ' UTC';
 
+            // Fallback shows the URL pattern when wrangler-action
+            // didn't surface the per-version URL — `<id>` is the
+            // 8-char prefix CF assigns; visible in the Versions tab
+            // of the worker dashboard.
             const urlLine = url
               ? `- URL: <${url}>`
-              : `- URL: <https://nlqdb-api-preview.omer-hochman.workers.dev>`;
+              : '- URL: `<id>-nlqdb-api.omer-hochman.workers.dev` (latest version visible in the dashboard → `nlqdb-api` → Versions)';
 
             const body = [
               marker,
               '🚀 **Preview API deployed**',
               '',
               urlLine,
-              `- Worker: \`nlqdb-api-preview\``,
+              '- Worker: `nlqdb-api` (non-production version — `app.nlqdb.com` untouched)',
               `- Commit: \`${sha}\``,
               `- Updated: ${ts}`,
               '',
-              `Bindings are shared with prod (KV / D1 / Queue / R2). The preview workflow does **not** run \`migrate:remote\` — schema-changing PRs need local testing. See [RUNBOOK §6](../blob/main/RUNBOOK.md).`,
+              'Versions inherit prod bindings (KV / D1 / Queue / R2). Schema-changing PRs need local testing — this workflow does **not** run `migrate:remote`. See [RUNBOOK §6](../blob/main/RUNBOOK.md).',
             ].join('\n');
 
             const { data: comments } = await github.rest.issues.listComments({

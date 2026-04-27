@@ -229,7 +229,7 @@ the failure path (Basic auth rejected = wrong id or secret).
 
 | Surface              | Hosting             | Production deploy                                          | PR preview                                                    |
 | :------------------- | :------------------ | :--------------------------------------------------------- | :------------------------------------------------------------ |
-| `apps/api`           | Cloudflare Workers  | GH Actions — `.github/workflows/deploy-api.yml`            | GH Actions — `.github/workflows/preview-api.yml` (single shared `nlqdb-api-preview` worker) |
+| `apps/api`           | Cloudflare Workers  | GH Actions — `.github/workflows/deploy-api.yml`            | GH Actions — `.github/workflows/preview-api.yml` (Workers Versions on `nlqdb-api`; per-PR URL) |
 | `apps/events-worker` | Cloudflare Workers  | GH Actions — `.github/workflows/deploy-events-worker.yml`  | n/a (queue-only; nothing visible to preview)                  |
 | `apps/coming-soon`   | Cloudflare Pages    | GH Actions — `.github/workflows/deploy-coming-soon.yml`    | available via the Pages project (push branch + Pages emits a preview URL) |
 | `apps/web`           | Cloudflare Pages    | **Cloudflare Pages git integration** (one-time dashboard) | automatic per-branch + PR comment with the URL                |
@@ -498,66 +498,61 @@ Default recommendation: option (2). Coming-soon is short-lived.
 #### Workers — `apps/api`
 
 `.github/workflows/preview-api.yml` triggers on every PR push and
-deploys to a single shared `nlqdb-api-preview` Worker. It comments
-the preview URL on the PR (sticky — same comment is updated on each
-push). The preview is reachable on a `*.workers.dev` URL; the prod
-custom domain `app.nlqdb.com` stays bound to `nlqdb-api`.
+runs `wrangler versions upload` against the `nlqdb-api` Worker
+(Workers Versions feature). Each push produces a *non-production*
+version of the prod Worker with a unique URL of the form
+`<id>-nlqdb-api.omer-hochman.workers.dev`. The promoted production
+version (and `app.nlqdb.com`) stay untouched until merge runs
+`wrangler deploy` via `deploy-api.yml`. Sticky PR comment carries
+the per-version URL.
 
-**First-time bootstrap (one-time, dashboard-only).** `wrangler
-deploy --env preview` 404s on a brand-new worker name — wrangler
-v4 in `--env` mode always hits the Workers Services API to diff
-existing config, and that endpoint can't route to a service that
-hasn't been created yet (failure logs as `code: 7003` +
-`code: 7000`). Both CI and a local CLI run hit the same wrangler
-code path, so the CLI is **not** a workaround. Create the Worker
-once via the dashboard:
+**One-time dashboard setup (already done):** Workers & Pages →
+`nlqdb-api` → Settings → Domains & Routes → enable both
+`workers.dev` and `Preview URLs`. Without Preview URLs enabled,
+`wrangler versions upload` succeeds but the per-version URLs aren't
+publicly reachable.
 
-1. Cloudflare dashboard → Workers & Pages → **Create** → **Create
-   Worker**.
-2. Name: `nlqdb-api-preview`.
-3. Click **Deploy** with the default Hello-World code (no
-   bindings, no config — placeholder only).
+**No bootstrap dance.** Unlike the older `--env preview` model
+(separate Worker named `nlqdb-api-preview`), Workers Versions never
+hits the brand-new-worker 404 path — it's always uploading a
+version of an *existing* worker. This is why we moved to it.
 
-That's it. The service now exists, and the next CI run of
-`preview-api.yml` updates it cleanly: `services/nlqdb-api-preview`
-routes, wrangler diffs / uploads, your real `[env.preview]` config
-overwrites the placeholder. The same one-click bootstrap will
-apply to any future preview Worker you split off (per-PR named
-workers, separate D1, etc.).
-
-**Shared bindings.** The preview Worker uses the same KV / D1 /
-Queue / R2 as prod. This is intentional for v0 — most PRs don't
-write to D1, and the contamination risk is acceptable while traffic
-is single-digit. The configuration is in
-`apps/api/wrangler.toml` `[env.preview]`.
+**Versions inherit prod bindings** (KV / D1 / Queue / R2). Same
+shared-bindings model as before, just with a saner URL story.
+Contamination risk is acceptable while pre-alpha traffic is
+single-digit; most PRs don't write to D1.
 
 **Schema-changing PRs are NOT covered.** The workflow deliberately
 skips `migrate:remote`: applying an unmerged migration to prod D1
-defeats the point. If a PR adds a migration, test locally with
-`migrate:local` + `wrangler dev` and call it out on the PR; the
-preview will 5xx routes that depend on the new schema until the
-PR merges and the production deploy runs migrations.
+defeats the point of "preview". If a PR adds a migration, test
+locally with `migrate:local` + `wrangler dev` and call it out on
+the PR; the preview version will 5xx routes that depend on the new
+schema until merge promotes the version *and* the production
+deploy runs migrations.
 
-**Concurrency.** Single shared preview means each PR push overwrites
-the previous Worker code. Two PRs in flight will see each other's
-code on the preview URL, last push wins. When that becomes
-disruptive, the upgrade path is per-PR named workers
-(e.g. `nlqdb-api-pr-${number}`) with a matching cleanup workflow on
-PR close — defer until needed.
+**Per-PR isolation comes for free.** Each push uploads a fresh
+version with its own URL — two open PRs never overwrite each
+other's preview. Older versions stay reachable on their per-version
+URLs in the dashboard until garbage-collected (CF retains the last
+~10 versions; older ones drop off automatically).
 
-**Upgrade to fully-isolated previews** (separate D1 + KV) when
-shared bindings start to bite — typically when schema changes are
-common or when PR review needs production-grade fidelity:
+**Upgrade to fully-isolated previews** (separate D1 + KV per PR)
+when shared bindings start to bite — typically when schema changes
+are common or PR review needs production-grade fidelity:
 
 1. Provision `nlqdb-app-preview` D1 + `nlqdb-cache-preview` KV via
-   `scripts/provision-cf-resources.sh` (extend the script to take a
-   `preview` mode).
-2. Update `apps/api/wrangler.toml` `[env.preview]` to point bindings
-   at the new IDs.
-3. Add `bun run --cwd apps/api migrate:remote -- --env preview` (or
-   equivalent flag) to `preview-api.yml` `preCommands`. The
-   migration script needs an extension for the preview database
-   name.
+   `scripts/provision-cf-resources.sh` (extend to take a `preview`
+   mode).
+2. Switch the workflow back to a separate-worker model with
+   `[env.preview]` block + `wrangler deploy --env preview`. The
+   versions-upload model can't address per-PR-isolated bindings on
+   a single worker.
+3. Re-add `migrate:remote` against the preview D1 in `preCommands`.
+
+The legacy `nlqdb-api-preview` Worker (created during the bootstrap
+detour, then orphaned by this Model-B switch) can be deleted from
+the dashboard at your leisure — it's not bound to anything and
+costs nothing.
 
 #### Workers — `apps/events-worker`
 
