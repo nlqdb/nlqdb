@@ -12,6 +12,7 @@
     "deploy": "astro build && wrangler pages deploy dist --project-name=nlqdb-web"
   },
   "dependencies": {
+    "@nlqdb/elements": "workspace:*",
     "astro": "^5.0.0"
   },
   "devDependencies": {

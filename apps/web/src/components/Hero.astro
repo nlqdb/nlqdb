@@ -44,7 +44,28 @@ const placeholders = [
       Get in touch
     </a>
   </div>
+
+  <aside class="demo" aria-labelledby="demo-caption">
+    <p class="demo__caption" id="demo-caption">
+      <span class="demo__arrow" aria-hidden="true">↓</span>
+      Drop two lines of HTML. That's the entire backend.
+    </p>
+    <div class="demo__grid">
+      <pre class="demo__code"><code>{`<script src="https://elements.nlqdb.com/v1.js" type="module"></script>
+<nlq-data data-demo="orders" template="table"></nlq-data>`}</code></pre>
+      <div class="demo__rendered">
+        <nlq-data data-demo="orders" template="table"></nlq-data>
+      </div>
+    </div>
+  </aside>
 </section>
+
+<script>
+  // Workspace import — registers <nlq-data> on the page. Astro
+  // bundles this for the static HTML build; the CDN script-tag form
+  // shown in the demo snippet is for third-party consumers.
+  import "@nlqdb/elements";
+</script>
 
 <script is:inline define:vars={{ placeholders }}>
   const input = document.querySelector("[data-hero-input]");

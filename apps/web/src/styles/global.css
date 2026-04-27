@@ -252,6 +252,149 @@ h3 {
   box-shadow: 6px 6px 0 0 var(--accent-fg);
 }
 
+/* Live demo panel — code on the left, rendered <nlq-data> on the right.
+ * Visible proof of the "0 to 1 with no backend" message (DESIGN §3.1). */
+
+.demo {
+  margin-top: clamp(20px, 3vw, 32px);
+  padding: clamp(16px, 2.5vw, 24px);
+  background: var(--bg-elev);
+  border: 2px solid var(--border-strong);
+  box-shadow: 6px 6px 0 0 var(--border-strong);
+}
+
+.demo__caption {
+  margin: 0 0 clamp(12px, 2vw, 18px);
+  font-family: var(--mono);
+  font-size: 13px;
+  color: var(--fg);
+}
+
+.demo__arrow {
+  color: var(--accent);
+  font-weight: 700;
+  margin-right: 6px;
+}
+
+.demo__grid {
+  display: grid;
+  gap: clamp(12px, 2vw, 18px);
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 720px) {
+  .demo__grid {
+    grid-template-columns: 1fr 1fr;
+    align-items: start;
+  }
+}
+
+.demo__code,
+.demo__rendered {
+  margin: 0;
+  padding: 14px 16px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  overflow-x: auto;
+}
+
+.demo__code {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--fg);
+  white-space: pre;
+}
+
+/* <nlq-data> output styles. The element renders into light DOM, so
+ * the consuming site is free to override these — these are the
+ * defaults nlqdb.com uses. */
+
+.nlq-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--mono);
+  font-size: 13px;
+}
+
+.nlq-table th,
+.nlq-table td {
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  vertical-align: top;
+  /* `anywhere` only kicks in for content that won't fit; normal text
+   * still wraps at word boundaries. Long URLs / IDs no longer blow
+   * out the viewport. */
+  overflow-wrap: anywhere;
+}
+
+.nlq-table th {
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.nlq-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.nlq-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 13px;
+}
+
+.nlq-list li {
+  padding: 4px 0;
+}
+
+.nlq-list small {
+  display: block;
+  color: var(--fg-muted);
+  font-size: 11px;
+  margin-top: 2px;
+}
+
+.nlq-kv {
+  margin: 0;
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 4px 14px;
+  font-family: var(--mono);
+  font-size: 13px;
+}
+
+.nlq-kv dt {
+  color: var(--accent);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.nlq-kv dd {
+  margin: 0;
+  color: var(--fg);
+}
+
+.nlq-empty,
+.nlq-pending {
+  padding: 8px;
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--fg-muted);
+}
+
+.nlq-pending code {
+  padding: 1px 5px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--fg-dim);
+}
+
 .foot {
   padding: 32px 0;
   font-family: var(--mono);
