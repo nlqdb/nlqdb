@@ -80,7 +80,7 @@ official docs before implementation (GUIDELINES §2).
 ## Tests
 
 ```bash
-bun --cwd packages/llm run test
+bun run --cwd packages/llm test
 ```
 
 Tests inject a fake `fetch` per provider — no live API keys required.

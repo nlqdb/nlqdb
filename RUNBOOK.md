@@ -225,6 +225,29 @@ the failure path (Basic auth rejected = wrong id or secret).
 
 ## 6. Deployments
 
+**Strategy** (per surface):
+
+| Surface              | Hosting                  | Production deploy                                      | Branch / PR previews |
+| :------------------- | :----------------------- | :----------------------------------------------------- | :------------------- |
+| `apps/api`           | Cloudflare Workers       | GH Actions — `.github/workflows/deploy-api.yml`        | n/a (single env)     |
+| `apps/events-worker` | Cloudflare Workers       | GH Actions — `.github/workflows/deploy-events-worker.yml` | n/a (single env)  |
+| `apps/coming-soon`   | Cloudflare Pages         | GH Actions — `.github/workflows/deploy-coming-soon.yml`| via the same Pages project |
+| `apps/web`           | Cloudflare Pages         | **Cloudflare Pages git integration** (recommended; setup below) | automatic on every push to non-main branches |
+| `packages/elements`  | Cloudflare Pages         | **Cloudflare Pages git integration** (recommended; setup below) | automatic on every push to non-main branches |
+
+Workers stay on GH Actions because they need pre-deploy migrations
+(`migrate:remote`) and the secrets-mirror sequence — those are
+naturally scripted in YAML. Pages projects move to Cloudflare's
+git integration because (a) it deploys every branch automatically,
+giving free PR previews and dashboard-managed previews per commit,
+(b) the YAML for a static-site deploy adds zero value over what
+Cloudflare gives us out of the box.
+
+`apps/coming-soon` keeps its GH Action for now (it pre-dates this
+strategy and still works). When `apps/web` ships content-complete and
+takes over `nlqdb.com`, retire the coming-soon GH Action with the
+project.
+
 ### Coming-soon page
 
 - Source: `apps/coming-soon/` (HTML + CSS, no build step).
@@ -234,7 +257,7 @@ the failure path (Basic auth rejected = wrong id or secret).
   `CLOUDFLARE_API_TOKEN` + `CLOUDFLARE_ACCOUNT_ID` GHA secrets).
   Manual: `./scripts/deploy-coming-soon.sh` (idempotent — creates the
   project on first run, pushes a new deployment on re-runs).
-  Shortcut: `bun --cwd apps/coming-soon run deploy`.
+  Shortcut: `bun run --cwd apps/coming-soon deploy`.
 - Custom domains: `nlqdb.com`, `www.nlqdb.com`.
 
 ### `apps/api` (Phase 0 §3 — in progress)
@@ -252,22 +275,29 @@ cost-ordered failover chain; Slice 5 wires Better Auth at
 (four tables in `migrations/0002_better_auth.sql`). Resource IDs are
 committed in `apps/api/wrangler.toml` (account-scoped, not secret).
 
-**First deploy from a clean Cloudflare account** (or after any new
-schema / new secret) requires **three** steps in order — `wrangler
-deploy` alone ships the code but neither pushes secrets nor applies
-migrations to remote D1:
+**Auto-deploy on merge to `main`**: `.github/workflows/deploy-api.yml`
+runs `migrate:remote` + `wrangler deploy` whenever `apps/api/**` or
+its workspace dependencies change. `secrets:remote` is not in CI
+(the script reads from `.envrc`, which only exists on dev boxes).
+Mirror secrets manually whenever one rotates:
 
 ```bash
-(cd apps/api && bun run secrets:remote)   # mirror .envrc → Worker secrets
-(cd apps/api && bun run migrate:remote)   # apply migrations/* to remote D1
-(cd apps/api && bun run deploy)           # wrangler deploy
+bun run --cwd apps/api secrets:remote
 ```
 
-All three are idempotent — safe to re-run on every deploy. Skip
-`secrets:remote` only if `.envrc` hasn't changed; skip `migrate:remote`
-only if no new files in `apps/api/migrations/`. The `app.nlqdb.com`
+**First deploy from a clean Cloudflare account** (or after a secret
+rotation that the Worker needs at runtime) — three steps in order:
+
+```bash
+bun run --cwd apps/api secrets:remote   # mirror .envrc → Worker secrets
+bun run --cwd apps/api migrate:remote   # apply migrations/* to remote D1
+bun run --cwd apps/api deploy           # wrangler deploy
+```
+
+All three are idempotent — safe to re-run. The `app.nlqdb.com`
 custom-domain attach happens once on first `deploy` and is a no-op
-thereafter.
+thereafter. After this initial deploy, CI takes over for code +
+schema changes; only re-run `secrets:remote` on rotation.
 
 **Cloudflare resources** (provisioned by
 `scripts/provision-cf-resources.sh`, idempotent):
@@ -321,8 +351,8 @@ and the Google client redirect URIs in §5).
 Secrets mirror — single source of truth is `.envrc`:
 
 ```bash
-bun --cwd apps/api run secrets:local    # writes apps/api/.dev.vars (wrangler dev)
-bun --cwd apps/api run secrets:remote   # wrangler secret bulk → deployed Worker
+bun run --cwd apps/api secrets:local    # writes apps/api/.dev.vars (wrangler dev)
+bun run --cwd apps/api secrets:remote   # wrangler secret bulk → deployed Worker
 ```
 
 Both modes filter to the Worker-runtime subset (BETTER_AUTH_SECRET,
@@ -342,12 +372,17 @@ talks to external sinks. See [`apps/events-worker/README.md`](./apps/events-work
 for the architecture and "adding a new event/sink" recipe.
 
 No HTTP route, no public URL (`workers_dev = false` /
-`preview_urls = false`). Two-step deploy (no D1 migrations of its
-own, so `migrate:remote` is skipped):
+`preview_urls = false`). No D1 of its own, so the deploy is a
+single `wrangler deploy`.
+
+**Auto-deploy on merge to `main`**: `.github/workflows/deploy-events-worker.yml`
+runs `wrangler deploy` whenever `apps/events-worker/**` or its
+workspace deps change. Same `secrets:remote`-stays-manual rule as
+`apps/api`.
 
 ```bash
-(cd apps/events-worker && bun run secrets:remote)   # mirror LogSnag + GRAFANA_*
-(cd apps/events-worker && bun run deploy)           # wrangler deploy
+bun run --cwd apps/events-worker secrets:remote   # mirror LogSnag + GRAFANA_*
+bun run --cwd apps/events-worker deploy           # wrangler deploy
 ```
 
 Secrets pushed: `LOGSNAG_TOKEN`, `LOGSNAG_PROJECT`,
@@ -364,6 +399,71 @@ wrangler queues info nlqdb-events
 
 The `nlqdb-events` queue is created/updated by
 `scripts/provision-cf-resources.sh` (idempotent).
+
+### `apps/web` (Phase 1 marketing site)
+
+Astro static site that builds to `apps/web/dist/`. Hosted on
+Cloudflare Pages project `nlqdb-web`. Currently lives on the
+`*.pages.dev` URL only; the DNS flip from `apps/coming-soon` to this
+project is a future operational step (see DESIGN §3.1).
+
+**Recommended: Cloudflare Pages git integration** (one-time setup,
+done in dashboard — gives free per-branch preview deploys + PR
+comments with preview URLs). Once configured, every push to any
+branch deploys; `main` becomes the production deployment.
+
+One-time dashboard setup:
+
+1. Cloudflare dashboard → Workers & Pages → `nlqdb-web` → Settings →
+   Builds & deployments → connect GitHub repo `nlqdb/nlqdb`.
+2. Production branch: `main`.
+3. Build configuration:
+   - **Framework preset:** Astro
+   - **Build command:** `bun install --frozen-lockfile && bun run --cwd apps/web build`
+   - **Build output directory:** `apps/web/dist`
+   - **Root directory** (project): leave blank (repo root)
+   - **Environment variables:** `BUN_VERSION=1.3.13` (or match `package.json` `engines.bun`)
+4. Save. The next push to any branch triggers a deploy; PRs get a
+   comment with the preview URL.
+
+Manual deploy (rarely needed once git integration is on):
+
+```bash
+bun run --cwd apps/web deploy   # wrangler pages deploy dist --project-name=nlqdb-web
+```
+
+### `packages/elements` (CDN bundle)
+
+The `<nlq-data>` runtime built to a single ESM at
+`packages/elements/dist/v1.js`. Hosted on Cloudflare Pages project
+`nlqdb-elements` so it's reachable at `nlqdb-elements.pages.dev/v1.js`
+(eventual DNS: `elements.nlqdb.com/v1.js`).
+
+**Recommended: Cloudflare Pages git integration** (same pattern as
+`apps/web`). Per-branch preview URLs are useful here — third parties
+can pin a specific bundle version while we iterate on `main`.
+
+One-time dashboard setup:
+
+1. Cloudflare dashboard → Workers & Pages → Create → Pages → Connect
+   to Git → repo `nlqdb/nlqdb` → project name `nlqdb-elements`.
+2. Production branch: `main`.
+3. Build configuration:
+   - **Framework preset:** None
+   - **Build command:** `bun install --frozen-lockfile && bun run --cwd packages/elements build`
+   - **Build output directory:** `packages/elements/dist`
+   - **Environment variables:** `BUN_VERSION=1.3.13`
+4. Save.
+
+Manual deploy:
+
+```bash
+bun run --cwd packages/elements build
+wrangler pages deploy packages/elements/dist --project-name=nlqdb-elements --branch=main --commit-dirty=true
+```
+
+CI bundle-size budget: < 6 KB gzipped (DESIGN §3.5). Enforced by
+`.github/workflows/ci.yml` job `build-elements`.
 
 ---
 

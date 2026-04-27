@@ -162,7 +162,7 @@ if [[ "$MODE" == "local" ]]; then
   ok "$set_count secrets written to $out (NODE_ENV=development)"
   [[ $skip_count -gt 0 ]] && printf '  \033[2m· %d skipped (empty in .envrc — provision later)\033[0m\n' "$skip_count"
   echo ""
-  echo "Run: bun --cwd $APP_DIR run dev"
+  echo "Run: bun run --cwd $APP_DIR dev"
 fi
 
 # --- remote mode --------------------------------------------------------

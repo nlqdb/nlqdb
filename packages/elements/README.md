@@ -46,9 +46,9 @@ The first import on a page registers `<nlq-data>` on
 ## Local dev
 
 ```bash
-bun --cwd packages/elements run typecheck
-bun --cwd packages/elements run test
-bun --cwd packages/elements run build      # produces dist/v1.js
+bun run --cwd packages/elements typecheck
+bun run --cwd packages/elements test
+bun run --cwd packages/elements build      # produces dist/v1.js
 ```
 
 ## Bundle budget

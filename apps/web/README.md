@@ -24,11 +24,11 @@ Not yet shipping (subsequent slices):
 ## Local dev
 
 ```bash
-bun --cwd apps/web install
-bun --cwd apps/web run dev      # http://localhost:4321
-bun --cwd apps/web run check    # astro check (typecheck)
-bun --cwd apps/web run build    # static dist/
-bun --cwd apps/web run preview  # serve dist/
+bun install --cwd apps/web
+bun run --cwd apps/web dev      # http://localhost:4321
+bun run --cwd apps/web check    # astro check (typecheck)
+bun run --cwd apps/web build    # static dist/
+bun run --cwd apps/web preview  # serve dist/
 ```
 
 ## Deploy
@@ -40,7 +40,7 @@ happens in a later slice once the marketing site is content-complete
 `apps/coming-soon` keeps serving `nlqdb.com`.
 
 ```bash
-bun --cwd apps/web run deploy
+bun run --cwd apps/web deploy
 ```
 
 First deploy creates the Pages project. Subsequent deploys upload
