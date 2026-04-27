@@ -1,0 +1,252 @@
+---
+// Magic-link sign-in page (Slice 10 — DESIGN §4.1, §4.3).
+//
+// Static Astro page with a bundled-script island. Posts the email to
+// Better Auth's magic-link endpoint at the API origin (cross-
+// subdomain: nlqdb.com → app.nlqdb.com), then swaps to a "check
+// your email" panel. No client framework — the entire form is ~50
+// lines of TS bundled by Astro.
+//
+// `?return_to=` is honored: the magic-link callback URL points back
+// at this app's chat surface, with `?return_to=` preserved so the
+// callback re-enters the originally requested page.
+
+import Base from "../layouts/Base.astro";
+---
+<Base
+  title="Sign in — nlqdb"
+  description="Sign in to nlqdb with a magic link. No passwords."
+>
+  <div class="page">
+    <header class="topnav">
+      <a class="topnav__brand" href="/">nlqdb</a>
+    </header>
+
+    <main class="signin">
+      <h1 class="signin__title">Sign in</h1>
+      <p class="signin__lede">A magic link, no passwords. Expires in 15 minutes.</p>
+
+      <form id="signin-form" class="signin__form">
+        <label class="signin__label" for="email">Email</label>
+        <input
+          id="email"
+          name="email"
+          type="email"
+          autocomplete="email"
+          required
+          placeholder="you@example.com"
+          class="signin__field"
+        />
+        <button type="submit" id="signin-submit" class="btn btn--accent signin__submit">
+          Send magic link
+        </button>
+        <p id="signin-error" class="signin__error" hidden></p>
+      </form>
+
+      <div id="signin-sent" class="signin__sent" hidden>
+        <h2 class="signin__sent-title">Check your email</h2>
+        <p class="signin__sent-body">
+          We sent a sign-in link to <strong id="signin-sent-email"></strong>.
+          Click it within 15 minutes to sign in.
+        </p>
+        <p class="signin__sent-meta">
+          Didn't get it? <button type="button" id="signin-resend" class="signin__link">Send another</button>
+          <span id="signin-resend-status" class="signin__resend-status" hidden></span>
+        </p>
+      </div>
+    </main>
+
+    <footer class="foot">
+      <span>&copy; nlqdb &middot; Pre-alpha</span>
+    </footer>
+  </div>
+
+  <script>
+    import { APP_BASE, isLikelyEmail, postJson } from "../lib/auth-client";
+
+    const form = document.getElementById("signin-form") as HTMLFormElement;
+    const emailInput = document.getElementById("email") as HTMLInputElement;
+    const submitBtn = document.getElementById("signin-submit") as HTMLButtonElement;
+    const errorEl = document.getElementById("signin-error") as HTMLParagraphElement;
+    const sentEl = document.getElementById("signin-sent") as HTMLDivElement;
+    const sentEmailEl = document.getElementById("signin-sent-email") as HTMLElement;
+    const resendBtn = document.getElementById("signin-resend") as HTMLButtonElement;
+    const resendStatus = document.getElementById("signin-resend-status") as HTMLElement;
+
+    const params = new URLSearchParams(location.search);
+    const returnTo = params.get("return_to") ?? "/app";
+    const callbackURL = new URL(returnTo, APP_BASE).toString();
+
+    type ButtonState = {
+      el: HTMLElement;
+      idle: string;
+      sending: string;
+    };
+
+    function setBusy(state: ButtonState, busy: boolean) {
+      if (state.el instanceof HTMLButtonElement) {
+        state.el.disabled = busy;
+      }
+      state.el.textContent = busy ? state.sending : state.idle;
+    }
+
+    const submitBtnState: ButtonState = {
+      el: submitBtn,
+      idle: "Send magic link",
+      sending: "Sending…",
+    };
+    const resendBtnState: ButtonState = {
+      el: resendBtn,
+      idle: "Send another",
+      sending: "Sending…",
+    };
+
+    async function send(email: string, busyState: ButtonState, options: { showSent: boolean }) {
+      errorEl.hidden = true;
+      resendStatus.hidden = true;
+      setBusy(busyState, true);
+      try {
+        // `redirectOn401: false` — the sign-in form itself must not
+        // redirect to /sign-in on a 401; that would loop. (Better
+        // Auth's send endpoint never returns 401 in normal flows;
+        // this guards against future plugin chains that could.)
+        await postJson(
+          "/api/auth/sign-in/magic-link",
+          { email, callbackURL },
+          { redirectOn401: false },
+        );
+        sentEmailEl.textContent = email;
+        if (options.showSent) {
+          form.hidden = true;
+          sentEl.hidden = false;
+        } else if (busyState === resendBtnState) {
+          resendStatus.textContent = "sent";
+          resendStatus.hidden = false;
+        }
+      } catch (err) {
+        errorEl.textContent =
+          err instanceof Error && err.message ? err.message : "Couldn't send. Try again.";
+        errorEl.hidden = false;
+      } finally {
+        setBusy(busyState, false);
+      }
+    }
+
+    form.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const email = emailInput.value.trim();
+      if (!email) return;
+      if (!isLikelyEmail(email)) {
+        errorEl.textContent = "That doesn't look like a valid email.";
+        errorEl.hidden = false;
+        return;
+      }
+      send(email, submitBtnState, { showSent: true });
+    });
+
+    resendBtn.addEventListener("click", () => {
+      const email = sentEmailEl.textContent ?? "";
+      if (!email) return;
+      send(email, resendBtnState, { showSent: false });
+    });
+  </script>
+
+  <style>
+    .signin {
+      max-width: 420px;
+      margin: 0 auto;
+      padding: clamp(48px, 10vw, 96px) 0;
+    }
+    .signin__title {
+      font-size: clamp(36px, 6vw, 56px);
+      font-weight: 700;
+      letter-spacing: -0.04em;
+      margin: 0 0 12px;
+    }
+    .signin__lede {
+      font-family: var(--mono);
+      font-size: 14px;
+      color: var(--fg-dim);
+      margin: 0 0 32px;
+    }
+    .signin__form {
+      display: grid;
+      gap: 12px;
+    }
+    .signin__label {
+      font-family: var(--mono);
+      font-size: 12px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: var(--accent);
+    }
+    .signin__field {
+      width: 100%;
+      padding: 14px 16px;
+      font-family: var(--mono);
+      font-size: 16px;
+      color: var(--fg);
+      background: var(--bg-elev);
+      border: 3px solid var(--border-strong);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow-hard);
+      outline: none;
+    }
+    .signin__field:focus {
+      border-color: var(--accent);
+      box-shadow: var(--shadow-hard-accent);
+    }
+    .signin__submit {
+      justify-content: center;
+      margin-top: 8px;
+    }
+    .signin__error {
+      margin: 8px 0 0;
+      padding: 10px 12px;
+      font-family: var(--mono);
+      font-size: 13px;
+      color: #ff8a8a;
+      background: #2a1212;
+      border: 2px solid #ff8a8a;
+    }
+    .signin__sent {
+      padding: 24px;
+      border: 3px solid var(--accent);
+      background: var(--bg-elev);
+      box-shadow: var(--shadow-hard-accent);
+    }
+    .signin__sent-title {
+      font-size: 22px;
+      margin: 0 0 12px;
+    }
+    .signin__sent-body {
+      font-family: var(--mono);
+      font-size: 14px;
+      color: var(--fg);
+      margin: 0 0 16px;
+    }
+    .signin__sent-meta {
+      font-family: var(--mono);
+      font-size: 13px;
+      color: var(--fg-dim);
+      margin: 0;
+    }
+    .signin__link {
+      background: none;
+      border: none;
+      color: var(--accent);
+      text-decoration: underline;
+      font: inherit;
+      cursor: pointer;
+      padding: 0;
+    }
+    .signin__link:disabled {
+      opacity: 0.6;
+      cursor: progress;
+    }
+    .signin__resend-status {
+      margin-left: 8px;
+      color: var(--accent);
+    }
+  </style>
+</Base>

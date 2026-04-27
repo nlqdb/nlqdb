@@ -1,0 +1,419 @@
+---
+// Chat surface (Slice 10 — DESIGN §3.2 "Signed-in surface").
+//
+// Static Astro page; bundled-script island for the conversation.
+// On load: GET /v1/chat/messages with cookies. 401 → redirect to
+// /sign-in?return_to=/app via shared client (lib/auth-client). New
+// turns POST /v1/chat/messages and append the returned user +
+// assistant rows to the list.
+//
+// Streaming is deferred to Slice 11 (TODO in apps/api/src/index.ts);
+// this is request/response. The composer requires a `dbId` because
+// /v1/ask does — there is no DB-on-first-reference yet, so the
+// empty-state copy explicitly tells the user what they need.
+
+import Base from "../../layouts/Base.astro";
+---
+<Base
+  title="Chat — nlqdb"
+  description="Query your database in English."
+>
+  <div class="page app">
+    <header class="topnav">
+      <a class="topnav__brand" href="/">nlqdb</a>
+      <nav class="topnav__links">
+        <button type="button" id="signout" class="signin__link">Sign out</button>
+      </nav>
+    </header>
+
+    <main class="chat">
+      <div id="chat-loading" class="chat__loading">Loading…</div>
+
+      <div id="chat-empty" class="chat__empty" hidden>
+        <h1 class="chat__title">Ask your database.</h1>
+        <p class="chat__lede">
+          Type your question and the <code>db_id</code> you want to query. The reply
+          includes the SQL we ran — for review or copy-paste.
+        </p>
+        <p class="chat__lede chat__lede--muted">
+          New here?  You'll need a database registered to your account first. The
+          public on-ramp ("create a DB in a sentence") ships in Phase 1; for now
+          ask the operator for a <code>db_id</code> bound to your user.
+        </p>
+      </div>
+
+      <ol id="chat-messages" class="chat__messages" hidden></ol>
+
+      <form id="chat-form" class="chat__form" hidden>
+        <input
+          id="chat-db"
+          name="dbId"
+          type="text"
+          placeholder="db_id (e.g. db_orders)"
+          class="chat__db"
+          autocomplete="off"
+          required
+        />
+        <textarea
+          id="chat-input"
+          name="goal"
+          placeholder="Show me the 10 most recent orders…"
+          class="chat__input"
+          rows="2"
+          required
+        ></textarea>
+        <div class="chat__send-row">
+          <span class="chat__hint" aria-hidden="true">Enter to send · Shift+Enter for newline</span>
+          <button type="submit" id="chat-send" class="btn btn--accent chat__send">Send</button>
+        </div>
+        <p id="chat-error" class="chat__error" hidden></p>
+      </form>
+    </main>
+  </div>
+
+  <script>
+    import { API_BASE, escapeHtml, getJson, postJson, redirectToSignIn } from "../../lib/auth-client";
+
+    type AssistantSuccess = {
+      kind: "ok";
+      sql: string;
+      rows: Record<string, unknown>[];
+      rowCount: number;
+      truncated: boolean;
+      cached: boolean;
+      summary?: string;
+    };
+    type AssistantError = {
+      kind: "error";
+      status: string;
+      message?: string;
+    };
+    type ChatMessage =
+      | { id: string; role: "user"; userId: string; dbId: string; goal: string; createdAt: number }
+      | {
+          id: string;
+          role: "assistant";
+          userId: string;
+          dbId: string;
+          createdAt: number;
+          result: AssistantSuccess | AssistantError;
+        };
+
+    const loading = document.getElementById("chat-loading") as HTMLDivElement;
+    const empty = document.getElementById("chat-empty") as HTMLDivElement;
+    const list = document.getElementById("chat-messages") as HTMLOListElement;
+    const form = document.getElementById("chat-form") as HTMLFormElement;
+    const dbInput = document.getElementById("chat-db") as HTMLInputElement;
+    const goalInput = document.getElementById("chat-input") as HTMLTextAreaElement;
+    const sendBtn = document.getElementById("chat-send") as HTMLButtonElement;
+    const errorEl = document.getElementById("chat-error") as HTMLParagraphElement;
+    const signoutBtn = document.getElementById("signout") as HTMLButtonElement;
+
+    const LAST_DB_KEY = "nlqdb:last-db";
+    const RENDER_ROW_CAP = 50;
+
+    function renderRowsAsTable(rows: Record<string, unknown>[]): string {
+      if (rows.length === 0) {
+        return '<p class="chat__rows-empty">No rows.</p>';
+      }
+      const cols = Object.keys(rows[0] ?? {});
+      const head = cols.map((c) => `<th>${escapeHtml(c)}</th>`).join("");
+      const body = rows
+        .slice(0, RENDER_ROW_CAP)
+        .map((row) => {
+          const cells = cols
+            .map((c) => {
+              const v = row[c];
+              const text =
+                v === null || v === undefined
+                  ? ""
+                  : typeof v === "object"
+                    ? JSON.stringify(v)
+                    : v;
+              return `<td>${escapeHtml(text)}</td>`;
+            })
+            .join("");
+          return `<tr>${cells}</tr>`;
+        })
+        .join("");
+      const more =
+        rows.length > RENDER_ROW_CAP
+          ? `<p class="chat__rows-more">… ${rows.length - RENDER_ROW_CAP} more rows in this page</p>`
+          : "";
+      return `<table class="nlq-table"><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table>${more}`;
+    }
+
+    function renderMessage(msg: ChatMessage): HTMLLIElement {
+      const li = document.createElement("li");
+      li.className = `chat__msg chat__msg--${msg.role}`;
+      if (msg.role === "user") {
+        li.innerHTML = `
+          <div class="chat__msg-meta">you · db=${escapeHtml(msg.dbId)}</div>
+          <div class="chat__msg-body">${escapeHtml(msg.goal)}</div>
+        `;
+        return li;
+      }
+      if (msg.result.kind === "error") {
+        li.innerHTML = `
+          <div class="chat__msg-meta">nlqdb · error</div>
+          <div class="chat__msg-error">
+            <strong>${escapeHtml(msg.result.status)}</strong>
+            ${msg.result.message ? `<div>${escapeHtml(msg.result.message)}</div>` : ""}
+          </div>
+        `;
+        return li;
+      }
+      const r = msg.result;
+      const summary = r.summary
+        ? `<div class="chat__msg-summary">${escapeHtml(r.summary)}</div>`
+        : "";
+      const sql = r.sql
+        ? `<pre class="chat__msg-sql"><code>${escapeHtml(r.sql)}</code></pre>`
+        : "";
+      const rowsHtml = renderRowsAsTable(r.rows);
+      const cached = r.cached ? " · cached" : "";
+      const truncated = r.truncated ? ` · stored first ${r.rows.length} of ${r.rowCount}` : "";
+      const meta = `nlqdb · ${r.rowCount} row${r.rowCount === 1 ? "" : "s"}${cached}${truncated}`;
+      li.innerHTML = `
+        <div class="chat__msg-meta">${escapeHtml(meta)}</div>
+        ${summary}
+        <div class="chat__msg-rows">${rowsHtml}</div>
+        ${sql}
+      `;
+      return li;
+    }
+
+    function appendMessage(msg: ChatMessage) {
+      list.appendChild(renderMessage(msg));
+      list.scrollTop = list.scrollHeight;
+    }
+
+    async function load() {
+      try {
+        const body = await getJson<{ messages: ChatMessage[] }>("/v1/chat/messages");
+        loading.hidden = true;
+        form.hidden = false;
+        const msgs = body.messages ?? [];
+        if (msgs.length === 0) {
+          empty.hidden = false;
+        } else {
+          list.hidden = false;
+          for (const m of msgs) appendMessage(m);
+        }
+        const lastDb = localStorage.getItem(LAST_DB_KEY);
+        if (lastDb) dbInput.value = lastDb;
+      } catch (err) {
+        // getJson redirected on 401 — anything else is a real error.
+        if (err instanceof Error && err.message === "unauthorized") return;
+        loading.textContent = `Couldn't load: ${
+          err instanceof Error ? err.message : "unknown error"
+        }`;
+      }
+    }
+
+    async function send() {
+      const goal = goalInput.value.trim();
+      const dbId = dbInput.value.trim();
+      if (!goal || !dbId) return;
+      errorEl.hidden = true;
+      sendBtn.disabled = true;
+      sendBtn.textContent = "Sending…";
+      try {
+        localStorage.setItem(LAST_DB_KEY, dbId);
+        const body = await postJson<{ user: ChatMessage; assistant: ChatMessage }>(
+          "/v1/chat/messages",
+          { goal, dbId },
+        );
+        empty.hidden = true;
+        list.hidden = false;
+        appendMessage(body.user);
+        appendMessage(body.assistant);
+        goalInput.value = "";
+      } catch (err) {
+        if (err instanceof Error && err.message === "unauthorized") return;
+        errorEl.textContent = err instanceof Error ? err.message : "Send failed.";
+        errorEl.hidden = false;
+      } finally {
+        sendBtn.disabled = false;
+        sendBtn.textContent = "Send";
+      }
+    }
+
+    form.addEventListener("submit", (e) => {
+      e.preventDefault();
+      send();
+    });
+
+    // Enter sends, Shift+Enter inserts a newline. Modern chat
+    // convention; the inline hint near the send button advertises it.
+    goalInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" && !e.shiftKey && !e.isComposing) {
+        e.preventDefault();
+        send();
+      }
+    });
+
+    signoutBtn.addEventListener("click", async () => {
+      await fetch(`${API_BASE}/api/auth/sign-out`, {
+        method: "POST",
+        credentials: "include",
+      });
+      redirectToSignIn();
+    });
+
+    load();
+  </script>
+
+  <style>
+    .app .topnav__links {
+      display: flex;
+      gap: 16px;
+    }
+    .chat {
+      display: grid;
+      grid-template-rows: 1fr auto;
+      gap: 16px;
+      padding: 24px 0 32px;
+      min-height: calc(100dvh - 120px);
+    }
+    .chat__loading,
+    .chat__empty {
+      font-family: var(--mono);
+      color: var(--fg-dim);
+      padding: 32px 0;
+    }
+    .chat__title {
+      font-size: clamp(28px, 5vw, 44px);
+      margin: 0 0 8px;
+      letter-spacing: -0.03em;
+      color: var(--fg);
+    }
+    .chat__lede {
+      font-family: var(--mono);
+      color: var(--fg-dim);
+      margin: 0 0 12px;
+      max-width: 60ch;
+    }
+    .chat__lede--muted {
+      color: var(--fg-muted);
+      font-size: 13px;
+    }
+    .chat__lede code {
+      padding: 1px 6px;
+      background: var(--bg-elev);
+      border: 1px solid var(--border);
+      color: var(--fg);
+    }
+    .chat__messages {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      display: grid;
+      gap: 16px;
+      overflow-y: auto;
+    }
+    .chat__msg {
+      padding: 14px 16px;
+      border: 2px solid var(--border-strong);
+      background: var(--bg-elev);
+      box-shadow: 4px 4px 0 0 var(--border-strong);
+    }
+    .chat__msg--user {
+      border-color: var(--accent);
+      box-shadow: 4px 4px 0 0 var(--accent);
+    }
+    .chat__msg-meta {
+      font-family: var(--mono);
+      font-size: 11px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 8px;
+    }
+    .chat__msg-body {
+      font-family: var(--mono);
+      font-size: 14px;
+      color: var(--fg);
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .chat__msg-summary {
+      font-size: 14px;
+      color: var(--fg);
+      margin-bottom: 10px;
+    }
+    .chat__msg-rows {
+      overflow-x: auto;
+      margin-bottom: 8px;
+    }
+    .chat__rows-empty,
+    .chat__rows-more {
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--fg-muted);
+      margin: 4px 0;
+    }
+    .chat__msg-sql {
+      margin: 8px 0 0;
+      padding: 8px 10px;
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--fg-dim);
+      background: var(--bg);
+      border: 1px solid var(--border);
+      overflow-x: auto;
+    }
+    .chat__msg-error {
+      font-family: var(--mono);
+      font-size: 13px;
+      color: #ff8a8a;
+    }
+    .chat__form {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 8px;
+      padding: 16px;
+      background: var(--bg-elev);
+      border: 3px solid var(--border-strong);
+      box-shadow: var(--shadow-hard);
+      position: sticky;
+      bottom: 12px;
+    }
+    .chat__db,
+    .chat__input {
+      width: 100%;
+      padding: 10px 12px;
+      font-family: var(--mono);
+      font-size: 14px;
+      color: var(--fg);
+      background: var(--bg);
+      border: 2px solid var(--border-strong);
+      outline: none;
+      resize: vertical;
+    }
+    .chat__db:focus,
+    .chat__input:focus {
+      border-color: var(--accent);
+    }
+    .chat__send-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .chat__hint {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--fg-muted);
+    }
+    .chat__error {
+      margin: 0;
+      padding: 8px 10px;
+      font-family: var(--mono);
+      font-size: 13px;
+      color: #ff8a8a;
+      background: #2a1212;
+      border: 2px solid #ff8a8a;
+    }
+  </style>
+</Base>

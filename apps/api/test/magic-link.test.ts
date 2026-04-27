@@ -1,0 +1,103 @@
+// End-to-end magic-link lifecycle (Slice 10):
+//   POST /api/auth/sign-in/magic-link → email "sent"
+//   click verify URL → session cookie set
+//   GET /api/auth/get-session → returns the new user
+//
+// `RESEND_API_KEY` is unset under Miniflare (vitest.config.ts), so the
+// email sender falls through to the console-logging dev stub. We spy
+// on console.log to extract the verify URL from the rendered email
+// body — the same URL the recipient would click.
+//
+// vi.mock of worker-internal modules is broken under
+// @cloudflare/vitest-pool-workers (cloudflare/workers-sdk#10201), so
+// we drive the real Better Auth instance via SELF.fetch and read the
+// stub-emitted URL out-of-band.
+
+import { SELF } from "cloudflare:test";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+const ORIGIN = "https://example.com";
+
+function extractMagicLinkUrl(logs: string[]): string {
+  // Dev-stub log format (src/email.ts):
+  //   [email:dev-stub] to=… subject=… body=<text containing the URL>
+  // The Better Auth verify URL is the first http(s) link in the body.
+  const joined = logs.join("\n");
+  const match = joined.match(/https?:\/\/[^\s"]+\/api\/auth\/magic-link\/verify\?[^\s"]+/);
+  if (!match) {
+    throw new Error(`no magic-link verify URL found in console output:\n${joined}`);
+  }
+  return match[0];
+}
+
+describe("magic-link lifecycle", () => {
+  let logSpy: ReturnType<typeof vi.spyOn>;
+  let logs: string[];
+
+  beforeEach(() => {
+    logs = [];
+    logSpy = vi.spyOn(console, "log").mockImplementation((...args: unknown[]) => {
+      logs.push(args.map((a) => String(a)).join(" "));
+    });
+  });
+
+  afterEach(() => {
+    logSpy.mockRestore();
+  });
+
+  it("send → verify → get-session returns the freshly-signed-in user", async () => {
+    const email = `t-${crypto.randomUUID()}@example.com`;
+
+    const sendRes = await SELF.fetch(`${ORIGIN}/api/auth/sign-in/magic-link`, {
+      method: "POST",
+      headers: { "content-type": "application/json", origin: ORIGIN },
+      body: JSON.stringify({ email, callbackURL: `${ORIGIN}/app` }),
+    });
+    expect(sendRes.status).toBe(200);
+
+    const verifyUrl = extractMagicLinkUrl(logs);
+
+    // Better Auth's verify endpoint sets the session cookie via
+    // Set-Cookie and 302-redirects to the callbackURL on success.
+    // `redirect: "manual"` keeps the cookie addressable on this
+    // response; following the redirect would land on a 404 in the
+    // test worker.
+    const verifyRes = await SELF.fetch(verifyUrl, { redirect: "manual" });
+    expect([200, 302]).toContain(verifyRes.status);
+    const setCookie = verifyRes.headers.get("set-cookie");
+    expect(setCookie).toBeTruthy();
+    expect(setCookie!).toMatch(/session/i);
+
+    const sessionRes = await SELF.fetch(`${ORIGIN}/api/auth/get-session`, {
+      headers: { cookie: setCookie!.split(";")[0]! },
+    });
+    expect(sessionRes.status).toBe(200);
+    const sessionBody = (await sessionRes.json()) as {
+      user?: { email?: string };
+    } | null;
+    expect(sessionBody?.user?.email).toBe(email);
+  });
+
+  it("a previously-redeemed token cannot mint a second session (single-use)", async () => {
+    const email = `t-${crypto.randomUUID()}@example.com`;
+    await SELF.fetch(`${ORIGIN}/api/auth/sign-in/magic-link`, {
+      method: "POST",
+      headers: { "content-type": "application/json", origin: ORIGIN },
+      body: JSON.stringify({ email, callbackURL: `${ORIGIN}/app` }),
+    });
+    const verifyUrl = extractMagicLinkUrl(logs);
+
+    const first = await SELF.fetch(verifyUrl, { redirect: "manual" });
+    expect([200, 302]).toContain(first.status);
+    expect(first.headers.get("set-cookie")).toBeTruthy();
+
+    // Second attempt: Better Auth's response shape varies (4xx body
+    // vs. 302→/error?error=…), but in every healthy variant the
+    // response does NOT carry a Set-Cookie that would mint a new
+    // session. That's the invariant we lock down here — the cookie
+    // is the user-visible side-effect of redemption.
+    const second = await SELF.fetch(verifyUrl, { redirect: "manual" });
+    const replayCookie = second.headers.get("set-cookie") ?? "";
+    expect(replayCookie.toLowerCase()).not.toMatch(/session_token=/);
+  });
+});
