@@ -1,15 +1,24 @@
 // SQL allow-list for `/v1/ask` plans (DESIGN §0.1, §1, §12).
 //
 // nlqdb is **schemas-only-widen**: the LLM is never allowed to emit
-// schema-narrowing or destructive DDL/DML. Two-stage validation:
+// schema-narrowing or destructive DDL/DML. Three-stage validation:
 //
-//   1. Leading-verb gate (regex) — fast, catches every DDL we reject.
-//      node-sql-parser doesn't understand all PG-specific destructive
-//      variants (DROP MATERIALIZED VIEW, VACUUM, …) so the regex gate
-//      is the authoritative reject path.
-//   2. AST check — node-sql-parser parses what passes the gate, so the
-//      DELETE-without-WHERE rule runs against a real AST instead of a
-//      brittle regex on the SQL string.
+//   1. Leading-verb gate (regex) — fast, catches every DDL we reject
+//      at position 0. node-sql-parser doesn't understand all PG-
+//      specific destructive variants (DROP MATERIALIZED VIEW, VACUUM, …)
+//      so the regex gate is the authoritative reject path for the
+//      common shape.
+//   2. AST parse — anything that passed the gate goes through
+//      node-sql-parser. We walk the result for any embedded
+//      destructive verb (DROP / TRUNCATE / GRANT / REVOKE / ALTER) —
+//      catches the `WITH x AS (DROP TABLE foo) SELECT 1` pattern
+//      where leading-verb regex alone gives a false pass.
+//   3. AST checks — DELETE without WHERE rejected.
+//
+// Parse failures do NOT fall through to allow — the LLM produced
+// something we can't reason about, so reject. (Earlier behavior was
+// "allow on parse failure"; tightened here so layered defense actually
+// holds.)
 
 import { Parser } from "node-sql-parser";
 
@@ -23,6 +32,7 @@ export type SqlRejectReason =
   | "delete_without_where"
   | "grant_or_revoke"
   | "disallowed_verb"
+  | "parse_failed"
   | "empty";
 
 const REJECT_VERBS: Array<[RegExp, SqlRejectReason]> = [
@@ -30,11 +40,11 @@ const REJECT_VERBS: Array<[RegExp, SqlRejectReason]> = [
   [/^\s*truncate\b/i, "truncate_statement"],
   [/^\s*grant\b/i, "grant_or_revoke"],
   [/^\s*revoke\b/i, "grant_or_revoke"],
-  // ALTER is rejected outright — the only flavor we'd want is
-  // ALTER TABLE … ADD COLUMN (schema widen), but we have no way to
-  // tell from the LLM that the broader DDL is intentional. Bucket
-  // under drop_statement since DROP is the user-visible failure mode.
+  // ALTER is rejected outright. Bucket under drop_statement since DROP
+  // is the user-visible failure mode.
   [/^\s*alter\b/i, "drop_statement"],
+  [/^\s*vacuum\b/i, "disallowed_verb"],
+  [/^\s*create\b/i, "disallowed_verb"],
 ];
 
 const ALLOWED_LEADING = new Set([
@@ -46,6 +56,17 @@ const ALLOWED_LEADING = new Set([
   "explain",
   "show",
 ]);
+
+// Embedded-verb mapping for the AST walk. Same buckets as REJECT_VERBS
+// but keyed by the AST `type` string node-sql-parser produces.
+const EMBEDDED_REJECT: Record<string, SqlRejectReason> = {
+  drop: "drop_statement",
+  truncate: "truncate_statement",
+  grant: "grant_or_revoke",
+  revoke: "grant_or_revoke",
+  alter: "drop_statement",
+  create: "disallowed_verb",
+};
 
 const parser = new Parser();
 
@@ -62,20 +83,54 @@ export function validateSql(rawSql: string): SqlValidationResult {
     return { ok: false, reason: "disallowed_verb", matched: leading };
   }
 
-  // DELETE-without-WHERE — only meaningful AST check on the allow-list.
-  // The parser may not handle every dialect quirk; fall back to a
-  // simple `\bwhere\b` regex on parse failure.
-  if (leading === "delete") {
-    try {
-      const ast = parser.astify(sql, { database: "PostgreSQL" });
-      const node = (Array.isArray(ast) ? ast[0] : ast) as { type?: string; where?: unknown };
-      if (node?.type === "delete" && !node.where) {
-        return { ok: false, reason: "delete_without_where" };
-      }
-    } catch {
-      if (!/\bwhere\b/i.test(sql)) return { ok: false, reason: "delete_without_where" };
+  // SHOW + EXPLAIN are read-only by definition. node-sql-parser refuses
+  // both ("not supported"); short-circuit instead of demanding a parse.
+  if (leading === "show" || leading === "explain") return { ok: true };
+
+  let asts: AstNode[];
+  try {
+    const parsed = parser.astify(sql, { database: "PostgreSQL" }) as unknown as AstNode | AstNode[];
+    asts = Array.isArray(parsed) ? parsed : [parsed];
+  } catch {
+    return { ok: false, reason: "parse_failed" };
+  }
+
+  for (const root of asts) {
+    const embedded = walkForRejectedType(root);
+    if (embedded) return { ok: false, reason: embedded };
+    if (root["type"] === "delete" && !root["where"]) {
+      return { ok: false, reason: "delete_without_where" };
     }
   }
 
   return { ok: true };
+}
+
+type AstNode = { [k: string]: unknown };
+
+// Recursively walks the AST looking for any node with a `type` matching
+// EMBEDDED_REJECT. Returns the first reject-reason found, or null.
+//
+// The walk traverses arrays + nested objects but skips primitive leaves
+// — keeps it O(nodes) without descending into string positions / line
+// numbers / other parser metadata.
+function walkForRejectedType(node: unknown): SqlRejectReason | null {
+  if (node === null || typeof node !== "object") return null;
+  if (Array.isArray(node)) {
+    for (const item of node) {
+      const hit = walkForRejectedType(item);
+      if (hit) return hit;
+    }
+    return null;
+  }
+  const obj = node as Record<string, unknown>;
+  const type = typeof obj["type"] === "string" ? (obj["type"] as string).toLowerCase() : null;
+  if (type && EMBEDDED_REJECT[type]) {
+    return EMBEDDED_REJECT[type] ?? null;
+  }
+  for (const value of Object.values(obj)) {
+    const hit = walkForRejectedType(value);
+    if (hit) return hit;
+  }
+  return null;
 }

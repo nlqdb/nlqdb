@@ -38,6 +38,8 @@ export default defineConfig(async () => {
               "test/demo.test.ts",
               "test/chat-demo-shortcut.test.ts",
               "test/waitlist.test.ts",
+              "test/kv-throttle.test.ts",
+              "test/anon-adopt.test.ts",
             ],
           },
         },

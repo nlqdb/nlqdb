@@ -2,9 +2,14 @@
 //
 // Two auth modes:
 //   • apiKey: 'sk_…'             server-to-server (Node, Bun, Workers)
-//   • credentials: 'include'     browser, riding the session cookie
+//   • withCredentials: true      browser, riding the session cookie
 //
 // Runtime-agnostic: only depends on global fetch.
+//
+// Error contract: every method throws `NlqdbApiError` on non-2xx.
+// The error carries the parsed envelope's `error.status` (or
+// `unknown_error` if the body wasn't the structured shape) plus the
+// HTTP status. Consumers `try/catch` and discriminate on `err.code`.
 
 export type AskRequest = {
   goal: string;
@@ -20,22 +25,13 @@ export type AskOk = {
   summary?: string;
 };
 
-export type AskError = {
-  status:
-    | "db_not_found"
-    | "schema_unavailable"
-    | "db_misconfigured"
-    | "db_unreachable"
-    | "sql_rejected"
-    | "llm_failed"
-    | "rate_limited";
+export type ApiErrorBody = {
+  status: string;
   message?: string;
   reason?: string;
   limit?: number;
   count?: number;
 };
-
-export type AskResponse = AskOk | { error: AskError };
 
 export type ChatMessage =
   | { id: string; role: "user"; userId: string; dbId: string; goal: string; createdAt: number }
@@ -45,7 +41,7 @@ export type ChatMessage =
       userId: string;
       dbId: string;
       createdAt: number;
-      result: AskOk | (AskError & { kind: "error" });
+      result: AskOk | (ApiErrorBody & { kind: "error" });
     };
 
 // Minimal fetch shape — just the call signature, not the runtime-
@@ -56,15 +52,12 @@ export type FetchLike = (input: RequestInfo | URL, init?: RequestInit) => Promis
 export type ClientOptions = {
   baseUrl?: string;
   apiKey?: string;
-  // Browser cookie mode. When true, sets `credentials: 'include'`
-  // on every request so the session cookie travels.
   withCredentials?: boolean;
-  // Test injection point.
   fetch?: FetchLike;
 };
 
 export type NlqClient = {
-  ask(req: AskRequest, opts?: { signal?: AbortSignal }): Promise<AskResponse>;
+  ask(req: AskRequest, opts?: { signal?: AbortSignal }): Promise<AskOk>;
   listChat(opts?: { signal?: AbortSignal }): Promise<{ messages: ChatMessage[] }>;
   postChat(
     req: AskRequest,
@@ -73,6 +66,22 @@ export type NlqClient = {
 };
 
 const DEFAULT_BASE_URL = "https://app.nlqdb.com";
+
+// Thrown on every non-2xx. Consumers discriminate on `code` (the
+// API's `error.status` discriminant — `rate_limited`, `db_not_found`,
+// `unauthorized`, …) rather than parsing strings.
+export class NlqdbApiError extends Error {
+  override readonly name = "NlqdbApiError";
+  constructor(
+    message: string,
+    readonly httpStatus: number,
+    readonly code: string,
+    readonly path: string,
+    readonly body: ApiErrorBody | null,
+  ) {
+    super(message);
+  }
+}
 
 export function createClient(opts: ClientOptions = {}): NlqClient {
   const baseUrl = (opts.baseUrl ?? DEFAULT_BASE_URL).replace(/\/$/, "");
@@ -92,21 +101,37 @@ export function createClient(opts: ClientOptions = {}): NlqClient {
       ...(credentials ? { credentials } : {}),
     });
     const text = await res.text();
-    let body: unknown;
+    let parsed: unknown;
     try {
-      body = text ? JSON.parse(text) : undefined;
+      parsed = text ? JSON.parse(text) : undefined;
     } catch {
-      throw new Error(`nlqdb: ${path} → ${res.status} non-JSON body: ${text.slice(0, 200)}`);
+      // Non-JSON body. Don't echo body content into the thrown
+      // message — proxies / CDNs sometimes return HTML error pages
+      // and the contents may carry deployment internals.
+      throw new NlqdbApiError(
+        `nlqdb: ${path} → ${res.status} non-JSON response`,
+        res.status,
+        "non_json_response",
+        path,
+        null,
+      );
     }
-    if (!res.ok && !(body && typeof body === "object" && "error" in body)) {
-      throw new Error(`nlqdb: ${path} → ${res.status}`);
+    if (!res.ok) {
+      const errBody = extractError(parsed);
+      throw new NlqdbApiError(
+        `nlqdb: ${path} → ${res.status} ${errBody?.status ?? "unknown_error"}`,
+        res.status,
+        errBody?.status ?? "unknown_error",
+        path,
+        errBody,
+      );
     }
-    return body as T;
+    return parsed as T;
   }
 
   return {
     ask: (req, callOpts) =>
-      call<AskResponse>("/v1/ask", {
+      call<AskOk>("/v1/ask", {
         method: "POST",
         body: JSON.stringify(req),
         signal: callOpts?.signal,
@@ -120,4 +145,15 @@ export function createClient(opts: ClientOptions = {}): NlqClient {
         signal: callOpts?.signal,
       }),
   };
+}
+
+function extractError(parsed: unknown): ApiErrorBody | null {
+  if (!parsed || typeof parsed !== "object") return null;
+  const body = parsed as Record<string, unknown>;
+  const errEnvelope = body["error"];
+  if (errEnvelope && typeof errEnvelope === "object") {
+    const inner = errEnvelope as Record<string, unknown>;
+    if (typeof inner["status"] === "string") return inner as ApiErrorBody;
+  }
+  return null;
 }

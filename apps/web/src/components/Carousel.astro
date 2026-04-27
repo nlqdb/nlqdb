@@ -18,28 +18,20 @@ import type { ShowcaseExample } from "../data/showcase-examples";
 type Props = {
   examples: ShowcaseExample[];
   cycleMs?: number;
+  // Container height. Tall enough for the largest slide so transitions
+  // don't reflow the page; lift via prop when callers ship shorter
+  // examples (e.g. a category-filtered showcase on a docs page).
+  minHeight?: string;
 };
 
-const { examples, cycleMs = 4500 } = Astro.props as Props;
-
-function categoryLabel(c: ShowcaseExample["category"]): string {
-  switch (c) {
-    case "create":
-      return "create";
-    case "schema":
-      return "schema";
-    case "write":
-      return "write";
-    case "read":
-      return "read";
-  }
-}
+const { examples, cycleMs = 4500, minHeight = "clamp(380px, 60vh, 560px)" } = Astro.props as Props;
 ---
 <section class="carousel" aria-roledescription="carousel" aria-label="What you can do with nlqdb">
   <div class="carousel__frame" data-carousel data-cycle-ms={cycleMs}>
-    <ol class="carousel__slides" role="list">
+    <ol class="carousel__slides" role="list" style={`min-height: ${minHeight};`}>
       {examples.map((ex, i) => (
         <li
+          id={`slide-${ex.id}`}
           class="carousel__slide"
           data-slide
           data-index={i}
@@ -49,7 +41,7 @@ function categoryLabel(c: ShowcaseExample["category"]): string {
           aria-label={`${i + 1} of ${examples.length}: ${ex.goal}`}
         >
           <header class="card__head">
-            <span class="card__cat" data-cat={ex.category}>{categoryLabel(ex.category)}</span>
+            <span class="card__cat" data-cat={ex.category}>{ex.category}</span>
             <p class="card__goal">"{ex.goal}"</p>
           </header>
 
@@ -229,12 +221,9 @@ function categoryLabel(c: ShowcaseExample["category"]): string {
     margin: 0;
     padding: 0;
     position: relative;
-    /* The slides are absolutely positioned over each other; the
-       container needs an explicit min-height so it doesn't collapse
-       between transitions. Tuned to fit the largest slide (6-row
-       table); shorter slides leave whitespace below — acceptable
-       trade-off vs the layout shift of auto-height. */
-    min-height: clamp(380px, 60vh, 560px);
+    /* min-height is set inline so callers can override per usage —
+       slides are absolutely positioned over each other and the
+       container would otherwise collapse between transitions. */
   }
   .carousel__slide {
     position: absolute;

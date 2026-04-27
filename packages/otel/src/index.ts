@@ -283,22 +283,47 @@ export function genAiAttributes(a: GenAiAttrs): Record<string, string> {
 }
 
 // PII redactor for prompts / completions before they go on a span,
-// in a log line, or in a trace export. Conservative — replaces the
-// match with the kind in brackets so the structure of the prompt is
-// recoverable for debugging while the sensitive content is gone.
+// log line, or trace export. Conservative — replaces matches with the
+// kind in brackets so the prompt's structure stays recoverable for
+// debugging while the sensitive content is gone.
 //
-// The patterns deliberately err on the side of over-redaction:
-//   • Email addresses
-//   • Phone numbers (10–15 digits with optional +/spaces/dashes)
-//   • Credit-card-ish runs (13–19 digits)
-//   • API-key-ish runs (`sk-…`, `pk_…`, `sec_…`, etc. — common shapes)
-//   • Long base64-ish blobs (40+ chars) — covers JWT/secret leaks
+// Pattern design: each pattern requires structural anchors that random
+// prose / SQL / timestamps don't satisfy, so false positives stay rare.
+// Earlier-greedy versions of phone/card matched things like
+// "2026-04-27 12:34:56" (timestamps) and 13+-digit transaction IDs;
+// those are tightened here. We accept some false negatives — a partial
+// IBAN written without grouping won't be caught — because the fallout
+// of "[card] [card] [card]" littering every trace is worse than the
+// edge-case leak.
+//
+// Patterns:
+//   • email     — RFC-ish local@domain.tld
+//   • jwt       — three base64url segments separated by dots
+//   • apikey    — provider prefix (sk-, pk_, sec_, …) + ≥20 chars
+//   • token     — 60+-char base64url run (catches SHA-256 hashes,
+//                 long opaque tokens; misses sentence-spanning prose)
+//   • phone     — E.164-shaped (+CC ...) or fully-grouped (NXX) NXX-XXXX
+//   • card      — strict 4-4-4-4 grouping with a separator (rejects
+//                 "20260427 12345678" timestamps, account-number runs)
+
+const EMAIL_RE = /[\w.+-]+@[\w-]+(?:\.[\w-]+)+/g;
+const JWT_RE = /\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\b/g;
+const APIKEY_RE = /\b(?:sk|pk|sec|api|key|tok|bearer)[_-][A-Za-z0-9_-]{20,}/gi;
+const TOKEN_RE = /\b[A-Za-z0-9_-]{60,}\b/g;
+const PHONE_RE =
+  /(?:\+\d{1,3}[\s.-]\d{2,4}[\s.-]?\d{3,4}[\s.-]?\d{3,4})|(?:\(\d{2,4}\)\s?\d{3,4}[\s.-]?\d{3,4})/g;
+const CARD_RE = /\b\d{4}[\s-]\d{4}[\s-]\d{4}[\s-]\d{4}\b/g;
+
+// Order matters: jwt + apikey before token (more specific first), email
+// first so addresses with hyphenated long local parts don't fall into
+// the token bucket.
 const PII_PATTERNS: Array<[RegExp, string]> = [
-  [/[\w.+-]+@[\w-]+(?:\.[\w-]+)+/g, "[email]"],
-  [/(?:\+\d{1,3}[\s-]?)?(?:\(\d{1,4}\)[\s-]?)?\d{3}[\s-]?\d{3,4}[\s-]?\d{3,4}/g, "[phone]"],
-  [/\b(?:\d[ -]?){13,19}\b/g, "[card]"],
-  [/\b(?:sk|pk|sec|api|key|tok)[_-][A-Za-z0-9_-]{16,}/gi, "[apikey]"],
-  [/\b[A-Za-z0-9_-]{40,}\b/g, "[token]"],
+  [EMAIL_RE, "[email]"],
+  [JWT_RE, "[jwt]"],
+  [APIKEY_RE, "[apikey]"],
+  [CARD_RE, "[card]"],
+  [PHONE_RE, "[phone]"],
+  [TOKEN_RE, "[token]"],
 ];
 
 export function redactPii(input: string): string {

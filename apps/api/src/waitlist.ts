@@ -9,13 +9,15 @@
 //   • email stored alongside its SHA-256 hash; PK is the hash so
 //     case-folded duplicates collapse atomically via ON CONFLICT
 //   • emits a `user.waitlist_joined` product event on the first
-//     insert (fire-and-forget; never blocks the response)
+//     insert. The route handler runs the emit through `ctx.waitUntil`
+//     so the response isn't blocked on queue latency — `pendingEmit`
+//     is the deferred promise the handler hands to the runtime.
 
-import type { EventEmitter } from "@nlqdb/events";
+import type { EventEmitter, ProductEvent } from "@nlqdb/events";
+import { makeKvThrottle } from "./lib/kv-throttle.ts";
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const MAX_EMAIL_LEN = 254;
-const RATE_KEY_PREFIX = "wl:rate:";
 const RATE_WINDOW_SECONDS = 60;
 const RATE_MAX = 5;
 
@@ -23,15 +25,33 @@ export type WaitlistDeps = {
   db: D1Database;
   kv: KVNamespace;
   events: EventEmitter;
-  // Per-request `Date.now()` injected for deterministic tests.
-  now?: () => number;
 };
 
 export type WaitlistResult =
-  | { status: 200; body: { received: true } }
-  | { status: 400; body: { error: "invalid_email" } }
-  | { status: 429; body: { error: "rate_limited" } }
-  | { status: 500; body: { error: "internal" } };
+  | {
+      status: 200;
+      body: { received: true };
+      // Caller schedules via `ctx.waitUntil` so the 200 ships before
+      // the queue producer resolves. Undefined on duplicate.
+      pendingEmit?: Promise<unknown>;
+    }
+  | { status: 400; body: { error: { status: "invalid_email" } } }
+  | { status: 429; body: { error: { status: "rate_limited" } } }
+  | { status: 500; body: { error: { status: "internal" } } };
+
+const throttleCache = new WeakMap<KVNamespace, ReturnType<typeof makeKvThrottle>>();
+function getThrottle(kv: KVNamespace) {
+  let t = throttleCache.get(kv);
+  if (!t) {
+    t = makeKvThrottle(kv, {
+      prefix: "wl:rate:",
+      max: RATE_MAX,
+      windowSeconds: RATE_WINDOW_SECONDS,
+    });
+    throttleCache.set(kv, t);
+  }
+  return t;
+}
 
 export async function joinWaitlist(
   deps: WaitlistDeps,
@@ -39,20 +59,18 @@ export async function joinWaitlist(
   clientIp: string | null,
   source: string | null = null,
 ): Promise<WaitlistResult> {
-  if (typeof email !== "string") return { status: 400, body: { error: "invalid_email" } };
+  if (typeof email !== "string") {
+    return { status: 400, body: { error: { status: "invalid_email" } } };
+  }
   const trimmed = email.trim();
   if (trimmed.length === 0 || trimmed.length > MAX_EMAIL_LEN || !EMAIL_PATTERN.test(trimmed)) {
-    return { status: 400, body: { error: "invalid_email" } };
+    return { status: 400, body: { error: { status: "invalid_email" } } };
   }
   const normalized = trimmed.toLowerCase();
 
-  // Per-IP throttle. Unknown IP (CF-Connecting-IP missing) collapses
-  // to a single bucket — paranoid but bounded.
-  const ipKey = `${RATE_KEY_PREFIX}${clientIp ?? "unknown"}`;
-  const raw = await deps.kv.get(ipKey);
-  const count = raw ? Number.parseInt(raw, 10) : 0;
-  if (count >= RATE_MAX) return { status: 429, body: { error: "rate_limited" } };
-  await deps.kv.put(ipKey, String(count + 1), { expirationTtl: RATE_WINDOW_SECONDS });
+  const throttle = getThrottle(deps.kv);
+  const allowed = await throttle.tryConsume(clientIp ?? "unknown");
+  if (!allowed) return { status: 429, body: { error: { status: "rate_limited" } } };
 
   const hash = await sha256Hex(normalized);
 
@@ -66,18 +84,21 @@ export async function joinWaitlist(
       .bind(hash, normalized, source)
       .first<{ ok: number }>();
   } catch {
-    return { status: 500, body: { error: "internal" } };
+    return { status: 500, body: { error: { status: "internal" } } };
   }
 
-  // First insert → emit. Duplicate (`inserted === null`) is silent.
-  if (inserted) {
-    await deps.events.emit(
-      { name: "user.waitlist_joined", emailHash: hash, source: source ?? "web" },
-      { id: `user.waitlist_joined.${hash}` },
-    );
-  }
+  // First insert → schedule emit (caller wraps in ctx.waitUntil so the
+  // 200 ships before the queue resolves). Duplicate (`inserted === null`)
+  // is silent — same UX as a fresh signup, no list-membership leak.
+  if (!inserted) return { status: 200, body: { received: true } };
 
-  return { status: 200, body: { received: true } };
+  const event: ProductEvent = {
+    name: "user.waitlist_joined",
+    emailHash: hash,
+    source: source ?? "web",
+  };
+  const pendingEmit = deps.events.emit(event, { id: `user.waitlist_joined.${hash}` });
+  return { status: 200, body: { received: true }, pendingEmit };
 }
 
 async function sha256Hex(input: string): Promise<string> {

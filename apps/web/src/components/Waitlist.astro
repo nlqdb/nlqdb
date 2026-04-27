@@ -72,9 +72,10 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "https://app.nlqdb.com";
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         form.hidden = true;
         doneEl.hidden = false;
-      } catch (err) {
-        errorEl.textContent =
-          err instanceof Error && err.message ? "Couldn't add you. Try again in a moment." : "Couldn't add you.";
+      } catch {
+        // Show a single, generic message — never echo the network
+        // error verbatim (could leak proxy/CDN internals on misconfig).
+        errorEl.textContent = "Couldn't add you. Try again in a moment.";
         errorEl.hidden = false;
         submitBtn.disabled = false;
         submitBtn.textContent = idle;

@@ -36,12 +36,13 @@
       groupName: "cloudflare-tooling",
     },
     {
-      matchPackageNames: ["@opentelemetry/api"],
-      matchPackagePatterns: ["^@opentelemetry/"],
+      // `matchPackagePatterns` was deprecated in Renovate v37; the
+      // glob form on `matchPackageNames` is the supported equivalent.
+      matchPackageNames: ["@opentelemetry/**"],
       groupName: "opentelemetry",
     },
     {
-      matchPackageNames: ["astro", "@astrojs/check"],
+      matchPackageNames: ["astro", "@astrojs/**"],
       groupName: "astro",
     },
     {

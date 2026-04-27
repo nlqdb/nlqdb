@@ -56,20 +56,30 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
-            const url = `${{ steps.deploy.outputs.deployment-url }}`;
+            // `wrangler versions upload` doesn't expose a clean
+            // `deployment-url` step output (only `wrangler deploy`
+            // does). Parse the per-version URL from stdout where
+            // wrangler prints "Workers Preview URL: https://…".
+            const stdout = `${{ steps.deploy.outputs.command-output }}`;
+            const match = stdout.match(/https:\/\/[a-z0-9-]+-nlqdb-web\.[a-z0-9.-]+\.workers\.dev/i);
+            const url = match ? match[0] : '';
             const sha = context.sha.slice(0, 7);
             const marker = '<!-- preview-web-sticky -->';
             const ts = new Date().toISOString().replace('T', ' ').slice(0, 19) + ' UTC';
+
+            const urlLine = url
+              ? `- URL: <${url}>`
+              : '- URL: `<id>-nlqdb-web.omer-hochman.workers.dev` (latest version visible in the dashboard → `nlqdb-web` → Versions)';
 
             const body = [
               marker,
               '🌐 **Preview web deployed**',
               '',
-              url ? `- URL: <${url}>` : '- URL: (see Wrangler logs)',
+              urlLine,
               `- Worker: \`nlqdb-web\` (preview version — non-production)`,
               `- Commit: \`${sha}\``,
               `- Updated: ${ts}`,
-            ].filter(Boolean).join('\n');
+            ].join('\n');
 
             const { data: comments } = await github.rest.issues.listComments({
               owner: context.repo.owner,

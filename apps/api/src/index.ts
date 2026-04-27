@@ -1,5 +1,5 @@
 import { env } from "cloudflare:workers";
-import { authEventsTotal, setupTelemetry } from "@nlqdb/otel";
+import { authEventsTotal, redactPii, setupTelemetry } from "@nlqdb/otel";
 import { trace } from "@opentelemetry/api";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
@@ -146,6 +146,8 @@ app.post("/v1/ask", requireSession, async (c) => {
       span.end();
       return c.json(parsed.error.body, parsed.error.status);
     }
+    // Redacted preview for trace search without leaking PII into spans.
+    span.setAttribute("nlqdb.ask.goal_preview", redactPii(parsed.body.goal).slice(0, 200));
 
     const accept = c.req.header("accept") ?? "";
     const wantsSse = accept.includes("text/event-stream");
@@ -233,7 +235,7 @@ app.post("/v1/waitlist", async (c) => {
   try {
     body = (await c.req.json()) as { email?: unknown };
   } catch {
-    return c.json({ error: "invalid_email" }, 400);
+    return c.json({ error: { status: "invalid_email" } }, 400);
   }
   const result = await joinWaitlist(
     {
@@ -245,6 +247,10 @@ app.post("/v1/waitlist", async (c) => {
     c.req.header("cf-connecting-ip") ?? null,
     "web",
   );
+  // Fire-and-forget: 200 ships before the queue producer resolves.
+  if (result.status === 200 && result.pendingEmit) {
+    c.executionCtx.waitUntil(result.pendingEmit);
+  }
   return c.json(result.body, result.status);
 });
 
@@ -271,6 +277,7 @@ app.post("/v1/demo/ask", async (c) => {
     const result = buildDemoResult(parsed.body.goal);
     span.setAttribute("nlqdb.demo.outcome", "ok");
     span.setAttribute("nlqdb.demo.goal_length", parsed.body.goal.length);
+    span.setAttribute("nlqdb.demo.goal_preview", redactPii(parsed.body.goal).slice(0, 200));
     span.end();
     return c.json(result);
   });
@@ -351,10 +358,8 @@ app.post("/v1/anon/adopt", requireSession, async (c) => {
   }
   const result = await recordAnonAdoption(c.env.DB, session.user.id, token);
   if (!result.ok) {
-    return c.json(
-      { error: { status: result.reason } },
-      result.reason === "invalid_token" ? 400 : 500,
-    );
+    const status = result.reason === "invalid_token" ? 400 : 500;
+    return c.json({ error: { status: result.reason } }, status);
   }
   return c.json({ adopted: result.adopted });
 });

@@ -42,7 +42,7 @@ describe("joinWaitlist", () => {
       "1.2.3.4",
     );
     expect(out.status).toBe(400);
-    expect(out.body).toEqual({ error: "invalid_email" });
+    expect(out.body).toEqual({ error: { status: "invalid_email" } });
   });
 
   it("returns 400 for malformed email", async () => {
@@ -62,9 +62,10 @@ describe("joinWaitlist", () => {
       "1.2.3.4",
     );
     expect(out.status).toBe(429);
+    expect(out.body).toEqual({ error: { status: "rate_limited" } });
   });
 
-  it("returns 200 on successful insert and emits the event", async () => {
+  it("returns 200 with pendingEmit on first insert; emit defers to caller", async () => {
     const events = { emit: vi.fn().mockResolvedValue(undefined) };
     const out = await joinWaitlist(
       { db: stubDb({ insertResult: { ok: 1 } }), kv: stubKv(), events },
@@ -73,6 +74,12 @@ describe("joinWaitlist", () => {
     );
     expect(out.status).toBe(200);
     expect(out.body).toEqual({ received: true });
+    if (out.status !== 200) throw new Error("unreachable");
+    // The handler hands `pendingEmit` to ctx.waitUntil so the emit
+    // doesn't block the response. Resolving it here is what the
+    // runtime would do.
+    expect(out.pendingEmit).toBeDefined();
+    await out.pendingEmit;
     expect(events.emit).toHaveBeenCalledTimes(1);
     expect(events.emit.mock.calls[0]?.[0]).toMatchObject({
       name: "user.waitlist_joined",
@@ -80,7 +87,7 @@ describe("joinWaitlist", () => {
     });
   });
 
-  it("returns 200 on duplicate without emitting (privacy)", async () => {
+  it("returns 200 on duplicate without scheduling an emit (privacy)", async () => {
     const events = { emit: vi.fn().mockResolvedValue(undefined) };
     const out = await joinWaitlist(
       { db: stubDb({ insertResult: null }), kv: stubKv(), events },
@@ -89,16 +96,19 @@ describe("joinWaitlist", () => {
     );
     expect(out.status).toBe(200);
     expect(out.body).toEqual({ received: true });
+    if (out.status !== 200) throw new Error("unreachable");
+    expect(out.pendingEmit).toBeUndefined();
     expect(events.emit).not.toHaveBeenCalled();
   });
 
-  it("returns 500 on D1 error", async () => {
+  it("returns 500 on D1 error with structured envelope", async () => {
     const out = await joinWaitlist(
       { db: stubDb({ insertResult: null, shouldThrow: true }), kv: stubKv(), events: eventsStub },
       "user@example.com",
       "1.2.3.4",
     );
     expect(out.status).toBe(500);
+    expect(out.body).toEqual({ error: { status: "internal" } });
   });
 
   it("normalizes email case (User@Example.COM === user@example.com)", async () => {
@@ -110,7 +120,7 @@ describe("joinWaitlist", () => {
     const lower = await joinWaitlist(
       { db: stubDb({ insertResult: { ok: 1 } }), kv: stubKv(), events: eventsStub },
       "user@example.com",
-      "1.2.3.4",
+      "1.2.3.5",
     );
     // Hash is computed off the normalized form; both should report 200.
     expect(upper.status).toBe(200);

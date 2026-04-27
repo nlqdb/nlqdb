@@ -45,4 +45,26 @@ describe("validateSql", () => {
       expect(validateSql(sql)).toEqual({ ok: true });
     });
   });
+
+  // Layered defense: leading-verb regex catches position-0 DDL, AST
+  // walk catches anything embedded in subqueries / CTEs that the regex
+  // would otherwise wave through.
+  describe("rejects nested destructive verbs (AST walk)", () => {
+    it("rejects DROP nested in a subquery", () => {
+      const result = validateSql("SELECT * FROM (DROP TABLE foo) AS x");
+      expect(result.ok).toBe(false);
+      // The parser may classify this as parse_failed (sub-query DROP
+      // is invalid PG grammar) — both reject states are acceptable
+      // here; what matters is `ok: false`.
+      if (!result.ok) {
+        expect(["drop_statement", "parse_failed"]).toContain(result.reason);
+      }
+    });
+
+    it("rejects unparseable SQL outright (no fall-through to allow)", () => {
+      const result = validateSql("SELECT $$$ malformed");
+      expect(result.ok).toBe(false);
+      if (!result.ok) expect(result.reason).toBe("parse_failed");
+    });
+  });
 });

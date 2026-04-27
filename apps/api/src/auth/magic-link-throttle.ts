@@ -1,9 +1,12 @@
-// Per-email magic-link send throttle backed by KV. Closes the gap left
-// by Better Auth's per-IP rate limit: one attacker, many target inboxes.
-// Counters are keyed by SHA-256(email lowercased) so plaintext addresses
-// never reach KV.
+// Per-email magic-link send throttle. Closes the gap left by Better
+// Auth's per-IP rate limit: one attacker, many target inboxes.
+//
+// Counter keyed by SHA-256(email lowercased) so plaintext addresses
+// never reach KV. Storage + race semantics are inherited from
+// `makeKvThrottle` — see `lib/kv-throttle.ts` for the fail-open and
+// TOCTOU notes.
 
-const KEY_PREFIX = "mlt:";
+import { makeKvThrottle, type Throttle } from "../lib/kv-throttle.ts";
 
 export type MagicLinkThrottleConfig = {
   max: number;
@@ -18,22 +21,12 @@ export function makeMagicLinkThrottle(
   kv: KVNamespace,
   config: MagicLinkThrottleConfig,
 ): MagicLinkThrottle {
-  return {
-    async tryConsume(emailHash: string): Promise<boolean> {
-      const key = `${KEY_PREFIX}${emailHash}`;
-      const raw = await kv.get(key);
-      const count = raw ? Number.parseInt(raw, 10) : 0;
-      if (count >= config.max) return false;
-      // KV `expirationTtl` is per-write, not per-key. Increment by
-      // re-writing with the same TTL — the window slides on each
-      // successful send, which is what we want for this defensive
-      // limit. KV reads are eventually consistent so concurrent sends
-      // can race past the cap; the breach is bounded (max+isolates),
-      // acceptable for a defense-in-depth check.
-      await kv.put(key, String(count + 1), { expirationTtl: config.windowSeconds });
-      return true;
-    },
-  };
+  const throttle: Throttle = makeKvThrottle(kv, {
+    prefix: "mlt:",
+    max: config.max,
+    windowSeconds: config.windowSeconds,
+  });
+  return { tryConsume: (emailHash) => throttle.tryConsume(emailHash) };
 }
 
 export async function hashEmail(email: string): Promise<string> {

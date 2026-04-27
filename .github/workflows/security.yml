@@ -28,11 +28,24 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 6
     container:
-      image: semgrep/semgrep
-    if: github.actor != 'dependabot[bot]'
+      # TODO: pin to a SHA digest once we've verified one. Earlier
+      # attempt used a fabricated digest that failed to pull. Renovate's
+      # container manager will replace this `:latest` tag with a
+      # digest-pinned form on its first run; manually pin in the meantime
+      # if supply-chain hardening becomes urgent.
+      image: semgrep/semgrep:latest
+    # Skip on dependabot/renovate PRs — they trigger `pull_request_target`-
+    # style scoping that doesn't expose SEMGREP_APP_TOKEN, so the run
+    # would fail-noisy with no signal. Renovate-bumped deps still get
+    # scanned on the merge to main via the push trigger above.
+    if: ${{ !contains('dependabot[bot] renovate[bot]', github.actor) }}
     steps:
       - uses: actions/checkout@v4
-      - run: |
+      - name: Run Semgrep
+        # `--error` exits 1 on any finding, blocking the PR. New false
+        # positives can be silenced inline with a `# nosemgrep` comment
+        # on the offending line — see Semgrep docs.
+        run: |
           semgrep ci \
             --config p/typescript \
             --config p/security-audit \

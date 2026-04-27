@@ -310,3 +310,90 @@ describe("createLLMRouter — caller cancellation", () => {
     expect(b.calls).toHaveLength(0);
   });
 });
+
+describe("createLLMRouter — circuit breaker", () => {
+  // Per-isolate state lives in the router; each test creates a fresh
+  // router so breaker state doesn't leak between cases.
+
+  it("opens after failureThreshold consecutive failures and skips the provider", async () => {
+    const flaky = fakeProvider("gemini", {
+      plan: new ProviderError("upstream 502", "http_5xx", 502),
+    });
+    const healthy = fakeProvider("groq", { plan: { sql: "select 1" } });
+    const router = createLLMRouter({
+      providers: [flaky, healthy],
+      chains: { plan: ["gemini", "groq"] },
+      circuitBreaker: { failureThreshold: 2, cooldownMs: 60_000 },
+    });
+
+    // Two failures from flaky → breaker opens. Healthy serves both.
+    for (let i = 0; i < 2; i++) {
+      const res = await router.plan({ goal: "g", schema: "s", dialect: "postgres" });
+      expect(res.sql).toBe("select 1");
+    }
+    expect(flaky.calls).toHaveLength(2);
+
+    // Third request — flaky should NOT be called (circuit_open).
+    await router.plan({ goal: "g", schema: "s", dialect: "postgres" });
+    expect(flaky.calls).toHaveLength(2);
+    expect(healthy.calls).toHaveLength(3);
+  });
+
+  it("a single success resets the failure counter", async () => {
+    let mode: "fail" | "ok" = "fail";
+    const flaky = fakeProvider("gemini", {
+      plan: () =>
+        mode === "fail"
+          ? Promise.reject(new ProviderError("upstream 502", "http_5xx", 502))
+          : Promise.resolve({ sql: "select 1" }),
+    });
+    const fallback = fakeProvider("groq", { plan: { sql: "fallback" } });
+    const router = createLLMRouter({
+      providers: [flaky, fallback],
+      chains: { plan: ["gemini", "groq"] },
+      circuitBreaker: { failureThreshold: 3, cooldownMs: 60_000 },
+    });
+
+    // 1 failure → breaker still closed
+    await router.plan({ goal: "g", schema: "s", dialect: "postgres" });
+    expect(flaky.calls).toHaveLength(1);
+
+    // Switch flaky to ok; success resets counter
+    mode = "ok";
+    const res = await router.plan({ goal: "g", schema: "s", dialect: "postgres" });
+    expect(res.sql).toBe("select 1");
+
+    // Switch back to fail; would take 3 more failures to open (fresh
+    // counter). Two failures should NOT yet open the breaker.
+    mode = "fail";
+    await router.plan({ goal: "g", schema: "s", dialect: "postgres" });
+    await router.plan({ goal: "g", schema: "s", dialect: "postgres" });
+
+    // 4th request — counter at 2, threshold 3 → flaky still tried.
+    await router.plan({ goal: "g", schema: "s", dialect: "postgres" });
+    // 1 (initial fail) + 1 (success) + 3 (post-reset fails) = 5 total calls.
+    expect(flaky.calls).toHaveLength(5);
+  });
+
+  it("emits llm.failover.total{reason: 'circuit_open'} when the breaker is open", async () => {
+    const flaky = fakeProvider("gemini", {
+      plan: new ProviderError("upstream 502", "http_5xx", 502),
+    });
+    const healthy = fakeProvider("groq", { plan: { sql: "select 1" } });
+    const router = createLLMRouter({
+      providers: [flaky, healthy],
+      chains: { plan: ["gemini", "groq"] },
+      circuitBreaker: { failureThreshold: 1, cooldownMs: 60_000 },
+    });
+
+    await router.plan({ goal: "g", schema: "s", dialect: "postgres" }); // opens
+    await router.plan({ goal: "g", schema: "s", dialect: "postgres" }); // skipped → groq
+
+    await telemetry.collectMetrics();
+    const counter = metric(telemetry, "nlqdb.llm.failover.total");
+    const circuitPoint = counter?.dataPoints.find(
+      (dp) => dp.attributes["reason"] === "circuit_open",
+    );
+    expect(circuitPoint).toBeDefined();
+  });
+});
