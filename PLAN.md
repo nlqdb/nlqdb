@@ -360,6 +360,12 @@ Three-tier is a cliché for a reason. Keep it.
 - 30-day PITR.
 - Priority support.
 
+**Premium models (add-on, Hobby+) — pay per token**
+- Opt-in routing of plan-generation to Claude Sonnet 4.6 / GPT-5 for hard queries.
+- Provider list price + 0% markup, metered through Cloudflare AI Gateway, billed via Stripe.
+- Free-tier chain (Groq → Gemini → Workers AI) stays the default fallback even with the add-on enabled.
+- Free tier never silently routes to a paid model — opt-in only.
+
 **Enterprise** — custom. VPC peering, SSO, audit log export. Annual contract.
 
 ### 5.3 The trial experience — no dark patterns

@@ -17,6 +17,7 @@ import { parseGoalDbBody } from "./http.ts";
 import { makeRequireSession, type RequireSessionVariables } from "./middleware.ts";
 import { cryptoProvider, stripe as stripeClient } from "./stripe/client.ts";
 import { processWebhook } from "./stripe/webhook.ts";
+import { joinWaitlist } from "./waitlist.ts";
 
 const SERVICE_VERSION = "0.1.0";
 
@@ -209,6 +210,43 @@ app.use(
     maxAge: 86400,
   }),
 );
+
+// `POST /v1/waitlist` — public, unauthenticated, idempotent. Backs
+// the homepage waitlist form while the chat surface is tabled.
+// Returns 200 for any well-formed email (privacy: never reveal
+// list membership). Per-IP throttle (5/min) defends against abuse.
+// Same permissive CORS posture as /v1/demo/* — body is `{email}`,
+// no cookies, no auth.
+app.use(
+  "/v1/waitlist",
+  cors({
+    origin: (origin) => origin ?? null,
+    credentials: false,
+    allowHeaders: ["Content-Type"],
+    allowMethods: ["POST", "OPTIONS"],
+    maxAge: 86400,
+  }),
+);
+
+app.post("/v1/waitlist", async (c) => {
+  let body: { email?: unknown } = {};
+  try {
+    body = (await c.req.json()) as { email?: unknown };
+  } catch {
+    return c.json({ error: "invalid_email" }, 400);
+  }
+  const result = await joinWaitlist(
+    {
+      db: c.env.DB,
+      kv: c.env.KV,
+      events: buildEventEmitter(c.env.EVENTS_QUEUE),
+    },
+    body.email,
+    c.req.header("cf-connecting-ip") ?? null,
+    "web",
+  );
+  return c.json(result.body, result.status);
+});
 
 app.post("/v1/demo/ask", async (c) => {
   const tracer = trace.getTracer("@nlqdb/api");

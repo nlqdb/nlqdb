@@ -82,6 +82,8 @@ function defaultId(event: ProductEvent): string {
       return `${event.name}.${event.userId}`;
     case "user.registered":
       return `${event.name}.${event.userId}`;
+    case "user.waitlist_joined":
+      return `${event.name}.${event.emailHash}`;
     case "billing.subscription_created":
       return `${event.name}.${event.subscriptionId}`;
     case "billing.subscription_canceled":

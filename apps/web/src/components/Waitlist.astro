@@ -1,0 +1,146 @@
+---
+// Waitlist signup. Replaces the /sign-in CTA while the chat surface
+// is tabled. POSTs to /v1/waitlist on the API origin (CORS allow-
+// list keeps the cross-origin POST honest).
+//
+// Returns the same UX whether the email is new or already on the
+// list — Better Auth-style "confirmed received" without leaking
+// list membership.
+
+const apiBase = import.meta.env.PUBLIC_API_BASE ?? "https://app.nlqdb.com";
+---
+<section class="waitlist" aria-labelledby="waitlist-title">
+  <h2 id="waitlist-title" class="waitlist__title">Join the waitlist</h2>
+  <p class="waitlist__lede">
+    Pre-alpha — we'll email when nlqdb opens up. No marketing fluff, just
+    one note when there's a button to push.
+  </p>
+
+  <form id="waitlist-form" class="waitlist__form" data-api-base={apiBase}>
+    <input
+      id="waitlist-email"
+      name="email"
+      type="email"
+      autocomplete="email"
+      required
+      placeholder="you@example.com"
+      class="waitlist__field"
+      aria-label="Email address"
+    />
+    <button type="submit" id="waitlist-submit" class="btn btn--accent waitlist__submit">
+      Join the waitlist
+    </button>
+    <p id="waitlist-error" class="waitlist__error" hidden role="alert"></p>
+  </form>
+
+  <div id="waitlist-done" class="waitlist__done" hidden>
+    <p class="waitlist__done-body">
+      You're on the list. We'll send one note when there's something to try.
+    </p>
+  </div>
+</section>
+
+<script>
+  const form = document.getElementById("waitlist-form") as HTMLFormElement | null;
+  if (form) {
+    const apiBase = (form.dataset["apiBase"] ?? "").replace(/\/$/, "");
+    const emailInput = document.getElementById("waitlist-email") as HTMLInputElement;
+    const submitBtn = document.getElementById("waitlist-submit") as HTMLButtonElement;
+    const errorEl = document.getElementById("waitlist-error") as HTMLParagraphElement;
+    const doneEl = document.getElementById("waitlist-done") as HTMLDivElement;
+
+    const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const email = emailInput.value.trim();
+      errorEl.hidden = true;
+      if (!EMAIL_RE.test(email)) {
+        errorEl.textContent = "That doesn't look like a valid email.";
+        errorEl.hidden = false;
+        return;
+      }
+      submitBtn.disabled = true;
+      const idle = submitBtn.textContent ?? "Join the waitlist";
+      submitBtn.textContent = "Submitting…";
+      try {
+        const res = await fetch(`${apiBase}/v1/waitlist`, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ email }),
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        form.hidden = true;
+        doneEl.hidden = false;
+      } catch (err) {
+        errorEl.textContent =
+          err instanceof Error && err.message ? "Couldn't add you. Try again in a moment." : "Couldn't add you.";
+        errorEl.hidden = false;
+        submitBtn.disabled = false;
+        submitBtn.textContent = idle;
+      }
+    });
+  }
+</script>
+
+<style>
+  .waitlist {
+    max-width: 520px;
+    margin: 32px auto 24px;
+    padding: 24px;
+    border: 3px solid var(--border-strong);
+    background: var(--bg-elev);
+    box-shadow: var(--shadow-hard);
+  }
+  .waitlist__title {
+    font-size: clamp(22px, 3vw, 28px);
+    margin: 0 0 8px;
+    letter-spacing: -0.02em;
+  }
+  .waitlist__lede {
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--fg-dim);
+    margin: 0 0 16px;
+  }
+  .waitlist__form {
+    display: grid;
+    gap: 10px;
+  }
+  .waitlist__field {
+    width: 100%;
+    padding: 12px 14px;
+    font-family: var(--mono);
+    font-size: 15px;
+    color: var(--fg);
+    background: var(--bg);
+    border: 2px solid var(--border-strong);
+    outline: none;
+  }
+  .waitlist__field:focus {
+    border-color: var(--accent);
+  }
+  .waitlist__submit {
+    justify-content: center;
+  }
+  .waitlist__error {
+    margin: 4px 0 0;
+    padding: 8px 10px;
+    font-family: var(--mono);
+    font-size: 13px;
+    color: #ff8a8a;
+    background: #2a1212;
+    border: 2px solid #ff8a8a;
+  }
+  .waitlist__done {
+    padding: 16px;
+    border: 3px solid var(--accent);
+    background: var(--bg);
+  }
+  .waitlist__done-body {
+    margin: 0;
+    font-family: var(--mono);
+    font-size: 14px;
+    color: var(--fg);
+  }
+</style>
