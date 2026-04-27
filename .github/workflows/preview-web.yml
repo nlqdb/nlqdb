@@ -66,19 +66,10 @@ jobs:
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           workingDirectory: apps/web
           command: versions upload --message "PR #${{ github.event.number }} ${{ github.sha }}"
-          postCommands: |
-            if [ -d "$WRANGLER_OUTPUT_DIR" ]; then
-              URL=$(cat "$WRANGLER_OUTPUT_DIR"/wrangler-output-*.json 2>/dev/null \
-                | jq -rs 'map(select(.type=="version-upload")) | first | .preview_url // .preview_alias_url // empty')
-              if [ -n "$URL" ]; then
-                echo "PREVIEW_URL=$URL" >> "$GITHUB_ENV"
-                echo "Captured preview URL: $URL"
-              else
-                echo "No version-upload event found in $WRANGLER_OUTPUT_DIR"
-              fi
-            else
-              echo "WRANGLER_OUTPUT_DIR not set or missing"
-            fi
+          # `postCommands` runs each newline as its own `sh -c`, so a
+          # multi-line if/fi block is invalid here. Delegate to a
+          # single-line script invocation; logic lives in the .sh file.
+          postCommands: sh ${{ github.workspace }}/scripts/extract-wrangler-preview-url.sh
 
       - name: Sticky preview comment
         uses: actions/github-script@v7
