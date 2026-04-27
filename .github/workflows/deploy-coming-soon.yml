@@ -1,0 +1,42 @@
+# nlqdb — auto-deploy apps/coming-soon to Cloudflare Pages on merge.
+#
+# Mirror of `scripts/deploy-coming-soon.sh` minus the project-create
+# step (project already exists; first-run creation stays a human
+# action). Triggers only when files under apps/coming-soon/** change
+# on main, so unrelated merges don't churn the Pages deployment list.
+#
+# Manual re-deploy: workflow_dispatch button on the Actions tab, or
+# `bun --cwd apps/coming-soon run deploy` from a dev machine.
+
+name: Deploy coming-soon
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "apps/coming-soon/**"
+      - ".github/workflows/deploy-coming-soon.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-coming-soon
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  deployments: write
+
+jobs:
+  deploy:
+    name: wrangler pages deploy
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy to Cloudflare Pages
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy apps/coming-soon --project-name=nlqdb-coming-soon --branch=main --commit-dirty=true
