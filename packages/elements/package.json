@@ -1,0 +1,21 @@
+{
+  "name": "@nlqdb/elements",
+  "private": true,
+  "version": "0.0.0",
+  "description": "<nlq-data> / <nlq-action> custom elements — drop-in HTML for nlqdb-backed UI.",
+  "type": "module",
+  "main": "src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "build": "bun run build.ts",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "esbuild": "^0.25.0",
+    "typescript": "^5.6.0",
+    "vitest": "^4.1.0"
+  }
+}
