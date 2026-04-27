@@ -189,7 +189,24 @@ app.post("/v1/ask", requireSession, async (c) => {
 // so cross-origin embeds work; per-IP rate-limited so it can't be
 // abused as a free LLM stand-in. See src/demo.ts for fixtures +
 // limiter.
-app.use("/v1/demo/*", cors({ origin: "*", allowMethods: ["POST", "OPTIONS"], maxAge: 86400 }));
+//
+// Note on CORS: must echo the request origin + `credentials: true`,
+// not `origin: "*"`. The `<nlq-data>` element always sends
+// `credentials: include` (packages/elements/src/fetch.ts:76) and
+// browsers reject `credentials: include` paired with `Origin: *`.
+// Echoing the origin is functionally "allow any" for this endpoint
+// — there's no auth, no cookies are read on the server side, and
+// the rate limiter keys off `cf-connecting-ip` not session.
+app.use(
+  "/v1/demo/*",
+  cors({
+    origin: (origin) => origin ?? null,
+    credentials: true,
+    allowHeaders: ["Content-Type", "Authorization"],
+    allowMethods: ["POST", "OPTIONS"],
+    maxAge: 86400,
+  }),
+);
 
 app.post("/v1/demo/ask", async (c) => {
   const tracer = trace.getTracer("@nlqdb/api");
