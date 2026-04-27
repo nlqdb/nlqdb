@@ -509,50 +509,17 @@ the per-version URL.
 **One-time dashboard setup (already done):** Workers & Pages →
 `nlqdb-api` → Settings → Domains & Routes → enable both
 `workers.dev` and `Preview URLs`. Without Preview URLs enabled,
-`wrangler versions upload` succeeds but the per-version URLs aren't
-publicly reachable.
+the per-version URLs aren't publicly reachable.
 
-**No bootstrap dance.** Unlike the older `--env preview` model
-(separate Worker named `nlqdb-api-preview`), Workers Versions never
-hits the brand-new-worker 404 path — it's always uploading a
-version of an *existing* worker. This is why we moved to it.
+Versions inherit prod bindings (KV / D1 / Queue / R2). The workflow
+deliberately skips `migrate:remote` — schema-changing PRs need
+local testing with `migrate:local` + `wrangler dev`, the preview
+will 5xx schema-dependent routes until the PR merges and
+`deploy-api.yml` applies migrations.
 
-**Versions inherit prod bindings** (KV / D1 / Queue / R2). Same
-shared-bindings model as before, just with a saner URL story.
-Contamination risk is acceptable while pre-alpha traffic is
-single-digit; most PRs don't write to D1.
-
-**Schema-changing PRs are NOT covered.** The workflow deliberately
-skips `migrate:remote`: applying an unmerged migration to prod D1
-defeats the point of "preview". If a PR adds a migration, test
-locally with `migrate:local` + `wrangler dev` and call it out on
-the PR; the preview version will 5xx routes that depend on the new
-schema until merge promotes the version *and* the production
-deploy runs migrations.
-
-**Per-PR isolation comes for free.** Each push uploads a fresh
-version with its own URL — two open PRs never overwrite each
-other's preview. Older versions stay reachable on their per-version
-URLs in the dashboard until garbage-collected (CF retains the last
-~10 versions; older ones drop off automatically).
-
-**Upgrade to fully-isolated previews** (separate D1 + KV per PR)
-when shared bindings start to bite — typically when schema changes
-are common or PR review needs production-grade fidelity:
-
-1. Provision `nlqdb-app-preview` D1 + `nlqdb-cache-preview` KV via
-   `scripts/provision-cf-resources.sh` (extend to take a `preview`
-   mode).
-2. Switch the workflow back to a separate-worker model with
-   `[env.preview]` block + `wrangler deploy --env preview`. The
-   versions-upload model can't address per-PR-isolated bindings on
-   a single worker.
-3. Re-add `migrate:remote` against the preview D1 in `preCommands`.
-
-The legacy `nlqdb-api-preview` Worker (created during the bootstrap
-detour, then orphaned by this Model-B switch) can be deleted from
-the dashboard at your leisure — it's not bound to anything and
-costs nothing.
+Why versions-upload over `--env preview` and what the per-version
+URL contract is: see the header comment in
+`.github/workflows/preview-api.yml`. Don't restate it here.
 
 #### Workers — `apps/events-worker`
 
@@ -671,9 +638,18 @@ NLQDB_BACKUP_DIR=/path/to/private/folder scripts/backup-envrc.sh
 
 ### When a credential fails verify
 
+> **After ANY rotation: re-run `scripts/mirror-secrets-gha.sh` (and
+> `scripts/mirror-secrets-workers.sh remote` if the secret runs at
+> Workers runtime). Never paste secret values into the GH Actions
+> UI directly — observed 2026-04-27 that UI-pasted values can drift
+> silently from `.envrc` and break deploys with misleading errors
+> (`code: 6111` Invalid auth header on D1, `code: 7003` Could not
+> route on Workers Versions). The mirror script reads from `.envrc`
+> via stdin so what's on disk is what gets stored.**
+
 | Credential             | Rotation path                                                              |
 | :--------------------- | :------------------------------------------------------------------------- |
-| `CLOUDFLARE_API_TOKEN` | https://dash.cloudflare.com/profile/api-tokens → regenerate (same perms)   |
+| `CLOUDFLARE_API_TOKEN` | https://dash.cloudflare.com/profile/api-tokens → use template **Edit Cloudflare Workers** (covers Workers Scripts/Builds/KV/R2/Tail edit + Account Settings/User Details read + Workers Routes edit). Add `D1: Edit` + `Queues: Edit` for our stack. |
 | `CLOUDFLARE_ACCOUNT_ID`| `wrangler whoami` — never rotates                                          |
 | `NEON_API_KEY`         | Neon → Account settings → API keys → create new                            |
 | `DATABASE_URL`         | Neon → Branches → main → Roles → `neondb_owner` → Reset password           |
