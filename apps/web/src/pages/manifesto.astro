@@ -1,0 +1,228 @@
+---
+import Base from "../layouts/Base.astro";
+
+// Long-form manifesto: §0 of DESIGN.md, written for humans rather
+// than spec-readers. AEO-friendly: definition lead in the first 150
+// words; one direct-answer block; FAQ JSON-LD via the Base layout.
+
+const tenets = [
+  {
+    n: "01",
+    title: "Free. Forever.",
+    body: [
+      "You can sign up, build a thing, and ship it to production without a credit card. That isn't a trial. That's the product.",
+      "Every cost upgrade is gated on a real signal — usually that someone is paying us for the thing they shipped. Until then the bill is zero, the limits are honest, and the free tier is the same engine paying customers run on.",
+    ],
+  },
+  {
+    n: "02",
+    title: "Open source. By default.",
+    body: [
+      "The engine, the CLI, the MCP server, the SDK — all under FSL-1.1-ALv2. Source-available now, Apache 2.0 in two years. The cloud is a convenience, not a moat. If we ever try to wall something off, you can fork the engine and run it yourself.",
+    ],
+  },
+  {
+    n: "03",
+    title: "Simple. One way to do each thing.",
+    body: [
+      "Two endpoints. Two CLI verbs. One chat box. No config files in the first 60 seconds. No “pick a region.” No schema. fetch is the SDK.",
+      "Every error is one sentence with the next action. If a feature needs a tutorial to use, it failed. If two engineers disagree on a design, we ship the simpler one.",
+    ],
+  },
+  {
+    n: "04",
+    title: "Effortless UX.",
+    body: [
+      "Zero modals. Zero “are you sure?” except for destructive actions. Keyboard-first. The chat is the product; everything else is a disclosure that you opt into when you actually need it.",
+    ],
+  },
+  {
+    n: "05",
+    title: "Seamless auth — one identity, four surfaces, zero friction.",
+    body: [
+      "No login wall before first value. Every surface produces a working answer before asking who you are. The DB you create before signing in adopts to your account when you do.",
+      "One sign-in covers everything. Web, CLI, every MCP host — same identity. Tokens refresh silently. You will never see a 401.",
+      "Credentials live in the OS keychain. Revocation is instant and visible. Every token on every device, listed with last-used; one click revokes it.",
+    ],
+  },
+  {
+    n: "06",
+    title: "Goal-first, not DB-first.",
+    body: [
+      "Nobody woke up wanting to create a database. They woke up wanting a meal-planner, an agent that remembers them, the number for the 4pm sync. The database is plumbing.",
+      "Every surface starts with a goal. The DB materialises as a side effect, named after the thing you described, ready to query. You can always reach the raw Postgres URL — it’s one click away — but you almost never need to.",
+    ],
+  },
+  {
+    n: "07",
+    title: "Bullet-proof by design — not by handling.",
+    body: [
+      "We make bad states unreachable, not branched on. Schemas only widen, so there is no “schema mismatch” code path. Every mutating call carries an idempotency key, so retries are safe by construction. Plans are content-addressed, so cache invalidation has nothing to invalidate.",
+      "Destructive operations require a diff preview and a second confirm. Numeric inputs are bounded, so there is no NaN, no overflow. Secrets are scoped per-DB, so there is no “wrong tenant” branch to write a test for.",
+    ],
+  },
+  {
+    n: "08",
+    title: "Creative. By policy.",
+    body: [
+      "The product looks and feels nothing like a Tailwind template. Personality is required. Acid lime on near-black, JetBrains Mono headlines, hard shadows, kinetic typography on the words that matter. Stock photos are forbidden. Logo grids are forbidden. “Trusted by” is forbidden.",
+    ],
+  },
+  {
+    n: "09",
+    title: "Fast. Measured.",
+    body: [
+      "p50 query under 400ms on cache hit. p95 under 1.5s on cache miss. Cold start under 800ms. CLI binary under 8MB, starts in under 30ms.",
+      "Marketing site: Lighthouse 100 on every metric. First paint under 600ms on 4G. Numbers exist so we can fail them in CI, not so we can quote them in a deck.",
+    ],
+  },
+];
+---
+
+<Base
+  title="Manifesto — nlqdb"
+  description="Nine non-negotiables that decide every nlqdb design choice. A database you talk to, with a backend that doesn't exist."
+  canonical="/manifesto"
+>
+  <div class="page">
+    <header class="topnav">
+      <a class="topnav__brand" href="/">nlqdb</a>
+      <nav class="topnav__links" aria-label="Primary">
+        <a href="/manifesto" aria-current="page">Manifesto</a>
+        <a href="mailto:hello@nlqdb.com">Contact</a>
+      </nav>
+    </header>
+
+    <main class="manifesto">
+      <header class="manifesto__head">
+        <p class="manifesto__kicker">Manifesto</p>
+        <h1 class="manifesto__title">
+          A database you talk to,<br />
+          with a backend that doesn&rsquo;t exist.
+        </h1>
+        <p class="manifesto__lede">
+          nlqdb is a natural-language database: you create one with a name,
+          you query it in English, and the schema, the engine, the indexes,
+          the migrations and the cache are all background concerns you
+          never have to see.
+        </p>
+        <p class="manifesto__sub">
+          What follows is the bar every change is judged against. If a
+          change violates one of these, it doesn&rsquo;t ship. Not as
+          guidelines &mdash; as acceptance criteria.
+        </p>
+      </header>
+
+      <section class="manifesto__answer" aria-label="Direct answer">
+        <p>
+          <strong>What is nlqdb?</strong> A database that accepts natural
+          language as its query language, picks the right engine for your
+          workload (Postgres, Redis, DuckDB, pgvector, &hellip;), and
+          exposes itself through five surfaces &mdash; an HTML element, a
+          typed SDK, a CLI, an MCP server, and a chat web app &mdash; all
+          backed by the same engine. The free tier is the same engine
+          paying customers run on; the escape hatch to raw SQL stays one
+          click away, always.
+        </p>
+      </section>
+
+      <ol class="tenets">
+        {tenets.map((t) => (
+          <li class="tenet">
+            <div class="tenet__head">
+              <span class="tenet__num" aria-hidden="true">{t.n}</span>
+              <h2 class="tenet__title">{t.title}</h2>
+            </div>
+            <div class="tenet__body">
+              {t.body.map((p) => <p>{p}</p>)}
+            </div>
+          </li>
+        ))}
+      </ol>
+
+      <section class="manifesto__inversion" aria-labelledby="inversion-title">
+        <h2 class="manifesto__h2" id="inversion-title">
+          The on-ramp inversion.
+        </h2>
+        <p>
+          The single most important design decision: every entry point
+          accepts <em>a goal</em>, not a database name. Every surface,
+          reframed.
+        </p>
+
+        <div class="inversion-table">
+          <div class="inversion-row inversion-row--head">
+            <div>Surface</div>
+            <div>Old &mdash; DB-first</div>
+            <div>New &mdash; goal-first</div>
+          </div>
+          <div class="inversion-row">
+            <div>Marketing hero</div>
+            <div>&ldquo;Name your database&rdquo;</div>
+            <div>&ldquo;What are you building?&rdquo;</div>
+          </div>
+          <div class="inversion-row">
+            <div>Platform first run</div>
+            <div>&ldquo;Create database&rdquo; button</div>
+            <div>One chat input; DB created silently</div>
+          </div>
+          <div class="inversion-row">
+            <div>CLI first command</div>
+            <div><code>nlq db create orders</code></div>
+            <div><code>nlq new "an orders tracker"</code></div>
+          </div>
+          <div class="inversion-row">
+            <div>MCP first call</div>
+            <div><code>nlqdb_create_database("memory")</code></div>
+            <div><code>nlqdb_query("memory", "remember&hellip;")</code></div>
+          </div>
+          <div class="inversion-row">
+            <div>HTML element</div>
+            <div><code>db="orders"</code> required</div>
+            <div><code>goal="&hellip;"</code> leads; <code>db</code> inferred</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="manifesto__not" aria-labelledby="not-title">
+        <h2 class="manifesto__h2" id="not-title">What this isn&rsquo;t.</h2>
+        <ul class="not-list">
+          <li>
+            <strong>Not</strong> a SQL builder. There is no &ldquo;here is
+            your generated SQL, paste it into your ORM&rdquo; step.
+          </li>
+          <li>
+            <strong>Not</strong> a vector store with a wrapper. Postgres
+            with pgvector is one of the engines under the hood, not the
+            product.
+          </li>
+          <li>
+            <strong>Not</strong> a chat-on-top-of-your-warehouse layer.
+            We own the storage too. Otherwise schema, indexes and
+            migrations leak back into the user&rsquo;s brain.
+          </li>
+          <li>
+            <strong>Not</strong> a no-code tool. The whole point is that
+            developers stay in their editor, in their language, against
+            their build. nlqdb is a backend, not a GUI.
+          </li>
+        </ul>
+      </section>
+
+      <p class="manifesto__cta">
+        <a class="btn btn--accent" href="/">&larr; Back to the snippet</a>
+      </p>
+    </main>
+
+    <footer class="foot">
+      <span>&copy; nlqdb &middot; Pre-alpha</span>
+      <span>
+        <a href="/manifesto">Manifesto</a>
+        &middot;
+        <a href="https://nlqdb.com/privacy">Privacy</a>
+        &middot;
+        <a href="https://nlqdb.com/terms">Terms</a>
+      </span>
+    </footer>
+  </div>
+</Base>

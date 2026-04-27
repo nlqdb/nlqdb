@@ -1,0 +1,41 @@
+---
+// "What this replaces" strip (DESIGN §3.1, §0.1). Eight things a
+// normal stack forces you to set up — DB, schema, ORM, endpoint,
+// auth, cache, migration, deploy — collapsing into a single line of
+// HTML. Pure CSS scroll animation; no JS, falls back gracefully on
+// browsers without scroll-driven timelines.
+
+const replaces = ["Database", "Schema", "ORM", "Endpoint", "Auth", "Cache", "Migrations", "Deploy"];
+---
+
+<section class="replaces" aria-labelledby="replaces-title">
+  <h2 class="replaces__title" id="replaces-title">
+    Eight boxes&hairsp;&mdash;&hairsp;or one tag.
+  </h2>
+  <p class="replaces__lede">
+    Everything a normal backend forces you to wire together, replaced by
+    a single element on the page.
+  </p>
+
+  <div class="replaces__grid">
+    <ul class="replaces__list" aria-label="Things you no longer build">
+      {replaces.map((item, i) => (
+        <li class="replaces__item" style={`--i:${i}`}>
+          <span class="replaces__strike">{item}</span>
+        </li>
+      ))}
+    </ul>
+
+    <div class="replaces__arrow" aria-hidden="true">
+      <span>&rarr;</span>
+    </div>
+
+    <div class="replaces__final">
+      <code class="replaces__code">&lt;nlq-data&gt;</code>
+      <p class="replaces__finalNote">
+        One element. Schema, plan, cache, auth — all server-side, all
+        invisible.
+      </p>
+    </div>
+  </div>
+</section>

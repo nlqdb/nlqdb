@@ -1,5 +1,8 @@
 ---
+import CodePanel from "../components/CodePanel.astro";
 import Hero from "../components/Hero.astro";
+import ManifestoExcerpt from "../components/ManifestoExcerpt.astro";
+import Replaces from "../components/Replaces.astro";
 import Base from "../layouts/Base.astro";
 ---
 <Base
@@ -10,17 +13,23 @@ import Base from "../layouts/Base.astro";
     <header class="topnav">
       <a class="topnav__brand" href="/">nlqdb</a>
       <nav class="topnav__links" aria-label="Primary">
+        <a href="/manifesto">Manifesto</a>
         <a href="mailto:hello@nlqdb.com">Contact</a>
       </nav>
     </header>
 
     <main>
       <Hero />
+      <CodePanel />
+      <Replaces />
+      <ManifestoExcerpt />
     </main>
 
     <footer class="foot">
       <span>&copy; nlqdb &middot; Pre-alpha</span>
       <span>
+        <a href="/manifesto">Manifesto</a>
+        &middot;
         <a href="https://nlqdb.com/privacy">Privacy</a>
         &middot;
         <a href="https://nlqdb.com/terms">Terms</a>

@@ -1,0 +1,44 @@
+---
+// Below-the-fold excerpt from the manifesto (DESIGN §0). Three
+// non-negotiables, lifted directly. Full thesis lives at /manifesto.
+
+const tenets = [
+  {
+    title: "Free, forever",
+    body: "Sign up, build, ship to production without a credit card. The free tier isn't a trial — it's the product. Every cost upgrade is gated on a real signal: paying customers, not theoretical scale.",
+  },
+  {
+    title: "No login wall before first value",
+    body: "Every surface produces a working answer before asking who you are. Anonymous-mode is the default. The DB you create before signing in adopts to your account when you do — one row update, no migration prompt.",
+  },
+  {
+    title: "Goal-first, not DB-first",
+    body: "Nobody woke up wanting to create a database. They want a meal-planner, an agent that remembers, the number for the 4pm sync. The DB materialises as a side effect of the goal.",
+  },
+];
+---
+
+<section class="manifesto-excerpt" aria-labelledby="manifesto-excerpt-title">
+  <header class="manifesto-excerpt__head">
+    <p class="manifesto-excerpt__kicker">Manifesto</p>
+    <h2 class="manifesto-excerpt__title" id="manifesto-excerpt-title">
+      Three rules every build is judged against.
+    </h2>
+  </header>
+
+  <ol class="manifesto-excerpt__list">
+    {tenets.map((t, i) => (
+      <li class="manifesto-excerpt__item">
+        <span class="manifesto-excerpt__num">{String(i + 1).padStart(2, "0")}</span>
+        <h3 class="manifesto-excerpt__itemTitle">{t.title}</h3>
+        <p class="manifesto-excerpt__body">{t.body}</p>
+      </li>
+    ))}
+  </ol>
+
+  <p class="manifesto-excerpt__more">
+    <a class="manifesto-excerpt__link" href="/manifesto">
+      Read the full manifesto <span aria-hidden="true">&rarr;</span>
+    </a>
+  </p>
+</section>
