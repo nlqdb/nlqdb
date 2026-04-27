@@ -56,6 +56,20 @@ jobs:
       - name: Build site
         run: bun run --cwd apps/web build
 
+      - name: DEBUG — verify CF secrets reach Pages API
+        env:
+          TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          ACCOUNT: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          echo "TOKEN length: ${#TOKEN}, prefix: ${TOKEN:0:5}"
+          echo "ACCOUNT length: ${#ACCOUNT}"
+          echo "--- /user/tokens/verify ---"
+          curl -sS "https://api.cloudflare.com/client/v4/user/tokens/verify" -H "Authorization: Bearer $TOKEN" | head -c 500
+          echo
+          echo "--- /accounts/$ACCOUNT/pages/projects ---"
+          curl -sS "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT/pages/projects" -H "Authorization: Bearer $TOKEN" | head -c 500
+          echo
+
       - name: Deploy preview to Cloudflare Pages
         id: deploy
         uses: cloudflare/wrangler-action@v3
