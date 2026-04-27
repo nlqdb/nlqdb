@@ -79,17 +79,26 @@ jobs:
       # new comment per deploy.
       - name: Sticky preview comment
         uses: actions/github-script@v7
+        env:
+          # Pass wrangler output via env, not GitHub interpolation —
+          # multi-line stdout/stderr breaks `${{ ... }}` injected into
+          # a JS template string. Search both stdout + stderr because
+          # wrangler emits the per-version URL on stderr in some
+          # versions and stdout in others.
+          WRANGLER_STDOUT: ${{ steps.deploy.outputs.command-output }}
+          WRANGLER_STDERR: ${{ steps.deploy.outputs.command-stderr }}
         with:
           script: |
-            const url = `${{ steps.deploy.outputs.deployment-url }}`;
+            const all = `${process.env.WRANGLER_STDOUT ?? ''}\n${process.env.WRANGLER_STDERR ?? ''}`;
+            const match = all.match(/https:\/\/[a-z0-9-]+-nlqdb-api\.[a-z0-9.-]+\.workers\.dev/i);
+            const url = match ? match[0] : '';
             const sha = context.sha.slice(0, 7);
             const marker = '<!-- preview-api-sticky -->';
             const ts = new Date().toISOString().replace('T', ' ').slice(0, 19) + ' UTC';
 
-            // Fallback shows the URL pattern when wrangler-action
-            // didn't surface the per-version URL — `<id>` is the
-            // 8-char prefix CF assigns; visible in the Versions tab
-            // of the worker dashboard.
+            // Fallback when wrangler-action didn't surface the per-
+            // version URL — `<id>` is the 8-char prefix CF assigns;
+            // visible in the Versions tab of the worker dashboard.
             const urlLine = url
               ? `- URL: <${url}>`
               : '- URL: `<id>-nlqdb-api.omer-hochman.workers.dev` (latest version visible in the dashboard → `nlqdb-api` → Versions)';

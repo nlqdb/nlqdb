@@ -54,14 +54,21 @@ jobs:
 
       - name: Sticky preview comment
         uses: actions/github-script@v7
+        env:
+          # Pass wrangler output via env, not GitHub interpolation —
+          # multi-line stdout/stderr breaks the JS template-string
+          # interpolation `${{ ... }}` produces. Search both since
+          # wrangler emits the per-version URL on stderr in some
+          # versions and stdout in others.
+          WRANGLER_STDOUT: ${{ steps.deploy.outputs.command-output }}
+          WRANGLER_STDERR: ${{ steps.deploy.outputs.command-stderr }}
         with:
           script: |
-            // `wrangler versions upload` doesn't expose a clean
-            // `deployment-url` step output (only `wrangler deploy`
-            // does). Parse the per-version URL from stdout where
-            // wrangler prints "Workers Preview URL: https://…".
-            const stdout = `${{ steps.deploy.outputs.command-output }}`;
-            const match = stdout.match(/https:\/\/[a-z0-9-]+-nlqdb-web\.[a-z0-9.-]+\.workers\.dev/i);
+            const all = `${process.env.WRANGLER_STDOUT ?? ''}\n${process.env.WRANGLER_STDERR ?? ''}`;
+            // `wrangler versions upload` prints the per-version URL as
+            // `https://<id>-nlqdb-web.<subdomain>.workers.dev`. Match
+            // any *.workers.dev URL with the worker name in the host.
+            const match = all.match(/https:\/\/[a-z0-9-]+-nlqdb-web\.[a-z0-9.-]+\.workers\.dev/i);
             const url = match ? match[0] : '';
             const sha = context.sha.slice(0, 7);
             const marker = '<!-- preview-web-sticky -->';

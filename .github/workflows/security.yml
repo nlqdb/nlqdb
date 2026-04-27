@@ -42,15 +42,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Run Semgrep
-        # `--error` exits 1 on any finding, blocking the PR. New false
-        # positives can be silenced inline with a `# nosemgrep` comment
-        # on the offending line — see Semgrep docs.
+        # `semgrep ci` already exits non-zero on findings — no flag
+        # needed. Earlier `--error` was a `semgrep scan` flag and was
+        # removed from `semgrep ci` in 1.x. False positives silence
+        # via `# nosemgrep` annotations on the offending line.
         run: |
           semgrep ci \
             --config p/typescript \
             --config p/security-audit \
             --config p/owasp-top-ten \
-            --config p/secrets \
-            --error
+            --config p/secrets
         env:
           SEMGREP_APP_TOKEN: ${{ secrets.SEMGREP_APP_TOKEN }}
