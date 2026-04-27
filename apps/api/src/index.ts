@@ -4,6 +4,7 @@ import { trace } from "@opentelemetry/api";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { streamSSE } from "hono/streaming";
+import { recordAnonAdoption } from "./anon-adopt.ts";
 import { buildAskDeps, buildEventEmitter } from "./ask/build-deps.ts";
 import { orchestrateAsk } from "./ask/orchestrate.ts";
 import type { AskError, OrchestrateEvent } from "./ask/types.ts";
@@ -296,6 +297,30 @@ app.post("/v1/stripe/webhook", async (c) => {
 // `nlqdb.user.id` + `nlqdb.chat.outcome` (`persisted` | `rejected` |
 // `invalid_request`). Mirrors the `nlqdb.ask` envelope so chat turns
 // appear in the same span tree as their underlying /v1/ask runs.
+// Anonymous-mode token adoption — POSTed by `/app` on first signed-in
+// load if `nlqdb:anon-token` is in localStorage. Idempotent.
+app.post("/v1/anon/adopt", requireSession, async (c) => {
+  const session = c.var.session;
+  let body: unknown;
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ error: { status: "invalid_body" } }, 400);
+  }
+  const token = (body as { token?: unknown })?.token;
+  if (typeof token !== "string") {
+    return c.json({ error: { status: "invalid_body" } }, 400);
+  }
+  const result = await recordAnonAdoption(c.env.DB, session.user.id, token);
+  if (!result.ok) {
+    return c.json(
+      { error: { status: result.reason } },
+      result.reason === "invalid_token" ? 400 : 500,
+    );
+  }
+  return c.json({ adopted: result.adopted });
+});
+
 app.get("/v1/chat/messages", requireSession, async (c) => {
   const session = c.var.session;
   const store = makeChatStore(c.env.DB);

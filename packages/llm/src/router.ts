@@ -5,7 +5,7 @@
 // `nlqdb.llm.failover.total{from_provider,to_provider,reason}` per
 // fall-through.
 
-import { llmCallsTotal, llmDurationMs, llmFailoverTotal } from "@nlqdb/otel";
+import { genAiAttributes, llmCallsTotal, llmDurationMs, llmFailoverTotal } from "@nlqdb/otel";
 import { SpanStatusCode, trace } from "@opentelemetry/api";
 import {
   type CallOpts,
@@ -40,7 +40,30 @@ export type LLMRouterOptions = {
   // Override per-operation attempt timeout in ms. Falls back to
   // DEFAULT_TIMEOUTS_MS for any operation not set here.
   timeouts?: Partial<Record<LLMOperation, number>>;
+  // Circuit breaker. When a provider hits `failureThreshold` consecutive
+  // failures, the router skips it for `cooldownMs` before retrying.
+  // Avoids burning the wall-clock budget on a known-bad provider when
+  // a healthy fallback exists. Defaults: 3 failures / 60s.
+  circuitBreaker?: { failureThreshold: number; cooldownMs: number };
 };
+
+const DEFAULT_BREAKER = { failureThreshold: 3, cooldownMs: 60_000 };
+
+type BreakerState = {
+  consecutiveFailures: number;
+  // ms-epoch when the breaker was opened (>0 means open until
+  // openedAt + cooldownMs).
+  openedAt: number;
+};
+
+function makeBreakerStore(): Map<ProviderName, BreakerState> {
+  return new Map();
+}
+
+function breakerOpen(state: BreakerState | undefined, now: number, cooldown: number): boolean {
+  if (!state || state.openedAt === 0) return false;
+  return now - state.openedAt < cooldown;
+}
 
 export type LLMRouter = {
   classify(req: ClassifyRequest, opts?: CallOpts): Promise<ClassifyResponse>;
@@ -105,6 +128,8 @@ export function createLLMRouter(opts: LLMRouterOptions): LLMRouter {
   const byName = new Map<ProviderName, Provider>();
   for (const p of opts.providers) byName.set(p.name, p);
   const timeouts = { ...DEFAULT_TIMEOUTS_MS, ...opts.timeouts };
+  const breaker = { ...DEFAULT_BREAKER, ...opts.circuitBreaker };
+  const breakerState = makeBreakerStore();
 
   const tracer = trace.getTracer("@nlqdb/llm");
 
@@ -120,6 +145,13 @@ export function createLLMRouter(opts: LLMRouterOptions): LLMRouter {
       `llm.${op}`,
       {
         attributes: {
+          ...genAiAttributes({
+            system: provider.name,
+            operation: op,
+            requestModel: provider.model(op),
+          }),
+          // Legacy attribute names — kept until existing dashboards
+          // migrate to the gen_ai.* keys above.
           "llm.provider": provider.name,
           "llm.model": provider.model(op),
         },
@@ -196,8 +228,25 @@ export function createLLMRouter(opts: LLMRouterOptions): LLMRouter {
         continue;
       }
 
+      // Circuit breaker: skip providers in their cooldown window.
+      const now = Date.now();
+      const state = breakerState.get(name);
+      if (breakerOpen(state, now, breaker.cooldownMs)) {
+        attempts.push({ provider: name, reason: "circuit_open", error: undefined });
+        if (next) {
+          llmFailoverTotal().add(1, {
+            from_provider: name,
+            to_provider: next,
+            reason: "circuit_open",
+          });
+        }
+        continue;
+      }
+
       const result = await attempt(op, provider, req, call, callerOpts, timeoutMs);
       if (result.ok) {
+        // Success resets the breaker.
+        breakerState.set(name, { consecutiveFailures: 0, openedAt: 0 });
         return result.value;
       }
 
@@ -205,6 +254,17 @@ export function createLLMRouter(opts: LLMRouterOptions): LLMRouter {
       // and burning budget the caller no longer wants spent.
       if (callerOpts?.signal?.aborted) {
         throw asError(result.error);
+      }
+
+      // Update breaker. Only count "real" failures — skip not_configured
+      // (it's a config error, not a provider outage) and parse (which
+      // is more often our own bug than the provider's).
+      if (result.reason !== "not_configured" && result.reason !== "parse") {
+        const failures = (state?.consecutiveFailures ?? 0) + 1;
+        breakerState.set(name, {
+          consecutiveFailures: failures,
+          openedAt: failures >= breaker.failureThreshold ? now : 0,
+        });
       }
 
       attempts.push({ provider: name, reason: result.reason, error: result.error });

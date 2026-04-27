@@ -1,28 +1,17 @@
-// SQL allow-list for `/v1/ask` plans (DESIGN §0.1, §1, §12; PERFORMANCE
-// §4 row 6 nlqdb.sql.validate span).
+// SQL allow-list for `/v1/ask` plans (DESIGN §0.1, §1, §12).
 //
 // nlqdb is **schemas-only-widen**: the LLM is never allowed to emit
-// schema-narrowing or destructive DDL/DML. The product escape for a
-// genuinely incompatible schema is `nlq new` (DESIGN §12) — a fresh
-// DB, not a destructive ALTER on the existing one.
+// schema-narrowing or destructive DDL/DML. Two-stage validation:
 //
-// Reject-list:
-//   - DROP TABLE / DROP COLUMN / DROP INDEX / DROP …
-//   - TRUNCATE
-//   - DELETE without a WHERE clause (full-table wipe)
-//   - ALTER … DROP COLUMN (schema narrowing)
-//   - GRANT / REVOKE (auth surface, not data)
-//   - Anything outside the allow-listed leading verb set.
-//
-// Allow-list (leading verb): SELECT, INSERT, UPDATE (with WHERE),
-// DELETE (with WHERE), WITH (CTE-led SELECT/INSERT/UPDATE), EXPLAIN,
-// SHOW (read-only metadata).
-//
-// Implementation: lightweight regex over the trimmed, lower-cased SQL.
-// Not a full parser — that's overkill for the LLM-emitted shape — but
-// matches the patterns the reject list cares about. A future tightening
-// can swap in `pg-query-emscripten` (~280KB) once we hit a false
-// positive or false negative that justifies the bundle cost.
+//   1. Leading-verb gate (regex) — fast, catches every DDL we reject.
+//      node-sql-parser doesn't understand all PG-specific destructive
+//      variants (DROP MATERIALIZED VIEW, VACUUM, …) so the regex gate
+//      is the authoritative reject path.
+//   2. AST check — node-sql-parser parses what passes the gate, so the
+//      DELETE-without-WHERE rule runs against a real AST instead of a
+//      brittle regex on the SQL string.
+
+import { Parser } from "node-sql-parser";
 
 export type SqlValidationResult =
   | { ok: true }
@@ -32,53 +21,60 @@ export type SqlRejectReason =
   | "drop_statement"
   | "truncate_statement"
   | "delete_without_where"
-  | "alter_drop_column"
   | "grant_or_revoke"
   | "disallowed_verb"
   | "empty";
 
-const ALLOWED_LEADING_VERBS = ["select", "insert", "update", "delete", "with", "explain", "show"];
+const REJECT_VERBS: Array<[RegExp, SqlRejectReason]> = [
+  [/^\s*drop\b/i, "drop_statement"],
+  [/^\s*truncate\b/i, "truncate_statement"],
+  [/^\s*grant\b/i, "grant_or_revoke"],
+  [/^\s*revoke\b/i, "grant_or_revoke"],
+  // ALTER is rejected outright — the only flavor we'd want is
+  // ALTER TABLE … ADD COLUMN (schema widen), but we have no way to
+  // tell from the LLM that the broader DDL is intentional. Bucket
+  // under drop_statement since DROP is the user-visible failure mode.
+  [/^\s*alter\b/i, "drop_statement"],
+];
+
+const ALLOWED_LEADING = new Set([
+  "select",
+  "insert",
+  "update",
+  "delete",
+  "with",
+  "explain",
+  "show",
+]);
+
+const parser = new Parser();
 
 export function validateSql(rawSql: string): SqlValidationResult {
   const sql = rawSql.trim();
   if (!sql) return { ok: false, reason: "empty" };
 
-  const lower = sql.toLowerCase();
-
-  // GRANT / REVOKE — auth surface, never legitimate from the planner.
-  if (/^\s*(grant|revoke)\b/.test(lower)) {
-    return { ok: false, reason: "grant_or_revoke" };
+  for (const [pattern, reason] of REJECT_VERBS) {
+    if (pattern.test(sql)) return { ok: false, reason };
   }
 
-  // DROP anything (table, column, index, schema, view, function, trigger…).
-  // Both `DROP TABLE` and `ALTER TABLE … DROP COLUMN` patterns.
-  if (
-    /\bdrop\s+(table|column|index|schema|view|function|trigger|database|materialized\s+view)\b/.test(
-      lower,
-    )
-  ) {
-    return { ok: false, reason: "drop_statement" };
+  const leading = sql.split(/\s+/)[0]?.toLowerCase() ?? "";
+  if (!ALLOWED_LEADING.has(leading)) {
+    return { ok: false, reason: "disallowed_verb", matched: leading };
   }
 
-  // ALTER … DROP COLUMN specifically (schema narrowing).
-  if (/\balter\s+table\b[\s\S]*\bdrop\s+column\b/.test(lower)) {
-    return { ok: false, reason: "alter_drop_column" };
-  }
-
-  // TRUNCATE — full-table wipe.
-  if (/^\s*truncate\b/.test(lower)) {
-    return { ok: false, reason: "truncate_statement" };
-  }
-
-  // DELETE without WHERE — full-table wipe via DELETE.
-  if (/^\s*delete\s+from\b/.test(lower) && !/\bwhere\b/.test(lower)) {
-    return { ok: false, reason: "delete_without_where" };
-  }
-
-  // Leading verb must be on the allow-list.
-  const leadingVerb = lower.split(/\s+/)[0];
-  if (!leadingVerb || !ALLOWED_LEADING_VERBS.includes(leadingVerb)) {
-    return { ok: false, reason: "disallowed_verb", matched: leadingVerb };
+  // DELETE-without-WHERE — only meaningful AST check on the allow-list.
+  // The parser may not handle every dialect quirk; fall back to a
+  // simple `\bwhere\b` regex on parse failure.
+  if (leading === "delete") {
+    try {
+      const ast = parser.astify(sql, { database: "PostgreSQL" });
+      const node = (Array.isArray(ast) ? ast[0] : ast) as { type?: string; where?: unknown };
+      if (node?.type === "delete" && !node.where) {
+        return { ok: false, reason: "delete_without_where" };
+      }
+    } catch {
+      if (!/\bwhere\b/i.test(sql)) return { ok: false, reason: "delete_without_where" };
+    }
   }
 
   return { ok: true };

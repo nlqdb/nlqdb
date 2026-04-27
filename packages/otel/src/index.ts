@@ -9,6 +9,9 @@
 //     Idempotent: first call wins, subsequent calls return the same handle.
 //   • createTestTelemetry() (./test) — vitest: in-memory exporters
 //     so assertions can read finished spans + collected metrics.
+//
+// Semantic conventions pinned to v1.37.0 (gen-ai is still Development;
+// pinning insulates us from breaking changes mid-2026).
 
 import { metrics, trace } from "@opentelemetry/api";
 import { OTLPMetricExporter } from "@opentelemetry/exporter-metrics-otlp-http";
@@ -247,4 +250,61 @@ export const webhookStripeArchiveFailuresTotal = lazyCounter(
 
 export function resetInstrumentsForTest(): void {
   for (const fn of resetFns) fn();
+}
+
+// OpenTelemetry semantic conventions pin. The `gen_ai` namespace is
+// Development as of 1.37; bumping requires a coordinated review.
+// See: https://opentelemetry.io/docs/specs/semconv/gen-ai/
+export const SEMCONV_SCHEMA_VERSION = "1.37.0";
+
+// Gen-AI span attribute keys (OTel semconv 1.37, gen_ai namespace).
+// Stable subset only — fields marked Stable in the spec, not the
+// experimental knobs that may rename mid-2026.
+export const GEN_AI_SYSTEM = "gen_ai.system";
+export const GEN_AI_OPERATION_NAME = "gen_ai.operation.name";
+export const GEN_AI_REQUEST_MODEL = "gen_ai.request.model";
+export const GEN_AI_RESPONSE_MODEL = "gen_ai.response.model";
+
+export type GenAiAttrs = {
+  system: string;
+  operation: string;
+  requestModel: string;
+  responseModel?: string;
+};
+
+export function genAiAttributes(a: GenAiAttrs): Record<string, string> {
+  const out: Record<string, string> = {
+    [GEN_AI_SYSTEM]: a.system,
+    [GEN_AI_OPERATION_NAME]: a.operation,
+    [GEN_AI_REQUEST_MODEL]: a.requestModel,
+  };
+  if (a.responseModel) out[GEN_AI_RESPONSE_MODEL] = a.responseModel;
+  return out;
+}
+
+// PII redactor for prompts / completions before they go on a span,
+// in a log line, or in a trace export. Conservative — replaces the
+// match with the kind in brackets so the structure of the prompt is
+// recoverable for debugging while the sensitive content is gone.
+//
+// The patterns deliberately err on the side of over-redaction:
+//   • Email addresses
+//   • Phone numbers (10–15 digits with optional +/spaces/dashes)
+//   • Credit-card-ish runs (13–19 digits)
+//   • API-key-ish runs (`sk-…`, `pk_…`, `sec_…`, etc. — common shapes)
+//   • Long base64-ish blobs (40+ chars) — covers JWT/secret leaks
+const PII_PATTERNS: Array<[RegExp, string]> = [
+  [/[\w.+-]+@[\w-]+(?:\.[\w-]+)+/g, "[email]"],
+  [/(?:\+\d{1,3}[\s-]?)?(?:\(\d{1,4}\)[\s-]?)?\d{3}[\s-]?\d{3,4}[\s-]?\d{3,4}/g, "[phone]"],
+  [/\b(?:\d[ -]?){13,19}\b/g, "[card]"],
+  [/\b(?:sk|pk|sec|api|key|tok)[_-][A-Za-z0-9_-]{16,}/gi, "[apikey]"],
+  [/\b[A-Za-z0-9_-]{40,}\b/g, "[token]"],
+];
+
+export function redactPii(input: string): string {
+  let out = input;
+  for (const [pattern, replacement] of PII_PATTERNS) {
+    out = out.replace(pattern, replacement);
+  }
+  return out;
 }

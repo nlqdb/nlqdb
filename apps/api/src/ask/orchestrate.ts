@@ -138,6 +138,10 @@ export async function orchestrateAsk(
     cacheHit = true;
   } else {
     cachePlanMissesTotal().add(1);
+    // Heartbeat before the LLM call. Lets the SSE client render
+    // "Thinking…" instead of staring at a frozen connection during
+    // a cache miss + cold provider (multi-second latency).
+    await safeEmit({ type: "plan_pending" });
     try {
       const plan = await deps.llm.plan({
         goal: req.goal,

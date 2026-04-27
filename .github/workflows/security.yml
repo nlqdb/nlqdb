@@ -1,0 +1,43 @@
+# nlqdb — supply-chain + SAST scans on every PR.
+#
+# Semgrep runs the curated p/typescript + p/security-audit + OWASP
+# Top 10 rulesets — fast (~30s), low false positive, blocks PRs that
+# introduce a new finding. CodeQL nightly is a separate workflow
+# (CodeQL is heavier and only matters once a week).
+#
+# Renovate covers dependency upgrades; vulnerabilityAlerts in
+# renovate.json5 surface CVEs as PRs the same day they're published.
+
+name: Security
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  schedule:
+    # Sundays 06:00 UTC — picks up rules updated through the week.
+    - cron: "0 6 * * 0"
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  semgrep:
+    name: Semgrep
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    container:
+      image: semgrep/semgrep
+    if: github.actor != 'dependabot[bot]'
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          semgrep ci \
+            --config p/typescript \
+            --config p/security-audit \
+            --config p/owasp-top-ten \
+            --config p/secrets \
+            --error
+        env:
+          SEMGREP_APP_TOKEN: ${{ secrets.SEMGREP_APP_TOKEN }}

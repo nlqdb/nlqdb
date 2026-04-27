@@ -7,7 +7,7 @@ import { createChatProvider } from "./_chat-provider.ts";
 import { httpReason, readBodySafe, truncate } from "./_shared.ts";
 import type { ChatMessage } from "./openai-compatible.ts";
 
-const BASE = "https://generativelanguage.googleapis.com/v1beta/models";
+const DEFAULT_BASE = "https://generativelanguage.googleapis.com/v1beta/models";
 
 const DEFAULT_MODELS: Record<LLMOperation, string> = {
   classify: "gemini-2.5-flash",
@@ -17,6 +17,10 @@ const DEFAULT_MODELS: Record<LLMOperation, string> = {
 
 export type GeminiProviderOptions = {
   apiKey: string;
+  // AI Gateway override. Path up to `/models`; provider appends
+  // `/{model}:generateContent`. Example:
+  // https://gateway.ai.cloudflare.com/v1/{acc}/{gw}/google-ai-studio/v1beta/models
+  baseUrl?: string;
   models?: Partial<Record<LLMOperation, string>>;
 };
 
@@ -30,13 +34,14 @@ type GeminiResponse = {
 // with the OpenAI-shaped messages format.
 async function geminiChat(
   apiKey: string,
+  base: string,
   model: string,
   messages: ChatMessage[],
   jsonMode: boolean,
   opts: CallOpts,
 ): Promise<string> {
   const fetchFn = opts.fetch ?? globalThis.fetch;
-  const url = `${BASE}/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`;
+  const url = `${base}/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`;
 
   const system = messages
     .filter((m) => m.role === "system")
@@ -73,7 +78,7 @@ async function geminiChat(
   if (!res.ok) {
     const bodySnippet = await readBodySafe(res);
     throw new ProviderError(
-      `POST ${BASE}/${model}:generateContent → ${res.status}: ${bodySnippet}`,
+      `POST ${base}/${model}:generateContent → ${res.status}: ${bodySnippet}`,
       httpReason(res.status),
       res.status,
     );
@@ -96,10 +101,11 @@ async function geminiChat(
 }
 
 export function createGeminiProvider(opts: GeminiProviderOptions): Provider {
+  const base = opts.baseUrl ?? DEFAULT_BASE;
   return createChatProvider({
     name: "gemini",
     models: { ...DEFAULT_MODELS, ...opts.models },
     callChat: ({ model, messages, jsonMode, opts: callOpts }) =>
-      geminiChat(opts.apiKey, model, messages, jsonMode, callOpts),
+      geminiChat(opts.apiKey, base, model, messages, jsonMode, callOpts),
   });
 }

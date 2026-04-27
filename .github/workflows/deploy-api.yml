@@ -39,6 +39,8 @@ concurrency:
 permissions:
   contents: read
   deployments: write
+  id-token: write
+  attestations: write
 
 jobs:
   deploy:
@@ -54,6 +56,15 @@ jobs:
 
       - name: Install workspace deps
         run: bun install --frozen-lockfile
+
+      - name: Build (wrangler dry-run for attestation subject)
+        working-directory: apps/api
+        run: bun run build
+
+      - name: SLSA build provenance attestation
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: "apps/api/dist/**"
 
       - name: Migrate + deploy
         uses: cloudflare/wrangler-action@v3

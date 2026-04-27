@@ -1312,5 +1312,26 @@ purpose. If a reader has to scroll twice, we failed.
 
 ---
 
+## 17. Semantic-layer adoption — Phase 2
+
+**Why:** the 2025–2026 NL-to-SQL frontier diverged hard from raw-schema introspection. dbt's 2026 benchmark reports up to **3× accuracy** when the LLM queries through a curated semantic model rather than raw `information_schema` columns; Snowflake Cortex Analyst, Databricks Genie, Wren AI, and the new [Open Semantic Interchange (OSI)](https://www.dataengineeringweekly.com/p/knowledge-metrics-and-ai-rethinking) standard all converge on semantic-first NL2SQL. Phase 0 raw-schema is fine for the demo; Phase 2 needs a semantic-model story or we lose every head-to-head accuracy comparison on real enterprise schemas.
+
+**Shape of the Phase 2 ship:**
+
+1. **OSI-compatible YAML** at `~/.nlqdb/semantic.yml` (or per-DB in the registry). Compatible subset of MetricFlow + OSI shape — `entities`, `dimensions`, `metrics`, `joins`. The user's existing dbt MetricFlow / Cube / LookML dump becomes the source of truth.
+2. **Optional, not required.** Without semantic.yml the planner still works against raw schema. With it, the LLM's `plan` prompt receives the curated dimensions/metrics list instead of (or in addition to) the raw schema dump.
+3. **`nlq semantic init`** — bootstraps a starter semantic.yml from the live schema by inferring entities and 5–10 obvious metrics. User edits, commits to repo.
+4. **Semantic-aware allow-list.** `apps/api/src/ask/sql-validate.ts` gains an optional pass that verifies referenced columns belong to dimensions/metrics declared in semantic.yml. Mis-references fail with `semantic_violation` instead of leaking schema.
+5. **Cache key** includes the semantic.yml fingerprint so the cached schema hash invalidates when a metric is renamed.
+
+**Out of scope for Phase 2:** authoring UI, multi-engine semantic projection (BigQuery/Snowflake-specific dialects via sqlglot transpile), semantic-layer marketplace.
+
+**Deferred decisions:**
+
+- Whether to ingest dbt MetricFlow `*.yml` directly (would force a Python sidecar via `metricflow-semantics`) or only the OSI-standardized subset. Lean OSI to keep the Worker bundle clean; revisit if a customer asks for native MetricFlow.
+- Caching strategy for embeddings of dimension descriptions (pgvector on Neon vs Cloudflare Vectorize). Vectorize wins on operational simplicity; benchmark before committing.
+
+---
+
 *Living document. Update via PR. Material changes require an entry in the
 git log explaining the why, not the what.*

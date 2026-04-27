@@ -219,7 +219,7 @@ describe("orchestrateAsk", () => {
     expect(llm2.summarize).not.toHaveBeenCalled();
   });
 
-  it("emits SSE events in order: plan → rows → summary", async () => {
+  it("emits SSE events in order: plan_pending → plan → rows → summary", async () => {
     const events: OrchestrateEvent[] = [];
     await orchestrateAsk(
       makeDeps({
@@ -229,10 +229,10 @@ describe("orchestrateAsk", () => {
       { goal: "go", dbId: "db_1", userId: "user_1" },
       { onEvent: (e) => void events.push(e) },
     );
-    expect(events.map((e) => e.type)).toEqual(["plan", "rows", "summary"]);
-    expect(events[0]).toMatchObject({ type: "plan", sql: "SELECT 1", cached: false });
-    expect(events[1]).toMatchObject({ type: "rows", rowCount: 2 });
-    expect(events[2]).toMatchObject({ type: "summary", summary: "ok" });
+    expect(events.map((e) => e.type)).toEqual(["plan_pending", "plan", "rows", "summary"]);
+    expect(events[1]).toMatchObject({ type: "plan", sql: "SELECT 1", cached: false });
+    expect(events[2]).toMatchObject({ type: "rows", rowCount: 2 });
+    expect(events[3]).toMatchObject({ type: "summary", summary: "ok" });
   });
 
   it("summary failure is non-fatal — returns rows + sql, omits summary", async () => {

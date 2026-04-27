@@ -1,0 +1,22 @@
+name = "nlqdb-web"
+compatibility_date = "2026-04-27"
+
+# Workers Static Assets — replaces the Pages git integration / `pages
+# deploy` flow. `astro build` emits to ./dist; Workers serves it from
+# the global edge with no script execution required for the static
+# routes (Astro is currently `output: 'static'`).
+#
+# `not_found_handling = "404-page"` resolves /missing → /404.html and
+# returns 404 (Astro's adapter-less default). Switch to
+# "single-page-application" if we ever ship a SPA route.
+
+[assets]
+directory = "./dist"
+not_found_handling = "404-page"
+
+[observability]
+enabled = true
+
+# Preview deploys per PR use Workers Versions on this Worker (same
+# pattern as apps/api's preview-api.yml). No separate environment
+# block — `wrangler versions upload` inherits the assets block above.

@@ -232,7 +232,7 @@ the failure path (Basic auth rejected = wrong id or secret).
 | `apps/api`           | Cloudflare Workers  | GH Actions — `.github/workflows/deploy-api.yml`            | GH Actions — `.github/workflows/preview-api.yml` (Workers Versions on `nlqdb-api`; per-PR URL) |
 | `apps/events-worker` | Cloudflare Workers  | GH Actions — `.github/workflows/deploy-events-worker.yml`  | n/a (queue-only; nothing visible to preview)                  |
 | `apps/coming-soon`   | Cloudflare Pages    | GH Actions — `.github/workflows/deploy-coming-soon.yml`    | n/a (short-lived; retires when `apps/web` takes over `nlqdb.com`) |
-| `apps/web`           | Cloudflare Pages    | GH Actions — `.github/workflows/deploy-web.yml`            | GH Actions — `.github/workflows/preview-web.yml` (sticky `pr-<N>.nlqdb-web.pages.dev`) |
+| `apps/web`           | Workers Static Assets | GH Actions — `.github/workflows/deploy-web.yml`          | GH Actions — `.github/workflows/preview-web.yml` (Workers Versions on `nlqdb-web`; per-PR URL) |
 | `packages/elements`  | Cloudflare Pages    | GH Actions — `.github/workflows/deploy-elements.yml`       | GH Actions — `.github/workflows/preview-elements.yml` (sticky `pr-<N>.nlqdb-elements.pages.dev/v1.js`) |
 
 Every surface deploys via GH Actions. Reasons we don't use
@@ -247,9 +247,10 @@ Cloudflare Pages git integration for the static surfaces:
   showed that anything dashboard-driven on CF risks invisible
   state divergence. Workflows checked into git are auditable.
 
-Per-branch preview URLs are achieved via `wrangler pages deploy
---branch=pr-<N>`; CF assigns a stable alias
-`pr-<N>.<project>.pages.dev` per branch.
+Per-branch preview URLs: Pages surfaces use `wrangler pages deploy
+--branch=pr-<N>` (CF stable alias `pr-<N>.<project>.pages.dev`);
+Worker surfaces (apps/api, apps/web) use `wrangler versions upload`
+(per-version preview URL on the Worker subdomain).
 
 ### Coming-soon page
 
@@ -405,15 +406,14 @@ The `nlqdb-events` queue is created/updated by
 
 ### `apps/web` (Phase 1 marketing site)
 
-Astro static site that builds to `apps/web/dist/`. Hosted on
-Cloudflare Pages project `nlqdb-web`. Currently on the `*.pages.dev`
-URL only; DNS flip from `apps/coming-soon` to this project is a
-future operational step (see DESIGN §3.1).
+Astro static site that builds to `apps/web/dist/`. Served by a
+Cloudflare Worker (`nlqdb-web`) via Workers Static Assets — migrated
+off Pages 2026-04-27. DNS flip from `apps/coming-soon` to this Worker
+is a future operational step (see DESIGN §3.1).
 
 Deploys via `.github/workflows/deploy-web.yml` on merge to main when
-`apps/web/**` or `packages/elements/**` changes. The workflow runs
-`wrangler pages project create` idempotently, so first-run is
-automatic — no human bootstrap step.
+`apps/web/**` or `packages/elements/**` changes. SLSA L3 build
+provenance is attested via `actions/attest-build-provenance@v2`.
 
 Manual re-deploy: workflow_dispatch on the Actions tab, or
 `bun run --cwd apps/web deploy` from a dev machine.
@@ -436,14 +436,13 @@ Manual re-deploy: workflow_dispatch on the Actions tab.
 
 What you see in a PR before merging, by surface:
 
-#### Pages — `apps/web`, `packages/elements`
+#### Web preview — `apps/web` (Workers Versions), `packages/elements` (Pages)
 
-`.github/workflows/preview-web.yml` and `preview-elements.yml`
-trigger on every PR push touching their respective paths. Each
-deploys to its Pages project with `--branch=pr-<N>`, giving a
-sticky alias URL (`pr-<N>.<project>.pages.dev`) that survives
-across pushes within the same PR. Sticky comment on the PR carries
-the URL. Production branch (`main`) is untouched.
+`.github/workflows/preview-web.yml` runs `wrangler versions upload`
+on the `nlqdb-web` Worker per PR — same pattern as the API.
+`preview-elements.yml` deploys to the elements Pages project with
+`--branch=pr-<N>`, giving a sticky `pr-<N>.nlqdb-elements.pages.dev/v1.js`.
+Both surfaces sticky-comment the URL on the PR; production stays untouched.
 
 Why GH Actions and not Pages git integration: see the strategy
 table earlier in this section.

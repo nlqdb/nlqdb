@@ -21,13 +21,13 @@ const ORIGIN = "https://example.com";
 function extractMagicLinkUrl(logs: string[]): string {
   // Dev-stub log format (src/email.ts):
   //   [email:dev-stub] to=… subject=… body=<text containing the URL>
-  // The Better Auth verify URL is the first http(s) link in the body.
+  // Email links go through `/auth/continue?next=<encoded verify URL>`
+  // (prefetch protection — DESIGN §4.3); decode `next` to get the
+  // actual verify URL the user would land on after clicking through.
   const joined = logs.join("\n");
-  const match = joined.match(/https?:\/\/[^\s"]+\/api\/auth\/magic-link\/verify\?[^\s"]+/);
-  if (!match) {
-    throw new Error(`no magic-link verify URL found in console output:\n${joined}`);
-  }
-  return match[0];
+  const wrapped = joined.match(/https?:\/\/[^\s"]+\/auth\/continue\?next=([^\s"]+)/);
+  if (wrapped?.[1]) return decodeURIComponent(wrapped[1]);
+  throw new Error(`no magic-link continue URL found in console output:\n${joined}`);
 }
 
 describe("magic-link lifecycle", () => {
