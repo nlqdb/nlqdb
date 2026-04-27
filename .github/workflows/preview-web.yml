@@ -1,0 +1,114 @@
+# nlqdb — preview deploys for apps/web on every PR push.
+#
+# Builds the PR's HEAD and pushes a Pages preview deployment to
+# `nlqdb-web` under branch `pr-<number>`. The branch alias gives a
+# stable preview URL of the form
+# `pr-<number>.nlqdb-web.pages.dev`, sticky across pushes — easier
+# for reviewers than a commit-specific URL that rotates per push.
+# The production deployment (and `nlqdb.com` once the DNS flip
+# lands) stays untouched: `--branch=pr-<number>` is non-prod by
+# definition.
+#
+# Why GH Actions over Cloudflare Pages git integration: uniformity
+# with our other deploys (api, events-worker, coming-soon all on
+# Actions), pre-deploy gating in CI (biome / typecheck / tests run
+# in ci.yml on the same PR), and code-driven config — see RUNBOOK
+# §6 rotation note 2026-04-27 for why we avoid CF dashboard-driven
+# state.
+#
+# Concurrency: keyed by PR number with `cancel-in-progress: true`
+# so only the latest push for each PR is in flight.
+
+name: Preview web
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - "apps/web/**"
+      - "packages/elements/**"
+      - ".github/workflows/preview-web.yml"
+
+concurrency:
+  group: preview-web-pr-${{ github.event.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: write
+  deployments: write
+
+jobs:
+  preview:
+    name: astro build + wrangler pages deploy
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: package.json
+
+      - name: Install workspace deps
+        run: bun install --frozen-lockfile
+
+      - name: Build site
+        run: bun run --cwd apps/web build
+
+      - name: Deploy preview to Cloudflare Pages
+        id: deploy
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          preCommands: |
+            wrangler pages project create nlqdb-web \
+              --production-branch main \
+              --compatibility-date "$(date -u +%Y-%m-%d)" || true
+          command: pages deploy apps/web/dist --project-name=nlqdb-web --branch=pr-${{ github.event.number }} --commit-dirty=true
+
+      - name: Sticky preview comment
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const aliasUrl = `${{ steps.deploy.outputs.pages-deployment-alias-url }}`;
+            const url = `${{ steps.deploy.outputs.deployment-url }}`;
+            const sha = context.sha.slice(0, 7);
+            const marker = '<!-- preview-web-sticky -->';
+            const ts = new Date().toISOString().replace('T', ' ').slice(0, 19) + ' UTC';
+
+            const primary = aliasUrl || url || `https://pr-${context.issue.number}.nlqdb-web.pages.dev`;
+
+            const body = [
+              marker,
+              '🌐 **Preview web deployed**',
+              '',
+              `- URL: <${primary}>`,
+              url && url !== primary ? `- This commit: <${url}>` : null,
+              `- Project: \`nlqdb-web\` (branch \`pr-${context.issue.number}\` — non-production)`,
+              `- Commit: \`${sha}\``,
+              `- Updated: ${ts}`,
+            ].filter(Boolean).join('\n');
+
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            const existing = comments.find((c) => c.body?.includes(marker));
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body,
+              });
+            }

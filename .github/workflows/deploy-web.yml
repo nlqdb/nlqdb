@@ -1,0 +1,59 @@
+# nlqdb — auto-deploy apps/web to Cloudflare Pages on merge.
+#
+# Production deploy of the Astro marketing site to Pages project
+# `nlqdb-web`. Triggers when files under apps/web/** or its workspace
+# dependency `packages/elements/**` change on main.
+#
+# `wrangler pages project create` is idempotent (tolerates "already
+# exists") so first-run is automatic — no human bootstrap step.
+#
+# Manual re-deploy: workflow_dispatch on the Actions tab, or
+# `bun run --cwd apps/web deploy` from a dev machine.
+
+name: Deploy web
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "apps/web/**"
+      - "packages/elements/**"
+      - ".github/workflows/deploy-web.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-web
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  deployments: write
+
+jobs:
+  deploy:
+    name: astro build + wrangler pages deploy
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: package.json
+
+      - name: Install workspace deps
+        run: bun install --frozen-lockfile
+
+      - name: Build site
+        run: bun run --cwd apps/web build
+
+      - name: Deploy to Cloudflare Pages
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          preCommands: |
+            wrangler pages project create nlqdb-web \
+              --production-branch main \
+              --compatibility-date "$(date -u +%Y-%m-%d)" || true
+          command: pages deploy apps/web/dist --project-name=nlqdb-web --branch=main --commit-dirty=true
