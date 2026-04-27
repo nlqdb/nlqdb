@@ -464,7 +464,18 @@ chain exercised with forced failover; $0 spent.
 - **Anonymous-mode end-to-end** (72h, localStorage token; adopt via one
   SQL row on sign-in).
 - **Sign-in:** magic link + GitHub OAuth (Google deferred). Cookie
-  `__Host-session` (HttpOnly / SameSite=Lax / Secure).
+  `__Host-session` (HttpOnly / SameSite=Lax / Secure) is the Phase 1
+  *target*. Slice 10 ships a **temporary deviation**: cookies are
+  scoped to `.nlqdb.com` (Better Auth `crossSubDomainCookies`,
+  HttpOnly / SameSite=Lax / Secure, no `__Host-` prefix) so the
+  chat UI on `nlqdb.com/app` shares the session with the API on
+  `app.nlqdb.com`. The `__Host-` prefix is incompatible with a
+  `Domain=` attribute. Restoring `__Host-session` requires moving
+  the chat surface onto the same origin as the API — either by
+  bundling `apps/web` static assets into the api Worker, or by
+  promoting `nlqdb-web` to a Pages project with a route that
+  delegates `/api/auth/*` + `/v1/*` to the Worker. Both are
+  Phase-1 follow-ups; logged in `apps/api/src/auth.ts` cookie block.
 - **Silent refresh + seamless re-auth** on the web per §4.3 design:
   401 → refresh; refresh fail → `/sign-in?return_to=…` preserving the
   pending action.

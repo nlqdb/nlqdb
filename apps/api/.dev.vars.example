@@ -1,0 +1,66 @@
+# apps/api — local Worker secrets template (Slice 5+).
+#
+# DO NOT FILL THIS IN BY HAND for routine work. Run
+#   scripts/mirror-secrets-workers.sh local api
+# from the repo root to generate `.dev.vars` from `.envrc`. That
+# script is the single source of truth for which secrets the api
+# Worker reads at runtime; copy from the SECRETS list in
+# scripts/mirror-secrets-workers.sh if you're standing up a new
+# environment by hand.
+#
+# This file (`.dev.vars.example`) is committed; `.dev.vars` is
+# gitignored. The Worker overlays whatever `.dev.vars` contains
+# on top of the [vars] block in `wrangler.toml` at boot.
+#
+# Each line below documents the format + the production rotation
+# path. `wrangler dev` will warn (but not fail) on a missing
+# secret; the relevant feature degrades gracefully:
+#   - missing RESEND_API_KEY     → magic-link emails print to console
+#   - missing GROQ/GEMINI/etc.   → LLM router skips that provider
+#   - missing STRIPE_WEBHOOK_*   → /v1/stripe/webhook returns 503
+
+NODE_ENV=development
+
+# Better Auth — required. 48 random bytes, base64url-encoded.
+#   bun -e 'console.log(require("crypto").randomBytes(48).toString("base64url"))'
+BETTER_AUTH_SECRET=
+
+# Magic-link email transport (Slice 10).
+#   resend.com → API Keys → Create
+# Leave empty to fall back to the console-stub: `wrangler dev` prints
+# the verify URL to stdout; click it from the terminal.
+RESEND_API_KEY=
+# From-address. Override during dev to Resend's sandbox sender so
+# you don't need a verified domain to test:
+RESEND_FROM=onboarding@resend.dev
+# Post-verify landing page. Defaults to http://localhost:4321/app
+# in dev (apps/web's Astro dev server) when unset.
+MAGIC_LINK_REDIRECT_URL=http://localhost:4321/app
+
+# OAuth providers (Slice 5). _DEV variants point at a separate
+# OAuth app whose callback URL is http://localhost:8787/api/auth/...
+# so production creds aren't fed to wrangler dev.
+OAUTH_GITHUB_CLIENT_ID_DEV=
+OAUTH_GITHUB_CLIENT_SECRET_DEV=
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
+
+# Postgres connection (Slice 3). Neon URL or any Postgres-
+# compatible. Used by `connection_secret_ref` resolution in
+# src/ask/build-deps.ts.
+DATABASE_URL=
+
+# LLM router (Slice 6, DESIGN §8.1). Any subset works — router
+# skips providers whose key is missing.
+GROQ_API_KEY=
+GEMINI_API_KEY=
+OPENROUTER_API_KEY=
+CLOUDFLARE_ACCOUNT_ID=
+CF_AI_TOKEN=
+
+# Stripe webhooks (Slice 7).
+STRIPE_WEBHOOK_SECRET=
+
+# OpenTelemetry (Grafana Cloud).
+GRAFANA_OTLP_ENDPOINT=
+GRAFANA_OTLP_AUTHORIZATION=

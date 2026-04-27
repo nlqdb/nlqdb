@@ -1,20 +1,15 @@
 import { env } from "cloudflare:workers";
-import { createPostgresAdapter } from "@nlqdb/db";
-import { type EventEmitter, makeNoopEmitter, makeQueueEmitter } from "@nlqdb/events";
 import { authEventsTotal, setupTelemetry } from "@nlqdb/otel";
 import { trace } from "@opentelemetry/api";
 import { Hono } from "hono";
 import { streamSSE } from "hono/streaming";
-import { makeFirstQueryTracker } from "./ask/first-query.ts";
-import { type OrchestrateDeps, orchestrateAsk } from "./ask/orchestrate.ts";
-import { makePlanCache } from "./ask/plan-cache.ts";
-import { makeRateLimiter } from "./ask/rate-limit.ts";
-import { type AskError, DbConfigError, type DbRecord, type OrchestrateEvent } from "./ask/types.ts";
+import { buildAskDeps, buildEventEmitter } from "./ask/build-deps.ts";
+import { orchestrateAsk } from "./ask/orchestrate.ts";
+import type { AskError, OrchestrateEvent } from "./ask/types.ts";
 import { auth, REVOCATION_KEY_PREFIX } from "./auth.ts";
 import { postChatMessage } from "./chat/orchestrate.ts";
 import { makeChatStore } from "./chat/store.ts";
-import { resolveDb } from "./db-registry.ts";
-import { getLLMRouter } from "./llm-router.ts";
+import { parseGoalDbBody } from "./http.ts";
 import { makeRequireSession, type RequireSessionVariables } from "./middleware.ts";
 import { cryptoProvider, stripe as stripeClient } from "./stripe/client.ts";
 import { processWebhook } from "./stripe/webhook.ts";
@@ -101,20 +96,10 @@ app.post("/v1/ask", requireSession, async (c) => {
     const session = c.var.session;
     span.setAttribute("nlqdb.user.id", session.user.id);
 
-    let body: { goal?: unknown; dbId?: unknown };
-    try {
-      body = (await c.req.json()) as typeof body;
-    } catch {
+    const parsed = await parseGoalDbBody(c);
+    if (!parsed.ok) {
       span.end();
-      return c.json({ error: "invalid_json" }, 400);
-    }
-    if (typeof body.goal !== "string" || body.goal.trim().length === 0) {
-      span.end();
-      return c.json({ error: "goal_required" }, 400);
-    }
-    if (typeof body.dbId !== "string" || body.dbId.length === 0) {
-      span.end();
-      return c.json({ error: "dbId_required" }, 400);
+      return c.json(parsed.error.body, parsed.error.status);
     }
 
     const accept = c.req.header("accept") ?? "";
@@ -122,7 +107,11 @@ app.post("/v1/ask", requireSession, async (c) => {
     const wantsJsonOnly = accept.includes("application/json") && !accept.includes("*/*");
 
     const deps = buildAskDeps(c.env);
-    const orchestrateReq = { goal: body.goal, dbId: body.dbId, userId: session.user.id };
+    const orchestrateReq = {
+      goal: parsed.body.goal,
+      dbId: parsed.body.dbId,
+      userId: session.user.id,
+    };
 
     if (wantsSse) {
       return streamSSE(c, async (stream) => {
@@ -200,11 +189,17 @@ app.post("/v1/stripe/webhook", async (c) => {
 // to Phase 1 alongside the anonymous-DB-adoption flow.
 //
 // `POST /v1/chat/messages` validates input → calls `postChatMessage`
-// (which writes the user row, runs `orchestrateAsk`, writes the
-// assistant row) → returns both rows. The orchestrator covers
-// rate-limiting, plan caching, exec, summarization — same surface
-// as `/v1/ask`. The chat handler is a persistence + history wrapper
-// over that, not a parallel pipeline.
+// (which runs `orchestrateAsk` and persists user + assistant rows on
+// success). The chat orchestrator returns `Rejected` for `rate_limited`
+// or `db_not_found` errors — the handler maps those to 4xx via the
+// shared `errorStatus()` mapper, identical to `/v1/ask`. Other
+// outcomes (success or post-execute failure) get persisted + 200,
+// because the user did engage and the history is meaningful.
+//
+// Telemetry: `nlqdb.chat.turn` parent span per request, attributes
+// `nlqdb.user.id` + `nlqdb.chat.outcome` (`persisted` | `rejected` |
+// `invalid_request`). Mirrors the `nlqdb.ask` envelope so chat turns
+// appear in the same span tree as their underlying /v1/ask runs.
 app.get("/v1/chat/messages", requireSession, async (c) => {
   const session = c.var.session;
   const store = makeChatStore(c.env.DB);
@@ -213,80 +208,50 @@ app.get("/v1/chat/messages", requireSession, async (c) => {
 });
 
 app.post("/v1/chat/messages", requireSession, async (c) => {
-  const session = c.var.session;
+  const tracer = trace.getTracer("@nlqdb/api");
+  return tracer.startActiveSpan("nlqdb.chat.turn", async (span) => {
+    const session = c.var.session;
+    span.setAttribute("nlqdb.user.id", session.user.id);
 
-  let body: { goal?: unknown; dbId?: unknown };
-  try {
-    body = (await c.req.json()) as typeof body;
-  } catch {
-    return c.json({ error: "invalid_json" }, 400);
-  }
-  if (typeof body.goal !== "string" || body.goal.trim().length === 0) {
-    return c.json({ error: "goal_required" }, 400);
-  }
-  if (typeof body.dbId !== "string" || body.dbId.length === 0) {
-    return c.json({ error: "dbId_required" }, 400);
-  }
+    const parsed = await parseGoalDbBody(c);
+    if (!parsed.ok) {
+      span.setAttribute("nlqdb.chat.outcome", "invalid_request");
+      span.end();
+      return c.json(parsed.error.body, parsed.error.status);
+    }
 
-  const askDeps = buildAskDeps(c.env);
-  const result = await postChatMessage(
-    {
-      store: makeChatStore(c.env.DB),
-      // Production wires the real orchestrator. The chat orchestrator
-      // takes `ask` as a dep so unit tests can stub it without
-      // standing up rate-limiter / plan-cache / LLM router seams.
-      // TODO(slice 11): swap to streaming once SSE chat lands; for
-      // now the response shape is request/response.
-      ask: (req) => orchestrateAsk(askDeps, req),
-      now: () => Date.now(),
-      newId: () => crypto.randomUUID(),
-    },
-    { userId: session.user.id, goal: body.goal, dbId: body.dbId },
-  );
-  return c.json(result);
-});
-
-// Resolves the DB row's `connection_secret_ref` to a connection URL
-// from env. Phase 0 ships one shared Postgres (PLAN line 87), so the
-// ref is typically "DATABASE_URL". Throws `DbConfigError` if the ref
-// doesn't resolve — operator config bug, distinct from a transient
-// "Neon is down" failure.
-async function buildExec(db: DbRecord, sql: string) {
-  const url = (env as unknown as Record<string, string | undefined>)[db.connectionSecretRef];
-  if (!url) {
-    throw new DbConfigError(
-      `connection_secret_ref ${JSON.stringify(db.connectionSecretRef)} did not resolve in env (db_id=${db.id})`,
+    const askDeps = buildAskDeps(c.env);
+    const outcome = await postChatMessage(
+      {
+        store: makeChatStore(c.env.DB),
+        // Production wires the real orchestrator. The chat orchestrator
+        // takes `ask` as a dep so unit tests can stub it without
+        // standing up rate-limiter / plan-cache / LLM router seams.
+        // TODO(slice 11): swap to streaming once SSE chat lands; for
+        // now the response shape is request/response.
+        ask: (req) => orchestrateAsk(askDeps, req),
+        now: () => Date.now(),
+        newId: () => crypto.randomUUID(),
+      },
+      { userId: session.user.id, goal: parsed.body.goal, dbId: parsed.body.dbId },
     );
-  }
-  const adapter = createPostgresAdapter({ connectionString: url });
-  return adapter.execute(sql);
-}
+
+    if (!outcome.ok) {
+      span.setAttribute("nlqdb.chat.outcome", "rejected");
+      span.setAttribute("nlqdb.chat.reject_status", outcome.error.status);
+      span.end();
+      const status = errorStatus(outcome.error.status);
+      return c.json({ error: outcome.error }, status);
+    }
+    span.setAttribute("nlqdb.chat.outcome", "persisted");
+    span.setAttribute("nlqdb.chat.assistant_kind", outcome.assistant.result.kind);
+    span.end();
+    return c.json({ user: outcome.user, assistant: outcome.assistant });
+  });
+});
 
 function serializeEvent(event: OrchestrateEvent): string {
   return JSON.stringify(event);
-}
-
-// Returns the production queue-backed emitter when the binding is
-// present (always in deployed Workers + `wrangler dev --remote`). Falls
-// back to a no-op for unit/integration tests and any environment where
-// the binding is unset, so tests don't need to mock a queue.
-function buildEventEmitter(queue: Queue | undefined): EventEmitter {
-  return queue ? makeQueueEmitter(queue) : makeNoopEmitter();
-}
-
-// Production deps for `orchestrateAsk`. Shared between `POST /v1/ask`
-// and `POST /v1/chat/messages` so a future seam (e.g. swapping the
-// rate limiter, replacing the LLM router) lands in one place.
-function buildAskDeps(envBindings: Cloudflare.Env): OrchestrateDeps {
-  return {
-    resolveDb: (id, tenantId) => resolveDb(envBindings.DB, id, tenantId),
-    planCache: makePlanCache(envBindings.KV),
-    llm: getLLMRouter(),
-    exec: buildExec,
-    rateLimiter: makeRateLimiter(envBindings.DB),
-    firstQuery: makeFirstQueryTracker(envBindings.KV),
-    events: buildEventEmitter(envBindings.EVENTS_QUEUE),
-  };
 }
 
 // Typed over `AskError["status"]` so adding a new error variant fails

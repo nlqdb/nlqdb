@@ -1,5 +1,8 @@
 // Unit tests for the Resend email sender shim. Verifies the
-// dev-stub fallback (no API key) and the prod fetch payload shape.
+// dev-stub fallback (no API key), the prod fetch payload shape,
+// the timeout path, and — critically — that Resend's response body
+// (which echoes destination email + sender) does NOT leak into the
+// thrown error.
 
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { makeEmailSender } from "../src/email.ts";
@@ -51,17 +54,57 @@ describe("makeEmailSender", () => {
     });
   });
 
-  it("throws on a non-2xx Resend response so callers surface the failure", async () => {
+  it("throws on non-2xx but does NOT echo the response body in the thrown error", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
     const fetchMock = vi.fn<typeof fetch>(
-      async () => new Response('{"message":"invalid api key"}', { status: 401 }),
+      async () =>
+        new Response(
+          // Body deliberately includes the destination email so the
+          // "no body in error message" invariant below means
+          // something.
+          '{"message":"recipient u-secret@example.com bounced"}',
+          { status: 422 },
+        ),
     );
     const send = makeEmailSender({
       apiKey: "re_bad",
       from: "x",
       fetch: fetchMock,
     });
+    const thrown = await send({ to: "u-secret@example.com", subject: "x", text: "x" }).catch(
+      (e: unknown) => e,
+    );
+    expect(thrown).toBeInstanceOf(Error);
+    const errMsg = (thrown as Error).message;
+    // Status code is in the error (caller needs *some* signal).
+    expect(errMsg).toMatch(/HTTP 422/);
+    // The Resend response body — which echoes the destination email
+    // address and any other PII — must NOT appear in the thrown
+    // error. The body goes to console.error for triage instead.
+    expect(errMsg).not.toContain("u-secret@example.com");
+    expect(errMsg).not.toContain("bounced");
+  });
+
+  it("aborts and rejects when the Resend fetch exceeds the timeout", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    // Honor AbortSignal so the timeout actually surfaces. Real fetch
+    // does this; the test stub mirrors the contract.
+    const fetchMock = vi.fn<typeof fetch>(
+      (_input, init) =>
+        new Promise<Response>((_resolve, reject) => {
+          init?.signal?.addEventListener("abort", () => {
+            reject(new DOMException("aborted", "AbortError"));
+          });
+        }),
+    );
+    const send = makeEmailSender({
+      apiKey: "re_x",
+      from: "x",
+      fetch: fetchMock,
+      timeoutMs: 10,
+    });
     await expect(send({ to: "u@e.com", subject: "x", text: "x" })).rejects.toThrow(
-      /resend send failed: HTTP 401/,
+      /resend send failed/,
     );
   });
 
