@@ -404,6 +404,15 @@ never returns raw HTML to the browser); `pk_live_` is read-only,
 origin-pinned, rate-limited; writes require `<nlq-action>` with a signed
 write-token. Element ships < 6KB gzipped, zero dependencies.
 
+**Public demo endpoint — `POST /v1/demo/ask`.** The marketing-site
+live `<nlq-data>` and any third-party "try this in a scratch HTML"
+embed point at `endpoint="https://app.nlqdb.com/v1/demo/ask"`. No
+auth, CORS-permissive, canned fixtures keyed off the goal substring;
+per-IP rate limit (10/min) so it can't be abused as an LLM stand-in.
+The element stays pure — no demo branch in client code (see PR #43);
+the "demo" semantic lives server-side. Source: `apps/api/src/demo.ts`.
+Real users hit `/v1/ask` with a session cookie or `pk_live_` key.
+
 ---
 
 ## 4. Authentication & identity

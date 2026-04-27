@@ -112,6 +112,19 @@ import Base from "../../layouts/Base.astro";
     const LAST_DB_KEY = "nlqdb:last-db";
     const RENDER_ROW_CAP = 50;
 
+    // Goal pre-fill from `?goal=` (set by Hero.astro on the marketing
+    // homepage, threaded through sign-in's return_to). The user typed
+    // their intent before signing in; we honor it as the first composer
+    // value. `?dbId=` is symmetric and reserved for the Phase-1
+    // anonymous-DB flow that lands the user on /app with both pieces.
+    function applyPrefill() {
+      const params = new URLSearchParams(location.search);
+      const goal = params.get("goal");
+      const dbIdHint = params.get("dbId");
+      if (goal) goalInput.value = goal;
+      if (dbIdHint) dbInput.value = dbIdHint;
+    }
+
     function renderRowsAsTable(rows: Record<string, unknown>[]): string {
       if (rows.length === 0) {
         return '<p class="chat__rows-empty">No rows.</p>';
@@ -202,6 +215,10 @@ import Base from "../../layouts/Base.astro";
         }
         const lastDb = localStorage.getItem(LAST_DB_KEY);
         if (lastDb) dbInput.value = lastDb;
+        // Pre-fill AFTER stored values so URL params win — they're the
+        // freshest signal of user intent for this navigation.
+        applyPrefill();
+        if (goalInput.value) goalInput.focus();
       } catch (err) {
         // getJson redirected on 401 — anything else is a real error.
         if (err instanceof Error && err.message === "unauthorized") return;

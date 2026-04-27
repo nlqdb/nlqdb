@@ -35,6 +35,7 @@ export default defineConfig(async () => {
               "test/stripe-webhook.test.ts",
               "test/chat-orchestrate.test.ts",
               "test/email.test.ts",
+              "test/demo.test.ts",
             ],
           },
         },
