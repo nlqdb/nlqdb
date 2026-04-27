@@ -16,6 +16,13 @@
 # workflow does NOT run `migrate:remote`: applying an unmerged
 # migration to prod D1 would defeat the point. Schema-changing PRs
 # need local testing — see RUNBOOK §6 "Preview environments".
+#
+# First-time bootstrap: `wrangler deploy --env preview` against a
+# never-deployed worker name 404s on the Workers Services API
+# (`code: 7003` + `code: 7000`). One-time fix is to deploy once
+# from a dev box (`bun run --cwd apps/api deploy:preview`) — local
+# `wrangler login` OAuth has create permissions. CI updates work
+# from there. Documented in RUNBOOK §6.
 
 name: Preview API
 

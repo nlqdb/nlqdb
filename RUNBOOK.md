@@ -503,6 +503,25 @@ the preview URL on the PR (sticky — same comment is updated on each
 push). The preview is reachable on a `*.workers.dev` URL; the prod
 custom domain `app.nlqdb.com` stays bound to `nlqdb-api`.
 
+**First-time bootstrap (one-time, before the first preview run
+succeeds):** `wrangler deploy --env preview` 404s on a brand-new
+worker name — wrangler v4 in `--env` mode hits the Workers
+Services API to diff existing config, and that endpoint can't route
+to a service that hasn't been created yet (failure mode logs as
+`code: 7003` + `code: 7000`). Bootstrap once from a dev box — the
+local `wrangler login` OAuth session has create permissions and
+falls through cleanly:
+
+```bash
+bun run --cwd apps/api deploy:preview
+```
+
+After this single local deploy, the `nlqdb-api-preview` Worker
+exists on Cloudflare and CI's `wrangler deploy --env preview`
+updates it on every PR push. Same one-time-bootstrap requirement
+will apply to any future preview env you split off (per-PR named
+workers, separate D1, etc.).
+
 **Shared bindings.** The preview Worker uses the same KV / D1 /
 Queue / R2 as prod. This is intentional for v0 — most PRs don't
 write to D1, and the contamination risk is acceptable while traffic
