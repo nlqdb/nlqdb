@@ -1,16 +1,22 @@
 ---
 // Chat surface (Slice 10 — DESIGN §3.2 "Signed-in surface").
 //
-// Static Astro page; bundled-script island for the conversation.
+// Two-pane layout: left = chronological turn list (compact, just
+// the goal / summary / error blurb per row), right = detail pane
+// showing the SQL + result table for the currently-selected
+// message. Defaults the selection to the most recent message;
+// clicking a row in the list updates the right pane in place.
+//
+// Why split: in v0 we rendered SQL + table inline with each turn,
+// which made history scroll like a wall of monospace tables.
+// Master/detail keeps the conversation legible AND lets each
+// result occupy real estate when actually being read.
+//
 // On load: GET /v1/chat/messages with cookies. 401 → redirect to
 // /sign-in?return_to=/app via shared client (lib/auth-client). New
 // turns POST /v1/chat/messages and append the returned user +
-// assistant rows to the list.
-//
-// Streaming is deferred to Slice 11 (TODO in apps/api/src/index.ts);
-// this is request/response. The composer requires a `dbId` because
-// /v1/ask does — there is no DB-on-first-reference yet, so the
-// empty-state copy explicitly tells the user what they need.
+// assistant rows. Streaming is deferred to Slice 11; this is
+// request/response.
 
 import Base from "../../layouts/Base.astro";
 ---
@@ -44,32 +50,42 @@ import Base from "../../layouts/Base.astro";
         </p>
       </div>
 
-      <ol id="chat-messages" class="chat__messages" hidden></ol>
+      <div id="chat-layout" class="chat__layout" hidden>
+        <section class="chat__pane chat__pane--list" aria-label="Conversation">
+          <ol id="chat-messages" class="chat__list"></ol>
 
-      <form id="chat-form" class="chat__form" hidden>
-        <input
-          id="chat-db"
-          name="dbId"
-          type="text"
-          placeholder="db_id (e.g. db_orders)"
-          class="chat__db"
-          autocomplete="off"
-          required
-        />
-        <textarea
-          id="chat-input"
-          name="goal"
-          placeholder="Show me the 10 most recent orders…"
-          class="chat__input"
-          rows="2"
-          required
-        ></textarea>
-        <div class="chat__send-row">
-          <span class="chat__hint" aria-hidden="true">Enter to send · Shift+Enter for newline</span>
-          <button type="submit" id="chat-send" class="btn btn--accent chat__send">Send</button>
-        </div>
-        <p id="chat-error" class="chat__error" hidden></p>
-      </form>
+          <form id="chat-form" class="chat__form">
+            <input
+              id="chat-db"
+              name="dbId"
+              type="text"
+              placeholder="db_id (e.g. db_orders)"
+              class="chat__db"
+              autocomplete="off"
+              required
+            />
+            <textarea
+              id="chat-input"
+              name="goal"
+              placeholder="Show me the 10 most recent orders…"
+              class="chat__input"
+              rows="2"
+              required
+            ></textarea>
+            <div class="chat__send-row">
+              <span class="chat__hint" aria-hidden="true">Enter to send · Shift+Enter for newline</span>
+              <button type="submit" id="chat-send" class="btn btn--accent chat__send">Send</button>
+            </div>
+            <p id="chat-error" class="chat__error" hidden></p>
+          </form>
+        </section>
+
+        <aside class="chat__pane chat__pane--detail" aria-label="Selected turn detail">
+          <div id="chat-detail" class="chat__detail">
+            <p class="chat__detail-empty">Select a message to see its results and SQL.</p>
+          </div>
+        </aside>
+      </div>
     </main>
   </div>
 
@@ -103,7 +119,9 @@ import Base from "../../layouts/Base.astro";
 
     const loading = document.getElementById("chat-loading") as HTMLDivElement;
     const empty = document.getElementById("chat-empty") as HTMLDivElement;
+    const layout = document.getElementById("chat-layout") as HTMLDivElement;
     const list = document.getElementById("chat-messages") as HTMLOListElement;
+    const detail = document.getElementById("chat-detail") as HTMLDivElement;
     const form = document.getElementById("chat-form") as HTMLFormElement;
     const dbInput = document.getElementById("chat-db") as HTMLInputElement;
     const goalInput = document.getElementById("chat-input") as HTMLTextAreaElement;
@@ -113,18 +131,57 @@ import Base from "../../layouts/Base.astro";
 
     const LAST_DB_KEY = "nlqdb:last-db";
     const RENDER_ROW_CAP = 50;
+    const LIST_GOAL_PREVIEW_CHARS = 90;
 
-    // Goal pre-fill from `?goal=` (set by Hero.astro on the marketing
-    // homepage, threaded through sign-in's return_to). The user typed
-    // their intent before signing in; we honor it as the first composer
-    // value. `?dbId=` is symmetric and reserved for the Phase-1
-    // anonymous-DB flow that lands the user on /app with both pieces.
+    // In-memory message store, indexed by id. Detail-pane re-renders
+    // off this map so we don't have to re-parse rendered HTML when the
+    // user clicks between rows. Append-only within a session.
+    const messages = new Map<string, ChatMessage>();
+    let selectedId: string | null = null;
+
     function applyPrefill() {
       const params = new URLSearchParams(location.search);
       const goal = params.get("goal");
       const dbIdHint = params.get("dbId");
       if (goal) goalInput.value = goal;
       if (dbIdHint) dbInput.value = dbIdHint;
+    }
+
+    function truncate(s: string, max: number): string {
+      return s.length > max ? `${s.slice(0, max - 1)}…` : s;
+    }
+
+    // List-row rendering: ONE line of meaning per turn. The detail
+    // pane shows the full SQL + table — keeping the list compact is
+    // the entire point of the master/detail split.
+    function listLabel(msg: ChatMessage): { meta: string; preview: string; tone: "user" | "ok" | "error" } {
+      if (msg.role === "user") {
+        return { meta: `you · db=${msg.dbId}`, preview: truncate(msg.goal, LIST_GOAL_PREVIEW_CHARS), tone: "user" };
+      }
+      if (msg.result.kind === "error") {
+        return {
+          meta: "nlqdb · error",
+          preview: msg.result.message ? truncate(msg.result.message, LIST_GOAL_PREVIEW_CHARS) : msg.result.status,
+          tone: "error",
+        };
+      }
+      const r = msg.result;
+      const summary = r.summary ?? `${r.rowCount} row${r.rowCount === 1 ? "" : "s"}`;
+      return { meta: `nlqdb · ${r.rowCount} row${r.rowCount === 1 ? "" : "s"}${r.cached ? " · cached" : ""}`, preview: truncate(summary, LIST_GOAL_PREVIEW_CHARS), tone: "ok" };
+    }
+
+    function renderListItem(msg: ChatMessage): HTMLLIElement {
+      const li = document.createElement("li");
+      const label = listLabel(msg);
+      li.className = `chat__list-item chat__list-item--${label.tone}`;
+      li.dataset.messageId = msg.id;
+      li.setAttribute("role", "button");
+      li.setAttribute("tabindex", "0");
+      li.innerHTML = `
+        <div class="chat__list-meta">${escapeHtml(label.meta)}</div>
+        <div class="chat__list-preview">${escapeHtml(label.preview)}</div>
+      `;
+      return li;
     }
 
     function renderRowsAsTable(rows: Record<string, unknown>[]): string {
@@ -158,71 +215,100 @@ import Base from "../../layouts/Base.astro";
       return `<table class="nlq-table"><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table>${more}`;
     }
 
-    function renderMessage(msg: ChatMessage): HTMLLIElement {
-      const li = document.createElement("li");
-      li.className = `chat__msg chat__msg--${msg.role}`;
+    function renderDetail(msg: ChatMessage | null): string {
+      if (!msg) {
+        return '<p class="chat__detail-empty">Select a message to see its results and SQL.</p>';
+      }
       if (msg.role === "user") {
-        li.innerHTML = `
-          <div class="chat__msg-meta">you · db=${escapeHtml(msg.dbId)}</div>
-          <div class="chat__msg-body">${escapeHtml(msg.goal)}</div>
+        return `
+          <div class="chat__detail-meta">you · db=${escapeHtml(msg.dbId)}</div>
+          <div class="chat__detail-goal">${escapeHtml(msg.goal)}</div>
+          <p class="chat__detail-hint">Click the assistant reply below this turn for SQL + rows.</p>
         `;
-        return li;
       }
       if (msg.result.kind === "error") {
-        li.innerHTML = `
-          <div class="chat__msg-meta">nlqdb · error</div>
-          <div class="chat__msg-error">
+        return `
+          <div class="chat__detail-meta">nlqdb · error</div>
+          <div class="chat__detail-error">
             <strong>${escapeHtml(msg.result.status)}</strong>
             ${msg.result.message ? `<div>${escapeHtml(msg.result.message)}</div>` : ""}
           </div>
         `;
-        return li;
       }
       const r = msg.result;
-      const summary = r.summary
-        ? `<div class="chat__msg-summary">${escapeHtml(r.summary)}</div>`
-        : "";
-      const sql = r.sql
-        ? `<pre class="chat__msg-sql"><code>${escapeHtml(r.sql)}</code></pre>`
-        : "";
-      const rowsHtml = renderRowsAsTable(r.rows);
       const cached = r.cached ? " · cached" : "";
       const truncated = r.truncated ? ` · stored first ${r.rows.length} of ${r.rowCount}` : "";
       const meta = `nlqdb · ${r.rowCount} row${r.rowCount === 1 ? "" : "s"}${cached}${truncated}`;
-      li.innerHTML = `
-        <div class="chat__msg-meta">${escapeHtml(meta)}</div>
+      const summary = r.summary
+        ? `<div class="chat__detail-summary">${escapeHtml(r.summary)}</div>`
+        : "";
+      const sql = r.sql
+        ? `<pre class="chat__detail-sql"><code>${escapeHtml(r.sql)}</code></pre>`
+        : "";
+      return `
+        <div class="chat__detail-meta">${escapeHtml(meta)}</div>
         ${summary}
-        <div class="chat__msg-rows">${rowsHtml}</div>
+        <div class="chat__detail-rows">${renderRowsAsTable(r.rows)}</div>
         ${sql}
       `;
-      return li;
     }
 
-    function appendMessage(msg: ChatMessage) {
-      list.appendChild(renderMessage(msg));
+    function setSelected(id: string | null) {
+      selectedId = id;
+      detail.innerHTML = renderDetail(id ? (messages.get(id) ?? null) : null);
+      for (const el of list.querySelectorAll<HTMLLIElement>(".chat__list-item")) {
+        const isSel = el.dataset.messageId === id;
+        el.classList.toggle("chat__list-item--selected", isSel);
+        if (isSel) el.scrollIntoView({ block: "nearest", behavior: "smooth" });
+      }
+    }
+
+    function appendMessage(msg: ChatMessage, opts: { select: boolean }) {
+      messages.set(msg.id, msg);
+      list.appendChild(renderListItem(msg));
+      if (opts.select) setSelected(msg.id);
       list.scrollTop = list.scrollHeight;
     }
+
+    list.addEventListener("click", (e) => {
+      const target = (e.target as HTMLElement).closest<HTMLLIElement>(".chat__list-item");
+      if (!target) return;
+      const id = target.dataset.messageId;
+      if (id) setSelected(id);
+    });
+
+    list.addEventListener("keydown", (e) => {
+      if (e.key !== "Enter" && e.key !== " ") return;
+      const target = (e.target as HTMLElement).closest<HTMLLIElement>(".chat__list-item");
+      if (!target) return;
+      e.preventDefault();
+      const id = target.dataset.messageId;
+      if (id) setSelected(id);
+    });
 
     async function load() {
       try {
         const body = await getJson<{ messages: ChatMessage[] }>("/v1/chat/messages");
         loading.hidden = true;
-        form.hidden = false;
         const msgs = body.messages ?? [];
         if (msgs.length === 0) {
           empty.hidden = false;
+          // Composer still needed even on empty state — but the layout
+          // is the natural home for it. Keep layout shown either way.
+          layout.hidden = false;
         } else {
-          list.hidden = false;
-          for (const m of msgs) appendMessage(m);
+          layout.hidden = false;
+          for (const m of msgs) appendMessage(m, { select: false });
+          // Default selection: latest message in the conversation.
+          // Almost always the assistant reply; if a user row landed
+          // without a reply (e.g. mid-error), we still surface it.
+          setSelected(msgs[msgs.length - 1].id);
         }
         const lastDb = localStorage.getItem(LAST_DB_KEY);
         if (lastDb) dbInput.value = lastDb;
-        // Pre-fill AFTER stored values so URL params win — they're the
-        // freshest signal of user intent for this navigation.
         applyPrefill();
         if (goalInput.value) goalInput.focus();
       } catch (err) {
-        // getJson redirected on 401 — anything else is a real error.
         if (err instanceof Error && err.message === "unauthorized") return;
         loading.textContent = `Couldn't load: ${
           err instanceof Error ? err.message : "unknown error"
@@ -244,9 +330,11 @@ import Base from "../../layouts/Base.astro";
           { goal, dbId },
         );
         empty.hidden = true;
-        list.hidden = false;
-        appendMessage(body.user);
-        appendMessage(body.assistant);
+        layout.hidden = false;
+        appendMessage(body.user, { select: false });
+        // Auto-select the assistant reply — that's the new
+        // information the user is here to see.
+        appendMessage(body.assistant, { select: true });
         goalInput.value = "";
       } catch (err) {
         if (err instanceof Error && err.message === "unauthorized") return;
@@ -263,8 +351,6 @@ import Base from "../../layouts/Base.astro";
       send();
     });
 
-    // Enter sends, Shift+Enter inserts a newline. Modern chat
-    // convention; the inline hint near the send button advertises it.
     goalInput.addEventListener("keydown", (e) => {
       if (e.key === "Enter" && !e.shiftKey && !e.isComposing) {
         e.preventDefault();
@@ -290,7 +376,6 @@ import Base from "../../layouts/Base.astro";
     }
     .chat {
       display: grid;
-      grid-template-rows: 1fr auto;
       gap: 16px;
       padding: 24px 0 32px;
       min-height: calc(100dvh - 120px);
@@ -323,47 +408,151 @@ import Base from "../../layouts/Base.astro";
       border: 1px solid var(--border);
       color: var(--fg);
     }
-    .chat__messages {
+
+    /* Two-pane layout. On wide screens the list is the narrower side
+       (40%), the detail takes the rest — that's where SQL + tables
+       live, so it deserves the room. Below 880px we stack: list on
+       top scrollable, detail below. */
+    .chat__layout {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 16px;
+      align-items: stretch;
+      min-height: 0;
+    }
+    @media (min-width: 880px) {
+      .chat__layout {
+        grid-template-columns: minmax(280px, 40%) 1fr;
+      }
+    }
+    .chat__pane {
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .chat__pane--list {
+      gap: 12px;
+    }
+
+    /* List of turns — compact rows, click/keyboard to select. */
+    .chat__list {
       list-style: none;
       padding: 0;
       margin: 0;
       display: grid;
-      gap: 16px;
+      gap: 8px;
       overflow-y: auto;
+      max-height: 60vh;
     }
-    .chat__msg {
-      padding: 14px 16px;
-      border: 2px solid var(--border-strong);
+    .chat__list-item {
+      padding: 10px 12px;
+      border: 2px solid var(--border);
       background: var(--bg-elev);
-      box-shadow: 4px 4px 0 0 var(--border-strong);
+      cursor: pointer;
+      transition: border-color 0.12s ease, background-color 0.12s ease;
+      outline: none;
     }
-    .chat__msg--user {
+    .chat__list-item:hover,
+    .chat__list-item:focus-visible {
+      border-color: var(--border-strong);
+    }
+    .chat__list-item--user {
+      border-left: 4px solid var(--accent);
+    }
+    .chat__list-item--ok {
+      border-left: 4px solid var(--border-strong);
+    }
+    .chat__list-item--error {
+      border-left: 4px solid #ff8a8a;
+    }
+    .chat__list-item--selected {
       border-color: var(--accent);
-      box-shadow: 4px 4px 0 0 var(--accent);
+      background: var(--bg);
     }
-    .chat__msg-meta {
+    .chat__list-meta {
       font-family: var(--mono);
       font-size: 11px;
       letter-spacing: 0.04em;
       text-transform: uppercase;
       color: var(--accent);
-      margin-bottom: 8px;
+      margin-bottom: 4px;
     }
-    .chat__msg-body {
+    .chat__list-preview {
       font-family: var(--mono);
-      font-size: 14px;
+      font-size: 13px;
+      color: var(--fg);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    /* Detail pane — the rendered surface for the selected turn. */
+    .chat__pane--detail {
+      gap: 0;
+    }
+    .chat__detail {
+      padding: 18px 20px;
+      border: 2px solid var(--border-strong);
+      background: var(--bg-elev);
+      box-shadow: 4px 4px 0 0 var(--border-strong);
+      min-height: 240px;
+      overflow: auto;
+      max-height: calc(100dvh - 200px);
+    }
+    .chat__detail-empty {
+      font-family: var(--mono);
+      font-size: 13px;
+      color: var(--fg-muted);
+      margin: 0;
+    }
+    .chat__detail-meta {
+      font-family: var(--mono);
+      font-size: 11px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 10px;
+    }
+    .chat__detail-goal {
+      font-family: var(--mono);
+      font-size: 15px;
       color: var(--fg);
       white-space: pre-wrap;
       word-break: break-word;
+      padding: 10px 12px;
+      background: var(--bg);
+      border: 1px solid var(--border);
     }
-    .chat__msg-summary {
+    .chat__detail-hint {
+      margin: 12px 0 0;
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--fg-muted);
+    }
+    .chat__detail-summary {
       font-size: 14px;
       color: var(--fg);
-      margin-bottom: 10px;
+      margin-bottom: 14px;
     }
-    .chat__msg-rows {
+    .chat__detail-rows {
       overflow-x: auto;
-      margin-bottom: 8px;
+      margin-bottom: 12px;
+    }
+    .chat__detail-sql {
+      margin: 14px 0 0;
+      padding: 10px 12px;
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--fg-dim);
+      background: var(--bg);
+      border: 1px solid var(--border);
+      overflow-x: auto;
+    }
+    .chat__detail-error {
+      font-family: var(--mono);
+      font-size: 13px;
+      color: #ff8a8a;
     }
     .chat__rows-empty,
     .chat__rows-more {
@@ -372,21 +561,8 @@ import Base from "../../layouts/Base.astro";
       color: var(--fg-muted);
       margin: 4px 0;
     }
-    .chat__msg-sql {
-      margin: 8px 0 0;
-      padding: 8px 10px;
-      font-family: var(--mono);
-      font-size: 12px;
-      color: var(--fg-dim);
-      background: var(--bg);
-      border: 1px solid var(--border);
-      overflow-x: auto;
-    }
-    .chat__msg-error {
-      font-family: var(--mono);
-      font-size: 13px;
-      color: #ff8a8a;
-    }
+
+    /* Composer — pinned at the bottom of the list pane. */
     .chat__form {
       display: grid;
       grid-template-columns: 1fr;
@@ -395,8 +571,7 @@ import Base from "../../layouts/Base.astro";
       background: var(--bg-elev);
       border: 3px solid var(--border-strong);
       box-shadow: var(--shadow-hard);
-      position: sticky;
-      bottom: 12px;
+      margin-top: auto;
     }
     .chat__db,
     .chat__input {

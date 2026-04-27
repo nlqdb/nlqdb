@@ -36,6 +36,31 @@ describe("buildDemoResult", () => {
     const result = buildDemoResult("a CRM for two-person startups");
     expect(result.summary).toContain("two-person startups");
   });
+
+  it("filters rows when the goal contains a column value (orders / americano)", () => {
+    const result = buildDemoResult("show me americano");
+    expect(result.rows.length).toBe(1);
+    expect(result.rows[0]).toMatchObject({ drink: "americano" });
+    expect(result.rowCount).toBe(1);
+    expect(result.sql).toContain("LIKE '%americano%'");
+    expect(result.summary.toLowerCase()).toContain("americano");
+  });
+
+  it("filters CRM contacts by status (warm)", () => {
+    const result = buildDemoResult("CRM contacts that are warm");
+    expect(result.rows.length).toBeGreaterThan(0);
+    expect(result.rows.length).toBeLessThan(5);
+    for (const row of result.rows) {
+      expect(row).toMatchObject({ status: "warm" });
+    }
+    expect(result.summary.toLowerCase()).toContain("warm");
+  });
+
+  it("returns the unfiltered fixture when no token in goal matches any row value", () => {
+    const result = buildDemoResult("hi");
+    expect(result.rows.length).toBe(6);
+    expect(result.summary).not.toContain("Filtered to");
+  });
 });
 
 describe("makeRateLimiter", () => {

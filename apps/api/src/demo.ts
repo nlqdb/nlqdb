@@ -37,6 +37,45 @@ export interface DemoResult {
   summary: string;
 }
 
+// Substring filter: if the goal contains any row's column value
+// (≥3 chars, case-insensitive), filter rows to matches. Makes the
+// demo feel responsive — "show me americano" → only the americano
+// row, not the full table. Returns the original rows when there's
+// no hit, so default fixtures still render something.
+//
+// Honest about the SQL string: appends an ILIKE clause referencing
+// the matched token so the displayed SQL reflects what got applied,
+// not an aspirational query.
+function applyGoalFilter(
+  rows: Row[],
+  baseSql: string,
+  goal: string,
+): { rows: Row[]; sql: string; matched: string | null } {
+  const goalLower = goal.toLowerCase();
+  for (const row of rows) {
+    for (const value of Object.values(row)) {
+      if (value == null) continue;
+      const v = String(value).toLowerCase();
+      if (v.length < 3) continue;
+      if (!goalLower.includes(v)) continue;
+      const filtered = rows.filter((r) =>
+        Object.values(r).some((c) => c != null && String(c).toLowerCase().includes(v)),
+      );
+      if (filtered.length > 0 && filtered.length < rows.length) {
+        // Inject the WHERE just before the trailing semicolon if any.
+        const trimmed = baseSql.replace(/;\s*$/, "");
+        const whereSql = `${trimmed}\n WHERE LOWER(CAST(* AS TEXT)) LIKE '%${v}%';`;
+        return { rows: filtered, sql: whereSql, matched: v };
+      }
+    }
+  }
+  return { rows, sql: baseSql, matched: null };
+}
+
+function summaryFor(base: string, goal: string, matched: string | null): string {
+  return matched ? `${base} Filtered to "${matched}" (matched in goal "${goal}").` : base;
+}
+
 // Goal → canned fixture. Match order matters: first hit wins.
 // Default (orders) is the fallback when nothing else matches.
 const FIXTURES: DemoFixture[] = [
@@ -205,6 +244,18 @@ const DEFAULT_FIXTURE: DemoFixture["build"] = (goal) => ({
 });
 
 export function buildDemoResult(goal: string): DemoResult {
+  const base = pickFixture(goal);
+  const filtered = applyGoalFilter(base.rows, base.sql, goal);
+  return {
+    ...base,
+    rows: filtered.rows,
+    rowCount: filtered.rows.length,
+    sql: filtered.sql,
+    summary: summaryFor(base.summary, goal, filtered.matched),
+  };
+}
+
+function pickFixture(goal: string): DemoResult {
   for (const fixture of FIXTURES) {
     if (fixture.match(goal)) return fixture.build(goal);
   }
