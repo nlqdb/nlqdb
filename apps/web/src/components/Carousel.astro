@@ -354,8 +354,13 @@ const {
       startLoop();
     }
 
-    root.addEventListener("pointerenter", pause);
-    root.addEventListener("pointerleave", resume);
+    // Keyboard-focus pause stays — a user tabbing through the
+    // prev/next/dot controls expects the carousel to hold still.
+    // Hover pause (`pointerenter` / `pointerleave`) was dropped:
+    // the carousel is the page's main attraction; pausing every
+    // time the cursor passes over it (including incidental
+    // pointermoves on touchpads + tablets) made the showcase feel
+    // unresponsive.
     root.addEventListener("focusin", pause);
     root.addEventListener("focusout", resume);
     document.addEventListener("visibilitychange", () => {
