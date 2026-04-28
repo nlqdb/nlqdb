@@ -127,16 +127,19 @@ echo "::endgroup::"
 #
 # `-rs` = raw output + slurp. `|| true` traps a non-zero pipeline
 # exit (e.g. jq missing) under `set -e`.
-# Try `preview_url` / `preview_alias_url` directly first. When
-# wrangler doesn't emit them (e.g. the worker has never been
-# `wrangler deploy`-ed and its workers.dev subdomain isn't
-# provisioned, so `versions upload` writes a `version-upload` event
-# with `preview_url: null`), construct the well-known URL pattern
-# from `version_id` + `worker_name` + the account subdomain.
+# Use `preview_url` / `preview_alias_url` from the event ONLY. When
+# they're missing (the worker has never been `wrangler deploy`-ed,
+# so its workers.dev subdomain isn't provisioned yet), do NOT
+# construct a synthetic URL — per Cloudflare docs, until the worker
+# is first deployed, NEITHER `<worker>.workers.dev` NOR
+# `<version-prefix>-<worker>.workers.dev` actually route. A
+# constructed URL would resolve to the "There is nothing here yet"
+# placeholder, which is worse than no URL at all.
 #
-# Format: https://<8-char-version-id-prefix>-<worker_name>.<subdomain>.workers.dev
-# Subdomain comes from $CF_WORKERS_SUBDOMAIN, set in the caller's
-# job env (avoids hardcoding the account subdomain in this script).
+# Caller should fall back to dashboard-pointer message and surface
+# the bootstrap-required state.
+#   https://developers.cloudflare.com/workers/configuration/previews/
+#
 # shellcheck disable=SC2086 # FILES is intentionally word-split
 EVENT=$(cat $FILES </dev/null 2>/dev/null \
         | jq -rs 'map(select(.type=="version-upload" or .type=="deploy")) | first // {}' \
@@ -144,22 +147,16 @@ EVENT=$(cat $FILES </dev/null 2>/dev/null \
 
 URL=$(echo "$EVENT" | jq -r '.preview_url // .preview_alias_url // (.targets[0]? // "")' 2>/dev/null || true)
 
-if [ -z "${URL:-}" ] || [ "$URL" = "null" ]; then
-  # Fall back to constructing the URL from version_id + worker_name.
-  VERSION_ID=$(echo "$EVENT" | jq -r '.version_id // ""' 2>/dev/null || true)
-  WORKER_NAME=$(echo "$EVENT" | jq -r '.worker_name // ""' 2>/dev/null || true)
-  if [ -n "$VERSION_ID" ] && [ "$VERSION_ID" != "null" ] \
-     && [ -n "$WORKER_NAME" ] && [ "$WORKER_NAME" != "null" ] \
-     && [ -n "${CF_WORKERS_SUBDOMAIN:-}" ]; then
-    PREFIX=$(echo "$VERSION_ID" | cut -c1-8)
-    URL="https://${PREFIX}-${WORKER_NAME}.${CF_WORKERS_SUBDOMAIN}.workers.dev"
-    echo "Constructed URL from version_id + worker_name (preview_url was missing in event)"
-  fi
-fi
-
 if [ -n "${URL:-}" ] && [ "$URL" != "null" ]; then
   echo "PREVIEW_URL=$URL" >> "$GITHUB_ENV"
   echo "Captured preview URL: $URL"
 else
-  echo "No URL captured — see DEBUG groups above for the event payload. Comment step will fall back to dashboard pointer."
+  # Diagnostic: show what fields the event actually has so a future
+  # bootstrap-state mismatch surfaces immediately.
+  WORKER_NAME=$(echo "$EVENT" | jq -r '.worker_name // "?"' 2>/dev/null || echo "?")
+  VERSION_ID=$(echo "$EVENT" | jq -r '.version_id // "?"' 2>/dev/null || echo "?")
+  echo "PREVIEW_BOOTSTRAP_NEEDED=1" >> "$GITHUB_ENV"
+  echo "preview_url missing in version-upload event for worker=$WORKER_NAME version=$VERSION_ID"
+  echo "this happens when the worker has never been \`wrangler deploy\`-ed."
+  echo "first deploy provisions the *.workers.dev subdomain; future versions then get URLs."
 fi

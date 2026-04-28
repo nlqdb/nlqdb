@@ -77,7 +77,13 @@ jobs:
           WRANGLER_OUTPUT_FILE_DIRECTORY: ${{ github.workspace }}/wrangler-out
         run: |
           mkdir -p "$WRANGLER_OUTPUT_FILE_DIRECTORY"
-          bunx wrangler versions upload --message "PR #${{ github.event.number }} @ ${{ github.event.pull_request.head.sha }}"
+          # `--preview-alias pr-N` gives us a stable URL —
+          # https://pr-N-nlqdb-api.<subdomain>.workers.dev. Updates to
+          # the latest version uploaded under that alias on each PR
+          # push, so the URL is sticky across the lifetime of the PR.
+          bunx wrangler versions upload \
+            --message "PR #${{ github.event.number }} @ ${{ github.event.pull_request.head.sha }}" \
+            --preview-alias "pr-${{ github.event.number }}"
 
       # Always attempt extraction so the comment step can distinguish
       # "deploy succeeded but URL parse failed" from "deploy failed".

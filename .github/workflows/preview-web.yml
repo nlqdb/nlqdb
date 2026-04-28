@@ -68,7 +68,13 @@ jobs:
           WRANGLER_OUTPUT_FILE_DIRECTORY: ${{ github.workspace }}/wrangler-out
         run: |
           mkdir -p "$WRANGLER_OUTPUT_FILE_DIRECTORY"
-          bunx wrangler versions upload --message "PR #${{ github.event.number }} ${{ github.sha }}"
+          # `--alias pr-N` gives us a stable, human-readable URL —
+          # https://pr-N-nlqdb-web.<subdomain>.workers.dev. The alias
+          # updates to whatever version was last uploaded under it,
+          # so the URL survives across pushes within a PR.
+          bunx wrangler versions upload \
+            --message "PR #${{ github.event.number }} ${{ github.sha }}" \
+            --preview-alias "pr-${{ github.event.number }}"
 
       - name: Extract preview URL
         if: always() && steps.deploy.outcome == 'success'
