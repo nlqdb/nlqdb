@@ -9,6 +9,11 @@
 # conditionals. Where a job is gated on a file existing, we run a
 # `precheck` step that sets an output, then guard later steps on it.
 #
+# Setup is centralised in `.github/actions/setup` (SHA-pinned setup-bun
+# + actions/cache over ~/.bun/install/cache + frozen install). Every
+# job that needs the workspace uses that composite to avoid re-running
+# the same install logic 8+ times per PR push without a cache.
+#
 # Eventually this file becomes a 4-line consumer of `nlqdb/actions@v1`
 # (DESIGN §13) once that repo exists. Until then the workflow is
 # inlined here.
@@ -34,15 +39,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v4
-
-      - uses: oven-sh/setup-bun@v2
-        with:
-          bun-version-file: package.json
-
-      - name: Install workspace deps
-        run: bun install --frozen-lockfile
-
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - uses: ./.github/actions/setup
       - name: Biome check
         run: bun run check
 
@@ -54,7 +52,7 @@ jobs:
       run:
         working-directory: cli
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
 
       - id: precheck
         working-directory: ${{ github.workspace }}
@@ -67,19 +65,34 @@ jobs:
           fi
 
       - if: steps.precheck.outputs.exists == 'true'
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
         with:
           go-version-file: cli/go.mod
           cache-dependency-path: cli/go.sum
 
+      # gofumpt -d prints a unified diff of unformatted files and
+      # exits 0 in BOTH the "no diff" and "diff present" cases — its
+      # signal is the diff content on stdout, not the exit code. Pipe
+      # the output through `wc -c` and treat any non-zero size as a
+      # failure. The previous `diff <(gofumpt -d .) <(echo -n)` form
+      # relied on the default `bash -eo pipefail` shell (process
+      # substitution requires bash anyway), but it leaked the file
+      # diffs through stderr only on failure. Capturing the diff into
+      # an output file lets us print it on failure for fast triage.
       - name: gofumpt
         if: steps.precheck.outputs.exists == 'true'
+        shell: bash
         run: |
+          set -euo pipefail
           go install mvdan.cc/gofumpt@latest
-          diff <(gofumpt -d .) <(echo -n) || {
+          out=$(gofumpt -d .)
+          if [ -n "$out" ]; then
+            echo "::group::gofumpt diff"
+            echo "$out"
+            echo "::endgroup::"
             echo "::error::gofumpt found unformatted files — run 'bun run check:go' locally"
             exit 1
-          }
+          fi
 
       - name: go vet
         if: steps.precheck.outputs.exists == 'true'
@@ -87,7 +100,7 @@ jobs:
 
       - name: golangci-lint
         if: steps.precheck.outputs.exists == 'true'
-        uses: golangci/golangci-lint-action@v7
+        uses: golangci/golangci-lint-action@9fae48acfc02a90574d7c304a1758ef9895495fa # v7.0.1
         with:
           working-directory: cli
           version: latest
@@ -101,7 +114,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
 
       - id: precheck
         run: |
@@ -113,7 +126,7 @@ jobs:
           fi
 
       - if: steps.precheck.outputs.exists == 'true'
-        uses: astral-sh/setup-uv@v5
+        uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86 # v5
         with:
           enable-cache: true
 
@@ -130,14 +143,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v4
-
-      - uses: oven-sh/setup-bun@v2
-        with:
-          bun-version-file: package.json
-
-      - name: Install workspace deps
-        run: bun install --frozen-lockfile
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - uses: ./.github/actions/setup
 
       - name: Typecheck
         working-directory: apps/api
@@ -147,6 +154,10 @@ jobs:
         working-directory: apps/api
         run: bun run test
 
+      # `bun run build` is `wrangler deploy --dry-run --outdir dist`
+      # (apps/api/package.json). Same script the deploy workflow's
+      # SLSA attestation step depends on — running it here keeps the
+      # build-output contract under PR-time CI gates.
       - name: Wrangler build (dry-run)
         working-directory: apps/api
         run: bun run build
@@ -160,14 +171,8 @@ jobs:
         pkg: [db, elements, llm, otel, sdk]
       fail-fast: false
     steps:
-      - uses: actions/checkout@v4
-
-      - uses: oven-sh/setup-bun@v2
-        with:
-          bun-version-file: package.json
-
-      - name: Install workspace deps
-        run: bun install --frozen-lockfile
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - uses: ./.github/actions/setup
 
       - name: Typecheck
         working-directory: packages/${{ matrix.pkg }}
@@ -182,14 +187,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v4
-
-      - uses: oven-sh/setup-bun@v2
-        with:
-          bun-version-file: package.json
-
-      - name: Install workspace deps
-        run: bun install --frozen-lockfile
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - uses: ./.github/actions/setup
 
       - name: Astro check
         working-directory: apps/web
@@ -204,14 +203,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 3
     steps:
-      - uses: actions/checkout@v4
-
-      - uses: oven-sh/setup-bun@v2
-        with:
-          bun-version-file: package.json
-
-      - name: Install workspace deps
-        run: bun install --frozen-lockfile
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - uses: ./.github/actions/setup
 
       - name: Build CDN bundle
         working-directory: packages/elements
@@ -236,7 +229,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 3
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
       - name: shellcheck
         run: |
           sudo apt-get update -qq
@@ -248,5 +241,5 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 2
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
       - run: ./scripts/lockfile-guard.sh

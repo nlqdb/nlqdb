@@ -38,11 +38,15 @@
     {
       // `matchPackagePatterns` was deprecated in Renovate v37; the
       // glob form on `matchPackageNames` is the supported equivalent.
-      matchPackageNames: ["@opentelemetry/**"],
+      // Use a single `*` (minimatch — matches one path segment, which
+      // is the entire package-name suffix after the org prefix) per
+      // the documented form. `**` works in minimatch too but isn't
+      // the documented spelling and risks a future tightening.
+      matchPackageNames: ["@opentelemetry/*"],
       groupName: "opentelemetry",
     },
     {
-      matchPackageNames: ["astro", "@astrojs/**"],
+      matchPackageNames: ["astro", "@astrojs/*"],
       groupName: "astro",
     },
     {

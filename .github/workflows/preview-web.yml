@@ -9,10 +9,14 @@
 # URL extraction: cloudflare/wrangler-action@v3 does NOT populate the
 # `deployment-url` step output for the `versions upload` command —
 # tracked at cloudflare/wrangler-action#343. The official machine-
-# readable hook is `WRANGLER_OUTPUT_FILE_PATH`: wrangler writes an
-# ND-JSON event log we parse for the `version-upload` entry, which
+# readable hook is `WRANGLER_OUTPUT_FILE_DIRECTORY`: wrangler writes
+# an ND-JSON event log we parse for the `version-upload` entry, which
 # carries `preview_url`. Documented at
 # https://developers.cloudflare.com/workers/wrangler/system-environment-variables/.
+#
+# Versions GC: same caveat as preview-api — old versions stay in the
+# dashboard until a future cleanup pass. Tracked in IMPLEMENTATION §8
+# ("preview Workers Versions GC").
 
 name: Preview web
 
@@ -28,10 +32,13 @@ concurrency:
   group: preview-web-pr-${{ github.event.number }}
   cancel-in-progress: true
 
+# `deployments: write` was previously declared but unused — Workers
+# Versions doesn't create a GitHub Deployment object; the sticky
+# comment uses the `pull-requests: write` scope. Dropped per the
+# least-privilege principle.
 permissions:
   contents: read
   pull-requests: write
-  deployments: write
 
 jobs:
   preview:
@@ -39,14 +46,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 6
     steps:
-      - uses: actions/checkout@v4
-
-      - uses: oven-sh/setup-bun@v2
-        with:
-          bun-version-file: package.json
-
-      - name: Install workspace deps
-        run: bun install --frozen-lockfile
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - uses: ./.github/actions/setup
 
       - name: Build site
         run: bun run --cwd apps/web build
@@ -70,27 +71,46 @@ jobs:
           bunx wrangler versions upload --message "PR #${{ github.event.number }} ${{ github.sha }}"
 
       - name: Extract preview URL
+        if: always() && steps.deploy.outcome == 'success'
         env:
           WRANGLER_OUTPUT_FILE_DIRECTORY: ${{ github.workspace }}/wrangler-out
         run: sh "$GITHUB_WORKSPACE/scripts/extract-wrangler-preview-url.sh"
 
+      # `if: always()` so a deploy failure still updates the sticky
+      # comment with a "FAILED — see logs" line instead of leaving a
+      # stale "deployed" message from the previous push.
       - name: Sticky preview comment
-        uses: actions/github-script@v7
+        if: always()
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7.1.0
+        env:
+          DEPLOY_OUTCOME: ${{ steps.deploy.outcome }}
         with:
           script: |
+            const outcome = process.env.DEPLOY_OUTCOME ?? '';
             const url = process.env.PREVIEW_URL ?? '';
 
             const sha = context.sha.slice(0, 7);
             const marker = '<!-- preview-web-sticky -->';
             const ts = new Date().toISOString().replace('T', ' ').slice(0, 19) + ' UTC';
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
 
-            const urlLine = url
-              ? `- URL: <${url}>`
-              : '- URL: latest version visible in the dashboard → `nlqdb-web` → Versions';
+            let header;
+            let urlLine;
+
+            if (outcome !== 'success') {
+              header = '❌ **Preview web deploy FAILED**';
+              urlLine = `- See logs: <${runUrl}>`;
+            } else if (url) {
+              header = '🌐 **Preview web deployed**';
+              urlLine = `- URL: <${url}>`;
+            } else {
+              header = '🌐 **Preview web deployed** (URL parse degraded — see logs)';
+              urlLine = '- URL: latest version visible in the dashboard → `nlqdb-web` → Versions';
+            }
 
             const body = [
               marker,
-              '🌐 **Preview web deployed**',
+              header,
               '',
               urlLine,
               `- Worker: \`nlqdb-web\` (preview version — non-production)`,

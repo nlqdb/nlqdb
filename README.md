@@ -118,9 +118,11 @@ Each step is 2–4 words on purpose — full spec lives in
 Things the code can't do for itself. Each block lists the cheapest
 trigger to unlock it.
 
-**Right now — unblock PR previews:**
-
-- ◯ Cloudflare Pages → connect git integration for `nlqdb-elements` ([RUNBOOK §6](./RUNBOOK.md))
+**Right now:** none — PR previews ship via GH Actions (deploy-api,
+deploy-web, preview-{api,web,elements}); no manual Cloudflare
+dashboard wiring required ([RUNBOOK §6](./RUNBOOK.md)). The earlier
+"connect Pages git integration for `nlqdb-elements`" item was made
+obsolete by the move to GH Actions for every surface.
 
 **Phase 1 — before public soft launch:**
 

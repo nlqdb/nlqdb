@@ -1,5 +1,14 @@
 # LLM credits — application plan
 
+> **Verify the credit amounts and program names against each
+> provider's official page before submitting an application.** The
+> figures in the table below were captured in April 2026 from the
+> public marketing pages, but startup credit programs reshape often
+> (Anthropic, MS Founders Hub and AWS Activate all restructured
+> within the past 18 months). Quoting a stale tier-amount in a
+> founder application looks worse than under-quoting and being
+> pleasantly surprised. Re-check before pasting amounts into a form.
+
 The 2026 NL-to-SQL frontier (Spider 2.0, BIRD-Interact, LiveSQLBench) is firmly in Claude Sonnet 4.6 / GPT-5 territory; small free-tier models (Groq Llama 3.1 8B, Gemini 2.5 Flash) lose 15–25 accuracy points on realistic schemas. We don't want to torch user experience to stay strict-$0 — but we also don't want to pay $5k/month before revenue.
 
 The plan: apply to four credit programs in parallel today, route paid models behind Cloudflare AI Gateway with quality telemetry, and keep the strict-$0 chain as fallback for low-priority paths (CI, dev, /v1/health probes, classify on cheap intents).
@@ -69,4 +78,4 @@ We already wired Cloudflare AI Gateway in `apps/api/src/llm-router.ts`. With the
 
 ## Draft application paragraph (reuse across forms)
 
-> nlqdb is a natural-language databases platform — users describe what they want in English and we generate, validate, and run the SQL on their database. Pre-alpha as of April 2026, on Cloudflare Workers + Hono + D1 + KV + R2 + Queues + Better Auth, Stripe Billing for usage-based pricing. Open-source ([github.com/nlqdb/nlqdb](https://github.com/nlqdb/nlqdb), private through pre-alpha), Swiss merchant. Solo-founder, bootstrapped. Frontier LLMs are core to plan-generation accuracy; current strict-$0 chain (Groq → Gemini → Workers AI → OpenRouter) gives ~70% accuracy on BIRD-realistic queries vs ~94% with Claude Sonnet 4.6 / GPT-5. Credits unblock production-grade accuracy without breaking the Free-plan economics.
+> nlqdb is a natural-language databases platform — users describe what they want in English and we generate, validate, and run the SQL on their database. Pre-alpha as of April 2026, on Cloudflare Workers + Hono + D1 + KV + R2 + Queues + Better Auth, Stripe Billing for usage-based pricing. Source-available under FSL-1.1-ALv2 (Apache 2.0 future license — repo is private through pre-alpha and opens publicly post-alpha). Swiss merchant. Solo-founder, bootstrapped. Frontier LLMs are core to plan-generation accuracy; current strict-$0 chain (Groq → Gemini → Workers AI → OpenRouter) gives ~70% accuracy on BIRD-realistic queries vs ~94% with Claude Sonnet 4.6 / GPT-5. Credits unblock production-grade accuracy without breaking the Free-plan economics.

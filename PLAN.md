@@ -355,13 +355,14 @@ Three-tier is a cliché for a reason. Keep it.
 - Email support.
 
 **Pro — usage-based, starts at $25/mo minimum**
-- Metered by (a) queries, (b) storage-GB-mo, (c) LLM tokens on complex queries (transparently shown).
+- Metered by (a) queries over the included 50k, (b) storage-GB-mo over the included 5 GB.
+- LLM tokens are **not** metered on Pro by default. Every Pro query routes through the strict-$0 chain (Groq → Gemini → Workers AI → OpenRouter), same as Free/Hobby. To pay for premium-model accuracy, add the **Premium models** add-on below — Pro alone never produces an `LLM tokens` invoice line.
 - Dedicated compute once you cross a threshold.
 - 30-day PITR.
 - Priority support.
 
 **Premium models (add-on, Hobby+) — pay per token**
-- Opt-in routing of plan-generation to Claude Sonnet 4.6 / GPT-5 for hard queries.
+- Opt-in routing of plan-generation to Claude Sonnet 4.6 / GPT-5 for hard queries. This add-on is the only thing that produces an `LLM tokens` line on a customer's invoice — neither Hobby nor Pro generates LLM-token charges without it.
 - Provider list price + 0% markup, metered through Cloudflare AI Gateway, billed via Stripe.
 - Free-tier chain (Groq → Gemini → Workers AI) stays the default fallback even with the add-on enabled.
 - Free tier never silently routes to a paid model — opt-in only.

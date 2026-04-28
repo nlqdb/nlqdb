@@ -10,7 +10,7 @@ harder to operate.
 - [PERFORMANCE.md](./PERFORMANCE.md) — SLOs, latency budgets, span/metric catalog.
 - **this file** — what's actually set up right now.
 
-**Last verified: 2026-04-25.** Running `./scripts/verify-secrets.sh`
+**Last verified: 2026-04-28.** Running `./scripts/verify-secrets.sh`
 should return 21/21 green (or more, as provisioning expands).
 
 ---
@@ -28,6 +28,7 @@ should return 21/21 green (or more, as provisioning expands).
 | Pages deployment URL        | https://nlqdb-coming-soon.pages.dev | 200 (same content as nlqdb.com)|
 | `nlqdb-api` health          | https://app.nlqdb.com/v1/health     | 200; bindings `kv` + `db` green |
 | `nlqdb-api` auth            | https://app.nlqdb.com/api/auth/*    | Better Auth — GitHub + Google verified live |
+| `nlqdb-web` (Workers Static Assets) | `nlqdb-web.<account>.workers.dev` | 200 (deployed; not yet on `nlqdb.com` — DNS flip pending per §6 "apps/web") |
 
 ---
 

@@ -24,7 +24,8 @@
 # Concurrency: keyed by PR number with `cancel-in-progress: true`
 # so only the latest push for each PR is in flight; older versions
 # stay reachable on their own URLs in the dashboard until a future
-# cleanup pass garbage-collects them.
+# cleanup pass garbage-collects them. Versions GC followup is tracked
+# in IMPLEMENTATION §8 ("preview Workers Versions GC").
 
 name: Preview API
 
@@ -44,10 +45,13 @@ concurrency:
   group: preview-api-pr-${{ github.event.number }}
   cancel-in-progress: true
 
+# `deployments: write` was previously declared but unused — Workers
+# Versions doesn't create a GitHub Deployment object; the sticky
+# comment uses the `pull-requests: write` scope. Dropped per the
+# least-privilege principle.
 permissions:
   contents: read
   pull-requests: write
-  deployments: write
 
 jobs:
   preview:
@@ -55,14 +59,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v4
-
-      - uses: oven-sh/setup-bun@v2
-        with:
-          bun-version-file: package.json
-
-      - name: Install workspace deps
-        run: bun install --frozen-lockfile
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - uses: ./.github/actions/setup
 
       # Run wrangler directly. wrangler-action@v3's `postCommands`
       # doesn't see `WRANGLER_OUTPUT_DIR` (set only in the wrangler
@@ -81,7 +79,10 @@ jobs:
           mkdir -p "$WRANGLER_OUTPUT_FILE_DIRECTORY"
           bunx wrangler versions upload --message "PR #${{ github.event.number }} @ ${{ github.event.pull_request.head.sha }}"
 
+      # Always attempt extraction so the comment step can distinguish
+      # "deploy succeeded but URL parse failed" from "deploy failed".
       - name: Extract preview URL
+        if: always() && steps.deploy.outcome == 'success'
         env:
           WRANGLER_OUTPUT_FILE_DIRECTORY: ${{ github.workspace }}/wrangler-out
         run: sh "$GITHUB_WORKSPACE/scripts/extract-wrangler-preview-url.sh"
@@ -90,23 +91,44 @@ jobs:
       # hidden marker and edits it in place. Keeps the PR conversation
       # clean: one comment per PR, updated on every push, instead of a
       # new comment per deploy.
+      #
+      # `if: always()` so a deploy failure still updates the sticky
+      # comment with a "FAILED — see logs" line instead of leaving a
+      # stale "deployed" message from the previous push.
       - name: Sticky preview comment
-        uses: actions/github-script@v7
+        if: always()
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7.1.0
+        env:
+          DEPLOY_OUTCOME: ${{ steps.deploy.outcome }}
         with:
           script: |
+            const outcome = process.env.DEPLOY_OUTCOME ?? '';
             const url = process.env.PREVIEW_URL ?? '';
 
             const sha = context.sha.slice(0, 7);
             const marker = '<!-- preview-api-sticky -->';
             const ts = new Date().toISOString().replace('T', ' ').slice(0, 19) + ' UTC';
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
 
-            const urlLine = url
-              ? `- URL: <${url}>`
-              : '- URL: latest version visible in the dashboard → `nlqdb-api` → Versions';
+            let header;
+            let urlLine;
+
+            if (outcome !== 'success') {
+              header = '❌ **Preview API deploy FAILED**';
+              urlLine = `- See logs: <${runUrl}>`;
+            } else if (url) {
+              header = '🚀 **Preview API deployed**';
+              urlLine = `- URL: <${url}>`;
+            } else {
+              // Deploy succeeded but URL parse degraded — still useful
+              // info for the reviewer; point them at the dashboard.
+              header = '🚀 **Preview API deployed** (URL parse degraded — see logs)';
+              urlLine = '- URL: latest version visible in the dashboard → `nlqdb-api` → Versions';
+            }
 
             const body = [
               marker,
-              '🚀 **Preview API deployed**',
+              header,
               '',
               urlLine,
               '- Worker: `nlqdb-api` (non-production version — `app.nlqdb.com` untouched)',

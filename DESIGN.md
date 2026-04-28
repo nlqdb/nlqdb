@@ -615,8 +615,8 @@ paying us.** Aligned with [`PLAN.md` §5](./PLAN.md).
 |---|---|---|---|---|
 | **Free** | $0 forever | Unlimited DBs, full chat/CLI/MCP/embed, all templates, 7-day backups | 1k queries/mo, 500MB/DB, pause after 7d idle (resume <2s), 100 emails/day | **No** |
 | **Hobby** | $10/mo | Free + no pausing, 30-day backups, email support, custom domain on embeds, 5 team members | 50k queries/mo, 5GB/DB, 5k emails/day | Yes |
-| **Pro** | $25/mo min, usage | Hobby + dedicated compute, 30-day PITR, priority Slack, Google Workspace SSO | $0.0005/query over 50k, $0.10/GB-mo over 5GB; user-set hard cap | Yes |
-| **Premium models** (add-on, Hobby+) | Pay-per-token | Frontier-model routing — Claude Sonnet 4.6 / GPT-5 — for hard-plan queries. Free-tier chain (Groq → Gemini → Workers AI) stays the default fallback. | Provider list + 0% markup, billed monthly via Stripe. Per-key spend cap. | Yes |
+| **Pro** | $25/mo min, usage | Hobby + dedicated compute, 30-day PITR, priority Slack, Google Workspace SSO | $0.0005/query over 50k, $0.10/GB-mo over 5GB; user-set hard cap. **LLM tokens not metered on Pro by default** — Pro queries use the strict-$0 chain (Groq → Gemini → Workers AI → OpenRouter), same as Free/Hobby. Premium-model accuracy is the separate **Premium models** add-on below. | Yes |
+| **Premium models** (add-on, Hobby+) | Pay-per-token | Frontier-model routing — Claude Sonnet 4.6 / GPT-5 — for hard-plan queries. **Opt-in only**, per-DB or per-API-key (never silently routed). Free-tier chain (Groq → Gemini → Workers AI) stays the default fallback. The add-on is what unlocks the `LLM tokens` invoice line — without it, no LLM-token charges appear on Hobby or Pro. | Provider list + 0% markup, billed monthly via Stripe. Per-key spend cap. | Yes |
 | **Enterprise** | Custom | VPC peering, SAML SSO, audit-log export, custom SLA, on-prem option | Negotiated | Annual |
 
 **Free-tier guarantees:** no card, ever. Hitting a limit rate-limits — never

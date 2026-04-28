@@ -16,6 +16,20 @@
 #
 # Manual re-deploy: workflow_dispatch on the Actions tab, or run the
 # three-step sequence locally per RUNBOOK §`apps/api`.
+#
+# Rollback constraint (do not skip): `migrate:remote` runs BEFORE
+# `wrangler deploy`. If the deploy then fails (build error, route
+# conflict, CF 5xx) the D1 schema is one step ahead of the running
+# Worker, so the previously-promoted Worker version may 500 on routes
+# that touch new columns/tables. Two consequences:
+#   1. Every D1 migration in `apps/api/migrations/` MUST be forward-
+#      compatible with the previous Worker (additive-only: new tables,
+#      new nullable columns, new indexes — never DROP/RENAME without a
+#      multi-PR expand-contract dance).
+#   2. If a deploy lands red, the fastest recovery is to rerun this
+#      workflow (most failures are transient CF errors); manual
+#      rollback to the previous Worker version is safe ONLY because
+#      of rule (1) above. Confirm with `wrangler versions list`.
 
 name: Deploy API
 
@@ -48,33 +62,46 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 8
     steps:
-      - uses: actions/checkout@v4
+      # SHA-pinned per renovate.json5 (`pinDigests: true`); Renovate
+      # rolls these forward when the upstream tag moves.
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
 
-      - uses: oven-sh/setup-bun@v2
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
           bun-version-file: package.json
 
       - name: Install workspace deps
         run: bun install --frozen-lockfile
 
-      - name: Build (wrangler dry-run for attestation subject)
+      # `bun run build` runs `wrangler deploy --dry-run --outdir dist`
+      # (apps/api/package.json). The `--outdir dist` is load-bearing:
+      # without it `wrangler deploy --dry-run` writes nothing to disk
+      # and the `actions/attest-build-provenance` step below globs
+      # zero files and errors with "no subjects found", failing the
+      # whole deploy job. Verified locally:
+      #   $ bun run --cwd apps/api build && ls apps/api/dist
+      #   index.js
+      - name: Build (wrangler dry-run → apps/api/dist)
         working-directory: apps/api
         run: bun run build
 
       - name: SLSA build provenance attestation
-        uses: actions/attest-build-provenance@v2
+        uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be # v2.4.0
         with:
           subject-path: "apps/api/dist/**"
 
       - name: Migrate + deploy
-        uses: cloudflare/wrangler-action@v3
+        uses: cloudflare/wrangler-action@9acf94ace14e7dc412b076f2c5c20b8ce93c79cd # v3.15.0
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           workingDirectory: apps/api
           # `migrate:remote` calls scripts/migrate-d1.sh which uses
           # wrangler (provided by this action). Runs BEFORE deploy so
-          # the worker boots against an up-to-date D1 schema.
+          # the worker boots against an up-to-date D1 schema. See the
+          # rollback constraint at the top of this file — every
+          # migration must be forward-compatible with the previous
+          # Worker version.
           preCommands: |
             bun run migrate:remote
           command: deploy

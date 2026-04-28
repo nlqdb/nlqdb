@@ -612,6 +612,17 @@ ClickHouse, TimescaleDB, Typesense), `<nlq-stream>`.
 - **Provider-swap drill:** quarterly forced LLM failover in production
   for 1h.
 - **Backup-restore drill:** weekly automated restore + diff; failure pages on-call.
+- **Preview Workers Versions GC** — `.github/workflows/preview-{api,web}.yml`
+  uploads a new Workers Version per PR push; old versions persist
+  indefinitely on the prod Worker (Cloudflare doesn't TTL them).
+  Active development = hundreds of orphaned per-version preview URLs
+  per Worker over the year. Followup (own PR, post-Phase-1): add a
+  scheduled workflow that lists `wrangler versions list` against
+  `nlqdb-api` + `nlqdb-web` and prunes versions older than ~14 days
+  via the CF API (Wrangler doesn't expose a `versions delete`
+  command yet — needs a direct `DELETE /accounts/:id/workers/scripts/:name/versions/:version`
+  call). Skip versions that match the currently-promoted production
+  version_id.
 
 ---
 
