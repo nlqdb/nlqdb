@@ -18,18 +18,19 @@ import Base from "../layouts/Base.astro";
     <Topnav />
 
     <main>
-      {/* Narrative order: positioning → capability showcase → primary CTA →
-          technical proof → competitive framing → philosophy. PR #49's
-          pivot dropped CodePanel + ManifestoExcerpt as part of the
-          coming-soon simplification; restored here because they back
-          the carousel's claims with real integration code (CodePanel)
-          and product philosophy (ManifestoExcerpt). */}
+      {/* Narrative order: positioning → capability showcase →
+          values + manifesto link → primary CTA → technical proof →
+          competitive framing. Promoting ManifestoExcerpt up front
+          (was at the bottom after Replaces) so the "Free, forever"
+          tenet + manifesto link land BEFORE the waitlist CTA — the
+          values frame the ask. PR #49's pivot dropped both
+          CodePanel + ManifestoExcerpt; PR #58 restored them. */}
       <Hero />
       <Carousel examples={SHOWCASE_EXAMPLES} />
+      <ManifestoExcerpt />
       <Waitlist />
       <CodePanel />
       <Replaces />
-      <ManifestoExcerpt />
     </main>
 
     <Footer />
