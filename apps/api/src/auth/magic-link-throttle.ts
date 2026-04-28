@@ -15,6 +15,7 @@ export type MagicLinkThrottleConfig = {
 
 export type MagicLinkThrottle = {
   tryConsume(emailHash: string): Promise<boolean>;
+  rollback(emailHash: string): Promise<void>;
 };
 
 export function makeMagicLinkThrottle(
@@ -26,7 +27,10 @@ export function makeMagicLinkThrottle(
     max: config.max,
     windowSeconds: config.windowSeconds,
   });
-  return { tryConsume: (emailHash) => throttle.tryConsume(emailHash) };
+  return {
+    tryConsume: (emailHash) => throttle.tryConsume(emailHash),
+    rollback: (emailHash) => throttle.rollback(emailHash),
+  };
 }
 
 export async function hashEmail(email: string): Promise<string> {

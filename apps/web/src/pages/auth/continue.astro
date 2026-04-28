@@ -1,0 +1,150 @@
+---
+import Base from "../../layouts/Base.astro";
+
+// Magic-link continue page. The API rewrites every magic-link email
+// from `app.nlqdb.com/api/auth/magic-link/verify?token=…` to
+// `nlqdb.com/auth/continue?next=<encoded verify URL>` so passive
+// link-scanners (Outlook SafeLinks, Gmail prefetch, Defender) GET the
+// continue page — which renders a button — instead of GETting the
+// verify endpoint, which would consume the single-use token.
+//
+// Open-redirect defense:
+//   `next` is decoded server-side at render time and validated against
+//   an allow-list of origins. Anything outside the allow-list is
+//   refused — the page renders an error instead of the button. This
+//   is the trust-boundary the API change at apps/api/src/auth.ts:177
+//   implicitly extended; without it, a fake email of the form
+//   `https://nlqdb.com/auth/continue?next=https://attacker.example/`
+//   would phish through our own domain.
+//
+// Why static-validated, not signed:
+//   The verify URL itself is HMAC-protected by Better Auth (the token
+//   query param). The continue page only needs to ensure `next`
+//   points at OUR verify endpoint. Origin allow-list is sufficient
+//   for that — we already control which origins ship our auth UI.
+//   Signing `next` would be defense-in-depth but adds a server-side
+//   secret to a static page.
+
+// Allow-list. Production: only app.nlqdb.com. Localhost variants are
+// included so `wrangler dev` + `astro dev` round-trip works.
+const ALLOWED_NEXT_ORIGINS = new Set(["https://app.nlqdb.com", "http://localhost:8787"]);
+
+type ResolvedNext =
+  | { ok: true; url: string }
+  | { ok: false; reason: "missing" | "malformed" | "untrusted_origin" };
+
+function resolveNext(raw: string | null): ResolvedNext {
+  if (!raw) return { ok: false, reason: "missing" };
+  let parsed: URL;
+  try {
+    parsed = new URL(raw);
+  } catch {
+    return { ok: false, reason: "malformed" };
+  }
+  if (!ALLOWED_NEXT_ORIGINS.has(parsed.origin)) {
+    return { ok: false, reason: "untrusted_origin" };
+  }
+  return { ok: true, url: parsed.toString() };
+}
+
+const rawNext = Astro.url.searchParams.get("next");
+const resolved = resolveNext(rawNext);
+---
+
+<Base
+  title="Sign in — nlqdb"
+  description="Confirm your magic-link sign-in to nlqdb."
+  canonical="/auth/continue"
+>
+  <div class="page">
+    <main class="auth-continue">
+      {
+        resolved.ok ? (
+          <section class="auth-continue__card" aria-labelledby="continue-title">
+            <h1 id="continue-title" class="auth-continue__title">
+              Sign in to nlqdb
+            </h1>
+            <p class="auth-continue__lede">
+              Click below to finish signing in. The link is single-use and
+              expires in 10 minutes.
+            </p>
+            <p class="auth-continue__cta">
+              <a class="btn btn--accent" href={resolved.url} rel="noopener">
+                Continue to nlqdb
+              </a>
+            </p>
+            <p class="auth-continue__hint">
+              You&rsquo;re seeing this page because email security
+              scanners sometimes follow links automatically. The button
+              keeps your one-time link valid until you click it.
+            </p>
+          </section>
+        ) : (
+          <section class="auth-continue__card auth-continue__card--err" aria-labelledby="continue-error-title">
+            <h1 id="continue-error-title" class="auth-continue__title">
+              This link can&rsquo;t be opened.
+            </h1>
+            <p class="auth-continue__lede">
+              {resolved.reason === "untrusted_origin"
+                ? "The destination of this link isn't an nlqdb endpoint, so we won't forward you to it."
+                : "The sign-in link is missing or malformed."}
+            </p>
+            <p class="auth-continue__hint">
+              Try requesting a fresh link from the sign-in page.
+            </p>
+            <p class="auth-continue__cta">
+              <a class="btn btn--accent" href="/">Back to home</a>
+            </p>
+          </section>
+        )
+      }
+    </main>
+  </div>
+</Base>
+
+<style is:global>
+  .auth-continue {
+    min-height: 70vh;
+    display: grid;
+    place-items: center;
+    padding: clamp(48px, 8vw, 96px) 24px;
+  }
+
+  .auth-continue__card {
+    border: 2px solid var(--border-strong);
+    background: var(--bg-elev);
+    padding: clamp(28px, 5vw, 48px);
+    max-width: 520px;
+    width: 100%;
+    box-shadow: var(--shadow-hard);
+  }
+
+  .auth-continue__card--err {
+    border-color: var(--fg-dim);
+  }
+
+  .auth-continue__title {
+    font-family: var(--mono);
+    font-size: clamp(22px, 3.2vw, 28px);
+    letter-spacing: -0.02em;
+    margin: 0 0 16px;
+  }
+
+  .auth-continue__lede {
+    margin: 0 0 20px;
+    font-size: clamp(15px, 1.6vw, 16px);
+    color: var(--fg);
+    line-height: 1.5;
+  }
+
+  .auth-continue__cta {
+    margin: 0 0 20px;
+  }
+
+  .auth-continue__hint {
+    margin: 0;
+    font-size: 13px;
+    color: var(--fg-dim);
+    line-height: 1.5;
+  }
+</style>

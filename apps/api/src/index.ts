@@ -248,8 +248,12 @@ app.post("/v1/waitlist", async (c) => {
     "web",
   );
   // Fire-and-forget: 200 ships before the queue producer resolves.
-  if (result.status === 200 && result.pendingEmit) {
-    c.executionCtx.waitUntil(result.pendingEmit);
+  // Nested guards so a future 200-shaped variant without `pendingEmit`
+  // can't silently end up unhandled.
+  if (result.status === 200) {
+    if (result.pendingEmit) {
+      c.executionCtx.waitUntil(result.pendingEmit);
+    }
   }
   return c.json(result.body, result.status);
 });
@@ -257,7 +261,15 @@ app.post("/v1/waitlist", async (c) => {
 app.post("/v1/demo/ask", async (c) => {
   const tracer = trace.getTracer("@nlqdb/api");
   return tracer.startActiveSpan("nlqdb.demo.ask", async (span) => {
-    const clientIp = c.req.header("cf-connecting-ip") ?? "unknown";
+    const ipHeader = c.req.header("cf-connecting-ip");
+    if (!ipHeader) {
+      // In production behind CF this header is always set. A miss
+      // means dev, vitest, or a routing change stripping the header
+      // — log so it surfaces in operator triage if it ever starts
+      // happening on the public edge.
+      console.warn("demo/ask: missing cf-connecting-ip; falling back to 'unknown' bucket");
+    }
+    const clientIp = ipHeader ?? "unknown";
     const limiter = makeDemoRateLimiter(c.env.KV);
     const verdict = await limiter.hit(clientIp);
     if (!verdict.ok) {
