@@ -41,7 +41,11 @@ async function geminiChat(
   opts: CallOpts,
 ): Promise<string> {
   const fetchFn = opts.fetch ?? globalThis.fetch;
-  const url = `${base}/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`;
+  // API key passed via `x-goog-api-key` header rather than the
+  // (also-supported) `?key=` query param. Keeps the secret out of any
+  // path/URL surfaced by `wrangler tail`, span exception messages, or
+  // upstream error bodies that echo the request URL.
+  const url = `${base}/${encodeURIComponent(model)}:generateContent`;
 
   const system = messages
     .filter((m) => m.role === "system")
@@ -65,7 +69,10 @@ async function geminiChat(
   try {
     res = await fetchFn(url, {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers: {
+        "content-type": "application/json",
+        "x-goog-api-key": apiKey,
+      },
       body: JSON.stringify(body),
       signal: opts.signal,
     });

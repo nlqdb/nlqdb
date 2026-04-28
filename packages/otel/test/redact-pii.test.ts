@@ -20,6 +20,27 @@ describe("redactPii — positive cases (should redact)", () => {
     expect(redactPii("sk_test_AbCdEfGhIjKlMnOpQrStUvWxYz123456")).toBe("[apikey]");
   });
 
+  it("redacts a Google API key (Gemini / GCP) — AIza prefix + 35 chars", () => {
+    // Gemini error bodies routinely echo the request URL with the key
+    // attached as `?key=AIza...`. APIKEY_RE doesn't catch it because
+    // there's no `[_-]` separator after the prefix; GOOGLE_API_KEY_RE
+    // is the safety net.
+    const key = `AIza${"a".repeat(35)}`;
+    expect(redactPii(`got error for ${key} on retry`)).toBe(`got error for [apikey] on retry`);
+  });
+
+  it("redacts API keys passed via URL query params", () => {
+    // Provider 5xx bodies that echo the request URL — `?key=AIza...`,
+    // `&api_key=...`, `?token=...` — must not leak through.
+    expect(redactPii("https://api.example/v1/chat?key=AIzaSy01234567890123456789ABC")).toBe(
+      "https://api.example/v1/chat?key=[apikey]",
+    );
+    expect(redactPii("call ?api_key=secretvalueOver20charsLongHere")).toBe(
+      "call ?api_key=[apikey]",
+    );
+    expect(redactPii("&access_token=abcdefghijklmnopqrstuv012345")).toBe("&access_token=[apikey]");
+  });
+
   it("redacts a SHA-256 hex hash", () => {
     const hash = "a".repeat(64);
     expect(redactPii(`hash=${hash}`)).toBe("hash=[token]");
