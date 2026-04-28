@@ -1,24 +1,44 @@
-// SQL allow-list for `/v1/ask` plans (DESIGN §0.1, §1, §12).
+// SQL allow-list for `/v1/ask` read/write plans (DESIGN §3.6.5).
 //
-// nlqdb is **schemas-only-widen**: the LLM is never allowed to emit
-// schema-narrowing or destructive DDL/DML. Three-stage validation:
+// This validator covers the read/write path only. DDL (CREATE/ALTER)
+// goes through the typed-plan pipeline at DESIGN §3.6.2 — the LLM
+// emits a typed JSON plan, our deterministic compiler emits the SQL,
+// and a separate Zod-plan + libpg_query parse is the validator.
+// CREATE rejection in *this* file is therefore correct: when called
+// from `/v1/ask`, the LLM has zero legitimate reason to emit DDL.
 //
-//   1. Leading-verb gate (regex) — fast, catches every DDL we reject
-//      at position 0. node-sql-parser doesn't understand all PG-
-//      specific destructive variants (DROP MATERIALIZED VIEW, VACUUM, …)
-//      so the regex gate is the authoritative reject path for the
-//      common shape.
+// nlqdb is **layered guardrails**, not single-rule (lesson from the
+// Replit incident — see docs/research-receipts.md §1: three
+// guardrails active and still lost data). Three-stage validation here:
+//
+//   1. Leading-verb gate (regex) — fast, catches every destructive
+//      verb at position 0. node-sql-parser doesn't understand all
+//      PG-specific destructive variants (DROP MATERIALIZED VIEW,
+//      VACUUM, …) so the regex gate is the authoritative reject
+//      path for the common shape.
 //   2. AST parse — anything that passed the gate goes through
 //      node-sql-parser. We walk the result for any embedded
-//      destructive verb (DROP / TRUNCATE / GRANT / REVOKE / ALTER) —
-//      catches the `WITH x AS (DROP TABLE foo) SELECT 1` pattern
-//      where leading-verb regex alone gives a false pass.
+//      destructive verb (DROP / TRUNCATE / GRANT / REVOKE / ALTER /
+//      CREATE) — catches the `WITH x AS (DROP TABLE foo) SELECT 1`
+//      pattern where leading-verb regex alone gives a false pass.
 //   3. AST checks — DELETE without WHERE rejected.
 //
 // Parse failures do NOT fall through to allow — the LLM produced
 // something we can't reason about, so reject. (Earlier behavior was
 // "allow on parse failure"; tightened here so layered defense actually
 // holds.)
+//
+// Postgres-specific guardrails this validator does NOT cover, which
+// MUST be applied at other layers (DESIGN §3.6.5, research-receipts §10):
+//   - Role-level isolation (`pg_read_all_data`, search_path scoping)
+//     — applied at the Neon connection pool, not here.
+//   - Row-Level Security policies — applied per-schema by the
+//     provisioner.
+//   - Statement timeout, EXPLAIN cost cap, transactional wrapper —
+//     applied by the executor in `apps/api/src/ask/orchestrate.ts`.
+//   - Side-effecting function rejection (`pg_sleep`, `dblink`,
+//     `lo_import`, `pg_read_file`, `COPY ... FROM PROGRAM`) — TODO
+//     to add as an AST function-name walk; tracked in IMPLEMENTATION.md.
 
 import { Parser } from "node-sql-parser";
 

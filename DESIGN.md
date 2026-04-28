@@ -415,6 +415,181 @@ Real users hit `/v1/ask` with a session cookie or `pk_live_` key.
 
 ---
 
+## 3.6 Hosted db.create — typed-plan, validator, provisioner
+
+This section covers the mechanism behind every "DB created silently"
+arrow in §0.1 and §3. Implementation slice lives in
+`IMPLEMENTATION.md §4`; the *why* behind every choice here is in
+[`docs/research-receipts.md`](./docs/research-receipts.md).
+
+### 3.6.1 Endpoint shape
+
+`/v1/ask` is the single create-or-query endpoint. There is no
+separate `/v1/db/new` — per §0.1 every entry point accepts a goal,
+and the planner decides what kind of goal it is.
+
+```
+POST /v1/ask
+  Authorization: Bearer <pk_live_… | sk_live_…>     (or none → anon)
+  Body: { "goal": "an orders tracker for my coffee shop",
+          "db"?: "db_orders_tracker_a4f3b2",          // optional
+          "name"?: "my coffee shop" }                  // optional, slug override
+```
+
+A cheap classifier-tier LLM call (per §8.1) decides
+`kind ∈ {"create" | "query" | "write"}` from the goal. `create`
+routes to the typed-plan pipeline below; `query` / `write` route to
+the existing read/write orchestrator.
+
+### 3.6.2 Typed-plan pipeline (the create path)
+
+```
+goal ──► classifier (cheap tier)
+            │  kind = "create"
+            ▼
+         schema-inference (planner tier, structured output)
+            │  → SchemaPlan {
+            │       tables[], columns[], foreign_keys[],
+            │       metrics[], dimensions[], sample_rows[]
+            │     }
+            ▼
+         Zod validator on SchemaPlan
+            │  rejects on identifier collisions, reserved-word use,
+            │  cross-tenant FK refs, per-tenant table-count caps
+            ▼
+         deterministic compiler (our code, not the LLM)
+            │  emits CREATE TABLE / CREATE INDEX / FK constraints
+            ▼
+         libpg_query parse-validate (defense in depth)
+            │  reject on parse failure or destructive verb leak
+            ▼
+         provisioner: BEGIN
+            │  CREATE SCHEMA <slug>
+            │  GRANT USAGE … to <tenant_role>
+            │  apply DDL statements
+            │  insert sample_rows
+            │  INSERT INTO databases (...) VALUES (...)
+            │  pgvector: write one table-card row per table
+            ▼
+         COMMIT — or ROLLBACK on any structural fail
+            │
+            ▼
+         response: { db: "db_orders_tracker_a4f3b2",
+                     pk_live: "pk_live_…",        (if authed user)
+                     rows: [...sample],
+                     plan: { metrics, dimensions, joins } }
+```
+
+The LLM **never emits raw DDL**. It emits a typed JSON plan; our
+deterministic code emits SQL. This collapses the prompt-injection
+surface to "what shape can the LLM force into the plan" — much
+smaller than "what SQL string can the LLM compose" — and matches
+the [Cortex Analyst](https://www.snowflake.com/en/engineering-blog/cortex-analyst-text-to-sql-accuracy-bi/)
++ [SchemaAgent](https://arxiv.org/html/2503.23886) lessons captured
+in [`docs/research-receipts.md §2`](./docs/research-receipts.md).
+
+### 3.6.3 The semantic-layer-at-create-time moat
+
+The same `SchemaPlan` carries `metrics` (named aggregations) and
+`dimensions` (named filterable attributes). No other shipped
+NL-Q product auto-creates the database — but every shipped enterprise
+NL-Q product depends on a curated semantic layer (Cortex Semantic
+View, Power BI Q&A model, ThoughtSpot Worksheet, Tableau Pulse
+Metrics, dbt MetricFlow, Cube). Because we own the schema-creation
+moment, we generate the semantic layer automatically — the runtime
+benefits from the dbt/Cube/Cortex pattern even though the user
+never wrote one. This is the unique position. See
+[`docs/research-receipts.md §8`](./docs/research-receipts.md). Phase
+2's user-editable semantic.yml (`§17`) extends this — the auto-
+generated baseline is the seed.
+
+### 3.6.4 Per-surface dbId resolution
+
+`dbId` is fully optional in `/v1/ask`. Resolution is **deterministic
+per surface** — we do not run an LLM-based "which db did you mean"
+heuristic, because the failure mode of guessing wrong silently is
+worse than asking. See
+[`docs/research-receipts.md §7`](./docs/research-receipts.md) for
+the prior art that pushed this decision.
+
+| Surface | If `dbId` absent | Authentication shape |
+|---|---|---|
+| HTML (`<nlq-data>`) | Resolved from the `pk_live_<dbId>` per-db key. **No key + goal** → CREATE on first call (anonymous flow, browser keeps the new dbId via the 72h `localStorage` token; sign-in adopts) | `pk_live_<dbId>` (per-db, read-only, origin-pinned, see §4.1) |
+| REST (`POST /v1/ask`) | If 0 dbs in account → CREATE; if 1 db → auto-target; if 2+ → `409 Conflict` with `{ candidate_dbs: [...] }` | `Bearer sk_live_…` (account-scoped) |
+| CLI (`nlq …`) | MRU + interactive `select` prompt; CREATE on `nlq new "<goal>"` regardless of MRU | `sk_live_…` from keychain (§3.3) |
+| MCP | If 0 dbs → CREATE; if 1 db → auto-target; if 2+ → MCP **elicitation** (clarifying-question response) — agents are the only surface where asking back has zero friction | `sk_mcp_<host>_<device>_…` (§3.4) |
+
+Schema-match scoring (LLM-driven heuristic disambiguation across
+multiple dbs) is **deferred to Phase 2+**. Deterministic per-surface
+fallbacks beat heuristic guesses in failure mode and explainability.
+
+### 3.6.5 Validator architecture — read/write vs DDL paths
+
+Two distinct validator paths, both exhaustively tested:
+
+| Path | Source | Allowed verbs | Why this scope |
+|---|---|---|---|
+| **Read/write** (every `/v1/ask` query/write) | [`apps/api/src/ask/sql-validate.ts`](./apps/api/src/ask/sql-validate.ts) | `SELECT / INSERT / UPDATE / DELETE / WITH / EXPLAIN / SHOW` only. **`CREATE / ALTER / DROP / TRUNCATE / GRANT / REVOKE / VACUUM` rejected.** `EXPLAIN ANALYZE` rejected (executes). Multi-statement rejected. | The LLM never has DDL rights through this path. CREATE rejection here is correct: the *only* legitimate CREATE comes from §3.6.2's typed-plan compiler, which is our code. |
+| **DDL** (only invoked from the create path in §3.6.2) | A separate validator over `SchemaPlan` (Zod) + libpg_query parse on the compiled DDL | The compiled CREATE TABLE / CREATE INDEX / FK constraints. AST reject-list still blocks `DROP / TRUNCATE / GRANT / REVOKE / pg_catalog / information_schema` | Defense-in-depth: even though our compiler authored the SQL, we parse with the actual Postgres parser before sending to the executor — guards against compiler bugs and future regressions. |
+
+Both paths share the **layered guardrails** principle from
+[`docs/research-receipts.md §1`](./docs/research-receipts.md) (the
+Replit incident lesson): AST-level reject-list, role isolation,
+RLS, statement timeout, transactional wrapper. None of these alone
+suffices.
+
+### 3.6.6 Tenancy and storage
+
+- **Phase 1:** every db is a Postgres schema on a single shared
+  Neon branch (per `PLAN.md §1.6`). The `connection_secret_ref` in
+  D1's `databases` table points to one Workers Secret holding the
+  shared `DATABASE_URL`; isolation comes from `SET LOCAL
+  search_path` + per-tenant role + RLS, not per-db secrets.
+- **Phase 2b:** tier-based tenancy — Free/Hobby on shared, Pro+
+  on dedicated Neon branches (per `PLAN.md §2.4b`). The
+  `connection_secret_ref` model already supports this; only the
+  provisioner gets a branch-create path added.
+- **Phase 4:** BYO Postgres unblock (per `IMPLEMENTATION.md §7`).
+  See §3.6.7 — the modular split done now means BYO is a
+  provisioner swap, not a rewrite.
+
+### 3.6.7 BYO Postgres — Phase 4, decided shape
+
+BYO Postgres is **not in Phase 1**. Locking the future shape now so
+we don't paint into a corner:
+
+- **Endpoint:** `POST /v1/db/connect { connection_url, name? }` —
+  separate from `/v1/ask` since it's an authoring action.
+- **Introspection:** at connect time, `pg_catalog` query reads the
+  existing schema; we generate one table-card per existing table
+  (LLM-written description, sample values), embed via pgvector. No
+  `pg_dump` ever — we read, we don't copy.
+- **Secret-at-rest:** per-db encrypted blob in D1 (`connection_url`
+  column on the `databases` row, AES-GCM with a Workers-held KEK).
+  Wrangler caps secret count per Worker, so per-user secrets in
+  Workers Secret Store don't scale; the blob model does.
+- **Validator inheritance:** the read/write validator from §3.6.5
+  applies unchanged. The user's connection role grants `SELECT` (and
+  optionally `INSERT/UPDATE/DELETE` if they opted into writes) to
+  our planner; everything else is denied at the role level.
+- **Threat model:** their connection string, their data; our parser
+  enforces the same guardrails as our hosted dbs. We never `pg_dump`,
+  never replicate to our infra, never store row content beyond the
+  table-card sample rows used for retrieval. Document this on the
+  BYO connect page.
+- **Provisioner abstraction split done now:** `provisionDb(plan)`
+  vs `registerByoDb(connection_url, plan)`. Two different functions,
+  one shared executor + validator path. Phase 4 work is replacing
+  one function call, not rebuilding the pipeline.
+
+### 3.6.8 Rate limits and abuse on create
+
+Free-tier abuse rules (`IMPLEMENTATION.md §8`) extend to db.create:
+per-IP 5 creates/hour, per-account 20 creates/day. PoW on signup if
+a wave of anonymous creates hits the bucket.
+
+---
+
 ## 4. Authentication & identity
 
 ### 4.1 Library and methods
@@ -688,7 +863,7 @@ approximate, April 2026.
 
 | Job | Tier | Model | $/1M in/out |
 |---|---|---|---|
-| Hot-path classification (read/write/destructive) | 1 | GPT-5.4 Nano / Gemini 3.1 Flash-Lite | $0.20 / $0.50 |
+| Hot-path classification (read/write/destructive triage + goal-kind classification per §3.6.1: `create` / `query` / `write`) | 1 | GPT-5.4 Nano / Gemini 3.1 Flash-Lite | $0.20 / $0.50 |
 | Schema embedding | 1 | Gemini 3.1 Embeddings / bge-m3 self-host | ~$0.02/1M |
 | NL → query plan (workhorse, ~80% of cost) | 2 | Claude Sonnet 4.6 | $3 / $15 |
 | Hard plans / multi-engine reasoning (≤5%) | 3 | Claude Opus 4.7 | $5 / $25 |
@@ -1321,13 +1496,15 @@ purpose. If a reader has to scroll twice, we failed.
 
 ## 17. Semantic-layer adoption — Phase 2
 
-**Why:** the 2025–2026 NL-to-SQL frontier diverged hard from raw-schema introspection. dbt's 2026 benchmark reports up to **3× accuracy** when the LLM queries through a curated semantic model rather than raw `information_schema` columns; Snowflake Cortex Analyst, Databricks Genie, Wren AI, and the new [Open Semantic Interchange (OSI)](https://www.dataengineeringweekly.com/p/knowledge-metrics-and-ai-rethinking) standard all converge on semantic-first NL2SQL. Phase 0 raw-schema is fine for the demo; Phase 2 needs a semantic-model story or we lose every head-to-head accuracy comparison on real enterprise schemas.
+**Why:** the 2025–2026 NL-to-SQL frontier diverged hard from raw-schema introspection. dbt's 2026 benchmark reports up to **3× accuracy** when the LLM queries through a curated semantic model rather than raw `information_schema` columns; Snowflake Cortex Analyst, Databricks Genie, Wren AI, and the new [Open Semantic Interchange (OSI)](https://www.dataengineeringweekly.com/p/knowledge-metrics-and-ai-rethinking) standard all converge on semantic-first NL2SQL. Full receipts in [`docs/research-receipts.md §8`](./docs/research-receipts.md).
+
+**Relationship to §3.6.** The typed-plan output of `db.create` (§3.6.2) already carries `metrics` and `dimensions`. Phase 1 emits an auto-generated baseline at create time; Phase 2 makes it editable, OSI-compatible, and source-controlled. The auto-baseline is the seed, not a parallel system.
 
 **Shape of the Phase 2 ship:**
 
 1. **OSI-compatible YAML** at `~/.nlqdb/semantic.yml` (or per-DB in the registry). Compatible subset of MetricFlow + OSI shape — `entities`, `dimensions`, `metrics`, `joins`. The user's existing dbt MetricFlow / Cube / LookML dump becomes the source of truth.
 2. **Optional, not required.** Without semantic.yml the planner still works against raw schema. With it, the LLM's `plan` prompt receives the curated dimensions/metrics list instead of (or in addition to) the raw schema dump.
-3. **`nlq semantic init`** — bootstraps a starter semantic.yml from the live schema by inferring entities and 5–10 obvious metrics. User edits, commits to repo.
+3. **`nlq semantic init`** — bootstraps a starter semantic.yml from the live schema by inferring entities and 5–10 obvious metrics. User edits, commits to repo. (Phase 2 alternative path: export the §3.6 auto-baseline directly — no inference needed.)
 4. **Semantic-aware allow-list.** `apps/api/src/ask/sql-validate.ts` gains an optional pass that verifies referenced columns belong to dimensions/metrics declared in semantic.yml. Mis-references fail with `semantic_violation` instead of leaking schema.
 5. **Cache key** includes the semantic.yml fingerprint so the cached schema hash invalidates when a metric is renamed.
 

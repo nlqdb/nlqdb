@@ -49,7 +49,7 @@ Pre-alpha. The bar below is the path from "Phase 0 backend exists" to
 
 ```
 Phase 0  Foundations         ████████████████████  10/10  ✓
-Phase 1  On-ramp              ████████████░░░░░░░░   5/9   (chat + auth UI tabled)
+Phase 1  On-ramp              ████████████░░░░░░░░   6/10  (chat + auth UI tabled)
 Phase 2  Agent + dev surfaces ████░░░░░░░░░░░░░░░░   1/7   (@nlqdb/sdk shipped)
 Phase 3  Multi-engine engine  ░░░░░░░░░░░░░░░░░░░░   0/5
 Phase 4  Enterprise polish    ░░░░░░░░░░░░░░░░░░░░   0/6
@@ -80,14 +80,15 @@ public exposure. Tabled items below are explicitly deferred, not "in
 progress".
 
 - ✓ Marketing skeleton (Astro on Workers Static Assets)
-- ✓ `<nlq-data>` v0 (live, public `/v1/demo/ask` endpoint)
+- ✓ `<nlq-data>` v0 (live, public `/v1/demo/ask` endpoint, fixture-backed)
 - ✓ Coming-soon waitlist + 20-slide capability carousel
 - ✓ `/v1/waitlist` (D1, atomic dedup, privacy-preserving 200-on-dup)
 - ✓ `apps/web` deployed via Workers Static Assets
-- ⚡ DNS flip `apps/coming-soon` → `apps/web` (in progress)
-- ◯ API keys page (`pk_live_…` for `<nlq-data>` embeds)
+- ✓ DNS flip `apps/coming-soon` → `apps/web` (PR #56 + manual detach)
+- ◯ Hosted db.create — typed-plan + provisioner ([`DESIGN §3.6`](./DESIGN.md), [`docs/research-receipts.md`](./docs/research-receipts.md)). Unblocks every `<nlq-data>` live claim — drop a tag with no `db=`, get a working db on first hit.
+- ◯ API keys page (`pk_live_<dbId>...` per-db, `sk_live_…` account-scoped)
 - ◯ `<nlq-action>` writes (signed write-tokens)
-- ◯ Hello-world tutorial
+- ◯ Hello-world tutorial (canonical entry; satisfied by db.create)
 - ⏸ Chat surface (tabled — UX rework before public; `/v1/chat/messages` API dormant)
 - ⏸ Magic-link + GitHub + Google sign-in UI (tabled with chat; `/api/auth/*` API ready)
 - ⏸ Anonymous-mode adoption flow (`/v1/anon/adopt` API shipped; web flow tied to chat)
@@ -137,7 +138,6 @@ obsolete by the move to GH Actions for every surface.
 - ◯ Resend domain verification (DKIM/SPF/DMARC for `nlqdb.com`)
 - ◯ LogSnag account → drop `LOGSNAG_TOKEN` + `LOGSNAG_PROJECT` in `.envrc`
 - ◯ Plausible self-hosted on Fly (web analytics, free)
-- ◯ DNS flip `apps/coming-soon` → `apps/web` when web is content-complete
 
 **Phase 2 — before charging anyone:**
 
@@ -216,12 +216,13 @@ ships, not before. Listed in order of when they bite.
 
 ### Reference
 
-- [DESIGN.md](./DESIGN.md) — system design (auth, pricing, $0 stack, AI-model selection, hello-world).
+- [DESIGN.md](./DESIGN.md) — system design (auth, pricing, $0 stack, AI-model selection, hello-world, hosted db.create §3.6).
 - [PLAN.md](./PLAN.md) — phased roadmap, alternative-tech evaluation, cost discussion.
 - [IMPLEMENTATION.md](./IMPLEMENTATION.md) — Phase 0 plan + prerequisites checklist.
 - [PERFORMANCE.md](./PERFORMANCE.md) — SLOs, latency budgets, span/metric catalog.
 - [GUIDELINES.md](./GUIDELINES.md) — four-habit decision rules.
-- [RUNBOOK.md](./RUNBOOK.md) — what's actually provisioned right now (deploy strategy, preview envs).
+- [RUNBOOK.md](./RUNBOOK.md) — what's actually provisioned right now (deploy strategy, preview envs, anonymous-db lifecycle).
+- [docs/research-receipts.md](./docs/research-receipts.md) — prior-art and incident research that shaped the design (Replit, Cortex Analyst, Pinterest table-card RAG, Keysight prompt-injection, Neon free-plan capacity math).
 - [PERSONAS.md](./PERSONAS.md) — who we're building for.
 - [COMPETITORS.md](./COMPETITORS.md) — competitive landscape.
 

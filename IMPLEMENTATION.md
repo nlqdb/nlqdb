@@ -436,8 +436,14 @@ Commit-message policy: **Conventional Commits** (enforced by lefthook
   - Key storage: Argon2id-hashed `pk_live_` / `sk_live_` / `sk_mcp_*` in
     D1 with last-4 cleartext suffix for display.
 - One Postgres adapter (Neon HTTP) + schema-per-DB tenancy.
-- `POST /v1/ask` end-to-end (goal → DB → schema inferred → row
-  inserted/queried → response). Internal.
+- `POST /v1/ask` orchestrator (read/write path) end-to-end against
+  a known `dbId`: validator → plan-cache → LLM router → executor →
+  response. **The implicit-create path** (goal-with-no-dbId triggers
+  schema inference + provisioner) ships in Phase 1 §4 as the
+  "hosted db.create" slice — it requires the typed-plan validator
+  and Neon-provisioner described in [`DESIGN.md §3.6`](./DESIGN.md).
+  Phase 0 leaves the `databases` D1 row + Neon schema seeding as a
+  manual fixture step for internal testing.
 
 **No public onboarding in Phase 0 by design.** The auth surface ships at
 `/api/auth/*` (Better Auth, GitHub + Google) and the device endpoints at
@@ -448,11 +454,16 @@ sign-in buttons to a known-good surface; verifiable today via a browser
 console fetch to `/api/auth/sign-in/social` followed by the OAuth
 callback.
 
-**Exit gate:** curl to `/v1/ask` returns a real answer from real Postgres
-in <2s p50; reusable CI goes green in <90s on a trivial PR; provider
-chain exercised with forced failover; $0 spent.
+**Exit gate:** curl to `/v1/ask` against a manually-seeded fixture db
+returns a real answer from real Postgres in <2s p50; reusable CI
+goes green in <90s on a trivial PR; provider chain exercised with
+forced failover; $0 spent. (The hosted db.create flow that turns a
+goal into a real Neon schema lands in Phase 1 §4; without it, Phase 0
+testing requires a fixture row in D1's `databases` table and a
+schema seeded directly on Neon.)
 
-**Out of scope:** chat UI, marketing site, CLI, MCP, embed element, billing.
+**Out of scope:** chat UI, marketing site, CLI, MCP, embed element,
+billing, **hosted db.create** (Phase 1 §4).
 
 ---
 
@@ -486,16 +497,48 @@ chain exercised with forced failover; $0 spent.
 - **Silent refresh + seamless re-auth** on the web per §4.3 design:
   401 → refresh; refresh fail → `/sign-in?return_to=…` preserving the
   pending action.
-- **API keys:** `pk_live_` + `sk_live_` from the dashboard. `sk_mcp_*`
-  arrives with the CLI in Phase 2.
+- **API keys:** `pk_live_<dbId>...` (publishable, per-db, read-only,
+  origin-pinned) + `sk_live_...` (secret, account-scoped, full
+  scope) from the dashboard. `sk_mcp_*` arrives with the CLI in
+  Phase 2. Per [`DESIGN.md §4.1`](./DESIGN.md).
 - **Settings → Keys** page (list/create/rotate/revoke per §4.5 design;
   last-4, host, device, last-used, coarse IP; ≤2s revocation).
-- **`<nlq-data>` v0** — `goal=`, `db=`; templates `table`, `list`, `kv`
-  (others Phase 2). Distributed via `elements.nlqdb.com` → R2.
+- **Hosted db.create — typed-plan + provisioner.** Goal-string in,
+  `{ db: slug, pk_live, rows, plan: { metrics, dimensions, joins } }`
+  out. The classifier-tier LLM call routes `kind=create` goals to
+  the typed-plan pipeline at [`DESIGN.md §3.6`](./DESIGN.md): LLM
+  emits a typed `SchemaPlan` (Zod-validated) → deterministic compiler
+  emits CREATE TABLE / CREATE INDEX / FK constraints → libpg_query
+  parse-validate → transactional execute on Neon → D1 row insert →
+  pgvector table-card embeddings. The LLM never emits raw DDL
+  (Replit-incident lesson, [`docs/research-receipts.md §1, §2`](./docs/research-receipts.md)).
+  This slice unblocks every `<nlq-data>` claim on the marketing
+  site: drop a tag with no `db=`, get a working db on first hit.
+  - **Sub-modules** (independent files for parallel work):
+    `apps/api/src/db-create/infer-schema.ts` (LLM call + Zod plan),
+    `apps/api/src/db-create/compile-ddl.ts` (deterministic SQL
+    emission + libpg_query parse), `apps/api/src/db-create/neon-provision.ts`
+    (schema + role + RLS + sample-row insert), `apps/api/src/db-create/orchestrate.ts`
+    (deps-injected pure orchestrator, mirrors the existing
+    `orchestrateAsk` pattern).
+  - **Deterministic per-surface dbId resolution** when `dbId` is
+    absent on `/v1/ask` — see [`DESIGN.md §3.6.4`](./DESIGN.md). HTML
+    resolves from the `pk_live_<dbId>` key (or CREATE on first call
+    for keyless anonymous embeds); REST returns `409 candidate_dbs`
+    on ambiguity; CLI prompts; MCP elicits.
+  - **Anonymous-db lifecycle** per [`RUNBOOK.md`](./RUNBOOK.md):
+    90-day TTL, 10 MB per-db cap, pressure-sweep at 300 MB total.
+- **`<nlq-data>` v0** — `goal=` (default; `db` resolved per §3.6.4);
+  templates `table`, `list`, `kv` (others Phase 2). Distributed via
+  `elements.nlqdb.com` → R2.
 - **"Copy snippet" / "Copy starter HTML"** (§14.5, §16 design) — every
-  chat-generated embed has the user's `pk_live_` pre-inlined. Anonymous
-  users get a temporary key rotated into `pk_live_` on sign-in.
+  chat-generated embed has the user's `pk_live_<dbId>` pre-inlined.
+  Anonymous users get a temporary `pk_live_` rotated to a permanent
+  one on sign-in.
 - **Hello-world tutorial** (§16) at `nlqdb.com/hello-world`, pinned in README.
+  Becomes naturally satisfied by the db.create slice — the "drop a
+  tag, type a goal, get a working db" flow IS the tutorial — but the
+  page still ships as the discoverable canonical entry.
 - **Resend** wired (one template: magic link). **Sentry** + **Plausible** wired.
 - **`packages/events` + LogSnag sink** wired. First call sites:
   `user.registered` (sign-in callback when the user is new) and
@@ -600,9 +643,19 @@ benchmark; weekly restore drill passes; 50 paying customers across tiers.
 
 ## 7. Phase 4+ — Beyond v1
 
-Covered in `PLAN §8` and `DESIGN §10–§12`: BYO Postgres (P4 unblock),
-enterprise (SSO, audit log, on-prem), more engines (pgvector at scale,
-ClickHouse, TimescaleDB, Typesense), `<nlq-stream>`.
+Covered in `PLAN §8`, `DESIGN §10–§12`, and `DESIGN §3.6.7` (BYO
+shape locked in advance):
+
+- **BYO Postgres** — separate `POST /v1/db/connect { connection_url }`
+  endpoint. Per-db AES-GCM blob in D1 with a Workers-held KEK
+  (Wrangler caps secret count, so per-user Workers Secrets don't
+  scale; the blob model does). `pg_catalog` introspection at connect
+  time → table-card pgvector embeddings. The read/write validator
+  applies unchanged. Locked shape now so the Phase 1 provisioner is
+  a function-swap, not a rewrite — see [`DESIGN.md §3.6.7`](./DESIGN.md).
+- **Enterprise** — SSO, audit log, on-prem.
+- **More engines** — pgvector at scale, ClickHouse, TimescaleDB, Typesense.
+- **`<nlq-stream>`** — write-counterpart elements beyond `<nlq-action>`.
 
 ---
 
