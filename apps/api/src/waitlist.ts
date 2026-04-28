@@ -68,6 +68,18 @@ export async function joinWaitlist(
   }
   const normalized = trimmed.toLowerCase();
 
+  // `clientIp === null` means the request reached us without a
+  // `cf-connecting-ip` header. In production behind Cloudflare that
+  // never happens (the edge sets it on every forwarded request), so
+  // a null IP is either local dev / vitest or a routing change that
+  // started stripping the header. We bucket all null-IP requests
+  // under the literal string "unknown", which collapses every
+  // anonymous hit into a single 5/min lane — degrades gracefully in
+  // dev, and (more importantly) flags unambiguously in operator logs
+  // if production ever starts hitting that bucket.
+  if (!clientIp) {
+    console.warn("waitlist: missing cf-connecting-ip; falling back to shared 'unknown' bucket");
+  }
   const throttle = getThrottle(deps.kv);
   const allowed = await throttle.tryConsume(clientIp ?? "unknown");
   if (!allowed) return { status: 429, body: { error: { status: "rate_limited" } } };
@@ -97,7 +109,10 @@ export async function joinWaitlist(
     emailHash: hash,
     source: source ?? "web",
   };
-  const pendingEmit = deps.events.emit(event, { id: `user.waitlist_joined.${hash}` });
+  // Default envelope id is `${name}.${emailHash}` for this event
+  // (packages/events/src/index.ts:85-86) — same string we'd pass
+  // explicitly. Let the producer SDK derive it.
+  const pendingEmit = deps.events.emit(event);
   return { status: 200, body: { received: true }, pendingEmit };
 }
 

@@ -131,8 +131,26 @@ export const auth = betterAuth({
         // (Better Auth's verification record is harmless if the email
         // never arrives; the 10-min TTL evicts it). Returning here
         // means the legitimate user retries through the per-IP path.
-        const allowed = await magicLinkThrottle.tryConsume(await hashEmail(email));
-        if (!allowed) return;
+        //
+        // UX gap (intentional, documented for triage):
+        //   Better Auth doesn't let `sendMagicLink` thread a result
+        //   back to the caller, so the API still responds 200 to
+        //   `/sign-in/magic-link`. A user blocked here sees "check
+        //   your inbox" and an empty inbox until they re-submit
+        //   enough times to also trip the per-IP limit (5/min, 429).
+        //   The warning log below carries the hashed email so support
+        //   can correlate inbound complaints to per-email throttle
+        //   hits without ever logging the plaintext address.
+        const emailHash = await hashEmail(email);
+        const allowed = await magicLinkThrottle.tryConsume(emailHash);
+        if (!allowed) {
+          console.warn("magic-link throttle: per-email block", {
+            emailHash,
+            max: 3,
+            windowSeconds: 600,
+          });
+          return;
+        }
 
         // Prefetch protection. Outlook SafeLinks / Gmail / Defender all
         // GET URLs from emails before the user clicks; Better Auth's
@@ -141,19 +159,31 @@ export const auth = betterAuth({
         // /auth/continue page that requires a user click to navigate
         // to the actual verify endpoint.
         const continueUrl = buildContinueUrl(url, magicLinkRedirect);
-        await sendEmail({
-          to: email,
-          subject: "Sign in to nlqdb",
-          text: [
-            "Click the link below to sign in to nlqdb. The link",
-            "expires in 10 minutes and can only be used once.",
-            "",
-            continueUrl,
-            "",
-            "If you didn't request this, you can ignore this email.",
-          ].join("\n"),
-          html: renderMagicLinkHtml(continueUrl),
-        });
+        try {
+          await sendEmail({
+            to: email,
+            subject: "Sign in to nlqdb",
+            text: [
+              "Click the link below to sign in to nlqdb. The link",
+              "expires in 10 minutes and can only be used once.",
+              "",
+              continueUrl,
+              "",
+              "If you didn't request this, you can ignore this email.",
+            ].join("\n"),
+            html: renderMagicLinkHtml(continueUrl),
+          });
+        } catch (err) {
+          // Resend outage / network / config error. Roll back the
+          // counter so a single transient failure doesn't burn one of
+          // the user's three sends in this window — otherwise a brief
+          // Resend hiccup looks identical to abuse from the user's
+          // side. Re-throw so Better Auth surfaces a 5xx and the UI
+          // can show "couldn't send, try again" instead of a phantom
+          // success.
+          await magicLinkThrottle.rollback(emailHash);
+          throw err;
+        }
       },
     }),
   ],
