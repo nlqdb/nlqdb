@@ -1,9 +1,10 @@
 import { env } from "cloudflare:workers";
-import { authEventsTotal, setupTelemetry } from "@nlqdb/otel";
+import { authEventsTotal, redactPii, setupTelemetry } from "@nlqdb/otel";
 import { trace } from "@opentelemetry/api";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { streamSSE } from "hono/streaming";
+import { recordAnonAdoption } from "./anon-adopt.ts";
 import { buildAskDeps, buildEventEmitter } from "./ask/build-deps.ts";
 import { orchestrateAsk } from "./ask/orchestrate.ts";
 import type { AskError, OrchestrateEvent } from "./ask/types.ts";
@@ -12,10 +13,11 @@ import { askFnFromDemoFixtures, DEMO_DB_ID } from "./chat/demo-shortcut.ts";
 import { postChatMessage } from "./chat/orchestrate.ts";
 import { makeChatStore } from "./chat/store.ts";
 import { buildDemoResult, makeRateLimiter as makeDemoRateLimiter } from "./demo.ts";
-import { parseGoalDbBody } from "./http.ts";
+import { parseGoalDbBody, parseJsonBody } from "./http.ts";
 import { makeRequireSession, type RequireSessionVariables } from "./middleware.ts";
 import { cryptoProvider, stripe as stripeClient } from "./stripe/client.ts";
 import { processWebhook } from "./stripe/webhook.ts";
+import { joinWaitlist } from "./waitlist.ts";
 
 const SERVICE_VERSION = "0.1.0";
 
@@ -144,6 +146,8 @@ app.post("/v1/ask", requireSession, async (c) => {
       span.end();
       return c.json(parsed.error.body, parsed.error.status);
     }
+    // Redacted preview for trace search without leaking PII into spans.
+    span.setAttribute("nlqdb.ask.goal_preview", redactPii(parsed.body.goal).slice(0, 200));
 
     const accept = c.req.header("accept") ?? "";
     const wantsSse = accept.includes("text/event-stream");
@@ -157,30 +161,44 @@ app.post("/v1/ask", requireSession, async (c) => {
     };
 
     if (wantsSse) {
+      // try/finally so the parent span always closes even if a stream
+      // write rejects (browser DC) or the orchestrator throws past the
+      // structured-error envelope. Mirror the JSON-mode error shape:
+      // SSE `data` is `{ error: AskError }` so SSE + JSON consumers
+      // share a parser.
       return streamSSE(c, async (stream) => {
-        const outcome = await orchestrateAsk(deps, orchestrateReq, {
-          onEvent: async (event) => {
-            await stream.writeSSE({ event: event.type, data: serializeEvent(event) });
-          },
-        });
-        if (!outcome.ok) {
-          await stream.writeSSE({ event: "error", data: JSON.stringify(outcome.error) });
-        } else {
-          await stream.writeSSE({ event: "done", data: JSON.stringify({ status: "ok" }) });
+        try {
+          const outcome = await orchestrateAsk(deps, orchestrateReq, {
+            onEvent: async (event) => {
+              await stream.writeSSE({ event: event.type, data: serializeEvent(event) });
+            },
+          });
+          if (!outcome.ok) {
+            await stream.writeSSE({
+              event: "error",
+              data: JSON.stringify({ error: outcome.error }),
+            });
+          } else {
+            await stream.writeSSE({ event: "done", data: JSON.stringify({ status: "ok" }) });
+          }
+        } finally {
+          span.end();
         }
-        span.end();
       });
     }
 
-    const outcome = await orchestrateAsk(deps, orchestrateReq, {
-      skipSummary: wantsJsonOnly,
-    });
-    span.end();
-    if (!outcome.ok) {
-      const status = errorStatus(outcome.error.status);
-      return c.json({ error: outcome.error }, status);
+    try {
+      const outcome = await orchestrateAsk(deps, orchestrateReq, {
+        skipSummary: wantsJsonOnly,
+      });
+      if (!outcome.ok) {
+        const status = errorStatus(outcome.error.status);
+        return c.json({ error: outcome.error }, status);
+      }
+      return c.json(outcome.result);
+    } finally {
+      span.end();
     }
-    return c.json(outcome.result);
   });
 });
 
@@ -209,10 +227,55 @@ app.use(
   }),
 );
 
+// `POST /v1/waitlist` — public, unauthenticated, idempotent. Backs
+// the homepage waitlist form while the chat surface is tabled.
+// Returns 200 for any well-formed email (privacy: never reveal
+// list membership). Per-IP throttle (5/min) defends against abuse.
+//
+// CORS: tightened to the same allow-list as `/api/auth/*` — the form
+// only ever loads from nlqdb.com / pages.dev previews / localhost dev.
+// (Earlier slice used reflect-any-origin in line with /v1/demo/* but
+// there's no third-party-embed contract here, so the narrower posture
+// keeps random sites from probing the rate-limit / abuse path from
+// the browser.)
+app.use("/v1/waitlist", credentialedCors);
+
+app.post("/v1/waitlist", async (c) => {
+  const body = await parseJsonBody<{ email?: unknown }>(c);
+  if (!body.ok) return c.json({ error: { status: "invalid_email" } }, 400);
+  const result = await joinWaitlist(
+    {
+      db: c.env.DB,
+      kv: c.env.KV,
+      events: buildEventEmitter(c.env.EVENTS_QUEUE),
+    },
+    body.body.email,
+    c.req.header("cf-connecting-ip") ?? null,
+    "web",
+  );
+  // Fire-and-forget: 200 ships before the queue producer resolves.
+  // Nested guards so a future 200-shaped variant without `pendingEmit`
+  // can't silently end up unhandled.
+  if (result.status === 200) {
+    if (result.pendingEmit) {
+      c.executionCtx.waitUntil(result.pendingEmit);
+    }
+  }
+  return c.json(result.body, result.status);
+});
+
 app.post("/v1/demo/ask", async (c) => {
   const tracer = trace.getTracer("@nlqdb/api");
   return tracer.startActiveSpan("nlqdb.demo.ask", async (span) => {
-    const clientIp = c.req.header("cf-connecting-ip") ?? "unknown";
+    const ipHeader = c.req.header("cf-connecting-ip");
+    if (!ipHeader) {
+      // In production behind CF this header is always set. A miss
+      // means dev, vitest, or a routing change stripping the header
+      // — log so it surfaces in operator triage if it ever starts
+      // happening on the public edge.
+      console.warn("demo/ask: missing cf-connecting-ip; falling back to 'unknown' bucket");
+    }
+    const clientIp = ipHeader ?? "unknown";
     const limiter = makeDemoRateLimiter(c.env.KV);
     const verdict = await limiter.hit(clientIp);
     if (!verdict.ok) {
@@ -232,6 +295,7 @@ app.post("/v1/demo/ask", async (c) => {
     const result = buildDemoResult(parsed.body.goal);
     span.setAttribute("nlqdb.demo.outcome", "ok");
     span.setAttribute("nlqdb.demo.goal_length", parsed.body.goal.length);
+    span.setAttribute("nlqdb.demo.goal_preview", redactPii(parsed.body.goal).slice(0, 200));
     span.end();
     return c.json(result);
   });
@@ -296,6 +360,33 @@ app.post("/v1/stripe/webhook", async (c) => {
 // `nlqdb.user.id` + `nlqdb.chat.outcome` (`persisted` | `rejected` |
 // `invalid_request`). Mirrors the `nlqdb.ask` envelope so chat turns
 // appear in the same span tree as their underlying /v1/ask runs.
+// Anonymous-mode token adoption — POSTed by `/app` on first signed-in
+// load if `nlqdb:anon-token` is in localStorage. Idempotent.
+app.post("/v1/anon/adopt", requireSession, async (c) => {
+  const session = c.var.session;
+  const body = await parseJsonBody<{ token?: unknown }>(c);
+  if (!body.ok || typeof body.body.token !== "string") {
+    return c.json({ error: { status: "invalid_body" } }, 400);
+  }
+  const result = await recordAnonAdoption(c.env.DB, session.user.id, body.body.token);
+  if (!result.ok) {
+    // Map internal-only reasons to a stable public string. The
+    // `internal` reason describes a server-side failure mode the
+    // client can't act on; surface it as `adopt_failed` so external
+    // dashboards / docs don't have to track infra detail.
+    const publicStatus =
+      result.reason === "invalid_token"
+        ? "invalid_token"
+        : result.reason === "token_taken"
+          ? "token_taken"
+          : "adopt_failed";
+    const httpStatus =
+      result.reason === "invalid_token" ? 400 : result.reason === "token_taken" ? 409 : 500;
+    return c.json({ error: { status: publicStatus } }, httpStatus);
+  }
+  return c.json({ adopted: result.adopted });
+});
+
 app.get("/v1/chat/messages", requireSession, async (c) => {
   const session = c.var.session;
   const store = makeChatStore(c.env.DB);

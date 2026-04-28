@@ -18,6 +18,10 @@ const DEFAULT_MODELS: Record<LLMOperation, string> = {
 export type WorkersAIProviderOptions = {
   accountId: string;
   apiToken: string;
+  // AI Gateway override. Path up to provider slug; provider appends
+  // `/{model}`. Example:
+  // https://gateway.ai.cloudflare.com/v1/{acc}/{gw}/workers-ai
+  baseUrl?: string;
   models?: Partial<Record<LLMOperation, string>>;
 };
 
@@ -30,14 +34,15 @@ type WorkersAIResponse = {
 async function workersAIChat(
   accountId: string,
   apiToken: string,
+  baseUrl: string | undefined,
   model: string,
   messages: ChatMessage[],
   opts: CallOpts,
 ): Promise<string> {
   const fetchFn = opts.fetch ?? globalThis.fetch;
-  const url = `https://api.cloudflare.com/client/v4/accounts/${encodeURIComponent(
-    accountId,
-  )}/ai/run/${model}`;
+  const url = baseUrl
+    ? `${baseUrl}/${model}`
+    : `https://api.cloudflare.com/client/v4/accounts/${encodeURIComponent(accountId)}/ai/run/${model}`;
 
   let res: Response;
   try {
@@ -95,6 +100,6 @@ export function createWorkersAIProvider(opts: WorkersAIProviderOptions): Provide
     name: "workers-ai",
     models: { ...DEFAULT_MODELS, ...opts.models },
     callChat: ({ model, messages, opts: callOpts }) =>
-      workersAIChat(opts.accountId, opts.apiToken, model, messages, callOpts),
+      workersAIChat(opts.accountId, opts.apiToken, opts.baseUrl, model, messages, callOpts),
   });
 }

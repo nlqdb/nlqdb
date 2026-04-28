@@ -1,0 +1,77 @@
+# nlqdb — supply-chain + SAST scans on every PR.
+#
+# Semgrep runs the curated rulesets on every PR and weekly on cron —
+# fast (~30s), low false-positive, blocks PRs that introduce a new
+# finding. CodeQL nightly is a separate workflow (CodeQL is heavier
+# and only matters once a week).
+#
+# Renovate covers dependency upgrades; vulnerabilityAlerts in
+# renovate.json5 surface CVEs as PRs the same day they're published.
+
+name: Security
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  schedule:
+    # Sundays 06:00 UTC — picks up rules updated through the week.
+    - cron: "0 6 * * 0"
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  semgrep:
+    name: Semgrep
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    container:
+      # Pinned to a digest. `:latest` was a known supply-chain hole;
+      # Renovate's `github-actions` manager does NOT pin container
+      # images in `container:` blocks (only `uses:` step actions),
+      # so the pin is manual. Roll forward by replacing both the tag
+      # comment and the digest after pulling a new image and copying
+      # the value from `docker images --digests semgrep/semgrep`.
+      # Latest at pin time: 1.160.0 (Apr 2026). Tag remains in the
+      # reference for human readability — the digest is what's
+      # authoritative.
+      image: semgrep/semgrep:1.160.0@sha256:7810f1d7884974ab6dda7bef8f4a2c8e165ea2142fd8260515d380e4f1407263
+    # Skip on dependabot/renovate PRs — they trigger
+    # `pull_request_target`-style scoping that doesn't expose
+    # `SEMGREP_APP_TOKEN`, so the run would fail-noisy with no signal.
+    # Use exact-match comparisons on `github.actor` rather than
+    # `contains('dependabot[bot] renovate[bot]', github.actor)` —
+    # `contains(haystack, needle)` is substring-positional and
+    # silently matched any actor whose login was a substring of the
+    # literal "dependabot[bot] renovate[bot]" (e.g. an actor named
+    # `bot`, `renovate`, or even `[`). Renovate-bumped deps still get
+    # scanned on the merge to main via the push trigger above.
+    if: ${{ github.actor != 'dependabot[bot]' && github.actor != 'renovate[bot]' }}
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - name: Run Semgrep
+        # `semgrep ci` already exits non-zero on findings — no flag
+        # needed. Earlier `--error` was a `semgrep scan` flag and was
+        # removed from `semgrep ci` in 1.x. False positives silence
+        # via `# nosemgrep` annotations on the offending line.
+        #
+        # Rulesets, by surface area:
+        #   p/typescript          — TS-specific rules (types, escape hatches).
+        #   p/javascript          — JS-only rules (eval, prototype pollution,
+        #                           regexp DoS) that p/typescript skips.
+        #   p/security-audit      — generic security smells across languages.
+        #   p/owasp-top-ten       — OWASP top 10 patterns (injection, XSS, …).
+        #   p/secrets             — hard-coded secret/key detection.
+        #   p/astro               — Astro-specific (apps/web ships Astro).
+        run: |
+          semgrep ci \
+            --config p/typescript \
+            --config p/javascript \
+            --config p/security-audit \
+            --config p/owasp-top-ten \
+            --config p/secrets \
+            --config p/astro
+        env:
+          SEMGREP_APP_TOKEN: ${{ secrets.SEMGREP_APP_TOKEN }}

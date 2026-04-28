@@ -1,11 +1,8 @@
-# nlqdb — auto-deploy apps/web to Cloudflare Pages on merge.
+# nlqdb — auto-deploy apps/web on merge to main.
 #
-# Production deploy of the Astro marketing site to Pages project
-# `nlqdb-web`. Triggers when files under apps/web/** or its workspace
-# dependency `packages/elements/**` change on main.
-#
-# `wrangler pages project create` is idempotent (tolerates "already
-# exists") so first-run is automatic — no human bootstrap step.
+# Static Astro site served via Cloudflare Workers Static Assets
+# (migrated off Pages 2026-04). `astro build` emits dist/, then
+# `wrangler deploy` from apps/web uploads the assets bundle.
 #
 # Manual re-deploy: workflow_dispatch on the Actions tab, or
 # `bun run --cwd apps/web deploy` from a dev machine.
@@ -28,30 +25,33 @@ concurrency:
 permissions:
   contents: read
   deployments: write
+  id-token: write
+  attestations: write
 
 jobs:
   deploy:
-    name: astro build + wrangler pages deploy
+    name: astro build + wrangler deploy
     runs-on: ubuntu-latest
     timeout-minutes: 6
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - uses: ./.github/actions/setup
 
-      - uses: oven-sh/setup-bun@v2
-        with:
-          bun-version-file: package.json
-
-      - name: Install workspace deps
-        run: bun install --frozen-lockfile
-
+      # `astro build` writes apps/web/dist; the SLSA attestation step
+      # below globs that path, so this build must succeed before the
+      # attestation runs.
       - name: Build site
         run: bun run --cwd apps/web build
 
-      - name: Deploy to Cloudflare Pages
-        uses: cloudflare/wrangler-action@v3
+      - name: SLSA build provenance attestation
+        uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be # v2.4.0
+        with:
+          subject-path: "apps/web/dist/**"
+
+      - name: Deploy to Cloudflare Workers Static Assets
+        uses: cloudflare/wrangler-action@9acf94ace14e7dc412b076f2c5c20b8ce93c79cd # v3.15.0
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          preCommands: |
-            bunx wrangler pages project create nlqdb-web --production-branch main --compatibility-date "$(date -u +%Y-%m-%d)" || true
-          command: pages deploy apps/web/dist --project-name=nlqdb-web --branch=main --commit-dirty=true
+          workingDirectory: apps/web
+          command: deploy

@@ -1,10 +1,11 @@
 ---
-import CodePanel from "../components/CodePanel.astro";
+import Carousel from "../components/Carousel.astro";
 import Footer from "../components/Footer.astro";
 import Hero from "../components/Hero.astro";
-import ManifestoExcerpt from "../components/ManifestoExcerpt.astro";
 import Replaces from "../components/Replaces.astro";
 import Topnav from "../components/Topnav.astro";
+import Waitlist from "../components/Waitlist.astro";
+import { SHOWCASE_EXAMPLES } from "../data/showcase-examples";
 import Base from "../layouts/Base.astro";
 ---
 <Base
@@ -16,9 +17,9 @@ import Base from "../layouts/Base.astro";
 
     <main>
       <Hero />
-      <CodePanel />
+      <Carousel examples={SHOWCASE_EXAMPLES} />
+      <Waitlist />
       <Replaces />
-      <ManifestoExcerpt />
     </main>
 
     <Footer />

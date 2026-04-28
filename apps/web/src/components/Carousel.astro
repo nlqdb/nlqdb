@@ -1,0 +1,371 @@
+---
+// Auto-sliding showcase. One slide visible at a time; cross-fade
+// between them every CYCLE_MS. Pauses on:
+//   • pointer hover
+//   • keyboard focus inside the carousel
+//   • document.hidden
+//   • IntersectionObserver — off-screen
+//   • prefers-reduced-motion (cycling disabled, manual nav still works)
+//
+// Markup is a flat `ol` of slides; `[data-active]` flips at the
+// boundary, CSS handles the transition. No framework, ~3 KB inline JS.
+//
+// Reusability: takes `examples` as a prop so a future caller (e.g.
+// /docs page) can pass a different slice.
+
+import type { ShowcaseExample } from "../data/showcase-examples";
+
+type Props = {
+  examples: ShowcaseExample[];
+  cycleMs?: number;
+  // Container height. Tall enough for the largest slide so transitions
+  // don't reflow the page; lift via prop when callers ship shorter
+  // examples (e.g. a category-filtered showcase on a docs page).
+  minHeight?: string;
+};
+
+const { examples, cycleMs = 4500, minHeight = "clamp(380px, 60vh, 560px)" } = Astro.props as Props;
+---
+<section class="carousel" aria-roledescription="carousel" aria-label="What you can do with nlqdb">
+  <div class="carousel__frame" data-carousel data-cycle-ms={cycleMs}>
+    <ol class="carousel__slides" role="list" style={`min-height: ${minHeight};`}>
+      {examples.map((ex, i) => (
+        <li
+          id={`slide-${ex.id}`}
+          class="carousel__slide"
+          data-slide
+          data-index={i}
+          data-active={i === 0 ? "" : null}
+          aria-hidden={i === 0 ? "false" : "true"}
+          aria-roledescription="slide"
+          aria-label={`${i + 1} of ${examples.length}: ${ex.goal}`}
+        >
+          <header class="card__head">
+            <span class="card__cat" data-cat={ex.category}>{ex.category}</span>
+            <p class="card__goal">"{ex.goal}"</p>
+          </header>
+
+          <pre class="card__sql"><code>{ex.sql}</code></pre>
+
+          {ex.category === "read" && ex.rows && ex.rows.length > 0 ? (
+            <div class="card__rows">
+              <table class="card__table">
+                <thead>
+                  <tr>
+                    {Object.keys(ex.rows[0] ?? {}).map((col) => (
+                      <th>{col}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {ex.rows.map((row) => (
+                    <tr>
+                      {Object.values(row).map((v) => (
+                        <td>{v == null ? "" : String(v)}</td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <p class="card__status">{ex.status}</p>
+          )}
+
+          {ex.summary && <p class="card__summary">{ex.summary}</p>}
+        </li>
+      ))}
+    </ol>
+
+    <nav class="carousel__nav" aria-label="Slide controls">
+      <button type="button" class="carousel__btn" data-prev aria-label="Previous example">‹</button>
+      <ol class="carousel__dots" role="tablist" aria-label="Select example">
+        {examples.map((ex, i) => (
+          <li>
+            <button
+              type="button"
+              class="carousel__dot"
+              data-dot
+              data-index={i}
+              data-active={i === 0 ? "" : null}
+              role="tab"
+              aria-controls={`slide-${ex.id}`}
+              aria-selected={i === 0 ? "true" : "false"}
+              aria-label={`Go to example ${i + 1}: ${ex.goal}`}
+            ></button>
+          </li>
+        ))}
+      </ol>
+      <button type="button" class="carousel__btn" data-next aria-label="Next example">›</button>
+    </nav>
+  </div>
+</section>
+
+<script>
+  // Pure DOM — every selector scoped under [data-carousel] so a future
+  // second instance on the same page wouldn't fight this one.
+  const root = document.querySelector<HTMLElement>("[data-carousel]");
+  // Empty examples = bail. Avoids `% 0` math + needless timer churn
+  // if the data source is ever filtered down to zero (e.g. a future
+  // category-filtered carousel renders no matches).
+  if (root && root.querySelectorAll("[data-slide]").length > 0) {
+    const slides = Array.from(root.querySelectorAll<HTMLElement>("[data-slide]"));
+    const dots = Array.from(root.querySelectorAll<HTMLElement>("[data-dot]"));
+    const cycleMs = Number(root.dataset["cycleMs"] ?? "4500");
+    const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+    let index = 0;
+    let timer: ReturnType<typeof setInterval> | null = null;
+    let paused = false;
+
+    function show(next: number) {
+      const n = ((next % slides.length) + slides.length) % slides.length;
+      const prev = slides[index];
+      const cur = slides[n];
+      if (prev) {
+        prev.removeAttribute("data-active");
+        prev.setAttribute("aria-hidden", "true");
+      }
+      if (cur) {
+        cur.setAttribute("data-active", "");
+        cur.setAttribute("aria-hidden", "false");
+      }
+      const prevDot = dots[index];
+      const curDot = dots[n];
+      if (prevDot) {
+        prevDot.removeAttribute("data-active");
+        prevDot.setAttribute("aria-selected", "false");
+      }
+      if (curDot) {
+        curDot.setAttribute("data-active", "");
+        curDot.setAttribute("aria-selected", "true");
+      }
+      index = n;
+    }
+
+    function start() {
+      if (timer || reducedMotion || paused) return;
+      timer = setInterval(() => show(index + 1), cycleMs);
+    }
+    function stop() {
+      if (!timer) return;
+      clearInterval(timer);
+      timer = null;
+    }
+    function pause() {
+      paused = true;
+      stop();
+    }
+    function resume() {
+      paused = false;
+      start();
+    }
+
+    root.addEventListener("pointerenter", pause);
+    root.addEventListener("pointerleave", resume);
+    root.addEventListener("focusin", pause);
+    root.addEventListener("focusout", resume);
+    document.addEventListener("visibilitychange", () => {
+      if (document.hidden) stop();
+      else start();
+    });
+
+    root.querySelector<HTMLElement>("[data-prev]")?.addEventListener("click", () => {
+      show(index - 1);
+      stop();
+      start();
+    });
+    root.querySelector<HTMLElement>("[data-next]")?.addEventListener("click", () => {
+      show(index + 1);
+      stop();
+      start();
+    });
+    for (const dot of dots) {
+      dot.addEventListener("click", () => {
+        const i = Number(dot.dataset["index"]);
+        if (Number.isInteger(i)) {
+          show(i);
+          stop();
+          start();
+        }
+      });
+    }
+
+    if ("IntersectionObserver" in window) {
+      const io = new IntersectionObserver((entries) => {
+        for (const e of entries) {
+          if (e.isIntersecting) start();
+          else stop();
+        }
+      });
+      io.observe(root);
+    } else {
+      start();
+    }
+  }
+</script>
+
+<style>
+  .carousel {
+    margin: 32px 0 16px;
+  }
+  .carousel__frame {
+    position: relative;
+    border: 3px solid var(--border-strong);
+    background: var(--bg-elev);
+    box-shadow: var(--shadow-hard);
+    overflow: hidden;
+  }
+  .carousel__slides {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    position: relative;
+    /* min-height is set inline so callers can override per usage —
+       slides are absolutely positioned over each other and the
+       container would otherwise collapse between transitions. */
+  }
+  .carousel__slide {
+    position: absolute;
+    inset: 0;
+    padding: 28px clamp(20px, 4vw, 36px);
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    opacity: 0;
+    transition: opacity 320ms ease;
+    pointer-events: none;
+  }
+  .carousel__slide[data-active] {
+    opacity: 1;
+    pointer-events: auto;
+  }
+  .card__head {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .card__cat {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 3px 8px;
+    border: 2px solid currentColor;
+    color: var(--accent);
+  }
+  .card__cat[data-cat="write"],
+  .card__cat[data-cat="schema"] {
+    color: #ffb84d;
+  }
+  .card__cat[data-cat="create"] {
+    color: #b3ff99;
+  }
+  .card__goal {
+    font-size: clamp(18px, 2.4vw, 22px);
+    font-weight: 600;
+    margin: 0;
+    color: var(--fg);
+    letter-spacing: -0.01em;
+  }
+  .card__sql {
+    margin: 0;
+    padding: 14px 16px;
+    font-family: var(--mono);
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--fg-dim);
+    background: var(--bg);
+    border: 1px solid var(--border);
+    overflow-x: auto;
+  }
+  .card__status {
+    margin: 0;
+    padding: 10px 14px;
+    font-family: var(--mono);
+    font-size: 14px;
+    color: var(--accent);
+    background: var(--bg);
+    border: 2px dashed currentColor;
+  }
+  .card__rows {
+    overflow-x: auto;
+  }
+  .card__table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: var(--mono);
+    font-size: 13px;
+  }
+  .card__table th,
+  .card__table td {
+    text-align: left;
+    padding: 6px 12px;
+    border-bottom: 1px solid var(--border);
+  }
+  .card__table th {
+    color: var(--accent);
+    text-transform: uppercase;
+    font-size: 11px;
+    letter-spacing: 0.04em;
+    font-weight: 600;
+  }
+  .card__summary {
+    margin: 0;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--fg-muted);
+  }
+  .carousel__nav {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 12px 16px;
+    border-top: 2px solid var(--border-strong);
+    background: var(--bg);
+  }
+  .carousel__btn {
+    background: none;
+    border: 2px solid var(--border-strong);
+    color: var(--fg);
+    width: 32px;
+    height: 32px;
+    font-size: 18px;
+    cursor: pointer;
+    line-height: 1;
+  }
+  .carousel__btn:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+  .carousel__dots {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .carousel__dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    border: 2px solid var(--border-strong);
+    background: transparent;
+    padding: 0;
+    cursor: pointer;
+    transition: background 150ms ease;
+  }
+  .carousel__dot[data-active] {
+    background: var(--accent);
+    border-color: var(--accent);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .carousel__slide {
+      transition: none;
+    }
+  }
+</style>

@@ -18,17 +18,25 @@ export type ParseError = {
 export type ParseResult = { ok: true; body: GoalDbBody } | { ok: false; error: ParseError };
 
 export async function parseGoalDbBody(c: Context): Promise<ParseResult> {
-  let raw: { goal?: unknown; dbId?: unknown };
-  try {
-    raw = (await c.req.json()) as typeof raw;
-  } catch {
-    return { ok: false, error: { status: 400, body: { error: "invalid_json" } } };
-  }
-  if (typeof raw.goal !== "string" || raw.goal.trim().length === 0) {
+  const raw = await parseJsonBody<{ goal?: unknown; dbId?: unknown }>(c);
+  if (!raw.ok) return { ok: false, error: { status: 400, body: { error: "invalid_json" } } };
+  if (typeof raw.body.goal !== "string" || raw.body.goal.trim().length === 0) {
     return { ok: false, error: { status: 400, body: { error: "goal_required" } } };
   }
-  if (typeof raw.dbId !== "string" || raw.dbId.length === 0) {
+  if (typeof raw.body.dbId !== "string" || raw.body.dbId.length === 0) {
     return { ok: false, error: { status: 400, body: { error: "dbId_required" } } };
   }
-  return { ok: true, body: { goal: raw.goal, dbId: raw.dbId } };
+  return { ok: true, body: { goal: raw.body.goal, dbId: raw.body.dbId } };
+}
+
+// JSON body reader that swallows the parse exception into a typed
+// result. Caller decides the error envelope — `parseGoalDbBody` wraps
+// it as `{ error: "invalid_json" }`; ad-hoc handlers wrap it however
+// they like. Returns `{ ok: false }` on missing/malformed JSON.
+export async function parseJsonBody<T>(c: Context): Promise<{ ok: true; body: T } | { ok: false }> {
+  try {
+    return { ok: true, body: (await c.req.json()) as T };
+  } catch {
+    return { ok: false };
+  }
 }

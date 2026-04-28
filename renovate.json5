@@ -1,0 +1,69 @@
+{
+  // Renovate config (replaces ad-hoc version bumps).
+  //
+  // Default schedule: weekly on Mondays so PR noise lands at the start
+  // of the week. Lockfile-only auto-merges; minor/major need review.
+  // Group rules collapse cross-package bumps (Astro, Hono, Stripe SDK,
+  // OpenTelemetry) into single PRs to cut churn.
+  $schema: "https://docs.renovatebot.com/renovate-schema.json",
+  extends: [
+    "config:recommended",
+    ":semanticCommits",
+    ":dependencyDashboard",
+    "schedule:weekly",
+    "group:monorepos",
+    "group:recommended",
+  ],
+  timezone: "Europe/Zurich",
+  prHourlyLimit: 4,
+  prConcurrentLimit: 8,
+  rangeStrategy: "bump",
+  rebaseWhen: "auto",
+  semanticCommitType: "chore",
+  semanticCommitScope: "deps",
+  lockFileMaintenance: {
+    enabled: true,
+    automerge: true,
+    schedule: ["before 5am on Monday"],
+  },
+  packageRules: [
+    {
+      matchUpdateTypes: ["patch", "pin", "digest"],
+      automerge: true,
+    },
+    {
+      matchPackageNames: ["@cloudflare/workers-types", "wrangler", "@cloudflare/vitest-pool-workers"],
+      groupName: "cloudflare-tooling",
+    },
+    {
+      // `matchPackagePatterns` was deprecated in Renovate v37; the
+      // glob form on `matchPackageNames` is the supported equivalent.
+      // Use a single `*` (minimatch — matches one path segment, which
+      // is the entire package-name suffix after the org prefix) per
+      // the documented form. `**` works in minimatch too but isn't
+      // the documented spelling and risks a future tightening.
+      matchPackageNames: ["@opentelemetry/*"],
+      groupName: "opentelemetry",
+    },
+    {
+      matchPackageNames: ["astro", "@astrojs/*"],
+      groupName: "astro",
+    },
+    {
+      matchPackageNames: ["stripe"],
+      // Stripe SDK majors track API versions; require manual review.
+      matchUpdateTypes: ["major"],
+      automerge: false,
+    },
+    {
+      matchManagers: ["github-actions"],
+      pinDigests: true,
+      groupName: "github-actions",
+    },
+  ],
+  vulnerabilityAlerts: {
+    enabled: true,
+    labels: ["security"],
+    automerge: false,
+  },
+}

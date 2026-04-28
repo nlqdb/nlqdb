@@ -5,7 +5,13 @@
 // `nlqdb.llm.failover.total{from_provider,to_provider,reason}` per
 // fall-through.
 
-import { llmCallsTotal, llmDurationMs, llmFailoverTotal } from "@nlqdb/otel";
+import {
+  genAiAttributes,
+  llmCallsTotal,
+  llmDurationMs,
+  llmFailoverTotal,
+  SEMCONV_SCHEMA_URL,
+} from "@nlqdb/otel";
 import { SpanStatusCode, trace } from "@opentelemetry/api";
 import {
   type CallOpts,
@@ -34,13 +40,42 @@ export const DEFAULT_TIMEOUTS_MS: Record<LLMOperation, number> = {
   summarize: 3000,
 };
 
+// HTTP statuses that indicate a config bug (bad key, forbidden), not
+// a provider outage. Excluded from the circuit breaker — opening the
+// breaker on these just delays surfacing the real problem and tricks
+// dashboards into thinking the upstream is unhealthy.
+const AUTH_FAILURE_STATUSES = new Set([401, 403]);
+
 export type LLMRouterOptions = {
   providers: Provider[];
   chains: LLMChains;
   // Override per-operation attempt timeout in ms. Falls back to
   // DEFAULT_TIMEOUTS_MS for any operation not set here.
   timeouts?: Partial<Record<LLMOperation, number>>;
+  // Circuit breaker. When a provider hits `failureThreshold` consecutive
+  // failures, the router skips it for `cooldownMs` before retrying.
+  // Avoids burning the wall-clock budget on a known-bad provider when
+  // a healthy fallback exists. Defaults: 3 failures / 60s.
+  circuitBreaker?: { failureThreshold: number; cooldownMs: number };
 };
+
+const DEFAULT_BREAKER = { failureThreshold: 3, cooldownMs: 60_000 };
+
+type BreakerState = {
+  consecutiveFailures: number;
+  // ms-epoch when the breaker was opened (>0 means open until
+  // openedAt + cooldownMs).
+  openedAt: number;
+};
+
+function makeBreakerStore(): Map<ProviderName, BreakerState> {
+  return new Map();
+}
+
+function breakerOpen(state: BreakerState | undefined, now: number, cooldown: number): boolean {
+  if (!state || state.openedAt === 0) return false;
+  return now - state.openedAt < cooldown;
+}
 
 export type LLMRouter = {
   classify(req: ClassifyRequest, opts?: CallOpts): Promise<ClassifyResponse>;
@@ -90,6 +125,29 @@ function asError(err: unknown): Error {
   return err instanceof Error ? err : new Error(String(err));
 }
 
+// Translate the caller's `signal.reason` (whatever they passed to
+// `controller.abort(reason)`) back into a thrown error.
+//   • If the caller passed an Error, propagate it untouched — preserves
+//     their stack and lets `instanceof DOMException` / name checks work.
+//   • Otherwise (or if abort was called with no argument), construct a
+//     synthetic AbortError so consumers using `err.name === "AbortError"`
+//     to detect cancellation still see a sensible result.
+function asAbortError(reason: unknown): Error {
+  if (reason instanceof Error) return reason;
+  const e = new Error(reason === undefined ? "caller cancelled" : String(reason));
+  e.name = "AbortError";
+  return e;
+}
+
+// 401/403 are config bugs (bad/missing API key), not provider outages.
+// Excluding them from the breaker keeps a misconfigured deploy from
+// looking like an upstream problem on dashboards.
+function isAuthFailure(reason: FailoverReason, error: unknown): boolean {
+  if (reason !== "http_4xx") return false;
+  const status = (error as { status?: number } | undefined)?.status;
+  return status !== undefined && AUTH_FAILURE_STATUSES.has(status);
+}
+
 // Caller signal + per-attempt timeout, combined. AbortSignal.any is
 // stable in Workers + Bun + Node ≥19; AbortSignal.timeout same.
 function buildSignal(callerSignal: AbortSignal | undefined, timeoutMs: number): AbortSignal {
@@ -105,8 +163,17 @@ export function createLLMRouter(opts: LLMRouterOptions): LLMRouter {
   const byName = new Map<ProviderName, Provider>();
   for (const p of opts.providers) byName.set(p.name, p);
   const timeouts = { ...DEFAULT_TIMEOUTS_MS, ...opts.timeouts };
+  const breaker = { ...DEFAULT_BREAKER, ...opts.circuitBreaker };
+  const breakerState = makeBreakerStore();
 
+  // Tracer pinned to semconv 1.37 for our gen_ai.* attributes. The
+  // 3-arg `getTracer(name, version, { schemaUrl })` form requires
+  // @opentelemetry/api ≥1.10; on 1.9.x we surface the schema URL as
+  // a span attribute instead so schema-aware backends can still pick
+  // it up. Once we bump api → 1.10, fold this back into getTracer's
+  // options arg and drop the per-span attribute.
   const tracer = trace.getTracer("@nlqdb/llm");
+  const schemaUrlAttr = { "otel.schema_url": SEMCONV_SCHEMA_URL } as const;
 
   async function attempt<Req, Res>(
     op: LLMOperation,
@@ -120,6 +187,14 @@ export function createLLMRouter(opts: LLMRouterOptions): LLMRouter {
       `llm.${op}`,
       {
         attributes: {
+          ...genAiAttributes({
+            system: provider.name,
+            operation: op,
+            requestModel: provider.model(op),
+          }),
+          ...schemaUrlAttr,
+          // Legacy attribute names — kept until existing dashboards
+          // migrate to the gen_ai.* keys above.
           "llm.provider": provider.name,
           "llm.model": provider.model(op),
         },
@@ -196,15 +271,71 @@ export function createLLMRouter(opts: LLMRouterOptions): LLMRouter {
         continue;
       }
 
+      // Circuit breaker: skip providers in their cooldown window.
+      const now = Date.now();
+      const state = breakerState.get(name);
+      if (breakerOpen(state, now, breaker.cooldownMs)) {
+        // Emit a zero-duration span so traces stay self-explanatory —
+        // without this, dashboards just see "no span" and can't tell the
+        // breaker rejected anything (vs. the request never happening).
+        tracer
+          .startSpan(`llm.${op}`, {
+            attributes: {
+              ...genAiAttributes({
+                system: provider.name,
+                operation: op,
+                requestModel: provider.model(op),
+              }),
+              ...schemaUrlAttr,
+              "llm.provider": provider.name,
+              "llm.model": provider.model(op),
+              "nlqdb.llm.circuit_open": true,
+            },
+          })
+          .end();
+        attempts.push({ provider: name, reason: "circuit_open", error: undefined });
+        if (next) {
+          llmFailoverTotal().add(1, {
+            from_provider: name,
+            to_provider: next,
+            reason: "circuit_open",
+          });
+        }
+        continue;
+      }
+
       const result = await attempt(op, provider, req, call, callerOpts, timeoutMs);
       if (result.ok) {
+        // Success resets the breaker.
+        breakerState.set(name, { consecutiveFailures: 0, openedAt: 0 });
         return result.value;
       }
 
-      // Caller-initiated cancel — propagate, don't keep walking the chain
-      // and burning budget the caller no longer wants spent.
+      // Caller-initiated cancel — propagate the caller's abort reason
+      // (not the inner provider's wrapped error) so try/catch on
+      // `signal.reason` / `err.name === "AbortError"` works as expected.
+      // Don't keep walking the chain and burning budget the caller no
+      // longer wants spent.
       if (callerOpts?.signal?.aborted) {
-        throw asError(result.error);
+        throw asAbortError(callerOpts.signal.reason);
+      }
+
+      // Update breaker. Only count "real" provider-health signals —
+      // skip:
+      //   • not_configured (config error, not a provider outage)
+      //   • parse          (more often our own bug than the provider's)
+      //   • 401/403        (bad/missing API key — a config bug; opening
+      //                     the breaker just delays surfacing it)
+      const skipBreaker =
+        result.reason === "not_configured" ||
+        result.reason === "parse" ||
+        isAuthFailure(result.reason, result.error);
+      if (!skipBreaker) {
+        const failures = (state?.consecutiveFailures ?? 0) + 1;
+        breakerState.set(name, {
+          consecutiveFailures: failures,
+          openedAt: failures >= breaker.failureThreshold ? now : 0,
+        });
       }
 
       attempts.push({ provider: name, reason: result.reason, error: result.error });

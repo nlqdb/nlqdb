@@ -21,13 +21,13 @@ const ORIGIN = "https://example.com";
 function extractMagicLinkUrl(logs: string[]): string {
   // Dev-stub log format (src/email.ts):
   //   [email:dev-stub] to=… subject=… body=<text containing the URL>
-  // The Better Auth verify URL is the first http(s) link in the body.
+  // Email links go through `/auth/continue?next=<encoded verify URL>`
+  // (prefetch protection — DESIGN §4.3); decode `next` to get the
+  // actual verify URL the user would land on after clicking through.
   const joined = logs.join("\n");
-  const match = joined.match(/https?:\/\/[^\s"]+\/api\/auth\/magic-link\/verify\?[^\s"]+/);
-  if (!match) {
-    throw new Error(`no magic-link verify URL found in console output:\n${joined}`);
-  }
-  return match[0];
+  const wrapped = joined.match(/https?:\/\/[^\s"]+\/auth\/continue\?next=([^\s"]+)/);
+  if (wrapped?.[1]) return decodeURIComponent(wrapped[1]);
+  throw new Error(`no magic-link continue URL found in console output:\n${joined}`);
 }
 
 describe("magic-link lifecycle", () => {
@@ -76,6 +76,47 @@ describe("magic-link lifecycle", () => {
       user?: { email?: string };
     } | null;
     expect(sessionBody?.user?.email).toBe(email);
+  });
+
+  it("per-IP customRules: 6th /sign-in/magic-link in 60s from one IP is rate-limited", async () => {
+    // Better Auth's `customRules` key is the path it dispatches under
+    // internally. If the key doesn't match (e.g. it's actually
+    // `/magic-link` rather than `/sign-in/magic-link`), the global
+    // 100/min default applies and there's no per-IP gate distinct from
+    // the rest of `/api/auth/*`. This test pins the actual behavior:
+    // 5 successful sends from one X-Forwarded-For, then the 6th gets
+    // a 4xx (Better Auth returns 429 for rate-limit; we assert >=400
+    // so a non-429 4xx from a future BA bump still flags here).
+    //
+    // Distinct emails per send so the per-email throttle (3/10min)
+    // doesn't fire first — we want to isolate the per-IP path.
+    const ip = "203.0.113.42";
+    const headers = {
+      "content-type": "application/json",
+      "x-forwarded-for": ip,
+      origin: ORIGIN,
+    };
+    for (let i = 0; i < 5; i++) {
+      const res = await SELF.fetch(`${ORIGIN}/api/auth/sign-in/magic-link`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          email: `t-ip-${i}-${crypto.randomUUID()}@example.com`,
+          callbackURL: `${ORIGIN}/app`,
+        }),
+      });
+      expect(res.status).toBe(200);
+    }
+    const blocked = await SELF.fetch(`${ORIGIN}/api/auth/sign-in/magic-link`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        email: `t-ip-blocked-${crypto.randomUUID()}@example.com`,
+        callbackURL: `${ORIGIN}/app`,
+      }),
+    });
+    expect(blocked.status).toBeGreaterThanOrEqual(400);
+    expect(blocked.status).toBeLessThan(500);
   });
 
   it("a previously-redeemed token cannot mint a second session (single-use)", async () => {

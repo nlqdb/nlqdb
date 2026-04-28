@@ -56,22 +56,29 @@ describe("createGeminiProvider", () => {
     } satisfies Partial<ProviderError>);
   });
 
-  it("api key is passed via ?key= query param, not Authorization header", async () => {
+  it("api key is passed via x-goog-api-key header, NOT in the URL", async () => {
+    // Header rather than `?key=` query param keeps the secret out of
+    // wrangler tail logs, span exception messages, and any upstream
+    // error body that echoes the request URL.
     const provider = createGeminiProvider({ apiKey });
     let url = "";
+    let goog: string | null = null;
     let auth: string | null = null;
     const fetch = mockFetch([
       {
         match: /generativelanguage/,
         respond: (req) => {
           url = req.url;
+          goog = req.headers.get("x-goog-api-key");
           auth = req.headers.get("authorization");
           return geminiResponse(JSON.stringify({ intent: "meta", confidence: 1 }));
         },
       },
     ]);
     await provider.classify({ utterance: "x" }, { fetch });
-    expect(url).toContain(`key=${apiKey}`);
+    expect(url).not.toContain(apiKey);
+    expect(url).not.toContain("key=");
+    expect(goog).toBe(apiKey);
     expect(auth).toBeNull();
   });
 });

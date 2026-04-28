@@ -41,6 +41,11 @@ declare global {
       CF_AI_TOKEN?: string;
       CLOUDFLARE_ACCOUNT_ID?: string;
       OPENROUTER_API_KEY?: string;
+      // Cloudflare AI Gateway. When both are set every provider call
+      // is proxied through the gateway for caching, retries, fallback,
+      // and unified observability. Keys remain ours; gateway just proxies.
+      AI_GATEWAY_ACCOUNT_ID?: string;
+      AI_GATEWAY_ID?: string;
 
       // Default Neon database URL — used when a `databases` row's
       // `connection_secret_ref` resolves to the shared free-tier DB.
@@ -73,6 +78,10 @@ declare global {
       // `https://nlqdb.com/app` in prod / `http://localhost:4321/app`
       // in dev. Override per environment if the chat surface moves.
       MAGIC_LINK_REDIRECT_URL?: string;
+      // Web origin hosting `/auth/continue`, the prefetch-protected
+      // intermediate page. Defaults to nlqdb.com in prod /
+      // localhost:4321 in dev.
+      MAGIC_LINK_WEB_ORIGIN?: string;
     }
   }
 }

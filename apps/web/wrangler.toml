@@ -1,0 +1,40 @@
+name = "nlqdb-web"
+compatibility_date = "2026-04-27"
+
+# Workers Static Assets — replaces the Pages git integration / `pages
+# deploy` flow. `astro build` emits to ./dist; Workers serves it from
+# the global edge with no script execution required for the static
+# routes (Astro is currently `output: 'static'`).
+#
+# `not_found_handling = "404-page"` resolves /missing → /404.html and
+# returns 404 (Astro's adapter-less default). Switch to
+# "single-page-application" if we ever ship a SPA route.
+
+# `workers_dev = true` is INTENTIONAL during the migration window.
+# Until the DNS flip from apps/coming-soon to nlqdb-web is executed
+# (RUNBOOK §6 "apps/web (Phase 1 marketing site)" — currently a
+# future operational step), the only public URL the deployed worker
+# has is `nlqdb-web.<account>.workers.dev`. Disabling it here would
+# leave production deploys with no reachable URL.
+#
+# Flip to `false` AS PART OF the same PR that adds the
+# `[[routes]] custom_domain = true` block for `nlqdb.com`. Doing both
+# in one change avoids an "exposed `*.workers.dev` competes with
+# nlqdb.com for SEO" window and avoids a deploy where neither URL
+# works.
+#
+# `preview_urls` is left at its default (true) — Workers Versions
+# preview URLs are a separate toggle from the workers.dev URL and
+# are required by `.github/workflows/preview-web.yml`.
+workers_dev = true
+
+[assets]
+directory = "./dist"
+not_found_handling = "404-page"
+
+[observability]
+enabled = true
+
+# Preview deploys per PR use Workers Versions on this Worker (same
+# pattern as apps/api's preview-api.yml). No separate environment
+# block — `wrangler versions upload` inherits the assets block above.

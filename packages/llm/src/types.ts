@@ -31,6 +31,7 @@ export type FailoverReason =
   | "parse"
   | "not_configured"
   | "provider_error"
+  | "circuit_open"
   | "unknown";
 
 export type ClassifyIntent = "data_query" | "meta" | "destructive";

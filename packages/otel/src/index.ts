@@ -9,6 +9,9 @@
 //     Idempotent: first call wins, subsequent calls return the same handle.
 //   • createTestTelemetry() (./test) — vitest: in-memory exporters
 //     so assertions can read finished spans + collected metrics.
+//
+// Semantic conventions pinned to v1.37.0 (gen-ai is still Development;
+// pinning insulates us from breaking changes mid-2026).
 
 import { metrics, trace } from "@opentelemetry/api";
 import { OTLPMetricExporter } from "@opentelemetry/exporter-metrics-otlp-http";
@@ -247,4 +250,116 @@ export const webhookStripeArchiveFailuresTotal = lazyCounter(
 
 export function resetInstrumentsForTest(): void {
   for (const fn of resetFns) fn();
+}
+
+// OpenTelemetry semantic conventions pin. The `gen_ai` namespace is
+// Development as of 1.37; bumping requires a coordinated review.
+// See: https://opentelemetry.io/docs/specs/semconv/gen-ai/
+export const SEMCONV_SCHEMA_VERSION = "1.37.0";
+// `schemaUrl`-shaped form. Pass to `trace.getTracer(name, version, { schemaUrl })`
+// so schema-aware backends (Tempo, Honeycomb) attach the right gen_ai
+// field semantics to our spans.
+export const SEMCONV_SCHEMA_URL = `https://opentelemetry.io/schemas/${SEMCONV_SCHEMA_VERSION}`;
+
+// Gen-AI span attribute keys (OTel semconv 1.37, gen_ai namespace).
+// Stable subset only — fields marked Stable in the spec, not the
+// experimental knobs that may rename mid-2026.
+export const GEN_AI_SYSTEM = "gen_ai.system";
+export const GEN_AI_OPERATION_NAME = "gen_ai.operation.name";
+export const GEN_AI_REQUEST_MODEL = "gen_ai.request.model";
+export const GEN_AI_RESPONSE_MODEL = "gen_ai.response.model";
+
+export type GenAiAttrs = {
+  system: string;
+  operation: string;
+  requestModel: string;
+  responseModel?: string;
+};
+
+export function genAiAttributes(a: GenAiAttrs): Record<string, string> {
+  const out: Record<string, string> = {
+    [GEN_AI_SYSTEM]: a.system,
+    [GEN_AI_OPERATION_NAME]: a.operation,
+    [GEN_AI_REQUEST_MODEL]: a.requestModel,
+  };
+  if (a.responseModel) out[GEN_AI_RESPONSE_MODEL] = a.responseModel;
+  return out;
+}
+
+// PII redactor for prompts / completions before they go on a span,
+// log line, or trace export. Conservative — replaces matches with the
+// kind in brackets so the prompt's structure stays recoverable for
+// debugging while the sensitive content is gone.
+//
+// Pattern design: each pattern requires structural anchors that random
+// prose / SQL / timestamps don't satisfy, so false positives stay rare.
+// Earlier-greedy versions of phone/card matched things like
+// "2026-04-27 12:34:56" (timestamps) and 13+-digit transaction IDs;
+// those are tightened here. We accept some false negatives — a partial
+// IBAN written without grouping won't be caught — because the fallout
+// of "[card] [card] [card]" littering every trace is worse than the
+// edge-case leak.
+//
+// Patterns:
+//   • email     — RFC-ish local@domain.tld
+//   • jwt       — three base64url segments separated by dots
+//   • google    — Google API keys (Gemini / GCP), `AIza` + 35 chars.
+//                 Common in 5xx error bodies that echo the request URL
+//                 and not caught by APIKEY_RE (no [_-] separator).
+//   • urlkey    — `?key=...` / `&api_key=...` / `Authorization=Bearer xxx`
+//                 query-shaped runs that APIKEY_RE's prefix-required
+//                 pattern misses
+//   • apikey    — provider prefix (sk-, pk_, sec_, …) + ≥20 chars
+//   • token     — 60+-char base64url run (catches SHA-256 hashes,
+//                 long opaque tokens; misses sentence-spanning prose)
+//   • phone     — E.164-shaped (+CC ...) or fully-grouped (NXX) NXX-XXXX
+//   • card      — strict 4-4-4-4 grouping with a separator (rejects
+//                 "20260427 12345678" timestamps, account-number runs)
+
+const EMAIL_RE = /[\w.+-]+@[\w-]+(?:\.[\w-]+)+/g;
+const JWT_RE = /\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\b/g;
+// Google API key shape (`AIza` prefix + 35 base64url chars). Provider
+// 5xx bodies echo the request URL with `?key=AIza...` and APIKEY_RE
+// won't catch it because there's no [_-] separator after the prefix.
+const GOOGLE_API_KEY_RE = /\bAIza[A-Za-z0-9_-]{35}\b/g;
+// URL-style key params — `?key=`, `&api-key=`, `?token=`, etc. Matches
+// the value (≥20 chars) and replaces just that, leaving the param name
+// for context. Run before APIKEY_RE (more specific anchor).
+const URL_KEY_PARAM_RE = /\b(api[_-]?key|access[_-]?token|key|token|auth)=([A-Za-z0-9_-]{20,})/gi;
+const APIKEY_RE = /\b(?:sk|pk|sec|api|key|tok|bearer)[_-][A-Za-z0-9_-]{20,}/gi;
+const TOKEN_RE = /\b[A-Za-z0-9_-]{60,}\b/g;
+const PHONE_RE =
+  /(?:\+\d{1,3}[\s.-]\d{2,4}[\s.-]?\d{3,4}[\s.-]?\d{3,4})|(?:\(\d{2,4}\)\s?\d{3,4}[\s.-]?\d{3,4})/g;
+const CARD_RE = /\b\d{4}[\s-]\d{4}[\s-]\d{4}[\s-]\d{4}\b/g;
+
+// URL_KEY_PARAM_RE replacement — preserve the param name so
+// `?key=AIza...` becomes `?key=[apikey]` rather than the whole pair
+// vanishing.
+function urlKeyReplacer(_match: string, name: string): string {
+  return `${name}=[apikey]`;
+}
+
+// Order matters: jwt + google + url-key + apikey before token (more
+// specific first), email first so addresses with hyphenated long local
+// parts don't fall into the token bucket.
+const PII_PATTERNS: Array<[RegExp, string | ((m: string, ...g: string[]) => string)]> = [
+  [EMAIL_RE, "[email]"],
+  [JWT_RE, "[jwt]"],
+  [GOOGLE_API_KEY_RE, "[apikey]"],
+  [URL_KEY_PARAM_RE, urlKeyReplacer],
+  [APIKEY_RE, "[apikey]"],
+  [CARD_RE, "[card]"],
+  [PHONE_RE, "[phone]"],
+  [TOKEN_RE, "[token]"],
+];
+
+export function redactPii(input: string): string {
+  let out = input;
+  for (const [pattern, replacement] of PII_PATTERNS) {
+    out =
+      typeof replacement === "string"
+        ? out.replace(pattern, replacement)
+        : out.replace(pattern, replacement as (m: string, ...g: string[]) => string);
+  }
+  return out;
 }

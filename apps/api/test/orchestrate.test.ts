@@ -219,7 +219,7 @@ describe("orchestrateAsk", () => {
     expect(llm2.summarize).not.toHaveBeenCalled();
   });
 
-  it("emits SSE events in order: plan → rows → summary", async () => {
+  it("emits SSE events in order: plan_pending → plan → rows → summary", async () => {
     const events: OrchestrateEvent[] = [];
     await orchestrateAsk(
       makeDeps({
@@ -229,10 +229,30 @@ describe("orchestrateAsk", () => {
       { goal: "go", dbId: "db_1", userId: "user_1" },
       { onEvent: (e) => void events.push(e) },
     );
-    expect(events.map((e) => e.type)).toEqual(["plan", "rows", "summary"]);
-    expect(events[0]).toMatchObject({ type: "plan", sql: "SELECT 1", cached: false });
-    expect(events[1]).toMatchObject({ type: "rows", rowCount: 2 });
-    expect(events[2]).toMatchObject({ type: "summary", summary: "ok" });
+    expect(events.map((e) => e.type)).toEqual(["plan_pending", "plan", "rows", "summary"]);
+    expect(events[1]).toMatchObject({ type: "plan", sql: "SELECT 1", cached: false });
+    expect(events[2]).toMatchObject({ type: "rows", rowCount: 2 });
+    expect(events[3]).toMatchObject({ type: "summary", summary: "ok" });
+  });
+
+  it("emits plan_pending unconditionally — cache hit still fires the heartbeat", async () => {
+    // Pre-seed the cache so the second call lands on a hit. Clients
+    // depend on the documented `plan_pending → plan → …` order; the
+    // heartbeat must fire even when there's no LLM call to cover.
+    const cache = stubPlanCache();
+    const llm = stubLLM({ plan: { sql: "SELECT 99" }, summary: { summary: "ok" } });
+    const deps = makeDeps({ planCache: cache, llm });
+    await orchestrateAsk(deps, { goal: "warm-up", dbId: "db_1", userId: "user_1" });
+
+    const events: OrchestrateEvent[] = [];
+    const out = await orchestrateAsk(
+      deps,
+      { goal: "warm-up", dbId: "db_1", userId: "user_1" },
+      { onEvent: (e) => void events.push(e) },
+    );
+    expect(out.ok && out.result.cached).toBe(true);
+    expect(events.map((e) => e.type)).toEqual(["plan_pending", "plan", "rows", "summary"]);
+    expect(events[1]).toMatchObject({ type: "plan", sql: "SELECT 99", cached: true });
   });
 
   it("summary failure is non-fatal — returns rows + sql, omits summary", async () => {

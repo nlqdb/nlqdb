@@ -1,23 +1,22 @@
 # nlqdb — preview deploys for apps/web on every PR push.
 #
-# Builds the PR's HEAD and pushes a Pages preview deployment to
-# `nlqdb-web` under branch `pr-<number>`. The branch alias gives a
-# stable preview URL of the form
-# `pr-<number>.nlqdb-web.pages.dev`, sticky across pushes — easier
-# for reviewers than a commit-specific URL that rotates per push.
-# The production deployment (and `nlqdb.com` once the DNS flip
-# lands) stays untouched: `--branch=pr-<number>` is non-prod by
-# definition.
+# Workers Versions: each PR push uploads a non-production version of
+# the apps/web Worker (Static Assets bundle inherited from the prod
+# config). CF assigns a stable per-version URL; the promoted prod
+# version (and nlqdb.com) stay untouched until merge runs
+# `wrangler deploy` via deploy-web.yml.
 #
-# Why GH Actions over Cloudflare Pages git integration: uniformity
-# with our other deploys (api, events-worker, coming-soon all on
-# Actions), pre-deploy gating in CI (biome / typecheck / tests run
-# in ci.yml on the same PR), and code-driven config — see RUNBOOK
-# §6 rotation note 2026-04-27 for why we avoid CF dashboard-driven
-# state.
+# URL extraction: cloudflare/wrangler-action@v3 does NOT populate the
+# `deployment-url` step output for the `versions upload` command —
+# tracked at cloudflare/wrangler-action#343. The official machine-
+# readable hook is `WRANGLER_OUTPUT_FILE_DIRECTORY`: wrangler writes
+# an ND-JSON event log we parse for the `version-upload` entry, which
+# carries `preview_url`. Documented at
+# https://developers.cloudflare.com/workers/wrangler/system-environment-variables/.
 #
-# Concurrency: keyed by PR number with `cancel-in-progress: true`
-# so only the latest push for each PR is in flight.
+# Versions GC: same caveat as preview-api — old versions stay in the
+# dashboard until a future cleanup pass. Tracked in IMPLEMENTATION §8
+# ("preview Workers Versions GC").
 
 name: Preview web
 
@@ -33,61 +32,104 @@ concurrency:
   group: preview-web-pr-${{ github.event.number }}
   cancel-in-progress: true
 
+# `deployments: write` was previously declared but unused — Workers
+# Versions doesn't create a GitHub Deployment object; the sticky
+# comment uses the `pull-requests: write` scope. Dropped per the
+# least-privilege principle.
 permissions:
   contents: read
   pull-requests: write
-  deployments: write
 
 jobs:
   preview:
-    name: astro build + wrangler pages deploy
+    name: astro build + wrangler versions upload
     runs-on: ubuntu-latest
     timeout-minutes: 6
     steps:
-      - uses: actions/checkout@v4
-
-      - uses: oven-sh/setup-bun@v2
-        with:
-          bun-version-file: package.json
-
-      - name: Install workspace deps
-        run: bun install --frozen-lockfile
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - uses: ./.github/actions/setup
 
       - name: Build site
         run: bun run --cwd apps/web build
 
-      - name: Deploy preview to Cloudflare Pages
+      # Run wrangler directly. We tried wrangler-action@v3 but its
+      # `postCommands` doesn't see `WRANGLER_OUTPUT_DIR` (set only in
+      # the wrangler subprocess env), and its `deployment-url` step
+      # output is documented-broken for `versions upload`
+      # (cloudflare/wrangler-action#343). Direct invocation gives us
+      # control over `WRANGLER_OUTPUT_FILE_DIRECTORY` — wrangler writes
+      # ND-JSON events including the per-version `preview_url` there.
+      - name: Upload preview version
         id: deploy
-        uses: cloudflare/wrangler-action@v3
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          preCommands: |
-            bunx wrangler pages project create nlqdb-web --production-branch main --compatibility-date "$(date -u +%Y-%m-%d)" || true
-          command: pages deploy apps/web/dist --project-name=nlqdb-web --branch=pr-${{ github.event.number }} --commit-dirty=true
+        working-directory: apps/web
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          WRANGLER_OUTPUT_FILE_DIRECTORY: ${{ github.workspace }}/wrangler-out
+        run: |
+          mkdir -p "$WRANGLER_OUTPUT_FILE_DIRECTORY"
+          # `--alias pr-N` gives us a stable, human-readable URL —
+          # https://pr-N-nlqdb-web.<subdomain>.workers.dev. The alias
+          # updates to whatever version was last uploaded under it,
+          # so the URL survives across pushes within a PR.
+          bunx wrangler versions upload \
+            --message "PR #${{ github.event.number }} ${{ github.sha }}" \
+            --preview-alias "pr-${{ github.event.number }}"
 
+      - name: Extract preview URL
+        if: always() && steps.deploy.outcome == 'success'
+        env:
+          WRANGLER_OUTPUT_FILE_DIRECTORY: ${{ github.workspace }}/wrangler-out
+          # Used by the script to construct the per-version URL when
+          # wrangler's `version-upload` event omits `preview_url`. Happens
+          # when the worker hasn't been `wrangler deploy`-ed yet so the
+          # workers.dev subdomain isn't fully provisioned — confirmed in
+          # the run log of 61255bb (file is written, event is present,
+          # `preview_url` is null).
+          CF_WORKERS_SUBDOMAIN: omer-hochman
+        run: sh "$GITHUB_WORKSPACE/scripts/extract-wrangler-preview-url.sh"
+
+      # `if: always()` so a deploy failure still updates the sticky
+      # comment with a "FAILED — see logs" line instead of leaving a
+      # stale "deployed" message from the previous push.
       - name: Sticky preview comment
-        uses: actions/github-script@v7
+        if: always()
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7.1.0
+        env:
+          DEPLOY_OUTCOME: ${{ steps.deploy.outcome }}
         with:
           script: |
-            const aliasUrl = `${{ steps.deploy.outputs.pages-deployment-alias-url }}`;
-            const url = `${{ steps.deploy.outputs.deployment-url }}`;
+            const outcome = process.env.DEPLOY_OUTCOME ?? '';
+            const url = process.env.PREVIEW_URL ?? '';
+
             const sha = context.sha.slice(0, 7);
             const marker = '<!-- preview-web-sticky -->';
             const ts = new Date().toISOString().replace('T', ' ').slice(0, 19) + ' UTC';
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
 
-            const primary = aliasUrl || url || `https://pr-${context.issue.number}.nlqdb-web.pages.dev`;
+            let header;
+            let urlLine;
+
+            if (outcome !== 'success') {
+              header = '❌ **Preview web deploy FAILED**';
+              urlLine = `- See logs: <${runUrl}>`;
+            } else if (url) {
+              header = '🌐 **Preview web deployed**';
+              urlLine = `- URL: <${url}>`;
+            } else {
+              header = '🌐 **Preview web deployed** (URL parse degraded — see logs)';
+              urlLine = '- URL: latest version visible in the dashboard → `nlqdb-web` → Versions';
+            }
 
             const body = [
               marker,
-              '🌐 **Preview web deployed**',
+              header,
               '',
-              `- URL: <${primary}>`,
-              url && url !== primary ? `- This commit: <${url}>` : null,
-              `- Project: \`nlqdb-web\` (branch \`pr-${context.issue.number}\` — non-production)`,
+              urlLine,
+              `- Worker: \`nlqdb-web\` (preview version — non-production)`,
               `- Commit: \`${sha}\``,
               `- Updated: ${ts}`,
-            ].filter(Boolean).join('\n');
+            ].join('\n');
 
             const { data: comments } = await github.rest.issues.listComments({
               owner: context.repo.owner,

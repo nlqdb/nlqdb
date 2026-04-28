@@ -14,6 +14,7 @@
 export type ProductEvent =
   | { name: "user.first_query"; userId: string; dbId: string }
   | { name: "user.registered"; userId: string; email: string }
+  | { name: "user.waitlist_joined"; emailHash: string; source: string }
   | {
       name: "billing.subscription_created";
       userId: string;

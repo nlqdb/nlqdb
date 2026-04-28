@@ -1,6 +1,6 @@
 name = "nlqdb-events-worker"
 main = "src/index.ts"
-compatibility_date = "2026-04-25"
+compatibility_date = "2026-04-27"
 compatibility_flags = ["nodejs_compat"]
 
 # Queue-only worker: no HTTP route, no public URL. `workers_dev = false`
