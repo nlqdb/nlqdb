@@ -320,17 +320,16 @@ const {
       else resume();
     });
 
-    // Manual nav: cancel the in-flight story, jump to target,
-    // fast-forward (skip typewriter), then resume the loop from
-    // there — but keep `paused` honest so hover/blur restart works.
+    // Manual nav: cancel the in-flight story, jump to the target
+    // slide, and PLAY THE STORY from the start (typing → ignite →
+    // hold). Original design fast-forwarded past the typewriter
+    // "to save the user from waiting", but the typewriter IS the
+    // point — clicking through should let the visitor see the
+    // animation on demand, not skip past it.
     function manualNav(targetIndex: number) {
       cancelStory();
-      show(targetIndex, { animate: false });
-      if (!paused) {
-        // Re-arm the loop. fastForward already set ignited; the
-        // loop will hold and then advance.
-        runLoop();
-      }
+      show(targetIndex, { animate: true });
+      if (!paused) runLoop();
     }
 
     root.querySelector<HTMLElement>("[data-prev]")?.addEventListener("click", () =>
@@ -346,13 +345,27 @@ const {
       });
     }
 
-    // Pause when off-screen, resume when visible. Initial visible
-    // state arms the loop the first time.
+    // Pause when off-screen, resume when visible. The initial
+    // observe fires synchronously with isIntersecting=true if the
+    // carousel is in view at mount — but `resume()` is a no-op
+    // when `paused` is false (its initial value), so the loop
+    // would never start until something paused it (e.g. tabbing
+    // away). Kick the loop directly here so the first visit
+    // animates without that detour.
     if ("IntersectionObserver" in window) {
       const io = new IntersectionObserver((entries) => {
         for (const e of entries) {
-          if (e.isIntersecting) resume();
-          else pause();
+          if (e.isIntersecting) {
+            // First call after observe: paused is false, so just
+            // arm the loop. Subsequent calls (after document.hidden
+            // or off-screen) flip paused=false then run.
+            if (!looping) {
+              paused = false;
+              runLoop();
+            }
+          } else {
+            pause();
+          }
         }
       });
       io.observe(root);
@@ -425,7 +438,12 @@ const {
   .card__input {
     display: flex;
     align-items: center;
-    gap: 10px;
+    /* Smaller gap between prompt → text → cursor so the cursor
+       sits visually adjacent to the last typed character. The
+       return arrow is pushed to the right edge via margin-left:
+       auto on `.card__input-return` (sibling), keeping the text +
+       cursor pair tight together at the start of the input. */
+    gap: 6px;
     padding: 12px 16px;
     font-family: var(--mono);
     font-size: clamp(15px, 2vw, 18px);
@@ -434,13 +452,20 @@ const {
     border: 3px solid var(--border-strong);
     box-shadow: 4px 4px 0 0 var(--border-strong);
     transition: border-color 180ms ease, box-shadow 180ms ease;
+    /* Need a defined min-height so an empty input doesn't collapse
+       to zero on `idle` state before the typewriter starts. */
+    min-height: calc(1.2em + 24px);
   }
   .card__input-prompt {
     color: var(--accent);
     font-weight: 700;
+    flex: none;
   }
   .card__input-text {
-    flex: 1;
+    /* Sizes to its content (the typed-so-far slice). Critically
+       NOT `flex: 1` — that would make this span fill the rest of
+       the input, putting the sibling cursor at the far right edge
+       of the input rather than next to the last character. */
     white-space: pre-wrap;
     word-break: break-word;
     min-height: 1.2em;
@@ -448,6 +473,11 @@ const {
   .card__input-cursor {
     color: var(--accent);
     opacity: 0;
+    flex: none;
+    /* Sit visually adjacent to the last typed char. `margin-left`
+       slightly negative so we tuck right against the text without
+       a gap-controlled space. */
+    margin-left: -2px;
     transition: opacity 120ms ease;
   }
   .carousel__slide[data-phase="typing"] .card__input-cursor {
@@ -455,6 +485,11 @@ const {
     animation: cursor-blink 1s steps(2, jump-none) infinite;
   }
   .card__input-return {
+    /* Pushed to the right edge of the input — keeps text + cursor
+       tight together on the left and surfaces the "press enter"
+       affordance on the right (where it'd be on a real form). */
+    margin-left: auto;
+    flex: none;
     color: var(--fg-muted);
     font-size: 0.85em;
     opacity: 0;
