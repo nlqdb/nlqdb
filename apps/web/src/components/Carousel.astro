@@ -160,8 +160,19 @@ const {
     // Single-flight controller for the running story; aborting
     // cancels mid-typewriter / mid-hold cleanly.
     let storyAbort: AbortController | null = null;
-    // Auto-advance loop running flag so we don't double-arm.
-    let looping = false;
+    // Promise of the current loop iteration. Used as a drain-
+    // primitive: pause/resume races (notably document.visibilitychange
+    // hide-then-show) used to leave the loop in a state where:
+    //   • the previous iteration was aborted (catch microtask
+    //     pending),
+    //   • a new resume() was kicked synchronously,
+    //   • the new resume saw `looping = true` (a synchronous flag
+    //     that hadn't been reset yet by the still-pending catch),
+    //   • bailed early — slide stuck mid-typewriter forever.
+    // Awaiting this promise before re-arming guarantees the old
+    // iteration has finished draining (the catch + finally have
+    // run) before the new one starts.
+    let runningLoop: Promise<void> | null = null;
 
     // Cancellable sleep — resolves on timeout OR rejects on abort.
     function sleep(ms: number, signal: AbortSignal): Promise<void> {
@@ -276,28 +287,57 @@ const {
       storyAbort = null;
     }
 
-    async function runLoop() {
-      if (looping) return;
-      looping = true;
-      try {
-        while (!paused) {
-          const slide = slides[index];
-          if (!slide) break;
-          storyAbort = new AbortController();
-          try {
-            await playStory(slide, storyAbort.signal);
-          } catch {
-            // Aborted by pause/manual nav — exit the loop; resume
-            // path will re-arm.
-            return;
-          }
-          if (paused) return;
-          show(index + 1, { animate: true });
+    // Inner loop body. Cooperative cancellation: every iteration
+    // checks `paused` between awaits so a mid-flight pause exits
+    // promptly without an extra wakeup tick.
+    async function loopBody(): Promise<void> {
+      while (!paused) {
+        const slide = slides[index];
+        if (!slide) break;
+        storyAbort = new AbortController();
+        try {
+          await playStory(slide, storyAbort.signal);
+        } catch {
+          return; // aborted; caller (startLoop) is responsible for re-arming
         }
-      } finally {
-        looping = false;
-        storyAbort = null;
+        if (paused) return;
+        show(index + 1, { animate: true });
       }
+    }
+
+    // Start (or restart) the auto-advance loop. Awaits any in-
+    // flight iteration's full drain before kicking a new one.
+    // Called from: initial mount, resume(), manualNav. Idempotent.
+    async function startLoop(): Promise<void> {
+      // Cancel any in-flight story so the previous loop exits its
+      // current await; then wait for that loop's promise to resolve
+      // (catch + finally have run) before starting fresh.
+      if (runningLoop) {
+        cancelStory();
+        try {
+          await runningLoop;
+        } catch {
+          /* drained */
+        }
+      }
+      if (paused) return;
+      // Placeholder init so TS's control-flow analysis can prove
+      // `p` is assigned before the IIFE's finally references it
+      // (closure captures by reference; the IIFE's await queues a
+      // microtask, so by the time finally runs, `p` IS assigned —
+      // but TS can't see that without the placeholder).
+      let p: Promise<void> = Promise.resolve();
+      p = (async () => {
+        try {
+          await loopBody();
+        } finally {
+          if (runningLoop === p) {
+            runningLoop = null;
+            storyAbort = null;
+          }
+        }
+      })();
+      runningLoop = p;
     }
 
     function pause() {
@@ -308,7 +348,10 @@ const {
     function resume() {
       if (!paused) return;
       paused = false;
-      runLoop();
+      // Fire-and-forget — startLoop awaits the drain internally.
+      // We don't `await` here because the resume() callers (event
+      // handlers) don't expect to block.
+      startLoop();
     }
 
     root.addEventListener("pointerenter", pause);
@@ -321,15 +364,14 @@ const {
     });
 
     // Manual nav: cancel the in-flight story, jump to the target
-    // slide, and PLAY THE STORY from the start (typing → ignite →
-    // hold). Original design fast-forwarded past the typewriter
-    // "to save the user from waiting", but the typewriter IS the
-    // point — clicking through should let the visitor see the
-    // animation on demand, not skip past it.
+    // slide, PLAY THE STORY from the start (typing → ignite →
+    // hold). Goes through startLoop so any in-flight iteration is
+    // properly drained before we re-arm — same race-prevention
+    // path as resume().
     function manualNav(targetIndex: number) {
       cancelStory();
       show(targetIndex, { animate: true });
-      if (!paused) runLoop();
+      if (!paused) startLoop();
     }
 
     root.querySelector<HTMLElement>("[data-prev]")?.addEventListener("click", () =>
@@ -348,21 +390,15 @@ const {
     // Pause when off-screen, resume when visible. The initial
     // observe fires synchronously with isIntersecting=true if the
     // carousel is in view at mount — but `resume()` is a no-op
-    // when `paused` is false (its initial value), so the loop
-    // would never start until something paused it (e.g. tabbing
-    // away). Kick the loop directly here so the first visit
-    // animates without that detour.
+    // when `paused` is false (its initial value), so we route the
+    // first visible-intersect through startLoop() directly so the
+    // first visit animates without needing a stray pause first.
     if ("IntersectionObserver" in window) {
       const io = new IntersectionObserver((entries) => {
         for (const e of entries) {
           if (e.isIntersecting) {
-            // First call after observe: paused is false, so just
-            // arm the loop. Subsequent calls (after document.hidden
-            // or off-screen) flip paused=false then run.
-            if (!looping) {
-              paused = false;
-              runLoop();
-            }
+            if (paused) resume();
+            else startLoop();
           } else {
             pause();
           }
@@ -370,7 +406,7 @@ const {
       });
       io.observe(root);
     } else {
-      runLoop();
+      startLoop();
     }
   }
 </script>

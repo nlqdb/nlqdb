@@ -9,6 +9,12 @@
 // visitor may see only a few before scrolling away, so every slide
 // is the strongest version of its concept.
 //
+// Order: lead with the strongest READ (revenue-by-drink — populated
+// table, immediately legible payoff) so a visitor's first 8 seconds
+// land on a real "the AI just answered me" moment. Mix CREATE /
+// SCHEMA / WRITE through the first half so each category gets seen
+// before the user scrolls away; trailing reads pad the long tail.
+//
 // `id` is stable, used for keys + pause-on-share-link in the future.
 // `category` drives the result block: `read` shows a table,
 // `write` / `schema` / `create` show a status line.
@@ -30,50 +36,8 @@ export type ShowcaseExample = {
 };
 
 export const SHOWCASE_EXAMPLES: ShowcaseExample[] = [
-  {
-    id: "create-coffee-db",
-    category: "create",
-    goal: "an orders tracker for my coffee shop",
-    sql: "CREATE DATABASE db_coffee;\nCREATE TABLE orders (id, customer, drink, total, created_at);",
-    status: "✓ created db_coffee · 1 table inferred",
-    summary: "schema = orders(id, customer, drink, total, created_at)",
-  },
-  {
-    id: "create-crm-db",
-    category: "create",
-    goal: "a CRM for two-person startups",
-    sql: "CREATE DATABASE db_crm;\nCREATE TABLE contacts (...);\nCREATE TABLE deals (...);",
-    status: "✓ created db_crm · 2 tables inferred",
-    summary: "schema = contacts(name, company, email), deals(contact_id, value, stage)",
-  },
-  {
-    id: "schema-add-column",
-    category: "schema",
-    goal: "add an allergens column to the drinks table",
-    sql: "ALTER TABLE drinks\n  ADD COLUMN allergens TEXT[] DEFAULT '{}';",
-    status: "✓ column added · 47 rows backfilled to default",
-  },
-  {
-    id: "schema-tag-high-caffeine",
-    category: "schema",
-    goal: "tag drinks with caffeine over 100mg as high-caffeine",
-    sql: "UPDATE drinks\n   SET tags = array_append(tags, 'high-caffeine')\n WHERE caffeine_mg > 100;",
-    status: "✓ updated 8 of 47 rows",
-  },
-  {
-    id: "write-insert-order",
-    category: "write",
-    goal: "log a new order: latte for sarah, $4.50",
-    sql: "INSERT INTO orders (customer, drink, total)\n VALUES ('sarah', 'latte', 4.50)\nRETURNING id;",
-    status: "✓ inserted order #4128",
-  },
-  {
-    id: "write-refund",
-    category: "write",
-    goal: "refund the last order",
-    sql: "UPDATE orders\n   SET status = 'refunded', refunded_at = now()\n WHERE id = (SELECT MAX(id) FROM orders)\nRETURNING id, total;",
-    status: "✓ refunded order #4127 · $6.20",
-  },
+  // 1 — READ: showpiece. Populated revenue table is the most
+  // immediate "the AI answered me" moment.
   {
     id: "read-revenue-by-drink",
     category: "read",
@@ -89,31 +53,24 @@ export const SHOWCASE_EXAMPLES: ShowcaseExample[] = [
     ],
     summary: "today aggregated · sorted by revenue",
   },
+  // 2 — CREATE
   {
-    id: "read-top-orders-week",
-    category: "read",
-    goal: "5 most-ordered drinks this month",
-    sql: "SELECT drink, COUNT(*) AS orders\n  FROM orders\n WHERE created_at > date_trunc('month', now())\n GROUP BY drink\n ORDER BY orders DESC\n LIMIT 5;",
-    rows: [
-      { drink: "flat white", orders: 412 },
-      { drink: "americano", orders: 298 },
-      { drink: "cortado", orders: 244 },
-      { drink: "cold brew", orders: 188 },
-      { drink: "espresso", orders: 162 },
-    ],
+    id: "create-coffee-db",
+    category: "create",
+    goal: "an orders tracker for my coffee shop",
+    sql: "CREATE DATABASE db_coffee;\nCREATE TABLE orders (id, customer, drink, total, created_at);",
+    status: "✓ created db_coffee · 1 table inferred",
+    summary: "schema = orders(id, customer, drink, total, created_at)",
   },
+  // 3 — SCHEMA
   {
-    id: "read-orders-over-10",
-    category: "read",
-    goal: "orders over $10 from last week",
-    sql: "SELECT created_at, customer, drink, total\n  FROM orders\n WHERE total > 10\n   AND created_at BETWEEN now() - interval '7 days' AND now()\n ORDER BY total DESC;",
-    rows: [
-      { created_at: "2026-04-23", customer: "ben", drink: "drip x4", total: 12.4 },
-      { created_at: "2026-04-22", customer: "lin", drink: "latte x3 + scone", total: 18.2 },
-      { created_at: "2026-04-21", customer: "rod", drink: "espresso flight", total: 14.0 },
-      { created_at: "2026-04-21", customer: "amy", drink: "cold brew growler", total: 22.5 },
-    ],
+    id: "schema-add-column",
+    category: "schema",
+    goal: "add an allergens column to the drinks table",
+    sql: "ALTER TABLE drinks\n  ADD COLUMN allergens TEXT[] DEFAULT '{}';",
+    status: "✓ column added · 47 rows backfilled to default",
   },
+  // 4 — READ
   {
     id: "read-busiest-hour",
     category: "read",
@@ -122,18 +79,15 @@ export const SHOWCASE_EXAMPLES: ShowcaseExample[] = [
     rows: [{ hour: 11, orders: 47 }],
     summary: "11:00 — 47 orders, 22% of the day's volume",
   },
+  // 5 — WRITE
   {
-    id: "read-customers-no-info",
-    category: "read",
-    goal: "orders missing customer info",
-    sql: "SELECT id, drink, total, created_at\n  FROM orders\n WHERE customer IS NULL\n    OR customer = ''\n ORDER BY created_at DESC;",
-    rows: [
-      { id: 4118, drink: "americano", total: 3.8, created_at: "2026-04-27 09:14" },
-      { id: 4101, drink: "latte", total: 4.5, created_at: "2026-04-26 18:32" },
-      { id: 4087, drink: "cortado", total: 4.3, created_at: "2026-04-26 11:10" },
-    ],
-    summary: "3 anonymous orders this week",
+    id: "write-insert-order",
+    category: "write",
+    goal: "log a new order: latte for sarah, $4.50",
+    sql: "INSERT INTO orders (customer, drink, total)\n VALUES ('sarah', 'latte', 4.50)\nRETURNING id;",
+    status: "✓ inserted order #4128",
   },
+  // 6 — READ (anti-join — strong "AI understood the negation" beat)
   {
     id: "read-stale-customers",
     category: "read",
@@ -146,6 +100,45 @@ export const SHOWCASE_EXAMPLES: ShowcaseExample[] = [
       { name: "kira", last_order_at: "2026-03-19" },
     ],
   },
+  // 7 — CREATE
+  {
+    id: "create-crm-db",
+    category: "create",
+    goal: "a CRM for two-person startups",
+    sql: "CREATE DATABASE db_crm;\nCREATE TABLE contacts (...);\nCREATE TABLE deals (...);",
+    status: "✓ created db_crm · 2 tables inferred",
+    summary: "schema = contacts(name, company, email), deals(contact_id, value, stage)",
+  },
+  // 8 — SCHEMA
+  {
+    id: "schema-tag-high-caffeine",
+    category: "schema",
+    goal: "tag drinks with caffeine over 100mg as high-caffeine",
+    sql: "UPDATE drinks\n   SET tags = array_append(tags, 'high-caffeine')\n WHERE caffeine_mg > 100;",
+    status: "✓ updated 8 of 47 rows",
+  },
+  // 9 — READ (join — basket-style analysis)
+  {
+    id: "read-co-ordered",
+    category: "read",
+    goal: "drinks ordered together with cake",
+    sql: "SELECT drink, COUNT(*) AS together\n  FROM orders o\n  JOIN order_items i ON i.order_id = o.id\n WHERE i.item = 'cake'\n GROUP BY drink\n ORDER BY together DESC\n LIMIT 4;",
+    rows: [
+      { drink: "latte", together: 87 },
+      { drink: "espresso", together: 62 },
+      { drink: "americano", together: 41 },
+      { drink: "cold brew", together: 18 },
+    ],
+  },
+  // 10 — WRITE
+  {
+    id: "write-refund",
+    category: "write",
+    goal: "refund the last order",
+    sql: "UPDATE orders\n   SET status = 'refunded', refunded_at = now()\n WHERE id = (SELECT MAX(id) FROM orders)\nRETURNING id, total;",
+    status: "✓ refunded order #4127 · $6.20",
+  },
+  // 11 — READ (time-bucket)
   {
     id: "read-aov-by-hour",
     category: "read",
@@ -161,18 +154,51 @@ export const SHOWCASE_EXAMPLES: ShowcaseExample[] = [
     ],
     summary: "AOV climbs into lunch · pastries kick in at 11",
   },
+  // 12 — SCHEMA
   {
-    id: "read-co-ordered",
+    id: "schema-add-birthday",
+    category: "schema",
+    goal: "add a birthday field to customers",
+    sql: "ALTER TABLE customers\n  ADD COLUMN birthday DATE;",
+    status: "✓ column added",
+    summary: "1,247 rows · default NULL · backfill via /v1/ask later",
+  },
+  // 13 — READ (data quality / NULL hunt)
+  {
+    id: "read-customers-no-info",
     category: "read",
-    goal: "drinks ordered together with cake",
-    sql: "SELECT drink, COUNT(*) AS together\n  FROM orders o\n  JOIN order_items i ON i.order_id = o.id\n WHERE i.item = 'cake'\n GROUP BY drink\n ORDER BY together DESC\n LIMIT 4;",
+    goal: "orders missing customer info",
+    sql: "SELECT id, drink, total, created_at\n  FROM orders\n WHERE customer IS NULL\n    OR customer = ''\n ORDER BY created_at DESC;",
     rows: [
-      { drink: "latte", together: 87 },
-      { drink: "espresso", together: 62 },
-      { drink: "americano", together: 41 },
-      { drink: "cold brew", together: 18 },
+      { id: 4118, drink: "americano", total: 3.8, created_at: "2026-04-27 09:14" },
+      { id: 4101, drink: "latte", total: 4.5, created_at: "2026-04-26 18:32" },
+      { id: 4087, drink: "cortado", total: 4.3, created_at: "2026-04-26 11:10" },
+    ],
+    summary: "3 anonymous orders this week",
+  },
+  // 14 — WRITE (subquery + grouping — most complex write)
+  {
+    id: "write-bulk-promote",
+    category: "write",
+    goal: "promote everyone with > 100 orders to 'gold' tier",
+    sql: "UPDATE customers\n   SET tier = 'gold', updated_at = now()\n WHERE id IN (\n   SELECT customer_id FROM orders\n    GROUP BY customer_id\n   HAVING COUNT(*) > 100\n );",
+    status: "✓ updated 23 rows",
+  },
+  // 15 — READ
+  {
+    id: "read-top-orders-week",
+    category: "read",
+    goal: "5 most-ordered drinks this month",
+    sql: "SELECT drink, COUNT(*) AS orders\n  FROM orders\n WHERE created_at > date_trunc('month', now())\n GROUP BY drink\n ORDER BY orders DESC\n LIMIT 5;",
+    rows: [
+      { drink: "flat white", orders: 412 },
+      { drink: "americano", orders: 298 },
+      { drink: "cortado", orders: 244 },
+      { drink: "cold brew", orders: 188 },
+      { drink: "espresso", orders: 162 },
     ],
   },
+  // 16 — READ (different vertical — feedback inbox)
   {
     id: "read-feedback-recent",
     category: "read",
@@ -206,6 +232,7 @@ export const SHOWCASE_EXAMPLES: ShowcaseExample[] = [
     ],
     summary: "mixed signal — 1 bug, 1 feature, 2 praise/observation",
   },
+  // 17 — READ (different vertical — leaderboard)
   {
     id: "read-leaderboard",
     category: "read",
@@ -219,6 +246,7 @@ export const SHOWCASE_EXAMPLES: ShowcaseExample[] = [
       { player: "owl-club", score: 7902, region: "NA" },
     ],
   },
+  // 18 — READ (different vertical — agent memory)
   {
     id: "read-agent-memory",
     category: "read",
@@ -264,6 +292,7 @@ export const SHOWCASE_EXAMPLES: ShowcaseExample[] = [
     ],
     summary: "6 turns · 3 threads · last day",
   },
+  // 19 — READ (different vertical — CRM)
   {
     id: "read-crm-recent",
     category: "read",
@@ -282,19 +311,17 @@ export const SHOWCASE_EXAMPLES: ShowcaseExample[] = [
       { name: "Jonas Berg", company: "Bauhaus Bikes", last_touch: "2026-04-20", status: "active" },
     ],
   },
+  // 20 — READ (date range filter)
   {
-    id: "schema-add-birthday",
-    category: "schema",
-    goal: "add a birthday field to customers",
-    sql: "ALTER TABLE customers\n  ADD COLUMN birthday DATE;",
-    status: "✓ column added",
-    summary: "1,247 rows · default NULL · backfill via /v1/ask later",
-  },
-  {
-    id: "write-bulk-promote",
-    category: "write",
-    goal: "promote everyone with > 100 orders to 'gold' tier",
-    sql: "UPDATE customers\n   SET tier = 'gold', updated_at = now()\n WHERE id IN (\n   SELECT customer_id FROM orders\n    GROUP BY customer_id\n   HAVING COUNT(*) > 100\n );",
-    status: "✓ updated 23 rows",
+    id: "read-orders-over-10",
+    category: "read",
+    goal: "orders over $10 from last week",
+    sql: "SELECT created_at, customer, drink, total\n  FROM orders\n WHERE total > 10\n   AND created_at BETWEEN now() - interval '7 days' AND now()\n ORDER BY total DESC;",
+    rows: [
+      { created_at: "2026-04-23", customer: "ben", drink: "drip x4", total: 12.4 },
+      { created_at: "2026-04-22", customer: "lin", drink: "latte x3 + scone", total: 18.2 },
+      { created_at: "2026-04-21", customer: "rod", drink: "espresso flight", total: 14.0 },
+      { created_at: "2026-04-21", customer: "amy", drink: "cold brew growler", total: 22.5 },
+    ],
   },
 ];
