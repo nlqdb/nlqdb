@@ -76,9 +76,30 @@ const {
             <span class="card__input-return" aria-hidden="true">⏎</span>
           </div>
 
-          <div class="card__result" data-result>
-            <pre class="card__sql"><code>{ex.sql}</code></pre>
+          {(() => {
+            // Split the embed template on the `{goal}` placeholder
+            // so we can interleave a typewriter span at the slot.
+            // Astro auto-escapes the surrounding text on
+            // interpolation — `<nlq-data>` etc. renders verbatim
+            // (no element registration risk).
+            const [embedBefore = "", embedAfter = ""] = ex.embed.template.split("{goal}");
+            return (
+              <div
+                class="card__embed"
+                data-embed-lang={ex.embed.lang}
+                aria-label={ex.embed.lang === "html" ? "HTML embed" : "CLI command"}
+              >
+                <span class="card__embed-label">
+                  {ex.embed.lang === "html" ? "drop on your page →" : "from the CLI →"}
+                </span>
+                <pre class="card__embed-pre"><code>{embedBefore}<span class="card__embed-goal" data-input-text data-goal={ex.goal}></span>{embedAfter}</code></pre>
+              </div>
+            );
+          })()}
 
+          <p class="card__renders" aria-hidden="true">renders ↓</p>
+
+          <div class="card__result" data-result>
             {ex.category === "read" && ex.rows && ex.rows.length > 0 ? (
               <div class="card__rows">
                 <table class="card__table">
@@ -105,6 +126,11 @@ const {
             )}
 
             {ex.summary && <p class="card__summary">{ex.summary}</p>}
+
+            <details class="card__sql-details">
+              <summary class="card__sql-summary">SQL the engine ran</summary>
+              <pre class="card__sql"><code>{ex.sql}</code></pre>
+            </details>
           </div>
         </li>
       ))}
@@ -193,23 +219,28 @@ const {
       });
     }
 
-    // Typewriter — appends one char at a time. Returns early if
-    // signal aborts. `target` is the visible-text span, separate
-    // from the cursor element so we don't interleave its blink.
+    // Typewriter — appends one char at a time to every target in
+    // sync. We pass an ARRAY because each slide has two visible
+    // typewriter slots (the standalone input AND the embed
+    // snippet's `goal=""` attribute), and they need to populate
+    // identically so the visitor sees "the same prompt I'm typing
+    // is what goes into the HTML embed". Returns early if signal
+    // aborts.
     async function typewrite(
-      target: HTMLElement,
+      targets: HTMLElement[],
       text: string,
       perCharMs: number,
       signal: AbortSignal,
     ): Promise<void> {
-      target.textContent = "";
+      for (const t of targets) t.textContent = "";
       if (perCharMs <= 0) {
-        target.textContent = text;
+        for (const t of targets) t.textContent = text;
         return;
       }
       for (let i = 0; i < text.length; i++) {
         if (signal.aborted) throw new DOMException("aborted", "AbortError");
-        target.textContent = text.slice(0, i + 1);
+        const slice = text.slice(0, i + 1);
+        for (const t of targets) t.textContent = slice;
         // Slight cadence variation on whitespace — punchier reading.
         const isSpace = text[i] === " ";
         await sleep(isSpace ? Math.max(8, perCharMs / 2) : perCharMs, signal);
@@ -224,12 +255,12 @@ const {
     // pause/cancellation. Caller (the auto-advance loop) catches
     // and exits silently.
     async function playStory(slide: HTMLElement, signal: AbortSignal): Promise<void> {
-      const inputText = slide.querySelector<HTMLElement>("[data-input-text]");
-      const goal = inputText?.dataset["goal"] ?? "";
-      if (!inputText) return;
+      const inputs = Array.from(slide.querySelectorAll<HTMLElement>("[data-input-text]"));
+      const goal = inputs[0]?.dataset["goal"] ?? "";
+      if (inputs.length === 0) return;
 
       setPhase(slide, "typing");
-      await typewrite(inputText, goal, typeMs, signal);
+      await typewrite(inputs, goal, typeMs, signal);
 
       setPhase(slide, "submitted");
       await sleep(submittedMs, signal);
@@ -243,9 +274,11 @@ const {
     // wait. The auto-advance loop will continue from "holding"
     // after the next call.
     function fastForward(slide: HTMLElement) {
-      const inputText = slide.querySelector<HTMLElement>("[data-input-text]");
-      const goal = inputText?.dataset["goal"] ?? "";
-      if (inputText) inputText.textContent = goal;
+      const inputs = slide.querySelectorAll<HTMLElement>("[data-input-text]");
+      for (const input of inputs) {
+        const goal = (input as HTMLElement).dataset["goal"] ?? "";
+        input.textContent = goal;
+      }
       setPhase(slide, "ignited");
     }
 
@@ -257,10 +290,13 @@ const {
         prev.removeAttribute("data-active");
         prev.setAttribute("aria-hidden", "true");
         // Reset the prev slide's story state so re-visits replay
-        // cleanly from `idle`.
+        // cleanly from `idle`. Clear ALL typewriter targets, not
+        // just the first — both the standalone input and the
+        // embed's `goal=""` slot need to empty out.
         setPhase(prev, "idle");
-        const prevInput = prev.querySelector<HTMLElement>("[data-input-text]");
-        if (prevInput) prevInput.textContent = "";
+        for (const input of prev.querySelectorAll<HTMLElement>("[data-input-text]")) {
+          input.textContent = "";
+        }
       }
       if (cur) {
         cur.setAttribute("data-active", "");
@@ -571,8 +607,101 @@ const {
     box-shadow: 0 0 0 2px var(--accent), 4px 4px 0 0 var(--border-strong);
   }
 
-  .card__sql {
+  /* Embed code block — renders the "drop this on your page" /
+     "from the CLI" snippet with a typewriter span at the {goal}
+     slot. Sits BETWEEN the standalone input and the rendered
+     result so the visual story reads:
+       what you type  →  what you'd embed  →  what renders.
+     Both typewriter targets (input + this) populate in sync via
+     a shared `[data-input-text]` selector. */
+  .card__embed {
+    display: flex;
+    align-items: stretch;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .card__embed-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--fg-muted);
+    align-self: center;
+    white-space: nowrap;
+  }
+  .card__embed-pre {
+    flex: 1;
     margin: 0;
+    padding: 10px 14px;
+    font-family: var(--mono);
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--fg);
+    background: var(--bg);
+    border: 2px solid var(--border-strong);
+    overflow-x: auto;
+    /* Preserve template whitespace exactly — embed snippets have
+       intentional spacing inside attributes. */
+    white-space: pre;
+  }
+  .card__embed-goal {
+    /* Highlight the typewriter slot so the eye tracks the live-
+       typing portion separately from the static template text.
+       Acid-lime accent matches the standalone input's cursor +
+       "ignited" border, tying the two animations together. */
+    color: var(--accent);
+    font-weight: 600;
+    /* Reserve a min-width so the empty `goal=""` slot doesn't
+       collapse the line as the typewriter starts (otherwise the
+       surrounding template text reflows on every char tick). */
+    display: inline-block;
+    min-width: 1ch;
+  }
+
+  /* Caption that bridges embed → rendered result. The arrow points
+     at the result panel below; visible from the start (idle phase
+     too) so the layout reads correctly even before the typewriter
+     fires. */
+  .card__renders {
+    margin: 4px 0 -4px;
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--accent);
+    text-align: center;
+  }
+
+  /* `<details>` for the engine's SQL — collapsed by default so
+     the rendered widget gets the visual emphasis. Open behavior
+     lets curious visitors verify what the engine ran without
+     forcing it on every slide. */
+  .card__sql-details {
+    margin-top: 4px;
+    font-family: var(--mono);
+    font-size: 11px;
+  }
+  .card__sql-summary {
+    cursor: pointer;
+    color: var(--fg-muted);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    list-style: none;
+    padding: 4px 0;
+  }
+  .card__sql-summary::-webkit-details-marker { display: none; }
+  .card__sql-summary::before {
+    content: "▸ ";
+    transition: transform 150ms ease;
+    display: inline-block;
+  }
+  .card__sql-details[open] .card__sql-summary::before {
+    transform: rotate(90deg);
+  }
+  .card__sql-summary:hover { color: var(--fg); }
+
+  .card__sql {
+    margin: 8px 0 0;
     padding: 10px 12px;
     font-family: var(--mono);
     font-size: 13px;
