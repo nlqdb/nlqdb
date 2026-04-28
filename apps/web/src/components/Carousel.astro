@@ -1,33 +1,57 @@
 ---
-// Auto-sliding showcase. One slide visible at a time; cross-fade
-// between them every CYCLE_MS. Pauses on:
-//   • pointer hover
-//   • keyboard focus inside the carousel
-//   • document.hidden
-//   • IntersectionObserver — off-screen
-//   • prefers-reduced-motion (cycling disabled, manual nav still works)
+// Auto-sliding showcase with per-slide story arc (typewriter input
+// → ignite result → hold → advance). Replaces the previous flat
+// cross-fade so each slide tells a self-contained story rather
+// than feeling like a static slideshow.
 //
-// Markup is a flat `ol` of slides; `[data-active]` flips at the
-// boundary, CSS handles the transition. No framework, ~3 KB inline JS.
+// Story phases (per active slide):
+//   1. typing    — typewriter effect populates the input from
+//                  empty (~30ms/char). Cursor blinks.
+//   2. submitted — brief "click" + return-arrow flash (~250ms).
+//   3. ignited   — result panel border swells to accent, table
+//                  rows / status badges stagger-fade in.
+//   4. holding   — settled state, ~2.6s for the eye to land.
+//   5. advancing — cross-fade to next slide; story restarts.
 //
-// Reusability: takes `examples` as a prop so a future caller (e.g.
-// /docs page) can pass a different slice.
+// Pause semantics (mid-story-aware via AbortController):
+//   • pointer hover, keyboard focus, document.hidden, off-screen
+//     IntersectionObserver — all pause IMMEDIATELY (typewriter
+//     freezes mid-character, hold timer pauses).
+//   • prefers-reduced-motion — typing becomes instant, ignite is
+//     a simple fade, hold time stays.
+//
+// Manual nav (prev/next/dot click) skips directly to `ignited`
+// state (no replay of the typewriter) so a clicked-through slide
+// still feels alive but doesn't make the user wait for the
+// animation. After the hold, auto-advance resumes from there.
+//
+// Reusability: takes `examples` as a prop so a future caller
+// (e.g. /docs page) can pass a different slice. `cycleMs` is
+// retained as a back-compat knob but the per-slide story timing
+// is what actually drives the cadence now (`storySleepMs` adjusts
+// the hold-after-ignite portion specifically).
 
 import type { ShowcaseExample } from "../data/showcase-examples";
 
 type Props = {
   examples: ShowcaseExample[];
-  cycleMs?: number;
-  // Container height. Tall enough for the largest slide so transitions
-  // don't reflow the page; lift via prop when callers ship shorter
-  // examples (e.g. a category-filtered showcase on a docs page).
+  // Hold time after the ignite phase before advancing. Default
+  // 2600ms, plus the typewriter time (~goal-length × 30ms) → total
+  // per-slide cadence ranges ~4-7s depending on goal length.
+  storyHoldMs?: number;
+  // Container height. Tall enough for the largest slide so phase
+  // transitions don't reflow the page.
   minHeight?: string;
 };
 
-const { examples, cycleMs = 4500, minHeight = "clamp(380px, 60vh, 560px)" } = Astro.props as Props;
+const {
+  examples,
+  storyHoldMs = 2600,
+  minHeight = "clamp(380px, 60vh, 560px)",
+} = Astro.props as Props;
 ---
 <section class="carousel" aria-roledescription="carousel" aria-label="What you can do with nlqdb">
-  <div class="carousel__frame" data-carousel data-cycle-ms={cycleMs}>
+  <div class="carousel__frame" data-carousel data-story-hold-ms={storyHoldMs}>
     <ol class="carousel__slides" role="list" style={`min-height: ${minHeight};`}>
       {examples.map((ex, i) => (
         <li
@@ -36,43 +60,52 @@ const { examples, cycleMs = 4500, minHeight = "clamp(380px, 60vh, 560px)" } = As
           data-slide
           data-index={i}
           data-active={i === 0 ? "" : null}
+          data-phase="idle"
           aria-hidden={i === 0 ? "false" : "true"}
           aria-roledescription="slide"
           aria-label={`${i + 1} of ${examples.length}: ${ex.goal}`}
         >
           <header class="card__head">
             <span class="card__cat" data-cat={ex.category}>{ex.category}</span>
-            <p class="card__goal">"{ex.goal}"</p>
           </header>
 
-          <pre class="card__sql"><code>{ex.sql}</code></pre>
+          <div class="card__input" role="presentation">
+            <span class="card__input-prompt" aria-hidden="true">›</span>
+            <span class="card__input-text" data-input-text data-goal={ex.goal}></span>
+            <span class="card__input-cursor" aria-hidden="true">▌</span>
+            <span class="card__input-return" aria-hidden="true">⏎</span>
+          </div>
 
-          {ex.category === "read" && ex.rows && ex.rows.length > 0 ? (
-            <div class="card__rows">
-              <table class="card__table">
-                <thead>
-                  <tr>
-                    {Object.keys(ex.rows[0] ?? {}).map((col) => (
-                      <th>{col}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {ex.rows.map((row) => (
+          <div class="card__result" data-result>
+            <pre class="card__sql"><code>{ex.sql}</code></pre>
+
+            {ex.category === "read" && ex.rows && ex.rows.length > 0 ? (
+              <div class="card__rows">
+                <table class="card__table">
+                  <thead>
                     <tr>
-                      {Object.values(row).map((v) => (
-                        <td>{v == null ? "" : String(v)}</td>
+                      {Object.keys(ex.rows[0] ?? {}).map((col) => (
+                        <th>{col}</th>
                       ))}
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <p class="card__status">{ex.status}</p>
-          )}
+                  </thead>
+                  <tbody>
+                    {ex.rows.map((row, ri) => (
+                      <tr style={`--row-i: ${ri}`}>
+                        {Object.values(row).map((v) => (
+                          <td>{v == null ? "" : String(v)}</td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <p class="card__status">{ex.status}</p>
+            )}
 
-          {ex.summary && <p class="card__summary">{ex.summary}</p>}
+            {ex.summary && <p class="card__summary">{ex.summary}</p>}
+          </div>
         </li>
       ))}
     </ol>
@@ -102,33 +135,126 @@ const { examples, cycleMs = 4500, minHeight = "clamp(380px, 60vh, 560px)" } = As
 </section>
 
 <script>
-  // Pure DOM — every selector scoped under [data-carousel] so a future
-  // second instance on the same page wouldn't fight this one.
+  // Per-slide story-arc carousel. AbortController is the central
+  // primitive — every async step (typewriter, hold, ignite delays)
+  // takes a signal so pause is instant and resume is clean.
   const root = document.querySelector<HTMLElement>("[data-carousel]");
-  // Empty examples = bail. Avoids `% 0` math + needless timer churn
-  // if the data source is ever filtered down to zero (e.g. a future
-  // category-filtered carousel renders no matches).
   if (root && root.querySelectorAll("[data-slide]").length > 0) {
     const slides = Array.from(root.querySelectorAll<HTMLElement>("[data-slide]"));
     const dots = Array.from(root.querySelectorAll<HTMLElement>("[data-dot]"));
-    const cycleMs = Number(root.dataset["cycleMs"] ?? "4500");
+    const storyHoldMs = Number(root.dataset["storyHoldMs"] ?? "2600");
     const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-    let index = 0;
-    let timer: ReturnType<typeof setInterval> | null = null;
-    let paused = false;
+    // Tunables — picked for "skim-friendly" cadence:
+    //   typeMs        per-character delay; ~30ms reads as natural
+    //                 human typing without dragging.
+    //   submittedMs   the brief "press enter" flash duration.
+    //   igniteMs      time the ignite border/stagger animation plays.
+    //   holdMs        eye-rest after ignite finishes.
+    const typeMs = reducedMotion ? 0 : 28;
+    const submittedMs = reducedMotion ? 0 : 240;
+    const holdMs = reducedMotion ? 1200 : storyHoldMs;
 
-    function show(next: number) {
+    let index = 0;
+    let paused = false;
+    // Single-flight controller for the running story; aborting
+    // cancels mid-typewriter / mid-hold cleanly.
+    let storyAbort: AbortController | null = null;
+    // Auto-advance loop running flag so we don't double-arm.
+    let looping = false;
+
+    // Cancellable sleep — resolves on timeout OR rejects on abort.
+    function sleep(ms: number, signal: AbortSignal): Promise<void> {
+      return new Promise((resolve, reject) => {
+        if (signal.aborted) {
+          reject(new DOMException("aborted", "AbortError"));
+          return;
+        }
+        const t = setTimeout(() => {
+          signal.removeEventListener("abort", onAbort);
+          resolve();
+        }, ms);
+        const onAbort = () => {
+          clearTimeout(t);
+          reject(new DOMException("aborted", "AbortError"));
+        };
+        signal.addEventListener("abort", onAbort, { once: true });
+      });
+    }
+
+    // Typewriter — appends one char at a time. Returns early if
+    // signal aborts. `target` is the visible-text span, separate
+    // from the cursor element so we don't interleave its blink.
+    async function typewrite(
+      target: HTMLElement,
+      text: string,
+      perCharMs: number,
+      signal: AbortSignal,
+    ): Promise<void> {
+      target.textContent = "";
+      if (perCharMs <= 0) {
+        target.textContent = text;
+        return;
+      }
+      for (let i = 0; i < text.length; i++) {
+        if (signal.aborted) throw new DOMException("aborted", "AbortError");
+        target.textContent = text.slice(0, i + 1);
+        // Slight cadence variation on whitespace — punchier reading.
+        const isSpace = text[i] === " ";
+        await sleep(isSpace ? Math.max(8, perCharMs / 2) : perCharMs, signal);
+      }
+    }
+
+    function setPhase(slide: HTMLElement, phase: "idle" | "typing" | "submitted" | "ignited") {
+      slide.dataset["phase"] = phase;
+    }
+
+    // Plays the active slide's story arc. Throws AbortError on
+    // pause/cancellation. Caller (the auto-advance loop) catches
+    // and exits silently.
+    async function playStory(slide: HTMLElement, signal: AbortSignal): Promise<void> {
+      const inputText = slide.querySelector<HTMLElement>("[data-input-text]");
+      const goal = inputText?.dataset["goal"] ?? "";
+      if (!inputText) return;
+
+      setPhase(slide, "typing");
+      await typewrite(inputText, goal, typeMs, signal);
+
+      setPhase(slide, "submitted");
+      await sleep(submittedMs, signal);
+
+      setPhase(slide, "ignited");
+      await sleep(holdMs, signal);
+    }
+
+    // Fast-forward to ignited — used by manual nav. Skips
+    // typewriter so a clicked-through slide doesn't make the user
+    // wait. The auto-advance loop will continue from "holding"
+    // after the next call.
+    function fastForward(slide: HTMLElement) {
+      const inputText = slide.querySelector<HTMLElement>("[data-input-text]");
+      const goal = inputText?.dataset["goal"] ?? "";
+      if (inputText) inputText.textContent = goal;
+      setPhase(slide, "ignited");
+    }
+
+    function show(next: number, opts: { animate: boolean }) {
       const n = ((next % slides.length) + slides.length) % slides.length;
       const prev = slides[index];
       const cur = slides[n];
-      if (prev) {
+      if (prev && prev !== cur) {
         prev.removeAttribute("data-active");
         prev.setAttribute("aria-hidden", "true");
+        // Reset the prev slide's story state so re-visits replay
+        // cleanly from `idle`.
+        setPhase(prev, "idle");
+        const prevInput = prev.querySelector<HTMLElement>("[data-input-text]");
+        if (prevInput) prevInput.textContent = "";
       }
       if (cur) {
         cur.setAttribute("data-active", "");
         cur.setAttribute("aria-hidden", "false");
+        if (!opts.animate) fastForward(cur);
       }
       const prevDot = dots[index];
       const curDot = dots[n];
@@ -143,22 +269,46 @@ const { examples, cycleMs = 4500, minHeight = "clamp(380px, 60vh, 560px)" } = As
       index = n;
     }
 
-    function start() {
-      if (timer || reducedMotion || paused) return;
-      timer = setInterval(() => show(index + 1), cycleMs);
+    // Cancel the in-flight story (caller arms a new one when
+    // appropriate via `runLoop`).
+    function cancelStory() {
+      storyAbort?.abort();
+      storyAbort = null;
     }
-    function stop() {
-      if (!timer) return;
-      clearInterval(timer);
-      timer = null;
+
+    async function runLoop() {
+      if (looping) return;
+      looping = true;
+      try {
+        while (!paused) {
+          const slide = slides[index];
+          if (!slide) break;
+          storyAbort = new AbortController();
+          try {
+            await playStory(slide, storyAbort.signal);
+          } catch {
+            // Aborted by pause/manual nav — exit the loop; resume
+            // path will re-arm.
+            return;
+          }
+          if (paused) return;
+          show(index + 1, { animate: true });
+        }
+      } finally {
+        looping = false;
+        storyAbort = null;
+      }
     }
+
     function pause() {
+      if (paused) return;
       paused = true;
-      stop();
+      cancelStory();
     }
     function resume() {
+      if (!paused) return;
       paused = false;
-      start();
+      runLoop();
     }
 
     root.addEventListener("pointerenter", pause);
@@ -166,41 +316,48 @@ const { examples, cycleMs = 4500, minHeight = "clamp(380px, 60vh, 560px)" } = As
     root.addEventListener("focusin", pause);
     root.addEventListener("focusout", resume);
     document.addEventListener("visibilitychange", () => {
-      if (document.hidden) stop();
-      else start();
+      if (document.hidden) pause();
+      else resume();
     });
 
-    root.querySelector<HTMLElement>("[data-prev]")?.addEventListener("click", () => {
-      show(index - 1);
-      stop();
-      start();
-    });
-    root.querySelector<HTMLElement>("[data-next]")?.addEventListener("click", () => {
-      show(index + 1);
-      stop();
-      start();
-    });
+    // Manual nav: cancel the in-flight story, jump to target,
+    // fast-forward (skip typewriter), then resume the loop from
+    // there — but keep `paused` honest so hover/blur restart works.
+    function manualNav(targetIndex: number) {
+      cancelStory();
+      show(targetIndex, { animate: false });
+      if (!paused) {
+        // Re-arm the loop. fastForward already set ignited; the
+        // loop will hold and then advance.
+        runLoop();
+      }
+    }
+
+    root.querySelector<HTMLElement>("[data-prev]")?.addEventListener("click", () =>
+      manualNav(index - 1),
+    );
+    root.querySelector<HTMLElement>("[data-next]")?.addEventListener("click", () =>
+      manualNav(index + 1),
+    );
     for (const dot of dots) {
       dot.addEventListener("click", () => {
         const i = Number(dot.dataset["index"]);
-        if (Number.isInteger(i)) {
-          show(i);
-          stop();
-          start();
-        }
+        if (Number.isInteger(i)) manualNav(i);
       });
     }
 
+    // Pause when off-screen, resume when visible. Initial visible
+    // state arms the loop the first time.
     if ("IntersectionObserver" in window) {
       const io = new IntersectionObserver((entries) => {
         for (const e of entries) {
-          if (e.isIntersecting) start();
-          else stop();
+          if (e.isIntersecting) resume();
+          else pause();
         }
       });
       io.observe(root);
     } else {
-      start();
+      runLoop();
     }
   }
 </script>
@@ -221,9 +378,6 @@ const { examples, cycleMs = 4500, minHeight = "clamp(380px, 60vh, 560px)" } = As
     margin: 0;
     padding: 0;
     position: relative;
-    /* min-height is set inline so callers can override per usage —
-       slides are absolutely positioned over each other and the
-       container would otherwise collapse between transitions. */
   }
   .carousel__slide {
     position: absolute;
@@ -240,6 +394,7 @@ const { examples, cycleMs = 4500, minHeight = "clamp(380px, 60vh, 560px)" } = As
     opacity: 1;
     pointer-events: auto;
   }
+
   .card__head {
     display: flex;
     align-items: baseline;
@@ -262,16 +417,87 @@ const { examples, cycleMs = 4500, minHeight = "clamp(380px, 60vh, 560px)" } = As
   .card__cat[data-cat="create"] {
     color: #b3ff99;
   }
-  .card__goal {
-    font-size: clamp(18px, 2.4vw, 22px);
-    font-weight: 600;
-    margin: 0;
+
+  /* Typewriter input — neo-brutalist chrome matching the old hero
+     input style. The cursor blinks while phase=typing; after
+     phase=submitted it stops blinking and the return arrow flashes
+     to signal "submitted". */
+  .card__input {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 16px;
+    font-family: var(--mono);
+    font-size: clamp(15px, 2vw, 18px);
     color: var(--fg);
-    letter-spacing: -0.01em;
+    background: var(--bg);
+    border: 3px solid var(--border-strong);
+    box-shadow: 4px 4px 0 0 var(--border-strong);
+    transition: border-color 180ms ease, box-shadow 180ms ease;
   }
+  .card__input-prompt {
+    color: var(--accent);
+    font-weight: 700;
+  }
+  .card__input-text {
+    flex: 1;
+    white-space: pre-wrap;
+    word-break: break-word;
+    min-height: 1.2em;
+  }
+  .card__input-cursor {
+    color: var(--accent);
+    opacity: 0;
+    transition: opacity 120ms ease;
+  }
+  .carousel__slide[data-phase="typing"] .card__input-cursor {
+    opacity: 1;
+    animation: cursor-blink 1s steps(2, jump-none) infinite;
+  }
+  .card__input-return {
+    color: var(--fg-muted);
+    font-size: 0.85em;
+    opacity: 0;
+    transform: translateX(-4px);
+    transition: opacity 180ms ease, transform 180ms ease, color 180ms ease;
+  }
+  .carousel__slide[data-phase="submitted"] .card__input,
+  .carousel__slide[data-phase="ignited"] .card__input {
+    border-color: var(--accent);
+    box-shadow: 4px 4px 0 0 var(--accent);
+  }
+  .carousel__slide[data-phase="submitted"] .card__input-return {
+    opacity: 1;
+    transform: translateX(0);
+    color: var(--accent);
+  }
+  @keyframes cursor-blink {
+    50% { opacity: 0; }
+  }
+
+  /* Result panel — dim by default, "ignites" when phase=ignited.
+     Border swells to accent, table rows stagger-fade in. */
+  .card__result {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 12px 14px;
+    border: 2px solid var(--border);
+    background: var(--bg-elev);
+    opacity: 0.45;
+    transition: opacity 320ms ease, border-color 320ms ease,
+                background 320ms ease, box-shadow 320ms ease;
+  }
+  .carousel__slide[data-phase="ignited"] .card__result {
+    opacity: 1;
+    border-color: var(--accent);
+    background: var(--bg);
+    box-shadow: 0 0 0 2px var(--accent), 4px 4px 0 0 var(--border-strong);
+  }
+
   .card__sql {
     margin: 0;
-    padding: 14px 16px;
+    padding: 10px 12px;
     font-family: var(--mono);
     font-size: 13px;
     line-height: 1.5;
@@ -311,12 +537,28 @@ const { examples, cycleMs = 4500, minHeight = "clamp(380px, 60vh, 560px)" } = As
     letter-spacing: 0.04em;
     font-weight: 600;
   }
+  /* Row stagger-fade on ignite. `--row-i` is set per-row inline.
+     Capped at 12 rows of stagger so a long table doesn't push the
+     last row past the hold-time budget. */
+  .carousel__slide[data-phase="ignited"] .card__table tbody tr {
+    animation: row-in 360ms ease both;
+    animation-delay: calc(min(var(--row-i, 0), 12) * 50ms);
+  }
+  .card__table tbody tr {
+    opacity: 0.35;
+  }
+  @keyframes row-in {
+    from { opacity: 0; transform: translateY(4px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
   .card__summary {
     margin: 0;
     font-family: var(--mono);
     font-size: 12px;
     color: var(--fg-muted);
   }
+
   .carousel__nav {
     display: flex;
     align-items: center;
@@ -363,9 +605,24 @@ const { examples, cycleMs = 4500, minHeight = "clamp(380px, 60vh, 560px)" } = As
     background: var(--accent);
     border-color: var(--accent);
   }
+
+  /* Reduced motion — keep states meaningful but kill the kinetic
+     parts. Typewriter goes instant (handled in JS), cursor doesn't
+     blink, row-stagger collapses to a fade. */
   @media (prefers-reduced-motion: reduce) {
-    .carousel__slide {
+    .carousel__slide,
+    .card__input,
+    .card__result,
+    .card__input-cursor,
+    .card__input-return {
       transition: none;
+    }
+    .carousel__slide[data-phase="typing"] .card__input-cursor {
+      animation: none;
+    }
+    .carousel__slide[data-phase="ignited"] .card__table tbody tr {
+      animation: none;
+      opacity: 1;
     }
   }
 </style>
