@@ -1,13 +1,22 @@
 ---
-// Auto-sliding showcase with per-slide story arc (typewriter input
-// → ignite result → hold → advance). Replaces the previous flat
-// cross-fade so each slide tells a self-contained story rather
-// than feeling like a static slideshow.
+// Auto-sliding showcase with per-slide story arc (typewriter prompt
+// inside the embed snippet → ignite result → hold → advance).
+// Replaces the previous flat cross-fade so each slide tells a
+// self-contained "drop this snippet → get this widget" story.
+//
+// One typewriter target per slide: the goal slot inside the embed
+// snippet (HTML / CLI / REST / MCP — varies per example). The
+// previous design also had a standalone input row; that was
+// visually redundant since the snippet itself contains the goal,
+// so it was dropped — visitors now read "this is the integration
+// shape" + "and here's the result", with no duplicate input mock.
 //
 // Story phases (per active slide):
-//   1. typing    — typewriter effect populates the input from
-//                  empty (~30ms/char). Cursor blinks.
-//   2. submitted — brief "click" + return-arrow flash (~250ms).
+//   1. typing    — typewriter effect populates the embed's goal
+//                  slot from empty (~30ms/char). Caret blinks
+//                  inside the snippet at the typing position.
+//   2. submitted — brief "lock-in" flash on the embed's border
+//                  (~250ms) signaling "prompt is committed".
 //   3. ignited   — result panel border swells to accent, table
 //                  rows / status badges stagger-fade in.
 //   4. holding   — settled state, ~2.6s for the eye to land.
@@ -69,29 +78,36 @@ const {
             <span class="card__cat" data-cat={ex.category}>{ex.category}</span>
           </header>
 
-          <div class="card__input" role="presentation">
-            <span class="card__input-prompt" aria-hidden="true">›</span>
-            <span class="card__input-text" data-input-text data-goal={ex.goal}></span>
-            <span class="card__input-cursor" aria-hidden="true">▌</span>
-            <span class="card__input-return" aria-hidden="true">⏎</span>
-          </div>
-
           {(() => {
-            // Split the embed template on the `{goal}` placeholder
-            // so we can interleave a typewriter span at the slot.
-            // Astro auto-escapes the surrounding text on
-            // interpolation — `<nlq-data>` etc. renders verbatim
-            // (no element registration risk).
+            // Split the embed template on the `{goal}` placeholder so
+            // we can interleave a typewriter span at the slot. Astro
+            // auto-escapes the surrounding text on interpolation —
+            // `<nlq-data>` etc. renders verbatim (no element-
+            // registration risk).
             const [embedBefore = "", embedAfter = ""] = ex.embed.template.split("{goal}");
+            // Surface chip — short, scan-friendly identifier so a
+            // visitor flicking past several slides sees the surface
+            // diversity (HTML widget vs CLI vs REST vs MCP tool call)
+            // at a glance.
+            const surfaceLabel =
+              ex.embed.lang === "html"
+                ? "HTML"
+                : ex.embed.lang === "bash"
+                  ? "CLI"
+                  : ex.embed.lang === "rest"
+                    ? "REST"
+                    : "MCP";
+            const surfaceAria =
+              ex.embed.lang === "html"
+                ? "HTML embed"
+                : ex.embed.lang === "bash"
+                  ? "CLI command"
+                  : ex.embed.lang === "rest"
+                    ? "REST API call"
+                    : "MCP tool call";
             return (
-              <div
-                class="card__embed"
-                data-embed-lang={ex.embed.lang}
-                aria-label={ex.embed.lang === "html" ? "HTML embed" : "CLI command"}
-              >
-                <span class="card__embed-label">
-                  {ex.embed.lang === "html" ? "drop on your page →" : "from the CLI →"}
-                </span>
+              <div class="card__embed" data-embed-lang={ex.embed.lang} aria-label={surfaceAria}>
+                <span class="card__embed-label" aria-hidden="true">{surfaceLabel}</span>
                 <pre class="card__embed-pre"><code>{embedBefore}<span class="card__embed-goal" data-input-text data-goal={ex.goal}></span>{embedAfter}</code></pre>
               </div>
             );
@@ -220,12 +236,11 @@ const {
     }
 
     // Typewriter — appends one char at a time to every target in
-    // sync. We pass an ARRAY because each slide has two visible
-    // typewriter slots (the standalone input AND the embed
-    // snippet's `goal=""` attribute), and they need to populate
-    // identically so the visitor sees "the same prompt I'm typing
-    // is what goes into the HTML embed". Returns early if signal
-    // aborts.
+    // sync. Currently each slide has ONE target (the embed snippet's
+    // `{goal}` slot), but we keep the array shape so a future
+    // caller — e.g. a "REST + curl + JS-SDK" tabbed slide that
+    // shows the same goal landing in multiple snippet variants —
+    // can populate them in lockstep without rewriting this loop.
     async function typewrite(
       targets: HTMLElement[],
       text: string,
@@ -290,9 +305,9 @@ const {
         prev.removeAttribute("data-active");
         prev.setAttribute("aria-hidden", "true");
         // Reset the prev slide's story state so re-visits replay
-        // cleanly from `idle`. Clear ALL typewriter targets, not
-        // just the first — both the standalone input and the
-        // embed's `goal=""` slot need to empty out.
+        // cleanly from `idle`. We iterate over all targets rather
+        // than the single embed slot directly, so the multi-target
+        // future case (see typewrite() comment) keeps working.
         setPhase(prev, "idle");
         for (const input of prev.querySelectorAll<HTMLElement>("[data-input-text]")) {
           input.textContent = "";
@@ -508,81 +523,6 @@ const {
     color: #b3ff99;
   }
 
-  /* Typewriter input — neo-brutalist chrome matching the old hero
-     input style. The cursor blinks while phase=typing; after
-     phase=submitted it stops blinking and the return arrow flashes
-     to signal "submitted". */
-  .card__input {
-    display: flex;
-    align-items: center;
-    /* Smaller gap between prompt → text → cursor so the cursor
-       sits visually adjacent to the last typed character. The
-       return arrow is pushed to the right edge via margin-left:
-       auto on `.card__input-return` (sibling), keeping the text +
-       cursor pair tight together at the start of the input. */
-    gap: 6px;
-    padding: 12px 16px;
-    font-family: var(--mono);
-    font-size: clamp(15px, 2vw, 18px);
-    color: var(--fg);
-    background: var(--bg);
-    border: 3px solid var(--border-strong);
-    box-shadow: 4px 4px 0 0 var(--border-strong);
-    transition: border-color 180ms ease, box-shadow 180ms ease;
-    /* Need a defined min-height so an empty input doesn't collapse
-       to zero on `idle` state before the typewriter starts. */
-    min-height: calc(1.2em + 24px);
-  }
-  .card__input-prompt {
-    color: var(--accent);
-    font-weight: 700;
-    flex: none;
-  }
-  .card__input-text {
-    /* Sizes to its content (the typed-so-far slice). Critically
-       NOT `flex: 1` — that would make this span fill the rest of
-       the input, putting the sibling cursor at the far right edge
-       of the input rather than next to the last character. */
-    white-space: pre-wrap;
-    word-break: break-word;
-    min-height: 1.2em;
-  }
-  .card__input-cursor {
-    color: var(--accent);
-    opacity: 0;
-    flex: none;
-    /* Sit visually adjacent to the last typed char. `margin-left`
-       slightly negative so we tuck right against the text without
-       a gap-controlled space. */
-    margin-left: -2px;
-    transition: opacity 120ms ease;
-  }
-  .carousel__slide[data-phase="typing"] .card__input-cursor {
-    opacity: 1;
-    animation: cursor-blink 1s steps(2, jump-none) infinite;
-  }
-  .card__input-return {
-    /* Pushed to the right edge of the input — keeps text + cursor
-       tight together on the left and surfaces the "press enter"
-       affordance on the right (where it'd be on a real form). */
-    margin-left: auto;
-    flex: none;
-    color: var(--fg-muted);
-    font-size: 0.85em;
-    opacity: 0;
-    transform: translateX(-4px);
-    transition: opacity 180ms ease, transform 180ms ease, color 180ms ease;
-  }
-  .carousel__slide[data-phase="submitted"] .card__input,
-  .carousel__slide[data-phase="ignited"] .card__input {
-    border-color: var(--accent);
-    box-shadow: 4px 4px 0 0 var(--accent);
-  }
-  .carousel__slide[data-phase="submitted"] .card__input-return {
-    opacity: 1;
-    transform: translateX(0);
-    color: var(--accent);
-  }
   @keyframes cursor-blink {
     50% { opacity: 0; }
   }
@@ -607,55 +547,92 @@ const {
     box-shadow: 0 0 0 2px var(--accent), 4px 4px 0 0 var(--border-strong);
   }
 
-  /* Embed code block — renders the "drop this on your page" /
-     "from the CLI" snippet with a typewriter span at the {goal}
-     slot. Sits BETWEEN the standalone input and the rendered
-     result so the visual story reads:
-       what you type  →  what you'd embed  →  what renders.
-     Both typewriter targets (input + this) populate in sync via
-     a shared `[data-input-text]` selector. */
+  /* Embed code block — the only typewriter target on each slide.
+     The {goal} slot inside the snippet fills via the typewriter,
+     so visitors read the integration shape AND watch the prompt
+     get inscribed into it in a single animation. Surface label
+     (HTML / CLI / REST / MCP) sits as a chip tucked above the
+     pre block so the surface kind is identifiable at a glance.
+     Border flash on the pre block tracks the story phases —
+     a subtle "lock-in" beat at `submitted` before the result
+     panel ignites. */
   .card__embed {
     display: flex;
+    flex-direction: column;
     align-items: stretch;
-    gap: 10px;
-    flex-wrap: wrap;
+    gap: 0;
   }
   .card__embed-label {
+    /* Chip-style surface tag — sits above the pre block, slightly
+       overlapping its top border so it reads as "this code's
+       language is X". Acid-on-near-black matches the carousel's
+       neo-brutalist palette. */
+    align-self: flex-start;
     font-family: var(--mono);
     font-size: 10px;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: var(--fg-muted);
-    align-self: center;
-    white-space: nowrap;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    padding: 3px 10px;
+    color: var(--bg);
+    background: var(--accent);
+    border: 2px solid var(--accent);
+    /* Tuck flush against the pre's top border. Negative margin
+       overlaps by 2px so the chip's bottom edge becomes the pre's
+       top edge — no double-line. */
+    margin-bottom: -2px;
+    position: relative;
+    z-index: 1;
   }
   .card__embed-pre {
-    flex: 1;
     margin: 0;
-    padding: 10px 14px;
+    padding: 12px 14px;
     font-family: var(--mono);
-    font-size: 13px;
-    line-height: 1.5;
+    font-size: clamp(12px, 1.4vw, 14px);
+    line-height: 1.55;
     color: var(--fg);
     background: var(--bg);
-    border: 2px solid var(--border-strong);
+    border: 3px solid var(--border-strong);
+    box-shadow: 4px 4px 0 0 var(--border-strong);
     overflow-x: auto;
     /* Preserve template whitespace exactly — embed snippets have
-       intentional spacing inside attributes. */
+       intentional spacing inside attributes / multi-line REST
+       templates rely on it. */
     white-space: pre;
+    transition: border-color 180ms ease, box-shadow 180ms ease;
+  }
+  /* Lock-in flash + ignited state — the embed's border swells to
+     accent when the prompt is "committed", mirroring the previous
+     input-row treatment. Carries the visual beat across the
+     story arc without needing a separate input mock. */
+  .carousel__slide[data-phase="submitted"] .card__embed-pre,
+  .carousel__slide[data-phase="ignited"] .card__embed-pre {
+    border-color: var(--accent);
+    box-shadow: 4px 4px 0 0 var(--accent);
   }
   .card__embed-goal {
     /* Highlight the typewriter slot so the eye tracks the live-
        typing portion separately from the static template text.
-       Acid-lime accent matches the standalone input's cursor +
-       "ignited" border, tying the two animations together. */
+       Inline-block lets it grow as chars stream in without
+       reflowing the surrounding snippet. */
     color: var(--accent);
     font-weight: 600;
-    /* Reserve a min-width so the empty `goal=""` slot doesn't
-       collapse the line as the typewriter starts (otherwise the
-       surrounding template text reflows on every char tick). */
     display: inline-block;
+    /* Reserve a min-width so the empty slot doesn't collapse the
+       line on idle/typing-start (otherwise the surrounding
+       template text would jump on every char tick). */
     min-width: 1ch;
+    /* Anchor a `::after` caret that blinks during `phase=typing`. */
+    position: relative;
+  }
+  .carousel__slide[data-phase="typing"] .card__embed-goal::after {
+    /* Typewriter caret pinned at the end of the typed-so-far
+       slice. The caret rides along as chars stream in (because
+       the span sizes to its content). Replaces the standalone
+       input's `▌` — same affordance, different home. */
+    content: "▌";
+    color: var(--accent);
+    margin-left: 1px;
+    animation: cursor-blink 1s steps(2, jump-none) infinite;
   }
 
   /* Caption that bridges embed → rendered result. The arrow points
@@ -812,17 +789,15 @@ const {
   }
 
   /* Reduced motion — keep states meaningful but kill the kinetic
-     parts. Typewriter goes instant (handled in JS), cursor doesn't
-     blink, row-stagger collapses to a fade. */
+     parts. Typewriter goes instant (handled in JS), embed caret
+     doesn't blink, row-stagger collapses to a fade. */
   @media (prefers-reduced-motion: reduce) {
     .carousel__slide,
-    .card__input,
-    .card__result,
-    .card__input-cursor,
-    .card__input-return {
+    .card__embed-pre,
+    .card__result {
       transition: none;
     }
-    .carousel__slide[data-phase="typing"] .card__input-cursor {
+    .carousel__slide[data-phase="typing"] .card__embed-goal::after {
       animation: none;
     }
     .carousel__slide[data-phase="ignited"] .card__table tbody tr {

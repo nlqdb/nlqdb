@@ -19,23 +19,34 @@
 // `category` drives the result block: `read` shows a table,
 // `write` / `schema` / `create` show a status line.
 //
-// `embed` is the "drop-this-in-your-code" snippet shown alongside
-// the typewriter input. The literal `{goal}` placeholder marks
-// where the user-typed goal text lands; the typewriter populates
-// that slot in sync with the standalone input. Surrounding text
-// renders verbatim (Astro auto-escapes HTML special chars). The
-// snippet category split:
-//   read   → `<nlq-data>`  (custom element on the embedding page)
-//   write  → `<nlq-action>` (custom element, click → POST /v1/ask)
-//   schema → `nlq schema`  (admin CLI — embed code is the wrong shape)
-//   create → `nlq new`     (admin CLI — same reason)
-// `lang` is a hint for any future syntax-color pass — not used today
-// but keeps the data future-proof.
+// `embed` is the "drop-this-in-your-code" snippet — now the only
+// typewriter target on each slide. The literal `{goal}` placeholder
+// marks where the user-typed goal text lands; the typewriter
+// populates that slot directly inside the snippet. Surrounding text
+// renders verbatim (Astro auto-escapes HTML special chars).
+//
+// We rotate across FOUR surfaces so visitors see the breadth of
+// integration shapes nlqdb covers — not just "it's a web embed":
+//   html → `<nlq-data>` / `<nlq-action>` (drop-in custom elements,
+//          best for read widgets and click-to-submit forms)
+//   bash → `nlq new` / `nlq schema`     (admin CLI for create +
+//          schema; the right shape when there's no embedding page)
+//   rest → `curl api.nlqdb.com/v1/ask`  (backend-triggered reads +
+//          writes — webhooks, cron, server code)
+//   mcp  → `nlqdb.ask({ db, goal })`    (AI-assistant tool call via
+//          mcp.nlqdb.com — the agent-callable surface)
+//
+// Distribution across the 20 slides: ~9 HTML / 4 CLI / 4 REST / 3 MCP.
+// Picked per-example for the *most evocative* shape — agent-memory
+// reads land on MCP, refund-the-last-order writes land on REST,
+// schema migrations land on CLI, etc.
 
 export type ShowcaseRow = Record<string, string | number | null>;
 
 export type ShowcaseEmbed = {
-  lang: "html" | "bash";
+  // Surface kind — drives the chip label on the slide ("HTML" / "CLI"
+  // / "REST" / "MCP") and aria-label, plus future syntax coloring.
+  lang: "html" | "bash" | "rest" | "mcp";
   template: string;
 };
 
@@ -98,7 +109,10 @@ export const SHOWCASE_EXAMPLES: ShowcaseExample[] = [
     category: "read",
     goal: "what's my busiest hour today?",
     sql: "SELECT EXTRACT(HOUR FROM created_at) AS hour, COUNT(*) AS orders\n  FROM orders\n WHERE created_at > date_trunc('day', now())\n GROUP BY 1\n ORDER BY orders DESC\n LIMIT 1;",
-    embed: { lang: "html", template: '<nlq-data goal="{goal}" db="db_coffee"></nlq-data>' },
+    embed: {
+      lang: "rest",
+      template: 'curl api.nlqdb.com/v1/ask -d \'{"db":"db_coffee","goal":"{goal}"}\'',
+    },
     rows: [{ hour: 11, orders: 47 }],
     summary: "11:00 — 47 orders, 22% of the day's volume",
   },
@@ -144,7 +158,10 @@ export const SHOWCASE_EXAMPLES: ShowcaseExample[] = [
     category: "schema",
     goal: "tag drinks with caffeine over 100mg as high-caffeine",
     sql: "UPDATE drinks\n   SET tags = array_append(tags, 'high-caffeine')\n WHERE caffeine_mg > 100;",
-    embed: { lang: "bash", template: 'nlq schema db_coffee "{goal}"' },
+    embed: {
+      lang: "mcp",
+      template: 'nlqdb.ask({ db: "db_coffee", goal: "{goal}" })',
+    },
     status: "✓ updated 8 of 47 rows",
   },
   // 9 — READ (join — basket-style analysis)
@@ -168,8 +185,8 @@ export const SHOWCASE_EXAMPLES: ShowcaseExample[] = [
     goal: "refund the last order",
     sql: "UPDATE orders\n   SET status = 'refunded', refunded_at = now()\n WHERE id = (SELECT MAX(id) FROM orders)\nRETURNING id, total;",
     embed: {
-      lang: "html",
-      template: '<nlq-action goal="{goal}" db="db_coffee">Refund last order</nlq-action>',
+      lang: "rest",
+      template: 'curl api.nlqdb.com/v1/ask -d \'{"db":"db_coffee","goal":"{goal}"}\'',
     },
     status: "✓ refunded order #4127 · $6.20",
   },
@@ -206,7 +223,10 @@ export const SHOWCASE_EXAMPLES: ShowcaseExample[] = [
     category: "read",
     goal: "orders missing customer info",
     sql: "SELECT id, drink, total, created_at\n  FROM orders\n WHERE customer IS NULL\n    OR customer = ''\n ORDER BY created_at DESC;",
-    embed: { lang: "html", template: '<nlq-data goal="{goal}" db="db_coffee"></nlq-data>' },
+    embed: {
+      lang: "rest",
+      template: 'curl api.nlqdb.com/v1/ask -d \'{"db":"db_coffee","goal":"{goal}"}\'',
+    },
     rows: [
       { id: 4118, drink: "americano", total: 3.8, created_at: "2026-04-27 09:14" },
       { id: 4101, drink: "latte", total: 4.5, created_at: "2026-04-26 18:32" },
@@ -221,8 +241,8 @@ export const SHOWCASE_EXAMPLES: ShowcaseExample[] = [
     goal: "promote everyone with > 100 orders to 'gold' tier",
     sql: "UPDATE customers\n   SET tier = 'gold', updated_at = now()\n WHERE id IN (\n   SELECT customer_id FROM orders\n    GROUP BY customer_id\n   HAVING COUNT(*) > 100\n );",
     embed: {
-      lang: "html",
-      template: '<nlq-action goal="{goal}" db="db_coffee">Promote to gold</nlq-action>',
+      lang: "mcp",
+      template: 'nlqdb.ask({ db: "db_coffee", goal: "{goal}" })',
     },
     status: "✓ updated 23 rows",
   },
@@ -297,7 +317,10 @@ export const SHOWCASE_EXAMPLES: ShowcaseExample[] = [
     category: "read",
     goal: "last 6 turns across all my agent threads",
     sql: "SELECT thread_id, role, content, created_at\n  FROM agent_memory\n WHERE created_at > now() - interval '1 day'\n ORDER BY created_at DESC\n LIMIT 6;",
-    embed: { lang: "html", template: '<nlq-data goal="{goal}" db="db_agents"></nlq-data>' },
+    embed: {
+      lang: "mcp",
+      template: 'nlqdb.ask({ db: "db_agents", goal: "{goal}" })',
+    },
     rows: [
       {
         thread_id: "t-204",
@@ -344,7 +367,10 @@ export const SHOWCASE_EXAMPLES: ShowcaseExample[] = [
     category: "read",
     goal: "5 most-recent contacts by last touch",
     sql: "SELECT name, company, last_touch, status\n  FROM contacts\n ORDER BY last_touch DESC\n LIMIT 5;",
-    embed: { lang: "html", template: '<nlq-data goal="{goal}" db="db_crm"></nlq-data>' },
+    embed: {
+      lang: "rest",
+      template: 'curl api.nlqdb.com/v1/ask -d \'{"db":"db_crm","goal":"{goal}"}\'',
+    },
     rows: [
       { name: "Maya Chen", company: "Vellum Coffee", last_touch: "2026-04-26", status: "warm" },
       {
