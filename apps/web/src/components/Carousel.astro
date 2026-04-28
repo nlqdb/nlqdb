@@ -40,7 +40,7 @@
 // is what actually drives the cadence now (`storySleepMs` adjusts
 // the hold-after-ignite portion specifically).
 
-import type { ShowcaseExample } from "../data/showcase-examples";
+import type { ShowcaseEmbed, ShowcaseExample } from "../data/showcase-examples";
 
 type Props = {
   examples: ShowcaseExample[];
@@ -58,6 +58,24 @@ const {
   storyHoldMs = 2600,
   minHeight = "clamp(380px, 60vh, 560px)",
 } = Astro.props as Props;
+
+// Surface chip label + aria description per `embed.lang`. Typed as
+// `Record<Lang, string>` (not a partial / `Record<string, ...>`) so
+// TypeScript flags any new union member that doesn't have an entry
+// in BOTH maps — adding a `"graphql"` lang later won't silently fall
+// through a chain of ternaries.
+const SURFACE_LABEL: Record<ShowcaseEmbed["lang"], string> = {
+  html: "HTML",
+  bash: "CLI",
+  rest: "REST",
+  mcp: "MCP",
+};
+const SURFACE_ARIA: Record<ShowcaseEmbed["lang"], string> = {
+  html: "HTML embed",
+  bash: "CLI command",
+  rest: "REST API call",
+  mcp: "MCP tool call",
+};
 ---
 <section class="carousel" aria-roledescription="carousel" aria-label="What you can do with nlqdb">
   <div class="carousel__frame" data-carousel data-story-hold-ms={storyHoldMs}>
@@ -85,29 +103,13 @@ const {
             // `<nlq-data>` etc. renders verbatim (no element-
             // registration risk).
             const [embedBefore = "", embedAfter = ""] = ex.embed.template.split("{goal}");
-            // Surface chip — short, scan-friendly identifier so a
-            // visitor flicking past several slides sees the surface
-            // diversity (HTML widget vs CLI vs REST vs MCP tool call)
-            // at a glance.
-            const surfaceLabel =
-              ex.embed.lang === "html"
-                ? "HTML"
-                : ex.embed.lang === "bash"
-                  ? "CLI"
-                  : ex.embed.lang === "rest"
-                    ? "REST"
-                    : "MCP";
-            const surfaceAria =
-              ex.embed.lang === "html"
-                ? "HTML embed"
-                : ex.embed.lang === "bash"
-                  ? "CLI command"
-                  : ex.embed.lang === "rest"
-                    ? "REST API call"
-                    : "MCP tool call";
             return (
-              <div class="card__embed" data-embed-lang={ex.embed.lang} aria-label={surfaceAria}>
-                <span class="card__embed-label" aria-hidden="true">{surfaceLabel}</span>
+              <div
+                class="card__embed"
+                data-embed-lang={ex.embed.lang}
+                aria-label={SURFACE_ARIA[ex.embed.lang]}
+              >
+                <span class="card__embed-label" aria-hidden="true">{SURFACE_LABEL[ex.embed.lang]}</span>
                 <pre class="card__embed-pre"><code>{embedBefore}<span class="card__embed-goal" data-input-text data-goal={ex.goal}></span>{embedAfter}</code></pre>
               </div>
             );
