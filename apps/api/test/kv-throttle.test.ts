@@ -6,11 +6,18 @@
 import { describe, expect, it, vi } from "vitest";
 import { makeKvThrottle } from "../src/lib/kv-throttle.ts";
 
+// Type the `put` stub to take the same 3-arg signature as
+// `KVNamespace.put` — `(key, value, options?)`. Without the third
+// param the inferred `mock.calls` tuple is `[k, v]` and tests that
+// assert on `call[2]` (the `{ expirationTtl }` options bag) fail to
+// compile with TS2493.
+type PutOptions = { expirationTtl?: number };
+
 function fakeKv(initial: Record<string, string> = {}) {
   const store = new Map(Object.entries(initial));
   const kv = {
     get: vi.fn(async (k: string) => store.get(k) ?? null),
-    put: vi.fn(async (k: string, v: string) => {
+    put: vi.fn(async (k: string, v: string, _opts?: PutOptions) => {
       store.set(k, v);
     }),
     delete: vi.fn(async (k: string) => {

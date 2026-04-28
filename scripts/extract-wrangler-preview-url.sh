@@ -72,12 +72,55 @@ fi
 # `-rs` = raw output, slurp all input into one array. `|| true` on
 # the whole pipeline catches the `set -e` trip if find/cat/jq exit
 # non-zero (e.g. jq missing in PATH on a stripped runner).
-URL=$(find "$DIR" -maxdepth 1 -type f -name 'wrangler-output-*.json' \
-        -exec cat {} + 2>/dev/null \
+# Diagnostic dump — without this, "no URL captured" gives no signal
+# as to whether files were written, what their extension is, or what
+# event types wrangler actually emitted. Print enough context to
+# debug from the run log alone (PR #49 spent multiple commits failing
+# silently because we couldn't see what the directory contained).
+echo "::group::wrangler output directory contents"
+ls -la "$DIR" 2>&1 || true
+echo "::endgroup::"
+
+# Match wrangler-output-* regardless of extension. Action source
+# claims `.json`; older docs say ND-JSON; newer wrangler may emit
+# `.ndjson`. Glob on the prefix only so we catch every variant.
+FILES=$(find "$DIR" -maxdepth 1 -type f -name 'wrangler-output-*' 2>/dev/null || true)
+if [ -z "$FILES" ]; then
+  echo "no wrangler-output-* files in $DIR — comment step will fall back to dashboard pointer"
+  exit 0
+fi
+
+# Dump distinct event types so a future "no URL captured" failure
+# shows what wrangler did emit, not just what we hoped for.
+echo "::group::distinct event types in wrangler-output-*"
+# shellcheck disable=SC2086 # FILES is intentionally word-split
+cat $FILES </dev/null 2>/dev/null | jq -rs 'map(.type) | unique' 2>&1 || true
+echo "::endgroup::"
+
+# jq pipeline:
+#   map(select(.type=="version-upload" or .type=="deploy"))
+#                                          accept both — `versions
+#                                          upload` should emit
+#                                          `version-upload` per docs,
+#                                          but wrangler 4.x may have
+#                                          changed and `deploy` is
+#                                          the next-most-likely shape.
+#   (first // {})                          first matching event, or
+#                                          empty object if none.
+#   (.preview_url
+#    // .preview_alias_url
+#    // (.targets[0]? // ""))              prefer preview_url, then
+#                                          alias, then `targets[0]`
+#                                          (the deploy-event field).
+#
+# `-rs` = raw output + slurp. `|| true` traps a non-zero pipeline
+# exit (e.g. jq missing) under `set -e`.
+# shellcheck disable=SC2086 # FILES is intentionally word-split
+URL=$(cat $FILES </dev/null 2>/dev/null \
       | jq -rs '
-          map(select(.type=="version-upload"))
+          map(select(.type=="version-upload" or .type=="deploy"))
           | (first // {})
-          | (.preview_url // .preview_alias_url // "")
+          | (.preview_url // .preview_alias_url // (.targets[0]? // ""))
         ' 2>/dev/null \
       || true)
 
@@ -88,5 +131,5 @@ if [ -n "${URL:-}" ] && [ "$URL" != "null" ]; then
   echo "PREVIEW_URL=$URL" >> "$GITHUB_ENV"
   echo "Captured preview URL: $URL"
 else
-  echo "No version-upload event found in $DIR — comment step will fall back to dashboard pointer"
+  echo "No URL captured — see DEBUG group above for the actual event types wrangler emitted. Comment step will fall back to dashboard pointer."
 fi
