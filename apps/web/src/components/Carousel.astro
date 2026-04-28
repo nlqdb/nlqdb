@@ -1,13 +1,22 @@
 ---
-// Auto-sliding showcase with per-slide story arc (typewriter input
-// → ignite result → hold → advance). Replaces the previous flat
-// cross-fade so each slide tells a self-contained story rather
-// than feeling like a static slideshow.
+// Auto-sliding showcase with per-slide story arc (typewriter prompt
+// inside the embed snippet → ignite result → hold → advance).
+// Replaces the previous flat cross-fade so each slide tells a
+// self-contained "drop this snippet → get this widget" story.
+//
+// One typewriter target per slide: the goal slot inside the embed
+// snippet (HTML / CLI / REST / MCP — varies per example). The
+// previous design also had a standalone input row; that was
+// visually redundant since the snippet itself contains the goal,
+// so it was dropped — visitors now read "this is the integration
+// shape" + "and here's the result", with no duplicate input mock.
 //
 // Story phases (per active slide):
-//   1. typing    — typewriter effect populates the input from
-//                  empty (~30ms/char). Cursor blinks.
-//   2. submitted — brief "click" + return-arrow flash (~250ms).
+//   1. typing    — typewriter effect populates the embed's goal
+//                  slot from empty (~30ms/char). Caret blinks
+//                  inside the snippet at the typing position.
+//   2. submitted — brief "lock-in" flash on the embed's border
+//                  (~250ms) signaling "prompt is committed".
 //   3. ignited   — result panel border swells to accent, table
 //                  rows / status badges stagger-fade in.
 //   4. holding   — settled state, ~2.6s for the eye to land.
@@ -31,7 +40,7 @@
 // is what actually drives the cadence now (`storySleepMs` adjusts
 // the hold-after-ignite portion specifically).
 
-import type { ShowcaseExample } from "../data/showcase-examples";
+import type { ShowcaseEmbed, ShowcaseExample } from "../data/showcase-examples";
 
 type Props = {
   examples: ShowcaseExample[];
@@ -49,6 +58,24 @@ const {
   storyHoldMs = 2600,
   minHeight = "clamp(380px, 60vh, 560px)",
 } = Astro.props as Props;
+
+// Surface chip label + aria description per `embed.lang`. Typed as
+// `Record<Lang, string>` (not a partial / `Record<string, ...>`) so
+// TypeScript flags any new union member that doesn't have an entry
+// in BOTH maps — adding a `"graphql"` lang later won't silently fall
+// through a chain of ternaries.
+const SURFACE_LABEL: Record<ShowcaseEmbed["lang"], string> = {
+  html: "HTML",
+  bash: "CLI",
+  rest: "REST",
+  mcp: "MCP",
+};
+const SURFACE_ARIA: Record<ShowcaseEmbed["lang"], string> = {
+  html: "HTML embed",
+  bash: "CLI command",
+  rest: "REST API call",
+  mcp: "MCP tool call",
+};
 ---
 <section class="carousel" aria-roledescription="carousel" aria-label="What you can do with nlqdb">
   <div class="carousel__frame" data-carousel data-story-hold-ms={storyHoldMs}>
@@ -69,16 +96,28 @@ const {
             <span class="card__cat" data-cat={ex.category}>{ex.category}</span>
           </header>
 
-          <div class="card__input" role="presentation">
-            <span class="card__input-prompt" aria-hidden="true">›</span>
-            <span class="card__input-text" data-input-text data-goal={ex.goal}></span>
-            <span class="card__input-cursor" aria-hidden="true">▌</span>
-            <span class="card__input-return" aria-hidden="true">⏎</span>
-          </div>
+          {(() => {
+            // Split the embed template on the `{goal}` placeholder so
+            // we can interleave a typewriter span at the slot. Astro
+            // auto-escapes the surrounding text on interpolation —
+            // `<nlq-data>` etc. renders verbatim (no element-
+            // registration risk).
+            const [embedBefore = "", embedAfter = ""] = ex.embed.template.split("{goal}");
+            return (
+              <div
+                class="card__embed"
+                data-embed-lang={ex.embed.lang}
+                aria-label={SURFACE_ARIA[ex.embed.lang]}
+              >
+                <span class="card__embed-label" aria-hidden="true">{SURFACE_LABEL[ex.embed.lang]}</span>
+                <pre class="card__embed-pre"><code>{embedBefore}<span class="card__embed-goal" data-input-text data-goal={ex.goal}></span>{embedAfter}</code></pre>
+              </div>
+            );
+          })()}
+
+          <p class="card__renders" aria-hidden="true">renders ↓</p>
 
           <div class="card__result" data-result>
-            <pre class="card__sql"><code>{ex.sql}</code></pre>
-
             {ex.category === "read" && ex.rows && ex.rows.length > 0 ? (
               <div class="card__rows">
                 <table class="card__table">
@@ -105,6 +144,11 @@ const {
             )}
 
             {ex.summary && <p class="card__summary">{ex.summary}</p>}
+
+            <details class="card__sql-details">
+              <summary class="card__sql-summary">SQL the engine ran</summary>
+              <pre class="card__sql"><code>{ex.sql}</code></pre>
+            </details>
           </div>
         </li>
       ))}
@@ -193,23 +237,27 @@ const {
       });
     }
 
-    // Typewriter — appends one char at a time. Returns early if
-    // signal aborts. `target` is the visible-text span, separate
-    // from the cursor element so we don't interleave its blink.
+    // Typewriter — appends one char at a time to every target in
+    // sync. Currently each slide has ONE target (the embed snippet's
+    // `{goal}` slot), but we keep the array shape so a future
+    // caller — e.g. a "REST + curl + JS-SDK" tabbed slide that
+    // shows the same goal landing in multiple snippet variants —
+    // can populate them in lockstep without rewriting this loop.
     async function typewrite(
-      target: HTMLElement,
+      targets: HTMLElement[],
       text: string,
       perCharMs: number,
       signal: AbortSignal,
     ): Promise<void> {
-      target.textContent = "";
+      for (const t of targets) t.textContent = "";
       if (perCharMs <= 0) {
-        target.textContent = text;
+        for (const t of targets) t.textContent = text;
         return;
       }
       for (let i = 0; i < text.length; i++) {
         if (signal.aborted) throw new DOMException("aborted", "AbortError");
-        target.textContent = text.slice(0, i + 1);
+        const slice = text.slice(0, i + 1);
+        for (const t of targets) t.textContent = slice;
         // Slight cadence variation on whitespace — punchier reading.
         const isSpace = text[i] === " ";
         await sleep(isSpace ? Math.max(8, perCharMs / 2) : perCharMs, signal);
@@ -224,12 +272,12 @@ const {
     // pause/cancellation. Caller (the auto-advance loop) catches
     // and exits silently.
     async function playStory(slide: HTMLElement, signal: AbortSignal): Promise<void> {
-      const inputText = slide.querySelector<HTMLElement>("[data-input-text]");
-      const goal = inputText?.dataset["goal"] ?? "";
-      if (!inputText) return;
+      const inputs = Array.from(slide.querySelectorAll<HTMLElement>("[data-input-text]"));
+      const goal = inputs[0]?.dataset["goal"] ?? "";
+      if (inputs.length === 0) return;
 
       setPhase(slide, "typing");
-      await typewrite(inputText, goal, typeMs, signal);
+      await typewrite(inputs, goal, typeMs, signal);
 
       setPhase(slide, "submitted");
       await sleep(submittedMs, signal);
@@ -243,9 +291,11 @@ const {
     // wait. The auto-advance loop will continue from "holding"
     // after the next call.
     function fastForward(slide: HTMLElement) {
-      const inputText = slide.querySelector<HTMLElement>("[data-input-text]");
-      const goal = inputText?.dataset["goal"] ?? "";
-      if (inputText) inputText.textContent = goal;
+      const inputs = slide.querySelectorAll<HTMLElement>("[data-input-text]");
+      for (const input of inputs) {
+        const goal = (input as HTMLElement).dataset["goal"] ?? "";
+        input.textContent = goal;
+      }
       setPhase(slide, "ignited");
     }
 
@@ -257,10 +307,13 @@ const {
         prev.removeAttribute("data-active");
         prev.setAttribute("aria-hidden", "true");
         // Reset the prev slide's story state so re-visits replay
-        // cleanly from `idle`.
+        // cleanly from `idle`. We iterate over all targets rather
+        // than the single embed slot directly, so the multi-target
+        // future case (see typewrite() comment) keeps working.
         setPhase(prev, "idle");
-        const prevInput = prev.querySelector<HTMLElement>("[data-input-text]");
-        if (prevInput) prevInput.textContent = "";
+        for (const input of prev.querySelectorAll<HTMLElement>("[data-input-text]")) {
+          input.textContent = "";
+        }
       }
       if (cur) {
         cur.setAttribute("data-active", "");
@@ -472,81 +525,6 @@ const {
     color: #b3ff99;
   }
 
-  /* Typewriter input — neo-brutalist chrome matching the old hero
-     input style. The cursor blinks while phase=typing; after
-     phase=submitted it stops blinking and the return arrow flashes
-     to signal "submitted". */
-  .card__input {
-    display: flex;
-    align-items: center;
-    /* Smaller gap between prompt → text → cursor so the cursor
-       sits visually adjacent to the last typed character. The
-       return arrow is pushed to the right edge via margin-left:
-       auto on `.card__input-return` (sibling), keeping the text +
-       cursor pair tight together at the start of the input. */
-    gap: 6px;
-    padding: 12px 16px;
-    font-family: var(--mono);
-    font-size: clamp(15px, 2vw, 18px);
-    color: var(--fg);
-    background: var(--bg);
-    border: 3px solid var(--border-strong);
-    box-shadow: 4px 4px 0 0 var(--border-strong);
-    transition: border-color 180ms ease, box-shadow 180ms ease;
-    /* Need a defined min-height so an empty input doesn't collapse
-       to zero on `idle` state before the typewriter starts. */
-    min-height: calc(1.2em + 24px);
-  }
-  .card__input-prompt {
-    color: var(--accent);
-    font-weight: 700;
-    flex: none;
-  }
-  .card__input-text {
-    /* Sizes to its content (the typed-so-far slice). Critically
-       NOT `flex: 1` — that would make this span fill the rest of
-       the input, putting the sibling cursor at the far right edge
-       of the input rather than next to the last character. */
-    white-space: pre-wrap;
-    word-break: break-word;
-    min-height: 1.2em;
-  }
-  .card__input-cursor {
-    color: var(--accent);
-    opacity: 0;
-    flex: none;
-    /* Sit visually adjacent to the last typed char. `margin-left`
-       slightly negative so we tuck right against the text without
-       a gap-controlled space. */
-    margin-left: -2px;
-    transition: opacity 120ms ease;
-  }
-  .carousel__slide[data-phase="typing"] .card__input-cursor {
-    opacity: 1;
-    animation: cursor-blink 1s steps(2, jump-none) infinite;
-  }
-  .card__input-return {
-    /* Pushed to the right edge of the input — keeps text + cursor
-       tight together on the left and surfaces the "press enter"
-       affordance on the right (where it'd be on a real form). */
-    margin-left: auto;
-    flex: none;
-    color: var(--fg-muted);
-    font-size: 0.85em;
-    opacity: 0;
-    transform: translateX(-4px);
-    transition: opacity 180ms ease, transform 180ms ease, color 180ms ease;
-  }
-  .carousel__slide[data-phase="submitted"] .card__input,
-  .carousel__slide[data-phase="ignited"] .card__input {
-    border-color: var(--accent);
-    box-shadow: 4px 4px 0 0 var(--accent);
-  }
-  .carousel__slide[data-phase="submitted"] .card__input-return {
-    opacity: 1;
-    transform: translateX(0);
-    color: var(--accent);
-  }
   @keyframes cursor-blink {
     50% { opacity: 0; }
   }
@@ -571,8 +549,138 @@ const {
     box-shadow: 0 0 0 2px var(--accent), 4px 4px 0 0 var(--border-strong);
   }
 
-  .card__sql {
+  /* Embed code block — the only typewriter target on each slide.
+     The {goal} slot inside the snippet fills via the typewriter,
+     so visitors read the integration shape AND watch the prompt
+     get inscribed into it in a single animation. Surface label
+     (HTML / CLI / REST / MCP) sits as a chip tucked above the
+     pre block so the surface kind is identifiable at a glance.
+     Border flash on the pre block tracks the story phases —
+     a subtle "lock-in" beat at `submitted` before the result
+     panel ignites. */
+  .card__embed {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0;
+  }
+  .card__embed-label {
+    /* Chip-style surface tag — sits above the pre block, slightly
+       overlapping its top border so it reads as "this code's
+       language is X". Acid-on-near-black matches the carousel's
+       neo-brutalist palette. */
+    align-self: flex-start;
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    padding: 3px 10px;
+    color: var(--bg);
+    background: var(--accent);
+    border: 2px solid var(--accent);
+    /* Tuck flush against the pre's top border. Negative margin
+       overlaps by 2px so the chip's bottom edge becomes the pre's
+       top edge — no double-line. */
+    margin-bottom: -2px;
+    position: relative;
+    z-index: 1;
+  }
+  .card__embed-pre {
     margin: 0;
+    padding: 12px 14px;
+    font-family: var(--mono);
+    font-size: clamp(12px, 1.4vw, 14px);
+    line-height: 1.55;
+    color: var(--fg);
+    background: var(--bg);
+    border: 3px solid var(--border-strong);
+    box-shadow: 4px 4px 0 0 var(--border-strong);
+    overflow-x: auto;
+    /* Preserve template whitespace exactly — embed snippets have
+       intentional spacing inside attributes / multi-line REST
+       templates rely on it. */
+    white-space: pre;
+    transition: border-color 180ms ease, box-shadow 180ms ease;
+  }
+  /* Lock-in flash + ignited state — the embed's border swells to
+     accent when the prompt is "committed", mirroring the previous
+     input-row treatment. Carries the visual beat across the
+     story arc without needing a separate input mock. */
+  .carousel__slide[data-phase="submitted"] .card__embed-pre,
+  .carousel__slide[data-phase="ignited"] .card__embed-pre {
+    border-color: var(--accent);
+    box-shadow: 4px 4px 0 0 var(--accent);
+  }
+  .card__embed-goal {
+    /* Highlight the typewriter slot so the eye tracks the live-
+       typing portion separately from the static template text.
+       Inline-block lets it grow as chars stream in without
+       reflowing the surrounding snippet. */
+    color: var(--accent);
+    font-weight: 600;
+    display: inline-block;
+    /* Reserve a min-width so the empty slot doesn't collapse the
+       line on idle/typing-start (otherwise the surrounding
+       template text would jump on every char tick). */
+    min-width: 1ch;
+    /* Anchor a `::after` caret that blinks during `phase=typing`. */
+    position: relative;
+  }
+  .carousel__slide[data-phase="typing"] .card__embed-goal::after {
+    /* Typewriter caret pinned at the end of the typed-so-far
+       slice. The caret rides along as chars stream in (because
+       the span sizes to its content). Replaces the standalone
+       input's `▌` — same affordance, different home. */
+    content: "▌";
+    color: var(--accent);
+    margin-left: 1px;
+    animation: cursor-blink 1s steps(2, jump-none) infinite;
+  }
+
+  /* Caption that bridges embed → rendered result. The arrow points
+     at the result panel below; visible from the start (idle phase
+     too) so the layout reads correctly even before the typewriter
+     fires. */
+  .card__renders {
+    margin: 4px 0 -4px;
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--accent);
+    text-align: center;
+  }
+
+  /* `<details>` for the engine's SQL — collapsed by default so
+     the rendered widget gets the visual emphasis. Open behavior
+     lets curious visitors verify what the engine ran without
+     forcing it on every slide. */
+  .card__sql-details {
+    margin-top: 4px;
+    font-family: var(--mono);
+    font-size: 11px;
+  }
+  .card__sql-summary {
+    cursor: pointer;
+    color: var(--fg-muted);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    list-style: none;
+    padding: 4px 0;
+  }
+  .card__sql-summary::-webkit-details-marker { display: none; }
+  .card__sql-summary::before {
+    content: "▸ ";
+    transition: transform 150ms ease;
+    display: inline-block;
+  }
+  .card__sql-details[open] .card__sql-summary::before {
+    transform: rotate(90deg);
+  }
+  .card__sql-summary:hover { color: var(--fg); }
+
+  .card__sql {
+    margin: 8px 0 0;
     padding: 10px 12px;
     font-family: var(--mono);
     font-size: 13px;
@@ -683,17 +791,15 @@ const {
   }
 
   /* Reduced motion — keep states meaningful but kill the kinetic
-     parts. Typewriter goes instant (handled in JS), cursor doesn't
-     blink, row-stagger collapses to a fade. */
+     parts. Typewriter goes instant (handled in JS), embed caret
+     doesn't blink, row-stagger collapses to a fade. */
   @media (prefers-reduced-motion: reduce) {
     .carousel__slide,
-    .card__input,
-    .card__result,
-    .card__input-cursor,
-    .card__input-return {
+    .card__embed-pre,
+    .card__result {
       transition: none;
     }
-    .carousel__slide[data-phase="typing"] .card__input-cursor {
+    .carousel__slide[data-phase="typing"] .card__embed-goal::after {
       animation: none;
     }
     .carousel__slide[data-phase="ignited"] .card__table tbody tr {
