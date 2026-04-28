@@ -38,6 +38,10 @@ export function truncate(s: string, max: number): string {
 export async function readBodySafe(res: Response, max = 200): Promise<string> {
   try {
     const text = await res.text();
+    // Keep redactPii inside the try — defense in depth. The patterns
+    // are simple and shouldn't throw, but a regex-engine bug or future
+    // pattern edit shouldn't surface as an unrelated "unreadable body"
+    // either; if redactPii throws we still want a sane fallback.
     return truncate(redactPii(text), max);
   } catch {
     return "<unreadable body>";
