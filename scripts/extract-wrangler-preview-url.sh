@@ -97,6 +97,18 @@ echo "::group::distinct event types in wrangler-output-*"
 cat $FILES </dev/null 2>/dev/null | jq -rs 'map(.type) | unique' 2>&1 || true
 echo "::endgroup::"
 
+# Dump the full version-upload event so we can see whether
+# preview_url is populated or undefined. The previous diagnostic
+# round (commit 61255bb's run) confirmed the event type IS
+# `version-upload` but the wrangler output had no "Worker Preview
+# URL:" line — suggesting preview_url is missing in the event.
+# This dump lets us verify and adjust the extraction without
+# another diagnostic round-trip.
+echo "::group::full version-upload event(s)"
+# shellcheck disable=SC2086 # FILES is intentionally word-split
+cat $FILES </dev/null 2>/dev/null | jq -s 'map(select(.type=="version-upload"))' 2>&1 || true
+echo "::endgroup::"
+
 # jq pipeline:
 #   map(select(.type=="version-upload" or .type=="deploy"))
 #                                          accept both — `versions
@@ -115,21 +127,39 @@ echo "::endgroup::"
 #
 # `-rs` = raw output + slurp. `|| true` traps a non-zero pipeline
 # exit (e.g. jq missing) under `set -e`.
+# Try `preview_url` / `preview_alias_url` directly first. When
+# wrangler doesn't emit them (e.g. the worker has never been
+# `wrangler deploy`-ed and its workers.dev subdomain isn't
+# provisioned, so `versions upload` writes a `version-upload` event
+# with `preview_url: null`), construct the well-known URL pattern
+# from `version_id` + `worker_name` + the account subdomain.
+#
+# Format: https://<8-char-version-id-prefix>-<worker_name>.<subdomain>.workers.dev
+# Subdomain comes from $CF_WORKERS_SUBDOMAIN, set in the caller's
+# job env (avoids hardcoding the account subdomain in this script).
 # shellcheck disable=SC2086 # FILES is intentionally word-split
-URL=$(cat $FILES </dev/null 2>/dev/null \
-      | jq -rs '
-          map(select(.type=="version-upload" or .type=="deploy"))
-          | (first // {})
-          | (.preview_url // .preview_alias_url // (.targets[0]? // ""))
-        ' 2>/dev/null \
-      || true)
+EVENT=$(cat $FILES </dev/null 2>/dev/null \
+        | jq -rs 'map(select(.type=="version-upload" or .type=="deploy")) | first // {}' \
+        2>/dev/null || true)
 
-# Guard against empty string AND the literal "null" jq sometimes
-# emits in raw mode when the leaf value is null and `// empty`
-# wasn't applied at the right point in the pipeline.
+URL=$(echo "$EVENT" | jq -r '.preview_url // .preview_alias_url // (.targets[0]? // "")' 2>/dev/null || true)
+
+if [ -z "${URL:-}" ] || [ "$URL" = "null" ]; then
+  # Fall back to constructing the URL from version_id + worker_name.
+  VERSION_ID=$(echo "$EVENT" | jq -r '.version_id // ""' 2>/dev/null || true)
+  WORKER_NAME=$(echo "$EVENT" | jq -r '.worker_name // ""' 2>/dev/null || true)
+  if [ -n "$VERSION_ID" ] && [ "$VERSION_ID" != "null" ] \
+     && [ -n "$WORKER_NAME" ] && [ "$WORKER_NAME" != "null" ] \
+     && [ -n "${CF_WORKERS_SUBDOMAIN:-}" ]; then
+    PREFIX=$(echo "$VERSION_ID" | cut -c1-8)
+    URL="https://${PREFIX}-${WORKER_NAME}.${CF_WORKERS_SUBDOMAIN}.workers.dev"
+    echo "Constructed URL from version_id + worker_name (preview_url was missing in event)"
+  fi
+fi
+
 if [ -n "${URL:-}" ] && [ "$URL" != "null" ]; then
   echo "PREVIEW_URL=$URL" >> "$GITHUB_ENV"
   echo "Captured preview URL: $URL"
 else
-  echo "No URL captured — see DEBUG group above for the actual event types wrangler emitted. Comment step will fall back to dashboard pointer."
+  echo "No URL captured — see DEBUG groups above for the event payload. Comment step will fall back to dashboard pointer."
 fi

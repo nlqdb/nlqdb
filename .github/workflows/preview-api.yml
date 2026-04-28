@@ -85,6 +85,11 @@ jobs:
         if: always() && steps.deploy.outcome == 'success'
         env:
           WRANGLER_OUTPUT_FILE_DIRECTORY: ${{ github.workspace }}/wrangler-out
+          # See preview-web.yml for the rationale — when the worker
+          # hasn't been `wrangler deploy`-ed yet, wrangler omits
+          # `preview_url` from the `version-upload` event and the
+          # script falls back to constructing the URL itself.
+          CF_WORKERS_SUBDOMAIN: omer-hochman
         run: sh "$GITHUB_WORKSPACE/scripts/extract-wrangler-preview-url.sh"
 
       # Sticky comment — looks up an existing preview comment by a

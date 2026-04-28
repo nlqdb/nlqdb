@@ -74,6 +74,13 @@ jobs:
         if: always() && steps.deploy.outcome == 'success'
         env:
           WRANGLER_OUTPUT_FILE_DIRECTORY: ${{ github.workspace }}/wrangler-out
+          # Used by the script to construct the per-version URL when
+          # wrangler's `version-upload` event omits `preview_url`. Happens
+          # when the worker hasn't been `wrangler deploy`-ed yet so the
+          # workers.dev subdomain isn't fully provisioned — confirmed in
+          # the run log of 61255bb (file is written, event is present,
+          # `preview_url` is null).
+          CF_WORKERS_SUBDOMAIN: omer-hochman
         run: sh "$GITHUB_WORKSPACE/scripts/extract-wrangler-preview-url.sh"
 
       # `if: always()` so a deploy failure still updates the sticky
