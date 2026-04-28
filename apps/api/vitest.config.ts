@@ -40,6 +40,7 @@ export default defineConfig(async () => {
               "test/waitlist.test.ts",
               "test/kv-throttle.test.ts",
               "test/anon-adopt.test.ts",
+              "src/db-create/orchestrate.test.ts",
             ],
           },
         },
