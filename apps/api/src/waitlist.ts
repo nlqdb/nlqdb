@@ -81,6 +81,11 @@ export async function joinWaitlist(
     console.warn("waitlist: missing cf-connecting-ip; falling back to shared 'unknown' bucket");
   }
   const throttle = getThrottle(deps.kv);
+  // Missing `cf-connecting-ip` (curl, non-CF preview) collapses every
+  // such caller into the shared `unknown` bucket — intentional. The
+  // 5/min cap then becomes a global ceiling on un-attributed traffic,
+  // which is the conservative posture: rather than open-fail, abuse
+  // from non-CF origins shares one rate budget across the planet.
   const allowed = await throttle.tryConsume(clientIp ?? "unknown");
   if (!allowed) return { status: 429, body: { error: { status: "rate_limited" } } };
 

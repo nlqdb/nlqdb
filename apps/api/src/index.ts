@@ -13,7 +13,7 @@ import { askFnFromDemoFixtures, DEMO_DB_ID } from "./chat/demo-shortcut.ts";
 import { postChatMessage } from "./chat/orchestrate.ts";
 import { makeChatStore } from "./chat/store.ts";
 import { buildDemoResult, makeRateLimiter as makeDemoRateLimiter } from "./demo.ts";
-import { parseGoalDbBody } from "./http.ts";
+import { parseGoalDbBody, parseJsonBody } from "./http.ts";
 import { makeRequireSession, type RequireSessionVariables } from "./middleware.ts";
 import { cryptoProvider, stripe as stripeClient } from "./stripe/client.ts";
 import { processWebhook } from "./stripe/webhook.ts";
@@ -161,30 +161,44 @@ app.post("/v1/ask", requireSession, async (c) => {
     };
 
     if (wantsSse) {
+      // try/finally so the parent span always closes even if a stream
+      // write rejects (browser DC) or the orchestrator throws past the
+      // structured-error envelope. Mirror the JSON-mode error shape:
+      // SSE `data` is `{ error: AskError }` so SSE + JSON consumers
+      // share a parser.
       return streamSSE(c, async (stream) => {
-        const outcome = await orchestrateAsk(deps, orchestrateReq, {
-          onEvent: async (event) => {
-            await stream.writeSSE({ event: event.type, data: serializeEvent(event) });
-          },
-        });
-        if (!outcome.ok) {
-          await stream.writeSSE({ event: "error", data: JSON.stringify(outcome.error) });
-        } else {
-          await stream.writeSSE({ event: "done", data: JSON.stringify({ status: "ok" }) });
+        try {
+          const outcome = await orchestrateAsk(deps, orchestrateReq, {
+            onEvent: async (event) => {
+              await stream.writeSSE({ event: event.type, data: serializeEvent(event) });
+            },
+          });
+          if (!outcome.ok) {
+            await stream.writeSSE({
+              event: "error",
+              data: JSON.stringify({ error: outcome.error }),
+            });
+          } else {
+            await stream.writeSSE({ event: "done", data: JSON.stringify({ status: "ok" }) });
+          }
+        } finally {
+          span.end();
         }
-        span.end();
       });
     }
 
-    const outcome = await orchestrateAsk(deps, orchestrateReq, {
-      skipSummary: wantsJsonOnly,
-    });
-    span.end();
-    if (!outcome.ok) {
-      const status = errorStatus(outcome.error.status);
-      return c.json({ error: outcome.error }, status);
+    try {
+      const outcome = await orchestrateAsk(deps, orchestrateReq, {
+        skipSummary: wantsJsonOnly,
+      });
+      if (!outcome.ok) {
+        const status = errorStatus(outcome.error.status);
+        return c.json({ error: outcome.error }, status);
+      }
+      return c.json(outcome.result);
+    } finally {
+      span.end();
     }
-    return c.json(outcome.result);
   });
 });
 
@@ -217,33 +231,25 @@ app.use(
 // the homepage waitlist form while the chat surface is tabled.
 // Returns 200 for any well-formed email (privacy: never reveal
 // list membership). Per-IP throttle (5/min) defends against abuse.
-// Same permissive CORS posture as /v1/demo/* — body is `{email}`,
-// no cookies, no auth.
-app.use(
-  "/v1/waitlist",
-  cors({
-    origin: (origin) => origin ?? null,
-    credentials: false,
-    allowHeaders: ["Content-Type"],
-    allowMethods: ["POST", "OPTIONS"],
-    maxAge: 86400,
-  }),
-);
+//
+// CORS: tightened to the same allow-list as `/api/auth/*` — the form
+// only ever loads from nlqdb.com / pages.dev previews / localhost dev.
+// (Earlier slice used reflect-any-origin in line with /v1/demo/* but
+// there's no third-party-embed contract here, so the narrower posture
+// keeps random sites from probing the rate-limit / abuse path from
+// the browser.)
+app.use("/v1/waitlist", credentialedCors);
 
 app.post("/v1/waitlist", async (c) => {
-  let body: { email?: unknown } = {};
-  try {
-    body = (await c.req.json()) as { email?: unknown };
-  } catch {
-    return c.json({ error: { status: "invalid_email" } }, 400);
-  }
+  const body = await parseJsonBody<{ email?: unknown }>(c);
+  if (!body.ok) return c.json({ error: { status: "invalid_email" } }, 400);
   const result = await joinWaitlist(
     {
       db: c.env.DB,
       kv: c.env.KV,
       events: buildEventEmitter(c.env.EVENTS_QUEUE),
     },
-    body.email,
+    body.body.email,
     c.req.header("cf-connecting-ip") ?? null,
     "web",
   );
@@ -358,20 +364,25 @@ app.post("/v1/stripe/webhook", async (c) => {
 // load if `nlqdb:anon-token` is in localStorage. Idempotent.
 app.post("/v1/anon/adopt", requireSession, async (c) => {
   const session = c.var.session;
-  let body: unknown;
-  try {
-    body = await c.req.json();
-  } catch {
+  const body = await parseJsonBody<{ token?: unknown }>(c);
+  if (!body.ok || typeof body.body.token !== "string") {
     return c.json({ error: { status: "invalid_body" } }, 400);
   }
-  const token = (body as { token?: unknown })?.token;
-  if (typeof token !== "string") {
-    return c.json({ error: { status: "invalid_body" } }, 400);
-  }
-  const result = await recordAnonAdoption(c.env.DB, session.user.id, token);
+  const result = await recordAnonAdoption(c.env.DB, session.user.id, body.body.token);
   if (!result.ok) {
-    const status = result.reason === "invalid_token" ? 400 : 500;
-    return c.json({ error: { status: result.reason } }, status);
+    // Map internal-only reasons to a stable public string. The
+    // `internal` reason describes a server-side failure mode the
+    // client can't act on; surface it as `adopt_failed` so external
+    // dashboards / docs don't have to track infra detail.
+    const publicStatus =
+      result.reason === "invalid_token"
+        ? "invalid_token"
+        : result.reason === "token_taken"
+          ? "token_taken"
+          : "adopt_failed";
+    const httpStatus =
+      result.reason === "invalid_token" ? 400 : result.reason === "token_taken" ? 409 : 500;
+    return c.json({ error: { status: publicStatus } }, httpStatus);
   }
   return c.json({ adopted: result.adopted });
 });
