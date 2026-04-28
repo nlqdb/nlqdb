@@ -43,8 +43,17 @@ jobs:
       - name: Build site
         run: bun run --cwd apps/web build
 
+      # SLSA L3 build-provenance attestation. The action's
+      # /repos/.../attestations API requires GitHub Pro/Team/Enterprise
+      # OR a public repository — `nlqdb/nlqdb` is private + Free, so
+      # the API rejects with "Feature not available for the nlqdb
+      # organization" and would fail the deploy. `continue-on-error`
+      # keeps the deploy unblocked; once the repo flips public (Phase
+      # 3+ per README) or we're on a paid plan, attestations start
+      # publishing automatically with no further change.
       - name: SLSA build provenance attestation
         uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be # v2.4.0
+        continue-on-error: true
         with:
           subject-path: "apps/web/dist/**"
 
