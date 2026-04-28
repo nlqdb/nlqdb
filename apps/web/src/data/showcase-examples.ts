@@ -19,7 +19,7 @@
 // `category` drives the result block: `read` shows a table,
 // `write` / `schema` / `create` show a status line.
 //
-// `embed` is the "drop-this-in-your-code" snippet — now the only
+// `embed` is the "drop-this-in-your-code" snippet — the only
 // typewriter target on each slide. The literal `{goal}` placeholder
 // marks where the user-typed goal text lands; the typewriter
 // populates that slot directly inside the snippet. Surrounding text
@@ -33,8 +33,19 @@
 //          schema; the right shape when there's no embedding page)
 //   rest → `curl api.nlqdb.com/v1/ask`  (backend-triggered reads +
 //          writes — webhooks, cron, server code)
-//   mcp  → `nlqdb.ask({ db, goal })`    (AI-assistant tool call via
+//   mcp  → `nlqdb.ask({ goal })`        (AI-assistant tool call via
 //          mcp.nlqdb.com — the agent-callable surface)
+//
+// **dbId is omitted from default snippets.** Per DESIGN §3.6.4, the
+// API resolves the target db deterministically per surface — the
+// `pk_live_<dbId>` key for HTML embeds, MRU + prompt for the CLI,
+// the bearer token's account scope for REST/MCP — so requiring an
+// explicit `db=` on every snippet would mislead visitors about
+// what's actually needed. We keep `db="..."` on slides 16-19 only
+// because their non-coffee dbs (db_feedback / db_hackathon /
+// db_agents / db_crm) are part of the pitch — showing breadth
+// across verticals is the point of those four. Everywhere else,
+// the snippet is the shortest valid form.
 //
 // Distribution across the 20 slides: ~9 HTML / 4 CLI / 4 REST / 3 MCP.
 // Picked per-example for the *most evocative* shape — agent-memory
@@ -73,7 +84,7 @@ export const SHOWCASE_EXAMPLES: ShowcaseExample[] = [
     category: "read",
     goal: "today's revenue by drink",
     sql: "SELECT drink, COUNT(*) AS orders, ROUND(SUM(total), 2) AS revenue\n  FROM orders\n WHERE created_at > date_trunc('day', now())\n GROUP BY drink\n ORDER BY revenue DESC;",
-    embed: { lang: "html", template: '<nlq-data goal="{goal}" db="db_coffee"></nlq-data>' },
+    embed: { lang: "html", template: '<nlq-data goal="{goal}"></nlq-data>' },
     rows: [
       { drink: "flat white", orders: 14, revenue: 64.4 },
       { drink: "cortado", orders: 11, revenue: 47.3 },
@@ -100,7 +111,7 @@ export const SHOWCASE_EXAMPLES: ShowcaseExample[] = [
     category: "schema",
     goal: "add an allergens column to the drinks table",
     sql: "ALTER TABLE drinks\n  ADD COLUMN allergens TEXT[] DEFAULT '{}';",
-    embed: { lang: "bash", template: 'nlq schema db_coffee "{goal}"' },
+    embed: { lang: "bash", template: 'nlq schema "{goal}"' },
     status: "✓ column added · 47 rows backfilled to default",
   },
   // 4 — READ
@@ -111,7 +122,7 @@ export const SHOWCASE_EXAMPLES: ShowcaseExample[] = [
     sql: "SELECT EXTRACT(HOUR FROM created_at) AS hour, COUNT(*) AS orders\n  FROM orders\n WHERE created_at > date_trunc('day', now())\n GROUP BY 1\n ORDER BY orders DESC\n LIMIT 1;",
     embed: {
       lang: "rest",
-      template: 'curl api.nlqdb.com/v1/ask -d \'{"db":"db_coffee","goal":"{goal}"}\'',
+      template: 'curl api.nlqdb.com/v1/ask -d \'{"goal":"{goal}"}\'',
     },
     rows: [{ hour: 11, orders: 47 }],
     summary: "11:00 — 47 orders, 22% of the day's volume",
@@ -124,7 +135,7 @@ export const SHOWCASE_EXAMPLES: ShowcaseExample[] = [
     sql: "INSERT INTO orders (customer, drink, total)\n VALUES ('sarah', 'latte', 4.50)\nRETURNING id;",
     embed: {
       lang: "html",
-      template: '<nlq-action goal="{goal}" db="db_coffee">Log order</nlq-action>',
+      template: '<nlq-action goal="{goal}">Log order</nlq-action>',
     },
     status: "✓ inserted order #4128",
   },
@@ -134,7 +145,7 @@ export const SHOWCASE_EXAMPLES: ShowcaseExample[] = [
     category: "read",
     goal: "customers who haven't ordered in 30 days",
     sql: "SELECT name, last_order_at\n  FROM customers c\n WHERE NOT EXISTS (\n   SELECT 1 FROM orders o\n    WHERE o.customer = c.name\n      AND o.created_at > now() - interval '30 days'\n )\n ORDER BY last_order_at;",
-    embed: { lang: "html", template: '<nlq-data goal="{goal}" db="db_coffee"></nlq-data>' },
+    embed: { lang: "html", template: '<nlq-data goal="{goal}"></nlq-data>' },
     rows: [
       { name: "noah", last_order_at: "2026-02-14" },
       { name: "priya", last_order_at: "2026-02-28" },
@@ -160,7 +171,7 @@ export const SHOWCASE_EXAMPLES: ShowcaseExample[] = [
     sql: "UPDATE drinks\n   SET tags = array_append(tags, 'high-caffeine')\n WHERE caffeine_mg > 100;",
     embed: {
       lang: "mcp",
-      template: 'nlqdb.ask({ db: "db_coffee", goal: "{goal}" })',
+      template: 'nlqdb.ask({ goal: "{goal}" })',
     },
     status: "✓ updated 8 of 47 rows",
   },
@@ -170,7 +181,7 @@ export const SHOWCASE_EXAMPLES: ShowcaseExample[] = [
     category: "read",
     goal: "drinks ordered together with cake",
     sql: "SELECT drink, COUNT(*) AS together\n  FROM orders o\n  JOIN order_items i ON i.order_id = o.id\n WHERE i.item = 'cake'\n GROUP BY drink\n ORDER BY together DESC\n LIMIT 4;",
-    embed: { lang: "html", template: '<nlq-data goal="{goal}" db="db_coffee"></nlq-data>' },
+    embed: { lang: "html", template: '<nlq-data goal="{goal}"></nlq-data>' },
     rows: [
       { drink: "latte", together: 87 },
       { drink: "espresso", together: 62 },
@@ -186,7 +197,7 @@ export const SHOWCASE_EXAMPLES: ShowcaseExample[] = [
     sql: "UPDATE orders\n   SET status = 'refunded', refunded_at = now()\n WHERE id = (SELECT MAX(id) FROM orders)\nRETURNING id, total;",
     embed: {
       lang: "rest",
-      template: 'curl api.nlqdb.com/v1/ask -d \'{"db":"db_coffee","goal":"{goal}"}\'',
+      template: 'curl api.nlqdb.com/v1/ask -d \'{"goal":"{goal}"}\'',
     },
     status: "✓ refunded order #4127 · $6.20",
   },
@@ -196,7 +207,7 @@ export const SHOWCASE_EXAMPLES: ShowcaseExample[] = [
     category: "read",
     goal: "average order value by hour today",
     sql: "SELECT EXTRACT(HOUR FROM created_at) AS hour,\n       ROUND(AVG(total), 2) AS avg_order\n  FROM orders\n WHERE created_at > date_trunc('day', now())\n GROUP BY 1\n ORDER BY 1;",
-    embed: { lang: "html", template: '<nlq-data goal="{goal}" db="db_coffee"></nlq-data>' },
+    embed: { lang: "html", template: '<nlq-data goal="{goal}"></nlq-data>' },
     rows: [
       { hour: 7, avg_order: 4.1 },
       { hour: 8, avg_order: 4.6 },
@@ -213,7 +224,7 @@ export const SHOWCASE_EXAMPLES: ShowcaseExample[] = [
     category: "schema",
     goal: "add a birthday field to customers",
     sql: "ALTER TABLE customers\n  ADD COLUMN birthday DATE;",
-    embed: { lang: "bash", template: 'nlq schema db_coffee "{goal}"' },
+    embed: { lang: "bash", template: 'nlq schema "{goal}"' },
     status: "✓ column added",
     summary: "1,247 rows · default NULL · backfill via /v1/ask later",
   },
@@ -225,7 +236,7 @@ export const SHOWCASE_EXAMPLES: ShowcaseExample[] = [
     sql: "SELECT id, drink, total, created_at\n  FROM orders\n WHERE customer IS NULL\n    OR customer = ''\n ORDER BY created_at DESC;",
     embed: {
       lang: "rest",
-      template: 'curl api.nlqdb.com/v1/ask -d \'{"db":"db_coffee","goal":"{goal}"}\'',
+      template: 'curl api.nlqdb.com/v1/ask -d \'{"goal":"{goal}"}\'',
     },
     rows: [
       { id: 4118, drink: "americano", total: 3.8, created_at: "2026-04-27 09:14" },
@@ -242,7 +253,7 @@ export const SHOWCASE_EXAMPLES: ShowcaseExample[] = [
     sql: "UPDATE customers\n   SET tier = 'gold', updated_at = now()\n WHERE id IN (\n   SELECT customer_id FROM orders\n    GROUP BY customer_id\n   HAVING COUNT(*) > 100\n );",
     embed: {
       lang: "mcp",
-      template: 'nlqdb.ask({ db: "db_coffee", goal: "{goal}" })',
+      template: 'nlqdb.ask({ goal: "{goal}" })',
     },
     status: "✓ updated 23 rows",
   },
@@ -252,7 +263,7 @@ export const SHOWCASE_EXAMPLES: ShowcaseExample[] = [
     category: "read",
     goal: "5 most-ordered drinks this month",
     sql: "SELECT drink, COUNT(*) AS orders\n  FROM orders\n WHERE created_at > date_trunc('month', now())\n GROUP BY drink\n ORDER BY orders DESC\n LIMIT 5;",
-    embed: { lang: "html", template: '<nlq-data goal="{goal}" db="db_coffee"></nlq-data>' },
+    embed: { lang: "html", template: '<nlq-data goal="{goal}"></nlq-data>' },
     rows: [
       { drink: "flat white", orders: 412 },
       { drink: "americano", orders: 298 },
@@ -390,7 +401,7 @@ export const SHOWCASE_EXAMPLES: ShowcaseExample[] = [
     category: "read",
     goal: "orders over $10 from last week",
     sql: "SELECT created_at, customer, drink, total\n  FROM orders\n WHERE total > 10\n   AND created_at BETWEEN now() - interval '7 days' AND now()\n ORDER BY total DESC;",
-    embed: { lang: "html", template: '<nlq-data goal="{goal}" db="db_coffee"></nlq-data>' },
+    embed: { lang: "html", template: '<nlq-data goal="{goal}"></nlq-data>' },
     rows: [
       { created_at: "2026-04-23", customer: "ben", drink: "drip x4", total: 12.4 },
       { created_at: "2026-04-22", customer: "lin", drink: "latte x3 + scone", total: 18.2 },

@@ -721,3 +721,89 @@ Idempotent. Pushes a fresh deployment within ~2s. Note: as of
 domains attached — `nlqdb.com` no longer points at it. This script
 still works to update the `*.pages.dev` URL of the project itself,
 useful if you want to keep a stand-by holding page available.
+
+---
+
+## 9. Anonymous-db lifecycle (Phase 1+)
+
+Lands with the hosted db.create slice ([`IMPLEMENTATION.md §4`](./IMPLEMENTATION.md),
+[`DESIGN.md §3.6`](./DESIGN.md)). Capacity reasoning and source
+citations: [`docs/research-receipts.md §9`](./docs/research-receipts.md).
+
+### 9.1 Capacity math
+
+Neon Free is **0.5 GB total per project**, scale-to-zero. Phase 1
+puts every db on a single shared Neon branch as a Postgres schema.
+A typical anonymous schema with a few tables and modest data sits
+in the **100-500 KB range**. That gives a ceiling of roughly
+**1,000-5,000 anonymous dbs before pressure** — not negligible at
+any meaningful traction. The cost ladder in [`README.md`](./README.md)
+gates the next upgrade ($19/mo Neon Launch) on "Neon DB exceeds
+0.5 GB or needs no-pause"; the policy below is designed to use
+that gate, not blow through it.
+
+### 9.2 Policy
+
+| Class | Retention | Per-db size cap | Notes |
+|---|---|---|---|
+| **Adopted** (signed-in user) | Forever | None on Free; tier raises it on Hobby+ | Adoption = explicit user intent → keep |
+| **Anonymous** (no sign-in) | 90 days from most-recent query | **10 MB hard cap** — writes that would exceed return `db_full` | TTL counts from last query, not creation, so an active anonymous user keeps their db |
+
+### 9.3 Daily sweep job
+
+Runs as a Cloudflare Workers Cron Trigger
+(`apps/api/wrangler.toml [triggers] crons = ["0 4 * * *"]` — 04:00
+UTC daily, off-peak). Source: `apps/api/src/db-sweep/sweep.ts`
+(lands with the db.create slice).
+
+```
+1. SELECT all anonymous dbs (D1: WHERE adopted_at IS NULL).
+2. Drop any anonymous db where last_queried_at < now() - 90 days,
+   regardless of size. Order: oldest first; per-iteration COMMIT.
+3. After step 2, sum bytes across remaining anonymous dbs.
+   If SUM > 300 MB → drop the OLDEST anonymous db; repeat until
+   total ≤ 300 MB.
+4. Emit one event per drop: `db.swept` with reason ∈
+   { "ttl_expired", "pressure_sweep" } (LogSnag + OTel span).
+```
+
+The 300 MB pressure threshold leaves **200 MB headroom** on the
+500 MB Neon Free cap for adopted dbs and Postgres system tables.
+
+### 9.4 Alert thresholds
+
+| Total anonymous-db bytes | Action |
+|---|---|
+| < 200 MB | green; daily sweep does its job |
+| ≥ 200 MB | **warn** — Slack post `#nlqdb-ops`, no automatic action |
+| ≥ 280 MB | **urgent** — pager ping + dashboard banner; pressure-sweep is imminent |
+| ≥ 300 MB | sweep runs automatically; emits `db.pressure_sweep_started` |
+| ≥ 450 MB total project (anonymous + adopted) | escalate to Neon Launch ($19/mo); follow [`README.md` cost ladder](./README.md) |
+
+### 9.5 Manual sweep (for ops, not automation)
+
+```bash
+# Dry-run: list what would be swept, drop nothing.
+wrangler tail nlqdb-api --search "db_sweep"
+curl -X POST "$API/v1/admin/db-sweep" -H "$INTERNAL_AUTH" -d '{"dry_run":true}'
+
+# Force a sweep outside the 04:00 window.
+curl -X POST "$API/v1/admin/db-sweep" -H "$INTERNAL_AUTH" -d '{}'
+```
+
+Admin endpoint requires `INTERNAL_JWT_SECRET`-signed bearer; not
+exposed publicly. CLI `nlq admin db-sweep --dry-run` lands in
+Phase 2 with the rest of the admin surface.
+
+### 9.6 What sweeps NEVER touch
+
+- Adopted dbs (signed-in). The sweep query explicitly filters
+  `WHERE adopted_at IS NULL`. Any future migration that touches
+  this column must update the sweep query in lockstep; covered by
+  unit test `sweep-skips-adopted.test.ts`.
+- Anonymous dbs whose last query was within the last 90 days, even
+  if total pressure is high — the pressure-sweep step drops only
+  the *oldest* dbs first.
+- The `databases` D1 row for a swept db. We mark `swept_at` on the
+  row but keep it for ~30 days for forensic queries (then a separate
+  monthly cleanup drops the D1 row + its KV plan-cache entries).
