@@ -1,7 +1,9 @@
 ---
 import Carousel from "../components/Carousel.astro";
+import CodePanel from "../components/CodePanel.astro";
 import Footer from "../components/Footer.astro";
 import Hero from "../components/Hero.astro";
+import ManifestoExcerpt from "../components/ManifestoExcerpt.astro";
 import Replaces from "../components/Replaces.astro";
 import Topnav from "../components/Topnav.astro";
 import Waitlist from "../components/Waitlist.astro";
@@ -16,10 +18,18 @@ import Base from "../layouts/Base.astro";
     <Topnav />
 
     <main>
+      {/* Narrative order: positioning → capability showcase → primary CTA →
+          technical proof → competitive framing → philosophy. PR #49's
+          pivot dropped CodePanel + ManifestoExcerpt as part of the
+          coming-soon simplification; restored here because they back
+          the carousel's claims with real integration code (CodePanel)
+          and product philosophy (ManifestoExcerpt). */}
       <Hero />
       <Carousel examples={SHOWCASE_EXAMPLES} />
       <Waitlist />
+      <CodePanel />
       <Replaces />
+      <ManifestoExcerpt />
     </main>
 
     <Footer />
