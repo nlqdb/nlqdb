@@ -141,3 +141,109 @@ mandatory. Core values are cited by name from `docs/design.md` §0.
     (same intent, different timestamp / nonce / client clock).
   - Client retries without keys — dangerous on any critical path; banned
     by review.
+
+## GLOBAL-006 — Plans content-addressed by `(schema_hash, query_hash)`
+
+- **Decision:** A query plan's cache key is the pair
+  `(schema_hash, query_hash)`. There is no time-based invalidation, no
+  "cache version," no manual flush. If the inputs match, the plan
+  matches.
+- **Core value:** Fast, Simple, Bullet-proof
+- **Why:** Cache invalidation is the second-hardest problem in
+  computer science; we side-step it by making every cache key
+  derive entirely from the inputs that determine the output. Combined
+  with `GLOBAL-004`, this guarantees plans are stable under benign
+  schema growth.
+- **Consequence in code:** `plan-cache` writes are keyed by
+  `(schema_hash, query_hash)`; reads are exact-match only. Anything
+  that wants to "force a new plan" must change `query_hash` (e.g., a
+  pin or a hint), not invalidate the cache. LLM-generated plans are
+  the only writers; humans pinning a plan write to the same store.
+- **Alternatives rejected:**
+  - TTL-based caches — wastes the 99% case where the inputs are
+    unchanged, plus introduces flakiness around the boundary.
+  - Versioned plans tied to schema versions — would force
+    `GLOBAL-004` to branch.
+
+## GLOBAL-007 — No login wall before first value
+
+- **Decision:** A first-time visitor — on the web, in the CLI, or via an
+  MCP-aware client — gets to a working answer before being asked to sign
+  in. Anonymous mode is the default first-touch experience.
+- **Core value:** Free, Effortless UX, Goal-first
+- **Why:** Login walls kill the activation funnel. Our pitch is "a
+  database you talk to" — not "create an account, verify email, choose
+  a region, then talk." We can ask for the email after the user has
+  already had a `wow`.
+- **Consequence in code:** `apps/web` boots into a usable demo without
+  a session. CLI's first `nlq ask` accepts an anonymous device, which
+  later attaches to a Better Auth identity on first sign-in. The API
+  has an explicit anonymous-mode rate-limit tier.
+- **Alternatives rejected:**
+  - Required signup with "free trial" framing — measurably worse for
+    activation.
+  - Auth-deferred-but-persistent — same effect as a wall, just delayed
+    by one screen.
+
+## GLOBAL-008 — One Better Auth identity across all surfaces
+
+- **Decision:** A user has exactly one identity, managed by Better Auth.
+  CLI, MCP, web, and SDK all authenticate through that identity (via
+  bearer / cookie / device-flow). No surface owns its own auth store.
+- **Core value:** Seamless auth, Simple, Bullet-proof
+- **Why:** Multi-surface products fragment when each surface owns its
+  own identity model — a user signs in to web but the CLI doesn't know,
+  or the MCP key isn't tied to the same human. One identity model means
+  one revocation surface (`GLOBAL-018`), one rate-limit surface, one
+  audit log.
+- **Consequence in code:** `packages/auth-internal` is the only thing
+  that talks to Better Auth. Every other surface consumes its
+  primitives. CLI's device-flow auth and MCP's host-scoped keys both
+  resolve to a single `user_id`.
+- **Alternatives rejected:**
+  - Per-surface identity systems — fragmented audit trails, fragmented
+    revocation, no cross-surface session continuity.
+  - Bring-your-own-IdP only — punts the problem to operators; bad
+    default for the free tier.
+
+## GLOBAL-009 — Tokens refresh silently — never surface a 401
+
+- **Decision:** When a token expires, the SDK refreshes it transparently
+  before any user-visible failure. A 401 reaching the surface (web
+  banner, CLI error, MCP tool error) is a bug, not a normal flow.
+- **Core value:** Seamless auth, Effortless UX, Bullet-proof
+- **Why:** Auth failures interrupt the user's actual goal. If the
+  refresh path is reliable, the user never has to think about tokens.
+  A user-visible 401 is a regression — file a bug.
+- **Consequence in code:** `packages/sdk` wraps fetch with a
+  refresh-on-401 retry that uses the refresh token. CLI and MCP rely on
+  this same logic; they don't implement their own refresh. The web
+  app's `useSession` hook auto-refreshes ahead of expiry where the
+  expiry is observable.
+- **Alternatives rejected:**
+  - Force re-login on expiry — kills long-running CLI / agent sessions.
+  - Aggressive proactive refresh on every call — wastes the auth
+    server's budget.
+
+## GLOBAL-010 — Credentials live in the OS keychain; `NLQDB_API_KEY` is the CI escape hatch
+
+- **Decision:** Long-lived credentials (CLI tokens, MCP host keys) live
+  in the OS keychain (Keychain on macOS, libsecret on Linux,
+  Credential Manager on Windows). The only env-var path is
+  `NLQDB_API_KEY`, used in CI / containerized environments where a
+  keychain is unavailable.
+- **Core value:** Seamless auth, Bullet-proof
+- **Why:** Keychain storage means credentials survive reboots, are
+  encrypted at rest by the OS, and don't leak into shell history /
+  ps output / env-dump screenshots. The single env-var fallback is
+  the explicit, auditable escape hatch — it doesn't quietly become
+  the default.
+- **Consequence in code:** `cli/` and `packages/mcp` use a small
+  keychain abstraction; tokens are written there on first sign-in.
+  When the keychain is missing (CI, Docker), `NLQDB_API_KEY` is read
+  with a one-line message that names the env-var explicitly. No
+  config-file fallback, no `~/.nlqdb/credentials.json`.
+- **Alternatives rejected:**
+  - Plain config-file storage in `~/.nlqdb/` — leaks via cloud
+    backups / dotfile syncs.
+  - Required env vars — bad UX on a developer laptop.
