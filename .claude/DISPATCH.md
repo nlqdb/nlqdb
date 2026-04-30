@@ -9,9 +9,40 @@ The dispatch model: **one agent per `SKILL.md`**. They never touch the
 same file. Merges are trivial. If one agent fails (streaming timeout,
 partial response), retry only that one — the others are unaffected.
 
+## Section index (so you can dispatch by number)
+
+| # | Skill | Status |
+|---|---|---|
+| 1 | `auth` | implemented |
+| 2 | `api-keys` | implemented |
+| 3 | `ask-pipeline` | implemented |
+| 4 | `plan-cache` | implemented |
+| 5 | `llm-router` | implemented |
+| 6 | `sql-allowlist` | implemented |
+| 7 | `db-adapter` | implemented |
+| 8 | `schema-widening` | implemented |
+| 9 | `idempotency` | implemented |
+| 10 | `observability` | implemented |
+| 11 | `stripe-billing` | implemented |
+| 12 | `events-pipeline` | implemented |
+| 13 | `rate-limit` | implemented |
+| 14 | `cli` | implemented |
+| 15 | `elements` | implemented |
+| 16 | `sdk` | implemented |
+| 17 | `mcp-server` | implemented |
+| 18 | `web-app` | implemented |
+| 19 | `anonymous-mode` | partial |
+| 20 | `engine-migration` | planned, Phase 3 |
+| 21 | `multi-engine-adapter` | planned, Phase 3 |
+
+To dispatch cold agent N, copy the section starting at `## N. SKILL · …`
+along with the **shared preamble** (just below) into a fresh agent.
+
+---
+
 ## How to use this file
 
-1. Pick a section below (e.g. `## SKILL · auth`).
+1. Pick a section below (e.g. `## 1. SKILL · auth`).
 2. Open a fresh Claude Code session (or `Agent` subagent) on a clean
    working tree synced to the foundation PR's merge commit.
 3. Paste the prompt as the first user message.
@@ -87,7 +118,7 @@ Workflow:
 
 ---
 
-## SKILL · auth
+## 1. SKILL · auth
 
 **Branch:** `claude/wave2-skill-auth`
 **File:** `.claude/skills/auth/SKILL.md`
@@ -110,7 +141,7 @@ block (or, if it's already in `decisions.md`, a copy of the relevant
 
 ---
 
-## SKILL · api-keys
+## 2. SKILL · api-keys
 
 **Branch:** `claude/wave2-skill-api-keys`
 **File:** `.claude/skills/api-keys/SKILL.md`
@@ -127,7 +158,7 @@ storage, rotation, revocation propagation, env-var fallback.
 
 ---
 
-## SKILL · ask-pipeline
+## 3. SKILL · ask-pipeline
 
 **Branch:** `claude/wave2-skill-ask-pipeline`
 **File:** `.claude/skills/ask-pipeline/SKILL.md`
@@ -146,7 +177,7 @@ results, streaming semantics, anonymous-mode rate-limit tier.
 
 ---
 
-## SKILL · plan-cache
+## 4. SKILL · plan-cache
 
 **Branch:** `claude/wave2-skill-plan-cache`
 **File:** `.claude/skills/plan-cache/SKILL.md`
@@ -163,7 +194,7 @@ absence), pinning, cache-warming, observability counters.
 
 ---
 
-## SKILL · llm-router
+## 5. SKILL · llm-router
 
 **Branch:** `claude/wave2-skill-llm-router`
 **File:** `.claude/skills/llm-router/SKILL.md`
@@ -181,7 +212,7 @@ their version pinning, per-user credit accounting, cost ceilings.
 
 ---
 
-## SKILL · sql-allowlist
+## 6. SKILL · sql-allowlist
 
 **Branch:** `claude/wave2-skill-sql-allowlist`
 **File:** `.claude/skills/sql-allowlist/SKILL.md`
@@ -200,7 +231,7 @@ how parameters are extracted, how multi-statement queries are rejected.
 
 ---
 
-## SKILL · db-adapter
+## 7. SKILL · db-adapter
 
 **Branch:** `claude/wave2-skill-db-adapter`
 **File:** `.claude/skills/db-adapter/SKILL.md`
@@ -217,7 +248,7 @@ specifics, connection pooling, transaction semantics.
 
 ---
 
-## SKILL · schema-widening
+## 8. SKILL · schema-widening
 
 **Branch:** `claude/wave2-skill-schema-widening`
 **File:** `.claude/skills/schema-widening/SKILL.md`
@@ -234,7 +265,7 @@ are handled, replanning policy.
 
 ---
 
-## SKILL · idempotency
+## 9. SKILL · idempotency
 
 **Branch:** `claude/wave2-skill-idempotency`
 **File:** `.claude/skills/idempotency/SKILL.md`
@@ -250,7 +281,7 @@ format, request-body hashing, what "byte-exact response" means.
 
 ---
 
-## SKILL · observability
+## 10. SKILL · observability
 
 **Branch:** `claude/wave2-skill-observability`
 **File:** `.claude/skills/observability/SKILL.md`
@@ -266,7 +297,7 @@ cardinality rules, where exporters write to, sampling.
 
 ---
 
-## SKILL · stripe-billing
+## 11. SKILL · stripe-billing
 
 **Branch:** `claude/wave2-skill-stripe-billing`
 **File:** `.claude/skills/stripe-billing/SKILL.md`
@@ -283,7 +314,7 @@ subscription state machine, R2 archival format, dunning behaviour.
 
 ---
 
-## SKILL · events-pipeline
+## 12. SKILL · events-pipeline
 
 **Branch:** `claude/wave2-skill-events-pipeline`
 **File:** `.claude/skills/events-pipeline/SKILL.md`
@@ -301,7 +332,7 @@ behaviour, fire-and-forget guarantee.
 
 ---
 
-## SKILL · rate-limit
+## 13. SKILL · rate-limit
 
 **Branch:** `claude/wave2-skill-rate-limit`
 **File:** `.claude/skills/rate-limit/SKILL.md`
@@ -318,7 +349,7 @@ returned, behaviour at the boundary.
 
 ---
 
-## SKILL · cli
+## 14. SKILL · cli
 
 **Branch:** `claude/wave2-skill-cli`
 **File:** `.claude/skills/cli/SKILL.md`
@@ -336,7 +367,7 @@ Extract: verb surface (must include `ask`, `run`, `login`, `mcp install`,
 
 ---
 
-## SKILL · elements
+## 15. SKILL · elements
 
 **Branch:** `claude/wave2-skill-elements`
 **File:** `.claude/skills/elements/SKILL.md`
@@ -353,7 +384,7 @@ SSR posture, framework-free guarantee.
 
 ---
 
-## SKILL · sdk
+## 16. SKILL · sdk
 
 **Branch:** `claude/wave2-skill-sdk`
 **File:** `.claude/skills/sdk/SKILL.md`
@@ -372,7 +403,7 @@ errors, retry+refresh logic, telemetry hooks, bundle-size budget.
 
 ---
 
-## SKILL · mcp-server
+## 17. SKILL · mcp-server
 
 **Branch:** `claude/wave2-skill-mcp-server`
 **File:** `.claude/skills/mcp-server/SKILL.md`
@@ -390,7 +421,7 @@ shape per host, auth handoff to packages/auth-internal.
 
 ---
 
-## SKILL · web-app
+## 18. SKILL · web-app
 
 **Branch:** `claude/wave2-skill-web-app`
 **File:** `.claude/skills/web-app/SKILL.md`
@@ -408,7 +439,7 @@ trace rendering, error-banner pattern.
 
 ---
 
-## SKILL · anonymous-mode
+## 19. SKILL · anonymous-mode
 
 **Branch:** `claude/wave2-skill-anonymous-mode`
 **File:** `.claude/skills/anonymous-mode/SKILL.md`
@@ -426,7 +457,7 @@ continuity.
 
 ---
 
-## SKILL · engine-migration (planned, Phase 3)
+## 20. SKILL · engine-migration (planned, Phase 3)
 
 **Branch:** `claude/wave2-skill-engine-migration`
 **File:** `.claude/skills/engine-migration/SKILL.md`
@@ -441,7 +472,7 @@ section with everything that needs answering before Phase 3 starts.
 
 ---
 
-## SKILL · multi-engine-adapter (planned, Phase 3)
+## 21. SKILL · multi-engine-adapter (planned, Phase 3)
 
 **Branch:** `claude/wave2-skill-multi-engine-adapter`
 **File:** `.claude/skills/multi-engine-adapter/SKILL.md`
