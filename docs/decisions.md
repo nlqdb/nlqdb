@@ -347,3 +347,109 @@ mandatory. Core values are cited by name from `docs/design.md` §0.
   - LLM-only API — fine for demos, fatal for production users.
   - Hide raw access behind enterprise tier — blocks the OSS
     contributor path and contradicts `GLOBAL-019`.
+
+## GLOBAL-016 — Reach for small mature packages before DIY; hard-pass on RC on the critical path
+
+- **Decision:** Before writing a primitive (auth, idempotency store,
+  retry logic, queue, OTel exporter), check for a small, mature,
+  actively-maintained package. If one exists, adopt it. Reject any
+  RC / alpha / pre-1.0 dependency on a critical path unless the
+  alternative is writing it ourselves.
+- **Core value:** Bullet-proof, Simple, Free
+- **Why:** Small, focused libraries that have been maintained for
+  years are usually more reliable than the version of the same thing
+  we'd write next quarter. RCs on the critical path become tech debt
+  the moment the upstream stalls — and they always stall.
+- **Consequence in code:** Dependency reviews check (a) maintenance
+  cadence (releases in the last 6 months), (b) ecosystem (downloads,
+  issues), (c) bundle weight (`GLOBAL-013`), (d) license. Reviews
+  reject pre-1.0 deps unless explicitly justified in the PR.
+- **Alternatives rejected:**
+  - "Write it ourselves, it'll be better" — measurably untrue across
+    auth, retry, ORM, queue.
+  - "Adopt the newest thing" — RC churn poisons the critical path.
+
+## GLOBAL-017 — Two endpoints, two CLI verbs, one chat box — one way to do each thing
+
+- **Decision:** The HTTP API exposes two primary endpoints (`/v1/ask`,
+  `/v1/run`). The CLI exposes two primary verbs (`nlq ask`, `nlq run`).
+  The web app exposes one chat box. There is exactly one way to
+  perform each conceptual operation; no aliases, no shadow endpoints.
+- **Core value:** Simple, Effortless UX
+- **Why:** Surface area is the enemy of learnability. If a user can
+  do X "via two endpoints" or "via three commands," they spend energy
+  on which one to pick instead of on their goal. A small canonical
+  surface keeps docs short and behavior consistent.
+- **Consequence in code:** New conceptual operations require a
+  decision: extend an existing endpoint/verb, or introduce a third
+  one (which requires explicit justification). No aliases. The CLI
+  may have helpers (`nlq init`, `nlq login`) — but the *operations
+  on data* are the two verbs.
+- **Alternatives rejected:**
+  - REST resource explosion (`/v1/queries`, `/v1/runs`, `/v1/plans`)
+    — bigger surface, more docs, more inconsistency.
+  - Multiple aliased CLI verbs — every alias becomes a new way to
+    misuse the tool.
+
+## GLOBAL-018 — Revocation is instant and visible across devices
+
+- **Decision:** Revoking a token, API key, or session takes effect on
+  the next request — no caching window, no propagation delay. The
+  user sees, in every active surface, that the credential is gone.
+- **Core value:** Bullet-proof, Seamless auth, Effortless UX
+- **Why:** Revocation that "eventually" propagates is a security
+  hole. A user pressing "sign out everywhere" or rotating an API key
+  expects immediate effect — across web, CLI, MCP, and any agent
+  with the credential. Anything less and the feature has lied.
+- **Consequence in code:** Token/key validation hits the auth
+  service on every request (or against a sub-second-stale cache);
+  revoked credentials return a clear, recoverable error
+  (`GLOBAL-012`). Surfaces show a banner / message naming the
+  revocation. Tests cover "revoke from web → CLI 401 on next call."
+- **Alternatives rejected:**
+  - Long-lived JWTs with no revocation list — revocation becomes a
+    lie.
+  - Soft revocation (mark, sweep later) — same problem, slower.
+
+## GLOBAL-019 — Free + Open Source core (Apache-2.0); Cloud is convenience, not a moat
+
+- **Decision:** The core engine, CLI, MCP, SDKs, elements, and
+  reference implementations are Apache-2.0 licensed. The hosted
+  Cloud offering exists for convenience (zero-config, managed) — it
+  is not a moat. Anyone can self-host.
+- **Core value:** Free, Open source
+- **Why:** "Open core" with a closed Cloud-only feature set destroys
+  trust and limits the contributor base. The OSS-first stance is the
+  reason the developer audience picks us; if Cloud were the moat we'd
+  be a different product. Cloud earns its keep by being effortless,
+  not by being the only option.
+- **Consequence in code:** No Cloud-only features in the critical
+  path. Every API the Cloud uses is documented and reachable from a
+  self-host. License headers stay Apache-2.0. PRs that introduce
+  hard Cloud-only paths require explicit re-architecture to keep the
+  self-host viable.
+- **Alternatives rejected:**
+  - Open-core with proprietary advanced features — fragments the
+    audience and shrinks the contributor pool.
+  - AGPL — incompatible with the embedded-SDK story.
+
+## GLOBAL-020 — No "pick a region", no config files in the first 60s
+
+- **Decision:** First-time use — `npx nlq ask`, opening the web app,
+  installing the MCP — completes without any config file, region
+  picker, project ID, or environment variable. The path to first
+  value is conversational and zero-config.
+- **Core value:** Effortless UX, Free, Goal-first
+- **Why:** Every required input before first value drops the funnel.
+  Users who pick a region are already deciding to commit; we want
+  them to decide *after* they've seen value, not before. Defaults
+  are good, asked-for defaults are bad.
+- **Consequence in code:** CLI's first invocation works against a
+  default anonymous device on a default region. Web app boots
+  against a demo dataset. MCP install does host detection
+  (`packages/mcp/install.ts`) — no JSON the user has to write. Any
+  PR that adds a required input to first-touch is rejected.
+- **Alternatives rejected:**
+  - "Sensible-default config file generated on first run" — still a
+    file, still confusing, drifts from the docs.
+  - Region picker on signup — half our funnel can't answer it.
