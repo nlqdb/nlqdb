@@ -247,3 +247,103 @@ mandatory. Core values are cited by name from `docs/design.md` §0.
   - Plain config-file storage in `~/.nlqdb/` — leaks via cloud
     backups / dotfile syncs.
   - Required env vars — bad UX on a developer laptop.
+
+## GLOBAL-011 — Honest latency — show the live trace; never spinner-lie
+
+- **Decision:** When a request is in flight, surfaces show what is
+  actually happening (cache lookup, plan, allowlist, exec, summarize)
+  with real timings — not a generic spinner. If a step takes long, we
+  say what step.
+- **Core value:** Honest latency, Effortless UX
+- **Why:** A spinner that hides progress trains users to assume the
+  worst. A live trace shows exactly where time goes and turns
+  perceived latency into legible, cacheable, debuggable information.
+  It also makes us better at performance because we *see* every slow
+  step.
+- **Consequence in code:** `apps/web` streams trace events from the
+  ask-pipeline (or polls the OTel-exposed step state) and renders
+  them in order. CLI's TTY mode prints each step as it completes.
+  The SDK exposes an `onTrace` hook for surfaces to consume.
+- **Alternatives rejected:**
+  - Generic spinner with "this is taking longer than usual" — gives
+    no information.
+  - Hide latency below a threshold — users notice anyway, and lose
+    trust when the threshold is wrong.
+
+## GLOBAL-012 — Errors are one sentence with the next action
+
+- **Decision:** Every user-facing error message is one sentence and
+  contains an actionable next step. No stack traces in the surface.
+  No "an error occurred." No multi-paragraph debug dumps.
+- **Core value:** Effortless UX, Honest latency, Simple
+- **Why:** Error messages are a UI surface. Long error messages train
+  users not to read them; vague ones train users not to trust them.
+  One sentence with a next action is read, understood, and acted on.
+- **Consequence in code:** Every `throw` / `error()` call in user-
+  facing paths returns a `code` (machine-readable) + `message` (one
+  sentence) + `action` (what to do). Surfaces render `message` and
+  optionally a CTA derived from `action`. Stack traces go to OTel
+  spans, not to the user.
+- **Alternatives rejected:**
+  - Surface the underlying exception — leaks internals, scares users.
+  - Generic "something went wrong" — prevents the user from helping
+    themselves.
+
+## GLOBAL-013 — $0/month for the free tier; Workers free-tier bundle ≤ 3 MiB compressed
+
+- **Decision:** The free tier runs on Cloudflare Workers free plan,
+  Neon free plan, and other zero-cost services. The deployed Worker
+  bundle stays under 3 MiB compressed (Cloudflare's hard limit on the
+  free plan is 3 MiB, paid is 10 MiB).
+- **Core value:** Free, Bullet-proof
+- **Why:** "Free forever" is the activation hook. If our infra cost
+  per free user is non-zero, the runway turns into a wall. The 3 MiB
+  ceiling is a real constraint that shapes dependency choices.
+- **Consequence in code:** Every dependency is checked against bundle
+  budget before adoption (`pnpm build && wrangler deploy --dry-run`).
+  Heavy deps (parsers, big crypto libs, full AI SDKs) are forbidden
+  on the Workers path; equivalent functionality goes through HTTP
+  to a cheaper backend or via tree-shakable submodules.
+- **Alternatives rejected:**
+  - "Free trial" with a card — kills activation.
+  - Bigger bundle with paid plan default — locks us out of the
+    Workers free plan, which is the actual product story.
+
+## GLOBAL-014 — OTel span on every external call (DB, LLM, HTTP, queue)
+
+- **Decision:** Every call that crosses a process boundary — DB query,
+  LLM call, outbound HTTP, queue enqueue/dequeue — is wrapped in an
+  OpenTelemetry span with the canonical attributes from
+  `docs/performance.md` §3 (the span / metric / label catalog).
+- **Core value:** Honest latency, Bullet-proof, Fast
+- **Why:** Without spans on every external call, we can't answer "why
+  is this request slow," "is the LLM the bottleneck," or "did this
+  retry actually go to the DB twice." The catalog enforces consistent
+  attribute names so dashboards and queries don't fragment.
+- **Consequence in code:** `packages/otel` exposes the wrapper helpers;
+  all DB / LLM / HTTP / queue clients in the codebase route through
+  them. New external calls without a span fail review. Span names,
+  attributes, and metrics match the catalog (no ad-hoc names).
+- **Alternatives rejected:**
+  - Sample only slow requests — loses the baseline distribution.
+  - Per-team conventions — fragments the dashboards within a quarter.
+
+## GLOBAL-015 — Power users always have an escape hatch
+
+- **Decision:** Every layer that turns natural language into something
+  executable — `/v1/ask` → SQL, plan-cache → plan, db-adapter → query
+  — exposes the underlying primitive directly. A power user can
+  bypass the LLM and run raw SQL / Mongo / connection-string queries.
+- **Core value:** Creative, Bullet-proof, Goal-first
+- **Why:** Anyone who outgrows the conversational interface must not
+  hit a wall. The product loses credibility (and users) if "the LLM
+  decided" is the only path to the data. The escape hatch is also
+  the thing that makes the LLM safe — humans can verify and fix.
+- **Consequence in code:** `/v1/run` (raw query) sits next to
+  `/v1/ask` (NL query). CLI's `nlq run` runs raw SQL. The plan
+  surfaced from `/v1/ask` is editable and re-runnable. Connection
+  strings are exposed for users on plans that can self-host the DB.
+- **Alternatives rejected:**
+  - LLM-only API — fine for demos, fatal for production users.
+  - Hide raw access behind enterprise tier — blocks the OSS
+    contributor path and contradicts `GLOBAL-019`.
