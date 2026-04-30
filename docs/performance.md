@@ -9,9 +9,9 @@ The "fast" promise made concrete. This doc pins:
 5. **Sampling + cost discipline** for the Grafana Cloud free tier (§5).
 6. **Dashboards-as-code** layout (§6).
 
-Not in scope: architectural rationale (see [DESIGN.md](./DESIGN.md)),
-phased plan (see [IMPLEMENTATION.md](./IMPLEMENTATION.md)), current
-state of provisioned infra (see [RUNBOOK.md](./RUNBOOK.md)).
+Not in scope: architectural rationale (see [./design.md](./design.md)),
+phased plan (see [./implementation.md](./implementation.md)), current
+state of provisioned infra (see [./runbook.md](./runbook.md)).
 
 ---
 

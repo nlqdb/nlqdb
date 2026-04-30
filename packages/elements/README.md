@@ -2,7 +2,7 @@
 
 `<nlq-data>` and (eventually) `<nlq-action>` custom elements — the
 "drop one HTML tag, get a backend" surface from
-[DESIGN §3.5](../../DESIGN.md) and [§14.5](../../DESIGN.md).
+[DESIGN §3.5](../../docs/design.md) and [§14.5](../../docs/design.md).
 
 ## What's in v0.1 (Slice 10)
 

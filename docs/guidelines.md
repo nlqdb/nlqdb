@@ -60,10 +60,10 @@ to `OTHER`.
 Every change must fit the broader system. Before opening the editor,
 mentally re-read:
 
-- The current slice's scope in [`apps/api/README.md`](./apps/api/README.md). Don't pre-empt future slices.
-- The span / metric / label catalog in [`PERFORMANCE.md §3`](./PERFORMANCE.md#3-span--metric--label-catalog). No one-off names.
-- The package's role in [`DESIGN.md §2`](./DESIGN.md#2-system-architecture-high-level). A change that's locally clean but breaks the system shape is worse than the bug it was fixing.
-- Whether [`RUNBOOK.md`](./RUNBOOK.md) or any package README drifts when this lands. If yes, update both in the same PR.
+- The current slice's scope in [`apps/api/README.md`](../apps/api/README.md). Don't pre-empt future slices.
+- The span / metric / label catalog in [`./performance.md §3`](./performance.md#3-span--metric--label-catalog). No one-off names.
+- The package's role in [`./design.md §2`](./design.md#2-system-architecture-high-level). A change that's locally clean but breaks the system shape is worse than the bug it was fixing.
+- Whether [`./runbook.md`](./runbook.md) or any package README drifts when this lands. If yes, update both in the same PR.
 
 Symptoms of having lost the overview:
 
@@ -159,6 +159,6 @@ breaks.
 
 ---
 
-This file pairs with [`CONTRIBUTING.md`](./CONTRIBUTING.md) (mechanics:
-hooks, branches, commit format) and [`DESIGN.md`](./DESIGN.md)
+This file pairs with [`CONTRIBUTING.md`](../CONTRIBUTING.md) (mechanics:
+hooks, branches, commit format) and [`./design.md`](./design.md)
 (architecture). Those are the *what*; this is the *how-we-decide*.

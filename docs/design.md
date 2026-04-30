@@ -4,8 +4,8 @@
 > You write HTML. Each component asks for what it wants in plain English. nlqdb answers.
 
 This document is the high-level design. Phasing, deeper rationale and risks live in
-[`PLAN.md`](./PLAN.md). User research lives in [`PERSONAS.md`](./PERSONAS.md). The competitive
-landscape lives in [`COMPETITORS.md`](./COMPETITORS.md). This doc focuses on **what we build,
+[`./plan.md`](./plan.md). User research lives in [`./personas.md`](./personas.md). The competitive
+landscape lives in [`./competitors.md`](./competitors.md). This doc focuses on **what we build,
 how the parts fit together, what tools we use, and how we ship it for $0/month**.
 
 ---
@@ -67,7 +67,7 @@ Acceptance criteria for every PR. If a change violates one, it doesn't ship.
 
 ## 0.1 On-ramp inversion (the most important design principle)
 
-No persona's goal is "create a database" (see [`PERSONAS.md`](./PERSONAS.md)).
+No persona's goal is "create a database" (see [`./personas.md`](./personas.md)).
 The DB is a side effect of the thing they're trying to do. Every surface is
 reframed so the user's first action is stating a goal; the DB materializes
 as a consequence.
@@ -177,7 +177,7 @@ unavoidable recurring cost; see §7).
 ### 3.1 Marketing site — `nlqdb.com`
 
 Static-first **Astro** (0KB JS by default; islands where needed). Hosted on
-Cloudflare Pages. Lighthouse 100/100/100/100. Implementation: [`apps/web`](./apps/web).
+Cloudflare Pages. Lighthouse 100/100/100/100. Implementation: [`apps/web`](../apps/web).
 
 **The message: 0 to 1 with no backend.** The home page is built the way
 we say users should build — `<nlq-data>` and `<nlq-action>` (§3.5) render
@@ -210,7 +210,7 @@ fold must be either a working snippet or proof that snippets work — no
 feature bullets, no logo grids, no "trusted by".
 
 **Code surfaces we promise on the home page** (full integration matrix in
-[`IMPLEMENTATION §10.1`](./IMPLEMENTATION.md)):
+[`IMPLEMENTATION §10.1`](./implementation.md)):
 
 | Surface | Package | Status |
 |---|---|---|
@@ -253,7 +253,7 @@ Claude.
 Signed-in surface. Same Astro project, React islands for chat + dashboard.
 
 - **Chat** — three-part response (answer / data / trace), streaming,
-  in-place edit + re-run, Cmd+K palette (see [`PLAN.md` §1.2](./PLAN.md)).
+  in-place edit + re-run, Cmd+K palette (see [`./plan.md` §1.2](./plan.md)).
 - **Database list** (left rail) — engine, size, last query per DB.
 - **Settings** — API keys, team (Phase 1.5), billing, live $-counter.
 - **Embed snippets** — copy-paste `<nlq-data>` HTML with `pk_live_`
@@ -419,8 +419,8 @@ Real users hit `/v1/ask` with a session cookie or `pk_live_` key.
 
 This section covers the mechanism behind every "DB created silently"
 arrow in §0.1 and §3. Implementation slice lives in
-`IMPLEMENTATION.md §4`; the *why* behind every choice here is in
-[`docs/research-receipts.md`](./docs/research-receipts.md).
+`./implementation.md §4`; the *why* behind every choice here is in
+[`docs/research-receipts.md`](./research-receipts.md).
 
 ### 3.6.1 Endpoint shape
 
@@ -486,7 +486,7 @@ surface to "what shape can the LLM force into the plan" — much
 smaller than "what SQL string can the LLM compose" — and matches
 the [Cortex Analyst](https://www.snowflake.com/en/engineering-blog/cortex-analyst-text-to-sql-accuracy-bi/)
 + [SchemaAgent](https://arxiv.org/html/2503.23886) lessons captured
-in [`docs/research-receipts.md §2`](./docs/research-receipts.md).
+in [`docs/research-receipts.md §2`](./research-receipts.md).
 
 ### 3.6.3 The semantic-layer-at-create-time moat
 
@@ -499,7 +499,7 @@ Metrics, dbt MetricFlow, Cube). Because we own the schema-creation
 moment, we generate the semantic layer automatically — the runtime
 benefits from the dbt/Cube/Cortex pattern even though the user
 never wrote one. This is the unique position. See
-[`docs/research-receipts.md §8`](./docs/research-receipts.md). Phase
+[`docs/research-receipts.md §8`](./research-receipts.md). Phase
 2's user-editable semantic.yml (`§17`) extends this — the auto-
 generated baseline is the seed.
 
@@ -509,7 +509,7 @@ generated baseline is the seed.
 per surface** — we do not run an LLM-based "which db did you mean"
 heuristic, because the failure mode of guessing wrong silently is
 worse than asking. See
-[`docs/research-receipts.md §7`](./docs/research-receipts.md) for
+[`docs/research-receipts.md §7`](./research-receipts.md) for
 the prior art that pushed this decision.
 
 | Surface | If `dbId` absent | Authentication shape |
@@ -529,11 +529,11 @@ Two distinct validator paths, both exhaustively tested:
 
 | Path | Source | Allowed verbs | Why this scope |
 |---|---|---|---|
-| **Read/write** (every `/v1/ask` query/write) | [`apps/api/src/ask/sql-validate.ts`](./apps/api/src/ask/sql-validate.ts) | `SELECT / INSERT / UPDATE / DELETE / WITH / EXPLAIN / SHOW` only. **`CREATE / ALTER / DROP / TRUNCATE / GRANT / REVOKE / VACUUM` rejected.** `EXPLAIN ANALYZE` rejected (executes). Multi-statement rejected. | The LLM never has DDL rights through this path. CREATE rejection here is correct: the *only* legitimate CREATE comes from §3.6.2's typed-plan compiler, which is our code. |
+| **Read/write** (every `/v1/ask` query/write) | [`apps/api/src/ask/sql-validate.ts`](../apps/api/src/ask/sql-validate.ts) | `SELECT / INSERT / UPDATE / DELETE / WITH / EXPLAIN / SHOW` only. **`CREATE / ALTER / DROP / TRUNCATE / GRANT / REVOKE / VACUUM` rejected.** `EXPLAIN ANALYZE` rejected (executes). Multi-statement rejected. | The LLM never has DDL rights through this path. CREATE rejection here is correct: the *only* legitimate CREATE comes from §3.6.2's typed-plan compiler, which is our code. |
 | **DDL** (only invoked from the create path in §3.6.2) | A separate validator over `SchemaPlan` (Zod) + libpg_query parse on the compiled DDL | The compiled CREATE TABLE / CREATE INDEX / FK constraints. AST reject-list still blocks `DROP / TRUNCATE / GRANT / REVOKE / pg_catalog / information_schema` | Defense-in-depth: even though our compiler authored the SQL, we parse with the actual Postgres parser before sending to the executor — guards against compiler bugs and future regressions. |
 
 Both paths share the **layered guardrails** principle from
-[`docs/research-receipts.md §1`](./docs/research-receipts.md) (the
+[`docs/research-receipts.md §1`](./research-receipts.md) (the
 Replit incident lesson): AST-level reject-list, role isolation,
 RLS, statement timeout, transactional wrapper. None of these alone
 suffices.
@@ -541,15 +541,15 @@ suffices.
 ### 3.6.6 Tenancy and storage
 
 - **Phase 1:** every db is a Postgres schema on a single shared
-  Neon branch (per `PLAN.md §1.6`). The `connection_secret_ref` in
+  Neon branch (per `./plan.md §1.6`). The `connection_secret_ref` in
   D1's `databases` table points to one Workers Secret holding the
   shared `DATABASE_URL`; isolation comes from `SET LOCAL
   search_path` + per-tenant role + RLS, not per-db secrets.
 - **Phase 2b:** tier-based tenancy — Free/Hobby on shared, Pro+
-  on dedicated Neon branches (per `PLAN.md §2.4b`). The
+  on dedicated Neon branches (per `./plan.md §2.4b`). The
   `connection_secret_ref` model already supports this; only the
   provisioner gets a branch-create path added.
-- **Phase 4:** BYO Postgres unblock (per `IMPLEMENTATION.md §7`).
+- **Phase 4:** BYO Postgres unblock (per `./implementation.md §7`).
   See §3.6.7 — the modular split done now means BYO is a
   provisioner swap, not a rewrite.
 
@@ -584,7 +584,7 @@ we don't paint into a corner:
 
 ### 3.6.8 Rate limits and abuse on create
 
-Free-tier abuse rules (`IMPLEMENTATION.md §8`) extend to db.create:
+Free-tier abuse rules (`./implementation.md §8`) extend to db.create:
 per-IP 5 creates/hour, per-account 20 creates/day. PoW on signup if
 a wave of anonymous creates hits the bucket.
 
@@ -743,9 +743,9 @@ Three layers, kept distinct:
 2. **Ops telemetry** — **Sentry** (5k errors/mo free) + **OpenTelemetry**
    → **Grafana Cloud** free for traces / metrics / logs. Drives the
    "fast" promise.
-3. **Product events** — an in-house [`packages/events`](./packages/events)
+3. **Product events** — an in-house [`packages/events`](../packages/events)
    producer that writes to a **Cloudflare Queue** (`nlqdb-events`); a
-   separate consumer Worker [`apps/events-worker`](./apps/events-worker)
+   separate consumer Worker [`apps/events-worker`](../apps/events-worker)
    drains the queue and fans out to sinks. **One sink today: LogSnag**
    (free tier 2,500 events/mo — plenty if we fire only one-shot events:
    `user.registered`, `user.first_query`, `billing.subscription_created`,
@@ -757,8 +757,8 @@ Three layers, kept distinct:
    The producer/consumer split keeps `apps/api`'s `/v1/ask` hot path
    clean — no LogSnag client, no network round-trips on event-emit,
    the p50 budget stays intact. Quotas, retry behavior, and the DLQ
-   wiring live in [`IMPLEMENTATION.md §2.6`](./IMPLEMENTATION.md) and
-   [`apps/events-worker/README.md`](./apps/events-worker/README.md).
+   wiring live in [`./implementation.md §2.6`](./implementation.md) and
+   [`apps/events-worker/README.md`](../apps/events-worker/README.md).
 
 A second sink — **PostHog Cloud** for funnels / cohorts / retention —
 is held in reserve for Phase 2, *only* if a real cohort question lands
@@ -772,11 +772,11 @@ empty and the sink no-ops.
 The boundary is firm: OTel spans describe what the *system* did,
 product events describe what the *user* did. They never collapse —
 high-cardinality labels like `nlqdb.user_id` stay out of metrics (see
-[`PERFORMANCE.md §3.3`](./PERFORMANCE.md)).
+[`./performance.md §3.3`](./performance.md)).
 
 Concrete SLOs, per-stage latency budgets, span/metric/label catalog,
 sampling rules, and the slice-by-slice instrumentation plan live in
-[`PERFORMANCE.md`](./PERFORMANCE.md) — that's the load-bearing doc for
+[`./performance.md`](./performance.md) — that's the load-bearing doc for
 the "fast" promise.
 
 ---
@@ -784,7 +784,7 @@ the "fast" promise.
 ## 6. Pricing — freemium done honestly
 
 The constraint: **a real user must be able to ship a real product without
-paying us.** Aligned with [`PLAN.md` §5](./PLAN.md).
+paying us.** Aligned with [`./plan.md` §5](./plan.md).
 
 | Tier | Price | What you get | Limits | Card |
 |---|---|---|---|---|
@@ -919,7 +919,7 @@ Swap order via env var. Zero app code changes per §9.
 - **Geo.** Groq is US-only; Gemini + Workers AI are global. Classification
   has Workers AI Llama 3 as a non-US backup to keep first-byte < 1s.
 
-**Account checklist** (mirrored in [`IMPLEMENTATION.md`](./IMPLEMENTATION.md)):
+**Account checklist** (mirrored in [`./implementation.md`](./implementation.md)):
 Google AI Studio → `GEMINI_API_KEY`; Groq → `GROQ_API_KEY`; Cloudflare
 Workers AI → `CF_AI_TOKEN`; OpenRouter → `OPENROUTER_API_KEY` (fallback).
 
@@ -961,7 +961,7 @@ We make bad states unreachable, not caught.
 
 ## 11. Immediate execution plan
 
-See [`IMPLEMENTATION.md`](./IMPLEMENTATION.md) for the phased plan. Short
+See [`./implementation.md`](./implementation.md) for the phased plan. Short
 version: wire DNS, stand up Cloudflare stack + Better Auth + Neon, build
 the LLM router + plan cache, ship chat/CLI/MCP/elements/email stack, write
 launch posts, recruit 5 design partners (one per persona, Free Pro for 12
@@ -1296,7 +1296,7 @@ curl https://api.nlqdb.com/v1/ask \
 Subsequent calls pass `Authorization: Bearer anon_…` to reuse the session.
 72h window same as the web (§4.1).
 
-**Power-user path** (the two-endpoint API from [`PLAN.md` §1.3](./PLAN.md))
+**Power-user path** (the two-endpoint API from [`./plan.md` §1.3](./plan.md))
 remains available unchanged for callers who already think in DBs.
 
 ---
@@ -1338,7 +1338,7 @@ a single SQL statement.
 | 2 | In the agent's system prompt: *"You have a tool `nlqdb_query`. Call it with a `db` and a `q` in plain English. The `db` can be any string — it'll be created if new."* | — |
 | 3 | Agent runs first session. On a fact: `nlqdb_query("research-memory", "remember: the user is researching solar panels in Berlin")` | DB `research-memory-...` materialized, row inserted |
 | 4 | Agent ends session, reopens hours later: `nlqdb_query("research-memory", "what do I know about the user's research topic?")` | Returns the stored fact |
-| 5 | Jordan watches the platform: clicks `research-memory`, sees every query the agent ran today, including the ones that returned zero rows | Trace + query log per [`PLAN.md` §2.2](./PLAN.md) |
+| 5 | Jordan watches the platform: clicks `research-memory`, sees every query the agent ran today, including the ones that returned zero rows | Trace + query log per [`./plan.md` §2.2](./plan.md) |
 | 6 | Deploys the agent on Modal. Sets `NLQDB_API_KEY` (from the dashboard) as a Modal secret — the one env var he touches. | Agent uses the `sk_live_` key; Modal's env-var flow stays idiomatic; no keychain or browser flow on the deploy target. |
 
 **What Jordan never wrote:** a vector-store glue layer, a schema for memory,
@@ -1496,7 +1496,7 @@ purpose. If a reader has to scroll twice, we failed.
 
 ## 17. Semantic-layer adoption — Phase 2
 
-**Why:** the 2025–2026 NL-to-SQL frontier diverged hard from raw-schema introspection. dbt's 2026 benchmark reports up to **3× accuracy** when the LLM queries through a curated semantic model rather than raw `information_schema` columns; Snowflake Cortex Analyst, Databricks Genie, Wren AI, and the new [Open Semantic Interchange (OSI)](https://www.dataengineeringweekly.com/p/knowledge-metrics-and-ai-rethinking) standard all converge on semantic-first NL2SQL. Full receipts in [`docs/research-receipts.md §8`](./docs/research-receipts.md).
+**Why:** the 2025–2026 NL-to-SQL frontier diverged hard from raw-schema introspection. dbt's 2026 benchmark reports up to **3× accuracy** when the LLM queries through a curated semantic model rather than raw `information_schema` columns; Snowflake Cortex Analyst, Databricks Genie, Wren AI, and the new [Open Semantic Interchange (OSI)](https://www.dataengineeringweekly.com/p/knowledge-metrics-and-ai-rethinking) standard all converge on semantic-first NL2SQL. Full receipts in [`docs/research-receipts.md §8`](./research-receipts.md).
 
 **Relationship to §3.6.** The typed-plan output of `db.create` (§3.6.2) already carries `metrics` and `dimensions`. Phase 1 emits an auto-generated baseline at create time; Phase 2 makes it editable, OSI-compatible, and source-controlled. The auto-baseline is the seed, not a parallel system.
 

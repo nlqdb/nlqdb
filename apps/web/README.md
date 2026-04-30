@@ -42,7 +42,7 @@ Static `dist/` deployed to a Cloudflare **Worker** (`nlqdb-web`) via
 Workers Static Assets. Configured in `wrangler.toml`. The Worker is
 reachable at `nlqdb-web.<account>.workers.dev`; the DNS flip moving
 `nlqdb.com` from the (now empty-domain) `nlqdb-coming-soon` Pages
-project to this Worker is in progress — see [RUNBOOK §6](../../RUNBOOK.md).
+project to this Worker is in progress — see [RUNBOOK §6](../../docs/runbook.md).
 
 ```bash
 bun run --cwd apps/web deploy

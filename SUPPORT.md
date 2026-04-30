@@ -28,13 +28,13 @@ than letting threads die.
 ## Documentation
 
 - [README](./README.md) — project overview, lean on-ramp, examples.
-- [DESIGN.md](./DESIGN.md) — system design, the canonical 1-pager
+- [./docs/design.md](./docs/design.md) — system design, the canonical 1-pager
   (§16), per-surface usage (§14).
-- [PLAN.md](./PLAN.md), [IMPLEMENTATION.md](./IMPLEMENTATION.md) —
+- [./docs/plan.md](./docs/plan.md), [./docs/implementation.md](./docs/implementation.md) —
   roadmap and phased plan, including the platform integrations matrix
   (§10) showing every framework / mobile / IDE / CMS / iPaaS we plan
   to ship into.
-- [PERFORMANCE.md](./PERFORMANCE.md) — SLOs, latency budgets,
+- [./docs/performance.md](./docs/performance.md) — SLOs, latency budgets,
   span/metric catalog.
 - [CONTRIBUTING.md](./CONTRIBUTING.md) — how to set up a dev
   environment and submit changes.

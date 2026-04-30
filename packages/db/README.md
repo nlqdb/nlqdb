@@ -13,7 +13,7 @@ const { rows } = await db.execute("SELECT id, email FROM users WHERE id = $1", [
 Every `execute` emits a `db.query` span (`db.system=postgresql`,
 `db.operation=SELECT|INSERT|UPDATE|DELETE|OTHER`) and records duration
 into the `nlqdb.db.duration_ms` histogram — see
-[PERFORMANCE §3](../../PERFORMANCE.md#3-span--metric--label-catalog).
+[PERFORMANCE §3](../../docs/performance.md#3-span--metric--label-catalog).
 
 ## Why an interface, not a re-export of Neon
 
