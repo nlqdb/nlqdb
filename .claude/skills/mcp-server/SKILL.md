@@ -4,7 +4,6 @@ description: MCP server + `nlq mcp install` host detection (Claude Desktop, Curs
 when-to-load:
   globs:
     - packages/mcp/**
-    - cli/src/mcp/**
   topics: [mcp, host-detection, claude-desktop, cursor]
 ---
 
@@ -12,13 +11,12 @@ when-to-load:
 
 **One-liner:** MCP server + `nlq mcp install` host detection (Claude Desktop, Cursor, etc.).
 **Status:** implemented (Phase 2)
-**Owners (code):** `packages/mcp/**`, `cli/src/mcp/**`
+**Owners (code):** `packages/mcp/**`
 **Cross-refs:** docs/design.md §3.4 (MCP server) · docs/design.md §14.4 (MCP happy path) · docs/surfaces.md (MCP server row) · docs/implementation.md §5 (Phase 2 mcp slice)
 
 ## Touchpoints — read this skill before editing
 
 - `packages/mcp/**`
-- `cli/src/mcp/**`
 
 ## Decisions
 

@@ -3,8 +3,7 @@ name: plan-cache
 description: Content-addressed plan storage keyed by (schema_hash, query_hash).
 when-to-load:
   globs:
-    - apps/api/src/plan-cache/**
-    - apps/api/src/ask/cache.ts
+    - apps/api/src/ask/plan-cache.ts
   topics: [plan-cache, schema_hash, query_hash, memoization]
 ---
 
@@ -12,13 +11,12 @@ when-to-load:
 
 **One-liner:** Content-addressed plan storage keyed by (schema_hash, query_hash).
 **Status:** implemented
-**Owners (code):** `apps/api/src/plan-cache/**`, `apps/api/src/ask/cache.ts`
+**Owners (code):** `apps/api/src/ask/plan-cache.ts`
 **Cross-refs:** docs/design.md §0 (Bullet-proof checklist), §2 (architecture), §7 (free-tier stack), §8 (cost-control rules), §9 (cache invalidation row) · docs/implementation.md Slice 6 (`/v1/ask` E2E) · docs/performance.md §2.1, §3.1, §3.2
 
 ## Touchpoints — read this skill before editing
 
-- `apps/api/src/plan-cache/**`
-- `apps/api/src/ask/cache.ts`
+- `apps/api/src/ask/plan-cache.ts`
 
 ## Decisions
 

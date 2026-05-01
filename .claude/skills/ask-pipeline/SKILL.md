@@ -4,7 +4,6 @@ description: /v1/ask orchestration: rate-limit → cache → LLM router → SQL 
 when-to-load:
   globs:
     - apps/api/src/ask/**
-    - apps/api/src/routes/v1/ask*.ts
   topics: [ask, /v1/ask, natural-language, pipeline, orchestration]
 ---
 
@@ -12,13 +11,12 @@ when-to-load:
 
 **One-liner:** /v1/ask orchestration: rate-limit → cache → LLM router → SQL allowlist → exec → summarize.
 **Status:** implemented
-**Owners (code):** `apps/api/src/ask/**`, `apps/api/src/routes/v1/ask*.ts`
+**Owners (code):** `apps/api/src/ask/**`
 **Cross-refs:** docs/design.md §3.6.1 (endpoint shape), §3.6.2 (typed-plan pipeline), §3.6.4 (dbId resolution), §3.6.5 (validator paths), §9 (bullet-proof checklist) · docs/implementation.md Slice 6 (`/v1/ask` E2E) · docs/performance.md §2.1, §2.2, §3
 
 ## Touchpoints — read this skill before editing
 
 - `apps/api/src/ask/**`
-- `apps/api/src/routes/v1/ask*.ts`
 
 ## Decisions
 

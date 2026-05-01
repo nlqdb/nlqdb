@@ -3,7 +3,7 @@ name: auth
 description: Better Auth identity across all surfaces — sessions, refresh, device flow, GitHub/Google/magic-link.
 when-to-load:
   globs:
-    - apps/api/src/routes/auth/**
+    - apps/api/src/auth/**
     - packages/auth-internal/**
   topics: [auth, session, login, refresh, device-flow, oauth, magic-link]
 ---
@@ -12,12 +12,12 @@ when-to-load:
 
 **One-liner:** Better Auth identity across all surfaces — sessions, refresh, device flow, GitHub/Google/magic-link.
 **Status:** implemented
-**Owners (code):** `apps/api/src/routes/auth/**`, `packages/auth-internal/**`
+**Owners (code):** `apps/api/src/auth/**`, `packages/auth-internal/**`
 **Cross-refs:** docs/design.md §4 (Authentication & identity) · docs/implementation.md §2.5, Slice 5 (Better Auth) · docs/runbook.md §5 (Google OAuth) · docs/runbook.md §5b (GitHub OAuth)
 
 ## Touchpoints — read this skill before editing
 
-- `apps/api/src/routes/auth/**`
+- `apps/api/src/auth/**`
 - `packages/auth-internal/**`
 
 ## Decisions

@@ -3,7 +3,7 @@ name: api-keys
 description: Long-lived API keys for CI / MCP hosts; rotation, revocation, scoping.
 when-to-load:
   globs:
-    - apps/api/src/keys/**
+    - apps/api/src/index.ts
     - packages/sdk/**
   topics: [api-key, credential, rotation, revocation, ci]
 ---
@@ -12,12 +12,12 @@ when-to-load:
 
 **One-liner:** Long-lived API keys for CI / MCP hosts; rotation, revocation, scoping.
 **Status:** implemented
-**Owners (code):** `apps/api/src/keys/**`, `packages/sdk/**`
+**Owners (code):** `apps/api/src/index.ts`, `packages/sdk/**`
 **Cross-refs:** docs/design.md §4.1 (key types), §4.4 (service-to-service), §4.5 (rotation/revocation), §3.4 (MCP per-host keys) · docs/runbook.md §4 (Secrets)
 
 ## Touchpoints — read this skill before editing
 
-- `apps/api/src/keys/**`
+- `apps/api/src/index.ts`
 - `packages/sdk/**`
 
 ## Decisions

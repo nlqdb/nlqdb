@@ -3,9 +3,7 @@ name: stripe-billing
 description: Stripe webhook ingest, subscription state, idempotent processing, R2 archive.
 when-to-load:
   globs:
-    - apps/api/src/billing/**
     - apps/api/src/stripe/**
-    - apps/api/src/routes/webhooks/stripe*.ts
   topics: [stripe, billing, webhook, subscription, r2-archive]
 ---
 
@@ -13,7 +11,7 @@ when-to-load:
 
 **One-liner:** Stripe webhook ingest, subscription state, idempotent processing, R2 archive.
 **Status:** implemented (Slice 7 — PR #33; live-mode flip in Phase 2)
-**Owners (code):** `apps/api/src/stripe/**`, `apps/api/src/index.ts` (`POST /v1/stripe/webhook`)
+**Owners (code):** `apps/api/src/stripe/**`, `apps/api/src/index.ts`, `POST /v1/stripe/webhook`
 **Cross-refs:** docs/design.md §6 (pricing) · docs/implementation.md §5 (Phase 2 stripe slice) · docs/runbook.md §6 (webhook + R2 archive) · `apps/api/src/stripe/webhook.ts` (canonical pipeline doc-comment)
 
 ## Touchpoints — read this skill before editing

@@ -5,7 +5,6 @@ when-to-load:
   globs:
     - apps/api/src/ask/rate-limit.ts
     - apps/api/src/demo.ts
-    - apps/api/src/middleware/rate-limit*.ts
   topics: [rate-limit, throttle, 429, rate_limited, anonymous-tier]
 ---
 

@@ -4,8 +4,8 @@ description: No-login first-value path across web / CLI / MCP; later attached to
 when-to-load:
   globs:
     - apps/web/**
-    - cli/src/**
-    - apps/api/src/middleware/anonymous*.ts
+    - cli/**
+    - apps/api/src/anon-adopt.ts
   topics: [anonymous, first-value, no-login, device]
 ---
 
@@ -13,14 +13,14 @@ when-to-load:
 
 **One-liner:** No-login first-value path across web / CLI / MCP; later attached to a Better Auth identity.
 **Status:** partial (API shipped — `/v1/anon/adopt`; web UI tabled per 2026-04-28 pivot)
-**Owners (code):** `apps/web/**`, `cli/src/**`, `apps/api/src/middleware/anonymous*.ts`
+**Owners (code):** `apps/web/**`, `cli/**`, `apps/api/src/anon-adopt.ts`
 **Cross-refs:** docs/decisions.md#GLOBAL-007 (canonical here) · docs/design.md §0.1, §3.3, §3.6.4, §4.1, §14.3, §14.6 · docs/personas.md (P1, P5 first-touch) · docs/implementation.md §4 (partial status) · docs/runbook.md §9 (anonymous-db lifecycle)
 
 ## Touchpoints — read this skill before editing
 
 - `apps/web/**`
-- `cli/src/**`
-- `apps/api/src/middleware/anonymous*.ts`
+- `cli/**`
+- `apps/api/src/anon-adopt.ts`
 
 ## Decisions
 
