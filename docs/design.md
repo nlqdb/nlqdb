@@ -317,13 +317,22 @@ per §0.1 inversion).
 
 ### 3.5 The embeddable HTML element — `<nlq-data>`
 
-**This is the bet.** A web component (custom element) that any developer can drop
-into static HTML. Distributed as `@nlqdb/elements` (one CDN URL: `https://elements.nlqdb.com/v1.js`).
+> **Canonical for `<nlq-data>`:** [`.claude/skills/elements/SKILL.md`](../.claude/skills/elements/SKILL.md).
+> Decisions that lived here (single-element registration, attribute
+> contract, single `POST /v1/ask` network call, safe template registry,
+> `pk_live_*` semantics, ESM bundle + 6 KB ceiling, custom events)
+> are now `SK-ELEM-001..008` in the skill. The public demo endpoint
+> (`POST /v1/demo/ask`) is canonical in `.claude/skills/web-app/SKILL.md`
+> as `SK-WEB-004`.
+
+**This is the bet.** A web component any developer can drop into static
+HTML. Two attribute shapes — goal-first (the default per §0.1) and
+power-user (explicit DB):
 
 ```html
 <script src="https://elements.nlqdb.com/v1.js" type="module"></script>
 
-<!-- Goal-first form (default; per §0.1). DB is auto-created from the goal
+<!-- Goal-first form (default per §0.1). DB is auto-created from the goal
      on the first call and remembered server-side per api-key. -->
 <nlq-data
   goal="the 5 most-loved coffee shops in Berlin, with photos"
@@ -340,26 +349,6 @@ into static HTML. Distributed as `@nlqdb/elements` (one CDN URL: `https://elemen
   template="card-grid"
 ></nlq-data>
 ```
-
-**How it works:** element POSTs `{ q, render: "html" }` → API returns
-`{ answer, data, html, trace }` with `html` rendered from a safe template
-registry (`card-grid`, `table`, `list`, `kv`, `chart`, `raw`). Element
-morphs the DOM via View Transitions. `refresh="60s"` is a timer; SSE
-auto-upgrades when supported.
-
-**Bullet-proof** (§0): templates make XSS structurally impossible (LLM
-never returns raw HTML to the browser); `pk_live_` is read-only,
-origin-pinned, rate-limited; writes require `<nlq-action>` with a signed
-write-token. Element ships < 6KB gzipped, zero dependencies.
-
-**Public demo endpoint — `POST /v1/demo/ask`.** The marketing-site
-live `<nlq-data>` and any third-party "try this in a scratch HTML"
-embed point at `endpoint="https://app.nlqdb.com/v1/demo/ask"`. No
-auth, CORS-permissive, canned fixtures keyed off the goal substring;
-per-IP rate limit (10/min) so it can't be abused as an LLM stand-in.
-The element stays pure — no demo branch in client code (see PR #43);
-the "demo" semantic lives server-side. Source: `apps/api/src/demo.ts`.
-Real users hit `/v1/ask` with a session cookie or `pk_live_` key.
 
 ---
 
