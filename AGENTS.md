@@ -179,3 +179,56 @@ Per-package commands are in each area's `AGENTS.md`.
 - Read the relevant `SKILL.md` first.
 - Then `docs/decisions.md` for any cited `GLOBAL-NNN`.
 - Then ask the user. Don't guess across a documented decision.
+
+## 10. Workflow — features and bug fixes
+
+The standard loop for every change:
+
+```
+Touch path X
+  → §5 path map gives the SKILL.md name
+  → read that SKILL.md fully (5 fields per decision; every cited
+    GLOBAL-NNN is duplicated inline so you don't need to chase
+    docs/decisions.md unless you're editing the GLOBAL itself)
+  → do the work
+  → new decision? add SK-<PREFIX>-NNN (or promote to GLOBAL if
+    cross-cutting)
+  → changed a GLOBAL? grep + update every copy in the same PR (P3)
+  → ambiguity or unfamiliar error? web-search current best
+    practices, cite sources (P2)
+  → contradicts a documented decision? STOP, raise to user with
+    the specific ID (P1)
+  → run the §8 quality gates before opening the PR
+```
+
+### 10.1 Adding a new feature
+
+| Scope | Action |
+|---|---|
+| Fits an existing skill | Add `SK-<PREFIX>-<next-N>` block(s) to that skill's `SKILL.md`. Update `_index.md` if status moves (e.g. `partial` → `implemented`). |
+| Crosses several skills | Add SK-* blocks in each affected skill, with cross-refs between them. |
+| Genuinely new (no skill covers it) | Create `.claude/skills/<feature>/SKILL.md` from the [`docs/skill-conventions.md`](docs/skill-conventions.md) §3 template. Add a row to `.claude/skills/_index.md`. Add the path-glob row to §5 above. Reserve the `SK-<PREFIX>-NNN` prefix (kebab-case → `<PREFIX>` is upper-snake, e.g. `auth` → `SK-AUTH-NNN`). |
+| Touches all surfaces (HTTP / SDK / CLI / MCP / elements) | Per `GLOBAL-003`, ship to all surfaces in the same PR or annotate the gap explicitly in the affected skills under *Open questions*. |
+| Introduces a cross-cutting rule (multiple features must obey) | Promote to a new `GLOBAL-NNN` in `docs/decisions.md`. Then copy the block verbatim into every affected skill with `Source: docs/decisions.md#GLOBAL-NNN`. |
+
+Every SK-* and GLOBAL-* decision must have all five fields
+(Decision / Core value / Why / Consequence / Alternatives) — see
+[`docs/skill-conventions.md`](docs/skill-conventions.md) §4. If you
+can't fill all five, the decision isn't ready to write.
+
+### 10.2 Fixing a bug
+
+1. Reproduce + isolate. Find the file. §5 → skill. Read the skill.
+2. **Does the bug contradict a documented decision?**
+   - **Code wrong, decision right** → fix the code so it conforms. Normal bug fix.
+   - **Decision wrong** (the bug is intended behaviour, but the behaviour is wrong) → **STOP.** Don't silently change behaviour. Per `P1`, raise it with the user, citing the specific `SK-*` or `GLOBAL-NNN` ID. The user decides whether to supersede.
+3. If you supersede a decision: add a new `SK-<PREFIX>-<next-N>` (or `GLOBAL-<next-N>`) with full 5 fields. Mark the old one `Status: superseded by <new-id>` — **don't delete or renumber. IDs are sticky.**
+4. If your fix touches a `GLOBAL-NNN`, per `P3` update every place it's copied in the same PR (`grep -rn 'GLOBAL-NNN' .claude/skills/ docs/`).
+5. If the fix raises a question that's not yet decided, add it to that skill's `## Open questions / known unknowns`. Don't decide for the user.
+
+### 10.3 Tie-breakers when sources disagree
+
+- **Skill says X, code does Y** → skill wins. Fix the code (or, if the code's behaviour is correct, file a P1 to amend the skill — don't silently update either).
+- **`docs/design.md` (or `implementation.md` / `plan.md` / `runbook.md`) says X, skill says Y** → skill wins. The long docs were leaned in Wave 3; if you find a stale prose passage that contradicts a skill, fix the prose. Don't change the skill to match stale prose.
+- **`GLOBAL-NNN` in `docs/decisions.md` says X, a skill's copy of `GLOBAL-NNN` says Y** → P3 violation. They should be byte-identical. Fix the skill's copy to match `docs/decisions.md`.
+- **Two skills disagree on a cross-cutting rule** → the rule should have been a `GLOBAL-NNN`. Promote it (per §10.1) and update both skills to copy it.
