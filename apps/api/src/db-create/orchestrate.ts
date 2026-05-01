@@ -8,17 +8,28 @@
 // [`docs/design.md §3.6.1`](../../../../docs/design.md#361-endpoint-shape) +
 // [`docs/design.md §3.6.2`](../../../../docs/design.md#362-typed-plan-pipeline-the-create-path):
 //
-//   rate-limit → inferSchema → compileDdl → validateCompiledDdl →
-//   provisionDb → embedTableCards
+//   inferSchema → compileDdl → validateCompiledDdl →
+//   provision → embedTableCards
 //
 // Each layer is a separate guardrail (`docs/research-receipts.md
 // §1`); the orchestrator's job is to ensure they run in order and
-// short-circuit cleanly on any failure. Sub-modules own their own
-// OTel spans on external calls (GLOBAL-014); the orchestrator is
-// in-process and adds no external boundaries of its own.
+// short-circuit cleanly on any failure.
 //
-// Related skill: `.claude/skills/ask-pipeline/SKILL.md` — the
-// `kind=create` branch routes here from `/v1/ask` (SK-ASK-001).
+// Rate-limit is NOT in this pipeline — per
+// `.claude/skills/hosted-db-create/SKILL.md` SK-HDC-008 the per-IP
+// (5/hr anonymous) / per-account (20/day authed) check runs in
+// `apps/api/src/ask/classifier.ts` before the orchestrator is
+// called, where the request-level info needed to discriminate IP
+// from account is still in scope.
+//
+// Sub-modules own their own OTel spans on external calls
+// (GLOBAL-014); the orchestrator is in-process and adds no external
+// boundaries of its own.
+//
+// Related skill: `.claude/skills/hosted-db-create/SKILL.md` is the
+// canonical owner of the create path (SK-HDC-001..008). The
+// `kind=create` branch routes here from `/v1/ask` per SK-ASK-001
+// in `.claude/skills/ask-pipeline/SKILL.md`.
 
 import type {
   CompileDdlResult,
@@ -32,9 +43,7 @@ import type {
   InferSchemaResult,
   LLMRouter,
   PgClient,
-  ProvisionDbArgs,
-  ProvisionDbDeps,
-  ProvisionDbResult,
+  ProvisionFn,
   SchemaPlan,
 } from "./types.ts";
 
@@ -42,15 +51,13 @@ export type DbCreateDeps = {
   inferSchema: (deps: InferSchemaDeps, args: InferSchemaArgs) => Promise<InferSchemaResult>;
   compileDdl: (plan: SchemaPlan, schemaName: string) => CompileDdlResult;
   validateCompiledDdl: (statements: string[]) => DdlValidationResult;
-  provisionDb: (deps: ProvisionDbDeps, args: ProvisionDbArgs) => Promise<ProvisionDbResult>;
+  // Per SK-HDC-007 the orchestrator takes a generic ProvisionFn so
+  // Phase 1 wires `provisionDb` and Phase 4 wires `registerByoDb`
+  // with no orchestrator change.
+  provision: ProvisionFn;
   // pgvector writer for table-card RAG. Awaited but failure does
-  // NOT roll back the provisioned DB — see step 7 below.
+  // NOT roll back the provisioned DB — see step 6 below.
   embedTableCards: (deps: EmbedDeps, plan: SchemaPlan, dbId: string) => Promise<void>;
-  // Per-tenant key from docs/implementation.md §8 (5/hr per IP,
-  // 20/day per account). The route handler decides whether the key
-  // is an IP bucket or an account bucket — this orchestrator just
-  // acquires.
-  rateLimiter: { tryAcquire(key: string): Promise<boolean> };
   // 6-char random for the dbId tail. Injectable so tests can
   // assert exact ids; prod uses `crypto.randomUUID().slice(...)` or
   // similar in `build-deps.ts`.
@@ -66,22 +73,14 @@ export type DbCreateDeps = {
   d1: D1Database;
 };
 
-// IPs and accounts hit different windows (per-hour vs per-day);
-// surfacing a uniform retry hint avoids leaking which limit fired.
-const RATE_LIMIT_RETRY_AFTER_SECONDS = 3600;
-
 export async function orchestrateDbCreate(
   deps: DbCreateDeps,
   args: DbCreateArgs,
 ): Promise<DbCreateResult> {
-  // 1. Rate-limit. Fail fast before any LLM spend.
-  const allowed = await deps.rateLimiter.tryAcquire(`db_create:${args.tenantId}`);
-  if (!allowed) {
-    return err({ kind: "rate_limited", retry_after_seconds: RATE_LIMIT_RETRY_AFTER_SECONDS });
-  }
-
-  // 2. Infer the SchemaPlan. The LLM never emits raw DDL — only
-  //    a typed JSON plan (docs/design.md §3.6.2 / receipts §2).
+  // 1. Infer the SchemaPlan. The LLM never emits raw DDL — only
+  //    a typed JSON plan (docs/design.md §3.6.2 / receipts §2;
+  //    SK-HDC-002). Zod validation lives inside `inferSchema`;
+  //    failures surface here as `infer_failed`.
   const inferred = await deps.inferSchema(
     { llm: deps.llm },
     { goal: args.goal, ...(args.name !== undefined ? { name: args.name } : {}) },
@@ -95,14 +94,14 @@ export async function orchestrateDbCreate(
   }
   const plan = inferred.plan;
 
-  // 3. Mint the dbId + schema name. Format from docs/design.md §14.6:
+  // 2. Mint the dbId + schema name. Format from docs/design.md §14.6:
   //    "db_<slug_hint>_<6-char-random>"; schema name drops the
   //    `db_` prefix (matches Worksheet C's contract).
   const suffix = deps.randomSuffix();
   const dbId = `db_${plan.slug_hint}_${suffix}`;
   const schemaName = `${plan.slug_hint}_${suffix}`;
 
-  // 4. Deterministic compiler emits CREATE TABLE / CREATE INDEX /
+  // 3. Deterministic compiler emits CREATE TABLE / CREATE INDEX /
   //    FK constraints. Pure function over `plan` + schemaName.
   const compiled = deps.compileDdl(plan, schemaName);
   if (!compiled.ok) {
@@ -113,10 +112,11 @@ export async function orchestrateDbCreate(
     });
   }
 
-  // 5. libpg_query parse-validate over the compiled DDL — the
-  //    second of two DDL guardrails (docs/design.md §3.6.5; see also
-  //    `.claude/skills/ask-pipeline/SKILL.md` SK-ASK-004). Catches
-  //    compiler bugs that smuggled a destructive verb through.
+  // 4. libpg_query parse-validate over the compiled DDL — the
+  //    second of two DDL guardrails (docs/design.md §3.6.5;
+  //    SK-HDC-003 defense-in-depth, SK-HDC-006 read/write vs DDL
+  //    split). Catches compiler bugs that smuggled a destructive
+  //    verb through.
   const validation = deps.validateCompiledDdl(compiled.statements);
   if (!validation.ok) {
     return err({
@@ -126,11 +126,13 @@ export async function orchestrateDbCreate(
     });
   }
 
-  // 6. Transactional provisioner. Schema + role + RLS + sample
+  // 5. Transactional provisioner. Schema + role + RLS + sample
   //    rows + `databases` row + (for non-anonymous tenants)
   //    pk_live row, all in one transaction with rollback on any
-  //    structural fail.
-  const provisioned = await deps.provisionDb(
+  //    structural fail. SK-HDC-007 keeps this dep generic so Phase 4
+  //    BYO can swap `provisionDb` for `registerByoDb` with no
+  //    orchestrator change.
+  const provisioned = await deps.provision(
     { pg: deps.pg, d1: deps.d1 },
     {
       plan,
@@ -150,7 +152,7 @@ export async function orchestrateDbCreate(
     });
   }
 
-  // 7. Table-card RAG seed. Awaited so the response reflects RAG
+  // 6. Table-card RAG seed. Awaited so the response reflects RAG
   //    readiness, but a throw here does NOT roll back the DB —
   //    the dbId is already committed and queryable. We surface a
   //    typed `embed_failed` with the dbId so callers can retry
@@ -165,10 +167,10 @@ export async function orchestrateDbCreate(
     });
   }
 
-  // 8. Anonymous tenants get `pkLive: null` regardless of what
-  //    provisionDb returned — the route handler issues a
+  // 7. Anonymous tenants get `pkLive: null` regardless of what the
+  //    provisioner returned — the route handler issues a
   //    session-scoped key separately (docs/design.md §3.6.4 row 1;
-  //    SK-ASK-003 documents the deterministic-resolution rationale).
+  //    SK-HDC-005 documents the deterministic-resolution rationale).
   const pkLive = isAnonymous(args.tenantId) ? null : provisioned.pkLive;
 
   return {

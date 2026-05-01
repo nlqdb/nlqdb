@@ -1,6 +1,13 @@
 // Unit tests for the db.create orchestrator. All deps are passed
 // as plain test stubs — no `vi.mock`, matching the
 // `apps/api/test/orchestrate.test.ts` (`/v1/ask`) convention.
+//
+// Rate-limit cases are deliberately absent — per
+// `.claude/skills/hosted-db-create/SKILL.md` SK-HDC-008 the per-IP
+// / per-account limiter runs in `apps/api/src/ask/classifier.ts`
+// before the orchestrator is called, so a rate-limited request
+// never reaches `orchestrateDbCreate`. Tests for that gate live
+// alongside the classifier.
 
 import type { LLMRouter } from "@nlqdb/llm";
 import { describe, expect, it, vi } from "vitest";
@@ -10,7 +17,7 @@ import type {
   DdlValidationResult,
   InferSchemaResult,
   PgClient,
-  ProvisionDbResult,
+  ProvisionResult,
   SchemaPlan,
 } from "./types.ts";
 
@@ -55,12 +62,12 @@ function stubValidateCompiledDdl(result?: DdlValidationResult) {
   return vi.fn((): DdlValidationResult => result ?? { ok: true });
 }
 
-function stubProvisionDb(result?: ProvisionDbResult) {
+function stubProvision(result?: ProvisionResult) {
   return vi.fn(
     async (
       _deps: unknown,
       args: { dbId: string; schemaName: string; tenantId: string },
-    ): Promise<ProvisionDbResult> =>
+    ): Promise<ProvisionResult> =>
       result ?? {
         ok: true,
         dbId: args.dbId,
@@ -76,18 +83,13 @@ function stubEmbedTableCards(impl?: () => Promise<void>) {
   });
 }
 
-function stubRateLimiter(allowed = true) {
-  return { tryAcquire: vi.fn(async () => allowed) };
-}
-
 function makeDeps(overrides: Partial<DbCreateDeps> = {}): DbCreateDeps {
   return {
     inferSchema: stubInferSchema(),
     compileDdl: stubCompileDdl(),
     validateCompiledDdl: stubValidateCompiledDdl(),
-    provisionDb: stubProvisionDb(),
+    provision: stubProvision(),
     embedTableCards: stubEmbedTableCards(),
-    rateLimiter: stubRateLimiter(),
     randomSuffix: () => FIXED_SUFFIX,
     schemaHash: () => "schema_hash_v1",
     llm: {} as LLMRouter,
@@ -119,8 +121,8 @@ describe("orchestrateDbCreate", () => {
         calls.push("validateCompiledDdl");
         return { ok: true };
       }),
-      provisionDb: vi.fn(async (_d, args): Promise<ProvisionDbResult> => {
-        calls.push("provisionDb");
+      provision: vi.fn(async (_d, args): Promise<ProvisionResult> => {
+        calls.push("provision");
         return {
           ok: true,
           dbId: args.dbId,
@@ -151,52 +153,14 @@ describe("orchestrateDbCreate", () => {
       "inferSchema",
       "compileDdl",
       "validateCompiledDdl",
-      "provisionDb",
+      "provision",
       "embedTableCards",
     ]);
   });
 
-  it("rate-limit reject short-circuits before any sub-module runs", async () => {
-    const inferSchema = stubInferSchema();
-    const compileDdl = stubCompileDdl();
-    const validateCompiledDdl = stubValidateCompiledDdl();
-    const provisionDb = stubProvisionDb();
-    const embedTableCards = stubEmbedTableCards();
-
-    const deps = makeDeps({
-      rateLimiter: stubRateLimiter(false),
-      inferSchema,
-      compileDdl,
-      validateCompiledDdl,
-      provisionDb,
-      embedTableCards,
-    });
-
-    const out = await orchestrateDbCreate(deps, ARGS);
-
-    expect(out.ok).toBe(false);
-    if (out.ok) throw new Error("expected error");
-    expect(out.error.kind).toBe("rate_limited");
-    if (out.error.kind !== "rate_limited") throw new Error("narrow");
-    expect(out.error.retry_after_seconds).toBeGreaterThan(0);
-
-    expect(inferSchema).not.toHaveBeenCalled();
-    expect(compileDdl).not.toHaveBeenCalled();
-    expect(validateCompiledDdl).not.toHaveBeenCalled();
-    expect(provisionDb).not.toHaveBeenCalled();
-    expect(embedTableCards).not.toHaveBeenCalled();
-  });
-
-  it("rate-limiter is keyed by tenantId", async () => {
-    const tryAcquire = vi.fn(async () => true);
-    const deps = makeDeps({ rateLimiter: { tryAcquire } });
-    await orchestrateDbCreate(deps, { ...ARGS, tenantId: "user_42" });
-    expect(tryAcquire).toHaveBeenCalledWith("db_create:user_42");
-  });
-
   it("inferSchema {ok:false, reason:'ambiguous_goal'} surfaces infer_failed and skips downstream", async () => {
     const compileDdl = stubCompileDdl();
-    const provisionDb = stubProvisionDb();
+    const provision = stubProvision();
     const embedTableCards = stubEmbedTableCards();
 
     const deps = makeDeps({
@@ -206,7 +170,7 @@ describe("orchestrateDbCreate", () => {
         details: { hint: "specify a domain" },
       }),
       compileDdl,
-      provisionDb,
+      provision,
       embedTableCards,
     });
 
@@ -221,12 +185,12 @@ describe("orchestrateDbCreate", () => {
       },
     });
     expect(compileDdl).not.toHaveBeenCalled();
-    expect(provisionDb).not.toHaveBeenCalled();
+    expect(provision).not.toHaveBeenCalled();
     expect(embedTableCards).not.toHaveBeenCalled();
   });
 
   it("compileDdl {ok:false} surfaces compile_failed and skips provision/embed", async () => {
-    const provisionDb = stubProvisionDb();
+    const provision = stubProvision();
     const embedTableCards = stubEmbedTableCards();
 
     const deps = makeDeps({
@@ -235,7 +199,7 @@ describe("orchestrateDbCreate", () => {
         reason: "identifier_collision",
         details: { table: "orders" },
       }),
-      provisionDb,
+      provision,
       embedTableCards,
     });
 
@@ -249,12 +213,12 @@ describe("orchestrateDbCreate", () => {
         details: { table: "orders" },
       },
     });
-    expect(provisionDb).not.toHaveBeenCalled();
+    expect(provision).not.toHaveBeenCalled();
     expect(embedTableCards).not.toHaveBeenCalled();
   });
 
   it("validateCompiledDdl {ok:false} surfaces ddl_invalid and skips provision", async () => {
-    const provisionDb = stubProvisionDb();
+    const provision = stubProvision();
     const embedTableCards = stubEmbedTableCards();
 
     const deps = makeDeps({
@@ -263,7 +227,7 @@ describe("orchestrateDbCreate", () => {
         reason: "destructive_verb",
         statement: "DROP TABLE orders",
       }),
-      provisionDb,
+      provision,
       embedTableCards,
     });
 
@@ -277,15 +241,15 @@ describe("orchestrateDbCreate", () => {
         statement: "DROP TABLE orders",
       },
     });
-    expect(provisionDb).not.toHaveBeenCalled();
+    expect(provision).not.toHaveBeenCalled();
     expect(embedTableCards).not.toHaveBeenCalled();
   });
 
-  it("provisionDb {ok:false} surfaces provision_failed and skips embed", async () => {
+  it("provision {ok:false} surfaces provision_failed and skips embed", async () => {
     const embedTableCards = stubEmbedTableCards();
 
     const deps = makeDeps({
-      provisionDb: stubProvisionDb({
+      provision: stubProvision({
         ok: false,
         reason: "ddl_execution_failed",
         rolled_back: true,
@@ -306,17 +270,17 @@ describe("orchestrateDbCreate", () => {
     expect(embedTableCards).not.toHaveBeenCalled();
   });
 
-  it("embedTableCards throwing returns embed_failed but provisionDb did succeed (dbId surfaced)", async () => {
-    const provisionDb = stubProvisionDb();
+  it("embedTableCards throwing returns embed_failed but provision did succeed (dbId surfaced)", async () => {
+    const provision = stubProvision();
     const embedTableCards = stubEmbedTableCards(async () => {
       throw new Error("pgvector down");
     });
 
-    const deps = makeDeps({ provisionDb, embedTableCards });
+    const deps = makeDeps({ provision, embedTableCards });
 
     const out = await orchestrateDbCreate(deps, ARGS);
 
-    expect(provisionDb).toHaveBeenCalledTimes(1);
+    expect(provision).toHaveBeenCalledTimes(1);
     expect(out.ok).toBe(false);
     if (out.ok) throw new Error("expected error");
     expect(out.error.kind).toBe("embed_failed");
@@ -327,7 +291,7 @@ describe("orchestrateDbCreate", () => {
 
   it("anonymous tenantId yields pkLive: null with all other fields populated", async () => {
     const deps = makeDeps({
-      provisionDb: stubProvisionDb({
+      provision: stubProvision({
         ok: true,
         // Even if a stub provisioner returned a pkLive, the
         // orchestrator must override to null for anon tenants.
@@ -348,12 +312,12 @@ describe("orchestrateDbCreate", () => {
     expect(out.sampleRows).toEqual(stubPlan().sample_rows);
   });
 
-  it("forwards args.name to inferSchema and schemaHash(plan) to provisionDb", async () => {
+  it("forwards args.name to inferSchema and schemaHash(plan) to provision", async () => {
     const inferSchema = stubInferSchema();
-    const provisionDb = stubProvisionDb();
+    const provision = stubProvision();
     const schemaHash = vi.fn(() => "deterministic_hash");
 
-    const deps = makeDeps({ inferSchema, provisionDb, schemaHash });
+    const deps = makeDeps({ inferSchema, provision, schemaHash });
 
     await orchestrateDbCreate(deps, { ...ARGS, name: "my coffee shop" });
 
@@ -362,8 +326,8 @@ describe("orchestrateDbCreate", () => {
       { goal: ARGS.goal, name: "my coffee shop" },
     );
     expect(schemaHash).toHaveBeenCalledTimes(1);
-    expect(provisionDb).toHaveBeenCalledTimes(1);
-    const provisionArgs = provisionDb.mock.calls[0]?.[1] as
+    expect(provision).toHaveBeenCalledTimes(1);
+    const provisionArgs = provision.mock.calls[0]?.[1] as
       | { schemaHash: string; secretRef: string; tenantId: string }
       | undefined;
     expect(provisionArgs?.schemaHash).toBe("deterministic_hash");

@@ -7,83 +7,36 @@
 //
 // Mirrors the layered split documented in
 // [`docs/research-receipts.md §1`](../../../../docs/research-receipts.md):
-// the LLM emits a typed `SchemaPlan`, our compiler emits SQL, a
-// libpg_query parse-validate runs over the compiled DDL, then a
-// transactional provisioner executes. The error unions below name
-// the failure modes each layer can surface back to the caller.
+// the LLM emits a typed `SchemaPlan` (canonical home in
+// `packages/db/src/types.ts` per
+// `.claude/skills/hosted-db-create/SKILL.md` SK-HDC-002), our
+// compiler emits SQL, a libpg_query parse-validate runs over the
+// compiled DDL, then a transactional provisioner executes. The
+// error unions below name the failure modes each layer can surface
+// back to the caller.
 //
-// Related skill: `.claude/skills/ask-pipeline/SKILL.md` — the
-// `kind=create` branch from `/v1/ask` lands these types in the
-// typed-plan compiler path (SK-ASK-001, SK-ASK-004).
+// Related skills:
+// - `.claude/skills/hosted-db-create/SKILL.md` (canonical owner of
+//   the create path; SK-HDC-001..008 govern this file's contracts).
+// - `.claude/skills/ask-pipeline/SKILL.md` — the `kind=create`
+//   branch routes here from `/v1/ask` (SK-ASK-001).
 
+import type { Dimension, ForeignKey, Metric, SampleRow, SchemaPlan } from "@nlqdb/db";
 import type { LLMRouter } from "@nlqdb/llm";
 
-// --- SchemaPlan -----------------------------------------------------
-// The structured-output shape returned by `inferSchema`. Both the
-// compiler and the provisioner read from it; the orchestrator only
-// pulls a few fields out for the response (`metrics`, `dimensions`,
-// `foreign_keys`, `sample_rows`).
-
-export type Column = {
-  name: string;
-  type: string;
-  nullable: boolean;
-  // Optional Postgres-side default literal (e.g. "now()", "0").
-  default?: string;
-  // Phase 2 semantic-layer hint — surfaces in
-  // `plan.dimensions` mapping. Absent for opaque columns.
-  description?: string;
-};
-
-export type Table = {
-  name: string;
-  columns: Column[];
-  primary_key: string[];
-  description?: string;
-};
-
-export type ForeignKey = {
-  from_table: string;
-  from_columns: string[];
-  to_table: string;
-  to_columns: string[];
-};
-
-export type Metric = {
-  name: string;
-  // SQL-flavoured aggregation expression — bound to a table at
-  // compile time. Example: "count(*)", "sum(orders.total_cents)".
-  expression: string;
-  description?: string;
-};
-
-export type Dimension = {
-  name: string;
-  // `<table>.<column>` reference resolved by the compiler.
-  column: string;
-  description?: string;
-};
-
-export type SampleRow = {
-  table: string;
-  values: Record<string, unknown>;
-};
-
-export type SchemaPlan = {
-  // Lower-case, underscore-separated. Used to derive both the
-  // schema name and the public dbId — see docs/design.md §14.6
-  // example "orders-tracker-a4f". The orchestrator appends a
-  // 6-char random suffix at runtime.
-  slug_hint: string;
-  // Optional human display name (passed through from `args.name`
-  // when supplied, otherwise inferred).
-  name?: string;
-  tables: Table[];
-  foreign_keys: ForeignKey[];
-  metrics: Metric[];
-  dimensions: Dimension[];
-  sample_rows: SampleRow[];
-};
+// Re-exports for callers that consume the SchemaPlan family
+// alongside the orchestrator's surface, so the import site doesn't
+// need a second `@nlqdb/db` line. Canonical home stays in
+// `packages/db/src/types.ts` (SK-HDC-002).
+export type {
+  Column,
+  Dimension,
+  ForeignKey,
+  Metric,
+  SampleRow,
+  SchemaPlan,
+  Table,
+} from "@nlqdb/db";
 
 // --- infer-schema ---------------------------------------------------
 
@@ -125,7 +78,7 @@ export type CompileDdlResult =
 // Defense-in-depth libpg_query parse + reject-list. Even though our
 // own compiler authored the SQL, we re-parse before sending to the
 // executor — guards against compiler bugs. docs/design.md §3.6.5
-// row 2; SK-ASK-004 codifies the read/write vs DDL split.
+// row 2; SK-HDC-006 codifies the read/write vs DDL split.
 
 export type DdlValidationFailureReason =
   | "parse_failed"
@@ -137,14 +90,19 @@ export type DdlValidationResult =
   | { ok: true }
   | { ok: false; reason: DdlValidationFailureReason; statement: string };
 
-// --- neon-provision -------------------------------------------------
+// --- provisioner ----------------------------------------------------
+// SK-HDC-007 splits the provisioner from day one: Phase 1 wires
+// `provisionDb` (schema on shared Neon branch); Phase 4 wires
+// `registerByoDb` (BYO connection_url, `docs/design.md §3.6.7`).
+// Both implement the same `ProvisionFn` shape so the orchestrator
+// swaps with a single dep change, not a refactor.
 
-export type ProvisionDbDeps = {
+export type ProvisionDeps = {
   pg: PgClient;
   d1: D1Database;
 };
 
-export type ProvisionDbArgs = {
+export type ProvisionArgs = {
   plan: SchemaPlan;
   dbId: string;
   schemaName: string;
@@ -167,7 +125,7 @@ export type ProvisionFailureReason =
   | "registry_insert_failed"
   | "transaction_failed";
 
-export type ProvisionDbResult =
+export type ProvisionResult =
   | {
       ok: true;
       dbId: string;
@@ -179,6 +137,10 @@ export type ProvisionDbResult =
       pkLive: string | null;
     }
   | { ok: false; reason: ProvisionFailureReason; rolled_back: boolean };
+
+// The injectable shape SK-HDC-007 calls out: Phase 1 = `provisionDb`;
+// Phase 4 = `registerByoDb`. The orchestrator only knows the type.
+export type ProvisionFn = (deps: ProvisionDeps, args: ProvisionArgs) => Promise<ProvisionResult>;
 
 // --- embed-table-cards ----------------------------------------------
 // One pgvector row per table for RAG retrieval at query time.
@@ -218,8 +180,11 @@ export type DbCreatePlanSummary = {
   foreign_keys: ForeignKey[];
 };
 
+// Rate-limit rejection is NOT a member of this union — per
+// SK-HDC-008 the per-IP / per-account limiter runs in
+// `apps/api/src/ask/classifier.ts` before the orchestrator is
+// called, so a rate-limited request never reaches `orchestrateDbCreate`.
 export type DbCreateError =
-  | { kind: "rate_limited"; retry_after_seconds: number }
   | { kind: "infer_failed"; reason: InferFailureReason; details?: unknown }
   | { kind: "compile_failed"; reason: CompileFailureReason; details?: unknown }
   | { kind: "ddl_invalid"; reason: DdlValidationFailureReason; statement: string }
