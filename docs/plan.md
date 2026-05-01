@@ -3,6 +3,13 @@
 > A database you talk to. Create one, query it in English, done.
 > Infrastructure is invisible. It Just Works™, and if it doesn't we rebuild it behind the scenes before you notice.
 
+> **Where decisions live:** Per-feature decisions are canonical in
+> [`.claude/skills/<feature>/SKILL.md`](../.claude/skills/_index.md);
+> cross-cutting decisions are canonical in
+> [`docs/decisions.md`](./decisions.md) (`GLOBAL-NNN`). This doc owns
+> phasing, slices, and exit criteria — the *when* and *in what order*.
+> If a sentence here disagrees with a skill, the skill wins.
+
 ---
 
 ## 0. Product Thesis

@@ -5,10 +5,13 @@ Living state-of-the-world doc. Ground truth for *what's provisioned*,
 infrastructure changes — if it goes stale, the rest of the repo gets
 harder to operate.
 
-- [./design.md](./design.md) — why the architecture looks this way.
+- [./design.md](./design.md) — architectural narrative.
 - [./implementation.md](./implementation.md) — phased plan + prereqs.
 - [./performance.md](./performance.md) — SLOs, latency budgets, span/metric catalog.
-- **this file** — what's actually set up right now.
+- [.claude/skills/](../.claude/skills/) — canonical per-feature decisions.
+- [./decisions.md](./decisions.md) — canonical cross-cutting `GLOBAL-NNN`.
+- **this file** — what's actually set up right now (operational state,
+  not decisions; if a sentence here disagrees with a skill, the skill wins).
 
 **Last verified: 2026-04-28.** Running `./scripts/verify-secrets.sh`
 should return 21/21 green (or more, as provisioning expands).

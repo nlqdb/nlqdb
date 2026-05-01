@@ -6,8 +6,13 @@ Answers:
 1. **What do we build, in what order, with what dependencies?** (§3–§7)
 2. **What accounts and API keys must we provision first, all $0?** (§2)
 
-For *why* a decision was made, read `./design.md`. This doc does not restate
-rationale.
+For *why* a decision was made, read the canonical skill — see
+[`.claude/skills/_index.md`](../.claude/skills/_index.md) for the full
+table — or [`docs/decisions.md`](./decisions.md) for cross-cutting
+`GLOBAL-NNN`s. `docs/design.md` carries the architectural narrative;
+this doc is operational. **No skill-canonical decisions are restated
+here**; references to features (auth, ask-pipeline, plan-cache, etc.)
+point at concepts whose decisions are owned by the corresponding skill.
 
 ---
 
