@@ -722,8 +722,15 @@ the "fast" promise.
 
 ## 6. Pricing — freemium done honestly
 
+> **Cross-refs:** `GLOBAL-013` (`$0/month free tier`) is canonical in
+> [`docs/decisions.md`](./decisions.md). Stripe ingest, idempotency, and
+> subscription state-machine decisions are in
+> [`.claude/skills/stripe-billing/SKILL.md`](../.claude/skills/stripe-billing/SKILL.md)
+> (`SK-STRIPE-001..007`). Premium-models routing (Pro-tier privacy)
+> sits with `SK-LLM-008`.
+
 The constraint: **a real user must be able to ship a real product without
-paying us.** Aligned with [`./plan.md` §5](./plan.md).
+paying us** (canonical: `GLOBAL-013`). Aligned with [`./plan.md` §5](./plan.md).
 
 | Tier | Price | What you get | Limits | Card |
 |---|---|---|---|---|
