@@ -16,7 +16,7 @@ when-to-load:
 **One-liner:** `Idempotency-Key` on every mutation; `(user_id, key)` dedupe store; byte-exact retry response.
 **Status:** partial — natural-key dedupe shipped (Stripe webhook via `stripe_events`, waitlist via email-hash PK). The general-purpose `Idempotency-Key` middleware on `/v1/ask` writes and the SDK's auto-generated retry keys are open work — the contract is locked (DESIGN §14.6 + GLOBAL-005), implementation is not.
 **Owners (code):** `apps/api/src/stripe/webhook.ts`, `apps/api/src/waitlist.ts`, `apps/api/src/middleware.ts` (target for the general middleware), `packages/sdk/**` (target for retry-key auto-generation).
-**Cross-refs:** docs/design.md §9 line 938–939 (bullet-proof checklist) · §14.6 line 1255–1297 (HTTP API mutation contract) · docs/decisions.md#GLOBAL-005 (canonical here)
+**Cross-refs:** docs/design.md §9 line 938–939 (bullet-proof checklist) · §14.6 line 1255–1297 (HTTP API mutation contract) · docs/decisions.md#GLOBAL-005
 
 ## Touchpoints — read this skill before editing
 
@@ -99,27 +99,11 @@ when-to-load:
   - Per-attempt keys — defeats the purpose; every retry looks like a new request to the server.
   - Force callers to pass a key always — pushes the responsibility to every surface; high chance someone forgets.
 
-### GLOBAL-005 — Every mutation accepts `Idempotency-Key`
+## GLOBALs governing this feature
 
-- **Decision:** Every state-changing endpoint (HTTP, SDK, CLI, MCP)
-  accepts an optional `Idempotency-Key` header. Mutations are recorded
-  keyed by `(user_id, idempotency_key)` so retries return the original
-  response body byte-for-byte.
-- **Core value:** Bullet-proof, Honest latency
-- **Why:** Networks fail. Workers retry. Without idempotency, retries
-  duplicate writes (double-charge, double-emit, double-record). This is
-  non-negotiable for any system that bills, emits events, or mutates
-  state on behalf of an agent that can itself retry.
-- **Consequence in code:** Every `POST` / `PATCH` / `DELETE` in the API
-  layer reads `Idempotency-Key`, dedupes by `(user_id, key)` against a
-  bounded-TTL store, and returns the recorded response on a hit. SDK
-  helpers auto-generate keys for retried calls.
-- **Alternatives rejected:**
-  - Server-side dedup by content hash — misses semantic duplicates
-    (same intent, different timestamp / nonce / client clock).
-  - Client retries without keys — dangerous on any critical path; banned
-    by review.
-- **Source:** docs/decisions.md#GLOBAL-005
+Canonical text in [`docs/decisions.md`](../../docs/decisions.md). The list below names the rules that constrain this feature; any skill-local commentary is nested under the rule.
+
+- **GLOBAL-005** — Every mutation accepts `Idempotency-Key`.
 
 ## Open questions / known unknowns
 

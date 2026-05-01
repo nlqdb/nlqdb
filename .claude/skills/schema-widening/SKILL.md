@@ -97,51 +97,12 @@ when-to-load:
   - Schema-mate-style migration files in the repo — invites the version-coupling problem we are explicitly avoiding.
   - In-place ALTER COLUMN — see `SK-SCHEMA-003`; breaks `GLOBAL-006`.
 
-### GLOBAL-004 — Schemas only widen
+## GLOBALs governing this feature
 
-- **Decision:** Once a column or field is observed in a query plan, it
-  stays in the schema fingerprint. Schemas grow; they don't shrink. The
-  `schema_hash` is monotonically widened, never branched on a "schema
-  mismatch" path.
-- **Core value:** Bullet-proof, Simple
-- **Why:** Branching on schema mismatch creates a combinatorial explosion
-  of plan-cache keys, and every replanning is a chance to regress.
-  Widening is monotonic and safe — old plans remain valid against
-  widened schemas because the fields they reference still exist.
-- **Consequence in code:** `schema_hash` is computed over observed-fields
-  sorted by name; adding fields is append-only. `plan-cache` keys remain
-  valid across widening; replanning is only triggered when an observed
-  field disappears (which we treat as a hard-stop event, not a normal
-  branch).
-- **Alternatives rejected:**
-  - Versioned schemas — more keys, more plans, more bugs.
-  - Re-plan on any schema change — breaks `GLOBAL-006` (content-addressed
-    cache).
-- **Source:** docs/decisions.md#GLOBAL-004
+Canonical text in [`docs/decisions.md`](../../docs/decisions.md). The list below names the rules that constrain this feature; any skill-local commentary is nested under the rule.
 
-### GLOBAL-006 — Plans content-addressed by `(schema_hash, query_hash)`
-
-- **Decision:** A query plan's cache key is the pair
-  `(schema_hash, query_hash)`. There is no time-based invalidation, no
-  "cache version," no manual flush. If the inputs match, the plan
-  matches.
-- **Core value:** Fast, Simple, Bullet-proof
-- **Why:** Cache invalidation is the second-hardest problem in
-  computer science; we side-step it by making every cache key
-  derive entirely from the inputs that determine the output. Combined
-  with `GLOBAL-004`, this guarantees plans are stable under benign
-  schema growth.
-- **Consequence in code:** `plan-cache` writes are keyed by
-  `(schema_hash, query_hash)`; reads are exact-match only. Anything
-  that wants to "force a new plan" must change `query_hash` (e.g., a
-  pin or a hint), not invalidate the cache. LLM-generated plans are
-  the only writers; humans pinning a plan write to the same store.
-- **Alternatives rejected:**
-  - TTL-based caches — wastes the 99% case where the inputs are
-    unchanged, plus introduces flakiness around the boundary.
-  - Versioned plans tied to schema versions — would force
-    `GLOBAL-004` to branch.
-- **Source:** docs/decisions.md#GLOBAL-006
+- **GLOBAL-004** — Schemas only widen.
+- **GLOBAL-006** — Plans content-addressed by `(schema_hash, query_hash)`.
 
 ## Open questions / known unknowns
 

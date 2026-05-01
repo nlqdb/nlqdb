@@ -45,6 +45,7 @@ Cross-cutting decisions cited by skills: [`docs/decisions.md`](../../docs/decisi
 
 | Skill | One-liner | Phase |
 |---|---|---|
+| [`hosted-db-create`](./hosted-db-create/SKILL.md) | Hosted db.create — typed-plan SchemaPlan, deterministic DDL compiler, Zod + libpg_query validation, provisioner, semantic layer at create-time. | Phase 1 — design locked in `docs/design.md` §3.6; sub-modules listed in `docs/implementation.md` §4 |
 | [`cli`](./cli/SKILL.md) | `nlq` verb surface, OS-keychain credential storage. | Phase 2 — design locked in `docs/design.md` §3.3 / §4.3 / §14.3; no code yet |
 | [`engine-migration`](./engine-migration/SKILL.md) | Auto-migrate Postgres ↔ Mongo / Redis / etc. | Phase 3 |
 | [`multi-engine-adapter`](./multi-engine-adapter/SKILL.md) | Adapters beyond Postgres. | Phase 3 |

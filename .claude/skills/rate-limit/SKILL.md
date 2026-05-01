@@ -88,46 +88,12 @@ when-to-load:
   - Build per-IP today, gated on `cf-connecting-ip` only — adds ops surface (KV write quota) without buying any abuse resistance under the current authenticated-only `/v1/ask`.
   - Skip per-IP entirely — leaves anonymous mode with no defence against script-kiddie LLM-stand-in abuse.
 
-### GLOBAL-002 — Behavior parity across surfaces
+## GLOBALs governing this feature
 
-- **Decision:** Every surface (HTTP API, SDK, CLI, MCP, elements, web)
-  presents the same auth modes, error shape, idempotency semantics, and
-  rate-limit signaling. Surface-specific UX wrapping (CLI prompts vs.
-  browser modals vs. MCP tool errors) is allowed; semantics are not.
-- **Core value:** Bullet-proof, Effortless UX
-- **Why:** Users and agents move between surfaces (CLI in dev, MCP in
-  their IDE, web for sharing). If a 429 means "back off 1 s" in CLI but
-  "give up" in MCP, behavior is unpredictable. Parity is what makes the
-  multi-surface story credible.
-- **Consequence in code:** Every error code, every header
-  (`Idempotency-Key`, `X-RateLimit-*`, `Authorization`), and every
-  status-mapping rule is defined once in `packages/sdk/` and re-used.
-- **Alternatives rejected:**
-  - Surface-specific error shapes — each surface team optimizes locally
-    and the surfaces drift.
-  - "Best effort" parity — degrades to no parity inside a year.
-- **Source:** docs/decisions.md#GLOBAL-002
+Canonical text in [`docs/decisions.md`](../../docs/decisions.md). The list below names the rules that constrain this feature; any skill-local commentary is nested under the rule.
 
-### GLOBAL-007 — No login wall before first value
-
-- **Decision:** A first-time visitor — on the web, in the CLI, or via an
-  MCP-aware client — gets to a working answer before being asked to sign
-  in. Anonymous mode is the default first-touch experience.
-- **Core value:** Free, Effortless UX, Goal-first
-- **Why:** Login walls kill the activation funnel. Our pitch is "a
-  database you talk to" — not "create an account, verify email, choose
-  a region, then talk." We can ask for the email after the user has
-  already had a `wow`.
-- **Consequence in code:** `apps/web` boots into a usable demo without
-  a session. CLI's first `nlq ask` accepts an anonymous device, which
-  later attaches to a Better Auth identity on first sign-in. The API
-  has an explicit anonymous-mode rate-limit tier.
-- **Alternatives rejected:**
-  - Required signup with "free trial" framing — measurably worse for
-    activation.
-  - Auth-deferred-but-persistent — same effect as a wall, just delayed
-    by one screen.
-- **Source:** docs/decisions.md#GLOBAL-007
+- **GLOBAL-002** — Behavior parity across surfaces.
+- **GLOBAL-007** — No login wall before first value.
 
 ## Open questions / known unknowns
 

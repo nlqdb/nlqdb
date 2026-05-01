@@ -37,8 +37,9 @@ Skills have no "imports." If a decision applies to multiple features it is
 Two namespaces, both globally unique:
 
 - `GLOBAL-NNN` — cross-cutting decisions that apply to multiple features.
-  Canonical text lives in `docs/decisions.md`. Each skill that is affected
-  copies the decision inline with a `source:` line back to `decisions.md`.
+  Canonical text lives in `docs/decisions.md` and **only there**. Skills
+  that are affected reference the GLOBAL by ID; they don't duplicate the
+  decision body. (See §5.)
 - `SK-<FEATURE>-NNN` — decisions local to one feature. Canonical text lives
   in that feature's `SKILL.md`. Numbering is per-feature, monotonic, and
   sticky — never renumber.
@@ -65,7 +66,7 @@ when-to-load:
 **One-liner:** <what this feature is>
 **Status:** implemented (Slice N) | partial | planned (Phase X)
 **Owners (code):** <paths>
-**Cross-refs:** docs/design.md §X · docs/implementation.md §Y · docs/runbook.md §Z
+**Cross-refs:** docs/design.md §X · docs/implementation.md §Y · docs/runbook.md §Z · GLOBAL-NNN, GLOBAL-MMM (canonical text in docs/decisions.md)
 
 ## Touchpoints — read this skill before editing
 
@@ -83,9 +84,17 @@ when-to-load:
 - **Alternatives rejected:** <one line each>
 - **Source:** canonical here · also referenced in docs/design.md §4.1
 
-### GLOBAL-005 — Every mutation accepts Idempotency-Key
-<duplicated verbatim from docs/decisions.md#GLOBAL-005>
-- **Source:** docs/decisions.md#GLOBAL-005
+## GLOBALs governing this feature
+
+Canonical text in [`docs/decisions.md`](../../docs/decisions.md). The list
+below names the rules that constrain this feature; any skill-local
+commentary is nested under the rule.
+
+- **GLOBAL-005** — Every mutation accepts `Idempotency-Key`.
+  - *In this skill:* <skill-local note — only when the skill adds a
+    feature-specific implication. Omit the bullet entirely if there's
+    nothing skill-local to say.>
+- **GLOBAL-014** — OTel span on every external call.
 
 ## Open questions / known unknowns
 
@@ -94,7 +103,7 @@ when-to-load:
 
 ## 4. Decision-block format (the five fields are mandatory)
 
-Every decision — `GLOBAL-*` or `SK-*-*` — must have all five fields:
+Every `SK-*-*` decision must have all five fields:
 
 1. **Decision:** one declarative sentence. What we will do.
 2. **Core value:** one or more values from `docs/design.md §0` cited by
@@ -108,27 +117,40 @@ Every decision — `GLOBAL-*` or `SK-*-*` — must have all five fields:
 5. **Alternatives rejected:** one line each, with the reason. Future
    readers will rediscover these — pre-empt the rediscovery loop.
 
-Optional: `Source:` line that points at where the decision is canonical
-(for duplicated GLOBALs) or where the long-form rationale lived before
-the skill existed.
+The same five fields are required for `GLOBAL-NNN` blocks in
+`docs/decisions.md`. Skills don't repeat these fields — they reference
+the GLOBAL by ID (see §5).
 
-## 5. Duplication rule (anti-DRY by design)
+Optional: `Source:` line on `SK-*` blocks that points at where the
+long-form rationale lived before the skill existed.
 
-If a decision affects N features, copy it into all N skill files. Every
-copy carries:
+## 5. Single source of truth (reference, don't duplicate)
 
+`GLOBAL-NNN` decisions live in `docs/decisions.md` and **only there**. A
+skill affected by a GLOBAL adds a line to its `## GLOBALs governing
+this feature` section like:
+
+```markdown
+- **GLOBAL-005** — Every mutation accepts `Idempotency-Key`.
+  - *In this skill:* <skill-local implication, only when there is one>
 ```
-- **Source:** docs/decisions.md#GLOBAL-NNN
-```
 
-This is intentional. A cold agent loading `SK-AUTH` should see every rule
-that constrains auth, even rules that "really live" elsewhere. Cost: when
-a GLOBAL changes, the duplicates must change with it. We pay that with
-the sync rule in the root `AGENTS.md`: any edit to `docs/decisions.md`
-requires updating every skill that copies the affected GLOBAL, in the
-same PR.
+The skill names the ID + title and adds skill-local commentary if the
+GLOBAL has a non-obvious implication for this feature ("this is a
+mutation, so the dedupe store keys on `(user_id, key)`"; "the create
+path emits four spans named exactly X / Y / Z / W"). When there's
+nothing skill-local to say, the rule is just listed by ID.
 
-To find duplicates: `grep -rn 'GLOBAL-005' .claude/skills/`.
+**Why not duplicate the GLOBAL body into every skill that cites it?**
+We tried that earlier ("anti-DRY by design"). It produced silent drift
+across N skills every time a GLOBAL was edited, and the only way to
+police it was a CI byte-identity check that itself needed maintenance.
+Modern agent context windows easily fit `docs/decisions.md` alongside a
+SKILL.md; the duplication was a workaround for a 2024-era constraint
+that no longer binds.
+
+To find every skill affected by a GLOBAL: `grep -rn 'GLOBAL-005'
+.claude/skills/`.
 
 ## 6. When to add a skill
 
@@ -152,17 +174,19 @@ introduces the skill, with at least one decision in it.
 
 These are grep-driven, no tooling needed:
 
-1. **Every decision cites a core value.** Search every `### SK-` and
-   `### GLOBAL-` block; each one has a `- **Core value:**` line.
-2. **Every decision has all five fields.** Decision / Core value / Why /
-   Consequence / Alternatives.
-3. **Every duplicated GLOBAL carries a `Source:` line** pointing at
-   `docs/decisions.md#GLOBAL-NNN`.
+1. **Every `SK-*` decision cites a core value.** Search every `### SK-`
+   block; each one has a `- **Core value:**` line.
+2. **Every `SK-*` decision has all five fields.** Decision / Core value
+   / Why / Consequence / Alternatives.
+3. **GLOBALs are referenced, not duplicated.** No `### GLOBAL-NNN`
+   block under `.claude/skills/` — only one-liner references in the
+   `## GLOBALs governing this feature` section. Verify with
+   `grep -rn '^### GLOBAL-' .claude/skills/` (should print nothing).
 4. **No broken cross-refs.** `docs/design.md §4.1` style references
    resolve to a real heading.
 5. **`when-to-load.globs` matches real paths.** A glob pointing at a
    non-existent directory is a sign the skill is stale or the feature
-   moved.
+   moved (planned skills are an explicit exception).
 
 A new skill that fails any of these is a draft, not a skill.
 

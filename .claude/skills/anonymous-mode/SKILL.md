@@ -14,7 +14,7 @@ when-to-load:
 **One-liner:** No-login first-value path across web / CLI / MCP; later attached to a Better Auth identity.
 **Status:** partial (API shipped — `/v1/anon/adopt`; web UI tabled per 2026-04-28 pivot)
 **Owners (code):** `apps/web/**`, `cli/**`, `apps/api/src/anon-adopt.ts`
-**Cross-refs:** docs/decisions.md#GLOBAL-007 (canonical here) · docs/design.md §0.1, §3.3, §3.6.4, §4.1, §14.3, §14.6 · docs/personas.md (P1, P5 first-touch) · docs/implementation.md §4 (partial status) · docs/runbook.md §9 (anonymous-db lifecycle)
+**Cross-refs:** docs/decisions.md#GLOBAL-007 · docs/design.md §0.1, §3.3, §3.6.4, §4.1, §14.3, §14.6 · docs/personas.md (P1, P5 first-touch) · docs/implementation.md §4 (partial status) · docs/runbook.md §9 (anonymous-db lifecycle)
 
 ## Touchpoints — read this skill before editing
 
@@ -84,50 +84,12 @@ when-to-load:
   - `if (isAnonymous)` branches at each pipeline step — drift over time, double the test surface.
   - Two separate routes for anonymous vs. authenticated — every endpoint duplicates, every bug fixes need two PRs.
 
-## Copies of GLOBAL decisions affecting this feature
+## GLOBALs governing this feature
 
-### GLOBAL-007 — No login wall before first value
+Canonical text in [`docs/decisions.md`](../../docs/decisions.md). The list below names the rules that constrain this feature; any skill-local commentary is nested under the rule.
 
-- **Decision:** A first-time visitor — on the web, in the CLI, or via an
-  MCP-aware client — gets to a working answer before being asked to sign
-  in. Anonymous mode is the default first-touch experience.
-- **Core value:** Free, Effortless UX, Goal-first
-- **Why:** Login walls kill the activation funnel. Our pitch is "a
-  database you talk to" — not "create an account, verify email, choose
-  a region, then talk." We can ask for the email after the user has
-  already had a `wow`.
-- **Consequence in code:** `apps/web` boots into a usable demo without
-  a session. CLI's first `nlq ask` accepts an anonymous device, which
-  later attaches to a Better Auth identity on first sign-in. The API
-  has an explicit anonymous-mode rate-limit tier.
-- **Alternatives rejected:**
-  - Required signup with "free trial" framing — measurably worse for
-    activation.
-  - Auth-deferred-but-persistent — same effect as a wall, just delayed
-    by one screen.
-- **Source:** docs/decisions.md#GLOBAL-007 (canonical here as the defining GLOBAL)
-
-### GLOBAL-020 — No "pick a region", no config files in the first 60s
-
-- **Decision:** First-time use — `npx nlq ask`, opening the web app,
-  installing the MCP — completes without any config file, region
-  picker, project ID, or environment variable. The path to first
-  value is conversational and zero-config.
-- **Core value:** Effortless UX, Free, Goal-first
-- **Why:** Every required input before first value drops the funnel.
-  Users who pick a region are already deciding to commit; we want
-  them to decide *after* they've seen value, not before. Defaults
-  are good, asked-for defaults are bad.
-- **Consequence in code:** CLI's first invocation works against a
-  default anonymous device on a default region. Web app boots
-  against a demo dataset. MCP install does host detection
-  (`packages/mcp/install.ts`) — no JSON the user has to write. Any
-  PR that adds a required input to first-touch is rejected.
-- **Alternatives rejected:**
-  - "Sensible-default config file generated on first run" — still a
-    file, still confusing, drifts from the docs.
-  - Region picker on signup — half our funnel can't answer it.
-- **Source:** docs/decisions.md#GLOBAL-020
+- **GLOBAL-007** — No login wall before first value.
+- **GLOBAL-020** — No "pick a region", no config files in the first 60s.
 
 ## Open questions / known unknowns
 

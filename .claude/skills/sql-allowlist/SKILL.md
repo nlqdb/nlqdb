@@ -13,7 +13,7 @@ when-to-load:
 **One-liner:** Safety boundary on LLM-generated SQL — what is allowed to execute.
 **Status:** implemented
 **Owners (code):** `apps/api/src/ask/sql-validate.ts` (called from `apps/api/src/ask/orchestrate.ts`)
-**Cross-refs:** docs/design.md §3.6.5 (validator architecture) · docs/research-receipts.md §1, §10 (Replit incident, Postgres-specific guardrails) · docs/decisions.md#GLOBAL-015
+**Cross-refs:** docs/design.md §3.6.5 (validator architecture) · docs/research-receipts.md §1, §10 (Replit incident, Postgres-specific guardrails) · GLOBAL-015 (see governing GLOBALs section) · `.claude/skills/hosted-db-create/SKILL.md` (Phase 1 — owns the parallel DDL-path validator at `apps/api/src/ask/sql-validate-ddl.ts`; SK-HDC-006 splits the two validator files deliberately)
 
 ## Touchpoints — read this skill before editing
 
@@ -93,28 +93,13 @@ when-to-load:
   - Move timeout enforcement into the validator — the validator runs at parse time, before execution, with no executor context.
   - Move RLS into application code — defeats the purpose of RLS (database-enforced).
 
-### GLOBAL-015 — Power users always have an escape hatch
+## GLOBALs governing this feature
 
-- **Decision:** Every layer that turns natural language into something
-  executable — `/v1/ask` → SQL, plan-cache → plan, db-adapter → query
-  — exposes the underlying primitive directly. A power user can
-  bypass the LLM and run raw SQL / Mongo / connection-string queries.
-- **Core value:** Creative, Bullet-proof, Goal-first
-- **Why:** Anyone who outgrows the conversational interface must not
-  hit a wall. The product loses credibility (and users) if "the LLM
-  decided" is the only path to the data. The escape hatch is also
-  the thing that makes the LLM safe — humans can verify and fix.
-- **Consequence in code:** `/v1/run` (raw query) sits next to
-  `/v1/ask` (NL query). CLI's `nlq run` runs raw SQL. The plan
-  surfaced from `/v1/ask` is editable and re-runnable. Connection
-  strings are exposed for users on plans that can self-host the DB.
-- **Alternatives rejected:**
-  - LLM-only API — fine for demos, fatal for production users.
-  - Hide raw access behind enterprise tier — blocks the OSS
-    contributor path and contradicts `GLOBAL-019`.
-- **Source:** docs/decisions.md#GLOBAL-015
+Canonical text in [`docs/decisions.md`](../../docs/decisions.md). The list below names the rules that constrain this feature; any skill-local commentary is nested under the rule.
 
-**Interaction note (P3):** GLOBAL-015 implies that `/v1/run` exists as a raw-SQL escape hatch. The same allowlist still applies on `/v1/run` to preserve the layered-guardrails posture (`SK-SQLAL-001`) — `/v1/run` skips the LLM, not the validator. Phase-2 escape-hatch work that loosens this needs to update both this skill and GLOBAL-015 in the same PR.
+- **GLOBAL-015** — Power users always have an escape hatch.
+  - *In this skill:*
+    **Interaction note (P3):** GLOBAL-015 implies that `/v1/run` exists as a raw-SQL escape hatch. The same allowlist still applies on `/v1/run` to preserve the layered-guardrails posture (`SK-SQLAL-001`) — `/v1/run` skips the LLM, not the validator. Phase-2 escape-hatch work that loosens this needs to update both this skill and GLOBAL-015 in the same PR.
 
 ## Open questions / known unknowns
 

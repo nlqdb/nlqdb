@@ -105,47 +105,12 @@ when-to-load:
   - DLQ from day one — extra infra surface for a Phase-0 system that has not yet observed retry exhaustion in the wild.
   - Persist failed messages to D1 — D1 is the primary user store; conflating event-pipeline backlog with user data violates the boundary.
 
-### GLOBAL-005 — Every mutation accepts `Idempotency-Key`
+## GLOBALs governing this feature
 
-- **Decision:** Every state-changing endpoint (HTTP, SDK, CLI, MCP)
-  accepts an optional `Idempotency-Key` header. Mutations are recorded
-  keyed by `(user_id, idempotency_key)` so retries return the original
-  response body byte-for-byte.
-- **Core value:** Bullet-proof, Honest latency
-- **Why:** Networks fail. Workers retry. Without idempotency, retries
-  duplicate writes (double-charge, double-emit, double-record). This is
-  non-negotiable for any system that bills, emits events, or mutates
-  state on behalf of an agent that can itself retry.
-- **Consequence in code:** Every `POST` / `PATCH` / `DELETE` in the API
-  layer reads `Idempotency-Key`, dedupes by `(user_id, key)` against a
-  bounded-TTL store, and returns the recorded response on a hit. SDK
-  helpers auto-generate keys for retried calls.
-- **Alternatives rejected:**
-  - Server-side dedup by content hash — misses semantic duplicates
-    (same intent, different timestamp / nonce / client clock).
-  - Client retries without keys — dangerous on any critical path; banned
-    by review.
-- **Source:** docs/decisions.md#GLOBAL-005
+Canonical text in [`docs/decisions.md`](../../docs/decisions.md). The list below names the rules that constrain this feature; any skill-local commentary is nested under the rule.
 
-### GLOBAL-014 — OTel span on every external call (DB, LLM, HTTP, queue)
-
-- **Decision:** Every call that crosses a process boundary — DB query,
-  LLM call, outbound HTTP, queue enqueue/dequeue — is wrapped in an
-  OpenTelemetry span with the canonical attributes from
-  `docs/performance.md` §3 (the span / metric / label catalog).
-- **Core value:** Honest latency, Bullet-proof, Fast
-- **Why:** Without spans on every external call, we can't answer "why
-  is this request slow," "is the LLM the bottleneck," or "did this
-  retry actually go to the DB twice." The catalog enforces consistent
-  attribute names so dashboards and queries don't fragment.
-- **Consequence in code:** `packages/otel` exposes the wrapper helpers;
-  all DB / LLM / HTTP / queue clients in the codebase route through
-  them. New external calls without a span fail review. Span names,
-  attributes, and metrics match the catalog (no ad-hoc names).
-- **Alternatives rejected:**
-  - Sample only slow requests — loses the baseline distribution.
-  - Per-team conventions — fragments the dashboards within a quarter.
-- **Source:** docs/decisions.md#GLOBAL-014
+- **GLOBAL-005** — Every mutation accepts `Idempotency-Key`.
+- **GLOBAL-014** — OTel span on every external call (DB, LLM, HTTP, queue).
 
 ## Open questions / known unknowns
 

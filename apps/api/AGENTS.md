@@ -10,6 +10,7 @@ Cloudflare Workers HTTP API. Hosts /v1/ask, /v1/run, auth, billing, webhooks.
 ## Skills relevant to this area
 
 - [`ask-pipeline`](../../.claude/skills/ask-pipeline/SKILL.md) — mandatory pre-read for changes that touch the feature.
+- [`hosted-db-create`](../../.claude/skills/hosted-db-create/SKILL.md) — mandatory pre-read for changes that touch `src/db-create/**`, `src/ask/classifier.ts`, or `src/ask/sql-validate-ddl.ts`. Phase 1.
 - [`plan-cache`](../../.claude/skills/plan-cache/SKILL.md) — mandatory pre-read for changes that touch the feature.
 - [`sql-allowlist`](../../.claude/skills/sql-allowlist/SKILL.md) — mandatory pre-read for changes that touch the feature.
 - [`idempotency`](../../.claude/skills/idempotency/SKILL.md) — mandatory pre-read for changes that touch the feature.

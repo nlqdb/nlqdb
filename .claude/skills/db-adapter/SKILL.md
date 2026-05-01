@@ -13,7 +13,7 @@ when-to-load:
 **One-liner:** Engine-agnostic DB interface; Phase 0 ships Postgres via Neon.
 **Status:** implemented (Phase 0 / Slice 3 — single Postgres adapter via Neon HTTP)
 **Owners (code):** `packages/db/**`, `apps/api/src/db-registry.ts`
-**Cross-refs:** docs/design.md §3.6.5–§3.6.7 (validator + tenancy + BYO) · docs/implementation.md §3 (Phase 0 Neon adapter, line 438) · docs/runbook.md §3 (Neon account, §6 deploy state) · docs/performance.md §2.1 row 6 + §3.1 (`db.query` span) · docs/decisions.md#GLOBAL-004 · #GLOBAL-014 · #GLOBAL-015
+**Cross-refs:** docs/design.md §3.6.5–§3.6.7 (validator + tenancy + BYO) · docs/implementation.md §3 (Phase 0 Neon adapter, line 438) · docs/runbook.md §3 (Neon account, §6 deploy state) · docs/performance.md §2.1 row 6 + §3.1 (`db.query` span) · GLOBAL-004, GLOBAL-014, GLOBAL-015 (see governing GLOBALs section) · `.claude/skills/hosted-db-create/SKILL.md` (Phase 1 create-path consumer; SK-HDC-007 splits the provisioner into `provisionDb` / `registerByoDb` over this adapter)
 
 ## Touchpoints — read this skill before editing
 
@@ -103,68 +103,13 @@ when-to-load:
   - In-place migrations — defeats `GLOBAL-004`.
   - Versioned schemas (`v1.users`, `v2.users` schemas) — explodes the plan-cache key surface; `GLOBAL-004` rejects this explicitly.
 
-### GLOBAL-004 — Schemas only widen
+## GLOBALs governing this feature
 
-- **Decision:** Once a column or field is observed in a query plan, it
-  stays in the schema fingerprint. Schemas grow; they don't shrink. The
-  `schema_hash` is monotonically widened, never branched on a "schema
-  mismatch" path.
-- **Core value:** Bullet-proof, Simple
-- **Why:** Branching on schema mismatch creates a combinatorial explosion
-  of plan-cache keys, and every replanning is a chance to regress.
-  Widening is monotonic and safe — old plans remain valid against
-  widened schemas because the fields they reference still exist.
-- **Consequence in code:** `schema_hash` is computed over observed-fields
-  sorted by name; adding fields is append-only. `plan-cache` keys remain
-  valid across widening; replanning is only triggered when an observed
-  field disappears (which we treat as a hard-stop event, not a normal
-  branch).
-- **Alternatives rejected:**
-  - Versioned schemas — more keys, more plans, more bugs.
-  - Re-plan on any schema change — breaks `GLOBAL-006` (content-addressed
-    cache).
-- **Source:** docs/decisions.md#GLOBAL-004
+Canonical text in [`docs/decisions.md`](../../docs/decisions.md). The list below names the rules that constrain this feature; any skill-local commentary is nested under the rule.
 
-### GLOBAL-014 — OTel span on every external call (DB, LLM, HTTP, queue)
-
-- **Decision:** Every call that crosses a process boundary — DB query,
-  LLM call, outbound HTTP, queue enqueue/dequeue — is wrapped in an
-  OpenTelemetry span with the canonical attributes from
-  `docs/performance.md` §3 (the span / metric / label catalog).
-- **Core value:** Honest latency, Bullet-proof, Fast
-- **Why:** Without spans on every external call, we can't answer "why
-  is this request slow," "is the LLM the bottleneck," or "did this
-  retry actually go to the DB twice." The catalog enforces consistent
-  attribute names so dashboards and queries don't fragment.
-- **Consequence in code:** `packages/otel` exposes the wrapper helpers;
-  all DB / LLM / HTTP / queue clients in the codebase route through
-  them. New external calls without a span fail review. Span names,
-  attributes, and metrics match the catalog (no ad-hoc names).
-- **Alternatives rejected:**
-  - Sample only slow requests — loses the baseline distribution.
-  - Per-team conventions — fragments the dashboards within a quarter.
-- **Source:** docs/decisions.md#GLOBAL-014
-
-### GLOBAL-015 — Power users always have an escape hatch
-
-- **Decision:** Every layer that turns natural language into something
-  executable — `/v1/ask` → SQL, plan-cache → plan, db-adapter → query
-  — exposes the underlying primitive directly. A power user can
-  bypass the LLM and run raw SQL / Mongo / connection-string queries.
-- **Core value:** Creative, Bullet-proof, Goal-first
-- **Why:** Anyone who outgrows the conversational interface must not
-  hit a wall. The product loses credibility (and users) if "the LLM
-  decided" is the only path to the data. The escape hatch is also
-  the thing that makes the LLM safe — humans can verify and fix.
-- **Consequence in code:** `/v1/run` (raw query) sits next to
-  `/v1/ask` (NL query). CLI's `nlq run` runs raw SQL. The plan
-  surfaced from `/v1/ask` is editable and re-runnable. Connection
-  strings are exposed for users on plans that can self-host the DB.
-- **Alternatives rejected:**
-  - LLM-only API — fine for demos, fatal for production users.
-  - Hide raw access behind enterprise tier — blocks the OSS
-    contributor path and contradicts `GLOBAL-019`.
-- **Source:** docs/decisions.md#GLOBAL-015
+- **GLOBAL-004** — Schemas only widen.
+- **GLOBAL-014** — OTel span on every external call (DB, LLM, HTTP, queue).
+- **GLOBAL-015** — Power users always have an escape hatch.
 
 ## Open questions / known unknowns
 
