@@ -120,6 +120,20 @@ when-to-load:
   - Single global rate limit — mis-incentivises one abuser to cap everyone; per-IP isolation is the standard pattern.
   - Captcha — bad UX (anonymous embed flow has no place to put it); PoW is invisible to the user when off, transparent when on.
 
+### SK-HDC-009 — SQL injection: identifiers asserted, literals escaped, values parameterised
+
+- **Decision:** The provisioner is the last-mile defense against SQL injection in the create path, even though the LLM-emitted plan is Zod-validated upstream (SK-HDC-002) and the compiled DDL is libpg_query-parsed (SK-HDC-003). Three rules at the executor level:
+  1. **Identifiers** (schema, table, column, role names) MUST pass an `assertSafeIdentifier` regex check (`^[a-zA-Z_][a-zA-Z0-9_]*$`, length ≤ 63) before being interpolated into a double-quoted form. A rejected identifier throws — no fallback "sanitize and continue" path exists.
+  2. **Values** (sample-row column values) MUST be passed as parameters (`$1, $2, …`) — never string-interpolated. Sample-row INSERTs use the parameterised form unconditionally.
+  3. **Literals** (the tenant_id embedded in `CREATE POLICY USING (... = '<tenant_id>')`, where Postgres DDL accepts no parameters) MUST be passed through `escapeSqlLiteral` (single-quote doubling, the canonical Postgres escape) before interpolation. The surrounding `'…'` quotes plus the doubled internal `''` together prevent literal-breakout.
+- **Core value:** Bullet-proof
+- **Why:** The Zod and libpg_query layers are upstream guards — they catch *plan-shape* and *parser-level* problems but don't address the executor's own string-handling. A compiler regression that emits an unquoted identifier, or an upstream validator that misses an exotic Unicode quote variant, would slip through both upper layers; the executor's own checks catch them. The identifier whitelist is intentionally narrower than Postgres allows (no quoted identifiers with embedded characters, no Unicode names) so the regex is auditable in one line. This mirrors the layered-guardrails posture from `docs/research-receipts.md §1` (the Replit incident lesson) — none of the layers alone suffices, and the executor's check is the one the user's data physically traverses.
+- **Consequence in code:** `apps/api/src/db-create/neon-provision.ts` exports nothing that bypasses these checks: `assertSafeIdentifier` and `escapeSqlLiteral` are local helpers, called on every interpolation site. Tests under `provisionDb — input validation (SK-HDC-009)` cover the malicious-identifier paths (quote-injection in `dbId`, table name, column name, plus the 63-char limit). PRs that add a new interpolation site without going through the helpers fail review. Where Postgres parameters work (`$1` placeholders), they MUST be used; the only literal-interpolation site is the `CREATE POLICY USING` clause, because Postgres DDL accepts no parameters there.
+- **Alternatives rejected:**
+  - Trust the upstream Zod + libpg_query layers — defeats the layered-guardrails posture; one upstream regression and the executor sends bad SQL to Neon.
+  - Use Postgres's `quote_ident()` / `format()` server-side — requires shipping the raw identifier to the server, which is exactly the surface we're trying to remove. The check belongs at the boundary, not after the wire crossing.
+  - Allow quoted identifiers with embedded characters (the full Postgres identifier grammar) — auditability cost outweighs the (zero) benefit; we control the upstream compiler and never need exotic identifier shapes.
+
 ## GLOBALs governing this feature
 
 Canonical text in [`docs/decisions.md`](../../docs/decisions.md). The list below names the rules that constrain this feature; any skill-local commentary is nested under the rule.
