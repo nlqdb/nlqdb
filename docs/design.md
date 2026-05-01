@@ -250,18 +250,21 @@ Claude.
 
 ### 3.2 Platform web app — `app.nlqdb.com`
 
-Signed-in surface. Same Astro project, React islands for chat + dashboard.
+> **Canonical for the platform web app:** [`.claude/skills/web-app/SKILL.md`](../.claude/skills/web-app/SKILL.md).
+> Stack-shape and chat-shape decisions (Astro + React islands, URL-first
+> state, three-part chat reply, copy-snippet behaviour, demo endpoint,
+> session cookie) are now `SK-WEB-001..007` in the skill. The page
+> inventory below is a product spec, not a decision list.
 
-- **Chat** — three-part response (answer / data / trace), streaming,
-  in-place edit + re-run, Cmd+K palette (see [`./plan.md` §1.2](./plan.md)).
+Signed-in surface. Page inventory:
+
+- **Chat** — see `SK-WEB-005` (answer/data/trace, Cmd+K palette,
+  Cmd+/ trace toggle, in-place edit + re-run).
 - **Database list** (left rail) — engine, size, last query per DB.
 - **Settings** — API keys, team (Phase 1.5), billing, live $-counter.
 - **Embed snippets** — copy-paste `<nlq-data>` HTML with `pk_live_`
-  pre-inlined (§14.5).
+  pre-inlined (`SK-WEB-007`; details §14.5).
 - **Escape hatch** — "Show connection string" reveals the raw Postgres URL.
-
-**Component model**: Astro routes + React islands. State is URL-first
-(every chat is permalinkable) + a small Zustand store. No global Redux.
 
 ### 3.3 CLI — `nlq`
 
