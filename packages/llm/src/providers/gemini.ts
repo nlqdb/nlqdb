@@ -13,6 +13,7 @@ const DEFAULT_MODELS: Record<LLMOperation, string> = {
   classify: "gemini-2.5-flash",
   plan: "gemini-2.5-flash",
   summarize: "gemini-2.5-flash",
+  schema_infer: "gemini-2.5-flash",
 };
 
 export type GeminiProviderOptions = {

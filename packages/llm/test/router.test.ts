@@ -13,6 +13,7 @@ import {
   type Provider,
   ProviderError,
   type ProviderName,
+  type SchemaInferResponse,
   type SummarizeResponse,
 } from "../src/types.ts";
 
@@ -31,6 +32,7 @@ function fakeProvider(
     classify?: Stub<ClassifyResponse>;
     plan?: Stub<PlanResponse>;
     summarize?: Stub<SummarizeResponse>;
+    schemaInfer?: Stub<SchemaInferResponse>;
   } = {},
 ): Provider & { calls: { op: string; req: unknown; opts: CallOpts | undefined }[] } {
   const calls: { op: string; req: unknown; opts: CallOpts | undefined }[] = [];
@@ -60,6 +62,10 @@ function fakeProvider(
     async summarize(req, opts) {
       calls.push({ op: "summarize", req, opts });
       return resolve(stubs.summarize, { summary: name }, req, opts);
+    },
+    async schemaInfer(req, opts) {
+      calls.push({ op: "schemaInfer", req, opts });
+      return resolve(stubs.schemaInfer, { plan: { provider: name } }, req, opts);
     },
   };
 }

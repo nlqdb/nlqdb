@@ -33,6 +33,8 @@ export {
   type Provider,
   ProviderError,
   type ProviderName,
+  type SchemaInferRequest,
+  type SchemaInferResponse,
   type SummarizeRequest,
   type SummarizeResponse,
 } from "./types.ts";

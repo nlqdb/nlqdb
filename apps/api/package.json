@@ -15,6 +15,7 @@
     "secrets:remote": "../../scripts/mirror-secrets-workers.sh remote api"
   },
   "dependencies": {
+    "@nlqdb/db": "workspace:*",
     "@nlqdb/events": "workspace:*",
     "@nlqdb/llm": "workspace:*",
     "@nlqdb/otel": "workspace:*",
@@ -24,7 +25,8 @@
     "kysely": "^0.28.16",
     "kysely-d1": "^0.4.0",
     "node-sql-parser": "^5.4.0",
-    "stripe": "^22.1.0"
+    "stripe": "^22.1.0",
+    "zod": "^3.25.76"
   },
   "devDependencies": {
     "@cloudflare/vitest-pool-workers": "latest",
