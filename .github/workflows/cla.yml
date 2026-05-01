@@ -10,6 +10,13 @@
 #      `nlqdb/cla-signatures` only. Add it to this repo's Actions
 #      secrets as `CLA_PAT`.
 #   3. Merge this workflow. The bot will start commenting on PRs.
+#
+# Allowlist note: contributor-assistant matches GitHub usernames via
+# picomatch, which is case-sensitive. The Claude-authored commits
+# resolve to GitHub user `claude` (lowercase, no [bot] suffix), so the
+# allowlist must list `claude` exactly. `Claude` (capital) and
+# `claude[bot]` (App suffix) do NOT match. See PR #70 history for the
+# bug we hit when the allowlist had only the capitalised form.
 
 name: CLA
 
@@ -39,7 +46,7 @@ jobs:
           path-to-signatures: 'signatures/v1/cla.json'
           path-to-document: 'https://github.com/nlqdb/nlqdb/blob/main/CLA.md'
           branch: 'main'
-          allowlist: dependabot[bot],renovate[bot],github-actions[bot],Claude,claude[bot]
+          allowlist: dependabot[bot],renovate[bot],github-actions[bot],claude,claude[bot]
           remote-organization-name: nlqdb
           remote-repository-name: cla-signatures
           create-file-commit-message: 'chore(cla): create signatures store'
