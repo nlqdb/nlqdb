@@ -103,6 +103,7 @@ manually before editing.)
 | `apps/api/src/routes/auth/**`, `packages/auth-internal/**` | `.claude/skills/auth/SKILL.md` |
 | `apps/api/src/keys/**`, anything `api-key` related | `.claude/skills/api-keys/SKILL.md` |
 | `apps/api/src/ask/**`, the `/v1/ask` pipeline | `.claude/skills/ask-pipeline/SKILL.md` |
+| `apps/api/src/db-create/**`, `apps/api/src/ask/classifier.ts`, `apps/api/src/ask/sql-validate-ddl.ts` | `.claude/skills/hosted-db-create/SKILL.md` |
 | `apps/api/src/plan-cache/**`, plan storage | `.claude/skills/plan-cache/SKILL.md` |
 | `packages/llm/**`, model routing, prompts | `.claude/skills/llm-router/SKILL.md` |
 | `apps/api/src/ask/sql-validate.ts`, SQL allowlist | `.claude/skills/sql-allowlist/SKILL.md` |
