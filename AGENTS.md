@@ -168,7 +168,10 @@ Per-package commands are in each area's `AGENTS.md`.
    and is in the right place (`docs/decisions.md` for `GLOBAL`,
    `.claude/skills/<feature>/SKILL.md` for `SK`).
 3. Every changed `GLOBAL-NNN` is updated everywhere it's copied
-   (`grep -rn 'GLOBAL-NNN' .claude/skills/ docs/`).
+   (`grep -rn 'GLOBAL-NNN' .claude/skills/ docs/`). Enforced
+   automatically by `bun scripts/check-skill-globals.ts` (runs in CI
+   and on `pre-push`). Use `--fix` to mechanically realign skill
+   copies with `docs/decisions.md`.
 4. Every new external call has an OTel span (`GLOBAL-014`).
 5. Every mutating endpoint accepts `Idempotency-Key` (`GLOBAL-005`).
 6. New capability added → SDK + CLI + MCP + elements all updated, or
@@ -230,5 +233,5 @@ can't fill all five, the decision isn't ready to write.
 
 - **Skill says X, code does Y** → skill wins. Fix the code (or, if the code's behaviour is correct, file a P1 to amend the skill — don't silently update either).
 - **`docs/design.md` (or `implementation.md` / `plan.md` / `runbook.md`) says X, skill says Y** → skill wins. The long docs were leaned in Wave 3; if you find a stale prose passage that contradicts a skill, fix the prose. Don't change the skill to match stale prose.
-- **`GLOBAL-NNN` in `docs/decisions.md` says X, a skill's copy of `GLOBAL-NNN` says Y** → P3 violation. They should be byte-identical. Fix the skill's copy to match `docs/decisions.md`.
+- **`GLOBAL-NNN` in `docs/decisions.md` says X, a skill's copy of `GLOBAL-NNN` says Y** → P3 violation. They should be byte-identical. Fix the skill's copy to match `docs/decisions.md` (`bun scripts/check-skill-globals.ts --fix`).
 - **Two skills disagree on a cross-cutting rule** → the rule should have been a `GLOBAL-NNN`. Promote it (per §10.1) and update both skills to copy it.

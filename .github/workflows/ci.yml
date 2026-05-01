@@ -236,6 +236,23 @@ jobs:
           sudo apt-get install -y shellcheck
           shellcheck scripts/*.sh
 
+  # Enforces the P3 sync rule from docs/skill-conventions.md §5: every
+  # ### GLOBAL-NNN block under .claude/skills/ must be byte-identical
+  # to the canonical ## GLOBAL-NNN block in docs/decisions.md, plus a
+  # trailing - **Source:** docs/decisions.md#GLOBAL-NNN line. Until this
+  # was wired, drift could only be caught by a reviewer running
+  # `grep -rn 'GLOBAL-NNN' .claude/skills/` by hand — and at least 8
+  # skills had drifted (re-wrapping, annotation suffixes on Source).
+  skills-globals-sync:
+    name: skill GLOBAL copies ↔ decisions.md (P3 sync)
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - uses: ./.github/actions/setup
+      - name: byte-identity check
+        run: bun scripts/check-skill-globals.ts
+
   lockfile-guard:
     name: lockfile guard (forbidden direct deps)
     runs-on: ubuntu-latest

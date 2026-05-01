@@ -132,45 +132,85 @@ when-to-load:
 
 ### GLOBAL-007 — No login wall before first value
 
-- **Decision:** A first-time visitor — on the web, in the CLI, or via an MCP-aware client — gets to a working answer before being asked to sign in. Anonymous mode is the default first-touch experience.
+- **Decision:** A first-time visitor — on the web, in the CLI, or via an
+  MCP-aware client — gets to a working answer before being asked to sign
+  in. Anonymous mode is the default first-touch experience.
 - **Core value:** Free, Effortless UX, Goal-first
-- **Why:** Login walls kill the activation funnel. Our pitch is "a database you talk to" — not "create an account, verify email, choose a region, then talk." We can ask for the email after the user has already had a `wow`.
-- **Consequence in code:** `apps/web` boots into a usable demo without a session. CLI's first `nlq ask` accepts an anonymous device, which later attaches to a Better Auth identity on first sign-in. The API has an explicit anonymous-mode rate-limit tier.
+- **Why:** Login walls kill the activation funnel. Our pitch is "a
+  database you talk to" — not "create an account, verify email, choose
+  a region, then talk." We can ask for the email after the user has
+  already had a `wow`.
+- **Consequence in code:** `apps/web` boots into a usable demo without
+  a session. CLI's first `nlq ask` accepts an anonymous device, which
+  later attaches to a Better Auth identity on first sign-in. The API
+  has an explicit anonymous-mode rate-limit tier.
 - **Alternatives rejected:**
-  - Required signup with "free trial" framing — measurably worse for activation.
-  - Auth-deferred-but-persistent — same effect as a wall, just delayed by one screen.
+  - Required signup with "free trial" framing — measurably worse for
+    activation.
+  - Auth-deferred-but-persistent — same effect as a wall, just delayed
+    by one screen.
 - **Source:** docs/decisions.md#GLOBAL-007
 
 ### GLOBAL-008 — One Better Auth identity across all surfaces
 
-- **Decision:** A user has exactly one identity, managed by Better Auth. CLI, MCP, web, and SDK all authenticate through that identity (via bearer / cookie / device-flow). No surface owns its own auth store.
+- **Decision:** A user has exactly one identity, managed by Better Auth.
+  CLI, MCP, web, and SDK all authenticate through that identity (via
+  bearer / cookie / device-flow). No surface owns its own auth store.
 - **Core value:** Seamless auth, Simple, Bullet-proof
-- **Why:** Multi-surface products fragment when each surface owns its own identity model — a user signs in to web but the CLI doesn't know, or the MCP key isn't tied to the same human. One identity model means one revocation surface (`GLOBAL-018`), one rate-limit surface, one audit log.
-- **Consequence in code:** `packages/auth-internal` is the only thing that talks to Better Auth. Every other surface consumes its primitives. CLI's device-flow auth and MCP's host-scoped keys both resolve to a single `user_id`.
+- **Why:** Multi-surface products fragment when each surface owns its
+  own identity model — a user signs in to web but the CLI doesn't know,
+  or the MCP key isn't tied to the same human. One identity model means
+  one revocation surface (`GLOBAL-018`), one rate-limit surface, one
+  audit log.
+- **Consequence in code:** `packages/auth-internal` is the only thing
+  that talks to Better Auth. Every other surface consumes its
+  primitives. CLI's device-flow auth and MCP's host-scoped keys both
+  resolve to a single `user_id`.
 - **Alternatives rejected:**
-  - Per-surface identity systems — fragmented audit trails, fragmented revocation, no cross-surface session continuity.
-  - Bring-your-own-IdP only — punts the problem to operators; bad default for the free tier.
+  - Per-surface identity systems — fragmented audit trails, fragmented
+    revocation, no cross-surface session continuity.
+  - Bring-your-own-IdP only — punts the problem to operators; bad
+    default for the free tier.
 - **Source:** docs/decisions.md#GLOBAL-008
 
 ### GLOBAL-009 — Tokens refresh silently — never surface a 401
 
-- **Decision:** When a token expires, the SDK refreshes it transparently before any user-visible failure. A 401 reaching the surface (web banner, CLI error, MCP tool error) is a bug, not a normal flow.
+- **Decision:** When a token expires, the SDK refreshes it transparently
+  before any user-visible failure. A 401 reaching the surface (web
+  banner, CLI error, MCP tool error) is a bug, not a normal flow.
 - **Core value:** Seamless auth, Effortless UX, Bullet-proof
-- **Why:** Auth failures interrupt the user's actual goal. If the refresh path is reliable, the user never has to think about tokens. A user-visible 401 is a regression — file a bug.
-- **Consequence in code:** `packages/sdk` wraps fetch with a refresh-on-401 retry that uses the refresh token. CLI and MCP rely on this same logic; they don't implement their own refresh. The web app's `useSession` hook auto-refreshes ahead of expiry where the expiry is observable.
+- **Why:** Auth failures interrupt the user's actual goal. If the
+  refresh path is reliable, the user never has to think about tokens.
+  A user-visible 401 is a regression — file a bug.
+- **Consequence in code:** `packages/sdk` wraps fetch with a
+  refresh-on-401 retry that uses the refresh token. CLI and MCP rely on
+  this same logic; they don't implement their own refresh. The web
+  app's `useSession` hook auto-refreshes ahead of expiry where the
+  expiry is observable.
 - **Alternatives rejected:**
   - Force re-login on expiry — kills long-running CLI / agent sessions.
-  - Aggressive proactive refresh on every call — wastes the auth server's budget.
+  - Aggressive proactive refresh on every call — wastes the auth
+    server's budget.
 - **Source:** docs/decisions.md#GLOBAL-009
 
 ### GLOBAL-018 — Revocation is instant and visible across devices
 
-- **Decision:** Revoking a token, API key, or session takes effect on the next request — no caching window, no propagation delay. The user sees, in every active surface, that the credential is gone.
+- **Decision:** Revoking a token, API key, or session takes effect on
+  the next request — no caching window, no propagation delay. The
+  user sees, in every active surface, that the credential is gone.
 - **Core value:** Bullet-proof, Seamless auth, Effortless UX
-- **Why:** Revocation that "eventually" propagates is a security hole. A user pressing "sign out everywhere" or rotating an API key expects immediate effect — across web, CLI, MCP, and any agent with the credential. Anything less and the feature has lied.
-- **Consequence in code:** Token/key validation hits the auth service on every request (or against a sub-second-stale cache); revoked credentials return a clear, recoverable error (`GLOBAL-012`). Surfaces show a banner / message naming the revocation. Tests cover "revoke from web → CLI 401 on next call."
+- **Why:** Revocation that "eventually" propagates is a security
+  hole. A user pressing "sign out everywhere" or rotating an API key
+  expects immediate effect — across web, CLI, MCP, and any agent
+  with the credential. Anything less and the feature has lied.
+- **Consequence in code:** Token/key validation hits the auth
+  service on every request (or against a sub-second-stale cache);
+  revoked credentials return a clear, recoverable error
+  (`GLOBAL-012`). Surfaces show a banner / message naming the
+  revocation. Tests cover "revoke from web → CLI 401 on next call."
 - **Alternatives rejected:**
-  - Long-lived JWTs with no revocation list — revocation becomes a lie.
+  - Long-lived JWTs with no revocation list — revocation becomes a
+    lie.
   - Soft revocation (mark, sweep later) — same problem, slower.
 - **Source:** docs/decisions.md#GLOBAL-018
 

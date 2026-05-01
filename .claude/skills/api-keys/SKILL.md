@@ -87,35 +87,69 @@ when-to-load:
 
 ### GLOBAL-010 — Credentials live in the OS keychain; `NLQDB_API_KEY` is the CI escape hatch
 
-- **Decision:** Long-lived credentials (CLI tokens, MCP host keys) live in the OS keychain (Keychain on macOS, libsecret on Linux, Credential Manager on Windows). The only env-var path is `NLQDB_API_KEY`, used in CI / containerized environments where a keychain is unavailable.
+- **Decision:** Long-lived credentials (CLI tokens, MCP host keys) live
+  in the OS keychain (Keychain on macOS, libsecret on Linux,
+  Credential Manager on Windows). The only env-var path is
+  `NLQDB_API_KEY`, used in CI / containerized environments where a
+  keychain is unavailable.
 - **Core value:** Seamless auth, Bullet-proof
-- **Why:** Keychain storage means credentials survive reboots, are encrypted at rest by the OS, and don't leak into shell history / ps output / env-dump screenshots. The single env-var fallback is the explicit, auditable escape hatch — it doesn't quietly become the default.
-- **Consequence in code:** `cli/` and `packages/mcp` use a small keychain abstraction; tokens are written there on first sign-in. When the keychain is missing (CI, Docker), `NLQDB_API_KEY` is read with a one-line message that names the env-var explicitly. No config-file fallback, no `~/.nlqdb/credentials.json`.
+- **Why:** Keychain storage means credentials survive reboots, are
+  encrypted at rest by the OS, and don't leak into shell history /
+  ps output / env-dump screenshots. The single env-var fallback is
+  the explicit, auditable escape hatch — it doesn't quietly become
+  the default.
+- **Consequence in code:** `cli/` and `packages/mcp` use a small
+  keychain abstraction; tokens are written there on first sign-in.
+  When the keychain is missing (CI, Docker), `NLQDB_API_KEY` is read
+  with a one-line message that names the env-var explicitly. No
+  config-file fallback, no `~/.nlqdb/credentials.json`.
 - **Alternatives rejected:**
-  - Plain config-file storage in `~/.nlqdb/` — leaks via cloud backups / dotfile syncs.
+  - Plain config-file storage in `~/.nlqdb/` — leaks via cloud
+    backups / dotfile syncs.
   - Required env vars — bad UX on a developer laptop.
 - **Source:** docs/decisions.md#GLOBAL-010
 
 ### GLOBAL-018 — Revocation is instant and visible across devices
 
-- **Decision:** Revoking a token, API key, or session takes effect on the next request — no caching window, no propagation delay. The user sees, in every active surface, that the credential is gone.
+- **Decision:** Revoking a token, API key, or session takes effect on
+  the next request — no caching window, no propagation delay. The
+  user sees, in every active surface, that the credential is gone.
 - **Core value:** Bullet-proof, Seamless auth, Effortless UX
-- **Why:** Revocation that "eventually" propagates is a security hole. A user pressing "sign out everywhere" or rotating an API key expects immediate effect — across web, CLI, MCP, and any agent with the credential. Anything less and the feature has lied.
-- **Consequence in code:** Token/key validation hits the auth service on every request (or against a sub-second-stale cache); revoked credentials return a clear, recoverable error (`GLOBAL-012`). Surfaces show a banner / message naming the revocation. Tests cover "revoke from web → CLI 401 on next call."
+- **Why:** Revocation that "eventually" propagates is a security
+  hole. A user pressing "sign out everywhere" or rotating an API key
+  expects immediate effect — across web, CLI, MCP, and any agent
+  with the credential. Anything less and the feature has lied.
+- **Consequence in code:** Token/key validation hits the auth
+  service on every request (or against a sub-second-stale cache);
+  revoked credentials return a clear, recoverable error
+  (`GLOBAL-012`). Surfaces show a banner / message naming the
+  revocation. Tests cover "revoke from web → CLI 401 on next call."
 - **Alternatives rejected:**
-  - Long-lived JWTs with no revocation list — revocation becomes a lie.
+  - Long-lived JWTs with no revocation list — revocation becomes a
+    lie.
   - Soft revocation (mark, sweep later) — same problem, slower.
 - **Source:** docs/decisions.md#GLOBAL-018
 
 ### GLOBAL-008 — One Better Auth identity across all surfaces
 
-- **Decision:** A user has exactly one identity, managed by Better Auth. CLI, MCP, web, and SDK all authenticate through that identity (via bearer / cookie / device-flow). No surface owns its own auth store.
+- **Decision:** A user has exactly one identity, managed by Better Auth.
+  CLI, MCP, web, and SDK all authenticate through that identity (via
+  bearer / cookie / device-flow). No surface owns its own auth store.
 - **Core value:** Seamless auth, Simple, Bullet-proof
-- **Why:** Multi-surface products fragment when each surface owns its own identity model — a user signs in to web but the CLI doesn't know, or the MCP key isn't tied to the same human. One identity model means one revocation surface (`GLOBAL-018`), one rate-limit surface, one audit log.
-- **Consequence in code:** `packages/auth-internal` is the only thing that talks to Better Auth. Every other surface consumes its primitives. CLI's device-flow auth and MCP's host-scoped keys both resolve to a single `user_id`.
+- **Why:** Multi-surface products fragment when each surface owns its
+  own identity model — a user signs in to web but the CLI doesn't know,
+  or the MCP key isn't tied to the same human. One identity model means
+  one revocation surface (`GLOBAL-018`), one rate-limit surface, one
+  audit log.
+- **Consequence in code:** `packages/auth-internal` is the only thing
+  that talks to Better Auth. Every other surface consumes its
+  primitives. CLI's device-flow auth and MCP's host-scoped keys both
+  resolve to a single `user_id`.
 - **Alternatives rejected:**
-  - Per-surface identity systems — fragmented audit trails, fragmented revocation, no cross-surface session continuity.
-  - Bring-your-own-IdP only — punts the problem to operators; bad default for the free tier.
+  - Per-surface identity systems — fragmented audit trails, fragmented
+    revocation, no cross-surface session continuity.
+  - Bring-your-own-IdP only — punts the problem to operators; bad
+    default for the free tier.
 - **Source:** docs/decisions.md#GLOBAL-008
 
 ## Open questions / known unknowns

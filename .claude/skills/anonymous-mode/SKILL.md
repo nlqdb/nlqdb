@@ -105,7 +105,7 @@ when-to-load:
     activation.
   - Auth-deferred-but-persistent — same effect as a wall, just delayed
     by one screen.
-- **Source:** docs/decisions.md#GLOBAL-007 (canonical here as the defining GLOBAL)
+- **Source:** docs/decisions.md#GLOBAL-007
 
 ### GLOBAL-020 — No "pick a region", no config files in the first 60s
 

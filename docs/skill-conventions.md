@@ -128,7 +128,13 @@ the sync rule in the root `AGENTS.md`: any edit to `docs/decisions.md`
 requires updating every skill that copies the affected GLOBAL, in the
 same PR.
 
-To find duplicates: `grep -rn 'GLOBAL-005' .claude/skills/`.
+To find duplicates: `grep -rn 'GLOBAL-005' .claude/skills/`. To enforce
+sync, the byte-identity check runs on every push and PR:
+
+```bash
+bun scripts/check-skill-globals.ts          # verify
+bun scripts/check-skill-globals.ts --fix    # mechanically realign
+```
 
 ## 6. When to add a skill
 

@@ -113,7 +113,7 @@ when-to-load:
     especially around error envelopes and retry semantics.
   - Generated clients (OpenAPI / typed-fetch codegen) — generator quirks
     plus a runtime surface duplication; not worth the build-time cost.
-- **Source:** docs/decisions.md#GLOBAL-001 (canonical here as the defining GLOBAL)
+- **Source:** docs/decisions.md#GLOBAL-001
 
 ### GLOBAL-002 — Behavior parity across surfaces
 

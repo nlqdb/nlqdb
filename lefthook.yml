@@ -72,6 +72,13 @@ pre-push:
       glob: "*.go"
       run: go vet ./...
 
+    skills-globals-sync:
+      # P3 sync rule from docs/skill-conventions.md §5: skill GLOBAL
+      # copies must stay byte-identical to docs/decisions.md. Same
+      # check that runs in CI; surfaces drift before push instead of
+      # waiting for the PR build.
+      run: bun scripts/check-skill-globals.ts
+
 # Skip hooks for a single commit with:  LEFTHOOK=0 git commit -m "…"
 # Never skip via --no-verify — it hides failures. If a hook is wrong,
 # fix the hook.

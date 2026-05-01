@@ -12,7 +12,7 @@ when-to-load:
 **One-liner:** Model selection, fallback chain, prompt strategy, per-user credit accounting.
 **Status:** implemented
 **Owners (code):** `packages/llm/**`
-**Cross-refs:** docs/design.md §8 (AI model selection), §8.1 (Strict-$0 inference path) · docs/llm-credits-plan.md (full file) · docs/implementation.md Slice 4 (LLM router) · docs/performance.md §2.2 (cache-miss latency), §3 (span/metric catalog)
+**Cross-refs:** docs/design.md §8 (AI model selection), §8.1 (Strict-$0 inference path) · docs/llm-credits-plan.md (full file) · docs/implementation.md Slice 4 (LLM router) · docs/performance.md §2.2 (cache-miss latency), §3 (span/metric catalog) · `.claude/skills/hosted-db-create/SKILL.md` (Phase 1 — `kind` classifier and `SchemaPlan` schema-inference are LLM calls routed through this router; SK-HDC-001/002)
 
 ## Touchpoints — read this skill before editing
 
@@ -123,10 +123,19 @@ when-to-load:
 
 ### GLOBAL-014 — OTel span on every external call (DB, LLM, HTTP, queue)
 
-- **Decision:** Every call that crosses a process boundary — DB query, LLM call, outbound HTTP, queue enqueue/dequeue — is wrapped in an OpenTelemetry span with the canonical attributes from `docs/performance.md` §3 (the span / metric / label catalog).
+- **Decision:** Every call that crosses a process boundary — DB query,
+  LLM call, outbound HTTP, queue enqueue/dequeue — is wrapped in an
+  OpenTelemetry span with the canonical attributes from
+  `docs/performance.md` §3 (the span / metric / label catalog).
 - **Core value:** Honest latency, Bullet-proof, Fast
-- **Why:** Without spans on every external call, we can't answer "why is this request slow," "is the LLM the bottleneck," or "did this retry actually go to the DB twice." The catalog enforces consistent attribute names so dashboards and queries don't fragment.
-- **Consequence in code:** `packages/otel` exposes the wrapper helpers; all DB / LLM / HTTP / queue clients in the codebase route through them. New external calls without a span fail review. Span names, attributes, and metrics match the catalog (no ad-hoc names).
+- **Why:** Without spans on every external call, we can't answer "why
+  is this request slow," "is the LLM the bottleneck," or "did this
+  retry actually go to the DB twice." The catalog enforces consistent
+  attribute names so dashboards and queries don't fragment.
+- **Consequence in code:** `packages/otel` exposes the wrapper helpers;
+  all DB / LLM / HTTP / queue clients in the codebase route through
+  them. New external calls without a span fail review. Span names,
+  attributes, and metrics match the catalog (no ad-hoc names).
 - **Alternatives rejected:**
   - Sample only slow requests — loses the baseline distribution.
   - Per-team conventions — fragments the dashboards within a quarter.
@@ -134,23 +143,44 @@ when-to-load:
 
 ### GLOBAL-013 — $0/month for the free tier; Workers free-tier bundle ≤ 3 MiB compressed
 
-- **Decision:** The free tier runs on Cloudflare Workers free plan, Neon free plan, and other zero-cost services. The deployed Worker bundle stays under 3 MiB compressed (Cloudflare's hard limit on the free plan is 3 MiB, paid is 10 MiB).
+- **Decision:** The free tier runs on Cloudflare Workers free plan,
+  Neon free plan, and other zero-cost services. The deployed Worker
+  bundle stays under 3 MiB compressed (Cloudflare's hard limit on the
+  free plan is 3 MiB, paid is 10 MiB).
 - **Core value:** Free, Bullet-proof
-- **Why:** "Free forever" is the activation hook. If our infra cost per free user is non-zero, the runway turns into a wall. The 3 MiB ceiling is a real constraint that shapes dependency choices.
-- **Consequence in code:** Every dependency is checked against bundle budget before adoption (`pnpm build && wrangler deploy --dry-run`). Heavy deps (parsers, big crypto libs, full AI SDKs) are forbidden on the Workers path; equivalent functionality goes through HTTP to a cheaper backend or via tree-shakable submodules.
+- **Why:** "Free forever" is the activation hook. If our infra cost
+  per free user is non-zero, the runway turns into a wall. The 3 MiB
+  ceiling is a real constraint that shapes dependency choices.
+- **Consequence in code:** Every dependency is checked against bundle
+  budget before adoption (`pnpm build && wrangler deploy --dry-run`).
+  Heavy deps (parsers, big crypto libs, full AI SDKs) are forbidden
+  on the Workers path; equivalent functionality goes through HTTP
+  to a cheaper backend or via tree-shakable submodules.
 - **Alternatives rejected:**
   - "Free trial" with a card — kills activation.
-  - Bigger bundle with paid plan default — locks us out of the Workers free plan, which is the actual product story.
+  - Bigger bundle with paid plan default — locks us out of the
+    Workers free plan, which is the actual product story.
 - **Source:** docs/decisions.md#GLOBAL-013
 
 ### GLOBAL-016 — Reach for small mature packages before DIY; hard-pass on RC on the critical path
 
-- **Decision:** Before writing a primitive (auth, idempotency store, retry logic, queue, OTel exporter), check for a small, mature, actively-maintained package. If one exists, adopt it. Reject any RC / alpha / pre-1.0 dependency on a critical path unless the alternative is writing it ourselves.
+- **Decision:** Before writing a primitive (auth, idempotency store,
+  retry logic, queue, OTel exporter), check for a small, mature,
+  actively-maintained package. If one exists, adopt it. Reject any
+  RC / alpha / pre-1.0 dependency on a critical path unless the
+  alternative is writing it ourselves.
 - **Core value:** Bullet-proof, Simple, Free
-- **Why:** Small, focused libraries that have been maintained for years are usually more reliable than the version of the same thing we'd write next quarter. RCs on the critical path become tech debt the moment the upstream stalls — and they always stall.
-- **Consequence in code:** Dependency reviews check (a) maintenance cadence (releases in the last 6 months), (b) ecosystem (downloads, issues), (c) bundle weight (`GLOBAL-013`), (d) license. Reviews reject pre-1.0 deps unless explicitly justified in the PR.
+- **Why:** Small, focused libraries that have been maintained for
+  years are usually more reliable than the version of the same thing
+  we'd write next quarter. RCs on the critical path become tech debt
+  the moment the upstream stalls — and they always stall.
+- **Consequence in code:** Dependency reviews check (a) maintenance
+  cadence (releases in the last 6 months), (b) ecosystem (downloads,
+  issues), (c) bundle weight (`GLOBAL-013`), (d) license. Reviews
+  reject pre-1.0 deps unless explicitly justified in the PR.
 - **Alternatives rejected:**
-  - "Write it ourselves, it'll be better" — measurably untrue across auth, retry, ORM, queue.
+  - "Write it ourselves, it'll be better" — measurably untrue across
+    auth, retry, ORM, queue.
   - "Adopt the newest thing" — RC churn poisons the critical path.
 - **Source:** docs/decisions.md#GLOBAL-016
 
