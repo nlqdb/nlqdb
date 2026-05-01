@@ -24,22 +24,53 @@ import type {
 const FIXED_SUFFIX = "a4f3b2";
 
 function stubPlan(overrides: Partial<SchemaPlan> = {}): SchemaPlan {
+  // The Zod schema in `packages/db/src/types.ts` requires
+  // `description` on Table / Column / Metric / Dimension and a
+  // top-level `description` on SchemaPlan — SK-HDC-004 puts the
+  // semantic-layer-at-create-time moat on these fields, so leaving
+  // them empty would defeat the purpose. Tests carry plausible
+  // values to mirror the production contract.
   return {
     slug_hint: "orders_tracker",
-    name: "orders tracker",
+    description: "fixture orders tracker for orchestrator tests",
     tables: [
       {
         name: "orders",
+        description: "Order line items the orchestrator test exercises.",
         primary_key: ["id"],
         columns: [
-          { name: "id", type: "uuid", nullable: false },
-          { name: "total_cents", type: "integer", nullable: false },
+          {
+            name: "id",
+            type: "uuid",
+            nullable: false,
+            description: "Primary key for an order.",
+          },
+          {
+            name: "total_cents",
+            type: "integer",
+            nullable: false,
+            description: "Total order amount in minor units (cents).",
+          },
         ],
       },
     ],
     foreign_keys: [],
-    metrics: [{ name: "order_count", expression: "count(*)" }],
-    dimensions: [{ name: "order_id", column: "orders.id" }],
+    metrics: [
+      {
+        name: "order_count",
+        description: "Total number of orders in the period.",
+        agg: "count",
+        expression: "*",
+      },
+    ],
+    dimensions: [
+      {
+        name: "order_id",
+        description: "Per-order identifier dimension.",
+        table: "orders",
+        column: "id",
+      },
+    ],
     sample_rows: [
       { table: "orders", values: { id: "00000000-0000-0000-0000-000000000001", total_cents: 999 } },
     ],

@@ -12,6 +12,7 @@ const DEFAULT_MODELS: Record<LLMOperation, string> = {
   classify: "llama-3.1-8b-instant",
   plan: "llama-3.3-70b-versatile",
   summarize: "llama-3.3-70b-versatile",
+  schema_infer: "llama-3.3-70b-versatile",
 };
 
 export type GroqProviderOptions = {

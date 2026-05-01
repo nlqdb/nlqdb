@@ -27,7 +27,7 @@ when-to-load:
 - **Decision:** LLM traffic is split across tiers by job: hot-path classification (Tier 1, cheap nano), schema embedding (Tier 1), NL→plan workhorse (Tier 2, ~80% of cost), hard-plan / multi-engine reasoning (Tier 3, ≤5%), result summarization (Tier 1). Each tier names a specific model for paid and a free fallback. Frontier models never receive all traffic.
 - **Core value:** Free, Fast, Bullet-proof
 - **Why:** A flat "use the best model for everything" policy turns every classify-or-summarize step into a Sonnet-priced call. Tiering captures the reality that 80%+ of LLM calls are cheap intents (route the request, summarize 5 rows) where a nano model is indistinguishable in quality from a frontier model. The plan tier is where quality matters, and that's where we spend the money.
-- **Consequence in code:** The router exposes `tier ∈ {classify, plan, summarize, hard, embed}`; callers pass the tier they need, the router chooses the model. New tiers require a `SK-LLM-NNN` decision and a row in the table at `docs/design.md §8`. Sending all traffic to one model is a CI-asserted regression (cost-test).
+- **Consequence in code:** The router exposes operations `{classify, plan, summarize, schema_infer}` today, with `hard` and `embed` planned. Callers pass the operation they need; the router chooses the model. New operations require a `SK-LLM-NNN` decision (e.g. `SK-LLM-012` for `schema_infer`) and a row in the catalog at `docs/performance.md §3.1` + `docs/design.md §8`. Sending all traffic to one model is a CI-asserted regression (cost-test).
 - **Alternatives rejected:** Always-frontier — predictable bills that scale linearly with traffic. Always-cheapest — `nl→plan` accuracy collapses below the 70% bar `docs/llm-credits-plan.md` flags. Per-call manual model pick — leaks model decisions into 50 call sites.
 - **Source:** docs/design.md §8
 
@@ -120,6 +120,18 @@ when-to-load:
 - **Consequence in code:** Provider implementation `modal_llama8b` already lands behind a feature flag; flipping the flag rolls classify traffic over. Failover chain stays Groq → Modal → Workers-AI so a Modal outage doesn't degrade classification accuracy. The 50k/day threshold is dashboard-monitored.
 - **Alternatives rejected:** Self-host plan tier — bursty plan workloads cost more on flat A10G than on per-call paid. Stay on hosted forever — once we hit 200k/day classify cost crosses $1k/mo.
 - **Source:** docs/design.md §8 (cost-control rule 5)
+
+### SK-LLM-012 — `schema_infer` is a distinct router operation, not an alias of `plan`
+
+- **Decision:** Hosted db.create's schema-inference call is its own router operation (`router.schemaInfer(...)` → span `llm.schema_infer`), not a re-use of `plan`. The two share the planner-tier provider chain and model defaults, but they ship distinct system prompts (`packages/llm/src/prompts/schema-inference.ts` vs the SQL-shaped `PLAN_SYSTEM`), distinct request shapes (`{goal}` vs `{goal, schema, dialect}`), and distinct response shapes (`{plan: Record<string, unknown>}` vs `{sql: string}`).
+- **Core value:** Honest latency, Bullet-proof, Simple
+- **Why:** `plan` is the hot-path NL→SQL operation that runs on every cache-miss `/v1/ask` query. `schema_infer` runs once per database, ever — it's a one-shot creation event, not a recurring query. Folding them under one operation name forces the same system prompt, the same span name, and the same dashboards onto two operations with very different cost profiles, latency budgets (`schema_infer` budgets at 8000 ms vs `plan`'s 5000 ms), and quality requirements (SK-HDC-002's typed-plan emit vs SQL emit). The distinct span name `llm.schema_infer` is what `.claude/skills/hosted-db-create/SKILL.md`'s GLOBAL-014 commentary calls out.
+- **Consequence in code:** `packages/llm/src/types.ts` carries a `SchemaInferRequest`/`SchemaInferResponse` pair; `LLMOperation` includes `"schema_infer"`; every chat provider's `DEFAULT_MODELS` table has a `schema_infer` row (planner-tier model). The router's `route(...)` call uses operation key `"schema_infer"` so the span is `llm.schema_infer` — matching `docs/performance.md §3.1`. Provider responses are parsed via `parseJsonResponse` and wrapped as `{plan: parsed}` so the shape is uniform with classify/plan/summarize. PRs that try to delete the operation and reuse `plan` are rejected with a pointer here.
+- **Alternatives rejected:**
+  - Reuse `plan` and stuff schema-inference instructions into the goal field — couples the SQL-shaped `PLAN_SYSTEM` prompt to a non-SQL response, leaks `{sql}` typing into the create path, and produces a misleading `llm.plan` span that double-counts on dashboards.
+  - Add `hard` instead and route schema-inference there — `hard` is reserved for hard-plan / multi-engine reasoning (SK-LLM-001); they have separate model selection and cost profiles.
+  - Keep schema-inference outside the router (call providers directly) — violates SK-LLM-002 (single adapter) and re-implements failover/circuit-breaker/spans per call site.
+- **Source:** .claude/skills/hosted-db-create/SKILL.md SK-HDC-002, GLOBAL-014 commentary · docs/performance.md §3.1
 
 ## GLOBALs governing this feature
 

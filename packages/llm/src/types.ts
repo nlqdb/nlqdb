@@ -1,10 +1,12 @@
 // Public types for @nlqdb/llm. Operation set tracks PERFORMANCE §4
-// row 4 (Slice 4): classify / plan / summarize. embed lands later
+// row 4 (Slice 4): classify / plan / summarize. `schema_infer` was
+// added as the planner-tier op for hosted db.create's typed-plan
+// pipeline (SK-HDC-002, span `llm.schema_infer`). embed lands later
 // alongside the embeddings pipeline.
 
 export type ProviderName = "gemini" | "groq" | "workers-ai" | "openrouter";
 
-export type LLMOperation = "classify" | "plan" | "summarize";
+export type LLMOperation = "classify" | "plan" | "summarize" | "schema_infer";
 
 // Reasons surfaced on `nlqdb.llm.failover.total{reason}` — bounded set
 // to keep the label cardinality safe (PERFORMANCE §3.3).
@@ -52,6 +54,15 @@ export type SummarizeRequest = {
 };
 export type SummarizeResponse = { summary: string };
 
+// Hosted db.create — goal string in, typed `SchemaPlan` out
+// (SK-HDC-002). The provider returns the parsed JSON object the LLM
+// emitted, wrapped in `{plan: ...}` so the response shape is uniform
+// across operations. Validation against the canonical Zod schema
+// lives at the call site (`packages/db/src/types.ts`) — keeping
+// `@nlqdb/llm` independent of the engine package avoids a cycle.
+export type SchemaInferRequest = { goal: string };
+export type SchemaInferResponse = { plan: Record<string, unknown> };
+
 // Minimal fetch shape — just the call signature, not the runtime-specific
 // static methods (Bun's typeof globalThis.fetch demands a `preconnect`
 // method). globalThis.fetch satisfies this; tests pass plain functions.
@@ -72,6 +83,7 @@ export type Provider = {
   classify(req: ClassifyRequest, opts?: CallOpts): Promise<ClassifyResponse>;
   plan(req: PlanRequest, opts?: CallOpts): Promise<PlanResponse>;
   summarize(req: SummarizeRequest, opts?: CallOpts): Promise<SummarizeResponse>;
+  schemaInfer(req: SchemaInferRequest, opts?: CallOpts): Promise<SchemaInferResponse>;
 };
 
 // Thrown by providers when the upstream call fails. Carries a

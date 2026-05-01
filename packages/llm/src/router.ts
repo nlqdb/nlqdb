@@ -24,6 +24,8 @@ import {
   type Provider,
   ProviderError,
   type ProviderName,
+  type SchemaInferRequest,
+  type SchemaInferResponse,
   type SummarizeRequest,
   type SummarizeResponse,
 } from "./types.ts";
@@ -38,6 +40,10 @@ export const DEFAULT_TIMEOUTS_MS: Record<LLMOperation, number> = {
   classify: 1500,
   plan: 5000,
   summarize: 3000,
+  // Schema-inference is a one-shot creation event; budget like a
+  // hard plan call (PERFORMANCE §2.2 stage budgets) rather than the
+  // hot-path `plan` op — it runs once per DB, not per query.
+  schema_infer: 8000,
 };
 
 // HTTP statuses that indicate a config bug (bad key, forbidden), not
@@ -81,6 +87,7 @@ export type LLMRouter = {
   classify(req: ClassifyRequest, opts?: CallOpts): Promise<ClassifyResponse>;
   plan(req: PlanRequest, opts?: CallOpts): Promise<PlanResponse>;
   summarize(req: SummarizeRequest, opts?: CallOpts): Promise<SummarizeResponse>;
+  schemaInfer(req: SchemaInferRequest, opts?: CallOpts): Promise<SchemaInferResponse>;
 };
 
 export type AttemptRecord = {
@@ -371,6 +378,14 @@ export function createLLMRouter(opts: LLMRouterOptions): LLMRouter {
         "summarize",
         req,
         (p, r, o) => p.summarize(r, o),
+        callerOpts,
+      );
+    },
+    schemaInfer(req, callerOpts) {
+      return route<SchemaInferRequest, SchemaInferResponse>(
+        "schema_infer",
+        req,
+        (p, r, o) => p.schemaInfer(r, o),
         callerOpts,
       );
     },
