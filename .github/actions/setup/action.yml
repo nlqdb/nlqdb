@@ -1,4 +1,4 @@
-# Composite action: setup-bun + bun install cache + frozen install.
+# Composite action: setup-node + setup-bun + bun install cache + frozen install.
 #
 # Every workflow job in this repo (ci.yml's 8 jobs, preview-{api,web},
 # deploy-{api,web}) re-runs setup-bun + bun install. Without a cache,
@@ -8,16 +8,28 @@
 # over `~/.bun/install/cache` keyed by `bun.lock` so cross-job and
 # cross-PR pulls land warm.
 #
+# Why setup-node alongside setup-bun: `bunx wrangler` resolves
+# wrangler's bin script, which has a `#!/usr/bin/env node` shebang,
+# so wrangler runs under Node — not Bun — even when launched via
+# bunx. Wrangler ≥4.x requires Node ≥22; ubuntu-latest currently
+# ships Node 20, so jobs fail with "Wrangler requires at least
+# Node.js v22.0.0" unless we pin Node here. Locking it in the shared
+# setup keeps every wrangler-using workflow on the same version.
+#
 # Pin policy: every third-party `uses:` is SHA-pinned (renovate.json5
 # `pinDigests: true` keeps these rolling forward). Don't loosen back
 # to floating tags — supply-chain compromise via tag hijack is the
 # whole reason for the SHA discipline.
 name: Setup nlqdb workspace
-description: Setup Bun (SHA-pinned), restore install cache, run frozen install.
+description: Setup Node + Bun (SHA-pinned), restore install cache, run frozen install.
 
 runs:
   using: composite
   steps:
+    - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+      with:
+        node-version: "22"
+
     - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
       with:
         bun-version-file: package.json

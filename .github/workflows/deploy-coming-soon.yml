@@ -34,6 +34,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # `bunx wrangler` resolves wrangler's bin via `#!/usr/bin/env
+      # node`, so wrangler runs on the runner's Node — not Bun.
+      # Wrangler ≥4.x requires Node ≥22; ubuntu-latest currently
+      # ships Node 20.
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: "22"
+
       # wrangler-action auto-detects bun.lock at the repo root and
       # tries to install wrangler with bun. Without setup-bun the
       # action fails: "Unable to locate executable file: bun" (ran
