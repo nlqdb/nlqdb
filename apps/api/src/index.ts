@@ -6,12 +6,15 @@ import { cors } from "hono/cors";
 import { streamSSE } from "hono/streaming";
 import { recordAnonAdoption } from "./anon-adopt.ts";
 import { buildAskDeps, buildEventEmitter } from "./ask/build-deps.ts";
+import { classifyKind } from "./ask/classifier.ts";
 import { orchestrateAsk } from "./ask/orchestrate.ts";
 import type { AskError, OrchestrateEvent } from "./ask/types.ts";
 import { auth, REVOCATION_KEY_PREFIX } from "./auth.ts";
 import { askFnFromDemoFixtures, DEMO_DB_ID } from "./chat/demo-shortcut.ts";
 import { postChatMessage } from "./chat/orchestrate.ts";
 import { makeChatStore } from "./chat/store.ts";
+import { buildDbCreateDeps } from "./db-create/build-deps.ts";
+import { orchestrateDbCreate } from "./db-create/orchestrate.ts";
 import { buildDemoResult, makeRateLimiter as makeDemoRateLimiter } from "./demo.ts";
 import { parseGoalDbBody, parseJsonBody } from "./http.ts";
 import { makeRequireSession, type RequireSessionVariables } from "./middleware.ts";
@@ -152,6 +155,65 @@ app.post("/v1/ask", requireSession, async (c) => {
     const accept = c.req.header("accept") ?? "";
     const wantsSse = accept.includes("text/event-stream");
     const wantsJsonOnly = accept.includes("application/json") && !accept.includes("*/*");
+
+    // Goal-kind classifier (SK-HDC-001 + SK-ASK-001) — runs only
+    // when `dbId` is absent. dbId-present requests are unambiguous
+    // query/write goals against the named db; classifier adds zero
+    // value there. v0 is a token-set heuristic; LLM swap-in is a
+    // follow-up (see classifier.ts header).
+    if (!parsed.body.dbId) {
+      const classification = classifyKind(parsed.body.goal);
+      span.setAttribute("nlqdb.ask.kind", classification.kind);
+      span.setAttribute("nlqdb.ask.kind_reason", classification.reason);
+      if (classification.kind === "create") {
+        // Route to the typed-plan create pipeline. SSE is not yet
+        // implemented for create (the orchestrator is await-blocking,
+        // not stream-emitting); a follow-up will add per-step events
+        // mirroring the orchestrateAsk pattern.
+        try {
+          const { deps: createDeps, secretRef } = buildDbCreateDeps(c.env);
+          const result = await orchestrateDbCreate(createDeps, {
+            goal: parsed.body.goal,
+            tenantId: session.user.id,
+            secretRef,
+          });
+          if (!result.ok) {
+            // Map create-error envelope to HTTP status. infer/compile/
+            // ddl/embed_failed map to 422 (the goal made it through
+            // routing but the pipeline rejected it); provision_failed
+            // maps to 500 (real infra failure, not user error).
+            const statusCode = result.error.kind === "provision_failed" ? 500 : 422;
+            return c.json({ error: result.error }, statusCode);
+          }
+          return c.json({
+            kind: "create" as const,
+            db: result.dbId,
+            schemaName: result.schemaName,
+            pkLive: result.pkLive,
+            plan: result.plan,
+            sampleRows: result.sampleRows,
+          });
+        } finally {
+          span.end();
+        }
+      }
+      // kind=query|write but no dbId — needs the per-surface
+      // resolution path (REST 409 + candidate_dbs / CLI prompt /
+      // MCP elicitation per SK-HDC-005 / SK-ASK-003). That whole
+      // surface lands in the next slice; for today we surface the
+      // ambiguity as a structured 400 so the client can render it.
+      span.end();
+      return c.json(
+        {
+          error: {
+            status: "db_id_required" as const,
+            message:
+              "no db specified — provide dbId in the request body or use a goal that creates a db (e.g. 'an orders tracker'). Per-surface resolution (candidate_dbs / prompt / MCP elicit) lands in a follow-up slice.",
+          },
+        },
+        400,
+      );
+    }
 
     const deps = buildAskDeps(c.env);
     const orchestrateReq = {

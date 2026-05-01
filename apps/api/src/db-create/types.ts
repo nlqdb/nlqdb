@@ -51,24 +51,29 @@ export type InferSchemaArgs = {
   name?: string;
 };
 
-export type InferFailureReason =
-  | "ambiguous_goal"
-  | "off_topic"
-  | "table_count_exceeded"
-  | "validation_failed"
-  | "llm_failed";
+// Reason union mirrors what `apps/api/src/db-create/infer-schema.ts`
+// actually emits (single source of truth). Wider futures
+// (`off_topic`, `table_count_exceeded`) live in `details` for now;
+// promote to first-class members when the inferer surfaces them
+// distinctly.
+export type InferFailureReason = "ambiguous_goal" | "llm_failed" | "plan_invalid";
 
 export type InferSchemaResult =
   | { ok: true; plan: SchemaPlan }
   | { ok: false; reason: InferFailureReason; details?: unknown };
 
 // --- compile-ddl ----------------------------------------------------
+//
+// Reason union mirrors what `apps/api/src/db-create/compile-ddl.ts`
+// actually emits (single source of truth). The orchestrator + tests
+// import these names from here; the compiler re-exports its own
+// alias so its caller doesn't need a second import path.
 
 export type CompileFailureReason =
-  | "identifier_collision"
+  | "duplicate_identifier"
+  | "fk_target_not_found"
   | "reserved_word"
-  | "cross_tenant_fk"
-  | "unsupported_type";
+  | "primary_key_column_missing";
 
 export type CompileDdlResult =
   | { ok: true; statements: string[] }
@@ -79,16 +84,19 @@ export type CompileDdlResult =
 // own compiler authored the SQL, we re-parse before sending to the
 // executor — guards against compiler bugs. docs/design.md §3.6.5
 // row 2; SK-HDC-006 codifies the read/write vs DDL split.
+//
+// Reason union mirrors `apps/api/src/ask/sql-validate-ddl.ts`'s
+// emitted set — single source of truth, lives there.
 
 export type DdlValidationFailureReason =
   | "parse_failed"
   | "destructive_verb"
-  | "system_catalog_reference"
-  | "multi_statement";
+  | "system_schema_ref"
+  | "side_effect_function";
 
 export type DdlValidationResult =
   | { ok: true }
-  | { ok: false; reason: DdlValidationFailureReason; statement: string };
+  | { ok: false; reason: DdlValidationFailureReason; statement: string; details?: unknown };
 
 // --- provisioner ----------------------------------------------------
 // SK-HDC-007 splits the provisioner from day one: Phase 1 wires
