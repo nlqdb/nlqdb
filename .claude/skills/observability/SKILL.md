@@ -17,7 +17,7 @@ when-to-load:
 **One-liner:** OTel span / metric / label catalog; mandatory on every external call.
 **Status:** implemented (Phase 0 / Slice 3 — OTel SDK + OTLP/HTTP exporters land as one-time infrastructure; later slices import the helpers).
 **Owners (code):** `packages/otel/**` (the canonical helpers), `apps/api/src/index.ts` (per-request setup + force-flush), `apps/api/src/ask/orchestrate.ts` (`/v1/ask` span tree), `apps/api/src/stripe/webhook.ts` (`nlqdb.webhook.stripe`), `packages/db/src/postgres.ts` (`db.query`), `apps/api/src/llm-router.ts` (`llm.*`).
-**Cross-refs:** docs/performance.md §1 (SLOs) · §2 (latency budgets) · §3 (span / metric / label catalog — load-bearing) · §4 (slice instrumentation plan) · §5 (sampling + cost discipline) · docs/design.md §5.4 line 743 (Sentry + OTel → Grafana Cloud) · §5.4 line 772 (events-vs-spans boundary) · docs/runbook.md §2.6 line 343 (telemetry env wiring) · docs/decisions.md#GLOBAL-014 (canonical here) · #GLOBAL-011
+**Cross-refs:** docs/performance.md §1 (SLOs) · §2 (latency budgets) · §3 (span / metric / label catalog — load-bearing) · §4 (slice instrumentation plan) · §5 (sampling + cost discipline) · docs/design.md §5.4 line 743 (Sentry + OTel → Grafana Cloud) · §5.4 line 772 (events-vs-spans boundary) · docs/runbook.md §2.6 line 343 (telemetry env wiring) · docs/decisions.md#GLOBAL-014 · #GLOBAL-011
 
 ## Touchpoints — read this skill before editing
 
@@ -109,48 +109,12 @@ when-to-load:
   - Trust the LLM provider to redact upstream — varies wildly by provider; doesn't cover our own logs.
   - Replace prompts with `[redacted]` wholesale — debugging becomes impossible.
 
-### GLOBAL-014 — OTel span on every external call (DB, LLM, HTTP, queue)
+## GLOBALs governing this feature
 
-- **Decision:** Every call that crosses a process boundary — DB query,
-  LLM call, outbound HTTP, queue enqueue/dequeue — is wrapped in an
-  OpenTelemetry span with the canonical attributes from
-  `docs/performance.md` §3 (the span / metric / label catalog).
-- **Core value:** Honest latency, Bullet-proof, Fast
-- **Why:** Without spans on every external call, we can't answer "why
-  is this request slow," "is the LLM the bottleneck," or "did this
-  retry actually go to the DB twice." The catalog enforces consistent
-  attribute names so dashboards and queries don't fragment.
-- **Consequence in code:** `packages/otel` exposes the wrapper helpers;
-  all DB / LLM / HTTP / queue clients in the codebase route through
-  them. New external calls without a span fail review. Span names,
-  attributes, and metrics match the catalog (no ad-hoc names).
-- **Alternatives rejected:**
-  - Sample only slow requests — loses the baseline distribution.
-  - Per-team conventions — fragments the dashboards within a quarter.
-- **Source:** docs/decisions.md#GLOBAL-014
+Canonical text in [`docs/decisions.md`](../../docs/decisions.md). The list below names the rules that constrain this feature; any skill-local commentary is nested under the rule.
 
-### GLOBAL-011 — Honest latency — show the live trace; never spinner-lie
-
-- **Decision:** When a request is in flight, surfaces show what is
-  actually happening (cache lookup, plan, allowlist, exec, summarize)
-  with real timings — not a generic spinner. If a step takes long, we
-  say what step.
-- **Core value:** Honest latency, Effortless UX
-- **Why:** A spinner that hides progress trains users to assume the
-  worst. A live trace shows exactly where time goes and turns
-  perceived latency into legible, cacheable, debuggable information.
-  It also makes us better at performance because we *see* every slow
-  step.
-- **Consequence in code:** `apps/web` streams trace events from the
-  ask-pipeline (or polls the OTel-exposed step state) and renders
-  them in order. CLI's TTY mode prints each step as it completes.
-  The SDK exposes an `onTrace` hook for surfaces to consume.
-- **Alternatives rejected:**
-  - Generic spinner with "this is taking longer than usual" — gives
-    no information.
-  - Hide latency below a threshold — users notice anyway, and lose
-    trust when the threshold is wrong.
-- **Source:** docs/decisions.md#GLOBAL-011
+- **GLOBAL-014** — OTel span on every external call (DB, LLM, HTTP, queue).
+- **GLOBAL-011** — Honest latency — show the live trace; never spinner-lie.
 
 ## Open questions / known unknowns
 

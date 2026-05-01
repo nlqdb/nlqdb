@@ -92,130 +92,16 @@ when-to-load:
   - Surface-specific SSE wiring — duplicates parsing logic on every surface.
   - Polling an OTel endpoint — too much round-trip latency; `onTrace` is fire-and-forget local.
 
-## Copies of GLOBAL decisions affecting this feature
+## GLOBALs governing this feature
 
-### GLOBAL-001 — SDK is the only HTTP client
+Canonical text in [`docs/decisions.md`](../../docs/decisions.md). The list below names the rules that constrain this feature; any skill-local commentary is nested under the rule.
 
-- **Decision:** Every nlqdb surface (`apps/web`, `cli/`, `packages/mcp`,
-  `packages/elements`) consumes `@nlqdb/sdk`. No raw `fetch('/v1/...')`
-  outside `packages/sdk/`.
-- **Core value:** Simple, Bullet-proof
-- **Why:** Surfaces drift when each owns their HTTP client — auth-header
-  semantics, retry policy, error shape, idempotency handling end up with
-  subtle differences. One client means one place to fix bugs and one
-  place to add new endpoints. It is also the precondition for
-  `GLOBAL-002` (behavior parity).
-- **Consequence in code:** Lint/CI rejects `fetch()` calls referencing
-  `/v1/` outside `packages/sdk/`. A new endpoint lands as an SDK method
-  first; surfaces consume it after.
-- **Alternatives rejected:**
-  - Per-surface clients with shared types — types diverge subtly,
-    especially around error envelopes and retry semantics.
-  - Generated clients (OpenAPI / typed-fetch codegen) — generator quirks
-    plus a runtime surface duplication; not worth the build-time cost.
-- **Source:** docs/decisions.md#GLOBAL-001 (canonical here as the defining GLOBAL)
-
-### GLOBAL-002 — Behavior parity across surfaces
-
-- **Decision:** Every surface (HTTP API, SDK, CLI, MCP, elements, web)
-  presents the same auth modes, error shape, idempotency semantics, and
-  rate-limit signaling. Surface-specific UX wrapping (CLI prompts vs.
-  browser modals vs. MCP tool errors) is allowed; semantics are not.
-- **Core value:** Bullet-proof, Effortless UX
-- **Why:** Users and agents move between surfaces (CLI in dev, MCP in
-  their IDE, web for sharing). If a 429 means "back off 1 s" in CLI but
-  "give up" in MCP, behavior is unpredictable. Parity is what makes the
-  multi-surface story credible.
-- **Consequence in code:** Every error code, every header
-  (`Idempotency-Key`, `X-RateLimit-*`, `Authorization`), and every
-  status-mapping rule is defined once in `packages/sdk/` and re-used.
-- **Alternatives rejected:**
-  - Surface-specific error shapes — each surface team optimizes locally
-    and the surfaces drift.
-  - "Best effort" parity — degrades to no parity inside a year.
-- **Source:** docs/decisions.md#GLOBAL-002
-
-### GLOBAL-005 — Every mutation accepts `Idempotency-Key`
-
-- **Decision:** Every state-changing endpoint (HTTP, SDK, CLI, MCP)
-  accepts an optional `Idempotency-Key` header. Mutations are recorded
-  keyed by `(user_id, idempotency_key)` so retries return the original
-  response body byte-for-byte.
-- **Core value:** Bullet-proof, Honest latency
-- **Why:** Networks fail. Workers retry. Without idempotency, retries
-  duplicate writes (double-charge, double-emit, double-record). This is
-  non-negotiable for any system that bills, emits events, or mutates
-  state on behalf of an agent that can itself retry.
-- **Consequence in code:** Every `POST` / `PATCH` / `DELETE` in the API
-  layer reads `Idempotency-Key`, dedupes by `(user_id, key)` against a
-  bounded-TTL store, and returns the recorded response on a hit. SDK
-  helpers auto-generate keys for retried calls.
-- **Alternatives rejected:**
-  - Server-side dedup by content hash — misses semantic duplicates
-    (same intent, different timestamp / nonce / client clock).
-  - Client retries without keys — dangerous on any critical path; banned
-    by review.
-- **Source:** docs/decisions.md#GLOBAL-005
-
-### GLOBAL-009 — Tokens refresh silently — never surface a 401
-
-- **Decision:** When a token expires, the SDK refreshes it transparently
-  before any user-visible failure. A 401 reaching the surface (web
-  banner, CLI error, MCP tool error) is a bug, not a normal flow.
-- **Core value:** Seamless auth, Effortless UX, Bullet-proof
-- **Why:** Auth failures interrupt the user's actual goal. If the
-  refresh path is reliable, the user never has to think about tokens.
-  A user-visible 401 is a regression — file a bug.
-- **Consequence in code:** `packages/sdk` wraps fetch with a
-  refresh-on-401 retry that uses the refresh token. CLI and MCP rely on
-  this same logic; they don't implement their own refresh. The web
-  app's `useSession` hook auto-refreshes ahead of expiry where the
-  expiry is observable.
-- **Alternatives rejected:**
-  - Force re-login on expiry — kills long-running CLI / agent sessions.
-  - Aggressive proactive refresh on every call — wastes the auth
-    server's budget.
-- **Source:** docs/decisions.md#GLOBAL-009
-
-### GLOBAL-012 — Errors are one sentence with the next action
-
-- **Decision:** Every user-facing error message is one sentence and
-  contains an actionable next step. No stack traces in the surface.
-  No "an error occurred." No multi-paragraph debug dumps.
-- **Core value:** Effortless UX, Honest latency, Simple
-- **Why:** Error messages are a UI surface. Long error messages train
-  users not to read them; vague ones train users not to trust them.
-  One sentence with a next action is read, understood, and acted on.
-- **Consequence in code:** Every `throw` / `error()` call in user-
-  facing paths returns a `code` (machine-readable) + `message` (one
-  sentence) + `action` (what to do). Surfaces render `message` and
-  optionally a CTA derived from `action`. Stack traces go to OTel
-  spans, not to the user.
-- **Alternatives rejected:**
-  - Surface the underlying exception — leaks internals, scares users.
-  - Generic "something went wrong" — prevents the user from helping
-    themselves.
-- **Source:** docs/decisions.md#GLOBAL-012
-
-### GLOBAL-014 — OTel span on every external call (DB, LLM, HTTP, queue)
-
-- **Decision:** Every call that crosses a process boundary — DB query,
-  LLM call, outbound HTTP, queue enqueue/dequeue — is wrapped in an
-  OpenTelemetry span with the canonical attributes from
-  `docs/performance.md` §3 (the span / metric / label catalog).
-- **Core value:** Honest latency, Bullet-proof, Fast
-- **Why:** Without spans on every external call, we can't answer "why
-  is this request slow," "is the LLM the bottleneck," or "did this
-  retry actually go to the DB twice." The catalog enforces consistent
-  attribute names so dashboards and queries don't fragment.
-- **Consequence in code:** `packages/otel` exposes the wrapper helpers;
-  all DB / LLM / HTTP / queue clients in the codebase route through
-  them. New external calls without a span fail review. Span names,
-  attributes, and metrics match the catalog (no ad-hoc names).
-- **Alternatives rejected:**
-  - Sample only slow requests — loses the baseline distribution.
-  - Per-team conventions — fragments the dashboards within a quarter.
-- **Source:** docs/decisions.md#GLOBAL-014
+- **GLOBAL-001** — SDK is the only HTTP client.
+- **GLOBAL-002** — Behavior parity across surfaces.
+- **GLOBAL-005** — Every mutation accepts `Idempotency-Key`.
+- **GLOBAL-009** — Tokens refresh silently — never surface a 401.
+- **GLOBAL-012** — Errors are one sentence with the next action.
+- **GLOBAL-014** — OTel span on every external call (DB, LLM, HTTP, queue).
 
 ## Open questions / known unknowns
 

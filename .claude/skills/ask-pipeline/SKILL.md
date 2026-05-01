@@ -12,7 +12,7 @@ when-to-load:
 **One-liner:** /v1/ask orchestration: rate-limit → cache → LLM router → SQL allowlist → exec → summarize.
 **Status:** implemented
 **Owners (code):** `apps/api/src/ask/**`
-**Cross-refs:** docs/design.md §3.6.1 (endpoint shape), §3.6.2 (typed-plan pipeline), §3.6.4 (dbId resolution), §3.6.5 (validator paths), §9 (bullet-proof checklist) · docs/implementation.md Slice 6 (`/v1/ask` E2E) · docs/performance.md §2.1, §2.2, §3
+**Cross-refs:** docs/design.md §3.6.1 (endpoint shape), §3.6.2 (typed-plan pipeline), §3.6.4 (dbId resolution), §3.6.5 (validator paths), §9 (bullet-proof checklist) · docs/implementation.md Slice 6 (`/v1/ask` E2E) · docs/performance.md §2.1, §2.2, §3 · `.claude/skills/hosted-db-create/SKILL.md` (Phase 1 — the `kind=create` arm of this pipeline lives there per SK-HDC-001; this skill keeps the read/write arm)
 
 ## Touchpoints — read this skill before editing
 
@@ -92,71 +92,16 @@ when-to-load:
 - **Alternatives rejected:** Generic spinner with "this is taking longer than usual" — gives no information; trains users not to trust the surface. Hide latency below a threshold — users notice anyway, and lose trust when the threshold is wrong.
 - **Source:** docs/design.md §0 (Honest latency) · docs/decisions.md#GLOBAL-011
 
-### GLOBAL-005 — Every mutation accepts `Idempotency-Key`
+## GLOBALs governing this feature
 
-- **Decision:** Every state-changing endpoint (HTTP, SDK, CLI, MCP) accepts an optional `Idempotency-Key` header. Mutations are recorded keyed by `(user_id, idempotency_key)` so retries return the original response body byte-for-byte.
-- **Core value:** Bullet-proof, Honest latency
-- **Why:** Networks fail. Workers retry. Without idempotency, retries duplicate writes (double-charge, double-emit, double-record). This is non-negotiable for any system that bills, emits events, or mutates state on behalf of an agent that can itself retry.
-- **Consequence in code:** Every `POST` / `PATCH` / `DELETE` in the API layer reads `Idempotency-Key`, dedupes by `(user_id, key)` against a bounded-TTL store, and returns the recorded response on a hit. SDK helpers auto-generate keys for retried calls.
-- **Alternatives rejected:**
-  - Server-side dedup by content hash — misses semantic duplicates (same intent, different timestamp / nonce / client clock).
-  - Client retries without keys — dangerous on any critical path; banned by review.
-- **Source:** docs/decisions.md#GLOBAL-005
+Canonical text in [`docs/decisions.md`](../../docs/decisions.md). The list below names the rules that constrain this feature; any skill-local commentary is nested under the rule.
 
-### GLOBAL-006 — Plans content-addressed by `(schema_hash, query_hash)`
-
-- **Decision:** A query plan's cache key is the pair `(schema_hash, query_hash)`. There is no time-based invalidation, no "cache version," no manual flush. If the inputs match, the plan matches.
-- **Core value:** Fast, Simple, Bullet-proof
-- **Why:** Cache invalidation is the second-hardest problem in computer science; we side-step it by making every cache key derive entirely from the inputs that determine the output. Combined with `GLOBAL-004`, this guarantees plans are stable under benign schema growth.
-- **Consequence in code:** `plan-cache` writes are keyed by `(schema_hash, query_hash)`; reads are exact-match only. Anything that wants to "force a new plan" must change `query_hash` (e.g., a pin or a hint), not invalidate the cache. LLM-generated plans are the only writers; humans pinning a plan write to the same store.
-- **Alternatives rejected:**
-  - TTL-based caches — wastes the 99% case where the inputs are unchanged, plus introduces flakiness around the boundary.
-  - Versioned plans tied to schema versions — would force `GLOBAL-004` to branch.
-- **Source:** docs/decisions.md#GLOBAL-006
-
-### GLOBAL-011 — Honest latency — show the live trace; never spinner-lie
-
-- **Decision:** When a request is in flight, surfaces show what is actually happening (cache lookup, plan, allowlist, exec, summarize) with real timings — not a generic spinner. If a step takes long, we say what step.
-- **Core value:** Honest latency, Effortless UX
-- **Why:** A spinner that hides progress trains users to assume the worst. A live trace shows exactly where time goes and turns perceived latency into legible, cacheable, debuggable information. It also makes us better at performance because we *see* every slow step.
-- **Consequence in code:** `apps/web` streams trace events from the ask-pipeline (or polls the OTel-exposed step state) and renders them in order. CLI's TTY mode prints each step as it completes. The SDK exposes an `onTrace` hook for surfaces to consume.
-- **Alternatives rejected:**
-  - Generic spinner with "this is taking longer than usual" — gives no information.
-  - Hide latency below a threshold — users notice anyway, and lose trust when the threshold is wrong.
-- **Source:** docs/decisions.md#GLOBAL-011
-
-### GLOBAL-014 — OTel span on every external call (DB, LLM, HTTP, queue)
-
-- **Decision:** Every call that crosses a process boundary — DB query, LLM call, outbound HTTP, queue enqueue/dequeue — is wrapped in an OpenTelemetry span with the canonical attributes from `docs/performance.md` §3 (the span / metric / label catalog).
-- **Core value:** Honest latency, Bullet-proof, Fast
-- **Why:** Without spans on every external call, we can't answer "why is this request slow," "is the LLM the bottleneck," or "did this retry actually go to the DB twice." The catalog enforces consistent attribute names so dashboards and queries don't fragment.
-- **Consequence in code:** `packages/otel` exposes the wrapper helpers; all DB / LLM / HTTP / queue clients in the codebase route through them. New external calls without a span fail review. Span names, attributes, and metrics match the catalog (no ad-hoc names).
-- **Alternatives rejected:**
-  - Sample only slow requests — loses the baseline distribution.
-  - Per-team conventions — fragments the dashboards within a quarter.
-- **Source:** docs/decisions.md#GLOBAL-014
-
-### GLOBAL-015 — Power users always have an escape hatch
-
-- **Decision:** Every layer that turns natural language into something executable — `/v1/ask` → SQL, plan-cache → plan, db-adapter → query — exposes the underlying primitive directly. A power user can bypass the LLM and run raw SQL / Mongo / connection-string queries.
-- **Core value:** Creative, Bullet-proof, Goal-first
-- **Why:** Anyone who outgrows the conversational interface must not hit a wall. The product loses credibility (and users) if "the LLM decided" is the only path to the data. The escape hatch is also the thing that makes the LLM safe — humans can verify and fix.
-- **Consequence in code:** `/v1/run` (raw query) sits next to `/v1/ask` (NL query). CLI's `nlq run` runs raw SQL. The plan surfaced from `/v1/ask` is editable and re-runnable. Connection strings are exposed for users on plans that can self-host the DB.
-- **Alternatives rejected:**
-  - LLM-only API — fine for demos, fatal for production users.
-  - Hide raw access behind enterprise tier — blocks the OSS contributor path and contradicts `GLOBAL-019`.
-- **Source:** docs/decisions.md#GLOBAL-015
-
-### GLOBAL-017 — Two endpoints, two CLI verbs, one chat box — one way to do each thing
-
-- **Decision:** The HTTP API exposes two primary endpoints (`/v1/ask`, `/v1/run`). The CLI exposes two primary verbs (`nlq ask`, `nlq run`). The web app exposes one chat box. There is exactly one way to perform each conceptual operation; no aliases, no shadow endpoints.
-- **Core value:** Simple, Effortless UX
-- **Why:** Surface area is the enemy of learnability. If a user can do X "via two endpoints" or "via three commands," they spend energy on which one to pick instead of on their goal. A small canonical surface keeps docs short and behavior consistent.
-- **Consequence in code:** New conceptual operations require a decision: extend an existing endpoint/verb, or introduce a third one (which requires explicit justification). No aliases. The CLI may have helpers (`nlq init`, `nlq login`) — but the *operations on data* are the two verbs.
-- **Alternatives rejected:**
-  - REST resource explosion (`/v1/queries`, `/v1/runs`, `/v1/plans`) — bigger surface, more docs, more inconsistency.
-  - Multiple aliased CLI verbs — every alias becomes a new way to misuse the tool.
-- **Source:** docs/decisions.md#GLOBAL-017
+- **GLOBAL-005** — Every mutation accepts `Idempotency-Key`.
+- **GLOBAL-006** — Plans content-addressed by `(schema_hash, query_hash)`.
+- **GLOBAL-011** — Honest latency — show the live trace; never spinner-lie.
+- **GLOBAL-014** — OTel span on every external call (DB, LLM, HTTP, queue).
+- **GLOBAL-015** — Power users always have an escape hatch.
+- **GLOBAL-017** — Two endpoints, two CLI verbs, one chat box — one way to do each thing.
 
 ## Open questions / known unknowns
 

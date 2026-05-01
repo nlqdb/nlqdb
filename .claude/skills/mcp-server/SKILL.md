@@ -90,117 +90,15 @@ when-to-load:
   - Hosted-only orchestration with local going through a different shim — two attack surfaces, two parsers.
   - Direct DB access from the local transport — explicitly rejected by `SK-MCP-005`.
 
-## Copies of GLOBAL decisions affecting this feature
+## GLOBALs governing this feature
 
-### GLOBAL-001 — SDK is the only HTTP client
+Canonical text in [`docs/decisions.md`](../../docs/decisions.md). The list below names the rules that constrain this feature; any skill-local commentary is nested under the rule.
 
-- **Decision:** Every nlqdb surface (`apps/web`, `cli/`, `packages/mcp`,
-  `packages/elements`) consumes `@nlqdb/sdk`. No raw `fetch('/v1/...')`
-  outside `packages/sdk/`.
-- **Core value:** Simple, Bullet-proof
-- **Why:** Surfaces drift when each owns their HTTP client — auth-header
-  semantics, retry policy, error shape, idempotency handling end up with
-  subtle differences. One client means one place to fix bugs and one
-  place to add new endpoints. It is also the precondition for
-  `GLOBAL-002` (behavior parity).
-- **Consequence in code:** Lint/CI rejects `fetch()` calls referencing
-  `/v1/` outside `packages/sdk/`. A new endpoint lands as an SDK method
-  first; surfaces consume it after.
-- **Alternatives rejected:**
-  - Per-surface clients with shared types — types diverge subtly,
-    especially around error envelopes and retry semantics.
-  - Generated clients (OpenAPI / typed-fetch codegen) — generator quirks
-    plus a runtime surface duplication; not worth the build-time cost.
-- **Source:** docs/decisions.md#GLOBAL-001
-
-### GLOBAL-002 — Behavior parity across surfaces
-
-- **Decision:** Every surface (HTTP API, SDK, CLI, MCP, elements, web)
-  presents the same auth modes, error shape, idempotency semantics, and
-  rate-limit signaling. Surface-specific UX wrapping (CLI prompts vs.
-  browser modals vs. MCP tool errors) is allowed; semantics are not.
-- **Core value:** Bullet-proof, Effortless UX
-- **Why:** Users and agents move between surfaces (CLI in dev, MCP in
-  their IDE, web for sharing). If a 429 means "back off 1 s" in CLI but
-  "give up" in MCP, behavior is unpredictable. Parity is what makes the
-  multi-surface story credible.
-- **Consequence in code:** Every error code, every header
-  (`Idempotency-Key`, `X-RateLimit-*`, `Authorization`), and every
-  status-mapping rule is defined once in `packages/sdk/` and re-used.
-- **Alternatives rejected:**
-  - Surface-specific error shapes — each surface team optimizes locally
-    and the surfaces drift.
-  - "Best effort" parity — degrades to no parity inside a year.
-- **Source:** docs/decisions.md#GLOBAL-002
-
-### GLOBAL-008 — One Better Auth identity across all surfaces
-
-- **Decision:** A user has exactly one identity, managed by Better Auth.
-  CLI, MCP, web, and SDK all authenticate through that identity (via
-  bearer / cookie / device-flow). No surface owns its own auth store.
-- **Core value:** Seamless auth, Simple, Bullet-proof
-- **Why:** Multi-surface products fragment when each surface owns its
-  own identity model — a user signs in to web but the CLI doesn't know,
-  or the MCP key isn't tied to the same human. One identity model means
-  one revocation surface (`GLOBAL-018`), one rate-limit surface, one
-  audit log.
-- **Consequence in code:** `packages/auth-internal` is the only thing
-  that talks to Better Auth. Every other surface consumes its
-  primitives. CLI's device-flow auth and MCP's host-scoped keys both
-  resolve to a single `user_id`.
-- **Alternatives rejected:**
-  - Per-surface identity systems — fragmented audit trails, fragmented
-    revocation, no cross-surface session continuity.
-  - Bring-your-own-IdP only — punts the problem to operators; bad
-    default for the free tier.
-- **Source:** docs/decisions.md#GLOBAL-008
-
-### GLOBAL-010 — Credentials live in the OS keychain; `NLQDB_API_KEY` is the CI escape hatch
-
-- **Decision:** Long-lived credentials (CLI tokens, MCP host keys) live
-  in the OS keychain (Keychain on macOS, libsecret on Linux,
-  Credential Manager on Windows). The only env-var path is
-  `NLQDB_API_KEY`, used in CI / containerized environments where a
-  keychain is unavailable.
-- **Core value:** Seamless auth, Bullet-proof
-- **Why:** Keychain storage means credentials survive reboots, are
-  encrypted at rest by the OS, and don't leak into shell history /
-  ps output / env-dump screenshots. The single env-var fallback is
-  the explicit, auditable escape hatch — it doesn't quietly become
-  the default.
-- **Consequence in code:** `cli/` and `packages/mcp` use a small
-  keychain abstraction; tokens are written there on first sign-in.
-  When the keychain is missing (CI, Docker), `NLQDB_API_KEY` is read
-  with a one-line message that names the env-var explicitly. No
-  config-file fallback, no `~/.nlqdb/credentials.json`.
-- **Alternatives rejected:**
-  - Plain config-file storage in `~/.nlqdb/` — leaks via cloud
-    backups / dotfile syncs.
-  - Required env vars — bad UX on a developer laptop.
-- **Source:** docs/decisions.md#GLOBAL-010
-
-### GLOBAL-017 — Two endpoints, two CLI verbs, one chat box — one way to do each thing
-
-- **Decision:** The HTTP API exposes two primary endpoints (`/v1/ask`,
-  `/v1/run`). The CLI exposes two primary verbs (`nlq ask`, `nlq run`).
-  The web app exposes one chat box. There is exactly one way to
-  perform each conceptual operation; no aliases, no shadow endpoints.
-- **Core value:** Simple, Effortless UX
-- **Why:** Surface area is the enemy of learnability. If a user can
-  do X "via two endpoints" or "via three commands," they spend energy
-  on which one to pick instead of on their goal. A small canonical
-  surface keeps docs short and behavior consistent.
-- **Consequence in code:** New conceptual operations require a
-  decision: extend an existing endpoint/verb, or introduce a third
-  one (which requires explicit justification). No aliases. The CLI
-  may have helpers (`nlq init`, `nlq login`) — but the *operations
-  on data* are the two verbs.
-- **Alternatives rejected:**
-  - REST resource explosion (`/v1/queries`, `/v1/runs`, `/v1/plans`)
-    — bigger surface, more docs, more inconsistency.
-  - Multiple aliased CLI verbs — every alias becomes a new way to
-    misuse the tool.
-- **Source:** docs/decisions.md#GLOBAL-017
+- **GLOBAL-001** — SDK is the only HTTP client.
+- **GLOBAL-002** — Behavior parity across surfaces.
+- **GLOBAL-008** — One Better Auth identity across all surfaces.
+- **GLOBAL-010** — Credentials live in the OS keychain; `NLQDB_API_KEY` is the CI escape hatch.
+- **GLOBAL-017** — Two endpoints, two CLI verbs, one chat box — one way to do each thing.
 
 ## Open questions / known unknowns
 

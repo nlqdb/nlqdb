@@ -93,68 +93,13 @@ when-to-load:
   - Hard-code `apiVersion: "2026-04-22.dahlia"` — drifts from SDK types; the next field-relocation produces silent runtime mismatches.
   - Pin to the latest version on every CI run — Stripe's "latest" is a moving target; we don't want CI breaking on a Stripe-side version flip.
 
-### GLOBAL-005 — Every mutation accepts `Idempotency-Key`
+## GLOBALs governing this feature
 
-- **Decision:** Every state-changing endpoint (HTTP, SDK, CLI, MCP)
-  accepts an optional `Idempotency-Key` header. Mutations are recorded
-  keyed by `(user_id, idempotency_key)` so retries return the original
-  response body byte-for-byte.
-- **Core value:** Bullet-proof, Honest latency
-- **Why:** Networks fail. Workers retry. Without idempotency, retries
-  duplicate writes (double-charge, double-emit, double-record). This is
-  non-negotiable for any system that bills, emits events, or mutates
-  state on behalf of an agent that can itself retry.
-- **Consequence in code:** Every `POST` / `PATCH` / `DELETE` in the API
-  layer reads `Idempotency-Key`, dedupes by `(user_id, key)` against a
-  bounded-TTL store, and returns the recorded response on a hit. SDK
-  helpers auto-generate keys for retried calls.
-- **Alternatives rejected:**
-  - Server-side dedup by content hash — misses semantic duplicates
-    (same intent, different timestamp / nonce / client clock).
-  - Client retries without keys — dangerous on any critical path; banned
-    by review.
-- **Source:** docs/decisions.md#GLOBAL-005
+Canonical text in [`docs/decisions.md`](../../docs/decisions.md). The list below names the rules that constrain this feature; any skill-local commentary is nested under the rule.
 
-### GLOBAL-013 — $0/month for the free tier; Workers free-tier bundle ≤ 3 MiB compressed
-
-- **Decision:** The free tier runs on Cloudflare Workers free plan,
-  Neon free plan, and other zero-cost services. The deployed Worker
-  bundle stays under 3 MiB compressed (Cloudflare's hard limit on the
-  free plan is 3 MiB, paid is 10 MiB).
-- **Core value:** Free, Bullet-proof
-- **Why:** "Free forever" is the activation hook. If our infra cost
-  per free user is non-zero, the runway turns into a wall. The 3 MiB
-  ceiling is a real constraint that shapes dependency choices.
-- **Consequence in code:** Every dependency is checked against bundle
-  budget before adoption (`pnpm build && wrangler deploy --dry-run`).
-  Heavy deps (parsers, big crypto libs, full AI SDKs) are forbidden
-  on the Workers path; equivalent functionality goes through HTTP
-  to a cheaper backend or via tree-shakable submodules.
-- **Alternatives rejected:**
-  - "Free trial" with a card — kills activation.
-  - Bigger bundle with paid plan default — locks us out of the
-    Workers free plan, which is the actual product story.
-- **Source:** docs/decisions.md#GLOBAL-013
-
-### GLOBAL-014 — OTel span on every external call (DB, LLM, HTTP, queue)
-
-- **Decision:** Every call that crosses a process boundary — DB query,
-  LLM call, outbound HTTP, queue enqueue/dequeue — is wrapped in an
-  OpenTelemetry span with the canonical attributes from
-  `docs/performance.md` §3 (the span / metric / label catalog).
-- **Core value:** Honest latency, Bullet-proof, Fast
-- **Why:** Without spans on every external call, we can't answer "why
-  is this request slow," "is the LLM the bottleneck," or "did this
-  retry actually go to the DB twice." The catalog enforces consistent
-  attribute names so dashboards and queries don't fragment.
-- **Consequence in code:** `packages/otel` exposes the wrapper helpers;
-  all DB / LLM / HTTP / queue clients in the codebase route through
-  them. New external calls without a span fail review. Span names,
-  attributes, and metrics match the catalog (no ad-hoc names).
-- **Alternatives rejected:**
-  - Sample only slow requests — loses the baseline distribution.
-  - Per-team conventions — fragments the dashboards within a quarter.
-- **Source:** docs/decisions.md#GLOBAL-014
+- **GLOBAL-005** — Every mutation accepts `Idempotency-Key`.
+- **GLOBAL-013** — $0/month for the free tier; Workers free-tier bundle ≤ 3 MiB compressed.
+- **GLOBAL-014** — OTel span on every external call (DB, LLM, HTTP, queue).
 
 ## Open questions / known unknowns
 

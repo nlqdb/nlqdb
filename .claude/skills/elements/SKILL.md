@@ -116,67 +116,13 @@ when-to-load:
   - SSE auto-upgrade today — adds complexity and a parser; deferred to a slice that has a real use-case.
   - Exponential backoff on errors — adds state machine to the element; defer until poll-storm is observed in production.
 
-### GLOBAL-001 — SDK is the only HTTP client
+## GLOBALs governing this feature
 
-- **Decision:** Every nlqdb surface (`apps/web`, `cli/`, `packages/mcp`,
-  `packages/elements`) consumes `@nlqdb/sdk`. No raw `fetch('/v1/...')`
-  outside `packages/sdk/`.
-- **Core value:** Simple, Bullet-proof
-- **Why:** Surfaces drift when each owns their HTTP client — auth-header
-  semantics, retry policy, error shape, idempotency handling end up with
-  subtle differences. One client means one place to fix bugs and one
-  place to add new endpoints. It is also the precondition for
-  `GLOBAL-002` (behavior parity).
-- **Consequence in code:** Lint/CI rejects `fetch()` calls referencing
-  `/v1/` outside `packages/sdk/`. A new endpoint lands as an SDK method
-  first; surfaces consume it after.
-- **Alternatives rejected:**
-  - Per-surface clients with shared types — types diverge subtly,
-    especially around error envelopes and retry semantics.
-  - Generated clients (OpenAPI / typed-fetch codegen) — generator quirks
-    plus a runtime surface duplication; not worth the build-time cost.
-- **Source:** docs/decisions.md#GLOBAL-001
+Canonical text in [`docs/decisions.md`](../../docs/decisions.md). The list below names the rules that constrain this feature; any skill-local commentary is nested under the rule.
 
-### GLOBAL-002 — Behavior parity across surfaces
-
-- **Decision:** Every surface (HTTP API, SDK, CLI, MCP, elements, web)
-  presents the same auth modes, error shape, idempotency semantics, and
-  rate-limit signaling. Surface-specific UX wrapping (CLI prompts vs.
-  browser modals vs. MCP tool errors) is allowed; semantics are not.
-- **Core value:** Bullet-proof, Effortless UX
-- **Why:** Users and agents move between surfaces (CLI in dev, MCP in
-  their IDE, web for sharing). If a 429 means "back off 1 s" in CLI but
-  "give up" in MCP, behavior is unpredictable. Parity is what makes the
-  multi-surface story credible.
-- **Consequence in code:** Every error code, every header
-  (`Idempotency-Key`, `X-RateLimit-*`, `Authorization`), and every
-  status-mapping rule is defined once in `packages/sdk/` and re-used.
-- **Alternatives rejected:**
-  - Surface-specific error shapes — each surface team optimizes locally
-    and the surfaces drift.
-  - "Best effort" parity — degrades to no parity inside a year.
-- **Source:** docs/decisions.md#GLOBAL-002
-
-### GLOBAL-013 — $0/month for the free tier; Workers free-tier bundle ≤ 3 MiB compressed
-
-- **Decision:** The free tier runs on Cloudflare Workers free plan,
-  Neon free plan, and other zero-cost services. The deployed Worker
-  bundle stays under 3 MiB compressed (Cloudflare's hard limit on the
-  free plan is 3 MiB, paid is 10 MiB).
-- **Core value:** Free, Bullet-proof
-- **Why:** "Free forever" is the activation hook. If our infra cost
-  per free user is non-zero, the runway turns into a wall. The 3 MiB
-  ceiling is a real constraint that shapes dependency choices.
-- **Consequence in code:** Every dependency is checked against bundle
-  budget before adoption (`pnpm build && wrangler deploy --dry-run`).
-  Heavy deps (parsers, big crypto libs, full AI SDKs) are forbidden
-  on the Workers path; equivalent functionality goes through HTTP
-  to a cheaper backend or via tree-shakable submodules.
-- **Alternatives rejected:**
-  - "Free trial" with a card — kills activation.
-  - Bigger bundle with paid plan default — locks us out of the
-    Workers free plan, which is the actual product story.
-- **Source:** docs/decisions.md#GLOBAL-013
+- **GLOBAL-001** — SDK is the only HTTP client.
+- **GLOBAL-002** — Behavior parity across surfaces.
+- **GLOBAL-013** — $0/month for the free tier; Workers free-tier bundle ≤ 3 MiB compressed.
 
 ## Open questions / known unknowns
 
