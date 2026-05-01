@@ -5,15 +5,20 @@
 // (env bindings + execution ctx) — see `apps/api/src/ask/build-deps.ts`.
 //
 // Pipeline implements the typed-plan flow from
-// [`DESIGN.md §3.6.1`](../../../../DESIGN.md#361-endpoint-shape) +
-// [`DESIGN.md §3.6.2`](../../../../DESIGN.md#362-typed-plan-pipeline-the-create-path):
+// [`docs/design.md §3.6.1`](../../../../docs/design.md#361-endpoint-shape) +
+// [`docs/design.md §3.6.2`](../../../../docs/design.md#362-typed-plan-pipeline-the-create-path):
 //
 //   rate-limit → inferSchema → compileDdl → validateCompiledDdl →
 //   provisionDb → embedTableCards
 //
 // Each layer is a separate guardrail (`docs/research-receipts.md
 // §1`); the orchestrator's job is to ensure they run in order and
-// short-circuit cleanly on any failure.
+// short-circuit cleanly on any failure. Sub-modules own their own
+// OTel spans on external calls (GLOBAL-014); the orchestrator is
+// in-process and adds no external boundaries of its own.
+//
+// Related skill: `.claude/skills/ask-pipeline/SKILL.md` — the
+// `kind=create` branch routes here from `/v1/ask` (SK-ASK-001).
 
 import type {
   CompileDdlResult,
@@ -41,9 +46,10 @@ export type DbCreateDeps = {
   // pgvector writer for table-card RAG. Awaited but failure does
   // NOT roll back the provisioned DB — see step 7 below.
   embedTableCards: (deps: EmbedDeps, plan: SchemaPlan, dbId: string) => Promise<void>;
-  // Per-tenant key from IMPLEMENTATION §8 (5/hr per IP, 20/day per
-  // account). The route handler decides whether the key is an IP
-  // bucket or an account bucket — this orchestrator just acquires.
+  // Per-tenant key from docs/implementation.md §8 (5/hr per IP,
+  // 20/day per account). The route handler decides whether the key
+  // is an IP bucket or an account bucket — this orchestrator just
+  // acquires.
   rateLimiter: { tryAcquire(key: string): Promise<boolean> };
   // 6-char random for the dbId tail. Injectable so tests can
   // assert exact ids; prod uses `crypto.randomUUID().slice(...)` or
@@ -75,7 +81,7 @@ export async function orchestrateDbCreate(
   }
 
   // 2. Infer the SchemaPlan. The LLM never emits raw DDL — only
-  //    a typed JSON plan (DESIGN §3.6.2 / receipts §2).
+  //    a typed JSON plan (docs/design.md §3.6.2 / receipts §2).
   const inferred = await deps.inferSchema(
     { llm: deps.llm },
     { goal: args.goal, ...(args.name !== undefined ? { name: args.name } : {}) },
@@ -89,7 +95,7 @@ export async function orchestrateDbCreate(
   }
   const plan = inferred.plan;
 
-  // 3. Mint the dbId + schema name. Format from DESIGN §14.6:
+  // 3. Mint the dbId + schema name. Format from docs/design.md §14.6:
   //    "db_<slug_hint>_<6-char-random>"; schema name drops the
   //    `db_` prefix (matches Worksheet C's contract).
   const suffix = deps.randomSuffix();
@@ -108,7 +114,8 @@ export async function orchestrateDbCreate(
   }
 
   // 5. libpg_query parse-validate over the compiled DDL — the
-  //    second of two DDL guardrails (DESIGN §3.6.5). Catches
+  //    second of two DDL guardrails (docs/design.md §3.6.5; see also
+  //    `.claude/skills/ask-pipeline/SKILL.md` SK-ASK-004). Catches
   //    compiler bugs that smuggled a destructive verb through.
   const validation = deps.validateCompiledDdl(compiled.statements);
   if (!validation.ok) {
@@ -160,7 +167,8 @@ export async function orchestrateDbCreate(
 
   // 8. Anonymous tenants get `pkLive: null` regardless of what
   //    provisionDb returned — the route handler issues a
-  //    session-scoped key separately (DESIGN §3.6.4 row 1).
+  //    session-scoped key separately (docs/design.md §3.6.4 row 1;
+  //    SK-ASK-003 documents the deterministic-resolution rationale).
   const pkLive = isAnonymous(args.tenantId) ? null : provisioned.pkLive;
 
   return {

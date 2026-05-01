@@ -1,5 +1,5 @@
 // Shared types for the `/v1/ask kind=create` typed-plan pipeline
-// (DESIGN §3.6.1 + §3.6.2). The four sibling modules
+// (docs/design.md §3.6.1 + §3.6.2). The four sibling modules
 // (`infer-schema`, `compile-ddl`, `neon-provision`, `orchestrate`)
 // import from here so contracts stay in one place — Worksheet A
 // owns this file's canonical shape; the orchestrator (this PR)
@@ -11,6 +11,10 @@
 // libpg_query parse-validate runs over the compiled DDL, then a
 // transactional provisioner executes. The error unions below name
 // the failure modes each layer can surface back to the caller.
+//
+// Related skill: `.claude/skills/ask-pipeline/SKILL.md` — the
+// `kind=create` branch from `/v1/ask` lands these types in the
+// typed-plan compiler path (SK-ASK-001, SK-ASK-004).
 
 import type { LLMRouter } from "@nlqdb/llm";
 
@@ -67,9 +71,9 @@ export type SampleRow = {
 
 export type SchemaPlan = {
   // Lower-case, underscore-separated. Used to derive both the
-  // schema name and the public dbId — see DESIGN §14.6 example
-  // "orders-tracker-a4f". The orchestrator appends a 6-char
-  // random suffix at runtime.
+  // schema name and the public dbId — see docs/design.md §14.6
+  // example "orders-tracker-a4f". The orchestrator appends a
+  // 6-char random suffix at runtime.
   slug_hint: string;
   // Optional human display name (passed through from `args.name`
   // when supplied, otherwise inferred).
@@ -120,7 +124,8 @@ export type CompileDdlResult =
 // --- validate-compiled-ddl ------------------------------------------
 // Defense-in-depth libpg_query parse + reject-list. Even though our
 // own compiler authored the SQL, we re-parse before sending to the
-// executor — guards against compiler bugs. DESIGN §3.6.5 row 2.
+// executor — guards against compiler bugs. docs/design.md §3.6.5
+// row 2; SK-ASK-004 codifies the read/write vs DDL split.
 
 export type DdlValidationFailureReason =
   | "parse_failed"
@@ -170,7 +175,7 @@ export type ProvisionDbResult =
       // Minted inside the same transaction that inserts the
       // `databases` row, so the key + DB land atomically. `null`
       // for anonymous tenants — the route handler issues a
-      // session-scoped key separately (DESIGN §3.6.4).
+      // session-scoped key separately (docs/design.md §3.6.4).
       pkLive: string | null;
     }
   | { ok: false; reason: ProvisionFailureReason; rolled_back: boolean };
