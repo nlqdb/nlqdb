@@ -287,60 +287,33 @@ device + last-used.
 
 ### 3.4 MCP server — `@nlqdb/mcp`
 
-Thin adapter over the HTTP API (same code path; never talks to Postgres,
-never holds a DB credential). Two transports — **hosted at
-`mcp.nlqdb.com`** (default; Cloudflare Worker via the `McpAgent` class
-on Workers Free + Durable Objects; OAuth-authenticated; zero install)
-and **npm `@nlqdb/mcp`** (local stdio fallback for offline /
-privacy-sensitive / CLI-everything workflows).
+> **Canonical for the MCP server:** [`.claude/skills/mcp-server/SKILL.md`](../.claude/skills/mcp-server/SKILL.md).
+> Decisions that lived here (two transports, three tools / no
+> `nlqdb_create_database`, per-host scoped keys with full
+> `(host, device)` isolation, recoverable `key_revoked` UX, transport
+> details) are now `SK-MCP-001..007` in the skill.
 
-**Tools:** `nlqdb_query(db, q)` (creates DB on first reference per §0.1;
-no public `nlqdb_create_database` tool), `nlqdb_list_databases()`,
-`nlqdb_describe(db)`.
+Two transports: **hosted** at `mcp.nlqdb.com` (default; paste-the-URL
+into the host's MCP-connector config) and **local stdio** via npm
+`@nlqdb/mcp` (offline / privacy-sensitive fallback). Three tools:
+`nlqdb_query`, `nlqdb_list_databases`, `nlqdb_describe` (no public
+`nlqdb_create_database` — DB is materialized on first `nlqdb_query`
+per §0.1 inversion).
 
-**Install paths** (per §0 "Seamless auth"; full spec §4.3, §4.4):
+**Install paths:**
 
-0. **Connector URL** *(default — hosted transport).* User pastes
-   `mcp.nlqdb.com` into the host's MCP-connector config (Claude Desktop
-   *Connectors*, Cursor / Zed / Windsurf MCP settings). First tool call
-   opens an OAuth window; on consent the host receives a session-bound
-   token. No file written, no key on disk, no `npx` to keep updated.
-
-The remaining paths target the npm transport — for the local stdio
-flavour:
-
-1. **`nlq mcp install`** *(default, no arg).* Scans known host configs for
-   Claude Desktop, Cursor, Zed, Windsurf, VS Code, Continue; prints what
-   was found (transparency — we never touch unnamed files). One host →
-   silent install. Multiple → numbered prompt (or `--all`). None → prints
-   install links. If the user isn't signed in, runs the device-code flow
-   first. Mints `sk_mcp_<host>_<device>_…` via `POST /v1/keys`; writes it
-   straight to the host's config file (never displayed). Hot-reloaders
-   (Cursor/Zed/Windsurf) pick up the change in seconds; Claude Desktop
-   gets a restart prompt. Self-check via `nlqdb_list_databases()` confirms.
-2. **`nlq mcp install <host>`** *(explicit override).* Same flow; targets
-   the named host even if not installed. `<host>` ∈ {`claude`, `cursor`,
-   `zed`, `windsurf`, `vscode`, `continue`}.
-3. **Website one-click** (`app.nlqdb.com/mcp`) mints the key server-side
-   and opens an `nlqdb://install?…` deep link the CLI handles.
-4. **`NLQDB_API_KEY`** env var — CI / Docker / air-gapped escape hatch;
-   takes precedence over any config file. Key generated in the dashboard.
-
-**Per-host isolation** (agents do **not** share credentials):
-
-- Each `sk_mcp_<host>_<device>_…` key carries `{ user_id, mcp_host,
-  device_id, created_at, last_used_at }`. Dashboard lists each with its
-  host, device, and last-used.
-- DBs created via MCP are tagged with `(mcp_host, device_id)` and default
-  to visible only under that tuple; promote-to-account is one click.
-- Revocation is instant. The next tool call returns `401 key_revoked`;
-  the server surfaces *"Sign in again: run `nlq mcp install`."* to the
-  host LLM. Re-install auto-detects the original host.
-
-**Transport:** Streamable-HTTP (hosted) or stdio to the host process
-(npm). Both share the same `/v1/ask` orchestration; neither holds DB
-credentials (§4.4). Local npm has no network listener on the user's
-machine. Postgres credentials never leave Cloudflare in either case.
+- **Connector URL** *(hosted, default).* Paste `mcp.nlqdb.com` into
+  the host's MCP-connector config (Claude Desktop *Connectors*, Cursor
+  / Zed / Windsurf MCP settings); first tool call opens an OAuth window.
+- **`nlq mcp install`** *(local stdio).* Auto-detects supported hosts
+  (Claude Desktop, Cursor, Zed, Windsurf, VS Code, Continue) and writes
+  `sk_mcp_<host>_<device>_…` straight into the host's config. Details
+  in `cli/SKILL.md` (`SK-CLI-011`) and `mcp-server/SKILL.md`
+  (`SK-MCP-003`).
+- **Website one-click** (`app.nlqdb.com/mcp`) mints the key server-side
+  and opens an `nlqdb://install?…` deep link the CLI handles.
+- **`NLQDB_API_KEY`** env var — CI / Docker / air-gapped escape hatch;
+  takes precedence over any config file.
 
 ### 3.5 The embeddable HTML element — `<nlq-data>`
 
