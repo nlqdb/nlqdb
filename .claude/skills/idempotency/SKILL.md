@@ -111,7 +111,7 @@ when-to-load:
   non-negotiable for any system that bills, emits events, or mutates
   state on behalf of an agent that can itself retry.
 - **Consequence in code:** Every `POST` / `PATCH` / `DELETE` in the API
-  layer reads `X-Idempotency-Key`, dedupes by `(user_id, key)` against a
+  layer reads `Idempotency-Key`, dedupes by `(user_id, key)` against a
   bounded-TTL store, and returns the recorded response on a hit. SDK
   helpers auto-generate keys for retried calls.
 - **Alternatives rejected:**
@@ -123,7 +123,6 @@ when-to-load:
 
 ## Open questions / known unknowns
 
-- **Header name disagreement (P1 — surfaced, not silently resolved).** GLOBAL-005's Decision and DESIGN §14.6 use `Idempotency-Key` (matching Stripe's convention). GLOBAL-005's *Consequence in code* says the API layer reads `X-Idempotency-Key`. These two phrasings cannot both be canonical. Stripe's published spec (`https://docs.stripe.com/api/idempotent_requests`) uses `Idempotency-Key` without the `X-` prefix; RFC 6648 deprecates the `X-` prefix for new headers (2012). Recommended resolution: align GLOBAL-005's Consequence to `Idempotency-Key` (no prefix) and update every place that copies it (`grep -rn 'GLOBAL-005' .claude/skills/ docs/`). **This skill flags the inconsistency and does not pick — owner of GLOBAL-005 must decide.**
 - **Dedupe-store TTL.** GLOBAL-005 says "bounded-TTL store" but does not pin a number. Stripe uses 24h on their idempotency store; that is a defensible default. D1 row TTL would be implemented as a periodic sweep job (see `docs/runbook.md` §9 daily sweeps), not a per-row expiry. Open: pin the TTL + sweep cadence before the middleware lands.
 - **Key reuse with a different body** — Stripe returns `400 idempotency_key_in_use` if a retry uses the same key with a different body. We have not decided whether to mirror that or to fall through to a fresh request. Recommended: mirror Stripe (mismatch is a programming error, not a transient hiccup). Storing a body hash alongside `(user_id, key)` makes the check cheap.
 - **Replay scope for SSE / streaming responses** — `SK-IDEMP-003` covers JSON; the orchestrator's SSE path (DESIGN §14.6 streaming) is unclear. Likely answer: an SSE stream is not idempotent in the byte-exact sense (timestamps interleave); a retry should fall through to a fresh stream and let the client reconcile. Decision pending.

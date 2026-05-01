@@ -107,7 +107,7 @@ when-to-load:
   non-negotiable for any system that bills, emits events, or mutates
   state on behalf of an agent that can itself retry.
 - **Consequence in code:** Every `POST` / `PATCH` / `DELETE` in the API
-  layer reads `X-Idempotency-Key`, dedupes by `(user_id, key)` against a
+  layer reads `Idempotency-Key`, dedupes by `(user_id, key)` against a
   bounded-TTL store, and returns the recorded response on a hit. SDK
   helpers auto-generate keys for retried calls.
 - **Alternatives rejected:**
