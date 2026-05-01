@@ -533,41 +533,51 @@ a wave of anonymous creates hits the bucket.
 
 ## 4. Authentication & identity
 
-### 4.1 Library and methods
+> **Canonical:** [`.claude/skills/auth/SKILL.md`](../.claude/skills/auth/SKILL.md)
+> (`SK-AUTH-001..012`),
+> [`.claude/skills/api-keys/SKILL.md`](../.claude/skills/api-keys/SKILL.md)
+> (`SK-APIKEYS-001..007`),
+> [`.claude/skills/anonymous-mode/SKILL.md`](../.claude/skills/anonymous-mode/SKILL.md)
+> (`SK-ANON-001..006`). Every decision below has a canonical entry in
+> one of those skills; the tables and architecture diagram in this
+> section are at-a-glance views.
 
-**Better Auth** (MIT, TypeScript, framework-agnostic) on Cloudflare Workers
-+ D1. No per-MAU fees, no vendor lock on user data shape. The Auth.js team
-merged into Better Auth in 2025; it's the de-facto TS standard. We build
-the UI ourselves — the sign-in page is part of the brand.
+### 4.1 Library, methods, anonymous mode, API keys
 
-Methods at launch: **magic link** (primary), **passkey** (promoted on
-second visit), **GitHub OAuth**, **Google OAuth**. No passwords, ever.
+- **Library.** Better Auth (MIT, TypeScript) on Cloudflare Workers + D1.
+  Why this choice and what it implies for the UI: `SK-AUTH-001`.
+- **Methods at launch.** Magic link (primary), passkey (promoted on
+  second visit), GitHub OAuth, Google OAuth. **No passwords, ever** —
+  `SK-AUTH-002`. The two GitHub OAuth Apps split (prod + dev) is
+  `SK-AUTH-008`; env-var prefixing (`OAUTH_GITHUB_*`) is `SK-AUTH-009`.
+- **Anonymous mode.** Opaque `localStorage` token (web) / OS-keychain
+  anonymous token (CLI). DB lives 72h tied to the token (90-day server
+  retention); on sign-in, adoption is a one-row update with no
+  conditional code paths. See `anonymous-mode/SKILL.md`
+  (`SK-ANON-001..006`) and `SK-AUTH-010`.
+- **Session storage.** 1h JWT access tokens; Workers KV holds the
+  revocation set. Cookie-cache + KV check land together
+  (`SK-AUTH-007`). Full decision: `SK-AUTH-003`.
+- **API keys** (separate from sessions):
 
-**Anonymous mode:** an opaque `localStorage` token lets users create and
-query a DB before signing in; the DB lives 72h tied to the token. On
-sign-in the DB is adopted by updating one row. No conditional code paths.
+  | Type | Scope | Used by |
+  |---|---|---|
+  | `pk_live_…` | Publishable, **read-only**, per-DB, origin-pinned | `<nlq-data>` |
+  | `sk_live_…` | Secret, server-only, full scope | Backend / HTTP API |
+  | `sk_mcp_<host>_<device>_…` | `sk_live_` + `(mcp_host, device_id)` claims | MCP server (§3.4) |
 
-**Session storage:** JWT-signed access tokens (1h); KV holds the
-revocation set. Workers KV free tier (100k reads/day) is ample.
-
-**API keys** are separate from sessions. Three types:
-
-| Type | Scope | Used by |
-|---|---|---|
-| `pk_live_…` | Publishable, **read-only**, per-DB, origin-pinned | `<nlq-data>` |
-| `sk_live_…` | Secret, server-only, full scope | Backend / HTTP API |
-| `sk_mcp_<host>_<device>_…` | Like `sk_live_` + `(mcp_host, device_id)` claims | MCP server (§3.4) |
-
-Keys hashed with Argon2id. Last 4 chars stored cleartext for display
-(*"sk_live_…a4f7 · 3m ago · Cursor on macbook-air"*). No plaintext
-retrieval path — if lost, rotate.
+  Hashed with Argon2id, last 4 chars cleartext for display
+  (*"sk_live_…a4f7 · 3m ago · Cursor on macbook-air"*), no plaintext
+  retrieval. Three types: `SK-APIKEYS-001`. Hashing + display:
+  `SK-APIKEYS-002`. `pk_live_*` semantics: `SK-APIKEYS-003`,
+  `SK-ELEM-005`. MCP key isolation: `SK-APIKEYS-004`, `SK-MCP-004`.
 
 ### 4.2 Authorization model
 
-Phase 1 has three roles: **Owner** (full), **Member** (read + query,
-no destructive ops or key creation), **Public** (anonymous, read-only via
+Three roles in Phase 1: **Owner** (full), **Member** (read + query, no
+destructive ops or key creation), **Public** (anonymous, read-only via
 publishable key, rate-limited). RBAC comes in Phase 2 only if a paying
-customer asks twice.
+customer asks twice. Decision: `SK-AUTH-006`.
 
 ### 4.3 Session lifecycle across surfaces
 
@@ -578,21 +588,13 @@ customer asks twice.
 | MCP | `nlq mcp install` (auto-detect) | Host config file (key only) | n/a | Key rotation, not refresh |
 | Embed | `pk_live_` | Inline in HTML | n/a | Key rotation |
 
-**Device-code flow:** CLI POSTs `/v1/auth/device`, gets
-`verification_uri_complete` (code embedded in the URL) + `user_code`
-fallback. Browser opens straight to "Approve this device?" — one click, no
-typing. On approval, CLI polls `/v1/auth/device/token`, gets
-`{access_token, refresh_token, expires_in: 3600}`, writes refresh token
-to keychain.
-
-**Refresh:** 401 on any call → `POST /v1/auth/refresh` → retry once. On
-refresh failure the surface re-initiates the original flow in-place
-(web: `/sign-in?return_to=…`; CLI: re-runs device flow and resumes the
-command). Users never see a bare 401.
-
-**Revocation:** write to the KV revocation set, keyed by `jti` (sessions)
-or key-hash-prefix (API keys). Edge checks membership on every request;
-≤2ms on miss, free on hit.
+The device-code flow uses `verification_uri_complete` so the user's
+browser lands on "Approve this device?" with the code pre-filled — full
+flow + endpoint shape in `SK-AUTH-004` (and `SK-CLI-006` for the CLI's
+side). Silent refresh (401 → `POST /v1/auth/refresh` → retry once →
+re-auth in place if refresh fails) is `SK-CLI-007` + `GLOBAL-009`.
+Revocation writes to the KV set keyed by `jti` (sessions) /
+key-hash-prefix (keys); edge checks are ≤2 ms on miss — `SK-AUTH-007`.
 
 ### 4.4 Service-to-service auth
 
@@ -607,39 +609,35 @@ or key-hash-prefix (API keys). Edge checks membership on every request;
                        [Neon Postgres | Upstash Redis | …]
 ```
 
-- **The edge is the only component that sees external credentials.** It
-  terminates the bearer header and signs a short-lived (30s) internal JWT
-  for all downstream calls using a Workers-only secret.
-- **Downstream components verify the internal JWT.** A leaked external
-  key has the blast radius of the key's scope — never the whole system.
-- **MCP server holds no DB credentials.** It signs its outbound call with
-  its `sk_mcp_…` key; `@nlqdb/mcp` has zero DB-driver deps in its
-  lockfile and CI refuses any addition.
-- **Postgres pool is at the edge, keyed by tenant.** Internal JWT binds
-  the caller via `SET LOCAL search_path` + Neon role scoping; no branch
-  can pick the wrong tenant (§9).
-- **Embed uses `pk_live_` only.** Origin-pinned, read-only; edge rejects
-  any mutating call with a publishable key before the plan runs. Writes
-  use `<nlq-action>` with a signed short-lived write-token (Phase 2).
+Decision: the edge is the only component that sees external credentials,
+and it signs a 30 s internal JWT for all downstream calls — `SK-AUTH-005`.
+MCP server holds no DB credentials and `@nlqdb/mcp` has zero DB-driver
+deps in its lockfile (CI-enforced) — `SK-MCP-005`. Postgres pool is
+edge-side and tenant-keyed via `SET LOCAL search_path` + Neon role
+scoping; tenant-isolation invariants live in §9. `pk_live_*` is
+origin-pinned and the edge rejects any mutating call with a publishable
+key before the plan runs — `SK-APIKEYS-003`, `SK-ELEM-005`. Writes use
+`<nlq-action>` with a signed short-lived write-token (Phase 2).
 
 ### 4.5 Rotation, revocation, device management
 
 Per §0 "Seamless auth" — instant and visible:
 
 - **Dashboard → Keys** lists every credential (`pk_live_`, `sk_live_`,
-  every `sk_mcp_`) + every web session + every CLI device. Columns: type,
-  host, device, created, last-used, coarse IP, user label.
-- **Revoke** is one click, propagates in ≤2s. Affected surface gets
-  `401 key_revoked` and enters the seamless re-auth path (§4.3).
-- **Rotate** (`sk_live_` / `sk_mcp_`) issues a new key, deprecates the
-  old one with 60d grace, emits a webhook. `nlq keys rotate <id>` CLI.
-- **Global sign-out** invalidates all sessions, device refresh tokens,
-  and `sk_mcp_` keys. `sk_live_` / `pk_live_` are left alone (production
-  credentials; rotate separately).
-- **Email + in-app notification** on key create/rotate/revoke and
-  new-device sign-in (templates in §5.1).
-- **No plaintext retrieval.** Lost a key → rotate. Refusing to ship a
-  "reveal" button is the feature.
+  every `sk_mcp_`) + every web session + every CLI device.
+- **Revoke** is one click, propagates in ≤2 s; affected surface gets
+  `401 key_revoked` and enters the re-auth path. Decision:
+  `GLOBAL-018` (canonical revocation contract), `SK-AUTH-007`,
+  `SK-MCP-006`.
+- **Rotate** (`sk_live_` / `sk_mcp_`) issues a new key with 60-day grace
+  + webhook — `SK-AUTH-011`, `SK-APIKEYS-005`. CLI: `nlq keys rotate <id>`.
+- **Global sign-out** clears sessions + device refresh tokens +
+  `sk_mcp_*`; leaves `sk_live_` / `pk_live_` alone — `SK-AUTH-011`,
+  `SK-APIKEYS-006`.
+- **Notification** on key create/rotate/revoke + new-device sign-in
+  (email templates in §5.1).
+- **No plaintext retrieval** — lost means rotate; refusing a "reveal"
+  button is the feature. `SK-AUTH-012`, `SK-APIKEYS-002`.
 
 ---
 
