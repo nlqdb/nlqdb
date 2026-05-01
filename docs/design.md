@@ -797,8 +797,14 @@ a per-service adapter layer — if we need to leave Cloudflare, it's a week.
 
 ## 8. AI model selection
 
-Tiered routing — never send all traffic to a frontier model. Pricing
-approximate, April 2026.
+> **Canonical:** [`.claude/skills/llm-router/SKILL.md`](../.claude/skills/llm-router/SKILL.md)
+> (`SK-LLM-001..011`). Tiered routing (`SK-LLM-001`), the single
+> adapter / cost-ordered chain (`SK-LLM-002`), the Day-1 strict-$0 chain
+> (`SK-LLM-003`), prompt caching (`SK-LLM-009`), plan-cache-first
+> (`SK-LLM-010`), Pro-tier privacy (`SK-LLM-008`), and self-host trigger
+> at 50 k queries/day (`SK-LLM-011`) are all canonical there. The tables
+> and account-checklist below are at-a-glance views; pricing is
+> approximate as of April 2026.
 
 | Job | Tier | Model | $/1M in/out |
 |---|---|---|---|
@@ -815,14 +821,6 @@ day-to-day code / marketing copy; Sonnet 4.6 for quick refactors;
 GPT-5.4 or Gemini 3.1 Pro for second-opinion review; DeepSeek V3.2 for
 fixtures; Gemini 3.1 Pro for SEO/AEO; Imagen 4 / Flux 1.5 Pro for
 images (we mostly avoid — see §3.1).
-
-**Cost-control rules:**
-1. Plan cache first, LLM second — 60–80% cache hit on mature workloads.
-2. Smallest model that solves the task wins; confidence-based escalation.
-3. Prompt caching on every provider that supports it (~80% input reduction).
-4. No summarization when client sends `Accept: application/json`.
-5. Self-host classifier once we hit ~50k queries/day (single A10G on
-   Modal, quantized 8B, ~$200/mo flat).
 
 ### 8.1 Strict-$0 inference path (Day 1, no credits, no card)
 
@@ -843,20 +841,14 @@ free-tier landscape makes this viable at launch scale.
 ~2–4k user queries/day after the plan cache. Covers Phase 1's exit
 criteria with headroom.
 
-**Architecture rule:** every LLM call routes through one `llm/` adapter
-taking `tier` ∈ `{classify, plan, summarize, hard, embed}` and a
-cost-ordered provider chain. Day-1 `plan` chain:
-`[gemini_flash_free, groq_llama70b_free, openrouter_free, anthropic_paid]`.
-Swap order via env var. Zero app code changes per §9.
-
 **Constraints we accept:**
 - **Data privacy.** Free tiers may use inputs to train; disclosed in our
-  privacy policy. **Pro customers route only through paid / retention-off
-  providers** — the one meaningful free→paid capability upgrade.
+  privacy policy. Pro-tier privacy promise: `SK-LLM-008`.
 - **RPM ceilings.** Bursts queue briefly; "queued — 2s" surfaced in UI.
-- **Provider outages.** The chain auto-falls-through, sub-100ms switch.
+- **Provider outages.** The chain auto-falls-through, sub-100 ms switch
+  via the circuit breaker (`SK-LLM-005`).
 - **Geo.** Groq is US-only; Gemini + Workers AI are global. Classification
-  has Workers AI Llama 3 as a non-US backup to keep first-byte < 1s.
+  has Workers AI Llama 3 as a non-US backup to keep first-byte < 1 s.
 
 **Account checklist** (mirrored in [`./implementation.md`](./implementation.md)):
 Google AI Studio → `GEMINI_API_KEY`; Groq → `GROQ_API_KEY`; Cloudflare
