@@ -5,10 +5,13 @@ Living state-of-the-world doc. Ground truth for *what's provisioned*,
 infrastructure changes — if it goes stale, the rest of the repo gets
 harder to operate.
 
-- [DESIGN.md](./DESIGN.md) — why the architecture looks this way.
-- [IMPLEMENTATION.md](./IMPLEMENTATION.md) — phased plan + prereqs.
-- [PERFORMANCE.md](./PERFORMANCE.md) — SLOs, latency budgets, span/metric catalog.
-- **this file** — what's actually set up right now.
+- [./design.md](./design.md) — architectural narrative.
+- [./implementation.md](./implementation.md) — phased plan + prereqs.
+- [./performance.md](./performance.md) — SLOs, latency budgets, span/metric catalog.
+- [.claude/skills/](../.claude/skills/) — canonical per-feature decisions.
+- [./decisions.md](./decisions.md) — canonical cross-cutting `GLOBAL-NNN`.
+- **this file** — what's actually set up right now (operational state,
+  not decisions; if a sentence here disagrees with a skill, the skill wins).
 
 **Last verified: 2026-04-28.** Running `./scripts/verify-secrets.sh`
 should return 21/21 green (or more, as provisioning expands).
@@ -125,7 +128,7 @@ re-enable via Cloudflare later).
 ## 4. Secrets
 
 Every credential's canonical name lives in
-[`.env.example`](./.env.example). Never commit real values.
+[`.env.example`](../.env.example). Never commit real values.
 
 - **Local dev:** `.envrc` (gitignored), loaded automatically by
   direnv. Regenerate self-signed secrets by running
@@ -224,7 +227,7 @@ nlqdb." rather than naming a specific backend.
     page**, not an OAuth redirect — device flow polls and never invokes
     the callback URL, so it doesn't need to be registered.
 - **Enable Device Flow:** ✅ — CLI uses device-code flow (`nlq login`)
-  per [DESIGN.md §3.3](./DESIGN.md#33-cli-and-device-code-flow).
+  per [./design.md §3.3](./design.md#33-cli-and-device-code-flow).
 - **Webhook URL:** _none_ — auth-only, no webhook.
 - **Credentials in `.envrc`** as `OAUTH_GITHUB_CLIENT_ID` +
   `OAUTH_GITHUB_CLIENT_SECRET` (the `OAUTH_*` prefix avoids GHA's
@@ -389,7 +392,7 @@ A separate Worker `nlqdb-events-worker` that drains the `nlqdb-events`
 Cloudflare Queue and dispatches each event to its sink(s). Phase 0 has
 one sink: **LogSnag**. The producer side is `@nlqdb/events`, called
 from `apps/api`'s orchestrator; this Worker is the only thing that
-talks to external sinks. See [`apps/events-worker/README.md`](./apps/events-worker/README.md)
+talks to external sinks. See [`apps/events-worker/README.md`](../apps/events-worker/README.md)
 for the architecture and "adding a new event/sink" recipe.
 
 No HTTP route, no public URL (`workers_dev = false` /
@@ -516,7 +519,7 @@ unmerged consumer code against the preview queue.
 
 ---
 
-## 7. Prerequisites checklist (§2 of IMPLEMENTATION.md)
+## 7. Prerequisites checklist (§2 of ./implementation.md)
 
 | §    | Item                               | Status       |
 | :--- | :--------------------------------- | :----------- |
@@ -726,9 +729,9 @@ useful if you want to keep a stand-by holding page available.
 
 ## 9. Anonymous-db lifecycle (Phase 1+)
 
-Lands with the hosted db.create slice ([`IMPLEMENTATION.md §4`](./IMPLEMENTATION.md),
-[`DESIGN.md §3.6`](./DESIGN.md)). Capacity reasoning and source
-citations: [`docs/research-receipts.md §9`](./docs/research-receipts.md).
+Lands with the hosted db.create slice ([`./implementation.md §4`](./implementation.md),
+[`./design.md §3.6`](./design.md)). Capacity reasoning and source
+citations: [`docs/research-receipts.md §9`](./research-receipts.md).
 
 ### 9.1 Capacity math
 
@@ -737,7 +740,7 @@ puts every db on a single shared Neon branch as a Postgres schema.
 A typical anonymous schema with a few tables and modest data sits
 in the **100-500 KB range**. That gives a ceiling of roughly
 **1,000-5,000 anonymous dbs before pressure** — not negligible at
-any meaningful traction. The cost ladder in [`README.md`](./README.md)
+any meaningful traction. The cost ladder in [`README.md`](../README.md)
 gates the next upgrade ($19/mo Neon Launch) on "Neon DB exceeds
 0.5 GB or needs no-pause"; the policy below is designed to use
 that gate, not blow through it.
@@ -778,7 +781,7 @@ The 300 MB pressure threshold leaves **200 MB headroom** on the
 | ≥ 200 MB | **warn** — Slack post `#nlqdb-ops`, no automatic action |
 | ≥ 280 MB | **urgent** — pager ping + dashboard banner; pressure-sweep is imminent |
 | ≥ 300 MB | sweep runs automatically; emits `db.pressure_sweep_started` |
-| ≥ 450 MB total project (anonymous + adopted) | escalate to Neon Launch ($19/mo); follow [`README.md` cost ladder](./README.md) |
+| ≥ 450 MB total project (anonymous + adopted) | escalate to Neon Launch ($19/mo); follow [`README.md` cost ladder](../README.md) |
 
 ### 9.5 Manual sweep (for ops, not automation)
 

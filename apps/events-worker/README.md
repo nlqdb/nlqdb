@@ -3,8 +3,8 @@
 Drains the `nlqdb-events` Cloudflare Queue and dispatches each event to
 its sink(s). Phase 0 has one sink: **LogSnag**.
 
-Architecture rationale lives in [`DESIGN.md §11`](../../DESIGN.md) and
-[`IMPLEMENTATION.md §2.6`](../../IMPLEMENTATION.md). This README covers
+Architecture rationale lives in [`../../docs/design.md §11`](../../docs/design.md) and
+[`../../docs/implementation.md §2.6`](../../docs/implementation.md). This README covers
 the operational surface only.
 
 ## Adding a new event type

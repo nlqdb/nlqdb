@@ -130,7 +130,7 @@ The personas are ordered by **priority for Phase 1 onboarding**. We optimize the
 **Representative queries.**
 - `"refund orders in state 'pending-dispute' older than 60 days, but preview first"`
 - `"users who signed up via the iOS promo link in March"`
-- `"migrate users from plan 'starter' to 'basic'"` (with diff preview, per §1.2 of PLAN.md)
+- `"migrate users from plan 'starter' to 'basic'"` (with diff preview, per §1.2 of ./plan.md)
 
 **Real-life use case.** Dmitri is on-call at a 20-person startup. Support escalates: a pricing bug double-charged ~180 customers between 11pm and midnight. Instead of writing a one-off refund script, he opens the team workspace pointed at their existing Postgres, types the refund in plain English, and reviews the generated diff (183 rows, $2,104 total) before approving. The audit log captures who ran it, and the Retool page he would've had to build doesn't need to exist. *(Requires Phase 2 "bring your own Postgres" mode — aspirational for this persona in Phase 1.)*
 
@@ -172,7 +172,7 @@ Finance, healthcare, anyone with HIPAA/SOC2/GDPR-DPA requirements today. We are 
 
 ### A2 — High-Volume OLTP at Scale
 
-Payment processors, ad-tech, real-time bidding, anyone doing >10k writes/sec. Our abstraction tax (§2.5 of PLAN.md: "within 1.3× of hand-written queries") means we're not for the top of that curve yet. They should run Postgres / CockroachDB / Scylla directly.
+Payment processors, ad-tech, real-time bidding, anyone doing >10k writes/sec. Our abstraction tax (§2.5 of ./plan.md: "within 1.3× of hand-written queries") means we're not for the top of that curve yet. They should run Postgres / CockroachDB / Scylla directly.
 
 ### A3 — Strict-Schema Shops Built Around dbt / Great Expectations / Flyway
 

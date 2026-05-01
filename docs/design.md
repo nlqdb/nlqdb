@@ -4,8 +4,8 @@
 > You write HTML. Each component asks for what it wants in plain English. nlqdb answers.
 
 This document is the high-level design. Phasing, deeper rationale and risks live in
-[`PLAN.md`](./PLAN.md). User research lives in [`PERSONAS.md`](./PERSONAS.md). The competitive
-landscape lives in [`COMPETITORS.md`](./COMPETITORS.md). This doc focuses on **what we build,
+[`./plan.md`](./plan.md). User research lives in [`./personas.md`](./personas.md). The competitive
+landscape lives in [`./competitors.md`](./competitors.md). This doc focuses on **what we build,
 how the parts fit together, what tools we use, and how we ship it for $0/month**.
 
 ---
@@ -67,7 +67,7 @@ Acceptance criteria for every PR. If a change violates one, it doesn't ship.
 
 ## 0.1 On-ramp inversion (the most important design principle)
 
-No persona's goal is "create a database" (see [`PERSONAS.md`](./PERSONAS.md)).
+No persona's goal is "create a database" (see [`./personas.md`](./personas.md)).
 The DB is a side effect of the thing they're trying to do. Every surface is
 reframed so the user's first action is stating a goal; the DB materializes
 as a consequence.
@@ -176,8 +176,11 @@ unavoidable recurring cost; see §7).
 
 ### 3.1 Marketing site — `nlqdb.com`
 
-Static-first **Astro** (0KB JS by default; islands where needed). Hosted on
-Cloudflare Pages. Lighthouse 100/100/100/100. Implementation: [`apps/web`](./apps/web).
+> **Canonical for marketing-site decisions:** [`.claude/skills/web-app/SKILL.md`](../.claude/skills/web-app/SKILL.md).
+> Stack choice (`SK-WEB-001`), goal-first hero (`SK-WEB-002`), and
+> "above-the-fold is runnable code, not feature bullets" (`SK-WEB-003`)
+> are all canonical there. Hosted on Cloudflare Pages, Lighthouse
+> 100/100/100/100. Implementation: [`apps/web`](../apps/web).
 
 **The message: 0 to 1 with no backend.** The home page is built the way
 we say users should build — `<nlq-data>` and `<nlq-action>` (§3.5) render
@@ -187,17 +190,17 @@ page, and it works. Marketing copy is *under* the fold; runnable code is
 
 **Above the fold** (in this order, vertically):
 
-1. **Goal-first input** — *"What are you building?"* (§14.1). Enter morphs
-   into chat via View Transitions, DB created silently, no signup wall.
-   On chat completion the page inlines an embed snippet (the same one in
-   the code panel below) with the user's `pk_live_` already filled in
-   (§14.5 "Copy snippet").
+1. **Goal-first input** — *"What are you building?"* (§14.1). See
+   `SK-WEB-002` for the full decision (View-Transition morph, no
+   signup wall, DB silently materialized). On chat completion the
+   page inlines an embed snippet with the user's `pk_live_` already
+   filled in (`SK-WEB-007`; details §14.5 "Copy snippet").
 2. **Tabbed code-example panel** — one snippet per surface, ≤10 lines each,
    all rendering against the *same* demo DB:
    `HTML` (default, shortest) · `React` · `Vue` · `Agent (MCP)` · `curl`.
-   Each has a copy button; switching tabs swaps the surface that the live
-   embed beneath the panel renders through. **The contrast IS the
-   message** — every snippet is the entire backend.
+   Each has a copy button (`home.snippet_copied` event for funnel signal);
+   switching tabs swaps the surface that the live embed beneath the panel
+   renders through. *Why this shape:* `SK-WEB-003`.
 3. **"What this replaces" strip** — DB / schema / ORM / endpoint / auth /
    cache / migration / deploy boxes that visually collapse on scroll into
    a single `<nlq-data>` line. One animation, scroll-driven, not on hover.
@@ -205,12 +208,10 @@ page, and it works. Marketing copy is *under* the fold; runnable code is
    product); GitHub star count (when the repo is public).
 
 Below the fold is allowed to be longer, comparative, or technical:
-manifesto excerpt, persona vignettes, blog teasers, docs link. Above the
-fold must be either a working snippet or proof that snippets work — no
-feature bullets, no logo grids, no "trusted by".
+manifesto excerpt, persona vignettes, blog teasers, docs link.
 
 **Code surfaces we promise on the home page** (full integration matrix in
-[`IMPLEMENTATION §10.1`](./IMPLEMENTATION.md)):
+[`IMPLEMENTATION §10.1`](./implementation.md)):
 
 | Surface | Package | Status |
 |---|---|---|
@@ -250,31 +251,28 @@ Claude.
 
 ### 3.2 Platform web app — `app.nlqdb.com`
 
-Signed-in surface. Same Astro project, React islands for chat + dashboard.
+> **Canonical for the platform web app:** [`.claude/skills/web-app/SKILL.md`](../.claude/skills/web-app/SKILL.md).
+> Stack-shape and chat-shape decisions (Astro + React islands, URL-first
+> state, three-part chat reply, copy-snippet behaviour, demo endpoint,
+> session cookie) are now `SK-WEB-001..007` in the skill. The page
+> inventory below is a product spec, not a decision list.
 
-- **Chat** — three-part response (answer / data / trace), streaming,
-  in-place edit + re-run, Cmd+K palette (see [`PLAN.md` §1.2](./PLAN.md)).
+Signed-in surface. Page inventory:
+
+- **Chat** — see `SK-WEB-005` (answer/data/trace, Cmd+K palette,
+  Cmd+/ trace toggle, in-place edit + re-run).
 - **Database list** (left rail) — engine, size, last query per DB.
 - **Settings** — API keys, team (Phase 1.5), billing, live $-counter.
 - **Embed snippets** — copy-paste `<nlq-data>` HTML with `pk_live_`
-  pre-inlined (§14.5).
+  pre-inlined (`SK-WEB-007`; details §14.5).
 - **Escape hatch** — "Show connection string" reveals the raw Postgres URL.
-
-**Component model**: Astro routes + React islands. State is URL-first
-(every chat is permalinkable) + a small Zustand store. No global Redux.
 
 ### 3.3 CLI — `nlq`
 
-Single static Go binary (`nlq`, 3 chars, no PATH collision). npm scope
-`@nlqdb/*` owned; binary name `nlq` and npm name `nlqdb` are taken so we
-don't publish under either.
-
-**Install:** `curl -fsSL https://nlqdb.com/install | sh` → `~/.local/bin/nlq`.
-Also: `brew install nlqdb/tap/nlq`, `npm i -g @nlqdb/cli` (Node shim).
-
-**Conventions** (per `gh` / `fly` / `wrangler`): subcommand-first
-(`nlq <noun> <verb>`), human output by default with `--json` for scripts,
-never TTY-detect. Preferences in `~/.config/nlqdb/config.toml` (non-secret only).
+> **Canonical for `nlq`:** [`.claude/skills/cli/SKILL.md`](../.claude/skills/cli/SKILL.md).
+> Decisions that lived here (binary identity, install paths, conventions,
+> auth flow, credential custody, CI escape hatch) are now `SK-CLI-001..011`
+> in the skill. This section keeps the verb surface at a glance.
 
 **Default surface:**
 
@@ -282,100 +280,63 @@ never TTY-detect. Preferences in `~/.config/nlqdb/config.toml` (non-secret only)
 nlq                          # interactive prompt → creates DB silently, drops into REPL
 nlq new "an orders tracker"  # one-liner: creates DB from goal, opens chat
 nlq "how many signups today" # bare query against the current DB
-nlq login                    # device-code flow (browser); see auth below
+nlq login                    # device-code flow (browser); details in cli/SKILL.md
 nlq mcp install              # auto-detects MCP host(s) and sets them up (§3.4)
 ```
 
 **Power-user surface:** `nlq db create|list`, `nlq query <db> "…"`,
 `nlq chat <db>`, `nlq use <db>`, `nlq connection <db>` (raw Postgres URL).
-
-**Auth flow** (per §0; full spec §4.3):
-
-1. **Anonymous-first.** Bare queries work with no sign-in. The CLI mints
-   an anonymous token (72h window, §4.1) into the OS keychain.
-2. **`nlq login`** uses OAuth 2.0 Device Authorization Grant. The browser
-   lands on `verification_uri_complete` with the code pre-filled in the
-   URL — one "Approve this device?" click, no typing. Raw code is printed
-   as a fallback for SSH / headless. On approval: anonymous DBs adopted
-   (§4.1); refresh token (90d) to OS keychain; access token (1h, JWT)
-   held in memory.
-3. **Silent refresh.** 401 → refresh → retry, once. If refresh fails,
-   CLI re-runs the device flow in-place and resumes the command.
-4. **`nlq logout`** wipes the keychain entry. `nlq whoami` prints identity
-   + device + last-used.
-5. **CI mode.** `NLQDB_API_KEY` takes precedence; `nlq login` is skipped
-   and no keychain access is attempted. Only env-var auth path.
-6. **Storage** is always the OS keychain (`zalando/go-keyring`: Keychain /
-   Credential Manager / libsecret). Fallback: AES-GCM file at
-   `~/.config/nlqdb/credentials.enc` keyed to the machine, with a warning.
-   Plaintext is never an option.
+`nlq logout` wipes the keychain entry; `nlq whoami` prints identity +
+device + last-used.
 
 ### 3.4 MCP server — `@nlqdb/mcp`
 
-Thin adapter over the HTTP API (same code path; never talks to Postgres,
-never holds a DB credential). Two transports — **hosted at
-`mcp.nlqdb.com`** (default; Cloudflare Worker via the `McpAgent` class
-on Workers Free + Durable Objects; OAuth-authenticated; zero install)
-and **npm `@nlqdb/mcp`** (local stdio fallback for offline /
-privacy-sensitive / CLI-everything workflows).
+> **Canonical for the MCP server:** [`.claude/skills/mcp-server/SKILL.md`](../.claude/skills/mcp-server/SKILL.md).
+> Decisions that lived here (two transports, three tools / no
+> `nlqdb_create_database`, per-host scoped keys with full
+> `(host, device)` isolation, recoverable `key_revoked` UX, transport
+> details) are now `SK-MCP-001..007` in the skill.
 
-**Tools:** `nlqdb_query(db, q)` (creates DB on first reference per §0.1;
-no public `nlqdb_create_database` tool), `nlqdb_list_databases()`,
-`nlqdb_describe(db)`.
+Two transports: **hosted** at `mcp.nlqdb.com` (default; paste-the-URL
+into the host's MCP-connector config) and **local stdio** via npm
+`@nlqdb/mcp` (offline / privacy-sensitive fallback). Three tools:
+`nlqdb_query`, `nlqdb_list_databases`, `nlqdb_describe` (no public
+`nlqdb_create_database` — DB is materialized on first `nlqdb_query`
+per §0.1 inversion).
 
-**Install paths** (per §0 "Seamless auth"; full spec §4.3, §4.4):
+**Install paths:**
 
-0. **Connector URL** *(default — hosted transport).* User pastes
-   `mcp.nlqdb.com` into the host's MCP-connector config (Claude Desktop
-   *Connectors*, Cursor / Zed / Windsurf MCP settings). First tool call
-   opens an OAuth window; on consent the host receives a session-bound
-   token. No file written, no key on disk, no `npx` to keep updated.
-
-The remaining paths target the npm transport — for the local stdio
-flavour:
-
-1. **`nlq mcp install`** *(default, no arg).* Scans known host configs for
-   Claude Desktop, Cursor, Zed, Windsurf, VS Code, Continue; prints what
-   was found (transparency — we never touch unnamed files). One host →
-   silent install. Multiple → numbered prompt (or `--all`). None → prints
-   install links. If the user isn't signed in, runs the device-code flow
-   first. Mints `sk_mcp_<host>_<device>_…` via `POST /v1/keys`; writes it
-   straight to the host's config file (never displayed). Hot-reloaders
-   (Cursor/Zed/Windsurf) pick up the change in seconds; Claude Desktop
-   gets a restart prompt. Self-check via `nlqdb_list_databases()` confirms.
-2. **`nlq mcp install <host>`** *(explicit override).* Same flow; targets
-   the named host even if not installed. `<host>` ∈ {`claude`, `cursor`,
-   `zed`, `windsurf`, `vscode`, `continue`}.
-3. **Website one-click** (`app.nlqdb.com/mcp`) mints the key server-side
-   and opens an `nlqdb://install?…` deep link the CLI handles.
-4. **`NLQDB_API_KEY`** env var — CI / Docker / air-gapped escape hatch;
-   takes precedence over any config file. Key generated in the dashboard.
-
-**Per-host isolation** (agents do **not** share credentials):
-
-- Each `sk_mcp_<host>_<device>_…` key carries `{ user_id, mcp_host,
-  device_id, created_at, last_used_at }`. Dashboard lists each with its
-  host, device, and last-used.
-- DBs created via MCP are tagged with `(mcp_host, device_id)` and default
-  to visible only under that tuple; promote-to-account is one click.
-- Revocation is instant. The next tool call returns `401 key_revoked`;
-  the server surfaces *"Sign in again: run `nlq mcp install`."* to the
-  host LLM. Re-install auto-detects the original host.
-
-**Transport:** Streamable-HTTP (hosted) or stdio to the host process
-(npm). Both share the same `/v1/ask` orchestration; neither holds DB
-credentials (§4.4). Local npm has no network listener on the user's
-machine. Postgres credentials never leave Cloudflare in either case.
+- **Connector URL** *(hosted, default).* Paste `mcp.nlqdb.com` into
+  the host's MCP-connector config (Claude Desktop *Connectors*, Cursor
+  / Zed / Windsurf MCP settings); first tool call opens an OAuth window.
+- **`nlq mcp install`** *(local stdio).* Auto-detects supported hosts
+  (Claude Desktop, Cursor, Zed, Windsurf, VS Code, Continue) and writes
+  `sk_mcp_<host>_<device>_…` straight into the host's config. Details
+  in `cli/SKILL.md` (`SK-CLI-011`) and `mcp-server/SKILL.md`
+  (`SK-MCP-003`).
+- **Website one-click** (`app.nlqdb.com/mcp`) mints the key server-side
+  and opens an `nlqdb://install?…` deep link the CLI handles.
+- **`NLQDB_API_KEY`** env var — CI / Docker / air-gapped escape hatch;
+  takes precedence over any config file.
 
 ### 3.5 The embeddable HTML element — `<nlq-data>`
 
-**This is the bet.** A web component (custom element) that any developer can drop
-into static HTML. Distributed as `@nlqdb/elements` (one CDN URL: `https://elements.nlqdb.com/v1.js`).
+> **Canonical for `<nlq-data>`:** [`.claude/skills/elements/SKILL.md`](../.claude/skills/elements/SKILL.md).
+> Decisions that lived here (single-element registration, attribute
+> contract, single `POST /v1/ask` network call, safe template registry,
+> `pk_live_*` semantics, ESM bundle + 6 KB ceiling, custom events)
+> are now `SK-ELEM-001..008` in the skill. The public demo endpoint
+> (`POST /v1/demo/ask`) is canonical in `.claude/skills/web-app/SKILL.md`
+> as `SK-WEB-004`.
+
+**This is the bet.** A web component any developer can drop into static
+HTML. Two attribute shapes — goal-first (the default per §0.1) and
+power-user (explicit DB):
 
 ```html
 <script src="https://elements.nlqdb.com/v1.js" type="module"></script>
 
-<!-- Goal-first form (default; per §0.1). DB is auto-created from the goal
+<!-- Goal-first form (default per §0.1). DB is auto-created from the goal
      on the first call and remembered server-side per api-key. -->
 <nlq-data
   goal="the 5 most-loved coffee shops in Berlin, with photos"
@@ -393,34 +354,14 @@ into static HTML. Distributed as `@nlqdb/elements` (one CDN URL: `https://elemen
 ></nlq-data>
 ```
 
-**How it works:** element POSTs `{ q, render: "html" }` → API returns
-`{ answer, data, html, trace }` with `html` rendered from a safe template
-registry (`card-grid`, `table`, `list`, `kv`, `chart`, `raw`). Element
-morphs the DOM via View Transitions. `refresh="60s"` is a timer; SSE
-auto-upgrades when supported.
-
-**Bullet-proof** (§0): templates make XSS structurally impossible (LLM
-never returns raw HTML to the browser); `pk_live_` is read-only,
-origin-pinned, rate-limited; writes require `<nlq-action>` with a signed
-write-token. Element ships < 6KB gzipped, zero dependencies.
-
-**Public demo endpoint — `POST /v1/demo/ask`.** The marketing-site
-live `<nlq-data>` and any third-party "try this in a scratch HTML"
-embed point at `endpoint="https://app.nlqdb.com/v1/demo/ask"`. No
-auth, CORS-permissive, canned fixtures keyed off the goal substring;
-per-IP rate limit (10/min) so it can't be abused as an LLM stand-in.
-The element stays pure — no demo branch in client code (see PR #43);
-the "demo" semantic lives server-side. Source: `apps/api/src/demo.ts`.
-Real users hit `/v1/ask` with a session cookie or `pk_live_` key.
-
 ---
 
 ## 3.6 Hosted db.create — typed-plan, validator, provisioner
 
 This section covers the mechanism behind every "DB created silently"
 arrow in §0.1 and §3. Implementation slice lives in
-`IMPLEMENTATION.md §4`; the *why* behind every choice here is in
-[`docs/research-receipts.md`](./docs/research-receipts.md).
+`./implementation.md §4`; the *why* behind every choice here is in
+[`docs/research-receipts.md`](./research-receipts.md).
 
 ### 3.6.1 Endpoint shape
 
@@ -486,7 +427,7 @@ surface to "what shape can the LLM force into the plan" — much
 smaller than "what SQL string can the LLM compose" — and matches
 the [Cortex Analyst](https://www.snowflake.com/en/engineering-blog/cortex-analyst-text-to-sql-accuracy-bi/)
 + [SchemaAgent](https://arxiv.org/html/2503.23886) lessons captured
-in [`docs/research-receipts.md §2`](./docs/research-receipts.md).
+in [`docs/research-receipts.md §2`](./research-receipts.md).
 
 ### 3.6.3 The semantic-layer-at-create-time moat
 
@@ -499,7 +440,7 @@ Metrics, dbt MetricFlow, Cube). Because we own the schema-creation
 moment, we generate the semantic layer automatically — the runtime
 benefits from the dbt/Cube/Cortex pattern even though the user
 never wrote one. This is the unique position. See
-[`docs/research-receipts.md §8`](./docs/research-receipts.md). Phase
+[`docs/research-receipts.md §8`](./research-receipts.md). Phase
 2's user-editable semantic.yml (`§17`) extends this — the auto-
 generated baseline is the seed.
 
@@ -509,7 +450,7 @@ generated baseline is the seed.
 per surface** — we do not run an LLM-based "which db did you mean"
 heuristic, because the failure mode of guessing wrong silently is
 worse than asking. See
-[`docs/research-receipts.md §7`](./docs/research-receipts.md) for
+[`docs/research-receipts.md §7`](./research-receipts.md) for
 the prior art that pushed this decision.
 
 | Surface | If `dbId` absent | Authentication shape |
@@ -529,11 +470,11 @@ Two distinct validator paths, both exhaustively tested:
 
 | Path | Source | Allowed verbs | Why this scope |
 |---|---|---|---|
-| **Read/write** (every `/v1/ask` query/write) | [`apps/api/src/ask/sql-validate.ts`](./apps/api/src/ask/sql-validate.ts) | `SELECT / INSERT / UPDATE / DELETE / WITH / EXPLAIN / SHOW` only. **`CREATE / ALTER / DROP / TRUNCATE / GRANT / REVOKE / VACUUM` rejected.** `EXPLAIN ANALYZE` rejected (executes). Multi-statement rejected. | The LLM never has DDL rights through this path. CREATE rejection here is correct: the *only* legitimate CREATE comes from §3.6.2's typed-plan compiler, which is our code. |
+| **Read/write** (every `/v1/ask` query/write) | [`apps/api/src/ask/sql-validate.ts`](../apps/api/src/ask/sql-validate.ts) | `SELECT / INSERT / UPDATE / DELETE / WITH / EXPLAIN / SHOW` only. **`CREATE / ALTER / DROP / TRUNCATE / GRANT / REVOKE / VACUUM` rejected.** `EXPLAIN ANALYZE` rejected (executes). Multi-statement rejected. | The LLM never has DDL rights through this path. CREATE rejection here is correct: the *only* legitimate CREATE comes from §3.6.2's typed-plan compiler, which is our code. |
 | **DDL** (only invoked from the create path in §3.6.2) | A separate validator over `SchemaPlan` (Zod) + libpg_query parse on the compiled DDL | The compiled CREATE TABLE / CREATE INDEX / FK constraints. AST reject-list still blocks `DROP / TRUNCATE / GRANT / REVOKE / pg_catalog / information_schema` | Defense-in-depth: even though our compiler authored the SQL, we parse with the actual Postgres parser before sending to the executor — guards against compiler bugs and future regressions. |
 
 Both paths share the **layered guardrails** principle from
-[`docs/research-receipts.md §1`](./docs/research-receipts.md) (the
+[`docs/research-receipts.md §1`](./research-receipts.md) (the
 Replit incident lesson): AST-level reject-list, role isolation,
 RLS, statement timeout, transactional wrapper. None of these alone
 suffices.
@@ -541,15 +482,15 @@ suffices.
 ### 3.6.6 Tenancy and storage
 
 - **Phase 1:** every db is a Postgres schema on a single shared
-  Neon branch (per `PLAN.md §1.6`). The `connection_secret_ref` in
+  Neon branch (per `./plan.md §1.6`). The `connection_secret_ref` in
   D1's `databases` table points to one Workers Secret holding the
   shared `DATABASE_URL`; isolation comes from `SET LOCAL
   search_path` + per-tenant role + RLS, not per-db secrets.
 - **Phase 2b:** tier-based tenancy — Free/Hobby on shared, Pro+
-  on dedicated Neon branches (per `PLAN.md §2.4b`). The
+  on dedicated Neon branches (per `./plan.md §2.4b`). The
   `connection_secret_ref` model already supports this; only the
   provisioner gets a branch-create path added.
-- **Phase 4:** BYO Postgres unblock (per `IMPLEMENTATION.md §7`).
+- **Phase 4:** BYO Postgres unblock (per `./implementation.md §7`).
   See §3.6.7 — the modular split done now means BYO is a
   provisioner swap, not a rewrite.
 
@@ -584,7 +525,7 @@ we don't paint into a corner:
 
 ### 3.6.8 Rate limits and abuse on create
 
-Free-tier abuse rules (`IMPLEMENTATION.md §8`) extend to db.create:
+Free-tier abuse rules (`./implementation.md §8`) extend to db.create:
 per-IP 5 creates/hour, per-account 20 creates/day. PoW on signup if
 a wave of anonymous creates hits the bucket.
 
@@ -592,41 +533,51 @@ a wave of anonymous creates hits the bucket.
 
 ## 4. Authentication & identity
 
-### 4.1 Library and methods
+> **Canonical:** [`.claude/skills/auth/SKILL.md`](../.claude/skills/auth/SKILL.md)
+> (`SK-AUTH-001..012`),
+> [`.claude/skills/api-keys/SKILL.md`](../.claude/skills/api-keys/SKILL.md)
+> (`SK-APIKEYS-001..007`),
+> [`.claude/skills/anonymous-mode/SKILL.md`](../.claude/skills/anonymous-mode/SKILL.md)
+> (`SK-ANON-001..006`). Every decision below has a canonical entry in
+> one of those skills; the tables and architecture diagram in this
+> section are at-a-glance views.
 
-**Better Auth** (MIT, TypeScript, framework-agnostic) on Cloudflare Workers
-+ D1. No per-MAU fees, no vendor lock on user data shape. The Auth.js team
-merged into Better Auth in 2025; it's the de-facto TS standard. We build
-the UI ourselves — the sign-in page is part of the brand.
+### 4.1 Library, methods, anonymous mode, API keys
 
-Methods at launch: **magic link** (primary), **passkey** (promoted on
-second visit), **GitHub OAuth**, **Google OAuth**. No passwords, ever.
+- **Library.** Better Auth (MIT, TypeScript) on Cloudflare Workers + D1.
+  Why this choice and what it implies for the UI: `SK-AUTH-001`.
+- **Methods at launch.** Magic link (primary), passkey (promoted on
+  second visit), GitHub OAuth, Google OAuth. **No passwords, ever** —
+  `SK-AUTH-002`. The two GitHub OAuth Apps split (prod + dev) is
+  `SK-AUTH-008`; env-var prefixing (`OAUTH_GITHUB_*`) is `SK-AUTH-009`.
+- **Anonymous mode.** Opaque `localStorage` token (web) / OS-keychain
+  anonymous token (CLI). DB lives 72h tied to the token (90-day server
+  retention); on sign-in, adoption is a one-row update with no
+  conditional code paths. See `anonymous-mode/SKILL.md`
+  (`SK-ANON-001..006`) and `SK-AUTH-010`.
+- **Session storage.** 1h JWT access tokens; Workers KV holds the
+  revocation set. Cookie-cache + KV check land together
+  (`SK-AUTH-007`). Full decision: `SK-AUTH-003`.
+- **API keys** (separate from sessions):
 
-**Anonymous mode:** an opaque `localStorage` token lets users create and
-query a DB before signing in; the DB lives 72h tied to the token. On
-sign-in the DB is adopted by updating one row. No conditional code paths.
+  | Type | Scope | Used by |
+  |---|---|---|
+  | `pk_live_…` | Publishable, **read-only**, per-DB, origin-pinned | `<nlq-data>` |
+  | `sk_live_…` | Secret, server-only, full scope | Backend / HTTP API |
+  | `sk_mcp_<host>_<device>_…` | `sk_live_` + `(mcp_host, device_id)` claims | MCP server (§3.4) |
 
-**Session storage:** JWT-signed access tokens (1h); KV holds the
-revocation set. Workers KV free tier (100k reads/day) is ample.
-
-**API keys** are separate from sessions. Three types:
-
-| Type | Scope | Used by |
-|---|---|---|
-| `pk_live_…` | Publishable, **read-only**, per-DB, origin-pinned | `<nlq-data>` |
-| `sk_live_…` | Secret, server-only, full scope | Backend / HTTP API |
-| `sk_mcp_<host>_<device>_…` | Like `sk_live_` + `(mcp_host, device_id)` claims | MCP server (§3.4) |
-
-Keys hashed with Argon2id. Last 4 chars stored cleartext for display
-(*"sk_live_…a4f7 · 3m ago · Cursor on macbook-air"*). No plaintext
-retrieval path — if lost, rotate.
+  Hashed with Argon2id, last 4 chars cleartext for display
+  (*"sk_live_…a4f7 · 3m ago · Cursor on macbook-air"*), no plaintext
+  retrieval. Three types: `SK-APIKEYS-001`. Hashing + display:
+  `SK-APIKEYS-002`. `pk_live_*` semantics: `SK-APIKEYS-003`,
+  `SK-ELEM-005`. MCP key isolation: `SK-APIKEYS-004`, `SK-MCP-004`.
 
 ### 4.2 Authorization model
 
-Phase 1 has three roles: **Owner** (full), **Member** (read + query,
-no destructive ops or key creation), **Public** (anonymous, read-only via
+Three roles in Phase 1: **Owner** (full), **Member** (read + query, no
+destructive ops or key creation), **Public** (anonymous, read-only via
 publishable key, rate-limited). RBAC comes in Phase 2 only if a paying
-customer asks twice.
+customer asks twice. Decision: `SK-AUTH-006`.
 
 ### 4.3 Session lifecycle across surfaces
 
@@ -637,21 +588,13 @@ customer asks twice.
 | MCP | `nlq mcp install` (auto-detect) | Host config file (key only) | n/a | Key rotation, not refresh |
 | Embed | `pk_live_` | Inline in HTML | n/a | Key rotation |
 
-**Device-code flow:** CLI POSTs `/v1/auth/device`, gets
-`verification_uri_complete` (code embedded in the URL) + `user_code`
-fallback. Browser opens straight to "Approve this device?" — one click, no
-typing. On approval, CLI polls `/v1/auth/device/token`, gets
-`{access_token, refresh_token, expires_in: 3600}`, writes refresh token
-to keychain.
-
-**Refresh:** 401 on any call → `POST /v1/auth/refresh` → retry once. On
-refresh failure the surface re-initiates the original flow in-place
-(web: `/sign-in?return_to=…`; CLI: re-runs device flow and resumes the
-command). Users never see a bare 401.
-
-**Revocation:** write to the KV revocation set, keyed by `jti` (sessions)
-or key-hash-prefix (API keys). Edge checks membership on every request;
-≤2ms on miss, free on hit.
+The device-code flow uses `verification_uri_complete` so the user's
+browser lands on "Approve this device?" with the code pre-filled — full
+flow + endpoint shape in `SK-AUTH-004` (and `SK-CLI-006` for the CLI's
+side). Silent refresh (401 → `POST /v1/auth/refresh` → retry once →
+re-auth in place if refresh fails) is `SK-CLI-007` + `GLOBAL-009`.
+Revocation writes to the KV set keyed by `jti` (sessions) /
+key-hash-prefix (keys); edge checks are ≤2 ms on miss — `SK-AUTH-007`.
 
 ### 4.4 Service-to-service auth
 
@@ -666,39 +609,35 @@ or key-hash-prefix (API keys). Edge checks membership on every request;
                        [Neon Postgres | Upstash Redis | …]
 ```
 
-- **The edge is the only component that sees external credentials.** It
-  terminates the bearer header and signs a short-lived (30s) internal JWT
-  for all downstream calls using a Workers-only secret.
-- **Downstream components verify the internal JWT.** A leaked external
-  key has the blast radius of the key's scope — never the whole system.
-- **MCP server holds no DB credentials.** It signs its outbound call with
-  its `sk_mcp_…` key; `@nlqdb/mcp` has zero DB-driver deps in its
-  lockfile and CI refuses any addition.
-- **Postgres pool is at the edge, keyed by tenant.** Internal JWT binds
-  the caller via `SET LOCAL search_path` + Neon role scoping; no branch
-  can pick the wrong tenant (§9).
-- **Embed uses `pk_live_` only.** Origin-pinned, read-only; edge rejects
-  any mutating call with a publishable key before the plan runs. Writes
-  use `<nlq-action>` with a signed short-lived write-token (Phase 2).
+Decision: the edge is the only component that sees external credentials,
+and it signs a 30 s internal JWT for all downstream calls — `SK-AUTH-005`.
+MCP server holds no DB credentials and `@nlqdb/mcp` has zero DB-driver
+deps in its lockfile (CI-enforced) — `SK-MCP-005`. Postgres pool is
+edge-side and tenant-keyed via `SET LOCAL search_path` + Neon role
+scoping; tenant-isolation invariants live in §9. `pk_live_*` is
+origin-pinned and the edge rejects any mutating call with a publishable
+key before the plan runs — `SK-APIKEYS-003`, `SK-ELEM-005`. Writes use
+`<nlq-action>` with a signed short-lived write-token (Phase 2).
 
 ### 4.5 Rotation, revocation, device management
 
 Per §0 "Seamless auth" — instant and visible:
 
 - **Dashboard → Keys** lists every credential (`pk_live_`, `sk_live_`,
-  every `sk_mcp_`) + every web session + every CLI device. Columns: type,
-  host, device, created, last-used, coarse IP, user label.
-- **Revoke** is one click, propagates in ≤2s. Affected surface gets
-  `401 key_revoked` and enters the seamless re-auth path (§4.3).
-- **Rotate** (`sk_live_` / `sk_mcp_`) issues a new key, deprecates the
-  old one with 60d grace, emits a webhook. `nlq keys rotate <id>` CLI.
-- **Global sign-out** invalidates all sessions, device refresh tokens,
-  and `sk_mcp_` keys. `sk_live_` / `pk_live_` are left alone (production
-  credentials; rotate separately).
-- **Email + in-app notification** on key create/rotate/revoke and
-  new-device sign-in (templates in §5.1).
-- **No plaintext retrieval.** Lost a key → rotate. Refusing to ship a
-  "reveal" button is the feature.
+  every `sk_mcp_`) + every web session + every CLI device.
+- **Revoke** is one click, propagates in ≤2 s; affected surface gets
+  `401 key_revoked` and enters the re-auth path. Decision:
+  `GLOBAL-018` (canonical revocation contract), `SK-AUTH-007`,
+  `SK-MCP-006`.
+- **Rotate** (`sk_live_` / `sk_mcp_`) issues a new key with 60-day grace
+  + webhook — `SK-AUTH-011`, `SK-APIKEYS-005`. CLI: `nlq keys rotate <id>`.
+- **Global sign-out** clears sessions + device refresh tokens +
+  `sk_mcp_*`; leaves `sk_live_` / `pk_live_` alone — `SK-AUTH-011`,
+  `SK-APIKEYS-006`.
+- **Notification** on key create/rotate/revoke + new-device sign-in
+  (email templates in §5.1).
+- **No plaintext retrieval** — lost means rotate; refusing a "reveal"
+  button is the feature. `SK-AUTH-012`, `SK-APIKEYS-002`.
 
 ---
 
@@ -743,9 +682,9 @@ Three layers, kept distinct:
 2. **Ops telemetry** — **Sentry** (5k errors/mo free) + **OpenTelemetry**
    → **Grafana Cloud** free for traces / metrics / logs. Drives the
    "fast" promise.
-3. **Product events** — an in-house [`packages/events`](./packages/events)
+3. **Product events** — an in-house [`packages/events`](../packages/events)
    producer that writes to a **Cloudflare Queue** (`nlqdb-events`); a
-   separate consumer Worker [`apps/events-worker`](./apps/events-worker)
+   separate consumer Worker [`apps/events-worker`](../apps/events-worker)
    drains the queue and fans out to sinks. **One sink today: LogSnag**
    (free tier 2,500 events/mo — plenty if we fire only one-shot events:
    `user.registered`, `user.first_query`, `billing.subscription_created`,
@@ -757,8 +696,8 @@ Three layers, kept distinct:
    The producer/consumer split keeps `apps/api`'s `/v1/ask` hot path
    clean — no LogSnag client, no network round-trips on event-emit,
    the p50 budget stays intact. Quotas, retry behavior, and the DLQ
-   wiring live in [`IMPLEMENTATION.md §2.6`](./IMPLEMENTATION.md) and
-   [`apps/events-worker/README.md`](./apps/events-worker/README.md).
+   wiring live in [`./implementation.md §2.6`](./implementation.md) and
+   [`apps/events-worker/README.md`](../apps/events-worker/README.md).
 
 A second sink — **PostHog Cloud** for funnels / cohorts / retention —
 is held in reserve for Phase 2, *only* if a real cohort question lands
@@ -772,19 +711,26 @@ empty and the sink no-ops.
 The boundary is firm: OTel spans describe what the *system* did,
 product events describe what the *user* did. They never collapse —
 high-cardinality labels like `nlqdb.user_id` stay out of metrics (see
-[`PERFORMANCE.md §3.3`](./PERFORMANCE.md)).
+[`./performance.md §3.3`](./performance.md)).
 
 Concrete SLOs, per-stage latency budgets, span/metric/label catalog,
 sampling rules, and the slice-by-slice instrumentation plan live in
-[`PERFORMANCE.md`](./PERFORMANCE.md) — that's the load-bearing doc for
+[`./performance.md`](./performance.md) — that's the load-bearing doc for
 the "fast" promise.
 
 ---
 
 ## 6. Pricing — freemium done honestly
 
+> **Cross-refs:** `GLOBAL-013` (`$0/month free tier`) is canonical in
+> [`docs/decisions.md`](./decisions.md). Stripe ingest, idempotency, and
+> subscription state-machine decisions are in
+> [`.claude/skills/stripe-billing/SKILL.md`](../.claude/skills/stripe-billing/SKILL.md)
+> (`SK-STRIPE-001..007`). Premium-models routing (Pro-tier privacy)
+> sits with `SK-LLM-008`.
+
 The constraint: **a real user must be able to ship a real product without
-paying us.** Aligned with [`PLAN.md` §5](./PLAN.md).
+paying us** (canonical: `GLOBAL-013`). Aligned with [`./plan.md` §5](./plan.md).
 
 | Tier | Price | What you get | Limits | Card |
 |---|---|---|---|---|
@@ -858,8 +804,14 @@ a per-service adapter layer — if we need to leave Cloudflare, it's a week.
 
 ## 8. AI model selection
 
-Tiered routing — never send all traffic to a frontier model. Pricing
-approximate, April 2026.
+> **Canonical:** [`.claude/skills/llm-router/SKILL.md`](../.claude/skills/llm-router/SKILL.md)
+> (`SK-LLM-001..011`). Tiered routing (`SK-LLM-001`), the single
+> adapter / cost-ordered chain (`SK-LLM-002`), the Day-1 strict-$0 chain
+> (`SK-LLM-003`), prompt caching (`SK-LLM-009`), plan-cache-first
+> (`SK-LLM-010`), Pro-tier privacy (`SK-LLM-008`), and self-host trigger
+> at 50 k queries/day (`SK-LLM-011`) are all canonical there. The tables
+> and account-checklist below are at-a-glance views; pricing is
+> approximate as of April 2026.
 
 | Job | Tier | Model | $/1M in/out |
 |---|---|---|---|
@@ -876,14 +828,6 @@ day-to-day code / marketing copy; Sonnet 4.6 for quick refactors;
 GPT-5.4 or Gemini 3.1 Pro for second-opinion review; DeepSeek V3.2 for
 fixtures; Gemini 3.1 Pro for SEO/AEO; Imagen 4 / Flux 1.5 Pro for
 images (we mostly avoid — see §3.1).
-
-**Cost-control rules:**
-1. Plan cache first, LLM second — 60–80% cache hit on mature workloads.
-2. Smallest model that solves the task wins; confidence-based escalation.
-3. Prompt caching on every provider that supports it (~80% input reduction).
-4. No summarization when client sends `Accept: application/json`.
-5. Self-host classifier once we hit ~50k queries/day (single A10G on
-   Modal, quantized 8B, ~$200/mo flat).
 
 ### 8.1 Strict-$0 inference path (Day 1, no credits, no card)
 
@@ -904,22 +848,16 @@ free-tier landscape makes this viable at launch scale.
 ~2–4k user queries/day after the plan cache. Covers Phase 1's exit
 criteria with headroom.
 
-**Architecture rule:** every LLM call routes through one `llm/` adapter
-taking `tier` ∈ `{classify, plan, summarize, hard, embed}` and a
-cost-ordered provider chain. Day-1 `plan` chain:
-`[gemini_flash_free, groq_llama70b_free, openrouter_free, anthropic_paid]`.
-Swap order via env var. Zero app code changes per §9.
-
 **Constraints we accept:**
 - **Data privacy.** Free tiers may use inputs to train; disclosed in our
-  privacy policy. **Pro customers route only through paid / retention-off
-  providers** — the one meaningful free→paid capability upgrade.
+  privacy policy. Pro-tier privacy promise: `SK-LLM-008`.
 - **RPM ceilings.** Bursts queue briefly; "queued — 2s" surfaced in UI.
-- **Provider outages.** The chain auto-falls-through, sub-100ms switch.
+- **Provider outages.** The chain auto-falls-through, sub-100 ms switch
+  via the circuit breaker (`SK-LLM-005`).
 - **Geo.** Groq is US-only; Gemini + Workers AI are global. Classification
-  has Workers AI Llama 3 as a non-US backup to keep first-byte < 1s.
+  has Workers AI Llama 3 as a non-US backup to keep first-byte < 1 s.
 
-**Account checklist** (mirrored in [`IMPLEMENTATION.md`](./IMPLEMENTATION.md)):
+**Account checklist** (mirrored in [`./implementation.md`](./implementation.md)):
 Google AI Studio → `GEMINI_API_KEY`; Groq → `GROQ_API_KEY`; Cloudflare
 Workers AI → `CF_AI_TOKEN`; OpenRouter → `OPENROUTER_API_KEY` (fallback).
 
@@ -961,7 +899,7 @@ We make bad states unreachable, not caught.
 
 ## 11. Immediate execution plan
 
-See [`IMPLEMENTATION.md`](./IMPLEMENTATION.md) for the phased plan. Short
+See [`./implementation.md`](./implementation.md) for the phased plan. Short
 version: wire DNS, stand up Cloudflare stack + Better Auth + Neon, build
 the LLM router + plan cache, ship chat/CLI/MCP/elements/email stack, write
 launch posts, recruit 5 design partners (one per persona, Free Pro for 12
@@ -1296,7 +1234,7 @@ curl https://api.nlqdb.com/v1/ask \
 Subsequent calls pass `Authorization: Bearer anon_…` to reuse the session.
 72h window same as the web (§4.1).
 
-**Power-user path** (the two-endpoint API from [`PLAN.md` §1.3](./PLAN.md))
+**Power-user path** (the two-endpoint API from [`./plan.md` §1.3](./plan.md))
 remains available unchanged for callers who already think in DBs.
 
 ---
@@ -1338,7 +1276,7 @@ a single SQL statement.
 | 2 | In the agent's system prompt: *"You have a tool `nlqdb_query`. Call it with a `db` and a `q` in plain English. The `db` can be any string — it'll be created if new."* | — |
 | 3 | Agent runs first session. On a fact: `nlqdb_query("research-memory", "remember: the user is researching solar panels in Berlin")` | DB `research-memory-...` materialized, row inserted |
 | 4 | Agent ends session, reopens hours later: `nlqdb_query("research-memory", "what do I know about the user's research topic?")` | Returns the stored fact |
-| 5 | Jordan watches the platform: clicks `research-memory`, sees every query the agent ran today, including the ones that returned zero rows | Trace + query log per [`PLAN.md` §2.2](./PLAN.md) |
+| 5 | Jordan watches the platform: clicks `research-memory`, sees every query the agent ran today, including the ones that returned zero rows | Trace + query log per [`./plan.md` §2.2](./plan.md) |
 | 6 | Deploys the agent on Modal. Sets `NLQDB_API_KEY` (from the dashboard) as a Modal secret — the one env var he touches. | Agent uses the `sk_live_` key; Modal's env-var flow stays idiomatic; no keychain or browser flow on the deploy target. |
 
 **What Jordan never wrote:** a vector-store glue layer, a schema for memory,
@@ -1496,7 +1434,7 @@ purpose. If a reader has to scroll twice, we failed.
 
 ## 17. Semantic-layer adoption — Phase 2
 
-**Why:** the 2025–2026 NL-to-SQL frontier diverged hard from raw-schema introspection. dbt's 2026 benchmark reports up to **3× accuracy** when the LLM queries through a curated semantic model rather than raw `information_schema` columns; Snowflake Cortex Analyst, Databricks Genie, Wren AI, and the new [Open Semantic Interchange (OSI)](https://www.dataengineeringweekly.com/p/knowledge-metrics-and-ai-rethinking) standard all converge on semantic-first NL2SQL. Full receipts in [`docs/research-receipts.md §8`](./docs/research-receipts.md).
+**Why:** the 2025–2026 NL-to-SQL frontier diverged hard from raw-schema introspection. dbt's 2026 benchmark reports up to **3× accuracy** when the LLM queries through a curated semantic model rather than raw `information_schema` columns; Snowflake Cortex Analyst, Databricks Genie, Wren AI, and the new [Open Semantic Interchange (OSI)](https://www.dataengineeringweekly.com/p/knowledge-metrics-and-ai-rethinking) standard all converge on semantic-first NL2SQL. Full receipts in [`docs/research-receipts.md §8`](./research-receipts.md).
 
 **Relationship to §3.6.** The typed-plan output of `db.create` (§3.6.2) already carries `metrics` and `dimensions`. Phase 1 emits an auto-generated baseline at create time; Phase 2 makes it editable, OSI-compatible, and source-controlled. The auto-baseline is the seed, not a parallel system.
 

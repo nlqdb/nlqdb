@@ -1,13 +1,18 @@
 # nlqdb — Implementation Plan
 
-Execution plan for [`DESIGN.md`](./DESIGN.md) and [`PLAN.md`](./PLAN.md).
+Execution plan for [`./design.md`](./design.md) and [`./plan.md`](./plan.md).
 Answers:
 
 1. **What do we build, in what order, with what dependencies?** (§3–§7)
 2. **What accounts and API keys must we provision first, all $0?** (§2)
 
-For *why* a decision was made, read `DESIGN.md`. This doc does not restate
-rationale.
+For *why* a decision was made, read the canonical skill — see
+[`.claude/skills/_index.md`](../.claude/skills/_index.md) for the full
+table — or [`docs/decisions.md`](./decisions.md) for cross-cutting
+`GLOBAL-NNN`s. `docs/design.md` carries the architectural narrative;
+this doc is operational. **No skill-canonical decisions are restated
+here**; references to features (auth, ask-pipeline, plan-cache, etc.)
+point at concepts whose decisions are owned by the corresponding skill.
 
 ---
 
@@ -232,7 +237,7 @@ Cloud for Startups / Modal startup credits.
       default `/api/auth/*` basePath). Device flow enabled (CLI
       `nlq login` per §3.3 design); device-code flow polls and never
       invokes the callback. Configured details in
-      [`RUNBOOK §5b`](./RUNBOOK.md#5b-github-oauth--whats-configured).
+      [`RUNBOOK §5b`](./runbook.md#5b-github-oauth--whats-configured).
 - [x] **GitHub OAuth app — `nlqdb-web-dev`** →
       `OAUTH_GITHUB_CLIENT_ID_DEV`, `OAUTH_GITHUB_CLIENT_SECRET_DEV`.
       Second OAuth App under the `nlqdb` org with callback
@@ -250,7 +255,7 @@ Cloud for Startups / Modal startup credits.
       `openid`, `/auth/userinfo.email`, `/auth/userinfo.profile` —
       all non-sensitive, so verification when submitted will be fast
       (days, not weeks). Client name: `nlqdb-web`. Redirect URIs and
-      JS origins enumerated in [`RUNBOOK.md §5`](./RUNBOOK.md).
+      JS origins enumerated in [`./runbook.md §5`](./runbook.md).
 - [ ] CLI build dep: `github.com/zalando/go-keyring` (OS keychain).
 - [x] **Resend** → `RESEND_API_KEY` (free tier, 3k emails/mo). API key
       live-verified via `verify-secrets.sh`. Domain verification for
@@ -301,9 +306,9 @@ Cloud for Startups / Modal startup credits.
 
 SLOs, per-stage latency budgets, span/metric catalog, sampling rules,
 and the slice-by-slice instrumentation hooks live in
-[`PERFORMANCE.md`](./PERFORMANCE.md). Slice 3 (Neon adapter) is the
+[`./performance.md`](./performance.md). Slice 3 (Neon adapter) is the
 first slice that emits OTel spans — it must ship the SDK + exporter
-wiring per `PERFORMANCE.md §4`.
+wiring per `./performance.md §4`.
 
 **`packages/events` — product event producer (distinct from OTel).**
 Exposes `events.emit(event)` — a discriminated-union payload, not a
@@ -323,7 +328,7 @@ queue gives 3 free retries on consumer-thrown errors), batching
 all live out-of-process from the request hot path on `apps/api`,
 keeping the `/v1/ask` p50 budget intact). Free-tier ops budget on
 Workers Free is 10K/day = ~3.3K msgs/day at 3 ops/msg, comfortable
-through Phase 1. See [`DESIGN.md §11`](./DESIGN.md) for the
+through Phase 1. See [`./design.md §11`](./design.md) for the
 delivery-architecture rationale and the dead-letter / retry-
 exhaustion plan.
 
@@ -332,12 +337,12 @@ lowercase): `user.registered`, `user.first_query`,
 `billing.subscription_created`, `billing.subscription_canceled`.
 **Sign-ins are deliberately not emitted** — they would dominate the
 2,500/mo LogSnag quota and add no founder signal. **No `trial.*`
-events** — `PLAN.md §5.3` rules out a Stripe-side trial period; the
+events** — `./plan.md §5.3` rules out a Stripe-side trial period; the
 free tier is the trial.
 Adding a new event: extend the union in
-[`packages/events/src/types.ts`](./packages/events/src/types.ts), add
+[`packages/events/src/types.ts`](../packages/events/src/types.ts), add
 a case to the LogSnag `buildPayload()` switch in
-[`apps/events-worker/src/sinks/logsnag.ts`](./apps/events-worker/src/sinks/logsnag.ts),
+[`apps/events-worker/src/sinks/logsnag.ts`](../apps/events-worker/src/sinks/logsnag.ts),
 and add a test asserting the dispatch call.
 
 ### 2.7 Secret management
@@ -441,7 +446,7 @@ Commit-message policy: **Conventional Commits** (enforced by lefthook
   response. **The implicit-create path** (goal-with-no-dbId triggers
   schema inference + provisioner) ships in Phase 1 §4 as the
   "hosted db.create" slice — it requires the typed-plan validator
-  and Neon-provisioner described in [`DESIGN.md §3.6`](./DESIGN.md).
+  and Neon-provisioner described in [`./design.md §3.6`](./design.md).
   Phase 0 leaves the `databases` D1 row + Neon schema seeding as a
   manual fixture step for internal testing.
 
@@ -500,18 +505,18 @@ billing, **hosted db.create** (Phase 1 §4).
 - **API keys:** `pk_live_<dbId>...` (publishable, per-db, read-only,
   origin-pinned) + `sk_live_...` (secret, account-scoped, full
   scope) from the dashboard. `sk_mcp_*` arrives with the CLI in
-  Phase 2. Per [`DESIGN.md §4.1`](./DESIGN.md).
+  Phase 2. Per [`./design.md §4.1`](./design.md).
 - **Settings → Keys** page (list/create/rotate/revoke per §4.5 design;
   last-4, host, device, last-used, coarse IP; ≤2s revocation).
 - **Hosted db.create — typed-plan + provisioner.** Goal-string in,
   `{ db: slug, pk_live, rows, plan: { metrics, dimensions, joins } }`
   out. The classifier-tier LLM call routes `kind=create` goals to
-  the typed-plan pipeline at [`DESIGN.md §3.6`](./DESIGN.md): LLM
+  the typed-plan pipeline at [`./design.md §3.6`](./design.md): LLM
   emits a typed `SchemaPlan` (Zod-validated) → deterministic compiler
   emits CREATE TABLE / CREATE INDEX / FK constraints → libpg_query
   parse-validate → transactional execute on Neon → D1 row insert →
   pgvector table-card embeddings. The LLM never emits raw DDL
-  (Replit-incident lesson, [`docs/research-receipts.md §1, §2`](./docs/research-receipts.md)).
+  (Replit-incident lesson, [`docs/research-receipts.md §1, §2`](./research-receipts.md)).
   This slice unblocks every `<nlq-data>` claim on the marketing
   site: drop a tag with no `db=`, get a working db on first hit.
   - **Sub-modules** (independent files for parallel work):
@@ -522,11 +527,11 @@ billing, **hosted db.create** (Phase 1 §4).
     (deps-injected pure orchestrator, mirrors the existing
     `orchestrateAsk` pattern).
   - **Deterministic per-surface dbId resolution** when `dbId` is
-    absent on `/v1/ask` — see [`DESIGN.md §3.6.4`](./DESIGN.md). HTML
+    absent on `/v1/ask` — see [`./design.md §3.6.4`](./design.md). HTML
     resolves from the `pk_live_<dbId>` key (or CREATE on first call
     for keyless anonymous embeds); REST returns `409 candidate_dbs`
     on ambiguity; CLI prompts; MCP elicits.
-  - **Anonymous-db lifecycle** per [`RUNBOOK.md`](./RUNBOOK.md):
+  - **Anonymous-db lifecycle** per [`./runbook.md`](./runbook.md):
     90-day TTL, 10 MB per-db cap, pressure-sweep at 300 MB total.
 - **`<nlq-data>` v0** — `goal=` (default; `db` resolved per §3.6.4);
   templates `table`, `list`, `kv` (others Phase 2). Distributed via
@@ -592,7 +597,7 @@ Workload Analyzer.
     drivers; CI fails any PR adding `pg` / `postgres` / `redis` / etc.
 - **`<nlq-action>` element** — write counterpart to `<nlq-data>`;
   form-field-to-column inference.
-- **CSV upload** in the chat (unlocks P3 per `PERSONAS.md`).
+- **CSV upload** in the chat (unlocks P3 per `./personas.md`).
 - **Custom domains for embed** via Cloudflare for SaaS (first 100 zones free).
 - **Stripe** live (Hobby $10; pricing page). The `/v1/stripe/webhook`
   handler shipped in Slice 7 (PR #33) and already emits
@@ -652,7 +657,7 @@ shape locked in advance):
   scale; the blob model does). `pg_catalog` introspection at connect
   time → table-card pgvector embeddings. The read/write validator
   applies unchanged. Locked shape now so the Phase 1 provisioner is
-  a function-swap, not a rewrite — see [`DESIGN.md §3.6.7`](./DESIGN.md).
+  a function-swap, not a rewrite — see [`./design.md §3.6.7`](./design.md).
 - **Enterprise** — SSO, audit log, on-prem.
 - **More engines** — pgvector at scale, ClickHouse, TimescaleDB, Typesense.
 - **`<nlq-stream>`** — write-counterpart elements beyond `<nlq-action>`.
@@ -704,7 +709,7 @@ Every integration is a thin wrapper over the same four primitives:
 - `@nlqdb/mcp` — agent surface (any MCP-speaking host).
 - The HTTP API at `api.nlqdb.com/v1` (curl-friendly).
 
-A new platform integration = a small adapter on top of those four. Days, not months. The matrix below is the canonical "what we plan to ship" list — every example folder under [`examples/`](./examples) maps to a row here, and contributors who want to propose a new platform should append a row.
+A new platform integration = a small adapter on top of those four. Days, not months. The matrix below is the canonical "what we plan to ship" list — every example folder under [`examples/`](../examples) maps to a row here, and contributors who want to propose a new platform should append a row.
 
 ### Tiers
 
@@ -733,7 +738,7 @@ What an "official" framework module adds beyond the universal `<nlq-data>` snipp
 | `@nlqdb/react-router`    | React Router 7                 | **P2** | `loader()` helpers; replaces ad-hoc fetch.                                                  |
 | `@nlqdb/vite`            | Vite plugin                    | **P2** | Auto-inject the elements script; dev-mode mock proxy for `api.nlqdb.com`.                   |
 
-Static-site generators (Hugo, Eleventy, Jekyll, Gatsby, Docusaurus, Mintlify) need no plugin — drop the elements `<script>` tag in your base layout, the snippet from [`examples/html`](./examples/html) works as-is.
+Static-site generators (Hugo, Eleventy, Jekyll, Gatsby, Docusaurus, Mintlify) need no plugin — drop the elements `<script>` tag in your base layout, the snippet from [`examples/html`](../examples/html) works as-is.
 
 ### 10.2 Mobile + desktop
 
@@ -850,7 +855,7 @@ Cursor, Windsurf, Zed, VS Code Continue, JetBrains AI Assistant all speak MCP �
 
 **1st-party (canonical):** `@nlqdb/elements`, `@nlqdb/sdk`, `@nlqdb/mcp`, the `nlq` CLI (Go), and the framework modules tagged P0/P1 above (`@nlqdb/{nuxt,next,sveltekit,astro,react-native,hono,express}` + the official `nlqdb-go` and `nlqdb-python` clients). We own these. They version with the API; breaking changes ride a major bump.
 
-**2nd-party (templated):** every folder under [`examples/`](./examples). Single-file, framework-native. Maintained by us, no installable artefact — copy-paste is the install. Where adoption signals demand, we promote a 2nd-party template to a 1st-party package.
+**2nd-party (templated):** every folder under [`examples/`](../examples). Single-file, framework-native. Maintained by us, no installable artefact — copy-paste is the install. Where adoption signals demand, we promote a 2nd-party template to a 1st-party package.
 
 **3rd-party (community):** everything else. Documented in the README's integrations index, listed at `nlqdb.com/integrations`, but published and maintained by partners or community contributors. We provide:
 

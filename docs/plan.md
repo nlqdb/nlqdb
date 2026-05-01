@@ -3,6 +3,13 @@
 > A database you talk to. Create one, query it in English, done.
 > Infrastructure is invisible. It Just Works™, and if it doesn't we rebuild it behind the scenes before you notice.
 
+> **Where decisions live:** Per-feature decisions are canonical in
+> [`.claude/skills/<feature>/SKILL.md`](../.claude/skills/_index.md);
+> cross-cutting decisions are canonical in
+> [`docs/decisions.md`](./decisions.md) (`GLOBAL-NNN`). This doc owns
+> phasing, slices, and exit criteria — the *when* and *in what order*.
+> If a sentence here disagrees with a skill, the skill wins.
+
 ---
 
 ## 0. Product Thesis
@@ -40,7 +47,7 @@ query(db, "natural language")   -> rows + NL answer + trace
 ```
 
 Surface detail (onboarding, chat, API, CLI, MCP) lives in
-[`DESIGN.md` §3, §14](./DESIGN.md). This section covers only what's
+[`./design.md` §3, §14](./design.md). This section covers only what's
 unique to Phase 1 rationale.
 
 ### 1.1 Onboarding — anti-patterns we refuse
@@ -302,7 +309,7 @@ We lean toward tools with **real APIs, generous free tiers, and no mandatory UI 
   Slack / Discord / email itself. PostHog deferred to Phase 2 *only*
   if a real cohort/funnel question lands that SQL on D1/Neon can't
   answer. Distinct from OTel: events describe what the *user* did,
-  OTel what the *system* did. See [`DESIGN.md §5.4`](./DESIGN.md).
+  OTel what the *system* did. See [`./design.md §5.4`](./design.md).
 - **Self-hosted Loki** later.
 
 ### MCP
@@ -462,7 +469,7 @@ What we should **not** reinvent:
 
 ## 9. Immediate next steps
 
-See [`IMPLEMENTATION.md`](./IMPLEMENTATION.md) for the phased, actionable
+See [`./implementation.md`](./implementation.md) for the phased, actionable
 plan. High level: Phase 0 stands up the Cloudflare stack + Better Auth +
 Neon + LLM router (API plane only — no public sign-in UI yet, by design;
 auth ships ahead of its UI so Phase 1 wires buttons to a known-good
@@ -470,7 +477,7 @@ surface). Phase 1 ships the marketing site + chat + anonymous mode +
 `<nlq-data>` v0 + "Copy starter HTML" — the first phase a real end user
 can onboard through. Phase 2 ships CLI + MCP + CSV upload + Stripe live.
 Five design partners recruited deliberately
-(one per persona in [`PERSONAS.md`](./PERSONAS.md)) — Free Pro for 12
+(one per persona in [`./personas.md`](./personas.md)) — Free Pro for 12
 months in exchange for 2 calls/month.
 
 ---

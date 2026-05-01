@@ -2,7 +2,7 @@
 
 Workers-compatible OpenTelemetry setup. Span + metric infrastructure
 for every nlqdb service. Phase 0 / Slice 3 — see
-[PERFORMANCE §4](../../PERFORMANCE.md#4-slice-by-slice-instrumentation-plan).
+[PERFORMANCE §4](../../docs/performance.md#4-slice-by-slice-instrumentation-plan).
 
 ## Why a thin in-house wrapper
 

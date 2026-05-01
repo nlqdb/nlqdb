@@ -34,7 +34,7 @@ nlq "today's orders, newest first"
 
 That's the whole backend. No SQL, no schema, no API, no framework.
 
-→ Full hello-world tutorial: [`DESIGN.md` §16](./DESIGN.md#16-hello-world-e2e-fullstack-tutorial--the-1-pager).
+→ Full hello-world tutorial: [`./docs/design.md` §16](./docs/design.md#16-hello-world-e2e-fullstack-tutorial--the-1-pager).
 
 ## Examples
 
@@ -56,7 +56,7 @@ Phase 4  Enterprise polish    ░░░░░░░░░░░░░░░░�
 ```
 
 Each step is 2–4 words on purpose — full spec lives in
-[`PLAN.md`](./PLAN.md) and [`IMPLEMENTATION.md`](./IMPLEMENTATION.md).
+[`./docs/plan.md`](./docs/plan.md) and [`./docs/implementation.md`](./docs/implementation.md).
 
 ### Phase 0 — Foundations ✓
 
@@ -85,7 +85,7 @@ progress".
 - ✓ `/v1/waitlist` (D1, atomic dedup, privacy-preserving 200-on-dup)
 - ✓ `apps/web` deployed via Workers Static Assets
 - ✓ DNS flip `apps/coming-soon` → `apps/web` (PR #56 + manual detach)
-- ◯ Hosted db.create — typed-plan + provisioner ([`DESIGN §3.6`](./DESIGN.md), [`docs/research-receipts.md`](./docs/research-receipts.md)). Unblocks every `<nlq-data>` live claim — drop a tag with no `db=`, get a working db on first hit.
+- ◯ Hosted db.create — typed-plan + provisioner ([`DESIGN §3.6`](./docs/design.md), [`docs/research-receipts.md`](./docs/research-receipts.md)). Unblocks every `<nlq-data>` live claim — drop a tag with no `db=`, get a working db on first hit.
 - ◯ API keys page (`pk_live_<dbId>...` per-db, `sk_live_…` account-scoped)
 - ◯ `<nlq-action>` writes (signed write-tokens)
 - ◯ Hello-world tutorial (canonical entry; satisfied by db.create)
@@ -129,7 +129,7 @@ trigger to unlock it.
 
 **Right now:** none — PR previews ship via GH Actions (deploy-api,
 deploy-web, preview-{api,web,elements}); no manual Cloudflare
-dashboard wiring required ([RUNBOOK §6](./RUNBOOK.md)). The earlier
+dashboard wiring required ([RUNBOOK §6](./docs/runbook.md)). The earlier
 "connect Pages git integration for `nlqdb-elements`" item was made
 obsolete by the move to GH Actions for every surface.
 
@@ -216,15 +216,15 @@ ships, not before. Listed in order of when they bite.
 
 ### Reference
 
-- [DESIGN.md](./DESIGN.md) — system design (auth, pricing, $0 stack, AI-model selection, hello-world, hosted db.create §3.6).
-- [PLAN.md](./PLAN.md) — phased roadmap, alternative-tech evaluation, cost discussion.
-- [IMPLEMENTATION.md](./IMPLEMENTATION.md) — Phase 0 plan + prerequisites checklist.
-- [PERFORMANCE.md](./PERFORMANCE.md) — SLOs, latency budgets, span/metric catalog.
-- [GUIDELINES.md](./GUIDELINES.md) — four-habit decision rules.
-- [RUNBOOK.md](./RUNBOOK.md) — what's actually provisioned right now (deploy strategy, preview envs, anonymous-db lifecycle).
+- [./docs/design.md](./docs/design.md) — system design (auth, pricing, $0 stack, AI-model selection, hello-world, hosted db.create §3.6).
+- [./docs/plan.md](./docs/plan.md) — phased roadmap, alternative-tech evaluation, cost discussion.
+- [./docs/implementation.md](./docs/implementation.md) — Phase 0 plan + prerequisites checklist.
+- [./docs/performance.md](./docs/performance.md) — SLOs, latency budgets, span/metric catalog.
+- [./docs/guidelines.md](./docs/guidelines.md) — four-habit decision rules.
+- [./docs/runbook.md](./docs/runbook.md) — what's actually provisioned right now (deploy strategy, preview envs, anonymous-db lifecycle).
 - [docs/research-receipts.md](./docs/research-receipts.md) — prior-art and incident research that shaped the design (Replit, Cortex Analyst, Pinterest table-card RAG, Keysight prompt-injection, Neon free-plan capacity math).
-- [PERSONAS.md](./PERSONAS.md) — who we're building for.
-- [COMPETITORS.md](./COMPETITORS.md) — competitive landscape.
+- [./docs/personas.md](./docs/personas.md) — who we're building for.
+- [./docs/competitors.md](./docs/competitors.md) — competitive landscape.
 
 ## Getting started (dev)
 
@@ -234,7 +234,7 @@ scripts/bootstrap-dev.sh   # installs everything, pulls Ollama models, seeds .en
 scripts/login-cloud.sh     # signs you into cloud providers that have a CLI flow
 ```
 
-What `bootstrap-dev.sh` stands up in one shot (see IMPLEMENTATION.md §2.8):
+What `bootstrap-dev.sh` stands up in one shot (see ./docs/implementation.md §2.8):
 
 - **Runtimes:** Bun (package manager + JS/TS runtime), Node 20+, Go 1.24+, uv (Python).
 - **Formatter + linter:** Biome (JS/TS/JSON/CSS), gofumpt + golangci-lint (Go), ruff (Python).
@@ -258,7 +258,7 @@ bun run hooks:run    # run pre-commit hooks against staged files
 - CLI — single static binary: `nlq new`, `nlq login`, `nlq "..."`.
 - MCP server — so agents can use it too.
 - `<nlq-data>` / `<nlq-action>` HTML elements — the embeddable backend.
-- Plus the platform integrations matrix in [IMPLEMENTATION §10](./IMPLEMENTATION.md#10-platform-integrations--the-matrix) — Nuxt, Next, SvelteKit, Astro, mobile, server middleware, IDE extensions, no-code, iPaaS, analytics tooling, chat platforms.
+- Plus the platform integrations matrix in [IMPLEMENTATION §10](./docs/implementation.md#10-platform-integrations--the-matrix) — Nuxt, Next, SvelteKit, Astro, mobile, server middleware, IDE extensions, no-code, iPaaS, analytics tooling, chat platforms.
 
 ## Community + legal
 

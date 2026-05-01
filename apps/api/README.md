@@ -14,7 +14,7 @@ binding presence is reflected as booleans for `KV`, `DB`,
 and orchestrates the full pipeline: rate-limit → DB resolve → plan
 cache → LLM router → SQL allow-list → Postgres exec → optional
 summary → first-query event emit. Spans + metrics per
-[`PERFORMANCE.md`](../../PERFORMANCE.md) §4 row 6.
+[`../../docs/performance.md`](../../docs/performance.md) §4 row 6.
 
 `POST /v1/stripe/webhook` (Slice 7) is unauthenticated by middleware
 — Stripe authenticates via HMAC signature against
@@ -57,7 +57,7 @@ isolate ends. Setup is idempotent — see [`@nlqdb/otel`](../../packages/otel/RE
 The Postgres adapter ([`@nlqdb/db`](../../packages/db/README.md))
 is wired into `/v1/ask`'s exec step. It emits a `db.query` span and
 records into the `nlqdb.db.duration_ms` histogram per
-[PERFORMANCE §3](../../PERFORMANCE.md#3-span--metric--label-catalog).
+[PERFORMANCE §3](../../docs/performance.md#3-span--metric--label-catalog).
 
 The LLM router ([`@nlqdb/llm`](../../packages/llm/README.md)) is
 wired into `/v1/ask`'s plan + summarize steps. Strict-$0 provider

@@ -1,7 +1,7 @@
 # @nlqdb/llm
 
 LLM router. Cost-ordered failover across the strict-$0 provider chain
-defined in [DESIGN §8.1](../../DESIGN.md#81-strict-0-inference-path).
+defined in [DESIGN §8.1](../../docs/design.md#81-strict-0-inference-path).
 
 ```ts
 import {
@@ -67,11 +67,11 @@ the per-provider reason history.
 | `nlqdb.llm.failover.total`     | `from_provider`, `to_provider`, `reason`     |
 
 Names + label keys pinned in
-[PERFORMANCE §3.2](../../PERFORMANCE.md#32-metric-names).
+[PERFORMANCE §3.2](../../docs/performance.md#32-metric-names).
 
 ## Why an in-house router (no Vercel AI SDK / LangChain)
 
-Per [`GUIDELINES.md`](../../GUIDELINES.md) §1: every provider's wire
+Per [`../../docs/guidelines.md`](../../docs/guidelines.md) §1: every provider's wire
 format is a small fetch call (~50 lines), and we'd rather own the
 ~400-line router than carry a multi-megabyte SDK tree on the Workers
 critical path. Each provider's HTTP shape is researched against the

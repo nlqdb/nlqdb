@@ -8,7 +8,7 @@ scripts/bootstrap-dev.sh   # installs every tool, pulls Ollama models, seeds .en
 scripts/login-cloud.sh     # CLI-based cloud provider logins + checklist for browser-only flows
 ```
 
-See [IMPLEMENTATION §2.8](./IMPLEMENTATION.md#28-dev-toolchain-zero-config--scriptsbootstrap-devsh) for the full toolchain breakdown and [`scripts/bootstrap-dev.sh`](./scripts/bootstrap-dev.sh) for the exact steps.
+See [IMPLEMENTATION §2.8](./docs/implementation.md#28-dev-toolchain-zero-config--scriptsbootstrap-devsh) for the full toolchain breakdown and [`scripts/bootstrap-dev.sh`](./scripts/bootstrap-dev.sh) for the exact steps.
 
 ## Dev loop
 
@@ -60,7 +60,7 @@ CI runs the same commands. Don't skip hooks with `--no-verify` — if a hook is 
 
 ## Monorepo layout
 
-See [IMPLEMENTATION §3](./IMPLEMENTATION.md#3-phase-0--foundations) for the full tree. Workspaces are declared in `package.json#workspaces` and each package README names its phase.
+See [IMPLEMENTATION §3](./docs/implementation.md#3-phase-0--foundations) for the full tree. Workspaces are declared in `package.json#workspaces` and each package README names its phase.
 
 ## Filing issues
 

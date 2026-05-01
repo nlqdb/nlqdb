@@ -39,7 +39,7 @@ jobs:
           path-to-signatures: 'signatures/v1/cla.json'
           path-to-document: 'https://github.com/nlqdb/nlqdb/blob/main/CLA.md'
           branch: 'main'
-          allowlist: dependabot[bot],renovate[bot],github-actions[bot]
+          allowlist: dependabot[bot],renovate[bot],github-actions[bot],Claude,claude[bot]
           remote-organization-name: nlqdb
           remote-repository-name: cla-signatures
           create-file-commit-message: 'chore(cla): create signatures store'
