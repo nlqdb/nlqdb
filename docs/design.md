@@ -176,8 +176,11 @@ unavoidable recurring cost; see §7).
 
 ### 3.1 Marketing site — `nlqdb.com`
 
-Static-first **Astro** (0KB JS by default; islands where needed). Hosted on
-Cloudflare Pages. Lighthouse 100/100/100/100. Implementation: [`apps/web`](../apps/web).
+> **Canonical for marketing-site decisions:** [`.claude/skills/web-app/SKILL.md`](../.claude/skills/web-app/SKILL.md).
+> Stack choice (`SK-WEB-001`), goal-first hero (`SK-WEB-002`), and
+> "above-the-fold is runnable code, not feature bullets" (`SK-WEB-003`)
+> are all canonical there. Hosted on Cloudflare Pages, Lighthouse
+> 100/100/100/100. Implementation: [`apps/web`](../apps/web).
 
 **The message: 0 to 1 with no backend.** The home page is built the way
 we say users should build — `<nlq-data>` and `<nlq-action>` (§3.5) render
@@ -187,17 +190,17 @@ page, and it works. Marketing copy is *under* the fold; runnable code is
 
 **Above the fold** (in this order, vertically):
 
-1. **Goal-first input** — *"What are you building?"* (§14.1). Enter morphs
-   into chat via View Transitions, DB created silently, no signup wall.
-   On chat completion the page inlines an embed snippet (the same one in
-   the code panel below) with the user's `pk_live_` already filled in
-   (§14.5 "Copy snippet").
+1. **Goal-first input** — *"What are you building?"* (§14.1). See
+   `SK-WEB-002` for the full decision (View-Transition morph, no
+   signup wall, DB silently materialized). On chat completion the
+   page inlines an embed snippet with the user's `pk_live_` already
+   filled in (`SK-WEB-007`; details §14.5 "Copy snippet").
 2. **Tabbed code-example panel** — one snippet per surface, ≤10 lines each,
    all rendering against the *same* demo DB:
    `HTML` (default, shortest) · `React` · `Vue` · `Agent (MCP)` · `curl`.
-   Each has a copy button; switching tabs swaps the surface that the live
-   embed beneath the panel renders through. **The contrast IS the
-   message** — every snippet is the entire backend.
+   Each has a copy button (`home.snippet_copied` event for funnel signal);
+   switching tabs swaps the surface that the live embed beneath the panel
+   renders through. *Why this shape:* `SK-WEB-003`.
 3. **"What this replaces" strip** — DB / schema / ORM / endpoint / auth /
    cache / migration / deploy boxes that visually collapse on scroll into
    a single `<nlq-data>` line. One animation, scroll-driven, not on hover.
@@ -205,9 +208,7 @@ page, and it works. Marketing copy is *under* the fold; runnable code is
    product); GitHub star count (when the repo is public).
 
 Below the fold is allowed to be longer, comparative, or technical:
-manifesto excerpt, persona vignettes, blog teasers, docs link. Above the
-fold must be either a working snippet or proof that snippets work — no
-feature bullets, no logo grids, no "trusted by".
+manifesto excerpt, persona vignettes, blog teasers, docs link.
 
 **Code surfaces we promise on the home page** (full integration matrix in
 [`IMPLEMENTATION §10.1`](./implementation.md)):
