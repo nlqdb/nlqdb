@@ -265,16 +265,10 @@ Signed-in surface. Same Astro project, React islands for chat + dashboard.
 
 ### 3.3 CLI — `nlq`
 
-Single static Go binary (`nlq`, 3 chars, no PATH collision). npm scope
-`@nlqdb/*` owned; binary name `nlq` and npm name `nlqdb` are taken so we
-don't publish under either.
-
-**Install:** `curl -fsSL https://nlqdb.com/install | sh` → `~/.local/bin/nlq`.
-Also: `brew install nlqdb/tap/nlq`, `npm i -g @nlqdb/cli` (Node shim).
-
-**Conventions** (per `gh` / `fly` / `wrangler`): subcommand-first
-(`nlq <noun> <verb>`), human output by default with `--json` for scripts,
-never TTY-detect. Preferences in `~/.config/nlqdb/config.toml` (non-secret only).
+> **Canonical for `nlq`:** [`.claude/skills/cli/SKILL.md`](../.claude/skills/cli/SKILL.md).
+> Decisions that lived here (binary identity, install paths, conventions,
+> auth flow, credential custody, CI escape hatch) are now `SK-CLI-001..011`
+> in the skill. This section keeps the verb surface at a glance.
 
 **Default surface:**
 
@@ -282,33 +276,14 @@ never TTY-detect. Preferences in `~/.config/nlqdb/config.toml` (non-secret only)
 nlq                          # interactive prompt → creates DB silently, drops into REPL
 nlq new "an orders tracker"  # one-liner: creates DB from goal, opens chat
 nlq "how many signups today" # bare query against the current DB
-nlq login                    # device-code flow (browser); see auth below
+nlq login                    # device-code flow (browser); details in cli/SKILL.md
 nlq mcp install              # auto-detects MCP host(s) and sets them up (§3.4)
 ```
 
 **Power-user surface:** `nlq db create|list`, `nlq query <db> "…"`,
 `nlq chat <db>`, `nlq use <db>`, `nlq connection <db>` (raw Postgres URL).
-
-**Auth flow** (per §0; full spec §4.3):
-
-1. **Anonymous-first.** Bare queries work with no sign-in. The CLI mints
-   an anonymous token (72h window, §4.1) into the OS keychain.
-2. **`nlq login`** uses OAuth 2.0 Device Authorization Grant. The browser
-   lands on `verification_uri_complete` with the code pre-filled in the
-   URL — one "Approve this device?" click, no typing. Raw code is printed
-   as a fallback for SSH / headless. On approval: anonymous DBs adopted
-   (§4.1); refresh token (90d) to OS keychain; access token (1h, JWT)
-   held in memory.
-3. **Silent refresh.** 401 → refresh → retry, once. If refresh fails,
-   CLI re-runs the device flow in-place and resumes the command.
-4. **`nlq logout`** wipes the keychain entry. `nlq whoami` prints identity
-   + device + last-used.
-5. **CI mode.** `NLQDB_API_KEY` takes precedence; `nlq login` is skipped
-   and no keychain access is attempted. Only env-var auth path.
-6. **Storage** is always the OS keychain (`zalando/go-keyring`: Keychain /
-   Credential Manager / libsecret). Fallback: AES-GCM file at
-   `~/.config/nlqdb/credentials.enc` keyed to the machine, with a warning.
-   Plaintext is never an option.
+`nlq logout` wipes the keychain entry; `nlq whoami` prints identity +
+device + last-used.
 
 ### 3.4 MCP server — `@nlqdb/mcp`
 
