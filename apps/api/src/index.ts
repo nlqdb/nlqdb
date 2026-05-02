@@ -13,8 +13,6 @@ import { auth, REVOCATION_KEY_PREFIX } from "./auth.ts";
 import { askFnFromDemoFixtures, DEMO_DB_ID } from "./chat/demo-shortcut.ts";
 import { postChatMessage } from "./chat/orchestrate.ts";
 import { makeChatStore } from "./chat/store.ts";
-import { buildDbCreateDeps } from "./db-create/build-deps.ts";
-import { orchestrateDbCreate } from "./db-create/orchestrate.ts";
 import { buildDemoResult, makeRateLimiter as makeDemoRateLimiter } from "./demo.ts";
 import { parseGoalDbBody, parseJsonBody } from "./http.ts";
 import { makeRequireSession, type RequireSessionVariables } from "./middleware.ts";
@@ -170,6 +168,15 @@ app.post("/v1/ask", requireSession, async (c) => {
         // implemented for create (the orchestrator is await-blocking,
         // not stream-emitting); a follow-up will add per-step events
         // mirroring the orchestrateAsk pattern.
+        //
+        // Dynamic import defers libpg-query's WASM initialization to
+        // the first create request. Static import pulls it into the
+        // Worker startup path, which breaks the workerd integration-test
+        // sandbox (libpg-query reads the .wasm via fs at init time;
+        // wrangler's esbuild inlines it for production but the test
+        // runner loads TypeScript source directly).
+        const { buildDbCreateDeps } = await import("./db-create/build-deps.ts");
+        const { orchestrateDbCreate } = await import("./db-create/orchestrate.ts");
         try {
           const { deps: createDeps, secretRef } = buildDbCreateDeps(c.env);
           const result = await orchestrateDbCreate(createDeps, {
