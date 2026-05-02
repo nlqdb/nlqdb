@@ -208,7 +208,7 @@ app.post("/v1/ask", requireSession, async (c) => {
           error: {
             status: "db_id_required" as const,
             message:
-              "no db specified — provide dbId in the request body or use a goal that creates a db (e.g. 'an orders tracker'). Per-surface resolution (candidate_dbs / prompt / MCP elicit) lands in a follow-up slice.",
+              "No db specified — include a dbId or phrase your goal as a create request (e.g. 'an orders tracker').",
           },
         },
         400,

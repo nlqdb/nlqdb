@@ -103,7 +103,7 @@ describe("classifyKind — heuristic v0", () => {
       expect(result.kind).toBe("create");
     });
 
-    it("includes the matched tokens in the reason for tracebility", () => {
+    it("includes the matched tokens in the reason for traceability", () => {
       const result = classifyKind("create a journal");
       expect(result.reason).toContain("create");
       expect(result.reason).toContain("journal");

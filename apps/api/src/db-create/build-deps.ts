@@ -76,14 +76,6 @@ export function buildDbCreateDeps(envBindings: Cloudflare.Env): BuildDbCreateDep
   };
 }
 
-// Pg client wrapper around Neon's HTTP serverless driver. The
-// orchestrator's PgClient interface is intentionally narrow
-// (`query(sql, params) → { rows, rowCount }`) so different drivers
-// can drop in. Today this is HTTP; if the provisioner's
-// BEGIN/COMMIT pattern proves brittle over stateless HTTP, the
-// follow-up swaps to the WebSocket-based driver here without
-// touching the provisioner.
-//
 // KNOWN INTEGRATION CAVEAT: Neon HTTP is per-request stateless.
 // Sequential `BEGIN; ...; COMMIT;` calls each become a separate
 // HTTP round-trip with no shared transaction. The provisioner's
@@ -144,6 +136,4 @@ async function noopEmbedTableCards(
   _deps: EmbedDeps,
   _plan: SchemaPlan,
   _dbId: string,
-): Promise<void> {
-  // Intentional no-op. See file header for the follow-up ticket.
-}
+): Promise<void> {}

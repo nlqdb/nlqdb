@@ -113,17 +113,8 @@ function tokenize(goal: string): string[] {
   return goal.toLowerCase().match(/[a-z][a-z']+/g) ?? [];
 }
 
-/**
- * Classify a goal string into one of `create | query | write`.
- *
- * Called from `/v1/ask` only when `dbId` is absent. dbId-present
- * requests skip this entirely (see file header).
- *
- * Today this is a token-set heuristic. The LLM swap-in (cheap
- * classifier-tier call returning the same `ClassifyKindResult` shape)
- * is the follow-up PR; this function's signature stays stable so the
- * route handler doesn't change.
- */
+// LLM swap-in is the follow-up PR; signature (`ClassifyKindResult`) stays
+// stable so the route handler doesn't change (see file header for rationale).
 export function classifyKind(goal: string): ClassifyKindResult {
   const tokens = tokenize(goal);
   if (tokens.length === 0) {
