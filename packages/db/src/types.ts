@@ -174,11 +174,30 @@ export const ColumnTypeSchema = z.enum([
 ]);
 export type ColumnType = z.infer<typeof ColumnTypeSchema>;
 
+// Safe DEFAULT expressions: numeric literals, booleans, NULL, single-quoted
+// string literals (no embedded single quotes — use doubled '' if needed),
+// and the common zero-arg functions the schema-inference LLM is likely to emit.
+// Rejects `;`, `--`, and `/*` which have no legitimate place in a DEFAULT
+// clause and are the canonical SQL injection entry points.
+// libpg_query parse (SK-HDC-003 layer 2) catches everything else.
+const SAFE_DEFAULT_RE =
+  /^(-?\d+(\.\d+)?|true|false|TRUE|FALSE|null|NULL|'[^']*'|gen_random_uuid\(\)|uuid_generate_v4\(\)|now\(\)|CURRENT_TIMESTAMP|CURRENT_DATE)$/;
+
 export const ColumnSchema = z.object({
   name: IdentifierSchema,
   type: ColumnTypeSchema,
   nullable: z.boolean().default(true),
-  default: z.string().nullable().optional(),
+  default: z
+    .string()
+    .refine((s) => !s.includes(";") && !s.includes("--") && !s.includes("/*"), {
+      message: "DEFAULT value must not contain SQL statement terminators or comments",
+    })
+    .refine((s) => SAFE_DEFAULT_RE.test(s.trim()), {
+      message:
+        "DEFAULT must be a numeric literal, boolean, NULL, quoted string, or a known zero-arg function (gen_random_uuid(), now(), CURRENT_TIMESTAMP, CURRENT_DATE)",
+    })
+    .nullable()
+    .optional(),
   description: z.string().max(500),
 });
 export type Column = z.infer<typeof ColumnSchema>;
@@ -210,9 +229,16 @@ export const MetricSchema = z.object({
   name: IdentifierSchema,
   description: z.string().max(500),
   agg: AggSchema,
-  // Free-form `table.column` reference (e.g. "orders.total"). The
-  // compiler resolves it; the LLM doesn't get to author SQL here.
-  expression: z.string().min(1).max(500),
+  // `table.column` reference (e.g. "orders.total") or `table.*` for
+  // count-star. The compiler resolves it; the LLM doesn't get to
+  // author SQL here. Restricted to lower_snake_case identifiers so
+  // the expression can never smuggle a SQL fragment through.
+  expression: z
+    .string()
+    .regex(
+      /^[a-z][a-z0-9_]*\.[a-z*][a-z0-9_]*$/,
+      'must be a "table.column" reference (lower_snake_case) or "table.*" for count-star',
+    ),
 });
 export type Metric = z.infer<typeof MetricSchema>;
 
@@ -224,9 +250,14 @@ export const DimensionSchema = z.object({
 });
 export type Dimension = z.infer<typeof DimensionSchema>;
 
+// Sample-row values are parameterised in INSERT statements (SK-HDC-009
+// point 2) so every value must be a scalar Postgres can accept as a $N
+// parameter. Objects and arrays can't be parameterised and would fail
+// at INSERT time; reject them here so the error surfaces at plan
+// validation rather than mid-transaction.
 export const SampleRowSchema = z.object({
   table: IdentifierSchema,
-  values: z.record(z.unknown()),
+  values: z.record(z.union([z.string(), z.number(), z.boolean(), z.null()])),
 });
 export type SampleRow = z.infer<typeof SampleRowSchema>;
 

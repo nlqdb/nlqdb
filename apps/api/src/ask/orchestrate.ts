@@ -107,7 +107,12 @@ export async function orchestrateAsk(
   if (!decision.allowed) {
     return {
       ok: false,
-      error: { status: "rate_limited", limit: decision.limit, count: decision.count },
+      error: {
+        status: "rate_limited",
+        limit: decision.limit,
+        count: decision.count,
+        resetAt: decision.resetAt,
+      },
     };
   }
 
@@ -151,11 +156,10 @@ export async function orchestrateAsk(
         dialect: "postgres",
       });
       planSql = plan.sql;
-    } catch (err) {
-      return {
-        ok: false,
-        error: { status: "llm_failed", message: err instanceof Error ? err.message : String(err) },
-      };
+    } catch {
+      // LLM provider errors can contain API keys or prompt fragments —
+      // the OTel span (llm.plan, SK-LLM-006) captures the root cause.
+      return { ok: false, error: { status: "llm_failed" } };
     }
     const fresh: CachedPlan = { sql: planSql, schemaHash };
     // Cache write is non-fatal — we have a valid plan in `planSql`,
@@ -183,15 +187,12 @@ export async function orchestrateAsk(
     result = await deps.exec(db, planSql);
   } catch (err) {
     if (err instanceof DbConfigError) {
-      return { ok: false, error: { status: "db_misconfigured", message: err.message } };
+      // Message would contain the secret ref name — don't leak it.
+      // The span (db.query) records the exception for operator visibility.
+      return { ok: false, error: { status: "db_misconfigured" } };
     }
-    return {
-      ok: false,
-      error: {
-        status: "db_unreachable",
-        message: err instanceof Error ? err.message : String(err),
-      },
-    };
+    // Postgres errors include schema details; keep them server-side.
+    return { ok: false, error: { status: "db_unreachable" } };
   }
 
   await safeEmit({ type: "rows", rows: result.rows, rowCount: result.rowCount });

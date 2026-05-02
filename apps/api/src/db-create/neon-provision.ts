@@ -84,6 +84,12 @@ export async function provisionDb(
       await runQuery(tracer, deps.pg, "BEGIN");
       txStarted = true;
 
+      // Cap every DDL statement so a misbehaving Neon connection or a
+      // pathological DDL expression can't hold the Worker open
+      // indefinitely (SK-HDC-010). `SET LOCAL` scopes to the
+      // transaction; it is automatically reset on COMMIT / ROLLBACK.
+      await runQuery(tracer, deps.pg, "SET LOCAL statement_timeout = '30s'");
+
       await runQuery(tracer, deps.pg, `CREATE SCHEMA IF NOT EXISTS "${schemaName}"`);
 
       // CREATE SCHEMA IF NOT EXISTS is silently no-op when the schema

@@ -36,11 +36,11 @@ export type AskResult = {
 export type AskError =
   | { status: "db_not_found" }
   | { status: "schema_unavailable" }
-  | { status: "db_misconfigured"; message: string }
-  | { status: "db_unreachable"; message: string }
+  | { status: "db_misconfigured" }
+  | { status: "db_unreachable" }
   | { status: "sql_rejected"; reason: string }
-  | { status: "llm_failed"; message: string }
-  | { status: "rate_limited"; limit: number; count: number };
+  | { status: "llm_failed" }
+  | { status: "rate_limited"; limit: number; count: number; resetAt: number };
 
 // Thrown by `exec` callbacks when a DB row's `connection_secret_ref`
 // doesn't resolve to anything in env (operator config error, not a

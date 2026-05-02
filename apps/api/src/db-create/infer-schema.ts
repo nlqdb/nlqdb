@@ -40,11 +40,8 @@ export type InferSchemaArgs = {
 
 export type InferSchemaResult =
   | { ok: true; plan: SchemaPlan }
-  | {
-      ok: false;
-      reason: "ambiguous_goal" | "llm_failed" | "plan_invalid";
-      details?: unknown;
-    };
+  | { ok: false; reason: "ambiguous_goal" | "llm_failed" }
+  | { ok: false; reason: "plan_invalid"; details: { issue_count: number } };
 
 // Bound on the slug derived from `args.name`. The plan-level slug_hint
 // allows up to 63 chars (Postgres identifier limit) but the override
@@ -96,12 +93,11 @@ export async function inferSchema(
   try {
     const resp = await deps.llm.schemaInfer({ goal: args.goal });
     candidate = resp.plan;
-  } catch (err) {
-    return {
-      ok: false,
-      reason: "llm_failed",
-      details: err instanceof Error ? { message: err.message, name: err.name } : String(err),
-    };
+  } catch {
+    // LLM error details (provider messages, API keys in URLs, stack traces)
+    // must not reach the client — GLOBAL-012. The OTel span on the LLM call
+    // (emitted by the router per SK-LLM-006) captures the root cause.
+    return { ok: false, reason: "llm_failed" };
   }
 
   // 2. Slug override (pre-validation so the override participates in
@@ -115,7 +111,13 @@ export async function inferSchema(
   //    Worksheet B (`apps/api/src/ask/sql-validate-ddl.ts`).
   const parsed = SchemaPlanSchema.safeParse(candidate);
   if (!parsed.success) {
-    return { ok: false, reason: "plan_invalid", details: parsed.error.issues };
+    // Don't send raw Zod issues to the client — they expose our schema shape.
+    // The issue count is enough to correlate with OTel if needed.
+    return {
+      ok: false,
+      reason: "plan_invalid",
+      details: { issue_count: parsed.error.issues.length },
+    };
   }
 
   // 4. Shallow-plan heuristic — runs after Zod so we know the shape

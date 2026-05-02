@@ -86,11 +86,10 @@ export async function orchestrateDbCreate(
     { goal: args.goal, ...(args.name !== undefined ? { name: args.name } : {}) },
   );
   if (!inferred.ok) {
-    return err({
-      kind: "infer_failed",
-      reason: inferred.reason,
-      ...(inferred.details !== undefined ? { details: inferred.details } : {}),
-    });
+    if (inferred.reason === "plan_invalid") {
+      return err({ kind: "infer_failed", reason: "plan_invalid", details: inferred.details });
+    }
+    return err({ kind: "infer_failed", reason: inferred.reason });
   }
   const plan = inferred.plan;
 
@@ -159,12 +158,11 @@ export async function orchestrateDbCreate(
   //    embedding out-of-band.
   try {
     await deps.embedTableCards({ pg: deps.pg, llm: deps.llm }, plan, dbId);
-  } catch (e) {
-    return err({
-      kind: "embed_failed",
-      reason: e instanceof Error ? e.message : String(e),
-      dbId,
-    });
+  } catch {
+    // Embedding errors (Workers AI / pgvector) can contain internal
+    // endpoint details — keep them server-side. The dbId is still valid
+    // and queryable; surface it so callers can retry embed out-of-band.
+    return err({ kind: "embed_failed", dbId });
   }
 
   // 7. Anonymous tenants get `pkLive: null` regardless of what the
