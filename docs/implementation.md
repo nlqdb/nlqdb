@@ -114,43 +114,10 @@ match). Ordered steps:
    *DNSSEC*), then copy the DS record Cloudflare gives you back to
    GoDaddy's *DNSSEC* page.
 
-**Flip sequencing (verified 2026-04-24 against the live wizard).**
-Cloudflare Pages *blocks* Custom-Domain attachment until the zone
-is fully active (`"Transfer your DNS to Cloudflare. Once the
-transfer is complete, you'll be able to add this Custom Domain to
-your Pages project."`). Pending zones cannot pre-bind, so we
-cannot eliminate the propagation gap from the Pages side — only
-minimise it. Actual sequence:
-
-1. Keep the Cloudflare zone pending; deploy `apps/coming-soon/` to
-   the `*.pages.dev` URL via `scripts/deploy-coming-soon.sh`.
-   Pre-launch traffic to `nlqdb-coming-soon.pages.dev` already
-   works on HTTPS via Cloudflare's shared cert.
-2. When committing to the domain flip: GoDaddy → *DNSSEC* →
-   **disable** → wait 1-2 min → *Nameservers* → change to the
-   assigned Cloudflare pair → save.
-3. Wait 5-30 min for zone activation (Cloudflare emails you).
-4. Pages project → *Custom domains* → *Set up a custom domain* →
-   pick **Cloudflare DNS** method (not *My DNS provider* — that is
-   for split-horizon cases where DNS stays authoritatively
-   elsewhere) → enter `nlqdb.com`; repeat for `www.nlqdb.com`.
-   Cloudflare auto-creates CNAMEs in the now-active zone and
-   provisions SSL (~3-5 min).
-
-**Visitor-facing gap** during the 5-30 min between step 2 and
-step 4's cert issuance: a mixed experience. Resolvers whose NS
-cache is still warm serve the old GoDaddy parking page; resolvers
-that have propagated to Cloudflare NS return
-`This domain is not configured` until the custom domain is
-attached and SSL provisions. Acceptable for a pre-launch domain;
-unacceptable in steady state. For the `coming-soon → apps/web`
-swap (now happening — see RUNBOOK §6 "apps/web"), we **detach**
-`nlqdb.com` from the legacy `nlqdb-web` Pages project (or whichever
-project still claims it; `nlqdb-coming-soon` already has zero
-custom domains as of 2026-04-28) and **attach** to the new
-`nlqdb-web` Cloudflare **Worker** — a ~2-minute dashboard action
-that doesn't touch NS. The Worker is the new home for `apps/web`
-since PR #49's migration to Workers Static Assets.
+**DNS migration complete.** `nlqdb.com` and `www.nlqdb.com` are served
+by the `nlqdb-web` Worker (Workers Static Assets). The legacy
+`nlqdb-coming-soon` Pages project has 0 custom domains and can be
+deleted from the Cloudflare dashboard.
 
 ### 2.1.1 Inbound email — Cloudflare Email Routing (free)
 
@@ -179,8 +146,6 @@ outbound (Resend) are aligned — premature DMARC breaks mail flow.
    a one-time verification link — click it.
 4. Create forwarding rules: `hello@` → `$FOUNDER_EMAIL`, catch-all
    `*@` → `$FOUNDER_EMAIL`.
-5. Update the coming-soon page's `mailto:` link from the placeholder
-   to `hello@nlqdb.com`.
 
 ### 2.2 Identity / source / distribution
 
@@ -476,29 +441,21 @@ billing, **hosted db.create** (Phase 1 §4).
 
 **Theme:** the goal-first 60-second flow works for a stranger.
 
-- **Marketing site** `nlqdb.com` (static Astro). Single hero input. AEO
-  basics: JSON-LD `SoftwareApplication`, `llms.txt`, `sitemap.xml`,
-  AI-crawler-permissive `robots.txt`.
-> **PIVOT NOTE (2026-04-28, post-PR #49)** — items below describe the
-> Phase 1 *target* state. After PR #49, the chat surface and
-> magic-link/OAuth sign-in UI on the web are **tabled** (UX rework
-> before public exposure); `apps/web` ships a coming-soon-style
-> waitlist + 20-slide carousel instead. The chat backend
-> (`/v1/chat/messages`, `/v1/anon/adopt`, `/api/auth/*` on
-> `app.nlqdb.com`) is tested + dormant. Reactivation is a Phase 1.x
-> or Phase 2 follow-up.
-
+- **Marketing site** `nlqdb.com` (static Astro, live). AEO basics:
+  JSON-LD `SoftwareApplication`, `llms.txt`, `sitemap.xml`,
+  AI-crawler-permissive `robots.txt`. Serves a waitlist + capability
+  carousel; both are removed when the four remaining Phase 1 items
+  (sign-in UI, chat surface, anon-mode web flow, hosted db.create) ship.
 - **Chat surface** `app.nlqdb.com` (one Astro route + React island).
-  Streaming, three-part response, Cmd+K, Cmd+/ trace, in-place edit + re-run. **(tabled)**
+  Streaming, three-part response, Cmd+K, Cmd+/ trace, in-place edit +
+  re-run. Backend (`/v1/chat/messages`) ready; **web UI remaining**.
 - **Anonymous-mode end-to-end** (72h, localStorage token; adopt via one
-  SQL row on sign-in). **(API shipped — `/v1/anon/adopt`; web flow tabled with chat)**
+  SQL row on sign-in). API shipped (`/v1/anon/adopt`); **web flow
+  remaining** — ships with sign-in UI.
 - **Sign-in:** magic link + GitHub OAuth (Google deferred). Cookie
-  `__Secure-session` is the Phase 1 *target* (was `__Host-session` in
-  earlier drafts; `__Host-` is incompatible with the `Domain=` attribute
-  required for cross-subdomain `nlqdb.com` ↔ `app.nlqdb.com` cookies).
-  Better Auth currently emits `__Secure-` with `crossSubDomainCookies`;
-  restoring `__Host-` requires same-origin chat (e.g. bundle `apps/web`
-  static assets into the API Worker). **(UI tabled; backend ready)**
+  `__Secure-session` (rationale in `SK-WEB-006`). Backend at
+  `/api/auth/*` ready; **web UI remaining**. Requires Resend
+  DKIM/SPF/DMARC (human-only prerequisite) before shipping.
 - **Silent refresh + seamless re-auth** on the web per §4.3 design:
   401 → refresh; refresh fail → `/sign-in?return_to=…` preserving the
   pending action.

@@ -1,30 +1,25 @@
-# apps/web — Astro coming-soon site
+# apps/web — Astro marketing site
 
 Phase 1. Static-first Astro deployed via Cloudflare **Workers Static
-Assets** (migrated off Pages 2026-04-27 in PR #49). Lighthouse target
-100/100/100/100 (PLAN §1.1, DESIGN §3.1).
-
-After PR #49's pivot, this is a coming-soon-style site rather than a
-signed-in chat surface. The chat surface (and the magic-link / OAuth
-sign-in UI that fed it) is tabled while the UX is reworked; the
-backend at `app.nlqdb.com` (`/v1/chat/messages`, `/v1/anon/adopt`,
-`/api/auth/*`) is intact and dormant.
+Assets** at `nlqdb.com`. Lighthouse target 100/100/100/100 (PLAN §1.1,
+DESIGN §3.1).
 
 Currently shipping:
 
-- `/` — wordmark + lede + auto-sliding 20-slide capability carousel
-  + waitlist form (POST `/v1/waitlist`).
+- `/` — wordmark + lede + 20-slide capability carousel + waitlist form
+  (POST `/v1/waitlist`). Waitlist is a holding pattern; removed when
+  sign-in UI + chat surface ship.
 - `/manifesto` — long-form philosophy.
 - `robots.txt`, `llms.txt`, hand-rolled `sitemap.xml`.
 - JSON-LD `SoftwareApplication` on every page via `Base.astro`.
-- Live `<nlq-data>` demo on the homepage hero, backed by
-  `/v1/demo/ask`.
+- Live `<nlq-data>` demo on the homepage, backed by `/v1/demo/ask`.
 
-Tabled (Phase 1.x or Phase 2):
+Phase 1 remaining:
 
-- `/sign-in`, `/app`, `/auth/continue` — chat surface + magic-link UI.
+- `/sign-in`, `/app`, `/auth/continue` — chat surface + magic-link UI
+  (backend at `app.nlqdb.com` is ready).
 - `/pricing`, `/docs`, `/blog`, `/showcase`.
-- View Transitions morph from hero into chat (chat tabled).
+- View Transitions morph from hero into chat.
 
 ## Local dev
 
@@ -39,10 +34,7 @@ bun run --cwd apps/web preview  # serve dist/
 ## Deploy
 
 Static `dist/` deployed to a Cloudflare **Worker** (`nlqdb-web`) via
-Workers Static Assets. Configured in `wrangler.toml`. The Worker is
-reachable at `nlqdb-web.<account>.workers.dev`; the DNS flip moving
-`nlqdb.com` from the (now empty-domain) `nlqdb-coming-soon` Pages
-project to this Worker is in progress — see [RUNBOOK §6](../../docs/runbook.md).
+Workers Static Assets at `nlqdb.com`. Configured in `wrangler.toml`.
 
 ```bash
 bun run --cwd apps/web deploy
