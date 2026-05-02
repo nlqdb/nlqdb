@@ -57,6 +57,14 @@ To find every skill affected by a GLOBAL:
 `grep -rn 'GLOBAL-NNN' .claude/skills/`. To find every doc that
 references it: `grep -rn 'GLOBAL-NNN' docs/`.
 
+### P4. Three documentation rules
+
+Before documenting any decision or plan:
+
+- **D1. Resolve open questions first** — Don't document vague decisions. **Push the user to answer open questions** before you document.
+- **D2. Never document ambiguity** — Vague or ambiguous decisions are worse than no documentation. If it's not clear enough to document, it's not ready.
+- **D3. Clarity always increases** — When documenting, **the next steps must be clearer than before**. Never document in a way that leaves the reader more confused.
+
 ## 3. Tech stack (high-level)
 
 - **Runtime:** Cloudflare Workers (free tier — see `GLOBAL-013`)
@@ -203,7 +211,8 @@ Touch path X
     section lists which GLOBAL-NNNs apply — open docs/decisions.md
     alongside the skill if you need their text)
   → do the work
-  → new decision? add SK-<PREFIX>-NNN (or promote to GLOBAL if
+  → new decision? apply P4 (D1, D2, D3): resolve open questions,
+    ensure clarity, then add SK-<PREFIX>-NNN (or promote to GLOBAL if
     cross-cutting)
   → changed a GLOBAL? edit docs/decisions.md (one place); update any
     affected skill's *In this skill:* commentary if the change
@@ -227,8 +236,8 @@ Touch path X
 
 Every SK-* and GLOBAL-* decision must have all five fields
 (Decision / Core value / Why / Consequence / Alternatives) — see
-[`docs/skill-conventions.md`](docs/skill-conventions.md) §4. If you
-can't fill all five, the decision isn't ready to write.
+[`docs/skill-conventions.md`](docs/skill-conventions.md) §4. Per P4 (D1–D3), if you
+can't fill all five or have open questions, don't document it yet.
 
 ### 10.2 Fixing a bug
 
