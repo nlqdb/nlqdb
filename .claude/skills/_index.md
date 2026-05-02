@@ -8,11 +8,6 @@ touches the feature (see the before-editing path map in the root
 How a skill is structured: [`docs/skill-conventions.md`](../../docs/skill-conventions.md).
 Cross-cutting decisions cited by skills: [`docs/decisions.md`](../../docs/decisions.md).
 
-> **Status reckoning.** The wave-2 deeper read corrected several optimistic
-> "implemented" labels in the original dispatch table. The truth is below;
-> the source of truth is each skill's `Status:` field — this index is a
-> mirror.
-
 ## Implemented
 
 | Skill | One-liner | Touchpoints |
@@ -30,16 +25,16 @@ Cross-cutting decisions cited by skills: [`docs/decisions.md`](../../docs/decisi
 | [`elements`](./elements/SKILL.md) | `<nlq-data>` web component; framework-free embedding. | `packages/elements/**` |
 | [`sdk`](./sdk/SKILL.md) | `@nlqdb/sdk` — the only HTTP client (cookie vs bearer). | `packages/sdk/**` |
 | [`mcp-server`](./mcp-server/SKILL.md) | MCP server, `nlq mcp install` host detection. | `packages/mcp/**` |
-| [`web-app`](./web-app/SKILL.md) | Onboarding flow, anonymous-mode default, demo dataset. (Phase 1; chat surface tabled per pivot 2026-04-28) | `apps/web/**` |
 
 ## Partial
 
 | Skill | One-liner | What's done · what's open |
 |---|---|---|
+| [`web-app`](./web-app/SKILL.md) | Marketing site + product web app. | Marketing site live · sign-in UI, chat surface, anon-mode web flow remaining (Phase 1 exit gate) |
 | [`schema-widening`](./schema-widening/SKILL.md) | "Schemas only widen" invariant; `schema_hash` semantics. | `schema_hash` plumbed end-to-end · observed-fields collector + widening trigger ship post-Phase-0 |
 | [`idempotency`](./idempotency/SKILL.md) | `Idempotency-Key` on every mutation; dedupe store; retry-safety. | natural-key dedupe shipped (Stripe webhook, waitlist) · general-purpose `Idempotency-Key` middleware on `/v1/ask` open |
 | [`rate-limit`](./rate-limit/SKILL.md) | Per-key, per-IP rate-limit middleware. | per-account D1 limiter (`/v1/ask`) + per-IP KV limiter (`/v1/demo/ask`) shipped · unified middleware open |
-| [`anonymous-mode`](./anonymous-mode/SKILL.md) | No-login first value across web / CLI / MCP. | API shipped (`/v1/anon/adopt`) · web UI tabled per 2026-04-28 pivot |
+| [`anonymous-mode`](./anonymous-mode/SKILL.md) | No-login first value across web / CLI / MCP. | API shipped (`/v1/anon/adopt`) · web UI remaining (Phase 1 exit gate) |
 
 ## Planned
 

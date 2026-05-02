@@ -12,7 +12,7 @@ when-to-load:
 # Feature: Anonymous Mode
 
 **One-liner:** No-login first-value path across web / CLI / MCP; later attached to a Better Auth identity.
-**Status:** partial (API shipped — `/v1/anon/adopt`; web UI tabled per 2026-04-28 pivot)
+**Status:** partial (API shipped — `/v1/anon/adopt`; web UI remaining — Phase 1 exit gate)
 **Owners (code):** `apps/web/**`, `cli/**`, `apps/api/src/anon-adopt.ts`
 **Cross-refs:** docs/decisions.md#GLOBAL-007 · docs/design.md §0.1, §3.3, §3.6.4, §4.1, §14.3, §14.6 · docs/personas.md (P1, P5 first-touch) · docs/implementation.md §4 (partial status) · docs/runbook.md §9 (anonymous-db lifecycle)
 
@@ -84,6 +84,17 @@ when-to-load:
   - `if (isAnonymous)` branches at each pipeline step — drift over time, double the test surface.
   - Two separate routes for anonymous vs. authenticated — every endpoint duplicates, every bug fixes need two PRs.
 
+### SK-ANON-007 — PoW challenge: Cloudflare Turnstile; triggers at 3 creates / 5 min per IP
+
+- **Decision:** When an IP exceeds 3 anonymous DB-create requests in any rolling 5-minute window, subsequent creates require a Cloudflare Turnstile challenge (invisible/managed mode) before processing.
+- **Core value:** Free, Bullet-proof
+- **Why:** The per-IP 5/hour cap blocks bulk creation over long windows; Turnstile addresses short bursts (a bot at 1 req/s hits 3 creates in 3 s). Turnstile is preferred over raw hashcash because it is free on CF Workers (unlimited requests, free plan), requires zero KV writes for validation (a single `fetch` to `challenges.cloudflare.com/turnstile/v0/siteverify`), and runs entirely in-browser. Argon2/scrypt-based hashcash at useful difficulty (20-bit SHA-256 ≈ 200–500 ms solve) would require a WASM bundle and server-side nonce state. The 3-in-5-min trigger mirrors Cloudflare's own WAF recommendation for sensitive write endpoints.
+- **Consequence in code:** `apps/api/src/middleware/rate-limit.ts` tracks the rolling 5-min create count per IP. At ≥ 3 without a valid `cf-turnstile-response` token, return `428 Precondition Required` with `{ code: "challenge_required", action: "Complete the browser challenge to continue." }`. Turnstile site-key + secret are Workers secrets; site-key is baked into the Astro front-end. Validation: `POST https://challenges.cloudflare.com/turnstile/v0/siteverify` — no KV write.
+- **Alternatives rejected:**
+  - Raw hashcash (SHA-256, 20-bit) — valid self-hosted fallback if Turnstile is unavailable, but requires a challenge-issuance endpoint and HMAC-signed nonce management (ALTCHA pattern).
+  - Argon2/scrypt — memory-hard; impractical in browser JS at useful difficulty without a WASM bundle.
+  - KV-backed nonce tracking — 1,000 KV writes/day budget; too expensive.
+
 ## GLOBALs governing this feature
 
 Canonical text in [`docs/decisions.md`](../../docs/decisions.md). The list below names the rules that constrain this feature; any skill-local commentary is nested under the rule.
@@ -93,9 +104,7 @@ Canonical text in [`docs/decisions.md`](../../docs/decisions.md). The list below
 
 ## Open questions / known unknowns
 
-- **Web flow reactivation date.** API path (`/v1/anon/adopt`) is shipped and tested but the chat-surface UI on `apps/web` is tabled per the 2026-04-28 pivot. Reactivation date undecided.
 - **MCP-side anonymous identity.** The current design has no MCP anonymous token — every MCP call carries a host-scoped key minted at install time. Whether a future "MCP try-before-install" flow needs an anonymous shape (server-issued one-shot key with stricter limits) is open.
 - **Pressure-sweep eviction order beyond "oldest first".** `docs/runbook.md §9.3` drops the oldest anonymous DB when total bytes exceed 300 MB. Whether to weight eviction by size (drop biggest-and-oldest first) is undecided; the simpler oldest-first is the current pick.
-- **PoW threshold.** `docs/design.md §3.6.8` mentions PoW on signup if a wave of anonymous creates hits the bucket — concrete threshold and PoW algorithm choice are not pinned.
-- **Cross-device anonymous continuity.** Today's anonymous identity is per-device (per-browser `localStorage`, per-CLI keychain). A user who creates an anonymous DB on web and runs `nlq` on the same machine has *two* anonymous identities. Decision on whether to unify (e.g. via a paste-this-code handshake) is open.
+- **Cross-device anonymous continuity.** Per-device anonymous identity (per-browser `localStorage`, per-CLI keychain) is the Phase 1 design. Cross-device unification (e.g., a paste-this-code handshake) is deferred to Phase 2 — it adds complexity for a small fraction of users and the per-device model covers the majority use case.
 - **Browser-storage clearing.** A user who clears `localStorage` before signing in loses access to their anonymous DB (the device-token hash is the only handle). No recovery path is currently designed; whether this is acceptable or needs a "lost my anonymous DB" support endpoint is open.

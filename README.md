@@ -40,7 +40,7 @@ That's the whole backend. No SQL, no schema, no API, no framework.
 
 [`examples/`](./examples) — minimal scaffolds in plain HTML, Next.js, Nuxt, SvelteKit, Astro, plus a CLI-only walkthrough. Each is the smallest valid integration around one `<nlq-data>` element or one CLI session.
 
-> **Status (Phase 0):** `/v1/ask` and `/v1/stripe/webhook` are live in `apps/api`. The `<nlq-data>` element + `apps/web` chat surface land in Phase 1, so these examples are still spec-only end-to-end — call sites are the contract.
+> **Status:** `/v1/ask`, `<nlq-data>`, and the marketing site are live. Examples are spec-only end-to-end until the Phase 1 chat surface ships.
 
 ## Progress & roadmap
 
@@ -49,7 +49,7 @@ Pre-alpha. The bar below is the path from "Phase 0 backend exists" to
 
 ```
 Phase 0  Foundations         ████████████████████  10/10  ✓
-Phase 1  On-ramp              ████████████░░░░░░░░   6/10  (chat + auth UI tabled)
+Phase 1  On-ramp              ████████░░░░░░░░░░░░   4/11  (sign-in, chat, anon-mode, db.create remaining)
 Phase 2  Agent + dev surfaces ████░░░░░░░░░░░░░░░░   1/7   (@nlqdb/sdk shipped)
 Phase 3  Multi-engine engine  ░░░░░░░░░░░░░░░░░░░░   0/5
 Phase 4  Enterprise polish    ░░░░░░░░░░░░░░░░░░░░   0/6
@@ -73,25 +73,22 @@ Each step is 2–4 words on purpose — full spec lives in
 
 ### Phase 1 — On-ramp (in progress)
 
-After PR #49's pivot, `apps/web` is a coming-soon-style page (waitlist
-+ 20-slide showcase carousel) rather than a signed-in chat surface.
-The chat backend is tested and dormant; the UI is reworked before
-public exposure. Tabled items below are explicitly deferred, not "in
-progress".
+The goal: a stranger lands on `nlqdb.com`, creates a DB in plain English,
+embeds it in an HTML file, and sends the link to a friend — in under 60
+seconds, no card, no config. The waitlist + carousel on the current site
+are a holding pattern; they ship away when all four remaining items land.
 
-- ✓ Marketing skeleton (Astro on Workers Static Assets)
+- ✓ Marketing site (Astro, Workers Static Assets, live at `nlqdb.com`)
 - ✓ `<nlq-data>` v0 (live, public `/v1/demo/ask` endpoint, fixture-backed)
-- ✓ Coming-soon waitlist + 20-slide capability carousel
-- ✓ `/v1/waitlist` (D1, atomic dedup, privacy-preserving 200-on-dup)
-- ✓ `apps/web` deployed via Workers Static Assets
-- ✓ DNS flip `apps/coming-soon` → `apps/web` (PR #56 + manual detach)
-- ◯ Hosted db.create — typed-plan + provisioner ([`DESIGN §3.6`](./docs/design.md), [`docs/research-receipts.md`](./docs/research-receipts.md)). Unblocks every `<nlq-data>` live claim — drop a tag with no `db=`, get a working db on first hit.
+- ✓ Waitlist + capability carousel (holding pattern; removed at Phase 1 close)
+- ✓ `apps/web` live at `nlqdb.com` (DNS flip complete, PR #56)
+- ◯ Sign-in UI — magic-link + GitHub OAuth (`/api/auth/*` backend ready; requires Resend DKIM/SPF/DMARC)
+- ◯ Chat surface — streaming 3-part response, anon-mode (`/v1/chat/messages` backend ready)
+- ◯ Anonymous-mode web flow — 72h localStorage token → adopt on sign-in (`/v1/anon/adopt` backend ready)
+- ◯ Hosted db.create — typed-plan + provisioner ([`DESIGN §3.6`](./docs/design.md)). Unblocks every `<nlq-data>` live claim.
 - ◯ API keys page (`pk_live_<dbId>...` per-db, `sk_live_…` account-scoped)
 - ◯ `<nlq-action>` writes (signed write-tokens)
 - ◯ Hello-world tutorial (canonical entry; satisfied by db.create)
-- ⏸ Chat surface (tabled — UX rework before public; `/v1/chat/messages` API dormant)
-- ⏸ Magic-link + GitHub + Google sign-in UI (tabled with chat; `/api/auth/*` API ready)
-- ⏸ Anonymous-mode adoption flow (`/v1/anon/adopt` API shipped; web flow tied to chat)
 
 ### Phase 2 — Agent + developer surfaces
 

@@ -10,7 +10,7 @@ when-to-load:
 # Feature: Web App
 
 **One-liner:** Marketing + product web app — onboarding, anonymous-mode default, demo dataset.
-**Status:** implemented (Phase 1, partial — chat surface tabled per pivot 2026-04-28)
+**Status:** partial (Phase 1 — sign-in UI, chat surface, anon-mode web flow remaining; these are the Phase 1 exit gate)
 **Owners (code):** `apps/web/**`
 **Cross-refs:** docs/design.md §3.1 (marketing site) · docs/design.md §3.2 (platform web app) · docs/design.md §14.1, §14.2 (happy paths) · docs/personas.md (P1, P3, P5) · docs/implementation.md §4 (Phase 1 web slices)
 
@@ -102,9 +102,8 @@ Canonical text in [`docs/decisions.md`](../../docs/decisions.md). The list below
 
 ## Open questions / known unknowns
 
-- **Chat-surface reactivation timing.** The 2026-04-28 pivot tabled the chat UI on `apps/web`; the backend (`/v1/chat/messages`, `/v1/anon/adopt`, `/api/auth/*`) is tested and dormant. Reactivation is a Phase 1.x or Phase 2 follow-up — no firm date.
-- **CSV upload.** Required for P3 (data-curious analyst) per `docs/personas.md`. Listed as Phase 1 priority but tabled with the chat surface. Decision on whether it ships before, with, or after chat reactivation is open.
-- **Same-origin chat for restoring `__Host-`.** Tracked as a future architecture change — bundle `apps/web` static assets into the API Worker so chat is same-origin. No timeline.
-- **Sharing a query result by link.** P1-priority surface mentioned in `docs/personas.md` ("Sharing a query result as a link") — implementation slice not yet scoped.
-- **Plausible vs Plausible-self-hosted decision.** `docs/design.md §3.1` says "Plausible, self-hosted"; `docs/plan.md` lists Plausible without qualifier. Reconcile when wiring web analytics.
-- **Marketing-site live ticker source-of-truth.** Anonymized query ticker is described in design but the data-pipe (which sample, what redaction, which OTel attributes) is undecided.
+- **Same-origin chat for restoring `__Host-`.** Future architecture change — bundle `apps/web` static assets into the API Worker so chat is same-origin, allowing `__Host-` cookie. No timeline; deferred post-chat-surface launch.
+- **Sharing a query result by link.** P1-priority surface per `docs/personas.md` — implementation slice not yet scoped.
+- **CSV upload.** Required for P3 (data-curious analyst) per `docs/personas.md`. Deferred to Phase 2 alongside CLI.
+- **Plausible vs Plausible-self-hosted.** `docs/design.md §3.1` says "Plausible, self-hosted"; `docs/plan.md` lists Plausible without qualifier. Reconcile when wiring web analytics.
+- **Marketing-site live ticker source-of-truth.** Data-pipe (which sample, what redaction, which OTel attributes) undecided.
