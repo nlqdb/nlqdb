@@ -107,3 +107,53 @@ Canonical text in [`docs/decisions.md`](../../docs/decisions.md). The list below
 - **Promote-to-account UX.** DBs created via MCP are tagged `(mcp_host, device_id)` and promote-to-account is "one click" in the design — the click target and confirmation copy are not specified yet.
 - **`NLQDB_API_KEY` precedence inside the local transport.** Design says it takes precedence over any config file; need explicit test coverage for the precedence chain (`env > host config > device key`) on the local transport.
 - **Session token revocation latency.** `GLOBAL-018` requires "instant" revocation; the hosted MCP transport's edge-cache TTL for the revocation set is not yet pinned.
+
+## Happy path walkthrough
+
+### §14.4 MCP server (`@nlqdb/mcp`)
+
+**Install** (one command, no arg; auto-detects what you have installed):
+
+```bash
+$ nlq mcp install
+🔎 Scanning: Claude Desktop, Cursor, Zed, Windsurf, VS Code, Continue
+✓ Found: Claude Desktop, Cursor
+
+→ Opening browser to approve this device… (fallback code: AB12-CD34)
+✓ Signed in as jordan@example.com.
+
+✓ Claude Desktop  — wrote config; Claude Desktop is running, restart to activate? [Y/n] y
+                    ↳ quit & relaunched. Self-check: ok.
+✓ Cursor          — wrote config; hot-reloaded. Self-check: ok.
+
+Done. Your MCP keys appear at nlqdb.com/settings/keys.
+```
+
+If only one host is installed, the prompt is skipped and the install is silent. If none are installed, the CLI prints one line pointing the user at `nlqdb.com/mcp` and exits.
+
+**Power-user forms** (escape hatches, always available):
+
+```bash
+$ nlq mcp install claude       # explicit host; skips auto-detection
+$ nlq mcp install --all        # install into every detected host, no prompt
+$ nlq mcp install --dry-run    # print what would happen; touch nothing
+$ NLQDB_API_KEY=sk_... nlq …   # CI / Docker / air-gapped — env-var override
+```
+
+**Usage from inside the host LLM** (the agent doesn't need to know about "databases"):
+
+```
+[Claude Desktop, after install]
+User:  "Remember that I prefer metric units and I'm vegetarian."
+Claude → calls tool: nlqdb_query("preferences", "remember: metric units, vegetarian")
+       → tool returns: { ok, db: "preferences-93b" }
+Claude:  "Got it. I'll remember."
+
+[next session, hours later]
+User:  "Plan me a Berlin food trip."
+Claude → calls tool: nlqdb_query("preferences", "what do you remember about me?")
+       → returns: "metric units, vegetarian"
+Claude:  "Here's a vegetarian itinerary in km..."
+```
+
+The agent never called `nlqdb_create_database`. The DB materialized on first reference. The agent's prompt has one tool, not two.

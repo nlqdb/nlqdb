@@ -25,7 +25,94 @@ open questions below must be answered before code lands. The skill
 exists now so the `SK-MULTIENG-NNN` ID prefix is reserved and
 `_index.md` is comprehensive (per `docs/skill-conventions.md §6`)._
 
-The shape of the feature is sketched in `docs/architecture.md §10 §2.2`:
+## Phase 2 engine architecture
+
+The Phase 2 engine continuously reads the query log and picks — and changes — the backend without downtime.
+
+```
+                    ┌─────────────────────────┐
+  user query ──►    │  Query Planner (LLM +   │ ──► engine-specific executor
+                    │  learned router)        │        │
+                    └────────────┬────────────┘        │
+                                 │                     ▼
+                                 ▼               ┌────────────────────────┐
+                         ┌───────────────┐       │  Engines (per-db):     │
+                         │ Query Log     │◄──────│  PG │ Mongo │ Redis │  │
+                         │ (append-only) │       │  DuckDB │ pgvector │  │
+                         └──────┬────────┘       └──────────┬─────────────┘
+                                │                           │
+                                ▼                           │
+                      ┌──────────────────┐                  │
+                      │ Workload Analyzer│ ─── decision ──► Migration Orchestrator
+                      │ (background)     │                  │
+                      └──────────────────┘                  ▼
+                                                     ┌───────────────┐
+                                                     │ Shadow + Cutover│
+                                                     └───────────────┘
+```
+
+### Query Planner
+- Given NL query + current engine + schema snapshot, emits a typed plan.
+- Hybrid: cached template router (fast path for repeat-structure queries) + LLM fallback (cold path).
+- Returns a *confidence score*; low confidence triggers inline clarification chips.
+- Plans are content-addressed and cached per-schema-hash.
+
+### Execution layer
+- One adapter per engine. Common `Executor` interface: `execute(plan) -> stream<row>`.
+- We own the connection pool per user-DB. PgBouncer-style, but ours.
+
+### Query Log (workload fingerprint)
+- Every query writes: fingerprint, latency, rows scanned, rows returned, engine used, plan shape (point-get / range / agg / join / doc-traversal / full-text / vector / graph-walk).
+- Fingerprints are anonymized; the *shape* is stored, not the data.
+- Storage: hot in Postgres, cold in ClickHouse.
+
+### Workload Analyzer
+- Runs every N minutes per DB.
+- Classifies the workload distribution into a vector over engine affinities.
+- Emits a recommendation: `{ current: pg, recommended: redis+pg, confidence: 0.87, reason: "92% of queries in last 24h are point-lookups by primary key with <1KB values" }`.
+- Never auto-migrates on its own decision alone — requires (a) confidence > threshold, (b) sustained over a window (hours, not minutes), (c) projected cost/latency win > threshold.
+
+### Migration Orchestrator
+- **Shadow-writes** to the new engine while reads stay on the old one.
+- Backfill in parallel; throttled against current load.
+- **Dual-read verification** — a sample of production reads runs on both engines and we compare results. Any divergence blocks cutover and pages.
+- **Atomic cutover** via a per-db routing pointer. Rollback is a pointer flip.
+- The user sees a single subtle line in their trace: `engine: postgres → redis (migrated 2h ago)`. Nothing more, unless they ask.
+
+### Backup & restore
+- Continuous WAL-style backup per engine to object storage (R2 primary — cheapest egress; S3 secondary).
+- Point-in-time restore to any second in last 7 days on free tier, 30 days on paid.
+- Restore is a natural-language action too: "restore orders to yesterday 3pm."
+
+### Engine selection heuristics (starting point, will be learned)
+
+| Workload signature | Engine |
+|---|---|
+| Majority writes + point reads by id, small values | Redis (persistence on) |
+| Relational joins, constraints, strong consistency | Postgres |
+| Document-shaped, variable schema, deep nesting | Mongo *or* Postgres JSONB (prefer JSONB unless nesting > 4 levels and access is by nested path) |
+| Analytics, scans, aggregations over millions of rows | DuckDB (embedded) or ClickHouse (managed, at scale) |
+| Semantic search, embeddings | pgvector (default) → Qdrant (if corpus > ~10M vectors) |
+| Time-series append-heavy | TimescaleDB extension on PG |
+| Full-text search heavy | PG `tsvector` default → Typesense at scale |
+| Graph traversals (>3 hops common) | Postgres recursive CTE default → Neo4j only if truly graph-native workload |
+
+**Principle:** default to Postgres + extensions. Only move off Postgres when the evidence is overwhelming.
+
+### Multi-tenancy & isolation
+- **Phase 2a (early):** Postgres schema-per-DB on shared clusters. Row-level-security off, we rely on connection-level scoping.
+- **Phase 2b (scale):** tier-based tenancy — free + hobby share clusters; pro+ get dedicated compute (Neon branches, Fly Machines, or our own k8s). The user never sees this shift.
+- **Noisy neighbor mitigation:** per-DB query timeouts, per-DB memory caps, per-DB connection caps, all enforced at the proxy.
+
+### Phase 2 exit criteria
+- Auto-migration between at least PG ↔ Redis and PG ↔ DuckDB running in prod with zero user-visible downtime across 100+ migrations.
+- Workload Analyzer's decisions beat a human DBA on a held-out benchmark (we'll build it).
+- p99 query latency under the *current* engine is within 1.3× of hand-written queries against that engine directly.
+- Backups: verified restore drill passes weekly.
+
+---
+
+The shape of the feature is sketched above and in `docs/architecture.md §10 §2.2`:
 **one adapter per engine; common `Executor` interface
 `execute(plan) -> stream<row>`; we own the connection pool per
 user-DB.** The engine target list (`docs/architecture.md §10 §2.3`) and the

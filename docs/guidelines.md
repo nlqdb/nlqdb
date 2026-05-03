@@ -159,6 +159,28 @@ breaks.
 
 ---
 
+## 6. Bullet-proof-by-design checklist
+
+We make bad states unreachable, not caught. Before shipping any user-visible feature, verify each row.
+
+| Edge case | How it's unreachable |
+|---|---|
+| Schema mismatch | Schemas only widen. `ALTER TABLE ADD COLUMN … NULL`. |
+| Cache invalidation | Plan cache keyed by `(schema_hash, query_hash)`. Old keys LRU. |
+| Signup race | Idempotent on email. Second signup = sign-in. |
+| Double-charge | `Idempotency-Key` required on mutations; Stripe webhooks deduped. |
+| Wrong-tenant leak | Enforced at the connection pool, not app code. No branch to take. |
+| SQL injection | No SQL strings; planner emits typed plan, executor binds. |
+| Cold-start timeout | Workers cold-start <5ms; Neon resume <1s; 2s first-byte ceiling. |
+| LLM column hallucination | Post-plan schema validation; re-prompt with the error. |
+| Accidental mass delete | Destructive plans show a diff, require second Enter. |
+| Leaked browser API key | `pk_live_` is read-only, origin-pinned, rate-limited. |
+| Marketing site outage | Static on Cloudflare CDN. Only fails if CF global is down. |
+| Email spam-folder | Resend SPF/DKIM/DMARC; plain templates, transactional only. |
+| Surprise trial charge | Never auto-charge. Free rate-limits; never deletes, never upgrades. |
+
+---
+
 This file pairs with [`CONTRIBUTING.md`](../CONTRIBUTING.md) (mechanics:
 hooks, branches, commit format) and [`./architecture.md`](./architecture.md)
 (architecture). Those are the *what*; this is the *how-we-decide*.

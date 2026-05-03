@@ -107,3 +107,49 @@ Canonical text in [`docs/decisions.md`](../../docs/decisions.md). The list below
 - **CSV upload.** Required for P3 (data-curious analyst) per `docs/runbook.md §10`. Deferred to Phase 2 alongside CLI.
 - **Plausible vs Plausible-self-hosted.** `docs/architecture.md §3.1` says "Plausible, self-hosted"; `docs/architecture.md §10` lists Plausible without qualifier. Reconcile when wiring web analytics.
 - **Marketing-site live ticker source-of-truth.** Data-pipe (which sample, what redaction, which OTel attributes) undecided.
+
+## Happy path walkthroughs
+
+### §14.1 Marketing site (`nlqdb.com`)
+
+```
+1. User lands on nlqdb.com.
+2. Sees ONE input: "What are you building?"
+3. Types: "an orders tracker for my coffee shop"
+4. Hits Enter.
+5. The page morphs in place into a chat. The first reply streams:
+     "Set up. Tell me about an order — what should I track?"
+6. User types: "customer name, what they ordered, time, total"
+7. The chat replies with the inferred schema, a sample row, and an embed snippet.
+   Total elapsed: 22 seconds. No sign-in. No pricing dialog. No "create your
+   first database" button.
+```
+
+### §14.2 Platform web app (`nlqdb.com/app`)
+
+```
+- After step 7 above, a slim bar appears: "Save this — sign in with GitHub."
+- User clicks; GitHub OAuth pops; back to the same chat, signed in, DB adopted.
+- The left rail now shows one entry: `orders-tracker-a4f` (auto-named).
+- User keeps chatting. Cmd+K opens the palette. Cmd+/ toggles the SQL trace.
+- Settings → API keys → "Reveal pk_live_..." (publishable, browser-safe).
+```
+
+### §15.1 Persona walkthrough — Maya, the Solo Builder
+
+**Goal:** ship a meal-planner side project this weekend.
+
+| Time | Maya does | nlqdb does |
+|---|---|---|
+| Fri 9:01pm | Lands on `nlqdb.com`, types *"a meal planner — dishes, ingredients, plans for the week"* | Materializes `meal-planner-7c2`, replies with inferred schema in NL, streams a `<nlq-data>` snippet for "this week's plan" **with her `pk_live_` key already inlined** |
+| 9:03pm | Pastes the snippet into her existing Next.js project's `page.tsx` | Element fetches, renders an empty table, refreshes every 30s — zero config |
+| 9:08pm | Types into the chat: *"add 12 sample dishes with realistic ingredients"* | Inserts 12 rows, returns the IDs and a preview |
+| 9:15pm | Adds a `<nlq-action>` form to add new dishes from the UI | Inferred new columns where the form has new fields |
+| 11:30pm | Deploys to Vercel. Site is live. | — |
+| Sat 10am | Sister tests it. Maya types: *"who used the planner today, and which dishes were added"* | Replies in prose + table |
+| Sun 6pm | *"add a `trial_ends_at` field to users, default 14 days from signup"* | Diff preview shown; Maya hits Enter; column added; existing rows backfilled |
+| Mon 9am | Signs in to the platform; adopts the anonymous DB; adds a card; switches to Hobby ($10) | DB unpaused, 30-day backups on |
+
+**What Maya never did:** wrote a migration file, opened psql, picked a region, configured Prisma, set up an admin panel, configured backups, wrote a single SQL statement.
+
+**Setup time, old way:** ~1 day. **Setup time, nlqdb:** ~2 minutes.
