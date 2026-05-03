@@ -42,6 +42,7 @@ export default defineConfig(async () => {
               "test/anon-adopt.test.ts",
               "src/db-create/*.test.ts",
               "src/ask/sql-validate-ddl.test.ts",
+              "src/ask/classifier.test.ts",
             ],
           },
         },

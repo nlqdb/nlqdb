@@ -227,7 +227,7 @@ describe("orchestrateDbCreate", () => {
     const deps = makeDeps({
       compileDdl: stubCompileDdl({
         ok: false,
-        reason: "identifier_collision",
+        reason: "duplicate_identifier",
         details: { table: "orders" },
       }),
       provision,
@@ -240,7 +240,7 @@ describe("orchestrateDbCreate", () => {
       ok: false,
       error: {
         kind: "compile_failed",
-        reason: "identifier_collision",
+        reason: "duplicate_identifier",
         details: { table: "orders" },
       },
     });
