@@ -128,6 +128,7 @@ manually before editing.)
 | any `POST` / `PATCH` / `DELETE` handler | `.claude/skills/idempotency/SKILL.md` |
 | `packages/otel/**`, new spans / metrics | `.claude/skills/observability/SKILL.md` |
 | `apps/api/src/billing/**`, Stripe webhooks | `.claude/skills/stripe-billing/SKILL.md` |
+| `apps/api/src/billing/premium/**`, `apps/api/src/ask/model-picker.ts`, `packages/llm/src/chains/paid.ts`, anything `model` preset / BYOK / spend-cap related | `.claude/skills/premium-tier/SKILL.md` |
 | `apps/events-worker/**`, `packages/events/**` | `.claude/skills/events-pipeline/SKILL.md` |
 | rate-limit middleware | `.claude/skills/rate-limit/SKILL.md` |
 | `cli/**` | `.claude/skills/cli/SKILL.md` |
