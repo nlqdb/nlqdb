@@ -263,7 +263,9 @@ function pickFixture(goal: string): DemoResult {
 }
 
 export interface RateLimiter {
-  hit: (clientIp: string) => Promise<{ ok: true } | { ok: false; retryAfter: number }>;
+  hit: (
+    clientIp: string,
+  ) => Promise<{ ok: true } | { ok: false; retryAfter: number; limit: number; count: number }>;
 }
 
 export function makeRateLimiter(kv: KVNamespace): RateLimiter {
@@ -275,7 +277,12 @@ export function makeRateLimiter(kv: KVNamespace): RateLimiter {
       const key = `${RATE_KEY_PREFIX}${clientIp}`;
       const current = Number((await kv.get(key)) ?? "0");
       if (current >= RATE_MAX_PER_WINDOW) {
-        return { ok: false, retryAfter: RATE_WINDOW_SECONDS };
+        return {
+          ok: false,
+          retryAfter: RATE_WINDOW_SECONDS,
+          limit: RATE_MAX_PER_WINDOW,
+          count: current,
+        };
       }
       await kv.put(key, String(current + 1), {
         expirationTtl: Math.max(RATE_WINDOW_SECONDS, KV_MIN_TTL_SECONDS),

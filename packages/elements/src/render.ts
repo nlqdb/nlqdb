@@ -42,6 +42,17 @@ function errorMessage(failure: AskFailure): string {
   // api: include the HTTP status + the API's `status` slug
   // (db_not_found, rate_limited, …) so the embedding page can branch
   // on either; full structured detail is on the `nlq-data:error` event.
-  const slug = typeof failure.error === "string" ? failure.error : failure.error.status;
+  const err = failure.error;
+  const slug = typeof err === "string" ? err : err.status;
+  // Rate-limit: tell the user how many requests they've used so they
+  // know when to retry (GLOBAL-012 — one sentence + next action).
+  if (
+    slug === "rate_limited" &&
+    typeof err === "object" &&
+    typeof err["limit"] === "number" &&
+    typeof err["count"] === "number"
+  ) {
+    return `Rate limit reached (${err["count"] as number} of ${err["limit"] as number} requests used). Please wait a moment, then try again.`;
+  }
   return `Error ${failure.status}: ${slug}`;
 }

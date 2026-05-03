@@ -17,9 +17,12 @@ describe("makeRateLimiter (D1)", () => {
 
   it("allows under-limit and increments the counter atomically", async () => {
     const limiter = makeRateLimiter(env.DB, { limit: 3, windowSeconds: 60 });
-    expect(await limiter.check("u_1")).toEqual({ allowed: true, count: 1, limit: 3 });
-    expect(await limiter.check("u_1")).toEqual({ allowed: true, count: 2, limit: 3 });
-    expect(await limiter.check("u_1")).toEqual({ allowed: true, count: 3, limit: 3 });
+    // 2026-04-26T12:00:00Z is on a minute boundary, so windowStart =
+    // that timestamp and resetAt = windowStart + 60s.
+    const resetAt = Math.floor(Date.now() / 1000 / 60) * 60 + 60;
+    expect(await limiter.check("u_1")).toEqual({ allowed: true, count: 1, limit: 3, resetAt });
+    expect(await limiter.check("u_1")).toEqual({ allowed: true, count: 2, limit: 3, resetAt });
+    expect(await limiter.check("u_1")).toEqual({ allowed: true, count: 3, limit: 3, resetAt });
   });
 
   it("denies once the limit is reached", async () => {

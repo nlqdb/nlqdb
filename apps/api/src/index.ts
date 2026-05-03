@@ -261,8 +261,17 @@ app.post("/v1/ask", requireSession, async (c) => {
         skipSummary: wantsJsonOnly,
       });
       if (!outcome.ok) {
-        const status = errorStatus(outcome.error.status);
-        return c.json({ error: outcome.error }, status);
+        const httpStatus = errorStatus(outcome.error.status);
+        // RFC 9110 X-RateLimit-* headers (SK-RL-004 / GLOBAL-002 parity).
+        if (outcome.error.status === "rate_limited") {
+          const { limit, count, resetAt } = outcome.error;
+          const now = Math.floor(Date.now() / 1000);
+          c.header("X-RateLimit-Limit", String(limit));
+          c.header("X-RateLimit-Remaining", String(Math.max(0, limit - count)));
+          c.header("X-RateLimit-Reset", String(resetAt));
+          c.header("Retry-After", String(Math.max(0, resetAt - now)));
+        }
+        return c.json({ error: outcome.error }, httpStatus);
       }
       return c.json(outcome.result);
     } finally {
@@ -350,7 +359,13 @@ app.post("/v1/demo/ask", async (c) => {
     if (!verdict.ok) {
       span.setAttribute("nlqdb.demo.outcome", "rate_limited");
       span.end();
+      // RFC 9110 X-RateLimit-* headers (SK-RL-004 / GLOBAL-002 parity).
+      const now = Math.floor(Date.now() / 1000);
+      const resetAt = now + verdict.retryAfter;
       c.header("Retry-After", String(verdict.retryAfter));
+      c.header("X-RateLimit-Limit", String(verdict.limit));
+      c.header("X-RateLimit-Remaining", "0");
+      c.header("X-RateLimit-Reset", String(resetAt));
       return c.json({ error: { status: "rate_limited" } }, 429);
     }
 
@@ -506,8 +521,16 @@ app.post("/v1/chat/messages", requireSession, async (c) => {
       span.setAttribute("nlqdb.chat.outcome", "rejected");
       span.setAttribute("nlqdb.chat.reject_status", outcome.error.status);
       span.end();
-      const status = errorStatus(outcome.error.status);
-      return c.json({ error: outcome.error }, status);
+      const httpStatus = errorStatus(outcome.error.status);
+      if (outcome.error.status === "rate_limited") {
+        const { limit, count, resetAt } = outcome.error;
+        const now = Math.floor(Date.now() / 1000);
+        c.header("X-RateLimit-Limit", String(limit));
+        c.header("X-RateLimit-Remaining", String(Math.max(0, limit - count)));
+        c.header("X-RateLimit-Reset", String(resetAt));
+        c.header("Retry-After", String(Math.max(0, resetAt - now)));
+      }
+      return c.json({ error: outcome.error }, httpStatus);
     }
     span.setAttribute("nlqdb.chat.outcome", "persisted");
     span.setAttribute("nlqdb.chat.assistant_kind", outcome.assistant.result.kind);

@@ -81,17 +81,12 @@ export async function postChatMessage(
     // Defensive: orchestrateAsk wraps every failure mode in
     // OrchestrateOutcome by contract, but a future regression (or a
     // throw from a dep we didn't anticipate) shouldn't escape and
-    // 500 the handler. Surface as a synthetic error result so the
-    // user sees a turn in their history with a debuggable status.
-    outcome = {
-      ok: false,
-      error: {
-        status: "llm_failed",
-        message: `chat orchestrator: unhandled throw — ${
-          err instanceof Error ? err.message : String(err)
-        }`,
-      },
-    };
+    // 500 the handler. The thrown error's message can contain
+    // provider/Postgres internals (GLOBAL-012) so it is not echoed
+    // to the client; the OTel span on this orchestrator captures
+    // the root cause server-side.
+    void err;
+    outcome = { ok: false, error: { status: "llm_failed" } };
   }
 
   if (!outcome.ok && REJECT_WITHOUT_PERSIST.has(outcome.error.status)) {
@@ -135,10 +130,8 @@ function buildSuccess(result: AskResult): AssistantChatMessage["result"] {
 }
 
 function buildError(error: AskError): AssistantChatMessage["result"] {
-  const message = "message" in error ? error.message : undefined;
-  return {
-    kind: "error",
-    status: error.status,
-    ...(message ? { message } : {}),
-  };
+  // No AskError variant carries a `message` field anymore — provider
+  // and Postgres details stay server-side (GLOBAL-012). The status
+  // alone is what the renderer narrows on.
+  return { kind: "error", status: error.status };
 }

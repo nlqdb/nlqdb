@@ -198,7 +198,6 @@ describe("orchestrateDbCreate", () => {
       inferSchema: stubInferSchema({
         ok: false,
         reason: "ambiguous_goal",
-        details: { hint: "specify a domain" },
       }),
       compileDdl,
       provision,
@@ -212,7 +211,6 @@ describe("orchestrateDbCreate", () => {
       error: {
         kind: "infer_failed",
         reason: "ambiguous_goal",
-        details: { hint: "specify a domain" },
       },
     });
     expect(compileDdl).not.toHaveBeenCalled();
@@ -317,7 +315,10 @@ describe("orchestrateDbCreate", () => {
     expect(out.error.kind).toBe("embed_failed");
     if (out.error.kind !== "embed_failed") throw new Error("narrow");
     expect(out.error.dbId).toBe(`db_orders_tracker_${FIXED_SUFFIX}`);
-    expect(out.error.reason).toContain("pgvector down");
+    // The embed error message can include internal endpoint URLs and is
+    // stripped at the boundary (GLOBAL-012); only the OTel span on the
+    // embed call retains it. Asserting absence locks the contract.
+    expect(out.error).not.toHaveProperty("reason");
   });
 
   it("anonymous tenantId yields pkLive: null with all other fields populated", async () => {

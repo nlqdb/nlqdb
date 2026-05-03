@@ -169,7 +169,8 @@ describe("inferSchema", () => {
     expect(out.ok).toBe(false);
     if (out.ok) return;
     expect(out.reason).toBe("plan_invalid");
-    expect(out.details).toBeDefined();
+    if (out.reason !== "plan_invalid") return;
+    expect(out.details.issue_count).toBeGreaterThan(0);
   });
 
   it("returns plan_invalid when the plan omits required `metrics` array (SK-HDC-004)", async () => {
@@ -190,6 +191,9 @@ describe("inferSchema", () => {
     expect(out.ok).toBe(false);
     if (out.ok) return;
     expect(out.reason).toBe("llm_failed");
-    expect(out.details).toMatchObject({ message: "upstream 500" });
+    // Provider error details (API keys, prompt fragments) must not
+    // surface in the result — only the OTel span on the LLM call
+    // captures them. SK-HDC-* / GLOBAL-012.
+    expect(out).not.toHaveProperty("details");
   });
 });

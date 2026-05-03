@@ -222,15 +222,21 @@ describe("provisionDb — happy path", () => {
     const sqls = pg.calls.map((c) => c.sql);
     let i = 0;
     expect(sqls[i++]).toBe("BEGIN");
+    // SK-HDC-010: 30s default cap immediately after BEGIN.
+    expect(sqls[i++]).toBe("SET LOCAL statement_timeout = '30s'");
     expect(sqls[i++]).toMatch(/CREATE SCHEMA IF NOT EXISTS "orders_tracker_a4f3b2"/);
     expect(sqls[i++]).toMatch(/information_schema\.tables/);
     expect(sqls[i++]).toMatch(/CREATE ROLE/);
     expect(sqls[i++]).toMatch(/GRANT USAGE ON SCHEMA "orders_tracker_a4f3b2"/);
-    // DDL is executed in the caller-supplied order.
+    // DDL is executed in the caller-supplied order. CREATE TABLEs
+    // run under the 30s default; CREATE INDEX is bracketed by 600s
+    // bumps per SK-HDC-010.
     expect(sqls[i++]).toBe(args.ddl[0]);
     expect(sqls[i++]).toBe(args.ddl[1]);
     expect(sqls[i++]).toBe(args.ddl[2]);
+    expect(sqls[i++]).toBe("SET LOCAL statement_timeout = '600s'");
     expect(sqls[i++]).toBe(args.ddl[3]);
+    expect(sqls[i++]).toBe("SET LOCAL statement_timeout = '30s'");
     // RLS pair per table — ALTER ENABLE then CREATE POLICY.
     expect(sqls[i++]).toMatch(/ALTER TABLE "orders_tracker_a4f3b2"\."orders" ENABLE ROW LEVEL/);
     expect(sqls[i++]).toMatch(

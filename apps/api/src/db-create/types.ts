@@ -60,7 +60,8 @@ export type InferFailureReason = "ambiguous_goal" | "llm_failed" | "plan_invalid
 
 export type InferSchemaResult =
   | { ok: true; plan: SchemaPlan }
-  | { ok: false; reason: InferFailureReason; details?: unknown };
+  | { ok: false; reason: Exclude<InferFailureReason, "plan_invalid"> }
+  | { ok: false; reason: "plan_invalid"; details: { issue_count: number } };
 
 // --- compile-ddl ----------------------------------------------------
 //
@@ -193,14 +194,26 @@ export type DbCreatePlanSummary = {
 // `apps/api/src/ask/classifier.ts` before the orchestrator is
 // called, so a rate-limited request never reaches `orchestrateDbCreate`.
 export type DbCreateError =
-  | { kind: "infer_failed"; reason: InferFailureReason; details?: unknown }
+  | {
+      kind: "infer_failed";
+      reason: Exclude<InferFailureReason, "plan_invalid">;
+    }
+  | {
+      kind: "infer_failed";
+      reason: "plan_invalid";
+      // Only the count — not the raw Zod issues array — so we don't
+      // leak the schema shape to callers.
+      details: { issue_count: number };
+    }
   | { kind: "compile_failed"; reason: CompileFailureReason; details?: unknown }
   | { kind: "ddl_invalid"; reason: DdlValidationFailureReason; statement: string }
   | { kind: "provision_failed"; reason: ProvisionFailureReason; rolled_back: boolean }
   // The DB itself is good; only the table-card RAG seed failed.
   // `dbId` is included so callers can retry embedding out-of-band
   // (or surface a "search will warm up shortly" hint to the user).
-  | { kind: "embed_failed"; reason: string; dbId: string };
+  // `reason` is intentionally absent — embedding error details can
+  // contain internal endpoint URLs; keep them server-side.
+  | { kind: "embed_failed"; dbId: string };
 
 export type DbCreateResult =
   | {

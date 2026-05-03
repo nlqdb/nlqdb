@@ -22,6 +22,9 @@ export type RateLimitDecision = {
   // (denied). Useful for surfacing in 429 responses.
   count: number;
   limit: number;
+  // Unix timestamp (seconds) when the current window resets. Used
+  // to populate X-RateLimit-Reset and Retry-After headers (SK-RL-004).
+  resetAt: number;
 };
 
 export type RateLimitOptions = {
@@ -58,7 +61,8 @@ export function makeRateLimiter(d1: D1Database, opts: RateLimitOptions = {}): Ra
       const windowStart = Math.floor(Date.now() / 1000 / windowSeconds) * windowSeconds;
       const row = await d1.prepare(UPSERT_SQL).bind(userId, windowStart).first<{ count: number }>();
       const count = row?.count ?? 1;
-      return { allowed: count <= limit, count, limit };
+      const resetAt = windowStart + windowSeconds;
+      return { allowed: count <= limit, count, limit, resetAt };
     },
   };
 }
