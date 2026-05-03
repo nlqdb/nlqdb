@@ -34,6 +34,10 @@ web search for current best practices before jumping to a fix**. The fast
 wrong answer is more expensive than the slower right one. State the
 sources you checked when you propose the fix.
 
+**Also:** When selecting any 3rd party package, SDK, or API, always web-search for
+the latest stable version before using it. Version and API changes move fast; your
+knowledge cutoff is stale for any external dependency.
+
 ### P3. Decisions live in one place
 
 Each decision has one canonical home:
