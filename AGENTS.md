@@ -172,7 +172,7 @@ bun run lint                       # lint
 bun run build                      # build all packages
 
 # bundle budget check (GLOBAL-013)
-bun --filter apps/api run build && wrangler deploy --dry-run --outdir=/tmp/out
+bun run --filter apps/api build && wrangler deploy --dry-run --outdir=/tmp/out
 ```
 
 Per-package commands are in each area's `AGENTS.md`.

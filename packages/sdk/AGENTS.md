@@ -16,8 +16,8 @@
 ## Commands
 
 ```bash
-bun --filter @nlqdb/sdk run build
-bun --filter @nlqdb/sdk run test
+bun run --filter @nlqdb/sdk build
+bun run --filter @nlqdb/sdk test
 ```
 
 ## Local rules

@@ -16,8 +16,8 @@ Engine-agnostic DB adapter. Phase 0 = Postgres via Neon.
 ## Commands
 
 ```bash
-bun --filter @nlqdb/db run build
-bun --filter @nlqdb/db run test
+bun run --filter @nlqdb/db build
+bun run --filter @nlqdb/db test
 ```
 
 ## Local rules

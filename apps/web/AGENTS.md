@@ -16,9 +16,9 @@ Marketing + product web app. Onboarding, anonymous-mode default, demo dataset.
 ## Commands
 
 ```bash
-bun --filter apps/web run dev
-bun --filter apps/web run build
-bun --filter apps/web run test
+bun run --filter apps/web dev
+bun run --filter apps/web build
+bun run --filter apps/web test
 ```
 
 ## Local rules
