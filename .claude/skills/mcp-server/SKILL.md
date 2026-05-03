@@ -12,7 +12,7 @@ when-to-load:
 **One-liner:** MCP server + `nlq mcp install` host detection (Claude Desktop, Cursor, etc.).
 **Status:** implemented (Phase 2)
 **Owners (code):** `packages/mcp/**`
-**Cross-refs:** docs/design.md §3.4 (MCP server) · docs/design.md §14.4 (MCP happy path) · docs/surfaces.md (MCP server row) · docs/implementation.md §5 (Phase 2 mcp slice)
+**Cross-refs:** docs/architecture.md §3.4 (MCP server) · docs/architecture.md §14.4 (MCP happy path) · docs/architecture.md §3 (MCP server row) · docs/architecture.md §10 §5 (Phase 2 mcp slice)
 
 ## Touchpoints — read this skill before editing
 
@@ -32,10 +32,10 @@ when-to-load:
 
 ### SK-MCP-002 — Three tools, no `nlqdb_create_database`: `nlqdb_query`, `nlqdb_list_databases`, `nlqdb_describe`
 
-- **Decision:** The MCP server exposes exactly three tools: `nlqdb_query(db, q)`, `nlqdb_list_databases()`, `nlqdb_describe(db)`. There is **no public `nlqdb_create_database` tool** — `nlqdb_query` materializes the DB on first reference (per the goal-first inversion in `docs/design.md §0.1`).
+- **Decision:** The MCP server exposes exactly three tools: `nlqdb_query(db, q)`, `nlqdb_list_databases()`, `nlqdb_describe(db)`. There is **no public `nlqdb_create_database` tool** — `nlqdb_query` materializes the DB on first reference (per the goal-first inversion in `docs/architecture.md §0.1`).
 - **Core value:** Simple, Goal-first, Effortless UX
 - **Why:** Two tools (`create`, then `query`) doubles the prompt the agent has to learn and creates an "agent forgot to call create" failure mode. One tool that does the right thing is the goal-first design applied to MCP — the agent never had a goal that was "create a database". Implicit creation is also what makes the persona walkthrough (P2 / Jordan) work: the system prompt has one tool, not two.
-- **Consequence in code:** `packages/mcp/src/tools.ts` registers exactly three tool handlers. `nlqdb_query` POSTs to `/v1/ask` which routes through the typed-plan create path on first reference (`docs/design.md §3.6.2`). PRs adding more tools require explicit justification against `GLOBAL-017` ("one way to do each thing").
+- **Consequence in code:** `packages/mcp/src/tools.ts` registers exactly three tool handlers. `nlqdb_query` POSTs to `/v1/ask` which routes through the typed-plan create path on first reference (`docs/architecture.md §3.6.2`). PRs adding more tools require explicit justification against `GLOBAL-017` ("one way to do each thing").
 - **Alternatives rejected:**
   - Expose `nlqdb_create_database` as a power-user tool — dilutes the agent's prompt, contradicts §0.1 inversion.
   - One mega-tool that takes an `op` parameter — harder for the host LLM to plan with, no real simplification.
@@ -45,7 +45,7 @@ when-to-load:
 - **Decision:** The default `nlq mcp install` (no arg) scans known host configs for Claude Desktop, Cursor, Zed, Windsurf, VS Code, and Continue, and prints what it found. One host → silent install. Multiple → numbered prompt (or `--all`). None → prints install links and exits. Explicit forms (`nlq mcp install <host>`, `--dry-run`, `--all`) are the escape hatches.
 - **Core value:** Effortless UX, Seamless auth, Goal-first
 - **Why:** Asking the user to name their MCP host is friction we can remove — every host stores its config in a known location. Detection-first ("what you have, set up") matches the on-ramp inversion principle. The explicit override exists for users who want to bypass detection (CI, custom builds, hosts not yet supported).
-- **Consequence in code:** `cli/src/mcp/install.ts` ships per-host detectors that read each host's config path and return a `{detected, configPath, hotReloads}` tuple. Detection is transparent — the CLI prints what it's about to touch (`docs/design.md §3.4`). The `--dry-run` flag is mandatory parity with explicit / no-arg modes.
+- **Consequence in code:** `cli/src/mcp/install.ts` ships per-host detectors that read each host's config path and return a `{detected, configPath, hotReloads}` tuple. Detection is transparent — the CLI prints what it's about to touch (`docs/architecture.md §3.4`). The `--dry-run` flag is mandatory parity with explicit / no-arg modes.
 - **Alternatives rejected:**
   - Always require `<host>` — every install adds a "what's my host called?" question.
   - Detect *and* always confirm — adds a click for the 60% of users with one host.

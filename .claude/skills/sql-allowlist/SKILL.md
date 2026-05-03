@@ -13,7 +13,7 @@ when-to-load:
 **One-liner:** Safety boundary on LLM-generated SQL — what is allowed to execute.
 **Status:** implemented
 **Owners (code):** `apps/api/src/ask/sql-validate.ts` (called from `apps/api/src/ask/orchestrate.ts`)
-**Cross-refs:** docs/design.md §3.6.5 (validator architecture) · docs/research-receipts.md §1, §10 (Replit incident, Postgres-specific guardrails) · GLOBAL-015 (see governing GLOBALs section) · `.claude/skills/hosted-db-create/SKILL.md` (Phase 1 — owns the parallel DDL-path validator at `apps/api/src/ask/sql-validate-ddl.ts`; SK-HDC-006 splits the two validator files deliberately)
+**Cross-refs:** docs/architecture.md §3.6.5 (validator architecture) · docs/research-receipts.md §1, §10 (Replit incident, Postgres-specific guardrails) · GLOBAL-015 (see governing GLOBALs section) · `.claude/skills/hosted-db-create/SKILL.md` (Phase 1 — owns the parallel DDL-path validator at `apps/api/src/ask/sql-validate-ddl.ts`; SK-HDC-006 splits the two validator files deliberately)
 
 ## Touchpoints — read this skill before editing
 
@@ -103,6 +103,6 @@ Canonical text in [`docs/decisions.md`](../../docs/decisions.md). The list below
 
 ## Open questions / known unknowns
 
-- **Side-effecting function rejection** — `pg_sleep`, `dblink`, `lo_import`, `pg_read_file`, `COPY ... FROM PROGRAM`, and similar are NOT currently rejected. The file header notes a TODO to add an AST function-name walk; tracked in `docs/implementation.md`. Reviewers should flag PRs that touch the validator without addressing this.
+- **Side-effecting function rejection** — `pg_sleep`, `dblink`, `lo_import`, `pg_read_file`, `COPY ... FROM PROGRAM`, and similar are NOT currently rejected. The file header notes a TODO to add an AST function-name walk; tracked in `docs/architecture.md §10`. Reviewers should flag PRs that touch the validator without addressing this.
 - **Semantic-aware allow-list** — Phase 2 (DESIGN §17 line 1508) plans an optional pass that verifies referenced columns belong to dimensions/metrics declared in `semantic.yml`. Mis-references would fail with `semantic_violation` instead of leaking schema. Not implemented yet; plan-cache key construction would need to fold in the semantic.yml fingerprint when this lands (DESIGN §17 line 1509).
 - **Multi-statement queries** — current behaviour rejects via the leading-verb gate when the second statement starts with a rejected verb, or via the AST walk for any embedded rejected pattern. The DESIGN §3.6.5 table claims "Multi-statement rejected"; verify whether `node-sql-parser` reliably emits the second statement as a sibling AST node for the walk to catch, or whether we need an explicit statement-count check at the top.

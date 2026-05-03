@@ -14,7 +14,7 @@ grep -rn 'GLOBAL-NNN' .claude/skills/
 
 Format of every block follows `docs/skill-conventions.md` §4 — the five
 fields (Decision / Core value / Why / Consequence / Alternatives) are
-mandatory. Core values are cited by name from `docs/design.md` §0.
+mandatory. Core values are cited by name from `docs/architecture.md` §0.
 
 ## Index
 
@@ -300,7 +300,7 @@ mandatory. Core values are cited by name from `docs/design.md` §0.
   per free user is non-zero, the runway turns into a wall. The 3 MiB
   ceiling is a real constraint that shapes dependency choices.
 - **Consequence in code:** Every dependency is checked against bundle
-  budget before adoption (`pnpm build && wrangler deploy --dry-run`).
+  budget before adoption (`bun run build && wrangler deploy --dry-run`).
   Heavy deps (parsers, big crypto libs, full AI SDKs) are forbidden
   on the Workers path; equivalent functionality goes through HTTP
   to a cheaper backend or via tree-shakable submodules.

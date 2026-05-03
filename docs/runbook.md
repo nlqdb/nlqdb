@@ -5,8 +5,7 @@ Living state-of-the-world doc. Ground truth for *what's provisioned*,
 infrastructure changes — if it goes stale, the rest of the repo gets
 harder to operate.
 
-- [./design.md](./design.md) — architectural narrative.
-- [./implementation.md](./implementation.md) — phased plan + prereqs.
+- [./architecture.md](./architecture.md) — architectural narrative, phase plan, tech-stack rationale.
 - [./performance.md](./performance.md) — SLOs, latency budgets, span/metric catalog.
 - [.claude/skills/](../.claude/skills/) — canonical per-feature decisions.
 - [./decisions.md](./decisions.md) — canonical cross-cutting `GLOBAL-NNN`.
@@ -210,7 +209,7 @@ nlqdb." rather than naming a specific backend.
     page**, not an OAuth redirect — device flow polls and never invokes
     the callback URL, so it doesn't need to be registered.
 - **Enable Device Flow:** ✅ — CLI uses device-code flow (`nlq login`)
-  per [./design.md §3.3](./design.md#33-cli-and-device-code-flow).
+  per [./architecture.md §3.3](./architecture.md#33-cli-and-device-code-flow).
 - **Webhook URL:** _none_ — auth-only, no webhook.
 - **Credentials in `.envrc`** as `OAUTH_GITHUB_CLIENT_ID` +
   `OAUTH_GITHUB_CLIENT_SECRET` (the `OAUTH_*` prefix avoids GHA's
@@ -482,7 +481,7 @@ unmerged consumer code against the preview queue.
 
 ---
 
-## 7. Prerequisites checklist (§2 of ./implementation.md)
+## 7. Prerequisites checklist (see `docs/architecture.md §10` Phase 0)
 
 | §    | Item                               | Status       |
 | :--- | :--------------------------------- | :----------- |
@@ -680,8 +679,8 @@ NLQDB_BACKUP_DIR=/path/to/private/folder scripts/backup-envrc.sh
 
 ## 9. Anonymous-db lifecycle (Phase 1+)
 
-Lands with the hosted db.create slice ([`./implementation.md §4`](./implementation.md),
-[`./design.md §3.6`](./design.md)). Capacity reasoning and source
+Lands with the hosted db.create slice ([`./architecture.md §10`](./architecture.md) Phase 1,
+[`./architecture.md §3.6`](./architecture.md)). Capacity reasoning and source
 citations: [`docs/research-receipts.md §9`](./research-receipts.md).
 
 ### 9.1 Capacity math

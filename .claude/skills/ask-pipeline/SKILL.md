@@ -12,7 +12,7 @@ when-to-load:
 **One-liner:** /v1/ask orchestration: rate-limit → cache → LLM router → SQL allowlist → exec → summarize.
 **Status:** implemented
 **Owners (code):** `apps/api/src/ask/**`
-**Cross-refs:** docs/design.md §3.6.1 (endpoint shape), §3.6.2 (typed-plan pipeline), §3.6.4 (dbId resolution), §3.6.5 (validator paths), §9 (bullet-proof checklist) · docs/implementation.md Slice 6 (`/v1/ask` E2E) · docs/performance.md §2.1, §2.2, §3 · `.claude/skills/hosted-db-create/SKILL.md` (Phase 1 — the `kind=create` arm of this pipeline lives there per SK-HDC-001; this skill keeps the read/write arm)
+**Cross-refs:** docs/architecture.md §3.6.1 (endpoint shape), §3.6.2 (typed-plan pipeline), §3.6.4 (dbId resolution), §3.6.5 (validator paths), §9 (bullet-proof checklist) · docs/architecture.md §10 Slice 6 (`/v1/ask` E2E) · docs/performance.md §2.1, §2.2, §3 · `.claude/skills/hosted-db-create/SKILL.md` (Phase 1 — the `kind=create` arm of this pipeline lives there per SK-HDC-001; this skill keeps the read/write arm)
 
 ## Touchpoints — read this skill before editing
 
@@ -22,39 +22,39 @@ when-to-load:
 
 ### SK-ASK-001 — `/v1/ask` is the single create-or-query endpoint
 
-- **Decision:** A single endpoint `POST /v1/ask` accepts a natural-language `goal` and a cheap classifier-tier LLM call decides `kind ∈ {"create", "query", "write"}`. `create` routes to the typed-plan pipeline (`docs/design.md §3.6.2`); `query` and `write` route to the read/write orchestrator. There is no `/v1/db/new`, no separate "create" verb.
+- **Decision:** A single endpoint `POST /v1/ask` accepts a natural-language `goal` and a cheap classifier-tier LLM call decides `kind ∈ {"create", "query", "write"}`. `create` routes to the typed-plan pipeline (`docs/architecture.md §3.6.2`); `query` and `write` route to the read/write orchestrator. There is no `/v1/db/new`, no separate "create" verb.
 - **Core value:** Goal-first, Simple, Effortless UX
-- **Why:** Every persona walks in with a goal, not a database. Two endpoints (`/v1/ask` for chat, `/v1/run` for raw queries) is the canonical surface (`GLOBAL-017`). Splitting create from query would force the user to know which one to call, contradicting `GLOBAL-017` and the on-ramp inversion principle in `docs/design.md §0.1`.
+- **Why:** Every persona walks in with a goal, not a database. Two endpoints (`/v1/ask` for chat, `/v1/run` for raw queries) is the canonical surface (`GLOBAL-017`). Splitting create from query would force the user to know which one to call, contradicting `GLOBAL-017` and the on-ramp inversion principle in `docs/architecture.md §0.1`.
 - **Consequence in code:** `apps/api/src/routes/v1/ask.ts` is the only handler; create/query/write are internal branches behind the classifier. PRs that add `/v1/db/new`, `/v1/queries`, or `/v1/plans` are rejected.
 - **Alternatives rejected:** REST resource explosion (`/v1/queries`, `/v1/runs`, `/v1/plans`) — bigger surface, more docs, more inconsistency. `/v1/ask` + `/v1/db/new` — splits a single user goal across two endpoints; the user has to know which.
-- **Source:** docs/design.md §3.6.1
+- **Source:** docs/architecture.md §3.6.1
 
 ### SK-ASK-002 — Canonical step order: edge → auth → rate-limit → hash → plan-cache → (hit: validate → exec) | (miss: classify → plan → SQL-validate → exec → cache-write) → optional summarize
 
 - **Decision:** Every `/v1/ask` request follows the canonical step order in `docs/performance.md §2.1, §2.2`. New steps require a `SK-ASK-NNN` decision; reordering existing steps requires updating the canonical tables in `performance.md` in the same PR.
 - **Core value:** Bullet-proof, Honest latency, Fast
 - **Why:** A canonical order means every reviewer, every dashboard, every test agrees on what "the ask path" is. Inserting an unsanctioned step (e.g., a third LLM call between plan and exec) is the kind of change that silently breaks the latency budget and the trace UI. The order is also load-bearing for `GLOBAL-011`: surfaces stream the trace in the order steps complete.
-- **Consequence in code:** `orchestrateAsk()` (per `docs/implementation.md` Slice 6) walks the steps in order. Each step gets one OTel span (per `docs/performance.md §3.1`). A reorder regression is caught by the span-tree assertion in the slice's vitest. Latency budgets in `performance.md §2.1, §2.2` are CI-asserted at 1.5× p50.
+- **Consequence in code:** `orchestrateAsk()` (per `docs/architecture.md §10` Slice 6) walks the steps in order. Each step gets one OTel span (per `docs/performance.md §3.1`). A reorder regression is caught by the span-tree assertion in the slice's vitest. Latency budgets in `performance.md §2.1, §2.2` are CI-asserted at 1.5× p50.
 - **Alternatives rejected:** Per-handler order — would let the order drift between create / query / write without notice. Skip cache when LLM is fast — defeats `GLOBAL-006` and breaks the cache-warming intent.
-- **Source:** docs/design.md §3.6.1, §3.6.2 · docs/performance.md §2.1, §2.2 · docs/implementation.md Slice 6
+- **Source:** docs/architecture.md §3.6.1, §3.6.2 · docs/performance.md §2.1, §2.2 · docs/architecture.md §10 Slice 6
 
 ### SK-ASK-003 — `dbId` resolution is deterministic per surface — never an LLM-driven "did you mean…?"
 
-- **Decision:** When `dbId` is omitted, resolution follows `docs/design.md §3.6.4`: HTML embeds resolve from `pk_live_<dbId>`; REST returns `409 Conflict` with `candidate_dbs` if the account has 2+ DBs; CLI uses MRU + interactive `select`; MCP uses elicitation. The system **never** runs an LLM-based "which DB did you mean" heuristic.
+- **Decision:** When `dbId` is omitted, resolution follows `docs/architecture.md §3.6.4`: HTML embeds resolve from `pk_live_<dbId>`; REST returns `409 Conflict` with `candidate_dbs` if the account has 2+ DBs; CLI uses MRU + interactive `select`; MCP uses elicitation. The system **never** runs an LLM-based "which DB did you mean" heuristic.
 - **Core value:** Bullet-proof, Honest latency, Effortless UX
 - **Why:** A guess that hits the wrong DB writes (or reads sensitive data from) the wrong tenant — silent corruption is the worst possible failure mode. Deterministic per-surface resolution turns "ambiguous" into a structured error the surface can render usefully (`409` for REST, prompt for CLI, elicitation for MCP).
 - **Consequence in code:** `resolveDbId(req)` returns `{db}` or `{candidates: [...]}`; ambiguity is never resolved by an LLM call. The HTTP handler returns 409 with the `candidate_dbs` envelope; the CLI prompts; MCP returns an elicitation. Schema-match scoring (LLM heuristic disambiguation) is **deferred to Phase 2+**.
 - **Alternatives rejected:** Auto-pick the most-recently-used DB on REST — silent wrong-tenant write. LLM "did you mean…" — failure mode is silent and unexplainable.
-- **Source:** docs/design.md §3.6.4
+- **Source:** docs/architecture.md §3.6.4
 
 ### SK-ASK-004 — Two distinct validator paths: read/write (LLM-generated) vs DDL (typed-plan compiler) — never mixed
 
-- **Decision:** `/v1/ask` query/write traffic routes through `apps/api/src/ask/sql-validate.ts`, which allows only `SELECT / INSERT / UPDATE / DELETE / WITH / EXPLAIN / SHOW` (multi-statement and `EXPLAIN ANALYZE` rejected). DDL is the **only** privilege of the typed-plan compiler in `docs/design.md §3.6.2` and never reaches the read/write validator.
+- **Decision:** `/v1/ask` query/write traffic routes through `apps/api/src/ask/sql-validate.ts`, which allows only `SELECT / INSERT / UPDATE / DELETE / WITH / EXPLAIN / SHOW` (multi-statement and `EXPLAIN ANALYZE` rejected). DDL is the **only** privilege of the typed-plan compiler in `docs/architecture.md §3.6.2` and never reaches the read/write validator.
 - **Core value:** Bullet-proof, Simple
 - **Why:** The LLM never has DDL rights through the read/write path — the only legitimate `CREATE` comes from our deterministic typed-plan compiler, which we wrote and we tested. The hard split makes prompt-injection structurally unable to reach DDL. Layered guardrails (AST reject-list + role isolation + RLS + statement timeout + transactional wrapper) follow the Replit-incident lesson from `docs/research-receipts.md §1`.
 - **Consequence in code:** `validateReadWrite(sql)` in `sql-validate.ts` rejects every DDL verb. The DDL path's validator is a separate file (Zod over `SchemaPlan` plus libpg_query parse on the compiled DDL) and is invoked **only** from the create path. PRs that try to merge the two validator surfaces are rejected.
 - **Alternatives rejected:** Single validator with a `mode: "rw" | "ddl"` flag — a single `mode` flag flip would re-open DDL to LLM-generated SQL. LLM emits DDL directly — explicitly rejected in `§3.6.2`; the LLM emits a typed plan, our code emits SQL.
-- **Source:** docs/design.md §3.6.2, §3.6.5
+- **Source:** docs/architecture.md §3.6.2, §3.6.5
 
 ### SK-ASK-005 — Summarize is conditional: skip when `Accept: application/json` or row count below threshold
 
@@ -63,25 +63,25 @@ when-to-load:
 - **Why:** Summarization adds 300 ms p50 / 800 ms p99 — material on a cache-miss path. Most fact-lookup queries return raw rows; summarising "[{count: 42}]" wastes user time and LLM credits. Programmatic clients (`Accept: application/json`) want raw data; humans on the chat surface want prose.
 - **Consequence in code:** `shouldSummarize(rows, intent, accept)` is a pure function tested in isolation. The summarize step is skipped *before* the LLM call, not inside it (no wasted token spend on a result we'd discard).
 - **Alternatives rejected:** Always summarise — wastes 80% of summarize budget on row-count queries. Always skip — chat surface loses prose; bad UX for the conversational majority.
-- **Source:** docs/design.md §8 (cost-control rule 4) · docs/performance.md §2.2
+- **Source:** docs/architecture.md §8 (cost-control rule 4) · docs/performance.md §2.2
 
 ### SK-ASK-006 — Anonymous-mode is a separate rate-limit tier — not "free with a lower limit"
 
 - **Decision:** The API has an explicit anonymous-mode rate-limit tier, distinct from authed-free and paid tiers (`GLOBAL-007`). Anonymous traffic shares its tier across all anonymous device-tokens by IP + device-token; signing in promotes the device's outstanding budget to the authed tier (no fresh quota grant).
 - **Core value:** Free, Bullet-proof, Goal-first
 - **Why:** Without a separate tier, an anonymous abuse spike (per-IP create-floods) eats authed-user budget. With it, abuse is contained in its own bucket while the authed surface stays fast. Promoting on sign-in (no fresh grant) prevents farming free quota by signing in repeatedly under fresh emails.
-- **Consequence in code:** Rate-limit middleware (`packages/rate-limit`) reads `(tier, identifier)` where `identifier` is `device_token` for anonymous and `user_id` for authed. `attachIdentity()` carries forward the consumed budget. PoW challenges fire on signup if the bucket spikes (`docs/design.md §3.6.8`).
+- **Consequence in code:** Rate-limit middleware (`packages/rate-limit`) reads `(tier, identifier)` where `identifier` is `device_token` for anonymous and `user_id` for authed. `attachIdentity()` carries forward the consumed budget. PoW challenges fire on signup if the bucket spikes (`docs/architecture.md §3.6.8`).
 - **Alternatives rejected:** Single global free tier — every anonymous abuse spike degrades authed users. Allow anonymous to refresh budget by attaching a new identity — quota-farming.
-- **Source:** docs/design.md §3.6.8 · docs/decisions.md#GLOBAL-007
+- **Source:** docs/architecture.md §3.6.8 · docs/decisions.md#GLOBAL-007
 
 ### SK-ASK-007 — `user.first_query` fires exactly once per user via the lookup-then-emit-then-commit pattern
 
-- **Decision:** The first successful `/v1/ask` per user emits a `user.first_query` product event exactly once. The implementation uses lookup-then-emit-then-commit with a KV marker — the marker is checked, the event is emitted, the marker is committed. The full pattern is in `docs/implementation.md` Slice 6.
+- **Decision:** The first successful `/v1/ask` per user emits a `user.first_query` product event exactly once. The implementation uses lookup-then-emit-then-commit with a KV marker — the marker is checked, the event is emitted, the marker is committed. The full pattern is in `docs/architecture.md §10` Slice 6.
 - **Core value:** Bullet-proof, Honest latency
 - **Why:** Naively writing the marker before emitting can drop the event on a Worker crash; emitting then writing can double-emit on retry. The lookup-then-emit-then-commit pattern with idempotent sink writes (events-pipeline) gives us at-most-once user-visible (the dashboard counts unique users) without dropping the signal.
 - **Consequence in code:** `firstQueryGate(user_id)` is wrapped in `nlqdb.cache.first_query.lookup` and `nlqdb.cache.first_query.commit` spans. The events emit is wrapped in `ctx.waitUntil` (per `docs/performance.md §3.1`) so it runs after the response. Test asserts exactly-once across two concurrent first calls (the second observes the marker).
 - **Alternatives rejected:** Write marker first — event drops on crash. Emit first — double-emit on retry. Synchronous DB write — adds DB round-trip to the response path.
-- **Source:** docs/implementation.md Slice 6 · docs/performance.md §3.1
+- **Source:** docs/architecture.md §10 Slice 6 · docs/performance.md §3.1
 
 ### SK-ASK-008 — Live trace is streamed in step-completion order; no spinner-lying
 
@@ -90,7 +90,7 @@ when-to-load:
 - **Why:** A spinner that hides progress trains users to assume the worst when latency spikes. A live trace turns slow steps into legible, debuggable information — and forces us to fix the slow steps because users see them. This is `GLOBAL-011`'s consequence on the ask path.
 - **Consequence in code:** Each step in the canonical order (`SK-ASK-002`) emits a trace event the SDK exposes via the `onTrace` hook. `apps/web` renders them in order; CLI's TTY mode prints each as it completes. Tests assert that every step in the cache-miss path produces exactly one trace event.
 - **Alternatives rejected:** Generic spinner with "this is taking longer than usual" — gives no information; trains users not to trust the surface. Hide latency below a threshold — users notice anyway, and lose trust when the threshold is wrong.
-- **Source:** docs/design.md §0 (Honest latency) · docs/decisions.md#GLOBAL-011
+- **Source:** docs/architecture.md §0 (Honest latency) · docs/decisions.md#GLOBAL-011
 
 ## GLOBALs governing this feature
 

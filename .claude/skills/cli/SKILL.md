@@ -12,7 +12,7 @@ when-to-load:
 **One-liner:** `nlq` command-line tool — verbs, OS-keychain credentials, device-flow auth.
 **Status:** planned (Phase 2) — design locked in DESIGN §3.3 / §4.3 / §14.3; no Go code yet (no `go.mod`; CI's `lint-go` job conditionally skips)
 **Owners (code):** `cli/**`
-**Cross-refs:** docs/design.md §3.3 (CLI surface) · §4.3 (session lifecycle, device-flow) · §14.3 (happy-path) · docs/surfaces.md (matrix) · docs/implementation.md §5 (Phase 2 CLI slice) · `cli/AGENTS.md` · `cli/README.md`
+**Cross-refs:** docs/architecture.md §3.3 (CLI surface) · §4.3 (session lifecycle, device-flow) · §14.3 (happy-path) · docs/architecture.md §3 (matrix) · docs/architecture.md §10 §5 (Phase 2 CLI slice) · `cli/AGENTS.md` · `cli/README.md`
 
 ## Touchpoints — read this skill before editing
 
@@ -69,10 +69,10 @@ when-to-load:
 
 ### SK-CLI-005 — Anonymous-first: bare queries work before any sign-in
 
-- **Decision:** `nlq new "..."` and bare `nlq "..."` mint an anonymous device token (72h window per `docs/design.md §4.1`) and immediately produce a working answer. The token is written to the OS keychain. `nlq login` runs the device-code flow only when the user wants to keep their work past 72h.
+- **Decision:** `nlq new "..."` and bare `nlq "..."` mint an anonymous device token (72h window per `docs/architecture.md §4.1`) and immediately produce a working answer. The token is written to the OS keychain. `nlq login` runs the device-code flow only when the user wants to keep their work past 72h.
 - **Core value:** Goal-first, Effortless UX, Free, Seamless auth
 - **Why:** The activation moment is the user typing a goal and getting an answer. A login wall before the first answer flips the moment from "wow" to "homework". The 72h window is the explicit agreement: long enough to demo the value, short enough that we're not running an unbounded anonymous storage tier. This is the CLI manifestation of `GLOBAL-007` and `GLOBAL-020`.
-- **Consequence in code:** The first invocation of any data verb mints the anonymous token via `POST /v1/auth/anonymous` (or whatever the slice settles on) and stores it in the keychain. Subsequent calls reuse it. On `nlq login`, anonymous DBs are adopted by updating one row server-side (`docs/design.md §4.1`); no client-side migration. **CI mode skips this entirely** — see SK-CLI-008.
+- **Consequence in code:** The first invocation of any data verb mints the anonymous token via `POST /v1/auth/anonymous` (or whatever the slice settles on) and stores it in the keychain. Subsequent calls reuse it. On `nlq login`, anonymous DBs are adopted by updating one row server-side (`docs/architecture.md §4.1`); no client-side migration. **CI mode skips this entirely** — see SK-CLI-008.
 - **Alternatives rejected:**
   - Force `nlq login` before first use — measurably worse for activation; contradicts `GLOBAL-007`.
   - Anonymous tokens in a flat config file, not the keychain — leaks via cloud backups + dotfile syncs; contradicts `GLOBAL-010`.
@@ -81,12 +81,12 @@ when-to-load:
 
 - **Decision:** `nlq login` runs the OAuth 2.0 Device Authorization Grant. The browser lands on `verification_uri_complete` with the code pre-filled in the URL — one "Approve this device?" click, no typing. The raw user_code is printed as a fallback for SSH / headless / `--no-browser` cases. On approval: anonymous DBs are adopted; refresh token (90d, rotated on every use) writes to OS keychain; access token (1h, JWT) stays in memory.
 - **Core value:** Seamless auth, Effortless UX, Bullet-proof
-- **Why:** Device-code with `verification_uri_complete` is the lowest-friction sign-in for a CLI — no copy-paste of codes, no port-binding callback (which fails on remote SSH and behind firewalls), and the code is visible in the browser URL so the human verifies they're approving the right device. 90d refresh + 1h access matches `docs/design.md §4.3` exactly so refresh logic is shared with `packages/sdk` (`GLOBAL-001`).
+- **Why:** Device-code with `verification_uri_complete` is the lowest-friction sign-in for a CLI — no copy-paste of codes, no port-binding callback (which fails on remote SSH and behind firewalls), and the code is visible in the browser URL so the human verifies they're approving the right device. 90d refresh + 1h access matches `docs/architecture.md §4.3` exactly so refresh logic is shared with `packages/sdk` (`GLOBAL-001`).
 - **Consequence in code:** The login flow POSTs `/v1/auth/device`, opens `verification_uri_complete` (or prints it on `--no-browser`), polls `/v1/auth/device/token`, writes the refresh token to keychain on success. Refresh token rotation is mandatory — every refresh issues a new refresh token; the old one is revoked. Tests cover the SSH-no-browser path and the firewall-blocks-localhost path.
 - **Alternatives rejected:**
   - localhost-callback OAuth — fails on SSH / headless; brittle behind firewalls.
   - Long-lived bearer tokens with no refresh — would force re-login on expiry; breaks the seamless-auth value.
-  - Username/password — banned by `docs/design.md §4.1` ("No passwords, ever").
+  - Username/password — banned by `docs/architecture.md §4.1` ("No passwords, ever").
 
 ### SK-CLI-007 — Silent refresh: 401 → refresh → retry once; refresh fail → re-run device flow in place
 

@@ -13,7 +13,7 @@ when-to-load:
 **One-liner:** Per-key, per-IP rate-limit middleware with X-RateLimit-* headers.
 **Status:** partial — per-account D1 limiter (`/v1/ask`) + per-IP KV limiter (`/v1/demo/ask`) shipped; anonymous tier + `X-RateLimit-*` parity headers pending
 **Owners (code):** `apps/api/src/ask/rate-limit.ts`, `apps/api/src/demo.ts`
-**Cross-refs:** docs/design.md §6 (free-tier rate-limit guarantees) · docs/design.md §3.5 (`pk_live_*` origin-pinned) · docs/design.md §3.6.8 (rate limits on create) · docs/implementation.md §8 (per-IP + per-account "Day 1") · docs/plan.md §5.3 / §11.5 (free-tier abuse)
+**Cross-refs:** docs/architecture.md §6 (free-tier rate-limit guarantees) · docs/architecture.md §3.5 (`pk_live_*` origin-pinned) · docs/architecture.md §3.6.8 (rate limits on create) · docs/architecture.md §10 §8 (per-IP + per-account "Day 1") · docs/architecture.md §10 §5.3 / §11.5 (free-tier abuse)
 
 ## Touchpoints — read this skill before editing
 
@@ -35,7 +35,7 @@ when-to-load:
 - **Alternatives rejected:**
   - Single KV-backed limiter for both — exhausts the 1k-writes-per-day Free quota within a day of any real traffic.
   - Single D1-backed limiter for both — every anonymous demo hit creates a `rate_limit_buckets` row keyed by IP, exploding D1 row count under abuse exactly when we need the limiter to be cheap.
-  - Upstash Redis token-bucket (referenced in `docs/plan.md §3` "per-API-key token bucket in Upstash Redis") — not free-tier viable today; deferred to Phase 2 if D1 ceiling becomes a problem.
+  - Upstash Redis token-bucket (referenced in `docs/architecture.md §10 §3` "per-API-key token bucket in Upstash Redis") — not free-tier viable today; deferred to Phase 2 if D1 ceiling becomes a problem.
 
 ### SK-RL-002 — D1 limiter: atomic UPSERT-with-RETURNING; over-limit requests still increment
 
@@ -72,11 +72,11 @@ when-to-load:
 
 - **Decision:** Hitting any free-tier ceiling rate-limits the user with a clear message — never deletes data, never silently upgrades to a paid plan, never holds data hostage. Export is always free, even 90d after a notional cancellation. DBs auto-pause after 7d idle (resume <2s, clearly disclosed).
 - **Core value:** Free, Bullet-proof, Honest latency
-- **Why:** The free-tier guarantee in `docs/design.md §6` is load-bearing for activation. A user who feels their data is at risk will not return; a rate-limit message they understand will (often) result in a card. "Free trial with countdown" is exactly the dark pattern we are not.
+- **Why:** The free-tier guarantee in `docs/architecture.md §6` is load-bearing for activation. A user who feels their data is at risk will not return; a rate-limit message they understand will (often) result in a card. "Free trial with countdown" is exactly the dark pattern we are not.
 - **Consequence in code:** No code path in `apps/api` deletes user data on quota violation. Pause logic (Phase 1+) marks DBs paused on idle but reactivates on the next query. The 429 message must offer a next action (add a card / wait for window reset / export data); reviewers reject "rate limited, sorry" with no follow-up.
 - **Alternatives rejected:**
   - Soft-delete after 30d over quota — exactly the user-hostile pattern we differentiate against.
-  - Silent auto-upgrade with a card on file — violates `docs/design.md §6` "honest billing"; first charge is always double-confirmed via email.
+  - Silent auto-upgrade with a card on file — violates `docs/architecture.md §6` "honest billing"; first charge is always double-confirmed via email.
 
 ### SK-RL-006 — Per-IP companion to per-account ships when anonymous-mode ships
 
@@ -100,6 +100,6 @@ Canonical text in [`docs/decisions.md`](../../docs/decisions.md). The list below
 - **`X-RateLimit-*` parity headers — RESOLVED.** `/v1/ask`, `/v1/chat/messages`, and `/v1/demo/ask` now emit `X-RateLimit-Limit`, `X-RateLimit-Remaining`, `X-RateLimit-Reset`, and `Retry-After` on every 429. `RateLimitDecision` carries `resetAt`; the demo `RateLimiter.hit` return type carries `limit` and `count`. The SDK-side header definitions (referenced in the original open question) are deferred to whenever the SDK adds retry-with-backoff — at that point the SDK should read `X-RateLimit-Reset` to schedule the retry rather than sleeping a fixed duration. SSE rate-limit responses (`/v1/ask` with `Accept: text/event-stream`) do NOT emit these headers because Hono's `streamSSE` commits the 200 before the rate-limit verdict is known; callers should use the `{ error: { status, limit, count, resetAt } }` event payload instead. Tracked as an open question: should SSE rate-limit responses return a plain 429 (not a stream) so headers can be set?
 - **Stale `rate_limit_buckets` row sweep.** D1 rows accumulate one per `(user_id, window_start)` tuple. At 60-second windows + 1k DAU that's ~1.4M rows/day — well within D1's 5GB Free quota for now, but a sweep job (drop rows older than 1 hour) is cheap insurance once volume crosses 100k MAU.
 - **Anonymous-tier ceiling.** PLAN §11.5 calls for "per-IP + per-account rate limits Day 1" without naming a number. Decide a tier before anonymous mode ships (suggested 30/min per IP for `/v1/ask`, lower than the 60/min authenticated tier).
-- **Tier-aware ceilings (Hobby / Pro).** Free is 60/min today. Hobby (50k/mo) and Pro ($0.0005/query over 50k) tiers in `docs/design.md §6` imply a higher per-minute ceiling for paid tiers. Limit-per-tier is not yet wired; needs `customers.tier` JOIN on the limiter call.
-- **Premium-models add-on per-key spend cap.** `docs/design.md §6` Premium-models row notes "per-key spend cap" — separate from request-count rate-limit. Lago wiring (PLAN §6) is the natural home; not built.
+- **Tier-aware ceilings (Hobby / Pro).** Free is 60/min today. Hobby (50k/mo) and Pro ($0.0005/query over 50k) tiers in `docs/architecture.md §6` imply a higher per-minute ceiling for paid tiers. Limit-per-tier is not yet wired; needs `customers.tier` JOIN on the limiter call.
+- **Premium-models add-on per-key spend cap.** `docs/architecture.md §6` Premium-models row notes "per-key spend cap" — separate from request-count rate-limit. Lago wiring (PLAN §6) is the natural home; not built.
 - **Token bucket vs fixed window.** Fixed-window is cheap but allows burst-at-boundary (60 in the last second of one window, 60 in the first of the next). Token bucket smooths this. Defer until burst-abuse shows up in OTel.

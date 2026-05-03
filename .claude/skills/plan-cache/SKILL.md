@@ -12,7 +12,7 @@ when-to-load:
 **One-liner:** Content-addressed plan storage keyed by (schema_hash, query_hash).
 **Status:** implemented
 **Owners (code):** `apps/api/src/ask/plan-cache.ts`
-**Cross-refs:** docs/design.md §0 (Bullet-proof checklist), §2 (architecture), §7 (free-tier stack), §8 (cost-control rules), §9 (cache invalidation row) · docs/implementation.md Slice 6 (`/v1/ask` E2E) · docs/performance.md §2.1, §3.1, §3.2
+**Cross-refs:** docs/architecture.md §0 (Bullet-proof checklist), §2 (architecture), §7 (free-tier stack), §8 (cost-control rules), §9 (cache invalidation row) · docs/architecture.md §10 Slice 6 (`/v1/ask` E2E) · docs/performance.md §2.1, §3.1, §3.2
 
 ## Touchpoints — read this skill before editing
 
@@ -27,7 +27,7 @@ when-to-load:
 - **Why:** KV is co-located with the Worker (same edge), giving 5 ms p50 / 15 ms p99 reads (`docs/performance.md §2.1`). It needs no provisioning step, no connection pool, and no extra dependency in the bundle (`GLOBAL-013`). The free tier covers Phase 1 traffic with headroom because plans are cheap to write and most are read many times before they're evicted.
 - **Consequence in code:** `apps/api/src/plan-cache/**` uses the Workers KV binding directly. No abstraction layer that pretends KV is interchangeable with Redis or Postgres — when we move the cache (if ever), we move it explicitly. The bundle has zero plan-cache deps.
 - **Alternatives rejected:** Redis (Upstash) — adds a connection step, costs at scale, and duplicates KV's edge co-location. D1 — fine for control-plane data; row-level reads are slower than KV's key-value access pattern. In-Worker memory cache — Workers are stateless across invocations; would lose every cache on cold-start.
-- **Source:** docs/design.md §2, §7
+- **Source:** docs/architecture.md §2, §7
 
 ### SK-PLAN-002 — Cache key = `(schema_hash, query_hash)` content-addressed; no other inputs
 
@@ -36,7 +36,7 @@ when-to-load:
 - **Why:** Plans are deterministic outputs of (schema, query). Adding any other input narrows the cache key space, drops the hit rate, and re-introduces the "is this user's plan compatible with that user's plan" question that determinism already answered. If a future requirement *does* need to differ — e.g., engine-specific plans for Phase 3 — we widen `query_hash` to include the engine label, not the cache key.
 - **Consequence in code:** `cacheKey(schema_hash, query_hash) → string` is the only constructor. Reviews reject any helper that adds a third field. Engine label, model version, prompt-template version, etc. fold into `query_hash` as the input changes — the cache key stays the same shape.
 - **Alternatives rejected:** Per-tenant cache (`(tenant_id, schema_hash, query_hash)`) — kills the cross-tenant hit rate that makes the cache pay off; identical schema + query produces identical SQL regardless of tenant. Per-model cache — same problem; if model output differs the input differs (model version goes into `query_hash`).
-- **Source:** docs/design.md §0, §9 · docs/decisions.md#GLOBAL-006
+- **Source:** docs/architecture.md §0, §9 · docs/decisions.md#GLOBAL-006
 
 ### SK-PLAN-003 — No TTL, no manual invalidation; eviction is LRU only when budget exhausts
 
@@ -45,7 +45,7 @@ when-to-load:
 - **Why:** Cache invalidation is the second-hardest problem in CS; TTLs introduce flakiness around the boundary (a query that just cache-missed re-runs the LLM even though nothing changed). `(schema_hash, query_hash)` covers every input that determines the output, so a TTL would only ever discard correct plans. Letting LRU handle the budget keeps the design free of operator-poked levers.
 - **Consequence in code:** No `ttl_sec` parameter on the write path. No `invalidateCache()` admin endpoint. The "force a new plan" escape hatch lives at the input layer — change `query_hash` (e.g., a `--force-replan` hint adds a salt to `query_hash`), don't punch through the cache. Hit on stale plan is structurally impossible because schema widening doesn't change `schema_hash` for fields the plan doesn't reference (per `GLOBAL-004`).
 - **Alternatives rejected:** TTL of N hours / N days — wastes the 99% case where inputs are unchanged; introduces flakiness. Manual flush button — operator footgun; usually used to "fix" a bug that's actually input-not-changing-when-it-should.
-- **Source:** docs/design.md §0, §9 · docs/decisions.md#GLOBAL-006
+- **Source:** docs/architecture.md §0, §9 · docs/decisions.md#GLOBAL-006
 
 ### SK-PLAN-004 — Reads are exact-match only; no fuzzy / prefix / similar-query lookup
 
@@ -63,7 +63,7 @@ when-to-load:
 - **Why:** A parallel pinned cache means two read paths, two eviction policies, two failure modes. One store with deterministic keys gives pinning the same operational properties as the auto-cached plans — and lets a human pin override the LLM's plan in the obvious way (a hit on a deliberately-shaped key wins).
 - **Consequence in code:** Pinning writes are `kv.put(cacheKey(schema_hash, queryHashWithPinSalt), plan)`. Reads still go through one `kv.get`. No "is this pinned?" branch in the read path.
 - **Alternatives rejected:** Separate `plan-pins` KV namespace — duplicates eviction logic, doubles surface area. Look up pin first, fall through to LLM-cache — adds a hop on the hot path; same result with a salt.
-- **Source:** docs/design.md §0 (Bullet-proof) · docs/decisions.md#GLOBAL-006
+- **Source:** docs/architecture.md §0 (Bullet-proof) · docs/decisions.md#GLOBAL-006
 
 ### SK-PLAN-006 — Cache write happens in-band before the response, not in `waitUntil`
 
@@ -78,8 +78,8 @@ when-to-load:
 
 - **Decision:** Every plan-cache lookup emits the canonical observability triple from `docs/performance.md §3`: a `nlqdb.cache.plan.lookup` span with label `hit=true|false`, plus `nlqdb.cache.plan.hits.total` / `nlqdb.cache.plan.misses.total` counters. Writes emit `nlqdb.cache.plan.write` spans.
 - **Core value:** Honest latency, Bullet-proof, Fast
-- **Why:** The cache is the largest cost lever in the system (per `docs/design.md §8`: "60–80% cache hit on mature workloads"). Without per-lookup hit/miss telemetry we can't tell whether a latency regression is the cache rate dropping or the LLM slowing down. Span + counter pair gives both per-request detail and aggregate counts.
-- **Consequence in code:** `cacheLookup()` is wrapped in the canonical span; the `hit` label is set before exit. Counter increments are unconditional (one of {`hits`, `misses`} fires every time). The spans/counters land together with the slice they belong to (`docs/implementation.md` Slice 6 instrumentation table).
+- **Why:** The cache is the largest cost lever in the system (per `docs/architecture.md §8`: "60–80% cache hit on mature workloads"). Without per-lookup hit/miss telemetry we can't tell whether a latency regression is the cache rate dropping or the LLM slowing down. Span + counter pair gives both per-request detail and aggregate counts.
+- **Consequence in code:** `cacheLookup()` is wrapped in the canonical span; the `hit` label is set before exit. Counter increments are unconditional (one of {`hits`, `misses`} fires every time). The spans/counters land together with the slice they belong to (`docs/architecture.md §10` Slice 6 instrumentation table).
 - **Alternatives rejected:** Lookup-counter only (no span) — loses the per-request latency breakdown. Span only (no counter) — loses cheap aggregate reporting; counters land in dashboards without span-aggregation cost.
 - **Source:** docs/performance.md §3.1, §3.2 · docs/decisions.md#GLOBAL-014
 
