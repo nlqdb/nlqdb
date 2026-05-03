@@ -84,10 +84,11 @@ export async function provisionDb(
       await runQuery(tracer, deps.pg, "BEGIN");
       txStarted = true;
 
-      // Cap every DDL statement so a misbehaving Neon connection or a
-      // pathological DDL expression can't hold the Worker open
-      // indefinitely (SK-HDC-010). `SET LOCAL` scopes to the
-      // transaction; it is automatically reset on COMMIT / ROLLBACK.
+      // Default cap so a misbehaving Neon connection or a pathological
+      // DDL expression can't hold the Worker open indefinitely
+      // (SK-HDC-010). Per-statement bumps to 600s for index DDL apply
+      // inside the loop below. `SET LOCAL` scopes to the transaction;
+      // it is automatically reset on COMMIT / ROLLBACK.
       await runQuery(tracer, deps.pg, "SET LOCAL statement_timeout = '30s'");
 
       await runQuery(tracer, deps.pg, `CREATE SCHEMA IF NOT EXISTS "${schemaName}"`);
@@ -124,6 +125,14 @@ export async function provisionDb(
       await runQuery(tracer, deps.pg, `GRANT USAGE ON SCHEMA "${schemaName}" TO "${roleName}"`);
 
       for (const stmt of args.ddl) {
+        // CREATE INDEX on a populated table can run well past 30 s
+        // (CREATE TABLE / ALTER TABLE on an empty schema do not).
+        // Bump per-statement to 600 s for index DDL only — other
+        // statements keep the default 30 s ceiling. SK-HDC-010.
+        const isIndexStmt = /\bindex\b/i.test(stmt);
+        if (isIndexStmt) {
+          await runQuery(tracer, deps.pg, "SET LOCAL statement_timeout = '600s'");
+        }
         try {
           await runQuery(tracer, deps.pg, stmt);
         } catch (err) {
@@ -140,6 +149,9 @@ export async function provisionDb(
               rolled_back: true,
             },
           };
+        }
+        if (isIndexStmt) {
+          await runQuery(tracer, deps.pg, "SET LOCAL statement_timeout = '30s'");
         }
       }
 

@@ -88,7 +88,10 @@ describe("renderState — error", () => {
       "table",
     );
     expect(html).toContain('data-kind="api"');
-    expect(html).toContain("Error 429: rate_limited");
+    // Per GLOBAL-012 the 429 path now renders a one-sentence + next-action
+    // message that includes the limit/count, instead of the old "Error 429".
+    expect(html).toContain("Rate limit reached (11 of 10 requests used)");
+    expect(html).toContain("Please wait a moment, then try again");
   });
 
   it("renders structured 5xx api errors (db_unreachable) with status + slug", () => {

@@ -125,7 +125,7 @@ describe("postChatMessage — persist path", () => {
       async () =>
         ({
           ok: false,
-          error: { status: "db_unreachable", message: "connection refused" },
+          error: { status: "db_unreachable" },
         }) satisfies OrchestrateOutcome,
     );
     const deps = makeDeps(ask);
@@ -135,7 +135,9 @@ describe("postChatMessage — persist path", () => {
     }
     expect(deps.store.rows).toHaveLength(2);
     expect(out.assistant.result.status).toBe("db_unreachable");
-    expect(out.assistant.result.message).toBe("connection refused");
+    // Postgres / connection-string fragments stay server-side
+    // (GLOBAL-012); the persisted row carries status only.
+    expect(out.assistant.result.message).toBeUndefined();
   });
 
   it("persists with no summary when ask omitted one (skipSummary path)", async () => {
@@ -171,9 +173,11 @@ describe("postChatMessage — persist path", () => {
       throw new Error("expected persisted error");
     }
     // Synthetic error uses `llm_failed` so it routes to the existing
-    // `errorStatus()` mapper without a new variant.
+    // `errorStatus()` mapper without a new variant. The thrown error's
+    // message is captured by the OTel span server-side; it must not
+    // leak into the persisted row (GLOBAL-012).
     expect(out.assistant.result.status).toBe("llm_failed");
-    expect(out.assistant.result.message).toMatch(/planet on fire/);
+    expect(out.assistant.result.message).toBeUndefined();
   });
 });
 
@@ -183,7 +187,12 @@ describe("postChatMessage — reject path (no persist)", () => {
       async () =>
         ({
           ok: false,
-          error: { status: "rate_limited" as const, limit: 60, count: 61 },
+          error: {
+            status: "rate_limited" as const,
+            limit: 60,
+            count: 61,
+            resetAt: 0,
+          },
         }) satisfies OrchestrateOutcome,
     );
     const deps = makeDeps(ask);

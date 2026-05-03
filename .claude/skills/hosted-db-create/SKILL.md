@@ -134,15 +134,17 @@ when-to-load:
   - Use Postgres's `quote_ident()` / `format()` server-side — requires shipping the raw identifier to the server, which is exactly the surface we're trying to remove. The check belongs at the boundary, not after the wire crossing.
   - Allow quoted identifiers with embedded characters (the full Postgres identifier grammar) — auditability cost outweighs the (zero) benefit; we control the upstream compiler and never need exotic identifier shapes.
 
-### SK-HDC-010 — DDL transaction has a 30-second statement timeout
+### SK-HDC-010 — DDL transaction has a 30 s statement timeout, 600 s for index DDL
 
-- **Decision:** Immediately after `BEGIN`, the provisioner issues `SET LOCAL statement_timeout = '30s'`. This caps every individual DDL statement in the transaction. The `SET LOCAL` is transaction-scoped and resets automatically on `COMMIT` or `ROLLBACK`.
+- **Decision:** Immediately after `BEGIN`, the provisioner issues `SET LOCAL statement_timeout = '30s'`. DDL statements matching `/\bindex\b/i` are bracketed with a per-statement bump to `'600s'` and reset to `'30s'` after. `SET LOCAL` is transaction-scoped and resets on `COMMIT` / `ROLLBACK`.
 - **Core value:** Bullet-proof
-- **Why:** The Neon HTTP adapter has its own network timeout (the Worker's 30 s CPU limit is the outer bound), but a server-side `statement_timeout` catches pathological DDL expressions — e.g., a schema with a circular FK reference — that parse and validate correctly but hang at execution time. 30 s is generous for any single `CREATE TABLE` or `CREATE INDEX` (typical: <100 ms), but short enough to prevent a stuck connection from holding the Worker open until isolate death. Without this, a hanging DDL statement would silently exhaust the Worker's CPU budget and return a 500 with no diagnostic information.
-- **Consequence in code:** `apps/api/src/db-create/neon-provision.ts` issues `SET LOCAL statement_timeout = '30s'` after `BEGIN`. Tests that inject a slow `pg.query` stub see the timeout fire and surface `ddl_execution_failed`. The value (30 s) is intentionally not configurable — it is calibrated to the Worker's execution model and the expected DDL complexity cap (≤20 tables, ≤50 columns, ≤50 FK+index statements).
+- **Why:** A server-side `statement_timeout` catches pathological DDL expressions — e.g., a schema with a circular FK reference — that parse and validate correctly but hang at execution time. 30 s is generous for `CREATE TABLE` / `ALTER TABLE` (typical: <100 ms) but short enough to prevent a stuck connection from holding the Worker open until isolate death. `CREATE INDEX` against a populated table is the carve-out: it can run for minutes, and capping at 30 s would surface as `ddl_execution_failed` on benign large-table cases.
+- **Consequence in code:** `apps/api/src/db-create/neon-provision.ts` sets the 30 s default after `BEGIN`, then bumps to 600 s around any DDL statement containing the word `index` (word-boundary match, so `idx_user_id` does not trigger). Neither value is configurable.
 - **Alternatives rejected:**
-  - Session-level `SET statement_timeout` — would leak into subsequent requests on a pooled connection; `SET LOCAL` is the correct scope for a transaction-bounded guard.
-  - Trust the Worker CPU limit alone — the Worker limit is a hard kill (no `finally` runs), and the error surface is worse.
+  - Session-level `SET statement_timeout` — leaks into subsequent requests on a pooled connection.
+  - Single 30 s ceiling for everything — bites on legitimate `CREATE INDEX` against a populated table.
+  - Single 600 s ceiling for everything — defeats the guard for the 99 % case.
+  - Trust the Worker CPU limit alone — hard kill, no `finally`, worse error surface.
   - Configurable via wrangler.toml — adds operator surface for a value that doesn't need tuning at Phase 1 scale.
 
 ## GLOBALs governing this feature

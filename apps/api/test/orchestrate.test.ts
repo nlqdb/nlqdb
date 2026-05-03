@@ -57,8 +57,8 @@ function stubExec(result: QueryResult | Error = { rows: [{ x: 1 }], rowCount: 1 
   });
 }
 
-function stubRateLimiter(allowed = true, count = 1, limit = 60) {
-  return { check: vi.fn(async () => ({ allowed, count, limit })) };
+function stubRateLimiter(allowed = true, count = 1, limit = 60, resetAt = 0) {
+  return { check: vi.fn(async () => ({ allowed, count, limit, resetAt })) };
 }
 
 function stubFirstQuery(notFiredYet = false) {
@@ -161,9 +161,12 @@ describe("orchestrateAsk", () => {
       dbId: "db_1",
       userId: "user_1",
     });
+    // Provider error messages can carry API keys / prompt fragments
+    // and are stripped at the boundary; only the OTel span retains
+    // them (GLOBAL-012).
     expect(out).toEqual({
       ok: false,
-      error: { status: "llm_failed", message: "all providers exhausted" },
+      error: { status: "llm_failed" },
     });
   });
 
@@ -174,9 +177,10 @@ describe("orchestrateAsk", () => {
       dbId: "db_1",
       userId: "user_1",
     });
+    // Postgres / connection-string fragments are stripped — status only.
     expect(out).toEqual({
       ok: false,
-      error: { status: "db_unreachable", message: "connection refused" },
+      error: { status: "db_unreachable" },
     });
   });
 
@@ -189,12 +193,11 @@ describe("orchestrateAsk", () => {
       dbId: "db_1",
       userId: "user_1",
     });
+    // Operator-config error message (secret name, schema name) is also
+    // captured server-side via OTel and not echoed to the client.
     expect(out).toEqual({
       ok: false,
-      error: {
-        status: "db_misconfigured",
-        message: 'connection_secret_ref "DATABASE_URL" did not resolve',
-      },
+      error: { status: "db_misconfigured" },
     });
   });
 
@@ -279,7 +282,7 @@ describe("orchestrateAsk", () => {
     });
     expect(out).toEqual({
       ok: false,
-      error: { status: "rate_limited", limit: 60, count: 60 },
+      error: { status: "rate_limited", limit: 60, count: 60, resetAt: 0 },
     });
     expect(llm.plan).not.toHaveBeenCalled();
     expect(exec).not.toHaveBeenCalled();
