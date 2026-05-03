@@ -15,8 +15,8 @@ MCP server + nlq mcp install host detection (Claude Desktop, Cursor, Cline).
 ## Commands
 
 ```bash
-pnpm --filter @nlqdb/mcp build
-pnpm --filter @nlqdb/mcp test
+bun --filter @nlqdb/mcp run build
+bun --filter @nlqdb/mcp run test
 ```
 
 ## Local rules

@@ -12,7 +12,7 @@ when-to-load:
 **One-liner:** `<nlq-data>` web component for framework-free embedding.
 **Status:** implemented (Slice 10 — `<nlq-data>` v0.1; `<nlq-action>` deferred to Phase 2)
 **Owners (code):** `packages/elements/**`
-**Cross-refs:** docs/design.md §3.5 (the bet) · §14.5 (happy path) · docs/surfaces.md (matrix) · `packages/elements/README.md`
+**Cross-refs:** docs/architecture.md §3.5 (the bet) · §14.5 (happy path) · docs/architecture.md §3 (matrix) · `packages/elements/README.md`
 
 ## Touchpoints — read this skill before editing
 
@@ -39,7 +39,7 @@ when-to-load:
 
 - **Decision:** All input flows through HTML attributes. Observed: `goal` (NL goal — required for goal-first form), `db` (explicit DB id — required for power-user form), `query` (explicit NL query against an explicit DB), `api-key` (`pk_live_…`), `endpoint` (override of `https://app.nlqdb.com/v1/ask`), `template` (`table` / `list` / `kv` in v0.1; `card-grid` / `chart` later), `refresh` (poll interval, e.g. `10s`, `60s`, `5m`). A change to any of `goal`, `db`, `query`, `api-key`, `endpoint`, `template` schedules an update; `refresh` re-arms the timer only.
 - **Core value:** Goal-first, Simple, Effortless UX
-- **Why:** HTML attributes are the framework-free contract — they work in static HTML, every framework's templating, every CMS's HTML field, every page builder. Anything beyond attributes (props, methods, events) requires JavaScript; embedding into a marketing page or no-code builder must work without that. The two attribute-shapes (`goal` alone vs `db` + `query`) realise the goal-first / power-user duality from `docs/design.md §0.1`.
+- **Why:** HTML attributes are the framework-free contract — they work in static HTML, every framework's templating, every CMS's HTML field, every page builder. Anything beyond attributes (props, methods, events) requires JavaScript; embedding into a marketing page or no-code builder must work without that. The two attribute-shapes (`goal` alone vs `db` + `query`) realise the goal-first / power-user duality from `docs/architecture.md §0.1`.
 - **Consequence in code:** `observedAttributes` is the canonical list. `attributeChangedCallback` dispatches to (a) `setupRefresh()` for `refresh`, (b) `scheduleUpdate()` for the fetch-relevant subset (`FETCH_ATTRS`). Adding a new attribute requires a `parse.ts` entry, a slot in the fetch payload (`fetch.ts`), an `observedAttributes` row, and a `FETCH_ATTRS`-vs-refresh-only classification. No DOM-property-only options.
 - **Alternatives rejected:**
   - Property-only API (`el.goal = "..."`) — breaks the static-HTML embed story.

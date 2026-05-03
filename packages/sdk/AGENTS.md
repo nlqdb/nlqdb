@@ -16,8 +16,8 @@
 ## Commands
 
 ```bash
-pnpm --filter @nlqdb/sdk build
-pnpm --filter @nlqdb/sdk test
+bun --filter @nlqdb/sdk run build
+bun --filter @nlqdb/sdk run test
 ```
 
 ## Local rules

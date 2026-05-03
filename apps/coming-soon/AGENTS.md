@@ -14,8 +14,8 @@ _No feature-specific skill — this area is intentionally minimal (static / land
 ## Commands
 
 ```bash
-pnpm --filter apps/coming-soon dev
-pnpm --filter apps/coming-soon build
+bun --filter apps/coming-soon run dev
+bun --filter apps/coming-soon run build
 ```
 
 ## Local rules

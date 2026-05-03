@@ -13,7 +13,7 @@ when-to-load:
 **One-liner:** EVENTS_QUEUE producer + events-worker consumer that fans out to sinks (LogSnag, etc.).
 **Status:** implemented (Slice 3 — `packages/events` + queue; Slice 7 wires `billing.*` emissions)
 **Owners (code):** `packages/events/**`, `apps/events-worker/**`
-**Cross-refs:** docs/design.md §5.4 (analytics layers) · docs/implementation.md §2.6 (events architecture) · docs/runbook.md §6 (`apps/events-worker` ops) · `apps/events-worker/README.md`
+**Cross-refs:** docs/architecture.md §5.4 (analytics layers) · docs/architecture.md §10 §2.6 (events architecture) · docs/runbook.md §6 (`apps/events-worker` ops) · `apps/events-worker/README.md`
 
 ## Touchpoints — read this skill before editing
 
@@ -40,7 +40,7 @@ when-to-load:
 - **Decision:** `ProductEvent` in `packages/events/src/types.ts` is a TypeScript discriminated union keyed on `name`. Producers call `events.emit({ name: "user.first_query", userId, dbId })`; consumer dispatch is type-checked. Adding a new event = (1) new union variant, (2) new sink case in `apps/events-worker/src/sinks/logsnag.ts`'s `buildPayload()`, (3) test asserting dispatch.
 - **Core value:** Bullet-proof, Simple
 - **Why:** Free-form `(name, props)` shapes drift across producer and consumer — the producer typos a property and the sink silently maps to `null`, the funnel reports a hole that doesn't exist. A discriminated union makes the consumer's `switch (event.name)` exhaustive at compile time; the `default: const _exhaustive: never = event` arm is a TypeScript error when a new variant is added without sink coverage.
-- **Consequence in code:** No `Record<string, unknown>` properties on events. Sink files use `switch (event.name)` with no default arm reachable at runtime. Producer call-sites that omit a required field fail `pnpm typecheck` before merge. Reviewers reject any `as ProductEvent` cast.
+- **Consequence in code:** No `Record<string, unknown>` properties on events. Sink files use `switch (event.name)` with no default arm reachable at runtime. Producer call-sites that omit a required field fail `bun run typecheck` before merge. Reviewers reject any `as ProductEvent` cast.
 - **Alternatives rejected:**
   - PostHog-style `capture(name, props)` — no compile-time guarantee the consumer recognises the name; reorderings of property names produce silent funnel breakage.
   - Protobuf / external schema — overkill for ≤ 10 event types and adds a build step on the Worker bundle.
@@ -77,7 +77,7 @@ when-to-load:
 
 ### SK-EVENTS-006 — Canonical event-name schema: `<domain>.<verb_noun>`, snake_dot, lowercase
 
-- **Decision:** Event names follow `<domain>.<verb_noun>` (e.g. `user.registered`, `user.first_query`, `billing.subscription_created`, `billing.subscription_canceled`). Domains today: `user`, `billing`. **No `trial.*` events** (the free tier IS the trial — see `docs/plan.md §5.3`). **Sign-ins are deliberately not emitted** — they would dominate the LogSnag 2,500/mo free quota with no founder signal.
+- **Decision:** Event names follow `<domain>.<verb_noun>` (e.g. `user.registered`, `user.first_query`, `billing.subscription_created`, `billing.subscription_canceled`). Domains today: `user`, `billing`. **No `trial.*` events** (the free tier IS the trial — see `docs/architecture.md §10 §5.3`). **Sign-ins are deliberately not emitted** — they would dominate the LogSnag 2,500/mo free quota with no founder signal.
 - **Core value:** Free, Simple, Honest latency
 - **Why:** A consistent naming scheme keeps LogSnag / future PostHog dashboards readable without a translation layer. The 2,500/mo quota is a hard constraint on what's worth emitting — the rule "fire only one-shot lifecycle events" is what keeps the free-tier sink viable. Trial events would lie about a funnel that doesn't exist.
 - **Consequence in code:** Reviewers reject names like `userSignedIn` (camelCase), `user-first-query` (kebab), `signin` (no domain). Reviewers reject any new event that fires more than once per user-lifecycle without an explicit cost analysis (e.g. PostHog wired alongside LogSnag with its own quota). The Stripe webhook deliberately does not emit `billing.subscription_updated` (`SK-STRIPE-005`); update is pure state sync.
@@ -116,6 +116,6 @@ Canonical text in [`docs/decisions.md`](../../docs/decisions.md). The list below
 
 - **DLQ activation threshold.** No agreed-upon dropped-event rate that triggers DLQ wiring; document the threshold (e.g. > X drops/day for 3 consecutive days) in `apps/events-worker/README.md` so the trigger is observable, not opinion-driven.
 - **PostHog wiring criteria.** The "real cohort question that SQL can't answer" is qualitative. Capture a concrete checklist (questions tried, time-spent, alternative outcomes) so the decision to wire PostHog is auditable rather than vibes.
-- **Schema evolution.** Adding a field to an existing `ProductEvent` variant breaks `pnpm typecheck` for older producers in flight during a deploy. There's no documented migration recipe — write one before a non-additive change lands.
+- **Schema evolution.** Adding a field to an existing `ProductEvent` variant breaks `bun run typecheck` for older producers in flight during a deploy. There's no documented migration recipe — write one before a non-additive change lands.
 - **Queue free-tier ceiling.** 10K ops/day on Workers Free = ~3.3K msgs/day at 3 ops/msg. PLAN's Phase 1 anonymous-mode + waitlist + first-query traffic is below this, but the head-room is thin; capture a "hot signal" alert when daily ops cross 70%.
 - **Inbound-email sink (RUNBOOK §2.1.1).** Cloudflare Email Routing is wired separately; consider whether a future `support.email_received` event should flow through this pipeline or stay separate.

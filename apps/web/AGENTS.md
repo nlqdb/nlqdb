@@ -16,9 +16,9 @@ Marketing + product web app. Onboarding, anonymous-mode default, demo dataset.
 ## Commands
 
 ```bash
-pnpm --filter apps/web dev
-pnpm --filter apps/web build
-pnpm --filter apps/web test
+bun --filter apps/web run dev
+bun --filter apps/web run build
+bun --filter apps/web run test
 ```
 
 ## Local rules

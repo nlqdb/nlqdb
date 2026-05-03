@@ -13,7 +13,7 @@ when-to-load:
 **One-liner:** Better Auth identity across all surfaces — sessions, refresh, device flow, GitHub/Google/magic-link.
 **Status:** implemented
 **Owners (code):** `apps/api/src/auth/**`, `packages/auth-internal/**`
-**Cross-refs:** docs/design.md §4 (Authentication & identity) · docs/implementation.md §2.5, Slice 5 (Better Auth) · docs/runbook.md §5 (Google OAuth) · docs/runbook.md §5b (GitHub OAuth)
+**Cross-refs:** docs/architecture.md §4 (Authentication & identity) · docs/architecture.md §10 §2.5, Slice 5 (Better Auth) · docs/runbook.md §5 (Google OAuth) · docs/runbook.md §5b (GitHub OAuth)
 
 ## Touchpoints — read this skill before editing
 
@@ -29,7 +29,7 @@ when-to-load:
 - **Why:** Better Auth has no per-MAU fees, no vendor lock on user data shape, and the Auth.js team merged into it in 2025 making it the de-facto TS standard. Workers + D1 keeps us inside the strict-$0 stack (`GLOBAL-013`). Building the sign-in page ourselves lets the auth surface express the brand instead of leaking a hosted-IdP look.
 - **Consequence in code:** `packages/auth-internal` is the only thing that imports Better Auth; every other package consumes its primitives. New auth methods are added by extending the Better Auth config in `packages/auth-internal`, never by reaching for a parallel SDK.
 - **Alternatives rejected:** Auth0 / Clerk / Supabase Auth — per-MAU fees break Free; data-shape lock-in conflicts with our identity-portability promise. Roll-your-own — `GLOBAL-016` rejects DIY when a small mature library exists.
-- **Source:** docs/design.md §4.1
+- **Source:** docs/architecture.md §4.1
 
 ### SK-AUTH-002 — Sign-in methods at launch: magic link, passkey, GitHub, Google. No passwords, ever.
 
@@ -38,7 +38,7 @@ when-to-load:
 - **Why:** Passwords are the largest reset/breach/social-engineering surface in any SaaS. Magic link + passkey covers the security-conscious and the convenience-first cohorts; GitHub + Google covers the "I just want to sign in" majority. Adding password auth later would expand attack surface for no UX gain — we'd rather cap that surface to zero now.
 - **Consequence in code:** No password column in the user table, no `/auth/sign-in/password` endpoint, no password-reset flow, no rate-limit bucket dedicated to password attempts. PRs that add a password field are rejected.
 - **Alternatives rejected:** Email + password baseline — every breach risk we're avoiding. SSO-only (no magic link) — punts the no-OAuth cohort to "create an account elsewhere first," contradicts `GLOBAL-007`.
-- **Source:** docs/design.md §4.1
+- **Source:** docs/architecture.md §4.1
 
 ### SK-AUTH-003 — Session storage: 1h JWT access tokens + KV revocation set
 
@@ -47,7 +47,7 @@ when-to-load:
 - **Why:** Pure JWT (no revocation list) makes revocation a lie; pure DB session lookup adds DB hops to every request and competes with the user's own DB on connection budget. KV revocation set is the small-cost bridge — JWT covers the 99.99% case, KV covers the "we just revoked this" case in seconds. Workers KV free tier (100k reads/day) absorbs the load.
 - **Consequence in code:** Every authenticating handler does `verifyJwt → kv.get(revocation:<jti>)` before trusting the caller. The "≤2 s revocation" SLA is a contract test (revoke-from-web-then-CLI-401-on-next-call). Session TTL (`access: 1h`, `refresh: 30d sliding for web / 90d rotated for CLI`) is fixed in `packages/auth-internal`.
 - **Alternatives rejected:** Long-lived JWTs with no revocation — `GLOBAL-018` violation. DB-only sessions — adds latency and load to every request. Short JWTs with no revocation — still has a window where a stolen token works.
-- **Source:** docs/design.md §4.1, §4.3
+- **Source:** docs/architecture.md §4.1, §4.3
 
 ### SK-AUTH-004 — Device-code flow with `verification_uri_complete` (one-click approve, no typing)
 
@@ -56,7 +56,7 @@ when-to-load:
 - **Why:** Standard device-code asks the user to copy a 6-letter code into a separate URL — three small failures (typo, copy-paste loss, wrong tab) per sign-in. `verification_uri_complete` removes the typing entirely: `nlq login` opens a browser tab that already says "Approve this device?" One click and the polling CLI receives the access + refresh tokens. The user_code path remains for shell-only environments.
 - **Consequence in code:** `nlq login` opens `verification_uri_complete` directly; the displayed code is shown after the URL, not before. CLI polls `/v1/auth/device/token` until tokens land, writes the refresh token to the OS keychain (per `GLOBAL-010`), and resumes the original command.
 - **Alternatives rejected:** PKCE with a localhost callback — needs a free port and a browser that doesn't sandbox `127.0.0.1`; flaky in WSL/Codespaces. Long-lived password-style API key entered at install — `SK-AUTH-002` rejects passwords. Plain device-code without `verification_uri_complete` — UX regressions enumerated above.
-- **Source:** docs/design.md §4.3
+- **Source:** docs/architecture.md §4.3
 
 ### SK-AUTH-005 — Edge is the only component that sees external credentials; downstream gets a 30 s internal JWT
 
@@ -65,16 +65,16 @@ when-to-load:
 - **Why:** A leaked external key has the blast radius of *that key's scope*; downstream components are protected even if a single secret leaks. Centralising external-credential validation means one place to add a credential type, one place to reason about revocation, one place to instrument. 30 s is short enough to bound replay risk and long enough to outlive any single DB call.
 - **Consequence in code:** Downstream components verify the internal JWT, never the external bearer. `packages/auth-internal` exposes `mintInternalJwt({user_id, db_scope}, ttlSec=30)` and `verifyInternalJwt`; both are the only paths to the secret. The edge is the only file that imports Better Auth's session-verifier.
 - **Alternatives rejected:** Each component re-validates the bearer — every component owns part of the auth surface; revocation rules duplicate; bugs multiply. Bearer pass-through with no internal token — a leaked DB-pool URL is a leaked external key.
-- **Source:** docs/design.md §4.4
+- **Source:** docs/architecture.md §4.4
 
 ### SK-AUTH-006 — Authorization model is Owner / Member / Public — RBAC deferred to Phase 2
 
 - **Decision:** Phase 1 has three roles: **Owner** (full), **Member** (read + query, no destructive ops or key creation), **Public** (anonymous, read-only via publishable key, rate-limited). Fine-grained RBAC ships in Phase 2 only if a paying customer asks twice.
 - **Core value:** Simple, Goal-first, Free
-- **Why:** Three roles cover every persona in `docs/personas.md`; building an RBAC engine for hypothetical Phase-2 buyers locks code shape we don't yet understand. Two requests from paying customers is a clearer signal than "we'll need it eventually."
+- **Why:** Three roles cover every persona in `docs/runbook.md §10`; building an RBAC engine for hypothetical Phase-2 buyers locks code shape we don't yet understand. Two requests from paying customers is a clearer signal than "we'll need it eventually."
 - **Consequence in code:** `authz.ts` is a switch on `role ∈ {owner, member, public}`. New roles require a `GLOBAL-NNN` (or skill-local SK-AUTH-NNN) decision and a customer-citation comment.
 - **Alternatives rejected:** Full RBAC on day one — premature abstraction; locks data shape. Two roles (owner + public) — Members can't share access to a DB without giving away destructive ops.
-- **Source:** docs/design.md §4.2
+- **Source:** docs/architecture.md §4.2
 
 ### SK-AUTH-007 — Cookie cache + KV revocation-set check land together; never separately
 
@@ -83,7 +83,7 @@ when-to-load:
 - **Why:** `cookieCache` alone drops `nlqdb.auth.verify` from ~30 ms p99 (D1-bound) to ~6 ms p99 (HMAC + KV) — but it would also defeat `GLOBAL-018` because the cached cookie would survive revocation until expiry. Adding the KV check on every read keeps the latency win and the revocation guarantee.
 - **Consequence in code:** A test asserts that revoking a session via the dashboard returns 401 within ≤2 s on the next call from any surface. The `useSession` hook on web, the bearer-verifier on the API, and the device-token verifier in CLI all share the same `verifySessionWithRevocation` helper.
 - **Alternatives rejected:** Cookie cache only — `GLOBAL-018` violated. KV check only (no cookie cache) — leaves perf on the table; auth verify dominates the cache-hit budget per `docs/performance.md §2.1`.
-- **Source:** docs/design.md §4.3, §4.5; docs/implementation.md Slice 6 (CI assertion)
+- **Source:** docs/architecture.md §4.3, §4.5; docs/architecture.md §10 Slice 6 (CI assertion)
 
 ### SK-AUTH-008 — Two GitHub OAuth Apps (prod + dev) because OAuth Apps support exactly one callback URL
 
@@ -92,7 +92,7 @@ when-to-load:
 - **Why:** GitHub OAuth Apps **do not support** multiple callback URLs (multi-callback is a GitHub-App feature, a different product whose installation/permission semantics we don't need). One callback per app forces the two-app split. Sharing one app between prod and localhost is impossible without rewriting the callback at request time, which is its own bug source.
 - **Consequence in code:** `.envrc` carries `OAUTH_GITHUB_CLIENT_ID` + `OAUTH_GITHUB_CLIENT_SECRET` (prod) and `OAUTH_GITHUB_CLIENT_ID_DEV` + `OAUTH_GITHUB_CLIENT_SECRET_DEV` (dev). `verify-secrets.sh` probes both. Documentation about which app is which lives in `docs/runbook.md §5b`.
 - **Alternatives rejected:** Single OAuth App with a callback-rewrite proxy — adds a moving part and a request-time rewrite step. GitHub App instead of OAuth App — the installation-permission model is wrong for sign-in only.
-- **Source:** docs/runbook.md §5b · docs/implementation.md §2.5
+- **Source:** docs/runbook.md §5b · docs/architecture.md §10 §2.5
 
 ### SK-AUTH-009 — Env-var prefix `OAUTH_GITHUB_*`, never `GITHUB_*`
 
@@ -101,7 +101,7 @@ when-to-load:
 - **Why:** GitHub Actions rejects org/repo secrets prefixed with `GITHUB_` (reserved namespace). Naming the pair `GITHUB_CLIENT_ID` would force a different name in CI than locally and in Workers — three places to misalign. The `OAUTH_GITHUB_*` prefix mirrors 1:1 across `.envrc`, GitHub Actions secrets, and Wrangler secrets.
 - **Consequence in code:** `.env.example`, `wrangler.toml`, GitHub Actions workflows, and `verify-secrets.sh` all use `OAUTH_GITHUB_*`. PRs that introduce a `GITHUB_CLIENT_*` secret name fail mirror-check in CI.
 - **Alternatives rejected:** `GITHUB_CLIENT_ID` (matches the Better Auth docs default) — blocked by GHA's reserved namespace; would diverge between local and CI. `GH_OAUTH_*` — saves three characters at the cost of pattern-matching with the rest of the auth env-var family.
-- **Source:** docs/implementation.md §2.5 · docs/runbook.md §5b
+- **Source:** docs/architecture.md §10 §2.5 · docs/runbook.md §5b
 
 ### SK-AUTH-010 — Anonymous-mode adoption is a single-row update — no conditional code paths
 
@@ -110,7 +110,7 @@ when-to-load:
 - **Why:** Conditional code paths for "is the caller anonymous" multiply across every handler, and every multiplication is a chance for a path to diverge. One row write at sign-in keeps the data model uniform; the only difference between anonymous and authed is which `user_id` value the row has.
 - **Consequence in code:** No `if (anonymous)` branches in `/v1/ask`, `/v1/run`, or any handler. The anonymous-token check is a thin pre-handler that looks up `anon_token → row` and otherwise treats the row exactly like an authed DB. The 72 h sweep (per `docs/runbook.md §9`) is the only anonymous-specific code.
 - **Alternatives rejected:** Two parallel handler trees (anonymous vs. authed) — every handler doubles. Migrate-on-sign-in (copy rows to a "real" DB) — wastes work, breaks the 72 h continuity guarantee.
-- **Source:** docs/design.md §4.1 · docs/runbook.md §9
+- **Source:** docs/architecture.md §4.1 · docs/runbook.md §9
 
 ### SK-AUTH-011 — Rotation has a 60-day grace window + webhook; global sign-out leaves `sk_live_` / `pk_live_` alone
 
@@ -119,7 +119,7 @@ when-to-load:
 - **Why:** Hard-revoking a production secret on sign-out from a developer's laptop would take down their deployed app — a foot-gun. The 60-day grace lets ops swap a `sk_live_…` across deployments without a flag day. The webhook lets customers automate the swap if they prefer.
 - **Consequence in code:** `keys.rotate()` writes the new key, marks the old as deprecated with `expires_at = now + 60d`, and enqueues the rotation webhook. `globalSignout()` filters by key type — the SQL `WHERE` excludes `sk_live_*` / `pk_live_*`. UI labels global-sign-out as "Sign out everywhere" and explicitly notes that production keys must be rotated separately.
 - **Alternatives rejected:** Hard-revoke on rotate (no grace) — production outages on every rotation. No webhook — customers polling the dashboard for rotations.
-- **Source:** docs/design.md §4.5
+- **Source:** docs/architecture.md §4.5
 
 ### SK-AUTH-012 — No plaintext key retrieval — lost means rotate
 
@@ -128,7 +128,7 @@ when-to-load:
 - **Why:** A reveal button is a single XSS / session-hijack / shoulder-surf away from a credential leak. Forcing rotation when a key is lost is mildly inconvenient and the right default; making rotation cheap (`SK-AUTH-011`) is the trade-off.
 - **Consequence in code:** No endpoint returns plaintext key material after creation. The `keys` table stores `key_hash` + `last_4`. PRs that add a "show key" button are rejected.
 - **Alternatives rejected:** Reveal-once flag tied to email re-confirmation — adds an "or you can have it back" path that erodes the discipline. Encrypted-at-rest with a master key — still a key-recovery surface; same risk model as plaintext.
-- **Source:** docs/design.md §4.1
+- **Source:** docs/architecture.md §4.1
 
 ## GLOBALs governing this feature
 
@@ -144,4 +144,4 @@ Canonical text in [`docs/decisions.md`](../../docs/decisions.md). The list below
 - **Passkey UX details (when promoted on second visit).** Better Auth ships passkey primitives, but the prompt copy / when-to-show heuristic is not yet specified. Track in the auth slice when the second-visit UX lands.
 - **Phase 2 RBAC trigger.** `SK-AUTH-006` defers RBAC until "two paying customers ask." We don't yet have an explicit way to count those requests in the support tracker. Add a `rbac_request` tag to the customer-feedback intake when Phase 2 starts.
 - **`session.cookieCache` failure mode under KV outage.** The `(cookie cache, revocation check)` pair in `SK-AUTH-007` assumes KV is reachable. If KV is unreachable, do we fail-closed (deny) or fail-open (trust the cookie until expiry)? Design.md doesn't decide. Open.
-- **Magic-link domain verification.** `RESEND_API_KEY` is provisioned, but `nlqdb.com` SPF/DKIM/DMARC verification is deferred until Phase 1 (per `docs/implementation.md §2.5`). Magic-link sign-in cannot ship until that lands.
+- **Magic-link domain verification.** `RESEND_API_KEY` is provisioned, but `nlqdb.com` SPF/DKIM/DMARC verification is deferred until Phase 1 (per `docs/architecture.md §10 §2.5`). Magic-link sign-in cannot ship until that lands.

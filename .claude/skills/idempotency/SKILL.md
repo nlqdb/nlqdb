@@ -16,7 +16,7 @@ when-to-load:
 **One-liner:** `Idempotency-Key` on every mutation; `(user_id, key)` dedupe store; byte-exact retry response.
 **Status:** partial — natural-key dedupe shipped (Stripe webhook via `stripe_events`, waitlist via email-hash PK). The general-purpose `Idempotency-Key` middleware on `/v1/ask` writes and the SDK's auto-generated retry keys are open work — the contract is locked (DESIGN §14.6 + GLOBAL-005), implementation is not.
 **Owners (code):** `apps/api/src/stripe/webhook.ts`, `apps/api/src/waitlist.ts`, `apps/api/src/middleware.ts` (target for the general middleware), `packages/sdk/**` (target for retry-key auto-generation).
-**Cross-refs:** docs/design.md §9 line 938–939 (bullet-proof checklist) · §14.6 line 1255–1297 (HTTP API mutation contract) · docs/decisions.md#GLOBAL-005
+**Cross-refs:** docs/architecture.md §9 line 938–939 (bullet-proof checklist) · §14.6 line 1255–1297 (HTTP API mutation contract) · docs/decisions.md#GLOBAL-005
 
 ## Touchpoints — read this skill before editing
 

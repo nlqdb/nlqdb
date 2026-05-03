@@ -12,7 +12,7 @@ when-to-load:
 **One-liner:** Phase 3: db-adapters for engines beyond Postgres (Mongo, Redis, ClickHouse, …).
 **Status:** planned (Phase 3)
 **Owners (code):** `packages/db/**`
-**Cross-refs:** docs/plan.md §2.1 (Execution layer + per-engine adapters) · docs/plan.md §2.3 (engine selection heuristics — the per-engine target list) · docs/plan.md §4 (alternative technologies — verdicts per engine) · docs/implementation.md §6 (Phase 3 — Redis as second engine, DuckDB as third) · docs/design.md (multi-engine references throughout)
+**Cross-refs:** docs/architecture.md §10 §2.1 (Execution layer + per-engine adapters) · docs/architecture.md §10 §2.3 (engine selection heuristics — the per-engine target list) · docs/architecture.md §11 (alternative technologies — verdicts per engine) · docs/architecture.md §10 §6 (Phase 3 — Redis as second engine, DuckDB as third) · docs/architecture.md (multi-engine references throughout)
 
 ## Touchpoints — read this skill before editing
 
@@ -25,11 +25,11 @@ open questions below must be answered before code lands. The skill
 exists now so the `SK-MULTIENG-NNN` ID prefix is reserved and
 `_index.md` is comprehensive (per `docs/skill-conventions.md §6`)._
 
-The shape of the feature is sketched in `docs/plan.md §2.2`:
+The shape of the feature is sketched in `docs/architecture.md §10 §2.2`:
 **one adapter per engine; common `Executor` interface
 `execute(plan) -> stream<row>`; we own the connection pool per
-user-DB.** The engine target list (`docs/plan.md §2.3`) and the
-verdict-per-engine table (`docs/plan.md §4`) constrain the choice
+user-DB.** The engine target list (`docs/architecture.md §10 §2.3`) and the
+verdict-per-engine table (`docs/architecture.md §11`) constrain the choice
 space, but per-engine decisions are still open.
 
 The current single-engine adapter lives in `packages/db/` and ships
@@ -43,13 +43,13 @@ Each one becomes one or more `SK-MULTIENG-NNN` decisions when answered.
 
 ### The common `Executor` contract
 
-- **Interface shape.** `docs/plan.md §2.2` names `execute(plan) ->
+- **Interface shape.** `docs/architecture.md §10 §2.2` names `execute(plan) ->
   stream<row>`. Concrete TypeScript signature, error shape, and
   cancellation semantics (`AbortSignal`?) are TBD.
 - **Plan format.** Each engine has a different native query language
   (SQL, Mongo aggregation, Redis commands). Is the `plan` an
   engine-specific document handed to the adapter, or an engine-
-  agnostic IR the adapter compiles? `docs/plan.md §3` notes
+  agnostic IR the adapter compiles? `docs/architecture.md §10 §3` notes
   "Structured tool-use with the target engine's grammar as a
   constrained decode where possible (grammars for SQL exist; for
   Mongo aggregation we hand-roll)" — implies engine-specific. Pin it.
@@ -65,14 +65,14 @@ Each one becomes one or more `SK-MULTIENG-NNN` decisions when answered.
 
 ### Per-engine adapters
 
-The Phase 3 target set per `docs/plan.md §2.3` and `docs/plan.md §4`:
+The Phase 3 target set per `docs/architecture.md §10 §2.3` and `docs/architecture.md §11`:
 
 #### Redis (Upstash) — Phase 3 second engine
 
 - **Decision:** Redis is the second engine after Postgres
-  (`docs/implementation.md §6`).
+  (`docs/architecture.md §10 §6`).
 - Why Upstash specifically: HTTP API (no persistent conns, serverless-
-  friendly) per `docs/plan.md §4`. Other Redis options (Redis Cloud /
+  friendly) per `docs/architecture.md §11`. Other Redis options (Redis Cloud /
   ElastiCache) explicitly rejected as "needs persistent conns; bad
   fit for serverless."
 - **Open:** persistence settings (RDB? AOF?), eviction policy
@@ -84,11 +84,11 @@ The Phase 3 target set per `docs/plan.md §2.3` and `docs/plan.md §4`:
 #### DuckDB — Phase 3 third engine, analytics workload
 
 - **Decision:** DuckDB embedded for analytic workloads
-  (`docs/plan.md §4`: "We run it as a sidecar for analytic workloads
+  (`docs/architecture.md §11`: "We run it as a sidecar for analytic workloads
   on a user's PG data via the `postgres_scanner` extension").
 - **Open:** is DuckDB a true target engine (data lives in DuckDB), or
   a query-time accelerator (data lives in PG, DuckDB scans on
-  demand)? `docs/plan.md §4` suggests the latter; `docs/plan.md §2.3`
+  demand)? `docs/architecture.md §11` suggests the latter; `docs/architecture.md §10 §2.3`
   ("Analytics, scans, aggregations over millions of rows | DuckDB
   (embedded) or ClickHouse (managed, at scale)") suggests the
   former. Pin it.
@@ -101,17 +101,17 @@ The Phase 3 target set per `docs/plan.md §2.3` and `docs/plan.md §4`:
 #### ClickHouse Cloud — Phase 3 analytics-at-scale
 
 - **Decision:** ClickHouse for analytics that outgrow DuckDB
-  (`docs/plan.md §4`: "✅ Phase 2 analytics-at-scale | Solid API.").
-  Re-classified as Phase 3 in `docs/implementation.md §6`.
+  (`docs/architecture.md §11`: "✅ Phase 2 analytics-at-scale | Solid API.").
+  Re-classified as Phase 3 in `docs/architecture.md §10 §6`.
 - **Open:** When does the Workload Analyzer recommend DuckDB vs.
-  ClickHouse? `docs/plan.md §2.3` mentions "DuckDB (embedded) or
+  ClickHouse? `docs/architecture.md §10 §2.3` mentions "DuckDB (embedded) or
   ClickHouse (managed, at scale)" — what's the row-count / QPS
   threshold for the handoff?
 
 #### MongoDB Atlas — verdict ⚠️, prefer JSONB unless we must
 
-- **Decision direction:** `docs/plan.md §4` is hesitant ("Free tier
-  is tiny. Prefer JSONB on PG unless we must"). `docs/plan.md §2.3`
+- **Decision direction:** `docs/architecture.md §11` is hesitant ("Free tier
+  is tiny. Prefer JSONB on PG unless we must"). `docs/architecture.md §10 §2.3`
   says "Document-shaped, variable schema, deep nesting | Mongo *or*
   Postgres JSONB (prefer JSONB unless nesting > 4 levels and access
   is by nested path)".
@@ -121,9 +121,9 @@ The Phase 3 target set per `docs/plan.md §2.3` and `docs/plan.md §4`:
 
 #### pgvector — Phase 3 default vector engine
 
-- **Decision direction:** `docs/plan.md §4`: "✅ default vector |
+- **Decision direction:** `docs/architecture.md §11`: "✅ default vector |
   Keeps us in PG." Already used for table-card embeddings on schema
-  inference (`docs/design.md §3.6.2`).
+  inference (`docs/architecture.md §3.6.2`).
 - **Open:** Is pgvector a *separate adapter* in the multi-engine
   contract, or does the Postgres adapter advertise vector capability
   via a feature flag? Cleaner to keep one PG adapter; simpler routing
@@ -131,16 +131,16 @@ The Phase 3 target set per `docs/plan.md §2.3` and `docs/plan.md §4`:
 
 #### TimescaleDB — Phase 3 time-series default
 
-- **Decision direction:** `docs/plan.md §4`: "✅ time-series default
+- **Decision direction:** `docs/architecture.md §11`: "✅ time-series default
   | PG extension — no new engine."
 - **Open:** Same question as pgvector — extension on the existing PG
-  adapter, or its own adapter? `docs/plan.md §4` strongly hints
+  adapter, or its own adapter? `docs/architecture.md §11` strongly hints
   "extension," not new engine.
 
 #### Typesense / Meilisearch — Phase 3+ optional search
 
-- **Decision direction:** `docs/plan.md §4` lists both as "✅ optional
-  search | API-first." `docs/plan.md §2.3` ("Full-text search heavy")
+- **Decision direction:** `docs/architecture.md §11` lists both as "✅ optional
+  search | API-first." `docs/architecture.md §10 §2.3` ("Full-text search heavy")
   routes to "PG `tsvector` default → Typesense at scale."
 - **Open:** Threshold for the `tsvector → Typesense` cutover; whether
   Meilisearch is ever a target.
@@ -169,7 +169,7 @@ For the record (don't relitigate without evidence):
   `docs/performance.md §3`. Per-engine attribute mapping (Redis
   command, Mongo aggregation pipeline depth, ClickHouse query id) is
   TBD.
-- **Connection pool ownership.** `docs/plan.md §2.2`: "We own the
+- **Connection pool ownership.** `docs/architecture.md §10 §2.2`: "We own the
   connection pool per user-DB. PgBouncer-style, but ours — see §6."
   Each engine has different connection semantics — Postgres has
   long-lived connections + transactions; Redis (HTTP via Upstash)
@@ -195,18 +195,18 @@ Ahead of the first SK-MULTIENG decision, these need to land:
    common contract it embodies has been documented.
 2. The `Executor` interface is named, written, and tested against
    the Postgres adapter as a single-engine reference implementation.
-3. `docs/plan.md §2.5` Phase 2 exit gate is met (ties the
+3. `docs/architecture.md §10 §2.5` Phase 2 exit gate is met (ties the
    engine-migration skill to this one — they ship together in
    Phase 3).
 4. Per-engine validator paths (`sql-allowlist` parity) are scoped.
 
 ## Source pointers
 
-- `docs/plan.md §2.1` — architecture (per-engine executors fan-out)
-- `docs/plan.md §2.2` — Execution layer subsection (`Executor`
+- `docs/architecture.md §10 §2.1` — architecture (per-engine executors fan-out)
+- `docs/architecture.md §10 §2.2` — Execution layer subsection (`Executor`
   interface, per-DB connection pool)
-- `docs/plan.md §2.3` — engine selection heuristics
-- `docs/plan.md §4` — alternative technologies, per-engine verdict
-- `docs/implementation.md §6` — Phase 3 slice list
+- `docs/architecture.md §10 §2.3` — engine selection heuristics
+- `docs/architecture.md §11` — alternative technologies, per-engine verdict
+- `docs/architecture.md §10 §6` — Phase 3 slice list
 - `packages/db/AGENTS.md` and the `db-adapter` skill (when
   populated) — current single-engine adapter contract

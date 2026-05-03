@@ -10,9 +10,8 @@ narrow this guide to the directory you're working in.
 
 You write HTML. Each component asks for what it wants in plain English.
 nlqdb answers. The full pitch and architecture are in
-[`docs/design.md`](docs/design.md). User research is in
-[`docs/personas.md`](docs/personas.md). Phasing and rationale are in
-[`docs/plan.md`](docs/plan.md).
+[`docs/architecture.md`](docs/architecture.md). Design-partner research is in
+[`docs/runbook.md §10`](docs/runbook.md).
 
 ## 2. Three behavioral principles (non-negotiable)
 
@@ -78,9 +77,9 @@ Before documenting any decision or plan:
 - **Observability:** OpenTelemetry (`packages/otel`)
 - **Frontend:** React + Web Components (`apps/web`, `packages/elements`)
 - **Languages:** TypeScript everywhere; Workers-compatible bundles only
-- **Monorepo:** pnpm workspaces
+- **Monorepo:** Bun workspaces
 
-For the full stack rationale see [`docs/design.md`](docs/design.md) §1–§2.
+For the full stack rationale see [`docs/architecture.md`](docs/architecture.md) §1–§2.
 
 ## 4. Project map
 
@@ -151,16 +150,11 @@ working in one directory.
 |---|---|
 | [`docs/decisions.md`](docs/decisions.md) | **Canonical** `GLOBAL-NNN` decisions. Read before editing skills. |
 | [`docs/skill-conventions.md`](docs/skill-conventions.md) | How `.claude/skills/` is structured. Read before adding/editing a skill. |
-| [`docs/design.md`](docs/design.md) | High-level system design. The "why" for the architecture. |
-| [`docs/plan.md`](docs/plan.md) | Phasing, slices, rationale. The "when" and "in what order." |
-| [`docs/implementation.md`](docs/implementation.md) | Slice-by-slice implementation status + decisions. |
-| [`docs/runbook.md`](docs/runbook.md) | Operations: env vars, secrets, deploy, recovery. |
+| [`docs/architecture.md`](docs/architecture.md) | System architecture, surface specs, phase plan, tech-stack rationale, risks. |
+| [`docs/runbook.md`](docs/runbook.md) | Operations: env vars, secrets, deploy, recovery. Design-partner reference (§10). |
 | [`docs/performance.md`](docs/performance.md) | Span/metric/label catalog + perf goals. |
 | [`docs/guidelines.md`](docs/guidelines.md) | Code-review heuristics, the four habits. |
-| [`docs/personas.md`](docs/personas.md) | User research. |
-| [`docs/competitors.md`](docs/competitors.md) | Competitive landscape. |
-| [`docs/surfaces.md`](docs/surfaces.md) | Surface inventory (HTTP / SDK / CLI / MCP / elements / web). |
-| [`docs/llm-credits-plan.md`](docs/llm-credits-plan.md) | LLM credit accounting. |
+| [`docs/progress.md`](docs/progress.md) | Platform integration tiers (P0–P3). |
 | [`docs/research-receipts.md`](docs/research-receipts.md) | Receipts for cited research. |
 
 These exist for depth; they are not loaded into every session by
@@ -170,22 +164,22 @@ door for any feature-specific work.
 ## 7. Common commands
 
 ```bash
-pnpm install                    # install workspaces
-pnpm dev                        # run all dev servers (apps/*)
-pnpm test                       # run all tests
-pnpm typecheck                  # type-check the workspace
-pnpm lint                       # lint
-pnpm build                      # build all packages
+bun install                    # install workspaces
+bun run dev                        # run all dev servers (apps/*)
+bun run test                       # run all tests
+bun run typecheck                  # type-check the workspace
+bun run lint                       # lint
+bun run build                      # build all packages
 
 # bundle budget check (GLOBAL-013)
-pnpm --filter apps/api build && wrangler deploy --dry-run --outdir=/tmp/out
+bun --filter apps/api run build && wrangler deploy --dry-run --outdir=/tmp/out
 ```
 
 Per-package commands are in each area's `AGENTS.md`.
 
 ## 8. Quality gates before opening a PR
 
-1. `pnpm typecheck && pnpm lint && pnpm test` all green.
+1. `bun run typecheck && bun run lint && bun run test` all green.
 2. Every new decision has an ID (`GLOBAL-NNN` or `SK-<FEATURE>-NNN`)
    and is in its canonical home (`docs/decisions.md` for `GLOBAL`,
    `.claude/skills/<feature>/SKILL.md` for `SK`). Skills reference
@@ -257,6 +251,6 @@ can't fill all five or have open questions, don't document it yet.
 ### 10.3 Tie-breakers when sources disagree
 
 - **Skill says X, code does Y** → skill wins. Fix the code (or, if the code's behaviour is correct, file a P1 to amend the skill — don't silently update either).
-- **`docs/design.md` (or `implementation.md` / `plan.md` / `runbook.md`) says X, skill says Y** → skill wins. The long docs were leaned in Wave 3; if you find a stale prose passage that contradicts a skill, fix the prose. Don't change the skill to match stale prose.
+- **`docs/architecture.md` (or `docs/runbook.md`) says X, skill says Y** → skill wins. If you find a stale prose passage that contradicts a skill, fix the prose. Don't change the skill to match stale prose.
 - **A skill has a `### GLOBAL-NNN` block with body text** → convention violation. `docs/skill-conventions.md` §5 says skills reference GLOBALs by ID, not by copy. Replace the block with a one-liner reference under `## GLOBALs governing this feature`. The decision body lives only in `docs/decisions.md`.
 - **Two skills disagree on a cross-cutting rule** → the rule should have been a `GLOBAL-NNN`. Promote it (per §10.1) and update both skills to copy it.

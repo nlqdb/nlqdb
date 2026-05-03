@@ -12,7 +12,7 @@ when-to-load:
 **One-liner:** `@nlqdb/sdk` — the only HTTP client; browser-cookie vs server-bearer; auto-refresh.
 **Status:** implemented
 **Owners (code):** `packages/sdk/**`
-**Cross-refs:** docs/design.md §3.1 (code-surfaces matrix) · docs/design.md §14.6 (HTTP API happy path) · docs/surfaces.md (TypeScript SDK row) · packages/sdk/README.md
+**Cross-refs:** docs/architecture.md §3.1 (code-surfaces matrix) · docs/architecture.md §14.6 (HTTP API happy path) · docs/architecture.md §3 (TypeScript SDK row) · packages/sdk/README.md
 
 ## Touchpoints — read this skill before editing
 
@@ -107,5 +107,5 @@ Canonical text in [`docs/decisions.md`](../../docs/decisions.md). The list below
 
 - **SSE consumer for `/v1/ask`.** The README explicitly notes this is not yet shipped (`ask()` calls the buffered JSON path). Decision deferred until the trace-streaming UX in `apps/web` requires it; the `onTrace` hook (SK-SDK-007) will be the consumer.
 - **Bundle-size budget enforcement.** `GLOBAL-013` caps the Workers bundle at 3 MiB compressed but doesn't pin a per-package budget for `@nlqdb/sdk`. Implicit target is < ~5 KB gzipped; should we land an explicit CI assertion?
-- **Python / Go / Rust SDKs.** `docs/surfaces.md` lists them as Phase 2. We have not yet decided whether they share this skill or earn their own (`SK-SDK-PY-NNN` etc.). Revisit when the Python SDK starts.
+- **Python / Go / Rust SDKs.** `docs/architecture.md §3` lists them as Phase 2. We have not yet decided whether they share this skill or earn their own (`SK-SDK-PY-NNN` etc.). Revisit when the Python SDK starts.
 - **`postChat` / `listChat` typed-error coverage.** The README enumerates the chat-related error codes; some are SDK-side sentinels (`network_error`, `aborted`) and may need reconciling with the API's canonical error catalog when chat surfaces formalize.

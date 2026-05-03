@@ -13,7 +13,7 @@ when-to-load:
 **One-liner:** Engine-agnostic DB interface; Phase 0 ships Postgres via Neon.
 **Status:** implemented (Phase 0 / Slice 3 — single Postgres adapter via Neon HTTP)
 **Owners (code):** `packages/db/**`, `apps/api/src/db-registry.ts`
-**Cross-refs:** docs/design.md §3.6.5–§3.6.7 (validator + tenancy + BYO) · docs/implementation.md §3 (Phase 0 Neon adapter, line 438) · docs/runbook.md §3 (Neon account, §6 deploy state) · docs/performance.md §2.1 row 6 + §3.1 (`db.query` span) · GLOBAL-004, GLOBAL-014, GLOBAL-015 (see governing GLOBALs section) · `.claude/skills/hosted-db-create/SKILL.md` (Phase 1 create-path consumer; SK-HDC-007 splits the provisioner into `provisionDb` / `registerByoDb` over this adapter)
+**Cross-refs:** docs/architecture.md §3.6.5–§3.6.7 (validator + tenancy + BYO) · docs/architecture.md §10 §3 (Phase 0 Neon adapter, line 438) · docs/runbook.md §3 (Neon account, §6 deploy state) · docs/performance.md §2.1 row 6 + §3.1 (`db.query` span) · GLOBAL-004, GLOBAL-014, GLOBAL-015 (see governing GLOBALs section) · `.claude/skills/hosted-db-create/SKILL.md` (Phase 1 create-path consumer; SK-HDC-007 splits the provisioner into `provisionDb` / `registerByoDb` over this adapter)
 
 ## Touchpoints — read this skill before editing
 
@@ -38,7 +38,7 @@ when-to-load:
 - **Decision:** Phase 0 ships exactly one adapter — `createPostgresAdapter()` over `@neondatabase/serverless` HTTP. No `pg`, no `postgres-js`, no connection pooling middleware. Phase 3 will widen to `redis` and/or `duckdb`; the seam is `Engine` plus a parallel `createXxxAdapter()`.
 - **Core value:** Free, Simple, Bullet-proof
 - **Why:** Workers don't keep TCP sockets warm across requests, so a connection-pooled driver (`pg`) is dead weight on the free tier. Neon's HTTP driver round-trips per query but sidesteps the pool problem entirely and runs on the Workers free plan within the 3 MiB bundle ceiling (`GLOBAL-013`). One engine in Phase 0 means one set of failure modes to learn before adding more.
-- **Consequence in code:** `package.json` for `@nlqdb/db` only depends on `@neondatabase/serverless` + `@opentelemetry/*`. CI fails any PR that adds `pg` / `postgres` / `redis` to `packages/db/` without an accompanying Phase 3 plan (per `docs/implementation.md` §5 line 592 wording).
+- **Consequence in code:** `package.json` for `@nlqdb/db` only depends on `@neondatabase/serverless` + `@opentelemetry/*`. CI fails any PR that adds `pg` / `postgres` / `redis` to `packages/db/` without an accompanying Phase 3 plan (per `docs/architecture.md §10` §5 line 592 wording).
 - **Alternatives rejected:**
   - `pg` with an external pooler (PgBouncer / Neon Pooler) — works but doubles the moving parts and the bundle weight; saves nothing in Phase 0.
   - Drizzle/Kysely on top — adds a query-builder layer; we emit raw SQL from the planner, the adapter just runs it.
@@ -95,7 +95,7 @@ when-to-load:
 
 ### SK-DB-008 — Schema evolution is `ALTER TABLE ADD COLUMN ... NULL` only (no migrations)
 
-- **Decision:** When the planner observes a new field, the schema widens via `ALTER TABLE ADD COLUMN <name> <type> NULL`. Columns are never dropped, never narrowed, never reordered. There is no migrations tool; for a true schema break, `nlq new` makes a fresh DB and the old one is left untouched (per `docs/design.md` §12 line 978).
+- **Decision:** When the planner observes a new field, the schema widens via `ALTER TABLE ADD COLUMN <name> <type> NULL`. Columns are never dropped, never narrowed, never reordered. There is no migrations tool; for a true schema break, `nlq new` makes a fresh DB and the old one is left untouched (per `docs/architecture.md` §12 line 978).
 - **Core value:** Bullet-proof, Simple
 - **Why:** "Schemas only widen" (`GLOBAL-004`) is the invariant that makes the plan-cache stable (`GLOBAL-006`) — old plans remain valid against widened schemas because referenced fields still exist. ADD COLUMN NULL is the cheapest Postgres operation that preserves the invariant. A migrations tool would invite branching schemas, which would force the plan-cache to either invalidate aggressively (slow) or branch keys (combinatorial explosion).
 - **Consequence in code:** Adapter consumers building DDL must emit ADD COLUMN NULL only; DROP / RENAME / type changes are out-of-band manual operations and are not exposed via `/v1/ask`. The schema-widening skill (`SK-SCHEMA-*`) owns the trigger and storage; this adapter just executes the resulting SQL when called.
