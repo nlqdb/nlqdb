@@ -1,0 +1,492 @@
+---
+// Sign-in page (SK-AUTH-002 — magic link, GitHub OAuth, Google OAuth;
+// no passwords). Static Astro page with a bundled-script island.
+//
+// All three methods POST cross-subdomain to app.nlqdb.com:
+//   - Magic link: POST /api/auth/sign-in/magic-link { email, callbackURL }
+//     → 200 swaps the form for "Check your inbox."
+//   - GitHub / Google: POST /api/auth/sign-in/social { provider, callbackURL }
+//     → 200 { url } → top-level navigate to provider.
+//
+// The session cookie set by Better Auth is `__Secure-session` with
+// Domain=nlqdb.com (SK-WEB-006), so the cookie scoped at app.nlqdb.com
+// is also visible on nlqdb.com.
+//
+// Brand chrome on OAuth buttons was reviewed against
+// https://developers.google.com/identity/branding-guidelines
+// (Google's "neutral / dark" template, exact spec — unchanged from
+// the pre-pivot version of this page) so Google's OAuth review will
+// not reject the integration.
+
+import Base from "../../layouts/Base.astro";
+
+const apiBase = import.meta.env.PUBLIC_API_BASE ?? "https://app.nlqdb.com";
+const appBase = import.meta.env.PUBLIC_APP_BASE ?? "https://nlqdb.com";
+---
+<Base
+  title="Sign in — nlqdb"
+  description="Sign in to nlqdb. Magic link, GitHub, or Google. No passwords."
+  canonical="/auth/sign-in"
+>
+  <div class="page">
+    <main class="signin" data-api-base={apiBase} data-app-base={appBase}>
+      <section class="signin__card" aria-labelledby="signin-title">
+        <h1 id="signin-title" class="signin__title">Sign in to nlqdb.</h1>
+        <p class="signin__lede">
+          No passwords. First sign-in creates your account.
+        </p>
+
+        <div class="signin__social">
+          <button
+            type="button"
+            data-social="google"
+            class="signin__oauth"
+            aria-label="Sign in with Google"
+          >
+            {/* Google "G" — official 4-color mark, per
+                https://developers.google.com/identity/branding-guidelines.
+                Used unmodified; size + button chrome match the
+                "neutral / dark" template in the brand guide. */}
+            <svg
+              class="signin__oauth-icon"
+              viewBox="0 0 48 48"
+              width="20"
+              height="20"
+              aria-hidden="true"
+            >
+              <path
+                fill="#FFC107"
+                d="M43.611 20.083H42V20H24v8h11.303c-1.649 4.657-6.08 8-11.303 8-6.627 0-12-5.373-12-12s5.373-12 12-12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4 12.955 4 4 12.955 4 24s8.955 20 20 20 20-8.955 20-20c0-1.341-.138-2.65-.389-3.917z"
+              />
+              <path
+                fill="#FF3D00"
+                d="M6.306 14.691l6.571 4.819C14.655 15.108 18.961 12 24 12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4 16.318 4 9.656 8.337 6.306 14.691z"
+              />
+              <path
+                fill="#4CAF50"
+                d="M24 44c5.166 0 9.86-1.977 13.409-5.192l-6.19-5.238C29.211 35.091 26.715 36 24 36c-5.202 0-9.619-3.317-11.283-7.946l-6.522 5.025C9.505 39.556 16.227 44 24 44z"
+              />
+              <path
+                fill="#1976D2"
+                d="M43.611 20.083H42V20H24v8h11.303c-.792 2.237-2.231 4.166-4.087 5.571l6.19 5.238C36.971 39.205 44 34 44 24c0-1.341-.138-2.65-.389-3.917z"
+              />
+            </svg>
+            <span>Sign in with Google</span>
+          </button>
+          <button
+            type="button"
+            data-social="github"
+            class="signin__oauth"
+            aria-label="Sign in with GitHub"
+          >
+            {/* GitHub "Mark" — single-color SVG suitable for dark
+                backgrounds when filled with currentColor, per
+                https://github.com/logos. Used unmodified in shape. */}
+            <svg
+              class="signin__oauth-icon"
+              viewBox="0 0 24 24"
+              width="20"
+              height="20"
+              fill="currentColor"
+              aria-hidden="true"
+            >
+              <path
+                d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.63-5.373-12-12-12"
+              />
+            </svg>
+            <span>Sign in with GitHub</span>
+          </button>
+        </div>
+
+        <div class="signin__divider" role="separator" aria-label="or with email">
+          <span>or</span>
+        </div>
+
+        <form id="signin-form" class="signin__form">
+          <label class="signin__label" for="email">Email</label>
+          <input
+            id="email"
+            name="email"
+            type="email"
+            autocomplete="email"
+            required
+            placeholder="you@example.com"
+            class="signin__field"
+          />
+          <button
+            type="submit"
+            id="signin-submit"
+            class="btn btn--accent signin__submit"
+          >
+            Send magic link
+          </button>
+          <p id="signin-error" class="signin__error" hidden role="alert"></p>
+        </form>
+
+        <div id="signin-sent" class="signin__sent" hidden>
+          <h2 class="signin__sent-title">Check your inbox.</h2>
+          <p class="signin__sent-body">
+            We sent a sign-in link to <strong id="signin-sent-email"></strong>.
+            Click it within 10 minutes to finish signing in.
+          </p>
+          <p class="signin__sent-meta">
+            Didn't get it? <button
+              type="button"
+              id="signin-resend"
+              class="signin__link"
+            >
+              Send another
+            </button>
+            <span id="signin-resend-status" class="signin__resend-status" hidden
+            ></span>
+          </p>
+        </div>
+      </section>
+    </main>
+  </div>
+</Base>
+
+<script>
+  // Inline helpers — auth-client.ts was removed in the pivot; the
+  // sign-in page is the only consumer that needs them now.
+  const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  const isLikelyEmail = (s: string) => EMAIL_RE.test(s.trim());
+
+  type ButtonState = {
+    el: HTMLButtonElement;
+    idle: string;
+    sending: string;
+  };
+  const setBusy = (state: ButtonState, busy: boolean) => {
+    state.el.disabled = busy;
+    state.el.textContent = busy ? state.sending : state.idle;
+  };
+
+  const root = document.querySelector<HTMLElement>(".signin");
+  if (root) {
+    const apiBase = (root.dataset["apiBase"] ?? "").replace(/\/$/, "");
+    const appBase = (root.dataset["appBase"] ?? "").replace(/\/$/, "");
+
+    const form = document.getElementById("signin-form") as HTMLFormElement;
+    const emailInput = document.getElementById("email") as HTMLInputElement;
+    const submitBtn = document.getElementById(
+      "signin-submit",
+    ) as HTMLButtonElement;
+    const errorEl = document.getElementById(
+      "signin-error",
+    ) as HTMLParagraphElement;
+    const sentEl = document.getElementById("signin-sent") as HTMLDivElement;
+    const sentEmailEl = document.getElementById(
+      "signin-sent-email",
+    ) as HTMLElement;
+    const resendBtn = document.getElementById(
+      "signin-resend",
+    ) as HTMLButtonElement;
+    const resendStatus = document.getElementById(
+      "signin-resend-status",
+    ) as HTMLElement;
+
+    const params = new URLSearchParams(location.search);
+    const returnTo = params.get("return_to") ?? "/";
+    const callbackURL = new URL(returnTo, appBase || location.origin).toString();
+
+    const submitBtnState: ButtonState = {
+      el: submitBtn,
+      idle: "Send magic link",
+      sending: "Sending…",
+    };
+    const resendBtnState: ButtonState = {
+      el: resendBtn,
+      idle: "Send another",
+      sending: "Sending…",
+    };
+
+    async function postJson<T>(path: string, body: unknown): Promise<T> {
+      const res = await fetch(`${apiBase}${path}`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return (await res.json()) as T;
+    }
+
+    async function sendMagicLink(
+      email: string,
+      busyState: ButtonState,
+      options: { showSent: boolean },
+    ) {
+      errorEl.hidden = true;
+      resendStatus.hidden = true;
+      setBusy(busyState, true);
+      try {
+        await postJson("/api/auth/sign-in/magic-link", { email, callbackURL });
+        sentEmailEl.textContent = email;
+        if (options.showSent) {
+          form.hidden = true;
+          sentEl.hidden = false;
+        } else if (busyState === resendBtnState) {
+          resendStatus.textContent = "sent";
+          resendStatus.hidden = false;
+        }
+      } catch {
+        errorEl.textContent = "Couldn't send the link — try again.";
+        errorEl.hidden = false;
+      } finally {
+        setBusy(busyState, false);
+      }
+    }
+
+    form.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const email = emailInput.value.trim();
+      if (!email) return;
+      if (!isLikelyEmail(email)) {
+        errorEl.textContent = "That doesn't look like a valid email — check the address.";
+        errorEl.hidden = false;
+        return;
+      }
+      sendMagicLink(email, submitBtnState, { showSent: true });
+    });
+
+    resendBtn.addEventListener("click", () => {
+      const email = sentEmailEl.textContent ?? "";
+      if (!email) return;
+      sendMagicLink(email, resendBtnState, { showSent: false });
+    });
+
+    // OAuth init via Better Auth's POST /api/auth/sign-in/social,
+    // which returns { url } — we top-level-navigate to it. The
+    // provider then redirects back to /api/auth/callback/<provider>,
+    // which sets the session cookie (.nlqdb.com scope per
+    // SK-WEB-006) and 302s to callbackURL.
+    for (const btn of document.querySelectorAll<HTMLButtonElement>(
+      "[data-social]",
+    )) {
+      btn.addEventListener("click", async () => {
+        const provider = btn.dataset["social"];
+        if (!provider) return;
+        errorEl.hidden = true;
+        btn.disabled = true;
+        btn.classList.add("signin__oauth--busy");
+        try {
+          const body = await postJson<{ url?: string; redirect?: boolean }>(
+            "/api/auth/sign-in/social",
+            { provider, callbackURL },
+          );
+          if (body.url) {
+            location.href = body.url;
+            return;
+          }
+          throw new Error("No redirect URL returned.");
+        } catch {
+          errorEl.textContent = "Couldn't start sign-in — try again.";
+          errorEl.hidden = false;
+          btn.disabled = false;
+          btn.classList.remove("signin__oauth--busy");
+        }
+      });
+    }
+  }
+</script>
+
+<style is:global>
+  .signin {
+    min-height: 70vh;
+    display: grid;
+    place-items: center;
+    padding: clamp(48px, 8vw, 96px) 24px;
+  }
+
+  .signin__card {
+    width: 100%;
+    max-width: 440px;
+    padding: clamp(28px, 5vw, 48px);
+    background: var(--bg-elev);
+    border: 2px solid var(--border-strong);
+    box-shadow: var(--shadow-hard);
+  }
+
+  .signin__title {
+    font-family: var(--mono);
+    font-size: clamp(22px, 3.2vw, 28px);
+    letter-spacing: -0.02em;
+    margin: 0 0 12px;
+  }
+
+  .signin__lede {
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--fg-dim);
+    margin: 0 0 28px;
+  }
+
+  /* OAuth buttons — Google brand-compliant "dark" variant exactly per
+     https://developers.google.com/identity/branding-guidelines:
+     40px height, 4px radius, #131314 fill, #8E918F 1px stroke,
+     Roboto Medium 14/20, #E3E3E3 text, 12px padding, 20×20 icon
+     unmodified. GitHub doesn't publish a comparable spec — we
+     mirror the same chrome (single-color Octocat fill via
+     currentColor is permitted per https://github.com/logos) so
+     the two buttons line up visually. */
+  .signin__social {
+    display: grid;
+    gap: 10px;
+    margin-bottom: 20px;
+  }
+
+  .signin__oauth {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    width: 100%;
+    height: 40px;
+    padding: 12px;
+    font-family:
+      "Roboto", -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial,
+      sans-serif;
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 20px;
+    letter-spacing: 0.0107em;
+    color: #e3e3e3;
+    background: #131314;
+    border: 1px solid #8e918f;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+  }
+
+  .signin__oauth:hover:not(:disabled) {
+    background: #1a1a1b;
+  }
+
+  .signin__oauth:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  .signin__oauth--busy,
+  .signin__oauth:disabled {
+    opacity: 0.7;
+    cursor: progress;
+  }
+
+  .signin__oauth-icon {
+    flex-shrink: 0;
+  }
+
+  .signin__divider {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 0 0 20px;
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--fg-muted);
+  }
+
+  .signin__divider::before,
+  .signin__divider::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  .signin__form {
+    display: grid;
+    gap: 12px;
+  }
+
+  .signin__label {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+
+  .signin__field {
+    width: 100%;
+    padding: 12px 14px;
+    font-family: var(--mono);
+    font-size: 15px;
+    color: var(--fg);
+    background: var(--bg);
+    border: 2px solid var(--border-strong);
+    outline: none;
+  }
+
+  .signin__field:focus {
+    border-color: var(--accent);
+  }
+
+  .signin__submit {
+    justify-content: center;
+    margin-top: 4px;
+  }
+
+  .signin__error {
+    margin: 4px 0 0;
+    padding: 8px 10px;
+    font-family: var(--mono);
+    font-size: 13px;
+    color: #ff8a8a;
+    background: #2a1212;
+    border: 2px solid #ff8a8a;
+  }
+
+  .signin__sent {
+    padding: 20px;
+    border: 2px solid var(--accent);
+    background: var(--bg);
+  }
+
+  .signin__sent-title {
+    font-family: var(--mono);
+    font-size: 18px;
+    margin: 0 0 10px;
+  }
+
+  .signin__sent-body {
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--fg);
+    margin: 0 0 14px;
+    line-height: 1.5;
+  }
+
+  .signin__sent-meta {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--fg-dim);
+    margin: 0;
+  }
+
+  .signin__link {
+    background: none;
+    border: none;
+    color: var(--accent);
+    text-decoration: underline;
+    font: inherit;
+    cursor: pointer;
+    padding: 0;
+  }
+
+  .signin__link:disabled {
+    opacity: 0.6;
+    cursor: progress;
+  }
+
+  .signin__resend-status {
+    margin-left: 8px;
+    color: var(--accent);
+  }
+</style>
+</content>
+</invoke>
