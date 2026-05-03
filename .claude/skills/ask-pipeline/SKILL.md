@@ -109,3 +109,61 @@ Canonical text in [`docs/decisions.md`](../../docs/decisions.md). The list below
 - **Streaming protocol for live trace.** `SK-ASK-008` and `GLOBAL-011` require a live trace, but the wire protocol (SSE? chunked JSON? OTel-over-WS?) is not yet pinned. SDK's `onTrace` hook in `packages/sdk` will fix the surface API; the wire format is open.
 - **Failure-mode for partial results.** If `exec` succeeds but `summarize` fails, do we return the rows + a summarize-error envelope, or 5xx the whole call? Design.md doesn't decide. Leaning toward "rows + envelope" so the user sees data, but needs an explicit `SK-ASK-NNN`.
 - **Idempotency on `/v1/ask`.** `GLOBAL-005` says every mutation accepts `Idempotency-Key`. `/v1/ask` is sometimes a query (no mutation), sometimes a write. Confirm whether the dedupe store is consulted for the write branch only or for every call (and what `kind=create` deduping looks like).
+
+## Happy path walkthrough
+
+### §14.6 HTTP API (when none of the surfaces fit)
+
+**Default (one endpoint; reads need no idempotency header):**
+
+```bash
+curl https://api.nlqdb.com/v1/ask \
+  -H "Authorization: Bearer sk_live_..." \
+  -d '{"goal": "an orders tracker", "ask": "how many orders today"}'
+
+→ 200 {
+  "answer": "12 today",
+  "data": [{"count": 12}],
+  "session": { "db": "orders-tracker-a4f", "key": "pk_live_..." },
+  "trace": { "engine": "postgres", "sql": "...", "ms": 41 }
+}
+```
+
+The `session.db` and `session.key` come back so the caller *can* go DB-explicit on subsequent calls. They don't have to.
+
+**Writes** (anything that mutates state) require `Idempotency-Key`:
+
+```bash
+curl https://api.nlqdb.com/v1/ask \
+  -H "Authorization: Bearer sk_live_..." \
+  -H "Idempotency-Key: $(uuidgen)" \
+  -d '{"ask": "add an order: alice, latte, 5.50"}'
+```
+
+The API **auto-classifies** the call; reads without a key succeed, writes without a key return `400 idempotency_required` with a curl snippet in the body showing the exact missing header. The user is never left guessing.
+
+**Anonymous mode from curl** (no key, no sign-in):
+
+```bash
+curl https://api.nlqdb.com/v1/ask \
+  -d '{"goal": "an orders tracker", "ask": "how many orders today"}'
+→ 200 { …, "session": { "anonymous_token": "anon_…" } }
+```
+
+Subsequent calls pass `Authorization: Bearer anon_…` to reuse the session. 72h window same as the web.
+
+### §15.3 Persona walkthrough — Priya, the Data-Curious PM
+
+**Goal:** answer the conference-leads question for the 4pm exec sync.
+
+| Time | Priya does | nlqdb does |
+|---|---|---|
+| 2:15pm | Drags the vendor's CSV onto `nlqdb.com`. Types *"how many of these are already in our users table"* | Uploads CSV as `conference-leads-q2`, joins against the read-only mirror of prod (already permissioned), returns the count and a preview |
+| 2:18pm | *"…and which plan are they on"* | Adds the join, returns table |
+| 2:20pm | *"break it down by acquisition channel"* | Adds the group-by, returns chart-ready data |
+| 2:22pm | Clicks "Share result" on the answer | Generates a permalinkable, redacted-by-default link to drop in Slack |
+| 4:00pm | Walks into the meeting with the answer | — |
+
+**What Priya never did:** opened a data-request ticket, pinged an engineer, opened Excel, learned SQL, installed a BI tool, got prod credentials.
+
+**Time saved on this one task:** ~1.5 days of waiting on engineering, plus ~30 minutes of Excel work.

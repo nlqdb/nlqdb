@@ -134,3 +134,41 @@ Canonical text in [`docs/decisions.md`](../../docs/decisions.md). The list below
 - **Error backoff during refresh polling.** Today the timer fires regardless of recent errors — a wedged endpoint generates one request per `refresh` interval forever. Decide a backoff policy (exponential to a ceiling? circuit-break after N consecutive failures?) before high-traffic embeds become a self-inflicted DoS.
 - **Theming approach.** v0.1 has no theming knobs — embedders style via descendant CSS or shadow DOM workarounds. Decide whether to expose CSS custom properties, `::part`, or stay strict on "consumer styles via plain CSS".
 - **SSR posture.** The element registers on `customElements.define`, which requires a browser. SSR consumers (Astro, Next) currently get the element rendered as `<nlq-data>` with no upgrade until the script tag executes. This is fine for marketing pages; document the gap so framework-aware wrappers know not to expect SSR HTML output today.
+
+## Happy path walkthrough
+
+### §14.5 `<nlq-data>` HTML element
+
+**Default (goal-first, the whole "backend"):**
+
+```html
+<script src="https://elements.nlqdb.com/v1.js" type="module"></script>
+
+<nlq-data
+  goal="the 5 newest orders, with customer and item"
+  api-key="pk_live_xxx"
+  template="table"
+  refresh="10s"
+></nlq-data>
+```
+
+That's the entire backend for a live order list. There is no API to write, no schema to define, no JSON to parse, no React to render. The element fetches, renders the table template, and refreshes every 10 seconds.
+
+**Getting `api-key` is never a separate errand.** Every chat surface — web, CLI, MCP — offers a "Copy snippet" action next to any generated query; the copied HTML has the user's `pk_live_` already inlined. The user never has to open the dashboard, find the keys page, click "Reveal", and paste. The key is right there, in the code they were about to use (per `SK-WEB-007`).
+
+**Day-2 (still no backend):**
+
+```html
+<form>
+  <input name="customer" />
+  <input name="drink" />
+  <input name="total" />
+  <nlq-action
+    goal="add an order from this form"
+    api-key="pk_live_xxx"
+    on-success="reload"
+  >Submit</nlq-action>
+</form>
+```
+
+`<nlq-action>` is the write counterpart. Same template-registry safety model as `<nlq-data>`. The form's field names are inferred into columns automatically.

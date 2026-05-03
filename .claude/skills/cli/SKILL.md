@@ -159,3 +159,65 @@ Canonical text in [`docs/decisions.md`](../../docs/decisions.md). The list below
 - **Update flow.** No decision on how the CLI self-updates. Options: silent on next-call, prompt-on-stale, manual `nlq update`. Pick one before the binary ships so the channel is set in stone.
 - **Windows experience.** All design decisions reference Keychain / libsecret / Credential Manager symmetrically, but Windows shells (cmd, PowerShell) and PATH semantics differ enough to warrant explicit testing. Capture per-platform quirks in `cli/AGENTS.md` once the binary lands.
 - **`nlq mcp install` for hosts not yet in DESIGN §3.4 / SK-CLI-011.** New MCP hosts emerge regularly. Document the "add a host" recipe in `cli/AGENTS.md` so the supported list grows without re-architecting `mcphosts/`.
+
+## Happy path walkthrough
+
+### §14.3 CLI (`nlq`)
+
+**Default path** (one line, no setup, no sign-in until you want it):
+
+```bash
+$ nlq new "an orders tracker"
+✓ Ready. Try: nlq "add an order: alice, latte, $5.50, just now"
+ℹ Saved as anonymous. Run `nlq login` within 72h to keep it.
+
+$ nlq "add an order: alice, latte, $5.50, just now"
+✓ Added. orders-tracker-a4f now has 1 row.
+```
+
+That's it. The DB exists. There is no `nlq db create` step the user had to know about.
+
+**Adopting the anonymous DB** (seamless):
+
+```bash
+$ nlq login
+→ Opening browser to approve this device… (fallback code: ABCD-1234)
+✓ Signed in as maya@example.com. Adopted 1 anonymous DB: orders-tracker-a4f.
+```
+
+The browser lands on a single "Approve this device?" screen with the code already pre-filled in the URL — one click, no typing. The refresh token is written to the macOS Keychain (or libsecret / Credential Manager on other OSes). Every subsequent call silently refreshes the access token as needed.
+
+**Day-2 ops** (still one line each):
+
+```bash
+$ nlq "how many orders today, by drink"
+latte    ████████████  12
+flat-white ██████      6
+mocha    ██            2
+
+$ nlq "export today's orders as csv > today.csv"
+✓ Wrote 20 rows to today.csv
+```
+
+**Power-user path** (explicit, when the user cares):
+
+```bash
+$ nlq db create finance --engine postgres --region us-east
+$ nlq query finance "monthly revenue last 12 months"
+$ nlq connection finance     # raw Postgres URL — drop into your own app
+```
+
+### §15.2 Persona walkthrough — Jordan, the Agent Builder
+
+**Goal:** ship a research-agent that remembers things between sessions.
+
+| Step | Jordan does | nlqdb does |
+|---|---|---|
+| 1 | On his laptop: runs `nlq mcp install`. The CLI auto-detects Claude Desktop + Cursor, opens the browser, he clicks Approve once. | Signs him in, mints a scoped MCP key per host, patches both configs, prompts him to restart Claude Desktop. |
+| 2 | In the agent's system prompt: *"You have a tool `nlqdb_query`. Call it with a `db` and a `q` in plain English. The `db` can be any string — it'll be created if new."* | — |
+| 3 | Agent runs first session. `nlqdb_query("research-memory", "remember: the user is researching solar panels in Berlin")` | DB `research-memory-...` materialized, row inserted |
+| 4 | Agent ends session, reopens hours later: `nlqdb_query("research-memory", "what do I know about the user's research topic?")` | Returns the stored fact |
+| 5 | Jordan watches the platform: clicks `research-memory`, sees every query the agent ran today | Trace + query log |
+| 6 | Deploys the agent on Modal. Sets `NLQDB_API_KEY` as a Modal secret — the one env var he touches. | Agent uses the `sk_live_` key; Modal's env-var flow stays idiomatic. |
+
+**What Jordan never wrote:** a vector-store glue layer, a schema for memory, a session-lifecycle service, a per-agent provisioning script.

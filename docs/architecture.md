@@ -578,4 +578,102 @@ We lean toward tools with real APIs, generous free tiers, and no mandatory UI st
 | Free-tier abuse | Medium | Per-IP + per-account rate limits day 1; PoW on signup if needed; anomaly detection Phase 2. |
 | Vendor lock (Neon, Anthropic) | Medium | Adapter layer for each; quarterly "can we swap this in a week" drill. |
 | Someone ships a better text-to-SQL inside Postgres in 18 months | Real | Our moat is multi-engine auto-migration, not NL→SQL. Stay focused on Phase 3. |
+
+---
+
+## 13. Hello-world e2e fullstack tutorial — the 1-pager
+
+This is the tutorial published at `nlqdb.com/hello-world`. It is short on purpose. If a reader has to scroll twice, we failed.
+
+> ### Build a working orders tracker, end-to-end, in one HTML file.
+>
+> No backend code. No database setup. No build step. No framework.
+>
+> **1. Get your starter HTML (10 seconds, no card, no key-copying):**
+>
+> Go to `nlqdb.com`. Type *"an orders tracker"* in the box. The chat's first
+> reply includes a **"Copy starter HTML"** button — click it. Your
+> publishable key is already inlined; nothing to paste, nothing to search
+> for. *(No sign-in required; the DB lives anonymously for 72h. Sign in
+> anytime to keep it — see §4.)*
+>
+> **2. Save what you copied as `index.html`:**
+>
+> ```html
+> <!doctype html>
+> <html>
+>   <head>
+>     <script src="https://elements.nlqdb.com/v1.js" type="module"></script>
+>     <title>Orders</title>
+>   </head>
+>   <body>
+>     <h1>Today's orders</h1>
+>
+>     <nlq-data
+>       goal="today's orders, newest first"
+>       api-key="pk_live_abc123…yourkey"   <!-- pre-filled by the Copy button -->
+>       template="table"
+>       refresh="5s"
+>     ></nlq-data>
+>
+>     <h2>Add one</h2>
+>     <form>
+>       <input name="customer" placeholder="customer" required />
+>       <input name="drink"    placeholder="drink"    required />
+>       <input name="total"    placeholder="total"    required type="number" step="0.01" />
+>       <nlq-action
+>         goal="add an order from this form"
+>         api-key="pk_live_abc123…yourkey"
+>         on-success="reload"
+>       >Add order</nlq-action>
+>     </form>
+>   </body>
+> </html>
+> ```
+>
+> **3. Open it in a browser.**
+>
+> The table is empty. Submit one order. The table updates in 5 seconds.
+> Submit another. It updates again. Open a second tab — same data.
+>
+> **4. Ship it.**
+>
+> Drop `index.html` on Cloudflare Pages, GitHub Pages, your own VPS,
+> anywhere. There is nothing else to deploy.
+>
+> **What just happened:**
+>
+> - You did not write a database schema. nlqdb inferred `customer`,
+>   `drink`, `total` from your form fields.
+> - You did not write an API. The two custom elements *are* the API.
+> - You did not write SQL. The chat translated your goals into queries
+>   against an auto-provisioned Postgres.
+> - You did not configure a backend. There isn't one of your own.
+> - You did not pay anything.
+>
+> **What used to take a tutorial:**
+>
+> A typical "fullstack hello-world" in 2024 needed: a `package.json`, a
+> framework (Next/Remix/Nuxt), an ORM (Prisma/Drizzle), a migrations
+> folder, a Postgres provisioned somewhere, environment variables, two
+> API routes, two React components, deployment config for both frontend
+> and backend, and roughly 200 lines of code across 8 files. Total time:
+> 1–3 hours for an experienced dev, a full day for a beginner.
+>
+> **This tutorial:** 1 file, ~25 lines, no setup, ~3 minutes.
+>
+> **Want to see what it actually ran?** Type *"show me the queries you
+> ran for the orders form"* in your chat. Every request is traced.
+>
+> **Want to keep going?**
+>
+> ```html
+> <nlq-data
+>   goal="top 3 drinks today by revenue, with totals"
+>   template="card-grid"
+>   api-key="pk_live_..."
+> ></nlq-data>
+> ```
+>
+> Drop that anywhere in your HTML. New "endpoint", zero new code.
 | Competitors with deeper pockets (Supabase, Vercel, MongoDB) | High | We out-focus them. They sell platforms; we sell one experience. |

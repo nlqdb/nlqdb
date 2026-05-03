@@ -156,6 +156,8 @@ working in one directory.
 | [`docs/guidelines.md`](docs/guidelines.md) | Code-review heuristics, the four habits. |
 | [`docs/progress.md`](docs/progress.md) | Platform integration tiers (P0–P3). |
 | [`docs/research-receipts.md`](docs/research-receipts.md) | Receipts for cited research. |
+| [`docs/competitors.md`](docs/competitors.md) | Competitive landscape — categories, threat matrix, gap analysis. |
+| [`docs/history/`](docs/history/) | Lessons learnt — one doc per operational topic (infra setup, migrations, etc.). |
 
 These exist for depth; they are not loaded into every session by
 default. The skill index (`.claude/skills/_index.md`) is the front
