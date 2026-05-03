@@ -14,8 +14,8 @@ EVENTS_QUEUE producer types — shared between apps/api and apps/events-worker.
 ## Commands
 
 ```bash
-bun --filter @nlqdb/events run build
-bun --filter @nlqdb/events run test
+bun run --filter @nlqdb/events build
+bun run --filter @nlqdb/events test
 ```
 
 ## Local rules

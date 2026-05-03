@@ -17,9 +17,9 @@
 ## Commands
 
 ```bash
-bun --filter cli run dev
-bun --filter cli run build
-bun --filter cli run test
+bun run --filter cli dev
+bun run --filter cli build
+bun run --filter cli test
 ```
 
 ## Local rules

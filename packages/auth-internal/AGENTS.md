@@ -14,8 +14,8 @@ Better Auth wrapper — the only thing that talks to the auth provider.
 ## Commands
 
 ```bash
-bun --filter @nlqdb/auth-internal run build
-bun --filter @nlqdb/auth-internal run test
+bun run --filter @nlqdb/auth-internal build
+bun run --filter @nlqdb/auth-internal test
 ```
 
 ## Local rules
