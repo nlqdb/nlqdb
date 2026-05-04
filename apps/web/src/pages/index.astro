@@ -19,17 +19,13 @@ import Base from "../layouts/Base.astro";
     <Topnav />
 
     <main>
-      {/* Hero gated behind Cmd+G (Ctrl+G on non-Mac) for production
-          testing. Default state: hidden — the SK-WEB-008 directive
-          shipped, but the surface needs vetting against real LLM
-          traffic + the global anon cap before we expose it to all
-          visitors. The toggle persists in localStorage so the
-          tester sees it on every reload from the same browser.
-          Carousel / CodePanel / Replaces / etc. continue to render
-          unconditionally; only the live <CreateForm> is gated. */}
-      <div id="hero-gate" hidden>
-        <Hero />
-      </div>
+      {/* Hero's marketing chrome (wordmark, lede, sub) renders
+          unconditionally; the live <CreateForm> inside is gated
+          behind Cmd+G (Ctrl+G on non-Mac) via the `#hero-gate` div
+          in `apps/web/src/components/Hero.astro`. The toggle
+          persists in localStorage so the tester sees it on every
+          reload from the same browser. */}
+      <Hero />
       <Carousel examples={SHOWCASE_EXAMPLES} />
       <Waitlist />
       <CodePanel />
