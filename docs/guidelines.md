@@ -184,3 +184,26 @@ We make bad states unreachable, not caught. Before shipping any user-visible fea
 This file pairs with [`CONTRIBUTING.md`](../CONTRIBUTING.md) (mechanics:
 hooks, branches, commit format) and [`./architecture.md`](./architecture.md)
 (architecture). Those are the *what*; this is the *how-we-decide*.
+
+## 7. What we reinvent — and what we don't
+
+### Build our own
+
+Seven places where the existing tool isn't good enough:
+
+1. **The query router.** No existing router decides between PG / Mongo / Redis / DuckDB based on a live workload fingerprint. This is the product.
+2. **The NL → plan compiler.** Existing text-to-SQL libraries (LangChain SQL agent, Vanna, etc.) are demos. They don't handle schema drift, don't stream, don't do multi-engine, don't expose trace. We build our own, tested against a held-out benchmark we curate.
+3. **The migration orchestrator with dual-read verification.** Shadow + compare + cutover, per engine pair. No off-the-shelf tool does cross-engine migration safely.
+4. **Connection proxy with per-DB quotas.** PgBouncer is the right shape but we need per-user-DB isolation, per-query budget, NL-query cancellation, and live trace surfacing. Write our own thin one in Go.
+5. **The NL diff/undo layer.** Before destructive ops, show the diff in plain English + data preview. This library does not exist.
+6. **Usage metering ingest path.** Lago handles invoicing, but the *ingest* of every query's token+latency stamp must be sub-ms overhead on the hot path. Async path, batched into Lago.
+7. **The onboarding itself.** It is literally the entire product for the first 60 seconds. Hand-craft it; don't reach for a SaaS onboarding framework.
+
+### Don't reinvent
+
+- Postgres.
+- Auth (Better Auth).
+- Payment processor (Stripe).
+- OTel.
+- The MCP protocol (implement the spec, don't fork it).
+- SQL parsers (use `pg_query`, `sqlparser-rs`).

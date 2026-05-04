@@ -109,3 +109,40 @@ Canonical text in [`docs/decisions.md`](../../docs/decisions.md). The list below
 - **Stripe Tax activation.** Test-mode is configured (`NLQDB.COM` descriptor, Switzerland/CHF merchant). Live-mode + Stripe Tax flip is a Phase 2 task — capture the activation steps in `docs/runbook.md §6` when it lands.
 - **Lago wiring.** PLAN §6 / DESIGN §6 calls for Lago-on-Fly as the usage-metering layer batched into Stripe; not yet wired. Slice TBD in Phase 2.
 - **Live-mode webhook secret.** `STRIPE_WEBHOOK_SECRET` today is the test-mode value; cutting over needs a coordinated `wrangler secret put` + Stripe Dashboard endpoint update; document the rollover playbook in `docs/runbook.md §6`.
+
+## Billing constraints and philosophy
+
+### No dark patterns — hard rules
+
+These apply to every billing surface. Violating any one of them is a product defect, not a configuration choice:
+
+- **No credit card for the free tier, ever.** Not "to verify identity." Not "for spam protection." No.
+- **The trial is the free tier itself.** There is no separate "14-day Pro trial" with a countdown. When a user exceeds free limits, rate-limit with a clear message — "You've used your 1,000 queries. Add a card to continue — or wait until next month." The user's data is never held hostage. Export is one click, always free.
+- **First charge confirmation.** When a card is added, email before the first charge: "You'll be billed $X on Y. Reply NO to cancel." No silent auto-upgrades from Hobby to Pro; tier changes require a deliberate click.
+- **Usage predictability.** Hard caps on Pro are opt-in; the default is a soft cap: email at 80% of the user's monthly budget, email + require a one-click extension at 100%. No surprise $4,000 bills. Ever.
+- **Downgrade is as easy as upgrade.** One click. Pro-rated refund on the unused portion.
+- **Cancellation is one click** — no call, no chat, no exit survey. Optional exit survey *after* cancellation is acceptable.
+
+### Payment tech stack
+
+- **Stripe Billing** — invoicing + payment method capture. Checkout is Stripe-hosted; we do not build card forms.
+- **Lago** (self-hosted, open source) — usage metering in front of Stripe. Meters queries, LLM tokens, GB-mo. Emits invoice events to Stripe. Not yet wired (Phase 2).
+- **Stripe Tax** — enabled from day 1 in live mode. Handles VAT/GST automatically.
+- **Paddle** — optional Merchant of Record if we expand internationally before setting up entities. Deferred until needed.
+
+### Things we will NOT do
+
+- Charge for the number of seats in Phase 1. The billing unit is the DB and the query, not the human.
+- Gate features we'd have shipped anyway behind Pro to manufacture upgrade urgency.
+- Offer "lifetime deals" on AppSumo. That audience is not ours and the support cost is real.
+- Hide prices behind "Contact sales" for anything under the Enterprise tier.
+
+### Unit economics (napkin, Phase 1)
+
+| Tier | Our cost | Margin target |
+|---|---|---|
+| Free (100 queries/mo) | ~$0.15–$0.40 | — (CAC substitute) |
+| Hobby ($10/mo) | ~$2–4 | 60–80% at target plan-cache hit rate |
+| Pro ($25/mo+) | — | 75%+ once self-hosted classifier is online |
+
+**LLM cost is the dominant variable.** Plan cache hit rate (60–80% at maturity) is the primary lever. Small-model-first chain + batch embeddings + no summarization for structured-output API calls are the secondary levers.
