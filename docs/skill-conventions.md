@@ -156,9 +156,9 @@ To find every skill affected by a GLOBAL: `grep -rn 'GLOBAL-005'
 Every feature gets a skill, even if the feature is not yet implemented:
 
 - **Implemented:** populate fully. Every decision from
-  `docs/architecture.md` / `docs/architecture.md §10` / `docs/architecture.md §10` /
-  `docs/runbook.md` that bears on this feature gets a `SK-*-*` ID and a
-  full decision block.
+  `docs/architecture.md` (incl. §10 phase plan) and `docs/runbook.md`
+  that bears on this feature gets a `SK-*-*` ID and a full decision
+  block.
 - **Partial:** populate the implemented decisions; mark the gaps under
   *Open questions*.
 - **Planned:** stub only — frontmatter, status `planned (Phase X)`, scope,
