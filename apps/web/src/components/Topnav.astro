@@ -1,17 +1,26 @@
 ---
-// Top navigation. Auth-aware: when the visitor has a valid cross-
-// subdomain `__Secure-session` cookie (SK-WEB-006), the "Open
-// chat" + "Sign out" pair fades in and replaces the anon CTAs.
-// We never render a "Sign in" button at all once the user is
-// authed — the only auth affordance on an authed surface is "Sign
-// out" (per follow-up convo on this branch).
+// Top navigation. Two reveal mechanics in play here:
 //
-// The cookie is HttpOnly so JS can't read it directly; we hit
-// `/api/auth/get-session` once on mount. To avoid a flash of
-// the wrong shell, the authed slot is hidden by default and
-// revealed only when the probe resolves authed; the anon slot
-// renders immediately so visitors don't see an empty topnav while
-// the probe is in flight.
+//   1. Cmd+G (Ctrl+G) tester gate — toggles every `[data-cmdg-gate]`
+//      element on the page in lockstep (currently the hero
+//      <CreateForm> on `/` and the "Sign in" link in this nav).
+//      Sticky via localStorage so the chord-toggled state survives
+//      reloads. This is the internal-tester reveal main shipped on
+//      #80 / #84.
+//
+//   2. Auth-aware swap — when the cross-subdomain `__Secure-session`
+//      cookie (SK-WEB-006) resolves a real user, the "Open chat /
+//      Sign out" pair takes over and the "Sign in" gate is
+//      permanently hidden for that visit. Per follow-up convo on
+//      this branch: an authed user MUST never see a "Sign in"
+//      affordance, even with Cmd+G held down.
+//
+// Order of operations: the Cmd+G handler installs unconditionally;
+// the auth probe hits `/api/auth/get-session` once on mount and, on
+// authed, strips the `data-cmdg-gate` attribute off the sign-in
+// span (so subsequent Cmd+G presses can't resurface it) AND force-
+// hides it. The cookie is HttpOnly, so the network round-trip is
+// the only honest source of truth for "is this visitor signed in?".
 interface Props {
   current?: "manifesto";
 }
@@ -28,51 +37,34 @@ const { current } = Astro.props;
       Manifesto
     </a>
     <a href="mailto:hello@nlqdb.com">Contact</a>
-<<<<<<< claude/build-chat-interface-kIJLt
 
+    {/* Sign-in link — gated behind Cmd+G for internal testers, AND
+        suppressed entirely once the auth probe resolves authed. */}
+    <span id="topnav-signin-gate" data-cmdg-gate hidden>
+      <a href="/auth/sign-in">Sign in</a>
+    </span>
+
+    {/* Authed slot — hidden by default; revealed only after the
+        probe resolves authed. Replaces the sign-in gate. */}
     <span id="topnav-authed" class="topnav__authed" hidden>
       <a href="/app" class="topnav__chat-link">Open chat &rarr;</a>
       <button type="button" id="topnav-signout" class="topnav__signout">
         Sign out
       </button>
-=======
-    {/* Sign in link gated behind Cmd+G — same chord that reveals the
-        hero <CreateForm>. Toggles in lockstep so internal testers see
-        both surfaces at once; persisted via localStorage. */}
-    <span id="topnav-signin-gate" data-cmdg-gate hidden>
-      <a href="/auth/sign-in">Sign in</a>
->>>>>>> main
     </span>
   </nav>
 </header>
 
 <script>
-<<<<<<< claude/build-chat-interface-kIJLt
   import { fetchSession, signOut } from "../lib/session";
 
-  const authed = document.getElementById("topnav-authed");
-  const signoutBtn = document.getElementById("topnav-signout");
-
-  if (signoutBtn) {
-    signoutBtn.addEventListener("click", () => {
-      void signOut();
-    });
-  }
-
-  void (async () => {
-    const user = await fetchSession();
-    if (user && authed) {
-      authed.hidden = false;
-    }
-  })();
-=======
-  // Shared Cmd+G (Ctrl+G on non-Mac) reveal gate. Toggles every
-  // `[data-cmdg-gate]` element on the page in lockstep — currently
-  // the hero <CreateForm> on `/` and the Sign-in link in this nav.
-  // preventDefault() because Chrome binds Cmd+G to "find next" and
-  // we want the chord exclusive while iterating. State sticks via
-  // localStorage["nlqdb_hero_visible"] (name kept for continuity
-  // with the original hero gate).
+  // ---- Cmd+G shared reveal gate (from main, preserved verbatim) ----
+  // Toggles every `[data-cmdg-gate]` element on the page in lockstep
+  // — currently the hero <CreateForm> on `/` and the "Sign in" link
+  // above. preventDefault() because Chrome binds Cmd+G to "find
+  // next" and we want the chord exclusive while iterating. State
+  // sticks via localStorage["nlqdb_hero_visible"] (name kept for
+  // continuity with the original hero gate).
   const FLAG = "nlqdb_hero_visible";
 
   function applyVisibility(on: boolean) {
@@ -94,5 +86,27 @@ const { current } = Astro.props;
       applyVisibility(next);
     }
   });
->>>>>>> main
+
+  // ---- Auth-aware swap ---------------------------------------------
+  const signinGate = document.getElementById("topnav-signin-gate");
+  const authed = document.getElementById("topnav-authed");
+  const signoutBtn = document.getElementById("topnav-signout");
+
+  if (signoutBtn) {
+    signoutBtn.addEventListener("click", () => {
+      void signOut();
+    });
+  }
+
+  void (async () => {
+    const user = await fetchSession();
+    if (!user) return;
+    if (authed) authed.hidden = false;
+    if (signinGate) {
+      // Strip the Cmd+G gate AND force-hide so a chord press can't
+      // resurface the "Sign in" link for an authed visitor.
+      signinGate.removeAttribute("data-cmdg-gate");
+      signinGate.setAttribute("hidden", "");
+    }
+  })();
 </script>
