@@ -131,8 +131,8 @@ export const excerpt: readonly ExcerptItem[] = [
     body: "Sign up, build, ship to production without a credit card. The free tier isn't a trial — it's the product. Every cost upgrade is gated on a real signal: paying customers, not theoretical scale.",
   },
   {
-    title: "No login wall before first value",
-    body: "Every surface produces a working answer before asking who you are. Anonymous-mode is the default. The DB you create before signing in adopts to your account when you do — one row update, no migration prompt.",
+    title: "Fast. Measured.",
+    body: "p50 query under 400ms on cache hit. p95 under 1.5s on cache miss. Cold start under 800ms. Numbers exist so we can fail them in CI, not so we can quote them in a deck.",
   },
   {
     title: "Goal-first, not DB-first",
