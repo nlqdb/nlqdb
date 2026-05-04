@@ -72,7 +72,7 @@ const credentialedCors = cors({
     return null;
   },
   credentials: true,
-  allowHeaders: ["Content-Type"],
+  allowHeaders: ["Content-Type", "Authorization", "cf-turnstile-response"],
   allowMethods: ["GET", "POST", "OPTIONS"],
   maxAge: 86400,
 });
