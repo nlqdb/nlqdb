@@ -1,5 +1,5 @@
 // Shared types for the `/v1/ask kind=create` typed-plan pipeline
-// (docs/design.md §3.6.1 + §3.6.2). The four sibling modules
+// (docs/architecture.md §3.6.1 + §3.6.2). The four sibling modules
 // (`infer-schema`, `compile-ddl`, `neon-provision`, `orchestrate`)
 // import from here so contracts stay in one place — Worksheet A
 // owns this file's canonical shape; the orchestrator (this PR)
@@ -83,7 +83,7 @@ export type CompileDdlResult =
 // --- validate-compiled-ddl ------------------------------------------
 // Defense-in-depth libpg_query parse + reject-list. Even though our
 // own compiler authored the SQL, we re-parse before sending to the
-// executor — guards against compiler bugs. docs/design.md §3.6.5
+// executor — guards against compiler bugs. docs/architecture.md §3.6.5
 // row 2; SK-HDC-006 codifies the read/write vs DDL split.
 //
 // Reason union mirrors `apps/api/src/ask/sql-validate-ddl.ts`'s
@@ -102,7 +102,7 @@ export type DdlValidationResult =
 // --- provisioner ----------------------------------------------------
 // SK-HDC-007 splits the provisioner from day one: Phase 1 wires
 // `provisionDb` (schema on shared Neon branch); Phase 4 wires
-// `registerByoDb` (BYO connection_url, `docs/design.md §3.6.7`).
+// `registerByoDb` (BYO connection_url, `docs/architecture.md §3.6.7`).
 // Both implement the same `ProvisionFn` shape so the orchestrator
 // swaps with a single dep change, not a refactor.
 
@@ -142,7 +142,7 @@ export type ProvisionResult =
       // Minted inside the same transaction that inserts the
       // `databases` row, so the key + DB land atomically. `null`
       // for anonymous tenants — the route handler issues a
-      // session-scoped key separately (docs/design.md §3.6.4).
+      // session-scoped key separately (docs/architecture.md §3.6.4).
       pkLive: string | null;
     }
   | { ok: false; reason: ProvisionFailureReason; rolled_back: boolean };

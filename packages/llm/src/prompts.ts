@@ -1,6 +1,6 @@
 // System prompts for each operation. Intentionally placeholder-grade —
 // Slice 6 (`/v1/ask` E2E) tunes them with real schemas, few-shot
-// examples, and prompt-cache discipline (DESIGN §8 cost-control rule 3).
+// examples, and prompt-cache discipline (docs/architecture.md §8 cost-control rule 3).
 // Prompts live here so every provider reuses the same shape.
 
 import type { ClassifyRequest, PlanRequest, SummarizeRequest } from "./types.ts";
@@ -35,7 +35,7 @@ export function buildPlanUser(req: PlanRequest): string {
 }
 
 export function buildSummarizeUser(req: SummarizeRequest): string {
-  // Truncate to keep prompts small — DESIGN §8 cost rule. Summarization
+  // Truncate to keep prompts small — docs/architecture.md §8 cost rule. Summarization
   // over thousands of rows is a Slice 6+ concern (paginate first).
   const sample = req.rows.slice(0, 50);
   return [`Goal: ${req.goal}`, `Rows (JSON):\n${JSON.stringify(sample)}`].join("\n\n");

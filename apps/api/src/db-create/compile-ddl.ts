@@ -1,4 +1,4 @@
-// DDL compiler for the db.create slice (docs/design.md §3.6.2,
+// DDL compiler for the db.create slice (docs/architecture.md §3.6.2,
 // §3.6.5). The LLM never emits raw DDL — it emits a typed
 // `SchemaPlan` (canonical types in @nlqdb/db/types per SK-HDC-002),
 // and this compiler turns the plan into deterministic SQL strings.

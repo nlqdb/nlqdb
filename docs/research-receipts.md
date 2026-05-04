@@ -1,8 +1,7 @@
 # Research receipts
 
 Single source of truth for the prior-art and incident research that
-shaped nlqdb's design. Other docs (`./design.md`, `./implementation.md`,
-`./runbook.md`) cite this file rather than duplicating URLs. The
+shaped nlqdb's design. Other docs (`./architecture.md`, `./runbook.md`) cite this file rather than duplicating URLs. The
 homepage's "Backed by the work" component pulls a curated subset
 from here.
 
@@ -184,7 +183,7 @@ agent context bleed
 ([Giskard](https://www.giskard.ai/knowledge/cross-session-leak-when-your-ai-assistant-becomes-a-data-breach)).
 
 **Where applied:** Phase 1 puts every user db on a single shared
-Neon branch as a schema (per `./plan.md §1.6`); the connection-pool
+Neon branch as a schema (per `./architecture.md §10`); the connection-pool
 sets `SET LOCAL search_path` to the tenant's schema and the role
 has no `USAGE` on other schemas. RLS policies guard every row.
 Cross-tenant leak requires three independent failures (search_path,
@@ -256,7 +255,8 @@ SUM(orders.total)`), `dimensions` (e.g. `customer.tier`,
 `order.status`), and `entities` with FK joins. These are stored as
 an OSI-compatible YAML alongside the DB and surfaced in the query
 planner's prompt context — matching the Phase 2 semantic-layer
-adoption story (`./design.md §17`) but landing now, automatically, at
+adoption story (`.claude/skills/hosted-db-create/SKILL.md` §
+"Semantic layer — Phase 2 design") but landing now, automatically, at
 create time.
 
 **Sources:**

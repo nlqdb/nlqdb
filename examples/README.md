@@ -28,7 +28,7 @@ Each folder's `README.md` includes:
 
 ## Authentication
 
-Every example uses a publishable key (`pk_live_…`) inlined into the HTML/JSX/template. That's by design: publishable keys are read-only, origin-pinned, and meant for client-side embed (DESIGN §4.1). For server-side usage where a `sk_live_…` is required, see `examples/cli/` and the (forthcoming) `@nlqdb/sdk` snippets.
+Every example uses a publishable key (`pk_live_…`) inlined into the HTML/JSX/template. That's by design: publishable keys are read-only, origin-pinned, and meant for client-side embed (`docs/architecture.md §4.1`). For server-side usage where a `sk_live_…` is required, see `examples/cli/` and the (forthcoming) `@nlqdb/sdk` snippets.
 
 To get a key, after Phase 1 lands:
 
@@ -37,10 +37,10 @@ nlq login          # one click in browser
 nlq keys create pk # prints pk_live_…
 ```
 
-Or use anonymous mode (DESIGN §3.3): no sign-in, DB lives 72 h, adopt later via `nlq login`.
+Or use anonymous mode (`docs/architecture.md §3.3`): no sign-in, DB lives 72 h, adopt later via `nlq login`.
 
 ## Contributing a new example
 
 PRs welcome — especially for stacks not yet here (SolidStart, TanStack Start, Qwik, React Native, Expo, Tauri, etc.) and creative use-cases (Discord bot, GitHub Action, browser extension, weekly digest cron). Keep each example to one source file plus a 10-line README. Same `<nlq-data>` snippet across all of them — that's the point.
 
-The full target list — every framework, mobile platform, server middleware, IDE extension, no-code platform, iPaaS, analytics tool, and chat integration we plan to ship into — lives in [`../docs/implementation.md` §10](../docs/implementation.md#10-platform-integrations--the-matrix). Each row there is a future 1st-party or 3rd-party integration; this folder is where the templated 2nd-party versions live.
+The full target list — every framework, mobile platform, server middleware, IDE extension, no-code platform, iPaaS, analytics tool, and chat integration we plan to ship into — lives in [`../docs/progress.md`](../docs/progress.md). Each row there is a future 1st-party or 3rd-party integration; this folder is where the templated 2nd-party versions live.

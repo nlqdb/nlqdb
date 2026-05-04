@@ -1,5 +1,5 @@
 // KV-backed plan cache for `/v1/ask`. Keyed by (schemaHash, queryHash)
-// per DESIGN §0.1 ("plans are content-addressed and cached per-schema-
+// per docs/architecture.md §0.1 ("plans are content-addressed and cached per-schema-
 // hash"). Hit-rate carries the cost story (PLAN line 394 / DESIGN line
 // 591); the LLM router only fires on miss.
 //

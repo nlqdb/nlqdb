@@ -5,8 +5,8 @@
 // (env bindings + execution ctx) — see `apps/api/src/ask/build-deps.ts`.
 //
 // Pipeline implements the typed-plan flow from
-// [`docs/design.md §3.6.1`](../../../../docs/design.md#361-endpoint-shape) +
-// [`docs/design.md §3.6.2`](../../../../docs/design.md#362-typed-plan-pipeline-the-create-path):
+// [`docs/architecture.md §3.6.1`](../../../../docs/architecture.md#361-endpoint-shape) +
+// [`docs/architecture.md §3.6.2`](../../../../docs/architecture.md#362-typed-plan-pipeline-the-create-path):
 //
 //   inferSchema → compileDdl → validateCompiledDdl →
 //   provision → embedTableCards
@@ -78,7 +78,7 @@ export async function orchestrateDbCreate(
   args: DbCreateArgs,
 ): Promise<DbCreateResult> {
   // 1. Infer the SchemaPlan. The LLM never emits raw DDL — only
-  //    a typed JSON plan (docs/design.md §3.6.2 / receipts §2;
+  //    a typed JSON plan (docs/architecture.md §3.6.2 / receipts §2;
   //    SK-HDC-002). Zod validation lives inside `inferSchema`;
   //    failures surface here as `infer_failed`.
   const inferred = await deps.inferSchema(
@@ -93,7 +93,7 @@ export async function orchestrateDbCreate(
   }
   const plan = inferred.plan;
 
-  // 2. Mint the dbId + schema name. Format from docs/design.md §14.6:
+  // 2. Mint the dbId + schema name. Format from docs/architecture.md §3.6:
   //    "db_<slug_hint>_<6-char-random>"; schema name drops the
   //    `db_` prefix (matches Worksheet C's contract).
   const suffix = deps.randomSuffix();
@@ -112,7 +112,7 @@ export async function orchestrateDbCreate(
   }
 
   // 4. libpg_query parse-validate over the compiled DDL — the
-  //    second of two DDL guardrails (docs/design.md §3.6.5;
+  //    second of two DDL guardrails (docs/architecture.md §3.6.5;
   //    SK-HDC-003 defense-in-depth, SK-HDC-006 read/write vs DDL
   //    split). Catches compiler bugs that smuggled a destructive
   //    verb through.
@@ -167,7 +167,7 @@ export async function orchestrateDbCreate(
 
   // 7. Anonymous tenants get `pkLive: null` regardless of what the
   //    provisioner returned — the route handler issues a
-  //    session-scoped key separately (docs/design.md §3.6.4 row 1;
+  //    session-scoped key separately (docs/architecture.md §3.6.4 row 1;
   //    SK-HDC-005 documents the deterministic-resolution rationale).
   const pkLive = isAnonymous(args.tenantId) ? null : provisioned.pkLive;
 

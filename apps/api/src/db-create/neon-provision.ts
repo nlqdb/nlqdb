@@ -2,7 +2,7 @@
 // fresh schema on the shared Neon branch and registers the new db
 // in D1's `databases` table (migration 0001_init.sql).
 //
-// Tenancy model: docs/design.md §3.6.6 — Phase 1 puts every db on a
+// Tenancy model: docs/architecture.md §3.6.6 — Phase 1 puts every db on a
 // single shared Neon branch as a schema. Isolation is layered:
 //   1. per-db schema (search_path on the read path)
 //   2. per-tenant role with USAGE only on its own schemas
@@ -246,7 +246,7 @@ export async function provisionDb(
 
 // SK-HDC-007 — split the provisioner abstraction from day one. Phase 4
 // wires `registerByoDb` for the BYO `POST /v1/db/connect` endpoint
-// (docs/design.md §3.6.7). Today it throws so the orchestrator's
+// (docs/architecture.md §3.6.7). Today it throws so the orchestrator's
 // injection seam is real, not theoretical, and so a Phase 4 PR is a
 // function-body fill-in rather than a rebuild.
 export async function registerByoDb(
@@ -254,7 +254,7 @@ export async function registerByoDb(
   _args: ProvisionArgs,
 ): Promise<ProvisionResult> {
   throw new Error(
-    "registerByoDb: BYO Postgres lands in Phase 4 — see docs/design.md §3.6.7 / SK-HDC-007",
+    "registerByoDb: BYO Postgres lands in Phase 4 — see docs/architecture.md §3.6.7 / SK-HDC-007",
   );
 }
 

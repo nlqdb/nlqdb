@@ -22,7 +22,7 @@ function extractMagicLinkUrl(logs: string[]): string {
   // Dev-stub log format (src/email.ts):
   //   [email:dev-stub] to=… subject=… body=<text containing the URL>
   // Email links go through `/auth/continue?next=<encoded verify URL>`
-  // (prefetch protection — DESIGN §4.3); decode `next` to get the
+  // (prefetch protection — docs/architecture.md §4.3); decode `next` to get the
   // actual verify URL the user would land on after clicking through.
   const joined = logs.join("\n");
   const wrapped = joined.match(/https?:\/\/[^\s"]+\/auth\/continue\?next=([^\s"]+)/);

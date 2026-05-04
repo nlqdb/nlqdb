@@ -14,7 +14,7 @@ when-to-load:
 **One-liner:** No-login first-value path across web / CLI / MCP; later attached to a Better Auth identity.
 **Status:** partial (API shipped — `/v1/anon/adopt`; web UI remaining — Phase 1 exit gate)
 **Owners (code):** `apps/web/**`, `cli/**`, `apps/api/src/anon-adopt.ts`
-**Cross-refs:** docs/decisions.md#GLOBAL-007 · docs/design.md §0.1, §3.3, §3.6.4, §4.1, §14.3, §14.6 · docs/personas.md (P1, P5 first-touch) · docs/implementation.md §4 (partial status) · docs/runbook.md §9 (anonymous-db lifecycle)
+**Cross-refs:** docs/decisions.md#GLOBAL-007 · docs/architecture.md §0.1, §3.3, §3.6.4, §4.1, §14.3, §14.6 · docs/runbook.md §10 (P1, P5 first-touch) · docs/architecture.md §10 §4 (partial status) · docs/runbook.md §9 (anonymous-db lifecycle)
 
 ## Touchpoints — read this skill before editing
 
@@ -39,10 +39,10 @@ when-to-load:
 - **Decision:** The user-facing message is "anonymous DBs live for 72h — sign in to keep them." The server-side retention policy in `docs/runbook.md §9` is more generous (90 days from last query, with a 10 MB per-DB hard cap and pressure-sweep at 300 MB total). The 72h number is a *promise*, not a *limit*.
 - **Core value:** Honest latency, Bullet-proof, Goal-first
 - **Why:** Promising 72h and keeping the data 90 days means the user is never surprised by data loss. The server policy is sized to actual capacity (`docs/runbook.md §9.1` does the math against the 0.5 GB Neon Free cap); the user-facing copy is a worst-case promise that's also short enough to feel urgent (drives adoption) but not so short it strands legitimate weekend-only users. Honesty about latency / availability cuts both ways: under-promise, over-deliver, never the reverse.
-- **Consequence in code:** All user-facing copy says "72h". The sweep job at `apps/api/src/db-sweep/sweep.ts` runs daily, drops anonymous DBs whose `last_queried_at < now() - 90 days`, and pressure-sweeps the oldest if total bytes exceed 300 MB. CLI's first-run banner: *"Saved as anonymous. Run `nlq login` within 72h to keep it."* (`docs/design.md §14.3`). Tests on `sweep-skips-adopted.test.ts` guarantee adopted DBs are never touched.
+- **Consequence in code:** All user-facing copy says "72h". The sweep job at `apps/api/src/db-sweep/sweep.ts` runs daily, drops anonymous DBs whose `last_queried_at < now() - 90 days`, and pressure-sweeps the oldest if total bytes exceed 300 MB. CLI's first-run banner: *"Saved as anonymous. Run `nlq login` within 72h to keep it."* (`.claude/skills/cli/SKILL.md`). Tests on `sweep-skips-adopted.test.ts` guarantee adopted DBs are never touched.
 - **Alternatives rejected:**
   - Promise 90 days and limit at 90 days — gives no urgency to sign in; activation funnel suffers.
-  - Promise 24h and limit at 24h — strands weekend-only users (Maya in `docs/personas.md` starts on a Friday night and signs in Monday).
+  - Promise 24h and limit at 24h — strands weekend-only users (Maya in `docs/runbook.md §10` starts on a Friday night and signs in Monday).
 
 ### SK-ANON-003 — Adoption is a one-row update, never a data move
 
@@ -56,7 +56,7 @@ when-to-load:
 
 ### SK-ANON-004 — Anonymous tier has its own rate-limit bucket distinct from authenticated
 
-- **Decision:** The API has an explicit anonymous-mode rate-limit tier — a per-IP bucket, separate from per-(user_id, key) buckets used for authenticated calls. Limits are tighter than free-tier authenticated limits. Anonymous creates also have separate per-IP and per-account create-rate caps (5/hour per IP, 20/day per account) per `docs/design.md §3.6.8`.
+- **Decision:** The API has an explicit anonymous-mode rate-limit tier — a per-IP bucket, separate from per-(user_id, key) buckets used for authenticated calls. Limits are tighter than free-tier authenticated limits. Anonymous creates also have separate per-IP and per-account create-rate caps (5/hour per IP, 20/day per account) per `docs/architecture.md §3.6.8`.
 - **Core value:** Free, Bullet-proof
 - **Why:** Anonymous traffic has no accountable identity behind it — abuse defenses can only key off IP. Sharing the authenticated bucket means one abuser exhausts the per-DB budget for legitimate users. A separate, tighter anonymous tier limits blast radius without inconveniencing real users (who graduate to the authenticated tier on sign-in). Without this tier the free promise collapses under any meaningful abuse.
 - **Consequence in code:** `apps/api/src/middleware/rate-limit.ts` selects bucket by auth shape: anonymous → IP bucket (smaller window, lower cap); authenticated → user/key bucket. The anonymous-create caps live alongside the rate-limit middleware. PoW on signup is the escape valve if a coordinated wave hits the IP bucket.
@@ -108,3 +108,27 @@ Canonical text in [`docs/decisions.md`](../../docs/decisions.md). The list below
 - **Pressure-sweep eviction order beyond "oldest first".** `docs/runbook.md §9.3` drops the oldest anonymous DB when total bytes exceed 300 MB. Whether to weight eviction by size (drop biggest-and-oldest first) is undecided; the simpler oldest-first is the current pick.
 - **Cross-device anonymous continuity.** Per-device anonymous identity (per-browser `localStorage`, per-CLI keychain) is the Phase 1 design. Cross-device unification (e.g., a paste-this-code handshake) is deferred to Phase 2 — it adds complexity for a small fraction of users and the per-device model covers the majority use case.
 - **Browser-storage clearing.** A user who clears `localStorage` before signing in loses access to their anonymous DB (the device-token hash is the only handle). No recovery path is currently designed; whether this is acceptable or needs a "lost my anonymous DB" support endpoint is open.
+
+## Happy path walkthrough
+
+### §15.4 P5 — Aarav, the Student
+
+**Goal:** finish the CS50 final project (a blog).
+
+| Step | Aarav does | nlqdb does |
+|---|---|---|
+| 1 | Opens `nlqdb.com` on the library laptop, types *"a blog with posts and authors"* | DB created anonymously (no signup), schema inferred, replies with the SQL it ran ("…in case you're curious — your assignment asks for it") |
+| 2 | Pastes the SQL into his write-up | — |
+| 3 | Types *"add a sample post by 'Aarav' titled 'hello world'"* | Inserts the row |
+| 4 | Clicks "Copy starter HTML" in the chat — a pre-keyed `<nlq-data>` snippet lands on his clipboard | — |
+| 5 | Pastes it into his static-HTML assignment | Renders the blog feed, no build step |
+| 6 | *(Optional)* Signs in with GitHub to keep the DB past 72h | Anonymous DB adopted into his account in one SQL row (§4.1) |
+| 7 | Submits the assignment | — |
+
+**What Aarav never did:** ran `brew install postgresql`, dealt with a port conflict, installed a CLI, learned what `pg_hba.conf` is, gave up on day 1.
+
+The chat **also taught him** the SQL it generated, so he understands what his own project does. The free tier costs us cents and produces a future P1.
+
+### §15.5 The pattern
+
+First action is always stating a goal. DB is a silent consequence. Four surfaces (chat, CLI, MCP, embed) are projections of one verb: *ask, in plain English, against the data you care about*.

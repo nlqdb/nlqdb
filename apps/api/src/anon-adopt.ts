@@ -1,4 +1,4 @@
-// Anonymous-mode token adoption (Slice 11 — DESIGN §4.1, §1.2).
+// Anonymous-mode token adoption (Slice 11 — docs/architecture.md §4.1, §1.2).
 //
 // `<nlq-data>` issues an anon token to localStorage; when the user
 // eventually signs in, /app POSTs the token here so the pre-sign-in

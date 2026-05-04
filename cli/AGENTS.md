@@ -17,9 +17,9 @@
 ## Commands
 
 ```bash
-pnpm --filter cli dev
-pnpm --filter cli build
-pnpm --filter cli test
+bun run --filter cli dev
+bun run --filter cli build
+bun run --filter cli test
 ```
 
 ## Local rules

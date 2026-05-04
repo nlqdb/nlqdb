@@ -12,7 +12,7 @@ when-to-load:
 **One-liner:** Phase 3: auto-migrate Postgres ↔ Mongo / Redis / etc. when usage signals a fit.
 **Status:** planned (Phase 3)
 **Owners (code):** `packages/db/**` (Migration Orchestrator lands as a sibling module — exact path TBD)
-**Cross-refs:** docs/plan.md §2.2 (Migration Orchestrator + Workload Analyzer) · docs/plan.md §2.5 (Phase 2 exit criteria — auto-migration is the gate) · docs/design.md §10 (open design questions) · docs/implementation.md §6 (Phase 3 — the engine, the moat)
+**Cross-refs:** docs/architecture.md §10 §2.2 (Migration Orchestrator + Workload Analyzer) · docs/architecture.md §10 §2.5 (Phase 2 exit criteria — auto-migration is the gate) · docs/architecture.md §10 (open design questions) · docs/architecture.md §10 §6 (Phase 3 — the engine, the moat)
 
 ## Touchpoints — read this skill before editing
 
@@ -25,7 +25,7 @@ questions below must be answered before code lands. The skill exists
 now so the `SK-MIGRATE-NNN` ID prefix is reserved and `_index.md` is
 comprehensive (per `docs/skill-conventions.md §6`)._
 
-The shape of the feature is sketched in `docs/plan.md §2.2`:
+The shape of the feature is sketched in `docs/architecture.md §10 §2.2`:
 **shadow-write to the new engine while reads stay on the old; backfill
 in parallel; dual-read verification on a sample of production reads;
 atomic cutover via a per-db routing pointer; rollback is a pointer
@@ -40,10 +40,10 @@ becomes one or more `SK-MIGRATE-NNN` decisions when answered.
 ### Trigger and policy
 
 - **Confidence threshold** for the Workload Analyzer to recommend a
-  migration. `docs/plan.md §2.2` calls for "confidence > threshold"
+  migration. `docs/architecture.md §10 §2.2` calls for "confidence > threshold"
   but pins no number. What does the threshold sweep look like on the
   held-out benchmark from §2.5?
-- **Sustained-window length** ("hours, not minutes" per `docs/plan.md
+- **Sustained-window length** ("hours, not minutes" per `docs/architecture.md §10
   §2.2`). 24h? 72h? What's the right window size before we believe a
   workload signature is real and not a one-off batch?
 - **Cost/latency win threshold.** What's the minimum projected gain
@@ -51,9 +51,9 @@ becomes one or more `SK-MIGRATE-NNN` decisions when answered.
   goes wrong, dual-read CPU, brief routing latency); we need a number,
   not a vibe.
 - **Per-tier policy.** Free / Hobby / Pro: do all tiers get auto-
-  migration? `docs/plan.md §6` lists Pro tier in Phase 3 — does free-
+  migration? `docs/architecture.md §10 §6` lists Pro tier in Phase 3 — does free-
   tier auto-migrate at all, or do we restrict to paid?
-- **User opt-out.** `docs/plan.md §8` open question: "When (if ever)
+- **User opt-out.** `docs/architecture.md §10 §8` open question: "When (if ever)
   do we allow users to write their own migration triggers? ('Always
   keep in Redis.')" — likely yes as an override, not as a default
   surface; concrete API shape undecided.
@@ -67,10 +67,10 @@ becomes one or more `SK-MIGRATE-NNN` decisions when answered.
 - **Backfill throttling.** What's the rate limit on backfill against
   the source DB? How do we measure "current load" to throttle against?
 - **Dual-read sampling rate.** What percentage of production reads run
-  on both engines during verification? `docs/plan.md §2.2` says "a
+  on both engines during verification? `docs/architecture.md §10 §2.2` says "a
   sample" — concrete number TBD.
 - **Divergence handling.** Any divergence "blocks cutover and pages"
-  per `docs/plan.md §2.2`. What's the page recipient (on-call only?
+  per `docs/architecture.md §10 §2.2`. What's the page recipient (on-call only?
   feature owner?), and what's the auto-rollback contract — does
   divergence rewind the shadow-write, or freeze it for analysis?
 - **Atomic cutover** via a per-db routing pointer. Where does the
@@ -96,22 +96,22 @@ becomes one or more `SK-MIGRATE-NNN` decisions when answered.
 
 ### Verification
 
-- **Held-out benchmark.** Phase 2 exit gate (`docs/plan.md §2.5`):
+- **Held-out benchmark.** Phase 2 exit gate (`docs/architecture.md §10 §2.5`):
   "Workload Analyzer's decisions beat a human DBA on a held-out
   benchmark (we'll build it)." Benchmark composition, scoring rubric,
   and human-DBA baselines are all TBD.
-- **Chaos testing.** `docs/plan.md §7` ("Risks, honestly") names
+- **Chaos testing.** `docs/architecture.md §10 §7` ("Risks, honestly") names
   "cross-engine migration corrupts data" as a Medium risk; the
   mitigation is "dual-read verification, staged rollout, chaos tests,
   reversible cutover." Chaos-test protocol undecided.
 - **Restore drill cadence.** Weekly automated restore + diff is the
-  cross-phase always-on practice (`docs/implementation.md §8`); is the
+  cross-phase always-on practice (`docs/architecture.md §10 §8`); is the
   same cadence enough for engine-migration verification, or do we
   need tighter loops during a live migration?
 
 ### User experience
 
-- **Trace surface.** `docs/plan.md §2.2`: "The user sees a single
+- **Trace surface.** `docs/architecture.md §10 §2.2`: "The user sees a single
   subtle line in their trace: `engine: postgres → redis (migrated 2h
   ago)`. Nothing more, unless they ask." The "ask" path is undefined —
   what does the deeper view show?
@@ -146,7 +146,7 @@ Ahead of the first SK-MIGRATE decision, these need to land:
 1. The held-out benchmark exists and has a human-DBA baseline.
 2. Phase 2's PG-only auto-migration scaffold (shadow-write + dual-read
    in single-engine) is wired and battle-tested.
-3. `docs/plan.md §2.5` Phase 2 exit gate is met:
+3. `docs/architecture.md §10 §2.5` Phase 2 exit gate is met:
    - Auto-migration between at least PG ↔ Redis and PG ↔ DuckDB in
      prod with zero user-visible downtime across 100+ migrations.
    - Workload Analyzer beats a human DBA on the held-out benchmark.
@@ -158,15 +158,15 @@ Ahead of the first SK-MIGRATE decision, these need to land:
 
 ## Source pointers
 
-- `docs/plan.md §2.1` — architecture diagram (Query Planner → Query
+- `docs/architecture.md §10 §2.1` — architecture diagram (Query Planner → Query
   Log → Workload Analyzer → Migration Orchestrator → Shadow + Cutover)
-- `docs/plan.md §2.2` — Migration Orchestrator subsection
-- `docs/plan.md §2.3` — engine selection heuristics (the "rule" the
+- `docs/architecture.md §10 §2.2` — Migration Orchestrator subsection
+- `docs/architecture.md §10 §2.3` — engine selection heuristics (the "rule" the
   analyzer is learning)
-- `docs/plan.md §2.5` — Phase 2 exit criteria (gates Phase 3 work)
-- `docs/plan.md §7` — risks (data corruption, abstraction tax,
+- `docs/architecture.md §10 §2.5` — Phase 2 exit criteria (gates Phase 3 work)
+- `docs/architecture.md §10 §7` — risks (data corruption, abstraction tax,
   migration cost)
-- `docs/implementation.md §6` — Phase 3 slice list (Query Log →
+- `docs/architecture.md §10 §6` — Phase 3 slice list (Query Log →
   Workload Analyzer → Migration Orchestrator + Redis as second engine
   + DuckDB as third)
-- `docs/design.md §10` — open design questions
+- `docs/architecture.md §10` — open design questions

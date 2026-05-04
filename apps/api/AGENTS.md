@@ -23,9 +23,9 @@ Cloudflare Workers HTTP API. Hosts /v1/ask, /v1/run, auth, billing, webhooks.
 ## Commands
 
 ```bash
-pnpm --filter apps/api dev
-pnpm --filter apps/api build
-pnpm --filter apps/api test
+bun run --filter apps/api dev
+bun run --filter apps/api build
+bun run --filter apps/api test
 wrangler deploy --dry-run
 ```
 

@@ -26,4 +26,4 @@ nlq connection finance                                     # raw Postgres URL
 nlq export finance --csv > finance.csv
 ```
 
-DESIGN §14.3 covers all of them.
+.claude/skills/cli/SKILL.md covers all of them.

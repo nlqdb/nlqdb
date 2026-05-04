@@ -1,4 +1,4 @@
-// Better Auth singleton (DESIGN §4.1, §4.3, RUNBOOK §5/§5b).
+// Better Auth singleton (docs/architecture.md §4.1, §4.3, RUNBOOK §5/§5b).
 //
 // Provider creds switch on `env.NODE_ENV`:
 //   production   → OAUTH_GITHUB_*

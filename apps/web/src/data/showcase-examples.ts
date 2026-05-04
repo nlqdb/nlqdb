@@ -36,7 +36,7 @@
 //   mcp  → `nlqdb.ask({ goal })`        (AI-assistant tool call via
 //          mcp.nlqdb.com — the agent-callable surface)
 //
-// **dbId is omitted from default snippets.** Per DESIGN §3.6.4, the
+// **dbId is omitted from default snippets.** Per docs/architecture.md §3.6.4, the
 // API resolves the target db deterministically per surface — the
 // `pk_live_<dbId>` key for HTML embeds, MRU + prompt for the CLI,
 // the bearer token's account scope for REST/MCP — so requiring an

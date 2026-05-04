@@ -1,4 +1,4 @@
-// Unit tests for the DDL compiler (docs/design.md §3.6.5,
+// Unit tests for the DDL compiler (docs/architecture.md §3.6.5,
 // SK-HDC-002). Tests cover byte-for-byte determinism, every
 // documented `CompileFailureReason`, and the type-mapping table.
 //

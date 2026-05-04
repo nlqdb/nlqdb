@@ -14,8 +14,8 @@ OpenTelemetry helpers. Span/metric/label catalog from docs/performance.md §3.
 ## Commands
 
 ```bash
-pnpm --filter @nlqdb/otel build
-pnpm --filter @nlqdb/otel test
+bun run --filter @nlqdb/otel build
+bun run --filter @nlqdb/otel test
 ```
 
 ## Local rules

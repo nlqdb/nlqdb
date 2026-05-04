@@ -25,6 +25,7 @@ Cross-cutting decisions cited by skills: [`docs/decisions.md`](../../docs/decisi
 | [`elements`](./elements/SKILL.md) | `<nlq-data>` web component; framework-free embedding. | `packages/elements/**` |
 | [`sdk`](./sdk/SKILL.md) | `@nlqdb/sdk` — the only HTTP client (cookie vs bearer). | `packages/sdk/**` |
 | [`mcp-server`](./mcp-server/SKILL.md) | MCP server, `nlq mcp install` host detection. | `packages/mcp/**` |
+| [`ci-permissions`](./ci-permissions/SKILL.md) | Least-privilege GitHub Actions `permissions:` blocks; default-deny; OIDC for publish. | `.github/workflows/**`, `nlqdb/actions/**` |
 
 ## Partial
 
@@ -35,14 +36,15 @@ Cross-cutting decisions cited by skills: [`docs/decisions.md`](../../docs/decisi
 | [`idempotency`](./idempotency/SKILL.md) | `Idempotency-Key` on every mutation; dedupe store; retry-safety. | natural-key dedupe shipped (Stripe webhook, waitlist) · general-purpose `Idempotency-Key` middleware on `/v1/ask` open |
 | [`rate-limit`](./rate-limit/SKILL.md) | Per-key, per-IP rate-limit middleware. | per-account D1 limiter (`/v1/ask`) + per-IP KV limiter (`/v1/demo/ask`) shipped · unified middleware open |
 | [`anonymous-mode`](./anonymous-mode/SKILL.md) | No-login first value across web / CLI / MCP. | API shipped (`/v1/anon/adopt`) · web UI remaining (Phase 1 exit gate) |
+| [`onboarding`](./onboarding/SKILL.md) | First-60-seconds experience — zero-friction signup, goal-first on-ramp, anti-patterns we refuse. | Anti-patterns locked (SK-ONBOARD-001..004) · web implementation remaining (Phase 1 exit gate) |
 
 ## Planned
 
 | Skill | One-liner | Phase |
 |---|---|---|
-| [`hosted-db-create`](./hosted-db-create/SKILL.md) | Hosted db.create — typed-plan SchemaPlan, deterministic DDL compiler, Zod + libpg_query validation, provisioner, semantic layer at create-time. | Phase 1 — design locked in `docs/design.md` §3.6; sub-modules listed in `docs/implementation.md` §4 |
-| [`cli`](./cli/SKILL.md) | `nlq` verb surface, OS-keychain credential storage. | Phase 2 — design locked in `docs/design.md` §3.3 / §4.3 / §14.3; no code yet |
-| [`premium-tier`](./premium-tier/SKILL.md) | Premium-models add-on — opt-in frontier-model routing, pay-per-token, surface-parity model picker, BYOK decision tree. | Phase 2 pricing-row design-locked in `docs/design.md` §6; Phase 3 ships alongside Pro tier |
+| [`hosted-db-create`](./hosted-db-create/SKILL.md) | Hosted db.create — typed-plan SchemaPlan, deterministic DDL compiler, Zod + libpg_query validation, provisioner, semantic layer at create-time. | Phase 1 — design locked in `docs/architecture.md` §3.6; sub-modules listed in `docs/architecture.md §10` §4 |
+| [`cli`](./cli/SKILL.md) | `nlq` verb surface, OS-keychain credential storage. | Phase 2 — design locked in `docs/architecture.md` §3.3 / §4.3 / §14.3; no code yet |
+| [`premium-tier`](./premium-tier/SKILL.md) | Premium-models add-on — opt-in frontier-model routing, pay-per-token, surface-parity model picker, BYOK decision tree. | Phase 2 pricing-row design-locked in `docs/architecture.md` §6; Phase 3 ships alongside Pro tier |
 | [`engine-migration`](./engine-migration/SKILL.md) | Auto-migrate Postgres ↔ Mongo / Redis / etc. | Phase 3 |
 | [`multi-engine-adapter`](./multi-engine-adapter/SKILL.md) | Adapters beyond Postgres. | Phase 3 |
 

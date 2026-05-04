@@ -1,5 +1,5 @@
 // DDL allow-list — defense-in-depth for the db.create path
-// (docs/design.md §3.6.5, SK-HDC-006). Sibling of `sql-validate.ts`,
+// (docs/architecture.md §3.6.5, SK-HDC-006). Sibling of `sql-validate.ts`,
 // which guards the read/write `/v1/ask` path; same primitives, two
 // distinct files, **non-overlapping verb sets** so each one is
 // trivially auditable. See `.claude/skills/hosted-db-create/SKILL.md`

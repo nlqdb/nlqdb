@@ -1,4 +1,4 @@
-// Unit tests for the DDL allow-list (docs/design.md §3.6.5,
+// Unit tests for the DDL allow-list (docs/architecture.md §3.6.5,
 // docs/research-receipts.md §10, SK-HDC-006). Tests use hand-crafted
 // SQL strings so the validator is exercised independently of the
 // compiler — a regression in `db-create/compile-ddl.ts` cannot mask a

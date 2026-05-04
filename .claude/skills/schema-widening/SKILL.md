@@ -15,7 +15,7 @@ when-to-load:
 **One-liner:** Schemas only widen — `schema_hash` is monotonically extended, never branched.
 **Status:** partial — `schema_hash` is plumbed end-to-end (D1 → registry → orchestrator → plan-cache key), but the observed-fields collector and widening trigger ship post-Phase-0 (see Open Questions).
 **Owners (code):** `apps/api/src/db-registry.ts`, `apps/api/src/ask/orchestrate.ts`, `apps/api/src/ask/types.ts`, `apps/api/src/ask/plan-cache.ts`, `packages/db/**`
-**Cross-refs:** docs/design.md §0.1 (on-ramp inversion bullets), §9 row "Schema mismatch" (line 936), §12 line 978 (no migrations tool) · docs/implementation.md §3 line 424 (plan cache key) · docs/decisions.md#GLOBAL-004 · #GLOBAL-006
+**Cross-refs:** docs/architecture.md §0.1 (on-ramp inversion bullets), §9 row "Schema mismatch" (line 936), §12 line 978 (no migrations tool) · docs/architecture.md §10 §3 line 424 (plan cache key) · docs/decisions.md#GLOBAL-004 · #GLOBAL-006
 
 ## Touchpoints — read this skill before editing
 
@@ -79,7 +79,7 @@ when-to-load:
 
 ### SK-SCHEMA-006 — Empty-DB first query: explicit `schema_unavailable` until the observation pipeline lands
 
-- **Decision:** Until the post-Phase-0 observation pipeline lands, an `/v1/ask` request against a DB with `schemaHash == null` returns the error `schema_unavailable` (`apps/api/src/ask/orchestrate.ts` line 116–119). This is the documented Phase 0 behaviour — Phase 0 testing requires a fixture row in D1's `databases` table and a schema seeded directly on Neon (`docs/implementation.md` §3 line 461–463).
+- **Decision:** Until the post-Phase-0 observation pipeline lands, an `/v1/ask` request against a DB with `schemaHash == null` returns the error `schema_unavailable` (`apps/api/src/ask/orchestrate.ts` line 116–119). This is the documented Phase 0 behaviour — Phase 0 testing requires a fixture row in D1's `databases` table and a schema seeded directly on Neon (`docs/architecture.md §10` §3 line 461–463).
 - **Core value:** Bullet-proof, Honest latency
 - **Why:** The implicit-create path (goal-with-no-dbId triggers schema inference + provisioner) ships in Phase 1 §4 as the "hosted db.create" slice — it requires the typed-plan validator and Neon-provisioner described in DESIGN §3.6. Bolting a partial inference into Phase 0 would create a code path that diverges from the typed-plan model and would have to be rewritten.
 - **Consequence in code:** `orchestrate.ts` returns `{ status: "schema_unavailable" }` on null hash; do not change this to "infer on the fly" without landing the typed-plan path. When the observation pipeline lands, this branch becomes the bootstrap entry point; the SK-IDs gain a follow-up.
@@ -89,13 +89,24 @@ when-to-load:
 
 ### SK-SCHEMA-007 — No migrations tool; schema break = fresh DB
 
-- **Decision:** nlqdb does not ship a migrations tool (`docs/design.md` §12 line 978). For a true schema break (incompatible field type, dropped column required), the user runs `nlq new` to materialise a fresh DB; the old DB stays untouched and queryable until the user retires it.
+- **Decision:** nlqdb does not ship a migrations tool (`docs/architecture.md` §12 line 978). For a true schema break (incompatible field type, dropped column required), the user runs `nlq new` to materialise a fresh DB; the old DB stays untouched and queryable until the user retires it.
 - **Core value:** Simple, Goal-first
 - **Why:** Migrations are the source of half the production bugs in conventional ORMs — they couple "current schema" to "history of schema changes" and force every running plan to be aware of which version it's against. Forcing a fresh DB instead is monotonically simpler: the old plans keep working against the old DB, the new DB starts widening from empty. The trade is operational ("two DBs") for engineering ("zero migration code path") and the engineering side wins decisively.
 - **Consequence in code:** No `apps/api/src/migrations/` directory exists or should exist. Operators encountering a "we need to drop this column" requirement should be pointed at `nlq new`. CLI / web flows that "rename a field" must do so by widening (add new name, keep old) — never by replacing.
 - **Alternatives rejected:**
   - Schema-mate-style migration files in the repo — invites the version-coupling problem we are explicitly avoiding.
   - In-place ALTER COLUMN — see `SK-SCHEMA-003`; breaks `GLOBAL-006`.
+
+### SK-SCHEMA-008 — First insert creates columns; types widen, never narrow
+
+- **Decision:** When `/v1/ask` orchestrates a write (`kind=write`) and the typed plan references a field the current `schema_hash` does not yet observe, the path is: (1) the typed-plan compiler emits an `ADD COLUMN <name> <type> NULL` ahead of the `INSERT`; (2) the row containing the new field is inserted; (3) the observation pipeline (when it lands, see `SK-SCHEMA-006` open question) recomputes `schema_hash` and writes the new value to D1's `databases.schema_hash`. The widen and the insert are in the same transaction; either both land or both roll back. Types are widened only — never narrowed without an explicit `nlq new` (`SK-SCHEMA-007`).
+- **Core value:** Goal-first, Bullet-proof
+- **Why:** This is the operational mechanism that lets the goal-first inversion (`docs/architecture.md §0.1`) work for writes. A user who says *"add an order: alice, latte, $5.50"* against a DB whose schema doesn't yet have a `total` column should not see a "schema mismatch" error — the column should appear, the row should land. The only way to make that bullet-proof is to bind the widen to the insert in one transaction so an error mid-way doesn't leave half-applied state. Phase 0 short-circuits this by requiring a fixture row + manually-seeded schema (`SK-SCHEMA-006`); Phase 1's hosted-db-create + write path is what wires the full mechanism.
+- **Consequence in code:** The write orchestrator (`apps/api/src/ask/orchestrate.ts` write branch, post-Phase-0) wraps `ADD COLUMN` + `INSERT` in a single transaction via the Neon HTTP transactional API. The typed-plan compiler (`apps/api/src/db-create/compile-ddl.ts` already exists for create; an analogous `compile-write-ddl.ts` covers the widen-on-write case) is the only path that emits `ALTER TABLE ADD COLUMN`. Direct LLM-emitted DDL on this path is rejected by the `sql-validate.ts` allow-list (`SK-SQLAL-002` rejects `ALTER`); the widen happens via the same typed-plan path that the create flow uses. PRs that introduce a write code path emitting `ADD COLUMN` without a transaction wrapper will be rejected.
+- **Alternatives rejected:**
+  - Reject writes that reference unknown fields → "schema mismatch" error — defeats the goal-first promise (`docs/architecture.md §0.1`); makes every first-write a two-step ceremony for the user.
+  - Add the column outside the transaction, then insert separately — leaves a window where the column exists with no rows referencing it, and a failure mid-way leaves the schema inconsistent with the data the user thought they were writing.
+  - Type narrowing on widen (e.g. user inserts `{ total: 5 }` then `{ total: "free" }`, narrow to `text`) — silently invalidates every cached plan that bound `total` as `numeric`. Per `SK-SCHEMA-003`, types only widen.
 
 ## GLOBALs governing this feature
 
@@ -107,7 +118,7 @@ Canonical text in [`docs/decisions.md`](../../docs/decisions.md). The list below
 ## Open questions / known unknowns
 
 - **Hash construction algorithm.** GLOBAL-004's Consequence specifies "computed over observed-fields sorted by name; append-only." The exact algorithm (SHA-256 over `JSON.stringify(sortedFields)` vs a custom canonical form, with or without per-field type) is not yet pinned in code. When the observation pipeline lands, this becomes a load-bearing decision and gets a new SK-SCHEMA-NNN. Surfacing here per P1 — do not silently choose without surfacing the trade-offs (hash stability vs type-aware widening).
-- **Observation pipeline** — the orchestrator currently rejects null-hash DBs (`SK-SCHEMA-006`). The pipeline that watches Postgres `information_schema` (or the typed-plan compiler) and writes new fields into D1 is post-Phase-0. Decisions still TBD: is observation push-based (planner emits widen) or pull-based (introspect on first query against an empty DB)? See `docs/implementation.md` §3 line 441–446 — the typed-plan validator + Neon-provisioner is the agreed Phase 1 §4 vehicle.
+- **Observation pipeline** — the orchestrator currently rejects null-hash DBs (`SK-SCHEMA-006`). The pipeline that watches Postgres `information_schema` (or the typed-plan compiler) and writes new fields into D1 is post-Phase-0. Decisions still TBD: is observation push-based (planner emits widen) or pull-based (introspect on first query against an empty DB)? See `docs/architecture.md §10` §3 line 441–446 — the typed-plan validator + Neon-provisioner is the agreed Phase 1 §4 vehicle.
 - **Field-type evolution.** When the observation pipeline lands, what happens if an existing column's underlying Postgres type changes (e.g. operator runs `ALTER COLUMN TYPE` out of band)? `SK-SCHEMA-004` says vanished = hard-stop; type-change is unspecified. Provisional answer: also hard-stop, treat as breaking change → `nlq new`.
 - **BYO Postgres edge cases (Phase 4).** A user-managed DB doesn't go through the typed-plan compiler, so widening is observation-only. Open: do we accept the schema as-is (whatever they have) and only widen forward, or do we refuse to operate against BYO DBs whose existing schema doesn't fit our model?
 - **Multi-Worker write race.** Two concurrent observers on different Workers might both decide to widen with overlapping fields. D1 single-writer semantics + a transactional update should handle this, but the exact compare-and-swap pattern needs to be specified before the writer lands.

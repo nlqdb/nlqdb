@@ -15,8 +15,8 @@ Consumer for EVENTS_QUEUE. Fans out to sinks (LogSnag, etc.) — fire-and-forget
 ## Commands
 
 ```bash
-pnpm --filter apps/events-worker dev
-pnpm --filter apps/events-worker test
+bun run --filter apps/events-worker dev
+bun run --filter apps/events-worker test
 ```
 
 ## Local rules

@@ -34,7 +34,7 @@ nlq "today's orders, newest first"
 
 That's the whole backend. No SQL, no schema, no API, no framework.
 
-→ Full hello-world tutorial: [`./docs/design.md` §16](./docs/design.md#16-hello-world-e2e-fullstack-tutorial--the-1-pager).
+→ Full hello-world tutorial: [`./docs/architecture.md` §13](./docs/architecture.md#13-hello-world-e2e-fullstack-tutorial--the-1-pager).
 
 ## Examples
 
@@ -56,7 +56,7 @@ Phase 4  Enterprise polish    ░░░░░░░░░░░░░░░░�
 ```
 
 Each step is 2–4 words on purpose — full spec lives in
-[`./docs/plan.md`](./docs/plan.md) and [`./docs/implementation.md`](./docs/implementation.md).
+[`./docs/architecture.md §10`](./docs/architecture.md#10-phase-plan) and [`./docs/history/infrastructure-setup.md`](./docs/history/infrastructure-setup.md).
 
 ### Phase 0 — Foundations ✓
 
@@ -85,7 +85,7 @@ are a holding pattern; they ship away when all four remaining items land.
 - ◯ Sign-in UI — magic-link + GitHub OAuth (`/api/auth/*` backend ready; requires Resend DKIM/SPF/DMARC)
 - ◯ Chat surface — streaming 3-part response, anon-mode (`/v1/chat/messages` backend ready)
 - ◯ Anonymous-mode web flow — 72h localStorage token → adopt on sign-in (`/v1/anon/adopt` backend ready)
-- ◯ Hosted db.create — typed-plan + provisioner ([`DESIGN §3.6`](./docs/design.md)). Unblocks every `<nlq-data>` live claim.
+- ◯ Hosted db.create — typed-plan + provisioner ([`docs/architecture.md §3.6`](./docs/architecture.md)). Unblocks every `<nlq-data>` live claim.
 - ◯ API keys page (`pk_live_<dbId>...` per-db, `sk_live_…` account-scoped)
 - ◯ `<nlq-action>` writes (signed write-tokens)
 - ◯ Hello-world tutorial (canonical entry; satisfied by db.create)
@@ -185,7 +185,7 @@ add only what is strictly forced by traffic or contractual need.
 | Usage metering needed (Phase 2 paid users) | Lago + Listmonk on 1 Fly Machine | ~$5 |
 
 The point: every line above is gated on a real signal. **Don't
-upgrade pre-emptively.** PLAN §5 has the full unit-economics model.
+upgrade pre-emptively.** `docs/architecture.md §8` has the full unit-economics model.
 
 ---
 
@@ -213,14 +213,13 @@ ships, not before. Listed in order of when they bite.
 
 ### Reference
 
-- [./docs/design.md](./docs/design.md) — system design (auth, pricing, $0 stack, AI-model selection, hello-world, hosted db.create §3.6).
-- [./docs/plan.md](./docs/plan.md) — phased roadmap, alternative-tech evaluation, cost discussion.
-- [./docs/implementation.md](./docs/implementation.md) — Phase 0 plan + prerequisites checklist.
+- [./docs/architecture.md](./docs/architecture.md) — system design (auth, pricing, $0 stack, AI-model selection, hello-world §13, hosted db.create §3.6, phase plan §10).
+- [./docs/history/infrastructure-setup.md](./docs/history/infrastructure-setup.md) — Phase 0 infrastructure setup lessons.
 - [./docs/performance.md](./docs/performance.md) — SLOs, latency budgets, span/metric catalog.
 - [./docs/guidelines.md](./docs/guidelines.md) — four-habit decision rules.
 - [./docs/runbook.md](./docs/runbook.md) — what's actually provisioned right now (deploy strategy, preview envs, anonymous-db lifecycle).
 - [docs/research-receipts.md](./docs/research-receipts.md) — prior-art and incident research that shaped the design (Replit, Cortex Analyst, Pinterest table-card RAG, Keysight prompt-injection, Neon free-plan capacity math).
-- [./docs/personas.md](./docs/personas.md) — who we're building for.
+- [./docs/research/personas.md](./docs/research/personas.md) — who we're building for.
 - [./docs/competitors.md](./docs/competitors.md) — competitive landscape.
 
 ## Getting started (dev)
@@ -231,7 +230,7 @@ scripts/bootstrap-dev.sh   # installs everything, pulls Ollama models, seeds .en
 scripts/login-cloud.sh     # signs you into cloud providers that have a CLI flow
 ```
 
-What `bootstrap-dev.sh` stands up in one shot (see ./docs/implementation.md §2.8):
+What `bootstrap-dev.sh` stands up in one shot (see [`./docs/history/infrastructure-setup.md §8`](./docs/history/infrastructure-setup.md#8-dev-toolchain)):
 
 - **Runtimes:** Bun (package manager + JS/TS runtime), Node 20+, Go 1.24+, uv (Python).
 - **Formatter + linter:** Biome (JS/TS/JSON/CSS), gofumpt + golangci-lint (Go), ruff (Python).
@@ -255,7 +254,7 @@ bun run hooks:run    # run pre-commit hooks against staged files
 - CLI — single static binary: `nlq new`, `nlq login`, `nlq "..."`.
 - MCP server — so agents can use it too.
 - `<nlq-data>` / `<nlq-action>` HTML elements — the embeddable backend.
-- Plus the platform integrations matrix in [IMPLEMENTATION §10](./docs/implementation.md#10-platform-integrations--the-matrix) — Nuxt, Next, SvelteKit, Astro, mobile, server middleware, IDE extensions, no-code, iPaaS, analytics tooling, chat platforms.
+- Plus the platform integrations matrix in [`docs/progress.md`](./docs/progress.md) — Nuxt, Next, SvelteKit, Astro, mobile, server middleware, IDE extensions, no-code, iPaaS, analytics tooling, chat platforms.
 
 ## Community + legal
 

@@ -12,7 +12,7 @@ when-to-load:
 **One-liner:** Marketing + product web app — onboarding, anonymous-mode default, demo dataset.
 **Status:** partial (Phase 1 — sign-in UI, chat surface, anon-mode web flow remaining; these are the Phase 1 exit gate)
 **Owners (code):** `apps/web/**`
-**Cross-refs:** docs/design.md §3.1 (marketing site) · docs/design.md §3.2 (platform web app) · docs/design.md §14.1, §14.2 (happy paths) · docs/personas.md (P1, P3, P5) · docs/implementation.md §4 (Phase 1 web slices)
+**Cross-refs:** docs/architecture.md §3.1 (marketing site) · docs/architecture.md §3.2 (platform web app) · docs/runbook.md §10 (P1, P3, P5) · docs/architecture.md §10 §4 (Phase 1 web slices)
 
 ## Touchpoints — read this skill before editing
 
@@ -34,7 +34,7 @@ when-to-load:
 
 - **Decision:** The marketing-site hero is a single input — *"What are you building?"* — that morphs into a chat via View Transitions. The first chat reply streams; the DB materializes silently. No pricing dialog, no "create your first database" button, no signup wall before first value.
 - **Core value:** Goal-first, Effortless UX, Free
-- **Why:** No persona ever woke up wanting to "create a database" (`docs/personas.md`). The goal-first inversion (`docs/design.md §0.1`) is the most important design principle in the project, and the hero is its most visible expression. Every required input before first value drops the funnel; one input is the floor.
+- **Why:** No persona ever woke up wanting to "create a database" (`docs/runbook.md §10`). The goal-first inversion (`docs/architecture.md §0.1`) is the most important design principle in the project, and the hero is its most visible expression. Every required input before first value drops the funnel; one input is the floor.
 - **Consequence in code:** `apps/web/src/pages/index.astro` is one input + one button + the code panel below. The chat morph happens in-place (View Transitions), not via navigation. The page is 100% functional with JS off (input still submits to a fallback chat URL). No dialog / modal / "are you sure" interrupts first value.
 - **Alternatives rejected:**
   - Required signup with "free trial" framing — measurably worse for activation; contradicts `GLOBAL-007`.
@@ -56,7 +56,7 @@ when-to-load:
 - **Decision:** The marketing-site live `<nlq-data>` and any third-party "try this in a scratch HTML" embed point at `endpoint="https://app.nlqdb.com/v1/demo/ask"`. The endpoint takes no auth, is CORS-permissive, returns canned fixtures keyed off the goal substring, and rate-limits per-IP at 10/min so it can't be abused as an LLM stand-in. The element stays pure — no demo branch in client code; the "demo" semantic lives server-side in `apps/api/src/demo.ts`.
 - **Core value:** Free, Bullet-proof, Honest latency
 - **Why:** The marketing site needs a live demo that costs us nothing per visitor and can't be turned into a free LLM proxy. Canned fixtures keep it free. Server-side semantics keep the embed code identical to what real users ship — paste-this-in-prod is the same code paste-this-on-marketing renders. Per-IP rate limit defends against abuse.
-- **Consequence in code:** `apps/api/src/demo.ts` owns the fixture map and the rate limit. `packages/elements` has zero "isDemo" branches. Real users' embeds hit `/v1/ask` with a session cookie or `pk_live_` key; the marketing site's embed hits `/v1/demo/ask` purely by virtue of its `endpoint` attribute. Per `docs/surfaces.md`, the demo endpoint is the *first* shipped surface row.
+- **Consequence in code:** `apps/api/src/demo.ts` owns the fixture map and the rate limit. `packages/elements` has zero "isDemo" branches. Real users' embeds hit `/v1/ask` with a session cookie or `pk_live_` key; the marketing site's embed hits `/v1/demo/ask` purely by virtue of its `endpoint` attribute. Per `docs/architecture.md §3`, the demo endpoint is the *first* shipped surface row.
 - **Alternatives rejected:**
   - LLM behind the demo endpoint — turns the marketing site into a free Claude proxy.
   - Per-visitor anonymous DB on the marketing site — works but burns Neon Free capacity for window-shoppers; canned fixtures are cheaper.
@@ -76,7 +76,7 @@ when-to-load:
 - **Decision:** Sign-in cookie is `__Secure-session` (HttpOnly, Secure, SameSite=Lax) with `Domain=nlqdb.com` so the same session covers `nlqdb.com` and `app.nlqdb.com`. `__Host-` was the earlier draft but is incompatible with `Domain=`; restoring it would require same-origin chat (e.g. bundling `apps/web` into the API Worker).
 - **Core value:** Seamless auth, Bullet-proof, Effortless UX
 - **Why:** Users sign in on the marketing site and continue to the product on a subdomain — one identity (`GLOBAL-008`) requires one cookie that spans both. `__Host-` is strictly more secure but it forbids the `Domain=` attribute; the cross-subdomain story is the right tradeoff for Phase 1. The decision is documented because it's a deliberate downgrade from a previous draft; future re-architecting (same-origin chat) can restore `__Host-`.
-- **Consequence in code:** Better Auth config sets `crossSubDomainCookies: true`; the cookie name in tests is `__Secure-session`. Any change to same-origin must restore `__Host-` in the same PR. Documented in `docs/implementation.md §4`.
+- **Consequence in code:** Better Auth config sets `crossSubDomainCookies: true`; the cookie name in tests is `__Secure-session`. Any change to same-origin must restore `__Host-` in the same PR. Documented in `docs/architecture.md §10 §4`.
 - **Alternatives rejected:**
   - Keep `__Host-` and force same-origin chat now — too much architecture churn for Phase 1.
   - Issue a separate cookie per subdomain — fragments identity, breaks `GLOBAL-008`.
@@ -86,7 +86,7 @@ when-to-load:
 - **Decision:** Every chat-generated `<nlq-data>` snippet has the user's `pk_live_<dbId>` already inlined when copied. Anonymous users get a temporary `pk_live_` that rotates to a permanent one on sign-in. The user never has to open the dashboard, find the keys page, click "Reveal", and paste.
 - **Core value:** Effortless UX, Goal-first, Seamless auth
 - **Why:** Getting an API key is the kind of side errand that breaks the goal-first flow. The user wanted an embed; making them collect a key first interrupts the moment. Inlining the key in the chat-copy action keeps the user inside one window. For anonymous users, rotating the key on sign-in is the seamless adoption path (`GLOBAL-007`).
-- **Consequence in code:** Chat panel's "Copy snippet" CTA pre-fills `api-key="pk_live_…"` server-side from the user's (or anonymous device's) per-DB key. The temporary anonymous key is rotated to a permanent one on sign-in via the same endpoint that adopts the anonymous DB. Tested end-to-end in `docs/design.md §14.5`.
+- **Consequence in code:** Chat panel's "Copy snippet" CTA pre-fills `api-key="pk_live_…"` server-side from the user's (or anonymous device's) per-DB key. The temporary anonymous key is rotated to a permanent one on sign-in via the same endpoint that adopts the anonymous DB. Tested end-to-end in `.claude/skills/elements/SKILL.md`.
 - **Alternatives rejected:**
   - Show the key in the chat as text + ask the user to copy it — extra step, easy to lose, leaks into chat history.
   - Require sign-in before "Copy snippet" works — breaks the no-login-wall promise.
@@ -103,7 +103,53 @@ Canonical text in [`docs/decisions.md`](../../docs/decisions.md). The list below
 ## Open questions / known unknowns
 
 - **Same-origin chat for restoring `__Host-`.** Future architecture change — bundle `apps/web` static assets into the API Worker so chat is same-origin, allowing `__Host-` cookie. No timeline; deferred post-chat-surface launch.
-- **Sharing a query result by link.** P1-priority surface per `docs/personas.md` — implementation slice not yet scoped.
-- **CSV upload.** Required for P3 (data-curious analyst) per `docs/personas.md`. Deferred to Phase 2 alongside CLI.
-- **Plausible vs Plausible-self-hosted.** `docs/design.md §3.1` says "Plausible, self-hosted"; `docs/plan.md` lists Plausible without qualifier. Reconcile when wiring web analytics.
+- **Sharing a query result by link.** P1-priority surface per `docs/runbook.md §10` — implementation slice not yet scoped.
+- **CSV upload.** Required for P3 (data-curious analyst) per `docs/runbook.md §10`. Deferred to Phase 2 alongside CLI.
+- **Plausible vs Plausible-self-hosted.** `docs/architecture.md §3.1` says "Plausible, self-hosted"; `docs/architecture.md §10` lists Plausible without qualifier. Reconcile when wiring web analytics.
 - **Marketing-site live ticker source-of-truth.** Data-pipe (which sample, what redaction, which OTel attributes) undecided.
+
+## Happy path walkthroughs
+
+### §14.1 Marketing site (`nlqdb.com`)
+
+```
+1. User lands on nlqdb.com.
+2. Sees ONE input: "What are you building?"
+3. Types: "an orders tracker for my coffee shop"
+4. Hits Enter.
+5. The page morphs in place into a chat. The first reply streams:
+     "Set up. Tell me about an order — what should I track?"
+6. User types: "customer name, what they ordered, time, total"
+7. The chat replies with the inferred schema, a sample row, and an embed snippet.
+   Total elapsed: 22 seconds. No sign-in. No pricing dialog. No "create your
+   first database" button.
+```
+
+### §14.2 Platform web app (`nlqdb.com/app`)
+
+```
+- After step 7 above, a slim bar appears: "Save this — sign in with GitHub."
+- User clicks; GitHub OAuth pops; back to the same chat, signed in, DB adopted.
+- The left rail now shows one entry: `orders-tracker-a4f` (auto-named).
+- User keeps chatting. Cmd+K opens the palette. Cmd+/ toggles the SQL trace.
+- Settings → API keys → "Reveal pk_live_..." (publishable, browser-safe).
+```
+
+### §15.1 Persona walkthrough — Maya, the Solo Builder
+
+**Goal:** ship a meal-planner side project this weekend.
+
+| Time | Maya does | nlqdb does |
+|---|---|---|
+| Fri 9:01pm | Lands on `nlqdb.com`, types *"a meal planner — dishes, ingredients, plans for the week"* | Materializes `meal-planner-7c2`, replies with inferred schema in NL, streams a `<nlq-data>` snippet for "this week's plan" **with her `pk_live_` key already inlined** |
+| 9:03pm | Pastes the snippet into her existing Next.js project's `page.tsx` | Element fetches, renders an empty table, refreshes every 30s — zero config |
+| 9:08pm | Types into the chat: *"add 12 sample dishes with realistic ingredients"* | Inserts 12 rows, returns the IDs and a preview |
+| 9:15pm | Adds a `<nlq-action>` form to add new dishes from the UI | Inferred new columns where the form has new fields |
+| 11:30pm | Deploys to Vercel. Site is live. | — |
+| Sat 10am | Sister tests it. Maya types: *"who used the planner today, and which dishes were added"* | Replies in prose + table |
+| Sun 6pm | *"add a `trial_ends_at` field to users, default 14 days from signup"* | Diff preview shown; Maya hits Enter; column added; existing rows backfilled |
+| Mon 9am | Signs in to the platform; adopts the anonymous DB; adds a card; switches to Hobby ($10) | DB unpaused, 30-day backups on |
+
+**What Maya never did:** wrote a migration file, opened psql, picked a region, configured Prisma, set up an admin panel, configured backups, wrote a single SQL statement.
+
+**Setup time, old way:** ~1 day. **Setup time, nlqdb:** ~2 minutes.

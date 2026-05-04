@@ -12,7 +12,7 @@ when-to-load:
 **One-liner:** MCP server + `nlq mcp install` host detection (Claude Desktop, Cursor, etc.).
 **Status:** implemented (Phase 2)
 **Owners (code):** `packages/mcp/**`
-**Cross-refs:** docs/design.md §3.4 (MCP server) · docs/design.md §14.4 (MCP happy path) · docs/surfaces.md (MCP server row) · docs/implementation.md §5 (Phase 2 mcp slice)
+**Cross-refs:** docs/architecture.md §3.4 (MCP server) · docs/architecture.md §3 (MCP server row) · docs/architecture.md §10 §5 (Phase 2 mcp slice)
 
 ## Touchpoints — read this skill before editing
 
@@ -32,10 +32,10 @@ when-to-load:
 
 ### SK-MCP-002 — Three tools, no `nlqdb_create_database`: `nlqdb_query`, `nlqdb_list_databases`, `nlqdb_describe`
 
-- **Decision:** The MCP server exposes exactly three tools: `nlqdb_query(db, q)`, `nlqdb_list_databases()`, `nlqdb_describe(db)`. There is **no public `nlqdb_create_database` tool** — `nlqdb_query` materializes the DB on first reference (per the goal-first inversion in `docs/design.md §0.1`).
+- **Decision:** The MCP server exposes exactly three tools: `nlqdb_query(db, q)`, `nlqdb_list_databases()`, `nlqdb_describe(db)`. There is **no public `nlqdb_create_database` tool** — `nlqdb_query` materializes the DB on first reference (per the goal-first inversion in `docs/architecture.md §0.1`).
 - **Core value:** Simple, Goal-first, Effortless UX
 - **Why:** Two tools (`create`, then `query`) doubles the prompt the agent has to learn and creates an "agent forgot to call create" failure mode. One tool that does the right thing is the goal-first design applied to MCP — the agent never had a goal that was "create a database". Implicit creation is also what makes the persona walkthrough (P2 / Jordan) work: the system prompt has one tool, not two.
-- **Consequence in code:** `packages/mcp/src/tools.ts` registers exactly three tool handlers. `nlqdb_query` POSTs to `/v1/ask` which routes through the typed-plan create path on first reference (`docs/design.md §3.6.2`). PRs adding more tools require explicit justification against `GLOBAL-017` ("one way to do each thing").
+- **Consequence in code:** `packages/mcp/src/tools.ts` registers exactly three tool handlers. `nlqdb_query` POSTs to `/v1/ask` which routes through the typed-plan create path on first reference (`docs/architecture.md §3.6.2`). PRs adding more tools require explicit justification against `GLOBAL-017` ("one way to do each thing").
 - **Alternatives rejected:**
   - Expose `nlqdb_create_database` as a power-user tool — dilutes the agent's prompt, contradicts §0.1 inversion.
   - One mega-tool that takes an `op` parameter — harder for the host LLM to plan with, no real simplification.
@@ -45,7 +45,7 @@ when-to-load:
 - **Decision:** The default `nlq mcp install` (no arg) scans known host configs for Claude Desktop, Cursor, Zed, Windsurf, VS Code, and Continue, and prints what it found. One host → silent install. Multiple → numbered prompt (or `--all`). None → prints install links and exits. Explicit forms (`nlq mcp install <host>`, `--dry-run`, `--all`) are the escape hatches.
 - **Core value:** Effortless UX, Seamless auth, Goal-first
 - **Why:** Asking the user to name their MCP host is friction we can remove — every host stores its config in a known location. Detection-first ("what you have, set up") matches the on-ramp inversion principle. The explicit override exists for users who want to bypass detection (CI, custom builds, hosts not yet supported).
-- **Consequence in code:** `cli/src/mcp/install.ts` ships per-host detectors that read each host's config path and return a `{detected, configPath, hotReloads}` tuple. Detection is transparent — the CLI prints what it's about to touch (`docs/design.md §3.4`). The `--dry-run` flag is mandatory parity with explicit / no-arg modes.
+- **Consequence in code:** `cli/src/mcp/install.ts` ships per-host detectors that read each host's config path and return a `{detected, configPath, hotReloads}` tuple. Detection is transparent — the CLI prints what it's about to touch (`docs/architecture.md §3.4`). The `--dry-run` flag is mandatory parity with explicit / no-arg modes.
 - **Alternatives rejected:**
   - Always require `<host>` — every install adds a "what's my host called?" question.
   - Detect *and* always confirm — adds a click for the 60% of users with one host.
@@ -90,6 +90,19 @@ when-to-load:
   - Hosted-only orchestration with local going through a different shim — two attack surfaces, two parsers.
   - Direct DB access from the local transport — explicitly rejected by `SK-MCP-005`.
 
+## Install paths
+
+Four supported paths — every user lands on one of these. Listed in decreasing order of friction:
+
+| Path | How | When to use |
+|---|---|---|
+| **Connector URL** (hosted, default) | Paste `mcp.nlqdb.com` into the host's MCP-connector config (Claude Desktop *Connectors*, Cursor / Zed / Windsurf MCP settings); first tool call opens an OAuth window in the browser. | Best for users who want zero local setup. No npm, no CLI. |
+| **`nlq mcp install`** (local stdio) | Auto-detects installed hosts, writes `sk_mcp_<host>_<device>_…` straight into each host's config. One host → silent. Multiple → numbered prompt. None → prints `nlqdb.com/mcp` link and exits. | Best for users who already have the CLI (`SK-MCP-003`). |
+| **Website one-click** (`app.nlqdb.com/mcp`) | Mints the key server-side and opens an `nlqdb://install?…` deep link the CLI handles. | Best for users arriving from the marketing site or dashboard who don't know about the CLI. |
+| **`NLQDB_API_KEY` env var** | Set `NLQDB_API_KEY=sk_…` in the shell / Docker environment; takes precedence over any config file on the local transport. | CI / Docker / air-gapped environments. The escape hatch (`GLOBAL-015`). |
+
+The hosted connector URL path requires no local install. All four paths terminate at the same `/v1/ask` orchestration and share the same three tools (`SK-MCP-002`, `SK-MCP-007`).
+
 ## GLOBALs governing this feature
 
 Canonical text in [`docs/decisions.md`](../../docs/decisions.md). The list below names the rules that constrain this feature; any skill-local commentary is nested under the rule.
@@ -107,3 +120,53 @@ Canonical text in [`docs/decisions.md`](../../docs/decisions.md). The list below
 - **Promote-to-account UX.** DBs created via MCP are tagged `(mcp_host, device_id)` and promote-to-account is "one click" in the design — the click target and confirmation copy are not specified yet.
 - **`NLQDB_API_KEY` precedence inside the local transport.** Design says it takes precedence over any config file; need explicit test coverage for the precedence chain (`env > host config > device key`) on the local transport.
 - **Session token revocation latency.** `GLOBAL-018` requires "instant" revocation; the hosted MCP transport's edge-cache TTL for the revocation set is not yet pinned.
+
+## Happy path walkthrough
+
+### §14.4 MCP server (`@nlqdb/mcp`)
+
+**Install** (one command, no arg; auto-detects what you have installed):
+
+```bash
+$ nlq mcp install
+🔎 Scanning: Claude Desktop, Cursor, Zed, Windsurf, VS Code, Continue
+✓ Found: Claude Desktop, Cursor
+
+→ Opening browser to approve this device… (fallback code: AB12-CD34)
+✓ Signed in as jordan@example.com.
+
+✓ Claude Desktop  — wrote config; Claude Desktop is running, restart to activate? [Y/n] y
+                    ↳ quit & relaunched. Self-check: ok.
+✓ Cursor          — wrote config; hot-reloaded. Self-check: ok.
+
+Done. Your MCP keys appear at nlqdb.com/settings/keys.
+```
+
+If only one host is installed, the prompt is skipped and the install is silent. If none are installed, the CLI prints one line pointing the user at `nlqdb.com/mcp` and exits.
+
+**Power-user forms** (escape hatches, always available):
+
+```bash
+$ nlq mcp install claude       # explicit host; skips auto-detection
+$ nlq mcp install --all        # install into every detected host, no prompt
+$ nlq mcp install --dry-run    # print what would happen; touch nothing
+$ NLQDB_API_KEY=sk_... nlq …   # CI / Docker / air-gapped — env-var override
+```
+
+**Usage from inside the host LLM** (the agent doesn't need to know about "databases"):
+
+```
+[Claude Desktop, after install]
+User:  "Remember that I prefer metric units and I'm vegetarian."
+Claude → calls tool: nlqdb_query("preferences", "remember: metric units, vegetarian")
+       → tool returns: { ok, db: "preferences-93b" }
+Claude:  "Got it. I'll remember."
+
+[next session, hours later]
+User:  "Plan me a Berlin food trip."
+Claude → calls tool: nlqdb_query("preferences", "what do you remember about me?")
+       → returns: "metric units, vegetarian"
+Claude:  "Here's a vegetarian itinerary in km..."
+```
+
+The agent never called `nlqdb_create_database`. The DB materialized on first reference. The agent's prompt has one tool, not two.

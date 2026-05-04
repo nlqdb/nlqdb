@@ -12,7 +12,7 @@ when-to-load:
 **One-liner:** Stripe webhook ingest, subscription state, idempotent processing, R2 archive.
 **Status:** implemented (Slice 7 — PR #33; live-mode flip in Phase 2)
 **Owners (code):** `apps/api/src/stripe/**`, `apps/api/src/index.ts`, `POST /v1/stripe/webhook`
-**Cross-refs:** docs/design.md §6 (pricing) · docs/implementation.md §5 (Phase 2 stripe slice) · docs/runbook.md §6 (webhook + R2 archive) · `apps/api/src/stripe/webhook.ts` (canonical pipeline doc-comment)
+**Cross-refs:** docs/architecture.md §6 (pricing) · docs/architecture.md §10 §5 (Phase 2 stripe slice) · docs/runbook.md §6 (webhook + R2 archive) · `apps/api/src/stripe/webhook.ts` (canonical pipeline doc-comment)
 
 ## Touchpoints — read this skill before editing
 
@@ -58,7 +58,7 @@ when-to-load:
 - **Decision:** Every Phase 2 `Checkout.Session` MUST be created with `mode: 'subscription'` and `client_reference_id: userId`. The `checkout.session.completed` handler reads `client_reference_id` to link the Stripe customer to an `nlqdb` user; missing or non-string `client_reference_id` → log `checkout_completed_missing_ids` and skip rather than create an orphan `customers` row.
 - **Core value:** Bullet-proof, Simple
 - **Why:** Stripe-side metadata is the only signal we control at Checkout time; an unlinked subscription leaves a customer who paid but has no nlqdb capability. Skipping with a warn log is recoverable (operator can backfill); creating an orphan row is not (the next event silently writes to the wrong user).
-- **Consequence in code:** The Checkout Session creation endpoint (Phase 2 slice — see `docs/implementation.md §5`) is required by review to set both fields. `handleCheckoutCompleted` defaults `status = 'incomplete'` until the subsequent `customer.subscription.created` event fires — checkout completion alone is not enough state to call the customer "active". The pair `(user_id, stripe_customer_id, stripe_subscription_id)` lives in the `customers` D1 table with `user_id` as the unique key.
+- **Consequence in code:** The Checkout Session creation endpoint (Phase 2 slice — see `docs/architecture.md §10 §5`) is required by review to set both fields. `handleCheckoutCompleted` defaults `status = 'incomplete'` until the subsequent `customer.subscription.created` event fires — checkout completion alone is not enough state to call the customer "active". The pair `(user_id, stripe_customer_id, stripe_subscription_id)` lives in the `customers` D1 table with `user_id` as the unique key.
 - **Alternatives rejected:**
   - Match by email — emails change, are non-unique across Stripe accounts, and arrive after the session anyway.
   - Pass `userId` via `metadata` instead of `client_reference_id` — `client_reference_id` is the dedicated Stripe field with stronger lifecycle guarantees and is surfaced in the Dashboard.
@@ -87,7 +87,7 @@ when-to-load:
 
 - **Decision:** The `stripe` npm SDK version is the source of truth for which Stripe API version we target. The client at `apps/api/src/stripe/client.ts` is constructed with the SDK's compiled-in default `apiVersion`; we do not hard-code a string. Currently pinned to API version `2026-04-22.dahlia` via the SDK install. Bumping requires a `stripe-node` upgrade PR with the changelog read.
 - **Core value:** Bullet-proof, Simple
-- **Why:** Stripe's API changes are tied to specific SDK versions — `current_period_end` moved from `Subscription` to `SubscriptionItem` in 2025-09 and is still there as of `2026-04-22.dahlia`. Pinning a string in code that disagrees with the SDK silently produces TypeScript types from one version and runtime payloads from another. Letting the SDK pick the version means the upgrade is one `pnpm update` + a code review of the changelog.
+- **Why:** Stripe's API changes are tied to specific SDK versions — `current_period_end` moved from `Subscription` to `SubscriptionItem` in 2025-09 and is still there as of `2026-04-22.dahlia`. Pinning a string in code that disagrees with the SDK silently produces TypeScript types from one version and runtime payloads from another. Letting the SDK pick the version means the upgrade is one `bun update` + a code review of the changelog.
 - **Consequence in code:** `extractSubscriptionFields` reads `current_period_end` from `sub.items.data[0]`, not from `sub` itself — the field's location is part of the API-version contract. When bumping the SDK, search for any field-access on `Stripe.Subscription` and re-validate against the new types. Tests stub the `WebhookSigner` interface (just `constructEventAsync`) so SDK upgrades don't require test fixture changes.
 - **Alternatives rejected:**
   - Hard-code `apiVersion: "2026-04-22.dahlia"` — drifts from SDK types; the next field-relocation produces silent runtime mismatches.
@@ -109,3 +109,40 @@ Canonical text in [`docs/decisions.md`](../../docs/decisions.md). The list below
 - **Stripe Tax activation.** Test-mode is configured (`NLQDB.COM` descriptor, Switzerland/CHF merchant). Live-mode + Stripe Tax flip is a Phase 2 task — capture the activation steps in `docs/runbook.md §6` when it lands.
 - **Lago wiring.** PLAN §6 / DESIGN §6 calls for Lago-on-Fly as the usage-metering layer batched into Stripe; not yet wired. Slice TBD in Phase 2.
 - **Live-mode webhook secret.** `STRIPE_WEBHOOK_SECRET` today is the test-mode value; cutting over needs a coordinated `wrangler secret put` + Stripe Dashboard endpoint update; document the rollover playbook in `docs/runbook.md §6`.
+
+## Billing constraints and philosophy
+
+### No dark patterns — hard rules
+
+These apply to every billing surface. Violating any one of them is a product defect, not a configuration choice:
+
+- **No credit card for the free tier, ever.** Not "to verify identity." Not "for spam protection." No.
+- **The trial is the free tier itself.** There is no separate "14-day Pro trial" with a countdown. When a user exceeds free limits, rate-limit with a clear message — "You've used your 1,000 queries. Add a card to continue — or wait until next month." The user's data is never held hostage. Export is one click, always free.
+- **First charge confirmation.** When a card is added, email before the first charge: "You'll be billed $X on Y. Reply NO to cancel." No silent auto-upgrades from Hobby to Pro; tier changes require a deliberate click.
+- **Usage predictability.** Hard caps on Pro are opt-in; the default is a soft cap: email at 80% of the user's monthly budget, email + require a one-click extension at 100%. No surprise $4,000 bills. Ever.
+- **Downgrade is as easy as upgrade.** One click. Pro-rated refund on the unused portion.
+- **Cancellation is one click** — no call, no chat, no exit survey. Optional exit survey *after* cancellation is acceptable.
+
+### Payment tech stack
+
+- **Stripe Billing** — invoicing + payment method capture. Checkout is Stripe-hosted; we do not build card forms.
+- **Lago** (self-hosted, open source) — usage metering in front of Stripe. Meters queries, LLM tokens, GB-mo. Emits invoice events to Stripe. Not yet wired (Phase 2).
+- **Stripe Tax** — enabled from day 1 in live mode. Handles VAT/GST automatically.
+- **Paddle** — optional Merchant of Record if we expand internationally before setting up entities. Deferred until needed.
+
+### Things we will NOT do
+
+- Charge for the number of seats in Phase 1. The billing unit is the DB and the query, not the human.
+- Gate features we'd have shipped anyway behind Pro to manufacture upgrade urgency.
+- Offer "lifetime deals" on AppSumo. That audience is not ours and the support cost is real.
+- Hide prices behind "Contact sales" for anything under the Enterprise tier.
+
+### Unit economics (napkin, Phase 1)
+
+| Tier | Our cost | Margin target |
+|---|---|---|
+| Free (100 queries/mo) | ~$0.15–$0.40 | — (CAC substitute) |
+| Hobby ($10/mo) | ~$2–4 | 60–80% at target plan-cache hit rate |
+| Pro ($25/mo+) | — | 75%+ once self-hosted classifier is online |
+
+**LLM cost is the dominant variable.** Plan cache hit rate (60–80% at maturity) is the primary lever. Small-model-first chain + batch embeddings + no summarization for structured-output API calls are the secondary levers.

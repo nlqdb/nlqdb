@@ -8,7 +8,7 @@ scripts/bootstrap-dev.sh   # installs every tool, pulls Ollama models, seeds .en
 scripts/login-cloud.sh     # CLI-based cloud provider logins + checklist for browser-only flows
 ```
 
-See [IMPLEMENTATION §2.8](./docs/implementation.md#28-dev-toolchain-zero-config--scriptsbootstrap-devsh) for the full toolchain breakdown and [`scripts/bootstrap-dev.sh`](./scripts/bootstrap-dev.sh) for the exact steps.
+See [`docs/history/infrastructure-setup.md §8`](./docs/history/infrastructure-setup.md#8-dev-toolchain) for the full toolchain breakdown and [`scripts/bootstrap-dev.sh`](./scripts/bootstrap-dev.sh) for the exact steps.
 
 ## Dev loop
 
@@ -27,7 +27,7 @@ Lefthook pre-commit hooks run automatically on every `git commit`. They are **fa
 - **`main` is always deployable.** Never push directly; always PR.
 - Branch naming: `feat/<scope>-<slug>`, `fix/<scope>-<slug>`, `docs/<slug>`, `chore/<slug>`.
 - PR title uses the same Conventional Commits prefix as the merge commit.
-- Require green CI + 1 review (enforced at the org level once `nlqdb` org is set up per IMPLEMENTATION §2.2).
+- Require green CI + 1 review (enforced at the org level once `nlqdb` org is set up per [`docs/history/infrastructure-setup.md §2`](./docs/history/infrastructure-setup.md#2-identity--source--distribution)).
 
 ## Commit messages — Conventional Commits
 
@@ -60,7 +60,7 @@ CI runs the same commands. Don't skip hooks with `--no-verify` — if a hook is 
 
 ## Monorepo layout
 
-See [IMPLEMENTATION §3](./docs/implementation.md#3-phase-0--foundations) for the full tree. Workspaces are declared in `package.json#workspaces` and each package README names its phase.
+See [`docs/architecture.md §10`](./docs/architecture.md#10-phase-plan) for the full phase plan. Workspaces are declared in `package.json#workspaces` and each package README names its phase.
 
 ## Filing issues
 

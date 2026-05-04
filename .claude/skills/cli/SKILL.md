@@ -12,7 +12,7 @@ when-to-load:
 **One-liner:** `nlq` command-line tool — verbs, OS-keychain credentials, device-flow auth.
 **Status:** planned (Phase 2) — design locked in DESIGN §3.3 / §4.3 / §14.3; no Go code yet (no `go.mod`; CI's `lint-go` job conditionally skips)
 **Owners (code):** `cli/**`
-**Cross-refs:** docs/design.md §3.3 (CLI surface) · §4.3 (session lifecycle, device-flow) · §14.3 (happy-path) · docs/surfaces.md (matrix) · docs/implementation.md §5 (Phase 2 CLI slice) · `cli/AGENTS.md` · `cli/README.md`
+**Cross-refs:** docs/architecture.md §3.3 (CLI surface) · §4.3 (session lifecycle, device-flow) · §14.3 (happy-path) · docs/architecture.md §3 (matrix) · docs/architecture.md §10 §5 (Phase 2 CLI slice) · `cli/AGENTS.md` · `cli/README.md`
 
 ## Touchpoints — read this skill before editing
 
@@ -69,10 +69,10 @@ when-to-load:
 
 ### SK-CLI-005 — Anonymous-first: bare queries work before any sign-in
 
-- **Decision:** `nlq new "..."` and bare `nlq "..."` mint an anonymous device token (72h window per `docs/design.md §4.1`) and immediately produce a working answer. The token is written to the OS keychain. `nlq login` runs the device-code flow only when the user wants to keep their work past 72h.
+- **Decision:** `nlq new "..."` and bare `nlq "..."` mint an anonymous device token (72h window per `docs/architecture.md §4.1`) and immediately produce a working answer. The token is written to the OS keychain. `nlq login` runs the device-code flow only when the user wants to keep their work past 72h.
 - **Core value:** Goal-first, Effortless UX, Free, Seamless auth
 - **Why:** The activation moment is the user typing a goal and getting an answer. A login wall before the first answer flips the moment from "wow" to "homework". The 72h window is the explicit agreement: long enough to demo the value, short enough that we're not running an unbounded anonymous storage tier. This is the CLI manifestation of `GLOBAL-007` and `GLOBAL-020`.
-- **Consequence in code:** The first invocation of any data verb mints the anonymous token via `POST /v1/auth/anonymous` (or whatever the slice settles on) and stores it in the keychain. Subsequent calls reuse it. On `nlq login`, anonymous DBs are adopted by updating one row server-side (`docs/design.md §4.1`); no client-side migration. **CI mode skips this entirely** — see SK-CLI-008.
+- **Consequence in code:** The first invocation of any data verb mints the anonymous token via `POST /v1/auth/anonymous` (or whatever the slice settles on) and stores it in the keychain. Subsequent calls reuse it. On `nlq login`, anonymous DBs are adopted by updating one row server-side (`docs/architecture.md §4.1`); no client-side migration. **CI mode skips this entirely** — see SK-CLI-008.
 - **Alternatives rejected:**
   - Force `nlq login` before first use — measurably worse for activation; contradicts `GLOBAL-007`.
   - Anonymous tokens in a flat config file, not the keychain — leaks via cloud backups + dotfile syncs; contradicts `GLOBAL-010`.
@@ -81,12 +81,12 @@ when-to-load:
 
 - **Decision:** `nlq login` runs the OAuth 2.0 Device Authorization Grant. The browser lands on `verification_uri_complete` with the code pre-filled in the URL — one "Approve this device?" click, no typing. The raw user_code is printed as a fallback for SSH / headless / `--no-browser` cases. On approval: anonymous DBs are adopted; refresh token (90d, rotated on every use) writes to OS keychain; access token (1h, JWT) stays in memory.
 - **Core value:** Seamless auth, Effortless UX, Bullet-proof
-- **Why:** Device-code with `verification_uri_complete` is the lowest-friction sign-in for a CLI — no copy-paste of codes, no port-binding callback (which fails on remote SSH and behind firewalls), and the code is visible in the browser URL so the human verifies they're approving the right device. 90d refresh + 1h access matches `docs/design.md §4.3` exactly so refresh logic is shared with `packages/sdk` (`GLOBAL-001`).
+- **Why:** Device-code with `verification_uri_complete` is the lowest-friction sign-in for a CLI — no copy-paste of codes, no port-binding callback (which fails on remote SSH and behind firewalls), and the code is visible in the browser URL so the human verifies they're approving the right device. 90d refresh + 1h access matches `docs/architecture.md §4.3` exactly so refresh logic is shared with `packages/sdk` (`GLOBAL-001`).
 - **Consequence in code:** The login flow POSTs `/v1/auth/device`, opens `verification_uri_complete` (or prints it on `--no-browser`), polls `/v1/auth/device/token`, writes the refresh token to keychain on success. Refresh token rotation is mandatory — every refresh issues a new refresh token; the old one is revoked. Tests cover the SSH-no-browser path and the firewall-blocks-localhost path.
 - **Alternatives rejected:**
   - localhost-callback OAuth — fails on SSH / headless; brittle behind firewalls.
   - Long-lived bearer tokens with no refresh — would force re-login on expiry; breaks the seamless-auth value.
-  - Username/password — banned by `docs/design.md §4.1` ("No passwords, ever").
+  - Username/password — banned by `docs/architecture.md §4.1` ("No passwords, ever").
 
 ### SK-CLI-007 — Silent refresh: 401 → refresh → retry once; refresh fail → re-run device flow in place
 
@@ -159,3 +159,65 @@ Canonical text in [`docs/decisions.md`](../../docs/decisions.md). The list below
 - **Update flow.** No decision on how the CLI self-updates. Options: silent on next-call, prompt-on-stale, manual `nlq update`. Pick one before the binary ships so the channel is set in stone.
 - **Windows experience.** All design decisions reference Keychain / libsecret / Credential Manager symmetrically, but Windows shells (cmd, PowerShell) and PATH semantics differ enough to warrant explicit testing. Capture per-platform quirks in `cli/AGENTS.md` once the binary lands.
 - **`nlq mcp install` for hosts not yet in DESIGN §3.4 / SK-CLI-011.** New MCP hosts emerge regularly. Document the "add a host" recipe in `cli/AGENTS.md` so the supported list grows without re-architecting `mcphosts/`.
+
+## Happy path walkthrough
+
+### §14.3 CLI (`nlq`)
+
+**Default path** (one line, no setup, no sign-in until you want it):
+
+```bash
+$ nlq new "an orders tracker"
+✓ Ready. Try: nlq "add an order: alice, latte, $5.50, just now"
+ℹ Saved as anonymous. Run `nlq login` within 72h to keep it.
+
+$ nlq "add an order: alice, latte, $5.50, just now"
+✓ Added. orders-tracker-a4f now has 1 row.
+```
+
+That's it. The DB exists. There is no `nlq db create` step the user had to know about.
+
+**Adopting the anonymous DB** (seamless):
+
+```bash
+$ nlq login
+→ Opening browser to approve this device… (fallback code: ABCD-1234)
+✓ Signed in as maya@example.com. Adopted 1 anonymous DB: orders-tracker-a4f.
+```
+
+The browser lands on a single "Approve this device?" screen with the code already pre-filled in the URL — one click, no typing. The refresh token is written to the macOS Keychain (or libsecret / Credential Manager on other OSes). Every subsequent call silently refreshes the access token as needed.
+
+**Day-2 ops** (still one line each):
+
+```bash
+$ nlq "how many orders today, by drink"
+latte    ████████████  12
+flat-white ██████      6
+mocha    ██            2
+
+$ nlq "export today's orders as csv > today.csv"
+✓ Wrote 20 rows to today.csv
+```
+
+**Power-user path** (explicit, when the user cares):
+
+```bash
+$ nlq db create finance --engine postgres --region us-east
+$ nlq query finance "monthly revenue last 12 months"
+$ nlq connection finance     # raw Postgres URL — drop into your own app
+```
+
+### §15.2 Persona walkthrough — Jordan, the Agent Builder
+
+**Goal:** ship a research-agent that remembers things between sessions.
+
+| Step | Jordan does | nlqdb does |
+|---|---|---|
+| 1 | On his laptop: runs `nlq mcp install`. The CLI auto-detects Claude Desktop + Cursor, opens the browser, he clicks Approve once. | Signs him in, mints a scoped MCP key per host, patches both configs, prompts him to restart Claude Desktop. |
+| 2 | In the agent's system prompt: *"You have a tool `nlqdb_query`. Call it with a `db` and a `q` in plain English. The `db` can be any string — it'll be created if new."* | — |
+| 3 | Agent runs first session. `nlqdb_query("research-memory", "remember: the user is researching solar panels in Berlin")` | DB `research-memory-...` materialized, row inserted |
+| 4 | Agent ends session, reopens hours later: `nlqdb_query("research-memory", "what do I know about the user's research topic?")` | Returns the stored fact |
+| 5 | Jordan watches the platform: clicks `research-memory`, sees every query the agent ran today | Trace + query log |
+| 6 | Deploys the agent on Modal. Sets `NLQDB_API_KEY` as a Modal secret — the one env var he touches. | Agent uses the `sk_live_` key; Modal's env-var flow stays idiomatic. |
+
+**What Jordan never wrote:** a vector-store glue layer, a schema for memory, a session-lifecycle service, a per-agent provisioning script.

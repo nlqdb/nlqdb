@@ -6,8 +6,7 @@ the right context before touching code.
 
 ## 0. Why skills exist
 
-Long reference docs (`docs/design.md`, `docs/implementation.md`,
-`docs/plan.md`, `docs/runbook.md`) describe the system as a whole. They are
+Long reference docs (`docs/architecture.md`, `docs/runbook.md`) describe the system as a whole. They are
 the wrong place to look up "what decisions govern this one feature I am
 about to edit." Skills are that place.
 
@@ -66,7 +65,7 @@ when-to-load:
 **One-liner:** <what this feature is>
 **Status:** implemented (Slice N) | partial | planned (Phase X)
 **Owners (code):** <paths>
-**Cross-refs:** docs/design.md §X · docs/implementation.md §Y · docs/runbook.md §Z · GLOBAL-NNN, GLOBAL-MMM (canonical text in docs/decisions.md)
+**Cross-refs:** docs/architecture.md §X · docs/runbook.md §Z · GLOBAL-NNN, GLOBAL-MMM (canonical text in docs/decisions.md)
 
 ## Touchpoints — read this skill before editing
 
@@ -82,7 +81,7 @@ when-to-load:
 - **Why:** <paragraph>
 - **Consequence in code:** <what this means concretely>
 - **Alternatives rejected:** <one line each>
-- **Source:** canonical here · also referenced in docs/design.md §4.1
+- **Source:** canonical here · also referenced in docs/architecture.md §4.1
 
 ## GLOBALs governing this feature
 
@@ -106,7 +105,7 @@ commentary is nested under the rule.
 Every `SK-*-*` decision must have all five fields:
 
 1. **Decision:** one declarative sentence. What we will do.
-2. **Core value:** one or more values from `docs/design.md §0` cited by
+2. **Core value:** one or more values from `docs/architecture.md §0` cited by
    name (Free, Open source, Simple, Effortless UX, Seamless auth, Fast,
    Creative, Goal-first, Bullet-proof, Honest latency). Every decision is
    anchored to at least one.
@@ -157,9 +156,9 @@ To find every skill affected by a GLOBAL: `grep -rn 'GLOBAL-005'
 Every feature gets a skill, even if the feature is not yet implemented:
 
 - **Implemented:** populate fully. Every decision from
-  `docs/design.md` / `docs/implementation.md` / `docs/plan.md` /
-  `docs/runbook.md` that bears on this feature gets a `SK-*-*` ID and a
-  full decision block.
+  `docs/architecture.md` (incl. §10 phase plan) and `docs/runbook.md`
+  that bears on this feature gets a `SK-*-*` ID and a full decision
+  block.
 - **Partial:** populate the implemented decisions; mark the gaps under
   *Open questions*.
 - **Planned:** stub only — frontmatter, status `planned (Phase X)`, scope,
@@ -182,7 +181,7 @@ These are grep-driven, no tooling needed:
    block under `.claude/skills/` — only one-liner references in the
    `## GLOBALs governing this feature` section. Verify with
    `grep -rn '^### GLOBAL-' .claude/skills/` (should print nothing).
-4. **No broken cross-refs.** `docs/design.md §4.1` style references
+4. **No broken cross-refs.** `docs/architecture.md §4.1` style references
    resolve to a real heading.
 5. **`when-to-load.globs` matches real paths.** A glob pointing at a
    non-existent directory is a sign the skill is stale or the feature

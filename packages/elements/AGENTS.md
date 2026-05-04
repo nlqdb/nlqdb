@@ -15,8 +15,8 @@
 ## Commands
 
 ```bash
-pnpm --filter @nlqdb/elements build
-pnpm --filter @nlqdb/elements test
+bun run --filter @nlqdb/elements build
+bun run --filter @nlqdb/elements test
 ```
 
 ## Local rules

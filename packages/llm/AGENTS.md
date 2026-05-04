@@ -15,8 +15,8 @@ LLM router + providers + per-user credit accounting.
 ## Commands
 
 ```bash
-pnpm --filter @nlqdb/llm build
-pnpm --filter @nlqdb/llm test
+bun run --filter @nlqdb/llm build
+bun run --filter @nlqdb/llm test
 ```
 
 ## Local rules

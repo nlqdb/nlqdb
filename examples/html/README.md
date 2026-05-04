@@ -21,6 +21,6 @@ Drop the file on Cloudflare Pages, GitHub Pages, Netlify drop, S3, your own VPS 
 
 ## Why it works
 
-`<nlq-data>` and `<nlq-action>` are custom elements registered by `https://elements.nlqdb.com/v1.js`. They handle fetching, rendering, refresh, and the `on-success` lifecycle. Your form's field names (`customer`, `drink`, `total`) are inferred into columns automatically (DESIGN §3.5).
+`<nlq-data>` and `<nlq-action>` are custom elements registered by `https://elements.nlqdb.com/v1.js`. They handle fetching, rendering, refresh, and the `on-success` lifecycle. Your form's field names (`customer`, `drink`, `total`) are inferred into columns automatically (`docs/architecture.md §3`).
 
-This is exactly the `../../docs/design.md` §16 hello-world — the simplest possible nlqdb integration.
+This is exactly the `docs/architecture.md` §13 hello-world — the simplest possible nlqdb integration.
