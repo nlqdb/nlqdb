@@ -16,6 +16,7 @@ Cloudflare Workers HTTP API. Hosts /v1/ask, /v1/run, auth, billing, webhooks.
 - [`idempotency`](../../.claude/skills/idempotency/SKILL.md) — mandatory pre-read for changes that touch the feature.
 - [`rate-limit`](../../.claude/skills/rate-limit/SKILL.md) — mandatory pre-read for changes that touch the feature.
 - [`auth`](../../.claude/skills/auth/SKILL.md) — mandatory pre-read for changes that touch the feature.
+- [`anonymous-mode`](../../.claude/skills/anonymous-mode/SKILL.md) — mandatory pre-read for changes that touch `src/principal.ts`, `src/anon-rate-limit.ts`, `src/anon-global-cap.ts`, `src/turnstile.ts`, or the anon `/v1/ask` path.
 - [`api-keys`](../../.claude/skills/api-keys/SKILL.md) — mandatory pre-read for changes that touch the feature.
 - [`stripe-billing`](../../.claude/skills/stripe-billing/SKILL.md) — mandatory pre-read for changes that touch the feature.
 - [`observability`](../../.claude/skills/observability/SKILL.md) — mandatory pre-read for changes that touch the feature.

@@ -12,7 +12,7 @@ Currently shipping:
 - `/manifesto` — long-form philosophy.
 - `robots.txt`, `llms.txt`, hand-rolled `sitemap.xml`.
 - JSON-LD `SoftwareApplication` on every page via `Base.astro`.
-- Live `<nlq-data>` demo on the homepage, backed by `/v1/demo/ask`.
+- Live `<nlq-data>` demo on the homepage, backed by `/v1/ask` with anonymous bearer (SK-WEB-008). Global anon cap (SK-ANON-010) keeps the LLM bill bounded; localStorage-backed prompt persistence (SK-ANON-011) survives the auth-redirect.
 
 Phase 1 remaining:
 

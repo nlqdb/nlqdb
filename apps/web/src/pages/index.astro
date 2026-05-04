@@ -21,13 +21,11 @@ import Base from "../layouts/Base.astro";
     <main>
       {/* Narrative order: positioning → capability showcase → primary
           CTA → technical proof → competitive framing → research
-          receipts → philosophy. PR #49's pivot dropped CodePanel +
-          ManifestoExcerpt as part of the coming-soon simplification;
-          restored because they back the carousel with real
-          integration code and product philosophy. ResearchReceipts
-          (added in the docs-clarification PR) sits late in the page
-          as the "we did our homework" credibility beat — visitors
-          who scrolled this far are skeptics who want sources. */}
+          receipts → philosophy. The hero now talks to real `/v1/ask`
+          with an anonymous bearer (SK-WEB-008) — the canned-fixture
+          /v1/demo/ask endpoint was retired. The carousel below
+          remains the only static-fixture surface; its examples
+          (`SHOWCASE_EXAMPLES`) are pre-rendered HTML, no fetch. */}
       <Hero />
       <Carousel examples={SHOWCASE_EXAMPLES} />
       <Waitlist />
@@ -40,3 +38,13 @@ import Base from "../layouts/Base.astro";
     <Footer />
   </div>
 </Base>
+
+<script>
+  // Provision the anonymous-mode token on first visit (SK-ANON-001).
+  // The hero's `<CreateForm>` would mint on first call anyway, but
+  // landing the bearer in localStorage at first paint means the
+  // network request that follows already has its `Authorization:
+  // Bearer anon_*` header.
+  import { getOrMintAnonToken } from "../lib/anon";
+  getOrMintAnonToken();
+</script>

@@ -58,6 +58,13 @@ declare global {
       // POST /v1/stripe/webhook — when absent, the route returns 503.
       STRIPE_WEBHOOK_SECRET?: string;
 
+      // Cloudflare Turnstile secret for the anonymous-create burst
+      // gate (SK-ANON-007). Optional at type level: when absent the
+      // burst gate skips Turnstile verification (fail-open) so
+      // `wrangler dev` without secrets configured still serves anon
+      // creates. The per-IP create cap (5/hour) still applies.
+      TURNSTILE_SECRET?: string;
+
       // R2 bucket for Stripe-event payload archives (and future blob
       // surfaces). Optional at type level so unit tests / wrangler dev
       // without --remote can run; the webhook handler skips archive

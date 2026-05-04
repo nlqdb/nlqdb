@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildDemoResult, makeRateLimiter } from "../src/demo.ts";
+import { buildDemoResult } from "../src/demo.ts";
 
 describe("buildDemoResult", () => {
   it("returns the orders fixture by default", () => {
@@ -63,45 +63,6 @@ describe("buildDemoResult", () => {
   });
 });
 
-describe("makeRateLimiter", () => {
-  // Minimal in-memory KV double — only the get/put surface the limiter
-  // touches. The TTL is honored by clearing on a second run; a real
-  // CF KV simulation isn't worth the bytes here.
-  function fakeKv(): KVNamespace {
-    const store = new Map<string, string>();
-    return {
-      get: async (key: string) => store.get(key) ?? null,
-      put: async (key: string, value: string) => {
-        store.set(key, value);
-      },
-      delete: async (key: string) => {
-        store.delete(key);
-      },
-      // Unused surfaces — typed-stub them.
-      list: async () => ({ keys: [], list_complete: true, cursor: "" }),
-      getWithMetadata: async () => ({ value: null, metadata: null, cacheStatus: null }),
-    } as unknown as KVNamespace;
-  }
-
-  it("admits up to 10 requests in a window then 429s", async () => {
-    const limiter = makeRateLimiter(fakeKv());
-    for (let i = 0; i < 10; i++) {
-      const v = await limiter.hit("1.2.3.4");
-      expect(v.ok, `attempt ${i}`).toBe(true);
-    }
-    const blocked = await limiter.hit("1.2.3.4");
-    expect(blocked.ok).toBe(false);
-    if (!blocked.ok) {
-      expect(blocked.retryAfter).toBe(60);
-    }
-  });
-
-  it("scopes counters per IP", async () => {
-    const limiter = makeRateLimiter(fakeKv());
-    for (let i = 0; i < 10; i++) {
-      await limiter.hit("1.1.1.1");
-    }
-    const otherIp = await limiter.hit("9.9.9.9");
-    expect(otherIp.ok).toBe(true);
-  });
-});
+// `makeRateLimiter` was deleted with the /v1/demo/ask route
+// (SK-WEB-008); per-IP anon rate-limiting now lives in
+// `apps/api/test/anon-rate-limit.test.ts`.

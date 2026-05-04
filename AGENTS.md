@@ -133,7 +133,8 @@ manually before editing.)
 | `apps/api/src/billing/**`, Stripe webhooks | `.claude/skills/stripe-billing/SKILL.md` |
 | `apps/api/src/billing/premium/**`, `apps/api/src/ask/model-picker.ts`, `packages/llm/src/chains/paid.ts`, anything `model` preset / BYOK / spend-cap related | `.claude/skills/premium-tier/SKILL.md` |
 | `apps/events-worker/**`, `packages/events/**` | `.claude/skills/events-pipeline/SKILL.md` |
-| rate-limit middleware | `.claude/skills/rate-limit/SKILL.md` |
+| rate-limit middleware (`apps/api/src/ask/rate-limit.ts`, `apps/api/src/anon-rate-limit.ts`, `apps/api/src/anon-global-cap.ts`) | `.claude/skills/rate-limit/SKILL.md` |
+| `apps/api/src/principal.ts`, `apps/api/src/anon-rate-limit.ts`, `apps/api/src/anon-global-cap.ts`, `apps/api/src/turnstile.ts`, `apps/web/src/lib/{anon,prompt-storage,turnstile,api}.ts`, `apps/web/src/components/CreateForm.tsx` | `.claude/skills/anonymous-mode/SKILL.md` |
 | `cli/**` | `.claude/skills/cli/SKILL.md` |
 | `packages/elements/**` | `.claude/skills/elements/SKILL.md` |
 | `packages/sdk/**` | `.claude/skills/sdk/SKILL.md` |

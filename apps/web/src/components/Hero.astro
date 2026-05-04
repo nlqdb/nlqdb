@@ -1,10 +1,18 @@
 ---
-// Coming-soon-style hero (DESIGN §3.1, slice 11b).
+// Marketing hero — the goal-first input that morphs into a real-LLM
+// chat (SK-WEB-002 / SK-WEB-008). Backed by the same `<CreateForm>`
+// React island as `/app/new`; both routes hit `/v1/ask` with an
+// anonymous bearer (SK-ANON-008), gated by the global anon cap
+// (SK-ANON-010) and the prompt-persistence guarantee (SK-ANON-011).
 //
-// Auth + chat are tabled while the surface gets reworked, so the
-// hero no longer collects a goal that routes to /sign-in. The
-// page-level Carousel + Waitlist below carry the value-prop and
-// the conversion ask.
+// `Hero.tsx` is intentionally retired — its old fixture client used
+// `/v1/demo/ask`, which no longer exists. The component is replaced
+// in-place by the marketing-chrome wordmark + lede + sub above the
+// shared form below.
+
+import CreateForm from "./CreateForm.tsx";
+
+const apiBase = import.meta.env.PUBLIC_API_BASE ?? "https://app.nlqdb.com";
 ---
 <section class="hero">
   <h1 class="hero__wordmark">nlqdb</h1>
@@ -15,8 +23,5 @@
     SQL stays one click away, always.
   </p>
 
-  <p class="heroinput__note">
-    <span class="dot" aria-hidden="true"></span>
-    Pre-alpha — Phase 0 shipped, Phase 1 in progress. Join the waitlist below.
-  </p>
+  <CreateForm client:load apiBase={apiBase} />
 </section>

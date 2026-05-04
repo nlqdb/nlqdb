@@ -12,7 +12,7 @@ when-to-load:
 # Feature: Anonymous Mode
 
 **One-liner:** No-login first-value path across web / CLI / MCP; later attached to a Better Auth identity.
-**Status:** partial (API shipped — `/v1/anon/adopt`; web UI remaining — Phase 1 exit gate)
+**Status:** partial — anon `/v1/ask` create flow (`apps/api/src/principal.ts` + `apps/api/src/anon-rate-limit.ts` + `apps/web/src/pages/app/new.astro`) shipped; `/v1/anon/adopt` row-update + RLS-policy rewrite on sign-in remains the Phase 1 exit gate
 **Owners (code):** `apps/web/**`, `cli/**`, `apps/api/src/anon-adopt.ts`
 **Cross-refs:** docs/decisions.md#GLOBAL-007 · docs/architecture.md §0.1, §3.3, §3.6.4, §4.1, §14.3, §14.6 · docs/runbook.md §10 (P1, P5 first-touch) · docs/architecture.md §10 §4 (partial status) · docs/runbook.md §9 (anonymous-db lifecycle)
 
@@ -29,7 +29,7 @@ when-to-load:
 - **Decision:** Anonymous identity is an opaque token. On the web it lives in `localStorage` (visible to the page; no server cookie required for first value). On the CLI, the anonymous token is minted by `nlq` and written to the OS keychain (`zalando/go-keyring`) with the same fallback behavior as a real session token. The MCP server inherits identity from the host's installed key, so MCP has no separate anonymous token.
 - **Core value:** Free, Effortless UX, Goal-first
 - **Why:** Per-surface storage matches each surface's idioms — `localStorage` is what every web app uses, the keychain is what every CLI uses. Reusing `GLOBAL-010`'s storage primitive on the CLI means anonymous tokens benefit from the same encryption-at-rest and same shell-history-leak protection as a real session. A single shared anonymous-token format would have forced the web to use cookies (heavier) or the CLI to use a config file (rejected by `GLOBAL-010`).
-- **Consequence in code:** Web reads/writes `localStorage["nlqdb_anon"]`. CLI uses the keychain abstraction with key `nlqdb-anon-<machine_id>`. The API treats both as `Authorization: Bearer anon_…`. No surface invents a third storage path.
+- **Consequence in code:** Web reads/writes `localStorage["nlqdb_anon"]` for the bearer token. Per `SK-ANON-011`, three additional localStorage slots — `nlqdb_draft`, `nlqdb_pending`, `nlqdb_history` — carry the prompt-persistence guarantee under the same storage primitive. CLI uses the keychain abstraction with key `nlqdb-anon-<machine_id>`. The API treats both bearer values as `Authorization: Bearer anon_…`. No surface invents a third storage path.
 - **Alternatives rejected:**
   - Cookie-based anonymous identity on the web — adds a server round-trip before the chat materializes; the cookie can't be set until the response.
   - Plaintext config file on the CLI — banned by `GLOBAL-010`.
@@ -56,7 +56,7 @@ when-to-load:
 
 ### SK-ANON-004 — Anonymous tier has its own rate-limit bucket distinct from authenticated
 
-- **Decision:** The API has an explicit anonymous-mode rate-limit tier — a per-IP bucket, separate from per-(user_id, key) buckets used for authenticated calls. Limits are tighter than free-tier authenticated limits. Anonymous creates also have separate per-IP and per-account create-rate caps (5/hour per IP, 20/day per account) per `docs/architecture.md §3.6.8`.
+- **Decision:** The API has an explicit anonymous-mode rate-limit tier — a per-IP bucket, separate from per-(user_id, key) buckets used for authenticated calls. Limits are tighter than free-tier authenticated limits. Anonymous creates also have separate per-IP and per-account create-rate caps (5/hour per IP, 20/day per account) per `docs/architecture.md §3.6.8`. Layered above this per-IP bucket is the **global anon cap** (`SK-ANON-010`, 100/hr / 1000/day / 10k/month summed across all anon traffic) — when global trips, the user is soft-promoted to auth via 401 + sign-in URL rather than 429'd.
 - **Core value:** Free, Bullet-proof
 - **Why:** Anonymous traffic has no accountable identity behind it — abuse defenses can only key off IP. Sharing the authenticated bucket means one abuser exhausts the per-DB budget for legitimate users. A separate, tighter anonymous tier limits blast radius without inconveniencing real users (who graduate to the authenticated tier on sign-in). Without this tier the free promise collapses under any meaningful abuse.
 - **Consequence in code:** `apps/api/src/middleware/rate-limit.ts` selects bucket by auth shape: anonymous → IP bucket (smaller window, lower cap); authenticated → user/key bucket. The anonymous-create caps live alongside the rate-limit middleware. PoW on signup is the escape valve if a coordinated wave hits the IP bucket.
@@ -94,6 +94,50 @@ when-to-load:
   - Raw hashcash (SHA-256, 20-bit) — valid self-hosted fallback if Turnstile is unavailable, but requires a challenge-issuance endpoint and HMAC-signed nonce management (ALTCHA pattern).
   - Argon2/scrypt — memory-hard; impractical in browser JS at useful difficulty without a WASM bundle.
   - KV-backed nonce tracking — 1,000 KV writes/day budget; too expensive.
+
+### SK-ANON-008 — Anon principal id is `anon:<sha256(token)[:16]>`; cookie session wins when both present
+
+- **Decision:** The `requirePrincipal` middleware (`apps/api/src/principal.ts`) accepts either a Better Auth cookie session OR `Authorization: Bearer anon_<token>`. The anon principal's id is `anon:<sha256(token)[:16]>` — a 64-bit, non-reversible derivation from the device token. When both shapes are present on the same request, the cookie session wins.
+- **Core value:** Bullet-proof, Seamless auth, Free
+- **Why:** Three properties forced this shape. (1) The orchestrator's `tenantId` is baked into RLS policies (`apps/api/src/db-create/neon-provision.ts`) and into OTel span attributes — putting the raw bearer there would leak it to every operator with span access. SHA-256 prefix is non-reversible and short enough to be safe in those contexts. (2) `apps/api/src/db-create/orchestrate.ts`'s `isAnonymous(tenantId)` check already keys off the `anon:` prefix to set `pkLive: null` (per SK-WEB-007); reusing it means no orchestrator branch (`SK-ANON-006`). (3) Cookie-wins is the only way `/v1/anon/adopt` can trigger on the seamless-auth path: a signed-in user that still has an `anon_*` token in `localStorage` is, by definition, an adopted user — the cookie reflects truth, the bearer is leftover state. 16 hex chars (= 64 bits) is collision-free at four-billion-device cardinality per birthday-bound math.
+- **Consequence in code:** `principal.ts` exports `Principal = { kind: "user", id, session } | { kind: "anon", id, token }` and `getPrincipal(c)`. Routes that need cookie-only stay on `requireSession` (`/v1/anon/adopt`, `/v1/chat/messages`); routes that accept anon switch to `requirePrincipal`. `parseAnonBearer` rejects bare `Bearer anon_` (no entropy after the prefix). The 16-char prefix is the only place where the token-to-id mapping happens; do not invent a parallel hash anywhere else.
+- **Alternatives rejected:**
+  - Use the raw token as `tenantId` — the token leaks into every span, every D1 row, every RLS policy. Rotation impossible.
+  - Hash the token with HMAC + secret (vs plain SHA-256) — adds an HMAC-secret deploy dependency for no security gain (the token itself is the secret, not the hash).
+  - Anon-bearer wins over cookie when both present — would let a stale anon token mask a live signed-in identity; adoption never fires.
+
+### SK-ANON-009 — Turnstile verify fails open when `TURNSTILE_SECRET` is unset
+
+- **Decision:** `verifyTurnstile()` returns `{ ok: false, reason: "unconfigured" }` when no secret is configured. The `/v1/ask` route treats `unconfigured` as allow-through. Any other failure (`invalid` / `verify_failed`) returns 428 with the challenge envelope so the surface re-renders the widget.
+- **Core value:** Bullet-proof, Effortless UX
+- **Why:** Local `wrangler dev` and integration tests run without Workers secrets — failing closed there means every contributor has to provision a Turnstile keypair before they can land an anon-create change. Failing open keeps the development edit loop fast while keeping the production posture safe: production ALWAYS has the secret set (`docs/runbook.md`), so production never hits the fail-open branch. The per-IP create cap (5/hour) still applies in dev, so even with Turnstile bypassed an abuser can't burn unlimited DBs.
+- **Consequence in code:** `apps/api/src/turnstile.ts` returns the typed `unconfigured` reason (not a generic failure) so the route can branch on it. The route's `allowed = verify.ok || verify.reason === "unconfigured"` is the only place this fail-open branch exists; tests assert that the production-configured path NEVER fails open even when siteverify says success=false.
+- **Alternatives rejected:**
+  - Fail closed when secret is missing — every dev environment + test fixture needs Turnstile credentials; landing the `kind=create` branch becomes a credential-provisioning errand.
+  - Treat `verify_failed` (network 5xx) as "allow through" — masks real Cloudflare outages; an attacker hammering the route would tip Turnstile over and bypass the gate.
+
+### SK-ANON-010 — Global anon cap (100/hr / 1000/day / 10k/month) → seamless auth redirect (401 `auth_required`)
+
+- **Decision:** Cumulative across **all** anonymous traffic — three rolling windows: 100 calls/hour, 1000/day, 10,000/month. When any window trips, `/v1/ask` returns `401 Unauthorized` with body `{ error: { status: "auth_required", code: "anon_global_cap", window, resetAt, signInUrl, action } }`. The web surface stashes the in-flight prompt in localStorage (`SK-ANON-011`) and redirects to `signInUrl` with a same-origin `return` query param. The user signs in, the post-OAuth landing page replays the queued prompt against `/v1/ask` with the now-authed cookie session — accountable identity, no anon cap. The per-IP query bucket (30/min, `SK-ANON-004` / `SK-RL-007`) and Turnstile burst gate (3-in-5min, `SK-ANON-007`) layer underneath this and continue to return 429 / 428 respectively.
+- **Core value:** Free, Bullet-proof, Effortless UX, Seamless auth
+- **Why:** `SK-ANON-004` covers per-IP abuse but says nothing about cumulative anon LLM spend. The `SK-WEB-008` directive ("demo === real LLM") makes that cumulative bill load-bearing — without a global ceiling, a Hacker News spike could empty the LLM credits before lunch. The auth-redirect framing keeps `GLOBAL-007` ("no login wall before first value") honest because the wall doesn't exist on call #1; it exists at #101 within the hour, when the anon tier has already delivered first value. At that point the user has reason to sign in (they want to keep going), so the wall is well-timed rather than punitive. `SK-RL-005`'s "next action" is now "sign in" instead of "wait for window reset" — same spirit (offer a way out), different verb. Numbers (100/1000/10000) are pinned in this skill rather than left to deploy-time tuning so reviewers can reason about behaviour without grepping env config.
+- **Consequence in code:** `apps/api/src/anon-global-cap.ts` keys three KV buckets (`anon:global:hr:<bucket>`, `anon:global:day:<bucket>`, `anon:global:mo:<bucket>`) under fixed-window approximations of "rolling". `peek()` returns the first failing window (hour → day → month priority); `record()` increments all three after a request is served. `apps/api/src/index.ts` runs the global gate before the per-IP gate — global is the user-facing soft-promotion; per-IP is the bot-speed defense. The `signInUrl` is built server-side via `buildSignInUrl()` (only same-origin returns allowed; never echo a foreign Referer). The Worker's `MAGIC_LINK_WEB_ORIGIN` env var picks dev vs prod sign-in.
+- **Alternatives rejected:**
+  - Per-IP cap only — sustained low-rate abuse across a botnet (1 req/IP/min × 1000 IPs) sails past the per-IP gate and burns the LLM budget.
+  - Single global counter (no hour/day/month tiering) — either the budget resets daily (a Hacker News afternoon empties the day; everyone who arrives after gets the wall for hours) or the budget is monthly (no shorter-window protection against a sudden spike). Three windows give the system three chances to back-pressure.
+  - Return 429 with a `Retry-After` instead of 401 with a sign-in URL — wastes the abuse moment for a quota the user can never refresh as anonymous; the "wait" framing misses the actual next action.
+  - Hard-fail (5xx) on cap — silent delivery failure; the frontend has no shape to render a sign-in CTA against.
+
+### SK-ANON-011 — Never lose a prompt: drafts + pending + history in localStorage; same guarantee for authed
+
+- **Decision:** Every prompt the user touches is durable in `localStorage`, on every surface, regardless of auth shape. Three slots: `nlqdb_draft` (the goal currently being typed, debounced-saved on every keystroke; rehydrated into the input on mount), `nlqdb_pending` (a submitted prompt that hit `auth_required` or any redirect-style failure — replayed by the post-OAuth landing page), and `nlqdb_history` (last 50 completed prompts with `{ goal, submittedAt, status, outcome }`). The same three slots exist for signed-in users — the `Authorization` shape on the request changes; the persistence guarantee does not.
+- **Core value:** Bullet-proof, Effortless UX, Goal-first
+- **Why:** "I lost what I typed" is the single most-broken trust signal in any AI surface. The auth-redirect flow (`SK-ANON-010`) makes prompt loss especially costly — a user who types a goal and then lands on a sign-in page, signs in, and finds the input empty associates "sign in" with "lose work" forever. Drafts cover the more common case (refresh, tab crash, accidental nav); history covers recall ("what did I just ask?") and seeds future server-side mirroring. Localizing in `localStorage` (not server-side) keeps the path zero-cost on the call's hot path and avoids a write before the user's identity even exists. Server-side mirroring for cross-device continuity is a Phase 2+ concern (and an Open Question on `SK-ANON-001`).
+- **Consequence in code:** `apps/web/src/lib/prompt-storage.ts` exposes `saveDraft / loadDraft / clearDraft / makeDraftSaver` (debounced via `setTimeout`), `savePending / loadPending / clearPending`, and `appendHistory / loadHistory` (capped at 50 with oldest-evicted). `CreateForm.tsx` wires the draft saver to `onChange`, rehydrates on mount via `useEffect`, stashes pending on `auth_required` BEFORE the redirect, and appends history on every terminal outcome. The post-OAuth landing page (Phase 1 exit gate; `apps/web/src/pages/sign-in/...`) reads `nlqdb_pending`, replays it, and clears the slot. localStorage availability is checked through `safeStorage()` so privacy-mode browsers fall back to in-memory state without throwing.
+- **Alternatives rejected:**
+  - Server-side prompt store keyed by anon hash — mirroring works cross-device but creates a write-before-identity flow (the device is anonymous; we'd have to invent an "anon prompts" table that's the next adoption target). Same end-state, larger surface; deferred to Phase 2+.
+  - URL-encode the prompt in the sign-in redirect — leaks goals into server logs and sign-in analytics; the prompt should never travel through a URL.
+  - Drafts-only (no pending replay) — the auth-redirect arc terminates with the user seeing a fresh empty form; defeats the point of "seamless".
 
 ## GLOBALs governing this feature
 

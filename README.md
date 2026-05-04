@@ -79,7 +79,7 @@ seconds, no card, no config. The waitlist + carousel on the current site
 are a holding pattern; they ship away when all four remaining items land.
 
 - ✓ Marketing site (Astro, Workers Static Assets, live at `nlqdb.com`)
-- ✓ `<nlq-data>` v0 (live, public `/v1/demo/ask` endpoint, fixture-backed)
+- ✓ `<nlq-data>` v0 (live, public `/v1/ask` with anonymous bearer; SK-WEB-008 retired the canned-fixture `/v1/demo/ask` path)
 - ✓ Waitlist + capability carousel (holding pattern; removed at Phase 1 close)
 - ✓ `apps/web` live at `nlqdb.com` (DNS flip complete, PR #56)
 - ◯ Sign-in UI — magic-link + GitHub OAuth (`/api/auth/*` backend ready; requires Resend DKIM/SPF/DMARC)
