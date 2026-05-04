@@ -381,6 +381,16 @@ Canonical: `llm-router/SKILL.md` (`SK-LLM-001..011`). Tables below are at-a-glan
 
 Env vars: `GEMINI_API_KEY`, `GROQ_API_KEY`, `CF_AI_TOKEN`, `OPENROUTER_API_KEY`.
 
+### 7.2 Cost-control mitigations, in priority order
+
+Skills reference these by number (e.g. "cost-control rule 3"). Canonical detail in `llm-router/SKILL.md`.
+
+1. **Plan cache by fingerprint — 60–80% hit rate, bypasses LLM entirely.** Every `/v1/ask` request hits the plan cache before any LLM call. Cache key = `(schema_hash, query_fingerprint)`. Expected steady-state hit rate 60–80%; covers the majority of production traffic with no model cost. (`SK-LLM-010`, `GLOBAL-006`)
+2. **Small-model first, big-model on fallback.** Hot-path classification and summarization run on the cheapest tier (Tier 1). The plan tier (Tier 2, Claude Sonnet 4.6) fires only on cache miss. Hard-plan reasoning (Tier 3, Opus 4.7) handles ≤5% of queries. (`SK-LLM-001`)
+3. **Prompt caching on every provider that supports it — ~80% input-token reduction.** System prompts and few-shot examples are pinned and sent with provider prompt-caching headers (Anthropic `cache_control`, OpenAI cached tokens, AI Gateway response cache). Repeated schema-context tokens cost near-zero after the first call. (`SK-LLM-009`)
+4. **No summarization for structured-output (API) callers.** When the caller sets `Accept: application/json`, the summarize step is skipped entirely. Summarization is a UX feature for chat surfaces, not a correctness requirement. (`SK-ASK-005`)
+5. **Self-host the classifier at ~50 k queries/day.** Once classify-tier hosted cost crosses the flat-Modal threshold (~50 k/day), a quantized 8B Llama on a single A10G (~$200/mo) replaces the per-call Groq cost. Plan and hard tiers stay on hosted providers indefinitely. (`SK-LLM-011`)
+
 ---
 
 ## 8. What we are NOT building
