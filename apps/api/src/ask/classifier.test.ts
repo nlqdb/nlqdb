@@ -37,7 +37,9 @@ describe("classifyKind — LLM intent mapping", () => {
 
   it("propagates LLM router errors so the caller can surface 502", async () => {
     const failing: LLMRouter = {
-      classify: async () => { throw new Error("all providers failed"); },
+      classify: async () => {
+        throw new Error("all providers failed");
+      },
       plan: async () => ({ sql: "" }),
       summarize: async () => ({ summary: "" }),
       schemaInfer: async () => ({ plan: {} }),

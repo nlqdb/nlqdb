@@ -31,10 +31,7 @@ export type ClassifyKindResult = {
   reason: string;
 };
 
-export async function classifyKind(
-  llm: LLMRouter,
-  goal: string,
-): Promise<ClassifyKindResult> {
+export async function classifyKind(llm: LLMRouter, goal: string): Promise<ClassifyKindResult> {
   const { intent, confidence } = await llm.classify({ utterance: goal });
   switch (intent) {
     case "create":
