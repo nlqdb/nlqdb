@@ -15,5 +15,42 @@ const { current } = Astro.props;
       Manifesto
     </a>
     <a href="mailto:hello@nlqdb.com">Contact</a>
+    {/* Sign in link gated behind Cmd+G — same chord that reveals the
+        hero <CreateForm>. Toggles in lockstep so internal testers see
+        both surfaces at once; persisted via localStorage. */}
+    <span id="topnav-signin-gate" data-cmdg-gate hidden>
+      <a href="/auth/sign-in">Sign in</a>
+    </span>
   </nav>
 </header>
+
+<script>
+  // Shared Cmd+G (Ctrl+G on non-Mac) reveal gate. Toggles every
+  // `[data-cmdg-gate]` element on the page in lockstep — currently
+  // the hero <CreateForm> on `/` and the Sign-in link in this nav.
+  // preventDefault() because Chrome binds Cmd+G to "find next" and
+  // we want the chord exclusive while iterating. State sticks via
+  // localStorage["nlqdb_hero_visible"] (name kept for continuity
+  // with the original hero gate).
+  const FLAG = "nlqdb_hero_visible";
+
+  function applyVisibility(on: boolean) {
+    const gates = document.querySelectorAll<HTMLElement>("[data-cmdg-gate]");
+    for (const gate of gates) {
+      if (on) gate.removeAttribute("hidden");
+      else gate.setAttribute("hidden", "");
+    }
+  }
+
+  if (localStorage.getItem(FLAG) === "1") applyVisibility(true);
+
+  document.addEventListener("keydown", (event) => {
+    if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "g") {
+      event.preventDefault();
+      const next = localStorage.getItem(FLAG) !== "1";
+      if (next) localStorage.setItem(FLAG, "1");
+      else localStorage.removeItem(FLAG);
+      applyVisibility(next);
+    }
+  });
+</script>
