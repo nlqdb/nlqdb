@@ -25,6 +25,7 @@ Cross-cutting decisions cited by skills: [`docs/decisions.md`](../../docs/decisi
 | [`elements`](./elements/SKILL.md) | `<nlq-data>` web component; framework-free embedding. | `packages/elements/**` |
 | [`sdk`](./sdk/SKILL.md) | `@nlqdb/sdk` — the only HTTP client (cookie vs bearer). | `packages/sdk/**` |
 | [`mcp-server`](./mcp-server/SKILL.md) | MCP server, `nlq mcp install` host detection. | `packages/mcp/**` |
+| [`ci-permissions`](./ci-permissions/SKILL.md) | Least-privilege GitHub Actions `permissions:` blocks; default-deny; OIDC for publish. | `.github/workflows/**`, `nlqdb/actions/**` |
 
 ## Partial
 

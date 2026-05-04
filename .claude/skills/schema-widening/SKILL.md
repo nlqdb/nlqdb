@@ -97,6 +97,17 @@ when-to-load:
   - Schema-mate-style migration files in the repo — invites the version-coupling problem we are explicitly avoiding.
   - In-place ALTER COLUMN — see `SK-SCHEMA-003`; breaks `GLOBAL-006`.
 
+### SK-SCHEMA-008 — First insert creates columns; types widen, never narrow
+
+- **Decision:** When `/v1/ask` orchestrates a write (`kind=write`) and the typed plan references a field the current `schema_hash` does not yet observe, the path is: (1) the typed-plan compiler emits an `ADD COLUMN <name> <type> NULL` ahead of the `INSERT`; (2) the row containing the new field is inserted; (3) the observation pipeline (when it lands, see `SK-SCHEMA-006` open question) recomputes `schema_hash` and writes the new value to D1's `databases.schema_hash`. The widen and the insert are in the same transaction; either both land or both roll back. Types are widened only — never narrowed without an explicit `nlq new` (`SK-SCHEMA-007`).
+- **Core value:** Goal-first, Bullet-proof
+- **Why:** This is the operational mechanism that lets the goal-first inversion (`docs/architecture.md §0.1`) work for writes. A user who says *"add an order: alice, latte, $5.50"* against a DB whose schema doesn't yet have a `total` column should not see a "schema mismatch" error — the column should appear, the row should land. The only way to make that bullet-proof is to bind the widen to the insert in one transaction so an error mid-way doesn't leave half-applied state. Phase 0 short-circuits this by requiring a fixture row + manually-seeded schema (`SK-SCHEMA-006`); Phase 1's hosted-db-create + write path is what wires the full mechanism.
+- **Consequence in code:** The write orchestrator (`apps/api/src/ask/orchestrate.ts` write branch, post-Phase-0) wraps `ADD COLUMN` + `INSERT` in a single transaction via the Neon HTTP transactional API. The typed-plan compiler (`apps/api/src/db-create/compile-ddl.ts` already exists for create; an analogous `compile-write-ddl.ts` covers the widen-on-write case) is the only path that emits `ALTER TABLE ADD COLUMN`. Direct LLM-emitted DDL on this path is rejected by the `sql-validate.ts` allow-list (`SK-SQLAL-002` rejects `ALTER`); the widen happens via the same typed-plan path that the create flow uses. PRs that introduce a write code path emitting `ADD COLUMN` without a transaction wrapper will be rejected.
+- **Alternatives rejected:**
+  - Reject writes that reference unknown fields → "schema mismatch" error — defeats the goal-first promise (`docs/architecture.md §0.1`); makes every first-write a two-step ceremony for the user.
+  - Add the column outside the transaction, then insert separately — leaves a window where the column exists with no rows referencing it, and a failure mid-way leaves the schema inconsistent with the data the user thought they were writing.
+  - Type narrowing on widen (e.g. user inserts `{ total: 5 }` then `{ total: "free" }`, narrow to `text`) — silently invalidates every cached plan that bound `total` as `numeric`. Per `SK-SCHEMA-003`, types only widen.
+
 ## GLOBALs governing this feature
 
 Canonical text in [`docs/decisions.md`](../../docs/decisions.md). The list below names the rules that constrain this feature; any skill-local commentary is nested under the rule.

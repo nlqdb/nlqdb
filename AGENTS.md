@@ -140,6 +140,7 @@ manually before editing.)
 | `packages/mcp/**` | `.claude/skills/mcp-server/SKILL.md` |
 | `apps/web/**` (onboarding, anonymous mode) | `.claude/skills/web-app/SKILL.md` |
 | `apps/web/src/onboarding/**`, signup flow, first-query path | `.claude/skills/onboarding/SKILL.md` |
+| `.github/workflows/**`, `nlqdb/actions/**` (CI permissions) | `.claude/skills/ci-permissions/SKILL.md` |
 
 Per-area `AGENTS.md` files (e.g. `packages/db/AGENTS.md`) repeat just
 their slice of this table, so you don't need the full root view when
@@ -158,8 +159,8 @@ working in one directory.
 | [`docs/progress.md`](docs/progress.md) | Platform integration tiers (P0–P3). |
 | [`docs/research-receipts.md`](docs/research-receipts.md) | Receipts for cited research. |
 | [`docs/competitors.md`](docs/competitors.md) | Competitive landscape — categories, threat matrix, gap analysis. |
-| [`docs/history/`](docs/history/) | Lessons learnt — one doc per operational topic (infra setup, migrations, etc.). |
-| [`docs/research/`](docs/research/) | Strategic research — personas, LLM credits plan, email & marketing strategy. |
+| [`docs/history/`](docs/history/) | Lessons learnt — one doc per operational topic (infra setup, Workers Versions GC, CI actions repo layout, etc.). |
+| [`docs/research/`](docs/research/) | Strategic research — personas, LLM credits plan, email & marketing strategy, Phase 1 exit criteria, open design questions. |
 
 These exist for depth; they are not loaded into every session by
 default. The skill index (`.claude/skills/_index.md`) is the front

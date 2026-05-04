@@ -60,7 +60,7 @@ CI runs the same commands. Don't skip hooks with `--no-verify` — if a hook is 
 
 ## Monorepo layout
 
-See [`docs/architecture.md §10`](./docs/architecture.md#10-phased-implementation-plan) for the full phase plan. Workspaces are declared in `package.json#workspaces` and each package README names its phase.
+See [`docs/architecture.md §10`](./docs/architecture.md#10-phase-plan) for the full phase plan. Workspaces are declared in `package.json#workspaces` and each package README names its phase.
 
 ## Filing issues
 
