@@ -6,11 +6,12 @@
 import type { ClassifyRequest, PlanRequest, SummarizeRequest } from "./types.ts";
 
 export const CLASSIFY_SYSTEM = [
-  "You classify a user utterance about a database into one of three intents:",
-  '- "data_query": read-only data lookup (SELECT, aggregate, filter).',
-  '- "meta": schema / metadata question ("what tables do I have", "describe X").',
-  '- "destructive": write or destructive op (INSERT, UPDATE, DELETE, DROP).',
-  'Respond with strict JSON: {"intent":"<one of the three>","confidence":<0-1 float>}.',
+  "You classify a user utterance into one of four intents:",
+  '- "create": the user wants to create a new database or schema ("a blog db", "db named messages", "tracker for my orders").',
+  '- "data_query": read-only data lookup against an existing db (SELECT, aggregate, filter).',
+  '- "meta": schema / metadata question about an existing db ("what tables do I have", "describe X").',
+  '- "destructive": write or destructive op against an existing db (INSERT, UPDATE, DELETE, DROP).',
+  'Respond with strict JSON: {"intent":"<one of the four>","confidence":<0-1 float>}.',
   "No prose, no code fences.",
 ].join("\n");
 
