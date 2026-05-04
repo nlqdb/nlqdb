@@ -1,16 +1,17 @@
-// Tiny `/v1/ask` client used by the product surface (`/app/new`).
+// Tiny `/v1/ask` client used by both the marketing hero and
+// `/app/new` (SK-WEB-008 collapsed them onto the same flow).
 //
-// The marketing hero uses `/v1/demo/ask` (canned fixtures —
-// SK-WEB-004); this helper is the real-create path: anon-bearer
-// authenticated, goal-only, returning the typed-plan create result
-// from SK-HDC-001.
+// Always anon-bearer authenticated, goal-only body, returns the
+// typed-plan create result (SK-HDC-001) on success. Carries the
+// auth_required envelope (SK-ANON-010) for the global-cap soft-
+// promotion to sign-in.
 //
 // Why a hand-rolled client and not `@nlqdb/sdk`: the SDK's surface
 // is shaped for `pk_live_<key>` query traffic (the `<nlq-data>`
 // element's primary use case — packages/elements/src/fetch.ts). The
 // anon-create flow is a one-shot the SDK doesn't model yet; landing
 // it in the SDK is its own slice. This helper is the minimum needed
-// to demonstrate the wired pipeline end-to-end.
+// to wire CreateForm.tsx end-to-end.
 
 import { getOrMintAnonToken } from "./anon";
 

@@ -3,15 +3,15 @@
 //
 // When `/v1/ask` returns 428 with `{ code: "challenge_required" }`,
 // the UI must render the Turnstile widget and resubmit with the
-// resulting `cf-turnstile-response` token. That flow lives in the
-// product app's anonymous-create path (Worksheet 3); this stub
-// returns null so callers can be wired now and the widget can be
-// dropped in without further surface churn.
+// resulting `cf-turnstile-response` token. The marketing hero AND
+// `/app/new` both reach this path via `<CreateForm>` since
+// SK-WEB-008 unified them on the real-LLM `/v1/ask` flow.
 //
-// Wired in the same PR as the product-app anonymous flow
-// (Worksheet 3). The marketing hero never reaches this path because
-// it talks to `/v1/demo/ask` (no auth, no rate-limit-driven
-// challenge).
+// Today this stub returns null so callers compile cleanly; the API
+// fails open when `TURNSTILE_SECRET` is unset (SK-ANON-009), which
+// keeps `wrangler dev` working without a Turnstile keypair. Drop in
+// the real widget (managed/invisible mode) without changing
+// `<CreateForm>`'s 428 retry seam.
 
 export async function solveChallenge(): Promise<string | null> {
   // Returns the cf-turnstile-response token, or null if unsupported.

@@ -6,9 +6,12 @@
 // per-device anonymous identity, later adopted into a real user via
 // `POST /v1/anon/adopt` on sign-in (SK-ANON-003).
 //
-// NOTE: the marketing hero does NOT call this — it talks to
-// `/v1/demo/ask` which is unauthenticated canned fixtures (SK-WEB-004).
-// The product chat surface (Worksheet 3) is the consumer.
+// Every surface that talks to `/v1/ask` reads this token — the
+// marketing hero, `/app/new`, and any first-party `<nlq-data>`
+// embed — since SK-WEB-008 unified them on the real-LLM flow. The
+// companion prompt-persistence slots (`nlqdb_draft`, `nlqdb_pending`,
+// `nlqdb_history`, per SK-ANON-011) live in `lib/prompt-storage.ts`
+// under the same localStorage primitive.
 
 const STORAGE_KEY = "nlqdb_anon";
 const PREFIX = "anon_";

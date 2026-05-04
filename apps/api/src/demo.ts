@@ -1,24 +1,16 @@
-// Public demo endpoint — backs the live `<nlq-data>` on the marketing
-// homepage and any third-party `<nlq-data goal="…" endpoint=".../v1/demo/ask">`
-// embed. No auth, CORS-permissive, canned fixtures.
+// Demo fixtures library — used to be the body of the public
+// `/v1/demo/ask` route. SK-WEB-008 retired that route in favour of
+// real-LLM `/v1/ask` for the marketing surface. The fixtures and
+// `buildDemoResult` survive here as a library because
+// `apps/api/src/chat/demo-shortcut.ts` still consumes them as the
+// chat-surface stopgap (its file header schedules its own
+// retirement once `/v1/chat/messages` migrates to real LLM).
 //
-// Why server-side and not a client-side stub on the element: per
-// PR #43, `<nlq-data>` is the real thing — no demo branch in the
-// runtime, bundle stays < 6 KB. The "demo" semantic lives here, on
-// the API. The element is dumb; whatever endpoint it points at,
-// it renders.
-//
-// Rate limit: 10/min per IP via KV, defensively keeping this from
-// becoming a free LLM-stand-in. Counters share the KV namespace
-// already wired for Better Auth's secondaryStorage.
-
-const RATE_WINDOW_SECONDS = 60;
-const RATE_MAX_PER_WINDOW = 10;
-const RATE_KEY_PREFIX = "demo:rate:";
-// Cloudflare KV `expirationTtl` minimum — 60 s. Our window aligns,
-// but the floor protects against shorter future tweaks silently
-// failing the put.
-const KV_MIN_TTL_SECONDS = 60;
+// The `RateLimiter` interface + `makeRateLimiter` factory that
+// formerly gated the demo route are deleted — anonymous rate-
+// limiting now lives in `apps/api/src/anon-rate-limit.ts` (per-IP)
+// and `apps/api/src/anon-global-cap.ts` (global), per SK-RL-007 +
+// SK-ANON-010. Do not reintroduce a per-route limiter here.
 
 type Row = Record<string, string | number | null>;
 
@@ -260,34 +252,4 @@ function pickFixture(goal: string): DemoResult {
     if (fixture.match(goal)) return fixture.build(goal);
   }
   return DEFAULT_FIXTURE(goal);
-}
-
-export interface RateLimiter {
-  hit: (
-    clientIp: string,
-  ) => Promise<{ ok: true } | { ok: false; retryAfter: number; limit: number; count: number }>;
-}
-
-export function makeRateLimiter(kv: KVNamespace): RateLimiter {
-  return {
-    hit: async (clientIp) => {
-      // Bucket per IP per window. Counter resets on TTL expiry — coarse
-      // but cheap; matches the pattern in @nlqdb/api's other rate-limit
-      // surfaces (auth, /v1/ask).
-      const key = `${RATE_KEY_PREFIX}${clientIp}`;
-      const current = Number((await kv.get(key)) ?? "0");
-      if (current >= RATE_MAX_PER_WINDOW) {
-        return {
-          ok: false,
-          retryAfter: RATE_WINDOW_SECONDS,
-          limit: RATE_MAX_PER_WINDOW,
-          count: current,
-        };
-      }
-      await kv.put(key, String(current + 1), {
-        expirationTtl: Math.max(RATE_WINDOW_SECONDS, KV_MIN_TTL_SECONDS),
-      });
-      return { ok: true };
-    },
-  };
 }
