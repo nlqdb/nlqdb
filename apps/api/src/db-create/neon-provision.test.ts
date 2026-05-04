@@ -6,7 +6,7 @@
 // SCHEMA → populated check → CREATE ROLE → GRANT → DDL[] → RLS[] →
 // INSERTs → COMMIT) — ordering is part of the provisioner's
 // contract because RLS must enable AFTER the table exists, and the
-// D1 row must land AFTER Postgres COMMITs (docs/design.md §3.6.6).
+// D1 row must land AFTER Postgres COMMITs (docs/architecture.md §3.6.6).
 //
 // Span assertions (SK-OBS-005) verify the `db.transaction` wrapper
 // and per-statement `db.query` spans land for every Postgres call,
@@ -403,7 +403,7 @@ describe("provisionDb — failure paths", () => {
     expect(result.ok).toBe(false);
     if (result.ok === false) {
       // Original cause surfaces; cleanup error is swallowed so the
-      // sweep job (docs/design.md §3.6.6) can pick up the orphan schema later.
+      // sweep job (docs/architecture.md §3.6.6) can pick up the orphan schema later.
       expect(result.reason).toBe("registry_insert_failed");
     }
   });

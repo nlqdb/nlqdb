@@ -1,7 +1,7 @@
 // Template registry. Each template is a pure function (unknown) -> HTML
 // string. Templates ESCAPE every value before interpolating, so an
 // LLM that returns hostile data can't inject HTML — the safety
-// property DESIGN §3.5 calls out lives here.
+// property docs/architecture.md §3.5 calls out lives here.
 //
 // Templates accept `unknown` rather than `Row[]` so callers don't have
 // to validate first; each template internally filters non-row entries

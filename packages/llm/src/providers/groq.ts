@@ -1,5 +1,5 @@
 // Groq — strict-$0 hot-path classification + 70B summarization.
-// DESIGN §8.1 free-tier limits: 14,400 RPD on Llama 3.1 8B Instant,
+// docs/architecture.md §8.1 free-tier limits: 14,400 RPD on Llama 3.1 8B Instant,
 // 1,000 RPD on Llama 3.3 70B / Qwen3 32B.
 
 import type { LLMOperation, Provider } from "../types.ts";

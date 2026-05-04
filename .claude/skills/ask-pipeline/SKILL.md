@@ -92,6 +92,24 @@ when-to-load:
 - **Alternatives rejected:** Generic spinner with "this is taking longer than usual" — gives no information; trains users not to trust the surface. Hide latency below a threshold — users notice anyway, and lose trust when the threshold is wrong.
 - **Source:** docs/architecture.md §0 (Honest latency) · docs/decisions.md#GLOBAL-011
 
+## The LLM loop
+
+This is the part most implementations get wrong. A single "prompt → SQL → run" pipeline is a demo, not a product. The `/v1/ask` pipeline runs these eight steps per query:
+
+1. **Schema retrieval.** Embed table + column names + sample values + foreign keys. Retrieve top-K relevant objects via pgvector. Cache per schema hash — this step is free on repeat schemas.
+2. **Intent classification.** Classify as read / write / ambiguous / clarification-needed / out-of-scope. Uses a cheap model (Groq Llama 3.1 8B / Gemini 2.5 Flash). Ambiguous → surface inline clarification chips, not a new turn.
+3. **Plan generation.** Structured tool-use with the target engine's grammar as a constrained decode where possible (grammars for SQL exist; for Mongo aggregation we hand-roll). The LLM emits a typed plan; our code emits SQL from the plan — the LLM never emits SQL directly (`SK-ASK-004`).
+4. **Static validation.** Parse the plan. Check referenced columns exist in the schema snapshot. Check for destructive ops. Dry-run with `EXPLAIN` when cheap (`EXPLAIN ANALYZE` is explicitly rejected — real data).
+5. **Confidence gate.** If confidence is low OR the plan is destructive OR touches > N rows, set `requires_confirm: true` in the response and surface a plain-English diff + row-count preview in the UI. Execution is blocked until the user approves (`SK-ONBOARD-004`).
+6. **Execute + stream.** Stream rows back as they arrive. The live trace shows this step completing in real time (`SK-ASK-008`).
+7. **Summarize.** A cheap model turns rows into prose. Always attach the raw data too — we never paraphrase away the truth. Skipped when `Accept: application/json` or row count is below threshold (`SK-ASK-005`).
+8. **Log.** Write `{ fingerprint, latency, rows_scanned, rows_returned, engine, plan_shape }` to the workload log. This feeds the Workload Analyzer in Phase 2 (`docs/architecture.md §10 §2`).
+
+**Reinventions on this path (intentional — see `docs/guidelines.md §7`):**
+- Grammar-constrained SQL decoder tuned to each dialect, not raw LLM SQL generation.
+- Schema-embedding format that treats foreign keys as edges (not just `text-embedding-3` over column names).
+- A learned query-shape classifier that runs in <10ms on the hot path and hands off to the LLM only when unsure.
+
 ## GLOBALs governing this feature
 
 Canonical text in [`docs/decisions.md`](../../docs/decisions.md). The list below names the rules that constrain this feature; any skill-local commentary is nested under the rule.

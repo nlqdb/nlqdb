@@ -1,6 +1,6 @@
 // Session-gating middleware for protected routes (`/v1/*`). Pairs with
 // `auth.ts`'s `cookieCache` + `secondaryStorage` + revocation-set hook
-// to satisfy DESIGN §4.5's "≤2s revocation" guarantee even with a
+// to satisfy docs/architecture.md §4.5's "≤2s revocation" guarantee even with a
 // 5-minute cookie cache:
 //
 // 1. `getSession()` — Better Auth returns the cookie-cached session if
@@ -43,7 +43,7 @@ export function makeRequireSession(opts: RequireSessionOpts): MiddlewareHandler<
     if (await opts.isRevoked(session.session.token)) {
       // The session row is gone but a cookie-cached copy is still in
       // flight. Tell the browser to stop using it; rely on the frontend's
-      // re-auth path (DESIGN §4.3).
+      // re-auth path (docs/architecture.md §4.3).
       return c.json({ error: "session_revoked" }, 401);
     }
     c.set("session", session);

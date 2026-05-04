@@ -172,7 +172,7 @@ export async function orchestrateAsk(
     cacheHit = false;
   }
 
-  // SQL allow-list. DESIGN §0.1 / §12 — no DROP / TRUNCATE / DELETE-
+  // SQL allow-list. docs/architecture.md §0.1 / §12 — no DROP / TRUNCATE / DELETE-
   // without-WHERE / ALTER…DROP / etc. The user's escape for an
   // incompatible schema is `nlq new`, not destructive SQL.
   const validation = await withSpan("nlqdb.sql.validate", async () => validateSql(planSql));

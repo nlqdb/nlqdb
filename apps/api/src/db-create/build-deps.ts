@@ -54,7 +54,7 @@ export function buildDbCreateDeps(envBindings: Cloudflare.Env): BuildDbCreateDep
       compileDdl,
       validateCompiledDdl,
       // SK-HDC-007: Phase 1 wires provisionDb. Phase 4 (BYO Postgres
-      // per docs/design.md §3.6.7) swaps in `registerByoDb` here
+      // per docs/architecture.md §3.6.7) swaps in `registerByoDb` here
       // — single function-body change, no orchestrator refactor.
       provision: provisionDb,
       // pgvector table-card RAG seed. The real implementation lives
@@ -99,7 +99,7 @@ function buildPgClient(connectionString: string): PgClient {
 }
 
 // 6-char random suffix for the dbId tail. Format from
-// docs/design.md §14.6: db_<slug>_<6 hex>. Uses crypto.randomUUID
+// docs/architecture.md §3.6: db_<slug>_<6 hex>. Uses crypto.randomUUID
 // (Workers + Node 18+ + Bun all have it) and slices to keep the
 // suffix short enough that the full dbId fits Postgres's 63-char
 // identifier limit even for long `slug_hint` values.

@@ -1,5 +1,5 @@
 // Engine-agnostic database adapter contract. Phase 0 ships the
-// `postgres` engine via Neon HTTP (docs/design.md §2, docs/implementation.md §3).
+// `postgres` engine via Neon HTTP (docs/architecture.md §2).
 // Phase 3 may add `redis` / `duckdb` — they implement the same shape.
 //
 // Per the product framing (memory: feedback_engine_agnostic_abstraction),

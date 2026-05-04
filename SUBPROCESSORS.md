@@ -40,7 +40,7 @@ the body) to receive updates.
 
 When you submit a query through nlqdb, the prompt — which **may
 contain personal data** — is sent to one or more LLM providers
-according to the [strict-$0 provider chain in DESIGN §8.1](./docs/design.md#81-strict-0-inference-path).
+according to the [strict-$0 provider chain in `docs/architecture.md §7.1`](./docs/architecture.md).
 We disclose this category separately because it is the most
 data-sensitive routing in the product.
 

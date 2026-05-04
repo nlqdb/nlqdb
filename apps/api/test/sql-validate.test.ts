@@ -1,5 +1,5 @@
 // SQL allow-list / reject-list tests. Asserts the contract the LLM
-// router is held to (DESIGN §0.1, §12; PERFORMANCE §4 row 6
+// router is held to (docs/architecture.md §0.1, §12; PERFORMANCE §4 row 6
 // `nlqdb.sql.validate`). Each rejected case carries a tagged reason
 // so dashboards / debugging can attribute regressions to a specific
 // rule.

@@ -1,4 +1,4 @@
-// D1-backed per-user rate limiter for `/v1/ask` (DESIGN §4.2 /
+// D1-backed per-user rate limiter for `/v1/ask` (docs/architecture.md §4.2 /
 // IMPLEMENTATION §8 / PLAN §11.5 — "per-IP + per-account rate limits
 // Day 1"). Fixed-window counter, atomic UPSERT-with-RETURNING.
 //

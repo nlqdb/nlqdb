@@ -1,4 +1,4 @@
-Progress tracker — platform integrations. Each row is a P0/P1/P2/P3 commitment. Move rows in as they're scoped, edit as they ship, archive when done. Other progress information (Phase 0/1/2 slice status) lives in `docs/architecture.md` §24.
+Progress tracker — platform integrations. Each row is a P0/P1/P2/P3 commitment. Move rows in as they're scoped, edit as they ship, archive when done. Other progress information (Phase 0/1/2 slice status) lives in `docs/architecture.md` §10.
 
 ## 1. P0 — must-have for launch
 
@@ -47,7 +47,7 @@ For server-side integration where a `sk_live_…` is held by the server and forw
 
 ### IDE / editor extensions
 
-Cursor, Windsurf, Zed, VS Code Continue, JetBrains AI Assistant all speak MCP — covered by `@nlqdb/mcp` per Phase 2 (`architecture.md` §24.5). The list below is for editor surfaces MCP doesn't reach.
+Cursor, Windsurf, Zed, VS Code Continue, JetBrains AI Assistant all speak MCP — covered by `@nlqdb/mcp` per Phase 2 (`architecture.md` §10). The list below is for editor surfaces MCP doesn't reach.
 
 | Extension              | Marketplace            | Tier   | Notes                                                            |
 | :--------------------- | :--------------------- | :----- | :--------------------------------------------------------------- |
@@ -234,7 +234,7 @@ Static-site generators (Hugo, Eleventy, Jekyll, Gatsby, Docusaurus, Mintlify) ne
 **What this matrix does NOT do.**
 
 - **Replace the `<nlq-data>` element.** The element is still the simplest way to embed nlqdb anywhere. Every framework module in §2 (Frontend framework modules) is sugar on top of it.
-- **Bind us to the listed package names.** Names are working titles; final names ride with `architecture.md` §24.2.2 (`@nlqdb` npm scope, GitHub `nlqdb` org).
+- **Bind us to the listed package names.** Names are working titles; final names ride with `architecture.md` §2 (`@nlqdb` npm scope, GitHub `nlqdb` org).
 - **Promise calendar dates.** Tiers are dependency-ordered. P0/P1/P2 ship when the prerequisite primitive ships, in priority order set by user demand.
 
 A new platform integration = open a PR adding a row to the relevant subsection + a folder under `examples/<platform>` showing the smallest working integration. Once it lands, the row gets a status badge and (when promoted) a 1st-party package.

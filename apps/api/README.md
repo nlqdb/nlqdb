@@ -1,8 +1,8 @@
 # apps/api — Cloudflare Workers API plane
 
-Phase 0 §3. Houses `POST /v1/ask` (DESIGN §4.1), auth endpoints
-(`/v1/auth/{device, device/token, refresh, logout}`, DESIGN §4.3), and
-key-management endpoints (DESIGN §4.5).
+Phase 0 §3. Houses `POST /v1/ask` (docs/architecture.md §4.1), auth endpoints
+(`/v1/auth/{device, device/token, refresh, logout}`, docs/architecture.md §4.3), and
+key-management endpoints (docs/architecture.md §4.5).
 
 ## Current state — through Slice 7
 
@@ -25,7 +25,7 @@ idempotency, dispatches `checkout.session.completed` /
 `customers` table and emit `billing.subscription_created` /
 `billing.subscription_canceled` events, and archives the raw payload
 to R2 at `stripe-events/YYYY/MM/DD/{event_id}.json` via
-`ctx.waitUntil`. No `trial.*` events — PLAN §5.3 has no Stripe trial
+`ctx.waitUntil`. No `trial.*` events — docs/architecture.md §10 has no Stripe trial
 period.
 
 ### Registering the webhook in the Stripe Dashboard
@@ -158,6 +158,6 @@ bun run --cwd apps/api deploy          # uses CLOUDFLARE_API_TOKEN + _ACCOUNT_ID
 ## Coming up
 
 - **Phase 1 (`apps/web`, Astro):** opens this auth surface to end users —
-  sign-in page (`/sign-in?return_to=…` per DESIGN §4.3), post-callback
-  landing, anonymous-mode → adoption flow (DESIGN §14). Until then,
+  sign-in page (`/sign-in?return_to=…` per docs/architecture.md §4.3), post-callback
+  landing, anonymous-mode → adoption flow (.claude/skills/web-app/SKILL.md). Until then,
   `/api/auth/*` is API-only; `app.nlqdb.com/` 404s by design.

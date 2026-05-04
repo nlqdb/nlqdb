@@ -33,7 +33,7 @@ declare global {
       GOOGLE_CLIENT_ID: string;
       GOOGLE_CLIENT_SECRET: string;
 
-      // LLM router (DESIGN §8.1). Optional at type level — providers
+      // LLM router (docs/architecture.md §8.1). Optional at type level — providers
       // whose key is missing at boot still construct, then fail their
       // first call with `not_configured` so the router can skip them.
       GROQ_API_KEY?: string;

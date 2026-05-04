@@ -7,7 +7,7 @@ declare global {
     interface Env {
       NODE_ENV?: string;
 
-      // LogSnag (DESIGN §15.6). Both must be set for the LogSnag sink
+      // LogSnag (docs/architecture.md §15.6). Both must be set for the LogSnag sink
       // to publish; a missing token short-circuits to a logged-warning
       // (the consumer still acks so the message doesn't retry forever
       // on configuration drift).

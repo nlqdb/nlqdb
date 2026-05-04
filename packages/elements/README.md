@@ -2,7 +2,7 @@
 
 `<nlq-data>` and (eventually) `<nlq-action>` custom elements — the
 "drop one HTML tag, get a backend" surface from
-[DESIGN §3.5](../../docs/design.md) and [§14.5](../../docs/design.md).
+[`docs/architecture.md §3`](../../docs/architecture.md) and [`.claude/skills/elements/SKILL.md`](../../.claude/skills/elements/SKILL.md).
 
 ## What's in v0.1 (Slice 10)
 
@@ -49,7 +49,7 @@ markup states this honestly via the `nlq-data:error` event +
 - `pk_live_*` publishable key issuance + origin-pinning.
 - `<nlq-action>` writes counterpart.
 - Server-side template rendering (the `render: "html"` API path
-  from DESIGN §3.5).
+  from `docs/architecture.md §3`).
 - `card-grid` and `chart` templates.
 - SSE auto-upgrade.
 - Error backoff during refresh polling (today: hammers at the
@@ -111,6 +111,6 @@ bun run --cwd packages/elements build      # produces dist/v1.js
 
 ## Bundle budget
 
-DESIGN §3.5 caps the CDN bundle at < 6 KB gzipped. Verify after
+`docs/architecture.md §3` caps the CDN bundle at < 6 KB gzipped. Verify after
 build with `gzip -c dist/v1.js | wc -c`. CI fails the build if the
 gzipped size reaches 6144 bytes.

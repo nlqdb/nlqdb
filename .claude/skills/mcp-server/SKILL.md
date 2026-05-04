@@ -12,7 +12,7 @@ when-to-load:
 **One-liner:** MCP server + `nlq mcp install` host detection (Claude Desktop, Cursor, etc.).
 **Status:** implemented (Phase 2)
 **Owners (code):** `packages/mcp/**`
-**Cross-refs:** docs/architecture.md §3.4 (MCP server) · docs/architecture.md §14.4 (MCP happy path) · docs/architecture.md §3 (MCP server row) · docs/architecture.md §10 §5 (Phase 2 mcp slice)
+**Cross-refs:** docs/architecture.md §3.4 (MCP server) · docs/architecture.md §3 (MCP server row) · docs/architecture.md §10 §5 (Phase 2 mcp slice)
 
 ## Touchpoints — read this skill before editing
 
@@ -89,6 +89,19 @@ when-to-load:
 - **Alternatives rejected:**
   - Hosted-only orchestration with local going through a different shim — two attack surfaces, two parsers.
   - Direct DB access from the local transport — explicitly rejected by `SK-MCP-005`.
+
+## Install paths
+
+Four supported paths — every user lands on one of these. Listed in decreasing order of friction:
+
+| Path | How | When to use |
+|---|---|---|
+| **Connector URL** (hosted, default) | Paste `mcp.nlqdb.com` into the host's MCP-connector config (Claude Desktop *Connectors*, Cursor / Zed / Windsurf MCP settings); first tool call opens an OAuth window in the browser. | Best for users who want zero local setup. No npm, no CLI. |
+| **`nlq mcp install`** (local stdio) | Auto-detects installed hosts, writes `sk_mcp_<host>_<device>_…` straight into each host's config. One host → silent. Multiple → numbered prompt. None → prints `nlqdb.com/mcp` link and exits. | Best for users who already have the CLI (`SK-MCP-003`). |
+| **Website one-click** (`app.nlqdb.com/mcp`) | Mints the key server-side and opens an `nlqdb://install?…` deep link the CLI handles. | Best for users arriving from the marketing site or dashboard who don't know about the CLI. |
+| **`NLQDB_API_KEY` env var** | Set `NLQDB_API_KEY=sk_…` in the shell / Docker environment; takes precedence over any config file on the local transport. | CI / Docker / air-gapped environments. The escape hatch (`GLOBAL-015`). |
+
+The hosted connector URL path requires no local install. All four paths terminate at the same `/v1/ask` orchestration and share the same three tools (`SK-MCP-002`, `SK-MCP-007`).
 
 ## GLOBALs governing this feature
 
