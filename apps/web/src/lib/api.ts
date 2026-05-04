@@ -35,6 +35,7 @@ export type CreateError =
   | { kind: "rate_limited"; retryAfter: number | null }
   | { kind: "auth_required"; signInUrl: string; window: "hour" | "day" | "month"; resetAt: number }
   | { kind: "unauthorized" }
+  | { kind: "goal_unclear" }
   | { kind: "server_error"; status: number };
 
 export type CreateOutcome = { ok: true; result: CreateResult } | { ok: false; error: CreateError };
@@ -102,6 +103,17 @@ export async function postAskCreate(
       // body wasn't json — fall through to bare unauthorized.
     }
     return { ok: false, error: { kind: "unauthorized" } };
+  }
+  if (res.status === 400) {
+    try {
+      const body = (await res.json()) as { error?: { status?: string } };
+      if (body.error?.status === "db_id_required") {
+        return { ok: false, error: { kind: "goal_unclear" } };
+      }
+    } catch {
+      // not json — fall through
+    }
+    return { ok: false, error: { kind: "server_error", status: 400 } };
   }
   if (!res.ok) return { ok: false, error: { kind: "server_error", status: res.status } };
 

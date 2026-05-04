@@ -55,6 +55,12 @@ const CREATE_TOKENS = new Set([
   // Setup phrasing — "set up a journal", "spin up a leaderboard"
   "setup",
   "spin",
+  // "db" / "database" without an explicit dbId is almost certainly
+  // a create intent ("a db named messages", "database for my blog").
+  // These run only when dbId is absent (see classifier.ts header),
+  // so false positives on "show db status" can't occur here.
+  "db",
+  "database",
   // Domain nouns that nearly always imply "I want a thing that
   // holds X". "log" is intentionally NOT here (overloaded with
   // verb-write usage); "memory" / "feedback" / "registry" same
