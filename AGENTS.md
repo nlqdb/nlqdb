@@ -185,6 +185,8 @@ Per-package commands are in each area's `AGENTS.md`.
 
 ## 8. Quality gates before opening a PR
 
+> **Format and lint before every commit.**
+
 1. `bun run typecheck && bun run lint && bun run test` all green.
 2. Every new decision has an ID (`GLOBAL-NNN` or `SK-<FEATURE>-NNN`)
    and is in its canonical home (`docs/decisions.md` for `GLOBAL`,
