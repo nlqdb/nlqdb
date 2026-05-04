@@ -1,5 +1,41 @@
 Progress tracker — platform integrations. Each row is a P0/P1/P2/P3 commitment. Move rows in as they're scoped, edit as they ship, archive when done. Other progress information (Phase 0/1/2 slice status) lives in `docs/architecture.md` §10.
 
+## 0. Surface status matrix — single source of truth
+
+**This table is the canonical status for every surface advertised on the homepage.** When a surface flips status, **edit this table first**, then update [`apps/web/src/components/CodePanel.astro`](../apps/web/src/components/CodePanel.astro) to match. The badge row on `nlqdb.com` mirrors this table; status here without a CodePanel update is a regression — the homepage advertises the truth.
+
+| Status     | Surface                  | Implemented as                                                                          | Notes                                                                  |
+| :--------- | :----------------------- | :-------------------------------------------------------------------------------------- | :--------------------------------------------------------------------- |
+| **Shipped**  | `<nlq-data>` HTML element | `packages/elements`; CDN bundle at `elements.nlqdb.com/v1.js` (R2)                       | Default surface; `goal=` attribute leads, `db=` is the power-user form. |
+| **Shipped**  | TypeScript SDK            | `@nlqdb/sdk` — `packages/sdk`                                                            | Sole HTTP client per `GLOBAL-001`.                                      |
+| **Shipped**  | Public demo endpoint      | `POST /v1/demo/ask` — `apps/api/src/demo.ts`                                             | No auth, CORS-permissive, canned fixtures. Backs the marketing live demo. |
+| **Phase 1**  | Chat surface              | `nlqdb.com/app` — `apps/web` Astro route + React island                                  | Streaming, three-part response, Cmd+K, Cmd+/ trace toggle.              |
+| **Phase 1**  | Hosted db.create          | `apps/api/src/db-create/**`                                                              | Typed-plan + Zod + libpg_query + Neon provisioner.                      |
+| **Phase 1**  | curl recipes              | `docs.nlqdb.com/curl/` (markdown, no code surface)                                       | One-liner reference for HTTP-API users.                                 |
+| **Phase 2**  | `nlq` CLI                 | Static Go binary; `curl \| sh`, Homebrew tap, npm shim `@nlqdb/cli` — `cli/`             | Device-code auth, OS-keychain credentials.                              |
+| **Phase 2**  | MCP server                | Hosted at `mcp.nlqdb.com` (default) + local stdio fallback `@nlqdb/mcp` — `packages/mcp` | Three tools, no `nlqdb_create_database`.                                |
+| **Phase 2**  | React / Next module       | `@nlqdb/next` (thin wrapper)                                                             | ≤200 LOC over `<nlq-data>`.                                             |
+| **Phase 2**  | Vue / Nuxt module         | `@nlqdb/nuxt` (thin wrapper)                                                             | ≤200 LOC over `<nlq-data>`.                                             |
+| **Phase 2**  | SvelteKit module          | `@nlqdb/sveltekit`                                                                       | Server `load` helpers; `<svelte:head>` injection.                       |
+| **Phase 2**  | Astro integration         | `@nlqdb/astro`                                                                           | Auto script in head; partial-hydration helpers.                         |
+| **Phase 2**  | Python SDK                | `pip install nlqdb`                                                                      | Sync + async; first user is the Jupyter magic.                          |
+| **Phase 2**  | Go SDK                    | `github.com/nlqdb/nlqdb-go`                                                              | First user is the CLI itself.                                           |
+| **Wishlist** | VSCode extension          | (clicks → `home.surface_wishlist`)                                                       | Sidebar panel + inline `<nlq-data>` preview in HTML files.              |
+| **Wishlist** | JetBrains plugin          | (clicks → `home.surface_wishlist`)                                                       | Same shape as VSCode for IntelliJ / WebStorm.                           |
+| **Wishlist** | Slack bot                 | (clicks → `home.surface_wishlist`)                                                       | `/nlq <goal>` in any channel; per-workspace API key.                    |
+| **Wishlist** | Discord bot               | (clicks → `home.surface_wishlist`)                                                       | Same shape as Slack.                                                    |
+
+**Conventions:**
+
+- **Shipped** — usable on `main`. CI builds it, runtime owns it.
+- **Phase 1** — committed for the on-ramp slice. Ships before the public alpha.
+- **Phase 2** — committed for the developer-surfaces slice. Ships before GA.
+- **Wishlist** — not committed. Surfaced on the homepage so user clicks become signal for what to prioritize next. Wishlist badges are `<a class="badge--wishlist" data-wishlist="<id>" href="mailto:hello@nlqdb.com?...">` so each click fires `home.surface_wishlist` — see `apps/web/src/components/CodePanel.astro` for the wiring.
+
+The integration matrix in §1–§4 below is *finer-grained* than this surface matrix — every row in §1–§4 corresponds to a P0/P1/P2/P3 *priority tier* for a specific package. Two of them (`@nlqdb/elements` P0, `@nlqdb/sdk` P0) are also surfaces in the matrix above; the rest are framework / mobile / middleware / IDE / iPaaS / analytics integrations that wrap one of the surfaces above.
+
+---
+
 ## 1. P0 — must-have for launch
 
 P0 ships in Phase 1 — core surface, blocked on `apps/api` going live.

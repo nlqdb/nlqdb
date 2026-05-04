@@ -62,7 +62,7 @@ mentally re-read:
 
 - The current slice's scope in [`apps/api/README.md`](../apps/api/README.md). Don't pre-empt future slices.
 - The span / metric / label catalog in [`./performance.md §3`](./performance.md#3-span--metric--label-catalog). No one-off names.
-- The package's role in [`./architecture.md §2`](./architecture.md#2-system-architecture-high-level). A change that's locally clean but breaks the system shape is worse than the bug it was fixing.
+- The package's role in [`./architecture.md §2`](./architecture.md#2-system-architecture). A change that's locally clean but breaks the system shape is worse than the bug it was fixing.
 - Whether [`./runbook.md`](./runbook.md) or any package README drifts when this lands. If yes, update both in the same PR.
 
 Symptoms of having lost the overview:

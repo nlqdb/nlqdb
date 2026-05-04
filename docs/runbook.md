@@ -209,7 +209,7 @@ nlqdb." rather than naming a specific backend.
     page**, not an OAuth redirect — device flow polls and never invokes
     the callback URL, so it doesn't need to be registered.
 - **Enable Device Flow:** ✅ — CLI uses device-code flow (`nlq login`)
-  per [./architecture.md §3.3](./architecture.md#33-cli-and-device-code-flow).
+  per [./architecture.md §3.3](./architecture.md#33-cli--nlq).
 - **Webhook URL:** _none_ — auth-only, no webhook.
 - **Credentials in `.envrc`** as `OAUTH_GITHUB_CLIENT_ID` +
   `OAUTH_GITHUB_CLIENT_SECRET` (the `OAUTH_*` prefix avoids GHA's
