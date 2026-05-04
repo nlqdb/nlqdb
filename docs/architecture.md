@@ -223,7 +223,7 @@ goal → classifier (cheap tier)
 
 #### 3.6.3 Semantic-layer moat
 
-`SchemaPlan` carries `metrics` (named aggregations) and `dimensions` (named filterable attributes). Because we own the schema-creation moment, we auto-generate the semantic layer — the runtime benefits from the dbt/Cube/Cortex pattern even though the user never wrote one. No other shipped NL-Q product does this. See [`research-receipts.md §8`](./research-receipts.md).
+`SchemaPlan` carries `metrics` (named aggregations) and `dimensions` (named filterable attributes). Because we own the schema-creation moment, we auto-generate the semantic layer — the runtime benefits from the dbt/Cube/Cortex pattern even though the user never wrote one. No other shipped NL-Q product does this. See [`research-receipts.md §8`](./research-receipts.md). Phase 2 makes this baseline editable, OSI-compatible, and source-controlled — full plan in [`docs/future/semantic-layer.md`](./future/semantic-layer.md).
 
 #### 3.6.4 Per-surface dbId resolution
 

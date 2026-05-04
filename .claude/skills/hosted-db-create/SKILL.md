@@ -171,21 +171,6 @@ Canonical text in [`docs/decisions.md`](../../docs/decisions.md). The list below
 
 ## Semantic layer — Phase 2 design
 
-**Why:** the 2025–2026 NL-to-SQL frontier diverged hard from raw-schema introspection. dbt's 2026 benchmark reports up to **3× accuracy** when the LLM queries through a curated semantic model rather than raw `information_schema` columns; Snowflake Cortex Analyst, Databricks Genie, Wren AI, and the Open Semantic Interchange (OSI) standard all converge on semantic-first NL2SQL. Full receipts in `docs/research-receipts.md §8`.
+Phase 1 emits an auto-generated `metrics`/`dimensions` baseline at create time (see `SK-HDC-005` above). Phase 2 makes that baseline **editable, OSI-compatible, and source-controlled**. Full plan, deferred decisions, and promotion path: [`docs/future/semantic-layer.md`](../../docs/future/semantic-layer.md).
 
-**Relationship to `db.create`.** The typed-plan output of `db.create` already carries `metrics` and `dimensions`. Phase 1 emits an auto-generated baseline at create time; Phase 2 makes it editable, OSI-compatible, and source-controlled. The auto-baseline is the seed, not a parallel system.
-
-**Shape of the Phase 2 ship:**
-
-1. **OSI-compatible YAML** at `~/.nlqdb/semantic.yml` (or per-DB in the registry). Compatible subset of MetricFlow + OSI shape — `entities`, `dimensions`, `metrics`, `joins`. The user's existing dbt MetricFlow / Cube / LookML dump becomes the source of truth.
-2. **Optional, not required.** Without `semantic.yml` the planner still works against raw schema. With it, the LLM's `plan` prompt receives the curated dimensions/metrics list instead of (or in addition to) the raw schema dump.
-3. **`nlq semantic init`** — bootstraps a starter `semantic.yml` from the live schema by inferring entities and 5–10 obvious metrics. User edits, commits to repo. (Alternative path: export the `db.create` auto-baseline directly — no inference needed.)
-4. **Semantic-aware allow-list.** `apps/api/src/ask/sql-validate.ts` gains an optional pass that verifies referenced columns belong to dimensions/metrics declared in `semantic.yml`. Mis-references fail with `semantic_violation` instead of leaking schema.
-5. **Cache key** includes the `semantic.yml` fingerprint so the cached schema hash invalidates when a metric is renamed.
-
-**Out of scope for Phase 2:** authoring UI, multi-engine semantic projection (BigQuery/Snowflake-specific dialects via sqlglot transpile), semantic-layer marketplace.
-
-**Deferred decisions:**
-
-- Whether to ingest dbt MetricFlow `*.yml` directly (would force a Python sidecar via `metricflow-semantics`) or only the OSI-standardized subset. Lean OSI to keep the Worker bundle clean; revisit if a customer asks for native MetricFlow.
-- Caching strategy for embeddings of dimension descriptions (pgvector on Neon vs Cloudflare Vectorize). Vectorize wins on operational simplicity; benchmark before committing.
+When Phase 2 ships, decisions from that doc promote into `SK-HDC-NNN` blocks here (semantic.yml shape, registry layout) and into sibling skills (`SK-PLAN-NNN` for cache fingerprint, `SK-SQLALLOW-NNN` for semantic-aware allow-list, `SK-CLI-NNN` for `nlq semantic init`).
