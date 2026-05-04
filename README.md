@@ -56,7 +56,7 @@ Phase 4  Enterprise polish    ░░░░░░░░░░░░░░░░�
 ```
 
 Each step is 2–4 words on purpose — full spec lives in
-[`./docs/architecture.md §10`](./docs/architecture.md#10-phased-implementation-plan) and [`./docs/history/infrastructure-setup.md`](./docs/history/infrastructure-setup.md).
+[`./docs/architecture.md §10`](./docs/architecture.md#10-phase-plan) and [`./docs/history/infrastructure-setup.md`](./docs/history/infrastructure-setup.md).
 
 ### Phase 0 — Foundations ✓
 
