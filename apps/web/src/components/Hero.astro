@@ -23,5 +23,10 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "https://app.nlqdb.com";
     SQL stays one click away, always.
   </p>
 
-  <CreateForm client:load apiBase={apiBase} />
+  {/* Form gated behind Cmd+G; the marketing chrome above renders
+      unconditionally. The Cmd+G keydown handler in
+      `apps/web/src/pages/index.astro` toggles this `hidden` attr. */}
+  <div id="hero-gate" hidden>
+    <CreateForm client:load apiBase={apiBase} />
+  </div>
 </section>
