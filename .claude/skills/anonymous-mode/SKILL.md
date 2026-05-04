@@ -108,3 +108,27 @@ Canonical text in [`docs/decisions.md`](../../docs/decisions.md). The list below
 - **Pressure-sweep eviction order beyond "oldest first".** `docs/runbook.md §9.3` drops the oldest anonymous DB when total bytes exceed 300 MB. Whether to weight eviction by size (drop biggest-and-oldest first) is undecided; the simpler oldest-first is the current pick.
 - **Cross-device anonymous continuity.** Per-device anonymous identity (per-browser `localStorage`, per-CLI keychain) is the Phase 1 design. Cross-device unification (e.g., a paste-this-code handshake) is deferred to Phase 2 — it adds complexity for a small fraction of users and the per-device model covers the majority use case.
 - **Browser-storage clearing.** A user who clears `localStorage` before signing in loses access to their anonymous DB (the device-token hash is the only handle). No recovery path is currently designed; whether this is acceptable or needs a "lost my anonymous DB" support endpoint is open.
+
+## Happy path walkthrough
+
+### §15.4 P5 — Aarav, the Student
+
+**Goal:** finish the CS50 final project (a blog).
+
+| Step | Aarav does | nlqdb does |
+|---|---|---|
+| 1 | Opens `nlqdb.com` on the library laptop, types *"a blog with posts and authors"* | DB created anonymously (no signup), schema inferred, replies with the SQL it ran ("…in case you're curious — your assignment asks for it") |
+| 2 | Pastes the SQL into his write-up | — |
+| 3 | Types *"add a sample post by 'Aarav' titled 'hello world'"* | Inserts the row |
+| 4 | Clicks "Copy starter HTML" in the chat — a pre-keyed `<nlq-data>` snippet lands on his clipboard | — |
+| 5 | Pastes it into his static-HTML assignment | Renders the blog feed, no build step |
+| 6 | *(Optional)* Signs in with GitHub to keep the DB past 72h | Anonymous DB adopted into his account in one SQL row (§4.1) |
+| 7 | Submits the assignment | — |
+
+**What Aarav never did:** ran `brew install postgresql`, dealt with a port conflict, installed a CLI, learned what `pg_hba.conf` is, gave up on day 1.
+
+The chat **also taught him** the SQL it generated, so he understands what his own project does. The free tier costs us cents and produces a future P1.
+
+### §15.5 The pattern
+
+First action is always stating a goal. DB is a silent consequence. Four surfaces (chat, CLI, MCP, embed) are projections of one verb: *ask, in plain English, against the data you care about*.
