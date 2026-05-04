@@ -10,7 +10,8 @@ describe("makeQueueEmitter", () => {
     await emitter.emit({ name: "user.first_query", userId: "u_1", dbId: "db_1" });
 
     expect(queue.sent).toHaveLength(1);
-    const env = queue.sent[0]!;
+    const env = queue.sent[0];
+    if (!env) throw new Error("expected one envelope on the queue");
     expect(env.id).toBe("user.first_query.u_1");
     expect(env.event).toEqual({ name: "user.first_query", userId: "u_1", dbId: "db_1" });
     expect(typeof env.ts).toBe("number");

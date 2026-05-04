@@ -13,7 +13,7 @@ describe("makeEmailSender", () => {
   });
 
   it("returns a console-logging stub when no API key is configured", async () => {
-    const log = vi.spyOn(console, "log").mockImplementation(() => {});
+    const log = vi.spyOn(console, "info").mockImplementation(() => {});
     const send = makeEmailSender({ apiKey: undefined, from: "x@example.com" });
     await send({ to: "user@example.com", subject: "hi", text: "click" });
     expect(log).toHaveBeenCalledOnce();

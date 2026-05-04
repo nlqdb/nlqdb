@@ -12,6 +12,7 @@ Smallest-scaffold integrations of nlqdb in popular frontends + a CLI-only path. 
 | [`sveltekit/`](./sveltekit)       | SvelteKit              | 11                            |
 | [`astro/`](./astro)               | Astro                  | 12                            |
 | [`cli/`](./cli)                   | Bash + `nlq`           | 4 commands, no frontend       |
+| [`curl/`](./curl)                 | Raw HTTP, no client    | 3 calls (read / write / anon) |
 
 Every framework example does the same thing: render today's orders as a live-refreshing table, in 1 file. The variance is the framework's surrounding files — the **nlqdb integration is identical**: include the `<nlq-data>` element from `elements.nlqdb.com/v1.js`, set `goal` + `api-key`, done.
 

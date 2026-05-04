@@ -181,7 +181,8 @@ function makeFakeR2(): FakeR2 {
         fake.failNextPut = undefined;
         throw err;
       }
-      fake.puts!.push({ key, body: String(body) });
+      if (!fake.puts) throw new Error("FakeR2.puts not initialized");
+      fake.puts.push({ key, body: String(body) });
       return {} as R2Object;
     },
   };
@@ -348,7 +349,9 @@ describe("processWebhook — idempotency", () => {
     expect(queue.sent).toHaveLength(1); // billing.subscription_canceled emitted
 
     // Reset customer status to verify second call doesn't re-dispatch.
-    db.customers.get("u_1")!.status = "active";
+    const customer = db.customers.get("u_1");
+    if (!customer) throw new Error("expected customer u_1 in fake db");
+    customer.status = "active";
     const second = await processWebhook(deps, "{}", "sig");
     expect(second.body).toMatchObject({ duplicate: true });
     expect(db.customers.get("u_1")?.status).toBe("active"); // unchanged
