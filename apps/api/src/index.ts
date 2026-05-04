@@ -48,6 +48,11 @@ const app = new Hono<{
 // the request header, not a cookie, but the marketing surfaces are
 // always on the explicit allow-listed origins.
 //
+// Preview surfaces (SK-AUTH-013): Workers-Versions preview URLs land
+// at `<short-version-id>-nlqdb-web.omer-hochman.workers.dev`; the
+// account-subdomain anchor keeps the regex scoped to our own account.
+// Pages-preview PRs use `pr-<N>.nlqdb-web.pages.dev`.
+//
 // `/v1/demo/*` was retired with /v1/demo/ask (SK-WEB-008). Third-
 // party `<nlq-data>` embeds with `pk_live_` keys are still a
 // separate slice — those land with per-key origin pinning, not a
@@ -57,6 +62,7 @@ const CORS_ALLOWED_ORIGINS = [
   "https://www.nlqdb.com",
   "https://nlqdb-web.pages.dev",
   /^https:\/\/pr-\d+\.nlqdb-web\.pages\.dev$/,
+  /^https:\/\/[a-f0-9]{8}-nlqdb-web\.omer-hochman\.workers\.dev$/,
   "http://localhost:4321",
   "http://localhost:8787",
 ];
