@@ -1,0 +1,141 @@
+---
+// "Promises" — the trust-beat block. Sits between Replaces (competitive
+// framing) and ResearchReceipts (credibility) as the second of two
+// skeptic-targeted sections. Each card surfaces one promise with a
+// pointer to the canonical decision ID; bodies live in
+// `docs/decisions.md` and the per-feature SKILL.md files, never here.
+//
+// Why on the homepage: a free-forever, $0-stack pitch invites a
+// "what's the catch" reflex. This block answers it directly with the
+// guarantees that constrain how we build, not how we market.
+
+import { PROMISES } from "../data/promises";
+---
+
+<section class="promises" aria-labelledby="promises-title">
+  <header class="promises__head">
+    <p class="promises__kicker">What we promise</p>
+    <h2 class="promises__title" id="promises-title">
+      Free forever has a catch — here it is.
+    </h2>
+    <p class="promises__lede">
+      Eight constraints that govern how we build. Each is a decision
+      with a canonical ID; reviews block PRs that contradict them.
+    </p>
+  </header>
+
+  <ol class="promises__list">
+    {
+      PROMISES.map((p, i) => (
+        <li class="promises__item">
+          <span class="promises__num" aria-hidden="true">
+            {String(i + 1).padStart(2, "0")}
+          </span>
+          <h3 class="promises__label">{p.label}</h3>
+          <p class="promises__what">{p.what}</p>
+          <p class="promises__src">
+            <span class="promises__src-id">{p.source}</span>
+          </p>
+        </li>
+      ))
+    }
+  </ol>
+</section>
+
+<style is:global>
+  .promises {
+    padding: clamp(48px, 8vw, 96px) 0;
+    border-top: 1px solid var(--border);
+  }
+
+  .promises__head {
+    margin-bottom: clamp(28px, 4vw, 40px);
+    max-width: 60ch;
+  }
+
+  .promises__kicker {
+    margin: 0 0 12px;
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+
+  .promises__title {
+    margin: 0 0 16px;
+    font-family: var(--mono);
+    font-size: clamp(24px, 3.6vw, 36px);
+    letter-spacing: -0.02em;
+    line-height: 1.15;
+  }
+
+  .promises__lede {
+    margin: 0;
+    font-size: 15px;
+    line-height: 1.6;
+    color: var(--fg-dim);
+  }
+
+  .promises__list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: grid;
+    gap: 16px;
+  }
+
+  @media (min-width: 720px) {
+    .promises__list {
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 20px;
+    }
+  }
+
+  .promises__item {
+    padding: clamp(20px, 2.5vw, 28px);
+    border: 2px solid var(--border-strong);
+    background: var(--bg-elev);
+    box-shadow: var(--shadow-hard);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .promises__num {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.16em;
+    color: var(--accent);
+  }
+
+  .promises__label {
+    margin: 0;
+    font-family: var(--mono);
+    font-size: clamp(15px, 1.7vw, 17px);
+    letter-spacing: -0.01em;
+    color: var(--fg);
+    line-height: 1.25;
+  }
+
+  .promises__what {
+    margin: 0;
+    font-size: 13px;
+    color: var(--fg-dim);
+    line-height: 1.55;
+    flex: 1;
+  }
+
+  .promises__src {
+    margin: 0;
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--fg-muted);
+  }
+
+  .promises__src-id {
+    color: var(--accent);
+  }
+</style>
