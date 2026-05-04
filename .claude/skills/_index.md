@@ -35,6 +35,7 @@ Cross-cutting decisions cited by skills: [`docs/decisions.md`](../../docs/decisi
 | [`idempotency`](./idempotency/SKILL.md) | `Idempotency-Key` on every mutation; dedupe store; retry-safety. | natural-key dedupe shipped (Stripe webhook, waitlist) · general-purpose `Idempotency-Key` middleware on `/v1/ask` open |
 | [`rate-limit`](./rate-limit/SKILL.md) | Per-key, per-IP rate-limit middleware. | per-account D1 limiter (`/v1/ask`) + per-IP KV limiter (`/v1/demo/ask`) shipped · unified middleware open |
 | [`anonymous-mode`](./anonymous-mode/SKILL.md) | No-login first value across web / CLI / MCP. | API shipped (`/v1/anon/adopt`) · web UI remaining (Phase 1 exit gate) |
+| [`onboarding`](./onboarding/SKILL.md) | First-60-seconds experience — zero-friction signup, goal-first on-ramp, anti-patterns we refuse. | Anti-patterns locked (SK-ONBOARD-001..004) · web implementation remaining (Phase 1 exit gate) |
 
 ## Planned
 

@@ -126,14 +126,14 @@ app.get("/v1/health", (c) =>
 
 // `POST /v1/ask` (Slice 6).
 //
-// Content negotiation (DESIGN §14.6 / line 624):
+// Content negotiation (docs/architecture.md §13 (HTTP API happy path in .claude/skills/ask-pipeline/SKILL.md) / line 624):
 //   - Accept: text/event-stream → SSE { plan → rows → summary }
 //   - Accept: application/json → JSON without summary (skips an LLM hop)
 //   - Default → JSON with summary
 //
 // JWT plug-in point: when the plan cache or query execution moves
 // to a separate service (Fly machine, Hyperdrive), mint a 30s
-// internal JWT here (DESIGN §4.4) and verify it on the receiving
+// internal JWT here (docs/architecture.md §4.4) and verify it on the receiving
 // end. In-isolate today, so signing would be cargo-culting (see
 // commit 1a body for the rationale).
 app.post("/v1/ask", requireSession, async (c) => {
@@ -410,7 +410,7 @@ app.post("/v1/stripe/webhook", async (c) => {
   return c.json(result.body, result.status);
 });
 
-// Chat surface (Slice 10 — DESIGN §3.2 "Signed-in surface").
+// Chat surface (Slice 10 — docs/architecture.md §3.2 "Signed-in surface").
 //
 // Two endpoints, both `requireSession`-gated. Stateless — every call
 // re-reads from D1, no in-isolate caching. The chat is one rolling
@@ -542,7 +542,7 @@ function errorStatus(status: AskError["status"]): 400 | 404 | 422 | 429 | 502 {
   }
 }
 
-// Better Auth catch-all (DESIGN §4.1, PERFORMANCE §4 row 5).
+// Better Auth catch-all (docs/architecture.md §4.1, PERFORMANCE §4 row 5).
 //
 // Span naming: callbacks get `nlqdb.auth.oauth.callback` (one span per
 // IdP code-exchange); every other `/api/auth/*` request — session

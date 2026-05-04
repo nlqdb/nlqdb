@@ -1,4 +1,4 @@
-// Stage 1 of the typed-plan pipeline (docs/design.md §3.6.2): goal
+// Stage 1 of the typed-plan pipeline (docs/architecture.md §3.6.2): goal
 // string in, validated `SchemaPlan` out. The LLM picks structure, our
 // code emits SQL — see docs/research-receipts.md §2 for the Cortex
 // Analyst / SchemaAgent / CHASE-SQL receipts and SK-HDC-002 /

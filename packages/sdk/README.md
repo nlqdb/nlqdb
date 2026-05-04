@@ -5,7 +5,7 @@ runtime-agnostic — only depends on global `fetch` (browsers, Node ≥
 18, Bun, Cloudflare Workers).
 
 Phase 0 — first consumer is `apps/web`; second is `packages/elements`.
-Published to npm as `@nlqdb/sdk` (DESIGN §5.1).
+Published to npm as `@nlqdb/sdk` (docs/architecture.md §5.1).
 
 ## Install
 

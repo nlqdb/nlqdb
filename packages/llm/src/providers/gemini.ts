@@ -1,5 +1,5 @@
 // Google AI Studio (Gemini) — strict-$0 plan workhorse + hard-plan
-// fallback. DESIGN §8.1 free-tier limits: 500 RPD on Flash, 100 RPD
+// fallback. docs/architecture.md §8.1 free-tier limits: 500 RPD on Flash, 100 RPD
 // on Pro. Wire format is Google's, not OpenAI's.
 
 import { type CallOpts, type LLMOperation, type Provider, ProviderError } from "../types.ts";

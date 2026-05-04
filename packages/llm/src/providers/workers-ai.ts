@@ -1,5 +1,5 @@
 // Cloudflare Workers AI — strict-$0 non-US classification fallback
-// + future embeddings home. DESIGN §8.1 free-tier limit: 10,000
+// + future embeddings home. docs/architecture.md §8.1 free-tier limit: 10,000
 // Neurons/day. We use the REST endpoint (uniform with the other
 // providers) rather than the `AI` Worker binding — keeps the package
 // runtime-agnostic and easy to test.

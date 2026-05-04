@@ -8,7 +8,7 @@ import { build } from "esbuild";
 //
 // Distribution (Slice 9 manual; Slice 10+ may automate): upload
 // `dist/v1.js` to R2 under the `elements.nlqdb.com` bucket.
-// Bundle-size budget per DESIGN §3.5: < 6 KB gzipped.
+// Bundle-size budget per docs/architecture.md §3.5: < 6 KB gzipped.
 
 await build({
   entryPoints: ["src/index.ts"],

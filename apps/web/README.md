@@ -1,8 +1,8 @@
 # apps/web — Astro marketing site
 
 Phase 1. Static-first Astro deployed via Cloudflare **Workers Static
-Assets** at `nlqdb.com`. Lighthouse target 100/100/100/100 (PLAN §1.1,
-DESIGN §3.1).
+Assets** at `nlqdb.com`. Lighthouse target 100/100/100/100 (docs/architecture.md §10,
+docs/architecture.md §3.1).
 
 Currently shipping:
 
@@ -45,6 +45,6 @@ producing sticky `pr-N-nlqdb-web.<account>.workers.dev` URLs.
 
 ## Design tokens
 
-`src/styles/global.css` — neo-brutalist + terminal per DESIGN §3.1:
+`src/styles/global.css` — neo-brutalist + terminal per docs/architecture.md §3.1:
 Acid Lime `#C6F432` on near-black `#0B0F0A`, JetBrains Mono headlines,
 3px borders, 6px hard shadows, no rounding.

@@ -8,7 +8,7 @@ export interface Snippet {
   source: string;
 }
 
-// Three install methods per DESIGN §3.1. Each ≤10 lines, all
+// Three install methods per docs/architecture.md §3.1. Each ≤10 lines, all
 // rendering against the same hypothetical "orders tracker" demo DB.
 // Edit content here only — the rendering pipeline tokenizes + escapes
 // at build time.

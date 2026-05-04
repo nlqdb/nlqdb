@@ -1,7 +1,7 @@
 # @nlqdb/llm
 
 LLM router. Cost-ordered failover across the strict-$0 provider chain
-defined in [DESIGN §8.1](../../docs/design.md#81-strict-0-inference-path).
+defined in [`docs/architecture.md §7.1`](../../docs/architecture.md).
 
 ```ts
 import {
@@ -84,4 +84,4 @@ bun run --cwd packages/llm test
 ```
 
 Tests inject a fake `fetch` per provider — no live API keys required.
-Per IMPLEMENTATION §3, every provider has a test for every operation.
+Per the Phase 0 slice plan in `docs/architecture.md §10`, every provider has a test for every operation.

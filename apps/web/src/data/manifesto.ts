@@ -1,4 +1,4 @@
-// Manifesto content (DESIGN §0). Single source of truth for the
+// Manifesto content (docs/architecture.md §0). Single source of truth for the
 // long-form `/manifesto` page and the home-page excerpt.
 
 export interface Tenet {
@@ -80,7 +80,7 @@ export const tenets: readonly Tenet[] = [
   },
 ];
 
-// Inversion table (DESIGN §0.1). Tabular data — rendered as a real
+// Inversion table (docs/architecture.md §0.1). Tabular data — rendered as a real
 // <table> by the manifesto page.
 export interface InversionRow {
   surface: string;

@@ -1,4 +1,4 @@
-// Production LLM router for `apps/api`. Provider chain per DESIGN §8.1
+// Production LLM router for `apps/api`. Provider chain per docs/architecture.md §8.1
 // strict-$0: Groq → Gemini → Workers AI → OpenRouter, cost-ordered
 // failover. Providers without API keys fail through `not_configured`.
 //

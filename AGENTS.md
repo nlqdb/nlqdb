@@ -139,6 +139,7 @@ manually before editing.)
 | `packages/sdk/**` | `.claude/skills/sdk/SKILL.md` |
 | `packages/mcp/**` | `.claude/skills/mcp-server/SKILL.md` |
 | `apps/web/**` (onboarding, anonymous mode) | `.claude/skills/web-app/SKILL.md` |
+| `apps/web/src/onboarding/**`, signup flow, first-query path | `.claude/skills/onboarding/SKILL.md` |
 
 Per-area `AGENTS.md` files (e.g. `packages/db/AGENTS.md`) repeat just
 their slice of this table, so you don't need the full root view when
@@ -158,6 +159,7 @@ working in one directory.
 | [`docs/research-receipts.md`](docs/research-receipts.md) | Receipts for cited research. |
 | [`docs/competitors.md`](docs/competitors.md) | Competitive landscape — categories, threat matrix, gap analysis. |
 | [`docs/history/`](docs/history/) | Lessons learnt — one doc per operational topic (infra setup, migrations, etc.). |
+| [`docs/research/`](docs/research/) | Strategic research — personas, LLM credits plan, email & marketing strategy. |
 
 These exist for depth; they are not loaded into every session by
 default. The skill index (`.claude/skills/_index.md`) is the front

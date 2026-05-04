@@ -1,7 +1,7 @@
-// SQL allow-list for `/v1/ask` read/write plans (DESIGN §3.6.5).
+// SQL allow-list for `/v1/ask` read/write plans (docs/architecture.md §3.6.5).
 //
 // This validator covers the read/write path only. DDL (CREATE/ALTER)
-// goes through the typed-plan pipeline at DESIGN §3.6.2 — the LLM
+// goes through the typed-plan pipeline at docs/architecture.md §3.6.2 — the LLM
 // emits a typed JSON plan, our deterministic compiler emits the SQL,
 // and a separate Zod-plan + libpg_query parse is the validator.
 // CREATE rejection in *this* file is therefore correct: when called
@@ -29,7 +29,7 @@
 // holds.)
 //
 // Postgres-specific guardrails this validator does NOT cover, which
-// MUST be applied at other layers (DESIGN §3.6.5, research-receipts §10):
+// MUST be applied at other layers (docs/architecture.md §3.6.5, research-receipts §10):
 //   - Role-level isolation (`pg_read_all_data`, search_path scoping)
 //     — applied at the Neon connection pool, not here.
 //   - Row-Level Security policies — applied per-schema by the

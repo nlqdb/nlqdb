@@ -1,5 +1,5 @@
 // OpenRouter — universal :free fallback when Gemini/Groq are out.
-// DESIGN §8.1: ~200 RPD across :free models. Same OpenAI-compat shape
+// docs/architecture.md §8.1: ~200 RPD across :free models. Same OpenAI-compat shape
 // as Groq, different host.
 
 import type { LLMOperation, Provider } from "../types.ts";

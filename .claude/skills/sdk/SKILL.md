@@ -12,7 +12,7 @@ when-to-load:
 **One-liner:** `@nlqdb/sdk` — the only HTTP client; browser-cookie vs server-bearer; auto-refresh.
 **Status:** implemented
 **Owners (code):** `packages/sdk/**`
-**Cross-refs:** docs/architecture.md §3.1 (code-surfaces matrix) · docs/architecture.md §14.6 (HTTP API happy path) · docs/architecture.md §3 (TypeScript SDK row) · packages/sdk/README.md
+**Cross-refs:** docs/architecture.md §3.1 (code-surfaces matrix) · `.claude/skills/ask-pipeline/SKILL.md` (HTTP API happy path) · docs/architecture.md §3 (TypeScript SDK row) · packages/sdk/README.md
 
 ## Touchpoints — read this skill before editing
 
