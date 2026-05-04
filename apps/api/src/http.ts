@@ -1,20 +1,19 @@
 // Tiny HTTP helpers for the Hono handlers.
 //
-// Three parsers, one per endpoint shape:
+// Two parsers, one per endpoint shape:
 //   - `parseGoalDbBody` — `{ goal, dbId }` both required (chat).
 //   - `parseAskBody`    — `{ goal, dbId? }` (the `/v1/ask` shape;
 //     dbId-omitted routes the create branch — SK-ASK-001 / SK-HDC-001).
-//   - `parseGoalBody`   — `{ goal }` only (`/v1/demo/ask` — fixtures
-//     ignore any dbId; SK-WEB-004 names this surface goal-only).
 //
-// Each parser keeps the "first failing field" error envelope shape so
-// clients can branch on `error` without parsing a list.
+// `parseGoalBody` (goal-only) was retired with /v1/demo/ask
+// (SK-WEB-008): the marketing surface now hits /v1/ask with an
+// anon bearer, and `parseAskBody` covers the goal-only shape via
+// dbId being optional.
 
 import type { Context } from "hono";
 
 export type GoalDbBody = { goal: string; dbId: string };
 export type AskBody = { goal: string; dbId?: string };
-export type GoalBody = { goal: string };
 
 export type ParseError = {
   status: 400;
@@ -50,19 +49,6 @@ export async function parseAskBody(c: Context): Promise<ParseResult<AskBody>> {
     body.dbId = raw.body.dbId;
   }
   return { ok: true, body };
-}
-
-// `/v1/demo/ask` parser — fixtures are keyed only off the goal
-// substring (apps/api/src/demo.ts), so dbId is structurally absent
-// rather than "optional". Mirrors SK-WEB-004's "marketing site lives
-// on goal-only fixtures" stance.
-export async function parseGoalBody(c: Context): Promise<ParseResult<GoalBody>> {
-  const raw = await parseJsonBody<{ goal?: unknown }>(c);
-  if (!raw.ok) return { ok: false, error: { status: 400, body: { error: "invalid_json" } } };
-  if (typeof raw.body.goal !== "string" || raw.body.goal.trim().length === 0) {
-    return { ok: false, error: { status: 400, body: { error: "goal_required" } } };
-  }
-  return { ok: true, body: { goal: raw.body.goal } };
 }
 
 // JSON body reader that swallows the parse exception into a typed

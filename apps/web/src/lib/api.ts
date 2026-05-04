@@ -32,10 +32,18 @@ export interface CreateResult {
 export type CreateError =
   | { kind: "challenge_required" }
   | { kind: "rate_limited"; retryAfter: number | null }
+  | { kind: "auth_required"; signInUrl: string; window: "hour" | "day" | "month"; resetAt: number }
   | { kind: "unauthorized" }
   | { kind: "server_error"; status: number };
 
 export type CreateOutcome = { ok: true; result: CreateResult } | { ok: false; error: CreateError };
+
+interface AuthRequiredEnvelope {
+  status: "auth_required";
+  signInUrl: string;
+  window: "hour" | "day" | "month";
+  resetAt: number;
+}
 
 export async function postAskCreate(
   apiBase: string,
@@ -69,7 +77,31 @@ export async function postAskCreate(
       },
     };
   }
-  if (res.status === 401) return { ok: false, error: { kind: "unauthorized" } };
+  if (res.status === 401) {
+    // The 401 carries TWO shapes: the global-anon-cap envelope
+    // (SK-ANON-010, soft auth-redirect) and the bare `unauthorized`
+    // shape (cookie revoked / malformed bearer). Distinguish by
+    // body. The cap envelope drives the prompt-stash + redirect
+    // flow in CreateForm.tsx; bare unauthorized is a hard error.
+    try {
+      const body = (await res.json()) as { error?: AuthRequiredEnvelope | { status?: string } };
+      if (body.error && "status" in body.error && body.error.status === "auth_required") {
+        const env = body.error as AuthRequiredEnvelope;
+        return {
+          ok: false,
+          error: {
+            kind: "auth_required",
+            signInUrl: env.signInUrl,
+            window: env.window,
+            resetAt: env.resetAt,
+          },
+        };
+      }
+    } catch {
+      // body wasn't json — fall through to bare unauthorized.
+    }
+    return { ok: false, error: { kind: "unauthorized" } };
+  }
   if (!res.ok) return { ok: false, error: { kind: "server_error", status: res.status } };
 
   const body = (await res.json()) as CreateResult;

@@ -2,10 +2,7 @@
 import Carousel from "../components/Carousel.astro";
 import CodePanel from "../components/CodePanel.astro";
 import Footer from "../components/Footer.astro";
-// `Hero` (interactive goal input) is intentionally NOT imported here
-// while the marketing surface is gated — see the long blocker comment
-// below. The component still exists at `../components/Hero.astro` +
-// `../components/Hero.tsx`; unhiding is a one-line restore.
+import Hero from "../components/Hero.astro";
 import ManifestoExcerpt from "../components/ManifestoExcerpt.astro";
 import Replaces from "../components/Replaces.astro";
 import ResearchReceipts from "../components/ResearchReceipts.astro";
@@ -22,102 +19,14 @@ import Base from "../layouts/Base.astro";
     <Topnav />
 
     <main>
-      {/* ══════════════════════════════════════════════════════════════
-          HERO INTENTIONALLY HIDDEN — DO NOT RESTORE WITHOUT CLEARING
-          THE BLOCKERS BELOW.
-
-          The interactive `<Hero />` (apps/web/src/components/Hero.astro
-          + Hero.tsx) is built and tested but not rendered on the
-          homepage. Unhiding is a one-line edit (re-add the import +
-          drop `<Hero />` back in above the carousel) once the items
-          below are resolved.
-
-          Why hidden, in priority order:
-
-          B1 — Demo fixtures lie by accident.
-              The hero submits to `/v1/demo/ask`, which runs the goal
-              through five regexes in `apps/api/src/demo.ts` (memory /
-              CRM / leaderboard / feedback / orders-default). Goals that
-              don't match any of the four named patterns fall through
-              to the orders fixture. Reproduction: "Create a new
-              workspace named omer" → returns "Today's orders
-              aggregated by drink (matching 'Create a new workspace
-              named omer')". The framing is technically honest (we
-              MATCHED against that goal) but reads as if the orders
-              data is RELATED to the goal, which it isn't. Until we
-              either (a) gate the hero on a regex hit and refuse the
-              fall-through, or (b) classify the goal server-side and
-              return a "this is a create — try /app/new" envelope, the
-              hero teaches users that nlqdb returns nonsense for novel
-              goals. SK-WEB-003 — "above the fold is runnable code,
-              not feature bullets" — explicitly trades on credibility;
-              an unrelated fixture is the opposite of runnable proof.
-
-          B2 — "What are you building?" implies create; demo only reads.
-              The hero's prompt is a creation cue ("a CRM", "an orders
-              tracker", "a workspace named …"). The demo endpoint, by
-              SK-WEB-004's design, never creates anything — it only
-              returns snapshots of toy datasets. The fixtures named
-              after example goals (CRM, leaderboard, feedback) accept
-              the input but answer with a static read. The mental
-              model the hero sets and the model the demo serves don't
-              line up. Real creation lives at /app/new (SK-HDC-001 +
-              SK-ANON-008 wired in this PR), which the hero does not
-              link to.
-
-          B3 — No next step from the hero result.
-              Even when the fixture happens to match, the rendered
-              table dead-ends. There's no "sign up to keep this", no
-              "open a real DB at /app/new", no copyable snippet
-              (SK-WEB-007 is about the chat surface, not the marketing
-              hero). The result is a curio, not an on-ramp.
-
-          B4 — No regression test for the fall-through.
-              `apps/api/test/demo.test.ts` covers each named fixture
-              but not the "no fixture matches" case. A future fixture
-              rename or regex tightening can silently change which
-              goals fall through to orders without anyone noticing.
-              Add a parametrised test (a list of goals known NOT to
-              match, asserting the orders default is returned with a
-              honest summary) before unhiding.
-
-          B5 — Hero conflicts with /app/new for hero traffic.
-              This PR shipped /app/new (real anon-create against
-              /v1/ask, SK-ANON-008 / SK-RL-007). With both surfaces
-              live, a user who lands on / and types "an orders
-              tracker" gets a fake; the same user typing the same
-              goal at /app/new gets a real Neon schema. Two surfaces,
-              two mental models, no signal which one is "real."
-              Either fold the hero into a "preview-then-real" flow
-              (demo on first paint → CTA to /app/new on submit) or
-              promote the carousel + waitlist as the homepage
-              entry-point until /app/new is link-bar-promoted.
-
-          B6 — `View Transitions` morph from SK-WEB-002 isn't built.
-              The skill describes the hero as "a single input that
-              MORPHS INTO A CHAT via View Transitions." Today's
-              implementation is one-shot fetch → static result. The
-              shipped artefact is a stub of the documented experience;
-              even if B1–B4 were resolved, the hero would still
-              underdeliver against SK-WEB-002. Treat the morph as a
-              prerequisite, not an enhancement.
-
-          When all six clear, restore by:
-            1. `import Hero from "../components/Hero.astro";`
-            2. `<Hero />` above `<Carousel ... />` below.
-            3. Update SK-WEB-002 status: planned → implemented.
-            4. Drop this comment block.
-          ══════════════════════════════════════════════════════════ */}
-
       {/* Narrative order: positioning → capability showcase → primary
           CTA → technical proof → competitive framing → research
-          receipts → philosophy. PR #49's pivot dropped CodePanel +
-          ManifestoExcerpt as part of the coming-soon simplification;
-          restored because they back the carousel with real
-          integration code and product philosophy. ResearchReceipts
-          (added in the docs-clarification PR) sits late in the page
-          as the "we did our homework" credibility beat — visitors
-          who scrolled this far are skeptics who want sources. */}
+          receipts → philosophy. The hero now talks to real `/v1/ask`
+          with an anonymous bearer (SK-WEB-008) — the canned-fixture
+          /v1/demo/ask endpoint was retired. The carousel below
+          remains the only static-fixture surface; its examples
+          (`SHOWCASE_EXAMPLES`) are pre-rendered HTML, no fetch. */}
+      <Hero />
       <Carousel examples={SHOWCASE_EXAMPLES} />
       <Waitlist />
       <CodePanel />
@@ -132,10 +41,10 @@ import Base from "../layouts/Base.astro";
 
 <script>
   // Provision the anonymous-mode token on first visit (SK-ANON-001).
-  // Stays here even with the hero hidden: visitors that navigate to
-  // /app/new from the carousel / footer / direct link benefit from
-  // a token already minted, so the product surface hydrates with the
-  // bearer in localStorage on first paint.
+  // The hero's `<CreateForm>` would mint on first call anyway, but
+  // landing the bearer in localStorage at first paint means the
+  // network request that follows already has its `Authorization:
+  // Bearer anon_*` header.
   import { getOrMintAnonToken } from "../lib/anon";
   getOrMintAnonToken();
 </script>

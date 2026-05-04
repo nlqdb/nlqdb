@@ -31,7 +31,7 @@ Cross-cutting decisions cited by skills: [`docs/decisions.md`](../../docs/decisi
 
 | Skill | One-liner | What's done · what's open |
 |---|---|---|
-| [`web-app`](./web-app/SKILL.md) | Marketing site + product web app. | Marketing site live · interactive hero (`/`) + anon-create surface (`/app/new`) shipped · sign-in UI + chat surface remain (Phase 1 exit gate) |
+| [`web-app`](./web-app/SKILL.md) | Marketing site + product web app. | Marketing site live · real-LLM hero (`/`) + permalink alias (`/app/new`) shipped (SK-WEB-008) · sign-in UI replays `nlqdb_pending` (Phase 1 exit gate) · chat surface remains |
 | [`schema-widening`](./schema-widening/SKILL.md) | "Schemas only widen" invariant; `schema_hash` semantics. | `schema_hash` plumbed end-to-end · observed-fields collector + widening trigger ship post-Phase-0 |
 | [`idempotency`](./idempotency/SKILL.md) | `Idempotency-Key` on every mutation; dedupe store; retry-safety. | natural-key dedupe shipped (Stripe webhook, waitlist) · general-purpose `Idempotency-Key` middleware on `/v1/ask` open |
 | [`rate-limit`](./rate-limit/SKILL.md) | Per-key, per-IP rate-limit middleware. | per-account D1 limiter, per-IP KV limiter (`/v1/demo/ask`), and anon-tier KV limiter (`anon-rate-limit.ts`) all shipped with `X-RateLimit-*` parity · per-account anon-create cap pending adoption |

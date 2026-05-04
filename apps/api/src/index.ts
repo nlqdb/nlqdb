@@ -5,6 +5,7 @@ import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { streamSSE } from "hono/streaming";
 import { recordAnonAdoption } from "./anon-adopt.ts";
+import { makeGlobalAnonLimiter } from "./anon-global-cap.ts";
 import { makeAnonRateLimiter } from "./anon-rate-limit.ts";
 import { buildAskDeps, buildEventEmitter } from "./ask/build-deps.ts";
 import { classifyKind } from "./ask/classifier.ts";
@@ -14,8 +15,7 @@ import { auth, REVOCATION_KEY_PREFIX } from "./auth.ts";
 import { askFnFromDemoFixtures, DEMO_DB_ID } from "./chat/demo-shortcut.ts";
 import { postChatMessage } from "./chat/orchestrate.ts";
 import { makeChatStore } from "./chat/store.ts";
-import { buildDemoResult, makeRateLimiter as makeDemoRateLimiter } from "./demo.ts";
-import { parseAskBody, parseGoalBody, parseGoalDbBody, parseJsonBody } from "./http.ts";
+import { parseAskBody, parseGoalDbBody, parseJsonBody } from "./http.ts";
 import { makeRequireSession, type RequireSessionVariables } from "./middleware.ts";
 import {
   makeRequirePrincipal,
@@ -37,18 +37,21 @@ const app = new Hono<{
   Variables: RequireSessionVariables & RequirePrincipalVariables;
 }>();
 
-// Cross-subdomain CORS allow-list. Sign-in (`/api/auth/*`) and chat
-// (`/v1/chat/*`) are called from `nlqdb.com` (Pages) into
-// `app.nlqdb.com` (Worker) with `credentials: include` so the
-// session cookie (`.nlqdb.com` scope) round-trips. Browsers reject
-// `credentials: include` against `origin: *`, so the allow-list is
-// explicit. `pages.dev` previews + localhost dev origins included
-// so the same flows work pre-merge and during `wrangler dev`.
+// Cross-subdomain CORS allow-list. Sign-in (`/api/auth/*`), chat
+// (`/v1/chat/*`), and the unified `/v1/ask` are called from
+// `nlqdb.com` (Pages) into `app.nlqdb.com` (Worker). Cookie-session
+// callers ride `credentials: include` so the `.nlqdb.com`-scoped
+// session cookie round-trips; browsers reject `credentials: include`
+// against `origin: *`, so the allow-list is explicit. Anon-bearer
+// callers (Authorization: Bearer anon_*, the marketing hero post-
+// SK-WEB-008) ride the same allow-list — the bearer is read from
+// the request header, not a cookie, but the marketing surfaces are
+// always on the explicit allow-listed origins.
 //
-// /v1/demo/* keeps its own permissive `*` policy (no credentials,
-// public read). /v1/ask stays uncovered for now — revisit when
-// third-party `<nlq-data>` embeds with `pk_live_` keys land
-// (Phase 1, separate slice).
+// `/v1/demo/*` was retired with /v1/demo/ask (SK-WEB-008). Third-
+// party `<nlq-data>` embeds with `pk_live_` keys are still a
+// separate slice — those land with per-key origin pinning, not a
+// permissive `*` blanket.
 const CORS_ALLOWED_ORIGINS = [
   "https://nlqdb.com",
   "https://www.nlqdb.com",
@@ -75,6 +78,7 @@ const credentialedCors = cors({
 });
 
 app.use("/api/auth/*", credentialedCors);
+app.use("/v1/ask", credentialedCors);
 app.use("/v1/chat/*", credentialedCors);
 
 // Session gate for `/v1/*` routes. Captures `auth.api.getSession`
@@ -172,10 +176,43 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
     const wantsSse = accept.includes("text/event-stream");
     const wantsJsonOnly = accept.includes("application/json") && !accept.includes("*/*");
 
-    // Per-IP rate-limit on the anon path (SK-RL-006 / SK-ANON-004).
-    // Cookie-session traffic skips this layer — the per-user D1
+    // Anon-tier gates (SK-ANON-004 / SK-ANON-010 / SK-RL-006). Two
+    // layers, two distinct user-facing outcomes:
+    //
+    //   1. Global anon cap (100/hr / 1000/day / 10k/month, summed
+    //      across ALL anon traffic) — when tripped, return 401
+    //      auth_required so the surface stashes the prompt and
+    //      redirects to sign-in (SK-ANON-010 / SK-ANON-011). The
+    //      user becomes accountable + their pending prompt replays
+    //      post-OAuth.
+    //   2. Per-IP query bucket (30/min) — when tripped, return 429
+    //      with X-RateLimit-* headers. Bot-speed defense; the user
+    //      hasn't burned the global budget so sign-in won't help.
+    //
+    // Cookie-session traffic skips both layers — the per-user D1
     // limiter inside `orchestrateAsk` already covers it.
     if (principal.kind === "anon") {
+      const globalLimiter = makeGlobalAnonLimiter(c.env.KV);
+      const globalPeek = await globalLimiter.peek();
+      if (!globalPeek.ok) {
+        span.setAttribute("nlqdb.ask.outcome", "auth_required_global_cap");
+        span.setAttribute("nlqdb.ask.global_window", globalPeek.window);
+        span.end();
+        return c.json(
+          {
+            error: {
+              status: "auth_required" as const,
+              code: "anon_global_cap" as const,
+              window: globalPeek.window,
+              resetAt: globalPeek.resetAt,
+              signInUrl: buildSignInUrl(c.req.header("referer")),
+              action: "Sign in to continue — your prompt is saved.",
+            },
+          },
+          401,
+        );
+      }
+
       const ip = c.req.header("cf-connecting-ip") ?? "unknown";
       const anonLimiter = makeAnonRateLimiter(c.env.KV);
       const verdict = await anonLimiter.checkQuery(ip);
@@ -202,6 +239,12 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
           429,
         );
       }
+
+      // Record the global counter only after BOTH gates clear and
+      // the request is actually about to be served. Per-IP bucket
+      // already incremented inside `checkQuery`.
+      // Fire-and-forget: the response doesn't wait on the increment.
+      c.executionCtx.waitUntil(globalLimiter.record());
     }
 
     // Goal-kind classifier (SK-HDC-001 + SK-ASK-001) — runs only when
@@ -371,31 +414,6 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
   });
 });
 
-// `POST /v1/demo/ask` — public, unauthenticated, canned fixtures.
-// Backs the live `<nlq-data>` on the marketing homepage (and any
-// third-party `endpoint=".../v1/demo/ask"` embed). CORS-permissive
-// so cross-origin embeds work; per-IP rate-limited so it can't be
-// abused as a free LLM stand-in. See src/demo.ts for fixtures +
-// limiter.
-//
-// Note on CORS: must echo the request origin + `credentials: true`,
-// not `origin: "*"`. The `<nlq-data>` element always sends
-// `credentials: include` (packages/elements/src/fetch.ts:76) and
-// browsers reject `credentials: include` paired with `Origin: *`.
-// Echoing the origin is functionally "allow any" for this endpoint
-// — there's no auth, no cookies are read on the server side, and
-// the rate limiter keys off `cf-connecting-ip` not session.
-app.use(
-  "/v1/demo/*",
-  cors({
-    origin: (origin) => origin ?? null,
-    credentials: true,
-    allowHeaders: ["Content-Type", "Authorization"],
-    allowMethods: ["POST", "OPTIONS"],
-    maxAge: 86400,
-  }),
-);
-
 // `POST /v1/waitlist` — public, unauthenticated, idempotent. Backs
 // the homepage waitlist form while the chat surface is tabled.
 // Returns 200 for any well-formed email (privacy: never reveal
@@ -433,48 +451,19 @@ app.post("/v1/waitlist", async (c) => {
   return c.json(result.body, result.status);
 });
 
-app.post("/v1/demo/ask", async (c) => {
-  const tracer = trace.getTracer("@nlqdb/api");
-  return tracer.startActiveSpan("nlqdb.demo.ask", async (span) => {
-    const ipHeader = c.req.header("cf-connecting-ip");
-    if (!ipHeader) {
-      // In production behind CF this header is always set. A miss
-      // means dev, vitest, or a routing change stripping the header
-      // — log so it surfaces in operator triage if it ever starts
-      // happening on the public edge.
-      console.warn("demo/ask: missing cf-connecting-ip; falling back to 'unknown' bucket");
-    }
-    const clientIp = ipHeader ?? "unknown";
-    const limiter = makeDemoRateLimiter(c.env.KV);
-    const verdict = await limiter.hit(clientIp);
-    if (!verdict.ok) {
-      span.setAttribute("nlqdb.demo.outcome", "rate_limited");
-      span.end();
-      // RFC 9110 X-RateLimit-* headers (SK-RL-004 / GLOBAL-002 parity).
-      const now = Math.floor(Date.now() / 1000);
-      const resetAt = now + verdict.retryAfter;
-      c.header("Retry-After", String(verdict.retryAfter));
-      c.header("X-RateLimit-Limit", String(verdict.limit));
-      c.header("X-RateLimit-Remaining", "0");
-      c.header("X-RateLimit-Reset", String(resetAt));
-      return c.json({ error: { status: "rate_limited" } }, 429);
-    }
-
-    const parsed = await parseGoalBody(c);
-    if (!parsed.ok) {
-      span.setAttribute("nlqdb.demo.outcome", "invalid_request");
-      span.end();
-      return c.json(parsed.error.body, parsed.error.status);
-    }
-
-    const result = buildDemoResult(parsed.body.goal);
-    span.setAttribute("nlqdb.demo.outcome", "ok");
-    span.setAttribute("nlqdb.demo.goal_length", parsed.body.goal.length);
-    span.setAttribute("nlqdb.demo.goal_preview", redactPii(parsed.body.goal).slice(0, 200));
-    span.end();
-    return c.json(result);
-  });
-});
+// `POST /v1/demo/ask` was retired here per SK-WEB-008. The marketing
+// surface and any third-party `<nlq-data>` embed now hit `/v1/ask`
+// with an `Authorization: Bearer anon_<token>` header (the bearer is
+// minted in localStorage by `apps/web/src/lib/anon.ts` and applies
+// to every surface — `<nlq-data>`, the hero, /app/new). The carousel
+// in `apps/web/src/components/Carousel.astro` is the only static-
+// fixture surface that remains; it ships pre-rendered HTML for
+// shapes the LLM might also produce, no fetch involved.
+//
+// `apps/api/src/demo.ts`'s `buildDemoResult` is still imported by
+// `apps/api/src/chat/demo-shortcut.ts`; that shortcut is itself
+// scheduled for retirement once /v1/chat/messages migrates to real
+// LLM (its file header names the slice).
 
 // `POST /v1/stripe/webhook` (Slice 7).
 //
@@ -632,6 +621,33 @@ app.post("/v1/chat/messages", requireSession, async (c) => {
 
 function serializeEvent(event: OrchestrateEvent): string {
   return JSON.stringify(event);
+}
+
+// Sign-in URL the global-anon-cap response hands the surface
+// (SK-ANON-010). The `return` query-param round-trips the page the
+// user was on; the surface is responsible for stashing the prompt
+// in localStorage before redirecting (SK-ANON-011 — the prompt
+// itself never travels through the URL or the server).
+//
+// Default web origin is `https://nlqdb.com`; overridden via
+// `MAGIC_LINK_WEB_ORIGIN` so dev / staging point at the local Astro
+// dev server instead of prod.
+function buildSignInUrl(referer: string | undefined): string {
+  const origin = env.MAGIC_LINK_WEB_ORIGIN ?? "https://nlqdb.com";
+  const url = new URL("/sign-in", origin);
+  if (referer) {
+    try {
+      const refUrl = new URL(referer);
+      // Only allow same-origin returns — never let an attacker craft
+      // a 401 response that hands the surface an off-domain redirect.
+      if (refUrl.origin === origin) {
+        url.searchParams.set("return", refUrl.pathname + refUrl.search);
+      }
+    } catch {
+      // Malformed referer header — fall through to no return param.
+    }
+  }
+  return url.toString();
 }
 
 // Typed over `AskError["status"]` so adding a new error variant fails

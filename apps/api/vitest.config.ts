@@ -34,6 +34,7 @@ export default defineConfig(async () => {
               "test/principal.test.ts",
               "test/turnstile.test.ts",
               "test/anon-rate-limit.test.ts",
+              "test/anon-global-cap.test.ts",
               "test/first-query.test.ts",
               "test/stripe-webhook.test.ts",
               "test/chat-orchestrate.test.ts",

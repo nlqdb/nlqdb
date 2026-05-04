@@ -53,6 +53,7 @@ when-to-load:
 
 ### SK-WEB-004 — Demo endpoint `POST /v1/demo/ask`: no auth, canned fixtures, server-owned
 
+- **Status:** superseded by `SK-WEB-008`. The reproduction that prompted the supersession: submitting "Create a new workspace named omer" to the canned-fixture endpoint returned the orders-aggregation default with summary line *"Today's orders aggregated by drink (matching 'Create a new workspace named omer')"* — fixtures lying by accident under SK-WEB-003's "above the fold is runnable proof" mandate. The free-LLM-proxy concern that motivated this skill is now addressed by the global anon cap (`SK-ANON-010`) layered on the per-IP cap (`SK-ANON-004`).
 - **Decision:** The marketing-site live `<nlq-data>` and any third-party "try this in a scratch HTML" embed point at `endpoint="https://app.nlqdb.com/v1/demo/ask"`. The endpoint takes no auth, is CORS-permissive, returns canned fixtures keyed off the goal substring, and rate-limits per-IP at 10/min so it can't be abused as an LLM stand-in. The element stays pure — no demo branch in client code; the "demo" semantic lives server-side in `apps/api/src/demo.ts`.
 - **Core value:** Free, Bullet-proof, Honest latency
 - **Why:** The marketing site needs a live demo that costs us nothing per visitor and can't be turned into a free LLM proxy. Canned fixtures keep it free. Server-side semantics keep the embed code identical to what real users ship — paste-this-in-prod is the same code paste-this-on-marketing renders. Per-IP rate limit defends against abuse.
@@ -60,6 +61,17 @@ when-to-load:
 - **Alternatives rejected:**
   - LLM behind the demo endpoint — turns the marketing site into a free Claude proxy.
   - Per-visitor anonymous DB on the marketing site — works but burns Neon Free capacity for window-shoppers; canned fixtures are cheaper.
+
+### SK-WEB-008 — Demo === real `/v1/ask` with anon bearer; canned fixtures live only in the static carousel
+
+- **Decision:** Supersedes `SK-WEB-004`. The marketing hero, `/app/new`, and any first-party `<nlq-data>` surface all hit `POST /v1/ask` with `Authorization: Bearer anon_<token>` (SK-ANON-008). The `/v1/demo/ask` route is deleted. Canned fixtures continue to exist only in `apps/web/src/components/Carousel.astro` (`SHOWCASE_EXAMPLES`) — pre-rendered HTML strings, no network call. Free-LLM-proxy abuse is prevented by the global anon cap (`SK-ANON-010`, 100/hr / 1000/day / 10k/month) layered on the per-IP buckets (`SK-ANON-004` / `SK-RL-007`).
+- **Core value:** Honest latency, Goal-first, Bullet-proof
+- **Why:** A canned-fixture demo lies by accident the moment a user types something the regex-matcher doesn't recognise. SK-WEB-003 trades on credibility — "above the fold is runnable proof, not feature bullets" — and an unrelated fixture is the opposite of runnable proof. The reproduction that surfaced this: "Create a new workspace named omer" fell through `apps/api/src/demo.ts`'s five regexes to the orders default and was rendered with a *"matching '<your goal>'"* summary line. The new posture pays a per-call LLM cost (mitigated by the global cap) for the right to never lie. Carousel fixtures keep their place — they're not "answers to your goal", they're "shapes the LLM also produces", and the snippets are visibly static markup.
+- **Consequence in code:** `/v1/demo/ask` route + CORS rule deleted from `apps/api/src/index.ts`; `parseGoalBody` dropped from `apps/api/src/http.ts`; `apps/api/src/demo.ts` survives as a library only because `apps/api/src/chat/demo-shortcut.ts` still imports `buildDemoResult` (its file header schedules it for retirement under the same directive). Marketing hero (`apps/web/src/components/Hero.astro`) and `/app/new` (`apps/web/src/pages/app/new.astro`) both render the shared `<CreateForm>` React island. The element (`packages/elements`) keeps zero "isDemo" branches — its `endpoint` attribute now points at `/v1/ask` for marketing too.
+- **Alternatives rejected:**
+  - Keep `/v1/demo/ask` as a thin alias that auto-mints an anon bearer server-side — backwards-compatible for embeds that hardcoded the URL, but every call still costs a network round-trip and the alias splits rate-limit accounting across two paths. Cleaner to delete.
+  - Two endpoints with separate caps (real-LLM `/v1/demo/ask` for marketing, full `/v1/ask` for product) — two budgets, two SDK shapes, two test suites; the global cap solves the abuse case without forking surfaces.
+  - Stay on canned fixtures and rewrite the matcher to refuse fall-through — a regex that returns "I don't have a fixture for that" is honest about the demo's limits, but it teaches the user that nlqdb is fixture-bound; flat dishonesty traded for limited honesty.
 
 ### SK-WEB-005 — Three-part chat response: answer + data + trace
 

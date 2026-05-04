@@ -1,20 +1,30 @@
-// Product-app anonymous-create form. Talks to `/v1/ask` with
-// `Authorization: Bearer anon_<token>` (SK-ANON-001, SK-ANON-006);
-// renders sample rows from the typed-plan response (SK-HDC-001).
+// Anonymous-create form. Talks to `/v1/ask` with
+// `Authorization: Bearer anon_<token>` (SK-ANON-001 / SK-ANON-006 /
+// SK-ANON-008); renders sample rows from the typed-plan response
+// (SK-HDC-001). Same component now drives both the marketing hero
+// and `/app/new` — `/v1/demo/ask` was retired in SK-WEB-008.
 //
-// Distinct from the marketing hero (`Hero.tsx` → /v1/demo/ask)
-// because SK-WEB-004 keeps fixture traffic off the create pipeline.
-// This is the surface a window-shopper crosses into when they're
-// committed to a real DB.
+// Three persistence behaviours, all SK-ANON-011:
+//   - Drafts (pre-submit typing) auto-save to localStorage on
+//     keystroke (debounced) and rehydrate on mount.
+//   - Successful prompts append to history (last 50).
+//   - On `auth_required` (global anon cap tripped, SK-ANON-010), the
+//     in-flight prompt is moved to the `pending` slot before the
+//     redirect to /sign-in; the post-OAuth landing replays it.
 //
 // Turnstile (SK-ANON-007) is stubbed via lib/turnstile.ts —
-// `solveChallenge()` returns null today. When a 428 comes back, we
-// retry once with whatever the stub returns (still null), so the
-// API's fail-open posture in dev keeps the flow unblocked. When the
-// real widget lands, the same retry seam picks it up unchanged.
+// `solveChallenge()` returns null today. The 428 retry seam picks
+// up the real widget when it ships.
 
-import { useId, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { type CreateError, type CreateResult, postAskCreate } from "../lib/api";
+import {
+  appendHistory,
+  clearDraft,
+  loadDraft,
+  makeDraftSaver,
+  savePending,
+} from "../lib/prompt-storage";
 import { solveChallenge } from "../lib/turnstile";
 
 interface CreateFormProps {
@@ -23,6 +33,8 @@ interface CreateFormProps {
 
 const MAX_ROWS_RENDERED = 5;
 
+const draftSaver = makeDraftSaver();
+
 export default function CreateForm({ apiBase }: CreateFormProps) {
   const inputId = useId();
   const [goal, setGoal] = useState("");
@@ -30,12 +42,26 @@ export default function CreateForm({ apiBase }: CreateFormProps) {
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<CreateResult | null>(null);
 
+  // Rehydrate the draft on mount — the user may have refreshed
+  // mid-typing, or come back from a sign-in redirect that didn't
+  // replay (rare; happens if /sign-in fell back to manual click).
+  useEffect(() => {
+    const saved = loadDraft();
+    if (saved) setGoal(saved);
+  }, []);
+
+  function onGoalChange(next: string) {
+    setGoal(next);
+    draftSaver(next);
+  }
+
   async function submit() {
     const trimmed = goal.trim();
     if (!trimmed || loading) return;
     setLoading(true);
     setError(null);
     setResult(null);
+    const submittedAt = new Date().toISOString();
     try {
       let outcome = await postAskCreate(apiBase, trimmed);
       // 428 retry seam — solveChallenge() returns null today
@@ -46,12 +72,42 @@ export default function CreateForm({ apiBase }: CreateFormProps) {
           outcome = await postAskCreate(apiBase, trimmed, { turnstileToken: token });
         }
       }
+      // SK-ANON-010 + SK-ANON-011: stash the prompt and redirect.
+      // The user lands on /sign-in?return=<here>; post-OAuth, the
+      // landing page reads `nlqdb_pending` and replays the call
+      // against the now-authed cookie session.
+      if (!outcome.ok && outcome.error.kind === "auth_required") {
+        savePending({
+          goal: trimmed,
+          submittedAt,
+          origin: typeof window !== "undefined" ? window.location.pathname : "/",
+        });
+        if (typeof window !== "undefined") {
+          window.location.assign(outcome.error.signInUrl);
+        }
+        return;
+      }
       if (outcome.ok) {
+        appendHistory({
+          goal: trimmed,
+          submittedAt,
+          status: "ok",
+          outcome: outcome.result.db,
+        });
+        clearDraft();
+        setGoal("");
         setResult(outcome.result);
       } else {
+        appendHistory({
+          goal: trimmed,
+          submittedAt,
+          status: "error",
+          outcome: outcome.error.kind,
+        });
         setError(messageFor(outcome.error));
       }
     } catch {
+      appendHistory({ goal: trimmed, submittedAt, status: "error", outcome: "network" });
       setError("Couldn't reach the API — try again.");
     } finally {
       setLoading(false);
@@ -81,7 +137,7 @@ export default function CreateForm({ apiBase }: CreateFormProps) {
           name="goal"
           type="text"
           value={goal}
-          onChange={(e) => setGoal(e.target.value)}
+          onChange={(e) => onGoalChange(e.target.value)}
           placeholder="an orders tracker"
           autoComplete="off"
           spellCheck={false}
@@ -195,6 +251,10 @@ function messageFor(error: CreateError): string {
       return error.retryAfter
         ? `Slow down — try again in ${error.retryAfter}s.`
         : "Slow down — try again in a moment.";
+    case "auth_required":
+      // Reached only if the redirect didn't fire (e.g. browser
+      // blocked navigation). The pending prompt is already saved.
+      return "Sign in to continue — your prompt is saved.";
     case "unauthorized":
       return "Couldn't authenticate — clear your browser storage and reload.";
     case "server_error":
