@@ -87,7 +87,9 @@ describe("publishToLogSnag", () => {
     );
     const calls = (fetchMock as unknown as { mock: { calls: [string, RequestInit][] } }).mock.calls;
     expect(calls).toHaveLength(1);
-    const [url, init] = calls[0]!;
+    const firstCall = calls[0];
+    if (!firstCall) throw new Error("expected logsnag fetch call");
+    const [url, init] = firstCall;
     expect(url).toBe("https://api.logsnag.com/v1/log");
     const headers = init.headers as Record<string, string>;
     expect(headers["authorization"]).toBe("Bearer tok_abc");

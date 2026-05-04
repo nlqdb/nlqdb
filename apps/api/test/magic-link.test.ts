@@ -5,7 +5,7 @@
 //
 // `RESEND_API_KEY` is unset under Miniflare (vitest.config.ts), so the
 // email sender falls through to the console-logging dev stub. We spy
-// on console.log to extract the verify URL from the rendered email
+// on console.info to extract the verify URL from the rendered email
 // body — the same URL the recipient would click.
 //
 // vi.mock of worker-internal modules is broken under
@@ -36,7 +36,7 @@ describe("magic-link lifecycle", () => {
 
   beforeEach(() => {
     logs = [];
-    logSpy = vi.spyOn(console, "log").mockImplementation((...args: unknown[]) => {
+    logSpy = vi.spyOn(console, "info").mockImplementation((...args: unknown[]) => {
       logs.push(args.map((a) => String(a)).join(" "));
     });
   });
@@ -65,11 +65,13 @@ describe("magic-link lifecycle", () => {
     const verifyRes = await SELF.fetch(verifyUrl, { redirect: "manual" });
     expect([200, 302]).toContain(verifyRes.status);
     const setCookie = verifyRes.headers.get("set-cookie");
-    expect(setCookie).toBeTruthy();
-    expect(setCookie!).toMatch(/session/i);
+    if (!setCookie) throw new Error("expected set-cookie header on verify response");
+    expect(setCookie).toMatch(/session/i);
 
+    const cookieFirst = setCookie.split(";")[0];
+    if (!cookieFirst) throw new Error("expected cookie value before first `;`");
     const sessionRes = await SELF.fetch(`${ORIGIN}/api/auth/get-session`, {
-      headers: { cookie: setCookie!.split(";")[0]! },
+      headers: { cookie: cookieFirst },
     });
     expect(sessionRes.status).toBe(200);
     const sessionBody = (await sessionRes.json()) as {

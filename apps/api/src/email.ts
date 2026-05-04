@@ -48,7 +48,7 @@ const DEFAULT_TIMEOUT_MS = 8000;
 export function makeEmailSender(cfg: ResendConfig): EmailSender {
   if (!cfg.apiKey) {
     return async (msg) => {
-      console.log(
+      console.info(
         `[email:dev-stub] to=${msg.to} subject=${JSON.stringify(msg.subject)} body=${msg.text}`,
       );
     };

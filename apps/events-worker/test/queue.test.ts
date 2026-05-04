@@ -65,11 +65,14 @@ describe("events-worker queue consumer", () => {
     const { batch, msgs } = makeBatch([envelope]);
     const env = { LOGSNAG_TOKEN: "tok_abc", LOGSNAG_PROJECT: "nlqdb" } as Cloudflare.Env;
 
-    await handler.queue!(batch, env, ctx);
+    if (!handler.queue) throw new Error("expected default export to define a queue handler");
+    await handler.queue(batch, env, ctx);
 
+    const msg = msgs[0];
+    if (!msg) throw new Error("expected one message in batch");
     expect(fetchMock).toHaveBeenCalledTimes(1);
-    expect(msgs[0]!.ack).toHaveBeenCalledTimes(1);
-    expect(msgs[0]!.retry).not.toHaveBeenCalled();
+    expect(msg.ack).toHaveBeenCalledTimes(1);
+    expect(msg.retry).not.toHaveBeenCalled();
   });
 
   it("retries when LogSnag returns 5xx", async () => {
@@ -79,10 +82,13 @@ describe("events-worker queue consumer", () => {
     const { batch, msgs } = makeBatch([envelope]);
     const env = { LOGSNAG_TOKEN: "tok_abc", LOGSNAG_PROJECT: "nlqdb" } as Cloudflare.Env;
 
-    await handler.queue!(batch, env, ctx);
+    if (!handler.queue) throw new Error("expected default export to define a queue handler");
+    await handler.queue(batch, env, ctx);
 
-    expect(msgs[0]!.ack).not.toHaveBeenCalled();
-    expect(msgs[0]!.retry).toHaveBeenCalledTimes(1);
+    const msg = msgs[0];
+    if (!msg) throw new Error("expected one message in batch");
+    expect(msg.ack).not.toHaveBeenCalled();
+    expect(msg.retry).toHaveBeenCalledTimes(1);
   });
 
   it("acks-and-drops when LogSnag is unconfigured (avoids retry forever on config drift)", async () => {
@@ -92,10 +98,13 @@ describe("events-worker queue consumer", () => {
     const { batch, msgs } = makeBatch([envelope]);
     const env = {} as Cloudflare.Env;
 
-    await handler.queue!(batch, env, ctx);
+    if (!handler.queue) throw new Error("expected default export to define a queue handler");
+    await handler.queue(batch, env, ctx);
 
+    const msg = msgs[0];
+    if (!msg) throw new Error("expected one message in batch");
     expect(fetchMock).not.toHaveBeenCalled();
-    expect(msgs[0]!.ack).toHaveBeenCalledTimes(1);
-    expect(msgs[0]!.retry).not.toHaveBeenCalled();
+    expect(msg.ack).toHaveBeenCalledTimes(1);
+    expect(msg.retry).not.toHaveBeenCalled();
   });
 });

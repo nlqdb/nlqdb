@@ -56,8 +56,10 @@ async function dispatch(env: Cloudflare.Env, msg: Message<EventEnvelope>): Promi
       await sendToSinks(env, msg.body);
       // Logged at info level (no PII — id is `<event>.<userId>`, which
       // is opaque). Cheap insurance for `wrangler tail` debugging in
-      // prod when an OTel pipeline isn't already attached.
-      console.log(`dispatched ${msg.body.event.name} id=${msg.body.id}`);
+      // prod when an OTel pipeline isn't already attached. The same
+      // values are also on the `nlqdb.events.dispatch` span attributes
+      // above, so OTel-attached environments don't need this line.
+      console.info(`dispatched ${msg.body.event.name} id=${msg.body.id}`);
       msg.ack();
     } catch (err) {
       const error = err instanceof Error ? err : new Error(String(err));
