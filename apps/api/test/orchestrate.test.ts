@@ -306,8 +306,10 @@ describe("orchestrateAsk", () => {
     expect(firstQuery.commit).toHaveBeenCalledWith("user_new");
     // Emit MUST precede commit — the contract is "show on the
     // observability path before persisting the seen-flag".
-    const emitOrder = events.emit.mock.invocationCallOrder[0]!;
-    const commitOrder = firstQuery.commit.mock.invocationCallOrder[0]!;
+    const emitOrder = events.emit.mock.invocationCallOrder[0];
+    const commitOrder = firstQuery.commit.mock.invocationCallOrder[0];
+    if (emitOrder === undefined) throw new Error("expected events.emit invocation order");
+    if (commitOrder === undefined) throw new Error("expected firstQuery.commit invocation order");
     expect(emitOrder).toBeLessThan(commitOrder);
   });
 
