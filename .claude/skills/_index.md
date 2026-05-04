@@ -31,11 +31,11 @@ Cross-cutting decisions cited by skills: [`docs/decisions.md`](../../docs/decisi
 
 | Skill | One-liner | What's done · what's open |
 |---|---|---|
-| [`web-app`](./web-app/SKILL.md) | Marketing site + product web app. | Marketing site live · sign-in UI, chat surface, anon-mode web flow remaining (Phase 1 exit gate) |
+| [`web-app`](./web-app/SKILL.md) | Marketing site + product web app. | Marketing site live · interactive hero (`/`) + anon-create surface (`/app/new`) shipped · sign-in UI + chat surface remain (Phase 1 exit gate) |
 | [`schema-widening`](./schema-widening/SKILL.md) | "Schemas only widen" invariant; `schema_hash` semantics. | `schema_hash` plumbed end-to-end · observed-fields collector + widening trigger ship post-Phase-0 |
 | [`idempotency`](./idempotency/SKILL.md) | `Idempotency-Key` on every mutation; dedupe store; retry-safety. | natural-key dedupe shipped (Stripe webhook, waitlist) · general-purpose `Idempotency-Key` middleware on `/v1/ask` open |
-| [`rate-limit`](./rate-limit/SKILL.md) | Per-key, per-IP rate-limit middleware. | per-account D1 limiter (`/v1/ask`) + per-IP KV limiter (`/v1/demo/ask`) shipped · unified middleware open |
-| [`anonymous-mode`](./anonymous-mode/SKILL.md) | No-login first value across web / CLI / MCP. | API shipped (`/v1/anon/adopt`) · web UI remaining (Phase 1 exit gate) |
+| [`rate-limit`](./rate-limit/SKILL.md) | Per-key, per-IP rate-limit middleware. | per-account D1 limiter, per-IP KV limiter (`/v1/demo/ask`), and anon-tier KV limiter (`anon-rate-limit.ts`) all shipped with `X-RateLimit-*` parity · per-account anon-create cap pending adoption |
+| [`anonymous-mode`](./anonymous-mode/SKILL.md) | No-login first value across web / CLI / MCP. | Anon `/v1/ask` create flow + `/v1/anon/adopt` shipped · adopt-time tenant_id rewrite + RLS-policy refresh on sign-in remain (Phase 1 exit gate) |
 | [`onboarding`](./onboarding/SKILL.md) | First-60-seconds experience — zero-friction signup, goal-first on-ramp, anti-patterns we refuse. | Anti-patterns locked (SK-ONBOARD-001..004) · web implementation remaining (Phase 1 exit gate) |
 
 ## Planned

@@ -11,7 +11,7 @@ when-to-load:
 # Feature: Rate Limit
 
 **One-liner:** Per-key, per-IP rate-limit middleware with X-RateLimit-* headers.
-**Status:** partial — per-account D1 limiter (`/v1/ask`) + per-IP KV limiter (`/v1/demo/ask`) shipped; anonymous tier + `X-RateLimit-*` parity headers pending
+**Status:** implemented — per-account D1 limiter (`/v1/ask`), per-IP KV limiter (`/v1/demo/ask`), anonymous-tier KV limiter (`apps/api/src/anon-rate-limit.ts`), and `X-RateLimit-*` parity headers across all three surfaces. Per-account anon-create cap (20/day) lands with adoption.
 **Owners (code):** `apps/api/src/ask/rate-limit.ts`, `apps/api/src/demo.ts`
 **Cross-refs:** docs/architecture.md §6 (free-tier rate-limit guarantees) · docs/architecture.md §3.5 (`pk_live_*` origin-pinned) · docs/architecture.md §3.6.8 (rate limits on create) · docs/architecture.md §10 §8 (per-IP + per-account "Day 1") · docs/architecture.md §10 §5.3 / §11.5 (free-tier abuse)
 
@@ -88,6 +88,17 @@ when-to-load:
   - Build per-IP today, gated on `cf-connecting-ip` only — adds ops surface (KV write quota) without buying any abuse resistance under the current authenticated-only `/v1/ask`.
   - Skip per-IP entirely — leaves anonymous mode with no defence against script-kiddie LLM-stand-in abuse.
 
+### SK-RL-007 — Anon limiter splits one identity (IP) into three buckets: query, hour-create, burst-create
+
+- **Decision:** `apps/api/src/anon-rate-limit.ts` keys three independent KV buckets off `cf-connecting-ip`: a 30/min query window, a 5/hour create cap, and a 5-minute burst window that flips to "needs Turnstile" at 3 creates. All three live in KV (per `SK-RL-001`'s per-IP/KV split) under distinct prefixes (`anon:query:`, `anon:create:hr:`, `anon:create:burst:`). Each verdict carries `{ limit, count, resetAt }` so the route emits `X-RateLimit-*` headers consistent with the authed path (`SK-RL-004` / `GLOBAL-002`).
+- **Core value:** Free, Bullet-proof, Honest latency
+- **Why:** A single counter can't satisfy both the slow-burn cap (5/hour) and the burst gate (3-in-5min) — they have different windows and different consequences (429 vs. 428). Composing them as separate buckets keyed off the same IP keeps each one cheap (one KV `get`/`put` per bucket per request) and lets the Turnstile gate live independently of the hard cap. Same-prefix buckets would race on TTL and force one window length on both. KV's TTL semantics auto-evict; no sweep job (matches `SK-RL-001`).
+- **Consequence in code:** `peekCreate()` is a read-only check the route runs before the orchestrator boots libpg-query — that's the cheap gate. `recordCreate()` runs only AFTER any Turnstile clears, so a bot stuck on the gate can't ratchet the counter forward. `checkQuery()` increments unconditionally (matching `SK-RL-002`). The 30/min query default is half the 60/min authed tier (`apps/api/src/ask/rate-limit.ts`); the rate-limit skill's Open Question on the anon ceiling is now closed at this number. Tests in `apps/api/test/anon-rate-limit.test.ts` cover the three-bucket isolation.
+- **Alternatives rejected:**
+  - Single `(ip, window)` row covering all three behaviors — forces one window length for query / hour-cap / burst, and bakes 429-vs-428 logic into a counter shape that can't express it.
+  - D1-backed anon limiter — IP cardinality is unbounded under abuse; D1 row count would explode exactly when we need the limiter to be cheap (per `SK-RL-001`'s rejected-alternatives).
+  - Reuse the demo limiter (`apps/api/src/demo.ts`) — its `hit()` is a single-bucket counter; can't compose for the burst-vs-cap split without forking it.
+
 ## GLOBALs governing this feature
 
 Canonical text in [`docs/decisions.md`](../../docs/decisions.md). The list below names the rules that constrain this feature; any skill-local commentary is nested under the rule.
@@ -99,7 +110,7 @@ Canonical text in [`docs/decisions.md`](../../docs/decisions.md). The list below
 
 - **`X-RateLimit-*` parity headers — RESOLVED.** `/v1/ask`, `/v1/chat/messages`, and `/v1/demo/ask` now emit `X-RateLimit-Limit`, `X-RateLimit-Remaining`, `X-RateLimit-Reset`, and `Retry-After` on every 429. `RateLimitDecision` carries `resetAt`; the demo `RateLimiter.hit` return type carries `limit` and `count`. The SDK-side header definitions (referenced in the original open question) are deferred to whenever the SDK adds retry-with-backoff — at that point the SDK should read `X-RateLimit-Reset` to schedule the retry rather than sleeping a fixed duration. SSE rate-limit responses (`/v1/ask` with `Accept: text/event-stream`) do NOT emit these headers because Hono's `streamSSE` commits the 200 before the rate-limit verdict is known; callers should use the `{ error: { status, limit, count, resetAt } }` event payload instead. Tracked as an open question: should SSE rate-limit responses return a plain 429 (not a stream) so headers can be set?
 - **Stale `rate_limit_buckets` row sweep.** D1 rows accumulate one per `(user_id, window_start)` tuple. At 60-second windows + 1k DAU that's ~1.4M rows/day — well within D1's 5GB Free quota for now, but a sweep job (drop rows older than 1 hour) is cheap insurance once volume crosses 100k MAU.
-- **Anonymous-tier ceiling.** PLAN §11.5 calls for "per-IP + per-account rate limits Day 1" without naming a number. Decide a tier before anonymous mode ships (suggested 30/min per IP for `/v1/ask`, lower than the 60/min authenticated tier).
+- **Anonymous-tier ceiling — RESOLVED.** Pinned at 30/min per IP for `/v1/ask` (half the 60/min authed tier) plus 5/hour per-IP DB-create cap and a 3-in-5min Turnstile burst gate. Implemented in `apps/api/src/anon-rate-limit.ts` (per `SK-RL-007`). Per-account anon-create cap (20/day, named in `SK-ANON-004`) is still pending — anon principals don't have an "account" yet, so the per-IP cap is the only effective ceiling on creates. Lands when adoption (Worksheet 4) gives anon principals a stable per-account identity.
 - **Tier-aware ceilings (Hobby / Pro).** Free is 60/min today. Hobby (50k/mo) and Pro ($0.0005/query over 50k) tiers in `docs/architecture.md §6` imply a higher per-minute ceiling for paid tiers. Limit-per-tier is not yet wired; needs `customers.tier` JOIN on the limiter call.
 - **Premium-models add-on per-key spend cap.** `docs/architecture.md §6` Premium-models row notes "per-key spend cap" — separate from request-count rate-limit. Lago wiring (PLAN §6) is the natural home; not built.
 - **Token bucket vs fixed window.** Fixed-window is cheap but allows burst-at-boundary (60 in the last second of one window, 60 in the first of the next). Token bucket smooths this. Defer until burst-abuse shows up in OTel.

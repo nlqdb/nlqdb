@@ -1,22 +1,174 @@
 ---
-// Coming-soon-style hero (DESIGN §3.1, slice 11b).
+// Marketing hero — interactive goal input (SK-WEB-002, SK-WEB-003).
 //
-// Auth + chat are tabled while the surface gets reworked, so the
-// hero no longer collects a goal that routes to /sign-in. The
-// page-level Carousel + Waitlist below carry the value-prop and
-// the conversion ask.
----
-<section class="hero">
-  <h1 class="hero__wordmark">nlqdb</h1>
-  <p class="hero__lede">Natural-language databases.</p>
-  <p class="hero__sub">
-    Create one in a word. Talk to it in English. The schema, the engine,
-    the indexes, the backups — all invisible. The escape hatch to raw
-    SQL stays one click away, always.
-  </p>
+// The visible markup lives in Hero.tsx (React island, client:load
+// because the input must be interactive on first paint). This file
+// resolves the API origin from the build-time env and hands it down,
+// so the island has no `import.meta.env` access of its own.
+import HeroIsland from "./Hero.tsx";
 
-  <p class="heroinput__note">
-    <span class="dot" aria-hidden="true"></span>
-    Pre-alpha — Phase 0 shipped, Phase 1 in progress. Join the waitlist below.
-  </p>
-</section>
+const apiBase = import.meta.env.PUBLIC_API_BASE ?? "https://app.nlqdb.com";
+---
+<HeroIsland client:load apiBase={apiBase} />
+
+<style is:global>
+  .heroinput {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 12px;
+    align-items: center;
+    max-width: 720px;
+  }
+
+  .heroinput__label {
+    grid-column: 1 / -1;
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--fg-dim);
+    margin: 0;
+  }
+
+  .heroinput__field {
+    width: 100%;
+    padding: 18px 20px;
+    font-family: var(--mono);
+    font-size: clamp(16px, 1.8vw, 18px);
+    color: var(--fg);
+    background: var(--bg-elev);
+    border: 3px solid var(--border-strong);
+    border-radius: var(--radius);
+    outline: none;
+    box-shadow: var(--shadow-hard);
+    transition:
+      box-shadow 80ms ease-out,
+      border-color 80ms ease-out;
+  }
+
+  .heroinput__field::placeholder {
+    color: var(--fg-muted);
+    opacity: 1;
+  }
+
+  .heroinput__field:focus {
+    border-color: var(--accent);
+    box-shadow: var(--shadow-hard-accent);
+  }
+
+  .heroinput__field:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  .heroinput__submit {
+    justify-content: center;
+    padding: 14px 22px;
+    min-width: 140px;
+  }
+
+  .heroinput__submit:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: 4px 4px 0 0 var(--accent-fg);
+  }
+
+  .heroinput__spinner {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    border: 2px solid currentColor;
+    border-right-color: transparent;
+    border-radius: 50%;
+    animation: heroinput-spin 0.7s linear infinite;
+  }
+
+  @keyframes heroinput-spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  .heroinput__error {
+    grid-column: 1 / -1;
+    margin: 0;
+    padding: 8px 10px;
+    font-family: var(--mono);
+    font-size: 13px;
+    color: #ff8a8a;
+    background: #2a1212;
+    border: 2px solid #ff8a8a;
+  }
+
+  /* Result surface — animates in once the demo response lands. */
+  .herodemo {
+    margin-top: 8px;
+    padding: 16px 18px;
+    background: var(--bg-elev);
+    border: 3px solid var(--border-strong);
+    box-shadow: var(--shadow-hard);
+    animation: herodemo-rise 220ms ease-out;
+  }
+
+  @keyframes herodemo-rise {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .herodemo__summary {
+    margin: 0 0 12px;
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--fg-dim);
+  }
+
+  .herodemo__tablewrap {
+    overflow-x: auto;
+  }
+
+  .herodemo__table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: var(--mono);
+    font-size: 13px;
+  }
+
+  .herodemo__table th,
+  .herodemo__table td {
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border);
+    text-align: left;
+    white-space: nowrap;
+  }
+
+  .herodemo__table th {
+    color: var(--fg-dim);
+    font-weight: 600;
+    border-bottom-color: var(--border-strong);
+  }
+
+  .herodemo__table tbody tr:last-child td {
+    border-bottom: none;
+  }
+
+  .herodemo__more {
+    margin: 10px 0 0;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--fg-muted);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .herodemo {
+      animation: none;
+    }
+    .heroinput__spinner {
+      animation-duration: 1.4s;
+    }
+  }
+</style>

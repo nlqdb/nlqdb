@@ -5,6 +5,7 @@ import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { streamSSE } from "hono/streaming";
 import { recordAnonAdoption } from "./anon-adopt.ts";
+import { makeAnonRateLimiter } from "./anon-rate-limit.ts";
 import { buildAskDeps, buildEventEmitter } from "./ask/build-deps.ts";
 import { classifyKind } from "./ask/classifier.ts";
 import { orchestrateAsk } from "./ask/orchestrate.ts";
@@ -14,10 +15,16 @@ import { askFnFromDemoFixtures, DEMO_DB_ID } from "./chat/demo-shortcut.ts";
 import { postChatMessage } from "./chat/orchestrate.ts";
 import { makeChatStore } from "./chat/store.ts";
 import { buildDemoResult, makeRateLimiter as makeDemoRateLimiter } from "./demo.ts";
-import { parseGoalDbBody, parseJsonBody } from "./http.ts";
+import { parseAskBody, parseGoalBody, parseGoalDbBody, parseJsonBody } from "./http.ts";
 import { makeRequireSession, type RequireSessionVariables } from "./middleware.ts";
+import {
+  makeRequirePrincipal,
+  type Principal,
+  type RequirePrincipalVariables,
+} from "./principal.ts";
 import { cryptoProvider, stripe as stripeClient } from "./stripe/client.ts";
 import { processWebhook } from "./stripe/webhook.ts";
+import { verifyTurnstile } from "./turnstile.ts";
 import { joinWaitlist } from "./waitlist.ts";
 
 const SERVICE_VERSION = "0.1.0";
@@ -25,7 +32,10 @@ const SERVICE_VERSION = "0.1.0";
 // `Cloudflare.Env` is augmented in src/env.d.ts — using it directly
 // (rather than a parallel local `Bindings` type) keeps the two from
 // drifting when bindings are added.
-const app = new Hono<{ Bindings: Cloudflare.Env; Variables: RequireSessionVariables }>();
+const app = new Hono<{
+  Bindings: Cloudflare.Env;
+  Variables: RequireSessionVariables & RequirePrincipalVariables;
+}>();
 
 // Cross-subdomain CORS allow-list. Sign-in (`/api/auth/*`) and chat
 // (`/v1/chat/*`) are called from `nlqdb.com` (Pages) into
@@ -71,8 +81,8 @@ app.use("/v1/chat/*", credentialedCors);
 // (cookieCache fast path → secondaryStorage → D1) + the KV revocation
 // lookup at module load; the callbacks fire per request. See
 // src/middleware.ts and PERFORMANCE §4 row 6.
-const requireSession = makeRequireSession({
-  getSession: async (req) => {
+const sessionResolver = {
+  getSession: async (req: Request) => {
     const result = await auth.api.getSession({ headers: req.headers });
     if (!result) return null;
     return {
@@ -80,11 +90,19 @@ const requireSession = makeRequireSession({
       session: { token: result.session.token, userId: result.session.userId },
     };
   },
-  isRevoked: async (token) => {
+  isRevoked: async (token: string) => {
     const hit = await env.KV.get(`${REVOCATION_KEY_PREFIX}${token}`);
     return hit !== null;
   },
-});
+};
+
+const requireSession = makeRequireSession(sessionResolver);
+
+// `/v1/ask` accepts either a cookie session OR `Authorization:
+// Bearer anon_<token>` (SK-ANON-001 + SK-ANON-006). The resolver
+// is shared with `requireSession` — same getSession + isRevoked
+// callbacks, principal middleware just adds the anon-bearer fork.
+const requirePrincipal = makeRequirePrincipal(sessionResolver);
 
 // Per-request telemetry install + flush. setupTelemetry is idempotent
 // — first call per isolate wins; later calls return the cached handle.
@@ -136,59 +154,138 @@ app.get("/v1/health", (c) =>
 // internal JWT here (docs/architecture.md §4.4) and verify it on the receiving
 // end. In-isolate today, so signing would be cargo-culting (see
 // commit 1a body for the rationale).
-app.post("/v1/ask", requireSession, async (c) => {
+app.post("/v1/ask", requirePrincipal, async (c) => {
   const tracer = trace.getTracer("@nlqdb/api");
   return tracer.startActiveSpan("nlqdb.ask", async (span) => {
-    const session = c.var.session;
-    span.setAttribute("nlqdb.user.id", session.user.id);
+    const principal = c.var.principal as Principal;
+    span.setAttribute("nlqdb.principal.kind", principal.kind);
+    span.setAttribute("nlqdb.principal.id", principal.id);
 
-    const parsed = await parseGoalDbBody(c);
+    const parsed = await parseAskBody(c);
     if (!parsed.ok) {
       span.end();
       return c.json(parsed.error.body, parsed.error.status);
     }
-    // Redacted preview for trace search without leaking PII into spans.
     span.setAttribute("nlqdb.ask.goal_preview", redactPii(parsed.body.goal).slice(0, 200));
 
     const accept = c.req.header("accept") ?? "";
     const wantsSse = accept.includes("text/event-stream");
     const wantsJsonOnly = accept.includes("application/json") && !accept.includes("*/*");
 
-    // Goal-kind classifier (SK-HDC-001 + SK-ASK-001) — runs only
-    // when `dbId` is absent. dbId-present requests are unambiguous
-    // query/write goals against the named db; classifier adds zero
-    // value there. v0 is a token-set heuristic; LLM swap-in is a
+    // Per-IP rate-limit on the anon path (SK-RL-006 / SK-ANON-004).
+    // Cookie-session traffic skips this layer — the per-user D1
+    // limiter inside `orchestrateAsk` already covers it.
+    if (principal.kind === "anon") {
+      const ip = c.req.header("cf-connecting-ip") ?? "unknown";
+      const anonLimiter = makeAnonRateLimiter(c.env.KV);
+      const verdict = await anonLimiter.checkQuery(ip);
+      // RFC 9110 X-RateLimit-* parity with the authed path
+      // (SK-RL-004 / GLOBAL-002). Emitted on success too so the
+      // surface can render headroom before the user hits the wall.
+      const now = Math.floor(Date.now() / 1000);
+      c.header("X-RateLimit-Limit", String(verdict.limit));
+      c.header("X-RateLimit-Remaining", String(Math.max(0, verdict.limit - verdict.count)));
+      c.header("X-RateLimit-Reset", String(verdict.resetAt));
+      if (!verdict.ok) {
+        span.setAttribute("nlqdb.ask.outcome", "rate_limited_ip");
+        span.end();
+        c.header("Retry-After", String(Math.max(0, verdict.resetAt - now)));
+        return c.json(
+          {
+            error: {
+              status: "rate_limited" as const,
+              limit: verdict.limit,
+              count: verdict.count,
+              resetAt: verdict.resetAt,
+            },
+          },
+          429,
+        );
+      }
+    }
+
+    // Goal-kind classifier (SK-HDC-001 + SK-ASK-001) — runs only when
+    // `dbId` is absent. v0 is a token-set heuristic; LLM swap-in is a
     // follow-up (see classifier.ts header).
     if (!parsed.body.dbId) {
       const classification = classifyKind(parsed.body.goal);
       span.setAttribute("nlqdb.ask.kind", classification.kind);
       span.setAttribute("nlqdb.ask.kind_reason", classification.reason);
       if (classification.kind === "create") {
-        // Route to the typed-plan create pipeline. SSE is not yet
-        // implemented for create (the orchestrator is await-blocking,
-        // not stream-emitting); a follow-up will add per-step events
-        // mirroring the orchestrateAsk pattern.
-        //
+        // Anon-create gating before we burn an LLM hop and a Neon
+        // schema: per-IP create cap (5/hr, SK-ANON-004) + Turnstile
+        // burst gate (3-in-5min → 428, SK-ANON-007). Authed-create
+        // limits (20/day per account) are not implemented yet — this
+        // PR ships the anon side that needs the gate to land at all.
+        if (principal.kind === "anon") {
+          const ip = c.req.header("cf-connecting-ip") ?? "unknown";
+          const anonLimiter = makeAnonRateLimiter(c.env.KV);
+          const peek = await anonLimiter.peekCreate(ip);
+          // X-RateLimit-* parity (SK-RL-004 / GLOBAL-002) — same
+          // header set for the create-cap bucket as for query.
+          const now = Math.floor(Date.now() / 1000);
+          c.header("X-RateLimit-Limit", String(peek.limit));
+          c.header("X-RateLimit-Remaining", String(Math.max(0, peek.limit - peek.count)));
+          c.header("X-RateLimit-Reset", String(peek.resetAt));
+          if (!peek.ok) {
+            span.setAttribute("nlqdb.ask.outcome", "create_cap_ip");
+            span.end();
+            c.header("Retry-After", String(Math.max(0, peek.resetAt - now)));
+            return c.json(
+              {
+                error: {
+                  status: "rate_limited" as const,
+                  limit: peek.limit,
+                  count: peek.count,
+                  resetAt: peek.resetAt,
+                },
+              },
+              429,
+            );
+          }
+          if (peek.needsChallenge) {
+            const turnstileToken = c.req.header("cf-turnstile-response") ?? null;
+            const verify = await verifyTurnstile(turnstileToken, c.env.TURNSTILE_SECRET, ip);
+            // Fail-open when the secret is unset (dev / pre-config).
+            // Any other failure (`invalid` / `verify_failed`) returns
+            // 428 challenge_required so the surface re-renders the
+            // widget. SK-ANON-007.
+            const allowed = verify.ok || verify.reason === "unconfigured";
+            if (!allowed) {
+              span.setAttribute("nlqdb.ask.outcome", "challenge_required");
+              span.end();
+              return c.json(
+                {
+                  error: {
+                    status: "challenge_required" as const,
+                    code: "challenge_required" as const,
+                    action: "Complete the browser challenge to continue.",
+                  },
+                },
+                428,
+              );
+            }
+          }
+          // Record AFTER any challenge clears — otherwise the
+          // counter ratchets up on every blocked attempt and the
+          // user is stuck behind the gate forever.
+          await anonLimiter.recordCreate(ip);
+        }
+
         // Dynamic import defers libpg-query's WASM initialization to
-        // the first create request. Static import pulls it into the
-        // Worker startup path, which breaks the workerd integration-test
-        // sandbox (libpg-query reads the .wasm via fs at init time;
-        // wrangler's esbuild inlines it for production but the test
-        // runner loads TypeScript source directly).
+        // the first create request — see commit 1a body for the
+        // rationale.
         const { buildDbCreateDeps } = await import("./db-create/build-deps.ts");
         const { orchestrateDbCreate } = await import("./db-create/orchestrate.ts");
         try {
           const { deps: createDeps, secretRef } = buildDbCreateDeps(c.env);
           const result = await orchestrateDbCreate(createDeps, {
             goal: parsed.body.goal,
-            tenantId: session.user.id,
+            tenantId: principal.id,
             secretRef,
           });
           if (!result.ok) {
-            // Map create-error envelope to HTTP status. infer/compile/
-            // ddl/embed_failed map to 422 (the goal made it through
-            // routing but the pipeline rejected it); provision_failed
-            // maps to 500 (real infra failure, not user error).
+            // infer/compile/ddl/embed_failed → 422; provision_failed → 500.
             const statusCode = result.error.kind === "provision_failed" ? 500 : 422;
             return c.json({ error: result.error }, statusCode);
           }
@@ -204,11 +301,10 @@ app.post("/v1/ask", requireSession, async (c) => {
           span.end();
         }
       }
-      // kind=query|write but no dbId — needs the per-surface
-      // resolution path (REST 409 + candidate_dbs / CLI prompt /
-      // MCP elicitation per SK-HDC-005 / SK-ASK-003). That whole
-      // surface lands in the next slice; for today we surface the
-      // ambiguity as a structured 400 so the client can render it.
+      // kind=query|write without dbId — surfaces the ambiguity per
+      // SK-HDC-005 / SK-ASK-003. The full per-surface resolution
+      // (409 + candidate_dbs / CLI prompt / MCP elicitation) is a
+      // separate slice.
       span.end();
       return c.json(
         {
@@ -226,15 +322,10 @@ app.post("/v1/ask", requireSession, async (c) => {
     const orchestrateReq = {
       goal: parsed.body.goal,
       dbId: parsed.body.dbId,
-      userId: session.user.id,
+      userId: principal.id,
     };
 
     if (wantsSse) {
-      // try/finally so the parent span always closes even if a stream
-      // write rejects (browser DC) or the orchestrator throws past the
-      // structured-error envelope. Mirror the JSON-mode error shape:
-      // SSE `data` is `{ error: AskError }` so SSE + JSON consumers
-      // share a parser.
       return streamSSE(c, async (stream) => {
         try {
           const outcome = await orchestrateAsk(deps, orchestrateReq, {
@@ -369,7 +460,7 @@ app.post("/v1/demo/ask", async (c) => {
       return c.json({ error: { status: "rate_limited" } }, 429);
     }
 
-    const parsed = await parseGoalDbBody(c);
+    const parsed = await parseGoalBody(c);
     if (!parsed.ok) {
       span.setAttribute("nlqdb.demo.outcome", "invalid_request");
       span.end();

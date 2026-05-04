@@ -12,7 +12,7 @@ when-to-load:
 # Feature: Anonymous Mode
 
 **One-liner:** No-login first-value path across web / CLI / MCP; later attached to a Better Auth identity.
-**Status:** partial (API shipped — `/v1/anon/adopt`; web UI remaining — Phase 1 exit gate)
+**Status:** partial — anon `/v1/ask` create flow (`apps/api/src/principal.ts` + `apps/api/src/anon-rate-limit.ts` + `apps/web/src/pages/app/new.astro`) shipped; `/v1/anon/adopt` row-update + RLS-policy rewrite on sign-in remains the Phase 1 exit gate
 **Owners (code):** `apps/web/**`, `cli/**`, `apps/api/src/anon-adopt.ts`
 **Cross-refs:** docs/decisions.md#GLOBAL-007 · docs/architecture.md §0.1, §3.3, §3.6.4, §4.1, §14.3, §14.6 · docs/runbook.md §10 (P1, P5 first-touch) · docs/architecture.md §10 §4 (partial status) · docs/runbook.md §9 (anonymous-db lifecycle)
 
@@ -94,6 +94,27 @@ when-to-load:
   - Raw hashcash (SHA-256, 20-bit) — valid self-hosted fallback if Turnstile is unavailable, but requires a challenge-issuance endpoint and HMAC-signed nonce management (ALTCHA pattern).
   - Argon2/scrypt — memory-hard; impractical in browser JS at useful difficulty without a WASM bundle.
   - KV-backed nonce tracking — 1,000 KV writes/day budget; too expensive.
+
+### SK-ANON-008 — Anon principal id is `anon:<sha256(token)[:16]>`; cookie session wins when both present
+
+- **Decision:** The `requirePrincipal` middleware (`apps/api/src/principal.ts`) accepts either a Better Auth cookie session OR `Authorization: Bearer anon_<token>`. The anon principal's id is `anon:<sha256(token)[:16]>` — a 64-bit, non-reversible derivation from the device token. When both shapes are present on the same request, the cookie session wins.
+- **Core value:** Bullet-proof, Seamless auth, Free
+- **Why:** Three properties forced this shape. (1) The orchestrator's `tenantId` is baked into RLS policies (`apps/api/src/db-create/neon-provision.ts`) and into OTel span attributes — putting the raw bearer there would leak it to every operator with span access. SHA-256 prefix is non-reversible and short enough to be safe in those contexts. (2) `apps/api/src/db-create/orchestrate.ts`'s `isAnonymous(tenantId)` check already keys off the `anon:` prefix to set `pkLive: null` (per SK-WEB-007); reusing it means no orchestrator branch (`SK-ANON-006`). (3) Cookie-wins is the only way `/v1/anon/adopt` can trigger on the seamless-auth path: a signed-in user that still has an `anon_*` token in `localStorage` is, by definition, an adopted user — the cookie reflects truth, the bearer is leftover state. 16 hex chars (= 64 bits) is collision-free at four-billion-device cardinality per birthday-bound math.
+- **Consequence in code:** `principal.ts` exports `Principal = { kind: "user", id, session } | { kind: "anon", id, token }` and `getPrincipal(c)`. Routes that need cookie-only stay on `requireSession` (`/v1/anon/adopt`, `/v1/chat/messages`); routes that accept anon switch to `requirePrincipal`. `parseAnonBearer` rejects bare `Bearer anon_` (no entropy after the prefix). The 16-char prefix is the only place where the token-to-id mapping happens; do not invent a parallel hash anywhere else.
+- **Alternatives rejected:**
+  - Use the raw token as `tenantId` — the token leaks into every span, every D1 row, every RLS policy. Rotation impossible.
+  - Hash the token with HMAC + secret (vs plain SHA-256) — adds an HMAC-secret deploy dependency for no security gain (the token itself is the secret, not the hash).
+  - Anon-bearer wins over cookie when both present — would let a stale anon token mask a live signed-in identity; adoption never fires.
+
+### SK-ANON-009 — Turnstile verify fails open when `TURNSTILE_SECRET` is unset
+
+- **Decision:** `verifyTurnstile()` returns `{ ok: false, reason: "unconfigured" }` when no secret is configured. The `/v1/ask` route treats `unconfigured` as allow-through. Any other failure (`invalid` / `verify_failed`) returns 428 with the challenge envelope so the surface re-renders the widget.
+- **Core value:** Bullet-proof, Effortless UX
+- **Why:** Local `wrangler dev` and integration tests run without Workers secrets — failing closed there means every contributor has to provision a Turnstile keypair before they can land an anon-create change. Failing open keeps the development edit loop fast while keeping the production posture safe: production ALWAYS has the secret set (`docs/runbook.md`), so production never hits the fail-open branch. The per-IP create cap (5/hour) still applies in dev, so even with Turnstile bypassed an abuser can't burn unlimited DBs.
+- **Consequence in code:** `apps/api/src/turnstile.ts` returns the typed `unconfigured` reason (not a generic failure) so the route can branch on it. The route's `allowed = verify.ok || verify.reason === "unconfigured"` is the only place this fail-open branch exists; tests assert that the production-configured path NEVER fails open even when siteverify says success=false.
+- **Alternatives rejected:**
+  - Fail closed when secret is missing — every dev environment + test fixture needs Turnstile credentials; landing the `kind=create` branch becomes a credential-provisioning errand.
+  - Treat `verify_failed` (network 5xx) as "allow through" — masks real Cloudflare outages; an attacker hammering the route would tip Turnstile over and bypass the gate.
 
 ## GLOBALs governing this feature
 

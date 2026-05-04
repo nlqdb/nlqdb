@@ -1,0 +1,251 @@
+---
+// Anonymous-create surface (SK-WEB-002 / SK-ANON-001 / SK-HDC-001).
+//
+// The marketing hero (`/`) talks to `/v1/demo/ask` (canned fixtures
+// — SK-WEB-004). This page is the real anonymous-create flow:
+// `/v1/ask` with `Authorization: Bearer anon_<token>`, kind=create
+// classifier, typed-plan pipeline, real Neon schema. No sign-in
+// required (GLOBAL-007); anonymous DBs live 72h until adopted on
+// sign-in (SK-ANON-002 + SK-ANON-003).
+//
+// Surface route: `/app/new`. The product app eventually moves to
+// `app.nlqdb.com` per SK-WEB-006 (cross-subdomain `__Secure-session`
+// cookie); same Astro project, same component, different host
+// routing in `wrangler.toml`. Today it's exposed on the marketing
+// origin so the flow can be exercised without DNS work.
+
+import CreateForm from "../../components/CreateForm.tsx";
+import Footer from "../../components/Footer.astro";
+import Topnav from "../../components/Topnav.astro";
+import Base from "../../layouts/Base.astro";
+
+const apiBase = import.meta.env.PUBLIC_API_BASE ?? "https://app.nlqdb.com";
+---
+<Base
+  title="Create a database — nlqdb"
+  description="Spin up a Postgres schema from a goal. No sign-in required for the first 72h."
+>
+  <div class="page">
+    <Topnav />
+    <main>
+      <CreateForm client:load apiBase={apiBase} />
+    </main>
+    <Footer />
+  </div>
+</Base>
+
+<script>
+  // Provision the anonymous-mode token early so it's in localStorage
+  // before CreateForm.tsx hydrates (SK-ANON-001). The form imports
+  // the same helper and would mint on first call anyway, but landing
+  // it server-script-first means a first-paint user can see the
+  // token in devtools immediately.
+  import { getOrMintAnonToken } from "../../lib/anon";
+  getOrMintAnonToken();
+</script>
+
+<style is:global>
+  .createform {
+    max-width: 720px;
+    margin: clamp(24px, 5vw, 56px) auto;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .createform__title {
+    font-family: var(--mono);
+    font-size: clamp(24px, 4vw, 36px);
+    letter-spacing: -0.02em;
+    margin: 0;
+  }
+
+  .createform__lede {
+    font-family: var(--mono);
+    color: var(--fg-dim);
+    font-size: 14px;
+    margin: 0;
+  }
+
+  .createform__form {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 12px;
+    align-items: center;
+  }
+
+  .createform__label {
+    grid-column: 1 / -1;
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--fg-dim);
+  }
+
+  .createform__field {
+    width: 100%;
+    padding: 18px 20px;
+    font-family: var(--mono);
+    font-size: clamp(16px, 1.8vw, 18px);
+    color: var(--fg);
+    background: var(--bg-elev);
+    border: 3px solid var(--border-strong);
+    outline: none;
+    box-shadow: var(--shadow-hard);
+    transition:
+      border-color 80ms ease-out,
+      box-shadow 80ms ease-out;
+  }
+
+  .createform__field:focus {
+    border-color: var(--accent);
+    box-shadow: var(--shadow-hard-accent);
+  }
+
+  .createform__field:disabled {
+    opacity: 0.6;
+  }
+
+  .createform__submit {
+    justify-content: center;
+    padding: 14px 22px;
+    min-width: 160px;
+  }
+
+  .createform__submit:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: 4px 4px 0 0 var(--accent-fg);
+  }
+
+  .createform__spinner {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    border: 2px solid currentColor;
+    border-right-color: transparent;
+    border-radius: 50%;
+    animation: createform-spin 0.7s linear infinite;
+  }
+
+  @keyframes createform-spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  .createform__error {
+    grid-column: 1 / -1;
+    margin: 0;
+    padding: 8px 10px;
+    font-family: var(--mono);
+    font-size: 13px;
+    color: #ff8a8a;
+    background: #2a1212;
+    border: 2px solid #ff8a8a;
+  }
+
+  .createresult {
+    margin-top: 4px;
+    padding: 18px 20px;
+    background: var(--bg-elev);
+    border: 3px solid var(--border-strong);
+    box-shadow: var(--shadow-hard);
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    animation: createresult-rise 220ms ease-out;
+  }
+
+  @keyframes createresult-rise {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .createresult__id,
+  .createresult__schema {
+    margin: 0;
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--fg-dim);
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    align-items: baseline;
+  }
+
+  .createresult__id-label {
+    color: var(--accent);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-weight: 600;
+  }
+
+  .createresult__id code,
+  .createresult__schema code {
+    color: var(--fg);
+    background: var(--bg);
+    padding: 2px 6px;
+    border: 1px solid var(--border);
+  }
+
+  .createresult__table-name {
+    margin: 0 0 8px;
+    font-family: var(--mono);
+    font-size: 14px;
+    color: var(--accent);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  .createresult__tablewrap {
+    overflow-x: auto;
+  }
+
+  .createresult__table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: var(--mono);
+    font-size: 13px;
+  }
+
+  .createresult__table th,
+  .createresult__table td {
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border);
+    text-align: left;
+    white-space: nowrap;
+  }
+
+  .createresult__table th {
+    color: var(--fg-dim);
+    border-bottom-color: var(--border-strong);
+  }
+
+  .createresult__table tbody tr:last-child td {
+    border-bottom: none;
+  }
+
+  .createresult__more,
+  .createresult__empty {
+    margin: 8px 0 0;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--fg-muted);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .createresult {
+      animation: none;
+    }
+    .createform__spinner {
+      animation-duration: 1.4s;
+    }
+  }
+</style>
