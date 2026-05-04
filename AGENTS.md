@@ -161,6 +161,7 @@ working in one directory.
 | [`docs/competitors.md`](docs/competitors.md) | Competitive landscape — categories, threat matrix, gap analysis. |
 | [`docs/history/`](docs/history/) | Lessons learnt — one doc per operational topic (infra setup, Workers Versions GC, CI actions repo layout, etc.). |
 | [`docs/research/`](docs/research/) | Strategic research — personas, LLM credits plan, email & marketing strategy, Phase 1 exit criteria, open design questions. |
+| [`docs/future/`](docs/future/) | Forward-looking plans not yet promoted to a skill — semantic-layer adoption, etc. Promote into the relevant skill once decisions are firm. |
 
 These exist for depth; they are not loaded into every session by
 default. The skill index (`.claude/skills/_index.md`) is the front
