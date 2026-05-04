@@ -1,4 +1,17 @@
 ---
+// Top navigation. Auth-aware: when the visitor has a valid cross-
+// subdomain `__Secure-session` cookie (SK-WEB-006), the "Open
+// chat" + "Sign out" pair fades in and replaces the anon CTAs.
+// We never render a "Sign in" button at all once the user is
+// authed — the only auth affordance on an authed surface is "Sign
+// out" (per follow-up convo on this branch).
+//
+// The cookie is HttpOnly so JS can't read it directly; we hit
+// `/api/auth/get-session` once on mount. To avoid a flash of
+// the wrong shell, the authed slot is hidden by default and
+// revealed only when the probe resolves authed; the anon slot
+// renders immediately so visitors don't see an empty topnav while
+// the probe is in flight.
 interface Props {
   current?: "manifesto";
 }
@@ -15,5 +28,32 @@ const { current } = Astro.props;
       Manifesto
     </a>
     <a href="mailto:hello@nlqdb.com">Contact</a>
+
+    <span id="topnav-authed" class="topnav__authed" hidden>
+      <a href="/app" class="topnav__chat-link">Open chat &rarr;</a>
+      <button type="button" id="topnav-signout" class="topnav__signout">
+        Sign out
+      </button>
+    </span>
   </nav>
 </header>
+
+<script>
+  import { fetchSession, signOut } from "../lib/session";
+
+  const authed = document.getElementById("topnav-authed");
+  const signoutBtn = document.getElementById("topnav-signout");
+
+  if (signoutBtn) {
+    signoutBtn.addEventListener("click", () => {
+      void signOut();
+    });
+  }
+
+  void (async () => {
+    const user = await fetchSession();
+    if (user && authed) {
+      authed.hidden = false;
+    }
+  })();
+</script>

@@ -1,4 +1,5 @@
 ---
+import AuthedHomeBanner from "../components/AuthedHomeBanner.astro";
 import Carousel from "../components/Carousel.astro";
 import CodePanel from "../components/CodePanel.astro";
 import Footer from "../components/Footer.astro";
@@ -19,6 +20,7 @@ import Base from "../layouts/Base.astro";
     <Topnav />
 
     <main>
+      <AuthedHomeBanner />
       {/* Hero's marketing chrome (wordmark, lede, sub) renders
           unconditionally; the live <CreateForm> inside is gated
           behind Cmd+G (Ctrl+G on non-Mac) via the `#hero-gate` div
