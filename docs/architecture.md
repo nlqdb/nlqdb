@@ -90,8 +90,8 @@ The four surfaces (Web, API, CLI, MCP) are four projections of the same engine. 
                                     │        │                           │
    ┌──────────────┐                 │        ▼                           │
    │ <nlq-data>   │ ─── HTTPS ───►  │   ┌────────────────────────────┐  │
-   │ HTML element │                 │   │ Engines: Postgres │ Redis │ │  │
-   │ (any site)   │                 │   │ DuckDB │ pgvector │ ...    │  │
+   │ HTML element │                 │   │ Engines: Postgres, ClickHouse│ │
+   │ (any site)   │                 │   │ (Tinybird), Redis, ...      │  │
    └──────────────┘                 │   └────────────────────────────┘  │
                                     └──────────────────────────────────────┘
 ```
@@ -409,7 +409,7 @@ To avoid scope creep — these are deliberate decisions, not oversights. Re-eval
 - A "Sign in with nlqdb" identity provider
 
 **What we deliberately reinvent** (the rest is boring-tool choices):
-1. **The query router** — no existing router picks between PG / Mongo / Redis / DuckDB based on a live workload fingerprint.
+1. **The query router** — no existing router picks between PG / ClickHouse / Redis / D1 based on a live workload fingerprint.
 2. **The NL → plan compiler** — existing text-to-SQL libraries are demos; they don't handle schema drift, don't stream, don't do multi-engine, don't expose trace.
 3. **The migration orchestrator with dual-read verification** — no off-the-shelf tool does cross-engine migration safely.
 
@@ -490,7 +490,7 @@ No public onboarding in Phase 0 by design — auth API ships ahead of its UI.
 ### Phase 3 — The engine (the moat)
 
 - Query Log → Workload Analyzer → Migration Orchestrator.
-- Redis (Upstash) as second engine; DuckDB as third (analytics).
+- ClickHouse via Tinybird as second engine (analytics; daily reshape via Pipes).
 - Pro tier live ($25/mo usage-based).
 - Self-hosted classifier on single A10G Modal once ~50k queries/day.
 - Continuous backups to R2 with PITR (7d free, 30d Hobby+).
@@ -530,9 +530,8 @@ We lean toward tools with real APIs, generous free tiers, and no mandatory UI st
 | **Postgres (RDS/Aurora)** | ❌ Phase 2+ at scale | Slow to provision, expensive idle. |
 | **Postgres (self-hosted on Fly)** | ✅ considered | Full control, API-provisionable. Heavier operationally. |
 | **SQLite (Turso / libSQL)** | ✅ edge + small DBs | Replicated, HTTP API, very cheap. |
-| **DuckDB** | ✅ analytics | Embedded OLAP via `postgres_scanner`. |
-| **Redis (Upstash)** | ✅ | HTTP API — no persistent conns, serverless-friendly. |
-| **ClickHouse Cloud** | ✅ Phase 2 analytics | Solid API. |
+| **ClickHouse (Tinybird)** | ✅ second engine | Free 10 GB / 1 k reads/day; Pipes = daily-reshape. |
+| **Redis (Upstash)** | ✅ deferred | HTTP; counters/leaderboards. |
 | **pgvector** | ✅ default vector | Stays in PG. |
 | **TimescaleDB** | ✅ time-series default | PG extension — no new engine. |
 | **MongoDB Atlas** | ⚠️ | Good API, tiny free tier. Prefer JSONB on PG unless must. |

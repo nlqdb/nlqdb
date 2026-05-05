@@ -191,7 +191,7 @@ hooks, branches, commit format) and [`./architecture.md`](./architecture.md)
 
 Seven places where the existing tool isn't good enough:
 
-1. **The query router.** No existing router decides between PG / Mongo / Redis / DuckDB based on a live workload fingerprint. This is the product.
+1. **The query router.** No existing router decides between PG / ClickHouse / Redis / D1 based on a live workload fingerprint. This is the product.
 2. **The NL → plan compiler.** Existing text-to-SQL libraries (LangChain SQL agent, Vanna, etc.) are demos. They don't handle schema drift, don't stream, don't do multi-engine, don't expose trace. We build our own, tested against a held-out benchmark we curate.
 3. **The migration orchestrator with dual-read verification.** Shadow + compare + cutover, per engine pair. No off-the-shelf tool does cross-engine migration safely.
 4. **Connection proxy with per-DB quotas.** PgBouncer is the right shape but we need per-user-DB isolation, per-query budget, NL-query cancellation, and live trace surfacing. Write our own thin one in Go.

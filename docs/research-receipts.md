@@ -73,7 +73,7 @@ through libpg_query parse-validate as defense-in-depth, then
 execute inside a transaction with rollback on any structural fail.
 The LLM never emits raw DDL. The same plan shape is also the seed
 for our future cross-engine IR — one plan compiles to Postgres,
-DuckDB, or a Redis namespace, matching the federated-query
+ClickHouse, or a Redis namespace, matching the federated-query
 direction of [Substrait](https://www.querifylabs.com/blog/substrait-the-lingua-franca-for-databases)
 and [Trino](https://trino.io/paper.html).
 

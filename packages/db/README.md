@@ -18,9 +18,9 @@ into the `nlqdb.db.duration_ms` histogram — see
 ## Why an interface, not a re-export of Neon
 
 nlqdb is "natural-language **databases**" — engine-agnostic by design.
-Phase 3 may add `redis` / `duckdb` adapters; they implement the same
-`DatabaseAdapter` shape so callers (LLM router, plan cache, `/v1/ask`)
-never branch on engine.
+Phase 3 adds `clickhouse` (via Tinybird) as the second engine; further
+adapters implement the same `DatabaseAdapter` shape so callers (LLM
+router, plan cache, `/v1/ask`) never branch on engine.
 
 ## Tests
 

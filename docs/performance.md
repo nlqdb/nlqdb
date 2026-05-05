@@ -171,7 +171,7 @@ Always use these label keys; never invent variants like `tenant`, `tenant-id`, `
 | :--------------------- | :------------------- | :------------------------------------------------- |
 | `nlqdb.tenant_id`      | Bounded by tenant ct | Free tier: keep < 5 k tenants per stack.           |
 | `nlqdb.user_id`        | **High** — gated     | Only on auth events; never on per-request metrics. |
-| `nlqdb.engine`         | Low (1-3)            | `postgres`, `redis` (Phase 3), `duckdb` (Phase 3). |
+| `nlqdb.engine`         | Low (1-3)            | `postgres`, `clickhouse` (Phase 3 via Tinybird).   |
 | `nlqdb.cache_hit`      | 2                    | `true` / `false`.                                  |
 | `llm.provider`         | Low (4)              | `cf-ai`, `gemini`, `groq`, `openrouter`.           |
 | `llm.model`            | Low (~10)            | Provider-specific; pin via env config.             |

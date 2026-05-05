@@ -1,20 +1,10 @@
 # Decisions Log — `GLOBAL-NNN`
 
-Cross-cutting decisions that govern more than one feature. Every skill that
-is affected by one of these GLOBALs **copies the decision verbatim** into
-its own `FEATURE.md`, with a `Source:` line pointing back to the anchor here
-(see `docs/skill-conventions.md` §5).
-
-This file is the canonical source. If you change a GLOBAL here, you must
-update every skill that copies it in the same PR. To find duplicates:
-
-```bash
-grep -rn 'GLOBAL-NNN' docs/features/
-```
-
-Format of every block follows `docs/skill-conventions.md` §4 — the five
-fields (Decision / Core value / Why / Consequence / Alternatives) are
-mandatory. Core values are cited by name from `docs/architecture.md` §0.
+Cross-cutting decisions; canonical source. Skills reference these by ID +
+title in `## GLOBALs governing this feature` — never copy the body
+(`docs/skill-conventions.md` §5). Five fields per block (Decision / Core
+value / Why / Consequence / Alternatives) per §4. Core values cited by
+name from `docs/architecture.md` §0.
 
 ## Index
 
@@ -23,7 +13,7 @@ mandatory. Core values are cited by name from `docs/architecture.md` §0.
 | GLOBAL-001 | SDK is the only HTTP client | every surface | active |
 | GLOBAL-002 | Behavior parity across surfaces | every surface | active |
 | GLOBAL-003 | New capabilities ship to all surfaces in one PR | every surface | active |
-| GLOBAL-004 | Schemas only widen | schema-inference, plan-cache, db-adapter | active |
+| GLOBAL-004 | Logical schemas widen; physical layout reshapes | schema-inference, plan-cache, db-adapter, multi-engine-adapter | active |
 | GLOBAL-005 | Every mutation accepts `Idempotency-Key` | every mutating endpoint | active |
 | GLOBAL-006 | Plans content-addressed by `(schema_hash, query_hash)` | plan-cache, ask-pipeline | active |
 | GLOBAL-007 | No login wall before first value | auth, web-app, cli, ask-pipeline | active |
@@ -100,26 +90,27 @@ mandatory. Core values are cited by name from `docs/architecture.md` §0.
   - "Web-first, others on demand" — creates a hierarchy of surfaces,
     contradicts `GLOBAL-002`.
 
-## GLOBAL-004 — Schemas only widen
+## GLOBAL-004 — Logical schemas widen; physical layout reshapes freely
 
-- **Decision:** Once a column or field is observed in a query plan, it
-  stays in the schema fingerprint. Schemas grow; they don't shrink. The
-  `schema_hash` is monotonically widened, never branched on a "schema
-  mismatch" path.
+- **Decision:** The *logical* schema (fields a query references) is
+  monotonically widened in `schema_hash` — once observed, never
+  removed. Physical layout (tables, indexes, materialised views, engine
+  choice) reshapes under the planner without bumping the hash. Each
+  adapter maps its native introspection to the logical hash.
 - **Core value:** Bullet-proof, Simple
-- **Why:** Branching on schema mismatch creates a combinatorial explosion
-  of plan-cache keys, and every replanning is a chance to regress.
-  Widening is monotonic and safe — old plans remain valid against
-  widened schemas because the fields they reference still exist.
-- **Consequence in code:** `schema_hash` is computed over observed-fields
-  sorted by name; adding fields is append-only. `plan-cache` keys remain
-  valid across widening; replanning is only triggered when an observed
-  field disappears (which we treat as a hard-stop event, not a normal
-  branch).
+- **Why:** Schema-mismatch branching explodes plan-cache keys; widening
+  is monotonic and safe. Decoupling logical from physical lets the
+  workload analyser re-cluster a table or migrate engines without
+  invalidating cached plans — referenced fields still resolve.
+- **Consequence in code:** `schema_hash` is computed over observed
+  field names; engine-specific introspection produces engine-specific
+  hashes; appends only. Plan-cache keys outlive both widening *and*
+  physical reshape. A field disappearing is a hard-stop event, not a
+  branch.
 - **Alternatives rejected:**
   - Versioned schemas — more keys, more plans, more bugs.
-  - Re-plan on any schema change — breaks `GLOBAL-006` (content-addressed
-    cache).
+  - Re-plan on any schema change — breaks `GLOBAL-006`.
+  - Bump `schema_hash` on physical reshape — defeats the analyser thesis.
 
 ## GLOBAL-005 — Every mutation accepts `Idempotency-Key`
 
