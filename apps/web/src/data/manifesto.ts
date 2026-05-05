@@ -10,21 +10,13 @@ export interface Tenet {
 export const tenets: readonly Tenet[] = [
   {
     n: "01",
-    title: "Free. Forever.",
-    body: [
-      "You can sign up, build a thing, and ship it to production without a credit card. That isn't a trial. That's the product.",
-      "Every cost upgrade is gated on a real signal — usually that someone is paying us for the thing they shipped. Until then the bill is zero, the limits are honest, and the free tier is the same engine paying customers run on.",
-    ],
-  },
-  {
-    n: "02",
     title: "Open source. By default.",
     body: [
       "The engine, the CLI, the MCP server, the SDK — all under FSL-1.1-ALv2. Source-available now, Apache 2.0 in two years. The cloud is a convenience, not a moat. If we ever try to wall something off, you can fork the engine and run it yourself.",
     ],
   },
   {
-    n: "03",
+    n: "02",
     title: "Simple. One way to do each thing.",
     body: [
       "Two endpoints. Two CLI verbs. One chat box. No config files in the first 60 seconds. No “pick a region.” No schema. fetch is the SDK.",
@@ -32,14 +24,14 @@ export const tenets: readonly Tenet[] = [
     ],
   },
   {
-    n: "04",
+    n: "03",
     title: "Effortless UX.",
     body: [
       "Zero modals. Zero “are you sure?” except for destructive actions. Keyboard-first. The chat is the product; everything else is a disclosure that you opt into when you actually need it.",
     ],
   },
   {
-    n: "05",
+    n: "04",
     title: "Seamless auth — one identity, four surfaces, zero friction.",
     body: [
       "No login wall before first value. Every surface produces a working answer before asking who you are. The DB you create before signing in adopts to your account when you do.",
@@ -48,7 +40,7 @@ export const tenets: readonly Tenet[] = [
     ],
   },
   {
-    n: "06",
+    n: "05",
     title: "Goal-first, not DB-first.",
     body: [
       "Nobody woke up wanting to create a database. They woke up wanting a meal-planner, an agent that remembers them, the number for the 4pm sync. The database is plumbing.",
@@ -56,7 +48,7 @@ export const tenets: readonly Tenet[] = [
     ],
   },
   {
-    n: "07",
+    n: "06",
     title: "Bullet-proof by design — not by handling.",
     body: [
       "We make bad states unreachable, not branched on. Schemas only widen, so there is no “schema mismatch” code path. Every mutating call carries an idempotency key, so retries are safe by construction. Plans are content-addressed, so cache invalidation has nothing to invalidate.",
@@ -64,14 +56,14 @@ export const tenets: readonly Tenet[] = [
     ],
   },
   {
-    n: "08",
+    n: "07",
     title: "Creative. By policy.",
     body: [
       "The product looks and feels nothing like a Tailwind template. Personality is required. Acid lime on near-black, JetBrains Mono headlines, hard shadows, kinetic typography on the words that matter. Stock photos are forbidden. Logo grids are forbidden. “Trusted by” is forbidden.",
     ],
   },
   {
-    n: "09",
+    n: "08",
     title: "Fast. Measured.",
     body: [
       "p50 query under 400ms on cache hit. p95 under 1.5s on cache miss. Cold start under 800ms. CLI binary under 8MB, starts in under 30ms.",
@@ -126,10 +118,6 @@ export interface ExcerptItem {
 }
 
 export const excerpt: readonly ExcerptItem[] = [
-  {
-    title: "Free, forever",
-    body: "Sign up, build, ship to production without a credit card. The free tier isn't a trial — it's the product. Every cost upgrade is gated on a real signal: paying customers, not theoretical scale.",
-  },
   {
     title: "Fast. Measured.",
     body: "p50 query under 400ms on cache hit. p95 under 1.5s on cache miss. Cold start under 800ms. Numbers exist so we can fail them in CI, not so we can quote them in a deck.",
