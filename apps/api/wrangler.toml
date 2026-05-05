@@ -3,6 +3,24 @@ main = "src/index.ts"
 compatibility_date = "2026-04-27"
 compatibility_flags = ["nodejs_compat"]
 
+# `workers_dev = true` is REQUIRED for Workers-Versions previews
+# (`SK-AUTH-014`). Wrangler defaults `workers_dev` to `false` when
+# `[[routes]]` are present, which leaves the `*.workers.dev`
+# subdomain unprovisioned — and `wrangler versions upload` then
+# can't return a `preview_url`, so `scripts/extract-wrangler-preview-url.sh`
+# correctly degrades to "see dashboard" and the PR preview comment
+# loses its clickable URL. Setting this to `true` exposes
+# `nlqdb-api.<account>.workers.dev` alongside the `app.nlqdb.com`
+# custom domain. Safe for an API surface — OAuth callbacks are pinned
+# to `app.nlqdb.com` (`SK-AUTH-008`) and APIs don't have the SEO-
+# duplication concern that gates `workers_dev` for `apps/web`.
+#
+# MUST stay above any `[[table]]` headers — TOML scopes bare keys to
+# the most recent table header, so misplacing this line below e.g.
+# `[[r2_buckets]]` makes wrangler reject it as "Unexpected fields
+# found in r2_buckets[0]".
+workers_dev = true
+
 [observability]
 enabled = true
 
