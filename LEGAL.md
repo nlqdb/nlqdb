@@ -57,21 +57,22 @@ Symbols:
 | ✅ | PyPI user + org                  | Founder created 2026-04-25 |
 | ✅ | BlueSky `@nlqdb.com`             | Domain-verified handle; reserved 2026-05-05 |
 | ✅ | YouTube channel `@nlqdb`         | Reserved 2026-05-05 |
-| ✅ | LinkedIn company page `nlqdb`    | Reserved 2026-05-05 |
+| ✅ | LinkedIn company page `nlqdb`    | Reserved 2026-05-05 (https://www.linkedin.com/company/nlqdb) |
 | ✅ | Mastodon `@nlqdb@hachyderm.io`   | Reserved 2026-05-05 |
+| ✅ | HuggingFace org `nlqdb`          | Reserved 2026-05-05 (https://huggingface.co/nlqdb) |
+| ✅ | Docker Hub user account `nlqdb`  | Reserved 2026-05-05 (free user account, not org) |
+| ✅ | crates.io `nlqdb`                | Reserved 2026-05-05 (Rust placeholder package) |
+| ✅ | RubyGems `nlqdb`                 | Reserved 2026-05-05 (Ruby placeholder gem) |
+| ✅ | Maven Central group `com.nlqdb`  | Reserved 2026-05-05 (verified via DNS TXT on nlqdb.com) |
+| ✅ | Maven Central group `ai.nlqdb`   | Reserved 2026-05-05 (verified via DNS TXT on nlqdb.ai) |
 | ❌ | X / Twitter `@nlqdb`             | **Taken by a third party.** Pick a workable alternative when launching X presence — e.g. `@nlqdb_com`, `@usenlqdb`, `@nlqdbhq`. |
+| ❌ | Threads `@nlqdb`                 | **Taken by a third party.** |
 
 ### Free, pending
 
 | Status | Where | Notes |
 | :----- | :---- | :---- |
-| 🆓 | Threads (`@nlqdb`)               | Free, takes 2 minutes |
-| 🆓 | HuggingFace org `nlqdb`          | Free; useful when LLM-related artifacts ship |
-| 🆓 | crates.io `nlqdb`                | Free placeholder package |
-| 🆓 | RubyGems `nlqdb`                 | Free placeholder gem |
-| 🆓 | Maven Central group `io.nlqdb`   | Free; needs DNS TXT proof of `nlqdb.com` ownership |
 | 🆓 | NuGet `Nlqdb`                    | Free; relevant only if .NET client ever ships |
-| 🆓 | Docker Hub `nlqdb` user account  | Free; the *org* is paid-only since 2024, the user account is free and reserves the namespace |
 | 🆓 | Discord vanity URL               | Requires server boost level 3 — defer |
 
 ### Paid (deferred until revenue)
@@ -122,7 +123,7 @@ The free path keeps you defensible until you can afford a real filing.
 | 🆓 | Use `nlqdb™` consistently in README, marketing site, CLI banner | Free; establishes a documented use date |
 | 🆓 | Reserve confusingly-similar package names defensively (see registrations above) | Free |
 | 🆓 | Monitor brand-confusion via Google Alerts on `nlqdb` | Free |
-| 💰 | **Swiss IGE base application (Class 9 + 42)** | CHF 550 — deferred. This is the cheapest path to actual statutory rights. **Without it, ™ is mostly posturing in Switzerland (first-to[...] |
+| 💰 | **Swiss IGE base application (Class 9 + 42)** | CHF 550 — deferred. This is the cheapest path to actual statutory rights. **Without it, ™ is mostly posturing in Switzerland (first-to-use is not statutory). |
 | 💰 | Madrid Protocol extension (US, EU, UK, CA, AU)           | CHF 3'500-4'500 + agent fees — deferred |
 | 💰 | National filings outside Madrid                          | Skip — Madrid handles it |
 
@@ -235,8 +236,7 @@ Set these in whatever calendar app you use.
 
 These are things only you can do, by browsing in your account:
 
-1. **Reserve remaining free social handles & package registrations** (~20 minutes):
-   Threads → HuggingFace org → Docker Hub user → crates.io → RubyGems → Maven Central groupId.
+1. ✅ **Reserve free social handles & package registrations** — COMPLETE as of 2026-05-05. All registries claimed except paid domains.
 
 2. **Cloudflare Email Routing entries** confirmed catch-all-to-founder
    already. Spot-check that `security@`, `conduct@`, `trademarks@`,
