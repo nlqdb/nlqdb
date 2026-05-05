@@ -272,13 +272,15 @@ GLOBAL.
    either (a) accept a long-lived ClickHouse process outside
    Workers (breaks the "$0 to ship" story for ourselves) or (b)
    accept worse storage economics than the floor (kills the pricing
-   pitch). No third option is currently visible.
+   pitch). **§9 below surveys free-forever options that may give us a
+   third path.**
 2. **Cold-start on the ingest path.** OTLP receivers must accept
    sustained throughput with backpressure. Workers' billing model
    (CPU-time, request count) is *probably* viable up to a few k
    spans/sec per tenant, but past that we're paying retail for
    what dedicated infra does for fixed cost. Modelling required
-   before any commitment.
+   before any commitment. **§9 below surveys edge alternatives that
+   share the Workers economic shape but give us more headroom.**
 3. **The AI moat is shrinking, not growing.** Honeycomb (2023),
    Grafana (2026), OpenObserve (2026), Datadog (Bits), Dynatrace
    (Davis), New Relic (AI Monitoring) all ship NL features today.
@@ -324,6 +326,107 @@ until §5 and the §7 risks have an owner and an answer.
 
 ---
 
+## 9. Free-forever stack — May 2026 research
+
+`GLOBAL-013` ("free tier, no credit card") is the constraint that
+forces both the storage and ingest decisions. This section surveys
+what's actually free-forever (not "free trial," not "$X credit," not
+"12 months on AWS") for each layer, with the goal of finding a path
+that preserves the strict-$0 sign-up promise from
+[`architecture.md §0`](../architecture.md).
+
+### 9.1 ClickHouse-class storage — what's actually free forever
+
+| Vendor | Free-forever quota | Engine | Notes |
+|---|---|---|---|
+| **Tinybird** | 10 GB storage · 1,000 read queries / day · 0.5 vCPU · 10 QPS · 0.5 GB / req · unlimited writes · no card | Managed ClickHouse | The only managed-ClickHouse provider with a true free-forever plan and no card. *Writes don't count toward the quota* — fits the OTLP ingest shape exactly. The 1,000 reads/day cap is the real ceiling: for o11y queries we'd need to be careful with autorefresh dashboards, but the NL-first UX (`§6.1`) only fires queries on user intent, so the limit is more livable than for a polling Grafana dashboard. |
+| **MotherDuck** | ~10 GB · included compute / month · pivoted up-market in 2026 | Cloud DuckDB | Columnar, very fast for analytics, weak on streaming ingest. Free tier exists as a developer on-ramp but the product is now enterprise-shaped. Viable for *query* but not for the OTLP write path. |
+| **ClickHouse Cloud** | $300 credits, no permanent free tier | ClickHouse | Out for our constraint. Sets the storage-floor benchmark (<3¢/GB/mo) but cannot be the user-facing free tier. |
+| **OpenObserve Cloud** | Free tier eliminated June 2025 | ClickHouse-class | Out. Pay-as-you-go ~$0.30/GB. |
+| **Aiven for ClickHouse** | "Try it free" — no documented permanent quota | ClickHouse | Out for the strict-$0 promise. |
+| **Altinity.Cloud** | No self-serve, no real free tier | ClickHouse | Out. |
+| **DoubleCloud** | Service shut down March 2025 | — | Out. |
+| **Self-host ClickHouse on Oracle Always Free** | 4 ARM OCPU · 24 GB RAM · 200 GB block · 10 TB egress / mo · forever | ClickHouse (self-hosted) | The "operator the user never sees" path: we host the ClickHouse cluster ourselves on the Oracle Always-Free Ampere allocation. Caveats: provisioning is genuinely hard (anti-fraud rejects accounts), Ampere capacity is regularly out-of-stock in popular regions, and idle instances may be reclaimed (95th-percentile CPU < 20% over 7 days). Workable for a single shared cluster powering the cohort of free-tier tenants; not workable as per-tenant infra. |
+| **Axiom** | 500 GB ingest / month · 30-day retention · OTLP-compatible | Custom event store | Not literally ClickHouse, but observability-shaped, OTLP-native, and the most generous free quota in the cohort. If the analytical primitive is "ask English over events," Axiom-as-backend is plausible. Loss of control over the storage layer is the price. |
+| **Honeycomb** | Free: 20 M events / month · 60-day retention | Custom event store | Comparable to Axiom on shape; smaller event budget; their NL Query Assistant is the obvious comparison. |
+
+**Provisional conclusion.** The cleanest free-forever path is
+**Tinybird for the user-facing write+query plane** (matches the
+write-heavy OTLP shape, no card, never expires) **plus optionally a
+self-hosted ClickHouse on Oracle Always-Free** (pooled across all
+free-tier users, kept warm by traffic) **as the cost-floor backstop
+when Tinybird's 10 GB / 1k-reads ceiling is hit.** Neither option
+forces us to put a credit card in front of the sign-up — exactly the
+seam `GLOBAL-013` requires.
+
+### 9.2 OTLP ingest hot-path — Workers alternatives that stay free forever
+
+Constraint set: *(a) free forever, no card; (b) capable of accepting
+sustained protobuf POSTs from an OTel collector; (c) cheap enough at
+1k–10k spans/sec/tenant that we don't bleed margin on the free
+tier.* Workers is the incumbent answer; the question is which
+alternatives match the shape and what trade-offs they bring.
+
+| Runtime | Free-forever quota | Shape | Trade-off vs Workers |
+|---|---|---|---|
+| **Cloudflare Workers** (status quo) | 100k req/day · 10 ms CPU/req · global edge · always free | Stateless edge, V8 isolates | OTLP/HTTP fits if we stay stateless and offload writes (Queues + R2 buffer + drainer). Hard ceilings on memory (128 MB) and CPU (10 ms per request, 30 s with extension). Fine for ingest, painful for fan-in. |
+| **Deno Deploy** | 100k req/day · 15 hours CPU / month · 100 GB egress · 1 GiB KV · 6 regions · always free | Stateless edge, V8 isolates | Same shape as Workers; no per-request CPU wall (15h/mo total). Wins when a single decode is heavy (large protobuf batches). Loses on global region count (6 vs Workers' ~330). Ergonomics are nicer (Node-compatible, npm-native). |
+| **AWS Lambda** | 1M req / month · 400k GB-sec / month · always free | Stateless serverless container | 10× the Workers request quota and explicit memory budget. Cold-start is the real tax (200–500 ms typical for a small Node bundle). Acceptable if OTLP collectors batch ≥250 ms — most do. Ties cleanly to Kinesis Data Streams or Firehose if we want a managed buffer. |
+| **Google Cloud Run** | 2M req / month · 360k vCPU-sec · 180k GiB-sec · always free | Container, scale-to-zero | Best raw quota in the cohort. Container model means we can run an actual `otelcol` binary, not a hand-written Worker. Cold-start ~1–3 s on scale-from-zero (mitigated with min-instances=0 + warm pool). |
+| **Vercel Hobby** | 1M function invocations · 1M edge req · 4 h Active CPU · 100 GB transfer · always free | Stateless serverless | Personal/non-commercial use only — disqualifies the production path. Only useful for marketing-site or demo. |
+| **Render (free)** | Web service sleeps after 15 min idle · ~30–60 s cold start · 1 GB Postgres expires after 30 d | Always-on container with sleep | Cold start is incompatible with OTLP (collectors retry but a 30 s wake will drop spans). **Out for the ingest hot path.** |
+| **Fly.io** | No free tier in 2026 — 2 h trial only | Container | **Out.** Removed the free tier in 2024; trial expires in 2 h or 7 d. |
+| **Railway** | $5 trial credit, then sleeps | Container | **Out.** No real free-forever. |
+| **Koyeb** | 1 web service · 1 Postgres · always free · commercial use allowed · no card | Container, no scale-to-zero | Long-lived process model — natural home for an `otelcol` receiver. Single service ceiling is the catch; sufficient for a *shared* receiver, not for tenant-isolated ones. |
+| **Northflank** | 2 services · 2 jobs · 1 db addon · always free | Container | Same shape as Koyeb; ergonomically a step up; same single-pool ceiling. |
+| **Oracle Cloud Always Free** | 4 ARM OCPU · 24 GB RAM · 200 GB · forever | Long-lived VPS | The "we run our own otelcol" path. Same caveats as §9.1 (capacity, idle reclaim). Pairs naturally with the self-hosted ClickHouse on the *same* always-free allocation. |
+
+**Provisional conclusion.** Three viable architectures, ranked by
+fit:
+
+1. **Cloud Run for ingest + Tinybird for storage.** Cleanest match
+   for our constraints. Cloud Run runs the official `otelcol` binary
+   on its always-free quota (2M req/mo is plenty for early users);
+   Tinybird stores rows for free with a 10 GB ceiling. Both are
+   no-card, never-expires. Storage spillover plan: when a tenant
+   hits Tinybird's free ceiling, route to a shared self-hosted
+   ClickHouse on Oracle Always-Free as a fallback "warm archive."
+2. **Workers + Deno Deploy hybrid.** Keep Workers for the routing
+   edge, dispatch heavy decode to Deno Deploy (no per-request CPU
+   wall). Storage same as (1). Plays to the existing Workers-first
+   stack but adds a second runtime to operate.
+3. **All-Oracle.** `otelcol` + ClickHouse on the same Always-Free
+   Ampere VM. Lowest cost of all three, but stakes the entire free
+   tier on Oracle's capacity availability — a fragile single point
+   of failure for a launch.
+
+The "Workers everywhere" plan from
+[`architecture.md §2`](../architecture.md) **does not break**, but
+for o11y workloads it's no longer the cheapest path. If we adopt
+this pivot, we'd be adding *one* of Cloud Run / Deno Deploy /
+Oracle to the platform stack, not replacing Workers — same shape as
+the existing `multi-engine-adapter` Phase-3 plan, but for compute
+runtimes.
+
+### 9.3 Implications for the §8 prototype
+
+The §8 prototype originally specified "ClickHouse on a $20/mo
+Hetzner box." Given §9, a more aligned prototype would be:
+
+- **Ingest:** Cloud Run service running the upstream `otelcol`
+  binary, OTLP/HTTP receiver, ClickHouse exporter.
+- **Storage:** Tinybird Free Forever, with the schema produced by
+  `otelcol`'s ClickHouse exporter mapped to a Tinybird Data Source.
+- **Query:** existing `ask-pipeline` compiles English → ClickHouse
+  SQL → Tinybird Pipe.
+- **Cost to validate the thesis end-to-end: $0.**
+
+This both *tests* the §6 "10× DevEx" claim and *validates* the
+free-forever architecture in one prototype, instead of leaving the
+infra question to a later phase.
+
+---
+
 ## Sources
 
 Surveys and competitor scans (May 2026):
@@ -362,3 +465,30 @@ NL-on-observability research:
 - [Catalog-driven NL→PromQL framework (arXiv 2604.13048)](https://arxiv.org/html/2604.13048v1)
 - [Alibaba Cloud PromQL Copilot](https://www.alibabacloud.com/blog/602420)
 - [Gartner — explainable AI driving LLM observability investment to 50% by 2028](https://www.gartner.com/en/newsroom/press-releases/2026-03-30-gartner-predicts-by-2028-explainable-ai-will-drive-llm-observability-investments-to-50-percent-for-secure-genai-deployment)
+
+Free-forever stack research (§9):
+
+- [Tinybird pricing (Free Forever — 10 GB / 1k reads per day, no card)](https://www.tinybird.co/pricing)
+- [Tinybird shared infrastructure limits](https://www.tinybird.co/docs/forward/pricing/shared-infrastructure)
+- [MotherDuck pricing change 2026 — free tier shape](https://tasrieit.com/blog/motherduck-pricing-change-2026)
+- [MotherDuck free tier directory entry](https://freetier.co/directory/products/motherduck)
+- [ClickHouse Cloud pricing (no permanent free tier)](https://clickhouse.com/pricing)
+- [Aiven for ClickHouse — try-it-free positioning](https://aiven.io/clickhouse)
+- [Altinity.Cloud pricing](https://altinity.com/clickhouse-pricing/)
+- [Oracle Cloud Always Free — Ampere A1 (4 OCPU / 24 GB)](https://docs.oracle.com/en-us/iaas/Content/FreeTier/freetier_topic-Always_Free_Resources.htm)
+- [Setting up Oracle Always-Free Ampere VPS — 2026 guide](https://medium.com/@imvinojanv/setup-always-free-vps-with-4-ocpu-24gb-ram-and-200gb-storage-the-ultimate-oracle-cloud-guide-bed5cbf73d34)
+- [Oracle Always Free capacity / out-of-capacity workaround](https://hitrov.medium.com/resolving-oracle-cloud-out-of-capacity-issue-and-getting-free-vps-with-4-arm-cores-24gb-of-a3d7e6a027a8)
+- [Axiom pricing (500 GB / month free, 30-day retention)](https://axiom.co/pricing)
+- [Axiom limits documentation](https://axiom.co/docs/reference/limits)
+- [Cloudflare Workers limits](https://developers.cloudflare.com/workers/platform/limits/)
+- [Deno Deploy pricing (100k req/day, 15 h CPU/mo, free forever)](https://deno.com/deploy/pricing)
+- [AWS Lambda pricing (1M req / 400k GB-sec, always-free)](https://aws.amazon.com/lambda/pricing/)
+- [AWS Free Tier — "Always Free" vs "12-month"](https://aws.amazon.com/free/)
+- [Google Cloud Run pricing (2M req / 360k vCPU-sec, always-free monthly)](https://cloud.google.com/run/pricing)
+- [Vercel Hobby plan limits (personal use only)](https://vercel.com/docs/plans/hobby)
+- [Fly.io pricing — free trial only in 2026](https://fly.io/pricing/)
+- [Render free tier (sleeps after 15 min, ~1 min cold start)](https://render.com/docs/free)
+- [Koyeb free tier (always-free, commercial use, no card)](https://www.koyeb.com/pricing)
+- [Northflank pricing (always-free 2 services + 2 jobs + 1 db)](https://northflank.com/pricing)
+- [Cloudflare Durable Objects (10 GB SQLite per object)](https://developers.cloudflare.com/durable-objects/)
+- [Cloudflare Containers — Durable Object Container](https://developers.cloudflare.com/containers/platform-details/architecture/)
