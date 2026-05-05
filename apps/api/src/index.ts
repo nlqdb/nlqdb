@@ -15,6 +15,7 @@ import { auth, REVOCATION_KEY_PREFIX } from "./auth.ts";
 import { askFnFromDemoFixtures, DEMO_DB_ID } from "./chat/demo-shortcut.ts";
 import { postChatMessage } from "./chat/orchestrate.ts";
 import { makeChatStore } from "./chat/store.ts";
+import { listDatabasesForTenant } from "./databases/list.ts";
 import { parseAskBody, parseGoalDbBody, parseJsonBody } from "./http.ts";
 import { getLLMRouter } from "./llm-router.ts";
 import { makeRequireSession, type RequireSessionVariables } from "./middleware.ts";
@@ -572,6 +573,17 @@ app.get("/v1/chat/messages", requireSession, async (c) => {
   const store = makeChatStore(c.env.DB);
   const messages = await store.list(session.user.id);
   return c.json({ messages });
+});
+
+// `GET /v1/databases` — left-rail data source for the chat surface
+// (apps/web/src/components/chat/LeftRail.tsx). Tenant-scoped read of
+// the `databases` registry. See databases/list.ts for the field-by-
+// field rationale (why `pkLive` and `lastQueriedAt` are null at
+// Phase 1).
+app.get("/v1/databases", requireSession, async (c) => {
+  const session = c.var.session;
+  const databases = await listDatabasesForTenant(c.env.DB, session.user.id);
+  return c.json({ databases });
 });
 
 app.post("/v1/chat/messages", requireSession, async (c) => {

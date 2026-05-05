@@ -44,6 +44,7 @@ export default defineConfig(async () => {
               "test/waitlist.test.ts",
               "test/kv-throttle.test.ts",
               "test/anon-adopt.test.ts",
+              "test/databases-list.test.ts",
               "src/db-create/*.test.ts",
               "src/ask/sql-validate-ddl.test.ts",
               "src/ask/classifier.test.ts",
