@@ -77,6 +77,10 @@ export function getLLMRouter(): LLMRouter {
       classify: ["groq", "gemini", "workers-ai", "openrouter"],
       plan: ["gemini", "groq", "workers-ai", "openrouter"],
       summarize: ["groq", "gemini", "workers-ai", "openrouter"],
+      // SK-LLM-012: schema_infer is its own operation but shares the
+      // planner-tier provider chain — same ordering as `plan` so it
+      // hits the JSON-strongest provider first.
+      schema_infer: ["gemini", "groq", "workers-ai", "openrouter"],
     },
   });
   return cached;
