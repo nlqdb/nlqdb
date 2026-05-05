@@ -2,7 +2,7 @@
 
 > A database you talk to. You write HTML; each component asks for what it wants in plain English. nlqdb answers.
 
-**Navigation:** [decisions.md](./decisions.md) for GLOBAL-NNN decisions · [skills index](../docs/features/_index.md) for feature decisions · [runbook.md](./runbook.md) for operations · [progress.md](./progress.md) for integration tiers
+**Navigation:** [decisions.md](./decisions.md) (index of GLOBAL-NNN; bodies under [decisions/](./decisions/)) · [skills index](../docs/features/_index.md) for feature decisions · [runbook.md](./runbook.md) for operations · [progress.md](./progress.md) for integration tiers
 
 If a sentence here disagrees with a skill, **the skill wins**. This document owns: core values, system architecture, surface overviews, phase plan, tech-stack rationale, risks, and what we are explicitly not building.
 

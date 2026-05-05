@@ -79,7 +79,7 @@ when-to-load:
 
 ## GLOBALs governing this feature
 
-Canonical text in [`docs/decisions.md`](../../decisions.md). The list below names the rules that constrain this feature; any skill-local commentary is nested under the rule.
+Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; index in [`docs/decisions.md`](../../decisions.md)). The list below names the rules that constrain this feature; any skill-local commentary is nested under the rule.
 
 - **GLOBAL-013** — `$0/month free tier`.
   - *In this skill:* OIDC for publish (`SK-CIPERM-003`) keeps us off paid secret-rotation tools (HashiCorp Vault, AWS Secrets Manager) and removes the `NPM_TOKEN` rotation chore from the always-on list.

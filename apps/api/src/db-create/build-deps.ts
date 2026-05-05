@@ -14,6 +14,11 @@
 // - `docs/features/ask-pipeline/FEATURE.md` — the `kind=create`
 //   branch routes here from `/v1/ask` per SK-ASK-001.
 
+// GLOBAL-021 exception: the control-plane provisioner needs the raw
+// Neon client to issue CREATE SCHEMA / role / RLS DDL that the
+// `DatabaseAdapter.execute()` seam in `@nlqdb/db` does not expose.
+// Owner of `@neondatabase/serverless` remains `packages/db/`; this
+// import is the documented one-file carve-out.
 import { neon } from "@neondatabase/serverless";
 import { validateCompiledDdl } from "../ask/sql-validate-ddl.ts";
 import { getLLMRouter } from "../llm-router.ts";

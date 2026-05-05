@@ -8,7 +8,7 @@ harder to operate.
 - [./architecture.md](./architecture.md) — architectural narrative, phase plan, tech-stack rationale.
 - [./performance.md](./performance.md) — SLOs, latency budgets, span/metric catalog.
 - [docs/features/](../docs/features/) — canonical per-feature decisions.
-- [./decisions.md](./decisions.md) — canonical cross-cutting `GLOBAL-NNN`.
+- [./decisions.md](./decisions.md) + [./decisions/](./decisions/) — canonical cross-cutting `GLOBAL-NNN` (index + one shard per decision).
 - **this file** — what's actually set up right now (operational state,
   not decisions; if a sentence here disagrees with a skill, the skill wins).
 
