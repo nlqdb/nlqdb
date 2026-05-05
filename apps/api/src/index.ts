@@ -97,7 +97,18 @@ app.use("/v1/databases/*", credentialedCors);
 // src/middleware.ts and PERFORMANCE §4 row 6.
 const sessionResolver = {
   getSession: async (req: Request) => {
-    const result = await auth.api.getSession({ headers: req.headers, url: req.url });
+    // `request: req` gives Better Auth's internal context the URL it
+    // needs (a previous attempt that omitted it 500'd in production —
+    // see commit b0c6ade). `asResponse: false` opts out of the
+    // Response-object wrapping that Better Auth otherwise applies
+    // whenever a `request` is present (`shouldReturnResponse` in
+    // `to-auth-endpoints.mjs`); without it, `result` would be a
+    // Response, not the typed `{ session, user } | null` shape.
+    const result = await auth.api.getSession({
+      headers: req.headers,
+      request: req,
+      asResponse: false,
+    });
     if (!result) return null;
     return {
       user: { id: result.user.id, email: result.user.email },
