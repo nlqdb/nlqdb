@@ -22,7 +22,7 @@
 // hides it. The cookie is HttpOnly, so the network round-trip is
 // the only honest source of truth for "is this visitor signed in?".
 interface Props {
-  current?: "chat";
+  current?: "manifesto" | "chat";
 }
 const { current } = Astro.props;
 const inChat = current === "chat";
@@ -31,6 +31,12 @@ const inChat = current === "chat";
 <header class="topnav">
   <a class="topnav__brand" href="/">nlqdb</a>
   <nav class="topnav__links" aria-label="Primary">
+    <a
+      href="/manifesto"
+      aria-current={current === "manifesto" ? "page" : undefined}
+    >
+      Manifesto
+    </a>
     <a href="mailto:hello@nlqdb.com">Contact</a>
 
     {/* Sign-in link — gated behind Cmd+G for internal testers, AND
