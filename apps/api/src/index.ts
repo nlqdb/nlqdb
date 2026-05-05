@@ -97,7 +97,7 @@ app.use("/v1/databases/*", credentialedCors);
 // src/middleware.ts and PERFORMANCE §4 row 6.
 const sessionResolver = {
   getSession: async (req: Request) => {
-    const result = await auth.api.getSession({ headers: req.headers });
+    const result = await auth.api.getSession({ headers: req.headers, url: req.url });
     if (!result) return null;
     return {
       user: { id: result.user.id, email: result.user.email },
