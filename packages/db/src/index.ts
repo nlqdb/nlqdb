@@ -17,7 +17,7 @@ export type {
   Table,
 } from "./types.ts";
 // SchemaPlan family — typed-plan output of the db.create pipeline
-// (`.claude/skills/hosted-db-create/SKILL.md` SK-HDC-002). Canonical
+// (`docs/features/hosted-db-create/FEATURE.md` SK-HDC-002). Canonical
 // home is `./types.ts`; re-exported from the package root so
 // consumers can `import { SchemaPlan } from "@nlqdb/db"` without
 // the subpath. Both styles work; root is the recommended import.

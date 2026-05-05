@@ -2,14 +2,14 @@
 
 Cross-cutting decisions that govern more than one feature. Every skill that
 is affected by one of these GLOBALs **copies the decision verbatim** into
-its own `SKILL.md`, with a `Source:` line pointing back to the anchor here
+its own `FEATURE.md`, with a `Source:` line pointing back to the anchor here
 (see `docs/skill-conventions.md` §5).
 
 This file is the canonical source. If you change a GLOBAL here, you must
 update every skill that copies it in the same PR. To find duplicates:
 
 ```bash
-grep -rn 'GLOBAL-NNN' .claude/skills/
+grep -rn 'GLOBAL-NNN' docs/features/
 ```
 
 Format of every block follows `docs/skill-conventions.md` §4 — the five

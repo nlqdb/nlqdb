@@ -155,7 +155,7 @@ app.get("/v1/health", (c) =>
 
 // `POST /v1/ask` (Slice 6).
 //
-// Content negotiation (docs/architecture.md §13 (HTTP API happy path in .claude/skills/ask-pipeline/SKILL.md) / line 624):
+// Content negotiation (docs/architecture.md §13 (HTTP API happy path in docs/features/ask-pipeline/FEATURE.md) / line 624):
 //   - Accept: text/event-stream → SSE { plan → rows → summary }
 //   - Accept: application/json → JSON without summary (skips an LLM hop)
 //   - Default → JSON with summary

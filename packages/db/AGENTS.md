@@ -9,9 +9,9 @@ Engine-agnostic DB adapter. Phase 0 = Postgres via Neon.
 
 ## Skills relevant to this area
 
-- [`db-adapter`](../../.claude/skills/db-adapter/SKILL.md) — mandatory pre-read for changes that touch the feature.
-- [`schema-widening`](../../.claude/skills/schema-widening/SKILL.md) — mandatory pre-read for changes that touch the feature.
-- [`observability`](../../.claude/skills/observability/SKILL.md) — mandatory pre-read for changes that touch the feature.
+- [`db-adapter`](../../docs/features/db-adapter/FEATURE.md) — mandatory pre-read for changes that touch the feature.
+- [`schema-widening`](../../docs/features/schema-widening/FEATURE.md) — mandatory pre-read for changes that touch the feature.
+- [`observability`](../../docs/features/observability/FEATURE.md) — mandatory pre-read for changes that touch the feature.
 
 ## Commands
 
@@ -35,6 +35,6 @@ bun run --filter @nlqdb/db test
 
 1. Run the commands above and ensure they all pass.
 2. If you added a decision, it has an ID, lives in the right place
-   (`docs/decisions.md` or the relevant `SKILL.md`), and any duplicate
+   (`docs/decisions.md` or the relevant `FEATURE.md`), and any duplicate
    of an affected `GLOBAL-NNN` is updated.
 3. Open a PR; the root `AGENTS.md` §8 lists the pre-PR quality gates.

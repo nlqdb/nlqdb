@@ -56,7 +56,7 @@ These were deferred during the PR #81 docs consolidation. They lived in the now-
 
 **Original lean.** *"Likely yes, as an override, not as a default surface."*
 
-**Status.** Decided in `engine-migration/SKILL.md` (per the post-consolidation grep). Move to that skill or close this row out — confirm with the engine-migration owner.
+**Status.** Decided in `engine-migration/FEATURE.md` (per the post-consolidation grep). Move to that skill or close this row out — confirm with the engine-migration owner.
 
 ## 6. Notebooks-style multi-query document
 

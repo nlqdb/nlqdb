@@ -8,7 +8,7 @@
 // clean: every line here is "shape SQL", every line over there is
 // "reject anything that isn't compiler-shaped DDL."
 //
-// Sibling skill: .claude/skills/hosted-db-create/SKILL.md.
+// Sibling skill: docs/features/hosted-db-create/FEATURE.md.
 //
 // Why ALTER for FK constraints, not inline REFERENCES:
 //   Forward references (table A's FK pointing at table B that's

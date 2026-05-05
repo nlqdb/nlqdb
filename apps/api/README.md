@@ -159,5 +159,5 @@ bun run --cwd apps/api deploy          # uses CLOUDFLARE_API_TOKEN + _ACCOUNT_ID
 
 - **Phase 1 (`apps/web`, Astro):** opens this auth surface to end users —
   sign-in page (`/sign-in?return_to=…` per docs/architecture.md §4.3), post-callback
-  landing, anonymous-mode → adoption flow (.claude/skills/web-app/SKILL.md). Until then,
+  landing, anonymous-mode → adoption flow (docs/features/web-app/FEATURE.md). Until then,
   `/api/auth/*` is API-only; `app.nlqdb.com/` 404s by design.

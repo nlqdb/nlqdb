@@ -9,8 +9,8 @@ Consumer for EVENTS_QUEUE. Fans out to sinks (LogSnag, etc.) — fire-and-forget
 
 ## Skills relevant to this area
 
-- [`events-pipeline`](../../.claude/skills/events-pipeline/SKILL.md) — mandatory pre-read for changes that touch the feature.
-- [`observability`](../../.claude/skills/observability/SKILL.md) — mandatory pre-read for changes that touch the feature.
+- [`events-pipeline`](../../docs/features/events-pipeline/FEATURE.md) — mandatory pre-read for changes that touch the feature.
+- [`observability`](../../docs/features/observability/FEATURE.md) — mandatory pre-read for changes that touch the feature.
 
 ## Commands
 
@@ -34,6 +34,6 @@ bun run --filter apps/events-worker test
 
 1. Run the commands above and ensure they all pass.
 2. If you added a decision, it has an ID, lives in the right place
-   (`docs/decisions.md` or the relevant `SKILL.md`), and any duplicate
+   (`docs/decisions.md` or the relevant `FEATURE.md`), and any duplicate
    of an affected `GLOBAL-NNN` is updated.
 3. Open a PR; the root `AGENTS.md` §8 lists the pre-PR quality gates.

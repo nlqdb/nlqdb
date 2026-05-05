@@ -9,10 +9,10 @@
 
 ## Skills relevant to this area
 
-- [`cli`](../.claude/skills/cli/SKILL.md) — mandatory pre-read for changes that touch the feature.
-- [`sdk`](../.claude/skills/sdk/SKILL.md) — mandatory pre-read for changes that touch the feature.
-- [`mcp-server`](../.claude/skills/mcp-server/SKILL.md) — mandatory pre-read for changes that touch the feature.
-- [`anonymous-mode`](../.claude/skills/anonymous-mode/SKILL.md) — mandatory pre-read for changes that touch the feature.
+- [`cli`](../docs/features/cli/FEATURE.md) — mandatory pre-read for changes that touch the feature.
+- [`sdk`](../docs/features/sdk/FEATURE.md) — mandatory pre-read for changes that touch the feature.
+- [`mcp-server`](../docs/features/mcp-server/FEATURE.md) — mandatory pre-read for changes that touch the feature.
+- [`anonymous-mode`](../docs/features/anonymous-mode/FEATURE.md) — mandatory pre-read for changes that touch the feature.
 
 ## Commands
 
@@ -37,6 +37,6 @@ bun run --filter cli test
 
 1. Run the commands above and ensure they all pass.
 2. If you added a decision, it has an ID, lives in the right place
-   (`docs/decisions.md` or the relevant `SKILL.md`), and any duplicate
+   (`docs/decisions.md` or the relevant `FEATURE.md`), and any duplicate
    of an affected `GLOBAL-NNN` is updated.
 3. Open a PR; the root `AGENTS.md` §8 lists the pre-PR quality gates.
