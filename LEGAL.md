@@ -61,8 +61,8 @@ Symbols:
 | ✅ | Mastodon `@nlqdb@hachyderm.io`   | Reserved 2026-05-05 |
 | ✅ | HuggingFace org `nlqdb`          | Reserved 2026-05-05 (https://huggingface.co/nlqdb) |
 | ✅ | Docker Hub user account `nlqdb`  | Reserved 2026-05-05 (free user account, not org) |
-| ✅ | crates.io `nlqdb`                | Reserved 2026-05-05 (Rust placeholder package) |
-| ✅ | RubyGems `nlqdb`                 | Reserved 2026-05-05 (Ruby placeholder gem) |
+| ✅ | crates.io `nlqdb`                | Reserved 2026-05-05 (Rust crate placeholder) — publish with `cargo publish` |
+| ✅ | RubyGems `nlqdb`                 | Reserved 2026-05-05 (Ruby gem placeholder) — publish with `gem push` |
 | ✅ | Maven Central group `com.nlqdb`  | Reserved 2026-05-05 (verified via DNS TXT on nlqdb.com) |
 | ✅ | Maven Central group `ai.nlqdb`   | Reserved 2026-05-05 (verified via DNS TXT on nlqdb.ai) |
 | ❌ | X / Twitter `@nlqdb`             | **Taken by a third party.** Pick a workable alternative when launching X presence — e.g. `@nlqdb_com`, `@usenlqdb`, `@nlqdbhq`. |
@@ -236,7 +236,7 @@ Set these in whatever calendar app you use.
 
 These are things only you can do, by browsing in your account:
 
-1. ✅ **Reserve free social handles & package registrations** — COMPLETE as of 2026-05-05. All registries claimed except paid domains.
+1. ✅ **Reserve free social handles & package registrations** — COMPLETE as of 2026-05-05. All registries claimed except paid domains. Rust crate and Ruby gem placeholder files committed to repo.
 
 2. **Cloudflare Email Routing entries** confirmed catch-all-to-founder
    already. Spot-check that `security@`, `conduct@`, `trademarks@`,
@@ -246,6 +246,10 @@ These are things only you can do, by browsing in your account:
 3. **Run the four free trademark searches** for `nlqdb` — links in the
    Trademark section above. ~10 minutes total. If anything blocks,
    surface it in the next session.
+
+4. **Publish packages** (when ready):
+   - Rust: `cd packages/nlqdb-rs && cargo publish` (requires `cargo login` first)
+   - Ruby: `cd packages/nlqdb-rb && gem build nlqdb.gemspec && gem push pkg/nlqdb-0.0.1.gem`
 
 That's everything pre-revenue. After revenue, revisit the 💰 sections.
 
