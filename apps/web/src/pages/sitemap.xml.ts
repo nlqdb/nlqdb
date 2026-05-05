@@ -2,8 +2,8 @@ import type { APIRoute } from "astro";
 
 // Hand-rolled sitemap. The official `@astrojs/sitemap` integration
 // auto-generates one from the page list, but a single-page site
-// doesn't justify the dependency. When `/pricing`, `/manifesto`, etc.
-// land, switch to the integration in one go.
+// doesn't justify the dependency. Switch to the integration when more
+// pages land.
 
 const SITE = "https://nlqdb.com";
 const ROUTES = ["/"];
