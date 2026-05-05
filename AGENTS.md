@@ -67,6 +67,7 @@ Before documenting any decision or plan:
 - **D1. Resolve open questions first** — Don't document vague decisions. **Push the user to answer open questions** before you document.
 - **D2. Never document ambiguity** — Vague or ambiguous decisions are worse than no documentation. If it's not clear enough to document, it's not ready.
 - **D3. Clarity always increases** — When documenting, **the next steps must be clearer than before**. Never document in a way that leaves the reader more confused.
+- **D4. No doc over 20 KB** — Never let a markdown doc cross 20 KB; if text must land in a file already at the limit, plan a smart split into smaller docs with cross-references and ensure the resulting structure is reachable based on the agent's intent (so the §5 path map, §6 long-form index, or a feature index routes the agent to the right shard without having to scan the whole tree).
 
 ## 3. Tech stack (high-level)
 
