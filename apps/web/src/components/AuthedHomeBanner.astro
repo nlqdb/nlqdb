@@ -33,7 +33,12 @@
 </script>
 
 <style>
-  .authed-home-banner {
+  /* `:not([hidden])` is load-bearing: the bare `.authed-home-banner`
+   * selector wins over the UA `[hidden] { display: none }` rule
+   * (equal specificity, author CSS wins), which would leak the
+   * "Welcome back" banner to anonymous visitors before the session
+   * probe resolves. */
+  .authed-home-banner:not([hidden]) {
     display: flex;
     align-items: center;
     justify-content: space-between;
