@@ -9,7 +9,7 @@ EVENTS_QUEUE producer types — shared between apps/api and apps/events-worker.
 
 ## Skills relevant to this area
 
-- [`events-pipeline`](../../docs/features/events-pipeline/SKILL.md) — mandatory pre-read for changes that touch the feature.
+- [`events-pipeline`](../../docs/features/events-pipeline/FEATURE.md) — mandatory pre-read for changes that touch the feature.
 
 ## Commands
 
@@ -33,6 +33,6 @@ bun run --filter @nlqdb/events test
 
 1. Run the commands above and ensure they all pass.
 2. If you added a decision, it has an ID, lives in the right place
-   (`docs/decisions.md` or the relevant `SKILL.md`), and any duplicate
+   (`docs/decisions.md` or the relevant `FEATURE.md`), and any duplicate
    of an affected `GLOBAL-NNN` is updated.
 3. Open a PR; the root `AGENTS.md` §8 lists the pre-PR quality gates.

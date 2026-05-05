@@ -3,7 +3,7 @@
 // `apps/api/test/orchestrate.test.ts` (`/v1/ask`) convention.
 //
 // Rate-limit cases are deliberately absent — per
-// `docs/features/hosted-db-create/SKILL.md` SK-HDC-008 the per-IP
+// `docs/features/hosted-db-create/FEATURE.md` SK-HDC-008 the per-IP
 // / per-account limiter runs in `apps/api/src/ask/classifier.ts`
 // before the orchestrator is called, so a rate-limited request
 // never reaches `orchestrateDbCreate`. Tests for that gate live

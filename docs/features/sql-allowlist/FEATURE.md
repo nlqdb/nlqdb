@@ -13,7 +13,7 @@ when-to-load:
 **One-liner:** Safety boundary on LLM-generated SQL — what is allowed to execute.
 **Status:** implemented
 **Owners (code):** `apps/api/src/ask/sql-validate.ts` (called from `apps/api/src/ask/orchestrate.ts`)
-**Cross-refs:** docs/architecture.md §3.6.5 (validator architecture) · docs/research-receipts.md §1, §10 (Replit incident, Postgres-specific guardrails) · GLOBAL-015 (see governing GLOBALs section) · `docs/features/hosted-db-create/SKILL.md` (Phase 1 — owns the parallel DDL-path validator at `apps/api/src/ask/sql-validate-ddl.ts`; SK-HDC-006 splits the two validator files deliberately)
+**Cross-refs:** docs/architecture.md §3.6.5 (validator architecture) · docs/research-receipts.md §1, §10 (Replit incident, Postgres-specific guardrails) · GLOBAL-015 (see governing GLOBALs section) · `docs/features/hosted-db-create/FEATURE.md` (Phase 1 — owns the parallel DDL-path validator at `apps/api/src/ask/sql-validate-ddl.ts`; SK-HDC-006 splits the two validator files deliberately)
 
 ## Touchpoints — read this skill before editing
 

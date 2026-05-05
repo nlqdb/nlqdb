@@ -9,9 +9,9 @@ Marketing + product web app. Onboarding, anonymous-mode default, demo dataset.
 
 ## Skills relevant to this area
 
-- [`web-app`](../../docs/features/web-app/SKILL.md) — mandatory pre-read for changes that touch the feature.
-- [`anonymous-mode`](../../docs/features/anonymous-mode/SKILL.md) — mandatory pre-read for changes that touch the feature.
-- [`sdk`](../../docs/features/sdk/SKILL.md) — mandatory pre-read for changes that touch the feature.
+- [`web-app`](../../docs/features/web-app/FEATURE.md) — mandatory pre-read for changes that touch the feature.
+- [`anonymous-mode`](../../docs/features/anonymous-mode/FEATURE.md) — mandatory pre-read for changes that touch the feature.
+- [`sdk`](../../docs/features/sdk/FEATURE.md) — mandatory pre-read for changes that touch the feature.
 
 ## Commands
 
@@ -36,6 +36,6 @@ bun run --filter apps/web test
 
 1. Run the commands above and ensure they all pass.
 2. If you added a decision, it has an ID, lives in the right place
-   (`docs/decisions.md` or the relevant `SKILL.md`), and any duplicate
+   (`docs/decisions.md` or the relevant `FEATURE.md`), and any duplicate
    of an affected `GLOBAL-NNN` is updated.
 3. Open a PR; the root `AGENTS.md` §8 lists the pre-PR quality gates.

@@ -20,7 +20,7 @@ feature it covers — including changes that *might* affect it indirectly
 docs/features/
 ├── _index.md                      # one-line summary of every skill, status, links
 ├── <feature-name>/
-│   └── SKILL.md                   # canonical decisions + scope for this feature
+│   └── FEATURE.md                   # canonical decisions + scope for this feature
 └── …
 ```
 
@@ -40,14 +40,14 @@ Two namespaces, both globally unique:
   that are affected reference the GLOBAL by ID; they don't duplicate the
   decision body. (See §5.)
 - `SK-<FEATURE>-NNN` — decisions local to one feature. Canonical text lives
-  in that feature's `SKILL.md`. Numbering is per-feature, monotonic, and
+  in that feature's `FEATURE.md`. Numbering is per-feature, monotonic, and
   sticky — never renumber.
 
 IDs are immutable once a skill cites them. If a decision is reversed,
 add a new ID (`SK-AUTH-014` supersedes `SK-AUTH-007`) and mark the old one
 `Status: superseded by SK-AUTH-014`. Don't delete.
 
-## 3. SKILL.md template
+## 3. FEATURE.md template
 
 ```markdown
 ---
@@ -145,7 +145,7 @@ We tried that earlier ("anti-DRY by design"). It produced silent drift
 across N skills every time a GLOBAL was edited, and the only way to
 police it was a CI byte-identity check that itself needed maintenance.
 Modern agent context windows easily fit `docs/decisions.md` alongside a
-SKILL.md; the duplication was a workaround for a 2024-era constraint
+FEATURE.md; the duplication was a workaround for a 2024-era constraint
 that no longer binds.
 
 To find every skill affected by a GLOBAL: `grep -rn 'GLOBAL-005'

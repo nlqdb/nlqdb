@@ -255,7 +255,7 @@ SUM(orders.total)`), `dimensions` (e.g. `customer.tier`,
 `order.status`), and `entities` with FK joins. These are stored as
 an OSI-compatible YAML alongside the DB and surfaced in the query
 planner's prompt context — matching the Phase 2 semantic-layer
-adoption story (`docs/features/hosted-db-create/SKILL.md` §
+adoption story (`docs/features/hosted-db-create/FEATURE.md` §
 "Semantic layer — Phase 2 design") but landing now, automatically, at
 create time.
 

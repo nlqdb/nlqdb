@@ -9,7 +9,7 @@
 //      IP so an abuser without an account can't burn the LLM
 //      budget across many anonymous tokens. Default 30/min (half
 //      the 60/min authed tier — see Open Questions in
-//      docs/features/rate-limit/SKILL.md).
+//      docs/features/rate-limit/FEATURE.md).
 //   2. Per-IP create cap (5/hr). DDL is the most expensive thing
 //      we do; this is the create-rate guard from
 //      docs/architecture.md §3.6.8.

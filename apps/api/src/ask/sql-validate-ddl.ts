@@ -2,7 +2,7 @@
 // (docs/architecture.md §3.6.5, SK-HDC-006). Sibling of `sql-validate.ts`,
 // which guards the read/write `/v1/ask` path; same primitives, two
 // distinct files, **non-overlapping verb sets** so each one is
-// trivially auditable. See `docs/features/hosted-db-create/SKILL.md`
+// trivially auditable. See `docs/features/hosted-db-create/FEATURE.md`
 // SK-HDC-006 for why duplication is the point — a reviewer asking
 // "could the LLM ever execute DROP?" reads exactly one short file
 // (`sql-validate.ts`); a reviewer asking "could the compiler emit

@@ -33,6 +33,6 @@ bun run --filter apps/coming-soon build
 
 1. Run the commands above and ensure they all pass.
 2. If you added a decision, it has an ID, lives in the right place
-   (`docs/decisions.md` or the relevant `SKILL.md`), and any duplicate
+   (`docs/decisions.md` or the relevant `FEATURE.md`), and any duplicate
    of an affected `GLOBAL-NNN` is updated.
 3. Open a PR; the root `AGENTS.md` §8 lists the pre-PR quality gates.

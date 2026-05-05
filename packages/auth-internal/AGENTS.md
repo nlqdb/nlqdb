@@ -9,7 +9,7 @@ Better Auth wrapper — the only thing that talks to the auth provider.
 
 ## Skills relevant to this area
 
-- [`auth`](../../docs/features/auth/SKILL.md) — mandatory pre-read for changes that touch the feature.
+- [`auth`](../../docs/features/auth/FEATURE.md) — mandatory pre-read for changes that touch the feature.
 
 ## Commands
 
@@ -33,6 +33,6 @@ bun run --filter @nlqdb/auth-internal test
 
 1. Run the commands above and ensure they all pass.
 2. If you added a decision, it has an ID, lives in the right place
-   (`docs/decisions.md` or the relevant `SKILL.md`), and any duplicate
+   (`docs/decisions.md` or the relevant `FEATURE.md`), and any duplicate
    of an affected `GLOBAL-NNN` is updated.
 3. Open a PR; the root `AGENTS.md` §8 lists the pre-PR quality gates.

@@ -3,7 +3,7 @@
 // fan out: kind=create → typed-plan pipeline (apps/api/src/db-create/),
 // kind=query/write → existing read/write orchestrator (./orchestrate.ts).
 //
-// Owners by skill: `docs/features/hosted-db-create/SKILL.md`
+// Owners by skill: `docs/features/hosted-db-create/FEATURE.md`
 // SK-HDC-001 (one classifier-routed endpoint) and SK-ASK-001
 // (`/v1/ask` is the single create-or-query endpoint).
 //

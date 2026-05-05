@@ -12,8 +12,8 @@ when-to-load:
 
 **One-liner:** First-60-seconds experience — zero-friction signup, goal-first on-ramp, anti-patterns we refuse.
 **Status:** implemented (Phase 1)
-**Owners (code):** `apps/web/src/` (onboarding flow), `apps/api/src/routes/auth/**` (signup), `docs/features/anonymous-mode/SKILL.md` (anonymous-first pattern)
-**Cross-refs:** docs/architecture.md §0.1 (goal-first inversion) · docs/architecture.md §3.1 (marketing site) · docs/architecture.md §3.2 (platform web app) · docs/research/personas.md (P1 Solo Builder — primary persona) · `docs/features/anonymous-mode/SKILL.md` (Aarav pattern) · `docs/features/web-app/SKILL.md` (chat surface, Maya happy path)
+**Owners (code):** `apps/web/src/` (onboarding flow), `apps/api/src/routes/auth/**` (signup), `docs/features/anonymous-mode/FEATURE.md` (anonymous-first pattern)
+**Cross-refs:** docs/architecture.md §0.1 (goal-first inversion) · docs/architecture.md §3.1 (marketing site) · docs/architecture.md §3.2 (platform web app) · docs/research/personas.md (P1 Solo Builder — primary persona) · `docs/features/anonymous-mode/FEATURE.md` (Aarav pattern) · `docs/features/web-app/FEATURE.md` (chat surface, Maya happy path)
 
 ## Touchpoints — read this skill before editing
 
@@ -38,16 +38,16 @@ when-to-load:
 - **Why:** Surprise charges are the single fastest way to turn a free-tier user into a vocal detractor. The free-tier economics (`GLOBAL-013`) work because users trust that nothing expensive happens silently. A user who gets an unexpected $25 charge tells five people; a user who gets a clear "you're about to be charged $25 — confirm?" tells nobody.
 - **Consequence in code:** Stripe billing uses setup-intents only at card entry; actual charge requires a second explicit action on the billing surface. No code path in `apps/api/src/billing/**` fires a Stripe `PaymentIntent.create` without a user-initiated request. CI should fail any PR that adds a background-triggered charge.
 - **Alternatives rejected:** Auto-upgrade on limit hit ("upgrade to continue") — common pattern but fundamentally dishonest; contradicts `GLOBAL-013`. Trial period that auto-charges — explicitly rejected in the pricing design; the free tier *is* the trial.
-- **Source:** docs/guidelines.md §6 (bullet-proof checklist) · `docs/features/stripe-billing/SKILL.md` (SK-STRIPE-001)
+- **Source:** docs/guidelines.md §6 (bullet-proof checklist) · `docs/features/stripe-billing/FEATURE.md` (SK-STRIPE-001)
 
 ### SK-ONBOARD-003 — Anonymous-first: first query before signup prompt
 
-- **Decision:** The user can run their first query without signing up. The signup prompt appears after value is demonstrated, not before. See `docs/features/anonymous-mode/SKILL.md` for the full anonymous-mode design.
+- **Decision:** The user can run their first query without signing up. The signup prompt appears after value is demonstrated, not before. See `docs/features/anonymous-mode/FEATURE.md` for the full anonymous-mode design.
 - **Core value:** Goal-first, Free, Effortless UX
 - **Why:** The 60-second promise only holds if the clock doesn't start ticking on a signup form. Asking for an account before the user has seen the product work is the standard SaaS on-ramp; our positioning is that we invert it. Every SaaS that has A/B tested anonymous-first vs. signup-first has found higher activation on anonymous-first. Our version is more aggressive: the anonymous query uses a real (ephemeral) DB, not a canned demo.
 - **Consequence in code:** `POST /v1/ask` accepts anonymous device tokens (Bearer `anon_…`) and provisions a real ephemeral DB. The web surface issues the device token on first load without a network call. The `anon_*` DB is promoted to the user's account on signup (no data loss). Rate limit is the separate anonymous tier (`SK-ASK-006`).
 - **Alternatives rejected:** Require signup before first query — standard SaaS, measurably worse activation. Fake demo data instead of a real query — users can tell, and "we ran your query against a real DB" is the trust moment we want.
-- **Source:** `docs/features/anonymous-mode/SKILL.md` · docs/architecture.md §0.1
+- **Source:** `docs/features/anonymous-mode/FEATURE.md` · docs/architecture.md §0.1
 
 ### SK-ONBOARD-004 — Destructive ops show a diff and require a second Enter before execution
 
@@ -68,5 +68,5 @@ Canonical text in [`docs/decisions.md`](../../docs/decisions.md). The list below
 ## Open questions / known unknowns
 
 - **Email verification timing.** Better Auth supports magic-link sign-in which doesn't require a separate verify step. If we add password auth later, the verification flow must not block the chat — the non-blocking banner approach (SK-ONBOARD-001) needs explicit implementation.
-- **Anonymous DB promotion on signup.** When an anonymous user signs up, the `anon_*` DB should be promoted to their account. The exact promotion flow (rename, re-key, or link) is owned by `docs/features/anonymous-mode/SKILL.md` and is not yet finalized.
-- **MCP confirmation UX.** SK-ONBOARD-004 says MCP waits for an `approve` follow-up query. The exact tool-call shape for this confirmation loop is TBD in `docs/features/mcp-server/SKILL.md`.
+- **Anonymous DB promotion on signup.** When an anonymous user signs up, the `anon_*` DB should be promoted to their account. The exact promotion flow (rename, re-key, or link) is owned by `docs/features/anonymous-mode/FEATURE.md` and is not yet finalized.
+- **MCP confirmation UX.** SK-ONBOARD-004 says MCP waits for an `approve` follow-up query. The exact tool-call shape for this confirmation loop is TBD in `docs/features/mcp-server/FEATURE.md`.

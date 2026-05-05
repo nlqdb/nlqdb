@@ -23,10 +23,10 @@ when-to-load:
 **Cross-refs:** docs/architecture.md §3.6.1–§3.6.8 (canonical) · docs/architecture.md §10 §4 (Phase 1 slice — sub-modules, anonymous-db lifecycle, exit gate) · docs/research-receipts.md §1 (Replit incident → layered guardrails), §2 (Cortex Analyst + SchemaAgent → typed plans), §7 (deterministic dbId fallbacks > LLM disambiguation), §8 (semantic-layer-at-create moat) · GLOBAL-005, GLOBAL-014, GLOBAL-017, GLOBAL-020 (see governing-GLOBALs section below)
 
 **Sibling skills to read alongside:**
-- `docs/features/ask-pipeline/SKILL.md` — the classifier branches off the existing `/v1/ask` orchestrator; this skill owns the `kind=create` arm
-- `docs/features/db-adapter/SKILL.md` — the provisioner uses the adapter; SK-DB-007 (schema-per-DB tenancy) and SK-DB-008 (ALTER TABLE ADD COLUMN NULL) constrain what we emit
-- `docs/features/llm-router/SKILL.md` — the classifier and schema-inference are LLM calls; provider routing + cost accounting belongs there
-- `docs/features/sql-allowlist/SKILL.md` — owns the read/write validator; SK-HDC-006 here owns the DDL-path validator that sits next to it
+- `docs/features/ask-pipeline/FEATURE.md` — the classifier branches off the existing `/v1/ask` orchestrator; this skill owns the `kind=create` arm
+- `docs/features/db-adapter/FEATURE.md` — the provisioner uses the adapter; SK-DB-007 (schema-per-DB tenancy) and SK-DB-008 (ALTER TABLE ADD COLUMN NULL) constrain what we emit
+- `docs/features/llm-router/FEATURE.md` — the classifier and schema-inference are LLM calls; provider routing + cost accounting belongs there
+- `docs/features/sql-allowlist/FEATURE.md` — owns the read/write validator; SK-HDC-006 here owns the DDL-path validator that sits next to it
 
 ## Touchpoints — read this skill before editing
 
@@ -94,7 +94,7 @@ when-to-load:
 - **Decision:** Two distinct SQL validators, exhaustively tested, with non-overlapping responsibilities. The **read/write** path (`apps/api/src/ask/sql-validate.ts`, owned by `sql-allowlist` skill) allows `SELECT / INSERT / UPDATE / DELETE / WITH / EXPLAIN / SHOW` and rejects `CREATE / ALTER / DROP / TRUNCATE / GRANT / REVOKE / VACUUM` and `EXPLAIN ANALYZE`. The **DDL** path (`apps/api/src/ask/sql-validate-ddl.ts`, owned by this skill) allows the compiler's `CREATE TABLE / CREATE INDEX / FK constraints` and rejects the same destructive verbs (`DROP / TRUNCATE / GRANT / REVOKE / pg_catalog / information_schema`).
 - **Core value:** Bullet-proof, Simple
 - **Why:** The LLM never has DDL rights through `/v1/ask`'s read/write path. The only legitimate `CREATE` comes from this skill's typed-plan compiler — which is our code, not the LLM. Two validators (instead of one with conditional verb sets) make each one trivially auditable: every line of the read/write validator says "no DDL"; every line of the DDL validator says "compiler-shaped DDL only." A reviewer asking "could the LLM ever execute `DROP`?" reads one short file and is done.
-- **Consequence in code:** The two validator files share the libpg_query primitives but ship as separate exports. PRs that try to "merge them for DRY" are rejected — duplication is the point. Both validators are called from the orchestrators (read/write from `ask/orchestrate.ts`, DDL from `db-create/orchestrate.ts`); neither orchestrator ever calls the other's validator. Cross-link enforced in `sql-allowlist/SKILL.md` SK-SQLAL-*.
+- **Consequence in code:** The two validator files share the libpg_query primitives but ship as separate exports. PRs that try to "merge them for DRY" are rejected — duplication is the point. Both validators are called from the orchestrators (read/write from `ask/orchestrate.ts`, DDL from `db-create/orchestrate.ts`); neither orchestrator ever calls the other's validator. Cross-link enforced in `sql-allowlist/FEATURE.md` SK-SQLAL-*.
 - **Alternatives rejected:**
   - One validator with verb-set parameter — the conditional becomes the audit risk; "trust me, in DDL mode it allows CREATE" is exactly the kind of branch we're trying to remove.
   - Drop the DDL validator (compiler is trusted) — defeats `SK-HDC-003`'s defense-in-depth lesson. Compiler bugs happen.

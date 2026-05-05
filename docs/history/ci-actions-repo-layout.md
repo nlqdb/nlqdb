@@ -1,6 +1,6 @@
 # Lessons Learnt — `nlqdb/actions` reusable-workflow repo layout
 
-Detail of the reusable CI / release pipeline shared across the eight nlqdb repos (web, platform, CLI, MCP, elements, SDKs, infra, actions). The 4-line consumer snippet and the high-level "what it does" live in [`../architecture.md` §9](../architecture.md#9-cicd); permissions live in [`../../docs/features/ci-permissions/SKILL.md`](../../docs/features/ci-permissions/SKILL.md). This file captures the **repo layout, workflow shape, and inputs/secrets/inputs-defaults** that a maintainer of `nlqdb/actions` needs.
+Detail of the reusable CI / release pipeline shared across the eight nlqdb repos (web, platform, CLI, MCP, elements, SDKs, infra, actions). The 4-line consumer snippet and the high-level "what it does" live in [`../architecture.md` §9](../architecture.md#9-cicd); permissions live in [`../../docs/features/ci-permissions/FEATURE.md`](../../docs/features/ci-permissions/FEATURE.md). This file captures the **repo layout, workflow shape, and inputs/secrets/inputs-defaults** that a maintainer of `nlqdb/actions` needs.
 
 ---
 
@@ -70,7 +70,7 @@ A repo without any of these still gets lint/test/build green — release / deplo
 
 ## Permissions
 
-See [`docs/features/ci-permissions/SKILL.md`](../../docs/features/ci-permissions/SKILL.md) — load-bearing decision, owns its own skill so the least-privilege contract is canonical and audited.
+See [`docs/features/ci-permissions/FEATURE.md`](../../docs/features/ci-permissions/FEATURE.md) — load-bearing decision, owns its own skill so the least-privilege contract is canonical and audited.
 
 ## Release-job gate
 

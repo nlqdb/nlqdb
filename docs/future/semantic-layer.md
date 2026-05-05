@@ -10,9 +10,9 @@
 **Cross-refs:**
 - [`docs/architecture.md §3.6.3`](../architecture.md) — auto-generated semantic-layer moat at create time (the seed)
 - [`docs/research-receipts.md §8`](../research-receipts.md) — research backing (dbt 2026 benchmark, OSI standard, Cortex / Genie / Wren AI)
-- [`docs/features/hosted-db-create/SKILL.md`](../../docs/features/hosted-db-create/SKILL.md) — Phase 1 metrics/dimensions emission
-- [`docs/features/ask-pipeline/SKILL.md`](../../docs/features/ask-pipeline/SKILL.md) — runtime planner that consumes the layer
-- [`docs/features/sql-allowlist/SKILL.md`](../../docs/features/sql-allowlist/SKILL.md) — semantic-aware allow-list extension
+- [`docs/features/hosted-db-create/FEATURE.md`](../../docs/features/hosted-db-create/FEATURE.md) — Phase 1 metrics/dimensions emission
+- [`docs/features/ask-pipeline/FEATURE.md`](../../docs/features/ask-pipeline/FEATURE.md) — runtime planner that consumes the layer
+- [`docs/features/sql-allowlist/FEATURE.md`](../../docs/features/sql-allowlist/FEATURE.md) — semantic-aware allow-list extension
 
 ---
 
@@ -78,10 +78,10 @@ is the seed, not a parallel system.
 
 When Phase 2 work begins, decisions from this doc move into:
 
-- Plan-cache fingerprint extension → `SK-PLAN-NNN` in `plan-cache/SKILL.md`.
-- Semantic-aware allow-list → `SK-SQLALLOW-NNN` in `sql-allowlist/SKILL.md`.
-- `nlq semantic init` verb → `SK-CLI-NNN` in `cli/SKILL.md`.
-- `semantic.yml` shape and registry layout → `SK-HDC-NNN` in `hosted-db-create/SKILL.md`.
+- Plan-cache fingerprint extension → `SK-PLAN-NNN` in `plan-cache/FEATURE.md`.
+- Semantic-aware allow-list → `SK-SQLALLOW-NNN` in `sql-allowlist/FEATURE.md`.
+- `nlq semantic init` verb → `SK-CLI-NNN` in `cli/FEATURE.md`.
+- `semantic.yml` shape and registry layout → `SK-HDC-NNN` in `hosted-db-create/FEATURE.md`.
 
 Once promoted, this doc becomes a back-reference (delete the
 duplicated body and link forward) — same convention as

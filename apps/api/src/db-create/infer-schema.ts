@@ -2,7 +2,7 @@
 // string in, validated `SchemaPlan` out. The LLM picks structure, our
 // code emits SQL — see docs/research-receipts.md §2 for the Cortex
 // Analyst / SchemaAgent / CHASE-SQL receipts and SK-HDC-002 /
-// SK-HDC-003 in `docs/features/hosted-db-create/SKILL.md`.
+// SK-HDC-003 in `docs/features/hosted-db-create/FEATURE.md`.
 //
 // This module is pure: every external dep — the LLM router — is
 // passed in via `InferSchemaDeps`. Tests construct stubs; the parent

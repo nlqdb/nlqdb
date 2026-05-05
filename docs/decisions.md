@@ -2,7 +2,7 @@
 
 Cross-cutting decisions that govern more than one feature. Every skill that
 is affected by one of these GLOBALs **copies the decision verbatim** into
-its own `SKILL.md`, with a `Source:` line pointing back to the anchor here
+its own `FEATURE.md`, with a `Source:` line pointing back to the anchor here
 (see `docs/skill-conventions.md` §5).
 
 This file is the canonical source. If you change a GLOBAL here, you must
