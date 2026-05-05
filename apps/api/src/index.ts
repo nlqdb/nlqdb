@@ -771,9 +771,7 @@ app.get("/api/auth/oauth-init/:provider", async (c) => {
       // etc). `getSetCookie()` is Workers-runtime native; the
       // single-string fallback covers any test runtime that lacks it.
       const setCookies =
-        typeof innerRes.headers.getSetCookie === "function"
-          ? innerRes.headers.getSetCookie()
-          : [];
+        typeof innerRes.headers.getSetCookie === "function" ? innerRes.headers.getSetCookie() : [];
       for (const sc of setCookies) headers.append("set-cookie", sc);
       if (setCookies.length === 0) {
         const sc = innerRes.headers.get("set-cookie");
