@@ -16,6 +16,7 @@ import { askFnFromDemoFixtures, DEMO_DB_ID } from "./chat/demo-shortcut.ts";
 import { postChatMessage } from "./chat/orchestrate.ts";
 import { makeChatStore } from "./chat/store.ts";
 import { parseAskBody, parseGoalDbBody, parseJsonBody } from "./http.ts";
+import { getLLMRouter } from "./llm-router.ts";
 import { makeRequireSession, type RequireSessionVariables } from "./middleware.ts";
 import {
   makeRequirePrincipal,
@@ -254,10 +255,17 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
     }
 
     // Goal-kind classifier (SK-HDC-001 + SK-ASK-001) — runs only when
-    // `dbId` is absent. v0 is a token-set heuristic; LLM swap-in is a
-    // follow-up (see classifier.ts header).
+    // `dbId` is absent. Uses router.classify (cheap LLM tier) with
+    // full provider-chain failover. All providers failing → 502.
     if (!parsed.body.dbId) {
-      const classification = classifyKind(parsed.body.goal);
+      let classification: Awaited<ReturnType<typeof classifyKind>>;
+      try {
+        classification = await classifyKind(getLLMRouter(), parsed.body.goal);
+      } catch {
+        span.setAttribute("nlqdb.ask.outcome", "classifier_failed");
+        span.end();
+        return c.json({ error: { status: "llm_failed" as const } }, 502);
+      }
       span.setAttribute("nlqdb.ask.kind", classification.kind);
       span.setAttribute("nlqdb.ask.kind_reason", classification.reason);
       if (classification.kind === "create") {

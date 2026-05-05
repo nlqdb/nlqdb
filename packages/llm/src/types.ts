@@ -36,7 +36,7 @@ export type FailoverReason =
   | "circuit_open"
   | "unknown";
 
-export type ClassifyIntent = "data_query" | "meta" | "destructive";
+export type ClassifyIntent = "create" | "data_query" | "meta" | "destructive";
 
 export type ClassifyRequest = { utterance: string };
 export type ClassifyResponse = { intent: ClassifyIntent; confidence: number };

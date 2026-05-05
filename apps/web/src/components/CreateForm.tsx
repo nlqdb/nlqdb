@@ -257,6 +257,8 @@ function messageFor(error: CreateError): string {
       return "Sign in to continue — your prompt is saved.";
     case "unauthorized":
       return "Couldn't authenticate — clear your browser storage and reload.";
+    case "goal_unclear":
+      return "Try describing what you want to build, e.g. 'a messages database' or 'an orders tracker'.";
     case "server_error":
       return "Couldn't create the DB — try again.";
   }
