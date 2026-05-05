@@ -121,6 +121,43 @@ h3 {
   align-items: center;
 }
 
+/* Authed slot — revealed by the topnav probe (lib/session.ts).
+ * Hidden by default so the anon UX is the no-flash default
+ * during the round-trip to /api/auth/get-session. */
+.topnav__authed {
+  display: inline-flex;
+  align-items: center;
+  gap: 16px;
+  padding-left: 16px;
+  border-left: 1px solid var(--border);
+}
+
+.topnav__chat-link {
+  color: var(--accent);
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.topnav__chat-link:hover {
+  color: var(--accent);
+  text-decoration: underline;
+}
+
+.topnav__signout {
+  font-family: var(--mono);
+  font-size: 13px;
+  background: transparent;
+  color: var(--fg-dim);
+  border: 1px solid var(--border);
+  padding: 4px 12px;
+  cursor: pointer;
+}
+
+.topnav__signout:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
 /* Footer (Footer.astro) */
 
 .foot {

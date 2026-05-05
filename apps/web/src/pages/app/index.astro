@@ -1,0 +1,40 @@
+---
+// Product chat page (SK-WEB-005). One static route handles the
+// whole chat surface — `/app` lands here without a DB selected
+// (the left rail prompts to pick one), `/app?db=<dbId>` deep-
+// links into a specific conversation. The DB id rides a query
+// param rather than a path segment because `apps/web` is a
+// static-output Astro site (no SSR adapter); a static build
+// can't pre-render `[dbId].astro` for unknown ids without an
+// adapter or wholesale SPA fallback.
+//
+// `selectDb` in ChatPanel updates the query string via
+// `history.pushState` so refresh + back/forward both round-trip
+// the active DB without a server hop. Auth is the cross-
+// subdomain `__Secure-session` cookie (SK-WEB-006); signed-out
+// users land on the in-panel "Sign in expired" banner the SDK
+// surfaces from a 401.
+
+import ChatPanel from "../../components/chat/ChatPanel.tsx";
+import Footer from "../../components/Footer.astro";
+import Topnav from "../../components/Topnav.astro";
+import Base from "../../layouts/Base.astro";
+
+const apiBase = import.meta.env.PUBLIC_API_BASE ?? "https://app.nlqdb.com";
+---
+<Base
+  title="Chat — nlqdb"
+  description="Talk to your databases."
+>
+  <div class="page page--chat">
+    <Topnav />
+    <main class="page__main page__main--chat">
+      <ChatPanel client:only="react" apiBase={apiBase} />
+    </main>
+    <Footer />
+  </div>
+</Base>
+
+<style is:global>
+  @import "../../styles/chat.css";
+</style>
