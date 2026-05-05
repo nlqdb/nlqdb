@@ -87,6 +87,8 @@ const credentialedCors = cors({
 app.use("/api/auth/*", credentialedCors);
 app.use("/v1/ask", credentialedCors);
 app.use("/v1/chat/*", credentialedCors);
+app.use("/v1/databases", credentialedCors);
+app.use("/v1/databases/*", credentialedCors);
 
 // Session gate for `/v1/*` routes. Captures `auth.api.getSession`
 // (cookieCache fast path → secondaryStorage → D1) + the KV revocation
