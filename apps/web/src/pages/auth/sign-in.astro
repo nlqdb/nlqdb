@@ -21,7 +21,6 @@
 import Base from "../../layouts/Base.astro";
 
 const apiBase = import.meta.env.PUBLIC_API_BASE ?? "https://app.nlqdb.com";
-const appBase = import.meta.env.PUBLIC_APP_BASE ?? "https://nlqdb.com";
 ---
 <Base
   title="Sign in — nlqdb"
@@ -29,7 +28,7 @@ const appBase = import.meta.env.PUBLIC_APP_BASE ?? "https://nlqdb.com";
   canonical="/auth/sign-in"
 >
   <div class="page">
-    <main class="signin" data-api-base={apiBase} data-app-base={appBase}>
+    <main class="signin" data-api-base={apiBase}>
       <section class="signin__card" aria-labelledby="signin-title">
         <h1 id="signin-title" class="signin__title">Sign in to nlqdb.</h1>
         <p class="signin__lede">
@@ -165,7 +164,6 @@ const appBase = import.meta.env.PUBLIC_APP_BASE ?? "https://nlqdb.com";
   const root = document.querySelector<HTMLElement>(".signin");
   if (root) {
     const apiBase = (root.dataset["apiBase"] ?? "").replace(/\/$/, "");
-    const appBase = (root.dataset["appBase"] ?? "").replace(/\/$/, "");
 
     const form = document.getElementById("signin-form") as HTMLFormElement;
     const emailInput = document.getElementById("email") as HTMLInputElement;
@@ -188,7 +186,13 @@ const appBase = import.meta.env.PUBLIC_APP_BASE ?? "https://nlqdb.com";
 
     const params = new URLSearchParams(location.search);
     const returnTo = params.get("return_to") ?? "/";
-    const callbackURL = new URL(returnTo, appBase || location.origin).toString();
+    // callbackURL anchors on `location.origin` (not `appBase`) so a
+    // user signing in from a Workers-Versions preview URL is returned
+    // to the same preview instead of bouncing to production
+    // (SK-AUTH-013 / SK-AUTH-015). Better Auth validates the origin
+    // against `trustedOrigins` server-side, so the preview wildcard is
+    // what makes this safe.
+    const callbackURL = new URL(returnTo, location.origin).toString();
 
     const submitBtnState: ButtonState = {
       el: submitBtn,
@@ -256,36 +260,32 @@ const appBase = import.meta.env.PUBLIC_APP_BASE ?? "https://nlqdb.com";
       sendMagicLink(email, resendBtnState, { showSent: false });
     });
 
-    // OAuth init via Better Auth's POST /api/auth/sign-in/social,
-    // which returns { url } — we top-level-navigate to it. The
-    // provider then redirects back to /api/auth/callback/<provider>,
-    // which sets the session cookie (.nlqdb.com scope per
-    // SK-WEB-006) and 302s to callbackURL.
+    // OAuth init via top-level navigation to the API's
+    // `/api/auth/oauth-init/:provider` wrapper (SK-AUTH-015). The
+    // wrapper invokes Better Auth's POST `/sign-in/social` server-side
+    // and returns a 302 to the IdP. A `fetch + JS redirect` would
+    // work in production (sign-in page and API share `nlqdb.com` —
+    // first-party cookie context) but loses the OAuth state cookie on
+    // Workers-Versions previews (sign-in on `*.workers.dev`, API on
+    // `app.nlqdb.com` — third-party context, browser drops the
+    // `Set-Cookie`), causing `state_mismatch` on the callback.
+    // Top-level navigation makes `app.nlqdb.com` the first-party
+    // origin for the response that sets the cookie, so it lands.
     for (const btn of document.querySelectorAll<HTMLButtonElement>(
       "[data-social]",
     )) {
-      btn.addEventListener("click", async () => {
+      btn.addEventListener("click", () => {
         const provider = btn.dataset["social"];
         if (!provider) return;
         errorEl.hidden = true;
         btn.disabled = true;
         btn.classList.add("signin__oauth--busy");
-        try {
-          const body = await postJson<{ url?: string; redirect?: boolean }>(
-            "/api/auth/sign-in/social",
-            { provider, callbackURL },
-          );
-          if (body.url) {
-            location.href = body.url;
-            return;
-          }
-          throw new Error("No redirect URL returned.");
-        } catch {
-          errorEl.textContent = "Couldn't start sign-in — try again.";
-          errorEl.hidden = false;
-          btn.disabled = false;
-          btn.classList.remove("signin__oauth--busy");
-        }
+        const url = new URL(
+          `/api/auth/oauth-init/${encodeURIComponent(provider)}`,
+          apiBase || location.origin,
+        );
+        url.searchParams.set("callbackURL", callbackURL);
+        location.href = url.toString();
       });
     }
   }

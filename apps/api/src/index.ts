@@ -688,6 +688,108 @@ function errorStatus(status: AskError["status"]): 400 | 404 | 422 | 429 | 502 {
   }
 }
 
+// OAuth init redirect (SK-AUTH-015).
+//
+// Top-level GET navigation from the sign-in page wraps Better Auth's
+// POST `/sign-in/social` and returns a 302 to the IdP. Why a wrapper
+// instead of a fetch: when the sign-in page lives on a different
+// eTLD+1 from the API (Workers-Versions previews on `*.workers.dev`,
+// per SK-AUTH-013), the cross-site `fetch + credentials: "include"`
+// to `app.nlqdb.com/api/auth/sign-in/social` is a third-party request
+// from the browser's POV. Chrome's third-party-cookie phase-out (and
+// Safari ITP) silently drops the `Set-Cookie` for the OAuth state
+// cookie, so the post-IdP callback fails `parseGenericState` →
+// `state_security_mismatch` → 302 to `${baseURL}/error?error=state_mismatch`.
+// Top-level navigation makes `app.nlqdb.com` the first-party origin
+// for the response that sets the state cookie, so the cookie lands and
+// the callback verifies cleanly.
+//
+// Trust boundary: the wrapped POST goes through Better Auth's normal
+// `socialSignInBodySchema` validation, which checks `callbackURL`
+// against `trustedOrigins` (preview wildcard added in SK-AUTH-013).
+// We don't need a parallel allow-list here.
+app.get("/api/auth/oauth-init/:provider", async (c) => {
+  const tracer = trace.getTracer("@nlqdb/api");
+  return tracer.startActiveSpan("nlqdb.auth.oauth.init", async (span) => {
+    try {
+      const provider = c.req.param("provider");
+      const callbackURL = c.req.query("callbackURL");
+      span.setAttribute("nlqdb.auth.provider", provider ?? "unknown");
+
+      if (provider !== "google" && provider !== "github") {
+        span.setAttribute("nlqdb.auth.oauth_init.outcome", "invalid_provider");
+        return c.text("invalid_provider", 400);
+      }
+      if (!callbackURL) {
+        span.setAttribute("nlqdb.auth.oauth_init.outcome", "missing_callback_url");
+        return c.text("missing_callback_url", 400);
+      }
+
+      const innerUrl = new URL("/api/auth/sign-in/social", c.req.url);
+      const innerHeaders: Record<string, string> = { "content-type": "application/json" };
+      const cookie = c.req.header("cookie");
+      if (cookie) innerHeaders["cookie"] = cookie;
+
+      const innerReq = new Request(innerUrl.toString(), {
+        method: "POST",
+        headers: innerHeaders,
+        body: JSON.stringify({ provider, callbackURL }),
+      });
+
+      const innerRes = await auth.handler(innerReq);
+
+      if (innerRes.status >= 400) {
+        // Better Auth rejected (untrusted callbackURL, provider not
+        // configured, etc). Forward the response so the caller sees
+        // the actual error rather than a silent 500.
+        span.setAttribute("nlqdb.auth.oauth_init.outcome", "rejected");
+        span.setAttribute("http.response.status_code", innerRes.status);
+        authEventsTotal().add(1, { type: "oauth_init", outcome: "failure" });
+        return innerRes;
+      }
+
+      // Better Auth's signInSocial sets `Location` and returns 200 with
+      // `{ url }` — we promote that into a real 302 so the browser
+      // follows it as part of this top-level navigation.
+      let redirectTo: string | null = innerRes.headers.get("Location");
+      if (!redirectTo) {
+        try {
+          const body = (await innerRes.clone().json()) as { url?: string };
+          redirectTo = body.url ?? null;
+        } catch {
+          redirectTo = null;
+        }
+      }
+      if (!redirectTo) {
+        span.setAttribute("nlqdb.auth.oauth_init.outcome", "no_redirect_url");
+        authEventsTotal().add(1, { type: "oauth_init", outcome: "failure" });
+        return c.text("oauth_init_failed", 500);
+      }
+
+      const headers = new Headers();
+      // Forward every Set-Cookie (state cookie, code-verifier cookie,
+      // etc). `getSetCookie()` is Workers-runtime native; the
+      // single-string fallback covers any test runtime that lacks it.
+      const setCookies =
+        typeof innerRes.headers.getSetCookie === "function"
+          ? innerRes.headers.getSetCookie()
+          : [];
+      for (const sc of setCookies) headers.append("set-cookie", sc);
+      if (setCookies.length === 0) {
+        const sc = innerRes.headers.get("set-cookie");
+        if (sc) headers.set("set-cookie", sc);
+      }
+      headers.set("Location", redirectTo);
+
+      span.setAttribute("nlqdb.auth.oauth_init.outcome", "redirect");
+      authEventsTotal().add(1, { type: "oauth_init", outcome: "success" });
+      return new Response(null, { status: 302, headers });
+    } finally {
+      span.end();
+    }
+  });
+});
+
 // Better Auth catch-all (docs/architecture.md §4.1, PERFORMANCE §4 row 5).
 //
 // Span naming: callbacks get `nlqdb.auth.oauth.callback` (one span per
