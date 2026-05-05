@@ -72,7 +72,7 @@ when-to-load:
 - **Why:** Without a separate tier, an anonymous abuse spike (per-IP create-floods) eats authed-user budget. With it, abuse is contained in its own bucket while the authed surface stays fast. Promoting on sign-in (no fresh grant) prevents farming free quota by signing in repeatedly under fresh emails.
 - **Consequence in code:** Rate-limit middleware (`packages/rate-limit`) reads `(tier, identifier)` where `identifier` is `device_token` for anonymous and `user_id` for authed. `attachIdentity()` carries forward the consumed budget. PoW challenges fire on signup if the bucket spikes (`docs/architecture.md §3.6.8`).
 - **Alternatives rejected:** Single global free tier — every anonymous abuse spike degrades authed users. Allow anonymous to refresh budget by attaching a new identity — quota-farming.
-- **Source:** docs/architecture.md §3.6.8 · docs/decisions.md#GLOBAL-007
+- **Source:** docs/architecture.md §3.6.8 · [GLOBAL-007](../../decisions/GLOBAL-007-no-login-wall.md)
 
 ### SK-ASK-007 — `user.first_query` fires exactly once per user via the lookup-then-emit-then-commit pattern
 
@@ -90,7 +90,7 @@ when-to-load:
 - **Why:** A spinner that hides progress trains users to assume the worst when latency spikes. A live trace turns slow steps into legible, debuggable information — and forces us to fix the slow steps because users see them. This is `GLOBAL-011`'s consequence on the ask path.
 - **Consequence in code:** Each step in the canonical order (`SK-ASK-002`) emits a trace event the SDK exposes via the `onTrace` hook. `apps/web` renders them in order; CLI's TTY mode prints each as it completes. Tests assert that every step in the cache-miss path produces exactly one trace event.
 - **Alternatives rejected:** Generic spinner with "this is taking longer than usual" — gives no information; trains users not to trust the surface. Hide latency below a threshold — users notice anyway, and lose trust when the threshold is wrong.
-- **Source:** docs/architecture.md §0 (Honest latency) · docs/decisions.md#GLOBAL-011
+- **Source:** docs/architecture.md §0 (Honest latency) · [GLOBAL-011](../../decisions/GLOBAL-011-honest-latency.md)
 
 ## The LLM loop
 
@@ -112,7 +112,7 @@ This is the part most implementations get wrong. A single "prompt → SQL → ru
 
 ## GLOBALs governing this feature
 
-Canonical text in [`docs/decisions.md`](../../decisions.md). The list below names the rules that constrain this feature; any skill-local commentary is nested under the rule.
+Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; index in [`docs/decisions.md`](../../decisions.md)). The list below names the rules that constrain this feature; any skill-local commentary is nested under the rule.
 
 - **GLOBAL-005** — Every mutation accepts `Idempotency-Key`.
 - **GLOBAL-006** — Plans content-addressed by `(schema_hash, query_hash)`.

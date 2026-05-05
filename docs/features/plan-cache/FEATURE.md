@@ -36,7 +36,7 @@ when-to-load:
 - **Why:** Plans are deterministic outputs of (schema, query). Adding any other input narrows the cache key space, drops the hit rate, and re-introduces the "is this user's plan compatible with that user's plan" question that determinism already answered. If a future requirement *does* need to differ — e.g., engine-specific plans for Phase 3 — we widen `query_hash` to include the engine label, not the cache key.
 - **Consequence in code:** `cacheKey(schema_hash, query_hash) → string` is the only constructor. Reviews reject any helper that adds a third field. Engine label, model version, prompt-template version, etc. fold into `query_hash` as the input changes — the cache key stays the same shape.
 - **Alternatives rejected:** Per-tenant cache (`(tenant_id, schema_hash, query_hash)`) — kills the cross-tenant hit rate that makes the cache pay off; identical schema + query produces identical SQL regardless of tenant. Per-model cache — same problem; if model output differs the input differs (model version goes into `query_hash`).
-- **Source:** docs/architecture.md §0, §9 · docs/decisions.md#GLOBAL-006
+- **Source:** docs/architecture.md §0, §9 · [GLOBAL-006](../../decisions/GLOBAL-006-plan-cache-content-addressing.md)
 
 ### SK-PLAN-003 — No TTL, no manual invalidation; eviction is LRU only when budget exhausts
 
@@ -45,7 +45,7 @@ when-to-load:
 - **Why:** Cache invalidation is the second-hardest problem in CS; TTLs introduce flakiness around the boundary (a query that just cache-missed re-runs the LLM even though nothing changed). `(schema_hash, query_hash)` covers every input that determines the output, so a TTL would only ever discard correct plans. Letting LRU handle the budget keeps the design free of operator-poked levers.
 - **Consequence in code:** No `ttl_sec` parameter on the write path. No `invalidateCache()` admin endpoint. The "force a new plan" escape hatch lives at the input layer — change `query_hash` (e.g., a `--force-replan` hint adds a salt to `query_hash`), don't punch through the cache. Hit on stale plan is structurally impossible because schema widening doesn't change `schema_hash` for fields the plan doesn't reference (per `GLOBAL-004`).
 - **Alternatives rejected:** TTL of N hours / N days — wastes the 99% case where inputs are unchanged; introduces flakiness. Manual flush button — operator footgun; usually used to "fix" a bug that's actually input-not-changing-when-it-should.
-- **Source:** docs/architecture.md §0, §9 · docs/decisions.md#GLOBAL-006
+- **Source:** docs/architecture.md §0, §9 · [GLOBAL-006](../../decisions/GLOBAL-006-plan-cache-content-addressing.md)
 
 ### SK-PLAN-004 — Reads are exact-match only; no fuzzy / prefix / similar-query lookup
 
@@ -54,7 +54,7 @@ when-to-load:
 - **Why:** Fuzzy matching turns the cache from a memo into a heuristic — a "miss looks like a hit" failure mode that's nearly impossible to debug. The user typed "top 5 customers" and got the plan for "top 10 customers" because the embeddings were close. Determinism is the cache's whole point.
 - **Consequence in code:** `kv.get(cacheKey)` only. No `kv.list({prefix})` paths in the read flow. Embedding-similarity lookups are reserved for *retrieval-augmented planning* (the LLM router's prompt context, not the plan cache itself).
 - **Alternatives rejected:** Embedding nearest-neighbour cache lookup — fast in the happy case, untraceable in the failure case. Prefix-based lookup — same problem with smaller blast radius.
-- **Source:** docs/decisions.md#GLOBAL-006
+- **Source:** [GLOBAL-006](../../decisions/GLOBAL-006-plan-cache-content-addressing.md)
 
 ### SK-PLAN-005 — LLM-generated and human-pinned plans share the same store
 
@@ -63,7 +63,7 @@ when-to-load:
 - **Why:** A parallel pinned cache means two read paths, two eviction policies, two failure modes. One store with deterministic keys gives pinning the same operational properties as the auto-cached plans — and lets a human pin override the LLM's plan in the obvious way (a hit on a deliberately-shaped key wins).
 - **Consequence in code:** Pinning writes are `kv.put(cacheKey(schema_hash, queryHashWithPinSalt), plan)`. Reads still go through one `kv.get`. No "is this pinned?" branch in the read path.
 - **Alternatives rejected:** Separate `plan-pins` KV namespace — duplicates eviction logic, doubles surface area. Look up pin first, fall through to LLM-cache — adds a hop on the hot path; same result with a salt.
-- **Source:** docs/architecture.md §0 (Bullet-proof) · docs/decisions.md#GLOBAL-006
+- **Source:** docs/architecture.md §0 (Bullet-proof) · [GLOBAL-006](../../decisions/GLOBAL-006-plan-cache-content-addressing.md)
 
 ### SK-PLAN-006 — Cache write happens in-band before the response, not in `waitUntil`
 
@@ -81,7 +81,7 @@ when-to-load:
 - **Why:** The cache is the largest cost lever in the system (per `docs/architecture.md §8`: "60–80% cache hit on mature workloads"). Without per-lookup hit/miss telemetry we can't tell whether a latency regression is the cache rate dropping or the LLM slowing down. Span + counter pair gives both per-request detail and aggregate counts.
 - **Consequence in code:** `cacheLookup()` is wrapped in the canonical span; the `hit` label is set before exit. Counter increments are unconditional (one of {`hits`, `misses`} fires every time). The spans/counters land together with the slice they belong to (`docs/architecture.md §10` Slice 6 instrumentation table).
 - **Alternatives rejected:** Lookup-counter only (no span) — loses the per-request latency breakdown. Span only (no counter) — loses cheap aggregate reporting; counters land in dashboards without span-aggregation cost.
-- **Source:** docs/performance.md §3.1, §3.2 · docs/decisions.md#GLOBAL-014
+- **Source:** docs/performance.md §3.1, §3.2 · [GLOBAL-014](../../decisions/GLOBAL-014-otel-on-external-calls.md)
 
 ### SK-PLAN-008 — Replanning is triggered only when an observed field *disappears* (hard-stop, not normal flow)
 
@@ -90,11 +90,11 @@ when-to-load:
 - **Why:** If schema growth invalidated the cache, every customer would pay the LLM cost on every schema migration. `GLOBAL-004` makes that impossible by widening only — fields don't disappear under normal use. The only event that *would* require a replan (an observed field vanishing) is rare enough that we treat it as a hard-stop, not a branch in the cache code.
 - **Consequence in code:** No "schema-version" branch in the cache read path. The disappearance-event handler is a separate, infrequently-tested code path that re-emits a `query_hash` salt and forces a fresh plan generation. It does not invalidate other entries.
 - **Alternatives rejected:** Replan on any schema change — breaks `GLOBAL-006`'s "no cache invalidation" promise. Replan on a heuristic ("this query looks similar to one that broke") — silent wrong-plan failure mode.
-- **Source:** docs/decisions.md#GLOBAL-004 · docs/decisions.md#GLOBAL-006
+- **Source:** [GLOBAL-004](../../decisions/GLOBAL-004-schemas-only-widen.md) · [GLOBAL-006](../../decisions/GLOBAL-006-plan-cache-content-addressing.md)
 
 ## GLOBALs governing this feature
 
-Canonical text in [`docs/decisions.md`](../../decisions.md). The list below names the rules that constrain this feature; any skill-local commentary is nested under the rule.
+Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; index in [`docs/decisions.md`](../../decisions.md)). The list below names the rules that constrain this feature; any skill-local commentary is nested under the rule.
 
 - **GLOBAL-006** — Plans content-addressed by `(schema_hash, query_hash)`.
 - **GLOBAL-004** — Schemas only widen.

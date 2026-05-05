@@ -127,11 +127,23 @@ when-to-load:
 
 ## GLOBALs governing this feature
 
-Canonical text in [`docs/decisions.md`](../../decisions.md). The list below names the rules that constrain this feature; any skill-local commentary is nested under the rule.
+Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; index in [`docs/decisions.md`](../../decisions.md)). The list below names the rules that constrain this feature; any skill-local commentary is nested under the rule.
 
-- **GLOBAL-004** — Schemas only widen.
+- **GLOBAL-004** — Logical schemas widen; physical layout reshapes.
 - **GLOBAL-014** — OTel span on every external call (DB, LLM, HTTP, queue).
 - **GLOBAL-015** — Power users always have an escape hatch.
+- **GLOBAL-021** — Each external system has one canonical owning module.
+  - *In this skill:* `packages/db/` is the owner for the user-data
+    engines (Postgres via Neon today; ClickHouse via Tinybird in
+    Phase 3 per `SK-MULTIENG-002`; later Redis/D1). All
+    `@neondatabase/serverless` imports live in `@nlqdb/db`. Documented
+    exception: `apps/api/src/db-create/build-deps.ts` imports the Neon
+    client directly for the control-plane provisioner (CREATE SCHEMA /
+    role / RLS) — see `SK-HDC-*`. Cloudflare D1 is a **separate**
+    external system owned by `packages/platform-db/` (per the GLOBAL-021
+    owner table); the `D1Database` typed binding flowing through
+    `db-registry.ts` is target-state platform-db consumer code, not a
+    db-adapter concern.
 
 ## Open questions / known unknowns
 

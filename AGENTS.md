@@ -41,20 +41,23 @@ knowledge cutoff is stale for any external dependency.
 
 Each decision has one canonical home:
 
-- `GLOBAL-NNN` lives in `docs/decisions.md` — the only place its body
-  text exists. Skills affected by a GLOBAL list it by ID + title in
-  their `## GLOBALs governing this feature` section, with optional
-  skill-local commentary nested under the line. They don't repeat the
-  decision body. (See `docs/skill-conventions.md` §5.)
+- `GLOBAL-NNN` lives in `docs/decisions/GLOBAL-NNN-<slug>.md` — the only
+  place its body text exists. The index in `docs/decisions.md` lists
+  every GLOBAL with a link to its file. Skills affected by a GLOBAL list
+  it by ID + title in their `## GLOBALs governing this feature` section,
+  with optional skill-local commentary nested under the line. They don't
+  repeat the decision body. (See `docs/skill-conventions.md` §5.)
 - `SK-<FEATURE>-NNN` lives in that feature's `FEATURE.md` — the only
   place its body text exists.
 
 When a decision changes:
-- Edit the canonical file (one place).
+- Edit the canonical file (one place — the per-GLOBAL file under
+  `docs/decisions/`, or the feature's `FEATURE.md`).
 - If the change affects how a feature applies the decision, update the
   skill-local commentary in that feature's FEATURE.md.
 - New GLOBALs / SK-IDs land in their canonical home before any code
-  change that depends on them.
+  change that depends on them. New GLOBALs also add a row to the
+  `docs/decisions.md` index.
 
 To find every skill affected by a GLOBAL:
 `grep -rn 'GLOBAL-NNN' docs/features/`. To find every doc that
@@ -152,7 +155,7 @@ working in one directory.
 
 | File | What for |
 |---|---|
-| [`docs/decisions.md`](docs/decisions.md) | **Canonical** `GLOBAL-NNN` decisions. Read before editing skills. |
+| [`docs/decisions.md`](docs/decisions.md) + [`docs/decisions/`](docs/decisions/) | **Canonical** `GLOBAL-NNN` decisions. Index in `decisions.md`; one body per file under `decisions/`. Read before editing skills. |
 | [`docs/skill-conventions.md`](docs/skill-conventions.md) | How `docs/features/` is structured. Read before adding/editing a skill. |
 | [`docs/architecture.md`](docs/architecture.md) | System architecture, surface specs, phase plan, tech-stack rationale, risks. |
 | [`docs/runbook.md`](docs/runbook.md) | Operations: env vars, secrets, deploy, recovery. Design-partner reference (§10). |
@@ -191,7 +194,8 @@ Per-package commands are in each area's `AGENTS.md`.
 
 1. `bun run typecheck && bun run lint && bun run test` all green.
 2. Every new decision has an ID (`GLOBAL-NNN` or `SK-<FEATURE>-NNN`)
-   and is in its canonical home (`docs/decisions.md` for `GLOBAL`,
+   and is in its canonical home (`docs/decisions/GLOBAL-NNN-<slug>.md`
+   for `GLOBAL` plus a row in `docs/decisions.md`,
    `docs/features/<feature>/FEATURE.md` for `SK`). Skills reference
    GLOBALs by ID; they don't duplicate the body
    (`docs/skill-conventions.md` §5).
@@ -206,7 +210,8 @@ Per-package commands are in each area's `AGENTS.md`.
 ## 9. When in doubt
 
 - Read the relevant `FEATURE.md` first.
-- Then `docs/decisions.md` for any cited `GLOBAL-NNN`.
+- Then the per-GLOBAL file under `docs/decisions/` for any cited
+  `GLOBAL-NNN` (the index in `docs/decisions.md` links to each).
 - Then ask the user. Don't guess across a documented decision.
 
 ## 10. Workflow — features and bug fixes
@@ -217,15 +222,15 @@ The standard loop for every change:
 Touch path X
   → §5 path map gives the FEATURE.md name
   → read that FEATURE.md fully (5 fields per SK-* decision; the GLOBALs
-    section lists which GLOBAL-NNNs apply — open docs/decisions.md
-    alongside the skill if you need their text)
+    section lists which GLOBAL-NNNs apply — open the relevant file under
+    docs/decisions/ alongside the skill if you need their text)
   → do the work
   → new decision? apply P4 (D1, D2, D3): resolve open questions,
     ensure clarity, then add SK-<PREFIX>-NNN (or promote to GLOBAL if
     cross-cutting)
-  → changed a GLOBAL? edit docs/decisions.md (one place); update any
-    affected skill's *In this skill:* commentary if the change
-    affects how the feature applies the rule
+  → changed a GLOBAL? edit the GLOBAL's file under docs/decisions/
+    (one place); update any affected skill's *In this skill:*
+    commentary if the change affects how the feature applies the rule
   → ambiguity or unfamiliar error? web-search current best
     practices, cite sources (P2)
   → contradicts a documented decision? STOP, raise to user with
@@ -241,7 +246,7 @@ Touch path X
 | Crosses several skills | Add SK-* blocks in each affected skill, with cross-refs between them. |
 | Genuinely new (no skill covers it) | Create `docs/features/<feature>/FEATURE.md` from the [`docs/skill-conventions.md`](docs/skill-conventions.md) §3 template. Add a row to `docs/features/_index.md`. Add the path-glob row to §5 above. Reserve the `SK-<PREFIX>-NNN` prefix (kebab-case → `<PREFIX>` is upper-snake, e.g. `auth` → `SK-AUTH-NNN`). |
 | Touches all surfaces (HTTP / SDK / CLI / MCP / elements) | Per `GLOBAL-003`, ship to all surfaces in the same PR or annotate the gap explicitly in the affected skills under *Open questions*. |
-| Introduces a cross-cutting rule (multiple features must obey) | Promote to a new `GLOBAL-NNN` in `docs/decisions.md`. Then add a reference line in each affected skill's `## GLOBALs governing this feature` section (`- **GLOBAL-NNN** — Title.`), with skill-local commentary nested under it only when the GLOBAL has a feature-specific implication worth calling out. |
+| Introduces a cross-cutting rule (multiple features must obey) | Promote to a new `GLOBAL-NNN`: create `docs/decisions/GLOBAL-NNN-<slug>.md` with the five-field block, then add a row to `docs/decisions.md` linking to it. Then add a reference line in each affected skill's `## GLOBALs governing this feature` section (`- **GLOBAL-NNN** — Title.`), with skill-local commentary nested under it only when the GLOBAL has a feature-specific implication worth calling out. |
 
 Every SK-* and GLOBAL-* decision must have all five fields
 (Decision / Core value / Why / Consequence / Alternatives) — see
@@ -262,5 +267,5 @@ can't fill all five or have open questions, don't document it yet.
 
 - **Skill says X, code does Y** → skill wins. Fix the code (or, if the code's behaviour is correct, file a P1 to amend the skill — don't silently update either).
 - **`docs/architecture.md` (or `docs/runbook.md`) says X, skill says Y** → skill wins. If you find a stale prose passage that contradicts a skill, fix the prose. Don't change the skill to match stale prose.
-- **A skill has a `### GLOBAL-NNN` block with body text** → convention violation. `docs/skill-conventions.md` §5 says skills reference GLOBALs by ID, not by copy. Replace the block with a one-liner reference under `## GLOBALs governing this feature`. The decision body lives only in `docs/decisions.md`.
+- **A skill has a `### GLOBAL-NNN` block with body text** → convention violation. `docs/skill-conventions.md` §5 says skills reference GLOBALs by ID, not by copy. Replace the block with a one-liner reference under `## GLOBALs governing this feature`. The decision body lives only in `docs/decisions/GLOBAL-NNN-<slug>.md`.
 - **Two skills disagree on a cross-cutting rule** → the rule should have been a `GLOBAL-NNN`. Promote it (per §10.1) and update both skills to copy it.

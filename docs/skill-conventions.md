@@ -36,8 +36,10 @@ Skills have no "imports." If a decision applies to multiple features it is
 Two namespaces, both globally unique:
 
 - `GLOBAL-NNN` — cross-cutting decisions that apply to multiple features.
-  Canonical text lives in `docs/decisions.md` and **only there**. Skills
-  that are affected reference the GLOBAL by ID; they don't duplicate the
+  Canonical text lives in `docs/decisions/GLOBAL-NNN-<slug>.md` (one
+  file per decision) and **only there**. The index in
+  `docs/decisions.md` links to every GLOBAL by ID. Skills that are
+  affected reference the GLOBAL by ID; they don't duplicate the
   decision body. (See §5.)
 - `SK-<FEATURE>-NNN` — decisions local to one feature. Canonical text lives
   in that feature's `FEATURE.md`. Numbering is per-feature, monotonic, and
@@ -65,7 +67,7 @@ when-to-load:
 **One-liner:** <what this feature is>
 **Status:** implemented (Slice N) | partial | planned (Phase X)
 **Owners (code):** <paths>
-**Cross-refs:** docs/architecture.md §X · docs/runbook.md §Z · GLOBAL-NNN, GLOBAL-MMM (canonical text in docs/decisions.md)
+**Cross-refs:** docs/architecture.md §X · docs/runbook.md §Z · GLOBAL-NNN, GLOBAL-MMM (canonical text in docs/decisions/GLOBAL-NNN-<slug>.md; index in docs/decisions.md)
 
 ## Touchpoints — read this skill before editing
 
@@ -85,7 +87,8 @@ when-to-load:
 
 ## GLOBALs governing this feature
 
-Canonical text in [`docs/decisions.md`](./decisions.md). The list
+Canonical text in [`docs/decisions/`](./decisions/) (one file per
+GLOBAL; index in [`docs/decisions.md`](./decisions.md)). The list
 below names the rules that constrain this feature; any skill-local
 commentary is nested under the rule.
 
@@ -117,17 +120,19 @@ Every `SK-*-*` decision must have all five fields:
    readers will rediscover these — pre-empt the rediscovery loop.
 
 The same five fields are required for `GLOBAL-NNN` blocks in
-`docs/decisions.md`. Skills don't repeat these fields — they reference
-the GLOBAL by ID (see §5).
+`docs/decisions/GLOBAL-NNN-<slug>.md`. Skills don't repeat these
+fields — they reference the GLOBAL by ID (see §5).
 
 Optional: `Source:` line on `SK-*` blocks that points at where the
 long-form rationale lived before the skill existed.
 
 ## 5. Single source of truth (reference, don't duplicate)
 
-`GLOBAL-NNN` decisions live in `docs/decisions.md` and **only there**. A
-skill affected by a GLOBAL adds a line to its `## GLOBALs governing
-this feature` section like:
+`GLOBAL-NNN` decisions live in `docs/decisions/GLOBAL-NNN-<slug>.md`
+(one file per decision) and **only there**. The index in
+`docs/decisions.md` links to every GLOBAL by ID. A skill affected by
+a GLOBAL adds a line to its `## GLOBALs governing this feature`
+section like:
 
 ```markdown
 - **GLOBAL-005** — Every mutation accepts `Idempotency-Key`.
@@ -144,9 +149,9 @@ nothing skill-local to say, the rule is just listed by ID.
 We tried that earlier ("anti-DRY by design"). It produced silent drift
 across N skills every time a GLOBAL was edited, and the only way to
 police it was a CI byte-identity check that itself needed maintenance.
-Modern agent context windows easily fit `docs/decisions.md` alongside a
-FEATURE.md; the duplication was a workaround for a 2024-era constraint
-that no longer binds.
+Modern agent context windows easily fit a single GLOBAL shard
+alongside a FEATURE.md; the duplication was a workaround for a
+2024-era constraint that no longer binds.
 
 To find every skill affected by a GLOBAL: `grep -rn 'GLOBAL-005'
 docs/features/`.
@@ -192,7 +197,8 @@ A new skill that fails any of these is a draft, not a skill.
 ## 8. Where to look first
 
 - `docs/features/_index.md` — table of every skill, status, top-level scope.
-- `docs/decisions.md` — canonical text of every `GLOBAL-NNN`.
+- `docs/decisions.md` — index of every `GLOBAL-NNN`; bodies live in
+  `docs/decisions/GLOBAL-NNN-<slug>.md` (one file per decision).
 - Root `AGENTS.md` — the before-editing path map (which paths require
   which skills) and the three behavioral principles.
 - Per-area `AGENTS.md` (`apps/<x>/AGENTS.md`, `packages/<x>/AGENTS.md`,
