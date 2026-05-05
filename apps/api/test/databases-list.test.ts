@@ -21,9 +21,7 @@ function stubDb(rows: Row[]): {
 
 describe("toSummary", () => {
   it("derives slug by stripping db_ prefix and turning underscores into dashes", () => {
-    expect(
-      toSummary({ id: "db_orders_tracker_a4fxyz", created_at: 1700000000 }),
-    ).toEqual({
+    expect(toSummary({ id: "db_orders_tracker_a4fxyz", created_at: 1700000000 })).toEqual({
       id: "db_orders_tracker_a4fxyz",
       slug: "orders-tracker-a4fxyz",
       pkLive: null,
