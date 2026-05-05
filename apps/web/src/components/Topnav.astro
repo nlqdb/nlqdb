@@ -22,9 +22,10 @@
 // hides it. The cookie is HttpOnly, so the network round-trip is
 // the only honest source of truth for "is this visitor signed in?".
 interface Props {
-  current?: "manifesto";
+  current?: "manifesto" | "chat";
 }
 const { current } = Astro.props;
+const inChat = current === "chat";
 ---
 
 <header class="topnav">
@@ -45,9 +46,14 @@ const { current } = Astro.props;
     </span>
 
     {/* Authed slot — hidden by default; revealed only after the
-        probe resolves authed. Replaces the sign-in gate. */}
+        probe resolves authed. Replaces the sign-in gate. The
+        "Open chat" link is suppressed when the visitor is already
+        inside the chat (current === "chat") — no reason to offer
+        a jump to the page they're on. */}
     <span id="topnav-authed" class="topnav__authed" hidden>
-      <a href="/app" class="topnav__chat-link">Open chat &rarr;</a>
+      {!inChat && (
+        <a href="/app" class="topnav__chat-link">Open chat &rarr;</a>
+      )}
       <button type="button" id="topnav-signout" class="topnav__signout">
         Sign out
       </button>

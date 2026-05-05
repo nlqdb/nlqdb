@@ -27,7 +27,7 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "https://app.nlqdb.com";
   description="Talk to your databases."
 >
   <div class="page page--chat">
-    <Topnav />
+    <Topnav current="chat" />
     <main class="page__main page__main--chat">
       <ChatPanel client:only="react" apiBase={apiBase} />
     </main>
