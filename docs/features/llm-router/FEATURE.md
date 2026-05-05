@@ -135,7 +135,7 @@ when-to-load:
 
 ## GLOBALs governing this feature
 
-Canonical text in [`docs/decisions.md`](../../docs/decisions.md). The list below names the rules that constrain this feature; any skill-local commentary is nested under the rule.
+Canonical text in [`docs/decisions.md`](../../decisions.md). The list below names the rules that constrain this feature; any skill-local commentary is nested under the rule.
 
 - **GLOBAL-014** — OTel span on every external call (DB, LLM, HTTP, queue).
 - **GLOBAL-013** — $0/month for the free tier; Workers free-tier bundle ≤ 3 MiB compressed.

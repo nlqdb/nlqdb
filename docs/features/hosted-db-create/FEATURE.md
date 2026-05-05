@@ -13,7 +13,7 @@ when-to-load:
 # Feature: Hosted db.create
 
 **One-liner:** Goal-string in, working multi-table Postgres database out — typed-plan pipeline, deterministic DDL compiler, semantic layer auto-generated at create-time.
-**Status:** planned (Phase 1 — design locked in [`docs/architecture.md` §3.6](../../docs/architecture.md), implementation pending)
+**Status:** planned (Phase 1 — design locked in [`docs/architecture.md` §3.6](../../architecture.md), implementation pending)
 **Owners (code):**
 - `apps/api/src/db-create/**` (orchestrator, infer-schema, compile-ddl, neon-provision)
 - `apps/api/src/ask/classifier.ts` (kind classifier on the `/v1/ask` entry)
@@ -149,7 +149,7 @@ when-to-load:
 
 ## GLOBALs governing this feature
 
-Canonical text in [`docs/decisions.md`](../../docs/decisions.md). The list below names the rules that constrain this feature; any skill-local commentary is nested under the rule.
+Canonical text in [`docs/decisions.md`](../../decisions.md). The list below names the rules that constrain this feature; any skill-local commentary is nested under the rule.
 
 - **GLOBAL-005** — Every mutation accepts `Idempotency-Key`.
   - *In this skill:* db.create is a mutation. The `(user_id, key)` store dedupes the entire pipeline — classifier + LLM call + DDL + provision — so a retried create returns the same `{ db, pk_live, rows, plan }` byte-for-byte and never double-allocates a Postgres schema. Anonymous-mode callers (no `user_id`) dedupe by `(anon_device_id, key)` from the 72h `localStorage` token (`SK-AUTH-*`).
@@ -171,6 +171,6 @@ Canonical text in [`docs/decisions.md`](../../docs/decisions.md). The list below
 
 ## Semantic layer — Phase 2 design
 
-Phase 1 emits an auto-generated `metrics`/`dimensions` baseline at create time (see `SK-HDC-005` above). Phase 2 makes that baseline **editable, OSI-compatible, and source-controlled**. Full plan, deferred decisions, and promotion path: [`docs/future/semantic-layer.md`](../../docs/future/semantic-layer.md).
+Phase 1 emits an auto-generated `metrics`/`dimensions` baseline at create time (see `SK-HDC-005` above). Phase 2 makes that baseline **editable, OSI-compatible, and source-controlled**. Full plan, deferred decisions, and promotion path: [`docs/future/semantic-layer.md`](../../future/semantic-layer.md).
 
 When Phase 2 ships, decisions from that doc promote into `SK-HDC-NNN` blocks here (semantic.yml shape, registry layout) and into sibling skills (`SK-PLAN-NNN` for cache fingerprint, `SK-SQLALLOW-NNN` for semantic-aware allow-list, `SK-CLI-NNN` for `nlq semantic init`).

@@ -94,7 +94,7 @@ when-to-load:
 
 ## GLOBALs governing this feature
 
-Canonical text in [`docs/decisions.md`](../../docs/decisions.md). The list below names the rules that constrain this feature; any skill-local commentary is nested under the rule.
+Canonical text in [`docs/decisions.md`](../../decisions.md). The list below names the rules that constrain this feature; any skill-local commentary is nested under the rule.
 
 - **GLOBAL-006** — Plans content-addressed by `(schema_hash, query_hash)`.
 - **GLOBAL-004** — Schemas only widen.

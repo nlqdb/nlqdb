@@ -85,7 +85,7 @@ when-to-load:
 
 ## GLOBALs governing this feature
 
-Canonical text in [`docs/decisions.md`](../../docs/decisions.md). The list
+Canonical text in [`docs/decisions.md`](./decisions.md). The list
 below names the rules that constrain this feature; any skill-local
 commentary is nested under the rule.
 

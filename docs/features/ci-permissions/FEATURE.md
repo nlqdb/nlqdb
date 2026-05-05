@@ -13,7 +13,7 @@ when-to-load:
 **One-liner:** Least-privilege GitHub Actions `permissions:` blocks across reusable workflows. Default-deny; explicit grants per job; OIDC for publish.
 **Status:** partial — reusable workflow contract locked (`SK-CIPERM-001..004`); `nlqdb/actions@v1` lives in its own repo, consumer repos call it with `secrets: inherit`. The CI-permissions linter (`SK-CIPERM-005`) is open work.
 **Owners (code):** `.github/workflows/**` in every consumer repo; `nlqdb/actions/.github/workflows/ci.yml` in the reusable-workflow repo.
-**Cross-refs:** [`docs/architecture.md §9`](../../docs/architecture.md#9-cicd) (CI/CD overview) · [`docs/history/ci-actions-repo-layout.md`](../../docs/history/ci-actions-repo-layout.md) (repo layout, inputs, secrets, gates)
+**Cross-refs:** [`docs/architecture.md §9`](../../architecture.md#9-cicd) (CI/CD overview) · [`docs/history/ci-actions-repo-layout.md`](../../history/ci-actions-repo-layout.md) (repo layout, inputs, secrets, gates)
 
 ## Touchpoints — read this skill before editing
 
@@ -79,7 +79,7 @@ when-to-load:
 
 ## GLOBALs governing this feature
 
-Canonical text in [`docs/decisions.md`](../../docs/decisions.md). The list below names the rules that constrain this feature; any skill-local commentary is nested under the rule.
+Canonical text in [`docs/decisions.md`](../../decisions.md). The list below names the rules that constrain this feature; any skill-local commentary is nested under the rule.
 
 - **GLOBAL-013** — `$0/month free tier`.
   - *In this skill:* OIDC for publish (`SK-CIPERM-003`) keeps us off paid secret-rotation tools (HashiCorp Vault, AWS Secrets Manager) and removes the `NPM_TOKEN` rotation chore from the always-on list.
