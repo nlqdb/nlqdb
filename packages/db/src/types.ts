@@ -10,7 +10,7 @@
 // schema-inference LLM call and consumed by the deterministic DDL
 // compiler — live below the adapter types because they're the
 // engine-side contract for the hosted db.create pipeline
-// (.claude/skills/hosted-db-create/SKILL.md SK-HDC-002, SK-HDC-003).
+// (docs/features/hosted-db-create/SKILL.md SK-HDC-002, SK-HDC-003).
 // SK-HDC's Touchpoints names this file as the canonical home so
 // every sub-module imports the same Zod schema and inferred types.
 

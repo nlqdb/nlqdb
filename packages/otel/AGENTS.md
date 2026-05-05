@@ -9,7 +9,7 @@ OpenTelemetry helpers. Span/metric/label catalog from docs/performance.md §3.
 
 ## Skills relevant to this area
 
-- [`observability`](../../.claude/skills/observability/SKILL.md) — mandatory pre-read for changes that touch the feature.
+- [`observability`](../../docs/features/observability/SKILL.md) — mandatory pre-read for changes that touch the feature.
 
 ## Commands
 

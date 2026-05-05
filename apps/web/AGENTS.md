@@ -9,9 +9,9 @@ Marketing + product web app. Onboarding, anonymous-mode default, demo dataset.
 
 ## Skills relevant to this area
 
-- [`web-app`](../../.claude/skills/web-app/SKILL.md) — mandatory pre-read for changes that touch the feature.
-- [`anonymous-mode`](../../.claude/skills/anonymous-mode/SKILL.md) — mandatory pre-read for changes that touch the feature.
-- [`sdk`](../../.claude/skills/sdk/SKILL.md) — mandatory pre-read for changes that touch the feature.
+- [`web-app`](../../docs/features/web-app/SKILL.md) — mandatory pre-read for changes that touch the feature.
+- [`anonymous-mode`](../../docs/features/anonymous-mode/SKILL.md) — mandatory pre-read for changes that touch the feature.
+- [`sdk`](../../docs/features/sdk/SKILL.md) — mandatory pre-read for changes that touch the feature.
 
 ## Commands
 

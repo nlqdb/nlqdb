@@ -9,16 +9,16 @@
 // [`docs/research-receipts.md §1`](../../../../docs/research-receipts.md):
 // the LLM emits a typed `SchemaPlan` (canonical home in
 // `packages/db/src/types.ts` per
-// `.claude/skills/hosted-db-create/SKILL.md` SK-HDC-002), our
+// `docs/features/hosted-db-create/SKILL.md` SK-HDC-002), our
 // compiler emits SQL, a libpg_query parse-validate runs over the
 // compiled DDL, then a transactional provisioner executes. The
 // error unions below name the failure modes each layer can surface
 // back to the caller.
 //
 // Related skills:
-// - `.claude/skills/hosted-db-create/SKILL.md` (canonical owner of
+// - `docs/features/hosted-db-create/SKILL.md` (canonical owner of
 //   the create path; SK-HDC-001..008 govern this file's contracts).
-// - `.claude/skills/ask-pipeline/SKILL.md` — the `kind=create`
+// - `docs/features/ask-pipeline/SKILL.md` — the `kind=create`
 //   branch routes here from `/v1/ask` (SK-ASK-001).
 
 import type { Dimension, ForeignKey, Metric, SampleRow, SchemaPlan } from "@nlqdb/db";

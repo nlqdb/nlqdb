@@ -16,7 +16,7 @@
 // short-circuit cleanly on any failure.
 //
 // Rate-limit is NOT in this pipeline — per
-// `.claude/skills/hosted-db-create/SKILL.md` SK-HDC-008 the per-IP
+// `docs/features/hosted-db-create/SKILL.md` SK-HDC-008 the per-IP
 // (5/hr anonymous) / per-account (20/day authed) check runs in
 // `apps/api/src/ask/classifier.ts` before the orchestrator is
 // called, where the request-level info needed to discriminate IP
@@ -26,10 +26,10 @@
 // (GLOBAL-014); the orchestrator is in-process and adds no external
 // boundaries of its own.
 //
-// Related skill: `.claude/skills/hosted-db-create/SKILL.md` is the
+// Related skill: `docs/features/hosted-db-create/SKILL.md` is the
 // canonical owner of the create path (SK-HDC-001..008). The
 // `kind=create` branch routes here from `/v1/ask` per SK-ASK-001
-// in `.claude/skills/ask-pipeline/SKILL.md`.
+// in `docs/features/ask-pipeline/SKILL.md`.
 
 import type {
   CompileDdlResult,

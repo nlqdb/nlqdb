@@ -23,10 +23,10 @@ when-to-load:
 **Cross-refs:** docs/architecture.md §3.6.1–§3.6.8 (canonical) · docs/architecture.md §10 §4 (Phase 1 slice — sub-modules, anonymous-db lifecycle, exit gate) · docs/research-receipts.md §1 (Replit incident → layered guardrails), §2 (Cortex Analyst + SchemaAgent → typed plans), §7 (deterministic dbId fallbacks > LLM disambiguation), §8 (semantic-layer-at-create moat) · GLOBAL-005, GLOBAL-014, GLOBAL-017, GLOBAL-020 (see governing-GLOBALs section below)
 
 **Sibling skills to read alongside:**
-- `.claude/skills/ask-pipeline/SKILL.md` — the classifier branches off the existing `/v1/ask` orchestrator; this skill owns the `kind=create` arm
-- `.claude/skills/db-adapter/SKILL.md` — the provisioner uses the adapter; SK-DB-007 (schema-per-DB tenancy) and SK-DB-008 (ALTER TABLE ADD COLUMN NULL) constrain what we emit
-- `.claude/skills/llm-router/SKILL.md` — the classifier and schema-inference are LLM calls; provider routing + cost accounting belongs there
-- `.claude/skills/sql-allowlist/SKILL.md` — owns the read/write validator; SK-HDC-006 here owns the DDL-path validator that sits next to it
+- `docs/features/ask-pipeline/SKILL.md` — the classifier branches off the existing `/v1/ask` orchestrator; this skill owns the `kind=create` arm
+- `docs/features/db-adapter/SKILL.md` — the provisioner uses the adapter; SK-DB-007 (schema-per-DB tenancy) and SK-DB-008 (ALTER TABLE ADD COLUMN NULL) constrain what we emit
+- `docs/features/llm-router/SKILL.md` — the classifier and schema-inference are LLM calls; provider routing + cost accounting belongs there
+- `docs/features/sql-allowlist/SKILL.md` — owns the read/write validator; SK-HDC-006 here owns the DDL-path validator that sits next to it
 
 ## Touchpoints — read this skill before editing
 

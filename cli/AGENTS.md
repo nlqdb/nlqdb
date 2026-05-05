@@ -9,10 +9,10 @@
 
 ## Skills relevant to this area
 
-- [`cli`](../.claude/skills/cli/SKILL.md) — mandatory pre-read for changes that touch the feature.
-- [`sdk`](../.claude/skills/sdk/SKILL.md) — mandatory pre-read for changes that touch the feature.
-- [`mcp-server`](../.claude/skills/mcp-server/SKILL.md) — mandatory pre-read for changes that touch the feature.
-- [`anonymous-mode`](../.claude/skills/anonymous-mode/SKILL.md) — mandatory pre-read for changes that touch the feature.
+- [`cli`](../docs/features/cli/SKILL.md) — mandatory pre-read for changes that touch the feature.
+- [`sdk`](../docs/features/sdk/SKILL.md) — mandatory pre-read for changes that touch the feature.
+- [`mcp-server`](../docs/features/mcp-server/SKILL.md) — mandatory pre-read for changes that touch the feature.
+- [`anonymous-mode`](../docs/features/anonymous-mode/SKILL.md) — mandatory pre-read for changes that touch the feature.
 
 ## Commands
 

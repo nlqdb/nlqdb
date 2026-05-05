@@ -17,7 +17,7 @@ when-to-load:
 **One-liner:** Opt-in routing of the `plan` and `hard` LLM tiers through frontier models (Claude Sonnet 4.6 / Opus 4.7 / GPT-5), billed pay-per-token at provider list price + 0% markup, with a surface-parity model picker and a per-key spend cap.
 **Status:** planned (Phase 2 pricing-row design-locked; Phase 3 ships alongside Pro)
 **Owners (code):** none yet — `apps/api/src/billing/**`, `apps/api/src/ask/**`, `packages/llm/**`, `apps/web/**`, `cli/`, `packages/sdk/**`, `packages/elements/**`, `packages/mcp/**` will all carry slices.
-**Cross-refs:** docs/architecture.md §6 (pricing — Premium-models row) · docs/architecture.md §8 (AI model selection — model catalog) · docs/architecture.md §10 §5.2 (Premium models add-on) · `.claude/skills/llm-router/SKILL.md` (`SK-LLM-007` tier-aware chain selector, `SK-LLM-008` Pro-tier privacy, `SK-LLM-009` prompt caching) · `.claude/skills/stripe-billing/SKILL.md` (`SK-STRIPE-004` Checkout linkage) · `.claude/skills/rate-limit/SKILL.md` (per-key spend cap is open) · `.claude/skills/web-app/SKILL.md` (CTA surface) · `.claude/skills/sdk/SKILL.md` / `cli/SKILL.md` / `mcp-server/SKILL.md` / `elements/SKILL.md` (surface-parity per `GLOBAL-003`)
+**Cross-refs:** docs/architecture.md §6 (pricing — Premium-models row) · docs/architecture.md §8 (AI model selection — model catalog) · docs/architecture.md §10 §5.2 (Premium models add-on) · `docs/features/llm-router/SKILL.md` (`SK-LLM-007` tier-aware chain selector, `SK-LLM-008` Pro-tier privacy, `SK-LLM-009` prompt caching) · `docs/features/stripe-billing/SKILL.md` (`SK-STRIPE-004` Checkout linkage) · `docs/features/rate-limit/SKILL.md` (per-key spend cap is open) · `docs/features/web-app/SKILL.md` (CTA surface) · `docs/features/sdk/SKILL.md` / `cli/SKILL.md` / `mcp-server/SKILL.md` / `elements/SKILL.md` (surface-parity per `GLOBAL-003`)
 
 ## Touchpoints — read this skill before editing
 
@@ -54,7 +54,7 @@ when-to-load:
   - Flat per-query premium price ($0.05/query) — opaque; bad queries that cost us $0.50 are subsidised by good ones that cost $0.005, and customers can't audit. Rejected for the pricing-honesty stance in `docs/architecture.md §10 §5.3`.
   - Token-bucket "credits" sold in $10 packs — easier billing UX, but requires an internal currency that needs accounting + refund + expiration policy + tax surface. Postpone until pass-through pricing produces enough complaints to justify the extra surface.
   - 10–30% markup — defensible eventually, but the open-source / Apache-2.0 positioning (`GLOBAL-019`) means we explicitly compete with self-hosting; +0% is the price floor that matches the value claim ("we route, you don't have to").
-- **Source:** docs/architecture.md §6 · docs/architecture.md §10 §5.2 · .claude/skills/llm-router/SKILL.md ("How credits flow into the product without breaking UX")
+- **Source:** docs/architecture.md §6 · docs/architecture.md §10 §5.2 · docs/features/llm-router/SKILL.md ("How credits flow into the product without breaking UX")
 
 ### SK-PREMIUM-003 — The user-facing knob is goal-first presets, not raw model names
 
@@ -103,7 +103,7 @@ when-to-load:
   - Soft cap only (warn but never stop) — produces the runaway bill in the worst case; rejected for the pricing-honesty stance.
   - Cap denominated in tokens not USD — token prices change; USD is the unit the user commits to. Internal accounting can use tokens; the user-facing cap is dollars.
   - Account-level cap instead of per-key — collides with `SK-PREMIUM-001`'s per-(DB, key) granularity; a per-key cap is the smaller blast radius.
-- **Source:** docs/architecture.md §10 §5.3 (no surprise bills) · docs/architecture.md §6 (per-key spend cap) · `.claude/skills/rate-limit/SKILL.md` (open: spend cap)
+- **Source:** docs/architecture.md §10 §5.3 (no surprise bills) · docs/architecture.md §6 (per-key spend cap) · `docs/features/rate-limit/SKILL.md` (open: spend cap)
 
 ### SK-PREMIUM-007 — Plan cache stays product-funded; cap accounting starts at the LLM call site
 
@@ -179,7 +179,7 @@ A future `SK-PREMIUM-008` lands when these are resolved. Until then, the in-cont
 ### Other open questions
 
 - **Hard-plan classifier confidence threshold.** `SK-LLM-001` names the `hard` tier but pins no confidence number. The CTA in `SK-PREMIUM-004` fires on "hard plan" verdict, so the threshold directly drives upsell frequency. Strawman: 0.85 confidence → `hard_plan` true; tunable per env var; A/B-able once we have traffic.
-- **Quality-score histogram.** `.claude/skills/llm-router/SKILL.md` proposes `nlqdb.plan.quality_score` (1 = clean, 0.5 = correction loop, 0 = rejected). The CTA's persuasiveness depends on showing the customer their measured quality delta on the strict-$0 chain. Histogram shape + LLM-as-judge prompt + statistical confidence interval all open.
+- **Quality-score histogram.** `docs/features/llm-router/SKILL.md` proposes `nlqdb.plan.quality_score` (1 = clean, 0.5 = correction loop, 0 = rejected). The CTA's persuasiveness depends on showing the customer their measured quality delta on the strict-$0 chain. Histogram shape + LLM-as-judge prompt + statistical confidence interval all open.
 - **Lago wiring for usage metering.** `docs/architecture.md §10 §5.4` calls for Lago-on-Fly as the metering layer batched into Stripe; the LLM-router → Lago path is not yet wired (`llm-router/SKILL.md` Open questions). Premium-tier billing depends on this path; it must land before `SK-PREMIUM-002` ships.
 - **Per-key spend cap UI.** `SK-PREMIUM-006` defines the data model but not the dashboard — where does the cap live in the UI? DB settings page or API-keys page or both? Probably both, with the API-keys page as the canonical write surface.
 - **Dunning when the add-on payment fails.** Stripe `invoice.payment_failed` for the metered LLM-tokens line — does the add-on pause (drop to strict-$0) immediately, after one retry, or after the standard Stripe dunning period? `stripe-billing/SKILL.md` Open questions cover dunning broadly; premium-tier needs the specific behavior pinned.
@@ -192,8 +192,8 @@ A future `SK-PREMIUM-008` lands when these are resolved. Until then, the in-cont
 - `docs/architecture.md §8` — AI model selection (model catalog: Sonnet 4.6, Opus 4.7, GPT-5)
 - `docs/architecture.md §10 §5.2` — Premium models add-on (pricing exposition)
 - `docs/architecture.md §10 §5.3` — Honest billing rules (no surprise bills)
-- `.claude/skills/llm-router/SKILL.md` — credit-program landscape; tier-aware routing flow
-- `.claude/skills/llm-router/SKILL.md` — `SK-LLM-007` (chain selector), `SK-LLM-008` (privacy), `SK-LLM-009` (prompt caching), `SK-LLM-010` (plan-cache first)
-- `.claude/skills/stripe-billing/SKILL.md` — `SK-STRIPE-004` (Checkout linkage), Open questions (dunning, Lago wiring)
-- `.claude/skills/rate-limit/SKILL.md` — Open: per-key spend cap
-- `.claude/skills/web-app/SKILL.md` — `SK-WEB-005` (three-part chat reply, the trace surface the CTA hooks into)
+- `docs/features/llm-router/SKILL.md` — credit-program landscape; tier-aware routing flow
+- `docs/features/llm-router/SKILL.md` — `SK-LLM-007` (chain selector), `SK-LLM-008` (privacy), `SK-LLM-009` (prompt caching), `SK-LLM-010` (plan-cache first)
+- `docs/features/stripe-billing/SKILL.md` — `SK-STRIPE-004` (Checkout linkage), Open questions (dunning, Lago wiring)
+- `docs/features/rate-limit/SKILL.md` — Open: per-key spend cap
+- `docs/features/web-app/SKILL.md` — `SK-WEB-005` (three-part chat reply, the trace surface the CTA hooks into)

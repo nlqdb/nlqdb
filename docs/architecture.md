@@ -2,7 +2,7 @@
 
 > A database you talk to. You write HTML; each component asks for what it wants in plain English. nlqdb answers.
 
-**Navigation:** [decisions.md](./decisions.md) for GLOBAL-NNN decisions · [skills index](../.claude/skills/_index.md) for feature decisions · [runbook.md](./runbook.md) for operations · [progress.md](./progress.md) for integration tiers
+**Navigation:** [decisions.md](./decisions.md) for GLOBAL-NNN decisions · [skills index](../docs/features/_index.md) for feature decisions · [runbook.md](./runbook.md) for operations · [progress.md](./progress.md) for integration tiers
 
 If a sentence here disagrees with a skill, **the skill wins**. This document owns: core values, system architecture, surface overviews, phase plan, tech-stack rationale, risks, and what we are explicitly not building.
 
@@ -116,7 +116,7 @@ Canonical: **`nlqdb.com`** (`.ai` is held defensively and 301s to `.com`).
 
 ## 3. Surfaces
 
-> Decisions for each surface live in the corresponding skill — see [skills index](../.claude/skills/_index.md). What follows is a product spec (the *what*), not a decision record.
+> Decisions for each surface live in the corresponding skill — see [skills index](../docs/features/_index.md). What follows is a product spec (the *what*), not a decision record.
 
 ### 3.1 Marketing site — `nlqdb.com`
 

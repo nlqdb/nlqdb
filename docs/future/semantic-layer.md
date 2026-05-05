@@ -10,9 +10,9 @@
 **Cross-refs:**
 - [`docs/architecture.md §3.6.3`](../architecture.md) — auto-generated semantic-layer moat at create time (the seed)
 - [`docs/research-receipts.md §8`](../research-receipts.md) — research backing (dbt 2026 benchmark, OSI standard, Cortex / Genie / Wren AI)
-- [`.claude/skills/hosted-db-create/SKILL.md`](../../.claude/skills/hosted-db-create/SKILL.md) — Phase 1 metrics/dimensions emission
-- [`.claude/skills/ask-pipeline/SKILL.md`](../../.claude/skills/ask-pipeline/SKILL.md) — runtime planner that consumes the layer
-- [`.claude/skills/sql-allowlist/SKILL.md`](../../.claude/skills/sql-allowlist/SKILL.md) — semantic-aware allow-list extension
+- [`docs/features/hosted-db-create/SKILL.md`](../../docs/features/hosted-db-create/SKILL.md) — Phase 1 metrics/dimensions emission
+- [`docs/features/ask-pipeline/SKILL.md`](../../docs/features/ask-pipeline/SKILL.md) — runtime planner that consumes the layer
+- [`docs/features/sql-allowlist/SKILL.md`](../../docs/features/sql-allowlist/SKILL.md) — semantic-aware allow-list extension
 
 ---
 

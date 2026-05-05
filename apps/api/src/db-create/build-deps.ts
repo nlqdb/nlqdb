@@ -7,11 +7,11 @@
 // call site.
 //
 // Skill cross-refs:
-// - `.claude/skills/hosted-db-create/SKILL.md` — owns the create
+// - `docs/features/hosted-db-create/SKILL.md` — owns the create
 //   path. SK-HDC-002 (typed plan), SK-HDC-007 (provisioner split:
 //   `provisionDb` is wired here; Phase-4 BYO swaps to
 //   `registerByoDb` via the same `provision` slot).
-// - `.claude/skills/ask-pipeline/SKILL.md` — the `kind=create`
+// - `docs/features/ask-pipeline/SKILL.md` — the `kind=create`
 //   branch routes here from `/v1/ask` per SK-ASK-001.
 
 import { neon } from "@neondatabase/serverless";

@@ -1,6 +1,6 @@
 # Skill Conventions
 
-How we structure `.claude/skills/` so every feature has one canonical place
+How we structure `docs/features/` so every feature has one canonical place
 for its decisions, and so agents (Claude Code, cold subagents, humans) load
 the right context before touching code.
 
@@ -17,7 +17,7 @@ feature it covers — including changes that *might* affect it indirectly
 ## 1. File layout
 
 ```
-.claude/skills/
+docs/features/
 ├── _index.md                      # one-line summary of every skill, status, links
 ├── <feature-name>/
 │   └── SKILL.md                   # canonical decisions + scope for this feature
@@ -149,7 +149,7 @@ SKILL.md; the duplication was a workaround for a 2024-era constraint
 that no longer binds.
 
 To find every skill affected by a GLOBAL: `grep -rn 'GLOBAL-005'
-.claude/skills/`.
+docs/features/`.
 
 ## 6. When to add a skill
 
@@ -178,9 +178,9 @@ These are grep-driven, no tooling needed:
 2. **Every `SK-*` decision has all five fields.** Decision / Core value
    / Why / Consequence / Alternatives.
 3. **GLOBALs are referenced, not duplicated.** No `### GLOBAL-NNN`
-   block under `.claude/skills/` — only one-liner references in the
+   block under `docs/features/` — only one-liner references in the
    `## GLOBALs governing this feature` section. Verify with
-   `grep -rn '^### GLOBAL-' .claude/skills/` (should print nothing).
+   `grep -rn '^### GLOBAL-' docs/features/` (should print nothing).
 4. **No broken cross-refs.** `docs/architecture.md §4.1` style references
    resolve to a real heading.
 5. **`when-to-load.globs` matches real paths.** A glob pointing at a
@@ -191,7 +191,7 @@ A new skill that fails any of these is a draft, not a skill.
 
 ## 8. Where to look first
 
-- `.claude/skills/_index.md` — table of every skill, status, top-level scope.
+- `docs/features/_index.md` — table of every skill, status, top-level scope.
 - `docs/decisions.md` — canonical text of every `GLOBAL-NNN`.
 - Root `AGENTS.md` — the before-editing path map (which paths require
   which skills) and the three behavioral principles.

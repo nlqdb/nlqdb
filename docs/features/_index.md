@@ -1,12 +1,12 @@
 # Skill Index
 
-Every feature has a folder under `.claude/skills/<feature>/SKILL.md`. The
+Every feature has a folder under `docs/features/<feature>/SKILL.md`. The
 `SKILL.md` is **mandatory pre-reading** before editing any code that
 touches the feature (see the before-editing path map in the root
 [`AGENTS.md`](../../AGENTS.md) §5).
 
-How a skill is structured: [`docs/skill-conventions.md`](../../docs/skill-conventions.md).
-Cross-cutting decisions cited by skills: [`docs/decisions.md`](../../docs/decisions.md).
+How a skill is structured: [`docs/skill-conventions.md`](../skill-conventions.md).
+Cross-cutting decisions cited by skills: [`docs/decisions.md`](../decisions.md).
 
 ## Implemented
 
@@ -50,7 +50,7 @@ Cross-cutting decisions cited by skills: [`docs/decisions.md`](../../docs/decisi
 
 ## Adding a new skill
 
-1. Create `.claude/skills/<feature>/SKILL.md` with the template from
+1. Create `docs/features/<feature>/SKILL.md` with the template from
    [`docs/skill-conventions.md`](../../docs/skill-conventions.md) §3.
 2. Add the row to the right table here.
 3. Add the path glob → skill mapping to root [`AGENTS.md`](../../AGENTS.md) §5

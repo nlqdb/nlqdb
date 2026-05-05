@@ -7,7 +7,7 @@ harder to operate.
 
 - [./architecture.md](./architecture.md) — architectural narrative, phase plan, tech-stack rationale.
 - [./performance.md](./performance.md) — SLOs, latency budgets, span/metric catalog.
-- [.claude/skills/](../.claude/skills/) — canonical per-feature decisions.
+- [docs/features/](../docs/features/) — canonical per-feature decisions.
 - [./decisions.md](./decisions.md) — canonical cross-cutting `GLOBAL-NNN`.
 - **this file** — what's actually set up right now (operational state,
   not decisions; if a sentence here disagrees with a skill, the skill wins).
@@ -807,7 +807,7 @@ Priya is a growth PM at a 30-person SaaS. Thursday afternoon a conference vendor
 
 Dmitri is on-call at a 20-person startup. Support escalates: a pricing bug double-charged ~180 customers between 11pm and midnight. Instead of writing a one-off refund script, he opens the team workspace pointed at their existing Postgres, types the refund in plain English, and reviews the generated diff (183 rows, $2,104 total) before approving. The audit log captures who ran it, and the Retool page he would've had to build doesn't need to exist. *(Requires Phase 2 "bring your own Postgres" mode — aspirational for this persona in Phase 1.)*
 
-Representative query example: `"migrate users from plan 'starter' to 'basic'"` (with diff preview, per [`.claude/skills/onboarding/SKILL.md` SK-ONBOARD-004](../.claude/skills/onboarding/SKILL.md)).
+Representative query example: `"migrate users from plan 'starter' to 'basic'"` (with diff preview, per [`docs/features/onboarding/SKILL.md` SK-ONBOARD-004](../docs/features/onboarding/SKILL.md)).
 
 #### 10.2.5 P5 — Aarav (Student / First-Timer)
 
@@ -823,7 +823,7 @@ Finance, healthcare, anyone with HIPAA/SOC2/GDPR-DPA requirements today. We are 
 
 #### A2 — High-Volume OLTP at Scale
 
-Payment processors, ad-tech, real-time bidding, anyone doing >10k writes/sec. Our abstraction tax (p99 latency within 1.3× of hand-written queries, per [`.claude/skills/multi-engine-adapter/SKILL.md` Phase 2 exit criteria](../.claude/skills/multi-engine-adapter/SKILL.md)) means we're not for the top of that curve yet. They should run Postgres / CockroachDB / Scylla directly.
+Payment processors, ad-tech, real-time bidding, anyone doing >10k writes/sec. Our abstraction tax (p99 latency within 1.3× of hand-written queries, per [`docs/features/multi-engine-adapter/SKILL.md` Phase 2 exit criteria](../docs/features/multi-engine-adapter/SKILL.md)) means we're not for the top of that curve yet. They should run Postgres / CockroachDB / Scylla directly.
 
 #### A3 — Strict-Schema Shops Built Around dbt / Great Expectations / Flyway
 

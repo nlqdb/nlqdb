@@ -172,7 +172,7 @@ Finance, healthcare, anyone with HIPAA/SOC2/GDPR-DPA requirements today. We are 
 
 ### A2 — High-Volume OLTP at Scale
 
-Payment processors, ad-tech, real-time bidding, anyone doing >10k writes/sec. Our abstraction tax (within 1.3× of hand-written queries, per `.claude/skills/multi-engine-adapter/SKILL.md` Phase 2 exit criteria) means we're not for the top of that curve yet. They should run Postgres / CockroachDB / Scylla directly.
+Payment processors, ad-tech, real-time bidding, anyone doing >10k writes/sec. Our abstraction tax (within 1.3× of hand-written queries, per `docs/features/multi-engine-adapter/SKILL.md` Phase 2 exit criteria) means we're not for the top of that curve yet. They should run Postgres / CockroachDB / Scylla directly.
 
 ### A3 — Strict-Schema Shops Built Around dbt / Great Expectations / Flyway
 

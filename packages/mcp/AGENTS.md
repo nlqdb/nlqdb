@@ -9,8 +9,8 @@ MCP server + nlq mcp install host detection (Claude Desktop, Cursor, Cline).
 
 ## Skills relevant to this area
 
-- [`mcp-server`](../../.claude/skills/mcp-server/SKILL.md) — mandatory pre-read for changes that touch the feature.
-- [`sdk`](../../.claude/skills/sdk/SKILL.md) — mandatory pre-read for changes that touch the feature.
+- [`mcp-server`](../../docs/features/mcp-server/SKILL.md) — mandatory pre-read for changes that touch the feature.
+- [`sdk`](../../docs/features/sdk/SKILL.md) — mandatory pre-read for changes that touch the feature.
 
 ## Commands
 

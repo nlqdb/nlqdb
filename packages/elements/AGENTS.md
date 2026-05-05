@@ -9,8 +9,8 @@
 
 ## Skills relevant to this area
 
-- [`elements`](../../.claude/skills/elements/SKILL.md) — mandatory pre-read for changes that touch the feature.
-- [`sdk`](../../.claude/skills/sdk/SKILL.md) — mandatory pre-read for changes that touch the feature.
+- [`elements`](../../docs/features/elements/SKILL.md) — mandatory pre-read for changes that touch the feature.
+- [`sdk`](../../docs/features/sdk/SKILL.md) — mandatory pre-read for changes that touch the feature.
 
 ## Commands
 

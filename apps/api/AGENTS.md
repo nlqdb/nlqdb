@@ -9,17 +9,17 @@ Cloudflare Workers HTTP API. Hosts /v1/ask, /v1/run, auth, billing, webhooks.
 
 ## Skills relevant to this area
 
-- [`ask-pipeline`](../../.claude/skills/ask-pipeline/SKILL.md) — mandatory pre-read for changes that touch the feature.
-- [`hosted-db-create`](../../.claude/skills/hosted-db-create/SKILL.md) — mandatory pre-read for changes that touch `src/db-create/**`, `src/ask/classifier.ts`, or `src/ask/sql-validate-ddl.ts`. Phase 1.
-- [`plan-cache`](../../.claude/skills/plan-cache/SKILL.md) — mandatory pre-read for changes that touch the feature.
-- [`sql-allowlist`](../../.claude/skills/sql-allowlist/SKILL.md) — mandatory pre-read for changes that touch the feature.
-- [`idempotency`](../../.claude/skills/idempotency/SKILL.md) — mandatory pre-read for changes that touch the feature.
-- [`rate-limit`](../../.claude/skills/rate-limit/SKILL.md) — mandatory pre-read for changes that touch the feature.
-- [`auth`](../../.claude/skills/auth/SKILL.md) — mandatory pre-read for changes that touch the feature.
-- [`anonymous-mode`](../../.claude/skills/anonymous-mode/SKILL.md) — mandatory pre-read for changes that touch `src/principal.ts`, `src/anon-rate-limit.ts`, `src/anon-global-cap.ts`, `src/turnstile.ts`, or the anon `/v1/ask` path.
-- [`api-keys`](../../.claude/skills/api-keys/SKILL.md) — mandatory pre-read for changes that touch the feature.
-- [`stripe-billing`](../../.claude/skills/stripe-billing/SKILL.md) — mandatory pre-read for changes that touch the feature.
-- [`observability`](../../.claude/skills/observability/SKILL.md) — mandatory pre-read for changes that touch the feature.
+- [`ask-pipeline`](../../docs/features/ask-pipeline/SKILL.md) — mandatory pre-read for changes that touch the feature.
+- [`hosted-db-create`](../../docs/features/hosted-db-create/SKILL.md) — mandatory pre-read for changes that touch `src/db-create/**`, `src/ask/classifier.ts`, or `src/ask/sql-validate-ddl.ts`. Phase 1.
+- [`plan-cache`](../../docs/features/plan-cache/SKILL.md) — mandatory pre-read for changes that touch the feature.
+- [`sql-allowlist`](../../docs/features/sql-allowlist/SKILL.md) — mandatory pre-read for changes that touch the feature.
+- [`idempotency`](../../docs/features/idempotency/SKILL.md) — mandatory pre-read for changes that touch the feature.
+- [`rate-limit`](../../docs/features/rate-limit/SKILL.md) — mandatory pre-read for changes that touch the feature.
+- [`auth`](../../docs/features/auth/SKILL.md) — mandatory pre-read for changes that touch the feature.
+- [`anonymous-mode`](../../docs/features/anonymous-mode/SKILL.md) — mandatory pre-read for changes that touch `src/principal.ts`, `src/anon-rate-limit.ts`, `src/anon-global-cap.ts`, `src/turnstile.ts`, or the anon `/v1/ask` path.
+- [`api-keys`](../../docs/features/api-keys/SKILL.md) — mandatory pre-read for changes that touch the feature.
+- [`stripe-billing`](../../docs/features/stripe-billing/SKILL.md) — mandatory pre-read for changes that touch the feature.
+- [`observability`](../../docs/features/observability/SKILL.md) — mandatory pre-read for changes that touch the feature.
 
 ## Commands
 

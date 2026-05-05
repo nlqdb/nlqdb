@@ -19,7 +19,7 @@
 // /v1/ask read path can't recover from. An orphan schema is
 // recoverable by a background sweep.
 //
-// Observability: GLOBAL-014 + .claude/skills/hosted-db-create/SKILL.md
+// Observability: GLOBAL-014 + docs/features/hosted-db-create/SKILL.md
 // — every Postgres call gets a `db.query` span (catalog row in
 // docs/performance.md §3.1); the BEGIN…COMMIT batch is wrapped in a
 // `db.transaction` span. D1 calls are in-process Workers bindings
@@ -233,7 +233,7 @@ export async function provisionDb(
   }
 
   // pkLive is null in the provisioner v0 — `pk_live_<dbId>` minting
-  // is the api-keys subsystem's job (`.claude/skills/api-keys/SKILL.md`),
+  // is the api-keys subsystem's job (`docs/features/api-keys/SKILL.md`),
   // not the provisioner's. The orchestrator handles the anonymous-vs-
   // authed split before issuing the key. Tracked as a Phase-1 follow-up.
   return {

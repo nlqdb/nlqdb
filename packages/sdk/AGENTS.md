@@ -9,9 +9,9 @@
 
 ## Skills relevant to this area
 
-- [`sdk`](../../.claude/skills/sdk/SKILL.md) — mandatory pre-read for changes that touch the feature.
-- [`observability`](../../.claude/skills/observability/SKILL.md) — mandatory pre-read for changes that touch the feature.
-- [`idempotency`](../../.claude/skills/idempotency/SKILL.md) — mandatory pre-read for changes that touch the feature.
+- [`sdk`](../../docs/features/sdk/SKILL.md) — mandatory pre-read for changes that touch the feature.
+- [`observability`](../../docs/features/observability/SKILL.md) — mandatory pre-read for changes that touch the feature.
+- [`idempotency`](../../docs/features/idempotency/SKILL.md) — mandatory pre-read for changes that touch the feature.
 
 ## Commands
 

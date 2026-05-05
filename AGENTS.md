@@ -20,7 +20,7 @@ Apply these to every edit, regardless of what the user has asked for.
 ### P1. Never contradict documented decisions silently
 
 `docs/decisions.md` (cross-cutting `GLOBAL-NNN`) and the per-feature
-`.claude/skills/<feature>/SKILL.md` (local `SK-<FEATURE>-NNN`) are the
+`docs/features/<feature>/SKILL.md` (local `SK-<FEATURE>-NNN`) are the
 canonical record of why the system is the way it is. If a request would
 violate one — even subtly — **stop and raise it with the user**, citing the
 specific ID(s). Don't rationalise around it. The user may decide to
@@ -57,7 +57,7 @@ When a decision changes:
   change that depends on them.
 
 To find every skill affected by a GLOBAL:
-`grep -rn 'GLOBAL-NNN' .claude/skills/`. To find every doc that
+`grep -rn 'GLOBAL-NNN' docs/features/`. To find every doc that
 references it: `grep -rn 'GLOBAL-NNN' docs/`.
 
 ### P4. Three documentation rules
@@ -101,7 +101,7 @@ nlqdb/
 │   ├── auth-internal/   # Better Auth wrapper
 │   └── events/          # event-pipeline producer types
 ├── docs/                # long-form reference docs (see §6)
-├── .claude/skills/      # per-feature skills (mandatory pre-read)
+│   └── features/        # per-feature decision records (mandatory pre-read)
 ├── examples/            # working samples (HTML, frameworks)
 └── AGENTS.md, CLAUDE.md # this file (CLAUDE.md → AGENTS.md symlink)
 ```
@@ -119,29 +119,29 @@ manually before editing.)
 
 | If you touch… | Read first |
 |---|---|
-| `apps/api/src/routes/auth/**`, `packages/auth-internal/**` | `.claude/skills/auth/SKILL.md` |
-| `apps/api/src/keys/**`, anything `api-key` related | `.claude/skills/api-keys/SKILL.md` |
-| `apps/api/src/ask/**`, the `/v1/ask` pipeline | `.claude/skills/ask-pipeline/SKILL.md` |
-| `apps/api/src/db-create/**`, `apps/api/src/ask/classifier.ts`, `apps/api/src/ask/sql-validate-ddl.ts` | `.claude/skills/hosted-db-create/SKILL.md` |
-| `apps/api/src/plan-cache/**`, plan storage | `.claude/skills/plan-cache/SKILL.md` |
-| `packages/llm/**`, model routing, prompts | `.claude/skills/llm-router/SKILL.md` |
-| `apps/api/src/ask/sql-validate.ts`, SQL allowlist | `.claude/skills/sql-allowlist/SKILL.md` |
-| `packages/db/**` | `.claude/skills/db-adapter/SKILL.md` |
-| anything touching `schema_hash`, schema fingerprinting | `.claude/skills/schema-widening/SKILL.md` |
-| any `POST` / `PATCH` / `DELETE` handler | `.claude/skills/idempotency/SKILL.md` |
-| `packages/otel/**`, new spans / metrics | `.claude/skills/observability/SKILL.md` |
-| `apps/api/src/billing/**`, Stripe webhooks | `.claude/skills/stripe-billing/SKILL.md` |
-| `apps/api/src/billing/premium/**`, `apps/api/src/ask/model-picker.ts`, `packages/llm/src/chains/paid.ts`, anything `model` preset / BYOK / spend-cap related | `.claude/skills/premium-tier/SKILL.md` |
-| `apps/events-worker/**`, `packages/events/**` | `.claude/skills/events-pipeline/SKILL.md` |
-| rate-limit middleware (`apps/api/src/ask/rate-limit.ts`, `apps/api/src/anon-rate-limit.ts`, `apps/api/src/anon-global-cap.ts`) | `.claude/skills/rate-limit/SKILL.md` |
-| `apps/api/src/principal.ts`, `apps/api/src/anon-rate-limit.ts`, `apps/api/src/anon-global-cap.ts`, `apps/api/src/turnstile.ts`, `apps/web/src/lib/{anon,prompt-storage,turnstile,api}.ts`, `apps/web/src/components/CreateForm.tsx` | `.claude/skills/anonymous-mode/SKILL.md` |
-| `cli/**` | `.claude/skills/cli/SKILL.md` |
-| `packages/elements/**` | `.claude/skills/elements/SKILL.md` |
-| `packages/sdk/**` | `.claude/skills/sdk/SKILL.md` |
-| `packages/mcp/**` | `.claude/skills/mcp-server/SKILL.md` |
-| `apps/web/**` (onboarding, anonymous mode) | `.claude/skills/web-app/SKILL.md` |
-| `apps/web/src/onboarding/**`, signup flow, first-query path | `.claude/skills/onboarding/SKILL.md` |
-| `.github/workflows/**`, `nlqdb/actions/**` (CI permissions) | `.claude/skills/ci-permissions/SKILL.md` |
+| `apps/api/src/routes/auth/**`, `packages/auth-internal/**` | `docs/features/auth/SKILL.md` |
+| `apps/api/src/keys/**`, anything `api-key` related | `docs/features/api-keys/SKILL.md` |
+| `apps/api/src/ask/**`, the `/v1/ask` pipeline | `docs/features/ask-pipeline/SKILL.md` |
+| `apps/api/src/db-create/**`, `apps/api/src/ask/classifier.ts`, `apps/api/src/ask/sql-validate-ddl.ts` | `docs/features/hosted-db-create/SKILL.md` |
+| `apps/api/src/plan-cache/**`, plan storage | `docs/features/plan-cache/SKILL.md` |
+| `packages/llm/**`, model routing, prompts | `docs/features/llm-router/SKILL.md` |
+| `apps/api/src/ask/sql-validate.ts`, SQL allowlist | `docs/features/sql-allowlist/SKILL.md` |
+| `packages/db/**` | `docs/features/db-adapter/SKILL.md` |
+| anything touching `schema_hash`, schema fingerprinting | `docs/features/schema-widening/SKILL.md` |
+| any `POST` / `PATCH` / `DELETE` handler | `docs/features/idempotency/SKILL.md` |
+| `packages/otel/**`, new spans / metrics | `docs/features/observability/SKILL.md` |
+| `apps/api/src/billing/**`, Stripe webhooks | `docs/features/stripe-billing/SKILL.md` |
+| `apps/api/src/billing/premium/**`, `apps/api/src/ask/model-picker.ts`, `packages/llm/src/chains/paid.ts`, anything `model` preset / BYOK / spend-cap related | `docs/features/premium-tier/SKILL.md` |
+| `apps/events-worker/**`, `packages/events/**` | `docs/features/events-pipeline/SKILL.md` |
+| rate-limit middleware (`apps/api/src/ask/rate-limit.ts`, `apps/api/src/anon-rate-limit.ts`, `apps/api/src/anon-global-cap.ts`) | `docs/features/rate-limit/SKILL.md` |
+| `apps/api/src/principal.ts`, `apps/api/src/anon-rate-limit.ts`, `apps/api/src/anon-global-cap.ts`, `apps/api/src/turnstile.ts`, `apps/web/src/lib/{anon,prompt-storage,turnstile,api}.ts`, `apps/web/src/components/CreateForm.tsx` | `docs/features/anonymous-mode/SKILL.md` |
+| `cli/**` | `docs/features/cli/SKILL.md` |
+| `packages/elements/**` | `docs/features/elements/SKILL.md` |
+| `packages/sdk/**` | `docs/features/sdk/SKILL.md` |
+| `packages/mcp/**` | `docs/features/mcp-server/SKILL.md` |
+| `apps/web/**` (onboarding, anonymous mode) | `docs/features/web-app/SKILL.md` |
+| `apps/web/src/onboarding/**`, signup flow, first-query path | `docs/features/onboarding/SKILL.md` |
+| `.github/workflows/**`, `nlqdb/actions/**` (CI permissions) | `docs/features/ci-permissions/SKILL.md` |
 
 Per-area `AGENTS.md` files (e.g. `packages/db/AGENTS.md`) repeat just
 their slice of this table, so you don't need the full root view when
@@ -152,7 +152,7 @@ working in one directory.
 | File | What for |
 |---|---|
 | [`docs/decisions.md`](docs/decisions.md) | **Canonical** `GLOBAL-NNN` decisions. Read before editing skills. |
-| [`docs/skill-conventions.md`](docs/skill-conventions.md) | How `.claude/skills/` is structured. Read before adding/editing a skill. |
+| [`docs/skill-conventions.md`](docs/skill-conventions.md) | How `docs/features/` is structured. Read before adding/editing a skill. |
 | [`docs/architecture.md`](docs/architecture.md) | System architecture, surface specs, phase plan, tech-stack rationale, risks. |
 | [`docs/runbook.md`](docs/runbook.md) | Operations: env vars, secrets, deploy, recovery. Design-partner reference (§10). |
 | [`docs/performance.md`](docs/performance.md) | Span/metric/label catalog + perf goals. |
@@ -165,7 +165,7 @@ working in one directory.
 | [`docs/future/`](docs/future/) | Forward-looking plans not yet promoted to a skill — semantic-layer adoption, etc. Promote into the relevant skill once decisions are firm. |
 
 These exist for depth; they are not loaded into every session by
-default. The skill index (`.claude/skills/_index.md`) is the front
+default. The skill index (`docs/features/_index.md`) is the front
 door for any feature-specific work.
 
 ## 7. Common commands
@@ -191,12 +191,12 @@ Per-package commands are in each area's `AGENTS.md`.
 1. `bun run typecheck && bun run lint && bun run test` all green.
 2. Every new decision has an ID (`GLOBAL-NNN` or `SK-<FEATURE>-NNN`)
    and is in its canonical home (`docs/decisions.md` for `GLOBAL`,
-   `.claude/skills/<feature>/SKILL.md` for `SK`). Skills reference
+   `docs/features/<feature>/SKILL.md` for `SK`). Skills reference
    GLOBALs by ID; they don't duplicate the body
    (`docs/skill-conventions.md` §5).
-3. No `### GLOBAL-NNN` block exists under `.claude/skills/` — only
+3. No `### GLOBAL-NNN` block exists under `docs/features/` — only
    reference lines in `## GLOBALs governing this feature` sections.
-   Verify: `grep -rn '^### GLOBAL-' .claude/skills/` prints nothing.
+   Verify: `grep -rn '^### GLOBAL-' docs/features/` prints nothing.
 4. Every new external call has an OTel span (`GLOBAL-014`).
 5. Every mutating endpoint accepts `Idempotency-Key` (`GLOBAL-005`).
 6. New capability added → SDK + CLI + MCP + elements all updated, or
@@ -238,7 +238,7 @@ Touch path X
 |---|---|
 | Fits an existing skill | Add `SK-<PREFIX>-<next-N>` block(s) to that skill's `SKILL.md`. Update `_index.md` if status moves (e.g. `partial` → `implemented`). |
 | Crosses several skills | Add SK-* blocks in each affected skill, with cross-refs between them. |
-| Genuinely new (no skill covers it) | Create `.claude/skills/<feature>/SKILL.md` from the [`docs/skill-conventions.md`](docs/skill-conventions.md) §3 template. Add a row to `.claude/skills/_index.md`. Add the path-glob row to §5 above. Reserve the `SK-<PREFIX>-NNN` prefix (kebab-case → `<PREFIX>` is upper-snake, e.g. `auth` → `SK-AUTH-NNN`). |
+| Genuinely new (no skill covers it) | Create `docs/features/<feature>/SKILL.md` from the [`docs/skill-conventions.md`](docs/skill-conventions.md) §3 template. Add a row to `docs/features/_index.md`. Add the path-glob row to §5 above. Reserve the `SK-<PREFIX>-NNN` prefix (kebab-case → `<PREFIX>` is upper-snake, e.g. `auth` → `SK-AUTH-NNN`). |
 | Touches all surfaces (HTTP / SDK / CLI / MCP / elements) | Per `GLOBAL-003`, ship to all surfaces in the same PR or annotate the gap explicitly in the affected skills under *Open questions*. |
 | Introduces a cross-cutting rule (multiple features must obey) | Promote to a new `GLOBAL-NNN` in `docs/decisions.md`. Then add a reference line in each affected skill's `## GLOBALs governing this feature` section (`- **GLOBAL-NNN** — Title.`), with skill-local commentary nested under it only when the GLOBAL has a feature-specific implication worth calling out. |
 
@@ -254,7 +254,7 @@ can't fill all five or have open questions, don't document it yet.
    - **Code wrong, decision right** → fix the code so it conforms. Normal bug fix.
    - **Decision wrong** (the bug is intended behaviour, but the behaviour is wrong) → **STOP.** Don't silently change behaviour. Per `P1`, raise it with the user, citing the specific `SK-*` or `GLOBAL-NNN` ID. The user decides whether to supersede.
 3. If you supersede a decision: add a new `SK-<PREFIX>-<next-N>` (or `GLOBAL-<next-N>`) with full 5 fields. Mark the old one `Status: superseded by <new-id>` — **don't delete or renumber. IDs are sticky.**
-4. If your fix touches a `GLOBAL-NNN`, per `P3` update every place it's copied in the same PR (`grep -rn 'GLOBAL-NNN' .claude/skills/ docs/`).
+4. If your fix touches a `GLOBAL-NNN`, per `P3` update every place it's copied in the same PR (`grep -rn 'GLOBAL-NNN' docs/features/ docs/`).
 5. If the fix raises a question that's not yet decided, add it to that skill's `## Open questions / known unknowns`. Don't decide for the user.
 
 ### 10.3 Tie-breakers when sources disagree

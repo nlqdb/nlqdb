@@ -9,8 +9,8 @@ Consumer for EVENTS_QUEUE. Fans out to sinks (LogSnag, etc.) — fire-and-forget
 
 ## Skills relevant to this area
 
-- [`events-pipeline`](../../.claude/skills/events-pipeline/SKILL.md) — mandatory pre-read for changes that touch the feature.
-- [`observability`](../../.claude/skills/observability/SKILL.md) — mandatory pre-read for changes that touch the feature.
+- [`events-pipeline`](../../docs/features/events-pipeline/SKILL.md) — mandatory pre-read for changes that touch the feature.
+- [`observability`](../../docs/features/observability/SKILL.md) — mandatory pre-read for changes that touch the feature.
 
 ## Commands
 

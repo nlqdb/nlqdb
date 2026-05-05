@@ -9,8 +9,8 @@ LLM router + providers + per-user credit accounting.
 
 ## Skills relevant to this area
 
-- [`llm-router`](../../.claude/skills/llm-router/SKILL.md) — mandatory pre-read for changes that touch the feature.
-- [`observability`](../../.claude/skills/observability/SKILL.md) — mandatory pre-read for changes that touch the feature.
+- [`llm-router`](../../docs/features/llm-router/SKILL.md) — mandatory pre-read for changes that touch the feature.
+- [`observability`](../../docs/features/observability/SKILL.md) — mandatory pre-read for changes that touch the feature.
 
 ## Commands
 

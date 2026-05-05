@@ -9,7 +9,7 @@ Better Auth wrapper — the only thing that talks to the auth provider.
 
 ## Skills relevant to this area
 
-- [`auth`](../../.claude/skills/auth/SKILL.md) — mandatory pre-read for changes that touch the feature.
+- [`auth`](../../docs/features/auth/SKILL.md) — mandatory pre-read for changes that touch the feature.
 
 ## Commands
 

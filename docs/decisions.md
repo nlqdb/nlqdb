@@ -9,7 +9,7 @@ This file is the canonical source. If you change a GLOBAL here, you must
 update every skill that copies it in the same PR. To find duplicates:
 
 ```bash
-grep -rn 'GLOBAL-NNN' .claude/skills/
+grep -rn 'GLOBAL-NNN' docs/features/
 ```
 
 Format of every block follows `docs/skill-conventions.md` §4 — the five

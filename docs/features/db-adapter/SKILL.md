@@ -13,7 +13,7 @@ when-to-load:
 **One-liner:** Engine-agnostic DB interface; Phase 0 ships Postgres via Neon.
 **Status:** implemented (Phase 0 / Slice 3 — single Postgres adapter via Neon HTTP)
 **Owners (code):** `packages/db/**`, `apps/api/src/db-registry.ts`
-**Cross-refs:** docs/architecture.md §3.6.5–§3.6.7 (validator + tenancy + BYO) · docs/architecture.md §10 §3 (Phase 0 Neon adapter, line 438) · docs/runbook.md §3 (Neon account, §6 deploy state) · docs/performance.md §2.1 row 6 + §3.1 (`db.query` span) · GLOBAL-004, GLOBAL-014, GLOBAL-015 (see governing GLOBALs section) · `.claude/skills/hosted-db-create/SKILL.md` (Phase 1 create-path consumer; SK-HDC-007 splits the provisioner into `provisionDb` / `registerByoDb` over this adapter)
+**Cross-refs:** docs/architecture.md §3.6.5–§3.6.7 (validator + tenancy + BYO) · docs/architecture.md §10 §3 (Phase 0 Neon adapter, line 438) · docs/runbook.md §3 (Neon account, §6 deploy state) · docs/performance.md §2.1 row 6 + §3.1 (`db.query` span) · GLOBAL-004, GLOBAL-014, GLOBAL-015 (see governing GLOBALs section) · `docs/features/hosted-db-create/SKILL.md` (Phase 1 create-path consumer; SK-HDC-007 splits the provisioner into `provisionDb` / `registerByoDb` over this adapter)
 
 ## Touchpoints — read this skill before editing
 

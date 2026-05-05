@@ -9,7 +9,7 @@ EVENTS_QUEUE producer types — shared between apps/api and apps/events-worker.
 
 ## Skills relevant to this area
 
-- [`events-pipeline`](../../.claude/skills/events-pipeline/SKILL.md) — mandatory pre-read for changes that touch the feature.
+- [`events-pipeline`](../../docs/features/events-pipeline/SKILL.md) — mandatory pre-read for changes that touch the feature.
 
 ## Commands
 
