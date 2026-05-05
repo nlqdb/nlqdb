@@ -1,0 +1,19 @@
+[package]
+name = "nlqdb"
+version = "0.0.1"
+edition = "2021"
+publish = true
+
+authors = ["nlqdb team"]
+description = "Rust client for nlqdb — natural-language databases"
+repository = "https://github.com/nlqdb/nlqdb"
+homepage = "https://nlqdb.com"
+license = "FSL-1.1-ALv2"
+keywords = ["nlqdb", "database", "natural-language", "ai"]
+categories = ["database"]
+
+[dependencies]
+
+[profile.release]
+opt-level = 3
+lto = true
