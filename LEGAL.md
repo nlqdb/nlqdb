@@ -55,19 +55,18 @@ Symbols:
 | ✅ | GitHub `nlqdb` org               | Reserved |
 | ✅ | Homebrew `nlqdb/tap`             | Reserved |
 | ✅ | PyPI user + org                  | Founder created 2026-04-25 |
+| ✅ | BlueSky `@nlqdb.com`             | Domain-verified handle; reserved 2026-05-05 |
+| ✅ | YouTube channel `@nlqdb`         | Reserved 2026-05-05 |
+| ✅ | LinkedIn company page `nlqdb`    | Reserved 2026-05-05 |
+| ✅ | Mastodon `@nlqdb@hachyderm.io`   | Reserved 2026-05-05 |
 | ❌ | X / Twitter `@nlqdb`             | **Taken by a third party.** Pick a workable alternative when launching X presence — e.g. `@nlqdb_com`, `@usenlqdb`, `@nlqdbhq`. |
 
 ### Free, pending
 
 | Status | Where | Notes |
 | :----- | :---- | :---- |
-| 🆓 | BlueSky `@nlqdb.com`             | Domain-verified handle, free. Set up via DNS TXT once the AT Protocol verifier flow is run. |
 | 🆓 | Threads (`@nlqdb`)               | Free, takes 2 minutes |
-| 🆓 | Mastodon (`@nlqdb@hachyderm.io` or self-hosted later) | Free |
-| 🆓 | LinkedIn company page            | Free |
-| 🆓 | YouTube channel `@nlqdb`         | Free |
 | 🆓 | HuggingFace org `nlqdb`          | Free; useful when LLM-related artifacts ship |
-| 🆓 | Bluesky and Threads can be claimed without posting — reserve only |
 | 🆓 | crates.io `nlqdb`                | Free placeholder package |
 | 🆓 | RubyGems `nlqdb`                 | Free placeholder gem |
 | 🆓 | Maven Central group `io.nlqdb`   | Free; needs DNS TXT proof of `nlqdb.com` ownership |
@@ -123,11 +122,11 @@ The free path keeps you defensible until you can afford a real filing.
 | 🆓 | Use `nlqdb™` consistently in README, marketing site, CLI banner | Free; establishes a documented use date |
 | 🆓 | Reserve confusingly-similar package names defensively (see registrations above) | Free |
 | 🆓 | Monitor brand-confusion via Google Alerts on `nlqdb` | Free |
-| 💰 | **Swiss IGE base application (Class 9 + 42)** | CHF 550 — deferred. This is the cheapest path to actual statutory rights. **Without it, ™ is mostly posturing in Switzerland (first-to-file system).** |
+| 💰 | **Swiss IGE base application (Class 9 + 42)** | CHF 550 — deferred. This is the cheapest path to actual statutory rights. **Without it, ™ is mostly posturing in Switzerland (first-to[...] |
 | 💰 | Madrid Protocol extension (US, EU, UK, CA, AU)           | CHF 3'500-4'500 + agent fees — deferred |
 | 💰 | National filings outside Madrid                          | Skip — Madrid handles it |
 
-Honest reality: until you file, your `TRADEMARKS.md` is **signaling**, not enforcement. The minute the IGE application is filed (not even granted), your leverage jumps significantly. Consider this the highest-priority paid action once revenue starts.
+Honest reality: until you file, your `TRADEMARKS.md` is **signaling**, not enforcement. The minute the IGE application is filed (not even granted), your leverage jumps significantly. Consider this when revenue arrives.
 
 ---
 
@@ -148,7 +147,7 @@ output is a defensible starting point for a pre-revenue project.
 
 | Service | URL | Notes |
 | :------ | :-- | :---- |
-| Termly (free tier) | https://termly.io                        | Free generator, must keep their attribution badge. Covers GDPR, CCPA, CalOPPA, CDPR, LGPD, PIPEDA. Best Swiss support of the free options. |
+| Termly (free tier) | https://termly.io                        | Free generator, must keep their attribution badge. Covers GDPR, CCPA, CalOPPA, CDPR, LGPD, PIPEDA. Best Swiss support of the free generators. |
 | GetTerms (free tier) | https://getterms.io                    | Free single-page generator. GDPR + CCPA. Smaller surface than Termly. |
 | Iubenda (free tier) | https://www.iubenda.com                 | Free tier with Iubenda branding; pricier than alternatives if upgraded. Has a cookie-banner add-on. |
 | PrivacyPolicies.com | https://www.privacypolicies.com         | Ad-supported free generator. Quick. |
@@ -236,11 +235,8 @@ Set these in whatever calendar app you use.
 
 These are things only you can do, by browsing in your account:
 
-1. **Reserve free social handles & package registrations** in a single
-   sitting (~30 minutes). Order by likelihood of impersonation:
-   BlueSky → LinkedIn company page → YouTube → Threads → Mastodon →
-   HuggingFace org → Docker Hub user → crates.io → RubyGems → Maven
-   Central groupId.
+1. **Reserve remaining free social handles & package registrations** (~20 minutes):
+   Threads → HuggingFace org → Docker Hub user → crates.io → RubyGems → Maven Central groupId.
 
 2. **Cloudflare Email Routing entries** confirmed catch-all-to-founder
    already. Spot-check that `security@`, `conduct@`, `trademarks@`,
