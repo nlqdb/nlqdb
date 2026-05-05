@@ -25,9 +25,9 @@ when-to-load:
 
 ### SK-DB-001 — Minimal adapter contract: `engine` tag + `execute(sql, params)`
 
-- **Decision:** The `DatabaseAdapter` interface in `packages/db/src/types.ts` exposes exactly two members: an `engine: Engine` tag (`"postgres"` today, `"redis" | "duckdb"` reserved for Phase 3) and `execute(sql: string, params?: unknown[]): Promise<QueryResult>` returning `{ rows, rowCount }`. No transaction handle, no streaming cursor, no per-connection state.
+- **Decision:** The `DatabaseAdapter` interface in `packages/db/src/types.ts` exposes exactly two members: an `engine: Engine` tag (`"postgres"` today; `"clickhouse"` joins in Phase 3 per `SK-MULTIENG-002`) and `execute(sql: string, params?: unknown[]): Promise<QueryResult>` returning `{ rows, rowCount }`. No transaction handle, no streaming cursor, no per-connection state. `SK-DB-009` widens the *public* signature to `execute(plan, signal?)` returning `EngineResult` for multi-engine; the underlying call shape is preserved.
 - **Core value:** Simple, Bullet-proof
-- **Why:** The framing of the product is "natural-language databases" — never "natural-language Postgres" (per `packages/db/src/types.ts` header). A narrow interface is the seam that keeps the engine-agnostic promise honest. Streaming, transactions, prepared-statement reuse all add API surface that Phase 3 engines (Redis, DuckDB) wouldn't share — adding them now would force a rewrite when Phase 3 lands.
+- **Why:** The framing of the product is "natural-language databases" — never "natural-language Postgres" (per `packages/db/src/types.ts` header). A narrow interface is the seam that keeps the engine-agnostic promise honest. Streaming, transactions, prepared-statement reuse all add API surface that Phase 3 engines (ClickHouse, later Redis/D1) wouldn't share — adding them now would force a rewrite when Phase 3 lands.
 - **Consequence in code:** Anything that needs DB access takes a `DatabaseAdapter` argument and only calls `execute()`. PRs that add transaction handles or cursor APIs to this interface require an explicit decision update + a Phase 3 migration plan. Per-engine extensions live in adapter-specific modules, not on the shared interface.
 - **Alternatives rejected:**
   - Mirror the `pg` driver API — leaks Postgres semantics into the contract; Redis adapter would have to fake half of it.
@@ -35,7 +35,7 @@ when-to-load:
 
 ### SK-DB-002 — Phase 0 ships one engine: Postgres via `@neondatabase/serverless`
 
-- **Decision:** Phase 0 ships exactly one adapter — `createPostgresAdapter()` over `@neondatabase/serverless` HTTP. No `pg`, no `postgres-js`, no connection pooling middleware. Phase 3 will widen to `redis` and/or `duckdb`; the seam is `Engine` plus a parallel `createXxxAdapter()`.
+- **Decision:** Phase 0 ships exactly one adapter — `createPostgresAdapter()` over `@neondatabase/serverless` HTTP. No `pg`, no `postgres-js`, no connection pooling middleware. Phase 3 widens to `clickhouse` (via Tinybird) per `SK-MULTIENG-002`; the seam is `Engine` plus a parallel `createXxxAdapter()`.
 - **Core value:** Free, Simple, Bullet-proof
 - **Why:** Workers don't keep TCP sockets warm across requests, so a connection-pooled driver (`pg`) is dead weight on the free tier. Neon's HTTP driver round-trips per query but sidesteps the pool problem entirely and runs on the Workers free plan within the 3 MiB bundle ceiling (`GLOBAL-013`). One engine in Phase 0 means one set of failure modes to learn before adding more.
 - **Consequence in code:** `package.json` for `@nlqdb/db` only depends on `@neondatabase/serverless` + `@opentelemetry/*`. CI fails any PR that adds `pg` / `postgres` / `redis` to `packages/db/` without an accompanying Phase 3 plan (per `docs/architecture.md §10` §5 line 592 wording).
@@ -103,6 +103,28 @@ when-to-load:
   - In-place migrations — defeats `GLOBAL-004`.
   - Versioned schemas (`v1.users`, `v2.users` schemas) — explodes the plan-cache key surface; `GLOBAL-004` rejects this explicitly.
 
+### SK-DB-009 — Engine-tagged Plan + `AsyncIterable<Row>` result; `meta` for engine extras
+
+- **Decision:** The public adapter signature widens (from `SK-DB-001`) to `execute(plan, signal?: AbortSignal): EngineResult` where `plan` is a discriminated union by `engine` and `EngineResult = AsyncIterable<Row> & { meta }` with `Row = Record<string, unknown>`. Each adapter projects its native result shape into row-shape; engine extras (column schema, command tag, batch count) travel on `meta`. The Postgres adapter keeps its `(sql, params)` underlying call shape; only the public type widens.
+- **Core value:** Simple, Bullet-proof
+- **Why:** Anchored by `SK-MULTIENG-001`. ADBC-shaped row streaming gives one renderer/summariser surface; one Result type per engine multiplies consumer narrowing across `<nlq-data>`, the summariser, and the plan-cache hit log. `AbortSignal` is the standard Workers cancellation primitive.
+- **Consequence in code:** `packages/db/src/types.ts` exports `EnginePlan = PgPlan | ChPlan | …`, `Row`, `EngineMeta`, and `EngineResult`. The PG adapter's `EnginePlan` variant is `{ engine: "postgres", sql, params }`; new adapters add their own variant. Tests stub the `query` injection seam (`SK-DB-006`) unchanged.
+- **Alternatives rejected:**
+  - Discriminated `EngineResult` union — pushes engine-narrowing onto every consumer.
+  - Per-adapter Result types — fragments the renderer/summariser surface.
+  - Substrait IR — heavy abstraction tax for an LLM that emits engine grammars directly.
+
+### SK-DB-010 — `engine?` on `db.create`: classifier-default with optional override
+
+- **Decision:** `db.create({ goal, engine? })` accepts an optional `engine: Engine`. If omitted, the classifier infers the engine from `goal` text using the engine-fit table in `SK-MULTIENG-002` (the prompt embeds it verbatim). Explicit `engine` overrides the classifier and skips its LLM call. Surface parity (`GLOBAL-003`): SDK / CLI (`--engine=…`) / MCP (`nlqdb_list_databases` returns `engine` per row) all carry the field; the web embed (`<nlq-data>`) does not (auto-create binds engine).
+- **Core value:** Effortless UX, Simple
+- **Why:** `GLOBAL-020` says no config in the first 60 s — default = inferred. `GLOBAL-015` says power users get an escape hatch — explicit override is that hatch. Two paths cover both audiences without adding a second endpoint (`GLOBAL-017`).
+- **Consequence in code:** `apps/api/src/db-create/orchestrate.ts` calls a new `classifyEngine(goal)` step before schema inference when `engine` is unset. Default fallback is `"postgres"` if classifier confidence is below threshold. The `databases` row in D1 stores `engine` as a non-null column; existing rows back-fill to `"postgres"`.
+- **Alternatives rejected:**
+  - Always require `engine` — breaks `GLOBAL-020`.
+  - Always classify (no override) — breaks `GLOBAL-015`.
+  - Add a second endpoint per engine — breaks `GLOBAL-017`.
+
 ## GLOBALs governing this feature
 
 Canonical text in [`docs/decisions.md`](../../decisions.md). The list below names the rules that constrain this feature; any skill-local commentary is nested under the rule.
@@ -115,7 +137,7 @@ Canonical text in [`docs/decisions.md`](../../decisions.md). The list below name
 
 - **Per-tenant role + RLS wiring** — `SK-DB-007` describes the model but the adapter today does not yet emit `SET LOCAL search_path` / `SET LOCAL ROLE` before queries; consumers must wrap calls themselves. Centralising that on the adapter (or a thin per-tenant adapter wrapper) is open work — risk is forgetting the SET LOCAL on a new code path.
 - **Phase 2b dedicated-branch upgrade** — needs a `branch_id` column on the `databases` row and a provisioner branch-create path. Decision shape locked (DESIGN §3.6.6); implementation deferred until paid tier exists.
-- **Phase 3 multi-engine** — Redis and DuckDB adapters reuse `Engine` and `createXxxAdapter()`, but the `QueryResult` shape (rows + rowCount) leaks SQL semantics. Redis would need a different result shape (key/value, list, hash). Open: do we widen `QueryResult` to a discriminated union, or does each engine define its own result type and the consumer narrows? (See `multi-engine-adapter` skill.)
+- **Phase 3 multi-engine** — *resolved by `SK-DB-009` + `SK-MULTIENG-001`.* Public signature widens to `execute(plan, signal?)` returning `EngineResult = AsyncIterable<Row> & { meta }`; engine-specific extras travel on `meta`. Per-engine result projection (Redis KV → `{key, value}` rows; ClickHouse Pipe response → row stream) lives in each adapter.
 - **Phase 4 BYO Postgres** — `POST /v1/db/connect { connection_url, name? }` is the agreed shape (DESIGN §3.6.7). Open: per-db encrypted blob in D1 with a Workers-held KEK — KEK rotation procedure isn't designed yet.
 - **Statement timeout / cost cap** — referenced as the executor's job (`SK-SQLAL-007`), but the adapter is the lowest layer with the actual query handle. Open: should the adapter accept a `timeout_ms` / `max_rows` option, or should the executor wrap?
 - **Side-effecting Postgres functions** — `pg_sleep`, `dblink`, `lo_import`, `pg_read_file`, `COPY ... FROM PROGRAM` are not blocked at any layer today (cross-link to `sql-allowlist` Open Questions).

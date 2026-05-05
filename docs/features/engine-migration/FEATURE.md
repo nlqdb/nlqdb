@@ -83,9 +83,11 @@ becomes one or more `SK-MIGRATE-NNN` decisions when answered.
 
 ### Schema mapping
 
-- **Postgres ↔ Mongo translation.** Phase 2 exit gate names PG ↔ Redis
-  and PG ↔ DuckDB explicitly. PG ↔ Mongo is mentioned but not
-  prioritized; do JSONB rows map 1:1 to documents, or do we re-shape?
+- **Postgres ↔ ClickHouse translation.** Phase 2 exit gate names
+  PG ↔ ClickHouse (via Tinybird) as the first migration pair; the
+  workload-analyser-driven materialised-view path inside ClickHouse
+  is the principal target (see `SK-MULTIENG-003`). Other pairs (PG ↔
+  Redis, PG ↔ Mongo) are deferred until concrete demand.
 - **Index translation.** Each engine has its own index DSL; the
   Migration Orchestrator must translate, not just dump rows.
 - **Constraint translation.** Foreign keys, NOT NULL, CHECK
@@ -147,7 +149,7 @@ Ahead of the first SK-MIGRATE decision, these need to land:
 2. Phase 2's PG-only auto-migration scaffold (shadow-write + dual-read
    in single-engine) is wired and battle-tested.
 3. `docs/architecture.md §10 §2.5` Phase 2 exit gate is met:
-   - Auto-migration between at least PG ↔ Redis and PG ↔ DuckDB in
+   - Auto-migration between at least PG ↔ ClickHouse (Tinybird) in
      prod with zero user-visible downtime across 100+ migrations.
    - Workload Analyzer beats a human DBA on the held-out benchmark.
    - p99 latency under the *current* engine within 1.3× of hand-
@@ -167,6 +169,6 @@ Ahead of the first SK-MIGRATE decision, these need to land:
 - `docs/architecture.md §10 §7` — risks (data corruption, abstraction tax,
   migration cost)
 - `docs/architecture.md §10 §6` — Phase 3 slice list (Query Log →
-  Workload Analyzer → Migration Orchestrator + Redis as second engine
-  + DuckDB as third)
+  Workload Analyzer → Migration Orchestrator + ClickHouse via Tinybird
+  as second engine; see `SK-MULTIENG-002`)
 - `docs/architecture.md §10` — open design questions

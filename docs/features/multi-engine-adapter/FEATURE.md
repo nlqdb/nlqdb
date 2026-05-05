@@ -1,6 +1,6 @@
 ---
 name: multi-engine-adapter
-description: Phase 3: db-adapters for engines beyond Postgres (Mongo, Redis, ClickHouse, …).
+description: Adapters beyond Postgres — Phase 3 expansion to ClickHouse via Tinybird (next), with Redis / D1 evaluated and deferred.
 when-to-load:
   globs:
     - packages/db/**
@@ -9,291 +9,124 @@ when-to-load:
 
 # Feature: Multi Engine Adapter
 
-**One-liner:** Phase 3: db-adapters for engines beyond Postgres (Mongo, Redis, ClickHouse, …).
-**Status:** planned (Phase 3)
+**One-liner:** Adapters beyond Postgres — Phase 3 expansion to ClickHouse via Tinybird (next), with Redis / D1 evaluated and deferred.
+**Status:** decisions firm (`SK-MULTIENG-001..004`); ClickHouse/Tinybird adapter implementation pending.
 **Owners (code):** `packages/db/**`
-**Cross-refs:** docs/architecture.md §10 §2.1 (Execution layer + per-engine adapters) · docs/architecture.md §10 §2.3 (engine selection heuristics — the per-engine target list) · docs/architecture.md §11 (alternative technologies — verdicts per engine) · docs/architecture.md §10 §6 (Phase 3 — Redis as second engine, DuckDB as third) · docs/architecture.md (multi-engine references throughout)
+**Cross-refs:** `db-adapter/FEATURE.md` (Phase 0 PG adapter; `SK-DB-009/010` evolve the contract for multi-engine) · `engine-migration/FEATURE.md` (auto-migration is decoupled — see `SK-MULTIENG-002` *Consequence*) · `docs/architecture.md §10` (Phase plan, §11 engine verdict)
 
 ## Touchpoints — read this skill before editing
 
-- `packages/db/**`
+- `packages/db/**` — adapter implementations
+- `apps/api/src/db-create/orchestrate.ts` — engine classifier hook (`SK-DB-010`)
+- `apps/api/src/db-registry.ts` — engine resolved per `DbRecord`
+- `packages/llm/src/prompts.ts` — engine-classifier prompt embeds the `SK-MULTIENG-002` table verbatim
 
 ## Decisions
 
-_No decisions are firm yet — multi-engine-adapter is Phase 3 and the
-open questions below must be answered before code lands. The skill
-exists now so the `SK-MULTIENG-NNN` ID prefix is reserved and
-`_index.md` is comprehensive (per `docs/skill-conventions.md §6`)._
+### SK-MULTIENG-001 — Executor contract: engine-tagged plan + `AsyncIterable<Row>` result
 
-## Phase 2 engine architecture
+- **Decision:** Shared executor signature is `execute(plan, signal?: AbortSignal): EngineResult` where `plan` is a discriminated union by `engine` and `EngineResult = AsyncIterable<Row> & { meta: EngineMeta }` with `Row = Record<string, unknown>`. Every adapter projects its native result shape into row-shape; engine-specific extras (column schema, command tag, batch count, Pipe id) travel on `meta`. Streams use the standard Workers `ReadableStream` underneath.
+- **Core value:** Simple, Bullet-proof
+- **Why:** Substrait/Calcite IR is overkill for an LLM that emits the engine's native grammar via constrained decoding (cf. Drizzle, Prisma v7, Vanna 2.0 — one runner per engine). ADBC-shaped row streaming gives one renderer in `<nlq-data>` and one summariser in the pipeline; per-engine quirks stay in `meta`. `AbortSignal` is the standard Workers cancellation primitive.
+- **Consequence in code:** `packages/db/src/types.ts` exports `EnginePlan = PgPlan | ChPlan | …` and `EngineResult`. Each adapter file owns its own narrow plan/meta types. The executor never inspects `meta`; only the rendering layer does. PG adapter's underlying call shape (`SK-DB-001`'s `execute(sql, params)`) is preserved — only the public entry-point widens.
+- **Alternatives rejected:**
+  - Substrait/Calcite IR — heavy JVM-shaped abstraction tax for a small engine target list.
+  - Discriminated `EngineResult` union — pushes engine-narrowing onto every consumer.
+  - Per-adapter Result types — fragments the renderer/summariser surface; same downside × N engines.
 
-The Phase 2 engine continuously reads the query log and picks — and changes — the backend without downtime.
+### SK-MULTIENG-002 — ClickHouse via Tinybird is the second engine; engine-fit table is the planner's source of truth
 
-```
-                    ┌─────────────────────────┐
-  user query ──►    │  Query Planner (LLM +   │ ──► engine-specific executor
-                    │  learned router)        │        │
-                    └────────────┬────────────┘        │
-                                 │                     ▼
-                                 ▼               ┌────────────────────────┐
-                         ┌───────────────┐       │  Engines (per-db):     │
-                         │ Query Log     │◄──────│  PG │ Mongo │ Redis │  │
-                         │ (append-only) │       │  DuckDB │ pgvector │  │
-                         └──────┬────────┘       └──────────┬─────────────┘
-                                │                           │
-                                ▼                           │
-                      ┌──────────────────┐                  │
-                      │ Workload Analyzer│ ─── decision ──► Migration Orchestrator
-                      │ (background)     │                  │
-                      └──────────────────┘                  ▼
-                                                     ┌───────────────┐
-                                                     │ Shadow + Cutover│
-                                                     └───────────────┘
-```
+- **Decision:** The first non-Postgres adapter is ClickHouse fronted by **Tinybird Free Forever** (10 GB storage, 1 k reads/day, no card; writes don't count). Other engines are evaluated below but deferred until concrete demand. **The table below is the canonical engine-fit source: when the engine-classifier prompt lands in `packages/llm/src/prompts.ts`, it must embed this table verbatim.** Adding a new engine = (a) add a row, (b) ship an adapter, (c) update the classifier prompt — exactly three edits.
 
-### Query Planner
-- Given NL query + current engine + schema snapshot, emits a typed plan.
-- Hybrid: cached template router (fast path for repeat-structure queries) + LLM fallback (cold path).
-- Returns a *confidence score*; low confidence triggers inline clarification chips.
-- Plans are content-addressed and cached per-schema-hash.
+  | Engine | Strong fit | Avoid when | Free-tier ceiling |
+  |---|---|---|---|
+  | **Postgres** (Neon) | OLTP ≤ 500 GB; relational joins / FK / ACID; mixed read+write; tables ≤ ~200 M rows; default for "tracker / app data" goals | aggregation over 100 M+ events; pure append-only analytics; sub-ms KV | 0.5 GB / project (shared across schemas) |
+  | **ClickHouse** (Tinybird) | analytics, time-series, append-heavy; aggregations over millions–billions of events; high-cardinality dimensions; real-time dashboards; 10–100× PG on `GROUP BY` | row-by-row OLTP updates; small mixed read/write; FK-enforced relational | 10 GB + 1 k reads/day; writes don't count |
+  | **SQLite** (Cloudflare D1, *deferred*) | read-heavy (>90 %) per-tenant DBs; thousands of small isolated DBs; edge-local sub-ms reads; content/catalog | sustained writes (≥ 100 wps cap); cross-tenant joins | 50 k DBs / account × 10 GB each |
+  | **Redis** (Upstash, *deferred*) | counters / rate-limit / session / leaderboard / cache; sub-ms KV at 50 k+ ops/s | tabular natural-language queries; analytical aggregates; relational joins | 500 k commands / month |
 
-### Execution layer
-- One adapter per engine. Common `Executor` interface: `execute(plan) -> stream<row>`.
-- We own the connection pool per user-DB. PgBouncer-style, but ours.
+  Engines outside this table (Mongo Atlas, ClickHouse Cloud direct, DynamoDB, …) are not on the roadmap; reopen via a new SK block if a concrete use-case forces the question.
+- **Core value:** Free, Simple, Effortless UX
+- **Why:** Tinybird is the only managed-ClickHouse with an actual free-forever tier and no card (matches `GLOBAL-013`); its materialised-view + Pipe primitives are exactly what `SK-MULTIENG-003` (physical reshape) operates on. Shipping one new engine first keeps the operational surface (validator, pool model, OTel mapping, anon-mode posture) tight. The table is the canonical source so the planner prompt and human reviewers reference one place.
+- **Consequence in code:** `packages/db/src/clickhouse-tinybird.ts` ships with `createTinybirdAdapter({ token, workspace })`. The classifier in `apps/api/src/db-create/` infers engine from goal text using the table; explicit override via `engine?` on `db.create` (per `SK-DB-010`). Auto-migration between engines is decoupled — multi-DB ships engine fixed at create time; engine-migration is a separate Phase-3 deliverable (`engine-migration/FEATURE.md`).
+- **Alternatives rejected:**
+  - Redis as second engine — chat-with-data pitch is awkward over KV; defer until concrete leaderboards/counters use-case lands.
+  - D1 as second engine — strong for many-small-DBs but adds a SQL dialect (SQLite ≠ PG) without solving the analytics gap; defer to anonymous-mode-at-scale.
+  - DuckDB as embedded engine — DuckDB-Wasm is 9.7 MB (blows `GLOBAL-013`'s 3 MB ceiling); DuckDB-as-Container needs Workers Paid; Tinybird already covers analytics on $0.
+  - Multiple engines in one PR — combinatorial validator/OTel/pool work; staged is safer.
 
-### Query Log (workload fingerprint)
-- Every query writes: fingerprint, latency, rows scanned, rows returned, engine used, plan shape (point-get / range / agg / join / doc-traversal / full-text / vector / graph-walk).
-- Fingerprints are anonymized; the *shape* is stored, not the data.
-- Storage: hot in Postgres, cold in ClickHouse.
+### SK-MULTIENG-003 — Logical schema widens; physical layout reshapes (per-engine)
 
-### Workload Analyzer
-- Runs every N minutes per DB.
-- Classifies the workload distribution into a vector over engine affinities.
-- Emits a recommendation: `{ current: pg, recommended: redis+pg, confidence: 0.87, reason: "92% of queries in last 24h are point-lookups by primary key with <1KB values" }`.
-- Never auto-migrates on its own decision alone — requires (a) confidence > threshold, (b) sustained over a window (hours, not minutes), (c) projected cost/latency win > threshold.
+- **Decision:** `GLOBAL-004` is the rule: logical schema (fields a query references) widens monotonically; physical layout (tables, indexes, materialised views, engine) reshapes under the planner without bumping `schema_hash`. Per-engine application:
+  - **Postgres** — physical reshape = `ALTER TABLE ADD COLUMN NULL` only (`SK-DB-008`); index changes are physical. Re-clustering / partitioning is out-of-band.
+  - **ClickHouse via Tinybird** — physical reshape = create new Pipes / materialised views per workload signature; old plans hit either the base table or a Pipe transparently. The workload analyser writes a new Pipe; cached plans retain their `schema_hash`.
+  - **D1** (when added) — physical reshape limited to `ADD COLUMN`; SQLite has no materialised views.
+  - **Redis** (when added) — schemaless; "logical schema" = the set of key prefixes the planner has emitted commands against.
+- **Core value:** Bullet-proof, Simple, Effortless UX
+- **Why:** This is the "architecture is hidden" thesis (`docs/architecture.md` §0): the user writes English; physical shape changes nightly without breaking cached plans. Bumping `schema_hash` on physical reshape would cache-invalidate every Pipe creation; that defeats the workload-analyser thesis.
+- **Consequence in code:** `db.describe()` returns logical schema only (field names + types). Physical state (which Pipe, which index, which engine) is on `meta` and is never input to `schema_hash`. The workload analyser (Phase 3, see `engine-migration/FEATURE.md`) is the only writer of physical reshapes.
+- **Alternatives rejected:**
+  - Per-engine `schema_hash` rules — fragments `GLOBAL-004`; harder to audit.
+  - Bump on Pipe creation — every analyser tick invalidates the cache.
+  - Surface physical state to the user — violates `architecture.md §0` ("architecture is hidden").
 
-### Migration Orchestrator
-- **Shadow-writes** to the new engine while reads stay on the old one.
-- Backfill in parallel; throttled against current load.
-- **Dual-read verification** — a sample of production reads runs on both engines and we compare results. Any divergence blocks cutover and pages.
-- **Atomic cutover** via a per-db routing pointer. Rollback is a pointer flip.
-- The user sees a single subtle line in their trace: `engine: postgres → redis (migrated 2h ago)`. Nothing more, unless they ask.
+### SK-MULTIENG-004 — Per-engine validator path, OTel attributes, and anon-mode posture
 
-### Backup & restore
-- Continuous WAL-style backup per engine to object storage (R2 primary — cheapest egress; S3 secondary).
-- Point-in-time restore to any second in last 7 days on free tier, 30 days on paid.
-- Restore is a natural-language action too: "restore orders to yesterday 3pm."
+- **Decision:** Each adapter ships a sibling validator and OTel attribute mapping. Anon-mode (`GLOBAL-007`) is opt-in per engine.
+  - **Validators:** PG = `libpg_query` (existing `sql-validate.ts`). Tinybird/ClickHouse = Pipe-name + table-name allowlist + dialect parse for raw-SQL escape hatch (`sqlglot`-equivalent). Redis (when shipped) = command allowlist (verbs are a finite set). Mongo (if ever) = `mongodb-js/stage-validator`. Each adapter's validator lives at `packages/db/src/<engine>/validator.ts`.
+  - **OTel:** every span = `db.query`. Canonical `db.system` per engine — `postgresql`, `redis`, `mongodb` (stable in semconv v1.27+); ClickHouse lacks a canonical value, emit `other_sql`. Required attributes per engine: PG = `db.namespace, db.operation.name, db.query.text`; Redis = `db.operation.name`; Mongo = `db.collection.name, db.operation.name, db.namespace` (no `db.query.text` — privacy convention).
+  - **Anon-mode:** PG path keeps schema-per-anon. Tinybird launches **sign-in-only** — the global anon rate-limit (`anon-global-cap.ts`) gates anon traffic away from non-PG engines until per-prefix isolation is hardened. Adding anon-mode on an engine = a follow-up SK block, not part of the adapter-launch slice.
+- **Core value:** Bullet-proof, Honest latency
+- **Why:** OSS validators exist where they exist; hand-rolling allowlists is bounded only for engines with finite verb sets. Per-engine OTel attributes are a `GLOBAL-014` parity requirement; canonical `db.system` values are in the spec for the engines that have them. Anon-mode parity is engine-by-engine work; gating Tinybird sign-in-only at launch keeps the multi-tenant prefix isolation off the critical path.
+- **Consequence in code:** New adapter PR template = `<engine>/{adapter,validator,otel-attrs}.ts` + an entry in the engine-fit table (`SK-MULTIENG-002`) + a one-line classifier-prompt edit (`packages/llm/src/prompts.ts`). Anon-mode wiring on a new engine is its own follow-up PR.
+- **Alternatives rejected:**
+  - Universal validator — engines have incommensurable grammars; one parser cannot cover them.
+  - Lift OTel up out of the adapter — caller doesn't have the engine-native operation; cardinality risk.
+  - Block all anon traffic on first non-PG engine — overkill; the global cap already deflects abuse.
 
-### Engine selection heuristics (starting point, will be learned)
+## GLOBALs governing this feature
 
-| Workload signature | Engine |
-|---|---|
-| Majority writes + point reads by id, small values | Redis (persistence on) |
-| Relational joins, constraints, strong consistency | Postgres |
-| Document-shaped, variable schema, deep nesting | Mongo *or* Postgres JSONB (prefer JSONB unless nesting > 4 levels and access is by nested path) |
-| Analytics, scans, aggregations over millions of rows | DuckDB (embedded) or ClickHouse (managed, at scale) |
-| Semantic search, embeddings | pgvector (default) → Qdrant (if corpus > ~10M vectors) |
-| Time-series append-heavy | TimescaleDB extension on PG |
-| Full-text search heavy | PG `tsvector` default → Typesense at scale |
-| Graph traversals (>3 hops common) | Postgres recursive CTE default → Neo4j only if truly graph-native workload |
+Canonical text in [`docs/decisions.md`](../../decisions.md). Skills reference by ID; bodies are not duplicated here.
 
-**Principle:** default to Postgres + extensions. Only move off Postgres when the evidence is overwhelming.
+- **GLOBAL-003** — New capabilities ship to all surfaces in one PR. *In this skill:* SDK/CLI/MCP all carry `engine` per `SK-DB-010`.
+- **GLOBAL-004** — Logical schemas widen; physical layout reshapes freely. *In this skill:* `SK-MULTIENG-003` lists per-engine application.
+- **GLOBAL-006** — Plans content-addressed by `(schema_hash, query_hash)`. *In this skill:* `schema_hash` is engine-specific via per-adapter introspection (`SK-MULTIENG-003`); no `engine` dimension added to the cache key.
+- **GLOBAL-013** — $0/month free tier; ≤ 3 MiB Workers bundle. *In this skill:* gates the engine list in `SK-MULTIENG-002`.
+- **GLOBAL-014** — OTel span on every external call. *In this skill:* `SK-MULTIENG-004` pins per-engine attributes.
+- **GLOBAL-015** — Power-user escape hatch. *In this skill:* `SK-DB-010` `engine?` override; `SK-MULTIENG-004` raw-SQL/command escape hatches per engine.
+- **GLOBAL-017** — One way to do each thing. *In this skill:* no new endpoints; `engine` is a field on existing `db.create`, never a new path.
+- **GLOBAL-020** — No "pick a region" in the first 60 s. *In this skill:* engine defaults to classifier inference; explicit field is power-user-only.
+
+## Phase 3 architecture (reference)
+
+The workload analyser + migration orchestrator are owned by [`engine-migration/FEATURE.md`](../engine-migration/FEATURE.md). High-level: query log feeds the analyser; the analyser emits per-DB recommendations (Pipe creation inside an engine, or cross-engine migration); the orchestrator shadow-writes, dual-reads, and atomic-cuts-over via a per-DB routing pointer. Multi-DB (this skill) is decoupled — engine is fixed at `db.create` time; the analyser is a separate Phase-3 deliverable.
 
 ### Multi-tenancy & isolation
-- **Phase 2a (early):** Postgres schema-per-DB on shared clusters. Row-level-security off, we rely on connection-level scoping.
-- **Phase 2b (scale):** tier-based tenancy — free + hobby share clusters; pro+ get dedicated compute (Neon branches, Fly Machines, or our own k8s). The user never sees this shift.
-- **Noisy neighbor mitigation:** per-DB query timeouts, per-DB memory caps, per-DB connection caps, all enforced at the proxy.
-
-### Phase 2 exit criteria
-- Auto-migration between at least PG ↔ Redis and PG ↔ DuckDB running in prod with zero user-visible downtime across 100+ migrations.
-- Workload Analyzer's decisions beat a human DBA on a held-out benchmark (we'll build it).
-- p99 query latency under the *current* engine is within 1.3× of hand-written queries against that engine directly.
-- Backups: verified restore drill passes weekly.
-
----
-
-The shape of the feature is sketched above and in `docs/architecture.md §10 §2.2`:
-**one adapter per engine; common `Executor` interface
-`execute(plan) -> stream<row>`; we own the connection pool per
-user-DB.** The engine target list (`docs/architecture.md §10 §2.3`) and the
-verdict-per-engine table (`docs/architecture.md §11`) constrain the choice
-space, but per-engine decisions are still open.
-
-The current single-engine adapter lives in `packages/db/` and ships
-Phase 0 Postgres via Neon (see the `db-adapter` skill,
-`SK-DB-NNN`). Phase 3 extends — does not replace — that contract.
+- **Free / Hobby:** shared infra per engine (Neon shared branch via `SK-DB-007`; one Tinybird workspace with per-DB table-prefix scoping).
+- **Pro+:** dedicated branch / workspace per tenant (deferred until paid tier exists).
+- **Noisy-neighbour:** per-DB query timeout, memory cap, connection cap — per-engine implementation; common shape lives in the adapter.
 
 ## Open questions / known unknowns
 
-These must be resolved before the first non-Postgres adapter ships.
-Each one becomes one or more `SK-MULTIENG-NNN` decisions when answered.
+These are the genuinely open items remaining after `SK-MULTIENG-001..004`. Each becomes a follow-up SK when answered.
 
-### The common `Executor` contract
+- **Connection-pool ownership for Tinybird.** Tinybird's HTTP API has no pool concept (matches Workers); confirm the adapter holds no client state across requests once `createTinybirdAdapter()` is wired.
+- **Per-prefix anon isolation on Tinybird.** Sign-in-only at adapter launch; the per-prefix validator that enables anon-mode (`GLOBAL-007` parity) is its own follow-up — schema for table-prefix scoping is undecided.
+- **Statement timeout / cost cap.** Adapter is the lowest layer with the actual handle. Whether the adapter accepts `timeout_ms`/`max_rows` or the executor wraps remains open across all engines (cross-link to `db-adapter` open questions).
+- **Rate-limit dimensions.** Free-tier user hits Tinybird's 1 k reads/day before they hit our per-account rate limit; pre-emptive throttling vs. let-through-then-error is undecided.
+- **Cross-engine `nlq run` semantics.** Power-user `nlq run` (`GLOBAL-015`) exists on PG today as raw SQL. Equivalent for ClickHouse via Tinybird = raw Pipe SQL; for Redis (later) = raw command. Mapping is per-engine but the surface is single — open whether the SDK accepts a discriminated `run` payload or a string + engine tag.
 
-- **Interface shape.** `docs/architecture.md §10 §2.2` names `execute(plan) ->
-  stream<row>`. Concrete TypeScript signature, error shape, and
-  cancellation semantics (`AbortSignal`?) are TBD.
-- **Plan format.** Each engine has a different native query language
-  (SQL, Mongo aggregation, Redis commands). Is the `plan` an
-  engine-specific document handed to the adapter, or an engine-
-  agnostic IR the adapter compiles? `docs/architecture.md §10 §3` notes
-  "Structured tool-use with the target engine's grammar as a
-  constrained decode where possible (grammars for SQL exist; for
-  Mongo aggregation we hand-roll)" — implies engine-specific. Pin it.
-- **Streaming semantics.** Do all engines return `stream<row>`, or
-  do some return materialized result sets (Redis MGET, e.g.)? How
-  does the executor present a unified streaming surface over both?
-- **Schema introspection contract.** What does `describe()` return
-  per engine, and how does that feed the schema-fingerprint used by
-  `GLOBAL-004` (schemas only widen)?
-- **Health / readiness.** How does the orchestrator probe an
-  adapter's readiness (cold connection pool, scale-to-zero engines
-  warming up)?
+## Phase-3 entry checklist
 
-### Per-engine adapters
-
-The Phase 3 target set per `docs/architecture.md §10 §2.3` and `docs/architecture.md §11`:
-
-#### Redis (Upstash) — Phase 3 second engine
-
-- **Decision:** Redis is the second engine after Postgres
-  (`docs/architecture.md §10 §6`).
-- Why Upstash specifically: HTTP API (no persistent conns, serverless-
-  friendly) per `docs/architecture.md §11`. Other Redis options (Redis Cloud /
-  ElastiCache) explicitly rejected as "needs persistent conns; bad
-  fit for serverless."
-- **Open:** persistence settings (RDB? AOF?), eviction policy
-  (per-DB? per-key?), command allowlist (Redis has destructive
-  commands like FLUSHDB that the validator must reject).
-- **Open:** Redis is schema-less; how does `GLOBAL-004` (schemas only
-  widen) translate? Treat each key prefix as a "table"?
-
-#### DuckDB — Phase 3 third engine, analytics workload
-
-- **Decision:** DuckDB embedded for analytic workloads
-  (`docs/architecture.md §11`: "We run it as a sidecar for analytic workloads
-  on a user's PG data via the `postgres_scanner` extension").
-- **Open:** is DuckDB a true target engine (data lives in DuckDB), or
-  a query-time accelerator (data lives in PG, DuckDB scans on
-  demand)? `docs/architecture.md §11` suggests the latter; `docs/architecture.md §10 §2.3`
-  ("Analytics, scans, aggregations over millions of rows | DuckDB
-  (embedded) or ClickHouse (managed, at scale)") suggests the
-  former. Pin it.
-- **Open:** Where does DuckDB run? Embedded in the API Worker
-  (Workers don't permit native binaries), or in a sidecar service?
-  Implies a Fly.io sidecar, which costs us money — interaction with
-  `GLOBAL-013` (Workers free-tier bundle ≤ 3 MiB) and free-tier $0
-  budget needs explicit reasoning.
-
-#### ClickHouse Cloud — Phase 3 analytics-at-scale
-
-- **Decision:** ClickHouse for analytics that outgrow DuckDB
-  (`docs/architecture.md §11`: "✅ Phase 2 analytics-at-scale | Solid API.").
-  Re-classified as Phase 3 in `docs/architecture.md §10 §6`.
-- **Open:** When does the Workload Analyzer recommend DuckDB vs.
-  ClickHouse? `docs/architecture.md §10 §2.3` mentions "DuckDB (embedded) or
-  ClickHouse (managed, at scale)" — what's the row-count / QPS
-  threshold for the handoff?
-
-#### MongoDB Atlas — verdict ⚠️, prefer JSONB unless we must
-
-- **Decision direction:** `docs/architecture.md §11` is hesitant ("Free tier
-  is tiny. Prefer JSONB on PG unless we must"). `docs/architecture.md §10 §2.3`
-  says "Document-shaped, variable schema, deep nesting | Mongo *or*
-  Postgres JSONB (prefer JSONB unless nesting > 4 levels and access
-  is by nested path)".
-- **Open:** Is Mongo an adapter target at all in Phase 3, or do we
-  ship "JSONB-on-Postgres" as the document story and defer Mongo to
-  Phase 4+? Consensus signal needed before adapter work begins.
-
-#### pgvector — Phase 3 default vector engine
-
-- **Decision direction:** `docs/architecture.md §11`: "✅ default vector |
-  Keeps us in PG." Already used for table-card embeddings on schema
-  inference (`docs/architecture.md §3.6.2`).
-- **Open:** Is pgvector a *separate adapter* in the multi-engine
-  contract, or does the Postgres adapter advertise vector capability
-  via a feature flag? Cleaner to keep one PG adapter; simpler routing
-  to fan it out.
-
-#### TimescaleDB — Phase 3 time-series default
-
-- **Decision direction:** `docs/architecture.md §11`: "✅ time-series default
-  | PG extension — no new engine."
-- **Open:** Same question as pgvector — extension on the existing PG
-  adapter, or its own adapter? `docs/architecture.md §11` strongly hints
-  "extension," not new engine.
-
-#### Typesense / Meilisearch — Phase 3+ optional search
-
-- **Decision direction:** `docs/architecture.md §11` lists both as "✅ optional
-  search | API-first." `docs/architecture.md §10 §2.3` ("Full-text search heavy")
-  routes to "PG `tsvector` default → Typesense at scale."
-- **Open:** Threshold for the `tsvector → Typesense` cutover; whether
-  Meilisearch is ever a target.
-
-#### Engines explicitly rejected
-
-For the record (don't relitigate without evidence):
-
-- **MongoDB Atlas** — Free tier is tiny; prefer JSONB unless we must.
-- **Redis Cloud / ElastiCache** — Needs persistent conns; bad fit
-  for serverless.
-- **FaunaDB** — Vendor lock and pricing opacity.
-- **PlanetScale** — Post-Vitess-changes; revisit later.
-- **Neo4j Aura** — Only if workload is truly graph-native.
-- **CockroachDB** — Phase 3 only; great at scale, expensive early.
-
-### Cross-cutting
-
-- **Validator parity per engine.** `GLOBAL-015` (power-user escape
-  hatch) requires raw Mongo / connection-string queries to work. Per-
-  engine validator paths (analogous to `apps/api/src/ask/sql-
-  validate.ts`) need to ship with each adapter — see the
-  `sql-allowlist` skill.
-- **OTel attribute parity per engine.** `GLOBAL-014` requires every
-  external call wrapped in a span with canonical attributes from
-  `docs/performance.md §3`. Per-engine attribute mapping (Redis
-  command, Mongo aggregation pipeline depth, ClickHouse query id) is
-  TBD.
-- **Connection pool ownership.** `docs/architecture.md §10 §2.2`: "We own the
-  connection pool per user-DB. PgBouncer-style, but ours — see §6."
-  Each engine has different connection semantics — Postgres has
-  long-lived connections + transactions; Redis (HTTP via Upstash)
-  has none; DuckDB is in-process. The per-engine pool model is open.
-- **Schema-widening mapping per engine.** `GLOBAL-004` was specified
-  for Postgres semantics; per-engine widening rules (a Mongo doc that
-  gains a nested field; a Redis hash that gains a key) are TBD.
-  Coordinate with `SK-SCHEMA-NNN` once that skill is populated.
-- **Plan-cache key per engine.** `GLOBAL-006` keys plans by
-  `(schema_hash, query_hash)`. After multi-engine adapters land, do
-  we add an `engine` dimension, or does `query_hash` already capture
-  engine choice via the structured plan? See `SK-PLAN-NNN`.
-- **Cost ceilings per engine.** `GLOBAL-013` ($0/month free tier).
-  Some engines (ClickHouse, dedicated DuckDB sidecar, Mongo Atlas
-  past free tier) have non-zero floor cost. How is that gated against
-  free-tier eligibility?
-
-## Phase-3 entry checklist (provisional)
-
-Ahead of the first SK-MULTIENG decision, these need to land:
-
-1. The Phase 0/1/2 Postgres adapter (`SK-DB-NNN`) is stable and the
-   common contract it embodies has been documented.
-2. The `Executor` interface is named, written, and tested against
-   the Postgres adapter as a single-engine reference implementation.
-3. `docs/architecture.md §10 §2.5` Phase 2 exit gate is met (ties the
-   engine-migration skill to this one — they ship together in
-   Phase 3).
-4. Per-engine validator paths (`sql-allowlist` parity) are scoped.
+1. PG adapter (`SK-DB-001..008`) is stable; tests cover the `Engine` tag on the existing path.
+2. `EnginePlan` / `EngineResult` types land in `packages/db/src/types.ts` per `SK-DB-009`; PG adapter migrates onto them with no behaviour change.
+3. `engine?` field threads through SDK / CLI / MCP / classifier per `SK-DB-010` and `GLOBAL-003`.
+4. Tinybird adapter ships with validator, OTel attrs, sign-in-only anon posture.
+5. Engine-classifier prompt block in `packages/llm/src/prompts.ts` embeds the `SK-MULTIENG-002` engine-fit table verbatim.
 
 ## Source pointers
 
-- `docs/architecture.md §10 §2.1` — architecture (per-engine executors fan-out)
-- `docs/architecture.md §10 §2.2` — Execution layer subsection (`Executor`
-  interface, per-DB connection pool)
-- `docs/architecture.md §10 §2.3` — engine selection heuristics
-- `docs/architecture.md §11` — alternative technologies, per-engine verdict
 - `docs/architecture.md §10 §6` — Phase 3 slice list
-- `packages/db/AGENTS.md` and the `db-adapter` skill (when
-  populated) — current single-engine adapter contract
+- `docs/architecture.md §11` — engine verdict table
+- [`db-adapter/FEATURE.md`](../db-adapter/FEATURE.md) — single-engine adapter reference (`SK-DB-001..008`); evolution to multi-engine via `SK-DB-009..010`
+- [`engine-migration/FEATURE.md`](../engine-migration/FEATURE.md) — workload analyser + migration orchestrator (decoupled deliverable)

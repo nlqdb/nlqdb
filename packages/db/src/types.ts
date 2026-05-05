@@ -1,6 +1,7 @@
 // Engine-agnostic database adapter contract. Phase 0 ships the
 // `postgres` engine via Neon HTTP (docs/architecture.md §2).
-// Phase 3 may add `redis` / `duckdb` — they implement the same shape.
+// Phase 3 adds `clickhouse` via Tinybird as the second engine; further
+// adapters implement the same shape (see SK-MULTIENG-002).
 //
 // Per the product framing (memory: feedback_engine_agnostic_abstraction),
 // nlqdb is "natural-language databases" — never "natural-language
