@@ -143,4 +143,44 @@ describe("magic-link lifecycle", () => {
     const replayCookie = second.headers.get("set-cookie") ?? "";
     expect(replayCookie.toLowerCase()).not.toMatch(/session_token=/);
   });
+
+  it("sign-out: POST with content-type:application/json + body `{}` returns 200", async () => {
+    // Pins the shape that `apps/web/src/lib/session.ts#signOut` sends.
+    // Background: in production we observed 500s on POST /api/auth/sign-out
+    // with `error: SyntaxError: Unexpected end of JSON input`. Root cause
+    // is in better-call v1.3.5's `getBody`: if the request advertises
+    // `content-type: application/json`, it calls `request.json()`
+    // unconditionally. On Workers, `request.body` is a non-null
+    // ReadableStream even when zero bytes were written, so the
+    // upstream `if (!request.body) return undefined` early-return never
+    // fires — and `JSON.parse("")` throws. The fix is on the client:
+    // send `body: "{}"` instead of no body. This test would have caught
+    // the regression had it existed.
+    const email = `t-${crypto.randomUUID()}@example.com`;
+    await SELF.fetch(`${ORIGIN}/api/auth/sign-in/magic-link`, {
+      method: "POST",
+      headers: { "content-type": "application/json", origin: ORIGIN },
+      body: JSON.stringify({ email, callbackURL: `${ORIGIN}/app` }),
+    });
+    const verifyUrl = extractMagicLinkUrl(logs);
+    const verifyRes = await SELF.fetch(verifyUrl, { redirect: "manual" });
+    const setCookie = verifyRes.headers.get("set-cookie");
+    if (!setCookie) throw new Error("expected set-cookie on verify response");
+    const cookieFirst = setCookie.split(";")[0];
+    if (!cookieFirst) throw new Error("expected cookie value before first `;`");
+
+    const signOutRes = await SELF.fetch(`${ORIGIN}/api/auth/sign-out`, {
+      method: "POST",
+      headers: {
+        cookie: cookieFirst,
+        origin: ORIGIN,
+        "content-type": "application/json",
+        accept: "application/json",
+      },
+      body: "{}",
+    });
+    expect(signOutRes.status).toBe(200);
+    const signOutBody = (await signOutRes.json()) as { success?: boolean };
+    expect(signOutBody.success).toBe(true);
+  });
 });
