@@ -124,7 +124,12 @@ h3 {
 /* Authed slot — revealed by the topnav probe (lib/session.ts).
  * Hidden by default so the anon UX is the no-flash default
  * during the round-trip to /api/auth/get-session. */
-.topnav__authed {
+/* `:not([hidden])` is load-bearing: the bare `.topnav__authed`
+ * selector wins over the UA `[hidden] { display: none }` rule
+ * (equal specificity, author CSS wins), which would leak the
+ * "Open chat / Sign out" affordances to anonymous visitors before
+ * the session probe resolves. */
+.topnav__authed:not([hidden]) {
   display: inline-flex;
   align-items: center;
   gap: 16px;
