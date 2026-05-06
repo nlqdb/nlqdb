@@ -16,7 +16,7 @@ import { auth, REVOCATION_KEY_PREFIX } from "./auth.ts";
 import { askFnFromDemoFixtures, DEMO_DB_ID } from "./chat/demo-shortcut.ts";
 import { postChatMessage } from "./chat/orchestrate.ts";
 import { makeChatStore } from "./chat/store.ts";
-import { listDatabasesForTenant } from "./databases/list.ts";
+import { deriveSlug, listDatabasesForTenant } from "./databases/list.ts";
 import { parseAskBody, parseGoalDbBody, parseJsonBody } from "./http.ts";
 import { getLLMRouter } from "./llm-router.ts";
 import { makeRequireSession, type RequireSessionVariables } from "./middleware.ts";
@@ -40,8 +40,46 @@ const app = new Hono<{
   Variables: RequireSessionVariables & RequirePrincipalVariables;
 }>();
 
-// Cross-origin callers: marketing hero on `nlqdb.com` (anon-bearer
-// `/v1/ask`) and local dev. Product UI is same-origin post-`SK-AUTH-016`.
+// Triage instrumentation — log full stack on any uncaught error so
+// `wrangler tail` shows the origin of opaque crashes (e.g. the
+// "Cannot read properties of undefined (reading 'href')" 500 we're
+// chasing). Hono's default handler `console.error(err)` truncates to
+// the message in JSON tail format. Remove once that bug is closed.
+app.onError((err, c) => {
+  const e = err as Error;
+  console.error(
+    JSON.stringify({
+      msg: "unhandled_error",
+      name: e?.name,
+      message: e?.message,
+      stack: e?.stack,
+      path: c.req.path,
+      method: c.req.method,
+    }),
+  );
+  return c.text("Internal Server Error", 500);
+});
+
+// Cross-subdomain CORS allow-list. Sign-in (`/api/auth/*`), chat
+// (`/v1/chat/*`), and the unified `/v1/ask` are called from
+// `nlqdb.com` (Pages) into `app.nlqdb.com` (Worker). Cookie-session
+// callers ride `credentials: include` so the `.nlqdb.com`-scoped
+// session cookie round-trips; browsers reject `credentials: include`
+// against `origin: *`, so the allow-list is explicit. Anon-bearer
+// callers (Authorization: Bearer anon_*, the marketing hero post-
+// SK-WEB-008) ride the same allow-list — the bearer is read from
+// the request header, not a cookie, but the marketing surfaces are
+// always on the explicit allow-listed origins.
+//
+// Preview surfaces (SK-AUTH-013): Workers-Versions preview URLs land
+// at `<short-version-id>-nlqdb-web.omer-hochman.workers.dev`; the
+// account-subdomain anchor keeps the regex scoped to our own account.
+// Pages-preview PRs use `pr-<N>.nlqdb-web.pages.dev`.
+//
+// `/v1/demo/*` was retired with /v1/demo/ask (SK-WEB-008). Third-
+// party `<nlq-data>` embeds with `pk_live_` keys are still a
+// separate slice — those land with per-key origin pinning, not a
+// permissive `*` blanket.
 const CORS_ALLOWED_ORIGINS = [
   "https://app.nlqdb.com",
   "https://nlqdb.com",
@@ -317,6 +355,20 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
       // Dynamic import defers libpg-query's WASM initialization to
       // the first create request — see commit 1a body for the
       // rationale.
+      //
+      // libpg-query@17.x ships an Emscripten-generated WASM loader
+      // that does `_scriptName = self.location.href` when both
+      // `__filename` is undefined and `WorkerGlobalScope` is defined.
+      // Cloudflare Workers (compat 2026-04-27) defines
+      // `WorkerGlobalScope` but not `self.location` for ESM workers
+      // with `nodejs_compat`, so the load throws
+      // `TypeError: Cannot read properties of undefined (reading 'href')`
+      // before any of our code runs. Polyfilling `globalThis.__filename`
+      // makes the loader take the Node.js branch instead, which the
+      // `nodejs_compat` shim handles correctly.
+      const g = globalThis as unknown as { __filename?: string; __dirname?: string };
+      if (typeof g.__filename === "undefined") g.__filename = "worker";
+      if (typeof g.__dirname === "undefined") g.__dirname = "/";
       const { buildDbCreateDeps } = await import("./db-create/build-deps.ts");
       const { orchestrateDbCreate } = await import("./db-create/orchestrate.ts");
       try {
@@ -705,6 +757,83 @@ app.get("/v1/databases", requireSession, async (c) => {
   const session = c.var.session;
   const databases = await listDatabasesForTenant(c.env.DB, session.user.id);
   return c.json({ databases });
+});
+
+// `POST /v1/databases` — explicit named-database creation from the
+// left-rail "+ New" affordance in the chat surface. Accepts
+// `{ name?, goal? }` (at least one required); uses the same
+// `orchestrateDbCreate` typed-plan pipeline as the `kind=create`
+// branch of `/v1/ask`. Rate-limit for authed users is enforced
+// inside `orchestrateAsk` via the per-account D1 limiter
+// (SK-HDC-008); anonymous access is not permitted here — the
+// left-rail only renders for authenticated sessions.
+app.post("/v1/databases", requireSession, async (c) => {
+  const tracer = trace.getTracer("@nlqdb/api");
+  return tracer.startActiveSpan("nlqdb.databases.create", async (span) => {
+    const session = c.var.session;
+    span.setAttribute("nlqdb.user.id", session.user.id);
+
+    const raw = await parseJsonBody<{ name?: unknown; goal?: unknown }>(c);
+    if (!raw.ok) {
+      span.end();
+      return c.json({ error: { status: "invalid_json" as const } }, 400);
+    }
+
+    const name =
+      typeof raw.body.name === "string" && raw.body.name.trim().length > 0
+        ? raw.body.name.trim()
+        : undefined;
+    const goal =
+      typeof raw.body.goal === "string" && raw.body.goal.trim().length > 0
+        ? raw.body.goal.trim()
+        : undefined;
+
+    if (!name && !goal) {
+      span.end();
+      return c.json({ error: { status: "goal_required" as const } }, 400);
+    }
+
+    // Same WASM polyfill as the /v1/ask runCreatePath — libpg-query's
+    // Emscripten loader calls `self.location.href` unless __filename
+    // is defined; Workers compat 2026-04-27 defines WorkerGlobalScope
+    // but not self.location for ESM workers with nodejs_compat.
+    const g = globalThis as unknown as { __filename?: string; __dirname?: string };
+    if (typeof g.__filename === "undefined") g.__filename = "worker";
+    if (typeof g.__dirname === "undefined") g.__dirname = "/";
+
+    const { buildDbCreateDeps } = await import("./db-create/build-deps.ts");
+    const { orchestrateDbCreate } = await import("./db-create/orchestrate.ts");
+
+    try {
+      const { deps: createDeps, secretRef } = buildDbCreateDeps(c.env);
+      const result = await orchestrateDbCreate(createDeps, {
+        goal: goal ?? name!,
+        ...(name !== undefined ? { name } : {}),
+        tenantId: session.user.id,
+        secretRef,
+      });
+      if (!result.ok) {
+        span.setAttribute("nlqdb.databases.create.outcome", result.error.kind);
+        span.end();
+        const statusCode = result.error.kind === "provision_failed" ? 500 : 422;
+        return c.json({ error: result.error }, statusCode);
+      }
+      span.setAttribute("nlqdb.databases.create.db_id", result.dbId);
+      span.end();
+      return c.json(
+        {
+          dbId: result.dbId,
+          slug: deriveSlug(result.dbId),
+          pkLive: result.pkLive,
+        },
+        201,
+      );
+    } catch (err) {
+      span.recordException(err as Error);
+      span.end();
+      throw err;
+    }
+  });
 });
 
 app.post("/v1/chat/messages", requireSession, async (c) => {
