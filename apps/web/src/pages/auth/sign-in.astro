@@ -185,7 +185,7 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "https://app.nlqdb.com";
     ) as HTMLElement;
 
     const params = new URLSearchParams(location.search);
-    const returnTo = params.get("return_to") ?? "/";
+    const returnTo = params.get("return_to") ?? "/app";
     // callbackURL anchors on `location.origin` (not `appBase`) so a
     // user signing in from a Workers-Versions preview URL is returned
     // to the same preview instead of bouncing to production
