@@ -3,6 +3,12 @@
 // name input that posts to `POST /v1/databases`. Each entry shows
 // a relative last-queried time so the user can land back on the
 // DB they were just talking to.
+//
+// SK-ASK-009 / SK-HDC-011: the rail also exposes an "All databases"
+// pseudo-item that clears the active selection — sends without a
+// pinned dbId route through the LLM disambiguator instead. The chat
+// composer is always enabled; the rail is now an *override*, not a
+// gate.
 
 import type { DatabaseSummary } from "@nlqdb/sdk";
 import { useEffect, useRef, useState } from "react";
@@ -12,6 +18,11 @@ interface LeftRailProps {
   apiBase: string;
   activeDbId: string | null;
   onSelect: (db: DatabaseSummary) => void;
+  // SK-ASK-009: clears the active selection so the next send routes
+  // through the deterministic-then-LLM resolver instead of pinning a
+  // db. Surfaces both the explicit "All databases" affordance and
+  // resets any URL `?db=` query param.
+  onClearSelection: () => void;
   onCreated: (db: DatabaseSummary) => void;
   // Fires once the database list lands so the parent can resolve
   // a URL-supplied dbId to its full summary record (pkLive et al.)
@@ -28,6 +39,7 @@ export default function LeftRail({
   apiBase,
   activeDbId,
   onSelect,
+  onClearSelection,
   onCreated,
   onLoaded,
 }: LeftRailProps) {
@@ -99,6 +111,21 @@ export default function LeftRail({
 
       {state.kind === "ready" ? (
         <ul className="left-rail__list">
+          {/* SK-ASK-009: "All databases" clears the active selection
+              so the next send routes through the LLM disambiguator
+              instead of pinning a db. Always rendered (even with 0
+              dbs) so users can return here from a switched state. */}
+          <li className="left-rail__item" data-active={activeDbId === null || undefined}>
+            <button
+              type="button"
+              className="left-rail__item-button"
+              onClick={onClearSelection}
+              aria-pressed={activeDbId === null}
+            >
+              <span className="left-rail__item-slug">All databases</span>
+              <span className="left-rail__item-time">auto-pick</span>
+            </button>
+          </li>
           {state.databases.map((db) => (
             <li
               key={db.id}

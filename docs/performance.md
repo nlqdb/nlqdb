@@ -68,23 +68,57 @@ The cold path. LLM dominates; everything else has to stay tight.
 | 3  | Rate-limit check (KV)                         | 5 ms   | 15 ms  |
 | 4  | Schema/query hash                             | 1 ms   | 5 ms   |
 | 5  | Plan-cache lookup (KV, **miss**)              | 5 ms   | 15 ms  |
-| 6  | LLM **classify** (intent: data_query / meta)  | 100 ms | 400 ms |
-| 7  | LLM **plan** (NL → SQL)                       | 600 ms | 1500 ms |
-| 8  | SQL parse + schema-fit validate               | 5 ms   | 20 ms  |
-| 9  | Neon DB execute                               | 100 ms | 350 ms |
-| 10 | LLM **summarize** (conditional — see below)   | 300 ms | 800 ms |
-| 11 | Plan-cache write (KV)                         | 5 ms   | 20 ms  |
-| 12 | Response serialize + egress                   | 5 ms   | 20 ms  |
-|    | **Total (with summarize)**                    | **1133 ms** | **3180 ms** |
-|    | **Total (no summarize)**                      | **833 ms**  | **2380 ms** |
-|    | Headroom vs SLO                               | 367 ms / 667 ms | 320 ms / 1120 ms |
+| 6  | LLM **plan** (NL → SQL)                       | 600 ms | 1500 ms |
+| 7  | SQL parse + schema-fit validate               | 5 ms   | 20 ms  |
+| 8  | Neon DB execute                               | 100 ms | 350 ms |
+| 9  | LLM **summarize** (conditional — see below)   | 300 ms | 800 ms |
+| 10 | Plan-cache write (KV)                         | 5 ms   | 20 ms  |
+| 11 | Response serialize + egress                   | 5 ms   | 20 ms  |
+|    | **Total (with summarize)**                    | **1033 ms** | **2780 ms** |
+|    | **Total (no summarize)**                      | **733 ms**  | **1980 ms** |
+|    | Headroom vs SLO                               | 467 ms / 767 ms | 720 ms / 1520 ms |
+
+The `kind` classifier (`apps/api/src/ask/classifier.ts`) runs **only**
+when `dbId` is absent — see §2.3 for that prelude. Pinned-dbId calls
+skip it entirely.
 
 **Summarize is conditional** — only runs when the result row count is
 above a threshold (default 5) or when the intent classifier flagged
 the query as conversational. Most fact-lookup queries return raw rows
 and skip stage 10 entirely.
 
-### 2.3 `GET /api/auth/callback/github`
+### 2.3 `POST /v1/ask` — `dbId` resolution prelude (dbId omitted)
+
+`SK-ASK-003` / `SK-HDC-005`. Runs **only** when the request omits
+`dbId`. Classifier + tenant DB list fire in parallel; the
+disambiguator kicks off speculatively the moment the DB list lands,
+overlapping with the still-running classify call. `disambiguateDb`
+itself layers slug-substring fast-path → KV cache → LLM, so most
+multi-DB sends never spend a full LLM round-trip here.
+
+| Path                                                                 | p50    | p99    |
+| :------------------------------------------------------------------- | :----- | :----- |
+| 0 dbs / 1 db (no disambiguator runs)                                 | 100 ms | 400 ms |
+| 2+ dbs, slug-substring match (no LLM, no KV)                         | 100 ms | 400 ms |
+| 2+ dbs, KV cache hit                                                 | 100 ms | 400 ms |
+| 2+ dbs, full LLM disambiguate (worst case; speculative parallelism)  | 115 ms | 445 ms |
+
+The classify call is on the critical path of every dbId-absent
+send (~100/400 ms p50/p99); speculative parallelism collapses the
+disambiguator's latency into classify's tail unless slug+cache both
+miss. Worst case adds 115/445 ms onto the §2.2 cache-miss budget:
+**1148 ms p50 / 3225 ms p99** with summarize, **848 ms p50 / 2425
+ms p99** without — both inside the 1.5s / 3.5s SLO with 352 / 275
+ms p99 headroom on the worst path.
+
+Operational guardrails:
+- Disambiguator timeout 1500 ms (cheap-tier, `DEFAULT_TIMEOUTS_MS`).
+- KV cache TTL 7 days, keyed by `(tenantId, goalHash, dbsetHash)`.
+- Span `llm.disambiguate` per LLM attempt; `nlqdb.ask.dbid_resolution`
+  attribute records which fast-path won (`slug_fastpath` /
+  `single_db_auto` / `llm_auto_target` / `ambiguous_409`).
+
+### 2.4 `GET /api/auth/callback/github`
 
 | Stage                                  | p50    | p99    |
 | :------------------------------------- | :----- | :----- |
@@ -95,23 +129,26 @@ and skip stage 10 entirely.
 | Cookie set + 302                       | 5 ms   | 30 ms  |
 | **Total**                              | **180 ms** | **900 ms** |
 
-### 2.4 Provider-side latencies (reference numbers)
+### 2.5 Provider-side latencies (reference numbers)
 
 | Provider                     | Operation         | p50    | p99    | Notes                            |
 | :--------------------------- | :---------------- | :----- | :----- | :------------------------------- |
 | Cloudflare Workers AI        | classify (Llama)  | 80 ms  | 300 ms | Same-region edge — fastest.      |
 | Cloudflare Workers AI        | plan              | 500 ms | 1200 ms | Heavier model.                  |
+| Cloudflare Workers AI        | disambiguate      | 80 ms  | 300 ms | Same model as classify; SK-ASK-009. |
 | Gemini 2.0 Flash             | classify          | 150 ms | 500 ms |                                  |
 | Gemini 2.0 Flash             | plan              | 700 ms | 1800 ms |                                  |
+| Groq (Llama 3.1 8B Instant)  | classify / disambiguate | 100 ms | 400 ms | Cheap-tier hot path; chain default. |
 | Groq (Llama 3.1 70B)         | plan              | 400 ms | 1000 ms | Fastest paid.                    |
 | OpenRouter (fallback)        | plan              | 1000 ms| 3000 ms | Used only on multi-provider failover. |
 | Neon HTTP (us-east-1)        | SELECT (warm)     | 80 ms  | 300 ms | Cold pool can spike to 1 s.      |
+| Cloudflare D1 (read, warm)   | SELECT            | 10 ms  | 30 ms  | listDatabasesForTenant prelude.  |
 | Cloudflare KV (read, hot)    | get               | 5 ms   | 15 ms  |                                  |
 | Cloudflare KV (write)        | put               | 5 ms   | 25 ms  |                                  |
 
 These are *measured-then-budgeted* numbers — when a slice lands its
 instrumentation, the dashboards (§6) will show actual p50/p99 per
-provider, and §2.4 gets updated with real values.
+provider, and §2.5 gets updated with real values.
 
 ---
 
@@ -276,7 +313,7 @@ Alerts (provisioned alongside dashboards):
   measurement that motivated the change.
 - **New routes** add a row to §1 (SLO) AND §2 (budget) AND §4
   (instrumentation hooks) in the same PR.
-- **New providers / engines** add to §2.4 (provider numbers) and
+- **New providers / engines** add to §2.5 (provider numbers) and
   §3.3 (label values). Backfill measurements within a week of landing.
 - **New metrics / labels** require a cardinality estimate in the PR
   description; the CI cardinality assertion catches the rest.

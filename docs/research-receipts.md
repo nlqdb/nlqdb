@@ -211,19 +211,30 @@ Confidence-scoring research finds that ambiguity costs ~10
 percentage points of accuracy; clarification recovers most of it
 ([Confidence scoring arXiv](https://arxiv.org/html/2506.17203v1)).
 
-**Where applied:** nlqdb resolves the target db deterministically
-by surface, not by LLM guess.
+**Where applied:** nlqdb resolves the target db deterministically on
+agent + key-scoped surfaces (HTML / CLI / MCP). On REST + the chat
+surface a cheap-tier LLM picks among 2+ candidates with a confidence
+floor (`≥ 0.7`), a visible `selected_db` echo, and a `409
+candidate_dbs` fallback below threshold (`SK-ASK-003` /
+`SK-HDC-005`).
 
 | Surface | Resolution rule |
 |---|---|
 | HTML (`<nlq-data>`) | Resolved from `pk_live_<dbId>` (per-db key); else CREATE on first call (anonymous flow) |
-| REST (`Bearer sk_live_…`) | Use `dbId` from request body; if 0 dbs CREATE, if 1 db auto-target, if 2+ → `409` with `candidate_dbs` |
+| REST + chat | 0 dbs → CREATE; 1 db → auto-target; 2+ → cheap-tier `llm.disambiguate` pick with `confidence ≥ 0.7` floor (auto-target + echo `selected_db`); below threshold → `409 candidate_dbs` ranked by LLM score |
 | CLI (`nlq`) | MRU + interactive `select` prompt; CREATE on `nlq new` |
 | MCP | Auto-target if 1 db; CREATE if 0; **MCP elicitation** (clarifying tool response) if 2+ |
 
-Schema-match scoring (LLM-driven heuristic disambiguation) is
-deferred — the deterministic per-surface fallbacks are simpler,
-faster, and don't make a wrong guess silently.
+The deterministic-by-default lesson still applies — silent
+wrong-tenant picks were the original worry. We address it on REST +
+chat without giving up the goal-first chat flow by **never being
+silent**: every auto-targeted response carries `selected_db: { id,
+slug, confidence, reason }` so the surface renders attribution and a
+one-click switch. Below the confidence floor we fall back to the
+original `409 candidate_dbs` UI. Destructive verbs still pass the
+SQL allowlist + confirm-diff gate, so a wrong-tenant write requires
+both a wrong LLM pick AND user-approved confirmation that names the
+wrong table.
 
 **Sources:**
 - [Confidence scoring for LLM SQL — Amazon Science](https://arxiv.org/html/2506.17203v1)

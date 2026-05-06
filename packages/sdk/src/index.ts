@@ -16,12 +16,27 @@
 
 export type AskRequest = {
   goal: string;
-  dbId: string;
+  // SK-ASK-009 / SK-HDC-011: `dbId` is optional. When omitted the API
+  // resolves it deterministically (0 dbs → CREATE, 1 → auto-target)
+  // or via a cheap-tier LLM disambiguator on 2+ DBs (≥ 0.7 confidence
+  // → auto-target with `selected_db` echo on the response; below →
+  // 409 ambiguous_db with `candidate_dbs` for the surface to render).
+  dbId?: string;
   // SK-ONBOARD-004: when the API returned `requires_confirm: true`
   // for a destructive plan, the surface re-sends the same request
   // with `confirm: true`. The orchestrator skips its confidence
   // gate on the second hop and runs the SQL.
   confirm?: boolean;
+};
+
+// SK-ASK-009: response echo when the API auto-targeted a DB on the
+// caller's behalf (single-DB auto-target OR LLM disambiguator pick
+// ≥ 0.7 confidence). Surfaces render attribution + a one-click switch.
+export type SelectedDbEcho = {
+  id: string;
+  slug: string;
+  confidence: number;
+  reason: string;
 };
 
 export type AskOk = {
@@ -36,7 +51,31 @@ export type AskOk = {
   // preview the surface renders before second-Enter / Approve.
   requires_confirm?: boolean;
   diff?: AskDiff;
+  // SK-ASK-009: present when the API auto-targeted a DB. Absent on
+  // requests that pinned `dbId` directly.
+  selected_db?: SelectedDbEcho;
 };
+
+// SK-HDC-001 / SK-ASK-009: when `kind=create` (or 0 DBs with kind=
+// query|write), the API returns this envelope instead of `AskOk`.
+// The chat surface narrows on `kind` to switch into "DB created"
+// mode, append the new DB to the rail, and re-pin `dbId` for the
+// next send.
+export type AskCreateResult = {
+  kind: "create";
+  db: string;
+  schemaName: string;
+  pkLive: string | null;
+  // SchemaPlan from the typed-plan compiler (`SK-HDC-002`). Surfaces
+  // that don't render the plan (current chat) ignore it; CreateForm
+  // narrows it via its own `CreateResult` type.
+  plan: unknown;
+  sampleRows: { table: string; rows: Record<string, unknown>[] }[];
+};
+
+// Discriminator: `AskOk` carries `status: "ok"`, `AskCreateResult`
+// carries `kind: "create"`. Callers narrow on whichever fits.
+export type AskResponse = AskOk | AskCreateResult;
 
 // Plain-English preview of a destructive plan. Values are derived
 // server-side (validator + EXPLAIN) — surfaces never compute a
@@ -59,7 +98,8 @@ export type TraceStep =
   | "validate"
   | "exec"
   | "summarize"
-  | "confirm_required";
+  | "confirm_required"
+  | "selected_db";
 
 export type TraceEvent =
   | { type: "plan_pending" }
@@ -67,6 +107,7 @@ export type TraceEvent =
   | { type: "rows"; rows: Record<string, unknown>[]; rowCount: number }
   | { type: "summary"; summary: string }
   | { type: "confirm_required"; diff: AskDiff }
+  | { type: "selected_db"; db: SelectedDbEcho }
   | { type: "error"; error: ApiErrorBody }
   | { type: "done"; status: "ok" };
 
@@ -115,6 +156,9 @@ export type ApiErrorCode =
   | "invalid_body"
   | "invalid_email"
   | "secret_unconfigured"
+  // SK-ASK-009: 409 returned when the LLM disambiguator's confidence
+  // is below the floor on a 2+ DB tenant. Body carries `candidate_dbs`.
+  | "ambiguous_db"
   // SDK-only sentinels — never sent by the API.
   | "unknown_error"
   | "non_json_response"
@@ -122,12 +166,17 @@ export type ApiErrorCode =
   | "aborted"
   | (string & {});
 
+// SK-ASK-009: candidate-DB ranking carried on `ambiguous_db` 409
+// envelopes. Surface uses these to render an explicit picker.
+export type CandidateDb = { id: string; slug: string };
+
 export type ApiErrorBody = {
   status: ApiErrorCode;
   message?: string;
   reason?: string;
   limit?: number;
   count?: number;
+  candidate_dbs?: CandidateDb[];
 };
 
 // Mirrors apps/api/src/chat/types.ts. Keep these definitions in sync
@@ -191,12 +240,19 @@ export type AskStreamOptions = {
 };
 
 export type NlqClient = {
-  ask(req: AskRequest, opts?: { signal?: AbortSignal }): Promise<AskOk>;
+  // Returns the union AskOk | AskCreateResult — callers narrow on the
+  // shape (`status === "ok"` vs `kind === "create"`). When `dbId` is
+  // present the API always returns `AskOk`; when omitted the API may
+  // route to the create path (`AskCreateResult`) per SK-ASK-009 /
+  // SK-HDC-011.
+  ask(req: AskRequest, opts?: { signal?: AbortSignal }): Promise<AskResponse>;
   // Streaming variant of `ask`. Resolves once the `done` event
   // arrives with the assembled `AskOk`; rejects with
   // `NlqdbApiError` on transport / API errors. Per-step events
   // surface via `opts.onTrace`. Use this — not `ask` — for chat
-  // surfaces that want incremental rendering (GLOBAL-011).
+  // surfaces that want incremental rendering (GLOBAL-011). Note: the
+  // streaming surface does NOT cover the create branch; surfaces that
+  // need `AskCreateResult` should call `ask()` instead.
   askStream(req: AskRequest, opts: AskStreamOptions): Promise<AskOk>;
   listChat(opts?: { signal?: AbortSignal }): Promise<{ messages: ChatMessage[] }>;
   postChat(
@@ -399,6 +455,7 @@ export function createClient(opts: ClientOptions = {}): NlqClient {
     let summary: string | undefined;
     let requiresConfirm = false;
     let diff: AskDiff | undefined;
+    let selectedDb: SelectedDbEcho | undefined;
 
     const reader = res.body.getReader();
     const decoder = new TextDecoder();
@@ -449,6 +506,11 @@ export function createClient(opts: ClientOptions = {}): NlqClient {
             diff = p.diff;
             break;
           }
+          case "selected_db": {
+            const p = payload as { db?: SelectedDbEcho };
+            if (p.db) selectedDb = p.db;
+            break;
+          }
           case "error": {
             const p = payload as { error?: ApiErrorBody };
             const errBody = p.error ?? null;
@@ -476,12 +538,13 @@ export function createClient(opts: ClientOptions = {}): NlqClient {
       ...(summary !== undefined ? { summary } : {}),
       ...(requiresConfirm ? { requires_confirm: true } : {}),
       ...(diff ? { diff } : {}),
+      ...(selectedDb ? { selected_db: selectedDb } : {}),
     };
   }
 
   return {
     ask: (req, callOpts) =>
-      call<AskOk>("/v1/ask", {
+      call<AskResponse>("/v1/ask", {
         method: "POST",
         body: JSON.stringify(req),
         signal: callOpts?.signal,
@@ -548,6 +611,11 @@ function toTraceEvent(event: string, payload: unknown): TraceEvent | null {
       const p = payload as { diff?: AskDiff };
       if (!p.diff) return null;
       return { type: "confirm_required", diff: p.diff };
+    }
+    case "selected_db": {
+      const p = payload as { db?: SelectedDbEcho };
+      if (!p.db) return null;
+      return { type: "selected_db", db: p.db };
     }
     case "error": {
       const p = payload as { error?: ApiErrorBody };

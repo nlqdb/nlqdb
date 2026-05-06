@@ -20,7 +20,7 @@ when-to-load:
 - `apps/api/src/ask/sql-validate-ddl.ts` (DDL-path validator, separate from the read/write allowlist)
 - `packages/llm/src/prompts/schema-inference.ts` (typed-plan prompt)
 
-**Cross-refs:** docs/architecture.md §3.6.1–§3.6.8 (canonical) · docs/architecture.md §10 §4 (Phase 1 slice — sub-modules, anonymous-db lifecycle, exit gate) · docs/research-receipts.md §1 (Replit incident → layered guardrails), §2 (Cortex Analyst + SchemaAgent → typed plans), §7 (deterministic dbId fallbacks > LLM disambiguation), §8 (semantic-layer-at-create moat) · GLOBAL-005, GLOBAL-014, GLOBAL-017, GLOBAL-020 (see governing-GLOBALs section below)
+**Cross-refs:** docs/architecture.md §3.6.1–§3.6.8 (canonical) · docs/architecture.md §10 §4 (Phase 1 slice — sub-modules, anonymous-db lifecycle, exit gate) · docs/research-receipts.md §1 (Replit incident → layered guardrails), §2 (Cortex Analyst + SchemaAgent → typed plans), §7 (per-surface dbId resolution, with confidence-gated LLM pick + visible echo on REST + chat — SK-HDC-005), §8 (semantic-layer-at-create moat) · GLOBAL-005, GLOBAL-014, GLOBAL-017, GLOBAL-020 (see governing-GLOBALs section below)
 
 **Sibling skills to read alongside:**
 - `docs/features/ask-pipeline/FEATURE.md` — the classifier branches off the existing `/v1/ask` orchestrator; this skill owns the `kind=create` arm
@@ -79,15 +79,13 @@ when-to-load:
   - Generate schema first, semantic layer later — splits the moment we have the goal in hand; second LLM call costs more and may disagree with the first.
   - Skip semantic generation, rely on the planner to infer at query time — every query repeats the same inference; latency and cost both go up; accuracy is worse without the named-metric grounding.
 
-### SK-HDC-005 — Per-surface `dbId` resolution is deterministic; we never LLM-guess "which db did you mean"
+### SK-HDC-005 — `dbId` resolution: deterministic fast-path then cheap-tier LLM, with confidence floor + visible echo
 
-- **Decision:** When `dbId` is absent on `/v1/ask`, resolution is fully deterministic per surface: HTML uses the `pk_live_<dbId>` per-db key (CREATE on first call if no key); REST returns `409 Conflict` with `{ candidate_dbs: [...] }` when the account has 2+ dbs; CLI prompts interactively (MRU + select); MCP elicits a clarifying-question response. We do **not** run an LLM-based "which db is this goal about" heuristic in Phase 1.
-- **Core value:** Bullet-proof, Honest latency
-- **Why:** The failure mode of guessing wrong silently is worse than asking. A wrong-db query against a multi-tenant account exposes the wrong rows or fails confusingly; MCP agents can act on incorrect data. The prior art that pushed this decision is in `docs/research-receipts.md §7`. Asking back has zero friction on agent surfaces (MCP elicitation is the protocol's intended path); it has tolerable friction on REST (the `409` includes `candidate_dbs` so the client picks). HTML resolves deterministically via the per-db key, so the embed case has no UX cost.
-- **Consequence in code:** No code path in `/v1/ask` calls the LLM to disambiguate `dbId`. Each surface implements its own deterministic fallback (table in `docs/architecture.md §3.6.4`). MCP servers return an elicitation payload; CLI prints a numbered list; REST returns `409 candidate_dbs`. Schema-match scoring (LLM-driven heuristic disambiguation) is **deferred to Phase 2+**.
-- **Alternatives rejected:**
-  - LLM picks the most-similar-looking db — silent wrong-tenant data exposure when the LLM is wrong; unrecoverable from the user's POV.
-  - Always require `dbId` — kills the goal-first framing on HTML and breaks the "drop a tag, get a working db" promise (`docs/architecture.md §0.1`).
+- **Decision:** When `dbId` is absent on `/v1/ask`: kind=create routes the typed-plan create path (SK-HDC-001) unchanged; for kind=query|write — 0 dbs → CREATE; 1 db → auto-target; 2+ dbs → slug-substring fast-path → KV cache → cheap-tier `llm.disambiguate`, with `confidence ≥ 0.7` floor and `selected_db` echo on auto-target. Below the floor the handler returns `409 candidate_dbs` ranked by score. CLI / MCP keep their deterministic fallbacks (MRU prompt / elicitation). Mirror of `SK-ASK-003` on the create-side.
+- **Core value:** Effortless UX, Goal-first, Honest latency
+- **Why:** A bare deterministic 409 paid a UX wall on goal-first chat. Wrong-tenant risk is contained by the confidence floor + visible echo (wrong picks are not silent) + one-click rail recovery. Writes still pass the SK-HDC-006 validator split + SK-ONBOARD-004 confirm-diff gate, so a wrong-tenant destructive call requires both a wrong LLM pick and a user-approved diff naming the wrong table.
+- **Consequence in code:** `apps/api/src/ask/disambiguate-db.ts` runs the new `llm.disambiguate` op; the route handler in `apps/api/src/index.ts` runs the new flow (0→create, 1→auto, 2+→slug-fastpath/cache/LLM with 0.7 floor) and routes the create branch through this skill's `orchestrateDbCreate` unchanged. Per-attempt LLM timeout 1500 ms (cheap-tier). `disambiguate` is dbId resolution only — never invoked from inside the typed-plan compiler.
+- **Alternatives rejected:** Bare deterministic 409 — UX wall on goal-first chat. LLM pick without confidence floor — silent on low-signal goals. LLM pick without `selected_db` echo — silent again. Planner-tier LLM — overkill; cheap tier is accurate enough on slug + schema-hash inputs.
 
 ### SK-HDC-006 — Two validator paths: read/write (allowlist) vs DDL (allowlist + libpg_query parse)
 

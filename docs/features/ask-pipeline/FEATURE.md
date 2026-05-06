@@ -38,14 +38,14 @@ when-to-load:
 - **Alternatives rejected:** Per-handler order — would let the order drift between create / query / write without notice. Skip cache when LLM is fast — defeats `GLOBAL-006` and breaks the cache-warming intent.
 - **Source:** docs/architecture.md §3.6.1, §3.6.2 · docs/performance.md §2.1, §2.2 · docs/architecture.md §10 Slice 6
 
-### SK-ASK-003 — `dbId` resolution is deterministic per surface — never an LLM-driven "did you mean…?"
+### SK-ASK-003 — `dbId` resolution: deterministic fast-path then cheap-tier LLM, with confidence floor + visible echo
 
-- **Decision:** When `dbId` is omitted, resolution follows `docs/architecture.md §3.6.4`: HTML embeds resolve from `pk_live_<dbId>`; REST returns `409 Conflict` with `candidate_dbs` if the account has 2+ DBs; CLI uses MRU + interactive `select`; MCP uses elicitation. The system **never** runs an LLM-based "which DB did you mean" heuristic.
-- **Core value:** Bullet-proof, Honest latency, Effortless UX
-- **Why:** A guess that hits the wrong DB writes (or reads sensitive data from) the wrong tenant — silent corruption is the worst possible failure mode. Deterministic per-surface resolution turns "ambiguous" into a structured error the surface can render usefully (`409` for REST, prompt for CLI, elicitation for MCP).
-- **Consequence in code:** `resolveDbId(req)` returns `{db}` or `{candidates: [...]}`; ambiguity is never resolved by an LLM call. The HTTP handler returns 409 with the `candidate_dbs` envelope; the CLI prompts; MCP returns an elicitation. Schema-match scoring (LLM heuristic disambiguation) is **deferred to Phase 2+**.
-- **Alternatives rejected:** Auto-pick the most-recently-used DB on REST — silent wrong-tenant write. LLM "did you mean…" — failure mode is silent and unexplainable.
-- **Source:** docs/architecture.md §3.6.4
+- **Decision:** When `dbId` is omitted on `/v1/ask`: 0 dbs → CREATE; 1 db → auto-target; 2+ dbs → (a) deterministic slug-substring match — if exactly one DB's slug words appear in the goal, pick it; (b) KV cache lookup `(tenantId, goalHash, dbsetHash)`; (c) cheap-tier `llm.disambiguate` call. Auto-target requires `confidence ≥ 0.7`; below threshold the API returns `409 ambiguous_db` with `candidate_dbs` ranked by score. Every auto-target echoes `selected_db: { id, slug, confidence, reason }` on the response. CLI / MCP keep their per-surface fallbacks (MRU prompt / elicitation).
+- **Core value:** Effortless UX, Goal-first, Honest latency
+- **Why:** Forcing a `409` round-trip on every multi-DB ambiguous send breaks the goal-first chat flow. The "silent wrong-tenant" failure mode is contained by three properties: a confidence floor, a visible `selected_db` echo (wrong picks are immediately visible, not silent), and one-click rail recovery. Destructive verbs still pass the SK-ASK-004 validator + SK-ONBOARD-004 confirm-diff gate, so a wrong-tenant write requires both a wrong LLM pick and the user approving a diff that names the wrong table.
+- **Consequence in code:** `apps/api/src/ask/disambiguate-db.ts` runs slug-fast-path → KV cache → `llm.disambiguate` (`packages/llm/src/types.ts` + `prompts.ts` + `_chat-provider.ts` + `router.ts`). The route handler in `apps/api/src/index.ts` parallelizes `classify` + `listDatabasesForTenant`, then speculatively kicks off disambiguate as soon as the DB list returns. SSE prepends a `selected_db` event before `plan_pending`; JSON includes `selected_db` on the `AskOk` envelope. The SDK's `AskRequest['dbId']` is optional; `AskOk.selected_db?` is the echo. Per-attempt LLM timeout 1500 ms (cheap-tier).
+- **Alternatives rejected:** Bare deterministic 409 — UX wall on goal-first chat. LLM pick *without* confidence floor — silent on low-signal goals. LLM pick *without* `selected_db` echo — silent again. Planner-tier LLM — overkill; cheap tier is accurate enough on slug + schema-hash inputs.
+- **Source:** docs/architecture.md §3.6.4 · docs/research-receipts.md §7 · docs/performance.md §2.3
 
 ### SK-ASK-004 — Two distinct validator paths: read/write (LLM-generated) vs DDL (typed-plan compiler) — never mixed
 
@@ -123,7 +123,6 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 
 ## Open questions / known unknowns
 
-- **Schema-match scoring (Phase 2+).** `SK-ASK-003` defers LLM-driven multi-DB disambiguation. Need to decide before Phase 2 whether to ship it at all, and if so what the failure mode is when the LLM picks wrong (silent vs. confirmable).
 - **Streaming protocol for live trace.** `SK-ASK-008` and `GLOBAL-011` require a live trace, but the wire protocol (SSE? chunked JSON? OTel-over-WS?) is not yet pinned. SDK's `onTrace` hook in `packages/sdk` will fix the surface API; the wire format is open.
 - **Failure-mode for partial results.** If `exec` succeeds but `summarize` fails, do we return the rows + a summarize-error envelope, or 5xx the whole call? Design.md doesn't decide. Leaning toward "rows + envelope" so the user sees data, but needs an explicit `SK-ASK-NNN`.
 - **Idempotency on `/v1/ask`.** `GLOBAL-005` says every mutation accepts `Idempotency-Key`. `/v1/ask` is sometimes a query (no mutation), sometimes a write. Confirm whether the dedupe store is consulted for the write branch only or for every call (and what `kind=create` deduping looks like).

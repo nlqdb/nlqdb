@@ -17,6 +17,8 @@ import {
   type CallOpts,
   type ClassifyRequest,
   type ClassifyResponse,
+  type DisambiguateRequest,
+  type DisambiguateResponse,
   type FailoverReason,
   type LLMOperation,
   type PlanRequest,
@@ -44,6 +46,10 @@ export const DEFAULT_TIMEOUTS_MS: Record<LLMOperation, number> = {
   // hard plan call (PERFORMANCE §2.2 stage budgets) rather than the
   // hot-path `plan` op — it runs once per DB, not per query.
   schema_infer: 8000,
+  // dbId disambiguation rides the same cheap-tier budget as `classify`
+  // (SK-ASK-009 / SK-HDC-011) — short prompt, short response, on the
+  // hot path before plan-cache lookup.
+  disambiguate: 1500,
 };
 
 // HTTP statuses that indicate a config bug (bad key, forbidden), not
@@ -88,6 +94,7 @@ export type LLMRouter = {
   plan(req: PlanRequest, opts?: CallOpts): Promise<PlanResponse>;
   summarize(req: SummarizeRequest, opts?: CallOpts): Promise<SummarizeResponse>;
   schemaInfer(req: SchemaInferRequest, opts?: CallOpts): Promise<SchemaInferResponse>;
+  disambiguate(req: DisambiguateRequest, opts?: CallOpts): Promise<DisambiguateResponse>;
 };
 
 export type AttemptRecord = {
@@ -386,6 +393,14 @@ export function createLLMRouter(opts: LLMRouterOptions): LLMRouter {
         "schema_infer",
         req,
         (p, r, o) => p.schemaInfer(r, o),
+        callerOpts,
+      );
+    },
+    disambiguate(req, callerOpts) {
+      return route<DisambiguateRequest, DisambiguateResponse>(
+        "disambiguate",
+        req,
+        (p, r, o) => p.disambiguate(r, o),
         callerOpts,
       );
     },

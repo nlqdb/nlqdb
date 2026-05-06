@@ -9,6 +9,7 @@ import {
 import {
   type CallOpts,
   type ClassifyResponse,
+  type DisambiguateResponse,
   type PlanResponse,
   type Provider,
   ProviderError,
@@ -33,6 +34,7 @@ function fakeProvider(
     plan?: Stub<PlanResponse>;
     summarize?: Stub<SummarizeResponse>;
     schemaInfer?: Stub<SchemaInferResponse>;
+    disambiguate?: Stub<DisambiguateResponse>;
   } = {},
 ): Provider & { calls: { op: string; req: unknown; opts: CallOpts | undefined }[] } {
   const calls: { op: string; req: unknown; opts: CallOpts | undefined }[] = [];
@@ -66,6 +68,15 @@ function fakeProvider(
     async schemaInfer(req, opts) {
       calls.push({ op: "schemaInfer", req, opts });
       return resolve(stubs.schemaInfer, { plan: { provider: name } }, req, opts);
+    },
+    async disambiguate(req, opts) {
+      calls.push({ op: "disambiguate", req, opts });
+      return resolve(
+        stubs.disambiguate,
+        { chosenId: null, confidence: 0, reason: name },
+        req,
+        opts,
+      );
     },
   };
 }

@@ -6,7 +6,7 @@
 
 export type ProviderName = "gemini" | "groq" | "workers-ai" | "openrouter";
 
-export type LLMOperation = "classify" | "plan" | "summarize" | "schema_infer";
+export type LLMOperation = "classify" | "plan" | "summarize" | "schema_infer" | "disambiguate";
 
 // Reasons surfaced on `nlqdb.llm.failover.total{reason}` — bounded set
 // to keep the label cardinality safe (PERFORMANCE §3.3).
@@ -63,6 +63,33 @@ export type SummarizeResponse = { summary: string };
 export type SchemaInferRequest = { goal: string };
 export type SchemaInferResponse = { plan: Record<string, unknown> };
 
+// Multi-DB dbId disambiguation (SK-ASK-009 / SK-HDC-011). Cheap-tier op
+// that picks one of the tenant's existing DBs given a goal, or returns
+// `chosenId: null` if it can't tell. The route handler enforces a
+// `confidence ≥ 0.7` floor on the response — anything below falls back
+// to a `409 candidate_dbs` UI. We deliberately do NOT pass the tenant's
+// row data into the prompt (privacy, and irrelevant to slug-level
+// disambiguation); the schema fingerprint hash is opaque enough that
+// the LLM picks by slug + maybe schema-shape semantics, not contents.
+export type DisambiguateCandidate = {
+  id: string;
+  slug: string;
+  // Schema-plan fingerprint (`schemaHash` in the `databases` row). May
+  // be null for legacy rows that pre-date hashing; the LLM ignores
+  // null entries and picks by slug alone.
+  schemaHash?: string | null;
+};
+export type DisambiguateRequest = {
+  goal: string;
+  candidates: DisambiguateCandidate[];
+};
+export type DisambiguateResponse = {
+  // `null` when the LLM can't pick — surface returns 409 candidate_dbs.
+  chosenId: string | null;
+  confidence: number;
+  reason: string;
+};
+
 // Minimal fetch shape — just the call signature, not the runtime-specific
 // static methods (Bun's typeof globalThis.fetch demands a `preconnect`
 // method). globalThis.fetch satisfies this; tests pass plain functions.
@@ -84,6 +111,7 @@ export type Provider = {
   plan(req: PlanRequest, opts?: CallOpts): Promise<PlanResponse>;
   summarize(req: SummarizeRequest, opts?: CallOpts): Promise<SummarizeResponse>;
   schemaInfer(req: SchemaInferRequest, opts?: CallOpts): Promise<SchemaInferResponse>;
+  disambiguate(req: DisambiguateRequest, opts?: CallOpts): Promise<DisambiguateResponse>;
 };
 
 // Thrown by providers when the upstream call fails. Carries a
