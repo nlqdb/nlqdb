@@ -58,7 +58,7 @@ export function toSummary(row: Row): DatabaseSummaryRow {
 // `db_orders_tracker_a4fxyz` → `orders-tracker-a4fxyz`. dbIds the
 // orchestrator didn't mint (legacy or hand-inserted rows) keep their
 // raw form minus the prefix so the rail still shows something stable.
-function deriveSlug(dbId: string): string {
+export function deriveSlug(dbId: string): string {
   const stripped = dbId.startsWith("db_") ? dbId.slice(3) : dbId;
   return stripped.replace(/_/g, "-");
 }

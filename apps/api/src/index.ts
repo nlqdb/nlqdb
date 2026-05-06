@@ -16,7 +16,7 @@ import { auth, REVOCATION_KEY_PREFIX } from "./auth.ts";
 import { askFnFromDemoFixtures, DEMO_DB_ID } from "./chat/demo-shortcut.ts";
 import { postChatMessage } from "./chat/orchestrate.ts";
 import { makeChatStore } from "./chat/store.ts";
-import { listDatabasesForTenant } from "./databases/list.ts";
+import { deriveSlug, listDatabasesForTenant } from "./databases/list.ts";
 import { parseAskBody, parseGoalDbBody, parseJsonBody } from "./http.ts";
 import { getLLMRouter } from "./llm-router.ts";
 import { makeRequireSession, type RequireSessionVariables } from "./middleware.ts";
@@ -763,6 +763,83 @@ app.get("/v1/databases", requireSession, async (c) => {
   const session = c.var.session;
   const databases = await listDatabasesForTenant(c.env.DB, session.user.id);
   return c.json({ databases });
+});
+
+// `POST /v1/databases` — explicit named-database creation from the
+// left-rail "+ New" affordance in the chat surface. Accepts
+// `{ name?, goal? }` (at least one required); uses the same
+// `orchestrateDbCreate` typed-plan pipeline as the `kind=create`
+// branch of `/v1/ask`. Rate-limit for authed users is enforced
+// inside `orchestrateAsk` via the per-account D1 limiter
+// (SK-HDC-008); anonymous access is not permitted here — the
+// left-rail only renders for authenticated sessions.
+app.post("/v1/databases", requireSession, async (c) => {
+  const tracer = trace.getTracer("@nlqdb/api");
+  return tracer.startActiveSpan("nlqdb.databases.create", async (span) => {
+    const session = c.var.session;
+    span.setAttribute("nlqdb.user.id", session.user.id);
+
+    const raw = await parseJsonBody<{ name?: unknown; goal?: unknown }>(c);
+    if (!raw.ok) {
+      span.end();
+      return c.json({ error: { status: "invalid_json" as const } }, 400);
+    }
+
+    const name =
+      typeof raw.body.name === "string" && raw.body.name.trim().length > 0
+        ? raw.body.name.trim()
+        : undefined;
+    const goal =
+      typeof raw.body.goal === "string" && raw.body.goal.trim().length > 0
+        ? raw.body.goal.trim()
+        : undefined;
+
+    if (!name && !goal) {
+      span.end();
+      return c.json({ error: { status: "goal_required" as const } }, 400);
+    }
+
+    // Same WASM polyfill as the /v1/ask runCreatePath — libpg-query's
+    // Emscripten loader calls `self.location.href` unless __filename
+    // is defined; Workers compat 2026-04-27 defines WorkerGlobalScope
+    // but not self.location for ESM workers with nodejs_compat.
+    const g = globalThis as unknown as { __filename?: string; __dirname?: string };
+    if (typeof g.__filename === "undefined") g.__filename = "worker";
+    if (typeof g.__dirname === "undefined") g.__dirname = "/";
+
+    const { buildDbCreateDeps } = await import("./db-create/build-deps.ts");
+    const { orchestrateDbCreate } = await import("./db-create/orchestrate.ts");
+
+    try {
+      const { deps: createDeps, secretRef } = buildDbCreateDeps(c.env);
+      const result = await orchestrateDbCreate(createDeps, {
+        goal: goal ?? name!,
+        ...(name !== undefined ? { name } : {}),
+        tenantId: session.user.id,
+        secretRef,
+      });
+      if (!result.ok) {
+        span.setAttribute("nlqdb.databases.create.outcome", result.error.kind);
+        span.end();
+        const statusCode = result.error.kind === "provision_failed" ? 500 : 422;
+        return c.json({ error: result.error }, statusCode);
+      }
+      span.setAttribute("nlqdb.databases.create.db_id", result.dbId);
+      span.end();
+      return c.json(
+        {
+          dbId: result.dbId,
+          slug: deriveSlug(result.dbId),
+          pkLive: result.pkLive,
+        },
+        201,
+      );
+    } catch (err) {
+      span.recordException(err as Error);
+      span.end();
+      throw err;
+    }
+  });
 });
 
 app.post("/v1/chat/messages", requireSession, async (c) => {
