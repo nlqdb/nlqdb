@@ -752,8 +752,24 @@ app.get("/api/auth/oauth-init/:provider", async (c) => {
       const innerHeaders: Record<string, string> = { "content-type": "application/json" };
       const cookie = c.req.header("cookie");
       if (cookie) innerHeaders["cookie"] = cookie;
-      const origin = c.req.header("origin");
-      if (origin) innerHeaders["origin"] = origin;
+      // Synthesize an Origin for the inner POST. Browsers don't send
+      // `Origin` on top-level cross-origin GET navigations (the shape
+      // SK-AUTH-015 uses), so the inbound GET typically lacks it
+      // entirely. Better Auth's `originCheckMiddleware` runs on the
+      // inner POST and rejects with `MISSING_OR_NULL_ORIGIN` when
+      // both `origin` and `referer` are absent (origin-check.mjs:103).
+      // Falling back to Better Auth's configured `baseURL` is safe:
+      // this is a server-side wrap (no browser CSRF surface between
+      // our edge and our own auth handler), and `baseURL` is
+      // implicitly added to `trustedOrigins` (context/helpers.mjs:73).
+      // Using `baseURL` rather than `c.req.url` keeps the synthesis
+      // trusted even if the request lands on a non-baseURL host
+      // (e.g. the workers.dev URL exposed by SK-AUTH-014).
+      const baseOrigin =
+        typeof auth.options.baseURL === "string"
+          ? new URL(auth.options.baseURL).origin
+          : new URL(c.req.url).origin;
+      innerHeaders["origin"] = c.req.header("origin") ?? baseOrigin;
 
       const innerReq = new Request(innerUrl.toString(), {
         method: "POST",

@@ -52,4 +52,29 @@ describe("/api/auth/* telemetry wrapper", () => {
     );
     expect(point).toBeDefined();
   });
+
+  // Regression for the SK-AUTH-015 preview-auth bug. Top-level
+  // cross-origin GET navigations (preview → app.nlqdb.com) don't
+  // carry an `Origin` header. The wrapper builds an inner
+  // `POST /sign-in/social` and Better Auth's `originCheckMiddleware`
+  // rejects it with 403 MISSING_OR_NULL_ORIGIN unless the wrapper
+  // synthesizes an Origin trusted by Better Auth. This test omits
+  // the `Origin` header on the inbound GET to assert the synthesis
+  // path; the `Location` assertion proves the inner POST cleared
+  // the CSRF gate and produced a real OAuth redirect.
+  it("/api/auth/oauth-init returns 302 to provider when inbound GET has no Origin", async () => {
+    const callbackURL = "http://localhost:4321/";
+    const res = await SELF.fetch(
+      `https://example.com/api/auth/oauth-init/google?callbackURL=${encodeURIComponent(callbackURL)}`,
+      { redirect: "manual" },
+    );
+    expect(res.status).toBe(302);
+    expect(res.headers.get("location") ?? "").toContain("accounts.google.com");
+
+    const counter = await metric("nlqdb.auth.events.total");
+    const point = counter?.dataPoints.find(
+      (dp) => dp.attributes["type"] === "oauth_init" && dp.attributes["outcome"] === "success",
+    );
+    expect(point).toBeDefined();
+  });
 });
