@@ -40,32 +40,33 @@ const app = new Hono<{
   Variables: RequireSessionVariables & RequirePrincipalVariables;
 }>();
 
-// Cross-subdomain CORS allow-list. Sign-in (`/api/auth/*`), chat
-// (`/v1/chat/*`), and the unified `/v1/ask` are called from
-// `nlqdb.com` (Pages) into `app.nlqdb.com` (Worker). Cookie-session
-// callers ride `credentials: include` so the `.nlqdb.com`-scoped
-// session cookie round-trips; browsers reject `credentials: include`
-// against `origin: *`, so the allow-list is explicit. Anon-bearer
-// callers (Authorization: Bearer anon_*, the marketing hero post-
-// SK-WEB-008) ride the same allow-list — the bearer is read from
-// the request header, not a cookie, but the marketing surfaces are
-// always on the explicit allow-listed origins.
+// CORS allow-list. After the Worksheet-1 merge, the product UI (chat,
+// `/auth/*`, `/app/*`) is served from the same worker as the API on
+// `app.nlqdb.com`, so cookie-session calls on those surfaces are
+// same-origin and never hit this list. CORS still gates two real
+// cross-origin paths:
 //
-// Preview surfaces (SK-AUTH-013): Workers-Versions preview URLs land
-// at `<short-version-id>-nlqdb-web.omer-hochman.workers.dev`; the
-// account-subdomain anchor keeps the regex scoped to our own account.
-// Pages-preview PRs use `pr-<N>.nlqdb-web.pages.dev`.
+//   1. Marketing → API: the homepage hero (`apps/web` on `nlqdb.com`)
+//      calls `/v1/ask` cross-origin with `Authorization: Bearer
+//      anon_*` (no cookie). Listed explicitly so `credentials:
+//      include` clients still get a same-origin shape if they ever
+//      flip on (today they don't).
+//   2. Local dev: Astro on `:4321`, Wrangler on `:8787`.
+//
+// Preview-URL wildcards were removed in Worksheet 1 (the cross-origin
+// preview shapes that motivated `SK-AUTH-013` no longer apply once
+// preview UI + API live in the same worker). Worksheet 3 will add a
+// scoped preview surface for the merged worker if needed.
 //
 // `/v1/demo/*` was retired with /v1/demo/ask (SK-WEB-008). Third-
 // party `<nlq-data>` embeds with `pk_live_` keys are still a
 // separate slice — those land with per-key origin pinning, not a
 // permissive `*` blanket.
 const CORS_ALLOWED_ORIGINS = [
+  "https://app.nlqdb.com",
   "https://nlqdb.com",
   "https://www.nlqdb.com",
   "https://nlqdb-web.pages.dev",
-  /^https:\/\/pr-\d+\.nlqdb-web\.pages\.dev$/,
-  /^https:\/\/[a-f0-9]{8}-nlqdb-web\.omer-hochman\.workers\.dev$/,
   "http://localhost:4321",
   "http://localhost:8787",
 ];
@@ -73,12 +74,7 @@ const CORS_ALLOWED_ORIGINS = [
 const credentialedCors = cors({
   origin: (origin) => {
     if (!origin) return null;
-    for (const allowed of CORS_ALLOWED_ORIGINS) {
-      if (typeof allowed === "string" ? allowed === origin : allowed.test(origin)) {
-        return origin;
-      }
-    }
-    return null;
+    return CORS_ALLOWED_ORIGINS.includes(origin) ? origin : null;
   },
   credentials: true,
   allowHeaders: ["Content-Type", "Authorization", "cf-turnstile-response", "idempotency-key"],
@@ -815,8 +811,15 @@ function toCandidates(
 }
 
 function buildSignInUrl(referer: string | undefined): string {
-  const origin = env.MAGIC_LINK_WEB_ORIGIN ?? "https://nlqdb.com";
-  const url = new URL("/sign-in", origin);
+  // Anchors on the API host (= the merged origin) so the redirect
+  // lands the user on the same-origin sign-in page where the new
+  // host-only `__Secure-…session` cookie can be set. Falls back to
+  // `auth.options.baseURL` so dev (`http://localhost:8787`) keeps
+  // working without an env override.
+  const origin =
+    env.MAGIC_LINK_WEB_ORIGIN ??
+    (typeof auth.options.baseURL === "string" ? auth.options.baseURL : "https://app.nlqdb.com");
+  const url = new URL("/auth/sign-in", origin);
   if (referer) {
     try {
       const refUrl = new URL(referer);

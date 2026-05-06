@@ -1,13 +1,15 @@
-// Browser-side session probe for the marketing surfaces. Better
-// Auth exposes `GET /api/auth/get-session` which returns the
-// session+user when the cookie is present and valid, and a body
-// of `null` (or empty) when not. The session cookie is HttpOnly
-// (SK-WEB-006), so this network round-trip is the only way the
-// static marketing pages can detect "is this visitor signed in?".
+// Browser-side session probe. Post-Worksheet-1, the product UI
+// (`/app/*`, `/auth/*`) is served same-origin with the API on
+// `app.nlqdb.com`, so this fetch is same-origin and the host-only
+// `__Secure-…session` cookie rides automatically. Default `apiBase`
+// is `""` so callers on `app.nlqdb.com` resolve `/api/auth/get-session`
+// against the current origin without any cross-origin cookie work.
 //
-// Used by Topnav.astro and the home page banner to flip into the
-// authed UX (Open chat / Sign out) without ever showing a "Sign
-// in" affordance the user can no longer use.
+// The marketing surface on `nlqdb.com` no longer probes — it can't
+// see the host-only product cookie cross-origin, and showing a stale
+// "Sign in" link to authed visitors is preferable to a flicker. See
+// `apps/web/src/components/Topnav.astro` for the marketing-side
+// rationale.
 
 export type SessionUser = {
   id: string;
@@ -22,7 +24,11 @@ export function readApiBase(): string {
     typeof import.meta !== "undefined" && import.meta.env
       ? (import.meta.env["PUBLIC_API_BASE"] as string | undefined)
       : undefined;
-  return fromEnv ?? "https://app.nlqdb.com";
+  // Empty string = same origin. Build-time override via
+  // `PUBLIC_API_BASE` is only used when the marketing site
+  // deliberately wants to point a hero / form at a non-default API
+  // host (none today).
+  return fromEnv ?? "";
 }
 
 export function fetchSession(apiBase = readApiBase()): Promise<SessionUser | null> {

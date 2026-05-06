@@ -3,32 +3,30 @@
 // whole chat surface — `/app` lands here without a DB selected
 // (the left rail prompts to pick one), `/app?db=<dbId>` deep-
 // links into a specific conversation. The DB id rides a query
-// param rather than a path segment because `apps/web` is a
-// static-output Astro site (no SSR adapter); a static build
-// can't pre-render `[dbId].astro` for unknown ids without an
-// adapter or wholesale SPA fallback.
+// param rather than a path segment because the build is static
+// (no SSR adapter); a static build can't pre-render `[dbId].astro`
+// for unknown ids without an adapter or wholesale SPA fallback.
 //
 // `selectDb` in ChatPanel updates the query string via
 // `history.pushState` so refresh + back/forward both round-trip
-// the active DB without a server hop. Auth is the cross-
-// subdomain `__Secure-session` cookie (SK-WEB-006).
+// the active DB without a server hop. Auth is the host-only
+// `__Secure-…session` cookie issued by Better Auth on
+// `app.nlqdb.com` (post-Worksheet-1: the chat surface is served
+// from the same worker as the API, so the probe and every API
+// call below are same-origin).
 //
 // Auth guard: a pre-render probe to `/api/auth/get-session`
 // redirects unauthenticated visitors to `/auth/sign-in` instead
 // of letting them sit on a chat shell whose every API call 401s.
-// The guard is what stops the post-OAuth redirect from landing on
-// a "signed in but every request fails" state when the browser
-// can't deliver the session cookie (e.g. SameSite=Lax blocking
-// the cross-eTLD+1 fetch on Workers-Versions previews per
-// SK-AUTH-013/SK-AUTH-015 — same symptom the user would see if
-// the cookie genuinely expired).
 
 import ChatPanel from "../../components/chat/ChatPanel.tsx";
 import Footer from "../../components/Footer.astro";
 import Topnav from "../../components/Topnav.astro";
 import Base from "../../layouts/Base.astro";
 
-const apiBase = import.meta.env.PUBLIC_API_BASE ?? "https://app.nlqdb.com";
+// Same-origin default; relative URLs resolve against the current
+// host (`app.nlqdb.com` in production, `:8787` in `wrangler dev`).
+const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
 ---
 <Base
   title="Chat — nlqdb"

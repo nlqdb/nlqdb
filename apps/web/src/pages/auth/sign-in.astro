@@ -2,15 +2,20 @@
 // Sign-in page (SK-AUTH-002 — magic link, GitHub OAuth, Google OAuth;
 // no passwords). Static Astro page with a bundled-script island.
 //
-// All three methods POST cross-subdomain to app.nlqdb.com:
+// Post-Worksheet-1 the sign-in page is served from the same worker
+// that serves the API at `app.nlqdb.com` (Workers Static Assets
+// `[assets]` binding in `apps/api/wrangler.toml`). All three sign-in
+// methods POST same-origin:
 //   - Magic link: POST /api/auth/sign-in/magic-link { email, callbackURL }
 //     → 200 swaps the form for "Check your inbox."
-//   - GitHub / Google: POST /api/auth/sign-in/social { provider, callbackURL }
-//     → 200 { url } → top-level navigate to provider.
+//   - GitHub / Google: GET /api/auth/oauth-init/:provider?callbackURL=…
+//     → 302 to the IdP. Top-level navigation, not a fetch (kept from
+//     `SK-AUTH-015` so dev `localhost` and any future cross-origin
+//     entry points still work).
 //
-// The session cookie set by Better Auth is `__Secure-session` with
-// Domain=nlqdb.com (SK-WEB-006), so the cookie scoped at app.nlqdb.com
-// is also visible on nlqdb.com.
+// The session cookie is `__Secure-…session` host-only on
+// `app.nlqdb.com` (no `Domain=` attribute) — the cross-subdomain
+// shape from the pre-merge `SK-WEB-006` is no longer in play.
 //
 // Brand chrome on OAuth buttons was reviewed against
 // https://developers.google.com/identity/branding-guidelines
@@ -20,7 +25,10 @@
 
 import Base from "../../layouts/Base.astro";
 
-const apiBase = import.meta.env.PUBLIC_API_BASE ?? "https://app.nlqdb.com";
+// Empty string = same origin. `PUBLIC_API_BASE` build-time override
+// is retained for any future split, but production resolves all auth
+// calls against the current origin.
+const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
 ---
 <Base
   title="Sign in — nlqdb"

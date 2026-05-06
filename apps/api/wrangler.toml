@@ -67,6 +67,33 @@ queue = "nlqdb-events"
 binding = "ASSETS"
 bucket_name = "nlqdb-assets"
 
+# Workers Static Assets (Worksheet 1 — single-origin app.nlqdb.com).
+# Serves the Astro build from `apps/web/dist` so `/auth/sign-in`,
+# `/auth/continue`, `/app`, `/app/new`, etc. land same-origin with the
+# API. The runtime tries asset routes first; on miss, the request falls
+# through to Hono in `src/index.ts` (so `/api/auth/*` and `/v1/*` keep
+# working unchanged). No code change in `src/index.ts` is required to
+# wire the priority ordering — the platform handles it.
+#
+# `directory` points at the existing `apps/web/dist` output: the
+# marketing site and the product UI build from the same Astro project
+# and ship together (deliberately simple — splitting the build into
+# two configs is deferred until we have a concrete need to disjoin the
+# two surfaces).
+#
+# Binding name `STATIC_ASSETS` chosen to avoid colliding with the R2
+# `ASSETS` binding above. The runtime exposes a `fetch()` Service-style
+# handle on this binding for cases where we ever need to forward to
+# the static resolver from inside a route — unused today.
+#
+# CI consequence: `deploy-api.yml` MUST build `apps/web` before
+# `wrangler deploy`, otherwise the directory is missing and the deploy
+# fails. See `.github/workflows/deploy-api.yml` for the sequencing.
+[assets]
+directory = "../web/dist"
+binding = "STATIC_ASSETS"
+not_found_handling = "404-page"
+
 # `custom_domain = true` (vs `pattern + zone_name`) gives the worker
 # exclusive ownership of `app.nlqdb.com` and lets wrangler create the
 # DNS record + provision the cert on first deploy. OAuth callbacks in

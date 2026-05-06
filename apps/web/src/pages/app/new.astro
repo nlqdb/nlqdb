@@ -8,15 +8,16 @@
 // links / docs / CLI prompts can target a stable URL even if the
 // homepage layout changes.
 //
-// `app.nlqdb.com` host migration (SK-WEB-006) lands later — same
-// component, different host. No code change required at that point.
+// Post-Worksheet-1 this page is served from `app.nlqdb.com` (same
+// origin as the API), so `apiBase` defaults to `""` and `/v1/ask`
+// resolves same-origin.
 
 import CreateForm from "../../components/CreateForm.tsx";
 import Footer from "../../components/Footer.astro";
 import Topnav from "../../components/Topnav.astro";
 import Base from "../../layouts/Base.astro";
 
-const apiBase = import.meta.env.PUBLIC_API_BASE ?? "https://app.nlqdb.com";
+const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
 ---
 <Base
   title="Create a database — nlqdb"
