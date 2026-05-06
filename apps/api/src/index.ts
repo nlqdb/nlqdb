@@ -40,6 +40,26 @@ const app = new Hono<{
   Variables: RequireSessionVariables & RequirePrincipalVariables;
 }>();
 
+// Triage instrumentation — log full stack on any uncaught error so
+// `wrangler tail` shows the origin of opaque crashes (e.g. the
+// "Cannot read properties of undefined (reading 'href')" 500 we're
+// chasing). Hono's default handler `console.error(err)` truncates to
+// the message in JSON tail format. Remove once that bug is closed.
+app.onError((err, c) => {
+  const e = err as Error;
+  console.error(
+    JSON.stringify({
+      msg: "unhandled_error",
+      name: e?.name,
+      message: e?.message,
+      stack: e?.stack,
+      path: c.req.path,
+      method: c.req.method,
+    }),
+  );
+  return c.text("Internal Server Error", 500);
+});
+
 // Cross-subdomain CORS allow-list. Sign-in (`/api/auth/*`), chat
 // (`/v1/chat/*`), and the unified `/v1/ask` are called from
 // `nlqdb.com` (Pages) into `app.nlqdb.com` (Worker). Cookie-session
@@ -341,6 +361,20 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
       // Dynamic import defers libpg-query's WASM initialization to
       // the first create request — see commit 1a body for the
       // rationale.
+      //
+      // libpg-query@17.x ships an Emscripten-generated WASM loader
+      // that does `_scriptName = self.location.href` when both
+      // `__filename` is undefined and `WorkerGlobalScope` is defined.
+      // Cloudflare Workers (compat 2026-04-27) defines
+      // `WorkerGlobalScope` but not `self.location` for ESM workers
+      // with `nodejs_compat`, so the load throws
+      // `TypeError: Cannot read properties of undefined (reading 'href')`
+      // before any of our code runs. Polyfilling `globalThis.__filename`
+      // makes the loader take the Node.js branch instead, which the
+      // `nodejs_compat` shim handles correctly.
+      const g = globalThis as unknown as { __filename?: string; __dirname?: string };
+      if (typeof g.__filename === "undefined") g.__filename = "worker";
+      if (typeof g.__dirname === "undefined") g.__dirname = "/";
       const { buildDbCreateDeps } = await import("./db-create/build-deps.ts");
       const { orchestrateDbCreate } = await import("./db-create/orchestrate.ts");
       try {
