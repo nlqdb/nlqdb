@@ -50,10 +50,59 @@ type Message =
 
 const PIPELINE_STEPS: TraceStepName[] = ["cache_lookup", "plan", "validate", "exec", "summarize"];
 
+const PAGE_SIZE = 20;
+const HIST_MAX = 50;
+
+function histKey(dbId: string) {
+  return `nlq_hist_${dbId}`;
+}
+
+function loadHistory(dbId: string): Message[] {
+  if (typeof localStorage === "undefined") return [];
+  try {
+    const raw = localStorage.getItem(histKey(dbId));
+    if (!raw) return [];
+    const parsed = JSON.parse(raw) as Message[];
+    return parsed.map((m): Message => {
+      if (m.role === "user") return m;
+      const { state } = m.reply;
+      if (state.kind === "pending" || state.kind === "needs-confirm") {
+        return { ...m, reply: { ...m.reply, state: { kind: "error", message: "Session ended." } } };
+      }
+      return m;
+    });
+  } catch {
+    return [];
+  }
+}
+
+function saveHistory(dbId: string, messages: Message[]): void {
+  if (typeof localStorage === "undefined") return;
+  try {
+    const compact = messages.slice(-HIST_MAX).map((m): Message => {
+      if (m.role === "user") return m;
+      const { reply } = m;
+      if (reply.state.kind !== "ok") return { ...m, reply: { ...reply, steps: [] } };
+      return {
+        ...m,
+        reply: {
+          ...reply,
+          steps: [],
+          state: { kind: "ok", ok: { ...reply.state.ok, rows: [] } },
+        },
+      };
+    });
+    localStorage.setItem(histKey(dbId), JSON.stringify(compact));
+  } catch {
+    // localStorage full or unavailable — degrade silently
+  }
+}
+
 export default function ChatPanel({ apiBase }: ChatPanelProps) {
   const [activeDb, setActiveDb] = useState<DatabaseSummary | null>(null);
   const [activeDbId, setActiveDbId] = useState<string | null>(() => readDbIdFromUrl());
   const [messages, setMessages] = useState<Message[]>([]);
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const [composer, setComposer] = useState("");
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [tracesOpen, setTracesOpen] = useState(false);
@@ -61,6 +110,7 @@ export default function ChatPanel({ apiBase }: ChatPanelProps) {
   const pendingDiffRef = useRef<{ replyId: string; goal: string } | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const composerRef = useRef<HTMLInputElement>(null);
+  const loadedForRef = useRef<string | null>(null);
 
   // Focus the composer once on mount so the user lands ready to
   // type. Imperative — `autoFocus` trips a11y rules that don't
@@ -97,6 +147,29 @@ export default function ChatPanel({ apiBase }: ChatPanelProps) {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [messages.length]);
+
+  // Load per-DB history from localStorage whenever the active DB changes
+  // (including the initial URL-driven mount). Guard with loadedForRef so
+  // switching back to an already-loaded DB doesn't clobber live messages.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: setMessages/setVisibleCount are stable
+  useEffect(() => {
+    if (!activeDbId || loadedForRef.current === activeDbId) return;
+    loadedForRef.current = activeDbId;
+    setMessages(loadHistory(activeDbId));
+    setVisibleCount(PAGE_SIZE);
+  }, [activeDbId]);
+
+  // Persist settled messages to localStorage after each completed exchange.
+  // Rows are stripped before writing (saveHistory) to cap storage usage.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: intentional — save on any message change
+  useEffect(() => {
+    if (!activeDbId || messages.length === 0) return;
+    const hasInFlight = messages.some(
+      (m) => m.role === "assistant" && m.reply.state.kind === "pending",
+    );
+    if (hasInFlight) return;
+    saveHistory(activeDbId, messages);
+  }, [messages, activeDbId]);
 
   const updateReply = useCallback((id: string, mut: (reply: Reply) => Reply) => {
     setMessages((prev) =>
@@ -218,7 +291,7 @@ export default function ChatPanel({ apiBase }: ChatPanelProps) {
     setActiveDb(db);
     setActiveDbId(db.id);
     pendingDiffRef.current = null;
-    setMessages([]);
+    // History loading and visibleCount reset happen in the activeDbId effect above.
     if (typeof window !== "undefined") {
       const url = new URL(window.location.href);
       url.searchParams.set("db", db.id);
@@ -280,6 +353,8 @@ export default function ChatPanel({ apiBase }: ChatPanelProps) {
   );
 
   const composerDisabled = !activeDbId;
+  const visibleMessages = messages.slice(-visibleCount);
+  const hasOlder = messages.length > visibleCount;
 
   return (
     <div className="chat-shell">
@@ -304,7 +379,18 @@ export default function ChatPanel({ apiBase }: ChatPanelProps) {
         </header>
 
         <ol className="chat-list" aria-live="polite">
-          {messages.map((msg) =>
+          {hasOlder && (
+            <li className="chat-list__load-more">
+              <button
+                type="button"
+                className="chat-list__load-more-btn"
+                onClick={() => setVisibleCount((c) => c + PAGE_SIZE)}
+              >
+                Load earlier messages
+              </button>
+            </li>
+          )}
+          {visibleMessages.map((msg) =>
             msg.role === "user" ? (
               <li key={msg.id} className="chat-list__user">
                 <span className="chat-list__user-label">you</span>
