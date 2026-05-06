@@ -12,7 +12,7 @@ when-to-load:
 **One-liner:** Stripe webhook ingest, subscription state, idempotent processing, R2 archive.
 **Status:** implemented (Slice 7 — PR #33; live-mode flip in Phase 2)
 **Owners (code):** `apps/api/src/stripe/**`, `apps/api/src/index.ts`, `POST /v1/stripe/webhook`
-**Cross-refs:** docs/architecture.md §6 (pricing) · docs/architecture.md §10 §5 (Phase 2 stripe slice) · docs/runbook.md §6 (webhook + R2 archive) · `apps/api/src/stripe/webhook.ts` (canonical pipeline doc-comment)
+**Cross-refs:** docs/architecture.md §6 (pricing) · docs/architecture.md §10 §5 (Phase 2 stripe slice) · docs/runbook.md §6 (webhook + R2 archive) · docs/performance.md §3.1 (`nlqdb.webhook.stripe` span) · §4 Slice 7 (instrumentation contract — `billing.subscription_created` / `billing.subscription_canceled` map 1:1; no `trial.*`) · §5 (100 % trace sampling on Stripe webhook) · `apps/api/src/stripe/webhook.ts` (canonical pipeline doc-comment)
 
 ## Touchpoints — read this skill before editing
 
