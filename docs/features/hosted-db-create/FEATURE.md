@@ -159,7 +159,7 @@ when-to-load:
   - LLM pick *without* confidence floor — re-introduces SK-HDC-005's silent-wrong-pick worry on low-signal goals (e.g. "hello", "show me everything").
   - LLM pick *without* the `selected_db` echo — silent again. The echo is what turns a wrong pick from "data corruption" into "one-click correction."
   - Planner-tier LLM (Gemini 2.5 / OpenRouter Sonnet) for disambiguation — overkill; the cheap tier is accurate enough on slug + schema-hash inputs at 1500 ms.
-- **Source:** docs/architecture.md §3.6.4 · docs/research-receipts.md §7 (lesson reframed: deterministic-by-default still applies, *plus* a confidence-gated LLM with visible echo + cheap recovery)
+- **Source:** docs/architecture.md §3.6.4 · docs/research-receipts.md §7 (lesson reframed: deterministic-by-default still applies, *plus* a confidence-gated LLM with visible echo + cheap recovery) · docs/performance.md §2.3 (dbId-resolution prelude budget)
 
 ## GLOBALs governing this feature
 

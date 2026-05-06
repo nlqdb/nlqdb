@@ -369,15 +369,32 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
     };
 
     if (!parsed.body.dbId) {
-      // Goal-kind classifier (SK-HDC-001 + SK-ASK-001). Cheap LLM tier
-      // with full provider-chain failover; all providers failing → 502.
-      let classification: Awaited<ReturnType<typeof classifyKind>>;
-      try {
-        classification = await classifyKind(getLLMRouter(), parsed.body.goal);
-      } catch {
+      // SK-ASK-009 perf budget (PERFORMANCE §2.5): kick off the
+      // classifier (cheap-tier LLM) and the tenant DB list read in
+      // parallel — they're independent. The list read is wasted on
+      // `kind=create` (we discard `tenantDbs`), but the marginal cost
+      // is one D1 read (~10/30ms p50/p99) vs. the ~100/400ms classify
+      // call we'd otherwise wait on serially. Promise.allSettled lets
+      // us surface the right error: classifier failure → 502, list
+      // failure → falls through to "0 dbs → create" because the user
+      // didn't cause it and create is a safe default.
+      const [classificationSettled, tenantDbsSettled] = await Promise.allSettled([
+        classifyKind(getLLMRouter(), parsed.body.goal),
+        listDatabasesForTenant(c.env.DB, principal.id),
+      ]);
+      if (classificationSettled.status === "rejected") {
         span.setAttribute("nlqdb.ask.outcome", "classifier_failed");
         span.end();
         return c.json({ error: { status: "llm_failed" as const } }, 502);
+      }
+      const classification = classificationSettled.value;
+      // List failure → empty list. The tenantDbs.length === 0 branch
+      // below treats this as "0 dbs → CREATE", which is the safe
+      // default for a fresh-touch tenant. A real outage shows up on
+      // the create path's own spans (db.query / db.transaction).
+      const tenantDbs = tenantDbsSettled.status === "fulfilled" ? tenantDbsSettled.value : [];
+      if (tenantDbsSettled.status === "rejected") {
+        span.setAttribute("nlqdb.ask.tenant_db_list_failed", true);
       }
       span.setAttribute("nlqdb.ask.kind", classification.kind);
       span.setAttribute("nlqdb.ask.kind_reason", classification.reason);
@@ -387,9 +404,7 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
       }
 
       // kind=query|write without dbId — SK-ASK-009 / SK-HDC-011 path.
-      // Read the tenant's DB list and route deterministically (0 / 1)
-      // or via LLM disambiguator (2+).
-      const tenantDbs = await listDatabasesForTenant(c.env.DB, principal.id);
+      // tenantDbs already in hand from the parallel fetch above.
       span.setAttribute("nlqdb.ask.tenant_db_count", tenantDbs.length);
 
       if (tenantDbs.length === 0) {

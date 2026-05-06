@@ -59,7 +59,7 @@ when-to-load:
   - LLM pick *without* the confidence floor — re-introduces SK-ASK-003's silent-wrong-pick worry on low-signal goals (e.g. "hello", "show me everything").
   - LLM pick *without* the `selected_db` echo — silent again. The echo is what turns a wrong pick from "data corruption" into "one-click correction."
   - Use the planner-tier LLM (Gemini 2.5 / OpenRouter Sonnet) for disambiguation — overkill; the cheap tier is accurate enough on slug + schema-hash inputs and 1500 ms is the budget we have on the hot path before plan-cache lookup.
-- **Source:** docs/architecture.md §3.6.4 · docs/research-receipts.md §7 (lesson reframed: deterministic-by-default still applies, *plus* a confidence-gated LLM with visible echo + cheap recovery is the operational shape we run)
+- **Source:** docs/architecture.md §3.6.4 · docs/research-receipts.md §7 (lesson reframed: deterministic-by-default still applies, *plus* a confidence-gated LLM with visible echo + cheap recovery is the operational shape we run) · docs/performance.md §2.3 (dbId-resolution prelude budget)
 
 ### SK-ASK-004 — Two distinct validator paths: read/write (LLM-generated) vs DDL (typed-plan compiler) — never mixed
 

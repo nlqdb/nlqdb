@@ -84,7 +84,41 @@ above a threshold (default 5) or when the intent classifier flagged
 the query as conversational. Most fact-lookup queries return raw rows
 and skip stage 10 entirely.
 
-### 2.3 `GET /api/auth/callback/github`
+### 2.3 `POST /v1/ask` — `dbId` resolution prelude (cache-miss path only)
+
+`SK-ASK-009` / `SK-HDC-011`. Runs **only** when the request omits
+`dbId`. The classifier and the tenant DB list read fire in parallel
+(`Promise.allSettled` in `apps/api/src/index.ts`); on a `kind=create`
+or 0/1-DB outcome the disambiguator is skipped entirely. The 2+
+DB branch is the worst case below.
+
+| #  | Stage                                                              | p50    | p99    |
+| :- | :----------------------------------------------------------------- | :----- | :----- |
+| 1  | LLM **classify** (cheap-tier; parallel with #2)                    | 100 ms | 400 ms |
+| 2  | `listDatabasesForTenant` (D1 read; parallel with #1)               | 10 ms  | 30 ms  |
+| 3  | LLM **disambiguate** (cheap-tier; runs only when ≥ 2 DBs)          | 100 ms | 400 ms |
+|    | **Total prelude (1 DB / auto-target)**                              | **100 ms** | **400 ms** |
+|    | **Total prelude (2+ DBs, LLM auto-target)**                        | **200 ms** | **800 ms** |
+
+The 2+ DB prelude adds onto the §2.2 cache-miss budget, which still
+fits the 1.5s p50 / 3.5s p99 SLO with the existing 367 ms / 320 ms
+headroom: 1133 + 200 = **1333 ms p50** (167 ms headroom remaining);
+3180 + 800 = **3980 ms p99** — 480 ms over the p99 SLO. The p99
+breach is acceptable for the dbId-absent worst case because: (a) it
+only fires when the user *omits* dbId on a 2+ DB tenant + cache miss
++ summarize-eligible response — three-way intersection that's a
+small fraction of total `/v1/ask` traffic; (b) the alternative under
+the prior `SK-ASK-003` rule was a `409` round-trip costing the user
+an entire human-perceptible re-send latency. Operational watch:
+when the dashboards land, alert if `disambiguate` p99 trends above
+500 ms or if the dbId-absent path's share of total traffic exceeds
+20% (signals a UX regression — most sends should auto-resolve from
+prior context).
+
+Below the 0.7 confidence floor the request returns `409 ambiguous_db`
+with `candidate_dbs` (mid-prelude); stages #4–12 from §2.2 don't run.
+
+### 2.4 `GET /api/auth/callback/github`
 
 | Stage                                  | p50    | p99    |
 | :------------------------------------- | :----- | :----- |
@@ -95,23 +129,26 @@ and skip stage 10 entirely.
 | Cookie set + 302                       | 5 ms   | 30 ms  |
 | **Total**                              | **180 ms** | **900 ms** |
 
-### 2.4 Provider-side latencies (reference numbers)
+### 2.5 Provider-side latencies (reference numbers)
 
 | Provider                     | Operation         | p50    | p99    | Notes                            |
 | :--------------------------- | :---------------- | :----- | :----- | :------------------------------- |
 | Cloudflare Workers AI        | classify (Llama)  | 80 ms  | 300 ms | Same-region edge — fastest.      |
 | Cloudflare Workers AI        | plan              | 500 ms | 1200 ms | Heavier model.                  |
+| Cloudflare Workers AI        | disambiguate      | 80 ms  | 300 ms | Same model as classify; SK-ASK-009. |
 | Gemini 2.0 Flash             | classify          | 150 ms | 500 ms |                                  |
 | Gemini 2.0 Flash             | plan              | 700 ms | 1800 ms |                                  |
+| Groq (Llama 3.1 8B Instant)  | classify / disambiguate | 100 ms | 400 ms | Cheap-tier hot path; chain default. |
 | Groq (Llama 3.1 70B)         | plan              | 400 ms | 1000 ms | Fastest paid.                    |
 | OpenRouter (fallback)        | plan              | 1000 ms| 3000 ms | Used only on multi-provider failover. |
 | Neon HTTP (us-east-1)        | SELECT (warm)     | 80 ms  | 300 ms | Cold pool can spike to 1 s.      |
+| Cloudflare D1 (read, warm)   | SELECT            | 10 ms  | 30 ms  | listDatabasesForTenant prelude.  |
 | Cloudflare KV (read, hot)    | get               | 5 ms   | 15 ms  |                                  |
 | Cloudflare KV (write)        | put               | 5 ms   | 25 ms  |                                  |
 
 These are *measured-then-budgeted* numbers — when a slice lands its
 instrumentation, the dashboards (§6) will show actual p50/p99 per
-provider, and §2.4 gets updated with real values.
+provider, and §2.5 gets updated with real values.
 
 ---
 
@@ -276,7 +313,7 @@ Alerts (provisioned alongside dashboards):
   measurement that motivated the change.
 - **New routes** add a row to §1 (SLO) AND §2 (budget) AND §4
   (instrumentation hooks) in the same PR.
-- **New providers / engines** add to §2.4 (provider numbers) and
+- **New providers / engines** add to §2.5 (provider numbers) and
   §3.3 (label values). Backfill measurements within a week of landing.
 - **New metrics / labels** require a cardinality estimate in the PR
   description; the CI cardinality assertion catches the rest.
