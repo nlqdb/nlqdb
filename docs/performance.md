@@ -68,55 +68,55 @@ The cold path. LLM dominates; everything else has to stay tight.
 | 3  | Rate-limit check (KV)                         | 5 ms   | 15 ms  |
 | 4  | Schema/query hash                             | 1 ms   | 5 ms   |
 | 5  | Plan-cache lookup (KV, **miss**)              | 5 ms   | 15 ms  |
-| 6  | LLM **classify** (intent: data_query / meta)  | 100 ms | 400 ms |
-| 7  | LLM **plan** (NL → SQL)                       | 600 ms | 1500 ms |
-| 8  | SQL parse + schema-fit validate               | 5 ms   | 20 ms  |
-| 9  | Neon DB execute                               | 100 ms | 350 ms |
-| 10 | LLM **summarize** (conditional — see below)   | 300 ms | 800 ms |
-| 11 | Plan-cache write (KV)                         | 5 ms   | 20 ms  |
-| 12 | Response serialize + egress                   | 5 ms   | 20 ms  |
-|    | **Total (with summarize)**                    | **1133 ms** | **3180 ms** |
-|    | **Total (no summarize)**                      | **833 ms**  | **2380 ms** |
-|    | Headroom vs SLO                               | 367 ms / 667 ms | 320 ms / 1120 ms |
+| 6  | LLM **plan** (NL → SQL)                       | 600 ms | 1500 ms |
+| 7  | SQL parse + schema-fit validate               | 5 ms   | 20 ms  |
+| 8  | Neon DB execute                               | 100 ms | 350 ms |
+| 9  | LLM **summarize** (conditional — see below)   | 300 ms | 800 ms |
+| 10 | Plan-cache write (KV)                         | 5 ms   | 20 ms  |
+| 11 | Response serialize + egress                   | 5 ms   | 20 ms  |
+|    | **Total (with summarize)**                    | **1033 ms** | **2780 ms** |
+|    | **Total (no summarize)**                      | **733 ms**  | **1980 ms** |
+|    | Headroom vs SLO                               | 467 ms / 767 ms | 720 ms / 1520 ms |
+
+The `kind` classifier (`apps/api/src/ask/classifier.ts`) runs **only**
+when `dbId` is absent — see §2.3 for that prelude. Pinned-dbId calls
+skip it entirely.
 
 **Summarize is conditional** — only runs when the result row count is
 above a threshold (default 5) or when the intent classifier flagged
 the query as conversational. Most fact-lookup queries return raw rows
 and skip stage 10 entirely.
 
-### 2.3 `POST /v1/ask` — `dbId` resolution prelude (cache-miss path only)
+### 2.3 `POST /v1/ask` — `dbId` resolution prelude (dbId omitted)
 
-`SK-ASK-009` / `SK-HDC-011`. Runs **only** when the request omits
-`dbId`. The classifier and the tenant DB list read fire in parallel
-(`Promise.allSettled` in `apps/api/src/index.ts`); on a `kind=create`
-or 0/1-DB outcome the disambiguator is skipped entirely. The 2+
-DB branch is the worst case below.
+`SK-ASK-003` / `SK-HDC-005`. Runs **only** when the request omits
+`dbId`. Classifier + tenant DB list fire in parallel; the
+disambiguator kicks off speculatively the moment the DB list lands,
+overlapping with the still-running classify call. `disambiguateDb`
+itself layers slug-substring fast-path → KV cache → LLM, so most
+multi-DB sends never spend a full LLM round-trip here.
 
-| #  | Stage                                                              | p50    | p99    |
-| :- | :----------------------------------------------------------------- | :----- | :----- |
-| 1  | LLM **classify** (cheap-tier; parallel with #2)                    | 100 ms | 400 ms |
-| 2  | `listDatabasesForTenant` (D1 read; parallel with #1)               | 10 ms  | 30 ms  |
-| 3  | LLM **disambiguate** (cheap-tier; runs only when ≥ 2 DBs)          | 100 ms | 400 ms |
-|    | **Total prelude (1 DB / auto-target)**                              | **100 ms** | **400 ms** |
-|    | **Total prelude (2+ DBs, LLM auto-target)**                        | **200 ms** | **800 ms** |
+| Path                                                                 | p50    | p99    |
+| :------------------------------------------------------------------- | :----- | :----- |
+| 0 dbs / 1 db (no disambiguator runs)                                 | 100 ms | 400 ms |
+| 2+ dbs, slug-substring match (no LLM, no KV)                         | 100 ms | 400 ms |
+| 2+ dbs, KV cache hit                                                 | 100 ms | 400 ms |
+| 2+ dbs, full LLM disambiguate (worst case; speculative parallelism)  | 115 ms | 445 ms |
 
-The 2+ DB prelude adds onto the §2.2 cache-miss budget, which still
-fits the 1.5s p50 / 3.5s p99 SLO with the existing 367 ms / 320 ms
-headroom: 1133 + 200 = **1333 ms p50** (167 ms headroom remaining);
-3180 + 800 = **3980 ms p99** — 480 ms over the p99 SLO. The p99
-breach is acceptable for the dbId-absent worst case because: (a) it
-only fires when the user *omits* dbId on a 2+ DB tenant + cache miss
-+ summarize-eligible response — three-way intersection that's a
-small fraction of total `/v1/ask` traffic; (b) the alternative under
-the prior `SK-ASK-003` rule was a `409` round-trip costing the user
-an entire human-perceptible re-send latency. Operational watch:
-when the dashboards land, alert if `disambiguate` p99 trends above
-500 ms or if the dbId-absent path's share of total traffic exceeds
-20% (signals a UX regression — most sends should auto-resolve from
-prior context).
+The classify call is on the critical path of every dbId-absent
+send (~100/400 ms p50/p99); speculative parallelism collapses the
+disambiguator's latency into classify's tail unless slug+cache both
+miss. Worst case adds 115/445 ms onto the §2.2 cache-miss budget:
+**1148 ms p50 / 3225 ms p99** with summarize, **848 ms p50 / 2425
+ms p99** without — both inside the 1.5s / 3.5s SLO with 352 / 275
+ms p99 headroom on the worst path.
 
-Below the 0.7 confidence floor the request returns `409 ambiguous_db`
-with `candidate_dbs` (mid-prelude); stages #4–12 from §2.2 don't run.
+Operational guardrails:
+- Disambiguator timeout 1500 ms (cheap-tier, `DEFAULT_TIMEOUTS_MS`).
+- KV cache TTL 7 days, keyed by `(tenantId, goalHash, dbsetHash)`.
+- Span `llm.disambiguate` per LLM attempt; `nlqdb.ask.dbid_resolution`
+  attribute records which fast-path won (`slug_fastpath` /
+  `single_db_auto` / `llm_auto_target` / `ambiguous_409`).
 
 ### 2.4 `GET /api/auth/callback/github`
 

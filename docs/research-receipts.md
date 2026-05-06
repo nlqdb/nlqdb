@@ -215,8 +215,8 @@ percentage points of accuracy; clarification recovers most of it
 agent + key-scoped surfaces (HTML / CLI / MCP). On REST + the chat
 surface a cheap-tier LLM picks among 2+ candidates with a confidence
 floor (`≥ 0.7`), a visible `selected_db` echo, and a `409
-candidate_dbs` fallback below threshold (`SK-ASK-009` /
-`SK-HDC-011`).
+candidate_dbs` fallback below threshold (`SK-ASK-003` /
+`SK-HDC-005`).
 
 | Surface | Resolution rule |
 |---|---|

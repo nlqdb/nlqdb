@@ -227,7 +227,7 @@ goal → classifier (cheap tier)
 
 #### 3.6.4 Per-surface dbId resolution
 
-`dbId` is fully optional in `/v1/ask`. Resolution is per-surface; on REST and the chat surface a cheap-tier LLM picks among 2+ candidates with a confidence floor (`SK-ASK-009` / `SK-HDC-011`). CLI / MCP stay deterministic.
+`dbId` is fully optional in `/v1/ask`. Resolution is per-surface; on REST and the chat surface a cheap-tier LLM picks among 2+ candidates with a confidence floor (`SK-ASK-003` / `SK-HDC-005`). CLI / MCP stay deterministic.
 
 | Surface | If `dbId` absent | Auth shape |
 |---|---|---|

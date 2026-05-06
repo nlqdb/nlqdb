@@ -269,7 +269,7 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
       c.executionCtx.waitUntil(globalLimiter.record());
     }
 
-    // dbId resolution (SK-ASK-009 / SK-HDC-011): when absent, the
+    // dbId resolution (SK-ASK-003 / SK-HDC-005): when absent, the
     // cheap-tier `kind` classifier runs first; `kind=create` (or any
     // kind with 0 DBs for the tenant) routes the create path.
     // Otherwise we read the tenant's DB list — 1 → auto-target, 2+ →
@@ -369,32 +369,68 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
     };
 
     if (!parsed.body.dbId) {
-      // SK-ASK-009 perf budget (PERFORMANCE §2.5): kick off the
-      // classifier (cheap-tier LLM) and the tenant DB list read in
-      // parallel — they're independent. The list read is wasted on
-      // `kind=create` (we discard `tenantDbs`), but the marginal cost
-      // is one D1 read (~10/30ms p50/p99) vs. the ~100/400ms classify
-      // call we'd otherwise wait on serially. Promise.allSettled lets
-      // us surface the right error: classifier failure → 502, list
-      // failure → falls through to "0 dbs → create" because the user
-      // didn't cause it and create is a safe default.
-      const [classificationSettled, tenantDbsSettled] = await Promise.allSettled([
-        classifyKind(getLLMRouter(), parsed.body.goal),
-        listDatabasesForTenant(c.env.DB, principal.id),
-      ]);
-      if (classificationSettled.status === "rejected") {
+      // SK-ASK-003 / SK-HDC-005 prelude — runs only when the request
+      // omits dbId. Three layered fast-paths to keep this off the
+      // critical path of multi-DB tenants:
+      //
+      //   1. classify + listDatabasesForTenant fire in parallel
+      //      (independent inputs).
+      //   2. Disambiguate kicks off as soon as the DB list lands —
+      //      concurrent with the still-pending classify call. Wasted
+      //      if classify ends up returning kind=create, but the cost
+      //      is one cheap-tier LLM call we'd otherwise pay serially.
+      //   3. disambiguateDb itself layers slug-substring fast-path →
+      //      KV cache → LLM, so most multi-DB sends never spend a
+      //      full LLM round-trip here.
+      //
+      // PERFORMANCE §2.3 owns the budget for this prelude.
+      const classifyPromise = classifyKind(getLLMRouter(), parsed.body.goal);
+      const listPromise = listDatabasesForTenant(c.env.DB, principal.id);
+
+      // Speculatively kick off the disambiguator the moment the DB
+      // list is in hand, while classify is still in flight. We pre-
+      // build the promise here; it resolves to `null` for the 0/1-DB
+      // cases (no LLM call made), or to the real pick for 2+. The
+      // outer `await` of classifyPromise still gates whether we
+      // CONSUME this result.
+      const speculativeDisambiguatePromise: Promise<{
+        candidates: ReturnType<typeof toCandidates>;
+        pick: Awaited<ReturnType<typeof disambiguateDb>> | null;
+      }> = (async () => {
+        let dbs: Awaited<ReturnType<typeof listDatabasesForTenant>>;
+        try {
+          dbs = await listPromise;
+        } catch {
+          return { candidates: [], pick: null };
+        }
+        if (dbs.length < 2) {
+          return { candidates: toCandidates(dbs), pick: null };
+        }
+        try {
+          const pick = await disambiguateDb(
+            { llm: getLLMRouter(), cache: c.env.KV },
+            {
+              tenantId: principal.id,
+              goal: parsed.body.goal,
+              candidates: toCandidates(dbs),
+            },
+          );
+          return { candidates: toCandidates(dbs), pick };
+        } catch {
+          return {
+            candidates: toCandidates(dbs),
+            pick: { chosenId: null, confidence: 0, reason: "disambiguator_failed" },
+          };
+        }
+      })();
+
+      let classification: Awaited<ReturnType<typeof classifyKind>>;
+      try {
+        classification = await classifyPromise;
+      } catch {
         span.setAttribute("nlqdb.ask.outcome", "classifier_failed");
         span.end();
         return c.json({ error: { status: "llm_failed" as const } }, 502);
-      }
-      const classification = classificationSettled.value;
-      // List failure → empty list. The tenantDbs.length === 0 branch
-      // below treats this as "0 dbs → CREATE", which is the safe
-      // default for a fresh-touch tenant. A real outage shows up on
-      // the create path's own spans (db.query / db.transaction).
-      const tenantDbs = tenantDbsSettled.status === "fulfilled" ? tenantDbsSettled.value : [];
-      if (tenantDbsSettled.status === "rejected") {
-        span.setAttribute("nlqdb.ask.tenant_db_list_failed", true);
       }
       span.setAttribute("nlqdb.ask.kind", classification.kind);
       span.setAttribute("nlqdb.ask.kind_reason", classification.reason);
@@ -403,20 +439,18 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
         return runCreatePath();
       }
 
-      // kind=query|write without dbId — SK-ASK-009 / SK-HDC-011 path.
-      // tenantDbs already in hand from the parallel fetch above.
-      span.setAttribute("nlqdb.ask.tenant_db_count", tenantDbs.length);
+      // kind=query|write — consume the prelude result.
+      const { candidates: tenantCandidates, pick } = await speculativeDisambiguatePromise;
+      span.setAttribute("nlqdb.ask.tenant_db_count", tenantCandidates.length);
 
-      if (tenantDbs.length === 0) {
-        // Architecture §3.6.4: "0 dbs → CREATE" — the goal MUST be a
-        // create even if the cheap classifier said query/write,
-        // because the tenant has nothing to query.
+      if (tenantCandidates.length === 0) {
+        // Architecture §3.6.4: "0 dbs → CREATE".
         span.setAttribute("nlqdb.ask.dbid_resolution", "zero_dbs_create_fallback");
         return runCreatePath();
       }
 
-      if (tenantDbs.length === 1) {
-        const only = tenantDbs[0];
+      if (tenantCandidates.length === 1) {
+        const only = tenantCandidates[0];
         if (only) {
           parsed.body.dbId = only.id;
           selectedDbEcho = {
@@ -427,24 +461,11 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
           };
           span.setAttribute("nlqdb.ask.dbid_resolution", "single_db_auto");
         }
-      } else {
-        // 2+ DBs — cheap-tier LLM disambiguator with 0.7 confidence
-        // floor. Below the floor (or on `chosenId: null`) we return
-        // 409 candidate_dbs so the surface renders an explicit picker.
-        let pick: Awaited<ReturnType<typeof disambiguateDb>>;
-        try {
-          pick = await disambiguateDb(getLLMRouter(), {
-            goal: parsed.body.goal,
-            candidates: tenantDbs.map((d) => ({ id: d.id, slug: d.slug })),
-          });
-        } catch {
-          span.setAttribute("nlqdb.ask.outcome", "disambiguator_failed");
-          span.end();
-          return c.json({ error: { status: "llm_failed" as const } }, 502);
-        }
+      } else if (pick) {
         span.setAttribute("nlqdb.ask.disambiguate_confidence", pick.confidence);
+        span.setAttribute("nlqdb.ask.disambiguate_reason", pick.reason);
         if (pick.chosenId !== null && pick.confidence >= DISAMBIGUATE_CONFIDENCE_FLOOR) {
-          const chosen = tenantDbs.find((d) => d.id === pick.chosenId);
+          const chosen = tenantCandidates.find((d) => d.id === pick.chosenId);
           if (chosen) {
             parsed.body.dbId = chosen.id;
             selectedDbEcho = {
@@ -453,7 +474,10 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
               confidence: pick.confidence,
               reason: pick.reason,
             };
-            span.setAttribute("nlqdb.ask.dbid_resolution", "llm_auto_target");
+            const resolutionLabel = pick.reason.startsWith("slug_match")
+              ? "slug_fastpath"
+              : "llm_auto_target";
+            span.setAttribute("nlqdb.ask.dbid_resolution", resolutionLabel);
           }
         }
         if (!parsed.body.dbId) {
@@ -463,7 +487,7 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
             {
               error: {
                 status: "ambiguous_db" as const,
-                candidate_dbs: tenantDbs.map((d) => ({ id: d.id, slug: d.slug })),
+                candidate_dbs: tenantCandidates.map((d) => ({ id: d.id, slug: d.slug })),
                 reason: pick.reason,
               },
             },
@@ -474,10 +498,9 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
     }
 
     const deps = buildAskDeps(c.env);
-    // After the SK-ASK-009 resolution above, `dbId` is guaranteed to
-    // be set — either by the caller, by the 1-DB auto-target, or by
-    // the LLM disambiguator. The non-null assertion keeps the shape
-    // of `orchestrateReq` clean without a redundant runtime check.
+    // After the SK-ASK-003 / SK-HDC-005 resolution above, `dbId` is
+    // guaranteed to be set — either by the caller, by the 1-DB auto-
+    // target, or by the slug-fastpath / cache / LLM disambiguator.
     const resolvedDbId = parsed.body.dbId;
     if (!resolvedDbId) {
       // Defensive: shouldn't happen — every branch above either sets
@@ -495,7 +518,7 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
     if (wantsSse) {
       return streamSSE(c, async (stream) => {
         try {
-          // SK-ASK-009: emit `selected_db` first so the chat surface
+          // SK-ASK-003: emit `selected_db` first so the chat surface
           // can render the "picked X" attribution chip before
           // plan_pending lands.
           if (selectedDbEcho) {
@@ -540,7 +563,7 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
         }
         return c.json({ error: outcome.error }, httpStatus);
       }
-      // SK-ASK-009: append the `selected_db` echo to the JSON envelope
+      // SK-ASK-003: append the `selected_db` echo to the JSON envelope
       // when the LLM disambiguator (or single-DB auto-target) chose
       // for the user. Surface uses it to render attribution.
       const body = selectedDbEcho
@@ -782,6 +805,15 @@ function serializeEvent(event: OrchestrateEvent): string {
 // Default web origin is `https://nlqdb.com`; overridden via
 // `MAGIC_LINK_WEB_ORIGIN` so dev / staging point at the local Astro
 // dev server instead of prod.
+// Map the D1 row shape from `listDatabasesForTenant` to the
+// disambiguator's candidate shape. Local helper rather than a
+// public export — the shape is incidental to the route handler.
+function toCandidates(
+  dbs: Awaited<ReturnType<typeof listDatabasesForTenant>>,
+): { id: string; slug: string }[] {
+  return dbs.map((d) => ({ id: d.id, slug: d.slug }));
+}
+
 function buildSignInUrl(referer: string | undefined): string {
   const origin = env.MAGIC_LINK_WEB_ORIGIN ?? "https://nlqdb.com";
   const url = new URL("/sign-in", origin);
