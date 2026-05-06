@@ -11,9 +11,17 @@
 // `selectDb` in ChatPanel updates the query string via
 // `history.pushState` so refresh + back/forward both round-trip
 // the active DB without a server hop. Auth is the cross-
-// subdomain `__Secure-session` cookie (SK-WEB-006); signed-out
-// users land on the in-panel "Sign in expired" banner the SDK
-// surfaces from a 401.
+// subdomain `__Secure-session` cookie (SK-WEB-006).
+//
+// Auth guard: a pre-render probe to `/api/auth/get-session`
+// redirects unauthenticated visitors to `/auth/sign-in` instead
+// of letting them sit on a chat shell whose every API call 401s.
+// The guard is what stops the post-OAuth redirect from landing on
+// a "signed in but every request fails" state when the browser
+// can't deliver the session cookie (e.g. SameSite=Lax blocking
+// the cross-eTLD+1 fetch on Workers-Versions previews per
+// SK-AUTH-013/SK-AUTH-015 — same symptom the user would see if
+// the cookie genuinely expired).
 
 import ChatPanel from "../../components/chat/ChatPanel.tsx";
 import Footer from "../../components/Footer.astro";
@@ -26,7 +34,7 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "https://app.nlqdb.com";
   title="Chat — nlqdb"
   description="Talk to your databases."
 >
-  <div class="page page--chat">
+  <div class="page page--chat" id="app-shell" data-api-base={apiBase} hidden>
     <Topnav current="chat" />
     <main class="page__main page__main--chat">
       <ChatPanel client:only="react" apiBase={apiBase} />
@@ -34,6 +42,32 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "https://app.nlqdb.com";
     <Footer />
   </div>
 </Base>
+
+<script>
+  // Inline auth guard. Runs before the chat shell paints — the
+  // shell is `hidden` until `fetchSession` resolves. On null
+  // (unauthenticated, expired, or cross-site cookie blocked),
+  // navigate to the sign-in page with a return target so the user
+  // doesn't see the chat in a broken-401 state. On hit, reveal
+  // the shell so React hydration can take over.
+  import { fetchSession } from "../../lib/session";
+
+  const shell = document.getElementById("app-shell");
+  if (shell) {
+    const apiBase = (shell as HTMLElement).dataset["apiBase"];
+    void (async () => {
+      const user = await fetchSession(apiBase);
+      if (!user) {
+        const returnTo = `${location.pathname}${location.search}${location.hash}`;
+        const signInUrl = new URL("/auth/sign-in", location.origin);
+        signInUrl.searchParams.set("return_to", returnTo);
+        location.replace(signInUrl.toString());
+        return;
+      }
+      shell.hidden = false;
+    })();
+  }
+</script>
 
 <style is:global>
   @import "../../styles/chat.css";
