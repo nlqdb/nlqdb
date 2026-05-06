@@ -1,16 +1,6 @@
 ---
-// Anonymous-create surface (SK-ANON-008 / SK-HDC-001 / SK-WEB-008).
-//
-// Permalink alias of the marketing hero — both render `<CreateForm>`
-// against `/v1/ask` with `Authorization: Bearer anon_<token>`. Same
-// orchestrator, same global anon cap (SK-ANON-010), same prompt
-// persistence (SK-ANON-011). Surface route exists so third-party
-// links / docs / CLI prompts can target a stable URL even if the
-// homepage layout changes.
-//
-// Post-Worksheet-1 this page is served from `app.nlqdb.com` (same
-// origin as the API), so `apiBase` defaults to `""` and `/v1/ask`
-// resolves same-origin.
+// Anonymous-create permalink alias of the marketing hero
+// (`SK-ANON-008` / `SK-HDC-001` / `SK-WEB-008`).
 
 import CreateForm from "../../components/CreateForm.tsx";
 import Footer from "../../components/Footer.astro";

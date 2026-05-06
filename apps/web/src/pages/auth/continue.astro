@@ -25,10 +25,7 @@ import Base from "../../layouts/Base.astro";
 //   Signing `next` would be defense-in-depth but adds a server-side
 //   secret to a static page.
 
-// Allow-list. Production: only `app.nlqdb.com`. Post-Worksheet-1 the
-// continue page is served from the merged worker at that exact host,
-// so `next` URLs always match. Localhost variants are included so
-// `wrangler dev` + `astro dev` round-trip works.
+// Production: only `app.nlqdb.com`. Localhost for `wrangler dev`.
 const ALLOWED_NEXT_ORIGINS = new Set(["https://app.nlqdb.com", "http://localhost:8787"]);
 
 type ResolvedNext =

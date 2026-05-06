@@ -32,15 +32,8 @@ const REVOCATION_TTL_SECONDS = COOKIE_CACHE_MAX_AGE_SECONDS + 60;
 // enough to survive a tab-switch.
 const MAGIC_LINK_TTL_SECONDS = 10 * 60;
 
-// Web origin where the prefetch-protected continue page lives.
-// Post-Worksheet-1 the continue page lives at `app.nlqdb.com/auth/continue`
-// (same worker as the API, served via the `[assets]` binding in
-// `wrangler.toml`). The marketing site at `nlqdb.com` still serves a
-// `/auth/continue` route from the same Astro build, but magic-link
-// emails should always anchor on the API host so the verify hop is
-// guaranteed same-origin and the new __Secure- host-only cookie can
-// land. `MAGIC_LINK_WEB_ORIGIN` overrides for `wrangler dev` (see
-// `.dev.vars.example`).
+// Magic-link emails anchor on the API host so verify is same-origin
+// and the host-only session cookie lands.
 const WEB_ORIGIN_DEFAULT = isDev ? "http://localhost:4321" : "https://app.nlqdb.com";
 const webOrigin = env.MAGIC_LINK_WEB_ORIGIN ?? WEB_ORIGIN_DEFAULT;
 const MAGIC_LINK_DEFAULT_REDIRECT = `${webOrigin}/app`;
@@ -113,36 +106,9 @@ export const auth = betterAuth({
   },
   trustedOrigins: isDev
     ? ["http://localhost:8787", "http://localhost:4321"]
-    : [
-        // Worksheet-1 trim: the product UI now lives on the same
-        // origin as the API (`app.nlqdb.com`), and the marketing
-        // surface on `nlqdb.com` still posts the magic-link form +
-        // links into `/auth/sign-in` on the API. Workers-Versions
-        // preview wildcards (`SK-AUTH-013`) are removed — the merged
-        // worker's previews are same-origin (UI + API on the same
-        // `*-nlqdb-api.omer-hochman.workers.dev` shape), so the
-        // cross-eTLD+1 motivation no longer applies. Worksheet 3
-        // adds back any preview-specific entries if needed.
-        "https://app.nlqdb.com",
-        "https://nlqdb.com",
-      ],
-  // Host-only session cookie. Removing `crossSubDomainCookies` drops
-  // the `Domain=` attribute, so the cookie is bound exclusively to
-  // `app.nlqdb.com` (the merged origin). This is the architectural
-  // fix for the cross-eTLD+1 cookie-drop bug: every product surface
-  // is now same-origin with the API, so the cookie never has to
-  // travel cross-site.
-  //
-  // Cookie name stays `__Secure-…` rather than `__Host-…` because
-  // Better Auth v1.6.9 hardcodes a `__Secure-` prefix in
-  // `node_modules/better-auth/dist/cookies/index.mjs` (line ~30) that
-  // can't be suppressed without also bypassing the Secure-attribute
-  // bookkeeping. Promoting to a literal `__Host-` prefix is tracked
-  // as a follow-up in `docs/features/web-app/FEATURE.md` (open
-  // questions). The browser-prefix protection that matters in
-  // practice — Secure attribute required, no cross-subdomain travel
-  // — is already enforced by `__Secure-` plus the absence of a
-  // Domain attribute.
+    : ["https://app.nlqdb.com", "https://nlqdb.com"],
+  // No `crossSubDomainCookies` → no `Domain=` → host-only session cookie
+  // on `app.nlqdb.com` (`SK-WEB-009`).
   ...(isDev
     ? {}
     : {

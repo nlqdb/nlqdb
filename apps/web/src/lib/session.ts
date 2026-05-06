@@ -1,15 +1,4 @@
-// Browser-side session probe. Post-Worksheet-1, the product UI
-// (`/app/*`, `/auth/*`) is served same-origin with the API on
-// `app.nlqdb.com`, so this fetch is same-origin and the host-only
-// `__Secure-…session` cookie rides automatically. Default `apiBase`
-// is `""` so callers on `app.nlqdb.com` resolve `/api/auth/get-session`
-// against the current origin without any cross-origin cookie work.
-//
-// The marketing surface on `nlqdb.com` no longer probes — it can't
-// see the host-only product cookie cross-origin, and showing a stale
-// "Sign in" link to authed visitors is preferable to a flicker. See
-// `apps/web/src/components/Topnav.astro` for the marketing-side
-// rationale.
+// Browser-side session probe (`SK-WEB-009`: host-only cookie, same-origin probe).
 
 export type SessionUser = {
   id: string;
@@ -24,10 +13,6 @@ export function readApiBase(): string {
     typeof import.meta !== "undefined" && import.meta.env
       ? (import.meta.env["PUBLIC_API_BASE"] as string | undefined)
       : undefined;
-  // Empty string = same origin. Build-time override via
-  // `PUBLIC_API_BASE` is only used when the marketing site
-  // deliberately wants to point a hero / form at a non-default API
-  // host (none today).
   return fromEnv ?? "";
 }
 

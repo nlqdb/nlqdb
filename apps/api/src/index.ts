@@ -40,28 +40,8 @@ const app = new Hono<{
   Variables: RequireSessionVariables & RequirePrincipalVariables;
 }>();
 
-// CORS allow-list. After the Worksheet-1 merge, the product UI (chat,
-// `/auth/*`, `/app/*`) is served from the same worker as the API on
-// `app.nlqdb.com`, so cookie-session calls on those surfaces are
-// same-origin and never hit this list. CORS still gates two real
-// cross-origin paths:
-//
-//   1. Marketing → API: the homepage hero (`apps/web` on `nlqdb.com`)
-//      calls `/v1/ask` cross-origin with `Authorization: Bearer
-//      anon_*` (no cookie). Listed explicitly so `credentials:
-//      include` clients still get a same-origin shape if they ever
-//      flip on (today they don't).
-//   2. Local dev: Astro on `:4321`, Wrangler on `:8787`.
-//
-// Preview-URL wildcards were removed in Worksheet 1 (the cross-origin
-// preview shapes that motivated `SK-AUTH-013` no longer apply once
-// preview UI + API live in the same worker). Worksheet 3 will add a
-// scoped preview surface for the merged worker if needed.
-//
-// `/v1/demo/*` was retired with /v1/demo/ask (SK-WEB-008). Third-
-// party `<nlq-data>` embeds with `pk_live_` keys are still a
-// separate slice — those land with per-key origin pinning, not a
-// permissive `*` blanket.
+// Cross-origin callers: marketing hero on `nlqdb.com` (anon-bearer
+// `/v1/ask`) and local dev. Product UI is same-origin post-`SK-AUTH-016`.
 const CORS_ALLOWED_ORIGINS = [
   "https://app.nlqdb.com",
   "https://nlqdb.com",
@@ -811,11 +791,6 @@ function toCandidates(
 }
 
 function buildSignInUrl(referer: string | undefined): string {
-  // Anchors on the API host (= the merged origin) so the redirect
-  // lands the user on the same-origin sign-in page where the new
-  // host-only `__Secure-…session` cookie can be set. Falls back to
-  // `auth.options.baseURL` so dev (`http://localhost:8787`) keeps
-  // working without an env override.
   const origin =
     env.MAGIC_LINK_WEB_ORIGIN ??
     (typeof auth.options.baseURL === "string" ? auth.options.baseURL : "https://app.nlqdb.com");

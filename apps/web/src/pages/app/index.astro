@@ -1,31 +1,13 @@
 ---
-// Product chat page (SK-WEB-005). One static route handles the
-// whole chat surface — `/app` lands here without a DB selected
-// (the left rail prompts to pick one), `/app?db=<dbId>` deep-
-// links into a specific conversation. The DB id rides a query
-// param rather than a path segment because the build is static
-// (no SSR adapter); a static build can't pre-render `[dbId].astro`
-// for unknown ids without an adapter or wholesale SPA fallback.
-//
-// `selectDb` in ChatPanel updates the query string via
-// `history.pushState` so refresh + back/forward both round-trip
-// the active DB without a server hop. Auth is the host-only
-// `__Secure-…session` cookie issued by Better Auth on
-// `app.nlqdb.com` (post-Worksheet-1: the chat surface is served
-// from the same worker as the API, so the probe and every API
-// call below are same-origin).
-//
-// Auth guard: a pre-render probe to `/api/auth/get-session`
-// redirects unauthenticated visitors to `/auth/sign-in` instead
-// of letting them sit on a chat shell whose every API call 401s.
+// Product chat page (`SK-WEB-005`). DB id rides `?db=<dbId>` rather
+// than a path segment because the static build can't pre-render
+// `[dbId].astro` without an SSR adapter.
 
 import ChatPanel from "../../components/chat/ChatPanel.tsx";
 import Footer from "../../components/Footer.astro";
 import Topnav from "../../components/Topnav.astro";
 import Base from "../../layouts/Base.astro";
 
-// Same-origin default; relative URLs resolve against the current
-// host (`app.nlqdb.com` in production, `:8787` in `wrangler dev`).
 const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
 ---
 <Base

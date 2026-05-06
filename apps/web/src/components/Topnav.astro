@@ -1,33 +1,13 @@
 ---
-// Top navigation. Two reveal mechanics in play here:
+// Top navigation. Two reveal mechanics:
+//   1. Cmd+G tester gate — toggles `[data-cmdg-gate]` elements,
+//      sticky via localStorage.
+//   2. Auth-aware swap — `/api/auth/get-session` probe; authed
+//      users MUST never see "Sign in" even with Cmd+G held.
 //
-//   1. Cmd+G (Ctrl+G) tester gate — toggles every `[data-cmdg-gate]`
-//      element on the page in lockstep (currently the hero
-//      <CreateForm> on `/` and the "Sign in" link in this nav).
-//      Sticky via localStorage so the chord-toggled state survives
-//      reloads. This is the internal-tester reveal main shipped on
-//      #80 / #84.
-//
-//   2. Auth-aware swap — when the host-only `__Secure-…session`
-//      cookie on `app.nlqdb.com` resolves a real user, the "Open
-//      chat / Sign out" pair takes over and the "Sign in" gate is
-//      permanently hidden for that visit. Per follow-up convo on
-//      this branch: an authed user MUST never see a "Sign in"
-//      affordance, even with Cmd+G held down.
-//
-// Order of operations: the Cmd+G handler installs unconditionally;
-// the auth probe hits `/api/auth/get-session` once on mount and, on
-// authed, strips the `data-cmdg-gate` attribute off the sign-in
-// span (so subsequent Cmd+G presses can't resurface it) AND force-
-// hides it.
-//
-// Worksheet-1 caveat: post-merge the session cookie is host-only on
-// `app.nlqdb.com` (no `Domain=` attribute), so the probe can ONLY
-// see it when this Topnav renders on `app.nlqdb.com` itself (the
-// product pages under `/app/*`). On the marketing surface
-// (`nlqdb.com`) the cross-origin probe returns null — authed users
-// will see the "Sign in" link there. Acceptable trade-off documented
-// in `docs/features/web-app/FEATURE.md` (replacement for SK-WEB-006).
+// Marketing-side caveat (`SK-WEB-009`): probe returns null on
+// `nlqdb.com` because the session cookie is host-only on
+// `app.nlqdb.com` — authed visitors see the "Sign in" link.
 interface Props {
   current?: "manifesto" | "chat";
 }
