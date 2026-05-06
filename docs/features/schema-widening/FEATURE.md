@@ -15,7 +15,7 @@ when-to-load:
 **One-liner:** Schemas only widen — `schema_hash` is monotonically extended, never branched.
 **Status:** partial — `schema_hash` is plumbed end-to-end (D1 → registry → orchestrator → plan-cache key), but the observed-fields collector and widening trigger ship post-Phase-0 (see Open Questions).
 **Owners (code):** `apps/api/src/db-registry.ts`, `apps/api/src/ask/orchestrate.ts`, `apps/api/src/ask/types.ts`, `apps/api/src/ask/plan-cache.ts`, `packages/db/**`
-**Cross-refs:** docs/architecture.md §0.1 (on-ramp inversion bullets), §9 row "Schema mismatch" (line 936), §12 line 978 (no migrations tool) · docs/architecture.md §10 §3 line 424 (plan cache key) · [GLOBAL-004](../../decisions/GLOBAL-004-schemas-only-widen.md) · [GLOBAL-006](../../decisions/GLOBAL-006-plan-cache-content-addressing.md)
+**Cross-refs:** docs/architecture.md §0.1 (on-ramp inversion bullets), §9 row "Schema mismatch" (line 936), §12 line 978 (no migrations tool) · docs/architecture.md §10 §3 line 424 (plan cache key) · docs/performance.md §2.1 stage 4 / §2.2 stage 4 (hash compute budget — 1 ms p50 / 5 ms p99) · §3.1 (`nlqdb.ask.hash` span) · [GLOBAL-004](../../decisions/GLOBAL-004-schemas-only-widen.md) · [GLOBAL-006](../../decisions/GLOBAL-006-plan-cache-content-addressing.md)
 
 ## Touchpoints — read this skill before editing
 

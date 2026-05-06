@@ -13,7 +13,7 @@ when-to-load:
 **One-liner:** EVENTS_QUEUE producer + events-worker consumer that fans out to sinks (LogSnag, etc.).
 **Status:** implemented (Slice 3 — `packages/events` + queue; Slice 7 wires `billing.*` emissions)
 **Owners (code):** `packages/events/**`, `apps/events-worker/**`
-**Cross-refs:** docs/architecture.md §5.4 (analytics layers) · docs/architecture.md §10 §2.6 (events architecture) · docs/runbook.md §6 (`apps/events-worker` ops) · `apps/events-worker/README.md`
+**Cross-refs:** docs/architecture.md §5.4 (analytics layers) · docs/architecture.md §10 §2.6 (events architecture) · docs/runbook.md §6 (`apps/events-worker` ops) · docs/performance.md §3.1 (`nlqdb.events.emit` span — wrapped in `ctx.waitUntil`, server-side only) · §4 Slices 5/6/7 (`user.registered` / `user.first_query` / `billing.*` emission contracts asserted with stub sink) · `apps/events-worker/README.md`
 
 ## Touchpoints — read this skill before editing
 
