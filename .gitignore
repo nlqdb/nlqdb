@@ -49,6 +49,12 @@ bun-debug.log*
 /cli/bin/
 /cli/dist/
 
+# Rust
+packages/nlqdb-rs/target/
+
+# Ruby gem build artifacts
+packages/nlqdb-rb/*.gem
+
 # Terraform (if/when we add IaC)
 *.tfstate
 *.tfstate.*
