@@ -13,8 +13,25 @@
 // Enter press / Approve click re-sends the SAME goal with
 // `confirm: true` — the diff acts as a one-shot bypass of the
 // confidence gate; we never silently re-fire without it.
+//
+// SK-ASK-009 / SK-HDC-011: the composer is no longer gated on a
+// pinned `dbId`. Sends without an active DB go through `client.ask()`
+// (non-streaming) — the API resolves the DB deterministically (0 →
+// CREATE, 1 → auto-target) or via the cheap-tier LLM disambiguator
+// on 2+ DBs. Confident picks come back with a `selected_db` echo
+// rendered as a "picked X" attribution chip; below the confidence
+// floor the API returns 409 `ambiguous_db` with `candidate_dbs` and
+// we render an explicit picker. `kind=create` responses fold the
+// new DB into the rail and re-pin it for the next send.
 
-import type { AskDiff, AskOk, DatabaseSummary, TraceEvent } from "@nlqdb/sdk";
+import type {
+  AskDiff,
+  AskOk,
+  CandidateDb,
+  DatabaseSummary,
+  SelectedDbEcho,
+  TraceEvent,
+} from "@nlqdb/sdk";
 import { NlqdbApiError } from "@nlqdb/sdk";
 import { type KeyboardEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getChatClient } from "../../lib/chat-client";
@@ -34,6 +51,14 @@ type ReplyState =
   | { kind: "pending" }
   | { kind: "ok"; ok: AskOk }
   | { kind: "needs-confirm"; diff: AskDiff; pending: AskOk | null }
+  // SK-HDC-001 + SK-ASK-009: kind=create response shape — surfaced
+  // as a distinct reply state so the user sees what got created
+  // (slug + sample rows hint) rather than an empty `AskOk`.
+  | { kind: "created"; dbSlug: string; dbId: string; tableCount: number; sampleRowCount: number }
+  // SK-ASK-009: 2+ DBs and the disambiguator's confidence was below
+  // the floor — render an explicit picker so the user can pin the
+  // intended DB. Clicking a candidate re-sends with that dbId.
+  | { kind: "ambiguous"; candidates: CandidateDb[]; reason: string }
   | { kind: "error"; message: string };
 
 type Reply = {
@@ -179,9 +204,25 @@ export default function ChatPanel({ apiBase }: ChatPanelProps) {
     );
   }, []);
 
+  // `applySelectedDb` is referenced inside `startSend`. It's defined
+  // below as a plain function (not useCallback) because it captures
+  // setState bindings that don't change across renders. The biome
+  // exhaustive-deps rule flags it; adding it to deps would defeat
+  // useCallback by re-creating startSend on every render.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: applySelectedDb is render-stable; see comment above
   const startSend = useCallback(
-    async (goal: string, opts: { confirm?: boolean; replyId?: string } = {}) => {
-      if (!activeDbId) return;
+    async (
+      goal: string,
+      opts: { confirm?: boolean; replyId?: string; dbIdOverride?: string } = {},
+    ) => {
+      // SK-ASK-009: send routes through `askStream` only when a
+      // `dbId` is pinned (active rail item OR the candidate the user
+      // just clicked). Without a pinned dbId we use `ask()` so the
+      // API can return either AskOk (auto-targeted, 1-DB or LLM
+      // pick), a kind=create envelope (0 DBs / classifier=create),
+      // or a 409 ambiguous_db with candidate_dbs.
+      const pinnedDbId = opts.dbIdOverride ?? activeDbId;
+
       const replyId = opts.replyId ?? cryptoRandomId();
 
       if (!opts.replyId) {
@@ -218,12 +259,70 @@ export default function ChatPanel({ apiBase }: ChatPanelProps) {
       const onTrace = (event: TraceEvent) =>
         updateReply(replyId, (reply) => applyTraceEvent(reply, event));
 
+      const client = getChatClient(apiBase);
+
       try {
-        const client = getChatClient(apiBase);
-        const result = await client.askStream(
-          { goal, dbId: activeDbId, ...(opts.confirm ? { confirm: true } : {}) },
-          { signal: ac.signal, onTrace },
-        );
+        if (pinnedDbId) {
+          const result = await client.askStream(
+            { goal, dbId: pinnedDbId, ...(opts.confirm ? { confirm: true } : {}) },
+            { signal: ac.signal, onTrace },
+          );
+          if (result.requires_confirm && result.diff) {
+            const diff = result.diff;
+            pendingDiffRef.current = { replyId, goal };
+            updateReply(replyId, (reply) => ({
+              ...reply,
+              state: { kind: "needs-confirm", diff, pending: result },
+            }));
+            return;
+          }
+          pendingDiffRef.current = null;
+          if (result.selected_db) applySelectedDb(result.selected_db);
+          updateReply(replyId, (reply) => ({
+            ...reply,
+            state: { kind: "ok", ok: result },
+          }));
+          return;
+        }
+
+        // No active dbId — `ask()` returns AskOk | AskCreateResult.
+        // Aborts and protocol errors throw NlqdbApiError; the 409
+        // ambiguous_db lands as `err.code === "ambiguous_db"` and is
+        // narrowed below to the picker UI. The `"kind" in result`
+        // check narrows to AskCreateResult (AskOk has `status` but
+        // not `kind`); the else branch is AskOk.
+        const result = await client.ask({ goal }, { signal: ac.signal });
+        if ("kind" in result) {
+          // SK-HDC-001: API created a new DB. Fold it into the rail,
+          // re-pin it, and surface a "Created X" reply state so the
+          // user sees what just happened.
+          const dbSummary: DatabaseSummary = {
+            id: result.db,
+            slug: deriveSlugFromId(result.db),
+            schemaName: result.schemaName,
+            pkLive: result.pkLive,
+            lastQueriedAt: null,
+            createdAt: Math.floor(Date.now() / 1000),
+          };
+          setActiveDb(dbSummary);
+          setActiveDbId(result.db);
+          syncDbIdToUrl(result.db);
+          const tableCount = result.sampleRows.length;
+          const sampleRowCount = result.sampleRows.reduce((acc, t) => acc + t.rows.length, 0);
+          updateReply(replyId, (reply) => ({
+            ...reply,
+            state: {
+              kind: "created",
+              dbSlug: dbSummary.slug,
+              dbId: result.db,
+              tableCount,
+              sampleRowCount,
+            },
+          }));
+          return;
+        }
+        // AskOk shape — auto-targeted (1-DB) or LLM-picked.
+        if (result.selected_db) applySelectedDb(result.selected_db);
         if (result.requires_confirm && result.diff) {
           const diff = result.diff;
           pendingDiffRef.current = { replyId, goal };
@@ -240,6 +339,17 @@ export default function ChatPanel({ apiBase }: ChatPanelProps) {
         }));
       } catch (err) {
         if (ac.signal.aborted) return;
+        // SK-ASK-009: 409 ambiguous_db carries `candidate_dbs` —
+        // surface as a picker chip rather than a generic error.
+        if (err instanceof NlqdbApiError && err.code === "ambiguous_db") {
+          const candidates = err.body?.candidate_dbs ?? [];
+          const reason = err.body?.reason ?? "";
+          updateReply(replyId, (reply) => ({
+            ...reply,
+            state: { kind: "ambiguous", candidates, reason },
+          }));
+          return;
+        }
         updateReply(replyId, (reply) => ({
           ...reply,
           state: { kind: "error", message: messageFor(err) },
@@ -248,6 +358,30 @@ export default function ChatPanel({ apiBase }: ChatPanelProps) {
     },
     [activeDbId, apiBase, updateReply],
   );
+
+  // Sync the active DB highlight when an LLM pick lands. We also
+  // pin `activeDbId` for the next send so users don't need to click
+  // the rail to keep the same DB context — they can override by
+  // clicking "All databases" if they want auto-pick again.
+  function applySelectedDb(echo: SelectedDbEcho) {
+    setActiveDb({
+      id: echo.id,
+      slug: echo.slug,
+      pkLive: null,
+      lastQueriedAt: null,
+      createdAt: Math.floor(Date.now() / 1000),
+    });
+    setActiveDbId(echo.id);
+    syncDbIdToUrl(echo.id);
+  }
+
+  // SK-ASK-009: clicking a candidate from the ambiguous picker
+  // re-sends the SAME goal with the chosen dbId pinned. The original
+  // reply's state advances to "pending" and the streaming path takes
+  // over — same UX as a normal send from that point on.
+  function pickCandidate(replyId: string, goal: string, dbId: string) {
+    void startSend(goal, { dbIdOverride: dbId, replyId });
+  }
 
   function approveDiff() {
     const pending = pendingDiffRef.current;
@@ -291,12 +425,24 @@ export default function ChatPanel({ apiBase }: ChatPanelProps) {
     setActiveDb(db);
     setActiveDbId(db.id);
     pendingDiffRef.current = null;
-    // History loading and visibleCount reset happen in the activeDbId effect above.
-    if (typeof window !== "undefined") {
-      const url = new URL(window.location.href);
-      url.searchParams.set("db", db.id);
-      window.history.pushState(null, "", url.toString());
-    }
+    // History loading and visibleCount reset happen in the activeDbId
+    // effect above (per-db localStorage rehydrate).
+    syncDbIdToUrl(db.id);
+  }
+
+  // SK-ASK-009: clear the active rail selection. Next send routes
+  // through the deterministic-then-LLM resolver. We DO clear the
+  // in-memory message list so the user gets a fresh "auto-pick"
+  // thread; the per-db history in localStorage is preserved and
+  // re-loaded if they pick that db again.
+  function clearSelection() {
+    setActiveDb(null);
+    setActiveDbId(null);
+    pendingDiffRef.current = null;
+    loadedForRef.current = null;
+    setMessages([]);
+    setVisibleCount(PAGE_SIZE);
+    syncDbIdToUrl(null);
   }
 
   // Browser back/forward — keep `?db=` in sync with the activeDb
@@ -352,7 +498,9 @@ export default function ChatPanel({ apiBase }: ChatPanelProps) {
     [activeDb, messages],
   );
 
-  const composerDisabled = !activeDbId;
+  // SK-ASK-009: composer is no longer gated on a pinned dbId — the
+  // resolver handles 0/1/2+ DBs server-side. Pagination state (from
+  // main) is computed from the full `messages` array.
   const visibleMessages = messages.slice(-visibleCount);
   const hasOlder = messages.length > visibleCount;
 
@@ -362,6 +510,7 @@ export default function ChatPanel({ apiBase }: ChatPanelProps) {
         apiBase={apiBase}
         activeDbId={activeDbId}
         onSelect={selectDb}
+        onClearSelection={clearSelection}
         onCreated={selectDb}
         onLoaded={(databases) => {
           if (!activeDbId) return;
@@ -372,7 +521,7 @@ export default function ChatPanel({ apiBase }: ChatPanelProps) {
 
       <main className="chat-main">
         <header className="chat-main__header">
-          <h1 className="chat-main__title">{activeDb?.slug ?? activeDbId ?? "Pick a database"}</h1>
+          <h1 className="chat-main__title">{activeDb?.slug ?? activeDbId ?? "All databases"}</h1>
           <span className="chat-main__hint">
             <kbd>Cmd</kbd>+<kbd>K</kbd> commands · <kbd>Cmd</kbd>+<kbd>/</kbd> trace
           </span>
@@ -404,6 +553,7 @@ export default function ChatPanel({ apiBase }: ChatPanelProps) {
                   tracesOpen={tracesOpen}
                   onApprove={approveDiff}
                   onCancel={cancelDiff}
+                  onPickCandidate={(dbId) => pickCandidate(msg.reply.id, msg.reply.goal, dbId)}
                 />
               </li>
             ),
@@ -421,23 +571,22 @@ export default function ChatPanel({ apiBase }: ChatPanelProps) {
             type="text"
             className="chat-composer__input"
             placeholder={
-              composerDisabled
-                ? "Pick a database to start"
-                : pendingDiffRef.current
-                  ? "Press Enter to approve the change above…"
-                  : "Ask about your data…"
+              pendingDiffRef.current
+                ? "Press Enter to approve the change above…"
+                : activeDbId
+                  ? "Ask about your data…"
+                  : "Ask anything — I'll pick the right database…"
             }
             value={composer}
             onChange={(e) => setComposer(e.target.value)}
             onKeyDown={onComposerKeyDown}
-            disabled={composerDisabled}
             spellCheck={false}
             autoComplete="off"
           />
           <button
             type="submit"
             className="btn btn--accent chat-composer__send"
-            disabled={composerDisabled || (!pendingDiffRef.current && composer.trim().length === 0)}
+            disabled={!pendingDiffRef.current && composer.trim().length === 0}
           >
             {pendingDiffRef.current ? "Approve" : "Send"}
           </button>
@@ -449,21 +598,48 @@ export default function ChatPanel({ apiBase }: ChatPanelProps) {
   );
 }
 
+// `db_orders_tracker_a4f` → `orders-tracker-a4f`. Mirrors
+// `apps/api/src/databases/list.ts`'s `deriveSlug` so a freshly-
+// created DB shows the same slug as a listed one until the next
+// rail refresh.
+function deriveSlugFromId(dbId: string): string {
+  const stripped = dbId.startsWith("db_") ? dbId.slice(3) : dbId;
+  return stripped.replace(/_/g, "-");
+}
+
+// SK-ASK-009: keep the URL `?db=` query param synced with the
+// active selection so back/forward and reload land on the same
+// state. Pass null to drop the param entirely.
+function syncDbIdToUrl(dbId: string | null) {
+  if (typeof window === "undefined") return;
+  const url = new URL(window.location.href);
+  if (dbId) url.searchParams.set("db", dbId);
+  else url.searchParams.delete("db");
+  window.history.pushState(null, "", url.toString());
+}
+
 function ReplyView({
   reply,
   pkLive,
   tracesOpen,
   onApprove,
   onCancel,
+  onPickCandidate,
 }: {
   reply: Reply;
   pkLive: string | null;
   tracesOpen: boolean;
   onApprove: () => void;
   onCancel: () => void;
+  // SK-ASK-009: invoked when the user clicks one of the
+  // `candidate_dbs` on an `ambiguous` reply. Re-sends the same goal
+  // pinned to the chosen dbId.
+  onPickCandidate: (dbId: string) => void;
 }) {
   const ok = reply.state.kind === "ok" ? reply.state.ok : null;
   const needsConfirm = reply.state.kind === "needs-confirm" ? reply.state.diff : null;
+  const created = reply.state.kind === "created" ? reply.state : null;
+  const ambiguous = reply.state.kind === "ambiguous" ? reply.state : null;
   const error = reply.state.kind === "error" ? reply.state.message : null;
   const pending = reply.state.kind === "pending";
 
@@ -471,9 +647,55 @@ function ReplyView({
   const rows = ok?.rows ?? null;
   const rowCount = ok?.rowCount ?? null;
   const summary = ok?.summary;
+  const selected = ok?.selected_db;
 
   return (
     <article className="chat-reply" data-state={reply.state.kind}>
+      {/* SK-ASK-009: visible attribution chip when the API auto-
+          picked a DB. Always shown alongside the answer so the user
+          sees which DB was queried before reading the rows. */}
+      {selected ? (
+        <p className="chat-reply__selected-db" role="status">
+          Picked database <code>{selected.slug}</code> ·{" "}
+          <span className="chat-reply__selected-reason">
+            {selected.reason || "matched your goal"}
+          </span>{" "}
+          ·{" "}
+          <span className="chat-reply__selected-confidence">
+            {Math.round(selected.confidence * 100)}% confident
+          </span>
+        </p>
+      ) : null}
+      {created ? (
+        <p className="chat-reply__created" role="status">
+          Created database <code>{created.dbSlug}</code> with {created.tableCount} table
+          {created.tableCount === 1 ? "" : "s"} and {created.sampleRowCount} sample row
+          {created.sampleRowCount === 1 ? "" : "s"}. Pinned to this conversation.
+        </p>
+      ) : null}
+      {ambiguous ? (
+        <div className="chat-reply__ambiguous">
+          <p className="chat-reply__ambiguous-prompt">
+            Which database did you mean?
+            {ambiguous.reason ? (
+              <span className="chat-reply__ambiguous-reason"> ({ambiguous.reason})</span>
+            ) : null}
+          </p>
+          <ul className="chat-reply__candidates">
+            {ambiguous.candidates.map((c) => (
+              <li key={c.id}>
+                <button
+                  type="button"
+                  className="btn btn--ghost"
+                  onClick={() => onPickCandidate(c.id)}
+                >
+                  {c.slug}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
       <Answer summary={summary} pending={pending} />
       <Data rows={rows} rowCount={rowCount} pending={pending} />
       {needsConfirm ? (
@@ -546,6 +768,12 @@ function applyTraceEvent(reply: Reply, event: TraceEvent): Reply {
         latencyMs: elapsed,
         detail: `${event.diff.verb} ${event.diff.affectedRows} rows`,
       }));
+      break;
+    case "selected_db":
+      // Trace timeline doesn't carry the selected_db pick — the
+      // `applySelectedDb` side effect on the AskOk envelope drives
+      // the rail highlight + URL sync. The chip rendered in
+      // ReplyView is the user-visible signal. Fall through.
       break;
     case "error":
       next.steps = next.steps.map((s) =>

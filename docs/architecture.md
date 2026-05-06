@@ -227,14 +227,16 @@ goal → classifier (cheap tier)
 
 #### 3.6.4 Per-surface dbId resolution
 
-`dbId` is fully optional in `/v1/ask`. Resolution is **deterministic per surface** — no LLM-based "which db did you mean" heuristic (wrong guess is worse than asking).
+`dbId` is fully optional in `/v1/ask`. Resolution is per-surface; on REST and the chat surface a cheap-tier LLM picks among 2+ candidates with a confidence floor (`SK-ASK-009` / `SK-HDC-011`). CLI / MCP stay deterministic.
 
 | Surface | If `dbId` absent | Auth shape |
 |---|---|---|
 | HTML (`<nlq-data>`) | Resolved from `pk_live_<dbId>` key; keyless + goal → CREATE on first call | `pk_live_<dbId>` (per-db, read-only, origin-pinned) |
-| REST | 0 dbs → CREATE; 1 db → auto-target; 2+ → `409` with `candidate_dbs` | `Bearer sk_live_…` |
+| REST + chat | 0 dbs → CREATE; 1 db → auto-target; 2+ → `llm.disambiguate` cheap-tier pick (≥ 0.7 confidence → auto-target with `selected_db` echo on response); else `409` with `candidate_dbs` ranked by LLM score | `Bearer sk_live_…` (REST) / session cookie (chat) |
 | CLI | MRU + interactive `select`; `nlq new "<goal>"` always creates | `sk_live_…` from keychain |
 | MCP | 0 dbs → CREATE; 1 db → auto-target; 2+ → MCP elicitation | `sk_mcp_<host>_<device>_…` |
+
+The "silent wrong-tenant" failure mode the original deterministic-only rule guarded against (`docs/research-receipts.md §7`) is contained by three properties of the LLM path: a confidence floor (`≥ 0.7`), a visible `selected_db` echo on every response (chosen slug + reason — a wrong pick is immediately visible to the user, not silent), and one-click recovery via the rail. Destructive verbs still pass the SK-ASK-004 / SK-HDC-006 validator split + the SK-ONBOARD-004 confirm-diff gate; a wrong-tenant *destructive* call requires both a wrong LLM pick AND the user approving a diff that names the wrong table.
 
 #### 3.6.5 Validator architecture — read/write vs DDL paths
 

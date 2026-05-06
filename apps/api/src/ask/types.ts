@@ -22,6 +22,17 @@ export type AskRequest = {
   userId: string;
 };
 
+// SK-ASK-009: when `dbId` was absent and the LLM disambiguator picked
+// a candidate (above the 0.7 confidence floor), the response carries
+// `selected_db` so the surface can render attribution + a one-click
+// switch. Absent on responses where the caller pinned `dbId` directly.
+export type SelectedDbEcho = {
+  id: string;
+  slug: string;
+  confidence: number;
+  reason: string;
+};
+
 export type AskResult = {
   status: "ok";
   cached: boolean;
@@ -31,6 +42,7 @@ export type AskResult = {
   // Omitted in JSON-no-summary mode (Accept: application/json), present
   // by default + in SSE mode.
   summary?: string;
+  selected_db?: SelectedDbEcho;
 };
 
 export type AskError =
@@ -66,11 +78,16 @@ export class DbConfigError extends Error {
 // land in a follow-up slice — providers need streamPlan support first.
 //
 // `summary` is omitted in JSON-no-summary mode.
+//
+// `selected_db` is emitted by the route handler (not the orchestrator)
+// before `plan_pending` when SK-ASK-009 disambiguation auto-targeted
+// the DB — surfaces wire it into a "picked X" attribution chip.
 export type OrchestrateEvent =
   | { type: "plan_pending" }
   | { type: "plan"; sql: string; cached: boolean }
   | { type: "rows"; rows: Record<string, unknown>[]; rowCount: number }
-  | { type: "summary"; summary: string };
+  | { type: "summary"; summary: string }
+  | { type: "selected_db"; db: SelectedDbEcho };
 
 // Re-export so deps using QueryResult don't need a second @nlqdb/db
 // import in callers.

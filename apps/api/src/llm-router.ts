@@ -81,6 +81,10 @@ export function getLLMRouter(): LLMRouter {
       // planner-tier provider chain — same ordering as `plan` so it
       // hits the JSON-strongest provider first.
       schema_infer: ["gemini", "groq", "workers-ai", "openrouter"],
+      // SK-ASK-009 / SK-HDC-011: dbId disambiguation rides the cheap-tier
+      // chain — same ordering as `classify` (Groq 8B first; the prompt
+      // is short and the budget is the same 1500 ms).
+      disambiguate: ["groq", "gemini", "workers-ai", "openrouter"],
     },
   });
   return cached;

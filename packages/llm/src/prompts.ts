@@ -3,7 +3,12 @@
 // examples, and prompt-cache discipline (docs/architecture.md §8 cost-control rule 3).
 // Prompts live here so every provider reuses the same shape.
 
-import type { ClassifyRequest, PlanRequest, SummarizeRequest } from "./types.ts";
+import type {
+  ClassifyRequest,
+  DisambiguateRequest,
+  PlanRequest,
+  SummarizeRequest,
+} from "./types.ts";
 
 export const CLASSIFY_SYSTEM = [
   "You classify a user utterance into one of four intents:",
@@ -27,6 +32,15 @@ export const SUMMARIZE_SYSTEM = [
   "Quote concrete numbers and named entities. No code blocks, no markdown.",
 ].join("\n");
 
+export const DISAMBIGUATE_SYSTEM = [
+  "You pick which of a user's existing databases best matches their goal.",
+  "Inputs: a natural-language goal and a list of candidate databases (id + slug, sometimes a schema fingerprint).",
+  "Pick the most likely match by reading the slug semantically — slugs are kebab-case names like 'orders-tracker-a4f', 'support-tickets-9xy'.",
+  'If no candidate is a clear match, return {"chosenId":null,...} and explain why in one short sentence.',
+  'Respond with strict JSON: {"chosenId":"<id-from-list-or-null>","confidence":<0-1 float>,"reason":"<one short sentence>"}.',
+  "No prose outside JSON, no code fences.",
+].join("\n");
+
 export function buildClassifyUser(req: ClassifyRequest): string {
   return `Utterance: ${req.utterance}`;
 }
@@ -40,4 +54,16 @@ export function buildSummarizeUser(req: SummarizeRequest): string {
   // over thousands of rows is a Slice 6+ concern (paginate first).
   const sample = req.rows.slice(0, 50);
   return [`Goal: ${req.goal}`, `Rows (JSON):\n${JSON.stringify(sample)}`].join("\n\n");
+}
+
+export function buildDisambiguateUser(req: DisambiguateRequest): string {
+  // Cap the candidate list defensively — the API hot path will rarely
+  // hit this, but a runaway tenant with hundreds of DBs shouldn't blow
+  // the cheap-tier prompt budget.
+  const trimmed = req.candidates.slice(0, 25).map((c) => ({
+    id: c.id,
+    slug: c.slug,
+    ...(c.schemaHash ? { schemaHash: c.schemaHash } : {}),
+  }));
+  return [`Goal: ${req.goal}`, `Candidates (JSON):\n${JSON.stringify(trimmed)}`].join("\n\n");
 }

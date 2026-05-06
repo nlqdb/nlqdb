@@ -10,15 +10,18 @@
 import { buildSchemaInferUser, SCHEMA_INFER_SYSTEM } from "../prompts/schema-inference.ts";
 import {
   buildClassifyUser,
+  buildDisambiguateUser,
   buildPlanUser,
   buildSummarizeUser,
   CLASSIFY_SYSTEM,
+  DISAMBIGUATE_SYSTEM,
   PLAN_SYSTEM,
   SUMMARIZE_SYSTEM,
 } from "../prompts.ts";
 import type {
   CallOpts,
   ClassifyResponse,
+  DisambiguateResponse,
   LLMOperation,
   PlanResponse,
   Provider,
@@ -101,6 +104,18 @@ export function createChatProvider(impl: ChatProviderImpl): Provider {
       // classify/plan/summarize.
       const parsed = parseJsonResponse<Record<string, unknown>>(raw);
       return { plan: parsed } satisfies SchemaInferResponse;
+    },
+    async disambiguate(req, opts = {}) {
+      const raw = await impl.callChat({
+        model: impl.models.disambiguate,
+        messages: [
+          { role: "system", content: DISAMBIGUATE_SYSTEM },
+          { role: "user", content: buildDisambiguateUser(req) },
+        ],
+        jsonMode: true,
+        opts,
+      });
+      return parseJsonResponse<DisambiguateResponse>(raw);
     },
   };
 }

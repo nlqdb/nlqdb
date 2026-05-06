@@ -9,8 +9,9 @@ import { makeGlobalAnonLimiter } from "./anon-global-cap.ts";
 import { makeAnonRateLimiter } from "./anon-rate-limit.ts";
 import { buildAskDeps, buildEventEmitter } from "./ask/build-deps.ts";
 import { classifyKind } from "./ask/classifier.ts";
+import { DISAMBIGUATE_CONFIDENCE_FLOOR, disambiguateDb } from "./ask/disambiguate-db.ts";
 import { orchestrateAsk } from "./ask/orchestrate.ts";
-import type { AskError, OrchestrateEvent } from "./ask/types.ts";
+import type { AskError, OrchestrateEvent, SelectedDbEcho } from "./ask/types.ts";
 import { auth, REVOCATION_KEY_PREFIX } from "./auth.ts";
 import { askFnFromDemoFixtures, DEMO_DB_ID } from "./chat/demo-shortcut.ts";
 import { postChatMessage } from "./chat/orchestrate.ts";
@@ -268,10 +269,108 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
       c.executionCtx.waitUntil(globalLimiter.record());
     }
 
-    // Goal-kind classifier (SK-HDC-001 + SK-ASK-001) — runs only when
-    // `dbId` is absent. Uses router.classify (cheap LLM tier) with
-    // full provider-chain failover. All providers failing → 502.
+    // dbId resolution (SK-ASK-009 / SK-HDC-011): when absent, the
+    // cheap-tier `kind` classifier runs first; `kind=create` (or any
+    // kind with 0 DBs for the tenant) routes the create path.
+    // Otherwise we read the tenant's DB list — 1 → auto-target, 2+ →
+    // LLM disambiguator with a 0.7 confidence floor (above → auto-
+    // target with `selected_db` echo on the response; below → 409
+    // candidate_dbs ranked by LLM score).
+    let selectedDbEcho: SelectedDbEcho | null = null;
+
+    // Helper closure for the create path — invoked when classifier
+    // says `kind=create`, OR when the tenant has 0 DBs and the kind
+    // wasn't create (architecture §3.6.4: "0 dbs → CREATE"). Anon-
+    // create gating is enforced before the LLM/Neon work runs.
+    const runCreatePath = async (): Promise<Response> => {
+      if (principal.kind === "anon") {
+        const ip = c.req.header("cf-connecting-ip") ?? "unknown";
+        const anonLimiter = makeAnonRateLimiter(c.env.KV);
+        const peek = await anonLimiter.peekCreate(ip);
+        // X-RateLimit-* parity (SK-RL-004 / GLOBAL-002) — same header
+        // set for the create-cap bucket as for query.
+        const now = Math.floor(Date.now() / 1000);
+        c.header("X-RateLimit-Limit", String(peek.limit));
+        c.header("X-RateLimit-Remaining", String(Math.max(0, peek.limit - peek.count)));
+        c.header("X-RateLimit-Reset", String(peek.resetAt));
+        if (!peek.ok) {
+          span.setAttribute("nlqdb.ask.outcome", "create_cap_ip");
+          span.end();
+          c.header("Retry-After", String(Math.max(0, peek.resetAt - now)));
+          return c.json(
+            {
+              error: {
+                status: "rate_limited" as const,
+                limit: peek.limit,
+                count: peek.count,
+                resetAt: peek.resetAt,
+              },
+            },
+            429,
+          );
+        }
+        if (peek.needsChallenge) {
+          const turnstileToken = c.req.header("cf-turnstile-response") ?? null;
+          const verify = await verifyTurnstile(turnstileToken, c.env.TURNSTILE_SECRET, ip);
+          // Fail-open when the secret is unset (dev / pre-config). Any
+          // other failure (`invalid` / `verify_failed`) returns 428
+          // challenge_required so the surface re-renders the widget.
+          // SK-ANON-007.
+          const allowed = verify.ok || verify.reason === "unconfigured";
+          if (!allowed) {
+            span.setAttribute("nlqdb.ask.outcome", "challenge_required");
+            span.end();
+            return c.json(
+              {
+                error: {
+                  status: "challenge_required" as const,
+                  code: "challenge_required" as const,
+                  action: "Complete the browser challenge to continue.",
+                },
+              },
+              428,
+            );
+          }
+        }
+        // Record AFTER any challenge clears — otherwise the counter
+        // ratchets up on every blocked attempt and the user is stuck
+        // behind the gate forever.
+        await anonLimiter.recordCreate(ip);
+      }
+
+      // Dynamic import defers libpg-query's WASM initialization to
+      // the first create request — see commit 1a body for the
+      // rationale.
+      const { buildDbCreateDeps } = await import("./db-create/build-deps.ts");
+      const { orchestrateDbCreate } = await import("./db-create/orchestrate.ts");
+      try {
+        const { deps: createDeps, secretRef } = buildDbCreateDeps(c.env);
+        const result = await orchestrateDbCreate(createDeps, {
+          goal: parsed.body.goal,
+          tenantId: principal.id,
+          secretRef,
+        });
+        if (!result.ok) {
+          // infer/compile/ddl/embed_failed → 422; provision_failed → 500.
+          const statusCode = result.error.kind === "provision_failed" ? 500 : 422;
+          return c.json({ error: result.error }, statusCode);
+        }
+        return c.json({
+          kind: "create" as const,
+          db: result.dbId,
+          schemaName: result.schemaName,
+          pkLive: result.pkLive,
+          plan: result.plan,
+          sampleRows: result.sampleRows,
+        });
+      } finally {
+        span.end();
+      }
+    };
+
     if (!parsed.body.dbId) {
+      // Goal-kind classifier (SK-HDC-001 + SK-ASK-001). Cheap LLM tier
+      // with full provider-chain failover; all providers failing → 502.
       let classification: Awaited<ReturnType<typeof classifyKind>>;
       try {
         classification = await classifyKind(getLLMRouter(), parsed.body.goal);
@@ -282,123 +381,114 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
       }
       span.setAttribute("nlqdb.ask.kind", classification.kind);
       span.setAttribute("nlqdb.ask.kind_reason", classification.reason);
-      if (classification.kind === "create") {
-        // Anon-create gating before we burn an LLM hop and a Neon
-        // schema: per-IP create cap (5/hr, SK-ANON-004) + Turnstile
-        // burst gate (3-in-5min → 428, SK-ANON-007). Authed-create
-        // limits (20/day per account) are not implemented yet — this
-        // PR ships the anon side that needs the gate to land at all.
-        if (principal.kind === "anon") {
-          const ip = c.req.header("cf-connecting-ip") ?? "unknown";
-          const anonLimiter = makeAnonRateLimiter(c.env.KV);
-          const peek = await anonLimiter.peekCreate(ip);
-          // X-RateLimit-* parity (SK-RL-004 / GLOBAL-002) — same
-          // header set for the create-cap bucket as for query.
-          const now = Math.floor(Date.now() / 1000);
-          c.header("X-RateLimit-Limit", String(peek.limit));
-          c.header("X-RateLimit-Remaining", String(Math.max(0, peek.limit - peek.count)));
-          c.header("X-RateLimit-Reset", String(peek.resetAt));
-          if (!peek.ok) {
-            span.setAttribute("nlqdb.ask.outcome", "create_cap_ip");
-            span.end();
-            c.header("Retry-After", String(Math.max(0, peek.resetAt - now)));
-            return c.json(
-              {
-                error: {
-                  status: "rate_limited" as const,
-                  limit: peek.limit,
-                  count: peek.count,
-                  resetAt: peek.resetAt,
-                },
-              },
-              429,
-            );
-          }
-          if (peek.needsChallenge) {
-            const turnstileToken = c.req.header("cf-turnstile-response") ?? null;
-            const verify = await verifyTurnstile(turnstileToken, c.env.TURNSTILE_SECRET, ip);
-            // Fail-open when the secret is unset (dev / pre-config).
-            // Any other failure (`invalid` / `verify_failed`) returns
-            // 428 challenge_required so the surface re-renders the
-            // widget. SK-ANON-007.
-            const allowed = verify.ok || verify.reason === "unconfigured";
-            if (!allowed) {
-              span.setAttribute("nlqdb.ask.outcome", "challenge_required");
-              span.end();
-              return c.json(
-                {
-                  error: {
-                    status: "challenge_required" as const,
-                    code: "challenge_required" as const,
-                    action: "Complete the browser challenge to continue.",
-                  },
-                },
-                428,
-              );
-            }
-          }
-          // Record AFTER any challenge clears — otherwise the
-          // counter ratchets up on every blocked attempt and the
-          // user is stuck behind the gate forever.
-          await anonLimiter.recordCreate(ip);
-        }
 
-        // Dynamic import defers libpg-query's WASM initialization to
-        // the first create request — see commit 1a body for the
-        // rationale.
-        const { buildDbCreateDeps } = await import("./db-create/build-deps.ts");
-        const { orchestrateDbCreate } = await import("./db-create/orchestrate.ts");
+      if (classification.kind === "create") {
+        return runCreatePath();
+      }
+
+      // kind=query|write without dbId — SK-ASK-009 / SK-HDC-011 path.
+      // Read the tenant's DB list and route deterministically (0 / 1)
+      // or via LLM disambiguator (2+).
+      const tenantDbs = await listDatabasesForTenant(c.env.DB, principal.id);
+      span.setAttribute("nlqdb.ask.tenant_db_count", tenantDbs.length);
+
+      if (tenantDbs.length === 0) {
+        // Architecture §3.6.4: "0 dbs → CREATE" — the goal MUST be a
+        // create even if the cheap classifier said query/write,
+        // because the tenant has nothing to query.
+        span.setAttribute("nlqdb.ask.dbid_resolution", "zero_dbs_create_fallback");
+        return runCreatePath();
+      }
+
+      if (tenantDbs.length === 1) {
+        const only = tenantDbs[0];
+        if (only) {
+          parsed.body.dbId = only.id;
+          selectedDbEcho = {
+            id: only.id,
+            slug: only.slug,
+            confidence: 1,
+            reason: "single_db_auto_target",
+          };
+          span.setAttribute("nlqdb.ask.dbid_resolution", "single_db_auto");
+        }
+      } else {
+        // 2+ DBs — cheap-tier LLM disambiguator with 0.7 confidence
+        // floor. Below the floor (or on `chosenId: null`) we return
+        // 409 candidate_dbs so the surface renders an explicit picker.
+        let pick: Awaited<ReturnType<typeof disambiguateDb>>;
         try {
-          const { deps: createDeps, secretRef } = buildDbCreateDeps(c.env);
-          const result = await orchestrateDbCreate(createDeps, {
+          pick = await disambiguateDb(getLLMRouter(), {
             goal: parsed.body.goal,
-            tenantId: principal.id,
-            secretRef,
+            candidates: tenantDbs.map((d) => ({ id: d.id, slug: d.slug })),
           });
-          if (!result.ok) {
-            // infer/compile/ddl/embed_failed → 422; provision_failed → 500.
-            const statusCode = result.error.kind === "provision_failed" ? 500 : 422;
-            return c.json({ error: result.error }, statusCode);
-          }
-          return c.json({
-            kind: "create" as const,
-            db: result.dbId,
-            schemaName: result.schemaName,
-            pkLive: result.pkLive,
-            plan: result.plan,
-            sampleRows: result.sampleRows,
-          });
-        } finally {
+        } catch {
+          span.setAttribute("nlqdb.ask.outcome", "disambiguator_failed");
           span.end();
+          return c.json({ error: { status: "llm_failed" as const } }, 502);
+        }
+        span.setAttribute("nlqdb.ask.disambiguate_confidence", pick.confidence);
+        if (pick.chosenId !== null && pick.confidence >= DISAMBIGUATE_CONFIDENCE_FLOOR) {
+          const chosen = tenantDbs.find((d) => d.id === pick.chosenId);
+          if (chosen) {
+            parsed.body.dbId = chosen.id;
+            selectedDbEcho = {
+              id: chosen.id,
+              slug: chosen.slug,
+              confidence: pick.confidence,
+              reason: pick.reason,
+            };
+            span.setAttribute("nlqdb.ask.dbid_resolution", "llm_auto_target");
+          }
+        }
+        if (!parsed.body.dbId) {
+          span.setAttribute("nlqdb.ask.dbid_resolution", "ambiguous_409");
+          span.end();
+          return c.json(
+            {
+              error: {
+                status: "ambiguous_db" as const,
+                candidate_dbs: tenantDbs.map((d) => ({ id: d.id, slug: d.slug })),
+                reason: pick.reason,
+              },
+            },
+            409,
+          );
         }
       }
-      // kind=query|write without dbId — surfaces the ambiguity per
-      // SK-HDC-005 / SK-ASK-003. The full per-surface resolution
-      // (409 + candidate_dbs / CLI prompt / MCP elicitation) is a
-      // separate slice.
-      span.end();
-      return c.json(
-        {
-          error: {
-            status: "db_id_required" as const,
-            message:
-              "No db specified — include a dbId or phrase your goal as a create request (e.g. 'an orders tracker').",
-          },
-        },
-        400,
-      );
     }
 
     const deps = buildAskDeps(c.env);
+    // After the SK-ASK-009 resolution above, `dbId` is guaranteed to
+    // be set — either by the caller, by the 1-DB auto-target, or by
+    // the LLM disambiguator. The non-null assertion keeps the shape
+    // of `orchestrateReq` clean without a redundant runtime check.
+    const resolvedDbId = parsed.body.dbId;
+    if (!resolvedDbId) {
+      // Defensive: shouldn't happen — every branch above either sets
+      // dbId, returns the create response, or returns 409. Surface as
+      // a 500 rather than letting the orchestrator crash on undefined.
+      span.end();
+      return c.json({ error: { status: "ambiguous_db" as const } }, 409);
+    }
     const orchestrateReq = {
       goal: parsed.body.goal,
-      dbId: parsed.body.dbId,
+      dbId: resolvedDbId,
       userId: principal.id,
     };
 
     if (wantsSse) {
       return streamSSE(c, async (stream) => {
         try {
+          // SK-ASK-009: emit `selected_db` first so the chat surface
+          // can render the "picked X" attribution chip before
+          // plan_pending lands.
+          if (selectedDbEcho) {
+            await stream.writeSSE({
+              event: "selected_db",
+              data: JSON.stringify({ db: selectedDbEcho }),
+            });
+          }
           const outcome = await orchestrateAsk(deps, orchestrateReq, {
             onEvent: async (event) => {
               await stream.writeSSE({ event: event.type, data: serializeEvent(event) });
@@ -435,7 +525,13 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
         }
         return c.json({ error: outcome.error }, httpStatus);
       }
-      return c.json(outcome.result);
+      // SK-ASK-009: append the `selected_db` echo to the JSON envelope
+      // when the LLM disambiguator (or single-DB auto-target) chose
+      // for the user. Surface uses it to render attribution.
+      const body = selectedDbEcho
+        ? { ...outcome.result, selected_db: selectedDbEcho }
+        : outcome.result;
+      return c.json(body);
     } finally {
       span.end();
     }

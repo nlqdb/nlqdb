@@ -13,6 +13,7 @@ const DEFAULT_MODELS: Record<LLMOperation, string> = {
   plan: "meta-llama/llama-3.3-70b-instruct:free",
   summarize: "meta-llama/llama-3.3-70b-instruct:free",
   schema_infer: "meta-llama/llama-3.3-70b-instruct:free",
+  disambiguate: "meta-llama/llama-3.1-8b-instruct:free",
 };
 
 export type OpenRouterProviderOptions = {
