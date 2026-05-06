@@ -752,6 +752,8 @@ app.get("/api/auth/oauth-init/:provider", async (c) => {
       const innerHeaders: Record<string, string> = { "content-type": "application/json" };
       const cookie = c.req.header("cookie");
       if (cookie) innerHeaders["cookie"] = cookie;
+      const origin = c.req.header("origin");
+      if (origin) innerHeaders["origin"] = origin;
 
       const innerReq = new Request(innerUrl.toString(), {
         method: "POST",
