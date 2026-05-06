@@ -1,13 +1,4 @@
-// Browser-side session probe for the marketing surfaces. Better
-// Auth exposes `GET /api/auth/get-session` which returns the
-// session+user when the cookie is present and valid, and a body
-// of `null` (or empty) when not. The session cookie is HttpOnly
-// (SK-WEB-006), so this network round-trip is the only way the
-// static marketing pages can detect "is this visitor signed in?".
-//
-// Used by Topnav.astro and the home page banner to flip into the
-// authed UX (Open chat / Sign out) without ever showing a "Sign
-// in" affordance the user can no longer use.
+// Browser-side session probe (`SK-WEB-009`: host-only cookie, same-origin probe).
 
 export type SessionUser = {
   id: string;
@@ -22,7 +13,7 @@ export function readApiBase(): string {
     typeof import.meta !== "undefined" && import.meta.env
       ? (import.meta.env["PUBLIC_API_BASE"] as string | undefined)
       : undefined;
-  return fromEnv ?? "https://app.nlqdb.com";
+  return fromEnv ?? "";
 }
 
 export function fetchSession(apiBase = readApiBase()): Promise<SessionUser | null> {

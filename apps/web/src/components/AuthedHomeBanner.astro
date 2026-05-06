@@ -1,14 +1,7 @@
 ---
-// Surfaces a "Welcome back — open chat" banner at the top of the
-// home page when the visitor already has a session. The marketing
-// hero stays in place underneath (some authed users genuinely want
-// to copy a snippet for a side project), but the banner gives the
-// quick-jump path the user expects: "I'm signed in, take me to my
-// chat".
-//
-// Hidden by default; revealed by the inline script after the
-// /api/auth/get-session probe resolves authed. This keeps signed-
-// out visitors from ever seeing a flash of authed chrome.
+// "Welcome back — open chat" banner on the marketing home page.
+// Stays hidden post-`SK-WEB-009` because the host-only session
+// cookie is invisible to a cross-origin probe from `nlqdb.com`.
 ---
 
 <aside id="authed-home-banner" class="authed-home-banner" hidden>

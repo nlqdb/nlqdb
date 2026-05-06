@@ -32,9 +32,9 @@ const REVOCATION_TTL_SECONDS = COOKIE_CACHE_MAX_AGE_SECONDS + 60;
 // enough to survive a tab-switch.
 const MAGIC_LINK_TTL_SECONDS = 10 * 60;
 
-// Web origin where the prefetch-protected continue page lives.
-// Default is production; .dev.vars overrides for `wrangler dev`.
-const WEB_ORIGIN_DEFAULT = isDev ? "http://localhost:4321" : "https://nlqdb.com";
+// Magic-link emails anchor on the API host so verify is same-origin
+// and the host-only session cookie lands.
+const WEB_ORIGIN_DEFAULT = isDev ? "http://localhost:4321" : "https://app.nlqdb.com";
 const webOrigin = env.MAGIC_LINK_WEB_ORIGIN ?? WEB_ORIGIN_DEFAULT;
 const MAGIC_LINK_DEFAULT_REDIRECT = `${webOrigin}/app`;
 const magicLinkRedirect = env.MAGIC_LINK_REDIRECT_URL ?? MAGIC_LINK_DEFAULT_REDIRECT;
@@ -106,30 +106,14 @@ export const auth = betterAuth({
   },
   trustedOrigins: isDev
     ? ["http://localhost:8787", "http://localhost:4321"]
-    : [
-        "https://app.nlqdb.com",
-        "https://nlqdb.com",
-        // Workers-Versions preview surface (SK-AUTH-013). Better Auth
-        // validates `callbackURL` and Origin against this list before
-        // redirecting after sign-in/social or magic-link verify, so
-        // without the preview pattern Google/GitHub callbacks and
-        // magic-link continue both fall back to baseURL instead of
-        // returning the user to their preview tab. The wildcard is
-        // anchored to `omer-hochman.workers.dev` (our account
-        // subdomain), which only our own account can publish under.
-        "https://*-nlqdb-web.omer-hochman.workers.dev",
-      ],
-  // Cross-subdomain cookies so the chat UI on `nlqdb.com/app` shares
-  // the session set by Better Auth at `app.nlqdb.com/api/auth/*`.
-  // `__Host-` prefix is incompatible with cross-subdomain (it requires
-  // no Domain attribute); `__Secure-` is the correct prefix here —
-  // forces the Secure flag and rejects any cookie set over HTTP.
+    : ["https://app.nlqdb.com", "https://nlqdb.com"],
+  // No `crossSubDomainCookies` → no `Domain=` → host-only session cookie
+  // on `app.nlqdb.com` (`SK-WEB-009`).
   ...(isDev
     ? {}
     : {
         advanced: {
           cookiePrefix: "__Secure",
-          crossSubDomainCookies: { enabled: true, domain: ".nlqdb.com" },
           defaultCookieAttributes: { sameSite: "lax", secure: true, httpOnly: true },
         },
       }),

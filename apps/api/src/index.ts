@@ -81,11 +81,10 @@ app.onError((err, c) => {
 // separate slice — those land with per-key origin pinning, not a
 // permissive `*` blanket.
 const CORS_ALLOWED_ORIGINS = [
+  "https://app.nlqdb.com",
   "https://nlqdb.com",
   "https://www.nlqdb.com",
   "https://nlqdb-web.pages.dev",
-  /^https:\/\/pr-\d+\.nlqdb-web\.pages\.dev$/,
-  /^https:\/\/[a-f0-9]{8}-nlqdb-web\.omer-hochman\.workers\.dev$/,
   "http://localhost:4321",
   "http://localhost:8787",
 ];
@@ -93,12 +92,7 @@ const CORS_ALLOWED_ORIGINS = [
 const credentialedCors = cors({
   origin: (origin) => {
     if (!origin) return null;
-    for (const allowed of CORS_ALLOWED_ORIGINS) {
-      if (typeof allowed === "string" ? allowed === origin : allowed.test(origin)) {
-        return origin;
-      }
-    }
-    return null;
+    return CORS_ALLOWED_ORIGINS.includes(origin) ? origin : null;
   },
   credentials: true,
   allowHeaders: ["Content-Type", "Authorization", "cf-turnstile-response", "idempotency-key"],
@@ -926,8 +920,10 @@ function toCandidates(
 }
 
 function buildSignInUrl(referer: string | undefined): string {
-  const origin = env.MAGIC_LINK_WEB_ORIGIN ?? "https://nlqdb.com";
-  const url = new URL("/sign-in", origin);
+  const origin =
+    env.MAGIC_LINK_WEB_ORIGIN ??
+    (typeof auth.options.baseURL === "string" ? auth.options.baseURL : "https://app.nlqdb.com");
+  const url = new URL("/auth/sign-in", origin);
   if (referer) {
     try {
       const refUrl = new URL(referer);
