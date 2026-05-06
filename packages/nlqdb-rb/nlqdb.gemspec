@@ -12,7 +12,7 @@ Gem::Specification.new do |spec|
   spec.homepage = "https://nlqdb.com"
   spec.license = "FSL-1.1-ALv2"
   spec.required_ruby_version = ">= 3.0"
-  spec.repository = "https://github.com/nlqdb/nlqdb"
+  spec.metadata["source_code_uri"] = "https://github.com/nlqdb/nlqdb"
 
   spec.files = Dir["{lib,exe,sig}/**/*", "README.md", "LICENSE"]
   spec.bindir = "exe"
