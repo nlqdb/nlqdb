@@ -1,6 +1,6 @@
 # nlqdb — Development Guidelines
 
-Four habits that keep Phase 0 lean. Apply before writing non-trivial
+Six habits that keep Phase 0 lean. Apply before writing non-trivial
 code; refer back during review.
 
 ---
@@ -92,9 +92,6 @@ explicit goal:
   underlying client. (See `createPostgresAdapter({ query })` — tests
   inject one function instead of mocking a Neon driver.)
 
-A function whose JSDoc explains *how to call it* has already failed
-DX. Make the call site obvious enough that no doc is needed.
-
 Examples that pass:
 
 - `setupTelemetry({ … })` — single call, idempotent, opt-in via env;
@@ -157,9 +154,33 @@ viewer is where you go for detail. If they're full of routine
 chatter, the chatter is hiding the actual signal next time something
 breaks.
 
+## 6. Comments are a last resort
+
+Default to no comments. Good names and small functions are the
+documentation; a narrator on top of working code is noise. Reach for a
+comment only when the *why* would surprise a reader who only sees the
+code — a workaround for a specific bug, a non-obvious constraint, a
+choice that looks wrong without context.
+
+When you do leave one: **one sentence, explaining why we did this
+instead of the obvious alternative.** Not what the code does — that's
+the code's job. If the reason needs more than a sentence, it belongs
+in a skill / decision record (`SK-*` or `GLOBAL-*`), not inline.
+
+This subsumes JSDoc on internals: a function whose JSDoc explains
+*how to call it* has already failed DX. Make the call site obvious
+enough that no doc is needed.
+
+Symptoms of getting this wrong:
+
+- Block comments restating the function name or signature.
+- Line comments that paraphrase the next line of code.
+- TODOs without an owner or an issue link — they rot in place.
+- JSDoc on every export by reflex, before anyone has asked for it.
+
 ---
 
-## 6. Bullet-proof-by-design checklist
+## 7. Bullet-proof-by-design checklist
 
 We make bad states unreachable, not caught. Before shipping any user-visible feature, verify each row.
 
@@ -185,7 +206,7 @@ This file pairs with [`CONTRIBUTING.md`](../CONTRIBUTING.md) (mechanics:
 hooks, branches, commit format) and [`./architecture.md`](./architecture.md)
 (architecture). Those are the *what*; this is the *how-we-decide*.
 
-## 7. What we reinvent — and what we don't
+## 8. What we reinvent — and what we don't
 
 ### Build our own
 
