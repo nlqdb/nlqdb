@@ -47,6 +47,11 @@ function stubLLM(
       if (r instanceof Error) throw r;
       return r;
     }),
+    schemaInfer: vi.fn(),
+    disambiguate: vi.fn(),
+    // SK-DB-010 — kept on every LLMRouter stub so contract widening
+    // doesn't cascade into orchestrator-test failures.
+    engineClassify: vi.fn(),
   } as unknown as LLMRouter;
 }
 

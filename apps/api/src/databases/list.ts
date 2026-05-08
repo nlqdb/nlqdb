@@ -25,7 +25,7 @@
 //     non-null column. The MCP `nlqdb_list_databases` tool reads
 //     this field per `GLOBAL-003`'s capability-parity requirement.
 
-import type { Engine } from "@nlqdb/db";
+import { ALLOWED_ENGINES, type Engine } from "@nlqdb/db";
 
 export type DatabaseSummaryRow = {
   id: string;
@@ -41,8 +41,6 @@ type Row = {
   engine: string;
   created_at: number;
 };
-
-const ALLOWED_ENGINES: ReadonlySet<Engine> = new Set<Engine>(["postgres", "clickhouse"]);
 
 export async function listDatabasesForTenant(
   d1: D1Database,

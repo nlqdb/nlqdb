@@ -1,5 +1,5 @@
 import { env } from "cloudflare:workers";
-import type { Engine } from "@nlqdb/db";
+import { ALLOWED_ENGINES, type Engine } from "@nlqdb/db";
 import { authEventsTotal, redactPii, setupTelemetry } from "@nlqdb/otel";
 import { trace } from "@opentelemetry/api";
 import { Hono } from "hono";
@@ -804,12 +804,24 @@ app.post("/v1/databases", requireSession, async (c) => {
 
     // SK-DB-010 — explicit engine override on the create surface.
     // Unknown strings reject with `invalid_engine`; absent runs the
-    // classifier inside the orchestrator.
+    // classifier inside the orchestrator. Envelope carries the
+    // offending value + the allowed list so SDK / CLI consumers can
+    // render a precise message (GLOBAL-012 — one sentence with the
+    // next action).
     let engine: Engine | undefined;
     if (raw.body.engine !== undefined) {
       if (!isAllowedEngine(raw.body.engine)) {
         span.end();
-        return c.json({ error: { status: "invalid_engine" as const } }, 400);
+        return c.json(
+          {
+            error: {
+              status: "invalid_engine" as const,
+              value: raw.body.engine,
+              allowed: [...ALLOWED_ENGINES],
+            },
+          },
+          400,
+        );
       }
       engine = raw.body.engine;
     }
@@ -826,8 +838,12 @@ app.post("/v1/databases", requireSession, async (c) => {
 
     try {
       const { deps: createDeps, secretRef } = buildDbCreateDeps(c.env);
+      // The `if (!name && !goal)` guard above ensures at least one is
+      // defined; the `?? ""` fallback satisfies Biome's
+      // noNonNullAssertion without changing semantics (the string is
+      // never empty at runtime).
       const result = await orchestrateDbCreate(createDeps, {
-        goal: goal ?? name!,
+        goal: goal ?? name ?? "",
         ...(name !== undefined ? { name } : {}),
         ...(engine !== undefined ? { engine } : {}),
         tenantId: session.user.id,

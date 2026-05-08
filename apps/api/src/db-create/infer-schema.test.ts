@@ -23,6 +23,12 @@ function stubLLM(result: SchemaInferResponse | Error): {
       plan: vi.fn(),
       summarize: vi.fn(),
       schemaInfer: schemaInferMock,
+      // Engine classifier (SK-DB-010) — every full LLMRouter stub
+      // includes this so a future contract widening (new method on
+      // LLMRouter) lands the typecheck error in the canonical
+      // classifier.test.ts, not scattered across feature tests.
+      disambiguate: vi.fn(),
+      engineClassify: vi.fn(),
     } as unknown as LLMRouter,
   };
 }

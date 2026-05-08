@@ -54,6 +54,7 @@ describe("classifyEngine", () => {
         const out = await classifyEngine({ llm }, goal);
         expect(out.engine).toBe("postgres");
         expect(out.confidence).toBe(0.92);
+        expect(out.fallbackReason).toBeNull();
       });
     }
   });
@@ -65,6 +66,7 @@ describe("classifyEngine", () => {
         const out = await classifyEngine({ llm }, goal);
         expect(out.engine).toBe("clickhouse");
         expect(out.confidence).toBe(0.88);
+        expect(out.fallbackReason).toBeNull();
       });
     }
   });
@@ -77,6 +79,7 @@ describe("classifyEngine", () => {
       // The wrapper passes through the LLM's confidence so dashboards
       // can see the low-signal pattern even after the fallback.
       expect(out.confidence).toBe(0.4);
+      expect(out.fallbackReason).toBe("below_floor");
     });
 
     it("returns the LLM pick when confidence is exactly at the floor (boundary)", async () => {
@@ -86,6 +89,7 @@ describe("classifyEngine", () => {
       }));
       const out = await classifyEngine({ llm }, "events analytics");
       expect(out.engine).toBe("clickhouse");
+      expect(out.fallbackReason).toBeNull();
     });
   });
 
@@ -97,6 +101,21 @@ describe("classifyEngine", () => {
       const out = await classifyEngine({ llm }, "tracker goal");
       expect(out.engine).toBe(DEFAULT_ENGINE);
       expect(out.confidence).toBe(0);
+      expect(out.fallbackReason).toBe("provider_failed");
+    });
+
+    it("falls back to postgres when LLM returns a deferred engine (sqlite)", async () => {
+      const llm = stubRouter(async () => ({ engine: "sqlite", confidence: 0.95 }));
+      const out = await classifyEngine({ llm }, "read-heavy content catalog");
+      expect(out.engine).toBe(DEFAULT_ENGINE);
+      expect(out.fallbackReason).toBe("deferred");
+    });
+
+    it("falls back to postgres when LLM returns a deferred engine (redis)", async () => {
+      const llm = stubRouter(async () => ({ engine: "redis", confidence: 0.95 }));
+      const out = await classifyEngine({ llm }, "leaderboard counters");
+      expect(out.engine).toBe(DEFAULT_ENGINE);
+      expect(out.fallbackReason).toBe("deferred");
     });
 
     it("falls back to postgres when LLM returns an unknown engine string", async () => {
@@ -105,12 +124,14 @@ describe("classifyEngine", () => {
       expect(out.engine).toBe(DEFAULT_ENGINE);
       // Pass-through confidence so the dashboard can spot LLM drift.
       expect(out.confidence).toBe(0.95);
+      expect(out.fallbackReason).toBe("unknown_string");
     });
 
     it("falls back to postgres when LLM returns an empty engine string", async () => {
       const llm = stubRouter(async () => ({ engine: "", confidence: 0.7 }));
       const out = await classifyEngine({ llm }, "tracker goal");
       expect(out.engine).toBe(DEFAULT_ENGINE);
+      expect(out.fallbackReason).toBe("unknown_string");
     });
   });
 });

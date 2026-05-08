@@ -12,8 +12,13 @@
 // anon bearer, and `parseAskBody` covers the goal-only shape via
 // dbId being optional.
 
-import type { Engine } from "@nlqdb/db";
+import { ALLOWED_ENGINES, type Engine, isAllowedEngine } from "@nlqdb/db";
 import type { Context } from "hono";
+
+// Re-export so existing consumers (`apps/api/src/index.ts`,
+// `apps/api/test/http.test.ts`) keep importing from `./http.ts`.
+// `@nlqdb/db` is the canonical home — see `packages/db/src/types.ts`.
+export { ALLOWED_ENGINES, isAllowedEngine };
 
 export type GoalDbBody = { goal: string; dbId: string };
 // SK-DB-010 — `engine` is optional on the create branch. When set the
@@ -23,18 +28,36 @@ export type GoalDbBody = { goal: string; dbId: string };
 // silently coercing to a default.
 export type AskBody = { goal: string; dbId?: string; engine?: Engine };
 
-export type ParseError = {
-  status: 400;
-  body: { error: "invalid_json" | "goal_required" | "dbId_required" | "invalid_engine" };
+// `invalid_engine` carries the offending value + the allowed list so
+// SDK / CLI consumers can render a precise message ("`mysql` is not a
+// supported engine; allowed values: postgres, clickhouse") without
+// re-fetching the docs. GLOBAL-012 — error message renders as one
+// sentence with the next action.
+export type InvalidEngineBody = {
+  error: "invalid_engine";
+  value: unknown;
+  allowed: Engine[];
 };
 
-// Single source of truth for the allowed engine values on the wire.
-// Mirrors `Engine` from `@nlqdb/db`; a Set lookup keeps the
-// validation O(1) and centralises the rejection message.
-const ALLOWED_ENGINES: ReadonlySet<Engine> = new Set<Engine>(["postgres", "clickhouse"]);
+export type ParseErrorBody =
+  | { error: "invalid_json" | "goal_required" | "dbId_required" }
+  | InvalidEngineBody;
 
-export function isAllowedEngine(value: unknown): value is Engine {
-  return typeof value === "string" && ALLOWED_ENGINES.has(value as Engine);
+export type ParseError = {
+  status: 400;
+  body: ParseErrorBody;
+};
+
+// Materialised list mirror of ALLOWED_ENGINES for the wire envelope.
+// Set has no JSON projection of its own; spreading once at module load
+// keeps the per-request path allocation-free.
+const ALLOWED_ENGINES_LIST: Engine[] = [...ALLOWED_ENGINES];
+
+export function invalidEngineError(value: unknown): ParseError {
+  return {
+    status: 400,
+    body: { error: "invalid_engine", value, allowed: ALLOWED_ENGINES_LIST },
+  };
 }
 
 export type ParseResult<T> = { ok: true; body: T } | { ok: false; error: ParseError };
@@ -71,7 +94,7 @@ export async function parseAskBody(c: Context): Promise<ParseResult<AskBody>> {
   }
   if (raw.body.engine !== undefined) {
     if (!isAllowedEngine(raw.body.engine)) {
-      return { ok: false, error: { status: 400, body: { error: "invalid_engine" } } };
+      return { ok: false, error: invalidEngineError(raw.body.engine) };
     }
     body.engine = raw.body.engine;
   }

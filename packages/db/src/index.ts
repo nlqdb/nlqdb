@@ -31,11 +31,13 @@ export type {
 // the subpath. Both styles work; root is the recommended import.
 export {
   AggSchema,
+  ALLOWED_ENGINES,
   ColumnSchema,
   ColumnTypeSchema,
   DimensionSchema,
   ForeignKeySchema,
   IdentifierSchema,
+  isAllowedEngine,
   MetricSchema,
   OnDeleteSchema,
   SampleRowSchema,

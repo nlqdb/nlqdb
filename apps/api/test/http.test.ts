@@ -62,6 +62,12 @@ describe("parseAskBody — engine validation (SK-DB-010)", () => {
     if (out.ok) throw new Error("expected error");
     expect(out.error.status).toBe(400);
     expect(out.error.body.error).toBe("invalid_engine");
+    // Envelope carries the offending value + the allowed list so SDK /
+    // CLI consumers can render a precise message without re-fetching
+    // the docs.
+    if (out.error.body.error !== "invalid_engine") throw new Error("narrow");
+    expect(out.error.body.value).toBe("mysql");
+    expect(out.error.body.allowed).toEqual(["postgres", "clickhouse"]);
   });
 
   it("rejects deferred engines (sqlite/redis) at the wire boundary", async () => {
@@ -70,6 +76,9 @@ describe("parseAskBody — engine validation (SK-DB-010)", () => {
       expect(out.ok).toBe(false);
       if (out.ok) throw new Error("expected error");
       expect(out.error.body.error).toBe("invalid_engine");
+      if (out.error.body.error !== "invalid_engine") throw new Error("narrow");
+      expect(out.error.body.value).toBe(engine);
+      expect(out.error.body.allowed).toEqual(["postgres", "clickhouse"]);
     }
   });
 
@@ -79,6 +88,9 @@ describe("parseAskBody — engine validation (SK-DB-010)", () => {
       expect(out.ok).toBe(false);
       if (out.ok) throw new Error("expected error");
       expect(out.error.body.error).toBe("invalid_engine");
+      if (out.error.body.error !== "invalid_engine") throw new Error("narrow");
+      expect(out.error.body.value).toEqual(engine);
+      expect(out.error.body.allowed).toEqual(["postgres", "clickhouse"]);
     }
   });
 });

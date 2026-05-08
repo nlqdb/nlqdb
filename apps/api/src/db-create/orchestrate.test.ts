@@ -115,12 +115,22 @@ function stubEmbedTableCards(impl?: () => Promise<void>) {
 }
 
 function stubClassifyEngine(
-  result: { engine: "postgres" | "clickhouse"; confidence: number } = {
+  result: {
+    engine: "postgres" | "clickhouse";
+    confidence: number;
+    fallbackReason?: import("./engine-classify.ts").EngineFallbackReason | null;
+  } = {
     engine: "postgres",
     confidence: 0.9,
   },
 ) {
-  return vi.fn(async () => result);
+  // Default `fallbackReason` to `null` (LLM pick used) so callers can
+  // omit the field; tests that exercise the fallback paths can set it
+  // explicitly when they want to assert the dashboard-side signal.
+  return vi.fn(async () => ({
+    ...result,
+    fallbackReason: result.fallbackReason ?? null,
+  }));
 }
 
 function makeDeps(overrides: Partial<DbCreateDeps> = {}): DbCreateDeps {
