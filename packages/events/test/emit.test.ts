@@ -69,7 +69,7 @@ describe("makeQueueEmitter", () => {
       queryHash: "qh_1",
       planShape: "ps_1",
       engine: "postgres" as const,
-      ms: 100,
+      orchestratorMs: 100,
       rowsReturned: 5,
       ts: 1700000000000,
     };

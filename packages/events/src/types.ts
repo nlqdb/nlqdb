@@ -28,7 +28,12 @@ export type AskCompletedEvent = {
   // level.
   planShape: string;
   engine: "postgres" | "clickhouse";
-  ms: number;
+  // Orchestrator-internal latency: time from orchestrate-entry to the
+  // emit point, BEFORE response serialise / egress. Distinct from the
+  // `/v1/ask` SLO timing (`docs/performance.md §1`) which is wall-clock
+  // request → response. The W5 analyser must not conflate the two —
+  // hence the explicit `orchestrator_` prefix.
+  orchestratorMs: number;
   rowsReturned: number;
   // Unix-ms at orchestrator success. Distinct from `EventEnvelope.ts`
   // (producer enqueue time) — the analyser needs the `/v1/ask` end

@@ -113,7 +113,6 @@ select_secrets() {
         LOGSNAG_TOKEN
         LOGSNAG_PROJECT
         TINYBIRD_TOKEN
-        TINYBIRD_WORKSPACE
         TINYBIRD_API_BASE
         GRAFANA_OTLP_ENDPOINT
       )

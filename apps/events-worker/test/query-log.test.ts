@@ -11,6 +11,7 @@
 // not the HTTP shape. The HTTP shape is unit-tested separately in
 // packages/db.
 
+import type { QueryLogEntry } from "@nlqdb/db";
 import type { AskCompletedEvent } from "@nlqdb/events";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
@@ -27,11 +28,15 @@ function makeEvent(overrides: Partial<AskCompletedEvent> = {}): AskCompletedEven
     queryHash: "qh_1",
     planShape: "ps_1",
     engine: "postgres",
-    ms: 100,
+    orchestratorMs: 100,
     rowsReturned: 5,
     ts: 1700000000000,
     ...overrides,
   };
+}
+
+function makeEntry(eventId: string, overrides: Partial<AskCompletedEvent> = {}): QueryLogEntry {
+  return { eventId, event: makeEvent(overrides) };
 }
 
 describe("publishToQueryLog", () => {
@@ -43,20 +48,29 @@ describe("publishToQueryLog", () => {
     _resetCircuitBreakerForTest();
   });
 
-  it("calls the writer with the projected event batch and returns ok", async () => {
-    const writer = vi.fn(async (_events: AskCompletedEvent[]) => ({ rowsWritten: 2, status: 202 }));
-    const events = [makeEvent({ queryHash: "qh_a" }), makeEvent({ queryHash: "qh_b" })];
+  it("calls the writer with the projected entry batch and returns ok", async () => {
+    const writer = vi.fn(async (_entries: QueryLogEntry[]) => ({ rowsWritten: 2, status: 202 }));
+    const entries = [
+      makeEntry("evt.a", { queryHash: "qh_a" }),
+      makeEntry("evt.b", { queryHash: "qh_b" }),
+    ];
 
-    const result = await publishToQueryLog({ token: "tok", workspace: "ws", writer }, events);
+    const result = await publishToQueryLog({ token: "tok", writer }, entries);
 
     expect(result).toEqual({ ok: true });
     expect(writer).toHaveBeenCalledTimes(1);
-    expect(writer.mock.calls[0]?.[0]).toEqual(events);
+    expect(writer.mock.calls[0]?.[0]).toEqual(entries);
+    // Pass-through invariant: every entry the writer sees carries the
+    // envelope id under `eventId` so the wire row gets `event_id`.
+    for (const e of writer.mock.calls[0]?.[0] ?? []) {
+      expect(typeof e.eventId).toBe("string");
+      expect(e.eventId.length).toBeGreaterThan(0);
+    }
   });
 
   it("no-ops on an empty batch (no writer call)", async () => {
     const writer = vi.fn();
-    const result = await publishToQueryLog({ token: "tok", workspace: "ws", writer }, []);
+    const result = await publishToQueryLog({ token: "tok", writer }, []);
     expect(result).toEqual({ ok: true });
     expect(writer).not.toHaveBeenCalled();
   });
@@ -65,26 +79,26 @@ describe("publishToQueryLog", () => {
     const writer = vi.fn(async () => {
       throw new Error("tinybird 502");
     });
-    await expect(
-      publishToQueryLog({ token: "tok", workspace: "ws", writer }, [makeEvent()]),
-    ).rejects.toThrow("tinybird 502");
+    await expect(publishToQueryLog({ token: "tok", writer }, [makeEntry("evt.x")])).rejects.toThrow(
+      "tinybird 502",
+    );
   });
 
   it("trips the circuit-breaker after 5 consecutive failures", async () => {
     const writer = vi.fn(async () => {
       throw new Error("tinybird down");
     });
-    const config = { token: "tok", workspace: "ws", writer };
+    const config = { token: "tok", writer };
 
     for (let i = 0; i < 5; i++) {
-      await expect(publishToQueryLog(config, [makeEvent()])).rejects.toThrow();
+      await expect(publishToQueryLog(config, [makeEntry(`evt.${i}`)])).rejects.toThrow();
     }
     expect(_isCircuitBreakerOpen()).toBe(true);
 
     // The 6th call sees the open breaker and ack-and-drops without
     // calling the writer. Failure count was 5 before this call; the
     // writer mock should still have only 5 invocations.
-    const result = await publishToQueryLog(config, [makeEvent()]);
+    const result = await publishToQueryLog(config, [makeEntry("evt.6")]);
     expect(result).toEqual({ ok: false, circuitOpen: true });
     expect(writer).toHaveBeenCalledTimes(5);
   });
@@ -98,21 +112,21 @@ describe("publishToQueryLog", () => {
     // Four failures — under the trip threshold.
     for (let i = 0; i < 4; i++) {
       await expect(
-        publishToQueryLog({ token: "tok", workspace: "ws", writer: failing }, [makeEvent()]),
+        publishToQueryLog({ token: "tok", writer: failing }, [makeEntry(`evt.f${i}`)]),
       ).rejects.toThrow();
     }
     expect(_isCircuitBreakerOpen()).toBe(false);
 
     // Success resets the consecutive-failures counter.
-    const result = await publishToQueryLog({ token: "tok", workspace: "ws", writer: okWriter }, [
-      makeEvent(),
+    const result = await publishToQueryLog({ token: "tok", writer: okWriter }, [
+      makeEntry("evt.ok"),
     ]);
     expect(result).toEqual({ ok: true });
 
     // After reset, four more failures should not trip the breaker.
     for (let i = 0; i < 4; i++) {
       await expect(
-        publishToQueryLog({ token: "tok", workspace: "ws", writer: failing }, [makeEvent()]),
+        publishToQueryLog({ token: "tok", writer: failing }, [makeEntry(`evt.g${i}`)]),
       ).rejects.toThrow();
     }
     expect(_isCircuitBreakerOpen()).toBe(false);

@@ -71,8 +71,9 @@ bun run --cwd apps/events-worker test
   until the breaker resets on the next successful write. Operator
   signals: `nlqdb.events.sink.query_log.failures.total{status_class}`
   counter and `nlqdb.events.circuit_open=true` on the sink span.
-- **Tinybird token / workspace unset** → ack-and-drop, same pattern as
-  LogSnag.
+- **Tinybird token unset** → ack-and-drop, same pattern as LogSnag.
+  Tinybird auths by token alone; no separate workspace identifier is
+  needed.
 
 When retry-exhaustion drops start showing in OTel, configure a DLQ:
 add a second queue, then in `wrangler.toml`:

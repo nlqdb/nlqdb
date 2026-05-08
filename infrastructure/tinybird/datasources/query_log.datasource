@@ -13,6 +13,14 @@
 #
 # Partition by day so the 90-day TTL drops whole partitions.
 #
+# `event_id` is the producer-side EventEnvelope.id passed through on
+# every batch. Cloudflare Queues redelivers on retry and on partial-batch
+# ack failures, and Tinybird does not natively deduplicate `/v0/events`
+# writes — so the W5 analyser deduplicates at read time on this column.
+# Keep it indexed in the sorting key after (schema_hash, query_hash) so
+# group-by-pattern still benefits from the primary index without losing
+# fast equality lookups by event_id during dedup.
+#
 # DO NOT widen this schema without coordinating with the events-worker
 # sink — adding a column requires a same-PR edit to
 # packages/db/src/clickhouse-tinybird/query-log.ts (`toWireRow`) and to
@@ -21,12 +29,13 @@
 # reject schema-only edits.
 
 SCHEMA >
+    `event_id` String `json:$.event_id`,
     `db_id` String `json:$.db_id`,
     `schema_hash` String `json:$.schema_hash`,
     `query_hash` String `json:$.query_hash`,
     `plan_shape` String `json:$.plan_shape`,
     `engine` LowCardinality(String) `json:$.engine`,
-    `ms` UInt32 `json:$.ms`,
+    `orchestrator_ms` UInt32 `json:$.orchestrator_ms`,
     `rows_returned` UInt32 `json:$.rows_returned`,
     `ts` DateTime64(3) `json:$.ts`
 

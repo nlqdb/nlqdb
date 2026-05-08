@@ -15,9 +15,11 @@ export {
 } from "./clickhouse-tinybird/adapter.ts";
 export type {
   AskCompletedEvent,
+  QueryLogEntry,
   QueryLogHttpClient,
   QueryLogRequest,
   QueryLogResponse,
+  QueryLogRow,
   QueryLogWriterOptions,
   WriteQueryLogResult,
 } from "./clickhouse-tinybird/query-log.ts";

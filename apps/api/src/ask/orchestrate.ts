@@ -54,7 +54,20 @@ export type OrchestrateOptions = {
   skipSummary?: boolean;
 };
 
-export type OrchestrateOutcome = { ok: true; result: AskResult } | { ok: false; error: AskError };
+export type OrchestrateOutcome =
+  | {
+      ok: true;
+      result: AskResult;
+      // Fire-and-forget producer call for the `ask.completed` event.
+      // The orchestrator returns it instead of awaiting so the route
+      // handler can hand it to `ctx.waitUntil(...)` — the queue.send
+      // round-trip then runs after the response has flushed and never
+      // sits on the user-visible /v1/ask p99 (PERFORMANCE §3.1 says the
+      // emit is wrapped in `ctx.waitUntil`; this keeps doc and code in
+      // agreement). The promise itself never throws (`SK-EVENTS-003`).
+      pendingAskCompleted: Promise<void>;
+    }
+  | { ok: false; error: AskError };
 
 export async function orchestrateAsk(
   deps: OrchestrateDeps,
@@ -251,14 +264,22 @@ export async function orchestrateAsk(
   // into the Tinybird `query_log` Data Source (W4 → W5 input). Fire-
   // and-forget: emit() never throws (`SK-EVENTS-003`), so a queue blip
   // never affects the user-visible response.
-  await deps.events.emit({
+  //
+  // `orchestratorMs` is captured BEFORE the response serialise / egress
+  // step so it stays orchestrator-internal — distinct from the §1 SLO
+  // wall-clock (request-in → response-out) which the W5 analyser
+  // measures separately. `planShape` is hashed inline so the value is
+  // computed before the promise is detached from the request lifetime.
+  const planShape = await hashPlanShape(planSql);
+  const orchestratorMs = Date.now() - startedAt;
+  const pendingAskCompleted = deps.events.emit({
     name: "ask.completed",
     dbId: req.dbId,
     schemaHash,
     queryHash,
-    planShape: await hashPlanShape(planSql),
+    planShape,
     engine: db.engine,
-    ms: Date.now() - startedAt,
+    orchestratorMs,
     rowsReturned: result.rowCount,
     ts: Date.now(),
   });
@@ -273,6 +294,7 @@ export async function orchestrateAsk(
       rowCount: result.rowCount,
       ...(summary !== undefined ? { summary } : {}),
     },
+    pendingAskCompleted,
   };
 }
 

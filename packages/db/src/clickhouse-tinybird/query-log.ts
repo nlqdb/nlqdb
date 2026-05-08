@@ -15,10 +15,22 @@
 // worker invocation already sits behind the queue, and "committed
 // before ack" gives the cleanest retry story).
 //
+// Idempotency: each row carries the producer-side `EventEnvelope.id`
+// as `event_id`. Tinybird's `/v0/events` endpoint does NOT dedupe
+// natively, and Cloudflare Queues redelivers on `msg.retry()` and on
+// partial-batch ack failures, so duplicate rows are expected at the
+// wire level. Consumers (the W5 daily reshape) MUST dedupe on
+// `event_id` if exactly-once is required.
+//
 // `SK-MULTIENG-001` names the read path's transport contract; the write
 // path is symmetric — same HTTP-client seam (`TinybirdHttpClient`-equivalent),
 // same OTel-friendly fetch wrapper, same no-pool / no-shared-state
 // posture.
+//
+// OTel: `writeQueryLog` emits a `db.query` span (`db.system=other_sql`,
+// `db.operation.name=EVENTS_WRITE`) so latency lands on the shared
+// `nlqdb.db.duration_ms{operation}` histogram alongside the read path
+// (GLOBAL-014 parity with the `createTinybirdAdapter` adapter).
 //
 // Failure model: this function THROWS on non-2xx so the caller (the
 // sink) decides how to react. The sink owns the retry budget and the
@@ -26,8 +38,20 @@
 // HTTP status so the caller can label OTel attributes consistently.
 
 import type { AskCompletedEvent } from "@nlqdb/events";
+import { dbDurationMs } from "@nlqdb/otel";
+import { SpanStatusCode, trace } from "@opentelemetry/api";
 
 export type { AskCompletedEvent } from "@nlqdb/events";
+
+// Each row is the producer envelope's id paired with its
+// `AskCompletedEvent` payload. The writer keeps these together so the
+// wire row can carry `event_id` (the envelope's stable id) for
+// downstream dedup — see the file-header note on Cloudflare Queues
+// redelivery and Tinybird's lack of native dedup.
+export type QueryLogEntry = {
+  eventId: string;
+  event: AskCompletedEvent;
+};
 
 // HTTP-client seam mirrors the read-path adapter's `TinybirdHttpClient`
 // — production wires this to `fetch`, tests inject a stub. The shape
@@ -79,42 +103,91 @@ export type QueryLogWriterOptions = {
 };
 
 // Construct a writer bound to a Tinybird workspace. The returned
-// function takes a batch of typed events and POSTs them as one NDJSON
+// function takes a batch of typed entries and POSTs them as one NDJSON
 // payload. Stateless — the closure carries config, not connections.
 export function createQueryLogWriter(
   opts: QueryLogWriterOptions,
-): (events: AskCompletedEvent[], signal?: AbortSignal) => Promise<WriteQueryLogResult> {
+): (entries: QueryLogEntry[], signal?: AbortSignal) => Promise<WriteQueryLogResult> {
   const httpClient = opts.httpClient ?? buildFetchClient(opts);
-  return (events, signal) => writeQueryLog(httpClient, events, signal);
+  return (entries, signal) => writeQueryLog(httpClient, entries, signal);
 }
 
-// Direct entry point — the sink calls this with an injected HTTP client
-// (under test) or a writer constructed via `createQueryLogWriter` (in
-// production). The two-layer split mirrors the read-path adapter:
-// `createTinybirdAdapter` builds the client; `execute` is the typed
-// call. Here `createQueryLogWriter` builds the client; `writeQueryLog`
-// is the typed call.
+/**
+ * Append a batch of `ask.completed` rows to the Tinybird `query_log`
+ * Data Source.
+ *
+ * Each entry pairs the `EventEnvelope.id` with its `AskCompletedEvent`
+ * payload. The id is written to the `event_id` column on every row so
+ * downstream consumers can deduplicate.
+ *
+ * **Idempotency:** Tinybird does not dedupe `/v0/events` writes
+ * natively, and Cloudflare Queues redelivers on `msg.retry()` and on
+ * partial-batch ack failures. Consumers (e.g. the W5 daily reshape)
+ * MUST dedupe on `event_id` if exactly-once semantics are required.
+ *
+ * Throws `QueryLogWriteError` on non-2xx so the caller can attach the
+ * status to its OTel span and decide whether to retry. Empty batches
+ * are a no-op (no HTTP call).
+ *
+ * Direct entry point — the sink calls this with an injected HTTP client
+ * (under test) or a writer constructed via `createQueryLogWriter` (in
+ * production). The two-layer split mirrors the read-path adapter:
+ * `createTinybirdAdapter` builds the client; `execute` is the typed
+ * call. Here `createQueryLogWriter` builds the client; `writeQueryLog`
+ * is the typed call.
+ */
 export async function writeQueryLog(
   http: QueryLogHttpClient,
-  events: AskCompletedEvent[],
+  entries: QueryLogEntry[],
   signal?: AbortSignal,
 ): Promise<WriteQueryLogResult> {
-  if (events.length === 0) {
+  if (entries.length === 0) {
     return { rowsWritten: 0, status: 0 };
   }
-  const ndjson = events
-    .map(toWireRow)
-    .map((row) => JSON.stringify(row))
-    .join("\n");
-  const response = await http({ ndjson, rowCount: events.length }, signal);
-  if (response.status < 200 || response.status >= 300) {
-    throw new QueryLogWriteError(
-      `tinybird query_log write failed: HTTP ${response.status}`,
-      response.status,
-      response.body,
-    );
-  }
-  return { rowsWritten: events.length, status: response.status };
+  // GLOBAL-014 parity with the read path: emit `db.query` so write
+  // latency lands on the same `nlqdb.db.duration_ms{operation}`
+  // histogram. `db.system=other_sql` matches `SK-MULTIENG-004` —
+  // ClickHouse has no canonical OTel value, and `EVENTS_WRITE` is the
+  // canonical operation name for the Data Source append boundary.
+  const tracer = trace.getTracer("@nlqdb/db");
+  return tracer.startActiveSpan(
+    "db.query",
+    {
+      attributes: {
+        "db.system": "other_sql",
+        "db.operation.name": "EVENTS_WRITE",
+        "nlqdb.events.batch_size": entries.length,
+      },
+    },
+    async (span) => {
+      const startedAt = performance.now();
+      try {
+        const ndjson = entries
+          .map(toWireRow)
+          .map((row) => JSON.stringify(row))
+          .join("\n");
+        const response = await http({ ndjson, rowCount: entries.length }, signal);
+        if (response.status < 200 || response.status >= 300) {
+          const err = new QueryLogWriteError(
+            `tinybird query_log write failed: HTTP ${response.status}`,
+            response.status,
+            response.body,
+          );
+          span.setAttribute("http.response.status_code", response.status);
+          span.recordException(err);
+          span.setStatus({ code: SpanStatusCode.ERROR, message: err.message });
+          throw err;
+        }
+        span.setAttribute("http.response.status_code", response.status);
+        span.setAttribute("nlqdb.events.rows_written", entries.length);
+        return { rowsWritten: entries.length, status: response.status };
+      } finally {
+        const elapsed = performance.now() - startedAt;
+        dbDurationMs().record(elapsed, { operation: "EVENTS_WRITE" });
+        span.end();
+      }
+    },
+  );
 }
 
 // Typed error so the sink can attach the HTTP status to an OTel span
@@ -131,24 +204,45 @@ export class QueryLogWriteError extends Error {
   }
 }
 
-// Project the typed event into the Tinybird row shape. The Data Source
-// schema in `infrastructure/tinybird/datasources/query_log.datasource`
-// is the canonical column list — adding a column is a coordinated edit
-// here + there.
+// Typed wire row — the JSON shape the NDJSON line carries. The Data
+// Source schema in `infrastructure/tinybird/datasources/query_log.datasource`
+// is the canonical column list; this type is the in-memory mirror.
+// Widening either requires a same-PR edit to both — Tinybird ingest
+// silently quarantines mismatched rows.
+export type QueryLogRow = {
+  event_id: string;
+  db_id: string;
+  schema_hash: string;
+  query_hash: string;
+  plan_shape: string;
+  engine: "postgres" | "clickhouse";
+  // Orchestrator-internal latency (orchestrate-entry → emit), NOT the
+  // §1 SLO request-in → response-out timing. The W5 analyser must not
+  // conflate the two — hence the explicit `orchestrator_` prefix.
+  orchestrator_ms: number;
+  rows_returned: number;
+  // ClickHouse `DateTime64(3)` ISO format ("YYYY-MM-DD HH:MM:SS.sss"),
+  // millisecond-precision UTC.
+  ts: string;
+};
+
+// Project the typed envelope+event pair into the Tinybird row shape.
 //
 // `ts` is converted from Unix-ms to ClickHouse `DateTime64(3)` ISO
 // format ("YYYY-MM-DD HH:MM:SS.sss") — Tinybird parses this via
 // `parseDateTimeBestEffort` on ingest. Using the ISO stamp keeps the
 // wire format human-readable without a custom codec; the millisecond
 // precision is preserved.
-function toWireRow(event: AskCompletedEvent): Record<string, unknown> {
+function toWireRow(entry: QueryLogEntry): QueryLogRow {
+  const { eventId, event } = entry;
   return {
+    event_id: eventId,
     db_id: event.dbId,
     schema_hash: event.schemaHash,
     query_hash: event.queryHash,
     plan_shape: event.planShape,
     engine: event.engine,
-    ms: event.ms,
+    orchestrator_ms: event.orchestratorMs,
     rows_returned: event.rowsReturned,
     ts: toClickHouseDateTime(event.ts),
   };

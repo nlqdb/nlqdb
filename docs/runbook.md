@@ -91,10 +91,11 @@ re-enable via Cloudflare later).
 - LogSnag (`LOGSNAG_TOKEN` + `LOGSNAG_PROJECT`) — Phase 1. Free tier
   (2,500 events/mo, 3 seats). Sole sink for `packages/events`; LogSnag
   fans events out to Slack / Discord / email itself.
-- Tinybird (`TINYBIRD_TOKEN` + `TINYBIRD_WORKSPACE`, optional
-  `TINYBIRD_API_BASE`) — Phase 3 / W4. Free Forever tier (10 GB, 1k
-  reads/day; writes don't count). Token scope: `DATASOURCE:APPEND` on
-  the `query_log` Data Source. Provision the Data Source from
+- Tinybird (`TINYBIRD_TOKEN`, optional `TINYBIRD_API_BASE`) — Phase 3 /
+  W4. Free Forever tier (10 GB, 1k reads/day; writes don't count). Token
+  scope: `DATASOURCE:APPEND` on the `query_log` Data Source. Tinybird
+  auths by token alone — the workspace is implicit in the token's scope.
+  Provision the Data Source from
   `infrastructure/tinybird/datasources/query_log.datasource` before
   flipping the secrets on (see `SK-EVENTS-009`).
 
@@ -405,12 +406,11 @@ bun run --cwd apps/events-worker deploy           # wrangler deploy
 ```
 
 Secrets pushed: `LOGSNAG_TOKEN`, `LOGSNAG_PROJECT`, `TINYBIRD_TOKEN`,
-`TINYBIRD_WORKSPACE`, optional `TINYBIRD_API_BASE`,
-`GRAFANA_OTLP_ENDPOINT`, computed `GRAFANA_OTLP_AUTHORIZATION`. If
-both LogSnag secrets are absent the consumer ack-and-drops user /
-billing events; if both Tinybird secrets are absent it ack-and-drops
-`ask.completed` (W4 query_log sink). Either path is safe for
-`wrangler dev` without real credentials.
+optional `TINYBIRD_API_BASE`, `GRAFANA_OTLP_ENDPOINT`, computed
+`GRAFANA_OTLP_AUTHORIZATION`. If both LogSnag secrets are absent the
+consumer ack-and-drops user / billing events; if `TINYBIRD_TOKEN` is
+absent it ack-and-drops `ask.completed` (W4 query_log sink). Either
+path is safe for `wrangler dev` without real credentials.
 
 Verify the wire end-to-end:
 
@@ -675,7 +675,7 @@ NLQDB_BACKUP_DIR=/path/to/private/folder scripts/backup-envrc.sh
 | `OPENROUTER_API_KEY`   | https://openrouter.ai/settings/keys                                        |
 | `SENTRY_DSN`           | Sentry → project settings → Client Keys (DSN). Project-scoped, safe-ish to re-share. |
 | `LOGSNAG_TOKEN`        | app.logsnag.com → Settings → API Tokens → revoke + create. 32-char hex. `LOGSNAG_PROJECT` is a slug, doesn't rotate. |
-| `TINYBIRD_TOKEN`       | app.tinybird.co → Workspace → Tokens → revoke + create with `DATASOURCE:APPEND` scope on `query_log`. `TINYBIRD_WORKSPACE` is the workspace slug, doesn't rotate. `TINYBIRD_API_BASE` is the regional gateway (only set for non-EU workspaces). |
+| `TINYBIRD_TOKEN`       | app.tinybird.co → Workspace → Tokens → revoke + create with `DATASOURCE:APPEND` scope on `query_log`. Tinybird auths by token alone — the workspace is implicit in the token's scope. `TINYBIRD_API_BASE` is the regional gateway (only set for non-EU workspaces). |
 | `POSTHOG_API_KEY`      | app.posthog.com → Project settings → Project API Key. Public-ish (used client-side too); rotate via "Reset" in the same panel. |
 | `GOOGLE_CLIENT_*`      | GCP → APIs & Services → Credentials → reset secret (client ID stays)       |
 | `BETTER_AUTH_SECRET`   | `bun -e 'console.log(require("crypto").randomBytes(48).toString("base64url"))'` — rotating this invalidates every active session. |

@@ -8,6 +8,7 @@ import type { AskCompletedEvent } from "@nlqdb/events";
 import { describe, expect, it, vi } from "vitest";
 import {
   createQueryLogWriter,
+  type QueryLogEntry,
   type QueryLogHttpClient,
   QueryLogWriteError,
   writeQueryLog,
@@ -21,24 +22,31 @@ function makeEvent(overrides: Partial<AskCompletedEvent> = {}): AskCompletedEven
     queryHash: "qh_1",
     planShape: "ps_1",
     engine: "postgres",
-    ms: 100,
+    orchestratorMs: 100,
     rowsReturned: 5,
     ts: Date.UTC(2026, 4, 8, 12, 30, 45, 123),
     ...overrides,
   };
 }
 
+function makeEntry(eventId: string, overrides: Partial<AskCompletedEvent> = {}): QueryLogEntry {
+  return { eventId, event: makeEvent(overrides) };
+}
+
 describe("writeQueryLog", () => {
-  it("encodes events as NDJSON with the canonical column shape", async () => {
+  it("encodes entries as NDJSON with the canonical column shape", async () => {
     const captured: { ndjson: string; rowCount: number } = { ndjson: "", rowCount: 0 };
     const http: QueryLogHttpClient = async (req) => {
       captured.ndjson = req.ndjson;
       captured.rowCount = req.rowCount;
       return { status: 202 };
     };
-    const events = [makeEvent({ queryHash: "qh_a" }), makeEvent({ queryHash: "qh_b" })];
+    const entries = [
+      makeEntry("evt.a", { queryHash: "qh_a" }),
+      makeEntry("evt.b", { queryHash: "qh_b" }),
+    ];
 
-    const result = await writeQueryLog(http, events);
+    const result = await writeQueryLog(http, entries);
 
     expect(result).toEqual({ rowsWritten: 2, status: 202 });
     expect(captured.rowCount).toBe(2);
@@ -46,14 +54,21 @@ describe("writeQueryLog", () => {
     expect(lines).toHaveLength(2);
     const first = JSON.parse(lines[0] ?? "");
     expect(first).toMatchObject({
+      // Producer envelope id passes through to `event_id` so consumers
+      // can dedupe at read time (Tinybird does not dedupe natively;
+      // Cloudflare Queues redelivers on retry).
+      event_id: "evt.a",
       db_id: "db_1",
       schema_hash: "schema_v1",
       query_hash: "qh_a",
       plan_shape: "ps_1",
       engine: "postgres",
-      ms: 100,
+      // The wire column is `orchestrator_ms`, not `ms` — distinct from
+      // the §1 SLO request-in→response-out timing.
+      orchestrator_ms: 100,
       rows_returned: 5,
     });
+    expect(first).not.toHaveProperty("ms");
     // ClickHouse DateTime64(3) — "YYYY-MM-DD HH:MM:SS.sss" UTC.
     expect(first.ts).toBe("2026-05-08 12:30:45.123");
   });
@@ -69,7 +84,7 @@ describe("writeQueryLog", () => {
     const http: QueryLogHttpClient = async () => ({ status: 503, body: "tinybird overloaded" });
     let caught: unknown;
     try {
-      await writeQueryLog(http, [makeEvent()]);
+      await writeQueryLog(http, [makeEntry("evt.x")]);
     } catch (err) {
       caught = err;
     }
@@ -87,7 +102,7 @@ describe("writeQueryLog", () => {
       return { status: 202 };
     };
     const ac = new AbortController();
-    await writeQueryLog(http, [makeEvent()], ac.signal);
+    await writeQueryLog(http, [makeEntry("evt.x")], ac.signal);
     expect(captured.signal).toBe(ac.signal);
   });
 });
@@ -100,7 +115,7 @@ describe("createQueryLogWriter", () => {
   it("uses the injected httpClient (token unused)", async () => {
     const http: QueryLogHttpClient = vi.fn(async () => ({ status: 202 }));
     const write = createQueryLogWriter({ httpClient: http });
-    await write([makeEvent()]);
+    await write([makeEntry("evt.x")]);
     expect(http).toHaveBeenCalledTimes(1);
   });
 
@@ -110,7 +125,7 @@ describe("createQueryLogWriter", () => {
     globalThis.fetch = fetchMock as unknown as typeof fetch;
     try {
       const write = createQueryLogWriter({ token: "tok_tb" });
-      await write([makeEvent()]);
+      await write([makeEntry("evt.x")]);
       const calls = (fetchMock as unknown as { mock: { calls: [string, RequestInit][] } }).mock
         .calls;
       const [url, init] = calls[0] ?? [];
@@ -134,7 +149,7 @@ describe("createQueryLogWriter", () => {
         apiBase: "https://api.us-east.tinybird.co",
         datasource: "query_log_staging",
       });
-      await write([makeEvent()]);
+      await write([makeEntry("evt.x")]);
       const calls = (fetchMock as unknown as { mock: { calls: [string, RequestInit][] } }).mock
         .calls;
       const [url] = calls[0] ?? [];

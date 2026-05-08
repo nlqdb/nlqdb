@@ -364,12 +364,30 @@ describe("orchestrateAsk", () => {
       rowsReturned: 3,
     });
     // No SQL text, no values — the wire shape is anonymised. Hashes
-    // are hex strings; `ms` and `ts` are numeric.
+    // are hex strings; `orchestratorMs` and `ts` are numeric.
     expect(askCompleted).not.toHaveProperty("sql");
     expect(typeof askCompleted.queryHash).toBe("string");
     expect(typeof askCompleted.planShape).toBe("string");
-    expect(typeof askCompleted.ms).toBe("number");
+    expect(typeof askCompleted.orchestratorMs).toBe("number");
     expect(typeof askCompleted.ts).toBe("number");
+    // The renamed field is the only canonical name — no stray `ms`
+    // alias should leak through, since W5 must not conflate it with
+    // the `/v1/ask` SLO timing.
+    expect(askCompleted).not.toHaveProperty("ms");
+  });
+
+  it("returns a pendingAskCompleted promise on success (route handler ctx.waitUntils it)", async () => {
+    const events = stubEmitter();
+    const out = await orchestrateAsk(makeDeps({ events }), {
+      goal: "anything",
+      dbId: "db_1",
+      userId: "user_1",
+    });
+    expect(out.ok).toBe(true);
+    if (!out.ok) throw new Error("unreachable");
+    expect(out.pendingAskCompleted).toBeInstanceOf(Promise);
+    // emit() is fire-and-forget — never throws.
+    await expect(out.pendingAskCompleted).resolves.toBeUndefined();
   });
 
   it("does NOT publish ask.completed on a failed /v1/ask (analyser only sees successes)", async () => {

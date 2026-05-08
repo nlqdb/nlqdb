@@ -130,7 +130,7 @@ describe("events-worker queue consumer", () => {
         queryHash,
         planShape: "ps_1",
         engine: "postgres",
-        ms: 100,
+        orchestratorMs: 100,
         rowsReturned: 5,
         ts: Date.now(),
       },
@@ -138,7 +138,6 @@ describe("events-worker queue consumer", () => {
     const { batch, msgs } = makeBatch([askEnvelope("qh_a"), askEnvelope("qh_b")]);
     const env = {
       TINYBIRD_TOKEN: "tok_tb",
-      TINYBIRD_WORKSPACE: "ws_test",
     } as Cloudflare.Env;
 
     if (!handler.queue) throw new Error("expected default export to define a queue handler");
@@ -174,7 +173,7 @@ describe("events-worker queue consumer", () => {
         queryHash: "qh_x",
         planShape: "ps_x",
         engine: "postgres",
-        ms: 200,
+        orchestratorMs: 200,
         rowsReturned: 1,
         ts: Date.now(),
       },
@@ -182,7 +181,6 @@ describe("events-worker queue consumer", () => {
     const { batch, msgs } = makeBatch([askEnvelope]);
     const env = {
       TINYBIRD_TOKEN: "tok_tb",
-      TINYBIRD_WORKSPACE: "ws_test",
     } as Cloudflare.Env;
 
     if (!handler.queue) throw new Error("expected default export to define a queue handler");
@@ -208,7 +206,7 @@ describe("events-worker queue consumer", () => {
         queryHash: "qh_x",
         planShape: "ps_x",
         engine: "postgres",
-        ms: 200,
+        orchestratorMs: 200,
         rowsReturned: 1,
         ts: Date.now(),
       },

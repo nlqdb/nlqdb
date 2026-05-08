@@ -24,8 +24,8 @@
 // aggregate cleanly across sinks.
 
 import {
-  type AskCompletedEvent,
   createQueryLogWriter,
+  type QueryLogEntry,
   QueryLogWriteError,
   type WriteQueryLogResult,
 } from "@nlqdb/db";
@@ -34,12 +34,11 @@ import { SpanStatusCode, trace } from "@opentelemetry/api";
 
 export type QueryLogConfig = {
   token: string;
-  workspace: string;
   apiBase?: string;
   // Test seam — bypasses the @nlqdb/db writer entirely. When set,
   // `token` / `apiBase` are ignored and the sink calls this directly
-  // with the projected event batch.
-  writer?: (events: AskCompletedEvent[], signal?: AbortSignal) => Promise<WriteQueryLogResult>;
+  // with the projected entry batch.
+  writer?: (entries: QueryLogEntry[], signal?: AbortSignal) => Promise<WriteQueryLogResult>;
 };
 
 // Circuit-breaker threshold: 5 consecutive failed batches trips the
@@ -79,16 +78,16 @@ export type PublishOutcome = { ok: true } | { ok: false; circuitOpen: true };
 
 export async function publishToQueryLog(
   config: QueryLogConfig,
-  events: AskCompletedEvent[],
+  entries: QueryLogEntry[],
 ): Promise<PublishOutcome> {
-  if (events.length === 0) return { ok: true };
+  if (entries.length === 0) return { ok: true };
 
   const tracer = trace.getTracer("@nlqdb/events-worker");
   return tracer.startActiveSpan(
     "nlqdb.events.sink.query_log",
     async (span): Promise<PublishOutcome> => {
-      span.setAttribute("nlqdb.events.batch_size", events.length);
-      eventsSinkQueryLogBatchSize().record(events.length);
+      span.setAttribute("nlqdb.events.batch_size", entries.length);
+      eventsSinkQueryLogBatchSize().record(entries.length);
 
       if (breakerOpen) {
         span.setAttribute("nlqdb.events.circuit_open", true);
@@ -108,7 +107,7 @@ export async function publishToQueryLog(
         });
 
       try {
-        const result = await writer(events);
+        const result = await writer(entries);
         span.setAttribute("http.response.status_code", result.status);
         span.setAttribute("nlqdb.events.rows_written", result.rowsWritten);
         consecutiveFailures = 0;
@@ -141,11 +140,15 @@ export async function publishToQueryLog(
   );
 }
 
-function httpStatusClass(status: number): string {
-  if (status === 0) return "transport";
+// Clamp the HTTP status into the catalog labels permitted by
+// `docs/performance.md §3.3`. The failures counter only fires on
+// failures, so the only reachable buckets are `4xx`, `5xx`, and
+// `transport` (fetch-throws / no HTTP status). Anything outside
+// those — fetch with status 0, defensively negative, or sub-200 —
+// is bucketed as `transport` to keep the cardinality budget honest;
+// `unknown` / `2xx` / `3xx` are deliberately not emitted.
+function httpStatusClass(status: number): "4xx" | "5xx" | "transport" {
   if (status >= 500) return "5xx";
   if (status >= 400) return "4xx";
-  if (status >= 300) return "3xx";
-  if (status >= 200) return "2xx";
-  return "unknown";
+  return "transport";
 }

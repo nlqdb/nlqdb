@@ -23,7 +23,8 @@
 // Telemetry per batch + per message via OTel; same setup pattern as
 // apps/api so spans correlate via `service.name`.
 
-import type { AskCompletedEvent, EventEnvelope } from "@nlqdb/events";
+import type { QueryLogEntry } from "@nlqdb/db";
+import type { EventEnvelope } from "@nlqdb/events";
 import { setupTelemetry } from "@nlqdb/otel";
 import { trace } from "@opentelemetry/api";
 import { publishToLogSnag } from "./sinks/logsnag.ts";
@@ -124,31 +125,34 @@ async function dispatchLogSnag(env: Cloudflare.Env, msg: Message<EventEnvelope>)
 async function drainQueryLog(env: Cloudflare.Env, msgs: Message<EventEnvelope>[]): Promise<void> {
   if (msgs.length === 0) return;
 
-  if (!env.TINYBIRD_TOKEN || !env.TINYBIRD_WORKSPACE) {
+  if (!env.TINYBIRD_TOKEN) {
     // Unconfigured sink: ack-and-drop. Same posture as LogSnag's
-    // `SK-EVENTS-005`.
+    // `SK-EVENTS-005`. Tinybird auths by token alone — workspace is
+    // implicit in the token's scope.
     for (const msg of msgs) msg.ack();
     return;
   }
 
-  const events: AskCompletedEvent[] = msgs.map((m) => {
+  const entries: QueryLogEntry[] = msgs.map((m) => {
     // Narrowing: drainBatch only routes `ask.completed` here, so the
     // cast is safe — the worker's discriminated union enforces the
-    // shape upstream.
+    // shape upstream. We pass through the envelope `id` as `eventId`
+    // so the writer can emit it as the `event_id` column for
+    // downstream dedup (Cloudflare Queues redelivers; Tinybird does
+    // not dedupe natively — see SK-EVENTS-009 / writeQueryLog JSDoc).
     if (m.body.event.name !== "ask.completed") {
       throw new Error(`drainQueryLog received non-ask.completed event: ${m.body.event.name}`);
     }
-    return m.body.event;
+    return { eventId: m.body.id, event: m.body.event };
   });
 
   try {
     const result = await publishToQueryLog(
       {
         token: env.TINYBIRD_TOKEN,
-        workspace: env.TINYBIRD_WORKSPACE,
         apiBase: env.TINYBIRD_API_BASE,
       },
-      events,
+      entries,
     );
     if (!result.ok) {
       // Circuit-breaker open — ack-and-drop. The operator signal is
