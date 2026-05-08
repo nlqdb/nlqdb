@@ -8,7 +8,7 @@
 // row's `connection_secret_ref` to a connection URL on every call.
 
 import { env } from "cloudflare:workers";
-import { createPostgresAdapter } from "@nlqdb/db";
+import { createPostgresAdapter, type Row } from "@nlqdb/db";
 import { type EventEmitter, makeNoopEmitter, makeQueueEmitter } from "@nlqdb/events";
 import { resolveDb } from "../db-registry.ts";
 import { getLLMRouter } from "../llm-router.ts";
@@ -16,7 +16,7 @@ import { makeFirstQueryTracker } from "./first-query.ts";
 import type { OrchestrateDeps } from "./orchestrate.ts";
 import { makePlanCache } from "./plan-cache.ts";
 import { makeRateLimiter } from "./rate-limit.ts";
-import { DbConfigError, type DbRecord } from "./types.ts";
+import { DbConfigError, type DbRecord, type QueryResult } from "./types.ts";
 
 export function buildAskDeps(envBindings: Cloudflare.Env): OrchestrateDeps {
   return {
@@ -35,7 +35,14 @@ export function buildAskDeps(envBindings: Cloudflare.Env): OrchestrateDeps {
 // ref is typically "DATABASE_URL". Throws `DbConfigError` if the ref
 // doesn't resolve — operator config bug, distinct from a transient
 // "Neon is down" failure.
-async function buildExec(db: DbRecord, sql: string) {
+//
+// SK-DB-009: the adapter's public signature returns `EngineResult` (an
+// AsyncIterable + meta). The orchestrator's `exec` boundary wants a
+// buffered `QueryResult` because it emits all rows in one SSE event;
+// we drain the stream here so the engine choice stays invisible to the
+// orchestrator (the seam that lets W2 add a Tinybird adapter without
+// touching `/v1/ask`).
+async function buildExec(db: DbRecord, sql: string, signal?: AbortSignal): Promise<QueryResult> {
   const url = (env as unknown as Record<string, string | undefined>)[db.connectionSecretRef];
   if (!url) {
     throw new DbConfigError(
@@ -43,7 +50,18 @@ async function buildExec(db: DbRecord, sql: string) {
     );
   }
   const adapter = createPostgresAdapter({ connectionString: url });
-  return adapter.execute(sql);
+  const result = await adapter.execute({ engine: "postgres", sql }, signal);
+  const rows: Row[] = [];
+  for await (const row of result) rows.push(row);
+  // SK-MULTIENG-001 keeps `EngineMeta` as a discriminated union so the
+  // executor doesn't fragment per engine; consumers that need
+  // engine-specific fields (here, PG's affected `rowCount`) narrow on
+  // `meta.engine`. The PG adapter only ever emits PG meta — the guard
+  // is a fail-fast assertion the runtime should not be able to trip.
+  if (result.meta.engine !== "postgres") {
+    throw new Error(`buildExec: postgres adapter returned non-postgres meta`);
+  }
+  return { rows, rowCount: result.meta.rowCount };
 }
 
 // Returns the production queue-backed emitter when the binding is

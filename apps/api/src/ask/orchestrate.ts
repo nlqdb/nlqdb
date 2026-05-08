@@ -36,7 +36,7 @@ export type OrchestrateDeps = {
   // Throws `DbConfigError` if the DB row's `connection_secret_ref`
   // doesn't resolve in env (operator config bug); other throws are
   // treated as transient `db_unreachable`.
-  exec(db: DbRecord, sql: string): Promise<QueryResult>;
+  exec(db: DbRecord, sql: string, signal?: AbortSignal): Promise<QueryResult>;
   rateLimiter: RateLimiter;
   firstQuery: FirstQueryTracker;
   // Product events. Producer hides whether the underlying transport

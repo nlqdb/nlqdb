@@ -1,14 +1,31 @@
 import { neon } from "@neondatabase/serverless";
 import { dbDurationMs } from "@nlqdb/otel";
 import { SpanStatusCode, trace } from "@opentelemetry/api";
-import type { DatabaseAdapter, QueryResult } from "./types.ts";
+import type {
+  DatabaseAdapter,
+  EngineMeta,
+  EnginePlan,
+  EngineResult,
+  PostgresEngineMeta,
+  Row,
+} from "./types.ts";
 
-// The narrowest seam the adapter actually needs. Production code calls
-// `neon(url).query(...)`; tests inject a fake matching this shape.
+// Internal call shape (`SK-DB-001` underlying `(sql, params)` preserved
+// per `SK-DB-009`). Production wires this to `neon().query()`; tests
+// inject a stub through the same `SK-DB-006` seam. `signal` is threaded
+// so cancellation is testable through the injection point — production
+// passes it via Neon's `fetchOptions.signal` to abort the in-flight
+// fetch.
 export type PostgresQueryFn = (
   sql: string,
   params: unknown[],
-) => Promise<{ rows: Record<string, unknown>[]; rowCount?: number }>;
+  signal?: AbortSignal,
+) => Promise<{
+  rows: Row[];
+  rowCount?: number;
+  command?: string;
+  fields?: { name: string; dataTypeID: number }[];
+}>;
 
 export type PostgresAdapterOptions = {
   connectionString?: string;
@@ -22,7 +39,16 @@ export function createPostgresAdapter(opts: PostgresAdapterOptions): DatabaseAda
 
   return {
     engine: "postgres",
-    async execute(sqlText: string, params: unknown[] = []): Promise<QueryResult> {
+    async execute(plan: EnginePlan, signal?: AbortSignal): Promise<EngineResult> {
+      // The public signature is engine-agnostic; this adapter only
+      // services the `postgres` variant. `db-registry` routes by
+      // `engine` so a non-PG plan never reaches here in production —
+      // the guard exists so the type narrowing below is sound.
+      if (plan.engine !== "postgres") {
+        throw new Error(`postgres adapter received non-postgres plan: ${plan.engine}`);
+      }
+      const sqlText = plan.sql;
+      const params = plan.params ?? [];
       const operation = detectOperation(sqlText);
       return tracer.startActiveSpan(
         "db.query",
@@ -35,9 +61,17 @@ export function createPostgresAdapter(opts: PostgresAdapterOptions): DatabaseAda
         async (span) => {
           const startedAt = performance.now();
           try {
-            const result = await query(sqlText, params);
-            const rows = result.rows;
-            return { rows, rowCount: result.rowCount ?? rows.length };
+            // Pre-flight abort check — skip the round-trip if the
+            // caller already cancelled.
+            signal?.throwIfAborted();
+            const result = await query(sqlText, params, signal);
+            const meta: PostgresEngineMeta = {
+              engine: "postgres",
+              command: result.command ?? operation,
+              rowCount: result.rowCount ?? result.rows.length,
+            };
+            if (result.fields) meta.fields = result.fields;
+            return makeEngineResult(result.rows, meta);
           } catch (err) {
             span.recordException(err as Error);
             span.setStatus({ code: SpanStatusCode.ERROR });
@@ -53,16 +87,33 @@ export function createPostgresAdapter(opts: PostgresAdapterOptions): DatabaseAda
   };
 }
 
+// Wraps a buffered row array as `EngineResult`. Neon HTTP returns the
+// full result set in one fetch, so the iterator is a synchronous yield
+// from memory — the AsyncIterable surface is for parity with engines
+// that genuinely stream (Tinybird Pipes, etc.). A fresh iterator is
+// produced per `[Symbol.asyncIterator]()` call so consumers can
+// re-iterate the same buffered result safely.
+function makeEngineResult(rows: Row[], meta: EngineMeta): EngineResult {
+  return {
+    meta,
+    [Symbol.asyncIterator]: async function* () {
+      for (const row of rows) yield row;
+    },
+  };
+}
+
 function buildNeonQuery(connectionString: string | undefined): PostgresQueryFn {
   if (!connectionString) {
     throw new Error("createPostgresAdapter: connectionString or query override is required");
   }
   const sql = neon(connectionString, { fullResults: true });
-  return async (text, params) => {
-    const result = await sql.query(text, params);
+  return async (text, params, signal) => {
+    const result = await sql.query(text, params, signal ? { fetchOptions: { signal } } : undefined);
     return {
-      rows: result.rows as Record<string, unknown>[],
+      rows: result.rows as Row[],
       rowCount: result.rowCount,
+      command: result.command,
+      fields: result.fields as { name: string; dataTypeID: number }[],
     };
   };
 }
