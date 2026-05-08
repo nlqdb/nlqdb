@@ -212,7 +212,7 @@ Always use these label keys; never invent variants like `tenant`, `tenant-id`, `
 | `nlqdb.cache_hit`      | 2                    | `true` / `false`.                                  |
 | `llm.provider`         | Low (4)              | `cf-ai`, `gemini`, `groq`, `openrouter`.           |
 | `llm.model`            | Low (~10)            | Provider-specific; pin via env config.             |
-| `db.system`            | 1                    | `postgresql` for now.                              |
+| `db.system`            | 2                    | `postgresql` (PG); `other_sql` (ClickHouse via Tinybird). |
 | `route`                | Low (~20)            | `/v1/ask`, `/v1/health`, `/v1/auth/*`.             |
 | `status_class`         | 5                    | `2xx` / `3xx` / `4xx` / `5xx` (NOT raw status).    |
 

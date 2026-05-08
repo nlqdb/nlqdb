@@ -15,18 +15,18 @@
 // `query` injection seam on the PG adapter).
 //
 // Buffered AsyncIterable: the Tinybird JSON response is materialised
-// in one read; we yield from memory the same way `postgres.ts`'s
-// `makeEngineResult` does. Streaming via `format=ndjson` is a future
-// optimisation — the contract is `AsyncIterable<Row>` so we can swap
-// in a streaming projection without touching consumers
+// in one read; we yield from memory via the shared
+// `bufferedEngineResult` helper. Streaming via `format=ndjson` is a
+// future optimisation — the contract is `AsyncIterable<Row>` so we can
+// swap in a streaming projection without touching consumers
 // (`SK-MULTIENG-001`).
 
 import { dbDurationMs } from "@nlqdb/otel";
 import { SpanStatusCode, trace } from "@opentelemetry/api";
+import { bufferedEngineResult } from "../engine-result.ts";
 import type {
   ClickHouseEngineMeta,
   DatabaseAdapter,
-  EngineMeta,
   EnginePlan,
   EngineResult,
   Row,
@@ -115,6 +115,7 @@ export function createTinybirdAdapter(opts: TinybirdAdapterOptions): DatabaseAda
 
       return tracer.startActiveSpan("db.query", { attributes: attrs }, async (span) => {
         const startedAt = performance.now();
+        let aborted = false;
         try {
           // Validation runs inside the span so reject reasons surface
           // as errored `db.query` spans alongside genuine call
@@ -150,14 +151,28 @@ export function createTinybirdAdapter(opts: TinybirdAdapterOptions): DatabaseAda
           if (response.statistics) meta.statistics = response.statistics;
           if (response.query_id) meta.queryId = response.query_id;
 
-          return makeEngineResult(response.data, meta);
+          return bufferedEngineResult(response.data, meta);
         } catch (err) {
+          // Surface Retry-After on the span when Tinybird responded
+          // 429 — the caller can back off without re-parsing the
+          // error envelope.
+          if (err instanceof TinybirdRateLimitError) {
+            span.setAttribute("nlqdb.tinybird.retry_after_s", err.retryAfterSeconds);
+          }
+          aborted = isAbortError(err);
           span.recordException(err as Error);
           span.setStatus({ code: SpanStatusCode.ERROR });
           throw err;
         } finally {
           const elapsed = performance.now() - startedAt;
-          dbDurationMs().record(elapsed, { operation });
+          // AbortError is a useful latency bucket but should not
+          // pollute the unlabelled p99 — label the sample with
+          // `outcome: "aborted"` so dashboards can filter it out of
+          // the steady-state distribution.
+          dbDurationMs().record(
+            elapsed,
+            aborted ? { operation, outcome: "aborted" } : { operation },
+          );
           span.end();
         }
       });
@@ -184,13 +199,81 @@ export class TinybirdValidationError extends Error {
   }
 }
 
-function makeEngineResult(rows: Row[], meta: EngineMeta): EngineResult {
-  return {
-    meta,
-    [Symbol.asyncIterator]: async function* () {
-      for (const row of rows) yield row;
-    },
-  };
+// Typed Tinybird HTTP errors. Each carries a `GLOBAL-012`-shaped
+// one-sentence `hint` keyed by status class so the orchestrator can
+// map the failure into a user-facing action without re-classifying the
+// status code.
+export class TinybirdAuthError extends Error {
+  readonly statusCode: number;
+  readonly hint: string;
+  constructor(statusCode: number, body: string) {
+    super(formatErrorMessage("auth", statusCode, body));
+    this.name = "TinybirdAuthError";
+    this.statusCode = statusCode;
+    this.hint = "check TINYBIRD_TOKEN scope and Pipe ACL";
+  }
+}
+
+export class TinybirdRateLimitError extends Error {
+  readonly statusCode: number;
+  readonly retryAfterSeconds: number;
+  readonly hint: string;
+  constructor(statusCode: number, retryAfterSeconds: number, body: string) {
+    super(formatErrorMessage("rate-limit", statusCode, body));
+    this.name = "TinybirdRateLimitError";
+    this.statusCode = statusCode;
+    this.retryAfterSeconds = retryAfterSeconds;
+    this.hint = "rate limit hit; retry after Retry-After seconds";
+  }
+}
+
+export class TinybirdServerError extends Error {
+  readonly statusCode: number;
+  readonly hint: string;
+  constructor(statusCode: number, body: string) {
+    super(formatErrorMessage("upstream", statusCode, body));
+    this.name = "TinybirdServerError";
+    this.statusCode = statusCode;
+    this.hint = "Tinybird upstream error; will retry on next request";
+  }
+}
+
+export class TinybirdRequestError extends Error {
+  readonly statusCode: number;
+  readonly hint: string;
+  constructor(statusCode: number, body: string) {
+    super(formatErrorMessage("request", statusCode, body));
+    this.name = "TinybirdRequestError";
+    this.statusCode = statusCode;
+    this.hint = "Tinybird rejected the request; check the plan and parameters";
+  }
+}
+
+// Wraps malformed Tinybird response bodies — when the HTTP request
+// succeeded (2xx) but the JSON parse failed. Truncated body keeps the
+// error one log line (`docs/guidelines.md §5`).
+export class TinybirdResponseParseError extends Error {
+  readonly bodySnippet: string;
+  readonly hint: string;
+  constructor(bodySnippet: string) {
+    super(`tinybird response JSON parse failed — body[0..200]=${bodySnippet}`);
+    this.name = "TinybirdResponseParseError";
+    this.bodySnippet = bodySnippet;
+    this.hint = "Tinybird returned a non-JSON body; retry on next request";
+  }
+}
+
+function formatErrorMessage(kind: string, statusCode: number, body: string): string {
+  const trimmed = body.slice(0, 500);
+  return trimmed
+    ? `tinybird ${kind} request failed: HTTP ${statusCode} — ${trimmed}`
+    : `tinybird ${kind} request failed: HTTP ${statusCode}`;
+}
+
+function isAbortError(err: unknown): boolean {
+  if (!err || typeof err !== "object") return false;
+  const name = (err as { name?: unknown }).name;
+  return name === "AbortError";
 }
 
 // Build the production `fetch`-backed HTTP client. Constructed once at
@@ -229,6 +312,12 @@ function buildFetchClient(opts: TinybirdAdapterOptions): TinybirdHttpClient {
     } else {
       url = `${base}/v0/sql`;
       headers["content-type"] = "application/json";
+      // Trim trailing whitespace + `;` before appending ` FORMAT JSON`.
+      // Without this, a validated SQL ending in `;` would produce
+      // `... FROM events; FORMAT JSON` which Tinybird rejects (and
+      // would be the entry vector for any future format-injection
+      // attempt riding on a trailing-semicolon allowlist gap).
+      const cleaned = request.text.replace(/[\s;]+$/, "");
       init = {
         method: "POST",
         headers,
@@ -236,7 +325,7 @@ function buildFetchClient(opts: TinybirdAdapterOptions): TinybirdHttpClient {
         // (otherwise Tinybird picks based on `Accept`); appending here
         // keeps the parser-side allowlist responsible for the SQL
         // text and the adapter responsible only for the wire format.
-        body: JSON.stringify({ q: `${request.text} FORMAT JSON` }),
+        body: JSON.stringify({ q: `${cleaned} FORMAT JSON` }),
         signal,
       };
     }
@@ -246,17 +335,62 @@ function buildFetchClient(opts: TinybirdAdapterOptions): TinybirdHttpClient {
       // Tinybird error envelope: `{ error: "...", documentation: "..." }`.
       // The body is small; reading it as text is the simplest way to
       // get a useful message into the rejection without forcing a
-      // shape on every error case (auth failure / 4xx validation /
-      // 5xx).
+      // shape on every error case.
       const body = await safeReadText(res);
-      throw new Error(
-        `tinybird ${request.kind} request failed: HTTP ${res.status}${
-          body ? ` — ${body.slice(0, 500)}` : ""
-        }`,
-      );
+      throw classifyHttpError(res, body);
     }
-    return (await res.json()) as TinybirdResponse;
+    // Successful 2xx still has to parse — wrap the JSON read so a
+    // malformed body surfaces as a typed error rather than a generic
+    // SyntaxError that callers can't classify.
+    let raw = "";
+    try {
+      raw = await res.text();
+    } catch {
+      throw new TinybirdResponseParseError("");
+    }
+    try {
+      return JSON.parse(raw) as TinybirdResponse;
+    } catch {
+      throw new TinybirdResponseParseError(raw.slice(0, 200));
+    }
   };
+}
+
+// Map a non-2xx Tinybird response to the typed error class with a
+// status-keyed `hint` per `GLOBAL-012`. 401/403 = auth; 429 = rate
+// limit (carries `Retry-After`); 5xx = upstream; other 4xx = request.
+function classifyHttpError(res: Response, body: string): Error {
+  const status = res.status;
+  if (status === 401 || status === 403) {
+    return new TinybirdAuthError(status, body);
+  }
+  if (status === 429) {
+    const retryAfter = parseRetryAfter(res.headers.get("retry-after"));
+    return new TinybirdRateLimitError(status, retryAfter, body);
+  }
+  if (status >= 500 && status <= 599) {
+    return new TinybirdServerError(status, body);
+  }
+  return new TinybirdRequestError(status, body);
+}
+
+// Parse the `Retry-After` header as integer seconds. Absent or
+// unparseable values resolve to 0 — the caller can treat that as
+// "retry immediately on next user action" rather than "back off
+// forever". HTTP-date form is rare for Tinybird; we accept it but fall
+// through to 0 if Date.parse balks.
+function parseRetryAfter(value: string | null): number {
+  if (!value) return 0;
+  const trimmed = value.trim();
+  if (!trimmed) return 0;
+  const numeric = Number.parseInt(trimmed, 10);
+  if (Number.isFinite(numeric) && numeric >= 0) return numeric;
+  const dateMs = Date.parse(trimmed);
+  if (Number.isFinite(dateMs)) {
+    const delta = Math.max(0, Math.round((dateMs - Date.now()) / 1000));
+    return delta;
+  }
+  return 0;
 }
 
 async function safeReadText(res: Response): Promise<string> {

@@ -2,7 +2,12 @@ import { createTestTelemetry, type TestTelemetry } from "@nlqdb/otel/test";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   createTinybirdAdapter,
+  TinybirdAuthError,
   type TinybirdHttpClient,
+  TinybirdRateLimitError,
+  TinybirdRequestError,
+  TinybirdResponseParseError,
+  TinybirdServerError,
   TinybirdValidationError,
 } from "../src/clickhouse-tinybird/adapter.ts";
 import { createValidator } from "../src/clickhouse-tinybird/validator.ts";
@@ -338,6 +343,72 @@ describe("createTinybirdAdapter — AbortSignal cancellation", () => {
 describe("validator round-trip", () => {
   const validator = createValidator(ALLOWLIST);
 
+  it("rejects multi-statement input that smuggles a DROP after a SELECT", () => {
+    // Bypass #1 from the PR review — node-sql-parser returns an array
+    // of ASTs for `;`-separated input; the second statement must reject
+    // even though `events` is allowlisted.
+    const got = validator({
+      kind: "sql",
+      text: "SELECT 1 FROM events; DROP TABLE events",
+    });
+    expect(got.ok).toBe(false);
+    if (!got.ok) {
+      expect(got.reason).toBe("non_select_statement");
+    }
+  });
+
+  it("rejects WITH cte AS (DELETE FROM x) SELECT 1 — embedded destructive verb", () => {
+    const got = validator({
+      kind: "sql",
+      text: "WITH cte AS (DELETE FROM events) SELECT 1",
+    });
+    expect(got.ok).toBe(false);
+    if (!got.ok) {
+      // node-sql-parser may either reject the CTE-with-DELETE at parse
+      // time (parse_failed) or surface it as an embedded reject; either
+      // closes the bypass.
+      expect(["embedded_destructive_verb", "parse_failed", "non_select_statement"]).toContain(
+        got.reason,
+      );
+    }
+  });
+
+  it("rejects UNION with embedded INSERT", () => {
+    // Some dialects parse `SELECT … UNION INSERT …` as a parse error;
+    // others as a UNION node with an INSERT branch. Either rejection
+    // path closes the bypass.
+    const got = validator({
+      kind: "sql",
+      text: "SELECT 1 FROM events UNION INSERT INTO events VALUES (1)",
+    });
+    expect(got.ok).toBe(false);
+  });
+
+  it("rejects schema-qualified cross-tenant reference (other.events)", () => {
+    // Bypass #2 — `analytics.events` AST shape is `{db:"other",
+    // table:"events"}`; the bare-name walk would let it through.
+    const got = validator({ kind: "sql", text: "SELECT 1 FROM other.events" });
+    expect(got).toEqual({
+      ok: false,
+      reason: "cross_prefix_reference",
+      matched: "other.events",
+    });
+  });
+
+  it("accepts schema-qualified reference when `<db>.<table>` is in the allowlist", () => {
+    const validatorWithQualified = createValidator({
+      pipes: [],
+      tables: ["analytics.events"],
+    });
+    expect(validatorWithQualified({ kind: "sql", text: "SELECT 1 FROM analytics.events" })).toEqual(
+      { ok: true },
+    );
+  });
+
+  it("still accepts bare-name allowlisted tables (no schema qualifier)", () => {
+    expect(validator({ kind: "sql", text: "SELECT 1 FROM events" })).toEqual({ ok: true });
+  });
+
   it("accepts allowlisted Pipes and rejects others", () => {
     expect(validator({ kind: "pipe", name: "events_per_day" })).toEqual({ ok: true });
     expect(validator({ kind: "pipe", name: "users_overview" })).toEqual({ ok: true });
@@ -396,6 +467,178 @@ describe("validator round-trip", () => {
   it("rejects empty input on both modes", () => {
     expect(validator({ kind: "sql", text: "  " })).toEqual({ ok: false, reason: "empty" });
     expect(validator({ kind: "pipe", name: "" })).toEqual({ ok: false, reason: "empty" });
+  });
+});
+
+describe("createTinybirdAdapter — wire payload hygiene", () => {
+  it("trims a trailing `;` before appending FORMAT JSON", async () => {
+    // Bypass #4 — the production fetch client builds the body string;
+    // exercise it via the global `fetch` mock so we can inspect the
+    // serialised body. Anything other than `... FROM events FORMAT
+    // JSON` would let format-injection ride on a trailing semicolon.
+    const calls: Array<{ url: string; body: string }> = [];
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = (async (url: RequestInfo | URL, init?: RequestInit) => {
+      calls.push({ url: String(url), body: String(init?.body ?? "") });
+      return new Response(JSON.stringify({ data: [], rows: 0 }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    }) as unknown as typeof fetch;
+    try {
+      const db = createTinybirdAdapter({
+        token: "test_token",
+        workspace: "ws_test",
+        allowlist: ALLOWLIST,
+      });
+      await db.execute(sqlPlan("SELECT 1 FROM events;"));
+      expect(calls).toHaveLength(1);
+      const body = JSON.parse(calls[0]?.body ?? "{}") as { q?: string };
+      expect(body.q).toBe("SELECT 1 FROM events FORMAT JSON");
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+});
+
+describe("createTinybirdAdapter — typed HTTP errors", () => {
+  function buildClientWith(status: number, body = "", headers: Record<string, string> = {}) {
+    const original = globalThis.fetch;
+    globalThis.fetch = (async () =>
+      new Response(body, {
+        status,
+        headers: { "content-type": "application/json", ...headers },
+      })) as unknown as typeof fetch;
+    return () => {
+      globalThis.fetch = original;
+    };
+  }
+
+  it("maps 401 to TinybirdAuthError with a hint", async () => {
+    const restore = buildClientWith(401, '{"error": "invalid token"}');
+    try {
+      const db = createTinybirdAdapter({
+        token: "bad",
+        workspace: "ws_test",
+        allowlist: ALLOWLIST,
+      });
+      try {
+        await db.execute(pipePlan("events_per_day"));
+        expect.unreachable("expected auth rejection");
+      } catch (err) {
+        expect(err).toBeInstanceOf(TinybirdAuthError);
+        expect((err as TinybirdAuthError).statusCode).toBe(401);
+        expect((err as TinybirdAuthError).hint).toMatch(/TINYBIRD_TOKEN/);
+      }
+    } finally {
+      restore();
+    }
+  });
+
+  it("maps 429 to TinybirdRateLimitError carrying Retry-After seconds", async () => {
+    const restore = buildClientWith(429, '{"error": "rate limited"}', {
+      "retry-after": "42",
+    });
+    try {
+      const db = createTinybirdAdapter({
+        token: "ok",
+        workspace: "ws_test",
+        allowlist: ALLOWLIST,
+      });
+      try {
+        await db.execute(pipePlan("events_per_day"));
+        expect.unreachable("expected rate-limit rejection");
+      } catch (err) {
+        expect(err).toBeInstanceOf(TinybirdRateLimitError);
+        expect((err as TinybirdRateLimitError).retryAfterSeconds).toBe(42);
+      }
+      const span = telemetry.spanExporter.getFinishedSpans()[0];
+      expect(span?.attributes["nlqdb.tinybird.retry_after_s"]).toBe(42);
+    } finally {
+      restore();
+    }
+  });
+
+  it("maps 5xx to TinybirdServerError", async () => {
+    const restore = buildClientWith(503, "service unavailable");
+    try {
+      const db = createTinybirdAdapter({
+        token: "ok",
+        workspace: "ws_test",
+        allowlist: ALLOWLIST,
+      });
+      await expect(db.execute(pipePlan("events_per_day"))).rejects.toBeInstanceOf(
+        TinybirdServerError,
+      );
+    } finally {
+      restore();
+    }
+  });
+
+  it("maps other 4xx to TinybirdRequestError", async () => {
+    const restore = buildClientWith(400, "bad request");
+    try {
+      const db = createTinybirdAdapter({
+        token: "ok",
+        workspace: "ws_test",
+        allowlist: ALLOWLIST,
+      });
+      await expect(db.execute(pipePlan("events_per_day"))).rejects.toBeInstanceOf(
+        TinybirdRequestError,
+      );
+    } finally {
+      restore();
+    }
+  });
+
+  it("wraps malformed JSON with TinybirdResponseParseError", async () => {
+    const restore = buildClientWith(200, "<html>not json</html>");
+    try {
+      const db = createTinybirdAdapter({
+        token: "ok",
+        workspace: "ws_test",
+        allowlist: ALLOWLIST,
+      });
+      try {
+        await db.execute(pipePlan("events_per_day"));
+        expect.unreachable("expected parse error");
+      } catch (err) {
+        expect(err).toBeInstanceOf(TinybirdResponseParseError);
+        expect((err as TinybirdResponseParseError).bodySnippet.length).toBeLessThanOrEqual(200);
+      }
+    } finally {
+      restore();
+    }
+  });
+});
+
+describe("createTinybirdAdapter — AbortError histogram outcome", () => {
+  it("labels the duration sample with outcome=aborted when the call aborts", async () => {
+    const aborting: TinybirdHttpClient = (_req, signal) =>
+      new Promise((_resolve, reject) => {
+        signal?.addEventListener("abort", () => {
+          const err = new Error("cancelled");
+          err.name = "AbortError";
+          reject(err);
+        });
+      });
+    const db = createTinybirdAdapter({
+      workspace: "ws_test",
+      allowlist: ALLOWLIST,
+      httpClient: aborting,
+    });
+    const controller = new AbortController();
+    const promise = db.execute(pipePlan("events_per_day"), controller.signal);
+    controller.abort();
+    await expect(promise).rejects.toThrow();
+    await telemetry.collectMetrics();
+    const all = telemetry.metricExporter
+      .getMetrics()
+      .flatMap((rm) => rm.scopeMetrics.flatMap((sm) => sm.metrics));
+    const histogram = all.find((m) => m.descriptor.name === "nlqdb.db.duration_ms");
+    expect(histogram).toBeDefined();
+    const point = histogram?.dataPoints.at(-1);
+    expect(point?.attributes["outcome"]).toBe("aborted");
   });
 });
 

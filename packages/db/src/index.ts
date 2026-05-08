@@ -6,6 +6,11 @@ export type {
 } from "./clickhouse-tinybird/adapter.ts";
 export {
   createTinybirdAdapter,
+  TinybirdAuthError,
+  TinybirdRateLimitError,
+  TinybirdRequestError,
+  TinybirdResponseParseError,
+  TinybirdServerError,
   TinybirdValidationError,
 } from "./clickhouse-tinybird/adapter.ts";
 export type { PostgresAdapterOptions, PostgresQueryFn } from "./postgres.ts";
