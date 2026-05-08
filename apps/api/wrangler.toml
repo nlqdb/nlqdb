@@ -82,11 +82,19 @@ pattern = "app.nlqdb.com"
 custom_domain = true
 
 # Preview deploys use Workers Versions on this worker (see
-# `.github/workflows/preview-api.yml` — `wrangler versions upload`).
+# `.github/workflows/preview-app.yml` — `wrangler versions upload`).
 # Each PR push uploads a non-production version inheriting the
 # bindings above; CF assigns a `<id>-nlqdb-api.omer-hochman.workers.dev`
 # URL per version. The promoted version (and `app.nlqdb.com`)
 # stay untouched until merge runs `wrangler deploy` via
-# `.github/workflows/deploy-api.yml`. No `[env.preview]` block
-# needed — that was the older "separate preview Worker" model.
-# Documented in RUNBOOK §6 "Preview environments — Workers".
+# `.github/workflows/deploy-api.yml`.
+#
+# Preview vars (`NODE_ENV=preview`, `MOCK_IDP=1`, etc.) are injected
+# at upload time via `wrangler versions upload --var KEY:VALUE` from
+# the workflow — not via a `[env.preview]` block here, to mirror the
+# canary pattern (`apps/api/wrangler.canary.toml` / `SK-AUTH-017`)
+# where each non-prod surface lives in its own file. If a preview
+# ever needs separate KV+D1 namespaces, create `wrangler.preview.toml`
+# alongside `wrangler.canary.toml` and switch the workflow's wrangler
+# command to `--config wrangler.preview.toml` rather than reviving
+# `--env preview`.

@@ -21,6 +21,7 @@ when-to-load:
 - `nlqdb/actions/.github/workflows/release.yml` — reusable release workflow, adds `id-token: write` for OIDC npm publish.
 - Every consumer repo's `.github/workflows/ci.yml` — 4-line caller; should not redeclare `permissions:`.
 - `nlqdb/actions/actions/deploy-cloudflare/` — composite action; runs in caller's job context, inherits permissions, must not assume any.
+- `.github/workflows/preview-app.yml` — unified preview workflow (`SK-CIPERM-002`-conformant: `contents: read` + `pull-requests: write`); consumes `NEON_API_KEY` + `NEON_PROJECT_ID` to mint per-PR Neon branches and `CLOUDFLARE_API_TOKEN` + `CLOUDFLARE_ACCOUNT_ID` for `wrangler versions upload`.
 
 ## Decisions
 

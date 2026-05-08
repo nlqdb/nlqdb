@@ -27,20 +27,19 @@
 # cleanup pass garbage-collects them. Versions GC followup is tracked
 # in IMPLEMENTATION §8 ("preview Workers Versions GC").
 
-name: Preview API
+# DISABLED: replaced by `.github/workflows/preview-app.yml`. Once
+# `apps/web` was merged into `apps/api` (`SK-AUTH-016`), running this
+# in addition to preview-app.yml would upload the same Worker version
+# twice per PR push. Keeping this file (instead of deleting it) preserves
+# the comment history for archaeology, and the no-op trigger ensures it
+# never runs. Delete after one cycle of confidence in preview-app.yml.
+
+name: Preview API (DISABLED)
 
 on:
   pull_request:
-    types: [opened, synchronize, reopened]
     paths:
-      - "apps/api/**"
-      - "apps/web/**"
-      - "packages/auth-internal/**"
-      - "packages/db/**"
-      - "packages/events/**"
-      - "packages/llm/**"
-      - "packages/otel/**"
-      - ".github/workflows/preview-api.yml"
+      - "__DISABLED__"
 
 concurrency:
   group: preview-api-pr-${{ github.event.number }}

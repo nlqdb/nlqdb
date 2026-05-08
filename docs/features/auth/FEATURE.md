@@ -132,7 +132,7 @@ when-to-load:
 
 ### SK-AUTH-013 — Both auth gates (Hono CORS allow-list + Better Auth `trustedOrigins`) cover Workers-Versions preview URLs
 
-- **Status:** Superseded by `SK-AUTH-016` (single-origin worker for prod). The historical body — preview-URL CORS regex, `trustedOrigins` wildcard, the "fix one, not both" failure mode — lives in this file's git history; consult it only if a future PR re-introduces a cross-eTLD+1 preview flow.
+- **Status:** Superseded by `SK-AUTH-016` (single-origin worker for prod) and `.github/workflows/preview-app.yml` (single-origin per-PR previews — same combined worker, with mock IdP). The historical body — preview-URL CORS regex, `trustedOrigins` wildcard, the "fix one, not both" failure mode — lives in this file's git history; consult it only if a future PR re-introduces a cross-eTLD+1 preview flow.
 
 ### SK-AUTH-014 — `nlqdb-api` keeps `workers_dev = true` so `wrangler versions upload` returns a `preview_url`
 
