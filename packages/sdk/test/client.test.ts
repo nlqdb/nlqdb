@@ -168,7 +168,12 @@ describe("createClient", () => {
     const fakeFetch: FetchLike = async (_url, init) => {
       capturedBody = init?.body ? JSON.parse(String(init.body)) : null;
       return new Response(
-        JSON.stringify({ dbId: "db_x_a1", slug: "x-a1", engine: "clickhouse", pkLive: "pk_live_x" }),
+        JSON.stringify({
+          dbId: "db_x_a1",
+          slug: "x-a1",
+          engine: "clickhouse",
+          pkLive: "pk_live_x",
+        }),
         { status: 201, headers: { "content-type": "application/json" } },
       );
     };

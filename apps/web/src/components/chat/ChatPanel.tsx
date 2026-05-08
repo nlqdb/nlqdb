@@ -363,9 +363,16 @@ export default function ChatPanel({ apiBase }: ChatPanelProps) {
   // the rail to keep the same DB context — they can override by
   // clicking "All databases" if they want auto-pick again.
   function applySelectedDb(echo: SelectedDbEcho) {
+    // The selected_db echo (`SK-ASK-009`) carries id/slug/confidence/
+    // reason — no engine field, since the picker only needs the slug
+    // to confirm the choice. We seed the activeDb placeholder with
+    // postgres as the default; the rail's full DB list (which carries
+    // the real engine column per `SK-DB-010`) overrides this when the
+    // LeftRail load resolves.
     setActiveDb({
       id: echo.id,
       slug: echo.slug,
+      engine: "postgres",
       pkLive: null,
       lastQueriedAt: null,
       createdAt: Math.floor(Date.now() / 1000),

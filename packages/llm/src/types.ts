@@ -142,10 +142,7 @@ export type Provider = {
   summarize(req: SummarizeRequest, opts?: CallOpts): Promise<SummarizeResponse>;
   schemaInfer(req: SchemaInferRequest, opts?: CallOpts): Promise<SchemaInferResponse>;
   disambiguate(req: DisambiguateRequest, opts?: CallOpts): Promise<DisambiguateResponse>;
-  engineClassify(
-    req: EngineClassifyRequest,
-    opts?: CallOpts,
-  ): Promise<EngineClassifyResponse>;
+  engineClassify(req: EngineClassifyRequest, opts?: CallOpts): Promise<EngineClassifyResponse>;
 };
 
 // Thrown by providers when the upstream call fails. Carries a

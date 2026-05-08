@@ -217,10 +217,7 @@ describe("provisionDb — happy path", () => {
   it("persists the engine column verbatim from args.engine (SK-DB-010)", async () => {
     const pg = makePgStub();
     const d1 = makeD1Stub();
-    const result = await provisionDb(
-      { pg: pg.pg, d1: d1.d1 },
-      makeArgs({ engine: "clickhouse" }),
-    );
+    const result = await provisionDb({ pg: pg.pg, d1: d1.d1 }, makeArgs({ engine: "clickhouse" }));
     expect(result.ok).toBe(true);
     expect(d1.inserts).toHaveLength(1);
     // Position 2 in the bind list is the engine — assert it traveled

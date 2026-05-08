@@ -4,10 +4,7 @@
 // prompt and the table would fork the LLM's worldview from the docs.
 
 import { describe, expect, it } from "vitest";
-import {
-  buildEngineClassifyUser,
-  ENGINE_CLASSIFY_SYSTEM,
-} from "../src/prompts.ts";
+import { buildEngineClassifyUser, ENGINE_CLASSIFY_SYSTEM } from "../src/prompts.ts";
 
 describe("ENGINE_CLASSIFY_SYSTEM (SK-DB-010 / SK-MULTIENG-002)", () => {
   it("embeds the SK-MULTIENG-002 engine-fit table header verbatim", () => {
@@ -42,8 +39,6 @@ describe("ENGINE_CLASSIFY_SYSTEM (SK-DB-010 / SK-MULTIENG-002)", () => {
 
 describe("buildEngineClassifyUser", () => {
   it("formats the user-prompt as `Goal: <text>`", () => {
-    expect(buildEngineClassifyUser({ goal: "an orders tracker" })).toBe(
-      "Goal: an orders tracker",
-    );
+    expect(buildEngineClassifyUser({ goal: "an orders tracker" })).toBe("Goal: an orders tracker");
   });
 });
