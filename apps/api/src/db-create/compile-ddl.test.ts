@@ -78,7 +78,6 @@ describe("compileDdl", () => {
     const result = compileDdl(minimalTable, "tenant_a");
     ok(result);
     expect(result.statements).toEqual([
-      `CREATE SCHEMA "tenant_a";`,
       [
         `CREATE TABLE "tenant_a"."orders" (`,
         `  "id" UUID NOT NULL,`,
@@ -93,11 +92,10 @@ describe("compileDdl", () => {
   it("emits CREATE TABLE before ALTER ... ADD CONSTRAINT and the FK index last", () => {
     const result = compileDdl(planWithFk, "tenant_b");
     ok(result);
-    expect(result.statements).toHaveLength(5); // schema, 2 tables, 1 fk, 1 index
-    expect(result.statements[0]).toBe(`CREATE SCHEMA "tenant_b";`);
-    expect(result.statements[1]).toContain(`CREATE TABLE "tenant_b"."customers"`);
-    expect(result.statements[2]).toContain(`CREATE TABLE "tenant_b"."orders"`);
-    expect(result.statements[3]).toBe(
+    expect(result.statements).toHaveLength(4); // 2 tables, 1 fk, 1 index
+    expect(result.statements[0]).toContain(`CREATE TABLE "tenant_b"."customers"`);
+    expect(result.statements[1]).toContain(`CREATE TABLE "tenant_b"."orders"`);
+    expect(result.statements[2]).toBe(
       [
         `ALTER TABLE "tenant_b"."orders"`,
         `  ADD CONSTRAINT "fk_orders__customer_id"`,
@@ -106,7 +104,7 @@ describe("compileDdl", () => {
         `  ON DELETE CASCADE;`,
       ].join("\n"),
     );
-    expect(result.statements[4]).toBe(
+    expect(result.statements[3]).toBe(
       `CREATE INDEX "idx_orders__customer_id" ON "tenant_b"."orders" ("customer_id");`,
     );
   });
@@ -257,6 +255,6 @@ describe("compileDdl", () => {
     };
     const result = compileDdl(plan, "tenant_types");
     ok(result);
-    expect(result.statements[1]).toContain(`"a" ${sql} NOT NULL`);
+    expect(result.statements[0]).toContain(`"a" ${sql} NOT NULL`);
   });
 });
