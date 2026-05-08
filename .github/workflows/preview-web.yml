@@ -18,15 +18,19 @@
 # dashboard until a future cleanup pass. Tracked in IMPLEMENTATION §8
 # ("preview Workers Versions GC").
 
-name: Preview web
+# DISABLED: replaced by `.github/workflows/preview-app.yml`. The
+# product UI now ships in the merged `apps/api` Worker (`SK-AUTH-016`),
+# so two separate preview workflows would each upload the same bundle.
+# Keeping this file (instead of deleting it) preserves the comment
+# history above for archaeology, and the no-op trigger ensures it
+# never runs. Delete after one cycle of confidence in preview-app.yml.
+
+name: Preview web (DISABLED)
 
 on:
   pull_request:
-    types: [opened, synchronize, reopened]
     paths:
-      - "apps/web/**"
-      - "packages/elements/**"
-      - ".github/workflows/preview-web.yml"
+      - "__DISABLED__"
 
 concurrency:
   group: preview-web-pr-${{ github.event.number }}

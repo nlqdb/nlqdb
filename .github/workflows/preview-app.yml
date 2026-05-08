@@ -1,0 +1,281 @@
+# nlqdb — unified preview deploys for the merged web+API worker.
+#
+# Replaces preview-web.yml + preview-api.yml: post-`SK-AUTH-016` the
+# product UI and HTTP API are a single Worker (`nlqdb-api`) on
+# `app.nlqdb.com`, so two preview workflows would each upload the
+# same bundle. One PR push uploads one preview version with the
+# build of `apps/web` already wired into `apps/api`'s `[assets]`
+# binding (`../web/dist`).
+#
+# Per-PR isolation:
+#   - Ephemeral Neon branch (`pr-N`) — isolated Postgres for the app
+#     data the Worker queries through `DATABASE_URL`. Created on
+#     open/synchronize, deleted on close.
+#   - Mock IdP / mock Stripe (`MOCK_IDP=1`, `MOCK_STRIPE=1`) —
+#     bypass real OAuth + Stripe round-trips so previews don't need
+#     per-PR OAuth callbacks (callback URL is single-tenant per
+#     `SK-AUTH-008`) or test Stripe webhook routing. The runtime
+#     toggle ships in Worksheet 2 (chore/mock-idp-preview-flags).
+#     Until that lands, these vars are inert and the preview falls
+#     back to the prod auth path — the workflow itself still
+#     functions; only the mock-IdP UX is degraded.
+#
+# Bindings: KV / D1 / Queue / R2 are inherited from prod via
+# `wrangler versions upload` (no `--env preview`). The
+# `[env.preview]` block in `apps/api/wrangler.toml` reserves
+# preview-specific KV+D1 IDs for a future activation; switching the
+# command to `versions upload --env preview` is a follow-up after
+# the human-side setup steps (H2–H7 in the PR description).
+#
+# Wrangler-action vs direct invocation: same rationale as the
+# preview-{api,web} workflows we replaced — `wrangler-action@v3`'s
+# `postCommands` doesn't see `WRANGLER_OUTPUT_DIR`, and its
+# `deployment-url` step output is broken for `versions upload`
+# (cloudflare/wrangler-action#343). Direct invocation lets us pin
+# `WRANGLER_OUTPUT_FILE_DIRECTORY` and parse the ND-JSON for the
+# `version-upload` event's `preview_url` ourselves, via the shared
+# `scripts/extract-wrangler-preview-url.sh`.
+
+name: Preview app (unified)
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, closed]
+    paths:
+      - "apps/api/**"
+      - "apps/web/**"
+      - "packages/**"
+      - ".github/workflows/preview-app.yml"
+
+concurrency:
+  group: preview-app-pr-${{ github.event.number }}
+  cancel-in-progress: true
+
+# `pull-requests: write` for the sticky comment. `contents: read`
+# for checkout. Nothing else — no `deployments: write` (Workers
+# Versions doesn't create a GitHub Deployment object), no
+# `id-token: write` (Cloudflare auth uses an API token secret).
+# See `docs/features/ci-permissions/FEATURE.md` `SK-CIPERM-002`.
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  deploy:
+    name: Build + Neon branch + versions upload
+    if: github.event.action != 'closed'
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    env:
+      PR_NUMBER: ${{ github.event.pull_request.number }}
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - uses: ./.github/actions/setup
+
+      # Fail fast with a clear pointer if any required secret is
+      # missing. Without this, the Neon step would 405 on the URL
+      # `…/projects//branches` (empty NEON_PROJECT_ID), which is
+      # accurate but harder to read. H1–H4 in the PR description list
+      # the secrets to configure post-merge.
+      - name: Preflight — required secrets present
+        env:
+          NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
+          NEON_PROJECT_ID: ${{ secrets.NEON_PROJECT_ID }}
+          PREVIEW_BETTER_AUTH_SECRET: ${{ secrets.PREVIEW_BETTER_AUTH_SECRET }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          missing=()
+          [ -n "${NEON_API_KEY:-}" ] || missing+=(NEON_API_KEY)
+          [ -n "${NEON_PROJECT_ID:-}" ] || missing+=(NEON_PROJECT_ID)
+          [ -n "${PREVIEW_BETTER_AUTH_SECRET:-}" ] || missing+=(PREVIEW_BETTER_AUTH_SECRET)
+          [ -n "${CLOUDFLARE_API_TOKEN:-}" ] || missing+=(CLOUDFLARE_API_TOKEN)
+          [ -n "${CLOUDFLARE_ACCOUNT_ID:-}" ] || missing+=(CLOUDFLARE_ACCOUNT_ID)
+          if [ ${#missing[@]} -ne 0 ]; then
+            echo "::error::preview-app.yml requires repository secrets that are not set: ${missing[*]}"
+            echo "::error::See the PR description for chore/unified-preview-ci (H1–H4) for the configuration steps."
+            exit 1
+          fi
+
+      # `apps/api`'s `[assets]` binding points at `../web/dist`
+      # (`SK-AUTH-016`). Same rationale as the merged-worker deploy
+      # workflow — building web before uploading the api Worker.
+      - name: Build apps/web
+        working-directory: apps/web
+        run: bun run build
+
+      # Provision an ephemeral Neon branch (`pr-N`). The connection
+      # URI is returned in `connection_uris[0].connection_uri` for
+      # single-role/database branches (per Neon docs); fail loudly
+      # if it's missing rather than silently deploying with an empty
+      # `DATABASE_URL`.
+      - name: Create Neon branch
+        id: neon
+        env:
+          NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
+          NEON_PROJECT_ID: ${{ secrets.NEON_PROJECT_ID }}
+        run: |
+          set -euo pipefail
+          response=$(curl -fsSL -X POST \
+            "https://console.neon.tech/api/v2/projects/${NEON_PROJECT_ID}/branches" \
+            -H "Authorization: Bearer ${NEON_API_KEY}" \
+            -H "Content-Type: application/json" \
+            -d "{\"branch\": {\"name\": \"pr-${PR_NUMBER}\"}, \"endpoints\": [{\"type\": \"read_write\"}]}")
+          db_url=$(echo "$response" | jq -r '.connection_uris[0].connection_uri // empty')
+          if [ -z "$db_url" ]; then
+            echo "::error::Neon API did not return connection_uris[0].connection_uri"
+            echo "$response" | jq .
+            exit 1
+          fi
+          # Mask the URL in subsequent log output — it carries the
+          # branch password.
+          echo "::add-mask::$db_url"
+          echo "database_url=$db_url" >> "$GITHUB_OUTPUT"
+
+      # Upload the merged Worker as a non-production version, with
+      # preview-only vars injected via `--var KEY:VALUE`. `--var` is
+      # the documented mechanism for `wrangler versions upload` to
+      # override `[vars]` at upload time, and splits on the FIRST
+      # colon — so the embedded `:` in a Postgres URL value is safe
+      # (https://developers.cloudflare.com/workers/wrangler/commands/workers/).
+      # Setting these in the step `env:` block alone would NOT inject
+      # them into the deployed Worker — `env:` only affects the
+      # wrangler CLI process, not the Worker's runtime bindings.
+      #
+      # NODE_ENV=preview is a deliberate fail-safe: `apps/api/src/auth.ts`
+      # only takes the prod OAuth-creds path when NODE_ENV is `production`
+      # or `canary` (`SK-AUTH-008` + `SK-AUTH-017`); any other value
+      # routes to the dev-creds branch, whose callback URL is `localhost`
+      # — so even if Worksheet 2's mock IdP isn't yet wired (or has a
+      # bug), a preview cannot accidentally complete OAuth against the
+      # production GitHub/Google apps. BETTER_AUTH_URL pins Better Auth's
+      # `baseURL` to the predictable preview-alias hostname so cookie
+      # scope and post-callback redirects stay first-party.
+      - name: Upload preview version
+        id: deploy
+        working-directory: apps/api
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          WRANGLER_OUTPUT_FILE_DIRECTORY: ${{ github.workspace }}/wrangler-out
+          DATABASE_URL: ${{ steps.neon.outputs.database_url }}
+          BETTER_AUTH_SECRET: ${{ secrets.PREVIEW_BETTER_AUTH_SECRET }}
+          PREVIEW_BASE_URL: "https://pr-${{ env.PR_NUMBER }}-nlqdb-api.omer-hochman.workers.dev"
+        run: |
+          set -euo pipefail
+          mkdir -p "$WRANGLER_OUTPUT_FILE_DIRECTORY"
+          bunx wrangler versions upload \
+            --message "PR #${PR_NUMBER} @ ${{ github.event.pull_request.head.sha }}" \
+            --preview-alias "pr-${PR_NUMBER}" \
+            --var "NODE_ENV:preview" \
+            --var "MOCK_IDP:1" \
+            --var "MOCK_STRIPE:1" \
+            --var "BETTER_AUTH_URL:${PREVIEW_BASE_URL}" \
+            --var "MAGIC_LINK_WEB_ORIGIN:${PREVIEW_BASE_URL}" \
+            --var "DATABASE_URL:${DATABASE_URL}" \
+            --var "BETTER_AUTH_SECRET:${BETTER_AUTH_SECRET}"
+
+      - name: Extract preview URL
+        if: always() && steps.deploy.outcome == 'success'
+        env:
+          WRANGLER_OUTPUT_FILE_DIRECTORY: ${{ github.workspace }}/wrangler-out
+          CF_WORKERS_SUBDOMAIN: omer-hochman
+        run: sh "$GITHUB_WORKSPACE/scripts/extract-wrangler-preview-url.sh"
+
+      # Sticky comment — single comment per PR, edited in place.
+      # `if: always()` so a deploy failure still updates the comment.
+      - name: Sticky preview comment
+        if: always()
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7.1.0
+        env:
+          DEPLOY_OUTCOME: ${{ steps.deploy.outcome }}
+          NEON_OUTCOME: ${{ steps.neon.outcome }}
+        with:
+          script: |
+            const deployOutcome = process.env.DEPLOY_OUTCOME ?? '';
+            const neonOutcome = process.env.NEON_OUTCOME ?? '';
+            const url = process.env.PREVIEW_URL ?? '';
+
+            const sha = context.sha.slice(0, 7);
+            const marker = '<!-- preview-app-sticky -->';
+            const ts = new Date().toISOString().replace('T', ' ').slice(0, 19) + ' UTC';
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+
+            let header;
+            const lines = [];
+
+            if (neonOutcome !== 'success') {
+              header = '❌ **Preview app deploy FAILED — Neon branch step**';
+              lines.push(`- See logs: <${runUrl}>`);
+            } else if (deployOutcome !== 'success') {
+              header = '❌ **Preview app deploy FAILED — version upload**';
+              lines.push(`- Neon branch: \`pr-${process.env.PR_NUMBER ?? context.issue.number}\` (created — will be cleaned up on PR close)`);
+              lines.push(`- See logs: <${runUrl}>`);
+            } else if (url) {
+              header = '🚀 **Preview app deployed**';
+              lines.push(`- URL: <${url}>`);
+              lines.push(`- Neon branch: \`pr-${process.env.PR_NUMBER ?? context.issue.number}\` (deleted on PR close)`);
+              lines.push('- Mock IdP: visit `/auth/sign-in` and submit the mock form');
+              lines.push(`- Magic-link inbox: \`${url}/api/dev/inbox\``);
+            } else {
+              header = '🚀 **Preview app deployed** (URL parse degraded — see logs)';
+              lines.push('- URL: latest version visible in the dashboard → `nlqdb-api` → Versions');
+            }
+
+            lines.push('- Worker: `nlqdb-api` (non-production version — `app.nlqdb.com` untouched)');
+            lines.push(`- Commit: \`${sha}\``);
+            lines.push(`- Updated: ${ts}`);
+
+            const body = [marker, header, '', ...lines].join('\n');
+
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            const existing = comments.find((c) => c.body?.includes(marker));
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body,
+              });
+            }
+
+  cleanup:
+    name: Delete Neon branch
+    if: github.event.action == 'closed'
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    env:
+      PR_NUMBER: ${{ github.event.pull_request.number }}
+      NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
+      NEON_PROJECT_ID: ${{ secrets.NEON_PROJECT_ID }}
+    steps:
+      # Look the branch up by name (we don't persist the branch ID
+      # across runs) and DELETE it. Idempotent: if the branch is
+      # already gone (re-run, or open never created one), exit 0.
+      - name: Delete Neon branch
+        run: |
+          set -euo pipefail
+          branches=$(curl -fsSL \
+            "https://console.neon.tech/api/v2/projects/${NEON_PROJECT_ID}/branches" \
+            -H "Authorization: Bearer ${NEON_API_KEY}")
+          branch_id=$(echo "$branches" | jq -r ".branches[] | select(.name == \"pr-${PR_NUMBER}\") | .id")
+          if [ -z "$branch_id" ]; then
+            echo "no Neon branch named pr-${PR_NUMBER} — nothing to clean up"
+            exit 0
+          fi
+          curl -fsSL -X DELETE \
+            "https://console.neon.tech/api/v2/projects/${NEON_PROJECT_ID}/branches/${branch_id}" \
+            -H "Authorization: Bearer ${NEON_API_KEY}" \
+            > /dev/null
+          echo "deleted Neon branch ${branch_id} (pr-${PR_NUMBER})"
