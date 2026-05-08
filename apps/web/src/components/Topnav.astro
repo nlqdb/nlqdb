@@ -51,6 +51,23 @@ const inChat = current === "chat";
 <script>
   import { fetchSession, signOut } from "../lib/session";
 
+  // Hop the "Sign in" link from the marketing origin to the merged
+  // app worker (`app.nlqdb.com`) so the sign-in page loads on the
+  // same origin as the API (SK-AUTH-015 / SK-AUTH-016). The Astro
+  // build is shared by both workers, so the link is a relative
+  // path on disk and rewritten here for the marketing surface only;
+  // dev (`localhost`), the merged app worker, and PR previews keep
+  // the relative path.
+  const signinAnchor = document.querySelector<HTMLAnchorElement>(
+    "#topnav-signin-gate a",
+  );
+  if (
+    signinAnchor &&
+    (location.hostname === "nlqdb.com" || location.hostname === "www.nlqdb.com")
+  ) {
+    signinAnchor.href = "https://app.nlqdb.com/auth/sign-in";
+  }
+
   // ---- Cmd+G shared reveal gate (from main, preserved verbatim) ----
   // Toggles every `[data-cmdg-gate]` element on the page in lockstep
   // — currently the hero <CreateForm> on `/` and the "Sign in" link
