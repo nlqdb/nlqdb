@@ -13,8 +13,18 @@
 #
 #   local   → write apps/<app>/.dev.vars from .envrc (gitignored,
 #              read by `wrangler dev`).
-#   remote  → push to the deployed Worker via `wrangler secret bulk`
-#              (one atomic call, idempotent — overwrites on re-run).
+#   remote  → push to the deployed Worker via
+#              `wrangler versions secret bulk` (one atomic call,
+#              idempotent — overwrites on re-run). The command forks
+#              a NEW Worker version from the currently-deployed version
+#              with the new secrets applied; this version is NOT
+#              auto-deployed. The script prints the new version id and
+#              auto-deploys it via `wrangler versions deploy <id>` so
+#              the new secrets actually take effect. Use the legacy
+#              `wrangler secret bulk` would mutate the latest-uploaded
+#              version, which fails (CF API code 10214) whenever a PR
+#              preview upload is ahead of the deployed version
+#              (`SK-AUTH-014` / `SK-AUTH-018` produce these every PR).
 #
 # Never logs values; only secret names + lengths + OK/skip status.
 #
@@ -187,28 +197,52 @@ fi
 
 # --- remote mode --------------------------------------------------------
 if [[ "$MODE" == "remote" ]]; then
-  say "Pushing to Cloudflare Workers ($WORKER_NAME) via wrangler secret bulk"
+  say "Pushing to Cloudflare Workers ($WORKER_NAME) via wrangler versions secret bulk"
   # Build JSON via jq's $ARGS.named — values arrive through fd-passed
-  # --arg, never through argv. One wrangler call atomically updates all
-  # secrets; partial failures roll back as a unit.
+  # --arg, never through argv. `versions secret bulk` reads the JSON
+  # from stdin (no file arg), forks a new Worker version from the
+  # currently-deployed version with the new secrets applied, and
+  # prints the new version id. Nothing is deployed yet at this point.
   declare -a jq_args
   for i in "${!names[@]}"; do
     jq_args+=(--arg "${names[$i]}" "${values[$i]}")
   done
   json=$(jq -n "${jq_args[@]}" '$ARGS.named')
-  if printf '%s' "$json" | (cd "$APP_DIR" && wrangler secret bulk) >/dev/null; then
-    for name in "${names[@]}"; do
-      val="${!name}"
-      ok "$name (${#val} chars)"
-    done
-    echo ""
-    say "Done"
-    ok "$set_count secrets pushed to Worker $WORKER_NAME"
-    [[ $skip_count -gt 0 ]] && printf '  \033[2m· %d skipped (empty in .envrc — provision later)\033[0m\n' "$skip_count"
-    echo ""
-    echo "Verify with: (cd $APP_DIR && wrangler secret list)"
-  else
-    fail "wrangler secret bulk" "see error above; check CLOUDFLARE_API_TOKEN scope + wrangler login"
+  upload_log=$(mktemp)
+  trap 'rm -f "$upload_log"' EXIT
+  if ! printf '%s' "$json" | (cd "$APP_DIR" && wrangler versions secret bulk) >"$upload_log" 2>&1; then
+    cat "$upload_log"
+    fail "wrangler versions secret bulk" "see error above; check CLOUDFLARE_API_TOKEN scope + wrangler login"
     exit 1
   fi
+  cat "$upload_log"
+  for name in "${names[@]}"; do
+    val="${!name}"
+    ok "$name (${#val} chars)"
+  done
+  # Extract the new version id from wrangler's output. Format (4.87+):
+  # "Worker Version ID: <uuid>" on its own line.
+  new_version=$(grep -Eo '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}' "$upload_log" | tail -1 || true)
+  rm -f "$upload_log"
+  trap - EXIT
+  if [[ -z "$new_version" ]]; then
+    fail "version id" "could not parse new Worker version id from wrangler output — deploy manually with 'wrangler versions deploy'"
+    exit 1
+  fi
+
+  echo ""
+  say "Deploying new version ($new_version) via wrangler versions deploy"
+  if (cd "$APP_DIR" && wrangler versions deploy "$new_version" --yes --message "secret rotation $(date -u +%Y-%m-%dT%H:%M:%SZ)") >/dev/null 2>&1; then
+    ok "deployed $new_version to 100%"
+  else
+    fail "wrangler versions deploy" "secret-only version uploaded ($new_version) but not promoted; finish with: (cd $APP_DIR && wrangler versions deploy $new_version --yes)"
+    exit 1
+  fi
+
+  echo ""
+  say "Done"
+  ok "$set_count secrets pushed and version $new_version deployed to Worker $WORKER_NAME"
+  [[ $skip_count -gt 0 ]] && printf '  \033[2m· %d skipped (empty in .envrc — provision later)\033[0m\n' "$skip_count"
+  echo ""
+  echo "Verify with: (cd $APP_DIR && wrangler secret list)"
 fi
