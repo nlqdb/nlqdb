@@ -15,6 +15,18 @@
 #              read by `wrangler dev`).
 #   remote  → push to the deployed Worker via `wrangler secret bulk`
 #              (one atomic call, idempotent — overwrites on re-run).
+#              Worker-level secrets (persistent across versions); CI
+#              runs this same script after `wrangler deploy` so every
+#              deploy self-heals the secret set, even if a previous
+#              rotation drifted (deploy-api.yml / deploy-events-worker.yml).
+#
+#              Pre-condition: latest Worker version must equal the
+#              deployed version (CF API code 10214 otherwise). CI runs
+#              this immediately after `wrangler deploy`, when latest
+#              is the deployed version, so the call succeeds. Local
+#              ad-hoc runs fail with 10214 whenever a PR preview upload
+#              is ahead — in that case, trigger a deploy via
+#              `gh workflow run deploy-api.yml --ref main` instead.
 #
 # Never logs values; only secret names + lengths + OK/skip status.
 #
@@ -208,7 +220,7 @@ if [[ "$MODE" == "remote" ]]; then
     echo ""
     echo "Verify with: (cd $APP_DIR && wrangler secret list)"
   else
-    fail "wrangler secret bulk" "see error above; check CLOUDFLARE_API_TOKEN scope + wrangler login"
+    fail "wrangler secret bulk" "see error above; check CLOUDFLARE_API_TOKEN scope + wrangler login. If 10214 'latest version isn't currently deployed', a PR preview upload is ahead — trigger a deploy via 'gh workflow run deploy-$APP.yml --ref main' instead of running this locally."
     exit 1
   fi
 fi

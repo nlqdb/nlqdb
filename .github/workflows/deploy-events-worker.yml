@@ -1,7 +1,16 @@
 # nlqdb — auto-deploy apps/events-worker (queue consumer Worker) on
-# merge. Drains `nlqdb-events` and posts to LogSnag; no D1 / KV /
-# secrets:remote sequence needed beyond what wrangler does, so the
-# workflow is a single-step deploy.
+# merge. Drains `nlqdb-events` and posts to LogSnag.
+#
+# Sequence:
+#   deploy           — wrangler deploy.
+#   secrets:remote   — `scripts/mirror-secrets-workers.sh remote
+#                      events-worker` re-syncs worker-level secrets
+#                      from GHA → Worker. Runs after deploy so latest
+#                      = deployed (CF API code 10214 otherwise). Same
+#                      script as the local `bun run secrets:remote`.
+#                      Without this, every deploy resets drifted
+#                      worker-level secrets — the OAuth-init incident
+#                      class on 2026-05-08, generalised.
 #
 # Manual re-deploy: workflow_dispatch on the Actions tab, or
 # `bun run --cwd apps/events-worker deploy` from a dev machine.
@@ -56,3 +65,19 @@ jobs:
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           workingDirectory: apps/events-worker
           command: deploy
+
+      # Re-sync worker-level secrets from GHA secrets. Same script
+      # path as `bun run --cwd apps/events-worker secrets:remote` —
+      # no CI-only push code path. Latest = deployed at this point
+      # because `wrangler deploy` just ran; `wrangler secret bulk`
+      # requires that.
+      - name: Sync Worker secrets (mirror-secrets-workers.sh)
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          ALL_SECRETS: ${{ toJSON(secrets) }}
+        run: |
+          export PATH="$PWD/node_modules/.bin:$PATH"
+          jq -r 'to_entries[] | "export \(.key)=\(.value | @sh)"' <<<"$ALL_SECRETS" > .envrc
+          ./scripts/mirror-secrets-workers.sh remote events-worker
+          rm -f .envrc
