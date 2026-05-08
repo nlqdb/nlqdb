@@ -25,6 +25,22 @@ import { findLatestForEmail } from "./mock-email-sink.ts";
 const DEFAULT_MOCK_EMAIL = "test@example.com";
 const MOCK_CALLBACK_PATH = "/app";
 
+// Side-channel for the verify URL. The `sendMagicLink` callback and
+// `handleMockSignIn` execute in the same Worker request — we capture
+// the URL here instead of round-tripping through KV, which is
+// eventually-consistent and may return a stale (already-used) token.
+let _capturedVerifyUrl: string | null = null;
+
+export function captureVerifyUrl(url: string): void {
+  _capturedVerifyUrl = url;
+}
+
+export function consumeCapturedVerifyUrl(): string | null {
+  const url = _capturedVerifyUrl;
+  _capturedVerifyUrl = null;
+  return url;
+}
+
 // Minimal structural type for the bits of the Hono Context we use.
 // Full typing would couple this file to the route handler's
 // `Variables` shape (RequireSessionVariables &
@@ -55,11 +71,13 @@ export async function handleMockSignIn(c: MockSignInCtx): Promise<Response> {
     return new Response(`mock_sign_in_send_failed: ${sendRes.status}`, { status: 502 });
   }
 
-  const latest = await findLatestForEmail(c.env.KV, email);
-  if (!latest) {
+  // Prefer the in-memory capture (same-request, no KV consistency
+  // lag). Fall back to KV for resilience.
+  const verifyUrl = consumeCapturedVerifyUrl()
+    ?? (await findLatestForEmail(c.env.KV, email))?.body;
+  if (!verifyUrl) {
     return new Response("mock_sign_in_inbox_empty", { status: 502 });
   }
-  const verifyUrl = latest.body;
 
   const verifyReq = new Request(verifyUrl, {
     method: "GET",

@@ -18,6 +18,7 @@ import { magicLink } from "better-auth/plugins";
 import { D1Dialect } from "kysely-d1";
 import { hashEmail, makeMagicLinkThrottle } from "./auth/magic-link-throttle.ts";
 import { sinkEmail } from "./auth/mock-email-sink.ts";
+import { captureVerifyUrl } from "./auth/mock-idp.ts";
 import { makeEmailSender } from "./email.ts";
 
 // `isDev` is the localhost gate — only the literal `development` value
@@ -160,6 +161,7 @@ export const auth = betterAuth({
         // it; the mock-sign-in handler reads it back from KV and
         // server-side fetches the verify endpoint to mint the cookie.
         if (env.MOCK_IDP === "1") {
+          captureVerifyUrl(url);
           await sinkEmail(env.KV, email, "Magic link (mock)", url);
           return;
         }
