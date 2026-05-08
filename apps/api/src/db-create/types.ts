@@ -21,7 +21,7 @@
 // - `docs/features/ask-pipeline/FEATURE.md` — the `kind=create`
 //   branch routes here from `/v1/ask` (SK-ASK-001).
 
-import type { Dimension, ForeignKey, Metric, SampleRow, SchemaPlan } from "@nlqdb/db";
+import type { Dimension, Engine, ForeignKey, Metric, SampleRow, SchemaPlan } from "@nlqdb/db";
 import type { LLMRouter } from "@nlqdb/llm";
 
 // Re-exports for callers that consume the SchemaPlan family
@@ -31,6 +31,7 @@ import type { LLMRouter } from "@nlqdb/llm";
 export type {
   Column,
   Dimension,
+  Engine,
   ForeignKey,
   Metric,
   SampleRow,
@@ -117,6 +118,11 @@ export type ProvisionArgs = {
   schemaName: string;
   ddl: string[];
   tenantId: string;
+  // SK-DB-010 — engine resolved by the orchestrator (classifier
+  // default or explicit override). Persisted into the `databases`
+  // row's `engine` column (migration 0001_init.sql) so future
+  // /v1/ask reads can route to the right adapter.
+  engine: Engine;
   // The `connection_secret_ref` value to write into the
   // `databases` row — resolved by the route handler from
   // `env.DATABASE_URL` (or a per-tier override). The provisioner
@@ -178,6 +184,12 @@ export type DbCreateArgs = {
   goal: string;
   tenantId: string;
   name?: string;
+  // SK-DB-010 — explicit engine override. When present the
+  // orchestrator skips the classifier LLM call and uses this engine.
+  // When absent the orchestrator runs `classifyEngine` against the
+  // goal text. Validated at the route handler against the canonical
+  // `Engine` literal in `@nlqdb/db` before reaching here.
+  engine?: Engine;
   // Resolved by the route handler from `env.DATABASE_URL` ref —
   // the orchestrator passes it through to the provisioner.
   secretRef: string;
@@ -220,6 +232,10 @@ export type DbCreateResult =
       ok: true;
       dbId: string;
       schemaName: string;
+      // SK-DB-010 — engine the orchestrator picked (classifier
+      // default or explicit override). Surfaces echo it on the
+      // create response so callers see what was provisioned.
+      engine: Engine;
       pkLive: string | null;
       plan: DbCreatePlanSummary;
       sampleRows: SampleRow[];

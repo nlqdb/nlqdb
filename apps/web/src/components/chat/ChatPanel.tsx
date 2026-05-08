@@ -298,6 +298,7 @@ export default function ChatPanel({ apiBase }: ChatPanelProps) {
             id: result.db,
             slug: deriveSlugFromId(result.db),
             schemaName: result.schemaName,
+            engine: result.engine,
             pkLive: result.pkLive,
             lastQueriedAt: null,
             createdAt: Math.floor(Date.now() / 1000),

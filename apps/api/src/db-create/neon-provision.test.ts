@@ -74,6 +74,7 @@ function makeArgs(overrides: Partial<ProvisionArgs> = {}): ProvisionArgs {
       "CREATE INDEX X ON A (id)",
     ],
     tenantId: "user_42",
+    engine: "postgres",
     secretRef: "DATABASE_URL",
     schemaHash: "schema_v1",
     ...overrides,
@@ -207,9 +208,26 @@ describe("provisionDb — happy path", () => {
     expect(d1.inserts[0]?.params).toEqual([
       "db_orders_tracker_a4f3b2",
       "user_42",
+      "postgres",
       "DATABASE_URL",
       "schema_v1",
     ]);
+  });
+
+  it("persists the engine column verbatim from args.engine (SK-DB-010)", async () => {
+    const pg = makePgStub();
+    const d1 = makeD1Stub();
+    const result = await provisionDb(
+      { pg: pg.pg, d1: d1.d1 },
+      makeArgs({ engine: "clickhouse" }),
+    );
+    expect(result.ok).toBe(true);
+    expect(d1.inserts).toHaveLength(1);
+    // Position 2 in the bind list is the engine — assert it traveled
+    // through unchanged. The Phase-1 file is the Neon provisioner so
+    // a non-postgres engine here is a contract test, not a runtime
+    // path; W2's Tinybird provisioner takes over for clickhouse.
+    expect(d1.inserts[0]?.params[2]).toBe("clickhouse");
   });
 
   it("issues pg queries in the contract-mandated order", async () => {

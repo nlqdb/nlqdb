@@ -1,12 +1,20 @@
 // Public types for @nlqdb/llm. Operation set tracks PERFORMANCE §4
 // row 4 (Slice 4): classify / plan / summarize. `schema_infer` was
 // added as the planner-tier op for hosted db.create's typed-plan
-// pipeline (SK-HDC-002, span `llm.schema_infer`). embed lands later
-// alongside the embeddings pipeline.
+// pipeline (SK-HDC-002, span `llm.schema_infer`). `engine_classify` is
+// the cheap-tier op that picks an engine from goal text on db.create
+// per `SK-DB-010` / `SK-MULTIENG-002` (span `llm.engine_classify`).
+// embed lands later alongside the embeddings pipeline.
 
 export type ProviderName = "gemini" | "groq" | "workers-ai" | "openrouter";
 
-export type LLMOperation = "classify" | "plan" | "summarize" | "schema_infer" | "disambiguate";
+export type LLMOperation =
+  | "classify"
+  | "plan"
+  | "summarize"
+  | "schema_infer"
+  | "disambiguate"
+  | "engine_classify";
 
 // Reasons surfaced on `nlqdb.llm.failover.total{reason}` — bounded set
 // to keep the label cardinality safe (PERFORMANCE §3.3).
@@ -63,6 +71,28 @@ export type SummarizeResponse = { summary: string };
 export type SchemaInferRequest = { goal: string };
 export type SchemaInferResponse = { plan: Record<string, unknown> };
 
+// Engine classification (SK-DB-010 / SK-MULTIENG-002). Cheap-tier op
+// that maps a goal string to one of the engines in the engine-fit
+// table (currently `postgres` / `clickhouse`). The classifier prompt
+// embeds the SK-MULTIENG-002 table verbatim — adding a new engine
+// means (a) widening the `Engine` literal in `@nlqdb/db`, (b)
+// shipping an adapter, (c) editing the table in `prompts.ts` so the
+// LLM knows about it. Caller enforces a confidence floor (default 0.6)
+// and falls back to `postgres` below it; explicit `engine` override
+// on `db.create` skips this op entirely.
+//
+// Engine literal lives in `@nlqdb/db` (the engine package) but
+// duplicating the union here would create a cycle — keep it as
+// `string` and let the route handler narrow against the canonical
+// `Engine` type. The provider's `parseJsonResponse` returns whatever
+// the LLM emits; the route handler validates the string against the
+// allowed set before persisting.
+export type EngineClassifyRequest = { goal: string };
+export type EngineClassifyResponse = {
+  engine: string;
+  confidence: number;
+};
+
 // Multi-DB dbId disambiguation (SK-ASK-009 / SK-HDC-011). Cheap-tier op
 // that picks one of the tenant's existing DBs given a goal, or returns
 // `chosenId: null` if it can't tell. The route handler enforces a
@@ -112,6 +142,10 @@ export type Provider = {
   summarize(req: SummarizeRequest, opts?: CallOpts): Promise<SummarizeResponse>;
   schemaInfer(req: SchemaInferRequest, opts?: CallOpts): Promise<SchemaInferResponse>;
   disambiguate(req: DisambiguateRequest, opts?: CallOpts): Promise<DisambiguateResponse>;
+  engineClassify(
+    req: EngineClassifyRequest,
+    opts?: CallOpts,
+  ): Promise<EngineClassifyResponse>;
 };
 
 // Thrown by providers when the upstream call fails. Carries a

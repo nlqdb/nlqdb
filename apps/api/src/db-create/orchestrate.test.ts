@@ -114,11 +114,21 @@ function stubEmbedTableCards(impl?: () => Promise<void>) {
   });
 }
 
+function stubClassifyEngine(
+  result: { engine: "postgres" | "clickhouse"; confidence: number } = {
+    engine: "postgres",
+    confidence: 0.9,
+  },
+) {
+  return vi.fn(async () => result);
+}
+
 function makeDeps(overrides: Partial<DbCreateDeps> = {}): DbCreateDeps {
   return {
     inferSchema: stubInferSchema(),
     compileDdl: stubCompileDdl(),
     validateCompiledDdl: stubValidateCompiledDdl(),
+    classifyEngine: stubClassifyEngine(),
     provision: stubProvision(),
     embedTableCards: stubEmbedTableCards(),
     randomSuffix: () => FIXED_SUFFIX,
@@ -172,6 +182,7 @@ describe("orchestrateDbCreate", () => {
       ok: true,
       dbId: `db_orders_tracker_${FIXED_SUFFIX}`,
       schemaName: `orders_tracker_${FIXED_SUFFIX}`,
+      engine: "postgres",
       pkLive: `pk_live_db_orders_tracker_${FIXED_SUFFIX}_secret`,
       plan: {
         metrics: stubPlan().metrics,
@@ -342,6 +353,54 @@ describe("orchestrateDbCreate", () => {
     expect(out.schemaName).toBe(`orders_tracker_${FIXED_SUFFIX}`);
     expect(out.plan.metrics).toEqual(stubPlan().metrics);
     expect(out.sampleRows).toEqual(stubPlan().sample_rows);
+  });
+
+  it("default path: classifier picks engine and orchestrator forwards it to provision (SK-DB-010)", async () => {
+    const classifyEngine = stubClassifyEngine({ engine: "clickhouse", confidence: 0.85 });
+    const provision = stubProvision();
+    const deps = makeDeps({ classifyEngine, provision });
+
+    const out = await orchestrateDbCreate(deps, ARGS);
+
+    expect(classifyEngine).toHaveBeenCalledTimes(1);
+    expect(classifyEngine).toHaveBeenCalledWith({ llm: deps.llm }, ARGS.goal);
+    expect(out.ok).toBe(true);
+    if (!out.ok) throw new Error("expected ok");
+    expect(out.engine).toBe("clickhouse");
+    const provisionArgs = (provision.mock.calls[0]?.[1] ?? {}) as { engine?: string };
+    expect(provisionArgs.engine).toBe("clickhouse");
+  });
+
+  it("explicit args.engine override skips the classifier LLM call (SK-DB-010 power-user path)", async () => {
+    const classifyEngine = stubClassifyEngine({ engine: "clickhouse", confidence: 0.85 });
+    const provision = stubProvision();
+    const deps = makeDeps({ classifyEngine, provision });
+
+    const out = await orchestrateDbCreate(deps, { ...ARGS, engine: "postgres" });
+
+    // The no-mock-call assertion is the testable contract from the
+    // worksheet: explicit override must not spend a classifier LLM call.
+    expect(classifyEngine).not.toHaveBeenCalled();
+    expect(out.ok).toBe(true);
+    if (!out.ok) throw new Error("expected ok");
+    expect(out.engine).toBe("postgres");
+    const provisionArgs = (provision.mock.calls[0]?.[1] ?? {}) as { engine?: string };
+    expect(provisionArgs.engine).toBe("postgres");
+  });
+
+  it("explicit clickhouse override: skips classifier and threads engine through to provisioner", async () => {
+    const classifyEngine = stubClassifyEngine();
+    const provision = stubProvision();
+    const deps = makeDeps({ classifyEngine, provision });
+
+    const out = await orchestrateDbCreate(deps, { ...ARGS, engine: "clickhouse" });
+
+    expect(classifyEngine).not.toHaveBeenCalled();
+    expect(out.ok).toBe(true);
+    if (!out.ok) throw new Error("expected ok");
+    expect(out.engine).toBe("clickhouse");
+    const provisionArgs = (provision.mock.calls[0]?.[1] ?? {}) as { engine?: string };
+    expect(provisionArgs.engine).toBe("clickhouse");
   });
 
   it("forwards args.name to inferSchema and schemaHash(plan) to provision", async () => {

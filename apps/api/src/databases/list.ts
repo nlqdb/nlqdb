@@ -20,10 +20,17 @@
 //     anon-device key when this is null.
 //   - `lastQueriedAt`: null. We don't yet record per-DB last-query
 //     timestamps; LeftRail falls back to `createdAt` for display.
+//   - `engine`: the engine column on the row, falling back to
+//     `"postgres"` for legacy rows that pre-date `SK-DB-010`'s
+//     non-null column. The MCP `nlqdb_list_databases` tool reads
+//     this field per `GLOBAL-003`'s capability-parity requirement.
+
+import type { Engine } from "@nlqdb/db";
 
 export type DatabaseSummaryRow = {
   id: string;
   slug: string;
+  engine: Engine;
   pkLive: string | null;
   lastQueriedAt: number | null;
   createdAt: number;
@@ -31,24 +38,37 @@ export type DatabaseSummaryRow = {
 
 type Row = {
   id: string;
+  engine: string;
   created_at: number;
 };
+
+const ALLOWED_ENGINES: ReadonlySet<Engine> = new Set<Engine>(["postgres", "clickhouse"]);
 
 export async function listDatabasesForTenant(
   d1: D1Database,
   tenantId: string,
 ): Promise<DatabaseSummaryRow[]> {
   const result = await d1
-    .prepare("SELECT id, created_at FROM databases WHERE tenant_id = ? ORDER BY created_at DESC")
+    .prepare(
+      "SELECT id, engine, created_at FROM databases WHERE tenant_id = ? ORDER BY created_at DESC",
+    )
     .bind(tenantId)
     .all<Row>();
   return (result.results ?? []).map(toSummary);
 }
 
 export function toSummary(row: Row): DatabaseSummaryRow {
+  // Defensive default — the migration adds `engine TEXT NOT NULL
+  // DEFAULT 'postgres'`, but legacy back-fills or hand-inserted rows
+  // could carry an unexpected string. Coerce anything outside the
+  // allowed set to postgres so the surface's narrowing stays sound.
+  const engine: Engine = ALLOWED_ENGINES.has(row.engine as Engine)
+    ? (row.engine as Engine)
+    : "postgres";
   return {
     id: row.id,
     slug: deriveSlug(row.id),
+    engine,
     pkLive: null,
     lastQueriedAt: null,
     createdAt: row.created_at,

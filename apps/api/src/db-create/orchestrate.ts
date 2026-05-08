@@ -31,6 +31,7 @@
 // `kind=create` branch routes here from `/v1/ask` per SK-ASK-001
 // in `docs/features/ask-pipeline/FEATURE.md`.
 
+import type { EngineClassifyDeps, EngineClassifyResult } from "./engine-classify.ts";
 import type {
   CompileDdlResult,
   DbCreateArgs,
@@ -38,6 +39,7 @@ import type {
   DbCreateResult,
   DdlValidationResult,
   EmbedDeps,
+  Engine,
   InferSchemaArgs,
   InferSchemaDeps,
   InferSchemaResult,
@@ -51,6 +53,12 @@ export type DbCreateDeps = {
   inferSchema: (deps: InferSchemaDeps, args: InferSchemaArgs) => Promise<InferSchemaResult>;
   compileDdl: (plan: SchemaPlan, schemaName: string) => CompileDdlResult;
   validateCompiledDdl: (statements: string[]) => DdlValidationResult;
+  // SK-DB-010 — classifier-default engine selection. Called only when
+  // `args.engine` is unset; explicit override skips this LLM call (the
+  // mock-call assertion in `engine-classify.test.ts` locks that
+  // contract). Always resolves with a usable engine; the floor +
+  // fallback live inside the classifier.
+  classifyEngine: (deps: EngineClassifyDeps, goal: string) => Promise<EngineClassifyResult>;
   // Per SK-HDC-007 the orchestrator takes a generic ProvisionFn so
   // Phase 1 wires `provisionDb` and Phase 4 wires `registerByoDb`
   // with no orchestrator change.
@@ -77,6 +85,19 @@ export async function orchestrateDbCreate(
   deps: DbCreateDeps,
   args: DbCreateArgs,
 ): Promise<DbCreateResult> {
+  // 0. Resolve the engine. Explicit `args.engine` (power-user
+  //    override per `GLOBAL-015` / `SK-DB-010`) skips the classifier
+  //    LLM call — that's the no-mock-call contract the orchestrator
+  //    test enforces. When unset, fall back to the SK-MULTIENG-002
+  //    classifier with its built-in confidence floor.
+  let engine: Engine;
+  if (args.engine !== undefined) {
+    engine = args.engine;
+  } else {
+    const picked = await deps.classifyEngine({ llm: deps.llm }, args.goal);
+    engine = picked.engine;
+  }
+
   // 1. Infer the SchemaPlan. The LLM never emits raw DDL — only
   //    a typed JSON plan (docs/architecture.md §3.6.2 / receipts §2;
   //    SK-HDC-002). Zod validation lives inside `inferSchema`;
@@ -139,6 +160,7 @@ export async function orchestrateDbCreate(
       schemaName,
       ddl: compiled.statements,
       tenantId: args.tenantId,
+      engine,
       secretRef: args.secretRef,
       schemaHash: deps.schemaHash(plan),
     },
@@ -175,6 +197,7 @@ export async function orchestrateDbCreate(
     ok: true,
     dbId,
     schemaName,
+    engine,
     pkLive,
     plan: {
       metrics: plan.metrics,

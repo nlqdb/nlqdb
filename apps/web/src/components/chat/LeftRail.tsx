@@ -184,6 +184,7 @@ function NewDbForm({
         id: result.dbId,
         slug: result.slug,
         name: trimmed,
+        engine: result.engine,
         pkLive: result.pkLive,
         lastQueriedAt: null,
         createdAt: Math.floor(Date.now() / 1000),

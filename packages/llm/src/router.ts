@@ -19,6 +19,8 @@ import {
   type ClassifyResponse,
   type DisambiguateRequest,
   type DisambiguateResponse,
+  type EngineClassifyRequest,
+  type EngineClassifyResponse,
   type FailoverReason,
   type LLMOperation,
   type PlanRequest,
@@ -50,6 +52,10 @@ export const DEFAULT_TIMEOUTS_MS: Record<LLMOperation, number> = {
   // (SK-ASK-009 / SK-HDC-011) — short prompt, short response, on the
   // hot path before plan-cache lookup.
   disambiguate: 1500,
+  // Engine classification (SK-DB-010) — cheap-tier, short prompt, runs
+  // once per db.create when the caller didn't pin `engine`. Same
+  // 1500 ms budget as classify/disambiguate.
+  engine_classify: 1500,
 };
 
 // HTTP statuses that indicate a config bug (bad key, forbidden), not
@@ -95,6 +101,10 @@ export type LLMRouter = {
   summarize(req: SummarizeRequest, opts?: CallOpts): Promise<SummarizeResponse>;
   schemaInfer(req: SchemaInferRequest, opts?: CallOpts): Promise<SchemaInferResponse>;
   disambiguate(req: DisambiguateRequest, opts?: CallOpts): Promise<DisambiguateResponse>;
+  engineClassify(
+    req: EngineClassifyRequest,
+    opts?: CallOpts,
+  ): Promise<EngineClassifyResponse>;
 };
 
 export type AttemptRecord = {
@@ -401,6 +411,14 @@ export function createLLMRouter(opts: LLMRouterOptions): LLMRouter {
         "disambiguate",
         req,
         (p, r, o) => p.disambiguate(r, o),
+        callerOpts,
+      );
+    },
+    engineClassify(req, callerOpts) {
+      return route<EngineClassifyRequest, EngineClassifyResponse>(
+        "engine_classify",
+        req,
+        (p, r, o) => p.engineClassify(r, o),
         callerOpts,
       );
     },
