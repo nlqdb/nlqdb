@@ -154,10 +154,11 @@ jobs:
         working-directory: apps/api
         run: bun run test
 
-      # `bun run build` is `wrangler deploy --dry-run --outdir dist`
-      # (apps/api/package.json). Same script the deploy workflow's
-      # SLSA attestation step depends on — running it here keeps the
-      # build-output contract under PR-time CI gates.
+      # `apps/api`'s `[assets]` binding points at `../web/dist` (`SK-AUTH-016`).
+      - name: Build apps/web
+        working-directory: apps/web
+        run: bun run build
+
       - name: Wrangler build (dry-run)
         working-directory: apps/api
         run: bun run build

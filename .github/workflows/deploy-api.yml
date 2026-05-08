@@ -38,6 +38,12 @@ on:
     branches: [main]
     paths:
       - "apps/api/**"
+      # `apps/web/dist` is bundled into the API worker via the
+      # `[assets]` binding (`SK-AUTH-016`), so any change that flips
+      # the static output must redeploy the API too. The cheapest
+      # gate is to trigger on every web change; the workflow then
+      # rebuilds web before deploying.
+      - "apps/web/**"
       - "packages/auth-internal/**"
       - "packages/db/**"
       - "packages/events/**"
@@ -80,6 +86,15 @@ jobs:
 
       - name: Install workspace deps
         run: bun install --frozen-lockfile
+
+      # Build apps/web FIRST. The API worker's `[assets]` binding
+      # (`apps/api/wrangler.toml`) points at `../web/dist`, so this
+      # directory must exist on disk before the api build / deploy
+      # steps run — wrangler validates the assets directory at
+      # `versions upload` / `deploy` time. See `SK-AUTH-016`.
+      - name: Build apps/web (Astro static output)
+        working-directory: apps/web
+        run: bun run build
 
       # `bun run build` runs `wrangler deploy --dry-run --outdir dist`
       # (apps/api/package.json). The `--outdir dist` is load-bearing:

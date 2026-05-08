@@ -34,6 +34,7 @@ on:
     types: [opened, synchronize, reopened]
     paths:
       - "apps/api/**"
+      - "apps/web/**"
       - "packages/auth-internal/**"
       - "packages/db/**"
       - "packages/events/**"
@@ -61,6 +62,11 @@ jobs:
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
       - uses: ./.github/actions/setup
+
+      # `apps/api`'s `[assets]` binding points at `../web/dist` (`SK-AUTH-016`).
+      - name: Build apps/web
+        working-directory: apps/web
+        run: bun run build
 
       # Run wrangler directly. wrangler-action@v3's `postCommands`
       # doesn't see `WRANGLER_OUTPUT_DIR` (set only in the wrangler
