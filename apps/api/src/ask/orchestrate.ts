@@ -62,6 +62,7 @@ export async function orchestrateAsk(
   opts: OrchestrateOptions = {},
 ): Promise<OrchestrateOutcome> {
   const tracer = trace.getTracer("@nlqdb/api");
+  const startedAt = Date.now();
 
   // Wrap a step in a child span. `swallow` flag turns the catch
   // path into a recordException + ERROR-status (used for non-fatal
@@ -245,6 +246,23 @@ export async function orchestrateAsk(
     });
   }
 
+  // Query-log fingerprint — anonymised; no SQL text, no values, no PII.
+  // Drained off EVENTS_QUEUE by `apps/events-worker/src/sinks/query-log.ts`
+  // into the Tinybird `query_log` Data Source (W4 → W5 input). Fire-
+  // and-forget: emit() never throws (`SK-EVENTS-003`), so a queue blip
+  // never affects the user-visible response.
+  await deps.events.emit({
+    name: "ask.completed",
+    dbId: req.dbId,
+    schemaHash,
+    queryHash,
+    planShape: await hashPlanShape(planSql),
+    engine: db.engine,
+    ms: Date.now() - startedAt,
+    rowsReturned: result.rowCount,
+    ts: Date.now(),
+  });
+
   return {
     ok: true,
     result: {
@@ -256,6 +274,20 @@ export async function orchestrateAsk(
       ...(summary !== undefined ? { summary } : {}),
     },
   };
+}
+
+// SHA-256 of the planned SQL — `plan_shape` on the query-log fingerprint.
+// Distinct from `query_hash` (over the user's goal); same goal can
+// produce structurally different plans across schema versions, so the
+// analyser dedupes at both axes. One-way hash means the wire log carries
+// no SQL text or literal values — the workload analyser sees only
+// equality classes.
+async function hashPlanShape(sql: string): Promise<string> {
+  const data = new TextEncoder().encode(sql);
+  const buf = await crypto.subtle.digest("SHA-256", data);
+  return Array.from(new Uint8Array(buf))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
 }
 
 // Records the exception on the span and marks it ERROR, but doesn't

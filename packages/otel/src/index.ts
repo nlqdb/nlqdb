@@ -248,6 +248,19 @@ export const webhookStripeArchiveFailuresTotal = lazyCounter(
   "Stripe webhook R2 archive failures (post-response, fire-and-forget). Best-effort — the event itself is already recorded in the stripe_events D1 table; this counter just exposes drop visibility.",
 );
 
+export const eventsSinkQueryLogBatchSize = lazyHistogram(
+  "@nlqdb/events-worker",
+  "nlqdb.events.sink.query_log.batch_size",
+  "Number of AskCompletedEvent rows sent to the Tinybird query_log Data Source per flush. Bounded by the Cloudflare Queue consumer's max_batch_size.",
+  "rows",
+);
+
+export const eventsSinkQueryLogFailuresTotal = lazyCounter(
+  "@nlqdb/events-worker",
+  "nlqdb.events.sink.query_log.failures.total",
+  "Tinybird query_log writes that failed (non-2xx HTTP or fetch threw). Labelled by status_class. Used to trip the in-isolate circuit-breaker after 5 consecutive failures.",
+);
+
 export function resetInstrumentsForTest(): void {
   for (const fn of resetFns) fn();
 }

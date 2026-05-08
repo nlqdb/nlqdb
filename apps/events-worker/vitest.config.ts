@@ -11,7 +11,7 @@ export default defineConfig({
         extends: true,
         test: {
           name: "unit",
-          include: ["test/queue.test.ts", "test/logsnag.test.ts"],
+          include: ["test/queue.test.ts", "test/logsnag.test.ts", "test/query-log.test.ts"],
         },
       },
     ],

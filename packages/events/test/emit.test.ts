@@ -59,6 +59,32 @@ describe("makeQueueEmitter", () => {
     expect(queue.sent[0]?.id).toBe("explicit-key");
   });
 
+  it("generates a unique id per emission for ask.completed (high-volume; legitimate repeats)", async () => {
+    const queue = makeFakeQueue();
+    const emitter = makeQueueEmitter(queue);
+    const event = {
+      name: "ask.completed" as const,
+      dbId: "db_1",
+      schemaHash: "schema_v1",
+      queryHash: "qh_1",
+      planShape: "ps_1",
+      engine: "postgres" as const,
+      ms: 100,
+      rowsReturned: 5,
+      ts: 1700000000000,
+    };
+
+    await emitter.emit(event);
+    await emitter.emit(event);
+
+    expect(queue.sent).toHaveLength(2);
+    const [first, second] = queue.sent;
+    if (!first || !second) throw new Error("expected two envelopes on the queue");
+    expect(first.id).not.toBe(second.id);
+    expect(first.id).toMatch(/^evt\./);
+    expect(second.id).toMatch(/^evt\./);
+  });
+
   it("swallows queue.send failures (emit is non-fatal)", async () => {
     const queue = makeFakeQueue();
     queue.failNext = new Error("queue full");

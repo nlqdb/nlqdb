@@ -105,12 +105,26 @@ when-to-load:
   - DLQ from day one — extra infra surface for a Phase-0 system that has not yet observed retry exhaustion in the wild.
   - Persist failed messages to D1 — D1 is the primary user store; conflating event-pipeline backlog with user data violates the boundary.
 
+### SK-EVENTS-009 — `ask.completed` → Tinybird `query_log` sink; circuit-break after 5 consecutive failures
+
+- **Decision:** Every successful `/v1/ask` resolution emits one `ask.completed` event onto `EVENTS_QUEUE` (anonymised — `db_id`, `schema_hash`, `query_hash`, `plan_shape`, `engine`, `ms`, `rows_returned`, `ts`; no SQL text, no parameter values, no PII). The events-worker drains the whole batch via a single Tinybird HTTP call to `/v0/events?name=query_log&wait=true`. The Tinybird HTTP boundary lives in `@nlqdb/db/clickhouse-tinybird/query-log.ts` (per `GLOBAL-021`); the events-worker imports `writeQueryLog`/`createQueryLogWriter` and never holds a Tinybird token of its own. After 5 consecutive batch-write failures the sink trips an isolate-scoped circuit-breaker — the next batch ack-and-drops without calling Tinybird until a successful write resets the counter.
+- **Core value:** Fast, Free, Bullet-proof
+- **Why:** `/v1/ask` p99 latency cannot absorb a Tinybird HTTP call (`SK-EVENTS-001`); the queue + sink is the only safe place to write the workload-analyser input (W5 reads `query_log`). One canonical owner per `GLOBAL-021` keeps the Tinybird token / fetch client / OTel attribute mapping in one file — the events-worker stays thin. Circuit-break protects the Tinybird Free-tier 1k-reads/day budget when the upstream is wedged: rather than burning the 3-retry queue budget per message + 100-row batches × N retries, the breaker short-circuits and lets the OTel `nlqdb.events.sink.query_log.failures.total` counter be the operator signal. Five consecutive failures is the bar because Cloudflare Queues already retries each message three times in-flight; the fifth distinct batch failure is unambiguous upstream-down.
+- **Consequence in code:** New external system → owner row in `GLOBAL-021`'s table (Tinybird is `packages/db/clickhouse-tinybird/`). `apps/events-worker/src/sinks/query-log.ts` is the dispatch entry; `packages/db/src/clickhouse-tinybird/query-log.ts` is the wire-format owner. Spans: `nlqdb.events.sink.query_log` per batch with `nlqdb.events.batch_size`, `http.response.status_code`, `nlqdb.events.rows_written`, `nlqdb.events.circuit_open`. Metrics: `nlqdb.events.sink.query_log.batch_size` (histogram), `nlqdb.events.sink.query_log.failures.total{status_class}` (counter). Configuration: `TINYBIRD_TOKEN`, `TINYBIRD_WORKSPACE`, optional `TINYBIRD_API_BASE` env vars; missing config ack-and-drops per `SK-EVENTS-005`. The Tinybird Data Source schema is the canonical column list (`infrastructure/tinybird/datasources/query_log.datasource`); widening the wire shape requires same-PR edits to `AskCompletedEvent` (`packages/events/src/types.ts`), `toWireRow` (`packages/db/src/clickhouse-tinybird/query-log.ts`), and the `.datasource` file.
+- **Alternatives rejected:**
+  - Inline Tinybird POST from `apps/api` on the `/v1/ask` request path — adds 100–300ms of HTTP RTT to every successful ask; violates `SK-EVENTS-001`. The queue is the only safe seam.
+  - Events-worker holds the Tinybird token directly — violates `GLOBAL-021`. The owner table maps Tinybird to `packages/db/clickhouse-tinybird/`; reaching past it from the events-worker spreads the SDK shape across files and re-implements OTel attributes inconsistently.
+  - Per-message Tinybird call (one HTTP per event) — burns the Tinybird Free-tier daily request budget on dispatch, when ClickHouse trivially ingests one NDJSON-batch of 100 rows in a single call.
+  - DLQ-on-Tinybird-failure instead of circuit-break — premature; DLQ infrastructure is deferred per `SK-EVENTS-008`. The breaker bounds damage in the meantime; flipping to DLQ is a one-line wrangler change once the failure counter shows it's worth the operational surface.
+
 ## GLOBALs governing this feature
 
 Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; index in [`docs/decisions.md`](../../decisions.md)). The list below names the rules that constrain this feature; any skill-local commentary is nested under the rule.
 
 - **GLOBAL-005** — Every mutation accepts `Idempotency-Key`.
+- **GLOBAL-013** — $0/month free tier; ≤ 3 MiB Workers bundle. *In this skill:* the events-worker imports `@nlqdb/db/clickhouse-tinybird` for `writeQueryLog`; the package's HTTP path is plain `fetch` with no SDK weight, keeping the bundle within budget.
 - **GLOBAL-014** — OTel span on every external call (DB, LLM, HTTP, queue).
+- **GLOBAL-021** — Each external system has one canonical owning module. *In this skill:* the events-worker is the canonical owner of `EVENTS_QUEUE` (consumer) per the GLOBAL-021 owner table; `packages/events/` owns the producer types. Tinybird HTTP is owned by `packages/db/clickhouse-tinybird/` — `SK-EVENTS-009`'s sink imports `writeQueryLog` from there rather than POSTing directly. Owner-to-owner library dependency (events-worker → `@nlqdb/db`) is explicitly allowed by GLOBAL-021.
 
 ## Open questions / known unknowns
 
