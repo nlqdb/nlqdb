@@ -294,6 +294,44 @@ describe("processWebhook — signature verification", () => {
       body: { error: "invalid_signature" },
     });
   });
+
+  // SK-AUTH-018 — when MOCK_STRIPE=1 the route handler sets
+  // bypassSignatureVerification, the body is JSON-parsed directly,
+  // signer.constructEventAsync is never called, and the dispatch +
+  // idempotency pipeline runs identically to the real path.
+  it("bypassSignatureVerification: parses raw JSON without signer; dispatch runs normally", async () => {
+    const event = makeEventStub({
+      id: "evt_mock_1",
+      type: "customer.subscription.updated",
+      object: makeSubscription({ customer: "cus_mock" }),
+    });
+    const signer: WebhookSigner = {
+      constructEventAsync: vi.fn().mockRejectedValue(new Error("should not be called")),
+    };
+    const { deps, db } = makeDeps({ signer });
+    const result = await processWebhook(
+      { ...deps, bypassSignatureVerification: true },
+      JSON.stringify(event),
+      null,
+    );
+    expect(result.status).toBe(200);
+    expect(result.body).toMatchObject({ received: true, duplicate: false });
+    expect(signer.constructEventAsync).not.toHaveBeenCalled();
+    expect(db.stripeEvents.get("evt_mock_1")?.processed_at).toEqual(expect.any(Number));
+  });
+
+  it("bypassSignatureVerification: malformed JSON still returns 400 invalid_signature", async () => {
+    const { deps } = makeDeps();
+    const result = await processWebhook(
+      { ...deps, bypassSignatureVerification: true },
+      "{not-json",
+      null,
+    );
+    expect(result).toEqual({
+      status: 400,
+      body: { error: "invalid_signature" },
+    });
+  });
 });
 
 describe("processWebhook — idempotency", () => {

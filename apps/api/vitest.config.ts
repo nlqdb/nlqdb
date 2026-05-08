@@ -45,6 +45,7 @@ export default defineConfig(async () => {
               "test/kv-throttle.test.ts",
               "test/anon-adopt.test.ts",
               "test/databases-list.test.ts",
+              "test/mock-email-sink.test.ts",
               "src/db-create/*.test.ts",
               "src/ask/sql-validate-ddl.test.ts",
               "src/ask/classifier.test.ts",
