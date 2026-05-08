@@ -89,6 +89,18 @@ declare global {
       // intermediate page. Defaults to nlqdb.com in prod /
       // localhost:4321 in dev.
       MAGIC_LINK_WEB_ORIGIN?: string;
+
+      // Better Auth `baseURL` override for non-prod hostnames
+      // (`SK-AUTH-017`). Canary sets this to the canary worker's
+      // `*.workers.dev` URL; prod leaves it unset and falls back to
+      // `https://app.nlqdb.com`.
+      BETTER_AUTH_URL?: string;
+      // Extra entry for Better Auth `trustedOrigins`. Canary sets
+      // this to its own origin so auth flows initiated from a future
+      // separate canary surface (if any) clear the gate. Optional
+      // because the single-origin canary worker is already covered by
+      // `baseURL` auto-trust.
+      CANARY_ORIGIN?: string;
     }
   }
 }

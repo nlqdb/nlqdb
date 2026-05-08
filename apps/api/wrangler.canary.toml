@@ -1,0 +1,71 @@
+# Canary deployment of `nlqdb-api` (`SK-AUTH-017`).
+#
+# A persistent non-prod worker with REAL GitHub + Google OAuth Apps and
+# Stripe test-mode. This is the integration gate between PR previews
+# (mock IdP per `SK-AUTH-016`) and production. One environment, one set
+# of bindings, deployed on every push to `main` (see
+# `.github/workflows/deploy-canary.yml`) and on demand via
+# `workflow_dispatch`.
+#
+# Naming follows the prod worker (`nlqdb-api`) — `nlqdb-api-canary` so
+# the workers.dev URL falls out as `nlqdb-api-canary.omer-hochman.workers.dev`.
+# OAuth callback URLs anchor on that hostname (`SK-AUTH-008` updated to
+# enumerate three OAuth App pairs: prod / canary / dev).
+#
+# ID-bearing fields below (`kv_namespaces[*].id`, `d1_databases[*].database_id`)
+# are filled in once the human runs the H3/H4 setup steps from the PR
+# description; before that they're placeholder strings and the deploy
+# fails fast with a clear wrangler error.
+name = "nlqdb-api-canary"
+main = "src/index.ts"
+compatibility_date = "2026-04-27"
+compatibility_flags = ["nodejs_compat"]
+workers_dev = true
+
+[observability]
+enabled = true
+
+[vars]
+NODE_ENV = "canary"
+# Better Auth `baseURL` override. Once a stable canary domain
+# (e.g. `canary.nlqdb-test.dev`) is provisioned, swap this for the
+# custom domain and add a `[[routes]]` block below.
+BETTER_AUTH_URL = "https://nlqdb-api-canary.omer-hochman.workers.dev"
+# Explicit `trustedOrigins` entry for the canary worker — Better Auth
+# auto-trusts `baseURL`, so this is belt-and-braces for any future
+# canary surfaces (e.g. a separate canary marketing tab) that want to
+# initiate auth flows against this worker.
+CANARY_ORIGIN = "https://nlqdb-api-canary.omer-hochman.workers.dev"
+
+[assets]
+directory = "../web/dist"
+binding = "STATIC_ASSETS"
+not_found_handling = "404-page"
+
+# Filled in by `wrangler kv namespace create nlqdb-canary` (H3).
+[[kv_namespaces]]
+binding = "KV"
+id = "FILL_IN_AFTER_HUMAN_CREATES"
+
+# Filled in by `wrangler d1 create nlqdb-canary` (H4). `migrations_dir`
+# matches prod so Better Auth migrations apply identically.
+[[d1_databases]]
+binding = "DB"
+database_name = "nlqdb-canary"
+database_id = "FILL_IN_AFTER_HUMAN_CREATES"
+migrations_dir = "migrations"
+
+# Provisioned by `wrangler queues create nlqdb-events-canary` (H5).
+[[queues.producers]]
+binding = "EVENTS_QUEUE"
+queue = "nlqdb-events-canary"
+
+# Provisioned by `wrangler r2 bucket create nlqdb-assets-canary` (H6).
+[[r2_buckets]]
+binding = "ASSETS"
+bucket_name = "nlqdb-assets-canary"
+
+# No `[[routes]]` block — canary lives at its `*.workers.dev` URL until
+# a `canary.nlqdb-test.dev` (or similar) custom domain is registered.
+# Add a route block here when that happens; the H10 OAuth callback URLs
+# will need to flip alongside it.

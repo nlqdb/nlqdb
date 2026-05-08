@@ -1,8 +1,12 @@
 // Better Auth singleton (docs/architecture.md §4.1, §4.3, RUNBOOK §5/§5b).
 //
 // Provider creds switch on `env.NODE_ENV`:
-//   production   → OAUTH_GITHUB_*
-//   development  → OAUTH_GITHUB_*_DEV
+//   production   → OAUTH_GITHUB_*       (prod GitHub App, prod Google client)
+//   canary       → OAUTH_GITHUB_*       (canary GitHub App, canary Google client —
+//                                        same env var slots as prod, since each
+//                                        worker has its own secret store; see
+//                                        `SK-AUTH-008` + `SK-AUTH-017`)
+//   development  → OAUTH_GITHUB_*_DEV   (localhost-callback dev App)
 //
 // Session caching: cookie cache (5min HMAC) → KV secondaryStorage → D1.
 // Revocation set in KV on session.delete.after; middleware short-circuits
@@ -15,7 +19,14 @@ import { D1Dialect } from "kysely-d1";
 import { hashEmail, makeMagicLinkThrottle } from "./auth/magic-link-throttle.ts";
 import { makeEmailSender } from "./email.ts";
 
-const isDev = env.NODE_ENV !== "production";
+// `isDev` is the localhost gate — only the literal `development` value
+// (set in `apps/api/.dev.vars` for `wrangler dev`) takes the dev path.
+// `production` and `canary` (`SK-AUTH-017`) both flow through the
+// HTTPS / `__Secure` cookie path; `canary` overrides the prod
+// hostnames via `BETTER_AUTH_URL`. Tests run with `NODE_ENV=test`
+// (vitest.config.ts) and inherit the dev path so they don't accidentally
+// reach for the prod cookie attributes when the test harness has no TLS.
+const isDev = env.NODE_ENV !== "production" && env.NODE_ENV !== "canary";
 
 const githubClientId = isDev ? env.OAUTH_GITHUB_CLIENT_ID_DEV : env.OAUTH_GITHUB_CLIENT_ID;
 const githubClientSecret = isDev
@@ -33,8 +44,11 @@ const REVOCATION_TTL_SECONDS = COOKIE_CACHE_MAX_AGE_SECONDS + 60;
 const MAGIC_LINK_TTL_SECONDS = 10 * 60;
 
 // Magic-link emails anchor on the API host so verify is same-origin
-// and the host-only session cookie lands.
-const WEB_ORIGIN_DEFAULT = isDev ? "http://localhost:4321" : "https://app.nlqdb.com";
+// and the host-only session cookie lands. `BETTER_AUTH_URL` (set by
+// canary, `SK-AUTH-017`) wins so the email link points at the canary
+// worker, not the prod hostname.
+const WEB_ORIGIN_DEFAULT =
+  env.BETTER_AUTH_URL ?? (isDev ? "http://localhost:4321" : "https://app.nlqdb.com");
 const webOrigin = env.MAGIC_LINK_WEB_ORIGIN ?? WEB_ORIGIN_DEFAULT;
 const MAGIC_LINK_DEFAULT_REDIRECT = `${webOrigin}/app`;
 const magicLinkRedirect = env.MAGIC_LINK_REDIRECT_URL ?? MAGIC_LINK_DEFAULT_REDIRECT;
@@ -62,7 +76,12 @@ const secondaryStorage = {
 };
 
 export const auth = betterAuth({
-  baseURL: isDev ? "http://localhost:8787" : "https://app.nlqdb.com",
+  // `BETTER_AUTH_URL` lets the canary worker (`SK-AUTH-017`) point at
+  // `nlqdb-api-canary.omer-hochman.workers.dev` without a parallel
+  // Better Auth instance. Better Auth auto-trusts `baseURL` so callback
+  // redirects to the canary origin succeed without a separate
+  // `trustedOrigins` entry.
+  baseURL: env.BETTER_AUTH_URL ?? (isDev ? "http://localhost:8787" : "https://app.nlqdb.com"),
   basePath: "/api/auth",
   secret: env.BETTER_AUTH_SECRET,
   database: {
@@ -104,9 +123,17 @@ export const auth = betterAuth({
     github: { clientId: githubClientId, clientSecret: githubClientSecret },
     google: { clientId: env.GOOGLE_CLIENT_ID, clientSecret: env.GOOGLE_CLIENT_SECRET },
   },
+  // Belt-and-braces canary entry — `baseURL` is auto-trusted, so the
+  // single-origin canary worker doesn't strictly need this. It exists
+  // for future canary surfaces that want to initiate auth flows
+  // against this worker (`SK-AUTH-017`).
   trustedOrigins: isDev
     ? ["http://localhost:8787", "http://localhost:4321"]
-    : ["https://app.nlqdb.com", "https://nlqdb.com"],
+    : [
+        "https://app.nlqdb.com",
+        "https://nlqdb.com",
+        ...(env.CANARY_ORIGIN ? [env.CANARY_ORIGIN] : []),
+      ],
   // No `crossSubDomainCookies` → no `Domain=` → host-only session cookie
   // on `app.nlqdb.com` (`SK-WEB-009`).
   ...(isDev
