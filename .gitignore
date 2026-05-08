@@ -12,6 +12,7 @@ node_modules/
 .env.*.local
 *.pem
 *.key
+.claude
 
 # Build / cache
 dist/
