@@ -152,7 +152,19 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
 
   const root = document.querySelector<HTMLElement>(".signin");
   if (root) {
-    const apiBase = (root.dataset["apiBase"] ?? "").replace(/\/$/, "");
+    // apiBase resolution: build-time PUBLIC_API_BASE wins; otherwise
+    // hop to `app.nlqdb.com` whenever the page is served from the
+    // marketing origin (the marketing worker shares `apps/web/dist`
+    // with the merged app worker per SK-AUTH-016 but lacks the
+    // `/api/auth/*` routes). On the merged app worker, on Workers-
+    // Versions previews (`*-nlqdb-api.workers.dev`), and under
+    // `wrangler dev`, sign-in and the API share an origin, so
+    // `location.origin` is the right answer.
+    const fromEnv = (root.dataset["apiBase"] ?? "").replace(/\/$/, "");
+    const isMarketingHost =
+      location.hostname === "nlqdb.com" || location.hostname === "www.nlqdb.com";
+    const apiBase =
+      fromEnv || (isMarketingHost ? "https://app.nlqdb.com" : location.origin);
 
     const form = document.getElementById("signin-form") as HTMLFormElement;
     const emailInput = document.getElementById("email") as HTMLInputElement;
@@ -175,13 +187,14 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
 
     const params = new URLSearchParams(location.search);
     const returnTo = params.get("return_to") ?? "/app";
-    // callbackURL anchors on `location.origin` (not `appBase`) so a
-    // user signing in from a Workers-Versions preview URL is returned
-    // to the same preview instead of bouncing to production
-    // (SK-AUTH-013 / SK-AUTH-015). Better Auth validates the origin
-    // against `trustedOrigins` server-side, so the preview wildcard is
-    // what makes this safe.
-    const callbackURL = new URL(returnTo, location.origin).toString();
+    // callbackURL anchors on `apiBase` so the user lands on the
+    // origin that actually serves `/app` — the merged app worker
+    // (SK-AUTH-016). Anchoring on `location.origin` would bounce a
+    // marketing-surface visitor to `nlqdb.com/app`, which the
+    // marketing worker doesn't serve. On the merged app worker and
+    // on previews, `apiBase === location.origin`, so the preview-
+    // returns-to-itself property from SK-AUTH-013 still holds.
+    const callbackURL = new URL(returnTo, apiBase).toString();
 
     const submitBtnState: ButtonState = {
       el: submitBtn,
@@ -252,14 +265,18 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
     // OAuth init via top-level navigation to the API's
     // `/api/auth/oauth-init/:provider` wrapper (SK-AUTH-015). The
     // wrapper invokes Better Auth's POST `/sign-in/social` server-side
-    // and returns a 302 to the IdP. A `fetch + JS redirect` would
-    // work in production (sign-in page and API share `nlqdb.com` —
-    // first-party cookie context) but loses the OAuth state cookie on
-    // Workers-Versions previews (sign-in on `*.workers.dev`, API on
-    // `app.nlqdb.com` — third-party context, browser drops the
-    // `Set-Cookie`), causing `state_mismatch` on the callback.
-    // Top-level navigation makes `app.nlqdb.com` the first-party
-    // origin for the response that sets the cookie, so it lands.
+    // and returns a 302 to the IdP. Top-level nav matters when the
+    // sign-in page is served from the marketing origin (`nlqdb.com`)
+    // while the API lives on `app.nlqdb.com` (per SK-AUTH-016): a
+    // `fetch + JS redirect` from `nlqdb.com` would be a third-party
+    // request and modern browsers (Chrome cookie partitioning, Safari
+    // ITP) silently drop the `Set-Cookie` for the OAuth state cookie,
+    // so `parseGenericState` finds nothing on the callback and Better
+    // Auth 302s to `${baseURL}/error?error=state_mismatch`. Top-level
+    // nav makes `app.nlqdb.com` the first-party origin for the
+    // response that sets the cookie, so it lands. On the merged app
+    // worker, on PR previews, and under `wrangler dev`, `apiBase ===
+    // location.origin` and the same code path is a same-origin nav.
     for (const btn of document.querySelectorAll<HTMLButtonElement>(
       "[data-social]",
     )) {
@@ -271,7 +288,7 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
         btn.classList.add("signin__oauth--busy");
         const url = new URL(
           `/api/auth/oauth-init/${encodeURIComponent(provider)}`,
-          apiBase || location.origin,
+          apiBase,
         );
         url.searchParams.set("callbackURL", callbackURL);
         location.href = url.toString();
