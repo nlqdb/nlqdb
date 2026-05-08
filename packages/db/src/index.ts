@@ -1,3 +1,13 @@
+export type {
+  TinybirdAdapterOptions,
+  TinybirdHttpClient,
+  TinybirdRequest,
+  TinybirdResponse,
+} from "./clickhouse-tinybird/adapter.ts";
+export {
+  createTinybirdAdapter,
+  TinybirdValidationError,
+} from "./clickhouse-tinybird/adapter.ts";
 export type { PostgresAdapterOptions, PostgresQueryFn } from "./postgres.ts";
 export { createPostgresAdapter } from "./postgres.ts";
 export type {

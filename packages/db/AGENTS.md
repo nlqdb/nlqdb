@@ -10,8 +10,24 @@ Engine-agnostic DB adapter. Phase 0 = Postgres via Neon.
 ## Skills relevant to this area
 
 - [`db-adapter`](../../docs/features/db-adapter/FEATURE.md) — mandatory pre-read for changes that touch the feature.
+- [`multi-engine-adapter`](../../docs/features/multi-engine-adapter/FEATURE.md) — mandatory pre-read for ClickHouse/Tinybird and any future non-PG engine.
 - [`schema-widening`](../../docs/features/schema-widening/FEATURE.md) — mandatory pre-read for changes that touch the feature.
 - [`observability`](../../docs/features/observability/FEATURE.md) — mandatory pre-read for changes that touch the feature.
+
+## External systems owned here (`GLOBAL-021`)
+
+`packages/db/` is the canonical owner for every user-data engine the
+product talks to. Each has exactly one entry point; reaching past it
+from outside the package fails review.
+
+| External system | Entry module | Notes |
+|---|---|---|
+| Neon Postgres | `src/postgres.ts` (`createPostgresAdapter`) | All `@neondatabase/serverless` imports. Documented exception: `apps/api/src/db-create/build-deps.ts` for the control-plane provisioner — see `SK-HDC-*`. |
+| ClickHouse via Tinybird | `src/clickhouse-tinybird/adapter.ts` (`createTinybirdAdapter`) | Owns the Tinybird HTTP client. The adapter exposes typed intent-named methods (`executePipe()` / `executeRawSql()` via the `execute()` plan dispatch today; W5 adds `createPipe()` / `dropPipe()` for the workload analyser). The Tinybird `fetch` client is **never** re-exported from this package — consumers go through `createTinybirdAdapter`. CI's `no-restricted-imports` rule for the Tinybird API token must reject any import of the HTTP client outside `packages/db/src/clickhouse-tinybird/`. |
+
+When adding a new engine, follow the same pattern: a sibling directory
+under `src/` that owns the SDK / HTTP client and exposes only the
+typed entry points the rest of the codebase needs.
 
 ## Commands
 
