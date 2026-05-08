@@ -71,6 +71,12 @@ declare global {
       // writes when undefined.
       ASSETS?: R2Bucket;
 
+      // Workers Static Assets binding — the platform serves matching
+      // files from `[assets] directory` before the fetch handler runs.
+      // Declared here for completeness; user code rarely accesses it
+      // directly (the platform handles asset serving implicitly).
+      STATIC_ASSETS?: Fetcher;
+
       // Resend API key for transactional email (Slice 10 — magic-link
       // sign-in). Optional at type level: when unset, `makeEmailSender`
       // returns a console-logging stub so `wrangler dev` and tests
@@ -82,11 +88,11 @@ declare global {
       // sender domain is verified.
       RESEND_FROM?: string;
       // Post-verify landing page for magic-link clicks. Defaults to
-      // `https://nlqdb.com/app` in prod / `http://localhost:4321/app`
+      // `https://app.nlqdb.com/app` in prod / `http://localhost:4321/app`
       // in dev. Override per environment if the chat surface moves.
       MAGIC_LINK_REDIRECT_URL?: string;
       // Web origin hosting `/auth/continue`, the prefetch-protected
-      // intermediate page. Defaults to nlqdb.com in prod /
+      // intermediate page. Defaults to app.nlqdb.com in prod /
       // localhost:4321 in dev.
       MAGIC_LINK_WEB_ORIGIN?: string;
 

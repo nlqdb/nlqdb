@@ -21,11 +21,10 @@
 #     functions; only the mock-IdP UX is degraded.
 #
 # Bindings: KV / D1 / Queue / R2 are inherited from prod via
-# `wrangler versions upload` (no `--env preview`). The
-# `[env.preview]` block in `apps/api/wrangler.toml` reserves
-# preview-specific KV+D1 IDs for a future activation; switching the
-# command to `versions upload --env preview` is a follow-up after
-# the human-side setup steps (H2–H7 in the PR description).
+# `wrangler versions upload` (no `--env preview`). Preview-only
+# vars (`MOCK_IDP`, `MOCK_STRIPE`, `DATABASE_URL`, etc.) are
+# injected at upload time via `--var KEY:VALUE`. This matches the
+# canary pattern (`wrangler.canary.toml` + `--var` overrides).
 #
 # Wrangler-action vs direct invocation: same rationale as the
 # preview-{api,web} workflows we replaced — `wrangler-action@v3`'s
@@ -104,6 +103,13 @@ jobs:
         working-directory: apps/web
         run: bun run build
 
+      # Remove the static sign-in page so the Hono mock-IdP route
+      # (`GET /auth/sign-in`) takes over. Workers Static Assets serves
+      # matching files BEFORE the fetch handler — without this, the
+      # real OAuth sign-in page overshadows the mock form.
+      - name: Strip real sign-in page (mock IdP override)
+        run: rm -rf apps/web/dist/auth/sign-in
+
       # Provision an ephemeral Neon branch (`pr-N`). The connection
       # URI is returned in `connection_uris[0].connection_uri` for
       # single-role/database branches (per Neon docs); fail loudly
@@ -116,6 +122,38 @@ jobs:
           NEON_PROJECT_ID: ${{ secrets.NEON_PROJECT_ID }}
         run: |
           set -euo pipefail
+
+          # Idempotent: if the branch already exists (workflow re-run),
+          # look up its connection URI instead of failing on a name
+          # conflict.
+          existing=$(curl -fsSL \
+            "https://console.neon.tech/api/v2/projects/${NEON_PROJECT_ID}/branches" \
+            -H "Authorization: Bearer ${NEON_API_KEY}" \
+            | jq -r ".branches[] | select(.name == \"pr-${PR_NUMBER}\") | .id")
+
+          if [ -n "$existing" ]; then
+            echo "Neon branch pr-${PR_NUMBER} already exists (${existing}) — reusing"
+            # Fetch the connection URI for the existing branch's endpoint
+            ep_response=$(curl -fsSL \
+              "https://console.neon.tech/api/v2/projects/${NEON_PROJECT_ID}/branches/${existing}/endpoints" \
+              -H "Authorization: Bearer ${NEON_API_KEY}")
+            db_url=$(echo "$ep_response" | jq -r '.endpoints[0].host // empty')
+            if [ -z "$db_url" ]; then
+              echo "::error::Existing Neon branch has no endpoint — delete it and re-run"
+              echo "$ep_response" | jq .
+              exit 1
+            fi
+            # Reconstruct the postgres URI from the endpoint host
+            # (Neon returns host only from /endpoints; the full URI
+            # with credentials comes only from branch creation).
+            # Delete and recreate to get a fresh connection_uri.
+            echo "Deleting stale branch to get fresh credentials..."
+            curl -fsSL -X DELETE \
+              "https://console.neon.tech/api/v2/projects/${NEON_PROJECT_ID}/branches/${existing}" \
+              -H "Authorization: Bearer ${NEON_API_KEY}" > /dev/null
+            echo "Recreating branch..."
+          fi
+
           response=$(curl -fsSL -X POST \
             "https://console.neon.tech/api/v2/projects/${NEON_PROJECT_ID}/branches" \
             -H "Authorization: Bearer ${NEON_API_KEY}" \

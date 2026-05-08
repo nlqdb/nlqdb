@@ -176,7 +176,6 @@ export default function ChatPanel({ apiBase }: ChatPanelProps) {
   // Load per-DB history from localStorage whenever the active DB changes
   // (including the initial URL-driven mount). Guard with loadedForRef so
   // switching back to an already-loaded DB doesn't clobber live messages.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: setMessages/setVisibleCount are stable
   useEffect(() => {
     if (!activeDbId || loadedForRef.current === activeDbId) return;
     loadedForRef.current = activeDbId;
@@ -186,7 +185,6 @@ export default function ChatPanel({ apiBase }: ChatPanelProps) {
 
   // Persist settled messages to localStorage after each completed exchange.
   // Rows are stripped before writing (saveHistory) to cap storage usage.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: intentional — save on any message change
   useEffect(() => {
     if (!activeDbId || messages.length === 0) return;
     const hasInFlight = messages.some(

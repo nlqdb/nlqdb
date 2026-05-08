@@ -1,22 +1,6 @@
-# ⚠️  This file ships at `apps/api/deploy-canary.yml.template` because
-#     the autonomous-bot OAuth token used to open this PR lacks the
-#     GitHub `workflow` scope and therefore can't push files into
-#     `.github/workflows/`. Before merging, move it into place from a
-#     dev box (or any token with workflow scope):
-#
-#       git mv apps/api/deploy-canary.yml.template \
-#              .github/workflows/deploy-canary.yml
-#       git commit -m "chore(canary): activate deploy workflow"
-#       git push
-#
-#     Once moved, the workflow is identical to what was validated in
-#     this PR (`bunx js-yaml apps/api/deploy-canary.yml.template`).
-#
-# ----- workflow content begins below -----
-#
 # nlqdb — auto-deploy canary worker (`nlqdb-api-canary`) on every push
 # to `main`. Canary is the integration gate between PR previews
-# (mock IdP, `SK-AUTH-016`) and production (`SK-AUTH-017`).
+# (mock IdP, `SK-AUTH-018`) and production (`SK-AUTH-017`).
 #
 # Mirrors `deploy-api.yml`'s shape (build apps/web → migrate D1 → deploy)
 # but points at `wrangler.canary.toml` so the canary D1, KV, Queue, and

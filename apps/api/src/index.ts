@@ -62,26 +62,17 @@ app.onError((err, c) => {
   return c.text("Internal Server Error", 500);
 });
 
-// Cross-subdomain CORS allow-list. Sign-in (`/api/auth/*`), chat
-// (`/v1/chat/*`), and the unified `/v1/ask` are called from
-// `nlqdb.com` (Pages) into `app.nlqdb.com` (Worker). Cookie-session
-// callers ride `credentials: include` so the `.nlqdb.com`-scoped
-// session cookie round-trips; browsers reject `credentials: include`
-// against `origin: *`, so the allow-list is explicit. Anon-bearer
-// callers (Authorization: Bearer anon_*, the marketing hero post-
-// SK-WEB-008) ride the same allow-list — the bearer is read from
-// the request header, not a cookie, but the marketing surfaces are
-// always on the explicit allow-listed origins.
+// CORS allow-list. Post SK-AUTH-016 the product UI and API are
+// same-origin (`app.nlqdb.com`), so product fetches don't need CORS.
+// The marketing site (`nlqdb.com` / Pages) still calls `/v1/ask`
+// cross-origin with an anon bearer (SK-WEB-008); that needs an
+// explicit entry because `credentials: include` rejects `origin: *`.
 //
-// Preview surfaces (SK-AUTH-013): Workers-Versions preview URLs land
-// at `<short-version-id>-nlqdb-web.omer-hochman.workers.dev`; the
-// account-subdomain anchor keeps the regex scoped to our own account.
-// Pages-preview PRs use `pr-<N>.nlqdb-web.pages.dev`.
+// Preview environments are same-origin too (single merged worker per
+// PR via `preview-app.yml`), so no preview-URL regexes are needed.
 //
-// `/v1/demo/*` was retired with /v1/demo/ask (SK-WEB-008). Third-
-// party `<nlq-data>` embeds with `pk_live_` keys are still a
-// separate slice — those land with per-key origin pinning, not a
-// permissive `*` blanket.
+// Third-party `<nlq-data>` embeds with `pk_live_` keys use per-key
+// origin pinning, not this blanket list.
 const CORS_ALLOWED_ORIGINS = [
   "https://app.nlqdb.com",
   "https://nlqdb.com",
@@ -369,15 +360,14 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
       // rationale.
       //
       // libpg-query@17.x ships an Emscripten-generated WASM loader
-      // that does `_scriptName = self.location.href` when both
-      // `__filename` is undefined and `WorkerGlobalScope` is defined.
-      // Cloudflare Workers (compat 2026-04-27) defines
-      // `WorkerGlobalScope` but not `self.location` for ESM workers
-      // with `nodejs_compat`, so the load throws
-      // `TypeError: Cannot read properties of undefined (reading 'href')`
-      // before any of our code runs. Polyfilling `globalThis.__filename`
-      // makes the loader take the Node.js branch instead, which the
-      // `nodejs_compat` shim handles correctly.
+      // whose `ENVIRONMENT_IS_NODE` branch calls `fs.readFileSync`
+      // on a path derived from `__dirname`. Cloudflare Workers'
+      // `nodejs_compat` provides `process.versions.node` (triggering
+      // that branch) but its `fs` polyfill can't read arbitrary
+      // paths. The `__filename` / `__dirname` polyfills below steer
+      // the Emscripten heuristic, but `sql-validate-ddl.ts` now
+      // gracefully degrades if loadModule() still fails — see that
+      // file's header comment for the full story.
       const g = globalThis as unknown as { __filename?: string; __dirname?: string };
       if (typeof g.__filename === "undefined") g.__filename = "worker";
       if (typeof g.__dirname === "undefined") g.__dirname = "/";
@@ -807,10 +797,9 @@ app.post("/v1/databases", requireSession, async (c) => {
       return c.json({ error: { status: "goal_required" as const } }, 400);
     }
 
-    // Same WASM polyfill as the /v1/ask runCreatePath — libpg-query's
-    // Emscripten loader calls `self.location.href` unless __filename
-    // is defined; Workers compat 2026-04-27 defines WorkerGlobalScope
-    // but not self.location for ESM workers with nodejs_compat.
+    // Same WASM polyfill as the /v1/ask runCreatePath — see that
+    // block's comment for the full rationale. `sql-validate-ddl.ts`
+    // gracefully degrades if loadModule() still fails on Workers.
     const g = globalThis as unknown as { __filename?: string; __dirname?: string };
     if (typeof g.__filename === "undefined") g.__filename = "worker";
     if (typeof g.__dirname === "undefined") g.__dirname = "/";
