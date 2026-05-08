@@ -31,20 +31,19 @@
 // (`apps/api/src/db-create/neon-provision.ts`, Worksheet C) executes
 // the SQL after this validator says ok.
 
-import {
-  type AlterTableCmd,
-  type AlterTableStmt,
-  type AlterTableType,
-  type Constraint,
-  type ConstrType,
-  type CopyStmt,
-  type FuncCall,
-  loadModule,
-  type Node,
-  parseSync,
-  type RangeVar,
-  type RawStmt,
+import type {
+  AlterTableCmd,
+  AlterTableStmt,
+  AlterTableType,
+  Constraint,
+  ConstrType,
+  CopyStmt,
+  FuncCall,
+  Node,
+  RangeVar,
+  RawStmt,
 } from "libpg-query";
+import { loadModule, parseSync } from "./libpg-query-worker.js";
 
 // libpg_query is a WASM build; the module loader is async-only.
 // Top-level await keeps the public API (parseSync) synchronous —
@@ -53,26 +52,7 @@ import {
 // path. `/v1/ask` cold-start chunk pulls `sql-validate.ts`
 // (node-sql-parser, read/write); it does NOT pull this file. Verified
 // by the import graph at commit time.
-//
-// Graceful degradation: on Cloudflare Workers, the Emscripten-generated
-// loader takes the `ENVIRONMENT_IS_NODE` path (because `nodejs_compat`
-// defines `process.versions.node`) and calls `fs.readFileSync` on a
-// path derived from `__dirname` — Workers' `nodejs_compat` polyfill
-// doesn't support arbitrary filesystem reads, so loadModule() rejects.
-// When this happens, `validateCompiledDdl` falls back to a pass-through
-// (defense-in-depth is degraded, but the create pipeline isn't blocked).
-// The compiler + Zod validation layers (SK-HDC-002 / SK-HDC-003) still
-// provide the primary guardrails; this validator is the second wall.
-let wasmAvailable = false;
-try {
-  await loadModule();
-  wasmAvailable = true;
-} catch (err) {
-  console.warn(
-    "[sql-validate-ddl] libpg-query WASM failed to load — DDL validation will be skipped.",
-    err instanceof Error ? err.message : String(err),
-  );
-}
+await loadModule();
 
 export type DdlValidationResult =
   | { ok: true }
@@ -252,13 +232,6 @@ function walkNode(node: unknown): RejectHit | null {
 }
 
 export function validateCompiledDdl(statements: string[]): DdlValidationResult {
-  if (!wasmAvailable) {
-    // WASM didn't load (Cloudflare Workers runtime). The compiler +
-    // Zod layers already validated the plan shape; skip the AST walk
-    // rather than crashing the create pipeline. Log once per isolate
-    // so operators see it in `wrangler tail`.
-    return { ok: true };
-  }
   for (const stmt of statements) {
     let parsed: { stmts?: RawStmt[] };
     try {

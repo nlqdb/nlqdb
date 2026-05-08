@@ -24,6 +24,14 @@ export default defineConfig(async () => {
       projects: [
         {
           extends: true,
+          resolve: {
+            alias: {
+              "libpg-query/wasm/libpg-query.wasm": path.resolve(
+                here,
+                "test/libpg-query-wasm-shim.ts",
+              ),
+            },
+          },
           test: {
             name: "unit",
             include: [
