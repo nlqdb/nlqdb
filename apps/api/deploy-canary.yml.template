@@ -1,0 +1,87 @@
+# ⚠️  This file ships at `apps/api/deploy-canary.yml.template` because
+#     the autonomous-bot OAuth token used to open this PR lacks the
+#     GitHub `workflow` scope and therefore can't push files into
+#     `.github/workflows/`. Before merging, move it into place from a
+#     dev box (or any token with workflow scope):
+#
+#       git mv apps/api/deploy-canary.yml.template \
+#              .github/workflows/deploy-canary.yml
+#       git commit -m "chore(canary): activate deploy workflow"
+#       git push
+#
+#     Once moved, the workflow is identical to what was validated in
+#     this PR (`bunx js-yaml apps/api/deploy-canary.yml.template`).
+#
+# ----- workflow content begins below -----
+#
+# nlqdb — auto-deploy canary worker (`nlqdb-api-canary`) on every push
+# to `main`. Canary is the integration gate between PR previews
+# (mock IdP, `SK-AUTH-016`) and production (`SK-AUTH-017`).
+#
+# Mirrors `deploy-api.yml`'s shape (build apps/web → migrate D1 → deploy)
+# but points at `wrangler.canary.toml` so the canary D1, KV, Queue, and
+# R2 bindings are used. Secrets (`BETTER_AUTH_SECRET`, `OAUTH_GITHUB_*`,
+# `GOOGLE_CLIENT_*`, `NEON_DATABASE_URL`, `RESEND_API_KEY`) are set
+# manually with `wrangler secret put --config wrangler.canary.toml`
+# (H8 in the PR description) — same model as prod.
+
+name: Deploy — Canary
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "apps/api/**"
+      - "apps/web/**"
+      - "packages/auth-internal/**"
+      - "packages/db/**"
+      - "packages/events/**"
+      - "packages/llm/**"
+      - "packages/otel/**"
+      - ".github/workflows/deploy-canary.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-canary
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  deployments: write
+
+jobs:
+  deploy:
+    name: D1 migrate + wrangler deploy (canary)
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: "22"
+
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version-file: package.json
+
+      - name: Install workspace deps
+        run: bun install --frozen-lockfile
+
+      - name: Build apps/web (Astro static output)
+        working-directory: apps/web
+        run: bun run build
+
+      - name: Migrate canary D1 + deploy
+        uses: cloudflare/wrangler-action@9acf94ace14e7dc412b076f2c5c20b8ce93c79cd # v3.15.0
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: apps/api
+          # Canary uses the same migration set as prod — Better Auth's
+          # tables don't diverge across environments. `--config` points
+          # the migrate command at `wrangler.canary.toml` so the canary
+          # D1 (binding `DB`) is targeted.
+          preCommands: |
+            wrangler d1 migrations apply nlqdb-canary --config wrangler.canary.toml --remote
+          command: deploy --config wrangler.canary.toml
