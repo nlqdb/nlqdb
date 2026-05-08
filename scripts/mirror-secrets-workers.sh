@@ -72,7 +72,7 @@ skip() { printf '  \033[2m· skip %s (not set in .envrc)\033[0m\n' "$*"; }
 command -v jq >/dev/null 2>&1 || { fail "preflight" "jq not installed — brew install jq"; exit 1; }
 command -v base64 >/dev/null 2>&1 || { fail "preflight" "base64 not installed (should be in coreutils)"; exit 1; }
 if [[ "$MODE" == "remote" ]]; then
-  command -v wrangler >/dev/null 2>&1 || { fail "preflight" "wrangler not installed — bun install"; exit 1; }
+  command -v bunx >/dev/null 2>&1 || { fail "preflight" "bunx not installed — install bun (https://bun.sh)"; exit 1; }
 fi
 
 # Source .envrc without echoing.
@@ -208,7 +208,10 @@ if [[ "$MODE" == "remote" ]]; then
     jq_args+=(--arg "${names[$i]}" "${values[$i]}")
   done
   json=$(jq -n "${jq_args[@]}" '$ARGS.named')
-  if printf '%s' "$json" | (cd "$APP_DIR" && wrangler secret bulk) >/dev/null; then
+  # `bunx wrangler` resolves the workspace-pinned wrangler from
+  # node_modules without requiring node_modules/.bin on PATH —
+  # works the same locally and in CI.
+  if printf '%s' "$json" | (cd "$APP_DIR" && bunx wrangler secret bulk) >/dev/null; then
     for name in "${names[@]}"; do
       val="${!name}"
       ok "$name (${#val} chars)"
