@@ -231,10 +231,9 @@ the failure path (Basic auth rejected = wrong id or secret).
 
 | Surface              | Hosting             | Production deploy                                          | PR preview                                                    |
 | :------------------- | :------------------ | :--------------------------------------------------------- | :------------------------------------------------------------ |
-| `apps/api`           | Cloudflare Workers  | GH Actions — `.github/workflows/deploy-api.yml`            | GH Actions — `.github/workflows/preview-api.yml` (Workers Versions on `nlqdb-api`; per-PR URL) |
+| `apps/api` + `apps/web` (merged worker) | Cloudflare Workers | GH Actions — `.github/workflows/deploy-api.yml` | GH Actions — `.github/workflows/preview-app.yml` (Workers Versions on `nlqdb-api`; per-PR URL + ephemeral Neon branch) |
 | `apps/events-worker` | Cloudflare Workers  | GH Actions — `.github/workflows/deploy-events-worker.yml`  | n/a (queue-only; nothing visible to preview)                  |
 | `apps/coming-soon`   | Cloudflare Pages    | retired — `nlqdb.com` now served by `apps/web`              | n/a |
-| `apps/web`           | Workers Static Assets | GH Actions — `.github/workflows/deploy-web.yml`          | GH Actions — `.github/workflows/preview-web.yml` (Workers Versions on `nlqdb-web`; per-PR URL) |
 | `packages/elements`  | Cloudflare Pages    | GH Actions — `.github/workflows/deploy-elements.yml`       | GH Actions — `.github/workflows/preview-elements.yml` (sticky `pr-<N>.nlqdb-elements.pages.dev/v1.js`) |
 
 Every surface deploys via GH Actions. Reasons we don't use
@@ -436,42 +435,32 @@ Manual re-deploy: workflow_dispatch on the Actions tab.
 
 What you see in a PR before merging, by surface:
 
-#### Web preview — `apps/web` (Workers Versions), `packages/elements` (Pages)
+#### Unified app preview — `apps/api` + `apps/web` (merged worker)
 
-`.github/workflows/preview-web.yml` runs `wrangler versions upload`
-on the `nlqdb-web` Worker per PR — same pattern as the API.
+`.github/workflows/preview-app.yml` (replaces the now-disabled
+`preview-api.yml` and `preview-web.yml`) triggers on every PR push
+and runs `wrangler versions upload` against the `nlqdb-api` Worker.
+Each push produces a non-production version with a stable URL
+`pr-<N>-nlqdb-api.omer-hochman.workers.dev`. The promoted production
+version (and `app.nlqdb.com`) stay untouched.
+
+Per-PR isolation:
+- **Neon branch:** an ephemeral `pr-<N>` branch is provisioned via
+  the Neon API — each PR gets its own Postgres. Deleted on PR close.
+- **Mock IdP** (`MOCK_IDP=1`): OAuth + Resend bypassed; a one-click
+  form mints a real Better Auth session. Email sink at `/api/dev/inbox`.
+- **Mock Stripe** (`MOCK_STRIPE=1`): webhook signature verification
+  bypassed; the rest of the billing pipeline runs real.
+
+KV / D1 / Queue / R2 are inherited from prod. Preview-only vars are
+injected at upload time via `--var`. See the header comment in
+`preview-app.yml` for the full rationale.
+
+#### Elements preview — `packages/elements` (Pages)
+
 `preview-elements.yml` deploys to the elements Pages project with
 `--branch=pr-<N>`, giving a sticky `pr-<N>.nlqdb-elements.pages.dev/v1.js`.
-Both surfaces sticky-comment the URL on the PR; production stays untouched.
-
-Why GH Actions and not Pages git integration: see the strategy
-table earlier in this section.
-
-#### Workers — `apps/api`
-
-`.github/workflows/preview-api.yml` triggers on every PR push and
-runs `wrangler versions upload` against the `nlqdb-api` Worker
-(Workers Versions feature). Each push produces a *non-production*
-version of the prod Worker with a unique URL of the form
-`<id>-nlqdb-api.omer-hochman.workers.dev`. The promoted production
-version (and `app.nlqdb.com`) stay untouched until merge runs
-`wrangler deploy` via `deploy-api.yml`. Sticky PR comment carries
-the per-version URL.
-
-**One-time dashboard setup (already done):** Workers & Pages →
-`nlqdb-api` → Settings → Domains & Routes → enable both
-`workers.dev` and `Preview URLs`. Without Preview URLs enabled,
-the per-version URLs aren't publicly reachable.
-
-Versions inherit prod bindings (KV / D1 / Queue / R2). The workflow
-deliberately skips `migrate:remote` — schema-changing PRs need
-local testing with `migrate:local` + `wrangler dev`, the preview
-will 5xx schema-dependent routes until the PR merges and
-`deploy-api.yml` applies migrations.
-
-Why versions-upload over `--env preview` and what the per-version
-URL contract is: see the header comment in
-`.github/workflows/preview-api.yml`. Don't restate it here.
+Production stays untouched.
 
 #### Workers — `apps/events-worker`
 

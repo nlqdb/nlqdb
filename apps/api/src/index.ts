@@ -62,26 +62,17 @@ app.onError((err, c) => {
   return c.text("Internal Server Error", 500);
 });
 
-// Cross-subdomain CORS allow-list. Sign-in (`/api/auth/*`), chat
-// (`/v1/chat/*`), and the unified `/v1/ask` are called from
-// `nlqdb.com` (Pages) into `app.nlqdb.com` (Worker). Cookie-session
-// callers ride `credentials: include` so the `.nlqdb.com`-scoped
-// session cookie round-trips; browsers reject `credentials: include`
-// against `origin: *`, so the allow-list is explicit. Anon-bearer
-// callers (Authorization: Bearer anon_*, the marketing hero post-
-// SK-WEB-008) ride the same allow-list — the bearer is read from
-// the request header, not a cookie, but the marketing surfaces are
-// always on the explicit allow-listed origins.
+// CORS allow-list. Post SK-AUTH-016 the product UI and API are
+// same-origin (`app.nlqdb.com`), so product fetches don't need CORS.
+// The marketing site (`nlqdb.com` / Pages) still calls `/v1/ask`
+// cross-origin with an anon bearer (SK-WEB-008); that needs an
+// explicit entry because `credentials: include` rejects `origin: *`.
 //
-// Preview surfaces (SK-AUTH-013): Workers-Versions preview URLs land
-// at `<short-version-id>-nlqdb-web.omer-hochman.workers.dev`; the
-// account-subdomain anchor keeps the regex scoped to our own account.
-// Pages-preview PRs use `pr-<N>.nlqdb-web.pages.dev`.
+// Preview environments are same-origin too (single merged worker per
+// PR via `preview-app.yml`), so no preview-URL regexes are needed.
 //
-// `/v1/demo/*` was retired with /v1/demo/ask (SK-WEB-008). Third-
-// party `<nlq-data>` embeds with `pk_live_` keys are still a
-// separate slice — those land with per-key origin pinning, not a
-// permissive `*` blanket.
+// Third-party `<nlq-data>` embeds with `pk_live_` keys use per-key
+// origin pinning, not this blanket list.
 const CORS_ALLOWED_ORIGINS = [
   "https://app.nlqdb.com",
   "https://nlqdb.com",
