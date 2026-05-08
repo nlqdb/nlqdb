@@ -73,8 +73,7 @@ export async function handleMockSignIn(c: MockSignInCtx): Promise<Response> {
 
   // Prefer the in-memory capture (same-request, no KV consistency
   // lag). Fall back to KV for resilience.
-  const verifyUrl = consumeCapturedVerifyUrl()
-    ?? (await findLatestForEmail(c.env.KV, email))?.body;
+  const verifyUrl = consumeCapturedVerifyUrl() ?? (await findLatestForEmail(c.env.KV, email))?.body;
   if (!verifyUrl) {
     return new Response("mock_sign_in_inbox_empty", { status: 502 });
   }
