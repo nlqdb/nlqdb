@@ -275,28 +275,42 @@ cost-ordered failover chain; Slice 5 wires Better Auth at
 committed in `apps/api/wrangler.toml` (account-scoped, not secret).
 
 **Auto-deploy on merge to `main`**: `.github/workflows/deploy-api.yml`
-runs `migrate:remote` + `wrangler deploy` whenever `apps/api/**` or
-its workspace dependencies change. `secrets:remote` is not in CI
-(the script reads from `.envrc`, which only exists on dev boxes).
-Mirror secrets manually whenever one rotates:
+runs `migrate:remote` + `wrangler deploy` + `secrets:remote` whenever
+`apps/api/**` or its workspace dependencies change. The third step
+re-reads GHA secrets (mirrored from `.envrc` via
+`scripts/mirror-secrets-gha.sh`) and pushes them as worker-level
+secrets via the same `mirror-secrets-workers.sh remote api` script
+that runs locally — every CI deploy self-heals the secret set.
+
+**Rotating a secret** — three steps:
 
 ```bash
-bun run --cwd apps/api secrets:remote
+# 1. Edit .envrc with the new value.
+# 2. Mirror to GHA (CI's source of truth):
+./scripts/mirror-secrets-gha.sh
+# 3. Trigger a deploy so CI re-pushes worker secrets:
+gh workflow run deploy-api.yml --ref main
 ```
 
-**First deploy from a clean Cloudflare account** (or after a secret
-rotation that the Worker needs at runtime) — three steps in order:
+Local `bun run --cwd apps/api secrets:remote` works too as an
+escape hatch, but fails (CF API code 10214) whenever a PR preview
+upload is ahead of the deployed prod version — which is most of the
+time. Prefer the CI path; it always works because `wrangler deploy`
+in the workflow puts latest = deployed before the bulk push.
+
+**First deploy from a clean Cloudflare account** — local sequence,
+all idempotent:
 
 ```bash
-bun run --cwd apps/api secrets:remote   # mirror .envrc → Worker secrets
-bun run --cwd apps/api migrate:remote   # apply migrations/* to remote D1
-bun run --cwd apps/api deploy           # wrangler deploy
+./scripts/mirror-secrets-gha.sh                # .envrc → GHA
+bun run --cwd apps/api migrate:remote          # migrations/* → D1
+bun run --cwd apps/api deploy                  # wrangler deploy
+bun run --cwd apps/api secrets:remote          # .envrc → Worker secrets
 ```
 
-All three are idempotent — safe to re-run. The `app.nlqdb.com`
-custom-domain attach happens once on first `deploy` and is a no-op
-thereafter. After this initial deploy, CI takes over for code +
-schema changes; only re-run `secrets:remote` on rotation.
+The `app.nlqdb.com` custom-domain attach happens once on first
+`deploy` and is a no-op thereafter. After this initial deploy, CI
+takes over for everything.
 
 **Cloudflare resources** (provisioned by
 `scripts/provision-cf-resources.sh`, idempotent):
@@ -375,9 +389,9 @@ No HTTP route, no public URL (`workers_dev = false` /
 single `wrangler deploy`.
 
 **Auto-deploy on merge to `main`**: `.github/workflows/deploy-events-worker.yml`
-runs `wrangler deploy` whenever `apps/events-worker/**` or its
-workspace deps change. Same `secrets:remote`-stays-manual rule as
-`apps/api`.
+runs `wrangler deploy` + `secrets:remote` whenever `apps/events-worker/**`
+or its workspace deps change. Same self-healing-secrets rule as
+`apps/api` — CI re-pushes from GHA on every deploy.
 
 ```bash
 bun run --cwd apps/events-worker secrets:remote   # mirror LogSnag + GRAFANA_*
