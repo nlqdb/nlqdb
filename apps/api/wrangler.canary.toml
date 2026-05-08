@@ -45,14 +45,14 @@ not_found_handling = "404-page"
 # Filled in by `wrangler kv namespace create nlqdb-canary` (H3).
 [[kv_namespaces]]
 binding = "KV"
-id = "FILL_IN_AFTER_HUMAN_CREATES"
+id = "d11103c1663c446cbb601b0c09500854"
 
 # Filled in by `wrangler d1 create nlqdb-canary` (H4). `migrations_dir`
 # matches prod so Better Auth migrations apply identically.
 [[d1_databases]]
 binding = "DB"
 database_name = "nlqdb-canary"
-database_id = "FILL_IN_AFTER_HUMAN_CREATES"
+database_id = "fda1a20b-9486-4928-91a7-a0f56df69b1f"
 migrations_dir = "migrations"
 
 # Provisioned by `wrangler queues create nlqdb-events-canary` (H5).
