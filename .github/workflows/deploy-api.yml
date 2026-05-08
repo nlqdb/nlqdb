@@ -150,17 +150,12 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           ALL_SECRETS: ${{ toJSON(secrets) }}
         run: |
-          # Put the workspace's `wrangler` on PATH so the script's
-          # `command -v wrangler` preflight + the `wrangler secret
-          # bulk` invocation resolve to the bun-installed copy
-          # (the cloudflare/wrangler-action step doesn't leak
-          # wrangler beyond its own step).
-          export PATH="$PWD/node_modules/.bin:$PATH"
           # Reconstruct an .envrc that the script can source. Every
           # GHA secret is exported as a shell variable; the script's
           # `select_secrets()` filters to the api Worker's runtime
           # subset. `@sh` quotes safely; values with newlines/quotes
-          # round-trip correctly.
+          # round-trip correctly. The script uses `bunx wrangler`
+          # internally so no PATH dance is needed here.
           jq -r 'to_entries[] | "export \(.key)=\(.value | @sh)"' <<<"$ALL_SECRETS" > .envrc
           ./scripts/mirror-secrets-workers.sh remote api
           rm -f .envrc
