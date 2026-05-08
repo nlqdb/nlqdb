@@ -17,6 +17,7 @@ import { betterAuth } from "better-auth";
 import { magicLink } from "better-auth/plugins";
 import { D1Dialect } from "kysely-d1";
 import { hashEmail, makeMagicLinkThrottle } from "./auth/magic-link-throttle.ts";
+import { sinkEmail } from "./auth/mock-email-sink.ts";
 import { makeEmailSender } from "./email.ts";
 
 // `isDev` is the localhost gate — only the literal `development` value
@@ -150,6 +151,19 @@ export const auth = betterAuth({
       allowedAttempts: 1,
       storeToken: "hashed",
       sendMagicLink: async ({ email, url }) => {
+        // Mock-IdP escape hatch (SK-AUTH-018). Preview environments
+        // run with MOCK_IDP=1 so that PR previews can complete sign-in
+        // without a registered OAuth callback or a configured Resend
+        // domain. The throttle is bypassed too — preview tests benefit
+        // from sending the same address repeatedly. The link itself is
+        // the magic-link verify URL exactly as Better Auth would send
+        // it; the mock-sign-in handler reads it back from KV and
+        // server-side fetches the verify endpoint to mint the cookie.
+        if (env.MOCK_IDP === "1") {
+          await sinkEmail(env.KV, email, "Magic link (mock)", url);
+          return;
+        }
+
         // Per-email throttle. When over limit, drop the send silently
         // (Better Auth's verification record is harmless if the email
         // never arrives; the 10-min TTL evicts it). Returning here

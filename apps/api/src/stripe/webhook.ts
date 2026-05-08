@@ -64,6 +64,11 @@ export type StripeWebhookDeps = {
   // (the result's `archive` field is undefined too).
   r2?: R2Bucket;
   events: EventEmitter;
+  // Preview-only signature bypass (SK-AUTH-018). When true the body
+  // is parsed as JSON and trusted as a Stripe.Event without HMAC
+  // verification. Set by the route handler when env.MOCK_STRIPE === "1";
+  // never true in production.
+  bypassSignatureVerification?: boolean;
 };
 
 export type StripeWebhookResult =
@@ -87,25 +92,37 @@ export async function processWebhook(
 
   return tracer.startActiveSpan("nlqdb.webhook.stripe", async (span) => {
     try {
-      if (!signature) {
-        span.setAttribute("nlqdb.webhook.signature_valid", false);
-        return { status: 400 as const, body: { error: "invalid_signature" as const } };
-      }
-
       let event: Stripe.Event;
-      try {
-        event = await deps.signer.constructEventAsync(
-          rawBody,
-          signature,
-          deps.webhookSecret,
-          undefined,
-          deps.cryptoProvider,
-        );
-        span.setAttribute("nlqdb.webhook.signature_valid", true);
-      } catch (err) {
-        span.setAttribute("nlqdb.webhook.signature_valid", false);
-        recordSpanError(span, err);
-        return { status: 400 as const, body: { error: "invalid_signature" as const } };
+      if (deps.bypassSignatureVerification) {
+        // SK-AUTH-018 mock-Stripe path. JSON body is trusted; the rest
+        // of the pipeline (idempotency insert, dispatch, R2 archive,
+        // events emit) runs identically to the real path.
+        try {
+          event = JSON.parse(rawBody) as Stripe.Event;
+        } catch (err) {
+          recordSpanError(span, err);
+          return { status: 400 as const, body: { error: "invalid_signature" as const } };
+        }
+        span.setAttribute("nlqdb.webhook.signature_bypassed", true);
+      } else {
+        if (!signature) {
+          span.setAttribute("nlqdb.webhook.signature_valid", false);
+          return { status: 400 as const, body: { error: "invalid_signature" as const } };
+        }
+        try {
+          event = await deps.signer.constructEventAsync(
+            rawBody,
+            signature,
+            deps.webhookSecret,
+            undefined,
+            deps.cryptoProvider,
+          );
+          span.setAttribute("nlqdb.webhook.signature_valid", true);
+        } catch (err) {
+          span.setAttribute("nlqdb.webhook.signature_valid", false);
+          recordSpanError(span, err);
+          return { status: 400 as const, body: { error: "invalid_signature" as const } };
+        }
       }
 
       span.setAttribute("nlqdb.webhook.event_id", event.id);

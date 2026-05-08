@@ -12,6 +12,8 @@ import { classifyKind } from "./ask/classifier.ts";
 import { DISAMBIGUATE_CONFIDENCE_FLOOR, disambiguateDb } from "./ask/disambiguate-db.ts";
 import { orchestrateAsk } from "./ask/orchestrate.ts";
 import type { AskError, OrchestrateEvent, SelectedDbEcho } from "./ask/types.ts";
+import { listInbox } from "./auth/mock-email-sink.ts";
+import { handleMockSignIn, mockSignInFormHtml } from "./auth/mock-idp.ts";
 import { auth, REVOCATION_KEY_PREFIX } from "./auth.ts";
 import { askFnFromDemoFixtures, DEMO_DB_ID } from "./chat/demo-shortcut.ts";
 import { postChatMessage } from "./chat/orchestrate.ts";
@@ -181,6 +183,16 @@ app.get("/v1/health", (c) =>
     },
   }),
 );
+
+// Mock IdP routes (SK-AUTH-018). Active only when env.MOCK_IDP === "1";
+// in production the flag is unset and these routes 404. The override on
+// `/auth/sign-in` is intentional — in mock mode the form replaces the
+// static Astro sign-in page bundled into the [assets] binding.
+if (env.MOCK_IDP === "1") {
+  app.get("/auth/sign-in", (c) => c.html(mockSignInFormHtml(new URL(c.req.url).origin)));
+  app.get("/api/auth/mock-sign-in", (c) => handleMockSignIn(c));
+  app.get("/api/dev/inbox", async (c) => c.json(await listInbox(c.env.KV)));
+}
 
 // `POST /v1/ask` (Slice 6).
 //
@@ -670,7 +682,8 @@ app.post("/v1/waitlist", async (c) => {
 //
 // R2 archive runs in `ctx.waitUntil` so 200 ships before the put completes.
 app.post("/v1/stripe/webhook", async (c) => {
-  if (!c.env.STRIPE_WEBHOOK_SECRET) {
+  const mockStripe = c.env.MOCK_STRIPE === "1";
+  if (!mockStripe && !c.env.STRIPE_WEBHOOK_SECRET) {
     return c.json({ error: "secret_unconfigured" }, 503);
   }
   const rawBody = await c.req.text();
@@ -680,10 +693,11 @@ app.post("/v1/stripe/webhook", async (c) => {
     {
       signer: stripeClient.webhooks,
       cryptoProvider,
-      webhookSecret: c.env.STRIPE_WEBHOOK_SECRET,
+      webhookSecret: c.env.STRIPE_WEBHOOK_SECRET ?? "",
       db: c.env.DB,
       r2: c.env.ASSETS,
       events: buildEventEmitter(c.env.EVENTS_QUEUE),
+      bypassSignatureVerification: mockStripe,
     },
     rawBody,
     signature,

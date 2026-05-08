@@ -101,6 +101,23 @@ declare global {
       // because the single-origin canary worker is already covered by
       // `baseURL` auto-trust.
       CANARY_ORIGIN?: string;
+
+      // Preview-only escape hatches (SK-AUTH-018). Both MUST remain
+      // unset in production wrangler.toml — they bypass the external
+      // OAuth / Resend / Stripe round-trips that prod relies on.
+      //
+      // MOCK_IDP=1: replaces the OAuth + Resend leg of sign-in with a
+      // one-click form (`GET /auth/sign-in`) that mints a real Better
+      // Auth session via the magic-link plugin. Implies email sinking
+      // — the magic-link `sendMagicLink` callback writes to KV instead
+      // of calling Resend; `GET /api/dev/inbox` reads them back.
+      //
+      // MOCK_STRIPE=1: bypasses Stripe webhook signature verification
+      // so synthetic events can be POSTed against /v1/stripe/webhook
+      // without configuring STRIPE_WEBHOOK_SECRET. The dispatcher,
+      // idempotency insert, and downstream emit all run real.
+      MOCK_IDP?: string;
+      MOCK_STRIPE?: string;
     }
   }
 }
