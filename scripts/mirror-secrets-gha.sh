@@ -16,12 +16,18 @@
 #
 # Run on the source machine after any .envrc rotation. CI workflows
 # read these via ${{ secrets.NAME }}; the canonical name list lives
-# in .env.example. Two intentional omissions:
+# in .env.example.
 #
-#   BETTER_AUTH_SECRET / INTERNAL_JWT_SECRET — LOCAL DEV ONLY. CI
-#     should generate fresh ephemeral values per workflow run;
-#     sharing dev values to CI would let CI compromise live dev
-#     sessions.
+# `BETTER_AUTH_SECRET` is mirrored to GHA so the deploy workflows can
+# push it to the prod Worker as a worker-level secret. Rotating it
+# invalidates every active session, so don't rotate without intent —
+# but it MUST be the same value across local-dev and prod, or sessions
+# minted on one don't verify on the other (the OAuth-init outage on
+# 2026-05-08 traced back to this missing on prod). `.envrc` stays the
+# single source of truth; this script keeps GHA + Worker in sync.
+# `INTERNAL_JWT_SECRET` is scaffolded in `.envrc` per `SK-AUTH-005`
+# but not yet read at runtime — promote to the SECRETS array below
+# once the edge starts minting internal JWTs.
 #
 # Prereqs: gh authenticated, admin/maintainer access to nlqdb/nlqdb.
 
@@ -53,6 +59,7 @@ set +a
 # Order = .env.example for easy diff. Add new secrets here AND in
 # .env.example simultaneously; CI references must use these exact names.
 SECRETS=(
+  BETTER_AUTH_SECRET
   CLOUDFLARE_ACCOUNT_ID
   CLOUDFLARE_API_TOKEN
   CF_AI_TOKEN

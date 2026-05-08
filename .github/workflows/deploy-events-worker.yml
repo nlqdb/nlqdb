@@ -77,7 +77,6 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           ALL_SECRETS: ${{ toJSON(secrets) }}
         run: |
-          export PATH="$PWD/node_modules/.bin:$PATH"
           jq -r 'to_entries[] | "export \(.key)=\(.value | @sh)"' <<<"$ALL_SECRETS" > .envrc
           ./scripts/mirror-secrets-workers.sh remote events-worker
           rm -f .envrc
