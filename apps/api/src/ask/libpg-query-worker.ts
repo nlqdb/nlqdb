@@ -10,10 +10,10 @@
 // making it available as a WebAssembly.Module at runtime. We pass it
 // via the instantiateWasm hook, bypassing the filesystem read entirely.
 
-// @ts-expect-error — Wrangler resolves .wasm imports to WebAssembly.Module at runtime
-import wasmModule from "libpg-query/wasm/libpg-query.wasm";
 // @ts-expect-error — Emscripten factory; no TS declarations
 import PgQueryEmscripten from "libpg-query/wasm/libpg-query.js";
+// @ts-expect-error — Wrangler resolves .wasm imports to WebAssembly.Module at runtime
+import wasmModule from "libpg-query/wasm/libpg-query.wasm";
 
 interface EmscriptenModule {
   _wasm_parse_query_raw(queryPtr: number): number;
@@ -35,9 +35,7 @@ const initPromise = (
     imports: WebAssembly.Imports,
     successCallback: (instance: WebAssembly.Instance) => void,
   ) {
-    WebAssembly.instantiate(wasmModule as WebAssembly.Module, imports).then(
-      successCallback,
-    );
+    WebAssembly.instantiate(wasmModule as WebAssembly.Module, imports).then(successCallback);
     return {};
   },
 }).then((m: EmscriptenModule) => {
@@ -49,10 +47,7 @@ export async function loadModule(): Promise<void> {
 }
 
 export function parseSync(query: string): unknown {
-  if (!mod)
-    throw new Error(
-      "WASM module not initialized. Call `loadModule()` first.",
-    );
+  if (!mod) throw new Error("WASM module not initialized. Call `loadModule()` first.");
 
   const len = mod.lengthBytesUTF8(query) + 1;
   const queryPtr = mod._malloc(len);
@@ -70,9 +65,7 @@ export function parseSync(query: string): unknown {
 
     if (errorPtr) {
       const messagePtr = mod.getValue(errorPtr, "i32");
-      const message = messagePtr
-        ? mod.UTF8ToString(messagePtr)
-        : "Unknown parse error";
+      const message = messagePtr ? mod.UTF8ToString(messagePtr) : "Unknown parse error";
       throw new Error(message);
     }
 
