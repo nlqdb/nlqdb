@@ -103,6 +103,13 @@ jobs:
         working-directory: apps/web
         run: bun run build
 
+      # Remove the static sign-in page so the Hono mock-IdP route
+      # (`GET /auth/sign-in`) takes over. Workers Static Assets serves
+      # matching files BEFORE the fetch handler — without this, the
+      # real OAuth sign-in page overshadows the mock form.
+      - name: Strip real sign-in page (mock IdP override)
+        run: rm -rf apps/web/dist/auth/sign-in
+
       # Provision an ephemeral Neon branch (`pr-N`). The connection
       # URI is returned in `connection_uris[0].connection_uri` for
       # single-role/database branches (per Neon docs); fail loudly
