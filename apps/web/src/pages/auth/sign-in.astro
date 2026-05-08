@@ -1,26 +1,15 @@
 ---
-// Sign-in page (SK-AUTH-002 — magic link, GitHub OAuth, Google OAuth;
-// no passwords). Static Astro page with a bundled-script island.
+// Sign-in page (`SK-AUTH-002` — magic link + Google/GitHub OAuth, no
+// passwords). OAuth init is a top-level GET to the API's
+// `/api/auth/oauth-init/:provider` wrapper (`SK-AUTH-015`).
 //
-// All three methods POST cross-subdomain to app.nlqdb.com:
-//   - Magic link: POST /api/auth/sign-in/magic-link { email, callbackURL }
-//     → 200 swaps the form for "Check your inbox."
-//   - GitHub / Google: POST /api/auth/sign-in/social { provider, callbackURL }
-//     → 200 { url } → top-level navigate to provider.
-//
-// The session cookie set by Better Auth is `__Secure-session` with
-// Domain=nlqdb.com (SK-WEB-006), so the cookie scoped at app.nlqdb.com
-// is also visible on nlqdb.com.
-//
-// Brand chrome on OAuth buttons was reviewed against
-// https://developers.google.com/identity/branding-guidelines
-// (Google's "neutral / dark" template, exact spec — unchanged from
-// the pre-pivot version of this page) so Google's OAuth review will
-// not reject the integration.
+// OAuth button chrome follows
+// https://developers.google.com/identity/branding-guidelines (neutral/
+// dark template) — modifying it risks Google's OAuth review.
 
 import Base from "../../layouts/Base.astro";
 
-const apiBase = import.meta.env.PUBLIC_API_BASE ?? "https://app.nlqdb.com";
+const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
 ---
 <Base
   title="Sign in — nlqdb"

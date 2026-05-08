@@ -1,34 +1,14 @@
 ---
-// Product chat page (SK-WEB-005). One static route handles the
-// whole chat surface — `/app` lands here without a DB selected
-// (the left rail prompts to pick one), `/app?db=<dbId>` deep-
-// links into a specific conversation. The DB id rides a query
-// param rather than a path segment because `apps/web` is a
-// static-output Astro site (no SSR adapter); a static build
-// can't pre-render `[dbId].astro` for unknown ids without an
-// adapter or wholesale SPA fallback.
-//
-// `selectDb` in ChatPanel updates the query string via
-// `history.pushState` so refresh + back/forward both round-trip
-// the active DB without a server hop. Auth is the cross-
-// subdomain `__Secure-session` cookie (SK-WEB-006).
-//
-// Auth guard: a pre-render probe to `/api/auth/get-session`
-// redirects unauthenticated visitors to `/auth/sign-in` instead
-// of letting them sit on a chat shell whose every API call 401s.
-// The guard is what stops the post-OAuth redirect from landing on
-// a "signed in but every request fails" state when the browser
-// can't deliver the session cookie (e.g. SameSite=Lax blocking
-// the cross-eTLD+1 fetch on Workers-Versions previews per
-// SK-AUTH-013/SK-AUTH-015 — same symptom the user would see if
-// the cookie genuinely expired).
+// Product chat page (`SK-WEB-005`). DB id rides `?db=<dbId>` rather
+// than a path segment because the static build can't pre-render
+// `[dbId].astro` without an SSR adapter.
 
 import ChatPanel from "../../components/chat/ChatPanel.tsx";
 import Footer from "../../components/Footer.astro";
 import Topnav from "../../components/Topnav.astro";
 import Base from "../../layouts/Base.astro";
 
-const apiBase = import.meta.env.PUBLIC_API_BASE ?? "https://app.nlqdb.com";
+const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
 ---
 <Base
   title="Chat — nlqdb"

@@ -85,6 +85,7 @@ when-to-load:
 
 ### SK-WEB-006 — Cookie is `__Secure-session` with cross-subdomain `Domain=nlqdb.com`
 
+- **Status:** Superseded by `SK-WEB-009` once `apps/web` and `apps/api` were merged into a single same-origin worker on `app.nlqdb.com`. Kept here so the rationale and the historical OAuth-state bug context (`SK-AUTH-013` / `SK-AUTH-015`) remain readable.
 - **Decision:** Sign-in cookie is `__Secure-session` (HttpOnly, Secure, SameSite=Lax) with `Domain=nlqdb.com` so the same session covers `nlqdb.com` and `app.nlqdb.com`. `__Host-` was the earlier draft but is incompatible with `Domain=`; restoring it would require same-origin chat (e.g. bundling `apps/web` into the API Worker).
 - **Core value:** Seamless auth, Bullet-proof, Effortless UX
 - **Why:** Users sign in on the marketing site and continue to the product on a subdomain — one identity (`GLOBAL-008`) requires one cookie that spans both. `__Host-` is strictly more secure but it forbids the `Domain=` attribute; the cross-subdomain story is the right tradeoff for Phase 1. The decision is documented because it's a deliberate downgrade from a previous draft; future re-architecting (same-origin chat) can restore `__Host-`.
@@ -92,6 +93,17 @@ when-to-load:
 - **Alternatives rejected:**
   - Keep `__Host-` and force same-origin chat now — too much architecture churn for Phase 1.
   - Issue a separate cookie per subdomain — fragments identity, breaks `GLOBAL-008`.
+
+### SK-WEB-009 — Host-only `__Secure-…session` cookie on `app.nlqdb.com` after the web/API merge
+
+- **Decision:** After `apps/web` is served from the same Cloudflare Worker as `apps/api` (Workers Static Assets `[assets]` binding pointing at `apps/web/dist`), Better Auth's `crossSubDomainCookies` block is removed. The session cookie has no `Domain=` attribute, making it host-only on `app.nlqdb.com`. Better Auth still hardcodes the `__Secure-` prefix in v1.6.9 (`node_modules/better-auth/dist/cookies/index.mjs:30`), so the literal cookie name is `__Secure-${cookiePrefix}.session_token` — the browser-prefix protection that matters in practice (Secure attribute required, no cross-subdomain travel) is enforced by `__Secure-` plus host-only.
+- **Core value:** Bullet-proof, Seamless auth, Effortless UX
+- **Why:** Pre-merge the cookie travelled across two eTLD+1s (`nlqdb.com` ↔ `app.nlqdb.com`) via the `Domain=.nlqdb.com` attribute, but Workers-Versions previews land on a third eTLD+1 (`*-nlqdb-web.omer-hochman.workers.dev`) that was never inside the cookie scope. Browser third-party-cookie partitioning then dropped the cookie on cross-eTLD+1 fetches into the API, surfacing as a 401 in preview branches and the `SK-AUTH-015` OAuth-state bug. Collapsing the product UI + API onto one origin makes every product-side request first-party, so the cookie no longer has to travel. Marketing on `nlqdb.com` loses the cross-subdomain UX (authed visitors see "Sign in") — accepted because the marketing-side authed signal was always best-effort and is now delivered by the product's own auth guard at `/app`.
+- **Consequence in code:** `apps/api/src/auth.ts` drops `crossSubDomainCookies`, keeps `cookiePrefix: "__Secure"` (Better Auth 1.6.9 limitation — see Open questions). `apps/api/wrangler.toml` adds `[assets]` pointing at `../web/dist`. `apps/web/src/lib/session.ts` and `chat-client.ts` default `apiBase` to `""` (same-origin). The OAuth-init wrapper at `/api/auth/oauth-init/:provider` (`SK-AUTH-015`) is retained — it is harmless when same-origin and still required for any future cross-origin entry. PRs that re-introduce a `Domain=` attribute (or any other cross-subdomain cookie shape) on the production session cookie are rejected.
+- **Alternatives rejected:**
+  - **Keep two workers and rely on `Domain=.nlqdb.com` indefinitely.** The cookie still has to travel cross-origin for every preview branch; the underlying browser-partitioning trend is widening, not narrowing. We would keep paying the same auth-bug debt every time a new browser ships.
+  - **Issue a literal `__Host-…session` cookie immediately.** Better Auth v1.6.9 hardcodes the `__Secure-` prefix; producing a real `__Host-` name requires either upgrading Better Auth to a version that supports it natively, post-processing every `Set-Cookie` header at the edge, or forking the plugin layer. Too much surface area for the merge PR; tracked as an open question.
+  - **Set `Domain=app.nlqdb.com` explicitly instead of removing the attribute.** Equivalent to host-only in browser semantics, but `__Host-` browser-prefix promotion later would have to also strip an explicit Domain — easier to never add it in the first place.
 
 ### SK-WEB-007 — "Copy snippet" inlines the user's `pk_live_` so the key is never a separate errand
 
@@ -114,7 +126,7 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 
 ## Open questions / known unknowns
 
-- **Same-origin chat for restoring `__Host-`.** Future architecture change — bundle `apps/web` static assets into the API Worker so chat is same-origin, allowing `__Host-` cookie. No timeline; deferred post-chat-surface launch.
+- **Promote session cookie name to literal `__Host-…session`.** Same-origin chat shipped in `SK-WEB-009`, so the architectural prerequisite is already met. The remaining blocker is Better Auth v1.6.9, which hardcodes a `__Secure-` prefix in `cookies/index.mjs:30` with no override. Options: upgrade Better Auth to a version that exposes the prefix as configurable, post-process every `Set-Cookie` header at the worker edge, or fork the cookies layer. Defer until Better Auth ships a fix or the cookie name needs to satisfy a specific audit.
 - **Sharing a query result by link.** P1-priority surface per `docs/runbook.md §10` — implementation slice not yet scoped.
 - **CSV upload.** Required for P3 (data-curious analyst) per `docs/runbook.md §10`. Deferred to Phase 2 alongside CLI.
 - **Plausible vs Plausible-self-hosted.** `docs/architecture.md §3.1` says "Plausible, self-hosted"; `docs/architecture.md §10` lists Plausible without qualifier. Reconcile when wiring web analytics.

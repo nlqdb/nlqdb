@@ -67,6 +67,12 @@ queue = "nlqdb-events"
 binding = "ASSETS"
 bucket_name = "nlqdb-assets"
 
+# `STATIC_ASSETS` (not `ASSETS`) avoids colliding with the R2 binding above.
+[assets]
+directory = "../web/dist"
+binding = "STATIC_ASSETS"
+not_found_handling = "404-page"
+
 # `custom_domain = true` (vs `pattern + zone_name`) gives the worker
 # exclusive ownership of `app.nlqdb.com` and lets wrangler create the
 # DNS record + provision the cert on first deploy. OAuth callbacks in
