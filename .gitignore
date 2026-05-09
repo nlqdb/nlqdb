@@ -5,6 +5,7 @@ node_modules/
 # Local env / secrets — never commit
 .envrc
 .envrc.age
+.tinyb
 .envrc.age.prev
 .envrc.pre-restore.*
 .env
