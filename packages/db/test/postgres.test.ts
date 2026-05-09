@@ -4,7 +4,7 @@ import { createPostgresAdapter, type PostgresQueryFn } from "../src/index.ts";
 import type { EnginePlan, Row } from "../src/types.ts";
 
 // PERFORMANCE §4 row 3: every Slice 3 call to the Postgres adapter MUST
-// emit `db.query` (with `db.system=postgresql`, `db.operation=…`) and
+// emit `db.query` (with `db.system=postgresql`, `db.operation.name=…`) and
 // record `nlqdb.db.duration_ms{operation}`. CI fails this slice if
 // either is missing or if measured p50 exceeds 1.5× the §2.1 budget.
 
@@ -53,9 +53,6 @@ describe("createPostgresAdapter", () => {
     const span = spans[0];
     expect(span?.name).toBe("db.query");
     expect(span?.attributes["db.system"]).toBe("postgresql");
-    // Legacy alias kept during the dashboard transition window.
-    expect(span?.attributes["db.operation"]).toBe("SELECT");
-    // Canonical OTel semconv v1.27+ key (`SK-MULTIENG-004`).
     expect(span?.attributes["db.operation.name"]).toBe("SELECT");
   });
 
@@ -91,7 +88,6 @@ describe("createPostgresAdapter", () => {
     const db = createPostgresAdapter({ query: okQuery });
     await db.execute(pgPlan(sql));
     const span = telemetry.spanExporter.getFinishedSpans()[0];
-    expect(span?.attributes["db.operation"]).toBe(expected);
     expect(span?.attributes["db.operation.name"]).toBe(expected);
   });
 

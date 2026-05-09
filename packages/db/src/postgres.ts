@@ -1,5 +1,5 @@
 import { neon } from "@neondatabase/serverless";
-import { dbDurationMs } from "@nlqdb/otel";
+import { dbDurationMs, redactPii } from "@nlqdb/otel";
 import { SpanStatusCode, trace } from "@opentelemetry/api";
 import { bufferedEngineResult } from "./engine-result.ts";
 import type {
@@ -55,11 +55,7 @@ export function createPostgresAdapter(opts: PostgresAdapterOptions): DatabaseAda
         {
           attributes: {
             "db.system": "postgresql",
-            // `db.operation` is the legacy attribute name; `db.operation.name` is
-            // the canonical OTel semconv v1.27+ key (`SK-MULTIENG-004`). Emit both
-            // during the dashboard transition window — drop the alias once the
-            // migration off `db.operation` lands.
-            "db.operation": operation,
+            "db.statement": redactPii(sqlText),
             "db.operation.name": operation,
           },
         },

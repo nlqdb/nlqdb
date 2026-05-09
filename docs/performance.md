@@ -173,7 +173,7 @@ Canonical names. Every slice MUST use these — no one-off variants.
 | `llm.schema_infer`            | Hosted db.create — NL → typed `SchemaPlan` (SK-HDC-002, SK-HDC-003). |
 | `llm.engine_classify`         | Hosted db.create — goal text → engine pick (SK-DB-010, SK-MULTIENG-002). Parent span carries `nlqdb.engine_classify.fallback_reason ∈ {deferred, below_floor, provider_failed, unknown_string}` (4 values; absent when LLM pick was used). |
 | `nlqdb.sql.validate`          | SQL parse + schema-fit check.                  |
-| `db.query`                    | Neon HTTP execute — standard OTel `db.*`.      |
+| `db.query`                    | Neon HTTP execute — standard OTel `db.*`. Attributes: `db.system=postgresql`, `db.operation.name`, `db.statement` (PII-redacted SQL text). |
 | `db.transaction`              | BEGIN…COMMIT batch around the db.create provisioner's DDL + sample-row apply (`apps/api/src/db-create/neon-provision.ts`). Carries `db.system=postgresql`. Per-statement `db.query` spans nest under it. |
 | `nlqdb.auth.oauth.callback`   | `/api/auth/callback/{github,google}` flow.     |
 | `nlqdb.webhook.stripe`        | Stripe webhook handler.                        |
@@ -243,7 +243,7 @@ Every slice from 3 onward MUST include:
 
 | Slice | New spans                                              | New metrics                                                      | CI assertion                            |
 | :---- | :----------------------------------------------------- | :--------------------------------------------------------------- | :-------------------------------------- |
-| 3 — Neon adapter      | `db.query` (label `db.system=postgresql`, `db.operation`) | `nlqdb.db.duration_ms{operation}`                                | span emitted; p50 < 200 ms in test.     |
+| 3 — Neon adapter      | `db.query` (label `db.system=postgresql`, `db.operation.name`) | `nlqdb.db.duration_ms{operation}`                                | span emitted; p50 < 200 ms in test.     |
 | 4 — LLM router        | `llm.classify` / `llm.plan` / `llm.summarize` / `llm.schema_infer` (label `llm.provider`, `llm.model`) | `nlqdb.llm.calls.total`, `nlqdb.llm.duration_ms`, `nlqdb.llm.failover.total` | failover counter increments on forced provider failure. `llm.schema_infer` lands in Phase 1 alongside hosted db.create. |
 | 5 — Better Auth       | `nlqdb.auth.verify`, `nlqdb.auth.oauth.callback`, `nlqdb.events.emit` (new sign-in only) | `nlqdb.auth.events.total`                                        | sign-in success + failure both emit OTel events; first-time sign-in fires exactly one `user.registered` into the sink (asserted with stub sink — real `LOGSNAG_TOKEN` not required in CI). |
 | 6 — `/v1/ask` E2E     | `nlqdb.ask` (parent), `nlqdb.cache.plan.lookup` / `write`, `nlqdb.sql.validate`, `nlqdb.ratelimit.check`, `nlqdb.cache.first_query.lookup` / `commit`, `nlqdb.events.emit` (first-query only) | `nlqdb.ask.duration_ms`, `nlqdb.cache.plan.hits.total` / `misses.total` | end-to-end span tree present; cache hit on second identical request; `user.first_query` fires exactly once per user (via the lookup-then-emit-then-commit pattern). **Also:** Better Auth `session.cookieCache` enabled + KV revocation-set check on every session read (DESIGN §4.3, §4.5). Pair lands together — cookie cache without the revocation hook would regress the "≤2s revocation" guarantee. Drops `nlqdb.auth.verify` from D1-bound (~30 ms p99) to HMAC + KV (~6 ms p99). |
