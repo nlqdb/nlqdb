@@ -109,8 +109,9 @@ export function createTinybirdAdapter(opts: TinybirdAdapterOptions): DatabaseAda
         operation,
         pipe: hasPipe ? (plan.pipe as string) : undefined,
         // `db.query.text` for raw-SQL plans only — pipe SQL lives
-        // server-side (`SK-MULTIENG-004`).
-        queryText: hasPipe ? undefined : (plan.sql as string),
+        // server-side (`SK-MULTIENG-004`). Capped at 4096 chars per
+        // SK-OBS-009 to keep spans exportable.
+        queryText: hasPipe ? undefined : (plan.sql as string).slice(0, 4096),
       });
 
       return tracer.startActiveSpan("db.query", { attributes: attrs }, async (span) => {

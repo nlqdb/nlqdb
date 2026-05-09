@@ -25,7 +25,13 @@ import { askFnFromDemoFixtures, DEMO_DB_ID } from "./chat/demo-shortcut.ts";
 import { postChatMessage } from "./chat/orchestrate.ts";
 import { makeChatStore } from "./chat/store.ts";
 import { deriveSlug, listDatabasesForTenant } from "./databases/list.ts";
-import { isAllowedEngine, parseAskBody, parseGoalDbBody, parseJsonBody } from "./http.ts";
+import {
+  isAllowedEngine,
+  MAX_GOAL_LENGTH,
+  parseAskBody,
+  parseGoalDbBody,
+  parseJsonBody,
+} from "./http.ts";
 import { getLLMRouter } from "./llm-router.ts";
 import { makeRequireSession, type RequireSessionVariables } from "./middleware.ts";
 import {
@@ -815,6 +821,16 @@ app.post("/v1/databases", requireSession, async (c) => {
     if (!name && !goal) {
       span.end();
       return c.json({ error: { status: "goal_required" as const } }, 400);
+    }
+
+    // SK-ASK-010 — enforce max goal/name length to bound LLM token cost.
+    const effectiveGoal = goal ?? name ?? "";
+    if (effectiveGoal.length > MAX_GOAL_LENGTH) {
+      span.end();
+      return c.json(
+        { error: { status: "goal_too_long" as const, maxLength: MAX_GOAL_LENGTH } },
+        400,
+      );
     }
 
     // SK-DB-010 — explicit engine override on the create surface.

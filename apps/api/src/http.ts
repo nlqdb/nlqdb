@@ -17,6 +17,10 @@ import type { Context } from "hono";
 
 export { ALLOWED_ENGINES, isAllowedEngine };
 
+// SK-ASK-010 — hard server-side cap on goal length. Prevents unbounded
+// LLM token cost from adversarially long inputs.
+export const MAX_GOAL_LENGTH = 2000;
+
 export type GoalDbBody = { goal: string; dbId: string };
 // SK-DB-010 — `engine` is optional on the create branch. When set the
 // orchestrator skips the classifier; otherwise the goal-text classifier
@@ -36,8 +40,13 @@ export type InvalidEngineBody = {
   allowed: Engine[];
 };
 
+// `goal_too_long` carries maxLength so SDK / CLI consumers can render
+// a precise message without hard-coding the limit.
+export type GoalTooLongBody = { error: "goal_too_long"; maxLength: number };
+
 export type ParseErrorBody =
   | { error: "invalid_json" | "goal_required" | "dbId_required" }
+  | GoalTooLongBody
   | InvalidEngineBody;
 
 export type ParseError = {
@@ -65,6 +74,12 @@ export async function parseGoalDbBody(c: Context): Promise<ParseResult<GoalDbBod
   if (typeof raw.body.goal !== "string" || raw.body.goal.trim().length === 0) {
     return { ok: false, error: { status: 400, body: { error: "goal_required" } } };
   }
+  if (raw.body.goal.length > MAX_GOAL_LENGTH) {
+    return {
+      ok: false,
+      error: { status: 400, body: { error: "goal_too_long", maxLength: MAX_GOAL_LENGTH } },
+    };
+  }
   if (typeof raw.body.dbId !== "string" || raw.body.dbId.length === 0) {
     return { ok: false, error: { status: 400, body: { error: "dbId_required" } } };
   }
@@ -84,6 +99,12 @@ export async function parseAskBody(c: Context): Promise<ParseResult<AskBody>> {
   if (!raw.ok) return { ok: false, error: { status: 400, body: { error: "invalid_json" } } };
   if (typeof raw.body.goal !== "string" || raw.body.goal.trim().length === 0) {
     return { ok: false, error: { status: 400, body: { error: "goal_required" } } };
+  }
+  if (raw.body.goal.length > MAX_GOAL_LENGTH) {
+    return {
+      ok: false,
+      error: { status: 400, body: { error: "goal_too_long", maxLength: MAX_GOAL_LENGTH } },
+    };
   }
   const body: AskBody = { goal: raw.body.goal };
   if (typeof raw.body.dbId === "string" && raw.body.dbId.length > 0) {
