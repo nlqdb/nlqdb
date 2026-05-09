@@ -87,6 +87,8 @@ SECRETS=(
   GRAFANA_CLOUD_API_KEY
   LOGSNAG_TOKEN
   LOGSNAG_PROJECT
+  TINYBIRD_TOKEN
+  TINYBIRD_API_BASE
   POSTHOG_API_KEY
   POSTHOG_HOST
   # Preview CI (preview-app.yml) — Neon ephemeral branches + mock IdP
