@@ -13,8 +13,9 @@
 // matching the catalog in docs/performance.md §3.1.
 
 import { createTestTelemetry, type TestTelemetry } from "@nlqdb/otel/test";
+import { trace } from "@opentelemetry/api";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { provisionDb, registerByoDb } from "./neon-provision.ts";
+import { dropSchemaAndRegistry, provisionDb, registerByoDb } from "./neon-provision.ts";
 import type { PgClient, ProvisionArgs, SchemaPlan } from "./types.ts";
 
 // Tables carry the nested-Column shape (canonical, per
@@ -126,15 +127,19 @@ type D1Stub = {
   d1: D1Database;
   selects: { sql: string; params: unknown[] }[];
   inserts: { sql: string; params: unknown[] }[];
+  deletes: { sql: string; params: unknown[] }[];
   setExistingDbId: (value: boolean) => void;
   setInsertFails: (value: boolean) => void;
+  setDeleteFails: (value: boolean) => void;
 };
 
 function makeD1Stub(): D1Stub {
   const selects: { sql: string; params: unknown[] }[] = [];
   const inserts: { sql: string; params: unknown[] }[] = [];
+  const deletes: { sql: string; params: unknown[] }[] = [];
   let existingDbId = false;
   let insertFails = false;
+  let deleteFails = false;
 
   const prepare = vi.fn((sql: string) => {
     let bound: unknown[] = [];
@@ -156,6 +161,11 @@ function makeD1Stub(): D1Stub {
           if (insertFails) throw new Error("D1 insert failed");
           return { success: true, meta: {} };
         }
+        if (sql.includes("DELETE FROM databases")) {
+          deletes.push({ sql, params: [...bound] });
+          if (deleteFails) throw new Error("D1 delete failed");
+          return { success: true, meta: {} };
+        }
         return { success: true, meta: {} };
       },
     };
@@ -166,11 +176,15 @@ function makeD1Stub(): D1Stub {
     d1: { prepare } as unknown as D1Database,
     selects,
     inserts,
+    deletes,
     setExistingDbId(value) {
       existingDbId = value;
     },
     setInsertFails(value) {
       insertFails = value;
+    },
+    setDeleteFails(value) {
+      deleteFails = value;
     },
   };
 }
@@ -404,6 +418,12 @@ describe("provisionDb — failure paths", () => {
     const sqls = pg.calls.map((c) => c.sql);
     expect(sqls).toContain("COMMIT");
     expect(sqls.some((s) => /DROP SCHEMA "orders_tracker_a4f3b2" CASCADE/.test(s))).toBe(true);
+    // SK-HDC-011 — the registry-insert-failed branch shares the
+    // `dropSchemaAndRegistry` primitive with SK-ASK-011's speculative
+    // rollback. The D1 INSERT never landed here, so the DELETE is a
+    // no-op against the registry but still runs.
+    expect(d1.deletes).toHaveLength(1);
+    expect(d1.deletes[0]?.params).toEqual(["db_orders_tracker_a4f3b2"]);
   });
 
   it("DROP SCHEMA cleanup failure does not mask registry_insert_failed", async () => {
@@ -544,6 +564,70 @@ describe("provisionDb — observability (GLOBAL-014, SK-OBS-005)", () => {
       .find((s) => s.name === "db.query" && s.events.length > 0);
     expect(failingQuerySpan).toBeDefined();
     expect(failingQuerySpan?.events.some((e) => e.name === "exception")).toBe(true);
+  });
+});
+
+describe("dropSchemaAndRegistry (SK-HDC-011)", () => {
+  // Per SK-HDC-011 the primitive is idempotent + best-effort: missing
+  // schema or absent registry row is not an error. Both branches —
+  // the registry-insert-failed compensation in provisionDb and
+  // SK-ASK-011's speculative rollback — share this function.
+  const tracer = trace.getTracer("@nlqdb/api/db-create-test");
+
+  it("schema present + row present → DROP runs and DELETE runs (full rollback)", async () => {
+    const pg = makePgStub();
+    const d1 = makeD1Stub();
+
+    await dropSchemaAndRegistry(tracer, pg.pg, d1.d1, "db_x_a4f3b2", "x_a4f3b2");
+
+    expect(pg.calls.map((c) => c.sql)).toContain('DROP SCHEMA "x_a4f3b2" CASCADE');
+    expect(d1.deletes).toHaveLength(1);
+    expect(d1.deletes[0]?.params).toEqual(["db_x_a4f3b2"]);
+  });
+
+  it("schema missing → DELETE still runs (DROP swallowed)", async () => {
+    const pg = makePgStub();
+    pg.setFailOn((sql) => /^DROP SCHEMA/.test(sql));
+    const d1 = makeD1Stub();
+
+    await dropSchemaAndRegistry(tracer, pg.pg, d1.d1, "db_x_a4f3b2", "x_a4f3b2");
+
+    expect(d1.deletes).toHaveLength(1);
+  });
+
+  it("registry-row missing (D1 delete throws) → DROP still runs (DELETE swallowed)", async () => {
+    const pg = makePgStub();
+    const d1 = makeD1Stub();
+    d1.setDeleteFails(true);
+
+    await dropSchemaAndRegistry(tracer, pg.pg, d1.d1, "db_x_a4f3b2", "x_a4f3b2");
+
+    expect(pg.calls.map((c) => c.sql)).toContain('DROP SCHEMA "x_a4f3b2" CASCADE');
+  });
+
+  it("both missing → no throw (idempotent no-op)", async () => {
+    const pg = makePgStub();
+    pg.setFailOn((sql) => /^DROP SCHEMA/.test(sql));
+    const d1 = makeD1Stub();
+    d1.setDeleteFails(true);
+
+    // Best-effort by design — both legs swallow their errors so the
+    // caller's primary error code (e.g. registry_insert_failed) isn't
+    // masked by a cleanup failure.
+    await expect(
+      dropSchemaAndRegistry(tracer, pg.pg, d1.d1, "db_x_a4f3b2", "x_a4f3b2"),
+    ).resolves.toBeUndefined();
+  });
+
+  it("rejects unsafe schema identifiers at the boundary (SK-HDC-009 carry-through)", async () => {
+    const pg = makePgStub();
+    const d1 = makeD1Stub();
+
+    await expect(
+      dropSchemaAndRegistry(tracer, pg.pg, d1.d1, "db_x_a4f3b2", 'x"; DROP TABLE foo; --'),
+    ).rejects.toThrow(/unsafe schemaName/);
+    expect(pg.calls).toHaveLength(0);
+    expect(d1.deletes).toHaveLength(0);
   });
 });
 

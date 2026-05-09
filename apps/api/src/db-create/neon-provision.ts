@@ -234,7 +234,11 @@ export async function provisionDb(
     // ended at this point; trace.getActiveSpan() can return undefined
     // in worker contexts. For now the reason code is the only signal
     // surfaced upward.
-    await dropSchemaBestEffort(tracer, deps.pg, schemaName);
+    //
+    // The D1 INSERT never landed, so only the Postgres schema needs
+    // tearing down — `dropSchemaAndRegistry` no-ops on the absent
+    // registry row by design (SK-HDC-011).
+    await dropSchemaAndRegistry(tracer, deps.pg, deps.d1, args.dbId, schemaName);
     return { ok: false, reason: "registry_insert_failed", rolled_back: true };
   }
 
@@ -331,16 +335,35 @@ async function safeRollback(tracer: Tracer, pg: PgClient): Promise<void> {
   }
 }
 
-async function dropSchemaBestEffort(
+// SK-HDC-011 — single rollback primitive for the create path. Both the
+// registry-insert-failed compensation (above) and SK-ASK-011's
+// speculative rollback call this. Idempotent + best-effort: missing
+// schema or absent registry row is not an error, so retries (manual
+// operator intervention or future automated sweeps) can call freely.
+// Identifier safety: the public callsites (`provisionDb` here and
+// `SpeculativeHandle.rollback`) feed in values that came from
+// `assertSafeIdentifier` upstream — but we re-validate at the
+// boundary because the function is exported and a future caller
+// might forget. Mirrors SK-HDC-009's defense-in-depth posture.
+export async function dropSchemaAndRegistry(
   tracer: Tracer,
   pg: PgClient,
+  d1: D1Database,
+  dbId: string,
   schemaName: string,
 ): Promise<void> {
+  assertSafeIdentifier(schemaName, "schemaName");
   try {
     await runQuery(tracer, pg, `DROP SCHEMA "${schemaName}" CASCADE`);
   } catch {
-    // Sweep job picks up orphans; better to surface registry_insert_failed
-    // to the caller than to mask it with a cleanup error.
+    // Sweep job picks up orphans; better to surface the original
+    // failure to the caller than to mask it with a cleanup error.
+  }
+  try {
+    await d1.prepare("DELETE FROM databases WHERE id = ?").bind(dbId).run();
+  } catch {
+    // D1 cleanup is best-effort for the same reason — a transient
+    // D1 failure shouldn't override the caller's primary error code.
   }
 }
 

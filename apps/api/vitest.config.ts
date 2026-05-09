@@ -58,6 +58,8 @@ export default defineConfig(async () => {
               "src/db-create/*.test.ts",
               "src/ask/sql-validate-ddl.test.ts",
               "src/ask/classifier.test.ts",
+              "src/ask/route-hint.test.ts",
+              "src/ask/reconcile-speculative.test.ts",
             ],
           },
         },
