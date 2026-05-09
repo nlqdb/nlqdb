@@ -20,6 +20,7 @@
 // Owner of `@neondatabase/serverless` remains `packages/db/`; this
 // import is the documented one-file carve-out.
 import { neon } from "@neondatabase/serverless";
+import { makeRecentTablesStore } from "../ask/recent-tables.ts";
 import { validateCompiledDdl } from "../ask/sql-validate-ddl.ts";
 import { getLLMRouter } from "../llm-router.ts";
 import { compileDdl } from "./compile-ddl.ts";
@@ -80,6 +81,10 @@ export function buildDbCreateDeps(envBindings: Cloudflare.Env): BuildDbCreateDep
       llm: getLLMRouter(),
       pg: buildPgClient(databaseUrl),
       d1: envBindings.DB,
+      // SK-ASK-012: post-provision MRU push. Same KV binding as the
+      // ask path so a fresh DB shows up in the principal's recent
+      // tables on the very next /v1/ask classify hop.
+      recentTables: makeRecentTablesStore(envBindings.KV),
     },
     secretRef: DEFAULT_SECRET_REF,
   };

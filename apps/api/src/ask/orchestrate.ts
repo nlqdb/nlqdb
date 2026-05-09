@@ -14,9 +14,11 @@ import type { EventEmitter } from "@nlqdb/events";
 import type { LLMRouter } from "@nlqdb/llm";
 import { cachePlanHitsTotal, cachePlanMissesTotal } from "@nlqdb/otel";
 import { type Span, SpanStatusCode, trace } from "@opentelemetry/api";
+import { deriveSlug } from "../databases/list.ts";
 import type { FirstQueryTracker } from "./first-query.ts";
 import { hashGoal, type PlanCache } from "./plan-cache.ts";
 import type { RateLimiter } from "./rate-limit.ts";
+import { extractTables, type RecentTablesStore } from "./recent-tables.ts";
 import { validateSql } from "./sql-validate.ts";
 import {
   type AskError,
@@ -49,6 +51,12 @@ export type OrchestrateDeps = {
   // audit row's pipe within 24h, or null. Tests omit this dep; production
   // wires it via `buildAskDeps`.
   lookupPipeAdvisory?: (dbId: string, queryHash: string) => Promise<PipeAdvisory | null>;
+  // `SK-ASK-012`: per-principal recent-tables MRU. Optional in tests
+  // (a noop default is fine); production wires `makeRecentTablesStore`
+  // via `buildAskDeps`. Touched after every successful exec — both
+  // cache-hit and cache-miss paths converge there. Failures are
+  // swallowed inside the store (never propagate to the response).
+  recentTables?: RecentTablesStore;
 };
 
 export type OrchestrateOptions = {
@@ -280,6 +288,18 @@ export async function orchestrateAsk(
     });
   }
 
+  // SK-ASK-012 — push the executed plan's referenced tables to the
+  // principal's recent-tables MRU. Runs on both cache-hit and cache-miss
+  // paths (this is the convergence point) so the MRU tracks user
+  // activity, not LLM-router behaviour. The store wraps its own
+  // `nlqdb.recent_tables.touch` span; we just kick it off so the route
+  // handler can hand the promise to `ctx.waitUntil` and keep the KV
+  // round-trip off the user-visible p99.
+  const recentTablesStore = deps.recentTables;
+  const pendingRecentTablesTouch: Promise<void> = recentTablesStore
+    ? safeTouchRecentTables(recentTablesStore, req.userId, req.dbId, planSql)
+    : Promise.resolve();
+
   // Query-log fingerprint — anonymised; no SQL text, no values, no PII.
   // Drained off EVENTS_QUEUE by `apps/events-worker/src/sinks/query-log.ts`
   // into the Tinybird `query_log` Data Source (W4 → W5 input). Fire-
@@ -293,7 +313,7 @@ export async function orchestrateAsk(
   // computed before the promise is detached from the request lifetime.
   const planShape = await hashPlanShape(planSql);
   const orchestratorMs = Date.now() - startedAt;
-  const pendingAskCompleted = deps.events.emit({
+  const askCompletedEmit = deps.events.emit({
     name: "ask.completed",
     dbId: req.dbId,
     schemaHash,
@@ -304,6 +324,12 @@ export async function orchestrateAsk(
     rowsReturned: result.rowCount,
     ts: Date.now(),
   });
+
+  // Both background promises are non-throwing by contract — combine so
+  // the route handler hands a single promise to `ctx.waitUntil`.
+  const pendingAskCompleted = Promise.all([askCompletedEmit, pendingRecentTablesTouch]).then(
+    () => undefined,
+  );
 
   return {
     ok: true,
@@ -340,4 +366,24 @@ function recordSwallowedException(span: Span, err: unknown): void {
   const error = err instanceof Error ? err : new Error(String(err));
   span.recordException(error);
   span.setStatus({ code: SpanStatusCode.ERROR, message: error.message });
+}
+
+// Best-effort MRU touch for the post-exec hook. Resolves void on every
+// path: parse failures yield zero tables (no-op write), KV failures are
+// swallowed inside the store, and any other throw is contained here so
+// `Promise.all([emit, touch])` in the outer flow never rejects.
+async function safeTouchRecentTables(
+  store: RecentTablesStore,
+  principalId: string,
+  dbId: string,
+  planSql: string,
+): Promise<void> {
+  try {
+    const tables = extractTables(planSql);
+    if (tables.length === 0) return;
+    await store.touch(principalId, dbId, deriveSlug(dbId), tables);
+  } catch {
+    // span already records the exception inside `store.touch`; nothing
+    // for the orchestrator to do but stay quiet.
+  }
 }

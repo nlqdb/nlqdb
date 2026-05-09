@@ -117,7 +117,7 @@ Operational guardrails:
   attribute records which fast-path won (`slug_fastpath` /
   `recent_table_fastpath` / `single_db_auto` / `llm_auto_target` /
   `ambiguous_409` / `zero_dbs_create_fallback`).
-- Recent-tables MRU per principal (SK-ASK-010 / WS1) caps at 100
+- Recent-tables MRU per principal (SK-ASK-012 / WS1) caps at 100
   entries; `routeAsk` projects `(dbId, table)` into the prompt.
 
 ### 2.4 `GET /api/auth/callback/github`
@@ -168,6 +168,8 @@ Canonical names. Every slice MUST use these — no one-off variants.
 | `nlqdb.ask.hash`              | Schema-hash + query-hash compute.              |
 | `nlqdb.cache.plan.lookup`     | KV read for cached plan (label `hit=true/false`). |
 | `nlqdb.cache.plan.write`      | KV write of new plan.                          |
+| `nlqdb.recent_tables.lookup`  | KV read of principal's recent-tables MRU (`SK-ASK-012`). |
+| `nlqdb.recent_tables.touch`   | KV read-merge-write to push new tables onto the MRU (`SK-ASK-012`). Wrapped in `ctx.waitUntil` on `/v1/ask`; awaited inline on the create path. |
 | `llm.route`                   | Merged kind + dbId classification (SK-ASK-009). One cheap-tier call per cache-miss / dbId-absent send; replaces the older `llm.classify` + `llm.disambiguate` pair. |
 | `llm.plan`                    | NL → SQL generation.                           |
 | `llm.summarize`               | Result summarization (conditional).            |
@@ -216,6 +218,7 @@ Other histograms (non-latency):
 Gauges:
 
 - `nlqdb.tenants.active{window}` — sampled hourly.
+- `nlqdb.recent_tables.entries{principal_kind}` — post-touch MRU length (`SK-ASK-012`). `principal_kind ∈ {user, anon}`; cardinality 2.
 
 ### 3.3 Label conventions
 
@@ -232,6 +235,7 @@ Always use these label keys; never invent variants like `tenant`, `tenant-id`, `
 | `db.system`            | 2                    | `postgresql` (PG); `other_sql` (ClickHouse via Tinybird). |
 | `route`                | Low (~20)            | `/v1/ask`, `/v1/health`, `/v1/auth/*`.             |
 | `status_class`         | 5                    | `2xx` / `3xx` / `4xx` / `5xx` / `transport` (NOT raw status). The `transport` value is reserved for fetch-throws (no HTTP status); used by the query_log failures counter (`SK-EVENTS-009`). |
+| `principal_kind`       | 2                    | `user` / `anon` — used on `nlqdb.recent_tables.entries` gauge (`SK-ASK-012`) and the SK-ASK-011 `nlqdb.create.speculative.*` metrics + spans. Derived from the principal-id prefix; never per-request. |
 
 **Cardinality rule:** total combined series < 8 k (Grafana Cloud free
 tier ceiling at 10 k, leave 2 k headroom). The above bounds are

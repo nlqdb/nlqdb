@@ -19,6 +19,7 @@ import { makeFirstQueryTracker } from "./first-query.ts";
 import type { OrchestrateDeps } from "./orchestrate.ts";
 import { makePlanCache } from "./plan-cache.ts";
 import { makeRateLimiter } from "./rate-limit.ts";
+import { makeRecentTablesStore } from "./recent-tables.ts";
 import { DbConfigError, type DbRecord, type QueryResult } from "./types.ts";
 
 export function buildAskDeps(envBindings: Cloudflare.Env): OrchestrateDeps {
@@ -30,6 +31,7 @@ export function buildAskDeps(envBindings: Cloudflare.Env): OrchestrateDeps {
     rateLimiter: makeRateLimiter(envBindings.DB),
     firstQuery: makeFirstQueryTracker(envBindings.KV),
     events: buildEventEmitter(envBindings.EVENTS_QUEUE),
+    recentTables: makeRecentTablesStore(envBindings.KV),
     lookupPipeAdvisory: (dbId, queryHash) =>
       lookupPipeAdvisory(envBindings.DB, dbId, queryHash, Date.now()),
   };

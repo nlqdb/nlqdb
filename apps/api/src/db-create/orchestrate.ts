@@ -31,6 +31,8 @@
 // `kind=create` branch routes here from `/v1/ask` per SK-ASK-001
 // in `docs/features/ask-pipeline/FEATURE.md`.
 
+import type { RecentTablesStore } from "../ask/recent-tables.ts";
+import { deriveSlug } from "../databases/list.ts";
 import type { EngineClassifyDeps, EngineClassifyResult } from "./engine-classify.ts";
 import type {
   CompileDdlResult,
@@ -79,6 +81,12 @@ export type DbCreateDeps = {
   llm: LLMRouter;
   pg: PgClient;
   d1: D1Database;
+  // SK-ASK-012 — push the freshly-provisioned tables onto the
+  // principal's recent-tables MRU. Optional so unit tests don't need
+  // to stub it; production wires `makeRecentTablesStore` via
+  // `build-deps.ts`. Failures inside `touch` are swallowed by the
+  // store and never propagate to the response.
+  recentTables?: RecentTablesStore;
 };
 
 export async function orchestrateDbCreate(
@@ -171,6 +179,24 @@ export async function orchestrateDbCreate(
       reason: provisioned.reason,
       rolled_back: provisioned.rolled_back,
     });
+  }
+
+  // SK-ASK-012 — seed the principal's recent-tables MRU with the
+  // tables that just landed. Lives between provision (step 5) and
+  // embedTableCards (step 6) so the MRU is populated even when
+  // embedding fails (the dbId is already committed and queryable).
+  // The store wraps its own `nlqdb.recent_tables.touch` span and
+  // swallows KV failures; we still guard the call with `.catch()` so
+  // an unexpected throw can't reverse the create response.
+  if (deps.recentTables) {
+    await deps.recentTables
+      .touch(
+        args.tenantId,
+        dbId,
+        deriveSlug(dbId),
+        plan.tables.map((t) => t.name),
+      )
+      .catch(() => {});
   }
 
   // 6. Table-card RAG seed. Awaited so the response reflects RAG

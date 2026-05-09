@@ -15,7 +15,7 @@ import { makeGlobalAnonLimiter } from "./anon-global-cap.ts";
 import { makeAnonRateLimiter } from "./anon-rate-limit.ts";
 import { buildAskDeps, buildEventEmitter } from "./ask/build-deps.ts";
 import { orchestrateAsk } from "./ask/orchestrate.ts";
-import { recentTablesStub } from "./ask/recent-tables.ts";
+import { makeRecentTablesStore } from "./ask/recent-tables.ts";
 import { type ReconcileResult, reconcileSpeculativeCreate } from "./ask/reconcile-speculative.ts";
 import { ROUTE_CONFIDENCE_FLOOR, routeAsk } from "./ask/route-ask.ts";
 import { probablyZeroDbs } from "./ask/route-hint.ts";
@@ -455,19 +455,21 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
       // PERFORMANCE §2.3 owns the budget for this prelude.
       const listPromise = listDatabasesForTenant(c.env.DB, principal.id);
 
+      // SK-ASK-012 — load the principal's recent-tables MRU once for
+      // the prelude. Used by the SK-ASK-011 speculation predicate
+      // (`probablyZeroDbs`) and by `routeAsk` below — single KV read,
+      // shared across the two consumers.
+      const recentTablesStore = makeRecentTablesStore(c.env.KV);
+      const recentTables = await recentTablesStore.load(principal.id);
+
       // SK-ASK-011 — speculative create on probable-0-dbs. When the
       // cached signal suggests "this principal has 0 dbs" we kick
       // off the create pipeline immediately, in parallel with the
       // authoritative `listPromise`. The reconciler commits when
       // D1 confirms 0 dbs; otherwise rolls back via SK-HDC-011's
       // `dropSchemaAndRegistry`.
-      //
-      // Soft-dep stub: WS1 (recent-tables MRU) ships the cache that
-      // sharpens the predicate. Until WS1 lands we pass `[]`, which
-      // degrades to "always speculate when no slug hint" — slightly
-      // more rollback churn until the cache is wired.
       let speculativeReconcilePromise: Promise<ReconcileResult> | undefined;
-      if (probablyZeroDbs([], parsed.body.goal)) {
+      if (probablyZeroDbs(recentTables, parsed.body.goal)) {
         const gateResp = await checkAnonCreateGate();
         if (gateResp) return gateResp;
         ensureLibpgWasmGlobals();
@@ -508,13 +510,12 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
               {
                 goal: parsed.body.goal,
                 dbs: [],
-                recentTables: await recentTablesStub.load(principal.id),
+                recentTables,
               },
             ),
           };
         }
         const candidates = toCandidates(dbs);
-        const recentTables = await recentTablesStub.load(principal.id);
         const output = await routeAsk(
           { llm: getLLMRouter() },
           {

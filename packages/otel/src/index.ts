@@ -158,6 +158,7 @@ export function resetTelemetryForTest(): void {
 
 type Histogram = ReturnType<ReturnType<typeof metrics.getMeter>["createHistogram"]>;
 type Counter = ReturnType<ReturnType<typeof metrics.getMeter>["createCounter"]>;
+type Gauge = ReturnType<ReturnType<typeof metrics.getMeter>["createGauge"]>;
 
 const resetFns: Array<() => void> = [];
 
@@ -169,6 +170,19 @@ function lazyCounter(meter: string, name: string, description: string): () => Co
   return () => {
     if (!cached) {
       cached = metrics.getMeter(meter).createCounter(name, { description });
+    }
+    return cached;
+  };
+}
+
+function lazyGauge(meter: string, name: string, description: string): () => Gauge {
+  let cached: Gauge | undefined;
+  resetFns.push(() => {
+    cached = undefined;
+  });
+  return () => {
+    if (!cached) {
+      cached = metrics.getMeter(meter).createGauge(name, { description });
     }
     return cached;
   };
@@ -234,6 +248,12 @@ export const cachePlanMissesTotal = lazyCounter(
   "@nlqdb/api",
   "nlqdb.cache.plan.misses.total",
   "/v1/ask plan-cache misses (LLM router invoked, KV write follows).",
+);
+
+export const recentTablesEntries = lazyGauge(
+  "@nlqdb/api",
+  "nlqdb.recent_tables.entries",
+  "Per-principal recent-tables MRU entry count after a successful touch (label: principal_kind).",
 );
 
 export const webhookStripeIdempotencyErrorsTotal = lazyCounter(
