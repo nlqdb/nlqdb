@@ -1,5 +1,5 @@
 import { neon } from "@neondatabase/serverless";
-import { dbDurationMs } from "@nlqdb/otel";
+import { dbDurationMs, redactPii } from "@nlqdb/otel";
 import { SpanStatusCode, trace } from "@opentelemetry/api";
 import type {
   DatabaseAdapter,
@@ -56,6 +56,7 @@ export function createPostgresAdapter(opts: PostgresAdapterOptions): DatabaseAda
           attributes: {
             "db.system": "postgresql",
             "db.operation": operation,
+            "db.statement": redactPii(sqlText),
           },
         },
         async (span) => {

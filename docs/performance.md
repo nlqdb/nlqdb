@@ -172,7 +172,7 @@ Canonical names. Every slice MUST use these — no one-off variants.
 | `llm.summarize`               | Result summarization (conditional).            |
 | `llm.schema_infer`            | Hosted db.create — NL → typed `SchemaPlan` (SK-HDC-002, SK-HDC-003). |
 | `nlqdb.sql.validate`          | SQL parse + schema-fit check.                  |
-| `db.query`                    | Neon HTTP execute — standard OTel `db.*`.      |
+| `db.query`                    | Neon HTTP execute — standard OTel `db.*`. Attributes: `db.system=postgresql`, `db.operation`, `db.statement` (PII-redacted SQL text). |
 | `db.transaction`              | BEGIN…COMMIT batch around the db.create provisioner's DDL + sample-row apply (`apps/api/src/db-create/neon-provision.ts`). Carries `db.system=postgresql`. Per-statement `db.query` spans nest under it. |
 | `nlqdb.auth.oauth.callback`   | `/api/auth/callback/{github,google}` flow.     |
 | `nlqdb.webhook.stripe`        | Stripe webhook handler.                        |
