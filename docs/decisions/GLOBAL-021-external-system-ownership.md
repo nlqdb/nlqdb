@@ -56,6 +56,7 @@ here in the same PR that introduces them.
 | OpenTelemetry exporter / SDK | `packages/otel/` | All `@opentelemetry/*` imports for instrumentation wrappers live here; consumers import from `@nlqdb/otel`. |
 | Stripe | `apps/api/src/billing/` | Stripe SDK + webhook handling; R2 archive of webhook payloads is owned here today (re-home if R2 grows a second use case). |
 | Cloudflare Queues | `apps/events-worker/` (consumer) + `packages/events/` (producer types) | Producer types imported by API; consumer code lives entirely in events-worker. |
+| Tinybird (ClickHouse) | `packages/db/src/clickhouse-tinybird/` | Read path = `createTinybirdAdapter` (`adapter.ts`). Write path = `createQueryLogWriter` / `writeQueryLog` (`query-log.ts`) — the `query_log` Data Source append boundary used by `apps/events-worker/src/sinks/query-log.ts` (`SK-EVENTS-009`). The events-worker imports the typed writer; it never imports Tinybird's HTTP client / SDK / wire format of its own. The token is delivered via env per Workers convention — GLOBAL-021's ownership rule constrains the SDK / wire surface, not which Worker holds the credential. |
 | Cloudflare R2 | `apps/api/src/billing/` | Single-use today (Stripe payload archive). Pick a dedicated owner before second use case. |
 | Cloudflare KV | TBD | Confirm whether used in runtime; add row when first use lands. |
 | Turnstile | `apps/api/src/turnstile.ts` (server) + `apps/web/src/lib/turnstile.ts` (client) | Cross-process: each surface has one owner module for its half. |

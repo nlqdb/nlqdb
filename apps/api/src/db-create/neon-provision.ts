@@ -214,13 +214,19 @@ export async function provisionDb(
 
   // Postgres COMMIT succeeded. D1 INSERT is the second leg of the
   // two-system tx — on failure we leak a schema unless we cleanup.
+  // SK-DB-010 — the orchestrator-resolved engine flows in via
+  // `args.engine`. Phase 1 still always provisions a Postgres schema
+  // here (this file is the Neon provisioner); a non-`postgres` engine
+  // would route through a different `provision` dep before W2's
+  // Tinybird adapter lands. We persist whatever the orchestrator
+  // resolved so the engine column is the canonical record.
   try {
     await deps.d1
       .prepare(
         "INSERT INTO databases (id, tenant_id, engine, connection_secret_ref, schema_hash, created_at, updated_at) " +
-          "VALUES (?, ?, 'postgres', ?, ?, unixepoch(), unixepoch())",
+          "VALUES (?, ?, ?, ?, ?, unixepoch(), unixepoch())",
       )
-      .bind(args.dbId, args.tenantId, args.secretRef, args.schemaHash)
+      .bind(args.dbId, args.tenantId, args.engine, args.secretRef, args.schemaHash)
       .run();
   } catch (_err) {
     // TODO(SK-OBS-*): create a dedicated span for the D1 leg so the

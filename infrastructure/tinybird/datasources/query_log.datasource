@@ -1,0 +1,45 @@
+# query_log — append-only fingerprint log of every successful /v1/ask
+# resolution. Producer: apps/events-worker query_log sink (W4); the
+# events-worker calls writeQueryLog from @nlqdb/db/clickhouse-tinybird,
+# which POSTs NDJSON to /v0/events?name=query_log&wait=true.
+#
+# Anonymisation contract: the wire shape carries hashes, not text.
+# `query_hash` is over the user's goal; `plan_shape` is SHA-256 of the
+# planned SQL. No SQL text, no parameter values, no PII.
+#
+# Sorting key (schema_hash, query_hash, ts) optimises the workload
+# analyser's grouping pattern (W5): "for each (schema, query) pattern,
+# how often does it run, and what's the latency distribution?"
+#
+# Partition by day so the 90-day TTL drops whole partitions.
+#
+# `event_id` is the producer-side EventEnvelope.id passed through on
+# every batch. Cloudflare Queues redelivers on retry and on partial-batch
+# ack failures, and Tinybird does not natively deduplicate `/v0/events`
+# writes — so the W5 analyser deduplicates at read time on this column.
+# Keep it indexed in the sorting key after (schema_hash, query_hash) so
+# group-by-pattern still benefits from the primary index without losing
+# fast equality lookups by event_id during dedup.
+#
+# DO NOT widen this schema without coordinating with the events-worker
+# sink — adding a column requires a same-PR edit to
+# packages/db/src/clickhouse-tinybird/query-log.ts (`toWireRow`) and to
+# packages/events/src/types.ts (`AskCompletedEvent`). Tinybird ingest
+# silently quarantines rows that don't match the schema; reviewers
+# reject schema-only edits.
+
+SCHEMA >
+    `event_id` String `json:$.event_id`,
+    `db_id` String `json:$.db_id`,
+    `schema_hash` String `json:$.schema_hash`,
+    `query_hash` String `json:$.query_hash`,
+    `plan_shape` String `json:$.plan_shape`,
+    `engine` LowCardinality(String) `json:$.engine`,
+    `orchestrator_ms` UInt32 `json:$.orchestrator_ms`,
+    `rows_returned` UInt32 `json:$.rows_returned`,
+    `ts` DateTime64(3) `json:$.ts`
+
+ENGINE "MergeTree"
+ENGINE_PARTITION_KEY "toYYYYMMDD(ts)"
+ENGINE_SORTING_KEY "schema_hash, query_hash, ts"
+ENGINE_TTL "ts + INTERVAL 90 DAY"

@@ -40,6 +40,11 @@ export function askFnFromDemoFixtures(): (req: AskRequest) => Promise<Orchestrat
         rowCount: fixture.rowCount,
         summary: fixture.summary,
       },
+      // Demo shortcut never produces a real `ask.completed` event
+      // (canned fixtures aren't workload-analyser input). The resolved
+      // no-op satisfies OrchestrateOutcome's contract so the route
+      // handler's `ctx.waitUntil(...)` is uniform across paths.
+      pendingAskCompleted: Promise.resolve(),
     };
   };
 }

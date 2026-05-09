@@ -18,7 +18,7 @@
 import { type Span, SpanStatusCode, trace } from "@opentelemetry/api";
 import type { EventEnvelope, ProductEvent } from "./types.ts";
 
-export type { EventEnvelope, ProductEvent } from "./types.ts";
+export type { AskCompletedEvent, EventEnvelope, ProductEvent } from "./types.ts";
 
 export interface EventEmitter {
   emit(event: ProductEvent, options?: EmitOptions): Promise<void>;
@@ -88,6 +88,13 @@ function defaultId(event: ProductEvent): string {
       return `${event.name}.${event.subscriptionId}`;
     case "billing.subscription_canceled":
       return `${event.name}.${event.subscriptionId}`;
+    case "ask.completed":
+      // High-volume event (every successful /v1/ask). No "natural" stable
+      // id — multiple emissions of the same `(schema_hash, query_hash)`
+      // are intentional (each row in the query log is a distinct request).
+      // Random UUID lets the queue dedupe transport-level retries
+      // without collapsing legitimate repeats at the sink.
+      return `evt.${crypto.randomUUID()}`;
     default: {
       const _exhaustive: never = event;
       return `evt.${crypto.randomUUID()}`;

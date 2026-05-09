@@ -1,9 +1,9 @@
 import { neon } from "@neondatabase/serverless";
 import { dbDurationMs, redactPii } from "@nlqdb/otel";
 import { SpanStatusCode, trace } from "@opentelemetry/api";
+import { bufferedEngineResult } from "./engine-result.ts";
 import type {
   DatabaseAdapter,
-  EngineMeta,
   EnginePlan,
   EngineResult,
   PostgresEngineMeta,
@@ -55,8 +55,8 @@ export function createPostgresAdapter(opts: PostgresAdapterOptions): DatabaseAda
         {
           attributes: {
             "db.system": "postgresql",
-            "db.operation": operation,
             "db.statement": redactPii(sqlText),
+            "db.operation.name": operation,
           },
         },
         async (span) => {
@@ -72,7 +72,7 @@ export function createPostgresAdapter(opts: PostgresAdapterOptions): DatabaseAda
               rowCount: result.rowCount ?? result.rows.length,
             };
             if (result.fields) meta.fields = result.fields;
-            return makeEngineResult(result.rows, meta);
+            return bufferedEngineResult(result.rows, meta);
           } catch (err) {
             span.recordException(err as Error);
             span.setStatus({ code: SpanStatusCode.ERROR });
@@ -84,21 +84,6 @@ export function createPostgresAdapter(opts: PostgresAdapterOptions): DatabaseAda
           }
         },
       );
-    },
-  };
-}
-
-// Wraps a buffered row array as `EngineResult`. Neon HTTP returns the
-// full result set in one fetch, so the iterator is a synchronous yield
-// from memory — the AsyncIterable surface is for parity with engines
-// that genuinely stream (Tinybird Pipes, etc.). A fresh iterator is
-// produced per `[Symbol.asyncIterator]()` call so consumers can
-// re-iterate the same buffered result safely.
-function makeEngineResult(rows: Row[], meta: EngineMeta): EngineResult {
-  return {
-    meta,
-    [Symbol.asyncIterator]: async function* () {
-      for (const row of rows) yield row;
     },
   };
 }

@@ -7,6 +7,8 @@
   "exports": {
     ".": "./src/index.ts",
     "./postgres": "./src/postgres.ts",
+    "./clickhouse-tinybird": "./src/clickhouse-tinybird/adapter.ts",
+    "./clickhouse-tinybird/query-log": "./src/clickhouse-tinybird/query-log.ts",
     "./types": "./src/types.ts"
   },
   "scripts": {
@@ -15,8 +17,10 @@
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.1.0",
+    "@nlqdb/events": "workspace:*",
     "@nlqdb/otel": "workspace:*",
     "@opentelemetry/api": "^1.9.0",
+    "node-sql-parser": "^5.4.0",
     "zod": "^3.25.76"
   },
   "devDependencies": {

@@ -24,6 +24,12 @@ import { z } from "zod";
 // narrow on `engine` from day one without a follow-up type churn.
 export type Engine = "postgres" | "clickhouse";
 
+export const ALLOWED_ENGINES: ReadonlySet<Engine> = new Set<Engine>(["postgres", "clickhouse"]);
+
+export function isAllowedEngine(value: unknown): value is Engine {
+  return typeof value === "string" && ALLOWED_ENGINES.has(value as Engine);
+}
+
 // ADBC-shaped row map every adapter projects into (`SK-MULTIENG-001`).
 // One row-shape across engines means one renderer in `<nlq-data>` and
 // one summariser; per-engine extras travel on `meta`.
@@ -38,12 +44,18 @@ export type PostgresPlan = {
   params?: unknown[];
 };
 
-// Reserved per `SK-MULTIENG-002` for the W2 Tinybird/ClickHouse
-// adapter. Concrete fields land alongside that adapter; reserving the
-// type union here keeps `EnginePlan` exhaustive without prejudicing
-// the W2 design (Pipe name vs raw SQL is open per the multi-engine
-// skill's open questions).
-export type ClickHousePlan = { engine: "clickhouse" };
+// ClickHouse via Tinybird (`SK-MULTIENG-002`). A plan either names a
+// published Pipe (`pipe`) and supplies its parameters (`params`), or
+// carries raw SQL through the `GLOBAL-015` escape hatch (`sql`).
+// Exactly one of `pipe` / `sql` must be set; the adapter rejects plans
+// that supply both or neither so the call shape stays unambiguous at
+// the seam.
+export type ClickHousePlan = {
+  engine: "clickhouse";
+  pipe?: string;
+  sql?: string;
+  params?: Record<string, unknown>;
+};
 
 export type EnginePlan = PostgresPlan | ClickHousePlan;
 
@@ -57,9 +69,24 @@ export type PostgresEngineMeta = {
   fields?: { name: string; dataTypeID: number }[];
 };
 
-// Reserved alongside `ClickHousePlan` — W2 fills in the Pipe id, byte
-// counts, and any Tinybird-specific stats the renderer wants.
-export type ClickHouseEngineMeta = { engine: "clickhouse" };
+// ClickHouse-via-Tinybird per-call metadata. The Tinybird Pipe response
+// carries column types in `meta`, server-measured timings in
+// `statistics`, and a server-assigned `query_id` we surface for log
+// correlation. `pipe` is the resolved Pipe name (or omitted for
+// raw-SQL plans) so the renderer can label results without re-parsing
+// the request.
+export type ClickHouseEngineMeta = {
+  engine: "clickhouse";
+  pipe?: string;
+  rowCount: number;
+  fields?: { name: string; type: string }[];
+  statistics?: {
+    elapsed?: number;
+    rows_read?: number;
+    bytes_read?: number;
+  };
+  queryId?: string;
+};
 
 export type EngineMeta = PostgresEngineMeta | ClickHouseEngineMeta;
 

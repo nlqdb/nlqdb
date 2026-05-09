@@ -115,6 +115,7 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 
 ## Open questions / known unknowns
 
+- **`engine` on `nlqdb_list_databases` (W3, GLOBAL-003 gap).** `SK-DB-010` adds `engine?` on `db.create` and an `engine` column on every `listDatabases` row in the TS SDK. The MCP package currently ships only `AGENTS.md` + `README.md` — `packages/mcp/src/tools/list-databases.ts` does not exist yet. When the local-stdio transport's tool handlers land (per `SK-MCP-002` / `SK-MCP-007`), the `nlqdb_list_databases` tool returns `engine` per row verbatim from the SDK's `DatabaseSummary.engine`, and `nlqdb_query` accepts an optional `engine` arg only on the create path (no separate `nlqdb_create_database` tool — `SK-MCP-002`). Tracker: this open question. Closes when the MCP tool slice lands.
 - **Hosts beyond the initial six.** Detection currently targets Claude Desktop, Cursor, Zed, Windsurf, VS Code, and Continue. New hosts (e.g. a future Anthropic terminal, JetBrains MCP plugin) need a detector module each — no decision yet on the per-host detector contract.
 - **Hosted-transport rate-limit tier vs. local-transport.** Whether the hosted Worker shares the API's per-key rate-limit budget or carries its own per-(host, device) tier is undecided; relates to `SK-RL-NNN` (rate-limit skill).
 - **Promote-to-account UX.** DBs created via MCP are tagged `(mcp_host, device_id)` and promote-to-account is "one click" in the design — the click target and confirmation copy are not specified yet.

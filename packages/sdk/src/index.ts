@@ -22,6 +22,12 @@ export type AskRequest = {
   // → auto-target with `selected_db` echo on the response; below →
   // 409 ambiguous_db with `candidate_dbs` for the surface to render).
   dbId?: string;
+  // SK-DB-010: when the request routes the create branch (no dbId,
+  // 0 DBs, or kind=create), `engine` overrides the classifier's
+  // pick. Ignored on the query / write branches. Power-user escape
+  // hatch per `GLOBAL-015`; absent path is the goal-first default
+  // per `GLOBAL-020`.
+  engine?: Engine;
   // SK-ONBOARD-004: when the API returned `requires_confirm: true`
   // for a destructive plan, the surface re-sends the same request
   // with `confirm: true`. The orchestrator skips its confidence
@@ -65,6 +71,8 @@ export type AskCreateResult = {
   kind: "create";
   db: string;
   schemaName: string;
+  // SK-DB-010 — engine the orchestrator resolved. Always present.
+  engine: Engine;
   pkLive: string | null;
   // SchemaPlan from the typed-plan compiler (`SK-HDC-002`). Surfaces
   // that don't render the plan (current chat) ignore it; CreateForm
@@ -111,6 +119,12 @@ export type TraceEvent =
   | { type: "error"; error: ApiErrorBody }
   | { type: "done"; status: "ok" };
 
+// SK-DB-010 — engine the create path resolved (classifier-default or
+// explicit override). Surfaces echo it back to the caller; the CLI
+// renders it after `nlq new`, the chat surface stores it on the rail
+// row, the MCP tool returns it per row from `nlqdb_list_databases`.
+export type Engine = "postgres" | "clickhouse";
+
 // One DB row in a `listDatabases` response. `pkLive` is the
 // publishable per-DB key used to inline into <nlq-data> snippets
 // (SK-WEB-007); when null the surface falls back to the anonymous
@@ -120,6 +134,9 @@ export type DatabaseSummary = {
   slug: string;
   name?: string;
   schemaName?: string;
+  // SK-DB-010 — the engine column on the row. Surfaces narrow on
+  // this when rendering badges or routing power-user `run` calls.
+  engine: Engine;
   pkLive: string | null;
   lastQueriedAt: number | null;
   createdAt: number;
@@ -128,11 +145,20 @@ export type DatabaseSummary = {
 export type CreateDatabaseRequest = {
   name?: string;
   goal?: string;
+  // SK-DB-010 — explicit engine override. When omitted the API runs
+  // the SK-MULTIENG-002 classifier on `goal` text. Power-user escape
+  // hatch per `GLOBAL-015`; absent path is the goal-first default
+  // per `GLOBAL-020`. The API rejects unknown engines with
+  // `invalid_engine` (400).
+  engine?: Engine;
 };
 
 export type CreateDatabaseResult = {
   dbId: string;
   slug: string;
+  // SK-DB-010 — the engine the API actually provisioned. Always
+  // present so callers don't have to re-resolve from the slug.
+  engine: Engine;
   pkLive: string;
   connectionString?: string;
 };
@@ -159,6 +185,9 @@ export type ApiErrorCode =
   // SK-ASK-009: 409 returned when the LLM disambiguator's confidence
   // is below the floor on a 2+ DB tenant. Body carries `candidate_dbs`.
   | "ambiguous_db"
+  // SK-DB-010: 400 returned when `engine` is set to a string that's
+  // not in the allowed engine set on `/v1/ask` or `/v1/databases`.
+  | "invalid_engine"
   // SDK-only sentinels — never sent by the API.
   | "unknown_error"
   | "non_json_response"

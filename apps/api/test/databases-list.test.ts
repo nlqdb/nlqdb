@@ -6,7 +6,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { listDatabasesForTenant, toSummary } from "../src/databases/list.ts";
 
-type Row = { id: string; created_at: number };
+type Row = { id: string; engine: string; created_at: number };
 
 function stubDb(rows: Row[]): {
   d1: D1Database;
@@ -21,9 +21,12 @@ function stubDb(rows: Row[]): {
 
 describe("toSummary", () => {
   it("derives slug by stripping db_ prefix and turning underscores into dashes", () => {
-    expect(toSummary({ id: "db_orders_tracker_a4fxyz", created_at: 1700000000 })).toEqual({
+    expect(
+      toSummary({ id: "db_orders_tracker_a4fxyz", engine: "postgres", created_at: 1700000000 }),
+    ).toEqual({
       id: "db_orders_tracker_a4fxyz",
       slug: "orders-tracker-a4fxyz",
+      engine: "postgres",
       pkLive: null,
       lastQueriedAt: null,
       createdAt: 1700000000,
@@ -31,29 +34,45 @@ describe("toSummary", () => {
   });
 
   it("keeps the raw id (minus prefix) when there are no underscores", () => {
-    expect(toSummary({ id: "db_simple", created_at: 1 }).slug).toBe("simple");
+    expect(toSummary({ id: "db_simple", engine: "postgres", created_at: 1 }).slug).toBe("simple");
   });
 
   it("survives ids that don't carry the db_ prefix", () => {
-    expect(toSummary({ id: "legacy_id", created_at: 1 }).slug).toBe("legacy-id");
+    expect(toSummary({ id: "legacy_id", engine: "postgres", created_at: 1 }).slug).toBe(
+      "legacy-id",
+    );
+  });
+
+  it("returns the engine column verbatim when allowed (clickhouse)", () => {
+    expect(toSummary({ id: "db_events_a1", engine: "clickhouse", created_at: 1 }).engine).toBe(
+      "clickhouse",
+    );
+  });
+
+  it("falls back to postgres for legacy / unknown engine strings", () => {
+    expect(toSummary({ id: "db_legacy_x", engine: "mysql", created_at: 1 }).engine).toBe(
+      "postgres",
+    );
+    expect(toSummary({ id: "db_legacy_y", engine: "", created_at: 1 }).engine).toBe("postgres");
   });
 });
 
 describe("listDatabasesForTenant", () => {
   it("scopes by tenant_id and returns rows mapped to the SDK summary shape", async () => {
     const { d1, prepare, bind } = stubDb([
-      { id: "db_meal_planner_7c2abc", created_at: 1700000200 },
-      { id: "db_orders_tracker_a4fxyz", created_at: 1700000100 },
+      { id: "db_meal_planner_7c2abc", engine: "postgres", created_at: 1700000200 },
+      { id: "db_orders_tracker_a4fxyz", engine: "clickhouse", created_at: 1700000100 },
     ]);
     const out = await listDatabasesForTenant(d1, "user_1");
     expect(prepare).toHaveBeenCalledWith(
-      "SELECT id, created_at FROM databases WHERE tenant_id = ? ORDER BY created_at DESC",
+      "SELECT id, engine, created_at FROM databases WHERE tenant_id = ? ORDER BY created_at DESC",
     );
     expect(bind).toHaveBeenCalledWith("user_1");
     expect(out).toEqual([
       {
         id: "db_meal_planner_7c2abc",
         slug: "meal-planner-7c2abc",
+        engine: "postgres",
         pkLive: null,
         lastQueriedAt: null,
         createdAt: 1700000200,
@@ -61,6 +80,7 @@ describe("listDatabasesForTenant", () => {
       {
         id: "db_orders_tracker_a4fxyz",
         slug: "orders-tracker-a4fxyz",
+        engine: "clickhouse",
         pkLive: null,
         lastQueriedAt: null,
         createdAt: 1700000100,

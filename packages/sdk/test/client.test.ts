@@ -163,6 +163,96 @@ describe("createClient", () => {
     }
   });
 
+  it("createDatabase: forwards engine in the JSON body when set (SK-DB-010)", async () => {
+    let capturedBody: unknown;
+    const fakeFetch: FetchLike = async (_url, init) => {
+      capturedBody = init?.body ? JSON.parse(String(init.body)) : null;
+      return new Response(
+        JSON.stringify({
+          dbId: "db_x_a1",
+          slug: "x-a1",
+          engine: "clickhouse",
+          pkLive: "pk_live_x",
+        }),
+        { status: 201, headers: { "content-type": "application/json" } },
+      );
+    };
+    const client = createClient({ apiKey: "sk_test", fetch: fakeFetch });
+    const out = await client.createDatabase({ name: "events", engine: "clickhouse" });
+    expect(capturedBody).toEqual({ name: "events", engine: "clickhouse" });
+    expect(out.engine).toBe("clickhouse");
+    expect(out.dbId).toBe("db_x_a1");
+  });
+
+  it("createDatabase: omits engine from the body when not set (classifier-default path)", async () => {
+    let capturedBody: unknown;
+    const fakeFetch: FetchLike = async (_url, init) => {
+      capturedBody = init?.body ? JSON.parse(String(init.body)) : null;
+      return new Response(
+        JSON.stringify({ dbId: "db_y_b2", slug: "y-b2", engine: "postgres", pkLive: "pk_live_y" }),
+        { status: 201, headers: { "content-type": "application/json" } },
+      );
+    };
+    const client = createClient({ apiKey: "sk_test", fetch: fakeFetch });
+    const out = await client.createDatabase({ name: "tracker" });
+    expect(capturedBody).toEqual({ name: "tracker" });
+    expect(out.engine).toBe("postgres");
+  });
+
+  it("ask: forwards engine on the create-branch request body", async () => {
+    let capturedBody: unknown;
+    const fakeFetch: FetchLike = async (_url, init) => {
+      capturedBody = init?.body ? JSON.parse(String(init.body)) : null;
+      return new Response(
+        JSON.stringify({
+          kind: "create",
+          db: "db_x_a1",
+          schemaName: "x_a1",
+          engine: "clickhouse",
+          pkLive: null,
+          plan: {},
+          sampleRows: [],
+        }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      );
+    };
+    const client = createClient({ apiKey: "sk_test", fetch: fakeFetch });
+    const out = await client.ask({ goal: "events tracker", engine: "clickhouse" });
+    expect(capturedBody).toMatchObject({ goal: "events tracker", engine: "clickhouse" });
+    if (!("kind" in out)) throw new Error("expected create result");
+    expect(out.engine).toBe("clickhouse");
+  });
+
+  it("listDatabases: surfaces engine on each row (SK-DB-010 / GLOBAL-003)", async () => {
+    const fakeFetch: FetchLike = async () =>
+      new Response(
+        JSON.stringify({
+          databases: [
+            {
+              id: "db_a",
+              slug: "a",
+              engine: "postgres",
+              pkLive: null,
+              lastQueriedAt: null,
+              createdAt: 1,
+            },
+            {
+              id: "db_b",
+              slug: "b",
+              engine: "clickhouse",
+              pkLive: null,
+              lastQueriedAt: null,
+              createdAt: 2,
+            },
+          ],
+        }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      );
+    const client = createClient({ apiKey: "sk_test", fetch: fakeFetch });
+    const out = await client.listDatabases();
+    expect(out.databases.map((d) => d.engine)).toEqual(["postgres", "clickhouse"]);
+  });
+
   it("createClient: throws when both apiKey and withCredentials are set (defensive runtime guard)", () => {
     expect(() =>
       createClient({

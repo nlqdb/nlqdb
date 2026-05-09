@@ -12,6 +12,7 @@ function stubLlm(intent: string, confidence = 0.9): LLMRouter {
     summarize: async () => ({ summary: "" }),
     schemaInfer: async () => ({ plan: {} }),
     disambiguate: async () => ({ chosenId: null, confidence: 0, reason: "stub" }),
+    engineClassify: async () => ({ engine: "postgres", confidence: 1 }),
   };
 }
 
@@ -45,6 +46,7 @@ describe("classifyKind — LLM intent mapping", () => {
       summarize: async () => ({ summary: "" }),
       schemaInfer: async () => ({ plan: {} }),
       disambiguate: async () => ({ chosenId: null, confidence: 0, reason: "stub" }),
+      engineClassify: async () => ({ engine: "postgres", confidence: 1 }),
     };
     await expect(classifyKind(failing, "some goal")).rejects.toThrow("all providers failed");
   });

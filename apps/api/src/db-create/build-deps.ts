@@ -23,6 +23,7 @@ import { neon } from "@neondatabase/serverless";
 import { validateCompiledDdl } from "../ask/sql-validate-ddl.ts";
 import { getLLMRouter } from "../llm-router.ts";
 import { compileDdl } from "./compile-ddl.ts";
+import { classifyEngine } from "./engine-classify.ts";
 import { inferSchema } from "./infer-schema.ts";
 import { provisionDb } from "./neon-provision.ts";
 import type { DbCreateDeps } from "./orchestrate.ts";
@@ -58,6 +59,9 @@ export function buildDbCreateDeps(envBindings: Cloudflare.Env): BuildDbCreateDep
       inferSchema,
       compileDdl,
       validateCompiledDdl,
+      // SK-DB-010: classifier-default engine selection. Skipped when
+      // the route handler passes an explicit `engine` on `DbCreateArgs`.
+      classifyEngine,
       // SK-HDC-007: Phase 1 wires provisionDb. Phase 4 (BYO Postgres
       // per docs/architecture.md §3.6.7) swaps in `registerByoDb` here
       // — single function-body change, no orchestrator refactor.

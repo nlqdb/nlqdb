@@ -19,10 +19,17 @@ enabled = true
 # this Worker drains.
 #
 # Tuning notes:
-#   max_batch_size = 10   — small batches keep p95 dispatch latency
-#                           low; LogSnag's free tier doesn't support
-#                           bulk submission so each event is its own
-#                           HTTP call regardless.
+#   max_batch_size = 100  — `ask.completed` is the high-volume event
+#                           (one per /v1/ask success). Tinybird ingests
+#                           the whole batch in one HTTP call so a
+#                           larger batch reduces queue ops + Tinybird
+#                           request count without hurting LogSnag-bound
+#                           events (which iterate one-by-one regardless).
+#   max_batch_timeout = 1 — One-second flush keeps query_log freshness
+#                           bounded; W5's daily reshape doesn't need
+#                           sub-second latency, but the bound caps how
+#                           stale the workload analyser's view can be
+#                           if traffic dries up.
 #   max_retries = 3       — Cloudflare default. After exhaustion the
 #                           message is dropped (no DLQ configured —
 #                           add `dead_letter_queue = "nlqdb-events-dlq"`
@@ -30,6 +37,6 @@ enabled = true
 #                           exhaustion starts appearing in metrics).
 [[queues.consumers]]
 queue = "nlqdb-events"
-max_batch_size = 10
-max_batch_timeout = 30
+max_batch_size = 100
+max_batch_timeout = 1
 max_retries = 3

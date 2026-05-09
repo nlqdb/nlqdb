@@ -35,6 +35,13 @@ export type PostChatPersisted = {
   ok: true;
   user: UserChatMessage;
   assistant: AssistantChatMessage;
+  // Threaded from the underlying OrchestrateOutcome so the route
+  // handler can `ctx.waitUntil(...)` the `ask.completed` queue.send —
+  // the chat surface shouldn't be on-path for the queue producer
+  // round-trip either. `undefined` when the underlying ask failed
+  // (no ask.completed emitted on errors) or the demo shortcut path
+  // (canned fixtures aren't workload-analyser input).
+  pendingAskCompleted?: Promise<void>;
 };
 
 export type PostChatRejected = {
@@ -113,7 +120,12 @@ export async function postChatMessage(
   };
   await deps.store.append(assistantMsg);
 
-  return { ok: true, user: userMsg, assistant: assistantMsg };
+  return {
+    ok: true,
+    user: userMsg,
+    assistant: assistantMsg,
+    ...(outcome.ok ? { pendingAskCompleted: outcome.pendingAskCompleted } : {}),
+  };
 }
 
 function buildSuccess(result: AskResult): AssistantChatMessage["result"] {

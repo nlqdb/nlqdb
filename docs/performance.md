@@ -171,12 +171,14 @@ Canonical names. Every slice MUST use these — no one-off variants.
 | `llm.plan`                    | NL → SQL generation.                           |
 | `llm.summarize`               | Result summarization (conditional).            |
 | `llm.schema_infer`            | Hosted db.create — NL → typed `SchemaPlan` (SK-HDC-002, SK-HDC-003). |
+| `llm.engine_classify`         | Hosted db.create — goal text → engine pick (SK-DB-010, SK-MULTIENG-002). Parent span carries `nlqdb.engine_classify.fallback_reason ∈ {deferred, below_floor, provider_failed, unknown_string}` (4 values; absent when LLM pick was used). |
 | `nlqdb.sql.validate`          | SQL parse + schema-fit check.                  |
 | `db.query`                    | Neon HTTP execute — standard OTel `db.*`. Attributes: `db.system=postgresql`, `db.operation`, `db.statement` (PII-redacted SQL text). |
 | `db.transaction`              | BEGIN…COMMIT batch around the db.create provisioner's DDL + sample-row apply (`apps/api/src/db-create/neon-provision.ts`). Carries `db.system=postgresql`. Per-statement `db.query` spans nest under it. |
 | `nlqdb.auth.oauth.callback`   | `/api/auth/callback/{github,google}` flow.     |
 | `nlqdb.webhook.stripe`        | Stripe webhook handler.                        |
 | `nlqdb.events.emit`           | Product-event sink dispatch (LogSnag; PostHog optional Phase 2). Wrapped in `ctx.waitUntil` so it runs **after** the response is returned — zero user-facing latency. Server-side only; no client SDK on the marketing site. |
+| `nlqdb.events.sink.query_log` | Tinybird `query_log` Data Source write. One per consumed events-batch. Carries `nlqdb.events.batch_size`, `http.response.status_code`, `nlqdb.events.rows_written`, `nlqdb.events.circuit_open`. Owner: `apps/events-worker/src/sinks/query-log.ts` calling `@nlqdb/db/clickhouse-tinybird/query-log.ts` (`SK-EVENTS-009`). |
 
 ### 3.2 Metric names
 
@@ -188,6 +190,7 @@ Counters (suffix `.total`):
 - `nlqdb.llm.failover.total{from_provider, to_provider, reason}`.
 - `nlqdb.errors.total{class, route}`.
 - `nlqdb.auth.events.total{type, outcome}` — sign-in / refresh / logout.
+- `nlqdb.events.sink.query_log.failures.total{status_class}` — Tinybird `query_log` write failures (non-2xx HTTP or fetch threw). Used as the trip signal for the events-worker's circuit-breaker (`SK-EVENTS-009`).
 
 Histograms (latency in ms — explicit `_ms` suffix):
 
@@ -195,6 +198,10 @@ Histograms (latency in ms — explicit `_ms` suffix):
 - `nlqdb.llm.duration_ms{provider, operation}`.
 - `nlqdb.db.duration_ms{operation}`.
 - `nlqdb.kv.duration_ms{operation}`.
+
+Other histograms (non-latency):
+
+- `nlqdb.events.sink.query_log.batch_size` (unit `rows`) — events written to Tinybird `query_log` per flush. Bounded by the Cloudflare Queue consumer's `max_batch_size` (currently 100).
 
 Gauges:
 
@@ -212,9 +219,9 @@ Always use these label keys; never invent variants like `tenant`, `tenant-id`, `
 | `nlqdb.cache_hit`      | 2                    | `true` / `false`.                                  |
 | `llm.provider`         | Low (4)              | `cf-ai`, `gemini`, `groq`, `openrouter`.           |
 | `llm.model`            | Low (~10)            | Provider-specific; pin via env config.             |
-| `db.system`            | 1                    | `postgresql` for now.                              |
+| `db.system`            | 2                    | `postgresql` (PG); `other_sql` (ClickHouse via Tinybird). |
 | `route`                | Low (~20)            | `/v1/ask`, `/v1/health`, `/v1/auth/*`.             |
-| `status_class`         | 5                    | `2xx` / `3xx` / `4xx` / `5xx` (NOT raw status).    |
+| `status_class`         | 5                    | `2xx` / `3xx` / `4xx` / `5xx` / `transport` (NOT raw status). The `transport` value is reserved for fetch-throws (no HTTP status); used by the query_log failures counter (`SK-EVENTS-009`). |
 
 **Cardinality rule:** total combined series < 8 k (Grafana Cloud free
 tier ceiling at 10 k, leave 2 k headroom). The above bounds are

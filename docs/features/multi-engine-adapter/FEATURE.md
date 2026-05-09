@@ -36,7 +36,7 @@ when-to-load:
 
 ### SK-MULTIENG-002 — ClickHouse via Tinybird is the second engine; engine-fit table is the planner's source of truth
 
-- **Decision:** The first non-Postgres adapter is ClickHouse fronted by **Tinybird Free Forever** (10 GB storage, 1 k reads/day, no card; writes don't count). Other engines are evaluated below but deferred until concrete demand. **The table below is the canonical engine-fit source: when the engine-classifier prompt lands in `packages/llm/src/prompts.ts`, it must embed this table verbatim.** Adding a new engine = (a) add a row, (b) ship an adapter, (c) update the classifier prompt — exactly three edits.
+- **Decision:** The first non-Postgres adapter is ClickHouse fronted by **Tinybird Free Forever** (10 GB storage, 1 k reads/day, no card; writes don't count). Other engines are evaluated below but deferred until concrete demand. **The table below is the canonical engine-fit source: when the engine-classifier prompt lands in `packages/llm/src/prompts.ts`, it embeds this table — engine names appear lowercased there to match the wire `Engine` literal.** Adding a new engine = (a) add a row, (b) ship an adapter, (c) update the classifier prompt — exactly three edits.
 
   | Engine | Strong fit | Avoid when | Free-tier ceiling |
   |---|---|---|---|

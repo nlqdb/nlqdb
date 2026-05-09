@@ -1,3 +1,33 @@
+export type {
+  TinybirdAdapterOptions,
+  TinybirdHttpClient,
+  TinybirdRequest,
+  TinybirdResponse,
+} from "./clickhouse-tinybird/adapter.ts";
+export {
+  createTinybirdAdapter,
+  TinybirdAuthError,
+  TinybirdRateLimitError,
+  TinybirdRequestError,
+  TinybirdResponseParseError,
+  TinybirdServerError,
+  TinybirdValidationError,
+} from "./clickhouse-tinybird/adapter.ts";
+export type {
+  AskCompletedEvent,
+  QueryLogEntry,
+  QueryLogHttpClient,
+  QueryLogRequest,
+  QueryLogResponse,
+  QueryLogRow,
+  QueryLogWriterOptions,
+  WriteQueryLogResult,
+} from "./clickhouse-tinybird/query-log.ts";
+export {
+  createQueryLogWriter,
+  QueryLogWriteError,
+  writeQueryLog,
+} from "./clickhouse-tinybird/query-log.ts";
 export type { PostgresAdapterOptions, PostgresQueryFn } from "./postgres.ts";
 export { createPostgresAdapter } from "./postgres.ts";
 export type {
@@ -31,11 +61,13 @@ export type {
 // the subpath. Both styles work; root is the recommended import.
 export {
   AggSchema,
+  ALLOWED_ENGINES,
   ColumnSchema,
   ColumnTypeSchema,
   DimensionSchema,
   ForeignKeySchema,
   IdentifierSchema,
+  isAllowedEngine,
   MetricSchema,
   OnDeleteSchema,
   SampleRowSchema,

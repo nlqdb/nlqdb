@@ -17,6 +17,9 @@ const DEFAULT_MODELS: Record<LLMOperation, string> = {
   // (SK-ASK-009 / SK-HDC-011) — the prompt is short (slugs + hashes)
   // and the budget is the same 1500 ms.
   disambiguate: "llama-3.1-8b-instant",
+  // Engine classification (SK-DB-010) — short prompt (the engine-fit
+  // table + one goal sentence), cheap-tier model, same budget as classify.
+  engine_classify: "llama-3.1-8b-instant",
 };
 
 export type GroqProviderOptions = {

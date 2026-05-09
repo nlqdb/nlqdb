@@ -15,6 +15,7 @@ const DEFAULT_MODELS: Record<LLMOperation, string> = {
   summarize: "@cf/meta/llama-3.3-70b-instruct-fp8-fast",
   schema_infer: "@cf/meta/llama-3.3-70b-instruct-fp8-fast",
   disambiguate: "@cf/meta/llama-3.1-8b-instruct",
+  engine_classify: "@cf/meta/llama-3.1-8b-instruct",
 };
 
 export type WorkersAIProviderOptions = {
