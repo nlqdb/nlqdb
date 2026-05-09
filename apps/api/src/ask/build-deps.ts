@@ -10,9 +10,9 @@
 import { env } from "cloudflare:workers";
 import { neon } from "@neondatabase/serverless";
 import type { Row } from "@nlqdb/db";
+import { type EventEmitter, makeNoopEmitter, makeQueueEmitter } from "@nlqdb/events";
 import { dbDurationMs } from "@nlqdb/otel";
 import { SpanStatusCode, trace } from "@opentelemetry/api";
-import { type EventEmitter, makeNoopEmitter, makeQueueEmitter } from "@nlqdb/events";
 import { resolveDb } from "../db-registry.ts";
 import { getLLMRouter } from "../llm-router.ts";
 import { makeFirstQueryTracker } from "./first-query.ts";
