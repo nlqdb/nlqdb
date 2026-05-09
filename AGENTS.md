@@ -76,6 +76,7 @@ Before documenting any decision or plan:
 
 Simplify rather than complexify.
 When fixing an issue or adding a feature - always look for a way to remove code, or simplify code rather than adding code. Same for documentations and comments.
+De-prioritize backward compatilibty and prioritze clean code - we are still in a building stage.
 
 ## 3. Tech stack (high-level)
 
