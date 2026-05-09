@@ -11,10 +11,12 @@ import { buildSchemaInferUser, SCHEMA_INFER_SYSTEM } from "../prompts/schema-inf
 import {
   buildClassifyUser,
   buildDisambiguateUser,
+  buildEngineClassifyUser,
   buildPlanUser,
   buildSummarizeUser,
   CLASSIFY_SYSTEM,
   DISAMBIGUATE_SYSTEM,
+  ENGINE_CLASSIFY_SYSTEM,
   PLAN_SYSTEM,
   SUMMARIZE_SYSTEM,
 } from "../prompts.ts";
@@ -22,6 +24,7 @@ import type {
   CallOpts,
   ClassifyResponse,
   DisambiguateResponse,
+  EngineClassifyResponse,
   LLMOperation,
   PlanResponse,
   Provider,
@@ -116,6 +119,18 @@ export function createChatProvider(impl: ChatProviderImpl): Provider {
         opts,
       });
       return parseJsonResponse<DisambiguateResponse>(raw);
+    },
+    async engineClassify(req, opts = {}) {
+      const raw = await impl.callChat({
+        model: impl.models.engine_classify,
+        messages: [
+          { role: "system", content: ENGINE_CLASSIFY_SYSTEM },
+          { role: "user", content: buildEngineClassifyUser(req) },
+        ],
+        jsonMode: true,
+        opts,
+      });
+      return parseJsonResponse<EngineClassifyResponse>(raw);
     },
   };
 }

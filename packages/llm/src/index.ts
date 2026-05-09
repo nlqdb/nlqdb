@@ -28,6 +28,8 @@ export {
   type DisambiguateCandidate,
   type DisambiguateRequest,
   type DisambiguateResponse,
+  type EngineClassifyRequest,
+  type EngineClassifyResponse,
   type FailoverReason,
   type FetchLike,
   type LLMOperation,

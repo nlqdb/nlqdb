@@ -24,6 +24,12 @@ import { z } from "zod";
 // narrow on `engine` from day one without a follow-up type churn.
 export type Engine = "postgres" | "clickhouse";
 
+export const ALLOWED_ENGINES: ReadonlySet<Engine> = new Set<Engine>(["postgres", "clickhouse"]);
+
+export function isAllowedEngine(value: unknown): value is Engine {
+  return typeof value === "string" && ALLOWED_ENGINES.has(value as Engine);
+}
+
 // ADBC-shaped row map every adapter projects into (`SK-MULTIENG-001`).
 // One row-shape across engines means one renderer in `<nlq-data>` and
 // one summariser; per-engine extras travel on `meta`.

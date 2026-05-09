@@ -10,6 +10,7 @@ import {
   type CallOpts,
   type ClassifyResponse,
   type DisambiguateResponse,
+  type EngineClassifyResponse,
   type PlanResponse,
   type Provider,
   ProviderError,
@@ -35,6 +36,7 @@ function fakeProvider(
     summarize?: Stub<SummarizeResponse>;
     schemaInfer?: Stub<SchemaInferResponse>;
     disambiguate?: Stub<DisambiguateResponse>;
+    engineClassify?: Stub<EngineClassifyResponse>;
   } = {},
 ): Provider & { calls: { op: string; req: unknown; opts: CallOpts | undefined }[] } {
   const calls: { op: string; req: unknown; opts: CallOpts | undefined }[] = [];
@@ -77,6 +79,10 @@ function fakeProvider(
         req,
         opts,
       );
+    },
+    async engineClassify(req, opts) {
+      calls.push({ op: "engineClassify", req, opts });
+      return resolve(stubs.engineClassify, { engine: "postgres", confidence: 1 }, req, opts);
     },
   };
 }
@@ -134,6 +140,31 @@ describe("createLLMRouter — happy path", () => {
     const calls = metric(telemetry, "nlqdb.llm.calls.total");
     expect(calls?.dataPoints[0]?.attributes["status"]).toBe("ok");
     expect(metric(telemetry, "nlqdb.llm.duration_ms")).toBeDefined();
+  });
+
+  it("engineClassify routes through the engine_classify chain (SK-DB-010)", async () => {
+    const a = fakeProvider("groq", { engineClassify: { engine: "clickhouse", confidence: 0.9 } });
+    const router = createLLMRouter({
+      providers: [a],
+      chains: { engine_classify: ["groq"] },
+    });
+    const res = await router.engineClassify({ goal: "events tracker" });
+    expect(res).toEqual({ engine: "clickhouse", confidence: 0.9 });
+    expect(a.calls.map((c) => c.op)).toEqual(["engineClassify"]);
+  });
+
+  it("engineClassify emits an llm.engine_classify span", async () => {
+    const a = fakeProvider("groq", { engineClassify: { engine: "postgres", confidence: 0.95 } });
+    const router = createLLMRouter({
+      providers: [a],
+      chains: { engine_classify: ["groq"] },
+    });
+    await router.engineClassify({ goal: "tracker app" });
+    const span = telemetry.spanExporter
+      .getFinishedSpans()
+      .find((s) => s.name === "llm.engine_classify");
+    expect(span).toBeDefined();
+    expect(span?.attributes["llm.provider"]).toBe("groq");
   });
 });
 

@@ -1,4 +1,5 @@
 import { env } from "cloudflare:workers";
+import { ALLOWED_ENGINES, type Engine } from "@nlqdb/db";
 import { authEventsTotal, redactPii, setupTelemetry } from "@nlqdb/otel";
 import { trace } from "@opentelemetry/api";
 import { Hono } from "hono";
@@ -19,7 +20,7 @@ import { askFnFromDemoFixtures, DEMO_DB_ID } from "./chat/demo-shortcut.ts";
 import { postChatMessage } from "./chat/orchestrate.ts";
 import { makeChatStore } from "./chat/store.ts";
 import { deriveSlug, listDatabasesForTenant } from "./databases/list.ts";
-import { parseAskBody, parseGoalDbBody, parseJsonBody } from "./http.ts";
+import { isAllowedEngine, parseAskBody, parseGoalDbBody, parseJsonBody } from "./http.ts";
 import { getLLMRouter } from "./llm-router.ts";
 import { makeRequireSession, type RequireSessionVariables } from "./middleware.ts";
 import {
@@ -378,6 +379,9 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
         const result = await orchestrateDbCreate(createDeps, {
           goal: parsed.body.goal,
           tenantId: principal.id,
+          // SK-DB-010 — explicit override flows through; classifier
+          // runs only when this is undefined.
+          ...(parsed.body.engine !== undefined ? { engine: parsed.body.engine } : {}),
           secretRef,
         });
         if (!result.ok) {
@@ -389,6 +393,7 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
           kind: "create" as const,
           db: result.dbId,
           schemaName: result.schemaName,
+          engine: result.engine,
           pkLive: result.pkLive,
           plan: result.plan,
           sampleRows: result.sampleRows,
@@ -786,7 +791,7 @@ app.post("/v1/databases", requireSession, async (c) => {
     const session = c.var.session;
     span.setAttribute("nlqdb.user.id", session.user.id);
 
-    const raw = await parseJsonBody<{ name?: unknown; goal?: unknown }>(c);
+    const raw = await parseJsonBody<{ name?: unknown; goal?: unknown; engine?: unknown }>(c);
     if (!raw.ok) {
       span.end();
       return c.json({ error: { status: "invalid_json" as const } }, 400);
@@ -806,6 +811,30 @@ app.post("/v1/databases", requireSession, async (c) => {
       return c.json({ error: { status: "goal_required" as const } }, 400);
     }
 
+    // SK-DB-010 — explicit engine override on the create surface.
+    // Unknown strings reject with `invalid_engine`; absent runs the
+    // classifier inside the orchestrator. Envelope carries the
+    // offending value + the allowed list so SDK / CLI consumers can
+    // render a precise message (GLOBAL-012 — one sentence with the
+    // next action).
+    let engine: Engine | undefined;
+    if (raw.body.engine !== undefined) {
+      if (!isAllowedEngine(raw.body.engine)) {
+        span.end();
+        return c.json(
+          {
+            error: {
+              status: "invalid_engine" as const,
+              value: raw.body.engine,
+              allowed: [...ALLOWED_ENGINES],
+            },
+          },
+          400,
+        );
+      }
+      engine = raw.body.engine;
+    }
+
     // Same WASM polyfill as the /v1/ask runCreatePath — see that
     // block's comment for the full rationale. `sql-validate-ddl.ts`
     // gracefully degrades if loadModule() still fails on Workers.
@@ -818,9 +847,14 @@ app.post("/v1/databases", requireSession, async (c) => {
 
     try {
       const { deps: createDeps, secretRef } = buildDbCreateDeps(c.env);
+      // The `if (!name && !goal)` guard above ensures at least one is
+      // defined; the `?? ""` fallback satisfies Biome's
+      // noNonNullAssertion without changing semantics (the string is
+      // never empty at runtime).
       const result = await orchestrateDbCreate(createDeps, {
-        goal: goal ?? name!,
+        goal: goal ?? name ?? "",
         ...(name !== undefined ? { name } : {}),
+        ...(engine !== undefined ? { engine } : {}),
         tenantId: session.user.id,
         secretRef,
       });
@@ -831,11 +865,13 @@ app.post("/v1/databases", requireSession, async (c) => {
         return c.json({ error: result.error }, statusCode);
       }
       span.setAttribute("nlqdb.databases.create.db_id", result.dbId);
+      span.setAttribute("nlqdb.databases.create.engine", result.engine);
       span.end();
       return c.json(
         {
           dbId: result.dbId,
           slug: deriveSlug(result.dbId),
+          engine: result.engine,
           pkLive: result.pkLive,
         },
         201,
