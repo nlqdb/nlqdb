@@ -33,6 +33,15 @@ export type SelectedDbEcho = {
   reason: string;
 };
 
+// `SK-MIGRATE-005`: surfaced when an audit row exists for the resolved
+// `(db_id, query_hash)` within the last 24h. Caveat — in W5 the Pipe
+// is created but not yet on the read path; future SK-MIGRATE wires the
+// adapter-side dispatch.
+export type PipeAdvisory = {
+  pipeName: string;
+  createdHoursAgo: number;
+};
+
 export type AskResult = {
   status: "ok";
   cached: boolean;
@@ -43,6 +52,7 @@ export type AskResult = {
   // by default + in SSE mode.
   summary?: string;
   selected_db?: SelectedDbEcho;
+  pipe_advisory?: PipeAdvisory;
 };
 
 export type AskError =
@@ -87,7 +97,11 @@ export type OrchestrateEvent =
   | { type: "plan"; sql: string; cached: boolean }
   | { type: "rows"; rows: Record<string, unknown>[]; rowCount: number }
   | { type: "summary"; summary: string }
-  | { type: "selected_db"; db: SelectedDbEcho };
+  | { type: "selected_db"; db: SelectedDbEcho }
+  // `SK-MIGRATE-005`: emitted once before `plan_pending` when an
+  // analyser audit row exists for `(db_id, query_hash)` within 24h.
+  // Surfaces render it as one line in the trace.
+  | { type: "pipe_advisory"; advisory: PipeAdvisory };
 
 // Re-export so deps using QueryResult don't need a second @nlqdb/db
 // import in callers.

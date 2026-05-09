@@ -1,5 +1,10 @@
 import { env } from "cloudflare:workers";
-import { ALLOWED_ENGINES, type Engine } from "@nlqdb/db";
+import {
+  ALLOWED_ENGINES,
+  createPipeManagementClient,
+  createTinybirdAdapter,
+  type Engine,
+} from "@nlqdb/db";
 import { authEventsTotal, redactPii, setupTelemetry } from "@nlqdb/otel";
 import { trace } from "@opentelemetry/api";
 import { Hono } from "hono";
@@ -32,6 +37,7 @@ import { cryptoProvider, stripe as stripeClient } from "./stripe/client.ts";
 import { processWebhook } from "./stripe/webhook.ts";
 import { verifyTurnstile } from "./turnstile.ts";
 import { joinWaitlist } from "./waitlist.ts";
+import { runWorkloadAnalyser } from "./workload-analyser/index.ts";
 
 const SERVICE_VERSION = "0.1.0";
 
@@ -1169,4 +1175,69 @@ app.on(["POST", "GET"], "/api/auth/*", async (c) => {
   });
 });
 
-export default app;
+// W5 daily workload-analyser cron handler (`SK-MIGRATE-001`). Schedule
+// is `0 4 * * *` UTC, configured in `wrangler.toml`'s `[triggers]`.
+// When `TINYBIRD_TOKEN` is unset the handler ack-and-skips (matches the
+// unconfigured-sink posture — `SK-EVENTS-005`). All Tinybird HTTP flows
+// through `@nlqdb/db`'s typed surface per `GLOBAL-021`.
+async function scheduled(
+  _controller: ScheduledController,
+  envBindings: Cloudflare.Env,
+  ctx: ExecutionContext,
+): Promise<void> {
+  const { GRAFANA_OTLP_ENDPOINT, GRAFANA_OTLP_AUTHORIZATION } = envBindings;
+  const telemetry =
+    GRAFANA_OTLP_ENDPOINT && GRAFANA_OTLP_AUTHORIZATION
+      ? setupTelemetry({
+          serviceName: "nlqdb-api",
+          serviceVersion: SERVICE_VERSION,
+          otlpEndpoint: GRAFANA_OTLP_ENDPOINT,
+          authorization: GRAFANA_OTLP_AUTHORIZATION,
+        })
+      : undefined;
+
+  try {
+    if (!envBindings.TINYBIRD_TOKEN) return;
+    const tinybird = createTinybirdAdapter({
+      token: envBindings.TINYBIRD_TOKEN,
+      ...(envBindings.TINYBIRD_API_BASE !== undefined
+        ? { apiBase: envBindings.TINYBIRD_API_BASE }
+        : {}),
+      workspace: "nlqdb",
+      // Allowlist scoped to `query_log` only — the analyser does not
+      // need any user-data Pipes; cross-prefix references in the read
+      // SQL would reject at validator time per `SK-MULTIENG-004`.
+      allowlist: { tables: ["query_log"], pipes: [] },
+    });
+    const pipes = createPipeManagementClient({
+      token: envBindings.TINYBIRD_TOKEN,
+      ...(envBindings.TINYBIRD_API_BASE !== undefined
+        ? { apiBase: envBindings.TINYBIRD_API_BASE }
+        : {}),
+    });
+    await runWorkloadAnalyser({
+      d1: envBindings.DB,
+      tinybird,
+      pipes,
+      now: () => Date.now(),
+      newId: () => crypto.randomUUID(),
+    });
+  } catch (err) {
+    // Cron-level failures (Tinybird wedged, D1 down) are recorded on the
+    // `nlqdb.workload_analyser.run` span. Log so operators on `wrangler
+    // tail` see the trip without OTel attached.
+    console.error(
+      JSON.stringify({
+        msg: "workload_analyser_failed",
+        message: err instanceof Error ? err.message : String(err),
+      }),
+    );
+  } finally {
+    if (telemetry) ctx.waitUntil(telemetry.forceFlush());
+  }
+}
+
+export default {
+  fetch: (req: Request, e: Cloudflare.Env, ctx: ExecutionContext) => app.fetch(req, e, ctx),
+  scheduled,
+};

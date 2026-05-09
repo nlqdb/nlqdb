@@ -32,6 +32,7 @@ Cross-cutting decisions cited by skills: [`docs/decisions.md`](../decisions.md).
 | Skill | One-liner | What's done · what's open |
 |---|---|---|
 | [`web-app`](./web-app/FEATURE.md) | Marketing site + product web app. | Marketing site live · real-LLM hero (`/`) + permalink alias (`/app/new`) shipped (SK-WEB-008) · sign-in UI replays `nlqdb_pending` (Phase 1 exit gate) · chat surface remains |
+| [`engine-migration`](./engine-migration/FEATURE.md) | Daily reshape loop — intra-engine Pipe creation today; cross-engine PG ↔ ClickHouse / Redis migration deferred. | Intra-engine reshape live (SK-MIGRATE-001..006: daily 04:00 UTC cron, ≥25/p99≥500ms thresholds, schema_hash invariant, audit table + /v1/ask `pipe_advisory`) · cross-engine migration still planned (Phase 2 exit gate) |
 | [`schema-widening`](./schema-widening/FEATURE.md) | "Schemas only widen" invariant; `schema_hash` semantics. | `schema_hash` plumbed end-to-end · observed-fields collector + widening trigger ship post-Phase-0 |
 | [`idempotency`](./idempotency/FEATURE.md) | `Idempotency-Key` on every mutation; dedupe store; retry-safety. | natural-key dedupe shipped (Stripe webhook, waitlist) · general-purpose `Idempotency-Key` middleware on `/v1/ask` open |
 | [`rate-limit`](./rate-limit/FEATURE.md) | Per-key, per-IP rate-limit middleware. | per-account D1 limiter, per-IP anon-tier KV limiter (`anon-rate-limit.ts`), and global anon KV cap (`anon-global-cap.ts`) all shipped with `X-RateLimit-*` parity · legacy `/v1/demo/ask` per-IP limiter retired with the route under SK-WEB-008 · per-account anon-create cap pending adoption |
@@ -45,7 +46,6 @@ Cross-cutting decisions cited by skills: [`docs/decisions.md`](../decisions.md).
 | [`hosted-db-create`](./hosted-db-create/FEATURE.md) | Hosted db.create — typed-plan SchemaPlan, deterministic DDL compiler, Zod + libpg_query validation, provisioner, semantic layer at create-time. | Phase 1 — design locked in `docs/architecture.md` §3.6; sub-modules listed in `docs/architecture.md §10` §4 |
 | [`cli`](./cli/FEATURE.md) | `nlq` verb surface, OS-keychain credential storage. | Phase 2 — design locked in `docs/architecture.md` §3.3 / §4.3 / §14.3; no code yet |
 | [`premium-tier`](./premium-tier/FEATURE.md) | Premium-models add-on — opt-in frontier-model routing, pay-per-token, surface-parity model picker, BYOK decision tree. | Phase 2 pricing-row design-locked in `docs/architecture.md` §6; Phase 3 ships alongside Pro tier |
-| [`engine-migration`](./engine-migration/FEATURE.md) | Auto-migrate Postgres ↔ Mongo / Redis / etc. | Phase 3 |
 | [`multi-engine-adapter`](./multi-engine-adapter/FEATURE.md) | Adapters beyond Postgres. | Phase 3 |
 
 ## Adding a new skill

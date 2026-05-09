@@ -14,6 +14,28 @@ export {
   TinybirdValidationError,
 } from "./clickhouse-tinybird/adapter.ts";
 export type {
+  PipeHttpClient,
+  PipeHttpRequest,
+  PipeHttpResponse,
+  PipeManagementClient,
+  PipeManagementOptions,
+  PipeNode,
+  PipeRecord,
+} from "./clickhouse-tinybird/pipe-management.ts";
+export {
+  createPipe,
+  createPipeManagementClient,
+  dropPipe,
+  getPipe,
+  OP_PIPE_CREATE,
+  OP_PIPE_DROP,
+  OP_PIPE_GET,
+  PipeAuthError,
+  PipeRateLimitError,
+  PipeRequestError,
+  PipeServerError,
+} from "./clickhouse-tinybird/pipe-management.ts";
+export type {
   AskCompletedEvent,
   QueryLogEntry,
   QueryLogHttpClient,

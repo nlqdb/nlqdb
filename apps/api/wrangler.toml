@@ -24,6 +24,14 @@ workers_dev = true
 [observability]
 enabled = true
 
+# W5 daily workload-analyser cron (`SK-MIGRATE-001`). 04:00 UTC sits in
+# the cross-region quiet window between US/EU traffic peaks. The
+# `scheduled()` handler in `src/index.ts` ack-and-skips when
+# `TINYBIRD_TOKEN` is unset (matches `SK-EVENTS-005`'s unconfigured
+# sink posture).
+[triggers]
+crons = ["0 4 * * *"]
+
 # Public, non-secret config. NODE_ENV switches Better Auth between the
 # `OAUTH_GITHUB_*` (prod) and `OAUTH_GITHUB_*_DEV` (Wrangler dev) credential
 # pairs at module load (apps/api/src/auth.ts). `wrangler dev` overrides this

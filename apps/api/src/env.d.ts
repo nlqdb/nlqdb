@@ -124,6 +124,16 @@ declare global {
       // idempotency insert, and downstream emit all run real.
       MOCK_IDP?: string;
       MOCK_STRIPE?: string;
+
+      // Tinybird credentials for the W5 workload analyser (`SK-MIGRATE-001`).
+      // The cron reads `query_log` via the Tinybird adapter and
+      // creates Pipes via the management API. When unset, the
+      // `scheduled()` handler ack-and-skips per `SK-EVENTS-005`'s
+      // unconfigured-sink posture. Mirrors the binding in
+      // `apps/events-worker/src/env.d.ts` so a workspace's read +
+      // write paths share credentials.
+      TINYBIRD_TOKEN?: string;
+      TINYBIRD_API_BASE?: string;
     }
   }
 }

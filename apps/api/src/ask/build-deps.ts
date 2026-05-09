@@ -30,7 +30,44 @@ export function buildAskDeps(envBindings: Cloudflare.Env): OrchestrateDeps {
     rateLimiter: makeRateLimiter(envBindings.DB),
     firstQuery: makeFirstQueryTracker(envBindings.KV),
     events: buildEventEmitter(envBindings.EVENTS_QUEUE),
+    lookupPipeAdvisory: (dbId, queryHash) =>
+      lookupPipeAdvisory(envBindings.DB, dbId, queryHash, Date.now()),
   };
+}
+
+// `SK-MIGRATE-005`: most recent `clickhouse_pipe_create` audit row for
+// `(db_id, query_hash)` within the last 24h, mapped to the
+// `PipeAdvisory` shape. Returns null when no row exists or when the
+// audit row's `after_json` did not carry a Pipe name (advisory /
+// failure rows). The caller treats null as "no surface".
+async function lookupPipeAdvisory(
+  d1: D1Database,
+  dbId: string,
+  queryHash: string,
+  nowMs: number,
+): Promise<{ pipeName: string; createdHoursAgo: number } | null> {
+  const cutoffSec = Math.floor((nowMs - 24 * 60 * 60 * 1000) / 1000);
+  const row = await d1
+    .prepare(
+      `SELECT after_json, run_at FROM workload_analyser_runs
+       WHERE db_id = ? AND query_hash = ?
+         AND kind = 'clickhouse_pipe_create'
+         AND run_at >= ?
+       ORDER BY run_at DESC LIMIT 1`,
+    )
+    .bind(dbId, queryHash, cutoffSec)
+    .first<{ after_json: string | null; run_at: number }>();
+  if (!row?.after_json) return null;
+  let pipeName: string | undefined;
+  try {
+    const parsed = JSON.parse(row.after_json) as { pipeName?: unknown };
+    if (typeof parsed.pipeName === "string") pipeName = parsed.pipeName;
+  } catch {
+    return null;
+  }
+  if (!pipeName) return null;
+  const createdHoursAgo = Math.max(0, Math.floor((nowMs / 1000 - row.run_at) / 3600));
+  return { pipeName, createdHoursAgo };
 }
 
 // Executes a SQL query inside the tenant's schema context.
