@@ -120,6 +120,12 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 - **GLOBAL-014** — OTel span on every external call (DB, LLM, HTTP, queue).
 - **GLOBAL-015** — Power users always have an escape hatch.
 - **GLOBAL-017** — Two endpoints, two CLI verbs, one chat box — one way to do each thing.
+- **GLOBAL-022** — Recoverable failures retry to success — never surface a fixable error.
+  - *In this skill:* each pipeline stage owns its recoverable error
+    class — classifier (wrong intent), planner (invalid SQL),
+    validator (allowlist re-plan), executor (transient DB error).
+    Each stage retries up to 3 attempts before propagating, feeding
+    the prior attempt's error into the next prompt where applicable.
 
 ## Open questions / known unknowns
 

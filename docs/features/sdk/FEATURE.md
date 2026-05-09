@@ -102,6 +102,11 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 - **GLOBAL-009** — Tokens refresh silently — never surface a 401.
 - **GLOBAL-012** — Errors are one sentence with the next action.
 - **GLOBAL-014** — OTel span on every external call (DB, LLM, HTTP, queue).
+- **GLOBAL-022** — Recoverable failures retry to success — never surface a fixable error.
+  - *In this skill:* `packages/sdk/src/fetch.ts` is the wire-layer
+    retry loop (transport failures + transient 5xx, up to 3
+    attempts, reusing the same `Idempotency-Key` from `SK-SDK-006`).
+    The 401 path stays single-retry per `SK-SDK-005`.
 
 ## Open questions / known unknowns
 
