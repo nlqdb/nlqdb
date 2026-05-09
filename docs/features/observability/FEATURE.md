@@ -109,6 +109,14 @@ when-to-load:
   - Trust the LLM provider to redact upstream — varies wildly by provider; doesn't cover our own logs.
   - Replace prompts with `[redacted]` wholesale — debugging becomes impossible.
 
+### SK-OBS-009 — SQL span attributes are capped at 4 096 characters
+
+- **Decision:** `db.statement` (Postgres adapter) and `db.query.text` (ClickHouse/Tinybird adapter) are truncated to 4 096 characters before being attached to the `db.query` span. The raw SQL is still executed in full; only the diagnostic copy on the span is capped.
+- **Core value:** Bullet-proof
+- **Why:** OTel exporters and downstream backends (Grafana Tempo, Honeycomb) have practical per-attribute size limits, typically 4–64 KB depending on configuration. Provisioning SQL (CREATE TABLE with many columns, RLS policies, index definitions) can easily exceed 4 KB. An unbounded attribute risks dropped spans or silent truncation by the exporter — worse than an explicit cap because the truncation point is unpredictable. 4 096 chars covers every LLM-generated query and the overwhelming majority of provisioning SQL while guaranteeing the attribute fits any reasonable exporter configuration.
+- **Consequence in code:** `redactPii(sqlText).slice(0, 4096)` in `packages/db/src/postgres.ts`; `(plan.sql as string).slice(0, 4096)` in the ClickHouse adapter. PII redaction runs before truncation so secrets near the 4 096-char boundary are still redacted. The truncation does not affect the SQL actually sent to the database engine.
+- **Alternatives rejected:** Truncate at exporter level — unpredictable and silent; operators see incomplete data with no indication of why. Store as a span event instead of an attribute — not yet supported by our OTel SDK wrapper; would be a larger refactor.
+
 ## GLOBALs governing this feature
 
 Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; index in [`docs/decisions.md`](../../decisions.md)). The list below names the rules that constrain this feature; any skill-local commentary is nested under the rule.

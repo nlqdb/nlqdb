@@ -92,6 +92,14 @@ when-to-load:
 - **Alternatives rejected:** Generic spinner with "this is taking longer than usual" — gives no information; trains users not to trust the surface. Hide latency below a threshold — users notice anyway, and lose trust when the threshold is wrong.
 - **Source:** docs/architecture.md §0 (Honest latency) · [GLOBAL-011](../../decisions/GLOBAL-011-honest-latency.md)
 
+### SK-ASK-010 — Goal text is capped at 2 000 characters server-side
+
+- **Decision:** Every endpoint that accepts a `goal` string (`/v1/ask`, `/v1/databases`, `/v1/chat/message`) rejects inputs longer than 2 000 characters with `400 goal_too_long { maxLength: 2000 }`. The cap applies before any LLM call so adversarially long strings cannot inflate token spend.
+- **Core value:** Bullet-proof, Honest latency
+- **Why:** A natural-language query goal is a sentence or short paragraph. 2 000 chars is ~400 words — generous enough for complex multi-step requests while bounding worst-case token cost at the API boundary. Without a cap, a single anon request carrying a multi-megabyte string would exhaust the cheap-tier model's context window, inflate the run's LLM invoice, and degrade latency for other requests sharing the isolate.
+- **Consequence in code:** `MAX_GOAL_LENGTH = 2000` is exported from `apps/api/src/http.ts` and checked in `parseGoalDbBody`, `parseAskBody`, and the `POST /v1/databases` handler. The error body carries `maxLength` so SDK consumers can render a precise message without hard-coding the limit (GLOBAL-012).
+- **Alternatives rejected:** Silent truncation — hides the problem from the caller; the truncated goal produces a wrong result with no diagnostic. Per-tier limits — adds complexity without meaningful UX benefit; 2 000 chars covers every legitimate use case across all tiers.
+
 ## The LLM loop
 
 This is the part most implementations get wrong. A single "prompt → SQL → run" pipeline is a demo, not a product. The `/v1/ask` pipeline runs these eight steps per query:
@@ -132,6 +140,7 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 - **Streaming protocol for live trace.** `SK-ASK-008` and `GLOBAL-011` require a live trace, but the wire protocol (SSE? chunked JSON? OTel-over-WS?) is not yet pinned. SDK's `onTrace` hook in `packages/sdk` will fix the surface API; the wire format is open.
 - **Failure-mode for partial results.** If `exec` succeeds but `summarize` fails, do we return the rows + a summarize-error envelope, or 5xx the whole call? Design.md doesn't decide. Leaning toward "rows + envelope" so the user sees data, but needs an explicit `SK-ASK-NNN`.
 - **Idempotency on `/v1/ask`.** `GLOBAL-005` says every mutation accepts `Idempotency-Key`. `/v1/ask` is sometimes a query (no mutation), sometimes a write. Confirm whether the dedupe store is consulted for the write branch only or for every call (and what `kind=create` deduping looks like).
+- **Null-pick disambiguator cache TTL.** When the LLM returns `chosenId: null` (cannot disambiguate), `disambiguate-db.ts` caches that result for 7 days under the `(tenantId, goalHash, dbsetHash)` key. The dbsetHash evicts naturally when the user adds/removes a DB, but a false-null (LLM wrong, answer exists) is sticky for up to 7 days against the same DB set. Two options: (a) don't cache null picks — costs an LLM call on each retry of an ambiguous goal; (b) cache with a shorter TTL (e.g. 1 hour) — limits stale-null exposure. Current code does option (a) by caching null with the full 7-day TTL, which may be the wrong default. Needs a decision (new `SK-ASK-NNN`).
 
 ## Happy path walkthrough
 

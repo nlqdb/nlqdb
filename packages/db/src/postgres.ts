@@ -55,7 +55,8 @@ export function createPostgresAdapter(opts: PostgresAdapterOptions): DatabaseAda
         {
           attributes: {
             "db.system": "postgresql",
-            "db.statement": redactPii(sqlText),
+            // SK-OBS-009 — cap at 4096 chars to keep spans exportable.
+            "db.statement": redactPii(sqlText).slice(0, 4096),
             "db.operation.name": operation,
           },
         },
