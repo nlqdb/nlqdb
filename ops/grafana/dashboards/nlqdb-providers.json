@@ -244,7 +244,7 @@
       },
       "targets": [{
         "datasource": { "type": "prometheus", "uid": "grafanacloud-prom" },
-        "expr": "histogram_quantile(0.50, sum(rate(nlqdb_llm_duration_ms_bucket[5m])) by (le, provider, operation))",
+        "expr": "histogram_quantile(0.50, sum(rate(nlqdb_llm_duration_ms_milliseconds_bucket[5m])) by (le, provider, operation))",
         "legendFormat": "p50 {{provider}} / {{operation}}", "refId": "A"
       }]
     },
@@ -274,7 +274,7 @@
       },
       "targets": [{
         "datasource": { "type": "prometheus", "uid": "grafanacloud-prom" },
-        "expr": "histogram_quantile(0.99, sum(rate(nlqdb_llm_duration_ms_bucket[5m])) by (le, provider, operation))",
+        "expr": "histogram_quantile(0.99, sum(rate(nlqdb_llm_duration_ms_milliseconds_bucket[5m])) by (le, provider, operation))",
         "legendFormat": "p99 {{provider}} / {{operation}}", "refId": "A"
       }]
     },

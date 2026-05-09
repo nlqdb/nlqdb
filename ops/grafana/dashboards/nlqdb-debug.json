@@ -20,8 +20,8 @@
     {
       "id": 1,
       "type": "stat",
-      "title": "DB errors (3 h)",
-      "description": "db.query spans with ERROR status — these map to db_unreachable in the API response.",
+      "title": "DB queries (3 h)",
+      "description": "Total db.query executions. Error-only count not yet available as a separate metric.",
       "gridPos": { "h": 4, "w": 6, "x": 0, "y": 0 },
       "datasource": { "type": "prometheus", "uid": "grafanacloud-prom" },
       "options": {
@@ -44,7 +44,7 @@
       },
       "targets": [{
         "datasource": { "type": "prometheus", "uid": "grafanacloud-prom" },
-        "expr": "sum(increase(nlqdb_db_errors_total[3h]))",
+        "expr": "sum(increase(nlqdb_db_duration_ms_milliseconds_count[3h]))",
         "legendFormat": "errors", "refId": "A", "instant": true
       }]
     },
@@ -297,12 +297,12 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "grafanacloud-prom" },
-          "expr": "histogram_quantile(0.50, sum(rate(nlqdb_llm_duration_ms_bucket{operation=\"plan\"}[5m])) by (le, provider))",
+          "expr": "histogram_quantile(0.50, sum(rate(nlqdb_llm_duration_ms_milliseconds_bucket{operation=\"plan\"}[5m])) by (le, provider))",
           "legendFormat": "p50 {{provider}}", "refId": "A"
         },
         {
           "datasource": { "type": "prometheus", "uid": "grafanacloud-prom" },
-          "expr": "histogram_quantile(0.99, sum(rate(nlqdb_llm_duration_ms_bucket{operation=\"plan\"}[5m])) by (le, provider))",
+          "expr": "histogram_quantile(0.99, sum(rate(nlqdb_llm_duration_ms_milliseconds_bucket{operation=\"plan\"}[5m])) by (le, provider))",
           "legendFormat": "p99 {{provider}}", "refId": "B"
         }
       ]
