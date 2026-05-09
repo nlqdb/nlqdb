@@ -13,7 +13,7 @@ nlqdb answers. The full pitch and architecture are in
 [`docs/architecture.md`](docs/architecture.md). Design-partner research is in
 [`docs/runbook.md §10`](docs/runbook.md).
 
-## 2. Three behavioral principles (non-negotiable)
+## 2. Five behavioral principles (non-negotiable)
 
 Apply these to every edit, regardless of what the user has asked for.
 
@@ -63,7 +63,7 @@ To find every skill affected by a GLOBAL:
 `grep -rn 'GLOBAL-NNN' docs/features/`. To find every doc that
 references it: `grep -rn 'GLOBAL-NNN' docs/`.
 
-### P4. Three documentation rules
+### P4. Four documentation rules
 
 Before documenting any decision or plan:
 
@@ -71,6 +71,11 @@ Before documenting any decision or plan:
 - **D2. Never document ambiguity** — Vague or ambiguous decisions are worse than no documentation. If it's not clear enough to document, it's not ready.
 - **D3. Clarity always increases** — When documenting, **the next steps must be clearer than before**. Never document in a way that leaves the reader more confused.
 - **D4. No doc over 20 KB** — When a markdown file would cross 20 KB, split it before adding text and route from the §5 path map / §6 long-form index / feature index so agents land on the right shard. Edits to a file already over 20 KB must net-shrink it.
+
+### P5. Keep functions simple. Keep high level architecture simple.
+
+Simplify rather than complexify.
+When fixing an issue or adding a feature - always look for a way to remove code, or simplify code rather than adding code. Same for documentations and comments.
 
 ## 3. Tech stack (high-level)
 
