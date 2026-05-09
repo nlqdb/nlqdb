@@ -179,6 +179,9 @@ Canonical names. Every slice MUST use these — no one-off variants.
 | `nlqdb.webhook.stripe`        | Stripe webhook handler.                        |
 | `nlqdb.events.emit`           | Product-event sink dispatch (LogSnag; PostHog optional Phase 2). Wrapped in `ctx.waitUntil` so it runs **after** the response is returned — zero user-facing latency. Server-side only; no client SDK on the marketing site. |
 | `nlqdb.events.sink.query_log` | Tinybird `query_log` Data Source write. One per consumed events-batch. Carries `nlqdb.events.batch_size`, `http.response.status_code`, `nlqdb.events.rows_written`, `nlqdb.events.circuit_open`. Owner: `apps/events-worker/src/sinks/query-log.ts` calling `@nlqdb/db/clickhouse-tinybird/query-log.ts` (`SK-EVENTS-009`). |
+| `nlqdb.workload_analyser.run` | W5 daily cron parent span. Carries `nlqdb.workload_analyser.{query_log_rows, proposals, reshapes_applied, errors, elapsed_ms}`. One per `scheduled()` invocation. Owner: `apps/api/src/workload-analyser/cron.ts` (`SK-MIGRATE-001`). |
+| `nlqdb.workload_analyser.reshape` | One child span per `ReshapeProposal` the cron dispatches. Carries `nlqdb.workload_analyser.{kind, db_id, pipe_pre_existed?, pipe_name?}`. ERROR status when the Tinybird API rejects the create or `schema_hash` drift forces a rollback (`SK-MIGRATE-004`/`SK-MIGRATE-006`). |
+| `db.query` (Tinybird Pipes management) | Per-call span around `createPipe` / `dropPipe` / `getPipe`. Attributes `db.system=other_sql`, `db.operation.name ∈ {PIPE_CREATE, PIPE_DROP, PIPE_GET}`, `db.tinybird.pipe`. Latency lands on the shared `nlqdb.db.duration_ms{operation}` histogram alongside the read path's `PIPE_CALL` and the write path's `EVENTS_WRITE`. Owner: `packages/db/src/clickhouse-tinybird/pipe-management.ts` (`SK-MIGRATE-001`). |
 
 ### 3.2 Metric names
 

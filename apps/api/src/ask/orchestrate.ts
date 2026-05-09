@@ -26,6 +26,7 @@ import {
   DbConfigError,
   type DbRecord,
   type OrchestrateEvent,
+  type PipeAdvisory,
   type QueryResult,
 } from "./types.ts";
 
@@ -43,6 +44,11 @@ export type OrchestrateDeps = {
   // is the EVENTS_QUEUE binding or a no-op (tests / dev without the
   // binding). `emit()` is fire-and-forget — never throws.
   events: EventEmitter;
+  // `SK-MIGRATE-005`: optional D1 lookup against `workload_analyser_runs`
+  // for the resolved `(db_id, query_hash)`. Returns the most recent
+  // audit row's pipe within 24h, or null. Tests omit this dep; production
+  // wires it via `buildAskDeps`.
+  lookupPipeAdvisory?: (dbId: string, queryHash: string) => Promise<PipeAdvisory | null>;
 };
 
 export type OrchestrateOptions = {
@@ -144,6 +150,21 @@ export async function orchestrateAsk(
   // parent span instead of its own (the dedicated `nlqdb.ask.hash`
   // span emission cost more than the work it described).
   const queryHash = await hashGoal(req.goal);
+
+  // `SK-MIGRATE-005`: lookup before `plan_pending` so the SSE event
+  // order is `pipe_advisory? → plan_pending → plan → rows → summary`.
+  // The lookup is best-effort — a failure here never blocks the request.
+  let pipeAdvisory: PipeAdvisory | null = null;
+  if (deps.lookupPipeAdvisory) {
+    try {
+      pipeAdvisory = await deps.lookupPipeAdvisory(req.dbId, queryHash);
+    } catch {
+      // Treat any lookup failure as "no advisory" — informational surface.
+    }
+    if (pipeAdvisory) {
+      await safeEmit({ type: "pipe_advisory", advisory: pipeAdvisory });
+    }
+  }
 
   // Heartbeat before any plan work. Always fires (cache hit OR miss) so
   // SSE clients can render "Thinking…" against a stable event order
@@ -293,6 +314,7 @@ export async function orchestrateAsk(
       rows: result.rows,
       rowCount: result.rowCount,
       ...(summary !== undefined ? { summary } : {}),
+      ...(pipeAdvisory ? { pipe_advisory: pipeAdvisory } : {}),
     },
     pendingAskCompleted,
   };
