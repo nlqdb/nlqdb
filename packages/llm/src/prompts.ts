@@ -4,22 +4,11 @@
 // Prompts live here so every provider reuses the same shape.
 
 import type {
-  ClassifyRequest,
-  DisambiguateRequest,
   EngineClassifyRequest,
   PlanRequest,
+  RouteRequest,
   SummarizeRequest,
 } from "./types.ts";
-
-export const CLASSIFY_SYSTEM = [
-  "You classify a user utterance into one of four intents:",
-  '- "create": the user wants to create a new database or schema ("a blog db", "db named messages", "tracker for my orders").',
-  '- "data_query": read-only data lookup against an existing db (SELECT, aggregate, filter).',
-  '- "meta": schema / metadata question about an existing db ("what tables do I have", "describe X").',
-  '- "destructive": write or destructive op against an existing db (INSERT, UPDATE, DELETE, DROP).',
-  'Respond with strict JSON: {"intent":"<one of the four>","confidence":<0-1 float>}.',
-  "No prose, no code fences.",
-].join("\n");
 
 export const PLAN_SYSTEM = [
   "You translate a natural-language goal into a single SQL statement for the named dialect.",
@@ -53,18 +42,35 @@ export const ENGINE_CLASSIFY_SYSTEM = [
   "No prose, no code fences.",
 ].join("\n");
 
-export const DISAMBIGUATE_SYSTEM = [
-  "You pick which of a user's existing databases best matches their goal.",
-  "Inputs: a natural-language goal and a list of candidate databases (id + slug, sometimes a schema fingerprint).",
-  "Pick the most likely match by reading the slug semantically — slugs are kebab-case names like 'orders-tracker-a4f', 'support-tickets-9xy'.",
-  'If no candidate is a clear match, return {"chosenId":null,...} and explain why in one short sentence.',
-  'Respond with strict JSON: {"chosenId":"<id-from-list-or-null>","confidence":<0-1 float>,"reason":"<one short sentence>"}.',
-  "No prose outside JSON, no code fences.",
+// Merged classifier + disambiguator prompt (SK-ASK-009). One cheap-
+// tier call per `/v1/ask` cache-miss decides what to do with the
+// goal: create a new database, query an existing one, or write to an
+// existing one. Recent-table context is the load-bearing input — it's
+// what lets the LLM tell "insert red and blue tables" (create) from
+// "insert into red and blue" (write).
+export const ROUTE_SYSTEM = [
+  "You decide how to handle a user's natural-language goal against their database.",
+  "You are given:",
+  "- The user's databases (id, slug).",
+  "- Tables they recently used in those databases (dbId, table).",
+  "- The goal text.",
+  "",
+  "Decide:",
+  '- "kind": "create" (the user wants a new database or new tables),',
+  '          "query"  (read existing tables),',
+  '          "write"  (insert/update/delete in existing tables).',
+  '- "targetDbId": which database the goal refers to (null when kind="create").',
+  '- "referencedTables": the tables the goal references (empty when kind="create").',
+  "",
+  "Rule: if the goal mentions tables that are NOT in any recent list AND",
+  'no slug matches, treat it as "create" — the user wants to make those',
+  "tables, not read/write them.",
+  "",
+  "Respond with strict JSON:",
+  '{"kind":"create"|"query"|"write","targetDbId":<id or null>,',
+  ' "referencedTables":[<strings>],"confidence":<0-1 float>,"reason":"<one short sentence>"}',
+  "No prose, no code fences.",
 ].join("\n");
-
-export function buildClassifyUser(req: ClassifyRequest): string {
-  return `Utterance: ${req.utterance}`;
-}
 
 export function buildPlanUser(req: PlanRequest): string {
   return [`Dialect: ${req.dialect}`, `Schema:\n${req.schema}`, `Goal: ${req.goal}`].join("\n\n");
@@ -81,14 +87,18 @@ export function buildEngineClassifyUser(req: EngineClassifyRequest): string {
   return `Goal: ${req.goal}`;
 }
 
-export function buildDisambiguateUser(req: DisambiguateRequest): string {
-  // Cap the candidate list defensively — the API hot path will rarely
-  // hit this, but a runaway tenant with hundreds of DBs shouldn't blow
-  // the cheap-tier prompt budget.
-  const trimmed = req.candidates.slice(0, 25).map((c) => ({
-    id: c.id,
-    slug: c.slug,
-    ...(c.schemaHash ? { schemaHash: c.schemaHash } : {}),
+export function buildRouteUser(req: RouteRequest): string {
+  // Cap defensively. Recent-tables tail is unsorted but bounded by the
+  // MRU producer (SK-ASK-010 / WS1, 100 entries); the dbset is bounded
+  // by the per-tenant DB count (free tier caps far below 25).
+  const dbs = req.dbs.slice(0, 25).map((d) => ({ id: d.id, slug: d.slug }));
+  const recentTables = req.recentTables.slice(0, 100).map((t) => ({
+    dbId: t.dbId,
+    table: t.table,
   }));
-  return [`Goal: ${req.goal}`, `Candidates (JSON):\n${JSON.stringify(trimmed)}`].join("\n\n");
+  return [
+    `Goal: ${req.goal}`,
+    `Databases (JSON):\n${JSON.stringify(dbs)}`,
+    `RecentTables (JSON):\n${JSON.stringify(recentTables)}`,
+  ].join("\n\n");
 }

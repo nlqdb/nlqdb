@@ -15,10 +15,6 @@ import {
 import { SpanStatusCode, trace } from "@opentelemetry/api";
 import {
   type CallOpts,
-  type ClassifyRequest,
-  type ClassifyResponse,
-  type DisambiguateRequest,
-  type DisambiguateResponse,
   type EngineClassifyRequest,
   type EngineClassifyResponse,
   type FailoverReason,
@@ -28,6 +24,8 @@ import {
   type Provider,
   ProviderError,
   type ProviderName,
+  type RouteRequest,
+  type RouteResponse,
   type SchemaInferRequest,
   type SchemaInferResponse,
   type SummarizeRequest,
@@ -41,20 +39,19 @@ export type LLMChains = Partial<Record<LLMOperation, ProviderName[]>>;
 // short enough that a hung provider is detected before the Worker's
 // wall-clock budget burns out.
 export const DEFAULT_TIMEOUTS_MS: Record<LLMOperation, number> = {
-  classify: 1500,
+  // SK-ASK-009 — merged routeAsk runs cheap-tier on the hot path
+  // before plan-cache lookup. One short prompt (goal + dbset +
+  // recent-tables MRU), one short JSON response.
+  route: 1500,
   plan: 5000,
   summarize: 3000,
   // Schema-inference is a one-shot creation event; budget like a
   // hard plan call (PERFORMANCE §2.2 stage budgets) rather than the
   // hot-path `plan` op — it runs once per DB, not per query.
   schema_infer: 8000,
-  // dbId disambiguation rides the same cheap-tier budget as `classify`
-  // (SK-ASK-009 / SK-HDC-011) — short prompt, short response, on the
-  // hot path before plan-cache lookup.
-  disambiguate: 1500,
   // Engine classification (SK-DB-010) — cheap-tier, short prompt, runs
   // once per db.create when the caller didn't pin `engine`. Same
-  // 1500 ms budget as classify/disambiguate.
+  // 1500 ms budget as route.
   engine_classify: 1500,
 };
 
@@ -96,11 +93,10 @@ function breakerOpen(state: BreakerState | undefined, now: number, cooldown: num
 }
 
 export type LLMRouter = {
-  classify(req: ClassifyRequest, opts?: CallOpts): Promise<ClassifyResponse>;
+  route(req: RouteRequest, opts?: CallOpts): Promise<RouteResponse>;
   plan(req: PlanRequest, opts?: CallOpts): Promise<PlanResponse>;
   summarize(req: SummarizeRequest, opts?: CallOpts): Promise<SummarizeResponse>;
   schemaInfer(req: SchemaInferRequest, opts?: CallOpts): Promise<SchemaInferResponse>;
-  disambiguate(req: DisambiguateRequest, opts?: CallOpts): Promise<DisambiguateResponse>;
   engineClassify(req: EngineClassifyRequest, opts?: CallOpts): Promise<EngineClassifyResponse>;
 };
 
@@ -254,7 +250,10 @@ export function createLLMRouter(opts: LLMRouterOptions): LLMRouter {
     );
   }
 
-  async function route<Req, Res>(
+  // Walks the provider chain for `op`, attempting each in order until
+  // one succeeds. Renamed from `route` so it doesn't shadow the
+  // returned router's `route` method (the SK-ASK-009 op).
+  async function dispatch<Req, Res>(
     op: LLMOperation,
     req: Req,
     call: (p: Provider, r: Req, o: CallOpts) => Promise<Res>,
@@ -376,19 +375,24 @@ export function createLLMRouter(opts: LLMRouterOptions): LLMRouter {
   }
 
   return {
-    classify(req, callerOpts) {
-      return route<ClassifyRequest, ClassifyResponse>(
-        "classify",
+    route(req, callerOpts) {
+      return dispatch<RouteRequest, RouteResponse>(
+        "route",
         req,
-        (p, r, o) => p.classify(r, o),
+        (p, r, o) => p.route(r, o),
         callerOpts,
       );
     },
     plan(req, callerOpts) {
-      return route<PlanRequest, PlanResponse>("plan", req, (p, r, o) => p.plan(r, o), callerOpts);
+      return dispatch<PlanRequest, PlanResponse>(
+        "plan",
+        req,
+        (p, r, o) => p.plan(r, o),
+        callerOpts,
+      );
     },
     summarize(req, callerOpts) {
-      return route<SummarizeRequest, SummarizeResponse>(
+      return dispatch<SummarizeRequest, SummarizeResponse>(
         "summarize",
         req,
         (p, r, o) => p.summarize(r, o),
@@ -396,23 +400,15 @@ export function createLLMRouter(opts: LLMRouterOptions): LLMRouter {
       );
     },
     schemaInfer(req, callerOpts) {
-      return route<SchemaInferRequest, SchemaInferResponse>(
+      return dispatch<SchemaInferRequest, SchemaInferResponse>(
         "schema_infer",
         req,
         (p, r, o) => p.schemaInfer(r, o),
         callerOpts,
       );
     },
-    disambiguate(req, callerOpts) {
-      return route<DisambiguateRequest, DisambiguateResponse>(
-        "disambiguate",
-        req,
-        (p, r, o) => p.disambiguate(r, o),
-        callerOpts,
-      );
-    },
     engineClassify(req, callerOpts) {
-      return route<EngineClassifyRequest, EngineClassifyResponse>(
+      return dispatch<EngineClassifyRequest, EngineClassifyResponse>(
         "engine_classify",
         req,
         (p, r, o) => p.engineClassify(r, o),

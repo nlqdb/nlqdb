@@ -10,11 +10,10 @@ import type { ChatMessage } from "./openai-compatible.ts";
 const DEFAULT_BASE = "https://generativelanguage.googleapis.com/v1beta/models";
 
 const DEFAULT_MODELS: Record<LLMOperation, string> = {
-  classify: "gemini-2.5-flash",
+  route: "gemini-2.5-flash",
   plan: "gemini-2.5-flash",
   summarize: "gemini-2.5-flash",
   schema_infer: "gemini-2.5-flash",
-  disambiguate: "gemini-2.5-flash",
   engine_classify: "gemini-2.5-flash",
 };
 

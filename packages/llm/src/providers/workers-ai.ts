@@ -10,11 +10,10 @@ import { httpReason, readBodySafe, truncate } from "./_shared.ts";
 import type { ChatMessage } from "./openai-compatible.ts";
 
 const DEFAULT_MODELS: Record<LLMOperation, string> = {
-  classify: "@cf/meta/llama-3.1-8b-instruct",
+  route: "@cf/meta/llama-3.1-8b-instruct",
   plan: "@cf/meta/llama-3.3-70b-instruct-fp8-fast",
   summarize: "@cf/meta/llama-3.3-70b-instruct-fp8-fast",
   schema_infer: "@cf/meta/llama-3.3-70b-instruct-fp8-fast",
-  disambiguate: "@cf/meta/llama-3.1-8b-instruct",
   engine_classify: "@cf/meta/llama-3.1-8b-instruct",
 };
 

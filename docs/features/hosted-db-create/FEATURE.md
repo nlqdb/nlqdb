@@ -4,7 +4,7 @@ description: Hosted db.create — typed-plan SchemaPlan, deterministic DDL compi
 when-to-load:
   globs:
     - apps/api/src/db-create/**
-    - apps/api/src/ask/classifier.ts
+    - apps/api/src/ask/route-ask.ts
     - apps/api/src/ask/sql-validate-ddl.ts
     - packages/llm/src/prompts/schema-inference.ts
   topics: [db.create, typed-plan, schema-inference, schema-plan, provisioner, semantic-layer, ddl, classifier, dbid-resolution]
@@ -16,7 +16,7 @@ when-to-load:
 **Status:** planned (Phase 1 — design locked in [`docs/architecture.md` §3.6](../../architecture.md), implementation pending)
 **Owners (code):**
 - `apps/api/src/db-create/**` (orchestrator, infer-schema, compile-ddl, neon-provision)
-- `apps/api/src/ask/classifier.ts` (kind classifier on the `/v1/ask` entry)
+- `apps/api/src/ask/route-ask.ts` (merged kind + dbId classifier on the `/v1/ask` entry — SK-ASK-009)
 - `apps/api/src/ask/sql-validate-ddl.ts` (DDL-path validator, separate from the read/write allowlist)
 - `packages/llm/src/prompts/schema-inference.ts` (typed-plan prompt)
 
@@ -31,7 +31,7 @@ when-to-load:
 ## Touchpoints — read this skill before editing
 
 - `apps/api/src/db-create/**` (canonical implementation: orchestrator + sub-modules)
-- `apps/api/src/ask/classifier.ts` (cheap-tier kind classifier; routes `kind=create` here)
+- `apps/api/src/ask/route-ask.ts` (merged cheap-tier classifier; routes `kind=create` here — SK-ASK-009)
 - `apps/api/src/ask/sql-validate-ddl.ts` (DDL validator path; split from read/write allowlist)
 - `apps/api/src/ask/orchestrate.ts` (the consumer that delegates `kind=create` to this skill)
 - `packages/llm/src/prompts/schema-inference.ts` (the typed-plan prompt)
@@ -81,6 +81,7 @@ when-to-load:
 
 ### SK-HDC-005 — `dbId` resolution: deterministic fast-path then cheap-tier LLM, with confidence floor + visible echo
 
+- **Status:** superseded by SK-ASK-009 (in `docs/features/ask-pipeline/FEATURE.md`) — this block was a mirror of SK-ASK-003 on the create-side; the merged `routeAsk` decision now owns dbId resolution for both arms.
 - **Decision:** When `dbId` is absent on `/v1/ask`: kind=create routes the typed-plan create path (SK-HDC-001) unchanged; for kind=query|write — 0 dbs → CREATE; 1 db → auto-target; 2+ dbs → slug-substring fast-path → KV cache → cheap-tier `llm.disambiguate`, with `confidence ≥ 0.7` floor and `selected_db` echo on auto-target. Below the floor the handler returns `409 candidate_dbs` ranked by score. CLI / MCP keep their deterministic fallbacks (MRU prompt / elicitation). Mirror of `SK-ASK-003` on the create-side.
 - **Core value:** Effortless UX, Goal-first, Honest latency
 - **Why:** A bare deterministic 409 paid a UX wall on goal-first chat. Wrong-tenant risk is contained by the confidence floor + visible echo (wrong picks are not silent) + one-click rail recovery. Writes still pass the SK-HDC-006 validator split + SK-ONBOARD-004 confirm-diff gate, so a wrong-tenant destructive call requires both a wrong LLM pick and a user-approved diff naming the wrong table.
@@ -152,7 +153,7 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 - **GLOBAL-005** — Every mutation accepts `Idempotency-Key`.
   - *In this skill:* db.create is a mutation. The `(user_id, key)` store dedupes the entire pipeline — classifier + LLM call + DDL + provision — so a retried create returns the same `{ db, pk_live, rows, plan }` byte-for-byte and never double-allocates a Postgres schema. Anonymous-mode callers (no `user_id`) dedupe by `(anon_device_id, key)` from the 72h `localStorage` token (`SK-AUTH-*`).
 - **GLOBAL-014** — OTel span on every external call (DB, LLM, HTTP, queue).
-  - *In this skill:* the create path emits four spans per call: `llm.classify` (cheap-tier `kind` decision), `llm.schema_infer` (planner-tier SchemaPlan generation), `db.query` (per-statement; provisioner emits one per `CREATE TABLE` / `CREATE INDEX` / sample-row insert), `db.transaction` (the BEGIN…COMMIT wrapping the DDL batch). All match `docs/performance.md` §3 names; new spans land in the catalog before they land in code.
+  - *In this skill:* the create path emits four spans per call: `llm.route` (cheap-tier merged kind + dbId decision — SK-ASK-009), `llm.schema_infer` (planner-tier SchemaPlan generation), `db.query` (per-statement; provisioner emits one per `CREATE TABLE` / `CREATE INDEX` / sample-row insert), `db.transaction` (the BEGIN…COMMIT wrapping the DDL batch). All match `docs/performance.md` §3 names; new spans land in the catalog before they land in code.
 - **GLOBAL-017** — Two endpoints, two CLI verbs, one chat box — one way to do each thing.
   - *In this skill:* SK-HDC-001 is the direct application of this GLOBAL on the create surface — `/v1/ask` does create, query, and write; there is no `/v1/db/new`. Phase 4's BYO connect *is* a separate endpoint (`POST /v1/db/connect` per `docs/architecture.md §3.6.7`) because it's an authoring action with different auth shape, not a data operation; SK-HDC-001 explicitly carves that exception.
 - **GLOBAL-020** — No "pick a region", no config files in the first 60s.

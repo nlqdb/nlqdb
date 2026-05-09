@@ -40,7 +40,7 @@ function stubLLM(
   opts: { plan?: { sql: string } | Error; summary?: { summary: string } | Error } = {},
 ) {
   return {
-    classify: vi.fn(),
+    route: vi.fn(),
     plan: vi.fn(async () => {
       const r = opts.plan ?? { sql: "SELECT 1" };
       if (r instanceof Error) throw r;
@@ -52,7 +52,6 @@ function stubLLM(
       return r;
     }),
     schemaInfer: vi.fn(),
-    disambiguate: vi.fn(),
     // SK-DB-010 — kept on every LLMRouter stub so contract widening
     // doesn't cascade into orchestrator-test failures.
     engineClassify: vi.fn(),

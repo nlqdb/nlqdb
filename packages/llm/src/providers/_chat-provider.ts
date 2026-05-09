@@ -1,7 +1,8 @@
 // Generic provider builder. Every chat-style provider plugs in a
-// per-wire-format `callChat` and gets the four operations (classify /
-// plan / summarize / schemaInfer) plumbed identically — same prompts,
-// same JSON parsing, same `Provider` shape.
+// per-wire-format `callChat` and gets the shared operations
+// (route / plan / summarize / schemaInfer / engineClassify) plumbed
+// identically — same prompts, same JSON parsing, same `Provider`
+// shape.
 //
 // Each provider file shrinks to ~25 lines of "name + models + how to
 // call my API." Adding a 5th provider becomes a config change, not a
@@ -9,26 +10,23 @@
 
 import { buildSchemaInferUser, SCHEMA_INFER_SYSTEM } from "../prompts/schema-inference.ts";
 import {
-  buildClassifyUser,
-  buildDisambiguateUser,
   buildEngineClassifyUser,
   buildPlanUser,
+  buildRouteUser,
   buildSummarizeUser,
-  CLASSIFY_SYSTEM,
-  DISAMBIGUATE_SYSTEM,
   ENGINE_CLASSIFY_SYSTEM,
   PLAN_SYSTEM,
+  ROUTE_SYSTEM,
   SUMMARIZE_SYSTEM,
 } from "../prompts.ts";
 import type {
   CallOpts,
-  ClassifyResponse,
-  DisambiguateResponse,
   EngineClassifyResponse,
   LLMOperation,
   PlanResponse,
   Provider,
   ProviderName,
+  RouteResponse,
   SchemaInferResponse,
 } from "../types.ts";
 import { parseJsonResponse } from "./_shared.ts";
@@ -55,17 +53,17 @@ export function createChatProvider(impl: ChatProviderImpl): Provider {
   return {
     name: impl.name,
     model: (op) => impl.models[op],
-    async classify(req, opts = {}) {
+    async route(req, opts = {}) {
       const raw = await impl.callChat({
-        model: impl.models.classify,
+        model: impl.models.route,
         messages: [
-          { role: "system", content: CLASSIFY_SYSTEM },
-          { role: "user", content: buildClassifyUser(req) },
+          { role: "system", content: ROUTE_SYSTEM },
+          { role: "user", content: buildRouteUser(req) },
         ],
         jsonMode: true,
         opts,
       });
-      return parseJsonResponse<ClassifyResponse>(raw);
+      return parseJsonResponse<RouteResponse>(raw);
     },
     async plan(req, opts = {}) {
       const raw = await impl.callChat({
@@ -104,21 +102,9 @@ export function createChatProvider(impl: ChatProviderImpl): Provider {
       // Caller validates against the canonical Zod schema in
       // `@nlqdb/db/types`. We just hand back the parsed object;
       // wrapping in `{plan}` keeps the response shape uniform with
-      // classify/plan/summarize.
+      // route/plan/summarize.
       const parsed = parseJsonResponse<Record<string, unknown>>(raw);
       return { plan: parsed } satisfies SchemaInferResponse;
-    },
-    async disambiguate(req, opts = {}) {
-      const raw = await impl.callChat({
-        model: impl.models.disambiguate,
-        messages: [
-          { role: "system", content: DISAMBIGUATE_SYSTEM },
-          { role: "user", content: buildDisambiguateUser(req) },
-        ],
-        jsonMode: true,
-        opts,
-      });
-      return parseJsonResponse<DisambiguateResponse>(raw);
     },
     async engineClassify(req, opts = {}) {
       const raw = await impl.callChat({

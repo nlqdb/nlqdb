@@ -24,10 +24,10 @@ when-to-load:
 
 ### SK-LLM-001 — Tiered routing — never send all traffic to a frontier model
 
-- **Decision:** LLM traffic is split across tiers by job: hot-path classification (Tier 1, cheap nano), schema embedding (Tier 1), NL→plan workhorse (Tier 2, ~80% of cost), hard-plan / multi-engine reasoning (Tier 3, ≤5%), result summarization (Tier 1). Each tier names a specific model for paid and a free fallback. Frontier models never receive all traffic.
+- **Decision:** LLM traffic is split across tiers by job: hot-path routing (Tier 1, cheap nano), schema embedding (Tier 1), NL→plan workhorse (Tier 2, ~80% of cost), hard-plan / multi-engine reasoning (Tier 3, ≤5%), result summarization (Tier 1). Each tier names a specific model for paid and a free fallback. Frontier models never receive all traffic.
 - **Core value:** Free, Fast, Bullet-proof
-- **Why:** A flat "use the best model for everything" policy turns every classify-or-summarize step into a Sonnet-priced call. Tiering captures the reality that 80%+ of LLM calls are cheap intents (route the request, summarize 5 rows) where a nano model is indistinguishable in quality from a frontier model. The plan tier is where quality matters, and that's where we spend the money.
-- **Consequence in code:** The router exposes operations `{classify, plan, summarize, schema_infer}` today, with `hard` and `embed` planned. Callers pass the operation they need; the router chooses the model. New operations require a `SK-LLM-NNN` decision (e.g. `SK-LLM-012` for `schema_infer`) and a row in the catalog at `docs/performance.md §3.1` + `docs/architecture.md §7`. Sending all traffic to one model is a CI-asserted regression (cost-test).
+- **Why:** A flat "use the best model for everything" policy turns every route-or-summarize step into a Sonnet-priced call. Tiering captures the reality that 80%+ of LLM calls are cheap intents (route the request, summarize 5 rows) where a nano model is indistinguishable in quality from a frontier model. The plan tier is where quality matters, and that's where we spend the money.
+- **Consequence in code:** The router exposes operations `{route, plan, summarize, schema_infer, engine_classify}` today, with `hard` and `embed` planned. Callers pass the operation they need; the router chooses the model. New operations require a `SK-LLM-NNN` decision (e.g. `SK-LLM-012` for `schema_infer`) and a row in the catalog at `docs/performance.md §3.1` + `docs/architecture.md §7`. Sending all traffic to one model is a CI-asserted regression (cost-test).
 - **Alternatives rejected:** Always-frontier — predictable bills that scale linearly with traffic. Always-cheapest — `nl→plan` accuracy collapses below the 70% bar `docs/features/llm-router/FEATURE.md` flags. Per-call manual model pick — leaks model decisions into 50 call sites.
 - **Source:** docs/architecture.md §7
 
@@ -42,10 +42,10 @@ when-to-load:
 
 ### SK-LLM-003 — Day-1 strict-$0 chain: Gemini Flash → Groq → Workers-AI → OpenRouter free
 
-- **Decision:** Until startup credits land, the `plan` tier chain is `[gemini_flash_free, groq_llama70b_free, openrouter_free]` (with `workers_ai` as a non-US backup). The `classify` tier uses `groq_llama8b_free` with `workers_ai` as the geo backup. Embeddings use Workers AI bge-base-en-v1.5. The chain is configured via env var, not code.
+- **Decision:** Until startup credits land, the `plan` tier chain is `[gemini_flash_free, groq_llama70b_free, openrouter_free]` (with `workers_ai` as a non-US backup). The `route` tier uses `groq_llama8b_free` with `workers_ai` as the geo backup. Embeddings use Workers AI bge-base-en-v1.5. The chain is configured via env var, not code.
 - **Core value:** Free, Bullet-proof, Honest latency
-- **Why:** Every provider in the chain has a no-card free tier (per `docs/architecture.md §7.1`): Gemini 500 RPD plan / 250k TPM, Groq 14,400 RPD on 8B / 1,000 RPD on 70B, Workers AI 10k Neurons/day, OpenRouter ~200 RPD. Stacked, this gives ~500 plan generations + ~14,400 classifications per day — comfortably above Phase 1's exit criteria after the plan cache (60–80% hit rate). Card-free is the activation guarantee in `GLOBAL-013`.
-- **Consequence in code:** Day-1 deploy reads `LLM_CHAIN_PLAN`, `LLM_CHAIN_CLASSIFY`, `LLM_CHAIN_SUMMARIZE` env vars; defaults are the strict-$0 chain. All four free providers are implemented in `packages/llm/src/providers/`; rotating the chain is a redeploy, not a code change.
+- **Why:** Every provider in the chain has a no-card free tier (per `docs/architecture.md §7.1`): Gemini 500 RPD plan / 250k TPM, Groq 14,400 RPD on 8B / 1,000 RPD on 70B, Workers AI 10k Neurons/day, OpenRouter ~200 RPD. Stacked, this gives ~500 plan generations + ~14,400 routings per day — comfortably above Phase 1's exit criteria after the plan cache (60–80% hit rate). Card-free is the activation guarantee in `GLOBAL-013`.
+- **Consequence in code:** Day-1 deploy reads `LLM_CHAIN_PLAN`, `LLM_CHAIN_ROUTE`, `LLM_CHAIN_SUMMARIZE` env vars; defaults are the strict-$0 chain. All four free providers are implemented in `packages/llm/src/providers/`; rotating the chain is a redeploy, not a code change.
 - **Alternatives rejected:** Single free provider — one outage kills the product. Wait for credits — punts launch by weeks; `docs/architecture.md §0` says we ship without spending money.
 - **Source:** docs/architecture.md §7.1 · docs/features/llm-router/FEATURE.md "Realistic timeline"
 
@@ -69,7 +69,7 @@ when-to-load:
 
 ### SK-LLM-006 — `gen_ai.*` OTel semconv on every LLM span; spans use canonical names from the catalog
 
-- **Decision:** Every LLM call emits an OTel span using the canonical names from `docs/performance.md §3.1` (`llm.classify`, `llm.plan`, `llm.summarize`) with `gen_ai.system`, `gen_ai.request.model`, `gen_ai.response.model` attributes (OTel semconv 1.37). Provider, model, operation, and outcome are first-class labels; cardinality budgets are in `docs/performance.md §3.3`.
+- **Decision:** Every LLM call emits an OTel span using the canonical names from `docs/performance.md §3.1` (`llm.route`, `llm.plan`, `llm.summarize`, `llm.schema_infer`, `llm.engine_classify`) with `gen_ai.system`, `gen_ai.request.model`, `gen_ai.response.model` attributes (OTel semconv 1.37). Provider, model, operation, and outcome are first-class labels; cardinality budgets are in `docs/performance.md §3.3`.
 - **Core value:** Honest latency, Bullet-proof, Fast
 - **Why:** The runtime decision of "which provider answered this call" is invisible without spans — and that is the most expensive question to answer the wrong way (a provider quality drop costs accuracy across every cache miss). `gen_ai.*` semconv is the cross-vendor standard that lets dashboards in Grafana / Honeycomb / Axiom share one schema. The explicit cardinality budget keeps Grafana free-tier costs flat.
 - **Consequence in code:** `packages/llm/src/router.ts` wraps every provider call in the canonical span with `gen_ai.*` attributes and increments `nlqdb.llm.calls.total{provider, operation, status}` plus `nlqdb.llm.duration_ms{provider, operation}`. Failovers emit `nlqdb.llm.failover.total{from_provider, to_provider, reason}`. New providers must wire these emissions before merge (CI assertion).
@@ -112,13 +112,13 @@ when-to-load:
 - **Alternatives rejected:** Cache only on second hit — wastes the first call; same cost as no-cache for a one-shot query. Cache off for "expensive" queries — every cached-but-expensive plan would be the one we discarded.
 - **Source:** docs/architecture.md §7 (cost-control rule 1) · [GLOBAL-006](../../decisions/GLOBAL-006-plan-cache-content-addressing.md)
 
-### SK-LLM-011 — Self-host the classifier once we hit ~50 k queries/day
+### SK-LLM-011 — Self-host the cheap-tier router once we hit ~50 k queries/day
 
-- **Decision:** When traffic crosses ~50 k queries/day, we self-host the classify tier on a single A10G on Modal (quantized 8B Llama). Cost: ~$200/mo flat. Plan and hard tiers stay on hosted providers indefinitely.
+- **Decision:** When traffic crosses ~50 k queries/day, we self-host the cheap-tier `route` (and `engine_classify`) calls on a single A10G on Modal (quantized 8B Llama). Cost: ~$200/mo flat. Plan and hard tiers stay on hosted providers indefinitely.
 - **Core value:** Free, Bullet-proof, Open source
-- **Why:** At ~50 k queries/day, classify-tier hosted cost crosses the flat-Modal threshold. Self-hosting turns a per-call cost into a fixed cost and removes an external dependency from the hottest path. Plan-tier compute is too uneven to self-host economically — we stay on hosted providers there.
-- **Consequence in code:** Provider implementation `modal_llama8b` already lands behind a feature flag; flipping the flag rolls classify traffic over. Failover chain stays Groq → Modal → Workers-AI so a Modal outage doesn't degrade classification accuracy. The 50k/day threshold is dashboard-monitored.
-- **Alternatives rejected:** Self-host plan tier — bursty plan workloads cost more on flat A10G than on per-call paid. Stay on hosted forever — once we hit 200k/day classify cost crosses $1k/mo.
+- **Why:** At ~50 k queries/day, cheap-tier hosted cost crosses the flat-Modal threshold. Self-hosting turns a per-call cost into a fixed cost and removes an external dependency from the hottest path. Plan-tier compute is too uneven to self-host economically — we stay on hosted providers there.
+- **Consequence in code:** Provider implementation `modal_llama8b` already lands behind a feature flag; flipping the flag rolls `route` traffic over. Failover chain stays Groq → Modal → Workers-AI so a Modal outage doesn't degrade routing accuracy. The 50k/day threshold is dashboard-monitored.
+- **Alternatives rejected:** Self-host plan tier — bursty plan workloads cost more on flat A10G than on per-call paid. Stay on hosted forever — once we hit 200k/day cheap-tier cost crosses $1k/mo.
 - **Source:** docs/architecture.md §7 (cost-control rule 5)
 
 ### SK-LLM-012 — `schema_infer` is a distinct router operation, not an alias of `plan`

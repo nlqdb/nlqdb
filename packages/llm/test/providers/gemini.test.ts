@@ -1,21 +1,42 @@
 import { describe, expect, it } from "vitest";
 import { createGeminiProvider } from "../../src/providers/gemini.ts";
-import type { ProviderError } from "../../src/types.ts";
+import type { ProviderError, RouteRequest } from "../../src/types.ts";
 import { geminiResponse, mockFetch } from "../_fixtures.ts";
 
 const apiKey = "AIza-test";
 
+const routeReq: RouteRequest = {
+  goal: "show revenue",
+  dbs: [],
+  recentTables: [],
+};
+
 describe("createGeminiProvider", () => {
-  it("classify parses JSON from candidates[0].content.parts[0].text", async () => {
+  it("route parses JSON from candidates[0].content.parts[0].text", async () => {
     const provider = createGeminiProvider({ apiKey });
     const fetch = mockFetch([
       {
         match: /generativelanguage\.googleapis\.com/,
-        respond: () => geminiResponse(JSON.stringify({ intent: "data_query", confidence: 0.95 })),
+        respond: () =>
+          geminiResponse(
+            JSON.stringify({
+              kind: "query",
+              targetDbId: null,
+              referencedTables: [],
+              confidence: 0.95,
+              reason: "ok",
+            }),
+          ),
       },
     ]);
-    const res = await provider.classify({ utterance: "u" }, { fetch });
-    expect(res).toEqual({ intent: "data_query", confidence: 0.95 });
+    const res = await provider.route(routeReq, { fetch });
+    expect(res).toEqual({
+      kind: "query",
+      targetDbId: null,
+      referencedTables: [],
+      confidence: 0.95,
+      reason: "ok",
+    });
   });
 
   it("plan parses JSON response", async () => {
@@ -41,7 +62,7 @@ describe("createGeminiProvider", () => {
 
   it("model() returns the configured Gemini model", () => {
     const provider = createGeminiProvider({ apiKey });
-    expect(provider.model("classify")).toBe("gemini-2.5-flash");
+    expect(provider.model("route")).toBe("gemini-2.5-flash");
     expect(provider.model("plan")).toBe("gemini-2.5-flash");
   });
 
@@ -50,7 +71,7 @@ describe("createGeminiProvider", () => {
     const fetch = mockFetch([
       { match: /generativelanguage/, respond: () => new Response("nope", { status: 401 }) },
     ]);
-    await expect(provider.classify({ utterance: "x" }, { fetch })).rejects.toMatchObject({
+    await expect(provider.route(routeReq, { fetch })).rejects.toMatchObject({
       reason: "http_4xx",
       status: 401,
     } satisfies Partial<ProviderError>);
@@ -71,11 +92,19 @@ describe("createGeminiProvider", () => {
           url = req.url;
           goog = req.headers.get("x-goog-api-key");
           auth = req.headers.get("authorization");
-          return geminiResponse(JSON.stringify({ intent: "meta", confidence: 1 }));
+          return geminiResponse(
+            JSON.stringify({
+              kind: "query",
+              targetDbId: null,
+              referencedTables: [],
+              confidence: 1,
+              reason: "ok",
+            }),
+          );
         },
       },
     ]);
-    await provider.classify({ utterance: "x" }, { fetch });
+    await provider.route(routeReq, { fetch });
     expect(url).not.toContain(apiKey);
     expect(url).not.toContain("key=");
     expect(goog).toBe(apiKey);

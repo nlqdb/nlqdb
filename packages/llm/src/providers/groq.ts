@@ -9,16 +9,14 @@ import { openAICompatibleChat } from "./openai-compatible.ts";
 const DEFAULT_BASE_URL = "https://api.groq.com/openai/v1";
 
 const DEFAULT_MODELS: Record<LLMOperation, string> = {
-  classify: "llama-3.1-8b-instant",
+  // SK-ASK-009 — merged routeAsk rides the cheap-tier 8B model. Prompt
+  // is short (goal + dbset + recent-tables MRU), budget is 1500 ms.
+  route: "llama-3.1-8b-instant",
   plan: "llama-3.3-70b-versatile",
   summarize: "llama-3.3-70b-versatile",
   schema_infer: "llama-3.3-70b-versatile",
-  // dbId disambiguation rides the same cheap-tier 8B model as `classify`
-  // (SK-ASK-009 / SK-HDC-011) — the prompt is short (slugs + hashes)
-  // and the budget is the same 1500 ms.
-  disambiguate: "llama-3.1-8b-instant",
   // Engine classification (SK-DB-010) — short prompt (the engine-fit
-  // table + one goal sentence), cheap-tier model, same budget as classify.
+  // table + one goal sentence), cheap-tier model, same budget as route.
   engine_classify: "llama-3.1-8b-instant",
 };
 

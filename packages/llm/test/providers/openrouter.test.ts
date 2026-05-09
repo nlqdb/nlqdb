@@ -1,20 +1,36 @@
 import { describe, expect, it } from "vitest";
 import { createOpenRouterProvider } from "../../src/providers/openrouter.ts";
+import type { RouteRequest } from "../../src/types.ts";
 import { mockFetch, openAIChatResponse } from "../_fixtures.ts";
 
 const apiKey = "sk-or-test";
 
+const routeReq: RouteRequest = {
+  goal: "what tables?",
+  dbs: [],
+  recentTables: [],
+};
+
 describe("createOpenRouterProvider", () => {
-  it("classify parses JSON response", async () => {
+  it("route parses JSON response", async () => {
     const provider = createOpenRouterProvider({ apiKey });
     const fetch = mockFetch([
       {
         match: /openrouter\.ai/,
-        respond: () => openAIChatResponse(JSON.stringify({ intent: "meta", confidence: 0.7 })),
+        respond: () =>
+          openAIChatResponse(
+            JSON.stringify({
+              kind: "query",
+              targetDbId: null,
+              referencedTables: [],
+              confidence: 0.7,
+              reason: "ok",
+            }),
+          ),
       },
     ]);
-    const res = await provider.classify({ utterance: "what tables?" }, { fetch });
-    expect(res.intent).toBe("meta");
+    const res = await provider.route(routeReq, { fetch });
+    expect(res.kind).toBe("query");
   });
 
   it("plan parses JSON response", async () => {
@@ -40,7 +56,7 @@ describe("createOpenRouterProvider", () => {
 
   it("model() reflects :free defaults", () => {
     const provider = createOpenRouterProvider({ apiKey });
-    expect(provider.model("classify")).toBe("meta-llama/llama-3.1-8b-instruct:free");
+    expect(provider.model("route")).toBe("meta-llama/llama-3.1-8b-instruct:free");
     expect(provider.model("plan")).toBe("meta-llama/llama-3.3-70b-instruct:free");
   });
 
@@ -52,11 +68,19 @@ describe("createOpenRouterProvider", () => {
         match: /openrouter\.ai/,
         respond: (req) => {
           capturedAuth = req.headers.get("authorization");
-          return openAIChatResponse(JSON.stringify({ intent: "meta", confidence: 1 }));
+          return openAIChatResponse(
+            JSON.stringify({
+              kind: "query",
+              targetDbId: null,
+              referencedTables: [],
+              confidence: 1,
+              reason: "ok",
+            }),
+          );
         },
       },
     ]);
-    await provider.classify({ utterance: "x" }, { fetch });
+    await provider.route(routeReq, { fetch });
     expect(capturedAuth).toBe("Bearer sk-or-test");
   });
 });
