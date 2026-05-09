@@ -328,11 +328,17 @@ export function compileDdl(plan: SchemaPlan, schemaName: string): CompileDdlResu
     if (sideMissing) return sideMissing;
   }
 
-  // Emission order is locked: CREATE SCHEMA → CREATE TABLE × N (in
-  // plan order) → ALTER ADD FK × N → CREATE INDEX × N. The two-phase
-  // FK pass means table declaration order in the plan never matters.
+  // Emission order is locked: CREATE TABLE × N (in plan order) →
+  // ALTER ADD FK × N → CREATE INDEX × N. The two-phase FK pass means
+  // table declaration order in the plan never matters.
+  //
+  // CREATE SCHEMA is intentionally absent — the provisioner
+  // (neon-provision.ts) creates the schema with IF NOT EXISTS before
+  // running these statements. Emitting CREATE SCHEMA here caused a
+  // double-create failure (the provisioner's CREATE SCHEMA IF NOT EXISTS
+  // succeeds, then this statement's CREATE SCHEMA without IF NOT EXISTS
+  // would fail with "schema already exists" → ddl_execution_failed).
   const statements: string[] = [];
-  statements.push(`CREATE SCHEMA ${quoteIdent(schemaName)};`);
   for (const table of plan.tables) {
     statements.push(compileTable(table, schemaName));
   }

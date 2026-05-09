@@ -9,10 +9,11 @@
 // pg_sleep?" reads exactly this one.
 //
 // What this validates: the byte-string output of
-// `apps/api/src/db-create/compile-ddl.ts` — `CREATE SCHEMA`,
-// `CREATE TABLE`, `ALTER TABLE … ADD CONSTRAINT … FOREIGN KEY …`,
-// `CREATE INDEX`. Anything else is rejected: every destructive verb
-// (DROP / TRUNCATE / GRANT / REVOKE), `pg_catalog` /
+// `apps/api/src/db-create/compile-ddl.ts` — `CREATE TABLE`,
+// `ALTER TABLE … ADD CONSTRAINT … FOREIGN KEY …`, `CREATE INDEX`.
+// (CREATE SCHEMA is not emitted by the compiler; the provisioner
+// creates the schema directly.) Anything else is rejected: every
+// destructive verb (DROP / TRUNCATE / GRANT / REVOKE), `pg_catalog` /
 // `information_schema` references in any RangeVar or qualified
 // FuncCall, and the side-effecting function set per
 // `docs/research-receipts.md §10` (`pg_sleep`, `dblink_*`, `lo_*`,
