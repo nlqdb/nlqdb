@@ -1,0 +1,394 @@
+{
+  "id": null,
+  "uid": "nlqdb-ask-pipeline",
+  "title": "nlqdb — Ask Pipeline",
+  "tags": ["nlqdb"],
+  "schemaVersion": 39,
+  "version": 0,
+  "refresh": "30s",
+  "time": { "from": "now-1h", "to": "now" },
+  "timepicker": {},
+  "timezone": "browser",
+  "graphTooltip": 1,
+  "links": [
+    { "title": "Overview",   "url": "/d/nlqdb-overview",   "type": "link", "icon": "external link", "targetBlank": false },
+    { "title": "Providers",  "url": "/d/nlqdb-providers",  "type": "link", "icon": "external link", "targetBlank": false }
+  ],
+  "annotations": { "list": [] },
+  "templating": { "list": [] },
+  "panels": [
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "Cache hit ratio",
+      "description": "Target: > 80 % after warm-up",
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "grafanacloud-prom" },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "colorMode": "background", "graphMode": "area", "justifyMode": "auto",
+        "orientation": "auto", "textMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent", "min": 0, "max": 100, "decimals": 1,
+          "color": { "mode": "thresholds" },
+          "thresholds": { "mode": "absolute", "steps": [
+            { "color": "red",    "value": null },
+            { "color": "yellow", "value": 50   },
+            { "color": "green",  "value": 80   }
+          ]},
+          "mappings": [{ "type": "special", "options": { "match": "nan", "result": { "text": "No data" } } }]
+        },
+        "overrides": []
+      },
+      "targets": [{
+        "datasource": { "type": "prometheus", "uid": "grafanacloud-prom" },
+        "expr": "100 * sum(rate(nlqdb_cache_plan_hits_total[5m])) / (sum(rate(nlqdb_cache_plan_hits_total[5m])) + sum(rate(nlqdb_cache_plan_misses_total[5m])))",
+        "legendFormat": "hit %", "refId": "A", "instant": true
+      }]
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Ask p50 — cache hit",
+      "description": "SLO: < 200 ms",
+      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "grafanacloud-prom" },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "colorMode": "background", "graphMode": "area", "justifyMode": "auto",
+        "orientation": "auto", "textMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms", "min": 0,
+          "color": { "mode": "thresholds" },
+          "thresholds": { "mode": "absolute", "steps": [
+            { "color": "green",  "value": null },
+            { "color": "yellow", "value": 150  },
+            { "color": "red",    "value": 200  }
+          ]},
+          "mappings": [{ "type": "special", "options": { "match": "nan", "result": { "text": "No data" } } }]
+        },
+        "overrides": []
+      },
+      "targets": [{
+        "datasource": { "type": "prometheus", "uid": "grafanacloud-prom" },
+        "expr": "histogram_quantile(0.50, sum(rate(nlqdb_ask_duration_ms_bucket{cache_hit=\"true\"}[5m])) by (le))",
+        "legendFormat": "p50", "refId": "A", "instant": true
+      }]
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Ask p50 — cache miss",
+      "description": "SLO: < 1 500 ms",
+      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "grafanacloud-prom" },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "colorMode": "background", "graphMode": "area", "justifyMode": "auto",
+        "orientation": "auto", "textMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms", "min": 0,
+          "color": { "mode": "thresholds" },
+          "thresholds": { "mode": "absolute", "steps": [
+            { "color": "green",  "value": null },
+            { "color": "yellow", "value": 1000 },
+            { "color": "red",    "value": 1500 }
+          ]},
+          "mappings": [{ "type": "special", "options": { "match": "nan", "result": { "text": "No data" } } }]
+        },
+        "overrides": []
+      },
+      "targets": [{
+        "datasource": { "type": "prometheus", "uid": "grafanacloud-prom" },
+        "expr": "histogram_quantile(0.50, sum(rate(nlqdb_ask_duration_ms_bucket{cache_hit=\"false\"}[5m])) by (le))",
+        "legendFormat": "p50", "refId": "A", "instant": true
+      }]
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "Ask p99 — cache miss",
+      "description": "SLO: < 3 500 ms",
+      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "grafanacloud-prom" },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "colorMode": "background", "graphMode": "area", "justifyMode": "auto",
+        "orientation": "auto", "textMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms", "min": 0,
+          "color": { "mode": "thresholds" },
+          "thresholds": { "mode": "absolute", "steps": [
+            { "color": "green",  "value": null },
+            { "color": "yellow", "value": 2500 },
+            { "color": "red",    "value": 3500 }
+          ]},
+          "mappings": [{ "type": "special", "options": { "match": "nan", "result": { "text": "No data" } } }]
+        },
+        "overrides": []
+      },
+      "targets": [{
+        "datasource": { "type": "prometheus", "uid": "grafanacloud-prom" },
+        "expr": "histogram_quantile(0.99, sum(rate(nlqdb_ask_duration_ms_bucket{cache_hit=\"false\"}[5m])) by (le))",
+        "legendFormat": "p99", "refId": "A", "instant": true
+      }]
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "Cache-hit latency vs SLO",
+      "description": "Red line = p99 SLO (500 ms). Budget: p50 < 200 ms, p99 < 500 ms.",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 4 },
+      "datasource": { "type": "prometheus", "uid": "grafanacloud-prom" },
+      "options": {
+        "tooltip": { "mode": "multi", "sort": "desc" },
+        "legend": { "calcs": ["mean", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "drawStyle": "line", "lineInterpolation": "linear", "lineWidth": 1,
+            "fillOpacity": 10, "gradientMode": "none", "showPoints": "auto",
+            "spanNulls": false, "stacking": { "group": "A", "mode": "none" },
+            "thresholdsStyle": { "mode": "line" }
+          },
+          "mappings": [],
+          "thresholds": { "mode": "absolute", "steps": [
+            { "color": "transparent", "value": null },
+            { "color": "red",         "value": 500  }
+          ]}
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "grafanacloud-prom" },
+          "expr": "histogram_quantile(0.50, sum(rate(nlqdb_ask_duration_ms_bucket{cache_hit=\"true\"}[5m])) by (le))",
+          "legendFormat": "p50", "refId": "A"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "grafanacloud-prom" },
+          "expr": "histogram_quantile(0.99, sum(rate(nlqdb_ask_duration_ms_bucket{cache_hit=\"true\"}[5m])) by (le))",
+          "legendFormat": "p99", "refId": "B"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "type": "timeseries",
+      "title": "Cache-miss latency vs SLO",
+      "description": "Red line = p99 SLO (3 500 ms). Budget: p50 < 1 500 ms, p99 < 3 500 ms.",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 4 },
+      "datasource": { "type": "prometheus", "uid": "grafanacloud-prom" },
+      "options": {
+        "tooltip": { "mode": "multi", "sort": "desc" },
+        "legend": { "calcs": ["mean", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "drawStyle": "line", "lineInterpolation": "linear", "lineWidth": 1,
+            "fillOpacity": 10, "gradientMode": "none", "showPoints": "auto",
+            "spanNulls": false, "stacking": { "group": "A", "mode": "none" },
+            "thresholdsStyle": { "mode": "line" }
+          },
+          "mappings": [],
+          "thresholds": { "mode": "absolute", "steps": [
+            { "color": "transparent", "value": null },
+            { "color": "red",         "value": 3500 }
+          ]}
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "grafanacloud-prom" },
+          "expr": "histogram_quantile(0.50, sum(rate(nlqdb_ask_duration_ms_bucket{cache_hit=\"false\"}[5m])) by (le))",
+          "legendFormat": "p50", "refId": "A"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "grafanacloud-prom" },
+          "expr": "histogram_quantile(0.99, sum(rate(nlqdb_ask_duration_ms_bucket{cache_hit=\"false\"}[5m])) by (le))",
+          "legendFormat": "p99", "refId": "B"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "type": "timeseries",
+      "title": "Plan cache — hit/miss rate",
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 12 },
+      "datasource": { "type": "prometheus", "uid": "grafanacloud-prom" },
+      "options": {
+        "tooltip": { "mode": "multi", "sort": "desc" },
+        "legend": { "calcs": ["mean", "sum"], "displayMode": "table", "placement": "bottom", "showLegend": true }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "drawStyle": "line", "lineInterpolation": "linear", "lineWidth": 1,
+            "fillOpacity": 20, "gradientMode": "none", "showPoints": "auto",
+            "spanNulls": false, "stacking": { "group": "A", "mode": "none" },
+            "thresholdsStyle": { "mode": "off" }
+          },
+          "mappings": [], "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "grafanacloud-prom" },
+          "expr": "sum(rate(nlqdb_cache_plan_hits_total[5m]))",
+          "legendFormat": "hits", "refId": "A"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "grafanacloud-prom" },
+          "expr": "sum(rate(nlqdb_cache_plan_misses_total[5m]))",
+          "legendFormat": "misses", "refId": "B"
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "type": "piechart",
+      "title": "LLM calls — provider mix",
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 12 },
+      "datasource": { "type": "prometheus", "uid": "grafanacloud-prom" },
+      "options": {
+        "pieType": "pie",
+        "displayLabels": ["name", "percent"],
+        "legend": { "calcs": ["sum"], "displayMode": "table", "placement": "right", "showLegend": true },
+        "tooltip": { "mode": "single", "sort": "none" }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "hideFrom": { "legend": false, "tooltip": false, "viz": false } },
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "targets": [{
+        "datasource": { "type": "prometheus", "uid": "grafanacloud-prom" },
+        "expr": "sum(increase(nlqdb_llm_calls_total[1h])) by (provider)",
+        "legendFormat": "{{provider}}", "refId": "A", "instant": true
+      }]
+    },
+    {
+      "id": 9,
+      "type": "piechart",
+      "title": "LLM calls — operation mix",
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 12 },
+      "datasource": { "type": "prometheus", "uid": "grafanacloud-prom" },
+      "options": {
+        "pieType": "pie",
+        "displayLabels": ["name", "percent"],
+        "legend": { "calcs": ["sum"], "displayMode": "table", "placement": "right", "showLegend": true },
+        "tooltip": { "mode": "single", "sort": "none" }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "hideFrom": { "legend": false, "tooltip": false, "viz": false } },
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "targets": [{
+        "datasource": { "type": "prometheus", "uid": "grafanacloud-prom" },
+        "expr": "sum(increase(nlqdb_llm_calls_total[1h])) by (operation)",
+        "legendFormat": "{{operation}}", "refId": "A", "instant": true
+      }]
+    },
+    {
+      "id": 10,
+      "type": "timeseries",
+      "title": "DB query latency — p50 & p99",
+      "description": "Budget: p50 < 100 ms, p99 < 350 ms (Neon warm pool)",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 20 },
+      "datasource": { "type": "prometheus", "uid": "grafanacloud-prom" },
+      "options": {
+        "tooltip": { "mode": "multi", "sort": "desc" },
+        "legend": { "calcs": ["mean", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "drawStyle": "line", "lineInterpolation": "linear", "lineWidth": 1,
+            "fillOpacity": 10, "gradientMode": "none", "showPoints": "auto",
+            "spanNulls": false, "stacking": { "group": "A", "mode": "none" },
+            "thresholdsStyle": { "mode": "off" }
+          },
+          "mappings": [], "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "grafanacloud-prom" },
+          "expr": "histogram_quantile(0.50, sum(rate(nlqdb_db_duration_ms_bucket[5m])) by (le, operation))",
+          "legendFormat": "p50 {{operation}}", "refId": "A"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "grafanacloud-prom" },
+          "expr": "histogram_quantile(0.99, sum(rate(nlqdb_db_duration_ms_bucket[5m])) by (le, operation))",
+          "legendFormat": "p99 {{operation}}", "refId": "B"
+        }
+      ]
+    },
+    {
+      "id": 11,
+      "type": "timeseries",
+      "title": "LLM plan latency — p50 & p99 by provider",
+      "description": "Budget: p50 < 600 ms, p99 < 1 500 ms (plan operation)",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 20 },
+      "datasource": { "type": "prometheus", "uid": "grafanacloud-prom" },
+      "options": {
+        "tooltip": { "mode": "multi", "sort": "desc" },
+        "legend": { "calcs": ["mean", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "drawStyle": "line", "lineInterpolation": "linear", "lineWidth": 1,
+            "fillOpacity": 10, "gradientMode": "none", "showPoints": "auto",
+            "spanNulls": false, "stacking": { "group": "A", "mode": "none" },
+            "thresholdsStyle": { "mode": "off" }
+          },
+          "mappings": [], "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "grafanacloud-prom" },
+          "expr": "histogram_quantile(0.50, sum(rate(nlqdb_llm_duration_ms_bucket{operation=\"plan\"}[5m])) by (le, provider))",
+          "legendFormat": "p50 {{provider}}", "refId": "A"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "grafanacloud-prom" },
+          "expr": "histogram_quantile(0.99, sum(rate(nlqdb_llm_duration_ms_bucket{operation=\"plan\"}[5m])) by (le, provider))",
+          "legendFormat": "p99 {{provider}}", "refId": "B"
+        }
+      ]
+    }
+  ]
+}
