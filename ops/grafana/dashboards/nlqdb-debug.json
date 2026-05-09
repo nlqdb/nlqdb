@@ -240,7 +240,7 @@
         {
           "datasource": { "type": "tempo", "uid": "grafanacloud-traces" },
           "queryType": "traceql",
-          "query": "{name = \"db.query\" && status = error} | select(db.statement, db.operation, duration)",
+          "query": "{name = \"db.query\" && status = error} | select(db.statement, db.operation.name, duration)",
           "refId": "A",
           "limit": 50,
           "tableType": "spans"

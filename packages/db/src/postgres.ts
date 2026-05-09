@@ -56,7 +56,6 @@ export function createPostgresAdapter(opts: PostgresAdapterOptions): DatabaseAda
           attributes: {
             "db.system": "postgresql",
             "db.statement": redactPii(sqlText),
-            "db.operation": operation,
             "db.operation.name": operation,
           },
         },
