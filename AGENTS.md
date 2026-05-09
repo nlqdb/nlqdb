@@ -74,7 +74,7 @@ Before documenting any decision or plan:
 
 ### P5. Keep functions simple. Keep high level architecture simple.
 
-Simplify rather than complexify.
+Simplify rather than complexify. Each goal must be achieved with minimal steps possible.
 When fixing an issue or adding a feature - always look for a way to remove code, or simplify code rather than adding code. Same for documentations and comments.
 De-prioritize backward compatilibty and prioritze clean code - we are still in a building stage.
 
