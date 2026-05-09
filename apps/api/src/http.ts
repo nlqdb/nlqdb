@@ -15,9 +15,6 @@
 import { ALLOWED_ENGINES, type Engine, isAllowedEngine } from "@nlqdb/db";
 import type { Context } from "hono";
 
-// Re-export so existing consumers (`apps/api/src/index.ts`,
-// `apps/api/test/http.test.ts`) keep importing from `./http.ts`.
-// `@nlqdb/db` is the canonical home — see `packages/db/src/types.ts`.
 export { ALLOWED_ENGINES, isAllowedEngine };
 
 export type GoalDbBody = { goal: string; dbId: string };

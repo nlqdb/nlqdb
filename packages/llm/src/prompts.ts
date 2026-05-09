@@ -33,21 +33,14 @@ export const SUMMARIZE_SYSTEM = [
   "Quote concrete numbers and named entities. No code blocks, no markdown.",
 ].join("\n");
 
-// Engine classifier system prompt (SK-DB-010 / SK-MULTIENG-002). The
-// table below is embedded VERBATIM from
-// `docs/features/multi-engine-adapter/FEATURE.md` SK-MULTIENG-002 — the
-// FEATURE.md is the canonical source. Adding a new engine = add a row
-// there, ship an adapter, then update this prompt to match.
+// Engine-fit table is canonical in `docs/features/multi-engine-adapter/FEATURE.md`
+// SK-MULTIENG-002; engine slugs lowercased here to match the wire `Engine` literal.
 export const ENGINE_CLASSIFY_SYSTEM = [
   "You pick which database engine best fits a user's goal for a new database.",
   "Choose from this engine-fit table (canonical in docs/features/multi-engine-adapter/FEATURE.md SK-MULTIENG-002):",
   "",
   "| Engine | Strong fit | Avoid when | Free-tier ceiling |",
   "|---|---|---|---|",
-  // P1 raised on review (#130): the SK-MULTIENG-002 canonical table uses
-  // Title-case display names; the lowercased form here matches the wire
-  // `Engine` literal so the LLM emits the slug directly. SK update is
-  // pending user decision — see follow-up.
   '| **postgres** (Neon) | OLTP ≤ 500 GB; relational joins / FK / ACID; mixed read+write; tables ≤ ~200 M rows; default for "tracker / app data" goals | aggregation over 100 M+ events; pure append-only analytics; sub-ms KV | 0.5 GB / project (shared across schemas) |',
   "| **clickhouse** (Tinybird) | analytics, time-series, append-heavy; aggregations over millions–billions of events; high-cardinality dimensions; real-time dashboards; 10–100× PG on `GROUP BY` | row-by-row OLTP updates; small mixed read/write; FK-enforced relational | 10 GB + 1 k reads/day; writes don't count |",
   "| **sqlite** (Cloudflare D1, *deferred*) | read-heavy (>90 %) per-tenant DBs; thousands of small isolated DBs; edge-local sub-ms reads; content/catalog | sustained writes (≥ 100 wps cap); cross-tenant joins | 50 k DBs / account × 10 GB each |",
