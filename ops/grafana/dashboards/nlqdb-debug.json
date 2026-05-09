@@ -12,7 +12,13 @@
   "graphTooltip": 1,
   "description": "Span-level investigation. Each row links to the full trace. Use the db_unreachable and llm_failed tables to see the exact SQL that hit Postgres and which LLM provider was used.",
   "links": [
-    { "title": "Overview", "url": "/d/nlqdb-overview", "type": "link", "icon": "external link", "targetBlank": false }
+    {
+      "title": "Overview",
+      "url": "/d/nlqdb-overview",
+      "type": "link",
+      "icon": "external link",
+      "targetBlank": false
+    }
   ],
   "annotations": { "list": [] },
   "templating": { "list": [] },
@@ -26,27 +32,38 @@
       "datasource": { "type": "prometheus", "uid": "grafanacloud-prom" },
       "options": {
         "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
-        "colorMode": "background", "graphMode": "none", "justifyMode": "auto",
-        "orientation": "auto", "textMode": "auto"
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "textMode": "auto"
       },
       "fieldConfig": {
         "defaults": {
-          "unit": "short", "min": 0,
+          "unit": "short",
+          "min": 0,
           "color": { "mode": "thresholds" },
-          "thresholds": { "mode": "absolute", "steps": [
-            { "color": "green",  "value": null },
-            { "color": "yellow", "value": 1    },
-            { "color": "red",    "value": 5    }
-          ]},
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 1 },
+              { "color": "red", "value": 5 }
+            ]
+          },
           "mappings": []
         },
         "overrides": []
       },
-      "targets": [{
-        "datasource": { "type": "prometheus", "uid": "grafanacloud-prom" },
-        "expr": "sum(increase(nlqdb_db_duration_ms_milliseconds_count[3h]))",
-        "legendFormat": "errors", "refId": "A", "instant": true
-      }]
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "grafanacloud-prom" },
+          "expr": "sum(increase(nlqdb_db_duration_ms_milliseconds_count[3h]))",
+          "legendFormat": "errors",
+          "refId": "A",
+          "instant": true
+        }
+      ]
     },
     {
       "id": 2,
@@ -57,27 +74,38 @@
       "datasource": { "type": "prometheus", "uid": "grafanacloud-prom" },
       "options": {
         "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
-        "colorMode": "background", "graphMode": "none", "justifyMode": "auto",
-        "orientation": "auto", "textMode": "auto"
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "textMode": "auto"
       },
       "fieldConfig": {
         "defaults": {
-          "unit": "short", "min": 0,
+          "unit": "short",
+          "min": 0,
           "color": { "mode": "thresholds" },
-          "thresholds": { "mode": "absolute", "steps": [
-            { "color": "green",  "value": null },
-            { "color": "yellow", "value": 1    },
-            { "color": "red",    "value": 5    }
-          ]},
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 1 },
+              { "color": "red", "value": 5 }
+            ]
+          },
           "mappings": []
         },
         "overrides": []
       },
-      "targets": [{
-        "datasource": { "type": "prometheus", "uid": "grafanacloud-prom" },
-        "expr": "sum(increase(nlqdb_llm_calls_total{operation=\"plan\",status=\"error\"}[3h]))",
-        "legendFormat": "errors", "refId": "A", "instant": true
-      }]
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "grafanacloud-prom" },
+          "expr": "sum(increase(nlqdb_llm_calls_total{operation=\"plan\",status=\"error\"}[3h]))",
+          "legendFormat": "errors",
+          "refId": "A",
+          "instant": true
+        }
+      ]
     },
     {
       "id": 3,
@@ -88,27 +116,38 @@
       "datasource": { "type": "prometheus", "uid": "grafanacloud-prom" },
       "options": {
         "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
-        "colorMode": "background", "graphMode": "none", "justifyMode": "auto",
-        "orientation": "auto", "textMode": "auto"
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "textMode": "auto"
       },
       "fieldConfig": {
         "defaults": {
-          "unit": "short", "min": 0,
+          "unit": "short",
+          "min": 0,
           "color": { "mode": "thresholds" },
-          "thresholds": { "mode": "absolute", "steps": [
-            { "color": "green",  "value": null },
-            { "color": "yellow", "value": 1    },
-            { "color": "red",    "value": 10   }
-          ]},
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 1 },
+              { "color": "red", "value": 10 }
+            ]
+          },
           "mappings": []
         },
         "overrides": []
       },
-      "targets": [{
-        "datasource": { "type": "prometheus", "uid": "grafanacloud-prom" },
-        "expr": "sum(increase(nlqdb_llm_failover_total[3h]))",
-        "legendFormat": "failovers", "refId": "A", "instant": true
-      }]
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "grafanacloud-prom" },
+          "expr": "sum(increase(nlqdb_llm_failover_total[3h]))",
+          "legendFormat": "failovers",
+          "refId": "A",
+          "instant": true
+        }
+      ]
     },
     {
       "id": 4,
@@ -119,27 +158,42 @@
       "datasource": { "type": "prometheus", "uid": "grafanacloud-prom" },
       "options": {
         "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
-        "colorMode": "background", "graphMode": "none", "justifyMode": "auto",
-        "orientation": "auto", "textMode": "auto"
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "textMode": "auto"
       },
       "fieldConfig": {
         "defaults": {
-          "unit": "percent", "min": 0, "max": 100, "decimals": 1,
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "decimals": 1,
           "color": { "mode": "thresholds" },
-          "thresholds": { "mode": "absolute", "steps": [
-            { "color": "green",  "value": null },
-            { "color": "yellow", "value": 50   },
-            { "color": "red",    "value": 90   }
-          ]},
-          "mappings": [{ "type": "special", "options": { "match": "nan", "result": { "text": "No data" } } }]
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 50 },
+              { "color": "red", "value": 90 }
+            ]
+          },
+          "mappings": [
+            { "type": "special", "options": { "match": "nan", "result": { "text": "No data" } } }
+          ]
         },
         "overrides": []
       },
-      "targets": [{
-        "datasource": { "type": "prometheus", "uid": "grafanacloud-prom" },
-        "expr": "100 * sum(rate(nlqdb_cache_plan_misses_total[5m])) / (sum(rate(nlqdb_cache_plan_hits_total[5m])) + sum(rate(nlqdb_cache_plan_misses_total[5m])))",
-        "legendFormat": "miss %", "refId": "A", "instant": true
-      }]
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "grafanacloud-prom" },
+          "expr": "100 * sum(rate(nlqdb_cache_plan_misses_total[5m])) / (sum(rate(nlqdb_cache_plan_hits_total[5m])) + sum(rate(nlqdb_cache_plan_misses_total[5m])))",
+          "legendFormat": "miss %",
+          "refId": "A",
+          "instant": true
+        }
+      ]
     },
     {
       "id": 5,
@@ -156,10 +210,13 @@
       "fieldConfig": {
         "defaults": {
           "custom": {
-            "align": "auto", "cellOptions": { "type": "auto" },
-            "inspect": false, "filterable": true
+            "align": "auto",
+            "cellOptions": { "type": "auto" },
+            "inspect": false,
+            "filterable": true
           },
-          "mappings": [], "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] }
+          "mappings": [],
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] }
         },
         "overrides": [
           {
@@ -179,14 +236,16 @@
           }
         ]
       },
-      "targets": [{
-        "datasource": { "type": "tempo", "uid": "grafanacloud-traces" },
-        "queryType": "traceql",
-        "query": "{name = \"db.query\" && status = error} | select(db.statement, db.operation, duration)",
-        "refId": "A",
-        "limit": 50,
-        "tableType": "spans"
-      }]
+      "targets": [
+        {
+          "datasource": { "type": "tempo", "uid": "grafanacloud-traces" },
+          "queryType": "traceql",
+          "query": "{name = \"db.query\" && status = error} | select(db.statement, db.operation, duration)",
+          "refId": "A",
+          "limit": 50,
+          "tableType": "spans"
+        }
+      ]
     },
     {
       "id": 6,
@@ -203,10 +262,13 @@
       "fieldConfig": {
         "defaults": {
           "custom": {
-            "align": "auto", "cellOptions": { "type": "auto" },
-            "inspect": false, "filterable": true
+            "align": "auto",
+            "cellOptions": { "type": "auto" },
+            "inspect": false,
+            "filterable": true
           },
-          "mappings": [], "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] }
+          "mappings": [],
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] }
         },
         "overrides": [
           {
@@ -219,14 +281,16 @@
           }
         ]
       },
-      "targets": [{
-        "datasource": { "type": "tempo", "uid": "grafanacloud-traces" },
-        "queryType": "traceql",
-        "query": "{name = \"llm.plan\"} | select(llm.provider, llm.model, duration)",
-        "refId": "A",
-        "limit": 50,
-        "tableType": "spans"
-      }]
+      "targets": [
+        {
+          "datasource": { "type": "tempo", "uid": "grafanacloud-traces" },
+          "queryType": "traceql",
+          "query": "{name = \"llm.plan\"} | select(llm.provider, llm.model, duration)",
+          "refId": "A",
+          "limit": 50,
+          "tableType": "spans"
+        }
+      ]
     },
     {
       "id": 7,
@@ -236,19 +300,29 @@
       "datasource": { "type": "prometheus", "uid": "grafanacloud-prom" },
       "options": {
         "tooltip": { "mode": "multi", "sort": "desc" },
-        "legend": { "calcs": ["sum"], "displayMode": "table", "placement": "bottom", "showLegend": true }
+        "legend": {
+          "calcs": ["sum"],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        }
       },
       "fieldConfig": {
         "defaults": {
           "unit": "short",
           "color": { "mode": "palette-classic" },
           "custom": {
-            "drawStyle": "bars", "lineWidth": 1, "fillOpacity": 60,
-            "gradientMode": "none", "showPoints": "never", "spanNulls": false,
+            "drawStyle": "bars",
+            "lineWidth": 1,
+            "fillOpacity": 60,
+            "gradientMode": "none",
+            "showPoints": "never",
+            "spanNulls": false,
             "stacking": { "group": "A", "mode": "normal" },
             "thresholdsStyle": { "mode": "off" }
           },
-          "mappings": [], "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] }
+          "mappings": [],
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] }
         },
         "overrides": []
       },
@@ -256,12 +330,14 @@
         {
           "datasource": { "type": "prometheus", "uid": "grafanacloud-prom" },
           "expr": "sum(increase(nlqdb_llm_calls_total{operation=\"plan\",status=\"error\"}[5m]))",
-          "legendFormat": "llm_failed", "refId": "A"
+          "legendFormat": "llm_failed",
+          "refId": "A"
         },
         {
           "datasource": { "type": "prometheus", "uid": "grafanacloud-prom" },
           "expr": "sum(increase(nlqdb_llm_failover_total[5m]))",
-          "legendFormat": "llm_failover", "refId": "B"
+          "legendFormat": "llm_failover",
+          "refId": "B"
         }
       ]
     },
@@ -274,23 +350,33 @@
       "datasource": { "type": "prometheus", "uid": "grafanacloud-prom" },
       "options": {
         "tooltip": { "mode": "multi", "sort": "desc" },
-        "legend": { "calcs": ["mean", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true }
+        "legend": {
+          "calcs": ["mean", "max"],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        }
       },
       "fieldConfig": {
         "defaults": {
           "unit": "ms",
           "color": { "mode": "palette-classic" },
           "custom": {
-            "drawStyle": "line", "lineInterpolation": "linear", "lineWidth": 1,
-            "fillOpacity": 10, "gradientMode": "none", "showPoints": "auto",
-            "spanNulls": false, "stacking": { "group": "A", "mode": "none" },
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "gradientMode": "none",
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": { "group": "A", "mode": "none" },
             "thresholdsStyle": { "mode": "line" }
           },
           "mappings": [],
-          "thresholds": { "mode": "absolute", "steps": [
-            { "color": "transparent", "value": null },
-            { "color": "red",         "value": 1500 }
-          ]}
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [{ "color": "transparent", "value": null }, { "color": "red", "value": 1500 }]
+          }
         },
         "overrides": []
       },
@@ -298,12 +384,14 @@
         {
           "datasource": { "type": "prometheus", "uid": "grafanacloud-prom" },
           "expr": "histogram_quantile(0.50, sum(rate(nlqdb_llm_duration_ms_milliseconds_bucket{operation=\"plan\"}[5m])) by (le, provider))",
-          "legendFormat": "p50 {{provider}}", "refId": "A"
+          "legendFormat": "p50 {{provider}}",
+          "refId": "A"
         },
         {
           "datasource": { "type": "prometheus", "uid": "grafanacloud-prom" },
           "expr": "histogram_quantile(0.99, sum(rate(nlqdb_llm_duration_ms_milliseconds_bucket{operation=\"plan\"}[5m])) by (le, provider))",
-          "legendFormat": "p99 {{provider}}", "refId": "B"
+          "legendFormat": "p99 {{provider}}",
+          "refId": "B"
         }
       ]
     }

@@ -11,9 +11,27 @@
   "timezone": "browser",
   "graphTooltip": 1,
   "links": [
-    { "title": "Ask Pipeline", "url": "/d/nlqdb-ask-pipeline", "type": "link", "icon": "external link", "targetBlank": false },
-    { "title": "Providers",    "url": "/d/nlqdb-providers",    "type": "link", "icon": "external link", "targetBlank": false },
-    { "title": "Auth",         "url": "/d/nlqdb-auth",         "type": "link", "icon": "external link", "targetBlank": false }
+    {
+      "title": "Ask Pipeline",
+      "url": "/d/nlqdb-ask-pipeline",
+      "type": "link",
+      "icon": "external link",
+      "targetBlank": false
+    },
+    {
+      "title": "Providers",
+      "url": "/d/nlqdb-providers",
+      "type": "link",
+      "icon": "external link",
+      "targetBlank": false
+    },
+    {
+      "title": "Auth",
+      "url": "/d/nlqdb-auth",
+      "type": "link",
+      "icon": "external link",
+      "targetBlank": false
+    }
   ],
   "annotations": { "list": [] },
   "templating": { "list": [] },
@@ -27,27 +45,40 @@
       "datasource": { "type": "prometheus", "uid": "grafanacloud-prom" },
       "options": {
         "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
-        "colorMode": "background", "graphMode": "area", "justifyMode": "auto",
-        "orientation": "auto", "textMode": "auto"
+        "colorMode": "background",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "textMode": "auto"
       },
       "fieldConfig": {
         "defaults": {
-          "unit": "ms", "min": 0,
+          "unit": "ms",
+          "min": 0,
           "color": { "mode": "thresholds" },
-          "thresholds": { "mode": "absolute", "steps": [
-            { "color": "green",  "value": null },
-            { "color": "yellow", "value": 300  },
-            { "color": "red",    "value": 500  }
-          ]},
-          "mappings": [{ "type": "special", "options": { "match": "nan", "result": { "text": "No data" } } }]
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 300 },
+              { "color": "red", "value": 500 }
+            ]
+          },
+          "mappings": [
+            { "type": "special", "options": { "match": "nan", "result": { "text": "No data" } } }
+          ]
         },
         "overrides": []
       },
-      "targets": [{
-        "datasource": { "type": "prometheus", "uid": "grafanacloud-prom" },
-        "expr": "histogram_quantile(0.99, sum(rate(nlqdb_ask_duration_ms_bucket{cache_hit=\"true\"}[5m])) by (le))",
-        "legendFormat": "p99", "refId": "A", "instant": true
-      }]
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "grafanacloud-prom" },
+          "expr": "histogram_quantile(0.99, sum(rate(nlqdb_ask_duration_ms_bucket{cache_hit=\"true\"}[5m])) by (le))",
+          "legendFormat": "p99",
+          "refId": "A",
+          "instant": true
+        }
+      ]
     },
     {
       "id": 2,
@@ -58,27 +89,40 @@
       "datasource": { "type": "prometheus", "uid": "grafanacloud-prom" },
       "options": {
         "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
-        "colorMode": "background", "graphMode": "area", "justifyMode": "auto",
-        "orientation": "auto", "textMode": "auto"
+        "colorMode": "background",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "textMode": "auto"
       },
       "fieldConfig": {
         "defaults": {
-          "unit": "ms", "min": 0,
+          "unit": "ms",
+          "min": 0,
           "color": { "mode": "thresholds" },
-          "thresholds": { "mode": "absolute", "steps": [
-            { "color": "green",  "value": null  },
-            { "color": "yellow", "value": 2000  },
-            { "color": "red",    "value": 3500  }
-          ]},
-          "mappings": [{ "type": "special", "options": { "match": "nan", "result": { "text": "No data" } } }]
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 2000 },
+              { "color": "red", "value": 3500 }
+            ]
+          },
+          "mappings": [
+            { "type": "special", "options": { "match": "nan", "result": { "text": "No data" } } }
+          ]
         },
         "overrides": []
       },
-      "targets": [{
-        "datasource": { "type": "prometheus", "uid": "grafanacloud-prom" },
-        "expr": "histogram_quantile(0.99, sum(rate(nlqdb_ask_duration_ms_bucket{cache_hit=\"false\"}[5m])) by (le))",
-        "legendFormat": "p99", "refId": "A", "instant": true
-      }]
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "grafanacloud-prom" },
+          "expr": "histogram_quantile(0.99, sum(rate(nlqdb_ask_duration_ms_bucket{cache_hit=\"false\"}[5m])) by (le))",
+          "legendFormat": "p99",
+          "refId": "A",
+          "instant": true
+        }
+      ]
     },
     {
       "id": 3,
@@ -89,27 +133,41 @@
       "datasource": { "type": "prometheus", "uid": "grafanacloud-prom" },
       "options": {
         "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
-        "colorMode": "background", "graphMode": "area", "justifyMode": "auto",
-        "orientation": "auto", "textMode": "auto"
+        "colorMode": "background",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "textMode": "auto"
       },
       "fieldConfig": {
         "defaults": {
-          "unit": "percent", "min": 0, "decimals": 2,
+          "unit": "percent",
+          "min": 0,
+          "decimals": 2,
           "color": { "mode": "thresholds" },
-          "thresholds": { "mode": "absolute", "steps": [
-            { "color": "green",  "value": null },
-            { "color": "yellow", "value": 0.05 },
-            { "color": "red",    "value": 0.1  }
-          ]},
-          "mappings": [{ "type": "special", "options": { "match": "nan", "result": { "text": "No data" } } }]
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 0.05 },
+              { "color": "red", "value": 0.1 }
+            ]
+          },
+          "mappings": [
+            { "type": "special", "options": { "match": "nan", "result": { "text": "No data" } } }
+          ]
         },
         "overrides": []
       },
-      "targets": [{
-        "datasource": { "type": "prometheus", "uid": "grafanacloud-prom" },
-        "expr": "100 * sum(rate(nlqdb_requests_total{status_class=\"5xx\"}[5m])) / sum(rate(nlqdb_requests_total[5m]))",
-        "legendFormat": "5xx %", "refId": "A", "instant": true
-      }]
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "grafanacloud-prom" },
+          "expr": "100 * sum(rate(nlqdb_requests_total{status_class=\"5xx\"}[5m])) / sum(rate(nlqdb_requests_total[5m]))",
+          "legendFormat": "5xx %",
+          "refId": "A",
+          "instant": true
+        }
+      ]
     },
     {
       "id": 4,
@@ -120,27 +178,42 @@
       "datasource": { "type": "prometheus", "uid": "grafanacloud-prom" },
       "options": {
         "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
-        "colorMode": "background", "graphMode": "area", "justifyMode": "auto",
-        "orientation": "auto", "textMode": "auto"
+        "colorMode": "background",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "textMode": "auto"
       },
       "fieldConfig": {
         "defaults": {
-          "unit": "percent", "min": 0, "max": 100, "decimals": 1,
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "decimals": 1,
           "color": { "mode": "thresholds" },
-          "thresholds": { "mode": "absolute", "steps": [
-            { "color": "red",    "value": null },
-            { "color": "yellow", "value": 50   },
-            { "color": "green",  "value": 80   }
-          ]},
-          "mappings": [{ "type": "special", "options": { "match": "nan", "result": { "text": "No data" } } }]
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "yellow", "value": 50 },
+              { "color": "green", "value": 80 }
+            ]
+          },
+          "mappings": [
+            { "type": "special", "options": { "match": "nan", "result": { "text": "No data" } } }
+          ]
         },
         "overrides": []
       },
-      "targets": [{
-        "datasource": { "type": "prometheus", "uid": "grafanacloud-prom" },
-        "expr": "100 * sum(rate(nlqdb_cache_plan_hits_total[5m])) / (sum(rate(nlqdb_cache_plan_hits_total[5m])) + sum(rate(nlqdb_cache_plan_misses_total[5m])))",
-        "legendFormat": "hit %", "refId": "A", "instant": true
-      }]
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "grafanacloud-prom" },
+          "expr": "100 * sum(rate(nlqdb_cache_plan_hits_total[5m])) / (sum(rate(nlqdb_cache_plan_hits_total[5m])) + sum(rate(nlqdb_cache_plan_misses_total[5m])))",
+          "legendFormat": "hit %",
+          "refId": "A",
+          "instant": true
+        }
+      ]
     },
     {
       "id": 5,
@@ -150,27 +223,41 @@
       "datasource": { "type": "prometheus", "uid": "grafanacloud-prom" },
       "options": {
         "tooltip": { "mode": "multi", "sort": "desc" },
-        "legend": { "calcs": ["mean", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true }
+        "legend": {
+          "calcs": ["mean", "max"],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        }
       },
       "fieldConfig": {
         "defaults": {
           "unit": "reqps",
           "color": { "mode": "palette-classic" },
           "custom": {
-            "drawStyle": "line", "lineInterpolation": "linear", "lineWidth": 1,
-            "fillOpacity": 10, "gradientMode": "none", "showPoints": "auto",
-            "spanNulls": false, "stacking": { "group": "A", "mode": "none" },
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "gradientMode": "none",
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": { "group": "A", "mode": "none" },
             "thresholdsStyle": { "mode": "off" }
           },
-          "mappings": [], "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] }
+          "mappings": [],
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] }
         },
         "overrides": []
       },
-      "targets": [{
-        "datasource": { "type": "prometheus", "uid": "grafanacloud-prom" },
-        "expr": "sum(rate(nlqdb_requests_total[5m])) by (route)",
-        "legendFormat": "{{route}}", "refId": "A"
-      }]
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "grafanacloud-prom" },
+          "expr": "sum(rate(nlqdb_requests_total[5m])) by (route)",
+          "legendFormat": "{{route}}",
+          "refId": "A"
+        }
+      ]
     },
     {
       "id": 6,
@@ -180,19 +267,30 @@
       "datasource": { "type": "prometheus", "uid": "grafanacloud-prom" },
       "options": {
         "tooltip": { "mode": "multi", "sort": "desc" },
-        "legend": { "calcs": ["mean", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true }
+        "legend": {
+          "calcs": ["mean", "max"],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        }
       },
       "fieldConfig": {
         "defaults": {
           "unit": "ms",
           "color": { "mode": "palette-classic" },
           "custom": {
-            "drawStyle": "line", "lineInterpolation": "linear", "lineWidth": 1,
-            "fillOpacity": 10, "gradientMode": "none", "showPoints": "auto",
-            "spanNulls": false, "stacking": { "group": "A", "mode": "none" },
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "gradientMode": "none",
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": { "group": "A", "mode": "none" },
             "thresholdsStyle": { "mode": "off" }
           },
-          "mappings": [], "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] }
+          "mappings": [],
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] }
         },
         "overrides": []
       },
@@ -200,22 +298,26 @@
         {
           "datasource": { "type": "prometheus", "uid": "grafanacloud-prom" },
           "expr": "histogram_quantile(0.50, sum(rate(nlqdb_ask_duration_ms_bucket{cache_hit=\"true\"}[5m])) by (le))",
-          "legendFormat": "hit p50", "refId": "A"
+          "legendFormat": "hit p50",
+          "refId": "A"
         },
         {
           "datasource": { "type": "prometheus", "uid": "grafanacloud-prom" },
           "expr": "histogram_quantile(0.99, sum(rate(nlqdb_ask_duration_ms_bucket{cache_hit=\"true\"}[5m])) by (le))",
-          "legendFormat": "hit p99", "refId": "B"
+          "legendFormat": "hit p99",
+          "refId": "B"
         },
         {
           "datasource": { "type": "prometheus", "uid": "grafanacloud-prom" },
           "expr": "histogram_quantile(0.50, sum(rate(nlqdb_ask_duration_ms_bucket{cache_hit=\"false\"}[5m])) by (le))",
-          "legendFormat": "miss p50", "refId": "C"
+          "legendFormat": "miss p50",
+          "refId": "C"
         },
         {
           "datasource": { "type": "prometheus", "uid": "grafanacloud-prom" },
           "expr": "histogram_quantile(0.99, sum(rate(nlqdb_ask_duration_ms_bucket{cache_hit=\"false\"}[5m])) by (le))",
-          "legendFormat": "miss p99", "refId": "D"
+          "legendFormat": "miss p99",
+          "refId": "D"
         }
       ]
     },
@@ -227,31 +329,44 @@
       "datasource": { "type": "prometheus", "uid": "grafanacloud-prom" },
       "options": {
         "tooltip": { "mode": "multi", "sort": "desc" },
-        "legend": { "calcs": ["mean", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true }
+        "legend": {
+          "calcs": ["mean", "max"],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        }
       },
       "fieldConfig": {
         "defaults": {
           "unit": "percent",
           "color": { "mode": "palette-classic" },
           "custom": {
-            "drawStyle": "line", "lineInterpolation": "linear", "lineWidth": 1,
-            "fillOpacity": 10, "gradientMode": "none", "showPoints": "auto",
-            "spanNulls": false, "stacking": { "group": "A", "mode": "none" },
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "gradientMode": "none",
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": { "group": "A", "mode": "none" },
             "thresholdsStyle": { "mode": "line+area" }
           },
           "mappings": [],
-          "thresholds": { "mode": "absolute", "steps": [
-            { "color": "transparent", "value": null },
-            { "color": "red",         "value": 0.1  }
-          ]}
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [{ "color": "transparent", "value": null }, { "color": "red", "value": 0.1 }]
+          }
         },
         "overrides": []
       },
-      "targets": [{
-        "datasource": { "type": "prometheus", "uid": "grafanacloud-prom" },
-        "expr": "100 * sum(rate(nlqdb_requests_total{status_class=\"5xx\"}[5m])) by (route) / sum(rate(nlqdb_requests_total[5m])) by (route)",
-        "legendFormat": "{{route}}", "refId": "A"
-      }]
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "grafanacloud-prom" },
+          "expr": "100 * sum(rate(nlqdb_requests_total{status_class=\"5xx\"}[5m])) by (route) / sum(rate(nlqdb_requests_total[5m])) by (route)",
+          "legendFormat": "{{route}}",
+          "refId": "A"
+        }
+      ]
     },
     {
       "id": 8,
@@ -261,19 +376,30 @@
       "datasource": { "type": "prometheus", "uid": "grafanacloud-prom" },
       "options": {
         "tooltip": { "mode": "multi", "sort": "desc" },
-        "legend": { "calcs": ["mean", "sum"], "displayMode": "table", "placement": "bottom", "showLegend": true }
+        "legend": {
+          "calcs": ["mean", "sum"],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        }
       },
       "fieldConfig": {
         "defaults": {
           "unit": "reqps",
           "color": { "mode": "palette-classic" },
           "custom": {
-            "drawStyle": "line", "lineInterpolation": "linear", "lineWidth": 1,
-            "fillOpacity": 20, "gradientMode": "none", "showPoints": "auto",
-            "spanNulls": false, "stacking": { "group": "A", "mode": "none" },
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "fillOpacity": 20,
+            "gradientMode": "none",
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": { "group": "A", "mode": "none" },
             "thresholdsStyle": { "mode": "off" }
           },
-          "mappings": [], "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] }
+          "mappings": [],
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] }
         },
         "overrides": []
       },
@@ -281,12 +407,14 @@
         {
           "datasource": { "type": "prometheus", "uid": "grafanacloud-prom" },
           "expr": "sum(rate(nlqdb_cache_plan_hits_total[5m]))",
-          "legendFormat": "hits", "refId": "A"
+          "legendFormat": "hits",
+          "refId": "A"
         },
         {
           "datasource": { "type": "prometheus", "uid": "grafanacloud-prom" },
           "expr": "sum(rate(nlqdb_cache_plan_misses_total[5m]))",
-          "legendFormat": "misses", "refId": "B"
+          "legendFormat": "misses",
+          "refId": "B"
         }
       ]
     }
