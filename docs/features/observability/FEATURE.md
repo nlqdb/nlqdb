@@ -115,6 +115,12 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 
 - **GLOBAL-014** — OTel span on every external call (DB, LLM, HTTP, queue).
 - **GLOBAL-011** — Honest latency — show the live trace; never spinner-lie.
+- **GLOBAL-022** — Recoverable failures retry to success — never surface a fixable error.
+  - *In this skill:* every retry decorates its parent span with
+    `nlqdb.retry.attempt` and increments
+    `nlqdb.retry.total{stage, reason}`. Sustained retry-rate climb
+    is the alert signal that recovery is masking a real upstream
+    regression.
 
 ## Open questions / known unknowns
 

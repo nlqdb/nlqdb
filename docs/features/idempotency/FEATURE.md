@@ -104,6 +104,11 @@ when-to-load:
 Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; index in [`docs/decisions.md`](../../decisions.md)). The list below names the rules that constrain this feature; any skill-local commentary is nested under the rule.
 
 - **GLOBAL-005** — Every mutation accepts `Idempotency-Key`.
+- **GLOBAL-022** — Recoverable failures retry to success — never surface a fixable error.
+  - *In this skill:* the SDK's 3-attempt retry budget for mutations
+    (`SK-SDK-006`) reuses the same `Idempotency-Key` across all
+    attempts, so byte-exact replay (`SK-IDEMP-003`) covers the
+    retry path by construction.
 
 ## Open questions / known unknowns
 

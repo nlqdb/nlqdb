@@ -49,6 +49,7 @@ grep -rn 'GLOBAL-007' docs/features/
 | [GLOBAL-019](./decisions/GLOBAL-019-apache2-open-source-core.md) | Free + Open Source core (Apache-2.0); Cloud is convenience, not a moat | every package — baseline | active |
 | [GLOBAL-020](./decisions/GLOBAL-020-zero-config-first-60s.md) | No "pick a region", no config files in the first 60s | web-app, cli, ask-pipeline | active |
 | [GLOBAL-021](./decisions/GLOBAL-021-external-system-ownership.md) | Each external system has one canonical owning module | every package — baseline | active |
+| [GLOBAL-022](./decisions/GLOBAL-022-recoverable-failures-retry-to-success.md) | Recoverable failures retry to success — never surface a fixable error | sdk, ask-pipeline, llm-router, idempotency, observability | active |
 
 ## Adding a new GLOBAL
 

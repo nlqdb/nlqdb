@@ -140,6 +140,11 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 - **GLOBAL-014** — OTel span on every external call (DB, LLM, HTTP, queue).
 - **GLOBAL-013** — $0/month for the free tier; Workers free-tier bundle ≤ 3 MiB compressed.
 - **GLOBAL-016** — Reach for small mature packages before DIY; hard-pass on RC on the critical path.
+- **GLOBAL-022** — Recoverable failures retry to success — never surface a fixable error.
+  - *In this skill:* provider 5xx and provider rate-limit (429) are
+    failover signals — fail to the next provider in the chain
+    rather than retry the same one. The chain retries up to 3
+    hops (one attempt per provider) before propagating the error.
 
 ## Open questions / known unknowns
 
