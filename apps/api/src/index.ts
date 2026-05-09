@@ -568,6 +568,11 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
               data: JSON.stringify({ error: outcome.error }),
             });
           } else {
+            // Detach the ask.completed producer so the queue.send
+            // round-trip runs after the SSE stream closes (PERFORMANCE
+            // §3.1 — the emit is `ctx.waitUntil`-wrapped, never on the
+            // user-visible path).
+            c.executionCtx.waitUntil(outcome.pendingAskCompleted);
             await stream.writeSSE({ event: "done", data: JSON.stringify({ status: "ok" }) });
           }
         } finally {
@@ -593,6 +598,10 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
         }
         return c.json({ error: outcome.error }, httpStatus);
       }
+      // Detach the ask.completed producer so queue.send runs in
+      // ctx.waitUntil after the response flushes — keeps /v1/ask p99
+      // off the queue producer round-trip (PERFORMANCE §3.1).
+      c.executionCtx.waitUntil(outcome.pendingAskCompleted);
       // SK-ASK-003: append the `selected_db` echo to the JSON envelope
       // when the LLM disambiguator (or single-DB auto-target) chose
       // for the user. Surface uses it to render attribution.
@@ -895,6 +904,12 @@ app.post("/v1/chat/messages", requireSession, async (c) => {
     }
     span.setAttribute("nlqdb.chat.outcome", "persisted");
     span.setAttribute("nlqdb.chat.assistant_kind", outcome.assistant.result.kind);
+    if (outcome.pendingAskCompleted) {
+      // Detach the ask.completed producer so queue.send runs after
+      // the response flushes (PERFORMANCE §3.1 — same posture as the
+      // /v1/ask handler).
+      c.executionCtx.waitUntil(outcome.pendingAskCompleted);
+    }
     span.end();
     return c.json({ user: outcome.user, assistant: outcome.assistant });
   });

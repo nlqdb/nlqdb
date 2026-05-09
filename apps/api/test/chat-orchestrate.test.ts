@@ -48,6 +48,7 @@ const successOutcome = () =>
       rowCount: 1,
       summary: "one row",
     },
+    pendingAskCompleted: Promise.resolve(),
   }) satisfies OrchestrateOutcome;
 
 describe("postChatMessage — persist path", () => {
@@ -108,6 +109,7 @@ describe("postChatMessage — persist path", () => {
             rows: big,
             rowCount: big.length,
           },
+          pendingAskCompleted: Promise.resolve(),
         }) satisfies OrchestrateOutcome,
     );
     const deps = makeDeps(ask);
@@ -152,6 +154,7 @@ describe("postChatMessage — persist path", () => {
             rows: [],
             rowCount: 0,
           },
+          pendingAskCompleted: Promise.resolve(),
         }) satisfies OrchestrateOutcome,
     );
     const deps = makeDeps(ask);

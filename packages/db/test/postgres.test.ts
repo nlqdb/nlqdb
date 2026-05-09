@@ -53,7 +53,10 @@ describe("createPostgresAdapter", () => {
     const span = spans[0];
     expect(span?.name).toBe("db.query");
     expect(span?.attributes["db.system"]).toBe("postgresql");
+    // Legacy alias kept during the dashboard transition window.
     expect(span?.attributes["db.operation"]).toBe("SELECT");
+    // Canonical OTel semconv v1.27+ key (`SK-MULTIENG-004`).
+    expect(span?.attributes["db.operation.name"]).toBe("SELECT");
   });
 
   it.each([
@@ -89,6 +92,7 @@ describe("createPostgresAdapter", () => {
     await db.execute(pgPlan(sql));
     const span = telemetry.spanExporter.getFinishedSpans()[0];
     expect(span?.attributes["db.operation"]).toBe(expected);
+    expect(span?.attributes["db.operation.name"]).toBe(expected);
   });
 
   it("records nlqdb.db.duration_ms with operation label", async () => {

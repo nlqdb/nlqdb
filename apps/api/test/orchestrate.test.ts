@@ -2,13 +2,17 @@
 // flow: rate-limit → resolve-DB → hash → plan-cache → LLM plan →
 // sql.validate → exec → summarize → emit-then-commit first-query.
 
-import { makeNoopEmitter } from "@nlqdb/events";
+import { makeNoopEmitter, type ProductEvent } from "@nlqdb/events";
 import type { LLMRouter } from "@nlqdb/llm";
 import { describe, expect, it, vi } from "vitest";
 import { type OrchestrateDeps, orchestrateAsk } from "../src/ask/orchestrate.ts";
 import type { PlanCache } from "../src/ask/plan-cache.ts";
 import type { CachedPlan, DbRecord, OrchestrateEvent, QueryResult } from "../src/ask/types.ts";
 import { DbConfigError } from "../src/ask/types.ts";
+
+function stubEmitter() {
+  return { emit: vi.fn<(event: ProductEvent) => Promise<void>>(async () => {}) };
+}
 
 function stubDb(overrides: Partial<DbRecord> = {}): DbRecord {
   return {
@@ -290,7 +294,7 @@ describe("orchestrateAsk", () => {
 
   it("commits first-query AFTER emit (emit-then-commit, UX > strict-once)", async () => {
     const firstQuery = stubFirstQuery(true);
-    const events = { emit: vi.fn(async () => {}) };
+    const events = stubEmitter();
     const out = await orchestrateAsk(makeDeps({ firstQuery, events }), {
       goal: "first ever",
       dbId: "db_1",
@@ -304,26 +308,96 @@ describe("orchestrateAsk", () => {
       dbId: "db_1",
     });
     expect(firstQuery.commit).toHaveBeenCalledWith("user_new");
-    // Emit MUST precede commit — the contract is "show on the
-    // observability path before persisting the seen-flag".
-    const emitOrder = events.emit.mock.invocationCallOrder[0];
+    // Emit (the user.first_query one) MUST precede commit — the
+    // contract is "show on the observability path before persisting
+    // the seen-flag". `ask.completed` fires after both per W4 (it's
+    // the workload-analyser fingerprint, not a lifecycle event).
+    const firstQueryEmitOrder = events.emit.mock.calls.findIndex(
+      (call) => call[0].name === "user.first_query",
+    );
+    expect(firstQueryEmitOrder).toBeGreaterThanOrEqual(0);
+    const firstQueryEmitInvocation = events.emit.mock.invocationCallOrder[firstQueryEmitOrder];
     const commitOrder = firstQuery.commit.mock.invocationCallOrder[0];
-    if (emitOrder === undefined) throw new Error("expected events.emit invocation order");
+    if (firstQueryEmitInvocation === undefined)
+      throw new Error("expected events.emit invocation order");
     if (commitOrder === undefined) throw new Error("expected firstQuery.commit invocation order");
-    expect(emitOrder).toBeLessThan(commitOrder);
+    expect(firstQueryEmitInvocation).toBeLessThan(commitOrder);
   });
 
-  it("does NOT emit when first-query has already fired", async () => {
+  it("does NOT emit user.first_query when first-query has already fired", async () => {
     const firstQuery = stubFirstQuery(false);
-    const events = { emit: vi.fn(async () => {}) };
+    const events = stubEmitter();
     const out = await orchestrateAsk(makeDeps({ firstQuery, events }), {
       goal: "second time",
       dbId: "db_1",
       userId: "user_seen",
     });
     expect(out.ok).toBe(true);
-    expect(events.emit).not.toHaveBeenCalled();
+    expect(events.emit.mock.calls.some((call) => call[0].name === "user.first_query")).toBe(false);
     expect(firstQuery.commit).not.toHaveBeenCalled();
+  });
+
+  it("publishes ask.completed on every successful resolution (workload-analyser input, W4)", async () => {
+    const events = stubEmitter();
+    const out = await orchestrateAsk(
+      makeDeps({
+        events,
+        llm: stubLLM({ plan: { sql: "SELECT * FROM users" } }),
+        exec: stubExec({ rows: [{ x: 1 }, { x: 2 }, { x: 3 }], rowCount: 3 }),
+      }),
+      { goal: "list users", dbId: "db_1", userId: "user_seen" },
+    );
+    expect(out.ok).toBe(true);
+    const askCompletedCall = events.emit.mock.calls.find(
+      (call) => call[0].name === "ask.completed",
+    );
+    if (!askCompletedCall) throw new Error("expected ask.completed emission");
+    const askCompleted = askCompletedCall[0];
+    if (askCompleted.name !== "ask.completed") {
+      throw new Error("narrowing failed");
+    }
+    expect(askCompleted).toMatchObject({
+      name: "ask.completed",
+      dbId: "db_1",
+      schemaHash: "schema_v1",
+      engine: "postgres",
+      rowsReturned: 3,
+    });
+    // No SQL text, no values — the wire shape is anonymised. Hashes
+    // are hex strings; `orchestratorMs` and `ts` are numeric.
+    expect(askCompleted).not.toHaveProperty("sql");
+    expect(typeof askCompleted.queryHash).toBe("string");
+    expect(typeof askCompleted.planShape).toBe("string");
+    expect(typeof askCompleted.orchestratorMs).toBe("number");
+    expect(typeof askCompleted.ts).toBe("number");
+    // The renamed field is the only canonical name — no stray `ms`
+    // alias should leak through, since W5 must not conflate it with
+    // the `/v1/ask` SLO timing.
+    expect(askCompleted).not.toHaveProperty("ms");
+  });
+
+  it("returns a pendingAskCompleted promise on success (route handler ctx.waitUntils it)", async () => {
+    const events = stubEmitter();
+    const out = await orchestrateAsk(makeDeps({ events }), {
+      goal: "anything",
+      dbId: "db_1",
+      userId: "user_1",
+    });
+    expect(out.ok).toBe(true);
+    if (!out.ok) throw new Error("unreachable");
+    expect(out.pendingAskCompleted).toBeInstanceOf(Promise);
+    // emit() is fire-and-forget — never throws.
+    await expect(out.pendingAskCompleted).resolves.toBeUndefined();
+  });
+
+  it("does NOT publish ask.completed on a failed /v1/ask (analyser only sees successes)", async () => {
+    const events = stubEmitter();
+    const out = await orchestrateAsk(
+      makeDeps({ events, exec: stubExec(new Error("connection refused")) }),
+      { goal: "anything", dbId: "db_1", userId: "user_1" },
+    );
+    expect(out.ok).toBe(false);
+    expect(events.emit.mock.calls.some((call) => call[0].name === "ask.completed")).toBe(false);
   });
 
   it("does NOT check first-query when execution fails (event not burned on failed call)", async () => {

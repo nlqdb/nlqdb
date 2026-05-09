@@ -1,9 +1,9 @@
 import { neon } from "@neondatabase/serverless";
 import { dbDurationMs } from "@nlqdb/otel";
 import { SpanStatusCode, trace } from "@opentelemetry/api";
+import { bufferedEngineResult } from "./engine-result.ts";
 import type {
   DatabaseAdapter,
-  EngineMeta,
   EnginePlan,
   EngineResult,
   PostgresEngineMeta,
@@ -55,7 +55,12 @@ export function createPostgresAdapter(opts: PostgresAdapterOptions): DatabaseAda
         {
           attributes: {
             "db.system": "postgresql",
+            // `db.operation` is the legacy attribute name; `db.operation.name` is
+            // the canonical OTel semconv v1.27+ key (`SK-MULTIENG-004`). Emit both
+            // during the dashboard transition window — drop the alias once the
+            // migration off `db.operation` lands.
             "db.operation": operation,
+            "db.operation.name": operation,
           },
         },
         async (span) => {
@@ -71,7 +76,7 @@ export function createPostgresAdapter(opts: PostgresAdapterOptions): DatabaseAda
               rowCount: result.rowCount ?? result.rows.length,
             };
             if (result.fields) meta.fields = result.fields;
-            return makeEngineResult(result.rows, meta);
+            return bufferedEngineResult(result.rows, meta);
           } catch (err) {
             span.recordException(err as Error);
             span.setStatus({ code: SpanStatusCode.ERROR });
@@ -83,21 +88,6 @@ export function createPostgresAdapter(opts: PostgresAdapterOptions): DatabaseAda
           }
         },
       );
-    },
-  };
-}
-
-// Wraps a buffered row array as `EngineResult`. Neon HTTP returns the
-// full result set in one fetch, so the iterator is a synchronous yield
-// from memory — the AsyncIterable surface is for parity with engines
-// that genuinely stream (Tinybird Pipes, etc.). A fresh iterator is
-// produced per `[Symbol.asyncIterator]()` call so consumers can
-// re-iterate the same buffered result safely.
-function makeEngineResult(rows: Row[], meta: EngineMeta): EngineResult {
-  return {
-    meta,
-    [Symbol.asyncIterator]: async function* () {
-      for (const row of rows) yield row;
     },
   };
 }
