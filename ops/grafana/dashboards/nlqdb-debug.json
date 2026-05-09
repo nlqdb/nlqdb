@@ -1,0 +1,311 @@
+{
+  "id": null,
+  "uid": "nlqdb-debug",
+  "title": "nlqdb — Request Debug",
+  "tags": ["nlqdb"],
+  "schemaVersion": 39,
+  "version": 0,
+  "refresh": "30s",
+  "time": { "from": "now-3h", "to": "now" },
+  "timepicker": {},
+  "timezone": "browser",
+  "graphTooltip": 1,
+  "description": "Span-level investigation. Each row links to the full trace. Use the db_unreachable and llm_failed tables to see the exact SQL that hit Postgres and which LLM provider was used.",
+  "links": [
+    { "title": "Overview", "url": "/d/nlqdb-overview", "type": "link", "icon": "external link", "targetBlank": false }
+  ],
+  "annotations": { "list": [] },
+  "templating": { "list": [] },
+  "panels": [
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "DB errors (3 h)",
+      "description": "db.query spans with ERROR status — these map to db_unreachable in the API response.",
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "grafanacloud-prom" },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "colorMode": "background", "graphMode": "none", "justifyMode": "auto",
+        "orientation": "auto", "textMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short", "min": 0,
+          "color": { "mode": "thresholds" },
+          "thresholds": { "mode": "absolute", "steps": [
+            { "color": "green",  "value": null },
+            { "color": "yellow", "value": 1    },
+            { "color": "red",    "value": 5    }
+          ]},
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "targets": [{
+        "datasource": { "type": "prometheus", "uid": "grafanacloud-prom" },
+        "expr": "sum(increase(nlqdb_db_errors_total[3h]))",
+        "legendFormat": "errors", "refId": "A", "instant": true
+      }]
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "LLM plan errors (3 h)",
+      "description": "llm.plan spans with ERROR status — these map to llm_failed in the API response.",
+      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "grafanacloud-prom" },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "colorMode": "background", "graphMode": "none", "justifyMode": "auto",
+        "orientation": "auto", "textMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short", "min": 0,
+          "color": { "mode": "thresholds" },
+          "thresholds": { "mode": "absolute", "steps": [
+            { "color": "green",  "value": null },
+            { "color": "yellow", "value": 1    },
+            { "color": "red",    "value": 5    }
+          ]},
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "targets": [{
+        "datasource": { "type": "prometheus", "uid": "grafanacloud-prom" },
+        "expr": "sum(increase(nlqdb_llm_calls_total{operation=\"plan\",status=\"error\"}[3h]))",
+        "legendFormat": "errors", "refId": "A", "instant": true
+      }]
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "LLM failovers (3 h)",
+      "description": "Provider-chain fallbacks — check the Providers dashboard for which pair.",
+      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "grafanacloud-prom" },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "colorMode": "background", "graphMode": "none", "justifyMode": "auto",
+        "orientation": "auto", "textMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short", "min": 0,
+          "color": { "mode": "thresholds" },
+          "thresholds": { "mode": "absolute", "steps": [
+            { "color": "green",  "value": null },
+            { "color": "yellow", "value": 1    },
+            { "color": "red",    "value": 10   }
+          ]},
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "targets": [{
+        "datasource": { "type": "prometheus", "uid": "grafanacloud-prom" },
+        "expr": "sum(increase(nlqdb_llm_failover_total[3h]))",
+        "legendFormat": "failovers", "refId": "A", "instant": true
+      }]
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "Cache miss rate (3 h)",
+      "description": "High miss rate means every request is calling the LLM.",
+      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "grafanacloud-prom" },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "colorMode": "background", "graphMode": "none", "justifyMode": "auto",
+        "orientation": "auto", "textMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent", "min": 0, "max": 100, "decimals": 1,
+          "color": { "mode": "thresholds" },
+          "thresholds": { "mode": "absolute", "steps": [
+            { "color": "green",  "value": null },
+            { "color": "yellow", "value": 50   },
+            { "color": "red",    "value": 90   }
+          ]},
+          "mappings": [{ "type": "special", "options": { "match": "nan", "result": { "text": "No data" } } }]
+        },
+        "overrides": []
+      },
+      "targets": [{
+        "datasource": { "type": "prometheus", "uid": "grafanacloud-prom" },
+        "expr": "100 * sum(rate(nlqdb_cache_plan_misses_total[5m])) / (sum(rate(nlqdb_cache_plan_hits_total[5m])) + sum(rate(nlqdb_cache_plan_misses_total[5m])))",
+        "legendFormat": "miss %", "refId": "A", "instant": true
+      }]
+    },
+    {
+      "id": 5,
+      "type": "table",
+      "title": "Recent DB errors — SQL that hit Postgres and failed",
+      "description": "Each row is a db.query span with ERROR status. 'db.statement' is the PII-redacted SQL that was executed. Click the Trace ID to open the full span tree in Explore.",
+      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 4 },
+      "datasource": { "type": "tempo", "uid": "grafanacloud-traces" },
+      "options": {
+        "frameIndex": 0,
+        "showHeader": true,
+        "footer": { "show": false, "reducer": ["sum"], "enablePagination": false }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto", "cellOptions": { "type": "auto" },
+            "inspect": false, "filterable": true
+          },
+          "mappings": [], "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] }
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "traceIdHidden" },
+            "properties": [{ "id": "custom.hidden", "value": true }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Duration" },
+            "properties": [{ "id": "unit", "value": "ns" }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "db.statement" },
+            "properties": [
+              { "id": "custom.width", "value": 600 },
+              { "id": "custom.cellOptions", "value": { "type": "auto", "wrapText": true } }
+            ]
+          }
+        ]
+      },
+      "targets": [{
+        "datasource": { "type": "tempo", "uid": "grafanacloud-traces" },
+        "queryType": "traceql",
+        "query": "{name = \"db.query\" && status = error} | select(db.statement, db.operation, duration)",
+        "refId": "A",
+        "limit": 50,
+        "tableType": "spans"
+      }]
+    },
+    {
+      "id": 6,
+      "type": "table",
+      "title": "Recent LLM plan calls — provider, model, and outcome",
+      "description": "Each row is an llm.plan span. Links to the full trace so you can see which goal triggered this plan and what happened next. Match traceId with the DB errors table above to reconstruct a full failing request.",
+      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 14 },
+      "datasource": { "type": "tempo", "uid": "grafanacloud-traces" },
+      "options": {
+        "frameIndex": 0,
+        "showHeader": true,
+        "footer": { "show": false, "reducer": ["sum"], "enablePagination": false }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto", "cellOptions": { "type": "auto" },
+            "inspect": false, "filterable": true
+          },
+          "mappings": [], "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] }
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "traceIdHidden" },
+            "properties": [{ "id": "custom.hidden", "value": true }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Duration" },
+            "properties": [{ "id": "unit", "value": "ns" }]
+          }
+        ]
+      },
+      "targets": [{
+        "datasource": { "type": "tempo", "uid": "grafanacloud-traces" },
+        "queryType": "traceql",
+        "query": "{name = \"llm.plan\"} | select(llm.provider, llm.model, duration)",
+        "refId": "A",
+        "limit": 50,
+        "tableType": "spans"
+      }]
+    },
+    {
+      "id": 7,
+      "type": "timeseries",
+      "title": "Error events over time",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 24 },
+      "datasource": { "type": "prometheus", "uid": "grafanacloud-prom" },
+      "options": {
+        "tooltip": { "mode": "multi", "sort": "desc" },
+        "legend": { "calcs": ["sum"], "displayMode": "table", "placement": "bottom", "showLegend": true }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "drawStyle": "bars", "lineWidth": 1, "fillOpacity": 60,
+            "gradientMode": "none", "showPoints": "never", "spanNulls": false,
+            "stacking": { "group": "A", "mode": "normal" },
+            "thresholdsStyle": { "mode": "off" }
+          },
+          "mappings": [], "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "grafanacloud-prom" },
+          "expr": "sum(increase(nlqdb_llm_calls_total{operation=\"plan\",status=\"error\"}[5m]))",
+          "legendFormat": "llm_failed", "refId": "A"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "grafanacloud-prom" },
+          "expr": "sum(increase(nlqdb_llm_failover_total[5m]))",
+          "legendFormat": "llm_failover", "refId": "B"
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "type": "timeseries",
+      "title": "LLM plan duration — p50 & p99",
+      "description": "Slow p99 here is the most common cause of ask latency SLO breach.",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 24 },
+      "datasource": { "type": "prometheus", "uid": "grafanacloud-prom" },
+      "options": {
+        "tooltip": { "mode": "multi", "sort": "desc" },
+        "legend": { "calcs": ["mean", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "drawStyle": "line", "lineInterpolation": "linear", "lineWidth": 1,
+            "fillOpacity": 10, "gradientMode": "none", "showPoints": "auto",
+            "spanNulls": false, "stacking": { "group": "A", "mode": "none" },
+            "thresholdsStyle": { "mode": "line" }
+          },
+          "mappings": [],
+          "thresholds": { "mode": "absolute", "steps": [
+            { "color": "transparent", "value": null },
+            { "color": "red",         "value": 1500 }
+          ]}
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "grafanacloud-prom" },
+          "expr": "histogram_quantile(0.50, sum(rate(nlqdb_llm_duration_ms_bucket{operation=\"plan\"}[5m])) by (le, provider))",
+          "legendFormat": "p50 {{provider}}", "refId": "A"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "grafanacloud-prom" },
+          "expr": "histogram_quantile(0.99, sum(rate(nlqdb_llm_duration_ms_bucket{operation=\"plan\"}[5m])) by (le, provider))",
+          "legendFormat": "p99 {{provider}}", "refId": "B"
+        }
+      ]
+    }
+  ]
+}
