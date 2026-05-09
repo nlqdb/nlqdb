@@ -13,6 +13,21 @@ export {
   TinybirdServerError,
   TinybirdValidationError,
 } from "./clickhouse-tinybird/adapter.ts";
+export type {
+  AskCompletedEvent,
+  QueryLogEntry,
+  QueryLogHttpClient,
+  QueryLogRequest,
+  QueryLogResponse,
+  QueryLogRow,
+  QueryLogWriterOptions,
+  WriteQueryLogResult,
+} from "./clickhouse-tinybird/query-log.ts";
+export {
+  createQueryLogWriter,
+  QueryLogWriteError,
+  writeQueryLog,
+} from "./clickhouse-tinybird/query-log.ts";
 export type { PostgresAdapterOptions, PostgresQueryFn } from "./postgres.ts";
 export { createPostgresAdapter } from "./postgres.ts";
 export type {

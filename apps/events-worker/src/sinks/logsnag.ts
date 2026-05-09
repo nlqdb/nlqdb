@@ -85,6 +85,15 @@ export function buildPayload(project: string, event: ProductEvent): LogSnagPaylo
           "price-id": event.priceId,
         },
       };
+    case "ask.completed":
+    case "user.waitlist_joined":
+      // Not LogSnag-routed. `ask.completed` flows to Tinybird
+      // `query_log` (`SK-EVENTS-009`); `user.waitlist_joined` has no
+      // sink mapping yet (`SK-EVENTS-006` — quota-bounded). The
+      // dispatcher in `apps/events-worker/src/index.ts` filters these
+      // before reaching `buildPayload`; this branch exists so the
+      // discriminated-union exhaustiveness check still passes.
+      throw new Error(`logsnag sink received non-routed event: ${event.name}`);
     default: {
       const _exhaustive: never = event;
       throw new Error(`unhandled event: ${JSON.stringify(_exhaustive)}`);
