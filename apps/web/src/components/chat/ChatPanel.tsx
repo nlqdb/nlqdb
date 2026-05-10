@@ -36,6 +36,7 @@ import { NlqdbApiError } from "@nlqdb/sdk";
 import { type KeyboardEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getChatClient } from "../../lib/chat-client";
 import { deriveSlug, displayName } from "../../lib/names";
+import { clearPending, loadPending } from "../../lib/prompt-storage";
 import Answer from "./Answer";
 import CopySnippet from "./CopySnippet";
 import Data from "./Data";
@@ -158,7 +159,17 @@ export default function ChatPanel({ apiBase }: ChatPanelProps) {
   // Focus the composer once on mount so the user lands ready to
   // type. Imperative — `autoFocus` trips a11y rules that don't
   // know the page's whole purpose is the input below.
+  //
+  // SK-ANON-012 — if `nlqdb_pending` is set (from the 2nd anon
+  // /v1/ask before the auth-redirect), pre-fill the composer with
+  // it and clear the slot so a refresh doesn't re-fill. The user
+  // reviews + submits; we no longer auto-replay through `/auth/post-signin`.
   useEffect(() => {
+    const pending = loadPending();
+    if (pending?.goal) {
+      setComposer(pending.goal);
+      clearPending();
+    }
     composerRef.current?.focus();
   }, []);
 

@@ -35,6 +35,7 @@ import { askFnFromDemoFixtures, DEMO_DB_ID } from "./chat/demo-shortcut.ts";
 import { postChatMessage } from "./chat/orchestrate.ts";
 import { makeChatStore } from "./chat/store.ts";
 import { deriveSlug, displayName, listDatabasesForTenant } from "./databases/list.ts";
+import { sweepAnonDatabases } from "./db-sweep/sweep.ts";
 import {
   isAllowedEngine,
   MAX_GOAL_LENGTH,
@@ -702,6 +703,31 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
       userId: principal.id,
     };
 
+    // SK-ANON-002 / SK-ANON-012 — bump `last_queried_at` on every
+    // successful /v1/ask so the daily sweep evicts truly-stale anon
+    // DBs (90-day TTL) and picks oldest-first under cap pressure.
+    // Authed user rows benefit too (drives "recent activity" reads
+    // on the dashboard). Fire-and-forget via ctx.waitUntil — never
+    // on the user-visible latency path. Only fires when the
+    // orchestrator returned ok; failures don't bump.
+    const touchLastQueried = (): void => {
+      c.executionCtx.waitUntil(
+        c.env.DB.prepare(
+          "UPDATE databases SET last_queried_at = unixepoch() WHERE id = ? AND tenant_id = ?",
+        )
+          .bind(resolvedDbId, principal.id)
+          .run()
+          .catch((err: unknown) => {
+            console.error(
+              JSON.stringify({
+                msg: "last_queried_at_touch_failed",
+                message: err instanceof Error ? err.message : String(err),
+              }),
+            );
+          }),
+      );
+    };
+
     if (wantsSse) {
       return streamSSE(c, async (stream) => {
         try {
@@ -734,6 +760,7 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
             // anon /v1/ask (not just creates). The 2nd anon call will
             // then trip the top-level peek and 401 with auth_required.
             await commitAnonCreate();
+            touchLastQueried();
             await stream.writeSSE({ event: "done", data: JSON.stringify({ status: "ok" }) });
           }
         } finally {
@@ -767,6 +794,7 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
       // anon /v1/ask (not just creates). See the SSE branch for the
       // matching commit.
       await commitAnonCreate();
+      touchLastQueried();
       // SK-ASK-003: append the `selected_db` echo to the JSON envelope
       // when the LLM disambiguator (or single-DB auto-target) chose
       // for the user. Surface uses it to render attribution.
@@ -1429,6 +1457,31 @@ async function scheduled(
       : undefined;
 
   try {
+    // SK-ANON-002 / SK-ANON-012 — anon-DB sweep. Runs first so even
+    // if the workload-analyser later trips, abandoned anon DBs still
+    // get evicted on schedule. D1-only — Postgres schema cleanup is
+    // operator territory per `docs/runbook.md §9`. Errors are
+    // logged (and re-raised by the outer catch) so a sweep miss
+    // surfaces in `wrangler tail`.
+    try {
+      const sweep = await sweepAnonDatabases(envBindings.DB);
+      console.info(
+        JSON.stringify({
+          msg: "anon_db_sweep",
+          evicted_by_age: sweep.evictedByAge.length,
+          evicted_by_cap: sweep.evictedByCap.length,
+          total_anon_after: sweep.totalAnonAfter,
+        }),
+      );
+    } catch (sweepErr) {
+      console.error(
+        JSON.stringify({
+          msg: "anon_db_sweep_failed",
+          message: sweepErr instanceof Error ? sweepErr.message : String(sweepErr),
+        }),
+      );
+    }
+
     if (!envBindings.TINYBIRD_TOKEN) return;
     const tinybird = createTinybirdAdapter({
       token: envBindings.TINYBIRD_TOKEN,

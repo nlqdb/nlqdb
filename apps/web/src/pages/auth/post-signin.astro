@@ -3,31 +3,28 @@ import Base from "../../layouts/Base.astro";
 
 // Post-signin landing page (SK-ANON-012).
 //
-// `callbackURL` from `sign-in.astro` points here. The inline script
-// runs the SK-ANON-011 replay flow:
-//   1. Probe `/api/auth/get-session` to confirm the cookie session
-//      landed. If null, the user signed in but the cookie didn't
-//      take — send them back to sign-in with a `session_lost` hint.
-//   2. Read `nlqdb_pending` from localStorage. If absent, go straight
-//      to `next` (default `/app`).
-//   3. POST the pending goal to `/v1/ask` under the now-authed
-//      cookie session, then clear `nlqdb_pending` and navigate to
-//      `next?db=<resulting_dbId>`. On replay failure, clear pending
-//      and fall through to `next` so the user never lands in an
-//      infinite-loop state.
+// `callbackURL` from `sign-in.astro` points here. The inline script:
+//   1. Probes `/api/auth/get-session` to confirm the cookie session
+//      landed. If null, sends the user back to sign-in with a
+//      `session_lost` hint.
+//   2. Redirects to `next` (default `/app`). The `nlqdb_pending` slot
+//      is intentionally LEFT IN localStorage — `ChatPanel.tsx` reads
+//      it on mount, pre-fills the composer, and clears the slot. The
+//      user reviews the prompt + submits; we no longer auto-replay.
 //
-// Adoption of the call-1 DB happens server-side via the Better Auth
-// `after` hook (`apps/api/src/auth.ts`), driven by the
-// `__Secure-anon-bearer` cookie that `/api/auth/anon-stash` set
-// before the sign-in init. This page only handles the call-2
-// prompt replay.
+// We deliberately do NOT auto-POST `/v1/ask` here:
+//   - Signing in with an existing account preserves the user's
+//     pre-existing DBs; auto-submitting would create a new DB they
+//     never asked for, separate from the orphaned anon DB.
+//   - The user typed the goal anonymously; reviewing it under their
+//     real identity (and the now-visible left rail of their actual
+//     DBs) is the more honest UX.
 //
-// The page renders a stable "Signing you in…" placeholder so the
-// user sees something while the script runs. No React, no SDK —
-// the script is inline so the redirect can fire before any heavy
-// bundle loads.
-
-const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
+// Adoption of the anon DB itself is deferred — per `SK-ANON-002`, the
+// orphaned anon DB sits at `tenant_id = anon:<hash>` until the sweep
+// job evicts it (90-day TTL or cap pressure). The 1st-call data is
+// not transferred; the 2nd-call prompt IS preserved (in `nlqdb_pending`)
+// and surfaces in the chat composer.
 ---
 <Base
   title="Signing you in — nlqdb"
@@ -35,7 +32,7 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
   canonical="/auth/post-signin"
 >
   <div class="page">
-    <main class="post-signin" data-api-base={apiBase}>
+    <main class="post-signin">
       <section class="post-signin__card" aria-labelledby="post-signin-title">
         <h1 id="post-signin-title" class="post-signin__title">
           Signing you in…
@@ -49,18 +46,13 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
 </Base>
 
 <script>
-  import { postAskCreate } from "../../lib/api";
-  import { clearPending, loadPending } from "../../lib/prompt-storage";
   import { fetchSession } from "../../lib/session";
-
-  const root = document.querySelector<HTMLElement>(".post-signin");
-  const apiBase = (root?.dataset["apiBase"] ?? "").replace(/\/$/, "");
 
   const params = new URLSearchParams(location.search);
   const next = params.get("next") ?? "/app";
 
   (async () => {
-    const session = await fetchSession(apiBase);
+    const session = await fetchSession();
     if (!session) {
       // Sign-in didn't take — cookie blocked, third-party cookies
       // disabled in the IdP round-trip, or the user closed the tab
@@ -68,29 +60,9 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
       location.replace("/auth/sign-in?error=session_lost");
       return;
     }
-
-    const pending = loadPending();
-    if (!pending) {
-      location.replace(next);
-      return;
-    }
-
-    try {
-      const outcome = await postAskCreate(apiBase, pending.goal);
-      clearPending();
-      if (outcome.ok) {
-        const dbId = outcome.result.db;
-        const sep = next.includes("?") ? "&" : "?";
-        location.replace(`${next}${sep}db=${encodeURIComponent(dbId)}`);
-        return;
-      }
-    } catch {
-      // Network error — fall through to clearing the slot and
-      // landing on `next`. We don't preserve `nlqdb_pending` here
-      // because re-replaying on /app would loop the user through
-      // the same broken state.
-    }
-    clearPending();
+    // ChatPanel will read `nlqdb_pending` from localStorage on mount
+    // and rehydrate the composer — no work needed here beyond the
+    // navigation.
     location.replace(next);
   })();
 </script>

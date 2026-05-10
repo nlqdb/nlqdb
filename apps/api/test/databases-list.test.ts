@@ -4,7 +4,11 @@
 // parameter binding, and row → summary shape without Miniflare.
 
 import { describe, expect, it, vi } from "vitest";
-import { listDatabasesForTenant, toSummary } from "../src/databases/list.ts";
+import {
+  disambiguateDisplayNames,
+  listDatabasesForTenant,
+  toSummary,
+} from "../src/databases/list.ts";
 
 type Row = { id: string; engine: string; created_at: number };
 
@@ -102,5 +106,56 @@ describe("listDatabasesForTenant", () => {
     const prepare = vi.fn().mockReturnValue({ bind });
     const d1 = { prepare } as unknown as D1Database;
     expect(await listDatabasesForTenant(d1, "user_1")).toEqual([]);
+  });
+
+  it("disambiguates same-display-name DBs with (2), (3), … suffixes (SK-ANON-012)", async () => {
+    // Two `db_orders_tracker_*` rows + one `db_orders_tracker` (no
+    // suffix slot). All three render `displayName = "orders tracker"`
+    // pre-disambiguation. The newest stays un-suffixed; older
+    // duplicates get (2), (3) in descending recency.
+    const { d1 } = stubDb([
+      { id: "db_orders_tracker_aaaaaa", engine: "postgres", created_at: 1700000300 },
+      { id: "db_orders_tracker_bbbbbb", engine: "postgres", created_at: 1700000200 },
+      { id: "db_orders_tracker_cccccc", engine: "postgres", created_at: 1700000100 },
+    ]);
+    const out = await listDatabasesForTenant(d1, "user_1");
+    expect(out.map((d) => d.displayName)).toEqual([
+      "orders tracker",
+      "orders tracker (2)",
+      "orders tracker (3)",
+    ]);
+    // ids stay un-suffixed.
+    expect(out.map((d) => d.id)).toEqual([
+      "db_orders_tracker_aaaaaa",
+      "db_orders_tracker_bbbbbb",
+      "db_orders_tracker_cccccc",
+    ]);
+  });
+});
+
+describe("disambiguateDisplayNames", () => {
+  it("leaves unique names alone", () => {
+    const rows = [{ displayName: "orders tracker" }, { displayName: "meal planner" }];
+    expect(disambiguateDisplayNames(rows).map((r) => r.displayName)).toEqual([
+      "orders tracker",
+      "meal planner",
+    ]);
+  });
+
+  it("appends (2), (3), … in row order — first occurrence wins the un-suffixed slot", () => {
+    const rows = [
+      { displayName: "foo" },
+      { displayName: "bar" },
+      { displayName: "foo" },
+      { displayName: "foo" },
+      { displayName: "bar" },
+    ];
+    expect(disambiguateDisplayNames(rows).map((r) => r.displayName)).toEqual([
+      "foo",
+      "bar",
+      "foo (2)",
+      "foo (3)",
+      "bar (2)",
+    ]);
   });
 });
