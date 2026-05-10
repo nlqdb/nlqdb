@@ -188,6 +188,12 @@ export type ApiErrorCode =
   // SK-ASK-009: 409 returned when the LLM disambiguator's confidence
   // is below the floor on a 2+ DB tenant. Body carries `candidate_dbs`.
   | "ambiguous_db"
+  // SK-ASK-014: 409 returned when the caller pinned `dbId` but the
+  // classifier returned `kind=create` (the goal looks like a creation
+  // request, e.g. "new table"). Body carries `pinned_db: {id, slug}` —
+  // surfaces render a chip with two actions: "Create new database"
+  // (re-send without `dbId`) and "Cancel".
+  | "clarify_required"
   // SK-DB-010: 400 returned when `engine` is set to a string that's
   // not in the allowed engine set on `/v1/ask` or `/v1/databases`.
   | "invalid_engine"
@@ -202,6 +208,11 @@ export type ApiErrorCode =
 // envelopes. Surface uses these to render an explicit picker.
 export type CandidateDb = { id: string; slug: string };
 
+// SK-ASK-014: surfaced on `clarify_required` 409 envelopes — the DB
+// the caller had pinned when the classifier decided `kind=create`.
+// Null when the pinned id couldn't be resolved (stale URL param).
+export type PinnedDb = { id: string; slug: string };
+
 export type ApiErrorBody = {
   status: ApiErrorCode;
   message?: string;
@@ -209,6 +220,9 @@ export type ApiErrorBody = {
   limit?: number;
   count?: number;
   candidate_dbs?: CandidateDb[];
+  // SK-ASK-014 — only present on `clarify_required` envelopes.
+  clarification?: "create_or_query_pinned";
+  pinned_db?: PinnedDb | null;
 };
 
 // Mirrors apps/api/src/chat/types.ts. Keep these definitions in sync

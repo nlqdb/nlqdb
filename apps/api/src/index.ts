@@ -445,128 +445,148 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
       }
     };
 
-    if (!parsed.body.dbId) {
-      // SK-ASK-009 prelude — runs only when the request omits dbId.
-      // routeAsk fires in parallel with listDatabasesForTenant; the
-      // tenant DB list pins the dbset the LLM picks from. routeAsk's
-      // own short-circuits (0 dbs / recent-table verb hit / slug
-      // match) keep most multi-DB sends off a full LLM round-trip;
-      // the LLM call below it has a 1500 ms budget.
-      //
-      // PERFORMANCE §2.3 owns the budget for this prelude.
-      const listPromise = listDatabasesForTenant(c.env.DB, principal.id);
+    // SK-ASK-009 + SK-ASK-014 prelude — routeAsk runs on every /v1/ask
+    // (with or without a pinned dbId), in parallel with the tenant DB
+    // list. Speculative-create stays gated on absent dbId — a pinned
+    // dbId means the user already has a DB, so probably-0 makes no
+    // sense there. Dispatch after routeAsk:
+    //
+    //   kind=create + no pin    → runCreatePath()
+    //   kind=create + pinned    → 409 clarify_required (SK-ASK-014)
+    //   kind=query|write + pin  → honour the pin
+    //   kind=query|write + no   → 0/1/N dispatch (existing)
+    //
+    // PERFORMANCE §2.3 owns the budget for this prelude.
+    const listPromise = listDatabasesForTenant(c.env.DB, principal.id);
 
-      // SK-ASK-012 — load the principal's recent-tables MRU once for
-      // the prelude. Used by the SK-ASK-011 speculation predicate
-      // (`probablyZeroDbs`) and by `routeAsk` below — single KV read,
-      // shared across the two consumers.
-      const recentTablesStore = makeRecentTablesStore(c.env.KV);
-      const recentTables = await recentTablesStore.load(principal.id);
+    // SK-ASK-012 — load the principal's recent-tables MRU once for
+    // the prelude. Used by the SK-ASK-011 speculation predicate
+    // (`probablyZeroDbs`) and by `routeAsk` below — single KV read,
+    // shared across the two consumers.
+    const recentTablesStore = makeRecentTablesStore(c.env.KV);
+    const recentTables = await recentTablesStore.load(principal.id);
 
-      // SK-ASK-011 — speculative create on probable-0-dbs. When the
-      // cached signal suggests "this principal has 0 dbs" we kick
-      // off the create pipeline immediately, in parallel with the
-      // authoritative `listPromise`. The reconciler commits when
-      // D1 confirms 0 dbs; otherwise rolls back via SK-HDC-011's
-      // `dropSchemaAndRegistry`.
-      let speculativeReconcilePromise: Promise<ReconcileResult> | undefined;
-      if (probablyZeroDbs(recentTables, parsed.body.goal)) {
-        const gateResp = await checkAnonCreateGate();
-        if (gateResp) return gateResp;
-        ensureLibpgWasmGlobals();
-        const { buildDbCreateDeps } = await import("./db-create/build-deps.ts");
-        const { startSpeculativeCreate } = await import("./db-create/speculative.ts");
-        const { deps: createDeps, secretRef } = buildDbCreateDeps(c.env);
-        const handle = startSpeculativeCreate(createDeps, {
-          goal: parsed.body.goal,
-          tenantId: principal.id,
-          principalId: principal.id,
-          principalKind: principal.kind,
-          ...(parsed.body.engine !== undefined ? { engine: parsed.body.engine } : {}),
-          secretRef,
-        });
-        speculativeReconcilePromise = reconcileSpeculativeCreate({
-          speculative: handle,
-          authoritativeDbsPromise: listPromise,
-          principalKind: principal.kind,
-        });
-      }
+    // SK-ASK-011 — speculative create on probable-0-dbs, only when no
+    // dbId is pinned (otherwise the user already has a DB).
+    let speculativeReconcilePromise: Promise<ReconcileResult> | undefined;
+    if (!parsed.body.dbId && probablyZeroDbs(recentTables, parsed.body.goal)) {
+      const gateResp = await checkAnonCreateGate();
+      if (gateResp) return gateResp;
+      ensureLibpgWasmGlobals();
+      const { buildDbCreateDeps } = await import("./db-create/build-deps.ts");
+      const { startSpeculativeCreate } = await import("./db-create/speculative.ts");
+      const { deps: createDeps, secretRef } = buildDbCreateDeps(c.env);
+      const handle = startSpeculativeCreate(createDeps, {
+        goal: parsed.body.goal,
+        tenantId: principal.id,
+        principalId: principal.id,
+        principalKind: principal.kind,
+        ...(parsed.body.engine !== undefined ? { engine: parsed.body.engine } : {}),
+        secretRef,
+      });
+      speculativeReconcilePromise = reconcileSpeculativeCreate({
+        speculative: handle,
+        authoritativeDbsPromise: listPromise,
+        principalKind: principal.kind,
+      });
+    }
 
-      // SK-ASK-009 — routeAsk runs in parallel with listPromise.
-      // Wraps both: routeAsk's `dbs` input comes from the awaited
-      // listPromise (or `[]` if that read fails — routeAsk then
-      // returns kind=create deterministically). GLOBAL-022 retries
-      // the LLM call inside routeAsk up to 3 attempts before
-      // surfacing as `llm_failed`.
-      const routePromise = (async () => {
-        let dbs: Awaited<ReturnType<typeof listDatabasesForTenant>>;
-        try {
-          dbs = await listPromise;
-        } catch {
-          // Tenant DB list failed — treat as 0 dbs so routeAsk picks
-          // create. The follow-up create path will surface the real
-          // error to the user.
-          return {
-            candidates: [] as ReturnType<typeof toCandidates>,
-            output: await withStageRetry("route", () =>
-              routeAsk(
-                { llm: getLLMRouter() },
-                {
-                  goal: parsed.body.goal,
-                  dbs: [],
-                  recentTables,
-                },
-              ),
-            ),
-          };
-        }
-        const candidates = toCandidates(dbs);
-        const output = await withStageRetry("route", () =>
-          routeAsk(
-            { llm: getLLMRouter() },
-            {
-              goal: parsed.body.goal,
-              dbs: candidates,
-              recentTables,
-            },
-          ),
-        );
-        return { candidates, output };
-      })();
-
-      let routed: Awaited<typeof routePromise>;
+    // SK-ASK-009 — routeAsk runs in parallel with listPromise.
+    // Wraps both: routeAsk's `dbs` input comes from the awaited
+    // listPromise (or `[]` if that read fails — routeAsk then
+    // returns kind=create deterministically). SK-ASK-013 / GLOBAL-022
+    // retries the LLM call inside routeAsk up to 3 attempts before
+    // surfacing as `llm_failed`.
+    const routePromise = (async () => {
+      let dbs: Awaited<ReturnType<typeof listDatabasesForTenant>>;
       try {
-        routed = await routePromise;
+        dbs = await listPromise;
       } catch {
-        span.setAttribute("nlqdb.ask.outcome", "router_failed");
+        // Tenant DB list failed — treat as 0 dbs so routeAsk picks
+        // create. The follow-up create path will surface the real
+        // error to the user.
+        return {
+          candidates: [] as ReturnType<typeof toCandidates>,
+          output: await withStageRetry("route", () =>
+            routeAsk(
+              { llm: getLLMRouter() },
+              {
+                goal: parsed.body.goal,
+                dbs: [],
+                recentTables,
+              },
+            ),
+          ),
+        };
+      }
+      const candidates = toCandidates(dbs);
+      const output = await withStageRetry("route", () =>
+        routeAsk(
+          { llm: getLLMRouter() },
+          {
+            goal: parsed.body.goal,
+            dbs: candidates,
+            recentTables,
+          },
+        ),
+      );
+      return { candidates, output };
+    })();
+
+    let routed: Awaited<typeof routePromise>;
+    try {
+      routed = await routePromise;
+    } catch {
+      span.setAttribute("nlqdb.ask.outcome", "router_failed");
+      span.end();
+      return c.json({ error: { status: "llm_failed" as const } }, 502);
+    }
+
+    const { candidates: tenantCandidates, output: routeOutput } = routed;
+    span.setAttribute("nlqdb.ask.kind", routeOutput.kind);
+    span.setAttribute("nlqdb.ask.kind_reason", routeOutput.reason);
+    span.setAttribute("nlqdb.ask.tenant_db_count", tenantCandidates.length);
+
+    // SK-ASK-011 — consume the speculative-create reconciliation if it
+    // was started (only when no dbId was pinned).
+    if (speculativeReconcilePromise) {
+      const reconciled = await speculativeReconcilePromise;
+      if (reconciled.kind === "committed") {
+        span.setAttribute("nlqdb.ask.outcome", "speculative_create_committed");
         span.end();
-        return c.json({ error: { status: "llm_failed" as const } }, 502);
+        return formatCreateJsonResponse(reconciled.result);
       }
+      span.setAttribute("nlqdb.ask.outcome", "speculative_create_rolled_back");
+    }
 
-      const { candidates: tenantCandidates, output: routeOutput } = routed;
-      span.setAttribute("nlqdb.ask.kind", routeOutput.kind);
-      span.setAttribute("nlqdb.ask.kind_reason", routeOutput.reason);
-      span.setAttribute("nlqdb.ask.tenant_db_count", tenantCandidates.length);
-
-      // SK-ASK-011 — consume the speculative create's reconciliation
-      // outcome. Committed → return the create response (cache was
-      // right). Rolled back → fall through; routeOutput already knows
-      // about the dbs (listPromise was shared) and the existing flow
-      // handles 0/1/2+ dispatch as today.
-      if (speculativeReconcilePromise) {
-        const reconciled = await speculativeReconcilePromise;
-        if (reconciled.kind === "committed") {
-          span.setAttribute("nlqdb.ask.outcome", "speculative_create_committed");
-          span.end();
-          return formatCreateJsonResponse(reconciled.result);
-        }
-        span.setAttribute("nlqdb.ask.outcome", "speculative_create_rolled_back");
+    // kind=create dispatch.
+    if (routeOutput.kind === "create") {
+      if (parsed.body.dbId) {
+        // SK-ASK-014 — pinned dbId + classifier wants create. Surface
+        // a typed clarification chip rather than letting the LLM emit
+        // CREATE TABLE through the read/write path and have the
+        // allowlist reject it as the cryptic `disallowed_verb`.
+        const pinned = tenantCandidates.find((d) => d.id === parsed.body.dbId);
+        span.setAttribute("nlqdb.ask.outcome", "clarify_create_with_pinned_db");
+        span.end();
+        return c.json(
+          {
+            error: {
+              status: "clarify_required" as const,
+              clarification: "create_or_query_pinned" as const,
+              pinned_db: pinned ? { id: pinned.id, slug: pinned.slug } : null,
+              reason: routeOutput.reason,
+            },
+          },
+          409,
+        );
       }
+      return runCreatePath();
+    }
 
-      if (routeOutput.kind === "create") {
-        return runCreatePath();
-      }
-
+    // kind=query|write — honour the pin if set; otherwise run the
+    // 0/1/N-db dispatch.
+    if (!parsed.body.dbId) {
       if (tenantCandidates.length === 0) {
         // Defense in depth — `routeAsk` returns kind=create on 0 dbs
         // (the architecture §3.6.4 rule). If we land here with kind=
@@ -1103,7 +1123,7 @@ function buildSignInUrl(referer: string | undefined): string {
 // for `schema_unavailable` mirrors REST convention for "request was
 // well-formed but the server can't act on it" (the goal+dbId parsed,
 // but introspection couldn't fetch a schema this time).
-function errorStatus(status: AskError["status"]): 400 | 404 | 422 | 429 | 502 {
+function errorStatus(status: AskError["status"]): 400 | 404 | 409 | 422 | 429 | 502 {
   switch (status) {
     case "db_not_found":
       return 404;
@@ -1117,6 +1137,8 @@ function errorStatus(status: AskError["status"]): 400 | 404 | 422 | 429 | 502 {
       return 502;
     case "sql_rejected":
       return 400;
+    case "clarify_required":
+      return 409;
   }
 }
 

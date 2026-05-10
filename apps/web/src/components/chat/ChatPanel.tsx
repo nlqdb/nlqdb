@@ -59,6 +59,12 @@ type ReplyState =
   // the floor — render an explicit picker so the user can pin the
   // intended DB. Clicking a candidate re-sends with that dbId.
   | { kind: "ambiguous"; candidates: CandidateDb[]; reason: string }
+  // SK-ASK-014: caller pinned a dbId but the classifier returned
+  // kind=create. Surface a clarification chip ("Create a new database,
+  // or query <pinned slug>?") so the user can choose; the previous
+  // behaviour was a generic "That query was rejected" via the read/
+  // write SQL allowlist's disallowed_verb path.
+  | { kind: "clarify"; pinnedDb: { id: string; slug: string } | null }
   | { kind: "error"; message: string };
 
 type Reply = {
@@ -91,7 +97,12 @@ function loadHistory(dbId: string): Message[] {
     return parsed.map((m): Message => {
       if (m.role === "user") return m;
       const { state } = m.reply;
-      if (state.kind === "pending" || state.kind === "needs-confirm") {
+      if (
+        state.kind === "pending" ||
+        state.kind === "needs-confirm" ||
+        state.kind === "clarify" ||
+        state.kind === "ambiguous"
+      ) {
         return { ...m, reply: { ...m.reply, state: { kind: "error", message: "Session ended." } } };
       }
       return m;
@@ -211,7 +222,17 @@ export default function ChatPanel({ apiBase }: ChatPanelProps) {
   const startSend = useCallback(
     async (
       goal: string,
-      opts: { confirm?: boolean; replyId?: string; dbIdOverride?: string } = {},
+      opts: {
+        confirm?: boolean;
+        replyId?: string;
+        dbIdOverride?: string;
+        // SK-ASK-014: when the user accepts the clarify chip's
+        // "Create new database" action, we re-send the same goal
+        // without any pin so the API's classifier routes the
+        // request through the create path. Overrides activeDbId
+        // and dbIdOverride.
+        forceNoPin?: boolean;
+      } = {},
     ) => {
       // SK-ASK-009: send routes through `askStream` only when a
       // `dbId` is pinned (active rail item OR the candidate the user
@@ -219,7 +240,7 @@ export default function ChatPanel({ apiBase }: ChatPanelProps) {
       // API can return either AskOk (auto-targeted, 1-DB or LLM
       // pick), a kind=create envelope (0 DBs / classifier=create),
       // or a 409 ambiguous_db with candidate_dbs.
-      const pinnedDbId = opts.dbIdOverride ?? activeDbId;
+      const pinnedDbId = opts.forceNoPin ? null : (opts.dbIdOverride ?? activeDbId);
 
       const replyId = opts.replyId ?? cryptoRandomId();
 
@@ -349,6 +370,18 @@ export default function ChatPanel({ apiBase }: ChatPanelProps) {
           }));
           return;
         }
+        // SK-ASK-014: 409 clarify_required carries `pinned_db` — the
+        // user pinned a DB but the classifier returned kind=create.
+        // Render a chip with two actions ("Create new database" /
+        // "Cancel") rather than the generic rejection message.
+        if (err instanceof NlqdbApiError && err.code === "clarify_required") {
+          const pinned = err.body?.pinned_db ?? null;
+          updateReply(replyId, (reply) => ({
+            ...reply,
+            state: { kind: "clarify", pinnedDb: pinned },
+          }));
+          return;
+        }
         updateReply(replyId, (reply) => ({
           ...reply,
           state: { kind: "error", message: messageFor(err) },
@@ -387,6 +420,21 @@ export default function ChatPanel({ apiBase }: ChatPanelProps) {
   // over — same UX as a normal send from that point on.
   function pickCandidate(replyId: string, goal: string, dbId: string) {
     void startSend(goal, { dbIdOverride: dbId, replyId });
+  }
+
+  // SK-ASK-014: clicking "Create new database" on the clarify chip
+  // re-sends the SAME goal without any pinned dbId. The classifier
+  // returns kind=create and the API takes the create path — folding
+  // a fresh DB into the rail and re-pinning it for the next send.
+  function acceptClarifyCreate(replyId: string, goal: string) {
+    void startSend(goal, { replyId, forceNoPin: true });
+  }
+
+  function cancelClarify(replyId: string) {
+    updateReply(replyId, (reply) => ({
+      ...reply,
+      state: { kind: "error", message: "Cancelled — try rephrasing." },
+    }));
   }
 
   function approveDiff() {
@@ -560,6 +608,8 @@ export default function ChatPanel({ apiBase }: ChatPanelProps) {
                   onApprove={approveDiff}
                   onCancel={cancelDiff}
                   onPickCandidate={(dbId) => pickCandidate(msg.reply.id, msg.reply.goal, dbId)}
+                  onClarifyCreate={() => acceptClarifyCreate(msg.reply.id, msg.reply.goal)}
+                  onClarifyCancel={() => cancelClarify(msg.reply.id)}
                 />
               </li>
             ),
@@ -631,6 +681,8 @@ function ReplyView({
   onApprove,
   onCancel,
   onPickCandidate,
+  onClarifyCreate,
+  onClarifyCancel,
 }: {
   reply: Reply;
   pkLive: string | null;
@@ -641,11 +693,17 @@ function ReplyView({
   // `candidate_dbs` on an `ambiguous` reply. Re-sends the same goal
   // pinned to the chosen dbId.
   onPickCandidate: (dbId: string) => void;
+  // SK-ASK-014: clarify chip actions. `onClarifyCreate` re-sends the
+  // goal without any pin so the API takes the create path;
+  // `onClarifyCancel` dismisses the reply with a "rephrase" hint.
+  onClarifyCreate: () => void;
+  onClarifyCancel: () => void;
 }) {
   const ok = reply.state.kind === "ok" ? reply.state.ok : null;
   const needsConfirm = reply.state.kind === "needs-confirm" ? reply.state.diff : null;
   const created = reply.state.kind === "created" ? reply.state : null;
   const ambiguous = reply.state.kind === "ambiguous" ? reply.state : null;
+  const clarify = reply.state.kind === "clarify" ? reply.state : null;
   const error = reply.state.kind === "error" ? reply.state.message : null;
   const pending = reply.state.kind === "pending";
 
@@ -699,6 +757,32 @@ function ReplyView({
                 </button>
               </li>
             ))}
+          </ul>
+        </div>
+      ) : null}
+      {clarify ? (
+        <div className="chat-reply__clarify">
+          <p className="chat-reply__clarify-prompt">
+            Looks like you want to create something new.{" "}
+            {clarify.pinnedDb ? (
+              <>
+                Spin up a fresh database, or rephrase to query <code>{clarify.pinnedDb.slug}</code>?
+              </>
+            ) : (
+              <>Spin up a fresh database, or rephrase your request?</>
+            )}
+          </p>
+          <ul className="chat-reply__clarify-actions">
+            <li>
+              <button type="button" className="btn btn--accent" onClick={onClarifyCreate}>
+                Create new database
+              </button>
+            </li>
+            <li>
+              <button type="button" className="btn btn--ghost" onClick={onClarifyCancel}>
+                Cancel
+              </button>
+            </li>
           </ul>
         </div>
       ) : null}
