@@ -146,6 +146,17 @@ when-to-load:
   - Trust the Worker CPU limit alone — hard kill, no `finally`, worse error surface.
   - Configurable via wrangler.toml — adds operator surface for a value that doesn't need tuning at Phase 1 scale.
 
+### SK-HDC-011 — `dropSchemaAndRegistry` is the single rollback primitive (idempotent, best-effort, paired Postgres + D1)
+
+- **Decision:** `apps/api/src/db-create/neon-provision.ts` exports `dropSchemaAndRegistry(tracer, pg, d1, dbId, schemaName)`. It runs `DROP SCHEMA "<schemaName>" CASCADE` followed by `DELETE FROM databases WHERE id = ?`. Both legs are idempotent and best-effort: a missing schema or row is not an error. Two compensation paths call this primitive — `provisionDb`'s registry-insert-failed branch (where the D1 INSERT never landed, so the DELETE no-ops) and `SK-ASK-011`'s `SpeculativeHandle.rollback()` (where both legs typically run).
+- **Core value:** Simple, Bullet-proof
+- **Why:** Two callsites that both compensate "we provisioned a schema and need to undo it" must use the same primitive — divergence here is how partial-rollback bugs land. Idempotency means retries (manual operator intervention or future automated sweeps) can call this freely. Best-effort means a transient Postgres error doesn't strand the registry row in a half-rolled-back state — the orphan-schema sweep job picks up either side.
+- **Consequence in code:** Both `provisionDb`'s registry-insert-failed branch (line ~237 in `neon-provision.ts`) and `SpeculativeHandle.rollback()` in `apps/api/src/db-create/speculative.ts` call `dropSchemaAndRegistry`. Tests cover: schema present + row present (full rollback), schema missing (DELETE still runs), row missing (DROP still runs), both missing (idempotent no-op). The function re-validates `schemaName` via `assertSafeIdentifier` at the boundary even though every callsite already validated upstream — consistent with `SK-HDC-009`'s defense-in-depth posture. PRs that introduce a third compensation path fail review.
+- **Alternatives rejected:**
+  - Inline both compensation flows — drift; the next bug is half-rollback because one callsite forgot the D1 delete.
+  - Make rollback transactional across PG + D1 — no two-phase commit primitive in this stack; the existing provision flow already accepts the orphan-schema-on-D1-failure pattern (see `neon-provision.ts` header comment).
+  - Keep `dropSchemaBestEffort` private with an inline D1 delete on the speculative path — same drift risk; sharing the export makes the symmetry visible at review time.
+
 ## GLOBALs governing this feature
 
 Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; index in [`docs/decisions.md`](../../decisions.md)). The list below names the rules that constrain this feature; any skill-local commentary is nested under the rule.

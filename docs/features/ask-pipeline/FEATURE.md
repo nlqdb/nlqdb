@@ -112,6 +112,24 @@ when-to-load:
 - **Consequence in code:** `MAX_GOAL_LENGTH = 2000` is exported from `apps/api/src/http.ts` and checked in `parseGoalDbBody`, `parseAskBody`, and the `POST /v1/databases` handler. The error body carries `maxLength` so SDK consumers can render a precise message without hard-coding the limit (GLOBAL-012).
 - **Alternatives rejected:** Silent truncation — hides the problem from the caller; the truncated goal produces a wrong result with no diagnostic. Per-tier limits — adds complexity without meaningful UX benefit; 2 000 chars covers every legitimate use case across all tiers.
 
+### SK-ASK-011 — Speculative create on probable-0-dbs (cache-stale defense)
+
+- **Decision:** When `probablyZeroDbs(recentTables, goal)` returns true on `/v1/ask`, the handler kicks off `startSpeculativeCreate` in parallel with the authoritative `listDatabasesForTenant` D1 read. The reconciler commits the create when D1 confirms 0 dbs; on D1 returning ≥ 1 dbs (or the read failing), the reconciler issues `dropSchemaAndRegistry` (DROP SCHEMA CASCADE + DELETE FROM databases) + evicts the request's `Idempotency-Key` dedupe entry, then routes the request through the existing 0/1/2+ dispatch.
+- **Core value:** Bullet-proof, Fast
+- **Why:** A stale or empty cache (`recentTables` is the most likely culprit, but listDb itself can also lie under D1 cold-pool) can falsely suggest 0 dbs. Pure serial "list-then-create" loses the create-pipeline parallelism on the genuine cold-start path (~800 ms). Speculating preserves cold-start latency while making the duplicate-create case impossible — the rollback closes the hole even when the cache lies. `Idempotency-Key` eviction prevents a retry from returning a rolled-back create response.
+- **Consequence in code:** Three small modules: `apps/api/src/ask/route-hint.ts` (predicate), `apps/api/src/db-create/speculative.ts` (handle + rollback), `apps/api/src/ask/reconcile-speculative.ts` (dispatcher). Each function ≤ 30 lines; PRs that fold them back into a single function fail review. Spans `nlqdb.create.speculative.{start,rollback}` and metrics `nlqdb.create.speculative.{start_total,commit_total,rollback_total,overhead_ms}` (per `GLOBAL-014`) drive a dashboard alert at rollback rate > 0.1 % / hour. The anon create-cap gate runs before speculation kicks off (mirrors `runCreatePath` parity); see `apps/api/src/index.ts` `checkAnonCreateGate` helper.
+- **Alternatives rejected:**
+  - Trust the cache only — duplicate creates on stale cache; user-visible bug.
+  - Always serial — biggest cold-start latency hit; create is the slowest step (~800 ms).
+  - Defer the create's COMMIT until reconcile — holds a Postgres connection across LLM-tier latency; Workers can't sustain that pattern.
+  - Skip Idempotency-Key eviction — retry returns the rolled-back response; dedupe store lies.
+
+**Open follow-ups (track in this skill's Open questions):**
+- pgvector card cleanup on rollback when embedding lands (today `embedTableCards` is a no-op in `apps/api/src/db-create/build-deps.ts`).
+- `pk_live` revocation on rollback when the api-keys subsystem ships.
+- Anon create-cap consumption when speculation rolls back: cap is consumed at gate time so a false-positive predicate over-counts the user's hourly cap by 1. Acceptable today; reconsider once WS1's cache makes the predicate selective enough that false positives become rare.
+- `Idempotency-Key` middleware itself is still open work (`SK-IDEMP-005` is locked, implementation pending). The `IdempotencyStore` interface in `apps/api/src/db-create/speculative.ts` carries the `delete(principalId, key)` primitive the rollback path needs; the route handler does not yet wire a store, so eviction is a no-op until the middleware lands.
+
 ## The LLM loop
 
 This is the part most implementations get wrong. A single "prompt → SQL → run" pipeline is a demo, not a product. The `/v1/ask` pipeline runs these eight steps per query:
