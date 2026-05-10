@@ -311,6 +311,19 @@ export const createSpeculativeOverheadMs = lazyHistogram(
   "ms",
 );
 
+// GLOBAL-022 — recoverable failures retry to success. One increment
+// per retry-triggering failure, labelled by `stage` (where the retry
+// fires) and `reason` (why the prior attempt failed). Counts retry
+// *attempts*, not requests — a request that succeeds on attempt 3
+// emits two increments. Sustained climb means recovery is firing
+// often enough that something genuine is broken; the dashboard alerts
+// on rolling-window rate.
+export const retryTotal = lazyCounter(
+  "@nlqdb/api",
+  "nlqdb.retry.total",
+  "Recoverable-failure retries fired. Labelled by stage ∈ {route, plan, exec, sdk} and reason ∈ {timeout, network, http_5xx, llm_failed, sql_rejected, db_unreachable, transport, parse, unknown}.",
+);
+
 export function resetInstrumentsForTest(): void {
   for (const fn of resetFns) fn();
 }

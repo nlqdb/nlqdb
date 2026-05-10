@@ -169,22 +169,22 @@ Canonical names. Every slice MUST use these — no one-off variants.
 | `nlqdb.cache.plan.lookup`     | KV read for cached plan (label `hit=true/false`). |
 | `nlqdb.cache.plan.write`      | KV write of new plan.                          |
 | `nlqdb.recent_tables.lookup`  | KV read of principal's recent-tables MRU (`SK-ASK-012`). |
-| `nlqdb.recent_tables.touch`   | KV read-merge-write to push new tables onto the MRU (`SK-ASK-012`). Wrapped in `ctx.waitUntil` on `/v1/ask`; awaited inline on the create path. |
+| `nlqdb.recent_tables.touch`   | KV read-merge-write to push new tables onto the MRU (`SK-ASK-012`). `ctx.waitUntil` on `/v1/ask`; awaited inline on create. |
 | `llm.route`                   | Merged kind + dbId classification (SK-ASK-009). One cheap-tier call per cache-miss / dbId-absent send; replaces the older `llm.classify` + `llm.disambiguate` pair. |
 | `llm.plan`                    | NL → SQL generation.                           |
 | `llm.summarize`               | Result summarization (conditional).            |
 | `llm.schema_infer`            | Hosted db.create — NL → typed `SchemaPlan` (SK-HDC-002, SK-HDC-003). |
-| `llm.engine_classify`         | Hosted db.create — goal text → engine pick (SK-DB-010, SK-MULTIENG-002). Parent span carries `nlqdb.engine_classify.fallback_reason ∈ {deferred, below_floor, provider_failed, unknown_string}` (4 values; absent when LLM pick was used). |
+| `llm.engine_classify`         | Hosted db.create — goal text → engine pick (SK-DB-010, SK-MULTIENG-002). Parent carries `nlqdb.engine_classify.fallback_reason ∈ {deferred, below_floor, provider_failed, unknown_string}` (absent when LLM pick was used). |
 | `nlqdb.sql.validate`          | SQL parse + schema-fit check.                  |
 | `db.query`                    | Neon HTTP execute — standard OTel `db.*`. Attributes: `db.system=postgresql`, `db.operation.name`, `db.statement` (PII-redacted SQL text). |
 | `db.transaction`              | BEGIN…COMMIT batch around the db.create provisioner's DDL + sample-row apply (`apps/api/src/db-create/neon-provision.ts`). Carries `db.system=postgresql`. Per-statement `db.query` spans nest under it. |
 | `nlqdb.auth.oauth.callback`   | `/api/auth/callback/{github,google}` flow.     |
 | `nlqdb.webhook.stripe`        | Stripe webhook handler.                        |
-| `nlqdb.events.emit`           | Product-event sink dispatch (LogSnag; PostHog optional Phase 2). Wrapped in `ctx.waitUntil` so it runs **after** the response is returned — zero user-facing latency. Server-side only; no client SDK on the marketing site. |
+| `nlqdb.events.emit`           | Product-event sink dispatch (LogSnag; PostHog optional Phase 2). Wrapped in `ctx.waitUntil` so it runs after the response — zero user-facing latency. Server-side only. |
 | `nlqdb.events.sink.query_log` | Tinybird `query_log` Data Source write. One per consumed events-batch. Carries `nlqdb.events.batch_size`, `http.response.status_code`, `nlqdb.events.rows_written`, `nlqdb.events.circuit_open`. Owner: `apps/events-worker/src/sinks/query-log.ts` calling `@nlqdb/db/clickhouse-tinybird/query-log.ts` (`SK-EVENTS-009`). |
 | `nlqdb.workload_analyser.run` | W5 daily cron parent span. Carries `nlqdb.workload_analyser.{query_log_rows, proposals, reshapes_applied, errors, elapsed_ms}`. One per `scheduled()` invocation. Owner: `apps/api/src/workload-analyser/cron.ts` (`SK-MIGRATE-001`). |
 | `nlqdb.workload_analyser.reshape` | One child span per `ReshapeProposal` the cron dispatches. Carries `nlqdb.workload_analyser.{kind, db_id, pipe_pre_existed?, pipe_name?}`. ERROR status when the Tinybird API rejects the create or `schema_hash` drift forces a rollback (`SK-MIGRATE-004`/`SK-MIGRATE-006`). |
-| `db.query` (Tinybird Pipes management) | Per-call span around `createPipe` / `dropPipe` / `getPipe`. Attributes `db.system=other_sql`, `db.operation.name ∈ {PIPE_CREATE, PIPE_DROP, PIPE_GET}`, `db.tinybird.pipe`. Latency lands on the shared `nlqdb.db.duration_ms{operation}` histogram alongside the read path's `PIPE_CALL` and the write path's `EVENTS_WRITE`. Owner: `packages/db/src/clickhouse-tinybird/pipe-management.ts` (`SK-MIGRATE-001`). |
+| `db.query` (Tinybird Pipes mgmt) | Per-call span around `createPipe` / `dropPipe` / `getPipe`. Attributes `db.system=other_sql`, `db.operation.name ∈ {PIPE_CREATE, PIPE_DROP, PIPE_GET}`, `db.tinybird.pipe`. Latency on `nlqdb.db.duration_ms{operation}` alongside `PIPE_CALL` / `EVENTS_WRITE`. Owner: `packages/db/src/clickhouse-tinybird/pipe-management.ts` (`SK-MIGRATE-001`). |
 | `nlqdb.create.speculative.start` | SK-ASK-011 — parent span for a speculative create kicked off when `probablyZeroDbs(...)` fired. Carries `nlqdb.principal_kind`, `nlqdb.create.speculative.outcome ∈ {create_ok, create_failed}`. Owner: `apps/api/src/db-create/speculative.ts`. |
 | `nlqdb.create.speculative.rollback` | SK-ASK-011 — child span on the rollback path. Carries `nlqdb.principal_kind`, `nlqdb.create.speculative.rollback_reason ∈ {dbs_appeared, list_failed, create_failed_after_speculation}`. Owner: `apps/api/src/db-create/speculative.ts`. |
 
@@ -200,8 +200,9 @@ Counters (suffix `.total`):
 - `nlqdb.auth.events.total{type, outcome}` — sign-in / refresh / logout.
 - `nlqdb.events.sink.query_log.failures.total{status_class}` — Tinybird `query_log` write failures (non-2xx HTTP or fetch threw). Used as the trip signal for the events-worker's circuit-breaker (`SK-EVENTS-009`).
 - `nlqdb.create.speculative.start_total{principal_kind}` — SK-ASK-011 speculative creates kicked off by `probablyZeroDbs(...)`.
-- `nlqdb.create.speculative.commit_total{principal_kind}` — SK-ASK-011 speculative creates the reconciler committed (D1 confirmed 0 dbs).
-- `nlqdb.create.speculative.rollback_total{principal_kind, reason}` — SK-ASK-011 speculative rollbacks. `reason ∈ {dbs_appeared, list_failed, create_failed_after_speculation}`. Alert at sustained rate > 0.1 % / hour — cache or trigger heuristic regression.
+- `nlqdb.create.speculative.commit_total{principal_kind}` — SK-ASK-011 commits (D1 confirmed 0 dbs).
+- `nlqdb.create.speculative.rollback_total{principal_kind, reason}` — SK-ASK-011 rollbacks. `reason ∈ {dbs_appeared, list_failed, create_failed_after_speculation}`. Alert > 0.1 % / hour.
+- `nlqdb.retry.total{stage, reason}` — GLOBAL-022 retries (SK-ASK-013, SK-SDK-008). `stage ∈ {route, plan, exec, sdk}`. Attempts, not requests. Sustained climb = release-blocking.
 
 Histograms (latency in ms — explicit `_ms` suffix):
 

@@ -478,4 +478,97 @@ describe("orchestrateAsk", () => {
     expect(out.ok).toBe(true);
     expect(onEvent).toHaveBeenCalled();
   });
+
+  // GLOBAL-022 — recoverable failures retry to success. Tests pin the
+  // four orchestrator stages: plan retries on LLM throw, plan retries
+  // on validator-reject (with feedback), exec retries on transient
+  // throws, DbConfigError is non-recoverable.
+
+  it("GLOBAL-022: plan retries on transient LLM throw and succeeds on attempt 2", async () => {
+    let calls = 0;
+    const llm = stubLLM();
+    llm.plan = vi.fn(async () => {
+      calls++;
+      if (calls < 2) throw new Error("provider chain exhausted");
+      return { sql: "SELECT 1" };
+    }) as unknown as typeof llm.plan;
+    const out = await orchestrateAsk(makeDeps({ llm }), {
+      goal: "x",
+      dbId: "db_1",
+      userId: "user_1",
+    });
+    expect(out.ok).toBe(true);
+    expect(calls).toBe(2);
+  });
+
+  it("GLOBAL-022: validator-reject feeds previousAttempt back into next plan call", async () => {
+    const planArgs: unknown[] = [];
+    const llm = stubLLM();
+    llm.plan = vi.fn(async (req) => {
+      planArgs.push(req);
+      if (planArgs.length === 1) return { sql: "DROP TABLE users" };
+      return { sql: "SELECT 1" };
+    }) as unknown as typeof llm.plan;
+    const out = await orchestrateAsk(makeDeps({ llm }), {
+      goal: "x",
+      dbId: "db_1",
+      userId: "user_1",
+    });
+    expect(out.ok).toBe(true);
+    expect(planArgs).toHaveLength(2);
+    // Second attempt sees the rejected SQL + reason in previousAttempt.
+    const second = planArgs[1] as { previousAttempt?: { sql?: string; error: string } };
+    expect(second.previousAttempt?.sql).toBe("DROP TABLE users");
+    expect(second.previousAttempt?.error).toContain("drop_statement");
+  });
+
+  it("GLOBAL-022: plan exhausts 3 attempts then surfaces sql_rejected", async () => {
+    let calls = 0;
+    const llm = stubLLM();
+    llm.plan = vi.fn(async () => {
+      calls++;
+      return { sql: "DROP TABLE users" };
+    }) as unknown as typeof llm.plan;
+    const out = await orchestrateAsk(makeDeps({ llm }), {
+      goal: "x",
+      dbId: "db_1",
+      userId: "user_1",
+    });
+    expect(out).toEqual({
+      ok: false,
+      error: { status: "sql_rejected", reason: "drop_statement" },
+    });
+    expect(calls).toBe(3);
+  });
+
+  it("GLOBAL-022: exec retries on transient throw and succeeds on attempt 2", async () => {
+    let calls = 0;
+    const exec = vi.fn(async () => {
+      calls++;
+      if (calls < 2) throw new Error("connection reset");
+      return { rows: [{ x: 1 }], rowCount: 1 };
+    });
+    const out = await orchestrateAsk(makeDeps({ exec }), {
+      goal: "x",
+      dbId: "db_1",
+      userId: "user_1",
+    });
+    expect(out.ok).toBe(true);
+    expect(calls).toBe(2);
+  });
+
+  it("GLOBAL-022: DbConfigError is non-recoverable — single attempt, no retry", async () => {
+    let calls = 0;
+    const exec = vi.fn(async () => {
+      calls++;
+      throw new DbConfigError('"DATABASE_URL" did not resolve');
+    });
+    const out = await orchestrateAsk(makeDeps({ exec }), {
+      goal: "x",
+      dbId: "db_1",
+      userId: "user_1",
+    });
+    expect(out).toEqual({ ok: false, error: { status: "db_misconfigured" } });
+    expect(calls).toBe(1);
+  });
 });

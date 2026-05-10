@@ -19,6 +19,7 @@ import { makeRecentTablesStore } from "./ask/recent-tables.ts";
 import { type ReconcileResult, reconcileSpeculativeCreate } from "./ask/reconcile-speculative.ts";
 import { ROUTE_CONFIDENCE_FLOOR, routeAsk } from "./ask/route-ask.ts";
 import { probablyZeroDbs } from "./ask/route-hint.ts";
+import { withStageRetry } from "./ask/retry.ts";
 import type { AskError, OrchestrateEvent, SelectedDbEcho } from "./ask/types.ts";
 import { listInbox } from "./auth/mock-email-sink.ts";
 import { handleMockSignIn, mockSignInFormHtml } from "./auth/mock-idp.ts";
@@ -494,7 +495,9 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
       // SK-ASK-009 — routeAsk runs in parallel with listPromise.
       // Wraps both: routeAsk's `dbs` input comes from the awaited
       // listPromise (or `[]` if that read fails — routeAsk then
-      // returns kind=create deterministically).
+      // returns kind=create deterministically). GLOBAL-022 retries
+      // the LLM call inside routeAsk up to 3 attempts before
+      // surfacing as `llm_failed`.
       const routePromise = (async () => {
         let dbs: Awaited<ReturnType<typeof listDatabasesForTenant>>;
         try {
@@ -505,24 +508,28 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
           // error to the user.
           return {
             candidates: [] as ReturnType<typeof toCandidates>,
-            output: await routeAsk(
-              { llm: getLLMRouter() },
-              {
-                goal: parsed.body.goal,
-                dbs: [],
-                recentTables,
-              },
+            output: await withStageRetry("route", () =>
+              routeAsk(
+                { llm: getLLMRouter() },
+                {
+                  goal: parsed.body.goal,
+                  dbs: [],
+                  recentTables,
+                },
+              ),
             ),
           };
         }
         const candidates = toCandidates(dbs);
-        const output = await routeAsk(
-          { llm: getLLMRouter() },
-          {
-            goal: parsed.body.goal,
-            dbs: candidates,
-            recentTables,
-          },
+        const output = await withStageRetry("route", () =>
+          routeAsk(
+            { llm: getLLMRouter() },
+            {
+              goal: parsed.body.goal,
+              dbs: candidates,
+              recentTables,
+            },
+          ),
         );
         return { candidates, output };
       })();

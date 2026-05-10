@@ -141,6 +141,18 @@ when-to-load:
   - Per-(principal, db) cache — needs the dbId at classify time, but classify *outputs* the dbId; chicken-and-egg.
   - Track all-time tables (no LRU cap) — unbounded growth on power users; 100 covers the realistic active set.
 
+### SK-ASK-013 — Per-stage recoverable-failure retries with feedback (3 attempts)
+
+- **Decision:** Each `/v1/ask` orchestrator stage with a recoverable error class wraps its work in `withStageRetry(stage, fn)` (3 attempts max): `route` (the SK-ASK-009 classifier), `plan` (LLM emit + validator allowlist as one loop), `exec` (DB query). When `validateSql` rejects, the next plan call receives the rejected SQL + reason in `PlanRequest.previousAttempt` so the prompt produces a different shape. Non-recoverable cases (`DbConfigError`, billing-cap, 4xx) skip the retry via the `Nonrecoverable` sentinel. Composes with the LLM provider chain's 3-hop failover (SK-LLM-006).
+- **Core value:** Bullet-proof, Effortless UX
+- **Why:** Without per-stage retries, a single Neon hiccup / provider 5xx / first-shot invalid SQL surfaces as `db_unreachable` / `llm_failed` / `sql_rejected` and breaks the Bullet-proof contract. Three attempts absorbs the transient without unbounded wall-clock; validator-reject feedback closes the "LLM emits DROP, we 4xx, user retypes" loop.
+- **Consequence in code:** `apps/api/src/ask/retry.ts` exports `withStageRetry`, `Nonrecoverable`, `RETRY_MAX_ATTEMPTS = 3`. `orchestrate.ts` wraps plan-with-validate and exec; the route handler wraps `routeAsk`. `PlanRequest.previousAttempt` carries `{sql?, error}`; `buildPlanUser` appends the previous-attempt block. Each retry stamps `nlqdb.retry.attempt` on the active span and increments `nlqdb.retry.total{stage, reason}` (`GLOBAL-014`).
+- **Alternatives rejected:**
+  - Single attempt — surfaces every transient as a user-visible failure.
+  - Unbounded retries — turns transients into request hangs.
+  - SDK-only retries — server-side recoveries (re-plan with parser feedback, provider failover) need server context.
+  - Skip validator-reject feedback — LLM commonly emits the same shape twice.
+
 ## The LLM loop
 
 This is the part most implementations get wrong. A single "prompt → SQL → run" pipeline is a demo, not a product. The `/v1/ask` pipeline runs these eight steps per query:
@@ -170,11 +182,7 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 - **GLOBAL-015** — Power users always have an escape hatch.
 - **GLOBAL-017** — Two endpoints, two CLI verbs, one chat box — one way to do each thing.
 - **GLOBAL-022** — Recoverable failures retry to success — never surface a fixable error.
-  - *In this skill:* each pipeline stage owns its recoverable error
-    class — classifier (wrong intent), planner (invalid SQL),
-    validator (allowlist re-plan), executor (transient DB error).
-    Each stage retries up to 3 attempts before propagating, feeding
-    the prior attempt's error into the next prompt where applicable.
+  - *In this skill:* see `SK-ASK-013` for the canonical implementation. Each pipeline stage owns its recoverable error class — classifier (wrong intent), planner (invalid SQL), validator (allowlist re-plan), executor (transient DB error) — and retries up to 3 attempts via `withStageRetry`, feeding the prior attempt's error into the next prompt where applicable.
 
 ## Open questions / known unknowns
 
@@ -185,58 +193,4 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 
 ## Happy path walkthrough
 
-### §14.6 HTTP API (when none of the surfaces fit)
-
-**Default (one endpoint; reads need no idempotency header):**
-
-```bash
-curl https://api.nlqdb.com/v1/ask \
-  -H "Authorization: Bearer sk_live_..." \
-  -d '{"goal": "an orders tracker", "ask": "how many orders today"}'
-
-→ 200 {
-  "answer": "12 today",
-  "data": [{"count": 12}],
-  "session": { "db": "orders-tracker-a4f", "key": "pk_live_..." },
-  "trace": { "engine": "postgres", "sql": "...", "ms": 41 }
-}
-```
-
-The `session.db` and `session.key` come back so the caller *can* go DB-explicit on subsequent calls. They don't have to.
-
-**Writes** (anything that mutates state) require `Idempotency-Key`:
-
-```bash
-curl https://api.nlqdb.com/v1/ask \
-  -H "Authorization: Bearer sk_live_..." \
-  -H "Idempotency-Key: $(uuidgen)" \
-  -d '{"ask": "add an order: alice, latte, 5.50"}'
-```
-
-The API **auto-classifies** the call; reads without a key succeed, writes without a key return `400 idempotency_required` with a curl snippet in the body showing the exact missing header. The user is never left guessing.
-
-**Anonymous mode from curl** (no key, no sign-in):
-
-```bash
-curl https://api.nlqdb.com/v1/ask \
-  -d '{"goal": "an orders tracker", "ask": "how many orders today"}'
-→ 200 { …, "session": { "anonymous_token": "anon_…" } }
-```
-
-Subsequent calls pass `Authorization: Bearer anon_…` to reuse the session. 72h window same as the web.
-
-### §15.3 Persona walkthrough — Priya, the Data-Curious PM
-
-**Goal:** answer the conference-leads question for the 4pm exec sync.
-
-| Time | Priya does | nlqdb does |
-|---|---|---|
-| 2:15pm | Drags the vendor's CSV onto `nlqdb.com`. Types *"how many of these are already in our users table"* | Uploads CSV as `conference-leads-q2`, joins against the read-only mirror of prod (already permissioned), returns the count and a preview |
-| 2:18pm | *"…and which plan are they on"* | Adds the join, returns table |
-| 2:20pm | *"break it down by acquisition channel"* | Adds the group-by, returns chart-ready data |
-| 2:22pm | Clicks "Share result" on the answer | Generates a permalinkable, redacted-by-default link to drop in Slack |
-| 4:00pm | Walks into the meeting with the answer | — |
-
-**What Priya never did:** opened a data-request ticket, pinged an engineer, opened Excel, learned SQL, installed a BI tool, got prod credentials.
-
-**Time saved on this one task:** ~1.5 days of waiting on engineering, plus ~30 minutes of Excel work.
+HTTP API cURL examples (default + writes with `Idempotency-Key` + anonymous-mode reuse) and the Priya persona walkthrough live in `docs/architecture.md` §14.6 / §15.3 — that's the canonical home for surface examples and persona stories so they don't drift out of sync with the architecture spec.

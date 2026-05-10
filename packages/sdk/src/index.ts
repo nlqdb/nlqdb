@@ -300,6 +300,11 @@ export type NlqClient = {
 
 const DEFAULT_BASE_URL = "https://app.nlqdb.com";
 
+// GLOBAL-022 — wire-layer retry budget. Three attempts per call: the
+// first plus two retries. Aligns with the server-side per-stage budget
+// so end-to-end transient resilience is high without unbounded loops.
+const SDK_MAX_ATTEMPTS = 3;
+
 // Thrown on every failure path. Consumers discriminate on `code`
 // rather than parsing strings. `httpStatus === 0` signals transport-
 // level failure (network / abort) — no response was received.
@@ -341,69 +346,34 @@ export function createClient(opts: ClientOptions = {}): NlqClient {
   if (opts.apiKey) baseHeaders["authorization"] = `Bearer ${opts.apiKey}`;
 
   async function call<T>(path: string, init: RequestInit): Promise<T> {
-    let res: Response;
-    try {
-      res = await fetcher(`${baseUrl}${path}`, {
-        ...init,
-        headers: { ...baseHeaders, ...(init.headers ?? {}) },
-        ...(credentials ? { credentials } : {}),
-      });
-    } catch (err) {
-      // Transport-level failure: DNS, CORS preflight, network drop,
-      // or AbortSignal firing mid-request. Wrap into the uniform
-      // error shape promised by README — consumers want one
-      // `catch (err: NlqdbApiError)` block, not `try/catch (err) if
-      // (err instanceof TypeError)`.
-      const aborted =
-        (err instanceof Error && err.name === "AbortError") ||
-        (typeof DOMException !== "undefined" &&
-          err instanceof DOMException &&
-          err.name === "AbortError") ||
-        init.signal?.aborted === true;
-      throw new NlqdbApiError(
-        aborted ? `nlqdb: ${path} aborted` : `nlqdb: ${path} network error`,
-        0,
-        aborted ? "aborted" : "network_error",
-        path,
-        null,
-        { cause: err },
-      );
+    // GLOBAL-022 + SK-SDK-006 — wire-layer retry loop. Up to 3
+    // attempts on transport failures and transient 5xx; 4xx surfaces
+    // immediately (caller error). For mutations the same
+    // `Idempotency-Key` is reused across attempts: auto-generate one
+    // if the caller didn't supply it, so the API's dedupe store
+    // collapses retries to a single side-effect (`SK-SDK-006`).
+    const headers = mergeHeaders(baseHeaders, init.headers);
+    const isMutation = (init.method ?? "GET").toUpperCase() !== "GET";
+    if (isMutation && !hasHeader(headers, "idempotency-key")) {
+      headers["idempotency-key"] = randomId();
     }
-    const text = await res.text();
-    let parsed: unknown;
-    if (text) {
-      try {
-        parsed = JSON.parse(text);
-      } catch {
-        // Non-JSON body. Don't echo body content into the thrown
-        // message — proxies / CDNs sometimes return HTML error
-        // pages whose contents may carry deployment internals.
-        throw new NlqdbApiError(
-          `nlqdb: ${path} → ${res.status} non-JSON response`,
-          res.status,
-          "non_json_response",
-          path,
-          null,
-        );
-      }
+    const reqInit: RequestInit = {
+      ...init,
+      headers,
+      ...(credentials ? { credentials } : {}),
+    };
+
+    let lastErr: NlqdbApiError | null = null;
+    for (let attempt = 1; attempt <= SDK_MAX_ATTEMPTS; attempt++) {
+      const result = await sendOnce<T>(fetcher, `${baseUrl}${path}`, path, reqInit);
+      if (result.kind === "ok") return result.value;
+      lastErr = result.error;
+      // Surface 4xx + parse + abort immediately. Aborts cancel the
+      // user's intent; 4xx are caller errors retry can't fix.
+      if (!isRecoverable(result.error)) throw result.error;
+      if (attempt === SDK_MAX_ATTEMPTS) throw result.error;
     }
-    if (!res.ok) {
-      const errBody = extractError(parsed);
-      const code = errBody?.status ?? "unknown_error";
-      throw new NlqdbApiError(
-        `nlqdb: ${path} → ${res.status} ${code}`,
-        res.status,
-        code,
-        path,
-        errBody,
-      );
-    }
-    // Empty 2xx (e.g. 204 No Content) — `parsed` is `undefined`, but
-    // we still cast to `T` because the caller's type already commits
-    // to a shape. If the API ever 204s a route that the caller
-    // expects to return JSON, the bug surfaces as a property-access
-    // TypeError downstream rather than a silent empty object.
-    return parsed as T;
+    throw lastErr ?? new NlqdbApiError(`nlqdb: ${path} retry exhausted`, 0, "unknown_error", path, null);
   }
 
   async function streamAsk(req: AskRequest, opts: AskStreamOptions): Promise<AskOk> {
@@ -658,6 +628,133 @@ function toTraceEvent(event: string, payload: unknown): TraceEvent | null {
     default:
       return null;
   }
+}
+
+// Single-attempt request. Returns either the parsed body or a wrapped
+// `NlqdbApiError`; the caller's retry loop decides whether to throw.
+// Splitting this out keeps the retry loop in `call` focused on
+// classification (recoverable vs not) instead of HTTP plumbing.
+type SendResult<T> = { kind: "ok"; value: T } | { kind: "err"; error: NlqdbApiError };
+
+async function sendOnce<T>(
+  fetcher: FetchLike,
+  url: string,
+  path: string,
+  init: RequestInit,
+): Promise<SendResult<T>> {
+  let res: Response;
+  try {
+    res = await fetcher(url, init);
+  } catch (err) {
+    const aborted =
+      (err instanceof Error && err.name === "AbortError") ||
+      (typeof DOMException !== "undefined" &&
+        err instanceof DOMException &&
+        err.name === "AbortError") ||
+      init.signal?.aborted === true;
+    return {
+      kind: "err",
+      error: new NlqdbApiError(
+        aborted ? `nlqdb: ${path} aborted` : `nlqdb: ${path} network error`,
+        0,
+        aborted ? "aborted" : "network_error",
+        path,
+        null,
+        { cause: err },
+      ),
+    };
+  }
+  const text = await res.text();
+  let parsed: unknown;
+  if (text) {
+    try {
+      parsed = JSON.parse(text);
+    } catch {
+      return {
+        kind: "err",
+        error: new NlqdbApiError(
+          `nlqdb: ${path} → ${res.status} non-JSON response`,
+          res.status,
+          "non_json_response",
+          path,
+          null,
+        ),
+      };
+    }
+  }
+  if (!res.ok) {
+    const errBody = extractError(parsed);
+    const code = errBody?.status ?? "unknown_error";
+    return {
+      kind: "err",
+      error: new NlqdbApiError(
+        `nlqdb: ${path} → ${res.status} ${code}`,
+        res.status,
+        code,
+        path,
+        errBody,
+      ),
+    };
+  }
+  return { kind: "ok", value: parsed as T };
+}
+
+// Recoverable = transport failure or transient 5xx. 4xx surfaces
+// immediately; aborts cancel the user's intent. `non_json_response`
+// from a 5xx counts (proxy returned an HTML error page); from a 2xx
+// it doesn't (server bug, retry won't help).
+function isRecoverable(err: NlqdbApiError): boolean {
+  if (err.code === "aborted") return false;
+  if (err.code === "network_error") return true;
+  if (err.httpStatus === 0) return false;
+  if (err.httpStatus >= 500 && err.httpStatus < 600) return true;
+  return false;
+}
+
+function mergeHeaders(
+  base: Record<string, string>,
+  extra: HeadersInit | undefined,
+): Record<string, string> {
+  const out: Record<string, string> = { ...base };
+  if (!extra) return out;
+  if (extra instanceof Headers) {
+    extra.forEach((v, k) => {
+      out[k.toLowerCase()] = v;
+    });
+    return out;
+  }
+  if (Array.isArray(extra)) {
+    for (const [k, v] of extra) out[k.toLowerCase()] = v;
+    return out;
+  }
+  for (const [k, v] of Object.entries(extra)) out[k.toLowerCase()] = String(v);
+  return out;
+}
+
+function hasHeader(headers: Record<string, string>, name: string): boolean {
+  return Object.hasOwn(headers, name.toLowerCase());
+}
+
+// 16-byte random id rendered as 32 hex chars. Used for the auto-
+// generated `Idempotency-Key` on retried mutations (`SK-SDK-006`).
+// Falls back to `Math.random` only when the global `crypto` is missing
+// (very old runtimes); the fallback is sufficient for de-dupe — the
+// API treats the key as opaque, not a security boundary.
+function randomId(): string {
+  const cryptoObj: { getRandomValues?: (b: Uint8Array) => Uint8Array } | undefined = (
+    globalThis as { crypto?: { getRandomValues?: (b: Uint8Array) => Uint8Array } }
+  ).crypto;
+  const bytes = new Uint8Array(16);
+  if (cryptoObj?.getRandomValues) {
+    cryptoObj.getRandomValues(bytes);
+  } else {
+    for (let i = 0; i < bytes.length; i++) bytes[i] = Math.floor(Math.random() * 256);
+  }
+  let out = "";
+  for (let i = 0; i < bytes.length; i++) {
+    out += (bytes[i] ?? 0).toString(16).padStart(2, "0");
+  }
+  return out;
 }
 
 // Normalize the API's TWO error envelope shapes into a single

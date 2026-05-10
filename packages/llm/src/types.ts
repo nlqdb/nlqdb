@@ -45,6 +45,12 @@ export type PlanRequest = {
   goal: string;
   schema: string;
   dialect: "postgres";
+  // GLOBAL-022 — when a previous plan attempt's SQL was rejected by the
+  // validator (or the LLM call itself failed), the orchestrator passes
+  // the prior attempt's SQL + reject reason here so the prompt can
+  // produce a different shape. Absent on first attempts. Capped at the
+  // builder; providers reuse `buildPlanUser` so no plumbing per provider.
+  previousAttempt?: { sql?: string; error: string };
 };
 export type PlanResponse = { sql: string };
 
