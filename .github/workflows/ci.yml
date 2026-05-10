@@ -244,3 +244,112 @@ jobs:
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
       - run: ./scripts/lockfile-guard.sh
+
+  # SK-HDC-012 — provisioner batch path's smoke test against a real
+  # Neon branch. Parallel to test-api / test-pkgs / build-* so it
+  # doesn't gate fast feedback on the cheap unit jobs. Uses an
+  # ephemeral branch (~seconds-long lifetime) to stay inside Neon
+  # Free's 10-branch/project ceiling alongside `preview-app.yml`'s
+  # long-lived `pr-N` branches.
+  #
+  # Skipped cleanly on forks (secrets unavailable) and on missing
+  # repo-level `NEON_API_KEY` / `NEON_PROJECT_ID` so the workflow
+  # doesn't fail the whole CI when run in unconfigured environments.
+  test-api-smoke-neon:
+    name: apps/api smoke (Neon HTTP transaction batch — SK-HDC-012)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    # Forks don't get repository secrets — skip without failing.
+    if: ${{ github.event.pull_request.head.repo.fork != true }}
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - uses: ./.github/actions/setup
+
+      - name: Preflight — secrets present
+        id: preflight
+        env:
+          NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
+          NEON_PROJECT_ID: ${{ secrets.NEON_PROJECT_ID }}
+        run: |
+          if [ -z "${NEON_API_KEY:-}" ] || [ -z "${NEON_PROJECT_ID:-}" ]; then
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::NEON_API_KEY/NEON_PROJECT_ID not set — smoke test skipped."
+          else
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      # Belt-and-suspenders for the rare case where a previous run's
+      # cleanup didn't fire (runner killed before `if: always()`).
+      # Free tier's 10-branch ceiling means we can't afford orphans.
+      - name: Sweep stale ci-smoke branches (>1 h old)
+        if: steps.preflight.outputs.configured == 'true'
+        env:
+          NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
+          NEON_PROJECT_ID: ${{ secrets.NEON_PROJECT_ID }}
+        run: |
+          set -euo pipefail
+          cutoff=$(date -u -d '1 hour ago' +%s)
+          curl -fsSL "https://console.neon.tech/api/v2/projects/${NEON_PROJECT_ID}/branches" \
+            -H "Authorization: Bearer ${NEON_API_KEY}" \
+          | jq -r --arg cutoff "$cutoff" \
+              '.branches[]
+                | select(.name | startswith("ci-smoke-"))
+                | select((.created_at | fromdateiso8601) < ($cutoff | tonumber))
+                | .id' \
+          | while read -r id; do
+              [ -z "$id" ] && continue
+              echo "Deleting stale branch $id"
+              curl -fsSL -X DELETE \
+                "https://console.neon.tech/api/v2/projects/${NEON_PROJECT_ID}/branches/${id}" \
+                -H "Authorization: Bearer ${NEON_API_KEY}" > /dev/null \
+                || echo "::warning::Failed to delete stale branch $id"
+            done
+
+      - name: Create ephemeral Neon branch
+        id: neon
+        if: steps.preflight.outputs.configured == 'true'
+        env:
+          NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
+          NEON_PROJECT_ID: ${{ secrets.NEON_PROJECT_ID }}
+        run: |
+          set -euo pipefail
+          name="ci-smoke-${{ github.run_id }}-${{ github.run_attempt }}"
+          response=$(curl -fsSL -X POST \
+            "https://console.neon.tech/api/v2/projects/${NEON_PROJECT_ID}/branches" \
+            -H "Authorization: Bearer ${NEON_API_KEY}" \
+            -H "Content-Type: application/json" \
+            -d "{\"branch\":{\"name\":\"$name\"},\"endpoints\":[{\"type\":\"read_write\"}]}")
+          id=$(echo "$response" | jq -r '.branch.id // empty')
+          uri=$(echo "$response" | jq -r '.connection_uris[0].connection_uri // empty')
+          if [ -z "$id" ] || [ -z "$uri" ]; then
+            echo "::error::Neon branch creation returned no id/connection_uri"
+            echo "$response" | jq . || echo "$response"
+            exit 1
+          fi
+          # Mask the URI in logs so the embedded password doesn't leak.
+          echo "::add-mask::$uri"
+          echo "id=$id" >> "$GITHUB_OUTPUT"
+          echo "uri=$uri" >> "$GITHUB_OUTPUT"
+
+      - name: Run integration smoke test
+        if: steps.preflight.outputs.configured == 'true'
+        working-directory: apps/api
+        env:
+          NEON_TEST_BRANCH_URL: ${{ steps.neon.outputs.uri }}
+        run: bunx vitest run src/db-create/neon-provision.integration.test.ts
+
+      # `if: always()` so the branch is deleted even on test failure
+      # or job cancellation — the 10-branch Free-tier ceiling makes
+      # orphans expensive.
+      - name: Delete ephemeral Neon branch
+        if: always() && steps.neon.outputs.id != ''
+        env:
+          NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
+          NEON_PROJECT_ID: ${{ secrets.NEON_PROJECT_ID }}
+          BRANCH_ID: ${{ steps.neon.outputs.id }}
+        run: |
+          curl -fsSL -X DELETE \
+            "https://console.neon.tech/api/v2/projects/${NEON_PROJECT_ID}/branches/${BRANCH_ID}" \
+            -H "Authorization: Bearer ${NEON_API_KEY}" > /dev/null \
+            || echo "::warning::Failed to delete branch ${BRANCH_ID} — sweep step on next run will retry"
+          echo "Deleted Neon branch ${BRANCH_ID}"
