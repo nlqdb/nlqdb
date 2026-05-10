@@ -1,7 +1,10 @@
 # WS1 — Per-principal recent-tables MRU cache
 
 **Branch:** `claude/ws1-recent-tables` off `origin/main`
-**SK-ID reserved:** `SK-ASK-010`
+**SK-ID reserved:** `SK-ASK-012` (was `SK-ASK-010` in the original draft;
+the slot was taken by the goal-length cap landed in PR #140, so the
+sticky-ID rule per CLAUDE.md §10.2 routed this worksheet to the next
+free number)
 **Hard deps:** none. **Soft deps:** none. Lands cleanly first.
 
 ## Goal
@@ -19,7 +22,7 @@ by WS2's classifier and WS3's speculation predicate.
 - `apps/api/src/ask/orchestrate.ts` — ctx.waitUntil pattern around `firstQuery` + `events.emit`
 - `apps/api/src/ask/build-deps.ts` — how OrchestrateDeps are wired
 - `apps/api/src/db-create/orchestrate.ts` — the create-side orchestrator that also needs to call this
-- `docs/features/ask-pipeline/FEATURE.md` — add SK-ASK-010 here
+- `docs/features/ask-pipeline/FEATURE.md` — add SK-ASK-012 here
 - `docs/features/anonymous-mode/FEATURE.md` SK-ANON-002 (90-day retention rationale)
 - `docs/skill-conventions.md` §4 (5-field decision block format)
 
@@ -60,8 +63,8 @@ Other WSs import `RecentTable` and `makeRecentTablesStore`. Stable.
 | `apps/api/src/ask/build-deps.ts` | Wire `makeRecentTablesStore(envBindings.KV)` into `buildAskDeps()`. |
 | `apps/api/src/db-create/orchestrate.ts` | Add `recentTables` dep; after step 5 (provisioner success) push `plan.tables[].name` to MRU. |
 | `apps/api/src/db-create/build-deps.ts` | Wire `makeRecentTablesStore` here too. |
-| `docs/features/ask-pipeline/FEATURE.md` | Add SK-ASK-010 block (template below). |
-| `docs/features/hosted-db-create/FEATURE.md` | Add one-line note under SK-HDC-001 *Consequence in code*: "post-create, the orchestrator pushes `plan.tables[].name` to the principal's recent-tables MRU per SK-ASK-010." |
+| `docs/features/ask-pipeline/FEATURE.md` | Add SK-ASK-012 block (template below). |
+| `docs/features/hosted-db-create/FEATURE.md` | Add one-line note under SK-HDC-001 *Consequence in code*: "post-create, the orchestrator pushes `plan.tables[].name` to the principal's recent-tables MRU per SK-ASK-012." |
 | `docs/performance.md §3.1` | Add span rows: `nlqdb.recent_tables.lookup`, `nlqdb.recent_tables.touch`. |
 | `docs/performance.md §3.2` | Add metric rows: `nlqdb.recent_tables.entries{principal_kind}` (gauge, post-touch length). |
 
@@ -78,7 +81,7 @@ Other WSs import `RecentTable` and `makeRecentTablesStore`. Stable.
 ## SK-* block to add (paste into `docs/features/ask-pipeline/FEATURE.md` Decisions, after SK-ASK-008)
 
 ```markdown
-### SK-ASK-010 — Per-principal recent-tables LRU (100 entries) in KV
+### SK-ASK-012 — Per-principal recent-tables LRU (100 entries) in KV
 
 - **Decision:** Each principal (`user:<id>` or `anon:<hash>`) has a KV-backed MRU list of the 100 most recently used `(dbId, slug, table)` tuples. Stored at `recent_tables:<principalId>` with a 90-day `expirationTtl` matching `SK-ANON-002`'s server retention. Updated after every successful `/v1/ask` exec and after every successful `db.create` provisioning.
 - **Core value:** Bullet-proof, Free, Fast
@@ -117,7 +120,7 @@ Other WSs import `RecentTable` and `makeRecentTablesStore`. Stable.
 - [ ] `recent-tables.ts` module shipped with full test coverage.
 - [ ] `OrchestrateDeps` (both read + create) carry the store; build-deps wire it.
 - [ ] `nlqdb.recent_tables.{lookup,touch}` spans emit on every call.
-- [ ] SK-ASK-010 block landed in `docs/features/ask-pipeline/FEATURE.md`.
+- [ ] SK-ASK-012 block landed in `docs/features/ask-pipeline/FEATURE.md`.
 - [ ] SK-HDC-001 *Consequence in code* gets the one-line addition.
 - [ ] `docs/performance.md` §3.1 + §3.2 updated.
 - [ ] `bun run typecheck && bun run lint && bun run test` green.

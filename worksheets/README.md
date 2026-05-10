@@ -22,8 +22,8 @@ dbId-resolution prelude, ~lines 412–540).
 - Idempotency-Key dedupe entry is evicted on speculative rollback (WS3).
 - All worksheet branches start from `origin/main`. SK-* IDs reserved here:
   - **SK-ASK-009** — merged `routeAsk` (WS2)
-  - **SK-ASK-010** — recent-tables MRU (WS1)
   - **SK-ASK-011** — speculative create on probable-0-dbs (WS3)
+  - **SK-ASK-012** — recent-tables MRU (WS1; SK-ASK-010 was already taken by the goal-length cap landed in PR #140 — sticky-ID rule per CLAUDE.md §10.2 forced the next free slot)
 
 ## Skill prereads (mandatory)
 

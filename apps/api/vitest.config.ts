@@ -60,6 +60,7 @@ export default defineConfig(async () => {
               "src/ask/classifier.test.ts",
               "src/ask/route-hint.test.ts",
               "src/ask/reconcile-speculative.test.ts",
+              "src/ask/recent-tables.test.ts",
             ],
           },
         },

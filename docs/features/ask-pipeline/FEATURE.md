@@ -130,6 +130,17 @@ when-to-load:
 - Anon create-cap consumption when speculation rolls back: cap is consumed at gate time so a false-positive predicate over-counts the user's hourly cap by 1. Acceptable today; reconsider once WS1's cache makes the predicate selective enough that false positives become rare.
 - `Idempotency-Key` middleware itself is still open work (`SK-IDEMP-005` is locked, implementation pending). The `IdempotencyStore` interface in `apps/api/src/db-create/speculative.ts` carries the `delete(principalId, key)` primitive the rollback path needs; the route handler does not yet wire a store, so eviction is a no-op until the middleware lands.
 
+### SK-ASK-012 — Per-principal recent-tables LRU (100 entries) in KV
+
+- **Decision:** Each principal (`user:<id>` or `anon:<hash>`) has a KV-backed MRU list of the 100 most recently used `(dbId, slug, table)` tuples. Stored at `recent_tables:<principalId>` with a 90-day `expirationTtl` matching `SK-ANON-002`'s server retention. Updated after every successful `/v1/ask` exec and after every successful `db.create` provisioning.
+- **Core value:** Bullet-proof, Free, Fast
+- **Why:** SK-ASK-009's classifier consumes this list to disambiguate ambiguous verbs ("insert / add / put") that can mean either DML against existing tables or DDL for new ones. Per-principal scope mirrors the existing rate-limit and disambiguate-cache patterns; 100 × ~30 chars ≈ 3 KB fits cheap-tier prompt budget. KV writes ride `ctx.waitUntil` so the update never sits on the user-visible p99.
+- **Consequence in code:** `apps/api/src/ask/recent-tables.ts` exports `makeRecentTablesStore(kv): RecentTablesStore` with `load` / `touch`. `OrchestrateDeps` (read + create) carry the store. The OTel spans `nlqdb.recent_tables.{lookup,touch}` (per `GLOBAL-014`) wrap the KV read-merge-write inside the store. PRs that read or update the MRU outside this module fail review.
+- **Alternatives rejected:**
+  - Derive lazily from per-db schema introspection — every classifier call pays a schema query; the union view across multiple dbs is what's actually needed.
+  - Per-(principal, db) cache — needs the dbId at classify time, but classify *outputs* the dbId; chicken-and-egg.
+  - Track all-time tables (no LRU cap) — unbounded growth on power users; 100 covers the realistic active set.
+
 ## The LLM loop
 
 This is the part most implementations get wrong. A single "prompt → SQL → run" pipeline is a demo, not a product. The `/v1/ask` pipeline runs these eight steps per query:
