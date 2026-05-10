@@ -261,6 +261,36 @@ export const eventsSinkQueryLogFailuresTotal = lazyCounter(
   "Tinybird query_log writes that failed (non-2xx HTTP or fetch threw). Labelled by status_class. Used to trip the in-isolate circuit-breaker after 5 consecutive failures.",
 );
 
+// SK-ASK-011 — speculative create on probable-0-dbs. Counts the
+// kick-offs (every cache-says-0 send), the commits (D1 confirmed 0),
+// and the rollbacks (D1 returned ≥1, or read failed). The histogram
+// records overhead-vs-authoritative so we can see when speculation
+// actually pays off (negative overhead = win, positive = pure cost).
+export const createSpeculativeStartTotal = lazyCounter(
+  "@nlqdb/api",
+  "nlqdb.create.speculative.start_total",
+  "Speculative creates kicked off when the cached signal suggested 0 dbs. Labelled by principal_kind (anon|user).",
+);
+
+export const createSpeculativeCommitTotal = lazyCounter(
+  "@nlqdb/api",
+  "nlqdb.create.speculative.commit_total",
+  "Speculative creates committed (authoritative D1 read confirmed 0 dbs). Labelled by principal_kind.",
+);
+
+export const createSpeculativeRollbackTotal = lazyCounter(
+  "@nlqdb/api",
+  "nlqdb.create.speculative.rollback_total",
+  "Speculative creates rolled back. Labelled by principal_kind and reason ∈ {dbs_appeared, list_failed, create_failed_after_speculation}.",
+);
+
+export const createSpeculativeOverheadMs = lazyHistogram(
+  "@nlqdb/api",
+  "nlqdb.create.speculative.overhead_ms",
+  "(speculative_done_ts - authoritative_done_ts) in ms. Negative = the speculative create finished first (win); positive = pure overhead.",
+  "ms",
+);
+
 export function resetInstrumentsForTest(): void {
   for (const fn of resetFns) fn();
 }

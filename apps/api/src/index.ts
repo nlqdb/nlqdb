@@ -17,6 +17,8 @@ import { buildAskDeps, buildEventEmitter } from "./ask/build-deps.ts";
 import { classifyKind } from "./ask/classifier.ts";
 import { DISAMBIGUATE_CONFIDENCE_FLOOR, disambiguateDb } from "./ask/disambiguate-db.ts";
 import { orchestrateAsk } from "./ask/orchestrate.ts";
+import { type ReconcileResult, reconcileSpeculativeCreate } from "./ask/reconcile-speculative.ts";
+import { probablyZeroDbs } from "./ask/route-hint.ts";
 import type { AskError, OrchestrateEvent, SelectedDbEcho } from "./ask/types.ts";
 import { listInbox } from "./auth/mock-email-sink.ts";
 import { handleMockSignIn, mockSignInFormHtml } from "./auth/mock-idp.ts";
@@ -308,65 +310,106 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
     // candidate_dbs ranked by LLM score).
     let selectedDbEcho: SelectedDbEcho | null = null;
 
+    // Anon-create gate (peek + challenge + record) — used by both
+    // the canonical `runCreatePath` and the SK-ASK-011 speculative
+    // path. Returns null on success; a Response on rate-limit,
+    // challenge, or any short-circuit. Side effects: emits headers
+    // on `c`, ends `span` on short-circuit (caller must end it on
+    // the success path).
+    const checkAnonCreateGate = async (): Promise<Response | null> => {
+      if (principal.kind !== "anon") return null;
+      const ip = c.req.header("cf-connecting-ip") ?? "unknown";
+      const anonLimiter = makeAnonRateLimiter(c.env.KV);
+      const peek = await anonLimiter.peekCreate(ip);
+      // X-RateLimit-* parity (SK-RL-004 / GLOBAL-002) — same header
+      // set for the create-cap bucket as for query.
+      const now = Math.floor(Date.now() / 1000);
+      c.header("X-RateLimit-Limit", String(peek.limit));
+      c.header("X-RateLimit-Remaining", String(Math.max(0, peek.limit - peek.count)));
+      c.header("X-RateLimit-Reset", String(peek.resetAt));
+      if (!peek.ok) {
+        span.setAttribute("nlqdb.ask.outcome", "create_cap_ip");
+        span.end();
+        c.header("Retry-After", String(Math.max(0, peek.resetAt - now)));
+        return c.json(
+          {
+            error: {
+              status: "rate_limited" as const,
+              limit: peek.limit,
+              count: peek.count,
+              resetAt: peek.resetAt,
+            },
+          },
+          429,
+        );
+      }
+      if (peek.needsChallenge) {
+        const turnstileToken = c.req.header("cf-turnstile-response") ?? null;
+        const verify = await verifyTurnstile(turnstileToken, c.env.TURNSTILE_SECRET, ip);
+        // Fail-open when the secret is unset (dev / pre-config). Any
+        // other failure (`invalid` / `verify_failed`) returns 428
+        // challenge_required so the surface re-renders the widget.
+        // SK-ANON-007.
+        const allowed = verify.ok || verify.reason === "unconfigured";
+        if (!allowed) {
+          span.setAttribute("nlqdb.ask.outcome", "challenge_required");
+          span.end();
+          return c.json(
+            {
+              error: {
+                status: "challenge_required" as const,
+                code: "challenge_required" as const,
+                action: "Complete the browser challenge to continue.",
+              },
+            },
+            428,
+          );
+        }
+      }
+      // Record AFTER any challenge clears — otherwise the counter
+      // ratchets up on every blocked attempt and the user is stuck
+      // behind the gate forever.
+      await anonLimiter.recordCreate(ip);
+      return null;
+    };
+
+    // libpg-query WASM init guard — needs `__filename` / `__dirname`
+    // to be defined on the global object before the dynamic import.
+    // See header of `apps/api/src/ask/sql-validate-ddl.ts`.
+    const ensureLibpgWasmGlobals = (): void => {
+      const g = globalThis as unknown as { __filename?: string; __dirname?: string };
+      if (typeof g.__filename === "undefined") g.__filename = "worker";
+      if (typeof g.__dirname === "undefined") g.__dirname = "/";
+    };
+
+    // Format a `DbCreateResult` as the JSON response. Shared by
+    // `runCreatePath` and the SK-ASK-011 speculative-commit path.
+    const formatCreateJsonResponse = (
+      result: import("./db-create/types.ts").DbCreateResult,
+    ): Response => {
+      if (!result.ok) {
+        // infer/compile/ddl/embed_failed → 422; provision_failed → 500.
+        const statusCode = result.error.kind === "provision_failed" ? 500 : 422;
+        return c.json({ error: result.error }, statusCode);
+      }
+      return c.json({
+        kind: "create" as const,
+        db: result.dbId,
+        schemaName: result.schemaName,
+        engine: result.engine,
+        pkLive: result.pkLive,
+        plan: result.plan,
+        sampleRows: result.sampleRows,
+      });
+    };
+
     // Helper closure for the create path — invoked when classifier
     // says `kind=create`, OR when the tenant has 0 DBs and the kind
     // wasn't create (architecture §3.6.4: "0 dbs → CREATE"). Anon-
     // create gating is enforced before the LLM/Neon work runs.
     const runCreatePath = async (): Promise<Response> => {
-      if (principal.kind === "anon") {
-        const ip = c.req.header("cf-connecting-ip") ?? "unknown";
-        const anonLimiter = makeAnonRateLimiter(c.env.KV);
-        const peek = await anonLimiter.peekCreate(ip);
-        // X-RateLimit-* parity (SK-RL-004 / GLOBAL-002) — same header
-        // set for the create-cap bucket as for query.
-        const now = Math.floor(Date.now() / 1000);
-        c.header("X-RateLimit-Limit", String(peek.limit));
-        c.header("X-RateLimit-Remaining", String(Math.max(0, peek.limit - peek.count)));
-        c.header("X-RateLimit-Reset", String(peek.resetAt));
-        if (!peek.ok) {
-          span.setAttribute("nlqdb.ask.outcome", "create_cap_ip");
-          span.end();
-          c.header("Retry-After", String(Math.max(0, peek.resetAt - now)));
-          return c.json(
-            {
-              error: {
-                status: "rate_limited" as const,
-                limit: peek.limit,
-                count: peek.count,
-                resetAt: peek.resetAt,
-              },
-            },
-            429,
-          );
-        }
-        if (peek.needsChallenge) {
-          const turnstileToken = c.req.header("cf-turnstile-response") ?? null;
-          const verify = await verifyTurnstile(turnstileToken, c.env.TURNSTILE_SECRET, ip);
-          // Fail-open when the secret is unset (dev / pre-config). Any
-          // other failure (`invalid` / `verify_failed`) returns 428
-          // challenge_required so the surface re-renders the widget.
-          // SK-ANON-007.
-          const allowed = verify.ok || verify.reason === "unconfigured";
-          if (!allowed) {
-            span.setAttribute("nlqdb.ask.outcome", "challenge_required");
-            span.end();
-            return c.json(
-              {
-                error: {
-                  status: "challenge_required" as const,
-                  code: "challenge_required" as const,
-                  action: "Complete the browser challenge to continue.",
-                },
-              },
-              428,
-            );
-          }
-        }
-        // Record AFTER any challenge clears — otherwise the counter
-        // ratchets up on every blocked attempt and the user is stuck
-        // behind the gate forever.
-        await anonLimiter.recordCreate(ip);
-      }
+      const gateResp = await checkAnonCreateGate();
+      if (gateResp) return gateResp;
 
       // Dynamic import defers libpg-query's WASM initialization to
       // the first create request — see commit 1a body for the
@@ -381,9 +424,7 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
       // the Emscripten heuristic, but `sql-validate-ddl.ts` now
       // gracefully degrades if loadModule() still fails — see that
       // file's header comment for the full story.
-      const g = globalThis as unknown as { __filename?: string; __dirname?: string };
-      if (typeof g.__filename === "undefined") g.__filename = "worker";
-      if (typeof g.__dirname === "undefined") g.__dirname = "/";
+      ensureLibpgWasmGlobals();
       const { buildDbCreateDeps } = await import("./db-create/build-deps.ts");
       const { orchestrateDbCreate } = await import("./db-create/orchestrate.ts");
       try {
@@ -396,20 +437,7 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
           ...(parsed.body.engine !== undefined ? { engine: parsed.body.engine } : {}),
           secretRef,
         });
-        if (!result.ok) {
-          // infer/compile/ddl/embed_failed → 422; provision_failed → 500.
-          const statusCode = result.error.kind === "provision_failed" ? 500 : 422;
-          return c.json({ error: result.error }, statusCode);
-        }
-        return c.json({
-          kind: "create" as const,
-          db: result.dbId,
-          schemaName: result.schemaName,
-          engine: result.engine,
-          pkLive: result.pkLive,
-          plan: result.plan,
-          sampleRows: result.sampleRows,
-        });
+        return formatCreateJsonResponse(result);
       } finally {
         span.end();
       }
@@ -433,6 +461,40 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
       // PERFORMANCE §2.3 owns the budget for this prelude.
       const classifyPromise = classifyKind(getLLMRouter(), parsed.body.goal);
       const listPromise = listDatabasesForTenant(c.env.DB, principal.id);
+
+      // SK-ASK-011 — speculative create on probable-0-dbs. When the
+      // cached signal suggests "this principal has 0 dbs" we kick
+      // off the create pipeline immediately, in parallel with the
+      // authoritative `listPromise`. The reconciler commits when
+      // D1 confirms 0 dbs; otherwise rolls back via SK-HDC-011's
+      // `dropSchemaAndRegistry`.
+      //
+      // Soft-dep stub: WS1 (recent-tables MRU) ships the cache that
+      // sharpens the predicate. Until WS1 lands we pass `[]`, which
+      // degrades to "always speculate when no slug hint" — slightly
+      // more rollback churn until the cache is wired.
+      let speculativeReconcilePromise: Promise<ReconcileResult> | undefined;
+      if (probablyZeroDbs([], parsed.body.goal)) {
+        const gateResp = await checkAnonCreateGate();
+        if (gateResp) return gateResp;
+        ensureLibpgWasmGlobals();
+        const { buildDbCreateDeps } = await import("./db-create/build-deps.ts");
+        const { startSpeculativeCreate } = await import("./db-create/speculative.ts");
+        const { deps: createDeps, secretRef } = buildDbCreateDeps(c.env);
+        const handle = startSpeculativeCreate(createDeps, {
+          goal: parsed.body.goal,
+          tenantId: principal.id,
+          principalId: principal.id,
+          principalKind: principal.kind,
+          ...(parsed.body.engine !== undefined ? { engine: parsed.body.engine } : {}),
+          secretRef,
+        });
+        speculativeReconcilePromise = reconcileSpeculativeCreate({
+          speculative: handle,
+          authoritativeDbsPromise: listPromise,
+          principalKind: principal.kind,
+        });
+      }
 
       // Speculatively kick off the disambiguator the moment the DB
       // list is in hand, while classify is still in flight. We pre-
@@ -481,6 +543,20 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
       }
       span.setAttribute("nlqdb.ask.kind", classification.kind);
       span.setAttribute("nlqdb.ask.kind_reason", classification.reason);
+
+      // SK-ASK-011 — consume the speculative create's reconciliation
+      // outcome. Committed → return the create response (cache was
+      // right). Rolled back → fall through; the dbs list is now
+      // known and the existing flow handles 0/1/2+ dispatch as today.
+      if (speculativeReconcilePromise) {
+        const reconciled = await speculativeReconcilePromise;
+        if (reconciled.kind === "committed") {
+          span.setAttribute("nlqdb.ask.outcome", "speculative_create_committed");
+          span.end();
+          return formatCreateJsonResponse(reconciled.result);
+        }
+        span.setAttribute("nlqdb.ask.outcome", "speculative_create_rolled_back");
+      }
 
       if (classification.kind === "create") {
         return runCreatePath();
