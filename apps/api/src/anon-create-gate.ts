@@ -1,39 +1,34 @@
-// WS5 fix C — anon create-cap gate, split into peek + commit.
+// Anon create-cap gate, split into peek + commit (WS5 fix C, WS8 SK-ANON-012).
 //
-// Today's behaviour (post-PR #146): the route handler peeks the
-// per-IP create bucket, runs Turnstile when the burst gate trips,
-// and records the create BEFORE the orchestrator runs. A failed
-// orchestrator (LLM `ambiguous_goal`, `plan_invalid`, compile error,
-// …) burned the user's cap with nothing to show for it. WS8's
-// SK-ANON-012 lowers the cap to 1/device, which would turn any
-// typo-driven failure into a hard lockout.
-//
-// The split here:
-//   * `peekAnonCreateGate` runs at gate entry — peeks the buckets,
-//     verifies Turnstile when the burst gate trips, returns a
-//     typed decision. **No `recordCreate` side effect.**
-//   * `commitAnonCreate` is a one-line wrapper around the limiter's
-//     `recordCreate`, called by the route handler after the
-//     orchestrator returns `result.ok === true` (or after the
-//     speculative-create reconciler commits an ok result).
+// Post-WS8 SK-ANON-012:
+//   * The PER-DEVICE CAP is enforced at the TOP of `/v1/ask` for all
+//     anon traffic (any kind), not inside this gate. See
+//     `apps/api/src/index.ts` — the cap fires before `routeAsk`
+//     classifies the request, so kind=query against the user's only
+//     anon DB also returns `401 auth_required`.
+//   * This gate now ONLY runs the Turnstile bot-floor on the create
+//     path (`runCreatePath` + the SK-ASK-011 speculative kickoff).
+//     Turnstile retains its place as the bot shield for creates —
+//     bots can mint anon-bearer tokens trivially, so the per-device
+//     cap doesn't help against them; the captcha does.
+//   * `commitAnonCreate` increments the per-device counter after the
+//     orchestrator returns `result.ok === true` (WS5 fix C — failed
+//     creates / queries don't burn the user's one-call budget). The
+//     `/v1/ask` handler also calls it on successful query/write
+//     outcomes so any successful 1st anon call consumes the cap.
 //
 // Both halves no-op for non-anon principals (SK-ANON-006 keeps
-// `principal.kind` out of the orchestrator; this module is the
-// route-layer home for the anon-conditional logic). The pure
+// `principal.kind` out of the orchestrator). The pure
 // `verifyTurnstile` dep is injected so tests can stub it without
 // reaching for `vi.mock`.
 
-import type { AnonCreateVerdict, AnonRateLimiter } from "./anon-rate-limit.ts";
+import type { AnonRateLimiter } from "./anon-rate-limit.ts";
 import type { verifyTurnstile as verifyTurnstileFn } from "./turnstile.ts";
-
-export type AnonPeekAllowed = Extract<AnonCreateVerdict, { ok: true }>;
-export type AnonPeekRateLimited = Extract<AnonCreateVerdict, { ok: false }>;
 
 export type AnonCreateGateDecision =
   | { kind: "skip" }
-  | { kind: "allow"; peek: AnonPeekAllowed }
-  | { kind: "rate_limited"; peek: AnonPeekRateLimited }
-  | { kind: "challenge_required"; peek: AnonPeekAllowed };
+  | { kind: "allow" }
+  | { kind: "challenge_required" };
 
 export type AnonCreateGateDeps = {
   limiter: AnonRateLimiter;
@@ -42,6 +37,9 @@ export type AnonCreateGateDeps = {
 
 export type AnonCreateGateInput = {
   principalKind: "anon" | "user";
+  // SK-ANON-008 principal id (`anon:<sha256(token)[:16]>` for anon).
+  principalId: string;
+  // Remote IP — only used as Turnstile's `remoteip` hint (`SK-ANON-007`).
   ip: string;
   turnstileSecret: string | undefined;
   turnstileToken: string | null;
@@ -52,27 +50,23 @@ export async function peekAnonCreateGate(
   input: AnonCreateGateInput,
 ): Promise<AnonCreateGateDecision> {
   if (input.principalKind !== "anon") return { kind: "skip" };
-  const peek = await deps.limiter.peekCreate(input.ip);
-  if (!peek.ok) return { kind: "rate_limited", peek };
-  if (peek.needsChallenge) {
-    const verify = await deps.verifyTurnstile(
-      input.turnstileToken,
-      input.turnstileSecret,
-      input.ip,
-    );
-    // SK-ANON-009 — fail-open when the secret is unset (dev / tests).
-    // Production always has it; the route handler still enforces the
-    // production-configured contract through verifyTurnstile itself.
-    const allowed = verify.ok || verify.reason === "unconfigured";
-    if (!allowed) return { kind: "challenge_required", peek };
-  }
-  return { kind: "allow", peek };
+
+  // SK-ANON-012 — Turnstile runs unconditionally on every anon create
+  // (not gated on burst count, since the per-device cap auth-walls
+  // call #2 anyway). SK-ANON-009 fail-open semantics intact: when the
+  // secret is unset (dev / tests) the verify returns `unconfigured`
+  // and we treat it as allow-through.
+  const verify = await deps.verifyTurnstile(input.turnstileToken, input.turnstileSecret, input.ip);
+  const turnstileAllowed = verify.ok || verify.reason === "unconfigured";
+
+  if (!turnstileAllowed) return { kind: "challenge_required" };
+  return { kind: "allow" };
 }
 
 export async function commitAnonCreate(
   deps: Pick<AnonCreateGateDeps, "limiter">,
-  input: Pick<AnonCreateGateInput, "principalKind" | "ip">,
+  input: Pick<AnonCreateGateInput, "principalKind" | "principalId">,
 ): Promise<void> {
   if (input.principalKind !== "anon") return;
-  await deps.limiter.recordCreate(input.ip);
+  await deps.limiter.recordDevice(input.principalId);
 }

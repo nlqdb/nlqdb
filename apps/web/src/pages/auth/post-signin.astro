@@ -1,0 +1,100 @@
+---
+import Base from "../../layouts/Base.astro";
+
+// Post-signin landing page (SK-ANON-012).
+//
+// `callbackURL` from `sign-in.astro` points here. The inline script:
+//   1. Probes `/api/auth/get-session` to confirm the cookie session
+//      landed. If null, sends the user back to sign-in with a
+//      `session_lost` hint.
+//   2. Redirects to `next` (default `/app`). The `nlqdb_pending` slot
+//      is intentionally LEFT IN localStorage — `ChatPanel.tsx` reads
+//      it on mount, pre-fills the composer, and clears the slot. The
+//      user reviews the prompt + submits; we no longer auto-replay.
+//
+// We deliberately do NOT auto-POST `/v1/ask` here:
+//   - Signing in with an existing account preserves the user's
+//     pre-existing DBs; auto-submitting would create a new DB they
+//     never asked for, separate from the orphaned anon DB.
+//   - The user typed the goal anonymously; reviewing it under their
+//     real identity (and the now-visible left rail of their actual
+//     DBs) is the more honest UX.
+//
+// Adoption of the anon DB itself is deferred — per `SK-ANON-002`, the
+// orphaned anon DB sits at `tenant_id = anon:<hash>` until the sweep
+// job evicts it (90-day TTL or cap pressure). The 1st-call data is
+// not transferred; the 2nd-call prompt IS preserved (in `nlqdb_pending`)
+// and surfaces in the chat composer.
+---
+<Base
+  title="Signing you in — nlqdb"
+  description="Finishing your sign-in."
+  canonical="/auth/post-signin"
+>
+  <div class="page">
+    <main class="post-signin">
+      <section class="post-signin__card" aria-labelledby="post-signin-title">
+        <h1 id="post-signin-title" class="post-signin__title">
+          Signing you in…
+        </h1>
+        <p class="post-signin__lede">
+          Bringing you back to your work.
+        </p>
+      </section>
+    </main>
+  </div>
+</Base>
+
+<script>
+  import { fetchSession } from "../../lib/session";
+
+  const params = new URLSearchParams(location.search);
+  const next = params.get("next") ?? "/app";
+
+  (async () => {
+    const session = await fetchSession();
+    if (!session) {
+      // Sign-in didn't take — cookie blocked, third-party cookies
+      // disabled in the IdP round-trip, or the user closed the tab
+      // mid-flow. Send back to sign-in with a friendly hint.
+      location.replace("/auth/sign-in?error=session_lost");
+      return;
+    }
+    // ChatPanel will read `nlqdb_pending` from localStorage on mount
+    // and rehydrate the composer — no work needed here beyond the
+    // navigation.
+    location.replace(next);
+  })();
+</script>
+
+<style is:global>
+  .post-signin {
+    min-height: 70vh;
+    display: grid;
+    place-items: center;
+    padding: clamp(48px, 8vw, 96px) 24px;
+  }
+
+  .post-signin__card {
+    border: 2px solid var(--border-strong);
+    background: var(--bg-elev);
+    padding: clamp(28px, 5vw, 48px);
+    max-width: 520px;
+    width: 100%;
+    box-shadow: var(--shadow-hard);
+    text-align: center;
+  }
+
+  .post-signin__title {
+    font-family: var(--mono);
+    font-size: clamp(22px, 3.2vw, 28px);
+    letter-spacing: -0.02em;
+    margin: 0 0 16px;
+  }
+
+  .post-signin__lede {
+    margin: 0;
+    font-size: clamp(14px, 1.6vw, 15px);
+    color: var(--fg-dim);
+  }
+</style>

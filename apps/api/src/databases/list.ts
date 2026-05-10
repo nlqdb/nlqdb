@@ -53,7 +53,27 @@ export async function listDatabasesForTenant(
     )
     .bind(tenantId)
     .all<Row>();
-  return (result.results ?? []).map(toSummary);
+  const rows = (result.results ?? []).map(toSummary);
+  return disambiguateDisplayNames(rows);
+}
+
+// SK-ANON-012 — when two DBs derive the same `displayName` from
+// their dbIds (e.g. both `db_orders_tracker_<6char>`), append "(2)",
+// "(3)", … to the older ones so the chat surface's left rail can
+// distinguish them. Suffixing keeps the IDs / slugs unchanged — only
+// the rendered name disambiguates. Order matters: the most-recent DB
+// keeps the un-suffixed name (newest first), prior duplicates
+// receive the suffix in descending recency. Mutates the array's
+// elements in place; returns the same array for convenience.
+export function disambiguateDisplayNames<T extends { displayName: string }>(rows: T[]): T[] {
+  const seen = new Map<string, number>();
+  for (const row of rows) {
+    const base = row.displayName;
+    const count = (seen.get(base) ?? 0) + 1;
+    seen.set(base, count);
+    if (count > 1) row.displayName = `${base} (${count})`;
+  }
+  return rows;
 }
 
 export function toSummary(row: Row): DatabaseSummaryRow {

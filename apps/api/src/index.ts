@@ -18,6 +18,7 @@ import {
 } from "./anon-create-gate.ts";
 import { makeGlobalAnonLimiter } from "./anon-global-cap.ts";
 import { makeAnonRateLimiter } from "./anon-rate-limit.ts";
+import { buildSetCookie, signAnonStash } from "./anon-stash.ts";
 import { buildAskDeps, buildEventEmitter } from "./ask/build-deps.ts";
 import { orchestrateAsk } from "./ask/orchestrate.ts";
 import { kickoffAskPrelude, resolveAnonEngineOverride } from "./ask/prelude.ts";
@@ -34,6 +35,7 @@ import { askFnFromDemoFixtures, DEMO_DB_ID } from "./chat/demo-shortcut.ts";
 import { postChatMessage } from "./chat/orchestrate.ts";
 import { makeChatStore } from "./chat/store.ts";
 import { deriveSlug, displayName, listDatabasesForTenant } from "./databases/list.ts";
+import { sweepAnonDatabases } from "./db-sweep/sweep.ts";
 import {
   isAllowedEngine,
   MAX_GOAL_LENGTH,
@@ -301,9 +303,37 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
         );
       }
 
+      // SK-ANON-012 — per-device cap. Fires at the TOP of /v1/ask so
+      // it gates ALL anon traffic (any kind), not just creates. The
+      // 1st anon call lets routeAsk classify normally; on success we
+      // commit (count → 1). The 2nd anon call lands here, peek
+      // returns ok=false, and we 401 with the auth_required envelope
+      // — the surface stashes pending + redirects to sign-in. Without
+      // this top-level peek, routeAsk would auto-target the user's
+      // single anon DB on the 2nd call (`single_db_auto_target`) and
+      // run a query against it, bypassing the auth-wall the worksheet
+      // designed for the hero flow.
+      const devicePeek = await anonLimiter.peekDevice(principal.id);
+      if (!devicePeek.ok) {
+        span.setAttribute("nlqdb.ask.outcome", "auth_required_device_cap");
+        span.end();
+        return c.json(
+          {
+            error: {
+              status: "auth_required" as const,
+              code: "anon_device_cap" as const,
+              signInUrl: buildSignInUrl(c.req.header("referer")),
+              action: "Sign in to create another database — your draft is saved.",
+            },
+          },
+          401,
+        );
+      }
+
       // Record the global counter only after BOTH gates clear and
       // the request is actually about to be served. Per-IP bucket
-      // already incremented inside `checkQuery`.
+      // already incremented inside `checkQuery`. The per-device cap
+      // commits later, after the orchestrator returns ok (WS5 fix C).
       // Fire-and-forget: the response doesn't wait on the increment.
       c.executionCtx.waitUntil(globalLimiter.record());
     }
@@ -336,6 +366,7 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
     const peekAnonCreateGate = async (): Promise<Response | null> => {
       const decision = await peekAnonCreateGateImpl(gateDeps, {
         principalKind: principal.kind,
+        principalId: principal.id,
         ip,
         turnstileSecret: c.env.TURNSTILE_SECRET,
         turnstileToken: c.req.header("cf-turnstile-response") ?? null,
@@ -343,7 +374,10 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
       return decisionToResponse(c, span, decision);
     };
     const commitAnonCreate = async (): Promise<void> => {
-      await commitAnonCreateImpl(gateDeps, { principalKind: principal.kind, ip });
+      await commitAnonCreateImpl(gateDeps, {
+        principalKind: principal.kind,
+        principalId: principal.id,
+      });
     };
 
     // libpg-query WASM init guard — needs `__filename` / `__dirname`
@@ -391,8 +425,8 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
     // says `kind=create`, OR when the tenant has 0 DBs and the kind
     // wasn't create (architecture §3.6.4: "0 dbs → CREATE"). Anon-
     // create gating is enforced before the LLM/Neon work runs; the
-    // per-IP counter increments only on `result.ok === true` (WS5
-    // fix C).
+    // per-device counter (SK-ANON-012) increments only on
+    // `result.ok === true` (WS5 fix C).
     const runCreatePath = async (): Promise<Response> => {
       const gateResp = await peekAnonCreateGate();
       if (gateResp) return gateResp;
@@ -549,8 +583,9 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
     if (speculativeReconcilePromise) {
       const reconciled = await speculativeReconcilePromise;
       if (reconciled.kind === "committed") {
-        // WS5 fix C — commit the per-IP create-cap counter only when
-        // the speculative orchestrator actually produced an ok result.
+        // WS5 fix C — commit the per-device create-cap counter
+        // (SK-ANON-012) only when the speculative orchestrator
+        // actually produced an ok result.
         // A `committed` reconcile with `result.ok === false` (e.g.
         // ambiguous_goal surfaced from the speculative LLM hop) does
         // not consume the user's cap.
@@ -668,6 +703,31 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
       userId: principal.id,
     };
 
+    // SK-ANON-002 / SK-ANON-012 — bump `last_queried_at` on every
+    // successful /v1/ask so the daily sweep evicts truly-stale anon
+    // DBs (90-day TTL) and picks oldest-first under cap pressure.
+    // Authed user rows benefit too (drives "recent activity" reads
+    // on the dashboard). Fire-and-forget via ctx.waitUntil — never
+    // on the user-visible latency path. Only fires when the
+    // orchestrator returned ok; failures don't bump.
+    const touchLastQueried = (): void => {
+      c.executionCtx.waitUntil(
+        c.env.DB.prepare(
+          "UPDATE databases SET last_queried_at = unixepoch() WHERE id = ? AND tenant_id = ?",
+        )
+          .bind(resolvedDbId, principal.id)
+          .run()
+          .catch((err: unknown) => {
+            console.error(
+              JSON.stringify({
+                msg: "last_queried_at_touch_failed",
+                message: err instanceof Error ? err.message : String(err),
+              }),
+            );
+          }),
+      );
+    };
+
     if (wantsSse) {
       return streamSSE(c, async (stream) => {
         try {
@@ -696,6 +756,11 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
             // §3.1 — the emit is `ctx.waitUntil`-wrapped, never on the
             // user-visible path).
             c.executionCtx.waitUntil(outcome.pendingAskCompleted);
+            // SK-ANON-012 — commit the per-device cap on any successful
+            // anon /v1/ask (not just creates). The 2nd anon call will
+            // then trip the top-level peek and 401 with auth_required.
+            await commitAnonCreate();
+            touchLastQueried();
             await stream.writeSSE({ event: "done", data: JSON.stringify({ status: "ok" }) });
           }
         } finally {
@@ -725,6 +790,11 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
       // ctx.waitUntil after the response flushes — keeps /v1/ask p99
       // off the queue producer round-trip (PERFORMANCE §3.1).
       c.executionCtx.waitUntil(outcome.pendingAskCompleted);
+      // SK-ANON-012 — commit the per-device cap on any successful
+      // anon /v1/ask (not just creates). See the SSE branch for the
+      // matching commit.
+      await commitAnonCreate();
+      touchLastQueried();
       // SK-ASK-003: append the `selected_db` echo to the JSON envelope
       // when the LLM disambiguator (or single-DB auto-target) chose
       // for the user. Surface uses it to render attribution.
@@ -1084,11 +1154,11 @@ function serializeEvent(event: OrchestrateEvent): string {
 }
 
 // Render the gate's typed decision (from `anon-create-gate.ts`)
-// into a Hono Response. Non-anon principals get `null` (gate is a
-// no-op). Anon `allow` emits the X-RateLimit-* headers but returns
-// null so the route handler proceeds. Anon short-circuits (429 cap
-// or 428 challenge) emit headers + end the span + return the
-// typed error envelope.
+// into a Hono Response. The gate now only enforces the Turnstile
+// bot-floor — the per-device cap (SK-ANON-012) is checked at the
+// top of `/v1/ask`, so it never bubbles up to this helper. Non-anon
+// principals + Turnstile-pass return `null` so the route handler
+// proceeds. Turnstile-fail returns 428 challenge_required.
 function decisionToResponse(
   // Hono's Context is generic over Bindings + Variables — keep this
   // helper agnostic so route handlers with different Variable shapes
@@ -1098,32 +1168,9 @@ function decisionToResponse(
   decision: AnonCreateGateDecision,
 ): Response | null {
   if (decision.kind === "skip") return null;
-  const peek = decision.peek;
-  // X-RateLimit-* parity (SK-RL-004 / GLOBAL-002) — emitted on every
-  // anon verdict so the surface can render headroom before the wall.
-  c.header("X-RateLimit-Limit", String(peek.limit));
-  c.header("X-RateLimit-Remaining", String(Math.max(0, peek.limit - peek.count)));
-  c.header("X-RateLimit-Reset", String(peek.resetAt));
   if (decision.kind === "allow") return null;
-  const now = Math.floor(Date.now() / 1000);
-  if (decision.kind === "rate_limited") {
-    span.setAttribute("nlqdb.ask.outcome", "create_cap_ip");
-    span.end();
-    c.header("Retry-After", String(Math.max(0, peek.resetAt - now)));
-    return c.json(
-      {
-        error: {
-          status: "rate_limited" as const,
-          limit: peek.limit,
-          count: peek.count,
-          resetAt: peek.resetAt,
-        },
-      },
-      429,
-    );
-  }
-  // challenge_required (SK-ANON-007 — 428 so the surface re-renders
-  // the Turnstile widget).
+  // challenge_required — Turnstile verify failed. 428 so the surface
+  // re-renders the widget (`SK-ANON-007` envelope shape unchanged).
   span.setAttribute("nlqdb.ask.outcome", "challenge_required");
   span.end();
   return c.json(
@@ -1199,6 +1246,40 @@ function errorStatus(status: AskError["status"]): 400 | 404 | 409 | 422 | 429 | 
       return 409;
   }
 }
+
+// Anon-bearer stash endpoint (SK-ANON-012).
+//
+// Called by `sign-in.astro` before initiating magic-link or OAuth so
+// the anon-bearer can ride the sign-in round-trip without travelling
+// through a URL query param. The endpoint reads `x-anon-bearer`,
+// signs the value with HMAC-SHA-256 (key = BETTER_AUTH_SECRET), and
+// sets a `__Secure-anon-bearer` cookie (10-minute Max-Age,
+// `Path=/api/auth`). Better Auth's `after` hook (`apps/api/src/auth.ts`)
+// reads the cookie on the magic-link verify / OAuth callback and
+// triggers `recordAnonAdoption()` per SK-ANON-003.
+//
+// SameSite=Lax permits the cookie to ride along on the top-level
+// redirect from the IdP. HttpOnly prevents the JS from reading it
+// back after stashing — the bearer is already in localStorage on
+// the same origin; the cookie is committed to the auth round-trip
+// and the page no longer needs it.
+app.post("/api/auth/anon-stash", async (c) => {
+  const bearer = c.req.header("x-anon-bearer");
+  if (!bearer?.startsWith("anon_") || bearer.length <= "anon_".length) {
+    return c.text("invalid_bearer", 400);
+  }
+  const secret = c.env.BETTER_AUTH_SECRET;
+  if (!secret) {
+    // Dev / test environments without a configured secret skip the
+    // stash silently — adoption is best-effort and the test harness
+    // doesn't exercise the post-signin replay.
+    return c.body(null, 204);
+  }
+  const isProd = c.env.NODE_ENV === "production" || c.env.NODE_ENV === "canary";
+  const signed = await signAnonStash(bearer, secret);
+  c.header("Set-Cookie", buildSetCookie(signed, isProd));
+  return c.body(null, 204);
+});
 
 // OAuth init redirect (SK-AUTH-015).
 //
@@ -1376,6 +1457,31 @@ async function scheduled(
       : undefined;
 
   try {
+    // SK-ANON-002 / SK-ANON-012 — anon-DB sweep. Runs first so even
+    // if the workload-analyser later trips, abandoned anon DBs still
+    // get evicted on schedule. D1-only — Postgres schema cleanup is
+    // operator territory per `docs/runbook.md §9`. Errors are
+    // logged (and re-raised by the outer catch) so a sweep miss
+    // surfaces in `wrangler tail`.
+    try {
+      const sweep = await sweepAnonDatabases(envBindings.DB);
+      console.info(
+        JSON.stringify({
+          msg: "anon_db_sweep",
+          evicted_by_age: sweep.evictedByAge.length,
+          evicted_by_cap: sweep.evictedByCap.length,
+          total_anon_after: sweep.totalAnonAfter,
+        }),
+      );
+    } catch (sweepErr) {
+      console.error(
+        JSON.stringify({
+          msg: "anon_db_sweep_failed",
+          message: sweepErr instanceof Error ? sweepErr.message : String(sweepErr),
+        }),
+      );
+    }
+
     if (!envBindings.TINYBIRD_TOKEN) return;
     const tinybird = createTinybirdAdapter({
       token: envBindings.TINYBIRD_TOKEN,

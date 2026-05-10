@@ -13,9 +13,13 @@
 // any cookie-cached session whose row is gone (≤2s revocation guarantee).
 
 import { env } from "cloudflare:workers";
+import { trace } from "@opentelemetry/api";
 import { betterAuth } from "better-auth";
+import { createAuthMiddleware } from "better-auth/api";
 import { magicLink } from "better-auth/plugins";
 import { D1Dialect } from "kysely-d1";
+import { recordAnonAdoption } from "./anon-adopt.ts";
+import { buildClearCookie, readStashCookie, verifyAnonStash } from "./anon-stash.ts";
 import { hashEmail, makeMagicLinkThrottle } from "./auth/magic-link-throttle.ts";
 import { sinkEmail } from "./auth/mock-email-sink.ts";
 import { captureVerifyUrl } from "./auth/mock-idp.ts";
@@ -119,6 +123,58 @@ export const auth = betterAuth({
         },
       },
     },
+  },
+  // SK-ANON-012 — adoption hook. On successful sign-in (magic-link
+  // verify or OAuth callback), read the `__Secure-anon-bearer`
+  // cookie stashed by `/api/auth/anon-stash`, verify the HMAC, and
+  // call `recordAnonAdoption()` (SK-ANON-003) to migrate the anon
+  // device's DB to the freshly-authed user. The cookie is cleared
+  // regardless of outcome — adoption is best-effort; sign-in must
+  // succeed even when adoption fails. The `nlqdb.anon.adopt` span
+  // captures the outcome for triage.
+  hooks: {
+    after: createAuthMiddleware(async (ctx) => {
+      const isAdoptablePath =
+        ctx.path === "/magic-link/verify" || ctx.path.startsWith("/callback/");
+      if (!isAdoptablePath) return;
+
+      const newSession = ctx.context.newSession;
+      if (!newSession) return;
+      const secret = env.BETTER_AUTH_SECRET;
+      if (!secret) return;
+      const isProd = !isDev;
+      const cookieHeader = ctx.headers?.get("cookie") ?? null;
+      const signed = readStashCookie(cookieHeader, isProd);
+      if (!signed) return;
+
+      // Clear the cookie regardless of adoption outcome — it served
+      // its single purpose, and leaving it set just widens the
+      // theft window.
+      ctx.context.responseHeaders?.append("Set-Cookie", buildClearCookie(isProd));
+
+      const tracer = trace.getTracer("@nlqdb/api");
+      await tracer.startActiveSpan("nlqdb.anon.adopt", async (span) => {
+        try {
+          const bearer = await verifyAnonStash(signed, secret);
+          if (!bearer) {
+            span.setAttribute("nlqdb.anon.adopt.outcome", "invalid_cookie");
+            return;
+          }
+          span.setAttribute("nlqdb.user.id", newSession.user.id);
+          const result = await recordAnonAdoption(env.DB, newSession.user.id, bearer);
+          if (result.ok) {
+            span.setAttribute("nlqdb.anon.adopt.outcome", result.adopted ? "adopted" : "replay");
+          } else {
+            span.setAttribute("nlqdb.anon.adopt.outcome", result.reason);
+          }
+        } catch (err) {
+          span.recordException(err as Error);
+          span.setAttribute("nlqdb.anon.adopt.outcome", "internal");
+        } finally {
+          span.end();
+        }
+      });
+    }),
   },
   emailAndPassword: { enabled: false },
   socialProviders: {
