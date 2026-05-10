@@ -213,6 +213,15 @@ h3 {
   margin: 0;
 }
 
+.hero__credo {
+  font-family: var(--mono);
+  font-size: clamp(12px, 1.4vw, 13px);
+  color: var(--fg-dim);
+  font-style: italic;
+  margin: 0;
+  opacity: 0.75;
+}
+
 .heroinput {
   position: relative;
   max-width: 720px;
