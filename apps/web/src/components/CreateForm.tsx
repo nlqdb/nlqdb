@@ -25,6 +25,7 @@ import {
   makeDraftSaver,
   savePending,
 } from "../lib/prompt-storage";
+import { prettifyHeader } from "../lib/text";
 import { solveChallenge } from "../lib/turnstile";
 
 interface CreateFormProps {
@@ -177,11 +178,11 @@ function CreateResultView({ result }: { result: CreateResult }) {
     <section className="createresult" aria-label="Created database">
       <p className="createresult__id">
         <span className="createresult__id-label">db</span>
-        <code>{result.db}</code>
+        <code>{result.displayName}</code>
       </p>
       <p className="createresult__schema">
-        Schema <code>{result.schemaName}</code> provisioned with {result.sampleRows.length} sample
-        row{result.sampleRows.length === 1 ? "" : "s"} across {grouped.length} table
+        Provisioned with {result.sampleRows.length} sample row
+        {result.sampleRows.length === 1 ? "" : "s"} across {grouped.length} table
         {grouped.length === 1 ? "" : "s"}.
       </p>
       {grouped.map((tbl) => (
@@ -212,7 +213,7 @@ function SampleTable({
   if (!firstRow) {
     return (
       <div className="createresult__table-wrap">
-        <h3 className="createresult__table-name">{table}</h3>
+        <h3 className="createresult__table-name">{prettifyHeader(table)}</h3>
         <p className="createresult__empty">No sample rows.</p>
       </div>
     );
@@ -221,13 +222,13 @@ function SampleTable({
   const visible = rows.slice(0, MAX_ROWS_RENDERED);
   return (
     <div className="createresult__table-wrap">
-      <h3 className="createresult__table-name">{table}</h3>
+      <h3 className="createresult__table-name">{prettifyHeader(table)}</h3>
       <div className="createresult__tablewrap">
         <table className="createresult__table">
           <thead>
             <tr>
               {columns.map((c) => (
-                <th key={c}>{c}</th>
+                <th key={c}>{prettifyHeader(c)}</th>
               ))}
             </tr>
           </thead>

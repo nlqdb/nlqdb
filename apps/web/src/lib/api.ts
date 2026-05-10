@@ -20,6 +20,10 @@ export type CreateRow = Record<string, string | number | boolean | null>;
 export interface CreateResult {
   kind: "create";
   db: string;
+  // Human-readable name (e.g. `orders tracker`) the API derives from
+  // `db` server-side. Surfaces render this; `db` and `schemaName`
+  // stay for technical contexts (trace expander, copy-snippet).
+  displayName: string;
   schemaName: string;
   pkLive: string | null;
   // The full SchemaPlan ships back; we pass it through verbatim

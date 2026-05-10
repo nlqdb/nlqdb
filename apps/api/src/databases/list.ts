@@ -30,6 +30,7 @@ import { ALLOWED_ENGINES, type Engine } from "@nlqdb/db";
 export type DatabaseSummaryRow = {
   id: string;
   slug: string;
+  displayName: string;
   engine: Engine;
   pkLive: string | null;
   lastQueriedAt: number | null;
@@ -66,6 +67,7 @@ export function toSummary(row: Row): DatabaseSummaryRow {
   return {
     id: row.id,
     slug: deriveSlug(row.id),
+    displayName: displayName(row.id),
     engine,
     pkLive: null,
     lastQueriedAt: null,
@@ -79,4 +81,19 @@ export function toSummary(row: Row): DatabaseSummaryRow {
 export function deriveSlug(dbId: string): string {
   const stripped = dbId.startsWith("db_") ? dbId.slice(3) : dbId;
   return stripped.replace(/_/g, "-");
+}
+
+// `db_orders_tracker_a4fxyz` → `"orders tracker"`. Strips the `db_`
+// prefix and the trailing `_<6 lowercase alnum>` suffix that
+// `defaultRandomSuffix()` in build-deps.ts emits, then renders the
+// result as space-separated words. ids that don't match the
+// orchestrator-minted shape (legacy / hand-inserted rows) fall back
+// to the underscore-stripped form so the rail still shows something.
+export function displayName(dbId: string): string {
+  if (!dbId.startsWith("db_")) return dbId.replace(/_/g, " ");
+  const stripped = dbId.slice(3);
+  // `db_<6chars>` with no slug body — stripping the suffix would
+  // leave nothing, so keep the whole tail.
+  if (/^[a-z0-9]{6}$/.test(stripped)) return stripped;
+  return stripped.replace(/_[a-z0-9]{6}$/, "").replace(/_/g, " ");
 }

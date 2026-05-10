@@ -70,6 +70,10 @@ export type AskOk = {
 export type AskCreateResult = {
   kind: "create";
   db: string;
+  // Human-readable name for the freshly-minted DB. Surfaces render
+  // this; `db` (the wire id) and `schemaName` stay for technical /
+  // URL contexts. Derived server-side from `db` via `displayName()`.
+  displayName: string;
   schemaName: string;
   // SK-DB-010 — engine the orchestrator resolved. Always present.
   engine: Engine;
@@ -135,6 +139,10 @@ export type Engine = "postgres" | "clickhouse";
 export type DatabaseSummary = {
   id: string;
   slug: string;
+  // Human-readable rendering of the dbId (e.g. `orders tracker`). The
+  // `slug` field stays for URL / technical contexts; `displayName` is
+  // what surfaces show in headers, the rail, and the create reply.
+  displayName: string;
   name?: string;
   schemaName?: string;
   // SK-DB-010 — the engine column on the row. Surfaces narrow on

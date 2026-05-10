@@ -4,6 +4,8 @@
 // array of strings → list, otherwise table. Surfaces never
 // paraphrase the data away — even when an Answer is present.
 
+import { prettifyHeader } from "../../lib/text";
+
 type Row = Record<string, unknown>;
 
 interface DataProps {
@@ -57,7 +59,7 @@ function KvBlock({ row }: { row: Row }) {
     <dl className="chat-data__kv">
       {entries.map(([key, value]) => (
         <div className="chat-data__kv-pair" key={key}>
-          <dt>{key}</dt>
+          <dt>{prettifyHeader(key)}</dt>
           <dd>{formatCell(value)}</dd>
         </div>
       ))}
@@ -94,7 +96,7 @@ function TableBlock({ rows }: { rows: Row[] }) {
           <tr>
             {columns.map((c) => (
               <th key={c} scope="col">
-                {c}
+                {prettifyHeader(c)}
               </th>
             ))}
           </tr>

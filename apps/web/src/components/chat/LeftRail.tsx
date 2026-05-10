@@ -13,6 +13,7 @@
 import type { DatabaseSummary } from "@nlqdb/sdk";
 import { useEffect, useRef, useState } from "react";
 import { getChatClient } from "../../lib/chat-client";
+import { displayName } from "../../lib/names";
 
 interface LeftRailProps {
   apiBase: string;
@@ -132,8 +133,13 @@ export default function LeftRail({
               className="left-rail__item"
               data-active={db.id === activeDbId || undefined}
             >
-              <button type="button" className="left-rail__item-button" onClick={() => onSelect(db)}>
-                <span className="left-rail__item-slug">{db.slug}</span>
+              <button
+                type="button"
+                className="left-rail__item-button"
+                onClick={() => onSelect(db)}
+                title={db.slug}
+              >
+                <span className="left-rail__item-slug">{db.displayName}</span>
                 <span className="left-rail__item-time">
                   {formatRelative(db.lastQueriedAt ?? db.createdAt)}
                 </span>
@@ -183,6 +189,11 @@ function NewDbForm({
       onCreated({
         id: result.dbId,
         slug: result.slug,
+        // The user-typed name is the most accurate human-readable
+        // form here — fall back to `displayName(dbId)` only when the
+        // form was submitted goal-only. Mirrors the API's default
+        // for goal-only creates.
+        displayName: trimmed || displayName(result.dbId),
         name: trimmed,
         engine: result.engine,
         pkLive: result.pkLive,
