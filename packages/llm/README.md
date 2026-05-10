@@ -23,26 +23,26 @@ const router = createLLMRouter({
     createOpenRouterProvider({ apiKey: env.OPENROUTER_API_KEY }),
   ],
   chains: {
-    classify:  ["groq", "workers-ai", "openrouter"],
+    route:     ["groq", "workers-ai", "openrouter"],
     plan:      ["gemini", "groq", "openrouter"],
     summarize: ["groq", "openrouter"],
   },
 });
 
-const intent = await router.classify({ utterance: "show revenue last month" });
-const plan   = await router.plan({ goal, schema, dialect: "postgres" });
-const text   = await router.summarize({ goal, rows });
+const decision = await router.route({ goal: "show revenue last month", dbs, recentTables });
+const plan     = await router.plan({ goal, schema, dialect: "postgres" });
+const text     = await router.summarize({ goal, rows });
 ```
 
 ## Operations
 
-Three operations land in this slice (PERFORMANCE §4 row 4 — Slice 4):
-
-| Operation   | Input                                      | Output                       |
-| :---------- | :----------------------------------------- | :--------------------------- |
-| `classify`  | `{ utterance }`                            | `{ intent, confidence }`     |
-| `plan`      | `{ goal, schema, dialect: "postgres" }`    | `{ sql }`                    |
-| `summarize` | `{ goal, rows }`                           | `{ summary }`                |
+| Operation         | Input                                                              | Output                                                                                  |
+| :---------------- | :----------------------------------------------------------------- | :-------------------------------------------------------------------------------------- |
+| `route`           | `{ goal, dbs, recentTables }`                                      | `{ kind, targetDbId, referencedTables, confidence, reason }` (SK-ASK-009)               |
+| `plan`            | `{ goal, schema, dialect: "postgres" }`                            | `{ sql }`                                                                               |
+| `summarize`       | `{ goal, rows }`                                                   | `{ summary }`                                                                           |
+| `schema_infer`    | `{ goal }`                                                         | `{ plan }` (SK-HDC-002)                                                                 |
+| `engine_classify` | `{ goal }`                                                         | `{ engine, confidence }` (SK-DB-010)                                                    |
 
 `embed` lands later alongside the embeddings pipeline.
 

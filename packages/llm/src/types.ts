@@ -1,20 +1,17 @@
 // Public types for @nlqdb/llm. Operation set tracks PERFORMANCE §4
-// row 4 (Slice 4): classify / plan / summarize. `schema_infer` was
-// added as the planner-tier op for hosted db.create's typed-plan
-// pipeline (SK-HDC-002, span `llm.schema_infer`). `engine_classify` is
-// the cheap-tier op that picks an engine from goal text on db.create
-// per `SK-DB-010` / `SK-MULTIENG-002` (span `llm.engine_classify`).
+// row 4 (Slice 4): plan / summarize plus the three op-specific calls.
+// `route` is the cheap-tier op that decides `{kind, targetDbId,
+// referencedTables}` for `/v1/ask` (SK-ASK-009) — it replaces the
+// older `classify` + `disambiguate` pair. `schema_infer` is the
+// planner-tier op for hosted db.create's typed-plan pipeline
+// (SK-HDC-002, span `llm.schema_infer`). `engine_classify` is the
+// cheap-tier op that picks an engine from goal text on db.create per
+// `SK-DB-010` / `SK-MULTIENG-002` (span `llm.engine_classify`).
 // embed lands later alongside the embeddings pipeline.
 
 export type ProviderName = "gemini" | "groq" | "workers-ai" | "openrouter";
 
-export type LLMOperation =
-  | "classify"
-  | "plan"
-  | "summarize"
-  | "schema_infer"
-  | "disambiguate"
-  | "engine_classify";
+export type LLMOperation = "route" | "plan" | "summarize" | "schema_infer" | "engine_classify";
 
 // Reasons surfaced on `nlqdb.llm.failover.total{reason}` — bounded set
 // to keep the label cardinality safe (PERFORMANCE §3.3).
@@ -43,11 +40,6 @@ export type FailoverReason =
   | "provider_error"
   | "circuit_open"
   | "unknown";
-
-export type ClassifyIntent = "create" | "data_query" | "meta" | "destructive";
-
-export type ClassifyRequest = { utterance: string };
-export type ClassifyResponse = { intent: ClassifyIntent; confidence: number };
 
 export type PlanRequest = {
   goal: string;
@@ -93,29 +85,27 @@ export type EngineClassifyResponse = {
   confidence: number;
 };
 
-// Multi-DB dbId disambiguation (SK-ASK-009 / SK-HDC-011). Cheap-tier op
-// that picks one of the tenant's existing DBs given a goal, or returns
-// `chosenId: null` if it can't tell. The route handler enforces a
-// `confidence ≥ 0.7` floor on the response — anything below falls back
-// to a `409 candidate_dbs` UI. We deliberately do NOT pass the tenant's
-// row data into the prompt (privacy, and irrelevant to slug-level
-// disambiguation); the schema fingerprint hash is opaque enough that
-// the LLM picks by slug + maybe schema-shape semantics, not contents.
-export type DisambiguateCandidate = {
-  id: string;
-  slug: string;
-  // Schema-plan fingerprint (`schemaHash` in the `databases` row). May
-  // be null for legacy rows that pre-date hashing; the LLM ignores
-  // null entries and picks by slug alone.
-  schemaHash?: string | null;
-};
-export type DisambiguateRequest = {
+// Merged `/v1/ask` router (SK-ASK-009). One cheap-tier call decides
+// `kind ∈ {create, query, write}`, picks `targetDbId` (or null on
+// create), and lists the tables the goal references — all from the
+// same prompt that knows the principal's recent tables. Replaces the
+// older `classify` + `disambiguate` pair. The route handler enforces
+// a confidence floor (`ROUTE_CONFIDENCE_FLOOR = 0.7`) before auto-
+// targeting; below the floor it returns `409 candidate_dbs`.
+export type RouteDbCandidate = { id: string; slug: string };
+export type RouteRecentTable = { dbId: string; table: string };
+export type RouteRequest = {
   goal: string;
-  candidates: DisambiguateCandidate[];
+  dbs: RouteDbCandidate[];
+  recentTables: RouteRecentTable[];
 };
-export type DisambiguateResponse = {
-  // `null` when the LLM can't pick — surface returns 409 candidate_dbs.
-  chosenId: string | null;
+export type RouteKind = "create" | "query" | "write";
+export type RouteResponse = {
+  kind: RouteKind;
+  // null when kind === "create" or the LLM can't pick.
+  targetDbId: string | null;
+  // empty when kind === "create".
+  referencedTables: string[];
   confidence: number;
   reason: string;
 };
@@ -137,11 +127,10 @@ export type Provider = {
   // `llm.model` span attribute. Operation-specific because providers
   // commonly use different models for different jobs.
   model(op: LLMOperation): string;
-  classify(req: ClassifyRequest, opts?: CallOpts): Promise<ClassifyResponse>;
+  route(req: RouteRequest, opts?: CallOpts): Promise<RouteResponse>;
   plan(req: PlanRequest, opts?: CallOpts): Promise<PlanResponse>;
   summarize(req: SummarizeRequest, opts?: CallOpts): Promise<SummarizeResponse>;
   schemaInfer(req: SchemaInferRequest, opts?: CallOpts): Promise<SchemaInferResponse>;
-  disambiguate(req: DisambiguateRequest, opts?: CallOpts): Promise<DisambiguateResponse>;
   engineClassify(req: EngineClassifyRequest, opts?: CallOpts): Promise<EngineClassifyResponse>;
 };
 

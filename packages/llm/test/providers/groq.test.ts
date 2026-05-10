@@ -1,22 +1,42 @@
 import { describe, expect, it } from "vitest";
 import { createGroqProvider } from "../../src/providers/groq.ts";
-import type { ProviderError } from "../../src/types.ts";
+import type { ProviderError, RouteRequest } from "../../src/types.ts";
 import { mockFetch, openAIChatResponse } from "../_fixtures.ts";
 
 const apiKey = "gsk_test";
 
+const routeReq: RouteRequest = {
+  goal: "show revenue last month",
+  dbs: [],
+  recentTables: [],
+};
+
 describe("createGroqProvider", () => {
-  it("classify parses JSON response", async () => {
+  it("route parses JSON response", async () => {
     const provider = createGroqProvider({ apiKey });
     const fetch = mockFetch([
       {
         match: /api\.groq\.com.*chat\/completions/,
         respond: () =>
-          openAIChatResponse(JSON.stringify({ intent: "data_query", confidence: 0.9 })),
+          openAIChatResponse(
+            JSON.stringify({
+              kind: "query",
+              targetDbId: null,
+              referencedTables: [],
+              confidence: 0.9,
+              reason: "ok",
+            }),
+          ),
       },
     ]);
-    const res = await provider.classify({ utterance: "show revenue" }, { fetch });
-    expect(res).toEqual({ intent: "data_query", confidence: 0.9 });
+    const res = await provider.route(routeReq, { fetch });
+    expect(res).toEqual({
+      kind: "query",
+      targetDbId: null,
+      referencedTables: [],
+      confidence: 0.9,
+      reason: "ok",
+    });
   });
 
   it("plan parses JSON response and returns sql", async () => {
@@ -45,14 +65,14 @@ describe("createGroqProvider", () => {
 
   it("model() reflects per-operation defaults", () => {
     const provider = createGroqProvider({ apiKey });
-    expect(provider.model("classify")).toBe("llama-3.1-8b-instant");
+    expect(provider.model("route")).toBe("llama-3.1-8b-instant");
     expect(provider.model("plan")).toBe("llama-3.3-70b-versatile");
     expect(provider.model("summarize")).toBe("llama-3.3-70b-versatile");
   });
 
   it("custom models override the defaults per operation", () => {
-    const provider = createGroqProvider({ apiKey, models: { classify: "qwen3-32b" } });
-    expect(provider.model("classify")).toBe("qwen3-32b");
+    const provider = createGroqProvider({ apiKey, models: { route: "qwen3-32b" } });
+    expect(provider.model("route")).toBe("qwen3-32b");
     expect(provider.model("plan")).toBe("llama-3.3-70b-versatile");
   });
 
@@ -61,7 +81,7 @@ describe("createGroqProvider", () => {
     const fetch = mockFetch([
       { match: /api\.groq\.com/, respond: () => new Response("rate limited", { status: 429 }) },
     ]);
-    await expect(provider.classify({ utterance: "x" }, { fetch })).rejects.toMatchObject({
+    await expect(provider.route(routeReq, { fetch })).rejects.toMatchObject({
       reason: "http_4xx",
       status: 429,
     } satisfies Partial<ProviderError>);
@@ -76,7 +96,7 @@ describe("createGroqProvider", () => {
           new Response(JSON.stringify({ error: { message: "invalid_api_key" } }), { status: 401 }),
       },
     ]);
-    await expect(provider.classify({ utterance: "x" }, { fetch })).rejects.toThrow(
+    await expect(provider.route(routeReq, { fetch })).rejects.toThrow(
       /api\.groq\.com.*chat\/completions.*401.*invalid_api_key/,
     );
   });
@@ -107,7 +127,7 @@ describe("createGroqProvider", () => {
     const fetch = mockFetch([
       { match: /api\.groq\.com/, respond: () => openAIChatResponse("not json at all") },
     ]);
-    await expect(provider.classify({ utterance: "x" }, { fetch })).rejects.toMatchObject({
+    await expect(provider.route(routeReq, { fetch })).rejects.toMatchObject({
       reason: "parse",
     } satisfies Partial<ProviderError>);
   });

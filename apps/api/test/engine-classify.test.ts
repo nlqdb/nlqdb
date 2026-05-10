@@ -19,11 +19,10 @@ import {
 
 function stubRouter(impl: () => Promise<{ engine: string; confidence: number }>): LLMRouter {
   return {
-    classify: vi.fn(),
+    route: vi.fn(),
     plan: vi.fn(),
     summarize: vi.fn(),
     schemaInfer: vi.fn(),
-    disambiguate: vi.fn(),
     engineClassify: vi.fn(impl),
   } as unknown as LLMRouter;
 }

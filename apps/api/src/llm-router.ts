@@ -74,17 +74,17 @@ export function getLLMRouter(): LLMRouter {
   cached = createLLMRouter({
     providers,
     chains: {
-      classify: ["groq", "gemini", "workers-ai", "openrouter"],
+      // SK-ASK-009 — merged routeAsk rides the cheap-tier chain (Groq
+      // 8B first; the prompt is short and the budget is 1500 ms).
+      route: ["groq", "gemini", "workers-ai", "openrouter"],
       plan: ["gemini", "groq", "workers-ai", "openrouter"],
       summarize: ["groq", "gemini", "workers-ai", "openrouter"],
       // SK-LLM-012: schema_infer is its own operation but shares the
       // planner-tier provider chain — same ordering as `plan` so it
       // hits the JSON-strongest provider first.
       schema_infer: ["gemini", "groq", "workers-ai", "openrouter"],
-      // SK-ASK-009 / SK-HDC-011: dbId disambiguation rides the cheap-tier
-      // chain — same ordering as `classify` (Groq 8B first; the prompt
-      // is short and the budget is the same 1500 ms).
-      disambiguate: ["groq", "gemini", "workers-ai", "openrouter"],
+      // SK-DB-010: engine-classifier rides the cheap-tier chain.
+      engine_classify: ["groq", "gemini", "workers-ai", "openrouter"],
     },
   });
   return cached;

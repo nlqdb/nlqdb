@@ -9,11 +9,10 @@ import { openAICompatibleChat } from "./openai-compatible.ts";
 const DEFAULT_BASE_URL = "https://openrouter.ai/api/v1";
 
 const DEFAULT_MODELS: Record<LLMOperation, string> = {
-  classify: "meta-llama/llama-3.1-8b-instruct:free",
+  route: "meta-llama/llama-3.1-8b-instruct:free",
   plan: "meta-llama/llama-3.3-70b-instruct:free",
   summarize: "meta-llama/llama-3.3-70b-instruct:free",
   schema_infer: "meta-llama/llama-3.3-70b-instruct:free",
-  disambiguate: "meta-llama/llama-3.1-8b-instruct:free",
   engine_classify: "meta-llama/llama-3.1-8b-instruct:free",
 };
 

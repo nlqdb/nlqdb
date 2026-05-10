@@ -14,10 +14,10 @@ import { recordAnonAdoption } from "./anon-adopt.ts";
 import { makeGlobalAnonLimiter } from "./anon-global-cap.ts";
 import { makeAnonRateLimiter } from "./anon-rate-limit.ts";
 import { buildAskDeps, buildEventEmitter } from "./ask/build-deps.ts";
-import { classifyKind } from "./ask/classifier.ts";
-import { DISAMBIGUATE_CONFIDENCE_FLOOR, disambiguateDb } from "./ask/disambiguate-db.ts";
 import { orchestrateAsk } from "./ask/orchestrate.ts";
+import { recentTablesStub } from "./ask/recent-tables.ts";
 import { type ReconcileResult, reconcileSpeculativeCreate } from "./ask/reconcile-speculative.ts";
+import { ROUTE_CONFIDENCE_FLOOR, routeAsk } from "./ask/route-ask.ts";
 import { probablyZeroDbs } from "./ask/route-hint.ts";
 import type { AskError, OrchestrateEvent, SelectedDbEcho } from "./ask/types.ts";
 import { listInbox } from "./auth/mock-email-sink.ts";
@@ -301,13 +301,14 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
       c.executionCtx.waitUntil(globalLimiter.record());
     }
 
-    // dbId resolution (SK-ASK-003 / SK-HDC-005): when absent, the
-    // cheap-tier `kind` classifier runs first; `kind=create` (or any
-    // kind with 0 DBs for the tenant) routes the create path.
-    // Otherwise we read the tenant's DB list — 1 → auto-target, 2+ →
-    // LLM disambiguator with a 0.7 confidence floor (above → auto-
-    // target with `selected_db` echo on the response; below → 409
-    // candidate_dbs ranked by LLM score).
+    // dbId resolution (SK-ASK-009): when absent, one cheap-tier
+    // `routeAsk` call decides `{kind, targetDbId, referencedTables}`
+    // from the goal + dbset + recent-tables MRU. `kind=create` (or
+    // any kind with 0 DBs for the tenant) routes the create path;
+    // otherwise we use the picked `targetDbId` if confidence ≥
+    // ROUTE_CONFIDENCE_FLOOR (0.7) — below it the handler returns
+    // `409 candidate_dbs`. The 1-DB auto-target stays a deterministic
+    // shortcut (the tenant has nowhere else to go).
     let selectedDbEcho: SelectedDbEcho | null = null;
 
     // Anon-create gate (peek + challenge + record) — used by both
@@ -444,22 +445,14 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
     };
 
     if (!parsed.body.dbId) {
-      // SK-ASK-003 / SK-HDC-005 prelude — runs only when the request
-      // omits dbId. Three layered fast-paths to keep this off the
-      // critical path of multi-DB tenants:
-      //
-      //   1. classify + listDatabasesForTenant fire in parallel
-      //      (independent inputs).
-      //   2. Disambiguate kicks off as soon as the DB list lands —
-      //      concurrent with the still-pending classify call. Wasted
-      //      if classify ends up returning kind=create, but the cost
-      //      is one cheap-tier LLM call we'd otherwise pay serially.
-      //   3. disambiguateDb itself layers slug-substring fast-path →
-      //      KV cache → LLM, so most multi-DB sends never spend a
-      //      full LLM round-trip here.
+      // SK-ASK-009 prelude — runs only when the request omits dbId.
+      // routeAsk fires in parallel with listDatabasesForTenant; the
+      // tenant DB list pins the dbset the LLM picks from. routeAsk's
+      // own short-circuits (0 dbs / recent-table verb hit / slug
+      // match) keep most multi-DB sends off a full LLM round-trip;
+      // the LLM call below it has a 1500 ms budget.
       //
       // PERFORMANCE §2.3 owns the budget for this prelude.
-      const classifyPromise = classifyKind(getLLMRouter(), parsed.body.goal);
       const listPromise = listDatabasesForTenant(c.env.DB, principal.id);
 
       // SK-ASK-011 — speculative create on probable-0-dbs. When the
@@ -496,58 +489,62 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
         });
       }
 
-      // Speculatively kick off the disambiguator the moment the DB
-      // list is in hand, while classify is still in flight. We pre-
-      // build the promise here; it resolves to `null` for the 0/1-DB
-      // cases (no LLM call made), or to the real pick for 2+. The
-      // outer `await` of classifyPromise still gates whether we
-      // CONSUME this result.
-      const speculativeDisambiguatePromise: Promise<{
-        candidates: ReturnType<typeof toCandidates>;
-        pick: Awaited<ReturnType<typeof disambiguateDb>> | null;
-      }> = (async () => {
+      // SK-ASK-009 — routeAsk runs in parallel with listPromise.
+      // Wraps both: routeAsk's `dbs` input comes from the awaited
+      // listPromise (or `[]` if that read fails — routeAsk then
+      // returns kind=create deterministically).
+      const routePromise = (async () => {
         let dbs: Awaited<ReturnType<typeof listDatabasesForTenant>>;
         try {
           dbs = await listPromise;
         } catch {
-          return { candidates: [], pick: null };
-        }
-        if (dbs.length < 2) {
-          return { candidates: toCandidates(dbs), pick: null };
-        }
-        try {
-          const pick = await disambiguateDb(
-            { llm: getLLMRouter(), cache: c.env.KV },
-            {
-              tenantId: principal.id,
-              goal: parsed.body.goal,
-              candidates: toCandidates(dbs),
-            },
-          );
-          return { candidates: toCandidates(dbs), pick };
-        } catch {
+          // Tenant DB list failed — treat as 0 dbs so routeAsk picks
+          // create. The follow-up create path will surface the real
+          // error to the user.
           return {
-            candidates: toCandidates(dbs),
-            pick: { chosenId: null, confidence: 0, reason: "disambiguator_failed" },
+            candidates: [] as ReturnType<typeof toCandidates>,
+            output: await routeAsk(
+              { llm: getLLMRouter() },
+              {
+                goal: parsed.body.goal,
+                dbs: [],
+                recentTables: await recentTablesStub.load(principal.id),
+              },
+            ),
           };
         }
+        const candidates = toCandidates(dbs);
+        const recentTables = await recentTablesStub.load(principal.id);
+        const output = await routeAsk(
+          { llm: getLLMRouter() },
+          {
+            goal: parsed.body.goal,
+            dbs: candidates,
+            recentTables,
+          },
+        );
+        return { candidates, output };
       })();
 
-      let classification: Awaited<ReturnType<typeof classifyKind>>;
+      let routed: Awaited<typeof routePromise>;
       try {
-        classification = await classifyPromise;
+        routed = await routePromise;
       } catch {
-        span.setAttribute("nlqdb.ask.outcome", "classifier_failed");
+        span.setAttribute("nlqdb.ask.outcome", "router_failed");
         span.end();
         return c.json({ error: { status: "llm_failed" as const } }, 502);
       }
-      span.setAttribute("nlqdb.ask.kind", classification.kind);
-      span.setAttribute("nlqdb.ask.kind_reason", classification.reason);
+
+      const { candidates: tenantCandidates, output: routeOutput } = routed;
+      span.setAttribute("nlqdb.ask.kind", routeOutput.kind);
+      span.setAttribute("nlqdb.ask.kind_reason", routeOutput.reason);
+      span.setAttribute("nlqdb.ask.tenant_db_count", tenantCandidates.length);
 
       // SK-ASK-011 — consume the speculative create's reconciliation
       // outcome. Committed → return the create response (cache was
-      // right). Rolled back → fall through; the dbs list is now
-      // known and the existing flow handles 0/1/2+ dispatch as today.
+      // right). Rolled back → fall through; routeOutput already knows
+      // about the dbs (listPromise was shared) and the existing flow
+      // handles 0/1/2+ dispatch as today.
       if (speculativeReconcilePromise) {
         const reconciled = await speculativeReconcilePromise;
         if (reconciled.kind === "committed") {
@@ -558,16 +555,15 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
         span.setAttribute("nlqdb.ask.outcome", "speculative_create_rolled_back");
       }
 
-      if (classification.kind === "create") {
+      if (routeOutput.kind === "create") {
         return runCreatePath();
       }
 
-      // kind=query|write — consume the prelude result.
-      const { candidates: tenantCandidates, pick } = await speculativeDisambiguatePromise;
-      span.setAttribute("nlqdb.ask.tenant_db_count", tenantCandidates.length);
-
       if (tenantCandidates.length === 0) {
-        // Architecture §3.6.4: "0 dbs → CREATE".
+        // Defense in depth — `routeAsk` returns kind=create on 0 dbs
+        // (the architecture §3.6.4 rule). If we land here with kind=
+        // query|write and no DBs, fall back to create so we don't
+        // 409 a user who has no place to write.
         span.setAttribute("nlqdb.ask.dbid_resolution", "zero_dbs_create_fallback");
         return runCreatePath();
       }
@@ -584,22 +580,25 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
           };
           span.setAttribute("nlqdb.ask.dbid_resolution", "single_db_auto");
         }
-      } else if (pick) {
-        span.setAttribute("nlqdb.ask.disambiguate_confidence", pick.confidence);
-        span.setAttribute("nlqdb.ask.disambiguate_reason", pick.reason);
-        if (pick.chosenId !== null && pick.confidence >= DISAMBIGUATE_CONFIDENCE_FLOOR) {
-          const chosen = tenantCandidates.find((d) => d.id === pick.chosenId);
+      } else {
+        span.setAttribute("nlqdb.ask.disambiguate_confidence", routeOutput.confidence);
+        span.setAttribute("nlqdb.ask.disambiguate_reason", routeOutput.reason);
+        if (routeOutput.targetDbId !== null && routeOutput.confidence >= ROUTE_CONFIDENCE_FLOOR) {
+          const chosen = tenantCandidates.find((d) => d.id === routeOutput.targetDbId);
           if (chosen) {
             parsed.body.dbId = chosen.id;
             selectedDbEcho = {
               id: chosen.id,
               slug: chosen.slug,
-              confidence: pick.confidence,
-              reason: pick.reason,
+              confidence: routeOutput.confidence,
+              reason: routeOutput.reason,
             };
-            const resolutionLabel = pick.reason.startsWith("slug_match")
-              ? "slug_fastpath"
-              : "llm_auto_target";
+            const resolutionLabel =
+              routeOutput.reason === "slug_match"
+                ? "slug_fastpath"
+                : routeOutput.reason === "recent_table_match"
+                  ? "recent_table_fastpath"
+                  : "llm_auto_target";
             span.setAttribute("nlqdb.ask.dbid_resolution", resolutionLabel);
           }
         }
@@ -611,7 +610,7 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
               error: {
                 status: "ambiguous_db" as const,
                 candidate_dbs: tenantCandidates.map((d) => ({ id: d.id, slug: d.slug })),
-                reason: pick.reason,
+                reason: routeOutput.reason,
               },
             },
             409,
@@ -621,9 +620,9 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
     }
 
     const deps = buildAskDeps(c.env);
-    // After the SK-ASK-003 / SK-HDC-005 resolution above, `dbId` is
-    // guaranteed to be set — either by the caller, by the 1-DB auto-
-    // target, or by the slug-fastpath / cache / LLM disambiguator.
+    // After the SK-ASK-009 resolution above, `dbId` is guaranteed to
+    // be set — either by the caller, by the 1-DB auto-target, or by
+    // routeAsk (recent-table fast-path / slug fast-path / LLM pick).
     const resolvedDbId = parsed.body.dbId;
     if (!resolvedDbId) {
       // Defensive: shouldn't happen — every branch above either sets
@@ -641,9 +640,9 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
     if (wantsSse) {
       return streamSSE(c, async (stream) => {
         try {
-          // SK-ASK-003: emit `selected_db` first so the chat surface
-          // can render the "picked X" attribution chip before
-          // plan_pending lands.
+          // SK-ASK-009 (echo carry-over from SK-ASK-003): emit
+          // `selected_db` first so the chat surface can render the
+          // "picked X" attribution chip before plan_pending lands.
           if (selectedDbEcho) {
             await stream.writeSSE({
               event: "selected_db",

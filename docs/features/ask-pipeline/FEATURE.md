@@ -29,17 +29,18 @@ when-to-load:
 - **Alternatives rejected:** REST resource explosion (`/v1/queries`, `/v1/runs`, `/v1/plans`) — bigger surface, more docs, more inconsistency. `/v1/ask` + `/v1/db/new` — splits a single user goal across two endpoints; the user has to know which.
 - **Source:** docs/architecture.md §3.6.1
 
-### SK-ASK-002 — Canonical step order: edge → auth → rate-limit → hash → plan-cache → (hit: validate → exec) | (miss: classify → plan → SQL-validate → exec → cache-write) → optional summarize
+### SK-ASK-002 — Canonical step order: edge → auth → rate-limit → hash → plan-cache → (hit: validate → exec) | (miss: route → plan → SQL-validate → exec → cache-write) → optional summarize
 
-- **Decision:** Every `/v1/ask` request follows the canonical step order in `docs/performance.md §2.1, §2.2`. New steps require a `SK-ASK-NNN` decision; reordering existing steps requires updating the canonical tables in `performance.md` in the same PR.
+- **Decision:** Every `/v1/ask` request follows the canonical step order in `docs/performance.md §2.1, §2.2`. New steps require a `SK-ASK-NNN` decision; reordering existing steps requires updating the canonical tables in `performance.md` in the same PR. The cache-miss path opens with one merged `route` LLM call (SK-ASK-009) — no separate `classify` then `disambiguate` step.
 - **Core value:** Bullet-proof, Honest latency, Fast
-- **Why:** A canonical order means every reviewer, every dashboard, every test agrees on what "the ask path" is. Inserting an unsanctioned step (e.g., a third LLM call between plan and exec) is the kind of change that silently breaks the latency budget and the trace UI. The order is also load-bearing for `GLOBAL-011`: surfaces stream the trace in the order steps complete.
-- **Consequence in code:** `orchestrateAsk()` (per `docs/architecture.md §10` Slice 6) walks the steps in order. Each step gets one OTel span (per `docs/performance.md §3.1`). A reorder regression is caught by the span-tree assertion in the slice's vitest. Latency budgets in `performance.md §2.1, §2.2` are CI-asserted at 1.5× p50.
-- **Alternatives rejected:** Per-handler order — would let the order drift between create / query / write without notice. Skip cache when LLM is fast — defeats `GLOBAL-006` and breaks the cache-warming intent.
+- **Why:** A canonical order means every reviewer, every dashboard, every test agrees on what "the ask path" is. Inserting an unsanctioned step (e.g., a third LLM call between plan and exec) is the kind of change that silently breaks the latency budget and the trace UI. The order is also load-bearing for `GLOBAL-011`: surfaces stream the trace in the order steps complete. Folding classify + disambiguate into one `route` call halves the cheap-tier latency on the dbId-absent path.
+- **Consequence in code:** `orchestrateAsk()` (per `docs/architecture.md §10` Slice 6) walks the steps in order. Each step gets one OTel span (per `docs/performance.md §3.1`). The route-handler prelude (SK-ASK-009) emits one `llm.route` span per cache-miss / dbId-absent send. A reorder regression is caught by the span-tree assertion in the slice's vitest. Latency budgets in `performance.md §2.1, §2.2` are CI-asserted at 1.5× p50.
+- **Alternatives rejected:** Per-handler order — would let the order drift between create / query / write without notice. Skip cache when LLM is fast — defeats `GLOBAL-006` and breaks the cache-warming intent. Keep classify + disambiguate as separate steps — see SK-ASK-009.
 - **Source:** docs/architecture.md §3.6.1, §3.6.2 · docs/performance.md §2.1, §2.2 · docs/architecture.md §10 Slice 6
 
 ### SK-ASK-003 — `dbId` resolution: deterministic fast-path then cheap-tier LLM, with confidence floor + visible echo
 
+- **Status:** superseded by SK-ASK-009 — see SK-ASK-009 for the merged `routeAsk` decision.
 - **Decision:** When `dbId` is omitted on `/v1/ask`: 0 dbs → CREATE; 1 db → auto-target; 2+ dbs → (a) deterministic slug-substring match — if exactly one DB's slug words appear in the goal, pick it; (b) KV cache lookup `(tenantId, goalHash, dbsetHash)`; (c) cheap-tier `llm.disambiguate` call. Auto-target requires `confidence ≥ 0.7`; below threshold the API returns `409 ambiguous_db` with `candidate_dbs` ranked by score. Every auto-target echoes `selected_db: { id, slug, confidence, reason }` on the response. CLI / MCP keep their per-surface fallbacks (MRU prompt / elicitation).
 - **Core value:** Effortless UX, Goal-first, Honest latency
 - **Why:** Forcing a `409` round-trip on every multi-DB ambiguous send breaks the goal-first chat flow. The "silent wrong-tenant" failure mode is contained by three properties: a confidence floor, a visible `selected_db` echo (wrong picks are immediately visible, not silent), and one-click rail recovery. Destructive verbs still pass the SK-ASK-004 validator + SK-ONBOARD-004 confirm-diff gate, so a wrong-tenant write requires both a wrong LLM pick and the user approving a diff that names the wrong table.
@@ -91,6 +92,17 @@ when-to-load:
 - **Consequence in code:** Each step in the canonical order (`SK-ASK-002`) emits a trace event the SDK exposes via the `onTrace` hook. `apps/web` renders them in order; CLI's TTY mode prints each as it completes. Tests assert that every step in the cache-miss path produces exactly one trace event.
 - **Alternatives rejected:** Generic spinner with "this is taking longer than usual" — gives no information; trains users not to trust the surface. Hide latency below a threshold — users notice anyway, and lose trust when the threshold is wrong.
 - **Source:** docs/architecture.md §0 (Honest latency) · [GLOBAL-011](../../decisions/GLOBAL-011-honest-latency.md)
+
+### SK-ASK-009 — Cheap-tier classifier sees the principal's recent tables; classify + disambiguate merge into `routeAsk`
+
+- **Decision:** The `/v1/ask` cheap-tier classifier receives the principal's 100 most-recent `(dbId, table)` tuples in its prompt. Output is `{kind, targetDbId, referencedTables, confidence, reason}` from a single LLM call (`llm.route`). This collapses today's two cheap-tier calls (`classify` + `disambiguate`) into one.
+- **Core value:** Bullet-proof, Fast, Effortless UX
+- **Why:** Without table-level context the classifier can't tell "insert red and blue tables" (intended `kind=create`) from "insert into red and blue" (intended `kind=write`). Recent tables are the cheapest signal that disambiguates the two — if `red`/`blue` aren't in the cache, the goal must be create. Merging classify + disambiguate halves cheap-tier latency on the dbId-absent path; the prompt budget absorbs the extra context (100 × ~30 chars ≈ 3 KB).
+- **Consequence in code:** `apps/api/src/ask/route-ask.ts` exports `routeAsk(deps, input)`. `apps/api/src/ask/classifier.ts` and `apps/api/src/ask/disambiguate-db.ts` are deleted. `LLMRouter.classify` and `LLMRouter.disambiguate` are replaced by `LLMRouter.route`; `LLMOperation.classify` and `LLMOperation.disambiguate` are removed. The route handler in `apps/api/src/index.ts` runs `routeAsk` in parallel with `listDatabasesForTenant` and dispatches on `{kind, targetDbId}`. PRs that re-introduce a separate kind-classification call fail review.
+- **Alternatives rejected:**
+  - Keep classify + disambiguate as separate cheap-tier calls — two LLM round-trips on every dbId-absent send; second call's input partially overlaps the first.
+  - Pass the full schema (every table across every db) — token-explodes on power users; bounded MRU is the right subset.
+  - Pass dbset only (no tables) — solves classify+disambiguate merge but doesn't help the "insert red and blue tables" misclassification, which is the load-bearing case.
 
 ### SK-ASK-010 — Goal text is capped at 2 000 characters server-side
 

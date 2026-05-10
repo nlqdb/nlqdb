@@ -78,45 +78,47 @@ The cold path. LLM dominates; everything else has to stay tight.
 |    | **Total (no summarize)**                      | **733 ms**  | **1980 ms** |
 |    | Headroom vs SLO                               | 467 ms / 767 ms | 720 ms / 1520 ms |
 
-The `kind` classifier (`apps/api/src/ask/classifier.ts`) runs **only**
-when `dbId` is absent — see §2.3 for that prelude. Pinned-dbId calls
-skip it entirely.
+The merged `route` LLM call (`apps/api/src/ask/route-ask.ts`,
+SK-ASK-009) runs **only** when `dbId` is absent — see §2.3 for that
+prelude. Pinned-dbId calls skip it entirely.
 
 **Summarize is conditional** — only runs when the result row count is
-above a threshold (default 5) or when the intent classifier flagged
+above a threshold (default 5) or when the route classifier flagged
 the query as conversational. Most fact-lookup queries return raw rows
 and skip stage 10 entirely.
 
 ### 2.3 `POST /v1/ask` — `dbId` resolution prelude (dbId omitted)
 
-`SK-ASK-003` / `SK-HDC-005`. Runs **only** when the request omits
-`dbId`. Classifier + tenant DB list fire in parallel; the
-disambiguator kicks off speculatively the moment the DB list lands,
-overlapping with the still-running classify call. `disambiguateDb`
-itself layers slug-substring fast-path → KV cache → LLM, so most
-multi-DB sends never spend a full LLM round-trip here.
+`SK-ASK-009`. Runs **only** when the request omits `dbId`. One merged
+`routeAsk` call (cheap-tier `llm.route` op) decides
+`{kind, targetDbId, referencedTables}` from the goal + dbset +
+recent-tables MRU. `routeAsk` runs in parallel with
+`listDatabasesForTenant`; its own short-circuits (0 dbs /
+recent-table verb hit / slug match) keep most multi-DB sends off a
+full LLM round-trip.
 
 | Path                                                                 | p50    | p99    |
 | :------------------------------------------------------------------- | :----- | :----- |
-| 0 dbs / 1 db (no disambiguator runs)                                 | 100 ms | 400 ms |
-| 2+ dbs, slug-substring match (no LLM, no KV)                         | 100 ms | 400 ms |
-| 2+ dbs, KV cache hit                                                 | 100 ms | 400 ms |
-| 2+ dbs, full LLM disambiguate (worst case; speculative parallelism)  | 115 ms | 445 ms |
+| 0 dbs (deterministic create, no LLM)                                 | 100 ms | 400 ms |
+| 1 db (auto-target, no LLM)                                           | 100 ms | 400 ms |
+| 2+ dbs, recent-table substring + verb match (no LLM)                 | 100 ms | 400 ms |
+| 2+ dbs, full LLM `route` (worst case; one cheap-tier call)           | 115 ms | 445 ms |
 
-The classify call is on the critical path of every dbId-absent
-send (~100/400 ms p50/p99); speculative parallelism collapses the
-disambiguator's latency into classify's tail unless slug+cache both
-miss. Worst case adds 115/445 ms onto the §2.2 cache-miss budget:
-**1148 ms p50 / 3225 ms p99** with summarize, **848 ms p50 / 2425
-ms p99** without — both inside the 1.5s / 3.5s SLO with 352 / 275
-ms p99 headroom on the worst path.
+The merged `route` call replaces yesterday's two cheap-tier calls
+(`classify` + `disambiguate`) with one — halving the LLM round-trips
+on the dbId-absent path. Worst case adds 115/445 ms onto the §2.2
+cache-miss budget: **1148 ms p50 / 3225 ms p99** with summarize,
+**848 ms p50 / 2425 ms p99** without — both inside the 1.5s / 3.5s
+SLO with 352 / 275 ms p99 headroom on the worst path.
 
 Operational guardrails:
-- Disambiguator timeout 1500 ms (cheap-tier, `DEFAULT_TIMEOUTS_MS`).
-- KV cache TTL 7 days, keyed by `(tenantId, goalHash, dbsetHash)`.
-- Span `llm.disambiguate` per LLM attempt; `nlqdb.ask.dbid_resolution`
+- `route` timeout 1500 ms (cheap-tier, `DEFAULT_TIMEOUTS_MS`).
+- Span `llm.route` per LLM attempt; `nlqdb.ask.dbid_resolution`
   attribute records which fast-path won (`slug_fastpath` /
-  `single_db_auto` / `llm_auto_target` / `ambiguous_409`).
+  `recent_table_fastpath` / `single_db_auto` / `llm_auto_target` /
+  `ambiguous_409` / `zero_dbs_create_fallback`).
+- Recent-tables MRU per principal (SK-ASK-010 / WS1) caps at 100
+  entries; `routeAsk` projects `(dbId, table)` into the prompt.
 
 ### 2.4 `GET /api/auth/callback/github`
 
@@ -133,12 +135,11 @@ Operational guardrails:
 
 | Provider                     | Operation         | p50    | p99    | Notes                            |
 | :--------------------------- | :---------------- | :----- | :----- | :------------------------------- |
-| Cloudflare Workers AI        | classify (Llama)  | 80 ms  | 300 ms | Same-region edge — fastest.      |
+| Cloudflare Workers AI        | route (Llama 8B)  | 80 ms  | 300 ms | Same-region edge — fastest.      |
 | Cloudflare Workers AI        | plan              | 500 ms | 1200 ms | Heavier model.                  |
-| Cloudflare Workers AI        | disambiguate      | 80 ms  | 300 ms | Same model as classify; SK-ASK-009. |
-| Gemini 2.0 Flash             | classify          | 150 ms | 500 ms |                                  |
+| Gemini 2.0 Flash             | route             | 150 ms | 500 ms |                                  |
 | Gemini 2.0 Flash             | plan              | 700 ms | 1800 ms |                                  |
-| Groq (Llama 3.1 8B Instant)  | classify / disambiguate | 100 ms | 400 ms | Cheap-tier hot path; chain default. |
+| Groq (Llama 3.1 8B Instant)  | route / engine_classify | 100 ms | 400 ms | Cheap-tier hot path; chain default. |
 | Groq (Llama 3.1 70B)         | plan              | 400 ms | 1000 ms | Fastest paid.                    |
 | OpenRouter (fallback)        | plan              | 1000 ms| 3000 ms | Used only on multi-provider failover. |
 | Neon HTTP (us-east-1)        | SELECT (warm)     | 80 ms  | 300 ms | Cold pool can spike to 1 s.      |
@@ -167,7 +168,7 @@ Canonical names. Every slice MUST use these — no one-off variants.
 | `nlqdb.ask.hash`              | Schema-hash + query-hash compute.              |
 | `nlqdb.cache.plan.lookup`     | KV read for cached plan (label `hit=true/false`). |
 | `nlqdb.cache.plan.write`      | KV write of new plan.                          |
-| `llm.classify`                | Intent classification call.                    |
+| `llm.route`                   | Merged kind + dbId classification (SK-ASK-009). One cheap-tier call per cache-miss / dbId-absent send; replaces the older `llm.classify` + `llm.disambiguate` pair. |
 | `llm.plan`                    | NL → SQL generation.                           |
 | `llm.summarize`               | Result summarization (conditional).            |
 | `llm.schema_infer`            | Hosted db.create — NL → typed `SchemaPlan` (SK-HDC-002, SK-HDC-003). |
@@ -253,7 +254,7 @@ Every slice from 3 onward MUST include:
 | Slice | New spans                                              | New metrics                                                      | CI assertion                            |
 | :---- | :----------------------------------------------------- | :--------------------------------------------------------------- | :-------------------------------------- |
 | 3 — Neon adapter      | `db.query` (label `db.system=postgresql`, `db.operation.name`) | `nlqdb.db.duration_ms{operation}`                                | span emitted; p50 < 200 ms in test.     |
-| 4 — LLM router        | `llm.classify` / `llm.plan` / `llm.summarize` / `llm.schema_infer` (label `llm.provider`, `llm.model`) | `nlqdb.llm.calls.total`, `nlqdb.llm.duration_ms`, `nlqdb.llm.failover.total` | failover counter increments on forced provider failure. `llm.schema_infer` lands in Phase 1 alongside hosted db.create. |
+| 4 — LLM router        | `llm.route` / `llm.plan` / `llm.summarize` / `llm.schema_infer` / `llm.engine_classify` (label `llm.provider`, `llm.model`) | `nlqdb.llm.calls.total`, `nlqdb.llm.duration_ms`, `nlqdb.llm.failover.total` | failover counter increments on forced provider failure. `llm.schema_infer` lands in Phase 1 alongside hosted db.create. `llm.route` replaces the older `llm.classify` + `llm.disambiguate` pair (SK-ASK-009). |
 | 5 — Better Auth       | `nlqdb.auth.verify`, `nlqdb.auth.oauth.callback`, `nlqdb.events.emit` (new sign-in only) | `nlqdb.auth.events.total`                                        | sign-in success + failure both emit OTel events; first-time sign-in fires exactly one `user.registered` into the sink (asserted with stub sink — real `LOGSNAG_TOKEN` not required in CI). |
 | 6 — `/v1/ask` E2E     | `nlqdb.ask` (parent), `nlqdb.cache.plan.lookup` / `write`, `nlqdb.sql.validate`, `nlqdb.ratelimit.check`, `nlqdb.cache.first_query.lookup` / `commit`, `nlqdb.events.emit` (first-query only) | `nlqdb.ask.duration_ms`, `nlqdb.cache.plan.hits.total` / `misses.total` | end-to-end span tree present; cache hit on second identical request; `user.first_query` fires exactly once per user (via the lookup-then-emit-then-commit pattern). **Also:** Better Auth `session.cookieCache` enabled + KV revocation-set check on every session read (DESIGN §4.3, §4.5). Pair lands together — cookie cache without the revocation hook would regress the "≤2s revocation" guarantee. Drops `nlqdb.auth.verify` from D1-bound (~30 ms p99) to HMAC + KV (~6 ms p99). |
 | 7 — Stripe webhook    | `nlqdb.webhook.stripe`, `nlqdb.events.emit`            | `nlqdb.requests.total{route="/v1/stripe/webhook"}`               | signature verify span emitted; `billing.subscription_created` / `billing.subscription_canceled` map 1:1 to events fired into the sink (asserted with stub sink). No `trial.*` events — PLAN §5.3 has no Stripe trial period. |

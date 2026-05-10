@@ -1,22 +1,37 @@
 import { describe, expect, it } from "vitest";
 import { createWorkersAIProvider } from "../../src/providers/workers-ai.ts";
-import type { ProviderError } from "../../src/types.ts";
+import type { ProviderError, RouteRequest } from "../../src/types.ts";
 import { jsonResponse, mockFetch, workersAIResponse } from "../_fixtures.ts";
 
 const accountId = "acc_test";
 const apiToken = "cf_token";
 
+const routeReq: RouteRequest = {
+  goal: "u",
+  dbs: [],
+  recentTables: [],
+};
+
 describe("createWorkersAIProvider", () => {
-  it("classify parses JSON from result.response", async () => {
+  it("route parses JSON from result.response", async () => {
     const provider = createWorkersAIProvider({ accountId, apiToken });
     const fetch = mockFetch([
       {
         match: /api\.cloudflare\.com.*\/ai\/run/,
-        respond: () => workersAIResponse(JSON.stringify({ intent: "data_query", confidence: 0.8 })),
+        respond: () =>
+          workersAIResponse(
+            JSON.stringify({
+              kind: "query",
+              targetDbId: null,
+              referencedTables: [],
+              confidence: 0.8,
+              reason: "ok",
+            }),
+          ),
       },
     ]);
-    const res = await provider.classify({ utterance: "u" }, { fetch });
-    expect(res.intent).toBe("data_query");
+    const res = await provider.route(routeReq, { fetch });
+    expect(res.kind).toBe("query");
   });
 
   it("plan parses JSON from result.response", async () => {
@@ -42,7 +57,7 @@ describe("createWorkersAIProvider", () => {
 
   it("model() returns the @cf/-prefixed model id", () => {
     const provider = createWorkersAIProvider({ accountId, apiToken });
-    expect(provider.model("classify")).toBe("@cf/meta/llama-3.1-8b-instruct");
+    expect(provider.model("route")).toBe("@cf/meta/llama-3.1-8b-instruct");
   });
 
   it("URL embeds the account id and model path", async () => {
@@ -53,11 +68,19 @@ describe("createWorkersAIProvider", () => {
         match: /api\.cloudflare\.com/,
         respond: (req) => {
           captured = req.url;
-          return workersAIResponse(JSON.stringify({ intent: "meta", confidence: 1 }));
+          return workersAIResponse(
+            JSON.stringify({
+              kind: "query",
+              targetDbId: null,
+              referencedTables: [],
+              confidence: 1,
+              reason: "ok",
+            }),
+          );
         },
       },
     ]);
-    await provider.classify({ utterance: "x" }, { fetch });
+    await provider.route(routeReq, { fetch });
     expect(captured).toContain(`/accounts/${accountId}/ai/run/@cf/meta/llama-3.1-8b-instruct`);
   });
 
@@ -73,7 +96,7 @@ describe("createWorkersAIProvider", () => {
           }),
       },
     ]);
-    await expect(provider.classify({ utterance: "x" }, { fetch })).rejects.toMatchObject({
+    await expect(provider.route(routeReq, { fetch })).rejects.toMatchObject({
       reason: "provider_error",
     } satisfies Partial<ProviderError>);
   });
@@ -90,8 +113,6 @@ describe("createWorkersAIProvider", () => {
           }),
       },
     ]);
-    await expect(provider.classify({ utterance: "x" }, { fetch })).rejects.toThrow(
-      /no route for that path/,
-    );
+    await expect(provider.route(routeReq, { fetch })).rejects.toThrow(/no route for that path/);
   });
 });

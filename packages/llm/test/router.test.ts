@@ -8,13 +8,13 @@ import {
 } from "../src/router.ts";
 import {
   type CallOpts,
-  type ClassifyResponse,
-  type DisambiguateResponse,
   type EngineClassifyResponse,
   type PlanResponse,
   type Provider,
   ProviderError,
   type ProviderName,
+  type RouteRequest,
+  type RouteResponse,
   type SchemaInferResponse,
   type SummarizeResponse,
 } from "../src/types.ts";
@@ -28,14 +28,27 @@ type Stub<R> =
   | Error
   | ((req: unknown, opts: CallOpts | undefined) => Promise<R>);
 
+const ROUTE_OK: RouteResponse = {
+  kind: "query",
+  targetDbId: null,
+  referencedTables: [],
+  confidence: 1,
+  reason: "stub",
+};
+
+const ROUTE_REQ: RouteRequest = {
+  goal: "g",
+  dbs: [],
+  recentTables: [],
+};
+
 function fakeProvider(
   name: ProviderName,
   stubs: {
-    classify?: Stub<ClassifyResponse>;
+    route?: Stub<RouteResponse>;
     plan?: Stub<PlanResponse>;
     summarize?: Stub<SummarizeResponse>;
     schemaInfer?: Stub<SchemaInferResponse>;
-    disambiguate?: Stub<DisambiguateResponse>;
     engineClassify?: Stub<EngineClassifyResponse>;
   } = {},
 ): Provider & { calls: { op: string; req: unknown; opts: CallOpts | undefined }[] } {
@@ -55,9 +68,9 @@ function fakeProvider(
     name,
     calls,
     model: () => `${name}-model`,
-    async classify(req, opts) {
-      calls.push({ op: "classify", req, opts });
-      return resolve(stubs.classify, { intent: "data_query", confidence: 1 }, req, opts);
+    async route(req, opts) {
+      calls.push({ op: "route", req, opts });
+      return resolve(stubs.route, ROUTE_OK, req, opts);
     },
     async plan(req, opts) {
       calls.push({ op: "plan", req, opts });
@@ -70,15 +83,6 @@ function fakeProvider(
     async schemaInfer(req, opts) {
       calls.push({ op: "schemaInfer", req, opts });
       return resolve(stubs.schemaInfer, { plan: { provider: name } }, req, opts);
-    },
-    async disambiguate(req, opts) {
-      calls.push({ op: "disambiguate", req, opts });
-      return resolve(
-        stubs.disambiguate,
-        { chosenId: null, confidence: 0, reason: name },
-        req,
-        opts,
-      );
     },
     async engineClassify(req, opts) {
       calls.push({ op: "engineClassify", req, opts });
@@ -105,14 +109,17 @@ afterEach(() => {
 });
 
 describe("createLLMRouter — happy path", () => {
-  it("classify returns the first provider's response", async () => {
-    const a = fakeProvider("groq", { classify: { intent: "meta", confidence: 0.5 } });
+  it("route returns the first provider's response", async () => {
+    const a = fakeProvider("groq", {
+      route: { ...ROUTE_OK, kind: "create", confidence: 0.9, reason: "no_dbs" },
+    });
     const router = createLLMRouter({
       providers: [a],
-      chains: { classify: ["groq"] },
+      chains: { route: ["groq"] },
     });
-    const res = await router.classify({ utterance: "u" });
-    expect(res).toEqual({ intent: "meta", confidence: 0.5 });
+    const res = await router.route(ROUTE_REQ);
+    expect(res.kind).toBe("create");
+    expect(res.confidence).toBe(0.9);
   });
 
   it("emits one llm.<op> span per attempt with provider/model attrs", async () => {
@@ -140,6 +147,18 @@ describe("createLLMRouter — happy path", () => {
     const calls = metric(telemetry, "nlqdb.llm.calls.total");
     expect(calls?.dataPoints[0]?.attributes["status"]).toBe("ok");
     expect(metric(telemetry, "nlqdb.llm.duration_ms")).toBeDefined();
+  });
+
+  it("route emits an llm.route span (SK-ASK-009)", async () => {
+    const a = fakeProvider("groq");
+    const router = createLLMRouter({
+      providers: [a],
+      chains: { route: ["groq"] },
+    });
+    await router.route(ROUTE_REQ);
+    const span = telemetry.spanExporter.getFinishedSpans().find((s) => s.name === "llm.route");
+    expect(span).toBeDefined();
+    expect(span?.attributes["llm.provider"]).toBe("groq");
   });
 
   it("engineClassify routes through the engine_classify chain (SK-DB-010)", async () => {
@@ -207,14 +226,14 @@ describe("createLLMRouter — failover", () => {
 
   it("emits one span per attempt — failed attempt has ERROR status", async () => {
     const a = fakeProvider("gemini", {
-      classify: new ProviderError("net", "network"),
+      route: new ProviderError("net", "network"),
     });
     const b = fakeProvider("groq");
     const router = createLLMRouter({
       providers: [a, b],
-      chains: { classify: ["gemini", "groq"] },
+      chains: { route: ["gemini", "groq"] },
     });
-    await router.classify({ utterance: "u" });
+    await router.route(ROUTE_REQ);
     const spans = telemetry.spanExporter.getFinishedSpans();
     expect(spans).toHaveLength(2);
     expect(spans[0]?.attributes["llm.provider"]).toBe("gemini");
@@ -252,17 +271,15 @@ describe("createLLMRouter — failover", () => {
   it("all providers fail → throws AllProvidersFailedError with attempts", async () => {
     const aErr = new ProviderError("a", "http_5xx");
     const bErr = new ProviderError("b", "http_4xx");
-    const a = fakeProvider("gemini", { classify: aErr });
-    const b = fakeProvider("groq", { classify: bErr });
+    const a = fakeProvider("gemini", { route: aErr });
+    const b = fakeProvider("groq", { route: bErr });
     const router = createLLMRouter({
       providers: [a, b],
-      chains: { classify: ["gemini", "groq"] },
+      chains: { route: ["gemini", "groq"] },
     });
-    await expect(router.classify({ utterance: "u" })).rejects.toBeInstanceOf(
-      AllProvidersFailedError,
-    );
+    await expect(router.route(ROUTE_REQ)).rejects.toBeInstanceOf(AllProvidersFailedError);
     try {
-      await router.classify({ utterance: "u" });
+      await router.route(ROUTE_REQ);
     } catch (err) {
       const e = err as AllProvidersFailedError;
       expect(e.attempts.map((x) => x.reason)).toEqual(["http_5xx", "http_4xx"]);
@@ -274,7 +291,7 @@ describe("createLLMRouter — failover", () => {
 
   it("empty chain → throws NoProviderError", async () => {
     const router = createLLMRouter({ providers: [], chains: {} });
-    await expect(router.classify({ utterance: "u" })).rejects.toBeInstanceOf(NoProviderError);
+    await expect(router.route(ROUTE_REQ)).rejects.toBeInstanceOf(NoProviderError);
   });
 
   it("chain with no registered provider → NoConfiguredProvidersError before any attempt", async () => {
@@ -319,16 +336,16 @@ describe("createLLMRouter — timeouts", () => {
   it("propagates the per-call signal so providers can wire it to fetch", async () => {
     let captured: AbortSignal | undefined;
     const a = fakeProvider("groq", {
-      classify: async (_req, opts) => {
+      route: async (_req, opts) => {
         captured = opts?.signal;
-        return { intent: "meta", confidence: 1 };
+        return ROUTE_OK;
       },
     });
     const router = createLLMRouter({
       providers: [a],
-      chains: { classify: ["groq"] },
+      chains: { route: ["groq"] },
     });
-    await router.classify({ utterance: "u" });
+    await router.route(ROUTE_REQ);
     expect(captured).toBeDefined();
     expect(captured).toBeInstanceOf(AbortSignal);
   });
