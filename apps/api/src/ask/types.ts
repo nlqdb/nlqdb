@@ -55,6 +55,20 @@ export type AskResult = {
   pipe_advisory?: PipeAdvisory;
 };
 
+// SK-ASK-014 — when the classifier returns `kind=create` but the caller
+// pinned a `dbId`, the handler returns this envelope instead of letting
+// the LLM emit `CREATE TABLE` and have the read/write SQL allowlist
+// reject it as the cryptic `disallowed_verb`. Surfaces render a chip
+// with two actions: "Create new database" (re-send without `dbId`) and
+// "Cancel". `pinned_db` is the DB the caller had selected — surfaces
+// echo its slug into the chip prompt.
+export type ClarifyRequired = {
+  status: "clarify_required";
+  clarification: "create_or_query_pinned";
+  pinned_db: { id: string; slug: string } | null;
+  reason: string;
+};
+
 export type AskError =
   | { status: "db_not_found" }
   | { status: "schema_unavailable" }
@@ -62,7 +76,8 @@ export type AskError =
   | { status: "db_unreachable" }
   | { status: "sql_rejected"; reason: string }
   | { status: "llm_failed" }
-  | { status: "rate_limited"; limit: number; count: number; resetAt: number };
+  | { status: "rate_limited"; limit: number; count: number; resetAt: number }
+  | ClarifyRequired;
 
 // Thrown by `exec` callbacks when a DB row's `connection_secret_ref`
 // doesn't resolve to anything in env (operator config error, not a

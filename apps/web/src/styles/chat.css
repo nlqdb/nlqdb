@@ -289,11 +289,37 @@
   box-shadow: var(--shadow-hard-accent);
 }
 
+.chat-reply[data-state="clarify"] {
+  border-color: var(--accent);
+}
+
 .chat-reply__error {
   margin: 0;
   font-family: var(--mono);
   font-size: 13px;
   color: #ff7b7b;
+}
+
+.chat-reply__clarify {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.chat-reply__clarify-prompt {
+  margin: 0;
+  font-family: var(--sans);
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.chat-reply__clarify-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }
 
 .chat-reply__actions {

@@ -153,6 +153,14 @@ when-to-load:
   - SDK-only retries — server-side recoveries (re-plan with parser feedback, provider failover) need server context.
   - Skip validator-reject feedback — LLM commonly emits the same shape twice.
 
+### SK-ASK-014 — `routeAsk` runs on every `/v1/ask`, even when `dbId` is pinned
+
+- **Decision:** `routeAsk` runs on every `/v1/ask`, regardless of `dbId` pin. `kind=create + pinned` → `409 clarify_required` with `pinned_db:{id,slug}` so the surface shows "Create a new database, or query *<slug>*?" instead of the cryptic `sql_rejected` the read/write allowlist would emit on the LLM's `CREATE TABLE`. `kind=create + no pin` → create path; `kind=query|write + pinned` → pin honoured. Refines SK-ASK-009 — its "only when dbId omitted" scoping is superseded.
+- **Core value:** Effortless UX, Goal-first, Bullet-proof
+- **Why:** "new table" against a pinned DB is a dead end — LLM emits `CREATE TABLE`, allowlist rejects (SK-SQLAL-002), surface shows "rejected." Classify-every-send turns that into a typed forward action. Actually extending `<slug>`'s schema needs a typed-plan extend pipeline (Open).
+- **Consequence in code:** `apps/api/src/index.ts` lifts the routeAsk prelude out of `if (!parsed.body.dbId)`; speculative-create (SK-ASK-011) stays gated on absent dbId; SK-ASK-013's `withStageRetry("route", …)` still applies. New `clarify_required` AskError in `ask/types.ts`, mirrored on the SDK with `pinned_db` on `ApiErrorBody`. `ChatPanel` chip: "Create new database" re-sends without `dbId`; "Cancel" dismisses.
+- **Alternatives rejected:** Silent pin override on `kind=create` — surprises (pin came from explicit `?db=…`). Convert only post-allowlist `disallowed_verb=create` — cheaper but burns a planner-tier hop first. Typed-plan extend pipeline — right long-term answer; bigger; Open.
+
 ## The LLM loop
 
 This is the part most implementations get wrong. A single "prompt → SQL → run" pipeline is a demo, not a product. The `/v1/ask` pipeline runs these eight steps per query:
@@ -190,6 +198,7 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 - **Failure-mode for partial results.** If `exec` succeeds but `summarize` fails, do we return the rows + a summarize-error envelope, or 5xx the whole call? Design.md doesn't decide. Leaning toward "rows + envelope" so the user sees data, but needs an explicit `SK-ASK-NNN`.
 - **Idempotency on `/v1/ask`.** `GLOBAL-005` says every mutation accepts `Idempotency-Key`. `/v1/ask` is sometimes a query (no mutation), sometimes a write. Confirm whether the dedupe store is consulted for the write branch only or for every call (and what `kind=create` deduping looks like).
 - **Null-pick disambiguator cache TTL.** When the LLM returns `chosenId: null` (cannot disambiguate), `disambiguate-db.ts` caches that result for 7 days under the `(tenantId, goalHash, dbsetHash)` key. The dbsetHash evicts naturally when the user adds/removes a DB, but a false-null (LLM wrong, answer exists) is sticky for up to 7 days against the same DB set. Two options: (a) don't cache null picks — costs an LLM call on each retry of an ambiguous goal; (b) cache with a shorter TTL (e.g. 1 hour) — limits stale-null exposure. Current code does option (a) by caching null with the full 7-day TTL, which may be the wrong default. Needs a decision (new `SK-ASK-NNN`).
+- **SK-ASK-014 follow-ups.** (a) Typed-plan extend-schema pipeline so "Add it to *<slug>*" works — `kind=extend` route + compiler + `sql-validate-ddl.ts` widening + table-card re-embed (`SK-HDC-NNN`). (b) Latency audit — classify-every-send adds ~150 ms p50 to dbId-pinned hot path; confirm PERFORMANCE §2.1/§2.2 still holds.
 
 ## Happy path walkthrough
 
