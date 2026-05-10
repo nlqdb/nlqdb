@@ -306,8 +306,8 @@ export default function ChatPanel({ apiBase }: ChatPanelProps) {
           setActiveDb(dbSummary);
           setActiveDbId(result.db);
           syncDbIdToUrl(result.db);
-          const tableCount = result.sampleRows.length;
-          const sampleRowCount = result.sampleRows.reduce((acc, t) => acc + t.rows.length, 0);
+          const tableCount = new Set(result.sampleRows.map((r) => r.table)).size;
+          const sampleRowCount = result.sampleRows.length;
           updateReply(replyId, (reply) => ({
             ...reply,
             state: {

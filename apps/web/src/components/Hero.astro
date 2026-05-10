@@ -12,7 +12,16 @@
 
 import CreateForm from "./CreateForm.tsx";
 
-const apiBase = import.meta.env.PUBLIC_API_BASE ?? "https://app.nlqdb.com";
+// Default to "" (same-origin) — `apps/web` is bundled into the
+// `nlqdb-api` Worker's [assets] binding (SK-AUTH-016), so `app.nlqdb.com`
+// and the per-PR preview URL (`<hash>-nlqdb-api.<account>.workers.dev`)
+// both serve the page and `/v1/ask` from the same origin. Hardcoding
+// `https://app.nlqdb.com` previously broke the preview hero with a
+// CORS preflight rejection (the preview origin isn't in the API's
+// allowlist). When the standalone marketing worker (`nlqdb-web`,
+// future `nlqdb.com`) goes live, set `PUBLIC_API_BASE=https://app.nlqdb.com`
+// for that build target.
+const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
 ---
 <section class="hero">
   <h1 class="hero__wordmark">nlqdb</h1>

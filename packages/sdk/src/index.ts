@@ -78,7 +78,10 @@ export type AskCreateResult = {
   // that don't render the plan (current chat) ignore it; CreateForm
   // narrows it via its own `CreateResult` type.
   plan: unknown;
-  sampleRows: { table: string; rows: Record<string, unknown>[] }[];
+  // One entry per sample row — mirrors the API's `SampleRow` shape
+  // (`packages/db/src/types.ts`). Surfaces that want a per-table
+  // view group on `table` themselves.
+  sampleRows: { table: string; values: Record<string, unknown> }[];
 };
 
 // Discriminator: `AskOk` carries `status: "ok"`, `AskCreateResult`

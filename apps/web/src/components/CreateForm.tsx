@@ -17,7 +17,7 @@
 // up the real widget when it ships.
 
 import { useEffect, useId, useState } from "react";
-import { type CreateError, type CreateResult, postAskCreate } from "../lib/api";
+import { type CreateError, type CreateResult, type CreateRow, postAskCreate } from "../lib/api";
 import {
   appendHistory,
   clearDraft,
@@ -172,6 +172,7 @@ export default function CreateForm({ apiBase }: CreateFormProps) {
 }
 
 function CreateResultView({ result }: { result: CreateResult }) {
+  const grouped = groupByTable(result.sampleRows);
   return (
     <section className="createresult" aria-label="Created database">
       <p className="createresult__id">
@@ -179,15 +180,25 @@ function CreateResultView({ result }: { result: CreateResult }) {
         <code>{result.db}</code>
       </p>
       <p className="createresult__schema">
-        Schema <code>{result.schemaName}</code> provisioned with{" "}
-        {result.sampleRows.reduce((acc, t) => acc + t.rows.length, 0)} sample rows across{" "}
-        {result.sampleRows.length} table{result.sampleRows.length === 1 ? "" : "s"}.
+        Schema <code>{result.schemaName}</code> provisioned with {result.sampleRows.length} sample
+        row{result.sampleRows.length === 1 ? "" : "s"} across {grouped.length} table
+        {grouped.length === 1 ? "" : "s"}.
       </p>
-      {result.sampleRows.map((tbl) => (
+      {grouped.map((tbl) => (
         <SampleTable key={tbl.table} table={tbl.table} rows={tbl.rows} />
       ))}
     </section>
   );
+}
+
+function groupByTable(rows: CreateResult["sampleRows"]): { table: string; rows: CreateRow[] }[] {
+  const groups = new Map<string, CreateRow[]>();
+  for (const row of rows) {
+    const list = groups.get(row.table) ?? [];
+    list.push(row.values);
+    groups.set(row.table, list);
+  }
+  return Array.from(groups, ([table, rows]) => ({ table, rows }));
 }
 
 function SampleTable({
