@@ -111,9 +111,7 @@ describe("anon rate-limiter — peekDevice / recordDevice (SK-ANON-012)", () => 
     const { kv, put } = fakeKv();
     const limiter = makeAnonRateLimiter(kv);
     await limiter.recordDevice(PRINCIPAL_A);
-    const call = put.mock.calls.find((c) =>
-      String(c[0]).startsWith("anon:create:device:"),
-    );
+    const call = put.mock.calls.find((c) => String(c[0]).startsWith("anon:create:device:"));
     expect(call).toBeDefined();
     const opts = call?.[2] as { expirationTtl: number };
     expect(opts.expirationTtl).toBe(90 * 24 * 60 * 60);

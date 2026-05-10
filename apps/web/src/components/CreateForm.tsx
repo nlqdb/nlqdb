@@ -61,7 +61,12 @@ export default function CreateForm({ apiBase }: CreateFormProps) {
     if (!trimmed || loading) return;
     setLoading(true);
     setError(null);
-    setResult(null);
+    // Keep the previous result visible during submission. On the
+    // SK-ANON-012 auth_required path the redirect fires and the page
+    // navigates away anyway; clearing here would just flash an empty
+    // form before the redirect. On a successful resubmit, setResult
+    // below replaces it; on error the previous result stays visible
+    // alongside the error banner — better than a blank form.
     const submittedAt = new Date().toISOString();
     try {
       let outcome = await postAskCreate(apiBase, trimmed);

@@ -302,9 +302,37 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
         );
       }
 
+      // SK-ANON-012 — per-device cap. Fires at the TOP of /v1/ask so
+      // it gates ALL anon traffic (any kind), not just creates. The
+      // 1st anon call lets routeAsk classify normally; on success we
+      // commit (count → 1). The 2nd anon call lands here, peek
+      // returns ok=false, and we 401 with the auth_required envelope
+      // — the surface stashes pending + redirects to sign-in. Without
+      // this top-level peek, routeAsk would auto-target the user's
+      // single anon DB on the 2nd call (`single_db_auto_target`) and
+      // run a query against it, bypassing the auth-wall the worksheet
+      // designed for the hero flow.
+      const devicePeek = await anonLimiter.peekDevice(principal.id);
+      if (!devicePeek.ok) {
+        span.setAttribute("nlqdb.ask.outcome", "auth_required_device_cap");
+        span.end();
+        return c.json(
+          {
+            error: {
+              status: "auth_required" as const,
+              code: "anon_device_cap" as const,
+              signInUrl: buildSignInUrl(c.req.header("referer")),
+              action: "Sign in to create another database — your draft is saved.",
+            },
+          },
+          401,
+        );
+      }
+
       // Record the global counter only after BOTH gates clear and
       // the request is actually about to be served. Per-IP bucket
-      // already incremented inside `checkQuery`.
+      // already incremented inside `checkQuery`. The per-device cap
+      // commits later, after the orchestrator returns ok (WS5 fix C).
       // Fire-and-forget: the response doesn't wait on the increment.
       c.executionCtx.waitUntil(globalLimiter.record());
     }
@@ -342,7 +370,7 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
         turnstileSecret: c.env.TURNSTILE_SECRET,
         turnstileToken: c.req.header("cf-turnstile-response") ?? null,
       });
-      return decisionToResponse(c, span, decision, c.req.header("referer"));
+      return decisionToResponse(c, span, decision);
     };
     const commitAnonCreate = async (): Promise<void> => {
       await commitAnonCreateImpl(gateDeps, {
@@ -702,6 +730,10 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
             // §3.1 — the emit is `ctx.waitUntil`-wrapped, never on the
             // user-visible path).
             c.executionCtx.waitUntil(outcome.pendingAskCompleted);
+            // SK-ANON-012 — commit the per-device cap on any successful
+            // anon /v1/ask (not just creates). The 2nd anon call will
+            // then trip the top-level peek and 401 with auth_required.
+            await commitAnonCreate();
             await stream.writeSSE({ event: "done", data: JSON.stringify({ status: "ok" }) });
           }
         } finally {
@@ -731,6 +763,10 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
       // ctx.waitUntil after the response flushes — keeps /v1/ask p99
       // off the queue producer round-trip (PERFORMANCE §3.1).
       c.executionCtx.waitUntil(outcome.pendingAskCompleted);
+      // SK-ANON-012 — commit the per-device cap on any successful
+      // anon /v1/ask (not just creates). See the SSE branch for the
+      // matching commit.
+      await commitAnonCreate();
       // SK-ASK-003: append the `selected_db` echo to the JSON envelope
       // when the LLM disambiguator (or single-DB auto-target) chose
       // for the user. Surface uses it to render attribution.
@@ -1090,12 +1126,11 @@ function serializeEvent(event: OrchestrateEvent): string {
 }
 
 // Render the gate's typed decision (from `anon-create-gate.ts`)
-// into a Hono Response. Non-anon principals get `null` (gate is a
-// no-op). Anon `allow` emits the X-RateLimit-* headers but returns
-// null so the route handler proceeds. Anon short-circuits (401
-// auth_required on device cap or 428 challenge_required on
-// Turnstile fail) emit headers + end the span + return the typed
-// error envelope.
+// into a Hono Response. The gate now only enforces the Turnstile
+// bot-floor — the per-device cap (SK-ANON-012) is checked at the
+// top of `/v1/ask`, so it never bubbles up to this helper. Non-anon
+// principals + Turnstile-pass return `null` so the route handler
+// proceeds. Turnstile-fail returns 428 challenge_required.
 function decisionToResponse(
   // Hono's Context is generic over Bindings + Variables — keep this
   // helper agnostic so route handlers with different Variable shapes
@@ -1103,35 +1138,9 @@ function decisionToResponse(
   c: Context,
   span: Span,
   decision: AnonCreateGateDecision,
-  referer: string | undefined,
 ): Response | null {
   if (decision.kind === "skip") return null;
-  const peek = decision.peek;
-  // X-RateLimit-* parity (SK-RL-004 / GLOBAL-002) — emitted on every
-  // anon verdict so the surface can render headroom before the wall.
-  c.header("X-RateLimit-Limit", String(peek.limit));
-  c.header("X-RateLimit-Remaining", String(Math.max(0, peek.limit - peek.count)));
-  c.header("X-RateLimit-Reset", String(peek.resetAt));
   if (decision.kind === "allow") return null;
-  if (decision.kind === "auth_required") {
-    // SK-ANON-012 — per-device 1-create cap hit. Same envelope shape
-    // as SK-ANON-010 anon_global_cap; the client (CreateForm.tsx)
-    // looks at `status: "auth_required"` and dispatches the
-    // stash-pending + redirect-to-sign-in flow.
-    span.setAttribute("nlqdb.ask.outcome", "auth_required_device_cap");
-    span.end();
-    return c.json(
-      {
-        error: {
-          status: "auth_required" as const,
-          code: "anon_device_cap" as const,
-          signInUrl: buildSignInUrl(referer),
-          action: "Sign in to create another database — your draft is saved.",
-        },
-      },
-      401,
-    );
-  }
   // challenge_required — Turnstile verify failed. 428 so the surface
   // re-renders the widget (`SK-ANON-007` envelope shape unchanged).
   span.setAttribute("nlqdb.ask.outcome", "challenge_required");

@@ -163,10 +163,7 @@ export const auth = betterAuth({
           span.setAttribute("nlqdb.user.id", newSession.user.id);
           const result = await recordAnonAdoption(env.DB, newSession.user.id, bearer);
           if (result.ok) {
-            span.setAttribute(
-              "nlqdb.anon.adopt.outcome",
-              result.adopted ? "adopted" : "replay",
-            );
+            span.setAttribute("nlqdb.anon.adopt.outcome", result.adopted ? "adopted" : "replay");
           } else {
             span.setAttribute("nlqdb.anon.adopt.outcome", result.reason);
           }

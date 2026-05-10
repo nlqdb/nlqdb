@@ -62,10 +62,7 @@ export async function signAnonStash(bearer: string, secret: string): Promise<str
 // Returns the bearer on a successful verify, or `null` if the cookie
 // is malformed, the HMAC doesn't match, or the embedded bearer doesn't
 // have the expected `anon_` prefix.
-export async function verifyAnonStash(
-  cookieValue: string,
-  secret: string,
-): Promise<string | null> {
+export async function verifyAnonStash(cookieValue: string, secret: string): Promise<string | null> {
   const dot = cookieValue.indexOf(".");
   if (dot < 0) return null;
   const payload = cookieValue.slice(0, dot);
@@ -108,7 +105,13 @@ export function buildSetCookie(value: string, isProd: boolean): string {
 // matches the cookie to delete.
 export function buildClearCookie(isProd: boolean): string {
   const name = cookieName(isProd);
-  const attrs = [`${name}=`, `Path=${ANON_STASH_COOKIE_PATH}`, "HttpOnly", "SameSite=Lax", "Max-Age=0"];
+  const attrs = [
+    `${name}=`,
+    `Path=${ANON_STASH_COOKIE_PATH}`,
+    "HttpOnly",
+    "SameSite=Lax",
+    "Max-Age=0",
+  ];
   if (isProd) attrs.push("Secure");
   return attrs.join("; ");
 }
