@@ -187,14 +187,39 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
 
     const params = new URLSearchParams(location.search);
     const returnTo = params.get("return_to") ?? "/app";
-    // callbackURL anchors on `apiBase` so the user lands on the
-    // origin that actually serves `/app` — the merged app worker
-    // (SK-AUTH-016). Anchoring on `location.origin` would bounce a
-    // marketing-surface visitor to `nlqdb.com/app`, which the
-    // marketing worker doesn't serve. On the merged app worker and
-    // on previews, `apiBase === location.origin`, so the preview-
-    // returns-to-itself property from SK-AUTH-013 still holds.
-    const callbackURL = new URL(returnTo, apiBase).toString();
+    // callbackURL routes through `/auth/post-signin` (SK-ANON-012)
+    // so the post-OAuth landing page can read `nlqdb_pending` and
+    // replay the queued anon prompt against `/v1/ask` under the
+    // freshly-authed cookie. `next` carries the user-requested
+    // destination (default `/app`). The whole URL is anchored on
+    // `apiBase` so the user lands on the merged app worker
+    // (SK-AUTH-016) which serves the static page.
+    const postSigninUrl = new URL("/auth/post-signin", apiBase);
+    postSigninUrl.searchParams.set("next", returnTo);
+    const callbackURL = postSigninUrl.toString();
+
+    // Stash the anon-bearer in an HMAC-signed cookie so the Better
+    // Auth `after` middleware can adopt it on the verify/callback
+    // (SK-ANON-012). Same-origin POST — the bearer never travels
+    // through a query param. Best-effort: a network blip here just
+    // means adoption misses on this sign-in; the user can still
+    // /v1/anon/adopt from the landing page as a fallback.
+    async function stashAnonBearer(): Promise<void> {
+      try {
+        const anon =
+          typeof window !== "undefined"
+            ? (window.localStorage.getItem("nlqdb_anon") ?? "")
+            : "";
+        if (!anon.startsWith("anon_")) return;
+        await fetch(`${apiBase}/api/auth/anon-stash`, {
+          method: "POST",
+          credentials: "include",
+          headers: { "x-anon-bearer": anon },
+        });
+      } catch {
+        // best-effort — see comment above.
+      }
+    }
 
     const submitBtnState: ButtonState = {
       el: submitBtn,
@@ -227,6 +252,9 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
       resendStatus.hidden = true;
       setBusy(busyState, true);
       try {
+        // SK-ANON-012 — stash anon-bearer before the sign-in init so
+        // the after-hook can adopt on the verify call.
+        await stashAnonBearer();
         await postJson("/api/auth/sign-in/magic-link", { email, callbackURL });
         sentEmailEl.textContent = email;
         if (options.showSent) {
@@ -280,12 +308,17 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
     for (const btn of document.querySelectorAll<HTMLButtonElement>(
       "[data-social]",
     )) {
-      btn.addEventListener("click", () => {
+      btn.addEventListener("click", async () => {
         const provider = btn.dataset["social"];
         if (!provider) return;
         errorEl.hidden = true;
         btn.disabled = true;
         btn.classList.add("signin__oauth--busy");
+        // SK-ANON-012 — stash anon-bearer before the top-level OAuth
+        // redirect so the after-hook can adopt on the callback. The
+        // top-level GET nav can't carry a custom header, so the
+        // stash hop happens here first.
+        await stashAnonBearer();
         const url = new URL(
           `/api/auth/oauth-init/${encodeURIComponent(provider)}`,
           apiBase,

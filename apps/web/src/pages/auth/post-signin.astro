@@ -1,0 +1,128 @@
+---
+import Base from "../../layouts/Base.astro";
+
+// Post-signin landing page (SK-ANON-012).
+//
+// `callbackURL` from `sign-in.astro` points here. The inline script
+// runs the SK-ANON-011 replay flow:
+//   1. Probe `/api/auth/get-session` to confirm the cookie session
+//      landed. If null, the user signed in but the cookie didn't
+//      take — send them back to sign-in with a `session_lost` hint.
+//   2. Read `nlqdb_pending` from localStorage. If absent, go straight
+//      to `next` (default `/app`).
+//   3. POST the pending goal to `/v1/ask` under the now-authed
+//      cookie session, then clear `nlqdb_pending` and navigate to
+//      `next?db=<resulting_dbId>`. On replay failure, clear pending
+//      and fall through to `next` so the user never lands in an
+//      infinite-loop state.
+//
+// Adoption of the call-1 DB happens server-side via the Better Auth
+// `after` hook (`apps/api/src/auth.ts`), driven by the
+// `__Secure-anon-bearer` cookie that `/api/auth/anon-stash` set
+// before the sign-in init. This page only handles the call-2
+// prompt replay.
+//
+// The page renders a stable "Signing you in…" placeholder so the
+// user sees something while the script runs. No React, no SDK —
+// the script is inline so the redirect can fire before any heavy
+// bundle loads.
+
+const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
+---
+<Base
+  title="Signing you in — nlqdb"
+  description="Finishing your sign-in."
+  canonical="/auth/post-signin"
+>
+  <div class="page">
+    <main class="post-signin" data-api-base={apiBase}>
+      <section class="post-signin__card" aria-labelledby="post-signin-title">
+        <h1 id="post-signin-title" class="post-signin__title">
+          Signing you in…
+        </h1>
+        <p class="post-signin__lede">
+          Bringing you back to your work.
+        </p>
+      </section>
+    </main>
+  </div>
+</Base>
+
+<script>
+  import { postAskCreate } from "../../lib/api";
+  import { clearPending, loadPending } from "../../lib/prompt-storage";
+  import { fetchSession } from "../../lib/session";
+
+  const root = document.querySelector<HTMLElement>(".post-signin");
+  const apiBase = (root?.dataset["apiBase"] ?? "").replace(/\/$/, "");
+
+  const params = new URLSearchParams(location.search);
+  const next = params.get("next") ?? "/app";
+
+  (async () => {
+    const session = await fetchSession(apiBase);
+    if (!session) {
+      // Sign-in didn't take — cookie blocked, third-party cookies
+      // disabled in the IdP round-trip, or the user closed the tab
+      // mid-flow. Send back to sign-in with a friendly hint.
+      location.replace("/auth/sign-in?error=session_lost");
+      return;
+    }
+
+    const pending = loadPending();
+    if (!pending) {
+      location.replace(next);
+      return;
+    }
+
+    try {
+      const outcome = await postAskCreate(apiBase, pending.goal);
+      clearPending();
+      if (outcome.ok) {
+        const dbId = outcome.result.db;
+        const sep = next.includes("?") ? "&" : "?";
+        location.replace(`${next}${sep}db=${encodeURIComponent(dbId)}`);
+        return;
+      }
+    } catch {
+      // Network error — fall through to clearing the slot and
+      // landing on `next`. We don't preserve `nlqdb_pending` here
+      // because re-replaying on /app would loop the user through
+      // the same broken state.
+    }
+    clearPending();
+    location.replace(next);
+  })();
+</script>
+
+<style is:global>
+  .post-signin {
+    min-height: 70vh;
+    display: grid;
+    place-items: center;
+    padding: clamp(48px, 8vw, 96px) 24px;
+  }
+
+  .post-signin__card {
+    border: 2px solid var(--border-strong);
+    background: var(--bg-elev);
+    padding: clamp(28px, 5vw, 48px);
+    max-width: 520px;
+    width: 100%;
+    box-shadow: var(--shadow-hard);
+    text-align: center;
+  }
+
+  .post-signin__title {
+    font-family: var(--mono);
+    font-size: clamp(22px, 3.2vw, 28px);
+    letter-spacing: -0.02em;
+    margin: 0 0 16px;
+  }
+
+  .post-signin__lede {
+    margin: 0;
+    font-size: clamp(14px, 1.6vw, 15px);
+    color: var(--fg-dim);
+  }
+</style>

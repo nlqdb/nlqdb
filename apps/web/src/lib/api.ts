@@ -40,7 +40,16 @@ export interface CreateResult {
 export type CreateError =
   | { kind: "challenge_required" }
   | { kind: "rate_limited"; retryAfter: number | null }
-  | { kind: "auth_required"; signInUrl: string; window: "hour" | "day" | "month"; resetAt: number }
+  | {
+      kind: "auth_required";
+      signInUrl: string;
+      // `window` and `resetAt` are present on the SK-ANON-010 global
+      // cap envelope but absent on the SK-ANON-012 per-device cap
+      // (the device cap is permanent until adoption — there's no
+      // window to wait out). Surfaces only consume `signInUrl`.
+      window?: "hour" | "day" | "month";
+      resetAt?: number;
+    }
   | { kind: "unauthorized" }
   | { kind: "goal_unclear" }
   | { kind: "server_error"; status: number };
@@ -50,8 +59,8 @@ export type CreateOutcome = { ok: true; result: CreateResult } | { ok: false; er
 interface AuthRequiredEnvelope {
   status: "auth_required";
   signInUrl: string;
-  window: "hour" | "day" | "month";
-  resetAt: number;
+  window?: "hour" | "day" | "month";
+  resetAt?: number;
 }
 
 export async function postAskCreate(
@@ -101,8 +110,8 @@ export async function postAskCreate(
           error: {
             kind: "auth_required",
             signInUrl: env.signInUrl,
-            window: env.window,
-            resetAt: env.resetAt,
+            ...(env.window !== undefined ? { window: env.window } : {}),
+            ...(env.resetAt !== undefined ? { resetAt: env.resetAt } : {}),
           },
         };
       }
