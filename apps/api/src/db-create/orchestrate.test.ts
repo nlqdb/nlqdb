@@ -413,6 +413,85 @@ describe("orchestrateDbCreate", () => {
     expect(provisionArgs.engine).toBe("clickhouse");
   });
 
+  it("retries with a fresh randomSuffix on schema_already_exists, succeeding on the 2nd attempt (SK-HDC-012)", async () => {
+    // SK-HDC-012 dropped the in-band populated guard; a true 6-hex
+    // collision (~1 in 16M) surfaces as `schema_already_exists` from
+    // the provisioner. The orchestrator regenerates the suffix and
+    // retries, bounded to 3 attempts.
+    const seenIds: string[] = [];
+    const provision = vi.fn(async (_d, args): Promise<ProvisionResult> => {
+      seenIds.push(args.dbId);
+      if (seenIds.length === 1) {
+        return { ok: false, reason: "schema_already_exists", rolled_back: true };
+      }
+      return {
+        ok: true,
+        dbId: args.dbId,
+        schemaName: args.schemaName,
+        pkLive: `pk_live_${args.dbId}_secret`,
+      };
+    });
+    const suffixes = ["aaaaaa", "bbbbbb", "cccccc"];
+    let suffixIdx = 0;
+    const randomSuffix = vi.fn(() => suffixes[suffixIdx++] ?? "zzzzzz");
+
+    const deps = makeDeps({ provision, randomSuffix });
+    const out = await orchestrateDbCreate(deps, ARGS);
+
+    expect(out.ok).toBe(true);
+    if (!out.ok) throw new Error("expected ok");
+    expect(provision).toHaveBeenCalledTimes(2);
+    expect(seenIds).toEqual(["db_orders_tracker_aaaaaa", "db_orders_tracker_bbbbbb"]);
+    // Final dbId reflects the second-attempt suffix.
+    expect(out.dbId).toBe("db_orders_tracker_bbbbbb");
+    expect(out.schemaName).toBe("orders_tracker_bbbbbb");
+  });
+
+  it("gives up after 3 schema_already_exists attempts and surfaces provision_failed", async () => {
+    const provision = vi.fn(
+      async (): Promise<ProvisionResult> => ({
+        ok: false,
+        reason: "schema_already_exists",
+        rolled_back: true,
+      }),
+    );
+    const randomSuffix = vi.fn(() => "deadbe");
+
+    const deps = makeDeps({ provision, randomSuffix });
+    const out = await orchestrateDbCreate(deps, ARGS);
+
+    expect(provision).toHaveBeenCalledTimes(3);
+    expect(out.ok).toBe(false);
+    if (out.ok) throw new Error("expected error");
+    expect(out.error).toEqual({
+      kind: "provision_failed",
+      reason: "schema_already_exists",
+      rolled_back: true,
+    });
+  });
+
+  it("does not retry on non-collision provision failures", async () => {
+    const provision = vi.fn(
+      async (): Promise<ProvisionResult> => ({
+        ok: false,
+        reason: "ddl_execution_failed",
+        rolled_back: true,
+      }),
+    );
+
+    const deps = makeDeps({ provision });
+    const out = await orchestrateDbCreate(deps, ARGS);
+
+    expect(provision).toHaveBeenCalledTimes(1);
+    expect(out.ok).toBe(false);
+    if (out.ok) throw new Error("expected error");
+    expect(out.error).toEqual({
+      kind: "provision_failed",
+      reason: "ddl_execution_failed",
+      rolled_back: true,
+    });
+  });
+
   it("forwards args.name to inferSchema and schemaHash(plan) to provision", async () => {
     const inferSchema = stubInferSchema();
     const provision = stubProvision();

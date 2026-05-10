@@ -51,7 +51,14 @@ function makePgStub(): PgStub {
     calls.push({ sql, params });
     return { rows: [] as Record<string, unknown>[], rowCount: 0 };
   }) as unknown as PgClient["query"];
-  return { pg: { query }, calls };
+  // SK-HDC-012 — the provisioner now batches its full statement list
+  // through `transaction`. The speculative tests stub it as the same
+  // record-and-return shape so per-statement assertions still work.
+  const transaction = vi.fn(async (statements: { sql: string; params?: unknown[] }[]) => {
+    for (const s of statements) calls.push({ sql: s.sql, params: s.params });
+    return statements.map(() => ({ rows: [] as Record<string, unknown>[], rowCount: 0 }));
+  }) as unknown as PgClient["transaction"];
+  return { pg: { query, transaction }, calls };
 }
 
 type D1Stub = {

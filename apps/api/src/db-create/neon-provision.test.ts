@@ -1,22 +1,25 @@
 // Provisioner unit tests. Pure-function shape — Postgres + D1 are
 // stubbed via deps injection (vi.mock of worker-internal modules is
 // broken under @cloudflare/vitest-pool-workers; see middleware.ts
-// header for the upstream issue). We assert both the happy-path
-// outcome and the contract-level pg.query SEQUENCE (BEGIN → CREATE
-// SCHEMA → populated check → CREATE ROLE → GRANT → DDL[] → RLS[] →
-// INSERTs → COMMIT) — ordering is part of the provisioner's
-// contract because RLS must enable AFTER the table exists, and the
-// D1 row must land AFTER Postgres COMMITs (docs/architecture.md §3.6.6).
+// header for the upstream issue).
+//
+// SK-HDC-012 — the provisioner now batches its full statement list
+// (`SET LOCAL`, `CREATE SCHEMA`, role + grant, compiled DDL, RLS,
+// sample inserts) into a single `pg.transaction([...])` call. Tests
+// stub the `transaction` seam and assert the batched statement
+// SEQUENCE plus statement count. Per-statement `db.query` spans are
+// no longer emitted on the happy path; one `db.transaction` span
+// wraps the whole batch.
 //
 // Span assertions (SK-OBS-005) verify the `db.transaction` wrapper
-// and per-statement `db.query` spans land for every Postgres call,
-// matching the catalog in docs/performance.md §3.1.
+// carries the SK-HDC-012 attributes (`db.transaction.statement_count`,
+// `db.transaction.batch_call=true`).
 
 import { createTestTelemetry, type TestTelemetry } from "@nlqdb/otel/test";
 import { trace } from "@opentelemetry/api";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { dropSchemaAndRegistry, provisionDb, registerByoDb } from "./neon-provision.ts";
-import type { PgClient, ProvisionArgs, SchemaPlan } from "./types.ts";
+import type { PgClient, PgTransactionStatement, ProvisionArgs, SchemaPlan } from "./types.ts";
 
 // Tables carry the nested-Column shape (canonical, per
 // packages/db/src/types.ts SchemaPlan family). The provisioner
@@ -84,41 +87,51 @@ function makeArgs(overrides: Partial<ProvisionArgs> = {}): ProvisionArgs {
 
 type PgStub = {
   pg: PgClient;
-  calls: { sql: string; params?: unknown[] }[];
-  setFailOn: (predicate: (sql: string, callIndex: number) => boolean) => void;
-  setSchemaPopulated: (value: boolean) => void;
+  // The single batch call (or none, if tx didn't run).
+  batch: PgTransactionStatement[] | undefined;
+  // `query()` calls (cleanup-path DROP SCHEMA only on the happy path).
+  queries: { sql: string; params?: unknown[] }[];
+  setTransactionFails: (error: { code?: string; message?: string } | null) => void;
+  setQueryFailOn: (predicate: (sql: string) => boolean) => void;
 };
 
 function makePgStub(): PgStub {
-  const calls: { sql: string; params?: unknown[] }[] = [];
-  let failOn: (sql: string, callIndex: number) => boolean = () => false;
-  let populated = false;
-  let callIndex = 0;
+  const queries: { sql: string; params?: unknown[] }[] = [];
+  let batch: PgTransactionStatement[] | undefined;
+  let txFail: { code?: string; message?: string } | null = null;
+  let queryFailOn: (sql: string) => boolean = () => false;
 
-  // Cast through `unknown` because vi.fn's inferred return type can't
-  // unify with PgClient.query's generic <T> — the mock returns a
-  // concrete row shape that's narrower than the call-site T. Same
-  // pattern as elsewhere in the suite.
   const query = vi.fn(async (sql: string, params?: unknown[]) => {
-    const idx = callIndex++;
-    calls.push({ sql, params });
-    if (failOn(sql, idx)) {
-      throw new Error(`pg stub failure on call ${idx}: ${sql.slice(0, 60)}`);
-    }
-    if (populated && /information_schema\.tables/i.test(sql)) {
-      return { rows: [{ "?column?": 1 } as Record<string, unknown>], rowCount: 1 };
+    queries.push({ sql, params });
+    if (queryFailOn(sql)) {
+      throw new Error(`pg.query stub failure on ${sql.slice(0, 60)}`);
     }
     return { rows: [] as Record<string, unknown>[], rowCount: 0 };
   }) as unknown as PgClient["query"];
 
+  const transaction = vi.fn(async (statements: PgTransactionStatement[]) => {
+    batch = statements;
+    if (txFail) {
+      const e: Error & { code?: string } = new Error(
+        txFail.message ?? "pg.transaction stub failure",
+      );
+      if (txFail.code) e.code = txFail.code;
+      throw e;
+    }
+    return statements.map(() => ({ rows: [] as Record<string, unknown>[], rowCount: 0 }));
+  }) as unknown as PgClient["transaction"];
+
   return {
-    pg: { query },
-    calls,
-    setFailOn(predicate) {
-      failOn = predicate;
+    pg: { query, transaction },
+    get batch() {
+      return batch;
     },
-    setSchemaPopulated(value) {
-      populated = value;
+    queries,
+    setTransactionFails(error) {
+      txFail = error;
+    },
+    setQueryFailOn(predicate) {
+      queryFailOn = predicate;
     },
   };
 }
@@ -241,25 +254,28 @@ describe("provisionDb — happy path", () => {
     expect(d1.inserts[0]?.params[2]).toBe("clickhouse");
   });
 
-  it("issues pg queries in the contract-mandated order", async () => {
+  it("issues one pg.transaction batch in the contract-mandated order (SK-HDC-012)", async () => {
     const pg = makePgStub();
     const d1 = makeD1Stub();
     const args = makeArgs();
 
     await provisionDb({ pg: pg.pg, d1: d1.d1 }, args);
 
-    const sqls = pg.calls.map((c) => c.sql);
+    expect(pg.batch).toBeDefined();
+    if (!pg.batch) throw new Error("expected batch");
+    const sqls = pg.batch.map((s) => s.sql);
     let i = 0;
-    expect(sqls[i++]).toBe("BEGIN");
-    // SK-HDC-010: 30s default cap immediately after BEGIN.
+    // SK-HDC-010: 30s default cap as the first statement of the batch.
     expect(sqls[i++]).toBe("SET LOCAL statement_timeout = '30s'");
-    expect(sqls[i++]).toMatch(/CREATE SCHEMA IF NOT EXISTS "orders_tracker_a4f3b2"/);
-    expect(sqls[i++]).toMatch(/information_schema\.tables/);
+    // SK-HDC-012: bare CREATE SCHEMA (no IF NOT EXISTS); the in-band
+    // populated guard is gone — collision surfaces via SQLSTATE 42P06.
+    expect(sqls[i++]).toBe('CREATE SCHEMA "orders_tracker_a4f3b2"');
     expect(sqls[i++]).toMatch(/CREATE ROLE/);
     expect(sqls[i++]).toMatch(/GRANT USAGE ON SCHEMA "orders_tracker_a4f3b2"/);
-    // DDL is executed in the caller-supplied order. CREATE TABLEs
+    // DDL is included in the caller-supplied order. CREATE TABLEs
     // run under the 30s default; CREATE INDEX is bracketed by 600s
-    // bumps per SK-HDC-010.
+    // bumps per SK-HDC-010, all within the same batch transaction
+    // (SET LOCAL scopes to the server-side BEGIN/COMMIT).
     expect(sqls[i++]).toBe(args.ddl[0]);
     expect(sqls[i++]).toBe(args.ddl[1]);
     expect(sqls[i++]).toBe(args.ddl[2]);
@@ -276,7 +292,13 @@ describe("provisionDb — happy path", () => {
     // Sample-row inserts are parameterised.
     expect(sqls[i++]).toMatch(/INSERT INTO "orders_tracker_a4f3b2"\."orders"/);
     expect(sqls[i++]).toMatch(/INSERT INTO "orders_tracker_a4f3b2"\."orders"/);
-    expect(sqls[i++]).toBe("COMMIT");
+    // SK-HDC-012: NO BEGIN/COMMIT/ROLLBACK literals — Neon's
+    // transaction() wraps server-side. NO information_schema probe —
+    // the in-band populated guard is gone (collision → 42P06).
+    expect(sqls.some((s) => /^BEGIN\b/i.test(s))).toBe(false);
+    expect(sqls.some((s) => /^COMMIT\b/i.test(s))).toBe(false);
+    expect(sqls.some((s) => /^ROLLBACK\b/i.test(s))).toBe(false);
+    expect(sqls.some((s) => /information_schema/.test(s))).toBe(false);
     expect(sqls).toHaveLength(i);
   });
 
@@ -287,7 +309,8 @@ describe("provisionDb — happy path", () => {
 
     await provisionDb({ pg: pg.pg, d1: d1.d1 }, args);
 
-    const inserts = pg.calls.filter((c) => /^INSERT INTO/.test(c.sql));
+    if (!pg.batch) throw new Error("expected batch");
+    const inserts = pg.batch.filter((s) => /^INSERT INTO/.test(s.sql));
     expect(inserts).toHaveLength(2);
     expect(inserts[0]?.sql).toMatch(/VALUES \(\$1, \$2\)/);
     expect(inserts[0]?.params).toEqual([1, "alice"]);
@@ -301,7 +324,8 @@ describe("provisionDb — happy path", () => {
 
     await provisionDb({ pg: pg.pg, d1: d1.d1 }, args);
 
-    const policy = pg.calls.find((c) => /CREATE POLICY tenant_isolation/.test(c.sql));
+    if (!pg.batch) throw new Error("expected batch");
+    const policy = pg.batch.find((s) => /CREATE POLICY tenant_isolation/.test(s.sql));
     expect(policy?.sql).toContain("current_setting('app.tenant_id', true) = 'user_42'");
   });
 
@@ -315,34 +339,13 @@ describe("provisionDb — happy path", () => {
 
     await provisionDb({ pg: pg.pg, d1: d1.d1 }, args);
 
-    const policy = pg.calls.find((c) => /CREATE POLICY tenant_isolation/.test(c.sql));
+    if (!pg.batch) throw new Error("expected batch");
+    const policy = pg.batch.find((s) => /CREATE POLICY tenant_isolation/.test(s.sql));
     expect(policy?.sql).toContain("'anon:o''malley'");
   });
 });
 
 describe("provisionDb — failure paths", () => {
-  it("schema already populated → rollback, schema_already_exists, no DDL executed", async () => {
-    const pg = makePgStub();
-    pg.setSchemaPopulated(true);
-    const d1 = makeD1Stub();
-    const args = makeArgs();
-
-    const result = await provisionDb({ pg: pg.pg, d1: d1.d1 }, args);
-
-    expect(result).toEqual({
-      ok: false,
-      reason: "schema_already_exists",
-      rolled_back: true,
-    });
-    const sqls = pg.calls.map((c) => c.sql);
-    expect(sqls).toContain("ROLLBACK");
-    expect(sqls).not.toContain("COMMIT");
-    expect(sqls.some((s) => /CREATE TABLE/.test(s))).toBe(false);
-    expect(sqls.some((s) => /CREATE ROLE/.test(s))).toBe(false);
-    expect(sqls.some((s) => /CREATE POLICY/.test(s))).toBe(false);
-    expect(d1.inserts).toHaveLength(0);
-  });
-
   it("D1 row already present for dbId → schema_already_exists with rolled_back=false; pg untouched", async () => {
     const pg = makePgStub();
     const d1 = makeD1Stub();
@@ -356,15 +359,35 @@ describe("provisionDb — failure paths", () => {
       reason: "schema_already_exists",
       rolled_back: false,
     });
-    expect(pg.calls).toHaveLength(0);
+    expect(pg.batch).toBeUndefined();
+    expect(pg.queries).toHaveLength(0);
     expect(d1.inserts).toHaveLength(0);
   });
 
-  it("DDL failure on stmt 3 → ROLLBACK, ddl_execution_failed; D1 not written", async () => {
+  it("transaction failure with SQLSTATE 42P06 → schema_already_exists, rolled_back=true (collision)", async () => {
+    // SK-HDC-012 dropped the in-band populated guard; a true id-suffix
+    // collision now surfaces as 42P06 from CREATE SCHEMA. The
+    // orchestrator retries with a fresh suffix.
     const pg = makePgStub();
     const d1 = makeD1Stub();
+    pg.setTransactionFails({ code: "42P06", message: "duplicate schema" });
     const args = makeArgs();
-    pg.setFailOn((sql) => sql === args.ddl[2]);
+
+    const result = await provisionDb({ pg: pg.pg, d1: d1.d1 }, args);
+
+    expect(result.ok).toBe(false);
+    if (result.ok === false) {
+      expect(result.reason).toBe("schema_already_exists");
+      expect(result.rolled_back).toBe(true);
+    }
+    expect(d1.inserts).toHaveLength(0);
+  });
+
+  it("transaction failure with SQLSTATE 42P07 → ddl_execution_failed", async () => {
+    const pg = makePgStub();
+    const d1 = makeD1Stub();
+    pg.setTransactionFails({ code: "42P07", message: "duplicate table" });
+    const args = makeArgs();
 
     const result = await provisionDb({ pg: pg.pg, d1: d1.d1 }, args);
 
@@ -373,21 +396,17 @@ describe("provisionDb — failure paths", () => {
       expect(result.reason).toBe("ddl_execution_failed");
       expect(result.rolled_back).toBe(true);
     }
-    const sqls = pg.calls.map((c) => c.sql);
-    expect(sqls).toContain("ROLLBACK");
-    expect(sqls).not.toContain("COMMIT");
-    // DDL[0] and DDL[1] succeeded; DDL[3] never ran.
-    expect(sqls).toContain(args.ddl[0]);
-    expect(sqls).toContain(args.ddl[1]);
-    expect(sqls).not.toContain(args.ddl[3]);
     expect(d1.inserts).toHaveLength(0);
   });
 
-  it("sample-row INSERT failure → ROLLBACK, sample_insert_failed; D1 not written", async () => {
+  it("transaction failure with integrity-violation SQLSTATE → sample_insert_failed", async () => {
+    // 23505 = unique_violation; 23502 = not_null_violation. The DDL
+    // statements run before the inserts in the batch, so a 23xxx
+    // failure implies the INSERT phase tripped the constraint.
     const pg = makePgStub();
     const d1 = makeD1Stub();
+    pg.setTransactionFails({ code: "23505", message: "unique violation" });
     const args = makeArgs();
-    pg.setFailOn((sql) => /^INSERT INTO "orders_tracker_a4f3b2"/.test(sql));
 
     const result = await provisionDb({ pg: pg.pg, d1: d1.d1 }, args);
 
@@ -396,10 +415,21 @@ describe("provisionDb — failure paths", () => {
       expect(result.reason).toBe("sample_insert_failed");
       expect(result.rolled_back).toBe(true);
     }
-    const sqls = pg.calls.map((c) => c.sql);
-    expect(sqls).toContain("ROLLBACK");
-    expect(sqls).not.toContain("COMMIT");
-    expect(d1.inserts).toHaveLength(0);
+  });
+
+  it("transaction failure without SQLSTATE → transaction_failed", async () => {
+    const pg = makePgStub();
+    const d1 = makeD1Stub();
+    pg.setTransactionFails({ message: "fetch failed: TLS error" });
+    const args = makeArgs();
+
+    const result = await provisionDb({ pg: pg.pg, d1: d1.d1 }, args);
+
+    expect(result.ok).toBe(false);
+    if (result.ok === false) {
+      expect(result.reason).toBe("transaction_failed");
+      expect(result.rolled_back).toBe(true);
+    }
   });
 
   it("D1 INSERT failure after Postgres COMMIT → DROP SCHEMA cleanup attempted; registry_insert_failed", async () => {
@@ -415,9 +445,11 @@ describe("provisionDb — failure paths", () => {
       expect(result.reason).toBe("registry_insert_failed");
       expect(result.rolled_back).toBe(true);
     }
-    const sqls = pg.calls.map((c) => c.sql);
-    expect(sqls).toContain("COMMIT");
-    expect(sqls.some((s) => /DROP SCHEMA "orders_tracker_a4f3b2" CASCADE/.test(s))).toBe(true);
+    // Cleanup-path DROP SCHEMA goes via pg.query (single round-trip),
+    // not the batch path.
+    expect(pg.queries.some((c) => /DROP SCHEMA "orders_tracker_a4f3b2" CASCADE/.test(c.sql))).toBe(
+      true,
+    );
     // SK-HDC-011 — the registry-insert-failed branch shares the
     // `dropSchemaAndRegistry` primitive with SK-ASK-011's speculative
     // rollback. The D1 INSERT never landed here, so the DELETE is a
@@ -428,7 +460,7 @@ describe("provisionDb — failure paths", () => {
 
   it("DROP SCHEMA cleanup failure does not mask registry_insert_failed", async () => {
     const pg = makePgStub();
-    pg.setFailOn((sql) => /^DROP SCHEMA/.test(sql));
+    pg.setQueryFailOn((sql) => /^DROP SCHEMA/.test(sql));
     const d1 = makeD1Stub();
     d1.setInsertFails(true);
     const args = makeArgs();
@@ -451,7 +483,7 @@ describe("provisionDb — input validation (SK-HDC-009)", () => {
     const args = makeArgs({ dbId: "not_a_db_id" });
 
     await expect(provisionDb({ pg: pg.pg, d1: d1.d1 }, args)).rejects.toThrow(/dbId/);
-    expect(pg.calls).toHaveLength(0);
+    expect(pg.batch).toBeUndefined();
   });
 
   it("rejects a dbId that produces an unsafe schema identifier", async () => {
@@ -462,7 +494,7 @@ describe("provisionDb — input validation (SK-HDC-009)", () => {
     const args = makeArgs({ dbId: 'db_bad"; DROP SCHEMA public; --' });
 
     await expect(provisionDb({ pg: pg.pg, d1: d1.d1 }, args)).rejects.toThrow(/unsafe schemaName/);
-    expect(pg.calls).toHaveLength(0);
+    expect(pg.batch).toBeUndefined();
   });
 
   it("rejects a sample-row whose table contains a quote", async () => {
@@ -474,14 +506,10 @@ describe("provisionDb — input validation (SK-HDC-009)", () => {
       }),
     });
 
-    const result = await provisionDb({ pg: pg.pg, d1: d1.d1 }, args);
-
-    expect(result.ok).toBe(false);
-    if (result.ok === false) {
-      expect(result.reason).toBe("sample_insert_failed");
-    }
-    // Provisioner ROLLBACKed; no INSERT against the bad identifier landed.
-    expect(pg.calls.some((c) => /DROP TABLE/.test(c.sql))).toBe(false);
+    await expect(provisionDb({ pg: pg.pg, d1: d1.d1 }, args)).rejects.toThrow(/unsafe sampleRow/);
+    // No batch ever issued — assertion fires in `buildSampleInsert`
+    // during pre-batch construction.
+    expect(pg.batch).toBeUndefined();
   });
 
   it("rejects a sample-row whose column contains a quote", async () => {
@@ -493,8 +521,8 @@ describe("provisionDb — input validation (SK-HDC-009)", () => {
       }),
     });
 
-    const result = await provisionDb({ pg: pg.pg, d1: d1.d1 }, args);
-    expect(result.ok).toBe(false);
+    await expect(provisionDb({ pg: pg.pg, d1: d1.d1 }, args)).rejects.toThrow(/unsafe sampleRow/);
+    expect(pg.batch).toBeUndefined();
   });
 
   it("rejects a table name that exceeds Postgres's 63-char identifier limit", async () => {
@@ -507,13 +535,13 @@ describe("provisionDb — input validation (SK-HDC-009)", () => {
       }),
     });
 
-    const result = await provisionDb({ pg: pg.pg, d1: d1.d1 }, args);
-    expect(result.ok).toBe(false);
+    await expect(provisionDb({ pg: pg.pg, d1: d1.d1 }, args)).rejects.toThrow(/63-char/);
+    expect(pg.batch).toBeUndefined();
   });
 });
 
-describe("provisionDb — observability (GLOBAL-014, SK-OBS-005)", () => {
-  it("emits a `db.transaction` span wrapping the BEGIN…COMMIT batch", async () => {
+describe("provisionDb — observability (GLOBAL-014, SK-OBS-005, SK-HDC-012)", () => {
+  it("emits one `db.transaction` span wrapping the batch", async () => {
     const pg = makePgStub();
     const d1 = makeD1Stub();
     const args = makeArgs();
@@ -521,12 +549,21 @@ describe("provisionDb — observability (GLOBAL-014, SK-OBS-005)", () => {
     await provisionDb({ pg: pg.pg, d1: d1.d1 }, args);
 
     const spans = telemetry.spanExporter.getFinishedSpans();
-    const txSpan = spans.find((s) => s.name === "db.transaction");
-    expect(txSpan).toBeDefined();
+    const txSpans = spans.filter((s) => s.name === "db.transaction");
+    expect(txSpans).toHaveLength(1);
+    const txSpan = txSpans[0];
     expect(txSpan?.attributes["db.system"]).toBe("postgresql");
+    expect(txSpan?.attributes["db.transaction.batch_call"]).toBe(true);
+    // Batch size: 1 SET LOCAL + CREATE SCHEMA + DO role + GRANT +
+    // 3 CREATE TABLE + (SET 600s + CREATE INDEX + SET 30s) +
+    // 4 RLS rows (2×ALTER+POLICY) + 2 INSERTs = 16 statements.
+    expect(txSpan?.attributes["db.transaction.statement_count"]).toBe(16);
   });
 
-  it("emits a `db.query` span per Postgres statement (with db.operation derived)", async () => {
+  it("emits NO per-statement `db.query` spans on the happy path (SK-HDC-012)", async () => {
+    // SK-HDC-012 collapses the per-statement spans into one batch span.
+    // Cleanup-path DROP SCHEMA still emits `db.query`, but that path
+    // doesn't run on the happy path.
     const pg = makePgStub();
     const d1 = makeD1Stub();
     const args = makeArgs();
@@ -536,34 +573,38 @@ describe("provisionDb — observability (GLOBAL-014, SK-OBS-005)", () => {
     const querySpans = telemetry.spanExporter
       .getFinishedSpans()
       .filter((s) => s.name === "db.query");
-    // 16 pg.query() calls in the happy path: BEGIN, CREATE SCHEMA,
-    // populated check, CREATE ROLE, GRANT, 4 DDL, 4 RLS, 2 INSERTs, COMMIT.
-    expect(querySpans).toHaveLength(pg.calls.length);
-    // Spot-check a few canonical operation names per OTel db.* semconv.
-    const ops = querySpans.map((s) => s.attributes["db.operation"]);
-    expect(ops).toContain("BEGIN");
-    expect(ops).toContain("COMMIT");
-    expect(ops).toContain("CREATE SCHEMA");
-    expect(ops).toContain("INSERT");
+    expect(querySpans).toHaveLength(0);
   });
 
-  it("marks the `db.transaction` span ERROR when a DDL statement throws", async () => {
+  it("marks the `db.transaction` span ERROR when the batch throws", async () => {
     const pg = makePgStub();
     const d1 = makeD1Stub();
+    pg.setTransactionFails({ code: "42P07", message: "duplicate table" });
     const args = makeArgs();
-    pg.setFailOn((sql) => sql === args.ddl[2]);
 
     await provisionDb({ pg: pg.pg, d1: d1.d1 }, args);
 
-    // The DDL failure path returns a graceful error result; the
-    // transaction span itself stays OK (the failure is caught and
-    // converted to a result, not propagated). The failed `db.query`
-    // span carries the exception.
-    const failingQuerySpan = telemetry.spanExporter
+    const txSpan = telemetry.spanExporter
       .getFinishedSpans()
-      .find((s) => s.name === "db.query" && s.events.length > 0);
-    expect(failingQuerySpan).toBeDefined();
-    expect(failingQuerySpan?.events.some((e) => e.name === "exception")).toBe(true);
+      .find((s) => s.name === "db.transaction");
+    expect(txSpan).toBeDefined();
+    expect(txSpan?.events.some((e) => e.name === "exception")).toBe(true);
+  });
+
+  it("emits a `db.query` span when the cleanup path's DROP SCHEMA runs", async () => {
+    const pg = makePgStub();
+    const d1 = makeD1Stub();
+    d1.setInsertFails(true); // forces the registry-insert-failed branch
+    const args = makeArgs();
+
+    await provisionDb({ pg: pg.pg, d1: d1.d1 }, args);
+
+    const querySpans = telemetry.spanExporter
+      .getFinishedSpans()
+      .filter((s) => s.name === "db.query");
+    expect(querySpans.length).toBeGreaterThan(0);
+    const dropSpan = querySpans.find((s) => s.attributes["db.operation"] === "DROP SCHEMA");
+    expect(dropSpan).toBeDefined();
   });
 });
 
@@ -580,14 +621,14 @@ describe("dropSchemaAndRegistry (SK-HDC-011)", () => {
 
     await dropSchemaAndRegistry(tracer, pg.pg, d1.d1, "db_x_a4f3b2", "x_a4f3b2");
 
-    expect(pg.calls.map((c) => c.sql)).toContain('DROP SCHEMA "x_a4f3b2" CASCADE');
+    expect(pg.queries.map((c) => c.sql)).toContain('DROP SCHEMA "x_a4f3b2" CASCADE');
     expect(d1.deletes).toHaveLength(1);
     expect(d1.deletes[0]?.params).toEqual(["db_x_a4f3b2"]);
   });
 
   it("schema missing → DELETE still runs (DROP swallowed)", async () => {
     const pg = makePgStub();
-    pg.setFailOn((sql) => /^DROP SCHEMA/.test(sql));
+    pg.setQueryFailOn((sql) => /^DROP SCHEMA/.test(sql));
     const d1 = makeD1Stub();
 
     await dropSchemaAndRegistry(tracer, pg.pg, d1.d1, "db_x_a4f3b2", "x_a4f3b2");
@@ -602,12 +643,12 @@ describe("dropSchemaAndRegistry (SK-HDC-011)", () => {
 
     await dropSchemaAndRegistry(tracer, pg.pg, d1.d1, "db_x_a4f3b2", "x_a4f3b2");
 
-    expect(pg.calls.map((c) => c.sql)).toContain('DROP SCHEMA "x_a4f3b2" CASCADE');
+    expect(pg.queries.map((c) => c.sql)).toContain('DROP SCHEMA "x_a4f3b2" CASCADE');
   });
 
   it("both missing → no throw (idempotent no-op)", async () => {
     const pg = makePgStub();
-    pg.setFailOn((sql) => /^DROP SCHEMA/.test(sql));
+    pg.setQueryFailOn((sql) => /^DROP SCHEMA/.test(sql));
     const d1 = makeD1Stub();
     d1.setDeleteFails(true);
 
@@ -626,7 +667,7 @@ describe("dropSchemaAndRegistry (SK-HDC-011)", () => {
     await expect(
       dropSchemaAndRegistry(tracer, pg.pg, d1.d1, "db_x_a4f3b2", 'x"; DROP TABLE foo; --'),
     ).rejects.toThrow(/unsafe schemaName/);
-    expect(pg.calls).toHaveLength(0);
+    expect(pg.queries).toHaveLength(0);
     expect(d1.deletes).toHaveLength(0);
   });
 });
@@ -644,7 +685,7 @@ describe("registerByoDb — Phase 4 stub (SK-HDC-007)", () => {
 
     await expect(registerByoDb({ pg: pg.pg, d1: d1.d1 }, byoArgs)).rejects.toThrow(/Phase 4/);
     // No Postgres or D1 work should have happened.
-    expect(pg.calls).toHaveLength(0);
+    expect(pg.batch).toBeUndefined();
     expect(d1.inserts).toHaveLength(0);
   });
 });

@@ -177,7 +177,7 @@ Canonical names. Every slice MUST use these — no one-off variants.
 | `llm.engine_classify`         | Hosted db.create — goal text → engine pick (SK-DB-010, SK-MULTIENG-002). Parent carries `nlqdb.engine_classify.fallback_reason ∈ {deferred, below_floor, provider_failed, unknown_string}` (absent when LLM pick was used). |
 | `nlqdb.sql.validate`          | SQL parse + schema-fit check.                  |
 | `db.query`                    | Neon HTTP execute — standard OTel `db.*`. Attributes: `db.system=postgresql`, `db.operation.name`, `db.statement` (PII-redacted SQL text). |
-| `db.transaction`              | BEGIN…COMMIT batch around the db.create provisioner's DDL + sample-row apply (`apps/api/src/db-create/neon-provision.ts`). Carries `db.system=postgresql`. Per-statement `db.query` spans nest under it. |
+| `db.transaction`              | One span around the db.create provisioner's batched DDL + RLS + sample-row apply (`apps/api/src/db-create/neon-provision.ts`). SK-HDC-012 — wraps a single Neon HTTP `transaction([...])` round-trip (one server-side `BEGIN/COMMIT`), no per-statement `db.query` spans nest under it on the happy path. Carries `db.system=postgresql`, `db.transaction.statement_count`, `db.transaction.batch_call=true`. Latency expectation collapses from N×RTT to 1×RTT. |
 | `nlqdb.auth.oauth.callback`   | `/api/auth/callback/{github,google}` flow.     |
 | `nlqdb.webhook.stripe`        | Stripe webhook handler.                        |
 | `nlqdb.events.emit`           | Product-event sink dispatch (LogSnag; PostHog optional Phase 2). Wrapped in `ctx.waitUntil` so it runs after the response — zero user-facing latency. Server-side only. |

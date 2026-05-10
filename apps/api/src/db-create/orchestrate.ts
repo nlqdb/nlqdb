@@ -124,10 +124,14 @@ export async function orchestrateDbCreate(
 
   // 2. Mint the dbId + schema name. Format from docs/architecture.md §3.6:
   //    "db_<slug_hint>_<6-char-random>"; schema name drops the
-  //    `db_` prefix (matches Worksheet C's contract).
-  const suffix = deps.randomSuffix();
-  const dbId = `db_${plan.slug_hint}_${suffix}`;
-  const schemaName = `${plan.slug_hint}_${suffix}`;
+  //    `db_` prefix (matches Worksheet C's contract). `let` because
+  //    SK-HDC-012's collision retry below regenerates the suffix on
+  //    `schema_already_exists`.
+  const mintIds = (): { dbId: string; schemaName: string } => {
+    const s = deps.randomSuffix();
+    return { dbId: `db_${plan.slug_hint}_${s}`, schemaName: `${plan.slug_hint}_${s}` };
+  };
+  let { dbId, schemaName } = mintIds();
 
   // 3. Deterministic compiler emits CREATE TABLE / CREATE INDEX /
   //    FK constraints. Pure function over `plan` + schemaName.
@@ -160,24 +164,44 @@ export async function orchestrateDbCreate(
   //    structural fail. SK-HDC-007 keeps this dep generic so Phase 4
   //    BYO can swap `provisionDb` for `registerByoDb` with no
   //    orchestrator change.
-  const provisioned = await deps.provision(
-    { pg: deps.pg, d1: deps.d1 },
-    {
-      plan,
-      dbId,
-      schemaName,
-      ddl: compiled.statements,
-      tenantId: args.tenantId,
-      engine,
-      secretRef: args.secretRef,
-      schemaHash: deps.schemaHash(plan),
-    },
-  );
-  if (!provisioned.ok) {
+  //
+  //    SK-HDC-012 — when the batch path drops the in-band
+  //    `SELECT 1 FROM information_schema.tables` populated guard, a
+  //    true 6-hex-suffix collision (~1 in 16M) surfaces as
+  //    `schema_already_exists`. Retry up to 3 times with a fresh
+  //    `randomSuffix()`; bounded so a misconfigured suffix generator
+  //    can't loop forever.
+  let provisioned: Awaited<ReturnType<typeof deps.provision>> | undefined;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    if (attempt > 0) {
+      ({ dbId, schemaName } = mintIds());
+    }
+    provisioned = await deps.provision(
+      { pg: deps.pg, d1: deps.d1 },
+      {
+        plan,
+        dbId,
+        schemaName,
+        ddl: compiled.statements,
+        tenantId: args.tenantId,
+        engine,
+        secretRef: args.secretRef,
+        schemaHash: deps.schemaHash(plan),
+      },
+    );
+    if (provisioned.ok) break;
+    if (provisioned.reason !== "schema_already_exists") break;
+  }
+  if (!provisioned?.ok) {
+    const failure = provisioned ?? {
+      ok: false as const,
+      reason: "transaction_failed" as const,
+      rolled_back: true as const,
+    };
     return err({
       kind: "provision_failed",
-      reason: provisioned.reason,
-      rolled_back: provisioned.rolled_back,
+      reason: failure.reason,
+      rolled_back: failure.rolled_back,
     });
   }
 

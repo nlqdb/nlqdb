@@ -13,17 +13,20 @@
 // post-mortem) for the prior art that motivated the layering.
 //
 // Atomicity: Postgres + D1 form a two-system transaction. We commit
-// Postgres first, then INSERT D1; on D1 failure we best-effort DROP
+// Postgres first (one HTTP round-trip via `pg.transaction([...])`,
+// SK-HDC-012), then INSERT D1; on D1 failure we best-effort DROP
 // the orphan schema. The reverse order (D1 first) would leave a
 // phantom registry row pointing at a non-existent schema, which the
 // /v1/ask read path can't recover from. An orphan schema is
 // recoverable by a background sweep.
 //
 // Observability: GLOBAL-014 + docs/features/hosted-db-create/FEATURE.md
-// — every Postgres call gets a `db.query` span (catalog row in
-// docs/performance.md §3.1); the BEGIN…COMMIT batch is wrapped in a
-// `db.transaction` span. D1 calls are in-process Workers bindings
-// and follow the existing api-app convention of un-spanned access.
+// — the BEGIN…COMMIT batch lives in one `db.transaction` span carrying
+// the statement count. Per-statement `db.query` spans are not emitted
+// for the batched path (one HTTP call ⇒ one span); the cleanup path's
+// `DROP SCHEMA` still uses `pg.query` and emits its own span. D1 calls
+// are in-process Workers bindings and follow the existing api-app
+// convention of un-spanned access.
 //
 // SQL injection: SK-HDC-009 — every identifier (schema/table/column)
 // passes `assertSafeIdentifier` before quoting; every value is
@@ -35,8 +38,10 @@ import { dbDurationMs } from "@nlqdb/otel";
 import { SpanStatusCode, type Tracer, trace } from "@opentelemetry/api";
 import type {
   PgClient,
+  PgTransactionStatement,
   ProvisionArgs,
   ProvisionDeps,
+  ProvisionFailureReason,
   ProvisionResult,
   SchemaPlan,
 } from "./types.ts";
@@ -77,133 +82,113 @@ export async function provisionDb(
   const tenantHash = await sha256Hex(args.tenantId, 16);
   const roleName = `tenant_${tenantHash}`;
 
+  // SK-HDC-012 — build the full provision batch as one statement
+  // list. Neon's `transaction([...])` sends them in a single HTTP
+  // request wrapped in a server-side BEGIN/COMMIT. Postgres
+  // transactional DDL guarantees full rollback on any statement
+  // failure (CREATE SCHEMA / TABLE / POLICY / INSERT all roll back;
+  // CREATE INDEX CONCURRENTLY is the only DDL exception, and our
+  // compiler doesn't emit CONCURRENTLY).
+  //
+  // Identifier safety: schemaName + roleName + per-table names already
+  // pass `assertSafeIdentifier` before this point, so direct double-
+  // quoted interpolation is safe (SK-HDC-009).
+  const tenantLiteral = escapeSqlLiteral(args.tenantId);
+  const statements: PgTransactionStatement[] = [];
+
+  // 30 s default cap so a misbehaving Neon connection or a pathological
+  // DDL expression can't hold the Worker open indefinitely (SK-HDC-010).
+  // Per-statement bumps to 600 s for index DDL apply inside the loop
+  // below. `SET LOCAL` scopes to the transaction; the whole batch is
+  // one server-side transaction so SET LOCAL/reset cycles work the same
+  // as in the legacy interactive flow.
+  statements.push({ sql: "SET LOCAL statement_timeout = '30s'" });
+
+  // SK-HDC-012 dropped the `CREATE SCHEMA IF NOT EXISTS` + `SELECT 1
+  // FROM information_schema.tables` populated-guard pair: a non-guarded
+  // CREATE SCHEMA fails with SQLSTATE `42P06` on a true id-suffix
+  // collision (~1 in 16M), which we map to `schema_already_exists` and
+  // the orchestrator retries with a fresh suffix. The D1 idempotency
+  // gate above still catches the prior-run case.
+  statements.push({ sql: `CREATE SCHEMA "${schemaName}"` });
+
+  // Postgres has no `CREATE ROLE IF NOT EXISTS`; wrap in a DO block.
+  // `roleName` is the hex prefix of a SHA-256, so direct interpolation
+  // is safe (no injection surface).
+  statements.push({
+    sql: `DO $$ BEGIN
+            IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = '${roleName}') THEN
+              CREATE ROLE "${roleName}";
+            END IF;
+          END $$`,
+  });
+  statements.push({
+    sql: `GRANT USAGE ON SCHEMA "${schemaName}" TO "${roleName}"`,
+  });
+
+  for (const stmt of args.ddl) {
+    // CREATE INDEX on a populated table can run well past 30 s
+    // (CREATE TABLE / ALTER TABLE on an empty schema do not).
+    // Bump per-statement to 600 s for index DDL only — other
+    // statements keep the default 30 s ceiling. SK-HDC-010.
+    const isIndexStmt = /\bindex\b/i.test(stmt);
+    if (isIndexStmt) {
+      statements.push({ sql: "SET LOCAL statement_timeout = '600s'" });
+    }
+    statements.push({ sql: stmt });
+    if (isIndexStmt) {
+      statements.push({ sql: "SET LOCAL statement_timeout = '30s'" });
+    }
+  }
+
+  // RLS comes after DDL — ENABLE ROW LEVEL SECURITY needs the table
+  // to exist. Application-side `SET LOCAL app.tenant_id = …` on every
+  // request makes the policy match (read/write path's job).
+  for (const table of args.plan.tables) {
+    assertSafeIdentifier(table.name, "tableName");
+    statements.push({
+      sql: `ALTER TABLE "${schemaName}"."${table.name}" ENABLE ROW LEVEL SECURITY`,
+    });
+    statements.push({
+      sql:
+        `CREATE POLICY tenant_isolation ON "${schemaName}"."${table.name}" ` +
+        `USING (current_setting('app.tenant_id', true) = '${tenantLiteral}')`,
+    });
+  }
+
+  // Sample-row inserts STAY parameterized (SK-HDC-009 point 2) — only
+  // pre-validated identifiers use double-quote interpolation; values
+  // travel as `$N` params on each statement.
+  for (const row of args.plan.sample_rows) {
+    statements.push(buildSampleInsert(schemaName, row));
+  }
+
   const txOutcome = await tracer.startActiveSpan("db.transaction", async (txSpan) => {
     txSpan.setAttribute("db.system", "postgresql");
-    let txStarted = false;
+    txSpan.setAttribute("db.transaction.statement_count", statements.length);
+    txSpan.setAttribute("db.transaction.batch_call", true);
+    const startedAt = performance.now();
     try {
-      await runQuery(tracer, deps.pg, "BEGIN");
-      txStarted = true;
-
-      // Default cap so a misbehaving Neon connection or a pathological
-      // DDL expression can't hold the Worker open indefinitely
-      // (SK-HDC-010). Per-statement bumps to 600s for index DDL apply
-      // inside the loop below. `SET LOCAL` scopes to the transaction;
-      // it is automatically reset on COMMIT / ROLLBACK.
-      await runQuery(tracer, deps.pg, "SET LOCAL statement_timeout = '30s'");
-
-      await runQuery(tracer, deps.pg, `CREATE SCHEMA IF NOT EXISTS "${schemaName}"`);
-
-      // CREATE SCHEMA IF NOT EXISTS is silently no-op when the schema
-      // exists. We can't distinguish from the result, so check directly
-      // — re-provisioning into a populated schema would mix two tenants'
-      // tables under the same RLS scope. Refuse with rollback.
-      const populated = await runQuery(
-        tracer,
-        deps.pg,
-        "SELECT 1 FROM information_schema.tables WHERE table_schema = $1 LIMIT 1",
-        [schemaName],
-      );
-      if (populated.rows.length > 0) {
-        await runQuery(tracer, deps.pg, "ROLLBACK");
-        return {
-          tx: { ok: false as const, reason: "schema_already_exists" as const, rolled_back: true },
-        };
-      }
-
-      // Postgres has no `CREATE ROLE IF NOT EXISTS`; wrap in a DO block.
-      // `roleName` is the hex prefix of a SHA-256, so direct interpolation
-      // is safe (no injection surface).
-      await runQuery(
-        tracer,
-        deps.pg,
-        `DO $$ BEGIN
-           IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = '${roleName}') THEN
-             CREATE ROLE "${roleName}";
-           END IF;
-         END $$`,
-      );
-      await runQuery(tracer, deps.pg, `GRANT USAGE ON SCHEMA "${schemaName}" TO "${roleName}"`);
-
-      for (const stmt of args.ddl) {
-        // CREATE INDEX on a populated table can run well past 30 s
-        // (CREATE TABLE / ALTER TABLE on an empty schema do not).
-        // Bump per-statement to 600 s for index DDL only — other
-        // statements keep the default 30 s ceiling. SK-HDC-010.
-        const isIndexStmt = /\bindex\b/i.test(stmt);
-        if (isIndexStmt) {
-          await runQuery(tracer, deps.pg, "SET LOCAL statement_timeout = '600s'");
-        }
-        try {
-          await runQuery(tracer, deps.pg, stmt);
-        } catch (err) {
-          // Preserve the error on the active tx span — the result
-          // shape (per main's ProvisionResult error variant) carries
-          // only the reason code, so without recording here the
-          // root cause is silently dropped.
-          txSpan.recordException(err as Error);
-          await safeRollback(tracer, deps.pg);
-          return {
-            tx: {
-              ok: false as const,
-              reason: "ddl_execution_failed" as const,
-              rolled_back: true,
-            },
-          };
-        }
-        if (isIndexStmt) {
-          await runQuery(tracer, deps.pg, "SET LOCAL statement_timeout = '30s'");
-        }
-      }
-
-      // RLS comes after DDL — ENABLE ROW LEVEL SECURITY needs the table
-      // to exist. Application-side `SET LOCAL app.tenant_id = …` on every
-      // request makes the policy match (read/write path's job).
-      const tenantLiteral = escapeSqlLiteral(args.tenantId);
-      for (const table of args.plan.tables) {
-        assertSafeIdentifier(table.name, "tableName");
-        await runQuery(
-          tracer,
-          deps.pg,
-          `ALTER TABLE "${schemaName}"."${table.name}" ENABLE ROW LEVEL SECURITY`,
-        );
-        await runQuery(
-          tracer,
-          deps.pg,
-          `CREATE POLICY tenant_isolation ON "${schemaName}"."${table.name}" ` +
-            `USING (current_setting('app.tenant_id', true) = '${tenantLiteral}')`,
-        );
-      }
-
-      for (const row of args.plan.sample_rows) {
-        try {
-          await insertSampleRow(tracer, deps.pg, schemaName, row);
-        } catch (err) {
-          txSpan.recordException(err as Error);
-          await safeRollback(tracer, deps.pg);
-          return {
-            tx: {
-              ok: false as const,
-              reason: "sample_insert_failed" as const,
-              rolled_back: true,
-            },
-          };
-        }
-      }
-
-      await runQuery(tracer, deps.pg, "COMMIT");
+      await deps.pg.transaction(statements);
       return { tx: { ok: true as const } };
     } catch (err) {
       txSpan.recordException(err as Error);
       txSpan.setStatus({ code: SpanStatusCode.ERROR });
-      if (txStarted) await safeRollback(tracer, deps.pg);
+      const reason = mapTransactionError(err);
       return {
         tx: {
           ok: false as const,
-          reason: "transaction_failed" as const,
+          reason,
           rolled_back: true,
         },
       };
     } finally {
+      // Mirror packages/db's adapter histogram so dashboards see the
+      // batch call alongside per-statement durations from the legacy
+      // path. Operation label is `TRANSACTION` to keep it bounded
+      // (docs/performance.md §3.3 cardinality budget).
+      const elapsed = performance.now() - startedAt;
+      dbDurationMs().record(elapsed, { operation: "TRANSACTION" });
       txSpan.end();
     }
   });
@@ -229,12 +214,6 @@ export async function provisionDb(
       .bind(args.dbId, args.tenantId, args.engine, args.secretRef, args.schemaHash)
       .run();
   } catch (_err) {
-    // TODO(SK-OBS-*): create a dedicated span for the D1 leg so the
-    // root cause is captured here too. The active txSpan has already
-    // ended at this point; trace.getActiveSpan() can return undefined
-    // in worker contexts. For now the reason code is the only signal
-    // surfaced upward.
-    //
     // The D1 INSERT never landed, so only the Postgres schema needs
     // tearing down — `dropSchemaAndRegistry` no-ops on the absent
     // registry row by design (SK-HDC-011).
@@ -298,41 +277,44 @@ function escapeSqlLiteral(value: string): string {
   return value.replace(/'/g, "''");
 }
 
-async function insertSampleRow(
-  tracer: Tracer,
-  pg: PgClient,
+function buildSampleInsert(
   schemaName: string,
   row: SchemaPlan["sample_rows"][number],
-): Promise<void> {
+): PgTransactionStatement {
   // SK-HDC-009 — every identifier validated; every value parameterised.
   assertSafeIdentifier(row.table, "sampleRow.table");
   const columns = Object.keys(row.values);
   for (const col of columns) assertSafeIdentifier(col, "sampleRow.column");
 
   if (columns.length === 0) {
-    await runQuery(tracer, pg, `INSERT INTO "${schemaName}"."${row.table}" DEFAULT VALUES`);
-    return;
+    return { sql: `INSERT INTO "${schemaName}"."${row.table}" DEFAULT VALUES` };
   }
 
   const colList = columns.map((c) => `"${c}"`).join(", ");
   const placeholders = columns.map((_, i) => `$${i + 1}`).join(", ");
   const params = columns.map((c) => row.values[c]);
-  await runQuery(
-    tracer,
-    pg,
-    `INSERT INTO "${schemaName}"."${row.table}" (${colList}) VALUES (${placeholders})`,
+  return {
+    sql: `INSERT INTO "${schemaName}"."${row.table}" (${colList}) VALUES (${placeholders})`,
     params,
-  );
+  };
 }
 
-async function safeRollback(tracer: Tracer, pg: PgClient): Promise<void> {
-  try {
-    await runQuery(tracer, pg, "ROLLBACK");
-  } catch {
-    // The connection may already be in a broken state — Neon will
-    // reset it on next checkout. Swallow so we still surface the
-    // original failure reason to the caller.
-  }
+// Map a Neon `transaction()` rejection to the existing
+// `ProvisionFailureReason` union. Neon rejects with `NeonDbError`
+// carrying a Postgres SQLSTATE in `code`; everything else becomes
+// the catch-all `transaction_failed`.
+function mapTransactionError(err: unknown): ProvisionFailureReason {
+  const code = (err as { code?: string } | null)?.code;
+  if (code === "42P06") return "schema_already_exists"; // duplicate_schema
+  if (code === "42P07") return "ddl_execution_failed"; // duplicate_table
+  if (code === "42501") return "ddl_execution_failed"; // insufficient_privilege
+  // Sample-row inserts come last in the batch; check_violation /
+  // not_null_violation / foreign_key_violation map cleanly here even
+  // though Postgres returns them with different SQLSTATEs (23xxx).
+  // The DDL chunk above runs first so an integrity error after that
+  // implies an INSERT failure.
+  if (typeof code === "string" && code.startsWith("23")) return "sample_insert_failed";
+  return "transaction_failed";
 }
 
 // SK-HDC-011 — single rollback primitive for the create path. Both the
@@ -367,18 +349,17 @@ export async function dropSchemaAndRegistry(
   }
 }
 
-// Per-statement `db.query` span emission — GLOBAL-014 + the skill's
-// commentary on it. Mirrors `packages/db/src/postgres.ts`'s adapter
-// span shape: same span name, same `db.system` / `db.operation`
-// attributes, same `nlqdb.db.duration_ms` histogram. Existing as a
-// local helper because our `PgClient` seam is one level below the
-// instrumented `DatabaseAdapter` (we need transactional session
-// semantics; the adapter is per-call HTTP).
+// Per-statement `db.query` span emission for the cleanup path —
+// GLOBAL-014 + the skill's commentary on it. Mirrors
+// `packages/db/src/postgres.ts`'s adapter span shape: same span
+// name, same `db.system` / `db.operation` attributes, same
+// `nlqdb.db.duration_ms` histogram. The provision path itself runs
+// under one `db.transaction` span (SK-HDC-012); this helper covers
+// `dropSchemaAndRegistry`'s single `DROP SCHEMA` call.
 async function runQuery(
   tracer: Tracer,
   pg: PgClient,
   sql: string,
-  params?: unknown[],
 ): Promise<{ rows: Record<string, unknown>[]; rowCount?: number }> {
   const operation = detectOperation(sql);
   return tracer.startActiveSpan(
@@ -392,7 +373,7 @@ async function runQuery(
     async (span) => {
       const startedAt = performance.now();
       try {
-        return await pg.query(sql, params);
+        return await pg.query(sql);
       } catch (err) {
         span.recordException(err as Error);
         span.setStatus({ code: SpanStatusCode.ERROR });
