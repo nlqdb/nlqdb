@@ -90,15 +90,13 @@ export function buildDbCreateDeps(envBindings: Cloudflare.Env): BuildDbCreateDep
   };
 }
 
-// KNOWN INTEGRATION CAVEAT: Neon HTTP is per-request stateless.
-// Sequential `BEGIN; ...; COMMIT;` calls each become a separate
-// HTTP round-trip with no shared transaction. The provisioner's
-// happy-path tests use a stub PgClient that records the call
-// sequence, so this caveat won't be caught until live integration.
-// Tracked as a Phase-1 follow-up — likely fix is to either (a)
-// use Neon's `transaction([...])` batch API, or (b) switch this
-// build site to the WebSocket driver. The orchestrator + provisioner
-// surface stays unchanged.
+// SK-HDC-012 — `transaction()` batches the provisioner's full statement
+// list (SET LOCAL + CREATE SCHEMA + role + DDL + RLS + sample inserts)
+// into one Neon HTTP round trip wrapped server-side in BEGIN/COMMIT.
+// Postgres transactional DDL guarantees full rollback on any failure
+// (CREATE INDEX CONCURRENTLY is the documented exception, and our
+// compiler does not emit CONCURRENTLY). `query` stays for the cleanup
+// path's `DROP SCHEMA` and the D1 idempotency `SELECT`.
 function buildPgClient(connectionString: string): PgClient {
   const sql = neon(connectionString, { fullResults: true });
   return {
@@ -108,6 +106,21 @@ function buildPgClient(connectionString: string): PgClient {
         rows: (result.rows as T[]) ?? [],
         rowCount: result.rowCount ?? 0,
       };
+    },
+    async transaction(statements) {
+      // Each `sql.query(text, params)` call returns a NeonQueryPromise;
+      // `sql.transaction([...])` consumes the array and emits a single
+      // HTTP request. `isolationLevel: "ReadCommitted"` matches Postgres
+      // default — no concurrent reader is racing the schema being
+      // created. `fetchOptions` is whole-batch (per CONFIG.md); the
+      // route handler's executionCtx already provides the lifetime
+      // guard so we don't wire one here.
+      const promises = statements.map((s) => sql.query(s.sql, s.params ?? []));
+      const results = await sql.transaction(promises, { isolationLevel: "ReadCommitted" });
+      return results.map((r) => ({
+        rows: (r.rows as Record<string, unknown>[]) ?? [],
+        rowCount: r.rowCount ?? 0,
+      }));
     },
   };
 }

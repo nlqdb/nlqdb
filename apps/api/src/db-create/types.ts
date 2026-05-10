@@ -171,11 +171,29 @@ export type EmbedDeps = {
 // methods on them directly. Kept as narrow shapes so tests can pass
 // `{} as PgClient` without pulling in a real driver.
 
+// SK-HDC-012 — `transaction(stmts)` batches a list of SQL statements
+// (with optional per-statement params) into a single Neon HTTP round
+// trip wrapped server-side in `BEGIN/COMMIT`. Used by the provisioner
+// to issue CREATE SCHEMA + role + DDL + RLS + sample inserts in one
+// shot; replaces the legacy per-statement loop whose client-side
+// `BEGIN/COMMIT` was decorative on Neon HTTP. `query` stays for
+// rollback-time `DROP SCHEMA` and the D1 idempotency `SELECT`.
+export type PgTransactionStatement = {
+  sql: string;
+  params?: unknown[];
+};
+
+export type PgTransactionResult = {
+  rows: Record<string, unknown>[];
+  rowCount: number;
+};
+
 export type PgClient = {
   query<T = Record<string, unknown>>(
     sql: string,
     params?: unknown[],
   ): Promise<{ rows: T[]; rowCount: number }>;
+  transaction(statements: PgTransactionStatement[]): Promise<PgTransactionResult[]>;
 };
 
 // --- DbCreate orchestrator surface ----------------------------------
