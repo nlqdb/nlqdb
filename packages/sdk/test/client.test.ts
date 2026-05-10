@@ -350,4 +350,123 @@ describe("createClient", () => {
     if (out.assistant.result.kind !== "error") expect.fail("expected error result");
     expect(out.assistant.result.status).toBe("sql_rejected");
   });
+
+  // GLOBAL-022 — SDK wire-layer retry. Three attempts on transport
+  // failures + transient 5xx; 4xx + abort surface immediately. Same
+  // Idempotency-Key reused across attempts so the API's dedupe store
+  // collapses retries to a single side-effect.
+
+  it("retries transient 5xx up to 3 attempts before throwing (GLOBAL-022)", async () => {
+    let calls = 0;
+    const fakeFetch: FetchLike = async () => {
+      calls++;
+      return new Response(JSON.stringify({ error: { status: "unknown_error" } }), { status: 503 });
+    };
+    const client = createClient({ apiKey: "sk_test", fetch: fakeFetch });
+    await expect(client.ask({ goal: "x", dbId: "y" })).rejects.toThrow();
+    expect(calls).toBe(3);
+  });
+
+  it("retries transport failure then succeeds on attempt 2", async () => {
+    let calls = 0;
+    const fakeFetch: FetchLike = async () => {
+      calls++;
+      if (calls === 1) throw new TypeError("Failed to fetch");
+      return new Response(
+        JSON.stringify({ status: "ok", cached: false, sql: "select 1", rows: [], rowCount: 0 }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      );
+    };
+    const client = createClient({ apiKey: "sk_test", fetch: fakeFetch });
+    const out = await client.ask({ goal: "x", dbId: "y" });
+    expect(calls).toBe(2);
+    expect(out).toMatchObject({ status: "ok" });
+  });
+
+  it("does NOT retry 4xx caller errors", async () => {
+    let calls = 0;
+    const fakeFetch: FetchLike = async () => {
+      calls++;
+      return new Response(JSON.stringify({ error: { status: "rate_limited" } }), { status: 429 });
+    };
+    const client = createClient({ apiKey: "sk_test", fetch: fakeFetch });
+    await expect(client.ask({ goal: "x", dbId: "y" })).rejects.toThrow();
+    expect(calls).toBe(1);
+  });
+
+  it("does NOT retry on abort (caller intent cancelled)", async () => {
+    let calls = 0;
+    const fakeFetch: FetchLike = async () => {
+      calls++;
+      const err = new Error("The operation was aborted");
+      err.name = "AbortError";
+      throw err;
+    };
+    const controller = new AbortController();
+    controller.abort();
+    const client = createClient({ apiKey: "sk_test", fetch: fakeFetch });
+    await expect(
+      client.ask({ goal: "x", dbId: "y" }, { signal: controller.signal }),
+    ).rejects.toThrow();
+    expect(calls).toBe(1);
+  });
+
+  it("auto-generates Idempotency-Key on POST and reuses it across retries (SK-SDK-006)", async () => {
+    const seenKeys: string[] = [];
+    let calls = 0;
+    const fakeFetch: FetchLike = async (_url, init) => {
+      calls++;
+      const headers = (init?.headers ?? {}) as Record<string, string>;
+      seenKeys.push(headers["idempotency-key"] ?? "");
+      if (calls < 3) {
+        return new Response(JSON.stringify({ error: { status: "unknown_error" } }), {
+          status: 502,
+        });
+      }
+      return new Response(
+        JSON.stringify({ status: "ok", cached: false, sql: "select 1", rows: [], rowCount: 0 }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      );
+    };
+    const client = createClient({ apiKey: "sk_test", fetch: fakeFetch });
+    await client.ask({ goal: "x", dbId: "y" });
+    expect(seenKeys).toHaveLength(3);
+    expect(seenKeys[0]).toMatch(/^[0-9a-f]{32}$/);
+    expect(seenKeys[1]).toBe(seenKeys[0]);
+    expect(seenKeys[2]).toBe(seenKeys[0]);
+  });
+
+  it("preserves a caller-supplied Idempotency-Key across retries", async () => {
+    const seenKeys: string[] = [];
+    let calls = 0;
+    const fakeFetch: FetchLike = async (_url, init) => {
+      calls++;
+      const headers = (init?.headers ?? {}) as Record<string, string>;
+      seenKeys.push(headers["idempotency-key"] ?? "");
+      if (calls < 2) {
+        return new Response(JSON.stringify({ error: { status: "unknown_error" } }), {
+          status: 502,
+        });
+      }
+      return new Response(
+        JSON.stringify({ dbId: "db_1", slug: "x", engine: "postgres", pkLive: "pk_x" }),
+        { status: 201, headers: { "content-type": "application/json" } },
+      );
+    };
+    const client = createClient({ apiKey: "sk_test", fetch: fakeFetch });
+    await client.createDatabase({ name: "x" }, { idempotencyKey: "caller-supplied-key" });
+    expect(seenKeys).toEqual(["caller-supplied-key", "caller-supplied-key"]);
+  });
+
+  it("does NOT auto-generate Idempotency-Key on GET", async () => {
+    let seenKey: string | undefined;
+    const fakeFetch: FetchLike = async (_url, init) => {
+      const headers = (init?.headers ?? {}) as Record<string, string>;
+      seenKey = headers["idempotency-key"];
+      return new Response(JSON.stringify({ databases: [] }), { status: 200 });
+    };
+    const client = createClient({ apiKey: "sk_test", fetch: fakeFetch });
+    await client.listDatabases();
+    expect(seenKey).toBeUndefined();
+  });
 });

@@ -73,7 +73,24 @@ export const ROUTE_SYSTEM = [
 ].join("\n");
 
 export function buildPlanUser(req: PlanRequest): string {
-  return [`Dialect: ${req.dialect}`, `Schema:\n${req.schema}`, `Goal: ${req.goal}`].join("\n\n");
+  const parts = [`Dialect: ${req.dialect}`, `Schema:\n${req.schema}`, `Goal: ${req.goal}`];
+  if (req.previousAttempt) {
+    // GLOBAL-022 — feed the prior attempt's failure back so the next
+    // SQL takes a different shape. SQL capped at 500 chars: enough to
+    // identify what failed without ballooning the prompt token count.
+    const sql = req.previousAttempt.sql?.slice(0, 500) ?? "";
+    parts.push(
+      [
+        "Previous attempt failed:",
+        sql ? `SQL: ${sql}` : null,
+        `Reason: ${req.previousAttempt.error}`,
+        "Produce a different SQL shape that avoids that error.",
+      ]
+        .filter(Boolean)
+        .join("\n"),
+    );
+  }
+  return parts.join("\n\n");
 }
 
 export function buildSummarizeUser(req: SummarizeRequest): string {

@@ -92,6 +92,17 @@ when-to-load:
   - Surface-specific SSE wiring — duplicates parsing logic on every surface.
   - Polling an OTel endpoint — too much round-trip latency; `onTrace` is fire-and-forget local.
 
+### SK-SDK-008 — Wire-layer retry loop on transport failures + transient 5xx (GLOBAL-022)
+
+- **Decision:** Every method on the client wraps its single-attempt fetch in a 3-attempt loop. Retries fire on transport failure (`fetcher` throws, `code: "network_error"`) and transient 5xx (`httpStatus ∈ [500, 600)`). 4xx caller errors and `code: "aborted"` surface immediately — retry can't fix bad input or undo the caller's cancel. Mutations (any non-GET) auto-generate an `Idempotency-Key` (32-hex `randomId()`) before the first attempt if the caller didn't supply one; the same key is reused across retries so the API's dedupe store collapses retries to a single side-effect. The caller's explicit `idempotencyKey` (currently on `createDatabase`) takes precedence.
+- **Core value:** Bullet-proof, Honest latency
+- **Why:** GLOBAL-022 requires the SDK layer to absorb wire-level transients independently of server-side retries — the server can't recover from a TCP reset on the way back, and non-SDK callers (future Python / Go SDKs, raw curl) lose parity (`GLOBAL-002`) without wire-layer retry. SK-SDK-006 already required Idempotency-Key reuse on retry; this decision codifies *when* the SDK retries (recoverable failure classes) and *how* (the same key threads across attempts). The retry budget aligns with the server's per-stage 3-attempt budget so end-to-end transient resilience is high without unbounded loops.
+- **Consequence in code:** `packages/sdk/src/index.ts` `call<T>` runs up to `SDK_MAX_ATTEMPTS = 3`. `sendOnce` is the single-attempt primitive; `isRecoverable(err)` classifies; `randomId()` generates the auto-key for mutations; `mergeHeaders` lower-cases header keys so the dedupe lookup is case-stable. The 401 path stays single-retry per SK-SDK-005 — refresh-on-401 is a different recovery class and the Idempotency-Key reuse semantics differ. Streaming (`askStream`) is intentionally not wrapped: mid-stream retries would re-fire side-effects already in flight; the buffered `ask()` path is the GLOBAL-022 surface for mutations.
+- **Alternatives rejected:**
+  - Retry every error class including 4xx — masks caller bugs.
+  - Skip auto-key generation, require callers to supply one — surfaces that don't retry don't need to think about it; auto-gen keeps the contract intact without ceremony (SK-SDK-006 lesson).
+  - Apply retry to streaming too — mid-stream retries re-fire side-effects. Stream callers own their own resume / cancel.
+
 ## GLOBALs governing this feature
 
 Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; index in [`docs/decisions.md`](../../decisions.md)). The list below names the rules that constrain this feature; any skill-local commentary is nested under the rule.
@@ -103,10 +114,7 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 - **GLOBAL-012** — Errors are one sentence with the next action.
 - **GLOBAL-014** — OTel span on every external call (DB, LLM, HTTP, queue).
 - **GLOBAL-022** — Recoverable failures retry to success — never surface a fixable error.
-  - *In this skill:* `packages/sdk/src/fetch.ts` is the wire-layer
-    retry loop (transport failures + transient 5xx, up to 3
-    attempts, reusing the same `Idempotency-Key` from `SK-SDK-006`).
-    The 401 path stays single-retry per `SK-SDK-005`.
+  - *In this skill:* see `SK-SDK-008` for the canonical implementation. `packages/sdk/src/index.ts` `call<T>` is the wire-layer retry loop (transport failures + transient 5xx, up to 3 attempts, reusing the auto-generated `Idempotency-Key` from `SK-SDK-006`). The 401 path stays single-retry per `SK-SDK-005`.
 
 ## Open questions / known unknowns
 

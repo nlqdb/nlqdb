@@ -19,6 +19,7 @@ import type { FirstQueryTracker } from "./first-query.ts";
 import { hashGoal, type PlanCache } from "./plan-cache.ts";
 import type { RateLimiter } from "./rate-limit.ts";
 import { extractTables, type RecentTablesStore } from "./recent-tables.ts";
+import { Nonrecoverable, type RetryReason, withStageRetry } from "./retry.ts";
 import { validateSql } from "./sql-validate.ts";
 import {
   type AskError,
@@ -189,17 +190,45 @@ export async function orchestrateAsk(
   if (cached) {
     cachePlanHitsTotal().add(1);
     planSql = cached.sql;
+    // Validate the cached plan once — caches don't lie often, but we
+    // never trust SQL onto the wire without a fresh allowlist pass.
+    const cachedValidation = await withSpan("nlqdb.sql.validate", async () => validateSql(planSql));
+    if (!cachedValidation.ok) {
+      return { ok: false, error: { status: "sql_rejected", reason: cachedValidation.reason } };
+    }
     cacheHit = true;
   } else {
     cachePlanMissesTotal().add(1);
+    // GLOBAL-022 — plan + validate is one recovery loop: if the
+    // validator rejects the LLM's SQL, re-prompt with the rejection
+    // reason in `previousAttempt`. Three attempts; on exhaustion the
+    // last error wins (`llm_failed` or `sql_rejected`).
     try {
-      const plan = await deps.llm.plan({
-        goal: req.goal,
-        schema: schemaHash,
-        dialect: "postgres",
-      });
-      planSql = plan.sql;
-    } catch {
+      planSql = await withStageRetry(
+        "plan",
+        async (_attempt, prev) => {
+          const plan = await deps.llm.plan({
+            goal: req.goal,
+            schema: schemaHash,
+            dialect: "postgres",
+            ...(prev ? { previousAttempt: prevAttemptFromError(prev) } : {}),
+          });
+          const validation = validateSql(plan.sql);
+          if (!validation.ok) {
+            // Tag with the reject reason so the next attempt's prompt
+            // can describe what to avoid; keep the rejected SQL on the
+            // error so prevAttemptFromError can echo it back.
+            const reject = new PlanValidationError(plan.sql, validation.reason);
+            throw reject;
+          }
+          return plan.sql;
+        },
+        { reasonOf: planRetryReason },
+      );
+    } catch (err) {
+      if (err instanceof PlanValidationError) {
+        return { ok: false, error: { status: "sql_rejected", reason: err.reason } };
+      }
       // LLM provider errors can contain API keys or prompt fragments —
       // the OTel span (llm.plan, SK-LLM-006) captures the root cause.
       return { ok: false, error: { status: "llm_failed" } };
@@ -215,19 +244,24 @@ export async function orchestrateAsk(
     cacheHit = false;
   }
 
-  // SQL allow-list. docs/architecture.md §0.1 / §12 — no DROP / TRUNCATE / DELETE-
-  // without-WHERE / ALTER…DROP / etc. The user's escape for an
-  // incompatible schema is `nlq new`, not destructive SQL.
-  const validation = await withSpan("nlqdb.sql.validate", async () => validateSql(planSql));
-  if (!validation.ok) {
-    return { ok: false, error: { status: "sql_rejected", reason: validation.reason } };
-  }
-
   await safeEmit({ type: "plan", sql: planSql, cached: cacheHit });
 
   let result: QueryResult;
   try {
-    result = await deps.exec(db, planSql);
+    result = await withStageRetry(
+      "exec",
+      async () => {
+        try {
+          return await deps.exec(db, planSql);
+        } catch (err) {
+          // Config errors are non-recoverable — operator has to fix
+          // the secret ref; retrying just delays surfacing the bug.
+          if (err instanceof DbConfigError) throw new Nonrecoverable("db_misconfigured", err);
+          throw err;
+        }
+      },
+      { reasonOf: () => "db_unreachable" satisfies RetryReason },
+    );
   } catch (err) {
     if (err instanceof DbConfigError) {
       // Message would contain the secret ref name — don't leak it.
@@ -366,6 +400,32 @@ function recordSwallowedException(span: Span, err: unknown): void {
   const error = err instanceof Error ? err : new Error(String(err));
   span.recordException(error);
   span.setStatus({ code: SpanStatusCode.ERROR, message: error.message });
+}
+
+// GLOBAL-022 — sentinel thrown inside the plan retry loop when the
+// LLM returned SQL the validator rejected. Distinguished from raw
+// LLM throws so the outer catch can return `sql_rejected` (with the
+// validator's reason) rather than `llm_failed`.
+class PlanValidationError extends Error {
+  constructor(
+    readonly sql: string,
+    readonly reason: string,
+  ) {
+    super(`plan SQL rejected by validator: ${reason}`);
+    this.name = "PlanValidationError";
+  }
+}
+
+function prevAttemptFromError(err: Error): { sql?: string; error: string } {
+  if (err instanceof PlanValidationError) {
+    return { sql: err.sql, error: `validator rejected SQL: ${err.reason}` };
+  }
+  return { error: err.message };
+}
+
+function planRetryReason(err: unknown): RetryReason {
+  if (err instanceof PlanValidationError) return "sql_rejected";
+  return "llm_failed";
 }
 
 // Best-effort MRU touch for the post-exec hook. Resolves void on every
