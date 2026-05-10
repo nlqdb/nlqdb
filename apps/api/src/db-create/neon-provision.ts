@@ -208,10 +208,10 @@ export async function provisionDb(
   try {
     await deps.d1
       .prepare(
-        "INSERT INTO databases (id, tenant_id, engine, connection_secret_ref, schema_hash, created_at, updated_at) " +
-          "VALUES (?, ?, ?, ?, ?, unixepoch(), unixepoch())",
+        "INSERT INTO databases (id, tenant_id, engine, connection_secret_ref, schema_hash, schema_text, created_at, updated_at) " +
+          "VALUES (?, ?, ?, ?, ?, ?, unixepoch(), unixepoch())",
       )
-      .bind(args.dbId, args.tenantId, args.engine, args.secretRef, args.schemaHash)
+      .bind(args.dbId, args.tenantId, args.engine, args.secretRef, args.schemaHash, args.schemaText)
       .run();
   } catch (_err) {
     // The D1 INSERT never landed, so only the Postgres schema needs

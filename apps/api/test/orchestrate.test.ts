@@ -21,6 +21,7 @@ function stubDb(overrides: Partial<DbRecord> = {}): DbRecord {
     engine: "postgres",
     connectionSecretRef: "DATABASE_URL",
     schemaHash: "schema_v1",
+    schemaText: 'CREATE TABLE "schema_v1"."orders" (id integer);',
     ...overrides,
   };
 }

@@ -87,6 +87,11 @@ export async function handleMockSignIn(c: MockSignInCtx): Promise<Response> {
 }
 
 export function mockSignInFormHtml(base: string): string {
+  // The inline stash script mirrors `apps/web/src/pages/auth/sign-in.astro`'s
+  // `stashAnonBearer()` — without it the mock-idp flow has no anon-bearer
+  // cookie on the magic-link verify call, so Better Auth's `after` hook
+  // in `apps/api/src/auth.ts` skips `recordAnonAdoption` and the anon
+  // DBs created from the hero stay orphaned at `tenant_id=anon:<hash>`.
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -103,12 +108,35 @@ button { padding: 0.6rem 1rem; background: #c6f432; border: 2px solid #0b0f0a; f
 <body>
 <h2>Preview sign-in (mock IdP)</h2>
 <p>This page only exists when <code>MOCK_IDP=1</code>. It mints a real Better Auth session for the email you submit, no OAuth or email round-trip required.</p>
-<form method="GET" action="${escapeHtml(base)}/api/auth/mock-sign-in">
+<form id="mock-form" method="GET" action="${escapeHtml(base)}/api/auth/mock-sign-in">
   <label>Email
     <input name="email" value="${escapeHtml(DEFAULT_MOCK_EMAIL)}" />
   </label>
   <button type="submit">Sign in as this user</button>
 </form>
+<script>
+  const apiBase = ${JSON.stringify(base)};
+  const form = document.getElementById("mock-form");
+  let stashed = false;
+  form.addEventListener("submit", async (e) => {
+    if (stashed) return;
+    e.preventDefault();
+    try {
+      const anon = window.localStorage.getItem("nlqdb_anon") || "";
+      if (anon.startsWith("anon_")) {
+        await fetch(apiBase + "/api/auth/anon-stash", {
+          method: "POST",
+          credentials: "include",
+          headers: { "x-anon-bearer": anon },
+        });
+      }
+    } catch {
+      // best-effort — see comment in sign-in.astro.
+    }
+    stashed = true;
+    form.submit();
+  });
+</script>
 </body>
 </html>`;
 }

@@ -187,6 +187,11 @@ export async function orchestrateDbCreate(
         engine,
         secretRef: args.secretRef,
         schemaHash: deps.schemaHash(plan),
+        // The compiled DDL is the smallest faithful schema description
+        // the LLM needs at /v1/ask time (table names, columns + types,
+        // foreign keys). Joined with blank lines so each statement stays
+        // legible in the plan prompt.
+        schemaText: compiled.statements.join("\n\n"),
       },
     );
     if (provisioned.ok) break;
