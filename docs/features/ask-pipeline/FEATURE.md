@@ -99,6 +99,7 @@ when-to-load:
 - **Core value:** Bullet-proof, Fast, Effortless UX
 - **Why:** Without table-level context the classifier can't tell "insert red and blue tables" (intended `kind=create`) from "insert into red and blue" (intended `kind=write`). Recent tables are the cheapest signal that disambiguates the two — if `red`/`blue` aren't in the cache, the goal must be create. Merging classify + disambiguate halves cheap-tier latency on the dbId-absent path; the prompt budget absorbs the extra context (100 × ~30 chars ≈ 3 KB).
 - **Consequence in code:** `apps/api/src/ask/route-ask.ts` exports `routeAsk(deps, input)`. `apps/api/src/ask/classifier.ts` and `apps/api/src/ask/disambiguate-db.ts` are deleted. `LLMRouter.classify` and `LLMRouter.disambiguate` are replaced by `LLMRouter.route`; `LLMOperation.classify` and `LLMOperation.disambiguate` are removed. The route handler in `apps/api/src/index.ts` runs `routeAsk` in parallel with `listDatabasesForTenant` and dispatches on `{kind, targetDbId}`. PRs that re-introduce a separate kind-classification call fail review.
+  - When `routeAsk` resolves `kind=create` for an anon principal and the per-device cap is hit, the create gate returns the `auth_required` envelope (`SK-ANON-012`). The post-OAuth landing page replays the queued prompt from `nlqdb_pending` (`SK-ANON-011`) so the second create completes as an authed call — the route prelude sees a cookie session and no longer hits the anon cap.
 - **Alternatives rejected:**
   - Keep classify + disambiguate as separate cheap-tier calls — two LLM round-trips on every dbId-absent send; second call's input partially overlaps the first.
   - Pass the full schema (every table across every db) — token-explodes on power users; bounded MRU is the right subset.
@@ -174,10 +175,7 @@ This is the part most implementations get wrong. A single "prompt → SQL → ru
 7. **Summarize.** A cheap model turns rows into prose. Always attach the raw data too — we never paraphrase away the truth. Skipped when `Accept: application/json` or row count is below threshold (`SK-ASK-005`).
 8. **Log.** Write `{ fingerprint, latency, rows_scanned, rows_returned, engine, plan_shape }` to the workload log. This feeds the Workload Analyzer in Phase 2 (`docs/architecture.md §10 §2`).
 
-**Reinventions on this path (intentional — see `docs/guidelines.md §7`):**
-- Grammar-constrained SQL decoder tuned to each dialect, not raw LLM SQL generation.
-- Schema-embedding format that treats foreign keys as edges (not just `text-embedding-3` over column names).
-- A learned query-shape classifier that runs in <10ms on the hot path and hands off to the LLM only when unsure.
+Intentional reinventions on this path (grammar-constrained SQL decoder, foreign-key-aware schema embedding, learned query-shape classifier) are catalogued in `docs/guidelines.md §7`.
 
 ## GLOBALs governing this feature
 
