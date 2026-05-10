@@ -27,7 +27,7 @@ import { auth, REVOCATION_KEY_PREFIX } from "./auth.ts";
 import { askFnFromDemoFixtures, DEMO_DB_ID } from "./chat/demo-shortcut.ts";
 import { postChatMessage } from "./chat/orchestrate.ts";
 import { makeChatStore } from "./chat/store.ts";
-import { deriveSlug, listDatabasesForTenant } from "./databases/list.ts";
+import { deriveSlug, displayName, listDatabasesForTenant } from "./databases/list.ts";
 import {
   isAllowedEngine,
   MAX_GOAL_LENGTH,
@@ -397,6 +397,7 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
       return c.json({
         kind: "create" as const,
         db: result.dbId,
+        displayName: displayName(result.dbId),
         schemaName: result.schemaName,
         engine: result.engine,
         pkLive: result.pkLive,

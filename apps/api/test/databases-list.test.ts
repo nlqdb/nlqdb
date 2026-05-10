@@ -26,6 +26,7 @@ describe("toSummary", () => {
     ).toEqual({
       id: "db_orders_tracker_a4fxyz",
       slug: "orders-tracker-a4fxyz",
+      displayName: "orders tracker",
       engine: "postgres",
       pkLive: null,
       lastQueriedAt: null,
@@ -72,6 +73,7 @@ describe("listDatabasesForTenant", () => {
       {
         id: "db_meal_planner_7c2abc",
         slug: "meal-planner-7c2abc",
+        displayName: "meal planner",
         engine: "postgres",
         pkLive: null,
         lastQueriedAt: null,
@@ -80,6 +82,7 @@ describe("listDatabasesForTenant", () => {
       {
         id: "db_orders_tracker_a4fxyz",
         slug: "orders-tracker-a4fxyz",
+        displayName: "orders tracker",
         engine: "clickhouse",
         pkLive: null,
         lastQueriedAt: null,

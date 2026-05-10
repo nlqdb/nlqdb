@@ -33,6 +33,7 @@ const COMMITTED_RESULT: DbCreateResult = {
 const ONE_DB: DatabaseSummaryRow = {
   id: "db_existing_xyz123",
   slug: "existing-xyz123",
+  displayName: "existing",
   engine: "postgres",
   pkLive: null,
   lastQueriedAt: null,

@@ -35,6 +35,7 @@ import type {
 import { NlqdbApiError } from "@nlqdb/sdk";
 import { type KeyboardEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getChatClient } from "../../lib/chat-client";
+import { deriveSlug, displayName } from "../../lib/names";
 import Answer from "./Answer";
 import CopySnippet from "./CopySnippet";
 import Data from "./Data";
@@ -53,8 +54,14 @@ type ReplyState =
   | { kind: "needs-confirm"; diff: AskDiff; pending: AskOk | null }
   // SK-HDC-001 + SK-ASK-009: kind=create response shape — surfaced
   // as a distinct reply state so the user sees what got created
-  // (slug + sample rows hint) rather than an empty `AskOk`.
-  | { kind: "created"; dbSlug: string; dbId: string; tableCount: number; sampleRowCount: number }
+  // (display name + sample rows hint) rather than an empty `AskOk`.
+  | {
+      kind: "created";
+      displayName: string;
+      dbId: string;
+      tableCount: number;
+      sampleRowCount: number;
+    }
   // SK-ASK-009: 2+ DBs and the disambiguator's confidence was below
   // the floor — render an explicit picker so the user can pin the
   // intended DB. Clicking a candidate re-sends with that dbId.
@@ -317,7 +324,8 @@ export default function ChatPanel({ apiBase }: ChatPanelProps) {
           // user sees what just happened.
           const dbSummary: DatabaseSummary = {
             id: result.db,
-            slug: deriveSlugFromId(result.db),
+            slug: deriveSlug(result.db),
+            displayName: result.displayName,
             schemaName: result.schemaName,
             engine: result.engine,
             pkLive: result.pkLive,
@@ -333,7 +341,7 @@ export default function ChatPanel({ apiBase }: ChatPanelProps) {
             ...reply,
             state: {
               kind: "created",
-              dbSlug: dbSummary.slug,
+              displayName: result.displayName,
               dbId: result.db,
               tableCount,
               sampleRowCount,
@@ -405,6 +413,7 @@ export default function ChatPanel({ apiBase }: ChatPanelProps) {
     setActiveDb({
       id: echo.id,
       slug: echo.slug,
+      displayName: displayName(echo.id),
       engine: "postgres",
       pkLive: null,
       lastQueriedAt: null,
@@ -575,7 +584,9 @@ export default function ChatPanel({ apiBase }: ChatPanelProps) {
 
       <main className="chat-main">
         <header className="chat-main__header">
-          <h1 className="chat-main__title">{activeDb?.slug ?? activeDbId ?? "All databases"}</h1>
+          <h1 className="chat-main__title">
+            {activeDb?.displayName ?? (activeDbId ? displayName(activeDbId) : "All databases")}
+          </h1>
           <span className="chat-main__hint">
             <kbd>Cmd</kbd>+<kbd>K</kbd> commands · <kbd>Cmd</kbd>+<kbd>/</kbd> trace
           </span>
@@ -654,15 +665,6 @@ export default function ChatPanel({ apiBase }: ChatPanelProps) {
   );
 }
 
-// `db_orders_tracker_a4f` → `orders-tracker-a4f`. Mirrors
-// `apps/api/src/databases/list.ts`'s `deriveSlug` so a freshly-
-// created DB shows the same slug as a listed one until the next
-// rail refresh.
-function deriveSlugFromId(dbId: string): string {
-  const stripped = dbId.startsWith("db_") ? dbId.slice(3) : dbId;
-  return stripped.replace(/_/g, "-");
-}
-
 // SK-ASK-009: keep the URL `?db=` query param synced with the
 // active selection so back/forward and reload land on the same
 // state. Pass null to drop the param entirely.
@@ -720,7 +722,7 @@ function ReplyView({
           sees which DB was queried before reading the rows. */}
       {selected ? (
         <p className="chat-reply__selected-db" role="status">
-          Picked database <code>{selected.slug}</code> ·{" "}
+          Picked database <code>{displayName(selected.id)}</code> ·{" "}
           <span className="chat-reply__selected-reason">
             {selected.reason || "matched your goal"}
           </span>{" "}
@@ -732,7 +734,7 @@ function ReplyView({
       ) : null}
       {created ? (
         <p className="chat-reply__created" role="status">
-          Created database <code>{created.dbSlug}</code> with {created.tableCount} table
+          Created database <code>{created.displayName}</code> with {created.tableCount} table
           {created.tableCount === 1 ? "" : "s"} and {created.sampleRowCount} sample row
           {created.sampleRowCount === 1 ? "" : "s"}. Pinned to this conversation.
         </p>
@@ -752,8 +754,9 @@ function ReplyView({
                   type="button"
                   className="btn btn--ghost"
                   onClick={() => onPickCandidate(c.id)}
+                  title={c.slug}
                 >
-                  {c.slug}
+                  {displayName(c.id)}
                 </button>
               </li>
             ))}
@@ -766,7 +769,8 @@ function ReplyView({
             Looks like you want to create something new.{" "}
             {clarify.pinnedDb ? (
               <>
-                Spin up a fresh database, or rephrase to query <code>{clarify.pinnedDb.slug}</code>?
+                Spin up a fresh database, or rephrase to query{" "}
+                <code>{displayName(clarify.pinnedDb.id)}</code>?
               </>
             ) : (
               <>Spin up a fresh database, or rephrase your request?</>
