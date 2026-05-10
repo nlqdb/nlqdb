@@ -128,7 +128,7 @@ when-to-load:
 **Open follow-ups (track in this skill's Open questions):**
 - pgvector card cleanup on rollback when embedding lands (today `embedTableCards` is a no-op in `apps/api/src/db-create/build-deps.ts`).
 - `pk_live` revocation on rollback when the api-keys subsystem ships.
-- Anon create-cap consumption when speculation rolls back: cap is consumed at gate time so a false-positive predicate over-counts the user's hourly cap by 1. Acceptable today; reconsider once WS1's cache makes the predicate selective enough that false positives become rare.
+- Anon create-cap consumption when speculation rolls back: resolved by WS5 fix C — `commitAnonCreate` runs only on `reconciled.result.ok === true`, so rolled-back speculations no longer count.
 - `Idempotency-Key` middleware itself is still open work (`SK-IDEMP-005` is locked, implementation pending). The `IdempotencyStore` interface in `apps/api/src/db-create/speculative.ts` carries the `delete(principalId, key)` primitive the rollback path needs; the route handler does not yet wire a store, so eviction is a no-op until the middleware lands.
 
 ### SK-ASK-012 — Per-principal recent-tables LRU (100 entries) in KV

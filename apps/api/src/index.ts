@@ -6,15 +6,21 @@ import {
   type Engine,
 } from "@nlqdb/db";
 import { authEventsTotal, redactPii, setupTelemetry } from "@nlqdb/otel";
-import { trace } from "@opentelemetry/api";
-import { Hono } from "hono";
+import { type Span, trace } from "@opentelemetry/api";
+import { type Context, Hono } from "hono";
 import { cors } from "hono/cors";
 import { streamSSE } from "hono/streaming";
 import { recordAnonAdoption } from "./anon-adopt.ts";
+import {
+  type AnonCreateGateDecision,
+  commitAnonCreate as commitAnonCreateImpl,
+  peekAnonCreateGate as peekAnonCreateGateImpl,
+} from "./anon-create-gate.ts";
 import { makeGlobalAnonLimiter } from "./anon-global-cap.ts";
 import { makeAnonRateLimiter } from "./anon-rate-limit.ts";
 import { buildAskDeps, buildEventEmitter } from "./ask/build-deps.ts";
 import { orchestrateAsk } from "./ask/orchestrate.ts";
+import { kickoffAskPrelude, resolveAnonEngineOverride } from "./ask/prelude.ts";
 import { makeRecentTablesStore } from "./ask/recent-tables.ts";
 import { type ReconcileResult, reconcileSpeculativeCreate } from "./ask/reconcile-speculative.ts";
 import { withStageRetry } from "./ask/retry.ts";
@@ -312,67 +318,32 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
     // shortcut (the tenant has nowhere else to go).
     let selectedDbEcho: SelectedDbEcho | null = null;
 
-    // Anon-create gate (peek + challenge + record) — used by both
-    // the canonical `runCreatePath` and the SK-ASK-011 speculative
-    // path. Returns null on success; a Response on rate-limit,
-    // challenge, or any short-circuit. Side effects: emits headers
-    // on `c`, ends `span` on short-circuit (caller must end it on
-    // the success path).
-    const checkAnonCreateGate = async (): Promise<Response | null> => {
-      if (principal.kind !== "anon") return null;
-      const ip = c.req.header("cf-connecting-ip") ?? "unknown";
-      const anonLimiter = makeAnonRateLimiter(c.env.KV);
-      const peek = await anonLimiter.peekCreate(ip);
-      // X-RateLimit-* parity (SK-RL-004 / GLOBAL-002) — same header
-      // set for the create-cap bucket as for query.
-      const now = Math.floor(Date.now() / 1000);
-      c.header("X-RateLimit-Limit", String(peek.limit));
-      c.header("X-RateLimit-Remaining", String(Math.max(0, peek.limit - peek.count)));
-      c.header("X-RateLimit-Reset", String(peek.resetAt));
-      if (!peek.ok) {
-        span.setAttribute("nlqdb.ask.outcome", "create_cap_ip");
-        span.end();
-        c.header("Retry-After", String(Math.max(0, peek.resetAt - now)));
-        return c.json(
-          {
-            error: {
-              status: "rate_limited" as const,
-              limit: peek.limit,
-              count: peek.count,
-              resetAt: peek.resetAt,
-            },
-          },
-          429,
-        );
-      }
-      if (peek.needsChallenge) {
-        const turnstileToken = c.req.header("cf-turnstile-response") ?? null;
-        const verify = await verifyTurnstile(turnstileToken, c.env.TURNSTILE_SECRET, ip);
-        // Fail-open when the secret is unset (dev / pre-config). Any
-        // other failure (`invalid` / `verify_failed`) returns 428
-        // challenge_required so the surface re-renders the widget.
-        // SK-ANON-007.
-        const allowed = verify.ok || verify.reason === "unconfigured";
-        if (!allowed) {
-          span.setAttribute("nlqdb.ask.outcome", "challenge_required");
-          span.end();
-          return c.json(
-            {
-              error: {
-                status: "challenge_required" as const,
-                code: "challenge_required" as const,
-                action: "Complete the browser challenge to continue.",
-              },
-            },
-            428,
-          );
-        }
-      }
-      // Record AFTER any challenge clears — otherwise the counter
-      // ratchets up on every blocked attempt and the user is stuck
-      // behind the gate forever.
-      await anonLimiter.recordCreate(ip);
-      return null;
+    // Anon-create gate, split into peek + commit (WS5 fix C). Peek
+    // runs at gate-entry on both the canonical `runCreatePath` and
+    // the SK-ASK-011 speculative path; commit only runs after the
+    // orchestrator returns `result.ok === true`. Failed creates
+    // (ambiguous_goal / plan_invalid / compile_failed / …) no longer
+    // burn the per-IP create cap. Both halves no-op for non-anon
+    // principals (SK-ANON-006 keeps `principal.kind` out of the
+    // orchestrator). The peek/commit pure logic lives in
+    // `anon-create-gate.ts`; this closure adapts the typed decision
+    // into a Hono Response and emits the X-RateLimit-* headers.
+    const ip = c.req.header("cf-connecting-ip") ?? "unknown";
+    const gateDeps = {
+      limiter: makeAnonRateLimiter(c.env.KV),
+      verifyTurnstile,
+    };
+    const peekAnonCreateGate = async (): Promise<Response | null> => {
+      const decision = await peekAnonCreateGateImpl(gateDeps, {
+        principalKind: principal.kind,
+        ip,
+        turnstileSecret: c.env.TURNSTILE_SECRET,
+        turnstileToken: c.req.header("cf-turnstile-response") ?? null,
+      });
+      return decisionToResponse(c, span, decision);
+    };
+    const commitAnonCreate = async (): Promise<void> => {
+      await commitAnonCreateImpl(gateDeps, { principalKind: principal.kind, ip });
     };
 
     // libpg-query WASM init guard — needs `__filename` / `__dirname`
@@ -406,12 +377,24 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
       });
     };
 
+    // SK-DB-010 / WS5 fix B — explicit body.engine wins; anon falls
+    // back to postgres (skips the cheap-tier classifier LLM); authed
+    // stays undefined so the classifier runs. Resolved once so the
+    // canonical create path and the speculative kickoff below stay
+    // in sync.
+    const engineOverride: Engine | undefined = resolveAnonEngineOverride(
+      parsed.body.engine,
+      principal.kind,
+    );
+
     // Helper closure for the create path — invoked when classifier
     // says `kind=create`, OR when the tenant has 0 DBs and the kind
     // wasn't create (architecture §3.6.4: "0 dbs → CREATE"). Anon-
-    // create gating is enforced before the LLM/Neon work runs.
+    // create gating is enforced before the LLM/Neon work runs; the
+    // per-IP counter increments only on `result.ok === true` (WS5
+    // fix C).
     const runCreatePath = async (): Promise<Response> => {
-      const gateResp = await checkAnonCreateGate();
+      const gateResp = await peekAnonCreateGate();
       if (gateResp) return gateResp;
 
       // Dynamic import defers libpg-query's WASM initialization to
@@ -435,11 +418,15 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
         const result = await orchestrateDbCreate(createDeps, {
           goal: parsed.body.goal,
           tenantId: principal.id,
-          // SK-DB-010 — explicit override flows through; classifier
-          // runs only when this is undefined.
-          ...(parsed.body.engine !== undefined ? { engine: parsed.body.engine } : {}),
+          // SK-DB-010 — explicit override flows through; for anon
+          // principals (Phase 0/1 ships postgres only per SK-DB-002)
+          // pin to postgres so we skip the cheap-tier classifier LLM
+          // hop on every anon create (WS5 fix B). Authed users still
+          // get the classifier — they may pick BYO engines later.
+          ...(engineOverride !== undefined ? { engine: engineOverride } : {}),
           secretRef,
         });
+        if (result.ok) await commitAnonCreate();
         return formatCreateJsonResponse(result);
       } finally {
         span.end();
@@ -458,20 +445,27 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
     //   kind=query|write + no   → 0/1/N dispatch (existing)
     //
     // PERFORMANCE §2.3 owns the budget for this prelude.
-    const listPromise = listDatabasesForTenant(c.env.DB, principal.id);
-
-    // SK-ASK-012 — load the principal's recent-tables MRU once for
-    // the prelude. Used by the SK-ASK-011 speculation predicate
-    // (`probablyZeroDbs`) and by `routeAsk` below — single KV read,
-    // shared across the two consumers.
+    //
+    // WS5 fix A — kickoffAskPrelude fires both reads synchronously
+    // before yielding. `listPromise` is awaited inside `routePromise`;
+    // `recentTablesPromise` is awaited here so the speculative-create
+    // predicate has a value to consult. KV blip → routeAsk still
+    // runs; D1 blip → routeAsk sees `dbs: []` (see catch below).
     const recentTablesStore = makeRecentTablesStore(c.env.KV);
-    const recentTables = await recentTablesStore.load(principal.id);
+    const { listPromise, recentTablesPromise } = kickoffAskPrelude(
+      {
+        listDatabases: (id) => listDatabasesForTenant(c.env.DB, id),
+        loadRecentTables: (id) => recentTablesStore.load(id),
+      },
+      principal.id,
+    );
+    const recentTables = await recentTablesPromise;
 
     // SK-ASK-011 — speculative create on probable-0-dbs, only when no
     // dbId is pinned (otherwise the user already has a DB).
     let speculativeReconcilePromise: Promise<ReconcileResult> | undefined;
     if (!parsed.body.dbId && probablyZeroDbs(recentTables, parsed.body.goal)) {
-      const gateResp = await checkAnonCreateGate();
+      const gateResp = await peekAnonCreateGate();
       if (gateResp) return gateResp;
       ensureLibpgWasmGlobals();
       const { buildDbCreateDeps } = await import("./db-create/build-deps.ts");
@@ -482,7 +476,9 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
         tenantId: principal.id,
         principalId: principal.id,
         principalKind: principal.kind,
-        ...(parsed.body.engine !== undefined ? { engine: parsed.body.engine } : {}),
+        // WS5 fix B — same engine-override seam as runCreatePath so
+        // anon speculation also skips the cheap-tier engine classifier.
+        ...(engineOverride !== undefined ? { engine: engineOverride } : {}),
         secretRef,
       });
       speculativeReconcilePromise = reconcileSpeculativeCreate({
@@ -553,6 +549,12 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
     if (speculativeReconcilePromise) {
       const reconciled = await speculativeReconcilePromise;
       if (reconciled.kind === "committed") {
+        // WS5 fix C — commit the per-IP create-cap counter only when
+        // the speculative orchestrator actually produced an ok result.
+        // A `committed` reconcile with `result.ok === false` (e.g.
+        // ambiguous_goal surfaced from the speculative LLM hop) does
+        // not consume the user's cap.
+        if (reconciled.result.ok) await commitAnonCreate();
         span.setAttribute("nlqdb.ask.outcome", "speculative_create_committed");
         span.end();
         return formatCreateJsonResponse(reconciled.result);
@@ -1079,6 +1081,61 @@ app.post("/v1/chat/messages", requireSession, async (c) => {
 
 function serializeEvent(event: OrchestrateEvent): string {
   return JSON.stringify(event);
+}
+
+// Render the gate's typed decision (from `anon-create-gate.ts`)
+// into a Hono Response. Non-anon principals get `null` (gate is a
+// no-op). Anon `allow` emits the X-RateLimit-* headers but returns
+// null so the route handler proceeds. Anon short-circuits (429 cap
+// or 428 challenge) emit headers + end the span + return the
+// typed error envelope.
+function decisionToResponse(
+  // Hono's Context is generic over Bindings + Variables — keep this
+  // helper agnostic so route handlers with different Variable shapes
+  // can call it without a cast.
+  c: Context,
+  span: Span,
+  decision: AnonCreateGateDecision,
+): Response | null {
+  if (decision.kind === "skip") return null;
+  const peek = decision.peek;
+  // X-RateLimit-* parity (SK-RL-004 / GLOBAL-002) — emitted on every
+  // anon verdict so the surface can render headroom before the wall.
+  c.header("X-RateLimit-Limit", String(peek.limit));
+  c.header("X-RateLimit-Remaining", String(Math.max(0, peek.limit - peek.count)));
+  c.header("X-RateLimit-Reset", String(peek.resetAt));
+  if (decision.kind === "allow") return null;
+  const now = Math.floor(Date.now() / 1000);
+  if (decision.kind === "rate_limited") {
+    span.setAttribute("nlqdb.ask.outcome", "create_cap_ip");
+    span.end();
+    c.header("Retry-After", String(Math.max(0, peek.resetAt - now)));
+    return c.json(
+      {
+        error: {
+          status: "rate_limited" as const,
+          limit: peek.limit,
+          count: peek.count,
+          resetAt: peek.resetAt,
+        },
+      },
+      429,
+    );
+  }
+  // challenge_required (SK-ANON-007 — 428 so the surface re-renders
+  // the Turnstile widget).
+  span.setAttribute("nlqdb.ask.outcome", "challenge_required");
+  span.end();
+  return c.json(
+    {
+      error: {
+        status: "challenge_required" as const,
+        code: "challenge_required" as const,
+        action: "Complete the browser challenge to continue.",
+      },
+    },
+    428,
+  );
 }
 
 // Sign-in URL the global-anon-cap response hands the surface
