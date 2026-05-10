@@ -27,7 +27,10 @@ export interface CreateResult {
   // for now. Future surfaces will render metrics + dimensions too
   // (SK-HDC-004).
   plan: unknown;
-  sampleRows: { table: string; rows: CreateRow[] }[];
+  // Matches `SampleRow` in `packages/db/src/types.ts` — one row per
+  // entry, with `values` carrying the column → scalar map. The UI
+  // groups by table at render time.
+  sampleRows: { table: string; values: CreateRow }[];
 }
 
 export type CreateError =
