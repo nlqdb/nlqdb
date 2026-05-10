@@ -373,7 +373,9 @@ export function createClient(opts: ClientOptions = {}): NlqClient {
       if (!isRecoverable(result.error)) throw result.error;
       if (attempt === SDK_MAX_ATTEMPTS) throw result.error;
     }
-    throw lastErr ?? new NlqdbApiError(`nlqdb: ${path} retry exhausted`, 0, "unknown_error", path, null);
+    throw (
+      lastErr ?? new NlqdbApiError(`nlqdb: ${path} retry exhausted`, 0, "unknown_error", path, null)
+    );
   }
 
   async function streamAsk(req: AskRequest, opts: AskStreamOptions): Promise<AskOk> {
