@@ -50,6 +50,8 @@ grep -rn 'GLOBAL-007' docs/features/
 | [GLOBAL-020](./decisions/GLOBAL-020-zero-config-first-60s.md) | No "pick a region", no config files in the first 60s | web-app, cli, ask-pipeline | active |
 | [GLOBAL-021](./decisions/GLOBAL-021-external-system-ownership.md) | Each external system has one canonical owning module | every package — baseline | active |
 | [GLOBAL-022](./decisions/GLOBAL-022-recoverable-failures-retry-to-success.md) | Recoverable failures retry to success — never surface a fixable error | sdk, ask-pipeline, llm-router, idempotency, observability | active |
+| [GLOBAL-023](./decisions/GLOBAL-023-trust-ux-baseline.md) | Trust UX baseline — diff preview, visible SQL trace, refuse-on-low-confidence | ask-pipeline, web-app, cli, elements, mcp-server | active |
+| [GLOBAL-024](./decisions/GLOBAL-024-demand-signal-telemetry.md) | Demand-signal telemetry on every "not yet" path | every surface, events-pipeline | active |
 
 ## Adding a new GLOBAL
 

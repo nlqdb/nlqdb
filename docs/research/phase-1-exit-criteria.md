@@ -50,13 +50,19 @@ The gate in `architecture.md §10` covers the *quantitative engineering* checks 
 - What's the failure response — surface a "high demand, queued" message and slow-roll, or auto-route paid models for the first 24h?
 - Does this gate move to "200 signups + 50% of design partners running their first query in the same hour" (the realistic worst case)?
 
-### 5. "MCP server installed in ≥3 distinct client apps"
+### 5. "MCP server installed in ≥3 distinct client apps" — RESOLVED 2026-05-10
 
-**Original wording (`plan.md §1.7`).** *"MCP server installed in ≥3 distinct client apps."* In the consolidated `architecture.md §10` this moved to the **Phase 2** exit gate.
+**Resolution.** Deliberate phase reassignment, confirmed. MCP is the
+**first item in the Phase 2 distribution slice** per
+[`docs/phase-plan.md §4`](../phase-plan.md) — it leads the
+distribution surfaces (before CLI) because the 2026 MCP registry
+(9 k+ servers, 78% enterprise adoption) is the active distribution
+channel. The original "≥3 distinct host apps" intent is preserved
+verbatim as the Phase 2 exit gate. Phase 1 does not gate on MCP;
+Phase 1 must still flow for an agent-shaped first call (an agent
+hitting `/v1/ask` directly), but the dedicated MCP server is Phase 2.
 
-**Why the move is reasonable.** MCP server is now a Phase 2 deliverable in the consolidated plan, so Phase 1 can't gate on it. But the Phase 2 gate already says *"MCP installed in 3+ distinct host apps; 1 agent product publicly uses nlqdb as memory"* — same intent.
-
-**Open question.** Confirm with the founder whether this is a deliberate phase reassignment (it should be) or an oversight. If deliberate, no action — the architecture.md §10 Phase 2 gate covers it. If the original intent was to ship MCP in Phase 1, the Phase 1 exit gate needs the row added back and the Phase 2 deliverables reshuffled.
+No further action — this row stays as the resolution trail.
 
 ## Source
 
