@@ -4,8 +4,7 @@
 //   * `kickoffAskPrelude` (fix A) fires the D1 listDatabases and the
 //     KV recent-tables reads together so they overlap on the cold
 //     path. Returns the pending promises; callers await each at the
-//     point its data is needed (recent-tables → `probablyZeroDbs` +
-//     routeAsk; listPromise → routeAsk + reconciler).
+//     point its data is needed (both feed routeAsk's input).
 //   * `resolveAnonEngineOverride` (fix B) picks the engine the
 //     orchestrator should run with — explicit `body.engine` always
 //     wins; an anonymous principal with no explicit value pins to
