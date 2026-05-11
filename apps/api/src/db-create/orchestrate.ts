@@ -68,6 +68,11 @@ export type DbCreateDeps = {
   // pgvector writer for table-card RAG. Awaited but failure does
   // NOT roll back the provisioned DB — see step 6 below.
   embedTableCards: (deps: EmbedDeps, plan: SchemaPlan, dbId: string) => Promise<void>;
+  // Mints a pk_live_ key for the newly-provisioned DB (SK-APIKEYS-001).
+  // Optional so unit tests don't need to stub it; production wires
+  // `mintPkLiveKey` via `build-deps.ts`. Failures are swallowed —
+  // the DB is already committed and queryable without a key.
+  mintPkLive?: (dbId: string, tenantId: string) => Promise<string>;
   // 6-char random for the dbId tail. Injectable so tests can
   // assert exact ids; prod uses `crypto.randomUUID().slice(...)` or
   // similar in `build-deps.ts`.
@@ -242,11 +247,15 @@ export async function orchestrateDbCreate(
     return err({ kind: "embed_failed", dbId });
   }
 
-  // 7. Anonymous tenants get `pkLive: null` regardless of what the
-  //    provisioner returned — the route handler issues a
-  //    session-scoped key separately (docs/architecture.md §3.6.4 row 1;
-  //    SK-HDC-005 documents the deterministic-resolution rationale).
-  const pkLive = isAnonymous(args.tenantId) ? null : provisioned.pkLive;
+  // 7. Mint a pk_live_ key for the newly-provisioned DB (SK-APIKEYS-001).
+  //    Both anon and authed tenants get a key — callers use it for the
+  //    copy-snippet CTA. Failures are swallowed: the DB is already
+  //    committed and queryable; the caller gets pkLive: null and the
+  //    copy snippet falls back gracefully.
+  let pkLive: string | null = null;
+  if (deps.mintPkLive) {
+    pkLive = await deps.mintPkLive(dbId, args.tenantId).catch(() => null);
+  }
 
   return {
     ok: true,
@@ -261,10 +270,6 @@ export async function orchestrateDbCreate(
     },
     sampleRows: plan.sample_rows,
   };
-}
-
-function isAnonymous(tenantId: string): boolean {
-  return tenantId.startsWith("anon:");
 }
 
 function err(error: DbCreateError): DbCreateResult {

@@ -13,7 +13,7 @@ when-to-load:
 # Feature: Hosted db.create
 
 **One-liner:** Goal-string in, working multi-table Postgres database out — typed-plan pipeline, deterministic DDL compiler, semantic layer auto-generated at create-time.
-**Status:** planned (Phase 1 — design locked in [`docs/architecture.md` §3.6](../../architecture.md), implementation pending)
+**Status:** partial (pipeline implemented; `embedTableCards` is a no-op stub pending pgvector slice)
 **Owners (code):**
 - `apps/api/src/db-create/**` (orchestrator, infer-schema, compile-ddl, neon-provision)
 - `apps/api/src/ask/route-ask.ts` (merged kind + dbId classifier on the `/v1/ask` entry — SK-ASK-009)

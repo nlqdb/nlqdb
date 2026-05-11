@@ -149,16 +149,7 @@ export type ProvisionFailureReason =
   | "transaction_failed";
 
 export type ProvisionResult =
-  | {
-      ok: true;
-      dbId: string;
-      schemaName: string;
-      // Minted inside the same transaction that inserts the
-      // `databases` row, so the key + DB land atomically. `null`
-      // for anonymous tenants — the route handler issues a
-      // session-scoped key separately (docs/architecture.md §3.6.4).
-      pkLive: string | null;
-    }
+  | { ok: true; dbId: string; schemaName: string }
   | { ok: false; reason: ProvisionFailureReason; rolled_back: boolean };
 
 // The injectable shape SK-HDC-007 calls out: Phase 1 = `provisionDb`;

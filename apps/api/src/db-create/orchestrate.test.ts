@@ -103,7 +103,6 @@ function stubProvision(result?: ProvisionResult) {
         ok: true,
         dbId: args.dbId,
         schemaName: args.schemaName,
-        pkLive: `pk_live_${args.dbId}_secret`,
       },
   );
 }
@@ -174,12 +173,7 @@ describe("orchestrateDbCreate", () => {
       }),
       provision: vi.fn(async (_d, args): Promise<ProvisionResult> => {
         calls.push("provision");
-        return {
-          ok: true,
-          dbId: args.dbId,
-          schemaName: args.schemaName,
-          pkLive: `pk_live_${args.dbId}_secret`,
-        };
+        return { ok: true, dbId: args.dbId, schemaName: args.schemaName };
       }),
       embedTableCards: vi.fn(async () => {
         calls.push("embedTableCards");
@@ -193,7 +187,7 @@ describe("orchestrateDbCreate", () => {
       dbId: `db_orders_tracker_${FIXED_SUFFIX}`,
       schemaName: `orders_tracker_${FIXED_SUFFIX}`,
       engine: "postgres",
-      pkLive: `pk_live_db_orders_tracker_${FIXED_SUFFIX}_secret`,
+      pkLive: null,
       plan: {
         metrics: stubPlan().metrics,
         dimensions: stubPlan().dimensions,
@@ -342,27 +336,26 @@ describe("orchestrateDbCreate", () => {
     expect(out.error).not.toHaveProperty("reason");
   });
 
-  it("anonymous tenantId yields pkLive: null with all other fields populated", async () => {
-    const deps = makeDeps({
-      provision: stubProvision({
-        ok: true,
-        // Even if a stub provisioner returned a pkLive, the
-        // orchestrator must override to null for anon tenants.
-        dbId: `db_orders_tracker_${FIXED_SUFFIX}`,
-        schemaName: `orders_tracker_${FIXED_SUFFIX}`,
-        pkLive: "pk_live_should_be_overridden",
-      }),
-    });
+  it("pkLive: null when mintPkLive dep is absent (unit tests don't stub it)", async () => {
+    const deps = makeDeps();
 
     const out = await orchestrateDbCreate(deps, { ...ARGS, tenantId: "anon:abc123" });
 
     expect(out.ok).toBe(true);
     if (!out.ok) throw new Error("expected ok");
     expect(out.pkLive).toBeNull();
-    expect(out.dbId).toBe(`db_orders_tracker_${FIXED_SUFFIX}`);
-    expect(out.schemaName).toBe(`orders_tracker_${FIXED_SUFFIX}`);
-    expect(out.plan.metrics).toEqual(stubPlan().metrics);
-    expect(out.sampleRows).toEqual(stubPlan().sample_rows);
+  });
+
+  it("mintPkLive dep is called and returned in pkLive for any tenant", async () => {
+    const mintPkLive = vi.fn(async (dbId: string) => `pk_live_${dbId}_minted`);
+    const deps = makeDeps({ mintPkLive });
+
+    const out = await orchestrateDbCreate(deps, ARGS);
+
+    expect(out.ok).toBe(true);
+    if (!out.ok) throw new Error("expected ok");
+    expect(mintPkLive).toHaveBeenCalledWith(`db_orders_tracker_${FIXED_SUFFIX}`, ARGS.tenantId);
+    expect(out.pkLive).toBe(`pk_live_db_orders_tracker_${FIXED_SUFFIX}_minted`);
   });
 
   it("default path: classifier picks engine and orchestrator forwards it to provision (SK-DB-010)", async () => {
@@ -424,12 +417,7 @@ describe("orchestrateDbCreate", () => {
       if (seenIds.length === 1) {
         return { ok: false, reason: "schema_already_exists", rolled_back: true };
       }
-      return {
-        ok: true,
-        dbId: args.dbId,
-        schemaName: args.schemaName,
-        pkLive: `pk_live_${args.dbId}_secret`,
-      };
+      return { ok: true, dbId: args.dbId, schemaName: args.schemaName };
     });
     const suffixes = ["aaaaaa", "bbbbbb", "cccccc"];
     let suffixIdx = 0;

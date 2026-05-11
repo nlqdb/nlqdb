@@ -227,10 +227,6 @@ describe("provisionDb — happy path", () => {
       ok: true,
       dbId: "db_orders_tracker_a4f3b2",
       schemaName: "orders_tracker_a4f3b2",
-      // pkLive is null in the provisioner v0 — the api-keys subsystem
-      // mints `pk_live_<dbId>` separately. Orchestrator handles the
-      // anonymous-vs-authed split before issuing the key.
-      pkLive: null,
     });
     expect(d1.inserts).toHaveLength(1);
     expect(d1.inserts[0]?.params).toEqual([

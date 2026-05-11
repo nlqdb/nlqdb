@@ -1,34 +1,31 @@
 // Principal resolution for `/v1/*` routes. A request is one of:
 //   - cookie session  → Principal { kind: "user", id: <userId> }
 //   - Authorization: Bearer anon_<token> → Principal { kind: "anon", id: "anon:<hash>" }
+//   - Authorization: Bearer pk_live_<key> → Principal { kind: "pk_live", id: <tenantId>, dbId: <dbId> }
 //   - neither → 401 unauthorized
 //
 // The `id` is the value passed to the orchestrators as `userId`/
 // `tenantId`. For anon, the `anon:` prefix is the convention
 // db-create's `isAnonymous()` (apps/api/src/db-create/orchestrate.ts)
-// recognises — pkLive is set to null in that branch (SK-ANON-001 +
-// SK-WEB-007 trade off "anon embeds work today" against "rotate on
-// sign-in"; today is null).
+// recognises.
 //
-// Why a hash instead of the raw token: the bearer token is the
-// device's secret. Putting it in the `databases.tenant_id` column,
-// in the RLS policy, and in OTel spans would leak it everywhere; a
-// 16-hex-char SHA-256 prefix is non-reversible and short enough to
-// be safe in those contexts. (16 hex = 64 bits — collision-free at
-// 4 billion devices per birthday-bound math; for our scale this is
-// orders of magnitude over what we need.)
+// `pk_live_` principals are read-only (SK-APIKEYS-003): the route handler
+// rejects any kind≠query when principal.kind === "pk_live". The `dbId`
+// field pins the request to a specific database so the caller doesn't
+// need to pass `dbId` in the request body.
 //
 // Per SK-ANON-006, the orchestrator does NOT branch on
 // `kind` — it consumes the resolved id. The only places kind
-// matters are: rate-limit selection (anon vs authed bucket) and
-// quotas (anon caps).
+// matters are: rate-limit selection (anon vs authed bucket),
+// quotas (anon caps), and read-only enforcement (pk_live_).
 
 import type { Context, MiddlewareHandler } from "hono";
 import type { Session } from "./middleware.ts";
 
 export type Principal =
   | { kind: "user"; id: string; session: Session }
-  | { kind: "anon"; id: string; token: string };
+  | { kind: "anon"; id: string; token: string }
+  | { kind: "pk_live"; id: string; dbId: string };
 
 export type RequirePrincipalVariables = {
   principal: Principal;
@@ -40,9 +37,13 @@ export type RequirePrincipalOpts = {
   // way (SK-MW-* via `makeRequireSession`).
   getSession: (req: Request) => Promise<Session | null>;
   isRevoked: (token: string) => Promise<boolean>;
+  // Optional: only present when the D1 binding is available.
+  // When absent, pk_live_ bearer tokens are rejected as unauthorized.
+  lookupPkLiveKey?: (key: string) => Promise<{ dbId: string; tenantId: string } | null>;
 };
 
 const ANON_BEARER_PREFIX = "anon_";
+const PK_LIVE_PREFIX = "pk_live_";
 
 export function makeRequirePrincipal(
   opts: RequirePrincipalOpts,
@@ -67,6 +68,16 @@ export function makeRequirePrincipal(
       const principal: Principal = { kind: "anon", id, token: anonToken };
       c.set("principal", principal);
       return next();
+    }
+
+    const pkLiveToken = parsePkLiveBearer(c.req.header("authorization"));
+    if (pkLiveToken && opts.lookupPkLiveKey) {
+      const found = await opts.lookupPkLiveKey(pkLiveToken);
+      if (found) {
+        const principal: Principal = { kind: "pk_live", id: found.tenantId, dbId: found.dbId };
+        c.set("principal", principal);
+        return next();
+      }
     }
 
     return c.json({ error: "unauthorized" }, 401);
@@ -94,6 +105,19 @@ export function parseAnonBearer(header: string | null | undefined): string | nul
   const token = raw.trim();
   if (!token.startsWith(ANON_BEARER_PREFIX)) return null;
   if (token.length <= ANON_BEARER_PREFIX.length) return null;
+  return token;
+}
+
+// `Authorization: Bearer pk_live_<...>` parser. Same structure as
+// parseAnonBearer — returns the raw token or null on any malformed input.
+export function parsePkLiveBearer(header: string | null | undefined): string | null {
+  if (!header) return null;
+  const match = /^Bearer\s+(.+)$/i.exec(header.trim());
+  const raw = match?.[1];
+  if (!raw) return null;
+  const token = raw.trim();
+  if (!token.startsWith(PK_LIVE_PREFIX)) return null;
+  if (token.length <= PK_LIVE_PREFIX.length) return null;
   return token;
 }
 
