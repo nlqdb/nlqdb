@@ -80,12 +80,16 @@ $0/mo.
 
 **Theme:** the funnel converts and we know *why*.
 
-Inserted between Phase 1 and Phase 2 because [layered-guardrails
-research](./research-receipts.md) shows trust UX (diff preview,
-show-the-SQL, confidence floor) is the #1 mitigation for the
-silent-wrong-answer failure mode in text-to-SQL, and because no
-scaling or monetization decision can be data-driven without the
-demand-signal events landing first. Both deliverables are governed by
+Inserted between Phase 1 and Phase 2 because the failure mode that
+sinks NL-to-SQL products is *syntactically-right, semantically-wrong*
+answers — a query that executes and looks plausible but joins the
+wrong table or omits a filter. The server-side validator
+([`sql-allowlist`](./features/sql-allowlist/FEATURE.md),
+[research-receipts §1](./research-receipts.md)) catches structural
+errors; trust UX catches the silent-semantic ones at the user
+surface. And no monetization or scaling decision can be data-driven
+without the demand-signal events landing first. Both deliverables
+are governed by
 [`GLOBAL-023`](./decisions/GLOBAL-023-trust-ux-baseline.md) and
 [`GLOBAL-024`](./decisions/GLOBAL-024-demand-signal-telemetry.md);
 implementation lives in [`trust-ux`](./features/trust-ux/FEATURE.md)
@@ -108,7 +112,9 @@ and across every existing skill.
 **Exit gate:** every Phase 1 surface emits a `surface` label and a
 demand-signal event on the documented failure paths; trust-UX diff
 preview measurably reduces the destructive-op retry rate in user
-tests; ≥ 20 entries in the "notify me when paid launches" queue.
+tests; the "notify me when paid launches" queue is non-empty
+(demonstrates the capture pipe works — absolute thresholds belong to
+§6, not here).
 
 ---
 
@@ -182,12 +188,23 @@ whichever happens first:
 | Unsolicited inbound asking how to pay | ≥ 5 across GH / Discord / email | Revealed preference. Founder-led pricing conversation. |
 | Test-mode Stripe Checkout completion rate (if shipped) | ≥ 30% over 50 sessions | Strong-enough signal to commit to Stripe live + Hobby $10 + Lago. |
 
-Until one trips, **no payment-infra engineering work happens**. The
-cost ladder in [`README.md`](../README.md) already says "pay only when
-someone pays you"; this section is the operational form of that rule.
+The thresholds above are starting heuristics, not measured truths —
+adjust on first contact with traffic. Until one trips, **no
+payment-infra engineering work happens**. The cost ladder in
+[`README.md`](../README.md) already says "pay only when someone pays
+you"; this section is the operational form of that rule. Same logic
+applies to scaling work (Cloudflare Pro, Neon Launch, etc.) — see
+the cost ladder in README.
 
-Same trigger logic applies to scaling work (Cloudflare Pro, Neon
-Launch, etc.) — see the cost ladder in README.
+**Reconciliation with the persona-validation plan.** The
+"2 convert to paid Hobby" criterion in
+[`personas.md §10.4`](./research/personas.md) is downstream of this
+trigger — it can only be measured after Stripe live ships. Persona
+validation for Phase 1 close therefore requires: (a) all the
+qualitative criteria in personas.md, AND (b) the §6 trigger has
+tripped and Stripe live has shipped, OR (c) deliberate decision to
+ship without paid validation if §6 hasn't tripped within the
+quarter.
 
 ---
 

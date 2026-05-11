@@ -854,8 +854,8 @@ Prisma / Drizzle / SQLAlchemy are not what we are. If they want codegen from a s
 
 For each P0 persona, before we declare Phase 1 done:
 
-- **P1 Solo Builder:** 5 design partners each ship a real project using nlqdb as the primary DB. At least 2 convert to paid Hobby.
-- **P2 Agent Builder:** MCP server installed in 3 distinct agent frameworks in the wild. At least 1 agent product publicly integrates nlqdb as its memory layer.
+- **P1 Solo Builder:** 5 design partners each ship a real project using nlqdb as the primary DB. **Paid-conversion target (≥ 2 to Hobby)** is downstream of the `docs/phase-plan.md §6` monetization trigger — measurable only after Stripe live ships. Pre-trigger, the equivalent qualitative gate is the Sean Ellis "very disappointed" check in [`docs/founder-playbook.md §2`](../docs/founder-playbook.md).
+- **P2 Agent Builder:** MCP server installed in 3 distinct agent frameworks in the wild. At least 1 agent product publicly integrates nlqdb as its memory layer. (MCP is the first item in the Phase 2 distribution slice — this gate is measured after MCP ships.)
 - **P3 Analyst:** 3 non-engineers complete a real analysis end-to-end in under 10 minutes, unassisted, in user tests.
 
 If any of these don't hit, we don't ship Phase 2 — we iterate.

@@ -31,7 +31,7 @@ before the [`phase-plan.md §6`](./phase-plan.md) trigger trips.
 
 | Persona | Where they hang out | Outreach shape |
 |---|---|---|
-| P1 Solo Builder | Indie Hackers, X build-in-public, `r/SaaS`, Hacker News Show-HN comment threads, founder-led Discord servers (Ahoy, Builders Club) | DM after they ship something visible; offer free Hobby tier in exchange for a 30-min call. |
+| P1 Solo Builder | Indie Hackers, X build-in-public, `r/SaaS`, Hacker News Show-HN comment threads | DM after they ship something visible; offer free Hobby tier in exchange for a 30-min call. |
 | P2 Agent Builder | MCP server registry contributors, `r/LocalLLaMA`, Cursor / Zed / Windsurf Discord, AI-agent Twitter (LangChain, LlamaIndex, AutoGen) | Comment on their public agent project with a working MCP install one-liner; ask if they'd like an early MCP key. |
 | P3 Analyst | Data PM Twitter, Reforge / Lenny circles, `r/ProductManagement` "tools I use" threads | Inbound only — too noisy to cold. Tell P1 / P2 partners to refer their growth-PM friends. |
 
@@ -55,10 +55,10 @@ forever" deals.
 > If yes — pick a slot: <Calendly>. If no — totally fine, thanks
 > for reading.
 
-**Conversion target.** 1-in-5 cold DMs land a call. 1-in-2 calls
-turn into a design partner. 5 cold messages per persona = 1
-design partner. The Phase 1 cohort takes ~30 messages over ~2 weeks
-when run as the founder's *only* outbound activity for those weeks.
+**Throughput note.** Real conversion rates emerge from doing the
+work, not from doc-time estimates. Recruitment is the founder's
+primary outbound activity in the Phase 1 weeks where it's running —
+treat it as a full-time loop, not a side-task.
 
 ---
 
@@ -199,37 +199,15 @@ that train the cohort to never pay.
 
 ---
 
-## 6. Cross-references and the in-product half
+## 6. Pairing with in-product telemetry
 
-Every founder-time activity above has an in-product counterpart in
-the demand-signal telemetry side:
-
-| Founder activity | In-product event |
-|---|---|
-| Sean Ellis interview | `feature.requested.*` tagging from verbatim quotes |
-| Inbound "how do I pay you" | Manual log into LogSnag under `billing.inbound_intent` |
-| Design-partner recruitment call accept | `user.design_partner_recruited` |
-| Show-HN launch traffic | `traffic.source.hackernews` (Plausible) + spike on every `feature.requested.*` event |
-
-The two halves are co-dependent: the in-product signals don't
-interpret themselves; the founder interpretation is the qualitative
-layer that turns raw events into product decisions. Treat them as
-one signal-capture system, not two.
-
----
-
-## 7. What's deliberately *not* in this playbook
-
-Per the "refuse" lists scattered above and in [`email-and-marketing.md §3`](./research/email-and-marketing.md):
-
-- Cold outbound email to non-handpicked lists.
-- Paid ads pre-PMF.
-- Influencer / sponsor partnerships pre-PMF.
-- AppSumo / Pitchground lifetime deals.
-- Gated content ("download the whitepaper to talk to us").
-- Discounts for design partners (creates a precedent we can't escape).
-- "Beta launch" announcement campaigns before the §4 pre-flight is green.
-
-Each of these has a clear failure mode pre-PMF and a clean
-re-evaluation trigger post-PMF (the same `phase-plan.md §6` signals
-that gate Stripe live).
+The founder activities above only become signal when paired with the
+in-product events from [`GLOBAL-024`](./decisions/GLOBAL-024-demand-signal-telemetry.md):
+verbatim interview quotes get tagged to `feature.requested.*` events,
+"how do I pay you" inbound gets logged under `billing.inbound_intent`,
+Show-HN traffic shows up in Plausible alongside `feature.requested.*`
+spikes. Treat the two halves as one signal-capture system. The
+exhaustive "refuse" list (cold outbound, paid ads, AppSumo lifetime
+deals, discounts to design partners, etc.) lives in
+[`email-and-marketing.md §3`](./research/email-and-marketing.md) — not
+duplicated here.

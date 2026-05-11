@@ -23,9 +23,11 @@
   `/v1/ask` responses include the compiled SQL in the `trace` block
   on every path, not only on `?trace=1`. The LLM router emits a
   `confidence` score on every plan; `ask-pipeline` refuses with
-  `low_confidence` (instead of executing) when the score is below the
-  tier floor (Tier 1 ≥ 0.6, Tier 2 ≥ 0.7, Tier 3 ≥ 0.8). Refusal is a
-  typed error per `GLOBAL-012` ("one sentence with the next action").
+  `low_confidence` (instead of executing) when the score is below a
+  per-tier floor. Floor values are placeholders until the
+  [`quality-eval`](../features/quality-eval/FEATURE.md) harness
+  calibrates them against real benchmark data. Refusal is a typed
+  error per `GLOBAL-012` ("one sentence with the next action").
 - **Alternatives rejected:**
   - Spinner-and-pray (silent commit) — fails the bullet-proof value;
     the silent-wrong-update is the exact failure this rule prevents.

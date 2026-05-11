@@ -16,7 +16,7 @@ when-to-load:
 **One-liner:** User-surface trust rules — diff preview on writes, visible SQL trace on every response, refuse-on-low-confidence on plans.
 **Status:** planned (Phase 1.5) — design locked in [`GLOBAL-023`](../../decisions/GLOBAL-023-trust-ux-baseline.md); implementation lands across `ask-pipeline`, `web-app`, `cli`, `elements`, and `mcp-server` skills in the Phase 1.5 slice (see [`phase-plan.md` §3](../../phase-plan.md)).
 **Owners (code):** cross-cutting — see touchpoints.
-**Cross-refs:** [`docs/decisions/GLOBAL-023-trust-ux-baseline.md`](../../decisions/GLOBAL-023-trust-ux-baseline.md) (canonical) · [`docs/phase-plan.md §3`](../../phase-plan.md) (Phase 1.5 placement) · [`docs/research-receipts.md §1`](../../research-receipts.md) (layered-guardrails research) · `ask-pipeline/FEATURE.md` (the pipeline that emits trace + confidence) · `sql-allowlist/FEATURE.md` (the parser-level guardrail this rule sits on top of)
+**Cross-refs:** [`docs/decisions/GLOBAL-023-trust-ux-baseline.md`](../../decisions/GLOBAL-023-trust-ux-baseline.md) (canonical) · [`docs/phase-plan.md §3`](../../phase-plan.md) (Phase 1.5 placement) · `ask-pipeline/FEATURE.md` (the pipeline that emits trace + confidence) · `sql-allowlist/FEATURE.md` (the parser-level guardrail that trust UX sits on top of — see [`research-receipts.md §1`](../../research-receipts.md) for the server-side guardrail rationale; the user-surface rationale lives in this skill)
 
 ## Touchpoints — read this skill before editing
 
@@ -53,9 +53,9 @@ when-to-load:
 
 ### SK-TRUST-003 — Confidence floor per tier; refuse rather than guess
 
-- **Decision:** The LLM router emits a `confidence` score on every plan. `ask-pipeline` rejects plans below the per-tier floor (Tier 1 ≥ 0.6, Tier 2 ≥ 0.7, Tier 3 ≥ 0.8) with `low_confidence`, suggesting a clarification or escalation. Refusal is a typed error, not a 5xx.
+- **Decision:** The LLM router emits a `confidence` score on every plan. `ask-pipeline` rejects plans below a per-tier floor with `low_confidence`, suggesting a clarification or escalation. Refusal is a typed error, not a 5xx. Floor values are calibrated against the [`quality-eval`](../quality-eval/FEATURE.md) harness; until that's running, placeholders ship.
 - **Core value:** Bullet-proof, Goal-first, Honest latency
-- **Why:** Executing a low-confidence plan and silently returning a wrong row is the worst possible UX. Forcing a re-prompt is slow; failing the call with a structured error that names what was ambiguous (the candidate dbs, the candidate columns, the missing filter) lets the surface ask the user *one* sharp question. The thresholds are conservative on Tier 1 (where false-negatives are cheap) and strict on Tier 3 (where the user paid for accuracy).
+- **Why:** Executing a low-confidence plan and silently returning a wrong row is the worst possible UX. Forcing a re-prompt is slow; failing the call with a structured error that names what was ambiguous (the candidate dbs, the candidate columns, the missing filter) lets the surface ask the user *one* sharp question. Per-tier floors (rather than one global floor) let us be loose on cheap-tier classify and strict on Opus-tier hard plans.
 - **Consequence in code:** `packages/llm/src/router.ts` returns `{ plan, confidence, alternatives? }` on every plan call. `apps/api/src/ask/orchestrate.ts` short-circuits to `low_confidence` before `db.execute` when `confidence < floor[tier]`. The error body follows [`GLOBAL-012`](../../decisions/GLOBAL-012-one-sentence-errors.md): one sentence, one next action (e.g. "Two databases match — say `orders` or `inventory`"). The web chat surfaces the alternatives as click-to-disambiguate chips; CLI prints them with arrow-key selection; MCP returns them as elicitation choices.
 - **Alternatives rejected:**
   - Always execute, mark with a warning — silent-wrong-answer is the failure mode this rule exists to prevent.
@@ -77,7 +77,7 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 
 ## Open questions / known unknowns
 
-- **Confidence-score calibration.** The Tier 1 / 2 / 3 floors (0.6 / 0.7 / 0.8) are placeholders. Real values need calibration against the `quality-eval` benchmark harness (BIRD / Spider) — see [`quality-eval/FEATURE.md`](../quality-eval/FEATURE.md). Pre-launch we ship with the placeholders and tighten in Phase 3.
-- **Diff for the read-path Worth-it?** Read queries that return >1k rows are also "silent-wrong-answer" risks. A "row count + sampled rows" preview before rendering the full result is similar in shape to the write diff. Defer to Phase 2 unless a P3-Priya user-test surfaces the issue earlier.
+- **Confidence-score calibration.** Floors need calibration against the `quality-eval` benchmark harness (BIRD / Spider) — see [`quality-eval/FEATURE.md`](../quality-eval/FEATURE.md). Pre-calibration, ship hand-picked placeholders and tighten when the harness has signal.
+- **Diff for the read path — worth it?** Read queries that return >1k rows are also "silent-wrong-answer" risks. A "row count + sampled rows" preview before rendering the full result is similar in shape to the write diff. Defer to Phase 2 unless a P3-Priya user-test surfaces the issue earlier.
 - **`<nlq-data>` template-level diff rendering.** Templates (`table`, `card-grid`) don't have a natural diff slot. Decide whether the trace pane is *outside* the template region or whether each template carries an optional diff slot. Most likely the former — keeps templates simple.
 - **MCP `confirm_required` ergonomics.** Some MCP hosts render `confirm_required` as a one-button "Approve" without the diff body. Audit Claude Desktop, Cursor, Zed for this; if any host hides the diff, the surface fails the SK-TRUST-001 contract on that host until the host fixes it. Document the host audit in `mcp-server/FEATURE.md`.
