@@ -12,7 +12,7 @@ when-to-load:
 **One-liner:** MCP server + `nlq mcp install` host detection (Claude Desktop, Cursor, etc.).
 **Status:** implemented (Phase 2)
 **Owners (code):** `packages/mcp/**`
-**Cross-refs:** docs/architecture.md §3.4 (MCP server) · docs/architecture.md §3 (MCP server row) · docs/architecture.md §10 §5 (Phase 2 mcp slice)
+**Cross-refs:** docs/architecture.md §3.4 (MCP server) · docs/architecture.md §3 (MCP server row) · docs/phase-plan.md (Phase 2 mcp slice)
 
 ## Touchpoints — read this skill before editing
 

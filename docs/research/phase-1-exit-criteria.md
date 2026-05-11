@@ -1,8 +1,8 @@
 # Phase 1 exit criteria — research notes
 
-> **Status:** research notes / starting hypotheses, not canonical decisions. The committed Phase 1 exit gate lives in [`../architecture.md` §10](../architecture.md#10-phase-plan). The items below were on the original plan.md / implementation.md exit gates and were dropped during the docs consolidation; they are kept here so the team can pull them back into the canonical gate as the launch date approaches and we have signal on which ones still apply.
+> **Status:** research notes / starting hypotheses, not canonical decisions. The committed Phase 1 exit gate lives in [`../architecture.md` §10](../phase-plan.md). The items below were on the original plan.md / implementation.md exit gates and were dropped during the docs consolidation; they are kept here so the team can pull them back into the canonical gate as the launch date approaches and we have signal on which ones still apply.
 
-The gate in `architecture.md §10` covers the *quantitative engineering* checks (p50 / p95 / Lighthouse / capacity / $0). The items below are the *qualitative product* checks — proof that the goal-first inversion is working, that real users got real value, and that we're capacity-safe at launch volume. They were dropped because they need more research to define cleanly: what counts as "a real side project," who the 5 target customers are, what the support-ticket triage rule is. Resolve before Phase 1 launch — don't ship without picking a stance.
+The gate in `phase-plan.md` covers the *quantitative engineering* checks (p50 / p95 / Lighthouse / capacity / $0). The items below are the *qualitative product* checks — proof that the goal-first inversion is working, that real users got real value, and that we're capacity-safe at launch volume. They were dropped because they need more research to define cleanly: what counts as "a real side project," who the 5 target customers are, what the support-ticket triage rule is. Resolve before Phase 1 launch — don't ship without picking a stance.
 
 ## Qualitative criteria (carried over from `plan.md §1.7` and `implementation.md §4`)
 
@@ -69,6 +69,6 @@ No further action — this row stays as the resolution trail.
 Carried forward from:
 - Pre-consolidation `docs/plan.md §1.7` (deleted in PR #81 commit `fb6e8c9`).
 - Pre-consolidation `docs/implementation.md §4` exit gate (same commit).
-- The consolidated gate in `docs/architecture.md §10` Phase 1.
+- The consolidated gate in `docs/phase-plan.md` Phase 1.
 
-Update this file as you resolve open questions; promote rows into `architecture.md §10` once they're crisp. Don't let a vague gate ship the launch — per `D1` of `CLAUDE.md §2`, resolve before documenting.
+Update this file as you resolve open questions; promote rows into `phase-plan.md` once they're crisp. Don't let a vague gate ship the launch — per `D1` of `CLAUDE.md §2`, resolve before documenting.

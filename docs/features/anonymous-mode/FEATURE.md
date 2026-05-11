@@ -14,7 +14,7 @@ when-to-load:
 **One-liner:** No-login first-value path across web / CLI / MCP; later attached to a Better Auth identity.
 **Status:** partial — anon `/v1/ask` create flow (`apps/api/src/principal.ts` + `apps/api/src/anon-rate-limit.ts` + `apps/web/src/pages/app/new.astro`) shipped; `/v1/anon/adopt` row-update + RLS-policy rewrite on sign-in remains the Phase 1 exit gate
 **Owners (code):** `apps/web/**`, `cli/**`, `apps/api/src/anon-adopt.ts`
-**Cross-refs:** [GLOBAL-007](../../decisions/GLOBAL-007-no-login-wall.md) · docs/architecture.md §0.1, §3.3, §3.6.4, §4.1, §14.3, §14.6 · docs/runbook.md §10 (P1, P5 first-touch) · docs/architecture.md §10 §4 (partial status) · docs/runbook.md §9 (anonymous-db lifecycle)
+**Cross-refs:** [GLOBAL-007](../../decisions/GLOBAL-007-no-login-wall.md) · docs/architecture.md §0.1, §3.3, §3.6.4, §4.1, §14.3, §14.6 · docs/runbook.md §10 (P1, P5 first-touch) · docs/phase-plan.md (partial status) · docs/runbook.md §9 (anonymous-db lifecycle)
 
 ## Touchpoints — read this skill before editing
 

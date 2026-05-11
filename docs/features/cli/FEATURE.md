@@ -12,7 +12,7 @@ when-to-load:
 **One-liner:** `nlq` command-line tool — verbs, OS-keychain credentials, device-flow auth.
 **Status:** planned (Phase 2) — design locked in DESIGN §3.3 / §4.3 / §14.3; no Go code yet (no `go.mod`; CI's `lint-go` job conditionally skips)
 **Owners (code):** `cli/**`
-**Cross-refs:** docs/architecture.md §3.3 (CLI surface) · §4.3 (session lifecycle, device-flow) · §14.3 (happy-path) · docs/architecture.md §3 (matrix) · docs/architecture.md §10 §5 (Phase 2 CLI slice) · `cli/AGENTS.md` · `cli/README.md`
+**Cross-refs:** docs/architecture.md §3.3 (CLI surface) · §4.3 (session lifecycle, device-flow) · §14.3 (happy-path) · docs/architecture.md §3 (matrix) · docs/phase-plan.md (Phase 2 CLI slice) · `cli/AGENTS.md` · `cli/README.md`
 
 ## Touchpoints — read this skill before editing
 
