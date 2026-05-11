@@ -92,6 +92,18 @@ when-to-load:
 - **Alternatives rejected:** Replan on any schema change — breaks `GLOBAL-006`'s "no cache invalidation" promise. Replan on a heuristic ("this query looks similar to one that broke") — silent wrong-plan failure mode.
 - **Source:** [GLOBAL-004](../../decisions/GLOBAL-004-schemas-only-widen.md) · [GLOBAL-006](../../decisions/GLOBAL-006-plan-cache-content-addressing.md)
 
+### SK-PLAN-009 — Cached value carries the planner's `model` + `confidence` for SK-TRUST-002 stability
+
+- **Decision:** `CachedPlan` is `{ sql, schemaHash, model?, confidence? }`. The optional fields record the model name + confidence that produced the SQL at first-write time. The orchestrator reuses them on every cache-hit so the SK-TRUST-002 `trace.model` / `trace.confidence` stay stable across hits without re-running the LLM. Pre-existing rows that pre-date this change carry only `sql` + `schemaHash`; the orchestrator falls through to placeholder defaults (`model: "cached"`, `confidence: 1.0`) so the trace block is still well-formed.
+- **Core value:** Bullet-proof, Honest latency, Free
+- **Why:** SK-TRUST-002 requires the trace block on every `/v1/ask` response, cache-hit or miss. Recomputing `model` / `confidence` on hit would either re-run the planner (defeating the cache) or fabricate a placeholder (lying about who emitted the plan). Caching the planner's identity alongside the SQL is the only honest answer that preserves the cache's cost win.
+- **Consequence in code:** `apps/api/src/ask/plan-cache.ts` extends `CachedPlan` with the two optional fields; `apps/api/src/ask/orchestrate.ts` populates them on cache write (post-successful exec per SK-ASK-015) and reads them on cache hit. Fields are optional so the JSON parser doesn't reject KV rows written before this decision.
+- **Alternatives rejected:**
+  - Re-run the planner on cache-hit to "refresh" the trace fields — re-introduces the LLM cost the cache exists to avoid.
+  - Hardcode `model: "cached"` on every hit — strips the "who emitted this plan" signal from the trace; debugging a bad plan loses its origin.
+  - Bump the KV key prefix to evict pre-SK-TRUST-002 entries — discards 30 days of warm cache for two optional fields.
+- **Source:** [SK-TRUST-002](../trust-ux/FEATURE.md) (the response-side decision this serves)
+
 ## GLOBALs governing this feature
 
 Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; index in [`docs/decisions.md`](../../decisions.md)). The list below names the rules that constrain this feature; any feature-local commentary is nested under the rule.
