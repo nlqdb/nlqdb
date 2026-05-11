@@ -183,7 +183,7 @@ agent context bleed
 ([Giskard](https://www.giskard.ai/knowledge/cross-session-leak-when-your-ai-assistant-becomes-a-data-breach)).
 
 **Where applied:** Phase 1 puts every user db on a single shared
-Neon branch as a schema (per `./architecture.md §10`); the connection-pool
+Neon branch as a schema (per `./phase-plan.md`); the connection-pool
 sets `SET LOCAL search_path` to the tenant's schema and the role
 has no `USAGE` on other schemas. RLS policies guard every row.
 Cross-tenant leak requires three independent failures (search_path,

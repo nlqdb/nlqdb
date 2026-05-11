@@ -12,7 +12,7 @@ when-to-load:
 **One-liner:** Marketing + product web app — onboarding, anonymous-mode default, demo dataset.
 **Status:** partial (Phase 1 — sign-in UI, chat surface, anon-mode web flow remaining; these are the Phase 1 exit gate)
 **Owners (code):** `apps/web/**`
-**Cross-refs:** docs/architecture.md §3.1 (marketing site) · docs/architecture.md §3.2 (platform web app) · docs/runbook.md §10 (P1, P3, P5) · docs/architecture.md §10 §4 (Phase 1 web slices)
+**Cross-refs:** docs/architecture.md §3.1 (marketing site) · docs/architecture.md §3.2 (platform web app) · docs/runbook.md §10 (P1, P3, P5) · docs/phase-plan.md §2 (Phase 1 web slices)
 
 ## Touchpoints — read this skill before editing
 
@@ -89,7 +89,7 @@ when-to-load:
 - **Decision:** Sign-in cookie is `__Secure-session` (HttpOnly, Secure, SameSite=Lax) with `Domain=nlqdb.com` so the same session covers `nlqdb.com` and `app.nlqdb.com`. `__Host-` was the earlier draft but is incompatible with `Domain=`; restoring it would require same-origin chat (e.g. bundling `apps/web` into the API Worker).
 - **Core value:** Seamless auth, Bullet-proof, Effortless UX
 - **Why:** Users sign in on the marketing site and continue to the product on a subdomain — one identity (`GLOBAL-008`) requires one cookie that spans both. `__Host-` is strictly more secure but it forbids the `Domain=` attribute; the cross-subdomain story is the right tradeoff for Phase 1. The decision is documented because it's a deliberate downgrade from a previous draft; future re-architecting (same-origin chat) can restore `__Host-`.
-- **Consequence in code:** Better Auth config sets `crossSubDomainCookies: true`; the cookie name in tests is `__Secure-session`. Any change to same-origin must restore `__Host-` in the same PR. Documented in `docs/architecture.md §10 §4`.
+- **Consequence in code:** Better Auth config sets `crossSubDomainCookies: true`; the cookie name in tests is `__Secure-session`. Any change to same-origin must restore `__Host-` in the same PR. Documented in `docs/phase-plan.md §2`.
 - **Alternatives rejected:**
   - Keep `__Host-` and force same-origin chat now — too much architecture churn for Phase 1.
   - Issue a separate cookie per subdomain — fragments identity, breaks `GLOBAL-008`.
@@ -123,13 +123,15 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 - **GLOBAL-011** — Honest latency — show the live trace; never spinner-lie.
 - **GLOBAL-012** — Errors are one sentence with the next action.
 - **GLOBAL-020** — No "pick a region", no config files in the first 60s.
+- **GLOBAL-023** — Trust UX baseline.
+  - *In this skill:* the chat panel renders the diff inline before commit (per `SK-TRUST-001`), the trace pane sits below the answer with collapsed-by-default state (per `SK-TRUST-002`), and low-confidence refusals surface as click-to-disambiguate chips (per `SK-TRUST-003`). See [`trust-ux/FEATURE.md`](../trust-ux/FEATURE.md).
 
 ## Open questions / known unknowns
 
 - **Promote session cookie name to literal `__Host-…session`.** Same-origin chat shipped in `SK-WEB-009`, so the architectural prerequisite is already met. The remaining blocker is Better Auth v1.6.9, which hardcodes a `__Secure-` prefix in `cookies/index.mjs:30` with no override. Options: upgrade Better Auth to a version that exposes the prefix as configurable, post-process every `Set-Cookie` header at the worker edge, or fork the cookies layer. Defer until Better Auth ships a fix or the cookie name needs to satisfy a specific audit.
 - **Sharing a query result by link.** P1-priority surface per `docs/runbook.md §10` — implementation slice not yet scoped.
 - **CSV upload.** Required for P3 (data-curious analyst) per `docs/runbook.md §10`. Deferred to Phase 2 alongside CLI.
-- **Plausible vs Plausible-self-hosted.** `docs/architecture.md §3.1` says "Plausible, self-hosted"; `docs/architecture.md §10` lists Plausible without qualifier. Reconcile when wiring web analytics.
+- **Plausible vs Plausible-self-hosted.** `docs/architecture.md §3.1` says "Plausible, self-hosted"; `docs/phase-plan.md` lists Plausible without qualifier. Reconcile when wiring web analytics.
 - **Marketing-site live ticker source-of-truth.** Data-pipe (which sample, what redaction, which OTel attributes) undecided.
 
 ## Happy path walkthroughs

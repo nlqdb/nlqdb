@@ -1,11 +1,21 @@
-# Future plan — Semantic-layer adoption (Phase 2)
+# Future plan — Semantic-layer adoption
 
-> **Status:** planned for Phase 2. This doc carries forward the
+> **Status:** planned, **signal-gated**. This doc carries forward the
 > semantic-layer adoption plan from the deleted `docs/design.md §17`
 > (PR #81 consolidation). Promote any decision below into a `SK-HDC-NNN` /
 > `SK-ASK-NNN` block — or a `GLOBAL-NNN` if cross-cutting — once it's
 > firm. Per `P4 / D1` of `CLAUDE.md §2`, vague decisions are worse than
 > no decision; do not promote until the underlying choice is resolved.
+>
+> **Promotion trigger:** promote into a skill **when the `quality-eval`
+> harness (see [`quality-eval/FEATURE.md`](../features/quality-eval/FEATURE.md))
+> reports NL-to-SQL accuracy on the *un-scaffolded* path below 75% for
+> two consecutive weekly runs.** Until that threshold trips, the
+> auto-baseline emitted by `db.create` (see
+> [`architecture.md §3.6.3`](../architecture.md)) is the only
+> semantic-layer surface. This replaces the previous time-based
+> "Phase 2" placement with a signal-based one — per the
+> [`phase-plan.md §6`](../phase-plan.md) trigger-not-phase doctrine.
 
 **Cross-refs:**
 - [`docs/architecture.md §3.6.3`](../architecture.md) — auto-generated semantic-layer moat at create time (the seed)

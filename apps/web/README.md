@@ -1,7 +1,7 @@
 # apps/web — Astro marketing site
 
 Phase 1. Static-first Astro deployed via Cloudflare **Workers Static
-Assets** at `nlqdb.com`. Lighthouse target 100/100/100/100 (docs/architecture.md §10,
+Assets** at `nlqdb.com`. Lighthouse target 100/100/100/100 (docs/phase-plan.md,
 docs/architecture.md §3.1).
 
 Currently shipping:

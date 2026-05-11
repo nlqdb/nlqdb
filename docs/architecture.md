@@ -441,81 +441,11 @@ jobs:
 
 ## 10. Phase plan
 
-Operative rules: ship the on-ramp first; vertical slices not horizontal layers; each phase has a measurable exit gate; strict-$0 through Phase 1; dogfood from Phase 0.
+Moved to its own file to keep this doc under the 20 KB D4 shard cap.
+The phase plan is the canonical roadmap: items per phase, exit gates,
+the §6 monetization trigger that supersedes the old "Stripe in Phase 2".
 
-### Phase 0 — Foundations
-
-**Theme:** the stack stands up end-to-end for one developer. No traffic.
-
-- Monorepo with Bun workspaces (`apps/web`, `apps/api`, `packages/…`, `cli/`).
-- Cloudflare Workers + KV + D1 + R2 provisioned via wrangler from CI.
-- LLM adapter (`classify|plan|summarize|embed`) with strict-$0 provider chain.
-- Plan cache in KV keyed by `(schema_hash, query_hash)`.
-- Auth scaffold: Better Auth, magic link + GitHub OAuth, anonymous-mode adoption.
-- One Postgres adapter (Neon HTTP) + schema-per-DB tenancy.
-- `POST /v1/ask` orchestrator (read/write path) end-to-end.
-
-No public onboarding in Phase 0 by design — auth API ships ahead of its UI.
-
-**Exit gate:** curl to `/v1/ask` against a fixture db returns a real answer in <2s p50; CI green in <90s; provider failover exercised; $0 spent.
-
-### Phase 1 — On-ramp (public soft launch)
-
-**Theme:** the goal-first 60-second flow works for a stranger.
-
-- Marketing site `nlqdb.com` (static Astro, AEO basics, JSON-LD, `llms.txt`).
-- Chat surface `nlqdb.com/app` — streaming, three-part response (answer/data/trace), Cmd+K, Cmd+/ trace toggle.
-- Anonymous-mode end-to-end (72h localStorage token; adopt via one SQL row on sign-in).
-- Sign-in: magic link + GitHub OAuth; session cookie `__Secure-session`.
-- Hosted db.create — typed-plan + Zod validator + deterministic compiler + Neon provisioner.
-- `<nlq-data>` v0 — `goal=` attribute; templates `table`, `list`, `kv`.
-- Copy-snippet: every chat-generated embed has `pk_live_<dbId>` pre-inlined.
-- API keys: `pk_live_` (per-db, read-only) + `sk_live_` (account-scoped) from dashboard.
-- Resend (magic link), Sentry, Plausible, LogSnag wired.
-
-**Exit gate:** 4/5 unguided user-tests complete 60s on-ramp; p50 < 400ms (cache hit); p95 < 1.5s (cache miss); Lighthouse 100/100/100/100; still $0/mo.
-
-### Phase 2 — Agent + developer surfaces
-
-**Theme:** make it a developer ecosystem.
-
-- CLI `nlq` (Go): `nlq new`, bare `nlq "…"`, device-code auth, OS-keychain storage, silent refresh.
-- MCP server: hosted (`mcp.nlqdb.com`, Cloudflare Worker + Durable Objects) + local stdio (`@nlqdb/mcp`); `nlq mcp install` auto-detect.
-- `<nlq-action>` write-counterpart element.
-- CSV upload in chat.
-- Stripe live (Hobby $10); Lago + Listmonk on Fly.
-- Docs site `docs.nlqdb.com`.
-- Custom domains for embeds via Cloudflare for SaaS (first 100 zones free).
-
-**Exit gate:** MCP installed in 3+ distinct host apps; 1 agent product publicly uses nlqdb as memory; 3 non-engineers complete CSV analysis <10 min unassisted; 5 paying Hobby customers; inference cost <$1/mo per paying customer.
-
-### Phase 3 — The engine (the moat)
-
-- Query Log → Workload Analyzer → Migration Orchestrator.
-- ClickHouse via Tinybird as second engine (analytics; daily reshape via Pipes).
-- Pro tier live ($25/mo usage-based).
-- Self-hosted classifier on single A10G Modal once ~50k queries/day.
-- Continuous backups to R2 with PITR (7d free, 30d Hobby+).
-- Team workspaces.
-- Self-host container image at `ghcr.io/nlqdb/api`.
-
-**Exit gate:** ≥100 successful auto-migrations with zero user-visible downtime; 50 paying customers across tiers.
-
-### Phase 4+ — Beyond v1
-
-- BYO Postgres (`POST /v1/db/connect`) — shape locked in §3.6.7.
-- Enterprise (SSO, audit log, on-prem).
-- More engines (ClickHouse, TimescaleDB, Typesense, pgvector at scale).
-- `<nlq-stream>` real-time element.
-
-### Always-on (cross-phase)
-
-- Build-in-public cadence: 1 long-form blog/week, 3 threads/week.
-- Security hygiene: Trivy + CodeQL on every PR; secret rotation quarterly; Dependabot monthly.
-- Inference cost monitoring: weekly Grafana; if any free provider hits 70% of daily quota for 3 days → light up paid tier.
-- Free-tier abuse: per-IP + per-account rate limits day 1; PoW on signup if needed.
-- Quarterly forced LLM failover in production for 1h.
-- Weekly automated backup-restore drill.
+→ [**`./phase-plan.md`**](./phase-plan.md)
 
 ---
 

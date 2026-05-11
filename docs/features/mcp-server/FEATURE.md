@@ -12,7 +12,7 @@ when-to-load:
 **One-liner:** MCP server + `nlq mcp install` host detection (Claude Desktop, Cursor, etc.).
 **Status:** implemented (Phase 2)
 **Owners (code):** `packages/mcp/**`
-**Cross-refs:** docs/architecture.md §3.4 (MCP server) · docs/architecture.md §3 (MCP server row) · docs/architecture.md §10 §5 (Phase 2 mcp slice)
+**Cross-refs:** docs/architecture.md §3.4 (MCP server) · docs/architecture.md §3 (MCP server row) · docs/phase-plan.md (Phase 2 mcp slice)
 
 ## Touchpoints — read this skill before editing
 
@@ -112,6 +112,8 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 - **GLOBAL-008** — One Better Auth identity across all surfaces.
 - **GLOBAL-010** — Credentials live in the OS keychain; `NLQDB_API_KEY` is the CI escape hatch.
 - **GLOBAL-017** — Two endpoints, two CLI verbs, one chat box — one way to do each thing.
+- **GLOBAL-023** — Trust UX baseline.
+  - *In this skill:* tools that mutate (writes / DDL) return `confirm_required` content with the diff body (per `SK-TRUST-001`). Audit each host (Claude Desktop, Cursor, Zed) for diff-rendering ergonomics — if a host hides the diff body, the surface fails the `SK-TRUST-001` contract on that host. See [`trust-ux/FEATURE.md`](../trust-ux/FEATURE.md) Open questions.
 
 ## Open questions / known unknowns
 

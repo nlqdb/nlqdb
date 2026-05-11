@@ -132,9 +132,11 @@ manually before editing.)
 | `apps/api/src/routes/auth/**`, `packages/auth-internal/**` | `docs/features/auth/FEATURE.md` |
 | `apps/api/src/keys/**`, anything `api-key` related | `docs/features/api-keys/FEATURE.md` |
 | `apps/api/src/ask/**`, the `/v1/ask` pipeline | `docs/features/ask-pipeline/FEATURE.md` |
+| anything touching write/DDL diff preview, `confidence`, or the `trace` block on responses | `docs/features/trust-ux/FEATURE.md` |
 | `apps/api/src/db-create/**`, `apps/api/src/ask/classifier.ts`, `apps/api/src/ask/sql-validate-ddl.ts` | `docs/features/hosted-db-create/FEATURE.md` |
 | `apps/api/src/plan-cache/**`, plan storage | `docs/features/plan-cache/FEATURE.md` |
 | `packages/llm/**`, model routing, prompts | `docs/features/llm-router/FEATURE.md` |
+| `tools/eval/**`, BIRD/Spider harness, NL-accuracy benchmarks | `docs/features/quality-eval/FEATURE.md` |
 | `apps/api/src/ask/sql-validate.ts`, SQL allowlist | `docs/features/sql-allowlist/FEATURE.md` |
 | `packages/db/**` | `docs/features/db-adapter/FEATURE.md` |
 | anything touching `schema_hash`, schema fingerprinting | `docs/features/schema-widening/FEATURE.md` |
@@ -164,8 +166,10 @@ working in one directory.
 |---|---|
 | [`docs/decisions.md`](docs/decisions.md) + [`docs/decisions/`](docs/decisions/) | **Canonical** `GLOBAL-NNN` decisions. Index in `decisions.md`; one body per file under `decisions/`. Read before editing skills. |
 | [`docs/skill-conventions.md`](docs/skill-conventions.md) | How `docs/features/` is structured. Read before adding/editing a skill. |
-| [`docs/architecture.md`](docs/architecture.md) | System architecture, surface specs, phase plan, tech-stack rationale, risks. |
+| [`docs/architecture.md`](docs/architecture.md) | System architecture, surface specs, tech-stack rationale, risks. Phase plan extracted to `phase-plan.md`. |
+| [`docs/phase-plan.md`](docs/phase-plan.md) | **Canonical phase plan** — per-phase items, exit gates, the §6 monetization trigger that supersedes "Stripe in Phase 2". |
 | [`docs/runbook.md`](docs/runbook.md) | Operations: env vars, secrets, deploy, recovery. Design-partner reference (§10). |
+| [`docs/founder-playbook.md`](docs/founder-playbook.md) | Design-partner recruitment, Sean Ellis interview script, inbound triage SLA — the founder-time work that lives next to the engineering plan. |
 | [`docs/performance.md`](docs/performance.md) | Span/metric/label catalog + perf goals. |
 | [`docs/guidelines.md`](docs/guidelines.md) | Code-review heuristics, the four habits. |
 | [`docs/progress.md`](docs/progress.md) | Platform integration tiers (P0–P3). |

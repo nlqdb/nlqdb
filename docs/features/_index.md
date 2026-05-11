@@ -43,9 +43,11 @@ Cross-cutting decisions cited by skills: [`docs/decisions.md`](../decisions.md).
 
 | Skill | One-liner | Phase |
 |---|---|---|
-| [`hosted-db-create`](./hosted-db-create/FEATURE.md) | Hosted db.create — typed-plan SchemaPlan, deterministic DDL compiler, Zod + libpg_query validation, provisioner, semantic layer at create-time. | Phase 1 — design locked in `docs/architecture.md` §3.6; sub-modules listed in `docs/architecture.md §10` §4 |
+| [`trust-ux`](./trust-ux/FEATURE.md) | Diff preview on writes, visible SQL trace on every response, refuse-on-low-confidence. | Phase 1.5 — design locked in `GLOBAL-023`; implementation spans `ask-pipeline`, `web-app`, `cli`, `elements`, `mcp-server`. |
+| [`hosted-db-create`](./hosted-db-create/FEATURE.md) | Hosted db.create — typed-plan SchemaPlan, deterministic DDL compiler, Zod + libpg_query validation, provisioner, semantic layer at create-time. | Phase 1 — design locked in `docs/architecture.md` §3.6; sub-modules listed in `docs/phase-plan.md §2` |
 | [`cli`](./cli/FEATURE.md) | `nlq` verb surface, OS-keychain credential storage. | Phase 2 — design locked in `docs/architecture.md` §3.3 / §4.3 / §14.3; no code yet |
-| [`premium-tier`](./premium-tier/FEATURE.md) | Premium-models add-on — opt-in frontier-model routing, pay-per-token, surface-parity model picker, BYOK decision tree. | Phase 2 pricing-row design-locked in `docs/architecture.md` §6; Phase 3 ships alongside Pro tier |
+| [`premium-tier`](./premium-tier/FEATURE.md) | Premium-models add-on — opt-in frontier-model routing, pay-per-token, surface-parity model picker, BYOK decision tree. | Signal-gated (post Phase 1.5 demand-signal trip per `phase-plan.md §6`); design-locked in `docs/architecture.md` §6 |
+| [`quality-eval`](./quality-eval/FEATURE.md) | NL-to-SQL accuracy benchmarking — BIRD/Spider; weekly cron; thresholds gate semantic-layer promotion and confidence-floor tuning. | Phase 3 — design-locked; no harness code yet. |
 | [`multi-engine-adapter`](./multi-engine-adapter/FEATURE.md) | Adapters beyond Postgres. | Phase 3 |
 
 ## Adding a new skill

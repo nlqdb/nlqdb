@@ -12,7 +12,7 @@ when-to-load:
 **One-liner:** Stripe webhook ingest, subscription state, idempotent processing, R2 archive.
 **Status:** implemented (Slice 7 — PR #33; live-mode flip in Phase 2)
 **Owners (code):** `apps/api/src/stripe/**`, `apps/api/src/index.ts`, `POST /v1/stripe/webhook`
-**Cross-refs:** docs/architecture.md §6 (pricing) · docs/architecture.md §10 §5 (Phase 2 stripe slice) · docs/runbook.md §6 (webhook + R2 archive) · docs/performance.md §3.1 (`nlqdb.webhook.stripe` span) · §4 Slice 7 (instrumentation contract — `billing.subscription_created` / `billing.subscription_canceled` map 1:1; no `trial.*`) · §5 (100 % trace sampling on Stripe webhook) · `apps/api/src/stripe/webhook.ts` (canonical pipeline doc-comment)
+**Cross-refs:** docs/architecture.md §6 (pricing) · docs/phase-plan.md (Phase 2 stripe slice) · docs/runbook.md §6 (webhook + R2 archive) · docs/performance.md §3.1 (`nlqdb.webhook.stripe` span) · §4 Slice 7 (instrumentation contract — `billing.subscription_created` / `billing.subscription_canceled` map 1:1; no `trial.*`) · §5 (100 % trace sampling on Stripe webhook) · `apps/api/src/stripe/webhook.ts` (canonical pipeline doc-comment)
 
 ## Touchpoints — read this skill before editing
 
@@ -58,7 +58,7 @@ when-to-load:
 - **Decision:** Every Phase 2 `Checkout.Session` MUST be created with `mode: 'subscription'` and `client_reference_id: userId`. The `checkout.session.completed` handler reads `client_reference_id` to link the Stripe customer to an `nlqdb` user; missing or non-string `client_reference_id` → log `checkout_completed_missing_ids` and skip rather than create an orphan `customers` row.
 - **Core value:** Bullet-proof, Simple
 - **Why:** Stripe-side metadata is the only signal we control at Checkout time; an unlinked subscription leaves a customer who paid but has no nlqdb capability. Skipping with a warn log is recoverable (operator can backfill); creating an orphan row is not (the next event silently writes to the wrong user).
-- **Consequence in code:** The Checkout Session creation endpoint (Phase 2 slice — see `docs/architecture.md §10 §5`) is required by review to set both fields. `handleCheckoutCompleted` defaults `status = 'incomplete'` until the subsequent `customer.subscription.created` event fires — checkout completion alone is not enough state to call the customer "active". The pair `(user_id, stripe_customer_id, stripe_subscription_id)` lives in the `customers` D1 table with `user_id` as the unique key.
+- **Consequence in code:** The Checkout Session creation endpoint (Phase 2 slice — see `docs/phase-plan.md`) is required by review to set both fields. `handleCheckoutCompleted` defaults `status = 'incomplete'` until the subsequent `customer.subscription.created` event fires — checkout completion alone is not enough state to call the customer "active". The pair `(user_id, stripe_customer_id, stripe_subscription_id)` lives in the `customers` D1 table with `user_id` as the unique key.
 - **Alternatives rejected:**
   - Match by email — emails change, are non-unique across Stripe accounts, and arrive after the session anyway.
   - Pass `userId` via `metadata` instead of `client_reference_id` — `client_reference_id` is the dedicated Stripe field with stronger lifecycle guarantees and is surfaced in the Dashboard.

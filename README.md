@@ -48,15 +48,35 @@ Pre-alpha. The bar below is the path from "Phase 0 backend exists" to
 "high-quality production-grade product".
 
 ```
-Phase 0  Foundations         ████████████████████  10/10  ✓
-Phase 1  On-ramp              ████████░░░░░░░░░░░░   4/11  (sign-in, chat, anon-mode, db.create remaining)
-Phase 2  Agent + dev surfaces ████░░░░░░░░░░░░░░░░   1/7   (@nlqdb/sdk shipped)
-Phase 3  Multi-engine engine  ░░░░░░░░░░░░░░░░░░░░   0/5
-Phase 4  Enterprise polish    ░░░░░░░░░░░░░░░░░░░░   0/6
+Phase 0    Foundations           ████████████████████  10/10  ✓
+Phase 1    On-ramp                ████████░░░░░░░░░░░░   4/11  (sign-in, chat, anon-mode, db.create remaining)
+Phase 1.5  Trust + Telemetry      ░░░░░░░░░░░░░░░░░░░░   0/3   (gates Phase 2 — see phase-plan.md §3)
+Phase 2    Distribution           ████░░░░░░░░░░░░░░░░   1/7   (@nlqdb/sdk basic methods shipped; MCP before CLI)
+Phase 3    Multi-engine engine    ░░░░░░░░░░░░░░░░░░░░   0/5
+Phase 4    Enterprise polish      ░░░░░░░░░░░░░░░░░░░░   0/6
+Gated      Monetization + scaling ─ ─ ─ ─ ─ ─ ─ ─ ─ ─    trigger-gated, not phase-gated
 ```
 
 Each step is 2–4 words on purpose — full spec lives in
-[`./docs/architecture.md §10`](./docs/architecture.md#10-phase-plan) and [`./docs/history/infrastructure-setup.md`](./docs/history/infrastructure-setup.md).
+[`./docs/phase-plan.md`](./docs/phase-plan.md) (canonical) and
+[`./docs/history/infrastructure-setup.md`](./docs/history/infrastructure-setup.md).
+
+**Critical path right now:** Hosted db.create → Chat surface → Sign-in
+UI. The other Phase 1 ◯s (API keys page, `<nlq-action>`, hello-world)
+fall out of those three as soon as they land.
+
+### Surfaces at a glance
+
+| Surface | Status | Where |
+|---|---|---|
+| HTTP API (`POST /v1/ask`) | ✓ shipped | `apps/api/src/ask/**` |
+| `<nlq-data>` HTML element | ✓ shipped | `packages/elements/**` |
+| `@nlqdb/sdk` TypeScript | ✓ shipped (basic); `runSql` Phase 2 | `packages/sdk/**` |
+| Chat surface `nlqdb.com/app` | ◯ Phase 1 | `apps/web/**` |
+| MCP server | ◯ Phase 2 (first in the distribution slice) | `packages/mcp/**` |
+| CLI `nlq` (Go) | ◯ Phase 2 (after MCP) | `cli/**` |
+
+Full integration matrix in [`docs/progress.md`](./docs/progress.md).
 
 ### Phase 0 — Foundations ✓
 
@@ -90,15 +110,30 @@ are a holding pattern; they ship away when all four remaining items land.
 - ◯ `<nlq-action>` writes (signed write-tokens)
 - ◯ Hello-world tutorial (canonical entry; satisfied by db.create)
 
-### Phase 2 — Agent + developer surfaces
+### Phase 1.5 — Trust + Telemetry (gates Phase 2)
 
-- ◯ CLI `nlq` (Go binary)
-- ◯ MCP server (hosted)
-- ◯ Framework wrappers (Next, Nuxt, React, Vue)
-- ✓ `@nlqdb/sdk` (typed client; `ask` / `listChat` / `postChat` + `NlqdbApiError`)
+The funnel converts and we know *why*. No new infra — the trust UX
+sits on the existing `/v1/ask` response shape; demand-signal events
+sit on the existing events pipeline. See [phase-plan.md §3](./docs/phase-plan.md).
+
+- ◯ Trust UX baseline ([`GLOBAL-023`](./docs/decisions/GLOBAL-023-trust-ux-baseline.md)): diff preview on writes/DDL · visible SQL trace on every response · refuse-on-low-confidence
+- ◯ Demand-signal telemetry ([`GLOBAL-024`](./docs/decisions/GLOBAL-024-demand-signal-telemetry.md)): typed product events on every "not yet" path
+- ◯ "Notify me when paid launches" CTA (the cheapest layer of the §6 monetization trigger)
+
+### Phase 2 — Distribution (agent + developer surfaces)
+
+Ordered intentionally — MCP first (the 2026 distribution channel),
+CLI second, SDK raw-query parity ships with the CLI. Stripe live +
+Lago are no longer Phase 2 deliverables; they ship on the §6
+monetization trigger, not on the phase rollover.
+
+- ◯ MCP server (hosted at `mcp.nlqdb.com` + local stdio `@nlqdb/mcp`)
+- ◯ CLI `nlq` (Go binary; includes `nlq run` raw-SQL escape hatch per `GLOBAL-015`)
+- ✓ `@nlqdb/sdk` basic methods (`ask` / `listChat` / `postChat`); ◯ `runSql()` ships with the CLI per `GLOBAL-003`
+- ◯ `<nlq-action>` writes
 - ◯ CSV upload
-- ◯ Stripe live + Checkout + Portal
-- ◯ Usage metering (Lago)
+- ◯ Framework wrappers (Next, Nuxt, React, Vue)
+- ◯ Docs site `docs.nlqdb.com`
 
 ### Phase 3 — Multi-engine engine (the moat)
 
@@ -136,11 +171,20 @@ obsolete by the move to GH Actions for every surface.
 - ◯ LogSnag account → drop `LOGSNAG_TOKEN` + `LOGSNAG_PROJECT` in `.envrc`
 - ◯ Plausible self-hosted on Fly (web analytics, free)
 
-**Phase 2 — before charging anyone:**
+**Signal-gated — before charging anyone (Stripe live + Lago + Listmonk):**
 
-- ◯ Stripe go-live: production keys, Stripe Tax enable
-- ◯ Lago on Fly (self-hosted, free) for usage metering
-- ◯ Listmonk on Fly (self-hosted, free) for marketing email
+These ship when one of the [`phase-plan.md §6`](./docs/phase-plan.md)
+demand-signal triggers trips, not on the Phase 2 rollover:
+
+- ≥ 50 unique "notify me when paid launches" submissions in 30 days, or
+- ≥ 5 unsolicited inbound asking how to pay, or
+- ≥ 30% Stripe-test-mode Checkout completion over 50 sessions.
+
+Until one trips:
+
+- ◯ Stripe go-live: production keys, Stripe Tax enable *(deferred)*
+- ◯ Lago on Fly (self-hosted, free) for usage metering *(deferred)*
+- ◯ Listmonk on Fly (self-hosted, free) for marketing email *(deferred)*
 - ◯ Apply for Anthropic / OpenAI / Modal / Together startup credits *(non-blocking)*
 - ◯ npm publish workflow for `@nlqdb/elements`, `@nlqdb/sdk` *(when v1 is real)*
 

@@ -84,4 +84,4 @@ bun run --cwd packages/llm test
 ```
 
 Tests inject a fake `fetch` per provider — no live API keys required.
-Per the Phase 0 slice plan in `docs/architecture.md §10`, every provider has a test for every operation.
+Per the Phase 0 slice plan in `docs/phase-plan.md`, every provider has a test for every operation.

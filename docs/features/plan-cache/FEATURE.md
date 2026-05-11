@@ -12,7 +12,7 @@ when-to-load:
 **One-liner:** Content-addressed plan storage keyed by (schema_hash, query_hash).
 **Status:** implemented
 **Owners (code):** `apps/api/src/ask/plan-cache.ts`
-**Cross-refs:** docs/architecture.md §0 (Bullet-proof checklist), §2 (architecture), §7 (free-tier stack), §8 (cost-control rules), §9 (cache invalidation row) · docs/architecture.md §10 Slice 6 (`/v1/ask` E2E) · docs/performance.md §2.1, §3.1, §3.2
+**Cross-refs:** docs/architecture.md §0 (Bullet-proof checklist), §2 (architecture), §7 (free-tier stack), §8 (cost-control rules), §9 (cache invalidation row) · docs/performance.md §4 Slice 6 (`/v1/ask` E2E) · docs/performance.md §2.1, §3.1, §3.2
 
 ## Touchpoints — read this skill before editing
 
@@ -79,7 +79,7 @@ when-to-load:
 - **Decision:** Every plan-cache lookup emits the canonical observability triple from `docs/performance.md §3`: a `nlqdb.cache.plan.lookup` span with label `hit=true|false`, plus `nlqdb.cache.plan.hits.total` / `nlqdb.cache.plan.misses.total` counters. Writes emit `nlqdb.cache.plan.write` spans.
 - **Core value:** Honest latency, Bullet-proof, Fast
 - **Why:** The cache is the largest cost lever in the system (per `docs/architecture.md §8`: "60–80% cache hit on mature workloads"). Without per-lookup hit/miss telemetry we can't tell whether a latency regression is the cache rate dropping or the LLM slowing down. Span + counter pair gives both per-request detail and aggregate counts.
-- **Consequence in code:** `cacheLookup()` is wrapped in the canonical span; the `hit` label is set before exit. Counter increments are unconditional (one of {`hits`, `misses`} fires every time). The spans/counters land together with the slice they belong to (`docs/architecture.md §10` Slice 6 instrumentation table).
+- **Consequence in code:** `cacheLookup()` is wrapped in the canonical span; the `hit` label is set before exit. Counter increments are unconditional (one of {`hits`, `misses`} fires every time). The spans/counters land together with the slice they belong to (`docs/performance.md §4` Slice 6 instrumentation table).
 - **Alternatives rejected:** Lookup-counter only (no span) — loses the per-request latency breakdown. Span only (no counter) — loses cheap aggregate reporting; counters land in dashboards without span-aggregation cost.
 - **Source:** docs/performance.md §3.1, §3.2 · [GLOBAL-014](../../decisions/GLOBAL-014-otel-on-external-calls.md)
 
