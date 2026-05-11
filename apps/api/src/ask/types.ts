@@ -84,6 +84,12 @@ export type AskError =
   | { status: "sql_rejected"; reason: string }
   | { status: "llm_failed" }
   | { status: "rate_limited"; limit: number; count: number; resetAt: number }
+  // SK-ASK-016 — the LLM-emitted SQL references a table not present in
+  // the target DB's schema. Pre-flight catches it before exec; the 42P01
+  // exec backstop catches the cases pre-flight misses. HTTP 409 — the
+  // goal was valid but aimed at the wrong DB; the surface can offer
+  // "create a fresh DB instead" without dead-ending on a generic 502.
+  | { status: "schema_mismatch"; referencedTables: string[]; schemaTables: string[] }
   | ClarifyRequired;
 
 // Thrown by `exec` callbacks when a DB row's `connection_secret_ref`
@@ -97,6 +103,29 @@ export class DbConfigError extends Error {
   constructor(message: string) {
     super(message);
     this.name = "DbConfigError";
+  }
+}
+
+// SK-ASK-016 — the LLM-emitted SQL references a table the target DB
+// doesn't have. Thrown from the orchestrator's pre-flight check (where
+// `referencedTables` / `schemaTables` are both populated) or from the
+// exec catch on PG `42P01` (where we only know the SQL ran against a
+// missing relation; arrays are empty). Outer catch maps to the typed
+// `schema_mismatch` envelope; SK-ASK-013's retry loop bails after one
+// attempt — retrying the same SQL produces the same error.
+export class SchemaMismatchError extends Error {
+  readonly code = "schema_mismatch" as const;
+  readonly referencedTables: string[];
+  readonly schemaTables: string[];
+  constructor(referencedTables: string[], schemaTables: string[]) {
+    super(
+      referencedTables.length > 0
+        ? `SQL references table(s) not in schema: ${referencedTables.join(", ")}`
+        : "SQL references a relation the target DB does not have",
+    );
+    this.name = "SchemaMismatchError";
+    this.referencedTables = referencedTables;
+    this.schemaTables = schemaTables;
   }
 }
 

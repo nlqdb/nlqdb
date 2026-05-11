@@ -31,6 +31,7 @@ import {
   type OrchestrateEvent,
   type PipeAdvisory,
   type QueryResult,
+  SchemaMismatchError,
 } from "./types.ts";
 
 export type OrchestrateDeps = {
@@ -247,6 +248,25 @@ export async function orchestrateAsk(
 
   await safeEmit({ type: "plan", sql: planSql, cached: cacheHit });
 
+  // SK-ASK-016 Defense A — pre-flight schema check. A cheap regex over
+  // the stored DDL catches the common case where the LLM emits SQL
+  // against a hallucinated table before we pay exec latency. Skipped
+  // gracefully when `schemaText` is null (rows pre-dating migration 0010);
+  // Defense B below still fires on the 42P01 from Postgres.
+  if (db.schemaText) {
+    const mismatch = checkSchemaTables(planSql, db.schemaText);
+    if (mismatch) {
+      return {
+        ok: false,
+        error: {
+          status: "schema_mismatch",
+          referencedTables: mismatch.referencedTables,
+          schemaTables: mismatch.schemaTables,
+        },
+      };
+    }
+  }
+
   let result: QueryResult;
   try {
     result = await withStageRetry(
@@ -258,6 +278,15 @@ export async function orchestrateAsk(
           // Config errors are non-recoverable — operator has to fix
           // the secret ref; retrying just delays surfacing the bug.
           if (err instanceof DbConfigError) throw new Nonrecoverable("db_misconfigured", err);
+          // SK-ASK-016 Defense B — PG `42P01 relation does not exist`.
+          // Retrying the same SQL produces the same error; bail after
+          // attempt 1. String match is the fallback when the Neon HTTP
+          // shim doesn't preserve the structured `.code` field.
+          const code = (err as { code?: string }).code;
+          const msg = err instanceof Error ? err.message : String(err);
+          if (code === "42P01" || /relation .* does not exist/i.test(msg)) {
+            throw new Nonrecoverable("schema_mismatch", new SchemaMismatchError([], []));
+          }
           throw err;
         }
       },
@@ -268,6 +297,16 @@ export async function orchestrateAsk(
       // Message would contain the secret ref name — don't leak it.
       // The span (db.query) records the exception for operator visibility.
       return { ok: false, error: { status: "db_misconfigured" } };
+    }
+    if (err instanceof SchemaMismatchError) {
+      return {
+        ok: false,
+        error: {
+          status: "schema_mismatch",
+          referencedTables: err.referencedTables,
+          schemaTables: err.schemaTables,
+        },
+      };
     }
     // Postgres errors include schema details; keep them server-side.
     return { ok: false, error: { status: "db_unreachable" } };
@@ -461,4 +500,28 @@ async function safeTouchRecentTables(
     // span already records the exception inside `store.touch`; nothing
     // for the orchestrator to do but stay quiet.
   }
+}
+
+// SK-ASK-016 Defense A — pre-flight check that every table referenced
+// in `planSql` exists in `schemaText`. Returns `null` when all tables
+// are present (no mismatch) or `{ referencedTables, schemaTables }`
+// when at least one is missing. SQL table extraction reuses
+// `extractTables` (also feeds the recent-tables MRU). Schema table
+// names are pulled from our own compiled DDL via a cheap regex —
+// faster than a full parse and the format is known (we wrote it).
+function checkSchemaTables(
+  sql: string,
+  schemaText: string,
+): { referencedTables: string[]; schemaTables: string[] } | null {
+  const referenced = extractTables(sql).map((t) => t.toLowerCase());
+  if (referenced.length === 0) return null;
+  const schemaSet = new Set<string>();
+  for (const match of schemaText.matchAll(
+    /CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?(?:"[^"]+"\.)?["]?(\w+)["]?/gi,
+  )) {
+    if (match[1]) schemaSet.add(match[1].toLowerCase());
+  }
+  const missing = referenced.filter((t) => !schemaSet.has(t));
+  if (missing.length === 0) return null;
+  return { referencedTables: missing, schemaTables: Array.from(schemaSet) };
 }
