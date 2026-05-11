@@ -13,7 +13,7 @@
 > - [`docs/architecture.md §0`](../architecture.md) — core values (Free, OSS, Simple, Effortless, Goal-first)
 > - [`docs/competitors.md`](../competitors.md) — current competitor scan (DB / NL-to-SQL / agent)
 > - [`docs/future/semantic-layer.md`](../future/semantic-layer.md) — same "exploratory, not yet promoted" template
-> - [`.claude/skills/observability/SKILL.md`](../../.claude/skills/observability/SKILL.md) — current OTel posture (we *emit* OTel; we don't *ingest* it)
+> - [`docs/features/observability/FEATURE.md`](../features/observability/FEATURE.md) — current OTel posture (we *emit* OTel; we don't *ingest* it)
 > - [`docs/research/open-questions.md §3`](../research/open-questions.md) — adjacent open question (NL as embeddable lib in users' apps)
 
 ---
@@ -122,16 +122,16 @@ A real 10× claim has to bundle several of these, not just NL chat.
 
 | Existing nlqdb piece | Reusable for o11y? | Notes |
 |---|---|---|
-| Goal-first NL → typed plan ([`ask-pipeline`](../../.claude/skills/ask-pipeline/SKILL.md)) | **High** — same shape, different DSL target. | Compile to `SQL-on-spans` (ClickHouse / DuckDB) or PromQL/LogQL. Existing `sql-allowlist` becomes a `query-allowlist`. |
-| Plan cache keyed by `(schema_hash, query_hash)` ([`plan-cache`](../../.claude/skills/plan-cache/SKILL.md)) | **High** — telemetry schemas widen exactly the same way (`schema-widening` skill applies). | Cache keys extend to `(otel_resource_hash, query_hash)`. |
-| LLM router with model presets + BYOK ([`llm-router`](../../.claude/skills/llm-router/SKILL.md), [`premium-tier`](../../.claude/skills/premium-tier/SKILL.md)) | **High** — direct reuse. | Per-incident model spend cap maps cleanly. |
-| Auth, rate-limit, idempotency, anonymous-mode ([`auth`](../../.claude/skills/auth/SKILL.md), [`rate-limit`](../../.claude/skills/rate-limit/SKILL.md), [`idempotency`](../../.claude/skills/idempotency/SKILL.md), [`anonymous-mode`](../../.claude/skills/anonymous-mode/SKILL.md)) | **High** — these are surface-agnostic. | "First trace ingested without signup" is the equivalent of anonymous-mode's "first query without signup." |
-| `<nlq-data>` web component ([`elements`](../../.claude/skills/elements/SKILL.md)) | **Medium** — `<nlq-chart>` / `<nlq-trace>` is a natural extension. Embedded SLO widgets on a status page is a clean use case. | Net new: streaming chart updates over SSE/WebSocket. |
-| MCP server ([`mcp-server`](../../.claude/skills/mcp-server/SKILL.md)) | **High** — the killer surface for "AI SRE" workflows. | An LLM agent doing incident triage via MCP is a unique angle vs Grafana GCX (which still requires a Grafana account + dashboard model). |
-| CLI (`nlq`) ([`cli`](../../.claude/skills/cli/SKILL.md)) | **Medium** — rebrand to `nlq tail`, `nlq why`, `nlq slo`. | Compelling demo: `nlq why "checkout p99 spike at 14:32"` returning trace IDs + correlated logs in one command. |
-| **Postgres / Neon as primary storage** ([`db-adapter`](../../.claude/skills/db-adapter/SKILL.md)) | **Low.** | OLTP Postgres is the wrong shape for time-series + spans. We'd need a real columnar engine — ClickHouse is the consensus pick across SigNoz/Uptrace/HyperDX. The `multi-engine-adapter` skill (Phase 3) was already the seam for this kind of expansion. |
+| Goal-first NL → typed plan ([`ask-pipeline`](../features/ask-pipeline/FEATURE.md)) | **High** — same shape, different DSL target. | Compile to `SQL-on-spans` (ClickHouse / DuckDB) or PromQL/LogQL. Existing `sql-allowlist` becomes a `query-allowlist`. |
+| Plan cache keyed by `(schema_hash, query_hash)` ([`plan-cache`](../features/plan-cache/FEATURE.md)) | **High** — telemetry schemas widen exactly the same way (`schema-widening` feature applies). | Cache keys extend to `(otel_resource_hash, query_hash)`. |
+| LLM router with model presets + BYOK ([`llm-router`](../features/llm-router/FEATURE.md), [`premium-tier`](../features/premium-tier/FEATURE.md)) | **High** — direct reuse. | Per-incident model spend cap maps cleanly. |
+| Auth, rate-limit, idempotency, anonymous-mode ([`auth`](../features/auth/FEATURE.md), [`rate-limit`](../features/rate-limit/FEATURE.md), [`idempotency`](../features/idempotency/FEATURE.md), [`anonymous-mode`](../features/anonymous-mode/FEATURE.md)) | **High** — these are surface-agnostic. | "First trace ingested without signup" is the equivalent of anonymous-mode's "first query without signup." |
+| `<nlq-data>` web component ([`elements`](../features/elements/FEATURE.md)) | **Medium** — `<nlq-chart>` / `<nlq-trace>` is a natural extension. Embedded SLO widgets on a status page is a clean use case. | Net new: streaming chart updates over SSE/WebSocket. |
+| MCP server ([`mcp-server`](../features/mcp-server/FEATURE.md)) | **High** — the killer surface for "AI SRE" workflows. | An LLM agent doing incident triage via MCP is a unique angle vs Grafana GCX (which still requires a Grafana account + dashboard model). |
+| CLI (`nlq`) ([`cli`](../features/cli/FEATURE.md)) | **Medium** — rebrand to `nlq tail`, `nlq why`, `nlq slo`. | Compelling demo: `nlq why "checkout p99 spike at 14:32"` returning trace IDs + correlated logs in one command. |
+| **Postgres / Neon as primary storage** ([`db-adapter`](../features/db-adapter/FEATURE.md)) | **Low.** | OLTP Postgres is the wrong shape for time-series + spans. We'd need a real columnar engine — ClickHouse is the consensus pick across SigNoz/Uptrace/HyperDX. The `multi-engine-adapter` feature (Phase 3) was already the seam for this kind of expansion. |
 | **Cloudflare Workers free tier** ([`GLOBAL-013`](../decisions.md)) | **Low for ingest hot path.** | OTLP ingest is sustained-throughput and CPU-bound on protobuf decoding. Workers' 30s CPU and 128 MB memory limits make it the wrong spot for the receiver. The **control plane** (auth, query, dashboards, alerts) still fits. The **data plane** wants a long-lived process — cheapest realistic option is ClickHouse Cloud or self-hosted ClickHouse on a small VPS, with an OTel collector in front. This breaks the "$0 to ship" story for any user with non-trivial volume. |
-| Observability skill ([`observability`](../../.claude/skills/observability/SKILL.md)) | **Inverted.** Today we *emit* OTel. The pivot makes us *ingest* it. | The span/metric catalogue at [`docs/performance.md`](../performance.md) becomes a dogfood demo dataset. |
+| Observability feature ([`observability`](../features/observability/FEATURE.md)) | **Inverted.** Today we *emit* OTel. The pivot makes us *ingest* it. | The span/metric catalogue at [`docs/performance.md`](../performance.md) becomes a dogfood demo dataset. |
 
 **Summary:** ~70% of the platform code is reusable. The expensive
 new build is the **data plane** (ClickHouse-class storage, OTLP
@@ -242,7 +242,7 @@ The bar to clear:
    charge for cardinality."*
 4. **Anonymous-mode for telemetry.** Paste an OTLP endpoint into
    your service config, ship traces in 30 seconds, no signup —
-   exactly the [`anonymous-mode`](../../.claude/skills/anonymous-mode/SKILL.md)
+   exactly the [`anonymous-mode`](../features/anonymous-mode/FEATURE.md)
    bar applied to o11y. Nobody else does this.
 5. **Agent-native incidents.** MCP tools: `incident.why(at: ts)`,
    `incident.diff(deploy_a, deploy_b)`, `slo.burn(service)`.
@@ -264,7 +264,7 @@ incumbents shipping AI features on existing distribution.
 
 ## 7. Risks & open questions
 
-These need answers before any of this gets promoted into a skill or
+These need answers before any of this gets promoted into a feature or
 GLOBAL.
 
 1. **Storage economics on Cloudflare-only infra.** ClickStack sets

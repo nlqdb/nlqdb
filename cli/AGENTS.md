@@ -3,11 +3,11 @@
 `nlq` command-line tool. Verbs ask/run, OS-keychain credentials, MCP install helper.
 
 > This is the local guide. Read root [`AGENTS.md`](../AGENTS.md) first
-> for the three behavioral principles, the full path → skill map, and
+> for the three behavioral principles, the full path → feature map, and
 > the project-wide tech stack. This file narrows that guide to
 > `cli/`.
 
-## Skills relevant to this area
+## Features relevant to this area
 
 - [`cli`](../docs/features/cli/FEATURE.md) — mandatory pre-read for changes that touch the feature.
 - [`sdk`](../docs/features/sdk/FEATURE.md) — mandatory pre-read for changes that touch the feature.

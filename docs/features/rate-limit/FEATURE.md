@@ -15,7 +15,7 @@ when-to-load:
 **Owners (code):** `apps/api/src/ask/rate-limit.ts`, `apps/api/src/demo.ts`
 **Cross-refs:** docs/architecture.md §6 (free-tier rate-limit guarantees) · docs/architecture.md §3.5 (`pk_live_*` origin-pinned) · docs/architecture.md §3.6.8 (rate limits on create) · docs/phase-plan.md (per-IP + per-account "Day 1") · docs/phase-plan.md / §11.5 (free-tier abuse) · docs/performance.md §2.1 stage 3 / §2.2 stage 3 (KV-read budget — 5 ms p50 / 15 ms p99) · §3.1 (`nlqdb.ratelimit.check` span) · §4 Slice 6
 
-## Touchpoints — read this skill before editing
+## Touchpoints — read this feature before editing
 
 - `apps/api/src/ask/rate-limit.ts` (per-user D1 limiter for `/v1/ask`)
 - `apps/api/src/anon-rate-limit.ts` (per-IP KV limiter for the anon `/v1/ask` path)
@@ -96,7 +96,7 @@ when-to-load:
 - **Decision:** `apps/api/src/anon-rate-limit.ts` keys three independent KV buckets off `cf-connecting-ip`: a 30/min query window, a 5/hour create cap, and a 5-minute burst window that flips to "needs Turnstile" at 3 creates. All three live in KV (per `SK-RL-001`'s per-IP/KV split) under distinct prefixes (`anon:query:`, `anon:create:hr:`, `anon:create:burst:`). Each verdict carries `{ limit, count, resetAt }` so the route emits `X-RateLimit-*` headers consistent with the authed path (`SK-RL-004` / `GLOBAL-002`). Layered ABOVE these per-IP buckets sits the **global anon cap** (`SK-ANON-010` / `apps/api/src/anon-global-cap.ts`) — three additional KV buckets (`anon:global:hr:` / `anon:global:day:` / `anon:global:mo:`) summed across all anon traffic, evaluated FIRST in the route. Trip-priority on the route: global → per-IP query → per-IP create → Turnstile burst.
 - **Core value:** Free, Bullet-proof, Honest latency
 - **Why:** A single counter can't satisfy both the slow-burn cap (5/hour) and the burst gate (3-in-5min) — they have different windows and different consequences (429 vs. 428). Composing them as separate buckets keyed off the same IP keeps each one cheap (one KV `get`/`put` per bucket per request) and lets the Turnstile gate live independently of the hard cap. Same-prefix buckets would race on TTL and force one window length on both. KV's TTL semantics auto-evict; no sweep job (matches `SK-RL-001`).
-- **Consequence in code:** `peekCreate()` is a read-only check the route runs before the orchestrator boots libpg-query — that's the cheap gate. `recordCreate()` runs only AFTER any Turnstile clears, so a bot stuck on the gate can't ratchet the counter forward. `checkQuery()` increments unconditionally (matching `SK-RL-002`). The 30/min query default is half the 60/min authed tier (`apps/api/src/ask/rate-limit.ts`); the rate-limit skill's Open Question on the anon ceiling is now closed at this number. Tests in `apps/api/test/anon-rate-limit.test.ts` cover the three-bucket isolation.
+- **Consequence in code:** `peekCreate()` is a read-only check the route runs before the orchestrator boots libpg-query — that's the cheap gate. `recordCreate()` runs only AFTER any Turnstile clears, so a bot stuck on the gate can't ratchet the counter forward. `checkQuery()` increments unconditionally (matching `SK-RL-002`). The 30/min query default is half the 60/min authed tier (`apps/api/src/ask/rate-limit.ts`); the rate-limit feature's Open Question on the anon ceiling is now closed at this number. Tests in `apps/api/test/anon-rate-limit.test.ts` cover the three-bucket isolation.
 - **Alternatives rejected:**
   - Single `(ip, window)` row covering all three behaviors — forces one window length for query / hour-cap / burst, and bakes 429-vs-428 logic into a counter shape that can't express it.
   - D1-backed anon limiter — IP cardinality is unbounded under abuse; D1 row count would explode exactly when we need the limiter to be cheap (per `SK-RL-001`'s rejected-alternatives).
@@ -104,12 +104,12 @@ when-to-load:
 
 ## GLOBALs governing this feature
 
-Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; index in [`docs/decisions.md`](../../decisions.md)). The list below names the rules that constrain this feature; any skill-local commentary is nested under the rule.
+Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; index in [`docs/decisions.md`](../../decisions.md)). The list below names the rules that constrain this feature; any feature-local commentary is nested under the rule.
 
 - **GLOBAL-002** — Behavior parity across surfaces.
 - **GLOBAL-007** — No login wall before first value.
 - **GLOBAL-024** — Demand-signal telemetry on every "not yet" path.
-  - *In this skill:* every 429 emits a typed product event — anon-tier hits fire `feature.requested.heavier_tier`; per-account caps fire `feature.requested.larger_account`. These pair with the `X-RateLimit-*` headers (system-level signal) to give both machine-readable retry hints and product-level demand signal.
+  - *In this feature:* every 429 emits a typed product event — anon-tier hits fire `feature.requested.heavier_tier`; per-account caps fire `feature.requested.larger_account`. These pair with the `X-RateLimit-*` headers (system-level signal) to give both machine-readable retry hints and product-level demand signal.
 
 ## Open questions / known unknowns
 

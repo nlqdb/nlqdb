@@ -5,7 +5,7 @@ registry, waitlist, idempotency). Per `GLOBAL-021`, all D1 access from
 runtime code routes through this package.
 
 > This is the local guide. Read root [`AGENTS.md`](../../AGENTS.md) first
-> for the three behavioral principles, the full path → skill map, and
+> for the three behavioral principles, the full path → feature map, and
 > the project-wide tech stack. This file narrows that guide to
 > `packages/platform-db/`.
 
@@ -16,7 +16,7 @@ documented owner per `GLOBAL-021`'s owner table. Current direct
 `D1Database` consumers in `apps/api/src/` migrate here in follow-up
 PRs (tracker: `GLOBAL-021` "Migration backlog").
 
-## Skills relevant to this area
+## Features relevant to this area
 
 - [`GLOBAL-021`](../../docs/decisions/GLOBAL-021-external-system-ownership.md)
   — the rule that defines this package's responsibility.
@@ -47,6 +47,6 @@ PRs (tracker: `GLOBAL-021` "Migration backlog").
 1. If you added a decision, it has an ID, lives in the right place
    (`docs/decisions/GLOBAL-NNN-<slug>.md` for GLOBAL plus an index row
    in `docs/decisions.md`, or the relevant `FEATURE.md` for SK), and
-   any affected skill's `## GLOBALs governing this feature` commentary
+   any affected feature's `## GLOBALs governing this feature` commentary
    is updated.
 2. Open a PR; the root `AGENTS.md` §8 lists the pre-PR quality gates.

@@ -14,7 +14,7 @@ when-to-load:
 **Owners (code):** `packages/mcp/**`
 **Cross-refs:** docs/architecture.md §3.4 (MCP server) · docs/architecture.md §3 (MCP server row) · docs/phase-plan.md (Phase 2 mcp slice)
 
-## Touchpoints — read this skill before editing
+## Touchpoints — read this feature before editing
 
 - `packages/mcp/**`
 
@@ -105,7 +105,7 @@ The hosted connector URL path requires no local install. All four paths terminat
 
 ## GLOBALs governing this feature
 
-Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; index in [`docs/decisions.md`](../../decisions.md)). The list below names the rules that constrain this feature; any skill-local commentary is nested under the rule.
+Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; index in [`docs/decisions.md`](../../decisions.md)). The list below names the rules that constrain this feature; any feature-local commentary is nested under the rule.
 
 - **GLOBAL-001** — SDK is the only HTTP client.
 - **GLOBAL-002** — Behavior parity across surfaces.
@@ -113,13 +113,13 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 - **GLOBAL-010** — Credentials live in the OS keychain; `NLQDB_API_KEY` is the CI escape hatch.
 - **GLOBAL-017** — Two endpoints, two CLI verbs, one chat box — one way to do each thing.
 - **GLOBAL-023** — Trust UX baseline.
-  - *In this skill:* tools that mutate (writes / DDL) return `confirm_required` content with the diff body (per `SK-TRUST-001`). Audit each host (Claude Desktop, Cursor, Zed) for diff-rendering ergonomics — if a host hides the diff body, the surface fails the `SK-TRUST-001` contract on that host. See [`trust-ux/FEATURE.md`](../trust-ux/FEATURE.md) Open questions.
+  - *In this feature:* tools that mutate (writes / DDL) return `confirm_required` content with the diff body (per `SK-TRUST-001`). Audit each host (Claude Desktop, Cursor, Zed) for diff-rendering ergonomics — if a host hides the diff body, the surface fails the `SK-TRUST-001` contract on that host. See [`trust-ux/FEATURE.md`](../trust-ux/FEATURE.md) Open questions.
 
 ## Open questions / known unknowns
 
 - **`engine` on `nlqdb_list_databases` (W3, GLOBAL-003 gap).** `SK-DB-010` adds `engine?` on `db.create` and an `engine` column on every `listDatabases` row in the TS SDK. The MCP package currently ships only `AGENTS.md` + `README.md` — `packages/mcp/src/tools/list-databases.ts` does not exist yet. When the local-stdio transport's tool handlers land (per `SK-MCP-002` / `SK-MCP-007`), the `nlqdb_list_databases` tool returns `engine` per row verbatim from the SDK's `DatabaseSummary.engine`, and `nlqdb_query` accepts an optional `engine` arg only on the create path (no separate `nlqdb_create_database` tool — `SK-MCP-002`). Tracker: this open question. Closes when the MCP tool slice lands.
 - **Hosts beyond the initial six.** Detection currently targets Claude Desktop, Cursor, Zed, Windsurf, VS Code, and Continue. New hosts (e.g. a future Anthropic terminal, JetBrains MCP plugin) need a detector module each — no decision yet on the per-host detector contract.
-- **Hosted-transport rate-limit tier vs. local-transport.** Whether the hosted Worker shares the API's per-key rate-limit budget or carries its own per-(host, device) tier is undecided; relates to `SK-RL-NNN` (rate-limit skill).
+- **Hosted-transport rate-limit tier vs. local-transport.** Whether the hosted Worker shares the API's per-key rate-limit budget or carries its own per-(host, device) tier is undecided; relates to `SK-RL-NNN` (rate-limit feature).
 - **Promote-to-account UX.** DBs created via MCP are tagged `(mcp_host, device_id)` and promote-to-account is "one click" in the design — the click target and confirmation copy are not specified yet.
 - **`NLQDB_API_KEY` precedence inside the local transport.** Design says it takes precedence over any config file; need explicit test coverage for the precedence chain (`env > host config > device key`) on the local transport.
 - **Session token revocation latency.** `GLOBAL-018` requires "instant" revocation; the hosted MCP transport's edge-cache TTL for the revocation set is not yet pinned.

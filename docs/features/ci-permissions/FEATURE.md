@@ -15,7 +15,7 @@ when-to-load:
 **Owners (code):** `.github/workflows/**` in every consumer repo; `nlqdb/actions/.github/workflows/ci.yml` in the reusable-workflow repo.
 **Cross-refs:** [`docs/architecture.md §9`](../../architecture.md#9-cicd) (CI/CD overview) · [`docs/history/ci-actions-repo-layout.md`](../../history/ci-actions-repo-layout.md) (repo layout, inputs, secrets, gates)
 
-## Touchpoints — read this skill before editing
+## Touchpoints — read this feature before editing
 
 - `nlqdb/actions/.github/workflows/ci.yml` — reusable CI workflow, declares the canonical `permissions:` block.
 - `nlqdb/actions/.github/workflows/release.yml` — reusable release workflow, adds `id-token: write` for OIDC npm publish.
@@ -80,12 +80,12 @@ when-to-load:
 
 ## GLOBALs governing this feature
 
-Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; index in [`docs/decisions.md`](../../decisions.md)). The list below names the rules that constrain this feature; any skill-local commentary is nested under the rule.
+Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; index in [`docs/decisions.md`](../../decisions.md)). The list below names the rules that constrain this feature; any feature-local commentary is nested under the rule.
 
 - **GLOBAL-013** — `$0/month free tier`.
-  - *In this skill:* OIDC for publish (`SK-CIPERM-003`) keeps us off paid secret-rotation tools (HashiCorp Vault, AWS Secrets Manager) and removes the `NPM_TOKEN` rotation chore from the always-on list.
+  - *In this feature:* OIDC for publish (`SK-CIPERM-003`) keeps us off paid secret-rotation tools (HashiCorp Vault, AWS Secrets Manager) and removes the `NPM_TOKEN` rotation chore from the always-on list.
 - **GLOBAL-014** — OTel span on every external call.
-  - *In this skill:* CI runs aren't part of the user-facing trace, but the `deploy-cloudflare` composite emits a `nlqdb.ci.deploy` span when it has the OTel collector configured (Phase 2+). Permission to write OTel is in the `id-token: write` lane (vendor-issued OIDC at the OTel endpoint).
+  - *In this feature:* CI runs aren't part of the user-facing trace, but the `deploy-cloudflare` composite emits a `nlqdb.ci.deploy` span when it has the OTel collector configured (Phase 2+). Permission to write OTel is in the `id-token: write` lane (vendor-issued OIDC at the OTel endpoint).
 
 ## Open questions / known unknowns
 
@@ -96,4 +96,4 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 
 ## Source
 
-Carried forward from pre-consolidation `docs/design.md §13.2` (deleted in PR #81 commit `fb6e8c9`). Repo layout, inputs, secrets, release-job gate live in `docs/history/ci-actions-repo-layout.md`; this skill is the canonical home for the permissions contract specifically because it's load-bearing for security and benefits from a SK-* decision record.
+Carried forward from pre-consolidation `docs/design.md §13.2` (deleted in PR #81 commit `fb6e8c9`). Repo layout, inputs, secrets, release-job gate live in `docs/history/ci-actions-repo-layout.md`; this feature is the canonical home for the permissions contract specifically because it's load-bearing for security and benefits from a SK-* decision record.

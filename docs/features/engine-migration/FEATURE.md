@@ -14,9 +14,9 @@ when-to-load:
 **One-liner:** Phase 3 reshape loop — daily workload analyser creates Tinybird Pipes for hot ClickHouse fingerprints and writes advisory audit rows for hot Postgres ones; cross-engine migration still planned.
 **Status:** partial — intra-engine reshape live (`SK-MIGRATE-001..006`); cross-engine migration (PG ↔ ClickHouse / Redis / Mongo) still planned.
 **Owners (code):** `apps/api/src/workload-analyser/**`, `packages/db/src/clickhouse-tinybird/pipe-management.ts`, `apps/api/migrations/0008_workload_analyser_audit.sql`
-**Cross-refs:** `multi-engine-adapter/FEATURE.md` `SK-MULTIENG-003` (the rule this skill operationalises) · `events-pipeline/FEATURE.md` `SK-EVENTS-009` (the `query_log` Data Source the analyser reads) · `plan-cache/FEATURE.md` `SK-PLAN-002` (cache key must outlive reshape) · `docs/phase-plan.md §5` (Migration Orchestrator + Workload Analyzer) · `docs/phase-plan.md §5` (Phase 3 exit criteria — auto-migration is the gate) · `docs/performance.md §3.1` (`nlqdb.workload_analyser.*` spans)
+**Cross-refs:** `multi-engine-adapter/FEATURE.md` `SK-MULTIENG-003` (the rule this feature operationalises) · `events-pipeline/FEATURE.md` `SK-EVENTS-009` (the `query_log` Data Source the analyser reads) · `plan-cache/FEATURE.md` `SK-PLAN-002` (cache key must outlive reshape) · `docs/phase-plan.md §5` (Migration Orchestrator + Workload Analyzer) · `docs/phase-plan.md §5` (Phase 3 exit criteria — auto-migration is the gate) · `docs/performance.md §3.1` (`nlqdb.workload_analyser.*` spans)
 
-## Touchpoints — read this skill before editing
+## Touchpoints — read this feature before editing
 
 - `apps/api/src/workload-analyser/**` (cron, analyser, policy, wiring)
 - `packages/db/src/clickhouse-tinybird/pipe-management.ts` (Tinybird Pipes management API owner per `GLOBAL-021`)
@@ -57,7 +57,7 @@ when-to-load:
 - **Consequence in code:** The cron's switch on `proposal.kind` has exactly two arms — no registry, no plugin shape (per P5). Adding a third kind = a new arm and a new SK-MIGRATE supersession. The audit row's `after_json` is non-null for `clickhouse_pipe_create` (carries the Pipe name) and null for `pg_add_column_suggestion`. Reviewers reject any path that issues PG DDL from the cron in v1.
 - **Alternatives rejected:**
   - Auto-DDL on Postgres — risks ALTER TABLE under load on a Phase-1 shared Neon branch (`SK-DB-007`); operator review gate is the right cost in v1.
-  - Postgres-side as a separate skill — the analyser already touches Postgres-backed DBs to read `query_log` fingerprints; threading the advisory output through the same audit table costs one extra D1 row per hot fingerprint and zero new infra.
+  - Postgres-side as a separate feature — the analyser already touches Postgres-backed DBs to read `query_log` fingerprints; threading the advisory output through the same audit table costs one extra D1 row per hot fingerprint and zero new infra.
   - Single ClickHouse-only kind — drops the only PG-side visibility surface and silently loses information about hot PG queries.
 
 ### SK-MIGRATE-004 — `schema_hash` is invariant across reshape; tests assert before/after byte-equality
@@ -95,18 +95,18 @@ when-to-load:
 
 ## GLOBALs governing this feature
 
-Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; index in [`docs/decisions.md`](../../decisions.md)). The list below names the rules that constrain this feature; any skill-local commentary is nested under the rule.
+Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; index in [`docs/decisions.md`](../../decisions.md)). The list below names the rules that constrain this feature; any feature-local commentary is nested under the rule.
 
 - **GLOBAL-004** — Logical schemas widen; physical layout reshapes freely.
-  - *In this skill:* `SK-MIGRATE-004` is the assertion that the cron honours the rule on every Pipe creation — `schema_hash` is re-read after the reshape and equality is asserted. Drift aborts the reshape.
+  - *In this feature:* `SK-MIGRATE-004` is the assertion that the cron honours the rule on every Pipe creation — `schema_hash` is re-read after the reshape and equality is asserted. Drift aborts the reshape.
 - **GLOBAL-006** — Plans content-addressed by `(schema_hash, query_hash)`.
-  - *In this skill:* Pipe creation MUST NOT bump `schema_hash`; the analyser is the only writer of physical reshape under the cache-key invariant.
+  - *In this feature:* Pipe creation MUST NOT bump `schema_hash`; the analyser is the only writer of physical reshape under the cache-key invariant.
 - **GLOBAL-013** — $0/month free tier; ≤ 3 MiB Workers bundle.
-  - *In this skill:* one Tinybird read per DB-day on the free tier (≤ 1k reads/day budget); pipe-management adds zero new dependencies (plain `fetch` + the existing OTel wrapper).
+  - *In this feature:* one Tinybird read per DB-day on the free tier (≤ 1k reads/day budget); pipe-management adds zero new dependencies (plain `fetch` + the existing OTel wrapper).
 - **GLOBAL-014** — OTel span on every external call.
-  - *In this skill:* every Tinybird Pipes-management call emits a `db.query` span (`db.system=other_sql`, `db.operation.name ∈ {PIPE_CREATE, PIPE_DROP, PIPE_GET}`); the cron emits `nlqdb.workload_analyser.run` (parent) and `nlqdb.workload_analyser.reshape` (per proposal).
+  - *In this feature:* every Tinybird Pipes-management call emits a `db.query` span (`db.system=other_sql`, `db.operation.name ∈ {PIPE_CREATE, PIPE_DROP, PIPE_GET}`); the cron emits `nlqdb.workload_analyser.run` (parent) and `nlqdb.workload_analyser.reshape` (per proposal).
 - **GLOBAL-021** — Each external system has one canonical owning module.
-  - *In this skill:* all Tinybird HTTP — read of `query_log` and Pipes management — flows through `packages/db/src/clickhouse-tinybird/`. The analyser imports typed methods (`createPipe` / `dropPipe` / `getPipe` / the existing `createTinybirdAdapter`); no `fetch(...tinybird...)` call sits in `apps/api/src/workload-analyser/`.
+  - *In this feature:* all Tinybird HTTP — read of `query_log` and Pipes management — flows through `packages/db/src/clickhouse-tinybird/`. The analyser imports typed methods (`createPipe` / `dropPipe` / `getPipe` / the existing `createTinybirdAdapter`); no `fetch(...tinybird...)` call sits in `apps/api/src/workload-analyser/`.
 
 ## Open questions / known unknowns
 

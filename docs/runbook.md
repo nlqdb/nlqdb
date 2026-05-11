@@ -10,7 +10,7 @@ harder to operate.
 - [docs/features/](../docs/features/) — canonical per-feature decisions.
 - [./decisions.md](./decisions.md) + [./decisions/](./decisions/) — canonical cross-cutting `GLOBAL-NNN` (index + one shard per decision).
 - **this file** — what's actually set up right now (operational state,
-  not decisions; if a sentence here disagrees with a skill, the skill wins).
+  not decisions; if a sentence here disagrees with a feature, the feature wins).
 
 **Last verified: 2026-04-28.** Running `./scripts/verify-secrets.sh`
 should return 21/21 green (or more, as provisioning expands).

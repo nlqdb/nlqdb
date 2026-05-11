@@ -15,7 +15,7 @@ when-to-load:
 **Owners (code):** `apps/api/src/ask/sql-validate.ts` (called from `apps/api/src/ask/orchestrate.ts`)
 **Cross-refs:** docs/architecture.md §3.6.5 (validator architecture) · docs/research-receipts.md §1, §10 (Replit incident, Postgres-specific guardrails) · docs/performance.md §2.1 stage 8 / §2.2 stage 8 (parse + schema-fit budget — 5 ms p50 / 20 ms p99) · §3.1 (`nlqdb.sql.validate` span) · §4 Slice 6 · GLOBAL-015 (see governing GLOBALs section) · `docs/features/hosted-db-create/FEATURE.md` (Phase 1 — owns the parallel DDL-path validator at `apps/api/src/ask/sql-validate-ddl.ts`; SK-HDC-006 splits the two validator files deliberately)
 
-## Touchpoints — read this skill before editing
+## Touchpoints — read this feature before editing
 
 - `apps/api/src/ask/sql-validate.ts`
 - `apps/api/src/ask/orchestrate.ts` (the only caller of `validateSql`)
@@ -95,11 +95,11 @@ when-to-load:
 
 ## GLOBALs governing this feature
 
-Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; index in [`docs/decisions.md`](../../decisions.md)). The list below names the rules that constrain this feature; any skill-local commentary is nested under the rule.
+Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; index in [`docs/decisions.md`](../../decisions.md)). The list below names the rules that constrain this feature; any feature-local commentary is nested under the rule.
 
 - **GLOBAL-015** — Power users always have an escape hatch.
-  - *In this skill:*
-    **Interaction note (P3):** GLOBAL-015 implies that `/v1/run` exists as a raw-SQL escape hatch. The same allowlist still applies on `/v1/run` to preserve the layered-guardrails posture (`SK-SQLAL-001`) — `/v1/run` skips the LLM, not the validator. Phase-2 escape-hatch work that loosens this needs to update both this skill and GLOBAL-015 in the same PR.
+  - *In this feature:*
+    **Interaction note (P3):** GLOBAL-015 implies that `/v1/run` exists as a raw-SQL escape hatch. The same allowlist still applies on `/v1/run` to preserve the layered-guardrails posture (`SK-SQLAL-001`) — `/v1/run` skips the LLM, not the validator. Phase-2 escape-hatch work that loosens this needs to update both this feature and GLOBAL-015 in the same PR.
 
 ## Open questions / known unknowns
 

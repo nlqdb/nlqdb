@@ -3,11 +3,11 @@
 Marketing + product web app. Onboarding, anonymous-mode default, demo dataset.
 
 > This is the local guide. Read root [`AGENTS.md`](../../AGENTS.md) first
-> for the three behavioral principles, the full path → skill map, and
+> for the three behavioral principles, the full path → feature map, and
 > the project-wide tech stack. This file narrows that guide to
 > `apps/web/`.
 
-## Skills relevant to this area
+## Features relevant to this area
 
 - [`web-app`](../../docs/features/web-app/FEATURE.md) — mandatory pre-read for changes that touch the feature.
 - [`anonymous-mode`](../../docs/features/anonymous-mode/FEATURE.md) — mandatory pre-read for changes that touch the feature.

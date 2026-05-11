@@ -14,7 +14,7 @@ when-to-load:
 **Owners (code):** `packages/llm/**`
 **Cross-refs:** docs/architecture.md §7 (AI model selection), §7.1 (Strict-$0 inference path) · docs/features/llm-router/FEATURE.md (full file) · docs/performance.md §4 Slice 4 (LLM router) · docs/performance.md §2.2 (cache-miss latency), §3 (span/metric catalog) · `docs/features/hosted-db-create/FEATURE.md` (Phase 1 — `kind` classifier and `SchemaPlan` schema-inference are LLM calls routed through this router; SK-HDC-001/002)
 
-## Touchpoints — read this skill before editing
+## Touchpoints — read this feature before editing
 
 - `packages/llm/**`
 
@@ -135,13 +135,13 @@ when-to-load:
 
 ## GLOBALs governing this feature
 
-Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; index in [`docs/decisions.md`](../../decisions.md)). The list below names the rules that constrain this feature; any skill-local commentary is nested under the rule.
+Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; index in [`docs/decisions.md`](../../decisions.md)). The list below names the rules that constrain this feature; any feature-local commentary is nested under the rule.
 
 - **GLOBAL-014** — OTel span on every external call (DB, LLM, HTTP, queue).
 - **GLOBAL-013** — $0/month for the free tier; Workers free-tier bundle ≤ 3 MiB compressed.
 - **GLOBAL-016** — Reach for small mature packages before DIY; hard-pass on RC on the critical path.
 - **GLOBAL-022** — Recoverable failures retry to success — never surface a fixable error.
-  - *In this skill:* provider 5xx and provider rate-limit (429) are
+  - *In this feature:* provider 5xx and provider rate-limit (429) are
     failover signals — fail to the next provider in the chain
     rather than retry the same one. The chain retries up to 3
     hops (one attempt per provider) before propagating the error.
@@ -150,6 +150,6 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 
 - **`nlqdb.plan.quality_score` shape and threshold.** `docs/features/llm-router/FEATURE.md` proposes a `(1 = clean, 0.5 = needed correction loop, 0 = rejected)` histogram. The exact bucket boundaries, the LLM-as-judge prompt, and the alert threshold for "this provider is silently degrading" are not yet specified.
 - **Prompt-template version pinning.** `SK-LLM-009` says system-prompt changes invalidate the prompt cache (intended). We don't yet have a place to record which template version produced which plan — a future debugging need. Open.
-- **Per-user credit accounting.** The skill description mentions "per-user credit accounting" but `docs/architecture.md §7` and `docs/features/llm-router/FEATURE.md` cover provider-level cost, not per-user usage metering. Lago is in `docs/architecture.md §6`'s stack as the metering backbone; the wiring from LLM router → Lago is not yet specified.
+- **Per-user credit accounting.** The feature description mentions "per-user credit accounting" but `docs/architecture.md §7` and `docs/features/llm-router/FEATURE.md` cover provider-level cost, not per-user usage metering. Lago is in `docs/architecture.md §6`'s stack as the metering backbone; the wiring from LLM router → Lago is not yet specified.
 - **Failover behaviour when every provider in a chain fails.** Today the chain falls through providers; what happens when the last one fails? Bubble up an error envelope (per `GLOBAL-012`)? Retry the head with backoff? The router currently throws; the user-facing error semantics are open.
-- **Free-tier RPM ceiling visibility.** `docs/architecture.md §7.1` says "bursts queue briefly; 'queued — 2s' surfaced in UI." The queue mechanism is not yet implemented in the router; today bursts that exceed the provider's RPM fail-and-fall-through. Track in the rate-limit / observability skills.
+- **Free-tier RPM ceiling visibility.** `docs/architecture.md §7.1` says "bursts queue briefly; 'queued — 2s' surfaced in UI." The queue mechanism is not yet implemented in the router; today bursts that exceed the provider's RPM fail-and-fall-through. Track in the rate-limit / observability features.

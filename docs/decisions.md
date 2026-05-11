@@ -6,19 +6,19 @@ Cross-cutting decisions that govern more than one feature. Each
 file is the index.**
 
 When you change a GLOBAL, edit only its file under `docs/decisions/`
-(one place). Skills under `docs/features/` reference the GLOBAL by ID;
+(one place). Features under `docs/features/` reference the GLOBAL by ID;
 they don't duplicate the body. If a change affects how a feature
-applies the rule, update that skill's `## GLOBALs governing this
+applies the rule, update that feature's `## GLOBALs governing this
 feature` commentary in the same PR
-(see [`docs/skill-conventions.md`](./skill-conventions.md) §5).
+(see [`docs/feature-conventions.md`](./feature-conventions.md) §5).
 
 Format of every block follows
-[`docs/skill-conventions.md`](./skill-conventions.md) §4 — the five
+[`docs/feature-conventions.md`](./feature-conventions.md) §4 — the five
 fields (Decision / Core value / Why / Consequence / Alternatives) are
 mandatory. Core values are cited by name from
 [`docs/architecture.md`](./architecture.md) §0.
 
-To find every skill affected by a GLOBAL:
+To find every feature affected by a GLOBAL:
 
 ```bash
 grep -rn 'GLOBAL-007' docs/features/
@@ -59,7 +59,7 @@ grep -rn 'GLOBAL-007' docs/features/
 2. Create `docs/decisions/GLOBAL-NNN-<slug>.md` with the five-field
    block. Slug is kebab-case, derived from the title.
 3. Add a row to the index above.
-4. For each affected skill, add a one-line reference under its
+4. For each affected feature, add a one-line reference under its
    `## GLOBALs governing this feature` section. Add nested
    commentary only when the GLOBAL has a feature-specific
    implication worth calling out.

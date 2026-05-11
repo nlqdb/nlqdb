@@ -2,9 +2,9 @@
 
 > A database you talk to. You write HTML; each component asks for what it wants in plain English. nlqdb answers.
 
-**Navigation:** [decisions.md](./decisions.md) (index of GLOBAL-NNN; bodies under [decisions/](./decisions/)) · [skills index](../docs/features/_index.md) for feature decisions · [runbook.md](./runbook.md) for operations · [progress.md](./progress.md) for integration tiers
+**Navigation:** [decisions.md](./decisions.md) (index of GLOBAL-NNN; bodies under [decisions/](./decisions/)) · [features/](./features/) for per-feature `FEATURE.md` decisions · [runbook.md](./runbook.md) for operations · [progress.md](./progress.md) for integration tiers
 
-If a sentence here disagrees with a skill, **the skill wins**. This document owns: core values, system architecture, surface overviews, phase plan, tech-stack rationale, risks, and what we are explicitly not building.
+If a sentence here disagrees with a feature, **the feature wins**. This document owns: core values, system architecture, surface overviews, phase plan, tech-stack rationale, risks, and what we are explicitly not building.
 
 ---
 
@@ -116,11 +116,11 @@ Canonical: **`nlqdb.com`** (`.ai` is held defensively and 301s to `.com`).
 
 ## 3. Surfaces
 
-> Decisions for each surface live in the corresponding skill — see [skills index](../docs/features/_index.md). What follows is a product spec (the *what*), not a decision record.
+> Decisions for each surface live in the corresponding `docs/features/<feature>/FEATURE.md`. What follows is a product spec (the *what*), not a decision record.
 
 ### 3.1 Marketing site — `nlqdb.com`
 
-Canonical skill: `web-app/FEATURE.md` (`SK-WEB-001..007`). Hosted on Cloudflare Pages, Lighthouse 100/100/100/100.
+Canonical feature: `web-app/FEATURE.md` (`SK-WEB-001..007`). Hosted on Cloudflare Pages, Lighthouse 100/100/100/100.
 
 Above the fold (top-to-bottom): goal-first input ("What are you building?"), tabbed code-example panel (HTML · React · Vue · Agent · curl, all rendering against the same demo DB), "what this replaces" scroll-driven strip, live anonymized query ticker.
 
@@ -139,13 +139,13 @@ Surfaces promised on the home page (full integration matrix in [`progress.md §1
 
 ### 3.2 Platform web app — `nlqdb.com/app`
 
-Canonical skill: `web-app/FEATURE.md`. Served at `nlqdb.com/app` (the API Worker owns `app.nlqdb.com`). Session cookie `__Secure-session` (HttpOnly, `Domain=.nlqdb.com`) read server-side via Astro frontmatter or a client-side `/api/auth/get-session` call.
+Canonical feature: `web-app/FEATURE.md`. Served at `nlqdb.com/app` (the API Worker owns `app.nlqdb.com`). Session cookie `__Secure-session` (HttpOnly, `Domain=.nlqdb.com`) read server-side via Astro frontmatter or a client-side `/api/auth/get-session` call.
 
 Pages: **Chat** (answer/data/trace, Cmd+K palette, Cmd+/ trace toggle), **DB list** (left rail), **Settings** (API keys, billing, live $-counter), **Embed snippets** (copy `<nlq-data>` HTML with `pk_live_` pre-inlined).
 
 ### 3.3 CLI — `nlq`
 
-Canonical skill: `cli/FEATURE.md` (`SK-CLI-001..011`). Static Go binary.
+Canonical feature: `cli/FEATURE.md` (`SK-CLI-001..011`). Static Go binary.
 
 ```
 nlq                          # interactive REPL, creates DB silently
@@ -159,11 +159,11 @@ Power-user: `nlq db create|list`, `nlq query <db> "…"`, `nlq use <db>`, `nlq c
 
 ### 3.4 MCP server — `@nlqdb/mcp`
 
-Canonical skill: `mcp-server/FEATURE.md` (`SK-MCP-001..007`). Two transports: **hosted** (`mcp.nlqdb.com`, paste-URL into host config, OAuth) and **local stdio** (`@nlqdb/mcp` via `nlq mcp install`). Three tools: `nlqdb_query`, `nlqdb_list_databases`, `nlqdb_describe` — no `nlqdb_create_database` (DB materializes on first `nlqdb_query` per §0.1).
+Canonical feature: `mcp-server/FEATURE.md` (`SK-MCP-001..007`). Two transports: **hosted** (`mcp.nlqdb.com`, paste-URL into host config, OAuth) and **local stdio** (`@nlqdb/mcp` via `nlq mcp install`). Three tools: `nlqdb_query`, `nlqdb_list_databases`, `nlqdb_describe` — no `nlqdb_create_database` (DB materializes on first `nlqdb_query` per §0.1).
 
 ### 3.5 `<nlq-data>` element
 
-Canonical skill: `elements/FEATURE.md` (`SK-ELEM-001..008`). ESM bundle ≤6 KB.
+Canonical feature: `elements/FEATURE.md` (`SK-ELEM-001..008`). ESM bundle ≤6 KB.
 
 ```html
 <script src="https://elements.nlqdb.com/v1.js" type="module"></script>
@@ -177,7 +177,7 @@ Canonical skill: `elements/FEATURE.md` (`SK-ELEM-001..008`). ESM bundle ≤6 KB.
 
 ### 3.6 Hosted db.create — typed-plan, validator, provisioner
 
-The mechanism behind every "DB created silently" arrow in §0.1 and §3. The *why* behind each choice is in [`docs/research-receipts.md`](./research-receipts.md). Canonical skill: `hosted-db-create/FEATURE.md`.
+The mechanism behind every "DB created silently" arrow in §0.1 and §3. The *why* behind each choice is in [`docs/research-receipts.md`](./research-receipts.md). Canonical feature: `hosted-db-create/FEATURE.md`.
 
 #### 3.6.1 Endpoint shape
 
@@ -271,7 +271,7 @@ Free-tier abuse rules extend to db.create: per-IP 5 creates/hour, per-account 20
 
 ## 4. Auth & identity
 
-Canonical skills: `auth/FEATURE.md` (`SK-AUTH-001..012`), `api-keys/FEATURE.md` (`SK-APIKEYS-001..007`), `anonymous-mode/FEATURE.md` (`SK-ANON-001..006`).
+Canonical features: `auth/FEATURE.md` (`SK-AUTH-001..012`), `api-keys/FEATURE.md` (`SK-APIKEYS-001..007`), `anonymous-mode/FEATURE.md` (`SK-ANON-001..006`).
 
 **Library:** Better Auth (MIT, TypeScript) on Cloudflare Workers + D1. **Methods:** magic link (primary), passkey (promoted on second visit), GitHub OAuth, Google OAuth. No passwords ever.
 
@@ -385,7 +385,7 @@ Env vars: `GEMINI_API_KEY`, `GROQ_API_KEY`, `CF_AI_TOKEN`, `OPENROUTER_API_KEY`.
 
 ### 7.2 Cost-control mitigations, in priority order
 
-Skills reference these by number (e.g. "cost-control rule 3"). Canonical detail in `llm-router/FEATURE.md`.
+Features reference these by number (e.g. "cost-control rule 3"). Canonical detail in `llm-router/FEATURE.md`.
 
 1. **Plan cache by fingerprint — 60–80% hit rate, bypasses LLM entirely.** Every `/v1/ask` request hits the plan cache before any LLM call. Cache key = `(schema_hash, query_fingerprint)`. Expected steady-state hit rate 60–80%; covers the majority of production traffic with no model cost. (`SK-LLM-010`, `GLOBAL-006`)
 2. **Small-model first, big-model on fallback.** Hot-path classification and summarization run on the cheapest tier (Tier 1). The plan tier (Tier 2, Claude Sonnet 4.6) fires only on cache miss. Hard-plan reasoning (Tier 3, Opus 4.7) handles ≤5% of queries. (`SK-LLM-001`)

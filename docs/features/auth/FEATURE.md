@@ -15,7 +15,7 @@ when-to-load:
 **Owners (code):** `apps/api/src/auth/**`, `packages/auth-internal/**`
 **Cross-refs:** docs/architecture.md §4 (Authentication & identity) · docs/performance.md §4 Slice 5 (Better Auth) · docs/runbook.md §5 (Google OAuth) · docs/runbook.md §5b (GitHub OAuth)
 
-## Touchpoints — read this skill before editing
+## Touchpoints — read this feature before editing
 
 - `apps/api/src/auth/**`
 - `packages/auth-internal/**`
@@ -72,7 +72,7 @@ when-to-load:
 - **Decision:** Phase 1 has three roles: **Owner** (full), **Member** (read + query, no destructive ops or key creation), **Public** (anonymous, read-only via publishable key, rate-limited). Fine-grained RBAC ships in Phase 2 only if a paying customer asks twice.
 - **Core value:** Simple, Goal-first, Free
 - **Why:** Three roles cover every persona in `docs/runbook.md §10`; building an RBAC engine for hypothetical Phase-2 buyers locks code shape we don't yet understand. Two requests from paying customers is a clearer signal than "we'll need it eventually."
-- **Consequence in code:** `authz.ts` is a switch on `role ∈ {owner, member, public}`. New roles require a `GLOBAL-NNN` (or skill-local SK-AUTH-NNN) decision and a customer-citation comment.
+- **Consequence in code:** `authz.ts` is a switch on `role ∈ {owner, member, public}`. New roles require a `GLOBAL-NNN` (or feature-local SK-AUTH-NNN) decision and a customer-citation comment.
 - **Alternatives rejected:** Full RBAC on day one — premature abstraction; locks data shape. Two roles (owner + public) — Members can't share access to a DB without giving away destructive ops.
 - **Source:** docs/architecture.md §4.2
 
@@ -188,7 +188,7 @@ when-to-load:
 
 ## GLOBALs governing this feature
 
-Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; index in [`docs/decisions.md`](../../decisions.md)). The list below names the rules that constrain this feature; any skill-local commentary is nested under the rule.
+Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; index in [`docs/decisions.md`](../../decisions.md)). The list below names the rules that constrain this feature; any feature-local commentary is nested under the rule.
 
 - **GLOBAL-007** — No login wall before first value.
 - **GLOBAL-008** — One Better Auth identity across all surfaces.
