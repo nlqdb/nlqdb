@@ -125,6 +125,7 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 - **GLOBAL-013** — $0/month free tier; ≤ 3 MiB Workers bundle. *In this skill:* the events-worker imports `@nlqdb/db/clickhouse-tinybird` for `writeQueryLog`; the package's HTTP path is plain `fetch` with no SDK weight, keeping the bundle within budget.
 - **GLOBAL-014** — OTel span on every external call (DB, LLM, HTTP, queue).
 - **GLOBAL-021** — Each external system has one canonical owning module. *In this skill:* the events-worker is the canonical owner of `EVENTS_QUEUE` (consumer) per the GLOBAL-021 owner table; `packages/events/` owns the producer types. Tinybird HTTP is owned by `packages/db/clickhouse-tinybird/` — `SK-EVENTS-009`'s sink imports `writeQueryLog` from there rather than POSTing directly. Owner-to-owner library dependency (events-worker → `@nlqdb/db`) is explicitly allowed by GLOBAL-021.
+- **GLOBAL-024** — Demand-signal telemetry on every "not yet" path. *In this skill:* the `feature.*` event domain (e.g. `feature.requested.ddl_via_ask`, `feature.requested.byo_pg`, `feature.requested.team_workspace`) lives alongside the existing `user.*` and `billing.*` domains in `packages/events`. The same `<domain>.<verb_noun>` naming rule from SK-EVENTS-* applies. Emission contract: every surface fires one event on its negative paths; the events-worker drains them into the same LogSnag sink.
 
 ## Open questions / known unknowns
 

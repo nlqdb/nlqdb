@@ -167,6 +167,8 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 
 - **GLOBAL-007** — No login wall before first value.
 - **GLOBAL-020** — No "pick a region", no config files in the first 60s.
+- **GLOBAL-024** — Demand-signal telemetry on every "not yet" path.
+  - *In this skill:* the 72h anon-TTL warning emits `feature.requested.persist_anon_db`; the anonymous-mode rate-limit hits surface `feature.requested.heavier_tier`. These are the in-product half of the [`founder-playbook §1`](../../founder-playbook.md) design-partner recruitment loop.
 
 ## Open questions / known unknowns
 

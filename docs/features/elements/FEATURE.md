@@ -123,6 +123,8 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 - **GLOBAL-001** — SDK is the only HTTP client.
 - **GLOBAL-002** — Behavior parity across surfaces.
 - **GLOBAL-013** — $0/month for the free tier; Workers free-tier bundle ≤ 3 MiB compressed.
+- **GLOBAL-023** — Trust UX baseline.
+  - *In this skill:* `<nlq-action>` blocks `on-success` until the user clicks "apply" on the rendered diff (per `SK-TRUST-001`). `<nlq-data>` exposes the trace via the `el.trace` JS property (per `SK-TRUST-002`). The trace pane lives outside the template render region — templates (`table`, `card-grid`, …) stay simple. See [`trust-ux/FEATURE.md`](../trust-ux/FEATURE.md).
 
 ## Open questions / known unknowns
 

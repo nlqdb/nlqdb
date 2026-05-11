@@ -108,6 +108,8 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 
 - **GLOBAL-002** — Behavior parity across surfaces.
 - **GLOBAL-007** — No login wall before first value.
+- **GLOBAL-024** — Demand-signal telemetry on every "not yet" path.
+  - *In this skill:* every 429 emits a typed product event — anon-tier hits fire `feature.requested.heavier_tier`; per-account caps fire `feature.requested.larger_account`. These pair with the `X-RateLimit-*` headers (system-level signal) to give both machine-readable retry hints and product-level demand signal.
 
 ## Open questions / known unknowns
 

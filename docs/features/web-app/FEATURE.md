@@ -123,6 +123,8 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 - **GLOBAL-011** — Honest latency — show the live trace; never spinner-lie.
 - **GLOBAL-012** — Errors are one sentence with the next action.
 - **GLOBAL-020** — No "pick a region", no config files in the first 60s.
+- **GLOBAL-023** — Trust UX baseline.
+  - *In this skill:* the chat panel renders the diff inline before commit (per `SK-TRUST-001`), the trace pane sits below the answer with collapsed-by-default state (per `SK-TRUST-002`), and low-confidence refusals surface as click-to-disambiguate chips (per `SK-TRUST-003`). See [`trust-ux/FEATURE.md`](../trust-ux/FEATURE.md).
 
 ## Open questions / known unknowns
 

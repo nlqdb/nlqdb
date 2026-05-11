@@ -189,6 +189,10 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 - **GLOBAL-017** — Two endpoints, two CLI verbs, one chat box — one way to do each thing.
 - **GLOBAL-022** — Recoverable failures retry to success — never surface a fixable error.
   - *In this skill:* see `SK-ASK-013` for the canonical implementation. Each pipeline stage owns its recoverable error class — classifier (wrong intent), planner (invalid SQL), validator (allowlist re-plan), executor (transient DB error) — and retries up to 3 attempts via `withStageRetry`, feeding the prior attempt's error into the next prompt where applicable.
+- **GLOBAL-023** — Trust UX baseline.
+  - *In this skill:* `/v1/ask` responses carry the `trace` and `confidence` blocks specified by [`SK-TRUST-002`](../trust-ux/FEATURE.md); writes/DDL responses carry the `diff` block for [`SK-TRUST-001`](../trust-ux/FEATURE.md); the orchestrator short-circuits to `low_confidence` per [`SK-TRUST-003`](../trust-ux/FEATURE.md) before `db.execute`.
+- **GLOBAL-024** — Demand-signal telemetry on every "not yet" path.
+  - *In this skill:* 4xx `unsupported_verb` rejections (DDL via `/v1/ask`) emit `feature.requested.ddl_via_ask`; `low_confidence` refusals emit `feature.requested.ambiguous_goal`; `db_full` write-cap hits emit `feature.requested.larger_db`.
 
 ## Open questions / known unknowns
 
