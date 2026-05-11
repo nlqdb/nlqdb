@@ -110,7 +110,7 @@ describe("orchestrateAsk", () => {
 
   it("calls LLM + writes cache on a cold-cache request", async () => {
     const cache = stubPlanCache();
-    const llm = stubLLM({ plan: { sql: "SELECT * FROM users" } });
+    const llm = stubLLM({ plan: { sql: "SELECT * FROM orders" } });
     const out = await orchestrateAsk(makeDeps({ planCache: cache, llm }), {
       goal: "list users",
       dbId: "db_1",
@@ -121,7 +121,7 @@ describe("orchestrateAsk", () => {
     expect(out.result).toMatchObject({
       status: "ok",
       cached: false,
-      sql: "SELECT * FROM users",
+      sql: "SELECT * FROM orders",
       rowCount: 1,
     });
     expect(llm.plan).toHaveBeenCalledTimes(1);
@@ -198,11 +198,17 @@ describe("orchestrateAsk", () => {
     // non-existent table; the next request 28 s later hit the bad cache
     // and 502'd in 1.4 s without an LLM call. The cache write must wait
     // for exec to confirm the plan actually runs.
+    //
+    // SK-ASK-016 caveat: a missing-table SQL would short-circuit at
+    // the pre-flight check before reaching exec. To exercise the
+    // SK-ASK-015 invariant cleanly we pick a SQL that passes pre-flight
+    // (`orders` is in the stub schema) and force exec to throw a generic
+    // transient error.
     const cache = stubPlanCache();
-    const llm = stubLLM({ plan: { sql: "SELECT * FROM ghost_table" } });
-    const exec = stubExec(new Error('relation "ghost_table" does not exist'));
+    const llm = stubLLM({ plan: { sql: "SELECT * FROM orders" } });
+    const exec = stubExec(new Error("connection refused"));
     const out = await orchestrateAsk(makeDeps({ planCache: cache, llm, exec }), {
-      goal: "rows from ghost",
+      goal: "rows from orders",
       dbId: "db_1",
       userId: "user_1",
     });
@@ -226,6 +232,64 @@ describe("orchestrateAsk", () => {
       ok: false,
       error: { status: "db_misconfigured" },
     });
+  });
+
+  it("SK-ASK-016 Defense A: pre-flight schema_mismatch when LLM references absent table", async () => {
+    // Stub DB has only `orders`. LLM emits a SELECT against `users`.
+    const llm = stubLLM({ plan: { sql: "SELECT * FROM users" } });
+    const exec = stubExec();
+    const out = await orchestrateAsk(makeDeps({ llm, exec }), {
+      goal: "list users",
+      dbId: "db_1",
+      userId: "user_1",
+    });
+    expect(out).toEqual({
+      ok: false,
+      error: {
+        status: "schema_mismatch",
+        referencedTables: ["users"],
+        schemaTables: ["orders"],
+      },
+    });
+    // Pre-flight short-circuits before exec — no DB round-trip wasted.
+    expect(exec).not.toHaveBeenCalled();
+  });
+
+  it("SK-ASK-016 Defense B: exec PG 42P01 → schema_mismatch, retry bails after one attempt", async () => {
+    // SchemaText null bypasses Defense A so we exercise the post-exec
+    // backstop. NeonDbError-shaped object: `.code = "42P01"` + message.
+    const ghostError = Object.assign(new Error('relation "ghost" does not exist'), {
+      code: "42P01",
+    });
+    const exec = stubExec(ghostError);
+    const out = await orchestrateAsk(
+      makeDeps({
+        resolveDb: vi.fn(async () => stubDb({ schemaText: null })),
+        llm: stubLLM({ plan: { sql: "SELECT * FROM ghost" } }),
+        exec,
+      }),
+      { goal: "anything", dbId: "db_1", userId: "user_1" },
+    );
+    expect(out).toEqual({
+      ok: false,
+      error: { status: "schema_mismatch", referencedTables: [], schemaTables: [] },
+    });
+    // Nonrecoverable wrapping means SK-ASK-013's 3-attempt retry stops
+    // after the first failure — no point re-running the same SQL.
+    expect(exec).toHaveBeenCalledTimes(1);
+  });
+
+  it("SK-ASK-016: pre-flight passes when all referenced tables exist", async () => {
+    // Plan references a real table — orchestrator proceeds to exec.
+    const llm = stubLLM({ plan: { sql: "SELECT * FROM orders" } });
+    const exec = stubExec();
+    const out = await orchestrateAsk(makeDeps({ llm, exec }), {
+      goal: "list orders",
+      dbId: "db_1",
+      userId: "user_1",
+    });
+    expect(out.ok).toBe(true);
+    expect(exec).toHaveBeenCalledTimes(1);
   });
 
   it("includes summary by default and skips it when skipSummary=true", async () => {
@@ -365,7 +429,7 @@ describe("orchestrateAsk", () => {
     const out = await orchestrateAsk(
       makeDeps({
         events,
-        llm: stubLLM({ plan: { sql: "SELECT * FROM users" } }),
+        llm: stubLLM({ plan: { sql: "SELECT * FROM orders" } }),
         exec: stubExec({ rows: [{ x: 1 }, { x: 2 }, { x: 3 }], rowCount: 3 }),
       }),
       { goal: "list users", dbId: "db_1", userId: "user_seen" },

@@ -27,7 +27,6 @@ when-to-load:
 - **Why:** Every persona walks in with a goal, not a database. Two endpoints (`/v1/ask` for chat, `/v1/run` for raw queries) is the canonical surface (`GLOBAL-017`). Splitting create from query would force the user to know which one to call, contradicting `GLOBAL-017` and the on-ramp inversion principle in `docs/architecture.md §0.1`.
 - **Consequence in code:** `apps/api/src/routes/v1/ask.ts` is the only handler; create/query/write are internal branches behind the classifier. PRs that add `/v1/db/new`, `/v1/queries`, or `/v1/plans` are rejected.
 - **Alternatives rejected:** REST resource explosion (`/v1/queries`, `/v1/runs`, `/v1/plans`) — bigger surface, more docs, more inconsistency. `/v1/ask` + `/v1/db/new` — splits a single user goal across two endpoints; the user has to know which.
-- **Source:** docs/architecture.md §3.6.1
 
 ### SK-ASK-002 — Canonical step order: edge → auth → rate-limit → hash → plan-cache → (hit: validate → exec) | (miss: route → plan → SQL-validate → exec → cache-write) → optional summarize
 
@@ -36,7 +35,6 @@ when-to-load:
 - **Why:** A canonical order means every reviewer, every dashboard, every test agrees on what "the ask path" is. Inserting an unsanctioned step (e.g., a third LLM call between plan and exec) is the kind of change that silently breaks the latency budget and the trace UI. The order is also load-bearing for `GLOBAL-011`: surfaces stream the trace in the order steps complete. Folding classify + disambiguate into one `route` call halves the cheap-tier latency on the dbId-absent path.
 - **Consequence in code:** `orchestrateAsk()` (per `docs/performance.md §4` Slice 6) walks the steps in order. Each step gets one OTel span (per `docs/performance.md §3.1`). The route-handler prelude (SK-ASK-009) emits one `llm.route` span per cache-miss / dbId-absent send. A reorder regression is caught by the span-tree assertion in the slice's vitest. Latency budgets in `performance.md §2.1, §2.2` are CI-asserted at 1.5× p50.
 - **Alternatives rejected:** Per-handler order — would let the order drift between create / query / write without notice. Skip cache when LLM is fast — defeats `GLOBAL-006` and breaks the cache-warming intent. Keep classify + disambiguate as separate steps — see SK-ASK-009.
-- **Source:** docs/architecture.md §3.6.1, §3.6.2 · docs/performance.md §2.1, §2.2 · docs/performance.md §4 Slice 6
 
 ### SK-ASK-003 — `dbId` resolution: deterministic fast-path then cheap-tier LLM, with confidence floor + visible echo
 
@@ -49,7 +47,6 @@ when-to-load:
 - **Why:** The LLM never has DDL rights through the read/write path — the only legitimate `CREATE` comes from our deterministic typed-plan compiler, which we wrote and we tested. The hard split makes prompt-injection structurally unable to reach DDL. Layered guardrails (AST reject-list + role isolation + RLS + statement timeout + transactional wrapper) follow the Replit-incident lesson from `docs/research-receipts.md §1`.
 - **Consequence in code:** `validateReadWrite(sql)` in `sql-validate.ts` rejects every DDL verb. The DDL path's validator is a separate file (Zod over `SchemaPlan` plus libpg_query parse on the compiled DDL) and is invoked **only** from the create path. PRs that try to merge the two validator surfaces are rejected.
 - **Alternatives rejected:** Single validator with a `mode: "rw" | "ddl"` flag — a single `mode` flag flip would re-open DDL to LLM-generated SQL. LLM emits DDL directly — explicitly rejected in `§3.6.2`; the LLM emits a typed plan, our code emits SQL.
-- **Source:** docs/architecture.md §3.6.2, §3.6.5
 
 ### SK-ASK-005 — Summarize is conditional: skip when `Accept: application/json` or row count below threshold
 
@@ -58,7 +55,6 @@ when-to-load:
 - **Why:** Summarization adds 300 ms p50 / 800 ms p99 — material on a cache-miss path. Most fact-lookup queries return raw rows; summarising "[{count: 42}]" wastes user time and LLM credits. Programmatic clients (`Accept: application/json`) want raw data; humans on the chat surface want prose.
 - **Consequence in code:** `shouldSummarize(rows, intent, accept)` is a pure function tested in isolation. The summarize step is skipped *before* the LLM call, not inside it (no wasted token spend on a result we'd discard).
 - **Alternatives rejected:** Always summarise — wastes 80% of summarize budget on row-count queries. Always skip — chat surface loses prose; bad UX for the conversational majority.
-- **Source:** docs/architecture.md §8 (cost-control rule 4) · docs/performance.md §2.2
 
 ### SK-ASK-006 — Anonymous-mode is a separate rate-limit tier — not "free with a lower limit"
 
@@ -67,7 +63,6 @@ when-to-load:
 - **Why:** Without a separate tier, an anonymous abuse spike (per-IP create-floods) eats authed-user budget. With it, abuse is contained in its own bucket while the authed surface stays fast. Promoting on sign-in (no fresh grant) prevents farming free quota by signing in repeatedly under fresh emails.
 - **Consequence in code:** Rate-limit middleware (`packages/rate-limit`) reads `(tier, identifier)` where `identifier` is `device_token` for anonymous and `user_id` for authed. `attachIdentity()` carries forward the consumed budget. PoW challenges fire on signup if the bucket spikes (`docs/architecture.md §3.6.8`).
 - **Alternatives rejected:** Single global free tier — every anonymous abuse spike degrades authed users. Allow anonymous to refresh budget by attaching a new identity — quota-farming.
-- **Source:** docs/architecture.md §3.6.8 · [GLOBAL-007](../../decisions/GLOBAL-007-no-login-wall.md)
 
 ### SK-ASK-007 — `user.first_query` fires exactly once per user via the lookup-then-emit-then-commit pattern
 
@@ -76,7 +71,6 @@ when-to-load:
 - **Why:** Naively writing the marker before emitting can drop the event on a Worker crash; emitting then writing can double-emit on retry. The lookup-then-emit-then-commit pattern with idempotent sink writes (events-pipeline) gives us at-most-once user-visible (the dashboard counts unique users) without dropping the signal.
 - **Consequence in code:** `firstQueryGate(user_id)` is wrapped in `nlqdb.cache.first_query.lookup` and `nlqdb.cache.first_query.commit` spans. The events emit is wrapped in `ctx.waitUntil` (per `docs/performance.md §3.1`) so it runs after the response. Test asserts exactly-once across two concurrent first calls (the second observes the marker).
 - **Alternatives rejected:** Write marker first — event drops on crash. Emit first — double-emit on retry. Synchronous DB write — adds DB round-trip to the response path.
-- **Source:** docs/performance.md §4 Slice 6 · docs/performance.md §3.1
 
 ### SK-ASK-008 — Live trace is streamed in step-completion order; no spinner-lying
 
@@ -85,7 +79,6 @@ when-to-load:
 - **Why:** A spinner that hides progress trains users to assume the worst when latency spikes. A live trace turns slow steps into legible, debuggable information — and forces us to fix the slow steps because users see them. This is `GLOBAL-011`'s consequence on the ask path.
 - **Consequence in code:** Each step in the canonical order (`SK-ASK-002`) emits a trace event the SDK exposes via the `onTrace` hook. `apps/web` renders them in order; CLI's TTY mode prints each as it completes. Tests assert that every step in the cache-miss path produces exactly one trace event.
 - **Alternatives rejected:** Generic spinner with "this is taking longer than usual" — gives no information; trains users not to trust the surface. Hide latency below a threshold — users notice anyway, and lose trust when the threshold is wrong.
-- **Source:** docs/architecture.md §0 (Honest latency) · [GLOBAL-011](../../decisions/GLOBAL-011-honest-latency.md)
 
 ### SK-ASK-009 — Cheap-tier classifier sees the principal's recent tables; classify + disambiguate merge into `routeAsk`
 
@@ -164,20 +157,17 @@ when-to-load:
 - **Consequence in code:** `apps/api/src/ask/orchestrate.ts`: `planCache.write` block moves below the successful `withStageRetry("exec", …)` and runs only when `!cacheHit`. `apps/api/test/orchestrate.test.ts`: SK-ASK-015 assertion — cache.write never fires on a failed exec.
 - **Alternatives rejected:** Tag the cached plan `unconfirmed` and invalidate on exec failure — two writes per request to manage a flag we can avoid by writing once at the right time. Very-short TTL — masks the root cause; the cache hit window is still wide enough to repro the bug under bursts.
 
+### SK-ASK-016 — `schema_mismatch` envelope: pre-flight + 42P01 backstop, both Nonrecoverable, surface as 409
+
+- **Decision:** When the LLM-emitted SQL references a table not present in the target DB, the orchestrator returns a new `AskError` variant `{ status: "schema_mismatch", referencedTables, schemaTables }` mapped to HTTP 409. Two paths converge there: (A) pre-flight — `extractTables(planSql)` compared against `db.schemaText` via a cheap regex over the compiled DDL, runs before exec; (B) post-exec backstop — `42P01 relation does not exist` caught inside the exec callback, wrapped in `Nonrecoverable` so SK-ASK-013's retry loop bails after one attempt. Pre-flight is skipped when `db.schemaText` is null (legacy rows); the backstop covers those + any case the regex misses (e.g. view-vs-table).
+- **Core value:** Bullet-proof, Honest latency, Effortless UX
+- **Why:** The failure is deterministic — SK-ASK-013's three retries replay the same wrong SQL, then 502 `db_unreachable` 600+ ms later (the surface shows "couldn't reach the DB" which is a lie). Pre-flight catches it for ~0.5 ms. 42P01 is the defense-in-depth backstop. Trace: anon goal `swimming pool visitors` resolved to `kind=query` against a stale DB without that table; 3× `db.query` failed `42P01`. The 409 envelope lets the surface re-route to a fresh create rather than dead-end.
+- **Consequence in code:** New `SchemaMismatchError` class + `schema_mismatch` AskError variant in `ask/types.ts`. `ask/orchestrate.ts`: `checkSchemaTables` helper runs between `plan` emit and `withStageRetry("exec", …)`; the inner exec catch wraps 42P01 in `Nonrecoverable("schema_mismatch", new SchemaMismatchError([], []))`. Outer catch maps `instanceof SchemaMismatchError` to the envelope. `errorStatus()` in `index.ts` adds `"schema_mismatch" → 409`.
+- **Alternatives rejected:** Retry plan with rejected table in `previousAttempt` — LLM often re-picks the same wrong table. Auto-reroute to `kind=create` server-side — same inputs, same wrong classification; surface-driven re-send is honest. Treat 42P01 as recoverable — same outcome, worse latency. `.code` field only — Neon HTTP shim doesn't reliably preserve it; keep the message regex as fallback.
+
 ## The LLM loop
 
-This is the part most implementations get wrong. A single "prompt → SQL → run" pipeline is a demo, not a product. The `/v1/ask` pipeline runs these eight steps per query:
-
-1. **Schema retrieval.** Embed table + column names + sample values + foreign keys. Retrieve top-K relevant objects via pgvector. Cache per schema hash — this step is free on repeat schemas.
-2. **Intent classification.** Classify as read / write / ambiguous / clarification-needed / out-of-scope. Uses a cheap model (Groq Llama 3.1 8B / Gemini 2.5 Flash). Ambiguous → surface inline clarification chips, not a new turn.
-3. **Plan generation.** Structured tool-use with the target engine's grammar as a constrained decode where possible (grammars for SQL exist; for Mongo aggregation we hand-roll). The LLM emits a typed plan; our code emits SQL from the plan — the LLM never emits SQL directly (`SK-ASK-004`).
-4. **Static validation.** Parse the plan. Check referenced columns exist in the schema snapshot. Check for destructive ops. Dry-run with `EXPLAIN` when cheap (`EXPLAIN ANALYZE` is explicitly rejected — real data).
-5. **Confidence gate.** If confidence is low OR the plan is destructive OR touches > N rows, set `requires_confirm: true` in the response and surface a plain-English diff + row-count preview in the UI. Execution is blocked until the user approves (`SK-ONBOARD-004`).
-6. **Execute + stream.** Stream rows back as they arrive. The live trace shows this step completing in real time (`SK-ASK-008`).
-7. **Summarize.** A cheap model turns rows into prose. Always attach the raw data too — we never paraphrase away the truth. Skipped when `Accept: application/json` or row count is below threshold (`SK-ASK-005`).
-8. **Log.** Write `{ fingerprint, latency, rows_scanned, rows_returned, engine, plan_shape }` to the workload log. This feeds the Workload Analyzer in Phase 2 (`docs/phase-plan.md`).
-
-Intentional reinventions on this path (grammar-constrained SQL decoder, foreign-key-aware schema embedding, learned query-shape classifier) are catalogued in `docs/guidelines.md §7`.
+Canonical step order is SK-ASK-002 (edge → auth → rate-limit → hash → plan-cache → (hit: validate → exec) | (miss: route → plan → SQL-validate → exec → cache-write) → optional summarize). Intentional reinventions on this path — grammar-constrained SQL decoder, foreign-key-aware schema embedding, learned query-shape classifier — are catalogued in `docs/guidelines.md §7`.
 
 ## GLOBALs governing this feature
 
@@ -201,7 +191,7 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 - **Streaming protocol for live trace.** `SK-ASK-008` and `GLOBAL-011` require a live trace, but the wire protocol (SSE? chunked JSON? OTel-over-WS?) is not yet pinned. SDK's `onTrace` hook in `packages/sdk` will fix the surface API; the wire format is open.
 - **Failure-mode for partial results.** If `exec` succeeds but `summarize` fails, do we return the rows + a summarize-error envelope, or 5xx the whole call? Design.md doesn't decide. Leaning toward "rows + envelope" so the user sees data, but needs an explicit `SK-ASK-NNN`.
 - **Idempotency on `/v1/ask`.** `GLOBAL-005` says every mutation accepts `Idempotency-Key`. `/v1/ask` is sometimes a query (no mutation), sometimes a write. Confirm whether the dedupe store is consulted for the write branch only or for every call (and what `kind=create` deduping looks like).
-- **Null-pick disambiguator cache TTL.** When the LLM returns `chosenId: null` (cannot disambiguate), `disambiguate-db.ts` caches that result for 7 days under the `(tenantId, goalHash, dbsetHash)` key. The dbsetHash evicts naturally when the user adds/removes a DB, but a false-null (LLM wrong, answer exists) is sticky for up to 7 days against the same DB set. Two options: (a) don't cache null picks — costs an LLM call on each retry of an ambiguous goal; (b) cache with a shorter TTL (e.g. 1 hour) — limits stale-null exposure. Current code does option (a) by caching null with the full 7-day TTL, which may be the wrong default. Needs a decision (new `SK-ASK-NNN`).
+- **Null-pick disambiguator cache TTL.** `disambiguate-db.ts` caches `chosenId: null` for 7 days under `(tenantId, goalHash, dbsetHash)`; dbsetHash evicts on DB add/remove but a false-null is sticky for that window. Options: don't cache nulls (cheap LLM hit on retry) vs. 1 h TTL (bounded staleness). Needs a decision (new `SK-ASK-NNN`).
 - **SK-ASK-014 follow-ups.** (a) Typed-plan extend-schema pipeline so "Add it to *<slug>*" works — `kind=extend` route + compiler + `sql-validate-ddl.ts` widening + table-card re-embed (`SK-HDC-NNN`). (b) Latency audit — classify-every-send adds ~150 ms p50 to dbId-pinned hot path; confirm PERFORMANCE §2.1/§2.2 still holds.
 
 ## Happy path walkthrough

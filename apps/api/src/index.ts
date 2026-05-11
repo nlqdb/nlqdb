@@ -1243,6 +1243,7 @@ function errorStatus(status: AskError["status"]): 400 | 404 | 409 | 422 | 429 | 
     case "sql_rejected":
       return 400;
     case "clarify_required":
+    case "schema_mismatch":
       return 409;
   }
 }
