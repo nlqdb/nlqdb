@@ -156,11 +156,11 @@ when-to-load:
 
 ### SK-ANON-013 — Anon `/v1/ask` short-circuits to `runCreatePath` when no `dbId` is pinned
 
-- **Decision:** `apps/api/src/index.ts` returns `runCreatePath()` directly when `principal.kind === "anon" && !parsed.body.dbId`, after the anon gates (global cap, per-IP query bucket, per-device peek) clear. `routeAsk`, `listDatabasesForTenant`, and `recentTablesStore.load` are skipped on this branch. Anon SDK users with a pinned `dbId` still flow through the query path (a legitimate follow-up). The 2nd anon call is already blocked at `peekDevice` (SK-ANON-012) and redirected to sign-in.
+- **Decision:** `apps/api/src/index.ts` returns `runCreatePath()` directly when `principal.kind === "anon" && !parsed.body.dbId`, after the anon gates (global cap, per-IP query bucket, per-device peek) clear. `routeAsk`, `listDatabasesForTenant`, and `recentTablesStore.load` are skipped. Anon SDK users with a pinned `dbId` still flow through the query path. The 2nd anon call is already blocked at `peekDevice` (SK-ANON-012). The branch lives in the route handler — `orchestrateAsk` remains anon-blind, preserving SK-ANON-006.
 - **Core value:** Free, Effortless UX, Bullet-proof, Goal-first
-- **Why:** Anon principals have no data to query — the classifier was designed for authed users with multiple DBs. Running it for anon traded zero UX value for cheap-tier LLM latency, SK-ASK-011 speculative complexity (removed in SK-ASK-017), MRU pollution, and the `kind=query` misclassification → 502 cascade observed in prod. The post-OAuth landing replays queued prompts as authed calls — nothing is lost.
-- **Consequence in code:** 2-line short-circuit in `apps/api/src/index.ts` (after `runCreatePath` is defined, before `kickoffAskPrelude`). Existing gates + `commitAnonCreate` inside `runCreatePath` keep SK-ANON-012 accurate. `routeAsk`, `kickoffAskPrelude`, `recentTablesStore` stay for authed users.
-- **Alternatives rejected:** Skip classifier even with pinned `dbId` — breaks SDK follow-ups. Keep classifier, only remove speculation — misclassification was the user-visible failure, not speculation alone. Auto-adopt stale anon DBs — adds a D1 write; 90-day sweep handles cleanup organically.
+- **Why:** Anon has no data to query — the classifier was designed for authed users with multiple DBs. Running it for anon traded zero UX value for cheap-tier LLM latency, SK-ASK-011 speculative complexity (removed in SK-ASK-017), MRU pollution, and the `kind=query` misclassification → 502 cascade observed in prod. Post-OAuth replays queued prompts as authed calls — nothing is lost.
+- **Consequence in code:** 2-line short-circuit in `apps/api/src/index.ts` (after `runCreatePath` is defined, before `kickoffAskPrelude`). Existing gates + `commitAnonCreate` inside `runCreatePath` keep SK-ANON-012 accurate. Coverage in `apps/api/test/ask.test.ts` asserts the response is never a routeAsk-only outcome (502 `llm_failed` / 409 `clarify_required`).
+- **Alternatives rejected:** Skip classifier even with pinned `dbId` — breaks SDK follow-ups. Keep classifier, only remove speculation — misclassification was the user-visible failure. Branch inside `orchestrateAsk` — contradicts SK-ANON-006. Auto-adopt stale anon DBs — adds a D1 write; the 90-day sweep handles cleanup.
 
 ## GLOBALs governing this feature
 
@@ -173,10 +173,10 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 
 ## Open questions / known unknowns
 
-- **MCP-side anonymous identity.** No MCP anonymous token today (every MCP call carries a host-scoped key minted at install). Whether a "try-before-install" flow needs a server-issued one-shot anon key is open.
-- **Pressure-sweep eviction order beyond "oldest first".** `docs/runbook.md §9.3` drops oldest when total bytes > 300 MB. Whether to weight by size (biggest-and-oldest first) is undecided.
-- **Cross-device anonymous continuity.** Per-device identity (browser `localStorage`, CLI keychain) is Phase 1. Cross-device unification (paste-a-code handshake) is deferred to Phase 2.
-- **Browser-storage clearing.** A user who clears `localStorage` before signing in loses access to the anonymous DB (device-token hash is the only handle). No recovery path designed; whether to add a "lost my anonymous DB" support endpoint is open.
+- **MCP-side anonymous identity.** Every MCP call carries a host-scoped key minted at install. Whether a "try-before-install" flow needs a server-issued one-shot anon key is open.
+- **Pressure-sweep eviction order.** `docs/runbook.md §9.3` drops oldest when total bytes > 300 MB. Whether to weight by size (biggest-and-oldest first) is undecided.
+- **Cross-device anonymous continuity.** Per-device identity (browser `localStorage`, CLI keychain) is Phase 1; cross-device unification (paste-a-code handshake) is deferred to Phase 2.
+- **Browser-storage clearing.** Clearing `localStorage` before signing in loses access to the anonymous DB (device-token hash is the only handle). No recovery path designed.
 
 ## Happy path walkthrough
 

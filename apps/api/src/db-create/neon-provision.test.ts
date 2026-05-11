@@ -452,10 +452,10 @@ describe("provisionDb — failure paths", () => {
     expect(pg.queries.some((c) => /DROP SCHEMA "orders_tracker_a4f3b2" CASCADE/.test(c.sql))).toBe(
       true,
     );
-    // SK-HDC-011 — the registry-insert-failed branch shares the
-    // `dropSchemaAndRegistry` primitive with SK-ASK-011's speculative
-    // rollback. The D1 INSERT never landed here, so the DELETE is a
-    // no-op against the registry but still runs.
+    // SK-HDC-011 — the registry-insert-failed branch calls
+    // `dropSchemaAndRegistry` to undo the Postgres-side state. The
+    // D1 INSERT never landed here, so the DELETE is a no-op against
+    // the registry but still runs.
     expect(d1.deletes).toHaveLength(1);
     expect(d1.deletes[0]?.params).toEqual(["db_orders_tracker_a4f3b2"]);
   });
@@ -612,9 +612,10 @@ describe("provisionDb — observability (GLOBAL-014, SK-OBS-005, SK-HDC-012)", (
 
 describe("dropSchemaAndRegistry (SK-HDC-011)", () => {
   // Per SK-HDC-011 the primitive is idempotent + best-effort: missing
-  // schema or absent registry row is not an error. Both branches —
-  // the registry-insert-failed compensation in provisionDb and
-  // SK-ASK-011's speculative rollback — share this function.
+  // schema or absent registry row is not an error. Today's only caller
+  // is the registry-insert-failed compensation in `provisionDb`; the
+  // function is kept exported so future automated sweeps or operator
+  // tooling can call it directly.
   const tracer = trace.getTracer("@nlqdb/api/db-create-test");
 
   it("schema present + row present → DROP runs and DELETE runs (full rollback)", async () => {

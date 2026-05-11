@@ -186,8 +186,6 @@ Canonical names. Every slice MUST use these — no one-off variants.
 | `nlqdb.workload_analyser.run` | W5 daily cron parent span. Carries `nlqdb.workload_analyser.{query_log_rows, proposals, reshapes_applied, errors, elapsed_ms}`. One per `scheduled()` invocation. Owner: `apps/api/src/workload-analyser/cron.ts` (`SK-MIGRATE-001`). |
 | `nlqdb.workload_analyser.reshape` | One child span per `ReshapeProposal` the cron dispatches. Carries `nlqdb.workload_analyser.{kind, db_id, pipe_pre_existed?, pipe_name?}`. ERROR status when the Tinybird API rejects the create or `schema_hash` drift forces a rollback (`SK-MIGRATE-004`/`SK-MIGRATE-006`). |
 | `db.query` (Tinybird Pipes mgmt) | Per-call span around `createPipe` / `dropPipe` / `getPipe`. Attributes `db.system=other_sql`, `db.operation.name ∈ {PIPE_CREATE, PIPE_DROP, PIPE_GET}`, `db.tinybird.pipe`. Latency on `nlqdb.db.duration_ms{operation}` alongside `PIPE_CALL` / `EVENTS_WRITE`. Owner: `packages/db/src/clickhouse-tinybird/pipe-management.ts` (`SK-MIGRATE-001`). |
-| `nlqdb.create.speculative.start` | SK-ASK-011 — parent span for a speculative create kicked off when `probablyZeroDbs(...)` fired. Carries `nlqdb.principal_kind`, `nlqdb.create.speculative.outcome ∈ {create_ok, create_failed}`. Owner: `apps/api/src/db-create/speculative.ts`. |
-| `nlqdb.create.speculative.rollback` | SK-ASK-011 — child span on the rollback path. Carries `nlqdb.principal_kind`, `nlqdb.create.speculative.rollback_reason ∈ {dbs_appeared, list_failed, create_failed_after_speculation}`. Owner: `apps/api/src/db-create/speculative.ts`. |
 
 ### 3.2 Metric names
 
@@ -200,9 +198,6 @@ Counters (suffix `.total`):
 - `nlqdb.errors.total{class, route}`.
 - `nlqdb.auth.events.total{type, outcome}` — sign-in / refresh / logout.
 - `nlqdb.events.sink.query_log.failures.total{status_class}` — Tinybird `query_log` write failures (non-2xx HTTP or fetch threw). Used as the trip signal for the events-worker's circuit-breaker (`SK-EVENTS-009`).
-- `nlqdb.create.speculative.start_total{principal_kind}` — SK-ASK-011 speculative creates kicked off by `probablyZeroDbs(...)`.
-- `nlqdb.create.speculative.commit_total{principal_kind}` — SK-ASK-011 commits (D1 confirmed 0 dbs).
-- `nlqdb.create.speculative.rollback_total{principal_kind, reason}` — SK-ASK-011 rollbacks. `reason ∈ {dbs_appeared, list_failed, create_failed_after_speculation}`. Alert > 0.1 % / hour.
 - `nlqdb.retry.total{stage, reason}` — GLOBAL-022 retries (SK-ASK-013, SK-SDK-008). `stage ∈ {route, plan, exec, sdk}`. Attempts, not requests. Sustained climb = release-blocking.
 
 Histograms (latency in ms — explicit `_ms` suffix):
@@ -215,7 +210,6 @@ Histograms (latency in ms — explicit `_ms` suffix):
 Other histograms (non-latency):
 
 - `nlqdb.events.sink.query_log.batch_size` (unit `rows`) — events written to Tinybird `query_log` per flush. Bounded by the Cloudflare Queue consumer's `max_batch_size` (currently 100).
-- `nlqdb.create.speculative.overhead_ms` (unit `ms`, label `principal_kind`) — `(speculative_done_ts − authoritative_done_ts)` for SK-ASK-011. Negative = speculative create finished first (win); positive = pure overhead.
 
 Gauges:
 
@@ -237,7 +231,7 @@ Always use these label keys; never invent variants like `tenant`, `tenant-id`, `
 | `db.system`            | 2                    | `postgresql` (PG); `other_sql` (ClickHouse via Tinybird). |
 | `route`                | Low (~20)            | `/v1/ask`, `/v1/health`, `/v1/auth/*`.             |
 | `status_class`         | 5                    | `2xx` / `3xx` / `4xx` / `5xx` / `transport` (NOT raw status). The `transport` value is reserved for fetch-throws (no HTTP status); used by the query_log failures counter (`SK-EVENTS-009`). |
-| `principal_kind`       | 2                    | `user` / `anon` — used on `nlqdb.recent_tables.entries` gauge (`SK-ASK-012`) and the SK-ASK-011 `nlqdb.create.speculative.*` metrics + spans. Derived from the principal-id prefix; never per-request. |
+| `principal_kind`       | 2                    | `user` / `anon` — used on the `nlqdb.recent_tables.entries` gauge (`SK-ASK-012`). Derived from the principal-id prefix; never per-request. |
 
 **Cardinality rule:** total combined series < 8 k (Grafana Cloud free
 tier ceiling at 10 k, leave 2 k headroom). The above bounds are
