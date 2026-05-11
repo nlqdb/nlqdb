@@ -78,9 +78,21 @@ export async function handleMockSignIn(c: MockSignInCtx): Promise<Response> {
     return new Response("mock_sign_in_inbox_empty", { status: 502 });
   }
 
+  // Forward the original request's `Cookie` header onto the verify
+  // call. Real magic-link / OAuth flows are top-level navigations from
+  // the user's browser, so the verify GET naturally carries every
+  // cookie on the origin — including the `anon-bearer` stashed by
+  // `POST /api/auth/anon-stash`. The synthetic `Request` we construct
+  // here doesn't carry any of that by default, so Better Auth's
+  // `after` hook reads `cookie: null` and `recordAnonAdoption` never
+  // runs (SK-ANON-012). Copy the inbound `Cookie` header through and
+  // adoption fires on mock sign-ins the same way it does on real ones.
+  const cookieHeader = c.req.raw.headers.get("cookie");
+  const verifyHeaders: Record<string, string> = { origin: baseOrigin };
+  if (cookieHeader) verifyHeaders["cookie"] = cookieHeader;
   const verifyReq = new Request(verifyUrl, {
     method: "GET",
-    headers: { origin: baseOrigin },
+    headers: verifyHeaders,
     redirect: "manual",
   });
   return auth.handler(verifyReq);
