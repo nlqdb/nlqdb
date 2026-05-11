@@ -43,7 +43,7 @@ export function kickoffAskPrelude(deps: AskPreludeDeps, principalId: string): As
 
 export function resolveAnonEngineOverride(
   bodyEngine: Engine | undefined,
-  principalKind: "anon" | "user",
+  principalKind: "anon" | "user" | "pk_live",
 ): Engine | undefined {
   if (bodyEngine !== undefined) return bodyEngine;
   if (principalKind === "anon") return "postgres";

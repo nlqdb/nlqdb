@@ -93,8 +93,22 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 - **GLOBAL-018** — Revocation is instant and visible across devices.
 - **GLOBAL-008** — One Better Auth identity across all surfaces.
 
+### SK-APIKEYS-008 — HMAC-SHA256 replaces Argon2id for all key storage on the Workers runtime
+
+- **Decision:** API keys (all types: `pk_live_`, `sk_live_`, `sk_mcp_…`) are stored as `HMAC-SHA256(BETTER_AUTH_SECRET, plaintext_key)` (hex-encoded) in D1, not as Argon2id digests. Phase 2 migration to a dedicated `API_KEY_SECRET` secret is tracked as an open question below. `sk_live_` and `sk_mcp_…` keys ship in Phase 2 (CLI install, MCP onboarding); this decision lands with `pk_live_` in Phase 1.
+- **Core value:** Bullet-proof, Simple, Free
+- **Why:** Argon2id is not available in the Cloudflare Workers runtime — the Web Crypto API only surfaces SHA, HMAC, AES, PBKDF2, HKDF, RSA, and ECDH. For randomly generated, high-entropy secrets (≥128 bits of CSPRNG output — what `pk_live_`, `sk_live_`, and `sk_mcp_` all are), HMAC-SHA256 provides equivalent protection against database-dump attacks: the preimage attack cost on a 128-bit random input is 2^128 SHA-256 operations regardless of whether the function is memory-hard. Argon2id's memory-hardening only improves security over fast hashes for *low-entropy* inputs (user-chosen passwords), which none of our key types are. Reusing `BETTER_AUTH_SECRET` avoids adding a new required secret in Phase 1 while keeping key hashes distinct from the HMAC-signed anon-stash cookies (different HMAC messages, same key — a security-standard pattern).
+- **Consequence in code:** `apps/api/src/api-keys.ts` is the only file that calls `crypto.subtle.importKey` / `crypto.subtle.sign` for key hashing. The `api_keys` D1 table stores `key_hash TEXT UNIQUE` (HMAC hex) + `last_4 TEXT` for display — not the plaintext key. Lookup is `WHERE key_hash = ?` with the computed HMAC. Verification is constant-time at the HMAC layer (identical-length hex strings). PRs that store plaintext keys or use a hash other than HMAC-SHA256 fail review.
+- **Alternatives rejected:**
+  - Argon2id WASM bundle — unavailable as a first-party Workers primitive; the smallest maintained WASM builds add ~200 KB to the bundle, violating `GLOBAL-013`'s 3 MiB total budget.
+  - PBKDF2 (available in Web Crypto) — provides memory-cost via iteration count but is single-threaded and still insufficient for low-entropy inputs at practical iteration counts; irrelevant for random keys anyway.
+  - Plaintext storage — D1 at rest is Cloudflare-encrypted but operator-readable; a `SELECT * FROM api_keys` would expose all keys.
+  - SHA-256 without HMAC — no keyed component means anyone with the database dump can compute the hash of any candidate key directly; HMAC binds the hash to the server secret so the attacker needs both the dump *and* `BETTER_AUTH_SECRET`.
+
 ## Open questions / known unknowns
 
+- **Dedicated `API_KEY_SECRET`.** `SK-APIKEYS-008` reuses `BETTER_AUTH_SECRET` as the HMAC key for Phase 1. Phase 2 should add a separate `API_KEY_SECRET` secret so key-hash HMAC and session-signing HMAC use independent keys. Rotation of one doesn't invalidate the other.
+- **Origin pinning for `pk_live_`.** `SK-APIKEYS-003` specifies per-key `allow_origins`. The `api_keys` table has no `allow_origins` column yet; Phase 1 skips origin enforcement (any origin can use a `pk_live_` key). Add `allow_origins TEXT` in Phase 2 when the dashboard key-management UI ships.
 - **`<nlq-action>` write-token shape (Phase 2).** `SK-APIKEYS-003` defers writes through `<nlq-action>` with a "signed short-lived write-token." The token's TTL, claim shape, and binding (per-DB? per-action?) aren't yet specified. Decide before the Phase 2 web-app slice that ships writes from the browser.
 - **Webhook delivery guarantees on rotate.** `SK-APIKEYS-005` says rotation emits a webhook. The events-pipeline feature governs delivery semantics (at-least-once with retries) — confirm that rotation events meet the at-least-once contract when the events slice lands.
 - **Rotation grace observability.** Need a dashboard signal for "old key still in use 7 days into its 60d grace" so operators know whether to worry. Track in the observability feature once the rotation slice lands.

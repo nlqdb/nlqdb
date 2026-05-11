@@ -36,7 +36,7 @@ export type AnonCreateGateDeps = {
 };
 
 export type AnonCreateGateInput = {
-  principalKind: "anon" | "user";
+  principalKind: "anon" | "user" | "pk_live";
   // SK-ANON-008 principal id (`anon:<sha256(token)[:16]>` for anon).
   principalId: string;
   // Remote IP — only used as Turnstile's `remoteip` hint (`SK-ANON-007`).

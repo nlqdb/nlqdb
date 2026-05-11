@@ -143,7 +143,8 @@ describe("recordAnonAdoption", () => {
     const stub = stubDb({ insertResult: { ok: 1 } });
     const out = await recordAnonAdoption(stub.db, "user_42", "abcdef1234567890");
     expect(out).toEqual({ ok: true, adopted: true });
-    expect(stub.updates).toHaveLength(1);
+    // Two UPDATEs: databases.tenant_id + api_keys.tenant_id (SK-ANON-003).
+    expect(stub.updates).toHaveLength(2);
     expect(stub.updates[0]?.sql).toContain("UPDATE databases SET tenant_id");
     const [boundUser, boundAnon] = stub.updates[0]?.params ?? [];
     expect(boundUser).toBe("user_42");
@@ -152,6 +153,7 @@ describe("recordAnonAdoption", () => {
     // recomputing the same crypto the implementation does.
     expect(typeof boundAnon).toBe("string");
     expect(String(boundAnon)).toMatch(/^anon:[0-9a-f]{16}$/);
+    expect(stub.updates[1]?.sql).toContain("UPDATE api_keys SET tenant_id");
   });
 
   it("rebinds databases.tenant_id on idempotent replay (same user)", async () => {
@@ -162,6 +164,6 @@ describe("recordAnonAdoption", () => {
     const stub = stubDb({ insertResult: null, existingUserId: "user_42" });
     const out = await recordAnonAdoption(stub.db, "user_42", "abcdef1234567890");
     expect(out).toEqual({ ok: true, adopted: false });
-    expect(stub.updates).toHaveLength(1);
+    expect(stub.updates).toHaveLength(2);
   });
 });

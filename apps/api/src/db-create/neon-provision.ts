@@ -221,16 +221,7 @@ export async function provisionDb(
     return { ok: false, reason: "registry_insert_failed", rolled_back: true };
   }
 
-  // pkLive is null in the provisioner v0 — `pk_live_<dbId>` minting
-  // is the api-keys subsystem's job (`docs/features/api-keys/FEATURE.md`),
-  // not the provisioner's. The orchestrator handles the anonymous-vs-
-  // authed split before issuing the key. Tracked as a Phase-1 follow-up.
-  return {
-    ok: true,
-    dbId: args.dbId,
-    schemaName,
-    pkLive: null,
-  };
+  return { ok: true, dbId: args.dbId, schemaName };
 }
 
 // SK-HDC-007 — split the provisioner abstraction from day one. Phase 4

@@ -20,6 +20,7 @@
 // Owner of `@neondatabase/serverless` remains `packages/db/`; this
 // import is the documented one-file carve-out.
 import { neon } from "@neondatabase/serverless";
+import { mintPkLiveKey } from "../api-keys.ts";
 import { makeRecentTablesStore } from "../ask/recent-tables.ts";
 import { validateCompiledDdl } from "../ask/sql-validate-ddl.ts";
 import { getLLMRouter } from "../llm-router.ts";
@@ -85,6 +86,9 @@ export function buildDbCreateDeps(envBindings: Cloudflare.Env): BuildDbCreateDep
       // ask path so a fresh DB shows up in the principal's recent
       // tables on the very next /v1/ask classify hop.
       recentTables: makeRecentTablesStore(envBindings.KV),
+      // SK-APIKEYS-001: mint pk_live_ key for the newly-provisioned DB.
+      mintPkLive: (dbId, tenantId) =>
+        mintPkLiveKey(envBindings.DB, envBindings.BETTER_AUTH_SECRET, dbId, tenantId),
     },
     secretRef: DEFAULT_SECRET_REF,
   };

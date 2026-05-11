@@ -25,6 +25,7 @@
 // while anonymous, and so subsequent `/v1/ask` resolveDb lookups
 // against those DBs match by tenant_id.
 
+import { adoptApiKeys } from "./api-keys.ts";
 import { sha256Hex } from "./principal.ts";
 
 const TOKEN_PATTERN = /^[A-Za-z0-9_-]{16,128}$/;
@@ -64,11 +65,9 @@ export async function recordAnonAdoption(
       if (existing.user_id !== userId) return { ok: false, reason: "token_taken" };
     }
 
-    // Migrate every database the anon device provisioned over to the
-    // freshly-authed user. Re-keys `tenant_id` on the registry row
-    // so subsequent `listDatabasesForTenant(userId)` reads see them.
-    // Idempotent — the WHERE clause naturally no-ops on a replay
-    // (the rows were already migrated on the first call).
+    // Migrate every database and api_key the anon device provisioned
+    // over to the freshly-authed user. Idempotent — WHERE clauses
+    // naturally no-op on a replay.
     const anonTenantId = `anon:${await sha256Hex(token, 16)}`;
     await db
       .prepare(
@@ -76,6 +75,7 @@ export async function recordAnonAdoption(
       )
       .bind(userId, anonTenantId)
       .run();
+    await adoptApiKeys(db, anonTenantId, userId);
 
     return { ok: true, adopted: isFirstAdoption };
   } catch {

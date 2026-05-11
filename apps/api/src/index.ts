@@ -43,6 +43,7 @@ import {
 } from "./http.ts";
 import { getLLMRouter } from "./llm-router.ts";
 import { makeRequireSession, type RequireSessionVariables } from "./middleware.ts";
+import { lookupPkLiveKey as lookupPkLiveKeyImpl } from "./api-keys.ts";
 import {
   makeRequirePrincipal,
   type Principal,
@@ -92,9 +93,6 @@ app.onError((err, c) => {
 //
 // Preview environments are same-origin too (single merged worker per
 // PR via `preview-app.yml`), so no preview-URL regexes are needed.
-//
-// Third-party `<nlq-data>` embeds with `pk_live_` keys use per-key
-// origin pinning, not this blanket list.
 const CORS_ALLOWED_ORIGINS = [
   "https://app.nlqdb.com",
   "https://nlqdb.com",
@@ -115,8 +113,32 @@ const credentialedCors = cors({
   maxAge: 86400,
 });
 
+// Third-party <nlq-data> embeds send `Authorization: Bearer pk_live_*`
+// from arbitrary customer origins. `credentials: true` is incompatible
+// with `origin: *`, so we use a separate non-credentialed handler.
+// Phase 1 skips per-key origin pinning (SK-APIKEYS-003 open question).
+// We check `Access-Control-Request-Headers` (preflight) or
+// `Authorization` (actual) to detect pk_live_ callers; known origins
+// still use credentialedCors which comes second in the chain.
+const pkLiveCors = cors({
+  origin: (origin, c) => {
+    if (!origin) return null;
+    if (CORS_ALLOWED_ORIGINS.includes(origin)) return null; // let credentialedCors handle
+    const reqHeaders = c.req.header("access-control-request-headers") ?? "";
+    const auth = c.req.header("authorization") ?? "";
+    const looksLikePkLive =
+      auth.toLowerCase().includes("pk_live_") ||
+      reqHeaders.toLowerCase().includes("authorization");
+    return looksLikePkLive ? origin : null;
+  },
+  credentials: false,
+  allowHeaders: ["Content-Type", "Authorization"],
+  allowMethods: ["GET", "POST", "OPTIONS"],
+  maxAge: 86400,
+});
+
 app.use("/api/auth/*", credentialedCors);
-app.use("/v1/ask", credentialedCors);
+app.use("/v1/ask", pkLiveCors, credentialedCors);
 app.use("/v1/chat/*", credentialedCors);
 app.use("/v1/databases", credentialedCors);
 app.use("/v1/databases/*", credentialedCors);
@@ -153,11 +175,12 @@ const sessionResolver = {
 
 const requireSession = makeRequireSession(sessionResolver);
 
-// `/v1/ask` accepts either a cookie session OR `Authorization:
-// Bearer anon_<token>` (SK-ANON-001 + SK-ANON-006). The resolver
-// is shared with `requireSession` — same getSession + isRevoked
-// callbacks, principal middleware just adds the anon-bearer fork.
-const requirePrincipal = makeRequirePrincipal(sessionResolver);
+// `/v1/ask` accepts cookie sessions, `Bearer anon_<token>`, or
+// `Bearer pk_live_<token>` (SK-ANON-001, SK-ANON-006, SK-APIKEYS-001).
+const requirePrincipal = makeRequirePrincipal({
+  ...sessionResolver,
+  lookupPkLiveKey: (key) => lookupPkLiveKeyImpl(env.DB, env.BETTER_AUTH_SECRET, key),
+});
 
 // Per-request telemetry install + flush. setupTelemetry is idempotent
 // — first call per isolate wins; later calls return the cached handle.
@@ -236,6 +259,16 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
     const accept = c.req.header("accept") ?? "";
     const wantsSse = accept.includes("text/event-stream");
     const wantsJsonOnly = accept.includes("application/json") && !accept.includes("*/*");
+
+    // SK-APIKEYS-003: pk_live_ keys are read-only and scoped to one DB.
+    // Auto-fill dbId from the principal if the caller omitted it, and
+    // block any non-query kind at parse time so the create path is never
+    // reached. Rate limiting uses the authed bucket (not the anon gates).
+    if (principal.kind === "pk_live") {
+      if (!parsed.body.dbId) {
+        parsed.body.dbId = principal.dbId;
+      }
+    }
 
     // Anon-tier gates (SK-ANON-004 / SK-ANON-010 / SK-RL-006). Two
     // layers, two distinct user-facing outcomes:
@@ -561,6 +594,12 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
 
     // kind=create dispatch.
     if (routeOutput.kind === "create") {
+      // SK-APIKEYS-003 — pk_live_ keys are read-only; creates are forbidden.
+      if (principal.kind === "pk_live") {
+        span.setAttribute("nlqdb.ask.outcome", "pk_live_create_rejected");
+        span.end();
+        return c.json({ error: "forbidden", reason: "pk_live_read_only" }, 403);
+      }
       if (parsed.body.dbId) {
         // SK-ASK-014 — pinned dbId + classifier wants create. Surface
         // a typed clarification chip rather than letting the LLM emit
