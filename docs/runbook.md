@@ -493,7 +493,7 @@ unmerged consumer code against the preview queue.
 
 ---
 
-## 7. Prerequisites checklist (see `docs/architecture.md §10` Phase 0)
+## 7. Prerequisites checklist (see `docs/phase-plan.md §1` Phase 0)
 
 | §    | Item                               | Status       |
 | :--- | :--------------------------------- | :----------- |
@@ -692,7 +692,7 @@ NLQDB_BACKUP_DIR=/path/to/private/folder scripts/backup-envrc.sh
 
 ## 9. Anonymous-db lifecycle (Phase 1+)
 
-Lands with the hosted db.create slice ([`./architecture.md §10`](./architecture.md) Phase 1,
+Lands with the hosted db.create slice ([`./phase-plan.md §2`](./phase-plan.md) Phase 1,
 [`./architecture.md §3.6`](./architecture.md)). Capacity reasoning and source
 citations: [`docs/research-receipts.md §9`](./research-receipts.md).
 
@@ -790,14 +790,14 @@ Ranked by how much of Phase 1 capacity they deserve.
 | Use case | Persona | Priority | Notes |
 |---|---|---|---|
 | Solo dev prototyping a new app's DB | P1 | **P0** | The flagship journey. Optimize onboarding for this. |
-| Agent giving itself memory via MCP | P2 | **P0** | MCP server must ship in Phase 1, not Phase 2. |
+| Agent giving itself memory via MCP | P2 | **P0** | MCP server is the first item in the Phase 2 distribution slice (see `docs/phase-plan.md §4`); Phase 1 must still flow for an agent-shaped first call. |
 | Non-engineer answering a one-off question from a CSV | P3 | **P1** | Requires CSV upload. Ship it. |
 | Solo dev using chat as an admin UI over their own nlqdb | P1 | **P1** | Falls out of P0 naturally. |
-| Startup team using chat as admin UI over *their own* PG | P4 | **Phase 2** | Needs BYO-connection. Park. |
+| Startup team using chat as admin UI over *their own* PG | P4 | **Phase 4+ (signal-gated)** | Needs BYO-connection per `docs/architecture.md §3.6.7`; moves forward only if P4 inbound trips the `docs/phase-plan.md §6` trigger. |
 | Scheduled/recurring queries ("email me this weekly") | P3 | **Phase 2** | Useful but not foundational. |
-| Destructive ops with NL-diff preview | P1, P4 | **P0** | Trust-building. Ship in Phase 1. |
+| Destructive ops with NL-diff preview | P1, P4 | **Phase 1.5 (`GLOBAL-023` SK-TRUST-001)** | Trust-building. Ships with the trust-UX slice. |
 | Sharing a query result by link | P3, P1 | **P1** | Cheap to build, high word-of-mouth. |
-| Team workspaces with roles | P4 | **Phase 2** | Solo product first. |
+| Team workspaces with roles | P4 | **Phase 3** | Per `docs/phase-plan.md §5`. |
 | Embedded NL-query widget in user's own app | — | **Phase 3** | Tempting but dilutes the message. |
 
 **P0 = must ship in Phase 1. P1 = ship in Phase 1 if capacity allows. Phase 2+ = explicitly deferred.**
@@ -818,7 +818,7 @@ Priya is a growth PM at a 30-person SaaS. Thursday afternoon a conference vendor
 
 #### 10.2.4 P4 — Dmitri (Backend Engineer at a Small Startup)
 
-Dmitri is on-call at a 20-person startup. Support escalates: a pricing bug double-charged ~180 customers between 11pm and midnight. Instead of writing a one-off refund script, he opens the team workspace pointed at their existing Postgres, types the refund in plain English, and reviews the generated diff (183 rows, $2,104 total) before approving. The audit log captures who ran it, and the Retool page he would've had to build doesn't need to exist. *(Requires Phase 2 "bring your own Postgres" mode — aspirational for this persona in Phase 1.)*
+Dmitri is on-call at a 20-person startup. Support escalates: a pricing bug double-charged ~180 customers between 11pm and midnight. Instead of writing a one-off refund script, he opens the team workspace pointed at their existing Postgres, types the refund in plain English, and reviews the generated diff (183 rows, $2,104 total) before approving. The audit log captures who ran it, and the Retool page he would've had to build doesn't need to exist. *(Requires "bring your own Postgres" mode — Phase 4+ signal-gated per `docs/phase-plan.md §6` / §7. Aspirational for this persona until P4 inbound trips the trigger.)*
 
 Representative query example: `"migrate users from plan 'starter' to 'basic'"` (with diff preview, per [`docs/features/onboarding/FEATURE.md` SK-ONBOARD-004](../docs/features/onboarding/FEATURE.md)).
 
@@ -854,8 +854,8 @@ Prisma / Drizzle / SQLAlchemy are not what we are. If they want codegen from a s
 
 For each P0 persona, before we declare Phase 1 done:
 
-- **P1 Solo Builder:** 5 design partners each ship a real project using nlqdb as the primary DB. At least 2 convert to paid Hobby.
-- **P2 Agent Builder:** MCP server installed in 3 distinct agent frameworks in the wild. At least 1 agent product publicly integrates nlqdb as its memory layer.
+- **P1 Solo Builder:** 5 design partners each ship a real project using nlqdb as the primary DB. **Paid-conversion target (≥ 2 to Hobby)** is downstream of the `docs/phase-plan.md §6` monetization trigger — measurable only after Stripe live ships. Pre-trigger, the equivalent qualitative gate is the Sean Ellis "very disappointed" check in [`docs/founder-playbook.md §2`](../docs/founder-playbook.md).
+- **P2 Agent Builder:** MCP server installed in 3 distinct agent frameworks in the wild. At least 1 agent product publicly integrates nlqdb as its memory layer. (MCP is the first item in the Phase 2 distribution slice — this gate is measured after MCP ships.)
 - **P3 Analyst:** 3 non-engineers complete a real analysis end-to-end in under 10 minutes, unassisted, in user tests.
 
 If any of these don't hit, we don't ship Phase 2 — we iterate.

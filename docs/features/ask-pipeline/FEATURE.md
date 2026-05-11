@@ -12,7 +12,7 @@ when-to-load:
 **One-liner:** /v1/ask orchestration: rate-limit → cache → LLM router → SQL allowlist → exec → summarize.
 **Status:** implemented
 **Owners (code):** `apps/api/src/ask/**`
-**Cross-refs:** docs/architecture.md §3.6.1 (endpoint shape), §3.6.2 (typed-plan pipeline), §3.6.4 (dbId resolution), §3.6.5 (validator paths), §9 (bullet-proof checklist) · docs/architecture.md §10 Slice 6 (`/v1/ask` E2E) · docs/performance.md §2.1, §2.2, §3 · `docs/features/hosted-db-create/FEATURE.md` (Phase 1 — the `kind=create` arm of this pipeline lives there per SK-HDC-001; this skill keeps the read/write arm)
+**Cross-refs:** docs/architecture.md §3.6.1 (endpoint shape), §3.6.2 (typed-plan pipeline), §3.6.4 (dbId resolution), §3.6.5 (validator paths), §9 (bullet-proof checklist) · docs/performance.md §4 Slice 6 (`/v1/ask` E2E) · docs/performance.md §2.1, §2.2, §3 · `docs/features/hosted-db-create/FEATURE.md` (Phase 1 — the `kind=create` arm of this pipeline lives there per SK-HDC-001; this skill keeps the read/write arm)
 
 ## Touchpoints — read this skill before editing
 
@@ -34,9 +34,9 @@ when-to-load:
 - **Decision:** Every `/v1/ask` request follows the canonical step order in `docs/performance.md §2.1, §2.2`. New steps require a `SK-ASK-NNN` decision; reordering existing steps requires updating the canonical tables in `performance.md` in the same PR. The cache-miss path opens with one merged `route` LLM call (SK-ASK-009) — no separate `classify` then `disambiguate` step.
 - **Core value:** Bullet-proof, Honest latency, Fast
 - **Why:** A canonical order means every reviewer, every dashboard, every test agrees on what "the ask path" is. Inserting an unsanctioned step (e.g., a third LLM call between plan and exec) is the kind of change that silently breaks the latency budget and the trace UI. The order is also load-bearing for `GLOBAL-011`: surfaces stream the trace in the order steps complete. Folding classify + disambiguate into one `route` call halves the cheap-tier latency on the dbId-absent path.
-- **Consequence in code:** `orchestrateAsk()` (per `docs/architecture.md §10` Slice 6) walks the steps in order. Each step gets one OTel span (per `docs/performance.md §3.1`). The route-handler prelude (SK-ASK-009) emits one `llm.route` span per cache-miss / dbId-absent send. A reorder regression is caught by the span-tree assertion in the slice's vitest. Latency budgets in `performance.md §2.1, §2.2` are CI-asserted at 1.5× p50.
+- **Consequence in code:** `orchestrateAsk()` (per `docs/performance.md §4` Slice 6) walks the steps in order. Each step gets one OTel span (per `docs/performance.md §3.1`). The route-handler prelude (SK-ASK-009) emits one `llm.route` span per cache-miss / dbId-absent send. A reorder regression is caught by the span-tree assertion in the slice's vitest. Latency budgets in `performance.md §2.1, §2.2` are CI-asserted at 1.5× p50.
 - **Alternatives rejected:** Per-handler order — would let the order drift between create / query / write without notice. Skip cache when LLM is fast — defeats `GLOBAL-006` and breaks the cache-warming intent. Keep classify + disambiguate as separate steps — see SK-ASK-009.
-- **Source:** docs/architecture.md §3.6.1, §3.6.2 · docs/performance.md §2.1, §2.2 · docs/architecture.md §10 Slice 6
+- **Source:** docs/architecture.md §3.6.1, §3.6.2 · docs/performance.md §2.1, §2.2 · docs/performance.md §4 Slice 6
 
 ### SK-ASK-003 — `dbId` resolution: deterministic fast-path then cheap-tier LLM, with confidence floor + visible echo
 
@@ -77,12 +77,12 @@ when-to-load:
 
 ### SK-ASK-007 — `user.first_query` fires exactly once per user via the lookup-then-emit-then-commit pattern
 
-- **Decision:** The first successful `/v1/ask` per user emits a `user.first_query` product event exactly once. The implementation uses lookup-then-emit-then-commit with a KV marker — the marker is checked, the event is emitted, the marker is committed. The full pattern is in `docs/architecture.md §10` Slice 6.
+- **Decision:** The first successful `/v1/ask` per user emits a `user.first_query` product event exactly once. The implementation uses lookup-then-emit-then-commit with a KV marker — the marker is checked, the event is emitted, the marker is committed. The full pattern is in `docs/performance.md §4` Slice 6.
 - **Core value:** Bullet-proof, Honest latency
 - **Why:** Naively writing the marker before emitting can drop the event on a Worker crash; emitting then writing can double-emit on retry. The lookup-then-emit-then-commit pattern with idempotent sink writes (events-pipeline) gives us at-most-once user-visible (the dashboard counts unique users) without dropping the signal.
 - **Consequence in code:** `firstQueryGate(user_id)` is wrapped in `nlqdb.cache.first_query.lookup` and `nlqdb.cache.first_query.commit` spans. The events emit is wrapped in `ctx.waitUntil` (per `docs/performance.md §3.1`) so it runs after the response. Test asserts exactly-once across two concurrent first calls (the second observes the marker).
 - **Alternatives rejected:** Write marker first — event drops on crash. Emit first — double-emit on retry. Synchronous DB write — adds DB round-trip to the response path.
-- **Source:** docs/architecture.md §10 Slice 6 · docs/performance.md §3.1
+- **Source:** docs/performance.md §4 Slice 6 · docs/performance.md §3.1
 
 ### SK-ASK-008 — Live trace is streamed in step-completion order; no spinner-lying
 
@@ -173,7 +173,7 @@ This is the part most implementations get wrong. A single "prompt → SQL → ru
 5. **Confidence gate.** If confidence is low OR the plan is destructive OR touches > N rows, set `requires_confirm: true` in the response and surface a plain-English diff + row-count preview in the UI. Execution is blocked until the user approves (`SK-ONBOARD-004`).
 6. **Execute + stream.** Stream rows back as they arrive. The live trace shows this step completing in real time (`SK-ASK-008`).
 7. **Summarize.** A cheap model turns rows into prose. Always attach the raw data too — we never paraphrase away the truth. Skipped when `Accept: application/json` or row count is below threshold (`SK-ASK-005`).
-8. **Log.** Write `{ fingerprint, latency, rows_scanned, rows_returned, engine, plan_shape }` to the workload log. This feeds the Workload Analyzer in Phase 2 (`docs/architecture.md §10 §2`).
+8. **Log.** Write `{ fingerprint, latency, rows_scanned, rows_returned, engine, plan_shape }` to the workload log. This feeds the Workload Analyzer in Phase 2 (`docs/phase-plan.md`).
 
 Intentional reinventions on this path (grammar-constrained SQL decoder, foreign-key-aware schema embedding, learned query-shape classifier) are catalogued in `docs/guidelines.md §7`.
 
@@ -189,6 +189,10 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 - **GLOBAL-017** — Two endpoints, two CLI verbs, one chat box — one way to do each thing.
 - **GLOBAL-022** — Recoverable failures retry to success — never surface a fixable error.
   - *In this skill:* see `SK-ASK-013` for the canonical implementation. Each pipeline stage owns its recoverable error class — classifier (wrong intent), planner (invalid SQL), validator (allowlist re-plan), executor (transient DB error) — and retries up to 3 attempts via `withStageRetry`, feeding the prior attempt's error into the next prompt where applicable.
+- **GLOBAL-023** — Trust UX baseline.
+  - *In this skill:* `/v1/ask` responses carry the `trace` and `confidence` blocks specified by [`SK-TRUST-002`](../trust-ux/FEATURE.md); writes/DDL responses carry the `diff` block for [`SK-TRUST-001`](../trust-ux/FEATURE.md); the orchestrator short-circuits to `low_confidence` per [`SK-TRUST-003`](../trust-ux/FEATURE.md) before `db.execute`.
+- **GLOBAL-024** — Demand-signal telemetry on every "not yet" path.
+  - *In this skill:* 4xx `unsupported_verb` rejections (DDL via `/v1/ask`) emit `feature.requested.ddl_via_ask`; `low_confidence` refusals emit `feature.requested.ambiguous_goal`; `db_full` write-cap hits emit `feature.requested.larger_db`.
 
 ## Open questions / known unknowns
 

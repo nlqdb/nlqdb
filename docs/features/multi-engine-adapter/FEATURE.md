@@ -12,7 +12,7 @@ when-to-load:
 **One-liner:** Adapters beyond Postgres — Phase 3 expansion to ClickHouse via Tinybird (next), with Redis / D1 evaluated and deferred.
 **Status:** decisions firm (`SK-MULTIENG-001..004`); ClickHouse/Tinybird adapter implementation pending.
 **Owners (code):** `packages/db/**`
-**Cross-refs:** `db-adapter/FEATURE.md` (Phase 0 PG adapter; `SK-DB-009/010` evolve the contract for multi-engine) · `engine-migration/FEATURE.md` (auto-migration is decoupled — see `SK-MULTIENG-002` *Consequence*) · `docs/architecture.md §10` (Phase plan, §11 engine verdict)
+**Cross-refs:** `db-adapter/FEATURE.md` (Phase 0 PG adapter; `SK-DB-009/010` evolve the contract for multi-engine) · `engine-migration/FEATURE.md` (auto-migration is decoupled — see `SK-MULTIENG-002` *Consequence*) · `docs/phase-plan.md` (Phase plan, §11 engine verdict)
 
 ## Touchpoints — read this skill before editing
 
@@ -126,7 +126,7 @@ These are the genuinely open items remaining after `SK-MULTIENG-001..004`. Each 
 
 ## Source pointers
 
-- `docs/architecture.md §10 §6` — Phase 3 slice list
+- `docs/phase-plan.md` — Phase 3 slice list
 - `docs/architecture.md §11` — engine verdict table
 - [`db-adapter/FEATURE.md`](../db-adapter/FEATURE.md) — single-engine adapter reference (`SK-DB-001..008`); evolution to multi-engine via `SK-DB-009..010`
 - [`engine-migration/FEATURE.md`](../engine-migration/FEATURE.md) — workload analyser + migration orchestrator (decoupled deliverable)

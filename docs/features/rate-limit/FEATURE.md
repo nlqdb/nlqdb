@@ -13,7 +13,7 @@ when-to-load:
 **One-liner:** Per-key, per-IP rate-limit middleware with X-RateLimit-* headers.
 **Status:** implemented — per-account D1 limiter (`/v1/ask`), per-IP anon-tier KV limiter (`apps/api/src/anon-rate-limit.ts`), global anon KV cap (`apps/api/src/anon-global-cap.ts`), and `X-RateLimit-*` parity headers. The legacy `/v1/demo/ask` per-IP limiter (formerly `apps/api/src/demo.ts`'s `makeRateLimiter`) was retired with the demo route under SK-WEB-008. Per-account anon-create cap (20/day) lands with adoption.
 **Owners (code):** `apps/api/src/ask/rate-limit.ts`, `apps/api/src/demo.ts`
-**Cross-refs:** docs/architecture.md §6 (free-tier rate-limit guarantees) · docs/architecture.md §3.5 (`pk_live_*` origin-pinned) · docs/architecture.md §3.6.8 (rate limits on create) · docs/architecture.md §10 §8 (per-IP + per-account "Day 1") · docs/architecture.md §10 §5.3 / §11.5 (free-tier abuse) · docs/performance.md §2.1 stage 3 / §2.2 stage 3 (KV-read budget — 5 ms p50 / 15 ms p99) · §3.1 (`nlqdb.ratelimit.check` span) · §4 Slice 6
+**Cross-refs:** docs/architecture.md §6 (free-tier rate-limit guarantees) · docs/architecture.md §3.5 (`pk_live_*` origin-pinned) · docs/architecture.md §3.6.8 (rate limits on create) · docs/phase-plan.md (per-IP + per-account "Day 1") · docs/phase-plan.md / §11.5 (free-tier abuse) · docs/performance.md §2.1 stage 3 / §2.2 stage 3 (KV-read budget — 5 ms p50 / 15 ms p99) · §3.1 (`nlqdb.ratelimit.check` span) · §4 Slice 6
 
 ## Touchpoints — read this skill before editing
 
@@ -37,7 +37,7 @@ when-to-load:
 - **Alternatives rejected:**
   - Single KV-backed limiter for both — exhausts the 1k-writes-per-day Free quota within a day of any real traffic.
   - Single D1-backed limiter for both — every anonymous demo hit creates a `rate_limit_buckets` row keyed by IP, exploding D1 row count under abuse exactly when we need the limiter to be cheap.
-  - Upstash Redis token-bucket (referenced in `docs/architecture.md §10 §3` "per-API-key token bucket in Upstash Redis") — not free-tier viable today; deferred to Phase 2 if D1 ceiling becomes a problem.
+  - Upstash Redis token-bucket (referenced in `docs/phase-plan.md` "per-API-key token bucket in Upstash Redis") — not free-tier viable today; deferred to Phase 2 if D1 ceiling becomes a problem.
 
 ### SK-RL-002 — D1 limiter: atomic UPSERT-with-RETURNING; over-limit requests still increment
 
@@ -108,6 +108,8 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 
 - **GLOBAL-002** — Behavior parity across surfaces.
 - **GLOBAL-007** — No login wall before first value.
+- **GLOBAL-024** — Demand-signal telemetry on every "not yet" path.
+  - *In this skill:* every 429 emits a typed product event — anon-tier hits fire `feature.requested.heavier_tier`; per-account caps fire `feature.requested.larger_account`. These pair with the `X-RateLimit-*` headers (system-level signal) to give both machine-readable retry hints and product-level demand signal.
 
 ## Open questions / known unknowns
 

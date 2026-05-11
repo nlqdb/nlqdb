@@ -25,7 +25,7 @@ idempotency, dispatches `checkout.session.completed` /
 `customers` table and emit `billing.subscription_created` /
 `billing.subscription_canceled` events, and archives the raw payload
 to R2 at `stripe-events/YYYY/MM/DD/{event_id}.json` via
-`ctx.waitUntil`. No `trial.*` events — docs/architecture.md §10 has no Stripe trial
+`ctx.waitUntil`. No `trial.*` events — docs/phase-plan.md has no Stripe trial
 period.
 
 ### Registering the webhook in the Stripe Dashboard

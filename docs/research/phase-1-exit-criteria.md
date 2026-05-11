@@ -1,8 +1,8 @@
 # Phase 1 exit criteria — research notes
 
-> **Status:** research notes / starting hypotheses, not canonical decisions. The committed Phase 1 exit gate lives in [`../architecture.md` §10](../architecture.md#10-phase-plan). The items below were on the original plan.md / implementation.md exit gates and were dropped during the docs consolidation; they are kept here so the team can pull them back into the canonical gate as the launch date approaches and we have signal on which ones still apply.
+> **Status:** research notes / starting hypotheses, not canonical decisions. The committed Phase 1 exit gate lives in [`../architecture.md` §10](../phase-plan.md). The items below were on the original plan.md / implementation.md exit gates and were dropped during the docs consolidation; they are kept here so the team can pull them back into the canonical gate as the launch date approaches and we have signal on which ones still apply.
 
-The gate in `architecture.md §10` covers the *quantitative engineering* checks (p50 / p95 / Lighthouse / capacity / $0). The items below are the *qualitative product* checks — proof that the goal-first inversion is working, that real users got real value, and that we're capacity-safe at launch volume. They were dropped because they need more research to define cleanly: what counts as "a real side project," who the 5 target customers are, what the support-ticket triage rule is. Resolve before Phase 1 launch — don't ship without picking a stance.
+The gate in `phase-plan.md` covers the *quantitative engineering* checks (p50 / p95 / Lighthouse / capacity / $0). The items below are the *qualitative product* checks — proof that the goal-first inversion is working, that real users got real value, and that we're capacity-safe at launch volume. They were dropped because they need more research to define cleanly: what counts as "a real side project," who the 5 target customers are, what the support-ticket triage rule is. Resolve before Phase 1 launch — don't ship without picking a stance.
 
 ## Qualitative criteria (carried over from `plan.md §1.7` and `implementation.md §4`)
 
@@ -50,19 +50,25 @@ The gate in `architecture.md §10` covers the *quantitative engineering* checks 
 - What's the failure response — surface a "high demand, queued" message and slow-roll, or auto-route paid models for the first 24h?
 - Does this gate move to "200 signups + 50% of design partners running their first query in the same hour" (the realistic worst case)?
 
-### 5. "MCP server installed in ≥3 distinct client apps"
+### 5. "MCP server installed in ≥3 distinct client apps" — RESOLVED 2026-05-10
 
-**Original wording (`plan.md §1.7`).** *"MCP server installed in ≥3 distinct client apps."* In the consolidated `architecture.md §10` this moved to the **Phase 2** exit gate.
+**Resolution.** Deliberate phase reassignment, confirmed. MCP is the
+**first item in the Phase 2 distribution slice** per
+[`docs/phase-plan.md §4`](../phase-plan.md) — it leads the
+distribution surfaces (before CLI) because the 2026 MCP registry
+(9 k+ servers, 78% enterprise adoption) is the active distribution
+channel. The original "≥3 distinct host apps" intent is preserved
+verbatim as the Phase 2 exit gate. Phase 1 does not gate on MCP;
+Phase 1 must still flow for an agent-shaped first call (an agent
+hitting `/v1/ask` directly), but the dedicated MCP server is Phase 2.
 
-**Why the move is reasonable.** MCP server is now a Phase 2 deliverable in the consolidated plan, so Phase 1 can't gate on it. But the Phase 2 gate already says *"MCP installed in 3+ distinct host apps; 1 agent product publicly uses nlqdb as memory"* — same intent.
-
-**Open question.** Confirm with the founder whether this is a deliberate phase reassignment (it should be) or an oversight. If deliberate, no action — the architecture.md §10 Phase 2 gate covers it. If the original intent was to ship MCP in Phase 1, the Phase 1 exit gate needs the row added back and the Phase 2 deliverables reshuffled.
+No further action — this row stays as the resolution trail.
 
 ## Source
 
 Carried forward from:
 - Pre-consolidation `docs/plan.md §1.7` (deleted in PR #81 commit `fb6e8c9`).
 - Pre-consolidation `docs/implementation.md §4` exit gate (same commit).
-- The consolidated gate in `docs/architecture.md §10` Phase 1.
+- The consolidated gate in `docs/phase-plan.md` Phase 1.
 
-Update this file as you resolve open questions; promote rows into `architecture.md §10` once they're crisp. Don't let a vague gate ship the launch — per `D1` of `CLAUDE.md §2`, resolve before documenting.
+Update this file as you resolve open questions; promote rows into `phase-plan.md` once they're crisp. Don't let a vague gate ship the launch — per `D1` of `CLAUDE.md §2`, resolve before documenting.

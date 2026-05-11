@@ -13,7 +13,7 @@ when-to-load:
 **One-liner:** Better Auth identity across all surfaces — sessions, refresh, device flow, GitHub/Google/magic-link.
 **Status:** implemented
 **Owners (code):** `apps/api/src/auth/**`, `packages/auth-internal/**`
-**Cross-refs:** docs/architecture.md §4 (Authentication & identity) · docs/architecture.md §10 §2.5, Slice 5 (Better Auth) · docs/runbook.md §5 (Google OAuth) · docs/runbook.md §5b (GitHub OAuth)
+**Cross-refs:** docs/architecture.md §4 (Authentication & identity) · docs/performance.md §4 Slice 5 (Better Auth) · docs/runbook.md §5 (Google OAuth) · docs/runbook.md §5b (GitHub OAuth)
 
 ## Touchpoints — read this skill before editing
 
@@ -83,7 +83,7 @@ when-to-load:
 - **Why:** `cookieCache` alone drops `nlqdb.auth.verify` from ~30 ms p99 (D1-bound) to ~6 ms p99 (HMAC + KV) — but it would also defeat `GLOBAL-018` because the cached cookie would survive revocation until expiry. Adding the KV check on every read keeps the latency win and the revocation guarantee.
 - **Consequence in code:** A test asserts that revoking a session via the dashboard returns 401 within ≤2 s on the next call from any surface. The `useSession` hook on web, the bearer-verifier on the API, and the device-token verifier in CLI all share the same `verifySessionWithRevocation` helper.
 - **Alternatives rejected:** Cookie cache only — `GLOBAL-018` violated. KV check only (no cookie cache) — leaves perf on the table; auth verify dominates the cache-hit budget per `docs/performance.md §2.1`.
-- **Source:** docs/architecture.md §4.3, §4.5; docs/architecture.md §10 Slice 6 (CI assertion)
+- **Source:** docs/architecture.md §4.3, §4.5; docs/performance.md §4 Slice 6 (CI assertion)
 
 ### SK-AUTH-008 — Three OAuth App pairs (prod + canary + dev) because OAuth Apps support exactly one callback URL
 
@@ -92,7 +92,7 @@ when-to-load:
 - **Why:** GitHub OAuth Apps **do not support** multiple callback URLs (multi-callback is a GitHub-App feature, a different product whose installation/permission semantics we don't need). One callback per app forces the per-environment split. Sharing one app across hosts is impossible without rewriting the callback at request time, which is its own bug source. Canary needs real-IdP coverage (PR previews use a mock per `SK-AUTH-018`), so it gets its own pair rather than reusing prod credentials.
 - **Consequence in code:** Per-worker secret stores hold `OAUTH_GITHUB_CLIENT_ID` / `OAUTH_GITHUB_CLIENT_SECRET` (the prod-equivalent slot, set to whichever App matches that worker). `.envrc` additionally carries `OAUTH_GITHUB_CLIENT_ID_DEV` / `OAUTH_GITHUB_CLIENT_SECRET_DEV` for `wrangler dev`. `verify-secrets.sh` probes both. Per-environment App ownership is documented in `docs/runbook.md §5b`.
 - **Alternatives rejected:** Single OAuth App with a callback-rewrite proxy — adds a moving part and a request-time rewrite step. GitHub App instead of OAuth App — the installation-permission model is wrong for sign-in only. Reusing prod creds on canary — defeats the point of canary as an isolated integration gate (a canary-side IdP regression would page prod-credential ownership).
-- **Source:** docs/runbook.md §5b · docs/architecture.md §10 §2.5
+- **Source:** docs/runbook.md §5b · docs/phase-plan.md
 
 ### SK-AUTH-009 — Env-var prefix `OAUTH_GITHUB_*`, never `GITHUB_*`
 
@@ -101,7 +101,7 @@ when-to-load:
 - **Why:** GitHub Actions rejects org/repo secrets prefixed with `GITHUB_` (reserved namespace). Naming the pair `GITHUB_CLIENT_ID` would force a different name in CI than locally and in Workers — three places to misalign. The `OAUTH_GITHUB_*` prefix mirrors 1:1 across `.envrc`, GitHub Actions secrets, and Wrangler secrets.
 - **Consequence in code:** `.env.example`, `wrangler.toml`, GitHub Actions workflows, and `verify-secrets.sh` all use `OAUTH_GITHUB_*`. PRs that introduce a `GITHUB_CLIENT_*` secret name fail mirror-check in CI.
 - **Alternatives rejected:** `GITHUB_CLIENT_ID` (matches the Better Auth docs default) — blocked by GHA's reserved namespace; would diverge between local and CI. `GH_OAUTH_*` — saves three characters at the cost of pattern-matching with the rest of the auth env-var family.
-- **Source:** docs/architecture.md §10 §2.5 · docs/runbook.md §5b
+- **Source:** docs/phase-plan.md · docs/runbook.md §5b
 
 ### SK-AUTH-010 — Anonymous-mode adoption is a single-row update — no conditional code paths
 
@@ -200,4 +200,4 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 - **Passkey UX details (when promoted on second visit).** Better Auth ships passkey primitives, but the prompt copy / when-to-show heuristic is not yet specified. Track in the auth slice when the second-visit UX lands.
 - **Phase 2 RBAC trigger.** `SK-AUTH-006` defers RBAC until "two paying customers ask." We don't yet have an explicit way to count those requests in the support tracker. Add a `rbac_request` tag to the customer-feedback intake when Phase 2 starts.
 - **`session.cookieCache` failure mode under KV outage.** The `(cookie cache, revocation check)` pair in `SK-AUTH-007` assumes KV is reachable. If KV is unreachable, do we fail-closed (deny) or fail-open (trust the cookie until expiry)? Design.md doesn't decide. Open.
-- **Magic-link domain verification.** `RESEND_API_KEY` is provisioned, but `nlqdb.com` SPF/DKIM/DMARC verification is deferred until Phase 1 (per `docs/architecture.md §10 §2.5`). Magic-link sign-in cannot ship until that lands.
+- **Magic-link domain verification.** `RESEND_API_KEY` is provisioned, but `nlqdb.com` SPF/DKIM/DMARC verification is deferred until Phase 1 (per `docs/phase-plan.md §2`). Magic-link sign-in cannot ship until that lands.

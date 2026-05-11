@@ -12,7 +12,7 @@ when-to-load:
 **One-liner:** Model selection, fallback chain, prompt strategy, per-user credit accounting.
 **Status:** implemented
 **Owners (code):** `packages/llm/**`
-**Cross-refs:** docs/architecture.md §7 (AI model selection), §7.1 (Strict-$0 inference path) · docs/features/llm-router/FEATURE.md (full file) · docs/architecture.md §10 Slice 4 (LLM router) · docs/performance.md §2.2 (cache-miss latency), §3 (span/metric catalog) · `docs/features/hosted-db-create/FEATURE.md` (Phase 1 — `kind` classifier and `SchemaPlan` schema-inference are LLM calls routed through this router; SK-HDC-001/002)
+**Cross-refs:** docs/architecture.md §7 (AI model selection), §7.1 (Strict-$0 inference path) · docs/features/llm-router/FEATURE.md (full file) · docs/performance.md §4 Slice 4 (LLM router) · docs/performance.md §2.2 (cache-miss latency), §3 (span/metric catalog) · `docs/features/hosted-db-create/FEATURE.md` (Phase 1 — `kind` classifier and `SchemaPlan` schema-inference are LLM calls routed through this router; SK-HDC-001/002)
 
 ## Touchpoints — read this skill before editing
 

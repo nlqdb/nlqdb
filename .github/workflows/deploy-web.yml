@@ -40,7 +40,21 @@ jobs:
       # `astro build` writes apps/web/dist; the SLSA attestation step
       # below globs that path, so this build must succeed before the
       # attestation runs.
+      #
+      # `PUBLIC_API_BASE` is baked into the client bundle at build time
+      # (Astro/Vite exposes `PUBLIC_*` env vars to client code via
+      # `import.meta.env.PUBLIC_API_BASE`). The marketing hero on
+      # `nlqdb.com` POSTs to `${apiBase}/v1/ask`; without this env the
+      # build falls back to `""` (same-origin), which 404s on `nlqdb-web`
+      # because the marketing Worker has no `/v1/*` route. Cross-origin
+      # to `app.nlqdb.com` works because the API CORS allow-list already
+      # includes `https://nlqdb.com` (`apps/api/src/index.ts`
+      # `CORS_ALLOWED_ORIGINS`). Preview builds (`preview-app.yml`)
+      # deliberately leave this unset so the preview hero stays
+      # same-origin — see comment in `apps/web/src/components/Hero.astro`.
       - name: Build site
+        env:
+          PUBLIC_API_BASE: https://app.nlqdb.com
         run: bun run --cwd apps/web build
 
       # SLSA L3 build-provenance attestation. The action's

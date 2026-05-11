@@ -10,7 +10,7 @@ The "fast" promise made concrete. This doc pins:
 6. **Dashboards-as-code** layout (§6).
 
 Not in scope: architectural rationale (see [./architecture.md](./architecture.md)),
-phased plan (see [./architecture.md §10](./architecture.md §10)), current
+phased plan (see [./phase-plan.md](./phase-plan.md)), current
 state of provisioned infra (see [./runbook.md](./runbook.md)).
 
 ---

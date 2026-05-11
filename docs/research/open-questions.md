@@ -2,7 +2,7 @@
 
 > **Status:** unresolved questions. Each row is a deferred decision the team needs to take a stance on before the indicated phase ships. Per `D1` of `CLAUDE.md §2`, don't promote any of these into a canonical doc / skill until the underlying question is resolved — vague decisions are worse than no decision.
 
-These were deferred during the PR #81 docs consolidation. They lived in the now-deleted `docs/design.md §10` and `docs/plan.md §8`. Some were already addressed by skills (`SK-AUTH-001` decided "Better Auth on Workers"; `architecture.md §10` Phase 2 committed custom embed domains). The seven below are the ones still open.
+These were deferred during the PR #81 docs consolidation. They lived in the now-deleted `docs/design.md §10` and `docs/plan.md §8`. Some were already addressed by skills (`SK-AUTH-001` decided "Better Auth on Workers"; `phase-plan.md` Phase 2 committed custom embed domains). The seven below are the ones still open.
 
 ## 1. `<nlq-data>` security review — external pentest
 
@@ -72,7 +72,7 @@ These were deferred during the PR #81 docs consolidation. They lived in the now-
 
 **Original lean.** *"Probably late Phase 1 — solo-user product first, teams when first 5 customers ask."*
 
-**Status.** `architecture.md §10` Phase 3 lists *Team workspaces* as a Phase 3 deliverable. The original intention (late Phase 1) was deferred — confirm whether that's based on customer signal (no Phase 1 partners asked) or scope-creep avoidance.
+**Status.** `phase-plan.md` Phase 3 lists *Team workspaces* as a Phase 3 deliverable. The original intention (late Phase 1) was deferred — confirm whether that's based on customer signal (no Phase 1 partners asked) or scope-creep avoidance.
 
 **Decision needed.** Confirm Phase 3 placement. If yes, close this row; if customer signal flips to "team is blocking adoption," it can move forward.
 

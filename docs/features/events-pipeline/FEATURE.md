@@ -13,7 +13,7 @@ when-to-load:
 **One-liner:** EVENTS_QUEUE producer + events-worker consumer that fans out to sinks (LogSnag, etc.).
 **Status:** implemented (Slice 3 — `packages/events` + queue; Slice 7 wires `billing.*` emissions)
 **Owners (code):** `packages/events/**`, `apps/events-worker/**`
-**Cross-refs:** docs/architecture.md §5.4 (analytics layers) · docs/architecture.md §10 §2.6 (events architecture) · docs/runbook.md §6 (`apps/events-worker` ops) · docs/performance.md §3.1 (`nlqdb.events.emit` span — wrapped in `ctx.waitUntil`, server-side only) · §4 Slices 5/6/7 (`user.registered` / `user.first_query` / `billing.*` emission contracts asserted with stub sink) · `apps/events-worker/README.md`
+**Cross-refs:** docs/architecture.md §5.4 (analytics layers) · docs/phase-plan.md (events architecture) · docs/runbook.md §6 (`apps/events-worker` ops) · docs/performance.md §3.1 (`nlqdb.events.emit` span — wrapped in `ctx.waitUntil`, server-side only) · §4 Slices 5/6/7 (`user.registered` / `user.first_query` / `billing.*` emission contracts asserted with stub sink) · `apps/events-worker/README.md`
 
 ## Touchpoints — read this skill before editing
 
@@ -77,7 +77,7 @@ when-to-load:
 
 ### SK-EVENTS-006 — Canonical event-name schema: `<domain>.<verb_noun>`, snake_dot, lowercase
 
-- **Decision:** Event names follow `<domain>.<verb_noun>` (e.g. `user.registered`, `user.first_query`, `billing.subscription_created`, `billing.subscription_canceled`). Domains today: `user`, `billing`. **No `trial.*` events** (the free tier IS the trial — see `docs/architecture.md §10 §5.3`). **Sign-ins are deliberately not emitted** — they would dominate the LogSnag 2,500/mo free quota with no founder signal.
+- **Decision:** Event names follow `<domain>.<verb_noun>` (e.g. `user.registered`, `user.first_query`, `billing.subscription_created`, `billing.subscription_canceled`). Domains today: `user`, `billing`. **No `trial.*` events** (the free tier IS the trial — see `docs/architecture.md §5`). **Sign-ins are deliberately not emitted** — they would dominate the LogSnag 2,500/mo free quota with no founder signal.
 - **Core value:** Free, Simple, Honest latency
 - **Why:** A consistent naming scheme keeps LogSnag / future PostHog dashboards readable without a translation layer. The 2,500/mo quota is a hard constraint on what's worth emitting — the rule "fire only one-shot lifecycle events" is what keeps the free-tier sink viable. Trial events would lie about a funnel that doesn't exist.
 - **Consequence in code:** Reviewers reject names like `userSignedIn` (camelCase), `user-first-query` (kebab), `signin` (no domain). Reviewers reject any new event that fires more than once per user-lifecycle without an explicit cost analysis (e.g. PostHog wired alongside LogSnag with its own quota). The Stripe webhook deliberately does not emit `billing.subscription_updated` (`SK-STRIPE-005`); update is pure state sync.
@@ -125,6 +125,7 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 - **GLOBAL-013** — $0/month free tier; ≤ 3 MiB Workers bundle. *In this skill:* the events-worker imports `@nlqdb/db/clickhouse-tinybird` for `writeQueryLog`; the package's HTTP path is plain `fetch` with no SDK weight, keeping the bundle within budget.
 - **GLOBAL-014** — OTel span on every external call (DB, LLM, HTTP, queue).
 - **GLOBAL-021** — Each external system has one canonical owning module. *In this skill:* the events-worker is the canonical owner of `EVENTS_QUEUE` (consumer) per the GLOBAL-021 owner table; `packages/events/` owns the producer types. Tinybird HTTP is owned by `packages/db/clickhouse-tinybird/` — `SK-EVENTS-009`'s sink imports `writeQueryLog` from there rather than POSTing directly. Owner-to-owner library dependency (events-worker → `@nlqdb/db`) is explicitly allowed by GLOBAL-021.
+- **GLOBAL-024** — Demand-signal telemetry on every "not yet" path. *In this skill:* the `feature.*` event domain (e.g. `feature.requested.ddl_via_ask`, `feature.requested.byo_pg`, `feature.requested.team_workspace`) lives alongside the existing `user.*` and `billing.*` domains in `packages/events`. The same `<domain>.<verb_noun>` naming rule from SK-EVENTS-* applies. Emission contract: every surface fires one event on its negative paths; the events-worker drains them into the same LogSnag sink.
 
 ## Open questions / known unknowns
 

@@ -14,7 +14,7 @@ when-to-load:
 **One-liner:** Phase 3 reshape loop — daily workload analyser creates Tinybird Pipes for hot ClickHouse fingerprints and writes advisory audit rows for hot Postgres ones; cross-engine migration still planned.
 **Status:** partial — intra-engine reshape live (`SK-MIGRATE-001..006`); cross-engine migration (PG ↔ ClickHouse / Redis / Mongo) still planned.
 **Owners (code):** `apps/api/src/workload-analyser/**`, `packages/db/src/clickhouse-tinybird/pipe-management.ts`, `apps/api/migrations/0008_workload_analyser_audit.sql`
-**Cross-refs:** `multi-engine-adapter/FEATURE.md` `SK-MULTIENG-003` (the rule this skill operationalises) · `events-pipeline/FEATURE.md` `SK-EVENTS-009` (the `query_log` Data Source the analyser reads) · `plan-cache/FEATURE.md` `SK-PLAN-002` (cache key must outlive reshape) · `docs/architecture.md §10 §2.2` (Migration Orchestrator + Workload Analyzer) · `docs/architecture.md §10 §2.5` (Phase 2 exit criteria — auto-migration is the gate) · `docs/performance.md §3.1` (`nlqdb.workload_analyser.*` spans)
+**Cross-refs:** `multi-engine-adapter/FEATURE.md` `SK-MULTIENG-003` (the rule this skill operationalises) · `events-pipeline/FEATURE.md` `SK-EVENTS-009` (the `query_log` Data Source the analyser reads) · `plan-cache/FEATURE.md` `SK-PLAN-002` (cache key must outlive reshape) · `docs/phase-plan.md §5` (Migration Orchestrator + Workload Analyzer) · `docs/phase-plan.md §5` (Phase 3 exit criteria — auto-migration is the gate) · `docs/performance.md §3.1` (`nlqdb.workload_analyser.*` spans)
 
 ## Touchpoints — read this skill before editing
 
@@ -116,7 +116,7 @@ These remain after `SK-MIGRATE-001..006` and become follow-up SK-MIGRATE blocks 
 
 - **Shadow-write path.** Where the shadow write happens (executor / orchestrator / fan-out worker) without moving the primary-write latency budget.
 - **Backfill throttling.** Rate limit on backfill against the source DB; how to measure current load.
-- **Dual-read sampling rate.** Concrete percentage TBD (`docs/architecture.md §10 §2.2` says "a sample").
+- **Dual-read sampling rate.** Concrete percentage TBD (`docs/phase-plan.md §5` says "a sample").
 - **Divergence handling.** Page recipient + auto-rollback contract (rewind vs freeze) undecided.
 - **Atomic cutover.** Per-db routing pointer location (D1 / KV / Durable Object) and flip-consistency guarantee undecided.
 - **Rollback procedure.** Post-cutover regression detection; source-engine warm grace window length.
@@ -151,9 +151,9 @@ These remain after `SK-MIGRATE-001..006` and become follow-up SK-MIGRATE blocks 
 
 ## Phase-3 cross-engine entry checklist
 
-`SK-MIGRATE-001..006` cover intra-engine reshape v1. Cross-engine migration is gated on `docs/architecture.md §10 §2.5` (held-out benchmark + dual-read + Phase 2 exit metrics) and on `SK-MULTIENG-NNN` for the target engine.
+`SK-MIGRATE-001..006` cover intra-engine reshape v1. Cross-engine migration is gated on `docs/phase-plan.md §5` (held-out benchmark + dual-read + Phase 2 exit metrics) and on `SK-MULTIENG-NNN` for the target engine.
 
 ## Source pointers
 
-- `docs/architecture.md §10 §2.1`–`§2.5`, `§6`, `§7` — Migration Orchestrator design, engine-selection heuristics, Phase-2 exit criteria, Phase-3 slice list, risks
+- `docs/phase-plan.md §5` and §7 — Migration Orchestrator design, engine-selection heuristics, Phase-2 exit criteria, Phase-3 slice list, risks
 - `infrastructure/tinybird/datasources/query_log.datasource` — read schema the analyser consumes
