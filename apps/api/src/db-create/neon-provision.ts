@@ -317,13 +317,12 @@ function mapTransactionError(err: unknown): ProvisionFailureReason {
   return "transaction_failed";
 }
 
-// SK-HDC-011 — single rollback primitive for the create path. Both the
-// registry-insert-failed compensation (above) and SK-ASK-011's
-// speculative rollback call this. Idempotent + best-effort: missing
-// schema or absent registry row is not an error, so retries (manual
-// operator intervention or future automated sweeps) can call freely.
-// Identifier safety: the public callsites (`provisionDb` here and
-// `SpeculativeHandle.rollback`) feed in values that came from
+// SK-HDC-011 — single rollback primitive for the create path. The
+// registry-insert-failed compensation (above) calls it. Idempotent +
+// best-effort: missing schema or absent registry row is not an error,
+// so retries (manual operator intervention or future automated
+// sweeps) can call freely. Identifier safety: the public callsites
+// (`provisionDb` here) feed in values that came from
 // `assertSafeIdentifier` upstream — but we re-validate at the
 // boundary because the function is exported and a future caller
 // might forget. Mirrors SK-HDC-009's defense-in-depth posture.

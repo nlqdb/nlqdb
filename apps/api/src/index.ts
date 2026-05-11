@@ -23,10 +23,8 @@ import { buildAskDeps, buildEventEmitter } from "./ask/build-deps.ts";
 import { orchestrateAsk } from "./ask/orchestrate.ts";
 import { kickoffAskPrelude, resolveAnonEngineOverride } from "./ask/prelude.ts";
 import { makeRecentTablesStore } from "./ask/recent-tables.ts";
-import { type ReconcileResult, reconcileSpeculativeCreate } from "./ask/reconcile-speculative.ts";
 import { withStageRetry } from "./ask/retry.ts";
 import { ROUTE_CONFIDENCE_FLOOR, routeAsk } from "./ask/route-ask.ts";
-import { probablyZeroDbs } from "./ask/route-hint.ts";
 import type { AskError, OrchestrateEvent, SelectedDbEcho } from "./ask/types.ts";
 import { listInbox } from "./auth/mock-email-sink.ts";
 import { handleMockSignIn, mockSignInFormHtml } from "./auth/mock-idp.ts";
@@ -349,9 +347,8 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
     let selectedDbEcho: SelectedDbEcho | null = null;
 
     // Anon-create gate, split into peek + commit (WS5 fix C). Peek
-    // runs at gate-entry on both the canonical `runCreatePath` and
-    // the SK-ASK-011 speculative path; commit only runs after the
-    // orchestrator returns `result.ok === true`. Failed creates
+    // runs at gate-entry on `runCreatePath`; commit only runs after
+    // the orchestrator returns `result.ok === true`. Failed creates
     // (ambiguous_goal / plan_invalid / compile_failed / …) no longer
     // burn the per-IP create cap. Both halves no-op for non-anon
     // principals (SK-ANON-006 keeps `principal.kind` out of the
@@ -389,8 +386,7 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
       if (typeof g.__dirname === "undefined") g.__dirname = "/";
     };
 
-    // Format a `DbCreateResult` as the JSON response. Shared by
-    // `runCreatePath` and the SK-ASK-011 speculative-commit path.
+    // Format a `DbCreateResult` as the JSON response from `runCreatePath`.
     const formatCreateJsonResponse = (
       result: import("./db-create/types.ts").DbCreateResult,
     ): Response => {
@@ -413,9 +409,7 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
 
     // SK-DB-010 / WS5 fix B — explicit body.engine wins; anon falls
     // back to postgres (skips the cheap-tier classifier LLM); authed
-    // stays undefined so the classifier runs. Resolved once so the
-    // canonical create path and the speculative kickoff below stay
-    // in sync.
+    // stays undefined so the classifier runs.
     const engineOverride: Engine | undefined = resolveAnonEngineOverride(
       parsed.body.engine,
       principal.kind,
@@ -467,11 +461,25 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
       }
     };
 
-    // SK-ASK-009 + SK-ASK-014 prelude — routeAsk runs on every /v1/ask
-    // (with or without a pinned dbId), in parallel with the tenant DB
-    // list. Speculative-create stays gated on absent dbId — a pinned
-    // dbId means the user already has a DB, so probably-0 makes no
-    // sense there. Dispatch after routeAsk:
+    // SK-ANON-013 — anon principals short-circuit to runCreatePath
+    // when no dbId is pinned. Anon has no data to query: the first
+    // call is always create; the second call is already blocked at
+    // peekDevice above (SK-ANON-012) and redirected to sign-in. The
+    // post-OAuth landing page replays the queued prompt as an authed
+    // call, which takes the normal classifier path.
+    //
+    // Skipping routeAsk/listDb/recent_tables for anon eliminates the
+    // SK-ASK-011-era cascade observed in prod (anon goal misclassified
+    // as `kind=query` against a stale DB, 502 `db_unreachable` after
+    // 21 s). SDK users who pin a dbId still flow through the query
+    // path — a pinned bearer + dbId is a legitimate follow-up.
+    if (principal.kind === "anon" && !parsed.body.dbId) {
+      return runCreatePath();
+    }
+
+    // SK-ASK-009 + SK-ASK-014 prelude — routeAsk runs on every authed
+    // /v1/ask (with or without a pinned dbId), in parallel with the
+    // tenant DB list. Dispatch after routeAsk:
     //
     //   kind=create + no pin    → runCreatePath()
     //   kind=create + pinned    → 409 clarify_required (SK-ASK-014)
@@ -482,9 +490,9 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
     //
     // WS5 fix A — kickoffAskPrelude fires both reads synchronously
     // before yielding. `listPromise` is awaited inside `routePromise`;
-    // `recentTablesPromise` is awaited here so the speculative-create
-    // predicate has a value to consult. KV blip → routeAsk still
-    // runs; D1 blip → routeAsk sees `dbs: []` (see catch below).
+    // `recentTablesPromise` is awaited inside routeAsk's input. KV
+    // blip → routeAsk still runs; D1 blip → routeAsk sees `dbs: []`
+    // (see catch below).
     const recentTablesStore = makeRecentTablesStore(c.env.KV);
     const { listPromise, recentTablesPromise } = kickoffAskPrelude(
       {
@@ -494,33 +502,6 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
       principal.id,
     );
     const recentTables = await recentTablesPromise;
-
-    // SK-ASK-011 — speculative create on probable-0-dbs, only when no
-    // dbId is pinned (otherwise the user already has a DB).
-    let speculativeReconcilePromise: Promise<ReconcileResult> | undefined;
-    if (!parsed.body.dbId && probablyZeroDbs(recentTables, parsed.body.goal)) {
-      const gateResp = await peekAnonCreateGate();
-      if (gateResp) return gateResp;
-      ensureLibpgWasmGlobals();
-      const { buildDbCreateDeps } = await import("./db-create/build-deps.ts");
-      const { startSpeculativeCreate } = await import("./db-create/speculative.ts");
-      const { deps: createDeps, secretRef } = buildDbCreateDeps(c.env);
-      const handle = startSpeculativeCreate(createDeps, {
-        goal: parsed.body.goal,
-        tenantId: principal.id,
-        principalId: principal.id,
-        principalKind: principal.kind,
-        // WS5 fix B — same engine-override seam as runCreatePath so
-        // anon speculation also skips the cheap-tier engine classifier.
-        ...(engineOverride !== undefined ? { engine: engineOverride } : {}),
-        secretRef,
-      });
-      speculativeReconcilePromise = reconcileSpeculativeCreate({
-        speculative: handle,
-        authoritativeDbsPromise: listPromise,
-        principalKind: principal.kind,
-      });
-    }
 
     // SK-ASK-009 — routeAsk runs in parallel with listPromise.
     // Wraps both: routeAsk's `dbs` input comes from the awaited
@@ -577,25 +558,6 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
     span.setAttribute("nlqdb.ask.kind", routeOutput.kind);
     span.setAttribute("nlqdb.ask.kind_reason", routeOutput.reason);
     span.setAttribute("nlqdb.ask.tenant_db_count", tenantCandidates.length);
-
-    // SK-ASK-011 — consume the speculative-create reconciliation if it
-    // was started (only when no dbId was pinned).
-    if (speculativeReconcilePromise) {
-      const reconciled = await speculativeReconcilePromise;
-      if (reconciled.kind === "committed") {
-        // WS5 fix C — commit the per-device create-cap counter
-        // (SK-ANON-012) only when the speculative orchestrator
-        // actually produced an ok result.
-        // A `committed` reconcile with `result.ok === false` (e.g.
-        // ambiguous_goal surfaced from the speculative LLM hop) does
-        // not consume the user's cap.
-        if (reconciled.result.ok) await commitAnonCreate();
-        span.setAttribute("nlqdb.ask.outcome", "speculative_create_committed");
-        span.end();
-        return formatCreateJsonResponse(reconciled.result);
-      }
-      span.setAttribute("nlqdb.ask.outcome", "speculative_create_rolled_back");
-    }
 
     // kind=create dispatch.
     if (routeOutput.kind === "create") {

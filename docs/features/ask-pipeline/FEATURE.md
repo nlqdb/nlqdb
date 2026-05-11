@@ -102,21 +102,7 @@ when-to-load:
 
 ### SK-ASK-011 — Speculative create on probable-0-dbs (cache-stale defense)
 
-- **Decision:** When `probablyZeroDbs(recentTables, goal)` returns true on `/v1/ask`, the handler kicks off `startSpeculativeCreate` in parallel with the authoritative `listDatabasesForTenant` D1 read. The reconciler commits the create when D1 confirms 0 dbs; on D1 returning ≥ 1 dbs (or the read failing), the reconciler issues `dropSchemaAndRegistry` (DROP SCHEMA CASCADE + DELETE FROM databases) + evicts the request's `Idempotency-Key` dedupe entry, then routes the request through the existing 0/1/2+ dispatch.
-- **Core value:** Bullet-proof, Fast
-- **Why:** A stale or empty cache (`recentTables` is the most likely culprit, but listDb itself can also lie under D1 cold-pool) can falsely suggest 0 dbs. Pure serial "list-then-create" loses the create-pipeline parallelism on the genuine cold-start path (~800 ms). Speculating preserves cold-start latency while making the duplicate-create case impossible — the rollback closes the hole even when the cache lies. `Idempotency-Key` eviction prevents a retry from returning a rolled-back create response.
-- **Consequence in code:** Three small modules: `apps/api/src/ask/route-hint.ts` (predicate), `apps/api/src/db-create/speculative.ts` (handle + rollback), `apps/api/src/ask/reconcile-speculative.ts` (dispatcher). Each function ≤ 30 lines; PRs that fold them back into a single function fail review. Spans `nlqdb.create.speculative.{start,rollback}` and metrics `nlqdb.create.speculative.{start_total,commit_total,rollback_total,overhead_ms}` (per `GLOBAL-014`) drive a dashboard alert at rollback rate > 0.1 % / hour. The anon create-cap gate runs before speculation kicks off (mirrors `runCreatePath` parity); see `apps/api/src/index.ts` `checkAnonCreateGate` helper.
-- **Alternatives rejected:**
-  - Trust the cache only — duplicate creates on stale cache; user-visible bug.
-  - Always serial — biggest cold-start latency hit; create is the slowest step (~800 ms).
-  - Defer the create's COMMIT until reconcile — holds a Postgres connection across LLM-tier latency; Workers can't sustain that pattern.
-  - Skip Idempotency-Key eviction — retry returns the rolled-back response; dedupe store lies.
-
-**Open follow-ups (track in this feature's Open questions):**
-- pgvector card cleanup on rollback when embedding lands (today `embedTableCards` is a no-op in `apps/api/src/db-create/build-deps.ts`).
-- `pk_live` revocation on rollback when the api-keys subsystem ships.
-- Anon create-cap consumption when speculation rolls back: resolved by WS5 fix C — `commitAnonCreate` runs only on `reconciled.result.ok === true`, so rolled-back speculations no longer count.
-- `Idempotency-Key` middleware itself is still open work (`SK-IDEMP-005` is locked, implementation pending). The `IdempotencyStore` interface in `apps/api/src/db-create/speculative.ts` carries the `delete(principalId, key)` primitive the rollback path needs; the route handler does not yet wire a store, so eviction is a no-op until the middleware lands.
+- **Status:** superseded by SK-ASK-017 — speculative create removed entirely. Historical: a `probablyZeroDbs` predicate kicked off `startSpeculativeCreate` in parallel with `listDatabasesForTenant`; the reconciler committed on D1 confirming 0 dbs or rolled back via `dropSchemaAndRegistry`. Removed because the rollback path was post-COMMIT (Postgres tx can't be cancelled mid-flight), producing a 21.6 s tail latency observed in prod under stale-state conditions. See SK-ASK-017 for the replacement decision.
 
 ### SK-ASK-012 — Per-principal recent-tables LRU (100 entries) in KV
 
@@ -143,10 +129,10 @@ when-to-load:
 
 ### SK-ASK-014 — `routeAsk` runs on every `/v1/ask`, even when `dbId` is pinned
 
-- **Decision:** `routeAsk` runs on every `/v1/ask`, regardless of `dbId` pin. `kind=create + pinned` → `409 clarify_required` with `pinned_db:{id,slug}` so the surface shows "Create a new database, or query *<slug>*?" instead of the cryptic `sql_rejected` the read/write allowlist would emit on the LLM's `CREATE TABLE`. `kind=create + no pin` → create path; `kind=query|write + pinned` → pin honoured. Refines SK-ASK-009 — its "only when dbId omitted" scoping is superseded.
+- **Decision:** `routeAsk` runs on every `/v1/ask`, regardless of `dbId` pin. `kind=create + pinned` → `409 clarify_required` with `pinned_db:{id,slug}` so the surface shows "Create a new database, or query *<slug>*?" instead of the cryptic `sql_rejected` the read/write allowlist would emit on the LLM's `CREATE TABLE`. `kind=create + no pin` → create path; `kind=query|write + pinned` → pin honoured. Refines SK-ASK-009 — its "only when dbId omitted" scoping is superseded. Per SK-ANON-013, anon principals without a pinned `dbId` short-circuit ahead of this — `routeAsk` runs only for authed callers and anon callers that pinned a `dbId`.
 - **Core value:** Effortless UX, Goal-first, Bullet-proof
 - **Why:** "new table" against a pinned DB is a dead end — LLM emits `CREATE TABLE`, allowlist rejects (SK-SQLAL-002), surface shows "rejected." Classify-every-send turns that into a typed forward action. Actually extending `<slug>`'s schema needs a typed-plan extend pipeline (Open).
-- **Consequence in code:** `apps/api/src/index.ts` lifts the routeAsk prelude out of `if (!parsed.body.dbId)`; speculative-create (SK-ASK-011) stays gated on absent dbId; SK-ASK-013's `withStageRetry("route", …)` still applies. New `clarify_required` AskError in `ask/types.ts`, mirrored on the SDK with `pinned_db` on `ApiErrorBody`. `ChatPanel` chip: "Create new database" re-sends without `dbId`; "Cancel" dismisses.
+- **Consequence in code:** `apps/api/src/index.ts` lifts the routeAsk prelude out of `if (!parsed.body.dbId)`; SK-ASK-013's `withStageRetry("route", …)` still applies. New `clarify_required` AskError in `ask/types.ts`, mirrored on the SDK with `pinned_db` on `ApiErrorBody`. `ChatPanel` chip: "Create new database" re-sends without `dbId`; "Cancel" dismisses.
 - **Alternatives rejected:** Silent pin override on `kind=create` — surprises (pin came from explicit `?db=…`). Convert only post-allowlist `disallowed_verb=create` — cheaper but burns a planner-tier hop first. Typed-plan extend pipeline — right long-term answer; bigger; Open.
 
 ### SK-ASK-015 — Plan cache writes are gated on successful exec
@@ -164,6 +150,14 @@ when-to-load:
 - **Why:** The failure is deterministic — SK-ASK-013's three retries replay the same wrong SQL, then 502 `db_unreachable` 600+ ms later (the surface shows "couldn't reach the DB" which is a lie). Pre-flight catches it for ~0.5 ms. 42P01 is the defense-in-depth backstop. Trace: anon goal `swimming pool visitors` resolved to `kind=query` against a stale DB without that table; 3× `db.query` failed `42P01`. The 409 envelope lets the surface re-route to a fresh create rather than dead-end.
 - **Consequence in code:** New `SchemaMismatchError` class + `schema_mismatch` AskError variant in `ask/types.ts`. `ask/orchestrate.ts`: `checkSchemaTables` helper runs between `plan` emit and `withStageRetry("exec", …)`; the inner exec catch wraps 42P01 in `Nonrecoverable("schema_mismatch", new SchemaMismatchError([], []))`. Outer catch maps `instanceof SchemaMismatchError` to the envelope. `errorStatus()` in `index.ts` adds `"schema_mismatch" → 409`.
 - **Alternatives rejected:** Retry plan with rejected table in `previousAttempt` — LLM often re-picks the same wrong table. Auto-reroute to `kind=create` server-side — same inputs, same wrong classification; surface-driven re-send is honest. Treat 42P01 as recoverable — same outcome, worse latency. `.code` field only — Neon HTTP shim doesn't reliably preserve it; keep the message regex as fallback.
+
+### SK-ASK-017 — Speculative create removed; cold-start parallelism comes from `kickoffAskPrelude` alone
+
+- **Decision:** `apps/api/src/ask/{route-hint,reconcile-speculative}.ts` and `apps/api/src/db-create/speculative.ts` are deleted. The `/v1/ask` handler no longer races a `startSpeculativeCreate` against `listDatabasesForTenant`. Cold-start parallelism is preserved by `kickoffAskPrelude` (listPromise + recentTablesPromise both kick off before `routeAsk`, and routeAsk runs in parallel with listPromise). Supersedes SK-ASK-011.
+- **Core value:** Simple, Bullet-proof, Honest latency
+- **Why:** SK-ASK-011's rollback path was post-COMMIT — Postgres transactions on Workers can't be cancelled mid-flight, so a doomed speculation has to fully finish before its schema can be dropped. Trace evidence: prod `/v1/ask` for goal `swimming pool visitors` against a stale anon principal observed 21.6 s wall-time, of which 18 s was the speculative create running to completion under a foregone-conclusion rollback. The parallelism the speculation bought (~600 ms saved on the cold-start LLM hop) is dwarfed by the 18 s tail risk; it was also a multiplier on three secondary failures (recent-tables MRU pollution from pre-rollback touch, plan-cache poisoning, classifier mis-routing against the now-zombie DB). Removing the entire mechanism is the smaller-blast-radius fix versus piecemeal patches.
+- **Consequence in code:** Three modules deleted. `apps/api/src/index.ts` drops the import block, the speculative kickoff block, and the post-route consume block. `apps/api/src/db-create/orchestrate.ts` keeps `recent_tables.touch` (only the canonical, non-speculative create reaches it now). `apps/api/src/db-create/neon-provision.ts` keeps `dropSchemaAndRegistry` for the registry-insert-failed compensation path; the comment naming the speculative caller is updated.
+- **Alternatives rejected:** Gate speculation on listDb returning 0 — adds a 50 ms wait on every cold-create for a mechanism that was already being deleted. Keep speculation, redesign rollback to be cancellable — Postgres tx semantics don't allow it cleanly on Workers (no long-lived connection to abort). Keep speculation, remove only the MRU-pre-rollback touch — leaves the 18 s tail risk in place. Speculation behind a feature flag — re-introduces all the dead code we just deleted.
 
 ## The LLM loop
 

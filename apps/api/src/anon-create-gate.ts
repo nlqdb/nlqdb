@@ -7,7 +7,7 @@
 //     classifies the request, so kind=query against the user's only
 //     anon DB also returns `401 auth_required`.
 //   * This gate now ONLY runs the Turnstile bot-floor on the create
-//     path (`runCreatePath` + the SK-ASK-011 speculative kickoff).
+//     path (`runCreatePath`).
 //     Turnstile retains its place as the bot shield for creates —
 //     bots can mint anon-bearer tokens trivially, so the per-device
 //     cap doesn't help against them; the captcha does.

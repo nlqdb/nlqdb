@@ -1,7 +1,6 @@
 // Per-principal recent-tables MRU. Bounded LRU of the 100 most
 // recent (dbId, slug, table) tuples — consumed by routeAsk's
-// classifier (WS2 / SK-ASK-009) and the speculative-create branch
-// (WS3 / SK-ASK-011) to disambiguate verbs that could mean DML
+// classifier (SK-ASK-009) to disambiguate verbs that could mean DML
 // against an existing table or DDL for a new one.
 //
 // Storage: JSON `{ entries: RecentTable[] }` at `recent_tables:<principalId>`.

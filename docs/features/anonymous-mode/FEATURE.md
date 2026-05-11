@@ -86,15 +86,7 @@ when-to-load:
 
 ### SK-ANON-007 — PoW challenge: Cloudflare Turnstile; triggers at 3 creates / 5 min per IP
 
-- **Status:** superseded by `SK-ANON-012` — the per-device 1-call cap returns `401 auth_required` on the 2nd anon `/v1/ask` (any kind), so the burst gate is redundant. Turnstile is retained but runs unconditionally on every anon create (not gated on burst count).
-- **Decision:** When an IP exceeds 3 anonymous DB-create requests in any rolling 5-minute window, subsequent creates require a Cloudflare Turnstile challenge (invisible/managed mode) before processing.
-- **Core value:** Free, Bullet-proof
-- **Why:** The per-IP 5/hour cap blocks bulk creation over long windows; Turnstile addresses short bursts (a bot at 1 req/s hits 3 creates in 3 s). Turnstile is preferred over raw hashcash because it is free on CF Workers (unlimited requests, free plan), requires zero KV writes for validation (a single `fetch` to `challenges.cloudflare.com/turnstile/v0/siteverify`), and runs entirely in-browser. Argon2/scrypt-based hashcash at useful difficulty (20-bit SHA-256 ≈ 200–500 ms solve) would require a WASM bundle and server-side nonce state. The 3-in-5-min trigger mirrors Cloudflare's own WAF recommendation for sensitive write endpoints.
-- **Consequence in code:** `apps/api/src/middleware/rate-limit.ts` tracks the rolling 5-min create count per IP. At ≥ 3 without a valid `cf-turnstile-response` token, return `428 Precondition Required` with `{ code: "challenge_required", action: "Complete the browser challenge to continue." }`. Turnstile site-key + secret are Workers secrets; site-key is baked into the Astro front-end. Validation: `POST https://challenges.cloudflare.com/turnstile/v0/siteverify` — no KV write.
-- **Alternatives rejected:**
-  - Raw hashcash (SHA-256, 20-bit) — valid self-hosted fallback if Turnstile is unavailable, but requires a challenge-issuance endpoint and HMAC-signed nonce management (ALTCHA pattern).
-  - Argon2/scrypt — memory-hard; impractical in browser JS at useful difficulty without a WASM bundle.
-  - KV-backed nonce tracking — 1,000 KV writes/day budget; too expensive.
+- **Status:** superseded by SK-ANON-012 — see that block for the per-device 1-call cap. Turnstile is retained as the bot-floor on the create path; it runs unconditionally now (not gated on burst count). Historical body: per-IP rolling 3-in-5-min burst gate returning 428 `challenge_required`.
 
 ### SK-ANON-008 — Anon principal id is `anon:<sha256(token)[:16]>`; cookie session wins when both present
 
@@ -161,6 +153,14 @@ when-to-load:
   - Cap on per-IP (today's key) instead of per-device — coffee-shop / university / hotel-wifi scenarios collapse multiple users to one IP. Device-keyed caps the abuse vector (one anon bearer) without false-positiving honest co-located users.
   - Server-side prompt mirroring (vs client `nlqdb_pending`) — same end-state as today's design; deferred to Phase 2+ per `SK-ANON-011`'s Open Question on cross-device prompt history.
   - Adoption client-side (`POST /v1/anon/adopt` from `/auth/post-signin`) — works, but the anon-bearer travels through `localStorage` at sign-in time and the client-side fetch is one more failure mode (network, cache). Server-side Better Auth `after` hook is one less moving part and the bearer rides the sign-in request header — the [Better Auth Hooks docs](https://better-auth.com/docs/concepts/hooks) confirm this is the supported pattern.
+
+### SK-ANON-013 — Anon `/v1/ask` short-circuits to `runCreatePath` when no `dbId` is pinned
+
+- **Decision:** `apps/api/src/index.ts` returns `runCreatePath()` directly when `principal.kind === "anon" && !parsed.body.dbId`, after the anon gates (global cap, per-IP query bucket, per-device peek) clear. `routeAsk`, `listDatabasesForTenant`, and `recentTablesStore.load` are skipped on this branch. Anon SDK users with a pinned `dbId` still flow through the query path (a legitimate follow-up). The 2nd anon call is already blocked at `peekDevice` (SK-ANON-012) and redirected to sign-in.
+- **Core value:** Free, Effortless UX, Bullet-proof, Goal-first
+- **Why:** Anon principals have no data to query — the classifier was designed for authed users with multiple DBs. Running it for anon traded zero UX value for cheap-tier LLM latency, SK-ASK-011 speculative complexity (removed in SK-ASK-017), MRU pollution, and the `kind=query` misclassification → 502 cascade observed in prod. The post-OAuth landing replays queued prompts as authed calls — nothing is lost.
+- **Consequence in code:** 2-line short-circuit in `apps/api/src/index.ts` (after `runCreatePath` is defined, before `kickoffAskPrelude`). Existing gates + `commitAnonCreate` inside `runCreatePath` keep SK-ANON-012 accurate. `routeAsk`, `kickoffAskPrelude`, `recentTablesStore` stay for authed users.
+- **Alternatives rejected:** Skip classifier even with pinned `dbId` — breaks SDK follow-ups. Keep classifier, only remove speculation — misclassification was the user-visible failure, not speculation alone. Auto-adopt stale anon DBs — adds a D1 write; 90-day sweep handles cleanup organically.
 
 ## GLOBALs governing this feature
 
