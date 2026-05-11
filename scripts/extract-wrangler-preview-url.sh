@@ -145,7 +145,18 @@ EVENT=$(cat $FILES </dev/null 2>/dev/null \
         | jq -rs 'map(select(.type=="version-upload" or .type=="deploy")) | first // {}' \
         2>/dev/null || true)
 
-URL=$(echo "$EVENT" | jq -r '.preview_url // .preview_alias_url // (.targets[0]? // "")' 2>/dev/null || true)
+# Prefer `preview_alias_url` over `preview_url`. The auth flow's
+# env vars (`BETTER_AUTH_URL` / `MAGIC_LINK_WEB_ORIGIN`) point at the
+# alias hostname (`pr-N-nlqdb-api.workers.dev`) — so the sign-in
+# redirect, the mock-IdP callback, and the post-signin landing all
+# resolve to the alias. localStorage is per-origin, so if the PR
+# comment surfaces the per-version hostname instead (`<hash>-nlqdb-api.workers.dev`)
+# the user starts there but the auth round-trip ends on the alias —
+# every `nlqdb_anon` / `nlqdb_pending` slot is stranded, adoption
+# silently skips, and the composer rehydrate finds an empty key.
+# Pinning the comment to the alias keeps the whole flow on a single
+# origin. `preview_url` stays as the fallback for non-alias uploads.
+URL=$(echo "$EVENT" | jq -r '.preview_alias_url // .preview_url // (.targets[0]? // "")' 2>/dev/null || true)
 
 if [ -n "${URL:-}" ] && [ "$URL" != "null" ]; then
   echo "PREVIEW_URL=$URL" >> "$GITHUB_ENV"

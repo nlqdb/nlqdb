@@ -131,6 +131,14 @@ export type ProvisionArgs = {
   // Deterministic hash of `plan` so `/v1/ask` plan-cache lookups
   // see a stable schema fingerprint immediately.
   schemaHash: string;
+  // Compiled DDL joined with newlines — the LLM-facing schema text
+  // used by `/v1/ask`'s plan prompt. Provisioner stores it on the
+  // `databases.schema_text` column so `resolveDb` can return it
+  // without re-introspecting Postgres. Separate from `schemaHash`
+  // (the cache key, GLOBAL-006) and from `args.ddl` (the executed
+  // statements) so callers can override the prompt shape later
+  // without touching either of the other two.
+  schemaText: string;
 };
 
 export type ProvisionFailureReason =

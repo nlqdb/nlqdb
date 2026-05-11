@@ -11,6 +11,7 @@ type DbRow = {
   engine: string;
   connection_secret_ref: string;
   schema_hash: string | null;
+  schema_text: string | null;
 };
 
 export async function resolveDb(
@@ -20,7 +21,7 @@ export async function resolveDb(
 ): Promise<DbRecord | null> {
   const row = await d1
     .prepare(
-      "SELECT id, tenant_id, engine, connection_secret_ref, schema_hash FROM databases WHERE id = ? AND tenant_id = ?",
+      "SELECT id, tenant_id, engine, connection_secret_ref, schema_hash, schema_text FROM databases WHERE id = ? AND tenant_id = ?",
     )
     .bind(id, tenantId)
     .first<DbRow>();
@@ -31,5 +32,6 @@ export async function resolveDb(
     engine: row.engine as "postgres",
     connectionSecretRef: row.connection_secret_ref,
     schemaHash: row.schema_hash,
+    schemaText: row.schema_text,
   };
 }

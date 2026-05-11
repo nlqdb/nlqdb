@@ -78,15 +78,32 @@ export async function handleMockSignIn(c: MockSignInCtx): Promise<Response> {
     return new Response("mock_sign_in_inbox_empty", { status: 502 });
   }
 
+  // Forward the original request's `Cookie` header onto the verify
+  // call. Real magic-link / OAuth flows are top-level navigations from
+  // the user's browser, so the verify GET naturally carries every
+  // cookie on the origin — including the `anon-bearer` stashed by
+  // `POST /api/auth/anon-stash`. The synthetic `Request` we construct
+  // here doesn't carry any of that by default, so Better Auth's
+  // `after` hook reads `cookie: null` and `recordAnonAdoption` never
+  // runs (SK-ANON-012). Copy the inbound `Cookie` header through and
+  // adoption fires on mock sign-ins the same way it does on real ones.
+  const cookieHeader = c.req.raw.headers.get("cookie");
+  const verifyHeaders: Record<string, string> = { origin: baseOrigin };
+  if (cookieHeader) verifyHeaders["cookie"] = cookieHeader;
   const verifyReq = new Request(verifyUrl, {
     method: "GET",
-    headers: { origin: baseOrigin },
+    headers: verifyHeaders,
     redirect: "manual",
   });
   return auth.handler(verifyReq);
 }
 
 export function mockSignInFormHtml(base: string): string {
+  // The inline stash script mirrors `apps/web/src/pages/auth/sign-in.astro`'s
+  // `stashAnonBearer()` — without it the mock-idp flow has no anon-bearer
+  // cookie on the magic-link verify call, so Better Auth's `after` hook
+  // in `apps/api/src/auth.ts` skips `recordAnonAdoption` and the anon
+  // DBs created from the hero stay orphaned at `tenant_id=anon:<hash>`.
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -103,12 +120,77 @@ button { padding: 0.6rem 1rem; background: #c6f432; border: 2px solid #0b0f0a; f
 <body>
 <h2>Preview sign-in (mock IdP)</h2>
 <p>This page only exists when <code>MOCK_IDP=1</code>. It mints a real Better Auth session for the email you submit, no OAuth or email round-trip required.</p>
-<form method="GET" action="${escapeHtml(base)}/api/auth/mock-sign-in">
+<form id="mock-form" method="GET" action="${escapeHtml(base)}/api/auth/mock-sign-in">
   <label>Email
     <input name="email" value="${escapeHtml(DEFAULT_MOCK_EMAIL)}" />
   </label>
   <button type="submit">Sign in as this user</button>
 </form>
+<script>
+  const apiBase = ${JSON.stringify(base)};
+  const form = document.getElementById("mock-form");
+
+  function readAnonBearer() {
+    const anon = window.localStorage.getItem("nlqdb_anon") || "";
+    return anon.startsWith("anon_") ? anon : null;
+  }
+
+  // Already-signed-in short-circuit mirrors apps/web/src/pages/auth/sign-in.astro.
+  // The hero (SK-ANON-001) runs anon unconditionally and may redirect
+  // a signed-in user here. Adopt in place and skip the form.
+  (async () => {
+    let hasSession = false;
+    try {
+      const res = await fetch(apiBase + "/api/auth/get-session", {
+        credentials: "include",
+        headers: { accept: "application/json" },
+      });
+      if (res.ok) {
+        const text = await res.text();
+        if (text && text !== "null") {
+          const body = JSON.parse(text);
+          hasSession = !!(body && body.user);
+        }
+      }
+    } catch {
+      // best-effort — fall through to the form.
+    }
+    if (!hasSession) return;
+    const anon = readAnonBearer();
+    if (anon) {
+      try {
+        await fetch(apiBase + "/api/auth/anon-adopt-now", {
+          method: "POST",
+          credentials: "include",
+          headers: { "x-anon-bearer": anon },
+        });
+      } catch {
+        // best-effort — adoption misses but the redirect proceeds.
+      }
+    }
+    location.replace("/app");
+  })();
+
+  let stashed = false;
+  form.addEventListener("submit", async (e) => {
+    if (stashed) return;
+    e.preventDefault();
+    try {
+      const anon = readAnonBearer();
+      if (anon) {
+        await fetch(apiBase + "/api/auth/anon-stash", {
+          method: "POST",
+          credentials: "include",
+          headers: { "x-anon-bearer": anon },
+        });
+      }
+    } catch {
+      // best-effort — see comment in sign-in.astro.
+    }
+    stashed = true;
+    form.submit();
+  });
+</script>
 </body>
 </html>`;
 }

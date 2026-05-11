@@ -79,6 +79,17 @@ export async function postAskCreate(
   const res = await fetch(`${apiBase.replace(/\/$/, "")}/v1/ask`, {
     method: "POST",
     headers,
+    // `credentials: "omit"` is load-bearing: the hero is contractually
+    // the anon-first surface (SK-ANON-001). When the hero is served
+    // same-origin with the API, the default `same-origin` policy
+    // would ride the `__Secure-better-auth.session_token` cookie on
+    // every POST — and `requirePrincipal` (SK-ANON-008) gives the
+    // cookie precedence over the anon bearer, so a signed-in user
+    // submitting from the hero would resolve as their authed self
+    // and never hit the SK-ANON-012 device cap. Dropping the cookie
+    // forces the request to run as anon unconditionally, which is
+    // what the device-cap → sign-in handoff requires.
+    credentials: "omit",
     // dbId omitted on purpose — the kind=create classifier branch
     // routes the typed-plan pipeline (SK-HDC-001).
     body: JSON.stringify({ goal }),

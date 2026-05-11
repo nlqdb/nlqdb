@@ -203,13 +203,22 @@ export async function orchestrateAsk(
     // validator rejects the LLM's SQL, re-prompt with the rejection
     // reason in `previousAttempt`. Three attempts; on exhaustion the
     // last error wins (`llm_failed` or `sql_rejected`).
+    // `schema_text` is the compiled DDL (`CREATE TABLE ...`, foreign
+    // keys, indexes) written by `db-create/neon-provision.ts` at
+    // provision time. Feeding it into the planner is what lets the LLM
+    // see real table + column names; without it the prompt only carried
+    // the FNV `schemaHash` fingerprint and the LLM hallucinated table
+    // names from it. Legacy rows pre-migration-0010 keep `schemaText`
+    // null — fall back to the hash so they still respond instead of
+    // 500'ing, even with the degraded prompt quality.
+    const planSchema = db.schemaText ?? schemaHash;
     try {
       planSql = await withStageRetry(
         "plan",
         async (_attempt, prev) => {
           const plan = await deps.llm.plan({
             goal: req.goal,
-            schema: schemaHash,
+            schema: planSchema,
             dialect: "postgres",
             ...(prev ? { previousAttempt: prevAttemptFromError(prev) } : {}),
           });

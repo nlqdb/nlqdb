@@ -9,6 +9,13 @@ export type DbRecord = {
   engine: "postgres";
   connectionSecretRef: string;
   schemaHash: string | null;
+  // Compiled DDL written at provision time (`db-create/neon-provision.ts`).
+  // The orchestrator feeds this to `deps.llm.plan` as the `schema`
+  // field so the planner sees real table + column names. `null` for
+  // legacy rows that pre-date migration 0010 — the orchestrator falls
+  // back to the schema hash in that case (degraded prompt quality but
+  // no 500).
+  schemaText: string | null;
 };
 
 export type CachedPlan = {

@@ -28,6 +28,7 @@ bun run --filter apps/api dev
 bun run --filter apps/api build
 bun run --filter apps/api test
 wrangler deploy --dry-run
+bunx wrangler d1 migrations create nlqdb-app <name>  # new D1 migration — always via CLI; never hand-roll NNNN_*.sql
 ```
 
 ## Local rules

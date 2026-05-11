@@ -81,6 +81,7 @@ function makeArgs(overrides: Partial<ProvisionArgs> = {}): ProvisionArgs {
     engine: "postgres",
     secretRef: "DATABASE_URL",
     schemaHash: "schema_v1",
+    schemaText: "CREATE TABLE A (id INT)\n\nCREATE TABLE B (id INT)",
     ...overrides,
   };
 }
@@ -238,6 +239,7 @@ describe("provisionDb — happy path", () => {
       "postgres",
       "DATABASE_URL",
       "schema_v1",
+      "CREATE TABLE A (id INT)\n\nCREATE TABLE B (id INT)",
     ]);
   });
 

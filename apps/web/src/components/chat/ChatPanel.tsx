@@ -587,9 +587,19 @@ export default function ChatPanel({ apiBase }: ChatPanelProps) {
         onClearSelection={clearSelection}
         onCreated={selectDb}
         onLoaded={(databases) => {
-          if (!activeDbId) return;
-          const match = databases.find((db) => db.id === activeDbId);
-          if (match) setActiveDb(match);
+          if (activeDbId) {
+            const match = databases.find((db) => db.id === activeDbId);
+            if (match) setActiveDb(match);
+            return;
+          }
+          // No `?db=` in URL — auto-pin the most-recently-created DB so
+          // a fresh load (e.g. post-signin from the hero) lands the user
+          // inside the DB they just made instead of the "All databases"
+          // pseudo-state. `listDatabasesForTenant` returns rows
+          // ORDER BY created_at DESC, so `databases[0]` is the newest.
+          // Leave the selection empty when the user has zero DBs.
+          const newest = databases[0];
+          if (newest) selectDb(newest);
         }}
       />
 

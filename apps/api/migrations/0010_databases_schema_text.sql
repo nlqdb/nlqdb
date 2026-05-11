@@ -1,0 +1,23 @@
+-- Migration number: 0010 	 2026-05-11T08:54:14.460Z
+-- Schema text for /v1/ask's LLM plan prompt.
+--
+-- The orchestrator (`apps/api/src/ask/orchestrate.ts`) previously
+-- passed `schemaHash` (an 8-char FNV fingerprint) as the `schema`
+-- field on every `deps.llm.plan({ goal, schema, ... })` call. Without
+-- the actual CREATE TABLE shape, the planner hallucinated table names
+-- (most observably: `SELECT * FROM "<hashHexPrefix>"`), every query
+-- failed at exec, and the surface rendered `db_unreachable`.
+--
+-- We now persist the compiled DDL (the same `args.ddl` array the
+-- provisioner ran inside the Neon transaction) joined with newlines.
+-- This is the smallest faithful representation of the schema the LLM
+-- needs to author valid SQL: schema-qualified table names, columns +
+-- types, foreign keys. Plan-cache keying stays on `schema_hash`
+-- (GLOBAL-006) — `schema_text` is for prompt context only.
+--
+-- Existing rows keep `schema_text = NULL` until the next widen lands
+-- (post-Phase-0, `SK-SCHEMA-008`). The orchestrator falls back to the
+-- old hash-only behaviour when `schema_text IS NULL`, so legacy DBs
+-- still respond rather than 500'ing.
+
+ALTER TABLE databases ADD COLUMN schema_text TEXT;
