@@ -242,14 +242,6 @@ export async function orchestrateAsk(
       // the OTel span (llm.plan, SK-LLM-006) captures the root cause.
       return { ok: false, error: { status: "llm_failed" } };
     }
-    const fresh: CachedPlan = { sql: planSql, schemaHash };
-    // Cache write is non-fatal — we have a valid plan in `planSql`,
-    // so a KV blip shouldn't 500 the request.
-    await withSpan(
-      "nlqdb.cache.plan.write",
-      () => deps.planCache.write(schemaHash, queryHash, fresh),
-      { onError: undefined },
-    );
     cacheHit = false;
   }
 
@@ -279,6 +271,20 @@ export async function orchestrateAsk(
     }
     // Postgres errors include schema details; keep them server-side.
     return { ok: false, error: { status: "db_unreachable" } };
+  }
+
+  // SK-ASK-015 — plan cache writes are gated on successful exec. A plan
+  // that the LLM emits and the SQL allowlist accepts is not the same as
+  // a plan that EXECUTES; caching the former poisons every subsequent
+  // request with the same goal. KV blip on the write is still non-fatal
+  // (we already have rows for this request).
+  if (!cacheHit) {
+    const fresh: CachedPlan = { sql: planSql, schemaHash };
+    await withSpan(
+      "nlqdb.cache.plan.write",
+      () => deps.planCache.write(schemaHash, queryHash, fresh),
+      { onError: undefined },
+    );
   }
 
   await safeEmit({ type: "rows", rows: result.rows, rowCount: result.rowCount });

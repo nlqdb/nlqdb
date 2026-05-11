@@ -40,13 +40,7 @@ when-to-load:
 
 ### SK-ASK-003 — `dbId` resolution: deterministic fast-path then cheap-tier LLM, with confidence floor + visible echo
 
-- **Status:** superseded by SK-ASK-009 — see SK-ASK-009 for the merged `routeAsk` decision.
-- **Decision:** When `dbId` is omitted on `/v1/ask`: 0 dbs → CREATE; 1 db → auto-target; 2+ dbs → (a) deterministic slug-substring match — if exactly one DB's slug words appear in the goal, pick it; (b) KV cache lookup `(tenantId, goalHash, dbsetHash)`; (c) cheap-tier `llm.disambiguate` call. Auto-target requires `confidence ≥ 0.7`; below threshold the API returns `409 ambiguous_db` with `candidate_dbs` ranked by score. Every auto-target echoes `selected_db: { id, slug, confidence, reason }` on the response. CLI / MCP keep their per-surface fallbacks (MRU prompt / elicitation).
-- **Core value:** Effortless UX, Goal-first, Honest latency
-- **Why:** Forcing a `409` round-trip on every multi-DB ambiguous send breaks the goal-first chat flow. The "silent wrong-tenant" failure mode is contained by three properties: a confidence floor, a visible `selected_db` echo (wrong picks are immediately visible, not silent), and one-click rail recovery. Destructive verbs still pass the SK-ASK-004 validator + SK-ONBOARD-004 confirm-diff gate, so a wrong-tenant write requires both a wrong LLM pick and the user approving a diff that names the wrong table.
-- **Consequence in code:** `apps/api/src/ask/disambiguate-db.ts` runs slug-fast-path → KV cache → `llm.disambiguate` (`packages/llm/src/types.ts` + `prompts.ts` + `_chat-provider.ts` + `router.ts`). The route handler in `apps/api/src/index.ts` parallelizes `classify` + `listDatabasesForTenant`, then speculatively kicks off disambiguate as soon as the DB list returns. SSE prepends a `selected_db` event before `plan_pending`; JSON includes `selected_db` on the `AskOk` envelope. The SDK's `AskRequest['dbId']` is optional; `AskOk.selected_db?` is the echo. Per-attempt LLM timeout 1500 ms (cheap-tier).
-- **Alternatives rejected:** Bare deterministic 409 — UX wall on goal-first chat. LLM pick *without* confidence floor — silent on low-signal goals. LLM pick *without* `selected_db` echo — silent again. Planner-tier LLM — overkill; cheap tier is accurate enough on slug + schema-hash inputs.
-- **Source:** docs/architecture.md §3.6.4 · docs/research-receipts.md §7 · docs/performance.md §2.3
+- **Status:** superseded by SK-ASK-009 — see that block for the merged `routeAsk` decision. (Historical: separate `classify` then `disambiguate` calls with confidence floor + `selected_db` echo. Source: docs/architecture.md §3.6.4 · docs/research-receipts.md §7.)
 
 ### SK-ASK-004 — Two distinct validator paths: read/write (LLM-generated) vs DDL (typed-plan compiler) — never mixed
 
@@ -161,6 +155,14 @@ when-to-load:
 - **Why:** "new table" against a pinned DB is a dead end — LLM emits `CREATE TABLE`, allowlist rejects (SK-SQLAL-002), surface shows "rejected." Classify-every-send turns that into a typed forward action. Actually extending `<slug>`'s schema needs a typed-plan extend pipeline (Open).
 - **Consequence in code:** `apps/api/src/index.ts` lifts the routeAsk prelude out of `if (!parsed.body.dbId)`; speculative-create (SK-ASK-011) stays gated on absent dbId; SK-ASK-013's `withStageRetry("route", …)` still applies. New `clarify_required` AskError in `ask/types.ts`, mirrored on the SDK with `pinned_db` on `ApiErrorBody`. `ChatPanel` chip: "Create new database" re-sends without `dbId`; "Cancel" dismisses.
 - **Alternatives rejected:** Silent pin override on `kind=create` — surprises (pin came from explicit `?db=…`). Convert only post-allowlist `disallowed_verb=create` — cheaper but burns a planner-tier hop first. Typed-plan extend pipeline — right long-term answer; bigger; Open.
+
+### SK-ASK-015 — Plan cache writes are gated on successful exec
+
+- **Decision:** `nlqdb.cache.plan.write` runs only after `withStageRetry("exec", …)` resolves ok. Cache-miss path on exec failure caches nothing. `cachePlanMissesTotal()` still fires on every miss regardless of exec outcome — it measures cache shape, not plan quality.
+- **Core value:** Bullet-proof, Fast
+- **Why:** A plan that the LLM emits and the SQL allowlist accepts is not the same as a plan that EXECUTES. Today's prior order (write-then-exec) let one bad LLM emit poison every subsequent request with the same goal — the user-visible failure was "fails identically and instantly," worse than "fails the first time, then retries cleanly." Trace evidence: an anon `/v1/ask` for goal `swimming pool visitors` cached a SELECT against a non-existent table; the next request 28 s later returned 502 in 1.4 s with no LLM call at all.
+- **Consequence in code:** `apps/api/src/ask/orchestrate.ts`: `planCache.write` block moves below the successful `withStageRetry("exec", …)` and runs only when `!cacheHit`. `apps/api/test/orchestrate.test.ts`: SK-ASK-015 assertion — cache.write never fires on a failed exec.
+- **Alternatives rejected:** Tag the cached plan `unconfirmed` and invalidate on exec failure — two writes per request to manage a flag we can avoid by writing once at the right time. Very-short TTL — masks the root cause; the cache hit window is still wide enough to repro the bug under bursts.
 
 ## The LLM loop
 
