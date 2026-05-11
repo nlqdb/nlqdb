@@ -26,11 +26,24 @@ export type TraceStepRecord = {
   detail?: string;
 };
 
+// SK-TRUST-002 — the trace block always present on /v1/ask responses.
+// Subset of `@nlqdb/sdk` `Trace`; kept local so this component has no
+// SDK import. `cache_hit` is rendered by the cache_lookup step's detail,
+// so it isn't passed in here — only the fields the steps don't already
+// surface (plan_id, confidence).
+export type ApiTraceMeta = {
+  plan_id: string;
+  confidence: number;
+};
+
 interface TraceProps {
   steps: TraceStepRecord[];
   sql: string | null;
   explain: string | null;
   defaultOpen: boolean;
+  // Always set on a settled reply per SK-TRUST-002; null only while
+  // the plan event hasn't landed yet.
+  meta?: ApiTraceMeta | null;
 }
 
 const STEP_LABELS: Record<TraceStepName, string> = {
@@ -42,7 +55,7 @@ const STEP_LABELS: Record<TraceStepName, string> = {
   confirm_required: "confirm gate",
 };
 
-export default function Trace({ steps, sql, explain, defaultOpen }: TraceProps) {
+export default function Trace({ steps, sql, explain, defaultOpen, meta }: TraceProps) {
   // Reflect the global Cmd+/ state into <details> open state on
   // change — uncontrolled `open` would otherwise stay stuck on
   // whatever the user last clicked.
@@ -75,6 +88,16 @@ export default function Trace({ steps, sql, explain, defaultOpen }: TraceProps) 
           </li>
         ))}
       </ol>
+      {meta ? (
+        <dl className="chat-trace__meta">
+          <dt>plan</dt>
+          <dd>
+            <code>{meta.plan_id}</code>
+          </dd>
+          <dt>confidence</dt>
+          <dd>{meta.confidence.toFixed(2)}</dd>
+        </dl>
+      ) : null}
       {sql ? (
         <div className="chat-trace__sql">
           <h4 className="chat-trace__heading">sql</h4>

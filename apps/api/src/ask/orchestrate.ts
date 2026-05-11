@@ -32,6 +32,7 @@ import {
   type PipeAdvisory,
   type QueryResult,
   SchemaMismatchError,
+  type Trace,
 } from "./types.ts";
 
 export type OrchestrateDeps = {
@@ -188,9 +189,18 @@ export async function orchestrateAsk(
 
   let planSql: string;
   let cacheHit: boolean;
+  // SK-TRUST-002 — `model` + `confidence` ride the response trace. On
+  // cache-miss the planner emits them; on cache-hit they come from the
+  // cached entry. Legacy cache rows (pre-SK-TRUST-002) carry neither —
+  // fall through to `"cached"` / `1.0` placeholders so the trace is
+  // still well-formed without claiming a model the cache can't prove.
+  let planModel: string;
+  let planConfidence: number;
   if (cached) {
     cachePlanHitsTotal().add(1);
     planSql = cached.sql;
+    planModel = cached.model ?? "cached";
+    planConfidence = cached.confidence ?? 1.0;
     // Validate the cached plan once — caches don't lie often, but we
     // never trust SQL onto the wire without a fresh allowlist pass.
     const cachedValidation = await withSpan("nlqdb.sql.validate", async () => validateSql(planSql));
@@ -213,6 +223,10 @@ export async function orchestrateAsk(
     // null — fall back to the hash so they still respond instead of
     // 500'ing, even with the degraded prompt quality.
     const planSchema = db.schemaText ?? schemaHash;
+    // Last winning plan's model + confidence — captured inside the
+    // retry loop so the trace reflects the attempt we actually used.
+    let lastModel = "";
+    let lastConfidence = 0;
     try {
       planSql = await withStageRetry(
         "plan",
@@ -231,10 +245,14 @@ export async function orchestrateAsk(
             const reject = new PlanValidationError(plan.sql, validation.reason);
             throw reject;
           }
+          lastModel = plan.model;
+          lastConfidence = plan.confidence;
           return plan.sql;
         },
         { reasonOf: planRetryReason },
       );
+      planModel = lastModel;
+      planConfidence = lastConfidence;
     } catch (err) {
       if (err instanceof PlanValidationError) {
         return { ok: false, error: { status: "sql_rejected", reason: err.reason } };
@@ -246,7 +264,14 @@ export async function orchestrateAsk(
     cacheHit = false;
   }
 
-  await safeEmit({ type: "plan", sql: planSql, cached: cacheHit });
+  const traceBlock: Trace = {
+    sql: planSql,
+    plan_id: `${schemaHash}:${queryHash}`,
+    confidence: planConfidence,
+    model: planModel,
+    cache_hit: cacheHit,
+  };
+  await safeEmit({ type: "plan", trace: traceBlock });
 
   // SK-ASK-016 Defense A — pre-flight schema check. A cheap regex over
   // the stored DDL catches the common case where the LLM emits SQL
@@ -318,7 +343,12 @@ export async function orchestrateAsk(
   // request with the same goal. KV blip on the write is still non-fatal
   // (we already have rows for this request).
   if (!cacheHit) {
-    const fresh: CachedPlan = { sql: planSql, schemaHash };
+    const fresh: CachedPlan = {
+      sql: planSql,
+      schemaHash,
+      model: planModel,
+      confidence: planConfidence,
+    };
     await withSpan(
       "nlqdb.cache.plan.write",
       () => deps.planCache.write(schemaHash, queryHash, fresh),
@@ -423,12 +453,11 @@ export async function orchestrateAsk(
     ok: true,
     result: {
       status: "ok",
-      cached: cacheHit,
-      sql: planSql,
       rows: result.rows,
       rowCount: result.rowCount,
       ...(summary !== undefined ? { summary } : {}),
       ...(pipeAdvisory ? { pipe_advisory: pipeAdvisory } : {}),
+      trace: traceBlock,
     },
     pendingAskCompleted,
   };

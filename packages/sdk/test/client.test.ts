@@ -9,7 +9,18 @@ describe("createClient", () => {
       capturedUrl = String(url);
       capturedInit = init;
       return new Response(
-        JSON.stringify({ status: "ok", cached: false, sql: "select 1", rows: [], rowCount: 0 }),
+        JSON.stringify({
+          status: "ok",
+          rows: [],
+          rowCount: 0,
+          trace: {
+            sql: "select 1",
+            plan_id: "h:q",
+            confidence: 1,
+            model: "stub",
+            cache_hit: false,
+          },
+        }),
         { status: 200, headers: { "content-type": "application/json" } },
       );
     };
@@ -26,7 +37,7 @@ describe("createClient", () => {
       "Bearer sk_test",
     );
     expect(capturedInit?.method).toBe("POST");
-    expect(out).toMatchObject({ status: "ok", sql: "select 1" });
+    expect(out).toMatchObject({ status: "ok", trace: { sql: "select 1" } });
   });
 
   it("listChat: includes credentials when withCredentials=true", async () => {
@@ -373,7 +384,18 @@ describe("createClient", () => {
       calls++;
       if (calls === 1) throw new TypeError("Failed to fetch");
       return new Response(
-        JSON.stringify({ status: "ok", cached: false, sql: "select 1", rows: [], rowCount: 0 }),
+        JSON.stringify({
+          status: "ok",
+          rows: [],
+          rowCount: 0,
+          trace: {
+            sql: "select 1",
+            plan_id: "h:q",
+            confidence: 1,
+            model: "stub",
+            cache_hit: false,
+          },
+        }),
         { status: 200, headers: { "content-type": "application/json" } },
       );
     };
@@ -424,7 +446,18 @@ describe("createClient", () => {
         });
       }
       return new Response(
-        JSON.stringify({ status: "ok", cached: false, sql: "select 1", rows: [], rowCount: 0 }),
+        JSON.stringify({
+          status: "ok",
+          rows: [],
+          rowCount: 0,
+          trace: {
+            sql: "select 1",
+            plan_id: "h:q",
+            confidence: 1,
+            model: "stub",
+            cache_hit: false,
+          },
+        }),
         { status: 200, headers: { "content-type": "application/json" } },
       );
     };

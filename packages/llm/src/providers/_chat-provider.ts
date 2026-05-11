@@ -66,8 +66,9 @@ export function createChatProvider(impl: ChatProviderImpl): Provider {
       return parseJsonResponse<RouteResponse>(raw);
     },
     async plan(req, opts = {}) {
+      const model = impl.models.plan;
       const raw = await impl.callChat({
-        model: impl.models.plan,
+        model,
         messages: [
           { role: "system", content: PLAN_SYSTEM },
           { role: "user", content: buildPlanUser(req) },
@@ -75,7 +76,11 @@ export function createChatProvider(impl: ChatProviderImpl): Provider {
         jsonMode: true,
         opts,
       });
-      return parseJsonResponse<PlanResponse>(raw);
+      // SK-TRUST-002: the trace block wants the model that emitted the
+      // plan + a per-plan confidence. Placeholder 1.0 until the
+      // `quality-eval` harness calibrates per-stage floors (SK-TRUST-003).
+      const parsed = parseJsonResponse<{ sql: string }>(raw);
+      return { sql: parsed.sql, model, confidence: 1.0 } satisfies PlanResponse;
     },
     async summarize(req, opts = {}) {
       const raw = await impl.callChat({

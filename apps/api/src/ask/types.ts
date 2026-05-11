@@ -18,9 +18,26 @@ export type DbRecord = {
   schemaText: string | null;
 };
 
+// SK-TRUST-002 — `model` + `confidence` ride alongside the cached SQL
+// so the response's `trace` block is stable across cache hits. Legacy
+// entries (no fields) fall through to placeholder defaults in the
+// orchestrator.
 export type CachedPlan = {
   sql: string;
   schemaHash: string;
+  model?: string;
+  confidence?: number;
+};
+
+// SK-TRUST-002 — every `/v1/ask` response carries this block. Always
+// emitted, always rendered. `plan_id` is the content-address pair
+// `${schema_hash}:${query_hash}` per GLOBAL-006 (stable across hits).
+export type Trace = {
+  sql: string;
+  plan_id: string;
+  confidence: number;
+  model: string;
+  cache_hit: boolean;
 };
 
 export type AskRequest = {
@@ -51,8 +68,6 @@ export type PipeAdvisory = {
 
 export type AskResult = {
   status: "ok";
-  cached: boolean;
-  sql: string;
   rows: Record<string, unknown>[];
   rowCount: number;
   // Omitted in JSON-no-summary mode (Accept: application/json), present
@@ -60,6 +75,10 @@ export type AskResult = {
   summary?: string;
   selected_db?: SelectedDbEcho;
   pipe_advisory?: PipeAdvisory;
+  // SK-TRUST-002 — always emitted. The compiled SQL + cache state live
+  // here (not at the top level) so the trust block is one cohesive
+  // record. Surfaces render it as a collapsed-by-default pane.
+  trace: Trace;
 };
 
 // SK-ASK-014 — when the classifier returns `kind=create` but the caller
@@ -145,7 +164,10 @@ export class SchemaMismatchError extends Error {
 // the DB — surfaces wire it into a "picked X" attribution chip.
 export type OrchestrateEvent =
   | { type: "plan_pending" }
-  | { type: "plan"; sql: string; cached: boolean }
+  // SK-TRUST-002 — the `plan` event carries the full trace block
+  // (sql, plan_id, confidence, model, cache_hit) so SSE consumers
+  // accumulate one record instead of stitching it across events.
+  | { type: "plan"; trace: Trace }
   | { type: "rows"; rows: Record<string, unknown>[]; rowCount: number }
   | { type: "summary"; summary: string }
   | { type: "selected_db"; db: SelectedDbEcho }
