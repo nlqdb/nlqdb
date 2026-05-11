@@ -1,3 +1,4 @@
+-- Migration number: 0010 	 2026-05-11T08:54:14.460Z
 -- Schema text for /v1/ask's LLM plan prompt.
 --
 -- The orchestrator (`apps/api/src/ask/orchestrate.ts`) previously
