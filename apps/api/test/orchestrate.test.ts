@@ -193,6 +193,24 @@ describe("orchestrateAsk", () => {
     });
   });
 
+  it("SK-ASK-015: cache miss + exec failure → no plan.write", async () => {
+    // Trace evidence from prod: an anon /v1/ask cached a SELECT against a
+    // non-existent table; the next request 28 s later hit the bad cache
+    // and 502'd in 1.4 s without an LLM call. The cache write must wait
+    // for exec to confirm the plan actually runs.
+    const cache = stubPlanCache();
+    const llm = stubLLM({ plan: { sql: "SELECT * FROM ghost_table" } });
+    const exec = stubExec(new Error('relation "ghost_table" does not exist'));
+    const out = await orchestrateAsk(makeDeps({ planCache: cache, llm, exec }), {
+      goal: "rows from ghost",
+      dbId: "db_1",
+      userId: "user_1",
+    });
+    expect(out).toEqual({ ok: false, error: { status: "db_unreachable" } });
+    expect(cache.write).not.toHaveBeenCalled();
+    expect(cache.lookup).toHaveBeenCalledTimes(1);
+  });
+
   it("returns db_misconfigured when exec throws DbConfigError", async () => {
     const exec = stubExec(
       new DbConfigError('connection_secret_ref "DATABASE_URL" did not resolve'),
