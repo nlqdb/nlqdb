@@ -15,7 +15,7 @@ when-to-load:
 **Owners (code):** `packages/events/**`, `apps/events-worker/**`
 **Cross-refs:** docs/architecture.md §5.4 (analytics layers) · docs/phase-plan.md (events architecture) · docs/runbook.md §6 (`apps/events-worker` ops) · docs/performance.md §3.1 (`nlqdb.events.emit` span — wrapped in `ctx.waitUntil`, server-side only) · §4 Slices 5/6/7 (`user.registered` / `user.first_query` / `billing.*` emission contracts asserted with stub sink) · `apps/events-worker/README.md`
 
-## Touchpoints — read this skill before editing
+## Touchpoints — read this feature before editing
 
 - `packages/events/**` (producer SDK + `ProductEvent` discriminated union)
 - `apps/events-worker/**` (queue consumer + sinks)
@@ -119,13 +119,13 @@ when-to-load:
 
 ## GLOBALs governing this feature
 
-Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; index in [`docs/decisions.md`](../../decisions.md)). The list below names the rules that constrain this feature; any skill-local commentary is nested under the rule.
+Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; index in [`docs/decisions.md`](../../decisions.md)). The list below names the rules that constrain this feature; any feature-local commentary is nested under the rule.
 
 - **GLOBAL-005** — Every mutation accepts `Idempotency-Key`.
-- **GLOBAL-013** — $0/month free tier; ≤ 3 MiB Workers bundle. *In this skill:* the events-worker imports `@nlqdb/db/clickhouse-tinybird` for `writeQueryLog`; the package's HTTP path is plain `fetch` with no SDK weight, keeping the bundle within budget.
+- **GLOBAL-013** — $0/month free tier; ≤ 3 MiB Workers bundle. *In this feature:* the events-worker imports `@nlqdb/db/clickhouse-tinybird` for `writeQueryLog`; the package's HTTP path is plain `fetch` with no SDK weight, keeping the bundle within budget.
 - **GLOBAL-014** — OTel span on every external call (DB, LLM, HTTP, queue).
-- **GLOBAL-021** — Each external system has one canonical owning module. *In this skill:* the events-worker is the canonical owner of `EVENTS_QUEUE` (consumer) per the GLOBAL-021 owner table; `packages/events/` owns the producer types. Tinybird HTTP is owned by `packages/db/clickhouse-tinybird/` — `SK-EVENTS-009`'s sink imports `writeQueryLog` from there rather than POSTing directly. Owner-to-owner library dependency (events-worker → `@nlqdb/db`) is explicitly allowed by GLOBAL-021.
-- **GLOBAL-024** — Demand-signal telemetry on every "not yet" path. *In this skill:* the `feature.*` event domain (e.g. `feature.requested.ddl_via_ask`, `feature.requested.byo_pg`, `feature.requested.team_workspace`) lives alongside the existing `user.*` and `billing.*` domains in `packages/events`. The same `<domain>.<verb_noun>` naming rule from SK-EVENTS-* applies. Emission contract: every surface fires one event on its negative paths; the events-worker drains them into the same LogSnag sink.
+- **GLOBAL-021** — Each external system has one canonical owning module. *In this feature:* the events-worker is the canonical owner of `EVENTS_QUEUE` (consumer) per the GLOBAL-021 owner table; `packages/events/` owns the producer types. Tinybird HTTP is owned by `packages/db/clickhouse-tinybird/` — `SK-EVENTS-009`'s sink imports `writeQueryLog` from there rather than POSTing directly. Owner-to-owner library dependency (events-worker → `@nlqdb/db`) is explicitly allowed by GLOBAL-021.
+- **GLOBAL-024** — Demand-signal telemetry on every "not yet" path. *In this feature:* the `feature.*` event domain (e.g. `feature.requested.ddl_via_ask`, `feature.requested.byo_pg`, `feature.requested.team_workspace`) lives alongside the existing `user.*` and `billing.*` domains in `packages/events`. The same `<domain>.<verb_noun>` naming rule from SK-EVENTS-* applies. Emission contract: every surface fires one event on its negative paths; the events-worker drains them into the same LogSnag sink.
 
 ## Open questions / known unknowns
 

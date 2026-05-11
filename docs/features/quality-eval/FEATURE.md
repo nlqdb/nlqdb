@@ -16,7 +16,7 @@ when-to-load:
 **Owners (code):** `tools/eval/**` (to be created), `packages/llm/**`
 **Cross-refs:** [`docs/future/semantic-layer.md`](../../future/semantic-layer.md) (the moat this harness measures the need for) · `llm-router/FEATURE.md` (the system under test) · `trust-ux/FEATURE.md` (uses these metrics to calibrate `SK-TRUST-003` confidence floors) · [`docs/research-receipts.md §8`](../../research-receipts.md) (dbt 2026 semantic-layer accuracy research)
 
-## Touchpoints — read this skill before editing
+## Touchpoints — read this feature before editing
 
 - `tools/eval/` — benchmark runner (planned)
 - `packages/llm/src/router.ts` — the system under test
@@ -54,9 +54,9 @@ when-to-load:
 Canonical text in [`docs/decisions/`](../../decisions/).
 
 - **GLOBAL-013** — $0/month for the free tier.
-  - *In this skill:* the harness uses the same strict-$0 chain users hit; if we exceed the free tier on eval, we're hiding cost that users will hit too.
+  - *In this feature:* the harness uses the same strict-$0 chain users hit; if we exceed the free tier on eval, we're hiding cost that users will hit too.
 - **GLOBAL-014** — OTel span on every external call.
-  - *In this skill:* the harness instruments per-question spans so failures can be debugged the same way as production calls.
+  - *In this feature:* the harness instruments per-question spans so failures can be debugged the same way as production calls.
 - **GLOBAL-024** — Demand-signal telemetry. *(Eval results emit `feature.eval.*` events.)*
 
 ## Open questions / known unknowns

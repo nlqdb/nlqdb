@@ -14,7 +14,7 @@ when-to-load:
 **Owners (code):** `packages/sdk/**`
 **Cross-refs:** docs/architecture.md §3.1 (code-surfaces matrix) · `docs/features/ask-pipeline/FEATURE.md` (HTTP API happy path) · docs/architecture.md §3 (TypeScript SDK row) · packages/sdk/README.md
 
-## Touchpoints — read this skill before editing
+## Touchpoints — read this feature before editing
 
 - `packages/sdk/**`
 
@@ -117,28 +117,28 @@ when-to-load:
 
 ## GLOBALs governing this feature
 
-Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; index in [`docs/decisions.md`](../../decisions.md)). The list below names the rules that constrain this feature; any skill-local commentary is nested under the rule.
+Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; index in [`docs/decisions.md`](../../decisions.md)). The list below names the rules that constrain this feature; any feature-local commentary is nested under the rule.
 
 - **GLOBAL-001** — SDK is the only HTTP client.
 - **GLOBAL-002** — Behavior parity across surfaces.
 - **GLOBAL-003** — New capabilities ship to all surfaces in one PR.
-  - *In this skill:* `runSql()` (`SK-SDK-009`) ships in the same PR as CLI `nlq run` and any `/v1/run` HTTP-surface change — no surface lags.
+  - *In this feature:* `runSql()` (`SK-SDK-009`) ships in the same PR as CLI `nlq run` and any `/v1/run` HTTP-surface change — no surface lags.
 - **GLOBAL-005** — Every mutation accepts `Idempotency-Key`.
 - **GLOBAL-009** — Tokens refresh silently — never surface a 401.
 - **GLOBAL-012** — Errors are one sentence with the next action.
 - **GLOBAL-014** — OTel span on every external call (DB, LLM, HTTP, queue).
 - **GLOBAL-015** — Power users always have an escape hatch (raw SQL/Mongo/connection string).
-  - *In this skill:* the canonical SDK implementation is `SK-SDK-009`'s `runSql()`.
+  - *In this feature:* the canonical SDK implementation is `SK-SDK-009`'s `runSql()`.
 - **GLOBAL-022** — Recoverable failures retry to success — never surface a fixable error.
-  - *In this skill:* see `SK-SDK-008` for the canonical implementation. `packages/sdk/src/index.ts` `call<T>` is the wire-layer retry loop (transport failures + transient 5xx, up to 3 attempts, reusing the auto-generated `Idempotency-Key` from `SK-SDK-006`). The 401 path stays single-retry per `SK-SDK-005`.
+  - *In this feature:* see `SK-SDK-008` for the canonical implementation. `packages/sdk/src/index.ts` `call<T>` is the wire-layer retry loop (transport failures + transient 5xx, up to 3 attempts, reusing the auto-generated `Idempotency-Key` from `SK-SDK-006`). The 401 path stays single-retry per `SK-SDK-005`.
 - **GLOBAL-023** — Trust UX baseline.
-  - *In this skill:* both `ask()` and `runSql()` responses include the `trace` block (`SK-TRUST-002`); surfaces render it.
+  - *In this feature:* both `ask()` and `runSql()` responses include the `trace` block (`SK-TRUST-002`); surfaces render it.
 
 ## Open questions / known unknowns
 
 - **`runSql()` implementation slice.** `SK-SDK-009` is design-locked; the implementation lands together with the CLI `nlq run` slice + the `/v1/run` HTTP endpoint per `GLOBAL-003` (Phase 2, see [`phase-plan.md §4`](../../phase-plan.md)). Until then, callers needing raw SQL drop to the CLI. PR description for the implementing slice must touch all three surfaces.
 - **SSE consumer for `/v1/ask`.** The README explicitly notes this is not yet shipped (`ask()` calls the buffered JSON path). Decision deferred until the trace-streaming UX in `apps/web` requires it; the `onTrace` hook (SK-SDK-007) will be the consumer.
 - **Bundle-size budget enforcement.** `GLOBAL-013` caps the Workers bundle at 3 MiB compressed but doesn't pin a per-package budget for `@nlqdb/sdk`. Implicit target is < ~5 KB gzipped; should we land an explicit CI assertion?
-- **Python / Go / Rust SDKs.** `docs/architecture.md §3` lists them as Phase 2. We have not yet decided whether they share this skill or earn their own (`SK-SDK-PY-NNN` etc.). Revisit when the Python SDK starts.
+- **Python / Go / Rust SDKs.** `docs/architecture.md §3` lists them as Phase 2. We have not yet decided whether they share this feature or earn their own (`SK-SDK-PY-NNN` etc.). Revisit when the Python SDK starts.
 - **`engine?` on Rust + Ruby SDK `db.create` (W3, GLOBAL-003 gap).** TS SDK lands `engine?` per `SK-DB-010` in W3. `packages/nlqdb-rs/src/lib.rs` and `packages/nlqdb-rb/lib/nlqdb.rb` are placeholder modules — no `db.create` method shipped — so there's nothing to wire `engine?` into yet. Per `GLOBAL-003`, when those SDKs land their first `db.create` method, that method exposes `engine?` directly (mirror of the TS shape: optional, classifier-default when absent, rejects unknown engines at the wire boundary with the API's `invalid_engine` 400). Tracker: this open question. Closes when the Rust + Ruby `db.create` slices ship.
 - **`postChat` / `listChat` typed-error coverage.** The README enumerates the chat-related error codes; some are SDK-side sentinels (`network_error`, `aborted`) and may need reconciling with the API's canonical error catalog when chat surfaces formalize.

@@ -19,7 +19,7 @@ when-to-load:
 **Owners (code):** `packages/otel/**` (the canonical helpers), `apps/api/src/index.ts` (per-request setup + force-flush), `apps/api/src/ask/orchestrate.ts` (`/v1/ask` span tree), `apps/api/src/stripe/webhook.ts` (`nlqdb.webhook.stripe`), `packages/db/src/postgres.ts` (`db.query`), `apps/api/src/llm-router.ts` (`llm.*`).
 **Cross-refs:** docs/performance.md §1 (SLOs) · §2 (latency budgets) · §3 (span / metric / label catalog — load-bearing) · §4 (slice instrumentation plan) · §5 (sampling + cost discipline) · docs/architecture.md §5.4 line 743 (Sentry + OTel → Grafana Cloud) · §5.4 line 772 (events-vs-spans boundary) · docs/runbook.md §2.6 line 343 (telemetry env wiring) · [GLOBAL-014](../../decisions/GLOBAL-014-otel-on-external-calls.md) · [GLOBAL-011](../../decisions/GLOBAL-011-honest-latency.md)
 
-## Touchpoints — read this skill before editing
+## Touchpoints — read this feature before editing
 
 - `packages/otel/src/index.ts` — `setupTelemetry`, `installTelemetryForTest`, the lazy-instrument helpers, the OTel semconv pin, `redactPii`.
 - `packages/otel/src/test.ts` — in-memory exporters for vitest assertions.
@@ -119,12 +119,12 @@ when-to-load:
 
 ## GLOBALs governing this feature
 
-Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; index in [`docs/decisions.md`](../../decisions.md)). The list below names the rules that constrain this feature; any skill-local commentary is nested under the rule.
+Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; index in [`docs/decisions.md`](../../decisions.md)). The list below names the rules that constrain this feature; any feature-local commentary is nested under the rule.
 
 - **GLOBAL-014** — OTel span on every external call (DB, LLM, HTTP, queue).
 - **GLOBAL-011** — Honest latency — show the live trace; never spinner-lie.
 - **GLOBAL-022** — Recoverable failures retry to success — never surface a fixable error.
-  - *In this skill:* every retry decorates its parent span with
+  - *In this feature:* every retry decorates its parent span with
     `nlqdb.retry.attempt` and increments
     `nlqdb.retry.total{stage, reason}`. Sustained retry-rate climb
     is the alert signal that recovery is masking a real upstream
@@ -133,7 +133,7 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 ## Open questions / known unknowns
 
 - **Tail-based sampling.** `SK-OBS-003` defers tail-based to a future collector hop. If the cache-hit 1% sample misses interesting outliers, we may want a "slowest 5% of cache hits, always" rule — that needs a collector that can buffer and decide post-hoc. Open: do we add a Workers-side Durable Object as a collector, or rely on Grafana Cloud's tail sampler if/when it becomes free-tier-eligible?
-- **`onTrace` SDK hook (GLOBAL-011)**. The Consequence-in-code names an `onTrace` hook on the SDK that surfaces consume. Not yet implemented; tracking under the `sdk` skill. Until it lands, web/CLI build their own trace renderers from the SSE event stream — works but couples the surface to the orchestrator's event shape.
+- **`onTrace` SDK hook (GLOBAL-011)**. The Consequence-in-code names an `onTrace` hook on the SDK that surfaces consume. Not yet implemented; tracking under the `sdk` feature. Until it lands, web/CLI build their own trace renderers from the SSE event stream — works but couples the surface to the orchestrator's event shape.
 - **Live-trace ↔ OTel span tree alignment.** `apps/web` renders user-facing trace events (`plan_pending → plan → rows → summary` per `apps/api/src/ask/types.ts`). Those names don't match the OTel span tree (`nlqdb.cache.plan.lookup`, `nlqdb.sql.validate`, …). Open: do we converge the names, or keep two vocabularies (system-facing OTel + user-facing trace) on purpose? Current view: keep separate — system observability and user-facing latency display are different audiences.
 - **Histogram bucket calibration.** `docs/performance.md §5` pins 8 buckets (5ms, 25ms, 100ms, 250ms, 500ms, 1s, 2.5s, 5s). After Phase 1 traffic lands, we should recalibrate against measured p50/p99 — the SLOs in §1 imply buckets at 200ms (cache hit p50), 1.5s (cache miss p50), 3.5s (cache miss p99), but we picked round numbers for the initial pass. Recalibration requires a metrics-replay tool we don't have yet.
 - **Sentry vs OTel overlap.** DESIGN §5.4 line 743 lists Sentry (5k errors/mo free) AND OpenTelemetry → Grafana Cloud as "ops telemetry." The boundary is unclear: do exceptions go to both? Default we picked is exceptions → Sentry, traces + metrics → Grafana; spans record exceptions via `span.recordException` so the Grafana side still sees them. Decision worth pinning explicitly when both are wired up.

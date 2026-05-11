@@ -22,18 +22,18 @@ when-to-load:
 
 **Cross-refs:** docs/architecture.md §3.6.1–§3.6.8 (canonical) · docs/phase-plan.md §2 (Phase 1 slice — sub-modules, anonymous-db lifecycle, exit gate) · docs/research-receipts.md §1 (Replit incident → layered guardrails), §2 (Cortex Analyst + SchemaAgent → typed plans), §7 (per-surface dbId resolution, with confidence-gated LLM pick + visible echo on REST + chat — SK-HDC-005), §8 (semantic-layer-at-create moat) · GLOBAL-005, GLOBAL-014, GLOBAL-017, GLOBAL-020 (see governing-GLOBALs section below)
 
-**Sibling skills to read alongside:**
-- `docs/features/ask-pipeline/FEATURE.md` — the classifier branches off the existing `/v1/ask` orchestrator; this skill owns the `kind=create` arm
+**Sibling features to read alongside:**
+- `docs/features/ask-pipeline/FEATURE.md` — the classifier branches off the existing `/v1/ask` orchestrator; this feature owns the `kind=create` arm
 - `docs/features/db-adapter/FEATURE.md` — the provisioner uses the adapter; SK-DB-007 (schema-per-DB tenancy) and SK-DB-008 (ALTER TABLE ADD COLUMN NULL) constrain what we emit
 - `docs/features/llm-router/FEATURE.md` — the classifier and schema-inference are LLM calls; provider routing + cost accounting belongs there
 - `docs/features/sql-allowlist/FEATURE.md` — owns the read/write validator; SK-HDC-006 here owns the DDL-path validator that sits next to it
 
-## Touchpoints — read this skill before editing
+## Touchpoints — read this feature before editing
 
 - `apps/api/src/db-create/**` (canonical implementation: orchestrator + sub-modules)
 - `apps/api/src/ask/route-ask.ts` (merged cheap-tier classifier; routes `kind=create` here — SK-ASK-009)
 - `apps/api/src/ask/sql-validate-ddl.ts` (DDL validator path; split from read/write allowlist)
-- `apps/api/src/ask/orchestrate.ts` (the consumer that delegates `kind=create` to this skill)
+- `apps/api/src/ask/orchestrate.ts` (the consumer that delegates `kind=create` to this feature)
 - `packages/llm/src/prompts/schema-inference.ts` (the typed-plan prompt)
 - `packages/db/src/types.ts` (`SchemaPlan` lives near the adapter types)
 
@@ -41,7 +41,7 @@ when-to-load:
 
 ### SK-HDC-001 — One classifier-routed endpoint: `/v1/ask` does create, query, and write
 
-- **Decision:** There is no `/v1/db/new`. `POST /v1/ask` accepts a `goal`, a cheap classifier-tier LLM call decides `kind ∈ {"create" | "query" | "write"}`, and `kind=create` routes to the typed-plan pipeline owned by this skill. `kind=query` and `kind=write` continue to use the existing read/write orchestrator.
+- **Decision:** There is no `/v1/db/new`. `POST /v1/ask` accepts a `goal`, a cheap classifier-tier LLM call decides `kind ∈ {"create" | "query" | "write"}`, and `kind=create` routes to the typed-plan pipeline owned by this feature. `kind=query` and `kind=write` continue to use the existing read/write orchestrator.
 - **Core value:** Simple, Goal-first
 - **Why:** `GLOBAL-017` says one way to do each thing. No persona ever woke up wanting to "create a database" (`docs/runbook.md §10`); they want a meal-planner, an agent that remembers, a number for the 4pm sync. A separate "create" endpoint forces every surface to add a "are you starting fresh?" branch — exactly the DB-first framing `docs/architecture.md §0.1` rejects. Folding create into `/v1/ask` lets `<nlq-data>` work with no `db=` attribute, lets MCP work with no setup tool, and keeps the SDK / CLI / MCP surface symmetric.
 - **Consequence in code:** The `/v1/ask` handler runs the classifier first; `kind=create` calls `db-create/orchestrate.ts`, `kind=query`/`kind=write` call the existing `ask/orchestrate.ts`. New endpoints for create are rejected at review. Surfaces (`<nlq-data>`, CLI, MCP, SDK) never branch on "create vs query" — they pass the goal and the API decides. Post-create, the orchestrator pushes `plan.tables[].name` to the principal's recent-tables MRU per `SK-ASK-012`. Surfaces render `displayName(dbId)` for human-readable names; `slug` stays for URL/technical contexts.
@@ -85,14 +85,14 @@ when-to-load:
 - **Decision:** When `dbId` is absent on `/v1/ask`: kind=create routes the typed-plan create path (SK-HDC-001) unchanged; for kind=query|write — 0 dbs → CREATE; 1 db → auto-target; 2+ dbs → slug-substring fast-path → KV cache → cheap-tier `llm.disambiguate`, with `confidence ≥ 0.7` floor and `selected_db` echo on auto-target. Below the floor the handler returns `409 candidate_dbs` ranked by score. CLI / MCP keep their deterministic fallbacks (MRU prompt / elicitation). Mirror of `SK-ASK-003` on the create-side.
 - **Core value:** Effortless UX, Goal-first, Honest latency
 - **Why:** A bare deterministic 409 paid a UX wall on goal-first chat. Wrong-tenant risk is contained by the confidence floor + visible echo (wrong picks are not silent) + one-click rail recovery. Writes still pass the SK-HDC-006 validator split + SK-ONBOARD-004 confirm-diff gate, so a wrong-tenant destructive call requires both a wrong LLM pick and a user-approved diff naming the wrong table.
-- **Consequence in code:** `apps/api/src/ask/disambiguate-db.ts` runs the new `llm.disambiguate` op; the route handler in `apps/api/src/index.ts` runs the new flow (0→create, 1→auto, 2+→slug-fastpath/cache/LLM with 0.7 floor) and routes the create branch through this skill's `orchestrateDbCreate` unchanged. Per-attempt LLM timeout 1500 ms (cheap-tier). `disambiguate` is dbId resolution only — never invoked from inside the typed-plan compiler.
+- **Consequence in code:** `apps/api/src/ask/disambiguate-db.ts` runs the new `llm.disambiguate` op; the route handler in `apps/api/src/index.ts` runs the new flow (0→create, 1→auto, 2+→slug-fastpath/cache/LLM with 0.7 floor) and routes the create branch through this feature's `orchestrateDbCreate` unchanged. Per-attempt LLM timeout 1500 ms (cheap-tier). `disambiguate` is dbId resolution only — never invoked from inside the typed-plan compiler.
 - **Alternatives rejected:** Bare deterministic 409 — UX wall on goal-first chat. LLM pick without confidence floor — silent on low-signal goals. LLM pick without `selected_db` echo — silent again. Planner-tier LLM — overkill; cheap tier is accurate enough on slug + schema-hash inputs.
 
 ### SK-HDC-006 — Two validator paths: read/write (allowlist) vs DDL (allowlist + libpg_query parse)
 
-- **Decision:** Two distinct SQL validators, exhaustively tested, with non-overlapping responsibilities. The **read/write** path (`apps/api/src/ask/sql-validate.ts`, owned by `sql-allowlist` skill) allows `SELECT / INSERT / UPDATE / DELETE / WITH / EXPLAIN / SHOW` and rejects `CREATE / ALTER / DROP / TRUNCATE / GRANT / REVOKE / VACUUM` and `EXPLAIN ANALYZE`. The **DDL** path (`apps/api/src/ask/sql-validate-ddl.ts`, owned by this skill) allows the compiler's `CREATE TABLE / CREATE INDEX / FK constraints` and rejects the same destructive verbs (`DROP / TRUNCATE / GRANT / REVOKE / pg_catalog / information_schema`).
+- **Decision:** Two distinct SQL validators, exhaustively tested, with non-overlapping responsibilities. The **read/write** path (`apps/api/src/ask/sql-validate.ts`, owned by `sql-allowlist` feature) allows `SELECT / INSERT / UPDATE / DELETE / WITH / EXPLAIN / SHOW` and rejects `CREATE / ALTER / DROP / TRUNCATE / GRANT / REVOKE / VACUUM` and `EXPLAIN ANALYZE`. The **DDL** path (`apps/api/src/ask/sql-validate-ddl.ts`, owned by this feature) allows the compiler's `CREATE TABLE / CREATE INDEX / FK constraints` and rejects the same destructive verbs (`DROP / TRUNCATE / GRANT / REVOKE / pg_catalog / information_schema`).
 - **Core value:** Bullet-proof, Simple
-- **Why:** The LLM never has DDL rights through `/v1/ask`'s read/write path. The only legitimate `CREATE` comes from this skill's typed-plan compiler — which is our code, not the LLM. Two validators (instead of one with conditional verb sets) make each one trivially auditable: every line of the read/write validator says "no DDL"; every line of the DDL validator says "compiler-shaped DDL only." A reviewer asking "could the LLM ever execute `DROP`?" reads one short file and is done.
+- **Why:** The LLM never has DDL rights through `/v1/ask`'s read/write path. The only legitimate `CREATE` comes from this feature's typed-plan compiler — which is our code, not the LLM. Two validators (instead of one with conditional verb sets) make each one trivially auditable: every line of the read/write validator says "no DDL"; every line of the DDL validator says "compiler-shaped DDL only." A reviewer asking "could the LLM ever execute `DROP`?" reads one short file and is done.
 - **Consequence in code:** The two validator files share the libpg_query primitives but ship as separate exports. PRs that try to "merge them for DRY" are rejected — duplication is the point. Both validators are called from the orchestrators (read/write from `ask/orchestrate.ts`, DDL from `db-create/orchestrate.ts`); neither orchestrator ever calls the other's validator. Cross-link enforced in `sql-allowlist/FEATURE.md` SK-SQLAL-*.
 - **Alternatives rejected:**
   - One validator with verb-set parameter — the conditional becomes the audit risk; "trust me, in DDL mode it allows CREATE" is exactly the kind of branch we're trying to remove.
@@ -166,20 +166,20 @@ when-to-load:
 - **Alternatives rejected:**
   - Keep per-statement HTTP — preserves the bug forever; the legacy `BEGIN/COMMIT` was a documentation lie.
   - Switch the entire app to the Neon WebSocket Pool driver — adds TCP/TLS setup per cold worker (~200 ms first call); fine, but a bigger refactor than the provisioner needs, and WebSockets have their own CF Workers gotchas (compatibility mode, hibernation). Tracked as the documented fallback if a future Neon HTTP regression breaks DDL batching.
-  - Hyperdrive — Cloudflare's pooler is the obvious "next" answer for production but is a free-tier cost concern (`GLOBAL-013`) and adds a dependency this skill should land independently of.
+  - Hyperdrive — Cloudflare's pooler is the obvious "next" answer for production but is a free-tier cost concern (`GLOBAL-013`) and adds a dependency this feature should land independently of.
 
 ## GLOBALs governing this feature
 
-Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; index in [`docs/decisions.md`](../../decisions.md)). The list below names the rules that constrain this feature; any skill-local commentary is nested under the rule.
+Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; index in [`docs/decisions.md`](../../decisions.md)). The list below names the rules that constrain this feature; any feature-local commentary is nested under the rule.
 
 - **GLOBAL-005** — Every mutation accepts `Idempotency-Key`.
-  - *In this skill:* db.create is a mutation. The `(user_id, key)` store dedupes the entire pipeline — classifier + LLM call + DDL + provision — so a retried create returns the same `{ db, pk_live, rows, plan }` byte-for-byte and never double-allocates a Postgres schema. Anonymous-mode callers (no `user_id`) dedupe by `(anon_device_id, key)` from the 72h `localStorage` token (`SK-AUTH-*`).
+  - *In this feature:* db.create is a mutation. The `(user_id, key)` store dedupes the entire pipeline — classifier + LLM call + DDL + provision — so a retried create returns the same `{ db, pk_live, rows, plan }` byte-for-byte and never double-allocates a Postgres schema. Anonymous-mode callers (no `user_id`) dedupe by `(anon_device_id, key)` from the 72h `localStorage` token (`SK-AUTH-*`).
 - **GLOBAL-014** — OTel span on every external call (DB, LLM, HTTP, queue).
-  - *In this skill:* the create path emits these spans per call: `llm.route` (cheap-tier merged kind + dbId decision — SK-ASK-009), `llm.schema_infer` (planner-tier SchemaPlan generation), `db.transaction` (one span per provision — SK-HDC-012's batched HTTP call carrying `db.transaction.statement_count` + `db.transaction.batch_call=true`), and `db.query` only on the cleanup path's `DROP SCHEMA` (one HTTP call per failure compensation). Per-statement `db.query` spans are no longer emitted on the happy path — the batch is one round-trip. All match `docs/performance.md` §3 names; new spans land in the catalog before they land in code.
+  - *In this feature:* the create path emits these spans per call: `llm.route` (cheap-tier merged kind + dbId decision — SK-ASK-009), `llm.schema_infer` (planner-tier SchemaPlan generation), `db.transaction` (one span per provision — SK-HDC-012's batched HTTP call carrying `db.transaction.statement_count` + `db.transaction.batch_call=true`), and `db.query` only on the cleanup path's `DROP SCHEMA` (one HTTP call per failure compensation). Per-statement `db.query` spans are no longer emitted on the happy path — the batch is one round-trip. All match `docs/performance.md` §3 names; new spans land in the catalog before they land in code.
 - **GLOBAL-017** — Two endpoints, two CLI verbs, one chat box — one way to do each thing.
-  - *In this skill:* SK-HDC-001 is the direct application of this GLOBAL on the create surface — `/v1/ask` does create, query, and write; there is no `/v1/db/new`. Phase 4's BYO connect *is* a separate endpoint (`POST /v1/db/connect` per `docs/architecture.md §3.6.7`) because it's an authoring action with different auth shape, not a data operation; SK-HDC-001 explicitly carves that exception.
+  - *In this feature:* SK-HDC-001 is the direct application of this GLOBAL on the create surface — `/v1/ask` does create, query, and write; there is no `/v1/db/new`. Phase 4's BYO connect *is* a separate endpoint (`POST /v1/db/connect` per `docs/architecture.md §3.6.7`) because it's an authoring action with different auth shape, not a data operation; SK-HDC-001 explicitly carves that exception.
 - **GLOBAL-020** — No "pick a region", no config files in the first 60s.
-  - *In this skill:* the create path is the load-bearing implementation of this GLOBAL. `<nlq-data goal="…">` with no `db=` and no key triggers anonymous create on first hit, returns rows, and stashes a 72h `localStorage` token — zero config, zero file, zero region picker. Anonymous-db lifecycle is owned by the `anonymous-mode` skill (90-day TTL, 10 MB per-db cap, pressure-sweep at 300 MB total per `docs/runbook.md`).
+  - *In this feature:* the create path is the load-bearing implementation of this GLOBAL. `<nlq-data goal="…">` with no `db=` and no key triggers anonymous create on first hit, returns rows, and stashes a 72h `localStorage` token — zero config, zero file, zero region picker. Anonymous-db lifecycle is owned by the `anonymous-mode` feature (90-day TTL, 10 MB per-db cap, pressure-sweep at 300 MB total per `docs/runbook.md`).
 
 ## Open questions / known unknowns
 
@@ -194,4 +194,4 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 
 Phase 1 emits an auto-generated `metrics`/`dimensions` baseline at create time (see `SK-HDC-005` above). Phase 2 makes that baseline **editable, OSI-compatible, and source-controlled**. Full plan, deferred decisions, and promotion path: [`docs/future/semantic-layer.md`](../../future/semantic-layer.md).
 
-When Phase 2 ships, decisions from that doc promote into `SK-HDC-NNN` blocks here (semantic.yml shape, registry layout) and into sibling skills (`SK-PLAN-NNN` for cache fingerprint, `SK-SQLALLOW-NNN` for semantic-aware allow-list, `SK-CLI-NNN` for `nlq semantic init`).
+When Phase 2 ships, decisions from that doc promote into `SK-HDC-NNN` blocks here (semantic.yml shape, registry layout) and into sibling features (`SK-PLAN-NNN` for cache fingerprint, `SK-SQLALLOW-NNN` for semantic-aware allow-list, `SK-CLI-NNN` for `nlq semantic init`).

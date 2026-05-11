@@ -165,7 +165,7 @@ choice that looks wrong without context.
 When you do leave one: **one sentence, explaining why we did this
 instead of the obvious alternative.** Not what the code does — that's
 the code's job. If the reason needs more than a sentence, it belongs
-in a skill / decision record (`SK-*` or `GLOBAL-*`), not inline.
+in a feature / decision record (`SK-*` or `GLOBAL-*`), not inline.
 
 This subsumes JSDoc on internals: a function whose JSDoc explains
 *how to call it* has already failed DX. Make the call site obvious

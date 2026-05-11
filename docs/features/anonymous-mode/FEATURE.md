@@ -16,7 +16,7 @@ when-to-load:
 **Owners (code):** `apps/web/**`, `cli/**`, `apps/api/src/anon-adopt.ts`
 **Cross-refs:** [GLOBAL-007](../../decisions/GLOBAL-007-no-login-wall.md) · docs/architecture.md §0.1, §3.3, §3.6.4, §4.1, §14.3, §14.6 · docs/runbook.md §10 (P1, P5 first-touch) · docs/phase-plan.md (partial status) · docs/runbook.md §9 (anonymous-db lifecycle)
 
-## Touchpoints — read this skill before editing
+## Touchpoints — read this feature before editing
 
 - `apps/web/**`
 - `cli/**`
@@ -121,7 +121,7 @@ when-to-load:
 
 - **Decision:** Cumulative across **all** anonymous traffic — three rolling windows: 100 calls/hour, 1000/day, 10,000/month. When any window trips, `/v1/ask` returns `401 Unauthorized` with body `{ error: { status: "auth_required", code: "anon_global_cap", window, resetAt, signInUrl, action } }`. The web surface stashes the in-flight prompt in localStorage (`SK-ANON-011`) and redirects to `signInUrl` with a same-origin `return` query param. The user signs in, the post-OAuth landing page replays the queued prompt against `/v1/ask` with the now-authed cookie session — accountable identity, no anon cap. The per-IP query bucket (30/min, `SK-ANON-004` / `SK-RL-007`) layers underneath this and continues to return 429. The per-device cap (`SK-ANON-012`, 1 anon `/v1/ask` per device → `auth_required`) gates anon traffic ahead of the global cap with the same envelope shape.
 - **Core value:** Free, Bullet-proof, Effortless UX, Seamless auth
-- **Why:** `SK-ANON-004` covers per-IP abuse but says nothing about cumulative anon LLM spend. The `SK-WEB-008` directive ("demo === real LLM") makes that cumulative bill load-bearing — without a global ceiling, a Hacker News spike could empty the LLM credits before lunch. The auth-redirect framing keeps `GLOBAL-007` honest because the wall doesn't exist on call #1; it lands at #101 within the hour, when the anon tier has already delivered first value and the user has reason to sign in. `SK-RL-005`'s "next action" becomes "sign in" instead of "wait for window reset" — same spirit, different verb. Numbers (100/1000/10000) are pinned in this skill rather than left to deploy-time tuning so reviewers can reason about behaviour without grepping env config.
+- **Why:** `SK-ANON-004` covers per-IP abuse but says nothing about cumulative anon LLM spend. The `SK-WEB-008` directive ("demo === real LLM") makes that cumulative bill load-bearing — without a global ceiling, a Hacker News spike could empty the LLM credits before lunch. The auth-redirect framing keeps `GLOBAL-007` honest because the wall doesn't exist on call #1; it lands at #101 within the hour, when the anon tier has already delivered first value and the user has reason to sign in. `SK-RL-005`'s "next action" becomes "sign in" instead of "wait for window reset" — same spirit, different verb. Numbers (100/1000/10000) are pinned in this feature rather than left to deploy-time tuning so reviewers can reason about behaviour without grepping env config.
 - **Consequence in code:** `apps/api/src/anon-global-cap.ts` keys three KV buckets (`anon:global:hr:<bucket>`, `anon:global:day:<bucket>`, `anon:global:mo:<bucket>`) under fixed-window approximations of "rolling". `peek()` returns the first failing window (hour → day → month priority); `record()` increments all three after a request is served. `apps/api/src/index.ts` runs the global gate before the per-IP gate — global is the user-facing soft-promotion; per-IP is the bot-speed defense. The `signInUrl` is built server-side via `buildSignInUrl()` (only same-origin returns allowed; never echo a foreign Referer). The Worker's `MAGIC_LINK_WEB_ORIGIN` env var picks dev vs prod sign-in.
   - Per-device cap (`SK-ANON-012`) is the first gate on every anon `/v1/ask`; the global cap layers above it. Both return the same `auth_required` envelope shape so the surface has one handler.
 - **Alternatives rejected:**
@@ -164,12 +164,12 @@ when-to-load:
 
 ## GLOBALs governing this feature
 
-Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; index in [`docs/decisions.md`](../../decisions.md)). The list below names the rules that constrain this feature; any skill-local commentary is nested under the rule.
+Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; index in [`docs/decisions.md`](../../decisions.md)). The list below names the rules that constrain this feature; any feature-local commentary is nested under the rule.
 
 - **GLOBAL-007** — No login wall before first value.
 - **GLOBAL-020** — No "pick a region", no config files in the first 60s.
 - **GLOBAL-024** — Demand-signal telemetry on every "not yet" path.
-  - *In this skill:* the 72h anon-TTL warning emits `feature.requested.persist_anon_db`; the anonymous-mode rate-limit hits surface `feature.requested.heavier_tier`. These are the in-product half of the [`founder-playbook §1`](../../founder-playbook.md) design-partner recruitment loop.
+  - *In this feature:* the 72h anon-TTL warning emits `feature.requested.persist_anon_db`; the anonymous-mode rate-limit hits surface `feature.requested.heavier_tier`. These are the in-product half of the [`founder-playbook §1`](../../founder-playbook.md) design-partner recruitment loop.
 
 ## Open questions / known unknowns
 

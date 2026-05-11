@@ -14,11 +14,11 @@ when-to-load:
 # Feature: Trust UX
 
 **One-liner:** User-surface trust rules — diff preview on writes, visible SQL trace on every response, refuse-on-low-confidence on plans.
-**Status:** planned (Phase 1.5) — design locked in [`GLOBAL-023`](../../decisions/GLOBAL-023-trust-ux-baseline.md); implementation lands across `ask-pipeline`, `web-app`, `cli`, `elements`, and `mcp-server` skills in the Phase 1.5 slice (see [`phase-plan.md` §3](../../phase-plan.md)).
+**Status:** planned (Phase 1.5) — design locked in [`GLOBAL-023`](../../decisions/GLOBAL-023-trust-ux-baseline.md); implementation lands across `ask-pipeline`, `web-app`, `cli`, `elements`, and `mcp-server` features in the Phase 1.5 slice (see [`phase-plan.md` §3](../../phase-plan.md)).
 **Owners (code):** cross-cutting — see touchpoints.
-**Cross-refs:** [`docs/decisions/GLOBAL-023-trust-ux-baseline.md`](../../decisions/GLOBAL-023-trust-ux-baseline.md) (canonical) · [`docs/phase-plan.md §3`](../../phase-plan.md) (Phase 1.5 placement) · `ask-pipeline/FEATURE.md` (the pipeline that emits trace + confidence) · `sql-allowlist/FEATURE.md` (the parser-level guardrail that trust UX sits on top of — see [`research-receipts.md §1`](../../research-receipts.md) for the server-side guardrail rationale; the user-surface rationale lives in this skill)
+**Cross-refs:** [`docs/decisions/GLOBAL-023-trust-ux-baseline.md`](../../decisions/GLOBAL-023-trust-ux-baseline.md) (canonical) · [`docs/phase-plan.md §3`](../../phase-plan.md) (Phase 1.5 placement) · `ask-pipeline/FEATURE.md` (the pipeline that emits trace + confidence) · `sql-allowlist/FEATURE.md` (the parser-level guardrail that trust UX sits on top of — see [`research-receipts.md §1`](../../research-receipts.md) for the server-side guardrail rationale; the user-surface rationale lives in this feature)
 
-## Touchpoints — read this skill before editing
+## Touchpoints — read this feature before editing
 
 - `apps/api/src/ask/**` — response shape (trace + confidence + diff blocks)
 - `apps/api/src/db-create/**` — diff for DDL paths
@@ -67,13 +67,13 @@ when-to-load:
 Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; index in [`docs/decisions.md`](../../decisions.md)).
 
 - **GLOBAL-011** — Honest latency — show the live trace; never spinner-lie.
-  - *In this skill:* The `trace` block is the textual form of the live-trace promise; the live-trace WebSocket events are the visual form. Both must agree.
+  - *In this feature:* The `trace` block is the textual form of the live-trace promise; the live-trace WebSocket events are the visual form. Both must agree.
 - **GLOBAL-012** — Errors are one sentence with the next action.
 - **GLOBAL-015** — Power users always have an escape hatch (raw SQL).
-  - *In this skill:* The `low_confidence` refusal response includes a `raw_sql_hint` field — the user can copy the partial plan to `/v1/run` and edit it themselves.
+  - *In this feature:* The `low_confidence` refusal response includes a `raw_sql_hint` field — the user can copy the partial plan to `/v1/run` and edit it themselves.
 - **GLOBAL-022** — Recoverable failures retry to success — never surface a fixable error.
-  - *In this skill:* `low_confidence` is *not* recoverable by retry — it's a user-clarification need, not a transient failure. Surfaces must distinguish the two.
-- **GLOBAL-023** — Trust UX baseline. *(This skill is the implementation of `GLOBAL-023`.)*
+  - *In this feature:* `low_confidence` is *not* recoverable by retry — it's a user-clarification need, not a transient failure. Surfaces must distinguish the two.
+- **GLOBAL-023** — Trust UX baseline. *(This feature is the implementation of `GLOBAL-023`.)*
 
 ## Open questions / known unknowns
 

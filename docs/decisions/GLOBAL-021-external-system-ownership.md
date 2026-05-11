@@ -34,7 +34,7 @@
     platform DB (D1) — collapses the engine-agnostic seam in
     `SK-DB-001` and forces D1's typed table operations through
     `execute(sql, params)` or a parallel API inside the same package.
-  - Per-feature ownership (each skill owns its own D1 access) —
+  - Per-feature ownership (each feature owns its own D1 access) —
     exactly the drift `GLOBAL-001` was written to prevent; ends up
     with five different retry / OTel / connection-handling patterns
     for the same backend.
@@ -51,7 +51,7 @@ here in the same PR that introduces them.
 |---|---|---|
 | Neon Postgres (user data) | `packages/db/` via `DatabaseAdapter` | Documented exception: `apps/api/src/db-create/build-deps.ts` imports `@neondatabase/serverless` directly for the control-plane provisioner (CREATE SCHEMA / role / RLS); see `SK-HDC-*`. |
 | Cloudflare D1 (platform DB) | `packages/platform-db/` | Holds auth, billing, rate-limit, registry, waitlist, idempotency tables. **Migration in progress** — current direct-D1 callers (`apps/api/src/db-registry.ts`, `waitlist.ts`, `ask/rate-limit.ts`, `anon-adopt.ts`, `db-create/neon-provision.ts`, `principal.ts`, `anon-rate-limit.ts`, `anon-global-cap.ts`) move to `@nlqdb/platform-db` in follow-up PRs. |
-| Better Auth | `apps/api/src/auth.ts` (today); planned consolidation in `packages/auth-internal/` | The auth skill (`docs/features/auth/FEATURE.md`) tracks the consolidation. Better Auth's `kysely-d1` reach into D1 is a documented owner-to-owner library dependency, not a violation. |
+| Better Auth | `apps/api/src/auth.ts` (today); planned consolidation in `packages/auth-internal/` | The auth feature (`docs/features/auth/FEATURE.md`) tracks the consolidation. Better Auth's `kysely-d1` reach into D1 is a documented owner-to-owner library dependency, not a violation. |
 | LLM providers | `packages/llm/` | All `@anthropic-ai/sdk`, `openai`, `@google/genai` imports live here. |
 | OpenTelemetry exporter / SDK | `packages/otel/` | All `@opentelemetry/*` imports for instrumentation wrappers live here; consumers import from `@nlqdb/otel`. |
 | Stripe | `apps/api/src/billing/` | Stripe SDK + webhook handling; R2 archive of webhook payloads is owned here today (re-home if R2 grows a second use case). |
@@ -69,7 +69,7 @@ The rule lands today; the codebase is not yet fully compliant. Tracked work:
 1. **D1 ownership consolidation** — move all direct `D1Database`
    usages in `apps/api/src/` into `@nlqdb/platform-db`. Tracked as
    open work under `docs/features/db-adapter/FEATURE.md` and the
-   forthcoming `platform-db` skill (or equivalent §10.1 promotion).
+   forthcoming `platform-db` feature (or equivalent §10.1 promotion).
 2. **Better Auth consolidation** — move Better Auth setup from
    `apps/api/src/auth.ts` into `packages/auth-internal/` once the
    package gets a `package.json`. Tracked under

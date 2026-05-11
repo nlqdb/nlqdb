@@ -6,12 +6,12 @@ here.
 
 **Navigation:** [architecture.md](./architecture.md) (system design) ·
 [decisions.md](./decisions.md) (cross-cutting `GLOBAL-NNN`) ·
-[features/_index.md](./features/_index.md) (skill status) ·
+[features/](./features/) (per-feature `FEATURE.md` with status) ·
 [performance.md](./performance.md) (SLOs and budgets).
 
-If a sentence here disagrees with a skill, **the skill wins**. This
+If a sentence here disagrees with a feature, **the feature wins**. This
 document owns the phase ordering, the items in each phase, and the
-measurable exit gate. Skill-level decisions (the `SK-*` blocks) own the
+measurable exit gate. Feature-level decisions (the `SK-*` blocks) own the
 *how*.
 
 ---
@@ -93,7 +93,7 @@ are governed by
 [`GLOBAL-023`](./decisions/GLOBAL-023-trust-ux-baseline.md) and
 [`GLOBAL-024`](./decisions/GLOBAL-024-demand-signal-telemetry.md);
 implementation lives in [`trust-ux`](./features/trust-ux/FEATURE.md)
-and across every existing skill.
+and across every existing feature.
 
 - **Trust UX baseline** ([`GLOBAL-023`](./decisions/GLOBAL-023-trust-ux-baseline.md)):
   every write/DDL path shows a diff before commit; every response carries
@@ -216,7 +216,7 @@ quarter.
   phase-gated).
 - **BYO ClickHouse** — undecided. The Phase 3 managed-CH path via
   Tinybird is unaffected; a "connect your own ClickHouse" mode is a
-  separate decision. Open question; promote into a skill when shape
+  separate decision. Open question; promote into a feature when shape
   is firm.
 - Enterprise (SSO, audit log, on-prem).
 - More engines (TimescaleDB, Typesense, pgvector at scale).

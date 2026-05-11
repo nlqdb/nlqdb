@@ -12,9 +12,9 @@ when-to-load:
 **One-liner:** /v1/ask orchestration: rate-limit → cache → LLM router → SQL allowlist → exec → summarize.
 **Status:** implemented
 **Owners (code):** `apps/api/src/ask/**`
-**Cross-refs:** docs/architecture.md §3.6.1 (endpoint shape), §3.6.2 (typed-plan pipeline), §3.6.4 (dbId resolution), §3.6.5 (validator paths), §9 (bullet-proof checklist) · docs/performance.md §4 Slice 6 (`/v1/ask` E2E) · docs/performance.md §2.1, §2.2, §3 · `docs/features/hosted-db-create/FEATURE.md` (Phase 1 — the `kind=create` arm of this pipeline lives there per SK-HDC-001; this skill keeps the read/write arm)
+**Cross-refs:** docs/architecture.md §3.6.1 (endpoint shape), §3.6.2 (typed-plan pipeline), §3.6.4 (dbId resolution), §3.6.5 (validator paths), §9 (bullet-proof checklist) · docs/performance.md §4 Slice 6 (`/v1/ask` E2E) · docs/performance.md §2.1, §2.2, §3 · `docs/features/hosted-db-create/FEATURE.md` (Phase 1 — the `kind=create` arm of this pipeline lives there per SK-HDC-001; this feature keeps the read/write arm)
 
-## Touchpoints — read this skill before editing
+## Touchpoints — read this feature before editing
 
 - `apps/api/src/ask/**`
 
@@ -125,7 +125,7 @@ when-to-load:
   - Defer the create's COMMIT until reconcile — holds a Postgres connection across LLM-tier latency; Workers can't sustain that pattern.
   - Skip Idempotency-Key eviction — retry returns the rolled-back response; dedupe store lies.
 
-**Open follow-ups (track in this skill's Open questions):**
+**Open follow-ups (track in this feature's Open questions):**
 - pgvector card cleanup on rollback when embedding lands (today `embedTableCards` is a no-op in `apps/api/src/db-create/build-deps.ts`).
 - `pk_live` revocation on rollback when the api-keys subsystem ships.
 - Anon create-cap consumption when speculation rolls back: resolved by WS5 fix C — `commitAnonCreate` runs only on `reconciled.result.ok === true`, so rolled-back speculations no longer count.
@@ -179,7 +179,7 @@ Intentional reinventions on this path (grammar-constrained SQL decoder, foreign-
 
 ## GLOBALs governing this feature
 
-Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; index in [`docs/decisions.md`](../../decisions.md)). The list below names the rules that constrain this feature; any skill-local commentary is nested under the rule.
+Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; index in [`docs/decisions.md`](../../decisions.md)). The list below names the rules that constrain this feature; any feature-local commentary is nested under the rule.
 
 - **GLOBAL-005** — Every mutation accepts `Idempotency-Key`.
 - **GLOBAL-006** — Plans content-addressed by `(schema_hash, query_hash)`.
@@ -188,11 +188,11 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 - **GLOBAL-015** — Power users always have an escape hatch.
 - **GLOBAL-017** — Two endpoints, two CLI verbs, one chat box — one way to do each thing.
 - **GLOBAL-022** — Recoverable failures retry to success — never surface a fixable error.
-  - *In this skill:* see `SK-ASK-013` for the canonical implementation. Each pipeline stage owns its recoverable error class — classifier (wrong intent), planner (invalid SQL), validator (allowlist re-plan), executor (transient DB error) — and retries up to 3 attempts via `withStageRetry`, feeding the prior attempt's error into the next prompt where applicable.
+  - *In this feature:* see `SK-ASK-013` for the canonical implementation. Each pipeline stage owns its recoverable error class — classifier (wrong intent), planner (invalid SQL), validator (allowlist re-plan), executor (transient DB error) — and retries up to 3 attempts via `withStageRetry`, feeding the prior attempt's error into the next prompt where applicable.
 - **GLOBAL-023** — Trust UX baseline.
-  - *In this skill:* `/v1/ask` responses carry the `trace` and `confidence` blocks specified by [`SK-TRUST-002`](../trust-ux/FEATURE.md); writes/DDL responses carry the `diff` block for [`SK-TRUST-001`](../trust-ux/FEATURE.md); the orchestrator short-circuits to `low_confidence` per [`SK-TRUST-003`](../trust-ux/FEATURE.md) before `db.execute`.
+  - *In this feature:* `/v1/ask` responses carry the `trace` and `confidence` blocks specified by [`SK-TRUST-002`](../trust-ux/FEATURE.md); writes/DDL responses carry the `diff` block for [`SK-TRUST-001`](../trust-ux/FEATURE.md); the orchestrator short-circuits to `low_confidence` per [`SK-TRUST-003`](../trust-ux/FEATURE.md) before `db.execute`.
 - **GLOBAL-024** — Demand-signal telemetry on every "not yet" path.
-  - *In this skill:* 4xx `unsupported_verb` rejections (DDL via `/v1/ask`) emit `feature.requested.ddl_via_ask`; `low_confidence` refusals emit `feature.requested.ambiguous_goal`; `db_full` write-cap hits emit `feature.requested.larger_db`.
+  - *In this feature:* 4xx `unsupported_verb` rejections (DDL via `/v1/ask`) emit `feature.requested.ddl_via_ask`; `low_confidence` refusals emit `feature.requested.ambiguous_goal`; `db_full` write-cap hits emit `feature.requested.larger_db`.
 
 ## Open questions / known unknowns
 

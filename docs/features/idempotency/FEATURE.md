@@ -18,7 +18,7 @@ when-to-load:
 **Owners (code):** `apps/api/src/stripe/webhook.ts`, `apps/api/src/waitlist.ts`, `apps/api/src/middleware.ts` (target for the general middleware), `packages/sdk/**` (target for retry-key auto-generation).
 **Cross-refs:** docs/architecture.md §9 line 938–939 (bullet-proof checklist) · §14.6 line 1255–1297 (HTTP API mutation contract) · [GLOBAL-005](../../decisions/GLOBAL-005-idempotency-key.md)
 
-## Touchpoints — read this skill before editing
+## Touchpoints — read this feature before editing
 
 - `apps/api/src/stripe/webhook.ts` — natural-key dedupe (`event_id` PK in D1 `stripe_events`).
 - `apps/api/src/waitlist.ts` — natural-key dedupe (SHA-256 of email is PK; `ON CONFLICT` collapses).
@@ -101,11 +101,11 @@ when-to-load:
 
 ## GLOBALs governing this feature
 
-Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; index in [`docs/decisions.md`](../../decisions.md)). The list below names the rules that constrain this feature; any skill-local commentary is nested under the rule.
+Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; index in [`docs/decisions.md`](../../decisions.md)). The list below names the rules that constrain this feature; any feature-local commentary is nested under the rule.
 
 - **GLOBAL-005** — Every mutation accepts `Idempotency-Key`.
 - **GLOBAL-022** — Recoverable failures retry to success — never surface a fixable error.
-  - *In this skill:* the SDK's 3-attempt retry budget for mutations
+  - *In this feature:* the SDK's 3-attempt retry budget for mutations
     (`SK-SDK-006`) reuses the same `Idempotency-Key` across all
     attempts, so byte-exact replay (`SK-IDEMP-003`) covers the
     retry path by construction.
@@ -116,5 +116,5 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 - **Key reuse with a different body** — Stripe returns `400 idempotency_key_in_use` if a retry uses the same key with a different body. We have not decided whether to mirror that or to fall through to a fresh request. Recommended: mirror Stripe (mismatch is a programming error, not a transient hiccup). Storing a body hash alongside `(user_id, key)` makes the check cheap.
 - **Replay scope for SSE / streaming responses** — `SK-IDEMP-003` covers JSON; the orchestrator's SSE path (DESIGN §14.6 streaming) is unclear. Likely answer: an SSE stream is not idempotent in the byte-exact sense (timestamps interleave); a retry should fall through to a fresh stream and let the client reconcile. Decision pending.
 - **`/v1/waitlist` vs general path** — waitlist's natural-key dedupe is correct (`SK-IDEMP-004`), but it does NOT enforce the "writes require Idempotency-Key" 400 rule (`SK-IDEMP-001`). Waitlist is unauth + idempotent on email by construction; classifying it as "read" for the auto-classifier is a hack but works. Cleaner: a per-route opt-out flag for the middleware.
-- **Anonymous-mode `user_id`** — `SK-IDEMP-002` keys on `user_id`, but anonymous-mode requests have a device token, not a Better Auth user ID. Open: do we use the anonymous device token as the `user_id` for dedupe purposes, or do we have a parallel `(device_id, key)` namespace? Cross-link to the `anonymous-mode` skill.
+- **Anonymous-mode `user_id`** — `SK-IDEMP-002` keys on `user_id`, but anonymous-mode requests have a device token, not a Better Auth user ID. Open: do we use the anonymous device token as the `user_id` for dedupe purposes, or do we have a parallel `(device_id, key)` namespace? Cross-link to the `anonymous-mode` feature.
 - **Cross-surface dedup** — if a user issues the same mutation via CLI and via web with the same key, do they collide? Per `SK-IDEMP-002` they share `user_id` so yes — that is the desired behaviour (one identity, one mutation). Confirm in the SDK retry helper that cross-surface key reuse is feature, not bug.

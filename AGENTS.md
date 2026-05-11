@@ -43,10 +43,10 @@ Each decision has one canonical home:
 
 - `GLOBAL-NNN` lives in `docs/decisions/GLOBAL-NNN-<slug>.md` — the only
   place its body text exists. The index in `docs/decisions.md` lists
-  every GLOBAL with a link to its file. Skills affected by a GLOBAL list
+  every GLOBAL with a link to its file. Features affected by a GLOBAL list
   it by ID + title in their `## GLOBALs governing this feature` section,
-  with optional skill-local commentary nested under the line. They don't
-  repeat the decision body. (See `docs/skill-conventions.md` §5.)
+  with optional feature-local commentary nested under the line. They don't
+  repeat the decision body. (See `docs/feature-conventions.md` §5.)
 - `SK-<FEATURE>-NNN` lives in that feature's `FEATURE.md` — the only
   place its body text exists.
 
@@ -54,12 +54,12 @@ When a decision changes:
 - Edit the canonical file (one place — the per-GLOBAL file under
   `docs/decisions/`, or the feature's `FEATURE.md`).
 - If the change affects how a feature applies the decision, update the
-  skill-local commentary in that feature's FEATURE.md.
+  feature-local commentary in that feature's FEATURE.md.
 - New GLOBALs / SK-IDs land in their canonical home before any code
   change that depends on them. New GLOBALs also add a row to the
   `docs/decisions.md` index.
 
-To find every skill affected by a GLOBAL:
+To find every feature affected by a GLOBAL:
 `grep -rn 'GLOBAL-NNN' docs/features/`. To find every doc that
 references it: `grep -rn 'GLOBAL-NNN' docs/`.
 
@@ -123,7 +123,7 @@ package-specific commands.
 ## 5. Before-editing path map
 
 When the change you're about to make touches any of these paths, the
-listed skill is **mandatory pre-reading**. (Skills auto-load via their
+listed feature is **mandatory pre-reading**. (Features auto-load via their
 `when-to-load.globs` field in editors that support it; otherwise read
 manually before editing.)
 
@@ -164,8 +164,8 @@ working in one directory.
 
 | File | What for |
 |---|---|
-| [`docs/decisions.md`](docs/decisions.md) + [`docs/decisions/`](docs/decisions/) | **Canonical** `GLOBAL-NNN` decisions. Index in `decisions.md`; one body per file under `decisions/`. Read before editing skills. |
-| [`docs/skill-conventions.md`](docs/skill-conventions.md) | How `docs/features/` is structured. Read before adding/editing a skill. |
+| [`docs/decisions.md`](docs/decisions.md) + [`docs/decisions/`](docs/decisions/) | **Canonical** `GLOBAL-NNN` decisions. Index in `decisions.md`; one body per file under `decisions/`. Read before editing features. |
+| [`docs/feature-conventions.md`](docs/feature-conventions.md) | How `docs/features/` is structured. Read before adding/editing a feature. |
 | [`docs/architecture.md`](docs/architecture.md) | System architecture, surface specs, tech-stack rationale, risks. Phase plan extracted to `phase-plan.md`. |
 | [`docs/phase-plan.md`](docs/phase-plan.md) | **Canonical phase plan** — per-phase items, exit gates, the §6 monetization trigger that supersedes "Stripe in Phase 2". |
 | [`docs/runbook.md`](docs/runbook.md) | Operations: env vars, secrets, deploy, recovery. Design-partner reference (§10). |
@@ -177,11 +177,12 @@ working in one directory.
 | [`docs/competitors.md`](docs/competitors.md) | Competitive landscape — categories, threat matrix, gap analysis. |
 | [`docs/history/`](docs/history/) | Lessons learnt — one doc per operational topic (infra setup, Workers Versions GC, CI actions repo layout, etc.). |
 | [`docs/research/`](docs/research/) | Strategic research — personas, LLM credits plan, email & marketing strategy, Phase 1 exit criteria, open design questions. |
-| [`docs/future/`](docs/future/) | Forward-looking plans not yet promoted to a skill — semantic-layer adoption, etc. Promote into the relevant skill once decisions are firm. |
+| [`docs/future/`](docs/future/) | Forward-looking plans not yet promoted to a feature — semantic-layer adoption, etc. Promote into the relevant feature once decisions are firm. |
 
 These exist for depth; they are not loaded into every session by
-default. The skill index (`docs/features/_index.md`) is the front
-door for any feature-specific work.
+default. The `docs/features/` directory is the front door for any
+feature-specific work — each `FEATURE.md`'s `Status:` line is the
+canonical status.
 
 ## 7. Common commands
 
@@ -207,16 +208,16 @@ Per-package commands are in each area's `AGENTS.md`.
 2. Every new decision has an ID (`GLOBAL-NNN` or `SK-<FEATURE>-NNN`)
    and is in its canonical home (`docs/decisions/GLOBAL-NNN-<slug>.md`
    for `GLOBAL` plus a row in `docs/decisions.md`,
-   `docs/features/<feature>/FEATURE.md` for `SK`). Skills reference
+   `docs/features/<feature>/FEATURE.md` for `SK`). Features reference
    GLOBALs by ID; they don't duplicate the body
-   (`docs/skill-conventions.md` §5).
+   (`docs/feature-conventions.md` §5).
 3. No `### GLOBAL-NNN` block exists under `docs/features/` — only
    reference lines in `## GLOBALs governing this feature` sections.
    Verify: `grep -rn '^### GLOBAL-' docs/features/` prints nothing.
 4. Every new external call has an OTel span (`GLOBAL-014`).
 5. Every mutating endpoint accepts `Idempotency-Key` (`GLOBAL-005`).
 6. New capability added → SDK + CLI + MCP + elements all updated, or
-   gap tracked in the affected skill (`GLOBAL-003`).
+   gap tracked in the affected feature (`GLOBAL-003`).
 
 ## 9. When in doubt
 
@@ -234,13 +235,13 @@ Touch path X
   → §5 path map gives the FEATURE.md name
   → read that FEATURE.md fully (5 fields per SK-* decision; the GLOBALs
     section lists which GLOBAL-NNNs apply — open the relevant file under
-    docs/decisions/ alongside the skill if you need their text)
+    docs/decisions/ alongside the feature if you need their text)
   → do the work
   → new decision? apply P4 (D1, D2, D3): resolve open questions,
     ensure clarity, then add SK-<PREFIX>-NNN (or promote to GLOBAL if
     cross-cutting)
   → changed a GLOBAL? edit the GLOBAL's file under docs/decisions/
-    (one place); update any affected skill's *In this skill:*
+    (one place); update any affected feature's *In this feature:*
     commentary if the change affects how the feature applies the rule
   → ambiguity or unfamiliar error? web-search current best
     practices, cite sources (P2)
@@ -253,30 +254,30 @@ Touch path X
 
 | Scope | Action |
 |---|---|
-| Fits an existing skill | Add `SK-<PREFIX>-<next-N>` block(s) to that skill's `FEATURE.md`. Update `_index.md` if status moves (e.g. `partial` → `implemented`). |
-| Crosses several skills | Add SK-* blocks in each affected skill, with cross-refs between them. |
-| Genuinely new (no skill covers it) | Create `docs/features/<feature>/FEATURE.md` from the [`docs/skill-conventions.md`](docs/skill-conventions.md) §3 template. Add a row to `docs/features/_index.md`. Add the path-glob row to §5 above. Reserve the `SK-<PREFIX>-NNN` prefix (kebab-case → `<PREFIX>` is upper-snake, e.g. `auth` → `SK-AUTH-NNN`). |
-| Touches all surfaces (HTTP / SDK / CLI / MCP / elements) | Per `GLOBAL-003`, ship to all surfaces in the same PR or annotate the gap explicitly in the affected skills under *Open questions*. |
-| Introduces a cross-cutting rule (multiple features must obey) | Promote to a new `GLOBAL-NNN`: create `docs/decisions/GLOBAL-NNN-<slug>.md` with the five-field block, then add a row to `docs/decisions.md` linking to it. Then add a reference line in each affected skill's `## GLOBALs governing this feature` section (`- **GLOBAL-NNN** — Title.`), with skill-local commentary nested under it only when the GLOBAL has a feature-specific implication worth calling out. |
+| Fits an existing feature | Add `SK-<PREFIX>-<next-N>` block(s) to that feature's `FEATURE.md`. Update its `Status:` line if status moves (e.g. `partial` → `implemented`). |
+| Crosses several features | Add SK-* blocks in each affected feature, with cross-refs between them. |
+| Genuinely new (no feature covers it) | Create `docs/features/<feature>/FEATURE.md` from the [`docs/feature-conventions.md`](docs/feature-conventions.md) §3 template. Add the path-glob row to §5 above. Reserve the `SK-<PREFIX>-NNN` prefix (kebab-case → `<PREFIX>` is upper-snake, e.g. `auth` → `SK-AUTH-NNN`). |
+| Touches all surfaces (HTTP / SDK / CLI / MCP / elements) | Per `GLOBAL-003`, ship to all surfaces in the same PR or annotate the gap explicitly in the affected features under *Open questions*. |
+| Introduces a cross-cutting rule (multiple features must obey) | Promote to a new `GLOBAL-NNN`: create `docs/decisions/GLOBAL-NNN-<slug>.md` with the five-field block, then add a row to `docs/decisions.md` linking to it. Then add a reference line in each affected feature's `## GLOBALs governing this feature` section (`- **GLOBAL-NNN** — Title.`), with feature-local commentary nested under it only when the GLOBAL has a feature-specific implication worth calling out. |
 
 Every SK-* and GLOBAL-* decision must have all five fields
 (Decision / Core value / Why / Consequence / Alternatives) — see
-[`docs/skill-conventions.md`](docs/skill-conventions.md) §4. Per P4 (D1–D3), if you
+[`docs/feature-conventions.md`](docs/feature-conventions.md) §4. Per P4 (D1–D3), if you
 can't fill all five or have open questions, don't document it yet.
 
 ### 10.2 Fixing a bug
 
-1. Reproduce + isolate. Find the file. §5 → skill. Read the skill.
+1. Reproduce + isolate. Find the file. §5 → feature. Read the feature.
 2. **Does the bug contradict a documented decision?**
    - **Code wrong, decision right** → fix the code so it conforms. Normal bug fix.
    - **Decision wrong** (the bug is intended behaviour, but the behaviour is wrong) → **STOP.** Don't silently change behaviour. Per `P1`, raise it with the user, citing the specific `SK-*` or `GLOBAL-NNN` ID. The user decides whether to supersede.
 3. If you supersede a decision: add a new `SK-<PREFIX>-<next-N>` (or `GLOBAL-<next-N>`) with full 5 fields. Mark the old one `Status: superseded by <new-id>` — **don't delete or renumber. IDs are sticky.**
 4. If your fix touches a `GLOBAL-NNN`, per `P3` update every place it's copied in the same PR (`grep -rn 'GLOBAL-NNN' docs/features/ docs/`).
-5. If the fix raises a question that's not yet decided, add it to that skill's `## Open questions / known unknowns`. Don't decide for the user.
+5. If the fix raises a question that's not yet decided, add it to that feature's `## Open questions / known unknowns`. Don't decide for the user.
 
 ### 10.3 Tie-breakers when sources disagree
 
-- **Skill says X, code does Y** → skill wins. Fix the code (or, if the code's behaviour is correct, file a P1 to amend the skill — don't silently update either).
-- **`docs/architecture.md` (or `docs/runbook.md`) says X, skill says Y** → skill wins. If you find a stale prose passage that contradicts a skill, fix the prose. Don't change the skill to match stale prose.
-- **A skill has a `### GLOBAL-NNN` block with body text** → convention violation. `docs/skill-conventions.md` §5 says skills reference GLOBALs by ID, not by copy. Replace the block with a one-liner reference under `## GLOBALs governing this feature`. The decision body lives only in `docs/decisions/GLOBAL-NNN-<slug>.md`.
-- **Two skills disagree on a cross-cutting rule** → the rule should have been a `GLOBAL-NNN`. Promote it (per §10.1) and update both skills to copy it.
+- **Feature says X, code does Y** → feature wins. Fix the code (or, if the code's behaviour is correct, file a P1 to amend the feature — don't silently update either).
+- **`docs/architecture.md` (or `docs/runbook.md`) says X, feature says Y** → feature wins. If you find a stale prose passage that contradicts a feature, fix the prose. Don't change the feature to match stale prose.
+- **A feature has a `### GLOBAL-NNN` block with body text** → convention violation. `docs/feature-conventions.md` §5 says features reference GLOBALs by ID, not by copy. Replace the block with a one-liner reference under `## GLOBALs governing this feature`. The decision body lives only in `docs/decisions/GLOBAL-NNN-<slug>.md`.
+- **Two features disagree on a cross-cutting rule** → the rule should have been a `GLOBAL-NNN`. Promote it (per §10.1) and update both features to copy it.

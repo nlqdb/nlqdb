@@ -3,13 +3,13 @@
 Standalone landing page. No backend, no auth — purely static + Cloudflare Pages.
 
 > This is the local guide. Read root [`AGENTS.md`](../../AGENTS.md) first
-> for the three behavioral principles, the full path → skill map, and
+> for the three behavioral principles, the full path → feature map, and
 > the project-wide tech stack. This file narrows that guide to
 > `apps/coming-soon/`.
 
-## Skills relevant to this area
+## Features relevant to this area
 
-_No feature-specific skill — this area is intentionally minimal (static / landing only). Follow the GLOBAL-NNN decisions only._
+_No feature-specific feature — this area is intentionally minimal (static / landing only). Follow the GLOBAL-NNN decisions only._
 
 ## Commands
 

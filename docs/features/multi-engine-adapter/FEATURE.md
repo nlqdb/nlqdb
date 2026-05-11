@@ -14,7 +14,7 @@ when-to-load:
 **Owners (code):** `packages/db/**`
 **Cross-refs:** `db-adapter/FEATURE.md` (Phase 0 PG adapter; `SK-DB-009/010` evolve the contract for multi-engine) · `engine-migration/FEATURE.md` (auto-migration is decoupled — see `SK-MULTIENG-002` *Consequence*) · `docs/phase-plan.md` (Phase plan, §11 engine verdict)
 
-## Touchpoints — read this skill before editing
+## Touchpoints — read this feature before editing
 
 - `packages/db/**` — adapter implementations
 - `apps/api/src/db-create/orchestrate.ts` — engine classifier hook (`SK-DB-010`)
@@ -86,20 +86,20 @@ when-to-load:
 
 ## GLOBALs governing this feature
 
-Canonical text in [`docs/decisions.md`](../../decisions.md). Skills reference by ID; bodies are not duplicated here.
+Canonical text in [`docs/decisions.md`](../../decisions.md). Features reference by ID; bodies are not duplicated here.
 
-- **GLOBAL-003** — New capabilities ship to all surfaces in one PR. *In this skill:* SDK/CLI/MCP all carry `engine` per `SK-DB-010`.
-- **GLOBAL-004** — Logical schemas widen; physical layout reshapes freely. *In this skill:* `SK-MULTIENG-003` lists per-engine application.
-- **GLOBAL-006** — Plans content-addressed by `(schema_hash, query_hash)`. *In this skill:* `schema_hash` is engine-specific via per-adapter introspection (`SK-MULTIENG-003`); no `engine` dimension added to the cache key.
-- **GLOBAL-013** — $0/month free tier; ≤ 3 MiB Workers bundle. *In this skill:* gates the engine list in `SK-MULTIENG-002`.
-- **GLOBAL-014** — OTel span on every external call. *In this skill:* `SK-MULTIENG-004` pins per-engine attributes.
-- **GLOBAL-015** — Power-user escape hatch. *In this skill:* `SK-DB-010` `engine?` override; `SK-MULTIENG-004` raw-SQL/command escape hatches per engine.
-- **GLOBAL-017** — One way to do each thing. *In this skill:* no new endpoints; `engine` is a field on existing `db.create`, never a new path.
-- **GLOBAL-020** — No "pick a region" in the first 60 s. *In this skill:* engine defaults to classifier inference; explicit field is power-user-only.
+- **GLOBAL-003** — New capabilities ship to all surfaces in one PR. *In this feature:* SDK/CLI/MCP all carry `engine` per `SK-DB-010`.
+- **GLOBAL-004** — Logical schemas widen; physical layout reshapes freely. *In this feature:* `SK-MULTIENG-003` lists per-engine application.
+- **GLOBAL-006** — Plans content-addressed by `(schema_hash, query_hash)`. *In this feature:* `schema_hash` is engine-specific via per-adapter introspection (`SK-MULTIENG-003`); no `engine` dimension added to the cache key.
+- **GLOBAL-013** — $0/month free tier; ≤ 3 MiB Workers bundle. *In this feature:* gates the engine list in `SK-MULTIENG-002`.
+- **GLOBAL-014** — OTel span on every external call. *In this feature:* `SK-MULTIENG-004` pins per-engine attributes.
+- **GLOBAL-015** — Power-user escape hatch. *In this feature:* `SK-DB-010` `engine?` override; `SK-MULTIENG-004` raw-SQL/command escape hatches per engine.
+- **GLOBAL-017** — One way to do each thing. *In this feature:* no new endpoints; `engine` is a field on existing `db.create`, never a new path.
+- **GLOBAL-020** — No "pick a region" in the first 60 s. *In this feature:* engine defaults to classifier inference; explicit field is power-user-only.
 
 ## Phase 3 architecture (reference)
 
-The workload analyser + migration orchestrator are owned by [`engine-migration/FEATURE.md`](../engine-migration/FEATURE.md). High-level: query log feeds the analyser; the analyser emits per-DB recommendations (Pipe creation inside an engine, or cross-engine migration); the orchestrator shadow-writes, dual-reads, and atomic-cuts-over via a per-DB routing pointer. Multi-DB (this skill) is decoupled — engine is fixed at `db.create` time; the analyser is a separate Phase-3 deliverable.
+The workload analyser + migration orchestrator are owned by [`engine-migration/FEATURE.md`](../engine-migration/FEATURE.md). High-level: query log feeds the analyser; the analyser emits per-DB recommendations (Pipe creation inside an engine, or cross-engine migration); the orchestrator shadow-writes, dual-reads, and atomic-cuts-over via a per-DB routing pointer. Multi-DB (this feature) is decoupled — engine is fixed at `db.create` time; the analyser is a separate Phase-3 deliverable.
 
 ### Multi-tenancy & isolation
 - **Free / Hobby:** shared infra per engine (Neon shared branch via `SK-DB-007`; one Tinybird workspace with per-DB table-prefix scoping).

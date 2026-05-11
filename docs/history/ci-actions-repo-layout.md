@@ -70,7 +70,7 @@ A repo without any of these still gets lint/test/build green — release / deplo
 
 ## Permissions
 
-See [`docs/features/ci-permissions/FEATURE.md`](../../docs/features/ci-permissions/FEATURE.md) — load-bearing decision, owns its own skill so the least-privilege contract is canonical and audited.
+See [`docs/features/ci-permissions/FEATURE.md`](../../docs/features/ci-permissions/FEATURE.md) — load-bearing decision, owns its own feature so the least-privilege contract is canonical and audited.
 
 ## Release-job gate
 

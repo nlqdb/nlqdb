@@ -19,7 +19,7 @@ when-to-load:
 **Owners (code):** none yet — `apps/api/src/billing/**`, `apps/api/src/ask/**`, `packages/llm/**`, `apps/web/**`, `cli/`, `packages/sdk/**`, `packages/elements/**`, `packages/mcp/**` will all carry slices.
 **Cross-refs:** docs/architecture.md §6 (pricing — Premium-models row) · docs/architecture.md §8 (AI model selection — model catalog) · docs/architecture.md §5 (Premium models add-on) · `docs/features/llm-router/FEATURE.md` (`SK-LLM-007` tier-aware chain selector, `SK-LLM-008` Pro-tier privacy, `SK-LLM-009` prompt caching) · `docs/features/stripe-billing/FEATURE.md` (`SK-STRIPE-004` Checkout linkage) · `docs/features/rate-limit/FEATURE.md` (per-key spend cap is open) · `docs/features/web-app/FEATURE.md` (CTA surface) · `docs/features/sdk/FEATURE.md` / `cli/FEATURE.md` / `mcp-server/FEATURE.md` / `elements/FEATURE.md` (surface-parity per `GLOBAL-003`)
 
-## Touchpoints — read this skill before editing
+## Touchpoints — read this feature before editing
 
 - `apps/api/src/billing/premium/**` (planned — pricing, metering, spend-cap enforcement)
 - `apps/api/src/ask/model-picker.ts` (planned — request → chain selector input)
@@ -86,7 +86,7 @@ when-to-load:
 - **Decision:** The premium-models add-on is not "shipped" until every surface in the parity set has the matching capability: HTTP API accepts the `model` enum on `/v1/ask`; SDK exposes `model` option; CLI exposes `--model` flag and `nlq model set`; MCP tools carry a `model` parameter; `<nlq-data>` accepts a `model` attribute; web app exposes the per-DB toggle in DB settings + the in-context CTA from `SK-PREMIUM-004`. A PR that ships only one surface lands the others as TODO blocks in the same PR or is rejected.
 - **Core value:** Simple, Bullet-proof, Effortless UX
 - **Why:** `GLOBAL-003` is explicit: "New capabilities ship to all surfaces in one PR." Premium-models is the highest-risk place to violate it — a paid feature that only works on the web product makes the SDK/CLI/MCP customers second-class billers. Shipping the surface-set together also forces the model-string-to-preset translation in `SK-PREMIUM-003` to be real (you can't ship `--model best` on the CLI and `model: "claude-sonnet-4-6"` on the SDK). The in-context CTA is web-only by exception, not by default — programmatic surfaces surface the verdict in the trace and let the embedder render its own UI.
-- **Consequence in code:** Every premium-tier slice's PR touches at minimum: `apps/api/src/ask/`, `packages/sdk/`, `cli/`, `packages/mcp/`, `packages/elements/`, `apps/web/`. The `Open questions` block in any one of those skills must explicitly cite premium-tier when the surface gap is intentional (e.g. `<nlq-action>` in Phase 2 ships without a model picker because the write path doesn't use plan-tier LLM). PRs that skip a surface without a written gap-note in the affected skill are rejected.
+- **Consequence in code:** Every premium-tier slice's PR touches at minimum: `apps/api/src/ask/`, `packages/sdk/`, `cli/`, `packages/mcp/`, `packages/elements/`, `apps/web/`. The `Open questions` block in any one of those features must explicitly cite premium-tier when the surface gap is intentional (e.g. `<nlq-action>` in Phase 2 ships without a model picker because the write path doesn't use plan-tier LLM). PRs that skip a surface without a written gap-note in the affected feature are rejected.
 - **Alternatives rejected:**
   - Web-first, then SDK / CLI / MCP — already the failure mode `GLOBAL-003` was written to prevent. Rejected for the reasons documented in [`GLOBAL-003`](../../decisions/GLOBAL-003-all-surfaces-one-pr.md).
   - Surface gap tolerated for "complex" capabilities — slippery; once tolerated for premium-tier, every future big feature claims the same exception.
@@ -119,28 +119,28 @@ when-to-load:
 
 ## GLOBALs governing this feature
 
-Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; index in [`docs/decisions.md`](../../decisions.md)). The list below names the rules that constrain this feature; any skill-local commentary is nested under the rule.
+Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; index in [`docs/decisions.md`](../../decisions.md)). The list below names the rules that constrain this feature; any feature-local commentary is nested under the rule.
 
 - **GLOBAL-002** — Behavior parity across surfaces.
-  - *In this skill:* The `model` preset enum (`auto | fast | best`) must be identical across HTTP, SDK, CLI, MCP, elements. Web's in-context CTA is the one surface-specific affordance per `SK-PREMIUM-004` — programmatic surfaces expose the verdict in the trace, not a chip.
+  - *In this feature:* The `model` preset enum (`auto | fast | best`) must be identical across HTTP, SDK, CLI, MCP, elements. Web's in-context CTA is the one surface-specific affordance per `SK-PREMIUM-004` — programmatic surfaces expose the verdict in the trace, not a chip.
 - **GLOBAL-003** — New capabilities ship to all surfaces in one PR.
-  - *In this skill:* `SK-PREMIUM-005` is the explicit local restatement; surface gaps require a written exception in the affected skill.
+  - *In this feature:* `SK-PREMIUM-005` is the explicit local restatement; surface gaps require a written exception in the affected feature.
 - **GLOBAL-005** — Every mutation accepts `Idempotency-Key`.
-  - *In this skill:* Premium toggle endpoints (`POST /v1/db/:id/premium`, `PATCH /v1/keys/:id`, `POST /v1/billing/premium/cap/extend`) and the Stripe Checkout creation endpoint all accept `Idempotency-Key`.
+  - *In this feature:* Premium toggle endpoints (`POST /v1/db/:id/premium`, `PATCH /v1/keys/:id`, `POST /v1/billing/premium/cap/extend`) and the Stripe Checkout creation endpoint all accept `Idempotency-Key`.
 - **GLOBAL-006** — Plans content-addressed by `(schema_hash, query_hash)`.
-  - *In this skill:* `SK-PREMIUM-007` enforces that cached plans are zero-cost on the customer-facing invoice; the cache key does not gain a `model` dimension just because premium exists.
+  - *In this feature:* `SK-PREMIUM-007` enforces that cached plans are zero-cost on the customer-facing invoice; the cache key does not gain a `model` dimension just because premium exists.
 - **GLOBAL-013** — $0/month for the free tier; Workers free-tier bundle ≤ 3 MiB compressed.
-  - *In this skill:* Free tier never routes to the paid chain. Premium-tier code in the Worker bundle must respect the 3 MiB ceiling — pricing tables are loaded from KV, not bundled, if they grow.
+  - *In this feature:* Free tier never routes to the paid chain. Premium-tier code in the Worker bundle must respect the 3 MiB ceiling — pricing tables are loaded from KV, not bundled, if they grow.
 - **GLOBAL-014** — OTel span on every external call (DB, LLM, HTTP, queue).
-  - *In this skill:* The `nlqdb.premium.spend_usd_cents` gauge and `nlqdb.premium.cap_hit.total` counter are wired alongside the existing `gen_ai.*` attributes on the LLM-router span; no new span is needed, only new attributes/metrics.
+  - *In this feature:* The `nlqdb.premium.spend_usd_cents` gauge and `nlqdb.premium.cap_hit.total` counter are wired alongside the existing `gen_ai.*` attributes on the LLM-router span; no new span is needed, only new attributes/metrics.
 - **GLOBAL-017** — Two endpoints, two CLI verbs, one chat box — one way to do each thing.
-  - *In this skill:* The `model` preset is the single way to express "I want better accuracy on this DB" — no parallel `--accuracy=high` flag, no `priority=premium` overload of the existing priority hint.
+  - *In this feature:* The `model` preset is the single way to express "I want better accuracy on this DB" — no parallel `--accuracy=high` flag, no `priority=premium` overload of the existing priority hint.
 - **GLOBAL-019** — Free + Open Source core (Apache-2.0); Cloud is convenience, not a moat.
-  - *In this skill:* The 0% markup in `SK-PREMIUM-002` is the consequence — we explicitly compete with self-hosting. Markup is a future decision that must be re-justified, not a default that drifts upward.
+  - *In this feature:* The 0% markup in `SK-PREMIUM-002` is the consequence — we explicitly compete with self-hosting. Markup is a future decision that must be re-justified, not a default that drifts upward.
 
 ## Open questions / known unknowns
 
-### BYOK — decision tree (the question this skill exists to host)
+### BYOK — decision tree (the question this feature exists to host)
 
 **Status:** undecided. The current default is **no BYOK in v1**; this section enumerates the decision points so a future SK-PREMIUM block can resolve them with the five-fields rigor.
 

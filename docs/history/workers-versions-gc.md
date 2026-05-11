@@ -46,4 +46,4 @@ These are already in the existing `CLOUDFLARE_API_TOKEN` scope used by deploy wo
 
 ## Source
 
-Carried forward from pre-consolidation `docs/implementation.md §8 — Cross-phase, always-on` (deleted in PR #81 commit `fb6e8c9`). The original framing was "Followup (own PR, post-Phase-1)" — that hasn't changed; promote out of `history/` into a skill or runbook section once the cleanup workflow lands and we have operational signal on its behaviour.
+Carried forward from pre-consolidation `docs/implementation.md §8 — Cross-phase, always-on` (deleted in PR #81 commit `fb6e8c9`). The original framing was "Followup (own PR, post-Phase-1)" — that hasn't changed; promote out of `history/` into a feature or runbook section once the cleanup workflow lands and we have operational signal on its behaviour.

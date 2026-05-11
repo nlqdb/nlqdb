@@ -14,7 +14,7 @@ when-to-load:
 **Owners (code):** `packages/elements/**`
 **Cross-refs:** docs/architecture.md §3.5 (the bet) · §14.5 (happy path) · docs/architecture.md §3 (matrix) · `packages/elements/README.md`
 
-## Touchpoints — read this skill before editing
+## Touchpoints — read this feature before editing
 
 - `packages/elements/src/element.ts` (custom-element class + lifecycle)
 - `packages/elements/src/fetch.ts` (single `POST /v1/ask` call)
@@ -118,13 +118,13 @@ when-to-load:
 
 ## GLOBALs governing this feature
 
-Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; index in [`docs/decisions.md`](../../decisions.md)). The list below names the rules that constrain this feature; any skill-local commentary is nested under the rule.
+Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; index in [`docs/decisions.md`](../../decisions.md)). The list below names the rules that constrain this feature; any feature-local commentary is nested under the rule.
 
 - **GLOBAL-001** — SDK is the only HTTP client.
 - **GLOBAL-002** — Behavior parity across surfaces.
 - **GLOBAL-013** — $0/month for the free tier; Workers free-tier bundle ≤ 3 MiB compressed.
 - **GLOBAL-023** — Trust UX baseline.
-  - *In this skill:* `<nlq-action>` blocks `on-success` until the user clicks "apply" on the rendered diff (per `SK-TRUST-001`). `<nlq-data>` exposes the trace via the `el.trace` JS property (per `SK-TRUST-002`). The trace pane lives outside the template render region — templates (`table`, `card-grid`, …) stay simple. See [`trust-ux/FEATURE.md`](../trust-ux/FEATURE.md).
+  - *In this feature:* `<nlq-action>` blocks `on-success` until the user clicks "apply" on the rendered diff (per `SK-TRUST-001`). `<nlq-data>` exposes the trace via the `el.trace` JS property (per `SK-TRUST-002`). The trace pane lives outside the template render region — templates (`table`, `card-grid`, …) stay simple. See [`trust-ux/FEATURE.md`](../trust-ux/FEATURE.md).
 
 ## Open questions / known unknowns
 

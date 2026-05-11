@@ -7,7 +7,7 @@
 > firm. Per `P4 / D1` of `CLAUDE.md §2`, vague decisions are worse than
 > no decision; do not promote until the underlying choice is resolved.
 >
-> **Promotion trigger:** promote into a skill **when the `quality-eval`
+> **Promotion trigger:** promote into a feature **when the `quality-eval`
 > harness (see [`quality-eval/FEATURE.md`](../features/quality-eval/FEATURE.md))
 > reports NL-to-SQL accuracy on the *un-scaffolded* path below 75% for
 > two consecutive weekly runs.** Until that threshold trips, the

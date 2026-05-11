@@ -1,8 +1,8 @@
 # Open design questions — research notes
 
-> **Status:** unresolved questions. Each row is a deferred decision the team needs to take a stance on before the indicated phase ships. Per `D1` of `CLAUDE.md §2`, don't promote any of these into a canonical doc / skill until the underlying question is resolved — vague decisions are worse than no decision.
+> **Status:** unresolved questions. Each row is a deferred decision the team needs to take a stance on before the indicated phase ships. Per `D1` of `CLAUDE.md §2`, don't promote any of these into a canonical doc / feature until the underlying question is resolved — vague decisions are worse than no decision.
 
-These were deferred during the PR #81 docs consolidation. They lived in the now-deleted `docs/design.md §10` and `docs/plan.md §8`. Some were already addressed by skills (`SK-AUTH-001` decided "Better Auth on Workers"; `phase-plan.md` Phase 2 committed custom embed domains). The seven below are the ones still open.
+These were deferred during the PR #81 docs consolidation. They lived in the now-deleted `docs/design.md §10` and `docs/plan.md §8`. Some were already addressed by features (`SK-AUTH-001` decided "Better Auth on Workers"; `phase-plan.md` Phase 2 committed custom embed domains). The seven below are the ones still open.
 
 ## 1. `<nlq-data>` security review — external pentest
 
@@ -27,7 +27,7 @@ These were deferred during the PR #81 docs consolidation. They lived in the now-
 
 **Decision needed.**
 - Partition strategy (by tenant_id mod N, or geographic, or by surface)?
-- Cutover mechanism (read-from-old write-to-both, then flip — same shape as `engine-migration` skill)?
+- Cutover mechanism (read-from-old write-to-both, then flip — same shape as `engine-migration` feature)?
 - Trigger (% of daily quota over a rolling window, or absolute DAU count)?
 
 ## 3. NL-querying as an embeddable library inside users' own apps
@@ -56,7 +56,7 @@ These were deferred during the PR #81 docs consolidation. They lived in the now-
 
 **Original lean.** *"Likely yes, as an override, not as a default surface."*
 
-**Status.** Decided in `engine-migration/FEATURE.md` (per the post-consolidation grep). Move to that skill or close this row out — confirm with the engine-migration owner.
+**Status.** Decided in `engine-migration/FEATURE.md` (per the post-consolidation grep). Move to that feature or close this row out — confirm with the engine-migration owner.
 
 ## 6. Notebooks-style multi-query document
 
@@ -94,4 +94,4 @@ Carried forward from:
 - Pre-consolidation `docs/design.md §10` "Open design questions" (deleted in PR #81 commit `fb6e8c9`).
 - Pre-consolidation `docs/plan.md §8` "Open questions — to resolve before Phase 2 starts" (same commit).
 
-When a question resolves, promote the decision into the canonical home (skill `SK-*` block or `GLOBAL-NNN` in `decisions.md`) and remove the row here. Per `P4 / D1` of `CLAUDE.md §2`, do not document the resolution before the question is actually answered.
+When a question resolves, promote the decision into the canonical home (feature `SK-*` block or `GLOBAL-NNN` in `decisions.md`) and remove the row here. Per `P4 / D1` of `CLAUDE.md §2`, do not document the resolution before the question is actually answered.

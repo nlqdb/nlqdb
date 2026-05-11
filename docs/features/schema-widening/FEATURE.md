@@ -17,7 +17,7 @@ when-to-load:
 **Owners (code):** `apps/api/src/db-registry.ts`, `apps/api/src/ask/orchestrate.ts`, `apps/api/src/ask/types.ts`, `apps/api/src/ask/plan-cache.ts`, `packages/db/**`
 **Cross-refs:** docs/architecture.md §0.1 (on-ramp inversion bullets), §9 row "Schema mismatch" (line 936), §12 line 978 (no migrations tool) · docs/phase-plan.md §1 (plan cache key — Phase 0 deliverable) · docs/performance.md §2.1 stage 4 / §2.2 stage 4 (hash compute budget — 1 ms p50 / 5 ms p99) · §3.1 (`nlqdb.ask.hash` span) · [GLOBAL-004](../../decisions/GLOBAL-004-schemas-only-widen.md) · [GLOBAL-006](../../decisions/GLOBAL-006-plan-cache-content-addressing.md)
 
-## Touchpoints — read this skill before editing
+## Touchpoints — read this feature before editing
 
 - `apps/api/src/db-registry.ts` — reads `schema_hash` from D1's `databases` row.
 - `apps/api/src/ask/orchestrate.ts` — guards `/v1/ask` on `db.schemaHash != null`.
@@ -110,7 +110,7 @@ when-to-load:
 
 ## GLOBALs governing this feature
 
-Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; index in [`docs/decisions.md`](../../decisions.md)). The list below names the rules that constrain this feature; any skill-local commentary is nested under the rule.
+Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; index in [`docs/decisions.md`](../../decisions.md)). The list below names the rules that constrain this feature; any feature-local commentary is nested under the rule.
 
 - **GLOBAL-004** — Schemas only widen.
 - **GLOBAL-006** — Plans content-addressed by `(schema_hash, query_hash)`.

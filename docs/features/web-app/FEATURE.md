@@ -14,7 +14,7 @@ when-to-load:
 **Owners (code):** `apps/web/**`
 **Cross-refs:** docs/architecture.md §3.1 (marketing site) · docs/architecture.md §3.2 (platform web app) · docs/runbook.md §10 (P1, P3, P5) · docs/phase-plan.md §2 (Phase 1 web slices)
 
-## Touchpoints — read this skill before editing
+## Touchpoints — read this feature before editing
 
 - `apps/web/**`
 
@@ -53,7 +53,7 @@ when-to-load:
 
 ### SK-WEB-004 — Demo endpoint `POST /v1/demo/ask`: no auth, canned fixtures, server-owned
 
-- **Status:** superseded by `SK-WEB-008`. The reproduction that prompted the supersession: submitting "Create a new workspace named omer" to the canned-fixture endpoint returned the orders-aggregation default with summary line *"Today's orders aggregated by drink (matching 'Create a new workspace named omer')"* — fixtures lying by accident under SK-WEB-003's "above the fold is runnable proof" mandate. The free-LLM-proxy concern that motivated this skill is now addressed by the global anon cap (`SK-ANON-010`) layered on the per-IP cap (`SK-ANON-004`).
+- **Status:** superseded by `SK-WEB-008`. The reproduction that prompted the supersession: submitting "Create a new workspace named omer" to the canned-fixture endpoint returned the orders-aggregation default with summary line *"Today's orders aggregated by drink (matching 'Create a new workspace named omer')"* — fixtures lying by accident under SK-WEB-003's "above the fold is runnable proof" mandate. The free-LLM-proxy concern that motivated this feature is now addressed by the global anon cap (`SK-ANON-010`) layered on the per-IP cap (`SK-ANON-004`).
 - **Decision:** The marketing-site live `<nlq-data>` and any third-party "try this in a scratch HTML" embed point at `endpoint="https://app.nlqdb.com/v1/demo/ask"`. The endpoint takes no auth, is CORS-permissive, returns canned fixtures keyed off the goal substring, and rate-limits per-IP at 10/min so it can't be abused as an LLM stand-in. The element stays pure — no demo branch in client code; the "demo" semantic lives server-side in `apps/api/src/demo.ts`.
 - **Core value:** Free, Bullet-proof, Honest latency
 - **Why:** The marketing site needs a live demo that costs us nothing per visitor and can't be turned into a free LLM proxy. Canned fixtures keep it free. Server-side semantics keep the embed code identical to what real users ship — paste-this-in-prod is the same code paste-this-on-marketing renders. Per-IP rate limit defends against abuse.
@@ -78,7 +78,7 @@ when-to-load:
 - **Decision:** The product chat (`app.nlqdb.com`) renders every reply as three parts: a one-sentence answer in prose, the raw data (table / list / kv / chart), and a collapsible trace (cache lookup → plan → validate → exec → summarize, with timings). The trace is toggled by `Cmd+/`; the palette is `Cmd+K`.
 - **Core value:** Honest latency, Effortless UX, Bullet-proof
 - **Why:** The trace IS the live-trace surface for `GLOBAL-011` — without it, latency is opaque and users have no way to debug. Always attaching the raw data ensures we never paraphrase away the truth (the answer is a summary; the data is the proof). The answer-first ordering keeps the goal-first promise — the user gets their number before the engineering details.
-- **Consequence in code:** Chat panel components render three children per reply: `<Answer>`, `<Data>`, `<Trace>`. `<Trace>` consumes the SDK's `onTrace` hook (per the sdk skill, `SK-SDK-007`). In-place edit + re-run is supported on the answer; Cmd+/ toggles the trace globally; Cmd+K opens the palette. Result-table column headers are rendered through `prettifyHeader()` so LLM-emitted snake_case identifiers display as `Title Case`.
+- **Consequence in code:** Chat panel components render three children per reply: `<Answer>`, `<Data>`, `<Trace>`. `<Trace>` consumes the SDK's `onTrace` hook (per the sdk feature, `SK-SDK-007`). In-place edit + re-run is supported on the answer; Cmd+/ toggles the trace globally; Cmd+K opens the palette. Result-table column headers are rendered through `prettifyHeader()` so LLM-emitted snake_case identifiers display as `Title Case`.
 - **Alternatives rejected:**
   - Spinner + final answer (no trace) — `GLOBAL-011` explicitly rejects this.
   - Markdown blob with everything inline — harder to copy data, harder to deep-link.
@@ -117,14 +117,14 @@ when-to-load:
 
 ## GLOBALs governing this feature
 
-Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; index in [`docs/decisions.md`](../../decisions.md)). The list below names the rules that constrain this feature; any skill-local commentary is nested under the rule.
+Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; index in [`docs/decisions.md`](../../decisions.md)). The list below names the rules that constrain this feature; any feature-local commentary is nested under the rule.
 
 - **GLOBAL-007** — No login wall before first value.
 - **GLOBAL-011** — Honest latency — show the live trace; never spinner-lie.
 - **GLOBAL-012** — Errors are one sentence with the next action.
 - **GLOBAL-020** — No "pick a region", no config files in the first 60s.
 - **GLOBAL-023** — Trust UX baseline.
-  - *In this skill:* the chat panel renders the diff inline before commit (per `SK-TRUST-001`), the trace pane sits below the answer with collapsed-by-default state (per `SK-TRUST-002`), and low-confidence refusals surface as click-to-disambiguate chips (per `SK-TRUST-003`). See [`trust-ux/FEATURE.md`](../trust-ux/FEATURE.md).
+  - *In this feature:* the chat panel renders the diff inline before commit (per `SK-TRUST-001`), the trace pane sits below the answer with collapsed-by-default state (per `SK-TRUST-002`), and low-confidence refusals surface as click-to-disambiguate chips (per `SK-TRUST-003`). See [`trust-ux/FEATURE.md`](../trust-ux/FEATURE.md).
 
 ## Open questions / known unknowns
 

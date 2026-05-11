@@ -15,7 +15,7 @@ when-to-load:
 **Owners (code):** `packages/db/**`, `apps/api/src/db-registry.ts`
 **Cross-refs:** docs/architecture.md §3.6.5–§3.6.7 (validator + tenancy + BYO) · docs/phase-plan.md §1 (Phase 0 Neon adapter) · docs/runbook.md §3 (Neon account, §6 deploy state) · docs/performance.md §2.1 row 6 + §3.1 (`db.query` span) · GLOBAL-004, GLOBAL-014, GLOBAL-015 (see governing GLOBALs section) · `docs/features/hosted-db-create/FEATURE.md` (Phase 1 create-path consumer; SK-HDC-007 splits the provisioner into `provisionDb` / `registerByoDb` over this adapter)
 
-## Touchpoints — read this skill before editing
+## Touchpoints — read this feature before editing
 
 - `packages/db/**` (the canonical adapter implementation)
 - `apps/api/src/db-registry.ts` (adapter consumers — DB lookup keyed by `(id, tenant_id)`)
@@ -98,7 +98,7 @@ when-to-load:
 - **Decision:** When the planner observes a new field, the schema widens via `ALTER TABLE ADD COLUMN <name> <type> NULL`. Columns are never dropped, never narrowed, never reordered. There is no migrations tool; for a true schema break, `nlq new` makes a fresh DB and the old one is left untouched (per `docs/architecture.md` §12 line 978).
 - **Core value:** Bullet-proof, Simple
 - **Why:** "Schemas only widen" (`GLOBAL-004`) is the invariant that makes the plan-cache stable (`GLOBAL-006`) — old plans remain valid against widened schemas because referenced fields still exist. ADD COLUMN NULL is the cheapest Postgres operation that preserves the invariant. A migrations tool would invite branching schemas, which would force the plan-cache to either invalidate aggressively (slow) or branch keys (combinatorial explosion).
-- **Consequence in code:** Adapter consumers building DDL must emit ADD COLUMN NULL only; DROP / RENAME / type changes are out-of-band manual operations and are not exposed via `/v1/ask`. The schema-widening skill (`SK-SCHEMA-*`) owns the trigger and storage; this adapter just executes the resulting SQL when called.
+- **Consequence in code:** Adapter consumers building DDL must emit ADD COLUMN NULL only; DROP / RENAME / type changes are out-of-band manual operations and are not exposed via `/v1/ask`. The schema-widening feature (`SK-SCHEMA-*`) owns the trigger and storage; this adapter just executes the resulting SQL when called.
 - **Alternatives rejected:**
   - In-place migrations — defeats `GLOBAL-004`.
   - Versioned schemas (`v1.users`, `v2.users` schemas) — explodes the plan-cache key surface; `GLOBAL-004` rejects this explicitly.
@@ -127,13 +127,13 @@ when-to-load:
 
 ## GLOBALs governing this feature
 
-Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; index in [`docs/decisions.md`](../../decisions.md)). The list below names the rules that constrain this feature; any skill-local commentary is nested under the rule.
+Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; index in [`docs/decisions.md`](../../decisions.md)). The list below names the rules that constrain this feature; any feature-local commentary is nested under the rule.
 
 - **GLOBAL-004** — Logical schemas widen; physical layout reshapes.
 - **GLOBAL-014** — OTel span on every external call (DB, LLM, HTTP, queue).
 - **GLOBAL-015** — Power users always have an escape hatch.
 - **GLOBAL-021** — Each external system has one canonical owning module.
-  - *In this skill:* `packages/db/` is the owner for the user-data
+  - *In this feature:* `packages/db/` is the owner for the user-data
     engines (Postgres via Neon today; ClickHouse via Tinybird in
     Phase 3 per `SK-MULTIENG-002`; later Redis/D1). All
     `@neondatabase/serverless` imports live in `@nlqdb/db`. Documented
@@ -147,7 +147,7 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 
 ## Open questions / known unknowns
 
-- **`engine?` surface parity gap (W3, GLOBAL-003)** — `SK-DB-010` lands the `engine?` field on the TypeScript SDK (`@nlqdb/sdk`), the HTTP API (`/v1/ask`, `POST /v1/databases`), and the `<nlq-data>` element (auto-bound, no surface change). The Go CLI (`cli/`), MCP server (`packages/mcp/`), Rust SDK (`packages/nlqdb-rs/`), and Ruby SDK (`packages/nlqdb-rb/`) do not yet expose `db.create`; their packages are scaffolds (no `go.mod`, no `db.create` method on the Rust/Ruby placeholder modules, no MCP tool wired in `packages/mcp/src/`). Per `GLOBAL-003`'s "tracked gap" clause, the W3 PR ships TS SDK + API; the four un-implemented surfaces inherit `engine?` via a one-line addition when their `db.create` methods first land. Tracker: this open question. Closes when each surface's first `db.create` PR exposes `engine?` directly — the row in the engine-fit table (`SK-MULTIENG-002`) plus the SDK + API contract (this skill) are the canonical reference any of those follow-ups builds against.
+- **`engine?` surface parity gap (W3, GLOBAL-003)** — `SK-DB-010` lands the `engine?` field on the TypeScript SDK (`@nlqdb/sdk`), the HTTP API (`/v1/ask`, `POST /v1/databases`), and the `<nlq-data>` element (auto-bound, no surface change). The Go CLI (`cli/`), MCP server (`packages/mcp/`), Rust SDK (`packages/nlqdb-rs/`), and Ruby SDK (`packages/nlqdb-rb/`) do not yet expose `db.create`; their packages are scaffolds (no `go.mod`, no `db.create` method on the Rust/Ruby placeholder modules, no MCP tool wired in `packages/mcp/src/`). Per `GLOBAL-003`'s "tracked gap" clause, the W3 PR ships TS SDK + API; the four un-implemented surfaces inherit `engine?` via a one-line addition when their `db.create` methods first land. Tracker: this open question. Closes when each surface's first `db.create` PR exposes `engine?` directly — the row in the engine-fit table (`SK-MULTIENG-002`) plus the SDK + API contract (this feature) are the canonical reference any of those follow-ups builds against.
 - **Per-tenant role + RLS wiring** — `SK-DB-007` describes the model but the adapter today does not yet emit `SET LOCAL search_path` / `SET LOCAL ROLE` before queries; consumers must wrap calls themselves. Centralising that on the adapter (or a thin per-tenant adapter wrapper) is open work — risk is forgetting the SET LOCAL on a new code path.
 - **Phase 2b dedicated-branch upgrade** — needs a `branch_id` column on the `databases` row and a provisioner branch-create path. Decision shape locked (DESIGN §3.6.6); implementation deferred until paid tier exists.
 - **Phase 3 multi-engine** — *resolved by `SK-DB-009` + `SK-MULTIENG-001`.* Public signature widens to `execute(plan, signal?)` returning `EngineResult = AsyncIterable<Row> & { meta }`; engine-specific extras travel on `meta`. Per-engine result projection (Redis KV → `{key, value}` rows; ClickHouse Pipe response → row stream) lives in each adapter.

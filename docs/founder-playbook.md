@@ -14,8 +14,8 @@ responsible for capturing.
 (qualitative gates) · [`docs/decisions/GLOBAL-024-demand-signal-telemetry.md`](./decisions/GLOBAL-024-demand-signal-telemetry.md)
 (the in-product half of the signal-capture story).
 
-If a sentence here disagrees with a skill or with `phase-plan.md`,
-**the skill / phase plan wins**. This doc owns the founder-time
+If a sentence here disagrees with a feature or with `phase-plan.md`,
+**the feature / phase plan wins**. This doc owns the founder-time
 process: recruitment, interviews, triage, conversion.
 
 ---

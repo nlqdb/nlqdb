@@ -3,11 +3,11 @@
 LLM router + providers + per-user credit accounting.
 
 > This is the local guide. Read root [`AGENTS.md`](../../AGENTS.md) first
-> for the three behavioral principles, the full path → skill map, and
+> for the three behavioral principles, the full path → feature map, and
 > the project-wide tech stack. This file narrows that guide to
 > `packages/llm/`.
 
-## Skills relevant to this area
+## Features relevant to this area
 
 - [`llm-router`](../../docs/features/llm-router/FEATURE.md) — mandatory pre-read for changes that touch the feature.
 - [`observability`](../../docs/features/observability/FEATURE.md) — mandatory pre-read for changes that touch the feature.

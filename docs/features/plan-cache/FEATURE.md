@@ -14,7 +14,7 @@ when-to-load:
 **Owners (code):** `apps/api/src/ask/plan-cache.ts`
 **Cross-refs:** docs/architecture.md §0 (Bullet-proof checklist), §2 (architecture), §7 (free-tier stack), §8 (cost-control rules), §9 (cache invalidation row) · docs/performance.md §4 Slice 6 (`/v1/ask` E2E) · docs/performance.md §2.1, §3.1, §3.2
 
-## Touchpoints — read this skill before editing
+## Touchpoints — read this feature before editing
 
 - `apps/api/src/ask/plan-cache.ts`
 
@@ -94,7 +94,7 @@ when-to-load:
 
 ## GLOBALs governing this feature
 
-Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; index in [`docs/decisions.md`](../../decisions.md)). The list below names the rules that constrain this feature; any skill-local commentary is nested under the rule.
+Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; index in [`docs/decisions.md`](../../decisions.md)). The list below names the rules that constrain this feature; any feature-local commentary is nested under the rule.
 
 - **GLOBAL-006** — Plans content-addressed by `(schema_hash, query_hash)`.
 - **GLOBAL-004** — Schemas only widen.
@@ -103,5 +103,5 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 
 - **Cache-warming on cold KV namespaces.** First-time deploys start with an empty KV. We don't currently warm the cache from the LLM router — every first user pays an LLM call. Decide whether to ship a one-time bulk pre-warm for canonical demo queries, or accept the cold-start cost.
 - **Cross-region KV replication latency.** Workers KV is eventually consistent across regions (sub-60s typical). A write in Frankfurt may take seconds to be visible in Sydney. For our Phase 0 / 1 single-region traffic this is moot, but worth flagging before global Phase 2 rollout.
-- **Disappearance-event hard-stop UX.** `SK-PLAN-008` says a vanished observed field is a hard-stop. The user-facing story for "your plan was invalidated because field X is gone" is not specified — error code, message, recovery path. Open question for the schema-widening skill.
+- **Disappearance-event hard-stop UX.** `SK-PLAN-008` says a vanished observed field is a hard-stop. The user-facing story for "your plan was invalidated because field X is gone" is not specified — error code, message, recovery path. Open question for the schema-widening feature.
 - **Pin-eviction policy.** `SK-PLAN-005` says LRU evicts pins like any other plan. Should human-pinned plans be exempt from LRU? Probably yes for a power-user feature, but the design doesn't decide.
