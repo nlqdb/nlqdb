@@ -99,10 +99,11 @@ describe("orchestrateAsk", () => {
     expect(out).toEqual({ ok: false, error: { status: "schema_unavailable" } });
   });
 
-  it("calls LLM + writes cache on a cold-cache request", async () => {
+  it("calls LLM + writes cache on a cold-cache request AFTER exec succeeds (SK-ASK-009)", async () => {
     const cache = stubPlanCache();
     const llm = stubLLM({ plan: { sql: "SELECT * FROM users" } });
-    const out = await orchestrateAsk(makeDeps({ planCache: cache, llm }), {
+    const exec = stubExec({ rows: [{ id: 1 }], rowCount: 1 });
+    const out = await orchestrateAsk(makeDeps({ planCache: cache, llm, exec }), {
       goal: "list users",
       dbId: "db_1",
       userId: "user_1",
@@ -116,7 +117,14 @@ describe("orchestrateAsk", () => {
       rowCount: 1,
     });
     expect(llm.plan).toHaveBeenCalledTimes(1);
+    // Write must fire exactly once — and only after exec returned rows.
     expect(cache.write).toHaveBeenCalledTimes(1);
+    // Exec must have been called before write (write order > exec order).
+    const execOrder = (exec as ReturnType<typeof stubExec>).mock.invocationCallOrder[0];
+    const writeOrder = cache.write.mock.invocationCallOrder[0];
+    if (execOrder === undefined) throw new Error("exec not called");
+    if (writeOrder === undefined) throw new Error("cache.write not called");
+    expect(execOrder).toBeLessThan(writeOrder);
   });
 
   it("hits cache on a second identical call and skips LLM.plan", async () => {
@@ -386,6 +394,40 @@ describe("orchestrateAsk", () => {
     if (!out.ok) throw new Error("unreachable");
     expect(out.result.sql).toBe("SELECT 1");
     expect(cache.write).toHaveBeenCalledTimes(1);
+  });
+
+  // SK-ASK-009: cache miss + exec failure must NOT poison the cache.
+  it("cache miss + exec throws → plan.write never called (SK-ASK-009)", async () => {
+    const cache = stubPlanCache();
+    const llm = stubLLM({ plan: { sql: "SELECT * FROM swimming_pool_visitors" } });
+    const exec = stubExec(new Error('relation "swimming_pool_visitors" does not exist'));
+    const out = await orchestrateAsk(makeDeps({ planCache: cache, llm, exec }), {
+      goal: "swimming pool visitors",
+      dbId: "db_1",
+      userId: "user_1",
+    });
+    expect(out).toEqual({ ok: false, error: { status: "db_unreachable" } });
+    expect(llm.plan).toHaveBeenCalledTimes(1);
+    // The broken plan must NOT be written to the cache.
+    expect(cache.write).not.toHaveBeenCalled();
+  });
+
+  // SK-ASK-009: cache miss + exec returns rows → plan.write called once with the validated SQL.
+  it("cache miss + exec returns rows → plan.write called once with the validated SQL (SK-ASK-009)", async () => {
+    const cache = stubPlanCache();
+    const sql = "SELECT count(*) FROM orders";
+    const llm = stubLLM({ plan: { sql } });
+    const exec = stubExec({ rows: [{ count: 7 }], rowCount: 1 });
+    const out = await orchestrateAsk(makeDeps({ planCache: cache, llm, exec }), {
+      goal: "count orders",
+      dbId: "db_1",
+      userId: "user_1",
+    });
+    expect(out.ok).toBe(true);
+    expect(cache.write).toHaveBeenCalledTimes(1);
+    // The second argument to write is the queryHash (opaque); the third is the CachedPlan.
+    const [, , written] = cache.write.mock.calls[0] as [string, string, { sql: string }];
+    expect(written.sql).toBe(sql);
   });
 
   it("onEvent failure is swallowed — request continues to a successful outcome", async () => {

@@ -92,6 +92,14 @@ when-to-load:
 - **Alternatives rejected:** Generic spinner with "this is taking longer than usual" — gives no information; trains users not to trust the surface. Hide latency below a threshold — users notice anyway, and lose trust when the threshold is wrong.
 - **Source:** docs/architecture.md §0 (Honest latency) · [GLOBAL-011](../../decisions/GLOBAL-011-honest-latency.md)
 
+### SK-ASK-009 — Plan cache writes are gated on successful exec
+
+- **Decision:** `nlqdb.cache.plan.write` runs only after `withStageRetry("exec", …)` resolves ok. Cache-miss path on exec failure caches nothing.
+- **Core value:** Bullet-proof, Fast
+- **Why:** A plan that the LLM emits and the SQL allowlist accepts is not the same as a plan that EXECUTES. The prior write-then-exec order let a single bad LLM emit poison every subsequent request with the same goal — the user-visible failure was "fails identically and instantly," worse than "fails the first time, then retries cleanly." Trace evidence: an anon `/v1/ask` for goal `swimming pool visitors` cached a SELECT against a non-existent table; the next request 28 s later returned 502 in 1.4 s with no LLM call.
+- **Consequence in code:** `apps/api/src/ask/orchestrate.ts`: `planCache.write` block moves below the successful exec path, guarded by `if (!cacheHit)`. Cache miss + exec failure = no cache write. `cachePlanMissesTotal().add(1)` still fires on cache miss regardless of exec outcome — it measures cache shape, not plan quality.
+- **Alternatives rejected:** TTL the cached plan very low — masks the root cause. Cache the plan but tag it `unconfirmed`, invalidate on exec failure — two writes per request to manage a flag we can avoid by writing once at the right time.
+
 ## The LLM loop
 
 This is the part most implementations get wrong. A single "prompt → SQL → run" pipeline is a demo, not a product. The `/v1/ask` pipeline runs these eight steps per query:
@@ -129,58 +137,4 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 
 ## Happy path walkthrough
 
-### §14.6 HTTP API (when none of the surfaces fit)
-
-**Default (one endpoint; reads need no idempotency header):**
-
-```bash
-curl https://api.nlqdb.com/v1/ask \
-  -H "Authorization: Bearer sk_live_..." \
-  -d '{"goal": "an orders tracker", "ask": "how many orders today"}'
-
-→ 200 {
-  "answer": "12 today",
-  "data": [{"count": 12}],
-  "session": { "db": "orders-tracker-a4f", "key": "pk_live_..." },
-  "trace": { "engine": "postgres", "sql": "...", "ms": 41 }
-}
-```
-
-The `session.db` and `session.key` come back so the caller *can* go DB-explicit on subsequent calls. They don't have to.
-
-**Writes** (anything that mutates state) require `Idempotency-Key`:
-
-```bash
-curl https://api.nlqdb.com/v1/ask \
-  -H "Authorization: Bearer sk_live_..." \
-  -H "Idempotency-Key: $(uuidgen)" \
-  -d '{"ask": "add an order: alice, latte, 5.50"}'
-```
-
-The API **auto-classifies** the call; reads without a key succeed, writes without a key return `400 idempotency_required` with a curl snippet in the body showing the exact missing header. The user is never left guessing.
-
-**Anonymous mode from curl** (no key, no sign-in):
-
-```bash
-curl https://api.nlqdb.com/v1/ask \
-  -d '{"goal": "an orders tracker", "ask": "how many orders today"}'
-→ 200 { …, "session": { "anonymous_token": "anon_…" } }
-```
-
-Subsequent calls pass `Authorization: Bearer anon_…` to reuse the session. 72h window same as the web.
-
-### §15.3 Persona walkthrough — Priya, the Data-Curious PM
-
-**Goal:** answer the conference-leads question for the 4pm exec sync.
-
-| Time | Priya does | nlqdb does |
-|---|---|---|
-| 2:15pm | Drags the vendor's CSV onto `nlqdb.com`. Types *"how many of these are already in our users table"* | Uploads CSV as `conference-leads-q2`, joins against the read-only mirror of prod (already permissioned), returns the count and a preview |
-| 2:18pm | *"…and which plan are they on"* | Adds the join, returns table |
-| 2:20pm | *"break it down by acquisition channel"* | Adds the group-by, returns chart-ready data |
-| 2:22pm | Clicks "Share result" on the answer | Generates a permalinkable, redacted-by-default link to drop in Slack |
-| 4:00pm | Walks into the meeting with the answer | — |
-
-**What Priya never did:** opened a data-request ticket, pinged an engineer, opened Excel, learned SQL, installed a BI tool, got prod credentials.
-
-**Time saved on this one task:** ~1.5 days of waiting on engineering, plus ~30 minutes of Excel work.
+`POST /v1/ask` with `Authorization: Bearer sk_live_…` and JSON body `{"goal": "…", "ask": "…"}`. Reads return `200` immediately; writes require `Idempotency-Key` or receive `400 idempotency_required`. Anonymous calls omit the header and receive `session.anonymous_token` in the response. See `docs/architecture.md §3.6.1` for the full envelope shape.
