@@ -1281,6 +1281,44 @@ app.post("/api/auth/anon-stash", async (c) => {
   return c.body(null, 204);
 });
 
+// Eager adoption for already-signed-in visitors (SK-ANON-012).
+//
+// When a user lands on `/auth/sign-in` already authenticated (a stale
+// nav, a same-origin hero-redirect after the SK-ANON-012 401, or just
+// hitting the page directly), the regular Better Auth `after` hook
+// never fires — there's no new sign-in to hook on. This endpoint is
+// the equivalent of that hook, invoked client-side from sign-in.astro
+// (and the mock-IdP form) once `fetchSession` returns non-null. It
+// runs the same `recordAnonAdoption(env.DB, session.user.id, bearer)`
+// row update so the anon DBs from the hero attach to the live
+// session before the redirect to `/app`. Best-effort and idempotent
+// — adoption failures don't block the redirect.
+app.post("/api/auth/anon-adopt-now", requireSession, async (c) => {
+  const session = c.var.session;
+  const bearer = c.req.header("x-anon-bearer");
+  if (!bearer?.startsWith("anon_") || bearer.length <= "anon_".length) {
+    return c.json({ error: { status: "invalid_bearer" } }, 400);
+  }
+  const tracer = trace.getTracer("@nlqdb/api");
+  return tracer.startActiveSpan("nlqdb.anon.adopt", async (span) => {
+    span.setAttribute("nlqdb.user.id", session.user.id);
+    span.setAttribute("nlqdb.anon.adopt.source", "adopt_now");
+    try {
+      const result = await recordAnonAdoption(c.env.DB, session.user.id, bearer);
+      if (result.ok) {
+        span.setAttribute("nlqdb.anon.adopt.outcome", result.adopted ? "adopted" : "replay");
+        return c.json({ adopted: result.adopted });
+      }
+      span.setAttribute("nlqdb.anon.adopt.outcome", result.reason);
+      const httpStatus =
+        result.reason === "invalid_token" ? 400 : result.reason === "token_taken" ? 409 : 500;
+      return c.json({ error: { status: result.reason } }, httpStatus);
+    } finally {
+      span.end();
+    }
+  });
+});
+
 // OAuth init redirect (SK-AUTH-015).
 //
 // Top-level GET navigation from the sign-in page wraps Better Auth's

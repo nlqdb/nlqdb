@@ -129,13 +129,55 @@ button { padding: 0.6rem 1rem; background: #c6f432; border: 2px solid #0b0f0a; f
 <script>
   const apiBase = ${JSON.stringify(base)};
   const form = document.getElementById("mock-form");
+
+  function readAnonBearer() {
+    const anon = window.localStorage.getItem("nlqdb_anon") || "";
+    return anon.startsWith("anon_") ? anon : null;
+  }
+
+  // Already-signed-in short-circuit mirrors apps/web/src/pages/auth/sign-in.astro.
+  // The hero (SK-ANON-001) runs anon unconditionally and may redirect
+  // a signed-in user here. Adopt in place and skip the form.
+  (async () => {
+    let hasSession = false;
+    try {
+      const res = await fetch(apiBase + "/api/auth/get-session", {
+        credentials: "include",
+        headers: { accept: "application/json" },
+      });
+      if (res.ok) {
+        const text = await res.text();
+        if (text && text !== "null") {
+          const body = JSON.parse(text);
+          hasSession = !!(body && body.user);
+        }
+      }
+    } catch {
+      // best-effort — fall through to the form.
+    }
+    if (!hasSession) return;
+    const anon = readAnonBearer();
+    if (anon) {
+      try {
+        await fetch(apiBase + "/api/auth/anon-adopt-now", {
+          method: "POST",
+          credentials: "include",
+          headers: { "x-anon-bearer": anon },
+        });
+      } catch {
+        // best-effort — adoption misses but the redirect proceeds.
+      }
+    }
+    location.replace("/app");
+  })();
+
   let stashed = false;
   form.addEventListener("submit", async (e) => {
     if (stashed) return;
     e.preventDefault();
     try {
-      const anon = window.localStorage.getItem("nlqdb_anon") || "";
-      if (anon.startsWith("anon_")) {
+      const anon = readAnonBearer();
+      if (anon) {
         await fetch(apiBase + "/api/auth/anon-stash", {
           method: "POST",
           credentials: "include",

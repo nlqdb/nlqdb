@@ -198,6 +198,12 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
     postSigninUrl.searchParams.set("next", returnTo);
     const callbackURL = postSigninUrl.toString();
 
+    function readAnonBearer(): string | null {
+      if (typeof window === "undefined") return null;
+      const anon = window.localStorage.getItem("nlqdb_anon") ?? "";
+      return anon.startsWith("anon_") ? anon : null;
+    }
+
     // Stash the anon-bearer in an HMAC-signed cookie so the Better
     // Auth `after` middleware can adopt it on the verify/callback
     // (SK-ANON-012). Same-origin POST — the bearer never travels
@@ -206,11 +212,8 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
     // /v1/anon/adopt from the landing page as a fallback.
     async function stashAnonBearer(): Promise<void> {
       try {
-        const anon =
-          typeof window !== "undefined"
-            ? (window.localStorage.getItem("nlqdb_anon") ?? "")
-            : "";
-        if (!anon.startsWith("anon_")) return;
+        const anon = readAnonBearer();
+        if (!anon) return;
         await fetch(`${apiBase}/api/auth/anon-stash`, {
           method: "POST",
           credentials: "include",
@@ -220,6 +223,58 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
         // best-effort — see comment above.
       }
     }
+
+    // Already-signed-in short-circuit. The hero (SK-ANON-001) runs
+    // anon unconditionally — when its `/v1/ask` hits the SK-ANON-012
+    // per-device cap, it redirects to `/auth/sign-in` even when the
+    // user already has a live session in this browser. The Better
+    // Auth `after` hook only fires on fresh sign-ins, so adoption
+    // wouldn't run on its own. Probe `/api/auth/get-session`; if a
+    // session exists, eagerly POST `/api/auth/anon-adopt-now` (which
+    // re-runs `recordAnonAdoption` against the live session), then
+    // navigate to the post-signin landing where ChatPanel rehydrates
+    // `nlqdb_pending` and the user reviews their queued prompt.
+    // Best-effort: an adoption failure still lets us forward to /app.
+    async function adoptInPlace(): Promise<void> {
+      const anon = readAnonBearer();
+      if (!anon) return;
+      try {
+        await fetch(`${apiBase}/api/auth/anon-adopt-now`, {
+          method: "POST",
+          credentials: "include",
+          headers: { "x-anon-bearer": anon },
+        });
+      } catch {
+        // best-effort — adoption misses but the redirect proceeds.
+      }
+    }
+
+    // Same-origin probe for an existing session. The hero
+    // (SK-ANON-001) runs anon unconditionally; when its `/v1/ask` hits
+    // the SK-ANON-012 device cap, the user lands here even though
+    // they're already signed in. Run adoption in-place and forward to
+    // the post-signin landing so they never see the form.
+    (async () => {
+      let hasSession = false;
+      try {
+        const res = await fetch(`${apiBase}/api/auth/get-session`, {
+          credentials: "include",
+          headers: { accept: "application/json" },
+        });
+        if (res.ok) {
+          const text = await res.text();
+          if (text && text !== "null") {
+            const body = JSON.parse(text) as { user?: unknown } | null;
+            hasSession = !!body?.user;
+          }
+        }
+      } catch {
+        // Network error — fall through to the form.
+      }
+      if (!hasSession) return;
+      await adoptInPlace();
+      location.replace(callbackURL);
+    })();
 
     const submitBtnState: ButtonState = {
       el: submitBtn,
