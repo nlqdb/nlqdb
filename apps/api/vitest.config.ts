@@ -104,6 +104,7 @@ export default defineConfig(async () => {
               "test/health.test.ts",
               "test/auth.test.ts",
               "test/ask.test.ts",
+              "test/cors.test.ts",
               "test/rate-limit.test.ts",
               "test/magic-link.test.ts",
             ],

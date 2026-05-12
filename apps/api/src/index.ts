@@ -117,13 +117,11 @@ const credentialedCors = cors({
 // from arbitrary customer origins. `credentials: true` is incompatible
 // with `origin: *`, so we use a separate non-credentialed handler.
 // Phase 1 skips per-key origin pinning (SK-APIKEYS-003 open question).
-// We check `Access-Control-Request-Headers` (preflight) or
-// `Authorization` (actual) to detect pk_live_ callers; known origins
-// still use credentialedCors which comes second in the chain.
+// Preflight has no `Authorization` header — only the requested-headers
+// list — so we look for it there too.
 const pkLiveCors = cors({
   origin: (origin, c) => {
     if (!origin) return null;
-    if (CORS_ALLOWED_ORIGINS.includes(origin)) return null; // let credentialedCors handle
     const reqHeaders = c.req.header("access-control-request-headers") ?? "";
     const auth = c.req.header("authorization") ?? "";
     const looksLikePkLive =
@@ -137,7 +135,17 @@ const pkLiveCors = cors({
 });
 
 app.use("/api/auth/*", credentialedCors);
-app.use("/v1/ask", pkLiveCors, credentialedCors);
+// `/v1/ask` is hit by both trusted origins (cookie / anon-bearer from
+// the product UI + marketing site) and arbitrary third-party origins
+// carrying `Bearer pk_live_*`. Chaining `cors()` middleware doesn't
+// work: Hono's cors short-circuits preflight with a 204 even when its
+// `origin` callback returns `null`, so the second handler never runs.
+// Dispatch on origin instead.
+app.use("/v1/ask", (c, next) => {
+  const origin = c.req.header("origin") ?? "";
+  const handler = CORS_ALLOWED_ORIGINS.includes(origin) ? credentialedCors : pkLiveCors;
+  return handler(c, next);
+});
 app.use("/v1/chat/*", credentialedCors);
 app.use("/v1/databases", credentialedCors);
 app.use("/v1/databases/*", credentialedCors);
