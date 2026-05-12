@@ -36,9 +36,7 @@ when-to-load:
 - **Consequence in code:** `orchestrateAsk()` (per `docs/performance.md §4` Slice 6) walks the steps in order. Each step gets one OTel span (per `docs/performance.md §3.1`). The route-handler prelude (SK-ASK-009) emits one `llm.route` span per cache-miss / dbId-absent send. A reorder regression is caught by the span-tree assertion in the slice's vitest. Latency budgets in `performance.md §2.1, §2.2` are CI-asserted at 1.5× p50.
 - **Alternatives rejected:** Per-handler order — would let the order drift between create / query / write without notice. Skip cache when LLM is fast — defeats `GLOBAL-006` and breaks the cache-warming intent. Keep classify + disambiguate as separate steps — see SK-ASK-009.
 
-### SK-ASK-003 — `dbId` resolution: deterministic fast-path then cheap-tier LLM, with confidence floor + visible echo
-
-- **Status:** superseded by SK-ASK-009 — see that block for the merged `routeAsk` decision. (Historical: separate `classify` then `disambiguate` calls with confidence floor + `selected_db` echo. Source: docs/architecture.md §3.6.4 · docs/research-receipts.md §7.)
+### SK-ASK-003 — superseded by SK-ASK-009 (merged `routeAsk` decision).
 
 ### SK-ASK-004 — Two distinct validator paths: read/write (LLM-generated) vs DDL (typed-plan compiler) — never mixed
 
@@ -100,9 +98,7 @@ when-to-load:
 - **Consequence in code:** `MAX_GOAL_LENGTH = 2000` is exported from `apps/api/src/http.ts` and checked in `parseGoalDbBody`, `parseAskBody`, and the `POST /v1/databases` handler. The error body carries `maxLength` so SDK consumers can render a precise message without hard-coding the limit (GLOBAL-012).
 - **Alternatives rejected:** Silent truncation — hides the problem from the caller; the truncated goal produces a wrong result with no diagnostic. Per-tier limits — adds complexity without meaningful UX benefit; 2 000 chars covers every legitimate use case across all tiers.
 
-### SK-ASK-011 — Speculative create on probable-0-dbs (cache-stale defense)
-
-- **Status:** superseded by SK-ASK-017 — speculative create removed entirely. Historical: a `probablyZeroDbs` predicate kicked off `startSpeculativeCreate` in parallel with `listDatabasesForTenant`; the reconciler committed on D1 confirming 0 dbs or rolled back via `dropSchemaAndRegistry`. Removed because the rollback path was post-COMMIT (Postgres tx can't be cancelled mid-flight), producing a 21.6 s tail latency observed in prod under stale-state conditions. See SK-ASK-017 for the replacement decision.
+### SK-ASK-011 — superseded by SK-ASK-017 (speculative create removed; rollback path was post-COMMIT, producing a 21.6 s tail).
 
 ### SK-ASK-012 — Per-principal recent-tables LRU (100 entries) in KV
 
@@ -176,7 +172,7 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 - **GLOBAL-022** — Recoverable failures retry to success — never surface a fixable error.
   - *In this feature:* see `SK-ASK-013` for the canonical implementation. Each pipeline stage owns its recoverable error class — classifier (wrong intent), planner (invalid SQL), validator (allowlist re-plan), executor (transient DB error) — and retries up to 3 attempts via `withStageRetry`, feeding the prior attempt's error into the next prompt where applicable.
 - **GLOBAL-023** — Trust UX baseline.
-  - *In this feature:* `/v1/ask` responses carry the `trace` and `confidence` blocks specified by [`SK-TRUST-002`](../trust-ux/FEATURE.md); writes/DDL responses carry the `diff` block for [`SK-TRUST-001`](../trust-ux/FEATURE.md); the orchestrator short-circuits to `low_confidence` per [`SK-TRUST-003`](../trust-ux/FEATURE.md) before `db.execute`.
+  - *In this feature:* SK-TRUST-002 shipped — `AskResult` carries the `trace: { sql, plan_id, confidence, model, cache_hit }` block on every successful response; top-level `sql` / `cached` were removed (cleaner-shape > backwards compat per CLAUDE.md P5). The SSE `plan` event is the streaming form of the same record. Writes/DDL responses carry the `diff` block for [`SK-TRUST-001`](../trust-ux/FEATURE.md) (planned); the orchestrator short-circuits to `low_confidence` per [`SK-TRUST-003`](../trust-ux/FEATURE.md) (planned) before `db.execute`.
 - **GLOBAL-024** — Demand-signal telemetry on every "not yet" path.
   - *In this feature:* 4xx `unsupported_verb` rejections (DDL via `/v1/ask`) emit `feature.requested.ddl_via_ask`; `low_confidence` refusals emit `feature.requested.ambiguous_goal`; `db_full` write-cap hits emit `feature.requested.larger_db`.
 

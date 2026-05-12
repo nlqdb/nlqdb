@@ -52,7 +52,11 @@ export type PlanRequest = {
   // builder; providers reuse `buildPlanUser` so no plumbing per provider.
   previousAttempt?: { sql?: string; error: string };
 };
-export type PlanResponse = { sql: string };
+// `model` + `confidence` populate SK-TRUST-002's response-level
+// `trace` block. `confidence` is a placeholder until the
+// `quality-eval` harness (Phase 3) calibrates per-stage floors per
+// SK-TRUST-003; providers ship `1.0` today.
+export type PlanResponse = { sql: string; model: string; confidence: number };
 
 export type SummarizeRequest = {
   goal: string;

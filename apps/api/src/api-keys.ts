@@ -52,9 +52,7 @@ export async function lookupPkLiveKey(
   if (!key.startsWith(PK_LIVE_PREFIX)) return null;
   const hash = await hmacHex(secret, key);
   const row = await d1
-    .prepare(
-      "SELECT db_id, tenant_id FROM api_keys WHERE key_hash = ? AND key_type = 'pk_live'",
-    )
+    .prepare("SELECT db_id, tenant_id FROM api_keys WHERE key_hash = ? AND key_type = 'pk_live'")
     .bind(hash)
     .first<{ db_id: string; tenant_id: string }>();
   if (!row) return null;

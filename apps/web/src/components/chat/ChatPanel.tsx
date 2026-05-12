@@ -25,6 +25,7 @@
 // new DB into the rail and re-pin it for the next send.
 
 import type {
+  Trace as ApiTrace,
   AskDiff,
   AskOk,
   CandidateDb,
@@ -81,6 +82,10 @@ type Reply = {
   state: ReplyState;
   steps: TraceStepRecord[];
   startedAt: number;
+  // SK-TRUST-002 — the full trace block, populated by the `plan`
+  // streaming event. Drives the trace pane's plan_id/confidence/model
+  // rendering. Null until the plan event lands.
+  trace?: ApiTrace;
 };
 
 type Message =
@@ -730,7 +735,7 @@ function ReplyView({
   const error = reply.state.kind === "error" ? reply.state.message : null;
   const pending = reply.state.kind === "pending";
 
-  const sql = ok?.sql ?? extractSqlFromSteps(reply.steps);
+  const sql = ok?.trace.sql ?? extractSqlFromSteps(reply.steps);
   const rows = ok?.rows ?? null;
   const rowCount = ok?.rowCount ?? null;
   const summary = ok?.summary;
@@ -822,7 +827,19 @@ function ReplyView({
           <CopySnippet goal={reply.goal} pkLive={pkLive} />
         </div>
       ) : null}
-      <Trace steps={reply.steps} sql={sql} explain={null} defaultOpen={tracesOpen} />
+      <Trace
+        steps={reply.steps}
+        sql={sql}
+        explain={null}
+        defaultOpen={tracesOpen}
+        meta={
+          reply.trace
+            ? { plan_id: reply.trace.plan_id, confidence: reply.trace.confidence }
+            : ok
+              ? { plan_id: ok.trace.plan_id, confidence: ok.trace.confidence }
+              : null
+        }
+      />
     </article>
   );
 }
@@ -853,16 +870,22 @@ function applyTraceEvent(reply: Reply, event: TraceEvent): Reply {
         ...s,
         status: "ok",
         latencyMs: elapsed,
-        detail: event.cached ? "hit" : "miss",
+        detail: event.trace.cache_hit ? "hit" : "miss",
       }));
       mark("plan", (s) => ({
         ...s,
         status: "ok",
         latencyMs: elapsed,
-        detail: event.cached ? "cached" : "fresh",
+        // SK-TRUST-002 — model + confidence ride the trace; surface
+        // them on the plan step so the user sees what answered them.
+        model: event.trace.model,
+        detail: event.trace.cache_hit ? "cached" : "fresh",
       }));
       mark("validate", (s) => ({ ...s, status: "ok", latencyMs: elapsed }));
       mark("exec", (s) => ({ ...s, status: "pending" }));
+      // Stash the full trace on the reply so the Trace pane can
+      // render plan_id + confidence + model alongside the SQL.
+      next.trace = event.trace;
       break;
     case "rows":
       mark("exec", (s) => ({
@@ -905,7 +928,7 @@ function applyTraceEvent(reply: Reply, event: TraceEvent): Reply {
 }
 
 function extractSqlFromSteps(_steps: TraceStepRecord[]): string | null {
-  // SQL surfaces via the buffered `AskOk.sql` field today; reserved
+  // SQL surfaces via `AskOk.trace.sql` (SK-TRUST-002) today; reserved
   // for a future where the trace events carry the SQL on a per-step
   // basis. Keeping the hook here so ReplyView doesn't have to know.
   return null;

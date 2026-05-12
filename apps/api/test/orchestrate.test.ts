@@ -38,14 +38,17 @@ function stubPlanCache(seed: Map<string, CachedPlan> = new Map()) {
 }
 
 function stubLLM(
-  opts: { plan?: { sql: string } | Error; summary?: { summary: string } | Error } = {},
+  opts: {
+    plan?: { sql: string; model?: string; confidence?: number } | Error;
+    summary?: { summary: string } | Error;
+  } = {},
 ) {
   return {
     route: vi.fn(),
     plan: vi.fn(async () => {
       const r = opts.plan ?? { sql: "SELECT 1" };
       if (r instanceof Error) throw r;
-      return r;
+      return { model: "stub-model", confidence: 1.0, ...r };
     }),
     summarize: vi.fn(async () => {
       const r = opts.summary ?? { summary: "default summary" };
@@ -120,9 +123,8 @@ describe("orchestrateAsk", () => {
     if (!out.ok) throw new Error("unreachable");
     expect(out.result).toMatchObject({
       status: "ok",
-      cached: false,
-      sql: "SELECT * FROM orders",
       rowCount: 1,
+      trace: { sql: "SELECT * FROM orders", cache_hit: false },
     });
     expect(llm.plan).toHaveBeenCalledTimes(1);
     expect(cache.write).toHaveBeenCalledTimes(1);
@@ -144,8 +146,8 @@ describe("orchestrateAsk", () => {
       userId: "user_1",
     });
 
-    expect(first.ok && first.result.cached).toBe(false);
-    expect(second.ok && second.result.cached).toBe(true);
+    expect(first.ok && first.result.trace.cache_hit).toBe(false);
+    expect(second.ok && second.result.trace.cache_hit).toBe(true);
     expect(llm.plan).toHaveBeenCalledTimes(1);
     expect(cache.write).toHaveBeenCalledTimes(1);
   });
@@ -324,7 +326,10 @@ describe("orchestrateAsk", () => {
       { onEvent: (e) => void events.push(e) },
     );
     expect(events.map((e) => e.type)).toEqual(["plan_pending", "plan", "rows", "summary"]);
-    expect(events[1]).toMatchObject({ type: "plan", sql: "SELECT 1", cached: false });
+    expect(events[1]).toMatchObject({
+      type: "plan",
+      trace: { sql: "SELECT 1", cache_hit: false },
+    });
     expect(events[2]).toMatchObject({ type: "rows", rowCount: 2 });
     expect(events[3]).toMatchObject({ type: "summary", summary: "ok" });
   });
@@ -344,9 +349,12 @@ describe("orchestrateAsk", () => {
       { goal: "warm-up", dbId: "db_1", userId: "user_1" },
       { onEvent: (e) => void events.push(e) },
     );
-    expect(out.ok && out.result.cached).toBe(true);
+    expect(out.ok && out.result.trace.cache_hit).toBe(true);
     expect(events.map((e) => e.type)).toEqual(["plan_pending", "plan", "rows", "summary"]);
-    expect(events[1]).toMatchObject({ type: "plan", sql: "SELECT 99", cached: true });
+    expect(events[1]).toMatchObject({
+      type: "plan",
+      trace: { sql: "SELECT 99", cache_hit: true },
+    });
   });
 
   it("summary failure is non-fatal — returns rows + sql, omits summary", async () => {
@@ -545,7 +553,7 @@ describe("orchestrateAsk", () => {
     });
     expect(out.ok).toBe(true);
     if (!out.ok) throw new Error("unreachable");
-    expect(out.result.sql).toBe("SELECT 1");
+    expect(out.result.trace.sql).toBe("SELECT 1");
     expect(cache.write).toHaveBeenCalledTimes(1);
   });
 

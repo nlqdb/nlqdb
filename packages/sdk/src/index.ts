@@ -45,10 +45,20 @@ export type SelectedDbEcho = {
   reason: string;
 };
 
+// SK-TRUST-002 — every successful `/v1/ask` response carries this
+// block. The compiled SQL + cache state live here, not at the top
+// level. Surfaces render it as an always-present (collapsed by
+// default) trace pane.
+export type Trace = {
+  sql: string;
+  plan_id: string;
+  confidence: number;
+  model: string;
+  cache_hit: boolean;
+};
+
 export type AskOk = {
   status: "ok";
-  cached: boolean;
-  sql: string;
   rows: Record<string, unknown>[];
   rowCount: number;
   summary?: string;
@@ -60,6 +70,8 @@ export type AskOk = {
   // SK-ASK-009: present when the API auto-targeted a DB. Absent on
   // requests that pinned `dbId` directly.
   selected_db?: SelectedDbEcho;
+  // SK-TRUST-002 — always present.
+  trace: Trace;
 };
 
 // SK-HDC-001 / SK-ASK-009: when `kind=create` (or 0 DBs with kind=
@@ -118,7 +130,9 @@ export type TraceStep =
 
 export type TraceEvent =
   | { type: "plan_pending" }
-  | { type: "plan"; sql: string; cached: boolean }
+  // SK-TRUST-002 — the `plan` event carries the full trace block so
+  // SSE consumers accumulate one record instead of stitching it.
+  | { type: "plan"; trace: Trace }
   | { type: "rows"; rows: Record<string, unknown>[]; rowCount: number }
   | { type: "summary"; summary: string }
   | { type: "confirm_required"; diff: AskDiff }
@@ -474,8 +488,7 @@ export function createClient(opts: ClientOptions = {}): NlqClient {
       }
     };
 
-    let sql = "";
-    let cached = false;
+    let trace: Trace | undefined;
     let rows: Record<string, unknown>[] = [];
     let rowCount = 0;
     let summary: string | undefined;
@@ -510,9 +523,8 @@ export function createClient(opts: ClientOptions = {}): NlqClient {
         if (traceEvent) fire(traceEvent);
         switch (event) {
           case "plan": {
-            const p = payload as { sql?: string; cached?: boolean };
-            sql = p.sql ?? "";
-            cached = Boolean(p.cached);
+            const p = payload as { trace?: Trace };
+            if (p.trace) trace = p.trace;
             break;
           }
           case "rows": {
@@ -555,16 +567,27 @@ export function createClient(opts: ClientOptions = {}): NlqClient {
       }
     }
 
+    if (!trace) {
+      // SK-TRUST-002: every successful response is contractually
+      // required to carry `trace`. If the server didn't emit a `plan`
+      // event before `done`, the stream is malformed.
+      throw new NlqdbApiError(
+        "nlqdb: /v1/ask stream missing trace block",
+        200,
+        "non_json_response",
+        "/v1/ask",
+        null,
+      );
+    }
     return {
       status: "ok",
-      cached,
-      sql,
       rows,
       rowCount,
       ...(summary !== undefined ? { summary } : {}),
       ...(requiresConfirm ? { requires_confirm: true } : {}),
       ...(diff ? { diff } : {}),
       ...(selectedDb ? { selected_db: selectedDb } : {}),
+      trace,
     };
   }
 
@@ -622,8 +645,9 @@ function toTraceEvent(event: string, payload: unknown): TraceEvent | null {
     case "plan_pending":
       return { type: "plan_pending" };
     case "plan": {
-      const p = payload as { sql?: string; cached?: boolean };
-      return { type: "plan", sql: p.sql ?? "", cached: Boolean(p.cached) };
+      const p = payload as { trace?: Trace };
+      if (!p.trace) return null;
+      return { type: "plan", trace: p.trace };
     }
     case "rows": {
       const p = payload as { rows?: Record<string, unknown>[]; rowCount?: number };

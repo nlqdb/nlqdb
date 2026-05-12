@@ -12,7 +12,7 @@ when-to-load:
 **One-liner:** Model selection, fallback chain, prompt strategy, per-user credit accounting.
 **Status:** implemented
 **Owners (code):** `packages/llm/**`
-**Cross-refs:** docs/architecture.md §7 (AI model selection), §7.1 (Strict-$0 inference path) · docs/features/llm-router/FEATURE.md (full file) · docs/performance.md §4 Slice 4 (LLM router) · docs/performance.md §2.2 (cache-miss latency), §3 (span/metric catalog) · `docs/features/hosted-db-create/FEATURE.md` (Phase 1 — `kind` classifier and `SchemaPlan` schema-inference are LLM calls routed through this router; SK-HDC-001/002)
+**Cross-refs:** docs/architecture.md §7 (AI model selection), §7.1 (Strict-$0) · docs/performance.md §4 Slice 4, §2.2 (cache-miss latency), §3 (span/metric catalog) · `docs/features/hosted-db-create/FEATURE.md` (SK-HDC-001/002 route through this router)
 
 ## Touchpoints — read this feature before editing
 
@@ -20,16 +20,13 @@ when-to-load:
 
 ## Decisions
 
-> **Cross-ref:** LLM content in `docs/architecture.md §7 (AI model selection)`, strict-$0 sub-table at `§7.1`.
-
 ### SK-LLM-001 — Tiered routing — never send all traffic to a frontier model
 
 - **Decision:** LLM traffic is split across tiers by job: hot-path routing (Tier 1, cheap nano), schema embedding (Tier 1), NL→plan workhorse (Tier 2, ~80% of cost), hard-plan / multi-engine reasoning (Tier 3, ≤5%), result summarization (Tier 1). Each tier names a specific model for paid and a free fallback. Frontier models never receive all traffic.
 - **Core value:** Free, Fast, Bullet-proof
 - **Why:** A flat "use the best model for everything" policy turns every route-or-summarize step into a Sonnet-priced call. Tiering captures the reality that 80%+ of LLM calls are cheap intents (route the request, summarize 5 rows) where a nano model is indistinguishable in quality from a frontier model. The plan tier is where quality matters, and that's where we spend the money.
 - **Consequence in code:** The router exposes operations `{route, plan, summarize, schema_infer, engine_classify}` today, with `hard` and `embed` planned. Callers pass the operation they need; the router chooses the model. New operations require a `SK-LLM-NNN` decision (e.g. `SK-LLM-012` for `schema_infer`) and a row in the catalog at `docs/performance.md §3.1` + `docs/architecture.md §7`. Sending all traffic to one model is a CI-asserted regression (cost-test).
-- **Alternatives rejected:** Always-frontier — predictable bills that scale linearly with traffic. Always-cheapest — `nl→plan` accuracy collapses below the 70% bar `docs/features/llm-router/FEATURE.md` flags. Per-call manual model pick — leaks model decisions into 50 call sites.
-- **Source:** docs/architecture.md §7
+- **Alternatives rejected:** Always-frontier — predictable bills that scale linearly with traffic. Always-cheapest — `nl→plan` accuracy collapses below the 70% bar; per-call manual model pick leaks model decisions into 50 call sites.
 
 ### SK-LLM-002 — Single adapter: `(tier, prompt, options) → response` over a cost-ordered provider chain
 
@@ -38,7 +35,6 @@ when-to-load:
 - **Why:** Direct provider SDK calls in handler code lock the provider into the call site — every retry, fallback, span, prompt-cache decision must be re-implemented per call site. One adapter means one place to add a provider, one place to wire `gen_ai.*` semconv attributes, one place to enforce circuit-breaker behaviour. It is also the precondition for the `chains: { free, paid }` selector below (`SK-LLM-007`).
 - **Consequence in code:** Handlers call `router.invoke({tier, prompt, ...})`. Provider implementations live in `packages/llm/src/providers/*.ts` and are added by name to the chain config. Direct imports of `@anthropic-ai/sdk` / `openai` / `@google/generative-ai` outside `packages/llm/` fail review.
 - **Alternatives rejected:** Per-handler provider pick — every handler owns its own retry/fallback. Provider-router-per-tier (multiple routers) — three places to add a new provider.
-- **Source:** docs/architecture.md §7.1 · docs/features/llm-router/FEATURE.md ("How credits flow into the product without breaking UX")
 
 ### SK-LLM-003 — Day-1 strict-$0 chain: Gemini Flash → Groq → Workers-AI → OpenRouter free
 
@@ -47,7 +43,6 @@ when-to-load:
 - **Why:** Every provider in the chain has a no-card free tier (per `docs/architecture.md §7.1`): Gemini 500 RPD plan / 250k TPM, Groq 14,400 RPD on 8B / 1,000 RPD on 70B, Workers AI 10k Neurons/day, OpenRouter ~200 RPD. Stacked, this gives ~500 plan generations + ~14,400 routings per day — comfortably above Phase 1's exit criteria after the plan cache (60–80% hit rate). Card-free is the activation guarantee in `GLOBAL-013`.
 - **Consequence in code:** Day-1 deploy reads `LLM_CHAIN_PLAN`, `LLM_CHAIN_ROUTE`, `LLM_CHAIN_SUMMARIZE` env vars; defaults are the strict-$0 chain. All four free providers are implemented in `packages/llm/src/providers/`; rotating the chain is a redeploy, not a code change.
 - **Alternatives rejected:** Single free provider — one outage kills the product. Wait for credits — punts launch by weeks; `docs/architecture.md §0` says we ship without spending money.
-- **Source:** docs/architecture.md §7.1 · docs/features/llm-router/FEATURE.md "Realistic timeline"
 
 ### SK-LLM-004 — Cloudflare AI Gateway sits in front of every paid provider
 
@@ -56,7 +51,6 @@ when-to-load:
 - **Why:** AI Gateway's prompt cache lands sub-100 ms responses on identical prompts (huge win for the same-question-twice pattern). It also gives us one log surface across Anthropic / OpenAI / Gemini, which is the only realistic way to compare provider quality at runtime (see `nlqdb.plan.quality_score` in `docs/features/llm-router/FEATURE.md`). The gateway costs nothing on the Free plan.
 - **Consequence in code:** Provider implementations accept a `baseUrl` / `endpoint` override; production config sets it to the gateway URL. `AI_GATEWAY_ACCOUNT_ID` + `AI_GATEWAY_ID` are env-driven. Free providers (Groq, Gemini Flash on its free key, Workers AI) hit their direct endpoints; paid providers go through the gateway.
 - **Alternatives rejected:** Direct provider SDKs — loses the prompt cache and the unified log surface. Self-built proxy — re-implements what the gateway does for $0.
-- **Source:** docs/features/llm-router/FEATURE.md "How credits flow into the product without breaking UX" §2
 
 ### SK-LLM-005 — Circuit breaker: skip flapping provider after 3 consecutive failures, 60 s cooldown
 
@@ -65,7 +59,6 @@ when-to-load:
 - **Why:** Without a circuit breaker, a provider that's down still costs us a connect-timeout per call before we fall through. With it, the second call after a known failure skips straight to the next provider — sub-100 ms switch (per `docs/architecture.md §7.1`). The 3-failure / 60-s threshold is calibrated against transient provider rate-limit blips that resolve quickly without taking the whole tier offline.
 - **Consequence in code:** `createLLMRouter({circuitBreaker: {failureThreshold: 3, cooldownMs: 60_000}})`. Failure-counter state lives in the Worker instance (eventual cross-instance through KV is on the table but not required). A "skip" emits `nlqdb.llm.failover.total{from_provider, to_provider, reason: "circuit_open"}`.
 - **Alternatives rejected:** No circuit breaker — every call to a downed provider pays the timeout. Aggressive (1-failure trip) — single transient failure flaps every provider at peak. Permanent open until manual reset — operators have to babysit.
-- **Source:** docs/features/llm-router/FEATURE.md "Concrete deliverables"
 
 ### SK-LLM-006 — `gen_ai.*` OTel semconv on every LLM span; spans use canonical names from the catalog
 
@@ -74,7 +67,6 @@ when-to-load:
 - **Why:** The runtime decision of "which provider answered this call" is invisible without spans — and that is the most expensive question to answer the wrong way (a provider quality drop costs accuracy across every cache miss). `gen_ai.*` semconv is the cross-vendor standard that lets dashboards in Grafana / Honeycomb / Axiom share one schema. The explicit cardinality budget keeps Grafana free-tier costs flat.
 - **Consequence in code:** `packages/llm/src/router.ts` wraps every provider call in the canonical span with `gen_ai.*` attributes and increments `nlqdb.llm.calls.total{provider, operation, status}` plus `nlqdb.llm.duration_ms{provider, operation}`. Failovers emit `nlqdb.llm.failover.total{from_provider, to_provider, reason}`. New providers must wire these emissions before merge (CI assertion).
 - **Alternatives rejected:** Custom attribute names — fragments dashboards within a quarter (`GLOBAL-014`). Skip spans on the free providers — same cost-saving fantasy as sample-only-slow-requests; loses the baseline distribution.
-- **Source:** docs/performance.md §3.1, §3.2, §3.3 · docs/features/llm-router/FEATURE.md ("Quality telemetry")
 
 ### SK-LLM-007 — Tier-aware chain selector: `priority` + user plan picks `free` vs `paid` chain
 
@@ -83,7 +75,6 @@ when-to-load:
 - **Why:** Paid users buy quality — they should never silently route through a free 70%-accurate model on plan generation. Free users get the strict-$0 chain, which their plan caches absorb most of the latency cost of. The `priority` hint lets the surfaces signal intent (chat = high; CI probe = low) so a noisy CI doesn't burn paid credits.
 - **Consequence in code:** `LLMRouterOptions.chains` is a `{free, paid}` object. `chooseChain(request)` is a pure function tested in isolation. `LLM_CHAIN_PLAN_FREE` and `LLM_CHAIN_PLAN_PAID` env vars override the defaults. The CLI's `nlq run` accepts `--priority` for explicit control.
 - **Alternatives rejected:** One chain everyone shares — paid users subsidise free users with their dollars buying free-model accuracy. Per-user explicit chain config — operator footgun; users don't know what to pick.
-- **Source:** docs/features/llm-router/FEATURE.md "Followups"
 
 ### SK-LLM-008 — Pro customers route only through paid / retention-off providers (data-privacy promise)
 
@@ -92,7 +83,6 @@ when-to-load:
 - **Why:** "Your data trains models" is fine for the demo path (and disclosed honestly), but a non-starter for any business asking us to query real data. Hard-routing Pro through retention-off providers turns the privacy story from a footnote into a contract. It's also the cleanest justification for the upsell — you're paying for the data-privacy boundary, not just for higher accuracy.
 - **Consequence in code:** `chooseChain(req)` for `plan === 'pro'` filters out any provider whose `retainsInputs === true`. Provider config carries the boolean explicitly; PRs that flip it without changing the privacy policy fail review. Tests assert no Pro request reaches a free-tier provider.
 - **Alternatives rejected:** Same chain for everyone with a privacy-policy disclaimer — the policy is true for the free tier; it's not the product story we want to sell. Per-user opt-out — adds a privacy lever the user has to operate; we'd rather just hold the line.
-- **Source:** docs/architecture.md §7.1 ("Constraints we accept" → "Data privacy") · docs/features/llm-router/FEATURE.md "How credits flow into the product without breaking UX" §1
 
 ### SK-LLM-009 — Prompt caching on every provider that supports it (~80% input reduction)
 
@@ -101,7 +91,6 @@ when-to-load:
 - **Why:** System-prompt + schema-context tokens dominate input cost on the plan tier. Provider prompt caching (paired with AI Gateway response caching) cuts ~80% of input cost on repeated patterns (per `docs/architecture.md §7` cost-control rule 3). Without it, we burn credit on the same system prompt thousands of times a day.
 - **Consequence in code:** Every `tier=plan` call passes `cache_control: ephemeral` markers (Anthropic) or equivalent (`extra_headers: { "x-cache-namespace": ... }`) into the request. The system-prompt is constructed from a single immutable template (per `SK-LLM-010`); changes to the template invalidate the cache, which is the intended behaviour.
 - **Alternatives rejected:** Skip prompt caching — pays full input price on every call; budget runs out in days. Custom in-Worker caching of prompts only — re-implements provider features at the wrong layer.
-- **Source:** docs/architecture.md §7 (cost-control rule 3)
 
 ### SK-LLM-010 — Plan cache first, LLM second (cost-control rule #1)
 
@@ -110,7 +99,6 @@ when-to-load:
 - **Why:** A frontier-model plan call is the most expensive operation on the hot path. The plan cache turns that cost into a one-time-per-`(schema_hash, query_hash)` event. Skipping the cache to "save a hop" is penny-wise; LLM cost dominates at every traffic level. This is also the single highest-leverage cost lever we have.
 - **Consequence in code:** The ask-pipeline order in `SK-ASK-002` puts plan-cache lookup before any `llm.*` span. Tests assert that a second identical request hits the cache (no `llm.plan` span emitted). The router's API exposes no "skip-cache" flag; force-replan is a `query_hash` salt at the ask layer (`SK-PLAN-005`).
 - **Alternatives rejected:** Cache only on second hit — wastes the first call; same cost as no-cache for a one-shot query. Cache off for "expensive" queries — every cached-but-expensive plan would be the one we discarded.
-- **Source:** docs/architecture.md §7 (cost-control rule 1) · [GLOBAL-006](../../decisions/GLOBAL-006-plan-cache-content-addressing.md)
 
 ### SK-LLM-011 — Self-host the cheap-tier router once we hit ~50 k queries/day
 
@@ -119,19 +107,24 @@ when-to-load:
 - **Why:** At ~50 k queries/day, cheap-tier hosted cost crosses the flat-Modal threshold. Self-hosting turns a per-call cost into a fixed cost and removes an external dependency from the hottest path. Plan-tier compute is too uneven to self-host economically — we stay on hosted providers there.
 - **Consequence in code:** Provider implementation `modal_llama8b` already lands behind a feature flag; flipping the flag rolls `route` traffic over. Failover chain stays Groq → Modal → Workers-AI so a Modal outage doesn't degrade routing accuracy. The 50k/day threshold is dashboard-monitored.
 - **Alternatives rejected:** Self-host plan tier — bursty plan workloads cost more on flat A10G than on per-call paid. Stay on hosted forever — once we hit 200k/day cheap-tier cost crosses $1k/mo.
-- **Source:** docs/architecture.md §7 (cost-control rule 5)
 
 ### SK-LLM-012 — `schema_infer` is a distinct router operation, not an alias of `plan`
 
 - **Decision:** Hosted db.create's schema-inference call is its own router operation (`router.schemaInfer(...)` → span `llm.schema_infer`), not a re-use of `plan`. The two share the planner-tier provider chain and model defaults, but they ship distinct system prompts (`packages/llm/src/prompts/schema-inference.ts` vs the SQL-shaped `PLAN_SYSTEM`), distinct request shapes (`{goal}` vs `{goal, schema, dialect}`), and distinct response shapes (`{plan: Record<string, unknown>}` vs `{sql: string}`).
 - **Core value:** Honest latency, Bullet-proof, Simple
-- **Why:** `plan` is the hot-path NL→SQL operation that runs on every cache-miss `/v1/ask` query. `schema_infer` runs once per database, ever — it's a one-shot creation event, not a recurring query. Folding them under one operation name forces the same system prompt, the same span name, and the same dashboards onto two operations with very different cost profiles, latency budgets (`schema_infer` budgets at 8000 ms vs `plan`'s 5000 ms), and quality requirements (SK-HDC-002's typed-plan emit vs SQL emit). The distinct span name `llm.schema_infer` is what `docs/features/hosted-db-create/FEATURE.md`'s GLOBAL-014 commentary calls out.
-- **Consequence in code:** `packages/llm/src/types.ts` carries a `SchemaInferRequest`/`SchemaInferResponse` pair; `LLMOperation` includes `"schema_infer"`; every chat provider's `DEFAULT_MODELS` table has a `schema_infer` row (planner-tier model). The router's `route(...)` call uses operation key `"schema_infer"` so the span is `llm.schema_infer` — matching `docs/performance.md §3.1`. Provider responses are parsed via `parseJsonResponse` and wrapped as `{plan: parsed}` so the shape is uniform with classify/plan/summarize. PRs that try to delete the operation and reuse `plan` are rejected with a pointer here.
+- **Why:** `plan` is the hot-path NL→SQL operation on every cache-miss `/v1/ask`; `schema_infer` runs once per database, ever. Folding them under one op forces shared prompt + span + dashboards onto two ops with different cost profiles, latency budgets (`schema_infer` 8000 ms vs `plan` 5000 ms), and quality requirements (typed-plan emit vs SQL emit). The distinct span name `llm.schema_infer` is what hosted-db-create's GLOBAL-014 commentary calls out.
+- **Consequence in code:** `packages/llm/src/types.ts` carries `SchemaInferRequest`/`SchemaInferResponse`; `LLMOperation` includes `"schema_infer"`; every chat provider has a `schema_infer` row (planner-tier). Responses parsed via `parseJsonResponse` and wrapped as `{plan: parsed}` so the shape is uniform.
+- **Alternatives rejected:** Reuse `plan` and stuff schema-inference into the goal field (couples SQL-shaped `PLAN_SYSTEM` to non-SQL response; misleading `llm.plan` span). Route to `hard` (reserved for hard-plan / multi-engine, SK-LLM-001). Call providers directly (violates SK-LLM-002 — re-implements failover/circuit-breaker/spans per call site).
+
+### SK-LLM-013 — `PlanResponse` carries `model` + `confidence` for SK-TRUST-002
+
+- **Decision:** `PlanResponse` is `{ sql, model, confidence }`. Providers populate `model` from their per-operation model name (`impl.models.plan`); `confidence` is a placeholder `1.0` until the [`quality-eval`](../quality-eval/FEATURE.md) harness (Phase 3) calibrates per-stage floors per [`SK-TRUST-003`](../trust-ux/FEATURE.md). The orchestrator threads both into the response `trace` block.
+- **Core value:** Honest latency, Bullet-proof
+- **Why:** [`SK-TRUST-002`](../trust-ux/FEATURE.md) requires the response trace to name the model that emitted the plan. The router already knows the model (it picked it); making that public is a one-field addition. Carrying `confidence` now — even as a placeholder — keeps the wire contract stable so SK-TRUST-003's later calibration is a value change, not a shape change.
+- **Consequence in code:** `packages/llm/src/types.ts` widens `PlanResponse`; `packages/llm/src/providers/_chat-provider.ts` wraps the parsed `{sql}` from the provider JSON with `{ model: impl.models.plan, confidence: 1.0 }`. Per-provider files (`gemini.ts`, `groq.ts`, etc.) need no change — they go through the shared chat-provider. `nlqdb.cache.plan.write` stores both fields (see [`SK-PLAN-009`](../plan-cache/FEATURE.md)) so cache-hits return the same `model` + `confidence` the original miss recorded.
 - **Alternatives rejected:**
-  - Reuse `plan` and stuff schema-inference instructions into the goal field — couples the SQL-shaped `PLAN_SYSTEM` prompt to a non-SQL response, leaks `{sql}` typing into the create path, and produces a misleading `llm.plan` span that double-counts on dashboards.
-  - Add `hard` instead and route schema-inference there — `hard` is reserved for hard-plan / multi-engine reasoning (SK-LLM-001); they have separate model selection and cost profiles.
-  - Keep schema-inference outside the router (call providers directly) — violates SK-LLM-002 (single adapter) and re-implements failover/circuit-breaker/spans per call site.
-- **Source:** docs/features/hosted-db-create/FEATURE.md SK-HDC-002, GLOBAL-014 commentary · docs/performance.md §3.1
+  - Extend the LLM JSON output schema to ask the model for its own confidence — adds an unbounded variable (model-reported confidence isn't calibrated) and a fragile prompt dependency before SK-TRUST-003 has any way to use the number.
+  - Skip `confidence` on `PlanResponse` until SK-TRUST-003 lands — forces a second wire-shape change later, breaking SDK consumers twice for one feature.
 
 ## GLOBALs governing this feature
 

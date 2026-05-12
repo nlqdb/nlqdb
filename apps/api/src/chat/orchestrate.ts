@@ -132,11 +132,11 @@ function buildSuccess(result: AskResult): AssistantChatMessage["result"] {
   const truncated = result.rows.length > MAX_PERSIST_ROWS;
   return {
     kind: "ok",
-    sql: result.sql,
+    sql: result.trace.sql,
     rows: truncated ? result.rows.slice(0, MAX_PERSIST_ROWS) : result.rows,
     rowCount: result.rowCount,
     truncated,
-    cached: result.cached,
+    cached: result.trace.cache_hit,
     ...(result.summary !== undefined ? { summary: result.summary } : {}),
   };
 }

@@ -34,11 +34,19 @@ export function askFnFromDemoFixtures(): (req: AskRequest) => Promise<Orchestrat
       ok: true,
       result: {
         status: "ok",
-        cached: fixture.cached,
-        sql: fixture.sql,
         rows: fixture.rows,
         rowCount: fixture.rowCount,
         summary: fixture.summary,
+        // SK-TRUST-002 — canned fixtures still ship a `trace` block so
+        // the response shape is uniform with real `/v1/ask`. `model`
+        // names this surface so dashboards can see canned vs real.
+        trace: {
+          sql: fixture.sql,
+          plan_id: `demo:${req.goal.slice(0, 64)}`,
+          confidence: 1.0,
+          model: "demo-fixture",
+          cache_hit: fixture.cached,
+        },
       },
       // Demo shortcut never produces a real `ask.completed` event
       // (canned fixtures aren't workload-analyser input). The resolved

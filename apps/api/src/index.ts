@@ -19,6 +19,7 @@ import {
 import { makeGlobalAnonLimiter } from "./anon-global-cap.ts";
 import { makeAnonRateLimiter } from "./anon-rate-limit.ts";
 import { buildSetCookie, signAnonStash } from "./anon-stash.ts";
+import { lookupPkLiveKey as lookupPkLiveKeyImpl } from "./api-keys.ts";
 import { buildAskDeps, buildEventEmitter } from "./ask/build-deps.ts";
 import { orchestrateAsk } from "./ask/orchestrate.ts";
 import { kickoffAskPrelude, resolveAnonEngineOverride } from "./ask/prelude.ts";
@@ -43,7 +44,6 @@ import {
 } from "./http.ts";
 import { getLLMRouter } from "./llm-router.ts";
 import { makeRequireSession, type RequireSessionVariables } from "./middleware.ts";
-import { lookupPkLiveKey as lookupPkLiveKeyImpl } from "./api-keys.ts";
 import {
   makeRequirePrincipal,
   type Principal,
@@ -127,8 +127,7 @@ const pkLiveCors = cors({
     const reqHeaders = c.req.header("access-control-request-headers") ?? "";
     const auth = c.req.header("authorization") ?? "";
     const looksLikePkLive =
-      auth.toLowerCase().includes("pk_live_") ||
-      reqHeaders.toLowerCase().includes("authorization");
+      auth.toLowerCase().includes("pk_live_") || reqHeaders.toLowerCase().includes("authorization");
     return looksLikePkLive ? origin : null;
   },
   credentials: false,

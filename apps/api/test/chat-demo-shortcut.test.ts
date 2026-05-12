@@ -15,10 +15,10 @@ describe("chat demo-shortcut", () => {
     expect(outcome.ok).toBe(true);
     if (!outcome.ok) return;
     expect(outcome.result.status).toBe("ok");
-    expect(outcome.result.sql).toContain("orders");
+    expect(outcome.result.trace.sql).toContain("orders");
     expect(outcome.result.rows.length).toBeGreaterThan(0);
     expect(outcome.result.rowCount).toBeGreaterThan(0);
-    expect(outcome.result.cached).toBe(false);
+    expect(outcome.result.trace.cache_hit).toBe(false);
     expect(outcome.result.summary).toContain("orders");
   });
 
@@ -27,8 +27,8 @@ describe("chat demo-shortcut", () => {
     const memory = await ask({ goal: "agent memory", dbId: "demo", userId: "u1" });
     const crm = await ask({ goal: "CRM contacts", dbId: "demo", userId: "u1" });
     const leaderboard = await ask({ goal: "leaderboard", dbId: "demo", userId: "u1" });
-    expect(memory.ok && memory.result.sql).toMatch(/agent_memory/);
-    expect(crm.ok && crm.result.sql).toMatch(/contacts/);
-    expect(leaderboard.ok && leaderboard.result.sql).toMatch(/hackathon_scores/);
+    expect(memory.ok && memory.result.trace.sql).toMatch(/agent_memory/);
+    expect(crm.ok && crm.result.trace.sql).toMatch(/contacts/);
+    expect(leaderboard.ok && leaderboard.result.trace.sql).toMatch(/hackathon_scores/);
   });
 });
