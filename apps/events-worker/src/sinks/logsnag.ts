@@ -2,11 +2,11 @@
 // public API contract (no SDK — the call shape is small and stable
 // enough that a fetch is cleaner than a dependency).
 //
-// Idempotency: LogSnag has no native dedup. Cloudflare Queues retries
-// on consumer-thrown exceptions only; if we get a 200 we don't retry,
-// so duplicate emission requires the rare LogSnag-down-then-up window.
-// Acceptable for Phase 0 — revisit when retry-exhaustion metrics show
-// it's a real problem.
+// Idempotency: LogSnag honours an `event_id` field for dedup
+// (SK-EVENTS-004 — the producer side derives a stable id per event
+// shape, e.g. `feature.requested.X.<principal>.<utcDay>`). The sink
+// passes `EventEnvelope.id` through to that field so per-day dedup
+// works across Cloudflare Queue redeliveries.
 
 import type { ProductEvent } from "@nlqdb/events";
 
@@ -29,9 +29,21 @@ type LogSnagPayload = {
   notify?: boolean;
   tags?: Record<string, string>;
   user_id?: string;
+  // SK-EVENTS-004 — passed through from `EventEnvelope.id` for
+  // sink-side dedup. Optional because tests can omit it.
+  event_id?: string;
 };
 
-export function buildPayload(project: string, event: ProductEvent): LogSnagPayload {
+export function buildPayload(
+  project: string,
+  event: ProductEvent,
+  eventId?: string,
+): LogSnagPayload {
+  const base = buildPayloadBody(project, event);
+  return eventId ? { ...base, event_id: eventId } : base;
+}
+
+function buildPayloadBody(project: string, event: ProductEvent): LogSnagPayload {
   switch (event.name) {
     case "user.first_query":
       return {
@@ -126,9 +138,10 @@ export function buildPayload(project: string, event: ProductEvent): LogSnagPaylo
 export async function publishToLogSnag(
   config: LogSnagConfig,
   event: ProductEvent,
+  eventId: string | undefined,
   fetchImpl: typeof fetch = fetch,
 ): Promise<void> {
-  const payload = buildPayload(config.project, event);
+  const payload = buildPayload(config.project, event, eventId);
   const res = await fetchImpl(LOGSNAG_URL, {
     method: "POST",
     headers: {

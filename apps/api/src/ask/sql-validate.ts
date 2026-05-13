@@ -56,6 +56,25 @@ export type SqlRejectReason =
   | "parse_failed"
   | "empty";
 
+// SK-EVENTS-010 / GLOBAL-024 — reasons that signal "user requested DDL
+// via /v1/ask" (the LLM emitted a DDL verb on the query path). Co-located
+// with `SqlRejectReason` so the demand-signal set cannot drift from the
+// validator: a new DDL-class reason MUST be added here at the same time
+// it's added to the union above. Non-DDL reasons (`parse_failed`,
+// `empty`, `delete_without_where`) are LLM-quality or write-safety
+// signals, not feature requests — they're deliberately excluded.
+//
+// Internally typed as `Set<SqlRejectReason>` so the array literal is
+// exhaustiveness-checked; exposed as `ReadonlySet<string>` so callers
+// with `AskError.reason: string` can `.has()` it without a cast.
+export const DDL_REJECT_REASONS: ReadonlySet<string> = new Set<SqlRejectReason>([
+  "drop_statement",
+  "truncate_statement",
+  "alter_statement",
+  "grant_or_revoke",
+  "disallowed_verb",
+]);
+
 // Verbs that get an early, attributed reject before the AST walk.
 // Keyed by the resolved leading-verb token (lowercase).
 const LEADING_VERB_REJECT: Record<string, SqlRejectReason> = {

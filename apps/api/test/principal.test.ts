@@ -11,6 +11,7 @@ import {
   type RequirePrincipalOpts,
   type RequirePrincipalVariables,
   sha256Hex,
+  surfaceFromPrincipal,
 } from "../src/principal.ts";
 
 function buildApp(opts: RequirePrincipalOpts) {
@@ -148,5 +149,26 @@ describe("sha256Hex", () => {
     expect(a.length).toBe(16);
     // Sanity: anchor against a known SHA-256 prefix for "hello".
     expect(a).toBe("2cf24dba5fb0a30e");
+  });
+});
+
+// SK-EVENTS-010 / performance.md §3.3 — surface attribute and event
+// payload both read from this mapping. A regression here drifts the
+// `nlqdb.surface` OTel attribute and the `feature.*` event field apart.
+describe("surfaceFromPrincipal", () => {
+  it("maps anon principals to `hero`", () => {
+    const principal: Principal = { kind: "anon", id: "anon:abc", token: "anon_x" };
+    expect(surfaceFromPrincipal(principal)).toBe("hero");
+  });
+
+  it("maps user principals to `chat`", () => {
+    // `session` is opaque in this test — the function only reads `.kind`.
+    const principal = { kind: "user", id: "u_1", session: {} } as unknown as Principal;
+    expect(surfaceFromPrincipal(principal)).toBe("chat");
+  });
+
+  it("maps pk_live principals to `embed`", () => {
+    const principal: Principal = { kind: "pk_live", id: "t_1", dbId: "db_1" };
+    expect(surfaceFromPrincipal(principal)).toBe("embed");
   });
 });
