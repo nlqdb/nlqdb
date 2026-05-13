@@ -41,6 +41,7 @@ import { clearPending, loadPending } from "../../lib/prompt-storage";
 import ErrorBoundary from "../ErrorBoundary";
 import Answer from "./Answer";
 import CopySnippet from "./CopySnippet";
+import { matchesValidMessageShape } from "./chat-validate";
 import Data from "./Data";
 import DiffChip from "./DiffChip";
 import LeftRail from "./LeftRail";
@@ -102,33 +103,12 @@ function histKey(dbId: string) {
   return `nlq_hist_${dbId}`;
 }
 
-// SK-WEB-001 — every persisted-state loader must validate the shape
-// before returning. Schema-drift between releases is now a permanent
-// risk (older browsers/tabs hold older shapes), and an unguarded read
-// becomes a render crash once a downstream component dereferences a
-// field that's no longer there.
+// Type-guard wrapper around `matchesValidMessageShape`. The structural
+// check lives in `./chat-validate.ts` (no JSX) so the unit suite can
+// import it without booting the React JSX runtime; this wrapper just
+// re-asserts the type relationship for the call sites here.
 function isValidMessage(m: unknown): m is Message {
-  if (!m || typeof m !== "object") return false;
-  const obj = m as Record<string, unknown>;
-  if (typeof obj["id"] !== "string") return false;
-  if (obj["role"] === "user") return typeof obj["goal"] === "string";
-  if (obj["role"] !== "assistant") return false;
-  const reply = obj["reply"];
-  if (!reply || typeof reply !== "object") return false;
-  const r = reply as Record<string, unknown>;
-  if (typeof r["id"] !== "string" || typeof r["goal"] !== "string") return false;
-  const state = r["state"];
-  if (!state || typeof state !== "object") return false;
-  const s = state as Record<string, unknown>;
-  // Drop "ok" entries that don't carry a `trace` block — they would
-  // crash `ReplyView` at `ok.trace.sql`. Older history shapes
-  // (pre-SK-TRUST-002) hit this branch.
-  if (s["kind"] === "ok") {
-    const ok = s["ok"] as Record<string, unknown> | undefined;
-    if (!ok || typeof ok !== "object") return false;
-    if (!ok["trace"] || typeof ok["trace"] !== "object") return false;
-  }
-  return true;
+  return matchesValidMessageShape(m);
 }
 
 function loadHistory(dbId: string): Message[] {

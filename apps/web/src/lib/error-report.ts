@@ -44,6 +44,27 @@ function fingerprint(report: ErrorReport): string {
   return `${report.surface}::${report.message}::${head}`;
 }
 
+// W3C Trace Context — generate a fresh traceparent for each report so
+// the server-side `nlqdb.web.error` span attaches to it and an OTel
+// backend (Tempo) groups the browser-recorded error with whatever
+// server work happens to share the same trace. The browser doesn't
+// run an OTel SDK, so there's no existing context to extract — we
+// mint a new one. `01` flags = sampled (recommended for unsampled
+// error pipelines: every error must reach the backend).
+function genHex(bytes: number): string {
+  const arr = new Uint8Array(bytes);
+  crypto.getRandomValues(arr);
+  let out = "";
+  for (let i = 0; i < arr.length; i++) {
+    out += (arr[i] as number).toString(16).padStart(2, "0");
+  }
+  return out;
+}
+
+export function newTraceparent(): string {
+  return `00-${genHex(16)}-${genHex(8)}-01`;
+}
+
 export function reportClientError(report: ErrorReport): void {
   try {
     const fp = fingerprint(report);
@@ -57,7 +78,10 @@ export function reportClientError(report: ErrorReport): void {
     const base = resolveApiBase();
     void fetch(`${base}${REPORT_PATH}`, {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers: {
+        "content-type": "application/json",
+        traceparent: newTraceparent(),
+      },
       // No cookies — the endpoint reads nothing from the session.
       credentials: "omit",
       keepalive: true,
