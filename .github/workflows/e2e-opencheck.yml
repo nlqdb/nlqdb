@@ -166,6 +166,13 @@ jobs:
   opencheck:
     name: Run E2E
     needs: deploy-staging
+    # SK-CIPERM-002 — minimum grant at the calling-job level. The
+    # reusable workflow's `run` job requests `contents: read` for its
+    # checkout; permissions in a reusable-workflow call chain can only
+    # be reduced, never elevated, so the caller must grant at least
+    # what the callee asks for.
+    permissions:
+      contents: read
     uses: ./.github/workflows/_e2e-opencheck.yml
     with:
       base_url: ${{ needs.deploy-staging.outputs.base_url }}
