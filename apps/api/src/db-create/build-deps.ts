@@ -46,7 +46,15 @@ export type BuildDbCreateDepsResult = {
   secretRef: string;
 };
 
-export function buildDbCreateDeps(envBindings: Cloudflare.Env): BuildDbCreateDepsResult {
+// SK-HDC-013 — `waitUntil` lifts tail steps (recent-tables MRU,
+// table-card embedding) off the response path. Production passes
+// `c.executionCtx.waitUntil` from the route handler; the orchestrator
+// then fires the tail work into that lifetime so the response returns
+// without blocking on it.
+export function buildDbCreateDeps(
+  envBindings: Cloudflare.Env,
+  waitUntil?: (p: Promise<unknown>) => void,
+): BuildDbCreateDepsResult {
   const databaseUrl = (envBindings as unknown as Record<string, string | undefined>)[
     DEFAULT_SECRET_REF
   ];
@@ -89,6 +97,9 @@ export function buildDbCreateDeps(envBindings: Cloudflare.Env): BuildDbCreateDep
       // SK-APIKEYS-001: mint pk_live_ key for the newly-provisioned DB.
       mintPkLive: (dbId, tenantId) =>
         mintPkLiveKey(envBindings.DB, envBindings.BETTER_AUTH_SECRET, dbId, tenantId),
+      // SK-HDC-013: off-critical-path tail steps. Optional — omit in
+      // tests / scheduled-handler callers that don't need to defer.
+      ...(waitUntil !== undefined ? { waitUntil } : {}),
     },
     secretRef: DEFAULT_SECRET_REF,
   };
@@ -168,3 +179,20 @@ async function noopEmbedTableCards(
   _plan: SchemaPlan,
   _dbId: string,
 ): Promise<void> {}
+
+// SK-HDC-014 — Neon keep-warm. Defers the Free-tier 5-min compute
+// auto-suspend by issuing a tiny `SELECT 1` on the cron interval.
+// Lives next to `buildPgClient` so the documented one-file `neon(...)`
+// carve-out stays here (no second file imports `@neondatabase/serverless`
+// — GLOBAL-021).
+//
+// Returns wall-clock ms so the scheduled handler can log it for the
+// Tempo span timing — useful for catching the case where the keep-warm
+// itself is paying a cold-start tax (which would mean the interval is
+// already too long).
+export async function keepNeonWarm(connectionString: string): Promise<number> {
+  const sql = neon(connectionString, { fullResults: true });
+  const t0 = performance.now();
+  await sql.query("SELECT 1");
+  return performance.now() - t0;
+}

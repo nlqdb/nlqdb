@@ -72,6 +72,22 @@ export type LLMRouterOptions = {
   // Avoids burning the wall-clock budget on a known-bad provider when
   // a healthy fallback exists. Defaults: 3 failures / 60s.
   circuitBreaker?: { failureThreshold: number; cooldownMs: number };
+  // SK-LLM-014 — Hedged-request races for operations marked here. After
+  // `afterMs` head-start, fire the second eligible provider in parallel
+  // with the first; whichever returns a usable result first wins, the
+  // loser's signal aborts. Trades ~1.05× provider RPS for elimination
+  // of the timeout-tail (Dean & Barroso 2013, "The Tail at Scale").
+  //
+  // ⚠️ FREE-TIER PROVIDER CHAINS ONLY. Hedging duplicates the request
+  // to a second provider on the slow tail; on free-tier providers
+  // (Groq / Gemini / Workers AI / OpenRouter free) the marginal cost
+  // is $0, so racing them is pure latency win. When the paid chain
+  // lands (SK-LLM-007 — retention-off Anthropic / OpenAI for Pro
+  // tenants), do NOT enable hedging there: every paid call is real
+  // per-token money and racing doubles the bill on the tail. Wire
+  // this map per-operation so paid-chain ops can opt out individually
+  // even when their op shares a key (e.g. `plan`) with a free hedge.
+  hedge?: Partial<Record<LLMOperation, { afterMs: number }>>;
 };
 
 const DEFAULT_BREAKER = { failureThreshold: 3, cooldownMs: 60_000 };
@@ -250,6 +266,34 @@ export function createLLMRouter(opts: LLMRouterOptions): LLMRouter {
     );
   }
 
+  // Update the breaker for a single provider given an attempt result.
+  // Shared by the sequential path and the hedged path so the rules
+  // for "what counts as a real provider-health failure" stay in one
+  // place. `hedge_lost` is intentionally skipped: it's our own cancel,
+  // not a provider failure.
+  function updateBreakerFromResult(
+    name: ProviderName,
+    result: AttemptResult<unknown>,
+    now: number,
+  ): void {
+    if (result.ok) {
+      breakerState.set(name, { consecutiveFailures: 0, openedAt: 0 });
+      return;
+    }
+    const skip =
+      result.reason === "not_configured" ||
+      result.reason === "parse" ||
+      result.reason === "hedge_lost" ||
+      isAuthFailure(result.reason, result.error);
+    if (skip) return;
+    const state = breakerState.get(name);
+    const failures = (state?.consecutiveFailures ?? 0) + 1;
+    breakerState.set(name, {
+      consecutiveFailures: failures,
+      openedAt: failures >= breaker.failureThreshold ? now : 0,
+    });
+  }
+
   // Walks the provider chain for `op`, attempting each in order until
   // one succeeds. Renamed from `route` so it doesn't shadow the
   // returned router's `route` method (the SK-ASK-009 op).
@@ -273,7 +317,106 @@ export function createLLMRouter(opts: LLMRouterOptions): LLMRouter {
     const attempts: AttemptRecord[] = [];
     const timeoutMs = timeouts[op];
 
-    for (let i = 0; i < chain.length; i++) {
+    // SK-LLM-014 — Hedged race over the first two eligible providers
+    // when `opts.hedge[op]` is configured. Free-tier providers only —
+    // see LLMRouterOptions.hedge for the cost rationale. Both legs
+    // emit their own `llm.<op>` span via `attempt()`; the loser's
+    // span ends with `reason: "hedge_lost"` so dashboards can count
+    // hedge fires without inflating the breaker.
+    let chainStart = 0;
+    const hedgeCfg = opts.hedge?.[op];
+    if (hedgeCfg) {
+      type Eligible = { name: ProviderName; chainIdx: number; provider: Provider };
+      const eligible: Eligible[] = [];
+      const nowForEligibility = Date.now();
+      for (let i = 0; i < chain.length && eligible.length < 2; i++) {
+        const name = chain[i];
+        if (!name) continue;
+        const provider = byName.get(name);
+        if (!provider) continue;
+        const state = breakerState.get(name);
+        if (breakerOpen(state, nowForEligibility, breaker.cooldownMs)) continue;
+        eligible.push({ name, chainIdx: i, provider });
+      }
+
+      if (eligible.length >= 2) {
+        const [a, b] = eligible as [Eligible, Eligible];
+        const outcome = await raceHedgedPair(
+          op,
+          a.provider,
+          b.provider,
+          req,
+          call,
+          callerOpts,
+          timeoutMs,
+          hedgeCfg.afterMs,
+          attempt,
+        );
+
+        // Caller-abort cuts the whole call short, mirror the
+        // mid-walk abort handling in the sequential loop below.
+        if (callerOpts?.signal?.aborted) {
+          throw asAbortError(callerOpts.signal.reason);
+        }
+
+        const now = Date.now();
+        updateBreakerFromResult(a.name, outcome.a, now);
+        if (outcome.b) updateBreakerFromResult(b.name, outcome.b, now);
+
+        if (outcome.winner) {
+          // Hedge actually engaged AND the secondary leg fired? Record
+          // the cancel of the losing leg so dashboards can count hedge
+          // fires. `outcome.b === undefined` means primary returned
+          // before the head-start delay, so no hedge happened.
+          if (outcome.b !== undefined) {
+            const loser = outcome.winner.from === "primary" ? b.name : a.name;
+            const winner = outcome.winner.from === "primary" ? a.name : b.name;
+            llmFailoverTotal().add(1, {
+              from_provider: loser,
+              to_provider: winner,
+              reason: "hedge_lost",
+            });
+          }
+          return outcome.winner.value;
+        }
+
+        // Both legs failed (or only `a` ran and failed within the
+        // head-start before `b` got the chance — handled below by
+        // checking `outcome.b`). Record each attempt and advance the
+        // chain index past the pair.
+        if (!outcome.a.ok) {
+          attempts.push({ provider: a.name, reason: outcome.a.reason, error: outcome.a.error });
+        }
+        if (outcome.b && !outcome.b.ok) {
+          attempts.push({ provider: b.name, reason: outcome.b.reason, error: outcome.b.error });
+          const next = chain[b.chainIdx + 1];
+          if (next) {
+            llmFailoverTotal().add(1, {
+              from_provider: b.name,
+              to_provider: next,
+              reason: outcome.b.reason,
+            });
+          }
+          chainStart = b.chainIdx + 1;
+        } else {
+          // `b` never fired (primary failed inside the head-start
+          // window so we skipped the hedge). Fall through from the
+          // entry after `a` — `b` is still eligible for the sequential
+          // pass.
+          const next = chain[a.chainIdx + 1];
+          if (next && !outcome.a.ok) {
+            llmFailoverTotal().add(1, {
+              from_provider: a.name,
+              to_provider: next,
+              reason: outcome.a.reason,
+            });
+          }
+          chainStart = a.chainIdx + 1;
+        }
+      }
+    }
+
+    for (let i = chainStart; i < chain.length; i++) {
       const name = chain[i];
       if (name === undefined) continue;
       const provider = byName.get(name);
@@ -418,15 +561,170 @@ export function createLLMRouter(opts: LLMRouterOptions): LLMRouter {
   };
 }
 
+// SK-LLM-014 — race two providers with a head-start delay. Free-tier
+// only; see LLMRouterOptions.hedge for the cost rationale.
+//
+// Flow:
+//   1. Fire `primary` immediately.
+//   2. Race primary's promise against a `hedgeAfterMs` head-start
+//      timer.
+//   3. If primary returns OK before the timer: skip the hedge — `b`
+//      never starts. (The point of the head-start is to avoid burning
+//      a duplicate request on the common fast-path case.)
+//   4. Otherwise: fire `secondary` in parallel. First success wins;
+//      loser's `AbortController` aborts with `HEDGE_LOST`.
+//   5. If both fail: return both results so dispatch can record both
+//      attempts and fall through to the rest of the chain.
+//
+// We use plain Promise/resolve plumbing (rather than `AbortSignal.any`
+// over the head-start timer) because the head-start logic needs to
+// inspect whether primary actually settled — `AbortSignal.timeout`
+// doesn't carry that signal.
+type HedgeOutcome<Res> = {
+  // Set iff at least one leg returned `{ok: true}`.
+  winner: { value: Res; from: "primary" | "secondary" } | undefined;
+  // Primary always runs in this path, so `a` is always set.
+  a: AttemptResult<Res>;
+  // `b` is `undefined` when primary returned within the head-start
+  // window (success OR failure) — the hedge skipped firing it. Set
+  // to the secondary's result when the hedge actually fired.
+  b: AttemptResult<Res> | undefined;
+};
+
+async function raceHedgedPair<Req, Res>(
+  op: LLMOperation,
+  primary: Provider,
+  secondary: Provider,
+  req: Req,
+  call: (p: Provider, r: Req, o: CallOpts) => Promise<Res>,
+  callerOpts: CallOpts | undefined,
+  timeoutMs: number,
+  hedgeAfterMs: number,
+  attemptFn: (
+    op: LLMOperation,
+    provider: Provider,
+    req: Req,
+    call: (p: Provider, r: Req, o: CallOpts) => Promise<Res>,
+    callerOpts: CallOpts | undefined,
+    timeoutMs: number,
+  ) => Promise<AttemptResult<Res>>,
+): Promise<HedgeOutcome<Res>> {
+  const primaryCtrl = new AbortController();
+  const secondaryCtrl = new AbortController();
+
+  // Bridge the caller's outer signal into both leg signals so a
+  // caller-side cancel cuts both legs cleanly (and `classifyError`
+  // surfaces the caller's `reason`, not `HEDGE_LOST`).
+  if (callerOpts?.signal) {
+    const outer = callerOpts.signal;
+    if (outer.aborted) {
+      primaryCtrl.abort(outer.reason);
+      secondaryCtrl.abort(outer.reason);
+    } else {
+      outer.addEventListener(
+        "abort",
+        () => {
+          primaryCtrl.abort(outer.reason);
+          secondaryCtrl.abort(outer.reason);
+        },
+        { once: true },
+      );
+    }
+  }
+
+  const primaryOpts: CallOpts = {
+    ...(callerOpts?.fetch !== undefined ? { fetch: callerOpts.fetch } : {}),
+    signal: primaryCtrl.signal,
+  };
+  const secondaryOpts: CallOpts = {
+    ...(callerOpts?.fetch !== undefined ? { fetch: callerOpts.fetch } : {}),
+    signal: secondaryCtrl.signal,
+  };
+
+  let primaryDone = false;
+  let primaryResult: AttemptResult<Res> | undefined;
+  const primaryP = attemptFn(op, primary, req, call, primaryOpts, timeoutMs).then((r) => {
+    primaryDone = true;
+    primaryResult = r;
+    return r;
+  });
+
+  // Wait for primary OR the head-start delay (whichever fires first).
+  // Race primary's resolution against a sleep — if primary settles
+  // first, we get to inspect it before deciding on the hedge.
+  await new Promise<void>((resolve) => {
+    const timer = setTimeout(resolve, hedgeAfterMs);
+    void primaryP.finally(() => {
+      clearTimeout(timer);
+      resolve();
+    });
+  });
+
+  // Primary already succeeded before the head-start? Done — no hedge.
+  if (primaryDone && primaryResult?.ok) {
+    return {
+      winner: { value: primaryResult.value, from: "primary" },
+      a: primaryResult,
+      b: undefined,
+    };
+  }
+
+  // Primary already failed before the head-start? Skip the hedge and
+  // let the caller fall through to the rest of the chain. (Firing the
+  // hedge here would waste a request — we already know primary's
+  // verdict and can move on sequentially.)
+  if (primaryDone && primaryResult && !primaryResult.ok) {
+    return { winner: undefined, a: primaryResult, b: undefined };
+  }
+
+  // Primary is still pending: fire the hedge.
+  const secondaryP = attemptFn(op, secondary, req, call, secondaryOpts, timeoutMs);
+
+  // Abort the loser as soon as the winner is known. The abort fires
+  // ~immediately (next microtask) on AbortController.abort() so the
+  // loser's `attempt()` settles with `reason: "hedge_lost"` within a
+  // few ms — `Promise.all` below blocks only on that brief cleanup.
+  void primaryP.then((r) => {
+    if (r.ok) secondaryCtrl.abort(HEDGE_LOST);
+  });
+  void secondaryP.then((r) => {
+    if (r.ok) primaryCtrl.abort(HEDGE_LOST);
+  });
+
+  const [pResult, sResult] = await Promise.all([primaryP, secondaryP]);
+
+  // Tie-breaker: when both legs succeed (rare — secondary fires at
+  // the head-start delay, so primary would have to land within the
+  // first ~ms of secondary's call), prefer primary. The head-start
+  // already filtered out the trivially-fast primary case, so any
+  // dual-success here is genuinely a race we can resolve either way.
+  let winner: { value: Res; from: "primary" | "secondary" } | undefined;
+  if (pResult.ok) {
+    winner = { value: pResult.value, from: "primary" };
+  } else if (sResult.ok) {
+    winner = { value: sResult.value, from: "secondary" };
+  }
+
+  return { winner, a: pResult, b: sResult };
+}
+
 function classifyError(err: unknown, signal: AbortSignal): FailoverReason {
   if (err instanceof ProviderError) return err.reason;
   // The combined signal aborting via our timeout surfaces here as an
   // AbortError-like throw the provider couldn't catch (or any subtle
   // code path that bypasses the provider's own ProviderError wrap).
   if (signal.aborted && err instanceof Error && err.name === "AbortError") {
+    // SK-LLM-014 — hedge race cancels the loser with `abort(HEDGE_LOST)`;
+    // distinguish from a real timeout so the breaker doesn't trip the
+    // cancelled provider and dashboards can count actual hedge fires.
+    if (signal.reason === HEDGE_LOST) return "hedge_lost";
     return "timeout";
   }
   // Anything else — programmer error, unexpected exception. Tagged
   // distinct from `network` so dashboards don't lie.
   return "unknown";
 }
+
+// Sentinel passed to AbortController.abort() when a hedged race
+// cancels the losing leg. Exported so tests can assert on it.
+export const HEDGE_LOST = "nlqdb.llm.hedge_lost";

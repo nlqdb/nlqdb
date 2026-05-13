@@ -117,6 +117,14 @@ when-to-load:
 - **Consequence in code:** `redactPii(sqlText).slice(0, 4096)` in `packages/db/src/postgres.ts`; `(plan.sql as string).slice(0, 4096)` in the ClickHouse adapter. PII redaction runs before truncation so secrets near the 4 096-char boundary are still redacted. The truncation does not affect the SQL actually sent to the database engine.
 - **Alternatives rejected:** Truncate at exporter level — unpredictable and silent; operators see incomplete data with no indication of why. Store as a span event instead of an attribute — not yet supported by our OTel SDK wrapper; would be a larger refactor.
 
+### SK-OBS-010 — `AsyncLocalStorageContextManager` registered so `startActiveSpan` propagates across `await`
+
+- **Decision:** `packages/otel/src/index.ts` calls `context.setGlobalContextManager(new AsyncLocalStorageContextManager().enable())` inside both `setupTelemetry` and `installTelemetryForTest`. Requires `nodejs_compat` (already on in `apps/api/wrangler.toml`); never `.disable()`d because Workers' AsyncLocalStorage omits the method.
+- **Core value:** Honest latency, Bullet-proof
+- **Why:** Trace `285b805cee6e2688768d9ffcd75a86fe` (2026-05-13) — `nlqdb.ask` had no children in Tempo; `llm.schema_infer` ×2, `db.transaction`, `recent_tables.touch` were separate root traces. `BasicTracerProvider` defaults to `NoopContextManager`, which doesn't carry active-span context across `await`. Triage took ~10× longer because the span tree didn't reconstruct.
+- **Consequence in code:** `packages/otel/package.json` adds `@opentelemetry/context-async-hooks ^2.7.1`. Shared `enableContextManager()` helper called from both setup paths; idempotent. Regression test asserts a child span from inside `await Promise.resolve()` shares its parent's `traceId` and `parentSpanContext.spanId`.
+- **Alternatives rejected:** `@microlabs/otel-cf-workers` (larger surface than the fix needs); manual `context.with(...)` at every async boundary (doesn't scale).
+
 ## GLOBALs governing this feature
 
 Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; index in [`docs/decisions.md`](../../decisions.md)). The list below names the rules that constrain this feature; any feature-local commentary is nested under the rule.

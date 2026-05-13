@@ -496,7 +496,12 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
       const { buildDbCreateDeps } = await import("./db-create/build-deps.ts");
       const { orchestrateDbCreate } = await import("./db-create/orchestrate.ts");
       try {
-        const { deps: createDeps, secretRef } = buildDbCreateDeps(c.env);
+        // SK-HDC-013 — pass executionCtx.waitUntil so the orchestrator's
+        // tail steps (recent-tables MRU, table-card embedding) fire
+        // off-path after the response goes back to the user.
+        const { deps: createDeps, secretRef } = buildDbCreateDeps(c.env, (p) =>
+          c.executionCtx.waitUntil(p as Promise<void>),
+        );
         const result = await orchestrateDbCreate(createDeps, {
           goal: parsed.body.goal,
           tenantId: principal.id,
@@ -1081,7 +1086,11 @@ app.post("/v1/databases", requireSession, async (c) => {
     const { orchestrateDbCreate } = await import("./db-create/orchestrate.ts");
 
     try {
-      const { deps: createDeps, secretRef } = buildDbCreateDeps(c.env);
+      // SK-HDC-013 — same waitUntil wiring as the /v1/ask kind=create
+      // branch above.
+      const { deps: createDeps, secretRef } = buildDbCreateDeps(c.env, (p) =>
+        c.executionCtx.waitUntil(p as Promise<void>),
+      );
       // The `if (!name && !goal)` guard above ensures at least one is
       // defined; the `?? ""` fallback satisfies Biome's
       // noNonNullAssertion without changing semantics (the string is
@@ -1556,13 +1565,25 @@ app.on(["POST", "GET"], "/api/auth/*", async (c) => {
   });
 });
 
+// SK-HDC-014 — Neon keep-warm cron expression. Must match exactly the
+// entry in `apps/api/wrangler.toml`'s `[triggers].crons`; the
+// scheduled handler dispatches on `controller.cron` and this constant
+// is the single source of truth so a typo in one file surfaces as a
+// "no matching branch" log line rather than a silent skip.
+const NEON_KEEP_WARM_CRON = "*/4 13-21 * * 1-5";
+
 // W5 daily workload-analyser cron handler (`SK-MIGRATE-001`). Schedule
 // is `0 4 * * *` UTC, configured in `wrangler.toml`'s `[triggers]`.
 // When `TINYBIRD_TOKEN` is unset the handler ack-and-skips (matches the
 // unconfigured-sink posture — `SK-EVENTS-005`). All Tinybird HTTP flows
 // through `@nlqdb/db`'s typed surface per `GLOBAL-021`.
+//
+// SK-HDC-014 — `controller.cron` dispatches between branches. The
+// Neon keep-warm branch (`*/4 13-21 * * 1-5`) fires far more often and
+// does a tiny `SELECT 1` to defer compute auto-suspend; the workload
+// analyser branch (`0 4 * * *`) does the heavy daily roll-up.
 async function scheduled(
-  _controller: ScheduledController,
+  controller: ScheduledController,
   envBindings: Cloudflare.Env,
   ctx: ExecutionContext,
 ): Promise<void> {
@@ -1578,6 +1599,47 @@ async function scheduled(
       : undefined;
 
   try {
+    // SK-HDC-014 — Neon keep-warm. Fires every 4 minutes during
+    // weekdays 13-21 UTC. Strictly under Neon's 5-min auto-suspend so
+    // the compute stays resident; at 0.25 CU minimum × 8h × 22
+    // weekdays ≈ 44 CU-h/month, well under the 100 CU-h Free-tier
+    // monthly budget (research-receipts: Neon plans page). One subrequest
+    // per fire — under the Workers Free-tier 50/invocation cap. Errors
+    // are logged but never re-thrown: a Neon outage shouldn't trip the
+    // analyser branch's run path or surface as a cron failure.
+    if (controller.cron === NEON_KEEP_WARM_CRON) {
+      const databaseUrl = (envBindings as unknown as Record<string, string | undefined>)[
+        "DATABASE_URL"
+      ];
+      if (!databaseUrl) {
+        console.warn(
+          JSON.stringify({
+            msg: "neon_keepwarm_skipped",
+            reason: "DATABASE_URL unset",
+          }),
+        );
+        return;
+      }
+      const { keepNeonWarm } = await import("./db-create/build-deps.ts");
+      try {
+        const elapsed = await keepNeonWarm(databaseUrl);
+        console.info(
+          JSON.stringify({
+            msg: "neon_keepwarm_ok",
+            elapsed_ms: Math.round(elapsed),
+          }),
+        );
+      } catch (err) {
+        console.error(
+          JSON.stringify({
+            msg: "neon_keepwarm_failed",
+            message: err instanceof Error ? err.message : String(err),
+          }),
+        );
+      }
+      return;
+    }
+
     // SK-ANON-002 / SK-ANON-012 — anon-DB sweep. Runs first so even
     // if the workload-analyser later trips, abandoned anon DBs still
     // get evicted on schedule. D1-only — Postgres schema cleanup is
