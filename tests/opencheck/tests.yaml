@@ -14,7 +14,14 @@
 baseUrl: "__BASE_URL__"
 modelProvider: "openai"
 model: "gemini-2.5-flash"
-sessionMode: "isolated"
+# Each test step extends the prior one (#hero-or-cmdg → #create-table-anon
+# → ... → #sign-out). With sessionMode: isolated, every test re-runs the
+# entire prerequisite chain from scratch — by #sign-out that's 8 nested
+# steps, well past the 60s timeout. `persistent` shares the browser
+# context across tests so each one only does the incremental work.
+# Trade-off: a real mid-chain failure cascades; acceptable because the
+# whole point of this flow is testing the journey end-to-end.
+sessionMode: "persistent"
 
 # Upstream incompatibility: opencheck@0.3.0 passes `--save-trace` to
 # @playwright/mcp, but that flag was removed in @playwright/mcp@0.0.69
