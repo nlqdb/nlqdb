@@ -602,12 +602,12 @@ NLQDB_BACKUP_DIR=/path/to/private/folder scripts/backup-envrc.sh
 
 ### When a credential fails verify, OR a new secret joins the stack
 
-> **Two destinations, two scripts. Both must be run on EVERY
-> rotation AND on EVERY first-time addition of a new secret.**
+> **Mirror to both destinations (GHA + Workers) on every rotation
+> and every new secret:**
 >
 > ```bash
-> ./scripts/mirror-secrets-gha.sh          # CI (used in workflows)
-> ./scripts/mirror-secrets-workers.sh remote api  # Worker runtime (used by deployed code)
+> ./scripts/mirror-secrets-all.sh
+> # or per-target: scripts/mirror-secrets-{gha,workers}.sh
 > ```
 >
 > Then verify the secret you just touched is actually present on
@@ -656,7 +656,7 @@ NLQDB_BACKUP_DIR=/path/to/private/folder scripts/backup-envrc.sh
 > 4. Add it to `scripts/mirror-secrets-workers.sh` IF the Worker
 >    reads it at runtime (most NEW ones do — anything in
 >    `apps/api/src/**` reading `c.env.X`).
-> 5. Run BOTH mirror scripts.
+> 5. Run `./scripts/mirror-secrets-all.sh`.
 > 6. Verify with both `grep` commands above.
 > 7. Wire it into `apps/api/wrangler.toml` `[vars]` block ONLY if
 >    it's non-secret; otherwise leave it out (Worker secret
