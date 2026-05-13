@@ -291,6 +291,14 @@ jobs:
       # Belt-and-suspenders for the rare case where a previous run's
       # cleanup didn't fire (runner killed before `if: always()`).
       # Free tier's 10-branch ceiling means we can't afford orphans.
+      #
+      # Idempotent curl calls (sweep GET, delete DELETE) use
+      # `--retry 3 --retry-delay 2 --retry-all-errors` to absorb
+      # transient Neon control-plane flakes. The create POST is NOT
+      # retried at the curl level — a mid-response stream drop (curl
+      # exit 56 in run 25827597094) could double-create. Any branch
+      # that was server-side-created but lost-in-transit lands here as
+      # an orphan; the >1 h sweep above cleans it on the next run.
       - name: Sweep stale ci-smoke branches (>1 h old)
         if: steps.preflight.outputs.configured == 'true'
         env:
@@ -299,7 +307,8 @@ jobs:
         run: |
           set -euo pipefail
           cutoff=$(date -u -d '1 hour ago' +%s)
-          curl -fsSL "https://console.neon.tech/api/v2/projects/${NEON_PROJECT_ID}/branches" \
+          curl -fsSL --retry 3 --retry-delay 2 --retry-all-errors \
+            "https://console.neon.tech/api/v2/projects/${NEON_PROJECT_ID}/branches" \
             -H "Authorization: Bearer ${NEON_API_KEY}" \
           | jq -r --arg cutoff "$cutoff" \
               '.branches[]
@@ -309,7 +318,7 @@ jobs:
           | while read -r id; do
               [ -z "$id" ] && continue
               echo "Deleting stale branch $id"
-              curl -fsSL -X DELETE \
+              curl -fsSL --retry 3 --retry-delay 2 --retry-all-errors -X DELETE \
                 "https://console.neon.tech/api/v2/projects/${NEON_PROJECT_ID}/branches/${id}" \
                 -H "Authorization: Bearer ${NEON_API_KEY}" > /dev/null \
                 || echo "::warning::Failed to delete stale branch $id"
@@ -324,6 +333,9 @@ jobs:
         run: |
           set -euo pipefail
           name="ci-smoke-${{ github.run_id }}-${{ github.run_attempt }}"
+          # No curl --retry here: POST is not idempotent; a retry after
+          # a mid-response stream drop would double-create. Orphans from
+          # this kind of flake are cleaned up by the >1 h sweep above.
           response=$(curl -fsSL -X POST \
             "https://console.neon.tech/api/v2/projects/${NEON_PROJECT_ID}/branches" \
             -H "Authorization: Bearer ${NEON_API_KEY}" \
@@ -341,12 +353,29 @@ jobs:
           echo "id=$id" >> "$GITHUB_OUTPUT"
           echo "uri=$uri" >> "$GITHUB_OUTPUT"
 
+      # Vitest is wrapped in a 3-attempt retry to absorb cold-compute
+      # first-query flakes on freshly-provisioned Neon endpoints and
+      # transient HTTP drops mid-test. The integration test's
+      # `beforeAll`/`afterAll` drop `test_ws6%` schemas idempotently,
+      # so a retry starts from a clean state.
       - name: Run integration smoke test
         if: steps.preflight.outputs.configured == 'true'
         working-directory: apps/api
         env:
           NEON_TEST_BRANCH_URL: ${{ steps.neon.outputs.uri }}
-        run: bunx vitest run src/db-create/neon-provision.integration.test.ts
+        run: |
+          set -uo pipefail
+          for attempt in 1 2 3; do
+            if bunx vitest run src/db-create/neon-provision.integration.test.ts; then
+              exit 0
+            fi
+            if [ "$attempt" -lt 3 ]; then
+              echo "::warning::Smoke test attempt $attempt failed; retrying in $((attempt * 5))s"
+              sleep $((attempt * 5))
+            fi
+          done
+          echo "::error::Smoke test failed after 3 attempts"
+          exit 1
 
       # `if: always()` so the branch is deleted even on test failure
       # or job cancellation — the 10-branch Free-tier ceiling makes
@@ -358,7 +387,7 @@ jobs:
           NEON_PROJECT_ID: ${{ secrets.NEON_PROJECT_ID }}
           BRANCH_ID: ${{ steps.neon.outputs.id }}
         run: |
-          curl -fsSL -X DELETE \
+          curl -fsSL --retry 3 --retry-delay 2 --retry-all-errors -X DELETE \
             "https://console.neon.tech/api/v2/projects/${NEON_PROJECT_ID}/branches/${BRANCH_ID}" \
             -H "Authorization: Bearer ${NEON_API_KEY}" > /dev/null \
             || echo "::warning::Failed to delete branch ${BRANCH_ID} — sweep step on next run will retry"

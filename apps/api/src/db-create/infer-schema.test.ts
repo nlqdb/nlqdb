@@ -178,6 +178,43 @@ describe("inferSchema", () => {
     expect(out.details.issue_count).toBeGreaterThan(0);
   });
 
+  it("coerces numeric / boolean `default` values to strings (Groq llama emits bare numbers)", async () => {
+    const ordersTable = ORDERS_PLAN.tables[0];
+    if (!ordersTable) throw new Error("fixture missing orders table");
+    const withNumericDefault = {
+      ...ORDERS_PLAN,
+      tables: [
+        {
+          ...ordersTable,
+          columns: [
+            ...ordersTable.columns,
+            {
+              name: "balance",
+              type: "numeric",
+              nullable: false,
+              default: 0,
+              description: "Starting balance.",
+            },
+            {
+              name: "is_paid",
+              type: "boolean",
+              nullable: false,
+              default: false,
+              description: "Whether the order was paid.",
+            },
+          ],
+        },
+      ],
+    };
+    const { llm } = stubLLM(planResponse(withNumericDefault as unknown as SchemaPlan));
+    const out = await inferSchema({ llm }, { goal: "anything" });
+    expect(out.ok).toBe(true);
+    if (!out.ok) return;
+    const cols = out.plan.tables[0]?.columns ?? [];
+    expect(cols.find((c) => c.name === "balance")?.default).toBe("0");
+    expect(cols.find((c) => c.name === "is_paid")?.default).toBe("false");
+  });
+
   it("returns plan_invalid when the plan omits required `metrics` array (SK-HDC-004)", async () => {
     // SK-HDC-004: metrics + dimensions are required arrays — empty
     // allowed, absent rejected. Drop `metrics` and we should fail
