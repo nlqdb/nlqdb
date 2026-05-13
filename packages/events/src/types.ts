@@ -10,7 +10,14 @@
 //
 // Convention: `name` is `<domain>.<verb_noun>` (e.g. `user.first_query`,
 // `billing.subscription_created`, `ask.completed`). Domains today:
-// `user`, `billing`, `ask`.
+// `user`, `billing`, `ask`, `feature`.
+
+// Originating surface for a request. Single source of truth for both
+// the `nlqdb.surface` OTel attribute (performance.md §3.3) and the
+// `surface` field on `feature.*` events (SK-EVENTS-010). Adding a
+// surface here is the one edit needed — every consumer reads from this
+// union.
+export type NlqSurface = "hero" | "chat" | "embed" | "mcp" | "cli";
 
 // `ask.completed` carries the anonymised fingerprint of a successful
 // `/v1/ask` resolution — the input W5's daily reshape consumes off the
@@ -42,6 +49,30 @@ export type AskCompletedEvent = {
   ts: number;
 };
 
+// `feature.requested.*` is the GLOBAL-024 demand-signal domain
+// (SK-EVENTS-010). Every "not yet" path on every surface fires one of
+// these so the §6 monetization trigger has typed signal instead of
+// guesses. `principalId` is the SHA-256-prefix anon id for anon
+// principals or the authed `userId` — same shape as the OTel
+// `nlqdb.user.id` attribute. Per-(principalId, day) dedup is applied
+// by `defaultId()` so the LogSnag 2,500/mo quota survives.
+export type FeatureRequestedDdlViaAskEvent = {
+  name: "feature.requested.ddl_via_ask";
+  principalId: string;
+  surface: NlqSurface;
+  // The sql-validate reject reason (`drop_statement`,
+  // `alter_statement`, `truncate_statement`, `grant_or_revoke`,
+  // `disallowed_verb`). Lets the sink slice "which DDL shape did the
+  // LLM produce" without re-parsing.
+  rejectReason: string;
+};
+
+export type FeatureRequestedHeavierTierEvent = {
+  name: "feature.requested.heavier_tier";
+  principalId: string;
+  surface: NlqSurface;
+};
+
 export type ProductEvent =
   | { name: "user.first_query"; userId: string; dbId: string }
   | { name: "user.registered"; userId: string; email: string }
@@ -60,7 +91,9 @@ export type ProductEvent =
       subscriptionId: string;
       priceId: string;
     }
-  | AskCompletedEvent;
+  | AskCompletedEvent
+  | FeatureRequestedDdlViaAskEvent
+  | FeatureRequestedHeavierTierEvent;
 
 // Envelope wrapping the event with producer-side metadata. The consumer
 // reads `id` for idempotency keys (passed to LogSnag) and `ts` for late-

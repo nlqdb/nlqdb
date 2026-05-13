@@ -5,6 +5,7 @@ import {
   createTinybirdAdapter,
   type Engine,
 } from "@nlqdb/db";
+import type { NlqSurface } from "@nlqdb/events";
 import { authEventsTotal, redactPii, setupTelemetry } from "@nlqdb/otel";
 import { type Span, trace } from "@opentelemetry/api";
 import { type Context, Hono } from "hono";
@@ -48,6 +49,7 @@ import {
   makeRequirePrincipal,
   type Principal,
   type RequirePrincipalVariables,
+  surfaceFromPrincipal,
 } from "./principal.ts";
 import { cryptoProvider, stripe as stripeClient } from "./stripe/client.ts";
 import { processWebhook } from "./stripe/webhook.ts";
@@ -253,8 +255,10 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
   const tracer = trace.getTracer("@nlqdb/api");
   return tracer.startActiveSpan("nlqdb.ask", async (span) => {
     const principal = c.var.principal as Principal;
+    const surface = surfaceFromPrincipal(principal);
     span.setAttribute("nlqdb.principal.kind", principal.kind);
     span.setAttribute("nlqdb.principal.id", principal.id);
+    span.setAttribute("nlqdb.surface", surface);
 
     const parsed = await parseAskBody(c);
     if (!parsed.ok) {
@@ -326,6 +330,16 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
       c.header("X-RateLimit-Reset", String(verdict.resetAt));
       if (!verdict.ok) {
         span.setAttribute("nlqdb.ask.outcome", "rate_limited_ip");
+        // SK-EVENTS-010: anon-tier rate-limit hit → demand-signal.
+        // Fire-and-forget through ctx.waitUntil so the 429 doesn't
+        // wait on the queue enqueue.
+        c.executionCtx.waitUntil(
+          buildEventEmitter(c.env.EVENTS_QUEUE).emit({
+            name: "feature.requested.heavier_tier",
+            principalId: principal.id,
+            surface,
+          }),
+        );
         span.end();
         c.header("Retry-After", String(Math.max(0, verdict.resetAt - now)));
         return c.json(
@@ -759,6 +773,7 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
               event: "error",
               data: JSON.stringify({ error: outcome.error }),
             });
+            emitFeatureSignal(c.env, c.executionCtx, principal.id, surface, outcome.error);
           } else {
             // Detach the ask.completed producer so the queue.send
             // round-trip runs after the SSE stream closes (PERFORMANCE
@@ -799,6 +814,7 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
           c.header("X-RateLimit-Reset", String(resetAt));
           c.header("Retry-After", String(Math.max(0, resetAt - now)));
         }
+        emitFeatureSignal(c.env, c.executionCtx, principal.id, surface, outcome.error);
         return c.json({ error: outcome.error }, httpStatus);
       }
       // Detach the ask.completed producer so queue.send runs in
@@ -998,6 +1014,7 @@ app.post("/v1/databases", requireSession, async (c) => {
   return tracer.startActiveSpan("nlqdb.databases.create", async (span) => {
     const session = c.var.session;
     span.setAttribute("nlqdb.user.id", session.user.id);
+    span.setAttribute("nlqdb.surface", "chat");
 
     const raw = await parseJsonBody<{ name?: unknown; goal?: unknown; engine?: unknown }>(c);
     if (!raw.ok) {
@@ -1107,6 +1124,7 @@ app.post("/v1/chat/messages", requireSession, async (c) => {
   return tracer.startActiveSpan("nlqdb.chat.turn", async (span) => {
     const session = c.var.session;
     span.setAttribute("nlqdb.user.id", session.user.id);
+    span.setAttribute("nlqdb.surface", "chat");
 
     const parsed = await parseGoalDbBody(c);
     if (!parsed.ok) {
@@ -1154,6 +1172,7 @@ app.post("/v1/chat/messages", requireSession, async (c) => {
         c.header("X-RateLimit-Reset", String(resetAt));
         c.header("Retry-After", String(Math.max(0, resetAt - now)));
       }
+      emitFeatureSignal(c.env, c.executionCtx, session.user.id, "chat", outcome.error);
       return c.json({ error: outcome.error }, httpStatus);
     }
     span.setAttribute("nlqdb.chat.outcome", "persisted");
@@ -1265,6 +1284,49 @@ function errorStatus(status: AskError["status"]): 400 | 404 | 409 | 422 | 429 | 
     case "clarify_required":
     case "schema_mismatch":
       return 409;
+  }
+}
+
+// SK-EVENTS-010 — emit the GLOBAL-024 demand-signal for the two
+// orchestrator failure shapes that map to typed `feature.*` variants.
+// Fire-and-forget through ctx.waitUntil so the 4xx isn't delayed.
+// `rate_limited` here covers the authed per-account D1 bucket trip
+// (the anon per-IP / per-device gates emit at the route top-level,
+// before orchestrateAsk runs).
+const DDL_REJECT_REASONS = new Set([
+  "drop_statement",
+  "truncate_statement",
+  "alter_statement",
+  "grant_or_revoke",
+  "disallowed_verb",
+]);
+
+function emitFeatureSignal(
+  env: Cloudflare.Env,
+  executionCtx: ExecutionContext,
+  principalId: string,
+  surface: NlqSurface,
+  error: AskError,
+): void {
+  if (error.status === "sql_rejected" && DDL_REJECT_REASONS.has(error.reason)) {
+    executionCtx.waitUntil(
+      buildEventEmitter(env.EVENTS_QUEUE).emit({
+        name: "feature.requested.ddl_via_ask",
+        principalId,
+        surface,
+        rejectReason: error.reason,
+      }),
+    );
+    return;
+  }
+  if (error.status === "rate_limited") {
+    executionCtx.waitUntil(
+      buildEventEmitter(env.EVENTS_QUEUE).emit({
+        name: "feature.requested.heavier_tier",
+        principalId,
+        surface,
+      }),
+    );
   }
 }
 

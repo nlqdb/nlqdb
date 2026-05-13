@@ -18,7 +18,14 @@
 import { type Span, SpanStatusCode, trace } from "@opentelemetry/api";
 import type { EventEnvelope, ProductEvent } from "./types.ts";
 
-export type { AskCompletedEvent, EventEnvelope, ProductEvent } from "./types.ts";
+export type {
+  AskCompletedEvent,
+  EventEnvelope,
+  FeatureRequestedDdlViaAskEvent,
+  FeatureRequestedHeavierTierEvent,
+  NlqSurface,
+  ProductEvent,
+} from "./types.ts";
 
 export interface EventEmitter {
   emit(event: ProductEvent, options?: EmitOptions): Promise<void>;
@@ -95,9 +102,21 @@ function defaultId(event: ProductEvent): string {
       // Random UUID lets the queue dedupe transport-level retries
       // without collapsing legitimate repeats at the sink.
       return `evt.${crypto.randomUUID()}`;
+    case "feature.requested.ddl_via_ask":
+    case "feature.requested.heavier_tier":
+      // SK-EVENTS-010: per-(principal, day) dedup. One demand-signal
+      // per user per day per missed feature is the unit the §6
+      // monetization trigger reasons about ("unique submissions over
+      // 30 days") — finer-grained would burn the 2,500/mo LogSnag
+      // quota without changing any decision the team makes.
+      return `${event.name}.${event.principalId}.${utcDay()}`;
     default: {
       const _exhaustive: never = event;
       return `evt.${crypto.randomUUID()}`;
     }
   }
+}
+
+function utcDay(): string {
+  return new Date().toISOString().slice(0, 10);
 }

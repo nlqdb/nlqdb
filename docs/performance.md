@@ -232,6 +232,7 @@ Always use these label keys; never invent variants like `tenant`, `tenant-id`, `
 | `route`                | Low (~20)            | `/v1/ask`, `/v1/health`, `/v1/auth/*`.             |
 | `status_class`         | 5                    | `2xx` / `3xx` / `4xx` / `5xx` / `transport` (NOT raw status). The `transport` value is reserved for fetch-throws (no HTTP status); used by the query_log failures counter (`SK-EVENTS-009`). |
 | `principal_kind`       | 2                    | `user` / `anon` — used on the `nlqdb.recent_tables.entries` gauge (`SK-ASK-012`). Derived from the principal-id prefix; never per-request. |
+| `nlqdb.surface`        | 5                    | `hero` / `chat` / `embed` / `mcp` / `cli`. Span attribute on `nlqdb.ask`, `nlqdb.chat.turn`, `nlqdb.databases.create`; also rides on `feature.*` events (`SK-EVENTS-010`). Derived once via `surfaceFromPrincipal()`. |
 
 **Cardinality rule:** total combined series < 8 k (Grafana Cloud free
 tier ceiling at 10 k, leave 2 k headroom). The above bounds are
