@@ -11,9 +11,6 @@ import {
   mapSdkError,
 } from "../src/index.ts";
 
-// Minimal stub client — every method either resolves with the given
-// value or rejects with the given error. Per-test wiring lets each
-// case express exactly what the API would say.
 function stubClient(overrides: Partial<NlqClient> = {}): NlqClient {
   const base: NlqClient = {
     ask: async () => {
@@ -69,7 +66,6 @@ describe("handleQuery", () => {
   it("surfaces requires_confirm + diff for destructive plans (SK-TRUST-001)", async () => {
     const client = stubClient({
       ask: async (req) => {
-        // Initial call has no confirm — server returns preview.
         expect(req.confirm).toBeUndefined();
         return {
           status: "ok",
@@ -197,7 +193,6 @@ describe("handleQuery", () => {
         throw new NlqdbApiError("low confidence", 422, "low_confidence", "/v1/ask", {
           status: "low_confidence",
           message: "two tables match 'users'",
-          // alternatives ride on the open-ended body shape (SK-TRUST-003).
           ...({ alternatives: ["users", "user_profiles"] } as Record<string, unknown>),
         });
       },
@@ -377,8 +372,6 @@ describe("mapSdkError", () => {
   it("returns a safe generic shape for unknown errors", () => {
     const err = mapSdkError(new Error("internal: hostname 'pg-pool-3.us-east-1.internal' refused"));
     expect(err.code).toBeTruthy();
-    // Defence against internal-detail leakage — no raw SDK message
-    // forwarded to the LLM/user.
     expect(err.message).toBe("An unexpected error occurred.");
     expect(err.action).toBeTruthy();
   });
@@ -420,7 +413,6 @@ describe("formatResult / formatQueryResult / formatError", () => {
     const formatted = formatResult({ ok: { databases: [] } });
     expect(formatted.isError).toBeUndefined();
     expect(formatted.content[0]?.type).toBe("text");
-    // Compact (no indent) keeps LLM token cost bounded.
     expect(formatted.content[0]?.text).toBe('{"databases":[]}');
     expect(formatted.structuredContent).toEqual({ databases: [] });
   });

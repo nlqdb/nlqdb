@@ -1,8 +1,3 @@
-// Public exports for testing and downstream embedding. The npm bin
-// (`bin/nlqdb-mcp.mjs`) imports `runStdio` directly; the rest are
-// here so vitest tests and (future) the hosted Worker can compose
-// the same handlers without going through stdio.
-
 export {
   createListDatabasesCache,
   createServer,

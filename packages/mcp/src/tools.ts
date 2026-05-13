@@ -1,24 +1,6 @@
-// Tool contracts + handlers for the MCP server. Transport-agnostic
-// per `SK-MCP-007` — the same handlers run under the local-stdio
-// transport (slice 2 of `SK-MCP-010`) and the hosted Streamable-HTTP
-// transport (slice 3). Three tools per `SK-MCP-002`; no
-// `nlqdb_create_database` (the create path is materialised by
-// `nlqdb_query` on first reference).
-//
-// Auth posture for slice 2:
-//   - `nlqdb_query` works against `pk_live_*` (pinned to one DB) and
-//     `sk_live_*` / `sk_mcp_*` (when slice 1 lands).
-//   - `nlqdb_list_databases` / `nlqdb_describe` require user-scoped
-//     auth (`sk_live_*` or `sk_mcp_*`). Until slice 1 ships they
-//     surface a typed `auth_required` error in the `SK-MCP-006`
-//     shape — the host LLM gets one sentence + one next action.
-
 import type { AskDiff, CandidateDb, NlqClient, NlqdbApiError } from "@nlqdb/sdk";
 import { z } from "zod";
 
-// MCP tool-error shape (SK-MCP-006). One sentence + one next action,
-// plus an optional `details` slot for structured payloads (e.g.
-// `ambiguous_db` candidate list) the agent can act on.
 export type ToolError = {
   code: string;
   message: string;
@@ -28,18 +10,11 @@ export type ToolError = {
 
 export type ToolResult<T> = { ok: T } | { err: ToolError };
 
-// Optional plumbing for handler invocation: cancellation signal +
-// a listDatabases memo so `handleDescribe` doesn't refetch on every
-// call within one tool-handler context (`SK-MCP-010` perf note).
 export type HandlerContext = {
   signal?: AbortSignal;
-  // When present, used in place of `client.listDatabases()` for the
-  // describe path. The server attaches a per-isolate TTL cache.
   listDatabasesCached?: () => Promise<{ databases: ListDatabaseRow[] }>;
 };
 
-// Row shape — mirrors the SDK's `DatabaseSummary` (without the
-// `pkLive` field, which is sensitive and not relevant to an agent).
 type ListDatabaseRow = {
   id: string;
   slug: string;
@@ -50,17 +25,12 @@ type ListDatabaseRow = {
   createdAt: number;
 };
 
-// Raw input shapes registered with the MCP SDK (`ZodRawShapeCompat`).
-
 export const queryInputShape = {
   db: z
     .string()
     .min(1)
     .describe("Database id or slug. Ignored when authenticated with a pk_live_ key."),
   q: z.string().min(1).describe("The natural-language goal — what you want from the database."),
-  // SK-TRUST-001: destructive plans (INSERT/UPDATE/DELETE/DDL)
-  // return a diff preview. The agent re-calls with `confirm: true`
-  // to commit. Omit on read queries.
   confirm: z
     .boolean()
     .optional()
@@ -80,10 +50,6 @@ export const describeInputShape = {
 };
 
 export type DescribeInput = z.infer<z.ZodObject<typeof describeInputShape>>;
-
-// Output schemas. Hosts use these to know what to do with the
-// `structuredContent` slot; agents use the descriptions to know how
-// to reason about the response.
 
 export const queryOutputShape = {
   rows: z.array(z.record(z.string(), z.unknown())).describe("Result rows; may be empty."),
@@ -105,7 +71,6 @@ export const queryOutputShape = {
       cache_hit: z.boolean(),
     })
     .describe("Compiled SQL and plan metadata (SK-TRUST-002)."),
-  // SK-TRUST-001 — destructive plans return these instead of rows.
   requires_confirm: z
     .boolean()
     .optional()
@@ -121,8 +86,6 @@ export const queryOutputShape = {
     })
     .optional()
     .describe("Diff preview body. Only present when requires_confirm is true."),
-  // SK-HDC-001 — when the query materialised a new DB on first
-  // reference (no separate create tool per SK-MCP-002).
   db_created: z
     .boolean()
     .optional()
@@ -158,11 +121,6 @@ export const describeOutputShape = {
 
 export type DescribeOutput = z.infer<z.ZodObject<typeof describeOutputShape>>;
 
-// `nlqdb_query` — the only tool the agent prompt needs to know
-// about. The API materialises a new DB on first reference (no
-// `nlqdb_create_database` per SK-MCP-002); destructive plans return
-// `requires_confirm: true` + a diff (SK-TRUST-001) — the agent
-// shows the diff and re-calls with `confirm: true`.
 export async function handleQuery(
   client: NlqClient,
   input: QueryInput,
@@ -177,8 +135,6 @@ export async function handleQuery(
     const response = await client.ask(askReq, askOpts);
 
     if (!("status" in response)) {
-      // SK-HDC-001 — first-reference create. Surfaced as ok so the
-      // agent gets the new dbId in one turn (no error-state confusion).
       return {
         ok: {
           rows: [],
@@ -191,8 +147,6 @@ export async function handleQuery(
       };
     }
 
-    // SK-TRUST-001 — destructive plan preview path. Returns the diff
-    // for the agent / user to review; commit requires confirm: true.
     if (response.requires_confirm) {
       return {
         ok: {
@@ -211,9 +165,6 @@ export async function handleQuery(
   }
 }
 
-// `nlqdb_list_databases` — enumerates the user's databases. Requires
-// user-scoped auth; surfaces a typed `auth_required` until slice 1
-// ships sk_live_/sk_mcp_ keys (SK-MCP-010).
 export async function handleListDatabases(
   client: NlqClient,
   ctx: HandlerContext = {},
@@ -239,10 +190,6 @@ export async function handleListDatabases(
   }
 }
 
-// `nlqdb_describe` — schema preview for one database. Uses the
-// `listDatabasesCached` memo (per-isolate TTL ~5 s) to keep multi-
-// describe agent loops cheap. When `/v1/databases/:id` lands,
-// replace the cache lookup with a direct fetch.
 export async function handleDescribe(
   client: NlqClient,
   input: DescribeInput,
@@ -278,10 +225,6 @@ export async function handleDescribe(
   }
 }
 
-// Narrow `Trace` to the fields the agent benefits from — `sql`,
-// `confidence`, `cache_hit`. The full SK-TRUST-002 trace block has
-// more (plan_id, model) but those bloat token cost without helping
-// the agent reason.
 function traceOf(trace: { sql: string; confidence: number; cache_hit: boolean }) {
   return { sql: trace.sql, confidence: trace.confidence, cache_hit: trace.cache_hit };
 }
@@ -303,10 +246,7 @@ function buildQueryOutput(
   return { rows, rowCount, trace: traceOf(trace) };
 }
 
-// Maps SDK errors into the `SK-MCP-006` tool-error shape. Known codes
-// get a tailored next-action; the catch-all reports only the code so
-// raw SDK strings don't leak to the host LLM (mild defence against
-// internal-detail leakage).
+// Strips raw SDK strings on the unknown bucket so internal details don't reach the host LLM.
 export function mapSdkError(err: unknown): ToolError {
   const apiErr = err as NlqdbApiError | undefined;
   const code = apiErr?.code ?? "unknown_error";
@@ -370,9 +310,6 @@ export function mapSdkError(err: unknown): ToolError {
 
 function readAlternatives(body: NlqdbApiError["body"]): Record<string, unknown> | undefined {
   if (!body) return undefined;
-  // SK-TRUST-003 alternatives ride on the open-ended ApiErrorBody —
-  // SDK types it as a Record-ish shape. Forward verbatim so the
-  // agent can pick one.
   const alt = (body as unknown as { alternatives?: unknown }).alternatives;
   if (Array.isArray(alt) && alt.length > 0) return { alternatives: alt };
   return undefined;

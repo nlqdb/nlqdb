@@ -1,11 +1,3 @@
-// MCP server factory. Registers the three `SK-MCP-002` tools against
-// a `NlqClient` and returns an `McpServer` ready to attach to a
-// transport (stdio in slice 2; Streamable-HTTP in slice 3).
-//
-// `SK-MCP-007`: the same `handleTool` core feeds both transports —
-// no transport-specific logic lives in this file. Transport modules
-// (`stdio.ts`, future `streamable-http.ts`) only wire I/O.
-
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { NlqClient } from "@nlqdb/sdk";
 import { trace } from "@opentelemetry/api";
@@ -29,18 +21,9 @@ import {
 
 export type ServerOptions = {
   client: NlqClient;
-  // Server identity reported in MCP `initialize`. Default name is the
-  // npm package name; default version is "0.0.0" only as a fallback —
-  // production callers (`stdio.ts`, slice-3 worker) pass the real
-  // `package.json#version`.
   name?: string;
   version?: string;
-  // Cap rows returned in a single `nlqdb_query` response to bound LLM
-  // context cost. Default 200; surface the full count via
-  // `totalRowCount` + `rowsTruncated: true`.
   maxRowsInResponse?: number;
-  // `handleDescribe` memoises listDatabases by default to avoid an
-  // O(N-describes) hit on `/v1/databases`. TTL in ms; default 5000.
   listDatabasesCacheTtlMs?: number;
 };
 
@@ -59,10 +42,6 @@ export function createServer(opts: ServerOptions): McpServer {
   } = opts;
 
   const server = new McpServer({ name, version });
-
-  // Per-server isolate cache for `listDatabases`. Keeps a multi-
-  // `nlqdb_describe` agent loop from re-hitting the API on every
-  // call (SK-MCP-009: low-RPS, but the API budget is finite).
   const listCache = createListDatabasesCache(client, listDatabasesCacheTtlMs);
 
   server.registerTool(
@@ -123,10 +102,7 @@ export function createServer(opts: ServerOptions): McpServer {
   return server;
 }
 
-// One OTel span per tool call (GLOBAL-014). Records `tool.name`,
-// `duration_ms`, and an `error.code` on failure. No-op when no
-// exporter is registered (local-stdio default; slice-3 Worker
-// supplies one).
+// GLOBAL-014: one span per external-call boundary; no-op when no exporter is registered.
 async function runTool<T>(
   toolName: string,
   signal: AbortSignal | undefined,
@@ -148,10 +124,6 @@ async function runTool<T>(
   });
 }
 
-// `SK-MCP-006`: a typed tool error surfaces to the host LLM as one
-// sentence + one next action so the agent can act on it. Success
-// payloads ride `structuredContent` (and a JSON text mirror so hosts
-// that don't render structured content still see something useful).
 export function formatResult<T>(result: ToolResult<T>): {
   content: { type: "text"; text: string }[];
   structuredContent?: Record<string, unknown>;
@@ -166,10 +138,6 @@ export function formatResult<T>(result: ToolResult<T>): {
   };
 }
 
-// `nlqdb_query` may emit very large `rows` arrays; cap at
-// `maxRowsInResponse` to bound LLM context cost. The full count
-// stays on `totalRowCount` + `rowsTruncated: true` so the agent
-// knows to refine the query or page.
 export function formatQueryResult(
   result: ToolResult<QueryOutput>,
   maxRows: number,
@@ -204,8 +172,6 @@ export function formatError(err: ToolError): {
   content: { type: "text"; text: string }[];
   isError: true;
 } {
-  // `\n\n→ ` separator renders cleanly across hosts; the LLM also
-  // parses "→" as a directive consistently.
   return {
     isError: true,
     content: [
@@ -217,12 +183,8 @@ export function formatError(err: ToolError): {
   };
 }
 
-// Tiny in-process TTL cache for `listDatabases`. Reused across the
-// `nlqdb_describe` tool invocations in one server-isolate; resets
-// when the process is restarted. Exposed for testing.
 export type ListDatabasesCache = {
   get: () => Promise<{ databases: Awaited<ReturnType<NlqClient["listDatabases"]>>["databases"] }>;
-  // Force refresh (test helper).
   invalidate: () => void;
 };
 
