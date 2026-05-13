@@ -1,0 +1,251 @@
+# nlqdb — daily E2E opencheck against an ephemeral preview environment.
+#
+# Trigger: cron at 07:00 UTC daily + manual `workflow_dispatch`.
+#
+# Why ephemeral preview (vs. long-lived staging or canary):
+# Same pattern as `preview-app.yml` — per-run Neon branch + Workers
+# Versions upload with MOCK_IDP=1, MOCK_STRIPE=1 under a fixed
+# `e2e-daily` preview alias. Always-fresh state, no drift,
+# `MOCK_IDP=1` removes the OAuth round-trip so opencheck can sign in
+# with the built-in form (`SK-AUTH-018`). Cleaned up at the end of
+# every run so the Neon Free-tier branch ceiling stays clear.
+#
+# `should-run` gate: cron skips when there were no main commits in
+# the last 24h, since the previous day's pass is still valid.
+# `workflow_dispatch` always runs (manual = "I want to check now").
+#
+# `concurrency: cancel-in-progress: false` — if a manual dispatch
+# overlaps an in-flight cron run, queue rather than cancel.
+# Cancelling mid-run would leave a Neon branch + Workers version
+# orphaned (cleanup only fires at the end).
+
+name: E2E (opencheck — daily)
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 7 * * *"
+
+concurrency:
+  group: e2e-opencheck
+  cancel-in-progress: false
+
+# SK-CIPERM-001 — default-deny at the workflow root; each job grants
+# its own minimum.
+permissions: {}
+
+# Fixed names so cleanup can find them regardless of which step
+# crashed mid-run. Per-run uniqueness comes from `github.run_id` only
+# where strictly needed (artifact name); the staging surface itself
+# is single-tenant ("there is one daily E2E env").
+env:
+  E2E_NEON_BRANCH: e2e-daily
+  E2E_PREVIEW_ALIAS: e2e-daily
+
+jobs:
+  should-run:
+    name: Detect changes (last 24h)
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    outputs:
+      run: ${{ steps.check.outputs.run }}
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          # 100 commits is enough to see the last 24h of activity on
+          # an active repo; cheaper than a full clone for a 2-min
+          # gate step.
+          fetch-depth: 100
+
+      - id: check
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          set -euo pipefail
+          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            echo "manual dispatch — running"
+            echo "run=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          count=$(git log --since='24 hours ago' --oneline | wc -l)
+          if [ "$count" -gt 0 ]; then
+            echo "$count commits in last 24h — running"
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "no commits in last 24h — skipping the run"
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  deploy-staging:
+    name: Spin up ephemeral preview
+    needs: should-run
+    if: needs.should-run.outputs.run == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    outputs:
+      base_url: ${{ steps.url.outputs.base_url }}
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - uses: ./.github/actions/setup
+
+      - name: Preflight — required secrets present
+        env:
+          NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
+          NEON_PROJECT_ID: ${{ secrets.NEON_PROJECT_ID }}
+          PREVIEW_BETTER_AUTH_SECRET: ${{ secrets.PREVIEW_BETTER_AUTH_SECRET }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          set -euo pipefail
+          missing=()
+          [ -n "${NEON_API_KEY:-}" ] || missing+=(NEON_API_KEY)
+          [ -n "${NEON_PROJECT_ID:-}" ] || missing+=(NEON_PROJECT_ID)
+          [ -n "${PREVIEW_BETTER_AUTH_SECRET:-}" ] || missing+=(PREVIEW_BETTER_AUTH_SECRET)
+          [ -n "${CLOUDFLARE_API_TOKEN:-}" ] || missing+=(CLOUDFLARE_API_TOKEN)
+          [ -n "${CLOUDFLARE_ACCOUNT_ID:-}" ] || missing+=(CLOUDFLARE_ACCOUNT_ID)
+          [ -n "${GEMINI_API_KEY:-}" ] || missing+=(GEMINI_API_KEY)
+          if [ ${#missing[@]} -ne 0 ]; then
+            echo "::error::missing required secrets: ${missing[*]}"
+            exit 1
+          fi
+
+      # `apps/api`'s `[assets]` binding points at `../web/dist`
+      # (SK-AUTH-016) — build web before uploading the merged Worker.
+      - name: Build apps/web
+        working-directory: apps/web
+        run: bun run build
+
+      # Mock IdP override — Workers Static Assets serves matching
+      # files BEFORE the fetch handler. Without this, the real
+      # `/auth/sign-in` page overshadows the mock-IdP route.
+      - name: Strip real sign-in page (mock-IdP override)
+        run: rm -rf apps/web/dist/auth/sign-in
+
+      # Idempotent recreate: the fixed `e2e-daily` branch name means
+      # a re-run finds a stale branch. Delete then recreate for fresh
+      # credentials (Neon only returns the connection URI on create,
+      # not on lookup).
+      - name: Recreate Neon branch
+        id: neon
+        env:
+          NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
+          NEON_PROJECT_ID: ${{ secrets.NEON_PROJECT_ID }}
+        run: |
+          set -euo pipefail
+          existing=$(curl -fsSL \
+            "https://console.neon.tech/api/v2/projects/${NEON_PROJECT_ID}/branches" \
+            -H "Authorization: Bearer ${NEON_API_KEY}" \
+            | jq -r ".branches[] | select(.name == \"${E2E_NEON_BRANCH}\") | .id")
+          if [ -n "$existing" ]; then
+            echo "deleting stale ${E2E_NEON_BRANCH} branch (${existing})"
+            curl -fsSL -X DELETE \
+              "https://console.neon.tech/api/v2/projects/${NEON_PROJECT_ID}/branches/${existing}" \
+              -H "Authorization: Bearer ${NEON_API_KEY}" > /dev/null
+          fi
+          response=$(curl -fsSL -X POST \
+            "https://console.neon.tech/api/v2/projects/${NEON_PROJECT_ID}/branches" \
+            -H "Authorization: Bearer ${NEON_API_KEY}" \
+            -H "Content-Type: application/json" \
+            -d "{\"branch\": {\"name\": \"${E2E_NEON_BRANCH}\"}, \"endpoints\": [{\"type\": \"read_write\"}]}")
+          db_url=$(echo "$response" | jq -r '.connection_uris[0].connection_uri // empty')
+          if [ -z "$db_url" ]; then
+            echo "::error::Neon API did not return connection_uris[0].connection_uri"
+            echo "$response" | jq .
+            exit 1
+          fi
+          echo "::add-mask::$db_url"
+          echo "database_url=$db_url" >> "$GITHUB_OUTPUT"
+
+      # Mirror `preview-app.yml`'s `--var` block. NODE_ENV=preview
+      # gates Better Auth's dev-creds path (SK-AUTH-008 / SK-AUTH-017),
+      # MOCK_IDP=1 enables /auth/sign-in form, MOCK_STRIPE=1 silences
+      # the billing webhook leg, BETTER_AUTH_URL pins cookie scope.
+      - name: Upload preview version
+        id: deploy
+        working-directory: apps/api
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          WRANGLER_OUTPUT_FILE_DIRECTORY: ${{ github.workspace }}/wrangler-out
+          DATABASE_URL: ${{ steps.neon.outputs.database_url }}
+          BETTER_AUTH_SECRET: ${{ secrets.PREVIEW_BETTER_AUTH_SECRET }}
+          PREVIEW_BASE_URL: "https://${{ env.E2E_PREVIEW_ALIAS }}-nlqdb-api.omer-hochman.workers.dev"
+        run: |
+          set -euo pipefail
+          mkdir -p "$WRANGLER_OUTPUT_FILE_DIRECTORY"
+          bunx wrangler versions upload \
+            --message "E2E daily @ ${{ github.sha }}" \
+            --preview-alias "${E2E_PREVIEW_ALIAS}" \
+            --var "NODE_ENV:preview" \
+            --var "MOCK_IDP:1" \
+            --var "MOCK_STRIPE:1" \
+            --var "BETTER_AUTH_URL:${PREVIEW_BASE_URL}" \
+            --var "MAGIC_LINK_WEB_ORIGIN:${PREVIEW_BASE_URL}" \
+            --var "DATABASE_URL:${DATABASE_URL}" \
+            --var "BETTER_AUTH_SECRET:${BETTER_AUTH_SECRET}"
+
+      - name: Extract preview URL
+        env:
+          WRANGLER_OUTPUT_FILE_DIRECTORY: ${{ github.workspace }}/wrangler-out
+          CF_WORKERS_SUBDOMAIN: omer-hochman
+        run: sh "$GITHUB_WORKSPACE/scripts/extract-wrangler-preview-url.sh"
+
+      - id: url
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -z "${PREVIEW_URL:-}" ]; then
+            echo "::error::no preview URL captured from wrangler output"
+            exit 1
+          fi
+          echo "captured base_url=$PREVIEW_URL"
+          echo "base_url=$PREVIEW_URL" >> "$GITHUB_OUTPUT"
+
+  opencheck:
+    name: Run E2E
+    needs: deploy-staging
+    uses: ./.github/workflows/_e2e-opencheck.yml
+    with:
+      base_url: ${{ needs.deploy-staging.outputs.base_url }}
+    # Explicit secrets pass-through (not `secrets: inherit`) so the
+    # reusable workflow's surface is auditable: only GEMINI_API_KEY
+    # crosses the boundary.
+    secrets:
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+
+  cleanup:
+    name: Delete Neon branch
+    needs: [deploy-staging, opencheck]
+    # `if: always()` so a failed opencheck run still triggers cleanup
+    # — Neon Free's 10-branch ceiling makes orphans expensive. Skip
+    # only if staging never came up (nothing to delete).
+    if: always() && needs.deploy-staging.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    permissions: {}
+    env:
+      NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
+      NEON_PROJECT_ID: ${{ secrets.NEON_PROJECT_ID }}
+    steps:
+      - name: Delete branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          branches=$(curl -fsSL \
+            "https://console.neon.tech/api/v2/projects/${NEON_PROJECT_ID}/branches" \
+            -H "Authorization: Bearer ${NEON_API_KEY}")
+          branch_id=$(echo "$branches" | jq -r ".branches[] | select(.name == \"${E2E_NEON_BRANCH}\") | .id")
+          if [ -z "$branch_id" ]; then
+            echo "no branch named ${E2E_NEON_BRANCH} — nothing to clean up"
+            exit 0
+          fi
+          curl -fsSL -X DELETE \
+            "https://console.neon.tech/api/v2/projects/${NEON_PROJECT_ID}/branches/${branch_id}" \
+            -H "Authorization: Bearer ${NEON_API_KEY}" > /dev/null
+          echo "deleted Neon branch ${branch_id} (${E2E_NEON_BRANCH})"
