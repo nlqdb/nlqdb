@@ -23,7 +23,12 @@ import { auth } from "../auth.ts";
 import { findLatestForEmail } from "./mock-email-sink.ts";
 
 const DEFAULT_MOCK_EMAIL = "test@example.com";
-const MOCK_CALLBACK_PATH = "/app";
+// SK-ANON-014 — route mock sign-ins through `/auth/post-signin` so the
+// after-hook-adopted dbId surfaces via the same `?db=<id>` pin as
+// real (magic-link / OAuth) sign-ins. Without this the mock flow
+// lands directly on `/app` and the user sees the rail's newest-DB
+// heuristic flash instead.
+const MOCK_CALLBACK_PATH = "/auth/post-signin?next=%2Fapp";
 
 // Side-channel for the verify URL. The `sendMagicLink` callback and
 // `handleMockSignIn` execute in the same Worker request — we capture
@@ -156,19 +161,9 @@ button { padding: 0.6rem 1rem; background: #c6f432; border: 2px solid #0b0f0a; f
       // best-effort — fall through to the form.
     }
     if (!hasSession) return;
-    const anon = readAnonBearer();
-    if (anon) {
-      try {
-        await fetch(apiBase + "/api/auth/anon-adopt-now", {
-          method: "POST",
-          credentials: "include",
-          headers: { "x-anon-bearer": anon },
-        });
-      } catch {
-        // best-effort — adoption misses but the redirect proceeds.
-      }
-    }
-    location.replace("/app");
+    // SK-ANON-014: route through post-signin so the adopted dbId is
+    // pinned via ?db=<id> for ChatPanel's synchronous mount.
+    location.replace("/auth/post-signin?next=" + encodeURIComponent("/app"));
   })();
 
   let stashed = false;

@@ -1300,7 +1300,10 @@ app.post("/v1/anon/adopt", requireSession, async (c) => {
       result.reason === "invalid_token" ? 400 : result.reason === "token_taken" ? 409 : 500;
     return c.json({ error: { status: publicStatus } }, httpStatus);
   }
-  return c.json({ adopted: result.adopted });
+  // SK-ANON-014 — `dbId` echoes the adopted DB so callers can pin it
+  // synchronously (e.g. the post-signin landing appends `?db=<id>`).
+  // Null when the anon DB was already evicted by the sweep job.
+  return c.json({ adopted: result.adopted, dbId: result.dbId });
 });
 
 app.get("/v1/chat/messages", requireSession, async (c) => {
@@ -1795,7 +1798,9 @@ app.post("/api/auth/anon-adopt-now", requireSession, async (c) => {
       const result = await recordAnonAdoption(c.env.DB, session.user.id, bearer);
       if (result.ok) {
         span.setAttribute("nlqdb.anon.adopt.outcome", result.adopted ? "adopted" : "replay");
-        return c.json({ adopted: result.adopted });
+        // SK-ANON-014 — surface the adopted dbId so `/auth/post-signin`
+        // can pin it via `?db=<id>` on the redirect to `/app`.
+        return c.json({ adopted: result.adopted, dbId: result.dbId });
       }
       span.setAttribute("nlqdb.anon.adopt.outcome", result.reason);
       const httpStatus =
