@@ -10,7 +10,7 @@ when-to-load:
 # Feature: Web App
 
 **One-liner:** Marketing + product web app — onboarding, anonymous-mode default, demo dataset.
-**Status:** partial (Phase 1.5 — Phase 1 surfaces shipped; remaining = GLOBAL-024 "notify me" CTA + queued wishlist, tracked in `events-pipeline/FEATURE.md`).
+**Status:** partial (Phase 1.5 — Phase 1 surfaces shipped; GLOBAL-024 "notify me" CTA + queued wishlist landed via `SK-EVENTS-011` (see `events-pipeline/FEATURE.md`); the `NotifyPaidCta` host lives in `CreateForm.tsx` and the wishlist fanout in `CodePanel.astro`).
 **Owners (code):** `apps/web/**`
 **Cross-refs:** docs/architecture.md §3.1 (marketing site) · docs/architecture.md §3.2 (platform web app) · docs/runbook.md §10 (P1, P3, P5) · docs/phase-plan.md §2 (Phase 1 web slices)
 

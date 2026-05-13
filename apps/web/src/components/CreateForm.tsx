@@ -17,7 +17,14 @@
 // up the real widget when it ships.
 
 import { useEffect, useId, useState } from "react";
-import { type CreateError, type CreateResult, type CreateRow, postAskCreate } from "../lib/api";
+import {
+  type CreateError,
+  type CreateResult,
+  type CreateRow,
+  type NotifyPaidCta as NotifyPaidCtaKind,
+  postAskCreate,
+  postNotifyPaid,
+} from "../lib/api";
 import {
   appendHistory,
   clearDraft,
@@ -126,6 +133,9 @@ export default function CreateForm({ apiBase }: CreateFormProps) {
       <p className="createform__lede">
         Anonymous — no sign-in. Your DB lives 72h; sign in to keep it.
       </p>
+      <div className="createform__notify">
+        <NotifyPaidCta apiBase={apiBase} cta="anon_warning" />
+      </div>
 
       <form
         className="createform__form"
@@ -166,18 +176,28 @@ export default function CreateForm({ apiBase }: CreateFormProps) {
           )}
         </button>
         {error && (
-          <p className="createform__error" role="alert">
-            {error}
-          </p>
+          <div className="createform__error-wrap" role="alert">
+            <p className="createform__error">{error}</p>
+            {isRateLimitedError(error) && <NotifyPaidCta apiBase={apiBase} cta="rate_limit" />}
+          </div>
         )}
       </form>
 
-      {result && <CreateResultView result={result} />}
+      {result && <CreateResultView result={result} apiBase={apiBase} />}
     </section>
   );
 }
 
-function CreateResultView({ result }: { result: CreateResult }) {
+// The `error` field in state is the user-facing string returned by
+// `messageFor()`; the rate-limit branch is the only one that produces
+// a "Slow down…" prefix. Matching on the prefix keeps the CTA scoped
+// to the documented surface (per `phase-plan.md §3`) without threading
+// the `CreateError` discriminator through render.
+function isRateLimitedError(message: string): boolean {
+  return message.startsWith("Slow down");
+}
+
+function CreateResultView({ result, apiBase }: { result: CreateResult; apiBase: string }) {
   const grouped = groupByTable(result.sampleRows);
   return (
     <section className="createresult" aria-label="Created database">
@@ -193,6 +213,9 @@ function CreateResultView({ result }: { result: CreateResult }) {
       {grouped.map((tbl) => (
         <SampleTable key={tbl.table} table={tbl.table} rows={tbl.rows} />
       ))}
+      <div className="createresult__notify">
+        <NotifyPaidCta apiBase={apiBase} cta="db_create_success" />
+      </div>
     </section>
   );
 }
@@ -279,4 +302,30 @@ function messageFor(error: CreateError): string {
     case "server_error":
       return "Couldn't create the DB — try again.";
   }
+}
+
+// SK-EVENTS-011 — "Notify me when paid launches" CTA. The button posts
+// to /v1/events/notify-paid and self-disables on click so the same
+// surface doesn't double-emit within a session. Cross-session dedup is
+// enforced by `defaultId()` at the producer layer (per-principal-per-
+// cta-per-day), so a reload that re-renders the button is safe — the
+// LogSnag sink collapses repeats at the envelope id.
+function NotifyPaidCta({ apiBase, cta }: { apiBase: string; cta: NotifyPaidCtaKind }) {
+  const [clicked, setClicked] = useState(false);
+  function onClick() {
+    setClicked(true);
+    void postNotifyPaid(apiBase, cta);
+  }
+  if (clicked) {
+    return (
+      <p className="notify-paid notify-paid--done" role="status">
+        Thanks — we'll let you know.
+      </p>
+    );
+  }
+  return (
+    <button type="button" className="btn btn--ghost notify-paid__btn" onClick={onClick}>
+      Notify me when paid launches
+    </button>
+  );
 }

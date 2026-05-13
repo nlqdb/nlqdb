@@ -106,6 +106,51 @@ describe("makeQueueEmitter", () => {
     expect(queue.sent[1]?.id).toBe(`feature.requested.heavier_tier.u_1.${today}`);
   });
 
+  it("keys feature.requested.notify_paid by (name, principalId, cta, utcDay) so surface clicks stay distinct (SK-EVENTS-011)", async () => {
+    const queue = makeFakeQueue();
+    const emitter = makeQueueEmitter(queue);
+
+    await emitter.emit({
+      name: "feature.requested.notify_paid",
+      principalId: "anon:abc",
+      surface: "hero",
+      cta: "db_create_success",
+    });
+    await emitter.emit({
+      name: "feature.requested.notify_paid",
+      principalId: "anon:abc",
+      surface: "hero",
+      cta: "rate_limit",
+    });
+
+    const today = new Date().toISOString().slice(0, 10);
+    expect(queue.sent[0]?.id).toBe(
+      `feature.requested.notify_paid.anon:abc.db_create_success.${today}`,
+    );
+    expect(queue.sent[1]?.id).toBe(`feature.requested.notify_paid.anon:abc.rate_limit.${today}`);
+    expect(queue.sent[0]?.id).not.toBe(queue.sent[1]?.id);
+  });
+
+  it("keys home.surface_wishlist by (name, principalId, surface, utcDay) so VSCode + Slack stay distinct (SK-EVENTS-011)", async () => {
+    const queue = makeFakeQueue();
+    const emitter = makeQueueEmitter(queue);
+
+    await emitter.emit({
+      name: "home.surface_wishlist",
+      principalId: "wl:abcd1234",
+      surface: "vscode",
+    });
+    await emitter.emit({
+      name: "home.surface_wishlist",
+      principalId: "wl:abcd1234",
+      surface: "slack",
+    });
+
+    const today = new Date().toISOString().slice(0, 10);
+    expect(queue.sent[0]?.id).toBe(`home.surface_wishlist.wl:abcd1234.vscode.${today}`);
+    expect(queue.sent[1]?.id).toBe(`home.surface_wishlist.wl:abcd1234.slack.${today}`);
+  });
+
   it("swallows queue.send failures (emit is non-fatal)", async () => {
     const queue = makeFakeQueue();
     queue.failNext = new Error("queue full");

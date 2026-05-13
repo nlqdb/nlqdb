@@ -86,6 +86,39 @@ describe("buildPayload", () => {
     });
   });
 
+  it("maps feature.requested.notify_paid onto the demand-signal channel with cta tag (SK-EVENTS-011)", () => {
+    const out = buildPayload("nlqdb", {
+      name: "feature.requested.notify_paid",
+      principalId: "anon:abc",
+      surface: "hero",
+      cta: "db_create_success",
+    });
+    expect(out).toMatchObject({
+      project: "nlqdb",
+      channel: "demand-signal",
+      event: "Notify-me on paid launch",
+      notify: true,
+      user_id: "anon:abc",
+      tags: { surface: "hero", cta: "db_create_success" },
+    });
+  });
+
+  it("maps home.surface_wishlist onto the demand-signal channel with surface tag (SK-EVENTS-011)", () => {
+    const out = buildPayload("nlqdb", {
+      name: "home.surface_wishlist",
+      principalId: "wl:abcd1234",
+      surface: "vscode",
+    });
+    expect(out).toMatchObject({
+      project: "nlqdb",
+      channel: "demand-signal",
+      event: "Wishlist click",
+      notify: false,
+      user_id: "wl:abcd1234",
+      tags: { surface: "vscode" },
+    });
+  });
+
   it("maps billing.subscription_canceled into the LogSnag shape", () => {
     const out = buildPayload("nlqdb", {
       name: "billing.subscription_canceled",

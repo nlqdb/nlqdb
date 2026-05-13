@@ -67,13 +67,13 @@ when-to-load:
 
 ### SK-EVENTS-005 — Unconfigured sink ack-and-drops; never blocks delivery to other sinks
 
-- **Decision:** When a sink's required env vars are absent (`LOGSNAG_TOKEN` / `LOGSNAG_PROJECT` for LogSnag), the consumer reaches a no-op `return` and `msg.ack()`s the message. It does not throw, retry, or block any other sink. This is intentional dev / CI behaviour: `wrangler dev` without secrets ack-drops every message, no-op verified by unit test.
+- **Decision:** When a sink's required env vars are absent (`LOGSNAG_TOKEN` / `LOGSNAG_PROJECT`), the consumer reaches a no-op `return` and `msg.ack()`s. It does not throw, retry, or block other sinks. Intentional dev / CI behaviour: `wrangler dev` without secrets ack-drops every message.
 - **Core value:** Effortless UX, Bullet-proof
-- **Why:** Throwing on missing config piles up retries forever and exhausts queue ops budget. Adding a sink shouldn't be able to break delivery to existing sinks (especially during a partial rollout where a new secret hasn't been mirrored yet). The OTel `nlqdb.events.dispatch` span on the parent already records the event id — operators missing config find dropped events via traces, not via crashed Workers.
-- **Consequence in code:** Each sink in `sendToSinks()` is gated on its own env-var check (`if (!env.X || !env.Y) return`). Adding a new sink requires (a) the env-gate, (b) entry in `apps/events-worker/.envrc` example, (c) entry in `scripts/mirror-secrets-workers.sh`'s `SECRETS=` array, (d) entry in `apps/events-worker/src/env.d.ts`. The four-place sync is documented in `apps/events-worker/README.md` "Adding a new sink".
+- **Why:** Throwing on missing config piles up retries forever and exhausts the queue ops budget. Adding a sink must not break delivery to existing sinks (especially during a partial rollout where a new secret hasn't been mirrored). The OTel `nlqdb.events.dispatch` span already records the event id — operators find dropped events via traces, not via crashed Workers.
+- **Consequence in code:** Each sink is env-gated (`if (!env.X || !env.Y) return`). Adding a sink requires a four-place sync: env-gate + `apps/events-worker/.envrc` + `scripts/mirror-secrets-workers.sh` SECRETS array + `apps/events-worker/src/env.d.ts`. Documented in `apps/events-worker/README.md` "Adding a new sink".
 - **Alternatives rejected:**
   - Throw on missing config and rely on Cloudflare retry — burns the 10K/day queue ops budget within minutes of a config drift.
-  - Crash-fast on the first batch — silently drops every event, but only after retries exhaust; same end result, longer delay, more noise.
+  - Crash-fast on first batch — same end result after retries exhaust, longer delay, more noise.
 
 ### SK-EVENTS-006 — Canonical event-name schema: `<domain>.<verb_noun>`, snake_dot, lowercase
 
@@ -87,41 +87,41 @@ when-to-load:
 
 ### SK-EVENTS-007 — PostHog as a future second sink, gated on a real cohort question
 
-- **Decision:** A second sink — PostHog Cloud — is held in reserve. Wiring is deliberately deferred until a real cohort / funnel / retention question lands that SQL on D1/Neon can't answer. When wired, it plugs into `apps/events-worker/src/sinks/posthog.ts` alongside LogSnag — call-sites stay unchanged. PostHog must run server-side from the Worker (no client SDK on the marketing site, would break Lighthouse 100s) wrapped in `ctx.waitUntil` after the response.
+- **Decision:** PostHog Cloud is held in reserve. Wiring is deferred until a real cohort / funnel / retention question lands that SQL on D1/Neon can't answer. When wired, it plugs into `apps/events-worker/src/sinks/posthog.ts` — call-sites stay unchanged. Server-side from the Worker only (no client SDK on the marketing site — would break Lighthouse 100s).
 - **Core value:** Free, Honest latency, Effortless UX
-- **Why:** PostHog Cloud is free for 1M events/mo, but the marketing-site client SDK adds ~30KB and a third-party fetch that hurts Lighthouse and contradicts our zero-tracking-pixel posture (DESIGN §5.4). Server-side capture from the Worker preserves the user-facing latency budget by construction. Until a question lands that needs cohort analysis, the env vars stay empty and the sink no-ops via `SK-EVENTS-005`.
-- **Consequence in code:** No PostHog client in `apps/api` or `apps/web`. When wiring, follow the four-place sync from `SK-EVENTS-005`. Capture path: server-side from `apps/events-worker`, in `ctx.waitUntil`, attaching `nlqdb.events.emit` span attributes (PERFORMANCE §3.1). Until then, the `apps/events-worker/src/sinks/` directory has only `logsnag.ts`.
+- **Why:** PostHog Cloud is free for 1M events/mo but its client SDK adds ~30KB and a third-party fetch that hurts Lighthouse and contradicts the zero-tracking-pixel posture (DESIGN §5.4). Until a real cohort question lands, env vars stay empty and the sink no-ops via `SK-EVENTS-005`.
+- **Consequence in code:** No PostHog client in `apps/api` or `apps/web`. When wiring, follow the four-place sync from `SK-EVENTS-005`. Until then, `apps/events-worker/src/sinks/` has only `logsnag.ts` + `query-log.ts`.
 - **Alternatives rejected:**
-  - Wire PostHog client SDK into the marketing site for "complete funnel coverage" — destroys Lighthouse scores and contradicts the no-tracking-pixel posture.
-  - Wire PostHog now as a second sink for redundancy — burns engineering time on signal we can't yet act on.
+  - PostHog client SDK on marketing site — destroys Lighthouse, contradicts no-tracking-pixel posture.
+  - Wire PostHog now for redundancy — burns time on signal we can't yet act on.
 
 ### SK-EVENTS-008 — Retry exhaustion drops silently; DLQ deferred until OTel signal warrants it
 
-- **Decision:** On the consumer side, `wrangler.toml`'s `max_retries = 3` is the only retry surface. After exhaustion the message is dropped — there is no DLQ wired today. When dropped-message counters in OTel start showing meaningful volume, configure a DLQ via a second queue and set `dead_letter_queue = "nlqdb-events-dlq"` in `wrangler.toml`'s `[[queues.consumers]]` block.
+- **Decision:** `wrangler.toml`'s `max_retries = 3` is the only retry surface. After exhaustion the message drops — no DLQ today. When OTel counters show meaningful volume, configure a DLQ via a second queue (`dead_letter_queue = "nlqdb-events-dlq"`).
 - **Core value:** Simple, Free, Honest latency
-- **Why:** A DLQ is a second queue, a second consumer, and a second alerting story. Standing one up before the data shows it's needed is over-engineering. The OTel span on every dispatch (`nlqdb.events.dispatch`) gives us the signal — when retry-exhaustion drops cross some threshold, build the DLQ then. Until then, structured logs (`dispatch failed <name> id=<id>: <message>`) plus `wrangler tail` give an operator enough to diagnose ad-hoc drops.
-- **Consequence in code:** The consumer in `apps/events-worker/src/index.ts` calls `msg.retry()` on dispatch error and `msg.ack()` on success or unconfigured sink. No DLQ binding in `wrangler.toml`. The "future DLQ" snippet is preserved in `apps/events-worker/README.md`'s "Failure handling" section so the wiring is one-step when the signal arrives.
+- **Why:** A DLQ is a second queue + consumer + alerting story. The OTel span on every dispatch gives us the signal; building the DLQ before that signal lands is over-engineering. Structured logs (`dispatch failed <name> id=<id>: <message>`) plus `wrangler tail` cover ad-hoc drops in the meantime.
+- **Consequence in code:** `apps/events-worker/src/index.ts` calls `msg.retry()` on dispatch error, `msg.ack()` on success / unconfigured sink. No DLQ binding. The "future DLQ" snippet lives in `apps/events-worker/README.md`'s "Failure handling" so wiring is one-step when the signal arrives.
 - **Alternatives rejected:**
-  - DLQ from day one — extra infra surface for a Phase-0 system that has not yet observed retry exhaustion in the wild.
-  - Persist failed messages to D1 — D1 is the primary user store; conflating event-pipeline backlog with user data violates the boundary.
+  - DLQ from day one — extra infra for a system that has not observed retry exhaustion.
+  - Persist failed messages to D1 — D1 is the primary user store; conflating event backlog with user data violates the boundary.
 
 ### SK-EVENTS-009 — `ask.completed` → Tinybird `query_log` sink; circuit-break after 5 consecutive failures
 
-- **Decision:** Every successful `/v1/ask` resolution emits one `ask.completed` event onto `EVENTS_QUEUE` (anonymised — `db_id`, `schema_hash`, `query_hash`, `plan_shape`, `engine`, `orchestrator_ms`, `rows_returned`, `ts`, plus `event_id` from the producer envelope; no SQL text, no parameter values, no PII). The orchestrator hands the emit to `ctx.waitUntil` from the route handler so the queue producer round-trip never sits on the `/v1/ask` response path. The events-worker drains the whole batch via a single Tinybird HTTP call to `/v0/events?name=query_log&wait=true`. The Tinybird HTTP boundary lives in `@nlqdb/db/clickhouse-tinybird/query-log.ts` (per `GLOBAL-021`); the events-worker imports `writeQueryLog`/`createQueryLogWriter` and never imports Tinybird's HTTP client / SDK / wire format of its own — the token is delivered via env per Workers convention. After 5 consecutive batch-write failures the sink trips an isolate-scoped circuit-breaker — the next batch ack-and-drops without calling Tinybird until a successful write resets the counter.
+- **Decision:** Every `/v1/ask` success emits one `ask.completed` (anonymised — `db_id`, `schema_hash`, `query_hash`, `plan_shape`, `engine`, `orchestrator_ms`, `rows_returned`, `ts`, plus `event_id` from the envelope; no SQL text, no values, no PII). Orchestrator hands the emit to `ctx.waitUntil` so the queue round-trip never sits on the `/v1/ask` path. The events-worker drains the whole batch via a single Tinybird HTTP call (`/v0/events?name=query_log&wait=true`). The Tinybird HTTP boundary lives in `@nlqdb/db/clickhouse-tinybird/query-log.ts` (`GLOBAL-021`); the worker imports `writeQueryLog` and never holds the token / SDK / wire format itself. After 5 consecutive batch-write failures the sink trips an isolate-scoped circuit-breaker — the next batch ack-and-drops until a successful write resets the counter.
 - **Core value:** Fast, Free, Bullet-proof
-- **Why:** `/v1/ask` p99 latency cannot absorb a Tinybird HTTP call (`SK-EVENTS-001`); the queue + sink is the only safe place to write the workload-analyser input (W5 reads `query_log`). One canonical owner per `GLOBAL-021` keeps the Tinybird token / fetch client / OTel attribute mapping in one file — the events-worker stays thin. Circuit-break protects the Tinybird Free-tier 1k-reads/day budget when the upstream is wedged: rather than burning the 3-retry queue budget per message + 100-row batches × N retries, the breaker short-circuits and lets the OTel `nlqdb.events.sink.query_log.failures.total` counter be the operator signal. Five consecutive failures is the bar because Cloudflare Queues already retries each message three times in-flight; the fifth distinct batch failure is unambiguous upstream-down.
-- **Consequence in code:** `apps/events-worker/src/sinks/query-log.ts` dispatches; `packages/db/src/clickhouse-tinybird/query-log.ts` is the wire-format owner (per `GLOBAL-021`). Spans (`performance.md §3.1`): `nlqdb.events.sink.query_log` per batch (carries `batch_size`, `http.response.status_code`, `rows_written`, `circuit_open`); the writer also emits a `db.query` span (`operation=EVENTS_WRITE`, `db.system=other_sql`) so write latency lands on `nlqdb.db.duration_ms{operation}` alongside the read path. Metrics: `nlqdb.events.sink.query_log.batch_size` (histogram) and `nlqdb.events.sink.query_log.failures.total{status_class}` (`status_class` clamped to `4xx` / `5xx` / `transport` per §3.3). Env: `TINYBIRD_TOKEN`, optional `TINYBIRD_API_BASE`; missing config ack-and-drops per `SK-EVENTS-005`. The wire row carries `event_id` from `EventEnvelope.id` so consumers dedupe at read time (Tinybird does not dedupe natively; Queues redeliver). Widening the wire shape requires same-PR edits to `AskCompletedEvent`, `toWireRow`, and `infrastructure/tinybird/datasources/query_log.datasource`.
+- **Why:** `/v1/ask` p99 cannot absorb a Tinybird HTTP call (`SK-EVENTS-001`); the queue + sink is the only safe place to write the workload-analyser input (W5 reads `query_log`). One canonical owner per `GLOBAL-021` keeps the token / fetch client / OTel mapping in one file. The breaker protects the Tinybird Free-tier 1k-reads/day budget when upstream is wedged — rather than burning the 3-retry queue budget × 100-row batches × N retries, the breaker short-circuits and lets the OTel failures counter be the operator signal. Five failures is the bar because Cloudflare Queues already retries each message three times in-flight; the fifth distinct batch failure is unambiguous upstream-down.
+- **Consequence in code:** `apps/events-worker/src/sinks/query-log.ts` dispatches; `packages/db/src/clickhouse-tinybird/query-log.ts` owns the wire format. Spans (`performance.md §3.1`): `nlqdb.events.sink.query_log` per batch (`batch_size`, `http.response.status_code`, `rows_written`, `circuit_open`); the writer also emits a `db.query` span (`operation=EVENTS_WRITE`) so write latency lands on `nlqdb.db.duration_ms{operation}`. Metrics: `nlqdb.events.sink.query_log.batch_size` (histogram), `nlqdb.events.sink.query_log.failures.total{status_class}` (`4xx`/`5xx`/`transport`). Env: `TINYBIRD_TOKEN`, optional `TINYBIRD_API_BASE`; missing config ack-and-drops per `SK-EVENTS-005`. The wire row carries `event_id` from `EventEnvelope.id` so consumers dedupe at read time. Widening the wire shape requires same-PR edits to `AskCompletedEvent`, `toWireRow`, and `infrastructure/tinybird/datasources/query_log.datasource`.
 - **Alternatives rejected:**
-  - Inline Tinybird POST from `apps/api` on the `/v1/ask` request path — adds 100–300ms of HTTP RTT to every successful ask; violates `SK-EVENTS-001`. The queue is the only safe seam.
-  - Events-worker holds the Tinybird token directly — violates `GLOBAL-021`. The owner table maps Tinybird to `packages/db/clickhouse-tinybird/`; reaching past it from the events-worker spreads the SDK shape across files and re-implements OTel attributes inconsistently.
-  - Per-message Tinybird call (one HTTP per event) — burns the Tinybird Free-tier daily request budget on dispatch, when ClickHouse trivially ingests one NDJSON-batch of 100 rows in a single call.
-  - DLQ-on-Tinybird-failure instead of circuit-break — premature; DLQ infrastructure is deferred per `SK-EVENTS-008`. The breaker bounds damage in the meantime; flipping to DLQ is a one-line wrangler change once the failure counter shows it's worth the operational surface.
+  - Inline Tinybird POST from `apps/api` — adds 100–300ms RTT to every ask; violates `SK-EVENTS-001`.
+  - Events-worker holds the token directly — violates `GLOBAL-021`; spreads the SDK shape across files.
+  - Per-message Tinybird call — burns the Tinybird Free-tier daily request budget when batched ingest works trivially.
+  - DLQ-on-failure instead of circuit-break — premature per `SK-EVENTS-008`; flipping to DLQ is a one-line wrangler change once the failure counter says so.
 
 ### SK-EVENTS-010 — `feature.*` event domain: every "not yet" path emits a typed signal
 
-- **Decision:** The `feature.*` domain joins `user.*` / `billing.*` / `ask.*`. Phase 1.5 ships two variants: `feature.requested.ddl_via_ask` (LLM emitted DDL on `/v1/ask` — reject reasons in `DDL_REJECT_REASONS`) and `feature.requested.heavier_tier` (any `/v1/ask` 429 — anon per-IP or authed per-account; distinct from the `auth_required` envelope, which is a sign-in nudge). Both carry `principalId` and `surface: NlqSurface`. Future variants (`notify_paid`, `byo_pg`, `team_workspace`, `unknown_cli_verb`, queued `home.surface_wishlist`) land with their emit site — no orphan types.
+- **Decision:** The `feature.*` domain joins `user.*` / `billing.*` / `ask.*`. Phase 1.5 ships two variants: `feature.requested.ddl_via_ask` (LLM emitted DDL on `/v1/ask` — reject reasons in `DDL_REJECT_REASONS`) and `feature.requested.heavier_tier` (any `/v1/ask` 429; distinct from the `auth_required` sign-in nudge). Both carry `principalId` and `surface: NlqSurface`. `notify_paid` and `home.surface_wishlist` landed in `SK-EVENTS-011`. Future variants (`byo_pg`, `team_workspace`, `unknown_cli_verb`) land with their emit site.
 - **Core value:** Bullet-proof, Free, Honest latency
-- **Why:** [`GLOBAL-024`](../../decisions/GLOBAL-024-demand-signal-telemetry.md) is the canonical rule; this block is the shape. The §6 monetization trigger reads off `feature.*` counts, so a typed union keeps a property typo from silently swallowing the signal (`SK-EVENTS-002`). Reusing the queue + sink seam (`SK-EVENTS-001`) limits the cost to one `switch` arm per variant.
+- **Why:** [`GLOBAL-024`](../../decisions/GLOBAL-024-demand-signal-telemetry.md) is the canonical rule; this block is the shape. The §6 trigger reads off `feature.*` counts, so a typed union keeps a property typo from silently swallowing the signal (`SK-EVENTS-002`). Reusing the queue + sink seam (`SK-EVENTS-001`) limits the cost to one `switch` arm per variant.
 - **Consequence in code:**
   - `packages/events/src/types.ts`: two variants plus `NlqSurface = "hero" | "chat" | "embed" | "mcp" | "cli"` — one union is both the event field and the `nlqdb.surface` OTel attribute value (`performance.md §3.3`).
   - `defaultId()` keys the new variants by `${name}.${principalId}.${utcDay}`; the LogSnag sink passes `EventEnvelope.id` through to `event_id` (`SK-EVENTS-004`) so the per-day collapse actually happens.
@@ -130,24 +130,41 @@ when-to-load:
   - `DDL_REJECT_REASONS` lives in `apps/api/src/ask/sql-validate.ts` next to `SqlRejectReason` so the demand-signal set can't drift from the validator.
   - Surface derivation lives in `surfaceFromPrincipal()` (`apps/api/src/principal.ts`) — `anon → hero`, `user → chat`, `pk_live → embed`.
 - **Alternatives rejected:**
-  - Add variants for surfaces that don't exist yet (MCP, CLI) — orphan types drift; let each land with its emit site.
-  - Emit on `auth_required` envelopes — sign-in is the free path forward, conflating it with "I want a heavier tier" pollutes the §6 trigger.
-  - Per-emit UUID id — burns the LogSnag quota; per-(user, day) matches the §6 unit-of-decision.
+  - Variants for surfaces that don't exist yet (MCP, CLI) — orphan types drift.
+  - Emit on `auth_required` — conflates sign-in nudge with "I want a heavier tier".
+  - Per-emit UUID id — burns the quota; per-(user, day) matches the §6 unit-of-decision.
+
+### SK-EVENTS-011 — `notify_paid` + `home.surface_wishlist` close the Phase 1.5 capture pipe
+
+- **Decision:** Two new variants + two new endpoints. `feature.requested.notify_paid` carries `principalId`, `surface: NlqSurface`, `cta: NotifyPaidCta` (`"db_create_success" | "anon_warning" | "rate_limit"`). `home.surface_wishlist` carries `principalId` and a free-string `surface`. `POST /v1/events/notify-paid` requires Principal; `POST /v1/events/wishlist` is public (KV-throttled 10/min/IP). Both ack 202 + waitUntil per `SK-EVENTS-003`.
+- **Core value:** Bullet-proof, Free, Honest latency
+- **Why:** Phase 1.5 exit gate (`phase-plan.md §3`) requires *"the 'notify me when paid launches' queue is non-empty"*. `SK-EVENTS-010` shipped the implicit-emit half; the gate hinges on the explicit CTA click. The `cta` discriminator lets the §6 dashboard slice "rate-limit-panic clicks" from "deliberate success-state opt-ins". The wishlist click previously fired a DOM CustomEvent no one listened to. Wishlist stays public so a marketing visitor doesn't need an anon-bearer for one optional click.
+- **Consequence in code:**
+  - `packages/events/src/types.ts`: two variants join `ProductEvent`. `defaultId()` keys `notify_paid` per-(principal, cta, day) and `surface_wishlist` per-(principal, surface, day) — preserves the distinct-intent-moment signal.
+  - `apps/events-worker/src/sinks/logsnag.ts`: both route to `demand-signal`. `notify_paid` sets `notify: true`; `surface_wishlist` sets `notify: false` (aggregate matters).
+  - `apps/api/src/events-feature.ts`: `recordNotifyPaid()` + `recordWishlist()` pure-function handlers. `recordWishlist` derives `principalId = wl:${sha256(ip:day, 16)}` — distinct prefix from `anon:` so LogSnag's user_id facet doesn't conflate the two.
+  - `apps/api/src/index.ts`: `/v1/events/*` rides the existing credentialed CORS allow-list.
+  - `apps/web/src/components/CreateForm.tsx`: the `NotifyPaidCta` sub-component renders on the three documented hosts. Self-disables on click; producer-side dedup handles cross-session repeats.
+  - `apps/web/src/components/CodePanel.astro`: existing wishlist handler now also fires a `keepalive: true` fetch to `/v1/events/wishlist`. DOM CustomEvent stays for legacy listeners; mailto: still runs.
+- **Alternatives rejected:**
+  - Collapse to one `feature.requested.opt_in` with a `via:` tag — wishlist is `home.*` because its no-auth lifecycle is structurally distinct.
+  - Mint an anon-bearer on marketing load — coerces every visitor into an auth artifact for one optional click.
+  - Emit on render rather than click — destroys the intent signal; a render is not an opt-in.
 
 ## GLOBALs governing this feature
 
 Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; index in [`docs/decisions.md`](../../decisions.md)). The list below names the rules that constrain this feature; any feature-local commentary is nested under the rule.
 
 - **GLOBAL-005** — Every mutation accepts `Idempotency-Key`.
-- **GLOBAL-013** — $0/month free tier; ≤ 3 MiB Workers bundle. *In this feature:* the events-worker imports `@nlqdb/db/clickhouse-tinybird` for `writeQueryLog`; the package's HTTP path is plain `fetch` with no SDK weight, keeping the bundle within budget.
+- **GLOBAL-013** — $0/month free tier; ≤ 3 MiB Workers bundle. *In this feature:* the events-worker imports `@nlqdb/db/clickhouse-tinybird` for `writeQueryLog`; plain `fetch` keeps bundle weight within budget.
 - **GLOBAL-014** — OTel span on every external call (DB, LLM, HTTP, queue).
-- **GLOBAL-021** — Each external system has one canonical owning module. *In this feature:* the events-worker is the canonical owner of `EVENTS_QUEUE` (consumer) per the GLOBAL-021 owner table; `packages/events/` owns the producer types. Tinybird HTTP is owned by `packages/db/clickhouse-tinybird/` — `SK-EVENTS-009`'s sink imports `writeQueryLog` from there rather than POSTing directly. Owner-to-owner library dependency (events-worker → `@nlqdb/db`) is explicitly allowed by GLOBAL-021.
-- **GLOBAL-024** — Demand-signal telemetry on every "not yet" path. *In this feature:* implemented by `SK-EVENTS-010` (the `feature.*` event domain).
+- **GLOBAL-021** — Each external system has one canonical owning module. *In this feature:* the events-worker owns `EVENTS_QUEUE` (consumer); `packages/events/` owns the producer types. Tinybird HTTP is owned by `packages/db/clickhouse-tinybird/` — `SK-EVENTS-009`'s sink imports `writeQueryLog` rather than POSTing directly. Owner-to-owner library dependency is explicitly allowed by GLOBAL-021.
+- **GLOBAL-024** — Demand-signal telemetry on every "not yet" path. *In this feature:* `SK-EVENTS-010` + `SK-EVENTS-011`.
 
 ## Open questions / known unknowns
 
-- **DLQ activation threshold.** No agreed-upon dropped-event rate that triggers DLQ wiring; document the threshold (e.g. > X drops/day for 3 consecutive days) in `apps/events-worker/README.md` so the trigger is observable, not opinion-driven.
-- **PostHog wiring criteria.** The "real cohort question that SQL can't answer" is qualitative. Capture a concrete checklist (questions tried, time-spent, alternative outcomes) so the decision to wire PostHog is auditable rather than vibes.
-- **Schema evolution.** Adding a field to an existing `ProductEvent` variant breaks `bun run typecheck` for older producers in flight during a deploy. There's no documented migration recipe — write one before a non-additive change lands.
-- **Queue free-tier ceiling.** 10K ops/day on Workers Free = ~3.3K msgs/day at 3 ops/msg. PLAN's Phase 1 anonymous-mode + waitlist + first-query traffic is below this, but the head-room is thin; capture a "hot signal" alert when daily ops cross 70%.
-- **Inbound-email sink (RUNBOOK §2.1.1).** Cloudflare Email Routing is wired separately; consider whether a future `support.email_received` event should flow through this pipeline or stay separate.
+- **DLQ activation threshold.** No agreed dropped-event rate that triggers DLQ wiring; document the threshold (e.g. > X drops/day for 3 days) in `apps/events-worker/README.md`.
+- **PostHog wiring criteria.** "Real cohort question SQL can't answer" is qualitative. Capture a concrete checklist before wiring.
+- **Schema evolution.** Adding a field to an existing `ProductEvent` variant breaks `typecheck` for older producers in flight during deploy. Document a migration recipe before a non-additive change lands.
+- **Queue free-tier ceiling.** 10K ops/day = ~3.3K msgs/day at 3 ops/msg. Head-room is thin; capture a "hot signal" alert when daily ops cross 70%.
+- **Inbound-email sink.** Cloudflare Email Routing is wired separately; decide whether a future `support.email_received` event flows through this pipeline.

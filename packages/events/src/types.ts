@@ -73,6 +73,43 @@ export type FeatureRequestedHeavierTierEvent = {
   surface: NlqSurface;
 };
 
+// `feature.requested.notify_paid` is the user-clicked CTA variant of the
+// GLOBAL-024 demand-signal domain (SK-EVENTS-011). Distinct from
+// `feature.requested.heavier_tier`, which fires implicitly on a 429 — this
+// fires only when the user *clicks* the "Notify me when paid launches"
+// button on one of the three documented hosts. The `cta` label distinguishes
+// which surface produced the signal so the §6 monetization-trigger
+// dashboard can slice by intent strength (success-state click ≠ panic-on-
+// rate-limit click). One signal per principal per day per cta keeps the
+// LogSnag 2,500/mo quota intact (`SK-EVENTS-006`).
+export type NotifyPaidCta = "db_create_success" | "anon_warning" | "rate_limit";
+
+export type FeatureRequestedNotifyPaidEvent = {
+  name: "feature.requested.notify_paid";
+  principalId: string;
+  surface: NlqSurface;
+  cta: NotifyPaidCta;
+};
+
+// `home.surface_wishlist` is the queued counterpart of the marketing-page
+// DOM event of the same name (`apps/web/src/components/CodePanel.astro`).
+// Each click on a wishlist badge (VSCode / JetBrains / Slack / Discord)
+// posts to `/v1/events/wishlist` so the click becomes typed signal in the
+// `home.*` domain rather than a DOM event that goes nowhere. The
+// marketing visitor may have no auth at all — `principalId` falls back
+// to a per-day IP-hash bucket so dedup still works without coercing the
+// visitor into an anon-bearer mint just to register a wishlist click.
+export type HomeSurfaceWishlistEvent = {
+  name: "home.surface_wishlist";
+  principalId: string;
+  // The wishlist surface id from the badge's `data-wishlist` attribute
+  // (`vscode`, `jetbrains`, `slack`, `discord`). Kept as a free string
+  // rather than a closed union so new wishlist surfaces land without a
+  // packages/events bump — the LogSnag tag carries it through to the
+  // dashboard verbatim.
+  surface: string;
+};
+
 export type ProductEvent =
   | { name: "user.first_query"; userId: string; dbId: string }
   | { name: "user.registered"; userId: string; email: string }
@@ -93,7 +130,9 @@ export type ProductEvent =
     }
   | AskCompletedEvent
   | FeatureRequestedDdlViaAskEvent
-  | FeatureRequestedHeavierTierEvent;
+  | FeatureRequestedHeavierTierEvent
+  | FeatureRequestedNotifyPaidEvent
+  | HomeSurfaceWishlistEvent;
 
 // Envelope wrapping the event with producer-side metadata. The consumer
 // reads `id` for idempotency keys (passed to LogSnag) and `ts` for late-

@@ -36,6 +36,7 @@ import { postChatMessage } from "./chat/orchestrate.ts";
 import { makeChatStore } from "./chat/store.ts";
 import { deriveSlug, displayName, listDatabasesForTenant } from "./databases/list.ts";
 import { sweepAnonDatabases } from "./db-sweep/sweep.ts";
+import { recordNotifyPaid, recordWishlist } from "./events-feature.ts";
 import {
   isAllowedEngine,
   MAX_GOAL_LENGTH,
@@ -868,6 +869,13 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
 // keeps random sites from probing the rate-limit / abuse path from
 // the browser.)
 app.use("/v1/waitlist", credentialedCors);
+// SK-EVENTS-011: `/v1/events/notify-paid` rides the credentialed allow-list
+// (the CTA is rendered inside `CreateForm.tsx` which posts with the anon
+// bearer / authed cookie). `/v1/events/wishlist` is public — clicks come
+// from the marketing CodePanel before any anon bearer has been minted —
+// so it uses the same allow-list to keep arbitrary third-party origins
+// out of the LogSnag quota.
+app.use("/v1/events/*", credentialedCors);
 
 app.post("/v1/waitlist", async (c) => {
   const body = await parseJsonBody<{ email?: unknown }>(c);
@@ -891,6 +899,49 @@ app.post("/v1/waitlist", async (c) => {
     }
   }
   return c.json(result.body, result.status);
+});
+
+// SK-EVENTS-011 — demand-signal endpoints closing the Phase 1.5 exit
+// gate. `notify-paid` is the user-clicked CTA wired into CreateForm
+// (db.create success, anon-mode lede, rate-limit error); `wishlist`
+// is the queued counterpart of the marketing-page DOM event of the
+// same name. Both fanout into the existing EVENTS_QUEUE → LogSnag
+// path; the §6 monetization trigger reads off the resulting
+// `feature.requested.notify_paid` / `home.surface_wishlist` counts.
+app.post("/v1/events/notify-paid", requirePrincipal, async (c) => {
+  const principal = c.var.principal as Principal;
+  const surface = surfaceFromPrincipal(principal);
+  const body = await parseJsonBody<{ cta?: unknown }>(c);
+  if (!body.ok) return c.json({ error: { status: "invalid_body" } }, 400);
+  const result = recordNotifyPaid(
+    buildEventEmitter(c.env.EVENTS_QUEUE),
+    principal.id,
+    surface,
+    body.body.cta,
+  );
+  if (result.status === 400) {
+    return c.json({ error: { status: result.reason } }, 400);
+  }
+  c.executionCtx.waitUntil(result.pendingEmit);
+  return c.json({ accepted: true }, 202);
+});
+
+app.post("/v1/events/wishlist", async (c) => {
+  const body = await parseJsonBody<{ surface?: unknown }>(c);
+  if (!body.ok) return c.json({ error: { status: "invalid_body" } }, 400);
+  const result = await recordWishlist(
+    { kv: c.env.KV, events: buildEventEmitter(c.env.EVENTS_QUEUE) },
+    body.body.surface,
+    c.req.header("cf-connecting-ip") ?? null,
+  );
+  if (result.status === 400) {
+    return c.json({ error: { status: result.reason } }, 400);
+  }
+  if (result.status === 429) {
+    return c.json({ error: { status: "rate_limited" } }, 429);
+  }
+  c.executionCtx.waitUntil(result.pendingEmit);
+  return c.json({ accepted: true }, 202);
 });
 
 // `POST /v1/demo/ask` was retired here per SK-WEB-008. The marketing

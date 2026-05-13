@@ -119,6 +119,35 @@ function buildPayloadBody(project: string, event: ProductEvent): LogSnagPayload 
         user_id: event.principalId,
         tags: { surface: event.surface },
       };
+    case "feature.requested.notify_paid":
+      // SK-EVENTS-011: the user-clicked CTA. `notify: true` because each
+      // hit is a discrete intent moment worth surfacing in the founder
+      // channel — quota-bounded by the per-(principal, cta, day) dedup
+      // key in `defaultId()`.
+      return {
+        project,
+        channel: "demand-signal",
+        event: "Notify-me on paid launch",
+        description: `${event.surface} → ${event.cta}: user opted in for paid-launch notification`,
+        icon: "🔔",
+        notify: true,
+        user_id: event.principalId,
+        tags: { surface: event.surface, cta: event.cta },
+      };
+    case "home.surface_wishlist":
+      // SK-EVENTS-011: wishlist click from the marketing CodePanel.
+      // `notify: false` — wishlist counts matter in aggregate, not
+      // per-click; the dashboard ranks by `tags.surface` over a window.
+      return {
+        project,
+        channel: "demand-signal",
+        event: "Wishlist click",
+        description: `${event.surface}: clicked the wishlist badge on the homepage`,
+        icon: "⭐",
+        notify: false,
+        user_id: event.principalId,
+        tags: { surface: event.surface },
+      };
     case "ask.completed":
     case "user.waitlist_joined":
       // Not LogSnag-routed. `ask.completed` flows to Tinybird
