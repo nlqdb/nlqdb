@@ -1,0 +1,31 @@
+{
+  "name": "@nlqdb/mcp",
+  "version": "0.0.0",
+  "description": "Model Context Protocol server for nlqdb — local-stdio transport (slice 2 of SK-MCP-010).",
+  "type": "module",
+  "main": "src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "bin": {
+    "nlqdb-mcp": "./bin/nlqdb-mcp.mjs"
+  },
+  "files": [
+    "src",
+    "bin",
+    "README.md"
+  ],
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "1.22.0",
+    "@nlqdb/sdk": "workspace:*",
+    "zod": "^3.25.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.0",
+    "vitest": "^4.1.0"
+  }
+}
