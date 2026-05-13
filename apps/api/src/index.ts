@@ -1694,23 +1694,8 @@ app.get("/api/auth/oauth-init/:provider", async (c) => {
   });
 });
 
-// Sign-out — direct `auth.api.signOut` call to bypass Better Auth's
-// `originCheckMiddleware`. The router-mounted middleware rejects any
-// cookie-bearing POST whose `Origin` header isn't in `trustedOrigins`
-// with a 403 `INVALID_ORIGIN` / `MISSING_OR_NULL_ORIGIN`. We've seen
-// production POSTs to `/api/auth/sign-out` from `app.nlqdb.com` 403
-// even though the origin matches `trustedOrigins` — extensions /
-// privacy proxies / corporate MITMs strip the `Origin` header often
-// enough that the legitimate-sign-out path is unreliable. CSRF on
-// sign-out is harmless given `SameSite=Lax` on the session cookie
-// (cross-site POST never carries the cookie, so a forced sign-out is
-// a no-op) and the endpoint's idempotency (clears the caller's own
-// cookie only). `auth.api.*` invokes endpoint handlers WITHOUT the
-// `routerMiddleware` chain (see `to-auth-endpoints.mjs`), so the
-// inner Better Auth signOut still deletes the D1 session row,
-// triggers the `databaseHooks.session.delete.after` KV-revocation
-// hook, and emits `Set-Cookie` to expire `session_token` +
-// `session_data` — same observable behavior, no origin gate.
+// SK-AUTH-019 — direct `auth.api.signOut` bypasses the router-mounted
+// `originCheckMiddleware` that 403s sign-out when `Origin` is stripped.
 app.post("/api/auth/sign-out", async (c) => {
   const tracer = trace.getTracer("@nlqdb/api");
   return tracer.startActiveSpan("nlqdb.auth.verify", async (span) => {
@@ -1726,10 +1711,6 @@ app.post("/api/auth/sign-out", async (c) => {
       authEventsTotal().add(1, { type: "verify", outcome });
       return response;
     } catch (err) {
-      // Throw path lands on `app.onError` (top of file) which returns
-      // 500. Pin the status on the span explicitly so Tempo/Grafana
-      // queries grouping on `http.response.status_code` see the right
-      // bucket without having to join on the exception event.
       span.setAttribute("http.response.status_code", 500);
       authEventsTotal().add(1, { type: "verify", outcome: "failure" });
       span.recordException(err as Error);

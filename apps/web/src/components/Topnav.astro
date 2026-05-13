@@ -103,10 +103,7 @@ const inChat = current === "chat";
   const signoutBtn = document.getElementById("topnav-signout");
 
   if (signoutBtn) {
-    // Navigate to the canonical sign-out sink rather than calling the
-    // POST inline. Keeps every "Sign out" affordance funneled through
-    // one page — see `apps/web/src/pages/auth/sign-out.astro` and the
-    // header comment in `lib/session.ts`.
+    // All sign-out triggers funnel through /auth/sign-out (SK-AUTH-019).
     signoutBtn.addEventListener("click", () => {
       window.location.assign("/auth/sign-out");
     });

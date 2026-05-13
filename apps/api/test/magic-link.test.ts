@@ -185,31 +185,10 @@ describe("magic-link lifecycle", () => {
   });
 
   it("sign-out: POST without an Origin header still hits our handler (route order + auth.api contract)", async () => {
-    // Two contracts this test pins, neither of which is "prod origin
-    // check is bypassed" — read on for why.
-    //
-    //   (a) Route order: `app.post("/api/auth/sign-out")` in src/index.ts
-    //       sits ahead of the `app.on(["POST","GET"], "/api/auth/*")`
-    //       catch-all, so our dedicated handler (which calls
-    //       `auth.api.signOut` directly) is what runs — not the Better
-    //       Auth catch-all (which runs `auth.handler`, the router
-    //       middleware, the origin check, the works).
-    //
-    //   (b) `auth.api.signOut` returns 200 for an authed cookie even
-    //       when the request carries no `Origin` header. This is the
-    //       Better-Auth-side guarantee our handler depends on — direct
-    //       `auth.api.*` calls bypass the router middleware chain (see
-    //       `to-auth-endpoints.mjs`), so the origin check never fires.
-    //
-    // What this test does NOT cover: Better Auth in `NODE_ENV=test`
-    // sets `skipOriginCheck` to `true` by default (see `isTest()` +
-    // `createContext` in `@better-auth/core`), so even the catch-all
-    // path would return 200 here regardless of headers. A real
-    // regression test for the prod-mode origin check would need a
-    // separate vitest project with `NODE_ENV=production` bindings;
-    // we've intentionally not stood that up — the failure mode is
-    // observable on `wrangler tail` and the safety argument
-    // (`SameSite=Lax` + idempotency) is captured in `SK-AUTH-019`.
+    // NODE_ENV=test forces Better Auth's `skipOriginCheck=true`, so
+    // this asserts route order and the `auth.api.signOut` contract —
+    // not the prod origin-check bypass (which is observable on
+    // `wrangler tail` and captured in SK-AUTH-019).
     const email = `t-${crypto.randomUUID()}@example.com`;
     await SELF.fetch(`${ORIGIN}/api/auth/sign-in/magic-link`, {
       method: "POST",
@@ -229,7 +208,6 @@ describe("magic-link lifecycle", () => {
         cookie: cookieFirst,
         "content-type": "application/json",
         accept: "application/json",
-        // No `origin` header — exercises our handler's contract.
       },
       body: "{}",
     });
@@ -237,10 +215,7 @@ describe("magic-link lifecycle", () => {
     const signOutBody = (await signOutRes.json()) as { success?: boolean };
     expect(signOutBody.success).toBe(true);
 
-    // Server-side cookie clear actually happened: response carries
-    // `Set-Cookie` with `Max-Age=0` for the session token. This is the
-    // observable side-effect that distinguishes "our handler ran" from
-    // "some middleware short-circuited 200".
+    // Set-Cookie max-age=0 confirms `auth.api.signOut` ran, not a middleware short-circuit.
     const clearCookie = signOutRes.headers.get("set-cookie") ?? "";
     expect(clearCookie.toLowerCase()).toMatch(/session_token=/);
     expect(clearCookie.toLowerCase()).toMatch(/max-age=0/);

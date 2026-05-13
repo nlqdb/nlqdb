@@ -1,11 +1,5 @@
 // Browser-side session probe (`SK-WEB-009`: host-only cookie, same-origin probe).
-//
-// Sign-out lives at `/auth/sign-out` (apps/web/src/pages/auth/sign-out.astro).
-// Every sign-out affordance — Topnav button, ChatPanel command palette,
-// ErrorBoundary fallback, Base.astro boot fallback — navigates there so
-// the POST-then-redirect dance has exactly one implementation. The boot
-// fallback can only emit a plain `<a>` (it renders before React mounts),
-// which is the constraint that forces the page-as-sink design.
+// Sign-out lives at `/auth/sign-out` (SK-AUTH-019), not here.
 
 export type SessionUser = {
   id: string;

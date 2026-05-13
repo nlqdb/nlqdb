@@ -1,32 +1,8 @@
 ---
-// Sign-out landing — the single sink for every "Sign out" affordance.
-//
-// Four product surfaces deep-link here today:
-//   - `Topnav.astro`'s sign-out button (programmatic click → navigate)
-//   - `ChatPanel.tsx`'s command-palette `sign-out` entry
-//   - `ErrorBoundary` fallback panel
-//   - `Base.astro`'s pre-hydration boot-fallback panel
-//
-// The boot-fallback can only emit a plain `<a>` (it renders before any
-// JS bundle loads), which is the constraint that forces page-as-sink
-// over a shared TS helper. With everyone navigating here, the
-// POST-then-redirect dance lives in exactly one place.
-//
-// Same-origin vs marketing origin:
-//   The Astro `dist` ships unchanged to both `nlqdb-api` (app.nlqdb.com)
-//   and `nlqdb-web` (nlqdb.com). On `app.nlqdb.com` the inline POST is
-//   same-origin, the session cookie rides, and the server actually
-//   clears it. On `nlqdb.com` the POST goes cross-origin to
-//   `${PUBLIC_API_BASE}/api/auth/sign-out`; `SameSite=Lax` keeps the
-//   session cookie home, so the server side is a no-op success. That's
-//   fine — anyone on `nlqdb.com` was never authed cross-origin in the
-//   first place (`fetchSession` returns null there), so the Topnav
-//   never shows them a Sign-out button to click.
-//
-// CSP note: the script uses `is:inline` to keep behavior in the page
-// itself (Astro processes the script otherwise and pulls in a bundler
-// chunk that delays first interactive paint). A future strict CSP
-// roll-out would need either a nonce or moving this to a hashed file.
+// Single client sink for every "Sign out" affordance (SK-AUTH-019).
+// Exists as a page rather than a TS helper because `Base.astro`'s boot
+// fallback can only emit a plain `<a>` — and once it has to, the other
+// three surfaces (Topnav, ChatPanel, ErrorBoundary) navigate here too.
 import Base from "../../layouts/Base.astro";
 
 const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
@@ -43,32 +19,19 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
 
   <script is:inline define:vars={{ apiBase }}>
     (async () => {
-      // Drop per-user state from localStorage before the server-side
-      // cookie clear so a refresh during the in-flight POST can't
-      // resurface another account's data. Anon bearer (`nlqdb_anon`)
-      // is intentionally preserved — SK-ANON-003 adopts it onto the
-      // next sign-in's account.
+      // Drop per-user chat history; `nlqdb_anon` stays for SK-ANON-003 adoption on next sign-in.
       try {
         const remove = [];
         for (let i = 0; i < localStorage.length; i++) {
           const key = localStorage.key(i);
-          if (!key) continue;
-          // `nlq_hist_<dbId>` — per-DB chat history (ChatPanel.tsx).
-          if (key.startsWith("nlq_hist_")) remove.push(key);
+          if (key?.startsWith("nlq_hist_")) remove.push(key);
         }
         for (const key of remove) localStorage.removeItem(key);
       } catch (_) {
-        // Privacy-mode browsers throw on localStorage access. Skip.
+        // Privacy mode can throw on localStorage access.
       }
 
-      // Best-effort POST. The redirect below fires regardless — the
-      // user-visible "you're signed out" signal is the navigation, not
-      // the response status. `body: "{}"` is load-bearing: better-call
-      // v1.3.5 unconditionally `request.json()`s a request that
-      // advertises `content-type: application/json`, and on Workers
-      // `request.body` is a non-null ReadableStream even when zero
-      // bytes were written — so `JSON.parse("")` throws and Better
-      // Auth surfaces a 500. Empty object sidesteps the parser bug.
+      // `body: "{}"` sidesteps better-call v1.3.5's empty-body JSON.parse 500.
       try {
         await fetch(`${apiBase.replace(/\/$/, "")}/api/auth/sign-out`, {
           method: "POST",
@@ -77,9 +40,7 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
           body: "{}",
         });
       } catch (_) {
-        // Network / CORS failure — still navigate. The cookie clear is a
-        // server concern; the worst case is a stale cookie until expiry,
-        // and the next protected call will 401.
+        // Network/CORS failure — navigate anyway; stale cookie expires naturally.
       } finally {
         window.location.replace("/");
       }
