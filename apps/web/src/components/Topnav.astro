@@ -49,7 +49,7 @@ const inChat = current === "chat";
 </header>
 
 <script>
-  import { fetchSession, signOut } from "../lib/session";
+  import { fetchSession } from "../lib/session";
 
   // Hop the "Sign in" link from the marketing origin to the merged
   // app worker (`app.nlqdb.com`) so the sign-in page loads on the
@@ -103,8 +103,12 @@ const inChat = current === "chat";
   const signoutBtn = document.getElementById("topnav-signout");
 
   if (signoutBtn) {
+    // Navigate to the canonical sign-out sink rather than calling the
+    // POST inline. Keeps every "Sign out" affordance funneled through
+    // one page — see `apps/web/src/pages/auth/sign-out.astro` and the
+    // header comment in `lib/session.ts`.
     signoutBtn.addEventListener("click", () => {
-      void signOut();
+      window.location.assign("/auth/sign-out");
     });
   }
 

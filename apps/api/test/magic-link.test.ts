@@ -184,25 +184,32 @@ describe("magic-link lifecycle", () => {
     expect(signOutBody.success).toBe(true);
   });
 
-  it("sign-out: POST without an Origin header (header-stripping client) returns 200", async () => {
-    // Pins the bypass of Better Auth's `originCheckMiddleware` that the
-    // dedicated `/api/auth/sign-out` handler in `src/index.ts` provides.
-    // Background: privacy extensions, corporate MITMs, and some mobile
-    // browsers strip the `Origin` header from same-origin POSTs, which
-    // makes Better Auth's origin check throw 403 `MISSING_OR_NULL_ORIGIN`
-    // on every cookie-bearing request — sign-out included. The handler
-    // calls `auth.api.signOut` directly (no router middleware) so the
-    // check is skipped; CSRF on sign-out is harmless given `SameSite=Lax`
-    // on the session cookie (cross-site POST can't carry the cookie, so
-    // a forged sign-out is a no-op).
+  it("sign-out: POST without an Origin header still hits our handler (route order + auth.api contract)", async () => {
+    // Two contracts this test pins, neither of which is "prod origin
+    // check is bypassed" — read on for why.
     //
-    // Note: NODE_ENV=test sets `skipOriginCheck=true` inside Better Auth
-    // regardless of headers (`better-auth/dist/context/create-context.mjs`
-    // line ~207), so this test wouldn't catch a regression of the
-    // `app.handler` catch-all path in prod-mode. It still pins the
-    // direct-API contract — `auth.api.signOut` MUST return 200 from an
-    // authed cookie + empty body — which is what the new handler depends
-    // on.
+    //   (a) Route order: `app.post("/api/auth/sign-out")` in src/index.ts
+    //       sits ahead of the `app.on(["POST","GET"], "/api/auth/*")`
+    //       catch-all, so our dedicated handler (which calls
+    //       `auth.api.signOut` directly) is what runs — not the Better
+    //       Auth catch-all (which runs `auth.handler`, the router
+    //       middleware, the origin check, the works).
+    //
+    //   (b) `auth.api.signOut` returns 200 for an authed cookie even
+    //       when the request carries no `Origin` header. This is the
+    //       Better-Auth-side guarantee our handler depends on — direct
+    //       `auth.api.*` calls bypass the router middleware chain (see
+    //       `to-auth-endpoints.mjs`), so the origin check never fires.
+    //
+    // What this test does NOT cover: Better Auth in `NODE_ENV=test`
+    // sets `skipOriginCheck` to `true` by default (see `isTest()` +
+    // `createContext` in `@better-auth/core`), so even the catch-all
+    // path would return 200 here regardless of headers. A real
+    // regression test for the prod-mode origin check would need a
+    // separate vitest project with `NODE_ENV=production` bindings;
+    // we've intentionally not stood that up — the failure mode is
+    // observable on `wrangler tail` and the safety argument
+    // (`SameSite=Lax` + idempotency) is captured in `SK-AUTH-019`.
     const email = `t-${crypto.randomUUID()}@example.com`;
     await SELF.fetch(`${ORIGIN}/api/auth/sign-in/magic-link`, {
       method: "POST",
@@ -222,12 +229,20 @@ describe("magic-link lifecycle", () => {
         cookie: cookieFirst,
         "content-type": "application/json",
         accept: "application/json",
-        // No `origin` header — simulates the stripped-header scenario.
+        // No `origin` header — exercises our handler's contract.
       },
       body: "{}",
     });
     expect(signOutRes.status).toBe(200);
     const signOutBody = (await signOutRes.json()) as { success?: boolean };
     expect(signOutBody.success).toBe(true);
+
+    // Server-side cookie clear actually happened: response carries
+    // `Set-Cookie` with `Max-Age=0` for the session token. This is the
+    // observable side-effect that distinguishes "our handler ran" from
+    // "some middleware short-circuited 200".
+    const clearCookie = signOutRes.headers.get("set-cookie") ?? "";
+    expect(clearCookie.toLowerCase()).toMatch(/session_token=/);
+    expect(clearCookie.toLowerCase()).toMatch(/max-age=0/);
   });
 });

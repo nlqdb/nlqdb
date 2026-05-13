@@ -1,29 +1,74 @@
 ---
-// Sign-out landing — the canonical sink for every "Sign out" affordance.
+// Sign-out landing — the single sink for every "Sign out" affordance.
 //
-// Three product surfaces deep-link here today:
-//   - `Topnav.astro`'s sign-out button (post-hydration JS click)
+// Four product surfaces deep-link here today:
+//   - `Topnav.astro`'s sign-out button (programmatic click → navigate)
 //   - `ChatPanel.tsx`'s command-palette `sign-out` entry
-//   - `ErrorBoundary` + `Base.astro`'s boot-fallback panels
+//   - `ErrorBoundary` fallback panel
+//   - `Base.astro`'s pre-hydration boot-fallback panel
 //
-// All three would otherwise need their own copy of the POST-then-redirect
-// dance; the boot-fallback in particular can only emit a plain `<a>` (it
-// renders before React mounts), so a server-routed page is the lowest
-// common denominator. The script below POSTs `/api/auth/sign-out`
-// best-effort and redirects to `/` no matter what — Better Auth's response
-// is the source of truth for the cookie clear, and the navigation is the
-// user-visible "you're signed out" signal even on a network failure.
+// The boot-fallback can only emit a plain `<a>` (it renders before any
+// JS bundle loads), which is the constraint that forces page-as-sink
+// over a shared TS helper. With everyone navigating here, the
+// POST-then-redirect dance lives in exactly one place.
+//
+// Same-origin vs marketing origin:
+//   The Astro `dist` ships unchanged to both `nlqdb-api` (app.nlqdb.com)
+//   and `nlqdb-web` (nlqdb.com). On `app.nlqdb.com` the inline POST is
+//   same-origin, the session cookie rides, and the server actually
+//   clears it. On `nlqdb.com` the POST goes cross-origin to
+//   `${PUBLIC_API_BASE}/api/auth/sign-out`; `SameSite=Lax` keeps the
+//   session cookie home, so the server side is a no-op success. That's
+//   fine — anyone on `nlqdb.com` was never authed cross-origin in the
+//   first place (`fetchSession` returns null there), so the Topnav
+//   never shows them a Sign-out button to click.
+//
+// CSP note: the script uses `is:inline` to keep behavior in the page
+// itself (Astro processes the script otherwise and pulls in a bundler
+// chunk that delays first interactive paint). A future strict CSP
+// roll-out would need either a nonce or moving this to a hashed file.
 import Base from "../../layouts/Base.astro";
 
 const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
 ---
-<Base title="Signing out — nlqdb" description="Signing you out of nlqdb.">
-  <main class="page__main">
-    <p>Signing you out…</p>
-  </main>
+<Base title="Signing out — nlqdb" description="Signing you out of nlqdb." canonical="/auth/sign-out">
+  <div class="page">
+    <main class="signout" aria-busy="true">
+      <section class="signout__card" aria-labelledby="signout-title">
+        <h1 id="signout-title" class="signout__title">Signing you out…</h1>
+        <p class="signout__lede">One moment — clearing your session.</p>
+      </section>
+    </main>
+  </div>
 
   <script is:inline define:vars={{ apiBase }}>
     (async () => {
+      // Drop per-user state from localStorage before the server-side
+      // cookie clear so a refresh during the in-flight POST can't
+      // resurface another account's data. Anon bearer (`nlqdb_anon`)
+      // is intentionally preserved — SK-ANON-003 adopts it onto the
+      // next sign-in's account.
+      try {
+        const remove = [];
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i);
+          if (!key) continue;
+          // `nlq_hist_<dbId>` — per-DB chat history (ChatPanel.tsx).
+          if (key.startsWith("nlq_hist_")) remove.push(key);
+        }
+        for (const key of remove) localStorage.removeItem(key);
+      } catch (_) {
+        // Privacy-mode browsers throw on localStorage access. Skip.
+      }
+
+      // Best-effort POST. The redirect below fires regardless — the
+      // user-visible "you're signed out" signal is the navigation, not
+      // the response status. `body: "{}"` is load-bearing: better-call
+      // v1.3.5 unconditionally `request.json()`s a request that
+      // advertises `content-type: application/json`, and on Workers
+      // `request.body` is a non-null ReadableStream even when zero
+      // bytes were written — so `JSON.parse("")` throws and Better
+      // Auth surfaces a 500. Empty object sidesteps the parser bug.
       try {
         await fetch(`${apiBase.replace(/\/$/, "")}/api/auth/sign-out`, {
           method: "POST",
@@ -31,8 +76,8 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
           headers: { "content-type": "application/json", accept: "application/json" },
           body: "{}",
         });
-      } catch (_err) {
-        // Network/CORS failure — still navigate. The cookie clear is a
+      } catch (_) {
+        // Network / CORS failure — still navigate. The cookie clear is a
         // server concern; the worst case is a stale cookie until expiry,
         // and the next protected call will 401.
       } finally {
@@ -40,4 +85,37 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
       }
     })();
   </script>
+
+  <style is:global>
+    .signout {
+      min-height: 70vh;
+      display: grid;
+      place-items: center;
+      padding: clamp(48px, 8vw, 96px) 24px;
+    }
+
+    .signout__card {
+      border: 2px solid var(--border-strong);
+      background: var(--bg-elev);
+      padding: clamp(28px, 5vw, 48px);
+      max-width: 480px;
+      width: 100%;
+      box-shadow: var(--shadow-hard);
+      text-align: center;
+    }
+
+    .signout__title {
+      font-family: var(--mono);
+      font-size: clamp(20px, 3vw, 26px);
+      letter-spacing: -0.02em;
+      margin: 0 0 12px;
+    }
+
+    .signout__lede {
+      margin: 0;
+      font-size: clamp(14px, 1.6vw, 15px);
+      color: var(--fg-dim);
+      line-height: 1.5;
+    }
+  </style>
 </Base>

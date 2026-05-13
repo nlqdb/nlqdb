@@ -1714,10 +1714,11 @@ app.get("/api/auth/oauth-init/:provider", async (c) => {
 app.post("/api/auth/sign-out", async (c) => {
   const tracer = trace.getTracer("@nlqdb/api");
   return tracer.startActiveSpan("nlqdb.auth.verify", async (span) => {
+    const raw = c.req.raw;
     try {
       const response = await auth.api.signOut({
-        headers: c.req.raw.headers,
-        request: c.req.raw,
+        headers: raw.headers,
+        request: raw,
         asResponse: true,
       });
       const outcome = response.status < 400 ? "success" : "failure";
@@ -1725,6 +1726,11 @@ app.post("/api/auth/sign-out", async (c) => {
       authEventsTotal().add(1, { type: "verify", outcome });
       return response;
     } catch (err) {
+      // Throw path lands on `app.onError` (top of file) which returns
+      // 500. Pin the status on the span explicitly so Tempo/Grafana
+      // queries grouping on `http.response.status_code` see the right
+      // bucket without having to join on the exception event.
+      span.setAttribute("http.response.status_code", 500);
       authEventsTotal().add(1, { type: "verify", outcome: "failure" });
       span.recordException(err as Error);
       throw err;
