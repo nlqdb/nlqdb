@@ -1,7 +1,7 @@
 ---
 import Base from "../../layouts/Base.astro";
 
-// Post-signin landing page (SK-ANON-012).
+// Post-signin landing page (SK-ANON-012, SK-ANON-014).
 //
 // `callbackURL` from `sign-in.astro` points here. The inline script:
 //   1. Probes `/api/auth/get-session` to confirm the cookie session
@@ -14,12 +14,15 @@ import Base from "../../layouts/Base.astro";
 //      sign-in path that didn't run the stash). Idempotent under
 //      `SK-ANON-003`'s `ON CONFLICT DO NOTHING`; bounded with a 3 s
 //      timeout so a hanging API never strands the user on the loading
-//      page.
-//   3. Redirects to `next` (default `/app`). The `nlqdb_pending` slot
-//      is intentionally LEFT IN localStorage — `ChatPanel.tsx` reads
-//      it on mount, pre-fills the composer, and clears the slot. The
-//      user reviews the prompt + submits; we do not auto-replay
-//      `/v1/ask` here.
+//      page. The response carries `{ adopted, dbId }` (SK-ANON-014) —
+//      we capture `dbId` to pin the adopted DB on the next hop.
+//   3. Redirects to `next` (default `/app`) with `?db=<dbId>` appended
+//      when adoption surfaced a dbId. ChatPanel reads the param
+//      synchronously on mount and pins the DB before the LeftRail's
+//      `/v1/databases` fetch resolves — no "newest by created_at"
+//      heuristic, no flash of "All databases". The `nlqdb_pending`
+//      slot is intentionally LEFT IN localStorage so ChatPanel can
+//      rehydrate the composer; the user reviews and submits.
 //
 // Why not auto-POST `/v1/ask`:
 //   - Signing in with an existing account preserves the user's
@@ -76,9 +79,13 @@ import Base from "../../layouts/Base.astro";
   // adoption is a one-row update guarded by `ON CONFLICT DO NOTHING`)
   // and runs against the freshly-authed cookie, so it succeeds
   // even when the cookie path missed.
-  async function adoptIfNeeded(): Promise<void> {
+  //
+  // SK-ANON-014 — the response carries `{ adopted, dbId }`. We return
+  // `dbId` so the caller can append `?db=<id>` to the redirect URL
+  // and ChatPanel pins the adopted DB synchronously on mount.
+  async function adoptIfNeeded(): Promise<string | null> {
     const anon = readAnonBearer();
-    if (!anon) return;
+    if (!anon) return null;
     // Bounded with an AbortController so a hung API never strands the
     // user on the loading page. Adoption is best-effort; the redirect
     // must not be blocked by it. 3 s matches the typical p99 budget
@@ -86,16 +93,38 @@ import Base from "../../layouts/Base.astro";
     const ac = new AbortController();
     const timer = setTimeout(() => ac.abort(), 3000);
     try {
-      await fetch(`${apiBase}/api/auth/anon-adopt-now`, {
+      const res = await fetch(`${apiBase}/api/auth/anon-adopt-now`, {
         method: "POST",
         credentials: "include",
         headers: { "x-anon-bearer": anon },
         signal: ac.signal,
       });
+      if (!res.ok) return null;
+      const body = (await res.json().catch(() => null)) as { dbId?: unknown } | null;
+      const dbId = body && typeof body.dbId === "string" ? body.dbId : null;
+      return dbId;
     } catch {
       // best-effort — timeout / network / 4xx all fall through here.
+      return null;
     } finally {
       clearTimeout(timer);
+    }
+  }
+
+  // Append `?db=<dbId>` to `next` (SK-ANON-014). `next` may already
+  // carry query params; URL parsing preserves them. The redirect base
+  // matters — `next` is always same-origin (set server-side by
+  // sign-in.astro from `return_to`), so we resolve against the current
+  // origin. The `URL` constructor throws on malformed input; a guarded
+  // fallback drops the param rather than failing the redirect entirely.
+  function withDbId(target: string, dbId: string | null): string {
+    if (!dbId) return target;
+    try {
+      const url = new URL(target, location.origin);
+      url.searchParams.set("db", dbId);
+      return url.pathname + url.search + url.hash;
+    } catch {
+      return target;
     }
   }
 
@@ -108,11 +137,11 @@ import Base from "../../layouts/Base.astro";
       location.replace("/auth/sign-in?error=session_lost");
       return;
     }
-    await adoptIfNeeded();
-    // ChatPanel will read `nlqdb_pending` from localStorage on mount
-    // and rehydrate the composer — no work needed here beyond the
-    // navigation.
-    location.replace(next);
+    const dbId = await adoptIfNeeded();
+    // ChatPanel reads `?db=<id>` from the URL on mount (SK-ANON-014)
+    // and pins the DB before the rail fetch resolves; it also reads
+    // `nlqdb_pending` from localStorage to rehydrate the composer.
+    location.replace(withDbId(next, dbId));
   })();
 </script>
 
