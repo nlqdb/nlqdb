@@ -11,13 +11,16 @@ when-to-load:
 # Feature: Api Keys
 
 **One-liner:** Long-lived API keys for CI / MCP hosts; rotation, revocation, scoping.
-**Status:** implemented
-**Owners (code):** `apps/api/src/index.ts`, `packages/sdk/**`
+**Status:** partial — Phase 1 `pk_live_` (per-DB read-only) ships end-to-end via `mintPkLiveKey` on `db.create`. **SK-MCP-010 slice 1** just shipped: `sk_live_` + `sk_mcp_<host>_<device>_` mint via `POST /v1/keys`, HMAC-SHA256 hashing, `lookupSkKey` in `principal.ts`, `last_used_at` bump on each successful lookup, and `GET /v1/databases` now accepts both bearer types (the MCP server's `nlqdb_list_databases` / `nlqdb_describe` tools work against the API on this PR). Dashboard key-management UI (mint button, copy-once toast, revoke flow), origin pinning for `pk_live_` (SK-APIKEYS-003 `allow_origins` column), rotation + 60-day grace (SK-APIKEYS-005), the `SK-APIKEYS-006` "sign out everywhere" wiring, the dedicated `API_KEY_SECRET`, and `<nlq-action>` write-tokens remain open work (see Open questions).
+**Owners (code):** `apps/api/src/api-keys.ts`, `apps/api/src/principal.ts`, `apps/api/src/index.ts` (`POST /v1/keys`, `GET /v1/databases`), `packages/sdk/**`
 **Cross-refs:** docs/architecture.md §4.1 (key types), §4.4 (service-to-service), §4.5 (rotation/revocation), §3.4 (MCP per-host keys) · docs/runbook.md §4 (Secrets)
 
 ## Touchpoints — read this feature before editing
 
-- `apps/api/src/index.ts`
+- `apps/api/src/api-keys.ts` (mint / lookup / `last_used_at` bump for all three key types)
+- `apps/api/src/principal.ts` (`Principal` discriminated union; bearer parsers; `accountTenantIdFromPrincipal`)
+- `apps/api/src/index.ts` (`POST /v1/keys` mint endpoint; `GET /v1/databases` account-scoped principal gate)
+- `apps/api/migrations/0011_api_keys.sql` (initial table) + `0012_api_keys_sk_columns.sql` (sk_mcp claims)
 - `packages/sdk/**`
 
 ## Decisions
@@ -107,9 +110,13 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 
 ## Open questions / known unknowns
 
-- **Dedicated `API_KEY_SECRET`.** `SK-APIKEYS-008` reuses `BETTER_AUTH_SECRET` as the HMAC key for Phase 1. Phase 2 should add a separate `API_KEY_SECRET` secret so key-hash HMAC and session-signing HMAC use independent keys. Rotation of one doesn't invalidate the other.
+- **Dashboard key-management UI (Phase 2).** `POST /v1/keys` ships in this slice; the dashboard pages that wrap it — generate-key form, copy-once toast (`SK-APIKEYS-002`), key list with `last_4` + `last_used_at` + label, revoke button — are open work in `apps/web`. The `nlq mcp install` deep-link flow (`SK-MCP-007` happy path) wires through `app.nlqdb.com/mcp` and depends on the same UI surface.
+- **`POST /v1/keys` revoke path.** Mint is live; revoke (`DELETE /v1/keys/:id`) is not. SK-APIKEYS-005 specifies 60-day grace with a deprecation flag; the minimal slice the dashboard needs is hard-revoke, with grace landing alongside the rotation webhook.
+- **`SK-APIKEYS-006` "sign out everywhere" wiring.** The decision (revoke every `sk_mcp_…` row on global sign-out, leave `sk_live_` / `pk_live_` alone) is locked, but no global-sign-out endpoint exists yet — Better Auth's per-session sign-out is the only path today. Implement when the dashboard "sign out everywhere" affordance ships.
+- **Dedicated `API_KEY_SECRET`.** `SK-APIKEYS-008` reuses `BETTER_AUTH_SECRET` as the HMAC key. Phase 2 should add a separate `API_KEY_SECRET` secret so key-hash HMAC and session-signing HMAC use independent keys. Rotation of one doesn't invalidate the other.
 - **Origin pinning for `pk_live_`.** `SK-APIKEYS-003` specifies per-key `allow_origins`. The `api_keys` table has no `allow_origins` column yet; Phase 1 skips origin enforcement (any origin can use a `pk_live_` key). Add `allow_origins TEXT` in Phase 2 when the dashboard key-management UI ships.
 - **`<nlq-action>` write-token shape (Phase 2).** `SK-APIKEYS-003` defers writes through `<nlq-action>` with a "signed short-lived write-token." The token's TTL, claim shape, and binding (per-DB? per-action?) aren't yet specified. Decide before the Phase 2 web-app slice that ships writes from the browser.
 - **Webhook delivery guarantees on rotate.** `SK-APIKEYS-005` says rotation emits a webhook. The events-pipeline feature governs delivery semantics (at-least-once with retries) — confirm that rotation events meet the at-least-once contract when the events slice lands.
 - **Rotation grace observability.** Need a dashboard signal for "old key still in use 7 days into its 60d grace" so operators know whether to worry. Track in the observability feature once the rotation slice lands.
 - **`NLQDB_API_KEY` precedence with multiple keys.** `GLOBAL-010` says the env var is the escape hatch. If a user has both a keychain-stored key and `NLQDB_API_KEY`, the env var wins (per `docs/architecture.md §3.4` install path 4). Confirm CLI and MCP both implement that ordering identically.
+- **`sk_live_` surface mapping.** `surfaceFromPrincipal` maps `sk_live_` → `"cli"` (the most common caller — `NLQDB_API_KEY` in shells / CI). Raw-HTTP-API callers using `sk_live_` outside of the CLI path will mislabel as `cli` until a distinct `"api"` value is added to `@nlqdb/events`'s `NlqSurface` union. Promote when API-direct volume becomes a meaningful signal.

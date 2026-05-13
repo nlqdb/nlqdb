@@ -3,11 +3,13 @@
 // worker-module vi.mock).
 
 import { Hono } from "hono";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
+  accountTenantIdFromPrincipal,
   makeRequirePrincipal,
   type Principal,
   parseAnonBearer,
+  parseSkBearer,
   type RequirePrincipalOpts,
   type RequirePrincipalVariables,
   sha256Hex,
@@ -18,11 +20,16 @@ function buildApp(opts: RequirePrincipalOpts) {
   const app = new Hono<{ Variables: RequirePrincipalVariables }>();
   app.get("/protected", makeRequirePrincipal(opts), (c) => {
     const principal = c.get("principal") as Principal;
-    return c.json({
+    const body: Record<string, unknown> = {
       ok: true,
       kind: principal.kind,
       id: principal.id,
-    });
+    };
+    if (principal.kind === "sk_mcp") {
+      body["mcpHost"] = principal.mcpHost;
+      body["deviceId"] = principal.deviceId;
+    }
+    return c.json(body);
   });
   return app;
 }
@@ -170,5 +177,158 @@ describe("surfaceFromPrincipal", () => {
   it("maps pk_live principals to `embed`", () => {
     const principal: Principal = { kind: "pk_live", id: "t_1", dbId: "db_1" };
     expect(surfaceFromPrincipal(principal)).toBe("embed");
+  });
+
+  it("maps sk_live principals to `cli`", () => {
+    const principal: Principal = { kind: "sk_live", id: "u_1", keyId: "k_1" };
+    expect(surfaceFromPrincipal(principal)).toBe("cli");
+  });
+
+  it("maps sk_mcp principals to `mcp`", () => {
+    const principal: Principal = {
+      kind: "sk_mcp",
+      id: "u_1",
+      keyId: "k_1",
+      mcpHost: "cursor",
+      deviceId: "macbook-air",
+    };
+    expect(surfaceFromPrincipal(principal)).toBe("mcp");
+  });
+});
+
+// SK-MCP-010 slice 1 — `sk_live_*` and `sk_mcp_<host>_<device>_*`
+// bearer auth lands here. The lookup hook is stubbed; integration
+// against the real `lookupSkKey` (HMAC + D1) is covered by the
+// api-keys unit tests.
+describe("requirePrincipal — sk_live / sk_mcp", () => {
+  it("resolves an sk_live principal when the lookup hook returns one", async () => {
+    const app = buildApp({
+      getSession: async () => null,
+      isRevoked: async () => false,
+      lookupSkKey: async (key) =>
+        key === "sk_live_abc123" ? { kind: "sk_live", tenantId: "u_alice", keyId: "k_1" } : null,
+    });
+    const res = await app.request("/protected", {
+      headers: { authorization: "Bearer sk_live_abc123" },
+    });
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ ok: true, kind: "sk_live", id: "u_alice" });
+  });
+
+  it("resolves an sk_mcp principal carrying the host + device claims", async () => {
+    const app = buildApp({
+      getSession: async () => null,
+      isRevoked: async () => false,
+      lookupSkKey: async () => ({
+        kind: "sk_mcp",
+        tenantId: "u_alice",
+        keyId: "k_2",
+        mcpHost: "cursor",
+        deviceId: "macbook-air",
+      }),
+    });
+    const res = await app.request("/protected", {
+      headers: { authorization: "Bearer sk_mcp_cursor_macbook-air_zzz" },
+    });
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({
+      ok: true,
+      kind: "sk_mcp",
+      id: "u_alice",
+      mcpHost: "cursor",
+      deviceId: "macbook-air",
+    });
+  });
+
+  it("returns 401 when the sk_* token is unknown to the lookup hook", async () => {
+    const app = buildApp({
+      getSession: async () => null,
+      isRevoked: async () => false,
+      lookupSkKey: async () => null,
+    });
+    const res = await app.request("/protected", {
+      headers: { authorization: "Bearer sk_live_unknown" },
+    });
+    expect(res.status).toBe(401);
+  });
+
+  it("returns 401 when sk_* tokens arrive without a lookup hook configured", async () => {
+    const app = buildApp({
+      getSession: async () => null,
+      isRevoked: async () => false,
+    });
+    const res = await app.request("/protected", {
+      headers: { authorization: "Bearer sk_mcp_cursor_macbook_xxx" },
+    });
+    expect(res.status).toBe(401);
+  });
+
+  it("prefers cookie session over an sk_live bearer when both are present", async () => {
+    const lookup = vi.fn(async () => ({
+      kind: "sk_live" as const,
+      tenantId: "u_other",
+      keyId: "k_x",
+    }));
+    const app = buildApp({
+      getSession: async () => ({
+        user: { id: "u_alice" },
+        session: { token: "tok_1", userId: "u_alice" },
+      }),
+      isRevoked: async () => false,
+      lookupSkKey: lookup,
+    });
+    const res = await app.request("/protected", {
+      headers: { authorization: "Bearer sk_live_xxx" },
+    });
+    const body = (await res.json()) as { kind: string; id: string };
+    expect(body).toEqual({ ok: true, kind: "user", id: "u_alice" });
+    expect(lookup).not.toHaveBeenCalled();
+  });
+});
+
+describe("parseSkBearer", () => {
+  it("returns the sk_live_ token verbatim", () => {
+    expect(parseSkBearer("Bearer sk_live_abc")).toBe("sk_live_abc");
+  });
+
+  it("returns the sk_mcp_ token verbatim", () => {
+    expect(parseSkBearer("Bearer sk_mcp_cursor_dev_zzz")).toBe("sk_mcp_cursor_dev_zzz");
+  });
+
+  it("rejects other bearer prefixes", () => {
+    expect(parseSkBearer("Bearer anon_xxx")).toBeNull();
+    expect(parseSkBearer("Bearer pk_live_xxx")).toBeNull();
+  });
+
+  it("rejects bare `Bearer sk_live_` and `Bearer sk_mcp_` (no entropy after the prefix)", () => {
+    expect(parseSkBearer("Bearer sk_live_")).toBeNull();
+    expect(parseSkBearer("Bearer sk_mcp_")).toBeNull();
+  });
+});
+
+describe("accountTenantIdFromPrincipal", () => {
+  it("returns the user id for session principals", () => {
+    const principal = { kind: "user", id: "u_1", session: {} } as unknown as Principal;
+    expect(accountTenantIdFromPrincipal(principal)).toBe("u_1");
+  });
+
+  it("returns the tenant id for sk_live and sk_mcp principals", () => {
+    expect(accountTenantIdFromPrincipal({ kind: "sk_live", id: "u_2", keyId: "k_1" })).toBe("u_2");
+    expect(
+      accountTenantIdFromPrincipal({
+        kind: "sk_mcp",
+        id: "u_3",
+        keyId: "k_2",
+        mcpHost: "cursor",
+        deviceId: "mac",
+      }),
+    ).toBe("u_3");
+  });
+
+  it("returns null for anon and pk_live principals (no account)", () => {
+    expect(
+      accountTenantIdFromPrincipal({ kind: "anon", id: "anon:abc", token: "anon_x" }),
+    ).toBeNull();
+    expect(accountTenantIdFromPrincipal({ kind: "pk_live", id: "t_1", dbId: "db_1" })).toBeNull();
   });
 });

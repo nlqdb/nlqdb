@@ -2,12 +2,17 @@
 //   - cookie session  → Principal { kind: "user", id: <userId> }
 //   - Authorization: Bearer anon_<token> → Principal { kind: "anon", id: "anon:<hash>" }
 //   - Authorization: Bearer pk_live_<key> → Principal { kind: "pk_live", id: <tenantId>, dbId: <dbId> }
-//   - neither → 401 unauthorized
+//   - Authorization: Bearer sk_live_<key> → Principal { kind: "sk_live", id: <tenantId>, keyId }
+//   - Authorization: Bearer sk_mcp_<host>_<device>_<key> → Principal { kind: "sk_mcp", id: <tenantId>, keyId, mcpHost, deviceId }
+//   - none of the above → 401 unauthorized
 //
 // The `id` is the value passed to the orchestrators as `userId`/
 // `tenantId`. For anon, the `anon:` prefix is the convention
 // db-create's `isAnonymous()` (apps/api/src/db-create/orchestrate.ts)
-// recognises.
+// recognises. For sk_live / sk_mcp, the tenant_id resolved from the
+// key row IS the user_id — sk_* keys are account-scoped per
+// SK-APIKEYS-001 / SK-APIKEYS-004 and identical to a session
+// principal as far as the orchestrator is concerned.
 //
 // `pk_live_` principals are read-only (SK-APIKEYS-003): the route handler
 // rejects any kind≠query when principal.kind === "pk_live". The `dbId`
@@ -18,20 +23,34 @@
 // `kind` — it consumes the resolved id. The only places kind
 // matters are: rate-limit selection (anon vs authed bucket),
 // quotas (anon caps), and read-only enforcement (pk_live_).
+//
+// Cookie session is tried first; an authenticated cookie always wins
+// over any Authorization header. Bearer-key resolution short-circuits
+// after the first match (anon → pk_live → sk_*), since the prefixes
+// are disjoint by construction.
 
 import type { NlqSurface } from "@nlqdb/events";
 import type { Context, MiddlewareHandler } from "hono";
+import type { SkKeyLookup } from "./api-keys.ts";
 import type { Session } from "./middleware.ts";
 
 export type Principal =
   | { kind: "user"; id: string; session: Session }
   | { kind: "anon"; id: string; token: string }
-  | { kind: "pk_live"; id: string; dbId: string };
+  | { kind: "pk_live"; id: string; dbId: string }
+  | { kind: "sk_live"; id: string; keyId: string }
+  | { kind: "sk_mcp"; id: string; keyId: string; mcpHost: string; deviceId: string };
 
 // SK-EVENTS-010 / performance.md §3.3: derives the `nlqdb.surface`
 // value from the principal kind. One place; every emit site + OTel
-// span attribute reads from here so a future principal kind (mcp /
-// cli) lands the matching surface in one edit.
+// span attribute reads from here so a future principal kind lands
+// the matching surface in one edit.
+//
+// sk_live_ maps to "cli" as the most common caller (NLQDB_API_KEY in
+// shells / CI / `nlq` raw HTTP path); raw-HTTP-API callers using
+// sk_live_ outside of that path will mislabel here. If that volume
+// ever becomes a meaningful signal we add a distinct "api" surface
+// to `@nlqdb/events` and re-route — for now "cli" is the right default.
 export function surfaceFromPrincipal(principal: Principal): NlqSurface {
   switch (principal.kind) {
     case "anon":
@@ -40,6 +59,29 @@ export function surfaceFromPrincipal(principal: Principal): NlqSurface {
       return "chat";
     case "pk_live":
       return "embed";
+    case "sk_live":
+      return "cli";
+    case "sk_mcp":
+      return "mcp";
+  }
+}
+
+// Returns the account `tenant_id` (== `user_id`) for principals that
+// have an account; null for anon and pk_live. Routes that need an
+// account (`GET /v1/databases`, `POST /v1/keys`, the dashboard) reject
+// null with `account_required`; the orchestrator paths that take any
+// principal kind don't call this. One helper means three surfaces
+// (session-only routes today, sk_* tomorrow) stay in sync.
+export function accountTenantIdFromPrincipal(principal: Principal): string | null {
+  switch (principal.kind) {
+    case "user":
+      return principal.id;
+    case "sk_live":
+    case "sk_mcp":
+      return principal.id;
+    case "anon":
+    case "pk_live":
+      return null;
   }
 }
 
@@ -56,10 +98,21 @@ export type RequirePrincipalOpts = {
   // Optional: only present when the D1 binding is available.
   // When absent, pk_live_ bearer tokens are rejected as unauthorized.
   lookupPkLiveKey?: (key: string) => Promise<{ dbId: string; tenantId: string } | null>;
+  // Optional: same shape as lookupPkLiveKey for sk_live_ / sk_mcp_
+  // keys. Absent → those bearer tokens reject as unauthorized (the
+  // dev environment without a configured DB binding stays callable
+  // with cookie sessions or anon tokens).
+  lookupSkKey?: (key: string) => Promise<SkKeyLookup | null>;
+  // Optional: fire-and-forget hook to bump `last_used_at` after a
+  // successful sk_* lookup. Called via the runtime's `waitUntil` so a
+  // D1 write failure can't impact the request path.
+  bumpKeyLastUsed?: (keyId: string) => Promise<void>;
 };
 
 const ANON_BEARER_PREFIX = "anon_";
 const PK_LIVE_PREFIX = "pk_live_";
+const SK_LIVE_PREFIX = "sk_live_";
+const SK_MCP_PREFIX = "sk_mcp_";
 
 export function makeRequirePrincipal(
   opts: RequirePrincipalOpts,
@@ -78,7 +131,8 @@ export function makeRequirePrincipal(
       return next();
     }
 
-    const anonToken = parseAnonBearer(c.req.header("authorization"));
+    const auth = c.req.header("authorization");
+    const anonToken = parseAnonBearer(auth);
     if (anonToken) {
       const id = `anon:${await sha256Hex(anonToken, 16)}`;
       const principal: Principal = { kind: "anon", id, token: anonToken };
@@ -86,12 +140,46 @@ export function makeRequirePrincipal(
       return next();
     }
 
-    const pkLiveToken = parsePkLiveBearer(c.req.header("authorization"));
+    const pkLiveToken = parsePkLiveBearer(auth);
     if (pkLiveToken && opts.lookupPkLiveKey) {
       const found = await opts.lookupPkLiveKey(pkLiveToken);
       if (found) {
         const principal: Principal = { kind: "pk_live", id: found.tenantId, dbId: found.dbId };
         c.set("principal", principal);
+        return next();
+      }
+    }
+
+    const skToken = parseSkBearer(auth);
+    if (skToken && opts.lookupSkKey) {
+      const found = await opts.lookupSkKey(skToken);
+      if (found) {
+        const principal: Principal =
+          found.kind === "sk_live"
+            ? { kind: "sk_live", id: found.tenantId, keyId: found.keyId }
+            : {
+                kind: "sk_mcp",
+                id: found.tenantId,
+                keyId: found.keyId,
+                mcpHost: found.mcpHost,
+                deviceId: found.deviceId,
+              };
+        c.set("principal", principal);
+        if (opts.bumpKeyLastUsed) {
+          // Fire-and-forget. We deliberately don't await — a failed
+          // bump must not stall the request, and we don't surface the
+          // outcome anywhere observable. `executionCtx` is absent in
+          // pure Hono-test flows (no `app.fetch(req, env, ctx)`) so
+          // we tolerate that path silently.
+          const ctx = (() => {
+            try {
+              return c.executionCtx;
+            } catch {
+              return null;
+            }
+          })();
+          if (ctx) ctx.waitUntil(opts.bumpKeyLastUsed(found.keyId));
+        }
         return next();
       }
     }
@@ -114,26 +202,32 @@ export function getPrincipal(c: Context<{ Variables: RequirePrincipalVariables }
 // any malformed input. Empty `anon_` (no body) is treated as
 // malformed — we want a real entropy source behind the prefix.
 export function parseAnonBearer(header: string | null | undefined): string | null {
-  if (!header) return null;
-  const match = /^Bearer\s+(.+)$/i.exec(header.trim());
-  const raw = match?.[1];
-  if (!raw) return null;
-  const token = raw.trim();
-  if (!token.startsWith(ANON_BEARER_PREFIX)) return null;
-  if (token.length <= ANON_BEARER_PREFIX.length) return null;
-  return token;
+  return parseBearerWithPrefix(header, ANON_BEARER_PREFIX);
 }
 
 // `Authorization: Bearer pk_live_<...>` parser. Same structure as
 // parseAnonBearer — returns the raw token or null on any malformed input.
 export function parsePkLiveBearer(header: string | null | undefined): string | null {
+  return parseBearerWithPrefix(header, PK_LIVE_PREFIX);
+}
+
+// `Authorization: Bearer sk_live_<...>` or `Bearer sk_mcp_<host>_<device>_<...>`.
+// Returns the raw token; the `lookupSkKey` D1 query dispatches on the
+// stored `key_type` so this parser doesn't need to discriminate.
+export function parseSkBearer(header: string | null | undefined): string | null {
+  return (
+    parseBearerWithPrefix(header, SK_LIVE_PREFIX) ?? parseBearerWithPrefix(header, SK_MCP_PREFIX)
+  );
+}
+
+function parseBearerWithPrefix(header: string | null | undefined, prefix: string): string | null {
   if (!header) return null;
   const match = /^Bearer\s+(.+)$/i.exec(header.trim());
   const raw = match?.[1];
   if (!raw) return null;
   const token = raw.trim();
-  if (!token.startsWith(PK_LIVE_PREFIX)) return null;
-  if (token.length <= PK_LIVE_PREFIX.length) return null;
+  if (!token.startsWith(prefix)) return null;
+  if (token.length <= prefix.length) return null;
   return token;
 }
 

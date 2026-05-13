@@ -1,19 +1,33 @@
-// pk_live_ key minting and lookup (SK-APIKEYS-001, SK-APIKEYS-008).
+// API-key minting and lookup for all three types in `SK-APIKEYS-001`:
 //
-// Phase 1 ships pk_live_ only (per-DB, read-only, used by <nlq-data>).
-// sk_live_ and sk_mcp_ ship in Phase 2 alongside the dashboard key-
-// management UI and the CLI/MCP install flow.
+//   - `pk_live_` — per-DB read-only embed key (Phase 1, used by
+//     `<nlq-data>`). Minted as a side-effect of `db.create`.
+//   - `sk_live_` — account-scoped backend key (Phase 2 Slice 1 of
+//     `SK-MCP-010`, used by CI / Docker / `NLQDB_API_KEY` / the HTTP API).
+//   - `sk_mcp_<host>_<device>_` — like `sk_live_` but tagged with the
+//     `(mcp_host, device_id)` claims from `SK-APIKEYS-004`. One key per
+//     MCP host per device; SK-APIKEYS-006 calls for "sign out
+//     everywhere" to revoke only this type (the helper lands with
+//     the dashboard slice — see api-keys/FEATURE.md Open questions).
 //
-// Hashing: HMAC-SHA256(BETTER_AUTH_SECRET, plaintext_key) per SK-APIKEYS-008.
-// Argon2id is unavailable in the CF Workers runtime; for random 128-bit keys
-// HMAC-SHA256 is computationally equivalent. See SK-APIKEYS-008 for full rationale.
+// Hashing: HMAC-SHA256(BETTER_AUTH_SECRET, plaintext_key) per
+// SK-APIKEYS-008. Argon2id is unavailable in the CF Workers runtime;
+// for random 128-bit keys HMAC-SHA256 is computationally equivalent.
+// See SK-APIKEYS-008 for the full rationale.
 //
-// Security posture:
+// Security posture (every key type):
 //   - plaintext_key is returned ONCE at mint time and never stored
-//   - key_hash is the only persistent form; lookup is constant-time at the hash layer
+//   - key_hash is the only persistent form; lookup is constant-time at
+//     the hash layer (D1 `WHERE key_hash = ?` is an index hit)
 //   - last_4 chars stored for dashboard display only (SK-APIKEYS-002)
 
 export const PK_LIVE_PREFIX = "pk_live_";
+export const SK_LIVE_PREFIX = "sk_live_";
+export const SK_MCP_PREFIX = "sk_mcp_";
+
+export type SkKeyLookup =
+  | { kind: "sk_live"; tenantId: string; keyId: string }
+  | { kind: "sk_mcp"; tenantId: string; keyId: string; mcpHost: string; deviceId: string };
 
 // Mints a new pk_live_ key, stores the hash in D1, and returns the plaintext.
 // The caller is responsible for returning it to the user exactly once.
@@ -25,9 +39,7 @@ export async function mintPkLiveKey(
   dbId: string,
   tenantId: string,
 ): Promise<string> {
-  // 128 bits of CSPRNG randomness encoded as 32 lowercase hex chars.
-  const tail = randomHex(16);
-  const plaintext = `${PK_LIVE_PREFIX}${tail}`;
+  const plaintext = `${PK_LIVE_PREFIX}${randomHex(16)}`;
   const hash = await hmacHex(secret, plaintext);
   const id = crypto.randomUUID();
   await d1
@@ -59,9 +71,120 @@ export async function lookupPkLiveKey(
   return { dbId: row.db_id, tenantId: row.tenant_id };
 }
 
+// ─── sk_live_ ────────────────────────────────────────────────────────────────
+
+// Mints a new sk_live_ key. Per SK-APIKEYS-001 these are account-scoped
+// (no db_id) full-scope backend secrets. `name` is the optional
+// human label rendered in the dashboard ("CI on GitHub Actions").
+export async function mintSkLiveKey(
+  d1: D1Database,
+  secret: string,
+  tenantId: string,
+  name: string | null,
+): Promise<{ id: string; plaintext: string }> {
+  const plaintext = `${SK_LIVE_PREFIX}${randomHex(16)}`;
+  const hash = await hmacHex(secret, plaintext);
+  const id = crypto.randomUUID();
+  await d1
+    .prepare(
+      "INSERT INTO api_keys (id, tenant_id, db_id, key_type, key_hash, last_4, name) " +
+        "VALUES (?, ?, NULL, 'sk_live', ?, ?, ?)",
+    )
+    .bind(id, tenantId, hash, plaintext.slice(-4), name)
+    .run();
+  return { id, plaintext };
+}
+
+// ─── sk_mcp_ ─────────────────────────────────────────────────────────────────
+
+// Mints a new sk_mcp_<host>_<device>_ key. Per SK-APIKEYS-004 these
+// carry `(mcp_host, device_id)` claims so the dashboard can show "Cursor
+// on macbook-air ran 14 queries today" and revocation is precise.
+//
+// The on-the-wire shape includes the host/device for human readability
+// in shell history / config files; the claims also live in their own
+// columns so lookup never needs to parse the token.
+export async function mintSkMcpKey(
+  d1: D1Database,
+  secret: string,
+  tenantId: string,
+  mcpHost: string,
+  deviceId: string,
+): Promise<{ id: string; plaintext: string }> {
+  const plaintext = `${SK_MCP_PREFIX}${normaliseSlug(mcpHost)}_${normaliseSlug(deviceId)}_${randomHex(16)}`;
+  const hash = await hmacHex(secret, plaintext);
+  const id = crypto.randomUUID();
+  await d1
+    .prepare(
+      "INSERT INTO api_keys (id, tenant_id, db_id, key_type, key_hash, last_4, mcp_host, device_id) " +
+        "VALUES (?, ?, NULL, 'sk_mcp', ?, ?, ?, ?)",
+    )
+    .bind(id, tenantId, hash, plaintext.slice(-4), mcpHost, deviceId)
+    .run();
+  return { id, plaintext };
+}
+
+// ─── lookup (sk_live + sk_mcp) ───────────────────────────────────────────────
+
+// Resolves a `Bearer sk_*` token to its tenant + claims. Returns null
+// on prefix mismatch, unknown key, or revoked row (a future revoke flag
+// will join on this same query). One call covers both sk_live_ and
+// sk_mcp_ since the dispatch is on the stored `key_type`, not on the
+// caller's parsing of the prefix — that keeps the principal middleware
+// off the hot path of two separate queries.
+export async function lookupSkKey(
+  d1: D1Database,
+  secret: string,
+  key: string,
+): Promise<SkKeyLookup | null> {
+  if (!key.startsWith(SK_LIVE_PREFIX) && !key.startsWith(SK_MCP_PREFIX)) return null;
+  const hash = await hmacHex(secret, key);
+  const row = await d1
+    .prepare(
+      "SELECT id, tenant_id, key_type, mcp_host, device_id FROM api_keys " +
+        "WHERE key_hash = ? AND key_type IN ('sk_live', 'sk_mcp')",
+    )
+    .bind(hash)
+    .first<{
+      id: string;
+      tenant_id: string;
+      key_type: "sk_live" | "sk_mcp";
+      mcp_host: string | null;
+      device_id: string | null;
+    }>();
+  if (!row) return null;
+  if (row.key_type === "sk_live") {
+    return { kind: "sk_live", tenantId: row.tenant_id, keyId: row.id };
+  }
+  // SK-APIKEYS-004 requires both claims on sk_mcp rows; a mis-migrated
+  // row missing either is rejected (better than auth'ing a malformed key).
+  if (!row.mcp_host || !row.device_id) return null;
+  return {
+    kind: "sk_mcp",
+    tenantId: row.tenant_id,
+    keyId: row.id,
+    mcpHost: row.mcp_host,
+    deviceId: row.device_id,
+  };
+}
+
+// Bumps `last_used_at` for a successful auth. Fire-and-forget from the
+// principal middleware via `waitUntil` — a failed bump must not block
+// the request (the key is already valid; we just lose one display
+// timestamp). Idempotent at the second-grain unixepoch().
+export async function bumpKeyLastUsed(d1: D1Database, keyId: string): Promise<void> {
+  await d1.prepare("UPDATE api_keys SET last_used_at = unixepoch() WHERE id = ?").bind(keyId).run();
+}
+
+// ─── adoption + global signout ───────────────────────────────────────────────
+
 // On anon-DB adoption (SK-ANON-003), re-keys every pk_live_ row for the
 // anonymous tenant to the newly-signed-in user so the key keeps working
 // post sign-in. Idempotent: the WHERE clause is a no-op on a replay.
+//
+// Only pk_live_ rows exist on anon tenants (anon users can't mint sk_*
+// keys), so the WHERE filter is implicit — an anon tenant never has a
+// row with key_type IN ('sk_live', 'sk_mcp') to re-key.
 export async function adoptApiKeys(
   d1: D1Database,
   anonTenantId: string,
@@ -94,4 +217,17 @@ function randomHex(byteCount: number): string {
   return Array.from(bytes)
     .map((b) => b.toString(16).padStart(2, "0"))
     .join("");
+}
+
+// Lowercase a-z0-9 only; everything else becomes `-`. Keeps the
+// on-the-wire `sk_mcp_<host>_<device>_…` shape parseable by humans
+// reading shell history without leaking host names that contain `_`
+// (which is the token field separator).
+function normaliseSlug(s: string): string {
+  return (
+    s
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "") || "x"
+  );
 }

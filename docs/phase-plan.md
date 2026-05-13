@@ -160,6 +160,19 @@ publicly uses nlqdb as memory; 3 non-engineers complete CSV analysis
 <10 min unassisted; inference cost <$1/mo per active anon-or-signed-in
 user.
 
+**Status (2026-05):** item 1 (MCP server) is in progress —
+`SK-MCP-010` slices 1 + 2 shipped. Slice 1: `sk_live_` + `sk_mcp_*`
+key mint via `POST /v1/keys`, HMAC-SHA256 hashing, principal wiring
+on `GET /v1/databases`. Slice 2: `packages/mcp/` stdio package with
+all three tools (`nlqdb_query`, `nlqdb_list_databases`,
+`nlqdb_describe`) working end-to-end against `sk_*` and (for
+`nlqdb_query`) `pk_live_*` keys. Remaining MCP work: slice 3
+(hosted Worker at `mcp.nlqdb.com`) and slice 4 (`nlq mcp install`
+CLI auto-detection) — see [`mcp-server/FEATURE.md`](./features/mcp-server/FEATURE.md)
+and [`cli/FEATURE.md`](./features/cli/FEATURE.md). The dashboard
+key-management UI that wraps `POST /v1/keys` is still open in
+[`api-keys/FEATURE.md`](./features/api-keys/FEATURE.md).
+
 ---
 
 ## 5. Phase 3 — The engine (the moat)

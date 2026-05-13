@@ -27,7 +27,13 @@ import {
 import { makeGlobalAnonLimiter } from "./anon-global-cap.ts";
 import { makeAnonRateLimiter } from "./anon-rate-limit.ts";
 import { buildSetCookie, signAnonStash } from "./anon-stash.ts";
-import { lookupPkLiveKey as lookupPkLiveKeyImpl } from "./api-keys.ts";
+import {
+  bumpKeyLastUsed as bumpKeyLastUsedImpl,
+  lookupPkLiveKey as lookupPkLiveKeyImpl,
+  lookupSkKey as lookupSkKeyImpl,
+  mintSkLiveKey,
+  mintSkMcpKey,
+} from "./api-keys.ts";
 import { buildAskDeps, buildEventEmitter } from "./ask/build-deps.ts";
 import { emitFeatureSignal } from "./ask/demand-signal.ts";
 import { orchestrateAsk } from "./ask/orchestrate.ts";
@@ -55,6 +61,7 @@ import {
 import { getLLMRouter } from "./llm-router.ts";
 import { makeRequireSession, type RequireSessionVariables } from "./middleware.ts";
 import {
+  accountTenantIdFromPrincipal,
   makeRequirePrincipal,
   type Principal,
   type RequirePrincipalVariables,
@@ -203,11 +210,16 @@ const sessionResolver = {
 
 const requireSession = makeRequireSession(sessionResolver);
 
-// `/v1/ask` accepts cookie sessions, `Bearer anon_<token>`, or
-// `Bearer pk_live_<token>` (SK-ANON-001, SK-ANON-006, SK-APIKEYS-001).
+// `/v1/ask` accepts cookie sessions, `Bearer anon_<token>`,
+// `Bearer pk_live_<token>`, or — once `sk_live_` / `sk_mcp_` keys
+// are minted via `POST /v1/keys` — `Bearer sk_live_<…>` /
+// `Bearer sk_mcp_<host>_<device>_<…>` (SK-ANON-001, SK-ANON-006,
+// SK-APIKEYS-001, SK-MCP-010 slice 1).
 const requirePrincipal = makeRequirePrincipal({
   ...sessionResolver,
   lookupPkLiveKey: (key) => lookupPkLiveKeyImpl(env.DB, env.BETTER_AUTH_SECRET, key),
+  lookupSkKey: (key) => lookupSkKeyImpl(env.DB, env.BETTER_AUTH_SECRET, key),
+  bumpKeyLastUsed: (keyId) => bumpKeyLastUsedImpl(env.DB, keyId),
 });
 
 // Per-request telemetry install + flush. setupTelemetry is idempotent
@@ -1297,14 +1309,120 @@ app.get("/v1/chat/messages", requireSession, async (c) => {
   return c.json({ messages });
 });
 
+// `POST /v1/keys` — canonical mint endpoint per SK-APIKEYS-007.
+// Mints `sk_live_` (account-scoped backend secret) or `sk_mcp_*`
+// (per-host per-device MCP key, SK-APIKEYS-004). Session-only by
+// design: a leaked `sk_live_` must not be able to mint more keys
+// (privilege-escalation containment). `pk_live_` is not mintable
+// here — those land as a side-effect of `db.create` via
+// `mintPkLiveKey` in `db-create/build-deps.ts`.
+//
+// Response carries the plaintext exactly once (SK-APIKEYS-002 /
+// SK-APIKEYS-007); subsequent reads return `last_4` only.
+app.post("/v1/keys", requireSession, async (c) => {
+  const tracer = trace.getTracer("@nlqdb/api");
+  return tracer.startActiveSpan("nlqdb.keys.mint", async (span) => {
+    const session = c.var.session;
+    span.setAttribute("nlqdb.user.id", session.user.id);
+
+    const raw = await parseJsonBody<{
+      type?: unknown;
+      host?: unknown;
+      device?: unknown;
+      name?: unknown;
+    }>(c);
+    if (!raw.ok) {
+      span.setAttribute("nlqdb.keys.mint.outcome", "invalid_json");
+      span.end();
+      return c.json({ error: "invalid_json" }, 400);
+    }
+
+    const type = raw.body.type;
+    if (type !== "sk_live" && type !== "sk_mcp") {
+      span.setAttribute("nlqdb.keys.mint.outcome", "invalid_type");
+      span.end();
+      return c.json({ error: "invalid_type", allowed: ["sk_live", "sk_mcp"] }, 400);
+    }
+    span.setAttribute("nlqdb.keys.mint.type", type);
+
+    try {
+      if (type === "sk_live") {
+        const name =
+          typeof raw.body.name === "string" && raw.body.name.trim().length > 0
+            ? raw.body.name.trim().slice(0, 80)
+            : null;
+        const { id, plaintext } = await mintSkLiveKey(
+          c.env.DB,
+          c.env.BETTER_AUTH_SECRET,
+          session.user.id,
+          name,
+        );
+        span.setAttribute("nlqdb.keys.mint.outcome", "ok");
+        span.end();
+        return c.json({
+          id,
+          type,
+          key: plaintext,
+          last_4: plaintext.slice(-4),
+          ...(name ? { name } : {}),
+        });
+      }
+
+      // sk_mcp — host and device are required claims (SK-APIKEYS-004).
+      const host = typeof raw.body.host === "string" ? raw.body.host.trim() : "";
+      const device = typeof raw.body.device === "string" ? raw.body.device.trim() : "";
+      if (!host || !device) {
+        span.setAttribute("nlqdb.keys.mint.outcome", "missing_claims");
+        span.end();
+        return c.json({ error: "missing_claims", required: ["host", "device"] }, 400);
+      }
+      const { id, plaintext } = await mintSkMcpKey(
+        c.env.DB,
+        c.env.BETTER_AUTH_SECRET,
+        session.user.id,
+        host,
+        device,
+      );
+      span.setAttribute("nlqdb.keys.mint.outcome", "ok");
+      span.setAttribute("nlqdb.mcp.host", host);
+      span.end();
+      return c.json({
+        id,
+        type,
+        key: plaintext,
+        last_4: plaintext.slice(-4),
+        host,
+        device,
+      });
+    } catch (err) {
+      const e = err as Error;
+      span.recordException(e);
+      span.setStatus({ code: 2, message: e.message });
+      span.setAttribute("nlqdb.keys.mint.outcome", "mint_failed");
+      span.end();
+      return c.json({ error: "mint_failed" }, 500);
+    }
+  });
+});
+
 // `GET /v1/databases` — left-rail data source for the chat surface
-// (apps/web/src/components/chat/LeftRail.tsx). Tenant-scoped read of
+// (apps/web/src/components/chat/LeftRail.tsx) and the MCP server's
+// `nlqdb_list_databases` tool (packages/mcp). Tenant-scoped read of
 // the `databases` registry. See databases/list.ts for the field-by-
 // field rationale (why `pkLive` and `lastQueriedAt` are null at
 // Phase 1).
-app.get("/v1/databases", requireSession, async (c) => {
-  const session = c.var.session;
-  const databases = await listDatabasesForTenant(c.env.DB, session.user.id);
+//
+// Accepts any account-scoped principal: cookie session (web), or
+// `sk_live_` / `sk_mcp_` bearer (HTTP API / MCP host). anon and
+// pk_live are rejected with `account_required` — they don't have a
+// concept of "my databases" on the server side.
+app.get("/v1/databases", requirePrincipal, async (c) => {
+  const principal = c.var.principal;
+  const tenantId = accountTenantIdFromPrincipal(principal);
+  if (!tenantId) {
+    return c.json({ error: "account_required" }, 403);
+  }
+  const databases = await listDatabasesForTenant(c.env.DB, tenantId);
   return c.json({ databases });
 });
 

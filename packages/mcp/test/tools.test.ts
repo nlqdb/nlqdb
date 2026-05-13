@@ -171,7 +171,7 @@ describe("handleQuery", () => {
     );
   });
 
-  it("maps a 401 to auth_required with the slice-1 action", async () => {
+  it("maps a 401 to auth_required pointing at the dashboard mint flow", async () => {
     const client = stubClient({
       ask: async () => {
         throw new NlqdbApiError("unauthorized", 401, "unauthorized", "/v1/ask", null);
@@ -183,7 +183,23 @@ describe("handleQuery", () => {
     expect("err" in result).toBe(true);
     if ("err" in result) {
       expect(result.err.code).toBe("auth_required");
-      expect(result.err.action).toMatch(/sk_mcp_/);
+      expect(result.err.action).toMatch(/app\.nlqdb\.com\/keys/);
+    }
+  });
+
+  it("maps a 403 account_required to account_required (pk_live_ on an account route)", async () => {
+    const client = stubClient({
+      ask: async () => {
+        throw new NlqdbApiError("forbidden", 403, "account_required", "/v1/ask", null);
+      },
+    });
+
+    const result = await handleQuery(client, { db: "x", q: "y" });
+
+    expect("err" in result).toBe(true);
+    if ("err" in result) {
+      expect(result.err.code).toBe("account_required");
+      expect(result.err.action).toMatch(/sk_live_/);
     }
   });
 
@@ -247,7 +263,7 @@ describe("handleListDatabases", () => {
     }
   });
 
-  it("surfaces 401 as auth_required (SK-MCP-010 slice-1 gap)", async () => {
+  it("surfaces 401 as auth_required pointing at the dashboard mint flow", async () => {
     const client = stubClient({
       listDatabases: async () => {
         throw new NlqdbApiError("unauthorized", 401, "unauthorized", "/v1/databases", null);
@@ -259,6 +275,7 @@ describe("handleListDatabases", () => {
     expect("err" in result).toBe(true);
     if ("err" in result) {
       expect(result.err.code).toBe("auth_required");
+      expect(result.err.action).toMatch(/app\.nlqdb\.com\/keys/);
     }
   });
 
