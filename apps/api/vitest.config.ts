@@ -65,6 +65,7 @@ export default defineConfig(async () => {
               "src/ask/prelude.test.ts",
               "src/ask/recent-tables.test.ts",
               "src/ask/retry.test.ts",
+              "src/ask/diff.test.ts",
             ],
           },
         },

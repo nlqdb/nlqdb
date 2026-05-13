@@ -44,6 +44,26 @@ export type AskRequest = {
   goal: string;
   dbId: string;
   userId: string;
+  // SK-TRUST-001 — render-before-commit gate. First call (omitted /
+  // false) returns `requires_confirm: true` + `diff` for write paths
+  // and skips exec. Surfaces re-send the same goal with `confirm: true`
+  // to commit. Read paths ignore this field. Per the decision, there
+  // is no bypass on `/v1/ask` — the escape hatch for power users is
+  // `/v1/run` (GLOBAL-015).
+  confirm?: boolean;
+};
+
+// SK-TRUST-001 — plain-English preview of a write plan. Values derived
+// server-side (parser + pre-flight COUNT) — surfaces never compute the
+// affected-rows count themselves; that would be a silent-lie risk
+// under GLOBAL-011. `DDL` reserved for the future db-create slice; the
+// `/v1/ask` write path never emits it (DDL via `/v1/ask` is rejected
+// by the allowlist).
+export type AskDiff = {
+  verb: "UPDATE" | "DELETE" | "INSERT" | "DDL";
+  table: string;
+  affectedRows: number;
+  summary: string;
 };
 
 // SK-ASK-009: when `dbId` was absent and the LLM disambiguator picked
@@ -75,6 +95,12 @@ export type AskResult = {
   summary?: string;
   selected_db?: SelectedDbEcho;
   pipe_advisory?: PipeAdvisory;
+  // SK-TRUST-001 — set on the first hop of a write path (no `confirm`
+  // in the request). `rows` is empty + `rowCount` 0 on this hop; the
+  // write hasn't run yet. Surfaces render `diff` and re-send with
+  // `confirm: true` to commit.
+  requires_confirm?: boolean;
+  diff?: AskDiff;
   // SK-TRUST-002 — always emitted. The compiled SQL + cache state live
   // here (not at the top level) so the trust block is one cohesive
   // record. Surfaces render it as a collapsed-by-default pane.
@@ -171,6 +197,10 @@ export type OrchestrateEvent =
   | { type: "rows"; rows: Record<string, unknown>[]; rowCount: number }
   | { type: "summary"; summary: string }
   | { type: "selected_db"; db: SelectedDbEcho }
+  // SK-TRUST-001 — emitted on the preview hop of a write path, after
+  // `plan` and before any `rows`/`summary`. Terminal for the stream;
+  // the client must re-send with `confirm: true` to commit.
+  | { type: "confirm_required"; diff: AskDiff }
   // `SK-MIGRATE-005`: emitted once before `plan_pending` when an
   // analyser audit row exists for `(db_id, query_hash)` within 24h.
   // Surfaces render it as one line in the trace.
