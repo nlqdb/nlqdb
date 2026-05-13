@@ -16,6 +16,14 @@ modelProvider: "openai"
 model: "gemini-2.5-flash"
 sessionMode: "isolated"
 
+# Upstream incompatibility: opencheck@0.3.0 passes `--save-trace` to
+# @playwright/mcp, but that flag was removed in @playwright/mcp@0.0.69
+# (current latest 0.0.75 only has --save-session). Until opencheck
+# updates, recording must be off — otherwise the MCP server crashes on
+# unknown option before any test can run. Re-enable once opencheck>0.3.0
+# ships with the corrected flag.
+recording: false
+
 tests:
   - name: "#hero-or-cmdg"
     case: |
