@@ -1694,6 +1694,46 @@ app.get("/api/auth/oauth-init/:provider", async (c) => {
   });
 });
 
+// Sign-out — direct `auth.api.signOut` call to bypass Better Auth's
+// `originCheckMiddleware`. The router-mounted middleware rejects any
+// cookie-bearing POST whose `Origin` header isn't in `trustedOrigins`
+// with a 403 `INVALID_ORIGIN` / `MISSING_OR_NULL_ORIGIN`. We've seen
+// production POSTs to `/api/auth/sign-out` from `app.nlqdb.com` 403
+// even though the origin matches `trustedOrigins` — extensions /
+// privacy proxies / corporate MITMs strip the `Origin` header often
+// enough that the legitimate-sign-out path is unreliable. CSRF on
+// sign-out is harmless given `SameSite=Lax` on the session cookie
+// (cross-site POST never carries the cookie, so a forced sign-out is
+// a no-op) and the endpoint's idempotency (clears the caller's own
+// cookie only). `auth.api.*` invokes endpoint handlers WITHOUT the
+// `routerMiddleware` chain (see `to-auth-endpoints.mjs`), so the
+// inner Better Auth signOut still deletes the D1 session row,
+// triggers the `databaseHooks.session.delete.after` KV-revocation
+// hook, and emits `Set-Cookie` to expire `session_token` +
+// `session_data` — same observable behavior, no origin gate.
+app.post("/api/auth/sign-out", async (c) => {
+  const tracer = trace.getTracer("@nlqdb/api");
+  return tracer.startActiveSpan("nlqdb.auth.verify", async (span) => {
+    try {
+      const response = await auth.api.signOut({
+        headers: c.req.raw.headers,
+        request: c.req.raw,
+        asResponse: true,
+      });
+      const outcome = response.status < 400 ? "success" : "failure";
+      span.setAttribute("http.response.status_code", response.status);
+      authEventsTotal().add(1, { type: "verify", outcome });
+      return response;
+    } catch (err) {
+      authEventsTotal().add(1, { type: "verify", outcome: "failure" });
+      span.recordException(err as Error);
+      throw err;
+    } finally {
+      span.end();
+    }
+  });
+});
+
 // Better Auth catch-all (docs/architecture.md §4.1, PERFORMANCE §4 row 5).
 //
 // Span naming: callbacks get `nlqdb.auth.oauth.callback` (one span per

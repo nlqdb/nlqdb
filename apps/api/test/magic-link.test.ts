@@ -183,4 +183,51 @@ describe("magic-link lifecycle", () => {
     const signOutBody = (await signOutRes.json()) as { success?: boolean };
     expect(signOutBody.success).toBe(true);
   });
+
+  it("sign-out: POST without an Origin header (header-stripping client) returns 200", async () => {
+    // Pins the bypass of Better Auth's `originCheckMiddleware` that the
+    // dedicated `/api/auth/sign-out` handler in `src/index.ts` provides.
+    // Background: privacy extensions, corporate MITMs, and some mobile
+    // browsers strip the `Origin` header from same-origin POSTs, which
+    // makes Better Auth's origin check throw 403 `MISSING_OR_NULL_ORIGIN`
+    // on every cookie-bearing request — sign-out included. The handler
+    // calls `auth.api.signOut` directly (no router middleware) so the
+    // check is skipped; CSRF on sign-out is harmless given `SameSite=Lax`
+    // on the session cookie (cross-site POST can't carry the cookie, so
+    // a forged sign-out is a no-op).
+    //
+    // Note: NODE_ENV=test sets `skipOriginCheck=true` inside Better Auth
+    // regardless of headers (`better-auth/dist/context/create-context.mjs`
+    // line ~207), so this test wouldn't catch a regression of the
+    // `app.handler` catch-all path in prod-mode. It still pins the
+    // direct-API contract — `auth.api.signOut` MUST return 200 from an
+    // authed cookie + empty body — which is what the new handler depends
+    // on.
+    const email = `t-${crypto.randomUUID()}@example.com`;
+    await SELF.fetch(`${ORIGIN}/api/auth/sign-in/magic-link`, {
+      method: "POST",
+      headers: { "content-type": "application/json", origin: ORIGIN },
+      body: JSON.stringify({ email, callbackURL: `${ORIGIN}/app` }),
+    });
+    const verifyUrl = extractMagicLinkUrl(logs);
+    const verifyRes = await SELF.fetch(verifyUrl, { redirect: "manual" });
+    const setCookie = verifyRes.headers.get("set-cookie");
+    if (!setCookie) throw new Error("expected set-cookie on verify response");
+    const cookieFirst = setCookie.split(";")[0];
+    if (!cookieFirst) throw new Error("expected cookie value before first `;`");
+
+    const signOutRes = await SELF.fetch(`${ORIGIN}/api/auth/sign-out`, {
+      method: "POST",
+      headers: {
+        cookie: cookieFirst,
+        "content-type": "application/json",
+        accept: "application/json",
+        // No `origin` header — simulates the stripped-header scenario.
+      },
+      body: "{}",
+    });
+    expect(signOutRes.status).toBe(200);
+    const signOutBody = (await signOutRes.json()) as { success?: boolean };
+    expect(signOutBody.success).toBe(true);
+  });
 });

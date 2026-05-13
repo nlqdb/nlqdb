@@ -1,0 +1,43 @@
+---
+// Sign-out landing — the canonical sink for every "Sign out" affordance.
+//
+// Three product surfaces deep-link here today:
+//   - `Topnav.astro`'s sign-out button (post-hydration JS click)
+//   - `ChatPanel.tsx`'s command-palette `sign-out` entry
+//   - `ErrorBoundary` + `Base.astro`'s boot-fallback panels
+//
+// All three would otherwise need their own copy of the POST-then-redirect
+// dance; the boot-fallback in particular can only emit a plain `<a>` (it
+// renders before React mounts), so a server-routed page is the lowest
+// common denominator. The script below POSTs `/api/auth/sign-out`
+// best-effort and redirects to `/` no matter what — Better Auth's response
+// is the source of truth for the cookie clear, and the navigation is the
+// user-visible "you're signed out" signal even on a network failure.
+import Base from "../../layouts/Base.astro";
+
+const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
+---
+<Base title="Signing out — nlqdb" description="Signing you out of nlqdb.">
+  <main class="page__main">
+    <p>Signing you out…</p>
+  </main>
+
+  <script is:inline define:vars={{ apiBase }}>
+    (async () => {
+      try {
+        await fetch(`${apiBase.replace(/\/$/, "")}/api/auth/sign-out`, {
+          method: "POST",
+          credentials: "include",
+          headers: { "content-type": "application/json", accept: "application/json" },
+          body: "{}",
+        });
+      } catch (_err) {
+        // Network/CORS failure — still navigate. The cookie clear is a
+        // server concern; the worst case is a stale cookie until expiry,
+        // and the next protected call will 401.
+      } finally {
+        window.location.replace("/");
+      }
+    })();
+  </script>
+</Base>
