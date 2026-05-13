@@ -23,8 +23,12 @@ export type {
   EventEnvelope,
   FeatureRequestedDdlViaAskEvent,
   FeatureRequestedHeavierTierEvent,
+  FeatureRequestedNotifyPaidEvent,
+  HomeSurfaceWishlistEvent,
   NlqSurface,
+  NotifyPaidCta,
   ProductEvent,
+  WishlistSurface,
 } from "./types.ts";
 
 export interface EventEmitter {
@@ -110,6 +114,19 @@ function defaultId(event: ProductEvent): string {
       // 30 days") — finer-grained would burn the 2,500/mo LogSnag
       // quota without changing any decision the team makes.
       return `${event.name}.${event.principalId}.${utcDay()}`;
+    case "feature.requested.notify_paid":
+      // SK-EVENTS-011: per-(principal, cta, day). A user clicking the
+      // CTA from db_create_success AND from rate_limit on the same day
+      // is two distinct intent moments — collapsing to one would lose
+      // the surface-level slice the §6 dashboard reads off.
+      return `${event.name}.${event.principalId}.${event.cta}.${utcDay()}`;
+    case "home.surface_wishlist":
+      // SK-EVENTS-011: per-(principal, surface, day). VSCode and Slack
+      // wishlist clicks on the same day from the same visitor are two
+      // distinct surfaces' intent signals — the wishlist dashboard
+      // ranks by surface, so collapsing to one event-per-visitor-per-day
+      // would erase the comparison.
+      return `${event.name}.${event.principalId}.${event.surface}.${utcDay()}`;
     default: {
       const _exhaustive: never = event;
       return `evt.${crypto.randomUUID()}`;

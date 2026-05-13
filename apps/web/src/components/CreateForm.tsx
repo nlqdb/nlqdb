@@ -17,7 +17,14 @@
 // up the real widget when it ships.
 
 import { useEffect, useId, useState } from "react";
-import { type CreateError, type CreateResult, type CreateRow, postAskCreate } from "../lib/api";
+import {
+  type CreateError,
+  type CreateResult,
+  type CreateRow,
+  type NotifyPaidCta as NotifyPaidCtaKind,
+  postAskCreate,
+  postNotifyPaid,
+} from "../lib/api";
 import {
   appendHistory,
   clearDraft,
@@ -51,7 +58,11 @@ function CreateFormInner({ apiBase }: CreateFormProps) {
   const inputId = useId();
   const [goal, setGoal] = useState("");
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  // Track the structured error, not the rendered string — the rate-limit
+  // CTA branch reads `error.kind` rather than scraping the user-facing
+  // copy. `networkError` is the `catch` branch (no `CreateError` shape).
+  const [error, setError] = useState<CreateError | null>(null);
+  const [networkError, setNetworkError] = useState<string | null>(null);
   const [result, setResult] = useState<CreateResult | null>(null);
 
   // Rehydrate the draft on mount — the user may have refreshed
@@ -72,6 +83,7 @@ function CreateFormInner({ apiBase }: CreateFormProps) {
     if (!trimmed || loading) return;
     setLoading(true);
     setError(null);
+    setNetworkError(null);
     // Keep the previous result visible during submission. On the
     // SK-ANON-012 auth_required path the redirect fires and the page
     // navigates away anyway; clearing here would just flash an empty
@@ -121,11 +133,11 @@ function CreateFormInner({ apiBase }: CreateFormProps) {
           status: "error",
           outcome: outcome.error.kind,
         });
-        setError(messageFor(outcome.error));
+        setError(outcome.error);
       }
     } catch {
       appendHistory({ goal: trimmed, submittedAt, status: "error", outcome: "network" });
-      setError("Couldn't reach the API — try again.");
+      setNetworkError("Couldn't reach the API — try again.");
     } finally {
       setLoading(false);
     }
@@ -137,6 +149,9 @@ function CreateFormInner({ apiBase }: CreateFormProps) {
       <p className="createform__lede">
         Anonymous — no sign-in. Your DB lives 72h; sign in to keep it.
       </p>
+      <div className="createform__notify">
+        <NotifyPaidCta apiBase={apiBase} cta="anon_warning" />
+      </div>
 
       <form
         className="createform__form"
@@ -177,18 +192,24 @@ function CreateFormInner({ apiBase }: CreateFormProps) {
           )}
         </button>
         {error && (
+          <div className="createform__error-wrap" role="alert">
+            <p className="createform__error">{messageFor(error)}</p>
+            {error.kind === "rate_limited" && <NotifyPaidCta apiBase={apiBase} cta="rate_limit" />}
+          </div>
+        )}
+        {networkError && (
           <p className="createform__error" role="alert">
-            {error}
+            {networkError}
           </p>
         )}
       </form>
 
-      {result && <CreateResultView result={result} />}
+      {result && <CreateResultView result={result} apiBase={apiBase} />}
     </section>
   );
 }
 
-function CreateResultView({ result }: { result: CreateResult }) {
+function CreateResultView({ result, apiBase }: { result: CreateResult; apiBase: string }) {
   const grouped = groupByTable(result.sampleRows);
   return (
     <section className="createresult" aria-label="Created database">
@@ -204,6 +225,9 @@ function CreateResultView({ result }: { result: CreateResult }) {
       {grouped.map((tbl) => (
         <SampleTable key={tbl.table} table={tbl.table} rows={tbl.rows} />
       ))}
+      <div className="createresult__notify">
+        <NotifyPaidCta apiBase={apiBase} cta="db_create_success" />
+      </div>
     </section>
   );
 }
@@ -290,4 +314,30 @@ function messageFor(error: CreateError): string {
     case "server_error":
       return "Couldn't create the DB — try again.";
   }
+}
+
+// SK-EVENTS-011 — "Notify me when paid launches" CTA. The button posts
+// to /v1/events/notify-paid and self-disables on click so the same
+// surface doesn't double-emit within a session. Cross-session dedup is
+// enforced by `defaultId()` at the producer layer (per-principal-per-
+// cta-per-day), so a reload that re-renders the button is safe — the
+// LogSnag sink collapses repeats at the envelope id.
+function NotifyPaidCta({ apiBase, cta }: { apiBase: string; cta: NotifyPaidCtaKind }) {
+  const [clicked, setClicked] = useState(false);
+  function onClick() {
+    setClicked(true);
+    void postNotifyPaid(apiBase, cta);
+  }
+  if (clicked) {
+    return (
+      <p className="notify-paid notify-paid--done" role="status">
+        Thanks — we'll let you know.
+      </p>
+    );
+  }
+  return (
+    <button type="button" className="btn btn--ghost notify-paid__btn" onClick={onClick}>
+      Notify me when paid launches
+    </button>
+  );
 }

@@ -30,7 +30,7 @@ Progress tracker — platform integrations. Each row is a P0/P1/P2/P3 commitment
 - **Shipped** — usable on `main`. CI builds it, runtime owns it.
 - **Phase 1** — committed for the on-ramp slice. Ships before the public alpha.
 - **Phase 2** — committed for the developer-surfaces slice. Ships before GA.
-- **Wishlist** — not committed. Surfaced on the homepage so user clicks become signal for what to prioritize next. Wishlist badges are `<a class="badge--wishlist" data-wishlist="<id>" href="mailto:hello@nlqdb.com?...">` so each click fires `home.surface_wishlist` — see `apps/web/src/components/CodePanel.astro` for the wiring.
+- **Wishlist** — not committed. Surfaced on the homepage so user clicks become signal for what to prioritize next. Wishlist badges are `<a class="badge--wishlist" data-wishlist="<id>" href="mailto:hello@nlqdb.com?...">`; each click fires the `home.surface_wishlist` event into the LogSnag `demand-signal` channel via `POST /v1/events/wishlist` (`SK-EVENTS-011`). Wiring: `apps/web/src/components/CodePanel.astro` (click handler) + `apps/api/src/events-feature.ts` (server-side fanout).
 
 The integration matrix in §1–§4 below is *finer-grained* than this surface matrix — every row in §1–§4 corresponds to a P0/P1/P2/P3 *priority tier* for a specific package. Two of them (`@nlqdb/elements` P0, `@nlqdb/sdk` P0) are also surfaces in the matrix above; the rest are framework / mobile / middleware / IDE / iPaaS / analytics integrations that wrap one of the surfaces above.
 

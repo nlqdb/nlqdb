@@ -147,3 +147,34 @@ export async function postAskCreate(
   const body = (await res.json()) as CreateResult;
   return { ok: true, result: body };
 }
+
+// SK-EVENTS-011 — "Notify me when paid launches" CTA fan-out. Returns
+// void; the caller fires-and-forgets. The user-facing UI reflects the
+// click instantly; the network round-trip is observability only.
+//
+// (`/v1/events/wishlist` has no helper here: the only client is the
+// marketing CodePanel's inline `<script>` which can't import .ts and
+// uses raw `fetch(keepalive: true)` instead.)
+
+export type NotifyPaidCta = "db_create_success" | "anon_warning" | "rate_limit";
+
+export async function postNotifyPaid(apiBase: string, cta: NotifyPaidCta): Promise<void> {
+  try {
+    await fetch(`${apiBase.replace(/\/$/, "")}/v1/events/notify-paid`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        authorization: `Bearer ${getOrMintAnonToken()}`,
+      },
+      // `credentials: include` so an already-signed-in user posts as
+      // their authed principal rather than as anon — the §6 dashboard
+      // wants to distinguish "anon hit the wall and asked to be
+      // notified" from "authed Hobby-tier-curious user opted in".
+      credentials: "include",
+      body: JSON.stringify({ cta }),
+    });
+  } catch {
+    // Best-effort: a failed CTA emit must NEVER surface as an error
+    // to the user. The button has already given them feedback.
+  }
+}
