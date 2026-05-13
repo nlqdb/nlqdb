@@ -123,11 +123,12 @@ when-to-load:
 - **Core value:** Bullet-proof, Free, Honest latency
 - **Why:** [`GLOBAL-024`](../../decisions/GLOBAL-024-demand-signal-telemetry.md) is the canonical rule; this block is the shape. The §6 monetization trigger reads off `feature.*` counts, so a typed union keeps a property typo from silently swallowing the signal (`SK-EVENTS-002`). Reusing the queue + sink seam (`SK-EVENTS-001`) limits the cost to one `switch` arm per variant.
 - **Consequence in code:**
-  - `packages/events/src/types.ts`: two variants plus `NlqSurface = "hero" | "chat" | "embed" | "mcp" | "cli"` co-located so the same union is both the event field and the `nlqdb.surface` OTel attribute value (`performance.md §3.3`).
-  - `defaultId()` keys the new variants by `${name}.${principalId}.${utcDay}` — one signal per user per day per missed feature is the unit the §6 trigger reasons about, and keeps the 2,500/mo LogSnag quota intact.
+  - `packages/events/src/types.ts`: two variants plus `NlqSurface = "hero" | "chat" | "embed" | "mcp" | "cli"` — one union is both the event field and the `nlqdb.surface` OTel attribute value (`performance.md §3.3`).
+  - `defaultId()` keys the new variants by `${name}.${principalId}.${utcDay}`; the LogSnag sink passes `EventEnvelope.id` through to `event_id` (`SK-EVENTS-004`) so the per-day collapse actually happens.
   - `apps/events-worker/src/sinks/logsnag.ts`: both variants land on the `demand-signal` channel with `notify: false`.
-  - `apps/api/src/index.ts`: `emitFeatureSignal()` fires from the `outcome.error` arms of `/v1/ask` (both SSE and JSON branches) and `/v1/chat/messages`; the anon per-IP 429 path emits inline before its early return. All emits go through `executionCtx.waitUntil` so the 4xx isn't delayed.
-  - Surface derivation lives in `surfaceFromPrincipal()` (`apps/api/src/principal.ts`) — `anon → hero`, `user → chat`, `pk_live → embed`. One mapping; every emit + every span attribute reads from it.
+  - `apps/api/src/ask/demand-signal.ts`: `emitFeatureSignal()` fires from `outcome.error` arms of `/v1/ask` (SSE + JSON) and `/v1/chat/messages`; the anon per-IP 429 path emits inline before its early return. All emits go through `ctx.waitUntil`.
+  - `DDL_REJECT_REASONS` lives in `apps/api/src/ask/sql-validate.ts` next to `SqlRejectReason` so the demand-signal set can't drift from the validator.
+  - Surface derivation lives in `surfaceFromPrincipal()` (`apps/api/src/principal.ts`) — `anon → hero`, `user → chat`, `pk_live → embed`.
 - **Alternatives rejected:**
   - Add variants for surfaces that don't exist yet (MCP, CLI) — orphan types drift; let each land with its emit site.
   - Emit on `auth_required` envelopes — sign-in is the free path forward, conflating it with "I want a heavier tier" pollutes the §6 trigger.

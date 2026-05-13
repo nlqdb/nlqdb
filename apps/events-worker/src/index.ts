@@ -100,6 +100,7 @@ async function dispatchLogSnag(env: Cloudflare.Env, msg: Message<EventEnvelope>)
       await publishToLogSnag(
         { token: env.LOGSNAG_TOKEN, project: env.LOGSNAG_PROJECT },
         msg.body.event,
+        msg.body.id,
       );
       // Logged at info level (no PII — id is `<event>.<userId>`, which
       // is opaque). Cheap insurance for `wrangler tail` debugging in

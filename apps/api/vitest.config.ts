@@ -66,6 +66,7 @@ export default defineConfig(async () => {
               "src/ask/recent-tables.test.ts",
               "src/ask/retry.test.ts",
               "src/ask/diff.test.ts",
+              "src/ask/demand-signal.test.ts",
             ],
           },
         },

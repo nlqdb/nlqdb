@@ -116,6 +116,7 @@ describe("publishToLogSnag", () => {
     await publishToLogSnag(
       { token: "tok_abc", project: "nlqdb" },
       { name: "user.first_query", userId: "u_1", dbId: "db_1" },
+      "user.first_query.u_1",
       fetchMock,
     );
     const calls = (fetchMock as unknown as { mock: { calls: [string, RequestInit][] } }).mock.calls;
@@ -130,6 +131,7 @@ describe("publishToLogSnag", () => {
     expect(JSON.parse(init.body as string)).toMatchObject({
       project: "nlqdb",
       event: "First Query",
+      event_id: "user.first_query.u_1",
     });
   });
 
@@ -139,8 +141,26 @@ describe("publishToLogSnag", () => {
       publishToLogSnag(
         { token: "tok_abc", project: "nlqdb" },
         { name: "user.first_query", userId: "u_1", dbId: "db_1" },
+        "user.first_query.u_1",
         fetchMock as unknown as typeof fetch,
       ),
     ).rejects.toThrow(/logsnag 429/);
+  });
+
+  it("omits event_id when the envelope id is undefined (test/dev path)", async () => {
+    const fetchMock: typeof fetch = vi.fn(
+      async () => new Response("{}", { status: 200 }),
+    ) as unknown as typeof fetch;
+    await publishToLogSnag(
+      { token: "tok_abc", project: "nlqdb" },
+      { name: "user.first_query", userId: "u_1", dbId: "db_1" },
+      undefined,
+      fetchMock,
+    );
+    const calls = (fetchMock as unknown as { mock: { calls: [string, RequestInit][] } }).mock.calls;
+    const firstCall = calls[0];
+    if (!firstCall) throw new Error("expected logsnag fetch call");
+    const body = JSON.parse(firstCall[1].body as string) as Record<string, unknown>;
+    expect("event_id" in body).toBe(false);
   });
 });
