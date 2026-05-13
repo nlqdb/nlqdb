@@ -85,6 +85,27 @@ describe("makeQueueEmitter", () => {
     expect(second.id).toMatch(/^evt\./);
   });
 
+  it("keys feature.requested.* events by (name, principalId, utcDay) so daily dedup collapses (SK-EVENTS-010)", async () => {
+    const queue = makeFakeQueue();
+    const emitter = makeQueueEmitter(queue);
+
+    await emitter.emit({
+      name: "feature.requested.ddl_via_ask",
+      principalId: "anon:abc",
+      surface: "hero",
+      rejectReason: "drop_statement",
+    });
+    await emitter.emit({
+      name: "feature.requested.heavier_tier",
+      principalId: "u_1",
+      surface: "chat",
+    });
+
+    const today = new Date().toISOString().slice(0, 10);
+    expect(queue.sent[0]?.id).toBe(`feature.requested.ddl_via_ask.anon:abc.${today}`);
+    expect(queue.sent[1]?.id).toBe(`feature.requested.heavier_tier.u_1.${today}`);
+  });
+
   it("swallows queue.send failures (emit is non-fatal)", async () => {
     const queue = makeFakeQueue();
     queue.failNext = new Error("queue full");

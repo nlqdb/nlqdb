@@ -85,6 +85,28 @@ export function buildPayload(project: string, event: ProductEvent): LogSnagPaylo
           "price-id": event.priceId,
         },
       };
+    case "feature.requested.ddl_via_ask":
+      return {
+        project,
+        channel: "demand-signal",
+        event: "DDL via /v1/ask",
+        description: `${event.surface}: LLM emitted ${event.rejectReason} on a query path`,
+        icon: "🧱",
+        notify: false,
+        user_id: event.principalId,
+        tags: { surface: event.surface, "reject-reason": event.rejectReason },
+      };
+    case "feature.requested.heavier_tier":
+      return {
+        project,
+        channel: "demand-signal",
+        event: "Heavier tier requested",
+        description: `${event.surface}: hit the free-tier rate-limit ceiling`,
+        icon: "📈",
+        notify: false,
+        user_id: event.principalId,
+        tags: { surface: event.surface },
+      };
     case "ask.completed":
     case "user.waitlist_joined":
       // Not LogSnag-routed. `ask.completed` flows to Tinybird

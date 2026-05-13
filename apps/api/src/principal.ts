@@ -19,6 +19,7 @@
 // matters are: rate-limit selection (anon vs authed bucket),
 // quotas (anon caps), and read-only enforcement (pk_live_).
 
+import type { NlqSurface } from "@nlqdb/events";
 import type { Context, MiddlewareHandler } from "hono";
 import type { Session } from "./middleware.ts";
 
@@ -26,6 +27,21 @@ export type Principal =
   | { kind: "user"; id: string; session: Session }
   | { kind: "anon"; id: string; token: string }
   | { kind: "pk_live"; id: string; dbId: string };
+
+// SK-EVENTS-010 / performance.md §3.3: derives the `nlqdb.surface`
+// value from the principal kind. One place; every emit site + OTel
+// span attribute reads from here so a future principal kind (mcp /
+// cli) lands the matching surface in one edit.
+export function surfaceFromPrincipal(principal: Principal): NlqSurface {
+  switch (principal.kind) {
+    case "anon":
+      return "hero";
+    case "user":
+      return "chat";
+    case "pk_live":
+      return "embed";
+  }
+}
 
 export type RequirePrincipalVariables = {
   principal: Principal;

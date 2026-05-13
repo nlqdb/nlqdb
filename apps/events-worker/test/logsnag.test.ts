@@ -53,6 +53,39 @@ describe("buildPayload", () => {
     });
   });
 
+  it("maps feature.requested.ddl_via_ask onto the demand-signal channel (SK-EVENTS-010)", () => {
+    const out = buildPayload("nlqdb", {
+      name: "feature.requested.ddl_via_ask",
+      principalId: "anon:abc",
+      surface: "hero",
+      rejectReason: "drop_statement",
+    });
+    expect(out).toMatchObject({
+      project: "nlqdb",
+      channel: "demand-signal",
+      event: "DDL via /v1/ask",
+      notify: false,
+      user_id: "anon:abc",
+      tags: { surface: "hero", "reject-reason": "drop_statement" },
+    });
+  });
+
+  it("maps feature.requested.heavier_tier onto the demand-signal channel (SK-EVENTS-010)", () => {
+    const out = buildPayload("nlqdb", {
+      name: "feature.requested.heavier_tier",
+      principalId: "u_5",
+      surface: "chat",
+    });
+    expect(out).toMatchObject({
+      project: "nlqdb",
+      channel: "demand-signal",
+      event: "Heavier tier requested",
+      notify: false,
+      user_id: "u_5",
+      tags: { surface: "chat" },
+    });
+  });
+
   it("maps billing.subscription_canceled into the LogSnag shape", () => {
     const out = buildPayload("nlqdb", {
       name: "billing.subscription_canceled",

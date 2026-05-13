@@ -10,7 +10,7 @@ when-to-load:
 # Feature: Web App
 
 **One-liner:** Marketing + product web app — onboarding, anonymous-mode default, demo dataset.
-**Status:** partial (Phase 1 — sign-in UI, chat surface, anon-mode web flow remaining; these are the Phase 1 exit gate)
+**Status:** partial (Phase 1.5 — Phase 1 surfaces shipped; remaining = GLOBAL-024 "notify me" CTA + queued wishlist, tracked in `events-pipeline/FEATURE.md`).
 **Owners (code):** `apps/web/**`
 **Cross-refs:** docs/architecture.md §3.1 (marketing site) · docs/architecture.md §3.2 (platform web app) · docs/runbook.md §10 (P1, P3, P5) · docs/phase-plan.md §2 (Phase 1 web slices)
 
