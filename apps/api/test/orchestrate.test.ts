@@ -662,4 +662,86 @@ describe("orchestrateAsk", () => {
     expect(out).toEqual({ ok: false, error: { status: "db_misconfigured" } });
     expect(calls).toBe(1);
   });
+
+  // SK-TRUST-001 — render-before-commit gate. Write plans without
+  // `confirm` return a preview (diff + requires_confirm) and skip
+  // exec; `confirm: true` re-sends commit and exec runs as normal.
+
+  it("SK-TRUST-001: write plan without confirm returns preview + diff and does NOT exec the write", async () => {
+    const llm = stubLLM({ plan: { sql: "DELETE FROM orders WHERE id = 1" } });
+    const exec = vi.fn(async (_db: DbRecord, sql: string) => {
+      // Only the pre-flight COUNT runs on the preview hop. The write
+      // itself MUST NOT execute until confirm lands.
+      expect(sql).toMatch(/COUNT\(\*\)/i);
+      return { rows: [{ c: 5 }], rowCount: 1 };
+    });
+    const out = await orchestrateAsk(makeDeps({ llm, exec }), {
+      goal: "delete order 1",
+      dbId: "db_1",
+      userId: "user_1",
+    });
+    expect(out.ok).toBe(true);
+    if (!out.ok) throw new Error("unreachable");
+    expect(out.result.requires_confirm).toBe(true);
+    expect(out.result.diff).toEqual({
+      verb: "DELETE",
+      table: "orders",
+      affectedRows: 5,
+      summary: "This will delete 5 rows in orders.",
+    });
+    expect(out.result.rowCount).toBe(0);
+    expect(out.result.rows).toEqual([]);
+    // Single exec hop: the count query. The DELETE never ran.
+    expect(exec).toHaveBeenCalledTimes(1);
+  });
+
+  it("SK-TRUST-001: write plan with confirm:true skips the preview and commits the write", async () => {
+    const llm = stubLLM({ plan: { sql: "DELETE FROM orders WHERE id = 1" } });
+    const exec = vi.fn(async (_db: DbRecord, sql: string) => {
+      expect(sql.toUpperCase()).toContain("DELETE FROM ORDERS");
+      return { rows: [], rowCount: 1 };
+    });
+    const out = await orchestrateAsk(makeDeps({ llm, exec }), {
+      goal: "delete order 1",
+      dbId: "db_1",
+      userId: "user_1",
+      confirm: true,
+    });
+    expect(out.ok).toBe(true);
+    if (!out.ok) throw new Error("unreachable");
+    expect(out.result.requires_confirm).toBeUndefined();
+    expect(out.result.diff).toBeUndefined();
+    expect(exec).toHaveBeenCalledTimes(1);
+  });
+
+  it("SK-TRUST-001: read plan bypasses the gate even without confirm", async () => {
+    const llm = stubLLM({ plan: { sql: "SELECT * FROM orders" } });
+    const exec = stubExec({ rows: [{ id: 1 }], rowCount: 1 });
+    const out = await orchestrateAsk(makeDeps({ llm, exec }), {
+      goal: "list orders",
+      dbId: "db_1",
+      userId: "user_1",
+    });
+    expect(out.ok).toBe(true);
+    if (!out.ok) throw new Error("unreachable");
+    expect(out.result.requires_confirm).toBeUndefined();
+    expect(out.result.rowCount).toBe(1);
+    expect(exec).toHaveBeenCalledTimes(1);
+  });
+
+  it("SK-TRUST-001: preview hop emits a confirm_required event with the diff", async () => {
+    const llm = stubLLM({ plan: { sql: "UPDATE orders SET status = 'paid' WHERE id = 1" } });
+    const exec = vi.fn(async () => ({ rows: [{ c: 3 }], rowCount: 1 }));
+    const events: OrchestrateEvent[] = [];
+    await orchestrateAsk(
+      makeDeps({ llm, exec }),
+      { goal: "mark order 1 paid", dbId: "db_1", userId: "user_1" },
+      { onEvent: async (e) => void events.push(e) },
+    );
+    const confirmEvt = events.find((e) => e.type === "confirm_required");
+    expect(confirmEvt).toBeDefined();
+    if (confirmEvt?.type !== "confirm_required") throw new Error("unreachable");
+    expect(confirmEvt.diff.verb).toBe("UPDATE");
+    expect(confirmEvt.diff.affectedRows).toBe(3);
+  });
 });

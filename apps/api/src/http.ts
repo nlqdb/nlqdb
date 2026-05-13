@@ -27,7 +27,7 @@ export type GoalDbBody = { goal: string; dbId: string };
 // picks. Validated at parse time against the `Engine` literal in
 // `@nlqdb/db`; an unknown string returns `invalid_engine` rather than
 // silently coercing to a default.
-export type AskBody = { goal: string; dbId?: string; engine?: Engine };
+export type AskBody = { goal: string; dbId?: string; engine?: Engine; confirm?: boolean };
 
 // `invalid_engine` carries the offending value + the allowed list so
 // SDK / CLI consumers can render a precise message ("`mysql` is not a
@@ -95,7 +95,12 @@ export async function parseGoalDbBody(c: Context): Promise<ParseResult<GoalDbBod
 // strings reject with `invalid_engine`; absent is fine and routes
 // through the classifier.
 export async function parseAskBody(c: Context): Promise<ParseResult<AskBody>> {
-  const raw = await parseJsonBody<{ goal?: unknown; dbId?: unknown; engine?: unknown }>(c);
+  const raw = await parseJsonBody<{
+    goal?: unknown;
+    dbId?: unknown;
+    engine?: unknown;
+    confirm?: unknown;
+  }>(c);
   if (!raw.ok) return { ok: false, error: { status: 400, body: { error: "invalid_json" } } };
   if (typeof raw.body.goal !== "string" || raw.body.goal.trim().length === 0) {
     return { ok: false, error: { status: 400, body: { error: "goal_required" } } };
@@ -115,6 +120,11 @@ export async function parseAskBody(c: Context): Promise<ParseResult<AskBody>> {
       return { ok: false, error: invalidEngineError(raw.body.engine) };
     }
     body.engine = raw.body.engine;
+  }
+  // SK-TRUST-001 — coerce truthy only; anything non-boolean is treated
+  // as preview-mode so a malformed client can't bypass the gate.
+  if (raw.body.confirm === true) {
+    body.confirm = true;
   }
   return { ok: true, body };
 }

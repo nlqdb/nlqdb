@@ -15,6 +15,7 @@ import type { LLMRouter } from "@nlqdb/llm";
 import { cachePlanHitsTotal, cachePlanMissesTotal } from "@nlqdb/otel";
 import { type Span, SpanStatusCode, trace } from "@opentelemetry/api";
 import { deriveSlug } from "../databases/list.ts";
+import { buildDiff, isWriteVerb } from "./diff.ts";
 import type { FirstQueryTracker } from "./first-query.ts";
 import { hashGoal, type PlanCache } from "./plan-cache.ts";
 import type { RateLimiter } from "./rate-limit.ts";
@@ -288,6 +289,43 @@ export async function orchestrateAsk(
           referencedTables: mismatch.referencedTables,
           schemaTables: mismatch.schemaTables,
         },
+      };
+    }
+  }
+
+  // SK-TRUST-001 — render-before-commit gate. On a write plan with no
+  // `confirm` flag, build a diff (pre-flight COUNT(*) for UPDATE/DELETE,
+  // values length for INSERT) and return without exec. The surface
+  // re-sends with `confirm: true` to commit. Reads bypass the gate.
+  // Per the decision, every write goes through preview at least once —
+  // there is no server-side bypass on `/v1/ask`; raw SQL lives on
+  // `/v1/run` (GLOBAL-015).
+  if (!req.confirm && isWriteVerb(planSql)) {
+    const diff = await withSpan("nlqdb.diff.build", async () =>
+      buildDiff(planSql, async (countSql) => {
+        const out = await deps.exec(db, countSql);
+        const row = out.rows[0] as Record<string, unknown> | undefined;
+        if (!row) return 0;
+        const raw = row["c"] ?? row["count"] ?? Object.values(row)[0];
+        const n = typeof raw === "string" ? Number.parseInt(raw, 10) : Number(raw);
+        return Number.isFinite(n) ? n : 0;
+      }),
+    );
+    if (diff) {
+      await safeEmit({ type: "confirm_required", diff });
+      return {
+        ok: true,
+        result: {
+          status: "ok",
+          rows: [],
+          rowCount: 0,
+          ...(pipeAdvisory ? { pipe_advisory: pipeAdvisory } : {}),
+          requires_confirm: true,
+          diff,
+          trace: traceBlock,
+        },
+        // Preview hop didn't exec; nothing for `ask.completed` to record.
+        pendingAskCompleted: Promise.resolve(),
       };
     }
   }

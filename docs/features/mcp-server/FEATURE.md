@@ -10,7 +10,7 @@ when-to-load:
 # Feature: Mcp Server
 
 **One-liner:** MCP server + `nlq mcp install` host detection (Claude Desktop, Cursor, etc.).
-**Status:** implemented (Phase 2)
+**Status:** planned (Phase 2) — design locked here and in `docs/architecture.md §3.4`; `packages/mcp/` carries only `README.md` + `AGENTS.md` so far, no source. The MCP slice is the first item in Phase 2 (`docs/phase-plan.md §4`); the trace block (SK-TRUST-002) and diff preview (SK-TRUST-001) need their MCP shape resolved when implementation begins.
 **Owners (code):** `packages/mcp/**`
 **Cross-refs:** docs/architecture.md §3.4 (MCP server) · docs/architecture.md §3 (MCP server row) · docs/phase-plan.md (Phase 2 mcp slice)
 

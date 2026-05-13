@@ -709,6 +709,7 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
       goal: parsed.body.goal,
       dbId: resolvedDbId,
       userId: principal.id,
+      ...(parsed.body.confirm ? { confirm: true as const } : {}),
     };
 
     // SK-ANON-002 / SK-ANON-012 — bump `last_queried_at` on every
@@ -764,11 +765,17 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
             // §3.1 — the emit is `ctx.waitUntil`-wrapped, never on the
             // user-visible path).
             c.executionCtx.waitUntil(outcome.pendingAskCompleted);
-            // SK-ANON-012 — commit the per-device cap on any successful
-            // anon /v1/ask (not just creates). The 2nd anon call will
-            // then trip the top-level peek and 401 with auth_required.
-            await commitAnonCreate();
-            touchLastQueried();
+            // SK-TRUST-001 — preview hop didn't exec; skip the anon
+            // cap commit (SK-ANON-012) and `last_queried_at` bump so
+            // the confirm hop can still land. The cap commits when
+            // the user approves and the write actually runs.
+            if (!outcome.result.requires_confirm) {
+              // SK-ANON-012 — commit the per-device cap on any successful
+              // anon /v1/ask (not just creates). The 2nd anon call will
+              // then trip the top-level peek and 401 with auth_required.
+              await commitAnonCreate();
+              touchLastQueried();
+            }
             await stream.writeSSE({ event: "done", data: JSON.stringify({ status: "ok" }) });
           }
         } finally {
@@ -798,11 +805,16 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
       // ctx.waitUntil after the response flushes — keeps /v1/ask p99
       // off the queue producer round-trip (PERFORMANCE §3.1).
       c.executionCtx.waitUntil(outcome.pendingAskCompleted);
-      // SK-ANON-012 — commit the per-device cap on any successful
-      // anon /v1/ask (not just creates). See the SSE branch for the
-      // matching commit.
-      await commitAnonCreate();
-      touchLastQueried();
+      // SK-TRUST-001 — preview hop didn't exec; skip the anon cap
+      // commit + `last_queried_at` bump so the confirm hop can still
+      // land. Same logic as the SSE branch above.
+      if (!outcome.result.requires_confirm) {
+        // SK-ANON-012 — commit the per-device cap on any successful
+        // anon /v1/ask (not just creates). See the SSE branch for the
+        // matching commit.
+        await commitAnonCreate();
+        touchLastQueried();
+      }
       // SK-ASK-003: append the `selected_db` echo to the JSON envelope
       // when the LLM disambiguator (or single-DB auto-target) chose
       // for the user. Surface uses it to render attribution.
