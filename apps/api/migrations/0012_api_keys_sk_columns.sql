@@ -20,9 +20,11 @@
 -- All four columns are nullable so the existing `pk_live_` rows from
 -- migration 0011 keep working unmodified (db_id stays the per-DB pin).
 --
--- `api_keys_sk_lookup` is the composite index `requirePrincipal` reads:
--- "Cursor on this device" → "is there a row?" stays an index hit, not
--- a tenant-wide scan, even as the per-account key count grows.
+-- `api_keys_sk_lookup` is the composite index for forthcoming dashboard
+-- list and SK-APIKEYS-006 "sign out everywhere" queries — "all sk_* rows
+-- for this tenant", scoped to the sk types. The request-path lookup goes
+-- through `WHERE key_hash = ?` and hits the UNIQUE `key_hash` index from
+-- 0011; it does not need this composite.
 
 ALTER TABLE api_keys ADD COLUMN mcp_host TEXT;
 ALTER TABLE api_keys ADD COLUMN device_id TEXT;

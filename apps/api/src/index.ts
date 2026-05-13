@@ -1326,35 +1326,32 @@ const DEVICE_ID_MAX = 64;
 app.post("/v1/keys", requireSession, async (c) => {
   const tracer = trace.getTracer("@nlqdb/api");
   return tracer.startActiveSpan("nlqdb.keys.mint", async (span) => {
-    const session = c.var.session;
-    span.setAttribute("nlqdb.user.id", session.user.id);
-
-    const raw = await parseJsonBody<{
-      type?: unknown;
-      host?: unknown;
-      device?: unknown;
-      name?: unknown;
-    }>(c);
-    if (!raw.ok) {
-      span.setAttribute("nlqdb.keys.mint.outcome", "invalid_json");
-      span.end();
-      return c.json({ error: "invalid_json" }, 400);
-    }
-
-    const type = raw.body.type;
-    if (type !== "sk_live" && type !== "sk_mcp") {
-      span.setAttribute("nlqdb.keys.mint.outcome", "invalid_type");
-      span.end();
-      return c.json({ error: "invalid_type", allowed: ["sk_live", "sk_mcp"] }, 400);
-    }
-    span.setAttribute("nlqdb.keys.mint.type", type);
-
     try {
+      const session = c.var.session;
+      span.setAttribute("nlqdb.user.id", session.user.id);
+
+      const raw = await parseJsonBody<{
+        type?: unknown;
+        host?: unknown;
+        device?: unknown;
+        name?: unknown;
+      }>(c);
+      if (!raw.ok) {
+        span.setAttribute("nlqdb.keys.mint.outcome", "invalid_json");
+        return c.json({ error: "invalid_json" }, 400);
+      }
+
+      const type = raw.body.type;
+      if (type !== "sk_live" && type !== "sk_mcp") {
+        span.setAttribute("nlqdb.keys.mint.outcome", "invalid_type");
+        return c.json({ error: "invalid_type", allowed: ["sk_live", "sk_mcp"] }, 400);
+      }
+      span.setAttribute("nlqdb.keys.mint.type", type);
+
       if (type === "sk_live") {
         const trimmedName = typeof raw.body.name === "string" ? raw.body.name.trim() : "";
         if (trimmedName.length > KEY_NAME_MAX) {
           span.setAttribute("nlqdb.keys.mint.outcome", "name_too_long");
-          span.end();
           return c.json({ error: "name_too_long", maxLength: KEY_NAME_MAX }, 400);
         }
         const name = trimmedName.length > 0 ? trimmedName : null;
@@ -1365,7 +1362,6 @@ app.post("/v1/keys", requireSession, async (c) => {
           name,
         );
         span.setAttribute("nlqdb.keys.mint.outcome", "ok");
-        span.end();
         return c.json({
           id,
           type,
@@ -1380,17 +1376,14 @@ app.post("/v1/keys", requireSession, async (c) => {
       const device = typeof raw.body.device === "string" ? raw.body.device.trim() : "";
       if (!host || !device) {
         span.setAttribute("nlqdb.keys.mint.outcome", "missing_claims");
-        span.end();
         return c.json({ error: "missing_claims", required: ["host", "device"] }, 400);
       }
       if (host.length > MCP_HOST_MAX) {
         span.setAttribute("nlqdb.keys.mint.outcome", "host_too_long");
-        span.end();
         return c.json({ error: "host_too_long", maxLength: MCP_HOST_MAX }, 400);
       }
       if (device.length > DEVICE_ID_MAX) {
         span.setAttribute("nlqdb.keys.mint.outcome", "device_too_long");
-        span.end();
         return c.json({ error: "device_too_long", maxLength: DEVICE_ID_MAX }, 400);
       }
       const { id, plaintext } = await mintSkMcpKey(
@@ -1402,7 +1395,6 @@ app.post("/v1/keys", requireSession, async (c) => {
       );
       span.setAttribute("nlqdb.keys.mint.outcome", "ok");
       span.setAttribute("nlqdb.mcp.host", host);
-      span.end();
       return c.json({
         id,
         type,
@@ -1416,8 +1408,9 @@ app.post("/v1/keys", requireSession, async (c) => {
       span.recordException(e);
       span.setStatus({ code: SpanStatusCode.ERROR, message: e.message });
       span.setAttribute("nlqdb.keys.mint.outcome", "mint_failed");
-      span.end();
       return c.json({ error: "mint_failed" }, 500);
+    } finally {
+      span.end();
     }
   });
 });

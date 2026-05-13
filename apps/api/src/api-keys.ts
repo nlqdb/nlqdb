@@ -187,7 +187,7 @@ export async function bumpKeyLastUsed(d1: D1Database, keyId: string): Promise<vo
       .bind(keyId, LAST_USED_BUMP_THROTTLE_SECONDS)
       .run();
   } catch {
-    // Display-only field; intentionally silent.
+    // Intentionally silent — see block comment above.
   }
 }
 
