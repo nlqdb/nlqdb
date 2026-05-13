@@ -88,6 +88,25 @@ describe("/v1/errors/web", () => {
     expect(res.headers.get("access-control-allow-origin")).toBe("https://app.nlqdb.com");
   });
 
+  it("CORS preflight advertises `traceparent` in Allow-Headers", async () => {
+    // Without this, browsers silently abort the cross-origin POST
+    // (the marketing site at `nlqdb.com` reports to `app.nlqdb.com`).
+    // The list is a literal echo of the middleware's `allowHeaders` —
+    // missing `traceparent` was the regression that motivated this case.
+    const res = await SELF.fetch(URL, {
+      method: "OPTIONS",
+      headers: {
+        origin: "https://app.nlqdb.com",
+        "access-control-request-method": "POST",
+        "access-control-request-headers": "content-type,traceparent",
+      },
+    });
+    expect(res.status).toBe(204);
+    const allowed = (res.headers.get("access-control-allow-headers") ?? "").toLowerCase();
+    expect(allowed).toContain("traceparent");
+    expect(allowed).toContain("content-type");
+  });
+
   it("CORS preflight from a disallowed origin is rejected", async () => {
     const res = await SELF.fetch(URL, {
       method: "OPTIONS",
@@ -188,5 +207,13 @@ describe("parseTraceparent", () => {
 
   it("rejects non-hex characters", () => {
     expect(parseTraceparent(`00-${"g".repeat(32)}-${SPAN}-01`)).toBeNull();
+  });
+
+  it("short-circuits a hostile oversized header without walking it", () => {
+    // Workers caps header values at ~16 KB; a 10 KB `traceparent` is
+    // valid HTTP. The early length-cap rejects without trim/lower-case
+    // allocating a copy of the full string.
+    const huge = `00-${TRACE}-${SPAN}-01${"x".repeat(10_000)}`;
+    expect(parseTraceparent(huge)).toBeNull();
   });
 });

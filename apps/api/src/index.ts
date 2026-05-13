@@ -119,7 +119,17 @@ const credentialedCors = cors({
     return CORS_ALLOWED_ORIGINS.includes(origin) ? origin : null;
   },
   credentials: true,
-  allowHeaders: ["Content-Type", "Authorization", "cf-turnstile-response", "idempotency-key"],
+  // `traceparent` is sent by the SK-WEB-001 error reporter on every
+  // cross-origin POST to `/v1/errors/web`. Hono's CORS middleware
+  // returns the literal list as `Access-Control-Allow-Headers`; if
+  // the header isn't here, browsers silently abort the preflight.
+  allowHeaders: [
+    "Content-Type",
+    "Authorization",
+    "cf-turnstile-response",
+    "idempotency-key",
+    "traceparent",
+  ],
   allowMethods: ["GET", "POST", "OPTIONS"],
   maxAge: 86400,
 });
@@ -314,9 +324,14 @@ export function _resetErrorSinkForTests(): void {
 //   version "-" trace_id "-" parent_id "-" trace_flags
 //   00       -  32-hex    -  16-hex     -  2-hex
 const TRACEPARENT_RE = /^([0-9a-f]{2})-([0-9a-f]{32})-([0-9a-f]{16})-([0-9a-f]{2})$/;
+// A well-formed v00 traceparent is exactly 55 bytes. Workers accepts
+// header values up to ~16 KB; rejecting on length first means a
+// hostile 16 KB `traceparent` never reaches `trim()`/`toLowerCase()`
+// (each of which would walk the full string and allocate a copy).
+const TRACEPARENT_MAX_LEN = 80;
 
 export function parseTraceparent(header: string | null | undefined): SpanContext | null {
-  if (!header) return null;
+  if (!header || header.length > TRACEPARENT_MAX_LEN) return null;
   const match = TRACEPARENT_RE.exec(header.trim().toLowerCase());
   if (!match) return null;
   const [, version, traceId, spanId, flags] = match;
@@ -333,6 +348,16 @@ export function parseTraceparent(header: string | null | undefined): SpanContext
     traceFlags: (Number.parseInt(flags, 16) & TraceFlags.SAMPLED) as TraceFlags,
     isRemote: true,
   };
+}
+
+// Classify the incoming `traceparent` for an observability attribute.
+// `missing` and `malformed` are the two failure modes a dashboard
+// needs to distinguish — a fleet-wide jump in `malformed` means a
+// browser change broke our minter; a jump in `missing` means an old
+// cached bundle is still in the wild.
+function classifyTraceparent(header: string | null | undefined): "valid" | "missing" | "malformed" {
+  if (!header) return "missing";
+  return parseTraceparent(header) ? "valid" : "malformed";
 }
 
 app.use("/v1/errors/web", credentialedCors);
@@ -352,37 +377,56 @@ app.post("/v1/errors/web", async (c) => {
       return c.body(null, 204);
     }
     const tracer = trace.getTracer("@nlqdb/api");
-    const parentSpanContext = parseTraceparent(c.req.header("traceparent"));
+    const traceparentHeader = c.req.header("traceparent");
+    const parentSpanContext = parseTraceparent(traceparentHeader);
     const parentContext = parentSpanContext
       ? trace.setSpanContext(ROOT_CONTEXT, parentSpanContext)
       : ROOT_CONTEXT;
     tracer.startActiveSpan("nlqdb.web.error", {}, parentContext, (span) => {
-      // The browser sink is unauthenticated and accepts any string the
-      // page can put in `e.message` / `e.stack` — user prompts,
-      // recovered URLs, and 5xx response bodies all routinely contain
-      // PII (emails, Bearer tokens, API keys, phone numbers). Every
-      // string that becomes a span attribute is routed through
-      // `redactPii` before truncation so spans (and any downstream
-      // exporter) never see raw PII. `surface` is set by our own code
-      // ("ChatPanel" / "CreateForm" / "boot"), so it's exempt.
-      span.setAttribute("nlqdb.web.surface", String(body["surface"] ?? "unknown").slice(0, 64));
-      span.setAttribute(
-        "nlqdb.web.message",
-        redactPii(String(body["message"] ?? "")).slice(0, 240),
-      );
-      if (typeof body["href"] === "string") {
-        span.setAttribute("nlqdb.web.href", redactPii(body["href"]).slice(0, 240));
-      }
-      if (typeof body["stack"] === "string") {
-        span.setAttribute("nlqdb.web.stack", redactPii(body["stack"]).slice(0, 2048));
-      }
-      if (typeof body["componentStack"] === "string") {
+      // try/finally so a throw in `redactPii` (defensive — its regex
+      // pipeline is hardened, but the outer `try/catch` would still
+      // leave the span unended on the BatchSpanProcessor, where most
+      // backends render it as "in progress" forever).
+      try {
+        // The browser sink is unauthenticated and accepts any string
+        // the page can put in `e.message` / `e.stack` — user prompts,
+        // recovered URLs, and 5xx response bodies all routinely
+        // contain PII (emails, Bearer tokens, API keys, phone
+        // numbers). Every string that becomes a span attribute is
+        // routed through `redactPii` before truncation so spans (and
+        // any downstream exporter) never see raw PII. `surface` is
+        // set by our own code today ("ChatPanel" / "CreateForm" /
+        // "boot") but the request body is network-controlled, so we
+        // redact + cap it too rather than trusting the client.
         span.setAttribute(
-          "nlqdb.web.componentStack",
-          redactPii(body["componentStack"]).slice(0, 2048),
+          "nlqdb.web.surface",
+          redactPii(String(body["surface"] ?? "unknown")).slice(0, 64),
         );
+        span.setAttribute(
+          "nlqdb.web.message",
+          redactPii(String(body["message"] ?? "")).slice(0, 240),
+        );
+        if (typeof body["href"] === "string") {
+          span.setAttribute("nlqdb.web.href", redactPii(body["href"]).slice(0, 240));
+        }
+        if (typeof body["stack"] === "string") {
+          span.setAttribute("nlqdb.web.stack", redactPii(body["stack"]).slice(0, 2048));
+        }
+        if (typeof body["componentStack"] === "string") {
+          span.setAttribute(
+            "nlqdb.web.componentStack",
+            redactPii(body["componentStack"]).slice(0, 2048),
+          );
+        }
+        // Propagation health — `valid` lets a Tempo dashboard count
+        // how often browser → server traceparent chained; `missing`
+        // vs `malformed` distinguishes "old cached bundle" from
+        // "browser change broke our minter". Low cardinality (3
+        // values) so it's metric-label safe.
+        span.setAttribute("nlqdb.web.traceparent_observed", classifyTraceparent(traceparentHeader));
+      } finally {
+        span.end();
       }
-      span.end();
     });
   } catch {
     // Best-effort — never let the error sink itself fail loudly.
