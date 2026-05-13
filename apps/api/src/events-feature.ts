@@ -16,7 +16,7 @@
 // returns 202 as soon as the queue producer accepts the message
 // (failures land on the OTel span, not the response status).
 
-import type { EventEmitter, NlqSurface, NotifyPaidCta } from "@nlqdb/events";
+import type { EventEmitter, NlqSurface, NotifyPaidCta, WishlistSurface } from "@nlqdb/events";
 import { makeKvThrottle } from "./lib/kv-throttle.ts";
 import { sha256Hex } from "./principal.ts";
 
@@ -26,11 +26,17 @@ const NOTIFY_PAID_CTAS: ReadonlySet<NotifyPaidCta> = new Set([
   "rate_limit",
 ]);
 
-// Closed at validation time. Adding a wishlist surface here lets the
-// homepage's `data-wishlist` attribute mint a new id without an API
-// edit — but the union here keeps a typo (`vsccode`) out of the
-// LogSnag dashboard.
-const WISHLIST_SURFACES: ReadonlySet<string> = new Set(["vscode", "jetbrains", "slack", "discord"]);
+// Source-of-truth check. Must mirror the `WishlistSurface` union in
+// `packages/events/src/types.ts` AND the `data-wishlist` attributes in
+// `apps/web/src/components/CodePanel.astro:101-104`. Adding a wishlist
+// badge is a three-place edit; the API rejects an unknown surface with
+// 400 `invalid_surface` so a missed edit fails loud rather than silent.
+const WISHLIST_SURFACES: ReadonlySet<WishlistSurface> = new Set([
+  "vscode",
+  "jetbrains",
+  "slack",
+  "discord",
+]);
 
 // Wishlist endpoint is public; KV throttle is the only defense.
 // 10/min/IP is generous enough that a real visitor clicking through
@@ -73,12 +79,16 @@ export type WishlistDeps = {
   events: EventEmitter;
 };
 
+function isWishlistSurface(value: unknown): value is WishlistSurface {
+  return typeof value === "string" && WISHLIST_SURFACES.has(value as WishlistSurface);
+}
+
 export async function recordWishlist(
   deps: WishlistDeps,
   surface: unknown,
   clientIp: string | null,
 ): Promise<WishlistResult> {
-  if (typeof surface !== "string" || !WISHLIST_SURFACES.has(surface)) {
+  if (!isWishlistSurface(surface)) {
     return { status: 400, reason: "invalid_surface" };
   }
   // Mirror waitlist.ts: null `cf-connecting-ip` collapses to a shared

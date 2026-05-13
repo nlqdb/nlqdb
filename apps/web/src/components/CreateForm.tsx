@@ -47,7 +47,11 @@ export default function CreateForm({ apiBase }: CreateFormProps) {
   const inputId = useId();
   const [goal, setGoal] = useState("");
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  // Track the structured error, not the rendered string — the rate-limit
+  // CTA branch reads `error.kind` rather than scraping the user-facing
+  // copy. `networkError` is the `catch` branch (no `CreateError` shape).
+  const [error, setError] = useState<CreateError | null>(null);
+  const [networkError, setNetworkError] = useState<string | null>(null);
   const [result, setResult] = useState<CreateResult | null>(null);
 
   // Rehydrate the draft on mount — the user may have refreshed
@@ -68,6 +72,7 @@ export default function CreateForm({ apiBase }: CreateFormProps) {
     if (!trimmed || loading) return;
     setLoading(true);
     setError(null);
+    setNetworkError(null);
     // Keep the previous result visible during submission. On the
     // SK-ANON-012 auth_required path the redirect fires and the page
     // navigates away anyway; clearing here would just flash an empty
@@ -117,11 +122,11 @@ export default function CreateForm({ apiBase }: CreateFormProps) {
           status: "error",
           outcome: outcome.error.kind,
         });
-        setError(messageFor(outcome.error));
+        setError(outcome.error);
       }
     } catch {
       appendHistory({ goal: trimmed, submittedAt, status: "error", outcome: "network" });
-      setError("Couldn't reach the API — try again.");
+      setNetworkError("Couldn't reach the API — try again.");
     } finally {
       setLoading(false);
     }
@@ -177,24 +182,20 @@ export default function CreateForm({ apiBase }: CreateFormProps) {
         </button>
         {error && (
           <div className="createform__error-wrap" role="alert">
-            <p className="createform__error">{error}</p>
-            {isRateLimitedError(error) && <NotifyPaidCta apiBase={apiBase} cta="rate_limit" />}
+            <p className="createform__error">{messageFor(error)}</p>
+            {error.kind === "rate_limited" && <NotifyPaidCta apiBase={apiBase} cta="rate_limit" />}
           </div>
+        )}
+        {networkError && (
+          <p className="createform__error" role="alert">
+            {networkError}
+          </p>
         )}
       </form>
 
       {result && <CreateResultView result={result} apiBase={apiBase} />}
     </section>
   );
-}
-
-// The `error` field in state is the user-facing string returned by
-// `messageFor()`; the rate-limit branch is the only one that produces
-// a "Slow down…" prefix. Matching on the prefix keeps the CTA scoped
-// to the documented surface (per `phase-plan.md §3`) without threading
-// the `CreateError` discriminator through render.
-function isRateLimitedError(message: string): boolean {
-  return message.startsWith("Slow down");
 }
 
 function CreateResultView({ result, apiBase }: { result: CreateResult; apiBase: string }) {

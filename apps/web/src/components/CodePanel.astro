@@ -102,6 +102,14 @@ const rendered = Object.fromEntries(
       <span class="badge">Python SDK</span>
       <span class="badge">Go SDK</span>
     </p>
+    {/*
+      Wishlist surfaces (SK-EVENTS-011). The `data-wishlist` values
+      below MUST match the `WishlistSurface` union in
+      `packages/events/src/types.ts` and the `WISHLIST_SURFACES` set in
+      `apps/api/src/events-feature.ts`. Adding a badge is a three-place
+      edit; the API rejects unknown surfaces with 400 `invalid_surface`
+      so a missed edit fails loud.
+    */}
     <p class="codepanel__matrix-row">
       <span class="codepanel__matrix-label">Wishlist</span>
       <a class="badge badge--wishlist" data-wishlist="vscode" href="mailto:hello@nlqdb.com?subject=Surface%20wishlist%3A%20VSCode%20extension">VSCode</a>

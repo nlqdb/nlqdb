@@ -13,7 +13,7 @@ when-to-load:
 **One-liner:** EVENTS_QUEUE producer + events-worker consumer that fans out to sinks (LogSnag, etc.).
 **Status:** implemented (Slice 3 — `packages/events` + queue; Slice 7 wires `billing.*` emissions)
 **Owners (code):** `packages/events/**`, `apps/events-worker/**`
-**Cross-refs:** docs/architecture.md §5.4 (analytics layers) · docs/phase-plan.md (events architecture) · docs/runbook.md §6 (`apps/events-worker` ops) · docs/performance.md §3.1 (`nlqdb.events.emit` span — wrapped in `ctx.waitUntil`, server-side only) · §4 Slices 5/6/7 (`user.registered` / `user.first_query` / `billing.*` emission contracts asserted with stub sink) · `apps/events-worker/README.md`
+**Cross-refs:** docs/architecture.md §5.4 · docs/phase-plan.md · docs/runbook.md §6 · docs/performance.md §3.1 + §4 · `apps/events-worker/README.md`
 
 ## Touchpoints — read this feature before editing
 
@@ -27,13 +27,13 @@ when-to-load:
 
 ### SK-EVENTS-001 — Producer/consumer split via Cloudflare Queue, never inline `ctx.waitUntil`
 
-- **Decision:** Product events flow `apps/api` → `EVENTS_QUEUE` (Cloudflare Queue `nlqdb-events`) → `apps/events-worker` → sinks. The producer side is `@nlqdb/events`; only `apps/events-worker` talks to external sinks. `apps/api` MUST NOT import any sink SDK (LogSnag, PostHog, Resend, Stripe-aftermath logic, outbound webhook libs).
+- **Decision:** Events flow `apps/api` → `EVENTS_QUEUE` (Cloudflare Queue `nlqdb-events`) → `apps/events-worker` → sinks. Only `apps/events-worker` talks to external sinks; `apps/api` MUST NOT import any sink SDK (LogSnag, PostHog, Resend).
 - **Core value:** Fast, Honest latency, Bullet-proof
-- **Why:** The `/v1/ask` p50 budget (< 400ms cache hit) cannot absorb sink latency. Inline `ctx.waitUntil` runs after the response but still bills the Worker invocation and blocks isolate shutdown — and gives no retry budget when the sink is briefly down. Queues hand us 3 free retries (`wrangler.toml max_retries`), batching (consumer pulls up to 10 events per invocation), and sink isolation (a wedged LogSnag SDK can't reach the `/v1/ask` hot path) for free on Workers Free tier (10K queue ops/day = ~3.3K msgs/day at 3 ops/msg).
-- **Consequence in code:** CI rejects any `apps/api` import of `@logsnag/*`, `posthog-*`, or other sink SDKs. New sinks are added as `apps/events-worker/src/sinks/<name>.ts` files with their own env-gated branch in `sendToSinks()`. Adding a producer call-site is one `events.emit({...})` line; no fan-out logic ever lives at the call-site.
+- **Why:** `/v1/ask` p50 (<400ms cache hit) cannot absorb sink latency. Inline `ctx.waitUntil` still bills the Worker, blocks isolate shutdown, and gives no retry budget. Queues hand us 3 free retries, batching (up to 10 per invocation), and sink isolation on Workers Free tier (10K queue ops/day = ~3.3K msgs/day at 3 ops/msg).
+- **Consequence in code:** CI rejects any `apps/api` import of `@logsnag/*` / `posthog-*`. New sinks land as `apps/events-worker/src/sinks/<name>.ts` with their own env-gated branch. Adding a producer call-site is one `events.emit({...})` line.
 - **Alternatives rejected:**
-  - Inline `ctx.waitUntil(logSnagClient.publish(...))` on the request path — couples request-Worker bundle size to sink SDKs, breaks `GLOBAL-013`'s 3 MiB ceiling, and gives zero retry budget.
-  - A third Worker per sink — the queue + dispatch shape already isolates sinks per-handler; an extra Worker doubles cold-start cost without buying isolation.
+  - Inline `ctx.waitUntil(sink.publish(...))` — couples request bundle to sink SDKs, breaks `GLOBAL-013`'s 3 MiB ceiling, zero retry.
+  - A third Worker per sink — the queue + dispatch already isolates; doubles cold-start cost.
 
 ### SK-EVENTS-002 — Discriminated-union event payloads, not free-form `(name, props)`
 
@@ -168,3 +168,5 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 - **Schema evolution.** Adding a field to an existing `ProductEvent` variant breaks `typecheck` for older producers in flight during deploy. Document a migration recipe before a non-additive change lands.
 - **Queue free-tier ceiling.** 10K ops/day = ~3.3K msgs/day at 3 ops/msg. Head-room is thin; capture a "hot signal" alert when daily ops cross 70%.
 - **Inbound-email sink.** Cloudflare Email Routing is wired separately; decide whether a future `support.email_received` event flows through this pipeline.
+- **Wishlist global cap (SK-EVENTS-011).** Only per-IP throttle (10/min). Distributed-IP abuse can exceed the Queue free-tier ceiling at request time even though producer-side dedup bounds LogSnag burn. Add a daily global cap on `/v1/events/wishlist` when `nlqdb.events.wishlist` shows abuse.
+- **NotifyPaidCta remount state (SK-EVENTS-011).** Click state is component-local; remounting `CreateResultView` restores the button. Producer-side per-(principal, cta, day) dedup absorbs the re-click at the sink; the quibble is UX only. Promote to a "have you opted in today" lookup if user-tests show confusion.

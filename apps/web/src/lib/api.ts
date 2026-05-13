@@ -148,11 +148,13 @@ export async function postAskCreate(
   return { ok: true, result: body };
 }
 
-// SK-EVENTS-011 — demand-signal CTA fan-out helpers. Both return void;
-// callers fire-and-forget. The pattern matches the snippet-copy +
-// wishlist-click DOM events on the marketing side: the user-facing UI
-// reflects the click instantly, the network round-trip is observability
-// only.
+// SK-EVENTS-011 — "Notify me when paid launches" CTA fan-out. Returns
+// void; the caller fires-and-forgets. The user-facing UI reflects the
+// click instantly; the network round-trip is observability only.
+//
+// (`/v1/events/wishlist` has no helper here: the only client is the
+// marketing CodePanel's inline `<script>` which can't import .ts and
+// uses raw `fetch(keepalive: true)` instead.)
 
 export type NotifyPaidCta = "db_create_success" | "anon_warning" | "rate_limit";
 
@@ -174,20 +176,5 @@ export async function postNotifyPaid(apiBase: string, cta: NotifyPaidCta): Promi
   } catch {
     // Best-effort: a failed CTA emit must NEVER surface as an error
     // to the user. The button has already given them feedback.
-  }
-}
-
-export async function postWishlist(apiBase: string, surface: string): Promise<void> {
-  try {
-    await fetch(`${apiBase.replace(/\/$/, "")}/v1/events/wishlist`, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      // No credentials — wishlist click is purely visitor-anonymous.
-      // The marketing CodePanel runs before any auth is established.
-      credentials: "omit",
-      body: JSON.stringify({ surface }),
-    });
-  } catch {
-    // Same posture as postNotifyPaid: never throw on a CTA emit.
   }
 }

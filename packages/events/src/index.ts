@@ -28,6 +28,7 @@ export type {
   NlqSurface,
   NotifyPaidCta,
   ProductEvent,
+  WishlistSurface,
 } from "./types.ts";
 
 export interface EventEmitter {

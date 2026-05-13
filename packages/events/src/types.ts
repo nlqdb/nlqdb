@@ -91,23 +91,24 @@ export type FeatureRequestedNotifyPaidEvent = {
   cta: NotifyPaidCta;
 };
 
+// Closed union of wishlist surface ids. Must match the `data-wishlist`
+// attributes in `apps/web/src/components/CodePanel.astro` AND the
+// `WISHLIST_SURFACES` validation set in `apps/api/src/events-feature.ts`.
+// Adding a wishlist badge is a three-place edit (HTML + API + this
+// union) — kept that way deliberately so a typo in any one place is
+// caught at the next: TypeScript flags the API, the API 400s the
+// click, or the LogSnag dashboard surfaces an unknown tag.
+export type WishlistSurface = "vscode" | "jetbrains" | "slack" | "discord";
+
 // `home.surface_wishlist` is the queued counterpart of the marketing-page
 // DOM event of the same name (`apps/web/src/components/CodePanel.astro`).
-// Each click on a wishlist badge (VSCode / JetBrains / Slack / Discord)
-// posts to `/v1/events/wishlist` so the click becomes typed signal in the
-// `home.*` domain rather than a DOM event that goes nowhere. The
-// marketing visitor may have no auth at all — `principalId` falls back
-// to a per-day IP-hash bucket so dedup still works without coercing the
-// visitor into an anon-bearer mint just to register a wishlist click.
+// The marketing visitor may have no auth at all — `principalId` falls
+// back to a per-day IP-hash bucket so dedup still works without
+// coercing the visitor into an anon-bearer mint for a wishlist click.
 export type HomeSurfaceWishlistEvent = {
   name: "home.surface_wishlist";
   principalId: string;
-  // The wishlist surface id from the badge's `data-wishlist` attribute
-  // (`vscode`, `jetbrains`, `slack`, `discord`). Kept as a free string
-  // rather than a closed union so new wishlist surfaces land without a
-  // packages/events bump — the LogSnag tag carries it through to the
-  // dashboard verbatim.
-  surface: string;
+  surface: WishlistSurface;
 };
 
 export type ProductEvent =
