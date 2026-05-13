@@ -1,0 +1,82 @@
+---
+// Single client sink for every "Sign out" affordance (SK-AUTH-019).
+// Exists as a page rather than a TS helper because `Base.astro`'s boot
+// fallback can only emit a plain `<a>` — and once it has to, the other
+// three surfaces (Topnav, ChatPanel, ErrorBoundary) navigate here too.
+import Base from "../../layouts/Base.astro";
+
+const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
+---
+<Base title="Signing out — nlqdb" description="Signing you out of nlqdb." canonical="/auth/sign-out">
+  <div class="page">
+    <main class="signout" aria-busy="true">
+      <section class="signout__card" aria-labelledby="signout-title">
+        <h1 id="signout-title" class="signout__title">Signing you out…</h1>
+        <p class="signout__lede">One moment — clearing your session.</p>
+      </section>
+    </main>
+  </div>
+
+  <script is:inline define:vars={{ apiBase }}>
+    (async () => {
+      // Drop per-user chat history; `nlqdb_anon` stays for SK-ANON-003 adoption on next sign-in.
+      try {
+        const remove = [];
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i);
+          if (key?.startsWith("nlq_hist_")) remove.push(key);
+        }
+        for (const key of remove) localStorage.removeItem(key);
+      } catch (_) {
+        // Privacy mode can throw on localStorage access.
+      }
+
+      // `body: "{}"` sidesteps better-call v1.3.5's empty-body JSON.parse 500.
+      try {
+        await fetch(`${apiBase.replace(/\/$/, "")}/api/auth/sign-out`, {
+          method: "POST",
+          credentials: "include",
+          headers: { "content-type": "application/json", accept: "application/json" },
+          body: "{}",
+        });
+      } catch (_) {
+        // Network/CORS failure — navigate anyway; stale cookie expires naturally.
+      } finally {
+        window.location.replace("/");
+      }
+    })();
+  </script>
+
+  <style is:global>
+    .signout {
+      min-height: 70vh;
+      display: grid;
+      place-items: center;
+      padding: clamp(48px, 8vw, 96px) 24px;
+    }
+
+    .signout__card {
+      border: 2px solid var(--border-strong);
+      background: var(--bg-elev);
+      padding: clamp(28px, 5vw, 48px);
+      max-width: 480px;
+      width: 100%;
+      box-shadow: var(--shadow-hard);
+      text-align: center;
+    }
+
+    .signout__title {
+      font-family: var(--mono);
+      font-size: clamp(20px, 3vw, 26px);
+      letter-spacing: -0.02em;
+      margin: 0 0 12px;
+    }
+
+    .signout__lede {
+      margin: 0;
+      font-size: clamp(14px, 1.6vw, 15px);
+      color: var(--fg-dim);
+      line-height: 1.5;
+    }
+  </style>
+</Base>

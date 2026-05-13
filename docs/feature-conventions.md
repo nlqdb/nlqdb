@@ -19,7 +19,9 @@ feature it covers — including changes that *might* affect it indirectly
 ```
 docs/features/
 ├── <feature-name>/
-│   └── FEATURE.md                   # canonical decisions + scope for this feature
+│   ├── FEATURE.md                   # canonical decisions + scope for this feature
+│   └── decisions/                   # optional: one file per SK-* once the feature
+│       └── SK-<PREFIX>-NNN-<slug>.md  # crosses CLAUDE.md D4's 20 KB ceiling
 └── …
 ```
 
@@ -29,6 +31,20 @@ breadcrumb pointing at it, so don't.
 
 Feature docs have no "imports." If a decision applies to multiple features
 it is referenced by `GLOBAL-NNN` ID (see §5), never duplicated.
+
+**Sharding (when `FEATURE.md` crosses 20 KB).** CLAUDE.md `D4` caps every
+markdown file at 20 KB. Small features keep all decisions inline in
+`FEATURE.md`. When the accumulating decision bodies would push the file
+over the cap, extract the bodies into a sibling `decisions/` directory —
+one file per `SK-*-*`, named `<ID>-<slug>.md` (e.g.
+`SK-AUTH-007-cookie-cache-with-kv-revocation.md`) — and rewrite the
+`## Decisions` section of `FEATURE.md` as an index of links (see §3).
+The directory mirrors the `docs/decisions/` pattern used for GLOBALs.
+The decision IDs and the five-field block format are unchanged; only
+the file boundary moves.
+
+For an example of the sharded shape, see
+[`docs/features/auth/`](features/auth/).
 
 ## 2. Decision IDs
 
@@ -125,6 +141,29 @@ fields — they reference the GLOBAL by ID (see §5).
 
 Optional: `Source:` line on `SK-*` blocks that points at where the
 long-form rationale lived before the feature doc existed.
+
+### 4a. Sharded layout (when `FEATURE.md` would cross 20 KB)
+
+Once the decision bodies push `FEATURE.md` over CLAUDE.md `D4`'s 20 KB
+cap, extract each `### SK-*-*` body into a sibling file under
+`decisions/` and replace the inline `## Decisions` section with a link
+index:
+
+```markdown
+## Decisions
+
+Canonical bodies live in [`decisions/`](decisions/) — one file per `SK-<PREFIX>-NNN`. The list below is the index; open the linked file for the full five-field block.
+
+- [**SK-AUTH-001**](decisions/SK-AUTH-001-better-auth-on-workers-d1.md) — Better Auth on Workers + D1 is the auth library.
+- [**SK-AUTH-002**](decisions/SK-AUTH-002-sign-in-methods.md) — Sign-in methods at launch: magic link, passkey, GitHub, Google. No passwords, ever.
+```
+
+Each shard file is a self-contained five-field block with an `# SK-*-*`
+H1 title (the ID + decision name on one line). IDs, numbering, and the
+five-field requirement (§4) are unchanged — only the file boundary
+moves. `docs/features/auth/` is the working example. The same pattern
+applies to GLOBALs (`docs/decisions/GLOBAL-NNN-<slug>.md`) — feature
+shards are the local equivalent.
 
 ## 5. Single source of truth (reference, don't duplicate)
 

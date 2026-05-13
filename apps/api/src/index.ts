@@ -1797,6 +1797,33 @@ app.get("/api/auth/oauth-init/:provider", async (c) => {
   });
 });
 
+// SK-AUTH-019 — direct `auth.api.signOut` bypasses the router-mounted
+// `originCheckMiddleware` that 403s sign-out when `Origin` is stripped.
+app.post("/api/auth/sign-out", async (c) => {
+  const tracer = trace.getTracer("@nlqdb/api");
+  return tracer.startActiveSpan("nlqdb.auth.verify", async (span) => {
+    const raw = c.req.raw;
+    try {
+      const response = await auth.api.signOut({
+        headers: raw.headers,
+        request: raw,
+        asResponse: true,
+      });
+      const outcome = response.status < 400 ? "success" : "failure";
+      span.setAttribute("http.response.status_code", response.status);
+      authEventsTotal().add(1, { type: "verify", outcome });
+      return response;
+    } catch (err) {
+      span.setAttribute("http.response.status_code", 500);
+      authEventsTotal().add(1, { type: "verify", outcome: "failure" });
+      span.recordException(err as Error);
+      throw err;
+    } finally {
+      span.end();
+    }
+  });
+});
+
 // Better Auth catch-all (docs/architecture.md §4.1, PERFORMANCE §4 row 5).
 //
 // Span naming: callbacks get `nlqdb.auth.oauth.callback` (one span per

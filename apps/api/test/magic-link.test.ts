@@ -183,4 +183,41 @@ describe("magic-link lifecycle", () => {
     const signOutBody = (await signOutRes.json()) as { success?: boolean };
     expect(signOutBody.success).toBe(true);
   });
+
+  it("sign-out: POST without an Origin header still hits our handler (route order + auth.api contract)", async () => {
+    // NODE_ENV=test forces Better Auth's `skipOriginCheck=true`, so
+    // this asserts route order and the `auth.api.signOut` contract —
+    // not the prod origin-check bypass (which is observable on
+    // `wrangler tail` and captured in SK-AUTH-019).
+    const email = `t-${crypto.randomUUID()}@example.com`;
+    await SELF.fetch(`${ORIGIN}/api/auth/sign-in/magic-link`, {
+      method: "POST",
+      headers: { "content-type": "application/json", origin: ORIGIN },
+      body: JSON.stringify({ email, callbackURL: `${ORIGIN}/app` }),
+    });
+    const verifyUrl = extractMagicLinkUrl(logs);
+    const verifyRes = await SELF.fetch(verifyUrl, { redirect: "manual" });
+    const setCookie = verifyRes.headers.get("set-cookie");
+    if (!setCookie) throw new Error("expected set-cookie on verify response");
+    const cookieFirst = setCookie.split(";")[0];
+    if (!cookieFirst) throw new Error("expected cookie value before first `;`");
+
+    const signOutRes = await SELF.fetch(`${ORIGIN}/api/auth/sign-out`, {
+      method: "POST",
+      headers: {
+        cookie: cookieFirst,
+        "content-type": "application/json",
+        accept: "application/json",
+      },
+      body: "{}",
+    });
+    expect(signOutRes.status).toBe(200);
+    const signOutBody = (await signOutRes.json()) as { success?: boolean };
+    expect(signOutBody.success).toBe(true);
+
+    // Set-Cookie max-age=0 confirms `auth.api.signOut` ran, not a middleware short-circuit.
+    const clearCookie = signOutRes.headers.get("set-cookie") ?? "";
+    expect(clearCookie.toLowerCase()).toMatch(/session_token=/);
+    expect(clearCookie.toLowerCase()).toMatch(/max-age=0/);
+  });
 });
