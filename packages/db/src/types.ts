@@ -272,19 +272,28 @@ export type ColumnType = z.infer<typeof ColumnTypeSchema>;
 const SAFE_DEFAULT_RE =
   /^(-?\d+(\.\d+)?|true|false|TRUE|FALSE|null|NULL|'[^']*'|gen_random_uuid\(\)|uuid_generate_v4\(\)|now\(\)|CURRENT_TIMESTAMP|CURRENT_DATE)$/;
 
+// Postel: providers vary in how they JSON-encode primitive defaults
+// (Groq's llama-3.3 emits `"default": 0` where Gemini emits `"default": "0"`).
+// Coerce numbers/booleans to their string form before the SAFE_DEFAULT_RE
+// check — both shapes inline identically into `DEFAULT <value>` in the
+// compiled DDL, and the regex still gates dangerous payloads.
 export const ColumnSchema = z.object({
   name: IdentifierSchema,
   type: ColumnTypeSchema,
   nullable: z.boolean().default(true),
   default: z
-    .string()
-    .refine((s) => !s.includes(";") && !s.includes("--") && !s.includes("/*"), {
-      message: "DEFAULT value must not contain SQL statement terminators or comments",
-    })
-    .refine((s) => SAFE_DEFAULT_RE.test(s.trim()), {
-      message:
-        "DEFAULT must be a numeric literal, boolean, NULL, quoted string, or a known zero-arg function (gen_random_uuid(), now(), CURRENT_TIMESTAMP, CURRENT_DATE)",
-    })
+    .preprocess(
+      (v) => (typeof v === "number" || typeof v === "boolean" ? String(v) : v),
+      z
+        .string()
+        .refine((s) => !s.includes(";") && !s.includes("--") && !s.includes("/*"), {
+          message: "DEFAULT value must not contain SQL statement terminators or comments",
+        })
+        .refine((s) => SAFE_DEFAULT_RE.test(s.trim()), {
+          message:
+            "DEFAULT must be a numeric literal, boolean, NULL, quoted string, or a known zero-arg function (gen_random_uuid(), now(), CURRENT_TIMESTAMP, CURRENT_DATE)",
+        }),
+    )
     .nullable()
     .optional(),
   description: z.string().max(500),
