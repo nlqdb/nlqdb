@@ -104,4 +104,36 @@ describe("reportClientError", () => {
     // Drain the rejected microtask so the next test starts clean.
     await new Promise((r) => setTimeout(r, 0));
   });
+
+  test("sends a W3C-shaped traceparent header so the server span joins the trace", async () => {
+    const captureHeaders: Record<string, string>[] = [];
+    globalThis.fetch = (async (_input: RequestInfo | URL, init?: RequestInit) => {
+      const h = (init?.headers ?? {}) as Record<string, string>;
+      captureHeaders.push(h);
+      return new Response(null, { status: 204 });
+    }) as typeof fetch;
+
+    const { reportClientError, _resetReportClientErrorForTests } = await import(
+      "./error-report.ts"
+    );
+    _resetReportClientErrorForTests();
+
+    reportClientError({ surface: "ChatPanel", message: "x is undefined" });
+    await new Promise((r) => setTimeout(r, 0));
+
+    const tp = captureHeaders[0]?.["traceparent"];
+    expect(tp).toBeDefined();
+    expect(tp).toMatch(/^00-[0-9a-f]{32}-[0-9a-f]{16}-01$/);
+  });
+});
+
+describe("newTraceparent", () => {
+  test("emits a v00 traceparent with random trace + span ids on each call", async () => {
+    const { newTraceparent } = await import("./error-report.ts");
+    const a = newTraceparent();
+    const b = newTraceparent();
+    expect(a).toMatch(/^00-[0-9a-f]{32}-[0-9a-f]{16}-01$/);
+    expect(b).toMatch(/^00-[0-9a-f]{32}-[0-9a-f]{16}-01$/);
+    expect(a).not.toBe(b);
+  });
 });

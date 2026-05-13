@@ -84,6 +84,22 @@ const jsonLd = {
           if (typeof r === "string") return r;
           return "Unhandled error.";
         }
+        // W3C Trace Context — mint a fresh traceparent per report so
+        // the server-side span attaches to it. Duplicates the helper
+        // in `lib/error-report.ts` because this is an `is:inline`
+        // boot script that can't import.
+        function genHex(bytes) {
+          var arr = new Uint8Array(bytes);
+          crypto.getRandomValues(arr);
+          var out = "";
+          for (var i = 0; i < arr.length; i++) {
+            out += arr[i].toString(16).padStart(2, "0");
+          }
+          return out;
+        }
+        function newTraceparent() {
+          return "00-" + genHex(16) + "-" + genHex(8) + "-01";
+        }
         function report(message) {
           var stack = (message || "").slice(0, 200);
           var fp = "boot::" + message + "::" + stack;
@@ -93,7 +109,10 @@ const jsonLd = {
           try {
             fetch(apiBase + "/v1/errors/web", {
               method: "POST",
-              headers: { "content-type": "application/json" },
+              headers: {
+                "content-type": "application/json",
+                traceparent: newTraceparent(),
+              },
               credentials: "omit",
               keepalive: true,
               body: JSON.stringify({

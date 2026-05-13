@@ -6,7 +6,15 @@ import {
   type Engine,
 } from "@nlqdb/db";
 import { authEventsTotal, redactPii, setupTelemetry } from "@nlqdb/otel";
-import { type Span, trace } from "@opentelemetry/api";
+import {
+  isValidSpanId,
+  isValidTraceId,
+  ROOT_CONTEXT,
+  type Span,
+  type SpanContext,
+  TraceFlags,
+  trace,
+} from "@opentelemetry/api";
 import { type Context, Hono } from "hono";
 import { cors } from "hono/cors";
 import { streamSSE } from "hono/streaming";
@@ -294,6 +302,39 @@ export function _resetErrorSinkForTests(): void {
   errorSinkRate.count = 0;
 }
 
+// W3C Trace Context propagation (browser → server). Parses the
+// `traceparent` header so the `nlqdb.web.error` span attaches to the
+// trace the client started — that way an OTel backend (Tempo) groups
+// the server-side record with whatever browser-side context the
+// reporting page held. We don't register a global propagator because
+// only this endpoint reads incoming `traceparent` today; the parser
+// stays local and the cost is one regex per error report.
+//
+// Header format (W3C Trace Context v1):
+//   version "-" trace_id "-" parent_id "-" trace_flags
+//   00       -  32-hex    -  16-hex     -  2-hex
+const TRACEPARENT_RE = /^([0-9a-f]{2})-([0-9a-f]{32})-([0-9a-f]{16})-([0-9a-f]{2})$/;
+
+export function parseTraceparent(header: string | null | undefined): SpanContext | null {
+  if (!header) return null;
+  const match = TRACEPARENT_RE.exec(header.trim().toLowerCase());
+  if (!match) return null;
+  const [, version, traceId, spanId, flags] = match;
+  if (!version || !traceId || !spanId || !flags) return null;
+  // Only `00` is defined today; later versions MAY append fields, but
+  // the spec says receivers MUST ignore them and treat the prefix as
+  // v00. Until a v01 exists, restrict to v00 to avoid silently mis-
+  // parsing future syntax.
+  if (version !== "00") return null;
+  if (!isValidTraceId(traceId) || !isValidSpanId(spanId)) return null;
+  return {
+    traceId,
+    spanId,
+    traceFlags: (Number.parseInt(flags, 16) & TraceFlags.SAMPLED) as TraceFlags,
+    isRemote: true,
+  };
+}
+
 app.use("/v1/errors/web", credentialedCors);
 app.post("/v1/errors/web", async (c) => {
   try {
@@ -311,17 +352,35 @@ app.post("/v1/errors/web", async (c) => {
       return c.body(null, 204);
     }
     const tracer = trace.getTracer("@nlqdb/api");
-    tracer.startActiveSpan("nlqdb.web.error", (span) => {
+    const parentSpanContext = parseTraceparent(c.req.header("traceparent"));
+    const parentContext = parentSpanContext
+      ? trace.setSpanContext(ROOT_CONTEXT, parentSpanContext)
+      : ROOT_CONTEXT;
+    tracer.startActiveSpan("nlqdb.web.error", {}, parentContext, (span) => {
+      // The browser sink is unauthenticated and accepts any string the
+      // page can put in `e.message` / `e.stack` — user prompts,
+      // recovered URLs, and 5xx response bodies all routinely contain
+      // PII (emails, Bearer tokens, API keys, phone numbers). Every
+      // string that becomes a span attribute is routed through
+      // `redactPii` before truncation so spans (and any downstream
+      // exporter) never see raw PII. `surface` is set by our own code
+      // ("ChatPanel" / "CreateForm" / "boot"), so it's exempt.
       span.setAttribute("nlqdb.web.surface", String(body["surface"] ?? "unknown").slice(0, 64));
-      span.setAttribute("nlqdb.web.message", String(body["message"] ?? "").slice(0, 240));
+      span.setAttribute(
+        "nlqdb.web.message",
+        redactPii(String(body["message"] ?? "")).slice(0, 240),
+      );
       if (typeof body["href"] === "string") {
-        span.setAttribute("nlqdb.web.href", body["href"].slice(0, 240));
+        span.setAttribute("nlqdb.web.href", redactPii(body["href"]).slice(0, 240));
       }
       if (typeof body["stack"] === "string") {
-        span.setAttribute("nlqdb.web.stack", body["stack"].slice(0, 2048));
+        span.setAttribute("nlqdb.web.stack", redactPii(body["stack"]).slice(0, 2048));
       }
       if (typeof body["componentStack"] === "string") {
-        span.setAttribute("nlqdb.web.componentStack", body["componentStack"].slice(0, 2048));
+        span.setAttribute(
+          "nlqdb.web.componentStack",
+          redactPii(body["componentStack"]).slice(0, 2048),
+        );
       }
       span.end();
     });
