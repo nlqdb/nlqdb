@@ -2,7 +2,7 @@
   "name": "@nlqdb/opencheck-tests",
   "private": true,
   "version": "0.0.0",
-  "description": "E2E opencheck tests. Run via .github/workflows/e2e-opencheck.yml (daily cron + manual dispatch).",
+  "description": "E2E opencheck tests. Run via .github/workflows/e2e-opencheck.yml (workflow_dispatch).",
   "type": "module",
   "dependencies": {
     "@langchain/openai": "^1.4.5",

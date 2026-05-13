@@ -1,30 +1,25 @@
-# nlqdb — daily E2E opencheck against an ephemeral preview environment.
+# nlqdb — manually-triggered E2E opencheck against an ephemeral preview.
 #
-# Trigger: cron at 07:00 UTC daily + manual `workflow_dispatch`.
+# Trigger: `workflow_dispatch` only. Scheduling (daily / on-change) is
+# driven externally by a Claude cron job that hits the dispatch endpoint
+# when it decides a run is warranted.
 #
 # Why ephemeral preview (vs. long-lived staging or canary):
 # Same pattern as `preview-app.yml` — per-run Neon branch + Workers
-# Versions upload with MOCK_IDP=1, MOCK_STRIPE=1 under a fixed
-# `e2e-daily` preview alias. Always-fresh state, no drift,
-# `MOCK_IDP=1` removes the OAuth round-trip so opencheck can sign in
-# with the built-in form (`SK-AUTH-018`). Cleaned up at the end of
-# every run so the Neon Free-tier branch ceiling stays clear.
+# Versions upload with MOCK_IDP=1, MOCK_STRIPE=1 under a fixed `e2e`
+# preview alias. Always-fresh state, no drift, `MOCK_IDP=1` removes
+# the OAuth round-trip so opencheck can sign in with the built-in
+# form (`SK-AUTH-018`). Cleaned up at the end of every run so the
+# Neon Free-tier branch ceiling stays clear.
 #
-# `should-run` gate: cron skips when there were no main commits in
-# the last 24h, since the previous day's pass is still valid.
-# `workflow_dispatch` always runs (manual = "I want to check now").
-#
-# `concurrency: cancel-in-progress: false` — if a manual dispatch
-# overlaps an in-flight cron run, queue rather than cancel.
-# Cancelling mid-run would leave a Neon branch + Workers version
-# orphaned (cleanup only fires at the end).
+# `concurrency: cancel-in-progress: false` — if two dispatches overlap,
+# queue rather than cancel. Cancelling mid-run would leave a Neon branch
+# + Workers version orphaned (cleanup only fires at the end).
 
-name: E2E (opencheck — daily)
+name: E2E (opencheck)
 
 on:
   workflow_dispatch:
-  schedule:
-    - cron: "0 7 * * *"
 
 concurrency:
   group: e2e-opencheck
@@ -37,52 +32,14 @@ permissions: {}
 # Fixed names so cleanup can find them regardless of which step
 # crashed mid-run. Per-run uniqueness comes from `github.run_id` only
 # where strictly needed (artifact name); the staging surface itself
-# is single-tenant ("there is one daily E2E env").
+# is single-tenant ("there is one E2E env").
 env:
-  E2E_NEON_BRANCH: e2e-daily
-  E2E_PREVIEW_ALIAS: e2e-daily
+  E2E_NEON_BRANCH: e2e
+  E2E_PREVIEW_ALIAS: e2e
 
 jobs:
-  should-run:
-    name: Detect changes (last 24h)
-    runs-on: ubuntu-latest
-    timeout-minutes: 2
-    outputs:
-      run: ${{ steps.check.outputs.run }}
-    permissions:
-      contents: read
-    steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
-        with:
-          # 100 commits is enough to see the last 24h of activity on
-          # an active repo; cheaper than a full clone for a 2-min
-          # gate step.
-          fetch-depth: 100
-
-      - id: check
-        shell: bash
-        env:
-          EVENT_NAME: ${{ github.event_name }}
-        run: |
-          set -euo pipefail
-          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
-            echo "manual dispatch — running"
-            echo "run=true" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          count=$(git log --since='24 hours ago' --oneline | wc -l)
-          if [ "$count" -gt 0 ]; then
-            echo "$count commits in last 24h — running"
-            echo "run=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "no commits in last 24h — skipping the run"
-            echo "run=false" >> "$GITHUB_OUTPUT"
-          fi
-
   deploy-staging:
     name: Spin up ephemeral preview
-    needs: should-run
-    if: needs.should-run.outputs.run == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 8
     outputs:
@@ -127,10 +84,9 @@ jobs:
       - name: Strip real sign-in page (mock-IdP override)
         run: rm -rf apps/web/dist/auth/sign-in
 
-      # Idempotent recreate: the fixed `e2e-daily` branch name means
-      # a re-run finds a stale branch. Delete then recreate for fresh
-      # credentials (Neon only returns the connection URI on create,
-      # not on lookup).
+      # Idempotent recreate: the fixed `e2e` branch name means a re-run
+      # finds a stale branch. Delete then recreate for fresh credentials
+      # (Neon only returns the connection URI on create, not on lookup).
       - name: Recreate Neon branch
         id: neon
         env:
@@ -180,7 +136,7 @@ jobs:
           set -euo pipefail
           mkdir -p "$WRANGLER_OUTPUT_FILE_DIRECTORY"
           bunx wrangler versions upload \
-            --message "E2E daily @ ${{ github.sha }}" \
+            --message "E2E @ ${{ github.sha }}" \
             --preview-alias "${E2E_PREVIEW_ALIAS}" \
             --var "NODE_ENV:preview" \
             --var "MOCK_IDP:1" \

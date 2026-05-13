@@ -1,8 +1,8 @@
 # E2E flow for nlqdb: anonymous → table-create → mutation-gate → mock-auth → authed-state-preserved → mutate → delete → sign-out.
-# Run by .github/workflows/e2e-opencheck.yml (daily cron + manual dispatch).
+# Run by .github/workflows/e2e-opencheck.yml (workflow_dispatch — external scheduler).
 #
 # Runtime substitution: the caller workflow renders `__BASE_URL__` to the
-# per-run preview alias (e.g. https://e2e-daily-nlqdb-api.omer-hochman.workers.dev)
+# per-run preview alias (e.g. https://e2e-nlqdb-api.omer-hochman.workers.dev)
 # via `sed` before invoking `bunx opencheck`. opencheck's YAML parser is
 # literal-string (no env interpolation), so the placeholder is mechanical.
 #
