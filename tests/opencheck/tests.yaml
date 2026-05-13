@@ -1,0 +1,76 @@
+# E2E flow for nlqdb: anonymous → table-create → mutation-gate → mock-auth → authed-state-preserved → mutate → delete → sign-out.
+# Run by .github/workflows/e2e-opencheck.yml (workflow_dispatch — external scheduler).
+#
+# Runtime substitution: the caller workflow renders `__BASE_URL__` to the
+# per-run preview alias (e.g. https://e2e-nlqdb-api.omer-hochman.workers.dev)
+# via `sed` before invoking `bunx opencheck`. opencheck's YAML parser is
+# literal-string (no env interpolation), so the placeholder is mechanical.
+#
+# LLM: Gemini via OpenAI-compat (https://ai.google.dev/gemini-api/docs/openai).
+# opencheck delegates to LangChain `initChatModel(model, { modelProvider })`,
+# which auto-loads `@langchain/openai`. ChatOpenAI reads OPENAI_API_KEY +
+# OPENAI_BASE_URL — both wired in the reusable workflow env.
+
+baseUrl: "__BASE_URL__"
+modelProvider: "openai"
+model: "gemini-2.5-flash"
+sessionMode: "isolated"
+
+tests:
+  - name: "#hero-or-cmdg"
+    case: |
+      Visit the home page. If the chat composer/input is not visible, press
+      Cmd+G (or Ctrl+G on Linux) to reveal the cmd+g-gated chat UI. Confirm a
+      chat input element is now visible and ready to accept text.
+
+  - name: "#create-table-anon"
+    case: |
+      #hero-or-cmdg, then type
+        "create a users table with id, name, email"
+      into the chat input and submit. Within 5 seconds either a `users`
+      table should be rendered on the page, or a chat reply should confirm
+      the table was created.
+
+  - name: "#add-row-redirects-to-auth"
+    case: |
+      #create-table-anon, then type
+        "add a new row: name='Alice', email='alice@example.com'"
+      into the chat input and submit. The browser should be redirected to a
+      sign-in page (URL path contains "/auth/sign-in"). Do NOT submit the
+      sign-in form in this step.
+
+  - name: "#mock-sign-in"
+    case: |
+      #add-row-redirects-to-auth, then on the /auth/sign-in page submit the
+      mock-IdP form: leave the email field at its default of
+      "test@example.com" and click the sign-in / submit button. Wait for the
+      browser to land on /app.
+
+  - name: "#authed-state-preserved"
+    case: |
+      #mock-sign-in, then on /app verify BOTH conditions hold:
+        (a) the users database created during the anonymous flow is the
+            currently focused / selected database (visible in the sidebar
+            or db selector), and
+        (b) the chat input is pre-filled with the "add a new row" command
+            that was typed before the auth redirect.
+
+  - name: "#submit-prefilled-row"
+    case: |
+      #authed-state-preserved, then submit the pre-filled query in the chat
+      input (Enter, or click the Send button). Within 5 seconds a new row
+      with name "Alice" and email "alice@example.com" should be visible in
+      the users table.
+
+  - name: "#delete-row"
+    case: |
+      #submit-prefilled-row, then type
+        "delete the row where name = 'Alice'"
+      into the chat input and submit. Within 5 seconds the Alice row should
+      no longer be present in the users table.
+
+  - name: "#sign-out"
+    case: |
+      #delete-row, then sign out (open the topnav user menu and click the
+      "Sign out" item). Confirm the topnav switches to an unauthenticated
+      state and the URL is no longer /app.

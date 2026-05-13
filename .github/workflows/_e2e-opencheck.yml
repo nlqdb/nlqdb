@@ -1,0 +1,162 @@
+# Reusable: run opencheck against a given baseUrl with Gemini through the
+# OpenAI-compatible endpoint. The `workflow_call` trigger means this file
+# never appears in the manual-dispatch list — callers (see
+# `e2e-opencheck.yml`) drive it.
+#
+# Why OpenAI-compat for Gemini:
+#   opencheck v0.3.0 pins `@langchain/core ^1.1.24` (the LangChain JS v1
+#   ecosystem). `@langchain/google-genai`'s entire published range peers
+#   `@langchain/core <0.3.0`, so installing it as a sibling dep causes a
+#   peer-dep split (two copies of core at runtime, broken types).
+#   `@langchain/openai` v1.4.5 is on the same v1 ecosystem and works
+#   cleanly. Gemini exposes a native OpenAI-compatible endpoint
+#   (https://ai.google.dev/gemini-api/docs/openai), so pointing
+#   ChatOpenAI at it with the Gemini key is the no-upstream-change path.
+
+name: E2E opencheck (reusable)
+
+on:
+  workflow_call:
+    inputs:
+      base_url:
+        description: "Base URL the E2E flow runs against (per-run staging URL)."
+        required: true
+        type: string
+    secrets:
+      GEMINI_API_KEY:
+        description: "Gemini API key. Surfaced to ChatOpenAI via OPENAI_API_KEY + Gemini OpenAI-compat base URL."
+        required: true
+
+# SK-CIPERM-001 — default-deny at workflow root.
+permissions: {}
+
+jobs:
+  run:
+    name: opencheck
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # SK-CIPERM-002 — minimal grant. No PR comment from this reusable
+    # (callers attach their own surface via step summary / artifacts);
+    # `contents: read` is enough for the checkout.
+    permissions:
+      contents: read
+    env:
+      BASE_URL: ${{ inputs.base_url }}
+      # @langchain/openai's ChatOpenAI delegates to the OpenAI Node SDK,
+      # which reads OPENAI_API_KEY + OPENAI_BASE_URL from env. Pointing
+      # OPENAI_BASE_URL at Gemini's OpenAI-compat endpoint routes every
+      # /chat/completions call to Gemini while keeping the SDK
+      # surface identical.
+      OPENAI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      OPENAI_BASE_URL: https://generativelanguage.googleapis.com/v1beta/openai/
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+
+      # The opencheck deps tree (LangChain v1 + Playwright MCP) is heavy
+      # and intentionally NOT in root `workspaces:` to keep the global
+      # CI install lean. Install locally instead.
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version-file: package.json
+
+      # Playwright browser binaries (~150 MB) live outside node_modules and
+      # are downloaded by playwright-mcp's postinstall. Cached on the
+      # opencheck-tests package.json hash so a dep bump that moves
+      # playwright's version invalidates cleanly; otherwise we save the
+      # whole download on every run.
+      - name: Restore Playwright browser cache
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('tests/opencheck/package.json') }}
+          restore-keys: |
+            playwright-${{ runner.os }}-
+
+      # opencheck's step cache. The point of caching it is to skip LLM
+      # re-derivation when the UI hasn't changed; the point of keying on
+      # app source (not just tests.yaml) is to invalidate when the UI
+      # CAN have changed — otherwise opencheck's "self-healing on UI
+      # changes" can quietly route past a regression. tests.yaml is in
+      # the key too so edits to test cases force re-derivation.
+      - name: Restore opencheck step cache
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: tests/opencheck/.opencheck-cache
+          key: opencheck-cache-${{ runner.os }}-${{ hashFiles('apps/web/src/**', 'apps/api/src/**', 'tests/opencheck/tests.yaml') }}
+          restore-keys: |
+            opencheck-cache-${{ runner.os }}-
+
+      - name: Install opencheck deps
+        working-directory: tests/opencheck
+        # No frozen lockfile — `tests/opencheck/` is non-workspace and
+        # we don't ship its bun.lock. Daily E2E doesn't need byte-for-byte
+        # repro; minor patch drifts in @langchain/openai are acceptable.
+        # Playwright postinstall sees the restored ms-playwright cache
+        # (if any) and skips re-download.
+        run: bun install
+
+      # opencheck's YAML parser does NOT interpolate env vars; substitute
+      # the placeholder before invocation. Writing to a new file (not
+      # mutating the checked-in tests.yaml) keeps the working tree clean.
+      - name: Render tests.yaml with runtime baseUrl
+        working-directory: tests/opencheck
+        run: |
+          sed "s|__BASE_URL__|${BASE_URL}|g" tests.yaml > tests-runtime.yaml
+          echo "::group::rendered tests-runtime.yaml"
+          cat tests-runtime.yaml
+          echo "::endgroup::"
+
+      - name: Run opencheck
+        id: oc
+        working-directory: tests/opencheck
+        shell: bash
+        # `set +e` + PIPESTATUS so a non-zero opencheck exit doesn't kill
+        # the job before we can capture the log + upload recordings.
+        run: |
+          set +e
+          bunx opencheck --config tests-runtime.yaml 2>&1 | tee /tmp/opencheck-output.txt
+          echo "exit_code=${PIPESTATUS[0]}" >> "$GITHUB_OUTPUT"
+
+      # opencheck writes Playwright traces + videos into
+      # `.opencheck-recordings/`. Always upload, even on success — first
+      # successful run lets us validate the artifact path; failure runs
+      # drag the trace.zip into trace.playwright.dev for triage.
+      - name: Upload recordings
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: opencheck-recordings-${{ github.run_id }}
+          path: tests/opencheck/.opencheck-recordings/
+          if-no-files-found: ignore
+          retention-days: 30
+
+      - name: Step summary
+        if: always()
+        shell: bash
+        env:
+          EXIT_CODE: ${{ steps.oc.outputs.exit_code }}
+          STAGING_URL: ${{ inputs.base_url }}
+        run: |
+          {
+            echo "## opencheck results"
+            echo
+            if [ "$EXIT_CODE" = "0" ]; then
+              echo "✅ All tests passed"
+            else
+              echo "❌ Tests failed (exit code $EXIT_CODE)"
+            fi
+            echo
+            echo "- Staging URL: $STAGING_URL"
+            echo "- Recordings: see the \`opencheck-recordings-${{ github.run_id }}\` artifact on this run."
+            echo "- Trace viewer: drag \`trace.zip\` into https://trace.playwright.dev"
+            echo
+            echo "### Run log"
+            echo '```'
+            cat /tmp/opencheck-output.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Propagate opencheck exit code
+        if: always()
+        shell: bash
+        run: exit "${{ steps.oc.outputs.exit_code }}"
