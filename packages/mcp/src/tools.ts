@@ -258,7 +258,14 @@ export function mapSdkError(err: unknown): ToolError {
       code: "auth_required",
       message: "This tool requires a user-scoped key (sk_live_ or sk_mcp_).",
       action:
-        "Wait for sk_mcp_* keys (Phase 2 slice 1) or use a pk_live_* key with nlqdb_query for a pinned database.",
+        "Mint one at https://app.nlqdb.com/keys, then re-launch this host so it picks up the new credentials.",
+    };
+  }
+  if (code === "account_required" || httpStatus === 403) {
+    return {
+      code: "account_required",
+      message: "This tool needs an account-scoped key; a pk_live_ embed key is not enough.",
+      action: "Re-launch with a sk_live_ or sk_mcp_ key minted at https://app.nlqdb.com/keys.",
     };
   }
   if (code === "low_confidence") {
