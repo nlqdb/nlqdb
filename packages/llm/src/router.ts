@@ -629,98 +629,107 @@ async function raceHedgedPair<Req, Res>(
 
   // Bridge the caller's outer signal into both leg signals so a
   // caller-side cancel cuts both legs cleanly (and `classifyError`
-  // surfaces the caller's `reason`, not `HEDGE_LOST`).
+  // surfaces the caller's `reason`, not `HEDGE_LOST`). The listener
+  // MUST be removed at the end of the race — without that, every
+  // `raceHedgedPair` call holds two `AbortController` instances in the
+  // outer signal's listener list until the outer signal aborts (which,
+  // for a successfully completed request, is never). With ~thousands
+  // of hedged ops per long-lived caller signal that adds up to a real
+  // memory leak.
+  let detachAbortBridge: (() => void) | undefined;
   if (callerOpts?.signal) {
     const outer = callerOpts.signal;
     if (outer.aborted) {
       primaryCtrl.abort(outer.reason);
       secondaryCtrl.abort(outer.reason);
     } else {
-      outer.addEventListener(
-        "abort",
-        () => {
-          primaryCtrl.abort(outer.reason);
-          secondaryCtrl.abort(outer.reason);
-        },
-        { once: true },
-      );
+      const onOuterAbort = () => {
+        primaryCtrl.abort(outer.reason);
+        secondaryCtrl.abort(outer.reason);
+      };
+      outer.addEventListener("abort", onOuterAbort, { once: true });
+      detachAbortBridge = () => outer.removeEventListener("abort", onOuterAbort);
     }
   }
 
-  const primaryOpts: CallOpts = {
-    ...(callerOpts?.fetch !== undefined ? { fetch: callerOpts.fetch } : {}),
-    signal: primaryCtrl.signal,
-  };
-  const secondaryOpts: CallOpts = {
-    ...(callerOpts?.fetch !== undefined ? { fetch: callerOpts.fetch } : {}),
-    signal: secondaryCtrl.signal,
-  };
-
-  let primaryDone = false;
-  let primaryResult: AttemptResult<Res> | undefined;
-  const primaryP = attemptFn(op, primary, req, call, primaryOpts, timeoutMs).then((r) => {
-    primaryDone = true;
-    primaryResult = r;
-    return r;
-  });
-
-  // Wait for primary OR the head-start delay (whichever fires first).
-  // Race primary's resolution against a sleep — if primary settles
-  // first, we get to inspect it before deciding on the hedge.
-  await new Promise<void>((resolve) => {
-    const timer = setTimeout(resolve, hedgeAfterMs);
-    void primaryP.finally(() => {
-      clearTimeout(timer);
-      resolve();
-    });
-  });
-
-  // Primary already succeeded before the head-start? Done — no hedge.
-  if (primaryDone && primaryResult?.ok) {
-    return {
-      winner: { value: primaryResult.value, from: "primary" },
-      a: primaryResult,
-      b: undefined,
+  try {
+    const primaryOpts: CallOpts = {
+      ...(callerOpts?.fetch !== undefined ? { fetch: callerOpts.fetch } : {}),
+      signal: primaryCtrl.signal,
     };
+    const secondaryOpts: CallOpts = {
+      ...(callerOpts?.fetch !== undefined ? { fetch: callerOpts.fetch } : {}),
+      signal: secondaryCtrl.signal,
+    };
+
+    let primaryDone = false;
+    let primaryResult: AttemptResult<Res> | undefined;
+    const primaryP = attemptFn(op, primary, req, call, primaryOpts, timeoutMs).then((r) => {
+      primaryDone = true;
+      primaryResult = r;
+      return r;
+    });
+
+    // Wait for primary OR the head-start delay (whichever fires first).
+    // Race primary's resolution against a sleep — if primary settles
+    // first, we get to inspect it before deciding on the hedge.
+    await new Promise<void>((resolve) => {
+      const timer = setTimeout(resolve, hedgeAfterMs);
+      void primaryP.finally(() => {
+        clearTimeout(timer);
+        resolve();
+      });
+    });
+
+    // Primary already succeeded before the head-start? Done — no hedge.
+    if (primaryDone && primaryResult?.ok) {
+      return {
+        winner: { value: primaryResult.value, from: "primary" },
+        a: primaryResult,
+        b: undefined,
+      };
+    }
+
+    // Primary already failed before the head-start? Skip the hedge and
+    // let the caller fall through to the rest of the chain. (Firing
+    // the hedge here would waste a request — we already know primary's
+    // verdict and can move on sequentially.)
+    if (primaryDone && primaryResult && !primaryResult.ok) {
+      return { winner: undefined, a: primaryResult, b: undefined };
+    }
+
+    // Primary is still pending: fire the hedge.
+    const secondaryP = attemptFn(op, secondary, req, call, secondaryOpts, timeoutMs);
+
+    // Abort the loser as soon as the winner is known. The abort fires
+    // ~immediately (next microtask) on AbortController.abort() so the
+    // loser's `attempt()` settles with `reason: "hedge_lost"` within a
+    // few ms — `Promise.all` below blocks only on that brief cleanup.
+    void primaryP.then((r) => {
+      if (r.ok) secondaryCtrl.abort(HEDGE_LOST);
+    });
+    void secondaryP.then((r) => {
+      if (r.ok) primaryCtrl.abort(HEDGE_LOST);
+    });
+
+    const [pResult, sResult] = await Promise.all([primaryP, secondaryP]);
+
+    // Tie-breaker: when both legs succeed (rare — secondary fires at
+    // the head-start delay, so primary would have to land within the
+    // first ~ms of secondary's call), prefer primary. The head-start
+    // already filtered out the trivially-fast primary case, so any
+    // dual-success here is genuinely a race we can resolve either way.
+    let winner: { value: Res; from: "primary" | "secondary" } | undefined;
+    if (pResult.ok) {
+      winner = { value: pResult.value, from: "primary" };
+    } else if (sResult.ok) {
+      winner = { value: sResult.value, from: "secondary" };
+    }
+
+    return { winner, a: pResult, b: sResult };
+  } finally {
+    detachAbortBridge?.();
   }
-
-  // Primary already failed before the head-start? Skip the hedge and
-  // let the caller fall through to the rest of the chain. (Firing the
-  // hedge here would waste a request — we already know primary's
-  // verdict and can move on sequentially.)
-  if (primaryDone && primaryResult && !primaryResult.ok) {
-    return { winner: undefined, a: primaryResult, b: undefined };
-  }
-
-  // Primary is still pending: fire the hedge.
-  const secondaryP = attemptFn(op, secondary, req, call, secondaryOpts, timeoutMs);
-
-  // Abort the loser as soon as the winner is known. The abort fires
-  // ~immediately (next microtask) on AbortController.abort() so the
-  // loser's `attempt()` settles with `reason: "hedge_lost"` within a
-  // few ms — `Promise.all` below blocks only on that brief cleanup.
-  void primaryP.then((r) => {
-    if (r.ok) secondaryCtrl.abort(HEDGE_LOST);
-  });
-  void secondaryP.then((r) => {
-    if (r.ok) primaryCtrl.abort(HEDGE_LOST);
-  });
-
-  const [pResult, sResult] = await Promise.all([primaryP, secondaryP]);
-
-  // Tie-breaker: when both legs succeed (rare — secondary fires at
-  // the head-start delay, so primary would have to land within the
-  // first ~ms of secondary's call), prefer primary. The head-start
-  // already filtered out the trivially-fast primary case, so any
-  // dual-success here is genuinely a race we can resolve either way.
-  let winner: { value: Res; from: "primary" | "secondary" } | undefined;
-  if (pResult.ok) {
-    winner = { value: pResult.value, from: "primary" };
-  } else if (sResult.ok) {
-    winner = { value: sResult.value, from: "secondary" };
-  }
-
-  return { winner, a: pResult, b: sResult };
 }
 
 function classifyError(err: unknown, signal: AbortSignal): FailoverReason {

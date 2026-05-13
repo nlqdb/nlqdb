@@ -178,6 +178,7 @@ Canonical names. Every slice MUST use these — no one-off variants.
 | `nlqdb.sql.validate`          | SQL parse + schema-fit check.                  |
 | `db.query`                    | Neon HTTP execute — standard OTel `db.*`. Attributes: `db.system=postgresql`, `db.operation.name`, `db.statement` (PII-redacted SQL text). |
 | `db.transaction`              | One span around the db.create provisioner's batched DDL + RLS + sample-row apply (`apps/api/src/db-create/neon-provision.ts`). SK-HDC-012 — wraps a single Neon HTTP `transaction([...])` round-trip (one server-side `BEGIN/COMMIT`), no per-statement `db.query` spans nest under it on the happy path. Carries `db.system=postgresql`, `db.transaction.statement_count`, `db.transaction.batch_call=true`. Latency expectation collapses from N×RTT to 1×RTT. |
+| `db.query` (Neon keep-warm)   | SK-HDC-014 — `SELECT 1` from the every-4-minutes Neon keep-warm cron. Carries `db.system=postgresql`, `db.operation=SELECT`, `db.statement="SELECT 1"`, and the discriminator `nlqdb.cron="keep_warm"` so dashboards can split keep-warm pings from user queries on the same `db.query` chart. Lives in `apps/api/src/db-create/build-deps.ts:keepNeonWarm`. |
 | `nlqdb.auth.oauth.callback`   | `/api/auth/callback/{github,google}` flow.     |
 | `nlqdb.anon.adopt`            | Better Auth `after` middleware adoption hop (SK-ANON-012). Wraps `recordAnonAdoption()` (the SK-ANON-003 D1 row-update) on successful magic-link verify / OAuth callback when a `__Secure-anon-bearer` cookie is present. Carries `nlqdb.user.id`, `nlqdb.anon.adopt.outcome ∈ {adopted, replay, invalid_cookie, invalid_token, token_taken, internal}`. Owner: `apps/api/src/auth.ts` after-hook. |
 | `nlqdb.webhook.stripe`        | Stripe webhook handler.                        |
@@ -193,8 +194,8 @@ Counters (suffix `.total`):
 
 - `nlqdb.requests.total{route, status_class}` — every request.
 - `nlqdb.cache.plan.hits.total` / `nlqdb.cache.plan.misses.total`.
-- `nlqdb.llm.calls.total{provider, operation, status}`.
-- `nlqdb.llm.failover.total{from_provider, to_provider, reason}`.
+- `nlqdb.llm.calls.total{provider, operation, status}` — `status ∈ {ok, error, hedge_lost}`. `hedge_lost` (SK-LLM-014) covers cancelled hedge legs; dashboards filter `status="error"` for real failures only.
+- `nlqdb.llm.failover.total{from_provider, to_provider, reason}` — `reason` includes `hedge_lost` (SK-LLM-014, the loser-cancelled signal) on top of the failure reasons.
 - `nlqdb.errors.total{class, route}`.
 - `nlqdb.auth.events.total{type, outcome}` — sign-in / refresh / logout.
 - `nlqdb.events.sink.query_log.failures.total{status_class}` — Tinybird `query_log` write failures (non-2xx HTTP or fetch threw). Used as the trip signal for the events-worker's circuit-breaker (`SK-EVENTS-009`).
@@ -233,6 +234,10 @@ Always use these label keys; never invent variants like `tenant`, `tenant-id`, `
 | `status_class`         | 5                    | `2xx` / `3xx` / `4xx` / `5xx` / `transport` (NOT raw status). The `transport` value is reserved for fetch-throws (no HTTP status); used by the query_log failures counter (`SK-EVENTS-009`). |
 | `principal_kind`       | 2                    | `user` / `anon` — used on the `nlqdb.recent_tables.entries` gauge (`SK-ASK-012`). Derived from the principal-id prefix; never per-request. |
 | `nlqdb.surface`        | 5                    | `hero` / `chat` / `embed` / `mcp` / `cli`. Span attribute on `nlqdb.ask`, `nlqdb.chat.turn`, `nlqdb.databases.create`; also rides on `feature.*` events (`SK-EVENTS-010`). Derived once via `surfaceFromPrincipal()`. |
+| `status` (on `llm.calls.total`) | 3              | `ok` / `error` / `hedge_lost` (SK-LLM-014). `hedge_lost` covers cancelled hedge legs; dashboards filter `status="error"` for real failures only. |
+| `reason` (on `llm.failover.total`) | bounded     | Existing `FailoverReason` set + `hedge_lost` (SK-LLM-014, the loser-cancelled signal). |
+| `nlqdb.cron`            | bounded (~3)        | Span attribute on `db.query` keep-warm pings (SK-HDC-014). Values pinned to the cron expressions in `wrangler.toml`. |
+| `nlqdb.llm.hedge_lost`  | 2 (boolean)         | Span-only attribute on `llm.<op>` spans when the leg was cancelled by a hedge winner (SK-LLM-014). Lets Tempo filter `hedge_lost=true` to count cancellations without conflating with real errors. Not a metric label. |
 
 **Cardinality rule:** total combined series < 8 k (Grafana Cloud free
 tier ceiling at 10 k, leave 2 k headroom). The above bounds are

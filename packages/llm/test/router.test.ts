@@ -1,5 +1,5 @@
 import { createTestTelemetry, type TestTelemetry } from "@nlqdb/otel/test";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   AllProvidersFailedError,
   createLLMRouter,
@@ -823,6 +823,35 @@ describe("createLLMRouter — hedged race (SK-LLM-014)", () => {
     );
     expect(hedgeLostBump).toBeDefined();
     expect(hedgeLostBump?.attributes["provider"]).toBe("groq");
+  });
+
+  it("removes the caller-signal 'abort' listener after the race completes", async () => {
+    // Regression for the leak called out in PR #171 self-review (N1):
+    // the bridge-listener `outer.addEventListener("abort", ...)` was
+    // never paired with `removeEventListener`. With many hedged ops on
+    // a long-lived caller signal, listeners accumulated. The fix
+    // detaches the listener in a `finally` block after `Promise.all`.
+    // Tested by spying on the AbortSignal proto methods.
+    const ctrl = new AbortController();
+    const addSpy = vi.spyOn(ctrl.signal, "addEventListener");
+    const removeSpy = vi.spyOn(ctrl.signal, "removeEventListener");
+
+    const primary = fakeProvider("gemini", {
+      schemaInfer: { plan: { from: "gemini" } },
+    });
+    const secondary = fakeProvider("groq");
+    const router = createLLMRouter({
+      providers: [primary, secondary],
+      chains: { schema_infer: ["gemini", "groq"] },
+      hedge: { schema_infer: { afterMs: 50 } },
+    });
+    await router.schemaInfer({ goal: "g" }, { signal: ctrl.signal });
+
+    const abortAdds = addSpy.mock.calls.filter(([type]) => type === "abort");
+    const abortRemoves = removeSpy.mock.calls.filter(([type]) => type === "abort");
+    expect(abortAdds.length).toBeGreaterThan(0);
+    // Every "abort" addEventListener must have a matching removeEventListener.
+    expect(abortRemoves.length).toBe(abortAdds.length);
   });
 
   it("both hedged legs fail (slow): falls through to chain[2]", async () => {

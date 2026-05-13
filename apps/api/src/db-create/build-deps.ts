@@ -196,13 +196,18 @@ async function noopEmbedTableCards(
 // (= interval too long; pings need to come more often). Throws on
 // Neon failure; the caller (`scheduled()` handler) catches + logs.
 //
-// OTel + metrics imports are *lazy* via dynamic import. The keep-warm
-// cron is the only caller, fires from `scheduled()` not the request
-// path, and we don't want to bloat the per-request bundle / module
-// load for code that runs ~once every 4 minutes. (Was a top-level
-// import in an earlier draft; eagerly importing `@nlqdb/otel` from
-// this file caused the integration test suite to flake — see PR #171
-// review notes.)
+// OTel imports are lazy via dynamic `import()`. Confirmed in PR #171
+// post-merge review: hoisting `import { dbDurationMs, ... }` to the
+// top of this file causes a **100% deterministic** integration-test
+// hang in `apps/api/test/ask.test.ts > SK-ANON-013` (timeout 5 s).
+// The test's call path doesn't reach `keepNeonWarm` — yet adding the
+// eager OTel import to a module that the route handler dynamically
+// imports (`build-deps.ts`) is enough to deadlock vitest-pool-workers
+// (`singleWorker: true`). Repro: 3/3 fails with eager imports, 0/3
+// fails with lazy. Workaround stays until either Cloudflare narrows
+// down the workerd interaction or we move the keep-warm to its own
+// module that the request path never touches. The cost is two
+// `await import(...)` calls per cron fire (~once / 4 min) — negligible.
 export async function keepNeonWarm(connectionString: string): Promise<number> {
   const { dbDurationMs } = await import("@nlqdb/otel");
   const { SpanStatusCode, trace } = await import("@opentelemetry/api");
@@ -211,6 +216,10 @@ export async function keepNeonWarm(connectionString: string): Promise<number> {
     span.setAttribute("db.system", "postgresql");
     span.setAttribute("db.operation", "SELECT");
     span.setAttribute("db.statement", "SELECT 1");
+    // SK-OBS-001 — distinguishes keep-warm pings from user-issued
+    // `SELECT 1`s in Tempo. Bounded label value (~3 cron expressions
+    // ever); no catalog cardinality impact.
+    span.setAttribute("nlqdb.cron", "keep_warm");
     const startedAt = performance.now();
     try {
       const sql = neon(connectionString, { fullResults: true });
