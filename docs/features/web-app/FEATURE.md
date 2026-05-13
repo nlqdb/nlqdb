@@ -20,15 +20,17 @@ when-to-load:
 
 ## Decisions
 
-### SK-WEB-001 — Astro static-first with React islands; one project for marketing + product
+### SK-WEB-001 — Astro static-first with React islands; one project for marketing + product; every island ships behind an ErrorBoundary; no blank screens
 
-- **Decision:** `apps/web` is a single Astro project. Marketing pages (`nlqdb.com`) ship as static-first Astro routes (0 KB JS by default); product pages (`app.nlqdb.com`) are Astro routes with React islands for chat, dashboard, and key management.
-- **Core value:** Free, Fast, Simple
-- **Why:** A single project gives one build, one deploy, one set of components, one design system. The Lighthouse 100/100/100/100 target on the marketing site requires static-first; the product surface needs interactive islands. Astro is the only popular framework that does both without forking the project. Also keeps `GLOBAL-013` (≤3 MiB Workers bundle) attainable — static pages contribute ~0 to the worker bundle.
-- **Consequence in code:** `apps/web` has one `astro.config.mjs`, one `package.json`. React appears only inside `*.tsx` islands; routes are `*.astro`. State in islands is URL-first (every chat is permalinkable) plus a small Zustand store. No global Redux. Marketing pages must remain JS-free unless an island is genuinely required.
+- **Decision:** `apps/web` is a single Astro project. Marketing pages (`nlqdb.com`) ship as static-first Astro routes (0 KB JS by default); product pages (`app.nlqdb.com`) are Astro routes with React islands for chat, dashboard, and key management. **Every React island is wrapped in `<ErrorBoundary>` (`apps/web/src/components/ErrorBoundary.tsx`) and `Base.astro` ships an inline pre-hydration `boot-fallback` block.** A render throw never produces a blank `<main>`; a chunk-load or top-level eval failure never produces an empty body. Persisted-state loaders (`localStorage` histories) shape-validate before returning hydrated values; mismatched entries are dropped, not trusted. Crashes POST best-effort to `/v1/errors/web` (`apps/api/src/index.ts`) so client-side throws land in the same OTel pipeline as server errors.
+- **Core value:** Free, Fast, Simple, Bullet-proof
+- **Why:** A single project gives one build, one deploy, one set of components, one design system. The Lighthouse 100/100/100/100 target on the marketing site requires static-first; the product surface needs interactive islands. Astro is the only popular framework that does both without forking the project. Also keeps `GLOBAL-013` (≤3 MiB Workers bundle) attainable — static pages contribute ~0 to the worker bundle. The ErrorBoundary + boot-fallback layer is non-negotiable: production hit a `Cannot read properties of undefined (reading 'sql')` throw in `ChatPanel` against stale persisted history and the entire chat surface vanished with no recovery affordance. A blank screen is the worst possible failure mode — it has no callback to action and no breadcrumb for support. Defence-in-depth (type narrowing + ErrorBoundary + pre-hydration handler + history shape guard) keeps every reachable failure visible.
+- **Consequence in code:** `apps/web` has one `astro.config.mjs`, one `package.json`. React appears only inside `*.tsx` islands; routes are `*.astro`. State in islands is URL-first (every chat is permalinkable). No global Redux. Marketing pages must remain JS-free unless an island is genuinely required. **Every island's top-level component renders its children inside `<ErrorBoundary>` (current islands: `ChatPanel`, `CreateForm` — see their `*Inner` split). New islands MUST do the same; reviewers reject otherwise.** `Base.astro` contains a hidden `#boot-fallback` div and inline `error` / `unhandledrejection` listeners that reveal it. Persisted-state loaders (`loadHistory` in `ChatPanel.tsx`, etc.) run a shape guard before returning hydrated values.
 - **Alternatives rejected:**
   - Two projects (Next.js for product, Astro for marketing) — duplicated tokens, components, and deploys; double the surface area to keep in sync.
   - Next.js for everything — heavier client bundles by default; misses the static-marketing message.
+  - Trust islands not to throw — proven false; any future refactor or stale-schema can break it again.
+  - Catch only at the page level — misses islands mounted with `client:only`, which replace rather than enhance the SSR markup.
 
 ### SK-WEB-002 — Goal-first hero: one input, no pricing dialog, no signup wall
 
@@ -85,14 +87,14 @@ when-to-load:
 
 ### SK-WEB-006 — Cookie is `__Secure-session` with cross-subdomain `Domain=nlqdb.com`
 
-- **Status:** Superseded by `SK-WEB-009` once `apps/web` and `apps/api` were merged into a single same-origin worker on `app.nlqdb.com`. Kept here so the rationale and the historical OAuth-state bug context (`SK-AUTH-013` / `SK-AUTH-015`) remain readable.
-- **Decision:** Sign-in cookie is `__Secure-session` (HttpOnly, Secure, SameSite=Lax) with `Domain=nlqdb.com` so the same session covers `nlqdb.com` and `app.nlqdb.com`. `__Host-` was the earlier draft but is incompatible with `Domain=`; restoring it would require same-origin chat (e.g. bundling `apps/web` into the API Worker).
+- **Status:** Superseded by `SK-WEB-009` once `apps/web` and `apps/api` were merged into a single same-origin worker. Historical context for `SK-AUTH-013` / `SK-AUTH-015` lives in those records.
+- **Decision:** Sign-in cookie is `__Secure-session` (HttpOnly, Secure, SameSite=Lax) with `Domain=nlqdb.com` so the same session covers `nlqdb.com` and `app.nlqdb.com`. `__Host-` is incompatible with `Domain=`.
 - **Core value:** Seamless auth, Bullet-proof, Effortless UX
-- **Why:** Users sign in on the marketing site and continue to the product on a subdomain — one identity (`GLOBAL-008`) requires one cookie that spans both. `__Host-` is strictly more secure but it forbids the `Domain=` attribute; the cross-subdomain story is the right tradeoff for Phase 1. The decision is documented because it's a deliberate downgrade from a previous draft; future re-architecting (same-origin chat) can restore `__Host-`.
-- **Consequence in code:** Better Auth config sets `crossSubDomainCookies: true`; the cookie name in tests is `__Secure-session`. Any change to same-origin must restore `__Host-` in the same PR. Documented in `docs/phase-plan.md §2`.
+- **Why:** Pre-merge, one identity (`GLOBAL-008`) across two subdomains required one cookie that spanned both; `__Host-` couldn't carry `Domain=` so cross-subdomain forced the downgrade. Same-origin chat (`SK-WEB-009`) restores the path to `__Host-`.
+- **Consequence in code:** Pre-merge Better Auth set `crossSubDomainCookies: true`. Removed under `SK-WEB-009`.
 - **Alternatives rejected:**
-  - Keep `__Host-` and force same-origin chat now — too much architecture churn for Phase 1.
-  - Issue a separate cookie per subdomain — fragments identity, breaks `GLOBAL-008`.
+  - Keep `__Host-` + force same-origin chat in Phase 1 — too much churn at the time.
+  - Separate cookie per subdomain — fragments identity, breaks `GLOBAL-008`.
 
 ### SK-WEB-009 — Host-only `__Secure-…session` cookie on `app.nlqdb.com` after the web/API merge
 
@@ -101,9 +103,9 @@ when-to-load:
 - **Why:** Pre-merge the cookie travelled across two eTLD+1s (`nlqdb.com` ↔ `app.nlqdb.com`) via the `Domain=.nlqdb.com` attribute, but Workers-Versions previews land on a third eTLD+1 (`*-nlqdb-web.omer-hochman.workers.dev`) that was never inside the cookie scope. Browser third-party-cookie partitioning then dropped the cookie on cross-eTLD+1 fetches into the API, surfacing as a 401 in preview branches and the `SK-AUTH-015` OAuth-state bug. Collapsing the product UI + API onto one origin makes every product-side request first-party, so the cookie no longer has to travel. Marketing on `nlqdb.com` loses the cross-subdomain UX (authed visitors see "Sign in") — accepted because the marketing-side authed signal was always best-effort and is now delivered by the product's own auth guard at `/app`.
 - **Consequence in code:** `apps/api/src/auth.ts` drops `crossSubDomainCookies`, keeps `cookiePrefix: "__Secure"` (Better Auth 1.6.9 limitation — see Open questions). `apps/api/wrangler.toml` adds `[assets]` pointing at `../web/dist`. `apps/web/src/lib/session.ts` and `chat-client.ts` default `apiBase` to `""` (same-origin). The OAuth-init wrapper at `/api/auth/oauth-init/:provider` (`SK-AUTH-015`) is retained — it is harmless when same-origin and still required for any future cross-origin entry. PRs that re-introduce a `Domain=` attribute (or any other cross-subdomain cookie shape) on the production session cookie are rejected.
 - **Alternatives rejected:**
-  - **Keep two workers and rely on `Domain=.nlqdb.com` indefinitely.** The cookie still has to travel cross-origin for every preview branch; the underlying browser-partitioning trend is widening, not narrowing. We would keep paying the same auth-bug debt every time a new browser ships.
-  - **Issue a literal `__Host-…session` cookie immediately.** Better Auth v1.6.9 hardcodes the `__Secure-` prefix; producing a real `__Host-` name requires either upgrading Better Auth to a version that supports it natively, post-processing every `Set-Cookie` header at the edge, or forking the plugin layer. Too much surface area for the merge PR; tracked as an open question.
-  - **Set `Domain=app.nlqdb.com` explicitly instead of removing the attribute.** Equivalent to host-only in browser semantics, but `__Host-` browser-prefix promotion later would have to also strip an explicit Domain — easier to never add it in the first place.
+  - **Keep two workers and `Domain=.nlqdb.com` indefinitely** — cookie still travels cross-origin for previews; browser-partitioning trend widens.
+  - **Literal `__Host-…session` cookie now** — Better Auth 1.6.9 hardcodes the `__Secure-` prefix; tracked as an open question.
+  - **Set `Domain=app.nlqdb.com` explicitly** — equivalent in browser semantics, but a future `__Host-` promotion would also have to strip Domain.
 
 ### SK-WEB-007 — "Copy snippet" inlines the user's `pk_live_` so the key is never a separate errand
 
@@ -163,19 +165,4 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 
 ### §15.1 Persona walkthrough — Maya, the Solo Builder
 
-**Goal:** ship a meal-planner side project this weekend.
-
-| Time | Maya does | nlqdb does |
-|---|---|---|
-| Fri 9:01pm | Lands on `nlqdb.com`, types *"a meal planner — dishes, ingredients, plans for the week"* | Materializes `meal-planner-7c2`, replies with inferred schema in NL, streams a `<nlq-data>` snippet for "this week's plan" **with her `pk_live_` key already inlined** |
-| 9:03pm | Pastes the snippet into her existing Next.js project's `page.tsx` | Element fetches, renders an empty table, refreshes every 30s — zero config |
-| 9:08pm | Types into the chat: *"add 12 sample dishes with realistic ingredients"* | Inserts 12 rows, returns the IDs and a preview |
-| 9:15pm | Adds a `<nlq-action>` form to add new dishes from the UI | Inferred new columns where the form has new fields |
-| 11:30pm | Deploys to Vercel. Site is live. | — |
-| Sat 10am | Sister tests it. Maya types: *"who used the planner today, and which dishes were added"* | Replies in prose + table |
-| Sun 6pm | *"add a `trial_ends_at` field to users, default 14 days from signup"* | Diff preview shown; Maya hits Enter; column added; existing rows backfilled |
-| Mon 9am | Signs in to the platform; adopts the anonymous DB; adds a card; switches to Hobby ($10) | DB unpaused, 30-day backups on |
-
-**What Maya never did:** wrote a migration file, opened psql, picked a region, configured Prisma, set up an admin panel, configured backups, wrote a single SQL statement.
-
-**Setup time, old way:** ~1 day. **Setup time, nlqdb:** ~2 minutes.
+Canonical persona narrative lives in [`docs/research/personas.md` §10.2.1](../../research/personas.md). The §14.1 / §14.2 happy paths above already cover the in-product flow; see personas.md for the weekend-build vignette (Fri → Mon).

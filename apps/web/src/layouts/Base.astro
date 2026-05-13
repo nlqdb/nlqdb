@@ -47,5 +47,92 @@ const jsonLd = {
   </head>
   <body>
     <slot />
+
+    {/* SK-WEB-001 — pre-hydration fallback. Catches crashes that fire
+        BEFORE React mounts (chunk-load failures, top-level eval errors).
+        Hidden by default; the inline script below reveals it on
+        `window.error` / `unhandledrejection`, gated on `__nlqdbBooted`
+        — once a React island mounts and sets that flag, ErrorBoundary
+        owns the recovery UI and this handler stops over-painting on
+        ad-blocker / extension noise. The markup is plain HTML so it
+        renders even when the JS bundle never executes. */}
+    <div id="boot-fallback" hidden role="alert">
+      <div class="boot-fallback__card">
+        <h2 class="boot-fallback__title">Something broke on this page.</h2>
+        <p class="boot-fallback__lede">
+          The error has been recorded. Reload to recover; if it persists, sign out and back in.
+        </p>
+        <p id="boot-fallback-reason" class="boot-fallback__reason"></p>
+        <div class="boot-fallback__actions">
+          <button id="boot-fallback-reload" type="button" class="btn btn--accent">Reload</button>
+          <a class="btn" href="/auth/sign-out">Sign out</a>
+        </div>
+      </div>
+    </div>
+
+    <script is:inline define:vars={{ apiBase: import.meta.env.PUBLIC_API_BASE ?? "" }}>
+      (function () {
+        var revealed = false;
+        var seen = {};
+        var seenCount = 0;
+        function extractMessage(e) {
+          if (!e) return "Script error.";
+          if (e.error && e.error.message) return String(e.error.message);
+          if (e.message) return String(e.message);
+          var r = e.reason;
+          if (r && r.message) return String(r.message);
+          if (typeof r === "string") return r;
+          return "Unhandled error.";
+        }
+        function report(message) {
+          var stack = (message || "").slice(0, 200);
+          var fp = "boot::" + message + "::" + stack;
+          if (seen[fp]) return;
+          if (seenCount >= 32) { seen = {}; seenCount = 0; }
+          seen[fp] = 1; seenCount++;
+          try {
+            fetch(apiBase + "/v1/errors/web", {
+              method: "POST",
+              headers: { "content-type": "application/json" },
+              credentials: "omit",
+              keepalive: true,
+              body: JSON.stringify({
+                surface: "boot",
+                message: message,
+                href: location.href,
+                userAgent: navigator.userAgent,
+              }),
+            }).catch(function () {});
+          } catch (_) {}
+        }
+        function reveal(message) {
+          // Once React has mounted, ErrorBoundary owns recovery UI.
+          // Skipping reveal here prevents extension / ad-blocker
+          // noise (`window.error` fires for any script throw, ours or
+          // not) from painting a "broken" panel over a healthy page.
+          if (window.__nlqdbBooted) {
+            report(message);
+            return;
+          }
+          if (revealed) { report(message); return; }
+          revealed = true;
+          try {
+            var node = document.getElementById("boot-fallback");
+            if (node) {
+              node.hidden = false;
+              var r = document.getElementById("boot-fallback-reason");
+              if (r && message) r.textContent = message.slice(0, 240);
+            }
+          } catch (_) {}
+          report(message);
+        }
+        window.addEventListener("error", function (e) { reveal(extractMessage(e)); });
+        window.addEventListener("unhandledrejection", function (e) { reveal(extractMessage(e)); });
+        document.addEventListener("DOMContentLoaded", function () {
+          var btn = document.getElementById("boot-fallback-reload");
+          if (btn) btn.addEventListener("click", function () { location.reload(); });
+        });
+      })();
+    </script>
   </body>
 </html>

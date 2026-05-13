@@ -27,6 +27,7 @@ import {
 } from "../lib/prompt-storage";
 import { prettifyHeader } from "../lib/text";
 import { solveChallenge } from "../lib/turnstile";
+import ErrorBoundary from "./ErrorBoundary";
 
 interface CreateFormProps {
   apiBase: string;
@@ -36,7 +37,17 @@ const MAX_ROWS_RENDERED = 5;
 
 const draftSaver = makeDraftSaver();
 
-export default function CreateForm({ apiBase }: CreateFormProps) {
+export default function CreateForm(props: CreateFormProps) {
+  // SK-WEB-001 — every island ships behind ErrorBoundary so a render
+  // throw produces a visible fallback instead of an empty `<main>`.
+  return (
+    <ErrorBoundary surface="CreateForm">
+      <CreateFormInner {...props} />
+    </ErrorBoundary>
+  );
+}
+
+function CreateFormInner({ apiBase }: CreateFormProps) {
   const inputId = useId();
   const [goal, setGoal] = useState("");
   const [loading, setLoading] = useState(false);

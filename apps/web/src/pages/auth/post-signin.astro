@@ -7,24 +7,27 @@ import Base from "../../layouts/Base.astro";
 //   1. Probes `/api/auth/get-session` to confirm the cookie session
 //      landed. If null, sends the user back to sign-in with a
 //      `session_lost` hint.
-//   2. Redirects to `next` (default `/app`). The `nlqdb_pending` slot
+//   2. Runs defense-in-depth `POST /api/auth/anon-adopt-now` so the
+//      anon DB is adopted into the user's tenant even when the Better
+//      Auth `after`-middleware adoption hop missed (network blip on
+//      `/api/auth/anon-stash`, third-party-cookie partitioning, or a
+//      sign-in path that didn't run the stash). Idempotent under
+//      `SK-ANON-003`'s `ON CONFLICT DO NOTHING`; bounded with a 3 s
+//      timeout so a hanging API never strands the user on the loading
+//      page.
+//   3. Redirects to `next` (default `/app`). The `nlqdb_pending` slot
 //      is intentionally LEFT IN localStorage — `ChatPanel.tsx` reads
 //      it on mount, pre-fills the composer, and clears the slot. The
-//      user reviews the prompt + submits; we no longer auto-replay.
+//      user reviews the prompt + submits; we do not auto-replay
+//      `/v1/ask` here.
 //
-// We deliberately do NOT auto-POST `/v1/ask` here:
+// Why not auto-POST `/v1/ask`:
 //   - Signing in with an existing account preserves the user's
 //     pre-existing DBs; auto-submitting would create a new DB they
-//     never asked for, separate from the orphaned anon DB.
+//     never asked for, separate from the adopted anon DB.
 //   - The user typed the goal anonymously; reviewing it under their
 //     real identity (and the now-visible left rail of their actual
 //     DBs) is the more honest UX.
-//
-// Adoption of the anon DB itself is deferred — per `SK-ANON-002`, the
-// orphaned anon DB sits at `tenant_id = anon:<hash>` until the sweep
-// job evicts it (90-day TTL or cap pressure). The 1st-call data is
-// not transferred; the 2nd-call prompt IS preserved (in `nlqdb_pending`)
-// and surfaces in the chat composer.
 ---
 <Base
   title="Signing you in — nlqdb"
@@ -50,6 +53,51 @@ import Base from "../../layouts/Base.astro";
 
   const params = new URLSearchParams(location.search);
   const next = params.get("next") ?? "/app";
+  const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
+
+  function readAnonBearer(): string | null {
+    try {
+      const v = window.localStorage.getItem("nlqdb_anon") ?? "";
+      return v.startsWith("anon_") ? v : null;
+    } catch {
+      return null;
+    }
+  }
+
+  // SK-ANON-012 — defense-in-depth adoption retry. The Better Auth
+  // `after`-middleware adoption hop fires only when the
+  // `__Secure-anon-bearer` cookie was successfully stashed by
+  // `sign-in.astro` BEFORE the OAuth redirect. If that POST
+  // missed (network blip, third-party-cookie partitioning on
+  // the stash hop, or the user landed here via a path that
+  // didn't run the stash), the anon DB stays at `anon:<hash>`
+  // and never surfaces in the user's `/v1/databases`. Re-running
+  // `anon-adopt-now` here is idempotent (per `SK-ANON-003` the
+  // adoption is a one-row update guarded by `ON CONFLICT DO NOTHING`)
+  // and runs against the freshly-authed cookie, so it succeeds
+  // even when the cookie path missed.
+  async function adoptIfNeeded(): Promise<void> {
+    const anon = readAnonBearer();
+    if (!anon) return;
+    // Bounded with an AbortController so a hung API never strands the
+    // user on the loading page. Adoption is best-effort; the redirect
+    // must not be blocked by it. 3 s matches the typical p99 budget
+    // for a D1 single-row update under the workers free tier.
+    const ac = new AbortController();
+    const timer = setTimeout(() => ac.abort(), 3000);
+    try {
+      await fetch(`${apiBase}/api/auth/anon-adopt-now`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "x-anon-bearer": anon },
+        signal: ac.signal,
+      });
+    } catch {
+      // best-effort — timeout / network / 4xx all fall through here.
+    } finally {
+      clearTimeout(timer);
+    }
+  }
 
   (async () => {
     const session = await fetchSession();
@@ -60,6 +108,7 @@ import Base from "../../layouts/Base.astro";
       location.replace("/auth/sign-in?error=session_lost");
       return;
     }
+    await adoptIfNeeded();
     // ChatPanel will read `nlqdb_pending` from localStorage on mount
     // and rehydrate the composer — no work needed here beyond the
     // navigation.
