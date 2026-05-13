@@ -165,19 +165,10 @@ export function makeRequirePrincipal(
                 deviceId: found.deviceId,
               };
         c.set("principal", principal);
+        // Fire-and-forget bump; `executionCtx` is absent in Hono unit-
+        // test flows that call `app.request()` without an env/ctx pair.
         if (opts.bumpKeyLastUsed) {
-          // Fire-and-forget. We deliberately don't await — a failed
-          // bump must not stall the request, and we don't surface the
-          // outcome anywhere observable. `executionCtx` is absent in
-          // pure Hono-test flows (no `app.fetch(req, env, ctx)`) so
-          // we tolerate that path silently.
-          const ctx = (() => {
-            try {
-              return c.executionCtx;
-            } catch {
-              return null;
-            }
-          })();
+          const ctx = tryGetExecutionCtx(c);
           if (ctx) ctx.waitUntil(opts.bumpKeyLastUsed(found.keyId));
         }
         return next();
@@ -196,24 +187,21 @@ export function getPrincipal(c: Context<{ Variables: RequirePrincipalVariables }
   return principal;
 }
 
-// `Authorization: Bearer anon_<...>` parser. Returns the raw token
-// (including the `anon_` prefix, since that's the on-the-wire shape
-// other surfaces emit too — CLI keychain, MCP install) or null on
-// any malformed input. Empty `anon_` (no body) is treated as
-// malformed — we want a real entropy source behind the prefix.
+// Returns the raw token *including* its prefix — that's the on-the-wire
+// shape the SDK keychain, MCP config files, and `Authorization` headers
+// all carry. A prefix with no body after it is rejected so we never auth
+// the literal `anon_` / `pk_live_` / `sk_live_` / `sk_mcp_`.
 export function parseAnonBearer(header: string | null | undefined): string | null {
   return parseBearerWithPrefix(header, ANON_BEARER_PREFIX);
 }
 
-// `Authorization: Bearer pk_live_<...>` parser. Same structure as
-// parseAnonBearer — returns the raw token or null on any malformed input.
 export function parsePkLiveBearer(header: string | null | undefined): string | null {
   return parseBearerWithPrefix(header, PK_LIVE_PREFIX);
 }
 
-// `Authorization: Bearer sk_live_<...>` or `Bearer sk_mcp_<host>_<device>_<...>`.
-// Returns the raw token; the `lookupSkKey` D1 query dispatches on the
-// stored `key_type` so this parser doesn't need to discriminate.
+// Both `sk_live_` and `sk_mcp_` tokens fall out here; `lookupSkKey`
+// dispatches on the stored `key_type`, so the caller never branches
+// on which sk-prefix matched.
 export function parseSkBearer(header: string | null | undefined): string | null {
   return (
     parseBearerWithPrefix(header, SK_LIVE_PREFIX) ?? parseBearerWithPrefix(header, SK_MCP_PREFIX)
@@ -241,4 +229,15 @@ export async function sha256Hex(input: string, hexChars = 64): Promise<string> {
     .map((b) => b.toString(16).padStart(2, "0"))
     .join("");
   return hex.slice(0, hexChars);
+}
+
+// Hono throws on `c.executionCtx` when the app is invoked without an
+// env+ctx pair (i.e. `app.request()` in unit tests). Tolerating that
+// path keeps the middleware testable without injecting a fake ctx.
+function tryGetExecutionCtx(c: Context): ExecutionContext | null {
+  try {
+    return c.executionCtx;
+  } catch {
+    return null;
+  }
 }

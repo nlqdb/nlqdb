@@ -168,12 +168,27 @@ export async function lookupSkKey(
   };
 }
 
-// Bumps `last_used_at` for a successful auth. Fire-and-forget from the
-// principal middleware via `waitUntil` — a failed bump must not block
-// the request (the key is already valid; we just lose one display
-// timestamp). Idempotent at the second-grain unixepoch().
+// Throttled to one write per minute per key — `last_used_at` is a
+// dashboard display field, not an audit trail, so a hot client running
+// 100 req/s shouldn't generate 100 writes/s on a shared row. The WHERE
+// clause keeps the write a no-op when we bumped recently, so the
+// throttle is enforced in SQLite (single round-trip, no isolate state).
+// Errors are swallowed: a failed bump must not surface as a `waitUntil`
+// uncaught rejection in the runtime log, and the key is already valid.
+const LAST_USED_BUMP_THROTTLE_SECONDS = 60;
+
 export async function bumpKeyLastUsed(d1: D1Database, keyId: string): Promise<void> {
-  await d1.prepare("UPDATE api_keys SET last_used_at = unixepoch() WHERE id = ?").bind(keyId).run();
+  try {
+    await d1
+      .prepare(
+        "UPDATE api_keys SET last_used_at = unixepoch() " +
+          "WHERE id = ? AND (last_used_at IS NULL OR last_used_at < unixepoch() - ?)",
+      )
+      .bind(keyId, LAST_USED_BUMP_THROTTLE_SECONDS)
+      .run();
+  } catch {
+    // Display-only field; intentionally silent.
+  }
 }
 
 // ─── adoption + global signout ───────────────────────────────────────────────
@@ -219,10 +234,9 @@ function randomHex(byteCount: number): string {
     .join("");
 }
 
-// Lowercase a-z0-9 only; everything else becomes `-`. Keeps the
-// on-the-wire `sk_mcp_<host>_<device>_…` shape parseable by humans
-// reading shell history without leaking host names that contain `_`
-// (which is the token field separator).
+// Strips characters that would collide with `_`, the token's field
+// separator, so `sk_mcp_<host>_<device>_…` stays parseable when read
+// out of shell history or a host's config file.
 function normaliseSlug(s: string): string {
   return (
     s

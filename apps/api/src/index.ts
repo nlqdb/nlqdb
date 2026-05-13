@@ -12,6 +12,7 @@ import {
   ROOT_CONTEXT,
   type Span,
   type SpanContext,
+  SpanStatusCode,
   TraceFlags,
   trace,
 } from "@opentelemetry/api";
@@ -1312,13 +1313,16 @@ app.get("/v1/chat/messages", requireSession, async (c) => {
 // `POST /v1/keys` — canonical mint endpoint per SK-APIKEYS-007.
 // Mints `sk_live_` (account-scoped backend secret) or `sk_mcp_*`
 // (per-host per-device MCP key, SK-APIKEYS-004). Session-only by
-// design: a leaked `sk_live_` must not be able to mint more keys
-// (privilege-escalation containment). `pk_live_` is not mintable
-// here — those land as a side-effect of `db.create` via
-// `mintPkLiveKey` in `db-create/build-deps.ts`.
+// design: a leaked `sk_live_` must not be able to mint more keys.
+// `pk_live_` keys aren't mintable here — they're a side-effect of
+// `db.create` (see `db-create/build-deps.ts`).
 //
-// Response carries the plaintext exactly once (SK-APIKEYS-002 /
-// SK-APIKEYS-007); subsequent reads return `last_4` only.
+// Response carries the plaintext exactly once (SK-APIKEYS-002 +
+// SK-APIKEYS-007); subsequent reads return `last4` only.
+const KEY_NAME_MAX = 80;
+const MCP_HOST_MAX = 32;
+const DEVICE_ID_MAX = 64;
+
 app.post("/v1/keys", requireSession, async (c) => {
   const tracer = trace.getTracer("@nlqdb/api");
   return tracer.startActiveSpan("nlqdb.keys.mint", async (span) => {
@@ -1347,10 +1351,13 @@ app.post("/v1/keys", requireSession, async (c) => {
 
     try {
       if (type === "sk_live") {
-        const name =
-          typeof raw.body.name === "string" && raw.body.name.trim().length > 0
-            ? raw.body.name.trim().slice(0, 80)
-            : null;
+        const trimmedName = typeof raw.body.name === "string" ? raw.body.name.trim() : "";
+        if (trimmedName.length > KEY_NAME_MAX) {
+          span.setAttribute("nlqdb.keys.mint.outcome", "name_too_long");
+          span.end();
+          return c.json({ error: "name_too_long", maxLength: KEY_NAME_MAX }, 400);
+        }
+        const name = trimmedName.length > 0 ? trimmedName : null;
         const { id, plaintext } = await mintSkLiveKey(
           c.env.DB,
           c.env.BETTER_AUTH_SECRET,
@@ -1363,7 +1370,7 @@ app.post("/v1/keys", requireSession, async (c) => {
           id,
           type,
           key: plaintext,
-          last_4: plaintext.slice(-4),
+          last4: plaintext.slice(-4),
           ...(name ? { name } : {}),
         });
       }
@@ -1375,6 +1382,16 @@ app.post("/v1/keys", requireSession, async (c) => {
         span.setAttribute("nlqdb.keys.mint.outcome", "missing_claims");
         span.end();
         return c.json({ error: "missing_claims", required: ["host", "device"] }, 400);
+      }
+      if (host.length > MCP_HOST_MAX) {
+        span.setAttribute("nlqdb.keys.mint.outcome", "host_too_long");
+        span.end();
+        return c.json({ error: "host_too_long", maxLength: MCP_HOST_MAX }, 400);
+      }
+      if (device.length > DEVICE_ID_MAX) {
+        span.setAttribute("nlqdb.keys.mint.outcome", "device_too_long");
+        span.end();
+        return c.json({ error: "device_too_long", maxLength: DEVICE_ID_MAX }, 400);
       }
       const { id, plaintext } = await mintSkMcpKey(
         c.env.DB,
@@ -1390,14 +1407,14 @@ app.post("/v1/keys", requireSession, async (c) => {
         id,
         type,
         key: plaintext,
-        last_4: plaintext.slice(-4),
+        last4: plaintext.slice(-4),
         host,
         device,
       });
     } catch (err) {
       const e = err as Error;
       span.recordException(e);
-      span.setStatus({ code: 2, message: e.message });
+      span.setStatus({ code: SpanStatusCode.ERROR, message: e.message });
       span.setAttribute("nlqdb.keys.mint.outcome", "mint_failed");
       span.end();
       return c.json({ error: "mint_failed" }, 500);

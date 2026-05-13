@@ -64,55 +64,57 @@ function stubDb(opts: StubOpts = {}): {
 const SECRET = "test-secret-do-not-use-in-prod";
 
 describe("mintPkLiveKey", () => {
+  // Bind order: (id, tenant_id, db_id, key_hash, last_4) — 5 params,
+  // `'pk_live'` is a SQL literal in the VALUES clause.
   it("emits a pk_live_ plaintext and writes one INSERT row", async () => {
     const { db, inserts } = stubDb();
     const plaintext = await mintPkLiveKey(db, SECRET, "db_1", "tenant_1");
     expect(plaintext.startsWith(PK_LIVE_PREFIX)).toBe(true);
-    // 16 random bytes → 32 hex chars after the prefix.
     expect(plaintext.length).toBe(PK_LIVE_PREFIX.length + 32);
     expect(inserts).toHaveLength(1);
     expect(inserts[0]?.sql).toContain("INSERT INTO api_keys");
     const params = inserts[0]?.params ?? [];
     expect(params[1]).toBe("tenant_1");
     expect(params[2]).toBe("db_1");
-    expect(params[4]).not.toBe(plaintext); // we store the hash, never the plaintext
-    expect(params[5]).toBe(plaintext.slice(-4)); // last_4 for display
+    expect(params[3]).not.toBe(plaintext); // hash, not plaintext
+    expect(params[4]).toBe(plaintext.slice(-4));
   });
 });
 
 describe("mintSkLiveKey", () => {
+  // Bind order: (id, tenant_id, key_hash, last_4, name) — 5 params,
+  // `db_id` is `NULL` and `key_type` is `'sk_live'` as SQL literals.
   it("emits an sk_live_ plaintext, persists name + last_4, no db_id", async () => {
     const { db, inserts } = stubDb();
     const { id, plaintext } = await mintSkLiveKey(db, SECRET, "u_alice", "CI on GitHub Actions");
     expect(plaintext.startsWith(SK_LIVE_PREFIX)).toBe(true);
     expect(id).toMatch(/^[0-9a-f-]{36}$/);
-    expect(inserts).toHaveLength(1);
     const sql = inserts[0]?.sql ?? "";
     expect(sql).toContain("'sk_live'");
-    expect(sql).toContain("db_id");
     expect(sql).toContain("NULL");
     const params = inserts[0]?.params ?? [];
     expect(params[1]).toBe("u_alice");
-    expect(params[4]).toBe(plaintext.slice(-4));
-    expect(params[5]).toBe("CI on GitHub Actions");
+    expect(params[3]).toBe(plaintext.slice(-4));
+    expect(params[4]).toBe("CI on GitHub Actions");
   });
 
   it("accepts a null name for unlabeled keys", async () => {
     const { db, inserts } = stubDb();
     await mintSkLiveKey(db, SECRET, "u_alice", null);
-    expect(inserts[0]?.params[5]).toBeNull();
+    expect(inserts[0]?.params[4]).toBeNull();
   });
 });
 
 describe("mintSkMcpKey", () => {
+  // Bind order: (id, tenant_id, key_hash, last_4, mcp_host, device_id) — 6 params.
   it("emits sk_mcp_<host>_<device>_<rand> and persists the claims", async () => {
     const { db, inserts } = stubDb();
     const { plaintext } = await mintSkMcpKey(db, SECRET, "u_alice", "Cursor", "macbook-air");
     expect(plaintext.startsWith(`${SK_MCP_PREFIX}cursor_macbook-air_`)).toBe(true);
     const params = inserts[0]?.params ?? [];
     expect(params[1]).toBe("u_alice");
-    expect(params[5]).toBe("Cursor"); // mcp_host stored verbatim, slug-form only in the on-the-wire token
-    expect(params[6]).toBe("macbook-air");
+    expect(params[4]).toBe("Cursor"); // claim stored verbatim; the on-the-wire slug is normalised
+    expect(params[5]).toBe("macbook-air");
   });
 
   it("normalises non-slug characters in the on-the-wire host/device segments", async () => {
@@ -237,11 +239,26 @@ describe("mint → lookup round trip (sk_live)", () => {
 });
 
 describe("bumpKeyLastUsed", () => {
-  it("issues a single UPDATE on api_keys keyed by id", async () => {
+  it("issues one throttled UPDATE; the WHERE skips writes inside the 60s window", async () => {
     const { db, updates } = stubDb();
     await bumpKeyLastUsed(db, "k_1");
     expect(updates).toHaveLength(1);
     expect(updates[0]?.sql).toContain("UPDATE api_keys SET last_used_at");
-    expect(updates[0]?.params).toEqual(["k_1"]);
+    expect(updates[0]?.sql).toContain("last_used_at < unixepoch() -");
+    expect(updates[0]?.params[0]).toBe("k_1");
+    expect(updates[0]?.params[1]).toBe(60);
+  });
+
+  it("swallows D1 errors so a failed bump cannot surface as a waitUntil rejection", async () => {
+    const throwingDb = {
+      prepare: () => ({
+        bind: () => ({
+          run: async () => {
+            throw new Error("d1 down");
+          },
+        }),
+      }),
+    } as unknown as D1Database;
+    await expect(bumpKeyLastUsed(throwingDb, "k_1")).resolves.toBeUndefined();
   });
 });
