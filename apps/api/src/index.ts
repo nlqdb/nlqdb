@@ -230,19 +230,85 @@ app.get("/v1/health", (c) =>
 );
 
 // `POST /v1/errors/web` — best-effort sink for browser-side crashes
-// (`SK-WEB-001`). The web layer's `ErrorBoundary` and Base.astro
+// (`SK-WEB-001`). The web layer's `ErrorBoundary` and `Base.astro`
 // pre-hydration handler POST here so islanded throws and pre-React
 // crashes surface in the same OTel pipeline as server errors. Auth
-// is intentionally not required — we want anon-mode crashes too —
-// and the body is bounded so we never accept arbitrary payloads.
+// is intentionally not required — we want anon-mode crashes too.
+//
+// Abuse safeguards (the endpoint is unauthenticated):
+//   - Reject bodies > 4 KB by `Content-Length` BEFORE reading
+//     (avoids tying up the isolate on a 100 MB body just to drop it).
+//   - Per-isolate dedup by `hash(surface+message+stack[0..200])`
+//     with a 5-minute TTL — a reload loop on the same broken state
+//     creates one span, not one per reload. Memory-bounded; the LRU
+//     is per-isolate so a Cloudflare cold-start gets a clean cache,
+//     which is acceptable because real abuse is already shaped by
+//     Cloudflare's edge rate limiter.
+//   - Per-isolate cap of `WEB_ERROR_MAX_PER_MINUTE`: above that,
+//     drop spans silently. The 204 stays so the client doesn't
+//     retry-storm; we just don't fan out to OTel.
+//
+// CORS uses `credentialedCors` for its origin allowlist; the client
+// fetch is `credentials: "omit"` so no cookies ride. The endpoint
+// reads nothing from the session — the safeguards above are sized
+// for "anyone in an allowed origin can POST text".
+const ERROR_SINK_BODY_CAP_BYTES = 4096;
+const ERROR_SINK_DEDUP_TTL_MS = 5 * 60 * 1000;
+const ERROR_SINK_DEDUP_MAX = 512;
+const ERROR_SINK_MAX_PER_MINUTE = 600;
+const errorSinkSeen = new Map<string, number>();
+const errorSinkRate = { windowStartedAt: 0, count: 0 };
+
+function errorSinkFingerprint(body: Record<string, unknown>): string {
+  const surface = String(body["surface"] ?? "").slice(0, 64);
+  const message = String(body["message"] ?? "").slice(0, 240);
+  const stackHead = typeof body["stack"] === "string" ? body["stack"].slice(0, 200) : "";
+  return `${surface}::${message}::${stackHead}`;
+}
+
+function errorSinkAllow(now: number, fp: string): boolean {
+  if (now - errorSinkRate.windowStartedAt > 60_000) {
+    errorSinkRate.windowStartedAt = now;
+    errorSinkRate.count = 0;
+  }
+  if (errorSinkRate.count >= ERROR_SINK_MAX_PER_MINUTE) return false;
+  const seenAt = errorSinkSeen.get(fp);
+  if (seenAt !== undefined && now - seenAt < ERROR_SINK_DEDUP_TTL_MS) return false;
+  if (errorSinkSeen.size >= ERROR_SINK_DEDUP_MAX) {
+    // Cheap eviction — clear half the entries when full. A true LRU
+    // costs more bytes than the dedup is worth.
+    for (const k of Array.from(errorSinkSeen.keys()).slice(0, ERROR_SINK_DEDUP_MAX / 2)) {
+      errorSinkSeen.delete(k);
+    }
+  }
+  errorSinkSeen.set(fp, now);
+  errorSinkRate.count += 1;
+  return true;
+}
+
+// Test-only seam — vitest sets/clears this so cases don't leak.
+export function _resetErrorSinkForTests(): void {
+  errorSinkSeen.clear();
+  errorSinkRate.windowStartedAt = 0;
+  errorSinkRate.count = 0;
+}
+
 app.use("/v1/errors/web", credentialedCors);
 app.post("/v1/errors/web", async (c) => {
   try {
+    const lenHeader = c.req.header("content-length");
+    if (lenHeader && Number.parseInt(lenHeader, 10) > ERROR_SINK_BODY_CAP_BYTES) {
+      return c.body(null, 204);
+    }
     const raw = await c.req.raw.clone().text();
-    if (raw.length > 4096) {
+    if (raw.length > ERROR_SINK_BODY_CAP_BYTES) {
       return c.body(null, 204);
     }
     const body = JSON.parse(raw) as Record<string, unknown>;
+    const fp = errorSinkFingerprint(body);
+    if (!errorSinkAllow(Date.now(), fp)) {
+      return c.body(null, 204);
+    }
     const tracer = trace.getTracer("@nlqdb/api");
     tracer.startActiveSpan("nlqdb.web.error", (span) => {
       span.setAttribute("nlqdb.web.surface", String(body["surface"] ?? "unknown").slice(0, 64));

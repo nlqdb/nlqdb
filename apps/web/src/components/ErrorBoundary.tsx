@@ -3,22 +3,22 @@
 // An unhandled throw inside a `client:load` / `client:only` island
 // unmounts the whole island and leaves an empty `<main>` with no
 // recovery affordance. This wrapper renders a small fallback panel
-// instead: a one-sentence reason, Reload + Sign-out actions, and a
-// "what was on screen before" hint so the user still has a way out.
+// instead with Reload + Sign-out actions.
 //
 // Pair this with `Base.astro`'s pre-hydration `boot-fallback` block —
 // that one catches `error` / `unhandledrejection` for crashes that
 // happen BEFORE React mounts (chunk-load failures, top-level eval
 // errors). ErrorBoundary catches throws DURING render / lifecycle.
-// Together: every reachable JS failure produces a visible UI, not a
-// blank screen.
+// We also set `window.__nlqdbBooted = true` on mount so the
+// pre-hydration handler stops revealing its panel for post-React
+// errors — those belong to the boundary, not the boot-fallback.
 //
-// Reporting: errors are logged to the browser console (preserving the
-// stack) and POSTed best-effort to `/v1/errors/web` so they show up
-// in the same observability pipeline as server errors. The POST is
-// fire-and-forget and never blocks the fallback render.
+// Reports go through `lib/error-report.ts` so the boundary and the
+// pre-hydration handler share one payload shape + dedup + abuse
+// safeguards.
 
 import { Component, type ErrorInfo, type ReactNode } from "react";
+import { reportClientError } from "../lib/error-report";
 
 interface ErrorBoundaryProps {
   children: ReactNode;
@@ -32,8 +32,20 @@ interface ErrorBoundaryState {
   error: Error | null;
 }
 
+declare global {
+  interface Window {
+    __nlqdbBooted?: boolean;
+  }
+}
+
 export default class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
   state: ErrorBoundaryState = { error: null };
+
+  componentDidMount(): void {
+    if (typeof window !== "undefined") {
+      window.__nlqdbBooted = true;
+    }
+  }
 
   static getDerivedStateFromError(error: Error): ErrorBoundaryState {
     return { error };
@@ -41,24 +53,14 @@ export default class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBo
 
   componentDidCatch(error: Error, info: ErrorInfo): void {
     console.error("[nlqdb] island crashed", error, info.componentStack);
-    try {
-      void fetch("/v1/errors/web", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({
-          surface: this.props.surface ?? "unknown",
-          message: error.message,
-          stack: error.stack ?? null,
-          componentStack: info.componentStack ?? null,
-          href: typeof window !== "undefined" ? window.location.href : null,
-          userAgent: typeof navigator !== "undefined" ? navigator.userAgent : null,
-        }),
-        keepalive: true,
-      });
-    } catch {
-      // best-effort — never let reporting itself blow up the fallback.
-    }
+    reportClientError({
+      surface: this.props.surface ?? "unknown",
+      message: error.message || "Unknown error.",
+      stack: error.stack ?? null,
+      componentStack: info.componentStack ?? null,
+      href: typeof window !== "undefined" ? window.location.href : null,
+      userAgent: typeof navigator !== "undefined" ? navigator.userAgent : null,
+    });
   }
 
   render(): ReactNode {

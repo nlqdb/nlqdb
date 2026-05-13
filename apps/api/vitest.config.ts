@@ -108,6 +108,7 @@ export default defineConfig(async () => {
               "test/cors.test.ts",
               "test/rate-limit.test.ts",
               "test/magic-link.test.ts",
+              "test/errors-web.test.ts",
             ],
             setupFiles: ["./test/apply-migrations.ts"],
           },
