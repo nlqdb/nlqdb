@@ -183,6 +183,16 @@ jobs:
         working-directory: packages/${{ matrix.pkg }}
         run: bun run test
 
+      # SK-MCP-010: packages/mcp ships a bundled artifact for npm
+      # consumers (npx @nlqdb/mcp). Verify the bundle builds and
+      # contains the expected exports on every PR.
+      - name: Build (mcp only)
+        if: matrix.pkg == 'mcp'
+        working-directory: packages/${{ matrix.pkg }}
+        run: |
+          bun run build
+          test -f dist/index.js || (echo "::error::dist/index.js not produced"; exit 1)
+
   build-web:
     name: apps/web (astro check + build)
     runs-on: ubuntu-latest

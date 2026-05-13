@@ -1,5 +1,6 @@
 {
   "name": "@nlqdb/mcp",
+  "private": true,
   "version": "0.0.0",
   "description": "Model Context Protocol server for nlqdb — local-stdio transport (slice 2 of SK-MCP-010).",
   "type": "module",
@@ -11,17 +12,27 @@
     "nlqdb-mcp": "./bin/nlqdb-mcp.mjs"
   },
   "files": [
-    "src",
     "bin",
+    "dist",
     "README.md"
   ],
   "scripts": {
     "test": "vitest run",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "build": "bun build src/index.ts --target=node --format=esm --outdir=dist --external='@modelcontextprotocol/sdk*' --external=@opentelemetry/api --external=zod --sourcemap=linked --minify"
+  },
+  "publishConfig": {
+    "main": "dist/index.js",
+    "exports": {
+      ".": {
+        "default": "./dist/index.js"
+      }
+    }
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "1.22.0",
     "@nlqdb/sdk": "workspace:*",
+    "@opentelemetry/api": "^1.9.0",
     "zod": "^3.25.0"
   },
   "devDependencies": {

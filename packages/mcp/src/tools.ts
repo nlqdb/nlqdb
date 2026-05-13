@@ -13,24 +13,44 @@
 //     surface a typed `auth_required` error in the `SK-MCP-006`
 //     shape — the host LLM gets one sentence + one next action.
 
-import type { NlqClient, NlqdbApiError } from "@nlqdb/sdk";
+import type { AskDiff, CandidateDb, NlqClient, NlqdbApiError } from "@nlqdb/sdk";
 import { z } from "zod";
 
-// MCP tool-error shape (SK-MCP-006). Each handler returns either
-// `{ ok: T }` or `{ err }`; the server layer maps `err` to MCP's
-// `{ isError: true, content: [...] }` so the host LLM gets the
-// `action` sentence in a place the agent can act on it.
+// MCP tool-error shape (SK-MCP-006). One sentence + one next action,
+// plus an optional `details` slot for structured payloads (e.g.
+// `ambiguous_db` candidate list) the agent can act on.
 export type ToolError = {
   code: string;
   message: string;
   action: string;
+  details?: Record<string, unknown>;
 };
 
 export type ToolResult<T> = { ok: T } | { err: ToolError };
 
-// Raw shapes registered with the MCP SDK (`ZodRawShapeCompat`). The
-// SDK exports a flat-shape input over the full `z.object(...)` form
-// to keep its TS-inference cost bounded; we follow the same shape.
+// Optional plumbing for handler invocation: cancellation signal +
+// a listDatabases memo so `handleDescribe` doesn't refetch on every
+// call within one tool-handler context (`SK-MCP-010` perf note).
+export type HandlerContext = {
+  signal?: AbortSignal;
+  // When present, used in place of `client.listDatabases()` for the
+  // describe path. The server attaches a per-isolate TTL cache.
+  listDatabasesCached?: () => Promise<{ databases: ListDatabaseRow[] }>;
+};
+
+// Row shape — mirrors the SDK's `DatabaseSummary` (without the
+// `pkLive` field, which is sensitive and not relevant to an agent).
+type ListDatabaseRow = {
+  id: string;
+  slug: string;
+  displayName: string;
+  schemaName?: string;
+  engine: string;
+  lastQueriedAt: number | null;
+  createdAt: number;
+};
+
+// Raw input shapes registered with the MCP SDK (`ZodRawShapeCompat`).
 
 export const queryInputShape = {
   db: z
@@ -38,6 +58,15 @@ export const queryInputShape = {
     .min(1)
     .describe("Database id or slug. Ignored when authenticated with a pk_live_ key."),
   q: z.string().min(1).describe("The natural-language goal — what you want from the database."),
+  // SK-TRUST-001: destructive plans (INSERT/UPDATE/DELETE/DDL)
+  // return a diff preview. The agent re-calls with `confirm: true`
+  // to commit. Omit on read queries.
+  confirm: z
+    .boolean()
+    .optional()
+    .describe(
+      "Set true to commit a destructive plan that previously returned requires_confirm. Default false (preview only).",
+    ),
 };
 
 export type QueryInput = z.infer<z.ZodObject<typeof queryInputShape>>;
@@ -52,82 +81,147 @@ export const describeInputShape = {
 
 export type DescribeInput = z.infer<z.ZodObject<typeof describeInputShape>>;
 
-export type QueryOutput = {
-  rows: Record<string, unknown>[];
-  rowCount: number;
-  trace: {
-    sql: string;
-    confidence: number;
-    cache_hit: boolean;
-  };
+// Output schemas. Hosts use these to know what to do with the
+// `structuredContent` slot; agents use the descriptions to know how
+// to reason about the response.
+
+export const queryOutputShape = {
+  rows: z.array(z.record(z.string(), z.unknown())).describe("Result rows; may be empty."),
+  rowCount: z.number().describe("Number of rows the underlying query produced."),
+  rowsTruncated: z
+    .boolean()
+    .optional()
+    .describe(
+      "True when rows were truncated for response-size safety; totalRowCount is the full count.",
+    ),
+  totalRowCount: z
+    .number()
+    .optional()
+    .describe("Full row count before truncation; only present when rowsTruncated is true."),
+  trace: z
+    .object({
+      sql: z.string(),
+      confidence: z.number(),
+      cache_hit: z.boolean(),
+    })
+    .describe("Compiled SQL and plan metadata (SK-TRUST-002)."),
+  // SK-TRUST-001 — destructive plans return these instead of rows.
+  requires_confirm: z
+    .boolean()
+    .optional()
+    .describe(
+      "True when the plan is destructive and not yet committed. Show diff, then re-call with confirm: true.",
+    ),
+  diff: z
+    .object({
+      verb: z.string(),
+      table: z.string(),
+      affectedRows: z.number(),
+      summary: z.string(),
+    })
+    .optional()
+    .describe("Diff preview body. Only present when requires_confirm is true."),
+  // SK-HDC-001 — when the query materialised a new DB on first
+  // reference (no separate create tool per SK-MCP-002).
+  db_created: z
+    .boolean()
+    .optional()
+    .describe("True when the database was created on this call. dbId carries the new id."),
+  dbId: z.string().optional(),
+  displayName: z.string().optional(),
 };
 
-export type ListDatabasesOutput = {
-  databases: {
-    id: string;
-    slug: string;
-    displayName: string;
-    engine: string;
-    lastQueriedAt: number | null;
-    createdAt: number;
-  }[];
+export type QueryOutput = z.infer<z.ZodObject<typeof queryOutputShape>>;
+
+export const listDatabasesOutputShape = {
+  databases: z.array(
+    z.object({
+      id: z.string(),
+      slug: z.string(),
+      displayName: z.string(),
+      engine: z.string(),
+      lastQueriedAt: z.number().nullable(),
+      createdAt: z.number(),
+    }),
+  ),
 };
 
-export type DescribeOutput = {
-  id: string;
-  slug: string;
-  displayName: string;
-  engine: string;
-  schemaName?: string;
+export type ListDatabasesOutput = z.infer<z.ZodObject<typeof listDatabasesOutputShape>>;
+
+export const describeOutputShape = {
+  id: z.string(),
+  slug: z.string(),
+  displayName: z.string(),
+  engine: z.string(),
+  schemaName: z.string().optional(),
 };
+
+export type DescribeOutput = z.infer<z.ZodObject<typeof describeOutputShape>>;
 
 // `nlqdb_query` — the only tool the agent prompt needs to know
-// about. `db` is a hint (slug or id); the API resolves it
-// deterministically per `SK-ASK-009` / `SK-HDC-011`. On `pk_live_*`
-// auth the API ignores `db` (the key pins the DB); on user-scoped
-// auth `db` selects.
+// about. The API materialises a new DB on first reference (no
+// `nlqdb_create_database` per SK-MCP-002); destructive plans return
+// `requires_confirm: true` + a diff (SK-TRUST-001) — the agent
+// shows the diff and re-calls with `confirm: true`.
 export async function handleQuery(
   client: NlqClient,
   input: QueryInput,
+  ctx: HandlerContext = {},
 ): Promise<ToolResult<QueryOutput>> {
   try {
-    const response = await client.ask({ goal: input.q, dbId: input.db });
+    const askOpts: { signal?: AbortSignal } = {};
+    if (ctx.signal) askOpts.signal = ctx.signal;
+    const askReq: Parameters<NlqClient["ask"]>[0] = { goal: input.q, dbId: input.db };
+    if (input.confirm !== undefined) askReq.confirm = input.confirm;
+
+    const response = await client.ask(askReq, askOpts);
+
     if (!("status" in response)) {
-      // `AskCreateResult` — the create path materialised a new DB.
-      // Surface as an info action so the agent re-queries.
+      // SK-HDC-001 — first-reference create. Surfaced as ok so the
+      // agent gets the new dbId in one turn (no error-state confusion).
       return {
-        err: {
-          code: "db_created",
-          message: `Database '${input.db}' did not exist and was created.`,
-          action: "Re-issue your query against the same db argument.",
+        ok: {
+          rows: [],
+          rowCount: 0,
+          trace: { sql: "", confidence: 0, cache_hit: false },
+          db_created: true,
+          dbId: response.db,
+          displayName: response.displayName,
         },
       };
     }
-    return {
-      ok: {
-        rows: response.rows ?? [],
-        rowCount: response.rowCount ?? response.rows?.length ?? 0,
-        trace: {
-          sql: response.trace?.sql ?? "",
-          confidence: response.trace?.confidence ?? 0,
-          cache_hit: response.trace?.cache_hit ?? false,
+
+    // SK-TRUST-001 — destructive plan preview path. Returns the diff
+    // for the agent / user to review; commit requires confirm: true.
+    if (response.requires_confirm) {
+      return {
+        ok: {
+          rows: [],
+          rowCount: 0,
+          trace: traceOf(response.trace),
+          requires_confirm: true,
+          ...(response.diff ? { diff: diffOf(response.diff) } : {}),
         },
-      },
-    };
+      };
+    }
+
+    return { ok: buildQueryOutput(response.rows, response.rowCount, response.trace) };
   } catch (err) {
     return { err: mapSdkError(err) };
   }
 }
 
 // `nlqdb_list_databases` — enumerates the user's databases. Requires
-// user-scoped auth (`sk_live_*` or `sk_mcp_*`). Until slice 1 ships,
-// `pk_live_*` calls return `auth_required` from the API; the
-// handler surfaces it in the `SK-MCP-006` shape.
+// user-scoped auth; surfaces a typed `auth_required` until slice 1
+// ships sk_live_/sk_mcp_ keys (SK-MCP-010).
 export async function handleListDatabases(
   client: NlqClient,
+  ctx: HandlerContext = {},
 ): Promise<ToolResult<ListDatabasesOutput>> {
   try {
-    const response = await client.listDatabases();
+    const opts: { signal?: AbortSignal } = {};
+    if (ctx.signal) opts.signal = ctx.signal;
+    const response = await client.listDatabases(opts);
     return {
       ok: {
         databases: response.databases.map((d) => ({
@@ -145,16 +239,21 @@ export async function handleListDatabases(
   }
 }
 
-// `nlqdb_describe` — schema preview for one database. Slice 2 uses
-// the listDatabases summary fields (slug, engine, schemaName)
-// because a dedicated `/v1/databases/:id` is not yet shipped — when
-// it lands, swap to a direct fetch (one-line change).
+// `nlqdb_describe` — schema preview for one database. Uses the
+// `listDatabasesCached` memo (per-isolate TTL ~5 s) to keep multi-
+// describe agent loops cheap. When `/v1/databases/:id` lands,
+// replace the cache lookup with a direct fetch.
 export async function handleDescribe(
   client: NlqClient,
   input: DescribeInput,
+  ctx: HandlerContext = {},
 ): Promise<ToolResult<DescribeOutput>> {
   try {
-    const response = await client.listDatabases();
+    const opts: { signal?: AbortSignal } = {};
+    if (ctx.signal) opts.signal = ctx.signal;
+    const response = ctx.listDatabasesCached
+      ? await ctx.listDatabasesCached()
+      : await client.listDatabases(opts);
     const match = response.databases.find((d) => d.id === input.db || d.slug === input.db);
     if (!match) {
       return {
@@ -179,14 +278,42 @@ export async function handleDescribe(
   }
 }
 
-// Maps SDK errors into the `SK-MCP-006` tool-error shape — one
-// sentence + one next action. Unknown errors collapse to a generic
-// shape so the host LLM never sees a bare stack trace.
-export function mapSdkError(err: unknown): ToolError {
-  const apiErr = err as NlqdbApiError;
-  const code = apiErr?.code ?? "unknown_error";
+// Narrow `Trace` to the fields the agent benefits from — `sql`,
+// `confidence`, `cache_hit`. The full SK-TRUST-002 trace block has
+// more (plan_id, model) but those bloat token cost without helping
+// the agent reason.
+function traceOf(trace: { sql: string; confidence: number; cache_hit: boolean }) {
+  return { sql: trace.sql, confidence: trace.confidence, cache_hit: trace.cache_hit };
+}
 
-  if (code === "unauthorized" || apiErr?.httpStatus === 401) {
+function diffOf(diff: AskDiff) {
+  return {
+    verb: diff.verb,
+    table: diff.table,
+    affectedRows: diff.affectedRows,
+    summary: diff.summary,
+  };
+}
+
+function buildQueryOutput(
+  rows: Record<string, unknown>[],
+  rowCount: number,
+  trace: { sql: string; confidence: number; cache_hit: boolean },
+): QueryOutput {
+  return { rows, rowCount, trace: traceOf(trace) };
+}
+
+// Maps SDK errors into the `SK-MCP-006` tool-error shape. Known codes
+// get a tailored next-action; the catch-all reports only the code so
+// raw SDK strings don't leak to the host LLM (mild defence against
+// internal-detail leakage).
+export function mapSdkError(err: unknown): ToolError {
+  const apiErr = err as NlqdbApiError | undefined;
+  const code = apiErr?.code ?? "unknown_error";
+  const httpStatus = apiErr?.httpStatus ?? 0;
+  const body = apiErr?.body ?? null;
+
+  if (code === "unauthorized" || httpStatus === 401) {
     return {
       code: "auth_required",
       message: "This tool requires a user-scoped key (sk_live_ or sk_mcp_).",
@@ -195,29 +322,58 @@ export function mapSdkError(err: unknown): ToolError {
     };
   }
   if (code === "low_confidence") {
+    const details = readAlternatives(body);
     return {
       code: "low_confidence",
-      message: apiErr?.body?.message ?? "The plan confidence was below the per-tier floor.",
-      action: "Rephrase your goal with the specific table or column names you mean.",
+      message: body?.message ?? "The plan confidence was below the per-tier floor.",
+      action: details
+        ? "Re-call with one of the alternatives in `details.alternatives`, or rephrase with the exact table/column names you mean."
+        : "Rephrase your goal with the specific table or column names you mean.",
+      ...(details ? { details } : {}),
     };
   }
   if (code === "ambiguous_db") {
+    const candidates = body?.candidate_dbs as CandidateDb[] | undefined;
     return {
       code: "ambiguous_db",
       message: "Multiple databases could match this goal.",
-      action: "Re-issue the query with an explicit `db` argument.",
+      action: candidates?.length
+        ? `Re-call with an explicit \`db\` argument (e.g. ${candidates
+            .slice(0, 3)
+            .map((c) => `\`${c.slug}\``)
+            .join(", ")}).`
+        : "Re-call with an explicit `db` argument.",
+      ...(candidates?.length ? { details: { candidate_dbs: candidates } } : {}),
     };
   }
-  if (code === "rate_limited" || apiErr?.httpStatus === 429) {
+  if (code === "rate_limited" || httpStatus === 429) {
     return {
       code: "rate_limited",
       message: "Rate limit exceeded.",
       action: "Wait briefly and retry; rate limits reset within a minute.",
     };
   }
+  if (code === "aborted") {
+    return {
+      code: "aborted",
+      message: "The tool call was cancelled.",
+      action: "Re-call when you're ready.",
+    };
+  }
   return {
     code: String(code),
-    message: apiErr?.message ?? "An unexpected error occurred.",
-    action: "Retry once; if the error persists report it at nlqdb.com/issues.",
+    message: "An unexpected error occurred.",
+    action:
+      "Retry once; if the error persists email support@nlqdb.com with the tool name and time.",
   };
+}
+
+function readAlternatives(body: NlqdbApiError["body"]): Record<string, unknown> | undefined {
+  if (!body) return undefined;
+  // SK-TRUST-003 alternatives ride on the open-ended ApiErrorBody —
+  // SDK types it as a Record-ish shape. Forward verbatim so the
+  // agent can pick one.
+  const alt = (body as unknown as { alternatives?: unknown }).alternatives;
+  if (Array.isArray(alt) && alt.length > 0) return { alternatives: alt };
+  return undefined;
 }

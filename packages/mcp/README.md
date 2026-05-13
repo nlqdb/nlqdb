@@ -9,7 +9,9 @@ for the full design.
 ## Auth posture (slice 2)
 
 - `nlqdb_query` works end-to-end against a `pk_live_*` key (pinned to
-  one database).
+  one database). Destructive plans (INSERT/UPDATE/DELETE/DDL) return
+  `requires_confirm: true` + a `diff` — re-call with `confirm: true`
+  to commit (`SK-TRUST-001`).
 - `nlqdb_list_databases` and `nlqdb_describe` require user-scoped
   auth (`sk_live_*` or `sk_mcp_*`). Until slice 1 ships those keys,
   both surface a typed `auth_required` tool error in the
@@ -32,6 +34,20 @@ per-host config path):
   }
 }
 ```
+
+`NLQDB_MCP_DEBUG=1` in the env prints stack traces on fatal errors.
+
+## Build pipeline
+
+- **Monorepo dev:** `main` points at `src/index.ts`; Bun loads `.ts`
+  directly. Run tests via `bun run --filter @nlqdb/mcp test`.
+- **Publish artifact:** `bun run build` emits `dist/index.js` (single
+  ESM bundle with `@nlqdb/sdk` inlined; npm deps kept external).
+  `publishConfig` flips `main` and `exports` to `dist/index.js` so
+  `npx @nlqdb/mcp` works under Node 20+ from npm.
+
+CI runs the build for the `mcp` matrix entry and asserts `dist/index.js`
+is produced; the bundle stays out of git (`.gitignore`'s `dist/`).
 
 ## Lockfile invariant (SK-MCP-005)
 

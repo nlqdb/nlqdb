@@ -10,7 +10,7 @@ when-to-load:
 # Feature: Mcp Server
 
 **One-liner:** MCP server + `nlq mcp install` host detection (Claude Desktop, Cursor, etc.).
-**Status:** planned (Phase 2) — design fully locked (`SK-MCP-001..010`). Slice 2 of `SK-MCP-010` (local-stdio package: tool contracts, dispatcher, transport) lands with this PR. `nlqdb_query` works today against `pk_live_*`; `nlqdb_list_databases` + `nlqdb_describe` return typed `auth_required` until slice 1 (`sk_*` keys in `api-keys/FEATURE.md`) ships. Slices 3 (hosted Worker) and 4 (`nlq mcp install`) live with their respective features.
+**Status:** partial (Phase 2) — design fully locked (`SK-MCP-001..010`). Slice 2 of `SK-MCP-010` shipped: `packages/mcp/` has tool contracts, a transport-agnostic dispatcher, stdio transport, and a `bun build` pipeline producing `dist/index.js` for `npx @nlqdb/mcp`. `nlqdb_query` works against `pk_live_*` and surfaces `requires_confirm` + diff (`SK-TRUST-001`); the other two tools return typed `auth_required` until slice 1 (`sk_*` keys, `api-keys/FEATURE.md`) ships. Slices 3 / 4 live with their respective features.
 **Owners (code):** `packages/mcp/**`
 **Cross-refs:** docs/architecture.md §3.4 (MCP server) · docs/architecture.md §3 (MCP server row) · docs/phase-plan.md (Phase 2 mcp slice)
 
@@ -101,27 +101,28 @@ when-to-load:
   - Declarative manifest per host — can't express host-specific JSON-patch logic.
   - Detect by binary presence — misleading on Linux; the config file is the canonical "host is installed" signal anyway.
 
-### SK-MCP-009 — Per-key rate-limit bucket; revocation propagates ≤ 1 s via D1 + 1 s isolate-local cache
+### SK-MCP-009 — Per-key rate-limit bucket; revocation propagates ≤ 1 s
 
 - **Decision:** Every `sk_mcp_*` key is its own rate-limit bucket — `SK-MCP-004` already embeds `(mcp_host, device_id)`, so hosts have independent budgets. Revocation marks `revoked_at` in D1; hosted-MCP isolates keep a 1 s `Map<keyHash, { revoked }>` cache gating every tool call. Local-stdio resolves auth against the API on every call (no cache).
 - **Core value:** Bullet-proof, Honest latency, Free
-- **Why:** Tool calls are low-RPS (humans driving an agent), so per-call auth is affordable. 1 s absorbs burst-validation in multi-step agent flows without breaching `GLOBAL-018`'s "instant" — 1 s is the human-perceptible bound and the practical KV/D1 propagation floor.
+- **Why:** Tool calls are low-RPS (humans driving an agent), so per-call auth is affordable. 1 s absorbs burst-validation without breaching `GLOBAL-018`'s "instant" — it's the human-perceptible bound and the practical KV/D1 propagation floor.
 - **Consequence in code:** `api-keys.ts` adds `revoked_at`; `lookupSkMcpKey()` filters `WHERE revoked_at IS NULL`. Hosted Worker wraps the lookup in `IsolateCache<KeyHash, …>` with `ttlMs: 1000`. Rate-limit middleware keys buckets as `rl:${keyHash}` — no `sk_mcp_*` vs `sk_live_*` special-casing.
 - **Alternatives rejected:**
-  - Shared per-user bucket across hosts — noisy host burns sibling-host budgets; no per-host revocation recourse.
-  - 5 s TTL — too loose for "instant"; pushes past the human-perceptible bound.
-  - Push-based revocation broadcast — fan-out cost on free tier; 1 s pull cache reaches the same SLO with one D1 read per miss.
+  - Shared per-user bucket across hosts — noisy host burns sibling budgets; no per-host revocation recourse.
+  - 5 s TTL — too loose; pushes past the human-perceptible bound.
+  - Push-based broadcast — fan-out cost on free tier; 1 s pull cache reaches the same SLO with one D1 read per miss.
 
 ### SK-MCP-010 — Implementation slicing: keys → stdio → hosted → install
 
-- **Decision:** Four ordered slices, each independently reviewable. **Slice 1:** `sk_live_*` + `sk_mcp_*` minting / hashing / lookup in `apps/api/src/api-keys.ts` + `principal.ts` — lives in `api-keys/FEATURE.md`. **Slice 2:** `packages/mcp/` local-stdio transport — package scaffold, three tool contracts, dispatcher, `bin/nlqdb-mcp`, vitest tests. `nlqdb_query` works against `pk_live_*` today; `nlqdb_list_databases` / `nlqdb_describe` return typed `auth_required` until slice 1 ships. **Slice 3:** Hosted Worker at `mcp.nlqdb.com` — Streamable-HTTP transport, `workers-oauth-provider`, Durable-Object-backed sessions per the [Cloudflare MCP pattern](https://developers.cloudflare.com/agents/model-context-protocol/). **Slice 4:** `nlq mcp install` host detection (Go) — consumes the `SK-MCP-008` registry; lives in `cli/FEATURE.md` once that feature has source.
+- **Decision:** Four ordered slices, each independently reviewable. **Slice 1:** `sk_live_*` + `sk_mcp_*` minting / hashing / lookup in `apps/api/src/api-keys.ts` + `principal.ts` — lives in `api-keys/FEATURE.md`. **Slice 2:** `packages/mcp/` local-stdio package — tool contracts, transport-agnostic dispatcher, stdio entry, `bin/nlqdb-mcp`, `bun build` pipeline emitting `dist/index.js`. `nlqdb_query` works against `pk_live_*`; `nlqdb_list_databases` / `nlqdb_describe` return typed `auth_required` until slice 1 ships. **Slice 3:** Hosted Worker at `mcp.nlqdb.com` — Streamable-HTTP transport, `workers-oauth-provider`, Durable-Object-backed sessions per the [Cloudflare MCP pattern](https://developers.cloudflare.com/agents/model-context-protocol/). **Slice 4:** `nlq mcp install` host detection (Go) — consumes the `SK-MCP-008` registry; lives in `cli/FEATURE.md`.
 - **Core value:** Simple, Honest latency, Goal-first
-- **Why:** Shipping `packages/mcp/` (slice 2) before keys (slice 1) is intentional: tool contracts and dispatch are stable regardless of auth backend, and `pk_live_*` covers the day-one agent shape (one memory DB per agent). Slice ordering is enforced by review, not code gates; the FEATURE.md is the source of truth.
-- **Consequence in code:** Slice-2 `auth_required` responses follow the `SK-MCP-006` shape: `{ code: "auth_required", message: "…", action: "Wait for sk_mcp_* keys (Phase 2 slice 1) or use a pk_live_* key for nlqdb_query." }`. Reviewers reject sk-key minting logic inside `packages/mcp/` — it lives in `apps/api/` per `GLOBAL-021`.
+- **Why:** Shipping `packages/mcp/` before keys is intentional: tool contracts and dispatch are stable regardless of auth backend, and `pk_live_*` covers the day-one agent shape (one memory DB per agent). Slice ordering is enforced by review, not code gates; the FEATURE.md is the source of truth.
+- **Consequence in code:** Slice-2 `auth_required` responses follow `SK-MCP-006`. The package keeps `main: src/index.ts` for monorepo dev (Bun loads `.ts`); `publishConfig` flips `main`/`exports` to `dist/index.js` when published so `npx @nlqdb/mcp` works under Node 20+. Reviewers reject sk-key minting logic inside `packages/mcp/` — it lives in `apps/api/` per `GLOBAL-021`.
 - **Alternatives rejected:**
   - Bundle slice 1 + slice 2 — doubles PR size; couples auth-backend work with package wiring.
   - Drop the unsupported tools until slice 1 lands — leaves the tool surface ambiguous; typed `auth_required` is cleaner.
   - Hosted-only (skip stdio) — cuts off the offline / air-gapped segment (`SK-MCP-001`).
+  - `tsc` emit for the build — workspace `.ts` imports of `@nlqdb/sdk` violate `rootDir`. `bun build` bundles workspace deps and leaves npm deps external.
 
 ## Install paths
 
@@ -148,8 +149,6 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 
 - **Promote-to-account UX (UI-only — server contract locked).** The server contract is `PATCH /v1/databases/:id { scope: "account" }` — flips the `(mcp_host, device_id)` tag to NULL on a DB row. Dashboard button placement, confirmation modal copy, and post-promote redirect target are product-owner calls. Resolve before slice 3 ships (hosted Worker surfaces the prompt).
 - **MCP `confirm_required` host-rendering audit.** Some hosts render `confirm_required` as a single "Approve" button without the diff body — that breaks `SK-TRUST-001`. Audit (Claude Desktop, Cursor, Zed, Windsurf, VS Code Continue, Cline) runs against slice 2; offending hosts get a documented warning in `nlq mcp install` until they fix it. Cross-ref: [`trust-ux/FEATURE.md`](../trust-ux/FEATURE.md) Open questions.
-
-Closed during 2026-05 doc revision: `engine` on list (`SK-MCP-002` + `SK-DB-010`); new-host contract (`SK-MCP-008`); hosted rate-limit tier (`SK-MCP-009`); `NLQDB_API_KEY` precedence `env > host config > device key` — covered by slice-2 tests; revocation latency (`SK-MCP-009`).
 
 ## Happy path walkthrough
 
