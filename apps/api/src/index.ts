@@ -500,7 +500,7 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
         // tail steps (recent-tables MRU, table-card embedding) fire
         // off-path after the response goes back to the user.
         const { deps: createDeps, secretRef } = buildDbCreateDeps(c.env, (p) =>
-          c.executionCtx.waitUntil(p as Promise<void>),
+          c.executionCtx.waitUntil(p),
         );
         const result = await orchestrateDbCreate(createDeps, {
           goal: parsed.body.goal,
@@ -1089,7 +1089,7 @@ app.post("/v1/databases", requireSession, async (c) => {
       // SK-HDC-013 — same waitUntil wiring as the /v1/ask kind=create
       // branch above.
       const { deps: createDeps, secretRef } = buildDbCreateDeps(c.env, (p) =>
-        c.executionCtx.waitUntil(p as Promise<void>),
+        c.executionCtx.waitUntil(p),
       );
       // The `if (!name && !goal)` guard above ensures at least one is
       // defined; the `?? ""` fallback satisfies Biome's
@@ -1565,12 +1565,16 @@ app.on(["POST", "GET"], "/api/auth/*", async (c) => {
   });
 });
 
-// SK-HDC-014 — Neon keep-warm cron expression. Must match exactly the
-// entry in `apps/api/wrangler.toml`'s `[triggers].crons`; the
-// scheduled handler dispatches on `controller.cron` and this constant
-// is the single source of truth so a typo in one file surfaces as a
-// "no matching branch" log line rather than a silent skip.
+// Cron expressions, mirrored from `apps/api/wrangler.toml`'s
+// `[triggers].crons`. The scheduled() handler dispatches on
+// `controller.cron` against these constants; an unmatched value
+// emits `scheduled_unknown_cron` and returns rather than falling
+// through to one of the branches — a string drift between this file
+// and wrangler.toml shouldn't accidentally route the keep-warm
+// schedule through the heavy daily workload-analyser path (which
+// would burn D1 quotas + LLM credits firing 210x/day).
 const NEON_KEEP_WARM_CRON = "*/4 13-21 * * 1-5";
+const WORKLOAD_ANALYSER_CRON = "0 4 * * *";
 
 // W5 daily workload-analyser cron handler (`SK-MIGRATE-001`). Schedule
 // is `0 4 * * *` UTC, configured in `wrangler.toml`'s `[triggers]`.
@@ -1622,13 +1626,11 @@ async function scheduled(
       }
       const { keepNeonWarm } = await import("./db-create/build-deps.ts");
       try {
-        const elapsed = await keepNeonWarm(databaseUrl);
-        console.info(
-          JSON.stringify({
-            msg: "neon_keepwarm_ok",
-            elapsed_ms: Math.round(elapsed),
-          }),
-        );
+        // Span carries the elapsed_ms via `nlqdb.db.duration_ms` —
+        // no console.info needed (would otherwise be ~210 lines/day
+        // of pure noise, fails the "non-spammy" bar). Failures still
+        // log so operators on `wrangler tail` see the trip.
+        await keepNeonWarm(databaseUrl);
       } catch (err) {
         console.error(
           JSON.stringify({
@@ -1637,6 +1639,20 @@ async function scheduled(
           }),
         );
       }
+      return;
+    }
+
+    // Unknown cron — log+return rather than fall through. Drift
+    // between this file and `wrangler.toml`'s `[triggers].crons`
+    // shouldn't accidentally pipe the wrong schedule into the heavy
+    // workload-analyser branch.
+    if (controller.cron !== WORKLOAD_ANALYSER_CRON) {
+      console.error(
+        JSON.stringify({
+          msg: "scheduled_unknown_cron",
+          cron: controller.cron,
+        }),
+      );
       return;
     }
 

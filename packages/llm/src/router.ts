@@ -234,7 +234,12 @@ export function createLLMRouter(opts: LLMRouterOptions): LLMRouter {
       },
       async (span) => {
         const startedAt = performance.now();
-        let outcome: "ok" | "error" = "error";
+        // SK-LLM-014 — `hedge_lost` is its own outcome value (not
+        // "error") so dashboards filtering `status="error"` don't
+        // over-count cancelled hedge legs. Bounded cardinality:
+        // 3 values × ops × providers stays well under SK-OBS-002's
+        // 8 k active-series budget.
+        let outcome: "ok" | "error" | "hedge_lost" = "error";
         const signal = buildSignal(callerOpts?.signal, timeoutMs);
         try {
           const value = await call(provider, req, {
@@ -245,9 +250,19 @@ export function createLLMRouter(opts: LLMRouterOptions): LLMRouter {
           return { ok: true as const, value };
         } catch (err) {
           const reason = classifyError(err, signal);
-          const wrapped = asError(err);
-          span.recordException(wrapped);
-          span.setStatus({ code: SpanStatusCode.ERROR, message: wrapped.message });
+          if (reason === "hedge_lost") {
+            // SK-LLM-014 — hedge winner cancelled this leg. Not a
+            // real failure: skip the ERROR span status and the
+            // recorded exception so Tempo's "errors" filter doesn't
+            // light up. The boolean attribute lets dashboards
+            // explicitly filter / count hedge-cancel spans.
+            span.setAttribute("nlqdb.llm.hedge_lost", true);
+            outcome = "hedge_lost";
+          } else {
+            const wrapped = asError(err);
+            span.recordException(wrapped);
+            span.setStatus({ code: SpanStatusCode.ERROR, message: wrapped.message });
+          }
           return { ok: false as const, reason, error: err };
         } finally {
           const elapsed = performance.now() - startedAt;

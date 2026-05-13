@@ -186,13 +186,43 @@ async function noopEmbedTableCards(
 // carve-out stays here (no second file imports `@neondatabase/serverless`
 // — GLOBAL-021).
 //
-// Returns wall-clock ms so the scheduled handler can log it for the
-// Tempo span timing — useful for catching the case where the keep-warm
-// itself is paying a cold-start tax (which would mean the interval is
-// already too long).
+// Wrapped in the canonical `db.query` span (GLOBAL-014 — every external
+// call gets a span) with `db.statement: "SELECT 1"` so dashboards /
+// Tempo can pull just the keep-warm pings via that filter. The
+// `nlqdb.db.duration_ms{operation:"SELECT"}` histogram lands here too,
+// matching the per-statement pattern from `packages/db`'s adapter so
+// keep-warm timings show up on the same chart as user queries — the
+// case we care about is "keep-warm itself is paying a cold-start tax"
+// (= interval too long; pings need to come more often). Throws on
+// Neon failure; the caller (`scheduled()` handler) catches + logs.
+//
+// OTel + metrics imports are *lazy* via dynamic import. The keep-warm
+// cron is the only caller, fires from `scheduled()` not the request
+// path, and we don't want to bloat the per-request bundle / module
+// load for code that runs ~once every 4 minutes. (Was a top-level
+// import in an earlier draft; eagerly importing `@nlqdb/otel` from
+// this file caused the integration test suite to flake — see PR #171
+// review notes.)
 export async function keepNeonWarm(connectionString: string): Promise<number> {
-  const sql = neon(connectionString, { fullResults: true });
-  const t0 = performance.now();
-  await sql.query("SELECT 1");
-  return performance.now() - t0;
+  const { dbDurationMs } = await import("@nlqdb/otel");
+  const { SpanStatusCode, trace } = await import("@opentelemetry/api");
+  const tracer = trace.getTracer("@nlqdb/api/keep-warm");
+  return tracer.startActiveSpan("db.query", async (span) => {
+    span.setAttribute("db.system", "postgresql");
+    span.setAttribute("db.operation", "SELECT");
+    span.setAttribute("db.statement", "SELECT 1");
+    const startedAt = performance.now();
+    try {
+      const sql = neon(connectionString, { fullResults: true });
+      await sql.query("SELECT 1");
+      return performance.now() - startedAt;
+    } catch (err) {
+      span.recordException(err as Error);
+      span.setStatus({ code: SpanStatusCode.ERROR });
+      throw err;
+    } finally {
+      dbDurationMs().record(performance.now() - startedAt, { operation: "SELECT" });
+      span.end();
+    }
+  });
 }

@@ -228,15 +228,30 @@ export async function orchestrateDbCreate(
   // the next /v1/ask classifier — the response doesn't carry it, so
   // late population is fine. Without a `waitUntil`, we fall back to
   // the pre-SK-HDC-013 inline-await behaviour so existing tests pass.
+  //
+  // The `Promise.resolve().then(...)` envelope converts any synchronous
+  // throw from `touch` (e.g., a future store impl that throws before
+  // its first `await`) into a promise rejection the `.catch` can
+  // handle — without it, a sync throw escapes the orchestrator and
+  // breaks the 200-already-shipped contract on the waitUntil path.
+  // Failures are logged so a silent regression in the store doesn't
+  // become invisible.
   if (deps.recentTables) {
-    const touch = deps.recentTables
-      .touch(
-        args.tenantId,
-        dbId,
-        deriveSlug(dbId),
-        plan.tables.map((t) => t.name),
+    const tables = plan.tables.map((t) => t.name);
+    const touch = Promise.resolve()
+      .then(() =>
+        // biome-ignore lint/style/noNonNullAssertion: guarded by `if (deps.recentTables)` above
+        deps.recentTables!.touch(args.tenantId, dbId, deriveSlug(dbId), tables),
       )
-      .catch(() => {});
+      .catch((cause) => {
+        console.error(
+          JSON.stringify({
+            msg: "recent_tables_touch_failed",
+            dbId,
+            message: cause instanceof Error ? cause.message : String(cause),
+          }),
+        );
+      });
     if (deps.waitUntil) deps.waitUntil(touch);
     else await touch;
   }
@@ -244,19 +259,28 @@ export async function orchestrateDbCreate(
   // 6. Table-card RAG seed (SK-HDC-013). The dbId is already
   //    committed and queryable; embedding is a RAG-quality concern,
   //    not a correctness one. Pushing it into `waitUntil` removes
-  //    Workers-AI / pgvector latency from the response path. Failures
-  //    are swallowed — the orchestrator can't surface an `embed_failed`
-  //    envelope after responding 200, but it never could meaningfully
-  //    act on it anyway (`embedTableCards` is `noopEmbedTableCards`
-  //    until the pgvector slice lands, and the FEATURE.md comment
-  //    already names "out-of-band retry" as the recovery path).
+  //    Workers-AI / pgvector latency from the response path. The
+  //    response already shipped 200; we can't surface `embed_failed`
+  //    here — but we DO log so a real embed regression (once the
+  //    pgvector slice replaces `noopEmbedTableCards`) doesn't become
+  //    a silent black hole.
   //
   //    Test path: when no `waitUntil` is injected, await inline + keep
   //    the typed `embed_failed` envelope so the existing orchestrator
   //    test that pins the failure shape doesn't drift.
   if (deps.waitUntil) {
     deps.waitUntil(
-      deps.embedTableCards({ pg: deps.pg, llm: deps.llm }, plan, dbId).catch(() => undefined),
+      Promise.resolve()
+        .then(() => deps.embedTableCards({ pg: deps.pg, llm: deps.llm }, plan, dbId))
+        .catch((cause) => {
+          console.error(
+            JSON.stringify({
+              msg: "embed_table_cards_failed",
+              dbId,
+              message: cause instanceof Error ? cause.message : String(cause),
+            }),
+          );
+        }),
     );
   } else {
     try {

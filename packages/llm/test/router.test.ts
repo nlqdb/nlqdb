@@ -774,4 +774,85 @@ describe("createLLMRouter — hedged race (SK-LLM-014)", () => {
     expect(res.plan).toEqual({ from: "gemini" });
     expect(a.calls).toHaveLength(1);
   });
+
+  it("hedge loser's span has hedge_lost attribute and NOT ERROR status", async () => {
+    // Regression for the dashboards-over-count-errors issue.
+    // Cancelled hedge legs must mark the span with
+    // `nlqdb.llm.hedge_lost: true` and leave status non-ERROR so
+    // Tempo's error filter doesn't count them, and the
+    // `llm.calls.total{status}` metric records `"hedge_lost"`, not
+    // `"error"`, on the cancelled leg.
+    const primary = fakeProvider("gemini", {
+      schemaInfer: async () => {
+        await new Promise((r) => setTimeout(r, 30));
+        return { plan: { from: "gemini" } };
+      },
+    });
+    const secondary = fakeProvider("groq", {
+      schemaInfer: (_req, opts) =>
+        new Promise((_resolve, reject) => {
+          opts?.signal?.addEventListener("abort", () => {
+            const err = new Error("aborted");
+            err.name = "AbortError";
+            reject(err);
+          });
+        }),
+    });
+    const router = createLLMRouter({
+      providers: [primary, secondary],
+      chains: { schema_infer: ["gemini", "groq"] },
+      hedge: { schema_infer: { afterMs: 10 } },
+    });
+    await router.schemaInfer({ goal: "g" });
+
+    const spans = telemetry.spanExporter.getFinishedSpans();
+    const secondarySpan = spans.find(
+      (s) => s.attributes["llm.provider"] === "groq" && s.name === "llm.schema_infer",
+    );
+    expect(secondarySpan).toBeDefined();
+    expect(secondarySpan?.attributes["nlqdb.llm.hedge_lost"]).toBe(true);
+    // SpanStatusCode.ERROR === 2 in @opentelemetry/api. Hedge cancel
+    // must NOT carry ERROR status — successful hedge would otherwise
+    // light up "errors" panels in Tempo.
+    expect(secondarySpan?.status.code).not.toBe(2);
+
+    await telemetry.collectMetrics();
+    const callsMetric = metric(telemetry, "nlqdb.llm.calls.total");
+    const hedgeLostBump = callsMetric?.dataPoints.find(
+      (dp) => dp.attributes["status"] === "hedge_lost",
+    );
+    expect(hedgeLostBump).toBeDefined();
+    expect(hedgeLostBump?.attributes["provider"]).toBe("groq");
+  });
+
+  it("both hedged legs fail (slow): falls through to chain[2]", async () => {
+    // Both primary AND secondary slow-fail (after head-start). The
+    // sequential loop must resume from chain[2] — verifies
+    // `chainStart = b.chainIdx + 1` accounting in dispatch.
+    const primary = fakeProvider("gemini", {
+      schemaInfer: async () => {
+        await new Promise((r) => setTimeout(r, 20));
+        throw new ProviderError("boom1", "http_5xx", 503);
+      },
+    });
+    const secondary = fakeProvider("groq", {
+      schemaInfer: async () => {
+        await new Promise((r) => setTimeout(r, 30));
+        throw new ProviderError("boom2", "http_5xx", 503);
+      },
+    });
+    const third = fakeProvider("workers-ai", {
+      schemaInfer: { plan: { from: "workers-ai" } },
+    });
+    const router = createLLMRouter({
+      providers: [primary, secondary, third],
+      chains: { schema_infer: ["gemini", "groq", "workers-ai"] },
+      hedge: { schema_infer: { afterMs: 5 } },
+    });
+    const res = await router.schemaInfer({ goal: "g" });
+    expect(res.plan).toEqual({ from: "workers-ai" });
+    expect(primary.calls).toHaveLength(1);
+    expect(secondary.calls).toHaveLength(1);
+    expect(third.calls).toHaveLength(1);
+  });
 });
