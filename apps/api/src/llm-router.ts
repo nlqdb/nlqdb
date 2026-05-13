@@ -86,6 +86,31 @@ export function getLLMRouter(): LLMRouter {
       // SK-DB-010: engine-classifier rides the cheap-tier chain.
       engine_classify: ["groq", "gemini", "workers-ai", "openrouter"],
     },
+    // SK-LLM-014 — Hedged-request race on planner-tier ops, where
+    // wall-clock tails are widest and we already pay 0 dollars per
+    // call. After the head-start delay, fire provider[1] in parallel
+    // with provider[0]; first valid response wins, loser aborts.
+    //
+    // ⚠️ FREE-TIER ONLY. Every chain in `chains:` above is a free-tier
+    // chain (Groq / Gemini / Workers AI / OpenRouter free) — racing
+    // them is pure latency win. **When the paid chain lands (SK-LLM-007
+    // — retention-off Anthropic / OpenAI for Pro tenants), do NOT
+    // copy this `hedge:` block into the paid router config**: every
+    // paid call is real per-token money and the hedge would double
+    // the bill on the slow tail. Per-op gating here makes that opt-in
+    // explicit for each operation.
+    //
+    // Trigger case observed in prod (ray 9fb27d766d075270): Gemini
+    // schema_infer hit the 8000 ms router timeout, fell through to
+    // Groq which returned in 3306 ms — costing the anon /v1/ask
+    // request 8 s of wall-clock for a result the hedge could have
+    // delivered ~3 s after start. Head-start of 800 ms = ~p90 of
+    // Gemini-Flash response time, so the typical fast-path skips the
+    // hedge entirely and the slow-path saves the tail.
+    hedge: {
+      schema_infer: { afterMs: 800 },
+      plan: { afterMs: 800 },
+    },
   });
   return cached;
 }

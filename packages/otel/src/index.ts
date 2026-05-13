@@ -13,7 +13,8 @@
 // Semantic conventions pinned to v1.37.0 (gen-ai is still Development;
 // pinning insulates us from breaking changes mid-2026).
 
-import { metrics, trace } from "@opentelemetry/api";
+import { context, metrics, trace } from "@opentelemetry/api";
+import { AsyncLocalStorageContextManager } from "@opentelemetry/context-async-hooks";
 import { OTLPMetricExporter } from "@opentelemetry/exporter-metrics-otlp-http";
 import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-http";
 import { type Resource, resourceFromAttributes } from "@opentelemetry/resources";
@@ -50,8 +51,37 @@ export type TelemetryHandle = {
 
 let active: TelemetryHandle | undefined;
 
+// Register the AsyncLocalStorage-backed context manager once per
+// isolate so `startActiveSpan` propagates parent context across
+// `await` boundaries. Without this, `BasicTracerProvider` falls back
+// to OTel's `NoopContextManager` and every child `startActiveSpan`
+// starts a fresh trace — observed in prod as orphaned `db.transaction`
+// / `llm.schema_infer` spans (separate trace IDs from their parent
+// `nlqdb.ask`), which made the 20s anon-create incident untraceable
+// in Tempo.
+//
+// Requires the `nodejs_compat` flag (set in `apps/api/wrangler.toml`);
+// Workers' AsyncLocalStorage omits `enterWith()` and `disable()`, but
+// `AsyncLocalStorageContextManager` only uses `run()` for span context
+// propagation, which works. Thenable (non-Promise) returns aren't
+// fully tracked — our codebase uses async/await + Promise throughout,
+// so this isn't a leak vector for us. Test installs also need this
+// because vitest runs in Node, where async_hooks fully works.
+function enableContextManager(): void {
+  // Re-enabling on every setup is fine: `setGlobalContextManager` is
+  // idempotent against the same instance, and we never `disable()` in
+  // Workers (the runtime would throw on `AsyncLocalStorage.disable()`,
+  // and we don't need it — isolates are reused for the life of the
+  // request).
+  const manager = new AsyncLocalStorageContextManager();
+  manager.enable();
+  context.setGlobalContextManager(manager);
+}
+
 export function setupTelemetry(opts: TelemetryOptions): TelemetryHandle {
   if (active) return active;
+
+  enableContextManager();
 
   const resource = resourceFromAttributes({
     [ATTR_SERVICE_NAME]: opts.serviceName,
@@ -120,6 +150,8 @@ export function installTelemetryForTest(opts: {
 }): TelemetryHandle {
   trace.disable();
   metrics.disable();
+
+  enableContextManager();
 
   const tracerProvider = new BasicTracerProvider({
     resource: opts.resource,

@@ -92,6 +92,13 @@ export type DbCreateDeps = {
   // `build-deps.ts`. Failures inside `touch` are swallowed by the
   // store and never propagate to the response.
   recentTables?: RecentTablesStore;
+  // SK-HDC-013 — push tail steps (KV writes, RAG embedding) off the
+  // user-visible response path. Production wires
+  // `c.executionCtx.waitUntil`; tests can pass a no-op or an awaitable
+  // collector. Optional so existing test stubs keep working — when
+  // unset, the orchestrator falls back to awaiting tail steps inline
+  // (the pre-SK-HDC-013 behaviour).
+  waitUntil?: (p: Promise<unknown>) => void;
 };
 
 export async function orchestrateDbCreate(
@@ -215,36 +222,72 @@ export async function orchestrateDbCreate(
     });
   }
 
-  // SK-ASK-012 — seed the principal's recent-tables MRU with the
-  // tables that just landed. Lives between provision (step 5) and
-  // embedTableCards (step 6) so the MRU is populated even when
-  // embedding fails (the dbId is already committed and queryable).
-  // The store wraps its own `nlqdb.recent_tables.touch` span and
-  // swallows KV failures; we still guard the call with `.catch()` so
-  // an unexpected throw can't reverse the create response.
+  // SK-ASK-012 + SK-HDC-013 — push the recent-tables MRU update off
+  // the user-visible response. The dbId is already committed to D1
+  // (inside step 5's transaction) and the MRU is a UX-only hint for
+  // the next /v1/ask classifier — the response doesn't carry it, so
+  // late population is fine. Without a `waitUntil`, we fall back to
+  // the pre-SK-HDC-013 inline-await behaviour so existing tests pass.
+  //
+  // The `Promise.resolve().then(...)` envelope converts any synchronous
+  // throw from `touch` (e.g., a future store impl that throws before
+  // its first `await`) into a promise rejection the `.catch` can
+  // handle — without it, a sync throw escapes the orchestrator and
+  // breaks the 200-already-shipped contract on the waitUntil path.
+  // Failures are logged so a silent regression in the store doesn't
+  // become invisible.
   if (deps.recentTables) {
-    await deps.recentTables
-      .touch(
-        args.tenantId,
-        dbId,
-        deriveSlug(dbId),
-        plan.tables.map((t) => t.name),
+    const tables = plan.tables.map((t) => t.name);
+    const touch = Promise.resolve()
+      .then(() =>
+        // biome-ignore lint/style/noNonNullAssertion: guarded by `if (deps.recentTables)` above
+        deps.recentTables!.touch(args.tenantId, dbId, deriveSlug(dbId), tables),
       )
-      .catch(() => {});
+      .catch((cause) => {
+        console.error(
+          JSON.stringify({
+            msg: "recent_tables_touch_failed",
+            dbId,
+            message: cause instanceof Error ? cause.message : String(cause),
+          }),
+        );
+      });
+    if (deps.waitUntil) deps.waitUntil(touch);
+    else await touch;
   }
 
-  // 6. Table-card RAG seed. Awaited so the response reflects RAG
-  //    readiness, but a throw here does NOT roll back the DB —
-  //    the dbId is already committed and queryable. We surface a
-  //    typed `embed_failed` with the dbId so callers can retry
-  //    embedding out-of-band.
-  try {
-    await deps.embedTableCards({ pg: deps.pg, llm: deps.llm }, plan, dbId);
-  } catch {
-    // Embedding errors (Workers AI / pgvector) can contain internal
-    // endpoint details — keep them server-side. The dbId is still valid
-    // and queryable; surface it so callers can retry embed out-of-band.
-    return err({ kind: "embed_failed", dbId });
+  // 6. Table-card RAG seed (SK-HDC-013). The dbId is already
+  //    committed and queryable; embedding is a RAG-quality concern,
+  //    not a correctness one. Pushing it into `waitUntil` removes
+  //    Workers-AI / pgvector latency from the response path. The
+  //    response already shipped 200; we can't surface `embed_failed`
+  //    here — but we DO log so a real embed regression (once the
+  //    pgvector slice replaces `noopEmbedTableCards`) doesn't become
+  //    a silent black hole.
+  //
+  //    Test path: when no `waitUntil` is injected, await inline + keep
+  //    the typed `embed_failed` envelope so the existing orchestrator
+  //    test that pins the failure shape doesn't drift.
+  if (deps.waitUntil) {
+    deps.waitUntil(
+      Promise.resolve()
+        .then(() => deps.embedTableCards({ pg: deps.pg, llm: deps.llm }, plan, dbId))
+        .catch((cause) => {
+          console.error(
+            JSON.stringify({
+              msg: "embed_table_cards_failed",
+              dbId,
+              message: cause instanceof Error ? cause.message : String(cause),
+            }),
+          );
+        }),
+    );
+  } else {
+    try {
+      await deps.embedTableCards({ pg: deps.pg, llm: deps.llm }, plan, dbId);
+    } catch {
+      return err({ kind: "embed_failed", dbId });
+    }
   }
 
   // 7. Mint a pk_live_ key for the newly-provisioned DB (SK-APIKEYS-001).

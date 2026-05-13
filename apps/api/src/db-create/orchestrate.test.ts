@@ -336,6 +336,79 @@ describe("orchestrateDbCreate", () => {
     expect(out.error).not.toHaveProperty("reason");
   });
 
+  it("SK-HDC-013: when waitUntil is provided, embed + recent-tables tail-fire off-path", async () => {
+    // Slow embed that would block ~50ms if awaited. With waitUntil
+    // injected the orchestrator must NOT block on it — the response
+    // returns immediately and the embed runs against the lifetime
+    // collected by the test.
+    const embedStarted = { value: false };
+    const embedDone = { value: false };
+    const embedTableCards = stubEmbedTableCards(async () => {
+      embedStarted.value = true;
+      await new Promise((r) => setTimeout(r, 50));
+      embedDone.value = true;
+    });
+    const touchStarted = { value: false };
+    const touchDone = { value: false };
+    const recentTables = {
+      touch: vi.fn(async () => {
+        touchStarted.value = true;
+        await new Promise((r) => setTimeout(r, 50));
+        touchDone.value = true;
+      }),
+      // load is unused by the orchestrator (the route handler reads
+      // recent tables; the orchestrator only writes). Stub returns
+      // empty to satisfy the type checker.
+      load: vi.fn(async () => []),
+    };
+    const collected: Promise<unknown>[] = [];
+    const waitUntil = (p: Promise<unknown>) => {
+      collected.push(p);
+    };
+    const deps = makeDeps({ embedTableCards, recentTables, waitUntil });
+
+    const t0 = Date.now();
+    const out = await orchestrateDbCreate(deps, ARGS);
+    const elapsed = Date.now() - t0;
+
+    expect(out.ok).toBe(true);
+    // Response came back before tail steps finished (otherwise we'd be
+    // at >= 100ms). Generous threshold to avoid CI flake.
+    expect(elapsed).toBeLessThan(45);
+    expect(embedStarted.value).toBe(true);
+    expect(embedDone.value).toBe(false);
+    expect(touchStarted.value).toBe(true);
+    expect(touchDone.value).toBe(false);
+    // waitUntil received 2 promises — one for embed, one for touch.
+    expect(collected).toHaveLength(2);
+    // Drain so the test isolate doesn't leak pending timers.
+    await Promise.all(collected);
+    expect(embedDone.value).toBe(true);
+    expect(touchDone.value).toBe(true);
+  });
+
+  it("SK-HDC-013: embed failure in waitUntil path does NOT surface embed_failed (response is 200)", async () => {
+    // With waitUntil, the response already shipped before embed
+    // settled — the typed embed_failed envelope is only available on
+    // the inline-await path. The orchestrator must swallow the throw
+    // and return ok.
+    const embedTableCards = stubEmbedTableCards(async () => {
+      throw new Error("pgvector down");
+    });
+    const collected: Promise<unknown>[] = [];
+    const waitUntil = (p: Promise<unknown>) => {
+      collected.push(p);
+    };
+    const deps = makeDeps({ embedTableCards, waitUntil });
+
+    const out = await orchestrateDbCreate(deps, ARGS);
+
+    expect(out.ok).toBe(true);
+    // Drain the tail so the swallowed throw doesn't leak as an
+    // unhandled rejection in subsequent tests.
+    await Promise.all(collected.map((p) => p.catch(() => undefined)));
+  });
+
   it("pkLive: null when mintPkLive dep is absent (unit tests don't stub it)", async () => {
     const deps = makeDeps();
 

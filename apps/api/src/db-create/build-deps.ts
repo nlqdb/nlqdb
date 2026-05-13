@@ -46,7 +46,15 @@ export type BuildDbCreateDepsResult = {
   secretRef: string;
 };
 
-export function buildDbCreateDeps(envBindings: Cloudflare.Env): BuildDbCreateDepsResult {
+// SK-HDC-013 — `waitUntil` lifts tail steps (recent-tables MRU,
+// table-card embedding) off the response path. Production passes
+// `c.executionCtx.waitUntil` from the route handler; the orchestrator
+// then fires the tail work into that lifetime so the response returns
+// without blocking on it.
+export function buildDbCreateDeps(
+  envBindings: Cloudflare.Env,
+  waitUntil?: (p: Promise<unknown>) => void,
+): BuildDbCreateDepsResult {
   const databaseUrl = (envBindings as unknown as Record<string, string | undefined>)[
     DEFAULT_SECRET_REF
   ];
@@ -89,6 +97,9 @@ export function buildDbCreateDeps(envBindings: Cloudflare.Env): BuildDbCreateDep
       // SK-APIKEYS-001: mint pk_live_ key for the newly-provisioned DB.
       mintPkLive: (dbId, tenantId) =>
         mintPkLiveKey(envBindings.DB, envBindings.BETTER_AUTH_SECRET, dbId, tenantId),
+      // SK-HDC-013: off-critical-path tail steps. Optional — omit in
+      // tests / scheduled-handler callers that don't need to defer.
+      ...(waitUntil !== undefined ? { waitUntil } : {}),
     },
     secretRef: DEFAULT_SECRET_REF,
   };
@@ -168,3 +179,50 @@ async function noopEmbedTableCards(
   _plan: SchemaPlan,
   _dbId: string,
 ): Promise<void> {}
+
+// SK-HDC-014 — Neon keep-warm. Defers the Free-tier 5-min compute
+// auto-suspend by issuing a tiny `SELECT 1` on the cron interval.
+// Lives next to `buildPgClient` so the documented one-file `neon(...)`
+// carve-out stays here (no second file imports `@neondatabase/serverless`
+// — GLOBAL-021).
+//
+// Wrapped in the canonical `db.query` span (GLOBAL-014 — every external
+// call gets a span) with `db.statement: "SELECT 1"` so dashboards /
+// Tempo can pull just the keep-warm pings via that filter. The
+// `nlqdb.db.duration_ms{operation:"SELECT"}` histogram lands here too,
+// matching the per-statement pattern from `packages/db`'s adapter so
+// keep-warm timings show up on the same chart as user queries — the
+// case we care about is "keep-warm itself is paying a cold-start tax"
+// (= interval too long; pings need to come more often). Throws on
+// Neon failure; the caller (`scheduled()` handler) catches + logs.
+//
+// OTel + metrics imports are *lazy* via dynamic import. The keep-warm
+// cron is the only caller, fires from `scheduled()` not the request
+// path, and we don't want to bloat the per-request bundle / module
+// load for code that runs ~once every 4 minutes. (Was a top-level
+// import in an earlier draft; eagerly importing `@nlqdb/otel` from
+// this file caused the integration test suite to flake — see PR #171
+// review notes.)
+export async function keepNeonWarm(connectionString: string): Promise<number> {
+  const { dbDurationMs } = await import("@nlqdb/otel");
+  const { SpanStatusCode, trace } = await import("@opentelemetry/api");
+  const tracer = trace.getTracer("@nlqdb/api/keep-warm");
+  return tracer.startActiveSpan("db.query", async (span) => {
+    span.setAttribute("db.system", "postgresql");
+    span.setAttribute("db.operation", "SELECT");
+    span.setAttribute("db.statement", "SELECT 1");
+    const startedAt = performance.now();
+    try {
+      const sql = neon(connectionString, { fullResults: true });
+      await sql.query("SELECT 1");
+      return performance.now() - startedAt;
+    } catch (err) {
+      span.recordException(err as Error);
+      span.setStatus({ code: SpanStatusCode.ERROR });
+      throw err;
+    } finally {
+      dbDurationMs().record(performance.now() - startedAt, { operation: "SELECT" });
+      span.end();
+    }
+  });
+}

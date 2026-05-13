@@ -39,6 +39,11 @@ export type FailoverReason =
   | "not_configured"
   | "provider_error"
   | "circuit_open"
+  // SK-LLM-014 — hedged sibling won the race; this leg was aborted by
+  // us, not by a real provider failure. Kept distinct from `timeout`
+  // so the circuit breaker doesn't trip the loser on a successful
+  // hedge and dashboards can show how often hedging fires.
+  | "hedge_lost"
   | "unknown";
 
 export type PlanRequest = {

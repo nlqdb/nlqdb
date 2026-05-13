@@ -25,6 +25,30 @@ describe("createTestTelemetry", () => {
     expect(spans[0]?.attributes["k"]).toBe("v");
   });
 
+  it("propagates parent context across await boundaries (AsyncLocalStorage)", async () => {
+    // Regression for the prod incident where child spans showed up as
+    // root spans in their own traces because no ContextManager was
+    // registered — `startActiveSpan` defaulted to NoopContextManager,
+    // which doesn't propagate across `await`. The fix is the
+    // AsyncLocalStorageContextManager wired in `setupTelemetry` /
+    // `installTelemetryForTest`. If this test regresses, every
+    // `db.transaction` / `llm.*` span emitted from inside an
+    // `async` callback under `nlqdb.ask` will orphan again.
+    const tracer = trace.getTracer("test");
+    await tracer.startActiveSpan("parent", async (parent) => {
+      await Promise.resolve();
+      tracer.startActiveSpan("child", (child) => child.end());
+      parent.end();
+    });
+    const finished = telemetry.spanExporter.getFinishedSpans();
+    const parent = finished.find((s) => s.name === "parent");
+    const child = finished.find((s) => s.name === "child");
+    expect(parent).toBeDefined();
+    expect(child).toBeDefined();
+    expect(child?.spanContext().traceId).toBe(parent?.spanContext().traceId);
+    expect(child?.parentSpanContext?.spanId).toBe(parent?.spanContext().spanId);
+  });
+
   it("attaches the configured resource so spans carry service.name", async () => {
     const tracer = trace.getTracer("test");
     tracer.startActiveSpan("svc.span", (span) => span.end());
