@@ -19,9 +19,19 @@ function isValidReplyState(s: Record<string, unknown>): boolean {
     case "ok": {
       const ok = s["ok"] as Record<string, unknown> | undefined;
       if (!ok || typeof ok !== "object") return false;
-      return !!ok["trace"] && typeof ok["trace"] === "object";
+      const t = ok["trace"] as Record<string, unknown> | undefined;
+      if (!t || typeof t !== "object") return false;
+      // `Trace.tsx` renders `meta.plan_id` directly; an `ok` reply
+      // whose persisted `trace` block lacks `plan_id` would print
+      // `undefined` into the trace pane's identifier slot. Require
+      // it as a string at the gate so we drop the entry instead.
+      return typeof t["plan_id"] === "string";
     }
     case "needs-confirm":
+      // `loadHistory` rewrites `needs-confirm` to `error` on rehydrate
+      // — `DiffChip` never sees a stale `needs-confirm` in practice.
+      // Same is true for `pending` / `clarify` / `ambiguous` below.
+      // The check here just gates "well-formed enough to normalise".
       return !!s["diff"] && typeof s["diff"] === "object";
     case "created":
       return (
@@ -65,6 +75,10 @@ export function matchesValidMessageShape(m: unknown): boolean {
   if (!reply || typeof reply !== "object") return false;
   const r = reply as Record<string, unknown>;
   if (typeof r["id"] !== "string" || typeof r["goal"] !== "string") return false;
+  // `Trace.tsx` calls `.length` and `.map` on `reply.steps`. `saveHistory`
+  // always writes `[]`, but the validator's job is to reject hostile or
+  // older-build shapes — a non-array `steps` would crash render.
+  if (!Array.isArray(r["steps"])) return false;
   const state = r["state"];
   if (!state || typeof state !== "object") return false;
   return isValidReplyState(state as Record<string, unknown>);

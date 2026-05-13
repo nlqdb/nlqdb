@@ -17,6 +17,9 @@ const baseAssistant = {
   reply: {
     id: "r1",
     goal: "show me sales",
+    // `saveHistory` always writes `steps: []` — the gate requires an
+    // array so older shapes (or hostile localStorage) get dropped.
+    steps: [],
     state: {} as unknown,
   },
 };
@@ -143,14 +146,22 @@ describe("isValidMessage — clarify state", () => {
 });
 
 describe("isValidMessage — other kinds", () => {
-  test("accepts ok with a trace block", () => {
-    expect(isValidMessage(withState({ kind: "ok", ok: { trace: { sql: "SELECT 1" } } }))).toBe(
-      true,
-    );
+  test("accepts ok with a trace block carrying plan_id", () => {
+    expect(
+      isValidMessage(
+        withState({ kind: "ok", ok: { trace: { sql: "SELECT 1", plan_id: "p_abc" } } }),
+      ),
+    ).toBe(true);
   });
 
   test("rejects ok without trace", () => {
     expect(isValidMessage(withState({ kind: "ok", ok: {} }))).toBe(false);
+  });
+
+  test("rejects ok whose trace block lacks plan_id", () => {
+    expect(isValidMessage(withState({ kind: "ok", ok: { trace: { sql: "SELECT 1" } } }))).toBe(
+      false,
+    );
   });
 
   test("accepts pending", () => {
@@ -167,5 +178,42 @@ describe("isValidMessage — other kinds", () => {
 
   test("rejects unknown kind so a future state isn't silently kept", () => {
     expect(isValidMessage(withState({ kind: "future-state" }))).toBe(false);
+  });
+});
+
+describe("isValidMessage — reply.steps", () => {
+  // `saveHistory` writes `steps: []`. The validator's job is to drop
+  // hostile / older-build shapes where `steps` is missing or not an
+  // array — `Trace.tsx` would crash on `.length` / `.map` otherwise.
+  const okState = { kind: "ok", ok: { trace: { sql: "SELECT 1", plan_id: "p_abc" } } };
+
+  test("rejects assistant message whose reply.steps is missing", () => {
+    expect(
+      isValidMessage({
+        id: "m1",
+        role: "assistant",
+        reply: { id: "r1", goal: "x", state: okState },
+      }),
+    ).toBe(false);
+  });
+
+  test("rejects assistant message whose reply.steps is not an array", () => {
+    expect(
+      isValidMessage({
+        id: "m1",
+        role: "assistant",
+        reply: { id: "r1", goal: "x", steps: "not-array", state: okState },
+      }),
+    ).toBe(false);
+  });
+
+  test("accepts assistant message with reply.steps = []", () => {
+    expect(
+      isValidMessage({
+        id: "m1",
+        role: "assistant",
+        reply: { id: "r1", goal: "x", steps: [], state: okState },
+      }),
+    ).toBe(true);
   });
 });
