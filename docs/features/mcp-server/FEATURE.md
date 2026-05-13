@@ -10,7 +10,7 @@ when-to-load:
 # Feature: Mcp Server
 
 **One-liner:** MCP server + `nlq mcp install` host detection (Claude Desktop, Cursor, etc.).
-**Status:** planned (Phase 2) — design locked here and in `docs/architecture.md §3.4`; `packages/mcp/` carries only `README.md` + `AGENTS.md` so far, no source. The MCP slice is the first item in Phase 2 (`docs/phase-plan.md §4`); the trace block (SK-TRUST-002) and diff preview (SK-TRUST-001) need their MCP shape resolved when implementation begins.
+**Status:** partial (Phase 2) — design fully locked (`SK-MCP-001..010`). Slice 2 of `SK-MCP-010` shipped: `packages/mcp/` has tool contracts, a transport-agnostic dispatcher, stdio transport, and a `bun build` pipeline producing `dist/index.js` for `npx @nlqdb/mcp`. `nlqdb_query` works against `pk_live_*` and surfaces `requires_confirm` + diff (`SK-TRUST-001`); the other two tools return typed `auth_required` until slice 1 (`sk_*` keys, `api-keys/FEATURE.md`) ships. Slices 3 / 4 live with their respective features.
 **Owners (code):** `packages/mcp/**`
 **Cross-refs:** docs/architecture.md §3.4 (MCP server) · docs/architecture.md §3 (MCP server row) · docs/phase-plan.md (Phase 2 mcp slice)
 
@@ -90,18 +90,48 @@ when-to-load:
   - Hosted-only orchestration with local going through a different shim — two attack surfaces, two parsers.
   - Direct DB access from the local transport — explicitly rejected by `SK-MCP-005`.
 
+### SK-MCP-008 — Per-host detector is one file behind `HostDetector { name, configPath, installed, hotReloadable, patch }`
+
+- **Decision:** Each host is a module implementing `HostDetector { name; configPath(home, platform); installed(); hotReloadable; patch(config, entry) }`. New hosts = one file in `cli/internal/mcp/hosts/<host>.go` + one registry entry. Initial six: Claude Desktop (`~/Library/Application Support/Claude/claude_desktop_config.json` macOS, `%APPDATA%\Claude\…` Windows, `~/.config/Claude/…` Linux), Cursor (`~/.cursor/mcp.json`), Windsurf (`~/.codeium/windsurf/mcp_config.json`), Zed (`~/.config/zed/settings.json` under `context_servers`), VS Code Continue (`~/.continue/config.json`), Cline (`~/.cline/mcp_settings.json`). Inserted entry shape: `{ "nlqdb": { "command": "npx", "args": ["@nlqdb/mcp"], "env": { "NLQDB_API_KEY": "sk_mcp_…" } } }` — host-specific JSON nesting (Zed `context_servers`, Cursor/Claude `mcpServers`, VS Code Continue `servers`) lives inside `patch()`.
+- **Core value:** Effortless UX, Simple
+- **Why:** Only the path, JSON shape, and hot-reload behaviour vary per host. Centralising those three facts behind one interface — and routing every install through the registry, not a host-name switch — keeps the list growing without re-architecting.
+- **Consequence in code:** `cli/internal/mcp/registry.go` lists detectors in detection order. PRs that branch on host name outside `hosts/<host>.go` fail review. The `patch()` function is the only place that knows host-specific JSON nesting.
+- **Alternatives rejected:**
+  - Switch statement in `install.go` — every new host edits the same hot file; merge-conflict magnet.
+  - Declarative manifest per host — can't express host-specific JSON-patch logic.
+  - Detect by binary presence — misleading on Linux; the config file is the canonical "host is installed" signal anyway.
+
+### SK-MCP-009 — Per-key rate-limit bucket; revocation propagates ≤ 1 s
+
+- **Decision:** Every `sk_mcp_*` key is its own rate-limit bucket — `SK-MCP-004` already embeds `(mcp_host, device_id)`, so hosts have independent budgets. Revocation marks `revoked_at` in D1; hosted-MCP isolates keep a 1 s `Map<keyHash, { revoked }>` cache gating every tool call. Local-stdio resolves auth against the API on every call (no cache).
+- **Core value:** Bullet-proof, Honest latency, Free
+- **Why:** Tool calls are low-RPS (humans driving an agent), so per-call auth is affordable. 1 s absorbs burst-validation without breaching `GLOBAL-018`'s "instant" — it's the human-perceptible bound and the practical KV/D1 propagation floor.
+- **Consequence in code:** `api-keys.ts` adds `revoked_at`; `lookupSkMcpKey()` filters `WHERE revoked_at IS NULL`. Hosted Worker wraps the lookup in `IsolateCache<KeyHash, …>` with `ttlMs: 1000`. Rate-limit middleware keys buckets as `rl:${keyHash}` — no `sk_mcp_*` vs `sk_live_*` special-casing.
+- **Alternatives rejected:**
+  - Shared per-user bucket across hosts — noisy host burns sibling budgets; no per-host revocation recourse.
+  - 5 s TTL — too loose; pushes past the human-perceptible bound.
+  - Push-based broadcast — fan-out cost on free tier; 1 s pull cache reaches the same SLO with one D1 read per miss.
+
+### SK-MCP-010 — Implementation slicing: keys → stdio → hosted → install
+
+- **Decision:** Four ordered slices, each independently reviewable. **Slice 1:** `sk_live_*` + `sk_mcp_*` minting / hashing / lookup in `apps/api/src/api-keys.ts` + `principal.ts` — lives in `api-keys/FEATURE.md`. **Slice 2:** `packages/mcp/` local-stdio package — tool contracts, transport-agnostic dispatcher, stdio entry, `bin/nlqdb-mcp`, `bun build` pipeline emitting `dist/index.js`. `nlqdb_query` works against `pk_live_*`; `nlqdb_list_databases` / `nlqdb_describe` return typed `auth_required` until slice 1 ships. **Slice 3:** Hosted Worker at `mcp.nlqdb.com` — Streamable-HTTP transport, `workers-oauth-provider`, Durable-Object-backed sessions per the [Cloudflare MCP pattern](https://developers.cloudflare.com/agents/model-context-protocol/). **Slice 4:** `nlq mcp install` host detection (Go) — consumes the `SK-MCP-008` registry; lives in `cli/FEATURE.md`.
+- **Core value:** Simple, Honest latency, Goal-first
+- **Why:** Shipping `packages/mcp/` before keys is intentional: tool contracts and dispatch are stable regardless of auth backend, and `pk_live_*` covers the day-one agent shape (one memory DB per agent). Slice ordering is enforced by review, not code gates; the FEATURE.md is the source of truth.
+- **Consequence in code:** Slice-2 `auth_required` responses follow `SK-MCP-006`. The package keeps `main: src/index.ts` for monorepo dev (Bun loads `.ts`); `publishConfig` flips `main`/`exports` to `dist/index.js` when published so `npx @nlqdb/mcp` works under Node 20+. Reviewers reject sk-key minting logic inside `packages/mcp/` — it lives in `apps/api/` per `GLOBAL-021`.
+- **Alternatives rejected:**
+  - Bundle slice 1 + slice 2 — doubles PR size; couples auth-backend work with package wiring.
+  - Drop the unsupported tools until slice 1 lands — leaves the tool surface ambiguous; typed `auth_required` is cleaner.
+  - Hosted-only (skip stdio) — cuts off the offline / air-gapped segment (`SK-MCP-001`).
+  - `tsc` emit for the build — workspace `.ts` imports of `@nlqdb/sdk` violate `rootDir`. `bun build` bundles workspace deps and leaves npm deps external.
+
 ## Install paths
 
-Four supported paths — every user lands on one of these. Listed in decreasing order of friction:
+Four paths, all terminating at the same `/v1/ask` orchestration and the same three tools (`SK-MCP-002`, `SK-MCP-007`):
 
-| Path | How | When to use |
-|---|---|---|
-| **Connector URL** (hosted, default) | Paste `mcp.nlqdb.com` into the host's MCP-connector config (Claude Desktop *Connectors*, Cursor / Zed / Windsurf MCP settings); first tool call opens an OAuth window in the browser. | Best for users who want zero local setup. No npm, no CLI. |
-| **`nlq mcp install`** (local stdio) | Auto-detects installed hosts, writes `sk_mcp_<host>_<device>_…` straight into each host's config. One host → silent. Multiple → numbered prompt. None → prints `nlqdb.com/mcp` link and exits. | Best for users who already have the CLI (`SK-MCP-003`). |
-| **Website one-click** (`app.nlqdb.com/mcp`) | Mints the key server-side and opens an `nlqdb://install?…` deep link the CLI handles. | Best for users arriving from the marketing site or dashboard who don't know about the CLI. |
-| **`NLQDB_API_KEY` env var** | Set `NLQDB_API_KEY=sk_…` in the shell / Docker environment; takes precedence over any config file on the local transport. | CI / Docker / air-gapped environments. The escape hatch (`GLOBAL-015`). |
-
-The hosted connector URL path requires no local install. All four paths terminate at the same `/v1/ask` orchestration and share the same three tools (`SK-MCP-002`, `SK-MCP-007`).
+1. **Connector URL** (hosted, default) — paste `mcp.nlqdb.com` into the host's MCP-connector config; OAuth opens in the browser on first tool call. Zero local setup.
+2. **`nlq mcp install`** (local stdio) — auto-detects installed hosts (`SK-MCP-003`), writes `sk_mcp_<host>_<device>_…` into each config.
+3. **Website one-click** (`app.nlqdb.com/mcp`) — mints the key server-side, opens an `nlqdb://install?…` deep link the CLI handles.
+4. **`NLQDB_API_KEY` env var** — `sk_…` precedence over any config; the CI / Docker / air-gapped escape hatch (`GLOBAL-015`).
 
 ## GLOBALs governing this feature
 
@@ -117,59 +147,34 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 
 ## Open questions / known unknowns
 
-- **`engine` on `nlqdb_list_databases` (W3, GLOBAL-003 gap).** `SK-DB-010` adds `engine?` on `db.create` and an `engine` column on every `listDatabases` row in the TS SDK. The MCP package currently ships only `AGENTS.md` + `README.md` — `packages/mcp/src/tools/list-databases.ts` does not exist yet. When the local-stdio transport's tool handlers land (per `SK-MCP-002` / `SK-MCP-007`), the `nlqdb_list_databases` tool returns `engine` per row verbatim from the SDK's `DatabaseSummary.engine`, and `nlqdb_query` accepts an optional `engine` arg only on the create path (no separate `nlqdb_create_database` tool — `SK-MCP-002`). Tracker: this open question. Closes when the MCP tool slice lands.
-- **Hosts beyond the initial six.** Detection currently targets Claude Desktop, Cursor, Zed, Windsurf, VS Code, and Continue. New hosts (e.g. a future Anthropic terminal, JetBrains MCP plugin) need a detector module each — no decision yet on the per-host detector contract.
-- **Hosted-transport rate-limit tier vs. local-transport.** Whether the hosted Worker shares the API's per-key rate-limit budget or carries its own per-(host, device) tier is undecided; relates to `SK-RL-NNN` (rate-limit feature).
-- **Promote-to-account UX.** DBs created via MCP are tagged `(mcp_host, device_id)` and promote-to-account is "one click" in the design — the click target and confirmation copy are not specified yet.
-- **`NLQDB_API_KEY` precedence inside the local transport.** Design says it takes precedence over any config file; need explicit test coverage for the precedence chain (`env > host config > device key`) on the local transport.
-- **Session token revocation latency.** `GLOBAL-018` requires "instant" revocation; the hosted MCP transport's edge-cache TTL for the revocation set is not yet pinned.
+- **Promote-to-account UX (UI-only — server contract locked).** The server contract is `PATCH /v1/databases/:id { scope: "account" }` — flips the `(mcp_host, device_id)` tag to NULL on a DB row. Dashboard button placement, confirmation modal copy, and post-promote redirect target are product-owner calls. Resolve before slice 3 ships (hosted Worker surfaces the prompt).
+- **MCP `confirm_required` host-rendering audit.** Some hosts render `confirm_required` as a single "Approve" button without the diff body — that breaks `SK-TRUST-001`. Audit (Claude Desktop, Cursor, Zed, Windsurf, VS Code Continue, Cline) runs against slice 2; offending hosts get a documented warning in `nlq mcp install` until they fix it. Cross-ref: [`trust-ux/FEATURE.md`](../trust-ux/FEATURE.md) Open questions.
 
 ## Happy path walkthrough
 
-### §14.4 MCP server (`@nlqdb/mcp`)
-
-**Install** (one command, no arg; auto-detects what you have installed):
+**Install** (auto-detects what's present; one host → silent, multiple → numbered prompt, none → prints `nlqdb.com/mcp` link):
 
 ```bash
 $ nlq mcp install
 🔎 Scanning: Claude Desktop, Cursor, Zed, Windsurf, VS Code, Continue
 ✓ Found: Claude Desktop, Cursor
-
 → Opening browser to approve this device… (fallback code: AB12-CD34)
 ✓ Signed in as jordan@example.com.
-
-✓ Claude Desktop  — wrote config; Claude Desktop is running, restart to activate? [Y/n] y
-                    ↳ quit & relaunched. Self-check: ok.
+✓ Claude Desktop  — wrote config; restart? [Y/n] y → relaunched. Self-check: ok.
 ✓ Cursor          — wrote config; hot-reloaded. Self-check: ok.
-
-Done. Your MCP keys appear at nlqdb.com/settings/keys.
 ```
 
-If only one host is installed, the prompt is skipped and the install is silent. If none are installed, the CLI prints one line pointing the user at `nlqdb.com/mcp` and exits.
+**Escape hatches:** `nlq mcp install <host>` (explicit), `--all`, `--dry-run`, `NLQDB_API_KEY=sk_…` (CI / air-gapped).
 
-**Power-user forms** (escape hatches, always available):
-
-```bash
-$ nlq mcp install claude       # explicit host; skips auto-detection
-$ nlq mcp install --all        # install into every detected host, no prompt
-$ nlq mcp install --dry-run    # print what would happen; touch nothing
-$ NLQDB_API_KEY=sk_... nlq …   # CI / Docker / air-gapped — env-var override
-```
-
-**Usage from inside the host LLM** (the agent doesn't need to know about "databases"):
+**Usage from inside the host LLM** — the agent never sees "create a database"; the DB materialises on first reference:
 
 ```
-[Claude Desktop, after install]
-User:  "Remember that I prefer metric units and I'm vegetarian."
-Claude → calls tool: nlqdb_query("preferences", "remember: metric units, vegetarian")
-       → tool returns: { ok, db: "preferences-93b" }
-Claude:  "Got it. I'll remember."
+User:   "Remember I prefer metric and I'm vegetarian."
+Claude → nlqdb_query("preferences", "remember: metric units, vegetarian")
+       → { ok, db: "preferences-93b" }
 
-[next session, hours later]
-User:  "Plan me a Berlin food trip."
-Claude → calls tool: nlqdb_query("preferences", "what do you remember about me?")
-       → returns: "metric units, vegetarian"
-Claude:  "Here's a vegetarian itinerary in km..."
+[next session]
+User:   "Plan me a Berlin food trip."
+Claude → nlqdb_query("preferences", "what do you remember about me?")
+       → "metric units, vegetarian"
 ```
-
-The agent never called `nlqdb_create_database`. The DB materialized on first reference. The agent's prompt has one tool, not two.

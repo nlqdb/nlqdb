@@ -116,6 +116,14 @@ tests; the "notify me when paid launches" queue is non-empty
 (demonstrates the capture pipe works — absolute thresholds belong to
 §6, not here).
 
+**Status (2026-05):** capture-pipe shipped. `SK-EVENTS-010` +
+`SK-EVENTS-011` wired every documented "not yet" path and the three
+`notify_paid` hosts; `SK-TRUST-001` + `SK-TRUST-002` shipped diff
+preview and trace on `/v1/ask` write paths; `nlqdb.surface` label
+flows on every metric. Remaining gate items — destructive-op
+retry-rate reduction (user-test signal) and queue non-empty (real
+traffic) — measure off Phase 2 distribution, not new engineering.
+
 ---
 
 ## 4. Phase 2 — Distribution (agent + developer surfaces)

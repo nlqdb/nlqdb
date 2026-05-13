@@ -98,6 +98,24 @@
         "better-sqlite3",
         "@neondatabase/serverless"
       ]
+    },
+    {
+      "name": "@nlqdb/mcp",
+      "path": "packages/mcp",
+      "forbidden": [
+        "pg",
+        "postgres",
+        "mysql",
+        "mysql2",
+        "mariadb",
+        "mongodb",
+        "mongoose",
+        "redis",
+        "ioredis",
+        "sqlite3",
+        "better-sqlite3",
+        "@neondatabase/serverless"
+      ]
     }
   ]
 }
