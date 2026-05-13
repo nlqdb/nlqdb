@@ -229,6 +229,41 @@ app.get("/v1/health", (c) =>
   }),
 );
 
+// `POST /v1/errors/web` — best-effort sink for browser-side crashes
+// (`SK-WEB-001`). The web layer's `ErrorBoundary` and Base.astro
+// pre-hydration handler POST here so islanded throws and pre-React
+// crashes surface in the same OTel pipeline as server errors. Auth
+// is intentionally not required — we want anon-mode crashes too —
+// and the body is bounded so we never accept arbitrary payloads.
+app.use("/v1/errors/web", credentialedCors);
+app.post("/v1/errors/web", async (c) => {
+  try {
+    const raw = await c.req.raw.clone().text();
+    if (raw.length > 4096) {
+      return c.body(null, 204);
+    }
+    const body = JSON.parse(raw) as Record<string, unknown>;
+    const tracer = trace.getTracer("@nlqdb/api");
+    tracer.startActiveSpan("nlqdb.web.error", (span) => {
+      span.setAttribute("nlqdb.web.surface", String(body["surface"] ?? "unknown").slice(0, 64));
+      span.setAttribute("nlqdb.web.message", String(body["message"] ?? "").slice(0, 240));
+      if (typeof body["href"] === "string") {
+        span.setAttribute("nlqdb.web.href", body["href"].slice(0, 240));
+      }
+      if (typeof body["stack"] === "string") {
+        span.setAttribute("nlqdb.web.stack", body["stack"].slice(0, 2048));
+      }
+      if (typeof body["componentStack"] === "string") {
+        span.setAttribute("nlqdb.web.componentStack", body["componentStack"].slice(0, 2048));
+      }
+      span.end();
+    });
+  } catch {
+    // Best-effort — never let the error sink itself fail loudly.
+  }
+  return c.body(null, 204);
+});
+
 // Mock IdP routes (SK-AUTH-018). Active only when env.MOCK_IDP === "1";
 // in production the flag is unset and these routes 404. The override on
 // `/auth/sign-in` is intentional — in mock mode the form replaces the
@@ -1253,7 +1288,10 @@ function buildSignInUrl(referer: string | undefined): string {
       // Only allow same-origin returns — never let an attacker craft
       // a 401 response that hands the surface an off-domain redirect.
       if (refUrl.origin === origin) {
-        url.searchParams.set("return", refUrl.pathname + refUrl.search);
+        // `return_to` matches the param name `sign-in.astro` reads
+        // (apps/web/src/pages/auth/sign-in.astro). A mismatched name
+        // silently drops the return path on every anon → auth bounce.
+        url.searchParams.set("return_to", refUrl.pathname + refUrl.search);
       }
     } catch {
       // Malformed referer header — fall through to no return param.

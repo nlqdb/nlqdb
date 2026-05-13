@@ -38,6 +38,7 @@ import { type KeyboardEvent, useCallback, useEffect, useMemo, useRef, useState }
 import { getChatClient } from "../../lib/chat-client";
 import { deriveSlug, displayName } from "../../lib/names";
 import { clearPending, loadPending } from "../../lib/prompt-storage";
+import ErrorBoundary from "../ErrorBoundary";
 import Answer from "./Answer";
 import CopySnippet from "./CopySnippet";
 import Data from "./Data";
@@ -101,13 +102,43 @@ function histKey(dbId: string) {
   return `nlq_hist_${dbId}`;
 }
 
+// SK-WEB-001 — every persisted-state loader must validate the shape
+// before returning. Schema-drift between releases is now a permanent
+// risk (older browsers/tabs hold older shapes), and an unguarded read
+// becomes a render crash once a downstream component dereferences a
+// field that's no longer there.
+function isValidMessage(m: unknown): m is Message {
+  if (!m || typeof m !== "object") return false;
+  const obj = m as Record<string, unknown>;
+  if (typeof obj["id"] !== "string") return false;
+  if (obj["role"] === "user") return typeof obj["goal"] === "string";
+  if (obj["role"] !== "assistant") return false;
+  const reply = obj["reply"];
+  if (!reply || typeof reply !== "object") return false;
+  const r = reply as Record<string, unknown>;
+  if (typeof r["id"] !== "string" || typeof r["goal"] !== "string") return false;
+  const state = r["state"];
+  if (!state || typeof state !== "object") return false;
+  const s = state as Record<string, unknown>;
+  // Drop "ok" entries that don't carry a `trace` block — they would
+  // crash `ReplyView` at `ok.trace.sql`. Older history shapes
+  // (pre-SK-TRUST-002) hit this branch.
+  if (s["kind"] === "ok") {
+    const ok = s["ok"] as Record<string, unknown> | undefined;
+    if (!ok || typeof ok !== "object") return false;
+    if (!ok["trace"] || typeof ok["trace"] !== "object") return false;
+  }
+  return true;
+}
+
 function loadHistory(dbId: string): Message[] {
   if (typeof localStorage === "undefined") return [];
   try {
     const raw = localStorage.getItem(histKey(dbId));
     if (!raw) return [];
-    const parsed = JSON.parse(raw) as Message[];
-    return parsed.map((m): Message => {
+    const parsed = JSON.parse(raw) as unknown;
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter(isValidMessage).map((m): Message => {
       if (m.role === "user") return m;
       const { state } = m.reply;
       if (
@@ -147,7 +178,17 @@ function saveHistory(dbId: string, messages: Message[]): void {
   }
 }
 
-export default function ChatPanel({ apiBase }: ChatPanelProps) {
+export default function ChatPanel(props: ChatPanelProps) {
+  // SK-WEB-001 — every island ships behind ErrorBoundary so a render
+  // throw produces a visible fallback instead of an empty `<main>`.
+  return (
+    <ErrorBoundary surface="ChatPanel">
+      <ChatPanelInner {...props} />
+    </ErrorBoundary>
+  );
+}
+
+function ChatPanelInner({ apiBase }: ChatPanelProps) {
   const [activeDb, setActiveDb] = useState<DatabaseSummary | null>(null);
   const [activeDbId, setActiveDbId] = useState<string | null>(() => readDbIdFromUrl());
   const [messages, setMessages] = useState<Message[]>([]);
@@ -735,7 +776,13 @@ function ReplyView({
   const error = reply.state.kind === "error" ? reply.state.message : null;
   const pending = reply.state.kind === "pending";
 
-  const sql = ok?.trace.sql ?? extractSqlFromSteps(reply.steps);
+  // SK-WEB-001 — explicit narrowing. `ok?.trace.sql` short-circuits
+  // only when `ok` itself is nullish; if `ok` exists but `ok.trace`
+  // is undefined (stale persisted state, partial response) the bare
+  // `.sql` access throws and unmounts the island. Type contract says
+  // `trace` is always present on `AskOk`; persisted-shape drift is
+  // why we still narrow defensively here.
+  const sql = ok?.trace?.sql ?? extractSqlFromSteps(reply.steps);
   const rows = ok?.rows ?? null;
   const rowCount = ok?.rowCount ?? null;
   const summary = ok?.summary;
@@ -835,7 +882,7 @@ function ReplyView({
         meta={
           reply.trace
             ? { plan_id: reply.trace.plan_id, confidence: reply.trace.confidence }
-            : ok
+            : ok?.trace
               ? { plan_id: ok.trace.plan_id, confidence: ok.trace.confidence }
               : null
         }

@@ -47,5 +47,65 @@ const jsonLd = {
   </head>
   <body>
     <slot />
+
+    {/* SK-WEB-001 — pre-hydration fallback. The React ErrorBoundary
+        catches throws DURING render; this block catches everything
+        that happens BEFORE React mounts (chunk-load failures,
+        top-level eval errors, unhandled promise rejections). Hidden
+        by default; the inline script below reveals it on
+        `window.error` / `unhandledrejection`. The markup is plain
+        HTML so it renders even when zero JS executes. */}
+    <div id="boot-fallback" hidden role="alert">
+      <div class="boot-fallback__card">
+        <h2 class="boot-fallback__title">Something broke on this page.</h2>
+        <p class="boot-fallback__lede">
+          The error has been recorded. Reload to recover; if it persists, sign out and back in.
+        </p>
+        <p id="boot-fallback-reason" class="boot-fallback__reason"></p>
+        <div class="boot-fallback__actions">
+          <button type="button" class="btn btn--accent" onclick="location.reload()">Reload</button>
+          <a class="btn" href="/auth/sign-out">Sign out</a>
+        </div>
+      </div>
+    </div>
+
+    <script is:inline>
+      (function () {
+        var revealed = false;
+        function reveal(reason) {
+          if (revealed) return;
+          revealed = true;
+          try {
+            var node = document.getElementById("boot-fallback");
+            if (node) {
+              node.hidden = false;
+              var r = document.getElementById("boot-fallback-reason");
+              if (r && reason) r.textContent = String(reason).slice(0, 240);
+            }
+            try {
+              fetch("/v1/errors/web", {
+                method: "POST",
+                headers: { "content-type": "application/json" },
+                credentials: "include",
+                body: JSON.stringify({
+                  surface: "boot",
+                  message: String(reason || "unknown"),
+                  href: location.href,
+                  userAgent: navigator.userAgent,
+                }),
+                keepalive: true,
+              });
+            } catch (_) {}
+          } catch (_) {}
+        }
+        window.addEventListener("error", function (e) {
+          reveal((e && e.message) || "Script error.");
+        });
+        window.addEventListener("unhandledrejection", function (e) {
+          var r = e && e.reason;
+          reveal((r && r.message) || (typeof r === "string" ? r : "Unhandled promise rejection."));
+        });
+      })();
+    </script>
   </body>
 </html>
