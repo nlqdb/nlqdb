@@ -151,7 +151,7 @@ manually before editing.)
 | `cli/**` | `docs/features/cli/FEATURE.md` |
 | `packages/elements/**` | `docs/features/elements/FEATURE.md` |
 | `packages/sdk/**` | `docs/features/sdk/FEATURE.md` |
-| `packages/mcp/**` | `docs/features/mcp-server/FEATURE.md` |
+| `packages/mcp/**`, `apps/mcp/**` | `docs/features/mcp-server/FEATURE.md` |
 | `apps/web/**` (onboarding, anonymous mode) | `docs/features/web-app/FEATURE.md` |
 | `apps/web/src/onboarding/**`, signup flow, first-query path | `docs/features/onboarding/FEATURE.md` |
 | `.github/workflows/**`, `nlqdb/actions/**` (CI permissions) | `docs/features/ci-permissions/FEATURE.md` |
