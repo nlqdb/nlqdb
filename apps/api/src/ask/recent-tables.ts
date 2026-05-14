@@ -117,14 +117,9 @@ async function withSpan<T>(name: string, fn: () => Promise<T>): Promise<T> {
   });
 }
 
-// Pull table names out of a compiled `schema_text` (the DDL the
-// provisioner stored at create time). Used by `routeAsk`'s prelude to
-// seed the classifier's `recentTables` from a pinned DB so "new
-// employee in this db" against an existing `employees` table routes
-// to `kind=write` instead of misfiring `kind=create` against the pin
-// (SK-ASK-018). Returns the lowercased table names in declaration
-// order, deduped. Shape of our compiled DDL is known and stable —
-// regex is cheaper than a full parse.
+// Lowercased table names from our compiled `CREATE TABLE` DDL, in
+// declaration order, deduped. Regex (vs. a full parse) is safe because
+// we author the DDL — used by `checkSchemaTables` and `seedFromPinnedDb`.
 export function tablesFromSchemaText(schemaText: string): string[] {
   const seen = new Set<string>();
   const out: string[] = [];

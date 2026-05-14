@@ -42,20 +42,9 @@ export function kickoffAskPrelude(deps: AskPreludeDeps, principalId: string): As
   };
 }
 
-// SK-ASK-018 — synthesize `RecentTable` entries for every table in the
-// pinned DB's `schema_text`. Only invoked when the MRU is empty (see
-// `seedFromPinnedDbIfMruEmpty`) — the steady-state MRU already covers
-// recent table context and a non-empty cache is the authoritative
-// signal we don't pay an extra D1 read for.
-//
-// The load-bearing case: a user who just adopted an anon DB has an
-// empty MRU under `user:<id>` (the anon MRU at `anon:<hash>` isn't
-// migrated on adoption). Without this fill, "new employee in this
-// db" 409s as `clarify_required` because the LLM applies its "no
-// recent tables → create" rule.
-//
-// Returns an empty array (callers swap in for an empty MRU) when the
-// row has no `schemaText` or no tables.
+// SK-ASK-018 — synthesize `RecentTable` entries from the pinned DB's
+// `schema_text` so routeAsk's classifier has table context when the
+// principal's MRU is cold (freshly adopted anon → user).
 export function seedFromPinnedDb(pinned: DbRecord): RecentTable[] {
   if (!pinned.schemaText) return [];
   const tables = tablesFromSchemaText(pinned.schemaText);
