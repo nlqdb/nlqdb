@@ -22,7 +22,8 @@
 
 import type { Engine } from "@nlqdb/db";
 import type { DatabaseSummaryRow } from "../databases/list.ts";
-import type { RecentTable } from "./recent-tables.ts";
+import { tablesFromSchemaText, type RecentTable } from "./recent-tables.ts";
+import type { DbRecord } from "./types.ts";
 
 export type AskPreludeDeps = {
   listDatabases: (principalId: string) => Promise<DatabaseSummaryRow[]>;
@@ -39,6 +40,34 @@ export function kickoffAskPrelude(deps: AskPreludeDeps, principalId: string): As
     listPromise: deps.listDatabases(principalId),
     recentTablesPromise: deps.loadRecentTables(principalId),
   };
+}
+
+// SK-ASK-018 — synthesize `RecentTable` entries for every table in the
+// pinned DB's `schema_text`. Only invoked when the MRU is empty (see
+// `seedFromPinnedDbIfMruEmpty`) — the steady-state MRU already covers
+// recent table context and a non-empty cache is the authoritative
+// signal we don't pay an extra D1 read for.
+//
+// The load-bearing case: a user who just adopted an anon DB has an
+// empty MRU under `user:<id>` (the anon MRU at `anon:<hash>` isn't
+// migrated on adoption). Without this fill, "new employee in this
+// db" 409s as `clarify_required` because the LLM applies its "no
+// recent tables → create" rule.
+//
+// Returns an empty array (callers swap in for an empty MRU) when the
+// row has no `schemaText` or no tables.
+export function seedFromPinnedDb(pinned: DbRecord): RecentTable[] {
+  if (!pinned.schemaText) return [];
+  const tables = tablesFromSchemaText(pinned.schemaText);
+  const slug = pinned.id.startsWith("db_")
+    ? pinned.id.slice(3).replaceAll("_", "-")
+    : pinned.id;
+  return tables.map((table) => ({
+    dbId: pinned.id,
+    slug,
+    table,
+    touchedAt: 0,
+  }));
 }
 
 export function resolveAnonEngineOverride(

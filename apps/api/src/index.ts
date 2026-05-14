@@ -38,7 +38,7 @@ import {
 import { buildAskDeps, buildEventEmitter } from "./ask/build-deps.ts";
 import { emitFeatureSignal } from "./ask/demand-signal.ts";
 import { orchestrateAsk } from "./ask/orchestrate.ts";
-import { kickoffAskPrelude, resolveAnonEngineOverride } from "./ask/prelude.ts";
+import { kickoffAskPrelude, resolveAnonEngineOverride, seedFromPinnedDb } from "./ask/prelude.ts";
 import { makeRecentTablesStore } from "./ask/recent-tables.ts";
 import { withStageRetry } from "./ask/retry.ts";
 import { ROUTE_CONFIDENCE_FLOOR, routeAsk } from "./ask/route-ask.ts";
@@ -50,6 +50,7 @@ import { askFnFromDemoFixtures, DEMO_DB_ID } from "./chat/demo-shortcut.ts";
 import { postChatMessage } from "./chat/orchestrate.ts";
 import { makeChatStore } from "./chat/store.ts";
 import { deriveSlug, displayName, listDatabasesForTenant } from "./databases/list.ts";
+import { resolveDb } from "./db-registry.ts";
 import { sweepAnonDatabases } from "./db-sweep/sweep.ts";
 import { recordNotifyPaid, recordWishlist } from "./events-feature.ts";
 import {
@@ -778,7 +779,20 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
       },
       principal.id,
     );
-    const recentTables = await recentTablesPromise;
+    let recentTables = await recentTablesPromise;
+    // SK-ASK-018 — fall back to the pinned DB's `schema_text` only
+    // when the MRU cache is empty. The cache is authoritative when
+    // populated (returning users); the D1 read only fires for the
+    // freshly-adopted / cold-MRU case where a pinned DB would
+    // otherwise misfire as `clarify_required` via routeAsk's "no
+    // recent tables → create" rule. Best-effort: a D1 hiccup leaves
+    // the empty MRU, same end-state as today.
+    if (recentTables.length === 0 && parsed.body.dbId) {
+      const pinnedDb = await resolveDb(c.env.DB, parsed.body.dbId, principal.id).catch(
+        () => null,
+      );
+      if (pinnedDb) recentTables = seedFromPinnedDb(pinnedDb);
+    }
 
     // SK-ASK-009 — routeAsk runs in parallel with listPromise.
     // Wraps both: routeAsk's `dbs` input comes from the awaited

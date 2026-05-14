@@ -117,6 +117,28 @@ async function withSpan<T>(name: string, fn: () => Promise<T>): Promise<T> {
   });
 }
 
+// Pull table names out of a compiled `schema_text` (the DDL the
+// provisioner stored at create time). Used by `routeAsk`'s prelude to
+// seed the classifier's `recentTables` from a pinned DB so "new
+// employee in this db" against an existing `employees` table routes
+// to `kind=write` instead of misfiring `kind=create` against the pin
+// (SK-ASK-018). Returns the lowercased table names in declaration
+// order, deduped. Shape of our compiled DDL is known and stable —
+// regex is cheaper than a full parse.
+export function tablesFromSchemaText(schemaText: string): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const match of schemaText.matchAll(
+    /CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?(?:"[^"]+"\.)?["]?(\w+)["]?/gi,
+  )) {
+    const name = match[1]?.toLowerCase();
+    if (!name || seen.has(name)) continue;
+    seen.add(name);
+    out.push(name);
+  }
+  return out;
+}
+
 // Pull table refs out of a SQL plan. Allowlist statement types are
 // SELECT / INSERT / UPDATE / DELETE; CTE aliases (`WITH cte AS …`) are
 // excluded because they're scope-local names, not real tables. Returns

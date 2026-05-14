@@ -10,7 +10,8 @@
 //     anon create path (fix B) — explicit `body.engine` always wins.
 
 import { describe, expect, it, vi } from "vitest";
-import { kickoffAskPrelude, resolveAnonEngineOverride } from "./prelude.ts";
+import { kickoffAskPrelude, resolveAnonEngineOverride, seedFromPinnedDb } from "./prelude.ts";
+import type { DbRecord } from "./types.ts";
 
 describe("kickoffAskPrelude (WS5 fix A)", () => {
   it("fires both reads before any await yields", async () => {
@@ -58,6 +59,34 @@ describe("kickoffAskPrelude (WS5 fix A)", () => {
     expect(listDone).toBe(false);
     await prelude.listPromise;
     expect(listDone).toBe(true);
+  });
+});
+
+describe("seedFromPinnedDb (SK-ASK-018)", () => {
+  const pinned: DbRecord = {
+    id: "db_factory_a1",
+    tenantId: "user_1",
+    engine: "postgres",
+    connectionSecretRef: "DATABASE_URL",
+    schemaHash: "h",
+    schemaText:
+      'CREATE TABLE "factory_a1"."employees" (id int);\n' +
+      'CREATE TABLE "factory_a1"."shifts" (id int);',
+  };
+
+  it("synthesizes RecentTable entries for every table in the pinned DB's schema_text", () => {
+    expect(seedFromPinnedDb(pinned)).toEqual([
+      { dbId: "db_factory_a1", slug: "factory-a1", table: "employees", touchedAt: 0 },
+      { dbId: "db_factory_a1", slug: "factory-a1", table: "shifts", touchedAt: 0 },
+    ]);
+  });
+
+  it("returns [] when schema_text is null (legacy row)", () => {
+    expect(seedFromPinnedDb({ ...pinned, schemaText: null })).toEqual([]);
+  });
+
+  it("returns [] when schema_text has no CREATE TABLE statements", () => {
+    expect(seedFromPinnedDb({ ...pinned, schemaText: "-- empty" })).toEqual([]);
   });
 });
 

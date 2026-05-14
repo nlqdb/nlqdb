@@ -19,7 +19,7 @@ import { buildDiff, isWriteVerb } from "./diff.ts";
 import type { FirstQueryTracker } from "./first-query.ts";
 import { hashGoal, type PlanCache } from "./plan-cache.ts";
 import type { RateLimiter } from "./rate-limit.ts";
-import { extractTables, type RecentTablesStore } from "./recent-tables.ts";
+import { extractTables, type RecentTablesStore, tablesFromSchemaText } from "./recent-tables.ts";
 import { Nonrecoverable, type RetryReason, withStageRetry } from "./retry.ts";
 import { validateSql } from "./sql-validate.ts";
 import {
@@ -341,13 +341,57 @@ export async function orchestrateAsk(
           // Config errors are non-recoverable — operator has to fix
           // the secret ref; retrying just delays surfacing the bug.
           if (err instanceof DbConfigError) throw new Nonrecoverable("db_misconfigured", err);
-          // SK-ASK-016 Defense B — PG `42P01 relation does not exist`.
-          // Retrying the same SQL produces the same error; bail after
-          // attempt 1. String match is the fallback when the Neon HTTP
-          // shim doesn't preserve the structured `.code` field.
+          // Deterministic structural failures — wrap in `Nonrecoverable`
+          // so `withStageRetry` bails after attempt 1 (retrying the
+          // identical SQL against the identical schema produces the
+          // identical error and just inflates wall time / cost):
+          //   • `42P01 relation does not exist` — SK-ASK-016 Defense B.
+          //   • `3F000 invalid_schema_name` — SK-ASK-019. The schema
+          //     itself is gone (orphan D1 row pointing at a dropped
+          //     Postgres schema, observed in prod for the recently-
+          //     adopted `db_factory_management_*` cohort).
+          // String match is the fallback when the Neon HTTP shim
+          // doesn't preserve the structured `.code` field.
           const code = (err as { code?: string }).code;
           const msg = err instanceof Error ? err.message : String(err);
-          if (code === "42P01" || /relation .* does not exist/i.test(msg)) {
+          if (
+            code === "42P01" ||
+            code === "3F000" ||
+            /relation .* does not exist/i.test(msg) ||
+            /schema .* does not exist/i.test(msg)
+          ) {
+            // SK-ASK-019 — log structured context so the rare orphan-
+            // schema case is greppable in Workers Logs / Grafana.
+            // Helps the next prompt-tuning pass see exactly which goal
+            // + DB + SQL shape produced the mismatch (the SchemaMismatchError
+            // envelope only carries table lists, not the full SQL).
+            const pgCode = code === "3F000" ? "3F000" : code === "42P01" ? "42P01" : "msg_match";
+            const reason = code === "3F000" || /schema .* does not exist/i.test(msg)
+              ? "schema_missing"
+              : "table_missing";
+            const activeSpan = trace.getActiveSpan();
+            if (activeSpan) {
+              activeSpan.setAttribute("nlqdb.ask.schema_mismatch.reason", reason);
+              activeSpan.setAttribute("nlqdb.ask.schema_mismatch.pg_code", pgCode);
+              activeSpan.setAttribute("nlqdb.ask.schema_mismatch.db_id", req.dbId);
+              activeSpan.setAttribute("nlqdb.ask.schema_mismatch.sql", planSql.slice(0, 500));
+              activeSpan.setAttribute("nlqdb.ask.schema_mismatch.goal", req.goal.slice(0, 500));
+              activeSpan.setAttribute("nlqdb.ask.schema_mismatch.pg_message", msg.slice(0, 500));
+              activeSpan.setAttribute("nlqdb.ask.schema_mismatch.cache_hit", cacheHit);
+            }
+            console.error(
+              JSON.stringify({
+                event: "schema_mismatch",
+                reason,
+                pg_code: pgCode,
+                pg_message: msg.slice(0, 500),
+                db_id: req.dbId,
+                goal: req.goal.slice(0, 500),
+                sql: planSql.slice(0, 500),
+                cache_hit: cacheHit,
+                plan_model: planModel,
+              }),
+            );
             throw new Nonrecoverable("schema_mismatch", new SchemaMismatchError([], []));
           }
           throw err;
@@ -582,13 +626,9 @@ function checkSchemaTables(
 ): { referencedTables: string[]; schemaTables: string[] } | null {
   const referenced = extractTables(sql).map((t) => t.toLowerCase());
   if (referenced.length === 0) return null;
-  const schemaSet = new Set<string>();
-  for (const match of schemaText.matchAll(
-    /CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?(?:"[^"]+"\.)?["]?(\w+)["]?/gi,
-  )) {
-    if (match[1]) schemaSet.add(match[1].toLowerCase());
-  }
+  const schemaTables = tablesFromSchemaText(schemaText);
+  const schemaSet = new Set(schemaTables);
   const missing = referenced.filter((t) => !schemaSet.has(t));
   if (missing.length === 0) return null;
-  return { referencedTables: missing, schemaTables: Array.from(schemaSet) };
+  return { referencedTables: missing, schemaTables };
 }

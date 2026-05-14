@@ -281,6 +281,77 @@ describe("orchestrateAsk", () => {
     expect(exec).toHaveBeenCalledTimes(1);
   });
 
+  it("SK-ASK-019: exec PG 3F000 (schema does not exist) → schema_mismatch, no retry", async () => {
+    // Orphan D1 row → schema dropped from Neon. PG raises 3F000 not 42P01
+    // because the schema name in the qualified reference is gone. SELECT
+    // avoids the SK-TRUST-001 confirm gate; the 3F000 path is the same
+    // for any verb that reaches exec.
+    const orphanError = Object.assign(
+      new Error('schema "factory_management_a723a5" does not exist'),
+      { code: "3F000" },
+    );
+    const exec = stubExec(orphanError);
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      const out = await orchestrateAsk(
+        makeDeps({
+          resolveDb: vi.fn(async () => stubDb({ schemaText: null })),
+          llm: stubLLM({
+            plan: { sql: "SELECT * FROM factory_management_a723a5.employees" },
+          }),
+          exec,
+        }),
+        { goal: "list employees", dbId: "db_factory_management_a723a5", userId: "user_1" },
+      );
+      expect(out).toEqual({
+        ok: false,
+        error: { status: "schema_mismatch", referencedTables: [], schemaTables: [] },
+      });
+      // Same Nonrecoverable wrapping as 42P01 — no retry on missing schema.
+      expect(exec).toHaveBeenCalledTimes(1);
+      // Structured log includes the goal, dbId, sql, and pg_code so the
+      // orphan-schema cohort is greppable in prod logs.
+      expect(errorSpy).toHaveBeenCalledOnce();
+      const logged = JSON.parse(errorSpy.mock.calls[0]?.[0] as string);
+      expect(logged).toMatchObject({
+        event: "schema_mismatch",
+        reason: "schema_missing",
+        pg_code: "3F000",
+        db_id: "db_factory_management_a723a5",
+        goal: "list employees",
+      });
+      expect(logged.sql).toMatch(/factory_management_a723a5/);
+    } finally {
+      errorSpy.mockRestore();
+    }
+  });
+
+  it("SK-ASK-019: 3F000 detected from message when .code field is absent", async () => {
+    // Neon HTTP shim sometimes drops `.code`. The string-match fallback
+    // still catches the missing-schema shape.
+    const orphanError = new Error('schema "ghost_schema" does not exist');
+    const exec = stubExec(orphanError);
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      const out = await orchestrateAsk(
+        makeDeps({
+          resolveDb: vi.fn(async () => stubDb({ schemaText: null })),
+          llm: stubLLM({ plan: { sql: "SELECT 1 FROM ghost_schema.t" } }),
+          exec,
+        }),
+        { goal: "anything", dbId: "db_1", userId: "user_1" },
+      );
+      expect(out.ok).toBe(false);
+      if (out.ok) throw new Error("unreachable");
+      expect(out.error.status).toBe("schema_mismatch");
+      expect(exec).toHaveBeenCalledTimes(1);
+      const logged = JSON.parse(errorSpy.mock.calls[0]?.[0] as string);
+      expect(logged).toMatchObject({ reason: "schema_missing", pg_code: "msg_match" });
+    } finally {
+      errorSpy.mockRestore();
+    }
+  });
+
   it("SK-ASK-016: pre-flight passes when all referenced tables exist", async () => {
     // Plan references a real table — orchestrator proceeds to exec.
     const llm = stubLLM({ plan: { sql: "SELECT * FROM orders" } });
