@@ -190,7 +190,11 @@ The personas are ordered by **priority for Phase 1 onboarding**. We optimize the
 
 **Real-life use case.** Yuki is on-call at a 40-person startup running SigNoz on self-hosted ClickHouse. At 9am Monday an alert fires: checkout p99 at 4s. Instead of joining `otel_traces` with `otel_logs` by hand in the ClickHouse console, Yuki opens the nlqdb chat pointed at their cluster: `"which services contributed to the checkout latency spike between 8:45 and 9:10"` — ranked breakdown in under 2s. Then: `"top error messages from those services during that window"`. Five minutes of chat replaces 45 minutes of SQL and dashboard-hopping.
 
-**Phase 1 treatment.** Acknowledge on the homepage as an inbound capture signal ("Already running ClickHouse? Tell us"). No product work until the signal gate trips. Requires BYO ClickHouse (`POST /v1/db/connect` variant), signal-gated in `docs/phase-plan.md §7`. Unlike BYO Postgres, ClickHouse's native HTTP interface lets Workers proxy directly — no TCP socket or Hyperdrive needed. Do not conflate with the managed OTel ingestion pivot in [`otel-grafana-pivot.md`](./otel-grafana-pivot.md): that explores nlqdb *owning* the OTel storage layer; P6 is nlqdb as an NL query skin over the user's existing ClickHouse.
+**Phase 1 treatment.** Acknowledge on the homepage as an inbound capture signal ("Already running ClickHouse? Tell us"). No product work until the signal gate trips — shape and signal mechanics live in `docs/phase-plan.md §7`. Do not conflate with the managed OTel ingestion pivot in [`otel-grafana-pivot.md`](./otel-grafana-pivot.md): P6 is an NL query skin over the user's existing ClickHouse, not nlqdb owning the storage.
+
+**Open questions (resolve before promoting to a feature).**
+- **Read-only enforcement is non-trivial in ClickHouse.** `readonly = 1` does *not* block DDL — TRUNCATE, DROP, ALTER still execute. Safe BYO requires `readonly = 1` + `allow_ddl = 0` + RBAC `GRANT SELECT`, or extending `sql-allowlist` to ClickHouse grammar. ClickHouse's own `mcp-clickhouse` ships with this gap open.
+- **Signal threshold:** follow §6 pattern — ≥5 unsolicited inbound asks before engineering work starts.
 
 ---
 

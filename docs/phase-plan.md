@@ -241,7 +241,7 @@ quarter.
   Workers proxies directly — no TCP socket or Hyperdrive required;
   (b) schema introspection reads `system.columns` instead of
   `pg_catalog`. Signal-gated on P6-persona inbound (see
-  [`personas.md`](./research/personas.md#p6----the-analytics--observability-engineer));
+  [`personas.md`](./research/personas.md#p6--the-analytics--observability-engineer));
   not phase-gated. The Phase 3 managed-CH path via Tinybird is
   unaffected — that is a separate internal-engine decision. Not the
   same as the managed OTel ingestion pivot in
