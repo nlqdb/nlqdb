@@ -75,6 +75,10 @@ export default {
     if ("err" in auth) return auth.err;
     const bearer = auth.ok;
 
+    // TODO(slice 3c): auth-failure paths above this line never enter a
+    // span, so probe / misconfigured-key traffic is invisible to OTel.
+    // Add a pre-gate counter (or start the span before requireBearer
+    // and tag failures) when rate-limit + observability hardening lands.
     const tracer = trace.getTracer(SERVER_NAME);
     return tracer.startActiveSpan("nlqdb.mcp.http.request", async (span) => {
       span.setAttribute("http.method", req.method);
@@ -133,7 +137,13 @@ async function dispatch(req: Request, bearer: string, env: Env): Promise<Respons
   const { req: nodeReq, res: nodeRes } = toReqRes(req);
   try {
     await server.connect(transport);
-    const body: unknown = await req.json();
+    // Clone before reading the body: `toReqRes(req)` may attach to
+    // `req.body`'s ReadableStream lazily, and a direct `req.json()` on
+    // the original `Request` after that attachment risks
+    // `TypeError: Body has already been read`. Cloning tees the stream
+    // so both copies are independently readable. The body is JSON-RPC
+    // (small), so the tee allocation is negligible.
+    const body: unknown = await req.clone().json();
     await transport.handleRequest(nodeReq, nodeRes, body);
     return toFetchResponse(nodeRes);
   } finally {
@@ -144,6 +154,14 @@ async function dispatch(req: Request, bearer: string, env: Env): Promise<Respons
 }
 
 function preflight(req: Request): Response {
+  // Echoing the request origin (or `*` fallback) is correct for the
+  // current slice — every request is bearer-authenticated; no cookies,
+  // no credentials.
+  // TODO(slice 3b): when `workers-oauth-provider` adds credentialed
+  // flows (OAuth session cookies on the authorize/callback routes),
+  // CORS-spec forbids `Access-Control-Allow-Origin: *` for credentialed
+  // requests. Replace this with an allow-list keyed off the OAuth
+  // client registry when slice 3b lands.
   const origin = req.headers.get("origin") ?? "*";
   return new Response(null, {
     status: 204,

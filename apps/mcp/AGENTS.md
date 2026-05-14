@@ -22,6 +22,13 @@ and forwards every tool call to `apps/api/` via `@nlqdb/sdk`.
 - Three tools registered via `createServer()` from `@nlqdb/mcp` (the transport-agnostic dispatcher) — never re-implement tool semantics here. New tools land in `packages/mcp/src/tools.ts` first.
 - Slice ordering per `SK-MCP-010`: 3a (this scaffold + bearer auth) → 3b (`workers-oauth-provider` + `McpAgent` Durable Object sessions) → 3c (per-key rate-limit + 1 s isolate-cache revocation per `SK-MCP-009`).
 
+## Deferred from slice-3a self-review (carry into 3b / 3c)
+
+Each is anchored to an inline `TODO(slice 3b)` / `TODO(slice 3c)` comment in `src/index.ts`. Grep before opening either follow-on PR.
+
+- **CORS `Access-Control-Allow-Origin: *` echo (3b).** `preflight()` echoes the request origin (or `*` fallback). Safe today — every request is bearer-authenticated, no cookies. When `workers-oauth-provider` adds credentialed flows on the authorize / callback routes, CORS-spec forbids `*` for credentialed requests. Replace with an allow-list keyed off the OAuth client registry.
+- **Auth-failure observability gap (3c).** The `nlqdb.mcp.http.request` span starts *after* `requireBearer`, so probe traffic and misconfigured-key traffic never produce a span. When rate-limit + observability hardening lands, either add a pre-gate counter or start the span before the gate and tag failures via a span attribute.
+
 ## Commands
 
 ```bash
