@@ -30,7 +30,6 @@
     "typescript": "^5.6.0"
   },
   "overrides": {
-    "@modelcontextprotocol/sdk": "1.29.0",
-    "zod": "^3.25.76"
+    "@modelcontextprotocol/sdk": "1.29.0"
   }
 }
