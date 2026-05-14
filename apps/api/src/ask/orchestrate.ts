@@ -19,8 +19,9 @@ import { buildDiff, isWriteVerb } from "./diff.ts";
 import type { FirstQueryTracker } from "./first-query.ts";
 import { hashGoal, type PlanCache } from "./plan-cache.ts";
 import type { RateLimiter } from "./rate-limit.ts";
-import { extractTables, type RecentTablesStore } from "./recent-tables.ts";
+import { extractTables, type RecentTablesStore, tablesFromSchemaText } from "./recent-tables.ts";
 import { Nonrecoverable, type RetryReason, withStageRetry } from "./retry.ts";
+import { classifySchemaError } from "./schema-mismatch.ts";
 import { validateSql } from "./sql-validate.ts";
 import {
   type AskError,
@@ -341,15 +342,16 @@ export async function orchestrateAsk(
           // Config errors are non-recoverable — operator has to fix
           // the secret ref; retrying just delays surfacing the bug.
           if (err instanceof DbConfigError) throw new Nonrecoverable("db_misconfigured", err);
-          // SK-ASK-016 Defense B — PG `42P01 relation does not exist`.
-          // Retrying the same SQL produces the same error; bail after
-          // attempt 1. String match is the fallback when the Neon HTTP
-          // shim doesn't preserve the structured `.code` field.
-          const code = (err as { code?: string }).code;
-          const msg = err instanceof Error ? err.message : String(err);
-          if (code === "42P01" || /relation .* does not exist/i.test(msg)) {
-            throw new Nonrecoverable("schema_mismatch", new SchemaMismatchError([], []));
-          }
+          // SK-ASK-016 / SK-ASK-019 — `42P01` (table) and `3F000` (schema)
+          // are deterministic; retry would replay the same error.
+          const schemaError = classifySchemaError(err, {
+            dbId: req.dbId,
+            goal: req.goal,
+            planSql,
+            cacheHit,
+            planModel,
+          });
+          if (schemaError) throw schemaError;
           throw err;
         }
       },
@@ -582,13 +584,9 @@ function checkSchemaTables(
 ): { referencedTables: string[]; schemaTables: string[] } | null {
   const referenced = extractTables(sql).map((t) => t.toLowerCase());
   if (referenced.length === 0) return null;
-  const schemaSet = new Set<string>();
-  for (const match of schemaText.matchAll(
-    /CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?(?:"[^"]+"\.)?["]?(\w+)["]?/gi,
-  )) {
-    if (match[1]) schemaSet.add(match[1].toLowerCase());
-  }
+  const schemaTables = tablesFromSchemaText(schemaText);
+  const schemaSet = new Set(schemaTables);
   const missing = referenced.filter((t) => !schemaSet.has(t));
   if (missing.length === 0) return null;
-  return { referencedTables: missing, schemaTables: Array.from(schemaSet) };
+  return { referencedTables: missing, schemaTables };
 }

@@ -117,6 +117,23 @@ async function withSpan<T>(name: string, fn: () => Promise<T>): Promise<T> {
   });
 }
 
+// Lowercased table names from our compiled `CREATE TABLE` DDL, in
+// declaration order, deduped. Regex (vs. a full parse) is safe because
+// we author the DDL — used by `checkSchemaTables` and `seedFromPinnedDb`.
+export function tablesFromSchemaText(schemaText: string): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const match of schemaText.matchAll(
+    /CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?(?:"[^"]+"\.)?["]?(\w+)["]?/gi,
+  )) {
+    const name = match[1]?.toLowerCase();
+    if (!name || seen.has(name)) continue;
+    seen.add(name);
+    out.push(name);
+  }
+  return out;
+}
+
 // Pull table refs out of a SQL plan. Allowlist statement types are
 // SELECT / INSERT / UPDATE / DELETE; CTE aliases (`WITH cte AS …`) are
 // excluded because they're scope-local names, not real tables. Returns

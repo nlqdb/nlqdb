@@ -5,7 +5,12 @@
 
 import { describe, expect, it, vi } from "vitest";
 import type { KVStore } from "../kv-store.ts";
-import { extractTables, makeRecentTablesStore, type RecentTable } from "./recent-tables.ts";
+import {
+  extractTables,
+  makeRecentTablesStore,
+  type RecentTable,
+  tablesFromSchemaText,
+} from "./recent-tables.ts";
 
 function makeStore(): KVStore & { data: Map<string, string> } {
   const data = new Map<string, string>();
@@ -214,5 +219,26 @@ describe("extractTables", () => {
     // but defensive belt-and-braces: the walker only contributes tables
     // for SELECT/INSERT/UPDATE/DELETE statement bodies.
     expect(extractTables("CREATE TABLE foo (id int)")).toEqual([]);
+  });
+});
+
+describe("tablesFromSchemaText (SK-ASK-018)", () => {
+  it("extracts unquoted, schema-qualified table names from compiled DDL", () => {
+    const ddl = [
+      'CREATE TABLE "factory_management_a723a5"."employees" (id int);',
+      'CREATE TABLE "factory_management_a723a5"."shifts" (id int);',
+      "CREATE INDEX idx_shifts ON shifts (id);",
+    ].join("\n");
+    expect(tablesFromSchemaText(ddl)).toEqual(["employees", "shifts"]);
+  });
+
+  it("dedupes repeated CREATE TABLE entries", () => {
+    const ddl = "CREATE TABLE a (id int);\nCREATE TABLE IF NOT EXISTS A (id int);";
+    expect(tablesFromSchemaText(ddl)).toEqual(["a"]);
+  });
+
+  it("returns [] when no CREATE TABLE is present", () => {
+    expect(tablesFromSchemaText("")).toEqual([]);
+    expect(tablesFromSchemaText("CREATE INDEX foo ON bar(x);")).toEqual([]);
   });
 });

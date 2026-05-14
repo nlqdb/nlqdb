@@ -22,7 +22,8 @@
 
 import type { Engine } from "@nlqdb/db";
 import type { DatabaseSummaryRow } from "../databases/list.ts";
-import type { RecentTable } from "./recent-tables.ts";
+import { type RecentTable, tablesFromSchemaText } from "./recent-tables.ts";
+import type { DbRecord } from "./types.ts";
 
 export type AskPreludeDeps = {
   listDatabases: (principalId: string) => Promise<DatabaseSummaryRow[]>;
@@ -39,6 +40,21 @@ export function kickoffAskPrelude(deps: AskPreludeDeps, principalId: string): As
     listPromise: deps.listDatabases(principalId),
     recentTablesPromise: deps.loadRecentTables(principalId),
   };
+}
+
+// SK-ASK-018 — synthesize `RecentTable` entries from the pinned DB's
+// `schema_text` so routeAsk's classifier has table context when the
+// principal's MRU is cold (freshly adopted anon → user).
+export function seedFromPinnedDb(pinned: DbRecord): RecentTable[] {
+  if (!pinned.schemaText) return [];
+  const tables = tablesFromSchemaText(pinned.schemaText);
+  const slug = pinned.id.startsWith("db_") ? pinned.id.slice(3).replaceAll("_", "-") : pinned.id;
+  return tables.map((table) => ({
+    dbId: pinned.id,
+    slug,
+    table,
+    touchedAt: 0,
+  }));
 }
 
 export function resolveAnonEngineOverride(
