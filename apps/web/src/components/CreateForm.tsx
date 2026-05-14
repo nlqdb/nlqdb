@@ -21,9 +21,7 @@ import {
   type CreateError,
   type CreateResult,
   type CreateRow,
-  type NotifyPaidCta as NotifyPaidCtaKind,
   postAskCreate,
-  postNotifyPaid,
 } from "../lib/api";
 import {
   appendHistory,
@@ -149,10 +147,6 @@ function CreateFormInner({ apiBase }: CreateFormProps) {
       <p className="createform__lede">
         Anonymous — no sign-in. Your DB lives 72h; sign in to keep it.
       </p>
-      <div className="createform__notify">
-        <NotifyPaidCta apiBase={apiBase} cta="anon_warning" />
-      </div>
-
       <form
         className="createform__form"
         onSubmit={(event) => {
@@ -194,7 +188,6 @@ function CreateFormInner({ apiBase }: CreateFormProps) {
         {error && (
           <div className="createform__error-wrap" role="alert">
             <p className="createform__error">{messageFor(error)}</p>
-            {error.kind === "rate_limited" && <NotifyPaidCta apiBase={apiBase} cta="rate_limit" />}
           </div>
         )}
         {networkError && (
@@ -225,9 +218,6 @@ function CreateResultView({ result, apiBase }: { result: CreateResult; apiBase: 
       {grouped.map((tbl) => (
         <SampleTable key={tbl.table} table={tbl.table} rows={tbl.rows} />
       ))}
-      <div className="createresult__notify">
-        <NotifyPaidCta apiBase={apiBase} cta="db_create_success" />
-      </div>
     </section>
   );
 }
@@ -316,28 +306,3 @@ function messageFor(error: CreateError): string {
   }
 }
 
-// SK-EVENTS-011 — "Notify me when paid launches" CTA. The button posts
-// to /v1/events/notify-paid and self-disables on click so the same
-// surface doesn't double-emit within a session. Cross-session dedup is
-// enforced by `defaultId()` at the producer layer (per-principal-per-
-// cta-per-day), so a reload that re-renders the button is safe — the
-// LogSnag sink collapses repeats at the envelope id.
-function NotifyPaidCta({ apiBase, cta }: { apiBase: string; cta: NotifyPaidCtaKind }) {
-  const [clicked, setClicked] = useState(false);
-  function onClick() {
-    setClicked(true);
-    void postNotifyPaid(apiBase, cta);
-  }
-  if (clicked) {
-    return (
-      <p className="notify-paid notify-paid--done" role="status">
-        Thanks — we'll let you know.
-      </p>
-    );
-  }
-  return (
-    <button type="button" className="btn btn--ghost notify-paid__btn" onClick={onClick}>
-      Notify me when paid launches
-    </button>
-  );
-}
