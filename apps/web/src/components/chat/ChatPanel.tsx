@@ -171,6 +171,11 @@ export default function ChatPanel(props: ChatPanelProps) {
 function ChatPanelInner({ apiBase }: ChatPanelProps) {
   const [activeDb, setActiveDb] = useState<DatabaseSummary | null>(null);
   const [activeDbId, setActiveDbId] = useState<string | null>(() => readDbIdFromUrl());
+  // Chat-created DB to inject into the rail. LeftRail watches this and
+  // prepends to its own list — the kind=create response originates in
+  // ChatPanel, so without this prop the new DB only appears in the
+  // sidebar after a full refresh.
+  const [newlyCreatedDb, setNewlyCreatedDb] = useState<DatabaseSummary | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const [composer, setComposer] = useState("");
@@ -369,8 +374,16 @@ function ChatPanelInner({ apiBase }: ChatPanelProps) {
             lastQueriedAt: null,
             createdAt: Math.floor(Date.now() / 1000),
           };
+          // Mark this dbId as already-loaded so the activeDbId effect
+          // below short-circuits instead of replacing the in-flight
+          // [user goal, "created" reply] pair with loadHistory(newDb)
+          // = [] (no history exists yet for a brand-new dbId). The
+          // save effect then persists this exchange to the new dbId's
+          // localStorage slot on the next render.
+          loadedForRef.current = result.db;
           setActiveDb(dbSummary);
           setActiveDbId(result.db);
+          setNewlyCreatedDb(dbSummary);
           syncDbIdToUrl(result.db);
           const tableCount = new Set(result.sampleRows.map((r) => r.table)).size;
           const sampleRowCount = result.sampleRows.length;
@@ -609,6 +622,7 @@ function ChatPanelInner({ apiBase }: ChatPanelProps) {
       <LeftRail
         apiBase={apiBase}
         activeDbId={activeDbId}
+        addedDb={newlyCreatedDb}
         onSelect={selectDb}
         onClearSelection={clearSelection}
         onCreated={selectDb}

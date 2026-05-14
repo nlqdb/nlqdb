@@ -29,6 +29,11 @@ interface LeftRailProps {
   // a URL-supplied dbId to its full summary record (pkLive et al.)
   // without forcing a second list-databases round-trip.
   onLoaded?: (databases: DatabaseSummary[]) => void;
+  // SK-HDC-001: chat-create flow (`kind=create` from /v1/ask) creates
+  // a DB outside this rail's own form. ChatPanel pushes the new DB
+  // through this prop so the sidebar stays in sync without a
+  // listDatabases refetch. Deduped by id.
+  addedDb?: DatabaseSummary | null;
 }
 
 type LoadState =
@@ -43,6 +48,7 @@ export default function LeftRail({
   onClearSelection,
   onCreated,
   onLoaded,
+  addedDb,
 }: LeftRailProps) {
   const [state, setState] = useState<LoadState>({ kind: "loading" });
   const [creating, setCreating] = useState(false);
@@ -71,14 +77,20 @@ export default function LeftRail({
   }, [apiBase]);
 
   function handleCreated(db: DatabaseSummary) {
-    setState((prev) =>
-      prev.kind === "ready"
-        ? { kind: "ready", databases: [db, ...prev.databases] }
-        : { kind: "ready", databases: [db] },
-    );
+    setState((prev) => prependDb(prev, db));
     setCreating(false);
     onCreated(db);
   }
+
+  // Watch the parent's chat-create injection. The kind=create response
+  // lands in ChatPanel, which surfaces the new DB through `addedDb`
+  // (latest one wins). We prepend on every prop change; the dedup in
+  // `prependDb` makes that a no-op once the entry exists, including
+  // when the initial listDatabases fetch resolves with the same row.
+  useEffect(() => {
+    if (!addedDb) return;
+    setState((prev) => prependDb(prev, addedDb));
+  }, [addedDb]);
 
   return (
     <aside className="left-rail" aria-label="Your databases">
@@ -236,6 +248,12 @@ function NewDbForm({
       </div>
     </form>
   );
+}
+
+function prependDb(prev: LoadState, db: DatabaseSummary): LoadState {
+  if (prev.kind !== "ready") return { kind: "ready", databases: [db] };
+  if (prev.databases.some((d) => d.id === db.id)) return prev;
+  return { kind: "ready", databases: [db, ...prev.databases] };
 }
 
 function formatRelative(epochSeconds: number | null): string {
