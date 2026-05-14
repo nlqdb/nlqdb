@@ -235,10 +235,19 @@ quarter.
   [`architecture.md` §3.6.7](./architecture.md#367-byo-postgres-phase-4-decided-shape).
   Moves forward only if P4-persona inbound (signal-gated, not
   phase-gated).
-- **BYO ClickHouse** — undecided. The Phase 3 managed-CH path via
-  Tinybird is unaffected; a "connect your own ClickHouse" mode is a
-  separate decision. Open question; promote into a feature when shape
-  is firm.
+- **BYO ClickHouse** (`POST /v1/db/connect`) — same `registerByoDb`
+  provisioner path as BYO Postgres ([`architecture.md §3.6.7`](./architecture.md#367-byo-postgres-phase-4-decided-shape)),
+  with two differences: (a) ClickHouse's native HTTP interface means
+  Workers proxies directly — no TCP socket or Hyperdrive required;
+  (b) schema introspection reads `system.columns` instead of
+  `pg_catalog`. Signal-gated on P6-persona inbound (see
+  [`personas.md`](./research/personas.md#p6--the-analytics--observability-engineer));
+  not phase-gated. The Phase 3 managed-CH path via Tinybird is
+  unaffected — that is a separate internal-engine decision. Not the
+  same as the managed OTel ingestion pivot in
+  [`otel-grafana-pivot.md`](./research/otel-grafana-pivot.md), which
+  explores nlqdb owning the storage layer; BYO ClickHouse is an NL
+  query skin over the user's existing cluster.
 - Enterprise (SSO, audit log, on-prem).
 - More engines (TimescaleDB, Typesense, pgvector at scale).
 - `<nlq-stream>` real-time element.

@@ -162,6 +162,42 @@ The personas are ordered by **priority for Phase 1 onboarding**. We optimize the
 
 ---
 
+## P6 — The Analytics / Observability Engineer
+
+**Role.** SRE debugging incidents against a ClickHouse + OTel stack (SigNoz, HyperDX, ClickStack), or a data / analytics engineer querying ClickHouse for product events (DAU, funnels, revenue). Writes SQL. Has a working data pipeline. The pain is not the storage — it is the query surface.
+
+**Current pain.**
+- ClickHouse SQL rewards deep familiarity — `ARRAY JOIN`, aggregate combinators, `MergeTree` semantics. It punishes ad-hoc queries from anyone who didn't write the schema.
+- LGTM-stack SREs must juggle PromQL, LogQL, and TraceQL to correlate one incident.
+- Existing NL-to-ClickHouse tools (DataStoria, Chat2DB, Beekeeper AI Shell) are generic: they know column names but not domain context; no plan cache, no schema-growth tracking, not embedded where triage happens.
+- ClickHouse added native NL-to-SQL in v25.7 but only in the CLI/playground — not embeddable, not API-accessible.
+
+**What "works" looks like.**
+- `POST /v1/db/connect { connection_url: "https://ch.company.com:8443", … }` → schema introspected at connect time; NL queries work immediately.
+- Same `/v1/ask` endpoint, same chat UI — BYO is invisible to the query path.
+- "p99 latency for checkout, last 6 hours, by customer tier" → compiled ClickHouse SQL, executed, streamed back.
+- No data migration. No new storage cost to them.
+
+**Willingness to pay.** $25–50/mo individually; team plan natural when the full SRE team uses it. Already paying for ClickHouse Cloud or SigNoz — one more line item is fine if it saves incident hours.
+
+**ROI (est.).** ~5–10 hrs/mo per engineer freed from context-switching and ad-hoc ClickHouse SQL. At $100–125/hr: **~$500–1,250/mo** per engineer. For a 4-person SRE team, blended total: **~$2,000–5,000/mo** in reclaimed investigation time — and faster MTTR on the incidents that actually page people.
+
+**Representative queries.**
+- `"p99 and p50 latency for checkout, last 6 hours, grouped by customer tier"`
+- `"which trace IDs had errors in the payment flow in the last hour"`
+- `"top 10 slowest queries across all services yesterday"`
+- `"how many spans per minute arrived during the 8:45–9:15 incident window"`
+
+**Real-life use case.** Yuki is on-call at a 40-person startup running SigNoz on self-hosted ClickHouse. At 9am Monday an alert fires: checkout p99 at 4s. Instead of joining `otel_traces` with `otel_logs` by hand in the ClickHouse console, Yuki opens the nlqdb chat pointed at their cluster: `"which services contributed to the checkout latency spike between 8:45 and 9:10"` — ranked breakdown in under 2s. Then: `"top error messages from those services during that window"`. Five minutes of chat replaces 45 minutes of SQL and dashboard-hopping.
+
+**Phase 1 treatment.** Acknowledge on the homepage as an inbound capture signal ("Already running ClickHouse? Tell us"). No product work until the signal gate trips — shape and signal mechanics live in `docs/phase-plan.md §7`. Do not conflate with the managed OTel ingestion pivot in [`otel-grafana-pivot.md`](./otel-grafana-pivot.md): P6 is an NL query skin over the user's existing ClickHouse, not nlqdb owning the storage.
+
+**Open questions (resolve before promoting to a feature).**
+- **Read-only enforcement is non-trivial in ClickHouse.** `readonly = 1` does *not* block DDL — TRUNCATE, DROP, ALTER still execute. Safe BYO requires `readonly = 1` + `allow_ddl = 0` + RBAC `GRANT SELECT`, or extending `sql-allowlist` to ClickHouse grammar. ClickHouse's own `mcp-clickhouse` ships with this gap open.
+- **Signal threshold:** follow §6 pattern — ≥5 unsolicited inbound asks before engineering work starts.
+
+---
+
 ## Anti-Personas (who we explicitly do NOT serve in Phase 1)
 
 Being clear about this prevents scope creep and bad-fit support tickets.
@@ -199,6 +235,7 @@ Ranked by how much of Phase 1 capacity they deserve.
 | Non-engineer answering a one-off question from a CSV | P3 | **P1** | Requires CSV upload. Ship it. |
 | Solo dev using chat as an admin UI over their own nlqdb | P1 | **P1** | Falls out of P0 naturally. |
 | Startup team using chat as admin UI over *their own* PG | P4 | **Phase 4+ (signal-gated)** | Needs BYO-connection per `docs/architecture.md §3.6.7`; moves forward only if P4 inbound trips the `docs/phase-plan.md §6` trigger. |
+| SRE / data engineer querying their existing ClickHouse | P6 | **Phase 4+ (signal-gated)** | BYO ClickHouse via HTTP — easier on Workers than BYO Postgres. Signal gate in `docs/phase-plan.md §7`. |
 | Scheduled/recurring queries ("email me this weekly") | P3 | **Phase 2** | Useful but not foundational. |
 | Destructive ops with NL-diff preview | P1, P4 | **Phase 1.5 (`GLOBAL-023` SK-TRUST-001)** | Trust-building. Ships with the trust-UX slice. |
 | Sharing a query result by link | P3, P1 | **P1** | Cheap to build, high word-of-mouth. |
