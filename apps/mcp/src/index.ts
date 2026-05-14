@@ -2,19 +2,17 @@
 // happy-path walkthrough. Slice 3a of `SK-MCP-010`:
 //
 //   • Streamable-HTTP transport (`SK-MCP-007`) at the `/mcp` route.
-//   • Bearer auth at the protocol boundary: `sk_live_` / `sk_mcp_` /
-//     `pk_live_` per `SK-APIKEYS-001`. Auth-of-record stays in
-//     `apps/api/` — this Worker forwards the bearer via `@nlqdb/sdk`
-//     and lets `apps/api/` reject mismatched keys (`SK-MCP-005`'s
-//     zero-driver rule + `SK-MCP-007`'s shared orchestration).
+//   • Bearer auth at the protocol boundary — see `./bearer-gate.ts`.
+//     Auth-of-record stays in `apps/api/`; this Worker forwards via
+//     `@nlqdb/sdk` per `SK-MCP-005` + `SK-MCP-007`.
 //   • Per-request fresh `McpServer` + transport. The SDK's stateless
 //     mode requires this — sharing instances across requests can leak
 //     one client's response stream to another. No Durable Objects in
 //     3a; promote to `McpAgent` in slice 3b.
 //   • Three tools (`nlqdb_query`, `nlqdb_list_databases`,
 //     `nlqdb_describe`) come from `@nlqdb/mcp`'s transport-agnostic
-//     dispatcher per `SK-MCP-002` and `SK-MCP-007`. Adding tools here
-//     fails review — register in `packages/mcp/src/tools.ts`.
+//     dispatcher per `SK-MCP-002`. Adding tools here fails review —
+//     register in `packages/mcp/src/tools.ts`.
 //
 // The MCP SDK's `StreamableHTTPServerTransport` is Node-flavoured
 // (it consumes `node:http` IncomingMessage / ServerResponse). The
@@ -31,17 +29,10 @@ import { setupTelemetry } from "@nlqdb/otel";
 import { createClient } from "@nlqdb/sdk";
 import { trace } from "@opentelemetry/api";
 import { toFetchResponse, toReqRes } from "fetch-to-node";
+import { requireBearer } from "./bearer-gate.ts";
 
 const SERVICE_VERSION = "0.1.0";
 const SERVER_NAME = "@nlqdb/mcp-server";
-
-// Recognised bearer prefixes — `pk_live_` works for `nlqdb_query` only
-// (read-only + origin-pinned per `SK-APIKEYS-003`); `sk_live_` and
-// `sk_mcp_` unlock the full surface including `nlqdb_list_databases`
-// and `nlqdb_describe` (`SK-MCP-004`). The shape check here is a fast
-// reject for malformed bearers; the upstream API enforces revocation,
-// scope, and origin.
-const KEY_PREFIXES = ["sk_live_", "sk_mcp_", "pk_live_"] as const;
 
 // CORS-allowed methods per the Streamable-HTTP transport spec. POST
 // carries JSON-RPC requests; GET opens an SSE stream for
@@ -69,43 +60,20 @@ export default {
       ctx.waitUntil(telemetry.forceFlush());
     }
 
+    if (req.method === "OPTIONS") return preflight(req);
+
     const url = new URL(req.url);
-
-    if (req.method === "OPTIONS") {
-      return preflight(req);
-    }
-
     // Liveness probe — no auth, no MCP. Lets the route monitor + CI
     // smoke tests confirm the Worker is up without burning bearer
     // credentials.
     if (url.pathname === "/health") {
       return new Response("ok", { status: 200, headers: { "content-type": "text/plain" } });
     }
+    if (url.pathname !== "/mcp") return new Response("Not Found", { status: 404 });
 
-    if (url.pathname !== "/mcp") {
-      return new Response("Not Found", { status: 404 });
-    }
-
-    // `SK-MCP-006` envelope shape: `{ code, message, action }`. The host
-    // LLM surfaces `action` as the next-step instruction so the user
-    // recovers without leaving the chat. We emit it as a JSON-RPC error
-    // body alongside the 401 so MCP-spec clients see a structured
-    // result, not a generic "tool unavailable".
-    const bearer = extractBearer(req);
-    if (!bearer) {
-      return authRequired(
-        "missing_bearer",
-        "Missing Authorization: Bearer header.",
-        "Mint a key at https://app.nlqdb.com/keys and configure it on this connector.",
-      );
-    }
-    if (!KEY_PREFIXES.some((p) => bearer.startsWith(p))) {
-      return authRequired(
-        "bearer_prefix_unrecognised",
-        "Bearer doesn't match a known nlqdb key prefix.",
-        "Use a sk_live_, sk_mcp_, or pk_live_ key from https://app.nlqdb.com/keys.",
-      );
-    }
+    const auth = requireBearer(req);
+    if ("err" in auth) return auth.err;
+    const bearer = auth.ok;
 
     const tracer = trace.getTracer(SERVER_NAME);
     return tracer.startActiveSpan("nlqdb.mcp.http.request", async (span) => {
@@ -117,9 +85,9 @@ export default {
         const e = err as Error;
         span.recordException(e);
         span.setStatus({ code: 2, message: e.message });
-        // The MCP spec requires a JSON-RPC error envelope for transport
-        // failures; a bare 500 would render as "tool unavailable" in the
-        // host. `internal_error` matches the JSON-RPC reserved range.
+        // JSON-RPC envelope for transport failures — a bare 500 would
+        // render as "tool unavailable" in the host. -32603 is the
+        // JSON-RPC reserved `internal_error` code.
         return new Response(
           JSON.stringify({
             jsonrpc: "2.0",
@@ -159,9 +127,6 @@ async function dispatch(req: Request, bearer: string, env: Env): Promise<Respons
     ...(env.NLQDB_API_BASE_URL ? { baseUrl: env.NLQDB_API_BASE_URL } : {}),
   });
 
-  // Fresh server + transport per request — stateless mode forbids
-  // shared instances. Promote to a session-bound McpAgent (DO-backed)
-  // in slice 3b.
   const server = createNlqMcpServer({ client, name: SERVER_NAME, version: SERVICE_VERSION });
   const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined });
 
@@ -178,12 +143,6 @@ async function dispatch(req: Request, bearer: string, env: Env): Promise<Respons
   }
 }
 
-function extractBearer(req: Request): string | null {
-  const auth = req.headers.get("authorization") ?? "";
-  const m = /^Bearer\s+(\S+)$/i.exec(auth);
-  return m ? (m[1] ?? null) : null;
-}
-
 function preflight(req: Request): Response {
   const origin = req.headers.get("origin") ?? "*";
   return new Response(null, {
@@ -196,23 +155,6 @@ function preflight(req: Request): Response {
       vary: "Origin",
     },
   });
-}
-
-function authRequired(code: string, message: string, action: string): Response {
-  return new Response(
-    JSON.stringify({
-      jsonrpc: "2.0",
-      error: { code: -32001, message, data: { code, action } },
-      id: null,
-    }),
-    {
-      status: 401,
-      headers: {
-        ...jsonHeaders(),
-        "www-authenticate": 'Bearer realm="nlqdb-mcp"',
-      },
-    },
-  );
 }
 
 function jsonHeaders(): Record<string, string> {
