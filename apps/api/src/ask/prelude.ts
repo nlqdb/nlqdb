@@ -22,7 +22,7 @@
 
 import type { Engine } from "@nlqdb/db";
 import type { DatabaseSummaryRow } from "../databases/list.ts";
-import { tablesFromSchemaText, type RecentTable } from "./recent-tables.ts";
+import { type RecentTable, tablesFromSchemaText } from "./recent-tables.ts";
 import type { DbRecord } from "./types.ts";
 
 export type AskPreludeDeps = {
@@ -48,9 +48,7 @@ export function kickoffAskPrelude(deps: AskPreludeDeps, principalId: string): As
 export function seedFromPinnedDb(pinned: DbRecord): RecentTable[] {
   if (!pinned.schemaText) return [];
   const tables = tablesFromSchemaText(pinned.schemaText);
-  const slug = pinned.id.startsWith("db_")
-    ? pinned.id.slice(3).replaceAll("_", "-")
-    : pinned.id;
+  const slug = pinned.id.startsWith("db_") ? pinned.id.slice(3).replaceAll("_", "-") : pinned.id;
   return tables.map((table) => ({
     dbId: pinned.id,
     slug,

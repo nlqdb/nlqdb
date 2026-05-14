@@ -784,9 +784,7 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
     // MRU cache is cold (e.g. freshly-adopted user). Best-effort: a D1
     // hiccup leaves the empty MRU, same end-state as today.
     if (recentTables.length === 0 && parsed.body.dbId) {
-      const pinnedDb = await resolveDb(c.env.DB, parsed.body.dbId, principal.id).catch(
-        () => null,
-      );
+      const pinnedDb = await resolveDb(c.env.DB, parsed.body.dbId, principal.id).catch(() => null);
       if (pinnedDb) recentTables = seedFromPinnedDb(pinnedDb);
     }
 
