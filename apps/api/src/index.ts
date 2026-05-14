@@ -1708,10 +1708,13 @@ function buildSignInUrl(referer: string | undefined): string {
       const refUrl = new URL(referer);
       // Only allow same-origin returns — never let an attacker craft
       // a 401 response that hands the surface an off-domain redirect.
-      if (refUrl.origin === origin) {
+      if (refUrl.origin === origin && refUrl.pathname !== "/") {
         // `return_to` matches the param name `sign-in.astro` reads
         // (apps/web/src/pages/auth/sign-in.astro). A mismatched name
         // silently drops the return path on every anon → auth bounce.
+        // Skipping pathname `/` lets the sign-in page's `?? "/app"`
+        // default kick in — the hero is the anon-cap source, and
+        // `nlqdb_pending` only rehydrates on `/app` (SK-ANON-012).
         url.searchParams.set("return_to", refUrl.pathname + refUrl.search);
       }
     } catch {
