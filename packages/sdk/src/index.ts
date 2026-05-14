@@ -307,6 +307,15 @@ export type AskStreamOptions = {
   onTrace?: (event: TraceEvent) => void;
 };
 
+// SK-MCP-014 — DO revalidation probe. `apps/mcp/`'s `McpAgent` caches
+// the resolved `sk_mcp_*` key for 1 s and refreshes via this method.
+// Server-side endpoint is `GET /v1/keys/:hash/status` — session-only,
+// scoped to the key owner's tenant.
+export type KeyStatus = {
+  revoked: boolean;
+  revoked_at?: number;
+};
+
 export type NlqClient = {
   // Returns the union AskOk | AskCreateResult — callers narrow on the
   // shape (`status === "ok"` vs `kind === "create"`). When `dbId` is
@@ -332,6 +341,11 @@ export type NlqClient = {
     req: CreateDatabaseRequest,
     opts?: { signal?: AbortSignal; idempotencyKey?: string },
   ): Promise<CreateDatabaseResult>;
+  // SK-MCP-014 — `apps/mcp/`'s `McpAgent` calls this every 1 s to
+  // re-check `sk_mcp_*` revocation. `keyHash` is the HMAC-SHA256 hex
+  // of the plaintext key (never the plaintext itself), computed via
+  // `hashKey` in the calling Worker.
+  getKeyStatus(keyHash: string, opts?: { signal?: AbortSignal }): Promise<KeyStatus>;
 };
 
 const DEFAULT_BASE_URL = "https://app.nlqdb.com";
@@ -617,6 +631,10 @@ export function createClient(opts: ClientOptions = {}): NlqClient {
         ...(callOpts?.idempotencyKey
           ? { headers: { "idempotency-key": callOpts.idempotencyKey } }
           : {}),
+      }),
+    getKeyStatus: (keyHash, callOpts) =>
+      call<KeyStatus>(`/v1/keys/${encodeURIComponent(keyHash)}/status`, {
+        signal: callOpts?.signal,
       }),
   };
 }

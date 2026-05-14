@@ -1,34 +1,42 @@
-// Hosted MCP Worker at `mcp.nlqdb.com` — `SK-MCP-010` slice 3a.
-// Forwards every tool call to `apps/api/` via `@nlqdb/sdk`; auth-of-
-// record stays there (`SK-MCP-005` / `SK-MCP-007`). Tools come from
-// `packages/mcp/src/tools.ts` via `createServer` — never register
-// inline (`SK-MCP-002`). Per-request fresh `McpServer` + transport:
-// SDK stateless mode forbids shared instances (response-stream leak);
-// promote to `McpAgent` in 3b. Uses `fetch-to-node` because the SDK's
-// Streamable-HTTP transport is Node-flavoured; `nodejs_compat` supplies.
+// Hosted MCP Worker — `mcp.nlqdb.com` connector URL. Slice 3b of `SK-MCP-010`:
+// `OAuthProvider` from `@cloudflare/workers-oauth-provider` owns `/authorize`,
+// `/token`, `/register`, `/.well-known/*` (`SK-MCP-011` dynamic client
+// registration; `SK-MCP-012` single `mcp` scope). `apiHandler` routes `/mcp/*`
+// through `NlqdbMcpAgent` — a `McpAgent` Durable Object per OAuth grant that
+// holds the bound `sk_mcp_*` bearer and revalidates it every 1 s (`SK-MCP-014`).
+// `defaultHandler` (./oauth-bridge.ts) handles `/authorize` by redirecting to
+// `app.nlqdb.com` for Better Auth login + consent, then redeems the one-shot
+// bridge code (`SK-MCP-013`). Slice 3c hardens auth-failure observability +
+// rate-limit; TODO below.
 
-import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
-import { createServer as createNlqMcpServer } from "@nlqdb/mcp";
+import { OAuthProvider } from "@cloudflare/workers-oauth-provider";
 import { setupTelemetry } from "@nlqdb/otel";
-import { createClient } from "@nlqdb/sdk";
-import { trace } from "@opentelemetry/api";
-import { toFetchResponse, toReqRes } from "fetch-to-node";
-import { requireBearer } from "./bearer-gate.ts";
-import { jsonRpcError } from "./jsonrpc.ts";
+import { NlqdbMcpAgent } from "./mcp-agent.ts";
+import { type BridgeEnv, bridgeHandler } from "./oauth-bridge.ts";
 
 const SERVICE_VERSION = "0.1.0";
-const SERVER_NAME = "@nlqdb/mcp-server";
 
-// Advertise the full Streamable-HTTP method set for probing clients;
-// stateless mode (`sessionIdGenerator: undefined`) only serves POST.
-const ALLOWED_METHODS = "GET, POST, DELETE, OPTIONS";
-const ALLOWED_HEADERS = "authorization, content-type, mcp-session-id, mcp-protocol-version";
-
-interface Env {
+export type Env = BridgeEnv & {
   NLQDB_API_BASE_URL?: string;
   GRAFANA_OTLP_ENDPOINT?: string;
   GRAFANA_OTLP_AUTHORIZATION?: string;
-}
+  MCP_AGENT: DurableObjectNamespace;
+};
+
+// Re-export the DO class so wrangler's `[[durable_objects.bindings]]` finds it.
+export { NlqdbMcpAgent };
+
+const oauth = new OAuthProvider<Env>({
+  apiRoute: "/mcp",
+  apiHandler: NlqdbMcpAgent.serve("/mcp", { binding: "MCP_AGENT" }) as never,
+  defaultHandler: bridgeHandler as never,
+  authorizeEndpoint: "/authorize",
+  tokenEndpoint: "/token",
+  clientRegistrationEndpoint: "/register",
+  scopesSupported: ["mcp"],
+  allowImplicitFlow: false,
+  allowPlainPKCE: false,
+});
 
 export default {
   async fetch(req: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
@@ -41,87 +49,8 @@ export default {
       });
       ctx.waitUntil(telemetry.forceFlush());
     }
-
-    if (req.method === "OPTIONS") return preflight(req);
-
-    const url = new URL(req.url);
-    // Unauthenticated liveness probe — route monitor + CI smoke.
-    if (url.pathname === "/health") {
-      return new Response("ok", { status: 200, headers: { "content-type": "text/plain" } });
-    }
-    if (url.pathname !== "/mcp") return new Response("Not Found", { status: 404 });
-
-    const auth = requireBearer(req);
-    if ("err" in auth) return auth.err;
-    const bearer = auth.ok;
-
-    // TODO(slice 3c): auth failures above never enter the span, so
-    // probe traffic is invisible. Add a pre-gate counter with rate-limit.
-    const tracer = trace.getTracer(SERVER_NAME);
-    return tracer.startActiveSpan("nlqdb.mcp.http.request", async (span) => {
-      span.setAttribute("http.method", req.method);
-      span.setAttribute("nlqdb.mcp.bearer_prefix", bearer.slice(0, 8));
-      try {
-        return await dispatch(req, bearer, env);
-      } catch (err) {
-        const e = err as Error;
-        span.recordException(e);
-        span.setStatus({ code: 2, message: e.message });
-        return jsonRpcError({ status: 500, code: -32603, message: "Internal MCP server error." });
-      } finally {
-        span.end();
-      }
-    });
+    // TODO(slice 3c): OAuthProvider's 401/403 rejections on `/mcp` never
+    // enter an OTel span — wrap its `onError` or add a pre-gate counter.
+    return oauth.fetch(req, env, ctx);
   },
 } satisfies ExportedHandler<Env>;
-
-async function dispatch(req: Request, bearer: string, env: Env): Promise<Response> {
-  // GET/DELETE are session-lifecycle (3b); stateless mode is POST-only.
-  if (req.method !== "POST") {
-    return jsonRpcError({
-      status: 405,
-      code: -32000,
-      message: "Method not allowed in stateless mode. Use POST.",
-      headers: { allow: "POST, OPTIONS" },
-    });
-  }
-
-  const client = createClient({
-    apiKey: bearer,
-    ...(env.NLQDB_API_BASE_URL ? { baseUrl: env.NLQDB_API_BASE_URL } : {}),
-  });
-
-  const server = createNlqMcpServer({ client, name: SERVER_NAME, version: SERVICE_VERSION });
-  const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined });
-
-  const { req: nodeReq, res: nodeRes } = toReqRes(req);
-  try {
-    await server.connect(transport);
-    // Clone first — `toReqRes` may have already attached to `req.body`,
-    // so `req.json()` on the original would throw "Body has already been read".
-    const body: unknown = await req.clone().json();
-    await transport.handleRequest(nodeReq, nodeRes, body);
-    return toFetchResponse(nodeRes);
-  } finally {
-    // Best-effort cleanup so isolates don't accumulate transports.
-    void transport.close?.().catch(() => {});
-    void server.close?.().catch(() => {});
-  }
-}
-
-function preflight(req: Request): Response {
-  // TODO(slice 3b): origin-echo is fine while no credentialed flows
-  // exist. When workers-oauth-provider lands, switch to an allow-list
-  // keyed off the OAuth client registry — `*` is banned with credentials.
-  const origin = req.headers.get("origin") ?? "*";
-  return new Response(null, {
-    status: 204,
-    headers: {
-      "access-control-allow-origin": origin,
-      "access-control-allow-methods": ALLOWED_METHODS,
-      "access-control-allow-headers": ALLOWED_HEADERS,
-      "access-control-max-age": "86400",
-      vary: "Origin",
-    },
-  });
-}

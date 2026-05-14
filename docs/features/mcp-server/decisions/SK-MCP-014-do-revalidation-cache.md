@@ -1,0 +1,11 @@
+# SK-MCP-014 — `McpAgent` DO caches `sk_mcp_*` + revalidates every 1 s
+
+- **Decision:** Each MCP session gets a `NlqdbMcpAgent` Durable Object instance (per `(user_id, mcp_host, device_id)`) keyed off the OAuth grant. The DO holds `{bearer, bearerHash, userId, mcpHost, deviceId}` in `this.props` and `{lastRevalidatedAt, revoked}` in `this.state`. Every tool call checks `Date.now() - lastRevalidatedAt < 1000`; if stale, the DO calls `GET /v1/keys/:hash/status` via `@nlqdb/sdk`'s new `getKeyStatus()` method. A `revoked: true` (or 404 / 401) response sets `state.revoked = true` (sticky) and throws an `SK-MCP-006` envelope. The probe goes through a fresh `createClient` so it bypasses the gated-fetch recursion.
+- **Core value:** Fast, Bullet-proof, Honest latency
+- **Why:** Revocation must propagate in ≤ 1 s per `SK-MCP-009`. The DO is the only piece of state the hot path needs; checking D1 every tool call would burn a round-trip on every JSON-RPC message. 1 s amortizes nicely: humans driving an agent send tool calls at < 1 Hz, so the revalidation hits roughly every call but the cache absorbs bursts. The hash in `props` (not just the plaintext) means the probe never re-HMACs.
+- **Consequence in code:** `apps/mcp/src/mcp-agent.ts` implements the DO. `apps/api/src/api-keys.ts` exports `getKeyStatusByHash` + `hashKey` and the `lookupSkKey` query filters `WHERE revoked_at IS NULL` (which migrated in `0013_api_keys_revoked.sql`). `packages/sdk/src/index.ts` adds `NlqClient.getKeyStatus(keyHash)`. `apps/api/src/index.ts` mounts `GET /v1/keys/:hash/status` — session-or-bearer-gated, cross-tenant probes return 404 (don't leak existence). Network-failure on the probe fails open with the current cache (don't kill live sessions on transient blips).
+- **Alternatives rejected:**
+  - Per-request D1 lookup with no cache — Workers Free request budget burns on revalidation noise; `SK-MCP-009` rejected this explicitly.
+  - 5 s TTL — too loose; pushes past `SK-MCP-009`'s 1 s revocation bound.
+  - Push-based broadcast (D1 → DO via WebSocket) — fan-out cost on free tier; 1 s pull cache reaches the same SLO with one read per miss.
+  - Stateless tool calls reusing isolate-cache (slice 3a posture) — couldn't bind `(user_id, mcp_host, device_id)` per session; OAuth grants need a stable per-session identity for audit.
