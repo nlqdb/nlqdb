@@ -6,7 +6,7 @@
 // returns 202 as soon as the queue producer accepts the message
 // (failures land on the OTel span, not the response status).
 
-import type { EventEmitter, NlqSurface, WishlistSurface } from "@nlqdb/events";
+import type { EventEmitter, WishlistSurface } from "@nlqdb/events";
 import { makeKvThrottle } from "./lib/kv-throttle.ts";
 import { sha256Hex } from "./principal.ts";
 
