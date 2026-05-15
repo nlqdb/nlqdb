@@ -11,7 +11,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "1.22.0",
+    "@modelcontextprotocol/sdk": "1.26.0",
     "@nlqdb/mcp": "workspace:*",
     "@nlqdb/otel": "workspace:*",
     "@nlqdb/sdk": "workspace:*",
