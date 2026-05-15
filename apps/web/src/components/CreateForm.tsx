@@ -17,12 +17,7 @@
 // up the real widget when it ships.
 
 import { useEffect, useId, useState } from "react";
-import {
-  type CreateError,
-  type CreateResult,
-  type CreateRow,
-  postAskCreate,
-} from "../lib/api";
+import { type CreateError, type CreateResult, type CreateRow, postAskCreate } from "../lib/api";
 import {
   appendHistory,
   clearDraft,
@@ -197,12 +192,12 @@ function CreateFormInner({ apiBase }: CreateFormProps) {
         )}
       </form>
 
-      {result && <CreateResultView result={result} apiBase={apiBase} />}
+      {result && <CreateResultView result={result} />}
     </section>
   );
 }
 
-function CreateResultView({ result, apiBase }: { result: CreateResult; apiBase: string }) {
+function CreateResultView({ result }: { result: CreateResult }) {
   const grouped = groupByTable(result.sampleRows);
   return (
     <section className="createresult" aria-label="Created database">
