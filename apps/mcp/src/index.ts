@@ -1,27 +1,11 @@
-// Hosted MCP Worker — `mcp.nlqdb.com` connector URL per `SK-MCP-001`'s
-// happy-path walkthrough. Slice 3a of `SK-MCP-010`:
-//
-//   • Streamable-HTTP transport (`SK-MCP-007`) at the `/mcp` route.
-//   • Bearer auth at the protocol boundary — see `./bearer-gate.ts`.
-//     Auth-of-record stays in `apps/api/`; this Worker forwards via
-//     `@nlqdb/sdk` per `SK-MCP-005` + `SK-MCP-007`.
-//   • Per-request fresh `McpServer` + transport. The SDK's stateless
-//     mode requires this — sharing instances across requests can leak
-//     one client's response stream to another. No Durable Objects in
-//     3a; promote to `McpAgent` in slice 3b.
-//   • Three tools (`nlqdb_query`, `nlqdb_list_databases`,
-//     `nlqdb_describe`) come from `@nlqdb/mcp`'s transport-agnostic
-//     dispatcher per `SK-MCP-002`. Adding tools here fails review —
-//     register in `packages/mcp/src/tools.ts`.
-//
-// The MCP SDK's `StreamableHTTPServerTransport` is Node-flavoured
-// (it consumes `node:http` IncomingMessage / ServerResponse). The
-// `fetch-to-node` adapter bridges Cloudflare's Fetch API request/
-// response objects to that shape; `nodejs_compat` provides the
-// `node:http` types at runtime. This matches the well-trodden
-// `mhart/mcp-hono-stateless` pattern. The MCP SDK's
-// `webStandardStreamableHttp` variant ships in newer SDK builds but
-// requires a zod bump that's outside this slice's scope.
+// Hosted MCP Worker at `mcp.nlqdb.com` — `SK-MCP-010` slice 3a.
+// Forwards every tool call to `apps/api/` via `@nlqdb/sdk`; auth-of-
+// record stays there (`SK-MCP-005` / `SK-MCP-007`). Tools come from
+// `packages/mcp/src/tools.ts` via `createServer` — never register
+// inline (`SK-MCP-002`). Per-request fresh `McpServer` + transport:
+// SDK stateless mode forbids shared instances (response-stream leak);
+// promote to `McpAgent` in 3b. Uses `fetch-to-node` because the SDK's
+// Streamable-HTTP transport is Node-flavoured; `nodejs_compat` supplies.
 
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { createServer as createNlqMcpServer } from "@nlqdb/mcp";
@@ -34,11 +18,8 @@ import { requireBearer } from "./bearer-gate.ts";
 const SERVICE_VERSION = "0.1.0";
 const SERVER_NAME = "@nlqdb/mcp-server";
 
-// CORS-allowed methods per the Streamable-HTTP transport spec. POST
-// carries JSON-RPC requests; GET opens an SSE stream for
-// server-initiated events; DELETE terminates a session. Stateless mode
-// (`sessionIdGenerator: undefined`) effectively limits us to POST, but
-// CORS advertises the full set for clients that probe.
+// Advertise the full Streamable-HTTP method set for probing clients;
+// stateless mode (`sessionIdGenerator: undefined`) only serves POST.
 const ALLOWED_METHODS = "GET, POST, DELETE, OPTIONS";
 const ALLOWED_HEADERS = "authorization, content-type, mcp-session-id, mcp-protocol-version";
 
@@ -63,9 +44,7 @@ export default {
     if (req.method === "OPTIONS") return preflight(req);
 
     const url = new URL(req.url);
-    // Liveness probe — no auth, no MCP. Lets the route monitor + CI
-    // smoke tests confirm the Worker is up without burning bearer
-    // credentials.
+    // Unauthenticated liveness probe — route monitor + CI smoke.
     if (url.pathname === "/health") {
       return new Response("ok", { status: 200, headers: { "content-type": "text/plain" } });
     }
@@ -75,10 +54,8 @@ export default {
     if ("err" in auth) return auth.err;
     const bearer = auth.ok;
 
-    // TODO(slice 3c): auth-failure paths above this line never enter a
-    // span, so probe / misconfigured-key traffic is invisible to OTel.
-    // Add a pre-gate counter (or start the span before requireBearer
-    // and tag failures) when rate-limit + observability hardening lands.
+    // TODO(slice 3c): auth failures above never enter the span, so
+    // probe traffic is invisible. Add a pre-gate counter with rate-limit.
     const tracer = trace.getTracer(SERVER_NAME);
     return tracer.startActiveSpan("nlqdb.mcp.http.request", async (span) => {
       span.setAttribute("http.method", req.method);
@@ -89,9 +66,7 @@ export default {
         const e = err as Error;
         span.recordException(e);
         span.setStatus({ code: 2, message: e.message });
-        // JSON-RPC envelope for transport failures — a bare 500 would
-        // render as "tool unavailable" in the host. -32603 is the
-        // JSON-RPC reserved `internal_error` code.
+        // JSON-RPC envelope: bare 500 renders as "tool unavailable".
         return new Response(
           JSON.stringify({
             jsonrpc: "2.0",
@@ -108,10 +83,7 @@ export default {
 } satisfies ExportedHandler<Env>;
 
 async function dispatch(req: Request, bearer: string, env: Env): Promise<Response> {
-  // Stateless mode only handles POST (one JSON-RPC request per call).
-  // GET/DELETE are session-lifecycle methods for the stateful (3b)
-  // path — surface 405 explicitly so clients fall back to POST instead
-  // of polling a dead SSE stream.
+  // GET/DELETE are session-lifecycle (3b); stateless mode is POST-only.
   if (req.method !== "POST") {
     return new Response(
       JSON.stringify({
@@ -137,12 +109,8 @@ async function dispatch(req: Request, bearer: string, env: Env): Promise<Respons
   const { req: nodeReq, res: nodeRes } = toReqRes(req);
   try {
     await server.connect(transport);
-    // Clone before reading the body: `toReqRes(req)` may attach to
-    // `req.body`'s ReadableStream lazily, and a direct `req.json()` on
-    // the original `Request` after that attachment risks
-    // `TypeError: Body has already been read`. Cloning tees the stream
-    // so both copies are independently readable. The body is JSON-RPC
-    // (small), so the tee allocation is negligible.
+    // Clone first — `toReqRes` may have already attached to `req.body`,
+    // so `req.json()` on the original would throw "Body has already been read".
     const body: unknown = await req.clone().json();
     await transport.handleRequest(nodeReq, nodeRes, body);
     return toFetchResponse(nodeRes);
@@ -154,14 +122,9 @@ async function dispatch(req: Request, bearer: string, env: Env): Promise<Respons
 }
 
 function preflight(req: Request): Response {
-  // Echoing the request origin (or `*` fallback) is correct for the
-  // current slice — every request is bearer-authenticated; no cookies,
-  // no credentials.
-  // TODO(slice 3b): when `workers-oauth-provider` adds credentialed
-  // flows (OAuth session cookies on the authorize/callback routes),
-  // CORS-spec forbids `Access-Control-Allow-Origin: *` for credentialed
-  // requests. Replace this with an allow-list keyed off the OAuth
-  // client registry when slice 3b lands.
+  // TODO(slice 3b): origin-echo is fine while no credentialed flows
+  // exist. When workers-oauth-provider lands, switch to an allow-list
+  // keyed off the OAuth client registry — `*` is banned with credentials.
   const origin = req.headers.get("origin") ?? "*";
   return new Response(null, {
     status: 204,

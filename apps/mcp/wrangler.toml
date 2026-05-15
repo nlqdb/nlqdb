@@ -3,37 +3,21 @@ main = "src/index.ts"
 compatibility_date = "2026-04-27"
 compatibility_flags = ["nodejs_compat"]
 
-# Hosted MCP Worker for `mcp.nlqdb.com` — slice 3a of `SK-MCP-010`
-# (`docs/features/mcp-server/FEATURE.md`). The "paste a URL" install
-# path called out in `SK-MCP-001`. This Worker is a thin protocol
-# shim: it terminates the MCP Streamable-HTTP transport and forwards
-# every tool call to the sibling `apps/api/` Worker via `@nlqdb/sdk`
-# (`SK-MCP-005` zero-driver rule + `SK-MCP-007` shared orchestration).
-# `apps/api/` remains the auth-of-record; this Worker holds no D1 / KV
-# bindings and never looks up keys directly.
-#
-# 3b (`workers-oauth-provider` + `McpAgent` Durable Object sessions)
-# and 3c (per-key rate-limit + 1 s isolate-cache revocation per
-# `SK-MCP-009`) ship as follow-on slices.
+# Hosted MCP Worker for `mcp.nlqdb.com` — `SK-MCP-010` slice 3a.
+# Thin shim: forwards every tool call to `apps/api/` via `@nlqdb/sdk`
+# (`SK-MCP-005`). 3b adds OAuth + DO sessions; 3c hardens revocation.
 workers_dev = true
 
 [observability]
 enabled = true
 
-# Public, non-secret config. `NODE_ENV` mirrors `apps/api/`. The base
-# URL targets the upstream API; defaults to `apps/api/`'s
-# `app.nlqdb.com` custom domain. Override locally via `.dev.vars`
-# (gitignored; copy from `.dev.vars.example`).
+# `NLQDB_API_BASE_URL` targets the upstream API; override via `.dev.vars`.
 [vars]
 NODE_ENV = "production"
 NLQDB_API_BASE_URL = "https://app.nlqdb.com"
 
-# `mcp.nlqdb.com` is the canonical hosted-MCP URL per `SK-MCP-001`'s
-# happy-path walkthrough. `custom_domain = true` (vs `pattern +
-# zone_name`) gives this worker exclusive ownership and lets wrangler
-# create the DNS record + cert on first deploy. The route is set up
-# during the slice-3a rollout; until then the Worker is reachable via
-# its `*.workers.dev` URL.
+# `custom_domain = true` gives wrangler exclusive ownership of
+# `mcp.nlqdb.com` and provisions the cert on first deploy.
 [[routes]]
 pattern = "mcp.nlqdb.com"
 custom_domain = true

@@ -1,13 +1,8 @@
-// Bearer auth gate for the hosted MCP Worker. Fast-rejects bearers
-// missing or shape-wrong before the request reaches MCP dispatch.
-// Auth-of-record stays in `apps/api/` per `SK-MCP-005`; this gate
-// only checks the prefix shape so the upstream API enforces
-// revocation, scope, and origin.
+// Prefix-shape gate — fast-rejects malformed bearers. Auth-of-record
+// (revocation, scope, origin) is `apps/api/` per `SK-MCP-005`.
 
-// `pk_live_` works for `nlqdb_query` only (read-only + origin-pinned
-// per `SK-APIKEYS-003`); `sk_live_` and `sk_mcp_` unlock the full
-// surface including `nlqdb_list_databases` and `nlqdb_describe`
-// (`SK-MCP-004`).
+// `pk_live_` is read-only (`SK-APIKEYS-003`); `sk_live_` / `sk_mcp_`
+// unlock the full tool surface (`SK-MCP-004`).
 const KEY_PREFIXES = ["sk_live_", "sk_mcp_", "pk_live_"] as const;
 
 export type BearerGate = { ok: string } | { err: Response };
@@ -41,9 +36,7 @@ function extractBearer(req: Request): string | null {
   return m?.[1] ?? null;
 }
 
-// `SK-MCP-006` envelope: `{ code, message, action }` inside a JSON-RPC
-// error body so MCP-spec clients render the next-step instruction
-// instead of a generic "tool unavailable".
+// `SK-MCP-006` envelope — host LLM renders `action` as the next step.
 function authRequired(code: string, message: string, action: string): Response {
   return new Response(
     JSON.stringify({
