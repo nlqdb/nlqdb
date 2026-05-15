@@ -16,8 +16,7 @@
     "@nlqdb/otel": "workspace:*",
     "@nlqdb/sdk": "workspace:*",
     "@opentelemetry/api": "^1.9.0",
-    "fetch-to-node": "^2.1.0",
-    "zod": "^3.25.0"
+    "fetch-to-node": "^2.1.0"
   },
   "devDependencies": {
     "@cloudflare/vitest-pool-workers": "latest",

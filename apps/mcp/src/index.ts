@@ -14,6 +14,7 @@ import { createClient } from "@nlqdb/sdk";
 import { trace } from "@opentelemetry/api";
 import { toFetchResponse, toReqRes } from "fetch-to-node";
 import { requireBearer } from "./bearer-gate.ts";
+import { jsonRpcError } from "./jsonrpc.ts";
 
 const SERVICE_VERSION = "0.1.0";
 const SERVER_NAME = "@nlqdb/mcp-server";
@@ -66,15 +67,7 @@ export default {
         const e = err as Error;
         span.recordException(e);
         span.setStatus({ code: 2, message: e.message });
-        // JSON-RPC envelope: bare 500 renders as "tool unavailable".
-        return new Response(
-          JSON.stringify({
-            jsonrpc: "2.0",
-            error: { code: -32603, message: "Internal MCP server error." },
-            id: null,
-          }),
-          { status: 500, headers: jsonHeaders() },
-        );
+        return jsonRpcError({ status: 500, code: -32603, message: "Internal MCP server error." });
       } finally {
         span.end();
       }
@@ -85,17 +78,12 @@ export default {
 async function dispatch(req: Request, bearer: string, env: Env): Promise<Response> {
   // GET/DELETE are session-lifecycle (3b); stateless mode is POST-only.
   if (req.method !== "POST") {
-    return new Response(
-      JSON.stringify({
-        jsonrpc: "2.0",
-        error: { code: -32000, message: "Method not allowed in stateless mode. Use POST." },
-        id: null,
-      }),
-      {
-        status: 405,
-        headers: { ...jsonHeaders(), allow: "POST, OPTIONS" },
-      },
-    );
+    return jsonRpcError({
+      status: 405,
+      code: -32000,
+      message: "Method not allowed in stateless mode. Use POST.",
+      headers: { allow: "POST, OPTIONS" },
+    });
   }
 
   const client = createClient({
@@ -136,8 +124,4 @@ function preflight(req: Request): Response {
       vary: "Origin",
     },
   });
-}
-
-function jsonHeaders(): Record<string, string> {
-  return { "content-type": "application/json; charset=utf-8" };
 }

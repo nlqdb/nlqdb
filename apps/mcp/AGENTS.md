@@ -18,7 +18,7 @@ and forwards every tool call to `apps/api/` via `@nlqdb/sdk`.
 ## Architecture posture
 
 - Pure HTTP-API client. **No D1 / KV / R2 bindings on this Worker.** Auth-of-record is `apps/api/`; this Worker forwards bearers via `@nlqdb/sdk` and surfaces upstream errors per `SK-MCP-006`.
-- Per-request `McpServer` + transport (SDK ≥ 1.26 stateless requirement). No shared instances across requests; no Durable Objects in slice 3a.
+- Per-request `McpServer` + transport — shared instances leak response streams between concurrent clients. No Durable Objects in slice 3a.
 - Three tools registered via `createServer()` from `@nlqdb/mcp` (the transport-agnostic dispatcher) — never re-implement tool semantics here. New tools land in `packages/mcp/src/tools.ts` first.
 - Slice ordering per `SK-MCP-010`: 3a (this scaffold + bearer auth) → 3b (`workers-oauth-provider` + `McpAgent` Durable Object sessions) → 3c (per-key rate-limit + 1 s isolate-cache revocation per `SK-MCP-009`).
 
