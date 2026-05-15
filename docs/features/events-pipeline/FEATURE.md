@@ -119,7 +119,7 @@ when-to-load:
 
 ### SK-EVENTS-010 — `feature.*` event domain: every "not yet" path emits a typed signal
 
-- **Decision:** The `feature.*` domain joins `user.*` / `billing.*` / `ask.*`. Phase 1.5 ships two variants: `feature.requested.ddl_via_ask` (LLM emitted DDL on `/v1/ask` — reject reasons in `DDL_REJECT_REASONS`) and `feature.requested.heavier_tier` (any `/v1/ask` 429; distinct from the `auth_required` sign-in nudge). Both carry `principalId` and `surface: NlqSurface`. `notify_paid` and `home.surface_wishlist` landed in `SK-EVENTS-011`. Future variants (`byo_pg`, `team_workspace`, `unknown_cli_verb`) land with their emit site.
+- **Decision:** The `feature.*` domain joins `user.*` / `billing.*` / `ask.*`. Phase 1.5 ships two variants: `feature.requested.ddl_via_ask` (LLM emitted DDL on `/v1/ask` — reject reasons in `DDL_REJECT_REASONS`) and `feature.requested.heavier_tier` (any `/v1/ask` 429; distinct from the `auth_required` sign-in nudge). Both carry `principalId` and `surface: NlqSurface`. `home.surface_wishlist` landed in `SK-EVENTS-011`. Future variants (`byo_pg`, `team_workspace`, `unknown_cli_verb`) land with their emit site.
 - **Core value:** Bullet-proof, Free, Honest latency
 - **Why:** [`GLOBAL-024`](../../decisions/GLOBAL-024-demand-signal-telemetry.md) is the canonical rule; this block is the shape. The §6 trigger reads off `feature.*` counts, so a typed union keeps a property typo from silently swallowing the signal (`SK-EVENTS-002`). Reusing the queue + sink seam (`SK-EVENTS-001`) limits the cost to one `switch` arm per variant.
 - **Consequence in code:**
