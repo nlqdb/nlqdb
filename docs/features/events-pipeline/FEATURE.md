@@ -119,7 +119,7 @@ when-to-load:
 
 ### SK-EVENTS-010 — `feature.*` event domain: every "not yet" path emits a typed signal
 
-- **Decision:** The `feature.*` domain joins `user.*` / `billing.*` / `ask.*`. Phase 1.5 ships two variants: `feature.requested.ddl_via_ask` (LLM emitted DDL on `/v1/ask` — reject reasons in `DDL_REJECT_REASONS`) and `feature.requested.heavier_tier` (any `/v1/ask` 429; distinct from the `auth_required` sign-in nudge). Both carry `principalId` and `surface: NlqSurface`. `notify_paid` and `home.surface_wishlist` landed in `SK-EVENTS-011`. Future variants (`byo_pg`, `team_workspace`, `unknown_cli_verb`) land with their emit site.
+- **Decision:** The `feature.*` domain joins `user.*` / `billing.*` / `ask.*`. Phase 1.5 ships two variants: `feature.requested.ddl_via_ask` (LLM emitted DDL on `/v1/ask` — reject reasons in `DDL_REJECT_REASONS`) and `feature.requested.heavier_tier` (any `/v1/ask` 429; distinct from the `auth_required` sign-in nudge). Both carry `principalId` and `surface: NlqSurface`. `home.surface_wishlist` landed in `SK-EVENTS-011`. Future variants (`byo_pg`, `team_workspace`, `unknown_cli_verb`) land with their emit site.
 - **Core value:** Bullet-proof, Free, Honest latency
 - **Why:** [`GLOBAL-024`](../../decisions/GLOBAL-024-demand-signal-telemetry.md) is the canonical rule; this block is the shape. The §6 trigger reads off `feature.*` counts, so a typed union keeps a property typo from silently swallowing the signal (`SK-EVENTS-002`). Reusing the queue + sink seam (`SK-EVENTS-001`) limits the cost to one `switch` arm per variant.
 - **Consequence in code:**
@@ -134,20 +134,18 @@ when-to-load:
   - Emit on `auth_required` — conflates sign-in nudge with "I want a heavier tier".
   - Per-emit UUID id — burns the quota; per-(user, day) matches the §6 unit-of-decision.
 
-### SK-EVENTS-011 — `notify_paid` + `home.surface_wishlist` close the Phase 1.5 capture pipe
+### SK-EVENTS-011 — `home.surface_wishlist` wires the marketing CodePanel into the demand-signal pipeline
 
-- **Decision:** Two new variants + two new endpoints. `feature.requested.notify_paid` carries `principalId`, `surface: NlqSurface`, `cta: NotifyPaidCta` (`"db_create_success" | "anon_warning" | "rate_limit"`). `home.surface_wishlist` carries `principalId` and a free-string `surface`. `POST /v1/events/notify-paid` requires Principal; `POST /v1/events/wishlist` is public (KV-throttled 10/min/IP). Both ack 202 + waitUntil per `SK-EVENTS-003`.
+- **Decision:** `home.surface_wishlist` carries `principalId` and `surface: WishlistSurface`. `POST /v1/events/wishlist` is public (KV-throttled 10/min/IP), acks 202 + waitUntil per `SK-EVENTS-003`.
 - **Core value:** Bullet-proof, Free, Honest latency
-- **Why:** Phase 1.5 exit gate (`phase-plan.md §3`) requires *"the 'notify me when paid launches' queue is non-empty"*. `SK-EVENTS-010` shipped the implicit-emit half; the gate hinges on the explicit CTA click. The `cta` discriminator lets the §6 dashboard slice "rate-limit-panic clicks" from "deliberate success-state opt-ins". The wishlist click previously fired a DOM CustomEvent no one listened to. Wishlist stays public so a marketing visitor doesn't need an anon-bearer for one optional click.
+- **Why:** The wishlist click previously fired a DOM CustomEvent no one listened to. Wiring it into the events pipeline routes it to the `demand-signal` LogSnag channel where the §6 monetization trigger reads off aggregate surface interest. Wishlist stays public so a marketing visitor doesn't need an anon-bearer for one optional click.
 - **Consequence in code:**
-  - `packages/events/src/types.ts`: two variants join `ProductEvent`. `defaultId()` keys `notify_paid` per-(principal, cta, day) and `surface_wishlist` per-(principal, surface, day) — preserves the distinct-intent-moment signal.
-  - `apps/events-worker/src/sinks/logsnag.ts`: both route to `demand-signal`. `notify_paid` sets `notify: true`; `surface_wishlist` sets `notify: false` (aggregate matters).
-  - `apps/api/src/events-feature.ts`: `recordNotifyPaid()` + `recordWishlist()` pure-function handlers. `recordWishlist` derives `principalId = wl:${sha256(ip:day, 16)}` — distinct prefix from `anon:` so LogSnag's user_id facet doesn't conflate the two.
+  - `packages/events/src/types.ts`: `HomeSurfaceWishlistEvent` joins `ProductEvent`. `defaultId()` keys per-(principal, surface, day) — preserves distinct-surface signals.
+  - `apps/events-worker/src/sinks/logsnag.ts`: routes to `demand-signal` with `notify: false` (aggregate matters, not per-click).
+  - `apps/api/src/events-feature.ts`: `recordWishlist()` derives `principalId = wl:${sha256(ip:day, 16)}` — distinct prefix from `anon:` so LogSnag's user_id facet doesn't conflate the two.
   - `apps/api/src/index.ts`: `/v1/events/*` rides the existing credentialed CORS allow-list.
-  - `apps/web/src/components/CreateForm.tsx`: the `NotifyPaidCta` sub-component renders on the three documented hosts. Self-disables on click; producer-side dedup handles cross-session repeats.
   - `apps/web/src/components/CodePanel.astro`: existing wishlist handler now also fires a `keepalive: true` fetch to `/v1/events/wishlist`. DOM CustomEvent stays for legacy listeners; mailto: still runs.
 - **Alternatives rejected:**
-  - Collapse to one `feature.requested.opt_in` with a `via:` tag — wishlist is `home.*` because its no-auth lifecycle is structurally distinct.
   - Mint an anon-bearer on marketing load — coerces every visitor into an auth artifact for one optional click.
   - Emit on render rather than click — destroys the intent signal; a render is not an opt-in.
 
@@ -169,4 +167,3 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 - **Queue free-tier ceiling.** 10K ops/day = ~3.3K msgs/day at 3 ops/msg. Head-room is thin; capture a "hot signal" alert when daily ops cross 70%.
 - **Inbound-email sink.** Cloudflare Email Routing is wired separately; decide whether a future `support.email_received` event flows through this pipeline.
 - **Wishlist global cap (SK-EVENTS-011).** Only per-IP throttle (10/min). Distributed-IP abuse can exceed the Queue free-tier ceiling at request time even though producer-side dedup bounds LogSnag burn. Add a daily global cap on `/v1/events/wishlist` when `nlqdb.events.wishlist` shows abuse.
-- **NotifyPaidCta remount state (SK-EVENTS-011).** Click state is component-local; remounting `CreateResultView` restores the button. Producer-side per-(principal, cta, day) dedup absorbs the re-click at the sink; the quibble is UX only. Promote to a "have you opted in today" lookup if user-tests show confusion.

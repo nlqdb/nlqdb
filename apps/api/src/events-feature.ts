@@ -1,30 +1,14 @@
-// `feature.*` / `home.*` demand-signal endpoints (SK-EVENTS-011).
+// `home.surface_wishlist` demand-signal endpoint (SK-EVENTS-011).
 //
-// Two routes, both pure-fanout-into-the-events-pipeline:
-//
-//   POST /v1/events/notify-paid   — requires Principal (anon or authed)
-//   POST /v1/events/wishlist      — public, IP-hash-bucketed for dedup
-//
-// Both close the Phase 1.5 exit-gate criterion "the 'notify me when
-// paid launches' queue is non-empty (demonstrates the capture pipe
-// works)" (`docs/phase-plan.md §3`). They emit `feature.requested.notify_paid`
-// and `home.surface_wishlist` respectively; the LogSnag sink routes
-// both to the `demand-signal` channel where the §6 monetization
-// trigger is read off.
+//   POST /v1/events/wishlist — public, IP-hash-bucketed for dedup
 //
 // Per `SK-EVENTS-003`, `events.emit()` is fire-and-forget — the route
 // returns 202 as soon as the queue producer accepts the message
 // (failures land on the OTel span, not the response status).
 
-import type { EventEmitter, NlqSurface, NotifyPaidCta, WishlistSurface } from "@nlqdb/events";
+import type { EventEmitter, WishlistSurface } from "@nlqdb/events";
 import { makeKvThrottle } from "./lib/kv-throttle.ts";
 import { sha256Hex } from "./principal.ts";
-
-const NOTIFY_PAID_CTAS: ReadonlySet<NotifyPaidCta> = new Set([
-  "db_create_success",
-  "anon_warning",
-  "rate_limit",
-]);
 
 // Source-of-truth check. Must mirror the `WishlistSurface` union in
 // `packages/events/src/types.ts` AND the `data-wishlist` attributes in
@@ -45,34 +29,10 @@ const WISHLIST_SURFACES: ReadonlySet<WishlistSurface> = new Set([
 const WISHLIST_RATE_WINDOW_SECONDS = 60;
 const WISHLIST_RATE_MAX = 10;
 
-export type NotifyPaidResult =
-  | { status: 202; pendingEmit: Promise<unknown> }
-  | { status: 400; reason: "invalid_cta" };
-
 export type WishlistResult =
   | { status: 202; pendingEmit: Promise<unknown> }
   | { status: 400; reason: "invalid_surface" }
   | { status: 429 };
-
-export function isNotifyPaidCta(value: unknown): value is NotifyPaidCta {
-  return typeof value === "string" && NOTIFY_PAID_CTAS.has(value as NotifyPaidCta);
-}
-
-export function recordNotifyPaid(
-  events: EventEmitter,
-  principalId: string,
-  surface: NlqSurface,
-  cta: unknown,
-): NotifyPaidResult {
-  if (!isNotifyPaidCta(cta)) return { status: 400, reason: "invalid_cta" };
-  const pendingEmit = events.emit({
-    name: "feature.requested.notify_paid",
-    principalId,
-    surface,
-    cta,
-  });
-  return { status: 202, pendingEmit };
-}
 
 export type WishlistDeps = {
   kv: KVNamespace;
