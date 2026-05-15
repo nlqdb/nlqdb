@@ -105,24 +105,19 @@ and across every existing feature.
   intent without payment infra.
 - **`nlqdb.surface` label** added to existing metrics so per-feature
   usage breakdown is queryable (db.create vs anon vs chat vs MCP vs CLI).
-- **"Notify me when paid launches" CTA** wired into the success state
-  of `db.create`, the anon-mode 72h warning, and rate-limit hits. Pure
-  product event, no Stripe.
 
 **Exit gate:** every Phase 1 surface emits a `surface` label and a
 demand-signal event on the documented failure paths; trust-UX diff
 preview measurably reduces the destructive-op retry rate in user
-tests; the "notify me when paid launches" queue is non-empty
-(demonstrates the capture pipe works — absolute thresholds belong to
-§6, not here).
+tests.
 
 **Status (2026-05):** capture-pipe shipped. `SK-EVENTS-010` +
-`SK-EVENTS-011` wired every documented "not yet" path and the three
-`notify_paid` hosts; `SK-TRUST-001` + `SK-TRUST-002` shipped diff
-preview and trace on `/v1/ask` write paths; `nlqdb.surface` label
-flows on every metric. Remaining gate items — destructive-op
-retry-rate reduction (user-test signal) and queue non-empty (real
-traffic) — measure off Phase 2 distribution, not new engineering.
+`SK-EVENTS-011` wired every documented "not yet" path plus the
+marketing-page wishlist click; `SK-TRUST-001` + `SK-TRUST-002` shipped
+diff preview and trace on `/v1/ask` write paths; `nlqdb.surface` label
+flows on every metric. Remaining gate item — destructive-op
+retry-rate reduction (user-test signal) — measures off Phase 2
+distribution, not new engineering.
 
 ---
 
@@ -208,8 +203,7 @@ whichever happens first:
 
 | Signal | Threshold | Implication |
 |---|---|---|
-| "Notify me when paid launches" CTA (`GLOBAL-024`) | ≥ 50 unique submissions over 30 days | Stated intent; ship Stripe Checkout in test mode + a $1 founding-supporter button as a hard-signal layer. |
-| Unsolicited inbound asking how to pay | ≥ 5 across GH / Discord / email | Revealed preference. Founder-led pricing conversation. |
+| Unsolicited inbound asking how to pay | ≥ 5 across GH / Discord / email | Revealed preference. Founder-led pricing conversation. Ship Stripe Checkout in test mode + a $1 founding-supporter button as a hard-signal layer. |
 | Test-mode Stripe Checkout completion rate (if shipped) | ≥ 30% over 50 sessions | Strong-enough signal to commit to Stripe live + Hobby $10 + Lago. |
 
 The thresholds above are starting heuristics, not measured truths —

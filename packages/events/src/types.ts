@@ -73,24 +73,6 @@ export type FeatureRequestedHeavierTierEvent = {
   surface: NlqSurface;
 };
 
-// `feature.requested.notify_paid` is the user-clicked CTA variant of the
-// GLOBAL-024 demand-signal domain (SK-EVENTS-011). Distinct from
-// `feature.requested.heavier_tier`, which fires implicitly on a 429 — this
-// fires only when the user *clicks* the "Notify me when paid launches"
-// button on one of the three documented hosts. The `cta` label distinguishes
-// which surface produced the signal so the §6 monetization-trigger
-// dashboard can slice by intent strength (success-state click ≠ panic-on-
-// rate-limit click). One signal per principal per day per cta keeps the
-// LogSnag 2,500/mo quota intact (`SK-EVENTS-006`).
-export type NotifyPaidCta = "db_create_success" | "anon_warning" | "rate_limit";
-
-export type FeatureRequestedNotifyPaidEvent = {
-  name: "feature.requested.notify_paid";
-  principalId: string;
-  surface: NlqSurface;
-  cta: NotifyPaidCta;
-};
-
 // Closed union of wishlist surface ids. Must match the `data-wishlist`
 // attributes in `apps/web/src/components/CodePanel.astro` AND the
 // `WISHLIST_SURFACES` validation set in `apps/api/src/events-feature.ts`.
@@ -132,7 +114,6 @@ export type ProductEvent =
   | AskCompletedEvent
   | FeatureRequestedDdlViaAskEvent
   | FeatureRequestedHeavierTierEvent
-  | FeatureRequestedNotifyPaidEvent
   | HomeSurfaceWishlistEvent;
 
 // Envelope wrapping the event with producer-side metadata. The consumer

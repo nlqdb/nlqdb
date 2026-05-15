@@ -1,13 +1,13 @@
-// SK-EVENTS-011 — unit tests for the demand-signal CTA handlers
-// (`/v1/events/notify-paid` + `/v1/events/wishlist`).
+// SK-EVENTS-011 — unit tests for the demand-signal wishlist handler
+// (`/v1/events/wishlist`).
 //
-// Verifies the validation gate (closed CTA / wishlist surface unions),
+// Verifies the validation gate (closed wishlist surface union),
 // the KV-throttle on the public wishlist endpoint, and the pure-fanout
-// behaviour into the EventEmitter — the handlers never block on the
-// emit, never throw on emitter failure, and never invent principalIds.
+// behaviour into the EventEmitter — the handler never blocks on the
+// emit, never throws on emitter failure, and never invents principalIds.
 
 import { describe, expect, it, vi } from "vitest";
-import { recordNotifyPaid, recordWishlist } from "../src/events-feature.ts";
+import { recordWishlist } from "../src/events-feature.ts";
 
 function stubEvents() {
   return { emit: vi.fn().mockResolvedValue(undefined) };
@@ -25,45 +25,6 @@ function stubKv(initial: Record<string, string> = {}): KVNamespace {
     }),
   } as unknown as KVNamespace;
 }
-
-describe("recordNotifyPaid", () => {
-  it("emits feature.requested.notify_paid with the cta passed through", () => {
-    const events = stubEvents();
-    const result = recordNotifyPaid(events, "anon:abc", "hero", "db_create_success");
-    expect(result.status).toBe(202);
-    expect(events.emit).toHaveBeenCalledWith({
-      name: "feature.requested.notify_paid",
-      principalId: "anon:abc",
-      surface: "hero",
-      cta: "db_create_success",
-    });
-  });
-
-  it("rejects an unknown cta with 400 invalid_cta", () => {
-    const events = stubEvents();
-    const result = recordNotifyPaid(events, "anon:abc", "hero", "bogus_cta");
-    expect(result.status).toBe(400);
-    if (result.status !== 400) throw new Error("unreachable");
-    expect(result.reason).toBe("invalid_cta");
-    expect(events.emit).not.toHaveBeenCalled();
-  });
-
-  it("rejects a non-string cta with 400 invalid_cta", () => {
-    const events = stubEvents();
-    const result = recordNotifyPaid(events, "u_1", "chat", 42);
-    expect(result.status).toBe(400);
-    expect(events.emit).not.toHaveBeenCalled();
-  });
-
-  it("accepts all three documented ctas", () => {
-    const events = stubEvents();
-    for (const cta of ["db_create_success", "anon_warning", "rate_limit"] as const) {
-      const out = recordNotifyPaid(events, "u_1", "chat", cta);
-      expect(out.status).toBe(202);
-    }
-    expect(events.emit).toHaveBeenCalledTimes(3);
-  });
-});
 
 describe("recordWishlist", () => {
   it("emits home.surface_wishlist with a hashed per-day principalId", async () => {

@@ -118,7 +118,6 @@ sit on the existing events pipeline. See [phase-plan.md §3](./docs/phase-plan.m
 
 - ◯ Trust UX baseline ([`GLOBAL-023`](./docs/decisions/GLOBAL-023-trust-ux-baseline.md)): diff preview on writes/DDL · visible SQL trace on every response · refuse-on-low-confidence
 - ◯ Demand-signal telemetry ([`GLOBAL-024`](./docs/decisions/GLOBAL-024-demand-signal-telemetry.md)): typed product events on every "not yet" path
-- ◯ "Notify me when paid launches" CTA (the cheapest layer of the §6 monetization trigger)
 
 ### Phase 2 — Distribution (agent + developer surfaces)
 
@@ -176,7 +175,6 @@ obsolete by the move to GH Actions for every surface.
 These ship when one of the [`phase-plan.md §6`](./docs/phase-plan.md)
 demand-signal triggers trips, not on the Phase 2 rollover:
 
-- ≥ 50 unique "notify me when paid launches" submissions in 30 days, or
 - ≥ 5 unsolicited inbound asking how to pay, or
 - ≥ 30% Stripe-test-mode Checkout completion over 50 sessions.
 
