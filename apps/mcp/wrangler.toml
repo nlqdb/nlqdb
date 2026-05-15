@@ -1,0 +1,23 @@
+name = "nlqdb-mcp-server"
+main = "src/index.ts"
+compatibility_date = "2026-04-27"
+compatibility_flags = ["nodejs_compat"]
+
+# Hosted MCP Worker for `mcp.nlqdb.com` — `SK-MCP-010` slice 3a.
+# Thin shim: forwards every tool call to `apps/api/` via `@nlqdb/sdk`
+# (`SK-MCP-005`). 3b adds OAuth + DO sessions; 3c hardens revocation.
+workers_dev = true
+
+[observability]
+enabled = true
+
+# `NLQDB_API_BASE_URL` targets the upstream API; override via `.dev.vars`.
+[vars]
+NODE_ENV = "production"
+NLQDB_API_BASE_URL = "https://app.nlqdb.com"
+
+# `custom_domain = true` gives wrangler exclusive ownership of
+# `mcp.nlqdb.com` and provisions the cert on first deploy.
+[[routes]]
+pattern = "mcp.nlqdb.com"
+custom_domain = true

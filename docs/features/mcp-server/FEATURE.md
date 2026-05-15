@@ -10,13 +10,14 @@ when-to-load:
 # Feature: Mcp Server
 
 **One-liner:** MCP server + `nlq mcp install` host detection (Claude Desktop, Cursor, etc.).
-**Status:** partial (Phase 2) — design fully locked (`SK-MCP-001..010`). **Slices 1 + 2 of `SK-MCP-010` shipped.** Slice 1: `sk_live_` + `sk_mcp_<host>_<device>_` mint via `POST /v1/keys`, HMAC-SHA256 hashing in `apps/api/src/api-keys.ts`, principal wiring in `apps/api/src/principal.ts`, `GET /v1/databases` account-scoped principal gate, `last_used_at` bump on each successful lookup — see `api-keys/FEATURE.md`. Slice 2: `packages/mcp/` has tool contracts, a transport-agnostic dispatcher, stdio transport, and a `bun build` pipeline producing `dist/index.js` for `npx @nlqdb/mcp`. All three tools (`nlqdb_query`, `nlqdb_list_databases`, `nlqdb_describe`) now work end-to-end against `sk_live_*` / `sk_mcp_*` keys; `nlqdb_query` continues to work against `pk_live_*` and surfaces `requires_confirm` + diff (`SK-TRUST-001`). Slices 3 (hosted Worker at `mcp.nlqdb.com`) and 4 (`nlq mcp install`) live with their respective features and remain open.
-**Owners (code):** `packages/mcp/**`
+**Status:** partial (Phase 2) — design fully locked (`SK-MCP-001..010`). **Slices 1, 2, and 3a of `SK-MCP-010` shipped** (see that decision below for slice-by-slice scope); slices 3b (OAuth + `McpAgent` DO sessions), 3c (rate-limit + revocation cache), and 4 (`nlq mcp install`) remain open.
+**Owners (code):** `packages/mcp/**`, `apps/mcp/**`
 **Cross-refs:** docs/architecture.md §3.4 (MCP server) · docs/architecture.md §3 (MCP server row) · docs/phase-plan.md (Phase 2 mcp slice)
 
 ## Touchpoints — read this feature before editing
 
 - `packages/mcp/**`
+- `apps/mcp/**`
 
 ## Decisions
 
@@ -114,10 +115,10 @@ when-to-load:
 
 ### SK-MCP-010 — Implementation slicing: keys → stdio → hosted → install
 
-- **Decision:** Four ordered slices, each independently reviewable. **Slice 1 (shipped):** `sk_live_*` + `sk_mcp_*` minting / hashing / lookup in `apps/api/src/api-keys.ts` + `principal.ts`, plus the canonical `POST /v1/keys` mint endpoint per `SK-APIKEYS-007` — lives in `api-keys/FEATURE.md`. **Slice 2 (shipped):** `packages/mcp/` local-stdio package — tool contracts, transport-agnostic dispatcher, stdio entry, `bin/nlqdb-mcp`, `bun build` pipeline emitting `dist/index.js`. With slice 1 live, all three tools (`nlqdb_query`, `nlqdb_list_databases`, `nlqdb_describe`) work end-to-end against `sk_live_*` / `sk_mcp_*` keys; `nlqdb_query` continues to work against `pk_live_*`. **Slice 3 (open):** Hosted Worker at `mcp.nlqdb.com` — Streamable-HTTP transport, `workers-oauth-provider`, Durable-Object-backed sessions per the [Cloudflare MCP pattern](https://developers.cloudflare.com/agents/model-context-protocol/). **Slice 4 (open):** `nlq mcp install` host detection (Go) — consumes the `SK-MCP-008` registry; lives in `cli/FEATURE.md`.
+- **Decision:** Four ordered slices, each independently reviewable. Slice 3 is sub-sliced (3a → 3b → 3c) so the hosted Worker ships end-to-end with bearer auth before OAuth and rate-limit hardening land. **Slice 1 (shipped, `api-keys/FEATURE.md`):** `sk_live_*` + `sk_mcp_*` mint / hash / lookup in `apps/api/src/{api-keys.ts,principal.ts}` + the canonical `POST /v1/keys` per `SK-APIKEYS-007`. **Slice 2 (shipped):** `packages/mcp/` local-stdio package — tool contracts, transport-agnostic dispatcher, stdio entry, `bun build` → `dist/index.js`. **Slice 3a (shipped):** `apps/mcp/` Cloudflare Worker (`nlqdb-mcp-server`) ready to bind to `mcp.nlqdb.com` — MCP Streamable-HTTP at `POST /mcp` via `@modelcontextprotocol/sdk` + `fetch-to-node` bridge, per-request fresh `McpServer` (stateless). Bearer prefix gate forwards to `apps/api/` via `@nlqdb/sdk` per `SK-MCP-005` + `SK-MCP-007`. See `apps/mcp/AGENTS.md`. **Slice 3b (open):** `workers-oauth-provider` + `McpAgent` DO-backed sessions per the [Cloudflare MCP pattern](https://developers.cloudflare.com/agents/model-context-protocol/) so the connector-URL OAuth flow mints `sk_mcp_<host>_<device>_*` server-side. **Slice 3c (open):** per-key rate-limit bucket + 1 s isolate-cache for revocation propagation (`SK-MCP-009`). **Slice 4 (open, `cli/FEATURE.md`):** `nlq mcp install` host detection (Go) — consumes the `SK-MCP-008` registry.
 - **Core value:** Simple, Honest latency, Goal-first
 - **Why:** Shipping `packages/mcp/` before keys is intentional: tool contracts and dispatch are stable regardless of auth backend, and `pk_live_*` covers the day-one agent shape (one memory DB per agent). Slice ordering is enforced by review, not code gates; the FEATURE.md is the source of truth.
-- **Consequence in code:** `auth_required` responses (now only fired when a request arrives without a valid bearer) follow `SK-MCP-006`'s shape; the helper action text in `packages/mcp/src/tools.ts` points the user at `https://app.nlqdb.com/keys` for the dashboard mint flow. The package keeps `main: src/index.ts` for monorepo dev (Bun loads `.ts`); `publishConfig` flips `main`/`exports` to `dist/index.js` when published so `npx @nlqdb/mcp` works under Node 20+. Reviewers reject sk-key minting logic inside `packages/mcp/` — it lives in `apps/api/` per `GLOBAL-021`.
+- **Consequence in code:** `auth_required` responses (now only fired when a request arrives without a valid bearer) follow `SK-MCP-006`'s shape; the helper action text in `packages/mcp/src/tools.ts` points the user at `https://app.nlqdb.com/keys` for the dashboard mint flow. The package keeps `main: src/index.ts` for monorepo dev (Bun loads `.ts`); `publishConfig` flips `main`/`exports` to `dist/index.js` when published so `npx @nlqdb/mcp` works under Node 20+. `apps/mcp/` is a thin protocol shim — it forwards bearers to `apps/api/` via `@nlqdb/sdk` and holds no D1 / KV bindings. Reviewers reject sk-key minting logic inside `packages/mcp/` or `apps/mcp/` — it lives in `apps/api/` per `GLOBAL-021`.
 - **Alternatives rejected:**
   - Bundle slice 1 + slice 2 — doubles PR size; couples auth-backend work with package wiring.
   - Drop the unsupported tools until slice 1 lands — leaves the tool surface ambiguous; typed `auth_required` is cleaner.
@@ -147,8 +148,8 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 
 ## Open questions / known unknowns
 
-- **Promote-to-account UX (UI-only — server contract locked).** The server contract is `PATCH /v1/databases/:id { scope: "account" }` — flips the `(mcp_host, device_id)` tag to NULL on a DB row. Dashboard button placement, confirmation modal copy, and post-promote redirect target are product-owner calls. Resolve before slice 3 ships (hosted Worker surfaces the prompt).
-- **MCP `confirm_required` host-rendering audit.** Some hosts render `confirm_required` as a single "Approve" button without the diff body — that breaks `SK-TRUST-001`. Audit (Claude Desktop, Cursor, Zed, Windsurf, VS Code Continue, Cline) runs against slice 2; offending hosts get a documented warning in `nlq mcp install` until they fix it. Cross-ref: [`trust-ux/FEATURE.md`](../trust-ux/FEATURE.md) Open questions.
+- **Promote-to-account UX (UI-only — server contract locked).** The server contract is `PATCH /v1/databases/:id { scope: "account" }` — flips the `(mcp_host, device_id)` tag to NULL on a DB row. Dashboard button placement, confirmation modal copy, and post-promote redirect target are product-owner calls. Resolve before slice 3b ships (the connector-URL OAuth flow surfaces the prompt).
+- **MCP `confirm_required` host-rendering audit.** Some hosts render `confirm_required` as a single "Approve" button without the diff body — that breaks `SK-TRUST-001`. Audit (Claude Desktop, Cursor, Zed, Windsurf, VS Code Continue, Cline) runs against slices 2 + 3a; offending hosts get a documented warning in `nlq mcp install` until they fix it. Cross-ref: [`trust-ux/FEATURE.md`](../trust-ux/FEATURE.md) Open questions.
 
 ## Happy path walkthrough
 

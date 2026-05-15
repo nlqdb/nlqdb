@@ -1,0 +1,28 @@
+{
+  "name": "@nlqdb/mcp-server",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "build": "wrangler deploy --dry-run --outdir dist",
+    "deploy": "wrangler deploy",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "1.22.0",
+    "@nlqdb/mcp": "workspace:*",
+    "@nlqdb/otel": "workspace:*",
+    "@nlqdb/sdk": "workspace:*",
+    "@opentelemetry/api": "^1.9.0",
+    "fetch-to-node": "^2.1.0"
+  },
+  "devDependencies": {
+    "@cloudflare/vitest-pool-workers": "latest",
+    "@cloudflare/workers-types": "latest",
+    "typescript": "^5.6.0",
+    "vitest": "^4.1.0",
+    "wrangler": "^4.0.0"
+  }
+}
