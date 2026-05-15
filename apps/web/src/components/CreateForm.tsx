@@ -305,4 +305,3 @@ function messageFor(error: CreateError): string {
       return "Couldn't create the DB — try again.";
   }
 }
-
