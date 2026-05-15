@@ -24,6 +24,7 @@
 // round-tripped verbatim.
 
 import type { AuthRequest, OAuthHelpers } from "@cloudflare/workers-oauth-provider";
+import { createClient, NlqdbApiError } from "@nlqdb/sdk";
 
 const BRIDGE_CALLBACK_PATH = "/oauth/mcp-bridge-callback";
 
@@ -32,6 +33,11 @@ export type BridgeEnv = {
   OAUTH_KV: KVNamespace;
   NLQDB_API_BASE_URL?: string;
   NLQDB_WEB_ORIGIN?: string;
+  // Shared with `apps/api/`. Used here as the HMAC key for the OAuth
+  // flow-state blob — see `signBlob` / `verifyBlob`. Required at
+  // runtime; missing it makes `/authorize` return 500 rather than
+  // silently downgrading to an unsigned blob.
+  BETTER_AUTH_SECRET: string;
   // `apps/api/` accepts a session cookie. The MCP Worker doesn't share
   // cookies with `apps/api/` directly — the consent page on
   // `${NLQDB_WEB_ORIGIN}` calls `POST /v1/oauth/mcp-callback` with the
@@ -96,7 +102,7 @@ async function handleAuthorize(req: Request, env: BridgeEnv): Promise<Response> 
     "/oauth/mcp-authorize",
     env.NLQDB_WEB_ORIGIN ?? "https://app.nlqdb.com",
   );
-  consentUrl.searchParams.set("flow", encodeBlob(stateBlob));
+  consentUrl.searchParams.set("flow", await signBlob(stateBlob, env.BETTER_AUTH_SECRET));
   consentUrl.searchParams.set("client_name", client.clientName ?? client.clientId);
   // Build the callback URL the consent screen redirects back to.
   // Same origin as this Worker.
@@ -113,36 +119,27 @@ async function handleBridgeCallback(url: URL, env: BridgeEnv): Promise<Response>
   }
   let stateBlob: BridgeStateBlob;
   try {
-    stateBlob = decodeBlob<BridgeStateBlob>(flow);
+    stateBlob = await verifyBlob<BridgeStateBlob>(flow, env.BETTER_AUTH_SECRET);
   } catch {
+    // Malformed envelope, missing signature, or signature mismatch.
+    // Single 400 — never tell the attacker which.
     return new Response("Malformed flow blob", { status: 400 });
   }
-  // Redeem the one-shot code at `apps/api/` via the SDK — same KV
-  // namespace, so we redeem locally instead. The web app's KV is
-  // `apps/api/`'s `KV` binding; this Worker doesn't have it. We hit
-  // `${API}/v1/oauth/mcp-callback/redeem` via the SDK.
-  //
-  // Implementation note: the redemption path is an internal Worker-
-  // to-Worker call. We POST to `apps/api/`'s redemption endpoint
-  // with the one-shot code; on success the response carries the
+  // Worker-to-Worker call to `apps/api/`'s redemption endpoint via the
+  // SDK (`GLOBAL-001`). The one-shot `code` is the auth proof — no
+  // bearer needed on the client. On success the response carries the
   // minted `sk_mcp_*` key + claims, which we install as the OAuth
   // grant's `props`.
-  const apiBase = env.NLQDB_API_BASE_URL ?? "https://app.nlqdb.com";
-  const redeemRes = await fetch(`${apiBase}/v1/oauth/mcp-callback/redeem`, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ code }),
+  const sdk = createClient({
+    ...(env.NLQDB_API_BASE_URL ? { baseUrl: env.NLQDB_API_BASE_URL } : {}),
   });
-  if (!redeemRes.ok) {
-    return new Response(`Bridge redemption failed: ${redeemRes.status}`, { status: 502 });
+  let redeemed: Awaited<ReturnType<typeof sdk.redeemOAuthBridgeCode>>;
+  try {
+    redeemed = await sdk.redeemOAuthBridgeCode(code);
+  } catch (err) {
+    const status = err instanceof NlqdbApiError ? err.httpStatus : 502;
+    return new Response(`Bridge redemption failed: ${status}`, { status: 502 });
   }
-  const redeemed = (await redeemRes.json()) as {
-    user_id: string;
-    mcp_host: string;
-    device_id: string;
-    bearer: string;
-    bearer_hash: string;
-  };
   // The flow blob from the consent screen pins the client_id +
   // redirect_uri the MCP host originally requested. Re-validate
   // before completing the grant — a swapped client_id between
@@ -172,26 +169,62 @@ async function handleBridgeCallback(url: URL, env: BridgeEnv): Promise<Response>
   return Response.redirect(redirectTo, 302);
 }
 
-// Base64url-encoded JSON. Keeps the blob URL-safe without a signing
-// step — integrity is enforced by `completeAuthorization` cross-
-// checking the `client_id` against the OAuth registry. The blob
-// can't elevate a request to a different client because the registry
-// lookup happens at `completeAuthorization` time.
-function encodeBlob(value: unknown): string {
-  const json = JSON.stringify(value);
-  const bytes = new TextEncoder().encode(json);
+// Signed envelope: `<base64url(json)>.<base64url(hmac)>`. The blob
+// round-trips the OAuth flow context (clientId, redirectUri, scope,
+// state, PKCE challenge) through the consent screen URL. Signing is
+// non-negotiable — without it an attacker can substitute their own
+// redirectUri (auth-code exfiltration) or strip the PKCE challenge
+// (`completeAuthorization` re-checks clientId against the registry but
+// trusts the other fields). HMAC-SHA256 over the payload, keyed by
+// `BETTER_AUTH_SECRET`.
+async function signBlob(value: unknown, secret: string): Promise<string> {
+  const payload = base64UrlEncode(new TextEncoder().encode(JSON.stringify(value)));
+  const mac = await hmac(secret, payload);
+  return `${payload}.${mac}`;
+}
+
+async function verifyBlob<T>(envelope: string, secret: string): Promise<T> {
+  const dot = envelope.indexOf(".");
+  if (dot < 0) throw new Error("blob: missing signature");
+  const payload = envelope.slice(0, dot);
+  const sig = envelope.slice(dot + 1);
+  const expected = await hmac(secret, payload);
+  if (!timingSafeEqual(sig, expected)) throw new Error("blob: signature mismatch");
+  return JSON.parse(new TextDecoder().decode(base64UrlDecode(payload))) as T;
+}
+
+async function hmac(secret: string, message: string): Promise<string> {
+  const key = await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(secret),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+  const sig = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(message));
+  return base64UrlEncode(new Uint8Array(sig));
+}
+
+function timingSafeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let mismatch = 0;
+  for (let i = 0; i < a.length; i++) mismatch |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return mismatch === 0;
+}
+
+function base64UrlEncode(bytes: Uint8Array): string {
   let bin = "";
   for (const b of bytes) bin += String.fromCharCode(b);
   return btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
 
-function decodeBlob<T>(s: string): T {
+function base64UrlDecode(s: string): Uint8Array {
   const padded = s.replace(/-/g, "+").replace(/_/g, "/");
   const bin = atob(padded + "==".slice(0, (4 - (padded.length % 4)) % 4));
   const bytes = new Uint8Array(bin.length);
   for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-  return JSON.parse(new TextDecoder().decode(bytes)) as T;
+  return bytes;
 }
 
 // Re-export for tests.
-export { decodeBlob, encodeBlob };
+export { signBlob, verifyBlob };

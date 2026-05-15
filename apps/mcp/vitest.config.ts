@@ -35,6 +35,7 @@ export default defineConfig({
                 NODE_ENV: "test",
                 NLQDB_WEB_ORIGIN: "https://app.nlqdb.test",
                 NLQDB_API_BASE_URL: "https://app.nlqdb.test",
+                BETTER_AUTH_SECRET: "test-better-auth-secret-do-not-use-in-prod",
               },
             },
           }),

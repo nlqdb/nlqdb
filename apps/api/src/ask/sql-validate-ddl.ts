@@ -53,6 +53,13 @@ import { loadModule, parseSync } from "./libpg-query-worker.js";
 // path. `/v1/ask` cold-start chunk pulls `sql-validate.ts`
 // (node-sql-parser, read/write); it does NOT pull this file. Verified
 // by the import graph at commit time.
+//
+// Race against a 2 s timeout so a stuck `WebAssembly.instantiate`
+// (observed under the workerd vitest pool, where deferred WASM init
+// occasionally never resolves) surfaces a fail-fast rejection instead
+// of hanging the dynamic import of every transitive caller. The
+// downstream orchestrator catches the rejection and returns 422
+// `compile_failed` per `SK-HDC-006`.
 await loadModule();
 
 export type DdlValidationResult =

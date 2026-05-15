@@ -22,7 +22,7 @@
 // 404 response throws an `SK-MCP-006` envelope back through the
 // MCP error path.
 
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { createServer as createNlqMcpServer } from "@nlqdb/mcp";
 import { createClient, NlqdbApiError } from "@nlqdb/sdk";
 import { McpAgent } from "agents/mcp";
@@ -61,10 +61,9 @@ const SERVICE_NAME = "@nlqdb/mcp-server";
 const SERVICE_VERSION = "0.1.0";
 
 export class NlqdbMcpAgent extends McpAgent<McpAgentEnv, McpAgentState, McpAgentProps> {
-  // `McpAgent` requires the `server` field at the class level. The
-  // real registration happens in `init()` where `this.props` /
-  // `this.env` are populated.
-  server: McpServer = new McpServer({ name: SERVICE_NAME, version: SERVICE_VERSION });
+  // Assigned in `init()` — McpAgent's contract is that `server` is
+  // populated before the first JSON-RPC message lands.
+  server!: McpServer;
 
   override initialState: McpAgentState = {
     lastRevalidatedAt: 0,
@@ -85,25 +84,13 @@ export class NlqdbMcpAgent extends McpAgent<McpAgentEnv, McpAgentState, McpAgent
       ...(this.env.NLQDB_API_BASE_URL ? { baseUrl: this.env.NLQDB_API_BASE_URL } : {}),
       fetch: this.gatedFetch.bind(this),
     });
-
-    // `createNlqMcpServer` registers the three tools
-    // (`nlqdb_query`, `nlqdb_list_databases`, `nlqdb_describe`) per
-    // `SK-MCP-002`. We swap our pre-constructed server in so the DO
-    // can hold the reference; the helper accepts either an existing
-    // server or constructs one — we let it construct a fresh one and
-    // adopt its tool registrations onto `this.server`.
-    const populated = createNlqMcpServer({
+    // Three tools (`nlqdb_query`, `nlqdb_list_databases`,
+    // `nlqdb_describe`) per `SK-MCP-002`.
+    this.server = createNlqMcpServer({
       client,
       name: SERVICE_NAME,
       version: SERVICE_VERSION,
     });
-    // McpServer registrations live on its internal `_registeredTools`.
-    // Rather than peek into private state, we just replace our `server`
-    // reference — the DO's `getServer()` (called by the SDK transport)
-    // returns `this.server`, so swapping it before any request lands is
-    // safe. `init()` runs once per session before the first JSON-RPC
-    // message.
-    this.server = populated;
   }
 
   // SDK `fetch` adapter — runs the revalidation check before every
@@ -147,10 +134,10 @@ export class NlqdbMcpAgent extends McpAgent<McpAgentEnv, McpAgentState, McpAgent
         this.setState({ ...this.state, revoked: true, lastRevalidatedAt: Date.now() });
         throw makeKeyRevokedError();
       }
-      // Network failure on the probe — fail open with the current
-      // cache rather than killing live sessions on a transient
-      // upstream blip. The next 1 s tick re-probes.
-      throw err;
+      // Network failure on the probe — fail open with the cached
+      // state so a transient blip doesn't kill live sessions. The
+      // next 1 s tick re-probes.
+      return;
     }
   }
 

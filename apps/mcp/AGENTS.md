@@ -26,7 +26,7 @@ and forwards every tool call to `apps/api/` via `@nlqdb/sdk`.
 
 Each item below is grep-discoverable via inline `TODO(slice 3c)` comments.
 
-- **CORS `Access-Control-Allow-Origin: *` echo (RESOLVED in 3b).** Replaced with `cors-allowlist.ts` — the `OAuthProvider`'s registered-client `redirect_uri` origins drive the allow-list (`SK-MCP-011`). The legacy `preflight()` shim is gone.
+- **CORS in 3b.** The slice-3a `*` echo is moot — `OAuthProvider` owns CORS for its own routes (`/authorize`, `/token`, `/register`, `/.well-known/*`), and the bridge callback at `/oauth/mcp-bridge-callback` is a server-side redirect that doesn't need CORS. No allow-list shim required at this slice.
 - **Auth-failure observability gap (3c).** The `nlqdb.mcp.http.request` span never fires on `/mcp` requests rejected by `OAuthProvider`'s bearer gate (no access token, expired token, wrong scope). When rate-limit + observability hardening lands, wrap `OAuthProvider`'s `onError` callback or add a pre-gate counter so probe / misconfigured-key traffic is visible in OTel.
 - **Slice 3b — `NlqdbMcpAgent.serve('/mcp')` type cast.** `apps/mcp/src/index.ts` casts the serve return value `as never` to bridge `OAuthProvider`'s `apiHandler` generics with `McpAgent.serve`'s untyped Env parameter. Both types are correct at runtime (the workers-oauth-provider tests use the same pattern); revisit when either package narrows its generics.
 

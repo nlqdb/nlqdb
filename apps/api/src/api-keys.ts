@@ -199,14 +199,6 @@ export async function getKeyStatusByHash(
   return { revoked: row.revoked_at !== null, revokedAt: row.revoked_at };
 }
 
-// Hex-encode the HMAC of a plaintext key so callers (the DO
-// revalidator, dashboard revoke surfaces) can probe `getKeyStatusByHash`
-// without holding the plaintext. Exported separately because every
-// other lookup helper takes the plaintext and hashes internally.
-export async function hashKey(secret: string, plaintext: string): Promise<string> {
-  return hmacHex(secret, plaintext);
-}
-
 // Throttled to one write per minute per key — `last_used_at` is a
 // dashboard display field, not an audit trail, so a hot client running
 // 100 req/s shouldn't generate 100 writes/s on a shared row. The WHERE
@@ -252,7 +244,10 @@ export async function adoptApiKeys(
 
 // ─── crypto helpers ──────────────────────────────────────────────────────────
 
-async function hmacHex(secret: string, message: string): Promise<string> {
+// HMAC-SHA256 hex. Exported so external callers (e.g. the OAuth bridge
+// mint path) can hash plaintext keys for `getKeyStatusByHash` probes
+// without re-implementing the primitive.
+export async function hmacHex(secret: string, message: string): Promise<string> {
   const key = await crypto.subtle.importKey(
     "raw",
     new TextEncoder().encode(secret),
