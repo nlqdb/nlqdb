@@ -263,11 +263,13 @@ Not in Phase 1. Shape locked now to avoid painting into a corner:
 - **Validator:** the read/write validator from §3.6.5 applies unchanged.
 - **Provisioner split done now:** `provisionDb(plan)` vs `registerByoDb(connection_url, plan)`. Phase 4 work is replacing one function call, not rebuilding the pipeline.
 
-**Caveats (surface to BYO users at connect time):**
+**BYO contract.** nlqdb operates with the role's privileges; the validator (§3.6.5) fires on every nlqdb-mediated path including `/v1/run`. Out-of-band psql is the user's surface.
 
-- *Escape-hatch reaches what the role can reach.* The `nlq run` raw-SQL path ([`GLOBAL-015`](./decisions/GLOBAL-015-power-user-escape-hatch.md)) and the user's own out-of-band psql against the same connection string operate with exactly the privileges of the supplied role. If the role has `TRUNCATE` / `DROP` / `GRANT`, those are reachable. The §3.6.5 validator gates the LLM path only.
-- *Read-only role recommended, not required.* `/v1/db/connect` recommends a `GRANT SELECT, INSERT, UPDATE, DELETE` role (no DDL, no `GRANT`) for defense-in-depth on top of the validator. We don't enforce it — the validator is the LLM-path guardrail; a tighter role is the user's defense against their own raw-SQL mistakes.
-- *Side-effect triggers and functions are invisible to the validator.* If the user's schema has triggers or functions that send emails, call webhooks, or mutate other tables on a plain `SELECT`, the §3.6.5 AST walk cannot see them. The user owns their DB; nlqdb does not introspect for side-effecting code at connect time.
+**Role model.** Each `dbId` stores up to three URLs: `read`, `write`, `admin`. `/v1/db/connect` accepts one admin URL and mints `nlqdb_read` / `nlqdb_write` via `CREATE ROLE` + `GRANT`; if `CREATE ROLE` is denied, falls back to a copy-paste SQL snippet for the missing URLs. `nlq role read|write|admin` flips the active role per `dbId`; default is `read`. `<nlq-data>` is hard-pinned to `read`. CLI prompt + chat pill + SDK response envelope echo the active role.
+
+**Cancel on write.** Write and DDL queries run inside `BEGIN; … COMMIT;` with a live `executing for Xs [Cancel]` label. Cancel → `ROLLBACK` + `pg_cancel_backend(pid)`. Layered under `SK-TRUST-001` diff-confirm (pre-exec gate); this is the during-exec gate.
+
+**Function reject-list.** Filesystem/network builtins (`pg_read_file`, `pg_ls_dir`, `lo_import`, `dblink*`, `COPY ... FROM PROGRAM`, `pg_sleep`) rejected by the validator (`SK-SQLAL-008`, sql-allowlist feature). User-defined functions opaque — user owns their DB.
 
 Sibling concern for BYO ClickHouse: `readonly = 1` does *not* block DDL — see `docs/research/personas.md` P6 open questions.
 
