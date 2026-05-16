@@ -93,6 +93,20 @@ jobs:
         # repro; minor patch drifts in @langchain/openai are acceptable.
         # Playwright postinstall sees the restored ms-playwright cache
         # (if any) and skips re-download.
+        #
+        # `@playwright/mcp` is pinned to 0.0.60 in package.json. Why:
+        # opencheck@0.3.0 (`node_modules/opencheck/src/agent/mcp-client.ts:77,80`)
+        # hardcodes `--save-trace` + `--save-video=...` when it spawns
+        # @playwright/mcp. Those flags shipped through 0.0.60 and were
+        # removed before 0.0.70. Without the pin, bun resolves
+        # @playwright/mcp transitively from `npx -y @playwright/mcp@latest`
+        # in opencheck's spawn path — which lands on 0.0.75 today and
+        # the MCP stdio handshake dies on `error: unknown option
+        # '--save-trace'`. opencheck's `resolvePlaywrightMcp()` checks
+        # `process.cwd()/node_modules/@playwright/mcp/cli.js` first,
+        # so pinning here makes opencheck use this version and bypass
+        # the broken `--latest` path. Unpin once opencheck publishes a
+        # fix that uses `--save-session`.
         run: bun install
 
       # opencheck's YAML parser does NOT interpolate env vars; substitute
