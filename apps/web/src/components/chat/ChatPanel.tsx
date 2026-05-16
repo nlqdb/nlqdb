@@ -1002,9 +1002,7 @@ function messageFor(err: unknown): string {
         // missing from the DB) and schemaTables (what's actually
         // there). Surface both so the user can rephrase or create a
         // new DB instead of dead-ending on "Something went wrong".
-        const body = err.body as
-          | { referencedTables?: string[]; schemaTables?: string[] }
-          | null;
+        const body = err.body as { referencedTables?: string[]; schemaTables?: string[] } | null;
         const missing = body?.referencedTables ?? [];
         const available = (body?.schemaTables ?? []).slice(0, 5);
         if (missing.length > 0 && available.length > 0) {
