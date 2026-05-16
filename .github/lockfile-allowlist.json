@@ -1,5 +1,5 @@
 {
-  "_comment": "Per-workspace forbidden DIRECT dependencies. CI fails if any listed name appears in a workspace's dependencies or devDependencies. Bounds the blast radius of accidental imports + supply-chain shifts. Direct deps only — transitive auditing is a future tightening (track when a real incident motivates the cost).",
+  "_comment": "Per-workspace forbidden DIRECT dependencies. CI fails if any listed name appears in a workspace's dependencies or devDependencies. Bounds the blast radius of accidental imports + supply-chain shifts. Direct deps only — transitive auditing is a future tightening (track when a real incident motivates the cost). NOTE: `@nlqdb/api` is permitted to depend on `@neondatabase/serverless` directly per the GLOBAL-021 carve-out documented in `apps/api/src/db-create/build-deps.ts` — the control-plane provisioner needs the raw Neon client for CREATE SCHEMA / role / RLS DDL that the `DatabaseAdapter.execute()` seam in `@nlqdb/db` doesn't expose.",
   "workspaces": [
     {
       "name": "@nlqdb/llm",
@@ -61,8 +61,7 @@
         "redis",
         "ioredis",
         "sqlite3",
-        "better-sqlite3",
-        "@neondatabase/serverless"
+        "better-sqlite3"
       ]
     },
     {
