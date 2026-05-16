@@ -77,10 +77,12 @@ describe("compileDdl", () => {
   it("emits the expected DDL for a single-table plan", () => {
     const result = compileDdl(minimalTable, "tenant_a");
     ok(result);
+    // SK-HDC-015 — a single-column UUID primary key with no LLM default
+    // picks up `DEFAULT gen_random_uuid()` from the compiler.
     expect(result.statements).toEqual([
       [
         `CREATE TABLE "tenant_a"."orders" (`,
-        `  "id" UUID NOT NULL,`,
+        `  "id" UUID NOT NULL DEFAULT gen_random_uuid(),`,
         `  "customer" TEXT NOT NULL,`,
         `  "total" NUMERIC DEFAULT 0,`,
         `  PRIMARY KEY ("id")`,
