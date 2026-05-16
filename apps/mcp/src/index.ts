@@ -1,13 +1,7 @@
-// Hosted MCP Worker — `mcp.nlqdb.com` connector URL. Slice 3b of `SK-MCP-010`:
-// `OAuthProvider` from `@cloudflare/workers-oauth-provider` owns `/authorize`,
-// `/token`, `/register`, `/.well-known/*` (`SK-MCP-011` dynamic client
-// registration; `SK-MCP-012` single `mcp` scope). `apiHandler` routes `/mcp/*`
-// through `NlqdbMcpAgent` — a `McpAgent` Durable Object per OAuth grant that
-// holds the bound `sk_mcp_*` bearer and revalidates it every 1 s (`SK-MCP-014`).
-// `defaultHandler` (./oauth-bridge.ts) handles `/authorize` by redirecting to
-// `app.nlqdb.com` for Better Auth login + consent, then redeems the one-shot
-// bridge code (`SK-MCP-013`). Slice 3c hardens auth-failure observability +
-// rate-limit; TODO below.
+// Hosted MCP Worker at `mcp.nlqdb.com` (`SK-MCP-010` slice 3b).
+// `OAuthProvider` owns `/authorize`, `/token`, `/register`,
+// `/.well-known/*`; `NlqdbMcpAgent` (Durable Object) handles `/mcp`;
+// `bridgeHandler` handles the consent-screen redirect + code redemption.
 
 import { OAuthProvider } from "@cloudflare/workers-oauth-provider";
 import { setupTelemetry } from "@nlqdb/otel";
@@ -23,7 +17,7 @@ export type Env = BridgeEnv & {
   MCP_AGENT: DurableObjectNamespace;
 };
 
-// Re-export the DO class so wrangler's `[[durable_objects.bindings]]` finds it.
+// Wrangler's `[[durable_objects.bindings]]` resolves the class by name from the Worker's exports.
 export { NlqdbMcpAgent };
 
 const oauth = new OAuthProvider<Env>({
@@ -49,8 +43,7 @@ export default {
       });
       ctx.waitUntil(telemetry.forceFlush());
     }
-    // TODO(slice 3c): OAuthProvider's 401/403 rejections on `/mcp` never
-    // enter an OTel span — wrap its `onError` or add a pre-gate counter.
+    // TODO(slice 3c): OAuthProvider's 401/403 rejections never enter an OTel span.
     return oauth.fetch(req, env, ctx);
   },
 } satisfies ExportedHandler<Env>;

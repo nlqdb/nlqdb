@@ -1,32 +1,8 @@
-// Cross-Worker bridge for the hosted MCP OAuth flow (SK-MCP-013) and
-// the DO revalidation probe (SK-MCP-014).
-//
-// Two endpoints:
-//
-// `POST /v1/oauth/mcp-callback` (session-gated):
-//   `apps/mcp/`'s `defaultHandler` redirects the user-agent to
-//   `app.nlqdb.com/oauth/mcp-authorize` (a page hosted by `apps/web`).
-//   That page rides the Better Auth cookie. When the user clicks
-//   "Approve", the page POSTs here:
-//     1. Authenticated via `requireSession` (cookie).
-//     2. Validate the OAuth context fields (`client_id`,
-//        `redirect_uri`, `state`).
-//     3. Mint a one-shot code (16-byte hex) + the bound `sk_mcp_*`
-//        plaintext, stash both in KV with a 60 s TTL.
-//     4. Return the code to the web page. The page redirects the
-//        browser to `mcp.nlqdb.com/oauth/mcp-bridge-callback?code=…`.
-//
-// `POST /v1/oauth/mcp-callback/redeem` (code-gated):
-//   Called Worker-to-Worker by `apps/mcp/`'s bridge callback. The
-//   one-shot code itself is the auth proof (128-bit random, 60 s
-//   TTL, one-shot delete-on-read). Returns the bound `sk_mcp_*`
-//   plaintext + claims so `apps/mcp/` can hand them to
-//   `OAuthProvider.completeAuthorization` as the grant's `props`.
-//
-// `Idempotency-Key` (GLOBAL-005) — required on the mint mutation.
-// Replay returns the same code from KV; the dedup key is the
-// request header. The code is one-shot at redemption — re-redeeming
-// the same code is rejected by `redeemBridgeCode`.
+// Cross-Worker bridge for the hosted MCP OAuth flow (`SK-MCP-013`).
+// `POST /v1/oauth/mcp-callback` (session-gated) mints a one-shot code
+// + the bound `sk_mcp_*` plaintext, both stashed in KV with a 60 s TTL.
+// `POST /v1/oauth/mcp-callback/redeem` (code-gated) returns them once;
+// delete-on-read makes the code single-use.
 
 import type { Context } from "hono";
 import type { Session } from "./middleware.ts";
@@ -34,10 +10,10 @@ import type { Session } from "./middleware.ts";
 export const BRIDGE_CODE_TTL_SECONDS = 60;
 const BRIDGE_CODE_PREFIX = "mcp-oauth-bridge:";
 const IDEMP_KEY_PREFIX = "mcp-oauth-bridge-idemp:";
-const IDEMP_TTL_SECONDS = BRIDGE_CODE_TTL_SECONDS;
+const CODE_HEX_BYTES = 16;
+const CODE_HEX_LENGTH = CODE_HEX_BYTES * 2;
 
-// Same bounds as `POST /v1/keys` so the resulting `sk_mcp_*` key stays
-// shaped per `SK-APIKEYS-004` / `mintSkMcpKey`.
+// Match `POST /v1/keys` bounds so the minted `sk_mcp_*` stays valid per `SK-APIKEYS-004`.
 const MCP_HOST_MAX = 32;
 const DEVICE_ID_MAX = 64;
 const CLIENT_ID_MAX = 64;
@@ -60,16 +36,7 @@ export type BridgeStoredCode = {
   redirect_uri: string;
   state: string;
   expires_at: number;
-  // Plaintext `sk_mcp_<host>_<device>_*` minted at the same time as
-  // the code. Lives in KV only for the 60 s TTL — the HMAC hash is
-  // already in D1 (`api_keys.key_hash`); the plaintext is destroyed
-  // when the redemption fires (`delete-on-read`) or when KV expires
-  // the row, whichever is first.
   bearer: string;
-  // HMAC-SHA256 hex of `bearer` for the DO revalidation probe path
-  // (`SK-MCP-014`). The DO never holds the plaintext alone — it
-  // always pairs the bearer with this hash so probe paths don't
-  // re-HMAC every 1 s.
   bearer_hash: string;
 };
 
@@ -86,38 +53,24 @@ export type BridgeDeps = {
   ) => Promise<{ plaintext: string; hash: string }>;
 };
 
-// Validates and parses the incoming JSON body. Returns an `Err` shape
-// the route handler can return verbatim.
-export function parseBridgeBody(
-  raw: unknown,
-): { ok: true; body: BridgeRequestBody } | { ok: false; status: 400; error: string } {
-  if (!raw || typeof raw !== "object") {
-    return { ok: false, status: 400, error: "invalid_json" };
-  }
-  const b = raw as Record<string, unknown>;
-  const clientId = typeof b["client_id"] === "string" ? b["client_id"].trim() : "";
-  const redirectUri = typeof b["redirect_uri"] === "string" ? b["redirect_uri"].trim() : "";
-  const state = typeof b["state"] === "string" ? b["state"] : "";
-  const mcpHost = typeof b["mcp_host"] === "string" ? b["mcp_host"].trim() : "";
-  const deviceId = typeof b["device_id"] === "string" ? b["device_id"].trim() : "";
+type ParseResult =
+  | { ok: true; body: BridgeRequestBody }
+  | { ok: false; status: 400; error: string };
 
-  if (!clientId || clientId.length > CLIENT_ID_MAX) {
-    return { ok: false, status: 400, error: "invalid_client_id" };
-  }
-  if (!redirectUri || redirectUri.length > REDIRECT_URI_MAX) {
-    return { ok: false, status: 400, error: "invalid_redirect_uri" };
-  }
-  // `state` is opaque to us — we round-trip it back to the OAuth
-  // client. Empty is a CSRF defense bypass and gets rejected.
-  if (!state || state.length > OAUTH_STATE_MAX) {
-    return { ok: false, status: 400, error: "invalid_state" };
-  }
-  if (!mcpHost || mcpHost.length > MCP_HOST_MAX) {
-    return { ok: false, status: 400, error: "invalid_mcp_host" };
-  }
-  if (!deviceId || deviceId.length > DEVICE_ID_MAX) {
-    return { ok: false, status: 400, error: "invalid_device_id" };
-  }
+export function parseBridgeBody(raw: unknown): ParseResult {
+  if (!raw || typeof raw !== "object") return fail("invalid_json");
+  const b = raw as Record<string, unknown>;
+  const clientId = trimmedString(b["client_id"]);
+  const redirectUri = trimmedString(b["redirect_uri"]);
+  const state = typeof b["state"] === "string" ? b["state"] : "";
+  const mcpHost = trimmedString(b["mcp_host"]);
+  const deviceId = trimmedString(b["device_id"]);
+
+  if (!clientId || clientId.length > CLIENT_ID_MAX) return fail("invalid_client_id");
+  if (!redirectUri || redirectUri.length > REDIRECT_URI_MAX) return fail("invalid_redirect_uri");
+  if (!state || state.length > OAUTH_STATE_MAX) return fail("invalid_state");
+  if (!mcpHost || mcpHost.length > MCP_HOST_MAX) return fail("invalid_mcp_host");
+  if (!deviceId || deviceId.length > DEVICE_ID_MAX) return fail("invalid_device_id");
   return {
     ok: true,
     body: {
@@ -130,37 +83,36 @@ export function parseBridgeBody(
   };
 }
 
-// Mints + persists the one-shot code AND the `sk_mcp_*` plaintext it
-// gates. Honors `Idempotency-Key` by keying on
-// `(user_id, idempotency_key)` per `SK-IDEMP-002`. On replay, returns
-// the same code — the underlying KV value (including the bearer
-// plaintext) is still live for the original TTL, so the consent screen
-// can survive a network retry without re-minting a fresh key.
+function fail(error: string): ParseResult {
+  return { ok: false, status: 400, error };
+}
+
+function trimmedString(v: unknown): string {
+  return typeof v === "string" ? v.trim() : "";
+}
+
+// Honors `Idempotency-Key` per `GLOBAL-005`: replay returns the
+// already-minted code so the consent screen survives network retries
+// without re-minting a fresh `sk_mcp_*`.
 export async function mintBridgeCode(
   userId: string,
   body: BridgeRequestBody,
   idempotencyKey: string | null,
   deps: BridgeDeps,
 ): Promise<BridgeMintResult> {
-  if (idempotencyKey) {
-    const idempKey = `${IDEMP_KEY_PREFIX}${userId}:${idempotencyKey}`;
+  const idempKey = idempotencyKey ? `${IDEMP_KEY_PREFIX}${userId}:${idempotencyKey}` : null;
+  if (idempKey) {
     const previousCode = await deps.kv.get(idempKey);
-    if (previousCode) {
-      return { code: previousCode, expires_in: BRIDGE_CODE_TTL_SECONDS };
-    }
-    const stored = await mintStoredCode(userId, body, deps);
-    const code = deps.randomHex(16);
-    await deps.kv.put(`${BRIDGE_CODE_PREFIX}${code}`, JSON.stringify(stored), {
-      expirationTtl: BRIDGE_CODE_TTL_SECONDS,
-    });
-    await deps.kv.put(idempKey, code, { expirationTtl: IDEMP_TTL_SECONDS });
-    return { code, expires_in: BRIDGE_CODE_TTL_SECONDS };
+    if (previousCode) return { code: previousCode, expires_in: BRIDGE_CODE_TTL_SECONDS };
   }
   const stored = await mintStoredCode(userId, body, deps);
-  const code = deps.randomHex(16);
+  const code = deps.randomHex(CODE_HEX_BYTES);
   await deps.kv.put(`${BRIDGE_CODE_PREFIX}${code}`, JSON.stringify(stored), {
     expirationTtl: BRIDGE_CODE_TTL_SECONDS,
   });
+  if (idempKey) {
+    await deps.kv.put(idempKey, code, { expirationTtl: BRIDGE_CODE_TTL_SECONDS });
+  }
   return { code, expires_in: BRIDGE_CODE_TTL_SECONDS };
 }
 
@@ -183,8 +135,7 @@ async function mintStoredCode(
   };
 }
 
-// One-shot redemption. Deletes on read so a second redemption of the
-// same code fails. Returns null on miss or expiry.
+// Single-use: delete-on-read so a replay misses.
 export async function redeemBridgeCode(
   code: string,
   kv: KVNamespace,
@@ -198,15 +149,11 @@ export async function redeemBridgeCode(
   } catch {
     return null;
   }
-  // Best-effort delete — the TTL is 60 s, so a partial cleanup just
-  // means the next retry hits the same delete; both are no-ops.
   await kv.delete(`${BRIDGE_CODE_PREFIX}${code}`);
   if (parsed.expires_at < now) return null;
   return parsed;
 }
 
-// Hex-encoded random bytes — separate so callers can inject a
-// deterministic generator under test.
 export function defaultRandomHex(byteCount: number): string {
   const bytes = crypto.getRandomValues(new Uint8Array(byteCount));
   return Array.from(bytes)
@@ -214,41 +161,28 @@ export function defaultRandomHex(byteCount: number): string {
     .join("");
 }
 
-// Inputs to the callback handler. The caller (the route in
-// `apps/api/src/index.ts`) walks through `requireSession` first, then
-// drops into this function with its already-resolved `session`. We
-// take the Hono `Context` and `Session` directly rather than build a
-// factory of `MiddlewareHandler<...>` so the surrounding route's
-// Hono generics (`Bindings`, the full `Variables` union) don't have
-// to flow through a narrower handler type.
+// biome-ignore lint/suspicious/noExplicitAny: route Context type varies per call site
+type RouteContext = Context<any>;
+
 export type McpCallbackHandlerOpts = {
-  // biome-ignore lint/suspicious/noExplicitAny: handlers operate on the route's untyped Context
-  kv: (c: Context<any>) => KVNamespace;
+  kv: (c: RouteContext) => KVNamespace;
   mintKey: (
-    // biome-ignore lint/suspicious/noExplicitAny: see kv comment
-    c: Context<any>,
+    c: RouteContext,
     userId: string,
     mcpHost: string,
     deviceId: string,
   ) => Promise<{ plaintext: string; hash: string }>;
-  // biome-ignore lint/suspicious/noExplicitAny: see kv comment
-  setOutcome?: (c: Context<any>, outcome: string) => void;
+  setOutcome?: (c: RouteContext, outcome: string) => void;
 };
 
 export async function handleMcpCallback(
-  // biome-ignore lint/suspicious/noExplicitAny: see McpCallbackHandlerOpts.kv comment
-  c: Context<any>,
+  c: RouteContext,
   session: Session,
   opts: McpCallbackHandlerOpts,
 ): Promise<Response> {
-  let rawBody: unknown;
-  try {
-    rawBody = await c.req.json();
-  } catch {
-    opts.setOutcome?.(c, "invalid_json");
-    return c.json({ error: "invalid_json" }, 400);
-  }
-  const parsed = parseBridgeBody(rawBody);
+  const body = await readJsonBody(c, opts.setOutcome);
+  if ("error" in body) return body.response;
+  const parsed = parseBridgeBody(body.value);
   if (!parsed.ok) {
     opts.setOutcome?.(c, parsed.error);
     return c.json({ error: parsed.error }, parsed.status);
@@ -264,35 +198,19 @@ export async function handleMcpCallback(
   return c.json(result);
 }
 
-// Code-gated redemption handler. The one-shot code is itself the
-// auth proof — 128-bit random, 60 s TTL, delete-on-read. We never
-// expose this endpoint cookie-gated because the caller is
-// `apps/mcp/`, a sibling Worker without the user's session.
 export type RedeemHandlerOpts = {
-  // biome-ignore lint/suspicious/noExplicitAny: handlers operate on the route's untyped Context
-  kv: (c: Context<any>) => KVNamespace;
-  // biome-ignore lint/suspicious/noExplicitAny: see kv comment
-  setOutcome?: (c: Context<any>, outcome: string) => void;
+  kv: (c: RouteContext) => KVNamespace;
+  setOutcome?: (c: RouteContext, outcome: string) => void;
 };
 
 export async function handleMcpCallbackRedeem(
-  // biome-ignore lint/suspicious/noExplicitAny: see RedeemHandlerOpts.kv comment
-  c: Context<any>,
+  c: RouteContext,
   opts: RedeemHandlerOpts,
 ): Promise<Response> {
-  let rawBody: unknown;
-  try {
-    rawBody = await c.req.json();
-  } catch {
-    opts.setOutcome?.(c, "invalid_json");
-    return c.json({ error: "invalid_json" }, 400);
-  }
-  if (!rawBody || typeof rawBody !== "object") {
-    opts.setOutcome?.(c, "invalid_json");
-    return c.json({ error: "invalid_json" }, 400);
-  }
-  const code = (rawBody as { code?: unknown }).code;
-  if (typeof code !== "string" || code.length !== 32 || !/^[0-9a-f]+$/.test(code)) {
+  const body = await readJsonBody(c, opts.setOutcome);
+  if ("error" in body) return body.response;
+  const code = (body.value as { code?: unknown }).code;
+  if (typeof code !== "string" || code.length !== CODE_HEX_LENGTH || !/^[0-9a-f]+$/.test(code)) {
     opts.setOutcome?.(c, "invalid_code");
     return c.json({ error: "invalid_code" }, 400);
   }
@@ -312,4 +230,23 @@ export async function handleMcpCallbackRedeem(
     bearer: stored.bearer,
     bearer_hash: stored.bearer_hash,
   });
+}
+
+type JsonBodyResult = { value: unknown } | { error: "invalid_json"; response: Response };
+
+async function readJsonBody(
+  c: RouteContext,
+  setOutcome?: (c: RouteContext, outcome: string) => void,
+): Promise<JsonBodyResult> {
+  try {
+    const value = await c.req.json();
+    if (!value || typeof value !== "object") {
+      setOutcome?.(c, "invalid_json");
+      return { error: "invalid_json", response: c.json({ error: "invalid_json" }, 400) };
+    }
+    return { value };
+  } catch {
+    setOutcome?.(c, "invalid_json");
+    return { error: "invalid_json", response: c.json({ error: "invalid_json" }, 400) };
+  }
 }

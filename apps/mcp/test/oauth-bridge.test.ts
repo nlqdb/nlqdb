@@ -8,7 +8,7 @@
 // is exercised in `bearer-gate.test.ts` via the cloudflare vitest pool.
 
 import { describe, expect, it } from "vitest";
-import { signBlob, verifyBlob } from "../src/oauth-bridge.ts";
+import { signBlob, verifyBlob } from "../src/crypto.ts";
 
 const SECRET = "test-secret-do-not-use-in-prod";
 
