@@ -145,7 +145,7 @@ Pages: **Chat** (answer/data/trace, Cmd+K palette, Cmd+/ trace toggle), **DB lis
 
 ### 3.3 CLI — `nlq`
 
-Canonical feature: `cli/FEATURE.md` (`SK-CLI-001..011`). Static Go binary.
+Canonical feature: `cli/FEATURE.md` (`SK-CLI-001..015`). Static Go binary.
 
 ```
 nlq                          # interactive REPL, creates DB silently
