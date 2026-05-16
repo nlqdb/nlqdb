@@ -102,7 +102,7 @@ func TestFallbackAuthFailsOnTamper(t *testing.T) {
 	}
 	// Flip the last byte of the GCM tag — Open must fail authentication.
 	raw[len(raw)-1] ^= 0xFF
-	if err := os.WriteFile(p, raw, 0o600); err != nil {
+	if err := os.WriteFile(p, raw, 0o600); err != nil { //nolint:gosec // test path under t.TempDir
 		t.Fatalf("write tamper: %v", err)
 	}
 	if _, err := Get(SlotAnonToken); err == nil {

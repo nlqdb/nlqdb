@@ -186,12 +186,14 @@ func splitSemver(v string) [3]int {
 		v = v[:idx]
 	}
 	parts := strings.SplitN(v, ".", 3)
+	// Static upper bound so gosec can prove the array write is safe.
+	limit := len(parts)
+	if limit > 3 {
+		limit = 3
+	}
 	var out [3]int
-	for i, p := range parts {
-		if i >= 3 {
-			break
-		}
-		n, err := strconv.Atoi(p)
+	for i := range limit {
+		n, err := strconv.Atoi(parts[i])
 		if err != nil {
 			n = 0
 		}
