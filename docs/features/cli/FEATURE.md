@@ -50,6 +50,7 @@ Canonical bodies live in [`decisions/`](decisions/) — one file per `SK-CLI-NNN
 Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; index in [`docs/decisions.md`](../../decisions.md)). The list below names the rules that constrain this feature; any feature-local commentary is nested under the rule.
 
 - **GLOBAL-001** — SDK is the only HTTP client.
+  - *In this feature:* the Go CLI cannot import the TypeScript `@nlqdb/sdk`, so it consumes `cli/internal/api/` — the Go port of the same wire contract (same auth modes, retry budget, idempotency-key reuse, error envelopes). All HTTP calls from `cli/` route through that one package; no other file opens connections.
 - **GLOBAL-002** — Behavior parity across surfaces.
 - **GLOBAL-010** — Credentials live in the OS keychain; `NLQDB_API_KEY` is the CI escape hatch.
 - **GLOBAL-011** — Honest latency — show the live trace; never spinner-lie.

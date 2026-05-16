@@ -1,3 +1,5 @@
+// Wire types mirror @nlqdb/sdk shape-for-shape (GLOBAL-001). A new
+// field lands here in the same PR as the SDK addition (GLOBAL-003).
 package api
 
 import "encoding/json"
