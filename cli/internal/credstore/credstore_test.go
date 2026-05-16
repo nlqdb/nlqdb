@@ -121,7 +121,15 @@ func TestSaltIsPersistentAcrossInvocations(t *testing.T) {
 	if err != nil {
 		t.Fatalf("config dir: %v", err)
 	}
-	salt1, err := os.ReadFile(filepath.Join(dir, ".salt")) //nolint:gosec // test path under t.TempDir
+	saltPath := filepath.Join(dir, ".salt")
+	info, err := os.Stat(saltPath)
+	if err != nil {
+		t.Fatalf("stat salt: %v", err)
+	}
+	if perm := info.Mode().Perm(); perm != 0o600 {
+		t.Fatalf("salt file mode %o, want 0600 (SK-CLI-009 — local non-owner reads break the threat model)", perm)
+	}
+	salt1, err := os.ReadFile(saltPath) //nolint:gosec // test path under t.TempDir
 	if err != nil {
 		t.Fatalf("read salt: %v", err)
 	}

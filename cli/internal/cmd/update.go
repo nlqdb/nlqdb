@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"context"
 	"fmt"
 	"os"
 
@@ -32,7 +31,10 @@ for brew / npm. dev builds are inert (SK-CLI-015).`,
 			default:
 				fmt.Fprintln(cmd.OutOrStdout(), "Dev build — no update path. Build from source.")
 			}
-			updatecheck.Run(context.Background(), os.Stderr, updatecheck.Options{
+			// cmd.Context() is the signal-aware ctx from main; using
+			// context.Background() here would let SIGINT during the
+			// fetch leak the goroutine past the user's Ctrl-C.
+			updatecheck.Run(cmd.Context(), os.Stderr, updatecheck.Options{
 				JSON:   false,
 				NonTTY: !isTerminal(os.Stdout),
 			})

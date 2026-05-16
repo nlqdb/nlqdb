@@ -33,6 +33,18 @@ cli/
 └── internal/version/            # build-time `-X` overrides
 ```
 
+## Files in `~/.config/nlqdb/`
+
+| File | Dotfiles-safe? | What it holds |
+|---|---|---|
+| `config.toml` | ✅ yes | Stable preferences only — `api_base_url`, color, `no_update_check` (SK-CLI-010). |
+| `state.json` | ⚠ no | Active DB + update-check timestamp (SK-CLI-013). Not a secret, but volatile and points at user data. |
+| `state.json.lock` | ✅ yes (zero-byte) | flock target; recreated on demand. |
+| `credentials.enc` | ❌ never | AES-GCM ciphertext of anon / refresh tokens (SK-CLI-009). |
+| `.salt` | ❌ never | The 32-byte HKDF salt authenticating `credentials.enc` to this user on this host (SK-CLI-009). Sharing it weakens the fallback's security back to per-machine. |
+
+"Share my dotfiles" recipes should copy `config.toml` only.
+
 ## Commands
 
 Run from the repo root:
