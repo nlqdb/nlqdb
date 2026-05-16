@@ -59,11 +59,14 @@ jobs:
         with:
           bun-version-file: package.json
 
-      # Playwright browser binaries (~150 MB) live outside node_modules and
-      # are downloaded by playwright-mcp's postinstall. Cached on the
-      # opencheck-tests package.json hash so a dep bump that moves
-      # playwright's version invalidates cleanly; otherwise we save the
-      # whole download on every run.
+      # Playwright browser binaries (~150 MB) live outside node_modules
+      # at ~/.cache/ms-playwright. @playwright/mcp 0.0.60 (and its
+      # bundled playwright / playwright-core) has no postinstall, so
+      # the binaries are pulled by the explicit `Install Playwright
+      # Chromium` step below — this cache step just persists what that
+      # step writes. Keyed on opencheck-tests package.json hash so a
+      # dep bump that moves playwright's version invalidates cleanly;
+      # otherwise we save the whole download on every run.
       - name: Restore Playwright browser cache
         uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         with:
@@ -91,8 +94,6 @@ jobs:
         # No frozen lockfile — `tests/opencheck/` is non-workspace and
         # we don't ship its bun.lock. Daily E2E doesn't need byte-for-byte
         # repro; minor patch drifts in @langchain/openai are acceptable.
-        # Playwright postinstall sees the restored ms-playwright cache
-        # (if any) and skips re-download.
         #
         # `@playwright/mcp` is pinned to 0.0.60 in package.json. Why:
         # opencheck@0.3.0 (`node_modules/opencheck/src/agent/mcp-client.ts:77,80`)
@@ -108,6 +109,19 @@ jobs:
         # the broken `--latest` path. Unpin once opencheck publishes a
         # fix that uses `--save-session`.
         run: bun install
+
+      # Playwright browser binaries don't ship with any of the npm
+      # packages above (no postinstall hook in @playwright/mcp@0.0.60,
+      # playwright, or playwright-core). Without this step, Chromium
+      # is absent at ~/.cache/ms-playwright/ and every opencheck test
+      # silently fails because the MCP server can't launch a browser.
+      # (The agent's LLM reports this as a "sandboxing issue" because
+      # that's how Chromium phrases "no executable found" in its launch
+      # error — it's a missing-binary problem, not a sandbox config
+      # problem.) Chromium-only — webkit/firefox aren't used.
+      - name: Install Playwright Chromium
+        working-directory: tests/opencheck
+        run: bunx playwright install chromium
 
       # opencheck's YAML parser does NOT interpolate env vars; substitute
       # the placeholder before invocation. Writing to a new file (not
