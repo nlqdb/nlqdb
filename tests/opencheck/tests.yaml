@@ -1,4 +1,6 @@
-# E2E flow for nlqdb: anonymous → table-create → mutation-gate → mock-auth → authed-state-preserved → mutate → delete → sign-out.
+# E2E flow for nlqdb: anonymous → table-create → mutation-gate → mock-auth →
+# authed-state-preserved → write → UX coverage (informative read, count,
+# trace pane, vague prompt, missing-table, Cmd+K palette) → delete → sign-out.
 # Run by .github/workflows/e2e-opencheck.yml (workflow_dispatch — external scheduler).
 #
 # Runtime substitution: the caller workflow renders `__BASE_URL__` to the
@@ -62,9 +64,98 @@ tests:
       with name "Alice" and email "alice@example.com" should be visible in
       the users table.
 
-  - name: "#delete-row"
+  # ----- UX coverage: "useful and informative with the least steps-to-value"
+  # The block below tests REPLY QUALITY rather than functional plumbing —
+  # each step asserts the reply itself is informative or that a vague /
+  # error-y prompt produces an actionable next step instead of a dead end.
+
+  - name: "#read-shows-informative-data"
     case: |
       #submit-prefilled-row, then type
+        "list all users in the table"
+      into the chat input and submit. Within 8 seconds verify BOTH:
+        (a) a row with name "Alice" and email "alice@example.com" is
+            visible in the rendered result rows, and
+        (b) the assistant's natural-language reply text (the summary
+            sentence(s) above or next to the data table — NOT the
+            cell values themselves) explicitly mentions either
+            "Alice" or "1 user" / "one user" — proving the summary
+            actually describes the data instead of a generic phrase
+            like "here are your results" or "your query ran".
+
+  - name: "#count-summarizes"
+    case: |
+      #read-shows-informative-data, then type
+        "how many users are there?"
+      into the chat input and submit. Within 8 seconds verify the
+      assistant's reply mentions the number 1 (the row count) —
+      either inside the natural-language summary text (e.g. "There
+      is 1 user.") or as the single returned data cell.
+
+  - name: "#trace-shows-sql"
+    case: |
+      #count-summarizes, then reveal the trace pane for the most
+      recent assistant reply. The pane is a collapsed "trace"
+      disclosure on each reply with a "Cmd+/" affordance label;
+      either click the trace summary on the latest reply OR press
+      Cmd+/ (Ctrl+/ on Linux) to open it. Within 5 seconds verify
+      the rendered SQL is visible — it should contain the word
+      "users" (case-insensitive) and a SQL keyword such as SELECT
+      or COUNT.
+
+  - name: "#vague-question-handled"
+    case: |
+      #trace-shows-sql, then type
+        "anything interesting in here?"
+      into the chat input and submit. Within 10 seconds verify the
+      chat does NOT display a dead-end failure like "Something went
+      wrong", "That query was rejected", or "Couldn't generate a
+      plan" with no follow-up affordance. ACCEPTABLE replies are
+      any of:
+        (a) rendered data rows from the users table with a summary,
+        (b) a clarification chip prompting a next action (e.g.
+            "Looks like you want to create something new" or "Which
+            database did you mean?") with at least one clickable
+            button,
+        (c) a non-error textual reply that references the users
+            table, the row count, or Alice.
+      The point: a vague prompt produces SOME useful next step,
+      never a dead end.
+
+  - name: "#schema-mismatch-clarifies"
+    case: |
+      #vague-question-handled, then type
+        "show me all the orders"
+      (there is NO orders table in this database — only users) into
+      the chat input and submit. Within 10 seconds verify the chat
+      reply does NOT contain the bare string "Something went wrong"
+      with no extra context. ACCEPTABLE replies are any of:
+        (a) text that explicitly references the missing "orders"
+            table OR the available "users" table (e.g. "no orders
+            table", "the database doesn't have an orders table",
+            "did you mean users?"),
+        (b) a clarification chip offering to create a new database /
+            table or rephrase,
+        (c) a typed "schema mismatch" / "table not found" style
+            message that names the issue.
+      A generic dead-end without an actionable next step should NOT
+      be considered passing.
+
+  - name: "#cmdk-palette-discoverable"
+    case: |
+      #schema-mismatch-clarifies, then press Cmd+K (Ctrl+K on
+      Linux) to open the command palette. Within 3 seconds verify a
+      modal / overlay appears with a "Type a command…" input and a
+      list of actions — it should show at least two of these labels
+      (case-insensitive substring match is fine): "New database",
+      "Copy embed snippet", "Settings", "Sign out". Then press
+      Escape to close the palette and verify the chat composer
+      input is visible and focusable again (the page is back to the
+      pre-palette state).
+
+  - name: "#delete-row"
+    case: |
+      #cmdk-palette-discoverable, then type
         "delete the row where name = 'Alice'"
       into the chat input and submit. Within 5 seconds the Alice row should
       no longer be present in the users table.
