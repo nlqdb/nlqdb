@@ -1,6 +1,9 @@
 // OpenRouter — universal :free fallback when Gemini/Groq are out.
-// docs/architecture.md §8.1: ~200 RPD across :free models. Same OpenAI-compat shape
-// as Groq, different host.
+// docs/architecture.md §7.1: 50 RPD without credits / 1000 RPD after a one-time
+// $10 deposit (kept even if balance falls back to $0). Same OpenAI-compat shape
+// as Groq, different host. SK-LLM-015: code-gen ops (plan, schema_infer) default
+// to `qwen/qwen3-coder:free` (480B MoE, 1M context) for SQL/SchemaPlan quality;
+// text + intent ops stay on Llama for speed.
 
 import type { LLMOperation, Provider } from "../types.ts";
 import { createChatProvider } from "./_chat-provider.ts";
@@ -10,9 +13,9 @@ const DEFAULT_BASE_URL = "https://openrouter.ai/api/v1";
 
 const DEFAULT_MODELS: Record<LLMOperation, string> = {
   route: "meta-llama/llama-3.1-8b-instruct:free",
-  plan: "meta-llama/llama-3.3-70b-instruct:free",
+  plan: "qwen/qwen3-coder:free",
   summarize: "meta-llama/llama-3.3-70b-instruct:free",
-  schema_infer: "meta-llama/llama-3.3-70b-instruct:free",
+  schema_infer: "qwen/qwen3-coder:free",
   engine_classify: "meta-llama/llama-3.1-8b-instruct:free",
 };
 
