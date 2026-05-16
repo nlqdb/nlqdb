@@ -18,6 +18,16 @@ modelProvider: "openai"
 model: "gemini-2.5-flash"
 sessionMode: "isolated"
 
+# opencheck's default per-test timeout is 60_000 ms, but each test
+# starts with `#prev, then ...` and the LLM agent walks the full
+# prereq chain from scratch (sessionMode=isolated → no shared state).
+# The deepest test (#sign-out) has 13 prereqs and consistently times
+# out at exactly 60.0s under that default. 240_000 (4 min) gives
+# headroom for the chain tail; tests at the head still finish in
+# ~20s. Once opencheck's step cache warms on a stable tests.yaml,
+# repeat runs land well under this ceiling.
+timeout: 240000
+
 # `video: false` because @playwright/mcp's --save-video path shells out
 # to ffmpeg, which ubuntu-latest does not ship by default. Trace stays
 # on (it's the workflow's documented triage path — drag trace.zip into

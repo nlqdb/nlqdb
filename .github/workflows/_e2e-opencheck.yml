@@ -34,7 +34,13 @@ jobs:
   run:
     name: opencheck
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    # Per-test timeout in tests.yaml is 240 s × 14 chained tests
+    # ≈ 56 min worst-case (cold cache). Real-world runs land well
+    # under that as opencheck's step cache warms — the 15-min bound
+    # was a holdover from the broken-from-start era when every test
+    # bailed inside seconds. 45 min leaves slack for the spin-up +
+    # the trace.zip upload at the end.
+    timeout-minutes: 45
     # SK-CIPERM-002 — minimal grant. No PR comment from this reusable
     # (callers attach their own surface via step summary / artifacts);
     # `contents: read` is enough for the checkout.
