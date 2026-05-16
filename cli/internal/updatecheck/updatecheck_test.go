@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/nlqdb/nlqdb/cli/internal/state"
-	"github.com/nlqdb/nlqdb/cli/internal/version"
 )
 
 func TestIsCIEnumerates(t *testing.T) {
@@ -32,11 +31,6 @@ func TestIsCIEnumerates(t *testing.T) {
 }
 
 func TestShouldRunSuppressors(t *testing.T) {
-	// Use a fake non-dev version so the SkipDevBuild branch is off.
-	orig := version.Version
-	version.Version = "0.1.0"
-	t.Cleanup(func() { version.Version = orig })
-
 	empty := func(string) string { return "" }
 	now := func() time.Time { return time.Unix(2_000_000_000, 0) }
 
@@ -80,17 +74,6 @@ func TestShouldRunSuppressors(t *testing.T) {
 				t.Errorf("ShouldRun(%s) = %q, want %q", c.name, got, c.want)
 			}
 		})
-	}
-}
-
-func TestShouldRunSkipsDevBuild(t *testing.T) {
-	orig := version.Version
-	version.Version = "0.0.0-dev"
-	t.Cleanup(func() { version.Version = orig })
-
-	r := ShouldRun(state.State{}, Options{Env: func(string) string { return "" }})
-	if r != SkipDevBuild {
-		t.Errorf("dev build should skip, got %q", r)
 	}
 }
 

@@ -159,6 +159,20 @@ func TestRetriesReuseIdempotencyKey(t *testing.T) {
 	}
 }
 
+func TestJitteredBackoffStaysWithinBound(t *testing.T) {
+	for attempt := 1; attempt <= 3; attempt++ {
+		expo := 200 * time.Millisecond * time.Duration(1<<(attempt-1))
+		min := expo / 2
+		max := expo
+		for i := 0; i < 100; i++ {
+			d := jitteredBackoff(attempt)
+			if d < min || d > max {
+				t.Errorf("attempt=%d: backoff %v outside [%v, %v]", attempt, d, min, max)
+			}
+		}
+	}
+}
+
 func TestIdempotencyKeyOnMutations(t *testing.T) {
 	var keys []string
 	mu := make(chan struct{}, 1)

@@ -46,13 +46,12 @@ func IsCI(env func(string) string) bool {
 type SkipReason string
 
 const (
-	SkipNone     SkipReason = ""
-	SkipEnvOff   SkipReason = "env_off"
-	SkipCI       SkipReason = "ci"
-	SkipJSON     SkipReason = "json_output"
-	SkipNonTTY   SkipReason = "non_tty"
-	SkipRecent   SkipReason = "recent"
-	SkipDevBuild SkipReason = "dev_build"
+	SkipNone   SkipReason = ""
+	SkipEnvOff SkipReason = "env_off"
+	SkipCI     SkipReason = "ci"
+	SkipJSON   SkipReason = "json_output"
+	SkipNonTTY SkipReason = "non_tty"
+	SkipRecent SkipReason = "recent"
 )
 
 type Options struct {
@@ -86,9 +85,6 @@ func ShouldRun(s state.State, opts Options) SkipReason {
 	}
 	if opts.NonTTY {
 		return SkipNonTTY
-	}
-	if strings.Contains(version.Version, "-dev") {
-		return SkipDevBuild
 	}
 	if s.UpdateCheck.CheckedAt > 0 {
 		last := time.Unix(s.UpdateCheck.CheckedAt, 0)

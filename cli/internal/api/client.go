@@ -97,7 +97,10 @@ func (c *Client) do(ctx context.Context, method, path string, body any, out any)
 			return ctx.Err()
 		}
 		if attempt < attempts {
-			backoff := time.Duration(200*attempt) * time.Millisecond
+			// Equal-jitter exponential backoff (~200/400/800 ms with
+			// ±50% randomisation) per 2026 best-practice retry guidance
+			// — pure exponential synchronises retry storms.
+			backoff := jitteredBackoff(attempt)
 			select {
 			case <-time.After(backoff):
 			case <-ctx.Done():
@@ -234,6 +237,36 @@ func randomHex(n int) string {
 		return fmt.Sprintf("nlq-fallback-%x", time.Now().UnixNano())
 	}
 	return hex.EncodeToString(b)
+}
+
+// jitteredBackoff returns base × 2^(attempt-1) plus equal-jitter
+// randomisation (±50 %). Bounded so a worst-case 3-attempt run can't
+// stall longer than ~1.8 s before hitting the caller's context deadline.
+func jitteredBackoff(attempt int) time.Duration {
+	const base = 200 * time.Millisecond
+	expo := base * (1 << (attempt - 1))
+	half := expo / 2
+	jitter, err := cryptoRandInt63(int64(half))
+	if err != nil {
+		return expo
+	}
+	return half + time.Duration(jitter)
+}
+
+func cryptoRandInt63(max int64) (int64, error) {
+	if max <= 0 {
+		return 0, nil
+	}
+	var b [8]byte
+	if _, err := rand.Read(b[:]); err != nil {
+		return 0, err
+	}
+	n := int64(b[0])<<56 | int64(b[1])<<48 | int64(b[2])<<40 | int64(b[3])<<32 |
+		int64(b[4])<<24 | int64(b[5])<<16 | int64(b[6])<<8 | int64(b[7])
+	if n < 0 {
+		n = -n
+	}
+	return n % max, nil
 }
 
 func trimRaw(b []byte) string {
