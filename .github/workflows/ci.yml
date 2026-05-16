@@ -177,11 +177,19 @@ jobs:
 
       - name: Typecheck
         working-directory: packages/${{ matrix.pkg }}
-        run: bun run typecheck
+        run: |
+          echo "START typecheck $(date -u +%H:%M:%S)"
+          bun run typecheck
+          echo "END typecheck $(date -u +%H:%M:%S)"
 
       - name: Test
         working-directory: packages/${{ matrix.pkg }}
-        run: bun run test
+        env:
+          NODE_OPTIONS: --max-old-space-size=4096
+        run: |
+          echo "START test $(date -u +%H:%M:%S)"
+          bun run test
+          echo "END test $(date -u +%H:%M:%S)"
 
       # SK-MCP-010: packages/mcp ships a bundled artifact for npm
       # consumers (npx @nlqdb/mcp). Verify the bundle builds and
@@ -190,8 +198,10 @@ jobs:
         if: matrix.pkg == 'mcp'
         working-directory: packages/${{ matrix.pkg }}
         run: |
+          echo "START build $(date -u +%H:%M:%S)"
           bun run build
           test -f dist/index.js || (echo "::error::dist/index.js not produced"; exit 1)
+          echo "END build $(date -u +%H:%M:%S)"
 
   build-web:
     name: apps/web (astro check + build)
