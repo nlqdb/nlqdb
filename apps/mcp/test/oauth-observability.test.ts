@@ -75,12 +75,11 @@ describe("recordOAuthError", () => {
         status: 401,
         headers: {},
       });
-      const finished = telemetry.spanExporter.getFinishedSpans();
+      expect(telemetry.spanExporter.getFinishedSpans()).toHaveLength(0);
       span.end();
       const last = telemetry.spanExporter.getFinishedSpans().at(-1);
       attrs = (last?.attributes ?? {}) as Record<string, unknown>;
       statusCode = last?.status.code;
-      expect(finished.length).toBeLessThanOrEqual(1);
     });
 
     expect(attrs["nlqdb.mcp.auth.error_code"]).toBe("invalid_token");
