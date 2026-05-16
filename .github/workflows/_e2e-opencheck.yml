@@ -114,14 +114,41 @@ jobs:
       # packages above (no postinstall hook in @playwright/mcp@0.0.60,
       # playwright, or playwright-core). Without this step, Chromium
       # is absent at ~/.cache/ms-playwright/ and every opencheck test
-      # silently fails because the MCP server can't launch a browser.
-      # (The agent's LLM reports this as a "sandboxing issue" because
-      # that's how Chromium phrases "no executable found" in its launch
-      # error — it's a missing-binary problem, not a sandbox config
-      # problem.) Chromium-only — webkit/firefox aren't used.
+      # fails because the MCP server can't find a browser executable.
+      # Chromium-only — webkit/firefox aren't selected via tests.yaml.
       - name: Install Playwright Chromium
         working-directory: tests/opencheck
         run: bunx playwright install chromium
+
+      # Inject --no-sandbox into the @playwright/mcp CLI. GitHub-hosted
+      # ubuntu runners have AppArmor configured to deny the unprivileged
+      # user-namespace clone that Chromium's setuid sandbox relies on
+      # (the default sandbox path); without --no-sandbox, Chromium fails
+      # to launch with `Failed to move to new namespace`. opencheck@0.3.0
+      # has no config knob for this — it builds the playwright-mcp
+      # spawn args in `node_modules/opencheck/src/agent/mcp-client.ts`
+      # without touching sandbox flags. The wrapper here prepends the
+      # flag to argv before delegating to the original CLI, so opencheck
+      # is unchanged. Idempotent: if the wrapper is already in place
+      # (cached node_modules / re-run), the step is a no-op.
+      - name: Patch @playwright/mcp to inject --no-sandbox
+        working-directory: tests/opencheck
+        run: |
+          set -euo pipefail
+          cli="node_modules/@playwright/mcp/cli.js"
+          orig="node_modules/@playwright/mcp/cli.original.js"
+          if [ -f "$orig" ]; then
+            echo "wrapper already in place — skipping"
+            exit 0
+          fi
+          mv "$cli" "$orig"
+          cat > "$cli" <<'EOF'
+          #!/usr/bin/env node
+          process.argv.push("--no-sandbox");
+          require("./cli.original.js");
+          EOF
+          chmod +x "$cli"
+          echo "patched $cli"
 
       # opencheck's YAML parser does NOT interpolate env vars; substitute
       # the placeholder before invocation. Writing to a new file (not
