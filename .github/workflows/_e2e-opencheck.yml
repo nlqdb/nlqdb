@@ -1,29 +1,33 @@
-# Reusable: run opencheck against a given baseUrl with Groq through the
-# OpenAI-compatible endpoint. The `workflow_call` trigger means this file
-# never appears in the manual-dispatch list — callers (see
-# `e2e-opencheck.yml`) drive it.
+# Reusable: run opencheck against a given baseUrl with OpenRouter
+# (`qwen/qwen3-coder:free`) through the OpenAI-compatible endpoint. The
+# `workflow_call` trigger means this file never appears in the
+# manual-dispatch list — callers (see `e2e-opencheck.yml`) drive it.
 #
-# Why OpenAI-compat (and not @langchain/groq directly):
+# Why OpenAI-compat (and not provider-specific LangChain packages):
 #   opencheck v0.3.0 pins `@langchain/core ^1.1.24` (the LangChain JS v1
 #   ecosystem). Provider-specific LangChain packages outside the v1
 #   range cause a peer-dep split (two copies of core at runtime, broken
 #   types). `@langchain/openai` v1.4.5 is on the same v1 ecosystem and
-#   works cleanly. Groq exposes a native OpenAI-compatible endpoint
-#   (https://console.groq.com/docs/openai), so pointing ChatOpenAI at
-#   it with the Groq key is the no-upstream-change path.
+#   works cleanly. OpenRouter exposes a native OpenAI-compatible
+#   endpoint (https://openrouter.ai/docs), so pointing ChatOpenAI at
+#   it with the OpenRouter key is the no-upstream-change path.
 #
-# Why Groq (and not Gemini, which we used through run #17):
+# Why OpenRouter + Qwen3-Coder (and not Gemini, which we used through
+# run #17, or Groq's gpt-oss-120b which we briefly tried after):
 #   Gemini 2.5 Flash free tier is 10 RPM. Each test makes ~10-15 model
 #   round-trips through opencheck's ReAct loop, so by the third or
 #   fourth test in the chain we'd burn through the per-minute quota
 #   and every subsequent LLM call paid a ~75-87 s silent-retry tax
-#   before surfacing as a 429 — which the agent saw as a generic
-#   error and counted toward its 240 s per-test budget. Groq free
-#   gives 30 RPM / 1,000 RPD / 12 K TPM with no credit card; the
-#   `openai/gpt-oss-120b` model card explicitly targets autonomous
-#   agents with tool use. Run #17's verbose log was the smoking gun
-#   (full chain of "429 status code (no body)" errors under
-#   [llm/error]).
+#   before surfacing as a 429 — which opencheck saw as a generic
+#   error and counted toward its 240 s per-test budget. Run #17's
+#   LANGCHAIN_VERBOSE=true log surfaced the full chain of "429 status
+#   code (no body)" errors under [llm/error] — the smoking gun.
+#   Qwen3-Coder is documented best-in-class for agentic tool calling
+#   ("most stable tool calling, rarely hallucinating calls or
+#   dropping parameters") — and the account behind the mirrored
+#   OPENROUTER_API_KEY already holds ≥$10 credits, lifting the free
+#   model RPD cap from 50 (per-account default) to 1,000 (which
+#   comfortably covers our ~140-200 LLM calls per run).
 
 name: E2E opencheck (reusable)
 
@@ -35,8 +39,8 @@ on:
         required: true
         type: string
     secrets:
-      GROQ_API_KEY:
-        description: "Groq API key. Surfaced to ChatOpenAI via OPENAI_API_KEY + Groq OpenAI-compat base URL."
+      OPENROUTER_API_KEY:
+        description: "OpenRouter API key. Surfaced to ChatOpenAI via OPENAI_API_KEY + OpenRouter OpenAI-compat base URL."
         required: true
 
 # SK-CIPERM-001 — default-deny at workflow root.
@@ -62,11 +66,12 @@ jobs:
       BASE_URL: ${{ inputs.base_url }}
       # @langchain/openai's ChatOpenAI delegates to the OpenAI Node SDK,
       # which reads OPENAI_API_KEY + OPENAI_BASE_URL from env. Pointing
-      # OPENAI_BASE_URL at Groq's OpenAI-compat endpoint routes every
-      # /chat/completions call to Groq while keeping the SDK surface
-      # identical.
-      OPENAI_API_KEY: ${{ secrets.GROQ_API_KEY }}
-      OPENAI_BASE_URL: https://api.groq.com/openai/v1
+      # OPENAI_BASE_URL at OpenRouter's OpenAI-compat endpoint routes
+      # every /chat/completions call to OpenRouter (which then dispatches
+      # to Qwen3-Coder per the model id in tests.yaml) while keeping the
+      # SDK surface identical.
+      OPENAI_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+      OPENAI_BASE_URL: https://openrouter.ai/api/v1
       # Dump every LangChain step (model start/end, tool calls, tool
       # results) to stdout so the job log captures the full agent
       # loop. Without this we only see opencheck's high-level

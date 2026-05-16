@@ -6,21 +6,26 @@
 # Runtime substitution: the caller workflow renders `__BASE_URL__` to the
 # per-run preview alias via `sed` before invoking `bunx opencheck`.
 #
-# LLM: Groq `openai/gpt-oss-120b` via OpenAI-compat
-# (https://console.groq.com/docs/openai). Switched off Gemini 2.5 Flash
-# after run #17's log surfaced opaque `429 status code (no body)` errors
-# that cost ~75-87 s per failed test (the openai Node SDK silently retries
-# 3× before surfacing). Gemini's free-tier 10 RPM was the ceiling we kept
-# hitting at the chain tail. Groq's free tier gives 30 RPM / 1,000 RPD /
-# 12 K TPM and the model card explicitly bills `gpt-oss-120b` as designed
-# for "high-capability autonomous agents with advanced reasoning, tool
-# use, and multi-step problem solving" — exactly opencheck's loop.
-# Fallback: `llama-3.3-70b-versatile` (same provider, same key, swap
-# the `model:` line).
+# LLM: OpenRouter `qwen/qwen3-coder:free` via OpenAI-compat
+# (https://openrouter.ai/docs). Picked over Groq's `gpt-oss-120b`
+# because multiple independent benchmarks call Qwen3-Coder
+# best-in-class for agentic tool calling specifically: "most stable
+# tool calling, rarely hallucinating calls or dropping parameters"
+# (https://brainroad.com/openrouter-free-models-which-ones-actually-work-for-ai-agents/).
+# That's the exact failure mode that costs us tool-call iterations.
+# 1M context absorbs `browser_snapshot` page trees without
+# truncation. OpenRouter's free-tier RPD lifts from 50 to 1,000
+# when the account holds ≥$10 credits, which this repo's account
+# already does. Switched off Gemini 2.5 Flash after run #17's
+# LANGCHAIN_VERBOSE log surfaced systematic `429 status code (no
+# body)` errors costing ~75-87 s per failed test from Gemini's
+# 10 RPM free-tier ceiling. Fallback if Qwen misbehaves: Groq's
+# `openai/gpt-oss-120b` (swap `OPENAI_BASE_URL`,
+# `OPENAI_API_KEY`, and `model:` together).
 
 baseUrl: "__BASE_URL__"
 modelProvider: "openai"
-model: "openai/gpt-oss-120b"
+model: "qwen/qwen3-coder:free"
 
 # Persistent session shares cookies + localStorage across tests so the
 # agent doesn't have to re-walk the prereq chain from a clean profile

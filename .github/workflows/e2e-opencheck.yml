@@ -57,7 +57,7 @@ jobs:
           PREVIEW_BETTER_AUTH_SECRET: ${{ secrets.PREVIEW_BETTER_AUTH_SECRET }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
         run: |
           set -euo pipefail
           missing=()
@@ -66,7 +66,7 @@ jobs:
           [ -n "${PREVIEW_BETTER_AUTH_SECRET:-}" ] || missing+=(PREVIEW_BETTER_AUTH_SECRET)
           [ -n "${CLOUDFLARE_API_TOKEN:-}" ] || missing+=(CLOUDFLARE_API_TOKEN)
           [ -n "${CLOUDFLARE_ACCOUNT_ID:-}" ] || missing+=(CLOUDFLARE_ACCOUNT_ID)
-          [ -n "${GROQ_API_KEY:-}" ] || missing+=(GROQ_API_KEY)
+          [ -n "${OPENROUTER_API_KEY:-}" ] || missing+=(OPENROUTER_API_KEY)
           if [ ${#missing[@]} -ne 0 ]; then
             echo "::error::missing required secrets: ${missing[*]}"
             exit 1
@@ -177,10 +177,10 @@ jobs:
     with:
       base_url: ${{ needs.deploy-staging.outputs.base_url }}
     # Explicit secrets pass-through (not `secrets: inherit`) so the
-    # reusable workflow's surface is auditable: only GROQ_API_KEY
+    # reusable workflow's surface is auditable: only OPENROUTER_API_KEY
     # crosses the boundary.
     secrets:
-      GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+      OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
 
   cleanup:
     name: Delete Neon branch
