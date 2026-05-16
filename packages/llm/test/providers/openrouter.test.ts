@@ -57,7 +57,9 @@ describe("createOpenRouterProvider", () => {
   it("model() reflects :free defaults", () => {
     const provider = createOpenRouterProvider({ apiKey });
     expect(provider.model("route")).toBe("meta-llama/llama-3.1-8b-instruct:free");
-    expect(provider.model("plan")).toBe("meta-llama/llama-3.3-70b-instruct:free");
+    expect(provider.model("plan")).toBe("qwen/qwen3-coder:free");
+    expect(provider.model("schema_infer")).toBe("qwen/qwen3-coder:free");
+    expect(provider.model("summarize")).toBe("meta-llama/llama-3.3-70b-instruct:free");
   });
 
   it("sends Authorization Bearer header", async () => {

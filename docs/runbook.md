@@ -354,7 +354,7 @@ secrets the Worker is a no-op telemetry-wise — fine for local dev.
 **LLM provider chain**: `packages/llm` reads four secrets at
 request time — `GROQ_API_KEY`, `GEMINI_API_KEY`, `CF_AI_TOKEN`
 (+ `CLOUDFLARE_ACCOUNT_ID`), `OPENROUTER_API_KEY`. Per-operation
-chains are baked in as defaults (DESIGN §8.1); env overrides are
+chains are baked in as defaults (DESIGN §7.1); env overrides are
 deferred until a real reason to override appears. A provider listed
 in a chain but missing its key is simply skipped and increments
 `nlqdb.llm.failover.total{reason="not_configured"}` — the next

@@ -40,7 +40,7 @@ when-to-load:
 
 - **Decision:** Until startup credits land, the `plan` tier chain is `[gemini_flash_free, groq_llama70b_free, openrouter_free]` (with `workers_ai` as a non-US backup). The `route` tier uses `groq_llama8b_free` with `workers_ai` as the geo backup. Embeddings use Workers AI bge-base-en-v1.5. The chain is configured via env var, not code.
 - **Core value:** Free, Bullet-proof, Honest latency
-- **Why:** Every provider in the chain has a no-card free tier (per `docs/architecture.md §7.1`): Gemini 500 RPD plan / 250k TPM, Groq 14,400 RPD on 8B / 1,000 RPD on 70B, Workers AI 10k Neurons/day, OpenRouter ~200 RPD. Stacked, this gives ~500 plan generations + ~14,400 routings per day — comfortably above Phase 1's exit criteria after the plan cache (60–80% hit rate). Card-free is the activation guarantee in `GLOBAL-013`.
+- **Why:** Every provider in the chain has a no-card free tier (per `docs/architecture.md §7.1`): Gemini 500 RPD plan / 250k TPM, Groq 14,400 RPD on 8B / 1,000 RPD on 70B, Workers AI 10k Neurons/day, OpenRouter 50 RPD anon / 1,000 RPD after a one-time $10 deposit. Stacked, this gives ~500 plan generations + ~14,400 routings per day — comfortably above Phase 1's exit criteria after the plan cache (60–80% hit rate). Card-free is the activation guarantee in `GLOBAL-013`.
 - **Consequence in code:** Day-1 deploy reads `LLM_CHAIN_PLAN`, `LLM_CHAIN_ROUTE`, `LLM_CHAIN_SUMMARIZE` env vars; defaults are the strict-$0 chain. All four free providers are implemented in `packages/llm/src/providers/`; rotating the chain is a redeploy, not a code change.
 - **Alternatives rejected:** Single free provider — one outage kills the product. Wait for credits — punts launch by weeks; `docs/architecture.md §0` says we ship without spending money.
 
@@ -123,6 +123,14 @@ when-to-load:
 - **Why:** Trace `285b805cee6e2688768d9ffcd75a86fe` (2026-05-13) — anon `/v1/ask kind=create` spent 8.0 s on a Gemini `schema_infer` timeout before falling over to Groq (3.3 s). With an 800 ms head-start hedge, Groq fires ~7 s earlier and returns in ~4.1 s wall-clock total; ~5 s saved on the bad case, unchanged on the happy case. Dean & Barroso "Tail at Scale" (CACM 2013) — trade ~1.05× provider RPS for the timeout-tail.
 - **Consequence in code:** `packages/llm/src/router.ts` carries `raceHedgedPair()` wired from `dispatch()` when `opts.hedge?.[op]` is set. `FailoverReason` gains `"hedge_lost"`; `classifyError()` keys off `signal.reason === HEDGE_LOST`. `updateBreakerFromResult()` skips `hedge_lost` so repeated successful hedges don't trip the fallback. `nlqdb.llm.failover.total{reason: "hedge_lost"}` fires once per actual engagement (skipped when primary returns within the head-start).
 - **Alternatives rejected:** Always hedge (1.5× RPS waste on the fast path); lower per-attempt timeout instead (keeps the same tail; loses safety margin for legitimately slow models); hedge on paid chains (doubles per-token bill on the slow tail); race all providers (combinatorial RPS waste; two-way is the right ratio for free providers).
+
+### SK-LLM-015 — OpenRouter code-gen ops default to `qwen/qwen3-coder:free`
+
+- **Decision:** OpenRouter pins `plan` and `schema_infer` to `qwen/qwen3-coder:free` (480B MoE, 1M context); `route` / `summarize` / `engine_classify` stay on Llama `:free`.
+- **Core value:** Free, Bullet-proof, Honest latency
+- **Why:** Qwen-Coder lineage hits ~96% on text-to-SQL vs ~88% for Llama 3.3 70B, and 1M context fits goal+schema without truncation — strictly better on the two code-gen ops where OpenRouter actually fires.
+- **Consequence in code:** `packages/llm/src/providers/openrouter.ts` `DEFAULT_MODELS` change only; chain order in `apps/api/src/llm-router.ts` unchanged (OpenRouter stays universal fallback per SK-LLM-003).
+- **Alternatives rejected:** Promote OpenRouter to chain head (unmeasured latency through provider routing — defer to `quality-eval`); Qwen3-Coder for all five ops (overkill latency on cheap-tier ops); stay on Llama 3.3 70B (leaves ~8 accuracy points on the table on the operation we cache hardest).
 
 ### SK-LLM-013 — `PlanResponse` carries `model` + `confidence` for SK-TRUST-002
 

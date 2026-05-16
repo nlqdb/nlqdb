@@ -50,7 +50,7 @@ GOOGLE_CLIENT_SECRET=
 # src/ask/build-deps.ts.
 DATABASE_URL=
 
-# LLM router (Slice 6, DESIGN §8.1). Any subset works — router
+# LLM router (Slice 6, DESIGN §7.1). Any subset works — router
 # skips providers whose key is missing.
 GROQ_API_KEY=
 GEMINI_API_KEY=
