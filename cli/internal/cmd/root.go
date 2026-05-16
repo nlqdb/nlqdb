@@ -3,7 +3,6 @@
 package cmd
 
 import (
-	"context"
 	"fmt"
 	"os"
 
@@ -37,19 +36,26 @@ func New() *cobra.Command {
 	root.PersistentFlags().BoolVar(&g.noUpdate, "no-update-check", false, "skip the once-per-day update check")
 	root.PersistentFlags().StringVar(&g.apiURL, "api-url", "", "override the API base URL (default: from config or https://app.nlqdb.com)")
 
-	cfg, _ := config.Load()
+	cfg, cfgErr := config.Load()
+	if cfgErr != nil {
+		// A malformed config.toml must surface — running on defaults
+		// silently would mask the user's broken file (config.Load
+		// considers parse failures a hard error per its docstring).
+		fmt.Fprintf(os.Stderr, "✗ config: %v\n", cfgErr)
+	}
 	if g.apiURL == "" {
 		g.apiURL = cfg.APIBaseURL
 	}
 
-	root.PersistentPostRun = func(cmd *cobra.Command, args []string) {
+	root.PersistentPostRunE = func(cmd *cobra.Command, args []string) error {
 		if g.noUpdate || cfg.NoUpdate {
-			return
+			return nil
 		}
-		updatecheck.Run(context.Background(), os.Stderr, updatecheck.Options{
+		updatecheck.Run(cmd.Context(), os.Stderr, updatecheck.Options{
 			JSON:   g.json,
 			NonTTY: !isTerminal(os.Stdout),
 		})
+		return nil
 	}
 
 	registerAsk(root, g)

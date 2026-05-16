@@ -1,7 +1,7 @@
 package cmd
 
 import (
-	"fmt"
+	"errors"
 
 	"github.com/spf13/cobra"
 )
@@ -16,10 +16,10 @@ SK-CLI-006. The server-side endpoints (` + "`POST /v1/auth/device`," + `
 then, set NLQDB_API_KEY or use anonymous mode (default).`,
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			fmt.Fprintln(cmd.OutOrStdout(),
-				"nlq login: device-flow ships in the next slice. "+
-					"For now: set NLQDB_API_KEY=<sk_live_…> or use anonymous mode (default).")
-			return nil
+			// Non-zero exit so scripts that gate on `$?` don't proceed
+			// thinking sign-in succeeded; mirrors `nlq mcp install`.
+			printErr(cmd, "nlq login: device-flow ships in the next slice — set NLQDB_API_KEY=<sk_live_…> or use anonymous mode (default).")
+			return errors.New("login not yet implemented")
 		},
 	}
 	root.AddCommand(cmd)

@@ -8,18 +8,18 @@ import (
 )
 
 func TestRegistryStableOrder(t *testing.T) {
-	hs := Registry()
-	if len(hs) < 4 {
-		t.Fatalf("registry shrank: %d", len(hs))
+	want := []string{"claude-desktop", "cursor", "zed", "windsurf", "vscode", "continue"}
+	got := []string{}
+	for _, h := range Registry() {
+		got = append(got, h.Name())
 	}
-	names := []string{}
-	for _, h := range hs {
-		names = append(names, h.Name())
+	if len(got) != len(want) {
+		t.Fatalf("registry length drift — got %d, want %d (%v)", len(got), len(want), got)
 	}
-	// First two slots are load-bearing for the SK-CLI-011 prompt order
-	// (Claude Desktop → Cursor) — auto-detect prompts in this order.
-	if names[0] != "claude-desktop" || names[1] != "cursor" {
-		t.Errorf("expected Claude first then Cursor, got %v", names)
+	for i := range want {
+		if got[i] != want[i] {
+			t.Errorf("registry[%d] = %q, want %q (full: %v)", i, got[i], want[i], got)
+		}
 	}
 }
 

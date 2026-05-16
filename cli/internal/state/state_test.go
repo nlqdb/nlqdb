@@ -57,7 +57,7 @@ func TestSaveAndLoadRoundtrip(t *testing.T) {
 	}
 }
 
-func TestUpdateAtomic(t *testing.T) {
+func TestUpdateSerialisesConcurrentWriters(t *testing.T) {
 	dir := t.TempDir()
 	t.Setenv("XDG_CONFIG_HOME", dir)
 
@@ -65,14 +65,20 @@ func TestUpdateAtomic(t *testing.T) {
 		t.Fatalf("seed save: %v", err)
 	}
 
+	const writers = 8
+	wantSum := int64(0)
+	for i := 1; i <= writers; i++ {
+		wantSum += int64(i)
+	}
+
 	var wg sync.WaitGroup
-	for i := 0; i < 8; i++ {
+	for i := 1; i <= writers; i++ {
 		i := i
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
 			if err := Update(func(s *State) {
-				s.LastUsedAt += int64(i + 1)
+				s.LastUsedAt += int64(i)
 			}); err != nil {
 				t.Errorf("Update %d: %v", i, err)
 			}
@@ -87,8 +93,9 @@ func TestUpdateAtomic(t *testing.T) {
 	if got.ActiveDB != "seed" {
 		t.Fatalf("ActiveDB clobbered: %q", got.ActiveDB)
 	}
-	if got.LastUsedAt == 0 {
-		t.Fatalf("expected non-zero LastUsedAt after concurrent updates")
+	if got.LastUsedAt != wantSum {
+		t.Fatalf("expected LastUsedAt == %d (lock serialised increments), got %d — concurrent writers lost updates",
+			wantSum, got.LastUsedAt)
 	}
 }
 

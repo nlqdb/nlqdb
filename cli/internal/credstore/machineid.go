@@ -11,15 +11,24 @@ import (
 )
 
 // machineFingerprint is the SK-CLI-009 AES-GCM "machine-keyed" input:
-// SHA-256 of the platform's machine-id so the raw id doesn't linger
-// in process memory and the fingerprint width is uniform across OSes.
+// SHA-256(machine-id || per-user salt). The salt is a 32-byte random
+// blob at ~/.config/nlqdb/.salt (mode 0600) written on first use —
+// /etc/machine-id is world-readable on Linux (machine-id(5)), so the
+// salt is what keeps an unprivileged process on the same box from
+// re-deriving the key.
 func machineFingerprint() ([]byte, error) {
 	raw, err := readMachineID()
 	if err != nil {
 		return nil, err
 	}
-	sum := sha256.Sum256([]byte(raw))
-	return sum[:], nil
+	salt, err := readOrCreateSalt()
+	if err != nil {
+		return nil, err
+	}
+	h := sha256.New()
+	h.Write([]byte(raw))
+	h.Write(salt)
+	return h.Sum(nil), nil
 }
 
 func readMachineID() (string, error) {

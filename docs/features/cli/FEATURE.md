@@ -10,7 +10,20 @@ when-to-load:
 # Feature: Cli
 
 **One-liner:** `nlq` command-line tool — verbs, OS-keychain credentials, device-flow auth.
-**Status:** partial (Phase 2) — bootstrap PR landed `cli/go.mod` + the data verbs (`ask`, `new`, bare-form, `db list`, `db create`, `query`, `use`, `whoami`, `logout`, `mcp detect`, `update`, `--json`, `--version`); credential store (keychain + AES-GCM fallback) per `SK-CLI-009`; state (`SK-CLI-013`) + config (`SK-CLI-010`); update check (`SK-CLI-015`); MCP host detection (`SK-CLI-011` first half). Deferred to follow-up slices — gated on server endpoints that don't exist yet: `nlq login` / `nlq logout` device-flow (needs `POST /v1/auth/device` per `SK-AUTH-004`), `nlq mcp install` key-write (needs the device-flow session for `POST /v1/keys`), `nlq run` (needs `POST /v1/run`), `nlq chat` REPL, `nlq keys list|rotate|revoke` (needs `GET/DELETE /v1/keys/*`), `nlq connection <db>` (needs API to expose `connection_url` on `GET /v1/databases`).
+**Status:** partial (Phase 2) — bootstrap PR landed:
+- `cli/go.mod` + the goal-first data verbs: `ask`, `new`, bare `nlq "<goal>"`, `db list`, `db create`, `query`, `use`, `whoami`, `logout`, `mcp detect`, `update`, `--json`, `--version`.
+- Credential store (keychain + AES-GCM fallback with per-user salt) per `SK-CLI-009`.
+- State (`SK-CLI-013`, file-locked load-mutate-save) + config (`SK-CLI-010`).
+- Background update check (`SK-CLI-015`).
+- MCP host detection (`SK-CLI-011` — the auto-detect half).
+
+Deferred to follow-up slices — gated on server endpoints that don't exist yet:
+- `nlq login` device-flow (needs `POST /v1/auth/device` per `SK-AUTH-004`).
+- `nlq mcp install` config-write (needs the device-flow session for `POST /v1/keys` to mint `sk_mcp_*`; the cobra command is wired to print the deferral hint).
+- `nlq run` raw-SQL (needs `POST /v1/run`).
+- `nlq chat` REPL (UX-only deferral; design intact).
+- `nlq keys list|rotate|revoke` (needs `GET/DELETE /v1/keys/*`).
+- `nlq connection <db>` (needs API to expose `connection_url` on `GET /v1/databases` rows).
 **Owners (code):** `cli/**`
 **Cross-refs:** docs/architecture.md §3.3 (CLI surface) · §4.3 (session lifecycle, device-flow) · §14.3 (happy-path) · docs/architecture.md §3 (matrix) · docs/phase-plan.md (Phase 2 CLI slice) · `cli/AGENTS.md` · `cli/README.md`
 

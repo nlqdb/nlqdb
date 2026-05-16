@@ -1,14 +1,19 @@
 package credstore
 
 import (
-	"strings"
+	"encoding/json"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/zalando/go-keyring"
+
+	"github.com/nlqdb/nlqdb/cli/internal/paths"
 )
 
 func TestRoundtripUsesKeychainWhenAvailable(t *testing.T) {
 	keyring.MockInit()
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 
 	if err := Set(SlotAnonToken, "anon_abc123"); err != nil {
 		t.Fatalf("Set: %v", err)
@@ -29,11 +34,7 @@ func TestRoundtripUsesKeychainWhenAvailable(t *testing.T) {
 	}
 }
 
-func TestFallbackRoundtrip(t *testing.T) {
-	// Force keychain unavailability via MockInitWithError so the
-	// fallback path is exercised end-to-end. The HKDF/AES-GCM
-	// envelope is validated implicitly: encryption then decryption
-	// round-trips through the file.
+func TestFallbackRoundtripWhenKeychainUnavailable(t *testing.T) {
 	keyring.MockInitWithError(keyring.ErrUnsupportedPlatform)
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 
@@ -48,7 +49,6 @@ func TestFallbackRoundtrip(t *testing.T) {
 		t.Fatalf("got %q", got)
 	}
 
-	// Different slot is independent.
 	if _, err := Get(SlotRefreshToken); err == nil {
 		t.Fatalf("expected refresh slot empty")
 	}
@@ -61,7 +61,7 @@ func TestFallbackRoundtrip(t *testing.T) {
 	}
 }
 
-func TestFallbackResistsBitFlipForgery(t *testing.T) {
+func TestFallbackOnDiskIsCiphertext(t *testing.T) {
 	keyring.MockInitWithError(keyring.ErrUnsupportedPlatform)
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 
@@ -69,11 +69,85 @@ func TestFallbackResistsBitFlipForgery(t *testing.T) {
 		t.Fatalf("Set: %v", err)
 	}
 
-	ff, err := loadFallback()
+	p, err := paths.CredentialsEnc()
 	if err != nil {
-		t.Fatalf("loadFallback: %v", err)
+		t.Fatalf("path: %v", err)
 	}
-	if !strings.HasPrefix(ff.Entries[string(SlotAnonToken)], "anon_") {
-		t.Fatalf("plaintext leaked: %v", ff.Entries)
+	raw, err := os.ReadFile(p) //nolint:gosec // test path under t.TempDir
+	if err != nil {
+		t.Fatalf("read: %v", err)
 	}
+	if string(raw) == "" {
+		t.Fatalf("credentials.enc unexpectedly empty")
+	}
+	if isPlainJSON(raw) {
+		t.Fatalf("credentials.enc looks like plaintext JSON — encryption is off")
+	}
+}
+
+func TestFallbackAuthFailsOnTamper(t *testing.T) {
+	keyring.MockInitWithError(keyring.ErrUnsupportedPlatform)
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+	if err := Set(SlotAnonToken, "anon_secret_value"); err != nil {
+		t.Fatalf("Set: %v", err)
+	}
+	p, err := paths.CredentialsEnc()
+	if err != nil {
+		t.Fatalf("path: %v", err)
+	}
+	raw, err := os.ReadFile(p) //nolint:gosec // test path under t.TempDir
+	if err != nil {
+		t.Fatalf("read: %v", err)
+	}
+	// Flip the last byte of the GCM tag — Open must fail authentication.
+	raw[len(raw)-1] ^= 0xFF
+	if err := os.WriteFile(p, raw, 0o600); err != nil {
+		t.Fatalf("write tamper: %v", err)
+	}
+	if _, err := Get(SlotAnonToken); err == nil {
+		t.Fatalf("expected AES-GCM authentication failure after tamper")
+	}
+}
+
+func TestSaltIsPersistentAcrossInvocations(t *testing.T) {
+	keyring.MockInitWithError(keyring.ErrUnsupportedPlatform)
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+	if err := Set(SlotAnonToken, "anon_first"); err != nil {
+		t.Fatalf("Set 1: %v", err)
+	}
+	dir, err := paths.ConfigDir()
+	if err != nil {
+		t.Fatalf("config dir: %v", err)
+	}
+	salt1, err := os.ReadFile(filepath.Join(dir, ".salt")) //nolint:gosec // test path under t.TempDir
+	if err != nil {
+		t.Fatalf("read salt: %v", err)
+	}
+	if len(salt1) < 32 {
+		t.Fatalf("salt too short: %d", len(salt1))
+	}
+
+	// A subsequent Set must reuse the same salt so decryption keeps working.
+	if err := Set(SlotRefreshToken, "ref_value"); err != nil {
+		t.Fatalf("Set 2: %v", err)
+	}
+	salt2, err := os.ReadFile(filepath.Join(dir, ".salt")) //nolint:gosec // test path under t.TempDir
+	if err != nil {
+		t.Fatalf("read salt 2: %v", err)
+	}
+	if string(salt1) != string(salt2) {
+		t.Fatalf("salt rotated unexpectedly")
+	}
+
+	got, err := Get(SlotAnonToken)
+	if err != nil || got != "anon_first" {
+		t.Fatalf("salt reuse broke decryption: %v / %q", err, got)
+	}
+}
+
+func isPlainJSON(b []byte) bool {
+	var v any
+	return json.Unmarshal(b, &v) == nil
 }

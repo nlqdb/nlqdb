@@ -3,7 +3,34 @@ package main
 import (
 	"reflect"
 	"testing"
+
+	"github.com/nlqdb/nlqdb/cli/internal/cmd"
 )
+
+func TestKnownVerbsMatchRegistered(t *testing.T) {
+	// The cmd package owns the verb list; main's `known` map mirrors
+	// it. Drift either way (verb registered but unknown to rewriter,
+	// or known to rewriter but unregistered) is a bug.
+	registered := cmd.RegisteredVerbs()
+	registered = append(registered, "version") // cobra exposes via --version flag
+	for _, v := range registered {
+		if _, ok := known[v]; !ok {
+			t.Errorf("registered verb %q missing from main.known map", v)
+		}
+	}
+	for v := range known {
+		found := false
+		for _, r := range registered {
+			if r == v {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Errorf("main.known has %q but no cobra command registers it", v)
+		}
+	}
+}
 
 func TestRewriteBareForm(t *testing.T) {
 	cases := []struct {

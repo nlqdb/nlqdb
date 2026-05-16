@@ -77,9 +77,13 @@ func (w *Writer) writeAskHuman(resp *api.AskResponse) error {
 		fmt.Fprintf(w.Err, "→ %s (auto-selected: %s)\n", resp.SelectedDB.Slug, resp.SelectedDB.Reason)
 	}
 	if resp.Confirm && resp.Diff != nil {
-		fmt.Fprintf(w.Err, "⚠ %s on `%s` affects ~%d rows — %s\n",
+		// Human-mode trust diff lands on stdout so the user sees the
+		// next-action right under the warning; JSON mode carries the
+		// same fields under `resp.Diff` for programmatic consumers
+		// (SK-TRUST-001).
+		fmt.Fprintf(w.Out, "⚠ %s on `%s` affects ~%d rows — %s\n",
 			resp.Diff.Verb, resp.Diff.Table, resp.Diff.AffectedRows, resp.Diff.Summary)
-		fmt.Fprintln(w.Err, "  Re-run with `--confirm` to apply.")
+		fmt.Fprintln(w.Out, "  Re-run with `--confirm` to apply.")
 		return nil
 	}
 	if resp.Summary != "" {

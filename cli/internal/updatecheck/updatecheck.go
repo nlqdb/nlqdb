@@ -10,6 +10,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -114,7 +115,11 @@ func Run(ctx context.Context, errw io.Writer, opts Options) {
 		return
 	}
 	req.Header.Set("Accept", "application/json")
-	resp, err := http.DefaultClient.Do(req)
+	// Explicit client (not http.DefaultClient) — a transport that
+	// ignores ctx during DNS / TLS hand-shake can hang past the
+	// caller's deadline; Client.Timeout is the belt to the ctx braces.
+	client := &http.Client{Timeout: 2 * time.Second}
+	resp, err := client.Do(req)
 	if err != nil {
 		return
 	}
@@ -161,7 +166,7 @@ func isNewer(latest, current string) bool {
 	}
 	l := splitSemver(latest)
 	c := splitSemver(current)
-	for i := 0; i < 3; i++ {
+	for i := range 3 {
 		if l[i] > c[i] {
 			return true
 		}
@@ -172,6 +177,9 @@ func isNewer(latest, current string) bool {
 	return false
 }
 
+// splitSemver treats a non-numeric component as zero; that's
+// conservative — `0.2.foo` compares as `0.2.0`, so an unrecognised
+// version is "older" rather than triggering a spurious upgrade hint.
 func splitSemver(v string) [3]int {
 	v = strings.TrimPrefix(v, "v")
 	if idx := strings.IndexAny(v, "-+"); idx >= 0 {
@@ -179,9 +187,14 @@ func splitSemver(v string) [3]int {
 	}
 	parts := strings.SplitN(v, ".", 3)
 	var out [3]int
-	for i := 0; i < len(parts) && i < 3; i++ {
-		var n int
-		_, _ = fmt.Sscanf(parts[i], "%d", &n)
+	for i, p := range parts {
+		if i >= 3 {
+			break
+		}
+		n, err := strconv.Atoi(p)
+		if err != nil {
+			n = 0
+		}
 		out[i] = n
 	}
 	return out

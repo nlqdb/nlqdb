@@ -162,12 +162,12 @@ func TestRetriesReuseIdempotencyKey(t *testing.T) {
 func TestJitteredBackoffStaysWithinBound(t *testing.T) {
 	for attempt := 1; attempt <= 3; attempt++ {
 		expo := 200 * time.Millisecond * time.Duration(1<<(attempt-1))
-		min := expo / 2
-		max := expo
-		for i := 0; i < 100; i++ {
+		minD := expo / 2
+		maxD := expo
+		for range 100 {
 			d := jitteredBackoff(attempt)
-			if d < min || d > max {
-				t.Errorf("attempt=%d: backoff %v outside [%v, %v]", attempt, d, min, max)
+			if d < minD || d > maxD {
+				t.Errorf("attempt=%d: backoff %v outside [%v, %v]", attempt, d, minD, maxD)
 			}
 		}
 	}
@@ -191,7 +191,7 @@ func TestIdempotencyKeyOnMutations(t *testing.T) {
 	defer srv.Close()
 
 	c := New(srv.URL, auth.Identity{Kind: auth.KindEnvKey, Token: "sk_live_x"})
-	for i := 0; i < 2; i++ {
+	for i := range 2 {
 		if _, err := c.Ask(context.Background(), AskRequest{Goal: "x"}); err != nil {
 			t.Fatalf("Ask %d: %v", i, err)
 		}

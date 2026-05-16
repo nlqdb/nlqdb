@@ -80,7 +80,27 @@ func Save(s State) error {
 	return nil
 }
 
+// Update serialises load-mutate-save through a file lock on
+// state.json.lock so two `nlq` invocations don't lose each other's
+// writes. flock semantics: held until the *os.File is closed; we
+// keep the handle for the whole transaction.
 func Update(mutate func(*State)) error {
+	p, err := paths.StateJSON()
+	if err != nil {
+		return err
+	}
+	lock, err := os.OpenFile(p+".lock", os.O_CREATE|os.O_RDWR, 0o600) //nolint:gosec // computed XDG path
+	if err != nil {
+		return fmt.Errorf("open state lock: %w", err)
+	}
+	defer func() {
+		_ = releaseLock(lock)
+		_ = lock.Close()
+	}()
+	if err := acquireLock(lock); err != nil {
+		return fmt.Errorf("acquire state lock: %w", err)
+	}
+
 	s, err := Load()
 	if err != nil {
 		return err

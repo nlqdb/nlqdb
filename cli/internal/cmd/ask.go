@@ -3,6 +3,7 @@ package cmd
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 	"time"
 
@@ -85,16 +86,22 @@ func doAsk(ctx context.Context, cmd *cobra.Command, g *globalFlags, p askParams)
 	}
 
 	// SK-CLI-012: persist the freshly-minted DB so the next bare call
-	// lands on it.
-	if resp.Kind == "create" && resp.DB != "" {
-		_ = state.Update(func(s *state.State) {
+	// lands on it. Failure logs to stderr (read-only fs etc.) so the
+	// user sees why future calls might re-create instead of reusing.
+	switch {
+	case resp.Kind == "create" && resp.DB != "":
+		if err := state.Update(func(s *state.State) {
 			s.ActiveDB = resp.DB
 			s.LastUsedAt = time.Now().Unix()
-		})
-	} else if resp.Status == "ok" && req.DBID != "" {
-		_ = state.Update(func(s *state.State) {
+		}); err != nil {
+			fmt.Fprintf(cmd.ErrOrStderr(), "⚠ state: %v\n", err)
+		}
+	case resp.Status == "ok" && req.DBID != "":
+		if err := state.Update(func(s *state.State) {
 			s.LastUsedAt = time.Now().Unix()
-		})
+		}); err != nil {
+			fmt.Fprintf(cmd.ErrOrStderr(), "⚠ state: %v\n", err)
+		}
 	}
 
 	w := output.New(cmd.OutOrStdout(), cmd.ErrOrStderr(), formatFor(g))
@@ -114,29 +121,36 @@ func renderAPIError(cmd *cobra.Command, err error) error {
 		printErr(cmd, "%v", err)
 		return err
 	}
-	switch {
-	case apiErr.Status == "ambiguous_db":
+	switch apiErr.Status {
+	case "ambiguous_db":
 		printErr(cmd, "the goal matches multiple databases — re-run with `--db=<id>` to pin one.")
-	case apiErr.Status == "clarify_required":
+	case "clarify_required":
 		printErr(cmd, "the goal looks like a creation request but a DB is pinned — re-run without `--db` to create, or rephrase.")
-	case apiErr.Status == "db_not_found":
+	case "db_not_found":
 		printErr(cmd, "database not found — try `nlq db list` to see what's available.")
-	case apiErr.Status == "rate_limited":
+	case "rate_limited":
 		printErr(cmd, "rate-limited — wait a moment, then retry.")
-	case apiErr.Status == "auth_required" && apiErr.Code == "anon_device_cap":
-		printErr(cmd, "anonymous device cap hit — sign in to keep building (set NLQDB_API_KEY or run `nlq login` once device-flow ships).")
-	case apiErr.Status == "auth_required" && apiErr.Code == "anon_global_cap":
-		printErr(cmd, "anonymous global quota hit — sign in to keep going (set NLQDB_API_KEY or run `nlq login` once device-flow ships).")
-	case apiErr.Status == "auth_required" || apiErr.Status == "unauthorized":
-		if apiErr.Action != "" {
-			printErr(cmd, "auth required — %s", apiErr.Action)
-		} else {
-			printErr(cmd, "auth required — set `NLQDB_API_KEY` or run `nlq login` (device-flow ships in the next slice).")
-		}
+	case "auth_required", "unauthorized":
+		renderAuthRequired(cmd, apiErr)
 	default:
 		printErr(cmd, "%s", apiErr.Error())
 	}
 	return err
+}
+
+func renderAuthRequired(cmd *cobra.Command, apiErr *api.APIError) {
+	switch apiErr.Code {
+	case "anon_device_cap":
+		printErr(cmd, "anonymous device cap hit — sign in to keep building (set NLQDB_API_KEY or run `nlq login` once device-flow ships).")
+	case "anon_global_cap":
+		printErr(cmd, "anonymous global quota hit — sign in to keep going (set NLQDB_API_KEY or run `nlq login` once device-flow ships).")
+	default:
+		if apiErr.Action != "" {
+			printErr(cmd, "auth required — %s", apiErr.Action)
+			return
+		}
+		printErr(cmd, "auth required — set `NLQDB_API_KEY` or run `nlq login` (device-flow ships in the next slice).")
+	}
 }
 
 func joinArgs(args []string) string {

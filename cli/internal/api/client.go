@@ -232,9 +232,11 @@ func recoverable(e *APIError) bool {
 
 func randomHex(n int) string {
 	b := make([]byte, n)
+	// crypto/rand failing on Linux/macOS/Windows means the OS is in an
+	// unusable state; falling back to a time-based id would silently
+	// weaken our retry-dedup contract. Crash loudly instead.
 	if _, err := rand.Read(b); err != nil {
-		// Idempotency-Key is opaque to the API, not a security boundary.
-		return fmt.Sprintf("nlq-fallback-%x", time.Now().UnixNano())
+		panic(fmt.Sprintf("nlqdb: crypto/rand unavailable: %v", err))
 	}
 	return hex.EncodeToString(b)
 }

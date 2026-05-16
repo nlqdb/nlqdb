@@ -128,10 +128,32 @@ func writeMcpServersField(path, key string, stanza ServerStanza) error {
 		_ = tmp.Close()
 		return fmt.Errorf("write tmp: %w", err)
 	}
+	// Explicit 0600 — `sk_mcp_*` keys land in this file once the
+	// install slice wires the mint call; matching `state.go` /
+	// `fallback.go` posture keeps every CLI-written file at the
+	// same permissions regardless of umask.
+	if err := tmp.Chmod(0o600); err != nil {
+		_ = tmp.Close()
+		return fmt.Errorf("chmod tmp: %w", err)
+	}
 	if err := tmp.Close(); err != nil {
 		return fmt.Errorf("close tmp: %w", err)
 	}
 	return os.Rename(tmpName, path)
+}
+
+// detectByDirExists is shared by hosts whose presence we infer from
+// the existence of a parent directory (Cursor, Zed, Windsurf, Continue).
+// Claude Desktop / VS Code use a different probe because their config
+// path is nested deeper.
+func detectByDirExists(p string) (Detection, error) {
+	if _, err := os.Stat(filepath.Dir(p)); err != nil {
+		if errors.Is(err, fs.ErrNotExist) {
+			return Detection{Present: false, ConfigPath: p}, nil
+		}
+		return Detection{}, err
+	}
+	return Detection{Present: true, ConfigPath: p}, nil
 }
 
 func userHome() (string, error) {

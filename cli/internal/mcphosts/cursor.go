@@ -1,9 +1,6 @@
 package mcphosts
 
 import (
-	"errors"
-	"io/fs"
-	"os"
 	"path/filepath"
 )
 
@@ -24,13 +21,7 @@ func (h Cursor) Detect() (Detection, error) {
 	if err != nil {
 		return Detection{}, err
 	}
-	if _, err := os.Stat(filepath.Dir(p)); err != nil {
-		if errors.Is(err, fs.ErrNotExist) {
-			return Detection{Present: false, ConfigPath: p}, nil
-		}
-		return Detection{}, err
-	}
-	return Detection{Present: true, ConfigPath: p}, nil
+	return detectByDirExists(p)
 }
 
 func (h Cursor) Install(name string, server ServerStanza) error {

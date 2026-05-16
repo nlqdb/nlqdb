@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -53,13 +54,14 @@ should prefer ` + "`nlq new \"<goal>\"`" + ` so the schema is inferred from
 the goal — this verb is the GLOBAL-015 escape hatch.`,
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			name := ""
-			if len(args) == 1 {
-				name = args[0]
-			}
-			goal := name
-			if goal == "" {
-				goal = "a new database"
+			// Wrap a bare name as a real goal sentence so the LLM
+			// schema-inference doesn't try to invent a schema for the
+			// bare token (e.g. `nlq db create finance` → "create a
+			// database named finance" rather than asking the LLM what
+			// "finance" implies).
+			goal := "create a new database"
+			if len(args) == 1 && args[0] != "" {
+				goal = fmt.Sprintf("create a database named %s", args[0])
 			}
 			ctx, cancel := context.WithTimeout(cmd.Context(), 120*time.Second)
 			defer cancel()

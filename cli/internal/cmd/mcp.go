@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -32,7 +33,8 @@ func mcpDetectCmd(g *globalFlags) *cobra.Command {
 				for _, d := range hits {
 					out = append(out, map[string]any{"config_path": d.ConfigPath})
 				}
-				enc := jsonEncoder(cmd)
+				enc := json.NewEncoder(cmd.OutOrStdout())
+				enc.SetIndent("", "  ")
 				return enc.Encode(map[string]any{"hosts": out})
 			}
 			if len(hits) == 0 {
@@ -47,15 +49,14 @@ func mcpDetectCmd(g *globalFlags) *cobra.Command {
 	}
 }
 
-func mcpInstallCmd(_ *globalFlags) *cobra.Command {
+func mcpInstallCmd(g *globalFlags) *cobra.Command {
 	return &cobra.Command{
 		Use:   "install [host]",
 		Short: "Wire nlqdb into an MCP host (requires `nlq login`, ships next slice)",
 		Long: `mcp install mints a host-scoped sk_mcp_* key via POST /v1/keys and
 writes it into the host's config (SK-CLI-011). The key-mint endpoint is
 session-only, so this verb requires the device-flow ` + "`nlq login`" + ` shipping in
-a follow-up slice. Until then, detection is exposed via ` + "`nlq mcp detect`" + ` so the
-auto-detect surface can be validated against real hosts.`,
+a follow-up slice. Until then, detection is exposed via ` + "`nlq mcp detect`" + `.`,
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			target := strings.TrimSpace(strings.Join(args, " "))
@@ -64,6 +65,16 @@ auto-detect surface can be validated against real hosts.`,
 					printErr(cmd, "%v", err)
 					return err
 				}
+			}
+			if g.json {
+				enc := json.NewEncoder(cmd.OutOrStdout())
+				enc.SetIndent("", "  ")
+				_ = enc.Encode(map[string]any{
+					"status": "not_implemented",
+					"reason": "device_flow_login_required",
+					"hint":   "https://nlqdb.com/app to mint sk_mcp_ keys until `nlq login` ships",
+				})
+				return errors.New("mcp install not yet implemented")
 			}
 			fmt.Fprintln(cmd.ErrOrStderr(),
 				"nlq mcp install requires session-authenticated key minting (POST /v1/keys is session-only).")

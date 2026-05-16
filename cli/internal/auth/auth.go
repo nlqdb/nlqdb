@@ -16,6 +16,8 @@ import (
 
 const envAPIKey = "NLQDB_API_KEY" //nolint:gosec // env var name, not a secret
 
+var ErrNoIdentity = errors.New("auth: no identity (env var unset, not signed in, no anon token)")
+
 type Kind int
 
 const (
@@ -71,8 +73,6 @@ func Resolve(ensureAnon bool) (Identity, error) {
 	}
 	return Identity{Kind: KindAnonymous, Token: tok}, nil
 }
-
-var ErrNoIdentity = errors.New("auth: no identity (env var unset, not signed in, no anon token)")
 
 // Clear removes the anonymous and refresh-token slots. An env-key is
 // left untouched because env-only auth is intentionally stateless.

@@ -12,14 +12,12 @@ import (
 var (
 	Version       = "0.0.0-dev"
 	Commit        = "unknown"
-	BuildDate     = "unknown"
 	InstallMethod = "dev"
 )
 
 type Info struct {
 	Version       string `json:"version"`
 	Commit        string `json:"commit"`
-	BuildDate     string `json:"build_date"`
 	InstallMethod string `json:"install_method"`
 	GoVersion     string `json:"go_version"`
 	OS            string `json:"os"`
@@ -30,7 +28,6 @@ func Current() Info {
 	return Info{
 		Version:       Version,
 		Commit:        Commit,
-		BuildDate:     BuildDate,
 		InstallMethod: InstallMethod,
 		GoVersion:     runtime.Version(),
 		OS:            runtime.GOOS,
