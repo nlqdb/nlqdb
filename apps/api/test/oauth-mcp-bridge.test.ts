@@ -101,7 +101,6 @@ describe("mintBridgeCode + redeemBridgeCode", () => {
     const result = await mintBridgeCode("user_42", body, null, {
       kv,
       randomHex: () => "deadbeef".repeat(4), // 32 chars
-      now: () => 1000,
       mintKey: mint,
     });
     expect(result.code.length).toBe(32);
@@ -123,7 +122,6 @@ describe("mintBridgeCode + redeemBridgeCode", () => {
     const deps = {
       kv,
       randomHex: () => `code${mintCount++}`.padEnd(32, "0"),
-      now: () => 1000,
       mintKey: async () => ({ plaintext: "sk_mcp_x", hash: "h".repeat(64) }),
     };
     const first = await mintBridgeCode("user_42", body, "idem-key-1", deps);
@@ -137,7 +135,6 @@ describe("mintBridgeCode + redeemBridgeCode", () => {
     const deps = {
       kv,
       randomHex: () => `code${mintCount++}`.padEnd(32, "0"),
-      now: () => 1000,
       mintKey: async () => ({ plaintext: "sk_mcp_x", hash: "h".repeat(64) }),
     };
     const a = await mintBridgeCode("user_42", body, "idem-a", deps);
@@ -150,31 +147,32 @@ describe("mintBridgeCode + redeemBridgeCode", () => {
     const result = await mintBridgeCode("user_42", body, null, {
       kv,
       randomHex: () => "f".repeat(32),
-      now: () => 1000,
       mintKey: async () => ({ plaintext: "sk_mcp_x", hash: "h".repeat(64) }),
     });
-    const first = await redeemBridgeCode(result.code, kv, 1000);
+    const first = await redeemBridgeCode(result.code, kv);
     expect(first?.bearer).toBe("sk_mcp_x");
-    const second = await redeemBridgeCode(result.code, kv, 1000);
+    const second = await redeemBridgeCode(result.code, kv);
     expect(second).toBeNull();
   });
 
   it("redeem returns null for an unknown code", async () => {
     const { kv } = makeKv();
-    const out = await redeemBridgeCode("nonexistent_code", kv, 1000);
+    const out = await redeemBridgeCode("nonexistent_code", kv);
     expect(out).toBeNull();
   });
 
-  it("redeem returns null for an expired code", async () => {
-    const { kv } = makeKv();
+  it("redeem returns null for a KV-expired code", async () => {
+    const { kv, store } = makeKv();
     const result = await mintBridgeCode("user_42", body, null, {
       kv,
       randomHex: () => "f".repeat(32),
-      now: () => 1000,
       mintKey: async () => ({ plaintext: "sk_mcp_x", hash: "h".repeat(64) }),
     });
-    // now is way past expires_at (1000 + 60)
-    const out = await redeemBridgeCode(result.code, kv, 999_999);
+    // Simulate KV TTL expiry by zeroing the entry's expiresAt.
+    for (const [key, val] of store.entries()) {
+      if (key.startsWith("mcp-oauth-bridge:")) store.set(key, { ...val, expiresAt: 0 });
+    }
+    const out = await redeemBridgeCode(result.code, kv);
     expect(out).toBeNull();
   });
 });

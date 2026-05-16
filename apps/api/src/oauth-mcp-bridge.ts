@@ -35,7 +35,6 @@ export type BridgeStoredCode = {
   client_id: string;
   redirect_uri: string;
   state: string;
-  expires_at: number;
   bearer: string;
   bearer_hash: string;
 };
@@ -45,7 +44,6 @@ export type BridgeMintResult = { code: string; expires_in: number };
 export type BridgeDeps = {
   kv: KVNamespace;
   randomHex: (bytes: number) => string;
-  now: () => number;
   mintKey: (
     userId: string,
     mcpHost: string,
@@ -129,29 +127,24 @@ async function mintStoredCode(
     client_id: body.client_id,
     redirect_uri: body.redirect_uri,
     state: body.state,
-    expires_at: deps.now() + BRIDGE_CODE_TTL_SECONDS,
     bearer: minted.plaintext,
     bearer_hash: minted.hash,
   };
 }
 
-// Single-use: delete-on-read so a replay misses.
+// Single-use: delete-on-read so a replay misses. KV TTL enforces expiry.
 export async function redeemBridgeCode(
   code: string,
   kv: KVNamespace,
-  now: number,
 ): Promise<BridgeStoredCode | null> {
   const raw = await kv.get(`${BRIDGE_CODE_PREFIX}${code}`);
   if (!raw) return null;
-  let parsed: BridgeStoredCode;
+  await kv.delete(`${BRIDGE_CODE_PREFIX}${code}`);
   try {
-    parsed = JSON.parse(raw) as BridgeStoredCode;
+    return JSON.parse(raw) as BridgeStoredCode;
   } catch {
     return null;
   }
-  await kv.delete(`${BRIDGE_CODE_PREFIX}${code}`);
-  if (parsed.expires_at < now) return null;
-  return parsed;
 }
 
 export function defaultRandomHex(byteCount: number): string {
@@ -191,7 +184,6 @@ export async function handleMcpCallback(
   const result = await mintBridgeCode(session.user.id, parsed.body, idempotencyKey, {
     kv: opts.kv(c),
     randomHex: defaultRandomHex,
-    now: () => Math.floor(Date.now() / 1000),
     mintKey: (userId, mcpHost, deviceId) => opts.mintKey(c, userId, mcpHost, deviceId),
   });
   opts.setOutcome?.(c, "ok");
@@ -214,7 +206,7 @@ export async function handleMcpCallbackRedeem(
     opts.setOutcome?.(c, "invalid_code");
     return c.json({ error: "invalid_code" }, 400);
   }
-  const stored = await redeemBridgeCode(code, opts.kv(c), Math.floor(Date.now() / 1000));
+  const stored = await redeemBridgeCode(code, opts.kv(c));
   if (!stored) {
     opts.setOutcome?.(c, "not_found");
     return c.json({ error: "not_found" }, 404);

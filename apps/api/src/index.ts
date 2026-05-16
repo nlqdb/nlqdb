@@ -30,7 +30,6 @@ import { makeAnonRateLimiter } from "./anon-rate-limit.ts";
 import { buildSetCookie, signAnonStash } from "./anon-stash.ts";
 import {
   bumpKeyLastUsed as bumpKeyLastUsedImpl,
-  getKeyStatusByHash,
   hmacHex,
   lookupPkLiveKey as lookupPkLiveKeyImpl,
   lookupSkKey as lookupSkKeyImpl,
@@ -1485,26 +1484,16 @@ app.get("/v1/keys/:hash/status", requirePrincipal, async (c) => {
       )
         .bind(keyHash)
         .first<{ tenant_id: string; revoked_at: number | null }>();
-      if (!row) {
-        // 404 is the right shape — the DO treats this identically to
-        // "revoked: true" (drops the cache + closes the session) but
-        // we don't want to leak "this hash exists for another tenant".
+      // 404 for both not-found and cross-tenant — don't leak which.
+      if (!row || row.tenant_id !== tenantId) {
         span.setAttribute("nlqdb.keys.status.outcome", "not_found");
         return c.json({ error: "not_found" }, 404);
       }
-      if (row.tenant_id !== tenantId) {
-        span.setAttribute("nlqdb.keys.status.outcome", "cross_tenant");
-        return c.json({ error: "not_found" }, 404);
-      }
-      const status = await getKeyStatusByHash(c.env.DB, keyHash);
-      if (!status) {
-        span.setAttribute("nlqdb.keys.status.outcome", "not_found");
-        return c.json({ error: "not_found" }, 404);
-      }
-      span.setAttribute("nlqdb.keys.status.outcome", status.revoked ? "revoked" : "active");
+      const revoked = row.revoked_at !== null;
+      span.setAttribute("nlqdb.keys.status.outcome", revoked ? "revoked" : "active");
       return c.json({
-        revoked: status.revoked,
-        ...(status.revokedAt != null ? { revoked_at: status.revokedAt } : {}),
+        revoked,
+        ...(row.revoked_at != null ? { revoked_at: row.revoked_at } : {}),
       });
     } catch (err) {
       const e = err as Error;

@@ -175,30 +175,6 @@ export async function lookupSkKey(
   };
 }
 
-// ─── key status (SK-MCP-014 hot-path revalidation) ─────────────────────────
-
-// Returns the revocation state for a key identified by its HMAC hash.
-// Used by `apps/mcp/`'s `McpAgent` Durable Object: the DO caches the
-// resolved key + claims for 1 s and re-probes this endpoint on every
-// tool call past the TTL. Returning `null` (unknown hash) and
-// `{ revoked: true }` (known but revoked) are distinct: the DO drops
-// its cache + closes the session on the latter and surfaces an
-// `SK-MCP-006` error envelope. Caller passes the HMAC, never the
-// plaintext — keeps key material out of cross-Worker URLs.
-export async function getKeyStatusByHash(
-  d1: D1Database,
-  keyHash: string,
-): Promise<{ revoked: boolean; revokedAt: number | null } | null> {
-  const row = await d1
-    .prepare(
-      "SELECT revoked_at FROM api_keys WHERE key_hash = ? AND key_type IN ('sk_live', 'sk_mcp')",
-    )
-    .bind(keyHash)
-    .first<{ revoked_at: number | null }>();
-  if (!row) return null;
-  return { revoked: row.revoked_at !== null, revokedAt: row.revoked_at };
-}
-
 // Throttled to one write per minute per key — `last_used_at` is a
 // dashboard display field, not an audit trail, so a hot client running
 // 100 req/s shouldn't generate 100 writes/s on a shared row. The WHERE
@@ -245,8 +221,7 @@ export async function adoptApiKeys(
 // ─── crypto helpers ──────────────────────────────────────────────────────────
 
 // HMAC-SHA256 hex. Exported so external callers (e.g. the OAuth bridge
-// mint path) can hash plaintext keys for `getKeyStatusByHash` probes
-// without re-implementing the primitive.
+// mint path) can hash plaintext keys without re-implementing the primitive.
 export async function hmacHex(secret: string, message: string): Promise<string> {
   const key = await crypto.subtle.importKey(
     "raw",
