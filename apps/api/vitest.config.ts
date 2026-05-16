@@ -113,6 +113,7 @@ export default defineConfig(async () => {
               "test/magic-link.test.ts",
               "test/errors-web.test.ts",
               "test/keys-mint.test.ts",
+              "test/databases-delete.test.ts",
             ],
             setupFiles: ["./test/apply-migrations.ts"],
           },

@@ -143,7 +143,7 @@ const credentialedCors = cors({
     "idempotency-key",
     "traceparent",
   ],
-  allowMethods: ["GET", "POST", "OPTIONS"],
+  allowMethods: ["GET", "POST", "DELETE", "OPTIONS"],
   maxAge: 86400,
 });
 
@@ -1543,10 +1543,15 @@ app.get("/v1/databases", requirePrincipal, async (c) => {
 // left-rail "+ New" affordance in the chat surface. Accepts
 // `{ name?, goal? }` (at least one required); uses the same
 // `orchestrateDbCreate` typed-plan pipeline as the `kind=create`
-// branch of `/v1/ask`. Rate-limit for authed users is enforced
-// inside `orchestrateAsk` via the per-account D1 limiter
-// (SK-HDC-008); anonymous access is not permitted here — the
-// left-rail only renders for authenticated sessions.
+// branch of `/v1/ask`. Anonymous access is not permitted here —
+// the left-rail only renders for authenticated sessions.
+//
+// Note: the `/v1/ask` create path inherits the `orchestrateAsk`
+// per-account D1 limiter (`SK-HDC-008`); this dedicated
+// `POST /v1/databases` and the sibling `DELETE /v1/databases/:id`
+// do not yet pay through that same gate. The gap is bounded by
+// `requireSession` (no anon traffic) and tenant scope (a user can
+// only thrash their own DBs), so it's accepted for Phase 1.
 app.post("/v1/databases", requireSession, async (c) => {
   const tracer = trace.getTracer("@nlqdb/api");
   return tracer.startActiveSpan("nlqdb.databases.create", async (span) => {
@@ -1657,6 +1662,83 @@ app.post("/v1/databases", requireSession, async (c) => {
       span.recordException(err as Error);
       span.end();
       throw err;
+    }
+  });
+});
+
+// `DELETE /v1/databases/:id` — destructive removal of a hosted DB.
+// Reuses the SK-HDC-011 `dropSchemaAndRegistry` rollback primitive
+// (DROP SCHEMA CASCADE then DELETE FROM databases) so create-time
+// rollback and user-initiated delete share one code path. Per-DB
+// `pk_live_*` keys carry the dbId in the api_keys row and become
+// orphans on delete, so they're cleaned up here too.
+//
+// Confirmation is the UI's job (SK-HDC-016): a modal that forces the
+// user to type the displayName. The endpoint trusts the caller —
+// nothing here re-checks intent. Tenant scoping via `resolveDb` is
+// the only safety: a leaked dbId from another tenant returns 404,
+// not 403, so we don't leak existence information.
+app.delete("/v1/databases/:id", requireSession, async (c) => {
+  const tracer = trace.getTracer("@nlqdb/api");
+  return tracer.startActiveSpan("nlqdb.databases.delete", async (span) => {
+    const session = c.var.session;
+    const dbId = c.req.param("id");
+    span.setAttribute("nlqdb.user.id", session.user.id);
+    span.setAttribute("nlqdb.databases.delete.db_id", dbId);
+
+    const record = await resolveDb(c.env.DB, dbId, session.user.id);
+    if (!record) {
+      span.setAttribute("nlqdb.databases.delete.outcome", "not_found");
+      span.end();
+      return c.json({ error: { status: "db_not_found" as const } }, 404);
+    }
+
+    // Same WASM polyfill as the POST handler above — `build-deps.ts`
+    // transitively pulls in `sql-validate-ddl.ts`'s top-level WASM
+    // `loadModule()` even though the delete path never invokes it.
+    // Keeping the dynamic import here matches POST's pattern and
+    // dodges the cold-start `loadModule()` hang risk on isolates that
+    // never hit a write path.
+    const g = globalThis as unknown as { __filename?: string; __dirname?: string };
+    if (typeof g.__filename === "undefined") g.__filename = "worker";
+    if (typeof g.__dirname === "undefined") g.__dirname = "/";
+
+    // Pull the lean `buildPgClient` + secret-ref resolver only — we
+    // don't need the LLM router, embed deps, or recent-tables store
+    // that `buildDbCreateDeps` wires up for the create path.
+    // `stripDbPrefix` is a pure helper (no WASM dependency); both are
+    // dynamic-imported through the same `neon-provision.ts` /
+    // `build-deps.ts` modules so the WASM polyfill above still gates
+    // the cold-start cost.
+    const { buildPgClient, resolveDatabaseUrl } = await import("./db-create/build-deps.ts");
+    const { dropSchemaAndRegistry, stripDbPrefix } = await import("./db-create/neon-provision.ts");
+
+    try {
+      const pg = buildPgClient(resolveDatabaseUrl(c.env));
+      const schemaName = stripDbPrefix(dbId);
+      await dropSchemaAndRegistry(tracer, pg, c.env.DB, dbId, schemaName);
+      // pk_live_* keys are per-DB (SK-APIKEYS-001) and become orphans
+      // when the DB is deleted. Clean them up so a re-created DB with
+      // the same id (vanishingly unlikely; 6-hex collision) doesn't
+      // inherit them, and so the api_keys table doesn't accumulate
+      // tombstones for removed DBs.
+      await c.env.DB.prepare("DELETE FROM api_keys WHERE db_id = ?").bind(dbId).run();
+      span.setAttribute("nlqdb.databases.delete.outcome", "ok");
+      span.end();
+      return c.body(null, 204);
+    } catch (err) {
+      // Typed 500 envelope so SDK consumers see a structured
+      // `code: "internal_error"` rather than the wire-layer's
+      // `unknown_error` fallback. Matches `POST /v1/oauth/...` and
+      // `GET /v1/keys/:hash/status` shape.
+      span.recordException(err as Error);
+      span.setStatus({
+        code: SpanStatusCode.ERROR,
+        message: err instanceof Error ? err.message : String(err),
+      });
+      span.setAttribute("nlqdb.databases.delete.outcome", "internal_error");
+      span.end();
+      return c.json({ error: "internal_error" as const }, 500);
     }
   });
 });

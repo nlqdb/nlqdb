@@ -341,6 +341,26 @@ h3 {
   box-shadow: 6px 6px 0 0 var(--accent-fg);
 }
 
+/* Destructive modifier — `DELETE` confirmations in the chat surface
+ * (`SK-HDC-016`). Distinct from `.btn--accent` so the eye can
+ * separate "go" from "drop". */
+.btn--danger {
+  background: #ff7b7b;
+  color: #1a0d0d;
+  border-color: #4a2020;
+  box-shadow: 4px 4px 0 0 #4a2020;
+}
+
+.btn--danger:hover {
+  color: #1a0d0d;
+  box-shadow: 6px 6px 0 0 #4a2020;
+}
+
+.btn--danger:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
 /* Live demo panel — code on the left, rendered <nlq-data> on the right.
  * Visible proof of the "0 to 1 with no backend" message (DESIGN §3.1). */
 

@@ -1,6 +1,10 @@
 # E2E flow for nlqdb: anonymous → table-create → mutation-gate → mock-auth →
 # authed-state-preserved → write → UX coverage (informative read, count,
-# trace pane, vague prompt, missing-table, Cmd+K palette) → delete → sign-out.
+# trace pane, vague prompt, missing-table, Cmd+K palette) → delete-row →
+# second-db-create → delete-db-while-signed-in → sign-out →
+# sign-in-again → delete-remaining-db. Covers SK-HDC-016 (typed-name
+# confirm dialog) across both authed sessions so cleanup runs whether
+# or not the session survived between deletes.
 # Run by .github/workflows/e2e-opencheck.yml (workflow_dispatch — external scheduler).
 #
 # Runtime substitution: the caller workflow renders `__BASE_URL__` to the
@@ -147,8 +151,64 @@ tests:
       and submit. If a confirm chip appears, approve it. Verify
       the Alice row is no longer present in the users table.
 
+  - name: "#create-second-database"
+    case: |
+      #delete-row, then in the left sidebar (aria-label "Your
+      databases") click the "+ New" button. A small form with a
+      "Name" input appears. Type
+        products-tracker
+      into that input and click the "Create" button. Wait until
+      the new database appears in the sidebar list. The new entry
+      will be active (highlighted) and the chat header changes
+      to its name. Verify the sidebar now shows at least two
+      database entries below the "All databases" item.
+
+  - name: "#delete-active-db-dialog-opens"
+    case: |
+      #create-second-database, then in the sidebar locate the
+      currently active database row (the highlighted one, named
+      something like "products tracker"). Click the "×" button at
+      the right edge of that row (aria-label starts with "Delete ").
+      Verify a modal dialog appears with the heading "Delete
+      database" and body text that includes "This cannot be reverted"
+      and a text input.
+
+  - name: "#delete-active-db-typed-confirm"
+    case: |
+      #delete-active-db-dialog-opens. The dialog shows a database
+      name in a <code> block next to a "Copy" button. Read the
+      exact text inside that <code> block, then type that EXACT
+      same text into the input field below it (it must match
+      character-for-character including spaces). Once the input
+      matches, the "Delete" button becomes enabled — click it.
+      Verify the dialog closes and that database entry is gone
+      from the sidebar list.
+
   - name: "#sign-out"
     case: |
-      #delete-row, then open the topnav user menu and click "Sign
-      out". Verify the URL is no longer "/app" and the topnav shows
-      a "Sign in" link instead of the user menu.
+      #delete-active-db-typed-confirm, then open the topnav user
+      menu and click "Sign out". Verify the URL is no longer "/app"
+      and the topnav shows a "Sign in" link instead of the user
+      menu.
+
+  - name: "#sign-in-again"
+    case: |
+      #sign-out, then navigate the browser directly to the path
+      "/auth/sign-in" (the topnav "Sign in" link is gated behind
+      Cmd+G — going URL-direct is faster). On the mock IdP form
+      submit it (default email "test@example.com", button "Sign
+      in as this user"). Wait for the URL path to become "/app".
+      Verify the sidebar shows at least one database row remaining
+      from the prior session (its display name starts with
+      "users").
+
+  - name: "#delete-remaining-db"
+    case: |
+      #sign-in-again, then in the sidebar click the "×" button on
+      the remaining database row whose name starts with "users"
+      (aria-label "Delete users…"). When the modal opens, copy the
+      exact name from the <code> block into the confirmation input,
+      then click "Delete". Verify the dialog closes and the
+      sidebar's database list is now empty (only the "All
+      databases" item remains; the rail shows "No databases yet —
+      create one." or no DB rows).

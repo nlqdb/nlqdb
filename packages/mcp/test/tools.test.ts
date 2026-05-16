@@ -27,6 +27,12 @@ function stubClient(overrides: Partial<NlqClient> = {}): NlqClient {
     createDatabase: async () => {
       throw new Error("createDatabase not stubbed");
     },
+    deleteDatabase: async () => {
+      // Destructive ops aren't exposed through MCP per SK-MCP-002;
+      // the stub is here only so the mock satisfies the NlqClient
+      // interface that the SDK now exports.
+      throw new Error("deleteDatabase not stubbed");
+    },
     getKeyStatus: async () => ({ revoked: false }),
     redeemOAuthBridgeCode: async () => {
       throw new Error("redeemOAuthBridgeCode not stubbed");
