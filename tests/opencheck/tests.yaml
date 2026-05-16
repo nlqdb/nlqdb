@@ -1,76 +1,154 @@
-# E2E flow for nlqdb: anonymous → table-create → mutation-gate → mock-auth → authed-state-preserved → mutate → delete → sign-out.
+# E2E flow for nlqdb: anonymous → table-create → mutation-gate → mock-auth →
+# authed-state-preserved → write → UX coverage (informative read, count,
+# trace pane, vague prompt, missing-table, Cmd+K palette) → delete → sign-out.
 # Run by .github/workflows/e2e-opencheck.yml (workflow_dispatch — external scheduler).
 #
 # Runtime substitution: the caller workflow renders `__BASE_URL__` to the
-# per-run preview alias (e.g. https://e2e-nlqdb-api.omer-hochman.workers.dev)
-# via `sed` before invoking `bunx opencheck`. opencheck's YAML parser is
-# literal-string (no env interpolation), so the placeholder is mechanical.
+# per-run preview alias via `sed` before invoking `bunx opencheck`.
 #
-# LLM: Gemini via OpenAI-compat (https://ai.google.dev/gemini-api/docs/openai).
-# opencheck delegates to LangChain `initChatModel(model, { modelProvider })`,
-# which auto-loads `@langchain/openai`. ChatOpenAI reads OPENAI_API_KEY +
-# OPENAI_BASE_URL — both wired in the reusable workflow env.
+# LLM: Groq `openai/gpt-oss-120b` via OpenAI-compat
+# (https://console.groq.com/docs/openai). Two failed pivots stand
+# behind this choice:
+#   1. Gemini 2.5 Flash — run #17's LANGCHAIN_VERBOSE log surfaced
+#      systematic `429 status code (no body)` errors costing
+#      ~75-87 s per call from Gemini's 10 RPM free-tier ceiling.
+#   2. OpenRouter `qwen/qwen3-coder:free` — run #19's same verbose
+#      log surfaced `429 Provider returned error` on the FIRST LLM
+#      call of the FIRST test, on a brand-new run with no quota
+#      yet burned. The `:free` upstream pool is rate-limited by
+#      the upstream provider (Together / Fireworks / etc) and the
+#      pool is shared across ALL OpenRouter users globally —
+#      $10 in account credits only lifts OpenRouter's per-account
+#      cap, not the upstream pool. Free models on OpenRouter are
+#      not viable for our ~140-200 calls/run load.
+# Groq's 30 RPM / 1,000 RPD / 12 K TPM is a real dedicated quota
+# on a key we own (no shared pool), and `gpt-oss-120b` is OpenAI's
+# open-weights model explicitly trained for "high-capability
+# autonomous agents with advanced reasoning, tool use, and
+# multi-step problem solving" — the closest free fit for opencheck's
+# ReAct loop. Fallback: `llama-3.3-70b-versatile` (same provider,
+# same key, swap the `model:` line).
 
 baseUrl: "__BASE_URL__"
 modelProvider: "openai"
-model: "gemini-2.5-flash"
-sessionMode: "isolated"
+model: "openai/gpt-oss-120b"
+
+# Persistent session shares cookies + localStorage across tests so the
+# agent doesn't have to re-walk the prereq chain from a clean profile
+# every time.
+sessionMode: "persistent"
+
+timeout: 240000
+
+# `video: false` — @playwright/mcp's --save-video shells out to ffmpeg
+# which ubuntu-latest doesn't ship. Trace stays on (trace.playwright.dev).
+recording:
+  trace: true
+  video: false
 
 tests:
   - name: "#hero-or-cmdg"
     case: |
-      Visit the home page. If the chat composer/input is not visible, press
-      Cmd+G (or Ctrl+G on Linux) to reveal the cmd+g-gated chat UI. Confirm a
-      chat input element is now visible and ready to accept text.
+      Navigate to the base URL. Press Ctrl+G (Cmd+G on Mac) once to
+      reveal the cmd+g-gated hero. Verify a text input with placeholder
+      "an orders tracker" is visible. (The waitlist email input is not
+      the target.)
 
   - name: "#create-table-anon"
     case: |
-      #hero-or-cmdg, then type
-        "create a users table with id, name, email"
-      into the chat input and submit. Within 5 seconds either a `users`
-      table should be rendered on the page, or a chat reply should confirm
-      the table was created.
+      #hero-or-cmdg, then in the input with placeholder "an orders
+      tracker" type
+        create a users table with id, name, email
+      and submit. Verify a result block titled "Provisioned with N
+      sample rows" appears and a "Users" table with id, name, email
+      columns is rendered.
 
   - name: "#add-row-redirects-to-auth"
     case: |
-      #create-table-anon, then type
-        "add a new row: name='Alice', email='alice@example.com'"
-      into the chat input and submit. The browser should be redirected to a
-      sign-in page (URL path contains "/auth/sign-in"). Do NOT submit the
-      sign-in form in this step.
+      #create-table-anon, then clear that same input and type
+        add a new row: name='Alice', email='alice@example.com'
+      and submit. Verify the URL ends up containing "/auth/sign-in".
+      Do not submit the sign-in form yet.
 
   - name: "#mock-sign-in"
     case: |
-      #add-row-redirects-to-auth, then on the /auth/sign-in page submit the
-      mock-IdP form: leave the email field at its default of
-      "test@example.com" and click the sign-in / submit button. Wait for the
-      browser to land on /app.
+      #add-row-redirects-to-auth, then on /auth/sign-in submit the
+      mock-IdP form (default email "test@example.com", button "Sign
+      in as this user"). Wait for the URL path to become "/app"
+      (possibly with a "?db=" query).
 
   - name: "#authed-state-preserved"
     case: |
-      #mock-sign-in, then on /app verify BOTH conditions hold:
-        (a) the users database created during the anonymous flow is the
-            currently focused / selected database (visible in the sidebar
-            or db selector), and
-        (b) the chat input is pre-filled with the "add a new row" command
-            that was typed before the auth redirect.
+      #mock-sign-in, then on /app verify both: a sidebar database
+      whose name starts with "users" is highlighted as selected,
+      AND the main chat input (placeholder "Ask about your data…")
+      is pre-filled with "add a new row: name='Alice', email='alice@example.com'".
 
   - name: "#submit-prefilled-row"
     case: |
-      #authed-state-preserved, then submit the pre-filled query in the chat
-      input (Enter, or click the Send button). Within 5 seconds a new row
-      with name "Alice" and email "alice@example.com" should be visible in
-      the users table.
+      #authed-state-preserved, then press Enter (or click "Send")
+      to submit the pre-filled prompt. If a confirm/diff chip
+      appears (e.g. "This will insert 1 row"), press Enter again
+      or click "Approve". Verify a row with name "Alice" and email
+      "alice@example.com" appears in the users table.
+
+  - name: "#read-shows-informative-data"
+    case: |
+      #submit-prefilled-row, then in the same chat input type
+        list all users in the table
+      and submit. Verify the chat reply has both: a data row with
+      "Alice" / "alice@example.com", AND a natural-language summary
+      sentence that mentions "Alice" or "1 user".
+
+  - name: "#count-summarizes"
+    case: |
+      #read-shows-informative-data, then type
+        how many users are there?
+      and submit. Verify the reply surfaces the number 1, either in
+      the summary text or as a single returned data cell.
+
+  - name: "#trace-shows-sql"
+    case: |
+      #count-summarizes, then open the trace pane on the latest
+      reply (click the "trace" summary, or press Ctrl+/). Verify a
+      <pre> block containing SQL is visible — must contain "users"
+      and a SQL keyword like SELECT or COUNT.
+
+  - name: "#vague-question-handled"
+    case: |
+      #trace-shows-sql, then type
+        anything interesting in here?
+      and submit. Verify the reply is NOT a bare dead-end message
+      like "Something went wrong — try again." Acceptable: data
+      rows, a clarification chip with a button, or a textual reply
+      referencing users / Alice / row count.
+
+  - name: "#schema-mismatch-clarifies"
+    case: |
+      #vague-question-handled, then type
+        show me all the orders
+      and submit. There is no orders table — only users. Verify the
+      reply is NOT a bare "Something went wrong — try again."
+      Acceptable: a message naming the missing "orders" table or
+      the available "users" table, or a clarification chip.
+
+  - name: "#cmdk-palette-discoverable"
+    case: |
+      #schema-mismatch-clarifies, then press Ctrl+K (Cmd+K on Mac).
+      Verify a modal appears with placeholder "Type a command…" and
+      action labels including at least two of "New database",
+      "Copy embed snippet", "Settings", "Sign out". Press Escape
+      and verify the modal closes.
 
   - name: "#delete-row"
     case: |
-      #submit-prefilled-row, then type
-        "delete the row where name = 'Alice'"
-      into the chat input and submit. Within 5 seconds the Alice row should
-      no longer be present in the users table.
+      #cmdk-palette-discoverable, then type
+        delete the row where name = 'Alice'
+      and submit. If a confirm chip appears, approve it. Verify
+      the Alice row is no longer present in the users table.
 
   - name: "#sign-out"
     case: |
-      #delete-row, then sign out (open the topnav user menu and click the
-      "Sign out" item). Confirm the topnav switches to an unauthenticated
-      state and the URL is no longer /app.
+      #delete-row, then open the topnav user menu and click "Sign
+      out". Verify the URL is no longer "/app" and the topnav shows
+      a "Sign in" link instead of the user menu.

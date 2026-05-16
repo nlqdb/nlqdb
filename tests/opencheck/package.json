@@ -2,10 +2,11 @@
   "name": "@nlqdb/opencheck-tests",
   "private": true,
   "version": "0.0.0",
-  "description": "E2E opencheck tests. Run via .github/workflows/e2e-opencheck.yml (workflow_dispatch).",
+  "description": "E2E opencheck tests. Run via .github/workflows/e2e-opencheck.yml (workflow_dispatch). @playwright/mcp pinned — see the `Install opencheck deps` step in _e2e-opencheck.yml for the why.",
   "type": "module",
   "dependencies": {
     "@langchain/openai": "^1.4.5",
+    "@playwright/mcp": "0.0.60",
     "opencheck": "^0.3.0"
   }
 }

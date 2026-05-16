@@ -1,17 +1,34 @@
-# Reusable: run opencheck against a given baseUrl with Gemini through the
-# OpenAI-compatible endpoint. The `workflow_call` trigger means this file
-# never appears in the manual-dispatch list — callers (see
-# `e2e-opencheck.yml`) drive it.
+# Reusable: run opencheck against a given baseUrl with Groq
+# (`openai/gpt-oss-120b`) through the OpenAI-compatible endpoint. The
+# `workflow_call` trigger means this file never appears in the
+# manual-dispatch list — callers (see `e2e-opencheck.yml`) drive it.
 #
-# Why OpenAI-compat for Gemini:
+# Why OpenAI-compat (and not provider-specific LangChain packages):
 #   opencheck v0.3.0 pins `@langchain/core ^1.1.24` (the LangChain JS v1
-#   ecosystem). `@langchain/google-genai`'s entire published range peers
-#   `@langchain/core <0.3.0`, so installing it as a sibling dep causes a
-#   peer-dep split (two copies of core at runtime, broken types).
-#   `@langchain/openai` v1.4.5 is on the same v1 ecosystem and works
-#   cleanly. Gemini exposes a native OpenAI-compatible endpoint
-#   (https://ai.google.dev/gemini-api/docs/openai), so pointing
-#   ChatOpenAI at it with the Gemini key is the no-upstream-change path.
+#   ecosystem). Provider-specific LangChain packages outside the v1
+#   range cause a peer-dep split (two copies of core at runtime, broken
+#   types). `@langchain/openai` v1.4.5 is on the same v1 ecosystem and
+#   works cleanly. Groq exposes a native OpenAI-compatible endpoint
+#   (https://console.groq.com/docs/openai), so pointing ChatOpenAI at
+#   it with the Groq key is the no-upstream-change path.
+#
+# Why Groq (two pivots lived and died before this landing):
+#   1. Gemini 2.5 Flash through run #17: free tier 10 RPM, opencheck
+#      makes ~10-15 calls/test, so by test 3-4 we exhausted the
+#      per-minute quota and every subsequent call paid a ~75-87 s
+#      silent-retry tax before surfacing as a 429. Run #17's
+#      LANGCHAIN_VERBOSE=true log was the smoking gun.
+#   2. OpenRouter `qwen/qwen3-coder:free` for run #19: 429 on the
+#      VERY FIRST LLM call. The `:free` suffix means OpenRouter
+#      routes to a shared upstream pool whose rate limit is set by
+#      the upstream provider, not by OpenRouter's per-account 1,000
+#      RPD cap. Our $10-credit account quota doesn't help that pool.
+#   Groq's 30 RPM / 1,000 RPD / 12 K TPM is a dedicated account
+#   quota on a key we own, AND `gpt-oss-120b` is OpenAI's open-weights
+#   model trained explicitly for "high-capability autonomous agents
+#   with advanced reasoning, tool use, and multi-step problem solving"
+#   — the closest free fit for opencheck's ReAct loop on a key with
+#   a real own-quota.
 
 name: E2E opencheck (reusable)
 
@@ -23,8 +40,8 @@ on:
         required: true
         type: string
     secrets:
-      GEMINI_API_KEY:
-        description: "Gemini API key. Surfaced to ChatOpenAI via OPENAI_API_KEY + Gemini OpenAI-compat base URL."
+      GROQ_API_KEY:
+        description: "Groq API key. Surfaced to ChatOpenAI via OPENAI_API_KEY + Groq OpenAI-compat base URL."
         required: true
 
 # SK-CIPERM-001 — default-deny at workflow root.
@@ -34,7 +51,13 @@ jobs:
   run:
     name: opencheck
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    # Per-test timeout in tests.yaml is 240 s × 14 chained tests
+    # ≈ 56 min worst-case (cold cache). Real-world runs land well
+    # under that as opencheck's step cache warms — the 15-min bound
+    # was a holdover from the broken-from-start era when every test
+    # bailed inside seconds. 45 min leaves slack for the spin-up +
+    # the trace.zip upload at the end.
+    timeout-minutes: 45
     # SK-CIPERM-002 — minimal grant. No PR comment from this reusable
     # (callers attach their own surface via step summary / artifacts);
     # `contents: read` is enough for the checkout.
@@ -44,11 +67,20 @@ jobs:
       BASE_URL: ${{ inputs.base_url }}
       # @langchain/openai's ChatOpenAI delegates to the OpenAI Node SDK,
       # which reads OPENAI_API_KEY + OPENAI_BASE_URL from env. Pointing
-      # OPENAI_BASE_URL at Gemini's OpenAI-compat endpoint routes every
-      # /chat/completions call to Gemini while keeping the SDK
-      # surface identical.
-      OPENAI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-      OPENAI_BASE_URL: https://generativelanguage.googleapis.com/v1beta/openai/
+      # OPENAI_BASE_URL at Groq's OpenAI-compat endpoint routes every
+      # /chat/completions call to Groq while keeping the SDK surface
+      # identical.
+      OPENAI_API_KEY: ${{ secrets.GROQ_API_KEY }}
+      OPENAI_BASE_URL: https://api.groq.com/openai/v1
+      # Dump every LangChain step (model start/end, tool calls, tool
+      # results) to stdout so the job log captures the full agent
+      # loop. Without this we only see opencheck's high-level
+      # PASS/FAIL/SKIP verdict and the LLM's after-the-fact reasoning
+      # — useless for diagnosing why a test got stuck or which tool
+      # call burned the timeout budget. Enabling adds ~5-10x to the
+      # log volume but lands the post-mortem signal we need to
+      # iterate on the cases. Drop once the cases stabilise.
+      LANGCHAIN_VERBOSE: "true"
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
 
@@ -59,11 +91,14 @@ jobs:
         with:
           bun-version-file: package.json
 
-      # Playwright browser binaries (~150 MB) live outside node_modules and
-      # are downloaded by playwright-mcp's postinstall. Cached on the
-      # opencheck-tests package.json hash so a dep bump that moves
-      # playwright's version invalidates cleanly; otherwise we save the
-      # whole download on every run.
+      # Playwright browser binaries (~150 MB) live outside node_modules
+      # at ~/.cache/ms-playwright. @playwright/mcp 0.0.60 (and its
+      # bundled playwright / playwright-core) has no postinstall, so
+      # the binaries are pulled by the explicit `Install Playwright
+      # Chromium` step below — this cache step just persists what that
+      # step writes. Keyed on opencheck-tests package.json hash so a
+      # dep bump that moves playwright's version invalidates cleanly;
+      # otherwise we save the whole download on every run.
       - name: Restore Playwright browser cache
         uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         with:
@@ -91,9 +126,61 @@ jobs:
         # No frozen lockfile — `tests/opencheck/` is non-workspace and
         # we don't ship its bun.lock. Daily E2E doesn't need byte-for-byte
         # repro; minor patch drifts in @langchain/openai are acceptable.
-        # Playwright postinstall sees the restored ms-playwright cache
-        # (if any) and skips re-download.
+        #
+        # `@playwright/mcp` is pinned to 0.0.60 in package.json. Why:
+        # opencheck@0.3.0 (`node_modules/opencheck/src/agent/mcp-client.ts:77,80`)
+        # hardcodes `--save-trace` + `--save-video=...` when it spawns
+        # @playwright/mcp. Those flags shipped through 0.0.60 and were
+        # removed before 0.0.70. Without the pin, bun resolves
+        # @playwright/mcp transitively from `npx -y @playwright/mcp@latest`
+        # in opencheck's spawn path — which lands on 0.0.75 today and
+        # the MCP stdio handshake dies on `error: unknown option
+        # '--save-trace'`. opencheck's `resolvePlaywrightMcp()` checks
+        # `process.cwd()/node_modules/@playwright/mcp/cli.js` first,
+        # so pinning here makes opencheck use this version and bypass
+        # the broken `--latest` path. Unpin once opencheck publishes a
+        # fix that uses `--save-session`.
         run: bun install
+
+      # Playwright browser binaries don't ship with any of the npm
+      # packages above (no postinstall hook in @playwright/mcp@0.0.60,
+      # playwright, or playwright-core). Without this step, Chromium
+      # is absent at ~/.cache/ms-playwright/ and every opencheck test
+      # fails because the MCP server can't find a browser executable.
+      # Chromium-only — webkit/firefox aren't selected via tests.yaml.
+      - name: Install Playwright Chromium
+        working-directory: tests/opencheck
+        run: bunx playwright install chromium
+
+      # Inject --no-sandbox into the @playwright/mcp CLI. GitHub-hosted
+      # ubuntu runners have AppArmor configured to deny the unprivileged
+      # user-namespace clone that Chromium's setuid sandbox relies on
+      # (the default sandbox path); without --no-sandbox, Chromium fails
+      # to launch with `Failed to move to new namespace`. opencheck@0.3.0
+      # has no config knob for this — it builds the playwright-mcp
+      # spawn args in `node_modules/opencheck/src/agent/mcp-client.ts`
+      # without touching sandbox flags. The wrapper here prepends the
+      # flag to argv before delegating to the original CLI, so opencheck
+      # is unchanged. Idempotent: if the wrapper is already in place
+      # (cached node_modules / re-run), the step is a no-op.
+      - name: Patch @playwright/mcp to inject --no-sandbox
+        working-directory: tests/opencheck
+        run: |
+          set -euo pipefail
+          cli="node_modules/@playwright/mcp/cli.js"
+          orig="node_modules/@playwright/mcp/cli.original.js"
+          if [ -f "$orig" ]; then
+            echo "wrapper already in place — skipping"
+            exit 0
+          fi
+          mv "$cli" "$orig"
+          cat > "$cli" <<'EOF'
+          #!/usr/bin/env node
+          process.argv.push("--no-sandbox");
+          require("./cli.original.js");
+          EOF
+          chmod +x "$cli"
+          echo "patched $cli"
 
       # opencheck's YAML parser does NOT interpolate env vars; substitute
       # the placeholder before invocation. Writing to a new file (not
