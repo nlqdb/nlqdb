@@ -12,6 +12,7 @@ import {
   parseSkBearer,
   type RequirePrincipalOpts,
   type RequirePrincipalVariables,
+  rateLimitBucketKey,
   sha256Hex,
   surfaceFromPrincipal,
 } from "../src/principal.ts";
@@ -193,6 +194,58 @@ describe("surfaceFromPrincipal", () => {
       deviceId: "macbook-air",
     };
     expect(surfaceFromPrincipal(principal)).toBe("mcp");
+  });
+});
+
+// SK-MCP-009 — per-key rate-limit bucketing. The bucket key must be
+// stable per principal and distinct between sibling sk_mcp keys so a
+// noisy MCP host can't burn its tenant's other-host budgets.
+describe("rateLimitBucketKey", () => {
+  it("keys user principals by their user id (same bucket as chat surface)", () => {
+    const principal = { kind: "user", id: "u_alice", session: {} } as unknown as Principal;
+    expect(rateLimitBucketKey(principal)).toBe("u_alice");
+  });
+
+  it("keys anon principals by their hashed id", () => {
+    const principal: Principal = { kind: "anon", id: "anon:abc", token: "anon_x" };
+    expect(rateLimitBucketKey(principal)).toBe("anon:abc");
+  });
+
+  it("keys pk_live principals by tenant id (unchanged from pre-slice-3c)", () => {
+    const principal: Principal = { kind: "pk_live", id: "t_1", dbId: "db_a" };
+    expect(rateLimitBucketKey(principal)).toBe("t_1");
+  });
+
+  it("isolates sibling sk_mcp keys for the same tenant", () => {
+    const cursor: Principal = {
+      kind: "sk_mcp",
+      id: "u_1",
+      keyId: "k_cursor",
+      mcpHost: "cursor",
+      deviceId: "macbook",
+    };
+    const claude: Principal = {
+      kind: "sk_mcp",
+      id: "u_1",
+      keyId: "k_claude",
+      mcpHost: "claude-desktop",
+      deviceId: "macbook",
+    };
+    expect(rateLimitBucketKey(cursor)).toBe("rl:k_cursor");
+    expect(rateLimitBucketKey(claude)).toBe("rl:k_claude");
+  });
+
+  it("uses one bucket-key namespace for sk_live and sk_mcp (no per-prefix special-casing)", () => {
+    const skLive: Principal = { kind: "sk_live", id: "u_1", keyId: "k_1" };
+    const skMcp: Principal = {
+      kind: "sk_mcp",
+      id: "u_1",
+      keyId: "k_2",
+      mcpHost: "cursor",
+      deviceId: "macbook",
+    };
+    expect(rateLimitBucketKey(skLive).startsWith("rl:")).toBe(true);
+    expect(rateLimitBucketKey(skMcp).startsWith("rl:")).toBe(true);
   });
 });
 

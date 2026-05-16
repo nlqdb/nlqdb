@@ -10,7 +10,7 @@ when-to-load:
 # Feature: Mcp Server
 
 **One-liner:** MCP server + `nlq mcp install` host detection (Claude Desktop, Cursor, etc.).
-**Status:** partial (Phase 2) — design locked (`SK-MCP-001..014`). **Slices 1, 2, 3a, 3b shipped**. Slice 3c (per-key rate-limit + isolate-cache revocation hardening) and slice 4 (`nlq mcp install`) remain open.
+**Status:** partial (Phase 2) — design locked (`SK-MCP-001..014`). **Slices 1, 2, 3a, 3b, 3c shipped** (hosted MCP server end-to-end with per-key rate-limit + auth-failure observability). Slice 4 (`nlq mcp install` host-detect) remains open — see [`cli/FEATURE.md`](../cli/FEATURE.md).
 **Owners (code):** `packages/mcp/**`, `apps/mcp/**`
 **Cross-refs:** docs/architecture.md §3.4 (MCP server) · docs/phase-plan.md (Phase 2 mcp slice)
 

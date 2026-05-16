@@ -41,6 +41,23 @@ export type Principal =
   | { kind: "sk_live"; id: string; keyId: string }
   | { kind: "sk_mcp"; id: string; keyId: string; mcpHost: string; deviceId: string };
 
+// SK-MCP-009: sk_* principals get one bucket per `api_keys.id` so a
+// noisy MCP host can't burn its siblings' budgets; user / anon / pk_live
+// stay at `principal.id` (preserves chat ↔ ask lockstep + pk_live's
+// tenant-wide budget). The `rl:` prefix is the decision's literal
+// namespace and guarantees sk_* buckets never collide with bare ids.
+export function rateLimitBucketKey(principal: Principal): string {
+  switch (principal.kind) {
+    case "user":
+    case "anon":
+    case "pk_live":
+      return principal.id;
+    case "sk_live":
+    case "sk_mcp":
+      return `rl:${principal.keyId}`;
+  }
+}
+
 // SK-EVENTS-010 / performance.md §3.3: derives the `nlqdb.surface`
 // value from the principal kind. One place; every emit site + OTel
 // span attribute reads from here so a future principal kind lands
