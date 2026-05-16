@@ -18,6 +18,14 @@ modelProvider: "openai"
 model: "gemini-2.5-flash"
 sessionMode: "isolated"
 
+# `video: false` because @playwright/mcp's --save-video path shells out
+# to ffmpeg, which ubuntu-latest does not ship by default. Trace stays
+# on (it's the workflow's documented triage path — drag trace.zip into
+# trace.playwright.dev per `.github/workflows/_e2e-opencheck.yml`).
+recording:
+  trace: true
+  video: false
+
 tests:
   - name: "#hero-or-cmdg"
     case: |
