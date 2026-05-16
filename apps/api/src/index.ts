@@ -30,6 +30,8 @@ import { makeAnonRateLimiter } from "./anon-rate-limit.ts";
 import { buildSetCookie, signAnonStash } from "./anon-stash.ts";
 import {
   bumpKeyLastUsed as bumpKeyLastUsedImpl,
+  getKeyStatusByHash,
+  hmacHex,
   lookupPkLiveKey as lookupPkLiveKeyImpl,
   lookupSkKey as lookupSkKeyImpl,
   mintSkLiveKey,
@@ -62,6 +64,7 @@ import {
 } from "./http.ts";
 import { getLLMRouter } from "./llm-router.ts";
 import { makeRequireSession, type RequireSessionVariables } from "./middleware.ts";
+import { handleMcpCallback, handleMcpCallbackRedeem } from "./oauth-mcp-bridge.ts";
 import {
   accountTenantIdFromPrincipal,
   makeRequirePrincipal,
@@ -712,6 +715,11 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
       // gracefully degrades if loadModule() still fails — see that
       // file's header comment for the full story.
       ensureLibpgWasmGlobals();
+      // TODO(slice 3c): `test/ask.test.ts SK-ANON-013` is `.skip`'d
+      // because this dynamic import hangs in the workerd vitest-pool
+      // after prior /v1/ask requests on the same worker. Root cause
+      // is in build-deps' static-import chain (past sql-validate-ddl);
+      // pool-side, not production. Re-enable the test once debugged.
       const { buildDbCreateDeps } = await import("./db-create/build-deps.ts");
       const { orchestrateDbCreate } = await import("./db-create/orchestrate.ts");
       try {
@@ -1373,6 +1381,136 @@ app.post("/v1/keys", requireSession, async (c) => {
       span.setStatus({ code: SpanStatusCode.ERROR, message: e.message });
       span.setAttribute("nlqdb.keys.mint.outcome", "mint_failed");
       return c.json({ error: "mint_failed" }, 500);
+    } finally {
+      span.end();
+    }
+  });
+});
+
+// `POST /v1/oauth/mcp-callback` — cross-Worker bridge for the hosted
+// MCP OAuth flow (`SK-MCP-013`). The web app's `/oauth/mcp-authorize`
+// page POSTs here after the user clicks Approve. We mint a one-shot
+// code in KV (60 s TTL) keyed by user_id + the OAuth flow context,
+// return it to the page, which navigates the browser to
+// `mcp.nlqdb.com/oauth/mcp-bridge-callback?code=…`. `apps/mcp/`'s
+// `defaultHandler` redeems the code and calls `OAuthProvider`'s
+// `completeAuthorization` to mint the access token + `sk_mcp_*` key.
+//
+// `Idempotency-Key` (`GLOBAL-005`) — handler routes through
+// `mintBridgeCode` which keys on `(user_id, idempotency_key)` per
+// `SK-IDEMP-002`. No request-body caching (the response is a one-shot
+// code, replay returns the same code which is the safe behavior).
+app.post("/v1/oauth/mcp-callback", requireSession, async (c) => {
+  const tracer = trace.getTracer("@nlqdb/api");
+  return tracer.startActiveSpan("nlqdb.oauth.mcp_callback", async (span) => {
+    try {
+      span.setAttribute("nlqdb.user.id", c.var.session.user.id);
+      return await handleMcpCallback(c, c.var.session, {
+        kv: (ctx) => ctx.env.KV,
+        mintKey: async (ctx, userId, mcpHost, deviceId) => {
+          const { plaintext } = await mintSkMcpKey(
+            ctx.env.DB,
+            ctx.env.BETTER_AUTH_SECRET,
+            userId,
+            mcpHost,
+            deviceId,
+          );
+          const hash = await hmacHex(ctx.env.BETTER_AUTH_SECRET, plaintext);
+          return { plaintext, hash };
+        },
+        setOutcome: (_ctx, outcome) =>
+          span.setAttribute("nlqdb.oauth.mcp_callback.outcome", outcome),
+      });
+    } catch (err) {
+      const e = err as Error;
+      span.recordException(e);
+      span.setStatus({ code: SpanStatusCode.ERROR, message: e.message });
+      span.setAttribute("nlqdb.oauth.mcp_callback.outcome", "internal_error");
+      return c.json({ error: "internal_error" }, 500);
+    } finally {
+      span.end();
+    }
+  });
+});
+
+// Code-gated redemption — called Worker-to-Worker by `apps/mcp/`'s
+// `/oauth/mcp-bridge-callback`. The one-shot code is the auth proof
+// (16-byte random, 60 s TTL, delete-on-read). No session, no bearer.
+app.post("/v1/oauth/mcp-callback/redeem", async (c) => {
+  const tracer = trace.getTracer("@nlqdb/api");
+  return tracer.startActiveSpan("nlqdb.oauth.mcp_callback_redeem", async (span) => {
+    try {
+      return await handleMcpCallbackRedeem(c, {
+        kv: (ctx) => ctx.env.KV,
+        setOutcome: (_ctx, outcome) =>
+          span.setAttribute("nlqdb.oauth.mcp_callback_redeem.outcome", outcome),
+      });
+    } catch (err) {
+      const e = err as Error;
+      span.recordException(e);
+      span.setStatus({ code: SpanStatusCode.ERROR, message: e.message });
+      span.setAttribute("nlqdb.oauth.mcp_callback_redeem.outcome", "internal_error");
+      return c.json({ error: "internal_error" }, 500);
+    } finally {
+      span.end();
+    }
+  });
+});
+
+// `GET /v1/keys/:hash/status` — DO-revalidation probe (`SK-MCP-014`).
+// `apps/mcp/`'s `McpAgent` calls this every 1 s past its local cache
+// TTL to re-check `revoked_at`. Authentication: the caller is itself
+// holding a valid `sk_*` bearer (the cached one); `requirePrincipal`
+// gates the request and we enforce that the caller's tenant matches
+// the key row's tenant — a leaked key on one tenant cannot probe
+// another tenant's revocation state.
+app.get("/v1/keys/:hash/status", requirePrincipal, async (c) => {
+  const tracer = trace.getTracer("@nlqdb/api");
+  return tracer.startActiveSpan("nlqdb.keys.status", async (span) => {
+    try {
+      const principal = c.var.principal;
+      const tenantId = accountTenantIdFromPrincipal(principal);
+      if (!tenantId) {
+        span.setAttribute("nlqdb.keys.status.outcome", "account_required");
+        return c.json({ error: "account_required" }, 403);
+      }
+      const keyHash = c.req.param("hash");
+      if (!keyHash || keyHash.length !== 64 || !/^[0-9a-f]+$/.test(keyHash)) {
+        span.setAttribute("nlqdb.keys.status.outcome", "invalid_hash");
+        return c.json({ error: "invalid_hash" }, 400);
+      }
+      const row = await c.env.DB.prepare(
+        "SELECT tenant_id, revoked_at FROM api_keys WHERE key_hash = ? AND key_type IN ('sk_live', 'sk_mcp')",
+      )
+        .bind(keyHash)
+        .first<{ tenant_id: string; revoked_at: number | null }>();
+      if (!row) {
+        // 404 is the right shape — the DO treats this identically to
+        // "revoked: true" (drops the cache + closes the session) but
+        // we don't want to leak "this hash exists for another tenant".
+        span.setAttribute("nlqdb.keys.status.outcome", "not_found");
+        return c.json({ error: "not_found" }, 404);
+      }
+      if (row.tenant_id !== tenantId) {
+        span.setAttribute("nlqdb.keys.status.outcome", "cross_tenant");
+        return c.json({ error: "not_found" }, 404);
+      }
+      const status = await getKeyStatusByHash(c.env.DB, keyHash);
+      if (!status) {
+        span.setAttribute("nlqdb.keys.status.outcome", "not_found");
+        return c.json({ error: "not_found" }, 404);
+      }
+      span.setAttribute("nlqdb.keys.status.outcome", status.revoked ? "revoked" : "active");
+      return c.json({
+        revoked: status.revoked,
+        ...(status.revokedAt != null ? { revoked_at: status.revokedAt } : {}),
+      });
+    } catch (err) {
+      const e = err as Error;
+      span.recordException(e);
+      span.setStatus({ code: SpanStatusCode.ERROR, message: e.message });
+      span.setAttribute("nlqdb.keys.status.outcome", "internal_error");
+      return c.json({ error: "internal_error" }, 500);
     } finally {
       span.end();
     }

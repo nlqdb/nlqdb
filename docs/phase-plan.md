@@ -156,22 +156,17 @@ publicly uses nlqdb as memory; 3 non-engineers complete CSV analysis
 user.
 
 **Status (2026-05):** item 1 (MCP server) is in progress —
-`SK-MCP-010` slices 1 + 2 + 3a shipped. Slice 1: `sk_live_` +
-`sk_mcp_*` key mint via `POST /v1/keys`, HMAC-SHA256 hashing,
-principal wiring on `GET /v1/databases`. Slice 2: `packages/mcp/`
-stdio package with all three tools (`nlqdb_query`,
-`nlqdb_list_databases`, `nlqdb_describe`) working end-to-end against
-`sk_*` and (for `nlqdb_query`) `pk_live_*` keys. Slice 3a:
-`apps/mcp/` Cloudflare Worker (`nlqdb-mcp-server`) ready to bind to
-`mcp.nlqdb.com`, speaks MCP Streamable-HTTP at `POST /mcp` via
-`@modelcontextprotocol/sdk` + the `fetch-to-node` bridge, per-request
-fresh `McpServer` + transport (stateless mode), bearer auth gate
-forwarding to `apps/api/` via `@nlqdb/sdk`, `/health` liveness,
-OTel-instrumented. Remaining MCP work: slice 3b
-(`workers-oauth-provider` + `McpAgent` Durable-Object sessions),
-slice 3c (per-key rate-limit + 1 s isolate-cache revocation per
-`SK-MCP-009`), and slice 4 (`nlq mcp install` CLI auto-detection) —
-see [`mcp-server/FEATURE.md`](./features/mcp-server/FEATURE.md) and
+`SK-MCP-010` slices 1 + 2 + 3a + 3b shipped. Slice 1: `sk_live_` +
+`sk_mcp_*` mint via `POST /v1/keys`. Slice 2: `packages/mcp/` stdio
+package with all three tools. Slice 3a: `apps/mcp/` Cloudflare Worker
+on `mcp.nlqdb.com`, MCP Streamable-HTTP at `/mcp`, stateless bearer
+auth. Slice 3b: `workers-oauth-provider` + `McpAgent` Durable Object
+sessions per `SK-MCP-011..014` — dynamic client registration, single
+`mcp` scope, cross-Worker callback bridge minting `sk_mcp_*` server-
+side, DO revalidation cache for 1 s revocation. Remaining: slice 3c
+(per-key rate-limit + observability hardening per `SK-MCP-009`), slice
+4 (`nlq mcp install` CLI auto-detection) — see
+[`mcp-server/FEATURE.md`](./features/mcp-server/FEATURE.md) and
 [`cli/FEATURE.md`](./features/cli/FEATURE.md). The dashboard
 key-management UI that wraps `POST /v1/keys` is still open in
 [`api-keys/FEATURE.md`](./features/api-keys/FEATURE.md).

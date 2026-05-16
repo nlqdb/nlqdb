@@ -1,20 +1,20 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { NlqClient } from "@nlqdb/sdk";
 import { trace } from "@opentelemetry/api";
+import type { z } from "zod";
 import {
+  type DescribeInput,
   type DescribeOutput,
   describeInputShape,
-  describeOutputShape,
   type HandlerContext,
   handleDescribe,
   handleListDatabases,
   handleQuery,
   type ListDatabasesOutput,
   listDatabasesInputShape,
-  listDatabasesOutputShape,
+  type QueryInput,
   type QueryOutput,
   queryInputShape,
-  queryOutputShape,
   type ToolError,
   type ToolResult,
 } from "./tools.ts";
@@ -30,6 +30,25 @@ export type ServerOptions = {
 const DEFAULT_MAX_ROWS = 200;
 const DEFAULT_LIST_CACHE_TTL_MS = 5000;
 
+// Minimal shape of the SDK's tool-handler `extra` arg — only fields we touch.
+type ToolExtra = { signal?: AbortSignal };
+
+// Non-recursive signature for `server.registerTool` — see the bind
+// cast inside `createServer` for the rationale.
+type ToolResponse = {
+  content: { type: "text"; text: string }[];
+  structuredContent?: Record<string, unknown>;
+  isError?: boolean;
+};
+// biome-ignore lint/suspicious/noExplicitAny: caller-narrowed via the per-handler `args: SpecificType` annotation
+type ToolHandler = (args: any, extra: ToolExtra) => Promise<ToolResponse>;
+type ToolDef = {
+  title?: string;
+  description?: string;
+  inputSchema?: Record<string, z.ZodTypeAny>;
+};
+type RegisterTool = (name: string, def: ToolDef, handler: ToolHandler) => void;
+
 const tracer = trace.getTracer("@nlqdb/mcp");
 
 export function createServer(opts: ServerOptions): McpServer {
@@ -43,17 +62,21 @@ export function createServer(opts: ServerOptions): McpServer {
 
   const server = new McpServer({ name, version });
   const listCache = createListDatabasesCache(client, listDatabasesCacheTtlMs);
+  // SDK 1.29's `registerTool` is a deeply-generic overload set that
+  // trips TS2589 when its inference walks our zod shapes (the
+  // `.describe()` chains return `ZodEffects`). One cast at the binding
+  // skips the recursion; runtime semantics are unchanged.
+  const registerTool = server.registerTool.bind(server) as unknown as RegisterTool;
 
-  server.registerTool(
+  registerTool(
     "nlqdb_query",
     {
       title: "Query a database in natural language",
       description:
         "Run a natural-language query against an nlqdb database. Returns rows + the compiled SQL (in trace). The database is materialised on first reference — no separate create tool. Destructive plans return requires_confirm: true + a diff; re-call with confirm: true to commit.",
       inputSchema: queryInputShape,
-      outputSchema: queryOutputShape,
     },
-    async (args, extra) => {
+    async (args: QueryInput, extra: ToolExtra) => {
       return runTool("nlqdb_query", extra.signal, async (ctx) => {
         const result = await handleQuery(client, args, ctx);
         return formatQueryResult(result, maxRowsInResponse);
@@ -61,16 +84,15 @@ export function createServer(opts: ServerOptions): McpServer {
     },
   );
 
-  server.registerTool(
+  registerTool(
     "nlqdb_list_databases",
     {
       title: "List the user's databases",
       description:
         "Enumerate databases visible to the authenticated user. Requires a user-scoped key (sk_live_ or sk_mcp_). Returns engine per row.",
       inputSchema: listDatabasesInputShape,
-      outputSchema: listDatabasesOutputShape,
     },
-    async (_args, extra) => {
+    async (_args: unknown, extra: ToolExtra) => {
       return runTool("nlqdb_list_databases", extra.signal, async (ctx) => {
         const result = await handleListDatabases(client, ctx);
         return formatResult<ListDatabasesOutput>(result);
@@ -78,16 +100,15 @@ export function createServer(opts: ServerOptions): McpServer {
     },
   );
 
-  server.registerTool(
+  registerTool(
     "nlqdb_describe",
     {
       title: "Describe one database",
       description:
         "Return schema metadata (slug, engine, schema name) for one database. Requires a user-scoped key (sk_live_ or sk_mcp_).",
       inputSchema: describeInputShape,
-      outputSchema: describeOutputShape,
     },
-    async (args, extra) => {
+    async (args: DescribeInput, extra: ToolExtra) => {
       return runTool("nlqdb_describe", extra.signal, async (ctx) => {
         const ctxWithCache: HandlerContext = {
           ...ctx,

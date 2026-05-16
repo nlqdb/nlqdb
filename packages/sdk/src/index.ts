@@ -307,6 +307,27 @@ export type AskStreamOptions = {
   onTrace?: (event: TraceEvent) => void;
 };
 
+// SK-MCP-014 — DO revalidation probe. `apps/mcp/`'s `McpAgent` caches
+// the resolved `sk_mcp_*` key for 1 s and refreshes via this method.
+// Server-side endpoint is `GET /v1/keys/:hash/status` — session-only,
+// scoped to the key owner's tenant.
+export type KeyStatus = {
+  revoked: boolean;
+  revoked_at?: number;
+};
+
+// SK-MCP-013 — cross-Worker bridge. `apps/mcp/`'s `bridgeHandler`
+// redeems the one-shot code minted by `apps/api/`'s
+// `POST /v1/oauth/mcp-callback`. The code itself is the auth proof
+// (128-bit random, 60 s TTL, delete-on-read).
+export type OAuthBridgeRedemption = {
+  user_id: string;
+  mcp_host: string;
+  device_id: string;
+  bearer: string;
+  bearer_hash: string;
+};
+
 export type NlqClient = {
   // Returns the union AskOk | AskCreateResult — callers narrow on the
   // shape (`status === "ok"` vs `kind === "create"`). When `dbId` is
@@ -332,6 +353,19 @@ export type NlqClient = {
     req: CreateDatabaseRequest,
     opts?: { signal?: AbortSignal; idempotencyKey?: string },
   ): Promise<CreateDatabaseResult>;
+  // SK-MCP-014 — `apps/mcp/`'s `McpAgent` calls this every 1 s to
+  // re-check `sk_mcp_*` revocation. `keyHash` is the HMAC-SHA256 hex
+  // of the plaintext key (never the plaintext itself), computed via
+  // `hmacHex` in the calling Worker.
+  getKeyStatus(keyHash: string, opts?: { signal?: AbortSignal }): Promise<KeyStatus>;
+  // SK-MCP-013 — redeem the one-shot OAuth-bridge code (Worker-to-Worker
+  // call from `apps/mcp/`'s `bridgeHandler` to `apps/api/`'s
+  // `POST /v1/oauth/mcp-callback/redeem`). The code is the auth proof;
+  // no bearer required on the client.
+  redeemOAuthBridgeCode(
+    code: string,
+    opts?: { signal?: AbortSignal },
+  ): Promise<OAuthBridgeRedemption>;
 };
 
 const DEFAULT_BASE_URL = "https://app.nlqdb.com";
@@ -617,6 +651,16 @@ export function createClient(opts: ClientOptions = {}): NlqClient {
         ...(callOpts?.idempotencyKey
           ? { headers: { "idempotency-key": callOpts.idempotencyKey } }
           : {}),
+      }),
+    getKeyStatus: (keyHash, callOpts) =>
+      call<KeyStatus>(`/v1/keys/${encodeURIComponent(keyHash)}/status`, {
+        signal: callOpts?.signal,
+      }),
+    redeemOAuthBridgeCode: (code, callOpts) =>
+      call<OAuthBridgeRedemption>("/v1/oauth/mcp-callback/redeem", {
+        method: "POST",
+        body: JSON.stringify({ code }),
+        signal: callOpts?.signal,
       }),
   };
 }

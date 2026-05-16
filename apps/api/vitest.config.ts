@@ -58,6 +58,7 @@ export default defineConfig(async () => {
               "test/databases-list.test.ts",
               "test/db-sweep.test.ts",
               "test/mock-email-sink.test.ts",
+              "test/oauth-mcp-bridge.test.ts",
               "test/workload-analyser/*.test.ts",
               "src/databases/list.test.ts",
               "src/db-create/*.test.ts",

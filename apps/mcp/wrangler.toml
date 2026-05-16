@@ -3,21 +3,40 @@ main = "src/index.ts"
 compatibility_date = "2026-04-27"
 compatibility_flags = ["nodejs_compat"]
 
-# Hosted MCP Worker for `mcp.nlqdb.com` — `SK-MCP-010` slice 3a.
-# Thin shim: forwards every tool call to `apps/api/` via `@nlqdb/sdk`
-# (`SK-MCP-005`). 3b adds OAuth + DO sessions; 3c hardens revocation.
+# Hosted MCP Worker for `mcp.nlqdb.com` — `SK-MCP-010` slice 3b.
+# OAuthProvider + McpAgent DO sessions on top of `apps/api/` (auth-of-
+# record) via `@nlqdb/sdk` (`SK-MCP-005`). DO + KV bindings back OAuth
+# state + per-session caching only; never touch D1.
 workers_dev = true
 
 [observability]
 enabled = true
 
-# `NLQDB_API_BASE_URL` targets the upstream API; override via `.dev.vars`.
+# `NLQDB_API_BASE_URL` targets the upstream API; `NLQDB_WEB_ORIGIN`
+# hosts the consent screen (`apps/web`). Override via `.dev.vars`.
 [vars]
 NODE_ENV = "production"
 NLQDB_API_BASE_URL = "https://app.nlqdb.com"
+NLQDB_WEB_ORIGIN = "https://app.nlqdb.com"
 
 # `custom_domain = true` gives wrangler exclusive ownership of
 # `mcp.nlqdb.com` and provisions the cert on first deploy.
 [[routes]]
 pattern = "mcp.nlqdb.com"
 custom_domain = true
+
+# OAuth-provider state (clients, grants, refresh tokens, one-shot
+# bridge codes). `workers-oauth-provider` requires this binding name.
+[[kv_namespaces]]
+binding = "OAUTH_KV"
+id = "REPLACE_WITH_PROVISIONED_OAUTH_KV_ID"
+
+# `McpAgent` Durable Object — one instance per OAuth grant
+# (`SK-MCP-014`'s `revalidated_at` stamp lives in the DO's SQL store).
+[[durable_objects.bindings]]
+class_name = "NlqdbMcpAgent"
+name = "MCP_AGENT"
+
+[[migrations]]
+tag = "slice-3b"
+new_sqlite_classes = ["NlqdbMcpAgent"]

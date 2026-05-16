@@ -53,9 +53,10 @@ export async function mintPkLiveKey(
 }
 
 // Looks up a pk_live_ key by its plaintext value.
-// Returns null when the key doesn't exist or the prefix is wrong.
-// Constant-time at the hash level — the D1 `WHERE key_hash = ?` lookup
-// does an index scan, not a full table scan, so timing doesn't leak row count.
+// Returns null when the key doesn't exist, the prefix is wrong, or the
+// row is revoked (SK-MCP-014). Constant-time at the hash level — the D1
+// `WHERE key_hash = ?` lookup does an index scan, not a full table scan,
+// so timing doesn't leak row count.
 export async function lookupPkLiveKey(
   d1: D1Database,
   secret: string,
@@ -64,7 +65,10 @@ export async function lookupPkLiveKey(
   if (!key.startsWith(PK_LIVE_PREFIX)) return null;
   const hash = await hmacHex(secret, key);
   const row = await d1
-    .prepare("SELECT db_id, tenant_id FROM api_keys WHERE key_hash = ? AND key_type = 'pk_live'")
+    .prepare(
+      "SELECT db_id, tenant_id FROM api_keys " +
+        "WHERE key_hash = ? AND key_type = 'pk_live' AND revoked_at IS NULL",
+    )
     .bind(hash)
     .first<{ db_id: string; tenant_id: string }>();
   if (!row) return null;
@@ -139,10 +143,13 @@ export async function lookupSkKey(
 ): Promise<SkKeyLookup | null> {
   if (!key.startsWith(SK_LIVE_PREFIX) && !key.startsWith(SK_MCP_PREFIX)) return null;
   const hash = await hmacHex(secret, key);
+  // `revoked_at IS NULL` filter implements SK-MCP-009's revocation
+  // contract at the source: any 1 s isolate cache / DO revalidator
+  // built atop this query inherits the filter for free.
   const row = await d1
     .prepare(
       "SELECT id, tenant_id, key_type, mcp_host, device_id FROM api_keys " +
-        "WHERE key_hash = ? AND key_type IN ('sk_live', 'sk_mcp')",
+        "WHERE key_hash = ? AND key_type IN ('sk_live', 'sk_mcp') AND revoked_at IS NULL",
     )
     .bind(hash)
     .first<{
@@ -166,6 +173,30 @@ export async function lookupSkKey(
     mcpHost: row.mcp_host,
     deviceId: row.device_id,
   };
+}
+
+// ─── key status (SK-MCP-014 hot-path revalidation) ─────────────────────────
+
+// Returns the revocation state for a key identified by its HMAC hash.
+// Used by `apps/mcp/`'s `McpAgent` Durable Object: the DO caches the
+// resolved key + claims for 1 s and re-probes this endpoint on every
+// tool call past the TTL. Returning `null` (unknown hash) and
+// `{ revoked: true }` (known but revoked) are distinct: the DO drops
+// its cache + closes the session on the latter and surfaces an
+// `SK-MCP-006` error envelope. Caller passes the HMAC, never the
+// plaintext — keeps key material out of cross-Worker URLs.
+export async function getKeyStatusByHash(
+  d1: D1Database,
+  keyHash: string,
+): Promise<{ revoked: boolean; revokedAt: number | null } | null> {
+  const row = await d1
+    .prepare(
+      "SELECT revoked_at FROM api_keys WHERE key_hash = ? AND key_type IN ('sk_live', 'sk_mcp')",
+    )
+    .bind(keyHash)
+    .first<{ revoked_at: number | null }>();
+  if (!row) return null;
+  return { revoked: row.revoked_at !== null, revokedAt: row.revoked_at };
 }
 
 // Throttled to one write per minute per key — `last_used_at` is a
@@ -213,7 +244,10 @@ export async function adoptApiKeys(
 
 // ─── crypto helpers ──────────────────────────────────────────────────────────
 
-async function hmacHex(secret: string, message: string): Promise<string> {
+// HMAC-SHA256 hex. Exported so external callers (e.g. the OAuth bridge
+// mint path) can hash plaintext keys for `getKeyStatusByHash` probes
+// without re-implementing the primitive.
+export async function hmacHex(secret: string, message: string): Promise<string> {
   const key = await crypto.subtle.importKey(
     "raw",
     new TextEncoder().encode(secret),

@@ -27,6 +27,10 @@ function stubClient(overrides: Partial<NlqClient> = {}): NlqClient {
     createDatabase: async () => {
       throw new Error("createDatabase not stubbed");
     },
+    getKeyStatus: async () => ({ revoked: false }),
+    redeemOAuthBridgeCode: async () => {
+      throw new Error("redeemOAuthBridgeCode not stubbed");
+    },
   };
   return { ...base, ...overrides };
 }

@@ -17,17 +17,18 @@ and forwards every tool call to `apps/api/` via `@nlqdb/sdk`.
 
 ## Architecture posture
 
-- Pure HTTP-API client. **No D1 / KV / R2 bindings on this Worker.** Auth-of-record is `apps/api/`; this Worker forwards bearers via `@nlqdb/sdk` and surfaces upstream errors per `SK-MCP-006`.
-- Per-request `McpServer` + transport — shared instances leak response streams between concurrent clients. No Durable Objects in slice 3a.
-- Three tools registered via `createServer()` from `@nlqdb/mcp` (the transport-agnostic dispatcher) — never re-implement tool semantics here. New tools land in `packages/mcp/src/tools.ts` first.
-- Slice ordering per `SK-MCP-010`: 3a (this scaffold + bearer auth) → 3b (`workers-oauth-provider` + `McpAgent` Durable Object sessions) → 3c (per-key rate-limit + 1 s isolate-cache revocation per `SK-MCP-009`).
+- Auth-of-record is `apps/api/` — `apps/mcp/` holds OAuth state (KV) + per-session DO state but no D1. The DO forwards bearers to `apps/api/` via `@nlqdb/sdk` per `SK-MCP-005`/`SK-MCP-007` and surfaces upstream errors per `SK-MCP-006`.
+- `OAuthProvider` from `@cloudflare/workers-oauth-provider` owns `/authorize`, `/token`, `/register`, `/.well-known/*`. `NlqdbMcpAgent.serve('/mcp')` puts every tool call through a Durable Object per `(user_id, mcp_host, device_id)` keyed off the OAuth grant.
+- Three tools registered via `createServer()` from `@nlqdb/mcp` — never re-implement tool semantics here. New tools land in `packages/mcp/src/tools.ts` first.
+- Slice ordering per `SK-MCP-010`: 3a (bearer scaffold, shipped) → 3b (this slice — OAuth + DO sessions per `SK-MCP-011..014`) → 3c (per-key rate-limit + auth-failure observability per `SK-MCP-009`).
 
-## Deferred from slice-3a self-review (carry into 3b / 3c)
+## Deferred from slice-3a/3b self-review (carry into 3c)
 
-Each is anchored to an inline `TODO(slice 3b)` / `TODO(slice 3c)` comment in `src/index.ts`. Grep before opening either follow-on PR.
+Each item below is grep-discoverable via inline `TODO(slice 3c)` comments.
 
-- **CORS `Access-Control-Allow-Origin: *` echo (3b).** `preflight()` echoes the request origin (or `*` fallback). Safe today — every request is bearer-authenticated, no cookies. When `workers-oauth-provider` adds credentialed flows on the authorize / callback routes, CORS-spec forbids `*` for credentialed requests. Replace with an allow-list keyed off the OAuth client registry.
-- **Auth-failure observability gap (3c).** The `nlqdb.mcp.http.request` span starts *after* `requireBearer`, so probe traffic and misconfigured-key traffic never produce a span. When rate-limit + observability hardening lands, either add a pre-gate counter or start the span before the gate and tag failures via a span attribute.
+- **CORS in 3b.** The slice-3a `*` echo is moot — `OAuthProvider` owns CORS for its own routes (`/authorize`, `/token`, `/register`, `/.well-known/*`), and the bridge callback at `/oauth/mcp-bridge-callback` is a server-side redirect that doesn't need CORS. No allow-list shim required at this slice.
+- **Auth-failure observability gap (3c).** The `nlqdb.mcp.http.request` span never fires on `/mcp` requests rejected by `OAuthProvider`'s bearer gate (no access token, expired token, wrong scope). When rate-limit + observability hardening lands, wrap `OAuthProvider`'s `onError` callback or add a pre-gate counter so probe / misconfigured-key traffic is visible in OTel.
+- **Slice 3b — `NlqdbMcpAgent.serve('/mcp')` type cast.** `apps/mcp/src/index.ts` casts the serve return value `as never` to bridge `OAuthProvider`'s `apiHandler` generics with `McpAgent.serve`'s untyped Env parameter. Both types are correct at runtime (the workers-oauth-provider tests use the same pattern); revisit when either package narrows its generics.
 
 ## Commands
 

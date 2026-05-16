@@ -1,82 +1,93 @@
-// Unit tests for the Worker's bearer-auth gate. The MCP protocol body
-// is fully exercised by `packages/mcp/` against the SDK; this file
-// asserts that requests without (or with a malformed) bearer never
-// reach the protocol layer, and that the `SK-MCP-006` error envelope
-// is shaped right.
+// Auth-boundary integration tests for the hosted MCP Worker.
+//
+// Slice 3a tested a prefix-only bearer gate; slice 3b replaces that
+// with `workers-oauth-provider` (`SK-MCP-011`/`-012`) + `McpAgent`
+// Durable Object sessions (`SK-MCP-014`). The protocol body is still
+// exercised in `packages/mcp/`; these tests run inside the Workers
+// runtime via `cloudflareTest` so the OAuthProvider's
+// `cloudflare:workers` import resolves and `SELF.fetch` hits the
+// same handler wrangler will run in prod.
+//
+// Coverage:
+//   • OAuth metadata served on `/.well-known/oauth-authorization-server`.
+//   • `/mcp` without a valid OAuth access token returns 401 — no raw
+//     `sk_*` bypass per the new architecture.
+//   • The bridge-callback path rejects malformed input before
+//     touching the upstream API.
+//   • `/health` stays unauthenticated (route-monitor parity).
 
+import { SELF } from "cloudflare:test";
 import { describe, expect, it } from "vitest";
-import handler from "../src/index.ts";
 
-const ctx = {
-  waitUntil: () => {},
-  passThroughOnException: () => {},
-} as unknown as ExecutionContext;
-
-const env = {};
-
-async function call(method: string, path: string, headers: Record<string, string> = {}) {
-  const url = `https://mcp.nlqdb.com${path}`;
-  const init: RequestInit = { method, headers };
-  if (method === "POST") {
-    init.body = JSON.stringify({ jsonrpc: "2.0", method: "ping", id: 1 });
-    headers["content-type"] = "application/json";
-  }
-  return handler.fetch?.(new Request(url, init), env, ctx);
-}
-
-describe("apps/mcp bearer gate", () => {
-  it("health is unauthenticated", async () => {
-    const res = await call("GET", "/health");
-    expect(res?.status).toBe(200);
-    expect(await res?.text()).toBe("ok");
+describe("apps/mcp auth boundary (slice 3b)", () => {
+  it("serves OAuth authorization-server metadata", async () => {
+    const res = await SELF.fetch("https://mcp.nlqdb.test/.well-known/oauth-authorization-server");
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as Record<string, unknown>;
+    expect(typeof body["authorization_endpoint"]).toBe("string");
+    expect(typeof body["token_endpoint"]).toBe("string");
+    // SK-MCP-012 — single `mcp` scope.
+    expect(body["scopes_supported"]).toEqual(["mcp"]);
+    // SK-MCP-011 — DCR endpoint advertised.
+    expect(typeof body["registration_endpoint"]).toBe("string");
   });
 
-  it("OPTIONS preflight is allowed", async () => {
-    const res = await call("OPTIONS", "/mcp", { origin: "https://example.com" });
-    expect(res?.status).toBe(204);
-    expect(res?.headers.get("access-control-allow-methods")).toContain("POST");
+  it("rejects /mcp without an Authorization header (OAuth gate)", async () => {
+    const res = await SELF.fetch("https://mcp.nlqdb.test/mcp", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ jsonrpc: "2.0", method: "ping", id: 1 }),
+    });
+    expect(res.status).toBe(401);
   });
 
-  it("unknown path returns 404", async () => {
-    const res = await call("POST", "/something-else");
-    expect(res?.status).toBe(404);
+  it("rejects /mcp with a raw sk_mcp bearer (no OAuth grant)", async () => {
+    // Slice 3a accepted raw `sk_mcp_*` here; 3b's OAuthProvider only
+    // accepts its own access tokens issued via `/authorize` -> `/token`.
+    const res = await SELF.fetch("https://mcp.nlqdb.test/mcp", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        authorization: "Bearer sk_mcp_test_dev_abcdef0123456789",
+      },
+      body: JSON.stringify({ jsonrpc: "2.0", method: "ping", id: 1 }),
+    });
+    expect(res.status).toBe(401);
   });
 
-  it("missing bearer returns 401 with SK-MCP-006 envelope", async () => {
-    const res = await call("POST", "/mcp");
-    expect(res?.status).toBe(401);
-    expect(res?.headers.get("www-authenticate")).toContain("Bearer");
-    const body = (await res?.json()) as {
-      jsonrpc: string;
-      error: { code: number; message: string; data: { code: string; action: string } };
-    };
-    expect(body.jsonrpc).toBe("2.0");
-    expect(body.error.data.code).toBe("missing_bearer");
-    expect(body.error.data.action).toMatch(/app\.nlqdb\.com\/keys/);
+  it("rejects /mcp with a bogus OAuth access token", async () => {
+    const res = await SELF.fetch("https://mcp.nlqdb.test/mcp", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        authorization: "Bearer not_a_real_access_token",
+      },
+      body: JSON.stringify({ jsonrpc: "2.0", method: "ping", id: 1 }),
+    });
+    expect(res.status).toBe(401);
   });
 
-  it("unknown prefix returns 401 with bearer_prefix_unrecognised", async () => {
-    const res = await call("POST", "/mcp", { authorization: "Bearer foo_not_an_nlqdb_key" });
-    expect(res?.status).toBe(401);
-    const body = (await res?.json()) as { error: { data: { code: string } } };
-    expect(body.error.data.code).toBe("bearer_prefix_unrecognised");
+  it("/oauth/mcp-bridge-callback without code+flow returns 400", async () => {
+    const res = await SELF.fetch("https://mcp.nlqdb.test/oauth/mcp-bridge-callback");
+    expect(res.status).toBe(400);
   });
 
-  it("non-POST on /mcp with valid prefix returns 405 (stateless mode)", async () => {
-    const res = await call("GET", "/mcp", { authorization: "Bearer sk_live_test_only" });
-    expect(res?.status).toBe(405);
-    expect(res?.headers.get("allow")).toBe("POST, OPTIONS");
+  it("/oauth/mcp-bridge-callback with malformed flow returns 400", async () => {
+    const res = await SELF.fetch(
+      "https://mcp.nlqdb.test/oauth/mcp-bridge-callback?code=abc123&flow=not-base64url!!!",
+    );
+    expect(res.status).toBe(400);
   });
 
-  it.each([
-    "sk_live_",
-    "sk_mcp_test_dev_",
-    "pk_live_",
-  ])("recognised prefix %s passes the gate (then upstream rejects)", async (prefix) => {
-    // No upstream API in unit tests — the fetch will fail and return
-    // 500. The gate-passing assertion is that we get past 401 (so the
-    // body isn't `missing_bearer` / `bearer_prefix_unrecognised`).
-    const res = await call("POST", "/mcp", { authorization: `Bearer ${prefix}abcd1234` });
-    expect(res?.status).not.toBe(401);
+  // `/authorize` happy + sad paths are owned by `OAuthProvider` —
+  // we don't re-verify what `workers-oauth-provider`'s own test
+  // suite already covers. The `handleAuthorize` slice we own (state
+  // blob construction) is unit-tested separately in
+  // `oauth-bridge.test.ts`.
+
+  it("/health stays unauthenticated", async () => {
+    const res = await SELF.fetch("https://mcp.nlqdb.test/health");
+    expect(res.status).toBe(200);
+    expect(await res.text()).toBe("ok");
   });
 });
