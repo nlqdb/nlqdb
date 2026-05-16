@@ -92,10 +92,10 @@ export default function Trace({ steps, sql, explain, defaultOpen, meta }: TraceP
         <dl className="chat-trace__meta">
           <dt>plan</dt>
           <dd>
-            <code>{meta.plan_id}</code>
+            <code>{meta.plan_id ?? "—"}</code>
           </dd>
           <dt>confidence</dt>
-          <dd>{meta.confidence.toFixed(2)}</dd>
+          <dd>{typeof meta.confidence === "number" ? meta.confidence.toFixed(2) : "—"}</dd>
         </dl>
       ) : null}
       {sql ? (
