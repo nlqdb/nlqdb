@@ -132,10 +132,9 @@ export async function orchestrateAsk(
     }
   }
 
-  // Rate-limit check first — fail fast on overlimit before any DB
-  // work or LLM call. PERFORMANCE §4 row 6 nlqdb.ratelimit.check span.
+  // Rate-limit check first — fail fast on overlimit before any DB work or LLM call.
   const decision = await withSpan("nlqdb.ratelimit.check", () =>
-    deps.rateLimiter.check(req.userId),
+    deps.rateLimiter.check(req.rateLimitBucketKey ?? req.userId),
   );
   if (!decision.allowed) {
     return {

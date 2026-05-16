@@ -163,7 +163,7 @@ Canonical names. Every slice MUST use these — no one-off variants.
 | :---------------------------- | :--------------------------------------------- |
 | `http.server.request`         | Outermost — already standard OTel.             |
 | `nlqdb.auth.verify`           | Internal JWT HMAC verify.                      |
-| `nlqdb.ratelimit.check`       | KV read for rate-limit window.                 |
+| `nlqdb.ratelimit.check`       | D1 UPSERT for the per-principal rate-limit window. `SK-MCP-009` slice 3c keys buckets via `apps/api/src/principal.ts::rateLimitBucketKey` — sk_live and sk_mcp principals get one bucket per `api_keys.id` (no per-prefix special-casing); sessions, anon, and pk_live continue to key by `principal.id`. |
 | `nlqdb.ask`                   | Top-level wrapper for `/v1/ask` request.       |
 | `nlqdb.ask.hash`              | Schema-hash + query-hash compute.              |
 | `nlqdb.cache.plan.lookup`     | KV read for cached plan (label `hit=true/false`). |
@@ -187,6 +187,7 @@ Canonical names. Every slice MUST use these — no one-off variants.
 | `nlqdb.workload_analyser.run` | W5 daily cron parent span. Carries `nlqdb.workload_analyser.{query_log_rows, proposals, reshapes_applied, errors, elapsed_ms}`. One per `scheduled()` invocation. Owner: `apps/api/src/workload-analyser/cron.ts` (`SK-MIGRATE-001`). |
 | `nlqdb.workload_analyser.reshape` | One child span per `ReshapeProposal` the cron dispatches. Carries `nlqdb.workload_analyser.{kind, db_id, pipe_pre_existed?, pipe_name?}`. ERROR status when the Tinybird API rejects the create or `schema_hash` drift forces a rollback (`SK-MIGRATE-004`/`SK-MIGRATE-006`). |
 | `db.query` (Tinybird Pipes mgmt) | Per-call span around `createPipe` / `dropPipe` / `getPipe`. Attributes `db.system=other_sql`, `db.operation.name ∈ {PIPE_CREATE, PIPE_DROP, PIPE_GET}`, `db.tinybird.pipe`. Latency on `nlqdb.db.duration_ms{operation}` alongside `PIPE_CALL` / `EVENTS_WRITE`. Owner: `packages/db/src/clickhouse-tinybird/pipe-management.ts` (`SK-MIGRATE-001`). |
+| `nlqdb.mcp.http.request`     | `SK-MCP-009` slice 3c — wraps every hosted-MCP Worker request before `OAuthProvider` dispatches (skipped on `GET /health` so route-monitor pings don't add trace volume). Attributes: `http.request.method`, `http.route`, `http.response.status_code`. On `OAuthProvider` error responses `onError` decorates the active span with `nlqdb.mcp.auth.error_code`, `nlqdb.mcp.auth.error_status`, `nlqdb.mcp.auth.error_description` and flips its status to ERROR — so trace queries filtering on `span.status=ERROR` surface auth failures alongside 5xx. Owner: `apps/mcp/src/index.ts`. |
 
 ### 3.2 Metric names
 
@@ -200,6 +201,7 @@ Counters (suffix `.total`):
 - `nlqdb.auth.events.total{type, outcome}` — sign-in / refresh / logout.
 - `nlqdb.events.sink.query_log.failures.total{status_class}` — Tinybird `query_log` write failures (non-2xx HTTP or fetch threw). Used as the trip signal for the events-worker's circuit-breaker (`SK-EVENTS-009`).
 - `nlqdb.retry.total{stage, reason}` — GLOBAL-022 retries (SK-ASK-013, SK-SDK-008). `stage ∈ {route, plan, exec, sdk}`. Attempts, not requests. Sustained climb = release-blocking.
+- `nlqdb.mcp.auth.failures.total{error_code, status}` — `SK-MCP-009` slice 3c. Hosted-MCP `OAuthProvider` error responses, fired from its `onError` callback. `error_code` ∈ workers-oauth-provider 0.6's set: `invalid_request | invalid_client | invalid_client_metadata | invalid_grant | invalid_target | invalid_token | not_implemented | temporarily_unavailable | unsupported_grant_type`. `status` ∈ {400, 401, 404, 405, 413, 429, 501} (429 fires when the OAuth grants KV store throws `temporarily_unavailable`). Used to distinguish probe traffic from genuine misconfiguration without sampling raw request volume.
 
 Histograms (latency in ms — explicit `_ms` suffix):
 

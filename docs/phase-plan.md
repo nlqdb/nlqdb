@@ -156,16 +156,25 @@ publicly uses nlqdb as memory; 3 non-engineers complete CSV analysis
 user.
 
 **Status (2026-05):** item 1 (MCP server) is in progress —
-`SK-MCP-010` slices 1 + 2 + 3a + 3b shipped. Slice 1: `sk_live_` +
+`SK-MCP-010` slices 1 + 2 + 3a + 3b + 3c shipped. Slice 1: `sk_live_` +
 `sk_mcp_*` mint via `POST /v1/keys`. Slice 2: `packages/mcp/` stdio
 package with all three tools. Slice 3a: `apps/mcp/` Cloudflare Worker
 on `mcp.nlqdb.com`, MCP Streamable-HTTP at `/mcp`, stateless bearer
 auth. Slice 3b: `workers-oauth-provider` + `McpAgent` Durable Object
 sessions per `SK-MCP-011..014` — dynamic client registration, single
 `mcp` scope, cross-Worker callback bridge minting `sk_mcp_*` server-
-side, DO revalidation cache for 1 s revocation. Remaining: slice 3c
-(per-key rate-limit + observability hardening per `SK-MCP-009`), slice
-4 (`nlq mcp install` CLI auto-detection) — see
+side, DO revalidation cache for 1 s revocation (pulled forward from
+the original 3c scope because the DO lifecycle was the natural home).
+Slice 3c: per-bucket rate-limit (`apps/api/src/principal.ts::rateLimitBucketKey`
+keys all `sk_*` principals by `rl:${api_keys.id}` — one namespace,
+no per-prefix special-casing per `SK-MCP-009`; migration 0014 renames
+`rate_limit_buckets.user_id` → `bucket_key` to match) + auth-failure
+observability (`nlqdb.mcp.http.request` span wraps every Worker
+request except `GET /health`; `nlqdb.mcp.auth.failures.total{error_code, status}`
+counter fires from `OAuthProvider`'s `onError`, and the active span is
+flipped to ERROR with `nlqdb.mcp.auth.error_*` attributes so trace
+queries surface auth failures alongside 5xx). Remaining: slice 4 (`nlq mcp install`
+CLI auto-detection) — see
 [`mcp-server/FEATURE.md`](./features/mcp-server/FEATURE.md) and
 [`cli/FEATURE.md`](./features/cli/FEATURE.md). The dashboard
 key-management UI that wraps `POST /v1/keys` is still open in

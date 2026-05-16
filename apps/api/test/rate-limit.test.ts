@@ -34,11 +34,18 @@ describe("makeRateLimiter (D1)", () => {
     expect(denied.count).toBeGreaterThan(2);
   });
 
-  it("isolates buckets by userId", async () => {
+  it("isolates buckets by key", async () => {
     const limiter = makeRateLimiter(env.DB, { limit: 1, windowSeconds: 60 });
     expect((await limiter.check("u_a")).allowed).toBe(true);
     expect((await limiter.check("u_b")).allowed).toBe(true);
     expect((await limiter.check("u_a")).allowed).toBe(false);
+  });
+
+  it("isolates sk_* keys for the same tenant (SK-MCP-009 per-key bucketing)", async () => {
+    const limiter = makeRateLimiter(env.DB, { limit: 1, windowSeconds: 60 });
+    expect((await limiter.check("rl:key_cursor")).allowed).toBe(true);
+    expect((await limiter.check("rl:key_claude")).allowed).toBe(true);
+    expect((await limiter.check("rl:key_cursor")).allowed).toBe(false);
   });
 
   it("rolls over when the window advances", async () => {

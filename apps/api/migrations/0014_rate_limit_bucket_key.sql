@@ -1,0 +1,22 @@
+-- SK-MCP-009 — rename `rate_limit_buckets.user_id` to `bucket_key` to
+-- match the new per-bucket semantics: `apps/api/src/principal.ts::rateLimitBucketKey`
+-- maps sk_live/sk_mcp principals to `rl:${api_keys.id}` and everyone
+-- else to `principal.id`, so the column is no longer "the user id" —
+-- it's an opaque per-principal bucket key.
+--
+-- Safety: SQLite's `ALTER TABLE ... RENAME COLUMN` (≥3.25; D1 runs a
+-- newer SQLite) atomically updates the column name in the PK
+-- definition (`PRIMARY KEY (user_id, window_start)` → `(bucket_key,
+-- window_start)`) and in every index / view / trigger that references
+-- it. The only index on this table is `idx_rate_limit_buckets_window`
+-- (on `window_start`), which doesn't reference the renamed column —
+-- so nothing else needs touching.
+--
+-- Behavioural note: at deploy, sk_live / sk_mcp traffic transitions
+-- from sharing its tenant's `user_id` bucket to a per-key `rl:<keyId>`
+-- bucket. A single user with N sk_* keys + sessions/anon traffic
+-- effectively goes from one bucket to N+1 — the per-minute ceiling
+-- applies per bucket, so per-account total throughput rises. See
+-- `docs/features/rate-limit/FEATURE.md` Open questions for the sweep
+-- discussion.
+ALTER TABLE rate_limit_buckets RENAME COLUMN user_id TO bucket_key;

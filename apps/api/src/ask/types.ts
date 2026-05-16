@@ -43,7 +43,10 @@ export type Trace = {
 export type AskRequest = {
   goal: string;
   dbId: string;
+  // Tenant id — passed to `resolveDb`, recent-tables, first-query; for sk_* principals this is the account, not the key.
   userId: string;
+  // SK-MCP-009 rate-limit bucket; defaults to `userId` so chat + tests don't churn.
+  rateLimitBucketKey?: string;
   // SK-TRUST-001 — render-before-commit gate. First call (omitted /
   // false) returns `requires_confirm: true` + `diff` for write paths
   // and skips exec. Surfaces re-send the same goal with `confirm: true`
