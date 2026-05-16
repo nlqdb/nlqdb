@@ -54,6 +54,15 @@ jobs:
       # /chat/completions call to Gemini while keeping the SDK
       # surface identical.
       OPENAI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      # Dump every LangChain step (model start/end, tool calls, tool
+      # results) to stdout so the job log captures the full agent
+      # loop. Without this we only see opencheck's high-level
+      # PASS/FAIL/SKIP verdict and the LLM's after-the-fact reasoning
+      # — useless for diagnosing why a test got stuck or which tool
+      # call burned the timeout budget. Enabling adds ~5-10x to the
+      # log volume but lands the post-mortem signal we need to
+      # iterate on the cases. Drop once the cases stabilise.
+      LANGCHAIN_VERBOSE: "true"
       OPENAI_BASE_URL: https://generativelanguage.googleapis.com/v1beta/openai/
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
