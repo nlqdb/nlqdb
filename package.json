@@ -18,7 +18,7 @@
     "lint": "biome lint",
     "check": "biome check",
     "fix": "biome check --write",
-    "check:go": "gofumpt -l . && go vet ./... && golangci-lint run",
+    "check:go": "gofumpt -l cli && go -C cli vet ./... && cd cli && golangci-lint run ./...",
     "check:py": "ruff check && ruff format --check",
     "check:all": "bun run check && bun run check:go && bun run check:py",
     "hooks:install": "lefthook install",

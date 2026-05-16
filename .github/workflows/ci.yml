@@ -109,6 +109,31 @@ jobs:
         if: steps.precheck.outputs.exists == 'true'
         run: go test ./... -race -count=1
 
+      # SK-CLI-001 binary-size budget. Failing CI on a regression is
+      # cheaper than discovering it after a release. Linux is the
+      # bound (godbus is only linked on Linux); macOS / Windows are
+      # smaller on the same build flags.
+      - name: Binary-size budget (SK-CLI-001)
+        if: steps.precheck.outputs.exists == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath \
+            -ldflags="-s -w -X github.com/nlqdb/nlqdb/cli/internal/version.Version=ci" \
+            -o /tmp/nlq-ci ./cmd/nlq
+          raw=$(stat -c%s /tmp/nlq-ci)
+          gzip -kf /tmp/nlq-ci
+          gz=$(stat -c%s /tmp/nlq-ci.gz)
+          echo "::notice::nlq linux/amd64 raw=${raw}B gz=${gz}B (caps: raw 10 MB, gz 4 MB)"
+          if [ "$raw" -ge 10485760 ]; then
+            echo "::error::raw binary ${raw}B ≥ 10 MB cap"
+            exit 1
+          fi
+          if [ "$gz" -ge 4194304 ]; then
+            echo "::error::gzipped binary ${gz}B ≥ 4 MB cap"
+            exit 1
+          fi
+
   lint-py:
     name: ruff (format + lint)
     runs-on: ubuntu-latest
