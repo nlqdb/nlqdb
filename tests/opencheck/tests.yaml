@@ -6,15 +6,21 @@
 # Runtime substitution: the caller workflow renders `__BASE_URL__` to the
 # per-run preview alias via `sed` before invoking `bunx opencheck`.
 #
-# LLM: Gemini via OpenAI-compat. Descriptions are kept short on purpose —
-# long, verbose cases caused the agent to thrash on tool calls and hit
-# 240 s per-test timeouts in run #15. The agent figures out selectors
-# from `browser_snapshot`; the case just needs to point at the right
-# page and the right text.
+# LLM: Groq `openai/gpt-oss-120b` via OpenAI-compat
+# (https://console.groq.com/docs/openai). Switched off Gemini 2.5 Flash
+# after run #17's log surfaced opaque `429 status code (no body)` errors
+# that cost ~75-87 s per failed test (the openai Node SDK silently retries
+# 3× before surfacing). Gemini's free-tier 10 RPM was the ceiling we kept
+# hitting at the chain tail. Groq's free tier gives 30 RPM / 1,000 RPD /
+# 12 K TPM and the model card explicitly bills `gpt-oss-120b` as designed
+# for "high-capability autonomous agents with advanced reasoning, tool
+# use, and multi-step problem solving" — exactly opencheck's loop.
+# Fallback: `llama-3.3-70b-versatile` (same provider, same key, swap
+# the `model:` line).
 
 baseUrl: "__BASE_URL__"
 modelProvider: "openai"
-model: "gemini-2.5-flash"
+model: "openai/gpt-oss-120b"
 
 # Persistent session shares cookies + localStorage across tests so the
 # agent doesn't have to re-walk the prereq chain from a clean profile
