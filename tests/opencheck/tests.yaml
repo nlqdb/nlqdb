@@ -12,20 +12,31 @@
 # opencheck delegates to LangChain `initChatModel(model, { modelProvider })`,
 # which auto-loads `@langchain/openai`. ChatOpenAI reads OPENAI_API_KEY +
 # OPENAI_BASE_URL — both wired in the reusable workflow env.
+#
+# Test descriptions deliberately name concrete UI: placeholder text, button
+# labels, URL paths. Earlier runs failed because the LLM agent guessed at
+# selectors ("input with placeholder containing 'Ask'") that don't match
+# the actual UI (home composer has placeholder "an orders tracker"; the
+# only "Ask" placeholder is on /app's authed composer). Being specific
+# reduces agent drift.
 
 baseUrl: "__BASE_URL__"
 modelProvider: "openai"
 model: "gemini-2.5-flash"
-sessionMode: "isolated"
 
-# opencheck's default per-test timeout is 60_000 ms, but each test
-# starts with `#prev, then ...` and the LLM agent walks the full
-# prereq chain from scratch (sessionMode=isolated → no shared state).
-# The deepest test (#sign-out) has 13 prereqs and consistently times
-# out at exactly 60.0s under that default. 240_000 (4 min) gives
-# headroom for the chain tail; tests at the head still finish in
-# ~20s. Once opencheck's step cache warms on a stable tests.yaml,
-# repeat runs land well under this ceiling.
+# Persistent session so cookies + localStorage (anon token, nlqdb_pending,
+# the auth session cookie after sign-in) survive across tests. Without
+# this each test starts with a fresh Chromium profile and the LLM agent
+# has to walk the whole prerequisite chain from scratch every time —
+# which times out at the chain tail. Persistent state means the agent
+# can pick up where the previous test left off; the `#prev` references
+# in each case description still hold but the agent doesn't have to
+# re-execute every step because the browser is already at the right
+# point in the flow.
+sessionMode: "persistent"
+
+# Even with persistent state, deep-chain tests can run slow on cold
+# cache. 240 s per test gives headroom; warm-cache runs land far below.
 timeout: 240000
 
 # `video: false` because @playwright/mcp's --save-video path shells out
@@ -39,147 +50,211 @@ recording:
 tests:
   - name: "#hero-or-cmdg"
     case: |
-      Visit the home page. If the chat composer/input is not visible, press
-      Cmd+G (or Ctrl+G on Linux) to reveal the cmd+g-gated chat UI. Confirm a
-      chat input element is now visible and ready to accept text.
+      Navigate to the home page (the base URL). The hero's create form is
+      gated behind Cmd+G via the `data-cmdg-gate` attribute (see
+      `apps/web/src/components/Hero.astro`), so on first load the
+      visible inputs are the topnav and the waitlist's email input —
+      NOT the create form. Press Cmd+G (or Ctrl+G on Linux/Windows)
+      ONCE to reveal the gate. Within 3 seconds verify a text input
+      with placeholder exactly "an orders tracker" is now visible
+      (this is the anonymous create form's "What are you building?"
+      input). The waitlist email input (placeholder includes "@" or
+      "email") is NOT the target — ignore it. Use browser_snapshot
+      to confirm both the "an orders tracker" input AND a button
+      labelled "Create the DB" are present and visible.
 
   - name: "#create-table-anon"
     case: |
       #hero-or-cmdg, then type
-        "create a users table with id, name, email"
-      into the chat input and submit. Within 5 seconds either a `users`
-      table should be rendered on the page, or a chat reply should confirm
-      the table was created.
+        create a users table with id, name, email
+      into the input with placeholder "an orders tracker" and either
+      press Enter or click the "Create the DB" button. Within 15
+      seconds verify a result block titled "Provisioned with N sample
+      rows" appears below the form, AND a table headed "Users" with
+      columns "Id", "Name", "Email" is rendered. The anonymous flow
+      creates a new Postgres schema; the result block is the visual
+      confirmation the create succeeded.
 
   - name: "#add-row-redirects-to-auth"
     case: |
-      #create-table-anon, then type
-        "add a new row: name='Alice', email='alice@example.com'"
-      into the chat input and submit. The browser should be redirected to a
-      sign-in page (URL path contains "/auth/sign-in"). Do NOT submit the
-      sign-in form in this step.
+      #create-table-anon, then in the SAME input (placeholder "an
+      orders tracker") clear the previous text and type
+        add a new row: name='Alice', email='alice@example.com'
+      then submit (Enter or "Create the DB" button). Per SK-ANON-012
+      this is the user's 2nd anonymous /v1/ask call so the API
+      returns 401 auth_required, the frontend stashes the prompt in
+      localStorage["nlqdb_pending"], and the browser navigates to a
+      sign-in page. Within 10 seconds verify the URL path contains
+      "/auth/sign-in". Do NOT submit the sign-in form in this step.
 
   - name: "#mock-sign-in"
     case: |
-      #add-row-redirects-to-auth, then on the /auth/sign-in page submit the
-      mock-IdP form: leave the email field at its default of
-      "test@example.com" and click the sign-in / submit button. Wait for the
-      browser to land on /app.
+      #add-row-redirects-to-auth, then on the /auth/sign-in page
+      find the form whose action contains "/api/auth/mock-sign-in".
+      The email field has default value "test@example.com" — leave
+      it as-is. Click the button labelled "Sign in as this user".
+      Wait up to 15 seconds for the browser to land on the path
+      "/app" (the post-signin redirect chain runs through
+      /auth/post-signin which appends `?db=<adopted-db-id>` per
+      SK-ANON-014, so the final URL is `/app?db=db_users_...`).
 
   - name: "#authed-state-preserved"
     case: |
-      #mock-sign-in, then on /app verify BOTH conditions hold:
-        (a) the users database created during the anonymous flow is the
-            currently focused / selected database (visible in the sidebar
-            or db selector), and
-        (b) the chat input is pre-filled with the "add a new row" command
-            that was typed before the auth redirect.
+      #mock-sign-in, then on /app verify BOTH conditions hold within
+      10 seconds:
+        (a) the sidebar (LeftRail) shows a database whose displayName
+            starts with "users" (e.g. "users info"), highlighted as
+            the currently selected DB. The DB is the one created
+            during the anonymous flow, now adopted into the test
+            user's account.
+        (b) the main chat input (placeholder "Ask about your data…"
+            on /app — different from the home page's "an orders
+            tracker") is pre-filled with the EXACT text
+              add a new row: name='Alice', email='alice@example.com'
+            because the prior #add-row-redirects-to-auth call
+            stashed it in localStorage and ChatPanel rehydrates from
+            `nlqdb_pending` on mount (see ChatPanel.tsx:194-203).
 
   - name: "#submit-prefilled-row"
     case: |
-      #authed-state-preserved, then submit the pre-filled query in the chat
-      input (Enter, or click the Send button). Within 5 seconds a new row
-      with name "Alice" and email "alice@example.com" should be visible in
-      the users table.
+      #authed-state-preserved, then in the chat input on /app
+      (placeholder "Ask about your data…") press Enter or click the
+      "Send" button to submit the pre-filled prompt. The write goes
+      through SK-TRUST-001's preview gate, so within 15 seconds
+      EITHER:
+        - a DiffChip appears summarizing the change ("This will
+          insert 1 row into users."), in which case press Enter
+          again (or click "Approve") to commit the write; OR
+        - the row commits directly and a new row with name "Alice"
+          and email "alice@example.com" appears in the users table
+          rendered in the chat reply.
+      Final state: Alice is present in the users table. If a
+      DiffChip appears and is not approved within the timeout, this
+      test fails — the gate is supposed to be a one-Enter approval.
 
-  # ----- UX coverage: "useful and informative with the least steps-to-value"
-  # The block below tests REPLY QUALITY rather than functional plumbing —
-  # each step asserts the reply itself is informative or that a vague /
-  # error-y prompt produces an actionable next step instead of a dead end.
+  # ----- UX coverage: "useful and informative with least steps-to-value"
+  # The block below tests REPLY QUALITY — does the chat give the user
+  # something genuinely useful per action, or does it dead-end?
 
   - name: "#read-shows-informative-data"
     case: |
-      #submit-prefilled-row, then type
-        "list all users in the table"
-      into the chat input and submit. Within 8 seconds verify BOTH:
-        (a) a row with name "Alice" and email "alice@example.com" is
-            visible in the rendered result rows, and
-        (b) the assistant's natural-language reply text (the summary
-            sentence(s) above or next to the data table — NOT the
-            cell values themselves) explicitly mentions either
-            "Alice" or "1 user" / "one user" — proving the summary
-            actually describes the data instead of a generic phrase
-            like "here are your results" or "your query ran".
+      #submit-prefilled-row, then in the /app chat input (placeholder
+      "Ask about your data…") type
+        list all users in the table
+      and submit. Within 15 seconds verify BOTH:
+        (a) a data table is rendered inside the chat reply showing a
+            row where the "Name" cell is "Alice" and the "Email" cell
+            is "alice@example.com"; AND
+        (b) the natural-language summary text in the chat reply
+            (rendered ABOVE the data table — NOT inside the cells)
+            explicitly contains either the string "Alice" or the
+            phrase "1 user" / "one user". The point is the summary
+            describes the data, not a generic "here are your results"
+            sentence.
 
   - name: "#count-summarizes"
     case: |
-      #read-shows-informative-data, then type
-        "how many users are there?"
-      into the chat input and submit. Within 8 seconds verify the
-      assistant's reply mentions the number 1 (the row count) —
-      either inside the natural-language summary text (e.g. "There
-      is 1 user.") or as the single returned data cell.
+      #read-shows-informative-data, then in the same /app chat input
+      type
+        how many users are there?
+      and submit. Within 15 seconds verify the assistant's reply
+      surfaces the number 1 — either in the natural-language summary
+      sentence (e.g. "There is 1 user.") or as a single returned data
+      cell (a one-cell result like "1" or "count = 1"). The test
+      passes if either form is present.
 
   - name: "#trace-shows-sql"
     case: |
       #count-summarizes, then reveal the trace pane for the most
-      recent assistant reply. The pane is a collapsed "trace"
-      disclosure on each reply with a "Cmd+/" affordance label;
-      either click the trace summary on the latest reply OR press
-      Cmd+/ (Ctrl+/ on Linux) to open it. Within 5 seconds verify
-      the rendered SQL is visible — it should contain the word
-      "users" (case-insensitive) and a SQL keyword such as SELECT
-      or COUNT.
+      recent assistant reply. The pane is a collapsed `<details>`
+      element rendered with the summary text "trace" and a "Cmd+/"
+      hint label on the right side of the reply (see Trace.tsx:69-74).
+      Either click the "trace" summary on the latest reply OR press
+      Cmd+/ (Ctrl+/ on Linux/Windows) to expand it globally. Within
+      5 seconds the SQL block inside the pane should be visible,
+      labelled "sql", with a <pre><code> containing the raw SQL for
+      the previous "how many users" query — it must contain the
+      string "users" (case-insensitive) and a SQL keyword such as
+      SELECT or COUNT. The plan id and confidence are also shown but
+      aren't required for the assertion.
 
   - name: "#vague-question-handled"
     case: |
-      #trace-shows-sql, then type
-        "anything interesting in here?"
-      into the chat input and submit. Within 10 seconds verify the
-      chat does NOT display a dead-end failure like "Something went
-      wrong", "That query was rejected", or "Couldn't generate a
-      plan" with no follow-up affordance. ACCEPTABLE replies are
-      any of:
+      #trace-shows-sql, then in the same /app chat input type
+        anything interesting in here?
+      and submit. Within 20 seconds verify the chat reply does NOT
+      contain the bare strings "Something went wrong — try again.",
+      "That query was rejected — try rephrasing.", or "Couldn't
+      generate a plan — try rephrasing." as standalone dead-end
+      messages. ACCEPTABLE replies are any of:
         (a) rendered data rows from the users table with a summary,
         (b) a clarification chip prompting a next action (e.g.
-            "Looks like you want to create something new" or "Which
-            database did you mean?") with at least one clickable
-            button,
+            "Looks like you want to create something new" or
+            "Which database did you mean?") with at least one
+            clickable button,
         (c) a non-error textual reply that references the users
-            table, the row count, or Alice.
-      The point: a vague prompt produces SOME useful next step,
-      never a dead end.
+            table, Alice, or the row count.
+      The point: a vague prompt produces SOME useful next step —
+      data, a chip, or a referencing summary — never a dead end.
 
   - name: "#schema-mismatch-clarifies"
     case: |
-      #vague-question-handled, then type
-        "show me all the orders"
-      (there is NO orders table in this database — only users) into
-      the chat input and submit. Within 10 seconds verify the chat
-      reply does NOT contain the bare string "Something went wrong"
-      with no extra context. ACCEPTABLE replies are any of:
-        (a) text that explicitly references the missing "orders"
-            table OR the available "users" table (e.g. "no orders
-            table", "the database doesn't have an orders table",
-            "did you mean users?"),
-        (b) a clarification chip offering to create a new database /
-            table or rephrase,
-        (c) a typed "schema mismatch" / "table not found" style
-            message that names the issue.
-      A generic dead-end without an actionable next step should NOT
-      be considered passing.
+      #vague-question-handled, then in the same /app chat input type
+        show me all the orders
+      and submit. There is NO `orders` table in this database — only
+      `users`. The API returns the typed `schema_mismatch` envelope
+      with `referencedTables: ["orders"]` and `schemaTables: ["users"]`
+      (SK-ASK-016). Within 15 seconds verify the chat reply does NOT
+      contain the bare string "Something went wrong — try again."
+      ACCEPTABLE replies are any of:
+        (a) text that explicitly references either the missing
+            "orders" table OR the available "users" table — e.g.
+            "no such table: orders", "this database has no orders
+            table", "This database has: users", "did you mean users?";
+        (b) a clarification chip offering to create a new database
+            or rephrase;
+        (c) a typed message naming the schema mismatch.
+      The messageFor switch in ChatPanel.tsx now has a specific
+      `schema_mismatch` case that renders the referencedTables /
+      schemaTables — generic dead-ends should no longer appear here.
 
   - name: "#cmdk-palette-discoverable"
     case: |
-      #schema-mismatch-clarifies, then press Cmd+K (Ctrl+K on
-      Linux) to open the command palette. Within 3 seconds verify a
-      modal / overlay appears with a "Type a command…" input and a
-      list of actions — it should show at least two of these labels
-      (case-insensitive substring match is fine): "New database",
-      "Copy embed snippet", "Settings", "Sign out". Then press
-      Escape to close the palette and verify the chat composer
-      input is visible and focusable again (the page is back to the
-      pre-palette state).
+      #schema-mismatch-clarifies, then with focus anywhere on the
+      /app page press Cmd+K (Ctrl+K on Linux/Windows). The handler
+      is registered globally on `window` in ChatPanel.tsx:209-223
+      and calls preventDefault() so the browser's default Ctrl+K
+      (focus address bar on Linux) is overridden. Within 5 seconds
+      verify a modal overlay appears with:
+        - an input with placeholder "Type a command…", AND
+        - a visible list of actions where at least two of these
+          labels are present (case-insensitive substring match
+          allowed): "New database", "Copy embed snippet",
+          "Settings", "Sign out".
+      Then press Escape to close the palette. Within 3 seconds
+      verify the palette modal is gone AND the chat input
+      (placeholder "Ask about your data…") is visible and focusable
+      again.
 
   - name: "#delete-row"
     case: |
-      #cmdk-palette-discoverable, then type
-        "delete the row where name = 'Alice'"
-      into the chat input and submit. Within 5 seconds the Alice row should
-      no longer be present in the users table.
+      #cmdk-palette-discoverable, then in the /app chat input type
+        delete the row where name = 'Alice'
+      and submit. As with #submit-prefilled-row this is a write so
+      a DiffChip may appear first ("This will delete 1 row in
+      users.") — if it does, press Enter again or click "Approve"
+      to commit. Within 20 seconds verify the Alice row is no
+      longer present in the users table when rendered (e.g. a
+      subsequent re-query or the post-delete reply's data block
+      shows zero rows, or the chat summary says the row was
+      deleted and any rendered table is empty).
 
   - name: "#sign-out"
     case: |
-      #delete-row, then sign out (open the topnav user menu and click the
-      "Sign out" item). Confirm the topnav switches to an unauthenticated
-      state and the URL is no longer /app.
+      #delete-row, then sign out. The sign-out affordance is on the
+      topnav (top right of /app) — open the user menu (avatar /
+      email button) and click the "Sign out" link. Within 10
+      seconds verify TWO conditions: the URL is no longer "/app"
+      (typically lands at "/" or "/auth/sign-out"), AND the topnav
+      shows a "Sign in" link instead of the user menu (the
+      unauthenticated state).
