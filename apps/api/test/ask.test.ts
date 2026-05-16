@@ -71,8 +71,8 @@ describe("POST /v1/ask — principal gate", () => {
   // to build-deps' static-import chain (sql-validate-ddl resolves; the
   // hang is downstream of it, before module body) but no clear single
   // dep is at fault. Slice 3b's larger module graph likely pushes the
-  // test pool past a workerd resource threshold. Re-enable in slice 3c
-  // once the pool's WASM/module-load behavior is debugged.
+  // test pool past a workerd resource threshold. Re-enable once the
+  // pool's WASM/module-load behavior is debugged.
   // Production behavior is unchanged — the assertion is a routing
   // invariant (anon + no dbId → create path), independently exercised
   // by the route-ask unit tests.

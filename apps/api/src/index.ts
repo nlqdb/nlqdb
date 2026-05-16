@@ -70,6 +70,7 @@ import {
   makeRequirePrincipal,
   type Principal,
   type RequirePrincipalVariables,
+  rateLimitBucketKey,
   surfaceFromPrincipal,
 } from "./principal.ts";
 import { cryptoProvider, stripe as stripeClient } from "./stripe/client.ts";
@@ -715,11 +716,10 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
       // gracefully degrades if loadModule() still fails — see that
       // file's header comment for the full story.
       ensureLibpgWasmGlobals();
-      // TODO(slice 3c): `test/ask.test.ts SK-ANON-013` is `.skip`'d
-      // because this dynamic import hangs in the workerd vitest-pool
-      // after prior /v1/ask requests on the same worker. Root cause
-      // is in build-deps' static-import chain (past sql-validate-ddl);
-      // pool-side, not production. Re-enable the test once debugged.
+      // `test/ask.test.ts SK-ANON-013` is `.skip`'d — this dynamic
+      // import hangs in the workerd vitest-pool after prior /v1/ask
+      // requests; root cause is in build-deps' static-import chain
+      // (past sql-validate-ddl), pool-side only, not production.
       const { buildDbCreateDeps } = await import("./db-create/build-deps.ts");
       const { orchestrateDbCreate } = await import("./db-create/orchestrate.ts");
       try {
@@ -962,6 +962,7 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
       goal: parsed.body.goal,
       dbId: resolvedDbId,
       userId: principal.id,
+      rateLimitBucketKey: rateLimitBucketKey(principal),
       ...(parsed.body.confirm ? { confirm: true as const } : {}),
     };
 

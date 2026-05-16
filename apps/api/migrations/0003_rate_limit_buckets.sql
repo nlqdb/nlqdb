@@ -1,4 +1,7 @@
 -- Slice 6 follow-up — fixed-window rate-limit buckets in D1.
+-- Column `user_id` was renamed to `bucket_key` in 0014 (per-bucket
+-- semantics per `SK-MCP-009`); the body below describes the original
+-- schema.
 --
 -- Originally implemented in KV (apps/api/src/ask/rate-limit.ts), but
 -- KV's free-tier ceiling is 1k writes/day (DESIGN §7.1 line 566) and

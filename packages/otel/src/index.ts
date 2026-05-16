@@ -313,6 +313,13 @@ export const eventsSinkQueryLogFailuresTotal = lazyCounter(
   "Tinybird query_log writes that failed (non-2xx HTTP or fetch threw). Labelled by status_class. Used to trip the in-isolate circuit-breaker after 5 consecutive failures.",
 );
 
+// SK-MCP-009 — auth-failure counter for the hosted MCP Worker; pre-handler error responses are otherwise invisible.
+export const mcpAuthFailuresTotal = lazyCounter(
+  "@nlqdb/mcp-server",
+  "nlqdb.mcp.auth.failures.total",
+  "OAuthProvider error responses on the hosted MCP Worker. Labelled by error_code (workers-oauth-provider 0.6 emits: invalid_request, invalid_client, invalid_client_metadata, invalid_grant, invalid_target, invalid_token, not_implemented, temporarily_unavailable, unsupported_grant_type) and status (400/401/404/405/413/429/501).",
+);
+
 // GLOBAL-022 — recoverable failures retry to success. One increment
 // per retry-triggering failure, labelled by `stage` (where the retry
 // fires) and `reason` (why the prior attempt failed). Counts retry

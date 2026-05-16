@@ -4,20 +4,23 @@ description: Per-key, per-IP rate-limit middleware with X-RateLimit-* headers.
 when-to-load:
   globs:
     - apps/api/src/ask/rate-limit.ts
-    - apps/api/src/demo.ts
+    - apps/api/src/principal.ts
+    - apps/api/src/anon-rate-limit.ts
+    - apps/api/src/anon-global-cap.ts
   topics: [rate-limit, throttle, 429, rate_limited, anonymous-tier]
 ---
 
 # Feature: Rate Limit
 
 **One-liner:** Per-key, per-IP rate-limit middleware with X-RateLimit-* headers.
-**Status:** implemented — per-account D1 limiter (`/v1/ask`), per-IP anon-tier KV limiter (`apps/api/src/anon-rate-limit.ts`), global anon KV cap (`apps/api/src/anon-global-cap.ts`), and `X-RateLimit-*` parity headers. The legacy `/v1/demo/ask` per-IP limiter (formerly `apps/api/src/demo.ts`'s `makeRateLimiter`) was retired with the demo route under SK-WEB-008. Per-account anon-create cap (20/day) lands with adoption.
-**Owners (code):** `apps/api/src/ask/rate-limit.ts`, `apps/api/src/demo.ts`
+**Status:** implemented — per-bucket D1 limiter (`/v1/ask`; bucket policy in `apps/api/src/principal.ts::rateLimitBucketKey` per `SK-MCP-009` — sk_* principals key by `rl:${api_keys.id}`, everyone else by `principal.id`), per-IP anon-tier KV limiter (`apps/api/src/anon-rate-limit.ts`), global anon KV cap (`apps/api/src/anon-global-cap.ts`), and `X-RateLimit-*` parity headers. The legacy `/v1/demo/ask` per-IP limiter (formerly `apps/api/src/demo.ts`'s `makeRateLimiter`) was retired with the demo route under SK-WEB-008. Per-account anon-create cap (20/day) lands with adoption.
+**Owners (code):** `apps/api/src/ask/rate-limit.ts`, `apps/api/src/principal.ts` (rateLimitBucketKey), `apps/api/src/anon-rate-limit.ts`, `apps/api/src/anon-global-cap.ts`
 **Cross-refs:** docs/architecture.md §6 (free-tier rate-limit guarantees) · docs/architecture.md §3.5 (`pk_live_*` origin-pinned) · docs/architecture.md §3.6.8 (rate limits on create) · docs/phase-plan.md (per-IP + per-account "Day 1") · docs/phase-plan.md / §11.5 (free-tier abuse) · docs/performance.md §2.1 stage 3 / §2.2 stage 3 (KV-read budget — 5 ms p50 / 15 ms p99) · §3.1 (`nlqdb.ratelimit.check` span) · §4 Slice 6
 
 ## Touchpoints — read this feature before editing
 
-- `apps/api/src/ask/rate-limit.ts` (per-user D1 limiter for `/v1/ask`)
+- `apps/api/src/ask/rate-limit.ts` (per-bucket D1 limiter for `/v1/ask`)
+- `apps/api/src/principal.ts::rateLimitBucketKey` (bucket-policy author: sk_* → `rl:${api_keys.id}`, others → `principal.id`)
 - `apps/api/src/anon-rate-limit.ts` (per-IP KV limiter for the anon `/v1/ask` path)
 - `apps/api/src/anon-global-cap.ts` (global anon KV cap, summed across all anon traffic)
 - `apps/api/src/demo.ts` (fixture library only — the route + per-IP demo limiter retired in SK-WEB-008)
@@ -41,7 +44,7 @@ when-to-load:
 
 ### SK-RL-002 — D1 limiter: atomic UPSERT-with-RETURNING; over-limit requests still increment
 
-- **Decision:** The `/v1/ask` limiter uses a single SQL statement: `INSERT INTO rate_limit_buckets (user_id, window_start, count) VALUES (?, ?, 1) ON CONFLICT(user_id, window_start) DO UPDATE SET count = count + 1 RETURNING count`. The returned post-increment count gates allow/deny. **Over-limit requests still increment** the counter — N+1 → N+2, both deny.
+- **Decision:** The `/v1/ask` limiter uses a single SQL statement: `INSERT INTO rate_limit_buckets (bucket_key, window_start, count) VALUES (?, ?, 1) ON CONFLICT(bucket_key, window_start) DO UPDATE SET count = count + 1 RETURNING count`. The returned post-increment count gates allow/deny. **Over-limit requests still increment** the counter — N+1 → N+2, both deny. (The column was named `user_id` pre-`SK-MCP-009` slice 3c; migration 0014 renames it to match the per-bucket semantics — see `SK-MCP-009`.)
 - **Core value:** Bullet-proof, Fast, Simple
 - **Why:** The two-statement read-then-write pattern races: two concurrent over-limit requests both read N, both write N+1, both think they're the first hit over. The atomic UPSERT closes this. Continuing to increment over-limit is harmless (the second over-limit hit just bumps the count), and it avoids a conditional UPDATE that would require a second SELECT to read state — adding latency to the most common deny path.
 - **Consequence in code:** The limiter MUST stay a single SQL round-trip — no separate SELECT for "current state". The fixed-window boundary is computed as `Math.floor(Date.now() / 1000 / windowSeconds) * windowSeconds`; bucket roll-over is implicit (a new `window_start` value yields a new row). Stale rows are not actively swept today; D1's free-tier row count gives plenty of head-room for a Phase-0 launch.
@@ -114,7 +117,7 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 ## Open questions / known unknowns
 
 - **`X-RateLimit-*` parity headers — RESOLVED.** `/v1/ask` (authed and anon-bearer) and `/v1/chat/messages` emit `X-RateLimit-Limit`, `X-RateLimit-Remaining`, `X-RateLimit-Reset`, and `Retry-After` on every 429. `RateLimitDecision` carries `resetAt`. The legacy `/v1/demo/ask` parity claim (formerly here) was retired with the route under `SK-WEB-008`. The SDK-side header definitions (referenced in the original open question) are deferred to whenever the SDK adds retry-with-backoff — at that point the SDK should read `X-RateLimit-Reset` to schedule the retry rather than sleeping a fixed duration. SSE rate-limit responses (`/v1/ask` with `Accept: text/event-stream`) do NOT emit these headers because Hono's `streamSSE` commits the 200 before the rate-limit verdict is known; callers should use the `{ error: { status, limit, count, resetAt } }` event payload instead. Tracked as an open question: should SSE rate-limit responses return a plain 429 (not a stream) so headers can be set?
-- **Stale `rate_limit_buckets` row sweep.** D1 rows accumulate one per `(user_id, window_start)` tuple. At 60-second windows + 1k DAU that's ~1.4M rows/day — well within D1's 5GB Free quota for now, but a sweep job (drop rows older than 1 hour) is cheap insurance once volume crosses 100k MAU.
+- **Stale `rate_limit_buckets` row sweep.** D1 rows accumulate one per `(bucket_key, window_start)` tuple. Post-`SK-MCP-009`-slice-3c a tenant with N sk_* keys has N+1 distinct bucket keys (one per sk_* key + one shared by session and pk_live traffic on `user.id`); anon traffic adds independent per-device buckets — still ≪ D1's 5GB Free quota at any plausible scale, but a sweep job (drop rows older than 1 hour) is cheap insurance once volume crosses 100k MAU.
 - **Anonymous-tier ceiling — RESOLVED.** Pinned at 30/min per IP for `/v1/ask` (half the 60/min authed tier) plus 5/hour per-IP DB-create cap and a 3-in-5min Turnstile burst gate. Implemented in `apps/api/src/anon-rate-limit.ts` (per `SK-RL-007`). Per-account anon-create cap (20/day, named in `SK-ANON-004`) is still pending — anon principals don't have an "account" yet, so the per-IP cap is the only effective ceiling on creates. Lands when adoption (Worksheet 4) gives anon principals a stable per-account identity.
 - **Tier-aware ceilings (Hobby / Pro).** Free is 60/min today. Hobby (50k/mo) and Pro ($0.0005/query over 50k) tiers in `docs/architecture.md §6` imply a higher per-minute ceiling for paid tiers. Limit-per-tier is not yet wired; needs `customers.tier` JOIN on the limiter call.
 - **Premium-models add-on per-key spend cap.** `docs/architecture.md §6` Premium-models row notes "per-key spend cap" — separate from request-count rate-limit. Lago wiring (PLAN §6) is the natural home; not built.

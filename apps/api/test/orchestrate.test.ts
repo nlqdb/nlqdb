@@ -103,6 +103,27 @@ describe("orchestrateAsk", () => {
     expect(out).toEqual({ ok: false, error: { status: "db_not_found" } });
   });
 
+  it("rate-limits by rateLimitBucketKey (SK-MCP-009 per-key bucket), not userId", async () => {
+    const rateLimiter = stubRateLimiter();
+    await orchestrateAsk(makeDeps({ rateLimiter }), {
+      goal: "anything",
+      dbId: "db_1",
+      userId: "user_1",
+      rateLimitBucketKey: "rl:key_cursor",
+    });
+    expect(rateLimiter.check).toHaveBeenCalledWith("rl:key_cursor");
+  });
+
+  it("falls back to userId when rateLimitBucketKey is absent (chat surface + tests)", async () => {
+    const rateLimiter = stubRateLimiter();
+    await orchestrateAsk(makeDeps({ rateLimiter }), {
+      goal: "anything",
+      dbId: "db_1",
+      userId: "user_1",
+    });
+    expect(rateLimiter.check).toHaveBeenCalledWith("user_1");
+  });
+
   it("returns schema_unavailable when the DB has no schema_hash yet", async () => {
     const out = await orchestrateAsk(
       makeDeps({ resolveDb: vi.fn(async () => stubDb({ schemaHash: null })) }),
