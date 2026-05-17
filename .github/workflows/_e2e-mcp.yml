@@ -1,0 +1,45 @@
+# Reusable: MCP e2e (InMemoryTransport + protocol conformance).
+# Hermetic — the SDK pair runs in-process; no network, no LLM. See
+# `tests/e2e/mcp/` for the driver and SK-E2E-002 for rationale.
+
+name: E2E MCP (reusable)
+
+on:
+  workflow_call: {}
+
+permissions: {}
+
+jobs:
+  run:
+    name: mcp vitest
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - uses: ./.github/actions/setup
+
+      - name: Install e2e-mcp deps
+        working-directory: tests/e2e/mcp
+        run: bun install
+
+      - name: Typecheck
+        working-directory: tests/e2e/mcp
+        run: bun run typecheck
+
+      - name: Run in-memory protocol tests
+        working-directory: tests/e2e/mcp
+        run: bun run test
+
+      - name: Post-failure diagnostic
+        if: failure()
+        working-directory: tests/e2e/mcp
+        shell: bash
+        run: |
+          {
+            echo "## MCP e2e — failure context"
+            echo
+            echo "### Test files"
+            ls -1 *.test.ts
+          } >> "$GITHUB_STEP_SUMMARY"

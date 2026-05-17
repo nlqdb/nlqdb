@@ -1,0 +1,15 @@
+# P1 — Solo Builder: `nlq db list` returns the user's DBs.
+# Hermetic — talks to $MOCK_API (the in-process httptest server) which
+# returns one canned database "Mealplan" so we can assert on display
+# name + JSON envelope without firing the live ask pipeline.
+
+# Default (human) shape — should show the canned database name.
+exec nlq --api-url=$MOCK_API --no-update-check db list
+stdout 'mealplan|Mealplan'
+
+# JSON shape — wraps under "databases" array per SK-CLI-004.
+exec nlq --api-url=$MOCK_API --no-update-check --json db list
+stdout '"databases"'
+stdout '"id"'
+stdout '"engine"'
+stdout '"postgres"'

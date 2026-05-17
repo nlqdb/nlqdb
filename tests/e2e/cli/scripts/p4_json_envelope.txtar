@@ -1,0 +1,22 @@
+# P4 — Backend Engineer at a Small Startup: --json output is the only
+# switch that changes shape (SK-CLI-004). A backend engineer wiring a
+# cron pipeline depends on this — anything that breaks the envelope
+# breaks every `nlq … | jq …` pipeline in CI.
+
+# `--json db list` must produce parseable JSON with a top-level
+# "databases" array. We grep for the field shapes the SDK contract
+# guarantees (id, slug, displayName, engine, createdAt — see
+# cli/internal/api/types.go::DatabaseSummary).
+exec nlq --api-url=$MOCK_API --no-update-check --json db list
+stdout '"databases"'
+stdout '"id":'
+stdout '"slug":'
+stdout '"displayName":'
+stdout '"engine":'
+stdout '"createdAt":'
+
+# Human shape must NOT carry the JSON envelope. This is the test
+# that catches "someone accidentally always emitted JSON" — the
+# bug class SK-CLI-004 exists to prevent.
+exec nlq --api-url=$MOCK_API --no-update-check db list
+! stdout '"databases":'

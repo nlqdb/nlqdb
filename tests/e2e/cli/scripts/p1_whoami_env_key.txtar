@@ -1,0 +1,16 @@
+# P1 — Solo Builder: env-key auth round-trips end-to-end (GLOBAL-010).
+# `nlq whoami` resolves an identity from the keychain or NLQDB_API_KEY
+# env var (SK-CLI-009) and prints a one-line summary. The driver
+# pre-sets NLQDB_API_KEY=sk_live_test_e2e_fixture, so the human path
+# must surface that the identity is env-key based.
+
+exec nlq --no-update-check whoami
+stdout 'identity: env'
+# Token is redacted — must NEVER print the raw key (SK-CLI-009).
+! stdout 'sk_live_test_e2e_fixture'
+
+# JSON shape exposes the same fields machine-readably.
+exec nlq --no-update-check --json whoami
+stdout '"kind":'
+stdout '"token_display":'
+! stdout 'sk_live_test_e2e_fixture'

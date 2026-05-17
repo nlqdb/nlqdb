@@ -30,6 +30,26 @@ bun run --filter @nlqdb/mcp test
 - A decision change (new or amended) updates every place that copies
   it, in the same PR (root `AGENTS.md` §2 P3).
 
+## E2E coverage
+
+MCP protocol-conformance tests live at [`tests/e2e/mcp/`](../../tests/e2e/mcp/) — `@modelcontextprotocol/sdk`'s `InMemoryTransport` pairs a Client with the nlqdb MCP server in-process and exercises all three tools (`nlqdb_query`, `nlqdb_list_databases`, `nlqdb_describe`). Persona mapping: [P2 — Agent Builder](../../tests/personas/P2-agent-builder/README.md).
+
+After a change to the tool surface, the wire shape of any tool's `structuredContent`, or the `mapSdkError` mapping:
+
+```bash
+gh workflow run e2e.yml -f surface=mcp
+```
+
+Local run (hermetic):
+
+```bash
+cd tests/e2e/mcp && bun install && bun run test
+```
+
+A new persona-step assertion lands as a new `it(...)` block in [`tests/e2e/mcp/p2_agent_tools.test.ts`](../../tests/e2e/mcp/p2_agent_tools.test.ts), with stubs scoped per-test via the `stubClient` helper.
+
+See [`docs/features/e2e-coverage/FEATURE.md`](../../docs/features/e2e-coverage/FEATURE.md).
+
 ## When you finish
 
 1. Run the commands above and ensure they all pass.

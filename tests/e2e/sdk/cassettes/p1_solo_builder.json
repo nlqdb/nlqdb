@@ -1,0 +1,78 @@
+{
+  "exchanges": [
+    {
+      "request": {
+        "method": "GET",
+        "path": "/v1/databases"
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "databases": [
+            {
+              "id": "db_e2e_p1",
+              "slug": "mealplan",
+              "displayName": "Mealplan",
+              "engine": "postgres",
+              "pkLive": "pk_live_p1_e2e_fixture",
+              "lastQueriedAt": null,
+              "createdAt": 1700000000
+            }
+          ]
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "POST",
+        "path": "/v1/ask",
+        "bodyContains": ["upcoming meals", "db_e2e_p1"]
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "status": "ok",
+          "rows": [
+            { "title": "Friday — pasta", "day": "2026-05-22" },
+            { "title": "Saturday — tacos", "day": "2026-05-23" }
+          ],
+          "rowCount": 2,
+          "summary": "2 upcoming meals this week.",
+          "trace": {
+            "sql": "SELECT title, day FROM meals WHERE day >= CURRENT_DATE ORDER BY day LIMIT 50",
+            "plan_id": "plan_p1_upcoming_v1",
+            "confidence": 0.92,
+            "model": "openai/gpt-oss-120b",
+            "cache_hit": false
+          }
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "POST",
+        "path": "/v1/ask",
+        "bodyContains": ["upcoming meals", "db_e2e_p1"]
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "status": "ok",
+          "rows": [
+            { "title": "Friday — pasta", "day": "2026-05-22" },
+            { "title": "Saturday — tacos", "day": "2026-05-23" }
+          ],
+          "rowCount": 2,
+          "summary": "2 upcoming meals this week.",
+          "trace": {
+            "sql": "SELECT title, day FROM meals WHERE day >= CURRENT_DATE ORDER BY day LIMIT 50",
+            "plan_id": "plan_p1_upcoming_v1",
+            "confidence": 0.92,
+            "model": "openai/gpt-oss-120b",
+            "cache_hit": true
+          }
+        }
+      }
+    }
+  ]
+}

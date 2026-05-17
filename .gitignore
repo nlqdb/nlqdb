@@ -46,6 +46,13 @@ __pycache__/
 *.log
 bun-debug.log*
 
+# E2E test runtime output (Playwright reports, traces, cassette caches)
+tests/e2e/**/test-results/
+tests/e2e/**/playwright-report/
+tests/opencheck/.opencheck-cache/
+tests/opencheck/.opencheck-recordings/
+tests/opencheck/tests-runtime.yaml
+
 # Go
 /cli/bin/
 /cli/dist/

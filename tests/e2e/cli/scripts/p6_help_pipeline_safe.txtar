@@ -1,0 +1,17 @@
+# P6 — Analytics / Observability Engineer: CLI help output is
+# pipeline-safe (no ANSI escapes, no interactive prompts). Engineers
+# who pipe `nlq … | duckdb …` or write GitHub Actions that capture
+# stdout rely on this.
+
+exec nlq --no-update-check --help
+stdout 'nlqdb command-line tool'
+stdout 'ask'
+stdout 'db'
+stdout 'mcp'
+# Plain ASCII-only output — no ANSI CSI sequences (\x1b[).
+! stdout '\x1b\['
+
+# `--version` is plain text, one line.
+exec nlq --no-update-check --version
+! stdout '\x1b\['
+! stderr 'panic'
