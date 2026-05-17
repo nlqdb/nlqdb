@@ -295,19 +295,20 @@ jobs:
   test-swift:
     name: packages/nlqdb-swift (swift build + swift test)
     runs-on: ubuntu-24.04
-    timeout-minutes: 8
+    timeout-minutes: 10
+    # Use the official Swift Docker image — `swift-actions/setup-swift@v2`
+    # is legacy and doesn't ship Swift 6; v3 is still beta and `GLOBAL-016`
+    # forbids RC on the critical path. Apple's image is the canonical
+    # Linux toolchain (URLSession via `FoundationNetworking`). SwiftUI
+    # parts of the package are gated by `#if canImport(SwiftUI)` so the
+    # Apple-platform Xcode build stays on the release workflow.
+    container:
+      image: swift:6.0.3-jammy
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
 
-      # Linux-runnable Swift 6 toolchain (URLSession via
-      # FoundationNetworking). SwiftUI parts of the package are gated
-      # behind `#if canImport(SwiftUI)` so they don't compile here —
-      # the wire-contract suite is the gate. Heavy Apple-platform
-      # builds (Xcode / iOS simulator) are deferred to the release
-      # workflow so PR CI stays cheap.
-      - uses: swift-actions/setup-swift@7ca6abe6b3b0e8b5421b88be48feee39cbf52c6a # v2.4.0
-        with:
-          swift-version: "6.0.3"
+      - name: swift --version
+        run: swift --version
 
       - name: swift build
         working-directory: packages/nlqdb-swift
