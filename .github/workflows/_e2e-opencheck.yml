@@ -104,6 +104,13 @@ jobs:
       # CAN have changed — otherwise opencheck's "self-healing on UI
       # changes" can quietly route past a regression. tests.yaml is in
       # the key too so edits to test cases force re-derivation.
+      #
+      # NOTE: the cache is explicitly cleared before each run (see the
+      # "Clear stale step cache" step below). We still restore it so
+      # GHA's post-job hook saves the freshly-derived plans — making
+      # subsequent runs benefit from caching once plans stabilise.
+      # The restore itself is a no-op in practice (cleared immediately),
+      # but the save at job end is what we want to preserve.
       - name: Restore opencheck step cache
         uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         with:
@@ -111,6 +118,16 @@ jobs:
           key: opencheck-cache-${{ runner.os }}-${{ hashFiles('apps/web/src/**', 'apps/api/src/**', 'tests/opencheck/tests.yaml') }}
           restore-keys: |
             opencheck-cache-${{ runner.os }}-
+
+      # Stale step plans cause test failures: e.g. a plan derived when
+      # Ctrl+G was already pressed omits that key press, so on re-run the
+      # agent types into a hidden input. Always start with fresh derivation
+      # so the agent observes actual page state at each step. Correct plans
+      # are re-saved at job end (via the cache restore hook above), so once
+      # the suite is stable a subsequent run will get a warm cache.
+      - name: Clear stale opencheck step cache
+        working-directory: tests/opencheck
+        run: rm -rf .opencheck-cache
 
       - name: Install opencheck deps
         working-directory: tests/opencheck
