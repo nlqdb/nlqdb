@@ -12,12 +12,6 @@ public struct AskRequest: Sendable, Codable {
         self.dbId = dbId
         self.confirm = confirm
     }
-
-    enum CodingKeys: String, CodingKey {
-        case goal
-        case dbId
-        case confirm
-    }
 }
 
 public struct Trace: Sendable, Codable {
@@ -41,37 +35,29 @@ public struct AskOk: Sendable, Codable {
     public let rows: [[String: AnyCodable]]
     public let rowCount: Int
     public let trace: Trace
-    public let answer: String?
-
-    enum CodingKeys: String, CodingKey {
-        case status
-        case rows
-        case rowCount
-        case trace
-        case answer
-    }
+    public let summary: String?
 }
 
 public struct DatabaseSummary: Sendable, Codable, Identifiable {
     public let id: String
     public let slug: String
+    public let displayName: String
+    public let name: String?
+    public let schemaName: String?
     public let engine: String
-    public let createdAt: Date?
-
-    enum CodingKeys: String, CodingKey {
-        case id
-        case slug
-        case engine
-        case createdAt = "created_at"
-    }
+    public let pkLive: String?
+    public let lastQueriedAt: Int64?
+    public let createdAt: Int64
 }
 
 public struct CreateDatabaseRequest: Sendable, Codable {
-    public var slug: String
+    public var name: String?
+    public var goal: String?
     public var engine: String?
 
-    public init(slug: String, engine: String? = nil) {
-        self.slug = slug
+    public init(name: String? = nil, goal: String? = nil, engine: String? = nil) {
+        self.name = name
+        self.goal = goal
         self.engine = engine
     }
 }
@@ -98,13 +84,6 @@ public struct RunSqlResult: Sendable, Codable {
     public let rows: [[String: AnyCodable]]
     public let rowCount: Int
     public let trace: Trace
-
-    enum CodingKeys: String, CodingKey {
-        case status
-        case rows
-        case rowCount
-        case trace
-    }
 }
 
 /// Codable wrapper for arbitrary JSON cell values — pattern-match a case to read a column.

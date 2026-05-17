@@ -124,7 +124,6 @@ export type NlqActionProps = {
   onSuccess?: (detail: NlqActionSuccessDetail) => void;
   onConfirmRequired?: (detail: NlqActionConfirmDetail) => void;
   onError?: (detail: NlqActionErrorDetail) => void;
-  /** Drives the post-Apply behavior — passed through as `on-success="..."`. */
   onSuccessAction?: "reload" | (string & {});
   children?: ReactNode;
   className?: string;

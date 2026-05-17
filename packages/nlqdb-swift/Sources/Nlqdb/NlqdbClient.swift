@@ -47,10 +47,8 @@ public actor NlqdbClient {
 
     public init(_ config: NlqdbConfig) {
         self.config = config
-        let enc = JSONEncoder()
-        enc.keyEncodingStrategy = .convertToSnakeCase
-        self.encoder = enc
-        // Per-model `CodingKeys` — a global strategy would clash with mixed-shape endpoints.
+        // Wire format is camelCase end-to-end; no key-strategy conversion.
+        self.encoder = JSONEncoder()
         self.decoder = JSONDecoder()
     }
 
