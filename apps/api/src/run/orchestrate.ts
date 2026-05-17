@@ -50,13 +50,23 @@ const WRITE_VERBS: ReadonlySet<string> = new Set(["insert", "update", "delete"])
 export async function orchestrateRun(deps: RunDeps, req: RunRequest): Promise<RunOutcome> {
   const tracer = trace.getTracer("@nlqdb/api");
 
-  const decision = await tracer.startActiveSpan("nlqdb.ratelimit.check", async (span) => {
-    try {
-      return await deps.rateLimiter.check(req.rateLimitBucketKey ?? req.userId);
-    } finally {
-      span.end();
-    }
-  });
+  // Records exception + ERROR status on every throw so a D1 / Neon hiccup surfaces on the span.
+  const withSpan = <T>(name: string, fn: () => Promise<T>): Promise<T> =>
+    tracer.startActiveSpan(name, async (span) => {
+      try {
+        return await fn();
+      } catch (err) {
+        span.recordException(err as Error);
+        span.setStatus({ code: SpanStatusCode.ERROR });
+        throw err;
+      } finally {
+        span.end();
+      }
+    });
+
+  const decision = await withSpan("nlqdb.ratelimit.check", () =>
+    deps.rateLimiter.check(req.rateLimitBucketKey ?? req.userId),
+  );
   if (!decision.allowed) {
     return {
       ok: false,
@@ -70,13 +80,7 @@ export async function orchestrateRun(deps: RunDeps, req: RunRequest): Promise<Ru
   }
 
   // Span name matches `/v1/ask` so dashboards built off `performance.md §3.1` work unchanged.
-  const validation = await tracer.startActiveSpan("nlqdb.sql.validate", async (span) => {
-    try {
-      return validateSql(req.sql);
-    } finally {
-      span.end();
-    }
-  });
+  const validation = await withSpan("nlqdb.sql.validate", async () => validateSql(req.sql));
   if (!validation.ok) {
     return { ok: false, error: { status: "sql_rejected", reason: validation.reason } };
   }
@@ -98,17 +102,7 @@ export async function orchestrateRun(deps: RunDeps, req: RunRequest): Promise<Ru
 
   let result: QueryResult;
   try {
-    result = await tracer.startActiveSpan("nlqdb.run.exec", async (span) => {
-      try {
-        return await deps.exec(db, req.sql);
-      } catch (err) {
-        span.recordException(err as Error);
-        span.setStatus({ code: SpanStatusCode.ERROR });
-        throw err;
-      } finally {
-        span.end();
-      }
-    });
+    result = await withSpan("nlqdb.run.exec", () => deps.exec(db, req.sql));
   } catch (err) {
     if (err instanceof DbConfigError) {
       return { ok: false, error: { status: "db_misconfigured" } };
