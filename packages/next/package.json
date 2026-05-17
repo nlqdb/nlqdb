@@ -1,0 +1,39 @@
+{
+  "name": "@nlqdb/next",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Next.js 15 helpers for <nlq-data> — Script tag with afterInteractive strategy + server-only sdk factory + Route Handler boilerplate.",
+  "type": "module",
+  "sideEffects": false,
+  "main": "src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./script": "./src/script.tsx",
+    "./server": "./src/server.ts"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "peerDependencies": {
+    "@nlqdb/elements": "workspace:*",
+    "@nlqdb/react": "workspace:*",
+    "@nlqdb/sdk": "workspace:*",
+    "next": "^15.0.0",
+    "react": "^19.0.0"
+  },
+  "devDependencies": {
+    "@nlqdb/elements": "workspace:*",
+    "@nlqdb/react": "workspace:*",
+    "@nlqdb/sdk": "workspace:*",
+    "@testing-library/react": "^16.1.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "happy-dom": "^15.0.0",
+    "next": "^15.0.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "typescript": "^5.6.0",
+    "vitest": "^4.1.0"
+  }
+}

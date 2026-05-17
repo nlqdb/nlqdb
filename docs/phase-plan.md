@@ -142,9 +142,13 @@ it composes on the same auth/SDK; framework wrappers third.
    in the same release as `nlq run` so all surfaces have the escape
    hatch on the same day.
 4. **`<nlq-action>` write-counterpart element.**
-5. **CSV upload** in chat.
-6. **Docs site** `docs.nlqdb.com`.
-7. **Custom domains for embeds** via Cloudflare for SaaS (first 100
+5. **Framework wrappers** — `@nlqdb/{react,next,vue,nuxt,svelte,sveltekit,astro,solid}` and the
+   `Nlqdb` Swift Package. Drop-in components + SSR-safe lazy CE
+   registration + `/server` `sk_live_*` factories where the framework
+   has one. See [`framework-wrappers/FEATURE.md`](./features/framework-wrappers/FEATURE.md) and [`sdk-swift/FEATURE.md`](./features/sdk-swift/FEATURE.md).
+6. **CSV upload** in chat.
+7. **Docs site** `docs.nlqdb.com`.
+8. **Custom domains for embeds** via Cloudflare for SaaS (first 100
    zones free).
 
 **Not in Phase 2 by default:** Stripe live, Lago, Listmonk. These are
@@ -205,7 +209,12 @@ two-click commit via [`SK-TRUST-001`](./features/trust-ux/FEATURE.md)'s
 diff hop, FormData → goal-text suffix, cookie-session auth
 (cross-origin write-token still deferred — tracked in
 [`api-keys/FEATURE.md`](./features/api-keys/FEATURE.md)). Bundle
-budget intact at < 6 KB gzipped per `SK-ELEM-007`.
+budget intact at < 6 KB gzipped per `SK-ELEM-007`. **Item 5 —
+framework wrappers — shipped:**
+`@nlqdb/{react,next,vue,nuxt,svelte,sveltekit,astro,solid}` and the
+native Swift Package `Nlqdb` (`packages/nlqdb-swift`) are now
+P1 · Shipped per [`progress.md §0`](./progress.md#0-surface-status-matrix--single-source-of-truth);
+React Native / Expo and Python / Go SDKs remain Phase 2 P1.
 
 ---
 
