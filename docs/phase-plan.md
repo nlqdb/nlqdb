@@ -197,7 +197,15 @@ CLI auto-detection) — see
 key-management UI shipped** at `/app/keys` per
 [`SK-APIKEYS-012`](./features/api-keys/decisions/SK-APIKEYS-012-dashboard-ui.md)
 — copy-once mint modal + confirm-revoke dialog, SDK `client.mintKey()`
-added, MCP `auth_required` envelope now points at a working URL.
+added, MCP `auth_required` envelope now points at a working URL. **Item
+4 — `<nlq-action>` write-counterpart element — v0.1 shipped** in
+`packages/elements/src/action-element.ts` per
+[`SK-ELEM-010..013`](./features/elements/decisions/): preview→Apply
+two-click commit via [`SK-TRUST-001`](./features/trust-ux/FEATURE.md)'s
+diff hop, FormData → goal-text suffix, cookie-session auth
+(cross-origin write-token still deferred — tracked in
+[`api-keys/FEATURE.md`](./features/api-keys/FEATURE.md)). Bundle
+budget intact at < 6 KB gzipped per `SK-ELEM-007`.
 
 ---
 

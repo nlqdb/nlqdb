@@ -15,6 +15,7 @@ test.describe("@html · examples/html/", () => {
     const data = page.locator("nlq-data");
     await expect(data).toHaveCount(1);
     await expect(data).toHaveAttribute("goal", /today's orders/);
+    await expect(data).toHaveAttribute("db", "orders");
     await expect(data).toHaveAttribute("api-key", /^pk_live_/);
     await expect(data).toHaveAttribute("template", "table");
     await expect(data).toHaveAttribute("refresh", "5s");
@@ -22,7 +23,11 @@ test.describe("@html · examples/html/", () => {
     const action = page.locator("nlq-action");
     await expect(action).toHaveCount(1);
     await expect(action).toHaveAttribute("goal", /add an order/);
-    await expect(action).toHaveAttribute("on-success", "reload");
+    await expect(action).toHaveAttribute("db", "orders");
+    // SK-ELEM-011: <nlq-action> uses cookie-session auth in v0.1 — no
+    // api-key in the markup (would be pk_live_, which is read-only).
+    await expect(action).not.toHaveAttribute("api-key", /.+/);
+    await expect(action).toHaveAttribute("on-success", /refresh:/);
   });
 
   test.fixme(

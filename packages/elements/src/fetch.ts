@@ -9,6 +9,16 @@
 // Aborts propagate as DOMException("AbortError"); callers `try/catch`
 // or check the signal. `fetchAsk` never invents an "aborted" sentinel.
 
+// SK-TRUST-001 — plain-English preview of a write plan. The action
+// element renders the diff inline before committing; the data element
+// never sees it (read paths skip the gate server-side).
+export type AskDiff = {
+  verb: "UPDATE" | "DELETE" | "INSERT" | "DDL";
+  table: string;
+  affectedRows: number;
+  summary: string;
+};
+
 export type AskSuccess = {
   status: "ok";
   cached: boolean;
@@ -16,6 +26,11 @@ export type AskSuccess = {
   rows: Record<string, unknown>[];
   rowCount: number;
   summary?: string;
+  // SK-TRUST-001 — present on the preview hop of a write path
+  // (`confirm` omitted/false). `rows` is empty and `rowCount` is 0;
+  // the surface re-sends with `confirm: true` to commit.
+  requires_confirm?: boolean;
+  diff?: AskDiff;
 };
 
 // API errors mirror `apps/api/src/ask/types.ts AskError` plus the bare
@@ -40,6 +55,10 @@ export type AskParams = {
   goal: string;
   dbId: string;
   apiKey?: string;
+  // SK-TRUST-001 — preview vs commit. Omitted/false on the first hop;
+  // `true` on the second hop to commit the diffed write. Reads ignore
+  // it server-side.
+  confirm?: boolean;
   signal?: AbortSignal;
   // Override the default `fetch` — used in tests so they don't have
   // to monkey-patch a global.
@@ -69,7 +88,9 @@ export async function fetchAsk(p: AskParams): Promise<AskOutcome> {
     response = await fetchImpl(p.endpoint, {
       method: "POST",
       headers,
-      body: JSON.stringify({ goal: p.goal, dbId: p.dbId }),
+      body: JSON.stringify(
+        p.confirm ? { goal: p.goal, dbId: p.dbId, confirm: true } : { goal: p.goal, dbId: p.dbId },
+      ),
       // Same-origin cookie session (Better Auth `__Host-session`)
       // only — host-only cookies are not sent cross-origin even with
       // `include`. Harmless when no cookie is set.

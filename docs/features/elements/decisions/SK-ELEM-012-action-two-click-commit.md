@@ -1,0 +1,10 @@
+# SK-ELEM-012 — Two-click commit: preview then Apply (the SK-TRUST-001 user confirmation)
+
+- **Decision:** First click on `<nlq-action>` sends the preview hop to `POST /v1/ask` (no `confirm`). On `requires_confirm: true` response, the element renders the diff (verb · table · affected-row count · plain-English summary) inline with Cancel and Apply buttons. The Apply click sends the second hop with `confirm: true` and commits. Cancel restores idle state without re-fetching. The Apply click **is** the [`SK-TRUST-001`](../../trust-ux/FEATURE.md) user confirmation — no separate `confirm()` dialog, no modal.
+- **Core value:** Bullet-proof, Honest latency, Effortless UX
+- **Why:** [`SK-TRUST-001`](../../trust-ux/FEATURE.md) mandates render-before-commit. Inline rendering of the diff (rather than a `window.confirm` modal) makes a multi-row INSERT or non-trivial UPDATE legible — modals strip layout and force users to confirm a one-line summary that omits the structural detail. The two-click pattern composes with the SK-ELEM-010 click-driven model: the button affordance the user already saw morphs into an Apply affordance with the diff above it, preserving spatial reasoning. The previewed goal (including FormData) is snapshotted between hops so a user editing the form mid-confirm doesn't surprise themselves — the diff they saw is the diff they confirm.
+- **Consequence in code:** State machine `idle → previewing → confirm → applying → success | error`. Cancel from `confirm` clears the snapshotted goal and returns to `idle`. A form-attribute mutation while in `confirm` discards the snapshot and returns to `idle` (so a stale diff never commits). The Apply button is `autofocus`'d so keyboard-driven users land on it.
+- **Alternatives rejected:**
+  - Single-click + `window.confirm()` — modal hostile to non-trivial diffs; doesn't render the affected-row count or table name structurally.
+  - Server-side approval queue — second surface; defeats the goal-first 60-second flow.
+  - Commit-then-undo — depends on every downstream system supporting compensation; [`SK-TRUST-001`](../../trust-ux/FEATURE.md) rejects this for the whole platform.

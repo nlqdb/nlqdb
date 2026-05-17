@@ -1,6 +1,6 @@
 # Packages · Elements — Agents Guide
 
-<nlq-data> web component for framework-free embedding.
+`<nlq-data>` (reads) + `<nlq-action>` (writes) web components for framework-free embedding.
 
 > This is the local guide. Read root [`AGENTS.md`](../../AGENTS.md) first
 > for the three behavioral principles, the full path → feature map, and
@@ -32,12 +32,12 @@ bun run --filter @nlqdb/elements test
 
 ## E2E coverage
 
-`<nlq-data>` only renders in a browser, so element e2e is covered by two complementary surfaces:
+`<nlq-data>` + `<nlq-action>` only render in a browser, so element e2e is covered by two complementary surfaces:
 
 1. **Embedded in the web app** — [`tests/opencheck/tests.yaml`](../../tests/opencheck/tests.yaml) exercises every element-bearing case end-to-end through the persona journeys (P3 + P5 land directly on element-rendered DOM).
-2. **Embedded in framework examples** — [`examples/*/e2e/smoke.spec.ts`](../../examples/) verifies the canonical `<nlq-data>` markup contract in HTML, Next.js, Astro, Nuxt, SvelteKit. Phase 0 status: source-content checks today; live-runtime checks `test.fixme`'d until `elements.nlqdb.com/v1.js` publishes.
+2. **Embedded in framework examples** — [`examples/*/e2e/smoke.spec.ts`](../../examples/) verifies the canonical `<nlq-data>` + `<nlq-action>` markup contract in HTML, Next.js, Astro, Nuxt, SvelteKit. Phase 0 status: source-content checks today; live-runtime checks `test.fixme`'d until `elements.nlqdb.com/v1.js` publishes.
 
-After an `<nlq-data>` attribute rename, slot change, or template behaviour shift, trigger both:
+After an attribute rename, slot change, or template behaviour shift, trigger both:
 
 ```bash
 gh workflow run e2e-opencheck.yml         # opencheck
