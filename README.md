@@ -131,7 +131,7 @@ monetization trigger, not on the phase rollover.
 - ✓ `@nlqdb/sdk` basic methods (`ask` / `listChat` / `postChat`); ◯ `runSql()` ships with the CLI per `GLOBAL-003`
 - ◯ `<nlq-action>` writes
 - ◯ CSV upload
-- ◯ Framework wrappers (Next, Nuxt, React, Vue)
+- ✓ Framework wrappers — `@nlqdb/{react,next,vue,nuxt,svelte,sveltekit,astro,solid}` and `Nlqdb` (Swift Package)
 - ◯ Docs site `docs.nlqdb.com`
 
 ### Phase 3 — Multi-engine engine (the moat)

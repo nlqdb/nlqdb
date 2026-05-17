@@ -104,6 +104,15 @@ nlqdb/
 ├── packages/
 │   ├── sdk/             # @nlqdb/sdk — the only HTTP client (GLOBAL-001)
 │   ├── elements/        # <nlq-data> web component
+│   ├── react/           # @nlqdb/react — typed React 19 wrapper
+│   ├── next/            # @nlqdb/next — Next 15 helpers + RSC server factory
+│   ├── vue/             # @nlqdb/vue — Vue 3.5 component
+│   ├── nuxt/            # @nlqdb/nuxt — Nuxt 3 module
+│   ├── svelte/          # @nlqdb/svelte — Svelte 5 component
+│   ├── sveltekit/       # @nlqdb/sveltekit — load() + <NlqHead>
+│   ├── astro/           # @nlqdb/astro — Astro 5 integration
+│   ├── solid/           # @nlqdb/solid — SolidJS component
+│   ├── nlqdb-swift/     # Swift 6 Package (iOS / macOS / Linux)
 │   ├── db/              # engine-agnostic DB adapter
 │   ├── llm/             # LLM router + providers
 │   ├── mcp/             # MCP server + host detection
@@ -151,6 +160,8 @@ manually before editing.)
 | `cli/**` | `docs/features/cli/FEATURE.md` |
 | `packages/elements/**` | `docs/features/elements/FEATURE.md` |
 | `packages/sdk/**` | `docs/features/sdk/FEATURE.md` |
+| `packages/{react,next,vue,nuxt,svelte,sveltekit,astro,solid}/**` | `docs/features/framework-wrappers/FEATURE.md` |
+| `packages/nlqdb-swift/**` | `docs/features/sdk-swift/FEATURE.md` |
 | `packages/mcp/**`, `apps/mcp/**` | `docs/features/mcp-server/FEATURE.md` |
 | `apps/web/**` (onboarding, anonymous mode) | `docs/features/web-app/FEATURE.md` |
 | `apps/web/src/onboarding/**`, signup flow, first-query path | `docs/features/onboarding/FEATURE.md` |

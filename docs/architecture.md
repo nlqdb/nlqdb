@@ -120,9 +120,9 @@ Canonical: **`nlqdb.com`** (`.ai` is held defensively and 301s to `.com`).
 
 ### 3.1 Marketing site — `nlqdb.com`
 
-Canonical feature: `web-app/FEATURE.md` (`SK-WEB-001..007`). Hosted on Cloudflare Pages, Lighthouse 100/100/100/100.
+Canonical: `web-app/FEATURE.md` (`SK-WEB-001..007`). Cloudflare Pages, Lighthouse 100/100/100/100.
 
-Above the fold (top-to-bottom): goal-first input ("What are you building?"), tabbed code-example panel (HTML · React · Vue · Agent · curl, all rendering against the same demo DB), "what this replaces" scroll-driven strip, live anonymized query ticker.
+Above the fold: goal-first input ("What are you building?"), tabbed code-example panel (HTML · React · Vue · Agent · curl against the same demo DB), "what this replaces" strip, live anonymized query ticker.
 
 **Creative direction:** neo-brutalist + terminal — thick borders, hard shadows, JetBrains Mono headlines, Acid Lime `#C6F432` on near-black `#0B0F0A`. No stock photos, no cookie banner (Plausible self-hosted).
 
@@ -132,8 +132,8 @@ Surfaces promised on the home page (full integration matrix in [`progress.md §1
 |---|---|---|
 | HTML / web component | `@nlqdb/elements` | Phase 1 |
 | JS/TS SDK | `@nlqdb/sdk` | Phase 1 |
-| React / Next | `@nlqdb/next` | Phase 2 |
-| Vue / Nuxt | `@nlqdb/nuxt` | Phase 2 |
+| Frontend framework wrappers | `@nlqdb/{react,next,vue,nuxt,svelte,sveltekit,astro,solid}` | Shipped |
+| Swift Package | `Nlqdb` | Shipped |
 | Agent (MCP) | `@nlqdb/mcp` | Phase 2 |
 | HTTP / curl | `POST /v1/ask` | Phase 0 |
 

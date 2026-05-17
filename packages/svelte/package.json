@@ -1,0 +1,25 @@
+{
+  "name": "@nlqdb/svelte",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Svelte 5 wrapper for <nlq-data> — typed component (runes) + HTMLAttributes augmentation.",
+  "type": "module",
+  "sideEffects": false,
+  "main": "src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./NlqData.svelte": "./src/NlqData.svelte"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "peerDependencies": {
+    "@nlqdb/elements": "workspace:*",
+    "svelte": "^5.0.0"
+  },
+  "devDependencies": {
+    "@nlqdb/elements": "workspace:*",
+    "svelte": "^5.0.0",
+    "typescript": "^5.6.0"
+  }
+}

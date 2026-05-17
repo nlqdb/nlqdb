@@ -1,0 +1,32 @@
+{
+  "name": "@nlqdb/sveltekit",
+  "private": true,
+  "version": "0.0.0",
+  "description": "SvelteKit helpers around @nlqdb/svelte — <NlqHead /> for the elements CDN + load() helper for server-side fetches.",
+  "type": "module",
+  "sideEffects": false,
+  "main": "src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./NlqHead.svelte": "./src/NlqHead.svelte",
+    "./server": "./src/server.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "peerDependencies": {
+    "@nlqdb/elements": "workspace:*",
+    "@nlqdb/sdk": "workspace:*",
+    "@nlqdb/svelte": "workspace:*",
+    "@sveltejs/kit": "^2.0.0",
+    "svelte": "^5.0.0"
+  },
+  "devDependencies": {
+    "@nlqdb/elements": "workspace:*",
+    "@nlqdb/sdk": "workspace:*",
+    "@nlqdb/svelte": "workspace:*",
+    "@sveltejs/kit": "^2.0.0",
+    "svelte": "^5.0.0",
+    "typescript": "^5.6.0"
+  }
+}

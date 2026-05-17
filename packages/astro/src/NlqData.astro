@@ -1,0 +1,27 @@
+---
+// <NlqData /> — Astro component wrapper. Identical surface to
+// `@nlqdb/react`'s `<NlqData>` but using kebab-case attribute names
+// (Astro passes attribute props through unchanged).
+type Props = {
+  goal?: string;
+  db?: string;
+  query?: string;
+  "api-key"?: string;
+  endpoint?: string;
+  template?: string;
+  refresh?: string;
+};
+const { goal, db, query, "api-key": apiKey, endpoint, template, refresh } = Astro.props;
+---
+
+<nlq-data
+  goal={goal}
+  db={db}
+  query={query}
+  api-key={apiKey}
+  endpoint={endpoint}
+  template={template}
+  refresh={refresh}
+>
+  <slot />
+</nlq-data>

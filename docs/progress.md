@@ -14,10 +14,8 @@ Progress tracker — platform integrations. Each row is a P0/P1/P2/P3 commitment
 | **Phase 1**  | curl recipes              | `docs.nlqdb.com/curl/` (markdown, no code surface)                                       | One-liner reference for HTTP-API users.                                 |
 | **Phase 2**  | `nlq` CLI                 | Static Go binary; `curl \| sh`, Homebrew tap, npm shim `@nlqdb/cli` — `cli/`             | Device-code auth, OS-keychain credentials.                              |
 | **Phase 2**  | MCP server                | Hosted at `mcp.nlqdb.com` (default) + local stdio fallback `@nlqdb/mcp` — `packages/mcp` | Three tools, no `nlqdb_create_database`.                                |
-| **Phase 2**  | React / Next module       | `@nlqdb/next` (thin wrapper)                                                             | ≤200 LOC over `<nlq-data>`.                                             |
-| **Phase 2**  | Vue / Nuxt module         | `@nlqdb/nuxt` (thin wrapper)                                                             | ≤200 LOC over `<nlq-data>`.                                             |
-| **Phase 2**  | SvelteKit module          | `@nlqdb/sveltekit`                                                                       | Server `load` helpers; `<svelte:head>` injection.                       |
-| **Phase 2**  | Astro integration         | `@nlqdb/astro`                                                                           | Auto script in head; partial-hydration helpers.                         |
+| **Shipped**  | Frontend framework modules | `@nlqdb/{react,next,vue,nuxt,svelte,sveltekit,astro,solid}` — `packages/{…}`              | Typed components, SSR-safe lazy CE registration, `/server` `sk_live_*` factories. See [`framework-wrappers/FEATURE.md`](./features/framework-wrappers/FEATURE.md). |
+| **Shipped**  | Swift Package             | `Nlqdb` — `packages/nlqdb-swift`                                                         | Swift 6, actor-based, async/await; `NlqDataView` SwiftUI helper. See [`sdk-swift/FEATURE.md`](./features/sdk-swift/FEATURE.md). |
 | **Phase 2**  | Python SDK                | `pip install nlqdb`                                                                      | Sync + async; first user is the Jupyter magic.                          |
 | **Phase 2**  | Go SDK                    | `github.com/nlqdb/nlqdb-go`                                                              | First user is the CLI itself.                                           |
 | **Wishlist** | VSCode extension          | (clicks → `home.surface_wishlist`)                                                       | Sidebar panel + inline `<nlq-data>` preview in HTML files.              |
@@ -30,9 +28,9 @@ Progress tracker — platform integrations. Each row is a P0/P1/P2/P3 commitment
 - **Shipped** — usable on `main`. CI builds it, runtime owns it.
 - **Phase 1** — committed for the on-ramp slice. Ships before the public alpha.
 - **Phase 2** — committed for the developer-surfaces slice. Ships before GA.
-- **Wishlist** — not committed. Surfaced on the homepage so user clicks become signal for what to prioritize next. Wishlist badges are `<a class="badge--wishlist" data-wishlist="<id>" href="mailto:hello@nlqdb.com?...">`; each click fires the `home.surface_wishlist` event into the LogSnag `demand-signal` channel via `POST /v1/events/wishlist` (`SK-EVENTS-011`). Wiring: `apps/web/src/components/CodePanel.astro` (click handler) + `apps/api/src/events-feature.ts` (server-side fanout).
+- **Wishlist** — not committed. Surfaced on the homepage so user clicks become signal for what to prioritize next. Click fires `home.surface_wishlist` (`SK-EVENTS-011`); wiring lives in `apps/web/src/components/CodePanel.astro` + `apps/api/src/events-feature.ts`.
 
-The integration matrix in §1–§4 below is *finer-grained* than this surface matrix — every row in §1–§4 corresponds to a P0/P1/P2/P3 *priority tier* for a specific package. Two of them (`@nlqdb/elements` P0, `@nlqdb/sdk` P0) are also surfaces in the matrix above; the rest are framework / mobile / middleware / IDE / iPaaS / analytics integrations that wrap one of the surfaces above.
+The integration matrix in §1–§4 below is *finer-grained* — every row is a P0/P1/P2/P3 priority tier for a specific package. `@nlqdb/elements` (P0) and `@nlqdb/sdk` (P0) are also surfaces above; the rest wrap one of them.
 
 ---
 
@@ -55,19 +53,24 @@ P1 ships in Phase 2 — depends on `@nlqdb/sdk` being published.
 
 What an "official" framework module adds beyond the universal `<nlq-data>` snippet from `examples/`: typed props, auto script injection, SSR prefetch, devtools, framework-idiomatic composables.
 
-| Package                  | Stack                          | Tier   | Why this wraps the element                                                                  |
-| :----------------------- | :----------------------------- | :----- | :------------------------------------------------------------------------------------------ |
-| `@nlqdb/nuxt`            | Nuxt 3 / 4 module              | **P1** | Auto-injects script; `useNlq()` / `useNlqQuery()` composables; SSR-safe; devtools tab.      |
-| `@nlqdb/next`            | Next.js                        | **P1** | Server / client / RSC helpers; `next/script` auto-load; route handler boilerplate for `sk_live_…` calls. |
-| `@nlqdb/sveltekit`       | SvelteKit                      | **P1** | Server `load` helpers; `<svelte:head>` injection; types.                                    |
-| `@nlqdb/astro`           | Astro integration              | **P1** | Auto script in head; partial-hydration helpers; matches `apps/web`.                         |
+| Package                  | Stack                          | Tier             | Why this wraps the element                                                                  |
+| :----------------------- | :----------------------------- | :--------------- | :------------------------------------------------------------------------------------------ |
+| `@nlqdb/react`           | React 19                       | **P1 · Shipped** | Foundation for `@nlqdb/next`. Details in [`framework-wrappers/FEATURE.md`](./features/framework-wrappers/FEATURE.md). |
+| `@nlqdb/next`            | Next.js 15 App Router          | **P1 · Shipped** | Same. `/server` factory keeps `sk_live_*` off the bundle.                                  |
+| `@nlqdb/vue`             | Vue 3.5                        | **P1 · Shipped** | Foundation for `@nlqdb/nuxt`.                                                              |
+| `@nlqdb/nuxt`            | Nuxt 3 / 4 module              | **P1 · Shipped** | Module + `useNlq()` composable; injects elements CDN.                                      |
+| `@nlqdb/svelte`          | Svelte 5 (runes)               | **P1 · Shipped** | Foundation for `@nlqdb/sveltekit`.                                                         |
+| `@nlqdb/sveltekit`       | SvelteKit                      | **P1 · Shipped** | `<NlqHead>` + `/server` `nlqdbLoad()`.                                                     |
+| `@nlqdb/astro`           | Astro 5 integration            | **P1 · Shipped** | `astro:config:setup` injects the script.                                                   |
+| `@nlqdb/solid`           | SolidJS                        | **P1 · Shipped** | Attribute pass-through; lazy CE registration.                                              |
 
 ### Mobile + desktop
 
-| Package                 | Distribution                  | Tier   | Notes                                                                                  |
-| :---------------------- | :---------------------------- | :----- | :------------------------------------------------------------------------------------- |
-| `@nlqdb/react-native`   | npm                           | **P1** | Hooks (`useNlqQuery`); native fetch path; secure-storage refresh tokens.               |
-| `@nlqdb/expo`           | Expo Modules                  | **P1** | `expo-config-plugin` for the keychain entitlement; works alongside the RN package.     |
+| Package                 | Distribution                  | Tier             | Notes                                                                                  |
+| :---------------------- | :---------------------------- | :--------------- | :------------------------------------------------------------------------------------- |
+| `Nlqdb` (Swift Package) | Swift Package Manager         | **P1 · Shipped** | Swift 6 actor + SwiftUI view. See [`sdk-swift/FEATURE.md`](./features/sdk-swift/FEATURE.md). |
+| `@nlqdb/react-native`   | npm                           | **P1**           | Hooks (`useNlqQuery`); native fetch path; secure-storage refresh tokens.               |
+| `@nlqdb/expo`           | Expo Modules                  | **P1**           | `expo-config-plugin` for the keychain entitlement; works alongside the RN package.     |
 
 ### Backend / server middleware
 
@@ -257,20 +260,12 @@ Static-site generators (Hugo, Eleventy, Jekyll, Gatsby, Docusaurus, Mintlify) ne
 
 **Build philosophy.**
 
-**1st-party (canonical):** `@nlqdb/elements`, `@nlqdb/sdk`, `@nlqdb/mcp`, the `nlq` CLI (Go), and the framework modules tagged P0/P1 above (`@nlqdb/{nuxt,next,sveltekit,astro,react-native,hono,express}` + the official `nlqdb-go` and `nlqdb-python` clients). We own these. They version with the API; breaking changes ride a major bump.
+**1st-party (canonical):** `@nlqdb/elements`, `@nlqdb/sdk`, `@nlqdb/mcp`, the `nlq` CLI (Go), the shipped framework wrappers (`@nlqdb/{react,next,vue,nuxt,svelte,sveltekit,astro,solid}`), the `Nlqdb` Swift Package, and the P1 modules still in flight (`@nlqdb/{react-native,hono,express}` + `nlqdb-go` and `nlqdb-python`). We own these; they version with the API.
 
 **2nd-party (templated):** every folder under [`examples/`](../examples). Single-file, framework-native. Maintained by us, no installable artefact — copy-paste is the install. Where adoption signals demand, we promote a 2nd-party template to a 1st-party package.
 
-**3rd-party (community):** everything else. Documented in the README's integrations index, listed at `nlqdb.com/integrations`, but published and maintained by partners or community contributors. We provide:
+**3rd-party (community):** everything else, listed at `nlqdb.com/integrations`, published and maintained by partners. We provide: a typed reference implementation in `packages/sdk`; a CI template (`.github/workflows/integration-conformance.yml`) that smoke-tests against `api.nlqdb.com/v1`; and a monthly review cadence.
 
-1. A typed reference implementation in `packages/sdk` that contributors can build against.
-2. A CI template (`.github/workflows/integration-conformance.yml`) that runs an integration's smoke tests against `api.nlqdb.com/v1` so contributions stay correct as the API evolves.
-3. A dedicated channel + monthly review cadence to triage integrations PRs.
+**What this matrix does NOT do.** It doesn't replace `<nlq-data>` (every framework module is sugar on top), doesn't bind us to listed package names (working titles), and doesn't promise calendar dates (tiers are dependency-ordered).
 
-**What this matrix does NOT do.**
-
-- **Replace the `<nlq-data>` element.** The element is still the simplest way to embed nlqdb anywhere. Every framework module in §2 (Frontend framework modules) is sugar on top of it.
-- **Bind us to the listed package names.** Names are working titles; final names ride with `architecture.md` §2 (`@nlqdb` npm scope, GitHub `nlqdb` org).
-- **Promise calendar dates.** Tiers are dependency-ordered. P0/P1/P2 ship when the prerequisite primitive ships, in priority order set by user demand.
-
-A new platform integration = open a PR adding a row to the relevant subsection + a folder under `examples/<platform>` showing the smallest working integration. Once it lands, the row gets a status badge and (when promoted) a 1st-party package.
+A new platform integration = open a PR adding a row + a folder under `examples/<platform>` with the smallest working integration. Once it lands, the row gets a status badge and (when promoted) a 1st-party package.
