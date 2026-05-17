@@ -7,7 +7,9 @@ import FoundationNetworking
 
 @testable import Nlqdb
 
-@Suite("NlqdbClient — wire contract")
+// `.serialized` — tests share static URLProtocol stub state through
+// `StubProtocol.queue`; parallel runs would race.
+@Suite("NlqdbClient — wire contract", .serialized)
 struct NlqdbClientTests {
 
     /// `URLProtocol` stub that replays a queue of pre-baked responses.
