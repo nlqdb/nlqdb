@@ -107,7 +107,8 @@ export class NlqActionElement extends HTMLElement {
     const target = e.target as HTMLElement | null;
     if (!target) return;
     const action = target.closest("[data-action]");
-    if (action instanceof HTMLElement) {
+    // `closest` walks past the host; restrict to our subtree so a parent can't hijack.
+    if (action instanceof HTMLElement && this.contains(action)) {
       const verb = action.dataset["action"];
       if (verb === "apply") {
         e.preventDefault();
@@ -167,7 +168,12 @@ export class NlqActionElement extends HTMLElement {
       });
     } catch (err) {
       if (err instanceof Error && err.name === "AbortError") return;
-      throw err;
+      // Surface unexpected throws as a network failure so the user always gets a retry path.
+      this.fail({
+        kind: "network",
+        message: err instanceof Error ? err.message : String(err),
+      });
+      return;
     }
     if (controller.signal.aborted) return;
     this.inflight = null;
@@ -192,8 +198,7 @@ export class NlqActionElement extends HTMLElement {
       return;
     }
 
-    // Server didn't ask for confirmation (read SQL or already committed)
-    // — render as success rather than swallow the response silently.
+    // No confirm needed (read SQL or already committed) — render success rather than swallow silently.
     this.applyCompleted(data.rowCount, data.diff ?? null);
   }
 
@@ -226,7 +231,11 @@ export class NlqActionElement extends HTMLElement {
       });
     } catch (err) {
       if (err instanceof Error && err.name === "AbortError") return;
-      throw err;
+      this.fail({
+        kind: "network",
+        message: err instanceof Error ? err.message : String(err),
+      });
+      return;
     }
     if (controller.signal.aborted) return;
     this.inflight = null;
@@ -268,6 +277,8 @@ export class NlqActionElement extends HTMLElement {
   }
 
   private commit(): void {
+    // `[data-state]` on the host gives CSS + analytics a state hook without subtree queries.
+    this.dataset["state"] = this.state.kind;
     this.innerHTML = renderActionState(this.state);
   }
 
@@ -279,7 +290,13 @@ export class NlqActionElement extends HTMLElement {
       return;
     }
     if (directive === "reload") {
-      if (typeof window !== "undefined") window.location.reload();
+      if (typeof window === "undefined") return;
+      try {
+        window.location.reload();
+      } catch (err) {
+        // Cross-origin iframes throw SecurityError; never crash a successful write.
+        console.warn(`[nlq-action] on-success="reload" failed:`, err);
+      }
       return;
     }
     if (directive.startsWith("refresh:")) {
@@ -292,11 +309,16 @@ export class NlqActionElement extends HTMLElement {
         console.warn(`[nlq-action] on-success="${directive}" selector is invalid; ignoring.`);
         return;
       }
-      // Duck-typed `.refresh()` keeps the action element decoupled
-      // from `<nlq-data>` at the module level.
+      // Duck-typed `.refresh()` decouples action from `<nlq-data>`; per-node try/catch
+      // so one throwing match doesn't skip the rest.
       for (const node of matches) {
         const fn = (node as { refresh?: () => void }).refresh;
-        if (typeof fn === "function") fn.call(node);
+        if (typeof fn !== "function") continue;
+        try {
+          fn.call(node);
+        } catch (err) {
+          console.warn(`[nlq-action] refresh of ${selector} match threw:`, err);
+        }
       }
       return;
     }

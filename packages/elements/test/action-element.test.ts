@@ -287,7 +287,110 @@ describe("<nlq-action> on-success behaviours", () => {
   });
 });
 
+describe("<nlq-action> observability", () => {
+  it("mirrors the state machine on the host's data-state attribute", async () => {
+    const fetchMock = makeFetchMock(previewBody, commitBody);
+    const el = makeAction({ goal: "x", db: "orders", fetchMock });
+    expect(el.dataset["state"]).toBe("idle");
+
+    clickButton(el);
+    await settle();
+    expect(el.dataset["state"]).toBe("confirm");
+
+    clickButton(el, '[data-action="apply"]');
+    await settle();
+    expect(el.dataset["state"]).toBe("success");
+  });
+
+  it("data-state moves to error on auth failure and back to idle on retry", async () => {
+    const fetchMock = vi.fn(async () => jsonResponse({}, { status: 401 }));
+    const el = makeAction({ goal: "x", db: "orders", fetchMock });
+    clickButton(el);
+    await settle();
+    expect(el.dataset["state"]).toBe("error");
+
+    clickButton(el, '[data-action="retry"]');
+    await settle();
+    expect(el.dataset["state"]).toBe("idle");
+  });
+});
+
 describe("<nlq-action> robustness", () => {
+  it("transitions to error (not stuck in previewing) when fetch throws an unexpected error", async () => {
+    const fetchMock = vi.fn(async () => {
+      throw new TypeError("Failed to fetch");
+    });
+    const el = makeAction({ goal: "x", db: "orders", fetchMock });
+    const errors: CustomEvent[] = [];
+    el.addEventListener("nlq-action:error", (e) => errors.push(e as CustomEvent));
+
+    clickButton(el);
+    await settle();
+
+    expect(el.dataset["state"]).toBe("error");
+    expect(errors.length).toBe(1);
+    expect(errors[0]?.detail).toEqual({ kind: "network", message: "Failed to fetch" });
+  });
+
+  it("does not let an outer parent's data-action hijack a click inside the element", async () => {
+    const fetchMock = makeFetchMock(previewBody, commitBody);
+    const wrapper = document.createElement("div");
+    wrapper.setAttribute("data-action", "apply");
+    mountPoint.appendChild(wrapper);
+    const el = document.createElement("nlq-action") as NlqActionElement;
+    el.setAttribute("goal", "x");
+    el.setAttribute("db", "orders");
+    el.setAttribute("endpoint", "https://api.example/v1/ask");
+    el.textContent = "Submit";
+    vi.stubGlobal("fetch", fetchMock);
+    wrapper.appendChild(el);
+    await settle();
+
+    clickButton(el);
+    await settle();
+    // First click went through `preview()`, not `applyDiff()` — fetch
+    // was called exactly once with the preview body (no `confirm`).
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(JSON.parse(fetchMock.mock.calls[0]?.[1].body as string)).toEqual({
+      goal: "x",
+      dbId: "orders",
+    });
+  });
+
+  it("continues refreshing remaining matches when one .refresh() throws", async () => {
+    const fetchMock = makeFetchMock(previewBody, commitBody);
+    const ok = document.createElement("div");
+    ok.className = "data-pane";
+    const okRefresh = vi.fn();
+    (ok as unknown as { refresh: () => void }).refresh = okRefresh;
+
+    const bad = document.createElement("div");
+    bad.className = "data-pane";
+    (bad as unknown as { refresh: () => void }).refresh = () => {
+      throw new Error("boom");
+    };
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+
+    mountPoint.appendChild(bad);
+    mountPoint.appendChild(ok);
+
+    const el = makeAction({
+      goal: "x",
+      db: "orders",
+      fetchMock,
+      onSuccess: "refresh:.data-pane",
+    });
+    clickButton(el);
+    await settle();
+    clickButton(el, '[data-action="apply"]');
+    await settle();
+
+    expect(okRefresh).toHaveBeenCalledTimes(1);
+    expect(warn).toHaveBeenCalled();
+  });
+});
+
+describe("<nlq-action> on-success robustness", () => {
   it("does not throw when on-success uses an invalid selector", async () => {
     const fetchMock = makeFetchMock(previewBody, commitBody);
     const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
