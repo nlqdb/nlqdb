@@ -188,12 +188,7 @@ export type CreateDatabaseResult = {
   connectionString?: string;
 };
 
-// SK-SDK-009 — `runSql()` request / response. The raw-SQL escape hatch
-// (`GLOBAL-015`); same allow-list as `/v1/ask` (SELECT / INSERT /
-// UPDATE / DELETE / WITH / EXPLAIN / SHOW), DDL still rejected. The
-// `trace` block mirrors `ask()`'s SK-TRUST-002 shape so callers don't
-// special-case the raw-SQL path: `model = "raw"`, `confidence = 1.0`,
-// `cache_hit = false` on every response.
+// `SK-SDK-009` — raw-SQL escape hatch (`GLOBAL-015`); same allow-list as `ask()`, DDL still rejected.
 export type RunSqlRequest = {
   db: string;
   sql: string;
@@ -237,8 +232,7 @@ export type ApiErrorCode =
   // SK-SDK-009 / SK-APIKEYS-003 — `/v1/run` rejected the call because
   // the principal is read-only (pk_live tried to write).
   | "forbidden"
-  // SK-SDK-009 — `/v1/run` parse errors that don't surface as the
-  // generic `invalid_json` / `invalid_body`.
+  // `SK-SDK-009` — `/v1/run` parse errors distinct from the generic `invalid_json` / `invalid_body`.
   | "sql_required"
   | "sql_too_long"
   | "db_required"
@@ -447,14 +441,7 @@ export type NlqClient = {
     dbId: string,
     opts?: { signal?: AbortSignal; idempotencyKey?: string },
   ): Promise<void>;
-  // SK-SDK-009 — raw-SQL escape hatch (`GLOBAL-015`). POSTs to
-  // `/v1/run`. The same allow-list as `ask()` applies server-side
-  // (SELECT / INSERT / UPDATE / DELETE / WITH / EXPLAIN / SHOW); DDL
-  // is rejected. The response shape carries the SK-TRUST-002 `trace`
-  // block so surfaces render it the same way as `ask()`. Mutating
-  // helper — `SK-SDK-006` auto-key applies; `SK-SDK-008` retry loop
-  // applies. Bearer-key callers (CLI, events-worker) and
-  // `withCredentials` callers (web) both work through this method.
+  // `SK-SDK-009` — raw-SQL escape hatch; same allow-list and `trace` block as `ask()`, DDL rejected.
   runSql(
     req: RunSqlRequest,
     opts?: { signal?: AbortSignal; idempotencyKey?: string },

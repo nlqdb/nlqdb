@@ -54,17 +54,13 @@ type AskResponse struct {
 	SampleRows  []map[string]json.RawMessage `json:"sampleRows,omitempty"`
 }
 
-// RunRequest mirrors @nlqdb/sdk's `RunSqlRequest` (SK-SDK-009).
-// Power-user escape hatch (`GLOBAL-015`): same SQL allow-list as
-// `/v1/ask`, DDL still rejected.
+// RunRequest mirrors @nlqdb/sdk's `RunSqlRequest` (`SK-SDK-009`).
 type RunRequest struct {
 	DB  string `json:"db"`
 	SQL string `json:"sql"`
 }
 
-// RunResponse mirrors the SDK's `RunSqlResult`. The `trace` block is
-// always present (SK-TRUST-002) — `model = "raw"`, `confidence = 1.0`,
-// `cache_hit = false` per the orchestrator.
+// RunResponse mirrors the SDK's `RunSqlResult`; `Trace` is always present (`SK-TRUST-002`).
 type RunResponse struct {
 	Status   string           `json:"status"`
 	Rows     []map[string]any `json:"rows"`

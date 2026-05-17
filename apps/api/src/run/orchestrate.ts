@@ -1,11 +1,7 @@
 // `/v1/run` raw-SQL orchestrator (`GLOBAL-015` escape hatch,
-// `SK-SDK-009` canonical contract). Distinct from `/v1/ask`'s
-// orchestrator because: no LLM, no plan cache, no diff/confirm gate
-// (the operator typed the SQL — see `docs/features/trust-ux/FEATURE.md`
-// line 42). Same SQL allow-list (`SK-SQLAL-006`) and same executor
-// (`buildExec`) — only the LLM steps are bypassed; the safety surface
-// is unchanged. Trace block mirrors `SK-TRUST-002` with
-// `model = "raw"`, `confidence = 1.0`, `cache_hit = false`.
+// `SK-SDK-009` canonical contract). Skips the LLM + plan cache + diff
+// gate that `/v1/ask` runs, but reuses the same SQL allow-list
+// (`SK-SQLAL-006`) and executor — only the LLM steps are bypassed.
 
 import { SpanStatusCode, trace } from "@opentelemetry/api";
 import { hashGoal } from "../ask/plan-cache.ts";
@@ -22,15 +18,11 @@ import {
 export type RunRequest = {
   sql: string;
   dbId: string;
-  // Tenant id (`Principal.id`). Drives `resolveDb` tenancy scope and the
-  // rate-limit bucket fallback.
+  // Tenant id (`Principal.id`) — drives `resolveDb` scope and the rate-limit bucket fallback.
   userId: string;
-  // SK-MCP-009 — sk_* principals key on `rl:${keyId}` so a noisy MCP
-  // host can't burn its siblings' budgets. Defaults to `userId`.
+  // `SK-MCP-009` — sk_* principals key on `rl:${keyId}` so a noisy host can't burn its siblings.
   rateLimitBucketKey?: string;
-  // SK-APIKEYS-003 — pk_live_ bearer keys are read-only. Set true when
-  // the principal is pk_live so the validator rejects write verbs at
-  // the leading-verb gate before exec.
+  // `SK-APIKEYS-003` — pk_live keys are read-only; orchestrator rejects writes before exec.
   readOnly?: boolean;
 };
 
@@ -42,9 +34,7 @@ export type RunResult = {
 
 export type RunError =
   | AskError
-  // GLOBAL-015 / SK-APIKEYS-003 — pk_live keys cannot write through
-  // `/v1/run`. Surfaced before exec so the wire response carries the
-  // policy reason rather than the generic `sql_rejected`.
+  // `SK-APIKEYS-003` — distinct from `sql_rejected` so the wire response carries the policy reason.
   | { status: "forbidden"; reason: "read_only_principal" };
 
 export type RunOutcome = { ok: true; result: RunResult } | { ok: false; error: RunError };
@@ -79,9 +69,7 @@ export async function orchestrateRun(deps: RunDeps, req: RunRequest): Promise<Ru
     };
   }
 
-  // `nlqdb.sql.validate` span matches `/v1/ask` so the validate stage
-  // shows up in the same place on dashboards built off the shared
-  // span catalog (`docs/performance.md §3.1`).
+  // Span name matches `/v1/ask` so dashboards built off `performance.md §3.1` work unchanged.
   const validation = await tracer.startActiveSpan("nlqdb.sql.validate", async (span) => {
     try {
       return validateSql(req.sql);
@@ -93,11 +81,7 @@ export async function orchestrateRun(deps: RunDeps, req: RunRequest): Promise<Ru
     return { ok: false, error: { status: "sql_rejected", reason: validation.reason } };
   }
 
-  // pk_live rejects writes before exec — `validateSql` accepts the verb
-  // (the allowlist intentionally allows INSERT/UPDATE/DELETE), but
-  // SK-APIKEYS-003 narrows pk_live to reads. Reuses the validator's
-  // comment-stripped normalization so `/* x */ INSERT ...` can't smuggle
-  // past this gate while the validator accepts it.
+  // Reuses the validator's normalization so `/* x */ INSERT ...` can't smuggle past this gate.
   if (req.readOnly) {
     const normalized = leadingVerb(stripLeadingComments(req.sql.trim()));
     if (WRITE_VERBS.has(normalized)) {

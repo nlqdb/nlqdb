@@ -21,11 +21,7 @@ export { ALLOWED_ENGINES, isAllowedEngine };
 // LLM token cost from adversarially long inputs.
 export const MAX_GOAL_LENGTH = 2000;
 
-// SK-SDK-009 / GLOBAL-015 — hard server-side cap on raw SQL length sent
-// to `/v1/run`. Aligns with `/v1/ask`'s 2 000-char goal cap so the wire
-// surface stays predictable; one statement of 64 KB doesn't accidentally
-// land here. Surfaces a typed error with the limit so SDK / CLI render
-// the next action per GLOBAL-012.
+// `SK-SDK-009` — server cap on `/v1/run` SQL body; larger batches belong on a direct Postgres connection.
 export const MAX_SQL_LENGTH = 64 * 1024;
 
 export type GoalDbBody = { goal: string; dbId: string };
@@ -142,21 +138,10 @@ export async function parseAskBody(c: Context): Promise<ParseResult<AskBody>> {
   return { ok: true, body };
 }
 
-// `/v1/run` parser — both fields required. `db` is the pinned dbId
-// (this is the escape hatch — no LLM picking the DB for you); `sql` is
-// the raw SQL to execute. The validator (`apps/api/src/ask/sql-validate.ts`)
-// runs inside the orchestrator after parse, so the only parser-level
-// shape check here is non-empty strings + length cap.
-//
-// SK-APIKEYS-003 / SK-SDK-009: pk_live auto-fills `db` from the
-// principal in the route handler before parse runs, so the wire shape
-// stays consistent across principal kinds.
+// `/v1/run` body — shape check only; SQL validation runs inside the orchestrator.
 export type RunBody = { sql: string; db: string };
 
-// `dbOptional` lets the pk_live route auto-fill from the principal's
-// pinned dbId after parse. Default behaviour (cookie / anon / sk_*)
-// requires the field — `/v1/run` is the escape hatch, the caller
-// always knows which DB they're targeting.
+// `dbOptional` lets the pk_live route auto-fill from the principal's pinned dbId after parse.
 export async function parseRunBody(
   c: Context,
   opts: { dbOptional?: boolean } = {},

@@ -1100,11 +1100,7 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
   });
 });
 
-// `POST /v1/run` — GLOBAL-015 power-user escape hatch (`SK-SDK-009`,
-// `SK-CLI-003`). Same allow-list + executor as `/v1/ask`, no LLM. The
-// orchestrator (`src/run/orchestrate.ts`) owns the WHY; this handler
-// owns the auth + CORS + anon-cap wiring (mirror of `/v1/ask` so a
-// noisy raw-SQL caller can't sidestep gates that the chat path enforces).
+// `POST /v1/run` — `GLOBAL-015` escape hatch (`SK-SDK-009`); orchestrator owns the WHY.
 app.use("/v1/run", (c, next) => {
   const origin = c.req.header("origin") ?? "";
   const handler = CORS_ALLOWED_ORIGINS.includes(origin) ? credentialedCors : pkLiveCors;
@@ -1121,9 +1117,6 @@ app.post("/v1/run", requirePrincipal, async (c) => {
       span.setAttribute("nlqdb.principal.id", principal.id);
       span.setAttribute("nlqdb.surface", surface);
 
-      // Parse with an optional `db`. pk_live's pinned dbId fills in
-      // afterwards — same UX as `/v1/ask` so the caller doesn't have to
-      // restate the dbId encoded in the key.
       const parsed = await parseRunBody(c, { dbOptional: principal.kind === "pk_live" });
       if (!parsed.ok) {
         span.setAttribute("nlqdb.run.outcome", parsed.error.body.error);
@@ -1132,14 +1125,9 @@ app.post("/v1/run", requirePrincipal, async (c) => {
       if (principal.kind === "pk_live" && !parsed.body.db) {
         parsed.body.db = principal.dbId;
       }
-      // Redacted SQL preview for debugging `sql_rejected` patterns —
-      // mirrors `/v1/ask`'s `nlqdb.ask.goal_preview`. `redactPii` strips
-      // emails / phone numbers before truncation; 200 chars matches the
-      // ask path so dashboards built on either attribute behave the same.
       span.setAttribute("nlqdb.run.sql_preview", redactPii(parsed.body.sql).slice(0, 200));
 
-      // Anon-tier gates — identical ordering to `/v1/ask` so raw-SQL
-      // callers can't sidestep what the chat path enforces.
+      // Anon-tier gates mirror `/v1/ask` ordering so raw-SQL can't sidestep the chat path's caps.
       if (principal.kind === "anon") {
         const globalLimiter = makeGlobalAnonLimiter(c.env.KV);
         const globalPeek = await globalLimiter.peek();
@@ -1168,9 +1156,7 @@ app.post("/v1/run", requirePrincipal, async (c) => {
         c.header("X-RateLimit-Reset", String(verdict.resetAt));
         if (!verdict.ok) {
           span.setAttribute("nlqdb.run.outcome", "rate_limited_ip");
-          // SK-EVENTS-010 / GLOBAL-024 — anon rate-limit hit on the
-          // raw-SQL escape hatch is the same demand-signal class as the
-          // `/v1/ask` anon trip. Fire-and-forget through `waitUntil`.
+          // `SK-EVENTS-010` — same demand-signal class as the `/v1/ask` anon trip.
           c.executionCtx.waitUntil(
             buildEventEmitter(c.env.EVENTS_QUEUE).emit({
               name: "feature.requested.heavier_tier",
@@ -1235,15 +1221,7 @@ app.post("/v1/run", requirePrincipal, async (c) => {
           c.header("X-RateLimit-Reset", String(resetAt));
           c.header("Retry-After", String(Math.max(0, resetAt - now)));
         }
-        // SK-EVENTS-010 — emit the heavier-tier demand signal on the
-        // orchestrator-level D1 bucket trip (the authed-bucket twin of
-        // the anon `feature.requested.heavier_tier` emit at the route
-        // top). Not routed through `emitFeatureSignal` because that
-        // helper also fires `feature.requested.ddl_via_ask` on DDL
-        // sql_rejected; on `/v1/run` the user explicitly bypassed the
-        // ask path, so the ask-tagged event would mislabel the funnel.
-        // `surface` (cli / chat / embed / mcp) is enough to track the
-        // raw-SQL slice once a `ddl_via_run` event is added.
+        // Inlined (not via `emitFeatureSignal`) because that helper also fires `ddl_via_ask` — wrong name for `/v1/run`.
         if (outcome.error.status === "rate_limited") {
           c.executionCtx.waitUntil(
             buildEventEmitter(c.env.EVENTS_QUEUE).emit({
@@ -1260,8 +1238,7 @@ app.post("/v1/run", requirePrincipal, async (c) => {
       span.setAttribute("nlqdb.run.outcome", "ok");
       span.setAttribute("nlqdb.run.rows_returned", outcome.result.rowCount);
 
-      // Off-path `last_queried_at` bump so the rail's recent-activity
-      // surface reflects raw-SQL traffic — matches `/v1/ask` behaviour.
+      // `last_queried_at` bump runs off-path so raw-SQL traffic shows in the rail's recent-activity surface.
       c.executionCtx.waitUntil(
         c.env.DB.prepare(
           "UPDATE databases SET last_queried_at = unixepoch() WHERE id = ? AND tenant_id = ?",
@@ -2169,8 +2146,7 @@ function errorStatus(status: AskError["status"]): 400 | 404 | 409 | 422 | 429 | 
   }
 }
 
-// `/v1/run` status mapper — wraps `errorStatus` with the `forbidden`
-// branch unique to this surface (pk_live + write verb per SK-APIKEYS-003).
+// Wraps `errorStatus` with the `forbidden` branch unique to `/v1/run` (`SK-APIKEYS-003`).
 function runErrorStatus(error: RunError): 400 | 403 | 404 | 409 | 422 | 429 | 502 {
   if (error.status === "forbidden") return 403;
   return errorStatus(error.status);

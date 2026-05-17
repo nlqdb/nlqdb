@@ -17,10 +17,7 @@ import (
 	"github.com/nlqdb/nlqdb/cli/internal/state"
 )
 
-// registerRun wires `nlq run` — the GLOBAL-015 power-user escape hatch
-// (SK-CLI-003's second canonical data verb, peer to `nlq ask`). Same
-// allow-list as `/v1/ask`; DDL still rejected. See
-// docs/features/sdk/FEATURE.md SK-SDK-009 for the wire contract.
+// registerRun wires `nlq run` — the SK-CLI-003 raw-SQL verb (wire contract: SK-SDK-009).
 func registerRun(root *cobra.Command, g *globalFlags) {
 	var db string
 	cmd := &cobra.Command{
@@ -84,10 +81,7 @@ func doRun(ctx context.Context, cmd *cobra.Command, g *globalFlags, dbID, sql st
 	return output.New(cmd.OutOrStdout(), cmd.ErrOrStderr(), formatFor(g)).WriteRun(resp)
 }
 
-// renderRunError extends the shared `renderAPIError` mapper with the
-// `/v1/run`-specific surfaces: `sql_rejected` is the most common
-// failure (DDL or other disallowed verb), and `forbidden` lands when
-// a pk_live key tries to write.
+// renderRunError adds the `/v1/run`-specific surfaces on top of the shared `renderAPIError` mapper.
 func renderRunError(cmd *cobra.Command, err error) error {
 	var apiErr *api.APIError
 	if !errors.As(err, &apiErr) {
@@ -118,10 +112,7 @@ func renderRunError(cmd *cobra.Command, err error) error {
 	return renderAPIError(cmd, err)
 }
 
-// readSQL pulls SQL from either positional args (joined with spaces) or
-// stdin when args are empty AND stdin is not a TTY. The TTY check
-// matters: bare `nlq run` on a terminal would otherwise block forever
-// reading stdin.
+// readSQL prefers positional args; falls back to stdin only when it's piped (bare TTY would hang otherwise).
 func readSQL(cmd *cobra.Command, args []string) (string, error) {
 	if len(args) > 0 {
 		return joinArgs(args), nil

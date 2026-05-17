@@ -1,7 +1,4 @@
-// `/v1/run` orchestrator unit tests — stub deps, no Workers env.
-// Covers the SK-SDK-009 contract: same SQL allow-list as `/v1/ask`,
-// pk_live read-only enforcement (SK-APIKEYS-003), trace block shape
-// (SK-TRUST-002), DB-not-found / unreachable / config-error mapping.
+// `/v1/run` orchestrator unit tests — stub deps; covers `SK-SDK-009` + `SK-APIKEYS-003` + error mapping.
 
 import { describe, expect, it, vi } from "vitest";
 

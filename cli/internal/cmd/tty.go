@@ -6,13 +6,7 @@ import (
 	"golang.org/x/term"
 )
 
-// isTerminal classifies a file as a TTY for two scoped use-cases:
-// (1) the SK-CLI-015 update-check gate (stdout-side), and (2) the
-// `nlq run` stdin-source check (so bare `nlq run` on a terminal exits
-// with an "empty sql" error instead of blocking on stdin forever).
-// Output formatting itself must never branch on this (SK-CLI-004) —
-// `--json` is the only switch. Uses x/term so Windows console (which
-// lacks os.ModeCharDevice in some shells) is classified correctly.
+// Scoped to update-check gating (`SK-CLI-015`) and the `nlq run` stdin-source check; output formatting must never branch on TTY (`SK-CLI-004`).
 func isTerminal(f any) bool {
 	file, ok := f.(*os.File)
 	if !ok {

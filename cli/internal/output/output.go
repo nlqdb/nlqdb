@@ -92,10 +92,7 @@ func keyLabel(r api.KeyRecord) string {
 	return "—"
 }
 
-// WriteRun renders `/v1/run` responses. Same trace-block treatment as
-// `nlq ask` so power users see the SQL they submitted echoed under a
-// `─ trace ─` separator (SK-TRUST-002). JSON mode emits the full
-// payload for scripts.
+// WriteRun renders `/v1/run` responses with the same `─ trace ─` separator as `nlq ask` (`SK-TRUST-002`).
 func (w *Writer) WriteRun(resp *api.RunResponse) error {
 	if w.Format == FormatJSON {
 		return w.JSON(resp)

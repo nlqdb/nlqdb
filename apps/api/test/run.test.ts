@@ -1,9 +1,4 @@
-// `/v1/run` skeleton — auth-gate + body-parse behaviour.
-//
-// Mirrors `apps/api/test/ask.test.ts` shape: full end-to-end via SELF;
-// covers principal gate, body parsing, and the SQL allow-list reject
-// path (DDL rejected). The 200 path needs a real DB row + Neon URL —
-// exercised by the orchestrator unit suite in `run-orchestrate.test.ts`.
+// `/v1/run` integration — auth-gate + body-parse only; the 200 path lives in `src/run/orchestrate.test.ts`.
 
 import { SELF } from "cloudflare:test";
 import { describe, expect, it } from "vitest";

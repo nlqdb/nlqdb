@@ -17,11 +17,7 @@ func (c *Client) Ask(ctx context.Context, req AskRequest) (*AskResponse, error) 
 	return &out, nil
 }
 
-// Run hits POST /v1/run (SK-SDK-009 / GLOBAL-015 escape hatch). Same
-// allow-list as `/v1/ask` (SELECT / INSERT / UPDATE / DELETE / WITH /
-// EXPLAIN / SHOW); DDL still rejected on this path. Returns the rows
-// + the SK-TRUST-002 trace block so consumers don't special-case the
-// raw-SQL surface.
+// Run hits POST /v1/run (`SK-SDK-009`); same allow-list as `/v1/ask`, DDL rejected.
 func (c *Client) Run(ctx context.Context, req RunRequest) (*RunResponse, error) {
 	var out RunResponse
 	if err := c.do(ctx, http.MethodPost, "/v1/run", req, &out); err != nil {
