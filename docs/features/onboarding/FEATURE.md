@@ -11,7 +11,8 @@ when-to-load:
 # Feature: Onboarding
 
 **One-liner:** First-60-seconds experience — zero-friction signup, goal-first on-ramp, anti-patterns we refuse.
-**Status:** implemented (Phase 1)
+**Status:** implemented (Phase 1) — `SK-ONBOARD-005` adds the KPI instrument owed for the [`GLOBAL-025`](../../decisions/GLOBAL-025-north-star.md) onboarding row; baseline due **2026-06-01**.
+**Contribution to north-star:** **Seamless onboarding** — this feature *is* the onboarding north-star. Owns the TTFV, first-query-success, and onboarding drop-off KPIs in [`GLOBAL-025`](../../decisions/GLOBAL-025-north-star.md) §KPI table.
 **Owners (code):** `apps/web/src/` (onboarding flow), `apps/api/src/routes/auth/**` (signup), `docs/features/anonymous-mode/FEATURE.md` (anonymous-first pattern)
 **Cross-refs:** docs/architecture.md §0.1 (goal-first inversion) · docs/architecture.md §3.1 (marketing site) · docs/architecture.md §3.2 (platform web app) · docs/research/personas.md (P1 Solo Builder — primary persona) · `docs/features/anonymous-mode/FEATURE.md` (Aarav pattern) · `docs/features/web-app/FEATURE.md` (chat surface, Maya happy path)
 
@@ -58,12 +59,25 @@ when-to-load:
 - **Alternatives rejected:** Single-click approve — too fast; users approve without reading. Require typing "DELETE" to confirm — patronizing for small deletes; still necessary for mass-delete (add this as a per-surface escalation for >10k rows). No confirmation at all — explicitly rejected; the Replit incident (`docs/research-receipts.md §1`) shows what happens without guardrails.
 - **Source:** docs/guidelines.md §6 (bullet-proof checklist row "Accidental mass delete")
 
+### SK-ONBOARD-005 — Instrument every onboarding KPI in [`GLOBAL-025`](../../decisions/GLOBAL-025-north-star.md); baseline by 2026-06-01
+
+- **Decision:** Add explicit event emissions for: `onboarding.landing.viewed`, `onboarding.first_query.attempted`, `onboarding.first_query.succeeded` (correct answer per the auto-grader described below), `onboarding.first_query.failed` (with reason), `onboarding.second_query.attempted` (signal for next-step engagement). The web surface records TTFV (`landing → first_query_succeeded` ms) on the existing event pipeline. **First-query-success grading** uses a lightweight LLM-judge prompt run async (no user-facing latency): given (question, returned answer, returned SQL, executed result), did the result answer the question? Output: boolean + one-sentence rationale; stored alongside the event for audit. Baselines for all five KPIs (TTFV p50/p95, first-query-success rate, unguided 4/5 pass rate, drop-off rate) recorded by 2026-06-01; the Phase 2 floor in [`GLOBAL-025`](../../decisions/GLOBAL-025-north-star.md) is enforced from that date.
+- **Core value:** Goal-first, Honest latency, Bullet-proof
+- **Why:** "Seamless onboarding" is the second north-star pillar of [`GLOBAL-025`](../../decisions/GLOBAL-025-north-star.md); without instrumentation it's an aesthetic claim. The five KPIs above are the smallest set that distinguishes "users arrive and bounce" (drop-off) from "users arrive, query, and leave wrong" (success-rate) from "users arrive, succeed, and leave anyway" (retention — owned by `trust-ux/SK-TRUST-004`). The LLM-judge grading is cheap (free chain, async) and unbiased — using returned-SQL as ground-truth would tautologically score everything green.
+- **Consequence in code:** New events in `packages/events/src/types.ts` (`onboarding.*` domain). Web surface (`apps/web/src/onboarding/`) emits landing / attempted / succeeded / failed; CLI's `nlq new` + bare-form first-time path emits the same shape (per [`GLOBAL-003`](../../decisions/GLOBAL-003-all-surfaces-one-pr.md)). The async LLM-judge runs via `ctx.waitUntil` from `apps/api/src/ask/` and posts a `feature.onboarding.graded` event back to the pipeline. Grafana panel `onboarding-kpis` is the canonical view; the weekly cron from `quality-eval/SK-QUAL-002` summarizes into LogSnag `#north-star`. Unguided user-test pass-rate (the 4/5 number) stays a manual founder-driven metric per [`founder-playbook.md`](../../founder-playbook.md), recorded in the same Grafana panel as an annotation.
+- **Alternatives rejected:** Heuristic grading (exact-match SQL or row-count) — too brittle; user's NL phrasing rarely matches the gold SQL even for correct answers. Synchronous LLM-judge — adds user-facing latency violating [`GLOBAL-011`](../../decisions/GLOBAL-011-honest-latency.md). No baseline date — repeats the failure mode `SK-QUAL-005` prevents. Self-report success ("did this answer your question?" prompt) — biases low; users don't reliably distinguish "answer was right" from "answer was useful".
+
 ## GLOBALs governing this feature
 
-Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; index in [`docs/decisions.md`](../../decisions.md)). The list below names the rules that constrain this feature; any feature-local commentary is nested under the rule.
+Canonical text in [`docs/decisions/`](../../decisions/) (index in [`docs/decisions.md`](../../decisions.md)). Local commentary nested under the rule.
 
-- **GLOBAL-013** — $0/month free tier; no card required; hitting a limit rate-limits, never deletes, never silently upgrades.
-- **GLOBAL-007** — Anonymous rate-limit tier is separate from authed-free and paid tiers.
+- **GLOBAL-007** — No login wall before first value.
+  - *In this feature:* anonymous-first per `SK-ONBOARD-003`; the signup prompt fires *after* value is demonstrated.
+- **GLOBAL-013** — $0/month free tier; no card required.
+- **GLOBAL-020** — No "pick a region", no config files in the first 60s.
+  - *In this feature:* the mechanism this feature measures.
+- **GLOBAL-025** — North-star: engine quality, onboarding, UX.
+  - *In this feature:* this feature *is* the onboarding pillar. `SK-ONBOARD-005` instruments the KPIs.
 
 ## Open questions / known unknowns
 

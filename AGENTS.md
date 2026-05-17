@@ -13,6 +13,25 @@ nlqdb answers. The full pitch and architecture are in
 [`docs/architecture.md`](docs/architecture.md). Design-partner research is in
 [`docs/runbook.md §10`](docs/runbook.md).
 
+### North-star — what every PR moves
+
+Three pillars per
+[`GLOBAL-025`](docs/decisions/GLOBAL-025-north-star.md): **engine
+quality**, **seamless onboarding**, **seamless UX**. Every PR
+measurably advances at least one — name which KPI in the PR body.
+
+The bet: **great on free LLMs ⇒ invincible on frontier LLMs.** The
+scaffolding (planner, validator, plan-cache, schema retrieval, hedged
+race, trust UX) compounds with whatever model is underneath; the
+Spider 2.0 frontier at 5–23% EM in 2026 proves engine work, not
+model picking, is the moat. LLM strategy per
+[`GLOBAL-026`](docs/decisions/GLOBAL-026-llm-strategy-byollm-hosted-premium.md):
+free chain forever · BYOLLM every tier · hosted premium on paid
+(pure metered, 0% markup, no allowance).
+[`quality-eval`](docs/features/quality-eval/FEATURE.md) is promoted
+to Phase 2 and owns the free-vs-frontier delta as the headline
+number.
+
 ## 2. Five behavioral principles (non-negotiable)
 
 Apply these to every edit, regardless of what the user has asked for.
@@ -80,16 +99,9 @@ De-prioritize backward compatilibty and prioritze clean code - we are still in a
 
 ## 3. Tech stack (high-level)
 
-- **Runtime:** Cloudflare Workers (free tier — see `GLOBAL-013`)
-- **DB (Phase 0):** Neon Postgres (free tier)
-- **Auth:** Better Auth (`packages/auth-internal`)
-- **LLM:** Multi-provider router (`packages/llm`)
-- **Observability:** OpenTelemetry (`packages/otel`)
-- **Frontend:** React + Web Components (`apps/web`, `packages/elements`)
-- **Languages:** TypeScript everywhere; Workers-compatible bundles only
-- **Monorepo:** Bun workspaces
+Cloudflare Workers (free tier — `GLOBAL-013`) · Neon Postgres (Phase 0) · Better Auth (`packages/auth-internal`) · Multi-provider LLM router with three dispatch lanes per `GLOBAL-026` (`packages/llm`) · OpenTelemetry (`packages/otel`) · React + Web Components (`apps/web`, `packages/elements`) · TypeScript only (Workers-compatible bundles) · Bun workspaces.
 
-For the full stack rationale see [`docs/architecture.md`](docs/architecture.md) §1–§2.
+Full rationale: [`docs/architecture.md`](docs/architecture.md) §1–§2.
 
 ## 4. Project map
 
@@ -153,7 +165,7 @@ manually before editing.)
 | any `POST` / `PATCH` / `DELETE` handler | `docs/features/idempotency/FEATURE.md` |
 | `packages/otel/**`, new spans / metrics | `docs/features/observability/FEATURE.md` |
 | `apps/api/src/billing/**`, Stripe webhooks | `docs/features/stripe-billing/FEATURE.md` |
-| `apps/api/src/billing/premium/**`, `apps/api/src/ask/model-picker.ts`, `packages/llm/src/chains/paid.ts`, anything `model` preset / BYOK / spend-cap related | `docs/features/premium-tier/FEATURE.md` |
+| `apps/api/src/billing/premium/**`, `apps/api/src/ask/model-picker.ts`, `packages/llm/src/chains/{paid,premium}.ts`, anything `model` preset / BYOLLM / spend-cap / `api_keys.scope = "byollm"` / hosted-premium meter related | `docs/features/premium-tier/FEATURE.md` (+ `decisions/SK-PREMIUM-008-byollm.md`, `decisions/SK-PREMIUM-009-hosted-premium-meter.md`) |
 | `apps/events-worker/**`, `packages/events/**`, `apps/api/src/events-feature.ts`, `apps/api/src/ask/demand-signal.ts` | `docs/features/events-pipeline/FEATURE.md` |
 | `apps/api/src/workload-analyser/**`, `packages/db/src/clickhouse-tinybird/pipe-management.ts`, `apps/api/migrations/0008_workload_analyser_audit.sql` | `docs/features/engine-migration/FEATURE.md` |
 | rate-limit middleware (`apps/api/src/ask/rate-limit.ts`, `apps/api/src/principal.ts` `rateLimitBucketKey`, `apps/api/src/anon-rate-limit.ts`, `apps/api/src/anon-global-cap.ts`) | `docs/features/rate-limit/FEATURE.md` |
@@ -177,20 +189,20 @@ working in one directory.
 
 | File | What for |
 |---|---|
-| [`docs/decisions.md`](docs/decisions.md) + [`docs/decisions/`](docs/decisions/) | **Canonical** `GLOBAL-NNN` decisions. Index in `decisions.md`; one body per file under `decisions/`. Read before editing features. |
-| [`docs/feature-conventions.md`](docs/feature-conventions.md) | How `docs/features/` is structured. Read before adding/editing a feature. |
-| [`docs/architecture.md`](docs/architecture.md) | System architecture, surface specs, tech-stack rationale, risks. Phase plan extracted to `phase-plan.md`. |
-| [`docs/phase-plan.md`](docs/phase-plan.md) | **Canonical phase plan** — per-phase items, exit gates, the §6 monetization trigger that supersedes "Stripe in Phase 2". |
-| [`docs/runbook.md`](docs/runbook.md) | Operations: env vars, secrets, deploy, recovery. Design-partner reference (§10). |
-| [`docs/founder-playbook.md`](docs/founder-playbook.md) | Design-partner recruitment, Sean Ellis interview script, inbound triage SLA — the founder-time work that lives next to the engineering plan. |
+| [`docs/decisions.md`](docs/decisions.md) + [`decisions/`](docs/decisions/) | Canonical `GLOBAL-NNN`; index in `decisions.md`, body per file under `decisions/`. |
+| [`docs/feature-conventions.md`](docs/feature-conventions.md) | How `docs/features/` is structured. |
+| [`docs/architecture.md`](docs/architecture.md) | System architecture, surface specs, tech-stack rationale, risks. |
+| [`docs/phase-plan.md`](docs/phase-plan.md) | Canonical phase plan — per-phase items, exit gates with KPI floors, §6 monetization trigger. |
+| [`docs/runbook.md`](docs/runbook.md) | Operations: env vars, secrets, deploy, recovery. |
+| [`docs/founder-playbook.md`](docs/founder-playbook.md) | Design-partner recruitment, Sean Ellis interview, inbound triage. |
 | [`docs/performance.md`](docs/performance.md) | Span/metric/label catalog + perf goals. |
-| [`docs/guidelines.md`](docs/guidelines.md) | Code-review heuristics, the four habits. |
-| [`docs/progress.md`](docs/progress.md) | Platform integration tiers (P0–P3). |
+| [`docs/guidelines.md`](docs/guidelines.md) | Code-review heuristics. |
+| [`docs/progress.md`](docs/progress.md) | Surface matrix + platform integration tiers (P0–P3). |
 | [`docs/research-receipts.md`](docs/research-receipts.md) | Receipts for cited research. |
-| [`docs/competitors.md`](docs/competitors.md) | Competitive landscape — categories, threat matrix, gap analysis. |
-| [`docs/history/`](docs/history/) | Lessons learnt — one doc per operational topic (infra setup, Workers Versions GC, CI actions repo layout, etc.). |
-| [`docs/research/`](docs/research/) | Strategic research — personas, LLM credits plan, email & marketing strategy, Phase 1 exit criteria, open design questions. |
-| [`docs/future/`](docs/future/) | Forward-looking plans not yet promoted to a feature — semantic-layer adoption, etc. Promote into the relevant feature once decisions are firm. |
+| [`docs/competitors.md`](docs/competitors.md) | Competitive landscape, threat matrix, gap analysis. |
+| [`docs/history/`](docs/history/) | Lessons learnt — one doc per operational topic. |
+| [`docs/research/`](docs/research/) | Strategic research — personas, LLM credits plan, marketing, Phase 1 exit criteria. |
+| [`docs/future/`](docs/future/) | Forward-looking plans; promote into a feature when decisions firm up. |
 
 These exist for depth; they are not loaded into every session by
 default. The `docs/features/` directory is the front door for any
@@ -200,44 +212,35 @@ canonical status.
 ## 7. Common commands
 
 ```bash
-bun install                    # install workspaces
-bun run dev                        # run all dev servers (apps/*)
-bun run test                       # run all tests
-bun run typecheck                  # type-check the workspace
-bun run lint                       # lint
-bun run build                      # build all packages
-
-# bundle budget check (GLOBAL-013)
-bun run --filter apps/api build && wrangler deploy --dry-run --outdir=/tmp/out
+bun install                                                                # workspaces
+bun run dev | test | typecheck | lint | build                              # workspace-wide
+bun run --filter apps/api build && wrangler deploy --dry-run --outdir=/tmp/out  # bundle budget (GLOBAL-013)
 ```
 
-Per-package commands are in each area's `AGENTS.md`.
+Per-package commands in each area's `AGENTS.md`.
 
 ## 8. Quality gates before opening a PR
 
 > **Format and lint before every commit.**
 
 1. `bun run typecheck && bun run lint && bun run test` all green.
-2. Every new decision has an ID (`GLOBAL-NNN` or `SK-<FEATURE>-NNN`)
-   and is in its canonical home (`docs/decisions/GLOBAL-NNN-<slug>.md`
-   for `GLOBAL` plus a row in `docs/decisions.md`,
-   `docs/features/<feature>/FEATURE.md` for `SK`). Features reference
-   GLOBALs by ID; they don't duplicate the body
-   (`docs/feature-conventions.md` §5).
-3. No `### GLOBAL-NNN` block exists under `docs/features/` — only
-   reference lines in `## GLOBALs governing this feature` sections.
+2. Every new decision has an ID in its canonical home: `GLOBAL` →
+   `docs/decisions/GLOBAL-NNN-<slug>.md` + a row in `docs/decisions.md`;
+   `SK-<FEATURE>-NNN` → `docs/features/<feature>/FEATURE.md` (or that
+   feature's `decisions/<id>.md` shard for long ones). Features
+   reference GLOBALs by ID, not body (`docs/feature-conventions.md` §5).
+3. No `### GLOBAL-NNN` block under `docs/features/` — only ref lines.
    Verify: `grep -rn '^### GLOBAL-' docs/features/` prints nothing.
 4. Every new external call has an OTel span (`GLOBAL-014`).
 5. Every mutating endpoint accepts `Idempotency-Key` (`GLOBAL-005`).
-6. New capability added → SDK + CLI + MCP + elements all updated, or
-   gap tracked in the affected feature (`GLOBAL-003`).
+6. New capability → SDK + CLI + MCP + elements all updated, or gap
+   tracked (`GLOBAL-003`).
+7. PR body names the [`GLOBAL-025`](docs/decisions/GLOBAL-025-north-star.md)
+   KPI the change moves (engine quality, onboarding, or UX).
 
 ## 9. When in doubt
 
-- Read the relevant `FEATURE.md` first.
-- Then the per-GLOBAL file under `docs/decisions/` for any cited
-  `GLOBAL-NNN` (the index in `docs/decisions.md` links to each).
-- Then ask the user. Don't guess across a documented decision.
+Read the relevant `FEATURE.md` first, then any cited GLOBAL's file under `docs/decisions/`, then ask the user. Don't guess across a documented decision.
 
 ## 10. Workflow — features and bug fixes
 

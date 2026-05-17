@@ -15,6 +15,7 @@ when-to-load:
 
 **One-liner:** User-surface trust rules — diff preview on writes, visible SQL trace on every response, refuse-on-low-confidence on plans.
 **Status:** partial (Phase 1.5) — SK-TRUST-001 + SK-TRUST-002 shipped end-to-end on `/v1/ask` + `@nlqdb/sdk` + `apps/web` chat. SK-TRUST-001 covers the `/v1/ask` write path (INSERT/UPDATE/DELETE): preview hop returns `requires_confirm: true` + a diff, the confirm hop commits. DDL preview via `db-create` is deferred — the create flow provisions atomically today; adding a confirm step is its own slice (see Open Questions). SK-TRUST-003 (confidence floor) remains placeholder until `quality-eval` lands. Cross-surface gap: `<nlq-data>` `el.trace`, MCP `confirm_required` shape, and the `nlq` CLI diff render are deferred (those surfaces don't exist yet). **Phase 1.5 telemetry slice:** `GLOBAL-024` demand-signal events are now wired end-to-end — `SK-EVENTS-010` (implicit emits: `feature.requested.ddl_via_ask`, `feature.requested.heavier_tier`, `nlqdb.surface` OTel attribute) and `SK-EVENTS-011` (`home.surface_wishlist` from the marketing CodePanel) together close the Phase 1.5 capture-pipe exit gate. Design locked in [`GLOBAL-023`](../../decisions/GLOBAL-023-trust-ux-baseline.md); implementation lands across `ask-pipeline`, `web-app`, `cli`, `elements`, and `mcp-server` features in the Phase 1.5 slice (see [`phase-plan.md` §3](../../phase-plan.md)).
+**Contribution to north-star:** **Seamless UX** — this feature owns the UX KPIs in [`GLOBAL-025`](../../decisions/GLOBAL-025-north-star.md): destructive-op retry rate (`SK-TRUST-001`), recoverable-failure recovery rate, refuse-vs-hallucinate ratio. `SK-TRUST-004` adds the instrument so the KPIs become numbers not adjectives.
 **Owners (code):** cross-cutting — see touchpoints.
 **Cross-refs:** [`docs/decisions/GLOBAL-023-trust-ux-baseline.md`](../../decisions/GLOBAL-023-trust-ux-baseline.md) (canonical) · [`docs/phase-plan.md §3`](../../phase-plan.md) (Phase 1.5 placement) · `ask-pipeline/FEATURE.md` (the pipeline that emits trace + confidence) · `sql-allowlist/FEATURE.md` (the parser-level guardrail that trust UX sits on top of — see [`research-receipts.md §1`](../../research-receipts.md) for the server-side guardrail rationale; the user-surface rationale lives in this feature)
 
@@ -63,18 +64,28 @@ when-to-load:
   - Single global floor (0.7) — under-serves Tier 1 (forces unnecessary refusals on cheap-tier classify) and over-serves Tier 3 (lets bad Opus plans through).
   - Re-prompt the LLM at lower temperature — the bad-plan rate is dominated by ambiguity in the user goal, not LLM stochasticity; re-rolling rarely helps.
 
+### SK-TRUST-004 — Instrument the three UX KPIs in [`GLOBAL-025`](../../decisions/GLOBAL-025-north-star.md); baseline by 2026-06-01
+
+- **Decision:** Add three explicit instruments. (1) **Destructive-op retry rate** — `feature.destructive.preview_rendered` and `feature.destructive.committed` events fire per `SK-TRUST-001` preview hop and commit hop; retry rate is `1 − (committed / preview_rendered)`. Captured per surface (`nlqdb.surface` label per [`phase-plan.md §3`](../../phase-plan.md)). (2) **Refuse-vs-hallucinate ratio** — every `low_confidence` refusal emits `feature.plan.refused`; every "answer looked plausible but was wrong" caught by `quality-eval` (`SK-QUAL-003` internal eval) labels the plan `nlqdb.plan.hallucinated = true` post-hoc. Ratio = `refused / hallucinated` per week. (3) **Recoverable-failure recovery rate** — derived from existing [`GLOBAL-022`](../../decisions/GLOBAL-022-recoverable-failures-retry-to-success.md) spans; new metric `nlqdb.recovery.rate{surface}` = `recovered / (recovered + surfaced_to_user)`. Baselines for all three by **2026-06-01** (same date as `SK-ONBOARD-005` and `SK-QUAL-005`).
+- **Core value:** Bullet-proof, Honest latency
+- **Why:** [`GLOBAL-025`](../../decisions/GLOBAL-025-north-star.md) names trust-UX as one of three north-star pillars. The three KPIs above are the smallest set that distinguishes the orthogonal UX failure modes: "user mass-deleted by accident" (retry rate captures whether the preview prevented it), "system answered confidently and wrong" (refuse-vs-hallucinate captures whether `SK-TRUST-003` is calibrated right), and "system surfaced a fixable error to the user" (recovery rate captures the `GLOBAL-022` promise). Without explicit emissions, the Phase 1.5 exit-gate language "measurably reduces the destructive-op retry rate" is unprovable.
+- **Consequence in code:** `apps/api/src/ask/` emits `feature.destructive.*` on the preview/commit boundary already established by `SK-TRUST-001`; one-line addition. The `nlqdb.plan.hallucinated` label is written by the `quality-eval` post-hoc grader (`SK-QUAL-003` internal eval flow). The recovery-rate metric is derived in `tools/eval/cron.ts` from existing OTel spans; no new emission needed. Grafana panel `trust-ux-kpis` is the canonical view; weekly cron summarizes into LogSnag `#north-star`. The Phase 1.5 exit-gate language in [`phase-plan.md §3`](../../phase-plan.md) is closed when the first weekly snapshot lands a non-null number for all three.
+- **Alternatives rejected:** Per-PR regression gate (already rejected by `SK-QUAL-002` for the same gameable-benchmark reason). Survey-based UX measurement (response rate <5% on free-tier; Sean-Ellis stays the qualitative spine per [`founder-playbook.md §2`](../../founder-playbook.md), but the three KPIs above are the quantitative spine). Skip the refuse-vs-hallucinate ratio (the dangerous metric to skip — a model that refuses too little but is also wrong less often looks "good" on naive accuracy alone).
+
 ## GLOBALs governing this feature
 
-Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; index in [`docs/decisions.md`](../../decisions.md)).
+Canonical text in [`docs/decisions/`](../../decisions/) (index in [`docs/decisions.md`](../../decisions.md)).
 
-- **GLOBAL-011** — Honest latency — show the live trace; never spinner-lie.
-  - *In this feature:* The `trace` block is the textual form of the live-trace promise; the live-trace WebSocket events are the visual form. Both must agree.
-- **GLOBAL-012** — Errors are one sentence with the next action.
-- **GLOBAL-015** — Power users always have an escape hatch (raw SQL).
-  - *In this feature:* The `low_confidence` refusal response includes a `raw_sql_hint` field — the user can copy the partial plan to `/v1/run` and edit it themselves.
-- **GLOBAL-022** — Recoverable failures retry to success — never surface a fixable error.
-  - *In this feature:* `low_confidence` is *not* recoverable by retry — it's a user-clarification need, not a transient failure. Surfaces must distinguish the two.
-- **GLOBAL-023** — Trust UX baseline. *(This feature is the implementation of `GLOBAL-023`.)*
+- **GLOBAL-011** — Honest latency.
+  - *In this feature:* The `trace` block is the textual form; live-trace WebSocket events are the visual form. Both must agree.
+- **GLOBAL-012** — One-sentence errors.
+- **GLOBAL-015** — Power-user escape hatch (raw SQL).
+  - *In this feature:* `low_confidence` refusals include a `raw_sql_hint` field.
+- **GLOBAL-022** — Recoverable failures retry to success.
+  - *In this feature:* `low_confidence` is *not* recoverable by retry — user-clarification need. Distinguish from transient failure.
+- **GLOBAL-023** — Trust UX baseline. *(This feature implements it.)*
+- **GLOBAL-025** — North-star: engine quality, onboarding, UX.
+  - *In this feature:* this feature *is* the UX pillar. `SK-TRUST-004` instruments the KPIs.
 
 ## Open questions / known unknowns
 

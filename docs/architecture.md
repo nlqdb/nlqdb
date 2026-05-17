@@ -314,16 +314,17 @@ Hashed with Argon2id; last 4 chars cleartext for display. No plaintext retrieval
 
 ## 5. Pricing
 
-Canonical: `GLOBAL-013` (strict-$0 free tier). Stripe ingest and subscription state decisions in `stripe-billing/FEATURE.md`. Premium-model routing in `premium-tier/FEATURE.md`.
+Canonical: `GLOBAL-013` (strict-$0 free tier) + [`GLOBAL-026`](./decisions/GLOBAL-026-llm-strategy-byollm-hosted-premium.md) (three permanent LLM lanes: free chain + BYOLLM + hosted premium). Stripe ingest in `stripe-billing/FEATURE.md`; premium routing + BYOLLM in `premium-tier/FEATURE.md`.
 
 **Constraint:** a real user must be able to ship a real product without paying us.
 
 | Tier | Price | Limits | Card |
 |---|---|---|---|
-| **Free** | $0 forever | 1k queries/mo, 500MB/DB, pause after 7d idle (resume <2s), 7-day backups | No |
+| **Free** | $0 forever | 1k queries/mo, 500MB/DB, pause after 7d idle (resume <2s), 7-day backups. Free LLM chain forever per `GLOBAL-026`. | No |
 | **Hobby** | $10/mo | 50k queries/mo, 5GB/DB, no pausing, 30-day backups, email support | Yes |
-| **Pro** | $25/mo min + usage | $0.0005/query over 50k, $0.10/GB-mo over 5GB; hard cap opt-in. LLM tokens **not** metered — Pro uses the strict-$0 chain same as Free | Yes |
-| **Premium models** (add-on, Hobby+) | Pay-per-token | Frontier routing (Claude Sonnet 4.6 / GPT-5) for hard-plan queries. Provider list + 0% markup. The **only** thing that produces an LLM-tokens invoice line | Yes |
+| **Pro** | $25/mo min + usage | $0.0005/query over 50k, $0.10/GB-mo over 5GB; hard cap opt-in. Retention-off routing per `SK-LLM-008`. | Yes |
+| **Premium models** (add-on, Hobby+) | Pure metered | Frontier routing (Claude Sonnet 4.6 / GPT-5 / Gemini 2.5 Pro). Provider list + 0% markup, **no included allowance** — first token costs real money per `SK-PREMIUM-009`. §6-gated meter. | Yes |
+| **BYOLLM** (any tier including Free) | $0 from us | Paste an Anthropic / OpenAI / Gemini / OpenRouter key in `/app/keys`; routes through your provider at 0% markup. Per `SK-PREMIUM-008`. | No |
 | **Enterprise** | Custom | VPC peering, SAML SSO, audit-log export, on-prem | Annual |
 
 **Honest billing rules:** no card for free tier, ever. Hitting a limit rate-limits — never silently upgrades. Soft cap email at 80%; hard cap default at 100%. Export always free. Cancellation is one click, no call, no exit survey.
@@ -387,45 +388,31 @@ Canonical: `llm-router/FEATURE.md` (`SK-LLM-001..011`). Tables below are at-a-gl
 | Embeddings | Cloudflare Workers AI — bge-base-en-v1.5 | 10,000 Neurons/day | No |
 | Universal fallback | OpenRouter — `qwen/qwen3-coder:free` (plan / schema_infer); Llama 3.x `:free` (route / summarize) | 50 RPD anon / 1,000 RPD after a one-time $10 deposit | No (deposit unlocks the 1k tier and is kept even if balance falls to $0) |
 
-**Capacity:** ~500 plan generations/day + ~14,400 classifications/day → ~2–4k user queries/day after the plan cache. Covers Phase 1 with headroom.
+**Capacity:** ~500 plan/day + ~14,400 classify/day → ~2–4k user queries/day after plan cache. Covers Phase 1 with headroom. **Total Day-1 cost: $0.**
 
-**Total cost to add intelligence Day 1: $0.**
-
-Env vars: `GEMINI_API_KEY`, `GROQ_API_KEY`, `CF_AI_TOKEN`, `OPENROUTER_API_KEY`.
+Env vars: `GEMINI_API_KEY`, `GROQ_API_KEY`, `CF_AI_TOKEN`, `OPENROUTER_API_KEY`. The free chain stays the **permanent** free-tier path per [`GLOBAL-026`](./decisions/GLOBAL-026-llm-strategy-byollm-hosted-premium.md); BYOLLM + hosted-premium are the upgrade paths.
 
 ### 7.2 Cost-control mitigations, in priority order
 
-Features reference these by number (e.g. "cost-control rule 3"). Canonical detail in `llm-router/FEATURE.md`.
+Features reference by number (e.g. "rule 3"). Canonical detail in `llm-router/FEATURE.md`.
 
-1. **Plan cache by fingerprint — 60–80% hit rate, bypasses LLM entirely.** Every `/v1/ask` request hits the plan cache before any LLM call. Cache key = `(schema_hash, query_fingerprint)`. Expected steady-state hit rate 60–80%; covers the majority of production traffic with no model cost. (`SK-LLM-010`, `GLOBAL-006`)
-2. **Small-model first, big-model on fallback.** Hot-path classification and summarization run on the cheapest tier (Tier 1). The plan tier (Tier 2, Claude Sonnet 4.6) fires only on cache miss. Hard-plan reasoning (Tier 3, Opus 4.7) handles ≤5% of queries. (`SK-LLM-001`)
-3. **Prompt caching on every provider that supports it — ~80% input-token reduction.** System prompts and few-shot examples are pinned and sent with provider prompt-caching headers (Anthropic `cache_control`, OpenAI cached tokens, AI Gateway response cache). Repeated schema-context tokens cost near-zero after the first call. (`SK-LLM-009`)
-4. **No summarization for structured-output (API) callers.** When the caller sets `Accept: application/json`, the summarize step is skipped entirely. Summarization is a UX feature for chat surfaces, not a correctness requirement. (`SK-ASK-005`)
-5. **Self-host the classifier at ~50 k queries/day.** Once classify-tier hosted cost crosses the flat-Modal threshold (~50 k/day), a quantized 8B Llama on a single A10G (~$200/mo) replaces the per-call Groq cost. Plan and hard tiers stay on hosted providers indefinitely. (`SK-LLM-011`)
+1. **Plan cache by fingerprint — 60–80% hit rate.** Every `/v1/ask` hits the cache before any LLM call. Key = `(schema_hash, query_fingerprint)`. (`SK-LLM-010`, `GLOBAL-006`)
+2. **Small-model first, big-model on fallback.** Tier 1 (classify/summarize) on cheapest; Tier 2 (plan) only on cache miss; Tier 3 (hard) ≤ 5%. (`SK-LLM-001`)
+3. **Prompt caching — ~80% input reduction.** Pinned system prompts + few-shot via Anthropic `cache_control` / OpenAI cached tokens / AI Gateway response cache. (`SK-LLM-009`)
+4. **No summarization for API callers.** `Accept: application/json` skips summarize. (`SK-ASK-005`)
+5. **Self-host classifier at ~50k queries/day.** Quantized 8B Llama on A10G (~$200/mo) replaces per-call Groq once flat-cost crosses. (`SK-LLM-011`)
 
 ---
 
 ## 8. What we are NOT building
 
-To avoid scope creep — these are deliberate decisions, not oversights. Re-evaluate after Phase 3 exit gate, not before.
+Deliberate scope exclusions. Re-evaluate after Phase 3 exit gate, not before.
 
-- A visual schema editor (the schema is invisible)
-- A query builder (you type English)
-- A migrations tool (schemas only widen; `nlq new` makes a fresh DB for schema breaks)
-- A mobile app (web app is responsive; that's enough)
-- A "low-code" workflow builder (`<nlq-data>` is the workflow builder)
-- A dashboard / BI product (showcase examples exist; the platform is not a BI tool)
-- On-prem before Phase 4
-- Real-time subscriptions / changefeeds (Phase 2 as `<nlq-stream>`)
-- A GraphQL API (REST + embed + MCP are enough)
-- A "Sign in with nlqdb" identity provider
+Not building: visual schema editor (schema is invisible) · query builder (you type English) · migrations tool (schemas only widen; `nlq new` for breaks) · mobile app (web is responsive) · low-code workflow builder (`<nlq-data>` is it) · BI product (showcase examples only) · on-prem before Phase 4 · real-time subscriptions (Phase 2 as `<nlq-stream>`) · GraphQL API · "Sign in with nlqdb" IdP.
 
-**What we deliberately reinvent** (the rest is boring-tool choices):
-1. **The query router** — no existing router picks between PG / ClickHouse / Redis / D1 based on a live workload fingerprint.
-2. **The NL → plan compiler** — existing text-to-SQL libraries are demos; they don't handle schema drift, don't stream, don't do multi-engine, don't expose trace.
-3. **The migration orchestrator with dual-read verification** — no off-the-shelf tool does cross-engine migration safely.
+**Deliberately reinvent:** (1) **query router** — no existing router picks between PG / ClickHouse / Redis / D1 from a live workload fingerprint; (2) **NL → plan compiler** — existing text-to-SQL libraries are demos (no schema drift, no streaming, no multi-engine, no trace); the scaffolding here is the engine-quality moat per [`GLOBAL-025`](./decisions/GLOBAL-025-north-star.md); (3) **migration orchestrator with dual-read verification** — no off-the-shelf tool does cross-engine safely.
 
-**What we do NOT reinvent:** auth (Better Auth), payments (Stripe + Lago), transport (MCP TypeScript SDK), SQL parsers (`pg_query`, `sqlparser-rs`).
+**Do NOT reinvent:** auth (Better Auth), payments (Stripe + Lago), transport (MCP TypeScript SDK), SQL parsers (`pg_query`, `sqlparser-rs`).
 
 ---
 
@@ -452,8 +439,10 @@ jobs:
 ## 10. Phase plan
 
 Moved to its own file to keep this doc under the 20 KB D4 shard cap.
-The phase plan is the canonical roadmap: items per phase, exit gates,
-the §6 monetization trigger that supersedes the old "Stripe in Phase 2".
+The phase plan is the canonical roadmap: items per phase, exit gates
+(KPI-floor-driven per [`GLOBAL-025`](./decisions/GLOBAL-025-north-star.md)),
+the §6 monetization trigger gating Stripe live + the hosted-premium
+LLM meter per [`GLOBAL-026`](./decisions/GLOBAL-026-llm-strategy-byollm-hosted-premium.md).
 
 → [**`./phase-plan.md`**](./phase-plan.md)
 
@@ -469,34 +458,34 @@ We lean toward tools with real APIs, generous free tiers, and no mandatory UI st
 |---|---|---|
 | **Postgres (Neon)** | ✅ primary | Branching, serverless, generous free tier, HTTP API. |
 | **Postgres (Supabase)** | ⚠️ backup | Great DX but opinionated (auth, storage bundled). |
-| **Postgres (RDS/Aurora)** | ❌ Phase 2+ at scale | Slow to provision, expensive idle. |
-| **Postgres (self-hosted on Fly)** | ✅ considered | Full control, API-provisionable. Heavier operationally. |
-| **SQLite (Turso / libSQL)** | ✅ edge + small DBs | Replicated, HTTP API, very cheap. |
-| **ClickHouse (Tinybird)** | ✅ second engine | Free 10 GB / 1 k reads/day; Pipes = daily-reshape. |
+| **Postgres (RDS/Aurora)** | ❌ Phase 2+ | Slow to provision, expensive idle. |
+| **Postgres (self-hosted on Fly)** | ✅ considered | API-provisionable; heavier ops. |
+| **SQLite (Turso / libSQL)** | ✅ edge + small DBs | Replicated, HTTP, cheap. |
+| **ClickHouse (Tinybird)** | ✅ second engine | Free 10 GB / 1k reads/day; Pipes. |
 | **Redis (Upstash)** | ✅ deferred | HTTP; counters/leaderboards. |
 | **pgvector** | ✅ default vector | Stays in PG. |
-| **TimescaleDB** | ✅ time-series default | PG extension — no new engine. |
-| **MongoDB Atlas** | ⚠️ | Good API, tiny free tier. Prefer JSONB on PG unless must. |
+| **TimescaleDB** | ✅ time-series | PG extension. |
+| **MongoDB Atlas** | ⚠️ | Tiny free tier; prefer JSONB on PG. |
 | **FaunaDB** | ❌ | Vendor lock + pricing opacity. |
-| **PlanetScale** | ❌ post-Vitess changes | Re-evaluate later. |
+| **PlanetScale** | ❌ post-Vitess | Re-evaluate later. |
 
 ### Hosting / compute
 
 | Candidate | Verdict | Notes |
 |---|---|---|
-| **Cloudflare Workers + R2 + D1** | ✅ edge + cheap egress | R2 zero egress is huge for us. |
-| **Fly.io Machines** | ✅ primary long-running compute | API-first, per-second billing. |
-| **Vercel** | ✅ frontend only | Not for stateful workloads. |
-| **AWS** | ❌ Phase 1 | Too heavy, too slow to iterate. Revisit Phase 3 for enterprise. |
-| **Modal** | ✅ LLM workers | Great Python API, scales to zero. |
+| **Cloudflare Workers + R2 + D1** | ✅ edge + zero egress | R2 zero egress is huge. |
+| **Fly.io Machines** | ✅ long-running compute | API-first, per-second billing. |
+| **Vercel** | ✅ frontend only | Not for stateful. |
+| **AWS** | ❌ Phase 1 | Too heavy; revisit Phase 3 for enterprise. |
+| **Modal** | ✅ LLM workers | Python API, scales to zero. |
 
 ### Auth
 
 | Candidate | Verdict |
 |---|---|
 | **Better Auth** (TS, OSS, MIT) | ✅ chosen — see `auth/FEATURE.md` |
-| **Clerk** | ❌ per-MAU pricing cliff, user-shape lock-in |
-| **WorkOS AuthKit** | ⚠️ keep for enterprise SSO later |
+| **Clerk** | ❌ per-MAU pricing cliff |
+| **WorkOS AuthKit** | ⚠️ enterprise SSO later |
 | **Supabase Auth** | ❌ pulls in whole Supabase |
 
 ### Payments
@@ -511,10 +500,10 @@ We lean toward tools with real APIs, generous free tiers, and no mandatory UI st
 
 | Candidate | Verdict |
 |---|---|
-| **Anthropic (Claude)** | ✅ primary — reasoning + tool-use quality |
-| **OpenAI** | ✅ fallback + cheap-small-model tier |
-| **Groq / Fireworks / Together** | ✅ cheap classifier models (latency wins) |
-| **Local (Llama via vLLM)** | ✅ schema-embedding + hot-path classifier once traffic justifies |
+| **Anthropic (Claude)** | ✅ premium primary — reasoning + tool-use |
+| **OpenAI** | ✅ premium fallback + cheap-small tier |
+| **Gemini / Groq / Workers-AI / OpenRouter** | ✅ free chain (`SK-LLM-003`) — latency-win classifier + 70%-accurate plan |
+| **Local (Llama via Modal)** | ✅ hot-path classifier at ~50k qpd (`SK-LLM-011`) |
 
 ---
 
@@ -522,13 +511,13 @@ We lean toward tools with real APIs, generous free tiers, and no mandatory UI st
 
 | Risk | Likelihood | Mitigation |
 |---|---|---|
-| LLM costs kill margins | High | Plan cache (60–80% hit rate); small-model-first chain; local classifier once traffic justifies. |
+| LLM costs kill margins | High | Free tier on strict-$0 chain forever (`GLOBAL-026`); plan cache (60–80% hit rate); BYOLLM passes through heavy users; hosted-premium is pure metered. |
 | Cross-engine migration corrupts data | Medium | Dual-read verification, staged rollout, chaos tests, reversible cutover. |
-| "Simple" is too simple for serious workloads | Medium | Always-available escape hatches: raw connection string, raw SQL, raw Mongo. |
-| LLM hallucinates column names → confident wrong answers | High | Static schema validation after plan gen; confidence gate; structured output. |
-| Free-tier abuse | Medium | Per-IP + per-account rate limits day 1; PoW on signup if needed; anomaly detection Phase 2. |
-| Vendor lock (Neon, Anthropic) | Medium | Adapter layer for each; quarterly "can we swap this in a week" drill. |
-| Someone ships a better text-to-SQL inside Postgres in 18 months | Real | Our moat is multi-engine auto-migration, not NL→SQL. Stay focused on Phase 3. |
+| "Simple" is too simple for serious workloads | Medium | Escape hatches: raw connection string, raw SQL, raw Mongo. |
+| LLM hallucinates column names → confident wrong answers | High | Static schema validation; confidence gate; structured output; `quality-eval` refuse-vs-hallucinate ratio (`SK-TRUST-004`). |
+| Free-tier abuse | Medium | Per-IP + per-account rate limits day 1; PoW on signup if needed. |
+| Vendor lock (Neon, Anthropic) | Medium | Adapter layer; quarterly swap drill. |
+| Someone ships a better text-to-SQL inside Postgres in 18 months | Real | Two moats, both per [`GLOBAL-025`](./decisions/GLOBAL-025-north-star.md): (a) **engine-quality scaffolding** (planner, validator, plan-cache, schema retrieval, hedged race, trust UX) measured by `quality-eval`'s free-vs-frontier delta — compounds with every model release; (b) multi-engine auto-migration in Phase 3. NL→SQL accuracy *is* a moat — but the moat is the scaffolding, not the underlying model. |
 | Competitors with deeper pockets (Supabase, Vercel, MongoDB) | High | We out-focus them. They sell platforms; we sell one experience. |
 
 ---
