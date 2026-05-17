@@ -1,6 +1,6 @@
 ---
 name: premium-tier
-description: The hosted-premium and BYOLLM lanes of the LLM router per GLOBAL-026 — frontier-model routing (Claude Sonnet 4.6 / Opus 4.7 / GPT-5) on paid plans, pure-metered at provider list + 0% markup, plus paste-your-key BYOLLM on every tier; surface-parity model picker, per-key spend cap.
+description: The hosted-premium and BYOLLM lanes of the LLM router per GLOBAL-026 — frontier-model routing (Claude Sonnet 4.6 / Opus 4.7 / GPT-5) on paid plans, flat sub + included monthly request allowance + soft-meter overage at provider list + 0% markup, plus paste-your-key BYOLLM on every tier; surface-parity model picker, per-key spend cap.
 when-to-load:
   globs:
     - apps/api/src/billing/premium/**
@@ -14,7 +14,7 @@ when-to-load:
 
 # Feature: Premium Tier (premium-models add-on)
 
-**One-liner:** The hosted-premium and BYOLLM lanes of the LLM router per [`GLOBAL-026`](../../decisions/GLOBAL-026-llm-strategy-byollm-hosted-premium.md). Premium = frontier-model routing (Claude Sonnet 4.6 / Opus 4.7 / GPT-5) on paid plans, pure-metered at provider list + 0% markup with no included allowance. BYOLLM = paste-your-key on any tier (free included). Surface-parity model picker, per-key spend cap, and the in-context upgrade CTA.
+**One-liner:** The hosted-premium and BYOLLM lanes of the LLM router per [`GLOBAL-026`](../../decisions/GLOBAL-026-llm-strategy-byollm-hosted-premium.md). Premium = frontier-model routing (Claude Sonnet 4.6 / Opus 4.7 / GPT-5) on paid plans — **flat subscription + included monthly request allowance + soft-meter overage** at provider list + 0% markup (Hobby ≈ 200 premium requests/mo, Pro ≈ 600 — calibrated against cost-per-query data per `SK-PREMIUM-010`). BYOLLM = paste-your-key on any tier (free included). Surface-parity model picker, per-key spend cap, and the in-context upgrade CTA.
 **Status:** partial — BYOLLM (SK-PREMIUM-008) ships in Phase 2; hosted-premium architectural slot (router precedence, schema, span names) lands in the same slice but the **meter stays dark** until the [`phase-plan.md §6`](../../phase-plan.md) trigger trips. SK-PREMIUM-001…007 are design-locked; meter-firing code is gated behind §6.
 **Contribution to north-star:** **Engine quality** (hosted-premium lights up the frontier dispatch lane that [`quality-eval`](../quality-eval/FEATURE.md) measures the delta against; BYOLLM keeps heavy-eval-signal users inside the product) and **UX** (per-key spend cap + "answer-first never block" CTA keep the upgrade moment from becoming a paywall).
 **Owners (code):** none yet — `apps/api/src/billing/**`, `apps/api/src/ask/**`, `packages/llm/**`, `apps/web/**`, `cli/`, `packages/sdk/**`, `packages/elements/**`, `packages/mcp/**` will all carry slices.
@@ -88,16 +88,9 @@ Planned: `apps/api/src/billing/premium/**` (pricing, metering, spend-cap), `apps
 
 ### SK-PREMIUM-006 — Per-key spend cap is mandatory; default 100% hard at sign-up; one-click extension
 
-- **Decision:** Every `(DB, API key)` pair with premium enabled carries a monthly spend cap denominated in USD. Default cap on opt-in is the user-set monthly budget (defaults to **$10/key/mo**); soft cap fires at 80% (email warning), hard cap defaults to 100% (router falls through to the strict-$0 chain and emits `nlqdb.premium.hard_cap_hit.total{customer_id, db_id, key_id}`). Hard cap extension is one click in the dashboard, generates an email confirmation, and applies for the remainder of the billing period only (resets next period). Cap can be raised via API but never silently — every change emits `billing.premium_cap_changed` to LogSnag.
-- **Core value:** Bullet-proof, Honest latency
-- **Why:** Pay-per-token without a cap is the runaway-bill story that breaks the "no surprise $4,000 bills. Ever." promise in `docs/architecture.md §5`. A cap that defaults to "off" or to a high number is the same risk re-shaped. Hard-falling-through to the strict-$0 chain at 100% (instead of 4xx-erroring) is the consequence of the goal-first stance in `SK-PREMIUM-003` — the user gets *an* answer, just not the frontier-model one. The 30-day extension reset prevents drift toward "everyone has $1k caps after a year."
-- **Consequence in code:** `apps/api/src/billing/premium/cap.ts` enforces the cap inline in the `/v1/ask` pipeline before the LLM router is invoked; over-cap requests rewrite the chain selector to `free` and add a `cap_hit: true` field to the response trace. The KV-cached lookup from `SK-PREMIUM-001` carries `cap_usd_cents` and `period_spent_cents`; `period_spent_cents` increments via the metering write from `SK-PREMIUM-002` (with `ctx.waitUntil`). Extension endpoint is `POST /v1/billing/premium/cap/extend { db_id, key_id, new_cap_usd }` with `Idempotency-Key` per `GLOBAL-005`. Telemetry: `nlqdb.premium.spend_usd_cents{customer_id, db_id, key_id, period}` gauge + `nlqdb.premium.cap_hit.total` counter (cardinality budget per `docs/performance.md §3.3`).
-- **Alternatives rejected:**
-  - 4xx error at hard cap — strands the user mid-task with no answer; the goal-first stance prefers a graceful chain fallback.
-  - Soft cap only (warn but never stop) — produces the runaway bill in the worst case; rejected for the pricing-honesty stance.
-  - Cap denominated in tokens not USD — token prices change; USD is the unit the user commits to. Internal accounting can use tokens; the user-facing cap is dollars.
-  - Account-level cap instead of per-key — collides with `SK-PREMIUM-001`'s per-(DB, key) granularity; a per-key cap is the smaller blast radius.
-- **Source:** docs/architecture.md §5 (honest billing rules) · docs/architecture.md §6 (per-key spend cap) · `docs/features/rate-limit/FEATURE.md` (open: spend cap)
+**Body:** [`decisions/SK-PREMIUM-006-per-key-spend-cap.md`](./decisions/SK-PREMIUM-006-per-key-spend-cap.md).
+
+Per-`(DB, API key)` USD spend cap, default $10/key/mo. Soft warn at 80%, hard fall-through to strict-$0 at 100% (never 4xx). One-click extension applies only for the current billing period. Under `SK-PREMIUM-009`'s Shape B, the cap applies to **overage spend after allowance exhaustion**; included-allowance requests don't tick the cap.
 
 ### SK-PREMIUM-007 — Plan cache stays product-funded; cap accounting starts at the LLM call site
 
@@ -131,10 +124,10 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
   - *In this feature:* The `model` preset is the single way to express "I want better accuracy on this DB" — no parallel `--accuracy=high` flag, no `priority=premium` overload of the existing priority hint.
 - **GLOBAL-019** — Free + Open Source core (Apache-2.0); Cloud is convenience, not a moat.
   - *In this feature:* The 0% markup in `SK-PREMIUM-002` is the consequence — we explicitly compete with self-hosting. Markup is a future decision that must be re-justified, not a default that drifts upward.
-- **GLOBAL-025** — North-star: engine quality, onboarding, UX.
-  - *In this feature:* Hosted-premium lights up the frontier dispatch lane that `quality-eval` measures the free-vs-frontier delta against. BYOLLM keeps the heaviest eval-signal users inside the product. Per-key spend cap (`SK-PREMIUM-006`) and "answer-first never block" CTA (`SK-PREMIUM-004`) are UX-quality contributions.
+- **GLOBAL-025** — North-star: engine quality (NL→SQL + data-engine layers), onboarding, UX.
+  - *In this feature:* Hosted-premium lights up the frontier dispatch lane that `quality-eval` measures the **NL→SQL free-vs-frontier delta** against. BYOLLM keeps the heaviest eval-signal users inside the product. Per-key spend cap (`SK-PREMIUM-006`), allowance guardrails (`SK-PREMIUM-010`), the explicit exhaustion policy (`SK-PREMIUM-011`), and "answer-first never block" CTA (`SK-PREMIUM-004`) are UX-quality contributions.
 - **GLOBAL-026** — LLM strategy: free chain forever, BYOLLM for everyone, hosted premium on paid.
-  - *In this feature:* This GLOBAL is the *parent* of `SK-PREMIUM-008` (BYOLLM resolution) and `SK-PREMIUM-009` (pure-metered hosted-premium shape). The Phase 2 / §6 split — BYOLLM ships now, hosted-premium meter ships when §6 trips — comes from here.
+  - *In this feature:* This GLOBAL is the *parent* of `SK-PREMIUM-008` (BYOLLM resolution), `SK-PREMIUM-009` (Shape-B hosted-premium meter: flat sub + included allowance + soft-meter overage), `SK-PREMIUM-010` (allowance guardrails), and `SK-PREMIUM-011` (exhaustion policy). The Phase 2 / §6 split — BYOLLM ships now, hosted-premium meter ships when §6 trips — comes from here.
 
 ### SK-PREMIUM-008 — BYOLLM: every tier, 0% markup, server-side keys only
 
@@ -142,11 +135,23 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 
 Resolves the 8-point BYOK decision tree previously held as Open: providers (Anthropic / OpenAI / Gemini / OpenRouter), through-Gateway dispatch with per-user namespace, encrypted-blob storage with Workers-Secret KEK, free-tier *included*, fail-loud on key error per [`GLOBAL-012`](../../decisions/GLOBAL-012-one-sentence-errors.md), retention-off certification for Pro, MCP-server-side-only key handling. Ships in Phase 2 alongside the `quality-eval` harness.
 
-### SK-PREMIUM-009 — Hosted-premium meter: pure-metered, 0% markup, no allowance, §6-gated
+### SK-PREMIUM-009 — Hosted-premium meter: flat sub + included monthly request allowance + soft-meter overage, §6-gated
 
 **Body:** [`decisions/SK-PREMIUM-009-hosted-premium-meter.md`](./decisions/SK-PREMIUM-009-hosted-premium-meter.md).
 
-When [`phase-plan.md §6`](../../phase-plan.md) trips, paid plans gain the hosted-premium dispatch lane: provider list + 0% markup, **no included allowance** (first token costs real money), per-key spend cap from `SK-PREMIUM-006` enforced upstream. Subscription pays for features; meter pays for compute. Pre-§6 the lane is feature-flagged dark; the architectural slot (router precedence, schema, OTel attributes) lands in Phase 2 so flipping it on is a flag, not a refactor.
+When [`phase-plan.md §6`](../../phase-plan.md) trips, paid plans gain the hosted-premium dispatch lane: **Hobby ≈ 200 included premium requests/mo, Pro ≈ 600** (calibrated against cost-per-query data per `SK-PREMIUM-010` by 2026-08-15), **no carryover**, **soft-meter overage** at provider list + 0% markup beyond allowance (default; user-opt-in to fallback-to-free per `SK-PREMIUM-011`). Per-key spend cap from `SK-PREMIUM-006` is the absolute overage ceiling. Allowance unit is **requests**, not dollars or tokens, so the unit doesn't drift with provider-price moves. Pre-§6 the lane is feature-flagged dark; the architectural slot (router precedence, schema, OTel attributes, allowance counter) lands in Phase 2.
+
+### SK-PREMIUM-010 — Allowance guardrails: per-query soft cap, hard ceiling, cost-per-query instrumentation
+
+**Body:** [`decisions/SK-PREMIUM-010-allowance-guardrails.md`](./decisions/SK-PREMIUM-010-allowance-guardrails.md).
+
+Protects the allowance from oversize queries. Per-query soft cap (~50k tokens, queries above count as multiple slots) + per-query hard ceiling (~500k tokens, refused with one-sentence error per `GLOBAL-012`) + `cost_per_query_usd` instrumentation that lands first and calibrates the 200/600 allowance counts. Calibration deadline: instrumentation by 2026-07-01, counts locked by 2026-08-15.
+
+### SK-PREMIUM-011 — Allowance exhaustion: soft-meter overage by default, opt-in fallback to free chain
+
+**Body:** [`decisions/SK-PREMIUM-011-overflow-policy.md`](./decisions/SK-PREMIUM-011-overflow-policy.md).
+
+Per-account `users.overflow_policy ∈ {"meter", "fallback"}`, default `"meter"`. Meter = continue serving and bill overage at provider list + 0% markup; fallback = route to free chain for remainder of period with explicit trace flag (never silent — `GLOBAL-023`). Per-key spend cap (`SK-PREMIUM-006`) is the absolute ceiling on either policy. Policy toggles in the billing dashboard.
 
 ## Open questions / known unknowns
 
@@ -166,4 +171,4 @@ When [`phase-plan.md §6`](../../phase-plan.md) trips, paid plans gain the hoste
 - `docs/features/stripe-billing/FEATURE.md` — `SK-STRIPE-004` Checkout linkage; Open: dunning + Lago wiring.
 - `docs/features/rate-limit/FEATURE.md` — Open: per-key spend cap.
 - `docs/features/web-app/FEATURE.md` — `SK-WEB-005` three-part chat reply (trace surface the CTA hooks into).
-- [`GLOBAL-025`](../../decisions/GLOBAL-025-north-star.md), [`GLOBAL-026`](../../decisions/GLOBAL-026-llm-strategy-byollm-hosted-premium.md) — parents of `SK-PREMIUM-008` and `SK-PREMIUM-009`.
+- [`GLOBAL-025`](../../decisions/GLOBAL-025-north-star.md), [`GLOBAL-026`](../../decisions/GLOBAL-026-llm-strategy-byollm-hosted-premium.md) — parents of `SK-PREMIUM-008` (BYOLLM), `SK-PREMIUM-009` (Shape-B hosted-premium meter), `SK-PREMIUM-010` (allowance guardrails), and `SK-PREMIUM-011` (exhaustion policy).

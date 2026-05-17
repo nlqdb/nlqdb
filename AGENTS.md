@@ -28,7 +28,9 @@ Spider 2.0 frontier at 5–23% EM in 2026 proves engine work, not
 model picking, is the moat. LLM strategy per
 [`GLOBAL-026`](docs/decisions/GLOBAL-026-llm-strategy-byollm-hosted-premium.md):
 free chain forever · BYOLLM every tier · hosted premium on paid
-(pure metered, 0% markup, no allowance).
+(flat sub + included monthly request allowance + soft-meter
+overage at 0% markup, no carryover, opt-in fallback-to-free at
+exhaustion).
 [`quality-eval`](docs/features/quality-eval/FEATURE.md) is promoted
 to Phase 2 and owns the free-vs-frontier delta as the headline
 number.

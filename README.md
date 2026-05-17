@@ -11,7 +11,7 @@ Engine choice (Postgres / Mongo / Redis / DuckDB / pgvector / …), schema infer
 
 **North-star.** Three pillars from [`GLOBAL-025`](./docs/decisions/GLOBAL-025-north-star.md): a **high-quality engine** — two layers, the **NL→SQL accuracy engine** (measured on BIRD + Spider 2.0 + an internal eval; see [`quality-eval`](./docs/features/quality-eval/FEATURE.md)) *and* the **multi-engine data engine** (auto-migration with dual-read verification, Phase 3); **seamless onboarding** (≤ 60 s from landing to first answer, no card, no config); **seamless UX** (diff before writes, visible SQL trace, refuse on low confidence). The bet: be great on free LLMs and you're invincible on frontier LLMs — engine work compounds with whatever model is underneath.
 
-**LLM strategy** ([`GLOBAL-026`](./docs/decisions/GLOBAL-026-llm-strategy-byollm-hosted-premium.md)): free LLM router *forever* for the free tier · **BYOLLM** (Anthropic / OpenAI / Gemini / OpenRouter) on every tier at 0% markup · **hosted premium** (Sonnet 4.6 / GPT-5 / Gemini 2.5 Pro) on paid plans, billed pure-metered at provider list + 0% markup, no included allowance — first token of premium usage costs real money, the subscription pays for features.
+**LLM strategy** ([`GLOBAL-026`](./docs/decisions/GLOBAL-026-llm-strategy-byollm-hosted-premium.md)): free LLM router *forever* for the free tier · **BYOLLM** (Anthropic / OpenAI / Gemini / OpenRouter) on every tier at 0% markup · **hosted premium** (Sonnet 4.6 / GPT-5 / Gemini 2.5 Pro) on paid plans, **flat sub + included monthly request allowance + soft-meter overage** at provider list + 0% markup (Hobby ≈ 200 premium requests/mo, Pro ≈ 600; no carryover; opt-in to fall back to free chain at exhaustion).
 
 ## Use it
 

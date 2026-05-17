@@ -21,16 +21,30 @@
      encrypted-at-rest in `api_keys` (scope `byollm`); see
      [`SK-PREMIUM-008`](../features/premium-tier/FEATURE.md) for
      storage, revocation, and failure-mode contract.
-  3. **Hosted premium router — paid plans only, charged by usage.**
-     On Hobby and Pro, the router gains a "premium" path
-     (Claude Sonnet 4.6 / GPT-5 / Gemini 2.5 Pro class) selected by
-     the existing tier-aware policy. Premium usage is billed via
-     Stripe metered subscription items at **provider list price +
-     0% markup, with no included allowance** — first token costs
-     real money, charged at month-end. Implemented in
+  3. **Hosted premium router — paid plans only, flat sub + included
+     allowance + soft-meter overage.** On Hobby and Pro, the router
+     gains a "premium" path (Claude Sonnet 4.6 / GPT-5 / Gemini 2.5
+     Pro class) selected by the existing tier-aware policy. Each tier
+     includes a monthly **request allowance** (Hobby ≈ 200 premium
+     queries/mo, Pro ≈ 600 — calibrated against cost-per-query
+     instrumentation per
+     [`SK-PREMIUM-010`](../features/premium-tier/decisions/SK-PREMIUM-010-allowance-guardrails.md),
+     no carryover). Premium usage beyond the included allowance bills
+     via Stripe metered subscription items at **provider list price +
+     0% markup** (the *Bessemer hybrid*: flat subscription + metered
+     overage). Default exhaustion policy is **soft-meter** (queries
+     continue at the overage rate); a per-account opt-in flips to
+     **fallback** (route to the free chain for the rest of the
+     period, never silently — see
+     [`SK-PREMIUM-011`](../features/premium-tier/decisions/SK-PREMIUM-011-overflow-policy.md)).
+     Per-key spend cap from
+     [`SK-PREMIUM-006`](../features/premium-tier/decisions/SK-PREMIUM-006-per-key-spend-cap.md)
+     is the absolute ceiling on overage spend regardless of policy.
+     Allowance unit is **requests** (not dollars or tokens) so the
+     unit doesn't churn as provider prices move. Implemented in
      [`SK-LLM-017`](../features/llm-router/FEATURE.md) and
-     [`SK-PREMIUM-009`](../features/premium-tier/FEATURE.md). Premium
-     dispatch is **gated** behind the existing
+     [`SK-PREMIUM-009`](../features/premium-tier/decisions/SK-PREMIUM-009-hosted-premium-meter.md).
+     Premium dispatch is **gated** behind the existing
      [`phase-plan.md` §6](../phase-plan.md) monetization trigger —
      the architectural slot exists from day one but the meter does
      not fire until Stripe live ships.
@@ -64,8 +78,11 @@
     Pure usage causes revenue volatility and "unexpected bill"
     complaints (78% of IT leaders in 2026; Flexprice survey). **The
     Bessemer-recommended hybrid for AI startups is flat subscription
-    + metered LLM overage** — adopted here as Hobby/Pro
-    (features) + per-token premium (compute pass-through).
+    + included allowance + metered overage** — adopted here as
+    Hobby/Pro features + N included premium requests + per-request
+    overage at provider list. Request-denominated allowance avoids the
+    dollar/token denomination churn that pure dollar-credit hybrids
+    suffer as provider prices move.
   - **0% markup is non-negotiable.** Vercel AI Gateway shipped at
     zero markup in May 2026; OpenRouter dropped BYOK markup to 0%
     for the first 1M requests in response. Charging more than
@@ -110,13 +127,34 @@
   - **Pure usage (no subscription, all tokens metered)** — revenue
     volatility, no feature-gating handle, scares predictable-bill
     buyers. 78% of buyers report unexpected-bill pain in 2026.
-  - **Subscription with included premium-LLM allowance ("Hobby = $10
-    + $5 of premium credit included")** — Bessemer's hybrid form,
-    but adds two complications: (a) allowance denomination (dollars?
-    tokens? requests?) churns as provider prices move; (b) "did my
-    free credit run out?" is the worst UX moment in a metered
-    product. Pure-overage from the first token, in a tier the user
-    already paid to enter, is cleaner.
+  - **Pure-metered overage with no included allowance** (the prior
+    shape of this GLOBAL before Shape-B review) — first-token
+    friction on the paid tier. Users primed by Cursor / v0 / Vercel
+    expect bundled quota; "I paid $10, why am I billed on my first
+    question?" is the moment we avoid by including the allowance.
+  - **Dollar-denominated allowance ("Hobby = $5 of premium credit
+    included")** — the Bessemer canonical hybrid form, but the
+    allowance unit churns with provider prices. With 2026 token
+    prices dropping ~80%/year, $5 buys 5× more tokens in 12 months,
+    forcing either silent customer-experience drift or quarterly
+    re-spec churn. Resolved by going request-denominated instead.
+  - **Token-denominated allowance** — opaque to buyers; different
+    models cost different per-token; would require a "normalized
+    token" fiction.
+  - **Carryover (banked credit across months)** — accounting
+    complexity around downgrade/cancel mid-period; abuse vector
+    (stockpile then cancel). No-carryover monthly-reset is the
+    Vercel-AI-Gateway / Cursor / v0 norm.
+  - **Hard-stop at allowance exhaustion (default)** — jarring at the
+    boundary; available as an effect of the spend cap, not as the
+    default exhaustion behavior.
+  - **Silent fallback to free chain at exhaustion (default)** —
+    dishonest; violates `GLOBAL-023` (trust-ux). Available as an
+    opt-in per `SK-PREMIUM-011` with explicit trace surfacing.
+  - **Third "Premium" tier with included quota (Hobby / Pro / Pro+)** —
+    adds a SKU pre-PMF; same allowance-denomination problem
+    amplified (the quota *defines* the tier); Hobby/Pro feel
+    second-class on premium routing.
   - **BYOLLM paid-tier-only** — leaves the heaviest free-tier
     abusers no escape valve; they hit the global cap, churn, and we
     never see their eval signal.
