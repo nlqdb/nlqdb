@@ -1,5 +1,5 @@
 # Reusable: run opencheck against a given baseUrl with Groq
-# (`llama-3.3-70b-versatile`) through the OpenAI-compatible endpoint.
+# (`meta-llama/llama-4-scout-17b-16e-instruct`) through the OpenAI-compatible endpoint.
 # The `workflow_call` trigger means this file never appears in the
 # manual-dispatch list — callers (see `e2e-opencheck.yml`) drive it.
 #
@@ -13,13 +13,11 @@
 #   it with the Groq key is the no-upstream-change path.
 #
 # Model history (see tests.yaml for the full pivot log):
-#   - llama-3.3-70b-versatile: current. 12 K TPM, 1 M TPD. Chosen
-#     because llama-4-scout's 500 K TPD was exhausted by debugging
-#     runs on the same day (runs #22-#26). llama-3.3-70b-versatile
-#     has its own quota pool and has never been used by this project.
-#   - llama-4-scout-17b: preferred long-term (30 K TPM, 500 K TPD).
+#   - llama-4-scout-17b-16e-instruct: current. 30 K TPM, 500 K TPD.
 #     With snapshot truncation at 3 K chars, one full run consumes
-#     ~210 K tokens — well within 500 K TPD once stable.
+#     ~252 K tokens — leaves ~250 K daily headroom for a second run.
+#   - llama-3.3-70b-versatile (runs #27-#28): only 100 K TPD (not 1 M
+#     as assumed). Cold-cache run needs ~252 K → exhausted after one run.
 
 name: E2E opencheck (reusable)
 
