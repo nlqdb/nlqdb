@@ -51,6 +51,47 @@ func (w *Writer) WriteAsk(resp *api.AskResponse) error {
 	}
 }
 
+// WriteKeys renders the inventory from `nlq keys list`. Mirrors the
+// dashboard layout: type, last-4, label (sk_live name or
+// "<host> on <device>" for sk_mcp), last-used, status.
+func (w *Writer) WriteKeys(rows []api.KeyRecord) error {
+	if w.Format == FormatJSON {
+		return w.JSON(map[string]any{"keys": rows})
+	}
+	if len(rows) == 0 {
+		_, err := fmt.Fprintln(w.Err, "No keys yet. Mint one from app.nlqdb.com/keys.")
+		return err
+	}
+	tw := tabwriter.NewWriter(w.Out, 0, 0, 2, ' ', 0)
+	fmt.Fprintln(tw, "ID\tTYPE\tLAST4\tLABEL\tLAST USED\tSTATUS")
+	for _, r := range rows {
+		last := "—"
+		if r.LastUsedAt != nil {
+			last = formatRelative(*r.LastUsedAt)
+		}
+		status := "active"
+		if r.RevokedAt != nil {
+			status = "revoked " + formatRelative(*r.RevokedAt)
+		}
+		fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%s\t%s\n",
+			r.ID, r.KeyType, r.Last4, keyLabel(r), last, status)
+	}
+	return tw.Flush()
+}
+
+func keyLabel(r api.KeyRecord) string {
+	if r.MCPHost != nil && r.DeviceID != nil {
+		return fmt.Sprintf("%s on %s", *r.MCPHost, *r.DeviceID)
+	}
+	if r.Name != nil && *r.Name != "" {
+		return *r.Name
+	}
+	if r.DBID != nil {
+		return "db " + *r.DBID
+	}
+	return "—"
+}
+
 func (w *Writer) WriteDatabases(rows []api.DatabaseSummary) error {
 	if w.Format == FormatJSON {
 		return w.JSON(map[string]any{"databases": rows})

@@ -130,7 +130,7 @@ manually before editing.)
 | If you touch… | Read first |
 |---|---|
 | `apps/api/src/routes/auth/**`, `packages/auth-internal/**` | `docs/features/auth/FEATURE.md` |
-| `apps/api/src/keys/**`, anything `api-key` related | `docs/features/api-keys/FEATURE.md` |
+| `apps/api/src/api-keys.ts`, `apps/api/src/index.ts` `/v1/keys*` routes, anything `api-key` related | `docs/features/api-keys/FEATURE.md` |
 | `apps/api/src/ask/**`, the `/v1/ask` pipeline | `docs/features/ask-pipeline/FEATURE.md` |
 | anything touching write/DDL diff preview, `confidence`, or the `trace` block on responses | `docs/features/trust-ux/FEATURE.md` |
 | `apps/api/src/db-create/**`, `apps/api/src/ask/classifier.ts`, `apps/api/src/ask/sql-validate-ddl.ts` | `docs/features/hosted-db-create/FEATURE.md` |

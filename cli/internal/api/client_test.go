@@ -200,3 +200,77 @@ func TestIdempotencyKeyOnMutations(t *testing.T) {
 		t.Errorf("expected two distinct non-empty Idempotency-Key headers, got %v", keys)
 	}
 }
+
+func TestListKeys(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/v1/keys" || r.Method != http.MethodGet {
+			t.Errorf("got %s %s, want GET /v1/keys", r.Method, r.URL.Path)
+		}
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"keys": []map[string]any{
+				{
+					"id":         "k_1",
+					"keyType":    "sk_live",
+					"last4":      "a4f7",
+					"name":       "CI",
+					"dbId":       nil,
+					"mcpHost":    nil,
+					"deviceId":   nil,
+					"lastUsedAt": nil,
+					"createdAt":  1_700_000_000,
+					"revokedAt":  nil,
+				},
+			},
+		})
+	}))
+	defer srv.Close()
+	c := New(srv.URL, auth.Identity{Kind: auth.KindSignedIn, Token: "session_x"})
+	rows, err := c.ListKeys(context.Background())
+	if err != nil {
+		t.Fatalf("ListKeys: %v", err)
+	}
+	if len(rows) != 1 || rows[0].ID != "k_1" || rows[0].Last4 != "a4f7" {
+		t.Errorf("unexpected rows: %+v", rows)
+	}
+}
+
+func TestRevokeKeyPathEscapesId(t *testing.T) {
+	var seenPath, seenMethod string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// EscapedPath() returns the on-the-wire form; r.URL.Path is the
+		// decoded form. Asserting on the wire form confirms `/` was %2F-
+		// escaped so the id can't accidentally route to /v1/keys/:hash/status.
+		seenPath = r.URL.EscapedPath()
+		seenMethod = r.Method
+		_ = json.NewEncoder(w).Encode(map[string]any{"ok": true, "alreadyRevoked": false})
+	}))
+	defer srv.Close()
+	c := New(srv.URL, auth.Identity{Kind: auth.KindSignedIn, Token: "session_x"})
+	res, err := c.RevokeKey(context.Background(), "weird/id with space")
+	if err != nil {
+		t.Fatalf("RevokeKey: %v", err)
+	}
+	if seenMethod != http.MethodDelete {
+		t.Errorf("method = %q, want DELETE", seenMethod)
+	}
+	if seenPath != "/v1/keys/weird%2Fid%20with%20space" {
+		t.Errorf("path = %q (want %%2F-escaped)", seenPath)
+	}
+	if !res.OK || res.AlreadyRevoked {
+		t.Errorf("res = %+v", res)
+	}
+}
+
+func TestRevokeKey404Surfaces(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+		_, _ = w.Write([]byte(`{"error":{"status":"key_not_found"}}`))
+	}))
+	defer srv.Close()
+	c := New(srv.URL, auth.Identity{Kind: auth.KindSignedIn, Token: "session_x"})
+	_, err := c.RevokeKey(context.Background(), "k_missing")
+	var apiErr *APIError
+	if !errors.As(err, &apiErr) || apiErr.HTTPStatus != 404 || apiErr.Status != "key_not_found" {
+		t.Fatalf("expected typed 404 key_not_found, got %v", err)
+	}
+}

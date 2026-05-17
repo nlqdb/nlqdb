@@ -32,10 +32,12 @@ import {
   bumpKeyLastUsed as bumpKeyLastUsedImpl,
   getKeyStatusByHash,
   hmacHex,
+  listKeysByTenant,
   lookupPkLiveKey as lookupPkLiveKeyImpl,
   lookupSkKey as lookupSkKeyImpl,
   mintSkLiveKey,
   mintSkMcpKey,
+  revokeKeyById,
 } from "./api-keys.ts";
 import { buildAskDeps, buildEventEmitter } from "./ask/build-deps.ts";
 import { emitFeatureSignal } from "./ask/demand-signal.ts";
@@ -1382,6 +1384,70 @@ app.post("/v1/keys", requireSession, async (c) => {
       span.setStatus({ code: SpanStatusCode.ERROR, message: e.message });
       span.setAttribute("nlqdb.keys.mint.outcome", "mint_failed");
       return c.json({ error: "mint_failed" }, 500);
+    } finally {
+      span.end();
+    }
+  });
+});
+
+// `GET /v1/keys` — list the caller's keys (SK-APIKEYS-010). Session-only:
+// a leaked `sk_live_` must not enumerate sibling keys (same threat model
+// as the mint route at `POST /v1/keys`). Returns both active and revoked
+// rows; revoked sort to the bottom so the surface can render two groups
+// from one slice. Plaintext is never present — `last4` is the only
+// display field (SK-APIKEYS-002).
+app.get("/v1/keys", requireSession, async (c) => {
+  const tracer = trace.getTracer("@nlqdb/api");
+  return tracer.startActiveSpan("nlqdb.keys.list", async (span) => {
+    try {
+      const session = c.var.session;
+      span.setAttribute("nlqdb.user.id", session.user.id);
+      const keys = await listKeysByTenant(c.env.DB, session.user.id);
+      span.setAttribute("nlqdb.keys.list.count", keys.length);
+      span.setAttribute("nlqdb.keys.list.outcome", "ok");
+      return c.json({ keys });
+    } catch (err) {
+      const e = err as Error;
+      span.recordException(e);
+      span.setStatus({ code: SpanStatusCode.ERROR, message: e.message });
+      span.setAttribute("nlqdb.keys.list.outcome", "internal_error");
+      return c.json({ error: "internal_error" }, 500);
+    } finally {
+      span.end();
+    }
+  });
+});
+
+// `DELETE /v1/keys/:id` — hard-revoke (SK-APIKEYS-011). Session-only;
+// tenant-scoped so a leaked id from another tenant returns 404, not 403
+// (no existence leak across tenants — same posture as
+// `DELETE /v1/databases/:id`). Idempotent re-DELETE returns 200 with
+// `alreadyRevoked: true` per RFC 9110. Propagation to the MCP DO is
+// ≤ 1 s via SK-MCP-014's revalidation probe; no extra cache bust here.
+//
+// SK-APIKEYS-005's 60-day rotation grace + webhook are not in this slice
+// — that's the rotation feature. For now revocation is the destructive
+// op; rotation will add a `deprecated_at` column alongside.
+app.delete("/v1/keys/:id", requireSession, async (c) => {
+  const tracer = trace.getTracer("@nlqdb/api");
+  return tracer.startActiveSpan("nlqdb.keys.revoke", async (span) => {
+    try {
+      const session = c.var.session;
+      const keyId = c.req.param("id");
+      span.setAttribute("nlqdb.user.id", session.user.id);
+      span.setAttribute("nlqdb.keys.revoke.key_id", keyId);
+      const outcome = await revokeKeyById(c.env.DB, session.user.id, keyId);
+      span.setAttribute("nlqdb.keys.revoke.outcome", outcome);
+      if (outcome === "not_found") {
+        return c.json({ error: { status: "key_not_found" as const } }, 404);
+      }
+      return c.json({ ok: true, alreadyRevoked: outcome === "already_revoked" });
+    } catch (err) {
+      const e = err as Error;
+      span.recordException(e);
+      span.setStatus({ code: SpanStatusCode.ERROR, message: e.message });
+      span.setAttribute("nlqdb.keys.revoke.outcome", "internal_error");
+      return c.json({ error: "internal_error" }, 500);
     } finally {
       span.end();
     }

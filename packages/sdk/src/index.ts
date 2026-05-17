@@ -316,6 +316,40 @@ export type KeyStatus = {
   revoked_at?: number;
 };
 
+// SK-APIKEYS-001 — three key types. The wire-level discriminant on
+// `KeyRecord`. Open-ended so a new type added server-side doesn't
+// force an SDK bump to compile.
+export type KeyType = "pk_live" | "sk_live" | "sk_mcp" | (string & {});
+
+// SK-APIKEYS-010 — one row in `listKeys()`. Plaintext is never present
+// (SK-APIKEYS-002); `last4` is the only display affordance. Per-type
+// claim fields are nullable: `dbId` is populated for `pk_live`,
+// `(mcpHost, deviceId)` for `sk_mcp`, `name` is the optional human
+// label for `sk_live`. `revokedAt` is non-null on revoked rows —
+// surfaces group active + revoked from the same slice.
+export type KeyRecord = {
+  id: string;
+  keyType: KeyType;
+  last4: string;
+  name: string | null;
+  dbId: string | null;
+  mcpHost: string | null;
+  deviceId: string | null;
+  lastUsedAt: number | null;
+  createdAt: number;
+  revokedAt: number | null;
+};
+
+// SK-APIKEYS-011 — DELETE response. Idempotent: a re-DELETE on an
+// already-revoked key returns `alreadyRevoked: true` rather than 404,
+// so caller scripts that retry don't have to special-case "is the
+// 404 because someone else got there first?". 404 only fires on
+// "key id is unknown / not yours" (`key_not_found`).
+export type RevokeKeyResult = {
+  ok: true;
+  alreadyRevoked: boolean;
+};
+
 // SK-MCP-013 — cross-Worker bridge. `apps/mcp/`'s `bridgeHandler`
 // redeems the one-shot code minted by `apps/api/`'s
 // `POST /v1/oauth/mcp-callback`. The code itself is the auth proof
@@ -368,6 +402,18 @@ export type NlqClient = {
   // of the plaintext key (never the plaintext itself), computed via
   // `hmacHex` in the calling Worker.
   getKeyStatus(keyHash: string, opts?: { signal?: AbortSignal }): Promise<KeyStatus>;
+  // SK-APIKEYS-010 — list the caller's keys (active + revoked, newest
+  // first; revoked rows sorted to the bottom). Session-cookie only:
+  // a leaked `sk_live_` cannot enumerate sibling keys.
+  listKeys(opts?: { signal?: AbortSignal }): Promise<{ keys: KeyRecord[] }>;
+  // SK-APIKEYS-011 — hard-revoke. Tenant-scoped — a key id from
+  // another tenant rejects as `key_not_found` (404) just like an
+  // unknown id, so the call never leaks cross-tenant existence.
+  // Idempotent: re-DELETE returns `alreadyRevoked: true`.
+  revokeKey(
+    keyId: string,
+    opts?: { signal?: AbortSignal; idempotencyKey?: string },
+  ): Promise<RevokeKeyResult>;
   // SK-MCP-013 — redeem the one-shot OAuth-bridge code (Worker-to-Worker
   // call from `apps/mcp/`'s `bridgeHandler` to `apps/api/`'s
   // `POST /v1/oauth/mcp-callback/redeem`). The code is the auth proof;
@@ -674,6 +720,15 @@ export function createClient(opts: ClientOptions = {}): NlqClient {
     getKeyStatus: (keyHash, callOpts) =>
       call<KeyStatus>(`/v1/keys/${encodeURIComponent(keyHash)}/status`, {
         signal: callOpts?.signal,
+      }),
+    listKeys: (callOpts) => call<{ keys: KeyRecord[] }>("/v1/keys", { signal: callOpts?.signal }),
+    revokeKey: (keyId, callOpts) =>
+      call<RevokeKeyResult>(`/v1/keys/${encodeURIComponent(keyId)}`, {
+        method: "DELETE",
+        signal: callOpts?.signal,
+        ...(callOpts?.idempotencyKey
+          ? { headers: { "idempotency-key": callOpts.idempotencyKey } }
+          : {}),
       }),
     redeemOAuthBridgeCode: (code, callOpts) =>
       call<OAuthBridgeRedemption>("/v1/oauth/mcp-callback/redeem", {

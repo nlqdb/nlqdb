@@ -10,24 +10,29 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   bumpKeyLastUsed,
+  listKeysByTenant,
   lookupPkLiveKey,
   lookupSkKey,
   mintPkLiveKey,
   mintSkLiveKey,
   mintSkMcpKey,
   PK_LIVE_PREFIX,
+  revokeKeyById,
   SK_LIVE_PREFIX,
   SK_MCP_PREFIX,
 } from "../src/api-keys.ts";
 
 type InsertCall = { sql: string; params: unknown[] };
 type SelectRow = Record<string, unknown> | null;
+type AllRows = Record<string, unknown>[];
 
 type StubOpts = {
   // Row returned by `.first()` on SELECT statements. Pass an array to
   // serve different rows on successive SELECT calls (used by the
   // mint-then-lookup round-trip tests).
   selectRow?: SelectRow | SelectRow[];
+  // Rows returned by `.all()` on SELECT statements (used by listKeysByTenant).
+  selectRows?: AllRows;
 };
 
 function stubDb(opts: StubOpts = {}): {
@@ -50,6 +55,11 @@ function stubDb(opts: StubOpts = {}): {
         if (selectQueue.length === 0) return null;
         return selectQueue.shift() ?? null;
       }),
+      all: vi.fn().mockImplementation(async () => ({
+        results: opts.selectRows ?? [],
+        success: true,
+        meta: {},
+      })),
       run: vi.fn().mockImplementation(async () => {
         if (sql.startsWith("INSERT")) inserts.push({ sql, params: [...params] });
         if (sql.startsWith("UPDATE")) updates.push({ sql, params: [...params] });
@@ -260,5 +270,157 @@ describe("bumpKeyLastUsed", () => {
       }),
     } as unknown as D1Database;
     await expect(bumpKeyLastUsed(throwingDb, "k_1")).resolves.toBeUndefined();
+  });
+});
+
+describe("listKeysByTenant", () => {
+  it("maps D1 columns to camelCase `KeyRecord` fields", async () => {
+    const { db } = stubDb({
+      selectRows: [
+        {
+          id: "k_1",
+          key_type: "sk_live",
+          last_4: "a4f7",
+          name: "CI on GitHub",
+          db_id: null,
+          mcp_host: null,
+          device_id: null,
+          last_used_at: 1_700_000_000,
+          created_at: 1_699_900_000,
+          revoked_at: null,
+        },
+        {
+          id: "k_2",
+          key_type: "sk_mcp",
+          last_4: "9c12",
+          name: null,
+          db_id: null,
+          mcp_host: "cursor",
+          device_id: "macbook-air",
+          last_used_at: null,
+          created_at: 1_699_800_000,
+          revoked_at: 1_699_850_000,
+        },
+      ],
+    });
+    const keys = await listKeysByTenant(db, "u_alice");
+    expect(keys).toEqual([
+      {
+        id: "k_1",
+        keyType: "sk_live",
+        last4: "a4f7",
+        name: "CI on GitHub",
+        dbId: null,
+        mcpHost: null,
+        deviceId: null,
+        lastUsedAt: 1_700_000_000,
+        createdAt: 1_699_900_000,
+        revokedAt: null,
+      },
+      {
+        id: "k_2",
+        keyType: "sk_mcp",
+        last4: "9c12",
+        name: null,
+        dbId: null,
+        mcpHost: "cursor",
+        deviceId: "macbook-air",
+        lastUsedAt: null,
+        createdAt: 1_699_800_000,
+        revokedAt: 1_699_850_000,
+      },
+    ]);
+  });
+
+  it("returns an empty array when the tenant has no keys", async () => {
+    const { db } = stubDb({ selectRows: [] });
+    expect(await listKeysByTenant(db, "u_empty")).toEqual([]);
+  });
+
+  it("scopes the SELECT to the caller's tenant_id (no cross-tenant leak)", async () => {
+    const calls: { sql: string; params: unknown[] }[] = [];
+    const db = {
+      prepare: (sql: string) => ({
+        bind: (...params: unknown[]) => {
+          calls.push({ sql, params });
+          return {
+            all: async () => ({ results: [], success: true, meta: {} }),
+          };
+        },
+      }),
+    } as unknown as D1Database;
+    await listKeysByTenant(db, "u_alice");
+    expect(calls[0]?.sql).toContain("WHERE tenant_id = ?");
+    expect(calls[0]?.params).toEqual(["u_alice"]);
+  });
+});
+
+describe("revokeKeyById", () => {
+  // The new flow is a single conditional UPDATE plus a probe SELECT to
+  // distinguish "already revoked" from "not found" only when the UPDATE
+  // no-op'd. The stub returns `changes` from `.run()` and a row from
+  // `.first()` when the SELECT runs.
+  function revokeStub(opts: { updateChanges: number; existsAfter?: boolean }): {
+    db: D1Database;
+    updates: InsertCall[];
+  } {
+    const updates: InsertCall[] = [];
+    const prepare = vi.fn().mockImplementation((sql: string) => ({
+      bind: vi.fn().mockImplementation((...params: unknown[]) => ({
+        first: vi.fn().mockImplementation(async () => {
+          if (sql.startsWith("SELECT")) return opts.existsAfter ? { hit: 1 } : null;
+          return null;
+        }),
+        run: vi.fn().mockImplementation(async () => {
+          if (sql.startsWith("UPDATE")) updates.push({ sql, params: [...params] });
+          return { success: true, meta: { changes: opts.updateChanges } };
+        }),
+      })),
+    }));
+    return { db: { prepare } as unknown as D1Database, updates };
+  }
+
+  it("returns `revoked` when the conditional UPDATE wins (changes === 1)", async () => {
+    const { db, updates } = revokeStub({ updateChanges: 1 });
+    const outcome = await revokeKeyById(db, "u_alice", "k_1");
+    expect(outcome).toBe("revoked");
+    expect(updates).toHaveLength(1);
+    expect(updates[0]?.sql).toContain("UPDATE api_keys SET revoked_at = unixepoch()");
+    expect(updates[0]?.sql).toContain("WHERE id = ? AND tenant_id = ? AND revoked_at IS NULL");
+    expect(updates[0]?.params).toEqual(["k_1", "u_alice"]);
+  });
+
+  it("returns `already_revoked` when UPDATE no-ops AND the row still exists", async () => {
+    // The conditional UPDATE's `revoked_at IS NULL` filter prevented the
+    // write; the follow-up SELECT confirms the row is in the tenant — so
+    // it must already be revoked. Idempotent re-DELETE per RFC 9110.
+    const { db } = revokeStub({ updateChanges: 0, existsAfter: true });
+    const outcome = await revokeKeyById(db, "u_alice", "k_1");
+    expect(outcome).toBe("already_revoked");
+  });
+
+  it("returns `not_found` when UPDATE no-ops AND no row matches the tenant", async () => {
+    // Same envelope whether the id is unknown or belongs to another tenant
+    // — the SELECT's `tenant_id = ?` filter collapses both cases so the
+    // caller cannot distinguish "wrong tenant" from "unknown" (no
+    // existence leak across tenants).
+    const { db } = revokeStub({ updateChanges: 0, existsAfter: false });
+    const outcome = await revokeKeyById(db, "u_alice", "k_owned_by_bob");
+    expect(outcome).toBe("not_found");
+  });
+
+  it("is race-safe: two concurrent revokes both observe a non-`not_found` outcome", async () => {
+    // Simulates the TOCTOU: caller A's UPDATE wins (changes=1), caller B's
+    // UPDATE finds the row already revoked (changes=0, follow-up SELECT
+    // confirms the row exists). B sees `already_revoked` — never the
+    // false `not_found` the previous (SELECT-then-UPDATE) shape risked.
+    const a = revokeStub({ updateChanges: 1 });
+    const b = revokeStub({ updateChanges: 0, existsAfter: true });
+    const [outA, outB] = await Promise.all([
+      revokeKeyById(a.db, "u_alice", "k_1"),
+      revokeKeyById(b.db, "u_alice", "k_1"),
+    ]);
+    expect(outA).toBe("revoked");
+    expect(outB).toBe("already_revoked");
   });
 });

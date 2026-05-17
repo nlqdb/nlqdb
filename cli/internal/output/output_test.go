@@ -97,3 +97,54 @@ func TestWriteDatabasesEmptyHasOnboardingHint(t *testing.T) {
 		t.Errorf("expected onboarding hint, got: %q", out.String())
 	}
 }
+
+func TestWriteKeysHumanShowsTypeLabelStatus(t *testing.T) {
+	var out bytes.Buffer
+	w := New(&out, &bytes.Buffer{}, FormatHuman)
+	ciName := "CI on GitHub"
+	cursor := "cursor"
+	device := "macbook-air"
+	rows := []api.KeyRecord{
+		{ID: "k_1", KeyType: "sk_live", Last4: "a4f7", Name: &ciName, CreatedAt: 1_700_000_000},
+		{ID: "k_2", KeyType: "sk_mcp", Last4: "9c12", MCPHost: &cursor, DeviceID: &device, CreatedAt: 1_699_900_000},
+	}
+	if err := w.WriteKeys(rows); err != nil {
+		t.Fatalf("WriteKeys: %v", err)
+	}
+	s := out.String()
+	for _, want := range []string{"k_1", "k_2", "sk_live", "sk_mcp", "a4f7", "9c12", "CI on GitHub", "cursor on macbook-air", "active"} {
+		if !strings.Contains(s, want) {
+			t.Errorf("missing %q in keys output: %q", want, s)
+		}
+	}
+}
+
+func TestWriteKeysJSONIsValid(t *testing.T) {
+	var out bytes.Buffer
+	w := New(&out, &bytes.Buffer{}, FormatJSON)
+	rows := []api.KeyRecord{{ID: "k_1", KeyType: "sk_live", Last4: "a4f7", CreatedAt: 1}}
+	if err := w.WriteKeys(rows); err != nil {
+		t.Fatalf("WriteKeys: %v", err)
+	}
+	var got map[string]any
+	if err := json.Unmarshal(out.Bytes(), &got); err != nil {
+		t.Fatalf("output is not JSON: %v\n%s", err, out.String())
+	}
+	if _, ok := got["keys"]; !ok {
+		t.Errorf("expected `keys` field, got %v", got)
+	}
+}
+
+func TestWriteKeysEmptyMessageGoesToStderr(t *testing.T) {
+	var out, errw bytes.Buffer
+	w := New(&out, &errw, FormatHuman)
+	if err := w.WriteKeys(nil); err != nil {
+		t.Fatalf("WriteKeys: %v", err)
+	}
+	if out.Len() != 0 {
+		t.Errorf("stdout should be empty on empty list, got %q", out.String())
+	}
+	if !strings.Contains(errw.String(), "No keys yet") {
+		t.Errorf("expected empty-state hint on stderr: %q", errw.String())
+	}
+}

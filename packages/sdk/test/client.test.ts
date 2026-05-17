@@ -553,4 +553,80 @@ describe("createClient", () => {
     await client.listDatabases();
     expect(seenKey).toBeUndefined();
   });
+
+  it("listKeys: GETs /v1/keys with the session cookie", async () => {
+    let capturedUrl = "";
+    let capturedInit: RequestInit | undefined;
+    const fakeFetch: FetchLike = async (url, init) => {
+      capturedUrl = String(url);
+      capturedInit = init;
+      return new Response(
+        JSON.stringify({
+          keys: [
+            {
+              id: "k_1",
+              keyType: "sk_live",
+              last4: "a4f7",
+              name: "CI",
+              dbId: null,
+              mcpHost: null,
+              deviceId: null,
+              lastUsedAt: null,
+              createdAt: 1700000000,
+              revokedAt: null,
+            },
+          ],
+        }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      );
+    };
+    const client = createClient({
+      withCredentials: true,
+      baseUrl: "https://app.nlqdb.com/",
+      fetch: fakeFetch,
+    });
+    const out = await client.listKeys();
+    expect(capturedUrl).toBe("https://app.nlqdb.com/v1/keys");
+    expect(capturedInit?.credentials).toBe("include");
+    expect(capturedInit?.method ?? "GET").toBe("GET");
+    expect(out.keys[0]?.last4).toBe("a4f7");
+  });
+
+  it("revokeKey: DELETE /v1/keys/:id with auto Idempotency-Key", async () => {
+    let capturedUrl = "";
+    let capturedInit: RequestInit | undefined;
+    const fakeFetch: FetchLike = async (url, init) => {
+      capturedUrl = String(url);
+      capturedInit = init;
+      return new Response(JSON.stringify({ ok: true, alreadyRevoked: false }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    };
+    const client = createClient({ apiKey: "sk_test", fetch: fakeFetch });
+    const out = await client.revokeKey("k 1/needs encoding");
+    expect(capturedUrl).toBe("https://app.nlqdb.com/v1/keys/k%201%2Fneeds%20encoding");
+    expect(capturedInit?.method).toBe("DELETE");
+    const headers = (capturedInit?.headers ?? {}) as Record<string, string>;
+    expect(headers["idempotency-key"]).toMatch(/^[0-9a-f]{32}$/);
+    expect(out).toEqual({ ok: true, alreadyRevoked: false });
+  });
+
+  it("revokeKey: surfaces 404 key_not_found as NlqdbApiError", async () => {
+    const fakeFetch: FetchLike = async () =>
+      new Response(JSON.stringify({ error: { status: "key_not_found" } }), {
+        status: 404,
+        headers: { "content-type": "application/json" },
+      });
+    const client = createClient({ apiKey: "sk_test", fetch: fakeFetch });
+    try {
+      await client.revokeKey("k_missing");
+      expect.fail("should have thrown");
+    } catch (err) {
+      expect(err).toBeInstanceOf(NlqdbApiError);
+      const e = err as NlqdbApiError;
+      expect(e.httpStatus).toBe(404);
+      expect(e.code).toBe("key_not_found");
+    }
+  });
 });
