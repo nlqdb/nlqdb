@@ -195,6 +195,57 @@ describe("createClient", () => {
     expect(out.dbId).toBe("db_x_a1");
   });
 
+  it("deleteDatabase: issues DELETE with an idempotency-key header (SK-HDC-016)", async () => {
+    let capturedUrl = "";
+    let capturedMethod = "";
+    let capturedKey: string | null = null;
+    const fakeFetch: FetchLike = async (url, init) => {
+      capturedUrl = String(url);
+      capturedMethod = init?.method ?? "GET";
+      const headers = init?.headers;
+      if (headers instanceof Headers) capturedKey = headers.get("idempotency-key");
+      else if (Array.isArray(headers)) {
+        const found = headers.find(([k]) => k.toLowerCase() === "idempotency-key");
+        capturedKey = found ? found[1] : null;
+      } else if (headers && typeof headers === "object") {
+        const obj = headers as Record<string, string>;
+        capturedKey = obj["idempotency-key"] ?? obj["Idempotency-Key"] ?? null;
+      }
+      return new Response(null, { status: 204 });
+    };
+    const client = createClient({ apiKey: "sk_test", fetch: fakeFetch });
+    await client.deleteDatabase("db_orders_a1");
+    expect(capturedMethod).toBe("DELETE");
+    expect(capturedUrl).toContain("/v1/databases/db_orders_a1");
+    // Auto-generated when caller omits — SK-SDK-006 retry-safe dedupe.
+    expect(capturedKey).toBeTruthy();
+  });
+
+  it("deleteDatabase: encodes the dbId for path safety", async () => {
+    let capturedUrl = "";
+    const fakeFetch: FetchLike = async (url) => {
+      capturedUrl = String(url);
+      return new Response(null, { status: 204 });
+    };
+    const client = createClient({ apiKey: "sk_test", fetch: fakeFetch });
+    await client.deleteDatabase("db with spaces");
+    expect(capturedUrl).toContain("/v1/databases/db%20with%20spaces");
+  });
+
+  it("deleteDatabase: surfaces a typed NlqdbApiError on 404 db_not_found", async () => {
+    const fakeFetch: FetchLike = async () =>
+      new Response(JSON.stringify({ error: { status: "db_not_found" } }), {
+        status: 404,
+        headers: { "content-type": "application/json" },
+      });
+    const client = createClient({ apiKey: "sk_test", fetch: fakeFetch });
+    await expect(client.deleteDatabase("db_missing_x")).rejects.toMatchObject({
+      name: "NlqdbApiError",
+      code: "db_not_found",
+      httpStatus: 404,
+    });
+  });
+
   it("createDatabase: omits engine from the body when not set (classifier-default path)", async () => {
     let capturedBody: unknown;
     const fakeFetch: FetchLike = async (_url, init) => {

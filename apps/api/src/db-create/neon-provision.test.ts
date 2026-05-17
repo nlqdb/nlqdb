@@ -18,7 +18,12 @@
 import { createTestTelemetry, type TestTelemetry } from "@nlqdb/otel/test";
 import { trace } from "@opentelemetry/api";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { dropSchemaAndRegistry, provisionDb, registerByoDb } from "./neon-provision.ts";
+import {
+  dropSchemaAndRegistry,
+  provisionDb,
+  registerByoDb,
+  stripDbPrefix,
+} from "./neon-provision.ts";
 import type { PgClient, PgTransactionStatement, ProvisionArgs, SchemaPlan } from "./types.ts";
 
 // Tables carry the nested-Column shape (canonical, per
@@ -444,10 +449,11 @@ describe("provisionDb — failure paths", () => {
       expect(result.rolled_back).toBe(true);
     }
     // Cleanup-path DROP SCHEMA goes via pg.query (single round-trip),
-    // not the batch path.
-    expect(pg.queries.some((c) => /DROP SCHEMA "orders_tracker_a4f3b2" CASCADE/.test(c.sql))).toBe(
-      true,
-    );
+    // not the batch path. `IF EXISTS` is part of the primitive so a
+    // partial-retry against an already-gone schema doesn't re-fail.
+    expect(
+      pg.queries.some((c) => /DROP SCHEMA IF EXISTS "orders_tracker_a4f3b2" CASCADE/.test(c.sql)),
+    ).toBe(true);
     // SK-HDC-011 — the registry-insert-failed branch calls
     // `dropSchemaAndRegistry` to undo the Postgres-side state. The
     // D1 INSERT never landed here, so the DELETE is a no-op against
@@ -607,56 +613,51 @@ describe("provisionDb — observability (GLOBAL-014, SK-OBS-005, SK-HDC-012)", (
 });
 
 describe("dropSchemaAndRegistry (SK-HDC-011)", () => {
-  // Per SK-HDC-011 the primitive is idempotent + best-effort: missing
-  // schema or absent registry row is not an error. Today's only caller
-  // is the registry-insert-failed compensation in `provisionDb`; the
-  // function is kept exported so future automated sweeps or operator
-  // tooling can call it directly.
+  // Per SK-HDC-011 + SK-HDC-016 the primitive is **strict** on error
+  // — both create-rollback and user-delete callers wrap with their
+  // own try/catch when they need best-effort semantics. The Postgres
+  // step uses `DROP SCHEMA IF EXISTS` so a partial-retry against an
+  // already-gone schema doesn't re-fail at that step.
   const tracer = trace.getTracer("@nlqdb/api/db-create-test");
 
-  it("schema present + row present → DROP runs and DELETE runs (full rollback)", async () => {
+  it("schema present + row present → DROP IF EXISTS runs and DELETE runs", async () => {
     const pg = makePgStub();
     const d1 = makeD1Stub();
 
     await dropSchemaAndRegistry(tracer, pg.pg, d1.d1, "db_x_a4f3b2", "x_a4f3b2");
 
-    expect(pg.queries.map((c) => c.sql)).toContain('DROP SCHEMA "x_a4f3b2" CASCADE');
+    expect(pg.queries.map((c) => c.sql)).toContain('DROP SCHEMA IF EXISTS "x_a4f3b2" CASCADE');
     expect(d1.deletes).toHaveLength(1);
     expect(d1.deletes[0]?.params).toEqual(["db_x_a4f3b2"]);
   });
 
-  it("schema missing → DELETE still runs (DROP swallowed)", async () => {
+  it("Postgres DROP fails → error propagates, D1 DELETE does NOT run (strict mode)", async () => {
     const pg = makePgStub();
     pg.setQueryFailOn((sql) => /^DROP SCHEMA/.test(sql));
     const d1 = makeD1Stub();
 
-    await dropSchemaAndRegistry(tracer, pg.pg, d1.d1, "db_x_a4f3b2", "x_a4f3b2");
-
-    expect(d1.deletes).toHaveLength(1);
-  });
-
-  it("registry-row missing (D1 delete throws) → DROP still runs (DELETE swallowed)", async () => {
-    const pg = makePgStub();
-    const d1 = makeD1Stub();
-    d1.setDeleteFails(true);
-
-    await dropSchemaAndRegistry(tracer, pg.pg, d1.d1, "db_x_a4f3b2", "x_a4f3b2");
-
-    expect(pg.queries.map((c) => c.sql)).toContain('DROP SCHEMA "x_a4f3b2" CASCADE');
-  });
-
-  it("both missing → no throw (idempotent no-op)", async () => {
-    const pg = makePgStub();
-    pg.setQueryFailOn((sql) => /^DROP SCHEMA/.test(sql));
-    const d1 = makeD1Stub();
-    d1.setDeleteFails(true);
-
-    // Best-effort by design — both legs swallow their errors so the
-    // caller's primary error code (e.g. registry_insert_failed) isn't
-    // masked by a cleanup failure.
     await expect(
       dropSchemaAndRegistry(tracer, pg.pg, d1.d1, "db_x_a4f3b2", "x_a4f3b2"),
-    ).resolves.toBeUndefined();
+    ).rejects.toThrow();
+    // Critical for SK-HDC-016: never claim "deleted" to the user when
+    // the underlying data still exists in Neon. The registry row must
+    // stay so a retry (manual / operator / sweep) can find it.
+    expect(d1.deletes).toHaveLength(0);
+  });
+
+  it("D1 DELETE fails after a successful DROP → error propagates", async () => {
+    const pg = makePgStub();
+    const d1 = makeD1Stub();
+    d1.setDeleteFails(true);
+
+    await expect(
+      dropSchemaAndRegistry(tracer, pg.pg, d1.d1, "db_x_a4f3b2", "x_a4f3b2"),
+    ).rejects.toThrow();
+    // DROP did run before the D1 failure, so the orphan is now an
+    // orphan registry row (schema gone, row remains). Retry-safe:
+    // the next call's IF-EXISTS DROP no-ops and the D1 DELETE
+    // re-attempts.
+    expect(pg.queries.map((c) => c.sql)).toContain('DROP SCHEMA IF EXISTS "x_a4f3b2" CASCADE');
   });
 
   it("rejects unsafe schema identifiers at the boundary (SK-HDC-009 carry-through)", async () => {
@@ -668,6 +669,20 @@ describe("dropSchemaAndRegistry (SK-HDC-011)", () => {
     ).rejects.toThrow(/unsafe schemaName/);
     expect(pg.queries).toHaveLength(0);
     expect(d1.deletes).toHaveLength(0);
+  });
+});
+
+describe("stripDbPrefix (exported for SK-HDC-016 DELETE /v1/databases/:id)", () => {
+  it("strips the leading db_ so the schema name is the orchestrator-minted suffix", () => {
+    expect(stripDbPrefix("db_orders_tracker_a4f3b2")).toBe("orders_tracker_a4f3b2");
+  });
+
+  it("throws on an id without the db_ prefix — defense in depth before SQL identifier quoting", () => {
+    expect(() => stripDbPrefix("legacy_no_prefix")).toThrow(/must start with "db_"/);
+  });
+
+  it("throws on an empty string for the same defensive reason", () => {
+    expect(() => stripDbPrefix("")).toThrow(/must start with "db_"/);
   });
 });
 

@@ -81,12 +81,7 @@ when-to-load:
 
 ### SK-HDC-005 — `dbId` resolution: deterministic fast-path then cheap-tier LLM, with confidence floor + visible echo
 
-- **Status:** superseded by SK-ASK-009 (in `docs/features/ask-pipeline/FEATURE.md`) — this block was a mirror of SK-ASK-003 on the create-side; the merged `routeAsk` decision now owns dbId resolution for both arms.
-- **Decision:** When `dbId` is absent on `/v1/ask`: kind=create routes the typed-plan create path (SK-HDC-001) unchanged; for kind=query|write — 0 dbs → CREATE; 1 db → auto-target; 2+ dbs → slug-substring fast-path → KV cache → cheap-tier `llm.disambiguate`, with `confidence ≥ 0.7` floor and `selected_db` echo on auto-target. Below the floor the handler returns `409 candidate_dbs` ranked by score. CLI / MCP keep their deterministic fallbacks (MRU prompt / elicitation). Mirror of `SK-ASK-003` on the create-side.
-- **Core value:** Effortless UX, Goal-first, Honest latency
-- **Why:** A bare deterministic 409 paid a UX wall on goal-first chat. Wrong-tenant risk is contained by the confidence floor + visible echo (wrong picks are not silent) + one-click rail recovery. Writes still pass the SK-HDC-006 validator split + SK-ONBOARD-004 confirm-diff gate, so a wrong-tenant destructive call requires both a wrong LLM pick and a user-approved diff naming the wrong table.
-- **Consequence in code:** `apps/api/src/ask/disambiguate-db.ts` runs the new `llm.disambiguate` op; the route handler in `apps/api/src/index.ts` runs the new flow (0→create, 1→auto, 2+→slug-fastpath/cache/LLM with 0.7 floor) and routes the create branch through this feature's `orchestrateDbCreate` unchanged. Per-attempt LLM timeout 1500 ms (cheap-tier). `disambiguate` is dbId resolution only — never invoked from inside the typed-plan compiler.
-- **Alternatives rejected:** Bare deterministic 409 — UX wall on goal-first chat. LLM pick without confidence floor — silent on low-signal goals. LLM pick without `selected_db` echo — silent again. Planner-tier LLM — overkill; cheap tier is accurate enough on slug + schema-hash inputs.
+**Status:** superseded by SK-ASK-009 (in `docs/features/ask-pipeline/FEATURE.md`). Full body retained in [`decisions/SK-HDC-005-dbid-resolution-superseded.md`](decisions/SK-HDC-005-dbid-resolution-superseded.md) per IDs-are-sticky.
 
 ### SK-HDC-006 — Two validator paths: read/write (allowlist) vs DDL (allowlist + libpg_query parse)
 
@@ -181,6 +176,10 @@ when-to-load:
 ### SK-HDC-015 — Compiler auto-generates defaults for single-column integer/uuid primary keys
 
 Full body lives in [`decisions/SK-HDC-015-pk-auto-defaults.md`](decisions/SK-HDC-015-pk-auto-defaults.md) — following the `mcp-server` shard pattern so this FEATURE.md doesn't blow past `D4`'s 20 KB cap. New decisions land in `decisions/` by default.
+
+### SK-HDC-016 — `DELETE /v1/databases/:id` reuses `dropSchemaAndRegistry`; UI gates with typed-name confirmation
+
+Full body lives in [`decisions/SK-HDC-016-delete-database.md`](decisions/SK-HDC-016-delete-database.md). One-line summary: user-initiated delete shares one rollback primitive with the create-time compensation path (SK-HDC-011), and the chat surface gates it with a modal that requires the user to type the displayName before the Delete button enables.
 
 ## GLOBALs governing this feature
 

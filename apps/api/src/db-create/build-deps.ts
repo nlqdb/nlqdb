@@ -51,19 +51,27 @@ export type BuildDbCreateDepsResult = {
 // `c.executionCtx.waitUntil` from the route handler; the orchestrator
 // then fires the tail work into that lifetime so the response returns
 // without blocking on it.
-export function buildDbCreateDeps(
-  envBindings: Cloudflare.Env,
-  waitUntil?: (p: Promise<unknown>) => void,
-): BuildDbCreateDepsResult {
+// Reads the canonical Phase-1 secret ref. Throws with a precise
+// message when unset so an operator-config bug surfaces clearly
+// instead of bubbling up as an opaque Neon-side error.
+export function resolveDatabaseUrl(envBindings: Cloudflare.Env): string {
   const databaseUrl = (envBindings as unknown as Record<string, string | undefined>)[
     DEFAULT_SECRET_REF
   ];
   if (!databaseUrl) {
     throw new Error(
-      `buildDbCreateDeps: env binding ${DEFAULT_SECRET_REF} is unset; ` +
-        "Phase 1 db.create requires the shared Neon connection (see RUNBOOK §4 secrets).",
+      `nlqdb: env binding ${DEFAULT_SECRET_REF} is unset; ` +
+        "Phase 1 db.create / db.delete requires the shared Neon connection (see RUNBOOK §4 secrets).",
     );
   }
+  return databaseUrl;
+}
+
+export function buildDbCreateDeps(
+  envBindings: Cloudflare.Env,
+  waitUntil?: (p: Promise<unknown>) => void,
+): BuildDbCreateDepsResult {
+  const databaseUrl = resolveDatabaseUrl(envBindings);
   return {
     deps: {
       inferSchema,
@@ -112,7 +120,13 @@ export function buildDbCreateDeps(
 // (CREATE INDEX CONCURRENTLY is the documented exception, and our
 // compiler does not emit CONCURRENTLY). `query` stays for the cleanup
 // path's `DROP SCHEMA` and the D1 idempotency `SELECT`.
-function buildPgClient(connectionString: string): PgClient {
+//
+// Exported so the user-delete route (SK-HDC-016) can build a PgClient
+// without paying for the LLM router, embed deps, and recent-tables
+// store the full `buildDbCreateDeps` wires up — none of which the
+// delete path touches. Pairs with `resolveDatabaseUrl(env)` below for
+// the secret-ref convention.
+export function buildPgClient(connectionString: string): PgClient {
   const sql = neon(connectionString, { fullResults: true });
   return {
     async query<T = Record<string, unknown>>(sqlText: string, params?: unknown[]) {

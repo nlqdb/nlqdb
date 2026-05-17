@@ -117,14 +117,26 @@
 }
 
 .left-rail__item {
-  display: contents;
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  border: 1px solid transparent;
+}
+
+.left-rail__item:hover {
+  border-color: var(--border);
+}
+
+.left-rail__item[data-active] {
+  border-color: var(--accent);
+  background: rgba(198, 244, 50, 0.06);
 }
 
 .left-rail__item-button {
-  width: 100%;
+  flex: 1 1 auto;
   text-align: left;
   background: transparent;
-  border: 1px solid transparent;
+  border: none;
   padding: 8px 10px;
   cursor: pointer;
   display: flex;
@@ -134,13 +146,20 @@
   font-family: var(--mono);
 }
 
-.left-rail__item-button:hover {
-  border-color: var(--border);
+.left-rail__item-delete {
+  flex: 0 0 auto;
+  background: transparent;
+  border: none;
+  padding: 0 10px;
+  color: var(--fg-muted);
+  font-family: var(--mono);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
 }
 
-.left-rail__item[data-active] .left-rail__item-button {
-  border-color: var(--accent);
-  background: rgba(198, 244, 50, 0.06);
+.left-rail__item-delete:hover {
+  color: #ff7b7b;
 }
 
 .left-rail__item-slug {
@@ -765,6 +784,121 @@
   color: var(--fg-muted);
   font-size: 11px;
 }
+
+/* ---------- Delete-db confirmation dialog (SK-HDC-016) ---------- */
+
+.delete-db-dialog__backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  /* One layer above the Cmd+K palette (`.palette` z-index: 50) so
+   * if the palette is open when a destructive confirm fires, the
+   * dialog wins the stack. */
+  z-index: 60;
+}
+
+.delete-db-dialog {
+  background: var(--bg-elev);
+  border: 2px solid var(--border-strong);
+  box-shadow: 6px 6px 0 0 var(--border-strong);
+  padding: 20px;
+  width: min(480px, 100%);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  font-family: var(--mono);
+}
+
+.delete-db-dialog__title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: #ff7b7b;
+}
+
+.delete-db-dialog__body {
+  margin: 0;
+  font-size: 13px;
+  color: var(--fg);
+  line-height: 1.4;
+}
+
+.delete-db-dialog__label {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.delete-db-dialog__label-text {
+  font-size: 12px;
+  color: var(--fg-muted);
+}
+
+.delete-db-dialog__name-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.delete-db-dialog__name {
+  font-family: var(--mono);
+  font-size: 13px;
+  padding: 4px 8px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--fg);
+}
+
+.delete-db-dialog__copy {
+  background: transparent;
+  border: 1px solid var(--border);
+  padding: 4px 10px;
+  font-family: var(--mono);
+  font-size: 11px;
+  cursor: pointer;
+  color: var(--fg);
+}
+
+.delete-db-dialog__copy:hover {
+  border-color: var(--border-strong);
+}
+
+.delete-db-dialog__label input {
+  padding: 8px 10px;
+  font-family: var(--mono);
+  font-size: 13px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--fg);
+}
+
+.delete-db-dialog__label input:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.delete-db-dialog__status {
+  margin: 0;
+  font-size: 12px;
+  color: var(--fg-muted);
+}
+
+.delete-db-dialog__status--error {
+  color: #ff7b7b;
+}
+
+.delete-db-dialog__actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+/* `.btn--danger` is canonical in `global.css` next to `.btn--accent`. */
 
 .palette__empty {
   padding: 14px 18px;

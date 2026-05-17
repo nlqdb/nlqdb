@@ -353,6 +353,16 @@ export type NlqClient = {
     req: CreateDatabaseRequest,
     opts?: { signal?: AbortSignal; idempotencyKey?: string },
   ): Promise<CreateDatabaseResult>;
+  // SK-HDC-016 — destructive removal from the chat surface's delete
+  // affordance. Returns once the API has dropped the schema and
+  // registry row; surfaces remove the entry from the rail on resolve.
+  // Rejects with `db_not_found` when the dbId is unknown or belongs
+  // to a different tenant. The UI is responsible for the typed-name
+  // confirmation; the wire call assumes intent is already gathered.
+  deleteDatabase(
+    dbId: string,
+    opts?: { signal?: AbortSignal; idempotencyKey?: string },
+  ): Promise<void>;
   // SK-MCP-014 — `apps/mcp/`'s `McpAgent` calls this every 1 s to
   // re-check `sk_mcp_*` revocation. `keyHash` is the HMAC-SHA256 hex
   // of the plaintext key (never the plaintext itself), computed via
@@ -652,6 +662,15 @@ export function createClient(opts: ClientOptions = {}): NlqClient {
           ? { headers: { "idempotency-key": callOpts.idempotencyKey } }
           : {}),
       }),
+    deleteDatabase: async (dbId, callOpts) => {
+      await call<void>(`/v1/databases/${encodeURIComponent(dbId)}`, {
+        method: "DELETE",
+        signal: callOpts?.signal,
+        ...(callOpts?.idempotencyKey
+          ? { headers: { "idempotency-key": callOpts.idempotencyKey } }
+          : {}),
+      });
+    },
     getKeyStatus: (keyHash, callOpts) =>
       call<KeyStatus>(`/v1/keys/${encodeURIComponent(keyHash)}/status`, {
         signal: callOpts?.signal,

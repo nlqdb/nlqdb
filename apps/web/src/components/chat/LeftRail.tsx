@@ -10,7 +10,7 @@
 // composer is always enabled; the rail is now an *override*, not a
 // gate.
 
-import type { DatabaseSummary } from "@nlqdb/sdk";
+import { type DatabaseSummary, NlqdbApiError } from "@nlqdb/sdk";
 import { useEffect, useRef, useState } from "react";
 import { getChatClient } from "../../lib/chat-client";
 import { displayName } from "../../lib/names";
@@ -34,6 +34,10 @@ interface LeftRailProps {
   // through this prop so the sidebar stays in sync without a
   // listDatabases refetch. Deduped by id.
   addedDb?: DatabaseSummary | null;
+  // SK-HDC-016: invoked once the typed-name-confirmed DELETE round-trip
+  // resolves. Parent clears `activeDbId`/history if the deleted DB was
+  // the active one.
+  onDeleted?: (db: DatabaseSummary) => void;
 }
 
 type LoadState =
@@ -49,9 +53,21 @@ export default function LeftRail({
   onCreated,
   onLoaded,
   addedDb,
+  onDeleted,
 }: LeftRailProps) {
   const [state, setState] = useState<LoadState>({ kind: "loading" });
   const [creating, setCreating] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState<DatabaseSummary | null>(null);
+
+  function handleDeleted(db: DatabaseSummary) {
+    setState((prev) =>
+      prev.kind !== "ready"
+        ? prev
+        : { kind: "ready", databases: prev.databases.filter((d) => d.id !== db.id) },
+    );
+    setConfirmDelete(null);
+    onDeleted?.(db);
+  }
 
   // The onLoaded ref captures the latest callback without
   // re-firing the load effect each time the parent re-renders.
@@ -156,9 +172,28 @@ export default function LeftRail({
                   {formatRelative(db.lastQueriedAt ?? db.createdAt)}
                 </span>
               </button>
+              <button
+                type="button"
+                className="left-rail__item-delete"
+                onClick={() => setConfirmDelete(db)}
+                aria-label={`Delete ${db.displayName}`}
+                data-testid={`delete-db-${db.slug}`}
+                title="Delete database"
+              >
+                ×
+              </button>
             </li>
           ))}
         </ul>
+      ) : null}
+
+      {confirmDelete ? (
+        <DeleteDbDialog
+          apiBase={apiBase}
+          db={confirmDelete}
+          onCancel={() => setConfirmDelete(null)}
+          onDeleted={handleDeleted}
+        />
       ) : null}
     </aside>
   );
@@ -248,6 +283,232 @@ function NewDbForm({
       </div>
     </form>
   );
+}
+
+// SK-HDC-016 — typed-name confirmation dialog. The user must type the
+// exact displayName before the Delete button enables; this is the only
+// gate between "click ×" and an irreversible drop. The displayName is
+// rendered next to the input with a copy button so a long disambiguated
+// name (`orders tracker (2)`) is one click + one paste away.
+//
+// Focus rules:
+//   - Focus enters the input on mount.
+//   - Tab cycles between the four focusable elements inside the dialog
+//     (Copy, input, Delete, Cancel) — we trap explicitly so a stray
+//     Tab past Cancel doesn't escape to the page underneath, which
+//     would let the user click a rail × of *another* DB while the
+//     dialog is still open.
+//   - Escape (when not submitting) closes the dialog.
+//   - On close, focus returns to the element that opened the dialog
+//     (the rail's `×` button) so keyboard users keep their place.
+function DeleteDbDialog({
+  apiBase,
+  db,
+  onCancel,
+  onDeleted,
+}: {
+  apiBase: string;
+  db: DatabaseSummary;
+  onCancel: () => void;
+  onDeleted: (db: DatabaseSummary) => void;
+}) {
+  const [typed, setTyped] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const dialogRef = useRef<HTMLFormElement>(null);
+  // Capture once at mount so a re-render of the parent (e.g. after a
+  // listDatabases refetch) doesn't change which element we return to.
+  const triggerRef = useRef<HTMLElement | null>(null);
+  if (triggerRef.current === null && typeof document !== "undefined") {
+    triggerRef.current = document.activeElement as HTMLElement | null;
+  }
+
+  useEffect(() => {
+    inputRef.current?.focus();
+    // Restore focus on unmount — covers Cancel, Escape, and success
+    // paths uniformly without each path having to remember.
+    const trigger = triggerRef.current;
+    return () => {
+      // On the success path the rail row containing the trigger × is
+      // removed from the DOM by `handleDeleted` BEFORE this cleanup
+      // runs; `.focus()` on a detached node is a silent no-op and
+      // focus would fall to <body>. Fall back to the rail's "+ New"
+      // button so keyboard users keep an anchor inside the rail.
+      if (trigger && document.body.contains(trigger)) {
+        trigger.focus();
+      } else if (typeof document !== "undefined") {
+        document.querySelector<HTMLElement>(".left-rail__new")?.focus();
+      }
+    };
+  }, []);
+
+  // Escape + Tab focus-trap. Captured at the document level rather
+  // than on the input so Escape works regardless of focus (e.g. after
+  // clicking the copy button); the Tab handler walks the dialog's
+  // focusable descendants to wrap forward/backward.
+  useEffect(() => {
+    function onKey(e: globalThis.KeyboardEvent) {
+      if (e.key === "Escape") {
+        if (!submitting) onCancel();
+        return;
+      }
+      if (e.key !== "Tab" || !dialogRef.current) return;
+      // Include `a[href]`, `select`, `textarea` so the trap stays
+      // correct if any of those gets added to the dialog later.
+      const focusable = Array.from(
+        dialogRef.current.querySelectorAll<HTMLElement>(
+          'input,select,textarea,button:not([disabled]),a[href],[tabindex]:not([tabindex="-1"])',
+        ),
+      );
+      if (focusable.length === 0) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (!first || !last) return;
+      const active = document.activeElement as HTMLElement | null;
+      if (e.shiftKey && active === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && active === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onCancel, submitting]);
+
+  const matches = typed === db.displayName;
+
+  async function submit(event: { preventDefault: () => void }) {
+    event.preventDefault();
+    if (!matches || submitting) return;
+    setSubmitting(true);
+    setError(null);
+    try {
+      const client = getChatClient(apiBase);
+      await client.deleteDatabase(db.id, {
+        idempotencyKey: `web-delete-${db.id}-${Date.now()}`,
+      });
+      onDeleted(db);
+    } catch (err) {
+      setError(messageForDelete(err));
+      setSubmitting(false);
+    }
+  }
+
+  async function copyName() {
+    try {
+      await navigator.clipboard.writeText(db.displayName);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1500);
+    } catch {
+      // clipboard rejection (insecure context, permission denial) is
+      // recoverable — the name is right there on screen.
+    }
+  }
+
+  return (
+    <div
+      className="delete-db-dialog__backdrop"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="delete-db-dialog__title"
+      aria-describedby="delete-db-dialog__body"
+      data-testid="delete-db-dialog"
+    >
+      <form className="delete-db-dialog" onSubmit={submit} ref={dialogRef}>
+        <h2 className="delete-db-dialog__title" id="delete-db-dialog__title">
+          Delete database
+        </h2>
+        <p className="delete-db-dialog__body" id="delete-db-dialog__body">
+          This cannot be reverted. It permanently drops the schema, every table inside it, and any
+          per-DB API keys. The data is not recoverable.
+        </p>
+        <label className="delete-db-dialog__label">
+          <span className="delete-db-dialog__label-text">Type the database name to confirm:</span>
+          <span className="delete-db-dialog__name-row">
+            <code className="delete-db-dialog__name" data-testid="delete-db-dialog-name">
+              {db.displayName}
+            </code>
+            <button
+              type="button"
+              className="delete-db-dialog__copy"
+              onClick={copyName}
+              // aria-label fully overrides the button text for AT, so
+              // it must reflect the post-click state too — otherwise SR
+              // users hear nothing when the visible label flips from
+              // "Copy" to "Copied".
+              aria-label={copied ? "Database name copied to clipboard" : "Copy database name"}
+            >
+              {copied ? "Copied" : "Copy"}
+            </button>
+          </span>
+          <input
+            ref={inputRef}
+            type="text"
+            value={typed}
+            onChange={(e) => setTyped(e.target.value)}
+            spellCheck={false}
+            autoComplete="off"
+            disabled={submitting}
+            // Intentionally no placeholder: rendering the exact text
+            // the user must type would undercut the typed-name gate.
+            // The name lives in the `<code>` block above with a Copy
+            // button next to it.
+            data-testid="delete-db-dialog-input"
+          />
+        </label>
+        {error ? (
+          <p
+            className="delete-db-dialog__status delete-db-dialog__status--error"
+            role="alert"
+            aria-live="assertive"
+          >
+            {error}
+          </p>
+        ) : null}
+        <div className="delete-db-dialog__actions">
+          <button
+            type="submit"
+            className="btn btn--danger"
+            disabled={!matches || submitting}
+            data-testid="delete-db-dialog-confirm"
+          >
+            {submitting ? "Deleting…" : "Delete"}
+          </button>
+          <button type="button" className="btn" onClick={onCancel} disabled={submitting}>
+            Cancel
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
+// Context-specific copy for the delete flow. `messageFor` (defined
+// below in this same file) has a load-context fallback
+// ("Couldn't load databases.") — surfacing that on a delete error
+// would mislead the user about which operation failed.
+function messageForDelete(err: unknown): string {
+  if (err instanceof NlqdbApiError) {
+    if (err.code === "db_not_found") {
+      // Race: another tab / surface already deleted this DB. The rail
+      // entry is stale; closing the dialog after this lands.
+      return "This database is already gone — close to refresh.";
+    }
+    if (err.code === "unauthorized") {
+      return "Your session expired. Sign in again to delete this database.";
+    }
+    if (err.code === "rate_limited") {
+      return "Too many requests just now — try again in a moment.";
+    }
+    if (err.code === "network_error" || err.code === "aborted") {
+      return "Network error reaching nlqdb — try again.";
+    }
+  }
+  return "Couldn't delete this database — try again.";
 }
 
 function prependDb(prev: LoadState, db: DatabaseSummary): LoadState {

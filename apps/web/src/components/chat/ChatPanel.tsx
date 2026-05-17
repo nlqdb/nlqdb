@@ -558,6 +558,19 @@ function ChatPanelInner({ apiBase }: ChatPanelProps) {
     syncDbIdToUrl(null);
   }
 
+  // SK-HDC-016: when a deleted DB was the active selection, fall back
+  // to the "All databases" auto-pick state and clear any persisted
+  // history for the dead id so a future DB minted with the same suffix
+  // (~1 in 16M) doesn't inherit stale messages.
+  function handleDeleted(db: DatabaseSummary) {
+    try {
+      if (typeof localStorage !== "undefined") localStorage.removeItem(histKey(db.id));
+    } catch {
+      // localStorage unavailable — degrade silently.
+    }
+    if (db.id === activeDbId) clearSelection();
+  }
+
   // Browser back/forward — keep `?db=` in sync with the activeDb
   // state so the rail's highlight matches the URL.
   useEffect(() => {
@@ -626,6 +639,7 @@ function ChatPanelInner({ apiBase }: ChatPanelProps) {
         onSelect={selectDb}
         onClearSelection={clearSelection}
         onCreated={selectDb}
+        onDeleted={handleDeleted}
         onLoaded={(databases) => {
           if (activeDbId) {
             const match = databases.find((db) => db.id === activeDbId);

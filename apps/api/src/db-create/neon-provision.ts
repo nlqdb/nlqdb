@@ -216,8 +216,16 @@ export async function provisionDb(
   } catch (_err) {
     // The D1 INSERT never landed, so only the Postgres schema needs
     // tearing down — `dropSchemaAndRegistry` no-ops on the absent
-    // registry row by design (SK-HDC-011).
-    await dropSchemaAndRegistry(tracer, deps.pg, deps.d1, args.dbId, schemaName);
+    // registry row by design (SK-HDC-011). The primitive is strict on
+    // error (SK-HDC-016 needs that for the user-delete path), so we
+    // swallow here: the create error matters more than a rollback
+    // hiccup, and any orphan schema gets cleaned up by the next
+    // operator pass or sweep.
+    try {
+      await dropSchemaAndRegistry(tracer, deps.pg, deps.d1, args.dbId, schemaName);
+    } catch {
+      // best-effort — see comment above
+    }
     return { ok: false, reason: "registry_insert_failed", rolled_back: true };
   }
 
@@ -238,7 +246,12 @@ export async function registerByoDb(
   );
 }
 
-function stripDbPrefix(dbId: string): string {
+// Exported so the `DELETE /v1/databases/:id` route handler can derive
+// the schema name to pass to `dropSchemaAndRegistry` without
+// duplicating the prefix convention. The function throws on a malformed
+// id, which is exactly the boundary check we want before constructing
+// quoted SQL identifiers downstream (SK-HDC-009 defense-in-depth).
+export function stripDbPrefix(dbId: string): string {
   if (!dbId.startsWith("db_")) {
     throw new Error(`provisionDb: dbId must start with "db_", got "${dbId}"`);
   }
@@ -308,13 +321,23 @@ function mapTransactionError(err: unknown): ProvisionFailureReason {
   return "transaction_failed";
 }
 
-// SK-HDC-011 — single rollback primitive for the create path. The
-// registry-insert-failed compensation (above) calls it. Idempotent +
-// best-effort: missing schema or absent registry row is not an error,
-// so retries (manual operator intervention or future automated
-// sweeps) can call freely. Identifier safety: the public callsites
-// (`provisionDb` here) feed in values that came from
-// `assertSafeIdentifier` upstream — but we re-validate at the
+// SK-HDC-011 — single rollback primitive shared by the create-time
+// rollback path (`registry_insert_failed` below) and the user-initiated
+// delete path (`DELETE /v1/databases/:id`, SK-HDC-016).
+//
+// Idempotent — `DROP SCHEMA IF EXISTS` and `DELETE FROM databases`
+// both no-op cleanly when the target is already gone, so retries
+// from operator intervention or future automated sweeps are safe.
+//
+// **Strict on error.** Throws on either the Postgres or the D1 step
+// failing. The create-rollback caller wraps in try/catch because the
+// original create error matters more than a rollback hiccup; the
+// user-delete caller wants the error surfaced so the user sees a 500
+// instead of a falsely-cheerful 204 + a silent orphan in Neon
+// (SK-HDC-016 — durability / GDPR right-to-erasure).
+//
+// Identifier safety: the public callsites feed in values that came
+// from `assertSafeIdentifier` upstream — but we re-validate at the
 // boundary because the function is exported and a future caller
 // might forget. Mirrors SK-HDC-009's defense-in-depth posture.
 export async function dropSchemaAndRegistry(
@@ -325,18 +348,10 @@ export async function dropSchemaAndRegistry(
   schemaName: string,
 ): Promise<void> {
   assertSafeIdentifier(schemaName, "schemaName");
-  try {
-    await runQuery(tracer, pg, `DROP SCHEMA "${schemaName}" CASCADE`);
-  } catch {
-    // Sweep job picks up orphans; better to surface the original
-    // failure to the caller than to mask it with a cleanup error.
-  }
-  try {
-    await d1.prepare("DELETE FROM databases WHERE id = ?").bind(dbId).run();
-  } catch {
-    // D1 cleanup is best-effort for the same reason — a transient
-    // D1 failure shouldn't override the caller's primary error code.
-  }
+  // `IF EXISTS` so a partially-applied retry (schema already gone,
+  // registry row still present) doesn't re-fail at the Postgres step.
+  await runQuery(tracer, pg, `DROP SCHEMA IF EXISTS "${schemaName}" CASCADE`);
+  await d1.prepare("DELETE FROM databases WHERE id = ?").bind(dbId).run();
 }
 
 // Per-statement `db.query` span emission for the cleanup path —
