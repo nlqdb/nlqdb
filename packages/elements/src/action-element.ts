@@ -21,6 +21,16 @@ export type NlqActionConfirmDetail = {
 
 export type NlqActionErrorDetail = AskFailure;
 
+// Typed events on HTMLElement: `el.addEventListener("nlq-action:success", e => e.detail)`
+// narrows `detail` to `NlqActionSuccessDetail` instead of `any`.
+declare global {
+  interface HTMLElementEventMap {
+    "nlq-action:confirm-required": CustomEvent<NlqActionConfirmDetail>;
+    "nlq-action:success": CustomEvent<NlqActionSuccessDetail>;
+    "nlq-action:error": CustomEvent<NlqActionErrorDetail>;
+  }
+}
+
 export class NlqActionElement extends HTMLElement {
   static get observedAttributes(): string[] {
     return ["goal", "db", "api-key", "endpoint", "form", "label", "on-success"];

@@ -18,6 +18,14 @@ export type NlqDataLoadDetail = {
 
 export type NlqDataErrorDetail = AskFailure;
 
+// Typed listeners on HTMLElement — `e.detail` narrows correctly.
+declare global {
+  interface HTMLElementEventMap {
+    "nlq-data:load": CustomEvent<NlqDataLoadDetail>;
+    "nlq-data:error": CustomEvent<NlqDataErrorDetail>;
+  }
+}
+
 // Fetch-relevant attributes — a change to any of these triggers a
 // new `update()`. `refresh` is observed too but only re-arms the
 // polling timer (handled in `attributeChangedCallback`).
