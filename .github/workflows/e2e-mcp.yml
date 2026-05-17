@@ -1,11 +1,17 @@
-# Reusable: MCP e2e (InMemoryTransport + protocol conformance).
-# Hermetic — the SDK pair runs in-process; no network, no LLM. See
-# `tests/e2e/mcp/` for the driver and SK-E2E-002 for rationale.
+# MCP e2e (InMemoryTransport + protocol conformance). Hermetic —
+# the SDK pair runs in-process; no network, no LLM. Trigger when
+# the MCP tool surface, the `mapSdkError` mapping, or any tool's
+# `structuredContent` wire shape changes. See `tests/e2e/mcp/`
+# for the driver and SK-E2E-002 / SK-E2E-004 for rationale.
 
-name: E2E MCP (reusable)
+name: E2E MCP
 
 on:
-  workflow_call: {}
+  workflow_dispatch:
+
+concurrency:
+  group: e2e-mcp
+  cancel-in-progress: false
 
 permissions: {}
 

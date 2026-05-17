@@ -31,7 +31,7 @@
 ## How to run just this persona
 
 ```bash
-gh workflow run e2e.yml -f surface=cli
-gh workflow run e2e.yml -f surface=sdk
-gh workflow run e2e.yml -f surface=examples
+gh workflow run e2e-cli.yml
+gh workflow run e2e-sdk.yml
+gh workflow run e2e-examples.yml
 ```

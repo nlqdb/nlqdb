@@ -40,8 +40,7 @@ Web persona journeys are exercised by opencheck — [`tests/opencheck/tests.yaml
 After a change that could move a button, rename a chat affordance, change a confirm-dialog wording, or alter the trace pane:
 
 ```bash
-gh workflow run e2e.yml -f surface=web      # opencheck (live LLM via Groq through plan-cache)
-gh workflow run e2e.yml -f surface=all      # web + every other surface, shared staging
+gh workflow run e2e-opencheck.yml      # opencheck (live LLM via Groq through plan-cache)
 ```
 
 The legacy [`e2e-opencheck.yml`](../../.github/workflows/e2e-opencheck.yml) entry point continues to work as a backwards-compat alias for `surface=web`.

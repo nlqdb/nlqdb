@@ -41,26 +41,25 @@ Runners live in:
 
 ## Triggering an e2e run
 
-All e2e is `workflow_dispatch`-only (see [`SK-E2E-004`](../../docs/features/e2e-coverage/FEATURE.md)). One dispatcher with a `surface` choice input routes to per-surface reusable workflows. Trigger from the Actions UI (`E2E (dispatcher)`) or via `gh`:
+All e2e is `workflow_dispatch`-only (see [`SK-E2E-004`](../../docs/features/e2e-coverage/FEATURE.md)). One workflow per surface — pick the one that matches the change you just made, or trigger several when a cross-surface journey is at stake:
 
 ```bash
-# Pick one surface
-gh workflow run e2e.yml -f surface=cli
-gh workflow run e2e.yml -f surface=sdk
-gh workflow run e2e.yml -f surface=mcp
-gh workflow run e2e.yml -f surface=examples
-gh workflow run e2e.yml -f surface=web      # existing opencheck
-gh workflow run e2e.yml -f surface=all      # serial, one staging spin-up shared
+gh workflow run e2e-cli.yml
+gh workflow run e2e-sdk.yml
+gh workflow run e2e-mcp.yml
+gh workflow run e2e-examples.yml                  # framework Playwright matrix (hermetic)
+gh workflow run e2e-examples.yml -f live=true     # + live curl + CLI shell smokes (spins up staging)
+gh workflow run e2e-opencheck.yml                 # web — staging spin-up + opencheck
 ```
 
-`surface=all` shares one Neon branch + Workers preview between surfaces (so the LLM plan-cache absorbs duplicate `ask` calls; see SK-E2E-003). Use it after changes that span surfaces (auth, SDK request shape, ask pipeline).
+For a cross-surface change (auth, SDK request shape, ask pipeline) trigger every relevant surface. Web + examples-live share a Neon branch + Workers preview alias via a common `e2e-staging` concurrency group, so overlapping runs queue rather than orphan resources.
 
 ## Adding a new persona test
 
 1. Pick the persona's folder (or open a P7 in `docs/research/personas.md` first; never add a persona here without it living there).
 2. Add the test file in the appropriate runner directory.
 3. Add the row to that persona's `README.md` surface table.
-4. If the test is the first one for a new surface, add a row to the global runner table above + extend `_e2e-<surface>.yml` if a new reusable workflow is needed.
+4. If the test is the first one for a new surface, add a row to the global runner table above + add a new `.github/workflows/e2e-<surface>.yml` workflow (mirror the closest existing one).
 5. Run the runner locally; commit; reference the relevant `SK-E2E-NNN` decision in the PR body.
 
-The dispatcher matrix is the runtime expression of this directory. Anything not reachable from the matrix is not running.
+The list of e2e workflows under `.github/workflows/e2e-*.yml` is the runtime expression of this directory. Anything not reachable from a workflow is not running.

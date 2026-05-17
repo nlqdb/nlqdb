@@ -32,5 +32,5 @@ This persona is the existing [`tests/opencheck/tests.yaml`](../../opencheck/test
 ## How to run just this persona
 
 ```bash
-gh workflow run e2e.yml -f surface=web
+gh workflow run e2e-opencheck.yml
 ```

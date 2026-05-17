@@ -31,11 +31,10 @@ NLQDB_API_KEY=sk_live_… go test ./...     # journey mode against a live stagin
 ## Trigger via GitHub Actions
 
 ```bash
-gh workflow run e2e.yml -f surface=cli
-gh workflow run e2e.yml -f surface=all    # CLI + every other surface, one shared staging
+gh workflow run e2e-cli.yml
 ```
 
-The `cli` surface runs the `_e2e-cli.yml` reusable workflow.
+The `cli` surface runs the `e2e-cli.yml` reusable workflow.
 
 ## When to add a script
 

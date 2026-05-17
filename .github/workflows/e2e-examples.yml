@@ -1,72 +1,98 @@
-# nlqdb — unified E2E dispatcher (SK-E2E-004).
+# Examples e2e — Playwright framework smoke tests (hermetic file-content
+# checks today; framework-runtime checks `test.fixme`'d until Phase 1
+# publishes `elements.nlqdb.com/v1.js`) plus bash shell smokes for the
+# curl + CLI examples. Trigger after any change to `examples/**` or the
+# `<nlq-data>` attribute contract. See `tests/e2e/examples/` for the
+# harness and SK-E2E-005 / SK-E2E-004 for rationale.
 #
-# One `workflow_dispatch` entry point routes to per-surface reusable
-# workflows. Surfaces:
-#   • web        — opencheck against the staging URL (existing reusable)
-#   • cli        — Go testscript fixtures, hermetic
-#   • sdk        — vitest + cassettes, hermetic
-#   • mcp        — InMemoryTransport protocol tests, hermetic
-#   • examples   — Playwright framework smoke + bash shell smokes
-#   • all        — every surface above, in series, sharing one staging URL
-#
-# Why workflow_dispatch only: every run can burn Neon-branch capacity,
-# Workers Versions slots, and Groq quota. An implicit `pull_request`
-# trigger would exhaust the free-tier envelope (GLOBAL-013). External
-# scheduling (the same Claude cron job that drives `e2e-opencheck.yml`)
-# can still POST the dispatch endpoint on a cadence.
-#
-# Why one dispatcher (vs one workflow per surface): single Actions-tab
-# entry point so the operator never has to remember which file runs
-# what. Per-surface reusables stay reusable for finer-grained future
-# triggers (e.g. a per-PR auto-run on a label, behind a follow-up
-# decision per the FEATURE.md's open-questions section).
-#
-# Existing `e2e-opencheck.yml` is unchanged and continues to be a
-# valid backwards-compat entry point for web-only manual triggers.
+# `live` input (default `false`): when `true`, this workflow spins up
+# its own ephemeral preview (Neon branch + Workers Versions alias) so
+# the bash curl + CLI smokes can hit a real `/v1/ask` endpoint. Default
+# `false` runs the hermetic Playwright matrix only — fastest and the
+# common case for an examples-only change.
 
-name: E2E (dispatcher)
+name: E2E Examples
 
 on:
   workflow_dispatch:
     inputs:
-      surface:
-        description: "Which surface(s) to test"
-        type: choice
-        required: true
-        default: web
-        options:
-          - web
-          - cli
-          - sdk
-          - mcp
-          - examples
-          - all
+      live:
+        description: "Deploy staging + run the curl/CLI shell smokes against it (slower; needs Neon + Cloudflare secrets)."
+        required: false
+        type: boolean
+        default: false
 
-# Serialise per-surface dispatch but allow different surfaces to
-# overlap with one another by namespacing the group on the input.
-# `surface=all` shares the `e2e-all` lock with itself only.
 concurrency:
-  group: e2e-dispatcher-${{ inputs.surface }}
+  # Share the lock with `e2e-opencheck.yml` whenever this workflow
+  # deploys staging — both write to the same `e2e` Neon branch +
+  # Workers preview alias, so overlap would orphan resources.
+  group: e2e-staging
   cancel-in-progress: false
 
-# SK-CIPERM-001 — default-deny at the workflow root.
+# SK-CIPERM-001 — default-deny at workflow root.
 permissions: {}
 
-# Fixed staging name so cleanup can find it regardless of which step
-# failed mid-run.
 env:
   E2E_NEON_BRANCH: e2e
   E2E_PREVIEW_ALIAS: e2e
 
 jobs:
-  # Spin up the ephemeral preview only when a surface actually needs
-  # it. Hermetic surfaces (cli, sdk, mcp) skip this and run faster.
-  # The deploy logic is the same shape as `e2e-opencheck.yml`'s
-  # `deploy-staging` job — see that file for rationale on every
-  # `--var` flag (MOCK_IDP=1 / MOCK_STRIPE=1 / etc.).
+  playwright:
+    name: examples · framework smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - uses: ./.github/actions/setup
+
+      # @playwright/test is a root workspace devDependency (hoisted so
+      # spec files under `examples/<framework>/e2e/` can resolve it via
+      # the standard upward node_modules walk). The local install adds
+      # only the typecheck + bash smoke wiring.
+      - name: Install e2e-examples deps
+        working-directory: tests/e2e/examples
+        run: bun install
+
+      - name: Restore Playwright browser cache
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-examples-${{ runner.os }}-${{ hashFiles('tests/e2e/examples/package.json', 'package.json') }}
+          restore-keys: |
+            playwright-examples-${{ runner.os }}-
+
+      - name: Install Playwright Chromium
+        working-directory: tests/e2e/examples
+        run: bunx playwright install chromium --with-deps
+
+      - name: Typecheck (config + spec discovery)
+        working-directory: tests/e2e/examples
+        run: bun run typecheck
+
+      - name: Run framework smoke tests
+        working-directory: tests/e2e/examples
+        run: bun run test
+
+      - name: Upload Playwright report on failure
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: playwright-report-examples-${{ github.run_id }}
+          path: tests/e2e/examples/playwright-report/
+          if-no-files-found: ignore
+          retention-days: 14
+
+  # Staging deploy is only needed for the live shell smokes. The deploy
+  # logic mirrors `e2e-opencheck.yml`'s `deploy-staging` job — see that
+  # file for rationale on every `--var` flag (MOCK_IDP / MOCK_STRIPE /
+  # NODE_ENV=preview / etc.). The shared `e2e-staging` concurrency
+  # group above keeps this from racing the opencheck workflow on the
+  # same Neon branch.
   deploy-staging:
-    name: Spin up ephemeral preview (web + examples-live)
-    if: inputs.surface == 'web' || inputs.surface == 'examples' || inputs.surface == 'all'
+    name: Spin up ephemeral preview (live shell smokes)
+    if: ${{ inputs.live }}
     runs-on: ubuntu-latest
     timeout-minutes: 8
     outputs:
@@ -84,7 +110,6 @@ jobs:
           PREVIEW_BETTER_AUTH_SECRET: ${{ secrets.PREVIEW_BETTER_AUTH_SECRET }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
         run: |
           set -euo pipefail
           missing=()
@@ -93,7 +118,6 @@ jobs:
           [ -n "${PREVIEW_BETTER_AUTH_SECRET:-}" ] || missing+=(PREVIEW_BETTER_AUTH_SECRET)
           [ -n "${CLOUDFLARE_API_TOKEN:-}" ] || missing+=(CLOUDFLARE_API_TOKEN)
           [ -n "${CLOUDFLARE_ACCOUNT_ID:-}" ] || missing+=(CLOUDFLARE_ACCOUNT_ID)
-          [ -n "${GROQ_API_KEY:-}" ] || missing+=(GROQ_API_KEY)
           if [ ${#missing[@]} -ne 0 ]; then
             echo "::error::missing required secrets: ${missing[*]}"
             exit 1
@@ -150,7 +174,7 @@ jobs:
           set -euo pipefail
           mkdir -p "$WRANGLER_OUTPUT_FILE_DIRECTORY"
           bunx wrangler versions upload \
-            --message "E2E @ ${{ github.sha }} (dispatcher surface=${{ inputs.surface }})" \
+            --message "E2E examples @ ${{ github.sha }}" \
             --preview-alias "${E2E_PREVIEW_ALIAS}" \
             --var "NODE_ENV:preview" \
             --var "MOCK_IDP:1" \
@@ -174,66 +198,51 @@ jobs:
             echo "::error::no preview URL captured from wrangler output"
             exit 1
           fi
-          echo "captured base_url=$PREVIEW_URL"
           echo "base_url=$PREVIEW_URL" >> "$GITHUB_OUTPUT"
 
-  web:
-    name: Web · opencheck
-    if: |
-      always() &&
-      (inputs.surface == 'web' || inputs.surface == 'all') &&
-      needs.deploy-staging.result == 'success'
+  shell-smokes:
+    name: examples · curl + cli (live)
     needs: deploy-staging
+    if: ${{ inputs.live && needs.deploy-staging.result == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
     permissions:
       contents: read
-    uses: ./.github/workflows/_e2e-opencheck.yml
-    with:
-      base_url: ${{ needs.deploy-staging.outputs.base_url }}
-    secrets:
-      GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
+        with:
+          go-version-file: cli/go.mod
 
-  cli:
-    name: CLI · testscript
-    if: inputs.surface == 'cli' || inputs.surface == 'all'
-    permissions:
-      contents: read
-    uses: ./.github/workflows/_e2e-cli.yml
+      - name: Build nlq binary for CLI shell smoke
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/bin"
+          go -C cli build -o "$RUNNER_TEMP/bin/nlq" ./cmd/nlq
+          echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
 
-  sdk:
-    name: SDK · vitest cassettes
-    if: inputs.surface == 'sdk' || inputs.surface == 'all'
-    permissions:
-      contents: read
-    uses: ./.github/workflows/_e2e-sdk.yml
+      - name: Run curl shell smoke
+        env:
+          NLQDB_API_URL: ${{ needs.deploy-staging.outputs.base_url }}
+          # The CI key is a publishable test key minted against the
+          # staging tenant — same pattern as preview-api.yml. Secret
+          # is `STAGING_NLQDB_API_KEY` (mint via dashboard if missing).
+          NLQDB_API_KEY: ${{ secrets.STAGING_NLQDB_API_KEY }}
+        run: |
+          if [ -z "${NLQDB_API_KEY:-}" ]; then
+            echo "::warning::STAGING_NLQDB_API_KEY not set — curl smoke will skip itself"
+          fi
+          bash examples/curl/e2e/smoke.sh
 
-  mcp:
-    name: MCP · InMemoryTransport
-    if: inputs.surface == 'mcp' || inputs.surface == 'all'
-    permissions:
-      contents: read
-    uses: ./.github/workflows/_e2e-mcp.yml
-
-  examples:
-    name: Examples · Playwright + shell
-    if: |
-      always() &&
-      (inputs.surface == 'examples' || inputs.surface == 'all') &&
-      (needs.deploy-staging.result == 'success' || needs.deploy-staging.result == 'skipped')
-    needs: deploy-staging
-    permissions:
-      contents: read
-    uses: ./.github/workflows/_e2e-examples.yml
-    with:
-      # Empty string when staging didn't run — the reusable still
-      # runs Playwright (hermetic) but the bash shell smokes
-      # short-circuit with their own SKIP messages (no live URL).
-      base_url: ${{ needs.deploy-staging.outputs.base_url || '' }}
+      - name: Run CLI shell smoke
+        env:
+          NLQDB_API_URL: ${{ needs.deploy-staging.outputs.base_url }}
+          NLQDB_API_KEY: ${{ secrets.STAGING_NLQDB_API_KEY }}
+        run: bash examples/cli/e2e/smoke.sh
 
   cleanup:
     name: Delete Neon branch
-    needs: [deploy-staging, web, examples]
-    # Run cleanup only when staging actually deployed. `always() &&`
-    # ensures it runs even when a surface job failed.
+    needs: [deploy-staging, shell-smokes]
     if: always() && needs.deploy-staging.result == 'success'
     runs-on: ubuntu-latest
     timeout-minutes: 3

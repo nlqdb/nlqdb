@@ -29,6 +29,6 @@
 ## How to run just this persona
 
 ```bash
-gh workflow run e2e.yml -f surface=web
-gh workflow run e2e.yml -f surface=examples
+gh workflow run e2e-opencheck.yml
+gh workflow run e2e-examples.yml
 ```

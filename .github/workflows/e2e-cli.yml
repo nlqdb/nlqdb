@@ -1,16 +1,22 @@
-# Reusable: CLI e2e (Go testscript fixtures). Hermetic — talks to an
-# in-process httptest mock, never to staging. See `tests/e2e/cli/`
-# for the driver + scripts and `docs/features/e2e-coverage/FEATURE.md`
-# for the rationale (SK-E2E-002).
+# CLI e2e (Go testscript fixtures). Hermetic — talks to an
+# in-process httptest mock, never to staging. Trigger when a
+# CLI change could shift wire shape, output format, or keychain
+# behaviour. See `tests/e2e/cli/` for the driver + scripts and
+# `docs/features/e2e-coverage/FEATURE.md` for the rationale
+# (SK-E2E-002 / SK-E2E-004).
 #
-# Why a separate Go module: keeps `testscript` out of the cli/ runtime
-# dependency tree. Root `bun install` and `go test ./...` from cli/
-# never touch this directory.
+# Why a separate Go module: keeps `testscript` out of the cli/
+# runtime dependency tree. Root `bun install` and `go test ./...`
+# from cli/ never touch this directory.
 
-name: E2E CLI (reusable)
+name: E2E CLI
 
 on:
-  workflow_call: {}
+  workflow_dispatch:
+
+concurrency:
+  group: e2e-cli
+  cancel-in-progress: false
 
 # SK-CIPERM-001 — default-deny at workflow root.
 permissions: {}

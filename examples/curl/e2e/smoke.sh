@@ -4,7 +4,7 @@
 # examples/curl/README.md against a live staging URL.
 #
 # Live-mode only: requires NLQDB_API_URL + NLQDB_API_KEY env vars.
-# (`gh workflow run e2e.yml -f surface=examples` sets both for
+# (`gh workflow run e2e-examples.yml` sets both for
 # surface=all; surface=examples on its own deploys staging too.)
 #
 # Behaviour without the env vars: skip cleanly with exit 0 so the

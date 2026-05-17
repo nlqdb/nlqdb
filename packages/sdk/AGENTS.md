@@ -38,8 +38,7 @@ SDK persona contract tests live at [`tests/e2e/sdk/`](../../tests/e2e/sdk/) — 
 After an SDK change that could shift wire shape, retry behaviour, header semantics, or error mapping:
 
 ```bash
-gh workflow run e2e.yml -f surface=sdk
-gh workflow run e2e.yml -f surface=all
+gh workflow run e2e-sdk.yml
 ```
 
 Local run (hermetic):

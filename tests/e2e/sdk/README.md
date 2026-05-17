@@ -39,10 +39,10 @@ RECORD=1 NLQDB_API_URL=https://<staging> NLQDB_API_KEY=sk_live_… bun run test
 ## Trigger via GitHub Actions
 
 ```bash
-gh workflow run e2e.yml -f surface=sdk
+gh workflow run e2e-sdk.yml
 ```
 
-The `sdk` surface runs the `_e2e-sdk.yml` reusable workflow, which `bun install`s this folder and runs `vitest run`. The job runs without secrets — cassettes are sufficient.
+The `sdk` surface runs the `e2e-sdk.yml` reusable workflow, which `bun install`s this folder and runs `vitest run`. The job runs without secrets — cassettes are sufficient.
 
 ## Cassette format
 

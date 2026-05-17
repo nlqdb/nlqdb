@@ -37,16 +37,16 @@ This is the "[Phase 1 success](../../../docs/research/personas.md#p1--the-solo-b
 
 ```bash
 # Web slice (existing)
-gh workflow run e2e.yml -f surface=web
+gh workflow run e2e-opencheck.yml
 
 # CLI slice
-gh workflow run e2e.yml -f surface=cli
+gh workflow run e2e-cli.yml
 
 # SDK slice (cassette-replay, hermetic)
-gh workflow run e2e.yml -f surface=sdk
+gh workflow run e2e-sdk.yml
 
 # Examples slice (smoke for nextjs + astro)
-gh workflow run e2e.yml -f surface=examples
+gh workflow run e2e-examples.yml
 ```
 
 For a local run during development, see each runner's `tests/e2e/<surface>/README.md`.

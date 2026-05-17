@@ -1,6 +1,6 @@
 # Examples-as-tests
 
-Stripe-samples–style: every `examples/<framework>/` ships an `e2e/smoke.spec.ts` (or `.sh` for shell-flavour examples) that exercises the README's quickstart. See [`SK-E2E-005`](../../../docs/features/e2e-coverage/FEATURE.md#sk-e2e-005--examples-as-tests-every-examplesframework-ships-a-smoke-test-wired-to-the-dispatcher) for the rationale.
+Stripe-samples–style: every `examples/<framework>/` ships an `e2e/smoke.spec.ts` (or `.sh` for shell-flavour examples) that exercises the README's quickstart. See [`SK-E2E-005`](../../../docs/features/e2e-coverage/FEATURE.md#sk-e2e-005--examples-as-tests-every-examplesframework-ships-a-smoke-test-wired-to-a-workflow) for the rationale.
 
 ## Layout
 
@@ -50,17 +50,18 @@ Each framework example's spec file is intentionally tiny and self-contained — 
 ## Trigger via GitHub Actions
 
 ```bash
-gh workflow run e2e.yml -f surface=examples
+gh workflow run e2e-examples.yml                  # framework matrix only (hermetic, fast)
+gh workflow run e2e-examples.yml -f live=true     # + live curl + CLI shell smokes (spins up staging)
 ```
 
-The `examples` surface runs the `_e2e-examples.yml` reusable workflow, which:
-1. Caches Playwright's Chromium binaries (same approach as `_e2e-opencheck.yml`).
+The workflow:
+1. Caches Playwright's Chromium binaries (same key approach as `e2e-opencheck.yml`).
 2. Runs `playwright test` (skipped examples are still discovered + reported).
-3. In `surface=all` mode, runs the bash shell smokes (`curl`, `cli`) against the staging URL the dispatcher spun up.
+3. When `live=true`, spins up its own ephemeral preview (Neon branch + Workers Versions alias) and runs the bash shell smokes (`curl`, `cli`) against the staging URL. Shares the `e2e-staging` concurrency group with `e2e-opencheck.yml`, so overlapping runs queue rather than orphan resources.
 
 ## When to add an example
 
-Per [`SK-E2E-005`](../../../docs/features/e2e-coverage/FEATURE.md#sk-e2e-005--examples-as-tests-every-examplesframework-ships-a-smoke-test-wired-to-the-dispatcher) and `tests/personas/README.md`:
+Per [`SK-E2E-005`](../../../docs/features/e2e-coverage/FEATURE.md#sk-e2e-005--examples-as-tests-every-examplesframework-ships-a-smoke-test-wired-to-a-workflow) and `tests/personas/README.md`:
 
 1. Add the example folder under `examples/<framework>/` with at least a README + main source file.
 2. Add `examples/<framework>/e2e/smoke.spec.ts` (or `.sh`) — copy the closest existing example, retag.

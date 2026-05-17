@@ -1,11 +1,17 @@
-# Reusable: SDK e2e (vitest + cassettes). Hermetic — replays
-# checked-in JSON cassettes against the SDK's `FetchLike` shim, no
-# external network. See `tests/e2e/sdk/` and SK-E2E-003 for rationale.
+# SDK e2e (vitest + cassettes). Hermetic — replays checked-in JSON
+# cassettes against the SDK's `FetchLike` shim, no external network.
+# Trigger when an SDK change could shift wire shape, retry behaviour,
+# header semantics, or error mapping. See `tests/e2e/sdk/` and
+# SK-E2E-003 / SK-E2E-004 for rationale.
 
-name: E2E SDK (reusable)
+name: E2E SDK
 
 on:
-  workflow_call: {}
+  workflow_dispatch:
+
+concurrency:
+  group: e2e-sdk
+  cancel-in-progress: false
 
 permissions: {}
 

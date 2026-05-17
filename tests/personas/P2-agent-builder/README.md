@@ -34,6 +34,6 @@ This is the "[Phase 1 success](../../../docs/research/personas.md#p2--the-agent-
 ## How to run just this persona
 
 ```bash
-gh workflow run e2e.yml -f surface=cli
-gh workflow run e2e.yml -f surface=mcp
+gh workflow run e2e-cli.yml
+gh workflow run e2e-mcp.yml
 ```

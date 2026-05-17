@@ -44,10 +44,10 @@ Or use anonymous mode (`docs/architecture.md §3.3`): no sign-in, DB lives 72 h,
 
 PRs welcome — especially for stacks not yet here (SolidStart, TanStack Start, Qwik, React Native, Expo, Tauri, etc.) and creative use-cases (Discord bot, GitHub Action, browser extension, weekly digest cron). Keep each example to one source file plus a 10-line README. Same `<nlq-data>` snippet across all of them — that's the point.
 
-Each example also ships an `e2e/` subfolder with a Playwright spec (`smoke.spec.ts`) or shell smoke (`smoke.sh`) that exercises the README's quickstart — see [`SK-E2E-005`](../docs/features/e2e-coverage/FEATURE.md#sk-e2e-005--examples-as-tests-every-examplesframework-ships-a-smoke-test-wired-to-the-dispatcher). When adding a new framework, copy the closest existing `<framework>/e2e/smoke.spec.ts` and retag it. Run the matrix:
+Each example also ships an `e2e/` subfolder with a Playwright spec (`smoke.spec.ts`) or shell smoke (`smoke.sh`) that exercises the README's quickstart — see [`SK-E2E-005`](../docs/features/e2e-coverage/FEATURE.md#sk-e2e-005--examples-as-tests-every-examplesframework-ships-a-smoke-test-wired-to-a-workflow). When adding a new framework, copy the closest existing `<framework>/e2e/smoke.spec.ts` and retag it. Run the matrix:
 
 ```bash
-gh workflow run e2e.yml -f surface=examples
+gh workflow run e2e-examples.yml
 # or locally:
 ( cd tests/e2e/examples && bun install && bun run install:browsers && bun run test )
 ```

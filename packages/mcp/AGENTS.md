@@ -37,7 +37,7 @@ MCP protocol-conformance tests live at [`tests/e2e/mcp/`](../../tests/e2e/mcp/) 
 After a change to the tool surface, the wire shape of any tool's `structuredContent`, or the `mapSdkError` mapping:
 
 ```bash
-gh workflow run e2e.yml -f surface=mcp
+gh workflow run e2e-mcp.yml
 ```
 
 Local run (hermetic):

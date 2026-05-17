@@ -27,7 +27,7 @@ bun run typecheck
 ## Trigger via GitHub Actions
 
 ```bash
-gh workflow run e2e.yml -f surface=mcp
+gh workflow run e2e-mcp.yml
 ```
 
 ## What's tested

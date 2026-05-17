@@ -40,9 +40,8 @@ bun run --filter @nlqdb/elements test
 After an `<nlq-data>` attribute rename, slot change, or template behaviour shift, trigger both:
 
 ```bash
-gh workflow run e2e.yml -f surface=web         # opencheck
-gh workflow run e2e.yml -f surface=examples    # framework matrix
-gh workflow run e2e.yml -f surface=all         # both above + every other surface
+gh workflow run e2e-opencheck.yml         # opencheck
+gh workflow run e2e-examples.yml    # framework matrix
 ```
 
 A new attribute lands with a row added to every framework example's spec assertion set + the matching opencheck case if the attribute is reachable from the rendered chat surface.

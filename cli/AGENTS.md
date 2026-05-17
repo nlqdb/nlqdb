@@ -122,8 +122,7 @@ After a CLI change that could shift wire shape, output format, or
 keychain behaviour, trigger the e2e from the repo:
 
 ```bash
-gh workflow run e2e.yml -f surface=cli       # hermetic, fast
-gh workflow run e2e.yml -f surface=all       # CLI + every other surface, shared staging
+gh workflow run e2e-cli.yml       # hermetic, fast
 ```
 
 Local run (no GitHub round-trip):
