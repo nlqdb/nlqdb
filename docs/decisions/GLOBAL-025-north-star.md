@@ -3,12 +3,25 @@
 - **Decision:** nlqdb has three permanent product north-stars and **every
   shipped feature must measurably advance at least one of them**:
 
-  1. **Engine quality** — NL→SQL accuracy on real-world schemas. Measured
-     by [`quality-eval`](../features/quality-eval/FEATURE.md) on BIRD-dev
-     and Spider 2.0-lite, plus an internal eval over `db.create` schemas.
-     Reported per [`llm-router`](../features/llm-router/FEATURE.md) tier
-     and **separately on the free-tier chain vs frontier models** (the
-     "free-vs-frontier delta") so we can see scaffolding compounding.
+  1. **Engine quality** — **two layers, one pillar.**
+     - **NL→SQL accuracy engine** — measured by
+       [`quality-eval`](../features/quality-eval/FEATURE.md) on BIRD-dev
+       and Spider 2.0-lite plus an internal eval over `db.create`
+       schemas. Reported per
+       [`llm-router`](../features/llm-router/FEATURE.md) tier and
+       **separately on the free-tier chain vs frontier models** (the
+       "free-vs-frontier delta") so we can see scaffolding compounding.
+     - **Data engine** — multi-engine adapter + workload analyzer +
+       migration orchestrator
+       ([`db-adapter`](../features/db-adapter/FEATURE.md),
+       [`multi-engine-adapter`](../features/multi-engine-adapter/FEATURE.md),
+       [`engine-migration`](../features/engine-migration/FEATURE.md)).
+       Measured by automatic-migration success rate (Phase 3 exit gate),
+       cross-engine read-result equivalence (dual-read verification),
+       and engine-classify accuracy.
+     **Both layers fail in the same way to the user** — "the answer
+     came back wrong" — so they share the pillar even though the
+     subsystems are different. KPIs for both live in the table below.
   2. **Seamless onboarding** — a stranger reaches first answer in
      ≤ 60 s with no config. Measured by TTFV p50/p95, first-query
      success rate, and the unguided user-test pass-rate already in
@@ -78,7 +91,7 @@ KPI columns:
   [`SK-QUAL-002`](../features/quality-eval/FEATURE.md)).
 - **Owner:** the FEATURE.md that owns the measurement.
 
-### Engine quality
+### Engine quality — NL→SQL layer
 
 | KPI | Baseline (2026-05) | Phase 2 floor | Phase 3 floor | Alert | Owner |
 |---|---|---|---|---|---|
@@ -90,10 +103,24 @@ KPI columns:
 | Validator false-positive rate (correct plan blocked) | tbd-by-2026-07-01 | ≤ 2% | ≤ 1% | +1 pt wk/wk | `ask-pipeline` |
 | Refuse-on-low-confidence rate (vs hallucinated answer rate) | tbd | refuse > hallucinate | refuse > hallucinate × 3 | inversion pages | `trust-ux` |
 
-The **free-vs-frontier delta is the headline north-star number for
-engine quality.** It is what proves "great on free LLMs ⇒ invincible
-on frontier LLMs": as our scaffolding improves, the delta narrows;
-when it narrows past the Phase 3 floor, the moat is real.
+The **free-vs-frontier delta is the headline NL→SQL number.** It is
+what proves "great on free LLMs ⇒ invincible on frontier LLMs": as
+our scaffolding improves, the delta narrows; when it narrows past
+the Phase 3 floor, the moat is real.
+
+### Engine quality — data-engine layer
+
+| KPI | Baseline (2026-05) | Phase 2 floor | Phase 3 floor | Alert | Owner |
+|---|---|---|---|---|---|
+| Engine-classify accuracy (right engine picked per query, vs gold label) | tbd-by-2026-07-01 | ≥ 90% | ≥ 97% | −2 pts wk/wk | `multi-engine-adapter` |
+| Dual-read result equivalence (cross-engine same row-set on identical query) | n/a until 2nd engine | n/a | 100% (any divergence pages) | any divergence | `engine-migration` |
+| Auto-migration success rate (Phase 3 exit gate) | n/a | n/a | ≥ 100 successful, 0 user-visible downtime | any failed cutover | `engine-migration` |
+| Workload-analyzer "right-engine" recommendation latency | tbd | n/a | ≤ 7 days from steady-state pattern detection to migration plan | regression alerts | `engine-migration` |
+
+These KPIs come online as the data engine ships (workload analyzer +
+multi-engine adapter are Phase 3; dual-read + auto-migration are
+Phase 3 exit-gate items). They are listed here so the pillar is
+complete and the docs commit to measuring them when the slices land.
 
 ### Onboarding
 

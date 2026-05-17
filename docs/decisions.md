@@ -52,7 +52,7 @@ grep -rn 'GLOBAL-007' docs/features/
 | [GLOBAL-022](./decisions/GLOBAL-022-recoverable-failures-retry-to-success.md) | Recoverable failures retry to success — never surface a fixable error | sdk, ask-pipeline, llm-router, idempotency, observability | active |
 | [GLOBAL-023](./decisions/GLOBAL-023-trust-ux-baseline.md) | Trust UX baseline — diff preview, visible SQL trace, refuse-on-low-confidence | ask-pipeline, web-app, cli, elements, mcp-server | active |
 | [GLOBAL-024](./decisions/GLOBAL-024-demand-signal-telemetry.md) | Demand-signal telemetry on every "not yet" path | every surface, events-pipeline | active |
-| [GLOBAL-025](./decisions/GLOBAL-025-north-star.md) | North-star: engine quality, onboarding, UX — each with explicit KPIs | every feature | active |
+| [GLOBAL-025](./decisions/GLOBAL-025-north-star.md) | North-star: engine quality (NL→SQL + data-engine layers), seamless onboarding, seamless UX — each with explicit KPIs | every feature | active |
 | [GLOBAL-026](./decisions/GLOBAL-026-llm-strategy-byollm-hosted-premium.md) | LLM strategy: free chain forever, BYOLLM for everyone, hosted premium on paid (0% markup, pure metered) | llm-router, premium-tier, stripe-billing, api-keys | active |
 
 ## Adding a new GLOBAL

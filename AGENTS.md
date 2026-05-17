@@ -17,7 +17,8 @@ nlqdb answers. The full pitch and architecture are in
 
 Three pillars per
 [`GLOBAL-025`](docs/decisions/GLOBAL-025-north-star.md): **engine
-quality**, **seamless onboarding**, **seamless UX**. Every PR
+quality** (two layers — NL→SQL accuracy *and* the multi-engine data
+engine), **seamless onboarding**, **seamless UX**. Every PR
 measurably advances at least one — name which KPI in the PR body.
 
 The bet: **great on free LLMs ⇒ invincible on frontier LLMs.** The
