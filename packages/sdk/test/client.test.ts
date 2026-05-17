@@ -554,6 +554,87 @@ describe("createClient", () => {
     expect(seenKey).toBeUndefined();
   });
 
+  it("mintKey sk_live: POSTs /v1/keys with name + auto Idempotency-Key", async () => {
+    let capturedUrl = "";
+    let capturedInit: RequestInit | undefined;
+    const fakeFetch: FetchLike = async (url, init) => {
+      capturedUrl = String(url);
+      capturedInit = init;
+      return new Response(
+        JSON.stringify({
+          id: "k_new",
+          type: "sk_live",
+          key: "sk_live_aabbccdd",
+          last4: "ccdd",
+          name: "CI",
+        }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      );
+    };
+    const client = createClient({
+      withCredentials: true,
+      baseUrl: "https://app.nlqdb.com/",
+      fetch: fakeFetch,
+    });
+    const out = await client.mintKey({ type: "sk_live", name: "CI" });
+    expect(capturedUrl).toBe("https://app.nlqdb.com/v1/keys");
+    expect(capturedInit?.method).toBe("POST");
+    expect(capturedInit?.credentials).toBe("include");
+    const headers = (capturedInit?.headers ?? {}) as Record<string, string>;
+    expect(headers["idempotency-key"]).toMatch(/^[0-9a-f]{32}$/);
+    const body = JSON.parse(String(capturedInit?.body)) as Record<string, unknown>;
+    expect(body).toEqual({ type: "sk_live", name: "CI" });
+    expect(out.key).toBe("sk_live_aabbccdd");
+    expect(out.last4).toBe("ccdd");
+  });
+
+  it("mintKey sk_mcp: passes host + device claims through", async () => {
+    let capturedBody: Record<string, unknown> | null = null;
+    const fakeFetch: FetchLike = async (_url, init) => {
+      capturedBody = JSON.parse(String(init?.body)) as Record<string, unknown>;
+      return new Response(
+        JSON.stringify({
+          id: "k_mcp",
+          type: "sk_mcp",
+          key: "sk_mcp_cursor_dev_aabb",
+          last4: "aabb",
+          host: "cursor",
+          device: "dev",
+        }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      );
+    };
+    const client = createClient({
+      withCredentials: true,
+      baseUrl: "https://app.nlqdb.com/",
+      fetch: fakeFetch,
+    });
+    const out = await client.mintKey({ type: "sk_mcp", host: "cursor", device: "dev" });
+    expect(capturedBody).toEqual({ type: "sk_mcp", host: "cursor", device: "dev" });
+    expect(out.host).toBe("cursor");
+    expect(out.device).toBe("dev");
+  });
+
+  it("mintKey: surfaces 400 invalid_type as NlqdbApiError", async () => {
+    const fakeFetch: FetchLike = async () =>
+      new Response(JSON.stringify({ error: "invalid_type", allowed: ["sk_live", "sk_mcp"] }), {
+        status: 400,
+        headers: { "content-type": "application/json" },
+      });
+    const client = createClient({ apiKey: "sk_test", fetch: fakeFetch });
+    try {
+      // `as never` keeps the wire-error path exercisable without
+      // teaching the union about server-side rejections.
+      await client.mintKey({ type: "pk_live" } as never);
+      expect.fail("should have thrown");
+    } catch (err) {
+      expect(err).toBeInstanceOf(NlqdbApiError);
+      const e = err as NlqdbApiError;
+      expect(e.httpStatus).toBe(400);
+      expect(e.code).toBe("invalid_type");
+    }
+  });
+
   it("listKeys: GETs /v1/keys with the session cookie", async () => {
     let capturedUrl = "";
     let capturedInit: RequestInit | undefined;

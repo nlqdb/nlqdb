@@ -41,6 +41,12 @@ function stubClient(overrides: Partial<NlqClient> = {}): NlqClient {
     revokeKey: async () => {
       throw new Error("revokeKey not stubbed");
     },
+    mintKey: async () => {
+      // MCP never mints keys through the SDK — sk_mcp_* keys come from
+      // the OAuth-callback path (SK-APIKEYS-009 / SK-MCP-013). The stub
+      // exists only to satisfy the NlqClient interface.
+      throw new Error("mintKey not stubbed");
+    },
   };
   return { ...base, ...overrides };
 }
@@ -197,7 +203,7 @@ describe("handleQuery", () => {
     expect("err" in result).toBe(true);
     if ("err" in result) {
       expect(result.err.code).toBe("auth_required");
-      expect(result.err.action).toMatch(/app\.nlqdb\.com\/keys/);
+      expect(result.err.action).toMatch(/app\.nlqdb\.com\/app\/keys/);
     }
   });
 
@@ -289,7 +295,7 @@ describe("handleListDatabases", () => {
     expect("err" in result).toBe(true);
     if ("err" in result) {
       expect(result.err.code).toBe("auth_required");
-      expect(result.err.action).toMatch(/app\.nlqdb\.com\/keys/);
+      expect(result.err.action).toMatch(/app\.nlqdb\.com\/app\/keys/);
     }
   });
 

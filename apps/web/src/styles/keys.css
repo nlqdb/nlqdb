@@ -1,0 +1,404 @@
+/* API-key management dashboard (SK-APIKEYS-010 / SK-APIKEYS-011 /
+ * SK-APIKEYS-012). Tokens come from `global.css`; the look matches
+ * the chat surface (neo-brutalist + terminal) so the morph from
+ * `/app` to `/app/keys` doesn't feel like a different product.
+ *
+ * The modal styles intentionally share `keys-dialog` class shape with
+ * `delete-db-dialog` from `chat.css` — same backdrop, same hard
+ * shadow, same width clamp — so the mint and revoke dialogs feel
+ * sibling-like with the existing typed-name delete dialog. */
+
+.page--keys {
+  max-width: 960px;
+  padding: 0 clamp(16px, 3vw, 32px);
+}
+
+.page__main--keys {
+  padding: 32px 0 64px;
+}
+
+.keys {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+.keys__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.keys__title {
+  margin: 0 0 8px;
+  font-family: var(--mono);
+  font-size: clamp(22px, 3vw, 28px);
+  letter-spacing: -0.02em;
+}
+
+.keys__lede {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 13px;
+  color: var(--fg-dim);
+  max-width: 56ch;
+  line-height: 1.5;
+}
+
+.keys__status {
+  font-family: var(--mono);
+  font-size: 13px;
+  color: var(--fg-dim);
+  padding: 16px;
+  border: 1px dashed var(--border);
+}
+
+.keys__status--error {
+  color: #ff8a8a;
+  border-color: #ff8a8a;
+}
+
+.keys__empty {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 24px;
+  border: 2px dashed var(--border);
+  background: var(--bg-elev);
+  font-family: var(--mono);
+  font-size: 13px;
+  color: var(--fg-dim);
+}
+
+.keys__empty p {
+  margin: 0;
+  line-height: 1.5;
+}
+
+.keys__groups {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+.keys-group {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.keys-group__title {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--fg-muted);
+}
+
+.keys-group__count {
+  font-size: 11px;
+  color: var(--fg-muted);
+}
+
+.keys-group__empty {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--fg-muted);
+}
+
+.keys-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.keys-list__row {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 16px;
+  align-items: center;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  background: var(--bg-elev);
+}
+
+@media (max-width: 640px) {
+  .keys-list__row {
+    grid-template-columns: 1fr;
+    align-items: flex-start;
+    gap: 8px;
+  }
+}
+
+.keys-list__main {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.keys-list__label-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.keys-list__type {
+  font-family: var(--mono);
+  font-size: 11px;
+  padding: 2px 6px;
+  border: 1px solid var(--border);
+  color: var(--fg-dim);
+  background: var(--bg);
+}
+
+.keys-list__type--sk_live {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.keys-list__type--sk_mcp {
+  border-color: #8be9fd;
+  color: #8be9fd;
+}
+
+.keys-list__type--pk_live {
+  border-color: var(--fg-dim);
+  color: var(--fg-dim);
+}
+
+.keys-list__label {
+  font-family: var(--mono);
+  font-size: 14px;
+  color: var(--fg);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.keys-list__last4 {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--fg-muted);
+}
+
+/* Screen-reader-only utility (WAI-ARIA APG pattern). Used on the
+ * last-4 code block so AT users hear "Key ending in …abcd" while
+ * sighted users see just the compact `…abcd` form. */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.keys-list__meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--fg-muted);
+}
+
+.keys-list__meta--revoked {
+  color: #ff7b7b;
+}
+
+@media (max-width: 640px) {
+  .keys-list__meta {
+    align-items: flex-start;
+  }
+}
+
+.keys-list__revoke {
+  font-family: var(--mono);
+  font-size: 12px;
+  padding: 6px 12px;
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--fg);
+  cursor: pointer;
+}
+
+.keys-list__revoke:hover {
+  border-color: #ff8a8a;
+  color: #ff8a8a;
+}
+
+.keys-list__revoke:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* ---------- Mint / revoke dialogs ---------- */
+
+.keys-dialog__backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  /* Above the Cmd+K palette (`z-index: 50` in `chat.css`) so a stray
+   * palette open doesn't cover an in-flight revoke confirm. Matches
+   * `delete-db-dialog__backdrop`. */
+  z-index: 60;
+}
+
+.keys-dialog {
+  background: var(--bg-elev);
+  border: 2px solid var(--border-strong);
+  box-shadow: 6px 6px 0 0 var(--border-strong);
+  padding: 20px;
+  width: min(520px, 100%);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  font-family: var(--mono);
+}
+
+.keys-dialog__title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--fg);
+}
+
+.keys-dialog__title--danger {
+  color: #ff7b7b;
+}
+
+.keys-dialog__body {
+  margin: 0;
+  font-size: 13px;
+  color: var(--fg);
+  line-height: 1.5;
+}
+
+.keys-dialog__body code {
+  font-family: var(--mono);
+  padding: 1px 4px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+}
+
+.keys-dialog__hint {
+  margin: 0;
+  font-size: 12px;
+  color: var(--fg-muted);
+  line-height: 1.5;
+}
+
+.keys-dialog__hint code {
+  font-family: var(--mono);
+  color: var(--fg-dim);
+}
+
+.keys-dialog__label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.keys-dialog__label-text {
+  font-size: 12px;
+  color: var(--fg-muted);
+}
+
+.keys-dialog__label input {
+  padding: 10px 12px;
+  font-family: var(--mono);
+  font-size: 14px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--fg);
+}
+
+.keys-dialog__label input:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.keys-dialog__plaintext-row {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+}
+
+.keys-dialog__plaintext {
+  flex: 1;
+  font-family: var(--mono);
+  font-size: 13px;
+  padding: 10px 12px;
+  background: var(--bg);
+  border: 1px solid var(--accent);
+  color: var(--accent);
+  word-break: break-all;
+  /* Allow native text-selection so users who prefer keyboard copy
+   * (Cmd+A → Cmd+C inside the code block) succeed regardless of the
+   * clipboard-permission outcome. */
+  user-select: all;
+}
+
+.keys-dialog__status {
+  margin: 0;
+  font-size: 12px;
+  color: var(--fg-muted);
+}
+
+.keys-dialog__status--error {
+  color: #ff7b7b;
+}
+
+.keys-dialog__target {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 6px 12px;
+  margin: 0;
+  font-size: 12px;
+}
+
+.keys-dialog__target div {
+  display: contents;
+}
+
+.keys-dialog__target dt {
+  color: var(--fg-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.keys-dialog__target dd {
+  margin: 0;
+  color: var(--fg);
+}
+
+.keys-dialog__target dd code {
+  font-family: var(--mono);
+}
+
+.keys-dialog__actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}

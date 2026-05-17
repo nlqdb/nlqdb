@@ -189,9 +189,11 @@ flipped to ERROR with `nlqdb.mcp.auth.error_*` attributes so trace
 queries surface auth failures alongside 5xx). Remaining: slice 4 (`nlq mcp install`
 CLI auto-detection) — see
 [`mcp-server/FEATURE.md`](./features/mcp-server/FEATURE.md) and
-[`cli/FEATURE.md`](./features/cli/FEATURE.md). The dashboard
-key-management UI that wraps `POST /v1/keys` is still open in
-[`api-keys/FEATURE.md`](./features/api-keys/FEATURE.md).
+[`cli/FEATURE.md`](./features/cli/FEATURE.md). **Dashboard
+key-management UI shipped** at `/app/keys` per
+[`SK-APIKEYS-012`](./features/api-keys/decisions/SK-APIKEYS-012-dashboard-ui.md)
+— copy-once mint modal + confirm-revoke dialog, SDK `client.mintKey()`
+added, MCP `auth_required` envelope now points at a working URL.
 
 ---
 
