@@ -1,0 +1,47 @@
+# Manual-trigger MCP e2e — hermetic, see docs/features/e2e-coverage/FEATURE.md SK-E2E-002/004.
+
+name: E2E MCP
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: e2e-mcp
+  cancel-in-progress: false
+
+permissions: {}
+
+jobs:
+  run:
+    name: mcp vitest
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - uses: ./.github/actions/setup
+
+      - name: Install e2e-mcp deps
+        working-directory: tests/e2e/mcp
+        run: bun install
+
+      - name: Typecheck
+        working-directory: tests/e2e/mcp
+        run: bun run typecheck
+
+      - name: Run in-memory protocol tests
+        working-directory: tests/e2e/mcp
+        run: bun run test
+
+      - name: Post-failure diagnostic
+        if: failure()
+        working-directory: tests/e2e/mcp
+        shell: bash
+        run: |
+          {
+            echo "## MCP e2e — failure context"
+            echo
+            echo "### Test files"
+            ls -1 *.test.ts
+          } >> "$GITHUB_STEP_SUMMARY"

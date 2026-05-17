@@ -1,0 +1,12 @@
+# P6 — Analytics Engineer · CLI help is pipeline-safe (no ANSI CSI escapes).
+
+exec nlq --no-update-check --help
+stdout 'nlqdb command-line tool'
+stdout 'ask'
+stdout 'db'
+stdout 'mcp'
+! stdout '\x1b\['
+
+exec nlq --no-update-check --version
+! stdout '\x1b\['
+! stderr 'panic'

@@ -1,0 +1,52 @@
+# Manual-trigger CLI e2e — hermetic, see docs/features/e2e-coverage/FEATURE.md SK-E2E-002/004.
+
+name: E2E CLI
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: e2e-cli
+  cancel-in-progress: false
+
+permissions: {}
+
+jobs:
+  run:
+    name: cli testscript
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
+        with:
+          go-version-file: cli/go.mod
+          cache-dependency-path: tests/e2e/cli/go.sum
+
+      # Front-load the build so a broken cli/ surfaces here, not mid-testscript.
+      - name: Verify cli builds before fixture run
+        working-directory: cli
+        run: go build ./...
+
+      - name: Run testscript fixtures
+        working-directory: tests/e2e/cli
+        run: go test -count=1 -race ./...
+
+      - name: Post-failure diagnostic
+        if: failure()
+        working-directory: tests/e2e/cli
+        shell: bash
+        run: |
+          set -euo pipefail
+          {
+            echo "## CLI e2e — failure context"
+            echo
+            echo "### Fixtures discovered"
+            ls -1 scripts/
+            echo
+            echo "### CLI build state"
+            go -C ../../../cli build ./cmd/nlq && echo "build OK"
+          } >> "$GITHUB_STEP_SUMMARY"

@@ -109,6 +109,35 @@ done
   `cmd/nlq/main.go` so the bare-form rewriter doesn't intercept it.
   The `TestRegisteredVerbs` lint test catches divergence.
 
+## E2E coverage
+
+CLI persona journeys live at [`tests/e2e/cli/`](../tests/e2e/cli/) — Go
+`testscript` fixtures driven from a hermetic `httptest` mock. Persona
+mapping: [P1](../tests/personas/P1-solo-builder/README.md),
+[P2](../tests/personas/P2-agent-builder/README.md),
+[P4](../tests/personas/P4-backend-engineer/README.md),
+[P6](../tests/personas/P6-analytics-engineer/README.md).
+
+After a CLI change that could shift wire shape, output format, or
+keychain behaviour, trigger the e2e from the repo:
+
+```bash
+gh workflow run e2e-cli.yml       # hermetic, fast
+```
+
+Local run (no GitHub round-trip):
+
+```bash
+cd tests/e2e/cli && go test -count=1 -race ./...
+```
+
+A new fixture lands as `tests/e2e/cli/scripts/<persona>_<step>.txtar`
++ a row in the relevant persona README's surface matrix.
+
+See [`docs/features/e2e-coverage/FEATURE.md`](../docs/features/e2e-coverage/FEATURE.md)
+for the harness conventions and [`tests/e2e/cli/README.md`](../tests/e2e/cli/README.md)
+for the runner specifics.
+
 ## When you finish
 
 1. Run the commands above and ensure they all pass.

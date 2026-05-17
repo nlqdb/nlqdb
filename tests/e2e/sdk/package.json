@@ -1,0 +1,18 @@
+{
+  "name": "@nlqdb/e2e-sdk",
+  "private": true,
+  "version": "0.0.0",
+  "description": "SDK e2e — persona contract tests with checked-in cassettes (SK-E2E-003). Lives outside root workspaces so root `bun install` stays lean (same pattern as tests/opencheck/).",
+  "type": "module",
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:record": "RECORD=1 vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "bun-types": "^1.3.14",
+    "typescript": "^5.6.0",
+    "vitest": "^4.1.0"
+  }
+}

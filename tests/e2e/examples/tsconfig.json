@@ -1,0 +1,18 @@
+{
+  "extends": "../../../tsconfig.base.json",
+  "compilerOptions": {
+    // Override base's `baseUrl: "."` (which is anchored at the
+    // tsconfig.base.json location, i.e. the repo root) so the path
+    // mapping below resolves to THIS package's local node_modules,
+    // where @playwright/test actually lives.
+    "baseUrl": ".",
+    "types": ["bun-types", "@playwright/test"],
+    "paths": {
+      "@playwright/test": ["./node_modules/@playwright/test"]
+    }
+  },
+  // playwright.config.ts is local; example specs live next to their
+  // example file under examples/<framework>/e2e/. Both get the local
+  // @playwright/test via the path mapping above.
+  "include": ["*.ts", "../../../examples/**/e2e/**/*.ts"]
+}

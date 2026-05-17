@@ -1,0 +1,12 @@
+# P4 — Backend Engineer · --json envelope is the only output-shape switch (SK-CLI-004).
+
+exec nlq --api-url=$MOCK_API --no-update-check --json db list
+stdout '"databases"'
+stdout '"id":'
+stdout '"slug":'
+stdout '"displayName":'
+stdout '"engine":'
+stdout '"createdAt":'
+
+exec nlq --api-url=$MOCK_API --no-update-check db list
+! stdout '"databases":'

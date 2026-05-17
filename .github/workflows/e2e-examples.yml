@@ -1,0 +1,146 @@
+# Manual-trigger examples e2e — see docs/features/e2e-coverage/FEATURE.md SK-E2E-005/004.
+
+name: E2E Examples
+
+on:
+  workflow_dispatch:
+    inputs:
+      live:
+        description: "Deploy staging + run the curl/CLI shell smokes against it (slower; needs Neon + Cloudflare secrets)."
+        required: false
+        type: boolean
+        default: false
+
+concurrency:
+  # Shared with e2e-opencheck.yml — both write to the same Neon branch + Workers preview alias.
+  group: e2e-staging
+  cancel-in-progress: false
+
+permissions: {}
+
+jobs:
+  playwright:
+    name: examples · framework smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - uses: ./.github/actions/setup
+
+      # @playwright/test lives at the workspace root so specs under examples/*/e2e/ can resolve it.
+      - name: Install e2e-examples deps
+        working-directory: tests/e2e/examples
+        run: bun install
+
+      - name: Restore Playwright browser cache
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-examples-${{ runner.os }}-${{ hashFiles('tests/e2e/examples/package.json', 'package.json') }}
+          restore-keys: |
+            playwright-examples-${{ runner.os }}-
+
+      - name: Install Playwright Chromium
+        working-directory: tests/e2e/examples
+        run: bunx playwright install chromium --with-deps
+
+      - name: Typecheck (config + spec discovery)
+        working-directory: tests/e2e/examples
+        run: bun run typecheck
+
+      - name: Run framework smoke tests
+        working-directory: tests/e2e/examples
+        run: bun run test
+
+      - name: Upload Playwright report on failure
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: playwright-report-examples-${{ github.run_id }}
+          path: tests/e2e/examples/playwright-report/
+          if-no-files-found: ignore
+          retention-days: 14
+
+  deploy-staging:
+    name: Spin up ephemeral preview (live shell smokes)
+    if: ${{ inputs.live }}
+    permissions:
+      contents: read
+    uses: ./.github/workflows/_e2e-staging.yml
+    with:
+      branch_name: e2e
+      wrangler_message: "E2E examples @ ${{ github.sha }}"
+    secrets:
+      NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
+      NEON_PROJECT_ID: ${{ secrets.NEON_PROJECT_ID }}
+      PREVIEW_BETTER_AUTH_SECRET: ${{ secrets.PREVIEW_BETTER_AUTH_SECRET }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+  shell-smokes:
+    name: examples · curl + cli (live)
+    needs: deploy-staging
+    if: ${{ inputs.live && needs.deploy-staging.result == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
+        with:
+          go-version-file: cli/go.mod
+
+      - name: Build nlq binary for CLI shell smoke
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/bin"
+          go -C cli build -o "$RUNNER_TEMP/bin/nlq" ./cmd/nlq
+          echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
+
+      - name: Run curl shell smoke
+        env:
+          NLQDB_API_URL: ${{ needs.deploy-staging.outputs.base_url }}
+          NLQDB_API_KEY: ${{ secrets.STAGING_NLQDB_API_KEY }}
+        run: |
+          if [ -z "${NLQDB_API_KEY:-}" ]; then
+            echo "::warning::STAGING_NLQDB_API_KEY not set — curl smoke will skip itself"
+          fi
+          bash examples/curl/e2e/smoke.sh
+
+      - name: Run CLI shell smoke
+        env:
+          NLQDB_API_URL: ${{ needs.deploy-staging.outputs.base_url }}
+          NLQDB_API_KEY: ${{ secrets.STAGING_NLQDB_API_KEY }}
+        run: bash examples/cli/e2e/smoke.sh
+
+  cleanup:
+    name: Delete Neon branch
+    needs: [deploy-staging, shell-smokes]
+    if: always() && needs.deploy-staging.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    permissions: {}
+    env:
+      NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
+      NEON_PROJECT_ID: ${{ secrets.NEON_PROJECT_ID }}
+      E2E_NEON_BRANCH: e2e
+    steps:
+      - name: Delete branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          branches=$(curl -fsSL \
+            "https://console.neon.tech/api/v2/projects/${NEON_PROJECT_ID}/branches" \
+            -H "Authorization: Bearer ${NEON_API_KEY}")
+          branch_id=$(echo "$branches" | jq -r ".branches[] | select(.name == \"${E2E_NEON_BRANCH}\") | .id")
+          if [ -z "$branch_id" ]; then
+            echo "no branch named ${E2E_NEON_BRANCH} — nothing to clean up"
+            exit 0
+          fi
+          curl -fsSL -X DELETE \
+            "https://console.neon.tech/api/v2/projects/${NEON_PROJECT_ID}/branches/${branch_id}" \
+            -H "Authorization: Bearer ${NEON_API_KEY}" > /dev/null
+          echo "deleted Neon branch ${branch_id} (${E2E_NEON_BRANCH})"

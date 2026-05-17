@@ -33,6 +33,22 @@ bun run --filter apps/web test
 - A decision change (new or amended) updates every place that copies
   it, in the same PR (root `AGENTS.md` §2 P3).
 
+## E2E coverage
+
+Web persona journeys are exercised by opencheck — [`tests/opencheck/tests.yaml`](../../tests/opencheck/tests.yaml) — driven by a Playwright-MCP agent against an ephemeral preview (Neon branch + Workers Versions alias). Persona mapping: [P3 — Data-Curious Analyst](../../tests/personas/P3-data-analyst/README.md), [P5 — Student / First-Timer](../../tests/personas/P5-student/README.md), and elements of every other persona that touches the app.
+
+After a change that could move a button, rename a chat affordance, change a confirm-dialog wording, or alter the trace pane:
+
+```bash
+gh workflow run e2e-opencheck.yml      # opencheck (live LLM via Groq through plan-cache)
+```
+
+The legacy [`e2e-opencheck.yml`](../../.github/workflows/e2e-opencheck.yml) entry point continues to work as a backwards-compat alias for `surface=web`.
+
+`tests/opencheck/.opencheck-cache` is checked into the GitHub Actions cache keyed on `apps/{api,web}/src/**` + `tests/opencheck/tests.yaml` — only changes to those paths force LLM re-derivation, which keeps Groq's 1k-RPD free tier comfortable across many runs per day.
+
+See [`docs/features/e2e-coverage/FEATURE.md`](../../docs/features/e2e-coverage/FEATURE.md) for the harness conventions.
+
 ## When you finish
 
 1. Run the commands above and ensure they all pass.

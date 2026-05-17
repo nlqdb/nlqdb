@@ -1,0 +1,15 @@
+# P2 — Agent Builder · `nlq mcp detect` + `mcp install` GLOBAL-012 error shape.
+
+exec nlq --no-update-check mcp detect
+stdout 'No MCP hosts detected'
+
+exec nlq --no-update-check --json mcp detect
+stdout '"hosts"'
+
+! exec nlq --no-update-check mcp install claude-desktop
+stderr 'mcp install requires session-authenticated key minting'
+stderr 'dashboard'
+
+! exec nlq --no-update-check mcp install not-a-real-host
+stderr 'unknown host'
+stderr 'claude-desktop'

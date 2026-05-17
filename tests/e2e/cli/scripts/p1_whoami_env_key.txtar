@@ -1,0 +1,11 @@
+# P1 — Solo Builder · NLQDB_API_KEY env-var auth (GLOBAL-010 escape hatch).
+# Token is redacted in output — printing the raw key would violate SK-CLI-009.
+
+exec nlq --no-update-check whoami
+stdout 'identity: env'
+! stdout 'sk_live_test_e2e_fixture'
+
+exec nlq --no-update-check --json whoami
+stdout '"kind":'
+stdout '"token_display":'
+! stdout 'sk_live_test_e2e_fixture'

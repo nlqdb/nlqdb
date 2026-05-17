@@ -30,6 +30,24 @@ bun run --filter @nlqdb/elements test
 - A decision change (new or amended) updates every place that copies
   it, in the same PR (root `AGENTS.md` §2 P3).
 
+## E2E coverage
+
+`<nlq-data>` only renders in a browser, so element e2e is covered by two complementary surfaces:
+
+1. **Embedded in the web app** — [`tests/opencheck/tests.yaml`](../../tests/opencheck/tests.yaml) exercises every element-bearing case end-to-end through the persona journeys (P3 + P5 land directly on element-rendered DOM).
+2. **Embedded in framework examples** — [`examples/*/e2e/smoke.spec.ts`](../../examples/) verifies the canonical `<nlq-data>` markup contract in HTML, Next.js, Astro, Nuxt, SvelteKit. Phase 0 status: source-content checks today; live-runtime checks `test.fixme`'d until `elements.nlqdb.com/v1.js` publishes.
+
+After an `<nlq-data>` attribute rename, slot change, or template behaviour shift, trigger both:
+
+```bash
+gh workflow run e2e-opencheck.yml         # opencheck
+gh workflow run e2e-examples.yml    # framework matrix
+```
+
+A new attribute lands with a row added to every framework example's spec assertion set + the matching opencheck case if the attribute is reachable from the rendered chat surface.
+
+See [`docs/features/e2e-coverage/FEATURE.md`](../../docs/features/e2e-coverage/FEATURE.md).
+
 ## When you finish
 
 1. Run the commands above and ensure they all pass.

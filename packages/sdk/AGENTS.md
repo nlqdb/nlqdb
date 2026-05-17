@@ -31,6 +31,34 @@ bun run --filter @nlqdb/sdk test
 - A decision change (new or amended) updates every place that copies
   it, in the same PR (root `AGENTS.md` §2 P3).
 
+## E2E coverage
+
+SDK persona contract tests live at [`tests/e2e/sdk/`](../../tests/e2e/sdk/) — vitest + checked-in cassettes replayed through the SDK's `FetchLike` shim. No network. Persona mapping: [P1](../../tests/personas/P1-solo-builder/README.md), [P4](../../tests/personas/P4-backend-engineer/README.md), [P6](../../tests/personas/P6-analytics-engineer/README.md).
+
+After an SDK change that could shift wire shape, retry behaviour, header semantics, or error mapping:
+
+```bash
+gh workflow run e2e-sdk.yml
+```
+
+Local run (hermetic):
+
+```bash
+cd tests/e2e/sdk && bun install && bun run test
+```
+
+Cassette re-record (live, against staging):
+
+```bash
+RECORD=1 NLQDB_API_URL=https://<staging> NLQDB_API_KEY=sk_live_… bun run test
+```
+
+A new persona test lands as `tests/e2e/sdk/pN_<persona>.test.ts` + the matching JSON cassette under `cassettes/`. Add the row to the persona README.
+
+Future Ruby + Rust SDKs ship pre-shipped skeletons under [`packages/nlqdb-rb/spec/e2e/`](../nlqdb-rb/spec/e2e/) and [`packages/nlqdb-rs/tests/e2e/`](../nlqdb-rs/tests/e2e/) (SK-E2E-006); not wired to CI today.
+
+See [`docs/features/e2e-coverage/FEATURE.md`](../../docs/features/e2e-coverage/FEATURE.md).
+
 ## When you finish
 
 1. Run the commands above and ensure they all pass.

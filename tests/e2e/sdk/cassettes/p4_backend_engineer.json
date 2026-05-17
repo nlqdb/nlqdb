@@ -1,0 +1,66 @@
+{
+  "exchanges": [
+    {
+      "request": {
+        "method": "POST",
+        "path": "/v1/ask",
+        "bodyContains": ["regression rows", "db_e2e_p4"]
+      },
+      "response": {
+        "status": 503,
+        "body": {
+          "error": {
+            "status": "llm_failed",
+            "message": "upstream provider transient failure"
+          }
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "POST",
+        "path": "/v1/ask",
+        "bodyContains": ["regression rows", "db_e2e_p4"]
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "status": "ok",
+          "rows": [{ "id": 1, "regression": "tax math drift", "since_release": "v2.1.0" }],
+          "rowCount": 1,
+          "summary": "1 regression since the last release.",
+          "trace": {
+            "sql": "SELECT id, regression, since_release FROM regressions WHERE created_at > (SELECT released_at FROM releases ORDER BY id DESC LIMIT 1)",
+            "plan_id": "plan_p4_regressions_v1",
+            "confidence": 0.88,
+            "model": "openai/gpt-oss-120b",
+            "cache_hit": true
+          }
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "POST",
+        "path": "/v1/ask",
+        "bodyContains": ["insert a row", "db_e2e_p4"]
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "status": "ok",
+          "rows": [],
+          "rowCount": 1,
+          "summary": "Inserted 1 row.",
+          "trace": {
+            "sql": "INSERT INTO regressions (regression, since_release) VALUES ($1, $2)",
+            "plan_id": "plan_p4_insert_v1",
+            "confidence": 0.97,
+            "model": "openai/gpt-oss-120b",
+            "cache_hit": false
+          }
+        }
+      }
+    }
+  ]
+}

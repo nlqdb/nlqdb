@@ -1,0 +1,45 @@
+{
+  "exchanges": [
+    {
+      "request": {
+        "method": "POST",
+        "path": "/v1/ask",
+        "bodyContains": ["orders this week", "db_e2e_p6"]
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "status": "ok",
+          "rows": [{ "source": "google", "orders": 142 }, { "source": "twitter", "orders": 38 }],
+          "rowCount": 2,
+          "summary": "180 orders across 2 sources this week.",
+          "trace": {
+            "sql": "SELECT source, COUNT(*) AS orders FROM orders WHERE created_at >= NOW() - INTERVAL '7 days' GROUP BY source ORDER BY orders DESC",
+            "plan_id": "plan_p6_orders_v1",
+            "confidence": 0.94,
+            "model": "openai/gpt-oss-120b",
+            "cache_hit": false
+          }
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "POST",
+        "path": "/v1/ask",
+        "bodyContains": ["something ambiguous", "db_e2e_p6"]
+      },
+      "response": {
+        "status": 422,
+        "body": {
+          "error": {
+            "status": "low_confidence",
+            "code": "refused_below_floor",
+            "message": "I don't have enough confidence to answer this safely. Try a more specific question (e.g. 'how many orders today').",
+            "action": "clarify"
+          }
+        }
+      }
+    }
+  ]
+}

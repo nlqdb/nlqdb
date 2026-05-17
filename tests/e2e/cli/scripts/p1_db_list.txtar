@@ -1,0 +1,10 @@
+# P1 — Solo Builder · `nlq db list` against the mock server.
+
+exec nlq --api-url=$MOCK_API --no-update-check db list
+stdout 'mealplan|Mealplan'
+
+exec nlq --api-url=$MOCK_API --no-update-check --json db list
+stdout '"databases"'
+stdout '"id"'
+stdout '"engine"'
+stdout '"postgres"'

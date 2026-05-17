@@ -289,6 +289,31 @@ bun run check:all    # biome + golangci-lint + ruff (what CI runs)
 bun run hooks:run    # run pre-commit hooks against staged files
 ```
 
+### End-to-end tests (manual trigger)
+
+E2E coverage is **persona-driven** (P1–P6 from [`docs/research/personas.md`](./docs/research/personas.md)) and **manually triggered** so cost stays inside the free-tier envelope. One top-level `workflow_dispatch` workflow per surface — pick the one that matches the change you just made:
+
+```bash
+# From any clone of this repo:
+gh workflow run e2e-opencheck.yml                  # web — live LLM via Groq, Neon branch, Workers preview
+gh workflow run e2e-cli.yml                        # Go testscript, hermetic
+gh workflow run e2e-sdk.yml                        # vitest + cassettes, hermetic
+gh workflow run e2e-mcp.yml                        # InMemoryTransport protocol tests, hermetic
+gh workflow run e2e-examples.yml                   # Playwright across HTML/Next/Astro/Nuxt/SvelteKit (hermetic)
+gh workflow run e2e-examples.yml -f live=true      # + spins up staging for the curl + CLI shell smokes
+```
+
+Run hermetic surfaces locally without GitHub:
+
+```bash
+( cd tests/e2e/cli && go test ./... )
+( cd tests/e2e/sdk && bun install && bun run test )
+( cd tests/e2e/mcp && bun install && bun run test )
+( cd tests/e2e/examples && bun install && bun run install:browsers && bun run test )
+```
+
+Conventions, decisions, persona mapping, cassette governance, and the rate-limit-aware design are all in [`docs/features/e2e-coverage/FEATURE.md`](./docs/features/e2e-coverage/FEATURE.md). Each package's `AGENTS.md` has a `## E2E coverage` section pointing at the relevant tests and the trigger command for that surface.
+
 ## Surfaces (planned, Phase 1)
 
 - Web chat UI — single page, 60 seconds from landing to first query, no card required.

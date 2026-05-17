@@ -1,0 +1,51 @@
+# Manual-trigger SDK e2e — hermetic, see docs/features/e2e-coverage/FEATURE.md SK-E2E-003/004.
+
+name: E2E SDK
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: e2e-sdk
+  cancel-in-progress: false
+
+permissions: {}
+
+jobs:
+  run:
+    name: sdk vitest
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - uses: ./.github/actions/setup
+
+      # tests/e2e/sdk is intentionally outside the root workspace (same pattern as tests/opencheck).
+      - name: Install e2e-sdk deps
+        working-directory: tests/e2e/sdk
+        run: bun install
+
+      - name: Typecheck
+        working-directory: tests/e2e/sdk
+        run: bun run typecheck
+
+      - name: Run cassette-replay tests
+        working-directory: tests/e2e/sdk
+        run: bun run test
+
+      - name: Post-failure diagnostic
+        if: failure()
+        working-directory: tests/e2e/sdk
+        shell: bash
+        run: |
+          {
+            echo "## SDK e2e — failure context"
+            echo
+            echo "### Cassettes present"
+            ls -1 cassettes/
+            echo
+            echo "### Test files"
+            ls -1 *.test.ts
+          } >> "$GITHUB_STEP_SUMMARY"
