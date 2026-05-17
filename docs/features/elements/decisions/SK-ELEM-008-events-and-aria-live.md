@@ -1,0 +1,9 @@
+# SK-ELEM-008 — `nlq-data:load` / `nlq-data:error` / `nlq-action:*` events; `aria-live="polite"` by default
+
+- **Decision:** Each element dispatches a closed taxonomy of custom events: `<nlq-data>` fires `nlq-data:load` (success — `detail = { rows, cached }`) and `nlq-data:error` (failure — `detail = { kind: "network" | "auth" | "api", status?, error? }`). `<nlq-action>` fires `nlq-action:confirm-required` (preview hop, `detail = { diff }`), `nlq-action:success` (commit hop, `detail = { rowCount, diff }`), and `nlq-action:error` (`detail = AskFailure`, same `kind` taxonomy). All bubble and compose. Host elements get `aria-live="polite"` by default (skipped when the author has set their own value) so screen-reader users get announced state transitions without any author wiring.
+- **Core value:** Effortless UX, Bullet-proof, Honest latency
+- **Why:** Custom events are the standard custom-element extension point — embedders can listen on the element or on a container without wiring a callback prop. The event detail carries enough context (`kind` slug + optional `status`) to drive a UX response (auth banner, retry, fall-back). `aria-live="polite"` defaulted-on is the accessible default; defaulting it off would mean every embedder has to remember it, which means most won't.
+- **Consequence in code:** The event names and `kind` slugs are part of the public API; renames break consumers. Reviewers reject any added event without explicit decision-log entry. `connectedCallback` sets `aria-live="polite"` only when `!this.hasAttribute("aria-live")` — it never overrides an author choice. The error `kind` taxonomy is closed: `network`, `auth`, `api` (with `api` carrying `status` for HTTP-level branching).
+- **Alternatives rejected:**
+  - Callback props (`onload`, `onerror` attributes) — events compose with the rest of the DOM event system; callbacks don't.
+  - No accessibility default — the package would silently ship as inaccessible by default.
