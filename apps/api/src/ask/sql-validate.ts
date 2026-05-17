@@ -124,7 +124,11 @@ const parser = new Parser();
 // Strip leading SQL comments (`-- …\n` line comments and `/* … */`
 // block comments, possibly nested inside whitespace) so the leading-
 // verb gate sees the actual first token, not a comment artifact.
-function stripLeadingComments(sql: string): string {
+// Exported so `/v1/run`'s pk_live gate uses the SAME normalization the
+// validator uses — `/* x */ INSERT ...` must reach both as `INSERT`,
+// otherwise pk_live could smuggle writes past the orchestrator gate
+// while the validator allows the verb.
+export function stripLeadingComments(sql: string): string {
   let s = sql;
   for (;;) {
     const next = s.replace(/^\s+/, "");
@@ -145,7 +149,8 @@ function stripLeadingComments(sql: string): string {
 // Pull the first SQL keyword token out of the (already-comment-stripped)
 // statement. Tolerates leading parens (`(SELECT …)`) and inline comments
 // directly after the verb (`WITH/*c*/x AS …`, `EXPLAIN(ANALYZE) …`).
-function leadingVerb(sql: string): string {
+// Exported alongside `stripLeadingComments` for `/v1/run` — see above.
+export function leadingVerb(sql: string): string {
   const head = sql.replace(/^\(+\s*/, "");
   return (head.match(/^[a-z_][a-z_0-9]*/i)?.[0] ?? "").toLowerCase();
 }

@@ -1,0 +1,24 @@
+---
+type Props = {
+  goal?: string;
+  db?: string;
+  "api-key"?: string;
+  endpoint?: string;
+  form?: string;
+  label?: string;
+  "on-success"?: string;
+};
+const { goal, db, "api-key": apiKey, endpoint, form, label, "on-success": onSuccess } = Astro.props;
+---
+
+<nlq-action
+  goal={goal}
+  db={db}
+  api-key={apiKey}
+  endpoint={endpoint}
+  form={form}
+  label={label}
+  on-success={onSuccess}
+>
+  <slot />
+</nlq-action>

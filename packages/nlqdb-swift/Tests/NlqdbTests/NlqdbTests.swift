@@ -7,13 +7,10 @@ import FoundationNetworking
 
 @testable import Nlqdb
 
-// `.serialized` — tests share static URLProtocol stub state through
-// `StubProtocol.queue`; parallel runs would race.
+// `.serialized` — `StubProtocol`'s static queue is shared across tests.
 @Suite("NlqdbClient — wire contract", .serialized)
 struct NlqdbClientTests {
 
-    /// `URLProtocol` stub that replays a queue of pre-baked responses.
-    /// Each `data(for:)` pulls the next entry from `queue`.
     final class StubProtocol: URLProtocol, @unchecked Sendable {
         nonisolated(unsafe) static var queue: [(Int, Data, String)] = []
         nonisolated(unsafe) static var lastIdempotencyKey: String?
@@ -75,7 +72,6 @@ struct NlqdbClientTests {
     @Test("retries on transient 5xx and reuses Idempotency-Key across attempts")
     func retryOn5xx() async throws {
         let client = makeClient()
-        // First two attempts: 503 with JSON envelope; third: 200.
         let errBody = #"{"error":{"status":"unknown_error","message":"boom"}}"#.data(using: .utf8)!
         StubProtocol.queue.append((503, errBody, "application/json"))
         StubProtocol.queue.append((503, errBody, "application/json"))
@@ -93,9 +89,8 @@ struct NlqdbClientTests {
     func noRetryOn4xx() async throws {
         let client = makeClient()
         let body = #"{"error":{"status":"rate_limited","message":"slow down"}}"#.data(using: .utf8)!
+        // Empty queue after the first response asserts no retry — a retry would fall off the end.
         StubProtocol.queue.append((429, body, "application/json"))
-        // Empty queue after the first response asserts the
-        // single-attempt path — a retry would fall off the end.
 
         do {
             _ = try await client.ask(AskRequest(goal: "users"))

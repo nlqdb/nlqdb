@@ -1,6 +1,4 @@
-// `import "server-only"` fails the build if this module is imported
-// from a Client Component — keeps `sk_live_*` on the server boundary
-// by construction.
+// `server-only` fails the build if this module is imported from a Client Component.
 
 import "server-only";
 import { type AskRequest, createClient, type NlqClient, NlqdbApiError } from "@nlqdb/sdk";
@@ -12,8 +10,6 @@ export type NlqdbServerOptions = {
 
 const ENV_KEY = "NLQDB_API_KEY";
 
-// Throws on missing key — surfacing a misconfiguration at boot is
-// better than 401s in production.
 export function nlqdbServer(opts: NlqdbServerOptions = {}): NlqClient {
   const apiKey = opts.apiKey ?? process.env[ENV_KEY];
   if (!apiKey) {
@@ -24,9 +20,9 @@ export function nlqdbServer(opts: NlqdbServerOptions = {}): NlqClient {
   return createClient({ apiKey, baseUrl: opts.baseUrl });
 }
 
-// Forwards `Idempotency-Key` if the caller supplied one; otherwise
-// the SDK auto-mints per SK-SDK-006.
+// Lazy single client — defers the env-var read until first request reaches the route.
 export function createAskRoute(opts: NlqdbServerOptions = {}) {
+  let client: NlqClient | null = null;
   return async function POST(req: Request): Promise<Response> {
     let body: AskRequest;
     try {
@@ -37,12 +33,10 @@ export function createAskRoute(opts: NlqdbServerOptions = {}) {
         { status: 400 },
       );
     }
-    const idempotencyKey = req.headers.get("idempotency-key") ?? undefined;
-    const client = nlqdbServer(opts);
+    client ??= nlqdbServer(opts);
     try {
       const out = await client.ask(body, { signal: req.signal });
-      const headers: HeadersInit = idempotencyKey ? { "idempotency-key": idempotencyKey } : {};
-      return Response.json(out, { headers });
+      return Response.json(out);
     } catch (err) {
       if (err instanceof NlqdbApiError) {
         return Response.json(

@@ -1,7 +1,3 @@
-// Injects the elements CDN as a head script on every page. The
-// guard around `customElements.get('nlq-data')` is the dedupe so
-// client-side route transitions don't re-append the tag.
-
 import type { AstroIntegration } from "astro";
 
 export type NlqdbIntegrationOptions = {

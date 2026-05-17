@@ -1,0 +1,9 @@
+# SK-ELEM-003 — `POST /v1/ask` is the only network call; defaults to `https://app.nlqdb.com/v1/ask`
+
+- **Decision:** Each render fetches via `POST /v1/ask` with the request body assembled from attributes. Default endpoint is `https://app.nlqdb.com/v1/ask`. The `endpoint` attribute overrides for self-hosters and preview deploys (e.g. `endpoint="https://pr-42.preview.nlqdb-elements.pages.dev/v1/ask"` for PR previews). The element does **not** speak directly to Postgres or any database; it only speaks to the API. Marketing surfaces and any anonymous embed authenticate via `Authorization: Bearer anon_<token>` against the same `/v1/ask` (the canned `/v1/demo/ask` path was retired under `SK-WEB-008`).
+- **Core value:** Simple, Bullet-proof
+- **Why:** A single endpoint is the smallest network surface — no auth-shape branching, no per-template URL paths, no client-side query construction. Letting the embedder override the endpoint covers self-hosting and PR previews without forking the element. Talking to the API rather than directly to Postgres is what makes `pk_live_*` keys safe — see SK-ELEM-005.
+- **Consequence in code:** `fetch.ts` constructs exactly one URL from `endpoint` (or `DEFAULT_ENDPOINT`) and one POST. No `GET` paths, no other endpoints called. CI test asserts no `fetch()` call inside `packages/elements/` references a path other than the configured endpoint. **Security warning** (`README.md`): never bind `endpoint=` to user-controlled input — the element sends `api-key` to whatever URL `endpoint` resolves to.
+- **Alternatives rejected:**
+  - Direct Postgres connection from the browser — leaks the connection string; no rate-limit / allowlist; contradicts the entire ask-pipeline story.
+  - SSE-only transport — Phase 0 ships polling; SSE upgrade is a Phase 1+ enhancement (deferred per README "What's NOT in v0.1").

@@ -194,13 +194,7 @@ jobs:
     timeout-minutes: 5
     strategy:
       matrix:
-        # All TypeScript workspace packages. Framework wrappers
-        # (react, next, vue, nuxt, svelte, sveltekit, astro, solid)
-        # share the same typecheck-then-vitest shape as the legacy
-        # packages — wrappers without browser-rendered tests still
-        # run their `test` script (which is a no-op typecheck for
-        # framework-compiler-only packages: nuxt, svelte, sveltekit,
-        # astro, solid). See docs/features/framework-wrappers/FEATURE.md.
+        # `test` is optional — framework-compiler-only packages skip it.
         pkg:
           [
             astro,
@@ -229,10 +223,6 @@ jobs:
 
       - name: Test
         working-directory: packages/${{ matrix.pkg }}
-        # Several wrapper packages have no JS unit tests (the
-        # compile path needs the framework's own toolchain — Svelte
-        # / Astro / Nuxt). Their `package.json` either omits `test`
-        # or aliases it to a no-op; tolerate both.
         run: |
           if jq -e '.scripts.test' package.json > /dev/null; then
             bun run test
@@ -299,13 +289,7 @@ jobs:
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
 
-      # Direct toolchain install from swift.org — `swift-actions/setup-swift@v2`
-      # is legacy and silently falls back to Swift 5 when asked for 6.0
-      # (see swift-actions/setup-swift#683); v3 is beta and `GLOBAL-016`
-      # forbids RC on the critical path; the `swift:6.0.3-jammy` container
-      # path is fragile because actions running in containers hit
-      # ownership / git-availability edge cases. Direct curl + tar is the
-      # most transparent install.
+      # `setup-swift@v2` falls back to Swift 5 silently (swift-actions/setup-swift#683); v3 is beta.
       - name: Install Swift 6.0.3
         shell: bash
         run: |

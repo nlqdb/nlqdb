@@ -8,7 +8,8 @@
   "main": "src/index.ts",
   "exports": {
     ".": "./src/index.ts",
-    "./NlqData.astro": "./src/NlqData.astro"
+    "./NlqData.astro": "./src/NlqData.astro",
+    "./NlqAction.astro": "./src/NlqAction.astro"
   },
   "scripts": {
     "typecheck": "tsc --noEmit"

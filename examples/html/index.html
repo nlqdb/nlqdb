@@ -10,7 +10,9 @@
     <h1>Today's orders</h1>
 
     <nlq-data
+      id="orders-pane"
       goal="today's orders, newest first"
+      db="orders"
       api-key="pk_live_REPLACE_ME"
       template="table"
       refresh="5s"
@@ -23,8 +25,8 @@
       <input name="total" placeholder="total" required type="number" step="0.01" />
       <nlq-action
         goal="add an order from this form"
-        api-key="pk_live_REPLACE_ME"
-        on-success="reload"
+        db="orders"
+        on-success="refresh:#orders-pane"
         >Add order</nlq-action
       >
     </form>

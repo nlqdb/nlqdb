@@ -1,5 +1,4 @@
-// Test-only stub for next/script. Returns a plain <script> tag so
-// the renderToString assertions in script.test.tsx can match.
+// Vitest stub — renders a plain <script> tag so renderToString assertions match.
 import { createElement } from "react";
 
 type Props = {

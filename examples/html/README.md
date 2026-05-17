@@ -4,8 +4,11 @@ The whole app is one file. No build step, no framework, no package manager.
 
 ## Run it
 
-1. Replace `pk_live_REPLACE_ME` with your key (from `nlq keys create pk` or the chat's "Copy snippet" button).
+1. Replace `pk_live_REPLACE_ME` with your read-only key (from the chat's "Copy snippet" button on any query); the `<nlq-data>` pane will populate.
 2. Open `index.html` in a browser. Done.
+
+The `<nlq-action>` form authenticates via your same-origin `app.nlqdb.com`
+session cookie ([`SK-ELEM-011`](../../docs/features/elements/decisions/SK-ELEM-011-action-cookie-session-only.md)) — sign in there once and the form works from any same-origin page. Cross-origin write-tokens are tracked in [`api-keys/FEATURE.md`](../../docs/features/api-keys/FEATURE.md) and ship in a follow-up slice.
 
 Or serve it:
 

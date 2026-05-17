@@ -1,8 +1,3 @@
-// Auto-registers `<NlqData>`, injects the elements CDN via `useHead`
-// from a client-only plugin, and surfaces `useNlq()` as an SSR-aware
-// composable on top of Nuxt's `useFetch` (so the response rides the
-// payload — no client refetch on hydration).
-
 import { fileURLToPath } from "node:url";
 import {
   addComponent,
@@ -45,14 +40,18 @@ export default defineNuxtModule<NlqdbModuleOptions>({
       filePath: "@nlqdb/vue",
       export: "NlqData",
     });
+    addComponent({
+      name: "NlqAction",
+      filePath: "@nlqdb/vue",
+      export: "NlqAction",
+    });
 
     addImports({
       name: "useNlq",
       from: resolver.resolve("composables"),
     });
 
-    // Client-only plugin — server-side `isCustomElement` doesn't
-    // reliably flow through Nuxt's SSR pass per nuxt#17263.
+    // Client-only — server-side `isCustomElement` is unreliable in Nuxt SSR (nuxt#17263).
     addPluginTemplate({
       filename: "nlqdb.client.mjs",
       getContents: () => `
@@ -65,7 +64,7 @@ export default defineNuxtPlugin({
     const cfg = useRuntimeConfig().public.nlqdb || {};
     const prev = nuxtApp.vueApp.config.compilerOptions.isCustomElement;
     nuxtApp.vueApp.config.compilerOptions.isCustomElement = (tag) =>
-      tag === 'nlq-data' || (prev?.(tag) ?? false);
+      tag === 'nlq-data' || tag === 'nlq-action' || (prev?.(tag) ?? false);
     useHead({
       script: [
         { src: cfg.elementsUrl || 'https://elements.nlqdb.com/v1.js', type: 'module' },

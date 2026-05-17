@@ -8,7 +8,8 @@
   "main": "src/index.ts",
   "exports": {
     ".": "./src/index.ts",
-    "./NlqData.svelte": "./src/NlqData.svelte"
+    "./NlqData.svelte": "./src/NlqData.svelte",
+    "./NlqAction.svelte": "./src/NlqAction.svelte"
   },
   "scripts": {
     "typecheck": "tsc --noEmit"

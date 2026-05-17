@@ -1,5 +1,4 @@
-// Wire models for the nlqdb /v1 API. Mirrors `packages/sdk/src/index.ts`;
-// when the wire shape changes update both in the same PR (GLOBAL-002).
+// Wire shape changes here ride in the same PR as `packages/sdk/src/index.ts` (GLOBAL-002).
 
 import Foundation
 
@@ -83,8 +82,32 @@ public struct CreateDatabaseResult: Sendable, Codable {
     public let engine: String
 }
 
-/// Codable wrapper for arbitrary JSON cell values (TS `unknown`).
-/// Consumers pattern-match the case to read a column.
+// `SK-SDK-009` / `GLOBAL-015` — raw-SQL escape hatch; same allow-list as `ask()`, DDL rejected.
+public struct RunSqlRequest: Sendable, Codable {
+    public var db: String
+    public var sql: String
+
+    public init(db: String, sql: String) {
+        self.db = db
+        self.sql = sql
+    }
+}
+
+public struct RunSqlResult: Sendable, Codable {
+    public let status: String
+    public let rows: [[String: AnyCodable]]
+    public let rowCount: Int
+    public let trace: Trace
+
+    enum CodingKeys: String, CodingKey {
+        case status
+        case rows
+        case rowCount
+        case trace
+    }
+}
+
+/// Codable wrapper for arbitrary JSON cell values — pattern-match a case to read a column.
 public enum AnyCodable: Sendable, Codable, Equatable {
     case string(String)
     case int(Int)

@@ -1,5 +1,4 @@
-// Duck-typed so the file typechecks without Nuxt's ambient globals
-// at our typecheck pass.
+// Duck-typed — keeps our typecheck pass free of Nuxt's ambient globals.
 
 declare const useFetch:
   | (<T>(

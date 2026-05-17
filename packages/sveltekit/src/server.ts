@@ -1,7 +1,3 @@
-// SvelteKit `+page.server.ts` / `+layout.server.ts` helpers. The
-// shape mirrors `load()` so SSR responses ride SvelteKit's payload
-// and the client doesn't refetch on hydration.
-
 import { type AskRequest, type AskResponse, createClient, NlqdbApiError } from "@nlqdb/sdk";
 
 export type NlqdbLoadOptions = {
@@ -34,8 +30,7 @@ export async function nlqdbLoad(
     return await client.ask(req);
   } catch (err) {
     if (err instanceof NlqdbApiError) {
-      // SvelteKit's `+error.svelte` shows `error.message` directly —
-      // GLOBAL-012 says that's one sentence with the next action.
+      // Plain `Error` so `+error.svelte` renders one sentence per GLOBAL-012; cause keeps the envelope.
       const e = new Error(err.message);
       (e as Error & { cause?: unknown }).cause = err;
       throw e;

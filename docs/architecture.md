@@ -161,18 +161,18 @@ Power-user: `nlq db create|list`, `nlq query <db> "…"`, `nlq use <db>`, `nlq c
 
 Canonical feature: `mcp-server/FEATURE.md` (`SK-MCP-001..007`). Two transports: **hosted** (`mcp.nlqdb.com`, paste-URL into host config, OAuth) and **local stdio** (`@nlqdb/mcp` via `nlq mcp install`). Three tools: `nlqdb_query`, `nlqdb_list_databases`, `nlqdb_describe` — no `nlqdb_create_database` (DB materializes on first `nlqdb_query` per §0.1).
 
-### 3.5 `<nlq-data>` element
+### 3.5 `<nlq-data>` + `<nlq-action>` elements
 
-Canonical feature: `elements/FEATURE.md` (`SK-ELEM-001..008`). ESM bundle ≤6 KB.
+Canonical feature: `elements/FEATURE.md` (`SK-ELEM-001..013`). ESM bundle ≤6 KB. `<nlq-data>` is the read element; `<nlq-action>` is the write counterpart with preview→Apply confirm (`SK-ELEM-012` / `SK-TRUST-001`).
 
 ```html
 <script src="https://elements.nlqdb.com/v1.js" type="module"></script>
-
-<!-- Goal-first (default): DB auto-created on first call -->
 <nlq-data goal="5 most-loved coffee shops in Berlin" api-key="pk_live_..." template="card-grid"></nlq-data>
-
-<!-- Power-user: explicit DB -->
 <nlq-data db="coffee-shops" query="5 most-loved…" api-key="pk_live_..."></nlq-data>
+<form>
+  <input name="customer" /><input name="drink" /><input name="total" />
+  <nlq-action goal="add an order from this form" db="orders" on-success="refresh:#orders">Submit</nlq-action>
+</form>
 ```
 
 ### 3.6 Hosted db.create — typed-plan, validator, provisioner

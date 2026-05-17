@@ -92,6 +92,24 @@ func keyLabel(r api.KeyRecord) string {
 	return "—"
 }
 
+// WriteRun renders `/v1/run` responses with the same `─ trace ─` separator as `nlq ask` (`SK-TRUST-002`).
+func (w *Writer) WriteRun(resp *api.RunResponse) error {
+	if w.Format == FormatJSON {
+		return w.JSON(resp)
+	}
+	if len(resp.Rows) > 0 {
+		writeRowsTable(w.Out, resp.Rows)
+	} else {
+		fmt.Fprintf(w.Out, "✓ %d row(s) affected.\n", resp.RowCount)
+	}
+	if resp.Trace != nil {
+		fmt.Fprintln(w.Out, "─ trace ─")
+		fmt.Fprintln(w.Out, indent(strings.TrimSpace(resp.Trace.SQL), "  "))
+		fmt.Fprintf(w.Out, "  plan=%s model=%s\n", resp.Trace.PlanID, resp.Trace.Model)
+	}
+	return nil
+}
+
 func (w *Writer) WriteDatabases(rows []api.DatabaseSummary) error {
 	if w.Format == FormatJSON {
 		return w.JSON(map[string]any{"databases": rows})

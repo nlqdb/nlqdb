@@ -63,6 +63,7 @@ import {
   parseAskBody,
   parseGoalDbBody,
   parseJsonBody,
+  parseRunBody,
 } from "./http.ts";
 import { getLLMRouter } from "./llm-router.ts";
 import { makeRequireSession, type RequireSessionVariables } from "./middleware.ts";
@@ -75,6 +76,7 @@ import {
   rateLimitBucketKey,
   surfaceFromPrincipal,
 } from "./principal.ts";
+import { orchestrateRun, type RunError } from "./run/orchestrate.ts";
 import { cryptoProvider, stripe as stripeClient } from "./stripe/client.ts";
 import { processWebhook } from "./stripe/webhook.ts";
 import { verifyTurnstile } from "./turnstile.ts";
@@ -1098,6 +1100,161 @@ app.post("/v1/ask", requirePrincipal, async (c) => {
   });
 });
 
+// `POST /v1/run` — `GLOBAL-015` escape hatch (`SK-SDK-009`); orchestrator owns the WHY.
+app.use("/v1/run", (c, next) => {
+  const origin = c.req.header("origin") ?? "";
+  const handler = CORS_ALLOWED_ORIGINS.includes(origin) ? credentialedCors : pkLiveCors;
+  return handler(c, next);
+});
+
+app.post("/v1/run", requirePrincipal, async (c) => {
+  const tracer = trace.getTracer("@nlqdb/api");
+  return tracer.startActiveSpan("nlqdb.run", async (span) => {
+    try {
+      const principal = c.var.principal as Principal;
+      const surface = surfaceFromPrincipal(principal);
+      span.setAttribute("nlqdb.principal.kind", principal.kind);
+      span.setAttribute("nlqdb.principal.id", principal.id);
+      span.setAttribute("nlqdb.surface", surface);
+
+      const parsed = await parseRunBody(c, { dbOptional: principal.kind === "pk_live" });
+      if (!parsed.ok) {
+        span.setAttribute("nlqdb.run.outcome", parsed.error.body.error);
+        return c.json(parsed.error.body, parsed.error.status);
+      }
+      if (principal.kind === "pk_live" && !parsed.body.db) {
+        parsed.body.db = principal.dbId;
+      }
+      span.setAttribute("nlqdb.run.sql_preview", redactPii(parsed.body.sql).slice(0, 200));
+
+      // Anon-tier gates mirror `/v1/ask` ordering so raw-SQL can't sidestep the chat path's caps.
+      if (principal.kind === "anon") {
+        const globalLimiter = makeGlobalAnonLimiter(c.env.KV);
+        const globalPeek = await globalLimiter.peek();
+        if (!globalPeek.ok) {
+          span.setAttribute("nlqdb.run.outcome", "auth_required_global_cap");
+          return c.json(
+            {
+              error: {
+                status: "auth_required" as const,
+                code: "anon_global_cap" as const,
+                window: globalPeek.window,
+                resetAt: globalPeek.resetAt,
+                signInUrl: buildSignInUrl(c.req.header("referer")),
+                action: "Sign in to continue — your prompt is saved.",
+              },
+            },
+            401,
+          );
+        }
+        const ip = c.req.header("cf-connecting-ip") ?? "unknown";
+        const anonLimiter = makeAnonRateLimiter(c.env.KV);
+        const verdict = await anonLimiter.checkQuery(ip);
+        const now = Math.floor(Date.now() / 1000);
+        c.header("X-RateLimit-Limit", String(verdict.limit));
+        c.header("X-RateLimit-Remaining", String(Math.max(0, verdict.limit - verdict.count)));
+        c.header("X-RateLimit-Reset", String(verdict.resetAt));
+        if (!verdict.ok) {
+          span.setAttribute("nlqdb.run.outcome", "rate_limited_ip");
+          // `SK-EVENTS-010` — same demand-signal class as the `/v1/ask` anon trip.
+          c.executionCtx.waitUntil(
+            buildEventEmitter(c.env.EVENTS_QUEUE).emit({
+              name: "feature.requested.heavier_tier",
+              principalId: principal.id,
+              surface,
+            }),
+          );
+          c.header("Retry-After", String(Math.max(0, verdict.resetAt - now)));
+          return c.json(
+            {
+              error: {
+                status: "rate_limited" as const,
+                limit: verdict.limit,
+                count: verdict.count,
+                resetAt: verdict.resetAt,
+              },
+            },
+            429,
+          );
+        }
+        const devicePeek = await anonLimiter.peekDevice(principal.id);
+        if (!devicePeek.ok) {
+          span.setAttribute("nlqdb.run.outcome", "auth_required_device_cap");
+          return c.json(
+            {
+              error: {
+                status: "auth_required" as const,
+                code: "anon_device_cap" as const,
+                signInUrl: buildSignInUrl(c.req.header("referer")),
+                action: "Sign in to keep going — your draft is saved.",
+              },
+            },
+            401,
+          );
+        }
+        c.executionCtx.waitUntil(globalLimiter.record());
+      }
+
+      const deps = buildAskDeps(c.env);
+      const outcome = await orchestrateRun(
+        {
+          resolveDb: deps.resolveDb,
+          exec: deps.exec,
+          rateLimiter: deps.rateLimiter,
+        },
+        {
+          sql: parsed.body.sql,
+          dbId: parsed.body.db,
+          userId: principal.id,
+          rateLimitBucketKey: rateLimitBucketKey(principal),
+          ...(principal.kind === "pk_live" ? { readOnly: true } : {}),
+        },
+      );
+
+      if (!outcome.ok) {
+        const httpStatus = runErrorStatus(outcome.error);
+        if (outcome.error.status === "rate_limited") {
+          const { limit, count, resetAt } = outcome.error;
+          const now = Math.floor(Date.now() / 1000);
+          c.header("X-RateLimit-Limit", String(limit));
+          c.header("X-RateLimit-Remaining", String(Math.max(0, limit - count)));
+          c.header("X-RateLimit-Reset", String(resetAt));
+          c.header("Retry-After", String(Math.max(0, resetAt - now)));
+        }
+        // Inlined (not via `emitFeatureSignal`) because that helper also fires `ddl_via_ask` — wrong name for `/v1/run`.
+        if (outcome.error.status === "rate_limited") {
+          c.executionCtx.waitUntil(
+            buildEventEmitter(c.env.EVENTS_QUEUE).emit({
+              name: "feature.requested.heavier_tier",
+              principalId: principal.id,
+              surface,
+            }),
+          );
+        }
+        span.setAttribute("nlqdb.run.outcome", outcome.error.status);
+        return c.json({ error: outcome.error }, httpStatus);
+      }
+
+      span.setAttribute("nlqdb.run.outcome", "ok");
+      span.setAttribute("nlqdb.run.rows_returned", outcome.result.rowCount);
+
+      // `last_queried_at` bump runs off-path so raw-SQL traffic shows in the rail's recent-activity surface.
+      c.executionCtx.waitUntil(
+        c.env.DB.prepare(
+          "UPDATE databases SET last_queried_at = unixepoch() WHERE id = ? AND tenant_id = ?",
+        )
+          .bind(parsed.body.db, principal.id)
+          .run()
+          .catch(() => undefined),
+      );
+
+      return c.json({ status: "ok" as const, ...outcome.result });
+    } finally {
+      span.end();
+    }
+  });
+});
+
 // `POST /v1/waitlist` — public, unauthenticated, idempotent. Backs
 // the homepage waitlist form while the chat surface is tabled.
 // Returns 200 for any well-formed email (privacy: never reveal
@@ -1987,6 +2144,12 @@ function errorStatus(status: AskError["status"]): 400 | 404 | 409 | 422 | 429 | 
     case "schema_mismatch":
       return 409;
   }
+}
+
+// Wraps `errorStatus` with the `forbidden` branch unique to `/v1/run` (`SK-APIKEYS-003`).
+function runErrorStatus(error: RunError): 400 | 403 | 404 | 409 | 422 | 429 | 502 {
+  if (error.status === "forbidden") return 403;
+  return errorStatus(error.status);
 }
 
 // Anon-bearer stash endpoint (SK-ANON-012).

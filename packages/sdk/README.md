@@ -35,9 +35,16 @@ escapes and JS callers.
 
 ```ts
 client.ask({ goal, dbId }, { signal? })           // POST /v1/ask
+client.runSql({ db, sql }, { signal?, idempotencyKey? }) // POST /v1/run
 client.listChat({ signal? })                       // GET  /v1/chat/messages
 client.postChat({ goal, dbId }, { signal? })       // POST /v1/chat/messages
 ```
+
+`runSql` is the `GLOBAL-015` escape hatch: same allow-list as `/v1/ask`
+(SELECT / INSERT / UPDATE / DELETE / WITH / EXPLAIN / SHOW); DDL is
+rejected. Use it when the LLM-emitted SQL is the wrong shape and you
+want to hand-write the query — the response carries the same `trace`
+block as `ask()`.
 
 `AbortSignal` is plumbed end-to-end. SSE consumer for `/v1/ask` is
 not yet shipped — `ask()` calls the buffered JSON path.

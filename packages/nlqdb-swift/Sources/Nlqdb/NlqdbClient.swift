@@ -1,8 +1,4 @@
-// Wire contract mirrors `packages/sdk/src/index.ts`: bearer auth,
-// auto-mint Idempotency-Key on mutations reused across retries
-// (GLOBAL-005, SK-SDK-008), 3-attempt retry on transport / transient
-// 5xx (GLOBAL-022), one error class with discriminant `code`
-// (GLOBAL-002).
+// Mirrors `packages/sdk/src/index.ts` — auth, idempotency, retry budget, error class (GLOBAL-002).
 
 import Foundation
 
@@ -15,9 +11,7 @@ import os.log
 private let _osLogger = Logger(subsystem: "com.nlqdb.sdk", category: "client")
 #endif
 
-// Console.app-visible (Apple) / stderr (Linux) — retries, auth
-// failures and decode errors. OTel-via-`swift-distributed-tracing`
-// is tracked in docs/features/sdk-swift/FEATURE.md as an Open question.
+// Console.app on Apple, stderr on Linux — `swift-distributed-tracing` tracked in sdk-swift FEATURE.md.
 @inline(__always)
 func nlqdbLog(_ message: String) {
     #if canImport(os)
@@ -56,8 +50,7 @@ public actor NlqdbClient {
         let enc = JSONEncoder()
         enc.keyEncodingStrategy = .convertToSnakeCase
         self.encoder = enc
-        // Models declare explicit `CodingKeys` — global snake/camel
-        // strategy would clash with mixed-shape endpoints.
+        // Per-model `CodingKeys` — a global strategy would clash with mixed-shape endpoints.
         self.decoder = JSONDecoder()
     }
 
@@ -102,18 +95,27 @@ public actor NlqdbClient {
         )
     }
 
+    public func runSql(
+        _ req: RunSqlRequest,
+        idempotencyKey: String? = nil
+    ) async throws -> RunSqlResult {
+        try await callDecoding(
+            path: "/v1/run",
+            method: "POST",
+            body: req,
+            idempotencyKey: idempotencyKey
+        )
+    }
+
     // MARK: — Internals
 
-    /// Single-attempt request — caller decides whether to decode.
     private func sendOnce(
         path: String,
         method: String,
         bodyData: Data?,
         idempotencyKey: String?
     ) async throws -> (Data, HTTPURLResponse) {
-        // `URL.appendingPathComponent` is the most portable API
-        // across Apple Foundation + swift-corelibs-foundation; the
-        // leading slash in `path` is stripped to keep the join correct.
+        // `appendingPathComponent` is portable across Apple + swift-corelibs Foundation.
         let trimmed = path.hasPrefix("/") ? String(path.dropFirst()) : path
         let url = config.baseURL.appendingPathComponent(trimmed)
         var req = URLRequest(url: url)
@@ -203,7 +205,6 @@ public actor NlqdbClient {
         )
     }
 
-    /// Retry envelope returning a decoded body.
     private func callDecoding<Body: Encodable, Out: Decodable>(
         path: String,
         method: String,
@@ -247,7 +248,6 @@ public actor NlqdbClient {
         )
     }
 
-    /// Retry envelope for endpoints that return no body.
     private func callVoid(
         path: String,
         method: String,
@@ -291,9 +291,7 @@ public actor NlqdbClient {
     }
 
     private func sleepForBackoff(attempt: Int) async throws {
-        // Linear; no jitter so tests stay deterministic. Cancellation
-        // during the sleep maps to the same `.aborted` shape callers
-        // see from `sendOnce` so they never branch on the error type.
+        // Cancellation during sleep maps to `.aborted` so callers never branch on error type.
         let nanoseconds = UInt64(50 * attempt) * 1_000_000
         do {
             try await Task.sleep(nanoseconds: nanoseconds)
@@ -320,7 +318,6 @@ public actor NlqdbClient {
     }
 }
 
-/// Empty body / empty response stand-in.
 public struct Empty: Sendable, Codable {
     public init() {}
 }

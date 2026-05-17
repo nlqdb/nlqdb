@@ -1,6 +1,4 @@
-// `afterInteractive` so the bundle loads after hydration and
-// upgrades any inert <nlq-data> tag the server rendered, without
-// blocking first paint.
+// `afterInteractive` so the elements bundle loads post-hydration without blocking first paint.
 
 import Script from "next/script";
 

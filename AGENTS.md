@@ -141,6 +141,7 @@ manually before editing.)
 | `apps/api/src/routes/auth/**`, `packages/auth-internal/**` | `docs/features/auth/FEATURE.md` |
 | `apps/api/src/api-keys.ts`, `apps/api/src/index.ts` `/v1/keys*` routes, `apps/web/src/pages/app/keys.astro`, `apps/web/src/components/keys/**`, anything `api-key` related | `docs/features/api-keys/FEATURE.md` |
 | `apps/api/src/ask/**`, the `/v1/ask` pipeline | `docs/features/ask-pipeline/FEATURE.md` |
+| `apps/api/src/run/**`, the `POST /v1/run` raw-SQL escape hatch (`GLOBAL-015`) | `docs/features/sdk/FEATURE.md` (`SK-SDK-009`) + `docs/features/cli/FEATURE.md` (`nlq run`) + `docs/features/sql-allowlist/FEATURE.md` (validator reuse) |
 | anything touching write/DDL diff preview, `confidence`, or the `trace` block on responses | `docs/features/trust-ux/FEATURE.md` |
 | `apps/api/src/db-create/**`, `apps/api/src/ask/classifier.ts`, `apps/api/src/ask/sql-validate-ddl.ts` | `docs/features/hosted-db-create/FEATURE.md` |
 | `apps/api/src/plan-cache/**`, plan storage | `docs/features/plan-cache/FEATURE.md` |

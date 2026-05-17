@@ -57,10 +57,20 @@ when-to-load:
 - **Decision:** Tests use the Swift Testing framework (`import Testing`, `@Test`, `@Suite`). The framework is part of the Swift 6 toolchain — no separate dependency.
 - **Core value:** Simple, Bullet-proof
 - **Why:** Swift Testing is the official replacement for XCTest going forward (WWDC 2024 announcement, GA in Swift 6.0). New code uses it; XCTest is the legacy surface. `@Test` is parameter-aware (better failure messages than `XCTAssertEqual`) and runs in parallel by default.
-- **Consequence in code:** `Tests/NlqdbTests/NlqdbTests.swift` uses `@Test` and `#expect`. CI installs Swift 6.0.3 via `swift-actions/setup-swift`.
+- **Consequence in code:** `Tests/NlqdbTests/NlqdbTests.swift` uses `@Test` and `#expect`. CI installs Swift 6.0.3 via a direct toolchain download from `swift.org` — `swift-actions/setup-swift@v2` silently falls back to Swift 5 (see [swift-actions#683](https://github.com/swift-actions/setup-swift/issues/683)); `v3` is still beta and `GLOBAL-016` forbids RC on the critical path. The suite is `@Suite(.serialized)` because the URLProtocol stub shares static state across tests.
 - **Alternatives rejected:**
   - XCTest — works, but new code on the latest toolchain has no reason to choose the legacy API.
   - `swift-testing` as a `.package` dependency — unnecessary; it ships in-toolchain on Swift 6.0+.
+
+### SK-SWIFT-005 — `runSql()` mirrors the TS SDK's `runSql` for parity (GLOBAL-002, GLOBAL-003)
+
+- **Decision:** The Swift client exposes `runSql(_ req: RunSqlRequest, idempotencyKey: String? = nil) async throws -> RunSqlResult` that POSTs to `/v1/run` (the raw-SQL escape-hatch endpoint per `GLOBAL-015`, see [`SK-SDK-009`](../sdk/FEATURE.md)). Wire shape, allow-list, error codes, retry budget and idempotency-key semantics are identical to the TS SDK.
+- **Core value:** Bullet-proof, Goal-first, Creative
+- **Why:** The raw-SQL escape hatch must exist on every 1st-party surface or `GLOBAL-002` parity fractures — a Swift consumer can't drop down to the CLI when they need raw SQL. The Swift port lands `runSql()` in the same PR as the TS SDK's `runSql` (`GLOBAL-003`).
+- **Consequence in code:** `NlqdbClient.runSql(_:idempotencyKey:)` delegates to `callDecoding` so the retry envelope and idempotency-key auto-mint reuse the same paths as `ask`. New error codes (`sql_required`, `sql_too_long`, `db_required`, `forbidden`) live in `NlqdbError.Code` and decode via the shared envelope mapper. The `RunSqlRequest` / `RunSqlResult` Codable types live in `Models.swift` next to `AskRequest` / `AskOk`.
+- **Alternatives rejected:**
+  - Skip `runSql()` in Swift and tell users to use the CLI — kills the parity story for native iOS / macOS apps; `GLOBAL-001` says the SDK is the only HTTP client per language.
+  - Build a separate raw-SQL-only client — doubles the surface for no semantic gain; the existing actor + retry envelope handles it.
 
 ## GLOBALs governing this feature
 

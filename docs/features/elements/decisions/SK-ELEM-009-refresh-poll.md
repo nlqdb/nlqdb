@@ -1,0 +1,9 @@
+# SK-ELEM-009 — `refresh="<duration>"` poll with microtask coalescing; client-side refresh is "dumb"
+
+- **Decision:** `refresh="60s"` re-fetches every 60 s while the element is connected. Multiple synchronous attribute changes coalesce into one fetch via `queueMicrotask`. The minimum poll interval is 250 ms (anything below clamps and warns once). On disconnect, the timer + in-flight request are torn down. **The client does not back off on errors today** — refresh polls hammer at the configured cadence regardless of failure.
+- **Core value:** Honest latency, Effortless UX, Simple
+- **Why:** Polling is the simplest cross-browser refresh primitive — every browser supports it, no SSE / websocket setup. Microtask coalescing means setting `goal`, `db`, `template` in sequence triggers one fetch, not three (otherwise framework-driven attribute updates would create an N-fetch storm). The 250 ms floor is a hand-grenade defence: `refresh="1ms"` is pure CPU burn for no UX gain. Error-backoff is deliberately deferred — marketing pages don't usually fail in patterns that need backoff, and the bundle budget pushes against per-feature complexity.
+- **Consequence in code:** `attributeChangedCallback` and the imperative `refresh()` method both call `scheduleUpdate()`, which is microtask-coalesced. `setupRefresh()` reads `parseRefresh()`'s clamped value. `disconnectedCallback` MUST tear down the timer and abort the in-flight fetch (else the next `connectedCallback` leaks). The "no backoff" gap is documented in `README.md`'s "What's NOT in v0.1".
+- **Alternatives rejected:**
+  - SSE auto-upgrade today — adds complexity and a parser; deferred to a slice that has a real use-case.
+  - Exponential backoff on errors — adds state machine to the element; defer until poll-storm is observed in production.

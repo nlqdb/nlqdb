@@ -1,5 +1,4 @@
-// Matches the TS SDK's `NlqdbApiError` shape (GLOBAL-002).
-// Discriminate on `code`, not on `message`.
+// Discriminate on `code`; matches TS SDK's `NlqdbApiError` (GLOBAL-002).
 
 import Foundation
 
@@ -9,6 +8,9 @@ public struct NlqdbError: Error, Sendable, Equatable {
         case rateLimited = "rate_limited"
         case forbidden
         case dbNotFound = "db_not_found"
+        case dbRequired = "db_required"
+        case sqlRequired = "sql_required"
+        case sqlTooLong = "sql_too_long"
         case sqlRejected = "sql_rejected"
         case invalidEngine = "invalid_engine"
         case lowConfidence = "low_confidence"

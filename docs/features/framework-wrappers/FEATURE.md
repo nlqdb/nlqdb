@@ -1,6 +1,6 @@
 ---
 name: framework-wrappers
-description: Per-framework typed wrappers over `<nlq-data>` — React, Next, Vue, Nuxt, Svelte, SvelteKit, Astro, Solid.
+description: Per-framework typed wrappers over `<nlq-data>` + `<nlq-action>` — React, Next, Vue, Nuxt, Svelte, SvelteKit, Astro, Solid.
 when-to-load:
   globs:
     - packages/react/**
@@ -16,7 +16,7 @@ when-to-load:
 
 # Feature: Framework wrappers
 
-**One-liner:** Per-framework typed wrappers over `<nlq-data>` — React, Next, Vue, Nuxt, Svelte, SvelteKit, Astro, Solid.
+**One-liner:** Per-framework typed wrappers over `<nlq-data>` + `<nlq-action>` — React, Next, Vue, Nuxt, Svelte, SvelteKit, Astro, Solid.
 **Status:** partial (Phase 2 — drop-in components shipped; idiomatic data composables tracked under Open questions)
 **Owners (code):** `packages/{react,next,vue,nuxt,svelte,sveltekit,astro,solid}/**`
 **Cross-refs:** [`elements/FEATURE.md`](../elements/FEATURE.md) (the underlying `<nlq-data>` web component) · [`sdk/FEATURE.md`](../sdk/FEATURE.md) (server-side calls inside framework adapters) · `docs/progress.md §0` (surface status matrix) · `docs/architecture.md §3.1` (matrix row per surface).
@@ -66,15 +66,25 @@ when-to-load:
   - One module with conditional imports — bundlers still ship the import shape; `import "server-only"` doesn't fire on a re-export.
   - Env-var-only enforcement (`if (typeof window !== 'undefined') throw`) — runtime guard; too late, the key is already in the bundle.
 
-### SK-FW-004 — Wrappers expose the canonical `nlq-data:load` / `nlq-data:error` CustomEvent as a framework-idiomatic callback prop
+### SK-FW-004 — Wrappers expose the canonical CustomEvents as framework-idiomatic callback props
 
-- **Decision:** Each wrapper translates the underlying element's two CustomEvents into the framework's idiomatic event-prop shape: React `onLoad` / `onError`, Vue `@load` / `@error`, Svelte `onload` / `onerror`, Solid `onLoad` / `onError`. The wrapper attaches listeners imperatively on mount and tears them down on unmount; it never relies on the framework's built-in event-prop mapping because React 19's mapping doesn't cover non-standard DOM events ([release note](https://react.dev/blog/2024/12/05/react-19#support-for-custom-elements)) and other frameworks' coverage is similarly partial.
+- **Decision:** Each wrapper translates the underlying elements' CustomEvents (`nlq-data:load`, `nlq-data:error`, `nlq-action:success`, `nlq-action:confirm-required`, `nlq-action:error`) into the framework's idiomatic event-prop shape: React `onLoad` / `onError` / `onSuccess` / `onConfirmRequired`, Vue `@load` / `@error` / `@success` / `@confirm-required`, Svelte `onload` / `onerror` / `onsuccess` / `onconfirmRequired`, Solid `onLoad` / `onError` / `onSuccess` / `onConfirmRequired`. The wrapper attaches listeners imperatively on mount and tears them down on unmount; it never relies on the framework's built-in event-prop mapping because React 19's mapping doesn't cover non-standard DOM events ([release note](https://react.dev/blog/2024/12/05/react-19#support-for-custom-elements)) and other frameworks' coverage is similarly partial.
 - **Core value:** Effortless UX, Simple
-- **Why:** The wrappers exist precisely so embedders don't have to remember which framework auto-binds which event. A single discoverable prop shape per wrapper, with a single payload type imported from `@nlqdb/elements`, keeps `<NlqData />` looking like every other component the embedder uses.
-- **Consequence in code:** `NlqDataLoadDetail` and `NlqDataErrorDetail` are re-exported from every wrapper. Unit tests assert that dispatching the underlying CustomEvent fires the wrapper's callback exactly once and stops firing after unmount.
+- **Why:** The wrappers exist precisely so embedders don't have to remember which framework auto-binds which event. A single discoverable prop shape per wrapper, with payload types imported from `@nlqdb/elements`, keeps both `<NlqData />` and `<NlqAction />` looking like every other component the embedder uses.
+- **Consequence in code:** `NlqDataLoadDetail`, `NlqDataErrorDetail`, `NlqActionSuccessDetail`, `NlqActionConfirmDetail`, `NlqActionErrorDetail` are re-exported from every wrapper. Unit tests assert that dispatching the underlying CustomEvent fires the wrapper's callback exactly once and stops firing after unmount.
 - **Alternatives rejected:**
   - Expose the raw element ref and let embedders wire listeners — kills the ergonomics that motivate the wrapper in the first place.
   - Map only the events React/Vue support natively — works for some users, surprises others; the imperative attach is universally correct.
+
+### SK-FW-005 — `<NlqAction>` ships in every wrapper in lockstep with `<NlqData>`
+
+- **Decision:** Every wrapper exports both `NlqData` (the read element) and `NlqAction` (the write element with preview→Apply diff hop, `SK-ELEM-010..013`). A new `<nlq-*>` element added to `@nlqdb/elements` lands in every wrapper in the same PR per `GLOBAL-003`.
+- **Core value:** Simple, Bullet-proof
+- **Why:** Read + write is the minimum cohesive surface for a CRUD UI — shipping `<NlqData>` without `<NlqAction>` would force embedders to drop down to raw `<nlq-action>` tags (losing the type augmentation) or call `runSql()` directly (losing the trust-UX diff hop). The wrappers are the framework-typed door; both doors stay aligned.
+- **Consequence in code:** Each wrapper's `index.ts` exports `NlqData` + `NlqAction` + the five event-detail types. Each wrapper's `JSX.IntrinsicElements` / `GlobalComponents` augmentation lists both tags. `configureNlqdb(app)` in Vue + the Nuxt `addComponent` calls register both. The Astro / SvelteKit packages re-export both from their `index`.
+- **Alternatives rejected:**
+  - Ship `<NlqData>` first, defer `<NlqAction>` to a follow-up — splits the migration cost across two releases; embedders writing forms drop straight to raw tags in the gap.
+  - One mega-component (`<NlqElement variant="data|action">`) — collapses two structurally different APIs (read returns rows; write goes through preview→Apply) into one prop-driven blob; opposite of `GLOBAL-017`'s "one way to do each thing".
 
 ## GLOBALs governing this feature
 

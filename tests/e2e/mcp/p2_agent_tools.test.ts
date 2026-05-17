@@ -12,6 +12,7 @@ function stubClient(overrides: Partial<NlqClient>): NlqClient {
   return {
     ask: notStubbed("ask"),
     askStream: notStubbed("askStream"),
+    runSql: notStubbed("runSql"),
     listChat: async () => ({ messages: [] }),
     postChat: notStubbed("postChat"),
     listDatabases: async () => ({ databases: [] }),

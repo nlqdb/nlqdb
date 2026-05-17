@@ -1,6 +1,4 @@
-// Minimal shim so `tsc --noEmit` resolves the .svelte module without
-// running the Svelte compiler. The actual component types are
-// covered by the Svelte language tools at consumer build time.
+// Shim lets `tsc --noEmit` resolve .svelte imports — real types come from svelte-check.
 declare module "*.svelte" {
   import type { Component } from "svelte";
 

@@ -1,6 +1,6 @@
 import { render } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import { NlqData, NlqScript } from "../src/index.ts";
+import { NlqAction, NlqData, NlqScript } from "../src/index.ts";
 
 describe("<NlqData>", () => {
   it("renders <nlq-data> with the camelCase → kebab-case attribute mapping", () => {
@@ -31,10 +31,45 @@ describe("<NlqData>", () => {
     el.dispatchEvent(new CustomEvent("nlq-data:error", { detail: { kind: "auth", status: 401 } }));
     expect(onError).toHaveBeenCalledTimes(1);
     unmount();
-    // After unmount the listener must be gone — dispatching again
-    // must not invoke the handler.
     el.dispatchEvent(new CustomEvent("nlq-data:error", { detail: { kind: "auth", status: 401 } }));
     expect(onError).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("<NlqAction>", () => {
+  it("renders <nlq-action> with kebab-cased attributes + label slot", () => {
+    const { container } = render(
+      <NlqAction goal="log this order" apiKey="pk_live_x" form="order-form" label="Submit">
+        custom child
+      </NlqAction>,
+    );
+    const el = container.querySelector("nlq-action")!;
+    expect(el.getAttribute("goal")).toBe("log this order");
+    expect(el.getAttribute("api-key")).toBe("pk_live_x");
+    expect(el.getAttribute("form")).toBe("order-form");
+    expect(el.getAttribute("label")).toBe("Submit");
+    expect(el.textContent).toContain("custom child");
+  });
+
+  it("invokes onConfirmRequired then onSuccess on the matching CustomEvents", () => {
+    const onConfirmRequired = vi.fn();
+    const onSuccess = vi.fn();
+    const { container } = render(
+      <NlqAction goal="x" onConfirmRequired={onConfirmRequired} onSuccess={onSuccess} />,
+    );
+    const el = container.querySelector("nlq-action")!;
+    el.dispatchEvent(
+      new CustomEvent("nlq-action:confirm-required", {
+        detail: { diff: { kind: "preview", rowsAffected: 1 } },
+      }),
+    );
+    expect(onConfirmRequired).toHaveBeenCalledTimes(1);
+    el.dispatchEvent(
+      new CustomEvent("nlq-action:success", {
+        detail: { rowCount: 1, diff: { kind: "preview", rowsAffected: 1 } },
+      }),
+    );
+    expect(onSuccess).toHaveBeenCalledTimes(1);
   });
 });
 

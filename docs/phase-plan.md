@@ -168,11 +168,15 @@ AES-GCM fallback per `SK-CLI-009`), state (`SK-CLI-013`) + config
 (`SK-CLI-010`), update check (`SK-CLI-015`), MCP host detection
 (`SK-CLI-011`). **Key-management slice added** `nlq keys list` +
 `nlq keys revoke <id>` (`SK-APIKEYS-010` / `SK-APIKEYS-011`) backed
-by `GET /v1/keys` + `DELETE /v1/keys/:id`. Remaining deferred verbs
-(`login`, `mcp install` key-write, `run`, `chat`, `keys rotate`) are
-gated on server-side endpoints not yet shipped (`POST /v1/auth/device`,
-`POST /v1/run`, `POST /v1/keys/:id/rotate`) — see
-[`cli/FEATURE.md`](./features/cli/FEATURE.md). Item 1 — MCP server —
+by `GET /v1/keys` + `DELETE /v1/keys/:id`. **Raw-SQL escape-hatch
+slice added** `nlq run [--db <id>] <sql>` + SDK `client.runSql()` +
+`POST /v1/run` (`SK-SDK-009` / `GLOBAL-015`) — all three surfaces in
+one PR per `GLOBAL-003`. Same allow-list as `/v1/ask`; DDL still
+rejected; pk_live writes rejected at the leading-verb gate
+(`SK-APIKEYS-003`). Remaining deferred verbs (`login`, `mcp install`
+key-write, `chat`, `keys rotate`) are gated on server-side endpoints
+not yet shipped (`POST /v1/auth/device`, `POST /v1/keys/:id/rotate`)
+— see [`cli/FEATURE.md`](./features/cli/FEATURE.md). Item 1 — MCP server —
 `SK-MCP-010` slices 1 + 2 + 3a + 3b + 3c shipped. Slice 1: `sk_live_` +
 `sk_mcp_*` mint via `POST /v1/keys`. Slice 2: `packages/mcp/` stdio
 package with all three tools. Slice 3a: `apps/mcp/` Cloudflare Worker
@@ -197,10 +201,19 @@ CLI auto-detection) — see
 key-management UI shipped** at `/app/keys` per
 [`SK-APIKEYS-012`](./features/api-keys/decisions/SK-APIKEYS-012-dashboard-ui.md)
 — copy-once mint modal + confirm-revoke dialog, SDK `client.mintKey()`
-added, MCP `auth_required` envelope now points at a working URL.
-**Framework wrappers (item 5) shipped:** `@nlqdb/{react,next,vue,nuxt,svelte,sveltekit,astro,solid}` are now
-P1 · Shipped per [`progress.md §0`](./progress.md#0-surface-status-matrix--single-source-of-truth),
-along with the native Swift Package `Nlqdb` (`packages/nlqdb-swift`).
+added, MCP `auth_required` envelope now points at a working URL. **Item
+4 — `<nlq-action>` write-counterpart element — v0.1 shipped** in
+`packages/elements/src/action-element.ts` per
+[`SK-ELEM-010..013`](./features/elements/decisions/): preview→Apply
+two-click commit via [`SK-TRUST-001`](./features/trust-ux/FEATURE.md)'s
+diff hop, FormData → goal-text suffix, cookie-session auth
+(cross-origin write-token still deferred — tracked in
+[`api-keys/FEATURE.md`](./features/api-keys/FEATURE.md)). Bundle
+budget intact at < 6 KB gzipped per `SK-ELEM-007`. **Item 5 —
+framework wrappers — shipped:**
+`@nlqdb/{react,next,vue,nuxt,svelte,sveltekit,astro,solid}` and the
+native Swift Package `Nlqdb` (`packages/nlqdb-swift`) are now
+P1 · Shipped per [`progress.md §0`](./progress.md#0-surface-status-matrix--single-source-of-truth);
 React Native / Expo and Python / Go SDKs remain Phase 2 P1.
 
 ---

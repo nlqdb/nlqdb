@@ -1,7 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-// `server-only` is aliased to a test stub in vitest.config.ts so the
-// source under test loads in a non-Next runtime.
+// `server-only` + `next/script` are aliased to stubs in vitest.config.ts.
 import { createAskRoute, nlqdbServer } from "../src/server.ts";
 
 describe("nlqdbServer()", () => {

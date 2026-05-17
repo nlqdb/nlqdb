@@ -71,7 +71,7 @@ fall out of those three as soon as they land.
 |---|---|---|
 | HTTP API (`POST /v1/ask`) | ✓ shipped | `apps/api/src/ask/**` |
 | `<nlq-data>` HTML element | ✓ shipped | `packages/elements/**` |
-| `@nlqdb/sdk` TypeScript | ✓ shipped (basic); `runSql` Phase 2 | `packages/sdk/**` |
+| `@nlqdb/sdk` TypeScript | ✓ shipped (basic + `runSql`) | `packages/sdk/**` |
 | Chat surface `nlqdb.com/app` | ◯ Phase 1 | `apps/web/**` |
 | MCP server | ◯ Phase 2 (first in the distribution slice) | `packages/mcp/**` |
 | CLI `nlq` (Go) | ◯ Phase 2 (after MCP) | `cli/**` |
@@ -127,8 +127,8 @@ Lago are no longer Phase 2 deliverables; they ship on the §6
 monetization trigger, not on the phase rollover.
 
 - ◯ MCP server (hosted at `mcp.nlqdb.com` + local stdio `@nlqdb/mcp`)
-- ◯ CLI `nlq` (Go binary; includes `nlq run` raw-SQL escape hatch per `GLOBAL-015`)
-- ✓ `@nlqdb/sdk` basic methods (`ask` / `listChat` / `postChat`); ◯ `runSql()` ships with the CLI per `GLOBAL-003`
+- ◯ CLI `nlq` (Go binary; ✓ `nlq run` raw-SQL escape hatch per `GLOBAL-015`)
+- ✓ `@nlqdb/sdk` basic methods (`ask` / `listChat` / `postChat` / `runSql`)
 - ◯ `<nlq-action>` writes
 - ◯ CSV upload
 - ✓ Framework wrappers — `@nlqdb/{react,next,vue,nuxt,svelte,sveltekit,astro,solid}` and `Nlqdb` (Swift Package)

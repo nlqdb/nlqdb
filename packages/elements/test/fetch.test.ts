@@ -267,4 +267,69 @@ describe("fetchAsk", () => {
       expect(warnSpy).not.toHaveBeenCalled();
     });
   });
+
+  describe("confirm payload", () => {
+    it("omits `confirm` from the body on the preview hop (undefined / false)", async () => {
+      const fetchImpl = vi.fn<FetchLike>(async () => jsonResponse(successBody));
+      await fetchAsk({
+        endpoint: "https://api.example/v1/ask",
+        goal: "delete row 1",
+        dbId: "orders",
+        fetchImpl,
+      });
+      const body = JSON.parse(call(fetchImpl).init.body as string) as Record<string, unknown>;
+      expect(body).toEqual({ goal: "delete row 1", dbId: "orders" });
+      expect("confirm" in body).toBe(false);
+    });
+
+    it("sends `confirm: true` in the body on the commit hop", async () => {
+      const fetchImpl = vi.fn<FetchLike>(async () => jsonResponse(successBody));
+      await fetchAsk({
+        endpoint: "https://api.example/v1/ask",
+        goal: "delete row 1",
+        dbId: "orders",
+        confirm: true,
+        fetchImpl,
+      });
+      expect(JSON.parse(call(fetchImpl).init.body as string)).toEqual({
+        goal: "delete row 1",
+        dbId: "orders",
+        confirm: true,
+      });
+    });
+
+    it("surfaces a preview hop response with requires_confirm + diff", async () => {
+      const fetchImpl = vi.fn<FetchLike>(async () =>
+        jsonResponse({
+          status: "ok",
+          cached: false,
+          sql: "INSERT INTO orders VALUES (...)",
+          rows: [],
+          rowCount: 0,
+          requires_confirm: true,
+          diff: {
+            verb: "INSERT",
+            table: "orders",
+            affectedRows: 1,
+            summary: "Insert 1 row into orders",
+          },
+        }),
+      );
+      const outcome = await fetchAsk({
+        endpoint: "https://api.example/v1/ask",
+        goal: "add an order",
+        dbId: "orders",
+        fetchImpl,
+      });
+      expect(outcome.ok).toBe(true);
+      if (!outcome.ok) return;
+      expect(outcome.data.requires_confirm).toBe(true);
+      expect(outcome.data.diff).toEqual({
+        verb: "INSERT",
+        table: "orders",
+        affectedRows: 1,
+        summary: "Insert 1 row into orders",
+      });
+    });
+  });
 });

@@ -13,18 +13,12 @@ let package = Package(
     products: [
         .library(name: "Nlqdb", targets: ["Nlqdb"])
     ],
-    // GLOBAL-013, GLOBAL-016 — zero runtime dependencies. URLSession +
-    // JSONEncoder/Decoder + Foundation cover the full surface; pulling
-    // swift-log costs ~100–300 KB binary per consumer and we'd never
-    // exercise the slot.
+    // Zero runtime deps per GLOBAL-013 / GLOBAL-016 — Foundation covers HTTP + JSON.
     dependencies: [],
     targets: [
         .target(
             name: "Nlqdb",
-            // Swift 6 language mode → strict concurrency on by default.
-            swiftSettings: [
-                .swiftLanguageMode(.v6),
-            ]
+            swiftSettings: [.swiftLanguageMode(.v6)]
         ),
         .testTarget(
             name: "NlqdbTests",

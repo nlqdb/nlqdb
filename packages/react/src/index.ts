@@ -1,9 +1,13 @@
-// React 19 forwards primitive props to custom elements as attributes
-// but does NOT bind `on*` props to non-standard DOM events — the
-// onLoad/onError props attach listeners imperatively in an effect.
-// https://react.dev/blog/2024/12/05/react-19 §"Support for Custom Elements".
+// React 19 forwards primitive props to custom elements as attributes but does NOT bind
+// `on*` props to non-standard DOM events — we attach listeners imperatively in an effect.
 
-import type { NlqDataErrorDetail, NlqDataLoadDetail } from "@nlqdb/elements";
+import type {
+  NlqActionConfirmDetail,
+  NlqActionErrorDetail,
+  NlqActionSuccessDetail,
+  NlqDataErrorDetail,
+  NlqDataLoadDetail,
+} from "@nlqdb/elements";
 import {
   type CSSProperties,
   createElement,
@@ -16,7 +20,13 @@ import {
   useRef,
 } from "react";
 
-export type { NlqDataErrorDetail, NlqDataLoadDetail } from "@nlqdb/elements";
+export type {
+  NlqActionConfirmDetail,
+  NlqActionErrorDetail,
+  NlqActionSuccessDetail,
+  NlqDataErrorDetail,
+  NlqDataLoadDetail,
+} from "@nlqdb/elements";
 
 export type NlqDataTemplate = "table" | "list" | "kv" | "card-grid" | (string & {});
 
@@ -37,8 +47,6 @@ export type NlqDataProps = {
   ref?: Ref<HTMLElement>;
 };
 
-// SSR-safe: no `customElements` on the server; the elements package
-// itself is idempotent against double-define.
 async function registerOnClient(): Promise<void> {
   if (typeof customElements === "undefined") return;
   if (customElements.get("nlq-data")) return;
@@ -106,13 +114,96 @@ export function NlqData(props: NlqDataProps) {
   );
 }
 
+export type NlqActionProps = {
+  goal?: string;
+  db?: string;
+  apiKey?: string;
+  endpoint?: string;
+  form?: string;
+  label?: string;
+  onSuccess?: (detail: NlqActionSuccessDetail) => void;
+  onConfirmRequired?: (detail: NlqActionConfirmDetail) => void;
+  onError?: (detail: NlqActionErrorDetail) => void;
+  /** Drives the post-Apply behavior — passed through as `on-success="..."`. */
+  onSuccessAction?: "reload" | (string & {});
+  children?: ReactNode;
+  className?: string;
+  style?: CSSProperties;
+  id?: string;
+  ref?: Ref<HTMLElement>;
+};
+
+export function NlqAction(props: NlqActionProps) {
+  const {
+    goal,
+    db,
+    apiKey,
+    endpoint,
+    form,
+    label,
+    onSuccess,
+    onConfirmRequired,
+    onError,
+    onSuccessAction,
+    children,
+    className,
+    style,
+    id,
+    ref,
+  } = props;
+  const internal = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    void registerOnClient();
+  }, []);
+
+  useEffect(() => {
+    const el = internal.current;
+    if (!el) return;
+    const successHandler = (e: Event) =>
+      onSuccess?.((e as CustomEvent<NlqActionSuccessDetail>).detail);
+    const confirmHandler = (e: Event) =>
+      onConfirmRequired?.((e as CustomEvent<NlqActionConfirmDetail>).detail);
+    const errorHandler = (e: Event) => onError?.((e as CustomEvent<NlqActionErrorDetail>).detail);
+    if (onSuccess) el.addEventListener("nlq-action:success", successHandler);
+    if (onConfirmRequired) el.addEventListener("nlq-action:confirm-required", confirmHandler);
+    if (onError) el.addEventListener("nlq-action:error", errorHandler);
+    return () => {
+      el.removeEventListener("nlq-action:success", successHandler);
+      el.removeEventListener("nlq-action:confirm-required", confirmHandler);
+      el.removeEventListener("nlq-action:error", errorHandler);
+    };
+  }, [onSuccess, onConfirmRequired, onError]);
+
+  const setRef = (node: HTMLElement | null) => {
+    internal.current = node;
+    if (typeof ref === "function") ref(node);
+    else if (ref) (ref as { current: HTMLElement | null }).current = node;
+  };
+
+  return createElement(
+    "nlq-action",
+    {
+      ref: setRef,
+      goal,
+      db,
+      "api-key": apiKey,
+      endpoint,
+      form,
+      label,
+      "on-success": onSuccessAction,
+      class: className,
+      style,
+      id,
+    },
+    children,
+  );
+}
+
 export type NlqScriptProps = {
   src?: string;
 };
 
-// Drop into a root layout to load the elements CDN bundle. Use the
-// framework-specific re-export (`@nlqdb/next/NlqScript`) where one
-// exists — it picks the right loading strategy for that framework.
 export function NlqScript({ src = "https://elements.nlqdb.com/v1.js" }: NlqScriptProps = {}) {
   return createElement(Fragment, null, createElement("script", { type: "module", src }));
 }
@@ -129,6 +220,15 @@ declare module "react" {
         endpoint?: string;
         template?: string;
         refresh?: string;
+      };
+      "nlq-action": DetailedHTMLProps<HTMLAttributes<HTMLElement>, HTMLElement> & {
+        goal?: string;
+        db?: string;
+        "api-key"?: string;
+        endpoint?: string;
+        form?: string;
+        label?: string;
+        "on-success"?: string;
       };
     }
   }

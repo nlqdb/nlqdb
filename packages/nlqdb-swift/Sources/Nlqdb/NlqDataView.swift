@@ -1,12 +1,10 @@
-// Gated by `canImport(SwiftUI)` so the package stays Linux-buildable
-// for server / CLI consumers.
+// `canImport(SwiftUI)` keeps the package Linux-buildable for server / CLI consumers.
 
 #if canImport(SwiftUI)
 import Foundation
 import SwiftUI
 
-/// Exposed publicly so embedders can drive their own view;
-/// `NlqDataView` is a convenience.
+/// Drive directly when you need full control over the rendering; `NlqDataView` is the convenience.
 @MainActor
 @Observable
 public final class NlqDataModel {
@@ -46,8 +44,6 @@ public final class NlqDataModel {
     }
 }
 
-/// Drop-in SwiftUI view. For template variety drive `NlqDataModel`
-/// directly and render rows into your own UI.
 public struct NlqDataView<Loading: View, Failure: View, Content: View>: View {
     private let goal: String
     private let dbId: String?

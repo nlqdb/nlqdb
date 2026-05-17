@@ -1,12 +1,21 @@
-// Solid sets attributes (not properties) for unknown tags, so plain
-// JSX prop passthrough is the right shape. Listeners are attached
-// imperatively because Solid's `on:` directive rejects event names
-// that contain a colon.
+// Listeners attach imperatively — Solid's `on:` directive rejects event names with a colon.
 
-import type { NlqDataErrorDetail, NlqDataLoadDetail } from "@nlqdb/elements";
+import type {
+  NlqActionConfirmDetail,
+  NlqActionErrorDetail,
+  NlqActionSuccessDetail,
+  NlqDataErrorDetail,
+  NlqDataLoadDetail,
+} from "@nlqdb/elements";
 import { type JSX, onCleanup, onMount } from "solid-js";
 
-export type { NlqDataErrorDetail, NlqDataLoadDetail } from "@nlqdb/elements";
+export type {
+  NlqActionConfirmDetail,
+  NlqActionErrorDetail,
+  NlqActionSuccessDetail,
+  NlqDataErrorDetail,
+  NlqDataLoadDetail,
+} from "@nlqdb/elements";
 
 export type NlqDataTemplate = "table" | "list" | "kv" | "card-grid" | (string & {});
 
@@ -62,6 +71,56 @@ export function NlqData(props: NlqDataProps): JSX.Element {
   );
 }
 
+export type NlqActionProps = {
+  goal?: string;
+  db?: string;
+  apiKey?: string;
+  endpoint?: string;
+  form?: string;
+  label?: string;
+  onSuccess?: (detail: NlqActionSuccessDetail) => void;
+  onConfirmRequired?: (detail: NlqActionConfirmDetail) => void;
+  onError?: (detail: NlqActionErrorDetail) => void;
+  onSuccessAction?: "reload" | (string & {});
+  children?: JSX.Element;
+};
+
+export function NlqAction(props: NlqActionProps): JSX.Element {
+  let ref: HTMLElement | undefined;
+  onMount(() => {
+    void registerOnClient();
+    if (!ref) return;
+    const success = (e: Event) =>
+      props.onSuccess?.((e as CustomEvent<NlqActionSuccessDetail>).detail);
+    const confirm = (e: Event) =>
+      props.onConfirmRequired?.((e as CustomEvent<NlqActionConfirmDetail>).detail);
+    const error = (e: Event) => props.onError?.((e as CustomEvent<NlqActionErrorDetail>).detail);
+    ref.addEventListener("nlq-action:success", success);
+    ref.addEventListener("nlq-action:confirm-required", confirm);
+    ref.addEventListener("nlq-action:error", error);
+    onCleanup(() => {
+      ref?.removeEventListener("nlq-action:success", success);
+      ref?.removeEventListener("nlq-action:confirm-required", confirm);
+      ref?.removeEventListener("nlq-action:error", error);
+    });
+  });
+
+  return (
+    <nlq-action
+      ref={ref}
+      goal={props.goal}
+      db={props.db}
+      api-key={props.apiKey}
+      endpoint={props.endpoint}
+      form={props.form}
+      label={props.label}
+      on-success={props.onSuccessAction}
+    >
+      {props.children}
+    </nlq-action>
+  );
+}
+
 declare module "solid-js" {
   namespace JSX {
     interface IntrinsicElements {
@@ -73,6 +132,15 @@ declare module "solid-js" {
         endpoint?: string;
         template?: string;
         refresh?: string;
+      };
+      "nlq-action": JSX.HTMLAttributes<HTMLElement> & {
+        goal?: string;
+        db?: string;
+        "api-key"?: string;
+        endpoint?: string;
+        form?: string;
+        label?: string;
+        "on-success"?: string;
       };
     }
   }
