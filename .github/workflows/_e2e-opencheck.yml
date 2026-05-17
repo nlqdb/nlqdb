@@ -150,7 +150,7 @@ jobs:
         working-directory: tests/opencheck
         run: bunx playwright install chromium
 
-      # Patch @playwright/mcp CLI for two reasons:
+      # Patch @playwright/mcp CLI for three reasons:
       #
       # 1. --no-sandbox: GitHub-hosted ubuntu runners' AppArmor profile
       #    denies the unprivileged user-namespace clone Chromium needs.
@@ -166,10 +166,19 @@ jobs:
       #    Chromium writes cookies + localStorage to the profile dir on clean
       #    exit, so the session state survives across the per-test restarts.
       #
+      # 3. Snapshot truncation: browser_snapshot returns ~40 KB accessibility
+      #    trees per call. With LangChain's default message retention, context
+      #    grows: 3 K → 13 K → 50 K+ tokens within one test, driving LLM call
+      #    latency from ~1 s to 100 s and hitting the 240 s timeout. We spawn
+      #    cli.original.js as a child process, pipe its stdio through, and
+      #    truncate any MCP result content[].text block exceeding SNAP_LIMIT
+      #    characters. 3000 chars ≈ 750 tokens — fits well inside a 30 K TPM
+      #    budget per LLM call while preserving enough of the UI structure for
+      #    the agent to navigate. Drop once opencheck exposes a snapshotLimit.
+      #
       # Idempotent: if cli.original.js is already present (cached node_modules
-      # or re-run), the step skips. Drop once opencheck exposes a noSandbox
-      # config field and fixes the per-test MCP lifecycle.
-      - name: Patch @playwright/mcp to inject --no-sandbox + fix profile lock
+      # or re-run), the step skips. Drop once opencheck fixes the above.
+      - name: Patch @playwright/mcp to inject --no-sandbox + fix profile lock + truncate snapshots
         working-directory: tests/opencheck
         run: |
           set -euo pipefail
@@ -182,12 +191,16 @@ jobs:
           mv "$cli" "$orig"
           cat > "$cli" <<'EOF'
           #!/usr/bin/env node
-          // --no-sandbox: required on ubuntu-latest (AppArmor denies sandbox).
-          // Profile lock cleanup: kill stale Chromium from the previous test so
-          // the new playwright-mcp instance can start with the same user-data-dir.
-          const { execSync, spawnSync } = require("child_process");
+          // --no-sandbox + profile-lock cleanup + snapshot truncation wrapper.
+          // See _e2e-opencheck.yml step comment for full rationale.
+          const { execSync, spawnSync, spawn } = require("child_process");
           const fs = require("fs");
           const path = require("path");
+          const readline = require("readline");
+
+          const SNAP_LIMIT = 3000; // chars per content[].text block
+
+          // 1. Profile lock cleanup — must run before spawning Chromium.
           const userDataDirArg = process.argv.find(a => a.startsWith("--user-data-dir="));
           if (userDataDirArg) {
             const dir = userDataDirArg.slice("--user-data-dir=".length);
@@ -199,8 +212,36 @@ jobs:
               try { fs.unlinkSync(lock); } catch {}
             }
           }
-          process.argv.push("--no-sandbox");
-          require("./cli.original.js");
+
+          // 2. Inject --no-sandbox and spawn the real CLI as a child.
+          const args = [...process.argv.slice(2), "--no-sandbox"];
+          const child = spawn(process.execPath, [path.join(__dirname, "cli.original.js"), ...args], {
+            stdio: ["inherit", "pipe", "inherit"],
+          });
+
+          // 3. Intercept child stdout line-by-line; truncate large snapshot blobs.
+          const rl = readline.createInterface({ input: child.stdout, crlfDelay: Infinity });
+          rl.on("line", (line) => {
+            let msg;
+            try { msg = JSON.parse(line); } catch { process.stdout.write(line + "\n"); return; }
+            // MCP tool result messages have result.content[].text
+            if (msg && msg.result && Array.isArray(msg.result.content)) {
+              msg.result.content = msg.result.content.map((block) => {
+                if (block.type === "text" && typeof block.text === "string" && block.text.length > SNAP_LIMIT) {
+                  const truncated = block.text.slice(0, SNAP_LIMIT);
+                  const dropped = block.text.length - SNAP_LIMIT;
+                  return { ...block, text: truncated + `\n[... ${dropped} chars truncated by wrapper ...]` };
+                }
+                return block;
+              });
+            }
+            process.stdout.write(JSON.stringify(msg) + "\n");
+          });
+
+          child.on("exit", (code, signal) => {
+            if (signal) process.kill(process.pid, signal);
+            else process.exit(code ?? 0);
+          });
           EOF
           chmod +x "$cli"
           echo "patched $cli"
