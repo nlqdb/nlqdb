@@ -17,12 +17,14 @@ when-to-load:
 - Background update check (`SK-CLI-015`).
 - MCP host detection (`SK-CLI-011` — the auto-detect half).
 
+**Key-management verbs:** `nlq keys list` and `nlq keys revoke <id>` ship — backed by `GET /v1/keys` ([`SK-APIKEYS-010`](../api-keys/decisions/SK-APIKEYS-010-list-endpoint.md)) and `DELETE /v1/keys/:id` ([`SK-APIKEYS-011`](../api-keys/decisions/SK-APIKEYS-011-hard-revoke.md)).
+
 Deferred to follow-up slices — gated on server endpoints that don't exist yet:
 - `nlq login` device-flow (needs `POST /v1/auth/device` per `SK-AUTH-004`).
 - `nlq mcp install` config-write (needs the device-flow session for `POST /v1/keys` to mint `sk_mcp_*`; the cobra command is wired to print the deferral hint).
 - `nlq run` raw-SQL (needs `POST /v1/run`).
 - `nlq chat` REPL (UX-only deferral; design intact).
-- `nlq keys list|rotate|revoke` (needs `GET/DELETE /v1/keys/*`).
+- `nlq keys rotate <id>` (needs `POST /v1/keys/:id/rotate` per [`SK-APIKEYS-005`](../api-keys/decisions/SK-APIKEYS-005-rotation-grace.md)).
 - `nlq connection <db>` (needs API to expose `connection_url` on `GET /v1/databases` rows).
 **Owners (code):** `cli/**`
 **Cross-refs:** docs/architecture.md §3.3 (CLI surface) · §4.3 (session lifecycle, device-flow) · §14.3 (happy-path) · docs/architecture.md §3 (matrix) · docs/phase-plan.md (Phase 2 CLI slice) · `cli/AGENTS.md` · `cli/README.md`
@@ -80,7 +82,7 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 - **Device-flow server endpoints.** `nlq login` / `nlq logout` / `nlq mcp install` are stubbed (return a "ships in the next slice" error) until `POST /v1/auth/device` + `POST /v1/auth/device/token` land per `SK-AUTH-004`. The credential storage layer is already in place — the missing piece is the wire endpoints. The CLI's `auth.Resolve` already returns `KindSignedIn` when a refresh token exists in the keychain, so the rollout is "land the endpoints, wire the device-flow polling loop, done."
 - **`nlq run` (raw SQL escape hatch).** `GLOBAL-015` keeps the verb in the design list; `apps/api` does not yet expose `POST /v1/run`. The slice that adds the endpoint also wires `nlq run` + `client.runSql()` in the TS SDK in the same PR per `GLOBAL-002`.
 - **`nlq chat` REPL.** A separate slice; intentionally deferred because the typed-line UX is non-trivial and the bootstrap focuses on the goal-first single-command path.
-- **`nlq keys list|rotate|revoke`.** Needs `GET /v1/keys`, `POST /v1/keys/:id/rotate`, `DELETE /v1/keys/:id`. Currently only `POST /v1/keys` is implemented (the mint path).
+- **`nlq keys rotate`.** `list` + `revoke` ship. Rotation needs `POST /v1/keys/:id/rotate` plus the 60-day grace + webhook + events-pipeline rotation event per [`SK-APIKEYS-005`](../api-keys/decisions/SK-APIKEYS-005-rotation-grace.md). Lands as one slice with those.
 - **`nlq connection <db>` for hosted Postgres.** Wants a raw `postgres://…` URL on `GET /v1/databases` rows. Today the SDK returns it on the create response only. The unblock is one API field; the CLI verb is one cobra command.
 - **Windows experience.** The bootstrap PR cross-compiled to windows/amd64 and the binary builds, but Windows shell quirks (cmd, PowerShell), the Credential Manager backend, and `~/.config` semantics under `APPDATA` need a manual round-trip on real hardware. Per-platform quirks land in `cli/AGENTS.md` once they're observed.
 - **`nlq mcp install` for hosts not yet covered by SK-CLI-011.** New MCP hosts emerge regularly. Add-a-host recipe in `cli/AGENTS.md` so the supported list grows without re-architecting `cli/internal/mcphosts/` — runbook concern, not a design decision.

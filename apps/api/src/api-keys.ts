@@ -175,6 +175,100 @@ export async function lookupSkKey(
   };
 }
 
+// ─── tenant-scoped list + revoke (SK-APIKEYS-010 / SK-APIKEYS-011) ──────────
+
+// Subset of `api_keys` columns surfaced to dashboards / `nlq keys list`.
+// `keyType: "pk_live"` carries `dbId`; `"sk_mcp"` carries `(host, device)`;
+// `"sk_live"` carries neither and an optional human label. `revokedAt`
+// is non-null on revoked rows — the list returns active + revoked so
+// surfaces can group "active" and "revoked" without a second round-trip.
+export type KeyRecord = {
+  id: string;
+  keyType: "pk_live" | "sk_live" | "sk_mcp";
+  last4: string;
+  name: string | null;
+  dbId: string | null;
+  mcpHost: string | null;
+  deviceId: string | null;
+  lastUsedAt: number | null;
+  createdAt: number;
+  revokedAt: number | null;
+};
+
+// Returns every key row for the tenant, newest first. Active rows
+// before revoked so surfaces can render "active" + "revoked" sections
+// with a single contiguous slice. Bounded by per-tenant key count
+// (<50 typical; pagination upgrade trigger documented in
+// `docs/features/api-keys/FEATURE.md`).
+export async function listKeysByTenant(d1: D1Database, tenantId: string): Promise<KeyRecord[]> {
+  const res = await d1
+    .prepare(
+      "SELECT id, key_type, last_4, name, db_id, mcp_host, device_id, " +
+        "last_used_at, created_at, revoked_at FROM api_keys " +
+        "WHERE tenant_id = ? " +
+        "ORDER BY (revoked_at IS NOT NULL), created_at DESC",
+    )
+    .bind(tenantId)
+    .all<{
+      id: string;
+      key_type: "pk_live" | "sk_live" | "sk_mcp";
+      last_4: string;
+      name: string | null;
+      db_id: string | null;
+      mcp_host: string | null;
+      device_id: string | null;
+      last_used_at: number | null;
+      created_at: number;
+      revoked_at: number | null;
+    }>();
+  return (res.results ?? []).map((r) => ({
+    id: r.id,
+    keyType: r.key_type,
+    last4: r.last_4,
+    name: r.name,
+    dbId: r.db_id,
+    mcpHost: r.mcp_host,
+    deviceId: r.device_id,
+    lastUsedAt: r.last_used_at,
+    createdAt: r.created_at,
+    revokedAt: r.revoked_at,
+  }));
+}
+
+export type RevokeOutcome = "revoked" | "already_revoked" | "not_found";
+
+// Hard-revokes a key by id, tenant-scoped. Sets `revoked_at = unixepoch()`
+// when the row is active; returns `"already_revoked"` when the row
+// existed but was already revoked (idempotent re-DELETE per RFC 9110);
+// returns `"not_found"` when the id is unknown or belongs to another
+// tenant — the latter intentionally indistinguishable so a leaked id
+// doesn't leak existence across tenants. Propagation to the MCP DO
+// is ≤ 1 s via SK-MCP-014's revalidation probe.
+//
+// Race-safe: a single conditional UPDATE wins-or-no-ops atomically.
+// `meta.changes === 1` means *this* call did the revoke; `=== 0`
+// disambiguates "already revoked" (row exists, `revoked_at` set) from
+// "not found" (row missing or other tenant) via one follow-up SELECT.
+export async function revokeKeyById(
+  d1: D1Database,
+  tenantId: string,
+  keyId: string,
+): Promise<RevokeOutcome> {
+  const upd = await d1
+    .prepare(
+      "UPDATE api_keys SET revoked_at = unixepoch() " +
+        "WHERE id = ? AND tenant_id = ? AND revoked_at IS NULL",
+    )
+    .bind(keyId, tenantId)
+    .run();
+  if (upd.meta.changes === 1) return "revoked";
+  const row = await d1
+    .prepare("SELECT 1 AS hit FROM api_keys WHERE id = ? AND tenant_id = ?")
+    .bind(keyId, tenantId)
+    .first<{ hit: number }>();
+  return row ? "already_revoked" : "not_found";
+}
+
 // ─── key status (SK-MCP-014 hot-path revalidation) ─────────────────────────
 
 // Returns the revocation state for a key identified by its HMAC hash.

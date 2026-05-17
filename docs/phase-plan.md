@@ -156,15 +156,18 @@ publicly uses nlqdb as memory; 3 non-engineers complete CSV analysis
 user.
 
 **Status (2026-05):** item 1 (MCP server) is in progress and item 2
-(CLI) has its bootstrap slice on a branch. CLI bootstrap shipped
-`cli/go.mod`, the data verbs (`ask`, `new`, bare-form, `db list`,
-`db create`, `query`, `use`, `whoami`, `logout`, `mcp detect`,
-`update`), credential store (keychain + AES-GCM fallback per
-`SK-CLI-009`), state (`SK-CLI-013`) + config (`SK-CLI-010`), update
-check (`SK-CLI-015`), MCP host detection (`SK-CLI-011`); deferred
-verbs (`login`, `mcp install` key-write, `run`, `chat`, `keys
-list|rotate|revoke`) are gated on server-side endpoints not yet
-shipped (`POST /v1/auth/device`, `POST /v1/run`, etc.) — see
+(CLI) has its bootstrap slice plus key-management verbs on a branch.
+CLI bootstrap shipped `cli/go.mod`, the data verbs (`ask`, `new`,
+bare-form, `db list`, `db create`, `query`, `use`, `whoami`,
+`logout`, `mcp detect`, `update`), credential store (keychain +
+AES-GCM fallback per `SK-CLI-009`), state (`SK-CLI-013`) + config
+(`SK-CLI-010`), update check (`SK-CLI-015`), MCP host detection
+(`SK-CLI-011`). **Key-management slice added** `nlq keys list` +
+`nlq keys revoke <id>` (`SK-APIKEYS-010` / `SK-APIKEYS-011`) backed
+by `GET /v1/keys` + `DELETE /v1/keys/:id`. Remaining deferred verbs
+(`login`, `mcp install` key-write, `run`, `chat`, `keys rotate`) are
+gated on server-side endpoints not yet shipped (`POST /v1/auth/device`,
+`POST /v1/run`, `POST /v1/keys/:id/rotate`) — see
 [`cli/FEATURE.md`](./features/cli/FEATURE.md). Item 1 — MCP server —
 `SK-MCP-010` slices 1 + 2 + 3a + 3b + 3c shipped. Slice 1: `sk_live_` +
 `sk_mcp_*` mint via `POST /v1/keys`. Slice 2: `packages/mcp/` stdio

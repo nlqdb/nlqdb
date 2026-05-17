@@ -69,3 +69,32 @@ type DatabaseSummary struct {
 type DatabasesResponse struct {
 	Databases []DatabaseSummary `json:"databases"`
 }
+
+// KeyRecord mirrors @nlqdb/sdk's KeyRecord shape (SK-APIKEYS-010).
+// Plaintext is never present — `Last4` is the only display field.
+// Per-type claim columns are pointers so an absent value round-trips
+// as JSON `null`, distinct from an empty string.
+type KeyRecord struct {
+	ID         string  `json:"id"`
+	KeyType    string  `json:"keyType"`
+	Last4      string  `json:"last4"`
+	Name       *string `json:"name"`
+	DBID       *string `json:"dbId"`
+	MCPHost    *string `json:"mcpHost"`
+	DeviceID   *string `json:"deviceId"`
+	LastUsedAt *int64  `json:"lastUsedAt"`
+	CreatedAt  int64   `json:"createdAt"`
+	RevokedAt  *int64  `json:"revokedAt"`
+}
+
+type KeysResponse struct {
+	Keys []KeyRecord `json:"keys"`
+}
+
+// RevokeKeyResult mirrors the SDK's `RevokeKeyResult`. `AlreadyRevoked`
+// is true when the call was a no-op replay on an already-revoked key
+// (SK-APIKEYS-011 — idempotent re-DELETE).
+type RevokeKeyResult struct {
+	OK             bool `json:"ok"`
+	AlreadyRevoked bool `json:"alreadyRevoked"`
+}
