@@ -62,17 +62,15 @@ func readDarwinIOPlatformUUID() (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("ioreg: %w", err)
 	}
-	for _, line := range strings.Split(string(out), "\n") {
+	for line := range strings.SplitSeq(string(out), "\n") {
 		if !strings.Contains(line, "IOPlatformUUID") {
 			continue
 		}
-		idx := strings.Index(line, "\"=")
-		if idx == -1 {
+		_, rest, found := strings.Cut(line, "\"=")
+		if !found {
 			continue
 		}
-		rest := line[idx+2:]
-		rest = strings.TrimSpace(rest)
-		rest = strings.Trim(rest, "\"")
+		rest = strings.Trim(strings.TrimSpace(rest), "\"")
 		if rest != "" {
 			return rest, nil
 		}
@@ -88,7 +86,7 @@ func readWindowsMachineGUID() (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("reg query: %w", err)
 	}
-	for _, line := range strings.Split(string(out), "\n") {
+	for line := range strings.SplitSeq(string(out), "\n") {
 		line = strings.TrimSpace(line)
 		if !strings.HasPrefix(line, "MachineGuid") {
 			continue

@@ -68,7 +68,6 @@ func TestShouldRunSuppressors(t *testing.T) {
 		},
 	}
 	for _, c := range cases {
-		c := c
 		t.Run(c.name, func(t *testing.T) {
 			if got := ShouldRun(c.st, c.opts); got != c.want {
 				t.Errorf("ShouldRun(%s) = %q, want %q", c.name, got, c.want)

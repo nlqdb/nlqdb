@@ -7,11 +7,11 @@ import (
 	"bytes"
 	"context"
 	"crypto/rand"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
+	mathrand "math/rand/v2"
 	"net/http"
 	"strings"
 	"time"
@@ -72,7 +72,9 @@ func (c *Client) do(ctx context.Context, method, path string, body any, out any)
 	}
 	idemKey := ""
 	if method != http.MethodGet && method != "" {
-		idemKey = randomHex(16)
+		// crypto/rand.Text returns a base32 string with ≥128 bits of
+		// entropy (Go 1.24+) — purpose-built for header tokens.
+		idemKey = rand.Text()
 	}
 
 	attempts := c.MaxRetries
@@ -230,45 +232,15 @@ func recoverable(e *APIError) bool {
 	return false
 }
 
-func randomHex(n int) string {
-	b := make([]byte, n)
-	// crypto/rand failing on Linux/macOS/Windows means the OS is in an
-	// unusable state; falling back to a time-based id would silently
-	// weaken our retry-dedup contract. Crash loudly instead.
-	if _, err := rand.Read(b); err != nil {
-		panic(fmt.Sprintf("nlqdb: crypto/rand unavailable: %v", err))
-	}
-	return hex.EncodeToString(b)
-}
-
 // jitteredBackoff returns base × 2^(attempt-1) plus equal-jitter
-// randomisation (±50 %). Bounded so a worst-case 3-attempt run can't
-// stall longer than ~1.8 s before hitting the caller's context deadline.
+// randomisation (±50 %). Uses math/rand/v2 — jitter is a timing
+// spread, not a security boundary, so crypto/rand would be both
+// slower (OS entropy syscalls) and over-spec.
 func jitteredBackoff(attempt int) time.Duration {
 	const base = 200 * time.Millisecond
 	expo := base * (1 << (attempt - 1))
 	half := expo / 2
-	jitter, err := cryptoRandInt63(int64(half))
-	if err != nil {
-		return expo
-	}
-	return half + time.Duration(jitter)
-}
-
-func cryptoRandInt63(max int64) (int64, error) {
-	if max <= 0 {
-		return 0, nil
-	}
-	var b [8]byte
-	if _, err := rand.Read(b[:]); err != nil {
-		return 0, err
-	}
-	n := int64(b[0])<<56 | int64(b[1])<<48 | int64(b[2])<<40 | int64(b[3])<<32 |
-		int64(b[4])<<24 | int64(b[5])<<16 | int64(b[6])<<8 | int64(b[7])
-	if n < 0 {
-		n = -n
-	}
-	return n % max, nil
+	return half + time.Duration(mathrand.Int64N(int64(half))) //nolint:gosec // G404: jitter, not a security boundary
 }
 
 func trimRaw(b []byte) string {
