@@ -1,12 +1,3 @@
-// P6 — Analytics / Observability Engineer. SDK contract: every
-// successful ask carries a `trace` block with SQL + confidence + cache
-// state (GLOBAL-011 + GLOBAL-023 + SK-TRUST-002), and low-confidence
-// requests refuse loudly rather than coerce.
-//
-// Hermetic — replays `cassettes/p6_analytics_engineer.json`.
-//
-// Persona link: ../personas/P6-analytics-engineer/README.md.
-
 import { describe, expect, it } from "vitest";
 import { createClient, NlqdbApiError } from "../../../packages/sdk/src/index.ts";
 import { openCassette } from "./_lib/cassette.ts";
@@ -20,7 +11,6 @@ describe("P6 — Analytics Engineer · SDK contract", () => {
       fetch,
     });
 
-    // Step 1 — analyst pipes a real question through.
     const ok = await client.ask({
       goal: "orders this week, by source",
       dbId: "db_e2e_p6",
@@ -29,13 +19,10 @@ describe("P6 — Analytics Engineer · SDK contract", () => {
     expect(ok.status).toBe("ok");
     expect(ok.rows).toHaveLength(2);
     expect(ok.summary).toMatch(/180/);
-    // GLOBAL-023 trust-UX baseline — trace is always present.
     expect(ok.trace.sql).toMatch(/SELECT/i);
     expect(ok.trace.confidence).toBeGreaterThan(0.8);
     expect(ok.trace.model).toBeTruthy();
 
-    // Step 2 — vague prompt: the LLM router refuses, the SDK throws
-    // NlqdbApiError with a discriminated code (not a generic Error).
     let thrown: unknown = null;
     try {
       await client.ask({
@@ -49,8 +36,6 @@ describe("P6 — Analytics Engineer · SDK contract", () => {
     const err = thrown as NlqdbApiError;
     expect(err.httpStatus).toBe(422);
     expect(err.code).toBe("low_confidence");
-    // The API's body carries the one-sentence + next-action message
-    // (GLOBAL-012); the SDK preserves it on `err.body.message`.
     expect(err.body?.message).toMatch(/confidence/i);
     expect(err.body?.message).toMatch(/Try a more specific/i);
 

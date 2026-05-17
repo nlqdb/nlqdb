@@ -1,8 +1,4 @@
-# MCP e2e (InMemoryTransport + protocol conformance). Hermetic —
-# the SDK pair runs in-process; no network, no LLM. Trigger when
-# the MCP tool surface, the `mapSdkError` mapping, or any tool's
-# `structuredContent` wire shape changes. See `tests/e2e/mcp/`
-# for the driver and SK-E2E-002 / SK-E2E-004 for rationale.
+# Manual-trigger MCP e2e — hermetic, see docs/features/e2e-coverage/FEATURE.md SK-E2E-002/004.
 
 name: E2E MCP
 

@@ -21,7 +21,7 @@ Cargo discovers integration tests in `tests/`; each `.rs` file there is its own 
 
 ## Not wired to CI
 
-The dispatcher (`.github/workflows/e2e.yml`) does not target this directory today. When the Rust SDK lands, extend `_e2e-sdk.yml` with a `rust` matrix cell.
+No `e2e-rust.yml` workflow exists today. When the Rust SDK lands, add one mirroring `.github/workflows/e2e-sdk.yml`.
 
 ## When to add a spec
 

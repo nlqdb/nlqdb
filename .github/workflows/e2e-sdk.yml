@@ -1,8 +1,4 @@
-# SDK e2e (vitest + cassettes). Hermetic — replays checked-in JSON
-# cassettes against the SDK's `FetchLike` shim, no external network.
-# Trigger when an SDK change could shift wire shape, retry behaviour,
-# header semantics, or error mapping. See `tests/e2e/sdk/` and
-# SK-E2E-003 / SK-E2E-004 for rationale.
+# Manual-trigger SDK e2e — hermetic, see docs/features/e2e-coverage/FEATURE.md SK-E2E-003/004.
 
 name: E2E SDK
 
@@ -26,9 +22,7 @@ jobs:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
       - uses: ./.github/actions/setup
 
-      # tests/e2e/sdk is intentionally outside the root workspace
-      # (same pattern as tests/opencheck) so its dep tree stays out
-      # of every contributor's `bun install`. Install locally.
+      # tests/e2e/sdk is intentionally outside the root workspace (same pattern as tests/opencheck).
       - name: Install e2e-sdk deps
         working-directory: tests/e2e/sdk
         run: bun install

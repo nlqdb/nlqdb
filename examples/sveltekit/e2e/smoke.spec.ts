@@ -1,6 +1,3 @@
-// SvelteKit example — Phase 0 contract. See examples/nextjs/e2e/ for
-// the pattern. Persona: P4 (Backend Engineer using SvelteKit).
-
 import { test, expect } from "@playwright/test";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -15,9 +12,7 @@ test.describe("@sveltekit · examples/sveltekit/", () => {
     expect(SOURCE).toMatch(/goal="today's orders, newest first"/);
     expect(SOURCE).toMatch(/template="table"/);
     expect(SOURCE).toMatch(/refresh="5s"/);
-    // <svelte:head> injects the elements script — documented in the README.
     expect(SOURCE).toMatch(/<svelte:head>/);
-    // SvelteKit's PUBLIC_ env var is read via $env/static/public.
     expect(SOURCE).toMatch(/PUBLIC_NLQDB_KEY/);
   });
 

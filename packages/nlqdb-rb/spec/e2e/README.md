@@ -20,7 +20,7 @@ bundle exec rspec spec/e2e
 
 ## Not wired to CI
 
-The dispatcher (`.github/workflows/e2e.yml`) does not target this directory today. When the Ruby SDK lands, extend `_e2e-sdk.yml` with a `ruby` matrix cell (mirroring the TypeScript one).
+No `e2e-ruby.yml` workflow exists today. When the Ruby SDK lands, add one mirroring `.github/workflows/e2e-sdk.yml`.
 
 ## When to add a spec
 

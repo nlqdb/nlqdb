@@ -1,14 +1,5 @@
 #!/usr/bin/env bash
-# Persona: P1 (Solo Builder, CLI-only path) + P6 (Analytics Engineer
-# scripting with `nlq`). Verifies the four-command walkthrough in
-# examples/cli/walkthrough.sh works end-to-end against a live staging.
-#
-# Live-mode only: requires the nlq binary on PATH plus NLQDB_API_URL +
-# NLQDB_API_KEY env vars. The CI workflow builds the binary from cli/
-# and prepends $WORK/bin to PATH before invoking this script.
-#
-# Without the env vars: skip cleanly so the dispatcher's `examples`
-# surface can include this script unconditionally.
+# Live-mode only: skips cleanly when the nlq binary or env vars are absent.
 
 set -euo pipefail
 
@@ -24,7 +15,7 @@ fi
 
 API_FLAGS=(--api-url="${NLQDB_API_URL%/}" --no-update-check)
 
-echo "→ Step 1: nlq whoami — env-key identity resolves (GLOBAL-010)"
+echo "→ Step 1: nlq whoami — env-key identity resolves"
 nlq "${API_FLAGS[@]}" whoami | grep -q 'identity:' || {
   echo "FAIL: whoami didn't surface an identity line"
   exit 1
@@ -38,7 +29,7 @@ nlq "${API_FLAGS[@]}" --json db list | grep -q '"databases"' || {
 }
 echo "  ✓ db list JSON envelope present"
 
-echo "→ Step 3: nlq help — verbs match the walkthrough (ask, new, db, mcp)"
+echo "→ Step 3: nlq help — verbs match the walkthrough"
 help_out=$(nlq "${API_FLAGS[@]}" --help)
 for verb in ask new db mcp; do
   echo "${help_out}" | grep -q "^  ${verb} " || {
@@ -48,11 +39,8 @@ for verb in ask new db mcp; do
 done
 echo "  ✓ all four walkthrough verbs registered"
 
-# Step 4 (the actual `nlq "<question>"` ask) would burn an LLM call;
-# the SDK + opencheck surfaces already cover ask end-to-end. Here we
-# verify the bare-form rewriter accepts the shape without trying to
-# execute, by passing `--help` to the rewritten verb.
-echo "→ Step 4: nlq <bare goal> rewrites to nlq ask (SK-CLI-012)"
+# `--help` on the rewritten verb proves the bare-form rewriter resolved it without firing the LLM.
+echo "→ Step 4: nlq <bare goal> rewrites to nlq ask"
 nlq "${API_FLAGS[@]}" ask --help | grep -q 'Usage' || {
   echo "FAIL: nlq ask --help missing — rewriter or ask verb broken"
   exit 1

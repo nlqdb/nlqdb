@@ -1,24 +1,15 @@
-# P2 — Agent Builder: `nlq mcp detect` lists MCP hosts on this machine.
-# testscript defaults HOME to a fresh per-script tempdir so no host
-# config files exist; the detector must report the friendly empty state
-# per GLOBAL-012 rather than crashing.
+# P2 — Agent Builder · `nlq mcp detect` + `mcp install` GLOBAL-012 error shape.
 
 exec nlq --no-update-check mcp detect
 stdout 'No MCP hosts detected'
 
-# JSON shape — empty hosts array, NOT a missing key.
 exec nlq --no-update-check --json mcp detect
 stdout '"hosts"'
 
-# Install verb is intentionally not-yet-implemented today (SK-CLI-011).
-# The error message must point the user at the dashboard rather than
-# silently doing nothing (GLOBAL-012 one-sentence errors).
 ! exec nlq --no-update-check mcp install claude-desktop
 stderr 'mcp install requires session-authenticated key minting'
 stderr 'dashboard'
 
-# An unknown host name surfaces the known list — also a GLOBAL-012
-# one-sentence-error-with-next-action shape.
 ! exec nlq --no-update-check mcp install not-a-real-host
 stderr 'unknown host'
 stderr 'claude-desktop'

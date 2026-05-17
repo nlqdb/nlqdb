@@ -1,15 +1,3 @@
-// Cassette replay for SDK e2e tests. Loads a JSON cassette and returns
-// a FetchLike that pops one canned exchange per call in order. Misses
-// throw — silent-fall-through to a live network would defeat the
-// purpose of cassette tests (SK-E2E-003).
-//
-// Two modes:
-//   • replay (default) — read cassette, match in order, throw on mismatch.
-//   • record (env RECORD=1) — perform live fetch, append the exchange
-//     to the cassette buffer; the test harness writes the file at end.
-//
-// Live mode requires `NLQDB_API_URL` + `NLQDB_API_KEY` env vars.
-
 import { readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -39,19 +27,12 @@ export function liveApiKey(): string | null {
 
 export type FetchLike = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
 
-// Open a cassette and return a fetch shim that replays it. `name` is
-// the filename stem under `cassettes/`. Throws at end-of-test if the
-// shim received fewer or more calls than expected.
 export function openCassette(name: string): {
   fetch: FetchLike;
   assertConsumed: () => void;
 } {
   const path = join(CASSETTES_DIR, `${name}.json`);
-
-  if (isRecording()) {
-    return openRecorder(name, path);
-  }
-  return openReplayer(name, path);
+  return isRecording() ? openRecorder(name, path) : openReplayer(name, path);
 }
 
 function openReplayer(
@@ -84,9 +65,7 @@ function openReplayer(
       throw new Error(`cassette ${name}@${idx}: path ${path} ≠ expected ${exchange.request.path}`);
     }
 
-    // Loose body matching — only the substrings the test author named
-    // are checked. Avoids brittleness on incidental fields (trace IDs,
-    // timestamps, idempotency keys) while still catching shape drift.
+    // Substring matching keeps the cassette stable across regenerated idempotency keys and timestamps.
     if (exchange.request.bodyContains && exchange.request.bodyContains.length > 0) {
       const body = typeof init?.body === "string" ? init.body : "";
       for (const needle of exchange.request.bodyContains) {
@@ -138,8 +117,6 @@ function openRecorder(
   const recorded: Exchange[] = [];
   const fetch: FetchLike = async (input, init) => {
     const url = new URL(typeof input === "string" ? input : input.toString());
-    // Cassettes are recorded against an absolute base URL but replayed
-    // against an arbitrary one; store the path only.
     const requestPath = url.pathname + (url.search || "");
     const method = (init?.method ?? "GET").toUpperCase();
     const reqBody = typeof init?.body === "string" ? init.body : "";
@@ -148,8 +125,8 @@ function openRecorder(
     const res = await globalThis.fetch(liveUrl, init);
     const bodyText = await res.text();
     const headersOut: Record<string, string> = {};
+    // Strip per-request headers so replayed cassettes don't lie about identity.
     res.headers.forEach((v, k) => {
-      // Drop noisy hop-by-hop / per-request headers from the cassette
       if (!["date", "x-request-id", "cf-ray", "set-cookie"].includes(k.toLowerCase())) {
         headersOut[k] = v;
       }
@@ -175,9 +152,6 @@ function openRecorder(
   };
 }
 
-// A stable substring that's likely to identify the call without
-// drifting across recordings — pick the first 32 chars of the body
-// JSON after stripping idempotency-key-style sentinels.
 function stableSubstring(s: string): string {
   return s.slice(0, 32);
 }

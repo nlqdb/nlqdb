@@ -1,17 +1,3 @@
-// P2 — Agent Builder. The MCP server's three tools must:
-//
-//   • be discoverable in the canonical order (SK-MCP-002)
-//   • return structured content alongside the text content
-//   • carry the SQL `trace` block on every successful `nlqdb_query`
-//     (GLOBAL-023 / SK-TRUST-002)
-//   • surface API errors as `isError: true` with one-sentence
-//     content + a `code` / `action` discriminant (GLOBAL-012)
-//
-// Hermetic — uses the SDK's `InMemoryTransport` to pair a Client and
-// the nlqdb McpServer in-process. The server's NlqClient is stubbed
-// per call rather than via cassette files; the surface is small
-// enough that inline stubs are clearer than another JSON layer.
-
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { describe, expect, it } from "vitest";
@@ -19,10 +5,6 @@ import { createServer } from "../../../packages/mcp/src/server.ts";
 import type { NlqClient } from "../../../packages/sdk/src/index.ts";
 import { NlqdbApiError } from "../../../packages/sdk/src/index.ts";
 
-// Stub helper — accepts overrides for the methods a test exercises;
-// every other NlqClient method throws "not stubbed" so an accidental
-// extra call surfaces in the failing test. Mirrors the helper used
-// in packages/mcp/test/index.test.ts.
 function stubClient(overrides: Partial<NlqClient>): NlqClient {
   const notStubbed = (name: string) => () => {
     throw new Error(`stubClient: ${name} not stubbed`);
@@ -37,14 +19,13 @@ function stubClient(overrides: Partial<NlqClient>): NlqClient {
     deleteDatabase: notStubbed("deleteDatabase"),
     getKeyStatus: async () => ({ revoked: false }),
     listKeys: async () => ({ keys: [] }),
+    mintKey: notStubbed("mintKey"),
     revokeKey: notStubbed("revokeKey"),
     redeemOAuthBridgeCode: notStubbed("redeemOAuthBridgeCode"),
     ...overrides,
   };
 }
 
-// Spin up a client+server pair connected by linked in-memory
-// transports. Returns the client and a teardown the test can defer.
 async function connect(client: NlqClient) {
   const server = createServer({ client });
   const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
@@ -66,10 +47,8 @@ describe("P2 — Agent Builder · MCP protocol contract", () => {
     try {
       const { tools } = await mcpClient.listTools();
       const names = tools.map((t) => t.name);
-      // SK-MCP-002: three tools, one canonical shape. Order is part
-      // of the contract — agents discover by index in some clients.
+      // Tool order is part of the contract — some agent clients discover by index.
       expect(names).toEqual(["nlqdb_query", "nlqdb_list_databases", "nlqdb_describe"]);
-      // Every tool ships a description (LLMs route on this).
       for (const t of tools) {
         expect(t.description).toBeTruthy();
         expect(t.description?.length ?? 0).toBeGreaterThan(20);
@@ -103,9 +82,7 @@ describe("P2 — Agent Builder · MCP protocol contract", () => {
         arguments: { db: "db_e2e_p2", q: "orders this week, by source" },
       });
       expect(result.isError).toBeFalsy();
-      // Structured content carries the rows + a nested trace block
-      // (SK-MCP-002 + GLOBAL-023). Shape mirrors `queryOutputShape`
-      // in packages/mcp/src/tools.ts — never flatten the trace.
+      // Shape mirrors `queryOutputShape` in packages/mcp/src/tools.ts; `trace` must stay nested.
       const sc = result.structuredContent as {
         rows: unknown[];
         rowCount: number;
@@ -158,10 +135,7 @@ describe("P2 — Agent Builder · MCP protocol contract", () => {
   });
 
   it("API errors surface as isError + one-sentence content (GLOBAL-012)", async () => {
-    // Use `unauthorized` because `mapSdkError` has an explicit mapping
-    // for it (auth_required), so the assertion verifies the actual
-    // GLOBAL-012 shape — one sentence + a concrete next action with a
-    // URL the agent can quote back to the user.
+    // `unauthorized` has an explicit `mapSdkError` mapping so the assertion sees the real GLOBAL-012 shape.
     const { mcpClient, teardown } = await connect(
       stubClient({
         ask: async () => {
@@ -181,8 +155,6 @@ describe("P2 — Agent Builder · MCP protocol contract", () => {
         arguments: { db: "db_e2e_p2", q: "anything" },
       });
       expect(result.isError).toBe(true);
-      // Text content is the human-readable one-liner + next-action
-      // (GLOBAL-012). Format is `${message}\n\n→ ${action}`.
       const content = result.content as { type: string; text: string }[];
       const text = content.find((c) => c.type === "text")?.text ?? "";
       expect(text).toMatch(/user-scoped key/i);

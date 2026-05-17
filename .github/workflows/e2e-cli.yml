@@ -1,13 +1,4 @@
-# CLI e2e (Go testscript fixtures). Hermetic — talks to an
-# in-process httptest mock, never to staging. Trigger when a
-# CLI change could shift wire shape, output format, or keychain
-# behaviour. See `tests/e2e/cli/` for the driver + scripts and
-# `docs/features/e2e-coverage/FEATURE.md` for the rationale
-# (SK-E2E-002 / SK-E2E-004).
-#
-# Why a separate Go module: keeps `testscript` out of the cli/
-# runtime dependency tree. Root `bun install` and `go test ./...`
-# from cli/ never touch this directory.
+# Manual-trigger CLI e2e — hermetic, see docs/features/e2e-coverage/FEATURE.md SK-E2E-002/004.
 
 name: E2E CLI
 
@@ -18,7 +9,6 @@ concurrency:
   group: e2e-cli
   cancel-in-progress: false
 
-# SK-CIPERM-001 — default-deny at workflow root.
 permissions: {}
 
 jobs:
@@ -33,15 +23,11 @@ jobs:
 
       - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
         with:
-          # Test module pins its own Go version; cli/ pins the runtime.
           go-version-file: cli/go.mod
           cache-dependency-path: tests/e2e/cli/go.sum
 
+      # Front-load the build so a broken cli/ surfaces here, not mid-testscript.
       - name: Verify cli builds before fixture run
-        # The testscript driver rebuilds the binary per `go test`
-        # invocation; this step front-loads the build so a broken
-        # cli/ surfaces clearly rather than as an opaque testscript
-        # mid-script failure.
         working-directory: cli
         run: go build ./...
 
@@ -49,9 +35,6 @@ jobs:
         working-directory: tests/e2e/cli
         run: go test -count=1 -race ./...
 
-      # On failure, surface the binary's --version + the fixture list
-      # so the run log is self-contained without digging into the
-      # testscript binary directory.
       - name: Post-failure diagnostic
         if: failure()
         working-directory: tests/e2e/cli

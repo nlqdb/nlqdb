@@ -1,6 +1,3 @@
-// Nuxt example — Phase 0 contract. See examples/nextjs/e2e/ for the
-// pattern. Persona: P4 (Backend Engineer at a small startup using Vue).
-
 import { test, expect } from "@playwright/test";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -15,7 +12,6 @@ test.describe("@nuxt · examples/nuxt/", () => {
     expect(SOURCE).toMatch(/goal="today's orders, newest first"/);
     expect(SOURCE).toMatch(/template="table"/);
     expect(SOURCE).toMatch(/refresh="5s"/);
-    // useHead is Nuxt's <head> management — documented in the README.
     expect(SOURCE).toMatch(/useHead/);
     expect(SOURCE).toMatch(/useRuntimeConfig/);
   });
