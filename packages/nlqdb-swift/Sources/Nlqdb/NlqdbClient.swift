@@ -5,16 +5,27 @@
 // (GLOBAL-002).
 
 import Foundation
-import os.log
 
 #if canImport(FoundationNetworking)
 import FoundationNetworking
 #endif
 
-// Console.app-visible signal for retries, auth failures and decode
-// errors. OTel-via-`swift-distributed-tracing` is tracked in
-// docs/features/sdk-swift/FEATURE.md as an Open question.
-let nlqdbLogger = Logger(subsystem: "com.nlqdb.sdk", category: "client")
+#if canImport(os)
+import os.log
+private let _osLogger = Logger(subsystem: "com.nlqdb.sdk", category: "client")
+#endif
+
+// Console.app-visible (Apple) / stderr (Linux) — retries, auth
+// failures and decode errors. OTel-via-`swift-distributed-tracing`
+// is tracked in docs/features/sdk-swift/FEATURE.md as an Open question.
+@inline(__always)
+func nlqdbLog(_ message: String) {
+    #if canImport(os)
+    _osLogger.warning("\(message, privacy: .public)")
+    #else
+    FileHandle.standardError.write(Data("[nlqdb] \(message)\n".utf8))
+    #endif
+}
 
 public struct NlqdbConfig: Sendable {
     public var apiKey: String
@@ -100,8 +111,11 @@ public actor NlqdbClient {
         bodyData: Data?,
         idempotencyKey: String?
     ) async throws -> (Data, HTTPURLResponse) {
-        var url = config.baseURL
-        url.append(path: path)
+        // `URL.appendingPathComponent` is the most portable API
+        // across Apple Foundation + swift-corelibs-foundation; the
+        // leading slash in `path` is stripped to keep the join correct.
+        let trimmed = path.hasPrefix("/") ? String(path.dropFirst()) : path
+        let url = config.baseURL.appendingPathComponent(trimmed)
         var req = URLRequest(url: url)
         req.httpMethod = method
         req.setValue("Bearer \(config.apiKey)", forHTTPHeaderField: "Authorization")
@@ -221,9 +235,7 @@ public actor NlqdbClient {
                     throw error
                 }
                 lastError = error
-                nlqdbLogger.warning(
-                    "retry \(attempt, privacy: .public)/\(attempts, privacy: .public) on \(path, privacy: .public): \(error.code.rawValue, privacy: .public) http=\(error.httpStatus, privacy: .public)"
-                )
+                nlqdbLog("retry \(attempt)/\(attempts) on \(path): \(error.code.rawValue) http=\(error.httpStatus)")
                 try await sleepForBackoff(attempt: attempt)
             }
         }
@@ -269,9 +281,7 @@ public actor NlqdbClient {
                     throw error
                 }
                 lastError = error
-                nlqdbLogger.warning(
-                    "retry \(attempt, privacy: .public)/\(attempts, privacy: .public) on \(path, privacy: .public): \(error.code.rawValue, privacy: .public) http=\(error.httpStatus, privacy: .public)"
-                )
+                nlqdbLog("retry \(attempt)/\(attempts) on \(path): \(error.code.rawValue) http=\(error.httpStatus)")
                 try await sleepForBackoff(attempt: attempt)
             }
         }
