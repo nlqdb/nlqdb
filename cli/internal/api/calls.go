@@ -17,6 +17,19 @@ func (c *Client) Ask(ctx context.Context, req AskRequest) (*AskResponse, error) 
 	return &out, nil
 }
 
+// Run hits POST /v1/run (SK-SDK-009 / GLOBAL-015 escape hatch). Same
+// allow-list as `/v1/ask` (SELECT / INSERT / UPDATE / DELETE / WITH /
+// EXPLAIN / SHOW); DDL still rejected on this path. Returns the rows
+// + the SK-TRUST-002 trace block so consumers don't special-case the
+// raw-SQL surface.
+func (c *Client) Run(ctx context.Context, req RunRequest) (*RunResponse, error) {
+	var out RunResponse
+	if err := c.do(ctx, http.MethodPost, "/v1/run", req, &out); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
 // ListDatabases hits GET /v1/databases. Empty list means a fresh tenant
 // — the create-path will fire on the next `nlq ask` per SK-ASK-009.
 func (c *Client) ListDatabases(ctx context.Context) ([]DatabaseSummary, error) {

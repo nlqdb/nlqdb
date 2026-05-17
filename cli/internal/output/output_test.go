@@ -87,6 +87,70 @@ func TestWriteAskCreateBranchHumanRendersDB(t *testing.T) {
 	}
 }
 
+func TestWriteRunHumanRendersTraceAndRows(t *testing.T) {
+	var out, errw bytes.Buffer
+	w := New(&out, &errw, FormatHuman)
+	resp := &api.RunResponse{
+		Status:   "ok",
+		Rows:     []map[string]any{{"name": "alice", "n": float64(3)}},
+		RowCount: 1,
+		Trace: &api.Trace{
+			SQL: "SELECT name, n FROM t", PlanID: "p1", Confidence: 1, Model: "raw", CacheHit: false,
+		},
+	}
+	if err := w.WriteRun(resp); err != nil {
+		t.Fatalf("WriteRun: %v", err)
+	}
+	s := out.String()
+	if !strings.Contains(s, "─ trace ─") {
+		t.Errorf("trace separator missing: %q", s)
+	}
+	if !strings.Contains(s, "model=raw") {
+		t.Errorf("raw-model marker missing: %q", s)
+	}
+	if !strings.Contains(s, "alice") {
+		t.Errorf("row value missing: %q", s)
+	}
+}
+
+func TestWriteRunHumanRendersAffectedCountWhenNoRows(t *testing.T) {
+	var out bytes.Buffer
+	w := New(&out, &bytes.Buffer{}, FormatHuman)
+	resp := &api.RunResponse{
+		Status:   "ok",
+		Rows:     []map[string]any{},
+		RowCount: 7,
+		Trace:    &api.Trace{SQL: "UPDATE t SET x=1", PlanID: "p", Model: "raw"},
+	}
+	if err := w.WriteRun(resp); err != nil {
+		t.Fatalf("WriteRun: %v", err)
+	}
+	if !strings.Contains(out.String(), "7 row(s) affected") {
+		t.Errorf("affected-count line missing: %q", out.String())
+	}
+}
+
+func TestWriteRunJSONIsValid(t *testing.T) {
+	var out bytes.Buffer
+	w := New(&out, &bytes.Buffer{}, FormatJSON)
+	resp := &api.RunResponse{
+		Status:   "ok",
+		Rows:     []map[string]any{{"n": float64(1)}},
+		RowCount: 1,
+		Trace:    &api.Trace{SQL: "SELECT 1", PlanID: "p", Model: "raw"},
+	}
+	if err := w.WriteRun(resp); err != nil {
+		t.Fatalf("WriteRun: %v", err)
+	}
+	var got map[string]any
+	if err := json.Unmarshal(out.Bytes(), &got); err != nil {
+		t.Fatalf("output is not JSON: %v\n%s", err, out.String())
+	}
+	if got["status"] != "ok" {
+		t.Errorf("status = %v", got["status"])
+	}
+}
+
 func TestWriteDatabasesEmptyHasOnboardingHint(t *testing.T) {
 	var out bytes.Buffer
 	w := New(&out, &bytes.Buffer{}, FormatHuman)

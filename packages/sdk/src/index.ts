@@ -188,6 +188,24 @@ export type CreateDatabaseResult = {
   connectionString?: string;
 };
 
+// SK-SDK-009 — `runSql()` request / response. The raw-SQL escape hatch
+// (`GLOBAL-015`); same allow-list as `/v1/ask` (SELECT / INSERT /
+// UPDATE / DELETE / WITH / EXPLAIN / SHOW), DDL still rejected. The
+// `trace` block mirrors `ask()`'s SK-TRUST-002 shape so callers don't
+// special-case the raw-SQL path: `model = "raw"`, `confidence = 1.0`,
+// `cache_hit = false` on every response.
+export type RunSqlRequest = {
+  db: string;
+  sql: string;
+};
+
+export type RunSqlResult = {
+  status: "ok";
+  rows: Record<string, unknown>[];
+  rowCount: number;
+  trace: Trace;
+};
+
 // Mirror of the API's `AskError` discriminant (apps/api/src/ask/types.ts)
 // plus SDK-only sentinels. Open-ended via `(string & {})` so a new API
 // status doesn't force an SDK bump to compile — consumers still get
@@ -216,6 +234,14 @@ export type ApiErrorCode =
   // surfaces render a chip with two actions: "Create new database"
   // (re-send without `dbId`) and "Cancel".
   | "clarify_required"
+  // SK-SDK-009 / SK-APIKEYS-003 — `/v1/run` rejected the call because
+  // the principal is read-only (pk_live tried to write).
+  | "forbidden"
+  // SK-SDK-009 — `/v1/run` parse errors that don't surface as the
+  // generic `invalid_json` / `invalid_body`.
+  | "sql_required"
+  | "sql_too_long"
+  | "db_required"
   // SK-DB-010: 400 returned when `engine` is set to a string that's
   // not in the allowed engine set on `/v1/ask` or `/v1/databases`.
   | "invalid_engine"
@@ -421,6 +447,18 @@ export type NlqClient = {
     dbId: string,
     opts?: { signal?: AbortSignal; idempotencyKey?: string },
   ): Promise<void>;
+  // SK-SDK-009 — raw-SQL escape hatch (`GLOBAL-015`). POSTs to
+  // `/v1/run`. The same allow-list as `ask()` applies server-side
+  // (SELECT / INSERT / UPDATE / DELETE / WITH / EXPLAIN / SHOW); DDL
+  // is rejected. The response shape carries the SK-TRUST-002 `trace`
+  // block so surfaces render it the same way as `ask()`. Mutating
+  // helper — `SK-SDK-006` auto-key applies; `SK-SDK-008` retry loop
+  // applies. Bearer-key callers (CLI, events-worker) and
+  // `withCredentials` callers (web) both work through this method.
+  runSql(
+    req: RunSqlRequest,
+    opts?: { signal?: AbortSignal; idempotencyKey?: string },
+  ): Promise<RunSqlResult>;
   // SK-MCP-014 — `apps/mcp/`'s `McpAgent` calls this every 1 s to
   // re-check `sk_mcp_*` revocation. `keyHash` is the HMAC-SHA256 hex
   // of the plaintext key (never the plaintext itself), computed via
@@ -722,6 +760,15 @@ export function createClient(opts: ClientOptions = {}): NlqClient {
         signal: callOpts?.signal,
       }),
     askStream: streamAsk,
+    runSql: (req, callOpts) =>
+      call<RunSqlResult>("/v1/run", {
+        method: "POST",
+        body: JSON.stringify(req),
+        signal: callOpts?.signal,
+        ...(callOpts?.idempotencyKey
+          ? { headers: { "idempotency-key": callOpts.idempotencyKey } }
+          : {}),
+      }),
     listChat: (callOpts) =>
       call<{ messages: ChatMessage[] }>("/v1/chat/messages", { signal: callOpts?.signal }),
     postChat: (req, callOpts) =>

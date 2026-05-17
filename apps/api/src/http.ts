@@ -21,6 +21,13 @@ export { ALLOWED_ENGINES, isAllowedEngine };
 // LLM token cost from adversarially long inputs.
 export const MAX_GOAL_LENGTH = 2000;
 
+// SK-SDK-009 / GLOBAL-015 — hard server-side cap on raw SQL length sent
+// to `/v1/run`. Aligns with `/v1/ask`'s 2 000-char goal cap so the wire
+// surface stays predictable; one statement of 64 KB doesn't accidentally
+// land here. Surfaces a typed error with the limit so SDK / CLI render
+// the next action per GLOBAL-012.
+export const MAX_SQL_LENGTH = 64 * 1024;
+
 export type GoalDbBody = { goal: string; dbId: string };
 // SK-DB-010 — `engine` is optional on the create branch. When set the
 // orchestrator skips the classifier; otherwise the goal-text classifier
@@ -44,9 +51,15 @@ export type InvalidEngineBody = {
 // a precise message without hard-coding the limit.
 export type GoalTooLongBody = { error: "goal_too_long"; maxLength: number };
 
+// `sql_too_long` mirrors `goal_too_long` for the `/v1/run` shape.
+export type SqlTooLongBody = { error: "sql_too_long"; maxLength: number };
+
 export type ParseErrorBody =
-  | { error: "invalid_json" | "goal_required" | "dbId_required" }
+  | {
+      error: "invalid_json" | "goal_required" | "dbId_required" | "sql_required" | "db_required";
+    }
   | GoalTooLongBody
+  | SqlTooLongBody
   | InvalidEngineBody;
 
 export type ParseError = {
@@ -127,6 +140,43 @@ export async function parseAskBody(c: Context): Promise<ParseResult<AskBody>> {
     body.confirm = true;
   }
   return { ok: true, body };
+}
+
+// `/v1/run` parser — both fields required. `db` is the pinned dbId
+// (this is the escape hatch — no LLM picking the DB for you); `sql` is
+// the raw SQL to execute. The validator (`apps/api/src/ask/sql-validate.ts`)
+// runs inside the orchestrator after parse, so the only parser-level
+// shape check here is non-empty strings + length cap.
+//
+// SK-APIKEYS-003 / SK-SDK-009: pk_live auto-fills `db` from the
+// principal in the route handler before parse runs, so the wire shape
+// stays consistent across principal kinds.
+export type RunBody = { sql: string; db: string };
+
+// `dbOptional` lets the pk_live route auto-fill from the principal's
+// pinned dbId after parse. Default behaviour (cookie / anon / sk_*)
+// requires the field — `/v1/run` is the escape hatch, the caller
+// always knows which DB they're targeting.
+export async function parseRunBody(
+  c: Context,
+  opts: { dbOptional?: boolean } = {},
+): Promise<ParseResult<RunBody>> {
+  const raw = await parseJsonBody<{ sql?: unknown; db?: unknown }>(c);
+  if (!raw.ok) return { ok: false, error: { status: 400, body: { error: "invalid_json" } } };
+  if (typeof raw.body.sql !== "string" || raw.body.sql.trim().length === 0) {
+    return { ok: false, error: { status: 400, body: { error: "sql_required" } } };
+  }
+  if (raw.body.sql.length > MAX_SQL_LENGTH) {
+    return {
+      ok: false,
+      error: { status: 400, body: { error: "sql_too_long", maxLength: MAX_SQL_LENGTH } },
+    };
+  }
+  const dbProvided = typeof raw.body.db === "string" && raw.body.db.length > 0;
+  if (!dbProvided && !opts.dbOptional) {
+    return { ok: false, error: { status: 400, body: { error: "db_required" } } };
+  }
+  return { ok: true, body: { sql: raw.body.sql, db: dbProvided ? (raw.body.db as string) : "" } };
 }
 
 // JSON body reader that swallows the parse exception into a typed

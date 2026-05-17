@@ -92,6 +92,27 @@ func keyLabel(r api.KeyRecord) string {
 	return "—"
 }
 
+// WriteRun renders `/v1/run` responses. Same trace-block treatment as
+// `nlq ask` so power users see the SQL they submitted echoed under a
+// `─ trace ─` separator (SK-TRUST-002). JSON mode emits the full
+// payload for scripts.
+func (w *Writer) WriteRun(resp *api.RunResponse) error {
+	if w.Format == FormatJSON {
+		return w.JSON(resp)
+	}
+	if len(resp.Rows) > 0 {
+		writeRowsTable(w.Out, resp.Rows)
+	} else {
+		fmt.Fprintf(w.Out, "✓ %d row(s) affected.\n", resp.RowCount)
+	}
+	if resp.Trace != nil {
+		fmt.Fprintln(w.Out, "─ trace ─")
+		fmt.Fprintln(w.Out, indent(strings.TrimSpace(resp.Trace.SQL), "  "))
+		fmt.Fprintf(w.Out, "  plan=%s model=%s\n", resp.Trace.PlanID, resp.Trace.Model)
+	}
+	return nil
+}
+
 func (w *Writer) WriteDatabases(rows []api.DatabaseSummary) error {
 	if w.Format == FormatJSON {
 		return w.JSON(map[string]any{"databases": rows})

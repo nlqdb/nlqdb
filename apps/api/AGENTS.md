@@ -10,6 +10,7 @@ Cloudflare Workers HTTP API. Hosts /v1/ask, /v1/run, auth, billing, webhooks.
 ## Features relevant to this area
 
 - [`ask-pipeline`](../../docs/features/ask-pipeline/FEATURE.md) — mandatory pre-read for changes that touch the feature.
+- [`sdk`](../../docs/features/sdk/FEATURE.md) (SK-SDK-009) + [`cli`](../../docs/features/cli/FEATURE.md) (`nlq run`) + [`sql-allowlist`](../../docs/features/sql-allowlist/FEATURE.md) — mandatory pre-read for changes that touch `src/run/**` (the `POST /v1/run` escape hatch, `GLOBAL-015`).
 - [`hosted-db-create`](../../docs/features/hosted-db-create/FEATURE.md) — mandatory pre-read for changes that touch `src/db-create/**`, `src/ask/classifier.ts`, or `src/ask/sql-validate-ddl.ts`. Phase 1.
 - [`plan-cache`](../../docs/features/plan-cache/FEATURE.md) — mandatory pre-read for changes that touch the feature.
 - [`sql-allowlist`](../../docs/features/sql-allowlist/FEATURE.md) — mandatory pre-read for changes that touch the feature.

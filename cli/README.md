@@ -4,8 +4,8 @@ Static Go binary, 3-char name, distributed via curl-pipe-sh, Homebrew
 tap, and an npm shim (`@nlqdb/cli`). Power-user surface for
 devs / agents who don't want a browser.
 
-Bootstrap slice ships: `nlq ask`, `nlq new`, bare `nlq "…"`,
-`nlq db list`, `nlq db create`, `nlq query`, `nlq use`,
+Bootstrap slice ships: `nlq ask`, `nlq run`, `nlq new`, bare
+`nlq "…"`, `nlq db list`, `nlq db create`, `nlq query`, `nlq use`,
 `nlq whoami`, `nlq logout`, `nlq mcp detect`, `nlq update`,
 `nlq keys list`, `nlq keys revoke <id>`, plus `--json` /
 `--version` / `--help`. Auth: `NLQDB_API_KEY` env-key (CI escape
@@ -13,8 +13,8 @@ hatch) or anonymous device token in the OS keychain (default).
 
 Verbs deferred to follow-up slices (gated on server endpoints not
 yet shipped): `nlq login` device-flow, `nlq mcp install` key-write,
-`nlq run` raw-SQL, `nlq chat` REPL, `nlq keys rotate`,
-`nlq connection`. See [`../docs/features/cli/FEATURE.md`](../docs/features/cli/FEATURE.md)
+`nlq chat` REPL, `nlq keys rotate`, `nlq connection`. See
+[`../docs/features/cli/FEATURE.md`](../docs/features/cli/FEATURE.md)
 for the per-verb status.
 
 See [`docs/architecture.md §3.3`](../docs/architecture.md#33-cli---nlq)

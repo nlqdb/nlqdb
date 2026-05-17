@@ -710,4 +710,101 @@ describe("createClient", () => {
       expect(e.code).toBe("key_not_found");
     }
   });
+
+  it("runSql: POSTs /v1/run with bearer + body + auto Idempotency-Key", async () => {
+    let capturedUrl = "";
+    let capturedInit: RequestInit | undefined;
+    const fakeFetch: FetchLike = async (url, init) => {
+      capturedUrl = String(url);
+      capturedInit = init;
+      return new Response(
+        JSON.stringify({
+          status: "ok",
+          rows: [{ a: 1 }],
+          rowCount: 1,
+          trace: {
+            sql: "select 1",
+            plan_id: "h:s",
+            confidence: 1,
+            model: "raw",
+            cache_hit: false,
+          },
+        }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      );
+    };
+    const client = createClient({
+      apiKey: "sk_test",
+      baseUrl: "https://api.example.com/",
+      fetch: fakeFetch,
+    });
+    const out = await client.runSql({ db: "db_1", sql: "SELECT 1" });
+    expect(capturedUrl).toBe("https://api.example.com/v1/run");
+    const headers = (capturedInit?.headers ?? {}) as Record<string, string>;
+    expect(headers["authorization"]).toBe("Bearer sk_test");
+    expect(headers["idempotency-key"]).toMatch(/^[0-9a-f]{32}$/);
+    expect(capturedInit?.method).toBe("POST");
+    expect(JSON.parse(String(capturedInit?.body))).toEqual({ db: "db_1", sql: "SELECT 1" });
+    expect(out).toMatchObject({
+      status: "ok",
+      rowCount: 1,
+      trace: { model: "raw", cache_hit: false },
+    });
+  });
+
+  it("runSql: caller-supplied idempotencyKey overrides the auto-generated one", async () => {
+    let capturedInit: RequestInit | undefined;
+    const fakeFetch: FetchLike = async (_url, init) => {
+      capturedInit = init;
+      return new Response(
+        JSON.stringify({
+          status: "ok",
+          rows: [],
+          rowCount: 0,
+          trace: { sql: "x", plan_id: "h:s", confidence: 1, model: "raw", cache_hit: false },
+        }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      );
+    };
+    const client = createClient({ apiKey: "sk_test", fetch: fakeFetch });
+    await client.runSql({ db: "db_1", sql: "SELECT 1" }, { idempotencyKey: "stable-key-123" });
+    const headers = (capturedInit?.headers ?? {}) as Record<string, string>;
+    expect(headers["idempotency-key"]).toBe("stable-key-123");
+  });
+
+  it("runSql: surfaces 400 sql_rejected as NlqdbApiError", async () => {
+    const fakeFetch: FetchLike = async () =>
+      new Response(
+        JSON.stringify({ error: { status: "sql_rejected", reason: "drop_statement" } }),
+        { status: 400, headers: { "content-type": "application/json" } },
+      );
+    const client = createClient({ apiKey: "sk_test", fetch: fakeFetch });
+    try {
+      await client.runSql({ db: "db_1", sql: "DROP TABLE x" });
+      expect.fail("should have thrown");
+    } catch (err) {
+      expect(err).toBeInstanceOf(NlqdbApiError);
+      const e = err as NlqdbApiError;
+      expect(e.httpStatus).toBe(400);
+      expect(e.code).toBe("sql_rejected");
+    }
+  });
+
+  it("runSql: surfaces 403 forbidden as NlqdbApiError (pk_live write)", async () => {
+    const fakeFetch: FetchLike = async () =>
+      new Response(
+        JSON.stringify({ error: { status: "forbidden", reason: "read_only_principal" } }),
+        { status: 403, headers: { "content-type": "application/json" } },
+      );
+    const client = createClient({ apiKey: "pk_live_test", fetch: fakeFetch });
+    try {
+      await client.runSql({ db: "db_1", sql: "DELETE FROM x WHERE id = 1" });
+      expect.fail("should have thrown");
+    } catch (err) {
+      expect(err).toBeInstanceOf(NlqdbApiError);
+      const e = err as NlqdbApiError;
+      expect(e.httpStatus).toBe(403);
+      expect(e.code).toBe("forbidden");
+    }
+  });
 });

@@ -19,10 +19,11 @@ when-to-load:
 
 **Key-management verbs:** `nlq keys list` and `nlq keys revoke <id>` ship — backed by `GET /v1/keys` ([`SK-APIKEYS-010`](../api-keys/decisions/SK-APIKEYS-010-list-endpoint.md)) and `DELETE /v1/keys/:id` ([`SK-APIKEYS-011`](../api-keys/decisions/SK-APIKEYS-011-hard-revoke.md)).
 
+**Raw-SQL escape hatch:** `nlq run [--db <id>] <sql>` ships — backed by `POST /v1/run` ([`SK-SDK-009`](../sdk/FEATURE.md), [`GLOBAL-015`](../../decisions/GLOBAL-015-power-user-escape-hatch.md)). Same allow-list as `/v1/ask` (SELECT / INSERT / UPDATE / DELETE / WITH / EXPLAIN / SHOW); DDL still rejected. SQL can ride positional args or stdin (`cat schema.sql | nlq run --db finance`). `--db` resolution mirrors `nlq ask`: explicit flag wins, else the active DB from `state.json`.
+
 Deferred to follow-up slices — gated on server endpoints that don't exist yet:
 - `nlq login` device-flow (needs `POST /v1/auth/device` per `SK-AUTH-004`).
 - `nlq mcp install` config-write (needs the device-flow session for `POST /v1/keys` to mint `sk_mcp_*`; the cobra command is wired to print the deferral hint).
-- `nlq run` raw-SQL (needs `POST /v1/run`).
 - `nlq chat` REPL (UX-only deferral; design intact).
 - `nlq keys rotate <id>` (needs `POST /v1/keys/:id/rotate` per [`SK-APIKEYS-005`](../api-keys/decisions/SK-APIKEYS-005-rotation-grace.md)).
 - `nlq connection <db>` (needs API to expose `connection_url` on `GET /v1/databases` rows).
@@ -80,7 +81,7 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 ## Open questions / known unknowns
 
 - **Device-flow server endpoints.** `nlq login` / `nlq logout` / `nlq mcp install` are stubbed (return a "ships in the next slice" error) until `POST /v1/auth/device` + `POST /v1/auth/device/token` land per `SK-AUTH-004`. The credential storage layer is already in place — the missing piece is the wire endpoints. The CLI's `auth.Resolve` already returns `KindSignedIn` when a refresh token exists in the keychain, so the rollout is "land the endpoints, wire the device-flow polling loop, done."
-- **`nlq run` (raw SQL escape hatch).** `GLOBAL-015` keeps the verb in the design list; `apps/api` does not yet expose `POST /v1/run`. The slice that adds the endpoint also wires `nlq run` + `client.runSql()` in the TS SDK in the same PR per `GLOBAL-002`.
+- ~~**`nlq run` (raw SQL escape hatch).**~~ Shipped — `POST /v1/run` lives in `apps/api/src/run/orchestrate.ts`; the CLI verb in `cli/internal/cmd/run.go`; the TS SDK's `client.runSql()` in `packages/sdk/src/index.ts`. All three landed in one slice per `GLOBAL-002` / `GLOBAL-003`.
 - **`nlq chat` REPL.** A separate slice; intentionally deferred because the typed-line UX is non-trivial and the bootstrap focuses on the goal-first single-command path.
 - **`nlq keys rotate`.** `list` + `revoke` ship. Rotation needs `POST /v1/keys/:id/rotate` plus the 60-day grace + webhook + events-pipeline rotation event per [`SK-APIKEYS-005`](../api-keys/decisions/SK-APIKEYS-005-rotation-grace.md). Lands as one slice with those.
 - **`nlq connection <db>` for hosted Postgres.** Wants a raw `postgres://…` URL on `GET /v1/databases` rows. Today the SDK returns it on the create response only. The unblock is one API field; the CLI verb is one cobra command.

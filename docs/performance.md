@@ -22,6 +22,7 @@ state of provisioned infra (see [./runbook.md](./runbook.md)).
 | `GET /v1/health`                 | < 5 ms   | < 50 ms  | Pure JSON serialize, no I/O.              |
 | `POST /v1/ask` — **cache hit**   | < 200 ms | < 500 ms | Plan in KV, just execute SQL.             |
 | `POST /v1/ask` — **cache miss**  | < 1.5 s  | < 3.5 s  | Full LLM plan + execute + (opt) summarize. |
+| `POST /v1/run`                   | < 200 ms | < 500 ms | Raw-SQL escape hatch (`GLOBAL-015`) — no LLM, mirrors `/v1/ask` cache-hit budget. |
 | `GET /api/auth/callback/github`  | < 200 ms | < 1.0 s  | OAuth code exchange + DB user upsert.     |
 | `POST /v1/auth/device`           | < 50 ms  | < 200 ms | DB write only.                            |
 | `POST /v1/auth/device/token`     | < 100 ms | < 500 ms | DB read + write + JWT sign.               |
