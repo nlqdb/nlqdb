@@ -18,6 +18,7 @@ import (
 // `TestRegisteredVerbs` in internal/cmd catches divergence.
 var known = map[string]struct{}{
 	"ask":        {},
+	"run":        {},
 	"new":        {},
 	"db":         {},
 	"keys":       {},

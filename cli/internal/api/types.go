@@ -54,6 +54,20 @@ type AskResponse struct {
 	SampleRows  []map[string]json.RawMessage `json:"sampleRows,omitempty"`
 }
 
+// RunRequest mirrors @nlqdb/sdk's `RunSqlRequest` (`SK-SDK-009`).
+type RunRequest struct {
+	DB  string `json:"db"`
+	SQL string `json:"sql"`
+}
+
+// RunResponse mirrors the SDK's `RunSqlResult`; `Trace` is always present (`SK-TRUST-002`).
+type RunResponse struct {
+	Status   string           `json:"status"`
+	Rows     []map[string]any `json:"rows"`
+	RowCount int              `json:"rowCount"`
+	Trace    *Trace           `json:"trace"`
+}
+
 type DatabaseSummary struct {
 	ID            string  `json:"id"`
 	Slug          string  `json:"slug"`

@@ -21,6 +21,9 @@ export { ALLOWED_ENGINES, isAllowedEngine };
 // LLM token cost from adversarially long inputs.
 export const MAX_GOAL_LENGTH = 2000;
 
+// `SK-SDK-009` — server cap on `/v1/run` SQL body; larger batches belong on a direct Postgres connection.
+export const MAX_SQL_LENGTH = 64 * 1024;
+
 export type GoalDbBody = { goal: string; dbId: string };
 // SK-DB-010 — `engine` is optional on the create branch. When set the
 // orchestrator skips the classifier; otherwise the goal-text classifier
@@ -44,9 +47,15 @@ export type InvalidEngineBody = {
 // a precise message without hard-coding the limit.
 export type GoalTooLongBody = { error: "goal_too_long"; maxLength: number };
 
+// `sql_too_long` mirrors `goal_too_long` for the `/v1/run` shape.
+export type SqlTooLongBody = { error: "sql_too_long"; maxLength: number };
+
 export type ParseErrorBody =
-  | { error: "invalid_json" | "goal_required" | "dbId_required" }
+  | {
+      error: "invalid_json" | "goal_required" | "dbId_required" | "sql_required" | "db_required";
+    }
   | GoalTooLongBody
+  | SqlTooLongBody
   | InvalidEngineBody;
 
 export type ParseError = {
@@ -127,6 +136,32 @@ export async function parseAskBody(c: Context): Promise<ParseResult<AskBody>> {
     body.confirm = true;
   }
   return { ok: true, body };
+}
+
+// `/v1/run` body — shape check only; SQL validation runs inside the orchestrator.
+export type RunBody = { sql: string; db: string };
+
+// `dbOptional` lets the pk_live route auto-fill from the principal's pinned dbId after parse.
+export async function parseRunBody(
+  c: Context,
+  opts: { dbOptional?: boolean } = {},
+): Promise<ParseResult<RunBody>> {
+  const raw = await parseJsonBody<{ sql?: unknown; db?: unknown }>(c);
+  if (!raw.ok) return { ok: false, error: { status: 400, body: { error: "invalid_json" } } };
+  if (typeof raw.body.sql !== "string" || raw.body.sql.trim().length === 0) {
+    return { ok: false, error: { status: 400, body: { error: "sql_required" } } };
+  }
+  if (raw.body.sql.length > MAX_SQL_LENGTH) {
+    return {
+      ok: false,
+      error: { status: 400, body: { error: "sql_too_long", maxLength: MAX_SQL_LENGTH } },
+    };
+  }
+  const dbProvided = typeof raw.body.db === "string" && raw.body.db.length > 0;
+  if (!dbProvided && !opts.dbOptional) {
+    return { ok: false, error: { status: 400, body: { error: "db_required" } } };
+  }
+  return { ok: true, body: { sql: raw.body.sql, db: dbProvided ? (raw.body.db as string) : "" } };
 }
 
 // JSON body reader that swallows the parse exception into a typed

@@ -99,7 +99,7 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 
 - **GLOBAL-015** — Power users always have an escape hatch.
   - *In this feature:*
-    **Interaction note (P3):** GLOBAL-015 implies that `/v1/run` exists as a raw-SQL escape hatch. The same allowlist still applies on `/v1/run` to preserve the layered-guardrails posture (`SK-SQLAL-001`) — `/v1/run` skips the LLM, not the validator. Phase-2 escape-hatch work that loosens this needs to update both this feature and GLOBAL-015 in the same PR.
+    **Interaction note:** `/v1/run` ships in Phase 2 (`apps/api/src/run/orchestrate.ts`, backing CLI `nlq run` + SDK `client.runSql()`). It reuses this validator unchanged — `/v1/run` skips the LLM, not the validator. The orchestrator calls `validateSql()` at the same point `/v1/ask` does; pk_live keys reject writes one step earlier at the leading-verb gate (`SK-APIKEYS-003`). Future work that loosens this needs to update both this feature and `GLOBAL-015` in the same PR.
 
 ## Open questions / known unknowns
 

@@ -19,6 +19,12 @@ function stubClient(overrides: Partial<NlqClient> = {}): NlqClient {
     askStream: async () => {
       throw new Error("askStream not stubbed");
     },
+    runSql: async () => {
+      // The MCP server doesn't expose raw SQL (SK-MCP-002 — three tools,
+      // none of which call `/v1/run`); the stub satisfies the NlqClient
+      // interface but throws if a future path accidentally wires it.
+      throw new Error("runSql not stubbed");
+    },
     listChat: async () => ({ messages: [] }),
     postChat: async () => {
       throw new Error("postChat not stubbed");

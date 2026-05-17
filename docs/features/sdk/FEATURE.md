@@ -136,7 +136,7 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 
 ## Open questions / known unknowns
 
-- **`runSql()` implementation slice.** `SK-SDK-009` is design-locked; the implementation lands together with the CLI `nlq run` slice + the `/v1/run` HTTP endpoint per `GLOBAL-003` (Phase 2, see [`phase-plan.md §4`](../../phase-plan.md)). Until then, callers needing raw SQL drop to the CLI. PR description for the implementing slice must touch all three surfaces.
+- ~~**`runSql()` implementation slice.**~~ Shipped. `packages/sdk/src/index.ts` exposes `client.runSql({ db, sql, idempotencyKey? })`; backed by `POST /v1/run` in `apps/api/src/run/orchestrate.ts`; CLI `nlq run` in `cli/internal/cmd/run.go`. All three surfaces landed in one slice per `GLOBAL-003`. SQL allow-list reused (`apps/api/src/ask/sql-validate.ts`); pk_live writes rejected at the leading-verb gate (`SK-APIKEYS-003`).
 - **SSE consumer for `/v1/ask`.** The README explicitly notes this is not yet shipped (`ask()` calls the buffered JSON path). Decision deferred until the trace-streaming UX in `apps/web` requires it; the `onTrace` hook (SK-SDK-007) will be the consumer.
 - **Bundle-size budget enforcement.** `GLOBAL-013` caps the Workers bundle at 3 MiB compressed but doesn't pin a per-package budget for `@nlqdb/sdk`. Implicit target is < ~5 KB gzipped; should we land an explicit CI assertion?
 - **Python / Go / Rust SDKs.** `docs/architecture.md §3` lists them as Phase 2. We have not yet decided whether they share this feature or earn their own (`SK-SDK-PY-NNN` etc.). Revisit when the Python SDK starts.

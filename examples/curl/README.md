@@ -59,4 +59,13 @@ curl https://api.nlqdb.com/v1/ask \
   -d '{"db": "orders-tracker-a4f", "ask": "weekly revenue by drink"}'
 ```
 
+Raw SQL on `/v1/run` — same allow-list, no LLM (`GLOBAL-015`):
+
+```bash
+curl https://api.nlqdb.com/v1/run \
+  -H "Authorization: Bearer sk_live_..." \
+  -H "Idempotency-Key: $(uuidgen)" \
+  -d '{"db": "orders-tracker-a4f", "sql": "SELECT date_trunc('"'"'week'"'"', created_at) w, SUM(amount) FROM orders GROUP BY 1"}'
+```
+
 The two-endpoint API (`/v1/ask` + `/v1/run`) is the canonical surface — see `GLOBAL-017`.

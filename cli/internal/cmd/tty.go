@@ -1,20 +1,16 @@
 package cmd
 
 import (
-	"io"
 	"os"
 
 	"golang.org/x/term"
 )
 
-// isTerminal is for the SK-CLI-015 update-check gate only — output
-// formatting must never branch on it (SK-CLI-004). Uses x/term so
-// Windows console (which lacks os.ModeCharDevice in some shells) is
-// classified correctly.
-func isTerminal(out io.Writer) bool {
-	f, ok := out.(*os.File)
+// Scoped to update-check gating (`SK-CLI-015`) and the `nlq run` stdin-source check; output formatting must never branch on TTY (`SK-CLI-004`).
+func isTerminal(f any) bool {
+	file, ok := f.(*os.File)
 	if !ok {
 		return false
 	}
-	return term.IsTerminal(int(f.Fd()))
+	return term.IsTerminal(int(file.Fd()))
 }
