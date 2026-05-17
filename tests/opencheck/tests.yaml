@@ -6,39 +6,31 @@
 # Runtime substitution: the caller workflow renders `__BASE_URL__` to the
 # per-run preview alias via `sed` before invoking `bunx opencheck`.
 #
-# LLM: Groq `meta-llama/llama-4-scout-17b-16e-instruct` via OpenAI-compat
-# (https://console.groq.com/docs/openai). Three failed pivots stand
-# behind this choice:
-#   1. Gemini 2.5 Flash — run #17's LANGCHAIN_VERBOSE log surfaced
-#      systematic `429 status code (no body)` errors costing
-#      ~75-87 s per call from Gemini's 10 RPM free-tier ceiling.
-#   2. OpenRouter `qwen/qwen3-coder:free` — run #19's same verbose
-#      log surfaced `429 Provider returned error` on the FIRST LLM
-#      call of the FIRST test, on a brand-new run with no quota
-#      yet burned. The `:free` upstream pool is rate-limited by
-#      the upstream provider (Together / Fireworks / etc) and the
-#      pool is shared across ALL OpenRouter users globally —
-#      $10 in account credits only lifts OpenRouter's per-account
-#      cap, not the upstream pool. Free models on OpenRouter are
-#      not viable for our ~140-200 calls/run load.
-#   3. Groq `openai/gpt-oss-120b` — run #21's LANGCHAIN_VERBOSE log
-#      confirmed 85-90 s between LLM calls for EVERY test, causing
-#      every test to timeout at 240 s with only 2-3 LLM calls. Root
-#      cause: gpt-oss-120b is a thinking/reasoning model (generates
-#      hidden reasoning_tokens that count against TPM), AND has only
-#      8 K TPM on our on-demand account. llama-3.3-70b-versatile was
-#      considered (12 K TPM, 50 % better) but llama-4-scout has
-#      30 K TPM — 3.75 × more — verified via x-ratelimit-limit-tokens
-#      response headers. llama-4-scout is a 17B MoE model (Llama 4)
-#      with proper function calling (verified via API test), no
-#      reasoning-token inflation, and sub-150 ms response time.
-# Fallback: `llama-3.3-70b-versatile` (same provider, same key,
-# swap the `model:` line). 30 K TPM → ~15-20 s per LLM call at
-# typical snapshot sizes → ~12 calls per 240 s test budget.
+# LLM: Groq via OpenAI-compat (https://console.groq.com/docs/openai).
+# Current model: `llama-3.3-70b-versatile` (12 K TPM, 1 M TPD, no
+# reasoning-token inflation, proper function calling).
+#
+# Preferred long-term: `meta-llama/llama-4-scout-17b-16e-instruct`
+# (30 K TPM, 500 K TPD). Switch back to it once we're confident
+# a single run stays under 500 K tokens/day. With snapshot truncation
+# at 3 K chars, 14 tests × ~5 calls × 3 K tokens ≈ 210 K/run, which
+# fits — but early days of debugging exhausted today's quota across
+# multiple runs, so llama-3.3-70b-versatile (separate 1 M TPD pool)
+# is used while we verify stability.
+#
+# Failed pivots:
+#   1. Gemini 2.5 Flash (run #17): 429s from 10 RPM free-tier ceiling.
+#   2. OpenRouter qwen3-coder:free (run #19): 429 on FIRST call; shared
+#      upstream pool is rate-limited by Together/Fireworks globally.
+#   3. Groq openai/gpt-oss-120b (run #21): 8 K TPM + hidden
+#      reasoning_tokens → 85-90 s per LLM call → all tests timeout.
+#   4. Groq llama-4-scout (runs #22-#26): 500 K TPD exhausted across
+#      debugging runs; each test then waited 8+ min for quota to
+#      refill, hitting the 240 s per-test timeout.
 
 baseUrl: "__BASE_URL__"
 modelProvider: "openai"
-model: "meta-llama/llama-4-scout-17b-16e-instruct"
+model: "llama-3.3-70b-versatile"
 
 # Persistent session shares cookies + localStorage across tests so the
 # agent doesn't have to re-walk the prereq chain from a clean profile
