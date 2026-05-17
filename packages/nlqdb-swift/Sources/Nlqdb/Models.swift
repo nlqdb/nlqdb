@@ -30,12 +30,40 @@ public struct Trace: Sendable, Codable {
     }
 }
 
+public struct AskDiff: Sendable, Codable {
+    public let verb: String
+    public let table: String
+    public let affectedRows: Int
+    public let summary: String
+}
+
+public struct SelectedDbEcho: Sendable, Codable {
+    public let id: String
+    public let slug: String
+    public let confidence: Double
+    public let reason: String
+}
+
 public struct AskOk: Sendable, Codable {
     public let status: String
     public let rows: [[String: AnyCodable]]
     public let rowCount: Int
     public let trace: Trace
     public let summary: String?
+    public let requiresConfirm: Bool?
+    public let diff: AskDiff?
+    public let selectedDb: SelectedDbEcho?
+
+    enum CodingKeys: String, CodingKey {
+        case status
+        case rows
+        case rowCount
+        case trace
+        case summary
+        case requiresConfirm = "requires_confirm"
+        case diff
+        case selectedDb = "selected_db"
+    }
 }
 
 public struct DatabaseSummary: Sendable, Codable, Identifiable {
