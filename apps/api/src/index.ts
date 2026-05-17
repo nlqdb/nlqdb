@@ -1132,6 +1132,11 @@ app.post("/v1/run", requirePrincipal, async (c) => {
       if (principal.kind === "pk_live" && !parsed.body.db) {
         parsed.body.db = principal.dbId;
       }
+      // Redacted SQL preview for debugging `sql_rejected` patterns —
+      // mirrors `/v1/ask`'s `nlqdb.ask.goal_preview`. `redactPii` strips
+      // emails / phone numbers before truncation; 200 chars matches the
+      // ask path so dashboards built on either attribute behave the same.
+      span.setAttribute("nlqdb.run.sql_preview", redactPii(parsed.body.sql).slice(0, 200));
 
       // Anon-tier gates — identical ordering to `/v1/ask` so raw-SQL
       // callers can't sidestep what the chat path enforces.
@@ -1163,6 +1168,16 @@ app.post("/v1/run", requirePrincipal, async (c) => {
         c.header("X-RateLimit-Reset", String(verdict.resetAt));
         if (!verdict.ok) {
           span.setAttribute("nlqdb.run.outcome", "rate_limited_ip");
+          // SK-EVENTS-010 / GLOBAL-024 — anon rate-limit hit on the
+          // raw-SQL escape hatch is the same demand-signal class as the
+          // `/v1/ask` anon trip. Fire-and-forget through `waitUntil`.
+          c.executionCtx.waitUntil(
+            buildEventEmitter(c.env.EVENTS_QUEUE).emit({
+              name: "feature.requested.heavier_tier",
+              principalId: principal.id,
+              surface,
+            }),
+          );
           c.header("Retry-After", String(Math.max(0, verdict.resetAt - now)));
           return c.json(
             {
@@ -1219,6 +1234,24 @@ app.post("/v1/run", requirePrincipal, async (c) => {
           c.header("X-RateLimit-Remaining", String(Math.max(0, limit - count)));
           c.header("X-RateLimit-Reset", String(resetAt));
           c.header("Retry-After", String(Math.max(0, resetAt - now)));
+        }
+        // SK-EVENTS-010 — emit the heavier-tier demand signal on the
+        // orchestrator-level D1 bucket trip (the authed-bucket twin of
+        // the anon `feature.requested.heavier_tier` emit at the route
+        // top). Not routed through `emitFeatureSignal` because that
+        // helper also fires `feature.requested.ddl_via_ask` on DDL
+        // sql_rejected; on `/v1/run` the user explicitly bypassed the
+        // ask path, so the ask-tagged event would mislabel the funnel.
+        // `surface` (cli / chat / embed / mcp) is enough to track the
+        // raw-SQL slice once a `ddl_via_run` event is added.
+        if (outcome.error.status === "rate_limited") {
+          c.executionCtx.waitUntil(
+            buildEventEmitter(c.env.EVENTS_QUEUE).emit({
+              name: "feature.requested.heavier_tier",
+              principalId: principal.id,
+              surface,
+            }),
+          );
         }
         span.setAttribute("nlqdb.run.outcome", outcome.error.status);
         return c.json({ error: outcome.error }, httpStatus);

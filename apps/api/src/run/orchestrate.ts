@@ -79,7 +79,16 @@ export async function orchestrateRun(deps: RunDeps, req: RunRequest): Promise<Ru
     };
   }
 
-  const validation = validateSql(req.sql);
+  // `nlqdb.sql.validate` span matches `/v1/ask` so the validate stage
+  // shows up in the same place on dashboards built off the shared
+  // span catalog (`docs/performance.md §3.1`).
+  const validation = await tracer.startActiveSpan("nlqdb.sql.validate", async (span) => {
+    try {
+      return validateSql(req.sql);
+    } finally {
+      span.end();
+    }
+  });
   if (!validation.ok) {
     return { ok: false, error: { status: "sql_rejected", reason: validation.reason } };
   }
