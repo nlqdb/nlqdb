@@ -1,19 +1,10 @@
 # GLOBAL-001 — SDK is the only HTTP client
 
-- **Decision:** Every nlqdb surface (`apps/web`, `cli/`, `packages/mcp`,
-  `packages/elements`) consumes `@nlqdb/sdk`. No raw `fetch('/v1/...')`
-  outside `packages/sdk/`.
+- **Decision:** Every nlqdb surface consumes the canonical wire-contract client for its language: TypeScript surfaces (`apps/web`, `packages/mcp`, `packages/elements`) consume `@nlqdb/sdk`; the Go CLI (`cli/`) consumes `cli/internal/api/`, which is a Go port of the same wire contract (same auth modes, retry budget, idempotency-key semantics, and error envelope parsing as `@nlqdb/sdk`). No raw `fetch('/v1/...')` outside those two homes.
 - **Core value:** Simple, Bullet-proof
-- **Why:** Surfaces drift when each owns their HTTP client — auth-header
-  semantics, retry policy, error shape, idempotency handling end up with
-  subtle differences. One client means one place to fix bugs and one
-  place to add new endpoints. It is also the precondition for
-  `GLOBAL-002` (behavior parity).
-- **Consequence in code:** Lint/CI rejects `fetch()` calls referencing
-  `/v1/` outside `packages/sdk/`. A new endpoint lands as an SDK method
-  first; surfaces consume it after.
+- **Why:** Surfaces drift when each owns their HTTP client — auth-header semantics, retry policy, error shape, idempotency handling end up with subtle differences. One client per language means one place to fix bugs in each ecosystem and one place to add new endpoints. It is also the precondition for `GLOBAL-002` (behavior parity). A Go port (rather than a Go consumer of the TS package) was unavoidable: TypeScript packages aren't importable from Go; the alternative is per-cobra-command HTTP, which is exactly what this decision rules out.
+- **Consequence in code:** Lint/CI rejects `fetch()` calls referencing `/v1/` outside `packages/sdk/`. The Go port lives in one place (`cli/internal/api/`) and is the only file in `cli/` that opens HTTP connections. A new endpoint lands in `packages/sdk` first; the Go port mirrors it in the same PR per `GLOBAL-003`. Type shapes in `cli/internal/api/types.go` carry a docstring noting the corresponding TS type.
 - **Alternatives rejected:**
-  - Per-surface clients with shared types — types diverge subtly,
-    especially around error envelopes and retry semantics.
-  - Generated clients (OpenAPI / typed-fetch codegen) — generator quirks
-    plus a runtime surface duplication; not worth the build-time cost.
+  - Per-surface clients with shared types — types diverge subtly, especially around error envelopes and retry semantics.
+  - Generated clients (OpenAPI / typed-fetch codegen) — generator quirks plus a runtime surface duplication; not worth the build-time cost.
+  - Promote `cli/internal/api/` to `packages/sdk-go/` immediately — premature; the CLI is the only Go consumer today, and an internal package keeps the surface area small while the wire contract is still moving. Promote once a second Go consumer (Go MCP server, etc.) lands.

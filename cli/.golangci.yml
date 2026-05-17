@@ -1,0 +1,49 @@
+# golangci-lint config for the nlq CLI. Mirrors the strictness the
+# rest of the monorepo applies (gofumpt + vet + a tight default
+# enabler set). We avoid presets that bring in style-only nags so the
+# CI signal is "real bug" not "style of the week".
+version: "2"
+
+run:
+  timeout: 5m
+
+linters:
+  default: none
+  enable:
+    - errcheck
+    - govet
+    - ineffassign
+    - staticcheck
+    - unused
+    - misspell
+    - bodyclose
+    - errorlint
+    - gosec
+    - revive
+  settings:
+    errcheck:
+      # fmt.Fprint* to cobra writers / stderr can't surface useful
+      # errors to the user — checking them creates noise without
+      # adding signal.
+      exclude-functions:
+        - fmt.Fprintf
+        - fmt.Fprintln
+        - fmt.Fprint
+        - (io.Writer).Write
+        - (*os.File).Close
+    gosec:
+      excludes:
+        # G115 (integer-overflow on conversion) — only place we narrow
+        # is unix-second arithmetic where overflow can't reach 2038.
+        - G115
+    revive:
+      rules:
+        - name: exported
+          disabled: true
+        - name: package-comments
+          disabled: true
+
+formatters:
+  enable:
+    - gofumpt
+    - goimports

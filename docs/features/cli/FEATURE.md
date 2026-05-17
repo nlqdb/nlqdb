@@ -10,7 +10,20 @@ when-to-load:
 # Feature: Cli
 
 **One-liner:** `nlq` command-line tool — verbs, OS-keychain credentials, device-flow auth.
-**Status:** planned (Phase 2) — design locked through `SK-CLI-001..015` (the four `SK-CLI-012..015` blocks resolved the 2026-05 open questions on bare-form sugar, `nlq init`, telemetry, and update flow). No Go code yet (no `go.mod`; CI's `lint-go` job conditionally skips). The bootstrap PR is now a straight-line implementation of the locked design.
+**Status:** partial (Phase 2) — bootstrap PR landed:
+- `cli/go.mod` + the goal-first data verbs: `ask`, `new`, bare `nlq "<goal>"`, `db list`, `db create`, `query`, `use`, `whoami`, `logout`, `mcp detect`, `update`, `--json`, `--version`.
+- Credential store (keychain + AES-GCM fallback with per-user salt) per `SK-CLI-009`.
+- State (`SK-CLI-013`, file-locked load-mutate-save) + config (`SK-CLI-010`).
+- Background update check (`SK-CLI-015`).
+- MCP host detection (`SK-CLI-011` — the auto-detect half).
+
+Deferred to follow-up slices — gated on server endpoints that don't exist yet:
+- `nlq login` device-flow (needs `POST /v1/auth/device` per `SK-AUTH-004`).
+- `nlq mcp install` config-write (needs the device-flow session for `POST /v1/keys` to mint `sk_mcp_*`; the cobra command is wired to print the deferral hint).
+- `nlq run` raw-SQL (needs `POST /v1/run`).
+- `nlq chat` REPL (UX-only deferral; design intact).
+- `nlq keys list|rotate|revoke` (needs `GET/DELETE /v1/keys/*`).
+- `nlq connection <db>` (needs API to expose `connection_url` on `GET /v1/databases` rows).
 **Owners (code):** `cli/**`
 **Cross-refs:** docs/architecture.md §3.3 (CLI surface) · §4.3 (session lifecycle, device-flow) · §14.3 (happy-path) · docs/architecture.md §3 (matrix) · docs/phase-plan.md (Phase 2 CLI slice) · `cli/AGENTS.md` · `cli/README.md`
 
@@ -50,6 +63,7 @@ Canonical bodies live in [`decisions/`](decisions/) — one file per `SK-CLI-NNN
 Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; index in [`docs/decisions.md`](../../decisions.md)). The list below names the rules that constrain this feature; any feature-local commentary is nested under the rule.
 
 - **GLOBAL-001** — SDK is the only HTTP client.
+  - *In this feature:* the Go CLI cannot import the TypeScript `@nlqdb/sdk`, so it consumes `cli/internal/api/` — the Go port of the same wire contract (same auth modes, retry budget, idempotency-key reuse, error envelopes). All HTTP calls from `cli/` route through that one package; no other file opens connections.
 - **GLOBAL-002** — Behavior parity across surfaces.
 - **GLOBAL-010** — Credentials live in the OS keychain; `NLQDB_API_KEY` is the CI escape hatch.
 - **GLOBAL-011** — Honest latency — show the live trace; never spinner-lie.
@@ -63,10 +77,13 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 
 ## Open questions / known unknowns
 
-- **No Go code yet.** `cli/` has only `AGENTS.md` + `README.md`; CI's `lint-go` job conditionally skips while `go.mod` is absent. The Phase 2 bootstrap slice will land the binary; until then every `SK-CLI-*` decision is design-locked but unimplemented. Reviewers must surface any conflict with these decisions when the slice opens.
-- **`--engine` flag (W3, GLOBAL-003 gap).** `SK-DB-010` puts `engine?` on every surface that exposes `db.create`. The Go CLI's `nlq new --engine=<engine>` is design-locked (DESIGN §3.3 power-user path; W3 worksheet acceptance: `nlq new --engine=clickhouse "events tracker"`) but un-shippable until the Phase-2 binary slice lands. The TS SDK + HTTP API land `engine?` in W3; the CLI inherits it via a one-line `cobra` flag in the slice that introduces `cmd/new.go`. Reviewer of that slice: assert the flag forwards verbatim to the SDK call without surface-side classification logic — surfaces never re-implement the decision.
-- **Windows experience.** All `SK-CLI-*` decisions reference Keychain / libsecret / Credential Manager symmetrically, but Windows shells (cmd, PowerShell) and PATH semantics differ enough to warrant explicit testing. Capture per-platform quirks in `cli/AGENTS.md` once the binary lands — runbook concern, not a design decision.
-- **`nlq mcp install` for hosts not yet covered by SK-CLI-011.** New MCP hosts emerge regularly. Document the "add a host" recipe in `cli/AGENTS.md` so the supported list grows without re-architecting `mcphosts/` — runbook concern, not a design decision.
+- **Device-flow server endpoints.** `nlq login` / `nlq logout` / `nlq mcp install` are stubbed (return a "ships in the next slice" error) until `POST /v1/auth/device` + `POST /v1/auth/device/token` land per `SK-AUTH-004`. The credential storage layer is already in place — the missing piece is the wire endpoints. The CLI's `auth.Resolve` already returns `KindSignedIn` when a refresh token exists in the keychain, so the rollout is "land the endpoints, wire the device-flow polling loop, done."
+- **`nlq run` (raw SQL escape hatch).** `GLOBAL-015` keeps the verb in the design list; `apps/api` does not yet expose `POST /v1/run`. The slice that adds the endpoint also wires `nlq run` + `client.runSql()` in the TS SDK in the same PR per `GLOBAL-002`.
+- **`nlq chat` REPL.** A separate slice; intentionally deferred because the typed-line UX is non-trivial and the bootstrap focuses on the goal-first single-command path.
+- **`nlq keys list|rotate|revoke`.** Needs `GET /v1/keys`, `POST /v1/keys/:id/rotate`, `DELETE /v1/keys/:id`. Currently only `POST /v1/keys` is implemented (the mint path).
+- **`nlq connection <db>` for hosted Postgres.** Wants a raw `postgres://…` URL on `GET /v1/databases` rows. Today the SDK returns it on the create response only. The unblock is one API field; the CLI verb is one cobra command.
+- **Windows experience.** The bootstrap PR cross-compiled to windows/amd64 and the binary builds, but Windows shell quirks (cmd, PowerShell), the Credential Manager backend, and `~/.config` semantics under `APPDATA` need a manual round-trip on real hardware. Per-platform quirks land in `cli/AGENTS.md` once they're observed.
+- **`nlq mcp install` for hosts not yet covered by SK-CLI-011.** New MCP hosts emerge regularly. Add-a-host recipe in `cli/AGENTS.md` so the supported list grows without re-architecting `cli/internal/mcphosts/` — runbook concern, not a design decision.
 
 ## Happy path walkthrough
 

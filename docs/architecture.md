@@ -23,7 +23,7 @@ Acceptance criteria for every PR. Violations don't ship.
   - `nlq mcp install` auto-detects installed hosts, signs in if needed, provisions a host-scoped key per host.
   - Credentials live in the OS keychain — never plaintext files.
   - Revocation is instant: every token listed with last-used, one click to revoke.
-- **Fast.** p50 query < 400ms (cache hit), p95 < 1.5s (cache miss), cold start < 800ms. CLI binary < 8MB, starts < 30ms.
+- **Fast.** p50 query < 400ms (cache hit), p95 < 1.5s (cache miss), cold start < 800ms. CLI binary < 10MB raw / < 4MB gzipped, starts < 30ms (measured 5ms on the bootstrap PR — see `SK-CLI-001`).
 - **Goal-first, not DB-first.** No persona woke up wanting to "create a database." The DB is plumbing. See §0.1.
 - **Bullet-proof by design, not by handling.** Make bad states unreachable:
   - Schemas only widen — no "schema mismatch" branch.
