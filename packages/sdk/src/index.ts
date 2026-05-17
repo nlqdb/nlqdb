@@ -350,6 +350,30 @@ export type RevokeKeyResult = {
   alreadyRevoked: boolean;
 };
 
+// SK-APIKEYS-007 — `POST /v1/keys` mint. `sk_live` carries an optional
+// human `name`; `sk_mcp` carries `(host, device)` claims per
+// `SK-APIKEYS-004`. The plaintext lands here exactly once
+// (`SK-APIKEYS-002`) — surfaces must copy on the same render or it is
+// gone for good.
+export type MintKeyRequest =
+  | { type: "sk_live"; name?: string }
+  | { type: "sk_mcp"; host: string; device: string };
+
+export type MintKeyResult = {
+  id: string;
+  type: "sk_live" | "sk_mcp";
+  // Full plaintext — present exactly once on the mint response, never
+  // again. Surfaces render it inside a copy-once affordance and drop
+  // the value from memory once dismissed.
+  key: string;
+  last4: string;
+  // Echoes the request claims so a wrapping UI can render the row
+  // without a follow-up `listKeys()` round-trip.
+  name?: string;
+  host?: string;
+  device?: string;
+};
+
 // SK-MCP-013 — cross-Worker bridge. `apps/mcp/`'s `bridgeHandler`
 // redeems the one-shot code minted by `apps/api/`'s
 // `POST /v1/oauth/mcp-callback`. The code itself is the auth proof
@@ -402,6 +426,15 @@ export type NlqClient = {
   // of the plaintext key (never the plaintext itself), computed via
   // `hmacHex` in the calling Worker.
   getKeyStatus(keyHash: string, opts?: { signal?: AbortSignal }): Promise<KeyStatus>;
+  // SK-APIKEYS-007 — mint a new `sk_live_*` or `sk_mcp_*` key. Session-
+  // only on the server side — a leaked `sk_live_` cannot bootstrap
+  // sibling keys. The returned `key` is the plaintext, present exactly
+  // once per `SK-APIKEYS-002` — callers must hand it to the user (or
+  // the host config file) on the same render.
+  mintKey(
+    req: MintKeyRequest,
+    opts?: { signal?: AbortSignal; idempotencyKey?: string },
+  ): Promise<MintKeyResult>;
   // SK-APIKEYS-010 — list the caller's keys (active + revoked, newest
   // first; revoked rows sorted to the bottom). Session-cookie only:
   // a leaked `sk_live_` cannot enumerate sibling keys.
@@ -720,6 +753,15 @@ export function createClient(opts: ClientOptions = {}): NlqClient {
     getKeyStatus: (keyHash, callOpts) =>
       call<KeyStatus>(`/v1/keys/${encodeURIComponent(keyHash)}/status`, {
         signal: callOpts?.signal,
+      }),
+    mintKey: (req, callOpts) =>
+      call<MintKeyResult>("/v1/keys", {
+        method: "POST",
+        body: JSON.stringify(req),
+        signal: callOpts?.signal,
+        ...(callOpts?.idempotencyKey
+          ? { headers: { "idempotency-key": callOpts.idempotencyKey } }
+          : {}),
       }),
     listKeys: (callOpts) => call<{ keys: KeyRecord[] }>("/v1/keys", { signal: callOpts?.signal }),
     revokeKey: (keyId, callOpts) =>

@@ -141,7 +141,7 @@ tests:
       #schema-mismatch-clarifies, then press Ctrl+K (Cmd+K on Mac).
       Verify a modal appears with placeholder "Type a command…" and
       action labels including at least two of "New database",
-      "Copy embed snippet", "Settings", "Sign out". Press Escape
+      "Copy embed snippet", "API keys", "Sign out". Press Escape
       and verify the modal closes.
 
   - name: "#delete-row"
@@ -184,12 +184,30 @@ tests:
       Verify the dialog closes and that database entry is gone
       from the sidebar list.
 
+  - name: "#api-keys-mint-and-revoke"
+    case: |
+      #delete-active-db-typed-confirm, then navigate the browser
+      directly to "/app/keys" (the dashboard's API-key page from
+      SK-APIKEYS-012). Verify a heading "API keys" is visible.
+      Click the "New key" button. A modal appears with the heading
+      "Mint a new key". Type
+        opencheck-smoke
+      into the "Label (optional)" input and click the "Mint" button.
+      The modal heading swaps to "Copy your new key" and a <code>
+      block contains a string starting with "sk_live_". Click
+      the "Done" button to close the dialog. Verify a key row with
+      the label "opencheck-smoke" is now present in the list.
+      Click "Revoke" on that row, then in the confirm dialog
+      ("Revoke this key?") click the "Revoke" button. Verify the
+      row moves to the "Revoked" group (the "Active" group no
+      longer contains the "opencheck-smoke" row).
+
   - name: "#sign-out"
     case: |
-      #delete-active-db-typed-confirm, then open the topnav user
-      menu and click "Sign out". Verify the URL is no longer "/app"
-      and the topnav shows a "Sign in" link instead of the user
-      menu.
+      #api-keys-mint-and-revoke, then navigate back to "/app", open
+      the topnav user menu and click "Sign out". Verify the URL is
+      no longer "/app" and the topnav shows a "Sign in" link instead
+      of the user menu.
 
   - name: "#sign-in-again"
     case: |

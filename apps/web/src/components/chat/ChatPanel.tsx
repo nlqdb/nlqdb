@@ -606,11 +606,11 @@ function ChatPanelInner({ apiBase }: ChatPanelProps) {
         },
       },
       {
-        id: "settings",
-        label: "Settings",
-        hint: "API keys, billing",
+        id: "keys",
+        label: "API keys",
+        hint: "Mint, list, revoke",
         run: () => {
-          if (typeof window !== "undefined") window.location.assign("/app/settings");
+          if (typeof window !== "undefined") window.location.assign("/app/keys");
         },
       },
       {

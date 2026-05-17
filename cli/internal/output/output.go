@@ -59,7 +59,7 @@ func (w *Writer) WriteKeys(rows []api.KeyRecord) error {
 		return w.JSON(map[string]any{"keys": rows})
 	}
 	if len(rows) == 0 {
-		_, err := fmt.Fprintln(w.Err, "No keys yet. Mint one from app.nlqdb.com/keys.")
+		_, err := fmt.Fprintln(w.Err, "No keys yet. Mint one from app.nlqdb.com/app/keys.")
 		return err
 	}
 	tw := tabwriter.NewWriter(w.Out, 0, 0, 2, ' ', 0)

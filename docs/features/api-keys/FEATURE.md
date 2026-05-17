@@ -12,8 +12,8 @@ when-to-load:
 # Feature: Api Keys
 
 **One-liner:** Long-lived API keys for CI / MCP hosts; rotation, revocation, scoping.
-**Status:** partial — `pk_live_` (per-DB read-only), `sk_live_` and `sk_mcp_*` mint via `POST /v1/keys` (slices 1 + 3b of `SK-MCP-010`); HMAC-SHA256 hashing, `revoked_at` column + `lookupSkKey` filtering it out, `last_used_at` bump on lookup, OAuth-callback mint path (`SK-APIKEYS-009`). **`GET /v1/keys` + `DELETE /v1/keys/:id` ship** (`SK-APIKEYS-010` / `SK-APIKEYS-011`) — SDK + CLI `nlq keys list|revoke` wired. Dashboard UI, origin pinning for `pk_live_` (`SK-APIKEYS-003` `allow_origins`), rotation grace (`SK-APIKEYS-005`), global sign-out (`SK-APIKEYS-006`), dedicated `API_KEY_SECRET`, and `<nlq-action>` write-tokens remain open (see Open questions).
-**Owners (code):** `apps/api/src/api-keys.ts`, `apps/api/src/principal.ts`, `apps/api/src/index.ts` (`POST /v1/keys`, `GET /v1/keys`, `DELETE /v1/keys/:id`, `GET /v1/databases`), `packages/sdk/**`, `cli/internal/cmd/keys.go`
+**Status:** partial — `pk_live_` (per-DB read-only), `sk_live_` and `sk_mcp_*` mint via `POST /v1/keys` (slices 1 + 3b of `SK-MCP-010`); HMAC-SHA256 hashing, `revoked_at` column + `lookupSkKey` filtering it out, `last_used_at` bump on lookup, OAuth-callback mint path (`SK-APIKEYS-009`). **`GET /v1/keys` + `DELETE /v1/keys/:id` ship** (`SK-APIKEYS-010` / `SK-APIKEYS-011`) — SDK + CLI `nlq keys list|revoke` wired. **Dashboard UI ships** at `/app/keys` (`SK-APIKEYS-012`) — copy-once mint modal + revoke-confirm dialog, SDK gains `client.mintKey()`; the Cmd+K palette in chat and the MCP `auth_required` envelope both point here. Origin pinning for `pk_live_` (`SK-APIKEYS-003` `allow_origins`), rotation grace (`SK-APIKEYS-005`), global sign-out (`SK-APIKEYS-006`), dedicated `API_KEY_SECRET`, and `<nlq-action>` write-tokens remain open (see Open questions).
+**Owners (code):** `apps/api/src/api-keys.ts`, `apps/api/src/principal.ts`, `apps/api/src/index.ts` (`POST /v1/keys`, `GET /v1/keys`, `DELETE /v1/keys/:id`, `GET /v1/databases`), `packages/sdk/**`, `cli/internal/cmd/keys.go`, `apps/web/src/pages/app/keys.astro`, `apps/web/src/components/keys/**`
 **Cross-refs:** docs/architecture.md §4.1 (key types), §4.4 (service-to-service), §4.5 (rotation/revocation), §3.4 (MCP per-host keys) · docs/runbook.md §4 (Secrets)
 
 ## Touchpoints — read this feature before editing
@@ -22,8 +22,9 @@ when-to-load:
 - `apps/api/src/principal.ts` (`Principal` discriminated union; bearer parsers; `accountTenantIdFromPrincipal`)
 - `apps/api/src/index.ts` (`POST /v1/keys` mint, `GET /v1/keys` list, `DELETE /v1/keys/:id` revoke, `GET /v1/databases` account-scoped principal gate)
 - `apps/api/migrations/0011_api_keys.sql` (initial table) + `0012_api_keys_sk_columns.sql` (sk_mcp claims) + `0013_api_keys_revoked.sql` (`revoked_at`)
-- `packages/sdk/**` (`listKeys`, `revokeKey`, `KeyRecord`)
+- `packages/sdk/**` (`mintKey`, `listKeys`, `revokeKey`, `KeyRecord`, `MintKeyRequest`, `MintKeyResult`)
 - `cli/internal/cmd/keys.go` (`nlq keys list`, `nlq keys revoke`)
+- `apps/web/src/pages/app/keys.astro` + `apps/web/src/components/keys/**` (dashboard UI per `SK-APIKEYS-012`)
 
 ## Decisions
 
@@ -40,6 +41,7 @@ Canonical bodies live in [`decisions/`](decisions/) — one file per `SK-APIKEYS
 - [**SK-APIKEYS-009**](decisions/SK-APIKEYS-009-sk-mcp-server-side-mint.md) — `sk_mcp_*` minted server-side at `POST /v1/oauth/mcp-callback`, never displayed.
 - [**SK-APIKEYS-010**](decisions/SK-APIKEYS-010-list-endpoint.md) — `GET /v1/keys` lists the caller's inventory in one envelope; no pagination in v1.
 - [**SK-APIKEYS-011**](decisions/SK-APIKEYS-011-hard-revoke.md) — `DELETE /v1/keys/:id` is hard-revoke; rotation grace lives in SK-APIKEYS-005.
+- [**SK-APIKEYS-012**](decisions/SK-APIKEYS-012-dashboard-ui.md) — Dashboard key-management UI at `/app/keys` with copy-once mint + confirm-revoke; SDK gains `client.mintKey()`.
 
 ## GLOBALs governing this feature
 
@@ -52,7 +54,7 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 
 ## Open questions / known unknowns
 
-- **Dashboard key-management UI (Phase 2).** `POST /v1/keys` + `GET /v1/keys` + `DELETE /v1/keys/:id` all ship; the dashboard pages that wrap them — generate-key form, copy-once toast (`SK-APIKEYS-002`), key list with `last_4` + `last_used_at` + label, revoke button — are open work in `apps/web`. The `nlq mcp install` deep-link flow (`SK-MCP-007` happy path) wires through `app.nlqdb.com/mcp` and depends on the same UI surface.
+- **Dashboard `app.nlqdb.com/mcp` deep-link landing.** `/app/keys` ships per `SK-APIKEYS-012` (generate-key form, copy-once disclosure, key list with `last_4` + `last_used_at` + label, revoke confirm). The `nlq mcp install` deep-link flow (`SK-MCP-007` happy path) still needs a sibling `/mcp` landing that calls `POST /v1/oauth/mcp-callback` and serves the `nlqdb://install?…` deep link — that's the next slice in `mcp-server/FEATURE.md`'s install paths, not blocked on this surface.
 - **`POST /v1/keys/:id/rotate`.** Mint + hard-revoke are live; rotation with 60-day grace + webhook is not. Lands alongside the events-pipeline rotation event ([`SK-APIKEYS-005`](decisions/SK-APIKEYS-005-rotation-grace.md)). Until then, "recover from a lost key" is "mint a new one and revoke the old".
 - **`SK-APIKEYS-006` "sign out everywhere" wiring.** The decision (revoke every `sk_mcp_…` row on global sign-out, leave `sk_live_` / `pk_live_` alone) is locked, but no global-sign-out endpoint exists yet — Better Auth's per-session sign-out is the only path today. Implement when the dashboard "sign out everywhere" affordance ships.
 - **Dedicated `API_KEY_SECRET`.** `SK-APIKEYS-008` reuses `BETTER_AUTH_SECRET` as the HMAC key. Phase 2 should add a separate `API_KEY_SECRET` secret so key-hash HMAC and session-signing HMAC use independent keys. Rotation of one doesn't invalidate the other.
