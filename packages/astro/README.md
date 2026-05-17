@@ -1,6 +1,6 @@
 # @nlqdb/astro
 
-Astro 5 integration for [`<nlq-data>`](../elements). Injects the elements CDN bundle on every page and ships a typed `<NlqData />` Astro component.
+Astro 5 integration for [`<nlq-data>`](../elements) + [`<nlq-action>`](../elements). Injects the elements CDN bundle on every page and ships typed `<NlqData />` and `<NlqAction />` Astro components.
 
 ## Install
 
@@ -34,10 +34,23 @@ const apiKey = import.meta.env.PUBLIC_NLQDB_KEY;
 />
 ```
 
-Or use the bare tag — Astro is custom-element-friendly out of the box:
+Writes use [`NlqAction.astro`](./src/NlqAction.astro):
+
+```astro
+---
+import { NlqAction } from "@nlqdb/astro/NlqAction.astro";
+---
+<form id="order-form">
+  <input name="customer" />
+  <NlqAction goal="log this order" form="order-form" api-key={apiKey}>Submit</NlqAction>
+</form>
+```
+
+Or use the bare tags — Astro is custom-element-friendly out of the box:
 
 ```astro
 <nlq-data goal="…" api-key="pk_live_…" template="table"></nlq-data>
+<nlq-action goal="…" api-key="pk_live_…" form="order-form">Submit</nlq-action>
 ```
 
 ## Self-host / preview deploys

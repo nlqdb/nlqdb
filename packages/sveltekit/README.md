@@ -23,7 +23,7 @@ bun add @nlqdb/sveltekit @nlqdb/svelte @nlqdb/elements
 ```svelte
 <!-- src/routes/+page.svelte -->
 <script lang="ts">
-  import { NlqData } from "@nlqdb/sveltekit";
+  import { NlqAction, NlqData } from "@nlqdb/sveltekit";
   import { env } from "$env/dynamic/public";
 </script>
 
@@ -33,6 +33,11 @@ bun add @nlqdb/sveltekit @nlqdb/svelte @nlqdb/elements
   template="table"
   refresh="60s"
 />
+
+<form id="order-form">
+  <input name="customer" />
+  <NlqAction goal="log this order" form="order-form" apiKey={env.PUBLIC_NLQDB_KEY}>Submit</NlqAction>
+</form>
 ```
 
 ## Server-side fetch

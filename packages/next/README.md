@@ -35,16 +35,24 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
 ```tsx
 // app/page.tsx
-import { NlqData } from "@nlqdb/next";
+import { NlqAction, NlqData } from "@nlqdb/next";
 
 export default function Page() {
   return (
-    <NlqData
-      goal="today's revenue by drink"
-      apiKey={process.env.NEXT_PUBLIC_NLQDB_KEY!}
-      template="table"
-      refresh="60s"
-    />
+    <>
+      <NlqData
+        goal="today's revenue by drink"
+        apiKey={process.env.NEXT_PUBLIC_NLQDB_KEY!}
+        template="table"
+        refresh="60s"
+      />
+      <form id="order-form">
+        <input name="customer" />
+        <NlqAction goal="log this order" form="order-form" apiKey={process.env.NEXT_PUBLIC_NLQDB_KEY!}>
+          Submit
+        </NlqAction>
+      </form>
+    </>
   );
 }
 ```

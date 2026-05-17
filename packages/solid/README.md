@@ -1,6 +1,6 @@
 # @nlqdb/solid
 
-SolidJS wrapper for [`<nlq-data>`](../elements). Uses Solid's native `attr:` and `on:` namespaces.
+SolidJS wrappers for [`<nlq-data>`](../elements) (reads) and [`<nlq-action>`](../elements) (writes). Plain JSX attribute pass-through plus imperative event-listener wiring.
 
 ## Install
 

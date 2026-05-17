@@ -1,6 +1,6 @@
 # @nlqdb/vue
 
-Vue 3.5 wrapper for [`<nlq-data>`](../elements).
+Vue 3.5 wrappers for [`<nlq-data>`](../elements) (reads) and [`<nlq-action>`](../elements) (writes with preview→Apply).
 
 ## Install
 
@@ -40,13 +40,32 @@ const apiKey = import.meta.env.VITE_NLQDB_KEY;
 </template>
 ```
 
+### Write — `<NlqAction>`
+
+```vue
+<template>
+  <form id="order-form">
+    <input name="customer" />
+    <NlqAction
+      goal="log this order"
+      form="order-form"
+      :api-key="apiKey"
+      @confirm-required="({ diff }) => console.info('preview', diff)"
+      @success="({ rowCount }) => console.info('committed', rowCount)"
+      on-success-action="reload"
+    >Submit order</NlqAction>
+  </form>
+</template>
+```
+
 ### Direct tag form
 
-`configureNlqdb(app)` also wires `compilerOptions.isCustomElement` so you can write `<nlq-data>` directly in templates without the Vue compiler warning:
+`configureNlqdb(app)` also wires `compilerOptions.isCustomElement` so you can write the raw tags directly in templates:
 
 ```vue
 <template>
   <nlq-data goal="…" api-key="pk_live_…" template="table"></nlq-data>
+  <nlq-action goal="…" api-key="pk_live_…" form="order-form">Submit</nlq-action>
 </template>
 ```
 

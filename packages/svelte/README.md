@@ -1,6 +1,6 @@
 # @nlqdb/svelte
 
-Svelte 5 wrapper for [`<nlq-data>`](../elements). Component uses runes (`$props`).
+Svelte 5 wrappers for [`<nlq-data>`](../elements) (reads) and [`<nlq-action>`](../elements) (writes). Components use runes (`$props`).
 
 ## Install
 
@@ -25,6 +25,25 @@ bun add @nlqdb/svelte @nlqdb/elements
 ```
 
 The component imports `@nlqdb/elements` on mount, so the bundle is only loaded once an `<NlqData>` actually renders. SSR-safe: the dynamic import is guarded by `typeof customElements !== "undefined"`.
+
+## Write — `<NlqAction>`
+
+```svelte
+<script lang="ts">
+  import { NlqAction } from "@nlqdb/svelte";
+</script>
+
+<form id="order-form">
+  <input name="customer" />
+  <NlqAction
+    goal="log this order"
+    form="order-form"
+    apiKey={import.meta.env.PUBLIC_NLQDB_KEY}
+    onsuccess={({ rowCount }) => console.info("committed", rowCount)}
+    onSuccessAction="reload"
+  >Submit order</NlqAction>
+</form>
+```
 
 ## SvelteKit
 

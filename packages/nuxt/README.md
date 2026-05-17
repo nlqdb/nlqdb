@@ -29,8 +29,15 @@ export default defineNuxtConfig({
     refresh="60s"
     @load="({ rows, cached }) => console.info(rows, cached)"
   />
+
+  <form id="order-form">
+    <input name="customer" />
+    <NlqAction goal="log this order" form="order-form">Submit</NlqAction>
+  </form>
 </template>
 ```
+
+Both `<NlqData>` and `<NlqAction>` are auto-imported.
 
 The publishable key is read from `runtimeConfig.public.nlqdb.publishableKey`. Set it in `nuxt.config.ts` or override per call.
 
