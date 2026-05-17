@@ -8,12 +8,12 @@ Read [`docs/features/e2e-coverage/FEATURE.md`](../../docs/features/e2e-coverage/
 
 | ID | Persona | Primary surfaces | Folder |
 |----|---------|-------------------|--------|
-| P1 | The Solo Builder | CLI · SDK · web · examples (Next.js, Astro) | [`P1-solo-builder/`](./P1-solo-builder/) |
+| P1 | The Solo Builder | CLI · SDK · web · examples (Next.js, Astro, React, Vue) | [`P1-solo-builder/`](./P1-solo-builder/) |
 | P2 | The Agent Builder | MCP · CLI (`nlq mcp install`) | [`P2-agent-builder/`](./P2-agent-builder/) |
 | P3 | The Data-Curious Analyst / PM / Ops | web | [`P3-data-analyst/`](./P3-data-analyst/) |
 | P4 | The Backend Engineer at a Small Startup | SDK · examples (Nuxt, SvelteKit) · CLI (cron) | [`P4-backend-engineer/`](./P4-backend-engineer/) |
-| P5 | The Student / First-Timer | web (anonymous mode) · examples (HTML) | [`P5-student/`](./P5-student/) |
-| P6 | The Analytics / Observability Engineer | CLI (pipelines) · examples (curl, CLI) · SDK | [`P6-analytics-engineer/`](./P6-analytics-engineer/) |
+| P5 | The Student / First-Timer | web (anonymous mode) · examples (HTML, Svelte) | [`P5-student/`](./P5-student/) |
+| P6 | The Analytics / Observability Engineer | CLI (pipelines) · examples (curl, CLI, Solid) · SDK | [`P6-analytics-engineer/`](./P6-analytics-engineer/) |
 
 ## How a persona test maps to a runner
 

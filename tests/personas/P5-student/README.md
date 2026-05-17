@@ -18,6 +18,7 @@
 | 3 — mutation gates to `/auth/sign-in` | Web | opencheck | [`tests/opencheck/tests.yaml`](../../opencheck/tests.yaml) (case `#add-row-redirects-to-auth`) |
 | 4 — mock-IdP sign-in, pre-filled prompt preserved | Web | opencheck | [`tests/opencheck/tests.yaml`](../../opencheck/tests.yaml) (cases `#mock-sign-in`, `#authed-state-preserved`) |
 | 5 — plain HTML embed: same snippet boots in a browser | Examples | Playwright via shared harness | [`examples/html/e2e/smoke.spec.ts`](../../../examples/html/e2e/smoke.spec.ts) |
+| 5 — Svelte 5 (runes) via the typed `@nlqdb/svelte` wrapper — smallest mental model for a first-timer | Examples | Playwright via shared harness | [`examples/svelte/e2e/smoke.spec.ts`](../../../examples/svelte/e2e/smoke.spec.ts) |
 
 ## GLOBALs this journey verifies end-to-end
 
