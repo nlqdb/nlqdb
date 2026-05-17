@@ -1,0 +1,124 @@
+# Reusable ephemeral preview spin-up — Neon branch + Workers Versions alias.
+# Shared by e2e-opencheck.yml and e2e-examples.yml. See FEATURE.md SK-E2E-004.
+
+name: E2E staging (reusable)
+
+on:
+  workflow_call:
+    inputs:
+      branch_name:
+        description: "Neon branch name (also the Workers preview alias)."
+        required: false
+        type: string
+        default: e2e
+      wrangler_message:
+        description: "Wrangler version-upload message — surfaces in the Cloudflare dashboard."
+        required: false
+        type: string
+        default: "E2E preview"
+    outputs:
+      base_url:
+        description: "Per-run preview URL (alias-hosted, mock-IdP enabled)."
+        value: ${{ jobs.deploy.outputs.base_url }}
+    secrets:
+      NEON_API_KEY: { required: true }
+      NEON_PROJECT_ID: { required: true }
+      PREVIEW_BETTER_AUTH_SECRET: { required: true }
+      CLOUDFLARE_API_TOKEN: { required: true }
+      CLOUDFLARE_ACCOUNT_ID: { required: true }
+
+permissions: {}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    outputs:
+      base_url: ${{ steps.url.outputs.base_url }}
+    permissions:
+      contents: read
+    env:
+      E2E_NEON_BRANCH: ${{ inputs.branch_name }}
+      E2E_PREVIEW_ALIAS: ${{ inputs.branch_name }}
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - uses: ./.github/actions/setup
+
+      - name: Build apps/web
+        working-directory: apps/web
+        run: bun run build
+
+      # Workers Static Assets serves matching files before the fetch handler, so the real sign-in page would shadow the mock-IdP route.
+      - name: Strip real sign-in page (mock-IdP override)
+        run: rm -rf apps/web/dist/auth/sign-in
+
+      # Neon only returns the connection URI on create, not on lookup, so delete-then-create is the only way to get fresh credentials.
+      - name: Recreate Neon branch
+        id: neon
+        env:
+          NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
+          NEON_PROJECT_ID: ${{ secrets.NEON_PROJECT_ID }}
+        run: |
+          set -euo pipefail
+          existing=$(curl -fsSL \
+            "https://console.neon.tech/api/v2/projects/${NEON_PROJECT_ID}/branches" \
+            -H "Authorization: Bearer ${NEON_API_KEY}" \
+            | jq -r ".branches[] | select(.name == \"${E2E_NEON_BRANCH}\") | .id")
+          if [ -n "$existing" ]; then
+            echo "deleting stale ${E2E_NEON_BRANCH} branch (${existing})"
+            curl -fsSL -X DELETE \
+              "https://console.neon.tech/api/v2/projects/${NEON_PROJECT_ID}/branches/${existing}" \
+              -H "Authorization: Bearer ${NEON_API_KEY}" > /dev/null
+          fi
+          response=$(curl -fsSL -X POST \
+            "https://console.neon.tech/api/v2/projects/${NEON_PROJECT_ID}/branches" \
+            -H "Authorization: Bearer ${NEON_API_KEY}" \
+            -H "Content-Type: application/json" \
+            -d "{\"branch\": {\"name\": \"${E2E_NEON_BRANCH}\"}, \"endpoints\": [{\"type\": \"read_write\"}]}")
+          db_url=$(echo "$response" | jq -r '.connection_uris[0].connection_uri // empty')
+          if [ -z "$db_url" ]; then
+            echo "::error::Neon API did not return connection_uris[0].connection_uri"
+            echo "$response" | jq .
+            exit 1
+          fi
+          echo "::add-mask::$db_url"
+          echo "database_url=$db_url" >> "$GITHUB_OUTPUT"
+
+      - name: Upload preview version
+        working-directory: apps/api
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          WRANGLER_OUTPUT_FILE_DIRECTORY: ${{ github.workspace }}/wrangler-out
+          DATABASE_URL: ${{ steps.neon.outputs.database_url }}
+          BETTER_AUTH_SECRET: ${{ secrets.PREVIEW_BETTER_AUTH_SECRET }}
+          PREVIEW_BASE_URL: "https://${{ env.E2E_PREVIEW_ALIAS }}-nlqdb-api.omer-hochman.workers.dev"
+        run: |
+          set -euo pipefail
+          mkdir -p "$WRANGLER_OUTPUT_FILE_DIRECTORY"
+          bunx wrangler versions upload \
+            --message "${{ inputs.wrangler_message }}" \
+            --preview-alias "${E2E_PREVIEW_ALIAS}" \
+            --var "NODE_ENV:preview" \
+            --var "MOCK_IDP:1" \
+            --var "MOCK_STRIPE:1" \
+            --var "BETTER_AUTH_URL:${PREVIEW_BASE_URL}" \
+            --var "MAGIC_LINK_WEB_ORIGIN:${PREVIEW_BASE_URL}" \
+            --var "DATABASE_URL:${DATABASE_URL}" \
+            --var "BETTER_AUTH_SECRET:${BETTER_AUTH_SECRET}"
+
+      - name: Extract preview URL
+        env:
+          WRANGLER_OUTPUT_FILE_DIRECTORY: ${{ github.workspace }}/wrangler-out
+          CF_WORKERS_SUBDOMAIN: omer-hochman
+        run: sh "$GITHUB_WORKSPACE/scripts/extract-wrangler-preview-url.sh"
+
+      - id: url
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -z "${PREVIEW_URL:-}" ]; then
+            echo "::error::no preview URL captured from wrangler output"
+            exit 1
+          fi
+          echo "base_url=$PREVIEW_URL" >> "$GITHUB_OUTPUT"

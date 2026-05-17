@@ -1,20 +1,5 @@
-# nlqdb — manually-triggered E2E opencheck against an ephemeral preview.
-#
-# Trigger: `workflow_dispatch` only. Scheduling (daily / on-change) is
-# driven externally by a Claude cron job that hits the dispatch endpoint
-# when it decides a run is warranted.
-#
-# Why ephemeral preview (vs. long-lived staging or canary):
-# Same pattern as `preview-app.yml` — per-run Neon branch + Workers
-# Versions upload with MOCK_IDP=1, MOCK_STRIPE=1 under a fixed `e2e`
-# preview alias. Always-fresh state, no drift, `MOCK_IDP=1` removes
-# the OAuth round-trip so opencheck can sign in with the built-in
-# form (`SK-AUTH-018`). Cleaned up at the end of every run so the
-# Neon Free-tier branch ceiling stays clear.
-#
-# `concurrency: cancel-in-progress: false` — if two dispatches overlap,
-# queue rather than cancel. Cancelling mid-run would leave a Neon branch
-# + Workers version orphaned (cleanup only fires at the end).
+# Manual-trigger web e2e (opencheck) against an ephemeral preview.
+# Shares the `e2e-staging` concurrency group with e2e-examples.yml.
 
 name: E2E (opencheck)
 
@@ -22,172 +7,44 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: e2e-opencheck
+  group: e2e-staging
   cancel-in-progress: false
 
-# SK-CIPERM-001 — default-deny at the workflow root; each job grants
-# its own minimum.
 permissions: {}
-
-# Fixed names so cleanup can find them regardless of which step
-# crashed mid-run. Per-run uniqueness comes from `github.run_id` only
-# where strictly needed (artifact name); the staging surface itself
-# is single-tenant ("there is one E2E env").
-env:
-  E2E_NEON_BRANCH: e2e
-  E2E_PREVIEW_ALIAS: e2e
 
 jobs:
   deploy-staging:
     name: Spin up ephemeral preview
-    runs-on: ubuntu-latest
-    timeout-minutes: 8
-    outputs:
-      base_url: ${{ steps.url.outputs.base_url }}
     permissions:
       contents: read
-    steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
-      - uses: ./.github/actions/setup
-
-      - name: Preflight — required secrets present
-        env:
-          NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
-          NEON_PROJECT_ID: ${{ secrets.NEON_PROJECT_ID }}
-          PREVIEW_BETTER_AUTH_SECRET: ${{ secrets.PREVIEW_BETTER_AUTH_SECRET }}
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
-        run: |
-          set -euo pipefail
-          missing=()
-          [ -n "${NEON_API_KEY:-}" ] || missing+=(NEON_API_KEY)
-          [ -n "${NEON_PROJECT_ID:-}" ] || missing+=(NEON_PROJECT_ID)
-          [ -n "${PREVIEW_BETTER_AUTH_SECRET:-}" ] || missing+=(PREVIEW_BETTER_AUTH_SECRET)
-          [ -n "${CLOUDFLARE_API_TOKEN:-}" ] || missing+=(CLOUDFLARE_API_TOKEN)
-          [ -n "${CLOUDFLARE_ACCOUNT_ID:-}" ] || missing+=(CLOUDFLARE_ACCOUNT_ID)
-          [ -n "${GROQ_API_KEY:-}" ] || missing+=(GROQ_API_KEY)
-          if [ ${#missing[@]} -ne 0 ]; then
-            echo "::error::missing required secrets: ${missing[*]}"
-            exit 1
-          fi
-
-      # `apps/api`'s `[assets]` binding points at `../web/dist`
-      # (SK-AUTH-016) — build web before uploading the merged Worker.
-      - name: Build apps/web
-        working-directory: apps/web
-        run: bun run build
-
-      # Mock IdP override — Workers Static Assets serves matching
-      # files BEFORE the fetch handler. Without this, the real
-      # `/auth/sign-in` page overshadows the mock-IdP route.
-      - name: Strip real sign-in page (mock-IdP override)
-        run: rm -rf apps/web/dist/auth/sign-in
-
-      # Idempotent recreate: the fixed `e2e` branch name means a re-run
-      # finds a stale branch. Delete then recreate for fresh credentials
-      # (Neon only returns the connection URI on create, not on lookup).
-      - name: Recreate Neon branch
-        id: neon
-        env:
-          NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
-          NEON_PROJECT_ID: ${{ secrets.NEON_PROJECT_ID }}
-        run: |
-          set -euo pipefail
-          existing=$(curl -fsSL \
-            "https://console.neon.tech/api/v2/projects/${NEON_PROJECT_ID}/branches" \
-            -H "Authorization: Bearer ${NEON_API_KEY}" \
-            | jq -r ".branches[] | select(.name == \"${E2E_NEON_BRANCH}\") | .id")
-          if [ -n "$existing" ]; then
-            echo "deleting stale ${E2E_NEON_BRANCH} branch (${existing})"
-            curl -fsSL -X DELETE \
-              "https://console.neon.tech/api/v2/projects/${NEON_PROJECT_ID}/branches/${existing}" \
-              -H "Authorization: Bearer ${NEON_API_KEY}" > /dev/null
-          fi
-          response=$(curl -fsSL -X POST \
-            "https://console.neon.tech/api/v2/projects/${NEON_PROJECT_ID}/branches" \
-            -H "Authorization: Bearer ${NEON_API_KEY}" \
-            -H "Content-Type: application/json" \
-            -d "{\"branch\": {\"name\": \"${E2E_NEON_BRANCH}\"}, \"endpoints\": [{\"type\": \"read_write\"}]}")
-          db_url=$(echo "$response" | jq -r '.connection_uris[0].connection_uri // empty')
-          if [ -z "$db_url" ]; then
-            echo "::error::Neon API did not return connection_uris[0].connection_uri"
-            echo "$response" | jq .
-            exit 1
-          fi
-          echo "::add-mask::$db_url"
-          echo "database_url=$db_url" >> "$GITHUB_OUTPUT"
-
-      # Mirror `preview-app.yml`'s `--var` block. NODE_ENV=preview
-      # gates Better Auth's dev-creds path (SK-AUTH-008 / SK-AUTH-017),
-      # MOCK_IDP=1 enables /auth/sign-in form, MOCK_STRIPE=1 silences
-      # the billing webhook leg, BETTER_AUTH_URL pins cookie scope.
-      - name: Upload preview version
-        id: deploy
-        working-directory: apps/api
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          WRANGLER_OUTPUT_FILE_DIRECTORY: ${{ github.workspace }}/wrangler-out
-          DATABASE_URL: ${{ steps.neon.outputs.database_url }}
-          BETTER_AUTH_SECRET: ${{ secrets.PREVIEW_BETTER_AUTH_SECRET }}
-          PREVIEW_BASE_URL: "https://${{ env.E2E_PREVIEW_ALIAS }}-nlqdb-api.omer-hochman.workers.dev"
-        run: |
-          set -euo pipefail
-          mkdir -p "$WRANGLER_OUTPUT_FILE_DIRECTORY"
-          bunx wrangler versions upload \
-            --message "E2E @ ${{ github.sha }}" \
-            --preview-alias "${E2E_PREVIEW_ALIAS}" \
-            --var "NODE_ENV:preview" \
-            --var "MOCK_IDP:1" \
-            --var "MOCK_STRIPE:1" \
-            --var "BETTER_AUTH_URL:${PREVIEW_BASE_URL}" \
-            --var "MAGIC_LINK_WEB_ORIGIN:${PREVIEW_BASE_URL}" \
-            --var "DATABASE_URL:${DATABASE_URL}" \
-            --var "BETTER_AUTH_SECRET:${BETTER_AUTH_SECRET}"
-
-      - name: Extract preview URL
-        env:
-          WRANGLER_OUTPUT_FILE_DIRECTORY: ${{ github.workspace }}/wrangler-out
-          CF_WORKERS_SUBDOMAIN: omer-hochman
-        run: sh "$GITHUB_WORKSPACE/scripts/extract-wrangler-preview-url.sh"
-
-      - id: url
-        shell: bash
-        run: |
-          set -euo pipefail
-          if [ -z "${PREVIEW_URL:-}" ]; then
-            echo "::error::no preview URL captured from wrangler output"
-            exit 1
-          fi
-          echo "captured base_url=$PREVIEW_URL"
-          echo "base_url=$PREVIEW_URL" >> "$GITHUB_OUTPUT"
+    uses: ./.github/workflows/_e2e-staging.yml
+    with:
+      branch_name: e2e
+      wrangler_message: "E2E @ ${{ github.sha }}"
+    secrets:
+      NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
+      NEON_PROJECT_ID: ${{ secrets.NEON_PROJECT_ID }}
+      PREVIEW_BETTER_AUTH_SECRET: ${{ secrets.PREVIEW_BETTER_AUTH_SECRET }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
   opencheck:
     name: Run E2E
     needs: deploy-staging
-    # SK-CIPERM-002 — minimum grant at the calling-job level. The
-    # reusable workflow's `run` job requests `contents: read` for its
-    # checkout; permissions in a reusable-workflow call chain can only
-    # be reduced, never elevated, so the caller must grant at least
-    # what the callee asks for.
+    # Reusable-workflow permissions can only be reduced; caller must grant at least what the callee asks for.
     permissions:
       contents: read
     uses: ./.github/workflows/_e2e-opencheck.yml
     with:
       base_url: ${{ needs.deploy-staging.outputs.base_url }}
-    # Explicit secrets pass-through (not `secrets: inherit`) so the
-    # reusable workflow's surface is auditable: only GROQ_API_KEY
-    # crosses the boundary.
+    # Explicit secrets list keeps the reusable's surface auditable.
     secrets:
       GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
 
   cleanup:
     name: Delete Neon branch
     needs: [deploy-staging, opencheck]
-    # `if: always()` so a failed opencheck run still triggers cleanup
-    # — Neon Free's 10-branch ceiling makes orphans expensive. Skip
-    # only if staging never came up (nothing to delete).
+    # `always()` runs cleanup even when opencheck failed; Neon Free's 10-branch ceiling makes orphans expensive.
     if: always() && needs.deploy-staging.result == 'success'
     runs-on: ubuntu-latest
     timeout-minutes: 3
@@ -195,6 +52,7 @@ jobs:
     env:
       NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
       NEON_PROJECT_ID: ${{ secrets.NEON_PROJECT_ID }}
+      E2E_NEON_BRANCH: e2e
     steps:
       - name: Delete branch
         shell: bash

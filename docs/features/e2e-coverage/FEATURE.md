@@ -36,8 +36,9 @@ when-to-load:
 - `.github/workflows/e2e-sdk.yml` — SDK cassette surface (workflow_dispatch)
 - `.github/workflows/e2e-mcp.yml` — MCP InMemoryTransport surface (workflow_dispatch)
 - `.github/workflows/e2e-examples.yml` — examples surface (workflow_dispatch with `live` input)
-- `.github/workflows/e2e-opencheck.yml` — existing web entry point (unchanged)
-- `.github/workflows/_e2e-opencheck.yml` — existing web reusable runner
+- `.github/workflows/e2e-opencheck.yml` — web entry point (workflow_dispatch)
+- `.github/workflows/_e2e-staging.yml` — shared ephemeral-preview spin-up (workflow_call; called by `e2e-opencheck.yml` and `e2e-examples.yml` when `live=true`)
+- `.github/workflows/_e2e-opencheck.yml` — opencheck test runner (workflow_call)
 
 ## Decisions
 
@@ -79,7 +80,7 @@ when-to-load:
 - **Decision:** All e2e workflows are `workflow_dispatch`-only. One top-level workflow per surface — `e2e-opencheck.yml` (web), `e2e-cli.yml`, `e2e-sdk.yml`, `e2e-mcp.yml`, `e2e-examples.yml` — each independently discoverable in the Actions UI list and triggerable on its own. `e2e-examples.yml` carries a `live` boolean input that opts into the per-run ephemeral preview (Neon branch + Workers Versions alias) for the bash curl + CLI shell smokes; hermetic Playwright is the default. Workflows that deploy staging (`e2e-opencheck.yml`, `e2e-examples.yml` with `live=true`) share the `e2e-staging` concurrency group with `cancel-in-progress: false` so overlapping deploys queue rather than orphan a Neon branch. Pull-request and push triggers are *not* added; e2e is intentionally an operator action.
 - **Core value:** Free, Simple
 - **Why:** Two costs forced this shape. (1) Every e2e run consumes free-tier provider quota — Neon branch creation (10-branch ceiling), Workers Versions upload, Groq tokens — so it must be a deliberate operator action, not an implicit consequence of opening a PR. (2) Multi-PR contention on the single `e2e` Neon branch would orphan resources; the shared `e2e-staging` concurrency group queues overlapping runs cleanly. One workflow per surface (vs a dispatcher with a `surface` input) makes the Actions UI list itself the discovery surface — operators see `E2E CLI`, `E2E SDK`, `E2E MCP`, `E2E Examples`, `E2E (opencheck)` directly rather than having to remember a hidden input. The 2025-26 industry pattern for expensive cross-surface e2e (stripe-samples, supabase, vercel) is `workflow_dispatch` + queued concurrency.
-- **Consequence in code:** Each `e2e-<surface>.yml` is self-contained: hermetic surfaces (CLI, SDK, MCP) have no staging deploy; the examples workflow has an inline staging-deploy job gated on `inputs.live`; the web workflow's deploy was already inline. Secrets are passed explicitly per workflow, not `secrets: inherit`. A cross-surface change triggers each relevant workflow individually; the shared `e2e-staging` concurrency group prevents Neon-branch races between `e2e-opencheck.yml` and a `e2e-examples.yml -f live=true` run.
+- **Consequence in code:** Each `e2e-<surface>.yml` is self-contained: hermetic surfaces (CLI, SDK, MCP) have no staging deploy; the examples + opencheck workflows both delegate their preview spin-up to the shared `_e2e-staging.yml` reusable (one source of truth for the Neon-branch + Workers-Versions pattern). Secrets are passed explicitly per workflow, not `secrets: inherit`. A cross-surface change triggers each relevant workflow individually; the shared `e2e-staging` concurrency group prevents Neon-branch races between `e2e-opencheck.yml` and a `e2e-examples.yml -f live=true` run.
 - **Alternatives rejected:**
   - `pull_request` trigger — too expensive, exhausts free-tier quota, blocks PRs on flaky e2e.
   - `schedule` cron — runs without context; failures land at 3 a.m. without a triggering author.
