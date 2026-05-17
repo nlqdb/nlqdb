@@ -1,19 +1,11 @@
 // API-key management dashboard (SK-APIKEYS-010 / SK-APIKEYS-011 /
-// SK-APIKEYS-012). Lists every key the caller owns, mints fresh
-// `sk_live_*` with a copy-once disclosure, and revokes via a confirm
-// dialog. The page lives behind `requireSession` per
-// `apps/api/src/index.ts`; this component assumes the auth guard in
-// `keys.astro` already resolved a session.
-//
-// `sk_mcp_*` keys are intentionally not mintable here — the canonical
-// path is the OAuth-callback mint via `POST /v1/oauth/mcp-callback`
-// (SK-APIKEYS-009) driven by the host's MCP-connector flow, or
-// `nlq mcp install` once Slice 4 lands. Listing + revoking sk_mcp keys
-// from this page is supported.
+// SK-APIKEYS-012). `sk_mcp_*` is mint-only via OAuth-callback
+// (SK-APIKEYS-009) / `nlq mcp install`, not from this UI.
 
 import { type KeyRecord, NlqdbApiError } from "@nlqdb/sdk";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { getChatClient } from "../../lib/chat-client";
+import { useFocusTrap, useRestoreFocusOnUnmount } from "../../lib/dialog";
 import { groupKeys, summarizeKey } from "./group";
 
 interface KeysPanelProps {
@@ -226,10 +218,9 @@ function KeyRow({
   );
 }
 
-// SK-APIKEYS-002 / SK-APIKEYS-012 — copy-once modal. Plaintext is
-// rendered exactly once on the mint response; this dialog is the
-// surface that hands it to the user. Closing the dialog drops the
-// value from component state; the user cannot reopen it.
+// Copy-once mint dialog. Plaintext is shown exactly once on the mint
+// response (SK-APIKEYS-002) and dropped from state when the dialog
+// unmounts.
 function NewKeyDialog({
   apiBase,
   onCancel,
@@ -247,78 +238,55 @@ function NewKeyDialog({
   const inputRef = useRef<HTMLInputElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
   const closeBtnRef = useRef<HTMLButtonElement>(null);
-  const triggerRef = useRef<HTMLElement | null>(null);
-  if (triggerRef.current === null && typeof document !== "undefined") {
-    triggerRef.current = document.activeElement as HTMLElement | null;
-  }
+  // Ref-based in-flight guard. `setSubmitting(true)` is asynchronous,
+  // so a rapid second Enter-in-input can fire `submit` again before
+  // the `submitting` closure value updates; the ref flips synchronously.
+  const inFlightRef = useRef(false);
+  const abortRef = useRef<AbortController | null>(null);
+
+  useRestoreFocusOnUnmount();
+  useFocusTrap(dialogRef, {
+    escapeEnabled: !submitting && !minted,
+    onEscape: onCancel,
+  });
 
   useEffect(() => {
     inputRef.current?.focus();
-    const trigger = triggerRef.current;
-    return () => {
-      if (trigger && document.body.contains(trigger)) trigger.focus();
-    };
   }, []);
 
-  // Once the key is minted, autofocus the Close button so a screen-
-  // reader user lands on the action that completes the disclosure
-  // rather than re-reading the plaintext.
+  // After mint, shift focus to the Close button so screen-reader
+  // users hear the action that completes the disclosure rather than
+  // re-reading the plaintext.
   useEffect(() => {
     if (minted) closeBtnRef.current?.focus();
   }, [minted]);
 
-  // Focus trap + Escape — same shape as `DeleteDbDialog` in
-  // `LeftRail.tsx`. Escape closes the dialog unless we're mid-mint
-  // (don't strand a pending POST) or post-mint (Esc-after-mint would
-  // discard the plaintext before the user copied it).
+  // Cancel any pending mint when the dialog unmounts so the user
+  // closing the dialog mid-flight doesn't leave a request to land
+  // against a dead component.
   useEffect(() => {
-    function onKey(e: globalThis.KeyboardEvent) {
-      if (e.key === "Escape") {
-        if (!submitting && !minted) onCancel();
-        return;
-      }
-      if (e.key !== "Tab" || !dialogRef.current) return;
-      const focusable = Array.from(
-        dialogRef.current.querySelectorAll<HTMLElement>(
-          'input,select,textarea,button:not([disabled]),a[href],[tabindex]:not([tabindex="-1"])',
-        ),
-      );
-      const first = focusable[0];
-      const last = focusable[focusable.length - 1];
-      if (!first || !last) return;
-      const active = document.activeElement as HTMLElement | null;
-      if (e.shiftKey && active === first) {
-        e.preventDefault();
-        last.focus();
-      } else if (!e.shiftKey && active === last) {
-        e.preventDefault();
-        first.focus();
-      }
-    }
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onCancel, submitting, minted]);
+    return () => abortRef.current?.abort();
+  }, []);
 
   async function submit(event: { preventDefault: () => void }) {
     event.preventDefault();
-    if (submitting || minted) return;
+    if (inFlightRef.current || minted) return;
     const trimmed = name.trim();
     if (trimmed.length > 80) {
       setError("Name must be 80 characters or fewer.");
       return;
     }
+    inFlightRef.current = true;
     setSubmitting(true);
     setError(null);
+    const ac = new AbortController();
+    abortRef.current = ac;
     try {
       const client = getChatClient(apiBase);
-      // The trimmed name is optional on `sk_live` mint. An empty
-      // string omits the field rather than minting an unnamed key
-      // with `""` — keeps the server-side default (`name = null`)
-      // and lets the user fix typos by minting again.
-      const out = await client.mintKey({
-        type: "sk_live",
-        ...(trimmed ? { name: trimmed } : {}),
-      });
+      const out = await client.mintKey(
+        { type: "sk_live", ...(trimmed ? { name: trimmed } : {}) },
+        { signal: ac.signal },
+      );
       setMinted({ id: out.id, key: out.key, last4: out.last4 });
       const now = Math.floor(Date.now() / 1000);
       onMinted({
@@ -334,8 +302,12 @@ function NewKeyDialog({
         revokedAt: null,
       });
     } catch (err) {
+      if (ac.signal.aborted) return;
       setError(messageForMint(err));
       setSubmitting(false);
+      inFlightRef.current = false;
+    } finally {
+      abortRef.current = null;
     }
   }
 
@@ -346,9 +318,8 @@ function NewKeyDialog({
       setCopied(true);
       window.setTimeout(() => setCopied(false), 1500);
     } catch {
-      // Clipboard permission denial or insecure context — fall through
-      // with `setCopied(false)` so the user picks up the plaintext
-      // manually from the still-displayed code block.
+      // Clipboard rejection is recoverable — the plaintext is still
+      // visible and `user-select: all` lets the user keyboard-copy.
     }
   }
 
@@ -445,11 +416,10 @@ function NewKeyDialog({
   );
 }
 
-// SK-APIKEYS-011 — hard-revoke. No typed-name gate here (we use one
-// for `db.delete` per SK-HDC-016 because data loss is irreversible);
-// revocation is recoverable by minting a fresh key, so a single
-// explicit confirmation suffices. The dialog still blocks the page
-// so a finger-slip on the rail button doesn't burn a key.
+// Single-confirm hard-revoke (SK-APIKEYS-011). No typed-name gate
+// (that's reserved for unrecoverable ops like `db.delete` per
+// SK-HDC-016) — minting a fresh key recovers from a finger-slip
+// revoke.
 function RevokeDialog({
   apiBase,
   target,
@@ -465,60 +435,44 @@ function RevokeDialog({
   const [error, setError] = useState<string | null>(null);
   const confirmRef = useRef<HTMLButtonElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
-  const triggerRef = useRef<HTMLElement | null>(null);
-  if (triggerRef.current === null && typeof document !== "undefined") {
-    triggerRef.current = document.activeElement as HTMLElement | null;
-  }
+  const inFlightRef = useRef(false);
+  const abortRef = useRef<AbortController | null>(null);
+
+  useRestoreFocusOnUnmount();
+  useFocusTrap(dialogRef, {
+    escapeEnabled: !submitting,
+    onEscape: onCancel,
+  });
 
   useEffect(() => {
     confirmRef.current?.focus();
-    const trigger = triggerRef.current;
-    return () => {
-      if (trigger && document.body.contains(trigger)) trigger.focus();
-    };
   }, []);
 
   useEffect(() => {
-    function onKey(e: globalThis.KeyboardEvent) {
-      if (e.key === "Escape") {
-        if (!submitting) onCancel();
-        return;
-      }
-      if (e.key !== "Tab" || !dialogRef.current) return;
-      const focusable = Array.from(
-        dialogRef.current.querySelectorAll<HTMLElement>(
-          'button:not([disabled]),a[href],[tabindex]:not([tabindex="-1"])',
-        ),
-      );
-      const first = focusable[0];
-      const last = focusable[focusable.length - 1];
-      if (!first || !last) return;
-      const active = document.activeElement as HTMLElement | null;
-      if (e.shiftKey && active === first) {
-        e.preventDefault();
-        last.focus();
-      } else if (!e.shiftKey && active === last) {
-        e.preventDefault();
-        first.focus();
-      }
-    }
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onCancel, submitting]);
+    return () => abortRef.current?.abort();
+  }, []);
 
   async function submit() {
-    if (submitting) return;
+    if (inFlightRef.current) return;
+    inFlightRef.current = true;
     setSubmitting(true);
     setError(null);
+    const ac = new AbortController();
+    abortRef.current = ac;
     try {
       const client = getChatClient(apiBase);
       await client.revokeKey(target.id, {
+        signal: ac.signal,
         idempotencyKey: `web-revoke-${target.id}-${Date.now()}`,
       });
       onRevoked(target.id);
     } catch (err) {
+      if (ac.signal.aborted) return;
       setError(messageForRevoke(err));
       setSubmitting(false);
+      inFlightRef.current = false;
+    } finally {
+      abortRef.current = null;
     }
   }
 

@@ -194,21 +194,6 @@
   color: var(--fg-muted);
 }
 
-/* Screen-reader-only utility (WAI-ARIA APG pattern). Used on the
- * last-4 code block so AT users hear "Key ending in …abcd" while
- * sighted users see just the compact `…abcd` form. */
-.visually-hidden {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  margin: -1px;
-  padding: 0;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
-  border: 0;
-}
-
 .keys-list__meta {
   display: flex;
   flex-direction: column;

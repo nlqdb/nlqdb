@@ -298,6 +298,20 @@ h3 {
   gap: 14px;
 }
 
+/* Screen-reader-only utility (WAI-ARIA APG). Used on labels that add
+ * context for AT without consuming visual space. */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 .btn {
   display: inline-flex;
   align-items: center;

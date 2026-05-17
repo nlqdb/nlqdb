@@ -13,6 +13,7 @@
 import { type DatabaseSummary, NlqdbApiError } from "@nlqdb/sdk";
 import { useEffect, useRef, useState } from "react";
 import { getChatClient } from "../../lib/chat-client";
+import { useFocusTrap, useRestoreFocusOnUnmount } from "../../lib/dialog";
 import { displayName } from "../../lib/names";
 
 interface LeftRailProps {
@@ -285,22 +286,8 @@ function NewDbForm({
   );
 }
 
-// SK-HDC-016 — typed-name confirmation dialog. The user must type the
-// exact displayName before the Delete button enables; this is the only
-// gate between "click ×" and an irreversible drop. The displayName is
-// rendered next to the input with a copy button so a long disambiguated
-// name (`orders tracker (2)`) is one click + one paste away.
-//
-// Focus rules:
-//   - Focus enters the input on mount.
-//   - Tab cycles between the four focusable elements inside the dialog
-//     (Copy, input, Delete, Cancel) — we trap explicitly so a stray
-//     Tab past Cancel doesn't escape to the page underneath, which
-//     would let the user click a rail × of *another* DB while the
-//     dialog is still open.
-//   - Escape (when not submitting) closes the dialog.
-//   - On close, focus returns to the element that opened the dialog
-//     (the rail's `×` button) so keyboard users keep their place.
+// SK-HDC-016 — typed-name confirmation. The Delete button stays
+// disabled until the user types the exact displayName.
 function DeleteDbDialog({
   apiBase,
   db,
@@ -318,66 +305,21 @@ function DeleteDbDialog({
   const [copied, setCopied] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const dialogRef = useRef<HTMLFormElement>(null);
-  // Capture once at mount so a re-render of the parent (e.g. after a
-  // listDatabases refetch) doesn't change which element we return to.
-  const triggerRef = useRef<HTMLElement | null>(null);
-  if (triggerRef.current === null && typeof document !== "undefined") {
-    triggerRef.current = document.activeElement as HTMLElement | null;
-  }
+
+  // Success path removes the rail row holding the trigger × before
+  // this dialog unmounts, so fall back to the rail's "+ New" button
+  // to keep keyboard focus anchored inside the rail.
+  useRestoreFocusOnUnmount(() =>
+    typeof document === "undefined" ? null : document.querySelector<HTMLElement>(".left-rail__new"),
+  );
+  useFocusTrap(dialogRef, {
+    escapeEnabled: !submitting,
+    onEscape: onCancel,
+  });
 
   useEffect(() => {
     inputRef.current?.focus();
-    // Restore focus on unmount — covers Cancel, Escape, and success
-    // paths uniformly without each path having to remember.
-    const trigger = triggerRef.current;
-    return () => {
-      // On the success path the rail row containing the trigger × is
-      // removed from the DOM by `handleDeleted` BEFORE this cleanup
-      // runs; `.focus()` on a detached node is a silent no-op and
-      // focus would fall to <body>. Fall back to the rail's "+ New"
-      // button so keyboard users keep an anchor inside the rail.
-      if (trigger && document.body.contains(trigger)) {
-        trigger.focus();
-      } else if (typeof document !== "undefined") {
-        document.querySelector<HTMLElement>(".left-rail__new")?.focus();
-      }
-    };
   }, []);
-
-  // Escape + Tab focus-trap. Captured at the document level rather
-  // than on the input so Escape works regardless of focus (e.g. after
-  // clicking the copy button); the Tab handler walks the dialog's
-  // focusable descendants to wrap forward/backward.
-  useEffect(() => {
-    function onKey(e: globalThis.KeyboardEvent) {
-      if (e.key === "Escape") {
-        if (!submitting) onCancel();
-        return;
-      }
-      if (e.key !== "Tab" || !dialogRef.current) return;
-      // Include `a[href]`, `select`, `textarea` so the trap stays
-      // correct if any of those gets added to the dialog later.
-      const focusable = Array.from(
-        dialogRef.current.querySelectorAll<HTMLElement>(
-          'input,select,textarea,button:not([disabled]),a[href],[tabindex]:not([tabindex="-1"])',
-        ),
-      );
-      if (focusable.length === 0) return;
-      const first = focusable[0];
-      const last = focusable[focusable.length - 1];
-      if (!first || !last) return;
-      const active = document.activeElement as HTMLElement | null;
-      if (e.shiftKey && active === first) {
-        e.preventDefault();
-        last.focus();
-      } else if (!e.shiftKey && active === last) {
-        e.preventDefault();
-        first.focus();
-      }
-    }
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onCancel, submitting]);
 
   const matches = typed === db.displayName;
 
