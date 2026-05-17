@@ -1,7 +1,8 @@
 # Reusable: run opencheck against a given baseUrl with Groq
-# (`openai/gpt-oss-120b`) through the OpenAI-compatible endpoint. The
-# `workflow_call` trigger means this file never appears in the
-# manual-dispatch list — callers (see `e2e-opencheck.yml`) drive it.
+# (`meta-llama/llama-4-scout-17b-16e-instruct`) through the
+# OpenAI-compatible endpoint. The `workflow_call` trigger means this
+# file never appears in the manual-dispatch list — callers (see
+# `e2e-opencheck.yml`) drive it.
 #
 # Why OpenAI-compat (and not provider-specific LangChain packages):
 #   opencheck v0.3.0 pins `@langchain/core ^1.1.24` (the LangChain JS v1
@@ -12,23 +13,20 @@
 #   (https://console.groq.com/docs/openai), so pointing ChatOpenAI at
 #   it with the Groq key is the no-upstream-change path.
 #
-# Why Groq (two pivots lived and died before this landing):
-#   1. Gemini 2.5 Flash through run #17: free tier 10 RPM, opencheck
-#      makes ~10-15 calls/test, so by test 3-4 we exhausted the
-#      per-minute quota and every subsequent call paid a ~75-87 s
-#      silent-retry tax before surfacing as a 429. Run #17's
-#      LANGCHAIN_VERBOSE=true log was the smoking gun.
+# Why Groq / llama-4-scout (three pivots lived and died before this):
+#   1. Gemini 2.5 Flash through run #17: free tier 10 RPM → 429s.
 #   2. OpenRouter `qwen/qwen3-coder:free` for run #19: 429 on the
-#      VERY FIRST LLM call. The `:free` suffix means OpenRouter
-#      routes to a shared upstream pool whose rate limit is set by
-#      the upstream provider, not by OpenRouter's per-account 1,000
-#      RPD cap. Our $10-credit account quota doesn't help that pool.
-#   Groq's 30 RPM / 1,000 RPD / 12 K TPM is a dedicated account
-#   quota on a key we own, AND `gpt-oss-120b` is OpenAI's open-weights
-#   model trained explicitly for "high-capability autonomous agents
-#   with advanced reasoning, tool use, and multi-step problem solving"
-#   — the closest free fit for opencheck's ReAct loop on a key with
-#   a real own-quota.
+#      VERY FIRST call. The shared upstream pool is rate-limited by
+#      the provider (Together / Fireworks), not our account quota.
+#   3. Groq `openai/gpt-oss-120b` for runs #20-#21: 8 K TPM on our
+#      on-demand account + hidden reasoning_tokens (it's a thinking
+#      model) → 85-90 s between LLM calls → every test hits the
+#      240 s timeout with only 2-3 calls. Verified via the
+#      LANGCHAIN_VERBOSE=true log and x-ratelimit-limit-tokens header.
+#   llama-4-scout-17b has 30 K TPM (x-ratelimit-limit-tokens: 30000,
+#   confirmed via curl against our GROQ_API_KEY), proper function
+#   calling, and no reasoning-token inflation → ~15-20 s per call at
+#   typical browser-snapshot sizes → ~12 calls per 240 s test budget.
 
 name: E2E opencheck (reusable)
 

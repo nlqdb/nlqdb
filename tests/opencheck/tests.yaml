@@ -6,8 +6,8 @@
 # Runtime substitution: the caller workflow renders `__BASE_URL__` to the
 # per-run preview alias via `sed` before invoking `bunx opencheck`.
 #
-# LLM: Groq `openai/gpt-oss-120b` via OpenAI-compat
-# (https://console.groq.com/docs/openai). Two failed pivots stand
+# LLM: Groq `meta-llama/llama-4-scout-17b-16e-instruct` via OpenAI-compat
+# (https://console.groq.com/docs/openai). Three failed pivots stand
 # behind this choice:
 #   1. Gemini 2.5 Flash — run #17's LANGCHAIN_VERBOSE log surfaced
 #      systematic `429 status code (no body)` errors costing
@@ -21,17 +21,24 @@
 #      $10 in account credits only lifts OpenRouter's per-account
 #      cap, not the upstream pool. Free models on OpenRouter are
 #      not viable for our ~140-200 calls/run load.
-# Groq's 30 RPM / 1,000 RPD / 12 K TPM is a real dedicated quota
-# on a key we own (no shared pool), and `gpt-oss-120b` is OpenAI's
-# open-weights model explicitly trained for "high-capability
-# autonomous agents with advanced reasoning, tool use, and
-# multi-step problem solving" — the closest free fit for opencheck's
-# ReAct loop. Fallback: `llama-3.3-70b-versatile` (same provider,
-# same key, swap the `model:` line).
+#   3. Groq `openai/gpt-oss-120b` — run #21's LANGCHAIN_VERBOSE log
+#      confirmed 85-90 s between LLM calls for EVERY test, causing
+#      every test to timeout at 240 s with only 2-3 LLM calls. Root
+#      cause: gpt-oss-120b is a thinking/reasoning model (generates
+#      hidden reasoning_tokens that count against TPM), AND has only
+#      8 K TPM on our on-demand account. llama-3.3-70b-versatile was
+#      considered (12 K TPM, 50 % better) but llama-4-scout has
+#      30 K TPM — 3.75 × more — verified via x-ratelimit-limit-tokens
+#      response headers. llama-4-scout is a 17B MoE model (Llama 4)
+#      with proper function calling (verified via API test), no
+#      reasoning-token inflation, and sub-150 ms response time.
+# Fallback: `llama-3.3-70b-versatile` (same provider, same key,
+# swap the `model:` line). 30 K TPM → ~15-20 s per LLM call at
+# typical snapshot sizes → ~12 calls per 240 s test budget.
 
 baseUrl: "__BASE_URL__"
 modelProvider: "openai"
-model: "openai/gpt-oss-120b"
+model: "meta-llama/llama-4-scout-17b-16e-instruct"
 
 # Persistent session shares cookies + localStorage across tests so the
 # agent doesn't have to re-walk the prereq chain from a clean profile
