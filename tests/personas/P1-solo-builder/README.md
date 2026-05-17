@@ -20,6 +20,8 @@ This is the "[Phase 1 success](../../../docs/research/personas.md#p1--the-solo-b
 | 1 — env-key auth resolves + token is redacted (GLOBAL-010 + SK-CLI-009) | CLI | Go `testscript` | [`tests/e2e/cli/scripts/p1_whoami_env_key.txtar`](../../e2e/cli/scripts/p1_whoami_env_key.txtar) |
 | 2 — Next.js page embeds `<nlq-data>` with `pk_live_…` | Examples | Playwright via shared harness | [`examples/nextjs/e2e/smoke.spec.ts`](../../../examples/nextjs/e2e/smoke.spec.ts) |
 | 2 — Astro page renders the same snippet | Examples | Playwright via shared harness | [`examples/astro/e2e/smoke.spec.ts`](../../../examples/astro/e2e/smoke.spec.ts) |
+| 2 — Vite + React SPA via the typed `@nlqdb/react` wrapper | Examples | Playwright via shared harness | [`examples/react/e2e/smoke.spec.ts`](../../../examples/react/e2e/smoke.spec.ts) |
+| 2 — Vite + Vue SPA via the typed `@nlqdb/vue` wrapper + `configureNlqdb` | Examples | Playwright via shared harness | [`examples/vue/e2e/smoke.spec.ts`](../../../examples/vue/e2e/smoke.spec.ts) |
 | 3 — web app chat reads + summarises | Web | opencheck | [`tests/opencheck/tests.yaml`](../../opencheck/tests.yaml) (cases `#read-shows-informative-data` · `#count-summarizes`) |
 | 4 — DDL diff preview + approve in chat | Web | opencheck | [`tests/opencheck/tests.yaml`](../../opencheck/tests.yaml) (case `#submit-prefilled-row` — same diff-confirm chip path) |
 | 5 — SDK contract: `client.ask("upcoming meals")` returns rows + summary | SDK | vitest + MSW cassette | [`tests/e2e/sdk/p1_solo_builder.test.ts`](../../e2e/sdk/p1_solo_builder.test.ts) |

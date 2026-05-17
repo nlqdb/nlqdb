@@ -4,17 +4,21 @@ Smallest-scaffold integrations of nlqdb in popular frontends + a CLI-only path. 
 
 ## Folders
 
-| Path                              | Stack                  | Lines (excluding boilerplate) |
-| :-------------------------------- | :--------------------- | :---------------------------- |
-| [`html/`](./html)                 | Plain HTML, no build   | 17                            |
-| [`nextjs/`](./nextjs)             | Next.js (React, App Router) | 11                       |
-| [`nuxt/`](./nuxt)                 | Nuxt 3 (Vue 3)         | 10                            |
-| [`sveltekit/`](./sveltekit)       | SvelteKit              | 11                            |
-| [`astro/`](./astro)               | Astro                  | 12                            |
-| [`cli/`](./cli)                   | Bash + `nlq`           | 4 commands, no frontend       |
-| [`curl/`](./curl)                 | Raw HTTP, no client    | 3 calls (read / write / anon) |
+| Path                              | Stack                  | Wrapper                | Persona |
+| :-------------------------------- | :--------------------- | :--------------------- | :------ |
+| [`html/`](./html)                 | Plain HTML, no build   | raw `<nlq-data>`       | P5 student |
+| [`nextjs/`](./nextjs)             | Next.js (App Router)   | raw `<nlq-data>`       | P1 solo builder |
+| [`nuxt/`](./nuxt)                 | Nuxt 3                 | raw `<nlq-data>`       | P4 backend engineer |
+| [`sveltekit/`](./sveltekit)       | SvelteKit              | raw `<nlq-data>`       | P4 backend engineer |
+| [`astro/`](./astro)               | Astro                  | raw `<nlq-data>`       | P1 solo builder |
+| [`react/`](./react)               | Vite + React 19 SPA    | `@nlqdb/react`         | P1 solo builder |
+| [`vue/`](./vue)                   | Vite + Vue 3.5 SPA     | `@nlqdb/vue`           | P1 solo builder |
+| [`svelte/`](./svelte)             | Vite + Svelte 5 (runes)| `@nlqdb/svelte`        | P5 student |
+| [`solid/`](./solid)               | Vite + SolidJS         | `@nlqdb/solid`         | P6 analytics engineer |
+| [`cli/`](./cli)                   | Bash + `nlq`           | n/a (CLI)              | P6 analytics engineer |
+| [`curl/`](./curl)                 | Raw HTTP, no client    | n/a (HTTP)             | P6 analytics engineer |
 
-Every framework example does the same thing: render today's orders as a live-refreshing table, in 1 file. The variance is the framework's surrounding files — the **nlqdb integration is identical**: include the `<nlq-data>` element from `elements.nlqdb.com/v1.js`, set `goal` + `api-key`, done.
+Two flavours: **raw custom-element** examples (`html`, `nextjs`, `nuxt`, `sveltekit`, `astro`) drop `<nlq-data>` straight into the framework's template and load the runtime from `elements.nlqdb.com/v1.js`. **Wrapper** examples (`react`, `vue`, `svelte`, `solid`) import the framework-native `@nlqdb/<framework>` package for typed props, idiomatic event handlers, and auto-loaded runtime. Pick raw when you want zero npm install; pick the wrapper when you want IDE autocomplete on `goal` / `apiKey` / `template`.
 
 ## Status
 
@@ -42,7 +46,7 @@ Or use anonymous mode (`docs/architecture.md §3.3`): no sign-in, DB lives 72 h,
 
 ## Contributing a new example
 
-PRs welcome — especially for stacks not yet here (SolidStart, TanStack Start, Qwik, React Native, Expo, Tauri, etc.) and creative use-cases (Discord bot, GitHub Action, browser extension, weekly digest cron). Keep each example to one source file plus a 10-line README. Same `<nlq-data>` snippet across all of them — that's the point.
+PRs welcome — especially for stacks not yet here (SolidStart, TanStack Start, Qwik, React Native, Expo, Tauri, etc.) and creative use-cases (Discord bot, GitHub Action, browser extension, weekly digest cron). Keep each example to one source file plus a 10-line README. For raw-element examples use the same `<nlq-data>` snippet across all of them; for wrapper examples import the typed component from `@nlqdb/<framework>`.
 
 Each example also ships an `e2e/` subfolder with a Playwright spec (`smoke.spec.ts`) or shell smoke (`smoke.sh`) that exercises the README's quickstart — see [`SK-E2E-005`](../docs/features/e2e-coverage/FEATURE.md#sk-e2e-005--examples-as-tests-every-examplesframework-ships-a-smoke-test-wired-to-a-workflow). When adding a new framework, copy the closest existing `<framework>/e2e/smoke.spec.ts` and retag it. Run the matrix:
 

@@ -17,6 +17,7 @@
 | 1 — `nlq --help` is pipeline-safe (no ANSI escapes, all verbs present) — the contract a `nlq … \| duckdb …` flow depends on | CLI | Go `testscript` | [`tests/e2e/cli/scripts/p6_help_pipeline_safe.txtar`](../../e2e/cli/scripts/p6_help_pipeline_safe.txtar) |
 | 2 — raw curl example matches the SDK wire shape | Examples | shell harness | [`examples/curl/e2e/smoke.sh`](../../../examples/curl/e2e/smoke.sh) |
 | 2 — bash CLI example walks through 4 commands | Examples | shell harness | [`examples/cli/e2e/smoke.sh`](../../../examples/cli/e2e/smoke.sh) |
+| 2 — SolidJS real-time dashboard (5s `refresh`) via the typed `@nlqdb/solid` wrapper | Examples | Playwright via shared harness | [`examples/solid/e2e/smoke.spec.ts`](../../../examples/solid/e2e/smoke.spec.ts) |
 | 3 — SDK `ask` returns a `trace` block | SDK | vitest + MSW cassette | [`tests/e2e/sdk/p6_analytics_engineer.test.ts`](../../e2e/sdk/p6_analytics_engineer.test.ts) |
 | 4 — `trace` carries the SQL + confidence | SDK | vitest + MSW cassette | [`tests/e2e/sdk/p6_analytics_engineer.test.ts`](../../e2e/sdk/p6_analytics_engineer.test.ts) |
 | 5 — low-confidence refusal surfaced as a typed error (GLOBAL-023) | SDK | vitest + MSW cassette | [`tests/e2e/sdk/p6_analytics_engineer.test.ts`](../../e2e/sdk/p6_analytics_engineer.test.ts) |
