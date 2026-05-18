@@ -1,0 +1,74 @@
+# Release config for the `nlq` CLI. Triggered by release-cli.yml on
+# `cli-v*` tag push. Local dry-run:
+#   cd cli && goreleaser release --snapshot --clean --skip=publish
+
+version: 2
+
+project_name: nlq
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - id: nlq
+    binary: nlq
+    main: ./cmd/nlq
+    env:
+      - CGO_ENABLED=0
+    goos: [linux, darwin]
+    goarch: [amd64, arm64]
+    flags: [-trimpath]
+    ldflags: [-s -w]
+
+archives:
+  - id: nlq
+    name_template: >-
+      {{- .ProjectName }}_
+      {{- .Version }}_
+      {{- if eq .Os "darwin" }}macOS
+      {{- else }}{{ .Os }}{{ end }}_
+      {{- if eq .Arch "amd64" }}x86_64
+      {{- else }}{{ .Arch }}{{ end }}
+    files:
+      - LICENSE*
+      - README.md
+
+checksum:
+  name_template: "checksums.txt"
+  algorithm: sha256
+
+sboms:
+  - id: archive
+    artifacts: archive
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^chore:"
+      - "Merge pull request"
+      - "Merge branch"
+
+brews:
+  - name: nlq
+    repository:
+      owner: nlqdb
+      name: homebrew-tap
+      token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
+    homepage: https://nlqdb.com
+    description: "Natural-language databases — talk to your data, ship without a backend."
+    license: MIT
+    install: |
+      bin.install "nlq"
+    test: |
+      system "#{bin}/nlq", "--version"
+
+release:
+  github:
+    owner: nlqdb
+    name: nlqdb
+  name_template: "nlq {{ .Version }}"
+  prerelease: auto

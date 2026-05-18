@@ -240,6 +240,7 @@ the failure path (Basic auth rejected = wrong id or secret).
 | :------------------- | :------------------ | :--------------------------------------------------------- | :------------------------------------------------------------ |
 | `apps/api` + `apps/web` (merged worker) | Cloudflare Workers | GH Actions — `.github/workflows/deploy-api.yml` | GH Actions — `.github/workflows/preview-app.yml` (Workers Versions on `nlqdb-api`; per-PR URL + ephemeral Neon branch) |
 | `apps/events-worker` | Cloudflare Workers  | GH Actions — `.github/workflows/deploy-events-worker.yml`  | n/a (queue-only; nothing visible to preview)                  |
+| `apps/mcp`           | Cloudflare Workers  | GH Actions — `.github/workflows/deploy-mcp.yml` (`mcp.nlqdb.com` via `custom_domain = true`; KV auto-provisioned) | GH Actions — `.github/workflows/preview-mcp.yml` (sticky `pr-<N>-nlqdb-mcp-server.<subdomain>.workers.dev`) |
 | `apps/coming-soon`   | Cloudflare Pages    | retired — `nlqdb.com` now served by `apps/web`              | n/a |
 | `packages/elements`  | Cloudflare Pages    | GH Actions — `.github/workflows/deploy-elements.yml`       | GH Actions — `.github/workflows/preview-elements.yml` (sticky `pr-<N>.nlqdb-elements.pages.dev/v1.js`) |
 
@@ -453,6 +454,52 @@ gzipped, DESIGN §3.5) is enforced upstream by
 `.github/workflows/ci.yml` job `packages/elements (esbuild + bundle-size)`.
 
 Manual re-deploy: workflow_dispatch on the Actions tab.
+
+### `apps/mcp` (hosted MCP server)
+
+Thin protocol shim that terminates MCP Streamable-HTTP and forwards
+every tool call to `apps/api/` via `@nlqdb/sdk`. Hosted on
+`mcp.nlqdb.com`; DNS + cert auto-provisioned by wrangler on first
+deploy because `apps/mcp/wrangler.toml` declares
+`[[routes]] custom_domain = true`.
+
+Deploys via `.github/workflows/deploy-mcp.yml` on merge to main
+when `apps/mcp/**`, `packages/mcp/**`, `packages/sdk/**`, or
+`packages/otel/**` changes.
+
+**OAUTH_KV** binding in `apps/mcp/wrangler.toml` has no `id` field
+— wrangler 4.45+ auto-provisions the namespace on first deploy and
+rebinds by binding name thereafter (CF changelog 2025-10-24). No
+manual bootstrap step required.
+
+PR previews via `.github/workflows/preview-mcp.yml` give a sticky
+URL `pr-<N>-nlqdb-mcp-server.<subdomain>.workers.dev` on every push.
+
+### Package releases (`packages/*` → npm)
+
+`@nlqdb/*` packages publish via changesets. Workflow:
+`.github/workflows/release-npm.yml` opens a "Version Packages" PR
+when any `.changeset/*.md` files land on main; merging the
+"Version Packages" PR would publish (currently gated — see
+`.changeset/README.md`). Authors run `bun run changeset` alongside
+their change to drop a release note.
+
+Required secret to enable publishing: `NPM_TOKEN` (npm Automation
+token on the `@nlqdb` scope).
+
+### CLI releases (`cli/` → GitHub Releases + Homebrew)
+
+The `nlq` Go binary releases via goreleaser on `cli-v*` tag push.
+Workflow: `.github/workflows/release-cli.yml`. Cross-compiles
+linux/darwin × amd64/arm64, attaches archives to a GitHub Release,
+and pushes an updated formula to `nlqdb/homebrew-tap`.
+
+Required secret to enable the Homebrew step: `HOMEBREW_TAP_GITHUB_TOKEN`
+(fine-grained PAT scoped to `nlqdb/homebrew-tap`, `contents: write`).
+Without it the GitHub Release still creates; only the tap bump
+silently skips.
+
+Local dry-run: `cd cli && goreleaser release --snapshot --clean --skip=publish`.
 
 ### Preview environments
 

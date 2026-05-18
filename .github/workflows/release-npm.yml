@@ -1,0 +1,45 @@
+# `@nlqdb/*` npm releases via changesets — opens a "Version Packages"
+# PR from pending `.changeset/*.md` notes; merging that PR publishes.
+# Publish step is gated until per-package builds emit dist/ — see
+# .changeset/README.md.
+
+name: Release npm
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: release-npm
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  pull-requests: write
+  id-token: write
+
+jobs:
+  release:
+    name: changesets version + (publish — gated)
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      # `fetch-depth: 0` so changesets can compute the version diff
+      # and reference prior commits in the generated CHANGELOG.
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          fetch-depth: 0
+
+      - uses: ./.github/actions/setup
+
+      - name: Create Version PR or publish
+        uses: changesets/action@v1
+        with:
+          version: bun run changeset:version
+          publish: bun run changeset:publish
+          commit: "chore(release): version packages"
+          title: "chore(release): version packages"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}

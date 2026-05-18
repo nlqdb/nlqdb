@@ -25,11 +25,12 @@ NLQDB_WEB_ORIGIN = "https://app.nlqdb.com"
 pattern = "mcp.nlqdb.com"
 custom_domain = true
 
-# OAuth-provider state (clients, grants, refresh tokens, one-shot
-# bridge codes). `workers-oauth-provider` requires this binding name.
+# `workers-oauth-provider` requires the binding name OAUTH_KV. The
+# `id` is intentionally omitted — wrangler 4.45+ auto-provisions on
+# first deploy and rebinds by binding name thereafter (CF changelog
+# 2025-10-24).
 [[kv_namespaces]]
 binding = "OAUTH_KV"
-id = "REPLACE_WITH_PROVISIONED_OAUTH_KV_ID"
 
 # `McpAgent` Durable Object — one instance per OAuth grant
 # (`SK-MCP-014`'s `revalidated_at` stamp lives in the DO's SQL store).

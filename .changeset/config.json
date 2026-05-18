@@ -1,0 +1,21 @@
+{
+  "$schema": "https://unpkg.com/@changesets/config@3.0.0/schema.json",
+  "changelog": "@changesets/cli/changelog",
+  "commit": false,
+  "fixed": [],
+  "linked": [],
+  "access": "public",
+  "baseBranch": "main",
+  "updateInternalDependencies": "patch",
+  "ignore": [
+    "@nlqdb/api",
+    "@nlqdb/web",
+    "@nlqdb/events-worker",
+    "@nlqdb/mcp-server",
+    "@nlqdb/coming-soon"
+  ],
+  "privatePackages": {
+    "version": false,
+    "tag": false
+  }
+}

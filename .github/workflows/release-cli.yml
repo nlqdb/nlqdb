@@ -1,0 +1,53 @@
+# `nlq` CLI releases via goreleaser on `cli-v*` tag push. Cross-
+# compiles linux/darwin × amd64/arm64, attaches archives + SBOM to
+# a GitHub Release. Homebrew tap bump runs in the same goreleaser
+# pass and requires HOMEBREW_TAP_GITHUB_TOKEN to be set on the repo
+# — otherwise the brews step fails after the Release is already
+# created. Set the secret before tagging.
+
+name: Release CLI
+
+on:
+  push:
+    tags:
+      - "cli-v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag to release (must already exist on origin, e.g. cli-v0.1.0)"
+        required: true
+
+concurrency:
+  group: release-cli-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: goreleaser
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.inputs.tag || github.ref }}
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: cli/go.mod
+          cache-dependency-path: cli/go.sum
+
+      # Syft generates the SPDX SBOM that goreleaser attaches to the release.
+      - uses: anchore/sbom-action/download-syft@v0
+
+      - uses: goreleaser/goreleaser-action@v6
+        with:
+          version: "~> v2"
+          args: release --clean
+          workdir: cli
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          HOMEBREW_TAP_GITHUB_TOKEN: ${{ secrets.HOMEBREW_TAP_GITHUB_TOKEN }}
