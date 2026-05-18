@@ -7,7 +7,7 @@ The whole app is one file. No build step, no framework, no package manager.
 The snippet below needs a `pk_live_` key scoped to your database. You don't generate one separately — the chat hands it to you, already inlined.
 
 1. Open **[nlqdb.com](https://nlqdb.com)** and describe what you're building in one sentence (e.g. *"a personal book library — title, author, genre, rating, finished_at"*). Hit **Create the DB**.
-2. The schema and a few sample rows render in place. Click **Open chat →**. First chat opens the sign-in screen (Google, GitHub, or magic link — no password). Sign-in adopts the anonymous DB you just created — same `dbId`, same data ([`SK-ANON-003`](../../docs/features/anonymous-mode/FEATURE.md)).
+2. The schema and a few sample rows render in place. Click **Open chat →**. First chat opens the sign-in screen (Google, GitHub, or magic link — no password). Sign-in is always free and requires no card — the free tier covers queries, embeds, and BYOLLM forever ([`GLOBAL-026`](../../docs/decisions/GLOBAL-026-llm-strategy-byollm-hosted-premium.md)). It also adopts the anonymous DB you just created — same `dbId`, same data ([`SK-ANON-003`](../../docs/features/anonymous-mode/FEATURE.md)).
 3. Ask anything against the DB. Next to any answer, click **Copy snippet**. The clipboard now contains the `<nlq-data>` block below with `api-key="pk_live_<dbId>"` already filled in ([`SK-WEB-007`](../../docs/features/web-app/FEATURE.md)).
 
 Paste it into the HTML file in the next section and you're done.

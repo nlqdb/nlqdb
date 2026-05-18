@@ -140,7 +140,7 @@ function CreateFormInner({ apiBase }: CreateFormProps) {
     <section className="createform">
       <h1 className="createform__title">Spin up a database from a sentence.</h1>
       <p className="createform__lede">
-        Anonymous — no sign-in. Your DB lives 72h; sign in to keep it.
+        Anonymous — no sign-in. Your DB lives 72h; sign in (always free) to keep it.
       </p>
       <form
         className="createform__form"
@@ -264,10 +264,11 @@ function CreateSnippetView({ primaryTable }: { primaryTable: string | undefined 
       </pre>
       <p className="createresult__snippet-hint">
         Sign in to keep this DB and reveal your <code>pk_live_</code>. Every chat answer has a{" "}
-        <strong>Copy snippet</strong> action that inlines the working key automatically.
+        <strong>Copy snippet</strong> action that inlines the working key automatically. Always
+        free — no card required.
       </p>
       <a className="btn btn--accent createresult__snippet-cta" href="/auth/sign-in?return_to=/app">
-        Sign in to continue →
+        Sign in (free) to continue →
       </a>
     </section>
   );
