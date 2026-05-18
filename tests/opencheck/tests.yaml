@@ -53,19 +53,29 @@ recording:
 tests:
   - name: "#hero-or-cmdg"
     case: |
-      Navigate to the base URL. Press Ctrl+G (Cmd+G on Mac) once to
-      reveal the cmd+g-gated hero. Verify a text input with placeholder
-      "an orders tracker" is visible. (The waitlist email input is not
-      the target.)
+      Navigate to the base URL. Press Ctrl+G (Cmd+G on Mac) to reveal
+      the cmd+g-gated hero. The page's #hero-gate div starts with the
+      HTML `hidden` attribute; Ctrl+G removes it. After pressing the
+      key, call browser_evaluate with
+        document.getElementById('hero-gate')?.hidden
+      — it must return false. Then call browser_snapshot and confirm
+      a text input with placeholder "an orders tracker" appears in
+      the accessibility tree. (The waitlist email input is not the
+      target — its placeholder is different.)
 
   - name: "#create-table-anon"
     case: |
       #hero-or-cmdg, then in the input with placeholder "an orders
       tracker" type
         create a users table with id, name, email
-      and submit. Verify a result block titled "Provisioned with N
-      sample rows" appears and a "Users" table with id, name, email
-      columns is rendered.
+      and submit. Wait for the response. Use browser_evaluate to
+      verify the result:
+        document.querySelector('.createresult__schema')?.textContent
+      must contain "Provisioned with". Also verify a "Users" table
+      heading appears by checking
+        document.querySelector('.createresult__table-name')?.textContent
+      contains "Users" (case-insensitive). id, name, email columns
+      should be present.
 
   - name: "#add-row-redirects-to-auth"
     case: |

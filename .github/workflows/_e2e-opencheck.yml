@@ -194,7 +194,7 @@ jobs:
           const path = require("path");
           const readline = require("readline");
 
-          const SNAP_LIMIT = 3000; // chars per content[].text block
+          const SNAP_LIMIT = 8000; // chars per content[].text block
 
           // 1. Profile lock cleanup — must run before spawning Chromium.
           const userDataDirArg = process.argv.find(a => a.startsWith("--user-data-dir="));
