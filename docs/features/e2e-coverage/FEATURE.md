@@ -127,7 +127,7 @@ commentary is nested under the rule.
 
 ## Free LLM model selection (opencheck)
 
-Top 5 free models for agentic/tool-use E2E runs — verified via live rate-limit API checks on 2026-05-18. Each run consumes ~360 K tokens cold (20 tests × ~6 LLM calls × 3 K tokens after snapshot truncation).
+Top 5 free models for agentic/tool-use E2E runs — verified via live rate-limit API checks on 2026-05-18. Each run consumes ~360 K tokens cold (20 tests × ~6 LLM calls × ~8 K char / ~2 K token snapshots).
 
 | Model | Provider | TPM | Daily budget | Context | Notes |
 |---|---|---|---|---|---|
