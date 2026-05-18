@@ -1,0 +1,32 @@
+---
+title: nlqdb
+description: A database you talk to. Create one in plain English, query it with `<nlq-data>` or the CLI.
+template: splash
+hero:
+  tagline: A database you talk to. Create one in plain English, query it with `<nlq-data>` or the CLI.
+  actions:
+    - text: Quickstart
+      link: /quickstart/
+      icon: right-arrow
+      variant: primary
+    - text: View on GitHub
+      link: https://github.com/nlqdb/nlqdb
+      icon: external
+---
+
+import { Card, CardGrid } from "@astrojs/starlight/components";
+
+<CardGrid>
+  <Card title="Quickstart" icon="rocket">
+    Copy-paste HTML, talk to a database in 60 seconds. [Start here.](/quickstart/)
+  </Card>
+  <Card title="HTTP API" icon="seti:json">
+    `POST /v1/ask`, `POST /v1/run`, idempotency, anonymous mode. [Reference.](/reference/http-api/)
+  </Card>
+  <Card title="SDK" icon="seti:typescript">
+    `@nlqdb/sdk` — the only HTTP client. Framework wrappers for React, Next, Vue, Nuxt, Svelte, SvelteKit, Astro, Solid + a native Swift Package. [Reference.](/reference/sdk/)
+  </Card>
+  <Card title="MCP" icon="puzzle">
+    Paste `mcp.nlqdb.com` into Claude Desktop, Cursor, Zed, Windsurf. [Setup.](/mcp/)
+  </Card>
+</CardGrid>

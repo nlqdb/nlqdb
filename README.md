@@ -178,8 +178,7 @@ obsolete by the move to GH Actions for every surface.
 
 **Phase 1 — before public soft launch:**
 
-- ◯ LogSnag account → drop `LOGSNAG_TOKEN` + `LOGSNAG_PROJECT` in `.envrc`
-- ◯ Plausible self-hosted on Fly (web analytics, free)
+- ◯ Cloudflare Web Analytics (free, zero ops; replaces the earlier "Plausible on Fly" plan — see `docs/research/email-and-marketing.md §4`)
 
 **Signal-gated — before charging anyone (Stripe live + Lago + Listmonk):**
 

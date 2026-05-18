@@ -114,6 +114,8 @@ nlqdb/
 │   ├── web/             # marketing + product web app
 │   ├── api/             # Cloudflare Workers HTTP API
 │   ├── events-worker/   # event-pipeline consumer (queue → sinks)
+│   ├── mcp/             # hosted MCP server (mcp.nlqdb.com)
+│   ├── docs/            # user-facing docs site (docs.nlqdb.com)
 │   └── coming-soon/     # standalone landing page
 ├── cli/                 # `nlq` command-line tool
 ├── packages/
@@ -181,6 +183,7 @@ manually before editing.)
 | `packages/mcp/**`, `apps/mcp/**` | `docs/features/mcp-server/FEATURE.md` |
 | `apps/web/**` (onboarding, anonymous mode) | `docs/features/web-app/FEATURE.md` |
 | `apps/web/src/onboarding/**`, signup flow, first-query path | `docs/features/onboarding/FEATURE.md` |
+| `apps/docs/**`, `docs.nlqdb.com` Starlight site | `docs/features/docs-site/FEATURE.md` |
 | `.github/workflows/**`, `nlqdb/actions/**` (CI permissions) | `docs/features/ci-permissions/FEATURE.md` |
 | `tests/personas/**`, `tests/opencheck/**`, `tests/e2e/**`, `examples/**/e2e/**`, `.github/workflows/e2e*.yml`, `.github/workflows/_e2e-*.yml`, `packages/nlqdb-rb/spec/e2e/**`, `packages/nlqdb-rs/tests/e2e/**` | `docs/features/e2e-coverage/FEATURE.md` |
 

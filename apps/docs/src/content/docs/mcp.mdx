@@ -1,0 +1,13 @@
+---
+title: MCP setup
+description: Connect Claude Desktop, Cursor, Zed, Windsurf, VS Code Continue, or Cline to nlqdb.
+---
+
+:::caution[Stub]
+**TODO:** replace with hand-written prose (concept layer per `SK-DOCS-003`). Host-specific setup is narrative, not auto-generable. Until then, see [`docs/features/mcp-server/FEATURE.md`](https://github.com/nlqdb/nlqdb/blob/main/docs/features/mcp-server/FEATURE.md).
+:::
+
+## Two install paths
+
+1. **Hosted (default)** — paste `https://mcp.nlqdb.com/mcp` into your host's MCP-connector config; OAuth opens in your browser on first tool call.
+2. **Local stdio** — `nlq mcp install` auto-detects installed hosts and writes scoped `sk_mcp_<host>_<device>_*` keys into each config.
