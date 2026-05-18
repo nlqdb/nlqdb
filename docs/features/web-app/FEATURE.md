@@ -10,7 +10,7 @@ when-to-load:
 # Feature: Web App
 
 **One-liner:** Marketing + product web app — onboarding, anonymous-mode default, demo dataset.
-**Status:** partial (Phase 1.5 — Phase 1 surfaces shipped; GLOBAL-024 queued wishlist landed via `SK-EVENTS-011` (see `events-pipeline/FEATURE.md`); the wishlist fanout lives in `CodePanel.astro`).
+**Status:** partial (Phase 1.5 — Phase 1 surfaces shipped; GLOBAL-024 queued wishlist landed via `SK-EVENTS-011` (see `events-pipeline/FEATURE.md`); the wishlist fanout lives in `CodePanel.astro`. `SK-WEB-010` adds the marketing-create Copy-snippet bridge to chat-side Copy snippet).
 **Owners (code):** `apps/web/**`
 **Cross-refs:** docs/architecture.md §3.1 (marketing site) · docs/architecture.md §3.2 (platform web app) · docs/runbook.md §10 (P1, P3, P5) · docs/phase-plan.md §2 (Phase 1 web slices)
 
@@ -112,10 +112,21 @@ when-to-load:
 - **Decision:** Every chat-generated `<nlq-data>` snippet has the user's `pk_live_<dbId>` already inlined when copied. Anonymous users get a temporary `pk_live_` that rotates to a permanent one on sign-in. The user never has to open the dashboard, find the keys page, click "Reveal", and paste.
 - **Core value:** Effortless UX, Goal-first, Seamless auth
 - **Why:** Getting an API key is the kind of side errand that breaks the goal-first flow. The user wanted an embed; making them collect a key first interrupts the moment. Inlining the key in the chat-copy action keeps the user inside one window. For anonymous users, rotating the key on sign-in is the seamless adoption path (`GLOBAL-007`).
-- **Consequence in code:** Chat panel's "Copy snippet" CTA pre-fills `api-key="pk_live_…"` server-side from the user's (or anonymous device's) per-DB key. The temporary anonymous key is rotated to a permanent one on sign-in via the same endpoint that adopts the anonymous DB. Tested end-to-end in `docs/features/elements/FEATURE.md`.
+- **Consequence in code:** Chat panel's "Copy snippet" CTA pre-fills `api-key="pk_live_…"` server-side from the user's (or anonymous device's) per-DB key. The temporary anonymous key is rotated to a permanent one on sign-in via the same endpoint that adopts the anonymous DB. Tested end-to-end in `docs/features/elements/FEATURE.md`. The marketing-page create-result surfaces the *shape* of the same snippet but defers key inlining to the chat — see `SK-WEB-010`.
 - **Alternatives rejected:**
   - Show the key in the chat as text + ask the user to copy it — extra step, easy to lose, leaks into chat history.
   - Require sign-in before "Copy snippet" works — breaks the no-login-wall promise.
+
+### SK-WEB-010 — Marketing-page Copy-snippet shows the embed shape; key inlining stays in the chat
+
+- **Decision:** The marketing-page create result (`CreateResultView` in `apps/web/src/components/CreateForm.tsx`) renders an embed-snippet block alongside the schema preview. The snippet shows the `<nlq-data>` shape with a goal derived from the primary table and `api-key="pk_live_REPLACE_ME"` as a literal placeholder. A "Copy" button writes the placeholder snippet to the clipboard; a "Sign in to continue →" CTA routes to `/auth/sign-in?return_to=/app`. The real `pk_live_` inlining still happens in one place only — the chat's per-answer Copy snippet (`SK-WEB-007`).
+- **Core value:** Goal-first, Effortless UX, Bullet-proof
+- **Why:** A fresh visitor lands on the marketing page, types one sentence, and sees their schema render in ~6 seconds (the wow moment). The natural follow-through is "how do I use this from my own page?" — without a snippet affordance there, the user has to click *Open chat →* → sign in → ask a question → find Copy snippet. Five steps before any HTML lands in their clipboard. The snippet-shape-first approach closes the gap to one step: paste the structure now, sign in to fill in the key. Inlining the actual anon `pk_live_` here would 401 on the element's first fetch — the create call already consumed the `SK-ANON-012` 1-call budget, so the embedded `<nlq-data>` would auth-wall before rendering. The CTA is honest about both the seam (sign-in needed) and the destination (the chat's Copy snippet, which inlines the working key per `SK-WEB-007`).
+- **Consequence in code:** `CreateForm.tsx` adds a `CreateSnippetView` sub-component rendered inside `CreateResultView` after the schema-preview tables. Snippet text is built client-side from `result.sampleRows[0].table` so the example goal references the actual table the user just created. The Copy button uses `navigator.clipboard.writeText` with a transient *"Copied"* state; clipboard failures (non-secure context, extension policy) are swallowed silently — users can still triple-click the `<pre>`. CSS lives under `.createresult__snippet*` in `apps/web/src/styles/global.css`. `SK-WEB-007` is **not** modified; the chat remains the only surface that inlines a working `pk_live_`. Two `GLOBAL-024` demand-signal events fire from this surface via `apps/web/src/lib/logsnag.ts` `emit()`: `home.snippet_copied` (extends the existing event used by chat / CodePanel; props `{ surface: "create_result" }`) and `home.snippet_signin_cta_clicked` (new; same `surface` prop) — the pair lets the funnel read *snippet-engaged → signed-in* without inferring it from page-view sequence.
+- **Alternatives rejected:**
+  - **Inline the real anon `pk_live_` on the marketing page.** Per `SK-ANON-012` the device cap is consumed by the create call, so any `<nlq-data>` element embedded with the anon key would 401 on first fetch — silent-broken-embed is the worst possible UX after the wow moment.
+  - **Don't show a snippet at all; only show "Open chat →".** Drops to five clicks before the user sees their first HTML; loses the chance to teach the embed shape during the most-engaged moment of the session.
+  - **Show a snippet with a working key gated behind a Turnstile.** Doubles the bot-defense surface area and still doesn't let the embed render against the just-created DB (the cap is per-device, not per-IP, and Turnstile doesn't reset it).
 
 ## GLOBALs governing this feature
 

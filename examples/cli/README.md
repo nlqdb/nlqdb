@@ -11,6 +11,32 @@ nlq "how many orders today, by drink"
 
 See [`walkthrough.sh`](./walkthrough.sh) for the same flow with annotated expected output.
 
+## Install
+
+> **Phase 2 — channels not yet live.** Install paths are decided ([`SK-CLI-002`](../../docs/features/cli/decisions/SK-CLI-002-distribution-channels.md)) and ship with the Phase 2 CLI surface ([`docs/phase-plan.md`](../../docs/phase-plan.md)). Until then build from source — see *Build from source today* below.
+
+Once Phase 2 ships, three install paths will resolve to the same Go binary pinned per release:
+
+```bash
+# curl-pipe-sh — installs to ~/.local/bin/nlq
+curl -fsSL https://nlqdb.com/install | sh
+
+# Homebrew (macOS / Linux)
+brew install nlqdb/tap/nlq
+
+# npm shim — downloads the right Go binary on postinstall
+npm i -g @nlqdb/cli
+```
+
+### Build from source today
+
+```bash
+git clone https://github.com/nlqdb/nlqdb
+cd nlqdb/cli && go build -o ~/.local/bin/nlq ./cmd/nlq
+```
+
+Track [#cli](https://github.com/nlqdb/nlqdb/issues?q=label%3Acli) for the install-endpoints rollout.
+
 ## Default path — no sign-in until you want it
 
 ```bash

@@ -2,6 +2,16 @@
 
 The whole app is one file. No build step, no framework, no package manager.
 
+## Step 0 — Get your key (60 seconds)
+
+The snippet below needs a `pk_live_` key scoped to your database. You don't generate one separately — the chat hands it to you, already inlined.
+
+1. Open **[nlqdb.com](https://nlqdb.com)** and describe what you're building in one sentence (e.g. *"a personal book library — title, author, genre, rating, finished_at"*). Hit **Create the DB**.
+2. The schema and a few sample rows render in place. Click **Open chat →**. First chat opens the sign-in screen (Google, GitHub, or magic link — no password). Sign-in is always free and requires no card — the free tier covers queries, embeds, and BYOLLM forever ([`GLOBAL-026`](../../docs/decisions/GLOBAL-026-llm-strategy-byollm-hosted-premium.md)). It also adopts the anonymous DB you just created — same `dbId`, same data ([`SK-ANON-003`](../../docs/features/anonymous-mode/FEATURE.md)).
+3. Ask anything against the DB. Next to any answer, click **Copy snippet**. The clipboard now contains the `<nlq-data>` block below with `api-key="pk_live_<dbId>"` already filled in ([`SK-WEB-007`](../../docs/features/web-app/FEATURE.md)).
+
+Paste it into the HTML file in the next section and you're done.
+
 ## The whole "backend"
 
 ```html
@@ -16,8 +26,6 @@ The whole app is one file. No build step, no framework, no package manager.
 ```
 
 That's the entire backend for a live order list. There is no API to write, no schema to define, no JSON to parse, no React to render. The element fetches, renders the table template, and refreshes every 10 seconds.
-
-Every chat surface (web, CLI, MCP) offers a "Copy snippet" action next to any generated query; the copied HTML has the user's `pk_live_` already inlined. The key is right there, in the code the user was about to use.
 
 ## Writes (`<nlq-action>`)
 
@@ -40,8 +48,8 @@ The form's field names are inferred into columns automatically. The first click 
 
 ## Run it
 
-1. Replace `pk_live_REPLACE_ME` with your read-only key (from the chat's "Copy snippet" button on any query); the `<nlq-data>` pane will populate.
-2. Open `index.html` in a browser. Done.
+1. Save the snippet above into an `index.html`. The `api-key` value should already be your real `pk_live_<dbId>` if you copied it from the chat per Step 0. Otherwise replace `pk_live_xxx` with the value from your chat's **Copy snippet** button.
+2. Open `index.html` in a browser. The `<nlq-data>` pane fetches, renders the table, and starts refreshing on the cadence you set.
 
 The `<nlq-action>` form authenticates via your same-origin `app.nlqdb.com`
 session cookie ([`SK-ELEM-011`](../../docs/features/elements/decisions/SK-ELEM-011-action-cookie-session-only.md)) — sign in there once and the form works from any same-origin page. Cross-origin write-tokens are tracked in [`api-keys/FEATURE.md`](../../docs/features/api-keys/FEATURE.md) and ship in a follow-up slice.
