@@ -171,8 +171,8 @@ jobs:
       # 3. Snapshot truncation: browser_snapshot returns ~40 KB accessibility
       #    trees per call. Context grows 3 K → 13 K → 50 K+ tokens within one
       #    test, driving LLM latency from ~1 s to 100 s and hitting the 240 s
-      #    timeout. The wrapper truncates content[].text blocks at 3,000 chars
-      #    (~750 tokens), preserving enough UI structure for navigation.
+      #    timeout. The wrapper truncates content[].text blocks at 8,000 chars
+      #    (~2,000 tokens), preserving enough UI structure for navigation.
       #
       # Idempotent: if cli.original.js is already present, the step skips.
       - name: Patch @playwright/mcp — no-sandbox + profile lock + snapshot truncation
