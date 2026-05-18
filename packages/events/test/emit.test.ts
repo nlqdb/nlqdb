@@ -126,6 +126,53 @@ describe("makeQueueEmitter", () => {
     expect(queue.sent[1]?.id).toBe(`home.surface_wishlist.wl:abcd1234.slack.${today}`);
   });
 
+  it("keys feature.eval.weekly by (name, dataset, runId) so workflow retries dedupe (SK-QUAL-002)", async () => {
+    const queue = makeFakeQueue();
+    const emitter = makeQueueEmitter(queue);
+
+    await emitter.emit({
+      name: "feature.eval.weekly",
+      runId: "2026-05-18T04:00:00Z",
+      dataset: "bird-mini-dev-sqlite",
+      questionCount: 500,
+      laneExecutionAccuracy: { free: 0.42 },
+      freeVsFrontierDelta: null,
+    });
+
+    expect(queue.sent[0]?.id).toBe("feature.eval.weekly.bird-mini-dev-sqlite.2026-05-18T04:00:00Z");
+  });
+
+  it("keys feature.eval.regression by (run, lane, trigger) so threshold + mcnemar stay distinct", async () => {
+    const queue = makeFakeQueue();
+    const emitter = makeQueueEmitter(queue);
+
+    await emitter.emit({
+      name: "feature.eval.regression",
+      runId: "2026-05-18T04:00:00Z",
+      dataset: "bird-mini-dev-sqlite",
+      lane: "free",
+      deltaPp: -0.07,
+      trigger: "threshold",
+      pValue: null,
+    });
+    await emitter.emit({
+      name: "feature.eval.regression",
+      runId: "2026-05-18T04:00:00Z",
+      dataset: "bird-mini-dev-sqlite",
+      lane: "free",
+      deltaPp: -0.07,
+      trigger: "mcnemar",
+      pValue: 0.02,
+    });
+
+    expect(queue.sent[0]?.id).toBe(
+      "feature.eval.regression.bird-mini-dev-sqlite.2026-05-18T04:00:00Z.free.threshold",
+    );
+    expect(queue.sent[1]?.id).toBe(
+      "feature.eval.regression.bird-mini-dev-sqlite.2026-05-18T04:00:00Z.free.mcnemar",
+    );
+  });
+
   it("swallows queue.send failures (emit is non-fatal)", async () => {
     const queue = makeFakeQueue();
     queue.failNext = new Error("queue full");

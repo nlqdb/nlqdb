@@ -57,6 +57,7 @@ export default defineConfig(async () => {
               "test/anon-stash.test.ts",
               "test/databases-list.test.ts",
               "test/db-sweep.test.ts",
+              "test/events-feature.test.ts",
               "test/mock-email-sink.test.ts",
               "test/oauth-mcp-bridge.test.ts",
               "test/workload-analyser/*.test.ts",

@@ -1,12 +1,18 @@
 // `home.surface_wishlist` demand-signal endpoint (SK-EVENTS-011).
 //
 //   POST /v1/events/wishlist — public, IP-hash-bucketed for dedup
+//   POST /v1/events/eval     — internal, bearer-token (SK-QUAL-002)
 //
 // Per `SK-EVENTS-003`, `events.emit()` is fire-and-forget — the route
 // returns 202 as soon as the queue producer accepts the message
 // (failures land on the OTel span, not the response status).
 
-import type { EventEmitter, WishlistSurface } from "@nlqdb/events";
+import type {
+  EventEmitter,
+  FeatureEvalRegressionEvent,
+  FeatureEvalWeeklyEvent,
+  WishlistSurface,
+} from "@nlqdb/events";
 import { makeKvThrottle } from "./lib/kv-throttle.ts";
 import { sha256Hex } from "./principal.ts";
 
@@ -83,4 +89,113 @@ async function deriveWishlistPrincipalId(ip: string): Promise<string> {
   // (`anon:<16hex>`); using a distinct `wl:` prefix keeps these from
   // colliding with real anon ids in the LogSnag user_id facet.
   return `wl:${await sha256Hex(`${ip}:${day}`, 16)}`;
+}
+
+// ---- POST /v1/events/eval — quality-eval cron ingestion (SK-QUAL-002) ----
+
+// Caller-supplied shape; we accept the harness's `EvalReport` plus the
+// optional `baseline` diff. The handler doesn't recompute either — the
+// GH-Actions runner is the canonical computer (it has both files locally)
+// and we just emit the typed events. Validation is shape-level only,
+// scoped to the fields the producer actually reads.
+export type EvalIngestPayload = {
+  report: {
+    run_at: string;
+    dataset: string;
+    question_count: number;
+    lanes: Array<{ lane: string; execution_accuracy: number }>;
+    free_vs_frontier_delta: number | null;
+    baseline?: {
+      lanes: Array<{
+        lane: string;
+        delta_pp: number | null;
+        regressions: Array<{ trigger: "threshold" | "mcnemar"; pValue: number | null }>;
+      }>;
+    };
+  };
+};
+
+export type EvalIngestResult =
+  | { status: 202; emitted: number; pendingEmits: Promise<unknown>[] }
+  | { status: 400; reason: "invalid_body" }
+  | { status: 401 };
+
+// Constant-time bearer compare so a length-leak doesn't reveal token
+// length on a brute-force attempt. Workers' `crypto.subtle.timingSafeEqual`
+// isn't available; we use a fixed-prefix XOR loop. Bearer prefix is
+// stripped before compare.
+function bearerEquals(provided: string | null, expected: string): boolean {
+  if (!provided) return false;
+  const prefix = "Bearer ";
+  if (!provided.startsWith(prefix)) return false;
+  const token = provided.slice(prefix.length);
+  if (token.length !== expected.length) return false;
+  let diff = 0;
+  for (let i = 0; i < token.length; i++) diff |= token.charCodeAt(i) ^ expected.charCodeAt(i);
+  return diff === 0;
+}
+
+function isValidPayload(value: unknown): value is EvalIngestPayload {
+  if (!value || typeof value !== "object") return false;
+  const root = value as { report?: unknown };
+  if (!root.report || typeof root.report !== "object") return false;
+  const r = root.report as {
+    run_at?: unknown;
+    dataset?: unknown;
+    question_count?: unknown;
+    lanes?: unknown;
+    free_vs_frontier_delta?: unknown;
+  };
+  return (
+    typeof r.run_at === "string" &&
+    typeof r.dataset === "string" &&
+    typeof r.question_count === "number" &&
+    Array.isArray(r.lanes) &&
+    (r.free_vs_frontier_delta === null || typeof r.free_vs_frontier_delta === "number")
+  );
+}
+
+export function recordEvalReport(
+  events: EventEmitter,
+  authorization: string | null,
+  expectedToken: string,
+  payload: unknown,
+): EvalIngestResult {
+  if (!bearerEquals(authorization, expectedToken)) return { status: 401 };
+  if (!isValidPayload(payload)) return { status: 400, reason: "invalid_body" };
+  const { report } = payload;
+  const pendingEmits: Promise<unknown>[] = [];
+  // Always emit the weekly summary so the SK-QUAL-002 weekly cadence
+  // reaches the dashboard regardless of whether a regression fired.
+  const weekly: FeatureEvalWeeklyEvent = {
+    name: "feature.eval.weekly",
+    runId: report.run_at,
+    dataset: report.dataset,
+    questionCount: report.question_count,
+    laneExecutionAccuracy: Object.fromEntries(
+      report.lanes.map((l) => [l.lane, l.execution_accuracy]),
+    ),
+    freeVsFrontierDelta: report.free_vs_frontier_delta,
+  };
+  pendingEmits.push(events.emit(weekly));
+  if (report.baseline) {
+    for (const laneCmp of report.baseline.lanes) {
+      // delta_pp is null for newly-added lanes — skip the regression
+      // emission since there's nothing to compare against.
+      if (laneCmp.delta_pp === null) continue;
+      for (const r of laneCmp.regressions) {
+        const event: FeatureEvalRegressionEvent = {
+          name: "feature.eval.regression",
+          runId: report.run_at,
+          dataset: report.dataset,
+          lane: laneCmp.lane,
+          deltaPp: laneCmp.delta_pp,
+          trigger: r.trigger,
+          pValue: r.pValue,
+        };
+        pendingEmits.push(events.emit(event));
+      }
+    }
+  }
+  return { status: 202, emitted: pendingEmits.length, pendingEmits };
 }

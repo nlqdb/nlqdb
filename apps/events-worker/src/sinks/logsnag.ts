@@ -133,6 +133,48 @@ function buildPayloadBody(project: string, event: ProductEvent): LogSnagPayload 
         user_id: event.principalId,
         tags: { surface: event.surface },
       };
+    case "feature.eval.weekly": {
+      // SK-QUAL-002: weekly summary lands in `#north-star`. Lane EAs
+      // are emitted as separate tags so the LogSnag dashboard can chart
+      // them; `notify: false` because weekly snapshots are review-
+      // cadence, not pager-cadence.
+      const laneTags = Object.fromEntries(
+        Object.entries(event.laneExecutionAccuracy).map(([lane, ea]) => [
+          `ea-${lane}`,
+          (ea * 100).toFixed(2),
+        ]),
+      );
+      return {
+        project,
+        channel: "north-star",
+        event: "Eval weekly",
+        description: `${event.dataset}: ${event.questionCount} Qs, delta ${
+          event.freeVsFrontierDelta === null
+            ? "n/a"
+            : `${(event.freeVsFrontierDelta * 100).toFixed(2)} pts`
+        }`,
+        icon: "📊",
+        notify: false,
+        tags: { dataset: event.dataset, run: event.runId, ...laneTags },
+      };
+    }
+    case "feature.eval.regression":
+      // SK-QUAL-002: regression pages the on-call. `trigger` tag
+      // distinguishes McNemar vs threshold without re-parsing.
+      return {
+        project,
+        channel: "north-star",
+        event: "Eval regression",
+        description: `${event.dataset} / ${event.lane}: ${(event.deltaPp * 100).toFixed(2)} pts (${event.trigger}${event.pValue === null ? "" : `, p=${event.pValue.toFixed(4)}`})`,
+        icon: "🚨",
+        notify: true,
+        tags: {
+          dataset: event.dataset,
+          run: event.runId,
+          lane: event.lane,
+          trigger: event.trigger,
+        },
+      };
     case "ask.completed":
     case "user.waitlist_joined":
       // Not LogSnag-routed. `ask.completed` flows to Tinybird

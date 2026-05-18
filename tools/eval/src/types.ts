@@ -56,4 +56,39 @@ export type EvalReport = {
   // Headline KPI per SK-QUAL-004; `null` when only one lane ran.
   free_vs_frontier_delta: number | null;
   results: QuestionResult[];
+  // Set when the runner was given a baseline file (SK-QUAL-002/006); the
+  // weekly cron then emits `feature.eval.weekly` always + `feature.eval.regression`
+  // per (lane, trigger) listed under `lanes[*].regressions`.
+  baseline?: BaselineComparison;
+};
+
+// SK-QUAL-006 — paired McNemar result on per-question outcomes.
+export type McNemarResult = {
+  b: number;
+  c: number;
+  pValue: number;
+  method: "exact-binomial" | "edwards-chi2";
+};
+
+export type LaneRegression = {
+  lane: DispatchLane;
+  // null when this lane wasn't in the baseline (newly added).
+  baseline_execution_accuracy: number | null;
+  current_execution_accuracy: number;
+  // current_EA − baseline_EA (signed; negative = regression).
+  delta_pp: number | null;
+  mcnemar: McNemarResult | null;
+  // SK-QUAL-002 / SK-QUAL-006: zero, one, or both triggers can fire on the
+  // same lane in the same run. The producer emits one event per trigger so
+  // the on-call sees both signals.
+  regressions: Array<{
+    trigger: "threshold" | "mcnemar";
+    pValue: number | null;
+  }>;
+};
+
+export type BaselineComparison = {
+  baseline_run_at: string;
+  baseline_question_count: number;
+  lanes: LaneRegression[];
 };

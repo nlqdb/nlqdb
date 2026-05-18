@@ -102,6 +102,68 @@ describe("buildPayload", () => {
     });
   });
 
+  it("maps feature.eval.weekly onto north-star with per-lane EA tags (SK-QUAL-002)", () => {
+    const out = buildPayload("nlqdb", {
+      name: "feature.eval.weekly",
+      runId: "2026-05-18T04:00:00Z",
+      dataset: "bird-mini-dev-sqlite",
+      questionCount: 500,
+      laneExecutionAccuracy: { free: 0.42, frontier: 0.66 },
+      freeVsFrontierDelta: 0.24,
+    });
+    expect(out).toMatchObject({
+      project: "nlqdb",
+      channel: "north-star",
+      event: "Eval weekly",
+      notify: false,
+      tags: {
+        dataset: "bird-mini-dev-sqlite",
+        run: "2026-05-18T04:00:00Z",
+        "ea-free": "42.00",
+        "ea-frontier": "66.00",
+      },
+    });
+    expect(out.description).toContain("24.00 pts");
+  });
+
+  it("maps feature.eval.regression with notify=true and trigger tag (SK-QUAL-002)", () => {
+    const out = buildPayload("nlqdb", {
+      name: "feature.eval.regression",
+      runId: "2026-05-18T04:00:00Z",
+      dataset: "bird-mini-dev-sqlite",
+      lane: "free",
+      deltaPp: -0.07,
+      trigger: "threshold",
+      pValue: null,
+    });
+    expect(out).toMatchObject({
+      project: "nlqdb",
+      channel: "north-star",
+      event: "Eval regression",
+      notify: true,
+      tags: {
+        dataset: "bird-mini-dev-sqlite",
+        run: "2026-05-18T04:00:00Z",
+        lane: "free",
+        trigger: "threshold",
+      },
+    });
+  });
+
+  it("includes p-value in description when trigger is mcnemar", () => {
+    const out = buildPayload("nlqdb", {
+      name: "feature.eval.regression",
+      runId: "2026-05-18T04:00:00Z",
+      dataset: "bird-mini-dev-sqlite",
+      lane: "frontier",
+      deltaPp: -0.03,
+      trigger: "mcnemar",
+      pValue: 0.0123,
+    });
+    expect(out.description).toContain("mcnemar");
+    expect(out.description).toContain("p=0.0123");
+  });
+
   it("maps billing.subscription_canceled into the LogSnag shape", () => {
     const out = buildPayload("nlqdb", {
       name: "billing.subscription_canceled",

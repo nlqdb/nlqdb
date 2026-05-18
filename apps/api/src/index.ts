@@ -56,7 +56,7 @@ import { makeChatStore } from "./chat/store.ts";
 import { deriveSlug, displayName, listDatabasesForTenant } from "./databases/list.ts";
 import { resolveDb } from "./db-registry.ts";
 import { sweepAnonDatabases } from "./db-sweep/sweep.ts";
-import { recordWishlist } from "./events-feature.ts";
+import { recordEvalReport, recordWishlist } from "./events-feature.ts";
 import {
   isAllowedEngine,
   MAX_GOAL_LENGTH,
@@ -1324,6 +1324,51 @@ app.post("/v1/events/wishlist", async (c) => {
       span.setAttribute("nlqdb.events.surface", String(body.body.surface));
       c.executionCtx.waitUntil(result.pendingEmit);
       return c.json({ accepted: true }, 202);
+    } finally {
+      span.end();
+    }
+  });
+});
+
+// POST /v1/events/eval — bearer-authenticated cron ingestion for
+// SK-QUAL-002. The GH-Actions weekly runner POSTs its full eval report
+// (plus baseline diff) here after every successful run; we mint the
+// `feature.eval.weekly` event + one `feature.eval.regression` per
+// triggered (lane, trigger) tuple, then fire-and-forget the queue
+// writes via `waitUntil`. 503 when the secret isn't configured matches
+// the unconfigured-sink posture (`SK-EVENTS-005`).
+app.post("/v1/events/eval", async (c) => {
+  const tracer = trace.getTracer("@nlqdb/api");
+  return tracer.startActiveSpan("nlqdb.events.eval", async (span) => {
+    try {
+      const expected = c.env.EVAL_INGEST_TOKEN;
+      if (!expected) {
+        span.setAttribute("nlqdb.events.outcome", "unconfigured");
+        return c.json({ error: { status: "unconfigured" } }, 503);
+      }
+      const body = await parseJsonBody<unknown>(c);
+      if (!body.ok) {
+        span.setAttribute("nlqdb.events.outcome", "invalid_body");
+        return c.json({ error: { status: "invalid_body" } }, 400);
+      }
+      const result = recordEvalReport(
+        buildEventEmitter(c.env.EVENTS_QUEUE),
+        c.req.header("authorization") ?? null,
+        expected,
+        body.body,
+      );
+      if (result.status === 401) {
+        span.setAttribute("nlqdb.events.outcome", "unauthorized");
+        return c.json({ error: { status: "unauthorized" } }, 401);
+      }
+      if (result.status === 400) {
+        span.setAttribute("nlqdb.events.outcome", result.reason);
+        return c.json({ error: { status: result.reason } }, 400);
+      }
+      span.setAttribute("nlqdb.events.outcome", "accepted");
+      span.setAttribute("nlqdb.events.emitted", result.emitted);
+      for (const p of result.pendingEmits) c.executionCtx.waitUntil(p);
+      return c.json({ accepted: true, emitted: result.emitted }, 202);
     } finally {
       span.end();
     }

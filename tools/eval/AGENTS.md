@@ -16,21 +16,29 @@ Before editing under `tools/eval/`:
 | `src/datasets/**`, the BIRD loader, gold-SQL fields | `docs/features/quality-eval/FEATURE.md` (`SK-QUAL-003`) |
 | `src/score.ts`, the EX (execution-accuracy) scorer | `docs/features/quality-eval/FEATURE.md` (`SK-QUAL-001`) |
 | `src/lanes.ts`, dispatch-lane selection | `docs/features/quality-eval/FEATURE.md` (`SK-QUAL-004`) + `docs/features/llm-router/decisions/SK-LLM-017-hosted-premium-chain.md` |
-| `src/runner.ts`, the runner, CI workflow | `docs/features/quality-eval/FEATURE.md` (`SK-QUAL-002`, `SK-QUAL-005`) |
+| `src/runner.ts`, the runner, CI workflow | `docs/features/quality-eval/decisions/SK-QUAL-002-weekly-cron.md` + `FEATURE.md` (`SK-QUAL-005`) |
+| `src/baseline.ts`, baseline comparison + regression detection | `docs/features/quality-eval/decisions/SK-QUAL-002-weekly-cron.md` + `decisions/SK-QUAL-006-mcnemar-paired-test.md` |
+| `src/significance.ts`, McNemar's test | `docs/features/quality-eval/decisions/SK-QUAL-006-mcnemar-paired-test.md` |
+| `src/emit.ts`, POST /v1/events/eval | `docs/features/quality-eval/decisions/SK-QUAL-002-weekly-cron.md` + `docs/features/events-pipeline/FEATURE.md` |
+| `baseline-2026-06-15.json` | `docs/features/quality-eval/FEATURE.md` (`SK-QUAL-005`) — pinned canonical baseline |
 
 ## Layout
 
 ```
 tools/eval/
 ├── src/
-│   ├── runner.ts          # main entry (`bun run --filter tools/eval bird-mini`)
+│   ├── runner.ts          # main entry — accepts --baseline + --emit-url/--emit-token
 │   ├── score.ts           # execution-accuracy (multiset compare, gold/exec error)
 │   ├── lanes.ts           # free / frontier router builders
+│   ├── baseline.ts        # read baseline JSON, per-lane diff, McNemar trigger
+│   ├── significance.ts    # McNemar exact-binomial + Edwards' chi-squared
+│   ├── emit.ts            # POST report to /v1/events/eval (typed event fanout)
 │   ├── output.ts          # JSON report writer
 │   ├── types.ts           # canonical types — BirdQuestion, EvalReport, etc.
 │   └── datasets/bird-mini.ts  # birdsql/bird_mini_dev loader (HF + on-disk)
 ├── test/                  # bun test unit tests (no real LLM, no network)
-└── results/               # report JSON output (gitignored except .keep)
+├── results/               # report JSON output (gitignored except .keep)
+└── baseline-2026-06-15.json  # pinned canonical baseline (SK-QUAL-005)
 ```
 
 ## Running locally
@@ -50,6 +58,14 @@ bun run --filter @nlqdb/eval bird-mini -- \
 # Adding the frontier lane:
 OPENROUTER_FRONTIER_API_KEY=sk-... \
   bun run --filter @nlqdb/eval bird-mini -- --limit 50
+
+# Baseline comparison + event emission (the weekly cron path):
+bun run --filter @nlqdb/eval bird-mini -- \
+  --data-dir ./bird_data \
+  --limit 500 \
+  --baseline tools/eval/baseline-2026-06-15.json \
+  --emit-url https://app.nlqdb.com \
+  --emit-token "$EVAL_INGEST_TOKEN"
 ```
 
 ## Conventions

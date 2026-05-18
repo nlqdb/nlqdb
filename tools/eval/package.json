@@ -9,6 +9,7 @@
     "bird-mini": "bun src/runner.ts"
   },
   "dependencies": {
+    "@nlqdb/events": "workspace:*",
     "@nlqdb/llm": "workspace:*"
   },
   "devDependencies": {
