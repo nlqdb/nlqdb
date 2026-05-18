@@ -12,16 +12,23 @@ when-to-load:
 # Feature: Quality Eval
 
 **One-liner:** NL-to-SQL accuracy benchmarking — three-dataset canon (BIRD-dev + Spider 2.0-lite + internal `db.create` eval per [`SK-QUAL-003`](#sk-qual-003)) against the LLM router's free / BYOLLM / hosted-premium lanes; the **free-vs-frontier delta** (`SK-QUAL-004`) is the headline KPI for [`GLOBAL-025`](../../decisions/GLOBAL-025-north-star.md)'s engine north-star.
-**Status:** **Phase 2** (promoted from Phase 3 by [`GLOBAL-025`](../../decisions/GLOBAL-025-north-star.md) — the engine north-star is unprovable without it). Design-locked; instrumentation lands first, baseline by 2026-06-15 per `SK-QUAL-005`. Promotion of [`docs/future/semantic-layer.md`](../../future/semantic-layer.md) depends on this harness.
+**Status:** **Phase 2 — slice 1 shipped (harness skeleton + BIRD Mini-Dev SQLite runner).** `tools/eval/` is now a workspace package with the dataset loader, multiset execution-accuracy scorer, free / frontier dispatch lanes, and a JSON-emitting runner. The daily workflow [`.github/workflows/quality-eval-bird-mini.yml`](../../../.github/workflows/quality-eval-bird-mini.yml) downloads BIRD Mini-Dev and runs the full 500-question pass against the free chain (frontier opt-in via `workflow_dispatch`). PR CI typechecks + runs unit tests (mocked router, ephemeral SQLite); real provider keys never fire on a PR per the user's CI policy. **Remaining for the Phase 2 exit gate:** baseline snapshot `tools/eval/baseline-2026-06-15.json` by **2026-06-15** per `SK-QUAL-005`, Grafana annotation + `feature.eval.weekly` event per `SK-QUAL-002`, internal `db.create` accepted-answer eval per `SK-QUAL-003`, and a `feature.eval.regression` alert when free EA drops > 5 pts week-over-week. Promotion of [`docs/future/semantic-layer.md`](../../future/semantic-layer.md) depends on this harness.
 
 **Contribution to north-star:** Engine quality, NL→SQL layer — this feature IS the measurement instrument. The three-dataset canon (`SK-QUAL-003`) feeds the BIRD-dev / Spider 2.0-lite KPIs and the free-vs-frontier delta in the [`GLOBAL-025`](../../decisions/GLOBAL-025-north-star.md) KPI table; the weekly cron in `SK-QUAL-002` is the alert-and-decision input.
-**Owners (code):** `tools/eval/**` (to be created), `packages/llm/**`
+**Owners (code):** `tools/eval/**`, `packages/llm/**`, `.github/workflows/quality-eval-bird-mini.yml`
 **Cross-refs:** [`docs/future/semantic-layer.md`](../../future/semantic-layer.md) (the moat this harness measures the need for) · `llm-router/FEATURE.md` (the system under test) · `trust-ux/FEATURE.md` (uses these metrics to calibrate `SK-TRUST-003` confidence floors) · [`docs/research-receipts.md §8`](../../research-receipts.md) (dbt 2026 semantic-layer accuracy research)
 
 ## Touchpoints — read this feature before editing
 
-- `tools/eval/` — benchmark runner (planned)
-- `packages/llm/src/router.ts` — the system under test
+- `tools/eval/` — benchmark runner (slice 1 shipped):
+  - `src/runner.ts` — main driver, CLI entry, lane loop
+  - `src/score.ts` — execution-accuracy scorer (multiset / sequence-strict)
+  - `src/lanes.ts` — free + frontier router builders
+  - `src/datasets/bird-mini.ts` — HuggingFace `birdsql/bird_mini_dev` loader
+  - `src/output.ts` — JSON report writer
+- `.github/workflows/quality-eval-bird-mini.yml` — daily + manual dispatch
+- `packages/llm/src/router.ts` — the system under test (calls `plan()` with `dialect: "sqlite"`)
+- `packages/llm/src/types.ts` — `PlanRequest.dialect` was widened to `"postgres" | "sqlite"` for SK-QUAL-001
 - `apps/api/src/ask/sql-validate.ts` — schema-fit checks the harness exercises
 - The Postgres / ClickHouse adapter test fixtures — repurposed as eval fixtures
 
@@ -99,7 +106,9 @@ Canonical text in [`docs/decisions/`](../../decisions/).
 
 ## Open questions / known unknowns
 
-- **Dataset mapping.** BIRD's schemas don't perfectly match our `SchemaPlan` shape. Decide whether to (a) auto-translate BIRD schemas into typed plans at load time, or (b) keep BIRD's raw `information_schema` shape and exercise the *un-scaffolded* path only. (a) is harder but matches production; (b) is faster to ship but measures a different thing. Lean: ship (b) first, layer (a) when semantic-layer promotes.
+- **Dataset mapping.** BIRD's schemas don't perfectly match our `SchemaPlan` shape. Decide whether to (a) auto-translate BIRD schemas into typed plans at load time, or (b) keep BIRD's raw `information_schema` shape and exercise the *un-scaffolded* path only. (a) is harder but matches production; (b) is faster to ship but measures a different thing. Lean: ship (b) first, layer (a) when semantic-layer promotes. **Slice 1 chose (b)** — `tools/eval/src/runner.ts::introspectSchema` reads `sqlite_master` and passes the raw `CREATE TABLE` DDL to `plan()`.
 - **Multi-dialect coverage.** Spider 2.0 includes BigQuery, Snowflake, SQLite. We support Postgres + ClickHouse. Decide whether to run only the PG + ClickHouse subset or to transpile non-supported dialects via `sqlglot`. Lean: PG + CH subset only; document the coverage gap.
-- **Fixture cost.** Standing up the full BIRD fixture set is ~6 GB of seed data. Decide whether to stage in Neon Launch ($19/mo) just for the eval run or to run against ephemeral SQLite. Lean: ephemeral SQLite for read-only correctness checks; Neon only if a benchmark exercises write paths.
+- **Fixture cost.** Standing up the full BIRD fixture set is ~6 GB of seed data. Decide whether to stage in Neon Launch ($19/mo) just for the eval run or to run against ephemeral SQLite. Lean: ephemeral SQLite for read-only correctness checks; Neon only if a benchmark exercises write paths. **Slice 1 chose ephemeral SQLite** — `bun:sqlite` opened readonly, `bird_data/` cached in GH Actions.
 - **Privacy.** No user data ever flows into the eval harness. Document this firmly so a future contributor doesn't "improve coverage" by sampling production schemas. The harness is for *public* benchmark data only.
+- **Validator integration.** Slice 1 calls `packages/llm/src/router.ts::plan()` directly — the LLM's raw plan output goes straight to execution. Production wraps `plan()` in `withStageRetry` + `validateSql` (`apps/api/src/ask/orchestrate.ts`), which lifts accuracy on the retry pass. Decide whether slice 2 should report *(raw, pipeline)* as two columns or only the pipeline number. Lean: both columns — the raw number measures the LLM, the pipeline number measures the product; the gap is the scaffolding value per `GLOBAL-025`'s "great on free LLMs ⇒ invincible on frontier LLMs" thesis.
+- **Hosted-premium lane wiring.** The frontier lane in slice 1 is a single OpenRouter provider with `model: "best"` pinned to Claude Sonnet 4.6. Slice 2 should add GPT-5 and Gemini 2.5 Pro as additional frontier providers and route them as separate runs (so per-model accuracy is visible) per `SK-LLM-017`. BYOLLM-lane instrumentation lands once `SK-LLM-016` ships.

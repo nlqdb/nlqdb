@@ -46,10 +46,15 @@ export type FailoverReason =
   | "hedge_lost"
   | "unknown";
 
+// `"sqlite"` is widened here for the `quality-eval` harness only
+// (BIRD Mini-Dev ships SQLite fixtures, per SK-QUAL-003). Production
+// callers in `apps/api/src/ask/**` still pass `"postgres"`; the LLM
+// reads the literal verbatim in the prompt and emits dialect-matching
+// SQL.
 export type PlanRequest = {
   goal: string;
   schema: string;
-  dialect: "postgres";
+  dialect: "postgres" | "sqlite";
   // GLOBAL-022 — when a previous plan attempt's SQL was rejected by the
   // validator (or the LLM call itself failed), the orchestrator passes
   // the prior attempt's SQL + reject reason here so the prompt can

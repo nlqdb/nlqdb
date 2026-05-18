@@ -240,6 +240,30 @@ jobs:
           bun run build
           test -f dist/index.js || (echo "::error::dist/index.js not produced"; exit 1)
 
+  test-tools:
+    name: tools/${{ matrix.tool }} (typecheck + bun test)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    strategy:
+      matrix:
+        # tools/* members. Eval harness is the BIRD Mini-Dev runner +
+        # scorer per docs/features/quality-eval/FEATURE.md (SK-QUAL-001).
+        # The real-LLM run is the daily workflow `quality-eval-bird-mini`;
+        # PRs only assert harness wiring (mocked router, ephemeral SQLite).
+        tool: [eval]
+      fail-fast: false
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - uses: ./.github/actions/setup
+
+      - name: Typecheck
+        working-directory: tools/${{ matrix.tool }}
+        run: bun run typecheck
+
+      - name: Test
+        working-directory: tools/${{ matrix.tool }}
+        run: bun test
+
   build-web:
     name: apps/web (astro check + build)
     runs-on: ubuntu-latest

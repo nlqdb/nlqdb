@@ -46,6 +46,12 @@ __pycache__/
 *.log
 bun-debug.log*
 
+# Quality-eval result snapshots — keep .gitkeep, ignore JSON
+tools/eval/results/*.json
+# BIRD Mini-Dev fixtures (~6 GB) live outside the repo
+bird_data/
+tools/eval/bird_data/
+
 # E2E test runtime output (Playwright reports, traces, cassette caches)
 tests/e2e/**/test-results/
 tests/e2e/**/playwright-report/

@@ -1,0 +1,18 @@
+{
+  "name": "@nlqdb/eval",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "test": "bun test",
+    "typecheck": "tsc --noEmit",
+    "bird-mini": "bun src/runner.ts"
+  },
+  "dependencies": {
+    "@nlqdb/llm": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^20.18.0",
+    "typescript": "^5.6.0"
+  }
+}

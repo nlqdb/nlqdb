@@ -159,15 +159,15 @@ manually before editing.)
 | `apps/api/src/api-keys.ts`, `apps/api/src/index.ts` `/v1/keys*` routes, `apps/web/src/pages/app/keys.astro`, `apps/web/src/components/keys/**`, anything `api-key` related | `docs/features/api-keys/FEATURE.md` |
 | `apps/api/src/ask/**`, the `/v1/ask` pipeline | `docs/features/ask-pipeline/FEATURE.md` |
 | `apps/api/src/run/**`, the `POST /v1/run` raw-SQL escape hatch (`GLOBAL-015`) | `docs/features/sdk/FEATURE.md` (`SK-SDK-009`) + `docs/features/cli/FEATURE.md` (`nlq run`) + `docs/features/sql-allowlist/FEATURE.md` (validator reuse) |
-| anything touching write/DDL diff preview, `confidence`, or the `trace` block on responses | `docs/features/trust-ux/FEATURE.md` |
+| write/DDL diff preview, `confidence`, response `trace` block | `docs/features/trust-ux/FEATURE.md` |
 | `apps/api/src/db-create/**`, `apps/api/src/ask/classifier.ts`, `apps/api/src/ask/sql-validate-ddl.ts` | `docs/features/hosted-db-create/FEATURE.md` |
 | `apps/api/src/plan-cache/**`, plan storage | `docs/features/plan-cache/FEATURE.md` |
 | `packages/llm/**`, model routing, prompts | `docs/features/llm-router/FEATURE.md` |
-| `tools/eval/**`, BIRD/Spider harness, NL-accuracy benchmarks | `docs/features/quality-eval/FEATURE.md` |
+| `tools/eval/**`, `.github/workflows/quality-eval-*.yml` (BIRD/Spider NL-accuracy harness) | `docs/features/quality-eval/FEATURE.md` |
 | `apps/api/src/ask/sql-validate.ts`, SQL allowlist | `docs/features/sql-allowlist/FEATURE.md` |
 | `packages/db/**` | `docs/features/db-adapter/FEATURE.md` |
 | anything touching `schema_hash`, schema fingerprinting | `docs/features/schema-widening/FEATURE.md` |
-| any `POST` / `PATCH` / `DELETE` handler | `docs/features/idempotency/FEATURE.md` |
+| any `POST`/`PATCH`/`DELETE` handler | `docs/features/idempotency/FEATURE.md` |
 | `packages/otel/**`, new spans / metrics | `docs/features/observability/FEATURE.md` |
 | `apps/api/src/billing/**`, Stripe webhooks | `docs/features/stripe-billing/FEATURE.md` |
 | `apps/api/src/billing/premium/**`, `apps/api/src/ask/model-picker.ts`, `packages/llm/src/chains/{paid,premium}.ts`, anything `model` preset / BYOLLM / spend-cap / hosted-premium meter related | `docs/features/premium-tier/FEATURE.md` + `decisions/SK-PREMIUM-{008,009}-*.md` |
