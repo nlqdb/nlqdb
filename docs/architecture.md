@@ -485,4 +485,4 @@ Sharded out to keep this doc under 20 KB per `CLAUDE.md` §2 D4 — content unch
 
 ## 13. Hello-world e2e fullstack tutorial — the 1-pager
 
-Published copy lives at `nlqdb.com/hello-world` (the canonical surface readers actually hit). Source for that page is in the `apps/web` repo; this doc no longer mirrors it.
+Published copy lives at [`docs.nlqdb.com/tutorials/html/`](https://docs.nlqdb.com/tutorials/html/) — sourced from `examples/html/README.md` per `SK-DOCS-003` slice b. The tutorial is regenerated on every push that touches `examples/**`, so it cannot drift from the canonical e2e-tested example.

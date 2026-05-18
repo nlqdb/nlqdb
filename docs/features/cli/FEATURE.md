@@ -90,62 +90,14 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 
 ## Happy path walkthrough
 
-### §14.3 CLI (`nlq`)
+User-facing CLI flows (anonymous-first invocation, `nlq login` adoption,
+day-2 ops, power-user explicit form) live on the docs site so they stay
+in lockstep with the binary's actual output:
 
-**Default path** (one line, no setup, no sign-in until you want it):
+- [`docs.nlqdb.com/cli/`](https://docs.nlqdb.com/cli/) — auto-generated reference for every verb / flag (`SK-DOCS-003` slice c).
+- [`docs.nlqdb.com/tutorials/cli/`](https://docs.nlqdb.com/tutorials/cli/) — tutorial sourced from `examples/cli/README.md`.
 
-```bash
-$ nlq new "an orders tracker"
-✓ Ready. Try: nlq "add an order: alice, latte, $5.50, just now"
-ℹ Saved as anonymous. Run `nlq login` within 72h to keep it.
-
-$ nlq "add an order: alice, latte, $5.50, just now"
-✓ Added. orders-tracker-a4f now has 1 row.
-```
-
-That's it. The DB exists. There is no `nlq db create` step the user had to know about.
-
-**Adopting the anonymous DB** (seamless):
-
-```bash
-$ nlq login
-→ Opening browser to approve this device… (fallback code: ABCD-1234)
-✓ Signed in as maya@example.com. Adopted 1 anonymous DB: orders-tracker-a4f.
-```
-
-The browser lands on a single "Approve this device?" screen with the code already pre-filled in the URL — one click, no typing. The refresh token is written to the macOS Keychain (or libsecret / Credential Manager on other OSes). Every subsequent call silently refreshes the access token as needed.
-
-**Day-2 ops** (still one line each):
-
-```bash
-$ nlq "how many orders today, by drink"
-latte    ████████████  12
-flat-white ██████      6
-mocha    ██            2
-
-$ nlq "export today's orders as csv > today.csv"
-✓ Wrote 20 rows to today.csv
-```
-
-**Power-user path** (explicit, when the user cares):
-
-```bash
-$ nlq db create finance --engine postgres --region us-east
-$ nlq query finance "monthly revenue last 12 months"
-$ nlq connection finance     # raw Postgres URL — drop into your own app
-```
-
-### §15.2 Persona walkthrough — Jordan, the Agent Builder
-
-**Goal:** ship a research-agent that remembers things between sessions.
-
-| Step | Jordan does | nlqdb does |
-|---|---|---|
-| 1 | On his laptop: runs `nlq mcp install`. The CLI auto-detects Claude Desktop + Cursor, opens the browser, he clicks Approve once. | Signs him in, mints a scoped MCP key per host, patches both configs, prompts him to restart Claude Desktop. |
-| 2 | In the agent's system prompt: *"You have a tool `nlqdb_query`. Call it with a `db` and a `q` in plain English. The `db` can be any string — it'll be created if new."* | — |
-| 3 | Agent runs first session. `nlqdb_query("research-memory", "remember: the user is researching solar panels in Berlin")` | DB `research-memory-...` materialized, row inserted |
-| 4 | Agent ends session, reopens hours later: `nlqdb_query("research-memory", "what do I know about the user's research topic?")` | Returns the stored fact |
-| 5 | Jordan watches the platform: clicks `research-memory`, sees every query the agent ran today | Trace + query log |
-| 6 | Deploys the agent on Modal. Sets `NLQDB_API_KEY` as a Modal secret — the one env var he touches. | Agent uses the `sk_live_` key; Modal's env-var flow stays idiomatic. |
-
-**What Jordan never wrote:** a vector-store glue layer, a schema for memory, a session-lifecycle service, a per-agent provisioning script.
+Jordan-the-Agent-Builder persona narrative (MCP install → memory DB →
+deploy on Modal) lives in [`docs/research/personas.md`](../../research/personas.md)
+alongside the other Phase 1 personas; it informs CLI decisions but is
+research context, not a user how-to.

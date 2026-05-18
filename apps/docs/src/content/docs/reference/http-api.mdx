@@ -3,12 +3,23 @@ title: HTTP API
 description: POST /v1/ask, POST /v1/run, idempotency, anonymous mode.
 ---
 
-:::caution[Stub]
-**TODO:** replace with autogen from `apps/api/openapi.yaml` (see `SK-DOCS-003` slice d). Blocked on the OpenAPI schema being published.
-:::
+The auto-generated HTTP API reference (SK-DOCS-003 slice d) is blocked on
+`apps/api` emitting an OpenAPI schema. The contract this page will eventually
+render is canonical in [`packages/sdk/src/index.ts`](/reference/sdk/) — every
+HTTP endpoint has a matching SDK method, by GLOBAL-001.
 
-## Endpoints
+While slice d is blocked, use the SDK reference: each method (`ask`,
+`runSql`, `createDatabase`, `listKeys`, …) documents the exact wire
+shape that flows over the corresponding `POST /v1/<resource>` endpoint.
 
-- `POST /v1/ask` — the canonical NL→SQL endpoint.
-- `POST /v1/run` — raw-SQL escape hatch (`GLOBAL-015`).
-- `POST /v1/databases` — create a database from a plain-English brief.
+## Endpoints (overview)
+
+- `POST /v1/ask` — the canonical NL→SQL endpoint. See [`NlqClient.ask`](/reference/sdk/type-aliases/nlqclient/).
+- `POST /v1/run` — raw-SQL escape hatch (`GLOBAL-015`). See [`NlqClient.runSql`](/reference/sdk/type-aliases/nlqclient/).
+- `POST /v1/databases` — create a database from a plain-English brief. See [`NlqClient.createDatabase`](/reference/sdk/type-aliases/nlqclient/).
+- `GET /v1/databases` — list databases. See [`NlqClient.listDatabases`](/reference/sdk/type-aliases/nlqclient/).
+- `POST /v1/keys`, `GET /v1/keys`, `DELETE /v1/keys/:id` — API-key lifecycle.
+- `POST /v1/chat/messages` — chat-style transcript endpoint.
+
+Curl-shaped examples for `/v1/ask` (read + write + anonymous mode) live in
+the [curl tutorial](/tutorials/curl/).
