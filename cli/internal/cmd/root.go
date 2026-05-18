@@ -70,6 +70,7 @@ func New() *cobra.Command {
 	registerLogin(root, g)
 	registerMCP(root, g)
 	registerUpdate(root, g)
+	installHelp(root, g)
 
 	return root
 }

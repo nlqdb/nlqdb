@@ -10,7 +10,7 @@ when-to-load:
 # Feature: Docs Site
 
 **One-liner:** User-facing documentation site at `docs.nlqdb.com` — Astro Starlight on Cloudflare Workers Static Assets.
-**Status:** scaffolded (Phase 2) — site is live with stub pages (Quickstart, HTTP API, SDK, MCP, CLI). Real content is per-section follow-up work, tracked under *Open questions* below.
+**Status:** partial (Phase 2) — site is live with the three autogen pipelines from SK-DOCS-003 wired (SDK reference, tutorials, CLI reference). HTTP API reference (slice d) is blocked on `apps/api` emitting OpenAPI; persona-transcript embedding (slice e) is deferred per the slicing table.
 **Owners (code):** `apps/docs/**`
 **Cross-refs:** docs/architecture.md §3 (surfaces) · docs/phase-plan.md §2.7 · `apps/docs/AGENTS.md`
 
@@ -52,13 +52,13 @@ when-to-load:
 
 ## Slicing (SK-DOCS-003 implementation)
 
-| Slice | Source | Target page(s) | Tool | Effort |
+| Slice | Source | Target page(s) | Tool | Status |
 |---|---|---|---|---|
-| a | `packages/sdk/src/**.ts` | `/reference/sdk/` | TypeDoc + `typedoc-plugin-markdown` → MDX | ~1 h |
-| b | `examples/<name>/README.md` + code | `/tutorials/<name>/` | Astro `import` or remark-import; one page per `examples/<name>/` | ~2 h |
-| c | `nlq help --json` | `/cli/` | Build script that shells out + writes MDX | ~1 h |
-| d | `apps/api/openapi.yaml` (TODO: schema does not yet exist) | `/reference/http-api/` | Widdershins or Redocly Markdown | ~half day; blocked on schema |
-| e | `tests/personas/P*/run.ts` transcripts | `/tutorials/<persona>/walkthrough/` | Playwright `--reporter=markdown` + screenshot embed | ~1 day; optional, slice b probably covers 90% |
+| a | `packages/sdk/src/**.ts` | `/reference/sdk/` | TypeDoc + `typedoc-plugin-markdown` → MDX via `apps/docs/scripts/gen-sdk.ts` | ✅ done |
+| b | `examples/<name>/README.md` | `/tutorials/<name>/` | Build script `apps/docs/scripts/gen-examples.ts` (one page per `examples/<name>/`) | ✅ done |
+| c | `nlq help --json` | `/cli/` | Build script `apps/docs/scripts/gen-cli.ts` (shells out to `nlq help --json`; relies on `internal/cmd/help.go`) | ✅ done |
+| d | `apps/api/openapi.yaml` | `/reference/http-api/` | Widdershins or Redocly Markdown | ⏸ blocked on `apps/api` emitting OpenAPI — tracked under `ask-pipeline/FEATURE.md` Open questions |
+| e | `tests/personas/P*/run.ts` transcripts | `/tutorials/<persona>/walkthrough/` | Playwright `--reporter=markdown` + screenshot embed | ⏸ deferred — slice b covers ~90 % |
 
 ## GLOBALs governing this feature
 
@@ -69,7 +69,6 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 
 ## Open questions / known unknowns
 
-- **Quickstart content.** The 60-second walkthrough copy is stub. Decision deferred until the Phase 1 hosted-`db.create` flow lands so the steps are real, not aspirational.
-- **HTTP API reference auto-gen vs hand-written.** OpenAPI schema does not yet exist in the repo; hand-write a minimal reference now, revisit auto-gen if/when the schema is published.
+- **HTTP API reference (slice d).** Blocked on `apps/api` emitting an OpenAPI schema (tracked under `ask-pipeline/FEATURE.md` Open questions). The `/reference/http-api/` page currently links readers at the SDK reference, which carries the canonical wire shape per `GLOBAL-001`. When the schema lands, wire `apps/docs/scripts/gen-api.ts` (widdershins) and remove the placeholder.
 - **Search.** Starlight's built-in Pagefind covers v0. Algolia DocSearch (free for OSS) is the upgrade path if/when content grows past ~50 pages.
 - **Analytics.** Cloudflare Web Analytics (free, no SDK) is the plan — wire it up alongside `apps/web` in the same task; see `docs/research/email-and-marketing.md §4`.

@@ -28,8 +28,10 @@ than letting threads die.
 ## Documentation
 
 - [README](./README.md) — project overview, lean on-ramp, examples.
-- [./docs/architecture.md](./docs/architecture.md) — system design, hello-world tutorial
-  (§13), phase plan (§10), per-surface design (§3).
+- [./docs/architecture.md](./docs/architecture.md) — system design, per-surface
+  design (§3). Phase plan extracted to [`./docs/phase-plan.md`](./docs/phase-plan.md);
+  the hello-world walkthrough lives on the user-facing docs site at
+  [`docs.nlqdb.com/tutorials/html/`](https://docs.nlqdb.com/tutorials/html/).
 - [./docs/progress.md](./docs/progress.md) — platform integrations matrix
   showing every framework / mobile / IDE / CMS / iPaaS we plan
   to ship into.

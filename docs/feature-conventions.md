@@ -195,6 +195,31 @@ alongside a FEATURE.md; the duplication was a workaround for a
 To find every feature affected by a GLOBAL: `grep -rn 'GLOBAL-005'
 docs/features/`.
 
+### 5a. User-facing how-to prose does NOT belong in a feature doc
+
+The canonical home for "how a user invokes / installs / calls something" is
+[`apps/docs/`](../apps/docs/) (rendered at `docs.nlqdb.com`). If a passage
+teaches a user how to use a surface — shell sessions, copy-paste HTML
+snippets, install commands, host-config recipes — write it as an autogen
+source (TypeScript types in `packages/sdk/src/`, `examples/<name>/README.md`,
+`nlq help --json`) or as hand-written narrative in
+`apps/docs/src/content/docs/`, not here.
+
+Feature docs keep:
+
+- **Decisions** (`SK-*` blocks) and their rationale.
+- **Architectural rationale** ("why we chose X", design contracts, internal
+  pipeline stages).
+- **GLOBAL references** (by ID, with optional feature-local commentary).
+- **Open questions / known unknowns.**
+- **Persona walkthroughs** insofar as they justify design choices — but
+  the canonical persona narrative lives in `docs/research/personas.md`.
+
+If a section in a feature doc currently says "here is how the user runs
+this surface", replace its body with a one-line link to the canonical
+docs.nlqdb.com page; if the canonical page is missing the content, move
+the prose into the underlying autogen source first, then strip.
+
 ## 6. When to add a feature doc
 
 Every feature gets a `FEATURE.md`, even if the feature is not yet implemented:

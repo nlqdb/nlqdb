@@ -42,10 +42,18 @@ type ToolResponse = {
 };
 // biome-ignore lint/suspicious/noExplicitAny: caller-narrowed via the per-handler `args: SpecificType` annotation
 type ToolHandler = (args: any, extra: ToolExtra) => Promise<ToolResponse>;
+type ToolAnnotations = {
+  readOnlyHint?: boolean;
+  destructiveHint?: boolean;
+  idempotentHint?: boolean;
+  openWorldHint?: boolean;
+  title?: string;
+};
 type ToolDef = {
   title?: string;
   description?: string;
   inputSchema?: Record<string, z.ZodTypeAny>;
+  annotations?: ToolAnnotations;
 };
 type RegisterTool = (name: string, def: ToolDef, handler: ToolHandler) => void;
 
@@ -75,6 +83,10 @@ export function createServer(opts: ServerOptions): McpServer {
       description:
         "Run a natural-language query against an nlqdb database. Returns rows + the compiled SQL (in trace). The database is materialised on first reference — no separate create tool. Destructive plans return requires_confirm: true + a diff; re-call with confirm: true to commit.",
       inputSchema: queryInputShape,
+      // SK-MCP-002: nlqdb_query covers both reads and writes. The
+      // static annotation is the worst case (destructive); the actual
+      // gate is the runtime `requires_confirm` confirm flow.
+      annotations: { destructiveHint: true },
     },
     async (args: QueryInput, extra: ToolExtra) => {
       return runTool("nlqdb_query", extra.signal, async (ctx) => {
@@ -91,6 +103,7 @@ export function createServer(opts: ServerOptions): McpServer {
       description:
         "Enumerate databases visible to the authenticated user. Requires a user-scoped key (sk_live_ or sk_mcp_). Returns engine per row.",
       inputSchema: listDatabasesInputShape,
+      annotations: { readOnlyHint: true },
     },
     async (_args: unknown, extra: ToolExtra) => {
       return runTool("nlqdb_list_databases", extra.signal, async (ctx) => {
@@ -107,6 +120,7 @@ export function createServer(opts: ServerOptions): McpServer {
       description:
         "Return schema metadata (slug, engine, schema name) for one database. Requires a user-scoped key (sk_live_ or sk_mcp_).",
       inputSchema: describeInputShape,
+      annotations: { readOnlyHint: true },
     },
     async (args: DescribeInput, extra: ToolExtra) => {
       return runTool("nlqdb_describe", extra.signal, async (ctx) => {

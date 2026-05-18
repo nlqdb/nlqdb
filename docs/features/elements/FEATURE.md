@@ -70,40 +70,13 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 
 ## Happy path walkthrough
 
-### §14.5 `<nlq-data>` HTML element
+User-facing `<nlq-data>` / `<nlq-action>` usage (copy-paste snippet, write
+form, `on-success` lifecycle) lives on the docs site sourced from the
+canonical e2e example:
 
-**Default (goal-first, the whole "backend"):**
+- [`docs.nlqdb.com/tutorials/html/`](https://docs.nlqdb.com/tutorials/html/) — tutorial sourced from `examples/html/README.md`.
 
-```html
-<script src="https://elements.nlqdb.com/v1.js" type="module"></script>
-
-<nlq-data
-  goal="the 5 newest orders, with customer and item"
-  api-key="pk_live_xxx"
-  template="table"
-  refresh="10s"
-></nlq-data>
-```
-
-That's the entire backend for a live order list. There is no API to write, no schema to define, no JSON to parse, no React to render. The element fetches, renders the table template, and refreshes every 10 seconds.
-
-**Getting `api-key` is never a separate errand.** Every chat surface — web, CLI, MCP — offers a "Copy snippet" action next to any generated query; the copied HTML has the user's `pk_live_` already inlined. The user never has to open the dashboard, find the keys page, click "Reveal", and paste. The key is right there, in the code they were about to use (per `SK-WEB-007`).
-
-**Day-2 (still no backend):**
-
-```html
-<form id="new-order">
-  <input name="customer" />
-  <input name="drink" />
-  <input name="total" />
-  <nlq-action
-    goal="add an order from this form"
-    db="orders"
-    on-success="reset"
-  >Submit</nlq-action>
-</form>
-
-<nlq-data id="orders-pane" db="orders" goal="the 5 newest orders" template="table"></nlq-data>
-```
-
-Same template-registry safety model as `<nlq-data>`. The form's field names are inferred into columns automatically via [`SK-ELEM-013`](decisions/SK-ELEM-013-action-form-context-in-goal.md). The first click previews the INSERT (verb · table · row count · plain-English summary); the second click commits. `on-success="reset"` clears the form; `on-success="refresh:#orders-pane"` re-fetches the sibling `<nlq-data>`.
+The "Copy snippet" UX referenced above ships in `SK-WEB-007` — the surface
+inlines the user's `pk_live_` into the copied HTML so getting a key is
+never a separate errand. The form-field-name → schema-column inference
+contract is canonical in [`SK-ELEM-013`](decisions/SK-ELEM-013-action-form-context-in-goal.md).

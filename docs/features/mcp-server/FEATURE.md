@@ -40,12 +40,13 @@ Canonical bodies live in [`decisions/`](decisions/) — one file per `SK-MCP-NNN
 
 ## Install paths
 
-Four paths, all terminating at the same `/v1/ask` orchestration and the same three tools (`SK-MCP-002`, `SK-MCP-007`):
-
-1. **Connector URL** (hosted, default) — paste `mcp.nlqdb.com` into the host's MCP-connector config; OAuth opens in the browser on first tool call. Zero local setup.
-2. **`nlq mcp install`** (local stdio) — auto-detects installed hosts (`SK-MCP-003`), writes `sk_mcp_<host>_<device>_…` into each config.
-3. **Website one-click** (`app.nlqdb.com/mcp`) — mints the key server-side, opens an `nlqdb://install?…` deep link the CLI handles.
-4. **`NLQDB_API_KEY` env var** — `sk_…` precedence over any config; the CI / Docker / air-gapped escape hatch (`GLOBAL-015`).
+User-facing install flow (connector URL, `nlq mcp install`, website
+one-click, `NLQDB_API_KEY` env var) lives at
+[`docs.nlqdb.com/mcp/`](https://docs.nlqdb.com/mcp/). The internal
+contract — four paths terminate at the same `/v1/ask` orchestration and
+the same three tools — is canonical in [`SK-MCP-002`](decisions/SK-MCP-002-three-tools.md)
++ [`SK-MCP-007`](decisions/SK-MCP-007-shared-orchestration.md). Host
+auto-detection lives in [`SK-MCP-003`](decisions/SK-MCP-003-install-autodetect.md).
 
 ## GLOBALs governing this feature
 
@@ -63,32 +64,11 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 
 - **Promote-to-account UX (UI-only — server contract locked).** Server contract is `PATCH /v1/databases/:id { scope: "account" }`. Dashboard button placement + post-promote redirect are product-owner calls.
 - **MCP `confirm_required` host-rendering audit.** Some hosts render `confirm_required` as a single "Approve" button without the diff body — breaks `SK-TRUST-001`. Audit Claude Desktop, Cursor, Zed, Windsurf, VS Code Continue, Cline; offending hosts get a warning in `nlq mcp install`. Cross-ref: [`trust-ux/FEATURE.md`](../trust-ux/FEATURE.md).
+- **Anthropic Connectors Directory submission.** Now unblocked by `docs.nlqdb.com` (the directory requires a public docs URL — [submission docs](https://claude.com/docs/connectors/building/submission)). Remaining work: (a) add Origin-header validation to `apps/mcp/src/index.ts` — reject browser-origin requests whose `Origin` is not in an allow-list, the ~30 % rejection cause per the submission docs; (b) pick branded logo + favicon (SVG, 256 × 256 minimum) and host them at the marketing domain; (c) fill out the form at `https://clau.de/mcp-directory-submission`. Tool-annotation hints (`readOnlyHint` / `destructiveHint`) are already wired per `SK-MCP-002`.
 
 ## Happy path walkthrough
 
-**Install** (auto-detects what's present; one host → silent, multiple → numbered prompt, none → prints `nlqdb.com/mcp` link):
-
-```bash
-$ nlq mcp install
-🔎 Scanning: Claude Desktop, Cursor, Zed, Windsurf, VS Code, Continue
-✓ Found: Claude Desktop, Cursor
-→ Opening browser to approve this device… (fallback code: AB12-CD34)
-✓ Signed in as jordan@example.com.
-✓ Claude Desktop  — wrote config; restart? [Y/n] y → relaunched. Self-check: ok.
-✓ Cursor          — wrote config; hot-reloaded. Self-check: ok.
-```
-
-**Escape hatches:** `nlq mcp install <host>` (explicit), `--all`, `--dry-run`, `NLQDB_API_KEY=sk_…` (CI / air-gapped).
-
-**Usage from inside the host LLM** — the agent never sees "create a database"; the DB materialises on first reference:
-
-```
-User:   "Remember I prefer metric and I'm vegetarian."
-Claude → nlqdb_query("preferences", "remember: metric units, vegetarian")
-       → { ok, db: "preferences-93b" }
-
-[next session]
-User:   "Plan me a Berlin food trip."
-Claude → nlqdb_query("preferences", "what do you remember about me?")
-       → "metric units, vegetarian"
-```
+End-user flow (`nlq mcp install` output, in-LLM tool calls, preferences-DB
+example) lives at [`docs.nlqdb.com/mcp/`](https://docs.nlqdb.com/mcp/).
+The Jordan-the-Agent-Builder narrative is in
+[`docs/research/personas.md` §P2](../../research/personas.md).

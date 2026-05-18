@@ -138,31 +138,10 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 
 ## Happy path walkthroughs
 
-### §14.1 Marketing site (`nlqdb.com`)
-
-```
-1. User lands on nlqdb.com.
-2. Sees ONE input: "What are you building?"
-3. Types: "an orders tracker for my coffee shop"
-4. Hits Enter.
-5. The page morphs in place into a chat. The first reply streams:
-     "Set up. Tell me about an order — what should I track?"
-6. User types: "customer name, what they ordered, time, total"
-7. The chat replies with the inferred schema, a sample row, and an embed snippet.
-   Total elapsed: 22 seconds. No sign-in. No pricing dialog. No "create your
-   first database" button.
-```
-
-### §14.2 Platform web app (`nlqdb.com/app`)
-
-```
-- After step 7 above, a slim bar appears: "Save this — sign in with GitHub."
-- User clicks; GitHub OAuth pops; back to the same chat, signed in, DB adopted.
-- The left rail now shows one entry: `orders-tracker-a4f` (auto-named).
-- User keeps chatting. Cmd+K opens the palette. Cmd+/ toggles the SQL trace.
-- Settings → API keys → "Reveal pk_live_..." (publishable, browser-safe).
-```
-
-### §15.1 Persona walkthrough — Maya, the Solo Builder
-
-Canonical persona narrative lives in [`docs/research/personas.md` §10.2.1](../../research/personas.md). The §14.1 / §14.2 happy paths above already cover the in-product flow; see personas.md for the weekend-build vignette (Fri → Mon).
+The marketing site (`nlqdb.com`) and the platform web app
+(`nlqdb.com/app`) are themselves the demo — the user-facing flow is what
+they will see when they visit. The canonical "first 22 seconds" copy and
+the post-sign-in adoption flow live in
+[`docs/research/personas.md` §P1 (Maya, the Solo Builder)](../../research/personas.md);
+internal contracts those flows depend on are the `SK-WEB-*` and
+[`SK-ONBOARD-*`](../onboarding/FEATURE.md) decisions.

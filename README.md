@@ -15,30 +15,10 @@ Engine choice (Postgres / Mongo / Redis / DuckDB / pgvector / …), schema infer
 
 ## Use it
 
-**One CLI command:**
-
-```bash
-nlq login                                               # opens browser, one click, done
-nlq "an orders tracker — customer, drink, total"        # creates the DB
-nlq "today's orders, newest first"
-```
-
-**One HTML file:**
-
-```html
-<script src="https://elements.nlqdb.com/v1.js" type="module"></script>
-
-<nlq-data
-  goal="today's orders, newest first"
-  api-key="pk_live_…"
-  template="table"
-  refresh="5s"
-></nlq-data>
-```
-
-That's the whole backend. No SQL, no schema, no API, no framework.
-
-→ Full hello-world tutorial: [`./docs/architecture.md` §13](./docs/architecture.md#13-hello-world-e2e-fullstack-tutorial--the-1-pager).
+The 60-second walkthrough — plain HTML, CLI, and ten framework wrappers — lives at
+[`docs.nlqdb.com`](https://docs.nlqdb.com). Start with the
+[HTML tutorial](https://docs.nlqdb.com/tutorials/html/) or the
+[CLI tutorial](https://docs.nlqdb.com/tutorials/cli/).
 
 ## Examples
 

@@ -188,6 +188,7 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 - **Idempotency on `/v1/ask`.** `GLOBAL-005` says every mutation accepts `Idempotency-Key`. `/v1/ask` is sometimes a query (no mutation), sometimes a write. Confirm whether the dedupe store is consulted for the write branch only or for every call (and what `kind=create` deduping looks like).
 - **Null-pick disambiguator cache TTL.** `disambiguate-db.ts` caches `chosenId: null` for 7 days under `(tenantId, goalHash, dbsetHash)`; dbsetHash evicts on DB add/remove but a false-null is sticky for that window. Options: don't cache nulls (cheap LLM hit on retry) vs. 1 h TTL (bounded staleness). Needs a decision (new `SK-ASK-NNN`).
 - **SK-ASK-014 follow-ups.** (a) Typed-plan extend-schema pipeline so "Add it to *<slug>*" works — `kind=extend` route + compiler + `sql-validate-ddl.ts` widening + table-card re-embed (`SK-HDC-NNN`). (b) Latency audit — classify-every-send adds ~150 ms p50 to dbId-pinned hot path; confirm PERFORMANCE §2.1/§2.2 still holds.
+- **OpenAPI schema for `apps/api`.** SK-DOCS-003 slice (d) is blocked on this. Decide: emit `apps/api/openapi.yaml` from the route table (a generator pass over `apps/api/src/index.ts` and the route modules) so `apps/docs/scripts/gen-api.ts` (widdershins) can fill the `/reference/http-api/` page. Until then docs.nlqdb.com links readers at the SDK reference (canonical wire shape per `GLOBAL-001`).
 
 ## Happy path walkthrough
 

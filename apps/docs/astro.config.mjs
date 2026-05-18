@@ -12,12 +12,12 @@ export default defineConfig({
         baseUrl: "https://github.com/nlqdb/nlqdb/edit/main/apps/docs/",
       },
       sidebar: [
-        { label: "Quickstart", link: "/quickstart/" },
+        { label: "Tutorials", autogenerate: { directory: "tutorials" } },
         {
           label: "Reference",
           items: [
             { label: "HTTP API", link: "/reference/http-api/" },
-            { label: "SDK (TypeScript)", link: "/reference/sdk/" },
+            { label: "SDK (TypeScript)", autogenerate: { directory: "reference/sdk" } },
           ],
         },
         { label: "MCP", link: "/mcp/" },
