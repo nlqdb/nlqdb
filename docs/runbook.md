@@ -240,7 +240,7 @@ the failure path (Basic auth rejected = wrong id or secret).
 | :------------------- | :------------------ | :--------------------------------------------------------- | :------------------------------------------------------------ |
 | `apps/api` + `apps/web` (merged worker) | Cloudflare Workers | GH Actions — `.github/workflows/deploy-api.yml` | GH Actions — `.github/workflows/preview-app.yml` (Workers Versions on `nlqdb-api`; per-PR URL + ephemeral Neon branch) |
 | `apps/events-worker` | Cloudflare Workers  | GH Actions — `.github/workflows/deploy-events-worker.yml`  | n/a (queue-only; nothing visible to preview)                  |
-| `apps/mcp`           | Cloudflare Workers  | GH Actions — `.github/workflows/deploy-mcp.yml` (`mcp.nlqdb.com` via `custom_domain = true`; KV auto-provisioned) | GH Actions — `.github/workflows/preview-mcp.yml` (sticky `pr-<N>-nlqdb-mcp-server.<subdomain>.workers.dev`) |
+| `apps/mcp`           | Cloudflare Workers  | GH Actions — `.github/workflows/deploy-mcp.yml` (`mcp.nlqdb.com` via `custom_domain = true`; OAUTH_KV id pinned) | GH Actions — `.github/workflows/preview-mcp.yml` (sticky `pr-<N>-nlqdb-mcp-server.<subdomain>.workers.dev`) |
 | `apps/coming-soon`   | Cloudflare Pages    | retired — `nlqdb.com` now served by `apps/web`              | n/a |
 | `packages/elements`  | Cloudflare Pages    | GH Actions — `.github/workflows/deploy-elements.yml`       | GH Actions — `.github/workflows/preview-elements.yml` (sticky `pr-<N>.nlqdb-elements.pages.dev/v1.js`) |
 
@@ -467,10 +467,12 @@ Deploys via `.github/workflows/deploy-mcp.yml` on merge to main
 when `apps/mcp/**`, `packages/mcp/**`, `packages/sdk/**`, or
 `packages/otel/**` changes.
 
-**OAUTH_KV** binding in `apps/mcp/wrangler.toml` has no `id` field
-— wrangler 4.45+ auto-provisions the namespace on first deploy and
-rebinds by binding name thereafter (CF changelog 2025-10-24). No
-manual bootstrap step required.
+**OAUTH_KV** binding in `apps/mcp/wrangler.toml` has its id pinned
+(`5e0ffc161a37499493264553a6168452`). Auto-provisioning (CF changelog
+2025-10-24) writes the id back to `wrangler.toml` on disk, which is
+fine for local dev but in CI the write-back is discarded with the
+runner — every deploy then re-creates the namespace and hits CF
+error 10014 ("title already exists"). Pin the id once, commit it.
 
 PR previews via `.github/workflows/preview-mcp.yml` give a sticky
 URL `pr-<N>-nlqdb-mcp-server.<subdomain>.workers.dev` on every push.

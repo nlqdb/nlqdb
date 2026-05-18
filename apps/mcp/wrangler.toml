@@ -26,11 +26,13 @@ pattern = "mcp.nlqdb.com"
 custom_domain = true
 
 # `workers-oauth-provider` requires the binding name OAUTH_KV. The
-# `id` is intentionally omitted — wrangler 4.45+ auto-provisions on
-# first deploy and rebinds by binding name thereafter (CF changelog
-# 2025-10-24).
+# `id` is pinned because wrangler's auto-provisioning writes the id
+# back to wrangler.toml on disk — fine for local dev, but in CI the
+# write-back is discarded with the runner, so every deploy re-creates
+# the namespace and hits "title already exists" (CF error 10014).
 [[kv_namespaces]]
 binding = "OAUTH_KV"
+id = "5e0ffc161a37499493264553a6168452"
 
 # `McpAgent` Durable Object — one instance per OAuth grant
 # (`SK-MCP-014`'s `revalidated_at` stamp lives in the DO's SQL store).
