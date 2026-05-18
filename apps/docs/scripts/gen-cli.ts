@@ -1,11 +1,8 @@
 #!/usr/bin/env bun
-// Generate the CLI reference page from `nlq help --json` (per SK-DOCS-003
-// slice c). Output: `apps/docs/src/content/docs/cli.mdx`.
-//
-// Resolution order for the `nlq` binary:
-//   1. $NLQDB_CLI       — explicit override (CI uses this).
-//   2. cli/dist/nlq     — local build (`go -C cli build -o dist/nlq ./cmd/nlq`).
-//   3. $PATH lookup     — for contributors with `nlq` installed.
+// gen-cli — SK-DOCS-003 slice c. Generates `cli.mdx` from `nlq help --json`.
+// Binary resolution: $NLQDB_CLI → cli/dist/nlq → $PATH. CI (NLQDB_CLI set)
+// fails hard if the binary doesn't run; local dev falls back to a placeholder
+// page so `bun run dev` works without a Go toolchain.
 
 import { existsSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
@@ -42,31 +39,52 @@ type CmdNode = {
 };
 
 async function main() {
-  const bin = await locateBinary();
-  const proc = Bun.spawnSync({
-    cmd: [bin, "help", "--json"],
-    stdout: "pipe",
-    stderr: "pipe",
-  });
+  const bin = locateBinary();
+  if (!bin) {
+    writeFileSync(OUT, placeholder());
+    console.warn(
+      `! gen-cli: \`nlq\` binary not found (set NLQDB_CLI or build cli/dist/nlq); wrote placeholder`,
+    );
+    return;
+  }
+  const proc = Bun.spawnSync({ cmd: [bin, "help", "--json"], stdout: "pipe", stderr: "pipe" });
   if (proc.exitCode !== 0) {
-    console.error(`✗ gen-cli: \`${bin} help --json\` exited ${proc.exitCode}`);
-    console.error(proc.stderr.toString());
-    process.exit(1);
+    if (process.env.NLQDB_CLI || process.env.CI) {
+      console.error(`✗ gen-cli: \`${bin} help --json\` exited ${proc.exitCode}`);
+      console.error(proc.stderr.toString());
+      process.exit(1);
+    }
+    writeFileSync(OUT, placeholder());
+    console.warn(`! gen-cli: \`${bin} help --json\` failed; wrote placeholder`);
+    return;
   }
   const tree = JSON.parse(proc.stdout.toString()) as CmdNode;
   writeFileSync(OUT, render(tree));
   console.info(`✓ CLI reference → ${relative(REPO_ROOT, OUT)}`);
 }
 
-async function locateBinary(): Promise<string> {
+function locateBinary(): string | null {
   const fromEnv = process.env.NLQDB_CLI;
-  if (fromEnv && existsSync(fromEnv)) return fromEnv;
+  if (fromEnv) return existsSync(fromEnv) ? fromEnv : null;
   const fromDist = join(REPO_ROOT, "cli/dist/nlq");
   if (existsSync(fromDist) && statSync(fromDist).isFile()) return fromDist;
-  // Last resort: rely on PATH. Bun.spawnSync resolves PATH automatically when
-  // the cmd has no slash; using literal "nlq" lets it find a globally
-  // installed binary.
-  return "nlq";
+  return null;
+}
+
+function placeholder(): string {
+  return [
+    "---",
+    `title: "nlq — CLI reference"`,
+    `description: "nlqdb command-line tool. Generated from \`nlq help --json\`."`,
+    "---",
+    "",
+    BANNER,
+    "",
+    "Build the CLI binary (`go -C cli build -o dist/nlq ./cmd/nlq`) and re-run",
+    "`bun run --filter apps/docs gen` to regenerate this page from the live",
+    "`nlq help --json` output.",
+    "",
+  ].join("\n");
 }
 
 function render(root: CmdNode): string {
@@ -129,20 +147,14 @@ function renderCommand(cmd: CmdNode, depth: number): string {
   return lines.join("\n");
 }
 
-// Cobra auto-generates two subtrees we don't want in the docs:
-//   • `completion` — shell-completion scripts; its Long text is raw bash
-//     full of `<(` etc. that MDX would parse as JSX.
-//   • Other `Hidden: true` commands marked at registration time.
+// Cobra's auto-generated `completion` subtree has raw-bash Long text with `<(` that MDX would parse as JSX.
 function skip(cmd: CmdNode): boolean {
   if (cmd.hidden) return true;
   if (cmd.name === "completion") return true;
   return false;
 }
 
-// MDX 3 treats `<` and `{` as JSX/expression starters. We're rendering
-// prose pulled from Go source, which can legitimately contain either —
-// e.g. argument placeholders like `<goal>`. Escape both with a backslash
-// so the prose renders as text. Code fences are not touched.
+// MDX treats `<` / `{` as JSX/expression starters; escape them in prose so argument placeholders like `<goal>` render as text. Code fences are left alone.
 function mdxSafeProse(text: string): string {
   return text
     .split(/(```[\s\S]*?```|`[^`]*`)/g)
@@ -178,8 +190,7 @@ function flagTable(flags: FlagNode[]): string {
   );
 }
 
-// Strip the first token (the verb / path component) from a Use string so
-// nested headings render `nlq db ls [flags]` instead of `nlq db ls db ls`.
+// Drop Cobra's `Use` first token (the verb itself) so nested headings render `nlq db ls [flags]`, not `nlq db ls db ls`.
 function stripFirst(use: string): string {
   const fields = use.split(/\s+/);
   return fields.slice(1).join(" ");

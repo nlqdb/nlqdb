@@ -1,4 +1,5 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { ToolAnnotations } from "@modelcontextprotocol/sdk/types.js";
 import type { NlqClient } from "@nlqdb/sdk";
 import { trace } from "@opentelemetry/api";
 import type { z } from "zod";
@@ -42,13 +43,6 @@ type ToolResponse = {
 };
 // biome-ignore lint/suspicious/noExplicitAny: caller-narrowed via the per-handler `args: SpecificType` annotation
 type ToolHandler = (args: any, extra: ToolExtra) => Promise<ToolResponse>;
-type ToolAnnotations = {
-  readOnlyHint?: boolean;
-  destructiveHint?: boolean;
-  idempotentHint?: boolean;
-  openWorldHint?: boolean;
-  title?: string;
-};
 type ToolDef = {
   title?: string;
   description?: string;
@@ -83,9 +77,7 @@ export function createServer(opts: ServerOptions): McpServer {
       description:
         "Run a natural-language query against an nlqdb database. Returns rows + the compiled SQL (in trace). The database is materialised on first reference — no separate create tool. Destructive plans return requires_confirm: true + a diff; re-call with confirm: true to commit.",
       inputSchema: queryInputShape,
-      // SK-MCP-002: nlqdb_query covers both reads and writes. The
-      // static annotation is the worst case (destructive); the actual
-      // gate is the runtime `requires_confirm` confirm flow.
+      // SK-MCP-002 — static hint is the worst case (read+write); runtime `requires_confirm` is the real gate.
       annotations: { destructiveHint: true },
     },
     async (args: QueryInput, extra: ToolExtra) => {

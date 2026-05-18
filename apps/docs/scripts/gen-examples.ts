@@ -1,7 +1,5 @@
 #!/usr/bin/env bun
-// Generate tutorial pages from `examples/<name>/README.md` (per SK-DOCS-003
-// slice b). One MDX page per example, with relative repo links rewritten to
-// absolute GitHub URLs so they resolve on docs.nlqdb.com.
+// gen-examples — SK-DOCS-003 slice b. examples/<name>/README.md → tutorials/<name>.mdx.
 
 import { mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
@@ -16,8 +14,7 @@ const OUT_DIR = join(DOCS_ROOT, "src/content/docs/tutorials");
 const GITHUB_BASE = "https://github.com/nlqdb/nlqdb/tree/main";
 const GITHUB_BLOB = "https://github.com/nlqdb/nlqdb/blob/main";
 
-// Friendly titles per slug — keeps the sidebar readable. Falls back to the
-// example's H1 if not listed.
+// Slug-to-sidebar-label override; falls back to the README's H1 when absent.
 const TITLE_OVERRIDES: Record<string, string> = {
   html: "Plain HTML",
   cli: "CLI",
@@ -32,9 +29,7 @@ const TITLE_OVERRIDES: Record<string, string> = {
   solid: "SolidJS",
 };
 
-// Sidebar ordering — Starlight's `autogenerate` sorts alphabetically; we
-// front-load with numeric prefixes via a Map and resolve back to the slug
-// at render time. Done as a frontmatter `sidebar.order` field below.
+// Emitted as the `sidebar.order` frontmatter field so Starlight doesn't sort alphabetically (html first, react second, …).
 const SIDEBAR_ORDER: Record<string, number> = {
   html: 1,
   react: 2,
@@ -92,7 +87,6 @@ function renderTutorial(slug: string, source: string): string {
     }
   }
 
-  // Description = first non-empty paragraph after the H1.
   let description = "";
   if (h1Index >= 0) {
     for (let i = h1Index + 1; i < lines.length; i++) {
@@ -128,8 +122,7 @@ function renderTutorial(slug: string, source: string): string {
   return `${frontmatter.join("\n")}${BANNER_TEMPLATE(slug)}\n\n${rewritten}\n${footer}\n`;
 }
 
-// Rewrite relative markdown links (`[text](../foo)`, `[text](./bar)`) so they
-// resolve on docs.nlqdb.com. Anchors / external / docs-site links pass through.
+// Relative repo links don't resolve on docs.nlqdb.com — rewrite them to GitHub absolute URLs.
 function rewriteRelativeLinks(body: string, slug: string): string {
   return body.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (match, text: string, href: string) => {
     if (/^(https?:|mailto:|#|\/)/.test(href)) return match;
@@ -142,16 +135,12 @@ function rewriteRelativeLinks(body: string, slug: string): string {
 }
 
 function resolveRelativeFromExample(slug: string, href: string): string {
-  // examples/<slug>/README.md is the base. `./foo` → examples/<slug>/foo.
-  // `../foo` → examples/foo. `../../packages/react/` → packages/react/.
-  const baseSegments = ["examples", slug];
-  const segments: string[] = [...baseSegments];
+  const segments: string[] = ["examples", slug];
   for (const part of href.split("/")) {
     if (part === "" || part === ".") continue;
     if (part === "..") segments.pop();
     else segments.push(part);
   }
-  // Drop trailing README.md so the GitHub URL renders the folder view.
   const last = segments[segments.length - 1];
   const isFile = last !== undefined && /\.[a-z0-9]+$/i.test(last);
   const prefix = isFile ? GITHUB_BLOB : GITHUB_BASE;

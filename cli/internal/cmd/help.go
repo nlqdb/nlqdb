@@ -10,11 +10,7 @@ import (
 	"github.com/spf13/pflag"
 )
 
-// cmdNode is the JSON shape `nlq help --json` emits — one node per
-// command in the tree. apps/docs/scripts/gen-cli.ts consumes this to
-// regenerate `docs.nlqdb.com/cli/` per SK-DOCS-003 slice c. Keep the
-// field set additive: removing or renaming a field breaks the doc
-// build until both ends ship.
+// Wire shape for `nlq help --json`; consumed by apps/docs/scripts/gen-cli.ts. Additive changes only — removing or renaming a field breaks the doc build until both ends ship.
 type cmdNode struct {
 	Name        string     `json:"name"`
 	Use         string     `json:"use,omitempty"`
@@ -37,10 +33,7 @@ type flagNode struct {
 	Persistent bool   `json:"persistent,omitempty"`
 }
 
-// installHelp swaps Cobra's built-in help command for one that honours
-// the global `--json` flag. `nlq help` falls back to the default
-// rendering; `nlq help --json` emits the full tree on stdout for
-// apps/docs' CLI-reference generator.
+// installHelp replaces Cobra's built-in help command so `nlq help --json` emits the command tree consumed by apps/docs/scripts/gen-cli.ts.
 func installHelp(root *cobra.Command, g *globalFlags) {
 	helpCmd := &cobra.Command{
 		Use:   "help [command]",
@@ -50,7 +43,6 @@ func installHelp(root *cobra.Command, g *globalFlags) {
 Pass --json to emit the full command tree as machine-readable JSON
 (consumed by apps/docs/scripts/gen-cli.ts to regenerate
 docs.nlqdb.com/cli/).`,
-		DisableFlagParsing: false,
 		Run: func(c *cobra.Command, args []string) {
 			target, _, err := root.Find(args)
 			if err != nil || target == nil {
@@ -116,8 +108,7 @@ func collectFlags(c *cobra.Command) []flagNode {
 	return flags
 }
 
-// nameOf returns the bare verb of a Cobra command (first token of `Use`),
-// falling back to the full Use string for the root.
+// First token of `Use` is the bare verb; fall back to Cobra's `Name()` when `Use` is empty (e.g. the root).
 func nameOf(c *cobra.Command) string {
 	fields := strings.Fields(c.Use)
 	if len(fields) == 0 {

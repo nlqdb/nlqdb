@@ -1,8 +1,5 @@
 #!/usr/bin/env bun
-// Generate SDK reference docs from `packages/sdk/src/**.ts` via TypeDoc
-// (per SK-DOCS-003 slice a). Output: `apps/docs/src/content/docs/reference/sdk/`.
-// Each emitted file is .mdx with a Starlight-compatible frontmatter block
-// and a banner that warns hand-editors away.
+// gen-sdk — SK-DOCS-003 slice a. TypeDoc → MDX into reference/sdk/.
 
 import { mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
@@ -52,10 +49,7 @@ async function main() {
     process.exit(1);
   }
   await app.generateOutputs(project);
-
-  // Post-process: extract the H1 → Starlight frontmatter + banner.
   walkAndStamp(OUT_DIR);
-
   console.info(`✓ SDK reference → ${relative(REPO_ROOT, OUT_DIR)}`);
 }
 
@@ -72,8 +66,7 @@ function walkAndStamp(dir: string): void {
   }
 }
 
-// First H1 becomes Starlight `title`. The H1 line is removed so the page
-// renders with one title, not two.
+// Lifts the H1 into Starlight's required `title` frontmatter; drops the H1 line so the page doesn't render two titles.
 function stampFile(path: string): void {
   const raw = readFileSync(path, "utf8");
   if (raw.includes(BANNER)) return;
