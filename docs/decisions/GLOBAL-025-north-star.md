@@ -1,7 +1,8 @@
-# GLOBAL-025 — North-star: engine quality, onboarding, UX
+# GLOBAL-025 — North-star: engine quality, onboarding, UX, performance
 
-- **Decision:** nlqdb has three permanent product north-stars and **every
-  shipped feature must measurably advance at least one of them**:
+- **Decision:** nlqdb has **four** permanent product north-stars and
+  **every shipped feature must measurably advance at least one of them
+  AND must not degrade any of the others**:
 
   1. **Engine quality** — **two layers, one pillar.**
      - **NL→SQL accuracy engine** — measured by
@@ -34,16 +35,29 @@
      ([`GLOBAL-022`](./GLOBAL-022-recoverable-failures-retry-to-success.md)),
      and the Sean-Ellis "very disappointed" share
      ([`founder-playbook.md` §2](../founder-playbook.md)).
+  4. **Performance** — every interaction is fast enough that latency
+     doesn't dominate the experience. Measured by p50/p95 `/v1/ask`
+     latency (cache hit / cache miss), cold-start latency, and CLI
+     start time. Per-stage budgets and the span/metric catalog live
+     in [`docs/performance.md`](../performance.md); the headline
+     floors below come from the `architecture.md §0` core-values
+     commitment.
 
   Concrete KPI targets and review cadence live in §**KPI table** below.
+  The "must not degrade" half of the rule is binary — no per-PR drift
+  allowance. The Phase 2 / Phase 3 floors are the absolute bar; weekly
+  KPI snapshots are the canonical truth; sustained week-over-week
+  degradation is investigated and reverted.
 
 - **Core value:** Bullet-proof, Honest latency, Free, Tax-free integration
 - **Why:** With a strict-$0 budget, multi-surface scope, and a
   pre-PMF posture, a multi-surface team drifts into shipping what's
-  easy rather than what wins. The three north-stars name the three
+  easy rather than what wins. The four north-stars name the four
   orthogonal failure modes ("we built a thing nobody trusts" / "they
-  never reached it" / "the second click broke them") and force every
-  PR to declare which one it moves. The bet is asymmetric: **make it
+  never reached it" / "the second click broke them" / "every click
+  is slow enough that nothing else matters") and force every PR to
+  declare which one it moves — and to prove it didn't break the
+  others. The bet is asymmetric: **make it
   great on free LLMs and the gap to competitors widens — not narrows —
   when frontier models drop in price or capability**, because our
   scaffolding (planner, validator, plan-cache, schema retrieval,
@@ -54,21 +68,24 @@
   for the LLM strategy this compass implies.
 - **Consequence in code & docs:**
   - Every `FEATURE.md` adds a `## Contribution to north-star` section
-    (one short paragraph: which of {engine, onboarding, UX} the
-    feature moves and by what mechanism). New features carry the
-    line; existing features grow it on their next edit.
+    (one short paragraph: which of {engine, onboarding, UX,
+    performance} the feature moves and by what mechanism, plus
+    confirmation it does not degrade the others). New features
+    carry the line; existing features grow it on their next edit.
   - The KPI table below is the **single source of truth** for north-star
     metrics. Implementation lives in
     [`quality-eval/FEATURE.md`](../features/quality-eval/FEATURE.md)
     (engine), [`onboarding/FEATURE.md`](../features/onboarding/FEATURE.md)
-    (onboarding), and [`trust-ux/FEATURE.md`](../features/trust-ux/FEATURE.md)
-    (UX).
+    (onboarding), [`trust-ux/FEATURE.md`](../features/trust-ux/FEATURE.md)
+    (UX), and [`docs/performance.md`](../performance.md) (performance).
   - Phase exit gates in [`phase-plan.md`](../phase-plan.md) name
     KPI thresholds, not feature lists. A phase doesn't roll over
-    until its north-star KPI clears the bar.
+    until **every** north-star KPI clears its floor.
   - Weekly review reads the KPI table; regression on any KPI by the
     `alert` threshold (below) pages the on-call per
-    [`SK-QUAL-002`](../features/quality-eval/FEATURE.md).
+    [`SK-QUAL-002`](../features/quality-eval/FEATURE.md). Sustained
+    degradation on any pillar triggers a revert of the slice that
+    caused it, regardless of which pillar the slice was advancing.
 - **Alternatives rejected:**
   - **Single NSM** (e.g. "weekly answered questions") — too reductive.
     Engine / onboarding / UX fail independently; one number hides
@@ -141,6 +158,20 @@ complete and the docs commit to measuring them when the slices land.
 | Session retention (% of users running ≥ 2 queries per session) | tbd | ≥ 60% | ≥ 75% | −5 pts wk/wk | `web-app` |
 | Recoverable-failure recovery rate (`GLOBAL-022`) — % of recoverable errors retried-to-success without surfacing | tbd | ≥ 95% | ≥ 99% | regression alerts | `observability` |
 
+### Performance
+
+Per-stage budgets and span/metric catalog live in
+[`docs/performance.md`](../performance.md); the floors below are the
+headline user-visible numbers from `architecture.md §0`.
+
+| KPI | Baseline (2026-05) | Phase 2 floor | Phase 3 floor | Alert | Owner |
+|---|---|---|---|---|---|
+| p50 `/v1/ask` latency — cache hit | tbd-by-2026-06-15 | ≤ 400 ms | ≤ 250 ms | +50 ms wk/wk | `performance.md` |
+| p95 `/v1/ask` latency — cache miss | tbd-by-2026-06-15 | ≤ 1.5 s | ≤ 1.0 s | +200 ms wk/wk | `performance.md` |
+| Cold-start latency (warm Worker p99) | tbd-by-2026-06-15 | ≤ 800 ms | ≤ 500 ms | +100 ms wk/wk | `performance.md` |
+| CLI start time (`nlq` no-op) | 5 ms (measured per `SK-CLI-001`) | ≤ 30 ms | ≤ 20 ms | regression alerts | `cli` |
+| Error rate (5xx, rolling 1 h, per route) | per `performance.md §1` | < 0.1% | < 0.1% | any breach pages | `performance.md` |
+
 ## How measurement is operationalized
 
 - **Instrument source.** Engine KPIs come from the weekly
@@ -182,8 +213,3 @@ following decisions already implied:
   signal is the instrument that makes these KPIs measurable.
 - [`GLOBAL-026`](./GLOBAL-026-llm-strategy-byollm-hosted-premium.md)
   — LLM strategy is the lever for the engine north-star.
-
-## Supersedes
-
-- Prior `docs/architecture.md §11` risks-table line: "Our moat is multi-engine auto-migration, not NL→SQL. Stay focused on Phase 3."
-  - **Replacement:** NL→SQL accuracy IS a moat, jointly with multi-engine auto-migration. The moat is the engine-quality scaffolding (planner, validator, plan-cache, schema retrieval, hedged race, trust UX) that compounds with every model release. `quality-eval` measures it via the free-vs-frontier delta KPI.

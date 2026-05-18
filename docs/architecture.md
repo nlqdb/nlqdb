@@ -478,7 +478,7 @@ Sharded out to keep this doc under 20 KB per `CLAUDE.md` §2 D4 — content unch
 | LLM hallucinates column names → confident wrong answers | High | Static schema validation after plan gen; confidence gate; structured output. |
 | Free-tier abuse | Medium | Per-IP + per-account rate limits day 1; PoW on signup if needed; anomaly detection Phase 2. |
 | Vendor lock (Neon, Anthropic) | Medium | Adapter layer for each; quarterly "can we swap this in a week" drill. |
-| Someone ships a better text-to-SQL inside Postgres in 18 months | Real | NL→SQL accuracy IS a moat, jointly with multi-engine auto-migration. The moat is the engine-quality scaffolding (planner, validator, plan-cache, schema retrieval, hedged race, trust UX) that compounds with every model release per [`GLOBAL-025`](./decisions/GLOBAL-025-north-star.md); `quality-eval` measures it via the free-vs-frontier delta KPI. |
+| Someone ships a better text-to-SQL inside Postgres in 18 months | Real | The moat is **engine quality** per [`GLOBAL-025`](./decisions/GLOBAL-025-north-star.md), which has two layers under one pillar: (a) NL→SQL accuracy scaffolding — planner, validator, plan-cache, schema retrieval, hedged race, trust UX — measured by `quality-eval`'s free-vs-frontier delta; compounds with every model release. (b) Multi-engine adapter + workload analyzer + auto-migration with dual-read verification — the router-based architecture a single-engine product cannot graft on. Postgres-with-text-to-SQL is still one engine on one workload shape. |
 | Competitors with deeper pockets (Supabase, Vercel, MongoDB) | High | We out-focus them. They sell platforms; we sell one experience. |
 
 ---

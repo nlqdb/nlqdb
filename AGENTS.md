@@ -15,12 +15,12 @@ nlqdb answers. The full pitch and architecture are in
 
 ### North-star — what every PR moves
 
-Three pillars per
+Four pillars per
 [`GLOBAL-025`](docs/decisions/GLOBAL-025-north-star.md): **engine
-quality** (NL→SQL + multi-engine data engine), **seamless onboarding**,
-**seamless UX**. Every PR advances at least one — name the KPI in
-the PR body. The bet: **great on free LLMs ⇒ invincible on frontier
-LLMs** — scaffolding compounds with the model. LLM strategy per
+quality** (NL→SQL + multi-engine), **onboarding**, **UX**,
+**performance**. Every PR advances ≥ 1 AND degrades 0 — name the
+KPI in the PR body. The bet: **great on free LLMs ⇒ invincible on
+frontier LLMs** — scaffolding compounds with the model. LLM strategy per
 [`GLOBAL-026`](docs/decisions/GLOBAL-026-llm-strategy-byollm-hosted-premium.md):
 free chain forever · BYOLLM every tier (0% markup) · hosted premium
 on paid (flat sub + included request allowance + soft-meter overage,
@@ -246,7 +246,7 @@ Per-package commands are in each area's `AGENTS.md`.
 5. Every mutating endpoint accepts `Idempotency-Key` (`GLOBAL-005`).
 6. New capability added → SDK + CLI + MCP + elements all updated, or
    gap tracked in the affected feature (`GLOBAL-003`).
-7. PR body names the [`GLOBAL-025`](docs/decisions/GLOBAL-025-north-star.md) KPI the change moves.
+7. PR body names the [`GLOBAL-025`](docs/decisions/GLOBAL-025-north-star.md) KPI advanced + confirms no other KPI degrades.
 
 ## 9. When in doubt
 

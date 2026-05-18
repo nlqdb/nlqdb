@@ -27,8 +27,9 @@ Apply to every phase:
   surface ships.
 - Vertical slices, not horizontal layers. Each slice ships end-to-end.
 - Every shipped feature must measurably advance at least one
-  north-star ([`GLOBAL-025`](./decisions/GLOBAL-025-north-star.md)):
-  engine quality, seamless onboarding, or seamless UX.
+  north-star ([`GLOBAL-025`](./decisions/GLOBAL-025-north-star.md))
+  — engine quality, seamless onboarding, seamless UX, or
+  performance — AND must not degrade any of the others.
 - Every phase has a measurable exit gate. No gate, no phase rollover.
 - **Strict-$0 forever for the free tier** ([`GLOBAL-013`](./decisions/GLOBAL-013-free-tier-bundle-budget.md)
   + [`GLOBAL-026`](./decisions/GLOBAL-026-llm-strategy-byollm-hosted-premium.md)).
