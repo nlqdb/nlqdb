@@ -262,7 +262,7 @@ Still to do — cloud provider accounts & keys (IMPLEMENTATION.md §2.3–§2.6)
   2.  Neon              — https://console.neon.tech/app/settings/api-keys
   3.  Upstash           — https://console.upstash.com/account/api
   4.  Fly.io            — `fly auth signup` or `fly auth login` → FLY_API_TOKEN
-  5.  Resend            — https://resend.com/api-keys (verify nlqdb.com DNS)
+  5.  Resend            — https://resend.com/api-keys  (nlqdb.com already verified)
   6.  Sentry            — https://sentry.io/settings/account/api/auth-tokens/
   7.  Grafana Cloud     — https://grafana.com/orgs/<org>/api-keys
   8.  Stripe (test)     — `stripe login` → STRIPE_SECRET_KEY et al.

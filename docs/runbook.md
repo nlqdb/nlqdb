@@ -46,10 +46,10 @@ re-enable via Cloudflare later).
   `nlqdb-web` Pages project and `nlqdb-coming-soon` Pages project both
   have 0 custom domains and can be deleted from the Cloudflare dashboard.
 - `www` follows the same routing as the apex.
-- **Cloudflare Email Routing ON:**
-  - `hello@nlqdb.com` → founder's personal inbox (verified).
-  - Catch-all: check current state at
-    https://dash.cloudflare.com → zone → Email.
+- **Cloudflare Email Routing ON** — catch-all → founder's personal
+  inbox (verified). Every address on `nlqdb.com` forwards, so
+  `hello@`, `contact@`, `dmarc@`, `support@`, etc. all reach the
+  founder without per-address rules.
 
 ### `nlqdb.ai`
 
@@ -60,8 +60,8 @@ re-enable via Cloudflare later).
 - **Single Redirect rule:** `All incoming requests` → dynamic
   expression `concat("https://nlqdb.com", http.request.uri)`, status
   301. Preserves path + query string.
-- Email Routing: **not yet enabled.** When enabled, forward to the
-  same destination as `nlqdb.com`.
+- **Cloudflare Email Routing ON** — catch-all → same destination as
+  `nlqdb.com` (founder's personal inbox).
 
 ---
 
@@ -80,17 +80,15 @@ re-enable via Cloudflare later).
 | Groq             | Existing                  | Free                              | —                                                  |
 | OpenRouter       | Existing                  | Free (fallback)                   | —                                                  |
 | Google Cloud     | `omer.hochman@gmail.com`  | Free                              | Project `nlqdb`, OAuth consent screen **In production** |
-| Resend           | `omer.hochman@gmail.com`  | Free (3k emails/mo)               | API key `nlqdb-phase0`; domain verification ⏳ Phase 1 |
+| Resend           | `omer.hochman@gmail.com`  | Free (3k emails/mo)               | API key `nlqdb-phase0`; `nlqdb.com` verified (DKIM `resend._domainkey`, SPF on `send.nlqdb.com`) |
 | Stripe           | `omer.hochman@gmail.com`  | Test mode (no card)               | Merchant: Switzerland / CHF; descriptor `NLQDB.COM`; webhook secret ⏳ Phase 0 §3 |
 | Grafana Cloud    | `omer.hochman@gmail.com`  | Free                              | Stack `nlqdb` on `us-east-2`, instance `1609127`, access policy `nlqdb-phase0-telemetry` |
+| LogSnag          | `omer.hochman@gmail.com`  | Free (2,500 events/mo)            | Sole sink for `packages/events`; verified end-to-end (first `/v1/ask` produced an event) |
 | Docker Hub       | **SKIPPED**               | —                                 | Using `ghcr.io/nlqdb` instead (paid-only org tier) |
 
 **Not yet provisioned**:
 
 - Stripe webhook secret — needs `apps/api` (Phase 0 §3) to host the endpoint.
-- LogSnag (`LOGSNAG_TOKEN` + `LOGSNAG_PROJECT`) — Phase 1. Free tier
-  (2,500 events/mo, 3 seats). Sole sink for `packages/events`; LogSnag
-  fans events out to Slack / Discord / email itself.
 - Tinybird (`TINYBIRD_TOKEN`, optional `TINYBIRD_API_BASE`) — Phase 3 /
   W4. Free Forever tier (10 GB, 1k reads/day; writes don't count). Token
   scope: `DATASOURCE:APPEND` on the `query_log` Data Source. Tinybird
@@ -150,9 +148,8 @@ the consent screen ships unverified-but-public (Google shows an
 - **GCP project:** `nlqdb`
 - **OAuth consent screen** (Branding tab):
   - App name: `nlqdb`
-  - User support email: `contact@nlqdb.com` (needs Email Routing rule
-    — currently only `hello@` is forwarded; add `contact@` or flip
-    catch-all on if Google's verification emails get lost)
+  - User support email: `contact@nlqdb.com` (routed via the
+    `nlqdb.com` Email Routing catch-all → founder's inbox)
   - Privacy policy: https://nlqdb.com/privacy
   - Terms of service: https://nlqdb.com/terms
   - Authorized domain: `nlqdb.com`
@@ -567,13 +564,13 @@ unmerged consumer code against the preview queue.
 | 2.5  | GitHub OAuth app — `nlqdb-web` (prod)  | ✅            |
 | 2.5  | GitHub OAuth app — `nlqdb-web-dev`     | ✅            |
 | 2.5  | Google OAuth client                | ✅ (In production) |
-| 2.5  | Resend API key                     | ✅ (domain verification ⏳ Phase 1) |
+| 2.5  | Resend API key + `nlqdb.com` domain verified | ✅            |
 | 2.5  | ~~AWS SES fallback~~               | ⏭ dropped — card-required; Resend free tier suffices pre-PMF |
 | 2.5  | Stripe (test mode) — sk + pk       | ✅            |
 | 2.5  | Stripe webhook secret              | ✅ (Slice 7 — PR #33) |
 | 2.6  | Sentry DSN                         | ✅            |
 | 2.6  | Grafana Cloud OTLP                 | ✅            |
-| 2.6  | LogSnag (`LOGSNAG_TOKEN` + `LOGSNAG_PROJECT`) | ⏳ (Phase 1 — single product-event sink) |
+| 2.6  | LogSnag (`LOGSNAG_TOKEN` + `LOGSNAG_PROJECT`) | ✅ (verified end-to-end: first `/v1/ask` produced a LogSnag event) |
 | 2.6  | PostHog Cloud (`POSTHOG_API_KEY`, `POSTHOG_HOST`) | ⏭ optional Phase 2 (only if SQL on D1/Neon stops being enough) |
 | 2.7  | Mirror `.envrc` → GHA secrets      | ✅ via `scripts/mirror-secrets-gha.sh` |
 | 2.7  | Mirror `.envrc` → Workers secrets  | ✅ via `scripts/mirror-secrets-workers.sh local`/`remote` |

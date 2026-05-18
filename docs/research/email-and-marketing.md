@@ -34,8 +34,13 @@ partnerships pre-PMF, AppSumo lifetime deals, gated content.
 
 Three layers, kept distinct:
 
-1. **Web engagement** — **Plausible** (self-hosted on Fly, GDPR-exempt,
-   no cookie banner). Page views, sources, click-through to sign-up.
+1. **Web engagement** — **Cloudflare Web Analytics** (free, GDPR-exempt,
+   no cookie banner, no client SDK to load). Pageviews, sources, top
+   pages, Core Web Vitals. One-line `<script>` in `apps/web` (and
+   `apps/docs` once it lands). Plausible is a Phase 2+ swap-in *only*
+   if goals/funnels become a real need — self-hosting on Fly needs
+   Postgres + ClickHouse + the app server (≥ $5/mo) and saves only
+   ~$9/mo vs Plausible Cloud, not worth the ops pre-PMF.
 2. **Ops telemetry** — **Sentry** (5k errors/mo free) + **OpenTelemetry**
    → **Grafana Cloud** free for traces / metrics / logs. Drives the
    "fast" promise.
