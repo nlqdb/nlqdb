@@ -31,14 +31,28 @@ jobs:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
       - uses: ./.github/actions/setup
 
+      # `wrangler versions upload` requires the Worker to already exist
+      # (workers-sdk constraint); preflight via CF API and short-circuit
+      # to bootstrap-required if not. After the first deploy-mcp.yml run
+      # on main this no-ops and real upload failures fail hard.
+      - name: Preflight — worker exists?
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          code=$(curl -sS -o /dev/null -w "%{http_code}" \
+            -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts/nlqdb-mcp-server")
+          if [ "$code" != "200" ]; then
+            echo "PREVIEW_BOOTSTRAP_NEEDED=1" >> "$GITHUB_ENV"
+            echo "::notice::nlqdb-mcp-server not deployed yet (CF API HTTP $code) — surfacing as bootstrap-required."
+          fi
+
       # Direct wrangler call — wrangler-action's deployment-url output
       # is broken for `versions upload` (cloudflare/wrangler-action#343).
-      # `versions upload` requires the Worker to already exist; on a PR
-      # that lands before the first deploy-mcp.yml run on main, the
-      # bootstrap-needed branch surfaces the state via sticky comment
-      # rather than failing the check.
       - name: Upload preview version
         id: deploy
+        if: env.PREVIEW_BOOTSTRAP_NEEDED != '1'
         working-directory: apps/mcp
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -46,19 +60,9 @@ jobs:
           WRANGLER_OUTPUT_FILE_DIRECTORY: ${{ github.workspace }}/wrangler-out
         run: |
           mkdir -p "$WRANGLER_OUTPUT_FILE_DIRECTORY"
-          set +e
           bunx wrangler versions upload \
             --message "PR #${{ github.event.number }} @ ${{ github.event.pull_request.head.sha }}" \
-            --preview-alias "pr-${{ github.event.number }}" 2>&1 | tee wrangler-stdout.log
-          code=${PIPESTATUS[0]}
-          if [ "$code" -ne 0 ]; then
-            if grep -qiE "not found|does not exist|workers? .* could not be found|no such worker" wrangler-stdout.log; then
-              echo "PREVIEW_BOOTSTRAP_NEEDED=1" >> "$GITHUB_ENV"
-              echo "::notice::nlqdb-mcp-server has not been deployed yet — surfacing as bootstrap-required."
-              exit 0
-            fi
-            exit "$code"
-          fi
+            --preview-alias "pr-${{ github.event.number }}"
 
       - name: Extract preview URL
         if: env.PREVIEW_BOOTSTRAP_NEEDED != '1'
