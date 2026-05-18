@@ -54,9 +54,9 @@ when-to-load:
 
 | Slice | Source | Target page(s) | Tool | Status |
 |---|---|---|---|---|
-| a | `packages/sdk/src/**.ts` | `/reference/sdk/` | TypeDoc + `typedoc-plugin-markdown` → MDX via `apps/docs/scripts/gen-sdk.ts` | ✅ done |
-| b | `examples/<name>/README.md` | `/tutorials/<name>/` | Build script `apps/docs/scripts/gen-examples.ts` (one page per `examples/<name>/`) | ✅ done |
-| c | `nlq help --json` | `/cli/` | Build script `apps/docs/scripts/gen-cli.ts` (shells out to `nlq help --json`; relies on `internal/cmd/help.go`) | ✅ done |
+| a | `packages/sdk/src/**.ts` | `/reference/sdk/` | TypeDoc + `typedoc-plugin-markdown` → MDX via `apps/docs/scripts/gen-sdk.ts` | ✅ done — commit `d8d8bc5` |
+| b | `examples/<name>/README.md` | `/tutorials/<name>/` | Build script `apps/docs/scripts/gen-examples.ts` (one page per `examples/<name>/`) | ✅ done — commit `d8d8bc5` |
+| c | `nlq help --json` | `/cli/` | Build script `apps/docs/scripts/gen-cli.ts` (shells out to `nlq help --json`; relies on `internal/cmd/help.go`) | ✅ done — commit `d8d8bc5` |
 | d | `apps/api/openapi.yaml` | `/reference/http-api/` | Widdershins or Redocly Markdown | ⏸ blocked on `apps/api` emitting OpenAPI — tracked under `ask-pipeline/FEATURE.md` Open questions |
 | e | `tests/personas/P*/run.ts` transcripts | `/tutorials/<persona>/walkthrough/` | Playwright `--reporter=markdown` + screenshot embed | ⏸ deferred — slice b covers ~90 % |
 
