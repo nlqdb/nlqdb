@@ -15,6 +15,12 @@
 // Turnstile (SK-ANON-007) is stubbed via lib/turnstile.ts —
 // `solveChallenge()` returns null today. The 428 retry seam picks
 // up the real widget when it ships.
+//
+// `CreateSnippetView` (SK-WEB-010) renders the embed snippet shape
+// under the schema preview with `pk_live_REPLACE_ME` + a Sign-in CTA.
+// The real key still inlines only via the chat's Copy snippet
+// (SK-WEB-007) — the marketing-page anon key is gone after the create
+// call consumes the SK-ANON-012 1-call cap.
 
 import { useEffect, useId, useState } from "react";
 import { type CreateError, type CreateResult, type CreateRow, postAskCreate } from "../lib/api";
@@ -264,8 +270,8 @@ function CreateSnippetView({ primaryTable }: { primaryTable: string | undefined 
       </pre>
       <p className="createresult__snippet-hint">
         Sign in to keep this DB and reveal your <code>pk_live_</code>. Every chat answer has a{" "}
-        <strong>Copy snippet</strong> action that inlines the working key automatically. Always
-        free — no card required.
+        <strong>Copy snippet</strong> action that inlines the working key automatically. Always free
+        — no card required.
       </p>
       <a className="btn btn--accent createresult__snippet-cta" href="/auth/sign-in?return_to=/app">
         Sign in (free) to continue →
