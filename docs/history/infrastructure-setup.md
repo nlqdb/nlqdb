@@ -77,7 +77,7 @@ Both zones use **Cloudflare Email Routing** (Free plan feature; included with th
 | Catch-all               | ✅ Yes                                |
 | MX / SPF auto-setup     | ✅ Cloudflare auto-writes the records |
 
-**DKIM / DMARC:** Resend's DKIM is set up when outbound email lands in Phase 1. DMARC is set after both inbound (Email Routing) and outbound (Resend) are aligned — premature DMARC breaks mail flow.
+**DKIM / DMARC:** Resend's DKIM for `nlqdb.com` is verified (DKIM TXT `resend._domainkey.nlqdb.com`, SPF on `send.nlqdb.com`, MX on `send.nlqdb.com` → `feedback-smtp.us-east-1.amazonses.com`). DMARC is not yet published — safe to add `_dmarc` TXT with `p=none` for monitoring; promote to `quarantine` once aggregate reports show ≥98% alignment.
 
 **Setup sequence (per zone, once NS are flipped):**
 1. Dashboard → the zone → *Email* → *Email Routing* → *Get started*.
@@ -130,7 +130,7 @@ Optional (apply Day 1, don't block): Anthropic / OpenAI / Google Cloud for Start
 | **GitHub OAuth app — `nlqdb-web` (prod)** → `OAUTH_GITHUB_CLIENT_ID`, `OAUTH_GITHUB_CLIENT_SECRET` | Single callback URL: `https://app.nlqdb.com/api/auth/callback/github`. The `OAUTH_*` prefix avoids GitHub Actions' reserved `GITHUB_*` namespace. Device-code flow enabled for CLI. |
 | **GitHub OAuth app — `nlqdb-web-dev`** → `OAUTH_GITHUB_CLIENT_ID_DEV`, `OAUTH_GITHUB_CLIENT_SECRET_DEV` | Callback: `http://localhost:8787/api/auth/callback/github`. Required because GitHub OAuth Apps support exactly one callback URL each. |
 | **Google OAuth client** → `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | GCP project: `nlqdb`. OAuth consent screen in **Testing** mode; publishing deferred until Phase 1 public launch. Scopes: `openid`, `/auth/userinfo.email`, `/auth/userinfo.profile` — all non-sensitive. |
-| **Resend** → `RESEND_API_KEY` | Free tier, 3k emails/mo. Domain verification for `nlqdb.com` (SPF/DKIM/DMARC) deferred to Phase 1 — no outbound mail until magic-link sign-in lands. |
+| **Resend** → `RESEND_API_KEY` | Free tier, 3k emails/mo. `nlqdb.com` verified (DKIM `resend._domainkey`, SPF + MX on `send.nlqdb.com`). DMARC not yet published — see Email Routing notes. |
 | **Stripe (test mode)** → `STRIPE_SECRET_KEY`, `STRIPE_PUBLISHABLE_KEY` | Merchant: Switzerland / CHF; statement descriptor `NLQDB.COM`. Stripe Tax to enable when going live in Phase 2. |
 | `STRIPE_WEBHOOK_SECRET` | Phase 0 — needs `apps/api` to host the webhook endpoint before the signing secret can be minted. |
 

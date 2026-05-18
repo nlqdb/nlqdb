@@ -106,7 +106,7 @@ are a holding pattern; they ship away when all four remaining items land.
 - ✓ `<nlq-data>` v0 (live, public `/v1/ask` with anonymous bearer; SK-WEB-008 retired the canned-fixture `/v1/demo/ask` path)
 - ✓ Waitlist + capability carousel (holding pattern; removed at Phase 1 close)
 - ✓ `apps/web` live at `nlqdb.com` (DNS flip complete, PR #56)
-- ◯ Sign-in UI — magic-link + GitHub OAuth (`/api/auth/*` backend ready; requires Resend DKIM/SPF/DMARC)
+- ◯ Sign-in UI — magic-link + GitHub OAuth (`/api/auth/*` backend ready)
 - ◯ Chat surface — streaming 3-part response, anon-mode (`/v1/chat/messages` backend ready)
 - ◯ Anonymous-mode web flow — 72h localStorage token → adopt on sign-in (`/v1/anon/adopt` backend ready)
 - ◯ Hosted db.create — typed-plan + provisioner ([`docs/architecture.md §3.6`](./docs/architecture.md)). Unblocks every `<nlq-data>` live claim.
@@ -171,9 +171,13 @@ dashboard wiring required ([RUNBOOK §6](./docs/runbook.md)). The earlier
 "connect Pages git integration for `nlqdb-elements`" item was made
 obsolete by the move to GH Actions for every surface.
 
+> **Already done — don't re-suggest:** Resend domain verification
+> (DKIM/SPF on `nlqdb.com`, verified); Cloudflare Email Routing on
+> both `nlqdb.com` (catch-all → founder's inbox) and `nlqdb.ai`. The
+> canonical "what's provisioned" record is [RUNBOOK §7](./docs/runbook.md#7-prerequisites-checklist-see-docsphase-planmd-1-phase-0).
+
 **Phase 1 — before public soft launch:**
 
-- ◯ Resend domain verification (DKIM/SPF/DMARC for `nlqdb.com`)
 - ◯ LogSnag account → drop `LOGSNAG_TOKEN` + `LOGSNAG_PROJECT` in `.envrc`
 - ◯ Plausible self-hosted on Fly (web analytics, free)
 
