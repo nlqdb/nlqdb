@@ -232,9 +232,16 @@ jobs:
             process.stdout.write(JSON.stringify(msg) + "\n");
           });
 
+          // Wait for readline to drain before exiting, so no trailing
+          // JSON lines are lost if the child exits with data still buffered.
+          let childExitCode = null;
+          let childSignal = null;
           child.on("exit", (code, signal) => {
-            if (signal) process.kill(process.pid, signal);
-            else process.exit(code ?? 0);
+            childExitCode = code; childSignal = signal;
+          });
+          rl.on("close", () => {
+            if (childSignal) process.kill(process.pid, childSignal);
+            else process.exit(childExitCode ?? 0);
           });
           EOF
           chmod +x "$cli"
