@@ -10,32 +10,32 @@
 # Runtime substitution: the caller workflow renders `__BASE_URL__` to the
 # per-run preview alias via `sed` before invoking `bunx opencheck`.
 #
-# LLM: Groq `openai/gpt-oss-120b` via OpenAI-compat
-# (https://console.groq.com/docs/openai). Two failed pivots stand
-# behind this choice:
-#   1. Gemini 2.5 Flash — run #17's LANGCHAIN_VERBOSE log surfaced
-#      systematic `429 status code (no body)` errors costing
-#      ~75-87 s per call from Gemini's 10 RPM free-tier ceiling.
-#   2. OpenRouter `qwen/qwen3-coder:free` — run #19's same verbose
-#      log surfaced `429 Provider returned error` on the FIRST LLM
-#      call of the FIRST test, on a brand-new run with no quota
-#      yet burned. The `:free` upstream pool is rate-limited by
-#      the upstream provider (Together / Fireworks / etc) and the
-#      pool is shared across ALL OpenRouter users globally —
-#      $10 in account credits only lifts OpenRouter's per-account
-#      cap, not the upstream pool. Free models on OpenRouter are
-#      not viable for our ~140-200 calls/run load.
-# Groq's 30 RPM / 1,000 RPD / 12 K TPM is a real dedicated quota
-# on a key we own (no shared pool), and `gpt-oss-120b` is OpenAI's
-# open-weights model explicitly trained for "high-capability
-# autonomous agents with advanced reasoning, tool use, and
-# multi-step problem solving" — the closest free fit for opencheck's
-# ReAct loop. Fallback: `llama-3.3-70b-versatile` (same provider,
-# same key, swap the `model:` line).
+# LLM: Mistral via OpenAI-compat (https://docs.mistral.ai/api/).
+# Current: `mistral-small-latest`
+# Budget: 50K TPM, ~1B tokens/month, 50 RPM, 128K ctx.
+# Fallback: swap to Groq llama-4-scout + update OPENAI_BASE_URL in workflow.
+#
+# Pivot history (newest first — researched 2026-05-18):
+#   7. mistral-small-latest [CURRENT] — Mistral, 50K TPM, ~1B/month, 128K ctx,
+#      50 RPM; switched from Groq after Groq TPD exhausted on run #32
+#   6. meta-llama/llama-4-scout-17b-16e-instruct — Groq, 30K TPM, 500K TPD,
+#      1000 RPM, 512K ctx; exhausted 500K TPD on single run #32 (2026-05-18)
+#   5. llama-3.3-70b-versatile — Groq, 12K TPM, 100K TPD (not 1M as assumed)
+#   4. openai/gpt-oss-120b — Groq, 8K TPM + hidden reasoning_tokens → 85-90s/call
+#   3. llama-4-scout early — Groq, 500K TPD but quota drained by debug runs
+#   2. OpenRouter qwen3-coder:free — 429 on first call; shared upstream pool
+#   1. Gemini 2.5 Flash — 10 RPM ceiling; 75-87s silent-retry tax
+#
+# Top 5 free LLM models for agentic/tool-use (verified 2026-05-18):
+#   1. Groq meta-llama/llama-4-scout-17b-16e-instruct — 30K TPM, 500K TPD, 512K ctx, fast ReAct; our primary
+#   2. Mistral mistral-small-latest — 50K TPM, 50 RPM, ~1B tokens/month, 128K ctx; best TPM headroom
+#   3. Groq llama-3.3-70b-versatile — 12K TPM, 100K TPD, 128K ctx; stronger reasoning, tighter daily budget
+#   4. Cerebras llama3.1-8b — 30K TPM, 1M TPD, 5 RPM, 8K ctx (free cap); high daily but RPM+ctx constrained
+#   5. NVIDIA NIM meta/llama-3.1-70b-instruct — credits-based, 40 RPM, 128K ctx; reliable fallback
 
 baseUrl: "__BASE_URL__"
 modelProvider: "openai"
-model: "openai/gpt-oss-120b"
+model: "mistral-small-latest"
 
 # Persistent session shares cookies + localStorage across tests so the
 # agent doesn't have to re-walk the prereq chain from a clean profile
@@ -53,25 +53,40 @@ recording:
 tests:
   - name: "#hero-or-cmdg"
     case: |
-      Navigate to the base URL. Press Ctrl+G (Cmd+G on Mac) once to
-      reveal the cmd+g-gated hero. Verify a text input with placeholder
-      "an orders tracker" is visible. (The waitlist email input is not
-      the target.)
+      Navigate to the base URL. Press Control+G (Cmd+G on Mac) to
+      reveal the hero create form. After pressing the key, call
+      browser_snapshot. The accessibility tree must contain a text
+      input with placeholder "an orders tracker" — this input is
+      inside a div that starts with the HTML `hidden` attribute and
+      only appears in the snapshot after Control+G removes it. Use
+      browser_snapshot to verify (not browser_evaluate or DOM
+      queries, which can find hidden elements). If the input is
+      absent from the snapshot, the test fails. (The waitlist email
+      input has a different placeholder — do not confuse them.)
 
   - name: "#create-table-anon"
     case: |
       #hero-or-cmdg, then in the input with placeholder "an orders
       tracker" type
         create a users table with id, name, email
-      and submit. Verify a result block titled "Provisioned with N
-      sample rows" appears and a "Users" table with id, name, email
-      columns is rendered.
+      and submit. Wait for the response. Call browser_snapshot and
+      verify: text containing "Provisioned with" is visible in the
+      result, and a table section headed "Users" with columns id,
+      name, email is rendered.
 
   - name: "#add-row-redirects-to-auth"
     case: |
-      #create-table-anon, then clear that same input and type
+      The session is already on the marketing page with the hero
+      create form visible (Control+G was pressed in a prior test and
+      the form stayed open; a "Provisioned with" result is shown
+      below the form). The text input with placeholder "an orders
+      tracker" is now EMPTY — it was cleared after the previous
+      submission. Do NOT navigate away from this page. Do NOT press
+      Control+G again. Do NOT re-create the users table.
+      Click the text input (placeholder "an orders tracker") and type
         add a new row: name='Alice', email='alice@example.com'
-      and submit. Verify the URL ends up containing "/auth/sign-in".
+      then press Enter or click the submit button. Wait for
+      navigation. Verify the URL ends up containing "/auth/sign-in".
       Do not submit the sign-in form yet.
 
   - name: "#mock-sign-in"
