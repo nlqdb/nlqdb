@@ -87,9 +87,13 @@ function stampFile(path: string): void {
     firstH1 >= 0
       ? [...lines.slice(0, firstH1), ...lines.slice(firstH1 + 1)].join("\n").replace(/^\n+/, "")
       : raw.replace(/^\n+/, "");
-  const safeTitle = title.replace(/"/g, '\\"');
-  const next = `---\ntitle: "${safeTitle}"\n---\n\n${BANNER}\n\n${body}`;
+  const next = `---\ntitle: ${yamlQuoted(title)}\n---\n\n${BANNER}\n\n${body}`;
   writeFileSync(path, next);
+}
+
+// YAML double-quoted string escapes both `\` and `"`; covers anything TypeDoc emits as a title.
+function yamlQuoted(s: string): string {
+  return `"${s.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
 }
 
 await main();

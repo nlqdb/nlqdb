@@ -1,8 +1,5 @@
 #!/usr/bin/env bun
-// gen-cli — SK-DOCS-003 slice c. Generates `cli.mdx` from `nlq help --json`.
-// Binary resolution: $NLQDB_CLI → cli/dist/nlq → $PATH. CI (NLQDB_CLI set)
-// fails hard if the binary doesn't run; local dev falls back to a placeholder
-// page so `bun run dev` works without a Go toolchain.
+// gen-cli — SK-DOCS-003 slice c. `nlq help --json` → cli.mdx; falls back to a placeholder when no binary is available so local dev doesn't require a Go toolchain.
 
 import { existsSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
@@ -58,7 +55,15 @@ async function main() {
     console.warn(`! gen-cli: \`${bin} help --json\` failed; wrote placeholder`);
     return;
   }
-  const tree = JSON.parse(proc.stdout.toString()) as CmdNode;
+  let tree: CmdNode;
+  try {
+    tree = JSON.parse(proc.stdout.toString()) as CmdNode;
+  } catch (err) {
+    console.error(
+      `✗ gen-cli: \`${bin} help --json\` produced invalid JSON: ${(err as Error).message}`,
+    );
+    process.exit(1);
+  }
   writeFileSync(OUT, render(tree));
   console.info(`✓ CLI reference → ${relative(REPO_ROOT, OUT)}`);
 }
@@ -74,8 +79,8 @@ function locateBinary(): string | null {
 function placeholder(): string {
   return [
     "---",
-    `title: "nlq — CLI reference"`,
-    `description: "nlqdb command-line tool. Generated from \`nlq help --json\`."`,
+    `title: ${yamlQuoted("nlq — CLI reference")}`,
+    `description: ${yamlQuoted("nlqdb command-line tool. Generated from `nlq help --json`.")}`,
     "---",
     "",
     BANNER,
@@ -102,8 +107,8 @@ function render(root: CmdNode): string {
 
   return [
     "---",
-    `title: "nlq — CLI reference"`,
-    `description: "${escapeYaml(description)}"`,
+    `title: ${yamlQuoted("nlq — CLI reference")}`,
+    `description: ${yamlQuoted(collapse(description))}`,
     "---",
     "",
     BANNER,
@@ -196,8 +201,13 @@ function stripFirst(use: string): string {
   return fields.slice(1).join(" ");
 }
 
-function escapeYaml(s: string): string {
-  return s.replace(/"/g, '\\"').replace(/\s+/g, " ").trim();
+// YAML double-quoted string escapes both `\` and `"`; covers anything that might appear in a Cobra command's `Short`.
+function yamlQuoted(s: string): string {
+  return `"${s.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
+}
+
+function collapse(s: string): string {
+  return s.replace(/\s+/g, " ").trim();
 }
 
 await main();

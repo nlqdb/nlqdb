@@ -104,8 +104,8 @@ function renderTutorial(slug: string, source: string): string {
   const rewritten = rewriteRelativeLinks(bodyLines.join("\n"), slug).replace(/^\n+/, "");
 
   const order = SIDEBAR_ORDER[slug];
-  const frontmatter: string[] = ["---", `title: "${h1.replace(/"/g, '\\"')}"`];
-  if (description) frontmatter.push(`description: "${description.replace(/"/g, '\\"')}"`);
+  const frontmatter: string[] = ["---", `title: ${yamlQuoted(h1)}`];
+  if (description) frontmatter.push(`description: ${yamlQuoted(description)}`);
   if (order !== undefined) {
     frontmatter.push("sidebar:");
     frontmatter.push(`  order: ${order}`);
@@ -156,6 +156,11 @@ function stripMarkdown(s: string): string {
 
 function collapse(s: string): string {
   return s.replace(/\s+/g, " ").trim();
+}
+
+// YAML double-quoted string escapes both `\` and `"`; covers anything we lift out of a README.
+function yamlQuoted(s: string): string {
+  return `"${s.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
 }
 
 main();
