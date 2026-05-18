@@ -197,21 +197,31 @@ jobs:
           const SNAP_LIMIT = 8000; // chars per content[].text block
 
           // 1. Profile lock cleanup — must run before spawning Chromium.
-          // Bug: fs.existsSync follows symlinks; Chromium's SingletonLock is a
-          // dangling symlink after a crash, so existsSync returns false and the
-          // cleanup block was silently skipped. Use lstatSync (no symlink follow)
-          // to detect it, and add SIGKILL as a fallback after the grace period.
+          // SingletonLock is a symlink whose target is "{hostname}-{pid}". After a
+          // crash it becomes a dangling symlink. lstatSync detects it (existsSync
+          // follows symlinks and returns false for dangling ones). We read the PID
+          // from the symlink target and kill only that process — pkill -f would also
+          // match this wrapper's own argv (which contains --user-data-dir=...) and
+          // SIGKILL itself, closing the MCP connection for every subsequent test.
           const userDataDirArg = process.argv.find(a => a.startsWith("--user-data-dir="));
           if (userDataDirArg) {
             const dir = userDataDirArg.slice("--user-data-dir=".length);
             const lock = path.join(dir, "SingletonLock");
             const lockExists = () => { try { fs.lstatSync(lock); return true; } catch { return false; } };
             if (lockExists()) {
-              try { spawnSync("pkill", ["-TERM", "-f", `user-data-dir=${dir}`], { stdio: "ignore" }); } catch {}
-              const deadline = Date.now() + 3000;
-              while (lockExists() && Date.now() < deadline) spawnSync("sleep", ["0.1"]);
-              try { spawnSync("pkill", ["-KILL", "-f", `user-data-dir=${dir}`], { stdio: "ignore" }); } catch {}
-              spawnSync("sleep", ["0.2"]);
+              let stalePid = null;
+              try {
+                const target = fs.readlinkSync(lock);
+                const m = target.match(/-(\d+)$/);
+                if (m) stalePid = parseInt(m[1], 10);
+              } catch {}
+              if (stalePid && stalePid !== process.pid) {
+                try { process.kill(stalePid, "SIGTERM"); } catch {}
+                const deadline = Date.now() + 3000;
+                while (lockExists() && Date.now() < deadline) spawnSync("sleep", ["0.1"]);
+                try { process.kill(stalePid, "SIGKILL"); } catch {}
+                spawnSync("sleep", ["0.2"]);
+              }
               try { fs.unlinkSync(lock); } catch {}
             }
           }
