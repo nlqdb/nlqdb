@@ -52,7 +52,7 @@ jobs:
           CGO_ENABLED: "0"
 
       - name: Build docs site
-        run: bun run --filter apps/docs build
+        run: bun run --cwd apps/docs build
         env:
           NLQDB_CLI: ${{ github.workspace }}/cli/dist/nlq
 
