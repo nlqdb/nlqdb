@@ -77,12 +77,13 @@ tests:
   - name: "#add-row-redirects-to-auth"
     case: |
       The session is already on the marketing page with the hero
-      create form visible (Control+G was pressed in an earlier test
-      and the form stayed open). The input with placeholder "an
-      orders tracker" already contains text from the previous test.
-      Do NOT navigate away from this page. Do NOT press Control+G
-      again. Do NOT re-create the users table.
-      Clear the text input (select all + delete) and type
+      create form visible (Control+G was pressed in a prior test and
+      the form stayed open; a "Provisioned with" result is shown
+      below the form). The text input with placeholder "an orders
+      tracker" is now EMPTY — it was cleared after the previous
+      submission. Do NOT navigate away from this page. Do NOT press
+      Control+G again. Do NOT re-create the users table.
+      Click the text input (placeholder "an orders tracker") and type
         add a new row: name='Alice', email='alice@example.com'
       then press Enter or click the submit button. Wait for
       navigation. Verify the URL ends up containing "/auth/sign-in".
