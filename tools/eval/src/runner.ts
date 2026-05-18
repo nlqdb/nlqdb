@@ -1,17 +1,6 @@
-// quality-eval harness — BIRD Mini-Dev driver. Walks the question
-// list, asks each configured dispatch lane (free / frontier) for SQL,
-// scores execution accuracy on the SQLite fixture, and writes a
-// report JSON to `results/`.
-//
-// Usage (from repo root):
-//   bun run --filter tools/eval bird-mini -- \
-//     --data-dir ./bird_data \
-//     --limit 500 \
-//     --out tools/eval/results
-//
-// All real provider calls require env vars (see lanes.ts). Without
-// any provider key the runner exits 1 with a one-sentence error per
-// GLOBAL-012.
+// quality-eval harness — BIRD Mini-Dev driver. Usage:
+//   bun src/runner.ts --data-dir ./bird_data --limit 500 --out tools/eval/results
+// All real provider calls require env vars (see lanes.ts); no key → one-sentence error per GLOBAL-012.
 
 import { parseArgs } from "node:util";
 
@@ -29,6 +18,7 @@ import type {
 } from "./types.ts";
 
 const PREDICTED_SQL_CAP = 4096;
+const ERROR_MSG_CAP = 240;
 
 export type RunOptions = {
   dataDir?: string;
@@ -36,12 +26,8 @@ export type RunOptions = {
   questionsJsonUrl?: string;
   limit?: number;
   outDir?: string;
-  // Per-question SQL execution timeout. Defaults to 5 s in score.ts.
   sqlTimeoutMs?: number;
-  // Test injection — keeps the unit tests from hitting HuggingFace.
   buildLanes?: typeof buildLanes;
-  // Test injection — short-circuit the writer so unit tests don't
-  // touch the file system.
   writeReport?: typeof writeReport;
 };
 
@@ -54,6 +40,11 @@ function percentile(sorted: number[], p: number): number {
   const idx = Math.min(sorted.length - 1, Math.floor((p / 100) * sorted.length));
   // biome-ignore lint/style/noNonNullAssertion: idx is bounded by sorted.length above
   return sorted[idx]!;
+}
+
+function trimErr(err: unknown): string {
+  const msg = err instanceof Error ? err.message : String(err);
+  return msg.slice(0, ERROR_MSG_CAP);
 }
 
 function summariseLane(lane: DispatchLane, results: QuestionResult[]): LaneSummary {
@@ -85,7 +76,7 @@ function summariseLane(lane: DispatchLane, results: QuestionResult[]): LaneSumma
 }
 
 async function introspectSchema(dbPath: string): Promise<string> {
-  // Lazy import keeps node-only consumers from crashing on bun:sqlite.
+  // Dynamic specifier so tsc (which doesn't know bun:* schemes) still resolves the module.
   const mod = (await import(/* @vite-ignore */ "bun:sqlite")) as {
     Database: new (
       filename: string,
@@ -119,11 +110,14 @@ async function runOneQuestion(
   sqlTimeoutMs?: number,
 ): Promise<QuestionResult> {
   const start = Date.now();
+  const ids = {
+    question_id: question.question_id,
+    db_id: question.db_id,
+    lane: lane.lane,
+  } as const;
   if (!dbPath) {
     return {
-      question_id: question.question_id,
-      db_id: question.db_id,
-      lane: lane.lane,
+      ...ids,
       outcome: "gold_error",
       predicted_sql: "",
       model: lane.modelHint,
@@ -138,27 +132,22 @@ async function runOneQuestion(
       schemaCache.set(question.db_id, schema);
     } catch (err) {
       return {
-        question_id: question.question_id,
-        db_id: question.db_id,
-        lane: lane.lane,
+        ...ids,
         outcome: "gold_error",
         predicted_sql: "",
         model: lane.modelHint,
         latency_ms: Date.now() - start,
-        error: err instanceof Error ? err.message : String(err),
+        error: trimErr(err),
       };
     }
   }
-  // BIRD's `evidence` is annotator-provided context — append to the
-  // goal so the LLM sees the same hint a human would. Without it,
-  // published BIRD scores aren't comparable.
+  // BIRD's `evidence` is annotator-provided context — published scores aren't comparable without feeding it in.
   const enrichedGoal = question.evidence
     ? `${question.question}\n\nEvidence: ${question.evidence}`
     : question.question;
 
-  let predicted = "";
-  let model = lane.modelHint;
-  let llmError: string | undefined;
+  let predicted: string;
+  let model: string;
   try {
     const plan = await lane.router.plan({
       goal: enrichedGoal,
@@ -168,31 +157,37 @@ async function runOneQuestion(
     predicted = plan.sql ?? "";
     model = plan.model || lane.modelHint;
   } catch (err) {
-    llmError = err instanceof Error ? err.message : String(err);
-  }
-  const latency_ms = Date.now() - start;
-  if (llmError) {
     return {
-      question_id: question.question_id,
-      db_id: question.db_id,
-      lane: lane.lane,
+      ...ids,
       outcome: "no_sql",
       predicted_sql: "",
-      model,
-      latency_ms,
-      error: llmError.slice(0, 240),
+      model: lane.modelHint,
+      latency_ms: Date.now() - start,
+      error: trimErr(err),
     };
   }
-  const score = await scoreOne({
-    dbPath,
-    goldSql: question.sql,
-    predictedSql: predicted,
-    timeoutMs: sqlTimeoutMs,
-  });
+  const latency_ms = Date.now() - start;
+  // scoreOne can throw if the SQLite file itself is corrupt; treat as a per-question gold_error so one bad fixture doesn't kill a 500-question run.
+  let score: Awaited<ReturnType<typeof scoreOne>>;
+  try {
+    score = await scoreOne({
+      dbPath,
+      goldSql: question.sql,
+      predictedSql: predicted,
+      timeoutMs: sqlTimeoutMs,
+    });
+  } catch (err) {
+    return {
+      ...ids,
+      outcome: "gold_error",
+      predicted_sql: predicted.slice(0, PREDICTED_SQL_CAP),
+      model,
+      latency_ms,
+      error: trimErr(err),
+    };
+  }
   return {
-    question_id: question.question_id,
-    db_id: question.db_id,
-    lane: lane.lane,
+    ...ids,
     outcome: score.outcome,
     predicted_sql: predicted.slice(0, PREDICTED_SQL_CAP),
     model,
@@ -266,8 +261,6 @@ function parseCliArgs(): RunOptions {
   return out;
 }
 
-// CLI entry — only runs when executed directly (not when imported by
-// tests). Bun's `import.meta.main` is true for the entry module.
 if (import.meta.main) {
   runEval(parseCliArgs())
     .then((r) => {

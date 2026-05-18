@@ -1,48 +1,24 @@
-// BIRD Mini-Dev SQLite loader. The official dataset ships at
-// https://huggingface.co/datasets/birdsql/bird_mini_dev — JSON variants
-// `mini_dev_sqlite.json`, `mini_dev_postgresql.json`, `mini_dev_mysql.json`.
-// For SK-QUAL-001 we use the SQLite variant: 500 SELECT-only instances
-// across 11 SQLite databases, CC-BY-SA-4.0 licensed.
-//
-// The SQLite database files themselves are distributed via Google
-// Drive (per the BIRD README), so the runner expects them to live on
-// disk at `${BIRD_DATA_DIR}/dev_databases/<db_id>/<db_id>.sqlite`.
-// The accompanying CI workflow downloads them once and caches.
+// BIRD Mini-Dev SQLite loader — 500 SELECT-only instances across 11 DBs, CC-BY-SA-4.0.
 
 import { readFile, stat } from "node:fs/promises";
 import { join } from "node:path";
 
 import type { BirdQuestion } from "../types.ts";
 
-// HuggingFace's `resolve/main` returns the raw file. The dataset is
-// sharded by HF's standard `data/<split>-NNNNN-of-NNNNN.json` layout;
-// `mini_dev_sqlite` is one shard (00000-of-00001 as of 2026-05).
-// Slice 2 may pin to a specific revision once we record the baseline.
+// HF's standard `data/<split>-NNNNN-of-NNNNN.json` sharded layout — pin to a revision once we record the slice-2 baseline.
 const HF_SQLITE_JSON_URL =
   "https://huggingface.co/datasets/birdsql/bird_mini_dev/resolve/main/data/mini_dev_sqlite-00000-of-00001.json";
 
 export type BirdLoaderOptions = {
-  // Local directory containing `dev_databases/<db_id>/<db_id>.sqlite`.
-  // Required for execution-accuracy scoring; loader still returns
-  // questions when absent so the harness can dry-run on metadata.
   dataDir?: string;
-  // Optional override for the questions JSON path. When set, reads
-  // from disk instead of fetching from HuggingFace — used in tests
-  // and in the CI workflow once `dev_data.json` is cached.
   questionsJsonPath?: string;
-  // Override the HuggingFace URL — useful for tests that need to
-  // assert no network fetch happens.
   questionsJsonUrl?: string;
-  // Cap the question count. Returned subset is `questions.slice(0, n)`
-  // — deterministic across runs.
   limit?: number;
 };
 
 export type LoadedBird = {
   questions: BirdQuestion[];
-  // Absolute path resolver `(db_id) => sqlite_path`. Returns null when
-  // the fixture is missing on disk; the runner records `gold_error` in
-  // that case so a partial fixture set doesn't crash a whole run.
+  // Returns null on missing fixture so a partial cache doesn't crash the run — the runner records `gold_error` instead.
   resolveDbPath: (db_id: string) => Promise<string | null>;
 };
 
@@ -55,8 +31,7 @@ async function fileExists(path: string): Promise<boolean> {
   }
 }
 
-// Shape the loader normalizes from. BIRD's JSON uses `SQL` (caps);
-// older mirrors lowercase to `sql`. Accept both.
+// BIRD's JSON uses `SQL` (caps); older mirrors lowercase to `sql` — accept both.
 type RawBirdEntry = {
   question_id?: number;
   db_id: string;
@@ -119,8 +94,7 @@ export async function loadBirdMini(opts: BirdLoaderOptions = {}): Promise<Loaded
     questions,
     resolveDbPath: async (db_id) => {
       if (!dataDir) return null;
-      // BIRD's layout: dev_databases/<db_id>/<db_id>.sqlite. Falls back
-      // to dev_databases/<db_id>.sqlite for flat caches.
+      // Nested `dev_databases/<id>/<id>.sqlite` is BIRD's layout; flat `dev_databases/<id>.sqlite` is the manual-cache fallback.
       const nested = join(dataDir, "dev_databases", db_id, `${db_id}.sqlite`);
       if (await fileExists(nested)) return nested;
       const flat = join(dataDir, "dev_databases", `${db_id}.sqlite`);

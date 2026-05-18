@@ -1,13 +1,4 @@
-// Execution-accuracy scoring per SK-QUAL-001. Compares two SQL queries'
-// result sets on the same SQLite database. The metric is BIRD's
-// canonical EX (Execution Accuracy): rows match iff the result-set
-// multisets match. ORDER BY in the gold SQL flips comparison to
-// sequence-equality so an unordered shuffle doesn't false-positive.
-//
-// Imports `bun:sqlite` lazily so non-Bun consumers (typecheck-only
-// builds, vitest under Node) can still load the module. Vitest in this
-// workspace runs on Bun (per the workspace's bun-types), so the lazy
-// import resolves on first call.
+// Execution-accuracy scoring per SK-QUAL-001 — BIRD's canonical EX metric.
 
 import type { ScoreOutcome } from "./types.ts";
 
@@ -20,23 +11,18 @@ type SqliteCtor = new (filename: string, opts?: { readonly?: boolean }) => Sqlit
 
 let cachedSqlite: SqliteCtor | undefined;
 
+// Dynamic specifier so tsc (which doesn't know bun:* schemes) still resolves the module.
 async function loadSqlite(): Promise<SqliteCtor> {
   if (cachedSqlite) return cachedSqlite;
-  // bun:sqlite is the runtime SQLite driver in Bun. We import it via
-  // dynamic specifier so module resolution doesn't fail under
-  // typecheck (tsc doesn't know bun:* schemes).
   const mod = (await import(/* @vite-ignore */ "bun:sqlite")) as { Database: SqliteCtor };
   cachedSqlite = mod.Database;
   return cachedSqlite;
 }
 
 export type ScoreInput = {
-  // Path to the SQLite DB file. Opened readonly.
   dbPath: string;
   goldSql: string;
   predictedSql: string;
-  // Per-query SQL timeout in ms. SQLite is in-process so this only
-  // bounds runaway recursive CTEs / cartesian products; default 5 s.
   timeoutMs?: number;
 };
 
@@ -46,9 +32,6 @@ export type ScoreResult = {
 };
 
 const DEFAULT_TIMEOUT_MS = 5000;
-
-// Cap on error messages emitted in results JSON. GLOBAL-012 wants
-// one-sentence errors; 240 chars is roughly that.
 const ERROR_MSG_CAP = 240;
 
 function trimError(err: unknown): string {
@@ -57,10 +40,7 @@ function trimError(err: unknown): string {
   return single.length > ERROR_MSG_CAP ? `${single.slice(0, ERROR_MSG_CAP - 1)}…` : single;
 }
 
-// Canonical JSON form for a SQLite row tuple. Used to multiset-compare
-// rows independent of column-naming or ordering noise. JSON is enough
-// because SQLite returns scalars (number/string/null/bigint/Uint8Array)
-// — BigInts round-trip via toString and Uint8Arrays via base64.
+// Sorted-key JSON serialisation so multiset comparison is independent of SQLite's result column order; Uint8Array (blob rows) round-trips via base64.
 function canonicalize(row: unknown): string {
   if (row === null || row === undefined) return "null";
   if (typeof row !== "object") return JSON.stringify(row);
@@ -76,10 +56,7 @@ function canonicalize(row: unknown): string {
   return `{${pairs.join(",")}}`;
 }
 
-// Multiset equality — two arrays of rows match iff every canonicalized
-// row appears the same number of times. Order-insensitive when caller
-// passes `ordered=false`. SK-QUAL-001 commits to "result-set match",
-// and BIRD's reference harness uses multisets too.
+// Multiset equality matches BIRD's reference harness; sequence-strict when gold has ORDER BY.
 function rowsMatch(a: unknown[], b: unknown[], ordered: boolean): boolean {
   if (a.length !== b.length) return false;
   const ac = a.map(canonicalize);
@@ -99,8 +76,7 @@ function rowsMatch(a: unknown[], b: unknown[], ordered: boolean): boolean {
   return tally.size === 0;
 }
 
-// Strip trailing `;`, whitespace, and BIRD's occasional gold-SQL
-// comment header so the parser sees a clean statement.
+// BIRD gold SQL occasionally ships with a leading `-- difficulty: …` comment header.
 function normalizeSql(sql: string): string {
   return sql
     .replace(/^\s*--.*$/gm, "")
@@ -109,8 +85,6 @@ function normalizeSql(sql: string): string {
 }
 
 function hasOrderBy(sql: string): boolean {
-  // Conservative — comments aren't yet stripped from gold SQL, so
-  // require a word-boundary at both ends.
   return /\border\s+by\b/i.test(sql);
 }
 
@@ -124,8 +98,6 @@ export async function scoreOne(input: ScoreInput): Promise<ScoreResult> {
   const goldSql = normalizeSql(input.goldSql);
   const db = new Database(input.dbPath, { readonly: true });
   try {
-    // SQLite `busy_timeout` PRAGMA bounds lock waits; for an in-process
-    // readonly DB this only matters for the timeout cap.
     db.query(`PRAGMA busy_timeout = ${Math.max(1, Math.floor(timeoutMs))}`).all();
     let gold: unknown[];
     try {
@@ -146,6 +118,4 @@ export async function scoreOne(input: ScoreInput): Promise<ScoreResult> {
   }
 }
 
-// Exposed for unit tests that want to compare two known result sets
-// without touching SQLite.
 export const _testing = { canonicalize, rowsMatch, hasOrderBy, normalizeSql };

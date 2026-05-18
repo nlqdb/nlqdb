@@ -29,7 +29,7 @@ tools/eval/
 │   ├── output.ts          # JSON report writer
 │   ├── types.ts           # canonical types — BirdQuestion, EvalReport, etc.
 │   └── datasets/bird-mini.ts  # birdsql/bird_mini_dev loader (HF + on-disk)
-├── test/                  # vitest unit tests (no real LLM, no network)
+├── test/                  # bun test unit tests (no real LLM, no network)
 └── results/               # report JSON output (gitignored except .keep)
 ```
 

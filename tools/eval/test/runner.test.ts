@@ -182,4 +182,33 @@ describe("runEval — end-to-end with mocked routers", () => {
       }),
     ).rejects.toThrow(/no dispatch lanes/);
   });
+
+  it("converts a corrupt SQLite fixture into a per-question gold_error (run continues)", async () => {
+    // Overwrite the fixture with garbage so scoreOne throws on Database open.
+    writeFileSync(join(dir, "dev_databases", "pets", "pets.sqlite"), "not a sqlite db");
+    const report = await runEval({
+      dataDir: dir,
+      questionsJsonPath: questionsPath,
+      outDir,
+      buildLanes: () => [
+        {
+          lane: "free",
+          modelHint: "free-fake",
+          router: {
+            ...fakeRouter("SELECT 1"),
+            plan: async (): Promise<PlanResponse> => ({
+              sql: "SELECT 1",
+              model: "fake",
+              confidence: 1,
+            }),
+          },
+        },
+      ],
+      writeReport: async () => "stub.json",
+    });
+    const free = report.lanes.find((l) => l.lane === "free");
+    expect(free?.gold_error).toBe(2);
+    expect(free?.match).toBe(0);
+    expect(free?.execution_accuracy).toBe(0);
+  });
 });
