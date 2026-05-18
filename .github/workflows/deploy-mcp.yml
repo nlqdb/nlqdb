@@ -1,0 +1,67 @@
+# nlqdb — auto-deploy apps/mcp (Cloudflare Worker `nlqdb-mcp-server`)
+# on merge. Hosts the MCP server at `mcp.nlqdb.com`.
+#
+# DNS + cert for `mcp.nlqdb.com` are provisioned by wrangler on first
+# deploy because `apps/mcp/wrangler.toml` declares
+# `[[routes]] custom_domain = true`. No Cloudflare dashboard click
+# needed; check DNS dash → zone → Records after the first green run
+# to confirm.
+#
+# Prerequisite for the first run: `apps/mcp/wrangler.toml` has
+# `id = "REPLACE_WITH_PROVISIONED_OAUTH_KV_ID"` for the OAUTH_KV
+# namespace. Provision once locally with
+#   bunx wrangler kv namespace create OAUTH_KV
+# and commit the returned id. CI cannot bootstrap this safely.
+#
+# Manual re-deploy: workflow_dispatch on the Actions tab, or
+# `bun run --cwd apps/mcp deploy` from a dev machine.
+
+name: Deploy MCP server
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "apps/mcp/**"
+      - "packages/mcp/**"
+      - "packages/sdk/**"
+      - "packages/otel/**"
+      - ".github/workflows/deploy-mcp.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-mcp
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  deployments: write
+
+jobs:
+  deploy:
+    name: wrangler deploy
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      # Wrangler ≥4.x requires Node ≥22; ubuntu-latest currently
+      # ships Node 20. Same pin as the other deploy workflows.
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: "22"
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: package.json
+
+      - name: Install workspace deps
+        run: bun install --frozen-lockfile
+
+      - name: Deploy
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: apps/mcp
+          command: deploy

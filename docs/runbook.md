@@ -240,6 +240,7 @@ the failure path (Basic auth rejected = wrong id or secret).
 | :------------------- | :------------------ | :--------------------------------------------------------- | :------------------------------------------------------------ |
 | `apps/api` + `apps/web` (merged worker) | Cloudflare Workers | GH Actions — `.github/workflows/deploy-api.yml` | GH Actions — `.github/workflows/preview-app.yml` (Workers Versions on `nlqdb-api`; per-PR URL + ephemeral Neon branch) |
 | `apps/events-worker` | Cloudflare Workers  | GH Actions — `.github/workflows/deploy-events-worker.yml`  | n/a (queue-only; nothing visible to preview)                  |
+| `apps/mcp`           | Cloudflare Workers  | GH Actions — `.github/workflows/deploy-mcp.yml` (`mcp.nlqdb.com` via `custom_domain = true`) | n/a (no PR preview yet; add `preview-mcp.yml` if branded staging is needed) |
 | `apps/coming-soon`   | Cloudflare Pages    | retired — `nlqdb.com` now served by `apps/web`              | n/a |
 | `packages/elements`  | Cloudflare Pages    | GH Actions — `.github/workflows/deploy-elements.yml`       | GH Actions — `.github/workflows/preview-elements.yml` (sticky `pr-<N>.nlqdb-elements.pages.dev/v1.js`) |
 
