@@ -91,10 +91,12 @@ tests:
 
   - name: "#mock-sign-in"
     case: |
-      #add-row-redirects-to-auth, then on /auth/sign-in submit the
-      mock-IdP form (default email "test@example.com", button "Sign
-      in as this user"). Wait for the URL path to become "/app"
-      (possibly with a "?db=" query).
+      The browser is currently on /auth/sign-in (the previous test
+      ended there). Do NOT navigate away. Do NOT repeat the add-row
+      step. The mock-IdP form is already visible with a default email
+      field and a "Sign in as this user" button.
+      Click "Sign in as this user". Wait for the URL path to become
+      "/app" (possibly with a "?db=" query).
 
   - name: "#authed-state-preserved"
     case: |
@@ -105,11 +107,16 @@ tests:
 
   - name: "#submit-prefilled-row"
     case: |
-      #authed-state-preserved, then press Enter (or click "Send")
-      to submit the pre-filled prompt. If a confirm/diff chip
-      appears (e.g. "This will insert 1 row"), press Enter again
-      or click "Approve". Verify a row with name "Alice" and email
-      "alice@example.com" appears in the users table.
+      The session is on /app with the chat input pre-filled with
+      "add a new row: name='Alice', email='alice@example.com'".
+      Do NOT re-navigate. Click the chat input and press Enter (or
+      click the Send button) to submit. If a confirm/diff chip
+      appears (e.g. "This will insert 1 row"), press Enter again or
+      click "Approve". If the response shows "Couldn't reach the
+      database" or any connectivity error, wait 5 seconds and submit
+      the same prompt again (type it fresh if the input is empty).
+      Verify a row with name "Alice" and email "alice@example.com"
+      appears in the users table.
 
   - name: "#read-shows-informative-data"
     case: |
