@@ -171,7 +171,7 @@ it composes on the same auth/SDK; framework wrappers third.
    dispatch lane (free / BYOLLM / hosted-premium). **Promoted from
    Phase 3** because the engine north-star
    ([`GLOBAL-025`](./decisions/GLOBAL-025-north-star.md)) is
-   unprovable without it.
+   unprovable without it. Slice-1 status in the footer below.
 10. **BYOLLM dispatch** — per
    [`GLOBAL-026`](./decisions/GLOBAL-026-llm-strategy-byollm-hosted-premium.md),
    every user (free or paid) can paste a provider key and route
@@ -247,6 +247,11 @@ framework wrappers — shipped:**
 native Swift Package `Nlqdb` (`packages/nlqdb-swift`) are now
 P1 · Shipped per [`progress.md §0`](./progress.md#0-surface-status-matrix--single-source-of-truth);
 React Native / Expo and Python / Go SDKs remain Phase 2 P1.
+**Item 9 — quality-eval — slice 1 shipped:** `tools/eval/` workspace,
+BIRD Mini-Dev SQLite runner, free + frontier lanes, multiset EX
+scorer, daily workflow. Smoke-tested against the free chain + Claude
+Sonnet 4.6 via OpenRouter. Slice 2 (baseline + Spider 2.0-lite PG +
+internal `db.create` eval + alert) by 2026-06-15 per `SK-QUAL-005`.
 
 ---
 
