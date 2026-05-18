@@ -1,7 +1,9 @@
 # `nlq` CLI releases via goreleaser on `cli-v*` tag push. Cross-
 # compiles linux/darwin × amd64/arm64, attaches archives + SBOM to
-# a GitHub Release, and pushes an updated formula to
-# nlqdb/homebrew-tap (skips silently without HOMEBREW_TAP_GITHUB_TOKEN).
+# a GitHub Release. Homebrew tap bump runs in the same goreleaser
+# pass and requires HOMEBREW_TAP_GITHUB_TOKEN to be set on the repo
+# — otherwise the brews step fails after the Release is already
+# created. Set the secret before tagging.
 
 name: Release CLI
 

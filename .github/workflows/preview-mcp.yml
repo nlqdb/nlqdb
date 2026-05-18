@@ -33,6 +33,10 @@ jobs:
 
       # Direct wrangler call — wrangler-action's deployment-url output
       # is broken for `versions upload` (cloudflare/wrangler-action#343).
+      # `versions upload` requires the Worker to already exist; on a PR
+      # that lands before the first deploy-mcp.yml run on main, the
+      # bootstrap-needed branch surfaces the state via sticky comment
+      # rather than failing the check.
       - name: Upload preview version
         id: deploy
         working-directory: apps/mcp
@@ -42,18 +46,27 @@ jobs:
           WRANGLER_OUTPUT_FILE_DIRECTORY: ${{ github.workspace }}/wrangler-out
         run: |
           mkdir -p "$WRANGLER_OUTPUT_FILE_DIRECTORY"
+          set +e
           bunx wrangler versions upload \
             --message "PR #${{ github.event.number }} @ ${{ github.event.pull_request.head.sha }}" \
-            --preview-alias "pr-${{ github.event.number }}"
+            --preview-alias "pr-${{ github.event.number }}" 2>&1 | tee wrangler-stdout.log
+          code=${PIPESTATUS[0]}
+          if [ "$code" -ne 0 ]; then
+            if grep -qiE "not found|does not exist|workers? .* could not be found|no such worker" wrangler-stdout.log; then
+              echo "PREVIEW_BOOTSTRAP_NEEDED=1" >> "$GITHUB_ENV"
+              echo "::notice::nlqdb-mcp-server has not been deployed yet — surfacing as bootstrap-required."
+              exit 0
+            fi
+            exit "$code"
+          fi
 
       - name: Extract preview URL
-        if: steps.deploy.outcome == 'success'
+        if: env.PREVIEW_BOOTSTRAP_NEEDED != '1'
         env:
           WRANGLER_OUTPUT_FILE_DIRECTORY: ${{ github.workspace }}/wrangler-out
         run: ./scripts/extract-wrangler-preview-url.sh
 
       - name: Sticky preview comment
-        if: steps.deploy.outcome == 'success'
         uses: actions/github-script@v7
         env:
           PREVIEW_URL: ${{ env.PREVIEW_URL }}
@@ -66,9 +79,10 @@ jobs:
             const marker = '<!-- preview-mcp-sticky -->';
             const ts = new Date().toISOString().replace('T', ' ').slice(0, 19) + ' UTC';
 
-            const lines = [marker, '🔌 **Preview MCP server uploaded**', ''];
+            const heading = bootstrap ? '🔌 **Preview MCP server — bootstrap required**' : '🔌 **Preview MCP server uploaded**';
+            const lines = [marker, heading, ''];
             if (bootstrap) {
-              lines.push('- Status: **bootstrap required** — `nlqdb-mcp-server` has never been deployed. Merge to `main` (or run `deploy-mcp.yml` once) to provision the workers.dev subdomain.');
+              lines.push('- Status: `nlqdb-mcp-server` has never been deployed. Merge to `main` (or run `deploy-mcp.yml` once) to provision the workers.dev subdomain; future PR previews will then surface a URL here.');
             } else if (url) {
               const base = url.replace(/\/$/, '');
               lines.push(`- URL: <${url}>`, `- MCP endpoint: \`${base}/mcp\``, `- OAuth discovery: \`${base}/.well-known/oauth-authorization-server\``);
