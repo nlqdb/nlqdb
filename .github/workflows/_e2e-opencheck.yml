@@ -163,8 +163,10 @@ jobs:
       #    subprocess per test. The previous test's Chromium may still hold
       #    the SingletonLock when the next subprocess starts, causing
       #    "Browser is already in use" on every test after the first.
-      #    The wrapper kills any stale Chromium for the same profile (SIGTERM
-      #    → 3 s grace → SIGKILL) and removes the lock before starting.
+      #    The wrapper kills any stale Chromium (SIGTERM → 3 s grace → SIGKILL)
+      #    and removes the lock before starting. Uses lstatSync (not existsSync)
+      #    to detect the lock — Chromium leaves a dangling symlink on crash and
+      #    existsSync follows symlinks, returning false for dangling ones.
       #
       # 3. Snapshot truncation: browser_snapshot returns ~40 KB accessibility
       #    trees per call. Context grows 3 K → 13 K → 50 K+ tokens within one
@@ -195,14 +197,21 @@ jobs:
           const SNAP_LIMIT = 8000; // chars per content[].text block
 
           // 1. Profile lock cleanup — must run before spawning Chromium.
+          // Bug: fs.existsSync follows symlinks; Chromium's SingletonLock is a
+          // dangling symlink after a crash, so existsSync returns false and the
+          // cleanup block was silently skipped. Use lstatSync (no symlink follow)
+          // to detect it, and add SIGKILL as a fallback after the grace period.
           const userDataDirArg = process.argv.find(a => a.startsWith("--user-data-dir="));
           if (userDataDirArg) {
             const dir = userDataDirArg.slice("--user-data-dir=".length);
             const lock = path.join(dir, "SingletonLock");
-            if (fs.existsSync(lock)) {
+            const lockExists = () => { try { fs.lstatSync(lock); return true; } catch { return false; } };
+            if (lockExists()) {
               try { spawnSync("pkill", ["-TERM", "-f", `user-data-dir=${dir}`], { stdio: "ignore" }); } catch {}
               const deadline = Date.now() + 3000;
-              while (fs.existsSync(lock) && Date.now() < deadline) spawnSync("sleep", ["0.1"]);
+              while (lockExists() && Date.now() < deadline) spawnSync("sleep", ["0.1"]);
+              try { spawnSync("pkill", ["-KILL", "-f", `user-data-dir=${dir}`], { stdio: "ignore" }); } catch {}
+              spawnSync("sleep", ["0.2"]);
               try { fs.unlinkSync(lock); } catch {}
             }
           }
