@@ -74,7 +74,7 @@ jobs:
             "https://console.neon.tech/api/v2/projects/${NEON_PROJECT_ID}/branches" \
             -H "Authorization: Bearer ${NEON_API_KEY}" \
             -H "Content-Type: application/json" \
-            -d "{\"branch\": {\"name\": \"${E2E_NEON_BRANCH}\"}, \"endpoints\": [{\"type\": \"read_write\", \"suspend_timeout_seconds\": 3600}]}")
+            -d "{\"branch\": {\"name\": \"${E2E_NEON_BRANCH}\"}, \"endpoints\": [{\"type\": \"read_write\"}]}")
           db_url=$(echo "$response" | jq -r '.connection_uris[0].connection_uri // empty')
           if [ -z "$db_url" ]; then
             echo "::error::Neon API did not return connection_uris[0].connection_uri"
