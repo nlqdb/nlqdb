@@ -22,10 +22,14 @@
     "check:py": "ruff check && ruff format --check",
     "check:all": "bun run check && bun run check:go && bun run check:py",
     "hooks:install": "lefthook install",
-    "hooks:run": "lefthook run pre-commit"
+    "hooks:run": "lefthook run pre-commit",
+    "changeset": "changeset",
+    "changeset:version": "changeset version && bun install --lockfile-only",
+    "changeset:publish": "echo 'npm publish gated until packages emit dist/ — see .changeset/README.md' && exit 0"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.0.0",
+    "@changesets/cli": "^2.27.0",
     "@playwright/test": "~1.49.0",
     "bun-types": "latest",
     "typescript": "^5.6.0"

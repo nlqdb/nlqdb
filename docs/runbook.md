@@ -455,6 +455,53 @@ gzipped, DESIGN §3.5) is enforced upstream by
 
 Manual re-deploy: workflow_dispatch on the Actions tab.
 
+### `apps/mcp` (hosted MCP server)
+
+Thin protocol shim that terminates MCP Streamable-HTTP and forwards
+every tool call to `apps/api/` via `@nlqdb/sdk`. Hosted on
+`mcp.nlqdb.com`; DNS + cert auto-provisioned by wrangler on first
+deploy because `apps/mcp/wrangler.toml` declares
+`[[routes]] custom_domain = true`.
+
+Deploys via `.github/workflows/deploy-mcp.yml` on merge to main
+when `apps/mcp/**`, `packages/mcp/**`, `packages/sdk/**`, or
+`packages/otel/**` changes.
+
+**One-time prerequisite before the first deploy:** the `OAUTH_KV`
+namespace must exist. Run `./scripts/bootstrap-mcp.sh` once
+(requires `CLOUDFLARE_API_TOKEN` + `CLOUDFLARE_ACCOUNT_ID` in env),
+then commit the resulting `apps/mcp/wrangler.toml` diff. The script
+is idempotent — safe to re-run.
+
+PR previews via `.github/workflows/preview-mcp.yml` give a sticky
+URL `pr-<N>-nlqdb-mcp-server.<subdomain>.workers.dev` on every push.
+
+### Package releases (`packages/*` → npm)
+
+`@nlqdb/*` packages publish via changesets. Workflow:
+`.github/workflows/release-npm.yml` opens a "Version Packages" PR
+when any `.changeset/*.md` files land on main; merging the
+"Version Packages" PR would publish (currently gated — see
+`.changeset/README.md`). Authors run `bun run changeset` alongside
+their change to drop a release note.
+
+Required secret to enable publishing: `NPM_TOKEN` (npm Automation
+token on the `@nlqdb` scope).
+
+### CLI releases (`cli/` → GitHub Releases + Homebrew)
+
+The `nlq` Go binary releases via goreleaser on `cli-v*` tag push.
+Workflow: `.github/workflows/release-cli.yml`. Cross-compiles
+linux/darwin × amd64/arm64, attaches archives to a GitHub Release,
+and pushes an updated formula to `nlqdb/homebrew-tap`.
+
+Required secret to enable the Homebrew step: `HOMEBREW_TAP_GITHUB_TOKEN`
+(fine-grained PAT scoped to `nlqdb/homebrew-tap`, `contents: write`).
+Without it the GitHub Release still creates; only the tap bump
+silently skips.
+
+Local dry-run: `cd cli && goreleaser release --snapshot --clean --skip=publish`.
+
 ### Preview environments
 
 What you see in a PR before merging, by surface:

@@ -1,0 +1,131 @@
+# nlqdb — preview deploys for apps/mcp on every PR push.
+#
+# Uploads the PR's HEAD as a non-production *version* of the prod
+# `nlqdb-mcp-server` Worker (`wrangler versions upload`) with a
+# sticky `--preview-alias pr-<number>`. Each PR gets a stable URL
+# of the form `pr-<number>-nlqdb-mcp-server.<subdomain>.workers.dev`
+# that updates on every push; the promoted production version (and
+# `mcp.nlqdb.com`) are untouched until merge runs deploy-mcp.yml.
+#
+# Bindings (KV `OAUTH_KV` + the McpAgent Durable Object) are
+# inherited from the prod worker via `versions upload` — the same
+# shared-bindings model preview-app.yml uses for D1 / KV / Queue.
+# This means a preview MCP shares the prod OAuth KV state, which is
+# fine: previews are author-only and a new install creates a new
+# grant rather than reusing one. Add a separate `--env preview`
+# binding set later if cross-PR state leakage becomes an issue.
+#
+# Prerequisite: the same OAUTH_KV namespace ID bootstrap as
+# deploy-mcp.yml — `apps/mcp/wrangler.toml` must have a real id
+# (run `bunx wrangler kv namespace create OAUTH_KV` once and commit
+# the returned id). Until then this workflow fails at upload time
+# with a clear binding-validation error.
+#
+# Concurrency: keyed by PR number with `cancel-in-progress: true`
+# so only the latest push for each PR is in flight.
+
+name: Preview MCP server
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - "apps/mcp/**"
+      - "packages/mcp/**"
+      - "packages/sdk/**"
+      - "packages/otel/**"
+      - ".github/workflows/preview-mcp.yml"
+
+concurrency:
+  group: preview-mcp-pr-${{ github.event.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  preview:
+    name: wrangler versions upload
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - uses: ./.github/actions/setup
+
+      # Direct wrangler invocation — cloudflare/wrangler-action@v3's
+      # `deployment-url` output is broken for `versions upload`
+      # (cloudflare/wrangler-action#343). Pin `WRANGLER_OUTPUT_FILE_DIRECTORY`
+      # so the shared `extract-wrangler-preview-url.sh` can parse the
+      # ND-JSON in a follow-up step.
+      - name: Upload preview version
+        id: deploy
+        working-directory: apps/mcp
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          WRANGLER_OUTPUT_FILE_DIRECTORY: ${{ github.workspace }}/wrangler-out
+        run: |
+          mkdir -p "$WRANGLER_OUTPUT_FILE_DIRECTORY"
+          bunx wrangler versions upload \
+            --message "PR #${{ github.event.number }} @ ${{ github.event.pull_request.head.sha }}" \
+            --preview-alias "pr-${{ github.event.number }}"
+
+      - name: Extract preview URL
+        if: always() && steps.deploy.outcome == 'success'
+        env:
+          WRANGLER_OUTPUT_FILE_DIRECTORY: ${{ github.workspace }}/wrangler-out
+        run: ./scripts/extract-wrangler-preview-url.sh
+
+      - name: Sticky preview comment
+        if: always() && steps.deploy.outcome == 'success'
+        uses: actions/github-script@v7
+        env:
+          PREVIEW_URL: ${{ env.PREVIEW_URL }}
+          BOOTSTRAP_NEEDED: ${{ env.PREVIEW_BOOTSTRAP_NEEDED }}
+        with:
+          script: |
+            const url = process.env.PREVIEW_URL || '';
+            const bootstrap = process.env.BOOTSTRAP_NEEDED === '1';
+            const sha = context.sha.slice(0, 7);
+            const marker = '<!-- preview-mcp-sticky -->';
+            const ts = new Date().toISOString().replace('T', ' ').slice(0, 19) + ' UTC';
+
+            const lines = [marker, '🔌 **Preview MCP server uploaded**', ''];
+            if (bootstrap) {
+              lines.push(
+                '- Status: **bootstrap required** — `nlqdb-mcp-server` has never been `wrangler deploy`-ed, so the `*.workers.dev` subdomain is not yet routing. Merge to `main` (or run `deploy-mcp.yml` once) to provision it; future PR previews will then surface a URL here.',
+              );
+            } else if (url) {
+              lines.push(
+                `- URL: <${url}>`,
+                `- MCP endpoint: \`${url.replace(/\/$/, '')}/mcp\``,
+                `- OAuth discovery: \`${url.replace(/\/$/, '')}/.well-known/oauth-authorization-server\``,
+              );
+            } else {
+              lines.push('- Status: deploy succeeded but URL not captured — check the run log for diagnostic dump.');
+            }
+            lines.push(`- Commit: \`${sha}\``, `- Updated: ${ts}`);
+
+            const body = lines.join('\n');
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            const existing = comments.find((c) => c.body?.includes(marker));
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body,
+              });
+            }

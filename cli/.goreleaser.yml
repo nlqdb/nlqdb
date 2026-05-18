@@ -1,0 +1,111 @@
+# nlqdb — goreleaser config for the `nlq` CLI.
+#
+# Triggered by `.github/workflows/release-cli.yml` on tags matching
+# `cli-v*` (e.g. `cli-v0.1.0`). Cross-compiles `nlq` for the host
+# matrix below, attaches the binaries to a GitHub Release, and pushes
+# an updated formula to `nlqdb/homebrew-tap`.
+#
+# Why goreleaser over hand-rolled `go build`:
+#   - Cross-compilation matrix in one config (linux/darwin × amd64/arm64).
+#   - Homebrew tap bump is one block, no shell scripting.
+#   - SHA256 checksum file and SBOM generation come free.
+#   - It's the dominant Go-release tool (cobra, hugo, terraform-cdk
+#     all use it).
+#
+# Local dry run:
+#   cd cli
+#   goreleaser release --snapshot --clean --skip=publish
+#
+# Production release (from a clean tag):
+#   git tag cli-v0.1.0
+#   git push origin cli-v0.1.0
+#   # → CI workflow takes over.
+
+version: 2
+
+project_name: nlq
+
+# Tag prefix `cli-` strips for the version number that ships in the
+# binary and the Homebrew formula. So `cli-v0.1.0` → `0.1.0`.
+git:
+  tag_sort: -version:refname
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - id: nlq
+    binary: nlq
+    main: ./cmd/nlq
+    # Version metadata is read at runtime in cli/internal/version
+    # (TODO: wire `-ldflags` injection here once the version package
+    # exists). For now goreleaser stamps the binary with the tag
+    # in its built-in default.
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+    # Static binary — no libc dependency, runs on alpine and
+    # vanilla glibc alike.
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w
+
+archives:
+  - id: nlq
+    name_template: >-
+      {{- .ProjectName }}_
+      {{- .Version }}_
+      {{- if eq .Os "darwin" }}macOS
+      {{- else }}{{ .Os }}{{ end }}_
+      {{- if eq .Arch "amd64" }}x86_64
+      {{- else }}{{ .Arch }}{{ end }}
+    files:
+      - LICENSE*
+      - README.md
+
+checksum:
+  name_template: "checksums.txt"
+  algorithm: sha256
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^chore:"
+      - "Merge pull request"
+      - "Merge branch"
+
+# Homebrew tap publication. Pushes to `nlqdb/homebrew-tap` on every
+# tagged release. Requires `HOMEBREW_TAP_GITHUB_TOKEN` repo secret —
+# a fine-grained PAT scoped to that single tap repo with
+# `contents: write`. Without the token, this step skips silently
+# rather than failing the whole release.
+brews:
+  - name: nlq
+    repository:
+      owner: nlqdb
+      name: homebrew-tap
+      token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
+    homepage: https://nlqdb.com
+    description: "Natural-language databases — talk to your data, ship without a backend."
+    license: MIT
+    install: |
+      bin.install "nlq"
+    test: |
+      system "#{bin}/nlq", "--version"
+
+release:
+  github:
+    owner: nlqdb
+    name: nlqdb
+  name_template: "nlq {{ .Version }}"
+  prerelease: auto
