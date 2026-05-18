@@ -1,0 +1,4580 @@
+{
+  "run_at": "2026-05-18T22:42:29.917Z",
+  "dataset": "bird-mini-dev-sqlite",
+  "question_count": 500,
+  "lanes": [
+    {
+      "lane": "free",
+      "attempted": 500,
+      "match": 159,
+      "mismatch": 283,
+      "exec_error": 7,
+      "no_sql": 51,
+      "gold_error": 0,
+      "execution_accuracy": 0.318,
+      "p50_latency_ms": 1504,
+      "p95_latency_ms": 5457
+    }
+  ],
+  "free_vs_frontier_delta": null,
+  "results": [
+    {
+      "question_id": 1471,
+      "db_id": "debit_card_specializing",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT CAST(SUM(CASE WHEN Currency = 'EUR' THEN 1 ELSE 0 END) AS REAL) / SUM(CASE WHEN Currency = 'CZK' THEN 1 ELSE 0 END) FROM customers",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1082
+    },
+    {
+      "question_id": 1472,
+      "db_id": "debit_card_specializing",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT T1.CustomerID FROM yearmonth AS T1 INNER JOIN customers AS T2 ON T1.CustomerID = T2.CustomerID WHERE T2.Segment = 'LAM' AND SUBSTR(T1.Date, 1, 4) = '2012' ORDER BY T1.Consumption ASC LIMIT 1",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1772
+    },
+    {
+      "question_id": 1473,
+      "db_id": "debit_card_specializing",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT AVG(T1.Consumption) / 12 FROM yearmonth AS T1 INNER JOIN customers AS T2 ON T1.CustomerID = T2.CustomerID WHERE T2.Segment = 'SME' AND SUBSTR(T1.Date, 1, 4) = '2013'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 2680
+    },
+    {
+      "question_id": 1476,
+      "db_id": "debit_card_specializing",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT SUM(CASE WHEN T1.Currency = 'CZK' THEN T2.Consumption ELSE 0 END) - SUM(CASE WHEN T1.Currency = 'EUR' THEN T2.Consumption ELSE 0 END) FROM customers AS T1 INNER JOIN yearmonth AS T2 ON T1.CustomerID = T2.CustomerID WHERE T1.Currency IN ('CZK', 'EUR') AND SUBSTR(T2.Date, 1, 4) = '2012'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1956
+    },
+    {
+      "question_id": 1479,
+      "db_id": "debit_card_specializing",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT SUBSTR(T1.Date, 1, 4) AS year FROM yearmonth AS T1 INNER JOIN customers AS T2 ON T1.CustomerID = T2.CustomerID WHERE T2.Currency = 'CZK' GROUP BY year ORDER BY SUM(T1.Consumption) DESC LIMIT 1",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1208
+    },
+    {
+      "question_id": 1480,
+      "db_id": "debit_card_specializing",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT SUBSTR(T1.Date, 5, 2) FROM yearmonth AS T1 INNER JOIN customers AS T2 ON T1.CustomerID = T2.CustomerID WHERE T2.Segment = 'SME' AND SUBSTR(T1.Date, 1, 4) = '2013' GROUP BY SUBSTR(T1.Date, 5, 2) ORDER BY SUM(T1.Consumption) DESC LIMIT 1",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1544
+    },
+    {
+      "question_id": 1481,
+      "db_id": "debit_card_specializing",
+      "lane": "free",
+      "outcome": "exec_error",
+      "predicted_sql": "WITH ranked_consumption AS (SELECT CustomerID, SUM(Consumption) AS total_consumption, SUBSTR(Date, 1, 4) AS year FROM yearmonth WHERE SUBSTR(Date, 1, 4) = '2013' GROUP BY CustomerID), ranked AS (SELECT CustomerID, total_consumption, ROW_NUMBER() OVER (PARTITION BY c.Segment ORDER BY total_consumption) AS row_num FROM ranked_consumption r JOIN customers c ON r.CustomerID = c.CustomerID), segments AS (SELECT Segment, AVG(total_consumption) AS avg_consumption FROM ranked WHERE row_num = 1 GROUP BY Segment) SELECT (SELECT avg_consumption FROM segments WHERE Segment = 'SME') - (SELECT avg_consumption FROM segments WHERE Segment = 'LAM') AS SME_LAM, (SELECT avg_consumption FROM segments WHERE Segment = 'LAM') - (SELECT avg_consumption FROM segments WHERE Segment = 'KAM') AS LAM_KAM, (SELECT avg_consumption FROM segments WHERE Segment = 'KAM') - (SELECT avg_consumption FROM segments WHERE Segment = 'SME') AS KAM_SME FROM segments",
+      "model": "llama-3.3-70b-versatile",
+      "latency_ms": 5998,
+      "error": "ambiguous column name: CustomerID"
+    },
+    {
+      "question_id": 1482,
+      "db_id": "debit_card_specializing",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "WITH consumption AS (SELECT c.CustomerID, c.Segment, ym.Date, ym.Consumption FROM customers c JOIN yearmonth ym ON c.CustomerID = ym.CustomerID WHERE c.Currency = 'EUR' AND ym.Date LIKE '2012%' OR ym.Date LIKE '2013%'), consumption_2012 AS (SELECT CustomerID, SUM(Consumption) AS consumption FROM consumption WHERE Date LIKE '2012%' GROUP BY CustomerID), consumption_2013 AS (SELECT CustomerID, SUM(Consumption) AS consumption FROM consumption WHERE Date LIKE '2013%' GROUP BY CustomerID), increases AS (SELECT c.Segment, (c_2013.consumption - c_2012.consumption) AS increase, (c_2013.consumption - c_2012.consumption) / c_2013.consumption * 100 AS percentage FROM consumption_2012 c_2012 JOIN consumption_2013 c_2013 ON c_2012.CustomerID = c_2013.CustomerID JOIN customers c ON c_2012.CustomerID = c.CustomerID) SELECT Segment, MAX(percentage) AS max_percentage, MIN(percentage) AS min_percentage FROM increases WHERE Segment IN ('SME', 'LAM', 'KAM') GROUP BY Segment",
+      "model": "llama-3.3-70b-versatile",
+      "latency_ms": 5949
+    },
+    {
+      "question_id": 1483,
+      "db_id": "debit_card_specializing",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT SUM(Consumption) FROM yearmonth WHERE CustomerID = 6 AND substr(Date, 1, 4) = '2013' AND substr(Date, 5, 2) BETWEEN '08' AND '11'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1508
+    },
+    {
+      "question_id": 1484,
+      "db_id": "debit_card_specializing",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT SUM(CASE WHEN Country = 'CZE' AND Segment = 'discount' THEN 1 ELSE 0 END) - SUM(CASE WHEN Country = 'SVK' AND Segment = 'discount' THEN 1 ELSE 0 END) FROM gasstations",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1620
+    },
+    {
+      "question_id": 1486,
+      "db_id": "debit_card_specializing",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT SUM(CASE WHEN T1.Currency = 'CZK' THEN 1 ELSE 0 END) - SUM(CASE WHEN T1.Currency = 'EUR' THEN 1 ELSE 0 END) FROM customers AS T1 WHERE T1.Segment = 'SME'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1525
+    },
+    {
+      "question_id": 1490,
+      "db_id": "debit_card_specializing",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT CAST(SUM(CASE WHEN T1.Consumption > 46.73 THEN 1 ELSE 0 END) AS REAL) * 100 / COUNT(T1.CustomerID) FROM yearmonth AS T1 INNER JOIN customers AS T2 ON T1.CustomerID = T2.CustomerID WHERE T2.Segment = 'LAM'",
+      "model": "llama-3.3-70b-versatile",
+      "latency_ms": 5439
+    },
+    {
+      "question_id": 1493,
+      "db_id": "debit_card_specializing",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT CAST(SUM(CASE WHEN T1.Consumption > 528.3 THEN 1 ELSE 0 END) AS REAL) * 100 / COUNT(T1.CustomerID) FROM yearmonth AS T1 WHERE SUBSTR(T1.Date, 1, 6) = '201202'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 2178
+    },
+    {
+      "question_id": 1498,
+      "db_id": "debit_card_specializing",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT MAX(T1.Consumption) FROM yearmonth AS T1 WHERE SUBSTR(T1.Date, 1, 4) = '2012' GROUP BY SUBSTR(T1.Date, 5, 2) ORDER BY MAX(T1.Consumption) DESC LIMIT 1",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 2400
+    },
+    {
+      "question_id": 1500,
+      "db_id": "debit_card_specializing",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT T1.Description FROM products AS T1 INNER JOIN transactions_1k AS T2 ON T1.ProductID = T2.ProductID WHERE STRFTIME('%Y-%m', T2.Date) = '2013-09'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1764
+    },
+    {
+      "question_id": 1501,
+      "db_id": "debit_card_specializing",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT DISTINCT T2.Country FROM transactions_1k AS T1 INNER JOIN gasstations AS T2 ON T1.GasStationID = T2.GasStationID WHERE STRFTIME('%Y-%m', T1.Date) = '2013-06'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 2125
+    },
+    {
+      "question_id": 1505,
+      "db_id": "debit_card_specializing",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT COUNT(DISTINCT T1.CustomerID) FROM customers AS T1 INNER JOIN yearmonth AS T2 ON T1.CustomerID = T2.CustomerID WHERE T1.Currency = 'EUR' AND T2.Consumption > 1000",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1081
+    },
+    {
+      "question_id": 1506,
+      "db_id": "debit_card_specializing",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT T1.Description FROM products AS T1 INNER JOIN transactions_1k AS T2 ON T1.ProductID = T2.ProductID INNER JOIN gasstations AS T3 ON T2.GasStationID = T3.GasStationID WHERE T3.Country = 'CZE'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1287
+    },
+    {
+      "question_id": 1507,
+      "db_id": "debit_card_specializing",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT DISTINCT T1.Time FROM transactions_1k AS T1 INNER JOIN gasstations AS T2 ON T1.GasStationID = T2.GasStationID WHERE T2.ChainID = 11",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1146
+    },
+    {
+      "question_id": 1509,
+      "db_id": "debit_card_specializing",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT COUNT(T1.TransactionID) FROM transactions_1k AS T1 INNER JOIN gasstations AS T2 ON T1.GasStationID = T2.GasStationID WHERE T2.Country = 'CZE' AND T1.Date > '2012-01-01'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1198
+    },
+    {
+      "question_id": 1514,
+      "db_id": "debit_card_specializing",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT T2.Currency FROM transactions_1k AS T1 INNER JOIN customers AS T2 ON T1.CustomerID = T2.CustomerID WHERE T1.Date = '2012-08-24' AND T1.Time = '16:25:00'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1558
+    },
+    {
+      "question_id": 1515,
+      "db_id": "debit_card_specializing",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT T1.Segment FROM customers AS T1 INNER JOIN transactions_1k AS T2 ON T1.CustomerID = T2.CustomerID WHERE T2.Date = '2012-08-23' AND T2.Time = '21:20:00'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 2346
+    },
+    {
+      "question_id": 1521,
+      "db_id": "debit_card_specializing",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT COUNT(T1.TransactionID) FROM transactions_1k AS T1 INNER JOIN gasstations AS T2 ON T1.GasStationID = T2.GasStationID WHERE T1.Date = '2012-08-26' AND T1.Time BETWEEN '08:00:00' AND '09:00:00' AND T2.Country = 'CZE'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1711
+    },
+    {
+      "question_id": 1524,
+      "db_id": "debit_card_specializing",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT T1.Currency FROM customers AS T1 INNER JOIN transactions_1k AS T2 ON T1.CustomerID = T2.CustomerID WHERE T2.Price = 548.4 AND T2.Date = '2012-08-24'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 2973
+    },
+    {
+      "question_id": 1525,
+      "db_id": "debit_card_specializing",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT CAST(SUM(CASE WHEN T2.Currency = 'EUR' THEN 1 ELSE 0 END) AS REAL) * 100 / COUNT(T1.CustomerID) FROM transactions_1k AS T1 INNER JOIN customers AS T2 ON T1.CustomerID = T2.CustomerID WHERE T1.Date = '2012-08-25'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1941
+    },
+    {
+      "question_id": 1526,
+      "db_id": "debit_card_specializing",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "WITH t1 AS (SELECT CustomerID FROM transactions_1k WHERE Date = '2012/8/25' AND Price = 634.8), t2 AS (SELECT CustomerID, SUM(CASE WHEN Date LIKE '2012%' THEN Consumption END) AS consumption_2012, SUM(CASE WHEN Date LIKE '2013%' THEN Consumption END) AS consumption_2013 FROM yearmonth GROUP BY CustomerID) SELECT (t2.consumption_2012 - t2.consumption_2013) / t2.consumption_2012 FROM t1 JOIN t2 ON t1.CustomerID = t2.CustomerID",
+      "model": "llama-3.3-70b-versatile",
+      "latency_ms": 5502
+    },
+    {
+      "question_id": 1528,
+      "db_id": "debit_card_specializing",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT CAST(SUM(CASE WHEN Segment = 'premium' THEN 1 ELSE 0 END) AS REAL) * 100 / COUNT(GasStationID) FROM gasstations WHERE Country = 'SVK'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1320
+    },
+    {
+      "question_id": 1529,
+      "db_id": "debit_card_specializing",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT SUM(t.Price * t.Amount) AS total_spent FROM transactions_1k t WHERE t.CustomerID = 38508 AND t.Date LIKE '201201%'",
+      "model": "llama-3.3-70b-versatile",
+      "latency_ms": 5344
+    },
+    {
+      "question_id": 1531,
+      "db_id": "debit_card_specializing",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT T1.CustomerID, T1.Currency, SUM(T2.Price) AS TotalSpending, SUM(T2.Price) * 1.0 / SUM(T2.Amount) AS AvgPricePerItem FROM customers AS T1 INNER JOIN transactions_1k AS T2 ON T1.CustomerID = T2.CustomerID GROUP BY T1.CustomerID, T1.Currency ORDER BY TotalSpending DESC LIMIT 1",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 2044
+    },
+    {
+      "question_id": 1533,
+      "db_id": "debit_card_specializing",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT T2.Consumption FROM transactions_1k AS T1 INNER JOIN yearmonth AS T2 ON T1.CustomerID = T2.CustomerID WHERE T1.ProductID = 5 AND T1.Price / T1.Amount > 29.00 AND T2.Date = '201208'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 2129
+    },
+    {
+      "question_id": 1312,
+      "db_id": "student_club",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT T2.major_name FROM member AS T1 INNER JOIN major AS T2 ON T1.link_to_major = T2.major_id WHERE T1.first_name = 'Angela' AND T1.last_name = 'Sanders'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1091
+    },
+    {
+      "question_id": 1317,
+      "db_id": "student_club",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT COUNT(T1.member_id) FROM member AS T1 INNER JOIN attendance AS T2 ON T1.member_id = T2.link_to_member INNER JOIN event AS T3 ON T2.link_to_event = T3.event_id WHERE T3.event_name = 'Women''s Soccer' AND T1.t_shirt_size = 'Medium'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 2961
+    },
+    {
+      "question_id": 1322,
+      "db_id": "student_club",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT COUNT(T1.event_id) FROM event AS T1 INNER JOIN attendance AS T2 ON T1.event_id = T2.link_to_event WHERE T1.type = 'Meeting' GROUP BY T1.event_id HAVING COUNT(T2.link_to_member) > 10",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1397
+    },
+    {
+      "question_id": 1323,
+      "db_id": "student_club",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT T1.event_name FROM event AS T1 INNER JOIN attendance AS T2 ON T1.event_id = T2.link_to_event WHERE T1.type != 'fundraiser' GROUP BY T1.event_id HAVING COUNT(T2.link_to_member) > 20",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 2275
+    },
+    {
+      "question_id": 1331,
+      "db_id": "student_club",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT SUM(T1.amount) FROM income AS T1 INNER JOIN member AS T2 ON T1.link_to_member = T2.member_id WHERE T2.position = 'Vice President'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1021
+    },
+    {
+      "question_id": 1334,
+      "db_id": "student_club",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT T1.first_name, T1.last_name FROM member AS T1 INNER JOIN zip_code AS T2 ON T1.zip = T2.zip_code WHERE T2.state = 'Illinois'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1217
+    },
+    {
+      "question_id": 1338,
+      "db_id": "student_club",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT T3.expense_description, T3.approved FROM event AS T1 INNER JOIN budget AS T2 ON T1.event_id = T2.link_to_event INNER JOIN expense AS T3 ON T2.budget_id = T3.link_to_budget WHERE T1.event_name = 'October Meeting' AND T1.event_date = '2019-10-08'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1499
+    },
+    {
+      "question_id": 1339,
+      "db_id": "student_club",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT AVG(T1.cost) FROM expense AS T1 INNER JOIN member AS T2 ON T1.link_to_member = T2.member_id WHERE T2.first_name = 'Elijah' AND T2.last_name = 'Allen' AND STRFTIME('%m', T1.expense_date) IN ('09', '10')",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1891
+    },
+    {
+      "question_id": 1340,
+      "db_id": "student_club",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT SUM(CASE WHEN substr(T1.event_date, 1, 4) = '2019' THEN T2.spent ELSE 0 END) - SUM(CASE WHEN substr(T1.event_date, 1, 4) = '2020' THEN T2.spent ELSE 0 END) FROM event AS T1 INNER JOIN budget AS T2 ON T1.event_id = T2.link_to_event WHERE substr(T1.event_date, 1, 4) IN ('2019', '2020')",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1794
+    },
+    {
+      "question_id": 1344,
+      "db_id": "student_club",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT notes FROM income WHERE source = 'Fundraising' AND date_received = '2019-09-14'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1100
+    },
+    {
+      "question_id": 1346,
+      "db_id": "student_club",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT phone FROM member WHERE first_name = 'Carlo' AND last_name = 'Jacobs'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1046
+    },
+    {
+      "question_id": 1350,
+      "db_id": "student_club",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT T3.status FROM expense AS T1 INNER JOIN budget AS T2 ON T1.link_to_budget = T2.budget_id INNER JOIN event AS T3 ON T2.link_to_event = T3.event_id WHERE T1.expense_description = 'Post Cards, Posters' AND T1.expense_date = '2019-8-20'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1776
+    },
+    {
+      "question_id": 1351,
+      "db_id": "student_club",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT T2.major_name FROM member AS T1 INNER JOIN major AS T2 ON T1.link_to_major = T2.major_id WHERE T1.first_name = 'Brent' AND T1.last_name = 'Thomason'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1463
+    },
+    {
+      "question_id": 1352,
+      "db_id": "student_club",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT COUNT(T1.member_id) FROM member AS T1 INNER JOIN major AS T2 ON T1.link_to_major = T2.major_id WHERE T2.major_name = 'Business' AND T1.t_shirt_size = 'Medium'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1144
+    },
+    {
+      "question_id": 1356,
+      "db_id": "student_club",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT T2.department FROM member AS T1 INNER JOIN major AS T2 ON T1.link_to_major = T2.major_id WHERE T1.position = 'President'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1147
+    },
+    {
+      "question_id": 1357,
+      "db_id": "student_club",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT T1.date_received FROM income AS T1 INNER JOIN member AS T2 ON T1.link_to_member = T2.member_id WHERE T2.first_name = 'Connor' AND T2.last_name = 'Hilton' AND T1.source = 'Dues'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1296
+    },
+    {
+      "question_id": 1359,
+      "db_id": "student_club",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT SUM(CASE WHEN T1.event_name = 'Yearly Kickoff' THEN T2.amount ELSE 0 END) * 1.0 / SUM(CASE WHEN T1.event_name = 'October Meeting' THEN T2.amount ELSE 0 END) FROM event AS T1 INNER JOIN budget AS T2 ON T1.event_id = T2.link_to_event WHERE T2.category = 'Advertisement'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1561
+    },
+    {
+      "question_id": 1361,
+      "db_id": "student_club",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT SUM(cost) FROM expense WHERE expense_description = 'Pizza'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 770
+    },
+    {
+      "question_id": 1362,
+      "db_id": "student_club",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT COUNT(DISTINCT city) FROM zip_code WHERE county = 'Orange County' AND state = 'Virginia'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 879
+    },
+    {
+      "question_id": 1368,
+      "db_id": "student_club",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT T2.major_name FROM member AS T1 INNER JOIN major AS T2 ON T1.link_to_major = T2.major_id WHERE T1.phone = '809-555-3360'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1063
+    },
+    {
+      "question_id": 1371,
+      "db_id": "student_club",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT COUNT(T1.link_to_member) FROM attendance AS T1 INNER JOIN event AS T2 ON T1.link_to_event = T2.event_id WHERE T2.event_name = 'Women''s Soccer'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 957
+    },
+    {
+      "question_id": 1375,
+      "db_id": "student_club",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT T1.first_name, T1.last_name FROM member AS T1 INNER JOIN major AS T2 ON T1.link_to_major = T2.major_id WHERE T2.department = 'School of Applied Sciences, Technology and Education'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1078
+    },
+    {
+      "question_id": 1376,
+      "db_id": "student_club",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT T1.event_name FROM event AS T1 INNER JOIN budget AS T2 ON T1.event_id = T2.link_to_event WHERE T1.status = 'Closed' ORDER BY T2.spent / T2.amount DESC LIMIT 1",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1222
+    },
+    {
+      "question_id": 1378,
+      "db_id": "student_club",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT MAX(spent) FROM budget",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 716
+    },
+    {
+      "question_id": 1380,
+      "db_id": "student_club",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT SUM(spent) FROM budget WHERE category = 'Food'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 850
+    },
+    {
+      "question_id": 1381,
+      "db_id": "student_club",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT T1.first_name, T1.last_name FROM member AS T1 INNER JOIN attendance AS T2 ON T1.member_id = T2.link_to_member GROUP BY T1.member_id HAVING COUNT(T2.link_to_event) > 7",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1479
+    },
+    {
+      "question_id": 1387,
+      "db_id": "student_club",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT T1.first_name, T1.last_name FROM member AS T1 INNER JOIN expense AS T2 ON T1.member_id = T2.link_to_member INNER JOIN budget AS T3 ON T2.link_to_budget = T3.budget_id INNER JOIN event AS T4 ON T3.link_to_event = T4.event_id WHERE T4.event_name = 'Yearly Kickoff'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 4138
+    },
+    {
+      "question_id": 1389,
+      "db_id": "student_club",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT T1.event_name FROM event AS T1 INNER JOIN budget AS T2 ON T1.event_id = T2.link_to_event INNER JOIN expense AS T3 ON T2.budget_id = T3.link_to_budget ORDER BY T3.cost ASC LIMIT 1",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1295
+    },
+    {
+      "question_id": 1390,
+      "db_id": "student_club",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT SUM(T3.cost) * 100.0 / (SELECT SUM(cost) FROM expense) FROM event AS T1 INNER JOIN budget AS T2 ON T1.event_id = T2.link_to_event INNER JOIN expense AS T3 ON T2.budget_id = T3.link_to_budget WHERE T1.event_name = 'Yearly Kickoff'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1307
+    },
+    {
+      "question_id": 1392,
+      "db_id": "student_club",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT source FROM income WHERE date_received BETWEEN '2019-09-01' AND '2019-09-30' GROUP BY source ORDER BY SUM(amount) DESC LIMIT 1",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1201
+    },
+    {
+      "question_id": 1394,
+      "db_id": "student_club",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT COUNT(T1.member_id) FROM member AS T1 INNER JOIN major AS T2 ON T1.link_to_major = T2.major_id WHERE T2.major_name = 'Physics Teaching'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1045
+    },
+    {
+      "question_id": 1398,
+      "db_id": "student_club",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT T1.event_name FROM event AS T1 INNER JOIN budget AS T2 ON T1.event_id = T2.link_to_event WHERE T2.category = 'Advertisement' ORDER BY T2.spent DESC LIMIT 1",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 982
+    },
+    {
+      "question_id": 1399,
+      "db_id": "student_club",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT COUNT(*) FROM attendance AS T1 INNER JOIN member AS T2 ON T1.link_to_member = T2.member_id INNER JOIN event AS T3 ON T1.link_to_event = T3.event_id WHERE T2.first_name = 'Maya' AND T2.last_name = 'Mclean' AND T3.event_name = 'Women''s Soccer'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1687
+    },
+    {
+      "question_id": 1401,
+      "db_id": "student_club",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT T1.cost FROM expense AS T1 INNER JOIN budget AS T2 ON T1.link_to_budget = T2.budget_id INNER JOIN event AS T3 ON T2.link_to_event = T3.event_id WHERE T1.expense_description = 'Posters' AND T3.event_name = 'September Speaker'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1591
+    },
+    {
+      "question_id": 1403,
+      "db_id": "student_club",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT T1.event_name FROM event AS T1 INNER JOIN budget AS T2 ON T1.event_id = T2.link_to_event WHERE T1.status = 'Closed' ORDER BY T2.remaining ASC LIMIT 1",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1209
+    },
+    {
+      "question_id": 1404,
+      "db_id": "student_club",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT T3.expense_description, SUM(T3.cost) FROM event AS T1 INNER JOIN budget AS T2 ON T1.event_id = T2.link_to_event INNER JOIN expense AS T3 ON T2.budget_id = T3.link_to_budget WHERE T1.event_name = 'October Meeting' AND T3.approved = 'True' GROUP BY T3.expense_description",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1741
+    },
+    {
+      "question_id": 1405,
+      "db_id": "student_club",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT T1.category, T1.amount FROM budget AS T1 INNER JOIN event AS T2 ON T1.link_to_event = T2.event_id WHERE T2.event_name = 'April Speaker' ORDER BY T1.amount ASC",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1065
+    },
+    {
+      "question_id": 1409,
+      "db_id": "student_club",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT SUM(cost) FROM expense WHERE expense_date = '2019-08-20'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 964
+    },
+    {
+      "question_id": 1410,
+      "db_id": "student_club",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT T1.first_name, T1.last_name, SUM(T2.cost) FROM member AS T1 INNER JOIN expense AS T2 ON T1.member_id = T2.link_to_member WHERE T1.member_id = 'rec4BLdZHS2Blfp4v'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1815
+    },
+    {
+      "question_id": 1411,
+      "db_id": "student_club",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT T1.expense_description FROM expense AS T1 INNER JOIN member AS T2 ON T1.link_to_member = T2.member_id WHERE T2.first_name = 'Sacha' AND T2.last_name = 'Harrison'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1475
+    },
+    {
+      "question_id": 1422,
+      "db_id": "student_club",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT type FROM event WHERE location = 'MU 215'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 905
+    },
+    {
+      "question_id": 1426,
+      "db_id": "student_club",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT T1.last_name, T2.department, T2.college FROM member AS T1 INNER JOIN major AS T2 ON T1.link_to_major = T2.major_id WHERE T2.major_name = 'Environmental Engineering'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1133
+    },
+    {
+      "question_id": 1427,
+      "db_id": "student_club",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT T1.category FROM budget AS T1 INNER JOIN event AS T2 ON T1.link_to_event = T2.event_id WHERE T2.location = 'MU 215' AND T2.type = 'Guest Speaker' AND T1.spent = 0",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1044
+    },
+    {
+      "question_id": 1432,
+      "db_id": "student_club",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT CAST(SUM(CASE WHEN T2.amount = 50 THEN 1 ELSE 0 END) AS REAL) * 100 / COUNT(T1.member_id) FROM member AS T1 INNER JOIN income AS T2 ON T1.member_id = T2.link_to_member WHERE T1.t_shirt_size = 'Medium' AND T1.position = 'Member'",
+      "model": "llama-3.3-70b-versatile",
+      "latency_ms": 5375
+    },
+    {
+      "question_id": 1435,
+      "db_id": "student_club",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT event_name FROM event WHERE type = 'Game' AND status = 'Closed' AND event_date BETWEEN '2019-03-15' AND '2020-03-20'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1094
+    },
+    {
+      "question_id": 1457,
+      "db_id": "student_club",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT T1.first_name, T1.last_name, T1.phone FROM member AS T1 INNER JOIN expense AS T2 ON T1.member_id = T2.link_to_member WHERE T2.cost > (SELECT AVG(cost) FROM expense)",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1226
+    },
+    {
+      "question_id": 1460,
+      "db_id": "student_club",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT T1.first_name, T1.last_name, T2.cost FROM member AS T1 INNER JOIN expense AS T2 ON T1.member_id = T2.link_to_member WHERE T2.expense_description = 'Water, Veggie tray, supplies'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1202
+    },
+    {
+      "question_id": 1464,
+      "db_id": "student_club",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT T1.first_name, T1.last_name, T2.amount FROM member AS T1 INNER JOIN income AS T2 ON T1.member_id = T2.link_to_member WHERE T2.date_received = '9/9/2019'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1113
+    },
+    {
+      "question_id": 1149,
+      "db_id": "thrombosis_prediction",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT CAST(SUM(CASE WHEN Admission = '+' THEN 1 ELSE 0 END) AS REAL) * 100 / SUM(CASE WHEN Admission = '-' THEN 1 ELSE 0 END) FROM Patient WHERE SEX = 'M'",
+      "model": "llama-3.3-70b-versatile",
+      "latency_ms": 5338
+    },
+    {
+      "question_id": 1150,
+      "db_id": "thrombosis_prediction",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT CAST(SUM(CASE WHEN strftime('%Y', Birthday) > '1930' THEN 1 ELSE 0 END) AS REAL) * 100 / COUNT(ID) FROM Patient WHERE SEX = 'F'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1286
+    },
+    {
+      "question_id": 1152,
+      "db_id": "thrombosis_prediction",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT CAST(SUM(CASE WHEN Admission = '-' THEN 1 ELSE 0 END) AS REAL) / SUM(CASE WHEN Admission = '+' THEN 1 ELSE 0 END) FROM Patient WHERE Diagnosis = 'SLE'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1425
+    },
+    {
+      "question_id": 1153,
+      "db_id": "thrombosis_prediction",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT T1.Diagnosis, T2.Date FROM Patient AS T1 INNER JOIN Laboratory AS T2 ON T1.ID = T2.ID WHERE T1.ID = 30609",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1537
+    },
+    {
+      "question_id": 1155,
+      "db_id": "thrombosis_prediction",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT T1.ID, T1.SEX, T1.Birthday FROM Patient AS T1 INNER JOIN Laboratory AS T2 ON T1.ID = T2.ID WHERE T2.LDH > 500",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1207
+    },
+    {
+      "question_id": 1156,
+      "db_id": "thrombosis_prediction",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT T1.ID, (strftime('%Y', 'now') - strftime('%Y', T1.Birthday)) FROM Patient AS T1 INNER JOIN Examination AS T2 ON T1.ID = T2.ID WHERE T2.RVVT = '+'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1813
+    },
+    {
+      "question_id": 1157,
+      "db_id": "thrombosis_prediction",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT T1.ID, T1.SEX, T1.Diagnosis FROM Patient AS T1 INNER JOIN Examination AS T2 ON T1.ID = T2.ID WHERE T2.Thrombosis = 2",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1108
+    },
+    {
+      "question_id": 1162,
+      "db_id": "thrombosis_prediction",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT COUNT(ID) FROM Patient WHERE SEX = 'F' AND strftime('%Y', Description) = '1997' AND Admission = '-'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1045
+    },
+    {
+      "question_id": 1164,
+      "db_id": "thrombosis_prediction",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT COUNT(T1.ID) FROM Patient AS T1 INNER JOIN Examination AS T2 ON T1.ID = T2.ID WHERE T1.SEX = 'F' AND T2.Thrombosis = 1 AND STRFTIME('%Y', T2.`Examination Date`) = '1997'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1478
+    },
+    {
+      "question_id": 1166,
+      "db_id": "thrombosis_prediction",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT T1.Symptoms, T1.Diagnosis FROM Examination AS T1 INNER JOIN Patient AS T2 ON T1.ID = T2.ID WHERE T1.Symptoms IS NOT NULL ORDER BY T2.Birthday DESC LIMIT 1",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1274
+    },
+    {
+      "question_id": 1168,
+      "db_id": "thrombosis_prediction",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT L.Date, (strftime('%Y', P.`First Date`) - strftime('%Y', P.Birthday)) AS age FROM Patient P INNER JOIN Laboratory L ON P.ID = L.ID WHERE P.Diagnosis = 'SJS' ORDER BY P.Birthday ASC LIMIT 1",
+      "model": "llama-3.3-70b-versatile",
+      "latency_ms": 5590
+    },
+    {
+      "question_id": 1169,
+      "db_id": "thrombosis_prediction",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT CAST(SUM(CASE WHEN P.SEX = 'M' AND L.UA <= 8.0 THEN 1 ELSE 0 END) AS REAL) / SUM(CASE WHEN P.SEX = 'F' AND L.UA <= 6.5 THEN 1 ELSE 0 END) FROM Patient P INNER JOIN Laboratory L ON P.ID = L.ID",
+      "model": "llama-3.3-70b-versatile",
+      "latency_ms": 5508
+    },
+    {
+      "question_id": 1171,
+      "db_id": "thrombosis_prediction",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT COUNT(DISTINCT T1.ID) FROM Patient AS T1 INNER JOIN Examination AS T2 ON T1.ID = T2.ID WHERE strftime('%Y', T2.`Examination Date`) BETWEEN '1990' AND '1993' AND strftime('%Y', T1.Birthday) > strftime('%Y', T2.`Examination Date`) - 18",
+      "model": "llama-3.3-70b-versatile",
+      "latency_ms": 5399
+    },
+    {
+      "question_id": 1175,
+      "db_id": "thrombosis_prediction",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT (strftime('%Y', T1.`Examination Date`) - strftime('%Y', T3.Birthday)) AS age, T1.Diagnosis FROM Examination AS T1 INNER JOIN Laboratory AS T2 ON T1.ID = T2.ID INNER JOIN Patient AS T3 ON T2.ID = T3.ID WHERE T2.HGB = (SELECT MAX(HGB) FROM Laboratory)",
+      "model": "llama-3.3-70b-versatile",
+      "latency_ms": 384
+    },
+    {
+      "question_id": 1179,
+      "db_id": "thrombosis_prediction",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT T1.`aCL IgM` FROM Examination AS T1 INNER JOIN Patient AS T2 ON T1.ID = T2.ID WHERE T2.Description = '1994-02-19' AND T2.Diagnosis = 'SLE' AND T1.`Examination Date` = '1993-11-12'",
+      "model": "llama-3.3-70b-versatile",
+      "latency_ms": 327
+    },
+    {
+      "question_id": 1185,
+      "db_id": "thrombosis_prediction",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT (SUM(CASE WHEN Date LIKE '1981-11-%' THEN `T-CHO` END) - SUM(CASE WHEN Date LIKE '1981-12-%' THEN `T-CHO` END)) / SUM(CASE WHEN Date LIKE '1981-12-%' THEN `T-CHO` END) FROM Laboratory WHERE ID IN (SELECT ID FROM Patient WHERE Birthday = '1959-02-18')",
+      "model": "llama-3.3-70b-versatile",
+      "latency_ms": 460
+    },
+    {
+      "question_id": 1187,
+      "db_id": "thrombosis_prediction",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT ID FROM Laboratory WHERE Date BETWEEN '1987-07-06' AND '1996-01-31' AND GPT > 30 AND ALB < 4",
+      "model": "llama-3.3-70b-versatile",
+      "latency_ms": 379
+    },
+    {
+      "question_id": 1189,
+      "db_id": "thrombosis_prediction",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT COUNT(ID) FROM Examination WHERE Thrombosis = 2 AND `ANA Pattern` = 'S' AND `aCL IgM` > (SELECT AVG(`aCL IgM`) FROM Examination) * 1.2",
+      "model": "llama-3.3-70b-versatile",
+      "latency_ms": 436
+    },
+    {
+      "question_id": 1192,
+      "db_id": "thrombosis_prediction",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT DISTINCT P.ID FROM Patient P INNER JOIN Laboratory L ON P.ID = L.ID WHERE P.Admission = '-' AND L.Date LIKE '1991-10%' AND L.`T-BIL` < 2.0",
+      "model": "llama-3.3-70b-versatile",
+      "latency_ms": 312
+    },
+    {
+      "question_id": 1195,
+      "db_id": "thrombosis_prediction",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT AVG(T1.ALB) FROM Laboratory AS T1 INNER JOIN Patient AS T2 ON T1.ID = T2.ID WHERE T2.SEX = 'F' AND T1.PLT > 400 AND T2.Diagnosis = 'SLE'",
+      "model": "llama-3.3-70b-versatile",
+      "latency_ms": 290
+    },
+    {
+      "question_id": 1198,
+      "db_id": "thrombosis_prediction",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT COUNT(ID) FROM Patient WHERE SEX = 'F' AND Diagnosis = 'APS'",
+      "model": "llama-3.3-70b-versatile",
+      "latency_ms": 397
+    },
+    {
+      "question_id": 1201,
+      "db_id": "thrombosis_prediction",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT CAST(SUM(CASE WHEN SEX = 'F' THEN 1 ELSE 0 END) AS REAL) * 100 / COUNT(SEX) FROM Patient WHERE STRFTIME('%Y', Birthday) = '1980' AND Diagnosis = 'RA'",
+      "model": "llama-3.3-70b-versatile",
+      "latency_ms": 397
+    },
+    {
+      "question_id": 1205,
+      "db_id": "thrombosis_prediction",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT CASE WHEN (P.SEX = 'M' AND L.UA > 8.0) OR (P.SEX = 'F' AND L.UA > 6.5) THEN 'Yes' ELSE 'No' END FROM Patient P INNER JOIN Laboratory L ON P.ID = L.ID WHERE P.ID = 57266",
+      "model": "llama-3.3-70b-versatile",
+      "latency_ms": 476
+    },
+    {
+      "question_id": 1208,
+      "db_id": "thrombosis_prediction",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT DISTINCT P.ID FROM Patient P INNER JOIN Laboratory L ON P.ID = L.ID WHERE P.SEX = 'M' AND L.GPT >= 60",
+      "model": "llama-3.3-70b-versatile",
+      "latency_ms": 378
+    },
+    {
+      "question_id": 1209,
+      "db_id": "thrombosis_prediction",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT T1.Diagnosis FROM Patient AS T1 INNER JOIN Laboratory AS T2 ON T1.ID = T2.ID WHERE T2.GPT > 60 ORDER BY T1.Birthday DESC",
+      "model": "llama-3.3-70b-versatile",
+      "latency_ms": 324
+    },
+    {
+      "question_id": 1220,
+      "db_id": "thrombosis_prediction",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT P.ID, P.SEX, P.Birthday FROM Patient P INNER JOIN Laboratory L ON P.ID = L.ID WHERE L.UN = 29",
+      "model": "llama-3.3-70b-versatile",
+      "latency_ms": 489
+    },
+    {
+      "question_id": 1225,
+      "db_id": "thrombosis_prediction",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT SEX, GROUP_CONCAT(DISTINCT P.ID) FROM Patient P INNER JOIN Laboratory L ON P.ID = L.ID WHERE L.`T-BIL` >= 2.0 GROUP BY P.SEX",
+      "model": "llama-3.3-70b-versatile",
+      "latency_ms": 436
+    },
+    {
+      "question_id": 1227,
+      "db_id": "thrombosis_prediction",
+      "lane": "free",
+      "outcome": "no_sql",
+      "predicted_sql": "",
+      "model": "free-chain",
+      "latency_ms": 2511,
+      "error": "llm.plan: all providers in chain failed (gemini:circuit_open, groq:http_4xx, workers-ai:parse, openrouter:http_4xx)"
+    },
+    {
+      "question_id": 1229,
+      "db_id": "thrombosis_prediction",
+      "lane": "free",
+      "outcome": "no_sql",
+      "predicted_sql": "",
+      "model": "free-chain",
+      "latency_ms": 1770,
+      "error": "llm.plan: all providers in chain failed (gemini:circuit_open, groq:http_4xx, workers-ai:parse, openrouter:http_4xx)"
+    },
+    {
+      "question_id": 1231,
+      "db_id": "thrombosis_prediction",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT COUNT(DISTINCT p.ID) FROM Patient p INNER JOIN Laboratory l ON p.ID = l.ID WHERE p.SEX = 'M' AND STRFTIME('%Y', p.Birthday) BETWEEN '1936' AND '1956' AND l.CPK >= 250",
+      "model": "llama-3.3-70b-versatile",
+      "latency_ms": 283
+    },
+    {
+      "question_id": 1232,
+      "db_id": "thrombosis_prediction",
+      "lane": "free",
+      "outcome": "no_sql",
+      "predicted_sql": "",
+      "model": "free-chain",
+      "latency_ms": 2077,
+      "error": "llm.plan: all providers in chain failed (gemini:circuit_open, groq:http_4xx, workers-ai:parse, openrouter:http_4xx)"
+    },
+    {
+      "question_id": 1235,
+      "db_id": "thrombosis_prediction",
+      "lane": "free",
+      "outcome": "no_sql",
+      "predicted_sql": "",
+      "model": "free-chain",
+      "latency_ms": 1602,
+      "error": "llm.plan: all providers in chain failed (gemini:circuit_open, groq:http_4xx, workers-ai:parse, openrouter:circuit_open)"
+    },
+    {
+      "question_id": 1238,
+      "db_id": "thrombosis_prediction",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT P.ID, P.SEX FROM Patient P INNER JOIN Examination E ON P.ID = E.ID INNER JOIN Laboratory L ON P.ID = L.ID WHERE P.Diagnosis = 'SLE' AND L.HGB > 10 AND L.HGB < 17 ORDER BY P.Birthday ASC LIMIT 1",
+      "model": "llama-3.3-70b-versatile",
+      "latency_ms": 516
+    },
+    {
+      "question_id": 1239,
+      "db_id": "thrombosis_prediction",
+      "lane": "free",
+      "outcome": "no_sql",
+      "predicted_sql": "",
+      "model": "free-chain",
+      "latency_ms": 3429,
+      "error": "llm.plan: all providers in chain failed (gemini:circuit_open, groq:http_4xx, workers-ai:parse, openrouter:circuit_open)"
+    },
+    {
+      "question_id": 1241,
+      "db_id": "thrombosis_prediction",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT SUM(CASE WHEN PLT < 100 THEN 1 ELSE 0 END) - SUM(CASE WHEN PLT > 400 THEN 1 ELSE 0 END) FROM Laboratory",
+      "model": "llama-3.3-70b-versatile",
+      "latency_ms": 350
+    },
+    {
+      "question_id": 1242,
+      "db_id": "thrombosis_prediction",
+      "lane": "free",
+      "outcome": "no_sql",
+      "predicted_sql": "",
+      "model": "free-chain",
+      "latency_ms": 3545,
+      "error": "llm.plan: all providers in chain failed (gemini:circuit_open, groq:http_4xx, workers-ai:parse, openrouter:circuit_open)"
+    },
+    {
+      "question_id": 1243,
+      "db_id": "thrombosis_prediction",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT CAST(SUM(CASE WHEN T1.SEX = 'F' AND T2.PT >= 14 THEN 1 ELSE 0 END) AS REAL) * 100 / SUM(CASE WHEN T2.PT >= 14 THEN 1 ELSE 0 END) FROM Patient AS T1 INNER JOIN Laboratory AS T2 ON T1.ID = T2.ID WHERE (strftime('%Y', 'now') - strftime('%Y', T1.Birthday)) > 55",
+      "model": "llama-3.3-70b-versatile",
+      "latency_ms": 506
+    },
+    {
+      "question_id": 1247,
+      "db_id": "thrombosis_prediction",
+      "lane": "free",
+      "outcome": "no_sql",
+      "predicted_sql": "",
+      "model": "free-chain",
+      "latency_ms": 2532,
+      "error": "llm.plan: all providers in chain failed (gemini:circuit_open, groq:http_4xx, workers-ai:parse, openrouter:circuit_open)"
+    },
+    {
+      "question_id": 1251,
+      "db_id": "thrombosis_prediction",
+      "lane": "free",
+      "outcome": "no_sql",
+      "predicted_sql": "",
+      "model": "free-chain",
+      "latency_ms": 954,
+      "error": "llm.plan: all providers in chain failed (gemini:circuit_open, groq:http_4xx, workers-ai:parse, openrouter:circuit_open)"
+    },
+    {
+      "question_id": 1252,
+      "db_id": "thrombosis_prediction",
+      "lane": "free",
+      "outcome": "no_sql",
+      "predicted_sql": "",
+      "model": "free-chain",
+      "latency_ms": 2194,
+      "error": "llm.plan: all providers in chain failed (gemini:circuit_open, groq:http_4xx, workers-ai:parse, openrouter:circuit_open)"
+    },
+    {
+      "question_id": 1254,
+      "db_id": "thrombosis_prediction",
+      "lane": "free",
+      "outcome": "no_sql",
+      "predicted_sql": "",
+      "model": "free-chain",
+      "latency_ms": 1868,
+      "error": "llm.plan: all providers in chain failed (gemini:circuit_open, groq:circuit_open, workers-ai:parse, openrouter:circuit_open)"
+    },
+    {
+      "question_id": 1255,
+      "db_id": "thrombosis_prediction",
+      "lane": "free",
+      "outcome": "no_sql",
+      "predicted_sql": "",
+      "model": "free-chain",
+      "latency_ms": 1035,
+      "error": "llm.plan: all providers in chain failed (gemini:circuit_open, groq:circuit_open, workers-ai:parse, openrouter:circuit_open)"
+    },
+    {
+      "question_id": 1256,
+      "db_id": "thrombosis_prediction",
+      "lane": "free",
+      "outcome": "no_sql",
+      "predicted_sql": "",
+      "model": "free-chain",
+      "latency_ms": 1066,
+      "error": "llm.plan: all providers in chain failed (gemini:circuit_open, groq:circuit_open, workers-ai:parse, openrouter:circuit_open)"
+    },
+    {
+      "question_id": 1257,
+      "db_id": "thrombosis_prediction",
+      "lane": "free",
+      "outcome": "no_sql",
+      "predicted_sql": "",
+      "model": "free-chain",
+      "latency_ms": 1550,
+      "error": "llm.plan: all providers in chain failed (gemini:circuit_open, groq:circuit_open, workers-ai:parse, openrouter:circuit_open)"
+    },
+    {
+      "question_id": 1265,
+      "db_id": "thrombosis_prediction",
+      "lane": "free",
+      "outcome": "no_sql",
+      "predicted_sql": "",
+      "model": "free-chain",
+      "latency_ms": 1255,
+      "error": "llm.plan: all providers in chain failed (gemini:circuit_open, groq:circuit_open, workers-ai:parse, openrouter:circuit_open)"
+    },
+    {
+      "question_id": 1267,
+      "db_id": "thrombosis_prediction",
+      "lane": "free",
+      "outcome": "no_sql",
+      "predicted_sql": "",
+      "model": "free-chain",
+      "latency_ms": 2001,
+      "error": "llm.plan: all providers in chain failed (gemini:circuit_open, groq:circuit_open, workers-ai:parse, openrouter:circuit_open)"
+    },
+    {
+      "question_id": 1270,
+      "db_id": "thrombosis_prediction",
+      "lane": "free",
+      "outcome": "no_sql",
+      "predicted_sql": "",
+      "model": "free-chain",
+      "latency_ms": 2000,
+      "error": "llm.plan: all providers in chain failed (gemini:circuit_open, groq:circuit_open, workers-ai:parse, openrouter:circuit_open)"
+    },
+    {
+      "question_id": 1275,
+      "db_id": "thrombosis_prediction",
+      "lane": "free",
+      "outcome": "no_sql",
+      "predicted_sql": "",
+      "model": "free-chain",
+      "latency_ms": 1540,
+      "error": "llm.plan: all providers in chain failed (gemini:circuit_open, groq:circuit_open, workers-ai:parse, openrouter:circuit_open)"
+    },
+    {
+      "question_id": 1281,
+      "db_id": "thrombosis_prediction",
+      "lane": "free",
+      "outcome": "no_sql",
+      "predicted_sql": "",
+      "model": "free-chain",
+      "latency_ms": 1678,
+      "error": "llm.plan: all providers in chain failed (gemini:circuit_open, groq:circuit_open, workers-ai:parse, openrouter:circuit_open)"
+    },
+    {
+      "question_id": 1302,
+      "db_id": "thrombosis_prediction",
+      "lane": "free",
+      "outcome": "no_sql",
+      "predicted_sql": "",
+      "model": "free-chain",
+      "latency_ms": 1450,
+      "error": "llm.plan: all providers in chain failed (gemini:circuit_open, groq:circuit_open, workers-ai:parse, openrouter:circuit_open)"
+    },
+    {
+      "question_id": 1025,
+      "db_id": "european_football_2",
+      "lane": "free",
+      "outcome": "no_sql",
+      "predicted_sql": "",
+      "model": "free-chain",
+      "latency_ms": 3342,
+      "error": "llm.plan: all providers in chain failed (gemini:circuit_open, groq:circuit_open, workers-ai:parse, openrouter:circuit_open)"
+    },
+    {
+      "question_id": 1028,
+      "db_id": "european_football_2",
+      "lane": "free",
+      "outcome": "no_sql",
+      "predicted_sql": "",
+      "model": "free-chain",
+      "latency_ms": 3451,
+      "error": "llm.plan: all providers in chain failed (gemini:circuit_open, groq:circuit_open, workers-ai:parse, openrouter:circuit_open)"
+    },
+    {
+      "question_id": 1029,
+      "db_id": "european_football_2",
+      "lane": "free",
+      "outcome": "no_sql",
+      "predicted_sql": "",
+      "model": "free-chain",
+      "latency_ms": 1275,
+      "error": "llm.plan: all providers in chain failed (gemini:circuit_open, groq:circuit_open, workers-ai:parse, openrouter:circuit_open)"
+    },
+    {
+      "question_id": 1030,
+      "db_id": "european_football_2",
+      "lane": "free",
+      "outcome": "no_sql",
+      "predicted_sql": "",
+      "model": "free-chain",
+      "latency_ms": 2261,
+      "error": "llm.plan: all providers in chain failed (gemini:circuit_open, groq:circuit_open, workers-ai:parse, openrouter:circuit_open)"
+    },
+    {
+      "question_id": 1031,
+      "db_id": "european_football_2",
+      "lane": "free",
+      "outcome": "no_sql",
+      "predicted_sql": "",
+      "model": "free-chain",
+      "latency_ms": 2613,
+      "error": "llm.plan: all providers in chain failed (gemini:circuit_open, groq:circuit_open, workers-ai:parse, openrouter:circuit_open)"
+    },
+    {
+      "question_id": 1032,
+      "db_id": "european_football_2",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT T2.name, COUNT(T1.id) FROM Match AS T1 INNER JOIN League AS T2 ON T1.league_id = T2.id GROUP BY T2.name ORDER BY COUNT(T1.id) DESC LIMIT 1",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1281
+    },
+    {
+      "question_id": 1035,
+      "db_id": "european_football_2",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT DISTINCT team_fifa_api_id FROM Team_Attributes WHERE buildUpPlaySpeed > 50 AND buildUpPlaySpeed < 60",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1211
+    },
+    {
+      "question_id": 1036,
+      "db_id": "european_football_2",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT T2.team_long_name FROM Team_Attributes AS T1 INNER JOIN Team AS T2 ON T1.team_api_id = T2.team_api_id WHERE strftime('%Y', T1.date) = '2012' AND T1.buildUpPlayPassing > (SELECT AVG(buildUpPlayPassing) FROM Team_Attributes WHERE strftime('%Y', date) = '2012')",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1971
+    },
+    {
+      "question_id": 1037,
+      "db_id": "european_football_2",
+      "lane": "free",
+      "outcome": "no_sql",
+      "predicted_sql": "",
+      "model": "free-chain",
+      "latency_ms": 7201,
+      "error": "llm.plan: all providers in chain failed (gemini:network, groq:circuit_open, workers-ai:parse, openrouter:circuit_open)"
+    },
+    {
+      "question_id": 1039,
+      "db_id": "european_football_2",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT AVG(T2.long_shots) FROM Player AS T1 INNER JOIN Player_Attributes AS T2 ON T1.player_api_id = T2.player_api_id WHERE T1.player_name = 'Ahmed Samir Farag'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1022
+    },
+    {
+      "question_id": 1040,
+      "db_id": "european_football_2",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT T1.player_name FROM Player AS T1 INNER JOIN Player_Attributes AS T2 ON T1.player_api_id = T2.player_api_id WHERE T1.height > 180 GROUP BY T1.player_name ORDER BY AVG(T2.heading_accuracy) DESC LIMIT 10",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1704
+    },
+    {
+      "question_id": 1042,
+      "db_id": "european_football_2",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT T1.name FROM League AS T1 INNER JOIN Match AS T2 ON T1.id = T2.league_id WHERE T2.season = '2009/2010' GROUP BY T1.name HAVING AVG(T2.home_team_goal) > AVG(T2.away_team_goal)",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1656
+    },
+    {
+      "question_id": 1044,
+      "db_id": "european_football_2",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT player_name FROM Player WHERE substr(birthday, 1, 4) = '1970' AND substr(birthday, 6, 2) = '10'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 2528
+    },
+    {
+      "question_id": 1048,
+      "db_id": "european_football_2",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT T2.overall_rating FROM Player AS T1 INNER JOIN Player_Attributes AS T2 ON T1.player_api_id = T2.player_api_id WHERE T1.player_name = 'Gabriel Tamas' AND strftime('%Y', T2.date) = '2011'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1477
+    },
+    {
+      "question_id": 1057,
+      "db_id": "european_football_2",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT AVG(T1.home_team_goal) FROM Match AS T1 INNER JOIN Country AS T2 ON T1.country_id = T2.id WHERE T2.name = 'Poland' AND T1.season = '2010/2011'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1049
+    },
+    {
+      "question_id": 1058,
+      "db_id": "european_football_2",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT MAX(T2.avg_finishing) FROM Player AS T1 INNER JOIN (SELECT player_api_id, AVG(finishing) AS avg_finishing FROM Player_Attributes GROUP BY player_api_id) AS T2 ON T1.player_api_id = T2.player_api_id WHERE T1.height = (SELECT MAX(height) FROM Player) OR T1.height = (SELECT MIN(height) FROM Player)",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 3626
+    },
+    {
+      "question_id": 1068,
+      "db_id": "european_football_2",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT AVG(T1.overall_rating) FROM Player_Attributes AS T1 INNER JOIN Player AS T2 ON T1.player_api_id = T2.player_api_id WHERE T2.height > 170 AND STRFTIME('%Y', T1.date) BETWEEN '2010' AND '2015'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1317
+    },
+    {
+      "question_id": 1076,
+      "db_id": "european_football_2",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT AVG(T2.ball_control) - (SELECT AVG(T2.ball_control) FROM Player AS T1 INNER JOIN Player_Attributes AS T2 ON T1.player_api_id = T2.player_api_id WHERE T1.player_name = 'Aaron Appindangoye') FROM Player AS T1 INNER JOIN Player_Attributes AS T2 ON T1.player_api_id = T2.player_api_id WHERE T1.player_name = 'Abdou Diallo'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1591
+    },
+    {
+      "question_id": 1078,
+      "db_id": "european_football_2",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT T1.player_name FROM Player AS T1 WHERE T1.player_name IN ('Aaron Lennon', 'Abdelaziz Barrada') ORDER BY T1.birthday ASC LIMIT 1",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1410
+    },
+    {
+      "question_id": 1079,
+      "db_id": "european_football_2",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT player_name FROM Player ORDER BY height DESC LIMIT 1",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1056
+    },
+    {
+      "question_id": 1080,
+      "db_id": "european_football_2",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT COUNT(DISTINCT player_api_id) FROM Player_Attributes WHERE preferred_foot = 'left' AND attacking_work_rate = 'low'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1109
+    },
+    {
+      "question_id": 1084,
+      "db_id": "european_football_2",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT COUNT(DISTINCT T1.player_api_id) FROM Player AS T1 INNER JOIN Player_Attributes AS T2 ON T1.player_api_id = T2.player_api_id WHERE strftime('%Y', T1.birthday) < '1986' AND T2.defensive_work_rate = 'high'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1217
+    },
+    {
+      "question_id": 1088,
+      "db_id": "european_football_2",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT T1.player_name FROM Player AS T1 INNER JOIN Player_Attributes AS T2 ON T1.player_api_id = T2.player_api_id WHERE T2.volleys > 70 AND T2.dribbling > 70",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1108
+    },
+    {
+      "question_id": 1091,
+      "db_id": "european_football_2",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT COUNT(T1.id) FROM Match AS T1 INNER JOIN League AS T2 ON T1.league_id = T2.id WHERE T2.name = 'Belgium Jupiler League' AND SUBSTR(T1.date, 1, 7) = '2009-04'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1267
+    },
+    {
+      "question_id": 1092,
+      "db_id": "european_football_2",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT T2.name FROM Match AS T1 INNER JOIN League AS T2 ON T1.league_id = T2.id WHERE T1.season = '2008/2009' GROUP BY T2.name ORDER BY COUNT(T1.id) DESC LIMIT 1",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1066
+    },
+    {
+      "question_id": 1094,
+      "db_id": "european_football_2",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT CAST(((SELECT overall_rating FROM Player_Attributes AS T1 INNER JOIN Player AS T2 ON T1.player_api_id = T2.player_api_id WHERE T2.player_name = 'Ariel Borysiuk') - (SELECT overall_rating FROM Player_Attributes AS T1 INNER JOIN Player AS T2 ON T1.player_api_id = T2.player_api_id WHERE T2.player_name = 'Paulin Puel')) AS REAL) * 100 / (SELECT overall_rating FROM Player_Attributes AS T1 INNER JOIN Player AS T2 ON T1.player_api_id = T2.player_api_id WHERE T2.player_name = 'Paulin Puel') AS percentage_higher",
+      "model": "llama-3.3-70b-versatile",
+      "latency_ms": 6072
+    },
+    {
+      "question_id": 1096,
+      "db_id": "european_football_2",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT AVG(T2.overall_rating) FROM Player AS T1 INNER JOIN Player_Attributes AS T2 ON T1.player_api_id = T2.player_api_id WHERE T1.player_name = 'Pietro Marino'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1262
+    },
+    {
+      "question_id": 1098,
+      "db_id": "european_football_2",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT T2.chanceCreationPassing, T2.chanceCreationPassingClass FROM Team AS T1 INNER JOIN Team_Attributes AS T2 ON T1.team_api_id = T2.team_api_id WHERE T1.team_long_name = 'Ajax' ORDER BY T2.chanceCreationPassing DESC LIMIT 1",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1777
+    },
+    {
+      "question_id": 1102,
+      "db_id": "european_football_2",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT T1.player_name FROM Player AS T1 INNER JOIN Player_Attributes AS T2 ON T1.player_api_id = T2.player_api_id WHERE T2.overall_rating = 77 AND T2.date LIKE '2016-06-23%' ORDER BY T1.birthday ASC LIMIT 1",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1297
+    },
+    {
+      "question_id": 1103,
+      "db_id": "european_football_2",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT T2.overall_rating FROM Player AS T1 INNER JOIN Player_Attributes AS T2 ON T1.player_api_id = T2.player_api_id WHERE T1.player_name = 'Aaron Mooy' AND T2.date LIKE '2016-02-04%'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1271
+    },
+    {
+      "question_id": 1105,
+      "db_id": "european_football_2",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT T2.attacking_work_rate FROM Player AS T1 INNER JOIN Player_Attributes AS T2 ON T1.player_api_id = T2.player_api_id WHERE T1.player_name = 'Francesco Migliore' AND T2.date LIKE '2015-05-01%'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1437
+    },
+    {
+      "question_id": 1107,
+      "db_id": "european_football_2",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT T1.date FROM Player_Attributes AS T1 INNER JOIN Player AS T2 ON T1.player_api_id = T2.player_api_id WHERE T2.player_name = 'Kevin Constant' ORDER BY T1.crossing DESC, T1.date ASC LIMIT 1",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 2038
+    },
+    {
+      "question_id": 1110,
+      "db_id": "european_football_2",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT T2.buildUpPlayPassingClass FROM Team AS T1 INNER JOIN Team_Attributes AS T2 ON T1.team_api_id = T2.team_api_id WHERE T1.team_long_name = 'FC Lorient' AND T2.date LIKE '2010-02-22%'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1225
+    },
+    {
+      "question_id": 1113,
+      "db_id": "european_football_2",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT T2.defenceAggressionClass FROM Team AS T1 INNER JOIN Team_Attributes AS T2 ON T1.team_api_id = T2.team_api_id WHERE T1.team_long_name = 'Hannover 96' AND T2.date LIKE '2015-09-10%'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1371
+    },
+    {
+      "question_id": 1114,
+      "db_id": "european_football_2",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT AVG(T2.overall_rating) FROM Player AS T1 INNER JOIN Player_Attributes AS T2 ON T1.player_api_id = T2.player_api_id WHERE T1.player_name = 'Marko Arnautovic' AND SUBSTR(T2.date, 1, 10) BETWEEN '2007-02-22' AND '2016-04-21'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1287
+    },
+    {
+      "question_id": 1115,
+      "db_id": "european_football_2",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT CAST((T1.overall_rating - T2.overall_rating) AS REAL) * 100 / T1.overall_rating FROM Player_Attributes AS T1 INNER JOIN Player AS T3 ON T1.player_api_id = T3.player_api_id INNER JOIN Player_Attributes AS T2 ON T2.date = T1.date INNER JOIN Player AS T4 ON T2.player_api_id = T4.player_api_id WHERE T3.player_name = 'Landon Donovan' AND T4.player_name = 'Jordan Bowery' AND T1.date = '2013-07-12'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 2401
+    },
+    {
+      "question_id": 1116,
+      "db_id": "european_football_2",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT player_name FROM Player ORDER BY height DESC LIMIT 1",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1005
+    },
+    {
+      "question_id": 1122,
+      "db_id": "european_football_2",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT T1.player_name FROM Player AS T1 INNER JOIN Player_Attributes AS T2 ON T1.player_api_id = T2.player_api_id ORDER BY T2.overall_rating DESC LIMIT 1",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1300
+    },
+    {
+      "question_id": 1124,
+      "db_id": "european_football_2",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT T1.player_name FROM Player AS T1 INNER JOIN Player_Attributes AS T2 ON T1.player_api_id = T2.player_api_id WHERE T2.attacking_work_rate = 'high'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1112
+    },
+    {
+      "question_id": 1130,
+      "db_id": "european_football_2",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT T2.team_short_name FROM Team_Attributes AS T1 INNER JOIN Team AS T2 ON T1.team_api_id = T2.team_api_id WHERE T1.chanceCreationPassingClass = 'Safe'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1344
+    },
+    {
+      "question_id": 1133,
+      "db_id": "european_football_2",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT COUNT(id) FROM Player WHERE player_name LIKE 'Aaron%' AND birthday > '1990-12-31'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1027
+    },
+    {
+      "question_id": 1134,
+      "db_id": "european_football_2",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT ABS((SELECT jumping FROM Player_Attributes WHERE id = 6) - (SELECT jumping FROM Player_Attributes WHERE id = 23))",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1517
+    },
+    {
+      "question_id": 1135,
+      "db_id": "european_football_2",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT player_api_id FROM Player_Attributes WHERE preferred_foot = 'right' ORDER BY potential ASC LIMIT 4",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1142
+    },
+    {
+      "question_id": 1136,
+      "db_id": "european_football_2",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT COUNT(DISTINCT T1.player_api_id) FROM Player_Attributes AS T1 WHERE T1.crossing = (SELECT MAX(crossing) FROM Player_Attributes) AND T1.preferred_foot = 'left'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1612
+    },
+    {
+      "question_id": 1139,
+      "db_id": "european_football_2",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT T1.home_team_goal, T1.away_team_goal FROM Match AS T1 INNER JOIN League AS T2 ON T1.league_id = T2.id WHERE T2.name = 'Belgium Jupiler League' AND T1.date LIKE '2008-09-24%'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1253
+    },
+    {
+      "question_id": 1141,
+      "db_id": "european_football_2",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT DISTINCT T2.buildUpPlaySpeedClass FROM Team AS T1 INNER JOIN Team_Attributes AS T2 ON T1.team_api_id = T2.team_api_id WHERE T1.team_long_name = 'KSV Cercle Brugge'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1869
+    },
+    {
+      "question_id": 1144,
+      "db_id": "european_football_2",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT T1.finishing, T1.curve FROM Player_Attributes AS T1 INNER JOIN Player AS T2 ON T1.player_api_id = T2.player_api_id ORDER BY T2.weight DESC LIMIT 1",
+      "model": "llama-3.3-70b-versatile",
+      "latency_ms": 5611
+    },
+    {
+      "question_id": 1145,
+      "db_id": "european_football_2",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT T2.name FROM Match AS T1 INNER JOIN League AS T2 ON T1.league_id = T2.id WHERE T1.season = '2015/2016' GROUP BY T2.name ORDER BY COUNT(T1.id) DESC LIMIT 4",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1279
+    },
+    {
+      "question_id": 1146,
+      "db_id": "european_football_2",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT T2.team_long_name FROM Match AS T1 INNER JOIN Team AS T2 ON T1.away_team_api_id = T2.team_api_id GROUP BY T2.team_long_name ORDER BY SUM(T1.away_team_goal) DESC LIMIT 1",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1633
+    },
+    {
+      "question_id": 1147,
+      "db_id": "european_football_2",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT T1.player_name FROM Player AS T1 INNER JOIN Player_Attributes AS T2 ON T1.player_api_id = T2.player_api_id ORDER BY T2.overall_rating DESC LIMIT 1",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1137
+    },
+    {
+      "question_id": 1148,
+      "db_id": "european_football_2",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT CAST(SUM(CASE WHEN T1.height < 180 AND T2.overall_rating > 70 THEN 1 ELSE 0 END) AS REAL) * 100 / COUNT(T1.id) FROM Player AS T1 INNER JOIN Player_Attributes AS T2 ON T1.player_api_id = T2.player_api_id",
+      "model": "llama-3.3-70b-versatile",
+      "latency_ms": 5971
+    },
+    {
+      "question_id": 846,
+      "db_id": "formula_1",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT T1.driverRef FROM drivers AS T1 INNER JOIN qualifying AS T2 ON T1.driverId = T2.driverId WHERE T2.raceId = 20 ORDER BY T2.q1 DESC LIMIT 5",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 2351
+    },
+    {
+      "question_id": 847,
+      "db_id": "formula_1",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT T1.surname FROM drivers AS T1 INNER JOIN qualifying AS T2 ON T1.driverId = T2.driverId WHERE T2.raceId = 19 AND T2.q2 IS NOT NULL ORDER BY T2.q2 ASC LIMIT 1",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1924
+    },
+    {
+      "question_id": 850,
+      "db_id": "formula_1",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT T1.name FROM races AS T1 INNER JOIN circuits AS T2 ON T1.circuitId = T2.circuitId WHERE T2.country = 'Germany'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 986
+    },
+    {
+      "question_id": 854,
+      "db_id": "formula_1",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT T1.lat, T1.lng FROM circuits AS T1 INNER JOIN races AS T2 ON T1.circuitId = T2.circuitId WHERE T2.name = 'Australian Grand Prix'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1205
+    },
+    {
+      "question_id": 857,
+      "db_id": "formula_1",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT T2.lat, T2.lng FROM races AS T1 INNER JOIN circuits AS T2 ON T1.circuitId = T2.circuitId WHERE T1.name = 'Abu Dhabi Grand Prix'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 987
+    },
+    {
+      "question_id": 859,
+      "db_id": "formula_1",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT T1.q1 FROM qualifying AS T1 INNER JOIN drivers AS T2 ON T1.driverId = T2.driverId INNER JOIN races AS T3 ON T1.raceId = T3.raceId WHERE T2.forename = 'Bruno' AND T2.surname = 'Senna' AND T3.raceId = 354",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1297
+    },
+    {
+      "question_id": 861,
+      "db_id": "formula_1",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT T1.number FROM qualifying AS T1 WHERE T1.raceId = 903 AND T1.q3 LIKE '1:54%'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1149
+    },
+    {
+      "question_id": 862,
+      "db_id": "formula_1",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT COUNT(T1.driverId) FROM results AS T1 INNER JOIN races AS T2 ON T1.raceId = T2.raceId WHERE T2.name = 'Bahrain Grand Prix' AND T2.year = 2007 AND T1.time IS NULL",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1669
+    },
+    {
+      "question_id": 865,
+      "db_id": "formula_1",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT T1.forename, T1.surname FROM drivers AS T1 INNER JOIN results AS T2 ON T1.driverId = T2.driverId WHERE T2.raceId = 592 AND T2.time IS NOT NULL ORDER BY T1.dob ASC LIMIT 1",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1451
+    },
+    {
+      "question_id": 866,
+      "db_id": "formula_1",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT T2.url FROM lapTimes AS T1 INNER JOIN drivers AS T2 ON T1.driverId = T2.driverId WHERE T1.raceId = 161 AND T1.time LIKE '1:27%'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1900
+    },
+    {
+      "question_id": 868,
+      "db_id": "formula_1",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT T2.lat, T2.lng FROM races AS T1 INNER JOIN circuits AS T2 ON T1.circuitId = T2.circuitId WHERE T1.name = 'Malaysian Grand Prix'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1334
+    },
+    {
+      "question_id": 869,
+      "db_id": "formula_1",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT T2.url FROM constructorResults AS T1 INNER JOIN constructors AS T2 ON T1.constructorId = T2.constructorId WHERE T1.raceId = 9 ORDER BY T1.points DESC LIMIT 1",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1028
+    },
+    {
+      "question_id": 872,
+      "db_id": "formula_1",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT T2.code FROM qualifying AS T1 INNER JOIN drivers AS T2 ON T1.driverId = T2.driverId WHERE T1.raceId = 45 AND T1.q3 LIKE '0:01:33%'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1370
+    },
+    {
+      "question_id": 875,
+      "db_id": "formula_1",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT T2.url FROM races AS T1 INNER JOIN seasons AS T2 ON T1.year = T2.year WHERE T1.raceId = 901",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1233
+    },
+    {
+      "question_id": 877,
+      "db_id": "formula_1",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT T1.forename, T1.surname FROM drivers AS T1 INNER JOIN results AS T2 ON T1.driverId = T2.driverId WHERE T2.raceId = 872 AND T2.time IS NOT NULL ORDER BY T1.dob DESC LIMIT 1",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1389
+    },
+    {
+      "question_id": 879,
+      "db_id": "formula_1",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT T2.nationality FROM results AS T1 INNER JOIN drivers AS T2 ON T1.driverId = T2.driverId ORDER BY T1.fastestLapSpeed DESC LIMIT 1",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1026
+    },
+    {
+      "question_id": 880,
+      "db_id": "formula_1",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT CAST((r1.fastestLapSpeed - r2.fastestLapSpeed) AS REAL) * 100 / r1.fastestLapSpeed FROM results r1 INNER JOIN drivers d ON r1.driverId = d.driverId INNER JOIN results r2 ON r2.raceId = r1.raceId + 1 WHERE r1.raceId = 853 AND d.forename = 'Paul' AND d.surname = 'di Resta'",
+      "model": "llama-3.3-70b-versatile",
+      "latency_ms": 5521
+    },
+    {
+      "question_id": 881,
+      "db_id": "formula_1",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT CAST(SUM(CASE WHEN T1.time IS NOT NULL THEN 1 ELSE 0 END) AS REAL) * 100 / COUNT(T1.driverId) FROM results AS T1 INNER JOIN races AS T2 ON T1.raceId = T2.raceId WHERE T2.date = '1983-07-16'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1688
+    },
+    {
+      "question_id": 884,
+      "db_id": "formula_1",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT name FROM races WHERE strftime('%Y', date) = (SELECT strftime('%Y', MIN(date)) FROM races) AND strftime('%m', date) = (SELECT strftime('%m', MIN(date)) FROM races)",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 2244
+    },
+    {
+      "question_id": 892,
+      "db_id": "formula_1",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT T1.forename, T1.surname, SUM(T2.points) AS total_points FROM drivers AS T1 INNER JOIN driverStandings AS T2 ON T1.driverId = T2.driverId GROUP BY T1.driverId, T1.forename, T1.surname ORDER BY total_points DESC LIMIT 1",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1470
+    },
+    {
+      "question_id": 894,
+      "db_id": "formula_1",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT T1.forename, T1.surname, T3.name FROM drivers AS T1 INNER JOIN lapTimes AS T2 ON T1.driverId = T2.driverId INNER JOIN races AS T3 ON T2.raceId = T3.raceId ORDER BY T2.milliseconds ASC LIMIT 1",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1309
+    },
+    {
+      "question_id": 895,
+      "db_id": "formula_1",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT AVG(LT.milliseconds) FROM lapTimes AS LT JOIN drivers AS D ON LT.driverId = D.driverId JOIN races AS R ON LT.raceId = R.raceId WHERE D.forename = 'Lewis' AND D.surname = 'Hamilton' AND R.name = 'Malaysian Grand Prix' AND R.year = 2009",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1453
+    },
+    {
+      "question_id": 896,
+      "db_id": "formula_1",
+      "lane": "free",
+      "outcome": "exec_error",
+      "predicted_sql": "SELECT CAST(SUM(CASE WHEN T3.position > 1 THEN 1 ELSE 0 END) AS REAL) * 100 / COUNT(T1.raceId) FROM races AS T1 INNER JOIN results AS T2 ON T1.raceId = T2.raceId INNER JOIN drivers AS T3 ON T2.driverId = T3.driverId WHERE T3.surname = 'Hamilton' AND T1.year >= 2010",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1705,
+      "error": "no such column: T3.position"
+    },
+    {
+      "question_id": 897,
+      "db_id": "formula_1",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT T1.forename, T1.surname, T1.nationality, MAX(T2.points) FROM drivers AS T1 INNER JOIN driverStandings AS T2 ON T1.driverId = T2.driverId GROUP BY T1.driverId ORDER BY SUM(T2.wins) DESC LIMIT 1",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1904
+    },
+    {
+      "question_id": 898,
+      "db_id": "formula_1",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT forename, surname FROM drivers WHERE nationality = 'Japanese' ORDER BY dob DESC LIMIT 1",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1264
+    },
+    {
+      "question_id": 901,
+      "db_id": "formula_1",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT T1.name, T2.name, T2.location FROM races AS T1 INNER JOIN circuits AS T2 ON T1.circuitId = T2.circuitId WHERE STRFTIME('%Y', T1.date) = '2005' AND STRFTIME('%m', T1.date) = '09'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1454
+    },
+    {
+      "question_id": 902,
+      "db_id": "formula_1",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT T3.name FROM drivers AS T1 INNER JOIN results AS T2 ON T1.driverId = T2.driverId INNER JOIN races AS T3 ON T2.raceId = T3.raceId WHERE T1.forename = 'Alex' AND T1.surname = 'Yoong' AND T2.position < 20",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 2193
+    },
+    {
+      "question_id": 904,
+      "db_id": "formula_1",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT T1.name, T1.year FROM races AS T1 INNER JOIN results AS T2 ON T1.raceId = T2.raceId INNER JOIN drivers AS T3 ON T2.driverId = T3.driverId WHERE T3.forename = 'Michael' AND T3.surname = 'Schumacher' ORDER BY T2.milliseconds ASC LIMIT 1",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1794
+    },
+    {
+      "question_id": 906,
+      "db_id": "formula_1",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT T2.name, T1.points FROM results AS T1 INNER JOIN races AS T2 ON T1.raceId = T2.raceId INNER JOIN drivers AS T3 ON T1.driverId = T3.driverId WHERE T3.forename = 'Lewis' AND T3.surname = 'Hamilton' ORDER BY T2.year ASC, T2.round ASC LIMIT 1",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1518
+    },
+    {
+      "question_id": 909,
+      "db_id": "formula_1",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT CAST(SUM(CASE WHEN T2.country = 'Germany' THEN 1 ELSE 0 END) AS REAL) * 100 / COUNT(T1.raceId) FROM races AS T1 INNER JOIN circuits AS T2 ON T1.circuitId = T2.circuitId WHERE T1.name = 'European Grand Prix'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1887
+    },
+    {
+      "question_id": 910,
+      "db_id": "formula_1",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT lat, lng FROM circuits WHERE name = 'Silverstone Circuit'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1038
+    },
+    {
+      "question_id": 912,
+      "db_id": "formula_1",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT circuitRef FROM circuits WHERE name = 'Marina Bay Street Circuit'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 822
+    },
+    {
+      "question_id": 915,
+      "db_id": "formula_1",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT nationality FROM drivers ORDER BY dob ASC LIMIT 1",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1170
+    },
+    {
+      "question_id": 928,
+      "db_id": "formula_1",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT T2.driverRef FROM results AS T1 INNER JOIN drivers AS T2 ON T1.driverId = T2.driverId INNER JOIN races AS T3 ON T1.raceId = T3.raceId WHERE T3.name = 'Canadian Grand Prix' AND T3.year = 2007 AND T1.position = 1",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1398
+    },
+    {
+      "question_id": 930,
+      "db_id": "formula_1",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT T2.name FROM drivers AS T1 INNER JOIN results AS T3 ON T1.driverId = T3.driverId INNER JOIN races AS T2 ON T3.raceId = T2.raceId WHERE T1.forename = 'Lewis' AND T1.surname = 'Hamilton' ORDER BY T3.rank ASC LIMIT 1",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1397
+    },
+    {
+      "question_id": 931,
+      "db_id": "formula_1",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT MAX(T1.fastestLapSpeed) FROM results AS T1 INNER JOIN races AS T2 ON T1.raceId = T2.raceId WHERE T2.name = 'Spanish Grand Prix' AND T2.year = 2009",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1101
+    },
+    {
+      "question_id": 933,
+      "db_id": "formula_1",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT T3.positionOrder FROM drivers AS T1 INNER JOIN results AS T3 ON T1.driverId = T3.driverId INNER JOIN races AS T2 ON T3.raceId = T2.raceId WHERE T1.forename = 'Lewis' AND T1.surname = 'Hamilton' AND T2.name = 'Chinese Grand Prix' AND T2.year = 2008",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1913
+    },
+    {
+      "question_id": 937,
+      "db_id": "formula_1",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT T1.time FROM results AS T1 INNER JOIN races AS T2 ON T1.raceId = T2.raceId WHERE T2.year = 2008 AND T2.name = 'Chinese Grand Prix' AND T1.rank = 2",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1442
+    },
+    {
+      "question_id": 940,
+      "db_id": "formula_1",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT COUNT(DISTINCT T1.driverId) FROM results AS T1 INNER JOIN races AS T2 ON T1.raceId = T2.raceId WHERE T2.year = 2008 AND T2.name = 'Chinese Grand Prix' AND T1.time IS NOT NULL",
+      "model": "llama-3.3-70b-versatile",
+      "latency_ms": 5454
+    },
+    {
+      "question_id": 944,
+      "db_id": "formula_1",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT CAST((SUBSTR(T2.time, INSTR(T2.time, '.') + 1) - SUBSTR(T1.time, INSTR(T1.time, '.') + 1)) AS REAL) * 100 / SUBSTR(T2.time, INSTR(T2.time, '.') + 1) FROM results AS T1 INNER JOIN results AS T2 ON T1.raceId = T2.raceId INNER JOIN races AS T3 ON T1.raceId = T3.raceId WHERE T3.year = 2008 AND T3.name = 'Australian Grand Prix' AND T1.position = 1 AND T2.position = (SELECT MAX(position) FROM results WHERE raceId = T1.raceId) AND T1.time IS NOT NULL AND T2.time IS NOT NULL",
+      "model": "llama-3.3-70b-versatile",
+      "latency_ms": 5644
+    },
+    {
+      "question_id": 945,
+      "db_id": "formula_1",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT COUNT(circuitId) FROM circuits WHERE location = 'Adelaide' AND country = 'Australia'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 995
+    },
+    {
+      "question_id": 948,
+      "db_id": "formula_1",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT MAX(T1.points) FROM constructorStandings AS T1 INNER JOIN constructors AS T2 ON T1.constructorId = T2.constructorId WHERE T2.nationality = 'British'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1358
+    },
+    {
+      "question_id": 950,
+      "db_id": "formula_1",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT T1.name FROM constructors AS T1 INNER JOIN constructorResults AS T2 ON T1.constructorId = T2.constructorId WHERE T2.raceId = 291 AND T2.points = 0",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1097
+    },
+    {
+      "question_id": 951,
+      "db_id": "formula_1",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT COUNT(DISTINCT T1.constructorId) FROM constructors AS T1 INNER JOIN constructorStandings AS T2 ON T1.constructorId = T2.constructorId WHERE T1.nationality = 'Japanese' AND T2.points = 0 GROUP BY T1.constructorId HAVING COUNT(T2.raceId) = 2",
+      "model": "llama-3.3-70b-versatile",
+      "latency_ms": 5534
+    },
+    {
+      "question_id": 954,
+      "db_id": "formula_1",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT CAST(SUM(CASE WHEN T3.time IS NOT NULL THEN 1 ELSE 0 END) AS REAL) * 100 / COUNT(T3.driverId) FROM drivers AS T1 INNER JOIN results AS T3 ON T1.driverId = T3.driverId INNER JOIN races AS T2 ON T3.raceId = T2.raceId WHERE T1.nationality = 'Japanese' AND T2.year BETWEEN 2007 AND 2009",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 2022
+    },
+    {
+      "question_id": 955,
+      "db_id": "formula_1",
+      "lane": "free",
+      "outcome": "exec_error",
+      "predicted_sql": "SELECT AVG(CAST(SUBSTR(T1.time, 1, INSTR(T1.time, ':') - 1) AS INTEGER) * 3600 + CAST(SUBSTR(T1.time, INSTR(T1.time, ':') + 1, INSTR(SUBSTR(T1.time, INSTR(T1.time, ':') + 1), ':') - 1) AS INTEGER) * 60 + CAST(SUBSTR(T1.time, INSTR(T1.time, ':', INSTR(T1.time, ':') + 1) + 1) AS REAL)) FROM results AS T1 INNER JOIN races AS T2 ON T1.raceId = T2.raceId WHERE T1.position = 1 AND T2.year < 1975 AND T1.time IS NOT NULL",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 2002,
+      "error": "wrong number of arguments to function INSTR()"
+    },
+    {
+      "question_id": 959,
+      "db_id": "formula_1",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT T1.fastestLap FROM results AS T1 INNER JOIN races AS T2 ON T1.raceId = T2.raceId WHERE T2.year = 2009 AND T1.fastestLapTime LIKE '%:%:%.%'",
+      "model": "llama-3.3-70b-versatile",
+      "latency_ms": 5536
+    },
+    {
+      "question_id": 960,
+      "db_id": "formula_1",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT AVG(T1.fastestLapSpeed) FROM results AS T1 INNER JOIN races AS T2 ON T1.raceId = T2.raceId WHERE T2.year = 2009 AND T2.name = 'Spanish Grand Prix'",
+      "model": "llama-3.3-70b-versatile",
+      "latency_ms": 5288
+    },
+    {
+      "question_id": 962,
+      "db_id": "formula_1",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT CAST(SUM(CASE WHEN T1.dob < '1985-01-01' AND T2.laps > 50 THEN 1 ELSE 0 END) AS REAL) * 100 / COUNT(T2.driverId) FROM drivers AS T1 INNER JOIN results AS T2 ON T1.driverId = T2.driverId INNER JOIN races AS T3 ON T2.raceId = T3.raceId WHERE T3.year BETWEEN 2000 AND 2005",
+      "model": "llama-3.3-70b-versatile",
+      "latency_ms": 5537
+    },
+    {
+      "question_id": 963,
+      "db_id": "formula_1",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT COUNT(DISTINCT T1.driverId) FROM drivers AS T1 INNER JOIN lapTimes AS T2 ON T1.driverId = T2.driverId WHERE T1.nationality = 'French' AND T2.milliseconds < 120000",
+      "model": "llama-3.3-70b-versatile",
+      "latency_ms": 367
+    },
+    {
+      "question_id": 964,
+      "db_id": "formula_1",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT code FROM drivers WHERE nationality = 'American'",
+      "model": "llama-3.3-70b-versatile",
+      "latency_ms": 298
+    },
+    {
+      "question_id": 967,
+      "db_id": "formula_1",
+      "lane": "free",
+      "outcome": "exec_error",
+      "predicted_sql": "SELECT COUNT(code) FROM (SELECT code, dob FROM drivers ORDER BY dob DESC LIMIT 3) AS youngest_drivers WHERE nationality = 'Dutch'",
+      "model": "llama-3.3-70b-versatile",
+      "latency_ms": 421,
+      "error": "no such column: nationality"
+    },
+    {
+      "question_id": 971,
+      "db_id": "formula_1",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT driverRef FROM drivers WHERE nationality = 'German' ORDER BY dob ASC LIMIT 1",
+      "model": "llama-3.3-70b-versatile",
+      "latency_ms": 295
+    },
+    {
+      "question_id": 972,
+      "db_id": "formula_1",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT T1.driverId, T1.code FROM drivers AS T1 INNER JOIN results AS T2 ON T1.driverId = T2.driverId WHERE STRFTIME('%Y', T1.dob) = '1971' AND T2.fastestLapTime IS NOT NULL",
+      "model": "llama-3.3-70b-versatile",
+      "latency_ms": 332
+    },
+    {
+      "question_id": 977,
+      "db_id": "formula_1",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT COUNT(*) FROM results WHERE raceId > 50 AND raceId < 100 AND time IS NOT NULL AND statusId = 2",
+      "model": "llama-3.3-70b-versatile",
+      "latency_ms": 414
+    },
+    {
+      "question_id": 978,
+      "db_id": "formula_1",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT location, lat, lng, COUNT(circuitId) FROM circuits WHERE country = 'Austria' GROUP BY location, lat, lng",
+      "model": "llama-3.3-70b-versatile",
+      "latency_ms": 406
+    },
+    {
+      "question_id": 981,
+      "db_id": "formula_1",
+      "lane": "free",
+      "outcome": "no_sql",
+      "predicted_sql": "",
+      "model": "free-chain",
+      "latency_ms": 3764,
+      "error": "llm.plan: all providers in chain failed (gemini:circuit_open, groq:http_4xx, workers-ai:parse, openrouter:http_4xx)"
+    },
+    {
+      "question_id": 988,
+      "db_id": "formula_1",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT T1.forename, T1.surname FROM drivers AS T1 INNER JOIN pitStops AS T2 ON T1.driverId = T2.driverId WHERE T1.nationality = 'German' AND STRFTIME('%Y', T1.dob) BETWEEN '1980' AND '1985' GROUP BY T1.driverId ORDER BY SUM(CAST(REPLACE(T2.duration, '.', '') AS REAL)) / COUNT(T2.duration) ASC LIMIT 3",
+      "model": "llama-3.3-70b-versatile",
+      "latency_ms": 503
+    },
+    {
+      "question_id": 989,
+      "db_id": "formula_1",
+      "lane": "free",
+      "outcome": "no_sql",
+      "predicted_sql": "",
+      "model": "free-chain",
+      "latency_ms": 1916,
+      "error": "llm.plan: all providers in chain failed (gemini:circuit_open, groq:http_4xx, workers-ai:parse, openrouter:circuit_open)"
+    },
+    {
+      "question_id": 990,
+      "db_id": "formula_1",
+      "lane": "free",
+      "outcome": "no_sql",
+      "predicted_sql": "",
+      "model": "free-chain",
+      "latency_ms": 2137,
+      "error": "llm.plan: all providers in chain failed (gemini:circuit_open, groq:http_4xx, workers-ai:parse, openrouter:circuit_open)"
+    },
+    {
+      "question_id": 717,
+      "db_id": "superhero",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT T3.power_name FROM superhero AS T1 INNER JOIN hero_power AS T2 ON T1.id = T2.hero_id INNER JOIN superpower AS T3 ON T2.power_id = T3.id WHERE T1.superhero_name = '3-D Man'",
+      "model": "llama-3.3-70b-versatile",
+      "latency_ms": 273
+    },
+    {
+      "question_id": 994,
+      "db_id": "formula_1",
+      "lane": "free",
+      "outcome": "no_sql",
+      "predicted_sql": "",
+      "model": "free-chain",
+      "latency_ms": 2988,
+      "error": "llm.plan: all providers in chain failed (gemini:circuit_open, groq:http_4xx, workers-ai:parse, openrouter:circuit_open)"
+    },
+    {
+      "question_id": 1001,
+      "db_id": "formula_1",
+      "lane": "free",
+      "outcome": "no_sql",
+      "predicted_sql": "",
+      "model": "free-chain",
+      "latency_ms": 3600,
+      "error": "llm.plan: all providers in chain failed (gemini:circuit_open, groq:http_4xx, workers-ai:parse, openrouter:circuit_open)"
+    },
+    {
+      "question_id": 1002,
+      "db_id": "formula_1",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT T1.forename, T1.surname, T1.nationality, T3.name FROM drivers AS T1 INNER JOIN results AS T2 ON T1.driverId = T2.driverId INNER JOIN races AS T3 ON T2.raceId = T3.raceId WHERE T1.dob = (SELECT MAX(dob) FROM drivers)",
+      "model": "llama-3.3-70b-versatile",
+      "latency_ms": 416
+    },
+    {
+      "question_id": 1003,
+      "db_id": "formula_1",
+      "lane": "free",
+      "outcome": "no_sql",
+      "predicted_sql": "",
+      "model": "free-chain",
+      "latency_ms": 1566,
+      "error": "llm.plan: all providers in chain failed (gemini:circuit_open, groq:http_4xx, workers-ai:parse, openrouter:circuit_open)"
+    },
+    {
+      "question_id": 1011,
+      "db_id": "formula_1",
+      "lane": "free",
+      "outcome": "no_sql",
+      "predicted_sql": "",
+      "model": "free-chain",
+      "latency_ms": 1754,
+      "error": "llm.plan: all providers in chain failed (gemini:circuit_open, groq:http_4xx, workers-ai:parse, openrouter:circuit_open)"
+    },
+    {
+      "question_id": 1014,
+      "db_id": "formula_1",
+      "lane": "free",
+      "outcome": "no_sql",
+      "predicted_sql": "",
+      "model": "free-chain",
+      "latency_ms": 2408,
+      "error": "llm.plan: all providers in chain failed (gemini:circuit_open, groq:http_4xx, workers-ai:parse, openrouter:circuit_open)"
+    },
+    {
+      "question_id": 719,
+      "db_id": "superhero",
+      "lane": "free",
+      "outcome": "no_sql",
+      "predicted_sql": "",
+      "model": "free-chain",
+      "latency_ms": 1287,
+      "error": "llm.plan: all providers in chain failed (gemini:circuit_open, groq:circuit_open, workers-ai:parse, openrouter:circuit_open)"
+    },
+    {
+      "question_id": 723,
+      "db_id": "superhero",
+      "lane": "free",
+      "outcome": "no_sql",
+      "predicted_sql": "",
+      "model": "free-chain",
+      "latency_ms": 2277,
+      "error": "llm.plan: all providers in chain failed (gemini:circuit_open, groq:circuit_open, workers-ai:parse, openrouter:circuit_open)"
+    },
+    {
+      "question_id": 724,
+      "db_id": "superhero",
+      "lane": "free",
+      "outcome": "no_sql",
+      "predicted_sql": "",
+      "model": "free-chain",
+      "latency_ms": 1799,
+      "error": "llm.plan: all providers in chain failed (gemini:circuit_open, groq:circuit_open, workers-ai:parse, openrouter:circuit_open)"
+    },
+    {
+      "question_id": 726,
+      "db_id": "superhero",
+      "lane": "free",
+      "outcome": "no_sql",
+      "predicted_sql": "",
+      "model": "free-chain",
+      "latency_ms": 1137,
+      "error": "llm.plan: all providers in chain failed (gemini:circuit_open, groq:circuit_open, workers-ai:parse, openrouter:circuit_open)"
+    },
+    {
+      "question_id": 728,
+      "db_id": "superhero",
+      "lane": "free",
+      "outcome": "no_sql",
+      "predicted_sql": "",
+      "model": "free-chain",
+      "latency_ms": 2012,
+      "error": "llm.plan: all providers in chain failed (gemini:circuit_open, groq:circuit_open, workers-ai:parse, openrouter:circuit_open)"
+    },
+    {
+      "question_id": 730,
+      "db_id": "superhero",
+      "lane": "free",
+      "outcome": "no_sql",
+      "predicted_sql": "",
+      "model": "free-chain",
+      "latency_ms": 2817,
+      "error": "llm.plan: all providers in chain failed (gemini:circuit_open, groq:circuit_open, workers-ai:parse, openrouter:circuit_open)"
+    },
+    {
+      "question_id": 732,
+      "db_id": "superhero",
+      "lane": "free",
+      "outcome": "no_sql",
+      "predicted_sql": "",
+      "model": "free-chain",
+      "latency_ms": 2027,
+      "error": "llm.plan: all providers in chain failed (gemini:circuit_open, groq:circuit_open, workers-ai:parse, openrouter:circuit_open)"
+    },
+    {
+      "question_id": 733,
+      "db_id": "superhero",
+      "lane": "free",
+      "outcome": "no_sql",
+      "predicted_sql": "",
+      "model": "free-chain",
+      "latency_ms": 1744,
+      "error": "llm.plan: all providers in chain failed (gemini:circuit_open, groq:circuit_open, workers-ai:parse, openrouter:circuit_open)"
+    },
+    {
+      "question_id": 736,
+      "db_id": "superhero",
+      "lane": "free",
+      "outcome": "no_sql",
+      "predicted_sql": "",
+      "model": "free-chain",
+      "latency_ms": 1799,
+      "error": "llm.plan: all providers in chain failed (gemini:circuit_open, groq:circuit_open, workers-ai:parse, openrouter:circuit_open)"
+    },
+    {
+      "question_id": 737,
+      "db_id": "superhero",
+      "lane": "free",
+      "outcome": "no_sql",
+      "predicted_sql": "",
+      "model": "free-chain",
+      "latency_ms": 1582,
+      "error": "llm.plan: all providers in chain failed (gemini:circuit_open, groq:circuit_open, workers-ai:parse, openrouter:circuit_open)"
+    },
+    {
+      "question_id": 738,
+      "db_id": "superhero",
+      "lane": "free",
+      "outcome": "no_sql",
+      "predicted_sql": "",
+      "model": "free-chain",
+      "latency_ms": 1553,
+      "error": "llm.plan: all providers in chain failed (gemini:circuit_open, groq:circuit_open, workers-ai:parse, openrouter:circuit_open)"
+    },
+    {
+      "question_id": 739,
+      "db_id": "superhero",
+      "lane": "free",
+      "outcome": "no_sql",
+      "predicted_sql": "",
+      "model": "free-chain",
+      "latency_ms": 1559,
+      "error": "llm.plan: all providers in chain failed (gemini:circuit_open, groq:circuit_open, workers-ai:parse, openrouter:circuit_open)"
+    },
+    {
+      "question_id": 740,
+      "db_id": "superhero",
+      "lane": "free",
+      "outcome": "no_sql",
+      "predicted_sql": "",
+      "model": "free-chain",
+      "latency_ms": 2146,
+      "error": "llm.plan: all providers in chain failed (gemini:circuit_open, groq:circuit_open, workers-ai:parse, openrouter:circuit_open)"
+    },
+    {
+      "question_id": 743,
+      "db_id": "superhero",
+      "lane": "free",
+      "outcome": "no_sql",
+      "predicted_sql": "",
+      "model": "free-chain",
+      "latency_ms": 2618,
+      "error": "llm.plan: all providers in chain failed (gemini:circuit_open, groq:circuit_open, workers-ai:parse, openrouter:circuit_open)"
+    },
+    {
+      "question_id": 744,
+      "db_id": "superhero",
+      "lane": "free",
+      "outcome": "no_sql",
+      "predicted_sql": "",
+      "model": "free-chain",
+      "latency_ms": 1688,
+      "error": "llm.plan: all providers in chain failed (gemini:circuit_open, groq:circuit_open, workers-ai:parse, openrouter:circuit_open)"
+    },
+    {
+      "question_id": 745,
+      "db_id": "superhero",
+      "lane": "free",
+      "outcome": "no_sql",
+      "predicted_sql": "",
+      "model": "free-chain",
+      "latency_ms": 876,
+      "error": "llm.plan: all providers in chain failed (gemini:circuit_open, groq:circuit_open, workers-ai:parse, openrouter:circuit_open)"
+    },
+    {
+      "question_id": 747,
+      "db_id": "superhero",
+      "lane": "free",
+      "outcome": "no_sql",
+      "predicted_sql": "",
+      "model": "free-chain",
+      "latency_ms": 564,
+      "error": "llm.plan: all providers in chain failed (gemini:circuit_open, groq:circuit_open, workers-ai:parse, openrouter:circuit_open)"
+    },
+    {
+      "question_id": 750,
+      "db_id": "superhero",
+      "lane": "free",
+      "outcome": "no_sql",
+      "predicted_sql": "",
+      "model": "free-chain",
+      "latency_ms": 1198,
+      "error": "llm.plan: all providers in chain failed (gemini:circuit_open, groq:circuit_open, workers-ai:parse, openrouter:circuit_open)"
+    },
+    {
+      "question_id": 751,
+      "db_id": "superhero",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT DISTINCT T3.power_name FROM superhero AS T1 INNER JOIN gender AS T2 ON T1.gender_id = T2.id INNER JOIN hero_power AS T4 ON T1.id = T4.hero_id INNER JOIN superpower AS T3 ON T4.power_id = T3.id WHERE T2.gender = 'Male'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 2383
+    },
+    {
+      "question_id": 753,
+      "db_id": "superhero",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT T1.superhero_name FROM superhero AS T1 INNER JOIN colour AS T2 ON T1.eye_colour_id = T2.id WHERE T1.height_cm BETWEEN 170 AND 190 AND T2.colour = 'No Colour'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1273
+    },
+    {
+      "question_id": 758,
+      "db_id": "superhero",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT T3.colour FROM superhero AS T1 INNER JOIN race AS T2 ON T1.race_id = T2.id INNER JOIN colour AS T3 ON T1.hair_colour_id = T3.id WHERE T2.race = 'Human' AND T1.height_cm = 185",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1459
+    },
+    {
+      "question_id": 760,
+      "db_id": "superhero",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT CAST(SUM(CASE WHEN T2.publisher_name = 'Marvel Comics' THEN 1 ELSE 0 END) AS REAL) * 100 / COUNT(T1.id) FROM superhero AS T1 INNER JOIN publisher AS T2 ON T1.publisher_id = T2.id WHERE T1.height_cm BETWEEN 150 AND 180",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 2145
+    },
+    {
+      "question_id": 761,
+      "db_id": "superhero",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT T1.superhero_name FROM superhero AS T1 INNER JOIN gender AS T2 ON T1.gender_id = T2.id WHERE T2.gender = 'Male' AND T1.weight_kg > (SELECT AVG(weight_kg) FROM superhero) * 0.79",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1644
+    },
+    {
+      "question_id": 764,
+      "db_id": "superhero",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT T2.power_name FROM hero_power AS T1 INNER JOIN superpower AS T2 ON T1.power_id = T2.id WHERE T1.hero_id = 1",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 2006
+    },
+    {
+      "question_id": 765,
+      "db_id": "superhero",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT COUNT(T1.hero_id) FROM hero_power AS T1 INNER JOIN superpower AS T2 ON T1.power_id = T2.id WHERE T2.power_name = 'Stealth'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1138
+    },
+    {
+      "question_id": 766,
+      "db_id": "superhero",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT T1.full_name FROM superhero AS T1 INNER JOIN hero_attribute AS T2 ON T1.id = T2.hero_id INNER JOIN attribute AS T3 ON T2.attribute_id = T3.id WHERE T3.attribute_name = 'Strength' ORDER BY T2.attribute_value DESC LIMIT 1",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1276
+    },
+    {
+      "question_id": 769,
+      "db_id": "superhero",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT T1.superhero_name FROM superhero AS T1 INNER JOIN publisher AS T2 ON T1.publisher_id = T2.id INNER JOIN hero_attribute AS T3 ON T1.id = T3.hero_id INNER JOIN attribute AS T4 ON T3.attribute_id = T4.id WHERE T2.publisher_name = 'Dark Horse Comics' AND T4.attribute_name = 'Durability' ORDER BY T3.attribute_value DESC LIMIT 1",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1666
+    },
+    {
+      "question_id": 772,
+      "db_id": "superhero",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT T3.colour AS eye_colour, T4.colour AS hair_colour, T5.colour AS skin_colour FROM superhero AS T1 INNER JOIN gender AS T2 ON T1.gender_id = T2.id INNER JOIN colour AS T3 ON T1.eye_colour_id = T3.id INNER JOIN colour AS T4 ON T1.hair_colour_id = T4.id INNER JOIN colour AS T5 ON T1.skin_colour_id = T5.id INNER JOIN publisher AS T6 ON T1.publisher_id = T6.id WHERE T2.gender = 'Female' AND T6.publisher_name = 'Dark Horse Comics'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 2087
+    },
+    {
+      "question_id": 773,
+      "db_id": "superhero",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT T1.superhero_name, T2.publisher_name FROM superhero AS T1 INNER JOIN publisher AS T2 ON T1.publisher_id = T2.id WHERE T1.eye_colour_id = T1.hair_colour_id AND T1.hair_colour_id = T1.skin_colour_id",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1346
+    },
+    {
+      "question_id": 775,
+      "db_id": "superhero",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT CAST(SUM(CASE WHEN T3.colour = 'Blue' THEN 1 ELSE 0 END) AS REAL) * 100 / COUNT(T1.id) FROM superhero AS T1 INNER JOIN gender AS T2 ON T1.gender_id = T2.id INNER JOIN colour AS T3 ON T1.skin_colour_id = T3.id WHERE T2.gender = 'Female'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 2179
+    },
+    {
+      "question_id": 779,
+      "db_id": "superhero",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT COUNT(T2.power_id) FROM superhero AS T1 INNER JOIN hero_power AS T2 ON T1.id = T2.hero_id WHERE T1.superhero_name = 'Amazo'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1140
+    },
+    {
+      "question_id": 781,
+      "db_id": "superhero",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT T1.height_cm FROM superhero AS T1 INNER JOIN colour AS T2 ON T1.eye_colour_id = T2.id WHERE T2.colour = 'Amber'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 3523
+    },
+    {
+      "question_id": 782,
+      "db_id": "superhero",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT T1.superhero_name FROM superhero AS T1 INNER JOIN colour AS T2 ON T1.eye_colour_id = T2.id INNER JOIN colour AS T3 ON T1.hair_colour_id = T3.id WHERE T2.colour = 'Black' AND T3.colour = 'Black'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1080
+    },
+    {
+      "question_id": 785,
+      "db_id": "superhero",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT T1.superhero_name FROM superhero AS T1 INNER JOIN alignment AS T2 ON T1.alignment_id = T2.id WHERE T2.alignment = 'Neutral'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 901
+    },
+    {
+      "question_id": 786,
+      "db_id": "superhero",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT COUNT(T1.hero_id) FROM hero_attribute AS T1 INNER JOIN attribute AS T2 ON T1.attribute_id = T2.id WHERE T2.attribute_name = 'Strength' AND T1.attribute_value = (SELECT MAX(T1.attribute_value) FROM hero_attribute AS T1 INNER JOIN attribute AS T2 ON T1.attribute_id = T2.id WHERE T2.attribute_name = 'Strength')",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1700
+    },
+    {
+      "question_id": 788,
+      "db_id": "superhero",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT CAST(SUM(CASE WHEN T2.gender = 'Female' THEN 1 ELSE 0 END) AS REAL) * 100 / COUNT(T1.id) FROM superhero AS T1 INNER JOIN gender AS T2 ON T1.gender_id = T2.id INNER JOIN publisher AS T3 ON T1.publisher_id = T3.id WHERE T3.publisher_name = 'Marvel Comics'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1465
+    },
+    {
+      "question_id": 790,
+      "db_id": "superhero",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT T1.weight_kg - T2.weight_kg FROM superhero AS T1 JOIN superhero AS T2 ON T1.full_name = 'Emil Blonsky' AND T2.full_name = 'Charles Chandler'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 986
+    },
+    {
+      "question_id": 791,
+      "db_id": "superhero",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT AVG(height_cm) FROM superhero",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 788
+    },
+    {
+      "question_id": 792,
+      "db_id": "superhero",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT T3.power_name FROM superhero AS T1 INNER JOIN hero_power AS T2 ON T1.id = T2.hero_id INNER JOIN superpower AS T3 ON T2.power_id = T3.id WHERE T1.superhero_name = 'Abomination'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1083
+    },
+    {
+      "question_id": 794,
+      "db_id": "superhero",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT T1.superhero_name FROM superhero AS T1 INNER JOIN hero_attribute AS T2 ON T1.id = T2.hero_id INNER JOIN attribute AS T3 ON T2.attribute_id = T3.id WHERE T3.attribute_name = 'Speed' ORDER BY T2.attribute_value DESC LIMIT 1",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1450
+    },
+    {
+      "question_id": 796,
+      "db_id": "superhero",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT T2.attribute_name, T1.attribute_value FROM hero_attribute AS T1 INNER JOIN attribute AS T2 ON T1.attribute_id = T2.id INNER JOIN superhero AS T3 ON T1.hero_id = T3.id WHERE T3.superhero_name = '3-D Man'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1313
+    },
+    {
+      "question_id": 797,
+      "db_id": "superhero",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT T1.superhero_name FROM superhero AS T1 INNER JOIN colour AS T2 ON T1.eye_colour_id = T2.id INNER JOIN colour AS T3 ON T1.hair_colour_id = T3.id WHERE T2.colour = 'Blue' AND T3.colour = 'Brown'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1178
+    },
+    {
+      "question_id": 798,
+      "db_id": "superhero",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT T2.publisher_name FROM superhero AS T1 INNER JOIN publisher AS T2 ON T1.publisher_id = T2.id WHERE T1.superhero_name IN ('Hawkman', 'Karate Kid', 'Speedy')",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1151
+    },
+    {
+      "question_id": 800,
+      "db_id": "superhero",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT CAST(SUM(CASE WHEN T2.colour = 'Blue' THEN 1 ELSE 0 END) AS REAL) * 100 / COUNT(T1.id) FROM superhero AS T1 INNER JOIN colour AS T2 ON T1.eye_colour_id = T2.id",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 969
+    },
+    {
+      "question_id": 801,
+      "db_id": "superhero",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT CAST(SUM(CASE WHEN T2.gender = 'Female' THEN 1 ELSE 0 END) AS REAL) / SUM(CASE WHEN T2.gender = 'Male' THEN 1 ELSE 0 END) FROM superhero AS T1 INNER JOIN gender AS T2 ON T1.gender_id = T2.id",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 4689
+    },
+    {
+      "question_id": 806,
+      "db_id": "superhero",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT T2.colour FROM superhero AS T1 INNER JOIN colour AS T2 ON T1.eye_colour_id = T2.id WHERE T1.full_name = 'Karen Beecher-Duncan'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1083
+    },
+    {
+      "question_id": 819,
+      "db_id": "superhero",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT SUM(CASE WHEN T2.colour = 'Blue' THEN 1 ELSE 0 END) - SUM(CASE WHEN T2.colour = 'No Color' THEN 1 ELSE 0 END) FROM superhero AS T1 INNER JOIN colour AS T2 ON T1.eye_colour_id = T2.id WHERE T1.weight_kg IS NULL OR T1.weight_kg = 0",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 2040
+    },
+    {
+      "question_id": 822,
+      "db_id": "superhero",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT COUNT(T1.id) FROM superhero AS T1 INNER JOIN colour AS T2 ON T1.skin_colour_id = T2.id INNER JOIN alignment AS T3 ON T1.alignment_id = T3.id WHERE T2.colour = 'Green' AND T3.alignment = 'Bad'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1129
+    },
+    {
+      "question_id": 824,
+      "db_id": "superhero",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT T1.superhero_name FROM superhero AS T1 INNER JOIN hero_power AS T2 ON T1.id = T2.hero_id INNER JOIN superpower AS T3 ON T2.power_id = T3.id WHERE T3.power_name = 'Wind Control' ORDER BY T1.superhero_name",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1099
+    },
+    {
+      "question_id": 825,
+      "db_id": "superhero",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT T2.gender FROM hero_power AS T1 INNER JOIN gender AS T2 ON T2.id = (SELECT T3.gender_id FROM superhero AS T3 WHERE T3.id = T1.hero_id) INNER JOIN superpower AS T4 ON T4.id = T1.power_id WHERE T4.power_name = 'Phoenix Force'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1161
+    },
+    {
+      "question_id": 829,
+      "db_id": "superhero",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT SUM(CASE WHEN T2.publisher_name = 'DC Comics' THEN 1 ELSE 0 END) - SUM(CASE WHEN T2.publisher_name = 'Marvel Comics' THEN 1 ELSE 0 END) FROM superhero AS T1 INNER JOIN publisher AS T2 ON T1.publisher_id = T2.id WHERE T2.publisher_name IN ('DC Comics', 'Marvel Comics')",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 4951
+    },
+    {
+      "question_id": 531,
+      "db_id": "codebase_community",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT DisplayName FROM users WHERE DisplayName IN ('Harlan', 'Jarrod Dixon') ORDER BY Reputation DESC LIMIT 1",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1185
+    },
+    {
+      "question_id": 532,
+      "db_id": "codebase_community",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT DisplayName FROM users WHERE strftime('%Y', CreationDate) = '2011'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1029
+    },
+    {
+      "question_id": 533,
+      "db_id": "codebase_community",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT COUNT(Id) FROM users WHERE LastAccessDate > '2014-09-01'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 964
+    },
+    {
+      "question_id": 539,
+      "db_id": "codebase_community",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT T2.DisplayName FROM posts AS T1 INNER JOIN users AS T2 ON T1.OwnerUserId = T2.Id WHERE T1.Title = 'Eliciting priors from experts'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1275
+    },
+    {
+      "question_id": 537,
+      "db_id": "codebase_community",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT COUNT(T1.Id) FROM posts AS T1 INNER JOIN users AS T2 ON T1.OwnerUserId = T2.Id WHERE T2.DisplayName = 'csgillespie'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1052
+    },
+    {
+      "question_id": 544,
+      "db_id": "codebase_community",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT T2.DisplayName FROM posts AS T1 INNER JOIN users AS T2 ON T1.LastEditorUserId = T2.Id WHERE T1.Title = 'Examples for teaching: Correlation does not mean causation'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1171
+    },
+    {
+      "question_id": 547,
+      "db_id": "codebase_community",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT COUNT(T1.Id) FROM posts AS T1 INNER JOIN users AS T2 ON T1.OwnerUserId = T2.Id WHERE T2.Age > 65 AND T1.Score >= 20",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1125
+    },
+    {
+      "question_id": 549,
+      "db_id": "codebase_community",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT T1.Body FROM posts AS T1 INNER JOIN tags AS T2 ON T1.Id = T2.ExcerptPostId WHERE T2.TagName = 'bayesian'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1081
+    },
+    {
+      "question_id": 555,
+      "db_id": "codebase_community",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT AVG(T1.Score) FROM posts AS T1 INNER JOIN users AS T2 ON T1.OwnerUserId = T2.Id WHERE T2.DisplayName = 'csgillespie'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1166
+    },
+    {
+      "question_id": 557,
+      "db_id": "codebase_community",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT CAST(SUM(CASE WHEN T2.Age > 65 THEN 1 ELSE 0 END) AS REAL) * 100 / COUNT(T1.Id) FROM posts AS T1 INNER JOIN users AS T2 ON T1.OwnerUserId = T2.Id WHERE T1.Score > 5",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1709
+    },
+    {
+      "question_id": 563,
+      "db_id": "codebase_community",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT T1.FavoriteCount FROM posts AS T1 INNER JOIN comments AS T2 ON T1.Id = T2.PostId WHERE T2.UserId = 3025 AND T2.CreationDate = '2014-04-23 20:29:39'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1221
+    },
+    {
+      "question_id": 565,
+      "db_id": "codebase_community",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT T1.ClosedDate IS NOT NULL FROM posts AS T1 INNER JOIN comments AS T2 ON T1.Id = T2.PostId WHERE T2.UserId = 23853 AND T2.CreationDate = '2013-07-12 09:08:18.0'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 2759
+    },
+    {
+      "question_id": 567,
+      "db_id": "codebase_community",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT COUNT(T1.Id) FROM posts AS T1 INNER JOIN users AS T2 ON T1.OwnerUserId = T2.Id WHERE T2.DisplayName = 'Tiago Pasqualini'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1274
+    },
+    {
+      "question_id": 568,
+      "db_id": "codebase_community",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT T2.DisplayName FROM votes AS T1 INNER JOIN users AS T2 ON T1.UserId = T2.Id WHERE T1.Id = 6347",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1512
+    },
+    {
+      "question_id": 571,
+      "db_id": "codebase_community",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT CAST(COUNT(DISTINCT T1.Id) AS REAL) / COUNT(DISTINCT T2.Id) FROM posts AS T1 INNER JOIN votes AS T2 ON T1.OwnerUserId = T2.UserId WHERE T1.OwnerUserId = 24",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1707
+    },
+    {
+      "question_id": 572,
+      "db_id": "codebase_community",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT ViewCount FROM posts WHERE Title = 'Integration of Weka and/or RapidMiner into Informatica PowerCenter/Developer'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 986
+    },
+    {
+      "question_id": 573,
+      "db_id": "codebase_community",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT Text FROM comments WHERE Score = 17",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 922
+    },
+    {
+      "question_id": 576,
+      "db_id": "codebase_community",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT T1.DisplayName FROM users AS T1 INNER JOIN comments AS T2 ON T1.Id = T2.UserId WHERE T2.Text = 'thank you user93!'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1084
+    },
+    {
+      "question_id": 578,
+      "db_id": "codebase_community",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT T1.DisplayName, T1.Reputation FROM users AS T1 INNER JOIN posts AS T2 ON T1.Id = T2.OwnerUserId WHERE T2.Title = 'Understanding what Dassault iSight is doing?'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1112
+    },
+    {
+      "question_id": 581,
+      "db_id": "codebase_community",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT T2.DisplayName FROM posts AS T1 INNER JOIN users AS T2 ON T1.OwnerUserId = T2.Id WHERE T1.Title = 'Open source tools for visualizing multi-dimensional data?'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1034
+    },
+    {
+      "question_id": 584,
+      "db_id": "codebase_community",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT T1.Text FROM comments AS T1 INNER JOIN posts AS T2 ON T1.UserId = T2.LastEditorUserId WHERE T2.Title = 'Why square the difference instead of taking the absolute value in standard deviation?'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1748
+    },
+    {
+      "question_id": 586,
+      "db_id": "codebase_community",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT T1.DisplayName FROM users AS T1 INNER JOIN votes AS T2 ON T1.Id = T2.UserId INNER JOIN posts AS T3 ON T2.PostId = T3.Id WHERE T2.BountyAmount = 50 AND T3.Title LIKE '%variance%'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1224
+    },
+    {
+      "question_id": 587,
+      "db_id": "codebase_community",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT T1.Title, T2.Text, AVG(T1.ViewCount) FROM posts AS T1 INNER JOIN postHistory AS T2 ON T1.Id = T2.PostId INNER JOIN tags AS T3 ON T3.TagName = 'humor' WHERE T1.Tags LIKE '%<humor>%' GROUP BY T1.Title, T2.Text",
+      "model": "llama-3.3-70b-versatile",
+      "latency_ms": 5802
+    },
+    {
+      "question_id": 592,
+      "db_id": "codebase_community",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT COUNT(T1.UserId) FROM (SELECT UserId FROM badges GROUP BY UserId HAVING COUNT(Name) > 5) AS T1",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1153
+    },
+    {
+      "question_id": 595,
+      "db_id": "codebase_community",
+      "lane": "free",
+      "outcome": "exec_error",
+      "predicted_sql": "SELECT DISTINCT T1.UserId FROM users AS T1 INNER JOIN postHistory AS T2 ON T1.Id = T2.UserId INNER JOIN posts AS T3 ON T2.PostId = T3.Id WHERE T1.Views >= 1000 AND T2.PostId IN (SELECT PostId FROM postHistory GROUP BY PostId HAVING COUNT(PostId) = 1)",
+      "model": "llama-3.3-70b-versatile",
+      "latency_ms": 5513,
+      "error": "no such column: T1.UserId"
+    },
+    {
+      "question_id": 598,
+      "db_id": "codebase_community",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT ((CAST(SUM(CASE WHEN STRFTIME('%Y', Date) = '2010' THEN 1 ELSE 0 END) AS REAL) / COUNT(Name)) * 100 - (CAST(SUM(CASE WHEN STRFTIME('%Y', Date) = '2011' THEN 1 ELSE 0 END) AS REAL) / COUNT(Name)) * 100) FROM badges WHERE Name = 'Student'",
+      "model": "llama-3.3-70b-versatile",
+      "latency_ms": 5378
+    },
+    {
+      "question_id": 604,
+      "db_id": "codebase_community",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT AVG(T1.UpVotes), AVG(T1.Age) FROM users AS T1 WHERE T1.Id IN (SELECT T2.OwnerUserId FROM posts AS T2 GROUP BY T2.OwnerUserId HAVING COUNT(T2.Id) > 10)",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 3202
+    },
+    {
+      "question_id": 629,
+      "db_id": "codebase_community",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT CAST(SUM(CASE WHEN strftime('%Y', CreationDate) = '2010' THEN 1 ELSE 0 END) AS REAL) / SUM(CASE WHEN strftime('%Y', CreationDate) = '2011' THEN 1 ELSE 0 END) FROM votes",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1454
+    },
+    {
+      "question_id": 633,
+      "db_id": "codebase_community",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT T1.Id FROM posts AS T1 INNER JOIN users AS T2 ON T1.OwnerUserId = T2.Id WHERE T2.DisplayName = 'slashnick' ORDER BY T1.AnswerCount DESC LIMIT 1",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1109
+    },
+    {
+      "question_id": 634,
+      "db_id": "codebase_community",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT T1.Title FROM posts AS T1 INNER JOIN users AS T2 ON T1.OwnerUserId = T2.Id WHERE T2.DisplayName IN ('Harvey Motulsky', 'Noah Snyder') ORDER BY T1.ViewCount DESC LIMIT 1",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1343
+    },
+    {
+      "question_id": 637,
+      "db_id": "codebase_community",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT T1.Tags FROM posts AS T1 INNER JOIN users AS T2 ON T1.OwnerUserId = T2.Id WHERE T2.DisplayName = 'Mark Meckes' AND T1.CommentCount = 0",
+      "model": "llama-3.3-70b-versatile",
+      "latency_ms": 5463
+    },
+    {
+      "question_id": 639,
+      "db_id": "codebase_community",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT CAST(SUM(CASE WHEN T1.Tags LIKE '%<r>%' THEN 1 ELSE 0 END) AS REAL) * 100 / COUNT(T1.Id) FROM posts AS T1 WHERE T1.OwnerDisplayName = 'Community'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 2336
+    },
+    {
+      "question_id": 640,
+      "db_id": "codebase_community",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT SUM(CASE WHEN T2.DisplayName = 'Mornington' THEN T1.ViewCount ELSE 0 END) - SUM(CASE WHEN T2.DisplayName = 'Amos' THEN T1.ViewCount ELSE 0 END) FROM posts AS T1 INNER JOIN users AS T2 ON T1.OwnerUserId = T2.Id WHERE T2.DisplayName IN ('Mornington', 'Amos')",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1566
+    },
+    {
+      "question_id": 665,
+      "db_id": "codebase_community",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT CAST(COUNT(T1.Id) AS REAL) / 12 FROM postLinks AS T1 INNER JOIN posts AS T2 ON T1.PostId = T2.Id WHERE STRFTIME('%Y', T1.CreationDate) = '2010' AND T2.AnswerCount <= 2",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1684
+    },
+    {
+      "question_id": 669,
+      "db_id": "codebase_community",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT MIN(T2.CreationDate) FROM users AS T1 INNER JOIN votes AS T2 ON T1.Id = T2.UserId WHERE T1.DisplayName = 'chl'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1431
+    },
+    {
+      "question_id": 671,
+      "db_id": "codebase_community",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT T2.DisplayName FROM badges AS T1 INNER JOIN users AS T2 ON T1.UserId = T2.Id WHERE T1.Name = 'Autobiographer' ORDER BY T1.Date LIMIT 1",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1143
+    },
+    {
+      "question_id": 672,
+      "db_id": "codebase_community",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT COUNT(DISTINCT T1.Id) FROM users AS T1 INNER JOIN posts AS T2 ON T1.Id = T2.OwnerUserId WHERE T1.Location = 'United Kingdom' AND T2.FavoriteCount >= 4",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1369
+    },
+    {
+      "question_id": 678,
+      "db_id": "codebase_community",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT T1.Id, T1.Title FROM posts AS T1 INNER JOIN users AS T2 ON T1.OwnerUserId = T2.Id WHERE T2.DisplayName = 'Harvey Motulsky' ORDER BY T1.ViewCount DESC LIMIT 1",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1004
+    },
+    {
+      "question_id": 682,
+      "db_id": "codebase_community",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT T1.Id, T2.DisplayName FROM posts AS T1 INNER JOIN users AS T2 ON T1.OwnerUserId = T2.Id WHERE strftime('%Y', T1.CreaionDate) = '2010' ORDER BY T1.FavoriteCount DESC LIMIT 1",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1764
+    },
+    {
+      "question_id": 683,
+      "db_id": "codebase_community",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT CAST(SUM(CASE WHEN T2.Reputation > 1000 THEN 1 ELSE 0 END) AS REAL) * 100 / COUNT(T1.Id) FROM posts AS T1 INNER JOIN users AS T2 ON T1.OwnerUserId = T2.Id WHERE STRFTIME('%Y', T1.CreaionDate) = '2011'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 2617
+    },
+    {
+      "question_id": 685,
+      "db_id": "codebase_community",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT T1.ViewCount, T2.DisplayName FROM posts AS T1 INNER JOIN users AS T2 ON T1.LastEditorUserId = T2.Id WHERE T1.Title = 'Computer Game Datasets'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1782
+    },
+    {
+      "question_id": 687,
+      "db_id": "codebase_community",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT COUNT(T1.Id) FROM comments AS T1 INNER JOIN posts AS T2 ON T1.PostId = T2.Id WHERE T2.Score = (SELECT MAX(Score) FROM posts)",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1136
+    },
+    {
+      "question_id": 694,
+      "db_id": "codebase_community",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT T1.Text, T2.DisplayName FROM comments AS T1 INNER JOIN users AS T2 ON T1.UserId = T2.Id INNER JOIN posts AS T3 ON T1.PostId = T3.Id WHERE T3.Title = 'Analysing wind data with R' ORDER BY T1.CreationDate DESC LIMIT 10",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1850
+    },
+    {
+      "question_id": 701,
+      "db_id": "codebase_community",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT CAST(SUM(CASE WHEN T1.Score > 50 THEN 1 ELSE 0 END) AS REAL) * 100 / COUNT(T1.Id) FROM posts AS T1 WHERE T1.OwnerUserId = (SELECT T2.Id FROM users AS T2 ORDER BY T2.Reputation DESC LIMIT 1)",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 3135
+    },
+    {
+      "question_id": 704,
+      "db_id": "codebase_community",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT ExcerptPostId, WikiPostId FROM tags WHERE TagName = 'sample'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 853
+    },
+    {
+      "question_id": 705,
+      "db_id": "codebase_community",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT T1.Reputation, T1.UpVotes FROM users AS T1 INNER JOIN comments AS T2 ON T1.Id = T2.UserId WHERE T2.Text = 'fine, you win :)'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1193
+    },
+    {
+      "question_id": 707,
+      "db_id": "codebase_community",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT T1.Text FROM comments AS T1 INNER JOIN posts AS T2 ON T1.PostId = T2.Id WHERE T2.ViewCount BETWEEN 100 AND 150 ORDER BY T1.Score DESC LIMIT 1",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1271
+    },
+    {
+      "question_id": 710,
+      "db_id": "codebase_community",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT COUNT(T1.Id) FROM comments AS T1 INNER JOIN posts AS T2 ON T1.PostId = T2.Id WHERE T2.CommentCount = 1 AND T1.Score = 0",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1235
+    },
+    {
+      "question_id": 716,
+      "db_id": "codebase_community",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT CAST(SUM(CASE WHEN T2.UpVotes = 0 THEN 1 ELSE 0 END) AS REAL) * 100 / COUNT(T1.UserId) FROM comments AS T1 INNER JOIN users AS T2 ON T1.UserId = T2.Id WHERE T1.Score BETWEEN 5 AND 10",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1557
+    },
+    {
+      "question_id": 340,
+      "db_id": "card_games",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT name FROM cards WHERE cardKingdomFoilId IS NOT NULL AND cardKingdomId IS NOT NULL",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 917
+    },
+    {
+      "question_id": 341,
+      "db_id": "card_games",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT * FROM cards WHERE borderColor = 'borderless' AND cardKingdomFoilId IS NULL AND cardKingdomId IS NOT NULL",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1370
+    },
+    {
+      "question_id": 344,
+      "db_id": "card_games",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT T1.name FROM cards AS T1 INNER JOIN legalities AS T2 ON T1.uuid = T2.uuid WHERE T1.rarity = 'mythic' AND T2.status = 'Banned' AND T2.format = 'gladiator'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1299
+    },
+    {
+      "question_id": 345,
+      "db_id": "card_games",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT T2.status FROM cards AS T1 INNER JOIN legalities AS T2 ON T1.uuid = T2.uuid WHERE T1.types = 'Artifact' AND T1.side IS NULL AND T2.format = 'vintage'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1135
+    },
+    {
+      "question_id": 346,
+      "db_id": "card_games",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT T1.id, T1.artist FROM cards AS T1 INNER JOIN legalities AS T2 ON T1.uuid = T2.uuid WHERE (T1.power = '*' OR T1.power IS NULL) AND T2.format = 'commander' AND T2.status = 'Legal'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1525
+    },
+    {
+      "question_id": 347,
+      "db_id": "card_games",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT T1.id, T2.text, T1.hasContentWarning FROM cards AS T1 INNER JOIN rulings AS T2 ON T1.uuid = T2.uuid WHERE T1.artist = 'Stephen Daniele'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1530
+    },
+    {
+      "question_id": 349,
+      "db_id": "card_games",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT T1.name, T1.artist, T1.isPromo FROM cards AS T1 INNER JOIN rulings AS T2 ON T1.uuid = T2.uuid GROUP BY T1.uuid, T1.name, T1.artist, T1.isPromo ORDER BY COUNT(T2.uuid) DESC LIMIT 1",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1279
+    },
+    {
+      "question_id": 352,
+      "db_id": "card_games",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT CAST(COUNT(DISTINCT T1.uuid) AS REAL) * 100 / (SELECT COUNT(id) FROM cards) FROM foreign_data AS T1 WHERE T1.language = 'Chinese Simplified'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 3719
+    },
+    {
+      "question_id": 356,
+      "db_id": "card_games",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT count(id) FROM cards WHERE power = '*'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1448
+    },
+    {
+      "question_id": 358,
+      "db_id": "card_games",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT borderColor FROM cards WHERE name = 'Ancestor''s Chosen'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 922
+    },
+    {
+      "question_id": 366,
+      "db_id": "card_games",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT T2.format, T2.status FROM cards AS T1 INNER JOIN legalities AS T2 ON T1.uuid = T2.uuid WHERE T1.name = 'Benalish Knight'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1385
+    },
+    {
+      "question_id": 368,
+      "db_id": "card_games",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT CAST(SUM(CASE WHEN borderColor = 'borderless' THEN 1 ELSE 0 END) AS REAL) * 100 / COUNT(id) FROM cards",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1151
+    },
+    {
+      "question_id": 371,
+      "db_id": "card_games",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT CAST(SUM(CASE WHEN T2.language = 'French' THEN 1 ELSE 0 END) AS REAL) * 100 / COUNT(T1.id) FROM cards AS T1 INNER JOIN foreign_data AS T2 ON T1.uuid = T2.uuid WHERE T1.isStorySpotlight = 1",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 2784
+    },
+    {
+      "question_id": 377,
+      "db_id": "card_games",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT count(id) FROM cards WHERE originalType = 'Summon - Angel' AND subtypes != 'Angel'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1175
+    },
+    {
+      "question_id": 379,
+      "db_id": "card_games",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT id FROM cards WHERE duelDeck = 'a'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1199
+    },
+    {
+      "question_id": 383,
+      "db_id": "card_games",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT COUNT(T1.id) FROM cards AS T1 INNER JOIN legalities AS T2 ON T1.uuid = T2.uuid WHERE T2.status = 'Banned' AND T1.borderColor = 'white'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1193
+    },
+    {
+      "question_id": 391,
+      "db_id": "card_games",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT T1.name FROM cards AS T1 INNER JOIN foreign_data AS T2 ON T1.uuid = T2.uuid WHERE T1.originalType = 'Artifact' AND T1.colors = 'B'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1446
+    },
+    {
+      "question_id": 397,
+      "db_id": "card_games",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT manaCost FROM cards WHERE layout = 'normal' AND frameVersion = '2003' AND borderColor = 'black' AND availability = 'mtgo,paper'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 996
+    },
+    {
+      "question_id": 402,
+      "db_id": "card_games",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT CAST(SUM(CASE WHEN isStorySpotlight = 1 AND isTextless = 0 THEN 1 ELSE 0 END) AS REAL) * 100 / COUNT(id), id FROM cards GROUP BY id",
+      "model": "llama-3.3-70b-versatile",
+      "latency_ms": 5865
+    },
+    {
+      "question_id": 405,
+      "db_id": "card_games",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT COUNT(DISTINCT T1.code) FROM sets AS T1 INNER JOIN set_translations AS T2 ON T1.code = T2.setCode WHERE T1.block = 'Commander' AND T2.language = 'Portuguese (Brasil)'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1431
+    },
+    {
+      "question_id": 407,
+      "db_id": "card_games",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT DISTINCT type FROM foreign_data WHERE language = 'German' AND type IS NOT NULL",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1430
+    },
+    {
+      "question_id": 408,
+      "db_id": "card_games",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT COUNT(*) FROM cards WHERE (power IS NULL OR power = '*') AND text LIKE '%triggered ability%'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1210
+    },
+    {
+      "question_id": 409,
+      "db_id": "card_games",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT COUNT(T1.id) FROM cards AS T1 INNER JOIN legalities AS T2 ON T1.uuid = T2.uuid INNER JOIN rulings AS T3 ON T1.uuid = T3.uuid WHERE T2.format = 'premodern' AND T3.text = 'This is a triggered mana ability.' AND T1.side IS NULL",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1678
+    },
+    {
+      "question_id": 412,
+      "db_id": "card_games",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT T2.name FROM cards AS T1 INNER JOIN foreign_data AS T2 ON T1.uuid = T2.uuid WHERE T2.language = 'French' AND T2.type = 'Creature' AND T1.layout = 'normal' AND T1.borderColor = 'black' AND T1.artist = 'Matthew D. Wilson'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1862
+    },
+    {
+      "question_id": 414,
+      "db_id": "card_games",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT T2.language FROM sets AS T1 INNER JOIN set_translations AS T2 ON T1.code = T2.setCode WHERE T1.baseSetSize = 180 AND T1.block = 'Ravnica'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1074
+    },
+    {
+      "question_id": 415,
+      "db_id": "card_games",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT CAST(SUM(CASE WHEN T1.hasContentWarning = 0 THEN 1 ELSE 0 END) AS REAL) * 100 / COUNT(T1.id) FROM cards AS T1 INNER JOIN legalities AS T2 ON T1.uuid = T2.uuid WHERE T2.format = 'commander' AND T2.status = 'Legal'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 2691
+    },
+    {
+      "question_id": 416,
+      "db_id": "card_games",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT CAST(SUM(CASE WHEN T2.language = 'French' THEN 1 ELSE 0 END) AS REAL) * 100 / COUNT(T1.id) FROM cards AS T1 INNER JOIN foreign_data AS T2 ON T1.uuid = T2.uuid WHERE T1.power IS NULL OR T1.power = '*';",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1815
+    },
+    {
+      "question_id": 422,
+      "db_id": "card_games",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT T2.language FROM cards AS T1 INNER JOIN foreign_data AS T2 ON T1.uuid = T2.uuid WHERE T1.multiverseId = '149934'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1411
+    },
+    {
+      "question_id": 424,
+      "db_id": "card_games",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT CAST(SUM(CASE WHEN isTextless = 1 AND layout = 'normal' THEN 1 ELSE 0 END) AS REAL) * 100 / COUNT(isTextless) FROM cards",
+      "model": "llama-3.3-70b-versatile",
+      "latency_ms": 5414
+    },
+    {
+      "question_id": 427,
+      "db_id": "card_games",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT T2.language FROM sets AS T1 INNER JOIN set_translations AS T2 ON T1.code = T2.setCode WHERE T1.mcmName = 'Archenemy' AND T1.code = 'ARC'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1244
+    },
+    {
+      "question_id": 440,
+      "db_id": "card_games",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT T1.language FROM foreign_data AS T1 INNER JOIN cards AS T2 ON T1.uuid = T2.uuid WHERE T2.name = 'A Pedra Fellwar'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1030
+    },
+    {
+      "question_id": 459,
+      "db_id": "card_games",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT name, convertedManaCost FROM cards WHERE name IN ('Serra Angel', 'Shrine Keeper')",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 956
+    },
+    {
+      "question_id": 462,
+      "db_id": "card_games",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT T3.translation FROM cards AS T1 INNER JOIN sets AS T2 ON T1.setCode = T2.code INNER JOIN set_translations AS T3 ON T2.code = T3.setCode WHERE T1.name = 'Ancestor''s Chosen' AND T3.language = 'Italian'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1477
+    },
+    {
+      "question_id": 465,
+      "db_id": "card_games",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT EXISTS (SELECT 1 FROM cards AS T1 INNER JOIN foreign_data AS T2 ON T1.uuid = T2.uuid WHERE T1.name = 'Ancestor''s Chosen' AND T2.language = 'Korean')",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1596
+    },
+    {
+      "question_id": 466,
+      "db_id": "card_games",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT COUNT(T1.id) FROM cards AS T1 INNER JOIN set_translations AS T2 ON T1.setCode = T2.setCode WHERE T2.translation = 'Hauptset Zehnte Edition' AND T1.artist = 'Adam Rex'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1706
+    },
+    {
+      "question_id": 468,
+      "db_id": "card_games",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT T2.translation FROM sets AS T1 INNER JOIN set_translations AS T2 ON T1.code = T2.setCode WHERE T1.name = 'Eighth Edition' AND T2.language = 'Chinese Simplified'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1180
+    },
+    {
+      "question_id": 469,
+      "db_id": "card_games",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT CASE WHEN T2.mtgoCode IS NOT NULL THEN 1 ELSE 0 END FROM cards AS T1 INNER JOIN sets AS T2 ON T1.setCode = T2.code WHERE T1.name = 'Angel of Mercy'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 2812
+    },
+    {
+      "question_id": 472,
+      "db_id": "card_games",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT COUNT(DISTINCT T1.code) FROM sets AS T1 INNER JOIN set_translations AS T2 ON T1.code = T2.setCode WHERE T1.block = 'Ice Age' AND T2.language = 'Italian' AND T2.translation IS NOT NULL",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1283
+    },
+    {
+      "question_id": 473,
+      "db_id": "card_games",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT T2.isForeignOnly FROM cards AS T1 INNER JOIN sets AS T2 ON T1.setCode = T2.code WHERE T1.name = 'Adarkar Valkyrie'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1338
+    },
+    {
+      "question_id": 474,
+      "db_id": "card_games",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT COUNT(DISTINCT T1.id) FROM sets AS T1 INNER JOIN set_translations AS T2 ON T1.code = T2.setCode WHERE T2.language = 'Italian' AND T1.baseSetSize < 100",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1645
+    },
+    {
+      "question_id": 477,
+      "db_id": "card_games",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT DISTINCT T1.artist FROM cards AS T1 INNER JOIN sets AS T2 ON T1.setCode = T2.code WHERE T2.name = 'Coldsnap' AND T1.artist IN ('Jeremy Jarvis', 'Aaron Miller', 'Chippy')",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1540
+    },
+    {
+      "question_id": 479,
+      "db_id": "card_games",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT COUNT(T1.id) FROM cards AS T1 INNER JOIN sets AS T2 ON T1.setCode = T2.code WHERE T2.name = 'Coldsnap' AND T1.convertedManaCost > 5 AND (T1.power = '*' OR T1.power IS NULL)",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1471
+    },
+    {
+      "question_id": 480,
+      "db_id": "card_games",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT T2.flavorText FROM cards AS T1 INNER JOIN foreign_data AS T2 ON T1.uuid = T2.uuid WHERE T1.name = 'Ancestor''s Chosen' AND T2.language = 'Italian'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1414
+    },
+    {
+      "question_id": 483,
+      "db_id": "card_games",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT T3.text FROM sets AS T1 INNER JOIN cards AS T2 ON T1.code = T2.setCode INNER JOIN rulings AS T3 ON T2.uuid = T3.uuid INNER JOIN foreign_data AS T4 ON T2.uuid = T4.uuid WHERE T1.name = 'Coldsnap' AND T4.language = 'Italian'",
+      "model": "llama-3.3-70b-versatile",
+      "latency_ms": 5326
+    },
+    {
+      "question_id": 484,
+      "db_id": "card_games",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT T2.name FROM cards AS T1 INNER JOIN foreign_data AS T2 ON T1.uuid = T2.uuid INNER JOIN sets AS T3 ON T1.setCode = T3.code WHERE T3.name = 'Coldsnap' AND T2.language = 'Italian' AND T1.convertedManaCost = (SELECT MAX(T4.convertedManaCost) FROM cards AS T4 INNER JOIN sets AS T5 ON T4.setCode = T5.code WHERE T5.name = 'Coldsnap')",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1731
+    },
+    {
+      "question_id": 486,
+      "db_id": "card_games",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT CAST(SUM(CASE WHEN T1.convertedManaCost = 7 THEN 1 ELSE 0 END) AS REAL) * 100 / COUNT(T1.id) FROM cards AS T1 INNER JOIN sets AS T2 ON T1.setCode = T2.code WHERE T2.name = 'Coldsnap'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 2224
+    },
+    {
+      "question_id": 487,
+      "db_id": "card_games",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT CAST(SUM(CASE WHEN T1.cardKingdomFoilId IS NOT NULL AND T1.cardKingdomId IS NOT NULL THEN 1 ELSE 0 END) AS REAL) * 100 / COUNT(T1.id) FROM cards AS T1 INNER JOIN sets AS T2 ON T1.setCode = T2.code WHERE T2.name = 'Coldsnap'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1770
+    },
+    {
+      "question_id": 518,
+      "db_id": "card_games",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT T1.format, GROUP_CONCAT(T2.name) FROM legalities AS T1 INNER JOIN cards AS T2 ON T1.uuid = T2.uuid WHERE T1.status = 'Banned' AND T1.format IN (SELECT format FROM legalities WHERE status = 'Banned' GROUP BY format HAVING COUNT(*) = (SELECT MAX(banned_count) FROM (SELECT format, COUNT(*) AS banned_count FROM legalities WHERE status = 'Banned' GROUP BY format))) GROUP BY T1.format",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 3819
+    },
+    {
+      "question_id": 522,
+      "db_id": "card_games",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT T1.name, T2.format FROM cards AS T1 INNER JOIN legalities AS T2 ON T1.uuid = T2.uuid WHERE T1.edhrecRank = 1 AND T2.status = 'Banned'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1281
+    },
+    {
+      "question_id": 528,
+      "db_id": "card_games",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT T1.name, T3.format FROM cards AS T1 INNER JOIN sets AS T2 ON T1.setCode = T2.code INNER JOIN legalities AS T3 ON T1.uuid = T3.uuid WHERE T2.name = 'Hour of Devastation' AND T3.status = 'Legal'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1576
+    },
+    {
+      "question_id": 529,
+      "db_id": "card_games",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT DISTINCT T1.name FROM sets AS T1 INNER JOIN set_translations AS T2 ON T1.code = T2.setCode WHERE T2.language = 'Korean' AND NOT EXISTS (SELECT 1 FROM set_translations AS T3 WHERE T3.setCode = T1.code AND T3.language = 'Japanese')",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 2661
+    },
+    {
+      "question_id": 530,
+      "db_id": "card_games",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT DISTINCT T1.frameVersion, T1.name FROM cards AS T1 INNER JOIN legalities AS T2 ON T1.uuid = T2.uuid WHERE T1.artist = 'Allen Williams' AND T2.status = 'Banned'",
+      "model": "llama-3.3-70b-versatile",
+      "latency_ms": 5383
+    },
+    {
+      "question_id": 195,
+      "db_id": "toxicology",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT bond_type FROM bond GROUP BY bond_type ORDER BY COUNT(bond_type) DESC LIMIT 1",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1283
+    },
+    {
+      "question_id": 197,
+      "db_id": "toxicology",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT AVG(T1.oxygen_count) FROM (SELECT T2.molecule_id, SUM(CASE WHEN T3.element = 'o' THEN 1 ELSE 0 END) AS oxygen_count FROM molecule AS T2 JOIN atom AS T3 ON T2.molecule_id = T3.molecule_id WHERE T2.molecule_id IN (SELECT DISTINCT molecule_id FROM bond WHERE bond_type = '-') GROUP BY T2.molecule_id) AS T1",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 2474
+    },
+    {
+      "question_id": 198,
+      "db_id": "toxicology",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT AVG(T1.single_bond_count) FROM (SELECT T1.molecule_id, COUNT(T2.bond_id) AS single_bond_count FROM molecule AS T1 JOIN bond AS T2 ON T1.molecule_id = T2.molecule_id WHERE T1.label = '+' AND T2.bond_type = '-' GROUP BY T1.molecule_id) AS T1",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 2900
+    },
+    {
+      "question_id": 200,
+      "db_id": "toxicology",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT T1.label FROM molecule AS T1 INNER JOIN bond AS T2 ON T1.molecule_id = T2.molecule_id WHERE T2.bond_type = '#' AND T1.label = '+'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1420
+    },
+    {
+      "question_id": 201,
+      "db_id": "toxicology",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT CAST(SUM(CASE WHEN T1.element = 'c' THEN 1 ELSE 0 END) AS REAL) * 100 / COUNT(T1.atom_id) FROM atom AS T1 INNER JOIN bond AS T2 ON T1.molecule_id = T2.molecule_id WHERE T2.bond_type = '='",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 2091
+    },
+    {
+      "question_id": 206,
+      "db_id": "toxicology",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT DISTINCT T1.element FROM atom AS T1 INNER JOIN connected AS T2 ON T1.atom_id = T2.atom_id WHERE T2.bond_id = 'TR004_8_9' UNION SELECT DISTINCT T1.element FROM atom AS T1 INNER JOIN connected AS T2 ON T1.atom_id = T2.atom_id2 WHERE T2.bond_id = 'TR004_8_9'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1560
+    },
+    {
+      "question_id": 207,
+      "db_id": "toxicology",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT DISTINCT T1.element FROM atom AS T1 INNER JOIN connected AS T2 ON T1.atom_id = T2.atom_id INNER JOIN bond AS T3 ON T2.bond_id = T3.bond_id WHERE T3.bond_type = '=' UNION SELECT DISTINCT T1.element FROM atom AS T1 INNER JOIN connected AS T2 ON T1.atom_id = T2.atom_id2 INNER JOIN bond AS T3 ON T2.bond_id = T3.bond_id WHERE T3.bond_type = '='",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 2153
+    },
+    {
+      "question_id": 208,
+      "db_id": "toxicology",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT T2.label FROM atom AS T1 INNER JOIN molecule AS T2 ON T1.molecule_id = T2.molecule_id WHERE T1.element = 'h' GROUP BY T2.label ORDER BY COUNT(T2.label) DESC LIMIT 1",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1504
+    },
+    {
+      "question_id": 212,
+      "db_id": "toxicology",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT T1.element FROM atom AS T1 INNER JOIN molecule AS T2 ON T1.molecule_id = T2.molecule_id WHERE T2.label = '-' GROUP BY T1.element ORDER BY COUNT(T1.element) ASC LIMIT 1",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1142
+    },
+    {
+      "question_id": 213,
+      "db_id": "toxicology",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT T2.bond_type FROM connected AS T1 INNER JOIN bond AS T2 ON T1.bond_id = T2.bond_id WHERE (T1.atom_id = 'TR004_8' AND T1.atom_id2 = 'TR004_20') OR (T1.atom_id = 'TR004_20' AND T1.atom_id2 = 'TR004_8')",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1789
+    },
+    {
+      "question_id": 215,
+      "db_id": "toxicology",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT COUNT(DISTINCT T1.atom_id) FROM atom AS T1 INNER JOIN bond AS T2 ON T1.molecule_id = T2.molecule_id WHERE T2.bond_type = '-' AND (T1.element = 'i' OR T1.element = 's')",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1525
+    },
+    {
+      "question_id": 218,
+      "db_id": "toxicology",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT 100 - (CAST(SUM(CASE WHEN T2.element = 'F' THEN 1 ELSE 0 END) AS REAL) * 100 / COUNT(T1.molecule_id)) FROM molecule AS T1 INNER JOIN atom AS T2 ON T1.molecule_id = T2.molecule_id WHERE T1.label = '+'",
+      "model": "llama-3.3-70b-versatile",
+      "latency_ms": 7029
+    },
+    {
+      "question_id": 219,
+      "db_id": "toxicology",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT CAST(SUM(CASE WHEN T2.bond_type = '#' THEN 1 ELSE 0 END) AS REAL) * 100 / COUNT(T2.bond_id) AS percent FROM molecule AS T1 INNER JOIN bond AS T2 ON T1.molecule_id = T2.molecule_id WHERE T1.label = '+'",
+      "model": "llama-3.3-70b-versatile",
+      "latency_ms": 5302
+    },
+    {
+      "question_id": 220,
+      "db_id": "toxicology",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT T1.element FROM atom AS T1 INNER JOIN molecule AS T2 ON T1.molecule_id = T2.molecule_id WHERE T2.molecule_id = 'TR000' GROUP BY T1.element ORDER BY COUNT(T1.element) DESC, T1.element ASC LIMIT 3",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1404
+    },
+    {
+      "question_id": 226,
+      "db_id": "toxicology",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT PRINTF(\"%.5f\", CAST(SUM(CASE WHEN T1.bond_type = '=' THEN 1 ELSE 0 END) AS REAL) * 100.0 / COUNT(T1.bond_id)) FROM bond AS T1 INNER JOIN molecule AS T2 ON T1.molecule_id = T2.molecule_id WHERE T2.molecule_id = 'TR008'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1741
+    },
+    {
+      "question_id": 227,
+      "db_id": "toxicology",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT ROUND(CAST(SUM(CASE WHEN label = '+' THEN 1 ELSE 0 END) AS REAL) * 100.0 / COUNT(molecule_id), 3) FROM molecule",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 2467
+    },
+    {
+      "question_id": 228,
+      "db_id": "toxicology",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT PRINTF('%.4f', CAST(SUM(CASE WHEN element = 'h' THEN 1 ELSE 0 END) AS REAL) * 100 / COUNT(atom_id)) FROM atom WHERE molecule_id = 'TR206'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1700
+    },
+    {
+      "question_id": 230,
+      "db_id": "toxicology",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT T1.element, T2.label FROM atom AS T1 INNER JOIN molecule AS T2 ON T1.molecule_id = T2.molecule_id WHERE T1.molecule_id = 'TR060'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1276
+    },
+    {
+      "question_id": 231,
+      "db_id": "toxicology",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT T.bond_type, CASE WHEN T.bond_type IS NOT NULL THEN 'carcinogenic' ELSE 'not carcinogenic' END AS carcinogenic FROM (SELECT bond_type, COUNT(bond_type) as count FROM bond WHERE molecule_id = 'TR010' GROUP BY bond_type ORDER BY count DESC LIMIT 1) T",
+      "model": "llama-3.3-70b-versatile",
+      "latency_ms": 5453
+    },
+    {
+      "question_id": 232,
+      "db_id": "toxicology",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT DISTINCT T1.molecule_id FROM molecule AS T1 INNER JOIN bond AS T2 ON T1.molecule_id = T2.molecule_id WHERE T1.label = '-' AND T2.bond_type = '-' ORDER BY T1.molecule_id LIMIT 3",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1892
+    },
+    {
+      "question_id": 234,
+      "db_id": "toxicology",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT COUNT(T1.bond_id) FROM bond AS T1 INNER JOIN connected AS T2 ON T1.bond_id = T2.bond_id WHERE T1.molecule_id = 'TR009' AND (T2.atom_id = 'TR009_12' OR T2.atom_id2 = 'TR009_12')",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1639
+    },
+    {
+      "question_id": 236,
+      "db_id": "toxicology",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT T1.bond_type, T2.atom_id, T2.atom_id2 FROM bond AS T1 INNER JOIN connected AS T2 ON T1.bond_id = T2.bond_id WHERE T1.bond_id = 'TR001_6_9'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1506
+    },
+    {
+      "question_id": 239,
+      "db_id": "toxicology",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT COUNT(T1.bond_id) FROM connected AS T1 INNER JOIN atom AS T2 ON T1.atom_id = T2.atom_id WHERE T2.atom_id LIKE 'TR%_19'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1266
+    },
+    {
+      "question_id": 240,
+      "db_id": "toxicology",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT element FROM atom WHERE molecule_id = 'TR004'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1123
+    },
+    {
+      "question_id": 242,
+      "db_id": "toxicology",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT DISTINCT T1.molecule_id FROM molecule AS T1 INNER JOIN atom AS T2 ON T1.molecule_id = T2.molecule_id WHERE T1.label = '+' AND SUBSTR(T2.atom_id, 7, 2) BETWEEN '21' AND '25'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1642
+    },
+    {
+      "question_id": 243,
+      "db_id": "toxicology",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT T1.bond_id FROM bond AS T1 INNER JOIN connected AS T2 ON T1.bond_id = T2.bond_id INNER JOIN atom AS T3 ON T2.atom_id = T3.atom_id INNER JOIN atom AS T4 ON T2.atom_id2 = T4.atom_id WHERE (T3.element = 'p' AND T4.element = 'n') OR (T3.element = 'n' AND T4.element = 'p')",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 2289
+    },
+    {
+      "question_id": 244,
+      "db_id": "toxicology",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT T2.label FROM bond AS T1 INNER JOIN molecule AS T2 ON T1.molecule_id = T2.molecule_id WHERE T1.bond_type = ' = ' GROUP BY T1.molecule_id ORDER BY COUNT(T1.bond_id) DESC LIMIT 1",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 3088
+    },
+    {
+      "question_id": 245,
+      "db_id": "toxicology",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT AVG(T2.num_bonds) FROM atom AS T1 JOIN (SELECT atom_id, COUNT(bond_id) AS num_bonds FROM connected GROUP BY atom_id UNION ALL SELECT atom_id2 AS atom_id, COUNT(bond_id) AS num_bonds FROM connected GROUP BY atom_id2) AS T2 ON T1.atom_id = T2.atom_id WHERE T1.element = 'i'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 4476
+    },
+    {
+      "question_id": 247,
+      "db_id": "toxicology",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT T1.element FROM atom AS T1 LEFT JOIN connected AS T2 ON T1.atom_id = T2.atom_id LEFT JOIN connected AS T3 ON T1.atom_id = T3.atom_id2 WHERE T2.atom_id IS NULL AND T3.atom_id IS NULL",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1443
+    },
+    {
+      "question_id": 248,
+      "db_id": "toxicology",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT T1.atom_id FROM atom AS T1 INNER JOIN connected AS T2 ON T1.atom_id = T2.atom_id INNER JOIN bond AS T3 ON T2.bond_id = T3.bond_id INNER JOIN molecule AS T4 ON T3.molecule_id = T4.molecule_id WHERE T4.molecule_id = 'TR041' AND T3.bond_type = '#';",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1595
+    },
+    {
+      "question_id": 249,
+      "db_id": "toxicology",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT T1.element FROM atom AS T1 JOIN connected AS T2 ON T1.atom_id = T2.atom_id WHERE T2.bond_id = 'TR144_8_19' UNION SELECT T1.element FROM atom AS T1 JOIN connected AS T2 ON T1.atom_id = T2.atom_id2 WHERE T2.bond_id = 'TR144_8_19'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 3214
+    },
+    {
+      "question_id": 253,
+      "db_id": "toxicology",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT T1.element FROM atom AS T1 INNER JOIN connected AS T2 ON T1.atom_id = T2.atom_id INNER JOIN bond AS T3 ON T2.bond_id = T3.bond_id WHERE T3.bond_type = '#'",
+      "model": "llama-3.3-70b-versatile",
+      "latency_ms": 5574
+    },
+    {
+      "question_id": 255,
+      "db_id": "toxicology",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT CAST(SUM(CASE WHEN T2.label = '+' THEN 1 ELSE 0 END) AS REAL) * 100 / COUNT(T1.bond_id) AS proportion FROM bond AS T1 INNER JOIN molecule AS T2 ON T1.molecule_id = T2.molecule_id WHERE T1.bond_type = '-'",
+      "model": "llama-3.3-70b-versatile",
+      "latency_ms": 2530
+    },
+    {
+      "question_id": 260,
+      "db_id": "toxicology",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT COUNT(T1.atom_id) FROM atom AS T1 WHERE T1.molecule_id IN (SELECT molecule_id FROM bond WHERE bond_type = '#' INTERSECT SELECT molecule_id FROM atom WHERE element IN ('p', 'br'))",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 3317
+    },
+    {
+      "question_id": 263,
+      "db_id": "toxicology",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT CAST(SUM(CASE WHEN T1.element = 'cl' THEN 1 ELSE 0 END) AS REAL) * 100 / COUNT(T1.atom_id) FROM atom AS T1 INNER JOIN bond AS T2 ON T1.molecule_id = T2.molecule_id WHERE T2.bond_type = '-'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 3401
+    },
+    {
+      "question_id": 268,
+      "db_id": "toxicology",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT T1.element FROM atom AS T1 INNER JOIN connected AS T2 ON T1.atom_id = T2.atom_id WHERE T2.bond_id = 'TR001_10_11' UNION SELECT T1.element FROM atom AS T1 INNER JOIN connected AS T2 ON T1.atom_id = T2.atom_id2 WHERE T2.bond_id = 'TR001_10_11'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1522
+    },
+    {
+      "question_id": 273,
+      "db_id": "toxicology",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT CAST(SUM(CASE WHEN T1.element = 'cl' THEN 1 ELSE 0 END) AS REAL) * 100 / COUNT(T1.atom_id) FROM atom AS T1 INNER JOIN molecule AS T2 ON T1.molecule_id = T2.molecule_id WHERE T2.label = '+'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 3246
+    },
+    {
+      "question_id": 281,
+      "db_id": "toxicology",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT T1.element, COUNT(T1.element) FROM atom AS T1 INNER JOIN molecule AS T2 ON T1.molecule_id = T2.molecule_id WHERE T2.label = '+' AND SUBSTR(T1.atom_id, 7, 1) = '4' GROUP BY T1.element",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1934
+    },
+    {
+      "question_id": 282,
+      "db_id": "toxicology",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT T1.label, CAST(SUM(CASE WHEN T2.element = 'h' THEN 1 ELSE 0 END) AS REAL) / COUNT(T2.element) FROM molecule AS T1 INNER JOIN atom AS T2 ON T1.molecule_id = T2.molecule_id WHERE T1.molecule_id = 'TR006'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1655
+    },
+    {
+      "question_id": 327,
+      "db_id": "toxicology",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT T1.molecule_id FROM molecule AS T1 INNER JOIN atom AS T2 ON T1.molecule_id = T2.molecule_id WHERE T1.label = '-' GROUP BY T1.molecule_id HAVING COUNT(T2.atom_id) > 5",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1420
+    },
+    {
+      "question_id": 5,
+      "db_id": "california_schools",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT COUNT(T1.CDSCode) FROM schools AS T1 INNER JOIN satscores AS T2 ON T1.CDSCode = T2.cds WHERE T2.AvgScrMath > 400 AND T1.Virtual = 'F'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1231
+    },
+    {
+      "question_id": 11,
+      "db_id": "california_schools",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT CDSCode FROM frpm WHERE `Enrollment (K-12)` + `Enrollment (Ages 5-17)` > 500",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 940
+    },
+    {
+      "question_id": 12,
+      "db_id": "california_schools",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT MAX(T1.`Percent (%) Eligible Free (Ages 5-17)`) FROM frpm AS T1 INNER JOIN satscores AS T2 ON T1.CDSCode = T2.cds WHERE CAST(T2.NumGE1500 AS REAL) / T2.NumTstTakr > 0.3",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1640
+    },
+    {
+      "question_id": 17,
+      "db_id": "california_schools",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT T1.sname, T1.AvgScrWrite, T2.CharterNum FROM satscores AS T1 INNER JOIN schools AS T2 ON T1.cds = T2.CDSCode WHERE T1.AvgScrWrite > 499 AND T2.CharterNum IS NOT NULL ORDER BY T1.AvgScrWrite DESC",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1825
+    },
+    {
+      "question_id": 23,
+      "db_id": "california_schools",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT T1.School, T1.Street, T1.City, T1.State, T1.Zip FROM schools AS T1 INNER JOIN frpm AS T2 ON T1.CDSCode = T2.CDSCode WHERE (T2.`Enrollment (K-12)` - T2.`Enrollment (Ages 5-17)`) > 30",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1679
+    },
+    {
+      "question_id": 24,
+      "db_id": "california_schools",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT T1.School FROM schools AS T1 INNER JOIN frpm AS T2 ON T1.CDSCode = T2.CDSCode INNER JOIN satscores AS T3 ON T1.CDSCode = T3.cds WHERE T2.\"Percent (%) Eligible Free (K-12)\" > 0.1 AND T3.NumGE1500 > 0",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 3190
+    },
+    {
+      "question_id": 25,
+      "db_id": "california_schools",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT T1.FundingType FROM schools AS T1 INNER JOIN satscores AS T2 ON T1.CDSCode = T2.cds WHERE T1.County = 'Riverside' AND T2.rtype = 'High' GROUP BY T1.CDSCode HAVING AVG(T2.AvgScrMath) > 400",
+      "model": "llama-3.3-70b-versatile",
+      "latency_ms": 5457
+    },
+    {
+      "question_id": 26,
+      "db_id": "california_schools",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT T1.School, T1.Street, T1.City, T1.State, T1.Zip FROM schools AS T1 INNER JOIN frpm AS T2 ON T1.CDSCode = T2.CDSCode WHERE T1.County = 'Monterey' AND T2.`High Grade` = '12' AND T2.`FRPM Count (Ages 5-17)` > 800",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 2033
+    },
+    {
+      "question_id": 27,
+      "db_id": "california_schools",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT T1.School, T2.AvgScrWrite, T1.Phone FROM schools AS T1 INNER JOIN satscores AS T2 ON T1.CDSCode = T2.cds WHERE T1.OpenDate > '1991-12-31' OR T1.ClosedDate < '2000-01-01'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 3626
+    },
+    {
+      "question_id": 28,
+      "db_id": "california_schools",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT T1.School, T1.DOCType FROM schools AS T1 INNER JOIN frpm AS T2 ON T1.CDSCode = T2.CDSCode WHERE T2.\"Enrollment (K-12)\" - T2.\"Enrollment (Ages 5-17)\" > (SELECT AVG(T3.\"Enrollment (K-12)\" - T3.\"Enrollment (Ages 5-17)\") FROM frpm AS T3 INNER JOIN schools AS T4 ON T3.CDSCode = T4.CDSCode WHERE T4.FundingType = 'Locally Funded')",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 2530
+    },
+    {
+      "question_id": 31,
+      "db_id": "california_schools",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT \"Free Meal Count (K-12)\" * 1.0 / \"Enrollment (K-12)\" FROM frpm ORDER BY \"Enrollment (K-12)\" DESC LIMIT 2 OFFSET 9",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1884
+    },
+    {
+      "question_id": 32,
+      "db_id": "california_schools",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT T1.`School Name`, CAST(T1.`FRPM Count (K-12)` AS REAL) / T1.`Enrollment (K-12)` FROM frpm AS T1 INNER JOIN schools AS T2 ON T1.CDSCode = T2.CDSCode WHERE T2.SOC = '66' AND T1.`Enrollment (K-12)` IS NOT NULL AND T1.`Enrollment (K-12)` != 0 ORDER BY T1.`FRPM Count (K-12)` DESC LIMIT 5",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1852
+    },
+    {
+      "question_id": 37,
+      "db_id": "california_schools",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT T1.Street, T1.City, T1.Zip, T1.State FROM schools AS T1 INNER JOIN satscores AS T2 ON T1.CDSCode = T2.cds WHERE T2.NumTstTakr > 0 ORDER BY CAST(T2.NumGE1500 AS REAL) * 1.0 / T2.NumTstTakr LIMIT 1",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1576
+    },
+    {
+      "question_id": 36,
+      "db_id": "california_schools",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT T2.AdmFName1, T2.AdmLName1, T2.AdmFName2, T2.AdmLName2, T2.AdmFName3, T2.AdmLName3 FROM satscores AS T1 INNER JOIN schools AS T2 ON T1.cds = T2.CDSCode ORDER BY T1.NumGE1500 DESC LIMIT 1",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1971
+    },
+    {
+      "question_id": 39,
+      "db_id": "california_schools",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT AVG(T2.NumTstTakr) FROM schools AS T1 INNER JOIN satscores AS T2 ON T1.CDSCode = T2.cds WHERE T1.County = 'Fresno' AND STRFTIME('%Y', T1.OpenDate) = '1980'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1209
+    },
+    {
+      "question_id": 40,
+      "db_id": "california_schools",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT T1.Phone FROM schools AS T1 INNER JOIN satscores AS T2 ON T1.CDSCode = T2.cds WHERE T2.dname = 'Fresno Unified' ORDER BY T2.AvgScrRead ASC LIMIT 1",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1238
+    },
+    {
+      "question_id": 41,
+      "db_id": "california_schools",
+      "lane": "free",
+      "outcome": "exec_error",
+      "predicted_sql": "SELECT T1.School FROM schools AS T1 INNER JOIN satscores AS T2 ON T1.CDSCode = T2.cds WHERE T1.Virtual = 'F' AND T2.AvgScrRead IS NOT NULL QUALIFY RANK() OVER (PARTITION BY T1.County ORDER BY T2.AvgScrRead DESC) <= 5",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1645,
+      "error": "near \"QUALIFY\": syntax error"
+    },
+    {
+      "question_id": 45,
+      "db_id": "california_schools",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT T1.School, T2.AvgScrWrite FROM schools AS T1 INNER JOIN satscores AS T2 ON T1.CDSCode = T2.cds WHERE (T1.AdmFName1 = 'Ricci' AND T1.AdmLName1 = 'Ulrich') OR (T1.AdmFName2 = 'Ricci' AND T1.AdmLName2 = 'Ulrich') OR (T1.AdmFName3 = 'Ricci' AND T1.AdmLName3 = 'Ulrich')",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 2166
+    },
+    {
+      "question_id": 46,
+      "db_id": "california_schools",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT T1.School FROM schools AS T1 INNER JOIN frpm AS T2 ON T1.CDSCode = T2.CDSCode WHERE T1.DOC = '31' ORDER BY T2.`Enrollment (K-12)` DESC LIMIT 1",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1369
+    },
+    {
+      "question_id": 47,
+      "db_id": "california_schools",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT CAST(COUNT(CDSCode) AS REAL) / 12 FROM schools WHERE County = 'Alameda' AND DOC = '52' AND strftime('%Y', OpenDate) = '1980'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1579
+    },
+    {
+      "question_id": 48,
+      "db_id": "california_schools",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT CAST(SUM(CASE WHEN T1.DOC = '54' AND T1.County = 'Orange' THEN 1 ELSE 0 END) AS REAL) / SUM(CASE WHEN T1.DOC = '52' THEN 1 ELSE 0 END) FROM schools AS T1",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1816
+    },
+    {
+      "question_id": 50,
+      "db_id": "california_schools",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT T1.School, T1.Street FROM schools AS T1 INNER JOIN satscores AS T2 ON T1.CDSCode = T2.cds WHERE T2.AvgScrMath IS NOT NULL ORDER BY T2.AvgScrMath DESC LIMIT 1 OFFSET 6",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1370
+    },
+    {
+      "question_id": 62,
+      "db_id": "california_schools",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT COUNT(T1.CDSCode) FROM schools AS T1 INNER JOIN frpm AS T2 ON T1.CDSCode = T2.CDSCode WHERE T1.County = 'Los Angeles' AND T1.Charter = 0 AND T2.`Percent (%) Eligible Free (K-12)` < 0.18",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 2124
+    },
+    {
+      "question_id": 72,
+      "db_id": "california_schools",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT T1.`Enrollment (Ages 5-17)` FROM frpm AS T1 INNER JOIN schools AS T2 ON T1.CDSCode = T2.CDSCode WHERE T1.`Academic Year` = '2014-2015' AND T2.EdOpsCode = 'SSS' AND T2.City = 'Fremont'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 3230
+    },
+    {
+      "question_id": 77,
+      "db_id": "california_schools",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT T1.School, (T2.\"FRPM Count (Ages 5-17)\" * 100.0 / T2.\"Enrollment (Ages 5-17)\") AS \"Percent (%) Eligible FRPM (Ages 5-17)\" FROM schools AS T1 INNER JOIN frpm AS T2 ON T1.CDSCode = T2.CDSCode WHERE T1.County = 'Los Angeles' AND T1.GSserved = 'K-9'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 2468
+    },
+    {
+      "question_id": 79,
+      "db_id": "california_schools",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT County, COUNT(CDSCode) AS NumberOfVirtualSchools FROM schools WHERE Virtual = 'F' AND County IN ('San Diego', 'Santa Barbara') GROUP BY County ORDER BY NumberOfVirtualSchools DESC LIMIT 1",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1765
+    },
+    {
+      "question_id": 82,
+      "db_id": "california_schools",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT GSoffered FROM schools ORDER BY Longitude DESC LIMIT 1",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1183
+    },
+    {
+      "question_id": 83,
+      "db_id": "california_schools",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT COUNT(DISTINCT T1.City) AS num_cities, T1.City, COUNT(T1.CDSCode) AS num_schools FROM schools AS T1 INNER JOIN frpm AS T2 ON T1.CDSCode = T2.CDSCode WHERE T1.Magnet = 1 AND T2.`Low Grade` = 'K' AND T2.`High Grade` = '8' AND T2.`NSLP Provision Status` = 'Multiple Provision Types' GROUP BY T1.City",
+      "model": "llama-3.3-70b-versatile",
+      "latency_ms": 5488
+    },
+    {
+      "question_id": 85,
+      "db_id": "california_schools",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT T1.`Percent (%) Eligible Free (K-12)`, T1.`District Code` FROM frpm AS T1 INNER JOIN schools AS T2 ON T1.CDSCode = T2.CDSCode WHERE T2.AdmFName1 = 'Alusine' OR T2.AdmFName2 = 'Alusine' OR T2.AdmFName3 = 'Alusine'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1605
+    },
+    {
+      "question_id": 87,
+      "db_id": "california_schools",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT AdmEmail1, AdmEmail2, AdmEmail3 FROM schools WHERE County = 'San Bernardino' AND City = 'San Bernardino' AND District = 'San Bernardino City Unified' AND OpenDate BETWEEN '2009-01-01' AND '2010-12-31' AND (SOC = '62' OR DOC = '54')",
+      "model": "llama-3.3-70b-versatile",
+      "latency_ms": 5353
+    },
+    {
+      "question_id": 89,
+      "db_id": "financial",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT COUNT(T1.account_id) FROM account AS T1 INNER JOIN district AS T2 ON T1.district_id = T2.district_id WHERE T1.frequency = 'POPLATEK PO OBRATU' AND T2.A3 = 'east Bohemia'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 2098
+    },
+    {
+      "question_id": 92,
+      "db_id": "financial",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT COUNT(DISTINCT T1.district_id) FROM district AS T1 INNER JOIN client AS T2 ON T1.district_id = T2.district_id WHERE T2.gender = 'F' AND T1.A11 > 6000 AND T1.A11 < 10000",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 3130
+    },
+    {
+      "question_id": 93,
+      "db_id": "financial",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT COUNT(T1.client_id) FROM client AS T1 INNER JOIN district AS T2 ON T1.district_id = T2.district_id WHERE T1.gender = 'M' AND T2.A3 = 'North Bohemia' AND T2.A11 > 8000",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1264
+    },
+    {
+      "question_id": 94,
+      "db_id": "financial",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "WITH oldest_female AS (SELECT client_id, district_id, birth_date FROM client WHERE gender = 'F' ORDER BY birth_date LIMIT 1), lowest_avg_salary AS (SELECT A11 FROM district WHERE district_id = (SELECT district_id FROM oldest_female) ORDER BY A11 LIMIT 1), highest_avg_salary AS (SELECT MAX(A11) AS max FROM district) SELECT (SELECT max FROM highest_avg_salary) - (SELECT A11 FROM lowest_avg_salary) AS gap",
+      "model": "llama-3.3-70b-versatile",
+      "latency_ms": 5494
+    },
+    {
+      "question_id": 95,
+      "db_id": "financial",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT T3.account_id FROM client AS T1 JOIN district AS T2 ON T1.district_id = T2.district_id JOIN disp AS T4 ON T1.client_id = T4.client_id JOIN account AS T3 ON T4.account_id = T3.account_id WHERE T1.birth_date = (SELECT MAX(birth_date) FROM client) AND T2.A11 = (SELECT MAX(A11) FROM district)",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 4798
+    },
+    {
+      "question_id": 98,
+      "db_id": "financial",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT T1.account_id FROM loan AS T1 INNER JOIN trans AS T2 ON T1.account_id = T2.account_id WHERE T1.status = 'A' AND T1.date LIKE '1997%' AND T2.operation = 'POPLATEK TYDNE' AND T1.amount = (SELECT MIN(amount) FROM loan WHERE date LIKE '1997%')",
+      "model": "llama-3.3-70b-versatile",
+      "latency_ms": 5398
+    },
+    {
+      "question_id": 99,
+      "db_id": "financial",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT T1.account_id FROM loan AS T1 INNER JOIN account AS T2 ON T1.account_id = T2.account_id WHERE T1.duration > 12 AND T2.date LIKE '1993%' AND T1.amount = (SELECT MAX(amount) FROM loan WHERE duration > 12 AND account_id IN (SELECT account_id FROM account WHERE date LIKE '1993%'))",
+      "model": "llama-3.3-70b-versatile",
+      "latency_ms": 5349
+    },
+    {
+      "question_id": 100,
+      "db_id": "financial",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT COUNT(T1.client_id) FROM client AS T1 INNER JOIN district AS T2 ON T1.district_id = T2.district_id WHERE T1.gender = 'F' AND T1.birth_date < '1950-01-01' AND T2.A2 = 'Sokolov'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1441
+    },
+    {
+      "question_id": 112,
+      "db_id": "financial",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT T4.A2 FROM client AS T1 INNER JOIN disp AS T2 ON T1.client_id = T2.client_id INNER JOIN account AS T3 ON T2.account_id = T3.account_id INNER JOIN district AS T4 ON T3.district_id = T4.district_id WHERE T1.gender = 'F' AND T1.birth_date = '1976-01-29'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1550
+    },
+    {
+      "question_id": 115,
+      "db_id": "financial",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT CAST(SUM(CASE WHEN T1.gender = 'M' THEN 1 ELSE 0 END) AS REAL) * 100.0 / COUNT(T1.client_id) FROM client AS T1 WHERE T1.district_id = (SELECT district_id FROM district WHERE A3 = 'south Bohemia' ORDER BY CAST(A4 AS INTEGER) DESC LIMIT 1)",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 4886
+    },
+    {
+      "question_id": 116,
+      "db_id": "financial",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "WITH approved_loan AS (SELECT account_id, date FROM loan WHERE status = 'A' AND date = '1993-07-05'), client_account AS (SELECT T1.account_id, T2.balance FROM account AS T1 INNER JOIN trans AS T2 ON T1.account_id = T2.account_id WHERE T2.date = '1998-12-27' AND T1.account_id IN (SELECT account_id FROM approved_loan)), client_account_2 AS (SELECT T1.account_id, T2.balance FROM account AS T1 INNER JOIN trans AS T2 ON T1.account_id = T2.account_id WHERE T2.date = '1993-03-22' AND T1.account_id IN (SELECT account_id FROM approved_loan)) SELECT ((T1.balance - T2.balance) / T2.balance) * 100 FROM client_account AS T1 INNER JOIN client_account_2 AS T2 ON T1.account_id = T2.account_id",
+      "model": "llama-3.3-70b-versatile",
+      "latency_ms": 5732
+    },
+    {
+      "question_id": 117,
+      "db_id": "financial",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT SUM(CASE WHEN status = 'A' THEN amount ELSE 0 END) * 100.0 / SUM(amount) FROM loan",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1023
+    },
+    {
+      "question_id": 118,
+      "db_id": "financial",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT CAST(SUM(CASE WHEN T1.status = 'C' THEN 1 ELSE 0 END) AS REAL) * 100 / COUNT(T1.account_id) FROM loan AS T1 WHERE T1.amount < 100000",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1656
+    },
+    {
+      "question_id": 125,
+      "db_id": "financial",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT T3.A2, ((T3.A13 - T3.A12) * 100.0 / T3.A12) FROM loan AS T1 INNER JOIN account AS T2 ON T1.account_id = T2.account_id INNER JOIN district AS T3 ON T2.district_id = T3.district_id WHERE T1.status = 'D'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 2603
+    },
+    {
+      "question_id": 128,
+      "db_id": "financial",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT T1.A2, COUNT(T2.client_id) AS num_female_holders FROM district AS T1 INNER JOIN client AS T2 ON T1.district_id = T2.district_id WHERE T2.gender = 'F' GROUP BY T1.A2 ORDER BY num_female_holders DESC LIMIT 9",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1343
+    },
+    {
+      "question_id": 136,
+      "db_id": "financial",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT COUNT(T1.loan_id) FROM loan AS T1 INNER JOIN account AS T2 ON T1.account_id = T2.account_id WHERE T1.date BETWEEN '1995-01-01' AND '1997-12-31' AND T1.amount >= 250000 AND T2.frequency = 'POPLATEK MESICNE' AND T1.status = 'A'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1492
+    },
+    {
+      "question_id": 129,
+      "db_id": "financial",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT T3.A2, SUM(T1.amount) AS total_withdrawal FROM trans AS T1 INNER JOIN account AS T2 ON T1.account_id = T2.account_id INNER JOIN district AS T3 ON T2.district_id = T3.district_id WHERE T1.type = 'VYDAJ' AND T1.date LIKE '1996-01%' GROUP BY T3.A2 ORDER BY total_withdrawal DESC LIMIT 10",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 2288
+    },
+    {
+      "question_id": 137,
+      "db_id": "financial",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT COUNT(DISTINCT T1.account_id) FROM account AS T1 INNER JOIN loan AS T2 ON T1.account_id = T2.account_id INNER JOIN district AS T3 ON T1.district_id = T3.district_id WHERE T2.status IN ('C', 'D') AND T3.A3 = '1'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1874
+    },
+    {
+      "question_id": 138,
+      "db_id": "financial",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT COUNT(T1.client_id) FROM client AS T1 INNER JOIN district AS T2 ON T1.district_id = T2.district_id WHERE T1.gender = 'M' AND T2.district_id = (SELECT district_id FROM district WHERE A15 IS NOT NULL ORDER BY A15 DESC LIMIT 1 OFFSET 1)",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1824
+    },
+    {
+      "question_id": 145,
+      "db_id": "financial",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT T1.client_id FROM disp AS T1 INNER JOIN trans AS T2 ON T1.account_id = T2.account_id WHERE T2.operation = 'VYBER KARTOU' AND strftime('%Y', T2.date) = '1998' AND T2.amount < (SELECT AVG(amount) FROM trans WHERE operation = 'VYBER KARTOU' AND strftime('%Y', date) = '1998')",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1938
+    },
+    {
+      "question_id": 149,
+      "db_id": "financial",
+      "lane": "free",
+      "outcome": "exec_error",
+      "predicted_sql": "SELECT T1.type FROM account AS T1 INNER JOIN district AS T2 ON T1.district_id = T2.district_id WHERE T1.frequency != 'OWNER' AND T2.A11 > 8000 AND T2.A11 <= 9000",
+      "model": "llama-3.3-70b-versatile",
+      "latency_ms": 5408,
+      "error": "no such column: T1.type"
+    },
+    {
+      "question_id": 152,
+      "db_id": "financial",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT AVG(T1.A15) FROM district AS T1 INNER JOIN account AS T2 ON T1.district_id = T2.district_id WHERE T1.A15 > 4000 AND STRFTIME('%Y', T2.date) >= '1997'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 2742
+    },
+    {
+      "question_id": 159,
+      "db_id": "financial",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT T1.* FROM trans AS T1 INNER JOIN account AS T2 ON T1.account_id = T2.account_id INNER JOIN disp AS T3 ON T2.account_id = T3.account_id WHERE T3.client_id = 3356 AND T1.operation = 'VYBER'",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1736
+    },
+    {
+      "question_id": 168,
+      "db_id": "financial",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT CAST(SUM(CASE WHEN T3.gender = 'F' THEN 1 ELSE 0 END) AS REAL) * 100 / COUNT(T3.client_id) FROM district AS T1 INNER JOIN account AS T2 ON T1.district_id = T2.district_id INNER JOIN disp AS T4 ON T2.account_id = T4.account_id INNER JOIN client AS T3 ON T4.client_id = T3.client_id WHERE T1.A11 > 10000",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 1732
+    },
+    {
+      "question_id": 169,
+      "db_id": "financial",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT (SUM(CASE WHEN strftime('%Y', T4.date) = '1997' THEN T4.amount ELSE 0 END) - SUM(CASE WHEN strftime('%Y', T4.date) = '1996' THEN T4.amount ELSE 0 END)) * 100.0 / SUM(CASE WHEN strftime('%Y', T4.date) = '1996' THEN T4.amount ELSE 0 END) FROM client AS T1 INNER JOIN disp AS T2 ON T1.client_id = T2.client_id INNER JOIN account AS T3 ON T2.account_id = T3.account_id INNER JOIN loan AS T4 ON T3.account_id = T4.account_id WHERE T1.gender = 'M' AND strftime('%Y', T4.date) IN ('1996', '1997')",
+      "model": "gemini-2.5-flash",
+      "latency_ms": 3068
+    },
+    {
+      "question_id": 173,
+      "db_id": "financial",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT COUNT(order_id), SUM(amount) FROM `order` WHERE account_id = 3 AND k_symbol = 'debiting 3539 in total'",
+      "model": "llama-3.3-70b-versatile",
+      "latency_ms": 5404
+    },
+    {
+      "question_id": 186,
+      "db_id": "financial",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT CAST(SUM(CASE WHEN T1.gender = 'M' THEN 1 ELSE 0 END) AS REAL) * 100 / COUNT(T1.client_id) FROM client AS T1 INNER JOIN disp AS T2 ON T1.client_id = T2.client_id INNER JOIN account AS T3 ON T2.account_id = T3.account_id WHERE T3.frequency = 'POPLATEK TYDNE'",
+      "model": "llama-3.3-70b-versatile",
+      "latency_ms": 5577
+    },
+    {
+      "question_id": 189,
+      "db_id": "financial",
+      "lane": "free",
+      "outcome": "match",
+      "predicted_sql": "SELECT T1.account_id FROM account AS T1 INNER JOIN disp AS T2 ON T1.account_id = T2.account_id INNER JOIN client AS T3 ON T2.client_id = T3.client_id INNER JOIN district AS T4 ON T3.district_id = T4.district_id WHERE T3.gender = 'F' ORDER BY T3.birth_date ASC, T4.A11 ASC LIMIT 1",
+      "model": "llama-3.3-70b-versatile",
+      "latency_ms": 5417
+    },
+    {
+      "question_id": 192,
+      "db_id": "financial",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT AVG(T1.amount) FROM loan AS T1 INNER JOIN trans AS T2 ON T1.account_id = T2.account_id WHERE T1.status IN ('C', 'D') AND T2.operation = 'POPLATEK PO OBRATU'",
+      "model": "llama-3.3-70b-versatile",
+      "latency_ms": 521
+    },
+    {
+      "question_id": 194,
+      "db_id": "financial",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT T1.client_id, (strftime('%Y', '2024-01-01') - strftime('%Y', T1.birth_date)) AS age FROM client AS T1 INNER JOIN disp AS T2 ON T1.client_id = T2.client_id INNER JOIN card AS T3 ON T2.disp_id = T3.card_id WHERE T3.type = 'gold' AND T2.type = 'OWNER'",
+      "model": "llama-3.3-70b-versatile",
+      "latency_ms": 560
+    },
+    {
+      "question_id": 119,
+      "db_id": "financial",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT T1.account_id, T3.A2, T3.A3 FROM trans AS T1 INNER JOIN account AS T2 ON T1.account_id = T2.account_id INNER JOIN district AS T3 ON T2.district_id = T3.district_id WHERE T1.type = 'POPLATEK PO OBRATU' AND T2.date LIKE '1993%' AND T1.date > T2.date",
+      "model": "llama-3.3-70b-versatile",
+      "latency_ms": 413
+    },
+    {
+      "question_id": 120,
+      "db_id": "financial",
+      "lane": "free",
+      "outcome": "mismatch",
+      "predicted_sql": "SELECT T1.account_id, T1.frequency FROM account AS T1 INNER JOIN district AS T2 ON T1.district_id = T2.district_id WHERE T2.A2 = 'east Bohemia' AND T1.date BETWEEN '1995-01-01' AND '2000-12-31'",
+      "model": "llama-3.3-70b-versatile",
+      "latency_ms": 345
+    }
+  ]
+}
