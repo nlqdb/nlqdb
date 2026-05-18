@@ -745,6 +745,77 @@ h3 {
   color: var(--fg-muted);
 }
 
+/* SK-WEB-010 — Embed snippet on the marketing create result.
+   Key is intentionally a placeholder; the CTA below sends the user
+   to sign-in so the chat's Copy snippet can inline the real value. */
+.createresult__snippet {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px;
+  background: var(--bg);
+  border: 1px dashed var(--border-strong);
+}
+
+.createresult__snippet-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.createresult__snippet-title {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 13px;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.createresult__snippet-copy {
+  font-size: 12px;
+  padding: 4px 12px;
+}
+
+.createresult__snippet-code {
+  margin: 0;
+  padding: 12px;
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  font-family: var(--mono);
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--fg);
+  overflow-x: auto;
+  white-space: pre;
+}
+
+.createresult__snippet-code code {
+  background: transparent;
+  padding: 0;
+  border: 0;
+}
+
+.createresult__snippet-hint {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--fg-dim);
+  line-height: 1.55;
+}
+
+.createresult__snippet-hint code {
+  font-size: 12px;
+  padding: 1px 4px;
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+}
+
+.createresult__snippet-cta {
+  align-self: flex-start;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .heroinput__note .dot {
     animation: none;

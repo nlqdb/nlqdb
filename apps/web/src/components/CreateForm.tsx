@@ -213,6 +213,62 @@ function CreateResultView({ result }: { result: CreateResult }) {
       {grouped.map((tbl) => (
         <SampleTable key={tbl.table} table={tbl.table} rows={tbl.rows} />
       ))}
+      <CreateSnippetView primaryTable={grouped[0]?.table} />
+    </section>
+  );
+}
+
+// SK-WEB-010 — Marketing-page Copy-snippet shows the embed shape but
+// defers key inlining to the chat. The just-created anon DB has burned
+// its 1-call SK-ANON-012 budget, so an inlined anon `pk_live_` would
+// 401 on the element's first fetch. Sign-in adopts the DB
+// (SK-ANON-003) and rotates the key to permanent (SK-WEB-007); the
+// post-sign-in chat is then the one place where Copy-snippet inlines
+// a working key.
+function CreateSnippetView({ primaryTable }: { primaryTable: string | undefined }) {
+  const goal = primaryTable ? `the 5 newest rows from ${primaryTable}` : "show me 5 rows";
+  const snippet = `<script src="https://elements.nlqdb.com/v1.js" type="module"></script>
+
+<nlq-data
+  goal="${goal}"
+  api-key="pk_live_REPLACE_ME"
+  template="table"
+></nlq-data>`;
+  const [copied, setCopied] = useState(false);
+
+  async function onCopy() {
+    try {
+      await navigator.clipboard.writeText(snippet);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1500);
+    } catch {
+      // Clipboard API can fail under non-secure contexts or extension
+      // policy; the user can still triple-click the <pre> to copy.
+    }
+  }
+
+  return (
+    <section className="createresult__snippet" aria-label="Embed snippet">
+      <div className="createresult__snippet-head">
+        <h3 className="createresult__snippet-title">Embed this DB</h3>
+        <button
+          type="button"
+          className="btn createresult__snippet-copy"
+          onClick={() => void onCopy()}
+        >
+          {copied ? "Copied" : "Copy"}
+        </button>
+      </div>
+      <pre className="createresult__snippet-code">
+        <code>{snippet}</code>
+      </pre>
+      <p className="createresult__snippet-hint">
+        Sign in to keep this DB and reveal your <code>pk_live_</code>. Every chat answer has a{" "}
+        <strong>Copy snippet</strong> action that inlines the working key automatically.
+      </p>
+      <a className="btn btn--accent createresult__snippet-cta" href="/auth/sign-in?return_to=/app">
+        Sign in to continue →
+      </a>
     </section>
   );
 }
