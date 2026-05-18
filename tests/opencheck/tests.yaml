@@ -10,17 +10,17 @@
 # Runtime substitution: the caller workflow renders `__BASE_URL__` to the
 # per-run preview alias via `sed` before invoking `bunx opencheck`.
 #
-# LLM: Groq via OpenAI-compat (https://console.groq.com/docs/openai).
-# Current: `meta-llama/llama-4-scout-17b-16e-instruct`
-# Cold-cache run: ~360 K tokens (20 tests × ~6 calls × 3 K tokens with snapshot
-# truncation). Budget: 500 K TPD — leaves ~140 K headroom for a debug pass.
-# Fallback: swap model line to `llama-3.3-70b-versatile` (12 K TPM, 100 K TPD).
+# LLM: Mistral via OpenAI-compat (https://docs.mistral.ai/api/).
+# Current: `mistral-small-latest`
+# Budget: 50K TPM, ~1B tokens/month, 50 RPM, 128K ctx.
+# Fallback: swap to Groq llama-4-scout + update OPENAI_BASE_URL in workflow.
 #
 # Pivot history (newest first — researched 2026-05-18):
-#   6. meta-llama/llama-4-scout-17b-16e-instruct [CURRENT] — Groq, 30K TPM, 500K TPD,
-#      1000 RPM, 512K ctx, function calling, best free agent model 2026-05-18
-#   5. llama-3.3-70b-versatile — Groq, 12K TPM, 100K TPD (not 1M as assumed); one
-#      cold run exhausts daily quota
+#   7. mistral-small-latest [CURRENT] — Mistral, 50K TPM, ~1B/month, 128K ctx,
+#      50 RPM; switched from Groq after Groq TPD exhausted on run #32
+#   6. meta-llama/llama-4-scout-17b-16e-instruct — Groq, 30K TPM, 500K TPD,
+#      1000 RPM, 512K ctx; exhausted 500K TPD on single run #32 (2026-05-18)
+#   5. llama-3.3-70b-versatile — Groq, 12K TPM, 100K TPD (not 1M as assumed)
 #   4. openai/gpt-oss-120b — Groq, 8K TPM + hidden reasoning_tokens → 85-90s/call
 #   3. llama-4-scout early — Groq, 500K TPD but quota drained by debug runs
 #   2. OpenRouter qwen3-coder:free — 429 on first call; shared upstream pool
@@ -35,7 +35,7 @@
 
 baseUrl: "__BASE_URL__"
 modelProvider: "openai"
-model: "meta-llama/llama-4-scout-17b-16e-instruct"
+model: "mistral-small-latest"
 
 # Persistent session shares cookies + localStorage across tests so the
 # agent doesn't have to re-walk the prereq chain from a clean profile
@@ -53,29 +53,26 @@ recording:
 tests:
   - name: "#hero-or-cmdg"
     case: |
-      Navigate to the base URL. Press Ctrl+G (Cmd+G on Mac) to reveal
-      the cmd+g-gated hero. The page's #hero-gate div starts with the
-      HTML `hidden` attribute; Ctrl+G removes it. After pressing the
-      key, call browser_evaluate with
-        document.getElementById('hero-gate')?.hidden
-      — it must return false. Then call browser_snapshot and confirm
-      a text input with placeholder "an orders tracker" appears in
-      the accessibility tree. (The waitlist email input is not the
-      target — its placeholder is different.)
+      Navigate to the base URL. Press Control+G (Cmd+G on Mac) to
+      reveal the hero create form. After pressing the key, call
+      browser_snapshot. The accessibility tree must contain a text
+      input with placeholder "an orders tracker" — this input is
+      inside a div that starts with the HTML `hidden` attribute and
+      only appears in the snapshot after Control+G removes it. Use
+      browser_snapshot to verify (not browser_evaluate or DOM
+      queries, which can find hidden elements). If the input is
+      absent from the snapshot, the test fails. (The waitlist email
+      input has a different placeholder — do not confuse them.)
 
   - name: "#create-table-anon"
     case: |
       #hero-or-cmdg, then in the input with placeholder "an orders
       tracker" type
         create a users table with id, name, email
-      and submit. Wait for the response. Use browser_evaluate to
-      verify the result:
-        document.querySelector('.createresult__schema')?.textContent
-      must contain "Provisioned with". Also verify a "Users" table
-      heading appears by checking
-        document.querySelector('.createresult__table-name')?.textContent
-      contains "Users" (case-insensitive). id, name, email columns
-      should be present.
+      and submit. Wait for the response. Call browser_snapshot and
+      verify: text containing "Provisioned with" is visible in the
+      result, and a table section headed "Users" with columns id,
+      name, email is rendered.
 
   - name: "#add-row-redirects-to-auth"
     case: |

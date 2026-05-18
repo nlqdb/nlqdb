@@ -131,8 +131,8 @@ Top 5 free models for agentic/tool-use E2E runs — verified via live rate-limit
 
 | Model | Provider | TPM | Daily budget | Context | Notes |
 |---|---|---|---|---|---|
-| `meta-llama/llama-4-scout-17b-16e-instruct` | Groq | 30 K | 500 K TPD | 512 K | **Primary.** Fast ReAct, proper function calling, 1000 RPM |
-| `mistral-small-latest` | Mistral | 50 K | ~1 B/month | 128 K | Highest TPM headroom; OpenAI-compat endpoint; good fallback |
+| `mistral-small-latest` | Mistral | 50 K | ~1 B/month | 128 K | **Current.** 50 RPM; switched from Groq (run #32 exhausted TPD) |
+| `meta-llama/llama-4-scout-17b-16e-instruct` | Groq | 30 K | 500 K TPD | 512 K | Primary until run #32 exhausted TPD (2026-05-18) |
 | `llama-3.3-70b-versatile` | Groq | 12 K | 100 K TPD | 128 K | Stronger reasoning; tighter daily budget (one cold run exhausts it) |
 | `llama3.1-8b` | Cerebras | 30 K | 1 M TPD | 8 K (free cap) | Largest daily budget; constrained by 5 RPM + 8 K ctx — not viable for long ReAct chains |
 | `meta/llama-3.1-70b-instruct` | NVIDIA NIM | credits-based | 40 RPM | 128 K | Reliable fallback when Groq quota is exhausted; credits-based not purely free |

@@ -1,5 +1,4 @@
-# Reusable: run opencheck against a given baseUrl with Groq
-# (`meta-llama/llama-4-scout-17b-16e-instruct`) through the OpenAI-compatible endpoint.
+# Reusable: run opencheck against a given baseUrl via the OpenAI-compatible endpoint.
 # The `workflow_call` trigger means this file never appears in the
 # manual-dispatch list — callers (see `e2e-opencheck.yml`) drive it.
 #
@@ -8,16 +7,14 @@
 #   ecosystem). Provider-specific LangChain packages outside the v1
 #   range cause a peer-dep split (two copies of core at runtime, broken
 #   types). `@langchain/openai` v1.4.5 is on the same v1 ecosystem and
-#   works cleanly. Groq exposes a native OpenAI-compatible endpoint
-#   (https://console.groq.com/docs/openai), so pointing ChatOpenAI at
-#   it with the Groq key is the no-upstream-change path.
+#   works cleanly. Both Groq and Mistral expose OpenAI-compatible endpoints,
+#   so swapping providers is an env-var change with no code changes.
 #
-# Model history (see tests.yaml for the full pivot log):
-#   - llama-4-scout-17b-16e-instruct: current. 30 K TPM, 500 K TPD.
-#     With snapshot truncation at 3 K chars, one full run consumes
-#     ~360 K tokens — leaves ~140 K daily headroom for a debug pass.
-#   - llama-3.3-70b-versatile (runs #27-#28): only 100 K TPD (not 1 M
-#     as assumed). Cold-cache run needs ~360 K → exhausted after one run.
+# Current: Mistral mistral-small-latest. 50 K TPM, ~1 B tokens/month.
+# Fallback: Groq llama-4-scout-17b-16e-instruct — 30 K TPM, 500 K TPD.
+#   Groq exhausted its 500 K TPD on run #32 (2026-05-18); switch back
+#   when the daily quota resets. Update OPENAI_API_KEY/OPENAI_BASE_URL
+#   and model in tests.yaml (see full pivot log there).
 
 name: E2E opencheck (reusable)
 
@@ -29,8 +26,8 @@ on:
         required: true
         type: string
     secrets:
-      GROQ_API_KEY:
-        description: "Groq API key. Surfaced to ChatOpenAI via OPENAI_API_KEY + Groq OpenAI-compat base URL."
+      LLM_API_KEY:
+        description: "LLM API key for the active provider. Surfaced via OPENAI_API_KEY + provider-specific OPENAI_BASE_URL."
         required: true
 
 # SK-CIPERM-001 — default-deny at workflow root.
@@ -56,11 +53,12 @@ jobs:
       BASE_URL: ${{ inputs.base_url }}
       # @langchain/openai's ChatOpenAI delegates to the OpenAI Node SDK,
       # which reads OPENAI_API_KEY + OPENAI_BASE_URL from env. Pointing
-      # OPENAI_BASE_URL at Groq's OpenAI-compat endpoint routes every
-      # /chat/completions call to Groq while keeping the SDK surface
-      # identical.
-      OPENAI_API_KEY: ${{ secrets.GROQ_API_KEY }}
-      OPENAI_BASE_URL: https://api.groq.com/openai/v1
+      # OPENAI_BASE_URL at the provider's OpenAI-compat endpoint routes
+      # every /chat/completions call there while keeping the SDK surface
+      # identical. Swap provider by changing LLM_API_KEY + OPENAI_BASE_URL
+      # + model in tests.yaml (see pivot log there).
+      OPENAI_API_KEY: ${{ secrets.LLM_API_KEY }}
+      OPENAI_BASE_URL: https://api.mistral.ai/v1
       # Dump every LangChain step (model start/end, tool calls, tool
       # results) to stdout so the job log captures the full agent
       # loop. Without this we only see opencheck's high-level
