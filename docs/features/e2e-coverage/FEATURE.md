@@ -125,6 +125,20 @@ commentary is nested under the rule.
 - **GLOBAL-014** — OTel span on every external call.
   - *In this feature:* journey tests run against a real staging API, so every external call already has a span by the time it reaches the persona test. The test harness does not introduce its own external calls outside of staging itself.
 
+## Free LLM model selection (opencheck)
+
+Top 5 free models for agentic/tool-use E2E runs — verified via live rate-limit API checks on 2026-05-18. Each run consumes ~360 K tokens cold (20 tests × ~6 LLM calls × 3 K tokens after snapshot truncation).
+
+| Model | Provider | TPM | Daily budget | Context | Notes |
+|---|---|---|---|---|---|
+| `meta-llama/llama-4-scout-17b-16e-instruct` | Groq | 30 K | 500 K TPD | 512 K | **Primary.** Fast ReAct, proper function calling, 1000 RPM |
+| `mistral-small-latest` | Mistral | 50 K | ~1 B/month | 128 K | Highest TPM headroom; OpenAI-compat endpoint; good fallback |
+| `llama-3.3-70b-versatile` | Groq | 12 K | 100 K TPD | 128 K | Stronger reasoning; tighter daily budget (one cold run exhausts it) |
+| `llama3.1-8b` | Cerebras | 30 K | 1 M TPD | 8 K (free cap) | Largest daily budget; constrained by 5 RPM + 8 K ctx — not viable for long ReAct chains |
+| `meta/llama-3.1-70b-instruct` | NVIDIA NIM | credits-based | 40 RPM | 128 K | Reliable fallback when Groq quota is exhausted; credits-based not purely free |
+
+**Switching model:** change the `model:` line in `tests/opencheck/tests.yaml` and update `OPENAI_BASE_URL` + `OPENAI_API_KEY` in `_e2e-opencheck.yml` secrets/env to point at the new provider's OpenAI-compat endpoint.
+
 ## Open questions / known unknowns
 
 - **Cassette staleness cron.** Cassettes are committed and replayed; if the live API's wire shape drifts, cassettes lie until re-recorded. Decide whether to run a weekly cron that re-records cassettes against staging and opens a PR with the diff (similar pattern to [`quality-eval/FEATURE.md`](../quality-eval/FEATURE.md)'s weekly accuracy cron) or to leave re-recording manual until staleness bites. Lean: manual until first staleness incident; promote to cron if it bites more than once.

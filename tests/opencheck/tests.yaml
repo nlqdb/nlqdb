@@ -10,32 +10,32 @@
 # Runtime substitution: the caller workflow renders `__BASE_URL__` to the
 # per-run preview alias via `sed` before invoking `bunx opencheck`.
 #
-# LLM: Groq `openai/gpt-oss-120b` via OpenAI-compat
-# (https://console.groq.com/docs/openai). Two failed pivots stand
-# behind this choice:
-#   1. Gemini 2.5 Flash — run #17's LANGCHAIN_VERBOSE log surfaced
-#      systematic `429 status code (no body)` errors costing
-#      ~75-87 s per call from Gemini's 10 RPM free-tier ceiling.
-#   2. OpenRouter `qwen/qwen3-coder:free` — run #19's same verbose
-#      log surfaced `429 Provider returned error` on the FIRST LLM
-#      call of the FIRST test, on a brand-new run with no quota
-#      yet burned. The `:free` upstream pool is rate-limited by
-#      the upstream provider (Together / Fireworks / etc) and the
-#      pool is shared across ALL OpenRouter users globally —
-#      $10 in account credits only lifts OpenRouter's per-account
-#      cap, not the upstream pool. Free models on OpenRouter are
-#      not viable for our ~140-200 calls/run load.
-# Groq's 30 RPM / 1,000 RPD / 12 K TPM is a real dedicated quota
-# on a key we own (no shared pool), and `gpt-oss-120b` is OpenAI's
-# open-weights model explicitly trained for "high-capability
-# autonomous agents with advanced reasoning, tool use, and
-# multi-step problem solving" — the closest free fit for opencheck's
-# ReAct loop. Fallback: `llama-3.3-70b-versatile` (same provider,
-# same key, swap the `model:` line).
+# LLM: Groq via OpenAI-compat (https://console.groq.com/docs/openai).
+# Current: `meta-llama/llama-4-scout-17b-16e-instruct`
+# Cold-cache run: ~360 K tokens (20 tests × ~6 calls × 3 K tokens with snapshot
+# truncation). Budget: 500 K TPD — leaves ~140 K headroom for a debug pass.
+# Fallback: swap model line to `llama-3.3-70b-versatile` (12 K TPM, 100 K TPD).
+#
+# Pivot history (newest first — researched 2026-05-18):
+#   6. meta-llama/llama-4-scout-17b-16e-instruct [CURRENT] — Groq, 30K TPM, 500K TPD,
+#      1000 RPM, 512K ctx, function calling, best free agent model 2026-05-18
+#   5. llama-3.3-70b-versatile — Groq, 12K TPM, 100K TPD (not 1M as assumed); one
+#      cold run exhausts daily quota
+#   4. openai/gpt-oss-120b — Groq, 8K TPM + hidden reasoning_tokens → 85-90s/call
+#   3. llama-4-scout early — Groq, 500K TPD but quota drained by debug runs
+#   2. OpenRouter qwen3-coder:free — 429 on first call; shared upstream pool
+#   1. Gemini 2.5 Flash — 10 RPM ceiling; 75-87s silent-retry tax
+#
+# Top 5 free LLM models for agentic/tool-use (verified 2026-05-18):
+#   1. Groq meta-llama/llama-4-scout-17b-16e-instruct — 30K TPM, 500K TPD, 512K ctx, fast ReAct; our primary
+#   2. Mistral mistral-small-latest — 50K TPM, 50 RPM, ~1B tokens/month, 128K ctx; best TPM headroom
+#   3. Groq llama-3.3-70b-versatile — 12K TPM, 100K TPD, 128K ctx; stronger reasoning, tighter daily budget
+#   4. Cerebras llama3.1-8b — 30K TPM, 1M TPD, 5 RPM, 8K ctx (free cap); high daily but RPM+ctx constrained
+#   5. NVIDIA NIM meta/llama-3.1-70b-instruct — credits-based, 40 RPM, 128K ctx; reliable fallback
 
 baseUrl: "__BASE_URL__"
 modelProvider: "openai"
-model: "openai/gpt-oss-120b"
+model: "meta-llama/llama-4-scout-17b-16e-instruct"
 
 # Persistent session shares cookies + localStorage across tests so the
 # agent doesn't have to re-walk the prereq chain from a clean profile
