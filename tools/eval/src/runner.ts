@@ -27,6 +27,7 @@ export type RunOptions = {
   limit?: number;
   outDir?: string;
   sqlTimeoutMs?: number;
+  // Test injection points — production callers leave these unset so unit tests can stub the router and writer.
   buildLanes?: typeof buildLanes;
   writeReport?: typeof writeReport;
 };
