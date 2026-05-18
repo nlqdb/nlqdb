@@ -21,6 +21,8 @@ import type { EventEnvelope, ProductEvent } from "./types.ts";
 export type {
   AskCompletedEvent,
   EventEnvelope,
+  FeatureEvalRegressionEvent,
+  FeatureEvalWeeklyEvent,
   FeatureRequestedDdlViaAskEvent,
   FeatureRequestedHeavierTierEvent,
   HomeSurfaceWishlistEvent,
@@ -119,6 +121,17 @@ function defaultId(event: ProductEvent): string {
       // ranks by surface, so collapsing to one event-per-visitor-per-day
       // would erase the comparison.
       return `${event.name}.${event.principalId}.${event.surface}.${utcDay()}`;
+    case "feature.eval.weekly":
+      // One weekly summary per run; `runId` is the eval-start ISO
+      // timestamp so workflow retries of the same run dedupe at the
+      // sink. Dataset is part of the key so future Spider-2-lite runs
+      // don't collide with BIRD Mini-Dev on the same day.
+      return `${event.name}.${event.dataset}.${event.runId}`;
+    case "feature.eval.regression":
+      // (run, lane, trigger) is the unique tuple — threshold + McNemar
+      // can both fire for the same lane in the same run, but each
+      // distinct trigger is its own signal the on-call should see.
+      return `${event.name}.${event.dataset}.${event.runId}.${event.lane}.${event.trigger}`;
     default: {
       const _exhaustive: never = event;
       return `evt.${crypto.randomUUID()}`;

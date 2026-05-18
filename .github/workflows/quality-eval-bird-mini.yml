@@ -7,11 +7,13 @@
 name: Quality eval — BIRD Mini-Dev
 
 on:
-  # Daily 04:00 UTC (off-peak for free-tier LLM providers and Cloudflare
-  # Workers AI quota — Gemini Flash RPD resets at PT midnight). E2E uses
-  # the same pattern.
+  # Weekly Mon 04:00 UTC per SK-QUAL-002 (BIRD/Spider move on the scale
+  # of model releases; weekly is enough cadence to catch real
+  # regressions without burning free-tier daily provider quotas). 04:00
+  # UTC sits in the cross-region quiet window between US/EU traffic
+  # peaks. Monday gives the EU work-week the freshest signal.
   schedule:
-    - cron: "0 4 * * *"
+    - cron: "0 4 * * 1"
   workflow_dispatch:
     inputs:
       limit:
@@ -20,6 +22,10 @@ on:
         required: false
       include_frontier:
         description: "Run the frontier lane too (paid OpenRouter)"
+        type: boolean
+        default: false
+      skip_emit:
+        description: "Skip POSTing the report to /v1/events/eval (default false)"
         type: boolean
         default: false
 
@@ -93,17 +99,42 @@ jobs:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
           CF_AI_TOKEN: ${{ secrets.CF_AI_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          # Frontier chain — opt-in for manual runs. Daily cron skips
+          # Frontier chain — opt-in for manual runs. Weekly cron skips
           # frontier to preserve the OpenRouter paid budget.
           OPENROUTER_FRONTIER_API_KEY: ${{ inputs.include_frontier == true && secrets.OPENROUTER_FRONTIER_API_KEY || '' }}
+          # SK-QUAL-002: API URL + bearer token for the typed event
+          # fanout. `EVAL_API_URL` defaults to prod app domain; override
+          # via workflow input for staging runs once a staging worker
+          # exists. Token is the GH-secret mirror of the Workers Secret.
+          EVAL_API_URL: ${{ vars.EVAL_API_URL || 'https://app.nlqdb.com' }}
+          EVAL_INGEST_TOKEN: ${{ secrets.EVAL_INGEST_TOKEN }}
+          SKIP_EMIT: ${{ inputs.skip_emit == true }}
         run: |
           set -euo pipefail
           limit="${{ inputs.limit || '500' }}"
+          # Baseline comparison: pin to `baseline-2026-06-15.json` per
+          # SK-QUAL-005. The file is committed at repo root of the eval
+          # workspace; weekly runs diff against it and emit
+          # feature.eval.regression on threshold/McNemar trigger.
+          baseline_arg=""
+          if [ -f baseline-2026-06-15.json ]; then
+            baseline_arg="--baseline baseline-2026-06-15.json"
+          fi
+          # Event-pipeline emit: skip on workflow_dispatch when the
+          # operator opted out, or when the token is unset (matches the
+          # SK-EVENTS-005 unconfigured-sink posture).
+          emit_args=""
+          if [ "$SKIP_EMIT" != "true" ] && [ -n "${EVAL_INGEST_TOKEN:-}" ]; then
+            emit_args="--emit-url $EVAL_API_URL --emit-token $EVAL_INGEST_TOKEN"
+          fi
+          # shellcheck disable=SC2086  # word-splitting on optional args is intentional
           bun src/runner.ts \
             --data-dir ../../bird_data \
             --questions-json ../../bird_data/mini_dev_sqlite.json \
             --limit "$limit" \
-            --out results
+            --out results \
+            $baseline_arg \
+            $emit_args
 
       - name: Upload report JSON
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
@@ -138,4 +169,26 @@ jobs:
               "",
               "Free-vs-frontier delta: " + (if .free_vs_frontier_delta == null then "n/a" else ((.free_vs_frontier_delta * 100 | tostring) + " pts") end)
             ' "$latest"
+            # SK-QUAL-002: surface baseline comparison so the operator
+            # sees regressions in the summary without downloading the
+            # report JSON. Always-on; harmless when no baseline.
+            if jq -e '.baseline' "$latest" > /dev/null 2>&1; then
+              echo ""
+              echo "### Baseline comparison (SK-QUAL-005)"
+              jq -r '
+                "Baseline run: " + .baseline.baseline_run_at + " (" + (.baseline.baseline_question_count | tostring) + " questions)",
+                "",
+                "| Lane | Baseline EA | Current EA | Delta (pp) | McNemar | Regressions |",
+                "|---|---|---|---|---|---|",
+                (.baseline.lanes[] |
+                  "| " + .lane
+                  + " | " + (if .baseline_execution_accuracy == null then "n/a (new lane)" else ((.baseline_execution_accuracy * 100 | tostring) + "%") end)
+                  + " | " + ((.current_execution_accuracy * 100 | tostring) + "%")
+                  + " | " + (if .delta_pp == null then "n/a" else ((.delta_pp * 100 | tostring) + " pp") end)
+                  + " | " + (if .mcnemar == null then "n/a" else ("b=" + (.mcnemar.b | tostring) + " c=" + (.mcnemar.c | tostring) + " p=" + (.mcnemar.pValue | tostring)) end)
+                  + " | " + (if (.regressions | length) == 0 then "OK" else ([.regressions[].trigger] | join(",")) end)
+                  + " |"
+                )
+              ' "$latest"
+            fi
           } >> "$GITHUB_STEP_SUMMARY"

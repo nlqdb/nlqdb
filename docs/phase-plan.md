@@ -187,71 +187,18 @@ publicly uses nlqdb as memory; 3 non-engineers complete CSV analysis
 <10 min unassisted; inference cost <$1/mo per active anon-or-signed-in
 user. **North-star floors cleared** per
 [`GLOBAL-025`](./decisions/GLOBAL-025-north-star.md): BIRD-dev EM
-≥ 72% on the free chain, ≥ 88% on frontier (free-vs-frontier delta
-≤ 22 pts); TTFV p50 ≤ 60 s, first-query success ≥ 70%; destructive-op
-retry rate measurably below the no-preview baseline.
+≥ 60% on the free chain, ≥ 80% on agentic-frontier (free-vs-agentic
+delta ≤ 25 pp; single-model frontier reported informationally per
+[`GLOBAL-025`](./decisions/GLOBAL-025-north-star.md)); TTFV p50 ≤ 60 s,
+first-query success ≥ 70%; destructive-op retry rate measurably below
+the no-preview baseline.
 
-**Status (2026-05):** item 1 (MCP server) is in progress and item 2
-(CLI) has its bootstrap slice plus key-management verbs on a branch.
-CLI bootstrap shipped `cli/go.mod`, the data verbs (`ask`, `new`,
-bare-form, `db list`, `db create`, `query`, `use`, `whoami`,
-`logout`, `mcp detect`, `update`), credential store (keychain +
-AES-GCM fallback per `SK-CLI-009`), state (`SK-CLI-013`) + config
-(`SK-CLI-010`), update check (`SK-CLI-015`), MCP host detection
-(`SK-CLI-011`). **Key-management slice added** `nlq keys list` +
-`nlq keys revoke <id>` (`SK-APIKEYS-010` / `SK-APIKEYS-011`) backed
-by `GET /v1/keys` + `DELETE /v1/keys/:id`. **Raw-SQL escape-hatch
-slice added** `nlq run [--db <id>] <sql>` + SDK `client.runSql()` +
-`POST /v1/run` (`SK-SDK-009` / `GLOBAL-015`) — all three surfaces in
-one PR per `GLOBAL-003`. Same allow-list as `/v1/ask`; DDL still
-rejected; pk_live writes rejected at the leading-verb gate
-(`SK-APIKEYS-003`). Remaining deferred verbs (`login`, `mcp install`
-key-write, `chat`, `keys rotate`) are gated on server-side endpoints
-not yet shipped (`POST /v1/auth/device`, `POST /v1/keys/:id/rotate`)
-— see [`cli/FEATURE.md`](./features/cli/FEATURE.md). Item 1 — MCP server —
-`SK-MCP-010` slices 1 + 2 + 3a + 3b + 3c shipped. Slice 1: `sk_live_` +
-`sk_mcp_*` mint via `POST /v1/keys`. Slice 2: `packages/mcp/` stdio
-package with all three tools. Slice 3a: `apps/mcp/` Cloudflare Worker
-on `mcp.nlqdb.com`, MCP Streamable-HTTP at `/mcp`, stateless bearer
-auth. Slice 3b: `workers-oauth-provider` + `McpAgent` Durable Object
-sessions per `SK-MCP-011..014` — dynamic client registration, single
-`mcp` scope, cross-Worker callback bridge minting `sk_mcp_*` server-
-side, DO revalidation cache for 1 s revocation (pulled forward from
-the original 3c scope because the DO lifecycle was the natural home).
-Slice 3c: per-bucket rate-limit (`apps/api/src/principal.ts::rateLimitBucketKey`
-keys all `sk_*` principals by `rl:${api_keys.id}` — one namespace,
-no per-prefix special-casing per `SK-MCP-009`; migration 0014 renames
-`rate_limit_buckets.user_id` → `bucket_key` to match) + auth-failure
-observability (`nlqdb.mcp.http.request` span wraps every Worker
-request except `GET /health`; `nlqdb.mcp.auth.failures.total{error_code, status}`
-counter fires from `OAuthProvider`'s `onError`, and the active span is
-flipped to ERROR with `nlqdb.mcp.auth.error_*` attributes so trace
-queries surface auth failures alongside 5xx). Remaining: slice 4 (`nlq mcp install`
-CLI auto-detection) — see
-[`mcp-server/FEATURE.md`](./features/mcp-server/FEATURE.md) and
-[`cli/FEATURE.md`](./features/cli/FEATURE.md). **Dashboard
-key-management UI shipped** at `/app/keys` per
-[`SK-APIKEYS-012`](./features/api-keys/decisions/SK-APIKEYS-012-dashboard-ui.md)
-— copy-once mint modal + confirm-revoke dialog, SDK `client.mintKey()`
-added, MCP `auth_required` envelope now points at a working URL. **Item
-4 — `<nlq-action>` write-counterpart element — v0.1 shipped** in
-`packages/elements/src/action-element.ts` per
-[`SK-ELEM-010..013`](./features/elements/decisions/): preview→Apply
-two-click commit via [`SK-TRUST-001`](./features/trust-ux/FEATURE.md)'s
-diff hop, FormData → goal-text suffix, cookie-session auth
-(cross-origin write-token still deferred — tracked in
-[`api-keys/FEATURE.md`](./features/api-keys/FEATURE.md)). Bundle
-budget intact at < 6 KB gzipped per `SK-ELEM-007`. **Item 5 —
-framework wrappers — shipped:**
-`@nlqdb/{react,next,vue,nuxt,svelte,sveltekit,astro,solid}` and the
-native Swift Package `Nlqdb` (`packages/nlqdb-swift`) are now
-P1 · Shipped per [`progress.md §0`](./progress.md#0-surface-status-matrix--single-source-of-truth);
-React Native / Expo and Python / Go SDKs remain Phase 2 P1.
-**Item 9 — quality-eval — slice 1 shipped:** `tools/eval/` workspace,
-BIRD Mini-Dev SQLite runner, free + frontier lanes, multiset EX
-scorer, daily workflow. Smoke-tested against the free chain + Claude
-Sonnet 4.6 via OpenRouter. Slice 2 (baseline + Spider 2.0-lite PG +
-internal `db.create` eval + alert) by 2026-06-15 per `SK-QUAL-005`.
+**Status (2026-05):**
+**Item 1 — MCP server** — `SK-MCP-010` slices 1–3c shipped: `sk_live_`/`sk_mcp_*` mint, `packages/mcp/` stdio with three tools, `apps/mcp/` Cloudflare Worker on `mcp.nlqdb.com` (Streamable-HTTP at `/mcp`), `workers-oauth-provider` + `McpAgent` Durable Object sessions per `SK-MCP-011..014` (cross-Worker callback bridge mints `sk_mcp_*` server-side, DO revalidation cache for 1 s revocation), per-bucket rate-limit (all `sk_*` keyed by `rl:${api_keys.id}` per `SK-MCP-009`; migration 0014 renames `user_id` → `bucket_key`), auth-failure observability (`nlqdb.mcp.http.request` span + `nlqdb.mcp.auth.failures.total{error_code,status}`). Remaining: slice 4 (`nlq mcp install` host-detect) — see [`mcp-server/FEATURE.md`](./features/mcp-server/FEATURE.md) + [`cli/FEATURE.md`](./features/cli/FEATURE.md).
+**Item 2 — CLI** bootstrap + key-management + raw-SQL slices shipped: data verbs (`ask`, `new`, bare-form, `db list/create`, `query`, `use`, `whoami`, `logout`, `mcp detect`, `update`), credential store (keychain + AES-GCM fallback per `SK-CLI-009`), state/config (`SK-CLI-010/013`), update check (`SK-CLI-015`), MCP detect (`SK-CLI-011`), `nlq keys list/revoke` (`SK-APIKEYS-010/011`) backed by `GET/DELETE /v1/keys[/:id]`, `nlq run [--db <id>] <sql>` + SDK `client.runSql()` + `POST /v1/run` (`SK-SDK-009`/`GLOBAL-015`, all three surfaces one PR per `GLOBAL-003`; same `/v1/ask` allow-list, DDL still rejected, pk_live writes rejected per `SK-APIKEYS-003`). Deferred verbs (`login`, `mcp install` key-write, `chat`, `keys rotate`) gated on `POST /v1/auth/device` + `POST /v1/keys/:id/rotate` — see [`cli/FEATURE.md`](./features/cli/FEATURE.md). **Dashboard `/app/keys` shipped** per [`SK-APIKEYS-012`](./features/api-keys/decisions/SK-APIKEYS-012-dashboard-ui.md) — copy-once mint + confirm-revoke; SDK `client.mintKey()` added.
+**Item 4 — `<nlq-action>` v0.1 shipped** in `packages/elements/src/action-element.ts` per [`SK-ELEM-010..013`](./features/elements/decisions/): preview→Apply via [`SK-TRUST-001`](./features/trust-ux/FEATURE.md)'s diff hop, FormData → goal-text suffix, cookie-session auth (cross-origin write-token deferred — see [`api-keys/FEATURE.md`](./features/api-keys/FEATURE.md)). Bundle < 6 KB gzipped (`SK-ELEM-007`).
+**Item 5 — framework wrappers — shipped:** `@nlqdb/{react,next,vue,nuxt,svelte,sveltekit,astro,solid}` + native Swift Package `Nlqdb` (`packages/nlqdb-swift`) all P1 · Shipped per [`progress.md §0`](./progress.md#0-surface-status-matrix--single-source-of-truth); React Native / Expo / Python / Go remain Phase 2 P1.
+**Item 9 — quality-eval — slices 1 + 2 shipped:** `tools/eval/` workspace, BIRD Mini-Dev SQLite runner, free + single-model frontier lanes, multiset EX scorer. Slice 2 added baseline diff (`tools/eval/baseline-2026-06-15.json`), McNemar's paired-binary test (`SK-QUAL-006`), regression detection on `feature.eval.regression` events (threshold + McNemar parallel triggers), `feature.eval.weekly` summary emission via `POST /v1/events/eval` (bearer-token → Cloudflare Queues → LogSnag `#north-star`), weekly Mon 04:00 UTC cron. Spider 2.0-lite loader deferred to slice 3 (dataset ships **zero PG rows** per 2026 research; `SK-QUAL-003` corrected); internal `db.create` eval deferred to slice 3 (depends on privacy-stripped R2 export). Agentic-frontier lane deferred to slice 3; single-model frontier reports informationally per revised `GLOBAL-025`.
 
 ---
 
@@ -282,10 +229,11 @@ internal `db.create` eval + alert) by 2026-06-15 per `SK-QUAL-005`.
 downtime; 50 paying customers across tiers (if monetization shipped);
 otherwise ≥200 weekly-active users. **North-star floors per
 [`GLOBAL-025`](./decisions/GLOBAL-025-north-star.md):** BIRD-dev EM
-≥ 78% on free chain, ≥ 92% on frontier (delta ≤ 14 pts); Spider
-2.0-lite EM ≥ 15% on free chain, ≥ 25% on frontier; TTFV p50 ≤ 30 s;
-first-query success ≥ 85%; Sean-Ellis "very disappointed" ≥ 40%
-(PMF) — measured monthly per
+≥ 72% on free chain, ≥ 88% on agentic-frontier (free-vs-agentic
+delta ≤ 16 pp); Spider 2.0-lite EM ≥ 15% on free chain, ≥ 25% on
+frontier (SQLite subset only — Spider 2.0-lite ships no PG rows);
+TTFV p50 ≤ 30 s; first-query success ≥ 85%; Sean-Ellis "very
+disappointed" ≥ 40% (PMF) — measured monthly per
 [`founder-playbook.md` §2](./founder-playbook.md).
 
 ---

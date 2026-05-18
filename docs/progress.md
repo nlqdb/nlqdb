@@ -19,21 +19,16 @@ Progress tracker — platform integrations. Each row is a P0/P1/P2/P3 commitment
 | **Phase 2**  | Python SDK                | `pip install nlqdb`                                                                      | Sync + async; first user is the Jupyter magic.                          |
 | **Phase 2**  | Go SDK                    | `github.com/nlqdb/nlqdb-go`                                                              | First user is the CLI itself.                                           |
 | **Phase 2**  | BYOLLM ([`SK-PREMIUM-008`](./features/premium-tier/decisions/SK-PREMIUM-008-byollm.md)) | `api_keys.scope = "byollm"` — every tier (free included); through-Gateway dispatch; 0% markup | Paste Anthropic / OpenAI / Gemini / OpenRouter key in `/app/keys`; fail-loud on key error per `GLOBAL-012`. |
-| **Phase 2 · slice 1** | Quality-eval harness | `tools/eval/` + daily GH Action; weekly Cron in slice 2 | Slice 1 ships BIRD Mini-Dev SQLite runner, EX scorer, free + frontier lanes. KPI = delta per `SK-QUAL-004`. Slice 2 adds Spider 2.0-lite PG subset + internal `db.create` eval + 2026-06-15 baseline (`SK-QUAL-005`). |
+| **Phase 2 · slices 1+2** | Quality-eval harness | `tools/eval/` + weekly Mon GH Action; `POST /v1/events/eval` → LogSnag `#north-star` | Slices 1+2 ship BIRD Mini-Dev SQLite runner, EX scorer, baseline diff + McNemar (`SK-QUAL-006`), `feature.eval.{weekly,regression}` events. Slice 3 adds Spider 2.0-lite SQLite subset (no PG rows per 2026 research) + internal `db.create` eval + agentic-frontier lane. |
 | **§6-gated** | Hosted-premium LLM lane  | `packages/llm/src/chains/premium.ts` + Stripe metered subscription items                | Frontier-only (Sonnet 4.6 / GPT-5 / Gemini 2.5 Pro); paid plans only; Shape B (flat sub + included monthly request allowance + soft-meter overage at provider list + 0% markup) per `SK-PREMIUM-009`. Architectural slot lands Phase 2 (dark); meter fires when `phase-plan.md §6` trips. |
 | **Wishlist** | VSCode extension          | (clicks → `home.surface_wishlist`)                                                       | Sidebar panel + inline `<nlq-data>` preview in HTML files.              |
 | **Wishlist** | JetBrains plugin          | (clicks → `home.surface_wishlist`)                                                       | Same shape as VSCode for IntelliJ / WebStorm.                           |
 | **Wishlist** | Slack bot                 | (clicks → `home.surface_wishlist`)                                                       | `/nlq <goal>` in any channel; per-workspace API key.                    |
 | **Wishlist** | Discord bot               | (clicks → `home.surface_wishlist`)                                                       | Same shape as Slack.                                                    |
 
-**Conventions:**
+**Conventions:** **Shipped** = usable on `main`. **Phase 1** = committed for the on-ramp slice, ships before public alpha. **Phase 2** = committed for the developer-surfaces slice, ships before GA. **Wishlist** = not committed; homepage clicks fire `home.surface_wishlist` (`SK-EVENTS-011`), wiring in `apps/web/src/components/CodePanel.astro` + `apps/api/src/events-feature.ts`.
 
-- **Shipped** — usable on `main`. CI builds it, runtime owns it.
-- **Phase 1** — committed for the on-ramp slice. Ships before the public alpha.
-- **Phase 2** — committed for the developer-surfaces slice. Ships before GA.
-- **Wishlist** — not committed. Surfaced on the homepage so clicks signal what to prioritize next; click fires `home.surface_wishlist` (`SK-EVENTS-011`), wiring in `apps/web/src/components/CodePanel.astro` + `apps/api/src/events-feature.ts`.
-
-The integration matrix in §1–§4 below is *finer-grained* — every row is a P0/P1/P2/P3 priority tier for a specific package. `@nlqdb/elements` (P0) and `@nlqdb/sdk` (P0) are also surfaces above; the rest wrap one of them.
+The integration matrix in §1–§4 below is *finer-grained* — every row is a P0/P1/P2/P3 priority tier for a specific package.
 
 ---
 
@@ -199,6 +194,6 @@ Static-site generators (Hugo, Eleventy, Jekyll, Gatsby, Docusaurus, Mintlify) ne
 
 **3rd-party (community):** everything else, listed at `nlqdb.com/integrations`, published and maintained by partners. We provide: a typed reference implementation in `packages/sdk`; a CI template (`.github/workflows/integration-conformance.yml`) that smoke-tests against `api.nlqdb.com/v1`; and a monthly review cadence.
 
-**What this matrix does NOT do.** Doesn't replace `<nlq-data>` (every framework module is sugar on top), doesn't bind us to listed package names (working titles), doesn't promise calendar dates (tiers are dependency-ordered).
+**What this matrix does NOT do.** Doesn't replace `<nlq-data>` (every framework module is sugar on top), doesn't bind us to listed package names (working titles), doesn't promise calendar dates.
 
 A new platform integration = open a PR with a new row + a folder under `examples/<platform>` containing the smallest working integration. Once it lands, the row gets a status badge and (when promoted) a 1st-party package.

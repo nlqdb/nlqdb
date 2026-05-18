@@ -1,5 +1,5 @@
 import { Database } from "bun:sqlite";
-import { afterEach, beforeEach, describe, expect, it } from "bun:test";
+import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test";
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -210,5 +210,143 @@ describe("runEval — end-to-end with mocked routers", () => {
     expect(free?.gold_error).toBe(2);
     expect(free?.match).toBe(0);
     expect(free?.execution_accuracy).toBe(0);
+  });
+
+  it("attaches baseline comparison + emits when baseline+emit options are provided (SK-QUAL-002)", async () => {
+    let emittedReport: EvalReport | undefined;
+    const report = await runEval({
+      dataDir: dir,
+      questionsJsonPath: questionsPath,
+      outDir,
+      buildLanes: () => [
+        {
+          lane: "free",
+          modelHint: "free-fake",
+          // Free lane: both questions correct on current run.
+          router: {
+            ...fakeRouter("SELECT 1"),
+            plan: async (req: PlanRequest): Promise<PlanResponse> => ({
+              sql: req.goal.includes("How many")
+                ? "SELECT COUNT(*) FROM pet WHERE species='cat'"
+                : "SELECT name FROM pet ORDER BY id DESC LIMIT 1",
+              model: "free-m",
+              confidence: 1,
+            }),
+          },
+        },
+      ],
+      writeReport: async () => "stub.json",
+      baselinePath: "/fake/baseline.json",
+      // Baseline says: both questions failed (0/2 match) — current is +100 pp.
+      readBaseline: async () => ({
+        run_at: "2026-05-01T00:00:00Z",
+        dataset: "bird-mini-dev-sqlite",
+        question_count: 2,
+        lanes: [
+          {
+            lane: "free",
+            attempted: 2,
+            match: 0,
+            mismatch: 2,
+            exec_error: 0,
+            no_sql: 0,
+            gold_error: 0,
+            execution_accuracy: 0,
+            p50_latency_ms: 0,
+            p95_latency_ms: 0,
+          },
+        ],
+        free_vs_frontier_delta: null,
+        results: [
+          {
+            question_id: 0,
+            db_id: "pets",
+            lane: "free",
+            outcome: "mismatch",
+            predicted_sql: "",
+            model: "x",
+            latency_ms: 0,
+          },
+          {
+            question_id: 1,
+            db_id: "pets",
+            lane: "free",
+            outcome: "mismatch",
+            predicted_sql: "",
+            model: "x",
+            latency_ms: 0,
+          },
+        ],
+      }),
+      emitUrl: "https://api.test",
+      emitToken: "tok_abc",
+      emitEvalReport: async (r) => {
+        emittedReport = r;
+        return { accepted: true, status: 202, emitted: 1 };
+      },
+    });
+    expect(report.baseline).toBeDefined();
+    expect(report.baseline?.lanes[0]?.delta_pp).toBeCloseTo(1, 5); // +100 pp improvement
+    expect(report.baseline?.lanes[0]?.regressions).toEqual([]); // no regression on improvement
+    expect(emittedReport).toBeDefined();
+    expect(emittedReport?.baseline).toBeDefined();
+  });
+
+  it("skips baseline + continues run when baseline read fails (SK-QUAL-002 fail-soft)", async () => {
+    const report = await runEval({
+      dataDir: dir,
+      questionsJsonPath: questionsPath,
+      outDir,
+      buildLanes: () => [
+        {
+          lane: "free",
+          modelHint: "free-fake",
+          router: {
+            ...fakeRouter("SELECT 1"),
+            plan: async (): Promise<PlanResponse> => ({
+              sql: "SELECT COUNT(*) FROM pet WHERE species='cat'",
+              model: "fake",
+              confidence: 1,
+            }),
+          },
+        },
+      ],
+      writeReport: async () => "stub.json",
+      baselinePath: "/does/not/exist.json",
+      readBaseline: async () => {
+        throw new Error("ENOENT");
+      },
+    });
+    // Baseline read failed → no baseline attached, run still completes.
+    expect(report.baseline).toBeUndefined();
+    expect(report.lanes[0]?.attempted).toBe(2);
+  });
+
+  it("does not emit when only one of emit-url/emit-token is set (caller forgot one)", async () => {
+    const emitMock = mock(async () => ({ accepted: true, status: 202 }));
+    await runEval({
+      dataDir: dir,
+      questionsJsonPath: questionsPath,
+      outDir,
+      buildLanes: () => [
+        {
+          lane: "free",
+          modelHint: "free-fake",
+          router: {
+            ...fakeRouter("SELECT 1"),
+            plan: async (): Promise<PlanResponse> => ({
+              sql: "SELECT COUNT(*) FROM pet WHERE species='cat'",
+              model: "fake",
+              confidence: 1,
+            }),
+          },
+        },
+      ],
+      writeReport: async () => "stub.json",
+      emitUrl: "https://api.test",
+      // emitToken intentionally omitted
+      emitEvalReport: emitMock as unknown as typeof import("../src/emit.ts").emitEvalReport,
+    });
+    expect(emitMock).not.toHaveBeenCalled();
   });
 });

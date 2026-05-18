@@ -134,6 +134,13 @@ declare global {
       // write paths share credentials.
       TINYBIRD_TOKEN?: string;
       TINYBIRD_API_BASE?: string;
+
+      // Shared secret for the quality-eval cron's POST /v1/events/eval
+      // (SK-QUAL-002). Set via `wrangler secret put EVAL_INGEST_TOKEN`
+      // and stored as a GitHub Actions secret of the same name. When
+      // unset the route returns 503 — matches the unconfigured-sink
+      // posture used by Tinybird / Stripe webhooks.
+      EVAL_INGEST_TOKEN?: string;
     }
   }
 }

@@ -110,20 +110,44 @@ KPI columns:
 
 ### Engine quality — NL→SQL layer
 
+**Frontier definition (revised 2026-05 per the BIRD-2026 leaderboard
+reality).** "Frontier" in the floors below means **agentic-orchestrated
+frontier** (Agentar-class: planner + validator + retry + ensembling on a
+frontier model) — the system class whose published BIRD-dev EM clears
+80% (Agentar-Scale-SQL 81.67% test, ReViSQL 87-91%). Pure **single-model
+frontier** (Sonnet 4.6 / GPT-5 / Gemini 2.5 Pro, no orchestration) tops
+out at ~73% on BIRD-dev in 2026 and is reported *informationally* on a
+separate row below. nlqdb's own engine work IS the agentic orchestration;
+the moat thesis is "our scaffolding closes the agentic-vs-single-model
+gap faster than the gap to humans grows", measured by the
+free-vs-agentic-frontier delta.
+
 | KPI | Baseline (2026-05) | Phase 2 floor | Phase 3 floor | Alert | Owner |
 |---|---|---|---|---|---|
-| BIRD-dev execution match (free chain) | tbd-by-2026-06-15 (target ≥ 70%) | ≥ 72% | ≥ 78% | −5 pts wk/wk | `quality-eval` |
-| BIRD-dev execution match (frontier — Claude Sonnet 4.6 / GPT-5 class) | tbd-by-2026-06-15 (target ≥ 90%) | ≥ 88% | ≥ 92% | −3 pts wk/wk | `quality-eval` |
-| Spider 2.0-lite execution match (free chain) | tbd-by-2026-06-15 | report only | ≥ 15% | regression -3 pts | `quality-eval` |
-| Spider 2.0-lite execution match (frontier) | tbd-by-2026-06-15 | report only | ≥ 25% | regression -3 pts | `quality-eval` |
-| **Free-vs-frontier delta** (frontier EM − free EM, BIRD-dev) | tbd | **≤ 22 pts** | **≤ 14 pts** | +3 pts wk/wk (gap widening) | `quality-eval` |
-| Validator false-positive rate (correct plan blocked) | tbd-by-2026-07-01 | ≤ 2% | ≤ 1% | +1 pt wk/wk | `ask-pipeline` |
+| BIRD-dev execution match (free chain) | tbd-by-2026-06-15 (target ≥ 50%) | ≥ 60% | ≥ 72% | −5 pp wk/wk OR McNemar p<0.05 | `quality-eval` |
+| BIRD-dev execution match (agentic-frontier — Agentar-class) | tbd-by-2026-09-01 | ≥ 80% | ≥ 88% | −3 pp wk/wk OR McNemar p<0.05 | `quality-eval` |
+| BIRD-dev execution match (single-model frontier — Sonnet 4.6 / GPT-5 / Gemini 2.5 Pro) | tbd-by-2026-06-15 (target ≥ 65%) | report only (single-model SOTA 2026 ≈ 73%) | report only | informational | `quality-eval` |
+| Spider 2.0-lite execution match (free chain, SQLite subset only — see Open Question) | tbd-by-2026-07-15 | report only | ≥ 15% | regression −3 pp | `quality-eval` |
+| Spider 2.0-lite execution match (frontier, SQLite subset only) | tbd-by-2026-07-15 | report only | ≥ 25% | regression −3 pp | `quality-eval` |
+| **Free-vs-agentic-frontier delta** (BIRD-dev) | tbd | **≤ 25 pp** | **≤ 16 pp** | +3 pp wk/wk (gap widening) | `quality-eval` |
+| Validator false-positive rate (correct plan blocked) | tbd-by-2026-07-01 | ≤ 2% | ≤ 1% | +1 pp wk/wk | `ask-pipeline` |
 | Refuse-on-low-confidence rate (vs hallucinated answer rate) | tbd | refuse > hallucinate | refuse > hallucinate × 3 | inversion pages | `trust-ux` |
 
-The **free-vs-frontier delta is the headline NL→SQL number.** It is
-what proves "great on free LLMs ⇒ invincible on frontier LLMs": as
-our scaffolding improves, the delta narrows; when it narrows past
-the Phase 3 floor, the moat is real.
+The **free-vs-agentic-frontier delta is the headline NL→SQL number.** It
+is what proves "great on free LLMs ⇒ invincible on frontier LLMs": as
+our scaffolding improves, the delta narrows; when it narrows past the
+Phase 3 floor, the moat is real. Phase 2 floor widened from ≤ 22 pp to
+≤ 25 pp to reflect the lifted frontier ceiling.
+
+**Regression-detection methodology (SK-QUAL-002 + SK-QUAL-006).** "Alert"
+rows above fire on **two parallel triggers**: (1) point-in-time threshold
+on the per-lane EA delta, *and* (2) McNemar's paired-binary test
+(p < 0.05) on per-question outcomes between the current run and
+[`tools/eval/baseline-2026-06-15.json`](../../tools/eval/baseline-2026-06-15.json).
+McNemar factors out questions both runs agree on, which is the right
+test at N≈500 where the binomial SE on raw EA is ~2.2 pp; a 5-pp drop can
+fire on noise, but a McNemar p<0.05 says the worsening is on a
+non-trivial set of questions that used to pass.
 
 ### Engine quality — data-engine layer
 

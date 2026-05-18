@@ -4,7 +4,9 @@
 
 import { parseArgs } from "node:util";
 
+import { compareToBaseline, readBaseline } from "./baseline.ts";
 import { loadBirdMini } from "./datasets/bird-mini.ts";
+import { emitEvalReport } from "./emit.ts";
 import { buildLanes, type Lane } from "./lanes.ts";
 import { writeReport } from "./output.ts";
 import { scoreOne } from "./score.ts";
@@ -27,9 +29,20 @@ export type RunOptions = {
   limit?: number;
   outDir?: string;
   sqlTimeoutMs?: number;
+  // SK-QUAL-002 / SK-QUAL-005 — when set, the runner loads the baseline
+  // JSON, attaches `report.baseline` with per-lane deltas + McNemar
+  // results, and (if `emitUrl` is also set) emits one `feature.eval.weekly`
+  // plus one `feature.eval.regression` per (lane, trigger) tuple.
+  baselinePath?: string;
+  // SK-QUAL-002 — fan-out target for the typed event pipeline. When
+  // unset (PR-CI / local), the runner just writes the report JSON.
+  emitUrl?: string;
+  emitToken?: string;
   // Test injection points — production callers leave these unset so unit tests can stub the router and writer.
   buildLanes?: typeof buildLanes;
   writeReport?: typeof writeReport;
+  readBaseline?: typeof readBaseline;
+  emitEvalReport?: typeof emitEvalReport;
 };
 
 function pct(n: number, d: number): number {
@@ -235,8 +248,34 @@ export async function runEval(opts: RunOptions = {}): Promise<EvalReport> {
     free_vs_frontier_delta: delta,
     results,
   };
+  // Baseline diff + McNemar. Failures are converted to console warnings;
+  // a missing or unreadable baseline must not block the weekly summary —
+  // the operator sees the warning in the GH-Actions log and re-runs.
+  if (opts.baselinePath) {
+    const reader = opts.readBaseline ?? readBaseline;
+    try {
+      const baseline = await reader(opts.baselinePath);
+      report.baseline = compareToBaseline(baseline, report);
+    } catch (err) {
+      console.warn(`quality-eval: baseline ${opts.baselinePath} skipped: ${trimErr(err)}`);
+    }
+  }
   const writer = opts.writeReport ?? writeReport;
   await writer(report, opts.outDir);
+  // Event emission is last so an emit failure can never lose the JSON
+  // report (the cron's primary artifact). Per SK-QUAL-002 the emission
+  // is opt-in via flag; PR CI never sets it.
+  if (opts.emitUrl && opts.emitToken) {
+    const emit = opts.emitEvalReport ?? emitEvalReport;
+    const result = await emit(report, { apiUrl: opts.emitUrl, token: opts.emitToken });
+    if (!result.accepted) {
+      console.warn(
+        `quality-eval: event emit failed (status=${result.status}${
+          result.errorBody ? `, body=${result.errorBody}` : ""
+        })`,
+      );
+    }
+  }
   return report;
 }
 
@@ -249,6 +288,13 @@ function parseCliArgs(): RunOptions {
       limit: { type: "string" },
       out: { type: "string" },
       "sql-timeout-ms": { type: "string" },
+      // SK-QUAL-002 / SK-QUAL-005 — baseline comparison + event emission.
+      baseline: { type: "string" },
+      // `emit-url` and `emit-token` go together; either both set (cron)
+      // or neither (PR CI / local). The runner verifies the pair before
+      // calling out.
+      "emit-url": { type: "string" },
+      "emit-token": { type: "string" },
     },
     strict: true,
     allowPositionals: false,
@@ -259,6 +305,17 @@ function parseCliArgs(): RunOptions {
   if (values.limit) out.limit = Number.parseInt(values.limit, 10);
   if (values.out) out.outDir = values.out;
   if (values["sql-timeout-ms"]) out.sqlTimeoutMs = Number.parseInt(values["sql-timeout-ms"], 10);
+  if (values.baseline) out.baselinePath = values.baseline;
+  // Both flags must be set together — fail loud per GLOBAL-012 if only
+  // one is provided, so a typo in the workflow doesn't silently drop the
+  // weekly emit.
+  if (values["emit-url"] || values["emit-token"]) {
+    if (!values["emit-url"] || !values["emit-token"]) {
+      throw new Error("--emit-url and --emit-token must be provided together");
+    }
+    out.emitUrl = values["emit-url"];
+    out.emitToken = values["emit-token"];
+  }
   return out;
 }
 

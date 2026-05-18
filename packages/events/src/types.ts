@@ -93,6 +93,42 @@ export type HomeSurfaceWishlistEvent = {
   surface: WishlistSurface;
 };
 
+// `feature.eval.*` is the quality-eval domain (SK-QUAL-002). Emitted by
+// the weekly GH-Actions cron after the BIRD Mini-Dev pass completes.
+// Per-run dedup is on `runId` (the ISO timestamp the eval started) so
+// a retry of the same workflow run can't double-count a regression.
+export type FeatureEvalWeeklyEvent = {
+  name: "feature.eval.weekly";
+  // The eval run timestamp — ISO-8601 UTC; same value as `EvalReport.run_at`.
+  runId: string;
+  dataset: string;
+  questionCount: number;
+  // EA per dispatch lane. Keyed by lane name (`"free"`, `"frontier"`).
+  // Object (not array) so the LogSnag tags map flattens 1:1.
+  laneExecutionAccuracy: Record<string, number>;
+  // SK-QUAL-004 headline KPI. Null when only one lane ran.
+  freeVsFrontierDelta: number | null;
+};
+
+// `feature.eval.regression` fires only when a regression trigger flags
+// per `SK-QUAL-002` (>5 pp WoW drop or McNemar p<0.05 paired test).
+// Drives the on-call page; high-signal, never deduped at the day level.
+export type FeatureEvalRegressionEvent = {
+  name: "feature.eval.regression";
+  runId: string;
+  dataset: string;
+  // Which lane regressed; same key set as `FeatureEvalWeeklyEvent.laneExecutionAccuracy`.
+  lane: string;
+  // Baseline → current EA (signed; negative = regression).
+  deltaPp: number;
+  // The trigger that fired: `"threshold"` (>5 pp drop) or
+  // `"mcnemar"` (paired-test p<0.05). Both can fire; the producer
+  // emits one event per trigger so the on-call sees both signals.
+  trigger: "threshold" | "mcnemar";
+  // McNemar p-value when `trigger === "mcnemar"`; null otherwise.
+  pValue: number | null;
+};
+
 export type ProductEvent =
   | { name: "user.first_query"; userId: string; dbId: string }
   | { name: "user.registered"; userId: string; email: string }
@@ -114,7 +150,9 @@ export type ProductEvent =
   | AskCompletedEvent
   | FeatureRequestedDdlViaAskEvent
   | FeatureRequestedHeavierTierEvent
-  | HomeSurfaceWishlistEvent;
+  | HomeSurfaceWishlistEvent
+  | FeatureEvalWeeklyEvent
+  | FeatureEvalRegressionEvent;
 
 // Envelope wrapping the event with producer-side metadata. The consumer
 // reads `id` for idempotency keys (passed to LogSnag) and `ts` for late-

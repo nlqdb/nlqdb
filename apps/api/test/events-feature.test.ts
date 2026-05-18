@@ -6,8 +6,9 @@
 // behaviour into the EventEmitter — the handler never blocks on the
 // emit, never throws on emitter failure, and never invents principalIds.
 
+import type { EventEmitter } from "@nlqdb/events";
 import { describe, expect, it, vi } from "vitest";
-import { recordWishlist } from "../src/events-feature.ts";
+import { recordEvalReport, recordWishlist } from "../src/events-feature.ts";
 
 function stubEvents() {
   return { emit: vi.fn().mockResolvedValue(undefined) };
@@ -89,5 +90,138 @@ describe("recordWishlist", () => {
     const first = events.emit.mock.calls[0]?.[0];
     const second = events.emit.mock.calls[1]?.[0];
     expect(first.principalId).not.toBe(second.principalId);
+  });
+});
+
+describe("recordEvalReport — SK-QUAL-002 internal cron ingestion", () => {
+  const TOKEN = "secret-token-1234567890abcdef";
+
+  function makePayload(
+    opts: {
+      withBaseline?: boolean;
+      regressions?: Array<{ trigger: "threshold" | "mcnemar"; pValue: number | null }>;
+    } = {},
+  ) {
+    return {
+      report: {
+        run_at: "2026-05-18T04:00:00Z",
+        dataset: "bird-mini-dev-sqlite",
+        question_count: 500,
+        lanes: [
+          { lane: "free", execution_accuracy: 0.42 },
+          { lane: "frontier", execution_accuracy: 0.66 },
+        ],
+        free_vs_frontier_delta: 0.24,
+        ...(opts.withBaseline
+          ? {
+              baseline: {
+                lanes: [
+                  {
+                    lane: "free",
+                    delta_pp: -0.07,
+                    regressions: opts.regressions ?? [],
+                  },
+                ],
+              },
+            }
+          : {}),
+      },
+    };
+  }
+
+  it("returns 401 on missing bearer", () => {
+    const events: EventEmitter = { emit: vi.fn().mockResolvedValue(undefined) };
+    const result = recordEvalReport(events, null, TOKEN, makePayload());
+    expect(result.status).toBe(401);
+    expect(events.emit).not.toHaveBeenCalled();
+  });
+
+  it("returns 401 on wrong bearer (constant-time compare)", () => {
+    const events: EventEmitter = { emit: vi.fn().mockResolvedValue(undefined) };
+    const result = recordEvalReport(events, "Bearer wrong-token", TOKEN, makePayload());
+    expect(result.status).toBe(401);
+  });
+
+  it("returns 401 when authorization is not a Bearer scheme", () => {
+    const events: EventEmitter = { emit: vi.fn().mockResolvedValue(undefined) };
+    const result = recordEvalReport(events, `Basic ${TOKEN}`, TOKEN, makePayload());
+    expect(result.status).toBe(401);
+  });
+
+  it("returns 400 on malformed payload", () => {
+    const events: EventEmitter = { emit: vi.fn().mockResolvedValue(undefined) };
+    const result = recordEvalReport(events, `Bearer ${TOKEN}`, TOKEN, { not: "a-report" });
+    expect(result.status).toBe(400);
+    if (result.status !== 400) throw new Error("unreachable");
+    expect(result.reason).toBe("invalid_body");
+  });
+
+  it("emits exactly one weekly event when no baseline is present", () => {
+    const events: EventEmitter = { emit: vi.fn().mockResolvedValue(undefined) };
+    const result = recordEvalReport(events, `Bearer ${TOKEN}`, TOKEN, makePayload());
+    expect(result.status).toBe(202);
+    if (result.status !== 202) throw new Error("unreachable");
+    expect(result.emitted).toBe(1);
+    expect(events.emit).toHaveBeenCalledTimes(1);
+    expect((events.emit as ReturnType<typeof vi.fn>).mock.calls[0]?.[0]).toMatchObject({
+      name: "feature.eval.weekly",
+      dataset: "bird-mini-dev-sqlite",
+      questionCount: 500,
+      laneExecutionAccuracy: { free: 0.42, frontier: 0.66 },
+      freeVsFrontierDelta: 0.24,
+    });
+  });
+
+  it("emits one weekly + one regression per (lane, trigger) when baseline regressions are present", () => {
+    const events: EventEmitter = { emit: vi.fn().mockResolvedValue(undefined) };
+    const result = recordEvalReport(
+      events,
+      `Bearer ${TOKEN}`,
+      TOKEN,
+      makePayload({
+        withBaseline: true,
+        regressions: [
+          { trigger: "threshold", pValue: null },
+          { trigger: "mcnemar", pValue: 0.012 },
+        ],
+      }),
+    );
+    expect(result.status).toBe(202);
+    if (result.status !== 202) throw new Error("unreachable");
+    expect(result.emitted).toBe(3); // 1 weekly + 2 regressions
+    const calls = (events.emit as ReturnType<typeof vi.fn>).mock.calls;
+    expect(calls).toHaveLength(3);
+    expect(calls[1]?.[0]).toMatchObject({ name: "feature.eval.regression", trigger: "threshold" });
+    expect(calls[2]?.[0]).toMatchObject({
+      name: "feature.eval.regression",
+      trigger: "mcnemar",
+      pValue: 0.012,
+    });
+  });
+
+  it("skips regression emission when delta_pp is null (newly-added lane)", () => {
+    const events: EventEmitter = { emit: vi.fn().mockResolvedValue(undefined) };
+    const payload = {
+      report: {
+        run_at: "2026-05-18T04:00:00Z",
+        dataset: "bird-mini-dev-sqlite",
+        question_count: 500,
+        lanes: [{ lane: "frontier", execution_accuracy: 0.66 }],
+        free_vs_frontier_delta: null,
+        baseline: {
+          lanes: [
+            {
+              lane: "frontier",
+              delta_pp: null,
+              regressions: [{ trigger: "threshold" as const, pValue: null }],
+            },
+          ],
+        },
+      },
+    };
+    const result = recordEvalReport(events, `Bearer ${TOKEN}`, TOKEN, payload);
+    expect(result.status).toBe(202);
+    if (result.status !== 202) throw new Error("unreachable");
+    expect(result.emitted).toBe(1); // weekly only
   });
 });
