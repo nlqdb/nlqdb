@@ -24,6 +24,7 @@
 
 import { useEffect, useId, useState } from "react";
 import { type CreateError, type CreateResult, type CreateRow, postAskCreate } from "../lib/api";
+import { emit } from "../lib/logsnag";
 import {
   appendHistory,
   clearDraft,
@@ -246,6 +247,11 @@ function CreateSnippetView({ primaryTable }: { primaryTable: string | undefined 
     try {
       await navigator.clipboard.writeText(snippet);
       setCopied(true);
+      // GLOBAL-024 demand-signal. Same event name + surface convention
+      // as chat CopySnippet (surface="chat") and CodePanel (surface=
+      // <snippet-slug>); "create_result" labels the marketing post-
+      // create surface so the funnel pivot reads cleanly.
+      emit("home.snippet_copied", { surface: "create_result" });
       window.setTimeout(() => setCopied(false), 1500);
     } catch {
       // Clipboard API can fail under non-secure contexts or extension
@@ -273,7 +279,11 @@ function CreateSnippetView({ primaryTable }: { primaryTable: string | undefined 
         <strong>Copy snippet</strong> action that inlines the working key automatically. Always free
         — no card required.
       </p>
-      <a className="btn btn--accent createresult__snippet-cta" href="/auth/sign-in?return_to=/app">
+      <a
+        className="btn btn--accent createresult__snippet-cta"
+        href="/auth/sign-in?return_to=/app"
+        onClick={() => emit("home.snippet_signin_cta_clicked", { surface: "create_result" })}
+      >
         Sign in (free) to continue →
       </a>
     </section>
