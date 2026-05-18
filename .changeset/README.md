@@ -1,40 +1,30 @@
 # Changesets
 
-This folder holds **pending release notes** for the `@nlqdb/*` packages
-under `packages/`. Apps under `apps/` (`api`, `web`, `events-worker`,
-`mcp-server`, `coming-soon`) are deploy-only and ignored by changesets —
-see the `ignore` list in `config.json`.
+Pending release notes for `@nlqdb/*` packages. Apps under `apps/` are
+deploy-only and ignored (see `config.json`).
 
-## How it works
+## Workflow
 
-1. **You make a change** in a `packages/*` directory that consumers will
-   notice — a new export, a bug fix, a breaking rename.
-2. **You add a changeset** describing it:
-   ```bash
-   bun run changeset
-   ```
-   The CLI walks you through: which packages changed, semver bump
-   (major/minor/patch), one-line summary. It writes a markdown file
-   here in `.changeset/`.
-3. **You commit the changeset alongside the code**. Reviewers see both
-   in the same PR — the change *and* its release note.
-4. **On merge to `main`**, `.github/workflows/release-npm.yml` collects
-   every pending changeset, opens (or updates) a "Version Packages"
-   PR that bumps versions + writes CHANGELOGs. Merging that PR
-   publishes the affected packages to npm.
+1. Make a change that consumers will notice (new export, bug fix,
+   breaking rename).
+2. `bun run changeset` — CLI walks you through bump + summary,
+   writes a markdown file here.
+3. Commit it alongside the code so reviewers see both.
+4. On merge to `main`, `.github/workflows/release-npm.yml` opens (or
+   updates) a "Version Packages" PR. Merging that PR would publish —
+   currently gated, see below.
 
-## Publishing is currently gated
+## Publishing is gated
 
-Today every `packages/*/package.json` has `"private": true` and
-`main` / `exports` pointing at raw `src/index.ts`. The release workflow
-runs `changeset version` (bumps versions, writes CHANGELOGs) but
-**skips `changeset publish`** — the actual npm publish step is wired
-but commented, because publishing raw TypeScript isn't right.
+Every `packages/*/package.json` has `"private": true` and points
+`main` at raw `src/index.ts`. The release workflow runs `changeset
+version` (bumps versions, writes CHANGELOGs) but `changeset:publish`
+is a no-op echo until packages emit `dist/`.
 
 To enable publishing for a package:
 
-1. Add a build step (e.g. `tsup` or `tsc`) that emits `dist/index.js`
-   + `dist/index.d.ts`.
+1. Add a build step (e.g. `tsup`) emitting `dist/index.js` +
+   `dist/index.d.ts`.
 2. Update its `package.json`:
    ```json
    {
@@ -45,17 +35,12 @@ To enable publishing for a package:
      "files": ["dist"]
    }
    ```
-3. Uncomment the `publish` step in `.github/workflows/release-npm.yml`.
+3. Replace `bun run changeset:publish` in `package.json` with the
+   real `changeset publish` command.
+4. Add `NPM_TOKEN` to repo secrets (npm Automation token on `@nlqdb`).
 
-The changesets workflow then publishes anything not marked `private`
-on the next "Version Packages" merge.
+## Skipping a changeset
 
-## When NOT to add a changeset
-
-- Refactors with no observable change (renaming internal helpers, etc.).
-- Pure docs / test changes.
-- Workspace-only changes (private packages — changesets ignore them
-  by default via the `private` flag).
-
-For these, run `bun run changeset --empty` to drop a marker that
-satisfies CI without bumping any version.
+For docs-only or refactor PRs that don't touch a published package,
+`bun run changeset --empty` drops a marker that satisfies CI without
+bumping any version.

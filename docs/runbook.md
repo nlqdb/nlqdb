@@ -240,7 +240,7 @@ the failure path (Basic auth rejected = wrong id or secret).
 | :------------------- | :------------------ | :--------------------------------------------------------- | :------------------------------------------------------------ |
 | `apps/api` + `apps/web` (merged worker) | Cloudflare Workers | GH Actions — `.github/workflows/deploy-api.yml` | GH Actions — `.github/workflows/preview-app.yml` (Workers Versions on `nlqdb-api`; per-PR URL + ephemeral Neon branch) |
 | `apps/events-worker` | Cloudflare Workers  | GH Actions — `.github/workflows/deploy-events-worker.yml`  | n/a (queue-only; nothing visible to preview)                  |
-| `apps/mcp`           | Cloudflare Workers  | GH Actions — `.github/workflows/deploy-mcp.yml` (`mcp.nlqdb.com` via `custom_domain = true`) | n/a (no PR preview yet; add `preview-mcp.yml` if branded staging is needed) |
+| `apps/mcp`           | Cloudflare Workers  | GH Actions — `.github/workflows/deploy-mcp.yml` (`mcp.nlqdb.com` via `custom_domain = true`; KV auto-provisioned) | GH Actions — `.github/workflows/preview-mcp.yml` (sticky `pr-<N>-nlqdb-mcp-server.<subdomain>.workers.dev`) |
 | `apps/coming-soon`   | Cloudflare Pages    | retired — `nlqdb.com` now served by `apps/web`              | n/a |
 | `packages/elements`  | Cloudflare Pages    | GH Actions — `.github/workflows/deploy-elements.yml`       | GH Actions — `.github/workflows/preview-elements.yml` (sticky `pr-<N>.nlqdb-elements.pages.dev/v1.js`) |
 
@@ -467,11 +467,10 @@ Deploys via `.github/workflows/deploy-mcp.yml` on merge to main
 when `apps/mcp/**`, `packages/mcp/**`, `packages/sdk/**`, or
 `packages/otel/**` changes.
 
-**One-time prerequisite before the first deploy:** the `OAUTH_KV`
-namespace must exist. Run `./scripts/bootstrap-mcp.sh` once
-(requires `CLOUDFLARE_API_TOKEN` + `CLOUDFLARE_ACCOUNT_ID` in env),
-then commit the resulting `apps/mcp/wrangler.toml` diff. The script
-is idempotent — safe to re-run.
+**OAUTH_KV** binding in `apps/mcp/wrangler.toml` has no `id` field
+— wrangler 4.45+ auto-provisions the namespace on first deploy and
+rebinds by binding name thereafter (CF changelog 2025-10-24). No
+manual bootstrap step required.
 
 PR previews via `.github/workflows/preview-mcp.yml` give a sticky
 URL `pr-<N>-nlqdb-mcp-server.<subdomain>.workers.dev` on every push.

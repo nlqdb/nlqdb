@@ -1,28 +1,7 @@
-# nlqdb — npm release automation via changesets.
-#
-# On every merge to `main`, this workflow:
-#   1. Runs `changeset version` if any `.changeset/*.md` files exist —
-#      bumps the affected packages' versions, writes CHANGELOG.md
-#      entries, and opens (or updates) a "Version Packages" PR.
-#   2. When that "Version Packages" PR merges, the workflow runs
-#      again and would `changeset publish` to npm — currently
-#      DISABLED until per-package builds emit `dist/` (see
-#      `.changeset/README.md`).
-#
-# Why this and not release-please / semantic-release:
-#   - changesets is the de-facto monorepo tool (turborepo, prisma,
-#     remix, astro, supabase all use it).
-#   - Author writes the release note at PR time, not after the fact
-#     from commit messages — better for users, doesn't depend on
-#     commit-message discipline.
-#
-# Required GH repo secrets (configure in repo settings → secrets →
-# Actions before the publish step is enabled):
-#   - NPM_TOKEN — npm automation token with publish rights on the
-#     `@nlqdb` scope. Generate at npmjs.com → Access Tokens →
-#     "Automation" type (bypasses 2FA for CI).
-#
-# Manual run: workflow_dispatch on the Actions tab.
+# `@nlqdb/*` npm releases via changesets — opens a "Version Packages"
+# PR from pending `.changeset/*.md` notes; merging that PR publishes.
+# Publish step is gated until per-package builds emit dist/ — see
+# .changeset/README.md.
 
 name: Release npm
 
@@ -46,28 +25,18 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 8
     steps:
+      # `fetch-depth: 0` so changesets can compute the version diff
+      # and reference prior commits in the generated CHANGELOG.
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
         with:
-          # Full history so changesets can compute the version diff
-          # and write CHANGELOG entries that reference past commits.
           fetch-depth: 0
 
       - uses: ./.github/actions/setup
 
-      # The changesets action handles two states:
-      #   - Pending `.changeset/*.md` files exist → it opens or
-      #     updates a "Version Packages" PR (no publish).
-      #   - No pending changesets, but the previous run merged a
-      #     "Version Packages" PR → it runs the `publish` script
-      #     (which would push to npm; currently a no-op).
       - name: Create Version PR or publish
-        uses: changesets/action@e0538b8a655baeebf9aaff0a1da9a8f8aa116f8c # v1.5.0
+        uses: changesets/action@v1
         with:
-          # `bun changeset version` is the version-bump path. The
-          # `version` script in package.json wires it.
           version: bun run changeset:version
-          # `bun changeset publish` would publish. Today the script
-          # only echoes a notice — flip it when builds emit dist/.
           publish: bun run changeset:publish
           commit: "chore(release): version packages"
           title: "chore(release): version packages"

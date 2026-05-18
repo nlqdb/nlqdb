@@ -1,28 +1,6 @@
-# nlqdb — preview deploys for apps/mcp on every PR push.
-#
-# Uploads the PR's HEAD as a non-production *version* of the prod
-# `nlqdb-mcp-server` Worker (`wrangler versions upload`) with a
-# sticky `--preview-alias pr-<number>`. Each PR gets a stable URL
-# of the form `pr-<number>-nlqdb-mcp-server.<subdomain>.workers.dev`
-# that updates on every push; the promoted production version (and
-# `mcp.nlqdb.com`) are untouched until merge runs deploy-mcp.yml.
-#
-# Bindings (KV `OAUTH_KV` + the McpAgent Durable Object) are
-# inherited from the prod worker via `versions upload` — the same
-# shared-bindings model preview-app.yml uses for D1 / KV / Queue.
-# This means a preview MCP shares the prod OAuth KV state, which is
-# fine: previews are author-only and a new install creates a new
-# grant rather than reusing one. Add a separate `--env preview`
-# binding set later if cross-PR state leakage becomes an issue.
-#
-# Prerequisite: the same OAUTH_KV namespace ID bootstrap as
-# deploy-mcp.yml — `apps/mcp/wrangler.toml` must have a real id
-# (run `bunx wrangler kv namespace create OAUTH_KV` once and commit
-# the returned id). Until then this workflow fails at upload time
-# with a clear binding-validation error.
-#
-# Concurrency: keyed by PR number with `cancel-in-progress: true`
-# so only the latest push for each PR is in flight.
+# Per-PR `wrangler versions upload` to nlqdb-mcp-server with a sticky
+# pr-<N> preview alias. Bindings (OAUTH_KV, McpAgent DO) are inherited
+# from prod — previews are author-only, fine to share OAuth state.
 
 name: Preview MCP server
 
@@ -53,11 +31,8 @@ jobs:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
       - uses: ./.github/actions/setup
 
-      # Direct wrangler invocation — cloudflare/wrangler-action@v3's
-      # `deployment-url` output is broken for `versions upload`
-      # (cloudflare/wrangler-action#343). Pin `WRANGLER_OUTPUT_FILE_DIRECTORY`
-      # so the shared `extract-wrangler-preview-url.sh` can parse the
-      # ND-JSON in a follow-up step.
+      # Direct wrangler call — wrangler-action's deployment-url output
+      # is broken for `versions upload` (cloudflare/wrangler-action#343).
       - name: Upload preview version
         id: deploy
         working-directory: apps/mcp
@@ -72,13 +47,13 @@ jobs:
             --preview-alias "pr-${{ github.event.number }}"
 
       - name: Extract preview URL
-        if: always() && steps.deploy.outcome == 'success'
+        if: steps.deploy.outcome == 'success'
         env:
           WRANGLER_OUTPUT_FILE_DIRECTORY: ${{ github.workspace }}/wrangler-out
         run: ./scripts/extract-wrangler-preview-url.sh
 
       - name: Sticky preview comment
-        if: always() && steps.deploy.outcome == 'success'
+        if: steps.deploy.outcome == 'success'
         uses: actions/github-script@v7
         env:
           PREVIEW_URL: ${{ env.PREVIEW_URL }}
@@ -93,17 +68,12 @@ jobs:
 
             const lines = [marker, '🔌 **Preview MCP server uploaded**', ''];
             if (bootstrap) {
-              lines.push(
-                '- Status: **bootstrap required** — `nlqdb-mcp-server` has never been `wrangler deploy`-ed, so the `*.workers.dev` subdomain is not yet routing. Merge to `main` (or run `deploy-mcp.yml` once) to provision it; future PR previews will then surface a URL here.',
-              );
+              lines.push('- Status: **bootstrap required** — `nlqdb-mcp-server` has never been deployed. Merge to `main` (or run `deploy-mcp.yml` once) to provision the workers.dev subdomain.');
             } else if (url) {
-              lines.push(
-                `- URL: <${url}>`,
-                `- MCP endpoint: \`${url.replace(/\/$/, '')}/mcp\``,
-                `- OAuth discovery: \`${url.replace(/\/$/, '')}/.well-known/oauth-authorization-server\``,
-              );
+              const base = url.replace(/\/$/, '');
+              lines.push(`- URL: <${url}>`, `- MCP endpoint: \`${base}/mcp\``, `- OAuth discovery: \`${base}/.well-known/oauth-authorization-server\``);
             } else {
-              lines.push('- Status: deploy succeeded but URL not captured — check the run log for diagnostic dump.');
+              lines.push('- Status: deploy succeeded but URL not captured — see run log.');
             }
             lines.push(`- Commit: \`${sha}\``, `- Updated: ${ts}`);
 
