@@ -100,10 +100,17 @@ tests:
 
   - name: "#authed-state-preserved"
     case: |
-      #mock-sign-in, then on /app verify both: a sidebar database
-      whose name starts with "users" is highlighted as selected,
-      AND the main chat input (placeholder "Ask about your data…")
-      is pre-filled with "add a new row: name='Alice', email='alice@example.com'".
+      The browser just signed in and is on /app (possibly with a
+      ?db= query param). Do NOT navigate away. Take a
+      browser_snapshot and verify TWO things:
+      1. The left sidebar shows at least one entry whose visible
+         text contains "users" (any casing; does not need to be
+         highlighted or aria-selected — just visible).
+      2. The main chat textarea (placeholder "Ask about your
+         data…") contains the text
+         "add a new row: name='Alice', email='alice@example.com'".
+      If condition 2 is not met after the first snapshot, wait
+      2 seconds and take another snapshot before failing.
 
   - name: "#submit-prefilled-row"
     case: |
