@@ -1,18 +1,20 @@
 ---
 name: quality-eval
-description: NL-to-SQL accuracy benchmarking — BIRD/Spider against the LLM router; thresholds gate semantic-layer promotion and confidence-floor tuning.
+description: NL-to-SQL accuracy benchmarking — three-dataset canon (BIRD-dev + Spider 2.0-lite + internal `db.create` eval) against the LLM router's free / BYOLLM / hosted-premium lanes; the **free-vs-frontier delta** is the headline KPI for the engine north-star.
 when-to-load:
   globs:
     - packages/llm/**
     - apps/api/src/ask/**
     - tools/eval/**
-  topics: [eval, benchmark, BIRD, Spider, accuracy, semantic-layer]
+  topics: [eval, benchmark, BIRD, Spider, accuracy, semantic-layer, free-vs-frontier-delta]
 ---
 
 # Feature: Quality Eval
 
-**One-liner:** NL-to-SQL accuracy benchmarking — BIRD/Spider against the LLM router; thresholds gate semantic-layer promotion and confidence-floor tuning.
-**Status:** planned (Phase 3) — design-locked here, no harness code yet. Promotion of [`docs/future/semantic-layer.md`](../../future/semantic-layer.md) depends on metrics from this harness.
+**One-liner:** NL-to-SQL accuracy benchmarking — three-dataset canon (BIRD-dev + Spider 2.0-lite + internal `db.create` eval per [`SK-QUAL-003`](#sk-qual-003)) against the LLM router's free / BYOLLM / hosted-premium lanes; the **free-vs-frontier delta** (`SK-QUAL-004`) is the headline KPI for [`GLOBAL-025`](../../decisions/GLOBAL-025-north-star.md)'s engine north-star.
+**Status:** **Phase 2** (promoted from Phase 3 by [`GLOBAL-025`](../../decisions/GLOBAL-025-north-star.md) — the engine north-star is unprovable without it). Design-locked; instrumentation lands first, baseline by 2026-06-15 per `SK-QUAL-005`. Promotion of [`docs/future/semantic-layer.md`](../../future/semantic-layer.md) depends on this harness.
+
+**Contribution to north-star:** Engine quality, NL→SQL layer — this feature IS the measurement instrument. The three-dataset canon (`SK-QUAL-003`) feeds the BIRD-dev / Spider 2.0-lite KPIs and the free-vs-frontier delta in the [`GLOBAL-025`](../../decisions/GLOBAL-025-north-star.md) KPI table; the weekly cron in `SK-QUAL-002` is the alert-and-decision input.
 **Owners (code):** `tools/eval/**` (to be created), `packages/llm/**`
 **Cross-refs:** [`docs/future/semantic-layer.md`](../../future/semantic-layer.md) (the moat this harness measures the need for) · `llm-router/FEATURE.md` (the system under test) · `trust-ux/FEATURE.md` (uses these metrics to calibrate `SK-TRUST-003` confidence floors) · [`docs/research-receipts.md §8`](../../research-receipts.md) (dbt 2026 semantic-layer accuracy research)
 
@@ -37,6 +39,38 @@ when-to-load:
   - Spider 1.0 only — superseded; 2.0 covers more dialects.
   - Single averaged accuracy number — hides per-tier regression, the actionable signal.
 
+### SK-QUAL-003 — Three-dataset canon: BIRD-dev + Spider 2.0-lite + internal `db.create` eval (the third dataset is the one that matters most)
+
+- **Decision:** The harness reports on **three** datasets, in this order of weight: (1) **Internal `db.create` eval** — questions sampled from real user `db.create` schemas (anonymized via aggressive column-name + value-class swaps; no row data persisted), scored against the gold answer the user actually accepted; this is the dataset that most closely matches production. (2) **BIRD-dev** — public, comparable to published research, our "honest external" yardstick. (3) **Spider 2.0-lite** — enterprise-scale schemas; we *report* on it even though the entire industry is at 5-23% EM, because the gap between datasets is itself the moat signal.
+- **Core value:** Bullet-proof, Honest latency, Free
+- **Why:** Public benchmarks are gameable and stale — BIRD's distribution doesn't match a `db.create` schema, and Spider 2.0's enterprise complexity isn't what a solo-developer persona is asking. The internal eval, built from actually-accepted answers, is the only dataset that measures the thing we ship. Public benchmarks stay in the table for external comparability and so the "free-vs-frontier delta" stays meaningful to readers outside the team. **The three weights are not equal** — when the internal eval and BIRD disagree, internal wins. This prevents BIRD-overfit, the failure mode that broke the published text-to-SQL leaderboard in 2024.
+- **Consequence in code:** `tools/eval/datasets/` ships three loaders: `internal.ts` (reads `db.create` accepted-answer rows from a dedicated R2 bucket with `principal.id` stripped at write time per [`GLOBAL-024`](../../decisions/GLOBAL-024-demand-signal-telemetry.md)'s privacy contract), `bird.ts`, and `spider2.ts`. The weekly cron from SK-QUAL-002 runs all three. The Grafana panel shows three lines, plus the free-vs-frontier delta as a separate panel.
+- **Alternatives rejected:**
+  - Internal-only — no external comparability; can't honestly answer "are you state of the art?"
+  - BIRD-only — what we already had; misses the production-shape gap.
+  - Equal weighting — when internal and BIRD disagree, the team has to choose; tying it to "internal wins" pre-commits us to the right answer.
+
+### SK-QUAL-004 — Free-vs-frontier delta is the headline KPI, reported on every dataset and every router tier
+
+- **Decision:** The harness reports execution-match accuracy under **two dispatch lanes** ([`GLOBAL-026`](../../decisions/GLOBAL-026-llm-strategy-byollm-hosted-premium.md)): the **free chain** (Gemini Flash → Groq → Workers-AI → OpenRouter free) and **frontier** (Claude Sonnet 4.6 / GPT-5 / Gemini 2.5 Pro class). The **delta** (frontier_EM − free_EM) is the single most-watched number. Narrowing delta = scaffolding (planner, validator, plan-cache, schema retrieval, few-shot) is compounding. Widening delta = we're shipping distribution faster than engine work.
+- **Core value:** Bullet-proof, Free, Honest latency
+- **Why:** Without this number, the "great-on-free-LLMs ⇒ invincible-on-frontier-LLMs" thesis is unfalsifiable. Reporting only frontier accuracy hides the free-tier user experience; reporting only free accuracy hides whether the engine has headroom. The delta makes both visible in one number, with target trajectory in [`GLOBAL-025`](../../decisions/GLOBAL-025-north-star.md): ≤ 22 pts (Phase 2 floor) → ≤ 14 pts (Phase 3 floor).
+- **Consequence in code:** `tools/eval/lanes.ts` selects the dispatch lane per run; the same questions are evaluated through both lanes back-to-back so the delta is per-question, not per-run-average (cancels noise). BYOLLM lane is also instrumented when an opt-in eval key is configured, but does not gate any floor — BYOLLM accuracy depends on the user's key, not on our work.
+- **Alternatives rejected:**
+  - One average accuracy number — hides which lane is regressing.
+  - Per-tier accuracy without a delta — forces every reader to do the subtraction; team focus dissipates.
+  - Delta tracked only on BIRD — too narrow; the internal eval's delta is the production-shape one.
+
+### SK-QUAL-005 — Baseline by 2026-06-15; first floor enforced in Phase 2 exit gate
+
+- **Decision:** The Phase 2 exit gate requires recorded baseline values for every engine-quality KPI in the [`GLOBAL-025`](../../decisions/GLOBAL-025-north-star.md) table by **2026-06-15**. The Phase 2 floor (BIRD-dev EM ≥ 72% free / ≥ 88% frontier; delta ≤ 22 pts) is enforced from the moment baselines exist. If baselines are below the floor on first measurement, the slice does not regress them — it ships engine work until the floor is cleared.
+- **Core value:** Bullet-proof
+- **Why:** "Phase 2 KPI floors" is meaningless without a baseline date. 2026-06-15 leaves ~one month from harness ship to baseline measurement — enough to debug the runner, not enough to drift. If we miss this date, the Phase 2 rollover is blocked per [`GLOBAL-025`](../../decisions/GLOBAL-025-north-star.md) — that is the point.
+- **Consequence in code:** `tools/eval/baseline-2026-06-15.json` is the canonical baseline snapshot. The weekly cron diffs against it. PRs that touch `packages/llm/**` add a one-line note to their description naming which KPI they're moving.
+- **Alternatives rejected:**
+  - No baseline date — "soon" never happens.
+  - Baseline floor = whatever first measurement returns — ratchets us into accepting bad numbers as the new normal.
+
 ### SK-QUAL-002 — Eval is a weekly cron, not a PR gate; thresholds drive *decisions*, not *merges*
 
 - **Decision:** The eval harness runs on a weekly cron (and on demand), not on every PR. The output drives three product decisions: (a) **confidence-floor calibration** for [`SK-TRUST-003`](../trust-ux/FEATURE.md), (b) **promotion trigger** for [`docs/future/semantic-layer.md`](../../future/semantic-layer.md) — promote when accuracy on the unscaffolded path drops persistently (starting threshold: 75% for two consecutive weekly runs; tighten once we have baseline data), (c) **alerting** on regression — a meaningful week-over-week drop pages the on-call (starting threshold: 5 percentage points; tighten with experience).
@@ -58,6 +92,10 @@ Canonical text in [`docs/decisions/`](../../decisions/).
 - **GLOBAL-014** — OTel span on every external call.
   - *In this feature:* the harness instruments per-question spans so failures can be debugged the same way as production calls.
 - **GLOBAL-024** — Demand-signal telemetry. *(Eval results emit `feature.eval.*` events.)*
+- **GLOBAL-025** — North-star: engine quality, onboarding, UX — each with explicit KPIs.
+  - *In this feature:* this feature owns the engine-quality NL→SQL KPIs (BIRD-dev EM, Spider 2.0-lite EM, free-vs-frontier delta, validator FP rate, refuse-vs-hallucinate ratio). Phase 2 floor and Phase 3 floor are set in the GLOBAL-025 KPI table; baseline by 2026-06-15 per `SK-QUAL-005`.
+- **GLOBAL-026** — LLM strategy: free chain forever, BYOLLM for everyone, hosted premium on paid (flat sub + included monthly request allowance + soft-meter overage, 0% markup).
+  - *In this feature:* eval runs through both the free chain and the hosted-premium chain (per `SK-QUAL-004`); BYOLLM lane instrumented when an opt-in eval key is configured but never used to gate a floor.
 
 ## Open questions / known unknowns
 

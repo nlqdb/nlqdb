@@ -1,21 +1,24 @@
 ---
 name: premium-tier
-description: Premium-models add-on — opt-in frontier-model routing (Claude Sonnet 4.6 / Opus 4.7 / GPT-5), pay-per-token billing, surface-parity model picker, BYOK decision tree.
+description: Premium LLM routing — BYOLLM on every tier (0% markup) and hosted-premium on paid plans with Shape B economics (flat sub + included monthly request allowance + soft-meter overage at provider list + 0% markup), plus surface-parity model picker, per-key spend cap, and upgrade CTA.
 when-to-load:
   globs:
     - apps/api/src/billing/premium/**
     - apps/api/src/ask/model-picker.ts
     - apps/web/src/components/PremiumCta*
     - packages/llm/src/chains/paid.ts
+    - packages/llm/src/chains/premium.ts
     - packages/sdk/src/options/model.ts
     - cli/cmd/model.go
-  topics: [premium, pay-per-token, byok, model-picker, upgrade-cta, frontier-model, spend-cap]
+  topics: [premium, byollm, hosted-premium, shape-b, allowance, model-picker, upgrade-cta, frontier-model, spend-cap]
 ---
 
 # Feature: Premium Tier (premium-models add-on)
 
-**One-liner:** Opt-in routing of the `plan` and `hard` LLM tiers through frontier models (Claude Sonnet 4.6 / Opus 4.7 / GPT-5), billed pay-per-token at provider list price + 0% markup, with a surface-parity model picker and a per-key spend cap.
-**Status:** planned (Phase 2 pricing-row design-locked; Phase 3 ships alongside Pro)
+**One-liner:** Two LLM upgrade lanes per [`GLOBAL-026`](../../decisions/GLOBAL-026-llm-strategy-byollm-hosted-premium.md): **BYOLLM** (every tier including free; the user's provider key, 0% markup) and **hosted premium** on paid plans (frontier routing — Sonnet 4.6 / GPT-5 / Gemini 2.5 Pro — under Shape B: flat sub + included monthly request allowance + soft-meter overage at provider list + 0% markup), with surface-parity model picker and per-key spend cap.
+**Status:** partial. BYOLLM (`SK-PREMIUM-008`) and the hosted-premium architectural slot ship in Phase 2 alongside `quality-eval`. The hosted-premium meter (`SK-PREMIUM-009`) is gated behind [`phase-plan.md §6`](../../phase-plan.md) and turns on by feature-flag when §6 trips.
+
+**Contribution to north-star:** Engine quality (the hosted-premium chain and BYOLLM give heavy users access to frontier-model accuracy on real schemas, feeding `quality-eval`'s free-vs-frontier delta KPI per [`GLOBAL-025`](../../decisions/GLOBAL-025-north-star.md)) and UX (request-denominated Shape B + opt-in fallback per `SK-PREMIUM-011` keep the boundary honest, removing the "first-token bill" surprise).
 **Owners (code):** none yet — `apps/api/src/billing/**`, `apps/api/src/ask/**`, `packages/llm/**`, `apps/web/**`, `cli/`, `packages/sdk/**`, `packages/elements/**`, `packages/mcp/**` will all carry slices.
 **Cross-refs:** docs/architecture.md §6 (pricing — Premium-models row) · docs/architecture.md §8 (AI model selection — model catalog) · docs/architecture.md §5 (Premium models add-on) · `docs/features/llm-router/FEATURE.md` (`SK-LLM-007` tier-aware chain selector, `SK-LLM-008` Pro-tier privacy, `SK-LLM-009` prompt caching) · `docs/features/stripe-billing/FEATURE.md` (`SK-STRIPE-004` Checkout linkage) · `docs/features/rate-limit/FEATURE.md` (per-key spend cap is open) · `docs/features/web-app/FEATURE.md` (CTA surface) · `docs/features/sdk/FEATURE.md` / `cli/FEATURE.md` / `mcp-server/FEATURE.md` / `elements/FEATURE.md` (surface-parity per `GLOBAL-003`)
 
@@ -70,7 +73,7 @@ when-to-load:
 
 ### SK-PREMIUM-004 — In-context upgrade CTA fires on classifier "hard plan" verdict, never on cost surprise
 
-- **Decision:** When the classifier (`llm.classify`) flags a request as `hard_plan` *and* the current chain is the strict-$0 chain, the chat surface renders a non-blocking "upgrade for higher accuracy" chip below the answer with three actions: "Upgrade this DB" (one-click → Stripe Checkout for the add-on; first-charge double-confirm per `docs/architecture.md §6`), "Use BYOK" (deferred — see open-questions), and "Dismiss for this DB" (writes a per-(user, db) preference). The chip never blocks the response — the free-chain answer renders first; the chip is *additional* context, not a paywall.
+- **Decision:** When the classifier (`llm.classify`) flags a request as `hard_plan` *and* the current chain is the strict-$0 chain, the chat surface renders a non-blocking "upgrade for higher accuracy" chip below the answer with three actions: "Upgrade this DB" (one-click → Stripe Checkout for the add-on; first-charge double-confirm per `docs/architecture.md §6`), "Use BYOLLM" (opens the paste-your-key flow per [`SK-PREMIUM-008`](./decisions/SK-PREMIUM-008-byollm.md) — works for every tier including free), and "Dismiss for this DB" (writes a per-(user, db) preference). The chip never blocks the response — the free-chain answer renders first; the chip is *additional* context, not a paywall.
 - **Core value:** Effortless UX, Honest latency, Goal-first
 - **Why:** The current flow has zero affordance for "this query would be more accurate on Sonnet 4.6" — the user gets the free-chain answer with no signal that an upgrade exists. Surfacing the chip *only* on hard-plan verdicts (not every query) keeps it out of the way for the 80% of queries the strict-$0 chain handles fine. Putting the chip below the answer (not above, not modal) preserves `GLOBAL-007` ("no login wall before first value") in spirit — the answer is delivered first, the upsell is a disclosure. Never firing on "we're about to bill you more" prevents the dark pattern where a customer thinks they hit a cap when they really hit a sales prompt.
 - **Consequence in code:** `apps/web/src/components/PremiumCta.tsx` consumes `response.classifier.verdict === 'hard_plan'` from the trace surface (already shipped per `SK-WEB-005`). The "Upgrade this DB" action POSTs to a new `/v1/billing/checkout/premium { db_id }` that creates a Stripe Checkout Session with `client_reference_id: userId` and the premium-models metered subscription item, redirecting back to the chat with `?premium_enabled=db_<id>`. The "Dismiss for this DB" preference lives in D1 `user_db_prefs (user_id, db_id, premium_cta_dismissed_at)`; the chip is suppressed for 30d after dismiss. Programmatic surfaces (SDK / CLI / MCP / elements) do not surface the chip — they surface the verdict in the trace and let the embedding app render its own UI per `GLOBAL-002`.
@@ -94,16 +97,28 @@ when-to-load:
 
 ### SK-PREMIUM-006 — Per-key spend cap is mandatory; default 100% hard at sign-up; one-click extension
 
-- **Decision:** Every `(DB, API key)` pair with premium enabled carries a monthly spend cap denominated in USD. Default cap on opt-in is the user-set monthly budget (defaults to **$10/key/mo**); soft cap fires at 80% (email warning), hard cap defaults to 100% (router falls through to the strict-$0 chain and emits `nlqdb.premium.hard_cap_hit.total{customer_id, db_id, key_id}`). Hard cap extension is one click in the dashboard, generates an email confirmation, and applies for the remainder of the billing period only (resets next period). Cap can be raised via API but never silently — every change emits `billing.premium_cap_changed` to LogSnag.
-- **Core value:** Bullet-proof, Honest latency
-- **Why:** Pay-per-token without a cap is the runaway-bill story that breaks the "no surprise $4,000 bills. Ever." promise in `docs/architecture.md §5`. A cap that defaults to "off" or to a high number is the same risk re-shaped. Hard-falling-through to the strict-$0 chain at 100% (instead of 4xx-erroring) is the consequence of the goal-first stance in `SK-PREMIUM-003` — the user gets *an* answer, just not the frontier-model one. The 30-day extension reset prevents drift toward "everyone has $1k caps after a year."
-- **Consequence in code:** `apps/api/src/billing/premium/cap.ts` enforces the cap inline in the `/v1/ask` pipeline before the LLM router is invoked; over-cap requests rewrite the chain selector to `free` and add a `cap_hit: true` field to the response trace. The KV-cached lookup from `SK-PREMIUM-001` carries `cap_usd_cents` and `period_spent_cents`; `period_spent_cents` increments via the metering write from `SK-PREMIUM-002` (with `ctx.waitUntil`). Extension endpoint is `POST /v1/billing/premium/cap/extend { db_id, key_id, new_cap_usd }` with `Idempotency-Key` per `GLOBAL-005`. Telemetry: `nlqdb.premium.spend_usd_cents{customer_id, db_id, key_id, period}` gauge + `nlqdb.premium.cap_hit.total` counter (cardinality budget per `docs/performance.md §3.3`).
-- **Alternatives rejected:**
-  - 4xx error at hard cap — strands the user mid-task with no answer; the goal-first stance prefers a graceful chain fallback.
-  - Soft cap only (warn but never stop) — produces the runaway bill in the worst case; rejected for the pricing-honesty stance.
-  - Cap denominated in tokens not USD — token prices change; USD is the unit the user commits to. Internal accounting can use tokens; the user-facing cap is dollars.
-  - Account-level cap instead of per-key — collides with `SK-PREMIUM-001`'s per-(DB, key) granularity; a per-key cap is the smaller blast radius.
-- **Source:** docs/architecture.md §5 (honest billing rules) · docs/architecture.md §6 (per-key spend cap) · `docs/features/rate-limit/FEATURE.md` (open: spend cap)
+**Body:** [`decisions/SK-PREMIUM-006-per-key-spend-cap.md`](./decisions/SK-PREMIUM-006-per-key-spend-cap.md).
+Every `(DB, API key)` pair with premium enabled carries a monthly USD spend cap (default $10/key/mo, soft warn at 80%, hard fall-through to strict-$0 chain at 100%, one-click extension with email confirmation). Under `SK-PREMIUM-009`'s Shape B the cap applies to **overage spend after allowance exhaustion** — included-allowance requests never tick the cap.
+
+### SK-PREMIUM-008 — BYOLLM: every tier including free; server-side keys; 0% markup; fail-loud on key error
+
+**Body:** [`decisions/SK-PREMIUM-008-byollm.md`](./decisions/SK-PREMIUM-008-byollm.md).
+Any authenticated user (free, Hobby, Pro, Enterprise) may paste an Anthropic / OpenAI / Gemini / OpenRouter key. The router dispatches through their key at 0% markup per [`GLOBAL-026`](../../decisions/GLOBAL-026-llm-strategy-byollm-hosted-premium.md); keys live encrypted in `api_keys` with `scope = "byollm"` and a Workers-Secret KEK. Failures fail loud per [`GLOBAL-012`](../../decisions/GLOBAL-012-one-sentence-errors.md). Resolves the 8-point decision tree previously held Open here.
+
+### SK-PREMIUM-009 — Hosted-premium meter (Shape B): flat sub + included monthly request allowance + soft-meter overage; §6-gated
+
+**Body:** [`decisions/SK-PREMIUM-009-hosted-premium-meter.md`](./decisions/SK-PREMIUM-009-hosted-premium-meter.md).
+When §6 trips, paid plans gain hosted-premium routing. Hobby $10/mo ≈ 200 included premium requests/mo; Pro $25/mo ≈ 600 (target, calibrated by 2026-08-15 against `nlqdb.premium.cost_per_query_usd` per `SK-PREMIUM-010`). Allowance unit is **requests** (not dollars, not tokens); no carryover; soft-meter overage at provider list + 0% markup; opt-in fallback to free chain per `SK-PREMIUM-011`. Pre-§6 the chain is wired but feature-flagged dark.
+
+### SK-PREMIUM-010 — Allowance guardrails: per-query soft cap, hard ceiling, instrumentation-first
+
+**Body:** [`decisions/SK-PREMIUM-010-allowance-guardrails.md`](./decisions/SK-PREMIUM-010-allowance-guardrails.md).
+Three guardrails protect the included allowance from `SK-PREMIUM-009`: per-query soft cap (~50k tokens; oversize = multiple allowance slots), hard ceiling (~500k tokens; refused with one-sentence error per `GLOBAL-012`), and cost-per-query instrumentation that ships **first** (by 2026-07-01) so allowance counts are calibrated against `p50_cost_per_query × allowance ≤ tier_price × (1 − target_gross_margin)`, target ≥ 60% gross margin post-COGS.
+
+### SK-PREMIUM-011 — Exhaustion policy: soft-meter overage by default, opt-in fallback to free chain
+
+**Body:** [`decisions/SK-PREMIUM-011-overflow-policy.md`](./decisions/SK-PREMIUM-011-overflow-policy.md).
+At allowance exhaustion, the per-account `users.overflow_policy` decides behavior: default `"meter"` continues at metered overage; opt-in `"fallback"` routes the rest of the billing period through the free chain with `overflow_fallback: true` surfaced in trace (never silent — `GLOBAL-023`). Per-key spend cap from `SK-PREMIUM-006` is the absolute ceiling regardless of policy.
 
 ### SK-PREMIUM-007 — Plan cache stays product-funded; cap accounting starts at the LLM call site
 
@@ -137,44 +152,14 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
   - *In this feature:* The `model` preset is the single way to express "I want better accuracy on this DB" — no parallel `--accuracy=high` flag, no `priority=premium` overload of the existing priority hint.
 - **GLOBAL-019** — Free + Open Source core (Apache-2.0); Cloud is convenience, not a moat.
   - *In this feature:* The 0% markup in `SK-PREMIUM-002` is the consequence — we explicitly compete with self-hosting. Markup is a future decision that must be re-justified, not a default that drifts upward.
+- **GLOBAL-025** — North-star: engine quality, onboarding, UX — each with explicit KPIs.
+  - *In this feature:* Hosted-premium routing and BYOLLM are the levers for the engine north-star (frontier accuracy on real schemas). `SK-PREMIUM-010`'s instrumentation-first cost-per-query histogram is the input to the Phase 3 unit-economics KPI.
+- **GLOBAL-026** — LLM strategy: free chain forever, BYOLLM for everyone, hosted premium on paid (flat sub + included monthly request allowance + soft-meter overage, 0% markup).
+  - *In this feature:* This feature owns the commercial shape of the upgrade lanes; `llm-router/FEATURE.md` owns the dispatch precedence (`SK-LLM-016`, `SK-LLM-017`).
 
 ## Open questions / known unknowns
 
-### BYOK — decision tree (the question this feature exists to host)
-
-**Status:** undecided. The current default is **no BYOK in v1**; this section enumerates the decision points so a future SK-PREMIUM block can resolve them with the five-fields rigor.
-
-The case for BYOK:
-- Customer already has Anthropic / OpenAI credits and doesn't want to double-pay.
-- Customer is on an enterprise contract with a specific provider that gives them better-than-list pricing.
-- Customer has a data-residency constraint that requires their own provider account (e.g. Azure-hosted OpenAI in a specific region).
-
-The case against BYOK in v1:
-- Surfaces a key-handling problem (per-customer encrypted blob, KEK rotation, leak audit) that we already deferred for "BYO Postgres" to Phase 4+.
-- Routes around our 0% markup pricing — if BYOK is the cheap path, the add-on becomes a tax on customers who don't have credits.
-- Splits the AI Gateway prompt-cache (`SK-LLM-004`) — BYOK customers don't share the cache namespace; warm-cache wins evaporate.
-- Splits the quality-telemetry surface — BYOK responses don't share the `nlqdb.plan.quality_score` histogram if they bypass the Gateway.
-
-**Decision points (must be resolved before BYOK SK-* lands):**
-
-1. **Which providers can users BYOK?** Anthropic + OpenAI only? Plus Gemini? Plus a generic "OpenAI-compatible endpoint" (Bedrock, Together, OpenRouter, self-hosted)?
-   - Trade-off: a long list grows the test matrix; a short list disappoints the "I have credits" customers we already lost a sale to.
-2. **Does BYOK go through Cloudflare AI Gateway?** Either path has cost: through-Gateway loses the prompt-cache (different account); around-Gateway loses our unified telemetry.
-   - Strawman: through-Gateway with `BYOK_<userid>` namespace; pay the cache-warmup cost on each customer's first hit.
-3. **Where do BYOK keys live?** Per-customer encrypted blob in D1 with a Workers-held KEK (mirrors the Phase 4+ "BYO Postgres" shape from `docs/architecture.md §3.6.7`)? Or per-DB Workers Secret (caps out around 1k per Worker — won't scale)?
-   - Strawman: D1 blob + KEK, same as the BYO-Postgres design, so we build the pattern once.
-4. **Does BYOK count against the per-key spend cap from `SK-PREMIUM-006`?** If we bill the customer's provider directly, our cap is irrelevant — but our `nlqdb.premium.spend_usd_cents` becomes unmonotonic vs invoice.
-   - Strawman: BYOK requests bypass the spend cap (cap is for our-billed tokens) but still emit `nlqdb.byok.spend_estimate_usd_cents{provider, model}` with a "estimated, not billed" disclaimer for the customer dashboard.
-5. **Does BYOK gate behind a paid plan?** Hobby+ only, or also Free? If Free can BYOK, we're hosting their LLM call without revenue against our compute / Gateway / observability cost.
-   - Strawman: Hobby+ only — BYOK is a paid-plan capability even though we don't bill the LLM line. The plan upsell is "we don't host your spend on our worker for free."
-6. **Failure modes — the customer's key is revoked / expired / rate-limited.** Do we fall through to our paid chain (silent re-billing) or to the strict-$0 chain (silent quality drop) or 4xx (user-visible failure)?
-   - Strawman: 4xx with a one-sentence error per `GLOBAL-012` ("Your Anthropic key returned 401. Update it at /settings/keys."). Silent fallback to either alternative is a dark pattern.
-7. **Privacy promise from `SK-LLM-008`.** Pro customers route exclusively through retention-off paid providers. If a Pro customer BYOKs a key on a retention-on plan, do we honor their setting (and silently break the privacy contract) or refuse?
-   - Strawman: refuse — the privacy contract is a property of the plan, not the key. BYOK + Pro requires the customer to certify (per-key checkbox + audit log entry) that their key is on a retention-off plan.
-8. **MCP host scenario.** An MCP host wants to BYOK on behalf of the connected user. Does the key live on the host or in our control plane? Hosts are diverse (Claude Desktop, Cursor, Zed); we can't trust them with provider keys.
-   - Strawman: BYOK is server-side only (our control plane); MCP hosts opt the user's request into BYOK via a tool parameter, never carry the key.
-
-A future `SK-PREMIUM-008` lands when these are resolved. Until then, the in-context CTA from `SK-PREMIUM-004` shows the "Use BYOK" action as `disabled` with tooltip "Coming in Phase 3 — vote at /roadmap" so we measure interest without committing to the design.
+The 8-point BYOK decision tree that previously lived here is resolved by [`SK-PREMIUM-008`](./decisions/SK-PREMIUM-008-byollm.md) (see its `Why` field). Historical case-for / case-against context lives in that file's `## Resolution history` section.
 
 ### Other open questions
 
