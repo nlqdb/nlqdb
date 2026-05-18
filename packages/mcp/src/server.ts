@@ -1,4 +1,5 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { ToolAnnotations } from "@modelcontextprotocol/sdk/types.js";
 import type { NlqClient } from "@nlqdb/sdk";
 import { trace } from "@opentelemetry/api";
 import type { z } from "zod";
@@ -46,6 +47,7 @@ type ToolDef = {
   title?: string;
   description?: string;
   inputSchema?: Record<string, z.ZodTypeAny>;
+  annotations?: ToolAnnotations;
 };
 type RegisterTool = (name: string, def: ToolDef, handler: ToolHandler) => void;
 
@@ -75,6 +77,8 @@ export function createServer(opts: ServerOptions): McpServer {
       description:
         "Run a natural-language query against an nlqdb database. Returns rows + the compiled SQL (in trace). The database is materialised on first reference — no separate create tool. Destructive plans return requires_confirm: true + a diff; re-call with confirm: true to commit.",
       inputSchema: queryInputShape,
+      // SK-MCP-002 — static hint is the worst case (read+write); runtime `requires_confirm` is the real gate.
+      annotations: { destructiveHint: true },
     },
     async (args: QueryInput, extra: ToolExtra) => {
       return runTool("nlqdb_query", extra.signal, async (ctx) => {
@@ -91,6 +95,7 @@ export function createServer(opts: ServerOptions): McpServer {
       description:
         "Enumerate databases visible to the authenticated user. Requires a user-scoped key (sk_live_ or sk_mcp_). Returns engine per row.",
       inputSchema: listDatabasesInputShape,
+      annotations: { readOnlyHint: true },
     },
     async (_args: unknown, extra: ToolExtra) => {
       return runTool("nlqdb_list_databases", extra.signal, async (ctx) => {
@@ -107,6 +112,7 @@ export function createServer(opts: ServerOptions): McpServer {
       description:
         "Return schema metadata (slug, engine, schema name) for one database. Requires a user-scoped key (sk_live_ or sk_mcp_).",
       inputSchema: describeInputShape,
+      annotations: { readOnlyHint: true },
     },
     async (args: DescribeInput, extra: ToolExtra) => {
       return runTool("nlqdb_describe", extra.signal, async (ctx) => {

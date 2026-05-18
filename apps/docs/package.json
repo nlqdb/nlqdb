@@ -5,11 +5,12 @@
   "description": "nlqdb user-facing documentation site (docs.nlqdb.com) — Astro Starlight on Cloudflare Workers Static Assets.",
   "type": "module",
   "scripts": {
-    "dev": "astro dev",
-    "build": "astro build",
+    "gen": "bun run scripts/gen-sdk.ts && bun run scripts/gen-examples.ts && bun run scripts/gen-cli.ts",
+    "dev": "bun run gen && astro dev",
+    "build": "bun run gen && astro build",
     "preview": "astro preview",
     "check": "astro check",
-    "deploy": "astro build && wrangler deploy"
+    "deploy": "bun run gen && astro build && wrangler deploy"
   },
   "dependencies": {
     "@astrojs/starlight": "^0.37.0",
@@ -18,6 +19,9 @@
   },
   "devDependencies": {
     "@astrojs/check": "^0.9.0",
+    "typedoc": "^0.28.0",
+    "typedoc-plugin-frontmatter": "^1.3.0",
+    "typedoc-plugin-markdown": "^4.11.0",
     "typescript": "^5.6.0",
     "wrangler": "^4.0.0"
   }

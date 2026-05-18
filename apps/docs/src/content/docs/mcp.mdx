@@ -3,11 +3,54 @@ title: MCP setup
 description: Connect Claude Desktop, Cursor, Zed, Windsurf, VS Code Continue, or Cline to nlqdb.
 ---
 
-:::caution[Stub]
-**TODO:** replace with hand-written prose (concept layer per `SK-DOCS-003`). Host-specific setup is narrative, not auto-generable. Until then, see [`docs/features/mcp-server/FEATURE.md`](https://github.com/nlqdb/nlqdb/blob/main/docs/features/mcp-server/FEATURE.md).
-:::
+nlqdb speaks MCP (Model Context Protocol) so any host that supports it —
+Claude Desktop, Cursor, Zed, Windsurf, VS Code Continue, Cline — can call
+`nlqdb_query`, `nlqdb_list_databases`, and `nlqdb_describe` directly.
 
-## Two install paths
+## Install paths
 
-1. **Hosted (default)** — paste `https://mcp.nlqdb.com/mcp` into your host's MCP-connector config; OAuth opens in your browser on first tool call.
-2. **Local stdio** — `nlq mcp install` auto-detects installed hosts and writes scoped `sk_mcp_<host>_<device>_*` keys into each config.
+Four paths, all terminating at the same `/v1/ask` orchestration and the same
+three tools:
+
+1. **Connector URL** (hosted, default) — paste `mcp.nlqdb.com` into the
+   host's MCP-connector config; OAuth opens in your browser on first tool
+   call. Zero local setup.
+2. **`nlq mcp install`** (local stdio) — the CLI auto-detects every
+   installed host, opens the browser once for OAuth, mints a scoped
+   `sk_mcp_<host>_<device>_…` key per host, and patches each host's
+   config file in place.
+3. **Website one-click** (`app.nlqdb.com/mcp`) — mints the key server-side,
+   opens an `nlqdb://install?…` deep link the CLI handles.
+4. **`NLQDB_API_KEY` env var** — `sk_…` precedence over any config; the
+   CI / Docker / air-gapped escape hatch.
+
+## `nlq mcp install` walkthrough
+
+```bash
+$ nlq mcp install
+🔎 Scanning: Claude Desktop, Cursor, Zed, Windsurf, VS Code, Continue
+✓ Found: Claude Desktop, Cursor
+→ Opening browser to approve this device… (fallback code: AB12-CD34)
+✓ Signed in as jordan@example.com.
+✓ Claude Desktop  — wrote config; restart? [Y/n] y → relaunched. Self-check: ok.
+✓ Cursor          — wrote config; hot-reloaded. Self-check: ok.
+```
+
+Escape hatches: `nlq mcp install <host>` (explicit), `--all`, `--dry-run`,
+`NLQDB_API_KEY=sk_…` (CI / air-gapped).
+
+## Usage from inside the host LLM
+
+The agent never sees "create a database"; the DB materialises on first
+reference:
+
+```
+User:   "Remember I prefer metric and I'm vegetarian."
+Claude → nlqdb_query("preferences", "remember: metric units, vegetarian")
+       → { ok, db: "preferences-93b" }
+
+[next session]
+User:   "Plan me a Berlin food trip."
+Claude → nlqdb_query("preferences", "what do you remember about me?")
+       → "metric units, vegetarian"
+```

@@ -1,6 +1,13 @@
 # Auto-deploys apps/docs on merge. Mirrors deploy-mcp.yml — static
 # Astro Starlight site, no D1, no Worker secrets. wrangler provisions
 # docs.nlqdb.com DNS + cert on first run via `custom_domain = true`.
+#
+# The build runs three autogen pipelines (SK-DOCS-003) before astro:
+#   • gen-sdk    — TypeDoc → MDX from packages/sdk/src/**.ts.
+#   • gen-examples — examples/<name>/README.md → /tutorials/<name>/.
+#   • gen-cli    — `nlq help --json` → /cli/.
+# That is why `paths:` watches packages/sdk, examples, and cli, and why
+# the job builds the `nlq` binary before the docs build.
 
 name: Deploy docs site
 
@@ -9,6 +16,9 @@ on:
     branches: [main]
     paths:
       - "apps/docs/**"
+      - "packages/sdk/**"
+      - "examples/**"
+      - "cli/**"
       - ".github/workflows/deploy-docs.yml"
   workflow_dispatch:
 
@@ -24,13 +34,27 @@ jobs:
   deploy:
     name: wrangler deploy
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 8
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
       - uses: ./.github/actions/setup
 
-      - name: Build
+      - uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5.5.0
+        with:
+          go-version-file: cli/go.mod
+          cache-dependency-path: cli/go.sum
+
+      - name: Build nlq binary (for gen-cli)
+        run: |
+          mkdir -p cli/dist
+          go -C cli build -o dist/nlq ./cmd/nlq
+        env:
+          CGO_ENABLED: "0"
+
+      - name: Build docs site
         run: bun run --filter apps/docs build
+        env:
+          NLQDB_CLI: ${{ github.workspace }}/cli/dist/nlq
 
       - name: Deploy
         uses: cloudflare/wrangler-action@9acf94ace14e7dc412b076f2c5c20b8ce93c79cd # v3.15.0
