@@ -18,6 +18,9 @@ Progress tracker — platform integrations. Each row is a P0/P1/P2/P3 commitment
 | **Shipped**  | Swift Package             | `Nlqdb` — `packages/nlqdb-swift`                                                         | Swift 6, actor-based, async/await; `NlqDataView` SwiftUI helper. See [`sdk-swift/FEATURE.md`](./features/sdk-swift/FEATURE.md). |
 | **Phase 2**  | Python SDK                | `pip install nlqdb`                                                                      | Sync + async; first user is the Jupyter magic.                          |
 | **Phase 2**  | Go SDK                    | `github.com/nlqdb/nlqdb-go`                                                              | First user is the CLI itself.                                           |
+| **Phase 2**  | BYOLLM ([`SK-PREMIUM-008`](./features/premium-tier/decisions/SK-PREMIUM-008-byollm.md)) | `api_keys.scope = "byollm"` — every tier (free included); through-Gateway dispatch; 0% markup | Paste Anthropic / OpenAI / Gemini / OpenRouter key in `/app/keys`; fail-loud on key error per `GLOBAL-012`. |
+| **Phase 2**  | Quality-eval harness     | `tools/eval/` + weekly Cloudflare Cron                                                  | BIRD-dev + Spider 2.0-lite + internal `db.create` eval. Headline KPI = free-vs-frontier delta per `SK-QUAL-004`. Promoted from Phase 3 by `GLOBAL-025`. |
+| **§6-gated** | Hosted-premium LLM lane  | `packages/llm/src/chains/premium.ts` + Stripe metered subscription items                | Frontier-only (Sonnet 4.6 / GPT-5 / Gemini 2.5 Pro); paid plans only; Shape B (flat sub + included monthly request allowance + soft-meter overage at provider list + 0% markup) per `SK-PREMIUM-009`. Architectural slot lands Phase 2 (dark); meter fires when `phase-plan.md §6` trips. |
 | **Wishlist** | VSCode extension          | (clicks → `home.surface_wishlist`)                                                       | Sidebar panel + inline `<nlq-data>` preview in HTML files.              |
 | **Wishlist** | JetBrains plugin          | (clicks → `home.surface_wishlist`)                                                       | Same shape as VSCode for IntelliJ / WebStorm.                           |
 | **Wishlist** | Slack bot                 | (clicks → `home.surface_wishlist`)                                                       | `/nlq <goal>` in any channel; per-workspace API key.                    |
@@ -180,79 +183,9 @@ P2 ships in Phase 3 — depends on Pro tier / multi-engine being live, or on par
 
 ## 4. P3 — explicitly out of scope
 
-Long-tail / community. Templates in `examples/` invite PRs; we may take canonical maintenance later if traction warrants.
+**Body:** [`docs/progress-p3-catalog.md`](./progress-p3-catalog.md).
 
-### Mobile + desktop
-
-| Package                 | Distribution                  | Tier   | Notes                                                                                  |
-| :---------------------- | :---------------------------- | :----- | :------------------------------------------------------------------------------------- |
-| `@nlqdb/electron`       | npm                           | **P3** | IPC adapter for keychain-stored refresh tokens in the main process.                    |
-
-### Backend / server middleware
-
-| Package              | Stack                 | Tier   | Notes                                                       |
-| :------------------- | :-------------------- | :----- | :---------------------------------------------------------- |
-| `nlqdb-spring`       | Maven Central         | **P3** | Spring Boot starter.                                        |
-| `nlqdb-rust`         | crates.io             | **P3** | Async client built on `reqwest`.                            |
-| `nlqdb-elixir`       | Hex.pm                | **P3** | Phoenix integration with a `Plug.NlqResponse` helper.       |
-
-### IDE / editor extensions
-
-| Extension              | Marketplace            | Tier   | Notes                                                            |
-| :--------------------- | :--------------------- | :----- | :--------------------------------------------------------------- |
-| `nlqdb.nvim`           | Lua plugin             | **P3** | Floating-window query runner.                                    |
-| `nlqdb-mode` Emacs     | MELPA                  | **P3** | Org-mode source-block backend.                                   |
-| `nlqdb` Sublime        | Package Control        | **P3** | Same surface, smaller community.                                 |
-
-### Browser extensions
-
-| Extension              | Store                       | Tier   | Use case                                                              |
-| :--------------------- | :-------------------------- | :----- | :-------------------------------------------------------------------- |
-| `nlqdb` for Safari     | Safari Extensions Gallery   | **P3** | Same; later because of the Safari notarisation tax.                   |
-| `nlqdb` Arc Boost      | Arc                         | **P3** | Boost-as-a-feature: turn any DataTable on a SaaS dashboard into nlq.  |
-
-### CMS, no-code, and site builders
-
-| Plugin                        | Platform                    | Tier   | Notes                                                          |
-| :---------------------------- | :-------------------------- | :----- | :------------------------------------------------------------- |
-| `nlqdb` Wix app               | Wix App Market              | **P3** | Velo backend wrapper.                                          |
-| Ghost integration             | Ghost custom integration    | **P3** | Members-aware queries via `pk_live_`.                          |
-| Notion connector              | Notion Connections          | **P3** | Push query results into a Notion DB on schedule.               |
-| Framer override               | Framer Code Components      | **P3** | `<NlqData />` Framer code component.                           |
-| Softr block                   | Softr Marketplace           | **P3** | Same shape as Bubble plugin.                                   |
-| FlutterFlow component         | FlutterFlow Marketplace     | **P3** | No-code mobile builder, mirrors `nlqdb_flutter`.                |
-
-### Workflow, RPA, iPaaS
-
-| Integration                  | Platform                    | Tier   | Notes                                                                       |
-| :--------------------------- | :-------------------------- | :----- | :-------------------------------------------------------------------------- |
-| Make module                  | make.com                    | **P3** | Mirror of the Zapier app.                                                   |
-| Pipedream component          | pipedream.com               | **P3** | Same.                                                                       |
-| Activepieces piece           | activepieces.com            | **P3** | Open-source iPaaS — community-friendly counterpart to Zapier.               |
-| GitLab CI component          | GitLab Catalog              | **P3** | Same shape as the GH Action.                                                |
-| Buildkite plugin             | Buildkite Plugins           | **P3** | Same.                                                                       |
-| Temporal activity helper     | Temporal SDK                | **P3** | Wraps `@nlqdb/sdk` so workflows can query / insert without ad-hoc HTTP.     |
-
-### Data + analytics tooling
-
-| Integration                  | Platform                    | Tier   | Notes                                                       |
-| :--------------------------- | :-------------------------- | :----- | :---------------------------------------------------------- |
-| Observable Plot helper       | npm (`@nlqdb/observable`)   | **P3** | One-liner chart from an nlq query.                          |
-| Streamlit component          | PyPI                        | **P3** | `st.nlqdb()` widget.                                        |
-| Marimo cell                  | PyPI                        | **P3** | Reactive cell; same shape as Streamlit.                     |
-| dbt source plugin            | dbt-core                    | **P3** | Treat an nlq DB as a source.                                |
-| Airbyte source / destination | Airbyte                     | **P3** | Connector for ETL pipelines.                                |
-| Fivetran connector           | Fivetran                    | **P3** | Same.                                                       |
-| Metabase data driver         | Metabase Driver SDK         | **P3** | Show an nlq DB inside Metabase like any Postgres.            |
-
-### Chat + collaboration platforms
-
-| Integration                  | Platform                    | Tier   | Notes                                                       |
-| :--------------------------- | :-------------------------- | :----- | :---------------------------------------------------------- |
-| Discord bot                  | OAuth + Bot                 | **P3** | Slash command + ambient response.                           |
-| Microsoft Teams app          | Teams Marketplace           | **P3** | Same shape as the Slack app.                                |
-| Telegram bot                 | BotFather                   | **P3** | Slash + inline.                                             |
-| Linear integration           | Linear Marketplace          | **P3** | Auto-tag issues with related rows from a connected DB.      |
+Sharded out to keep this doc under 20 KB per `CLAUDE.md` §2 D4 — all 8 sub-tables (mobile/desktop, backend, IDE, browser, CMS, workflow, data/analytics, chat) intact in the sub-file. Long-tail / community; templates in `examples/` invite PRs.
 
 ---
 

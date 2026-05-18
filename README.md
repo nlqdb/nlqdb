@@ -9,6 +9,10 @@ Two user actions. That's the whole product:
 
 Engine choice (Postgres / Mongo / Redis / DuckDB / pgvector / …), schema inference, indexing, backups, auto-migration between engines based on your actual workload — background concerns you never have to see.
 
+**North-star.** Four pillars from [`GLOBAL-025`](./docs/decisions/GLOBAL-025-north-star.md): a **high-quality engine** — two layers, the **NL→SQL accuracy engine** (measured on BIRD + Spider 2.0 + an internal eval; see [`quality-eval`](./docs/features/quality-eval/FEATURE.md)) *and* the **multi-engine data engine** (auto-migration with dual-read verification, Phase 3); **seamless onboarding** (≤ 60 s from landing to first answer, no card, no config); **seamless UX** (diff before writes, visible SQL trace, refuse on low confidence); **performance** (p50 cache-hit ≤ 400 ms, p95 cache-miss ≤ 1.5 s, cold-start ≤ 800 ms). Every shipped feature must advance at least one pillar AND must not degrade any of the others. The bet: be great on free LLMs and you're invincible on frontier LLMs — engine work compounds with whatever model is underneath.
+
+**LLM strategy** ([`GLOBAL-026`](./docs/decisions/GLOBAL-026-llm-strategy-byollm-hosted-premium.md)): free LLM router *forever* for the free tier · **BYOLLM** (Anthropic / OpenAI / Gemini / OpenRouter) on every tier at 0% markup · **hosted premium** (Sonnet 4.6 / GPT-5 / Gemini 2.5 Pro) on paid plans, **flat sub + included monthly request allowance + soft-meter overage** at provider list + 0% markup (Hobby ≈ 200 premium requests/mo, Pro ≈ 600; no carryover; opt-in to fall back to free chain at exhaustion).
+
 ## Use it
 
 **One CLI command:**
@@ -133,6 +137,8 @@ monetization trigger, not on the phase rollover.
 - ◯ CSV upload
 - ✓ Framework wrappers — `@nlqdb/{react,next,vue,nuxt,svelte,sveltekit,astro,solid}` and `Nlqdb` (Swift Package)
 - ◯ Docs site `docs.nlqdb.com`
+- ◯ Quality-eval harness ([`quality-eval`](./docs/features/quality-eval/FEATURE.md)) — BIRD + Spider 2.0 + internal `db.create` eval; weekly cron; **free-vs-frontier delta is the headline KPI**. Promoted from Phase 3 by `GLOBAL-025`.
+- ◯ BYOLLM dispatch ([`SK-PREMIUM-008`](./docs/features/premium-tier/decisions/SK-PREMIUM-008-byollm.md)) — paste your Anthropic / OpenAI / Gemini / OpenRouter key; works on every tier (free included); 0% markup; no payment infra required.
 
 ### Phase 3 — Multi-engine engine (the moat)
 
@@ -141,6 +147,7 @@ monetization trigger, not on the phase rollover.
 - ◯ Redis as second engine
 - ◯ DuckDB analytics path
 - ◯ Dual-read verification
+- ◯ Hosted-premium LLM lane lit up (§6-gated; flag flip on top of the Phase 2 architectural slot)
 
 ### Phase 4 — Enterprise polish
 

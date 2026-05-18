@@ -12,7 +12,10 @@ here.
 If a sentence here disagrees with a feature, **the feature wins**. This
 document owns the phase ordering, the items in each phase, and the
 measurable exit gate. Feature-level decisions (the `SK-*` blocks) own the
-*how*.
+*how*. Exit gates from Phase 1.5 onward reference KPI floors defined in
+[`GLOBAL-025`](./decisions/GLOBAL-025-north-star.md) (engine quality,
+onboarding, UX). LLM strategy across all phases is fixed by
+[`GLOBAL-026`](./decisions/GLOBAL-026-llm-strategy-byollm-hosted-premium.md).
 
 ---
 
@@ -23,8 +26,15 @@ Apply to every phase:
 - Ship the on-ramp first. A user must reach first value before any new
   surface ships.
 - Vertical slices, not horizontal layers. Each slice ships end-to-end.
+- Every shipped feature must measurably advance at least one
+  north-star ([`GLOBAL-025`](./decisions/GLOBAL-025-north-star.md))
+  — engine quality, seamless onboarding, seamless UX, or
+  performance — AND must not degrade any of the others.
 - Every phase has a measurable exit gate. No gate, no phase rollover.
-- Strict-$0 through Phase 1 ([`GLOBAL-013`](./decisions/GLOBAL-013-free-tier-bundle-budget.md)).
+- **Strict-$0 forever for the free tier** ([`GLOBAL-013`](./decisions/GLOBAL-013-free-tier-bundle-budget.md)
+  + [`GLOBAL-026`](./decisions/GLOBAL-026-llm-strategy-byollm-hosted-premium.md)).
+  Free LLM chain is permanent; hosted premium routes only on paid
+  plans; BYOLLM is available on every tier.
 - Dogfood from Phase 0. Every surface used by the team before it ships
   to a stranger.
 - New monetization or scaling work is **gated on demand-signal**, not
@@ -109,7 +119,10 @@ and across every existing feature.
 **Exit gate:** every Phase 1 surface emits a `surface` label and a
 demand-signal event on the documented failure paths; trust-UX diff
 preview measurably reduces the destructive-op retry rate in user
-tests.
+tests; **north-star baselines measured** — TTFV, first-query success,
+destructive-op retry rate, and BIRD-dev/Spider 2.0-lite EM on the
+free chain all have a recorded `2026-05` value per the
+[`GLOBAL-025`](./decisions/GLOBAL-025-north-star.md) KPI table.
 
 **Status (2026-05):** capture-pipe shipped. `SK-EVENTS-010` +
 `SK-EVENTS-011` wired every documented "not yet" path plus the
@@ -151,13 +164,32 @@ it composes on the same auth/SDK; framework wrappers third.
 8. **Custom domains for embeds** via Cloudflare for SaaS (first 100
    zones free).
 
-**Not in Phase 2 by default:** Stripe live, Lago, Listmonk. These are
-gated on the §6 monetization trigger, not on the phase rollover.
+9. **Quality-eval harness** ([`quality-eval`](./features/quality-eval/FEATURE.md))
+   — BIRD-dev + Spider 2.0-lite + an internal eval over `db.create`
+   schemas, run weekly, accuracy reported per
+   [`llm-router`](./features/llm-router/FEATURE.md) tier and per
+   dispatch lane (free / BYOLLM / hosted-premium). **Promoted from
+   Phase 3** because the engine north-star
+   ([`GLOBAL-025`](./decisions/GLOBAL-025-north-star.md)) is
+   unprovable without it.
+10. **BYOLLM dispatch** — per
+   [`GLOBAL-026`](./decisions/GLOBAL-026-llm-strategy-byollm-hosted-premium.md),
+   every user (free or paid) can paste a provider key and route
+   through it at 0% markup. Ships now because no payment infra is
+   required; the hosted-premium lane stays dark until §6 trips.
+
+**Not in Phase 2 by default:** Stripe live, Lago, Listmonk, and the
+hosted-premium LLM lane (architectural slot landed in §10 above; meter
+stays off). These all turn on when §6 trips.
 
 **Exit gate:** MCP installed in 3+ distinct host apps; 1 agent product
 publicly uses nlqdb as memory; 3 non-engineers complete CSV analysis
 <10 min unassisted; inference cost <$1/mo per active anon-or-signed-in
-user.
+user. **North-star floors cleared** per
+[`GLOBAL-025`](./decisions/GLOBAL-025-north-star.md): BIRD-dev EM
+≥ 72% on the free chain, ≥ 88% on frontier (free-vs-frontier delta
+≤ 22 pts); TTFV p50 ≤ 60 s, first-query success ≥ 70%; destructive-op
+retry rate measurably below the no-preview baseline.
 
 **Status (2026-05):** item 1 (MCP server) is in progress and item 2
 (CLI) has its bootstrap slice plus key-management verbs on a branch.
@@ -223,20 +255,33 @@ React Native / Expo and Python / Go SDKs remain Phase 2 P1.
 - Query Log → Workload Analyzer → Migration Orchestrator.
 - ClickHouse via Tinybird as second engine (analytics; daily reshape
   via Pipes).
-- **Pro tier live** ($25/mo usage-based) — only if the §6 monetization
-  trigger fired during Phase 2; otherwise stays a Phase 4 deliverable.
+- **Hobby $10 + Pro $25 live + hosted-premium LLM lane lit up**
+  ([`GLOBAL-026`](./decisions/GLOBAL-026-llm-strategy-byollm-hosted-premium.md))
+  — flat subscription + included monthly request allowance per
+  [`SK-PREMIUM-009`](./features/premium-tier/decisions/SK-PREMIUM-009-hosted-premium-meter.md)
+  (~200 Hobby / ~600 Pro) + soft-meter overage at provider list + 0%
+  markup. Ships only if §6 has tripped; otherwise stays a Phase 4
+  deliverable.
 - Self-hosted classifier on single A10G Modal once ~50k queries/day.
 - Continuous backups to R2 with PITR (7d free, 30d Hobby+).
 - Team workspaces.
 - Self-host container image at `ghcr.io/nlqdb/api`.
-- **Quality-eval harness** ([`quality-eval`](./features/quality-eval/FEATURE.md))
-  — BIRD/Spider benchmarks against the LLM router; gates the
-  promotion of [`docs/future/semantic-layer.md`](./future/semantic-layer.md)
-  when accuracy drops below the trigger threshold.
+- **Semantic-layer promotion gate** — when the
+  [`quality-eval`](./features/quality-eval/FEATURE.md) free-chain EM
+  drops below the unscaffolded threshold per
+  [`SK-QUAL-002`](./features/quality-eval/FEATURE.md), promote
+  [`docs/future/semantic-layer.md`](./future/semantic-layer.md) into
+  an active feature. (The harness itself ships in Phase 2.)
 
 **Exit gate:** ≥100 successful auto-migrations with zero user-visible
 downtime; 50 paying customers across tiers (if monetization shipped);
-otherwise ≥200 weekly-active users.
+otherwise ≥200 weekly-active users. **North-star floors per
+[`GLOBAL-025`](./decisions/GLOBAL-025-north-star.md):** BIRD-dev EM
+≥ 78% on free chain, ≥ 92% on frontier (delta ≤ 14 pts); Spider
+2.0-lite EM ≥ 15% on free chain, ≥ 25% on frontier; TTFV p50 ≤ 30 s;
+first-query success ≥ 85%; Sean-Ellis "very disappointed" ≥ 40%
+(PMF) — measured monthly per
+[`founder-playbook.md` §2](./founder-playbook.md).
 
 ---
 
@@ -268,6 +313,16 @@ qualitative criteria in personas.md, AND (b) the §6 trigger has
 tripped and Stripe live has shipped, OR (c) deliberate decision to
 ship without paid validation if §6 hasn't tripped within the
 quarter.
+
+**What is *not* §6-gated.** Per
+[`GLOBAL-026`](./decisions/GLOBAL-026-llm-strategy-byollm-hosted-premium.md),
+**BYOLLM ships in Phase 2** for every tier (no payment infra needed)
+and the **architectural slot for hosted-premium dispatch** lands in
+the same slice (router precedence, span names, schema columns). What
+§6 actually gates is the *meter firing*: until §6 trips, the
+hosted-premium lane is feature-flagged dark, and there is no path
+from "I'm a paid user" to "we billed Stripe for tokens". When §6
+trips, lighting the lane is a flag flip, not a refactor.
 
 ---
 

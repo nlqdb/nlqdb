@@ -9,8 +9,11 @@ when-to-load:
 
 # Feature: Llm Router
 
-**One-liner:** Model selection, fallback chain, prompt strategy, per-user credit accounting.
-**Status:** implemented
+**One-liner:** Model selection, fallback chain, prompt strategy, per-user credit accounting; three permanent dispatch lanes per [`GLOBAL-026`](../../decisions/GLOBAL-026-llm-strategy-byollm-hosted-premium.md) — free chain forever, BYOLLM every tier (0% markup), hosted-premium on paid (§6-gated Shape B meter).
+**Status:** implemented for the free chain (`SK-LLM-001..015`). `SK-LLM-016` (BYOLLM) and `SK-LLM-017` (hosted-premium chain) land in Phase 2 alongside `quality-eval`; the premium-chain meter stays dark until [`phase-plan.md §6`](../../phase-plan.md) trips.
+
+**Contribution to north-star:** Engine quality — the router is the NL→SQL accuracy lever per [`GLOBAL-025`](../../decisions/GLOBAL-025-north-star.md). Free-chain scaffolding compounds when BYOLLM or hosted-premium swaps in a frontier model; `quality-eval`'s free-vs-frontier delta measures the compounding.
+
 **Owners (code):** `packages/llm/**`
 **Cross-refs:** docs/architecture.md §7 (AI model selection), §7.1 (Strict-$0) · docs/performance.md §4 Slice 4, §2.2 (cache-miss latency), §3 (span/metric catalog) · `docs/features/hosted-db-create/FEATURE.md` (SK-HDC-001/002 route through this router)
 
@@ -118,11 +121,18 @@ when-to-load:
 
 ### SK-LLM-014 — Hedged-request race on free-tier chains for planner-tier ops
 
-- **Decision:** `LLMRouterOptions.hedge: Partial<Record<LLMOperation, { afterMs: number }>>` opts an operation into a hedged race over the first two eligible providers (configured + breaker-closed). After `afterMs` head-start, fire provider[1] in parallel with provider[0]; first success wins, the loser is aborted via `AbortController` (sentinel `HEDGE_LOST`) and surfaces `FailoverReason: "hedge_lost"` — distinct from `timeout` so the breaker doesn't trip on the cancelled leg. **Free-tier chains only** (per-op opt-in so paid chains under SK-LLM-007 can stay sequential). Production wires `schema_infer` and `plan` at `afterMs: 800`.
-- **Core value:** Honest latency, Fast, Free
-- **Why:** Trace `285b805cee6e2688768d9ffcd75a86fe` (2026-05-13) — anon `/v1/ask kind=create` spent 8.0 s on a Gemini `schema_infer` timeout before falling over to Groq (3.3 s). With an 800 ms head-start hedge, Groq fires ~7 s earlier and returns in ~4.1 s wall-clock total; ~5 s saved on the bad case, unchanged on the happy case. Dean & Barroso "Tail at Scale" (CACM 2013) — trade ~1.05× provider RPS for the timeout-tail.
-- **Consequence in code:** `packages/llm/src/router.ts` carries `raceHedgedPair()` wired from `dispatch()` when `opts.hedge?.[op]` is set. `FailoverReason` gains `"hedge_lost"`; `classifyError()` keys off `signal.reason === HEDGE_LOST`. `updateBreakerFromResult()` skips `hedge_lost` so repeated successful hedges don't trip the fallback. `nlqdb.llm.failover.total{reason: "hedge_lost"}` fires once per actual engagement (skipped when primary returns within the head-start).
-- **Alternatives rejected:** Always hedge (1.5× RPS waste on the fast path); lower per-attempt timeout instead (keeps the same tail; loses safety margin for legitimately slow models); hedge on paid chains (doubles per-token bill on the slow tail); race all providers (combinatorial RPS waste; two-way is the right ratio for free providers).
+**Body:** [`decisions/SK-LLM-014-hedged-request-race.md`](./decisions/SK-LLM-014-hedged-request-race.md).
+`LLMRouterOptions.hedge` opts an op into a two-way hedged race after `afterMs` head-start; loser aborted with `HEDGE_LOST` so the breaker doesn't trip on the cancel. Free-tier chains only. Production wires `schema_infer` + `plan` at `afterMs: 800`. Empirical (trace `285b805cee6e2688768d9ffcd75a86fe`): ~5 s saved on the bad case, unchanged on the happy case. Cites Dean & Barroso "Tail at Scale" (CACM 2013) — trade ~1.05× provider RPS for the timeout-tail. Alternatives rejected: always-hedge (1.5× waste), lower per-attempt timeout (same tail), hedge on paid chains (doubles per-token bill), race-all (combinatorial waste).
+
+### SK-LLM-016 — BYOLLM dispatch lane: per-request override → account-stored → hosted-premium → free
+
+**Body:** [`decisions/SK-LLM-016-byollm-dispatch.md`](./decisions/SK-LLM-016-byollm-dispatch.md).
+Four-step dispatch precedence per `GLOBAL-026`: per-request `x-nlq-byollm-key` header → account-stored key → hosted-premium → free. Routes through AI Gateway namespace `BYOLLM_<user_id>`; failures fail loud per `GLOBAL-012`. Key-handling in [`SK-PREMIUM-008`](../premium-tier/decisions/SK-PREMIUM-008-byollm.md).
+
+### SK-LLM-017 — Hosted-premium chain: separate provider list, §6-gated meter, never available on free
+
+**Body:** [`decisions/SK-LLM-017-hosted-premium-chain.md`](./decisions/SK-LLM-017-hosted-premium-chain.md).
+Third chain alongside `free` and `paid`: **`premium`** = Sonnet 4.6 + GPT-5 + Gemini 2.5 Pro. Fires only when `principal.tier !== "free"` AND (`model === "best"` or auto-classified hard-plan) AND `PREMIUM_METER_LIVE` (§6-gated). Pre-§6 dark; trace surfaces `pending_premium_launch: true`. Shape B commercial form in [`SK-PREMIUM-009`](../premium-tier/decisions/SK-PREMIUM-009-hosted-premium-meter.md).
 
 ### SK-LLM-015 — OpenRouter code-gen ops default to `qwen/qwen3-coder:free`
 
@@ -134,13 +144,7 @@ when-to-load:
 
 ### SK-LLM-013 — `PlanResponse` carries `model` + `confidence` for SK-TRUST-002
 
-- **Decision:** `PlanResponse` is `{ sql, model, confidence }`. Providers populate `model` from their per-operation model name (`impl.models.plan`); `confidence` is a placeholder `1.0` until the [`quality-eval`](../quality-eval/FEATURE.md) harness (Phase 3) calibrates per-stage floors per [`SK-TRUST-003`](../trust-ux/FEATURE.md). The orchestrator threads both into the response `trace` block.
-- **Core value:** Honest latency, Bullet-proof
-- **Why:** [`SK-TRUST-002`](../trust-ux/FEATURE.md) requires the response trace to name the model that emitted the plan. The router already knows the model (it picked it); making that public is a one-field addition. Carrying `confidence` now — even as a placeholder — keeps the wire contract stable so SK-TRUST-003's later calibration is a value change, not a shape change.
-- **Consequence in code:** `packages/llm/src/types.ts` widens `PlanResponse`; `packages/llm/src/providers/_chat-provider.ts` wraps the parsed `{sql}` from the provider JSON with `{ model: impl.models.plan, confidence: 1.0 }`. Per-provider files (`gemini.ts`, `groq.ts`, etc.) need no change — they go through the shared chat-provider. `nlqdb.cache.plan.write` stores both fields (see [`SK-PLAN-009`](../plan-cache/FEATURE.md)) so cache-hits return the same `model` + `confidence` the original miss recorded.
-- **Alternatives rejected:**
-  - Extend the LLM JSON output schema to ask the model for its own confidence — adds an unbounded variable (model-reported confidence isn't calibrated) and a fragile prompt dependency before SK-TRUST-003 has any way to use the number.
-  - Skip `confidence` on `PlanResponse` until SK-TRUST-003 lands — forces a second wire-shape change later, breaking SDK consumers twice for one feature.
+**Body:** [`decisions/SK-LLM-013-plan-response-shape.md`](./decisions/SK-LLM-013-plan-response-shape.md) (relocated unchanged). `PlanResponse` widens to `{ sql, model, confidence }`; `confidence` ships as a `1.0` placeholder until `quality-eval` calibrates per-tier floors per `SK-TRUST-003`. `nlqdb.cache.plan.write` stores both fields so cache-hits return the original miss's values.
 
 ## GLOBALs governing this feature
 
@@ -154,6 +158,10 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
     failover signals — fail to the next provider in the chain
     rather than retry the same one. The chain retries up to 3
     hops (one attempt per provider) before propagating the error.
+- **GLOBAL-025** — North-star: engine quality, onboarding, UX — each with explicit KPIs.
+  - *In this feature:* the router IS the engine north-star's mechanism on the NL→SQL layer; the free-vs-frontier delta KPI runs `quality-eval` against this router's free chain vs its hosted-premium chain.
+- **GLOBAL-026** — LLM strategy: free chain forever, BYOLLM for everyone, hosted premium on paid (flat sub + included monthly request allowance + soft-meter overage, 0% markup).
+  - *In this feature:* owns dispatch precedence (`SK-LLM-016`) and the hosted-premium chain wiring (`SK-LLM-017`); commercial shape in `premium-tier/FEATURE.md`.
 
 ## Open questions / known unknowns
 
