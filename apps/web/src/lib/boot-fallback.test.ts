@@ -1,12 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { isExternalNoise } from "./boot-fallback.ts";
 
-// Regression coverage for SK-WEB-001. Production showed the
-// boot-fallback panel painted under the footer of a healthy
-// marketing page because `window.error` fired for browser-extension
-// throws and the gate was wide open. `isExternalNoise` is the filter
-// the inline boot script applies — these tests pin the prefixes so a
-// future "tidy up" doesn't reopen the regression.
+// Regression coverage for SK-WEB-001 — pin the prefixes so a future tidy-up doesn't reopen the production bug where extension throws painted the boot-fallback on healthy pages.
 
 describe("isExternalNoise", () => {
   test("flags the browser's cross-origin 'Script error.'", () => {
