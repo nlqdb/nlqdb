@@ -77,16 +77,22 @@ const jsonLd = {
           if (typeof r === "string") return r;
           return "Unhandled error.";
         }
-        // Hand-copy of `lib/boot-fallback.ts#isExternalNoise` — `is:inline` can't import; the TS module carries the unit tests.
+        // Hand-copy of `lib/boot-fallback.ts#EXTENSION_PREFIXES` — `is:inline` can't import; the sync test in `boot-fallback.test.ts` pins drift.
+        var EXTENSION_PREFIXES = [
+          "chrome://",
+          "chrome-extension://",
+          "moz-extension://",
+          "safari-web-extension://",
+          "safari-extension://",
+          "webkit-masked-url://",
+        ];
         function isExternalNoise(e, message) {
           if (message === "Script error.") return true;
           var filename = e && e.filename ? String(e.filename) : "";
           if (!filename) return false;
-          if (filename.startsWith("chrome-extension://")) return true;
-          if (filename.startsWith("moz-extension://")) return true;
-          if (filename.startsWith("safari-web-extension://")) return true;
-          if (filename.startsWith("safari-extension://")) return true;
-          if (filename.startsWith("webkit-masked-url://")) return true;
+          for (var i = 0; i < EXTENSION_PREFIXES.length; i++) {
+            if (filename.indexOf(EXTENSION_PREFIXES[i]) === 0) return true;
+          }
           return false;
         }
         // Hand-copy of `lib/error-report.ts#newTraceparent` so the server-side span attaches to a real W3C trace context.

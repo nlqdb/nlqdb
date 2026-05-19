@@ -1,11 +1,18 @@
 import { describe, expect, test } from "bun:test";
-import { isExternalNoise } from "./boot-fallback.ts";
+import { readFileSync } from "node:fs";
+import { EXTENSION_PREFIXES, isExternalNoise } from "./boot-fallback.ts";
 
 // Regression coverage for SK-WEB-001 — pin the prefixes so a future tidy-up doesn't reopen the production bug where extension throws painted the boot-fallback on healthy pages.
 
 describe("isExternalNoise", () => {
   test("flags the browser's cross-origin 'Script error.'", () => {
     expect(isExternalNoise({ filename: "" }, "Script error.")).toBe(true);
+  });
+
+  test("flags Chromium browser-chrome throws (chrome://newtab etc.)", () => {
+    expect(isExternalNoise({ filename: "chrome://newtab/script.js" }, "x is not defined")).toBe(
+      true,
+    );
   });
 
   test("flags Chrome / Edge / Brave extension throws", () => {
@@ -50,4 +57,12 @@ describe("isExternalNoise", () => {
       isExternalNoise({ filename: "https://nlqdb.com/path?chrome-extension://x" }, "real error"),
     ).toBe(false);
   });
+});
+
+// `is:inline` can't import — Base.astro carries a hand-copy of the prefix list; this guards drift at CI time.
+test("Base.astro inline copy of EXTENSION_PREFIXES stays in sync", () => {
+  const baseAstro = readFileSync(new URL("../layouts/Base.astro", import.meta.url), "utf-8");
+  for (const prefix of EXTENSION_PREFIXES) {
+    expect(baseAstro).toContain(`"${prefix}"`);
+  }
 });
