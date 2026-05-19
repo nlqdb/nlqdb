@@ -9,6 +9,7 @@ import { compareToBaseline, readBaseline } from "./baseline.ts";
 import { loadBirdMini } from "./datasets/bird-mini.ts";
 import { loadSpider2Lite } from "./datasets/spider2-lite.ts";
 import { emitEvalReport } from "./emit.ts";
+import { type AttemptScore, withExecRetry } from "./exec-retry.ts";
 import { buildLanes, type Lane } from "./lanes.ts";
 import { writeReport } from "./output.ts";
 import { scoreOne, scoreOneSpider2 } from "./score.ts";
@@ -110,6 +111,10 @@ function summariseLane(lane: DispatchLane, results: QuestionResult[]): LaneSumma
     .filter((r) => r.outcome !== "gold_error")
     .map((r) => r.latency_ms)
     .sort((a, b) => a - b);
+  // SK-QUAL-009 — questions without an `attempts` field never went through
+  // the retry helper (gold_error short-circuits, or pre-3c baselines); count
+  // them as 1 so `total_attempts` always lower-bounds `attempted`.
+  const total_attempts = filtered.reduce((acc, r) => acc + (r.attempts ?? 1), 0);
   return {
     lane,
     attempted,
@@ -121,6 +126,7 @@ function summariseLane(lane: DispatchLane, results: QuestionResult[]): LaneSumma
     execution_accuracy: ea,
     p50_latency_ms: percentile(sortedLatencies, 50),
     p95_latency_ms: percentile(sortedLatencies, 95),
+    total_attempts,
   };
 }
 
@@ -211,17 +217,43 @@ async function runOneQuestion(
     ? `${question.question}\n\nEvidence: ${question.evidence}`
     : question.question;
 
-  let predicted: string;
-  let model: string;
+  // SK-QUAL-009 — score wrapper. A throw from scoreOne (corrupt SQLite,
+  // I/O error) becomes a terminal gold_error inside the retry loop;
+  // exec_error from the SQL itself is the only retryable outcome.
+  const scoreSql = async (predictedSql: string): Promise<AttemptScore> => {
+    try {
+      return question.spider2
+        ? await scoreOneSpider2({
+            dbPath,
+            predictedSql,
+            goldTables: question.spider2.gold_tables,
+            conditionCols: question.spider2.condition_cols,
+            ignoreOrder: question.spider2.ignore_order,
+            timeoutMs: sqlTimeoutMs,
+          })
+        : await scoreOne({
+            dbPath,
+            goldSql: question.sql,
+            predictedSql,
+            timeoutMs: sqlTimeoutMs,
+          });
+    } catch (err) {
+      return { outcome: "gold_error", error: trimErr(err) };
+    }
+  };
+
+  let retryResult: Awaited<ReturnType<typeof withExecRetry>>;
   try {
-    const plan = await lane.router.plan({
-      goal: enrichedGoal,
-      schema,
-      dialect: "sqlite",
+    retryResult = await withExecRetry({
+      maxAttempts: lane.maxAttempts,
+      plan: (req) => lane.router.plan(req),
+      request: { goal: enrichedGoal, schema, dialect: "sqlite" },
+      score: scoreSql,
     });
-    predicted = plan.sql ?? "";
-    model = plan.model || lane.modelHint;
   } catch (err) {
+    // A plan() throw bubbles out of the retry helper. Production's chain
+    // failover already exhausted; surface as no_sql with the original
+    // error — same shape as the pre-3c behaviour on a first-attempt throw.
     return {
       ...ids,
       outcome: "no_sql",
@@ -232,41 +264,16 @@ async function runOneQuestion(
     };
   }
   const latency_ms = Date.now() - start;
-  // scoreOne can throw if the SQLite file itself is corrupt; treat as a per-question gold_error so one bad fixture doesn't kill a 500-question run. Spider 2.0 rows go through the multi-CSV path (SK-QUAL-008); everything else uses BIRD's gold-SQL EX path.
-  let score: Awaited<ReturnType<typeof scoreOne>>;
-  try {
-    score = question.spider2
-      ? await scoreOneSpider2({
-          dbPath,
-          predictedSql: predicted,
-          goldTables: question.spider2.gold_tables,
-          conditionCols: question.spider2.condition_cols,
-          ignoreOrder: question.spider2.ignore_order,
-          timeoutMs: sqlTimeoutMs,
-        })
-      : await scoreOne({
-          dbPath,
-          goldSql: question.sql,
-          predictedSql: predicted,
-          timeoutMs: sqlTimeoutMs,
-        });
-  } catch (err) {
-    return {
-      ...ids,
-      outcome: "gold_error",
-      predicted_sql: predicted.slice(0, PREDICTED_SQL_CAP),
-      model,
-      latency_ms,
-      error: trimErr(err),
-    };
-  }
   return {
     ...ids,
-    outcome: score.outcome,
-    predicted_sql: predicted.slice(0, PREDICTED_SQL_CAP),
-    model,
+    outcome: retryResult.finalScore.outcome,
+    predicted_sql: retryResult.finalSql.slice(0, PREDICTED_SQL_CAP),
+    model: retryResult.finalModel || lane.modelHint,
     latency_ms,
-    ...(score.error ? { error: score.error } : {}),
+    // Omit `attempts` when 1 so a single-attempt lane's result stays
+    // byte-identical to pre-3c rows in the baseline JSON.
+    ...(retryResult.attempts > 1 ? { attempts: retryResult.attempts } : {}),
+    ...(retryResult.finalScore.error ? { error: retryResult.finalScore.error } : {}),
   };
 }
 
@@ -294,16 +301,20 @@ export async function runEval(opts: RunOptions = {}): Promise<EvalReport> {
   const laneSummaries = lanes.map((l) => summariseLane(l.lane, results));
   const free = laneSummaries.find((l) => l.lane === "free");
   const frontier = laneSummaries.find((l) => l.lane === "frontier");
-  const delta =
-    free && frontier
-      ? Math.round((frontier.execution_accuracy - free.execution_accuracy) * 10_000) / 10_000
+  const agenticFrontier = laneSummaries.find((l) => l.lane === "agentic-frontier");
+  const deltaPp = (paid: LaneSummary | undefined, base: LaneSummary | undefined): number | null =>
+    paid && base
+      ? Math.round((paid.execution_accuracy - base.execution_accuracy) * 10_000) / 10_000
       : null;
   const report: EvalReport = {
     run_at: new Date().toISOString(),
     dataset: datasetName,
     question_count: dataset.questions.length,
     lanes: laneSummaries,
-    free_vs_frontier_delta: delta,
+    free_vs_frontier_delta: deltaPp(frontier, free),
+    // SK-QUAL-009 — headline KPI per GLOBAL-025. Null when either lane
+    // didn't run; the gate / event consumers tolerate null.
+    free_vs_agentic_frontier_delta: deltaPp(agenticFrontier, free),
     results,
   };
   // Baseline diff + McNemar. Failures are converted to console warnings;
@@ -394,22 +405,34 @@ function parseCliArgs(): RunOptions {
 if (import.meta.main) {
   runEval(parseCliArgs())
     .then((r) => {
-      const free = r.lanes.find((l) => l.lane === "free");
-      const frontier = r.lanes.find((l) => l.lane === "frontier");
+      const summarise = (label: string, ls: LaneSummary | undefined) => {
+        if (!ls) return;
+        const total = ls.total_attempts ?? ls.attempted;
+        const retried = total > ls.attempted ? ` retries=${total - ls.attempted}` : "";
+        console.info(
+          `  ${label.padEnd(20)}: EA=${(ls.execution_accuracy * 100).toFixed(2)}% (match=${ls.match}/${ls.attempted}, p50=${ls.p50_latency_ms}ms${retried})`,
+        );
+      };
       console.info(`nlqdb quality-eval — ${r.dataset}`);
-      console.info(`  questions   : ${r.question_count}`);
-      if (free) {
-        console.info(
-          `  free        : EA=${(free.execution_accuracy * 100).toFixed(2)}% (match=${free.match}/${free.attempted}, p50=${free.p50_latency_ms}ms)`,
-        );
-      }
-      if (frontier) {
-        console.info(
-          `  frontier    : EA=${(frontier.execution_accuracy * 100).toFixed(2)}% (match=${frontier.match}/${frontier.attempted}, p50=${frontier.p50_latency_ms}ms)`,
-        );
-      }
+      console.info(`  questions           : ${r.question_count}`);
+      summarise(
+        "free",
+        r.lanes.find((l) => l.lane === "free"),
+      );
+      summarise(
+        "frontier",
+        r.lanes.find((l) => l.lane === "frontier"),
+      );
+      summarise(
+        "agentic-frontier",
+        r.lanes.find((l) => l.lane === "agentic-frontier"),
+      );
       if (r.free_vs_frontier_delta !== null) {
-        console.info(`  delta       : ${(r.free_vs_frontier_delta * 100).toFixed(2)} pts`);
+        console.info(`  delta (single)      : ${(r.free_vs_frontier_delta * 100).toFixed(2)} pts`);
+      }
+      const ag = r.free_vs_agentic_frontier_delta;
+      if (ag !== null && ag !== undefined) {
+        console.info(`  delta (agentic, KPI): ${(ag * 100).toFixed(2)} pts`);
       }
     })
     .catch((err) => {

@@ -159,18 +159,26 @@ function buildPayloadBody(project: string, event: ProductEvent): LogSnagPayload 
           (ea * 100).toFixed(2),
         ]),
       );
+      const fmt = (d: number | null | undefined) =>
+        d === null || d === undefined ? "n/a" : `${(d * 100).toFixed(2)} pts`;
+      const headline = event.freeVsAgenticFrontierDelta ?? null;
+      const tags: Record<string, string> = {
+        dataset: event.dataset,
+        run: event.runId,
+        ...laneTags,
+      };
+      if (headline !== null) tags["delta-agentic"] = (headline * 100).toFixed(2);
       return {
         project,
         channel: "north-star",
         event: "Eval weekly",
-        description: `${event.dataset}: ${event.questionCount} Qs, delta ${
-          event.freeVsFrontierDelta === null
-            ? "n/a"
-            : `${(event.freeVsFrontierDelta * 100).toFixed(2)} pts`
-        }`,
+        // SK-QUAL-009 — surface both deltas. Agentic-frontier is the
+        // GLOBAL-025 headline; single-model frontier is the SK-QUAL-004
+        // informational reference.
+        description: `${event.dataset}: ${event.questionCount} Qs, agentic-Δ ${fmt(headline)}, single-Δ ${fmt(event.freeVsFrontierDelta)}`,
         icon: "📊",
         notify: false,
-        tags: { dataset: event.dataset, run: event.runId, ...laneTags },
+        tags,
       };
     }
     case "feature.eval.regression":

@@ -2,7 +2,12 @@
 
 import type { GoldTable } from "./csv.ts";
 
-export type DispatchLane = "free" | "frontier";
+// `frontier` is the single-model unscaffolded reference (`SK-QUAL-004`
+// informational); `agentic-frontier` wraps the same provider in
+// `SK-QUAL-009`'s exec-retry loop. The `free` lane is also scaffolded
+// per `SK-QUAL-009` so the "scaffolding compounds with the model"
+// north-star bet is testable across both ends of the model spectrum.
+export type DispatchLane = "free" | "frontier" | "agentic-frontier";
 
 // Datasets the runner can dispatch — extend when SK-QUAL-007 follow-ups land.
 export type EvalDataset = "bird-mini-dev-sqlite" | "spider2-lite-sqlite";
@@ -58,6 +63,11 @@ export type QuestionResult = {
   // Spider 2.0-lite carries a string row key (`local003`) we preserve for
   // baseline-pair joining and debugging. Omitted on BIRD rows.
   instance_id?: string;
+  // SK-QUAL-009 — total plan() attempts the lane used for this question.
+  // 1 = no retry (default for unscaffolded `frontier`); 2+ means the
+  // exec-retry helper kicked in. Omitted when 1 so the per-question
+  // result-array delta stays small for back-compat with pre-3c baselines.
+  attempts?: number;
 };
 
 export type LaneSummary = {
@@ -72,6 +82,13 @@ export type LaneSummary = {
   execution_accuracy: number;
   p50_latency_ms: number;
   p95_latency_ms: number;
+  // SK-QUAL-009 — sum of plan() attempts across all questions in this
+  // lane; useful for sanity-checking the retry helper kicked in. A
+  // scaffolded lane with 0% exec_error rate will report
+  // `total_attempts == attempted` (no retries needed). Optional on the
+  // type so pre-3c baselines + synthetic test fixtures still validate;
+  // the runner always populates it on fresh reports.
+  total_attempts?: number;
 };
 
 export type EvalReport = {
@@ -80,8 +97,15 @@ export type EvalReport = {
   dataset: EvalDataset;
   question_count: number;
   lanes: LaneSummary[];
-  // Headline KPI per SK-QUAL-004; `null` when only one lane ran.
+  // `free_vs_frontier_delta` is the legacy single-model-frontier delta
+  // — informational per `SK-QUAL-004`. `free_vs_agentic_frontier_delta`
+  // is the headline KPI per `GLOBAL-025` once `SK-QUAL-009` lands:
+  // Phase 2 ≤ 25 pp, Phase 3 ≤ 16 pp. Both are `null` when the
+  // corresponding lane didn't run. The agentic field is optional on
+  // the read side so pre-3c baselines + tests validate; the runner
+  // always populates it on fresh reports.
   free_vs_frontier_delta: number | null;
+  free_vs_agentic_frontier_delta?: number | null;
   results: QuestionResult[];
   // Set when the runner was given a baseline file (SK-QUAL-002/006); the
   // weekly cron then emits `feature.eval.weekly` always + `feature.eval.regression`

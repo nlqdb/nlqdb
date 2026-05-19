@@ -92,6 +92,7 @@ describe("runEval — end-to-end with mocked routers", () => {
         {
           lane: "free",
           modelHint: "free-fake",
+          maxAttempts: 1,
           router: {
             ...fakeRouter("SELECT COUNT(*) FROM pet WHERE species='cat'"),
             plan: async (req: PlanRequest): Promise<PlanResponse> => {
@@ -114,6 +115,7 @@ describe("runEval — end-to-end with mocked routers", () => {
         {
           lane: "frontier",
           modelHint: "frontier-fake",
+          maxAttempts: 1,
           router: {
             ...fakeRouter("SELECT 1"),
             plan: async (req: PlanRequest): Promise<PlanResponse> => {
@@ -157,6 +159,7 @@ describe("runEval — end-to-end with mocked routers", () => {
         {
           lane: "free",
           modelHint: "free-fake",
+          maxAttempts: 1,
           router: {
             ...fakeRouter(""),
             plan: async (): Promise<PlanResponse> => {
@@ -196,6 +199,7 @@ describe("runEval — end-to-end with mocked routers", () => {
         {
           lane: "free",
           modelHint: "free-fake",
+          maxAttempts: 1,
           router: {
             ...fakeRouter("SELECT 1"),
             plan: async (): Promise<PlanResponse> => ({
@@ -224,6 +228,7 @@ describe("runEval — end-to-end with mocked routers", () => {
         {
           lane: "free",
           modelHint: "free-fake",
+          maxAttempts: 1,
           // Free lane: both questions correct on current run.
           router: {
             ...fakeRouter("SELECT 1"),
@@ -303,6 +308,7 @@ describe("runEval — end-to-end with mocked routers", () => {
         {
           lane: "free",
           modelHint: "free-fake",
+          maxAttempts: 1,
           router: {
             ...fakeRouter("SELECT 1"),
             plan: async (): Promise<PlanResponse> => ({
@@ -332,6 +338,7 @@ describe("runEval — end-to-end with mocked routers", () => {
         {
           lane: "free",
           modelHint: "free-fake",
+          maxAttempts: 1,
           router: {
             ...fakeRouter("SELECT 1"),
             plan: async (): Promise<PlanResponse> => ({
@@ -392,6 +399,7 @@ describe("runEval — end-to-end with mocked routers", () => {
         {
           lane: "free",
           modelHint: "free-fake",
+          maxAttempts: 1,
           router: {
             ...fakeRouter("SELECT 1"),
             plan: async (): Promise<PlanResponse> => ({
@@ -430,6 +438,140 @@ describe("runEval — end-to-end with mocked routers", () => {
     expect(free?.mismatch).toBe(1);
   });
 
+  it("SK-QUAL-009: agentic-frontier lane retries on exec_error and records the new headline KPI", async () => {
+    // Attempt 1 returns malformed SQL → bun:sqlite throws → exec_error.
+    // Attempt 2 returns valid SQL → match. We assert: (a) two plan calls
+    // landed; (b) the second received `previousAttempt`; (c) the final
+    // outcome is match; (d) `attempts: 2` lands on the result row;
+    // (e) `free_vs_agentic_frontier_delta` is set (+pp because free
+    // returned wrong SQL).
+    const planCalls: Array<{ withPrev: boolean }> = [];
+    const report = await runEval({
+      dataDir: dir,
+      questionsJsonPath: questionsPath,
+      outDir,
+      buildLanes: () => [
+        {
+          lane: "free",
+          modelHint: "free-fake",
+          maxAttempts: 3,
+          router: {
+            ...fakeRouter("SELECT 0"),
+            plan: async (): Promise<PlanResponse> => ({
+              // Free always returns wrong SQL — predictable mismatch.
+              sql: "SELECT id FROM pet WHERE 1=2",
+              model: "free-m",
+              confidence: 1,
+            }),
+          },
+        },
+        {
+          lane: "agentic-frontier",
+          modelHint: "agentic-fake",
+          maxAttempts: 3,
+          router: {
+            ...fakeRouter("SELECT 1"),
+            plan: async (req: PlanRequest): Promise<PlanResponse> => {
+              planCalls.push({ withPrev: req.previousAttempt !== undefined });
+              if (req.previousAttempt) {
+                // Second attempt: produce the correct SQL.
+                return req.goal.includes("How many")
+                  ? {
+                      sql: "SELECT COUNT(*) FROM pet WHERE species='cat'",
+                      model: "ag-m",
+                      confidence: 1,
+                    }
+                  : {
+                      sql: "SELECT name FROM pet ORDER BY id DESC LIMIT 1",
+                      model: "ag-m",
+                      confidence: 1,
+                    };
+              }
+              // First attempt: syntactically broken SQL → bun:sqlite throws → exec_error.
+              return { sql: "SELECT BROKEN FROM nope", model: "ag-m", confidence: 1 };
+            },
+          },
+        },
+      ],
+      writeReport: async () => "stub.json",
+    });
+    expect(planCalls.length).toBeGreaterThanOrEqual(4); // 2 questions × 2 attempts on agentic
+    expect(planCalls.filter((c) => c.withPrev).length).toBeGreaterThanOrEqual(2);
+    const agentic = report.lanes.find((l) => l.lane === "agentic-frontier");
+    expect(agentic?.match).toBe(2);
+    expect(agentic?.execution_accuracy).toBe(1);
+    expect(agentic?.total_attempts).toBe(4); // 2 questions × 2 attempts
+    // Every agentic-lane row landed with attempts=2 (single retry resolved).
+    const agenticRows = report.results.filter((r) => r.lane === "agentic-frontier");
+    expect(agenticRows.every((r) => r.attempts === 2)).toBe(true);
+    // Headline KPI: agentic - free = 1.0 - 0.0 = 1.0.
+    expect(report.free_vs_agentic_frontier_delta).toBeCloseTo(1, 5);
+    // Single-model frontier delta stays null (lane didn't run).
+    expect(report.free_vs_frontier_delta).toBeNull();
+  });
+
+  it("SK-QUAL-009: agentic-frontier exhausts its budget and lands the final exec_error on the row", async () => {
+    const report = await runEval({
+      dataDir: dir,
+      questionsJsonPath: questionsPath,
+      outDir,
+      buildLanes: () => [
+        {
+          lane: "agentic-frontier",
+          modelHint: "agentic-fake",
+          maxAttempts: 3,
+          router: {
+            ...fakeRouter("BROKEN"),
+            // Every attempt returns broken SQL — retry never resolves.
+            plan: async (): Promise<PlanResponse> => ({
+              sql: "SELECT * FROM nonexistent_table_xyz",
+              model: "ag-m",
+              confidence: 1,
+            }),
+          },
+        },
+      ],
+      writeReport: async () => "stub.json",
+    });
+    const agentic = report.lanes.find((l) => l.lane === "agentic-frontier");
+    expect(agentic?.exec_error).toBe(2);
+    expect(agentic?.match).toBe(0);
+    expect(agentic?.total_attempts).toBe(6); // 2 questions × 3 attempts (full budget)
+    const rows = report.results.filter((r) => r.lane === "agentic-frontier");
+    expect(rows.every((r) => r.attempts === 3)).toBe(true);
+  });
+
+  it("SK-QUAL-009: omits `attempts` on the result row when only one attempt ran (back-compat)", async () => {
+    const report = await runEval({
+      dataDir: dir,
+      questionsJsonPath: questionsPath,
+      outDir,
+      buildLanes: () => [
+        {
+          lane: "free",
+          modelHint: "free-fake",
+          maxAttempts: 3,
+          // Single-attempt success — no retry, so `attempts` must not
+          // appear on the result row (pre-3c baseline JSONs don't have it).
+          router: {
+            ...fakeRouter("SELECT 1"),
+            plan: async (req: PlanRequest): Promise<PlanResponse> => ({
+              sql: req.goal.includes("How many")
+                ? "SELECT COUNT(*) FROM pet WHERE species='cat'"
+                : "SELECT name FROM pet ORDER BY id DESC LIMIT 1",
+              model: "free-m",
+              confidence: 1,
+            }),
+          },
+        },
+      ],
+      writeReport: async () => "stub.json",
+    });
+    const free = report.lanes.find((l) => l.lane === "free");
+    expect(free?.total_attempts).toBe(2); // 2 questions × 1 attempt
+    expect(report.results.every((r) => r.attempts === undefined)).toBe(true);
+  });
+
   it("does not emit when only one of emit-url/emit-token is set (caller forgot one)", async () => {
     const emitMock = mock(async () => ({ accepted: true, status: 202 }));
     await runEval({
@@ -440,6 +582,7 @@ describe("runEval — end-to-end with mocked routers", () => {
         {
           lane: "free",
           modelHint: "free-fake",
+          maxAttempts: 1,
           router: {
             ...fakeRouter("SELECT 1"),
             plan: async (): Promise<PlanResponse> => ({
@@ -490,6 +633,7 @@ describe("summariseLane — latency stats exclude gold_error (SK-QUAL-007)", () 
         {
           lane: "free",
           modelHint: "free-fake",
+          maxAttempts: 1,
           router: {
             ...fakeRouter("SELECT 1"),
             plan: async (): Promise<PlanResponse> => {

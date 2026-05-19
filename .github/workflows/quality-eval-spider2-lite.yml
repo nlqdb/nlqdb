@@ -24,6 +24,10 @@ on:
         description: "Run the frontier lane too (paid OpenRouter)"
         type: boolean
         default: false
+      include_agentic_frontier:
+        description: "Run the SK-QUAL-009 agentic-frontier lane (exec-retry; ~3x provider RPS)"
+        type: boolean
+        default: false
       skip_emit:
         description: "Skip POSTing the report to /v1/events/eval (default false)"
         type: boolean
@@ -107,8 +111,12 @@ jobs:
           CF_AI_TOKEN: ${{ secrets.CF_AI_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           # Frontier chain — opt-in for manual runs. Weekly cron skips
-          # frontier to preserve the OpenRouter paid budget.
-          OPENROUTER_FRONTIER_API_KEY: ${{ inputs.include_frontier == true && secrets.OPENROUTER_FRONTIER_API_KEY || '' }}
+          # frontier to preserve the OpenRouter paid budget.  The agentic
+          # lane (SK-QUAL-009) needs the same key + the explicit
+          # `include_agentic_frontier` toggle so `include_frontier=true`
+          # doesn't accidentally fire the 3x-RPS exec-retry budget.
+          OPENROUTER_FRONTIER_API_KEY: ${{ (inputs.include_frontier == true || inputs.include_agentic_frontier == true) && secrets.OPENROUTER_FRONTIER_API_KEY || '' }}
+          RUN_AGENTIC_FRONTIER: ${{ inputs.include_agentic_frontier == true && '1' || '' }}
           EVAL_API_URL: ${{ vars.EVAL_API_URL || 'https://app.nlqdb.com' }}
           EVAL_INGEST_TOKEN: ${{ secrets.EVAL_INGEST_TOKEN }}
           SKIP_EMIT: ${{ inputs.skip_emit == true }}
