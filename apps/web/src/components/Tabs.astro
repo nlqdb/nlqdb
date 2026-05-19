@@ -157,7 +157,7 @@ const panels = await Promise.all(tabs.map((t) => Astro.slots.render(t.id)));
 
   .tabs__list {
     display: flex;
-    flex-wrap: wrap;
+    overflow-x: auto;
     border-bottom: 2px solid var(--border-strong);
     background: var(--bg);
   }
