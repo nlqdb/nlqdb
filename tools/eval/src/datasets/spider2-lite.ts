@@ -187,13 +187,7 @@ async function listCachedGoldCsvs(
   return matches.map((n) => join(cachedExecResultDir, n));
 }
 
-// Loads gold CSVs for one instance. When `cachedExecResultDir` is set, the
-// on-disk cache is **authoritative** — instances with no cached CSVs return
-// an empty array (the run reports `gold_error` for them) rather than
-// silently reaching out to the network mid-cron. Network probing fires only
-// when no cache root exists at all (dev / first-time local run), probing
-// `<id>.csv` then `<id>_a..z.csv` to the first 404 per the canonical
-// `resolve_gold_paths` pattern.
+// Cache-authoritative when `cachedExecResultDir` is set (CI cron's normal path); only network mode probes `<id>.csv` then `<id>_a..z.csv` to the first 404 per the canonical `resolve_gold_paths` pattern.
 async function loadGoldCsvs(
   instance_id: string,
   cachedExecResultDir: string | undefined,
