@@ -122,20 +122,11 @@ Canonical: **`nlqdb.com`** (`.ai` is held defensively and 301s to `.com`).
 
 Canonical: `web-app/FEATURE.md` (`SK-WEB-001..007`). Cloudflare Pages, Lighthouse 100/100/100/100.
 
-Above the fold: goal-first input ("What are you building?"), tabbed code-example panel (HTML · React · Vue · Agent · curl against the same demo DB), "what this replaces" strip, live anonymized query ticker.
+Above the fold: goal-first input ("What are you building?"), tabbed code-example panel (CLI · HTML · React · Vue · SDK · curl · MCP · Swift against the same demo DB — full list in [`apps/web/src/data/snippets.ts`](../apps/web/src/data/snippets.ts)), "what this replaces" strip, live anonymized query ticker.
 
 **Creative direction:** neo-brutalist + terminal — thick borders, hard shadows, JetBrains Mono headlines, Acid Lime `#C6F432` on near-black `#0B0F0A`. No stock photos, no cookie banner (Plausible self-hosted).
 
-Surfaces promised on the home page (full integration matrix in [`progress.md §10`](./progress.md)):
-
-| Surface | Package | Status |
-|---|---|---|
-| HTML / web component | `@nlqdb/elements` | Phase 1 |
-| JS/TS SDK | `@nlqdb/sdk` | Phase 1 |
-| Frontend framework wrappers | `@nlqdb/{react,next,vue,nuxt,svelte,sveltekit,astro,solid}` | Shipped |
-| Swift Package | `Nlqdb` | Shipped |
-| Agent (MCP) | `@nlqdb/mcp` | Phase 2 |
-| HTTP / curl | `POST /v1/ask` | Phase 0 |
+Surfaces promised on the home page live in [`progress.md §0`](./progress.md#0-surface-status-matrix--single-source-of-truth) — the canonical status table, mirrored into [`apps/web/src/components/CodePanel.astro`](../apps/web/src/components/CodePanel.astro). When a status flips, edit progress.md §0 first; this prose intentionally does not duplicate the table (per `AGENTS.md` P3).
 
 ### 3.2 Platform web app — `nlqdb.com/app`
 
