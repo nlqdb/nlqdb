@@ -1,30 +1,11 @@
-// React error boundary for every island in `apps/web` (SK-WEB-001).
-//
-// An unhandled throw inside a `client:load` / `client:only` island
-// unmounts the whole island and leaves an empty `<main>` with no
-// recovery affordance. This wrapper renders a small fallback panel
-// instead with Reload + Sign-out actions.
-//
-// Pair this with `Base.astro`'s pre-hydration `boot-fallback` block —
-// that one catches `error` / `unhandledrejection` for crashes that
-// happen BEFORE React mounts (chunk-load failures, top-level eval
-// errors). ErrorBoundary catches throws DURING render / lifecycle.
-// We also set `window.__nlqdbBooted = true` on mount so the
-// pre-hydration handler stops revealing its panel for post-React
-// errors — those belong to the boundary, not the boot-fallback.
-//
-// Reports go through `lib/error-report.ts` so the boundary and the
-// pre-hydration handler share one payload shape + dedup + abuse
-// safeguards.
+// SK-WEB-001 — render-time recovery for every island; paired with `Base.astro`'s pre-hydration `boot-fallback` for crashes before React mounts.
 
 import { Component, type ErrorInfo, type ReactNode } from "react";
 import { reportClientError } from "../lib/error-report";
 
 interface ErrorBoundaryProps {
   children: ReactNode;
-  // Optional surface tag — included in the error report so we can
-  // distinguish a CreateForm crash from a ChatPanel crash without
-  // parsing stack traces.
+  // Surface tag in the error report so a CreateForm crash is distinguishable from a ChatPanel crash without parsing stack traces.
   surface?: string;
 }
 

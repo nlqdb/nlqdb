@@ -48,14 +48,7 @@ const jsonLd = {
   <body>
     <slot />
 
-    {/* SK-WEB-001 — pre-hydration fallback. Catches crashes that fire
-        BEFORE React mounts (chunk-load failures, top-level eval errors).
-        Hidden by default; the inline script below reveals it on
-        `window.error` / `unhandledrejection`, gated on `__nlqdbBooted`
-        — once a React island mounts and sets that flag, ErrorBoundary
-        owns the recovery UI and this handler stops over-painting on
-        ad-blocker / extension noise. The markup is plain HTML so it
-        renders even when the JS bundle never executes. */}
+    {/* SK-WEB-001 — pre-hydration recovery panel for crashes before `DOMContentLoaded`; the boot script below gates the reveal and the CSS overlay covers the viewport if it ever fires. */}
     <div id="boot-fallback" hidden role="alert">
       <div class="boot-fallback__card">
         <h2 class="boot-fallback__title">Something broke on this page.</h2>
@@ -84,10 +77,25 @@ const jsonLd = {
           if (typeof r === "string") return r;
           return "Unhandled error.";
         }
-        // W3C Trace Context — mint a fresh traceparent per report so
-        // the server-side span attaches to it. Duplicates the helper
-        // in `lib/error-report.ts` because this is an `is:inline`
-        // boot script that can't import.
+        // Hand-copy of `lib/boot-fallback.ts#EXTENSION_PREFIXES` — `is:inline` can't import; the sync test in `boot-fallback.test.ts` pins drift.
+        var EXTENSION_PREFIXES = [
+          "chrome://",
+          "chrome-extension://",
+          "moz-extension://",
+          "safari-web-extension://",
+          "safari-extension://",
+          "webkit-masked-url://",
+        ];
+        function isExternalNoise(e, message) {
+          if (message === "Script error.") return true;
+          var filename = e && e.filename ? String(e.filename) : "";
+          if (!filename) return false;
+          for (var i = 0; i < EXTENSION_PREFIXES.length; i++) {
+            if (filename.indexOf(EXTENSION_PREFIXES[i]) === 0) return true;
+          }
+          return false;
+        }
+        // Hand-copy of `lib/error-report.ts#newTraceparent` so the server-side span attaches to a real W3C trace context.
         function genHex(bytes) {
           var arr = new Uint8Array(bytes);
           crypto.getRandomValues(arr);
@@ -125,10 +133,7 @@ const jsonLd = {
           } catch (_) {}
         }
         function reveal(message) {
-          // Once React has mounted, ErrorBoundary owns recovery UI.
-          // Skipping reveal here prevents extension / ad-blocker
-          // noise (`window.error` fires for any script throw, ours or
-          // not) from painting a "broken" panel over a healthy page.
+          // Post-`DOMContentLoaded` throws are ErrorBoundary's or the report pipeline's; the CSS overlay is the second line if this guard ever regresses.
           if (window.__nlqdbBooted) {
             report(message);
             return;
@@ -145,8 +150,20 @@ const jsonLd = {
           } catch (_) {}
           report(message);
         }
-        window.addEventListener("error", function (e) { reveal(extractMessage(e)); });
-        window.addEventListener("unhandledrejection", function (e) { reveal(extractMessage(e)); });
+        function onError(e) {
+          var message = extractMessage(e);
+          if (isExternalNoise(e, message)) return;
+          reveal(message);
+        }
+        window.addEventListener("error", onError);
+        window.addEventListener("unhandledrejection", onError);
+        // Close the reveal gate on every page once HTML parses — ErrorBoundary also sets this flag, whichever fires first wins.
+        function markBooted() { window.__nlqdbBooted = true; }
+        if (document.readyState === "loading") {
+          document.addEventListener("DOMContentLoaded", markBooted);
+        } else {
+          markBooted();
+        }
         document.addEventListener("DOMContentLoaded", function () {
           var btn = document.getElementById("boot-fallback-reload");
           if (btn) btn.addEventListener("click", function () { location.reload(); });

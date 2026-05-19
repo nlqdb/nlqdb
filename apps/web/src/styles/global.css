@@ -906,6 +906,14 @@ h3 {
   padding: clamp(40px, 8vw, 96px) 24px;
   min-height: 60vh;
 }
+/* Pin the revealed pre-hydration panel as a fixed overlay so it never flows under already-painted content; `.err-boundary` stays in-flow because it replaces an island's own children. */
+#boot-fallback:not([hidden]) {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: var(--bg-base);
+  overflow-y: auto;
+}
 .err-boundary__card,
 .boot-fallback__card {
   border: 2px solid var(--border-strong);
