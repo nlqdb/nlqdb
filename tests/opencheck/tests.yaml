@@ -10,15 +10,20 @@
 # Runtime substitution: the caller workflow renders `__BASE_URL__` to the
 # per-run preview alias via `sed` before invoking `bunx opencheck`.
 #
-# LLM: Groq via OpenAI-compat (https://console.groq.com/docs/openai).
-# Current: `meta-llama/llama-4-scout-17b-16e-instruct`
-# Budget: 30K TPM, 1000 RPM, 500K TPD, 512K ctx.
-# Fallback: swap to Mistral mistral-small-latest + update OPENAI_BASE_URL in workflow.
+# LLM: Mistral via OpenAI-compat (https://docs.mistral.ai/api/).
+# Current: `mistral-small-latest`
+# Budget: 50K TPM, ~1B tokens/month, 50 RPM, 128K ctx.
+# Fallback: swap to Groq llama-3.3-70b-versatile + update OPENAI_BASE_URL in workflow.
 #
 # Pivot history (newest first — researched 2026-05-19):
-#   8. meta-llama/llama-4-scout-17b-16e-instruct [CURRENT] — Groq, 30K TPM, 500K TPD,
-#      1000 RPM, 512K ctx; switched back from Mistral — run #38: Mistral 50 RPM
-#      caused cascade 240s timeouts once per-minute budget hit
+#   9. mistral-small-latest [CURRENT] — Mistral; switched back from Groq — run #42:
+#      llama-4-scout sends `submit: "true"` (string) for boolean browser_type param
+#      → 400 tool call validation error → stale-ref spiral → 24-min test stuck.
+#      Mistral handles JSON schema booleans correctly; 50 RPM is safe now that
+#      pkill self-kill cascade is fixed.
+#   8. meta-llama/llama-4-scout-17b-16e-instruct — Groq, 30K TPM, 500K TPD,
+#      1000 RPM, 512K ctx; switched from Mistral for run #39: 50 RPM cascade in
+#      run #38 (caused by pkill self-kill bug, now fixed)
 #   7. mistral-small-latest — Mistral, 50K TPM, ~1B/month, 128K ctx,
 #      50 RPM; switched from Groq after Groq TPD exhausted on run #32
 #   6. meta-llama/llama-4-scout-17b-16e-instruct — Groq, 30K TPM, 500K TPD,
@@ -38,7 +43,7 @@
 
 baseUrl: "__BASE_URL__"
 modelProvider: "openai"
-model: "meta-llama/llama-4-scout-17b-16e-instruct"
+model: "mistral-small-latest"
 
 # Persistent session shares cookies + localStorage across tests so the
 # agent doesn't have to re-walk the prereq chain from a clean profile
@@ -86,10 +91,13 @@ tests:
       tracker" is now EMPTY — it was cleared after the previous
       submission. Do NOT navigate away from this page. Do NOT press
       Control+G again. Do NOT re-create the users table.
+      Start by calling browser_snapshot to confirm the page state
+      and get valid element refs for the current session.
       Click the text input (placeholder "an orders tracker") and type
         add a new row: name='Alice', email='alice@example.com'
-      then press Enter or click the submit button. Wait for
-      navigation. Verify the URL ends up containing "/auth/sign-in".
+      then press Enter (as a SEPARATE step after typing — do NOT use
+      the submit parameter on browser_type). Wait for navigation.
+      Verify the URL ends up containing "/auth/sign-in".
       Do not submit the sign-in form yet.
 
   - name: "#mock-sign-in"
