@@ -95,11 +95,11 @@ const jsonLd = {
           if (message === "Script error.") return true;
           var filename = e && e.filename ? String(e.filename) : "";
           if (!filename) return false;
-          if (filename.indexOf("chrome-extension://") === 0) return true;
-          if (filename.indexOf("moz-extension://") === 0) return true;
-          if (filename.indexOf("safari-web-extension://") === 0) return true;
-          if (filename.indexOf("safari-extension://") === 0) return true;
-          if (filename.indexOf("webkit-masked-url://") === 0) return true;
+          if (filename.startsWith("chrome-extension://")) return true;
+          if (filename.startsWith("moz-extension://")) return true;
+          if (filename.startsWith("safari-web-extension://")) return true;
+          if (filename.startsWith("safari-extension://")) return true;
+          if (filename.startsWith("webkit-masked-url://")) return true;
           return false;
         }
         // W3C Trace Context — mint a fresh traceparent per report so

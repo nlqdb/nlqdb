@@ -25,11 +25,13 @@ export function isExternalNoise(event: BootErrorLike | null | undefined, message
   if (message === "Script error.") return true;
   const filename = event?.filename ? String(event.filename) : "";
   if (!filename) return false;
-  // Browser-extension content scripts. All four prefixes are real:
-  // Chrome / Edge / Brave use chrome-extension://, Firefox uses
-  // moz-extension://, Safari uses both safari-web-extension:// and
-  // (older) safari-extension://. webkit-masked-url:// is Safari's
-  // obfuscation for extension code under content-isolation.
+  // Browser-extension content scripts. All five prefixes are real:
+  // Chromium browsers (Chrome / Edge / Brave / Opera / Arc) use
+  // chrome-extension://, Firefox uses moz-extension://, Safari uses
+  // safari-web-extension:// (v14+) and safari-extension:// (older).
+  // webkit-masked-url:// is Safari's obfuscation for extension code
+  // running under content-isolation. List mirrors the standard noise
+  // denylist shipped by Sentry / Bugsnag.
   if (filename.startsWith("chrome-extension://")) return true;
   if (filename.startsWith("moz-extension://")) return true;
   if (filename.startsWith("safari-web-extension://")) return true;

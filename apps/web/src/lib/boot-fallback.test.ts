@@ -43,13 +43,16 @@ describe("isExternalNoise", () => {
     ).toBe(false);
   });
 
-  test("does NOT flag throws with no filename (unhandled rejection shape)", () => {
+  test("does NOT flag events with no filename (covers PromiseRejectionEvent too)", () => {
     expect(isExternalNoise({ filename: "" }, "TypeError: undefined")).toBe(false);
+    expect(isExternalNoise({}, "TypeError: undefined")).toBe(false);
     expect(isExternalNoise(null, "TypeError: undefined")).toBe(false);
     expect(isExternalNoise(undefined, "TypeError: undefined")).toBe(false);
   });
 
-  test("a missing filename does not trigger an extension-prefix match", () => {
-    expect(isExternalNoise({}, "real error")).toBe(false);
+  test("a same-origin URL never matches an extension prefix by accident", () => {
+    expect(
+      isExternalNoise({ filename: "https://nlqdb.com/path?chrome-extension://x" }, "real error"),
+    ).toBe(false);
   });
 });
