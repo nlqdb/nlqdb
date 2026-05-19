@@ -15,19 +15,22 @@ export interface Snippet {
 
 export const snippets: readonly Snippet[] = [
   {
-    id: "cli",
-    label: "CLI",
-    sub: "one binary, three verbs",
-    lang: "bash",
-    source: `# 1. install (curl, brew, npm — pick one)
-curl -fsSL https://nlqdb.com/install | sh
+    id: "react",
+    label: "React",
+    sub: "one component, SSR-safe",
+    lang: "ts",
+    source: `import { NlqData } from "@nlqdb/react";
 
-# 2. create from a goal — the DB is a side effect
-nlq new "an orders tracker for my coffee shop"
-
-# 3. talk to it
-nlq "add an order: alice, latte, $5.50, just now"
-nlq "how many orders today, by drink"`,
+export default function Orders() {
+  return (
+    <NlqData
+      goal="today's orders, newest first, with customer + total"
+      apiKey={process.env.NEXT_PUBLIC_NLQDB_KEY!}
+      template="table"
+      refresh="5s"
+    />
+  );
+}`,
   },
   {
     id: "html",
