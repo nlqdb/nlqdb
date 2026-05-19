@@ -1,11 +1,7 @@
-# `@nlqdb/*` npm releases via changesets — opens a "Version Packages"
-# PR from pending `.changeset/*.md` notes; merging that PR publishes.
-# Per-package gate is `"private": true` in each package.json; un-gated
-# packages emit `dist/` and are picked up by `changeset publish`.
-# Auth: Trusted Publishing (OIDC) by default per SK-CIPERM-003;
-# NPM_TOKEN is bootstrap-only for a package's first publish (chicken-
-# and-egg — Trusted Publisher config requires the package to exist on
-# npm). See .changeset/README.md for per-package setup.
+# `@nlqdb/*` npm releases via changesets. Per-package gate is
+# `"private": true`; un-gated packages emit `dist/` and ship.
+# Auth path documented in .changeset/README.md (Trusted Publishing
+# default per SK-CIPERM-003; NPM_TOKEN bootstrap for first publish).
 
 name: Release npm
 
@@ -29,29 +25,23 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 8
     steps:
-      # `fetch-depth: 0` so changesets can compute the version diff
-      # and reference prior commits in the generated CHANGELOG.
+      # fetch-depth: 0 so changesets can diff history for the CHANGELOG.
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
         with:
           fetch-depth: 0
 
       - uses: ./.github/actions/setup
 
-      # Trusted Publishing requires npm CLI ≥ 11.5.1; Node 22 ships
-      # npm 10.x. Upgrade so `changeset publish` (which shells out to
-      # `npm publish` per package) speaks the OIDC handshake.
-      - name: Upgrade npm to ≥ 11.5.1
-        run: npm install -g npm@latest
+      # Trusted Publishing requires npm CLI ≥ 11.5.1; Node 22 ships npm 10.x.
+      - name: Upgrade npm to v11
+        run: npm install -g npm@11
 
-      # Build every un-gated `@nlqdb/*` package so `changeset publish`
-      # has `dist/` to ship. The filter only matches packages with a
-      # `build` script, so gated packages (no build script) are silently
-      # skipped without failing the job.
+      # Add a filter entry as each `@nlqdb/*` package un-gates (see .changeset/README.md).
       - name: Build publishable packages
         run: bun run --filter='@nlqdb/sdk' build
 
       - name: Create Version PR or publish
-        uses: changesets/action@v1
+        uses: changesets/action@63a615b9cd06ba9a3e6d13796c7fbcb080a60a0b # v1.8.0
         with:
           version: bun run changeset:version
           publish: bun run changeset:publish
@@ -59,10 +49,7 @@ jobs:
           title: "chore(release): version packages"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # Bootstrap-only. Remove once every un-gated `@nlqdb/*`
-          # package has a Trusted Publisher configured on npmjs.com.
+          # Bootstrap-only: remove once every un-gated @nlqdb/* has a Trusted Publisher configured.
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-          # Auto-generate provenance attestations on every publish
-          # (works under both OIDC and NPM_TOKEN paths, but only the
-          # OIDC path produces verified attestations on npmjs.com).
+          # Sigstore-signed provenance attestations on every publish (works under both NPM_TOKEN and OIDC paths).
           NPM_CONFIG_PROVENANCE: "true"

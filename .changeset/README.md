@@ -27,21 +27,21 @@ Status:
 To un-gate a new package:
 
 1. Add a `build` script (tsup) that emits `dist/index.js` + `dist/index.d.ts`.
-2. Flip `private: false` and add `publishConfig` so the published tarball
-   points at `dist/` (workspace dev keeps reading `src/` via the top-level
-   `main`/`exports`):
+2. Drop `"private": true` and add `publishConfig` so the published
+   tarball points at `dist/` (workspace dev keeps reading `src/` via
+   the top-level `main`/`exports`):
    ```json
    {
-     "private": false,
      "main": "./src/index.ts",
      "exports": { ".": "./src/index.ts" },
-     "files": ["dist", "src", "README.md"],
+     "files": ["dist"],
+     "sideEffects": false,
+     "license": "FSL-1.1-ALv2",
      "repository": {
        "type": "git",
        "url": "git+https://github.com/nlqdb/nlqdb.git",
        "directory": "packages/<name>"
      },
-     "license": "FSL-1.1-ALv2",
      "publishConfig": {
        "main": "./dist/index.js",
        "types": "./dist/index.d.ts",
