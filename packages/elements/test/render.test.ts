@@ -158,6 +158,31 @@ describe("renderState — error", () => {
     expect(html).toContain("nlqdb is pre-alpha — join the waitlist for early access.");
   });
 
+  it("tolerates an array / null / scalar `gate` field by hiding the progress line", () => {
+    const make = (gate: unknown) =>
+      renderState(
+        {
+          kind: "error",
+          failure: {
+            kind: "api",
+            status: 403,
+            error: {
+              status: "feature_gated",
+              action: "Join the waitlist",
+              waitlist_url: "https://nlqdb.com/#waitlist",
+              gate,
+            },
+          },
+        },
+        "table",
+      );
+    for (const gate of [[0.5, 0.65], null, undefined, "0.5", 42]) {
+      const html = make(gate);
+      expect(html).toContain('data-kind="gated"');
+      expect(html).not.toContain("nlq-gated-progress");
+    }
+  });
+
   it("escapes hostile action/message text in the gated card", () => {
     const html = renderState(
       {
