@@ -59,6 +59,8 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 - **GLOBAL-017** — Two endpoints, two CLI verbs, one chat box — one way to do each thing.
 - **GLOBAL-023** — Trust UX baseline.
   - *In this feature:* tools that mutate (writes / DDL) return `confirm_required` with the diff body (per `SK-TRUST-001`). Audit each host (Claude Desktop, Cursor, Zed) for diff-rendering ergonomics — hosts that hide the diff fail `SK-TRUST-001` on that surface. See [`trust-ux/FEATURE.md`](../trust-ux/FEATURE.md) Open questions.
+- **GLOBAL-027** — Pre-alpha gate.
+  - *In this feature:* MCP tools call through the SDK, so a 403 `feature_gated` arrives as an `NlqdbApiError` and the MCP host renders the body verbatim (no MCP-specific code path needed). Design partners paste their invite into the host config's per-server `env` map: `{"NLQDB_INVITE_CODE": "<code>"}` for Claude Desktop / Cursor / VS Code. See [`pre-alpha-gate/FEATURE.md`](../pre-alpha-gate/FEATURE.md).
 
 ## Open questions / known unknowns
 

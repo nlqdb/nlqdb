@@ -52,11 +52,15 @@ describe("POST /v1/ask — principal gate", () => {
     // empty body falls through to `parseAskBody`, which returns
     // `goal_required`. That 400 (not 401) is the contract we care
     // about: anon traffic gets parsed like authed traffic.
+    // `X-Invite-Code: TEST_INVITE` clears the GLOBAL-027 pre-alpha
+    // gate (pre-seeded in `seed-gate-bypass.ts`) so the assertion
+    // remains the body-parse seam, not the gate.
     const res = await SELF.fetch("https://example.com/v1/ask", {
       method: "POST",
       headers: {
         "content-type": "application/json",
         authorization: "Bearer anon_abcdef0123456789",
+        "x-invite-code": "TEST_INVITE",
       },
       body: JSON.stringify({}),
     });

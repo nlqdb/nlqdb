@@ -189,7 +189,11 @@ function CreateFormInner({ apiBase }: CreateFormProps) {
         </button>
         {error && (
           <div className="createform__error-wrap" role="alert">
-            <p className="createform__error">{messageFor(error)}</p>
+            {error.kind === "feature_gated" ? (
+              <FeatureGatedView error={error} />
+            ) : (
+              <p className="createform__error">{messageFor(error)}</p>
+            )}
           </div>
         )}
         {networkError && (
@@ -369,7 +373,58 @@ function messageFor(error: CreateError): string {
       return "Couldn't authenticate — clear your browser storage and reload.";
     case "goal_unclear":
       return "Try describing what you want to build, e.g. 'a messages database' or 'an orders tracker'.";
+    case "feature_gated":
+      // Rendered by FeatureGatedView; the return value is unused.
+      return error.message;
     case "server_error":
       return "Couldn't create the DB — try again.";
   }
+}
+
+// `GLOBAL-027` progress bar + waitlist CTA.
+function FeatureGatedView({ error }: { error: Extract<CreateError, { kind: "feature_gated" }> }) {
+  const { gate, message, waitlistUrl } = error;
+  return (
+    <div className="createform__gate">
+      <p className="createform__gate-message">{message}</p>
+      <dl className="createform__gate-lanes">
+        <GateLane label="BIRD" accuracy={gate.bird_accuracy} target={gate.bird_target} />
+        <GateLane label="Spider" accuracy={gate.spider_accuracy} target={gate.spider_target} />
+      </dl>
+      <a
+        className="btn btn--accent createform__gate-cta"
+        href={waitlistUrl}
+        target="_blank"
+        rel="noreferrer"
+      >
+        Join the waitlist
+      </a>
+    </div>
+  );
+}
+
+function GateLane({
+  label,
+  accuracy,
+  target,
+}: {
+  label: string;
+  accuracy: number | null;
+  target: number;
+}) {
+  const met = accuracy !== null && accuracy >= target;
+  const pct = accuracy === null ? 0 : Math.min(100, (accuracy / target) * 100);
+  return (
+    <div className={`createform__gate-lane${met ? " createform__gate-lane--met" : ""}`}>
+      <dt className="createform__gate-lane-label">{label}</dt>
+      <dd className="createform__gate-lane-value">
+        {accuracy === null
+          ? "not yet measured"
+          : `${(accuracy * 100).toFixed(1)}% / ${(target * 100).toFixed(0)}%`}
+      </dd>
+      <div className="createform__gate-bar" aria-hidden="true">
+        <div className="createform__gate-bar-fill" style={{ width: `${pct}%` }} />
+      </div>
+    </div>
+  );
 }

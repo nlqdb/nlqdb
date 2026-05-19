@@ -133,6 +133,8 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
   - *In this feature:* see `SK-SDK-008` for the canonical implementation. `packages/sdk/src/index.ts` `call<T>` is the wire-layer retry loop (transport failures + transient 5xx, up to 3 attempts, reusing the auto-generated `Idempotency-Key` from `SK-SDK-006`). The 401 path stays single-retry per `SK-SDK-005`.
 - **GLOBAL-023** — Trust UX baseline.
   - *In this feature:* both `ask()` and `runSql()` responses include the `trace` block (`SK-TRUST-002`); surfaces render it.
+- **GLOBAL-027** — Pre-alpha gate.
+  - *In this feature:* `ApiErrorCode` gained `"feature_gated"`; `ApiErrorBody` gained optional `gate`, `action`, `waitlist_url` fields (plus the `GateProgress` type); `createClient()` accepts an `inviteCode` option forwarded as `X-Invite-Code`. `isRecoverable` treats `feature_gated` as terminal (no retry). See [`pre-alpha-gate/FEATURE.md`](../pre-alpha-gate/FEATURE.md).
 
 ## Open questions / known unknowns
 

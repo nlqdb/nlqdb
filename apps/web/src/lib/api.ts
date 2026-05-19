@@ -37,6 +37,15 @@ export interface CreateResult {
   sampleRows: { table: string; values: CreateRow }[];
 }
 
+// Mirrors `@nlqdb/sdk`'s `GateProgress` (`GLOBAL-027` / `SK-GATE-005`).
+export interface GateProgress {
+  bird_accuracy: number | null;
+  spider_accuracy: number | null;
+  bird_target: number;
+  spider_target: number;
+  measured_at: string;
+}
+
 export type CreateError =
   | { kind: "challenge_required" }
   | { kind: "rate_limited"; retryAfter: number | null }
@@ -52,6 +61,7 @@ export type CreateError =
     }
   | { kind: "unauthorized" }
   | { kind: "goal_unclear" }
+  | { kind: "feature_gated"; gate: GateProgress; waitlistUrl: string; message: string }
   | { kind: "server_error"; status: number };
 
 export type CreateOutcome = { ok: true; result: CreateResult } | { ok: false; error: CreateError };
@@ -61,6 +71,14 @@ interface AuthRequiredEnvelope {
   signInUrl: string;
   window?: "hour" | "day" | "month";
   resetAt?: number;
+}
+
+interface FeatureGatedEnvelope {
+  status: "feature_gated";
+  message: string;
+  action: string;
+  waitlist_url: string;
+  gate: GateProgress;
 }
 
 export async function postAskCreate(
@@ -96,6 +114,25 @@ export async function postAskCreate(
   });
 
   if (res.status === 428) return { ok: false, error: { kind: "challenge_required" } };
+  if (res.status === 403) {
+    // `GLOBAL-027` pre-alpha gate envelope. Anything else 403 falls
+    // through to a generic server_error.
+    try {
+      const body = (await res.json()) as { error?: FeatureGatedEnvelope };
+      if (body.error?.status === "feature_gated") {
+        return {
+          ok: false,
+          error: {
+            kind: "feature_gated",
+            gate: body.error.gate,
+            waitlistUrl: body.error.waitlist_url,
+            message: body.error.message,
+          },
+        };
+      }
+    } catch {}
+    return { ok: false, error: { kind: "server_error", status: 403 } };
+  }
   if (res.status === 429) {
     const retryAfter = Number(res.headers.get("retry-after"));
     return {

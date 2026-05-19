@@ -119,6 +119,21 @@ function buildPayloadBody(project: string, event: ProductEvent): LogSnagPayload 
         user_id: event.principalId,
         tags: { surface: event.surface },
       };
+    case "feature.requested.early_access":
+      // GLOBAL-027 / SK-GATE-006 — pre-alpha gate blocked a request.
+      // Lands in `#north-star` alongside the weekly eval summaries so
+      // the block rate and the eval delta appear side-by-side in the
+      // digest.
+      return {
+        project,
+        channel: "north-star",
+        event: "Early-access requested",
+        description: `${event.surface}: blocked by the pre-alpha gate`,
+        icon: "🔒",
+        notify: false,
+        user_id: event.principalId,
+        tags: { surface: event.surface },
+      };
     case "home.surface_wishlist":
       // SK-EVENTS-011: wishlist click from the marketing CodePanel.
       // `notify: false` — wishlist counts matter in aggregate, not

@@ -61,7 +61,7 @@ func doAsk(ctx context.Context, cmd *cobra.Command, g *globalFlags, p askParams)
 		printErr(cmd, "auth: %v", err)
 		return err
 	}
-	client := api.New(g.apiURL, id)
+	client := api.New(g.apiURL, id).WithInviteCode(g.inviteCode)
 
 	req := api.AskRequest{
 		Goal:    p.goal,
@@ -132,10 +132,43 @@ func renderAPIError(cmd *cobra.Command, err error) error {
 		printErr(cmd, "rate-limited — wait a moment, then retry.")
 	case "auth_required", "unauthorized":
 		renderAuthRequired(cmd, apiErr)
+	case "feature_gated":
+		renderFeatureGated(cmd, apiErr)
 	default:
 		printErr(cmd, "%s", apiErr.Error())
 	}
 	return err
+}
+
+// `GLOBAL-027` — CLI counterpart of `FeatureGatedView` in the web app.
+func renderFeatureGated(cmd *cobra.Command, apiErr *api.APIError) {
+	message := apiErr.Message
+	if message == "" {
+		message = "nlqdb is pre-alpha — join the waitlist for early access."
+	}
+	printErr(cmd, "%s", message)
+	if apiErr.Gate != nil {
+		fmt.Fprintf(
+			cmd.ErrOrStderr(),
+			"  progress: BIRD %s · Spider %s\n",
+			formatLane(apiErr.Gate.BirdAccuracy, apiErr.Gate.BirdTarget),
+			formatLane(apiErr.Gate.SpiderAccuracy, apiErr.Gate.SpiderTarget),
+		)
+	}
+	if apiErr.WaitlistURL != "" {
+		fmt.Fprintf(cmd.ErrOrStderr(), "  waitlist: %s\n", apiErr.WaitlistURL)
+	}
+	fmt.Fprintln(
+		cmd.ErrOrStderr(),
+		"  bypass: pass --invite-code <code> or set NLQDB_INVITE_CODE if you have one.",
+	)
+}
+
+func formatLane(accuracy *float64, target float64) string {
+	if accuracy == nil {
+		return "not yet measured"
+	}
+	return fmt.Sprintf("%.1f%% / %.0f%%", *accuracy*100, target*100)
 }
 
 func renderAuthRequired(cmd *cobra.Command, apiErr *api.APIError) {

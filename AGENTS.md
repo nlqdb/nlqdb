@@ -161,6 +161,7 @@ manually before editing.)
 | `apps/api/src/run/**`, the `POST /v1/run` raw-SQL escape hatch (`GLOBAL-015`) | `docs/features/sdk/FEATURE.md` (`SK-SDK-009`) + `docs/features/cli/FEATURE.md` (`nlq run`) + `docs/features/sql-allowlist/FEATURE.md` (validator reuse) |
 | write/DDL diff preview, `confidence`, response `trace` block | `docs/features/trust-ux/FEATURE.md` |
 | `apps/api/src/db-create/**`, `apps/api/src/ask/classifier.ts`, `apps/api/src/ask/sql-validate-ddl.ts` | `docs/features/hosted-db-create/FEATURE.md` |
+| `apps/api/src/gate/**`, `gatePreAlpha` middleware on `/v1/ask` `/v1/run` `POST /v1/databases` `POST /v1/chat/messages`, `X-Invite-Code` header, `gate:user:*` / `gate:invite:*` KV keys, `apps/api/src/gate/eval-baseline.ts` | `docs/features/pre-alpha-gate/FEATURE.md` |
 | `apps/api/src/plan-cache/**`, plan storage | `docs/features/plan-cache/FEATURE.md` |
 | `packages/llm/**`, model routing, prompts | `docs/features/llm-router/FEATURE.md` |
 | `tools/eval/**`, `.github/workflows/quality-eval-*.yml` (BIRD/Spider NL-accuracy harness) | `docs/features/quality-eval/FEATURE.md` |
