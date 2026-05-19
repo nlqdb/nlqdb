@@ -35,12 +35,12 @@
 #   2. OpenRouter qwen3-coder:free — 429 on first call; shared upstream pool
 #   1. Gemini 2.5 Flash — 10 RPM ceiling; 75-87s silent-retry tax
 #
-# Top 5 free LLM models for agentic/tool-use (verified live 2026-05-19 18:00 UTC):
-#   1. Groq llama-3.3-70b-versatile — 12K TPM, 1000 RPM, 100K TPD, 128K ctx; correct booleans; strong reasoning; daily limit too small for a 500K-token run
-#   2. Groq meta-llama/llama-4-scout-17b-16e-instruct — 30K TPM, 1000 RPM, 500K TPD, 512K ctx; BROKEN booleans (sends "true" as string)
-#   3. OpenRouter google/gemma-4-31b-it:free — correct booleans (verified); upstream throttled sporadically; unknown stable RPM
-#   4. OpenRouter google/gemma-4-26b-a4b-it:free — correct booleans (verified); MoE variant, lower latency; same upstream throttle risk
-#   5. Mistral mistral-small-latest (direct) — 50K TPM, 50 RPM, ~1B/month, 128K ctx; correct booleans; 50 RPM causes 240s agentic timeouts
+# Top 5 models for agentic/tool-use (verified live 2026-05-19 18:00 UTC — see FEATURE.md for full table):
+#   1. OpenRouter mistralai/mistral-small-3.2-24b-instruct (paid) — no RPM/TPD cap, ~$0.06/run, correct booleans; CURRENT
+#   2. Groq qwen/qwen3-32b — 60 RPM, 6K TPM, 500K TPD, 131K ctx; best free TPD; correct booleans (no documented issues)
+#   3. Google gemini-2.5-flash — 15 RPM, 1M TPM, 1500 RPD, 1M ctx; verify boolean false via OpenAI compat before switching
+#   4. Groq llama-3.3-70b-versatile — 1000 RPM, 12K TPM, 100K TPD, 128K ctx; correct booleans; TPD too small for full run
+#   5. Mistral mistral-small-latest (direct) — 50 RPM, 50K TPM, ~1B/month; correct booleans; 50 RPM causes 240s timeouts
 
 baseUrl: "__BASE_URL__"
 modelProvider: "openai"

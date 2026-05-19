@@ -127,17 +127,17 @@ commentary is nested under the rule.
 
 ## Free LLM model selection (opencheck)
 
-Top 5 free/low-cost models for agentic/tool-use E2E runs — verified live 2026-05-19 18:00 UTC via API calls. Each run consumes ~360–500 K tokens cold (20 tests × ~6–10 LLM calls × ~2 K token snapshots).
+Top 5 models for agentic/tool-use E2E runs — verified live 2026-05-19 18:00 UTC. Each run ~360–500 K tokens (20 tests × ~6–10 calls × ~1–2 K tokens/call after snapshot truncation).
 
-| Model | Provider | TPM | RPM | Daily budget | Context | Notes |
+| Model | Provider | TPM | RPM | Daily | Context | Notes |
 |---|---|---|---|---|---|---|
-| `mistralai/mistral-small-3.2-24b-instruct` | OpenRouter (paid) | no cap | no cap | ~$0.06/run | 128 K | **Current.** No RPM limit on paid tier; correct boolean tool calls; ~$0.06/500 K-token run via OPENROUTER_API_KEY |
-| `llama-3.3-70b-versatile` | Groq | 12 K | 1000 | 100 K TPD | 128 K | Best free fallback; correct boolean calls; 100 K TPD too small for one cold run (500 K tokens) |
-| `google/gemma-4-31b-it:free` | OpenRouter | unknown | unknown | unknown | 262 K | Correct boolean calls (verified); sporadically throttled upstream; no stable rate guarantees |
-| `google/gemma-4-26b-a4b-it:free` | OpenRouter | unknown | unknown | unknown | 262 K | MoE variant of Gemma 4 26B; correct boolean calls (verified); same upstream throttle risk |
-| `mistral-small-latest` | Mistral (direct) | 50 K | 50 | ~1 B/month | 128 K | Huge monthly budget; 50 RPM causes 240 s test timeouts in agentic loops (run #40: 9/20 tests timed out) |
+| `mistralai/mistral-small-3.2-24b-instruct` | OpenRouter (paid) | no cap | no cap | ~$0.06/run | 128 K | **Current.** Paid tier removes RPM cap; correct booleans (verified); uses OPENROUTER_API_KEY |
+| `qwen/qwen3-32b` | Groq | 6 K | 60 | 500 K TPD | 131 K | Best free TPD; 6K TPM = ~5 calls/min at 1.2K-token calls; correct booleans (no documented issues) |
+| `gemini-2.5-flash` | Google AI | 1 M | 15 | 1 500 RPD | 1 M | 15 RPM is OK for sequential tests; boolean `false` unverified via OpenAI compat; test before switching |
+| `llama-3.3-70b-versatile` | Groq | 12 K | 1000 | 100 K TPD | 128 K | Correct booleans (verified); 100 K TPD too small for a 500 K-token run |
+| `mistral-small-latest` | Mistral (direct) | 50 K | 50 | ~1 B/mo | 128 K | 50 RPM causes 240 s timeouts (run #40: 9/20 failed); huge monthly budget if rate is OK |
 
-**Switching model:** update `model:` in `tests/opencheck/tests.yaml`, `OPENAI_BASE_URL` in `_e2e-opencheck.yml`, and the secret name in `e2e-opencheck.yml` (see `secrets:` → `LLM_API_KEY`).
+**Switching:** update `model:` in `tests/opencheck/tests.yaml`, `OPENAI_BASE_URL` in `_e2e-opencheck.yml`, and the secret in `e2e-opencheck.yml` (`LLM_API_KEY` source).
 
 ## Open questions / known unknowns
 
