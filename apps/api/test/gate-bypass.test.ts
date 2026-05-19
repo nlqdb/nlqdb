@@ -93,10 +93,7 @@ describe("bypass — allowlist + invite run in parallel", () => {
   // primitives are independently awaitable (no shared state).
   it("two concurrent calls on the same KV don't deadlock or share state", async () => {
     const { kv } = fakeKv({ "gate:user:u_1": "1" });
-    const results = await Promise.all([
-      isUserAllowlisted(kv, "u_1"),
-      isInviteValid(kv, "unknown"),
-    ]);
+    const results = await Promise.all([isUserAllowlisted(kv, "u_1"), isInviteValid(kv, "unknown")]);
     expect(results).toEqual([{ hit: true }, { hit: false }]);
   });
 });

@@ -29,7 +29,7 @@ import {
   surfaceFromPrincipal,
 } from "../principal.ts";
 import { isInviteValid, isUserAllowlisted } from "./bypass.ts";
-import { gateState, type GateState, type LaneStatus } from "./check.ts";
+import { type GateState, gateState, type LaneStatus } from "./check.ts";
 import { EVAL_BASELINE } from "./eval-baseline.ts";
 
 export const INVITE_CODE_HEADER = "x-invite-code";
@@ -185,10 +185,7 @@ export function makeGatePreAlpha(deps: GateDeps): MiddlewareHandler<{
         // but invalid" — the latter is signal for brute-force guess
         // attempts. Operators can alert on a spike in
         // `bypass_reason=invite_invalid` from a single principal.
-        span.setAttribute(
-          "nlqdb.gate.bypass_reason",
-          inviteAttempted ? "invite_invalid" : "none",
-        );
+        span.setAttribute("nlqdb.gate.bypass_reason", inviteAttempted ? "invite_invalid" : "none");
 
         // `SK-GATE-006` — fire-and-forget demand-signal emit. Per
         // `GLOBAL-024`, every "not yet" path produces a typed event.

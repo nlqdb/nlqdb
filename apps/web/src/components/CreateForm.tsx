@@ -311,11 +311,7 @@ function messageFor(error: CreateError): string {
 
 // GLOBAL-027 — progress bar + waitlist CTA. Two lanes (BIRD + Spider)
 // each rendered as "current / target" or "not yet measured" when null.
-function FeatureGatedView({
-  error,
-}: {
-  error: Extract<CreateError, { kind: "feature_gated" }>;
-}) {
+function FeatureGatedView({ error }: { error: Extract<CreateError, { kind: "feature_gated" }> }) {
   const { gate, message, waitlistUrl } = error;
   return (
     <div className="createform__gate">
