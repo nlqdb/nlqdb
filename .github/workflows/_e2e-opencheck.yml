@@ -10,12 +10,11 @@
 #   works cleanly. Both Groq and Mistral expose OpenAI-compatible endpoints,
 #   so swapping providers is an env-var change with no code changes.
 #
-# Current: Mistral mistral-small-latest. 50 K TPM, ~1 B tokens/month, 50 RPM.
-# Fallback: Groq llama-4-scout-17b-16e-instruct — 30 K TPM, 1000 RPM, 500 K TPD.
-#   Groq has a boolean-encoding bug: sends `submit: "true"` (string) instead of
-#   bool → 400 tool-call validation → test spiral. Return to Groq only if the
-#   bug is fixed upstream. Update OPENAI_API_KEY/OPENAI_BASE_URL and model in
-#   tests.yaml (see full pivot log there).
+# Current: OpenRouter → mistralai/mistral-small-3.2-24b-instruct. No per-minute cap
+#   on OpenRouter paid tier; ~$0.06 per 500 K-token run. Mistral direct API has 50 RPM
+#   which causes 240 s test timeouts in the agentic loop (see pivot #10 in tests.yaml).
+# Fallback: Groq llama-3.3-70b-versatile (GROQ_API_KEY) — 1000 RPM, correct booleans;
+#   only 100 K TPD so split tests across two runs. Groq llama-4-scout has a boolean bug.
 
 name: E2E opencheck (reusable)
 
@@ -38,12 +37,7 @@ jobs:
   run:
     name: opencheck
     runs-on: ubuntu-latest
-    # 240 s per-test × 20 tests = 80 min absolute worst case (cold cache,
-    # isolated sessions). With sessionMode:persistent + the profile-lock
-    # wrapper, each test starts where the last one left off — the agent
-    # does ONE step instead of re-walking the full prereq chain, so
-    # real runs land in the 20-30 min range. 60 min leaves comfortable slack
-    # for the Playwright/opencheck dep installs + the trace upload.
+    # persistent-mode actual: 20-30 min; 60 min covers dep-install + trace-upload slack.
     timeout-minutes: 60
     # SK-CIPERM-002 — minimal grant. No PR comment from this reusable
     # (callers attach their own surface via step summary / artifacts);
@@ -52,22 +46,10 @@ jobs:
       contents: read
     env:
       BASE_URL: ${{ inputs.base_url }}
-      # @langchain/openai's ChatOpenAI delegates to the OpenAI Node SDK,
-      # which reads OPENAI_API_KEY + OPENAI_BASE_URL from env. Pointing
-      # OPENAI_BASE_URL at the provider's OpenAI-compat endpoint routes
-      # every /chat/completions call there while keeping the SDK surface
-      # identical. Swap provider by changing LLM_API_KEY + OPENAI_BASE_URL
-      # + model in tests.yaml (see pivot log there).
+      # ChatOpenAI reads OPENAI_API_KEY + OPENAI_BASE_URL; update both + model in tests.yaml to swap provider.
       OPENAI_API_KEY: ${{ secrets.LLM_API_KEY }}
-      OPENAI_BASE_URL: https://api.mistral.ai/v1
-      # Dump every LangChain step (model start/end, tool calls, tool
-      # results) to stdout so the job log captures the full agent
-      # loop. Without this we only see opencheck's high-level
-      # PASS/FAIL/SKIP verdict and the LLM's after-the-fact reasoning
-      # — useless for diagnosing why a test got stuck or which tool
-      # call burned the timeout budget. Enabling adds ~5-10x to the
-      # log volume but lands the post-mortem signal we need to
-      # iterate on the cases. Drop once the cases stabilise.
+      OPENAI_BASE_URL: https://openrouter.ai/api/v1
+      # Full agent loop in job log; ~5-10x log volume; drop once cases stabilise.
       LANGCHAIN_VERBOSE: "true"
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
@@ -79,14 +61,7 @@ jobs:
         with:
           bun-version-file: package.json
 
-      # Playwright browser binaries (~150 MB) live outside node_modules
-      # at ~/.cache/ms-playwright. @playwright/mcp 0.0.60 (and its
-      # bundled playwright / playwright-core) has no postinstall, so
-      # the binaries are pulled by the explicit `Install Playwright
-      # Chromium` step below — this cache step just persists what that
-      # step writes. Keyed on opencheck-tests package.json hash so a
-      # dep bump that moves playwright's version invalidates cleanly;
-      # otherwise we save the whole download on every run.
+      # Playwright bins live at ~/.cache/ms-playwright; no postinstall — explicit install step below writes them.
       - name: Restore Playwright browser cache
         uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         with:
@@ -95,16 +70,7 @@ jobs:
           restore-keys: |
             playwright-${{ runner.os }}-
 
-      # opencheck's step cache. The point of caching it is to skip LLM
-      # re-derivation when the UI hasn't changed; the point of keying on
-      # app source (not just tests.yaml) is to invalidate when the UI
-      # CAN have changed — otherwise opencheck's "self-healing on UI
-      # changes" can quietly route past a regression. tests.yaml is in
-      # the key too so edits to test cases force re-derivation.
-      #
-      # NOTE: the cache is cleared immediately after restore (see below).
-      # We still restore so GHA's post-job hook saves the freshly-derived
-      # plans — making subsequent runs warm once the suite stabilises.
+      # Skip LLM re-derivation on unchanged UI; keyed on app + tests.yaml; cleared below and re-saved fresh.
       - name: Restore opencheck step cache
         uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         with:
@@ -113,67 +79,23 @@ jobs:
           restore-keys: |
             opencheck-cache-${{ runner.os }}-
 
-      # Stale step plans cause silent failures: a plan derived when
-      # Ctrl+G was already pressed omits that key press, so on re-run
-      # the agent types into a hidden input. Always start fresh so the
-      # agent observes actual page state. The post-job cache save above
-      # re-persists freshly-derived plans for the next warm run.
+      # Always start fresh — stale plans omit steps from prior page state; post-job hook re-saves fresh ones.
       - name: Clear stale opencheck step cache
         working-directory: tests/opencheck
         run: rm -rf .opencheck-cache
 
       - name: Install opencheck deps
         working-directory: tests/opencheck
-        # No frozen lockfile — `tests/opencheck/` is non-workspace and
-        # we don't ship its bun.lock. Daily E2E doesn't need byte-for-byte
-        # repro; minor patch drifts in @langchain/openai are acceptable.
-        #
-        # `@playwright/mcp` is pinned to 0.0.60 in package.json. Why:
-        # opencheck@0.3.0 (`node_modules/opencheck/src/agent/mcp-client.ts:77,80`)
-        # hardcodes `--save-trace` + `--save-video=...` when it spawns
-        # @playwright/mcp. Those flags shipped through 0.0.60 and were
-        # removed before 0.0.70. Without the pin, bun resolves
-        # @playwright/mcp transitively from `npx -y @playwright/mcp@latest`
-        # in opencheck's spawn path — which lands on 0.0.75 today and
-        # the MCP stdio handshake dies on `error: unknown option
-        # '--save-trace'`. opencheck's `resolvePlaywrightMcp()` checks
-        # `process.cwd()/node_modules/@playwright/mcp/cli.js` first,
-        # so pinning here makes opencheck use this version and bypass
-        # the broken `--latest` path. Unpin once opencheck publishes a
-        # fix that uses `--save-session`.
+        # No frozen lockfile — non-workspace dir, bun.lock not shipped; minor patch drift acceptable.
+        # @playwright/mcp pinned to 0.0.60: opencheck@0.3.0 hardcodes --save-trace flag removed after 0.0.60.
         run: bun install
 
-      # Playwright browser binaries don't ship with any of the npm
-      # packages above (no postinstall hook in @playwright/mcp@0.0.60,
-      # playwright, or playwright-core). Without this step, Chromium
-      # is absent at ~/.cache/ms-playwright/ and every opencheck test
-      # fails because the MCP server can't find a browser executable.
-      # Chromium-only — webkit/firefox aren't selected via tests.yaml.
+      # No postinstall hook in @playwright/mcp@0.0.60 — binaries must be installed explicitly.
       - name: Install Playwright Chromium
         working-directory: tests/opencheck
         run: bunx playwright install chromium
 
-      # Patch @playwright/mcp CLI for three reasons:
-      #
-      # 1. --no-sandbox: GitHub-hosted ubuntu runners' AppArmor profile
-      #    denies the unprivileged user-namespace clone Chromium needs.
-      #    opencheck@0.3.0 has no sandbox config knob.
-      #
-      # 2. Profile lock cleanup (sessionMode:persistent): opencheck creates
-      #    ONE user-data-dir for the whole run but spawns a NEW playwright-mcp
-      #    subprocess per test. The previous test's Chromium may still hold
-      #    the SingletonLock when the next subprocess starts, causing
-      #    "Browser is already in use" on every test after the first.
-      #    The wrapper kills any stale Chromium for the same profile (SIGTERM
-      #    → 3 s grace → SIGKILL) and removes the lock before starting.
-      #
-      # 3. Snapshot truncation: browser_snapshot returns ~40 KB accessibility
-      #    trees per call. Context grows 3 K → 13 K → 50 K+ tokens within one
-      #    test, driving LLM latency from ~1 s to 100 s and hitting the 240 s
-      #    timeout. The wrapper truncates content[].text blocks at 8,000 chars
-      #    (~2,000 tokens), preserving enough UI structure for navigation.
-      #
-      # Idempotent: if cli.original.js is already present, the step skips.
+      # Wrapper injects --no-sandbox (AppArmor), cleans SingletonLock between tests (persistent sessionMode), truncates snapshots at 8K chars to prevent context bloat.
       - name: Patch @playwright/mcp — no-sandbox + profile lock + snapshot truncation
         working-directory: tests/opencheck
         run: |

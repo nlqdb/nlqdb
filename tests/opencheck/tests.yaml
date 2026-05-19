@@ -10,40 +10,41 @@
 # Runtime substitution: the caller workflow renders `__BASE_URL__` to the
 # per-run preview alias via `sed` before invoking `bunx opencheck`.
 #
-# LLM: Mistral via OpenAI-compat (https://docs.mistral.ai/api/).
-# Current: `mistral-small-latest`
-# Budget: 50K TPM, ~1B tokens/month, 50 RPM, 128K ctx.
-# Fallback: swap to Groq llama-3.3-70b-versatile + update OPENAI_BASE_URL in workflow.
+# LLM: OpenRouter → Mistral Small 3.2 via OpenAI-compat (https://openrouter.ai).
+# Current: `mistralai/mistral-small-3.2-24b-instruct` via OpenRouter
+# Budget: paid tier, ~$0.06/run (500K tokens @ $0.075/M in + $0.20/M out), no RPM cap.
+# Fallback: Groq llama-3.3-70b-versatile (GROQ_API_KEY) — 1000 RPM, 100K TPD.
 #
 # Pivot history (newest first — researched 2026-05-19):
-#   9. mistral-small-latest [CURRENT] — Mistral; switched back from Groq — run #42:
+#  10. mistralai/mistral-small-3.2-24b-instruct [CURRENT] — OpenRouter; switched from
+#      Mistral direct API (run #40): 50 RPM causes 240s test timeouts in the agentic
+#      loop. 9 of 20 tests timed out. OpenRouter paid tier removes the RPM cap while
+#      routing to the same Mistral Small model. Cost: ~$0.06/run. Boolean tool calls
+#      correct (verified 2026-05-19). Accessible via OPENROUTER_API_KEY.
+#   9. mistral-small-latest — Mistral direct, 50 RPM; switched back from Groq (run #42):
 #      llama-4-scout sends `submit: "true"` (string) for boolean browser_type param
 #      → 400 tool call validation error → stale-ref spiral → 24-min test stuck.
-#      Mistral handles JSON schema booleans correctly; 50 RPM is safe now that
-#      pkill self-kill cascade is fixed.
-#   8. meta-llama/llama-4-scout-17b-16e-instruct — Groq, 30K TPM, 500K TPD,
-#      1000 RPM, 512K ctx; switched from Mistral for run #39: 50 RPM cascade in
-#      run #38 (caused by pkill self-kill bug, now fixed)
-#   7. mistral-small-latest — Mistral, 50K TPM, ~1B/month, 128K ctx,
-#      50 RPM; switched from Groq after Groq TPD exhausted on run #32
-#   6. meta-llama/llama-4-scout-17b-16e-instruct — Groq, 30K TPM, 500K TPD,
-#      1000 RPM, 512K ctx; exhausted 500K TPD on single run #32 (2026-05-18)
+#   8. meta-llama/llama-4-scout-17b-16e-instruct — Groq, 30K TPM, 500K TPD, 1000 RPM,
+#      512K ctx; switched from Mistral for run #39: 50 RPM cascade in run #38
+#   7. mistral-small-latest — Mistral, 50K TPM, ~1B/month, 128K ctx, 50 RPM;
+#      switched from Groq after Groq TPD exhausted on run #32
+#   6. meta-llama/llama-4-scout-17b-16e-instruct — Groq; exhausted 500K TPD on run #32
 #   5. llama-3.3-70b-versatile — Groq, 12K TPM, 100K TPD (not 1M as assumed)
 #   4. openai/gpt-oss-120b — Groq, 8K TPM + hidden reasoning_tokens → 85-90s/call
 #   3. llama-4-scout early — Groq, 500K TPD but quota drained by debug runs
 #   2. OpenRouter qwen3-coder:free — 429 on first call; shared upstream pool
 #   1. Gemini 2.5 Flash — 10 RPM ceiling; 75-87s silent-retry tax
 #
-# Top 5 free LLM models for agentic/tool-use (verified 2026-05-19 via live rate-limit API checks):
-#   1. Groq meta-llama/llama-4-scout-17b-16e-instruct — 30K TPM, 1000 RPM, 500K TPD, 512K ctx; fastest ReAct; current
-#   2. Mistral mistral-small-latest — 50K TPM, 50 RPM, ~1B/month, 128K ctx; huge monthly budget; RPM too low for agentic loops
-#   3. Groq llama-3.3-70b-versatile — 12K TPM, 1000 RPM, 100K TPD, 128K ctx; stronger reasoning, tighter daily budget
-#   4. Groq qwen/qwen3-32b — 6K TPM, 1000 RPM, 128K ctx; Qwen3 architecture; tight TPM rules it out as sole model
-#   5. Cerebras llama3.1-8b — 30K TPM, 1M TPD, 5 RPM, 8K ctx (free cap); vast daily budget; 8K ctx too small for snapshots
+# Top 5 models for agentic/tool-use (verified live 2026-05-19 18:00 UTC — see FEATURE.md for full table):
+#   1. OpenRouter mistralai/mistral-small-3.2-24b-instruct (paid) — no RPM/TPD cap, ~$0.06/run, correct booleans; CURRENT
+#   2. Groq qwen/qwen3-32b — 60 RPM, 6K TPM, 500K TPD, 131K ctx; best free TPD; correct booleans (no documented issues)
+#   3. Google gemini-2.5-flash — 15 RPM, 1M TPM, 1500 RPD, 1M ctx; verify boolean false via OpenAI compat before switching
+#   4. Groq llama-3.3-70b-versatile — 1000 RPM, 12K TPM, 100K TPD, 128K ctx; correct booleans; TPD too small for full run
+#   5. Mistral mistral-small-latest (direct) — 50 RPM, 50K TPM, ~1B/month; correct booleans; 50 RPM causes 240s timeouts
 
 baseUrl: "__BASE_URL__"
 modelProvider: "openai"
-model: "mistral-small-latest"
+model: "mistralai/mistral-small-3.2-24b-instruct"
 
 # Persistent session shares cookies + localStorage across tests so the
 # agent doesn't have to re-walk the prereq chain from a clean profile
@@ -81,23 +82,25 @@ tests:
       verify: text containing "Provisioned with" is visible in the
       result, and a table section headed "Users" with columns id,
       name, email is rendered.
+      STOP here — do NOT click any "Sign in" link, "Sign in to
+      continue" button, or any other navigation element. The test
+      is complete once the result is verified on this page.
 
   - name: "#add-row-redirects-to-auth"
     case: |
-      The session is already on the marketing page with the hero
-      create form visible (the form is always visible — no keyboard
-      shortcut needed). A "Provisioned with" result is shown below
-      the form from the previous test. The text input with placeholder
-      "an orders tracker" is now EMPTY — it was cleared after the
-      previous submission. Do NOT navigate away from this page. Do
-      NOT re-create the users table.
-      Start by calling browser_snapshot to confirm the page state
-      and get valid element refs for the current session.
-      Click the text input (placeholder "an orders tracker") and type
+      Step 1 — Navigate to the base URL (the marketing page).
+      Step 2 — Call browser_snapshot and confirm the hero input
+      with placeholder "an orders tracker" is visible. Do NOT
+      re-create the users table — a previous session provisioned
+      one already.
+      Step 3 — Click the text input (placeholder "an orders
+      tracker") and type
         add a new row: name='Alice', email='alice@example.com'
-      then press Enter (as a SEPARATE step after typing — do NOT use
-      the submit parameter on browser_type). Wait for navigation.
-      Verify the URL ends up containing "/auth/sign-in".
+      Step 4 — Press Enter as a SEPARATE tool call (do NOT use
+      the submit parameter on browser_type).
+      Step 5 — Wait for the page to navigate AWAY from the base
+      URL. The destination URL must contain "/auth/sign-in".
+      Verify the URL contains "/auth/sign-in".
       Do not submit the sign-in form yet.
 
   - name: "#mock-sign-in"
@@ -111,21 +114,20 @@ tests:
 
   - name: "#authed-state-preserved"
     case: |
-      The browser just signed in and is on /app (possibly with a
-      ?db= query param). Do NOT navigate away. Take a
-      browser_snapshot and verify: the left sidebar shows at least
-      one entry whose visible text contains "users" (any casing;
-      does not need to be highlighted or aria-selected — just
-      visible).
+      Navigate to "/app". The previous test signed in, so the
+      session cookie is valid. Take a browser_snapshot and verify:
+      the left sidebar shows at least one entry whose visible text
+      contains "users" (any casing; does not need to be highlighted
+      or aria-selected — just visible).
 
   - name: "#submit-prefilled-row"
     case: |
-      The browser is currently on /app with a ?db= query parameter
-      in the URL (e.g. /app/?db=db_users_info_XXXXXX). Do NOT call
-      browser_navigate. Do NOT modify the URL. Do NOT go to /app
-      without the ?db= param — that breaks the page. Stay exactly
-      where you are. Click the chat textarea (placeholder "Ask about
-      your data…"). If the textarea already contains "add a new row:
+      Navigate to "/app". In the left sidebar find the database
+      entry whose name contains "users" and click it. Wait for the
+      URL to contain "?db=" before continuing (clicking the entry
+      pins the db in the URL).
+      Click the chat textarea (placeholder "Ask about your data…").
+      If the textarea already contains "add a new row:
       name='Alice', email='alice@example.com'" submit it directly
       (press Enter or click Send). If the textarea is empty, type
       that prompt fresh and then submit. If a confirm/diff chip
