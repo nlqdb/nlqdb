@@ -47,14 +47,32 @@ jobs:
           go-version-file: cli/go.mod
           cache-dependency-path: cli/go.sum
 
+      # Strip the `cli-` monorepo prefix so goreleaser v2's strict semver
+      # parser accepts current + previous tags (`tag_prefix` is PRO only).
+      - name: Resolve semver tags
+        id: ver
+        run: |
+          set -euo pipefail
+          raw="${{ inputs.tag || github.ref_name }}"
+          echo "tag=${raw#cli-}" >> "$GITHUB_OUTPUT"
+          prev_raw=$(git tag --list 'cli-v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname \
+            | grep -E '^cli-v[0-9]+\.[0-9]+\.[0-9]+$' \
+            | grep -v -x "$raw" \
+            | head -n1 || true)
+          echo "prev=${prev_raw#cli-}" >> "$GITHUB_OUTPUT"
+
       # Syft generates the SPDX SBOM that goreleaser attaches to the release.
       - uses: anchore/sbom-action/download-syft@v0
 
+      # --skip=validate is required because GORELEASER_CURRENT_TAG doesn't
+      # match a real git tag on HEAD (the real tag is `cli-vX.Y.Z`).
       - uses: goreleaser/goreleaser-action@v6
         with:
           version: "~> v2"
-          args: release --clean
+          args: release --clean --skip=validate
           workdir: cli
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GORELEASER_CURRENT_TAG: ${{ steps.ver.outputs.tag }}
+          GORELEASER_PREVIOUS_TAG: ${{ steps.ver.outputs.prev }}
           HOMEBREW_TAP_GITHUB_TOKEN: ${{ secrets.HOMEBREW_TAP_GITHUB_TOKEN }}
