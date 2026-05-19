@@ -39,6 +39,9 @@ async function main() {
       useCodeBlocks: true,
       expandObjects: false,
       mergeReadme: false,
+      // packages/sdk/src/index.ts documents every export with `//` line comments, not `/** */`
+      // JSDoc. Without "all" TypeDoc renders every Description column as `-`.
+      commentStyle: "all",
     },
     [new TSConfigReader()],
   );
@@ -87,8 +90,19 @@ function stampFile(path: string): void {
     firstH1 >= 0
       ? [...lines.slice(0, firstH1), ...lines.slice(firstH1 + 1)].join("\n").replace(/^\n+/, "")
       : raw.replace(/^\n+/, "");
-  const next = `---\ntitle: ${yamlQuoted(title)}\n---\n\n${BANNER}\n\n${body}`;
+  const next = `---\ntitle: ${yamlQuoted(title)}\n---\n\n${BANNER}\n\n${rewriteLinks(body)}`;
   writeFileSync(path, next);
+}
+
+// TypeDoc emits cross-refs as `[Engine](Engine.mdx)`, but Astro's content-collection
+// slug lowercases the filename, so the page lives at `/reference/sdk/type-aliases/engine/`.
+// The case-sensitive `.mdx` href 404s in production. Strip the extension, lowercase the
+// path, add a trailing slash; preserve any case-sensitive #fragment.
+function rewriteLinks(body: string): string {
+  return body.replace(
+    /\]\(([^)#\s]+)\.mdx(#[^)]*)?\)/g,
+    (_m, path: string, hash = "") => `](${path.toLowerCase()}/${hash})`,
+  );
 }
 
 // YAML double-quoted string escapes both `\` and `"`; covers anything TypeDoc emits as a title.

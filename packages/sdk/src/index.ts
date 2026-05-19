@@ -1,19 +1,24 @@
-// @nlqdb/sdk — typed HTTP client for the nlqdb /v1 API.
-//
-// Two auth modes (mutually exclusive):
-//   • apiKey: 'sk_…'             server-to-server (Node, Bun, Workers)
-//   • withCredentials: true      browser, riding the session cookie
-//
-// Runtime-agnostic: only depends on global fetch.
-//
-// Error contract: every method throws `NlqdbApiError` on failure —
-// non-2xx, network failure, abort, and non-JSON proxy response. The
-// error carries a discriminant `code` (mirrors the API's
-// `error.status`, plus SDK-only sentinels `unknown_error`,
-// `non_json_response`, `network_error`, `aborted`) and the HTTP
-// status (0 for transport-level failures). Consumers `try/catch` and
-// discriminate on `err.code`.
+/**
+ * @module @nlqdb/sdk
+ *
+ * Typed HTTP client for the nlqdb /v1 API.
+ *
+ * Two auth modes (mutually exclusive):
+ *   - `apiKey: 'sk_…'`         server-to-server (Node, Bun, Workers)
+ *   - `withCredentials: true`  browser, riding the session cookie
+ *
+ * Runtime-agnostic: only depends on global fetch.
+ *
+ * Error contract: every method throws `NlqdbApiError` on failure —
+ * non-2xx, network failure, abort, and non-JSON proxy response. The
+ * error carries a discriminant `code` (mirrors the API's
+ * `error.status`, plus SDK-only sentinels `unknown_error`,
+ * `non_json_response`, `network_error`, `aborted`) and the HTTP
+ * status (0 for transport-level failures). Consumers `try/catch` and
+ * discriminate on `err.code`.
+ */
 
+// Request body for `client.ask()` / `askStream()` — the plain-English goal plus optional routing hints.
 export type AskRequest = {
   goal: string;
   // SK-ASK-009 / SK-HDC-011: `dbId` is optional. When omitted the API
@@ -57,6 +62,7 @@ export type Trace = {
   cache_hit: boolean;
 };
 
+// Success envelope from `/v1/ask` — the query/write branch of `AskResponse`, carrying rows + `trace`.
 export type AskOk = {
   status: "ok";
   rows: Record<string, unknown>[];
@@ -128,6 +134,7 @@ export type TraceStep =
   | "confirm_required"
   | "selected_db";
 
+// One event from the `askStream()` trace channel; surfaces narrow on `type` to drive the live trace pane.
 export type TraceEvent =
   | { type: "plan_pending" }
   // SK-TRUST-002 — the `plan` event carries the full trace block so
@@ -147,7 +154,7 @@ export type TraceEvent =
 export type Engine = "postgres" | "clickhouse";
 
 // One DB row in a `listDatabases` response. `pkLive` is the
-// publishable per-DB key used to inline into <nlq-data> snippets
+// publishable per-DB key used to inline into `<nlq-data>` snippets
 // (SK-WEB-007); when null the surface falls back to the anonymous
 // device's pk_live (SK-ANON-006).
 export type DatabaseSummary = {
@@ -167,6 +174,7 @@ export type DatabaseSummary = {
   createdAt: number;
 };
 
+// Body for `client.createDatabase()` — goal-first (`goal` drives the engine classifier) with an optional explicit `engine` override.
 export type CreateDatabaseRequest = {
   name?: string;
   goal?: string;
@@ -178,6 +186,7 @@ export type CreateDatabaseRequest = {
   engine?: Engine;
 };
 
+// Response from `client.createDatabase()` — surfaces the new dbId, the resolved engine, and the publishable per-DB key.
 export type CreateDatabaseResult = {
   dbId: string;
   slug: string;
@@ -194,6 +203,7 @@ export type RunSqlRequest = {
   sql: string;
 };
 
+// Response from `client.runSql()` — same row/`trace` shape as `AskOk` minus the NL summary.
 export type RunSqlResult = {
   status: "ok";
   rows: Record<string, unknown>[];
@@ -267,6 +277,7 @@ export type GateProgress = {
   measured_at: string;
 };
 
+// JSON body the API returns on every non-2xx response; surfaced as `NlqdbApiError.body`.
 export type ApiErrorBody = {
   status: ApiErrorCode;
   message?: string;
@@ -296,14 +307,17 @@ export type ChatAssistantSuccess = {
   summary?: string;
 };
 
+// Error branch of `ChatAssistantResult` — a persisted assistant turn whose API call failed.
 export type ChatAssistantError = {
   kind: "error";
   status: ApiErrorCode;
   message?: string;
 };
 
+// Persisted outcome of one chat turn; surfaces narrow on `kind` to render success rows vs an error chip.
 export type ChatAssistantResult = ChatAssistantSuccess | ChatAssistantError;
 
+// One persisted chat turn; the `role` discriminant narrows to a user prompt vs an assistant result.
 export type ChatMessage =
   | { id: string; role: "user"; userId: string; dbId: string; goal: string; createdAt: number }
   | {
@@ -331,11 +345,13 @@ type ClientOptionsBase = {
   inviteCode?: string;
 };
 
+// Argument to `createClient()`; the union picks one auth mode at compile time so a server bearer cannot ride a browser cookie.
 export type ClientOptions =
   | (ClientOptionsBase & { apiKey: string; withCredentials?: never })
   | (ClientOptionsBase & { withCredentials: true; apiKey?: never })
   | (ClientOptionsBase & { apiKey?: never; withCredentials?: never });
 
+// Second arg to `askStream()` — abort signal plus the per-step trace listener that feeds live UIs.
 export type AskStreamOptions = {
   signal?: AbortSignal;
   // SK-SDK-007: every ask-pipeline step fires once when known.
@@ -397,6 +413,7 @@ export type MintKeyRequest =
   | { type: "sk_live"; name?: string }
   | { type: "sk_mcp"; host: string; device: string };
 
+// Response from `client.mintKey()` — the plaintext `key` is present here exactly once (`SK-APIKEYS-002`).
 export type MintKeyResult = {
   id: string;
   type: "sk_live" | "sk_mcp";
@@ -424,6 +441,7 @@ export type OAuthBridgeRedemption = {
   bearer_hash: string;
 };
 
+// The typed client returned by `createClient()` — the only HTTP surface per `GLOBAL-001`.
 export type NlqClient = {
   // Returns the union AskOk | AskCreateResult — callers narrow on the
   // shape (`status === "ok"` vs `kind === "create"`). When `dbId` is
@@ -524,6 +542,7 @@ export class NlqdbApiError extends Error {
   }
 }
 
+// Factory that returns the typed `NlqClient`; the only entrypoint consumers call directly.
 export function createClient(opts: ClientOptions = {}): NlqClient {
   // Defensive runtime guard — the union type above blocks this at
   // compile time, but JS callers (or `as any` escapes) can still slip
