@@ -271,10 +271,15 @@ export async function loadSpider2Lite(
   opts: Spider2LiteLoaderOptions = {},
 ): Promise<LoadedSpider2Lite> {
   const fetchImpl = opts.fetchImpl ?? fetch;
-  let raw: string;
+  let raw: string | null = null;
   if (opts.questionsJsonlPath) {
     raw = await readFile(opts.questionsJsonlPath, "utf8");
-  } else {
+  } else if (opts.dataDir) {
+    // Cache-aware: the sparse-clone workflow ships `spider2-lite.jsonl` alongside the eval/gold tree, so this branch keeps the questions read in lockstep with the eval-JSONL + gold-CSV cache.
+    const cached = join(opts.dataDir, "spider2-lite.jsonl");
+    if (await fileExists(cached)) raw = await readFile(cached, "utf8");
+  }
+  if (raw === null) {
     const url = opts.questionsJsonlUrl ?? SPIDER2_LITE_JSONL_URL;
     const res = await fetchWithRetry(url, fetchImpl);
     if (!res.ok) {

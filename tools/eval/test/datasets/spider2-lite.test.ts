@@ -207,6 +207,16 @@ describe("loadSpider2Lite — disk cache layout (the CI cache-hit path)", () => 
     });
     for (const q of loaded.questions) expect(q.sql).toBe("");
   });
+
+  it("reads the questions JSONL from the cache when only dataDir is set (no network)", async () => {
+    // dataDir's `spider2-lite.jsonl` already exists from beforeEach; questionsJsonlPath is unset.
+    writeFileSync(join(execResultDir, "local003_a.csv"), "x\n1\n");
+    const loaded = await loadSpider2Lite({
+      dataDir: dir,
+      fetchImpl: fetchAsserts,
+    });
+    expect(loaded.questions.map((q) => q.instance_id)).toEqual(["local003", "local005"]);
+  });
 });
 
 describe("loadSpider2Lite — network mode (fetches gold CSVs + eval JSONL from upstream)", () => {

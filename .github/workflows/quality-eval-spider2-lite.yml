@@ -75,11 +75,14 @@ jobs:
           # `--filter=blob:none` defers blob fetches until checkout, so
           # the initial clone stays metadata-only; `--sparse` then narrows
           # the checkout to one subdirectory (~2 MB on disk vs ~150 MB
-          # for the full repo).
+          # for the full repo). Cone mode auto-includes top-level files
+          # of every ancestor of the included path, so
+          # `spider2-lite/spider2-lite.jsonl` (the questions JSONL) ships
+          # in the same checkout without an explicit pattern.
           tmp_clone=$(mktemp -d)
           git clone --depth 1 --filter=blob:none --sparse \
             https://github.com/xlang-ai/Spider2 "$tmp_clone"
-          (cd "$tmp_clone" && git sparse-checkout set spider2-lite/evaluation_suite/gold spider2-lite/spider2-lite.jsonl)
+          (cd "$tmp_clone" && git sparse-checkout set spider2-lite/evaluation_suite/gold)
           mkdir -p spider2_data/evaluation_suite
           cp -r "$tmp_clone/spider2-lite/evaluation_suite/gold" spider2_data/evaluation_suite/gold
           cp "$tmp_clone/spider2-lite/spider2-lite.jsonl" spider2_data/spider2-lite.jsonl
