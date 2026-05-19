@@ -4,6 +4,8 @@ The whole app is one file. No build step, no framework, no package manager.
 
 ## Step 0 — Get your key (60 seconds)
 
+> **Pre-alpha:** every "do-work" call returns `403 feature_gated` until our free LLM chain clears BIRD ≥ 65% and Spider ≥ 75% ([`GLOBAL-027`](../../docs/decisions/GLOBAL-027-pre-alpha-gate.md)). Today it's closed. If you have an invite code, set `NLQDB_INVITE_CODE` before any call; everyone else lands on the [`Join the waitlist`](https://nlqdb.com/#waitlist) CTA below. Full surface table: [`docs.nlqdb.com/pre-alpha/`](https://docs.nlqdb.com/pre-alpha/).
+
 The snippet below needs a `pk_live_` key scoped to your database. You don't generate one separately — the chat hands it to you, already inlined.
 
 1. Open **[nlqdb.com](https://nlqdb.com)** and describe what you're building in one sentence (e.g. *"a personal book library — title, author, genre, rating, finished_at"*). Hit **Create the DB**.
