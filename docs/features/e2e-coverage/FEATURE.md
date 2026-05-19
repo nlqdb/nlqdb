@@ -127,17 +127,17 @@ commentary is nested under the rule.
 
 ## Free LLM model selection (opencheck)
 
-Top 5 free models for agentic/tool-use E2E runs — verified via live rate-limit API checks on 2026-05-18. Each run consumes ~360 K tokens cold (20 tests × ~6 LLM calls × ~8 K char / ~2 K token snapshots).
+Top 5 free models for agentic/tool-use E2E runs — verified via live rate-limit API checks on 2026-05-19. Each run consumes ~360 K tokens cold (20 tests × ~6 LLM calls × ~8 K char / ~2 K token snapshots).
 
-| Model | Provider | TPM | Daily budget | Context | Notes |
-|---|---|---|---|---|---|
-| `mistral-small-latest` | Mistral | 50 K | ~1 B/month | 128 K | **Current.** 50 RPM; switched from Groq (run #32 exhausted TPD) |
-| `meta-llama/llama-4-scout-17b-16e-instruct` | Groq | 30 K | 500 K TPD | 512 K | Primary until run #32 exhausted TPD (2026-05-18) |
-| `llama-3.3-70b-versatile` | Groq | 12 K | 100 K TPD | 128 K | Stronger reasoning; tighter daily budget (one cold run exhausts it) |
-| `llama3.1-8b` | Cerebras | 30 K | 1 M TPD | 8 K (free cap) | Largest daily budget; constrained by 5 RPM + 8 K ctx — not viable for long ReAct chains |
-| `meta/llama-3.1-70b-instruct` | NVIDIA NIM | credits-based | 40 RPM | 128 K | Reliable fallback when Groq quota is exhausted; credits-based not purely free |
+| Model | Provider | TPM | RPM | Daily budget | Context | Notes |
+|---|---|---|---|---|---|---|
+| `meta-llama/llama-4-scout-17b-16e-instruct` | Groq | 30 K | 1000 | 500 K TPD | 512 K | **Current.** 1000 RPM prevents cascade timeouts; switched back from Mistral (run #38: 50 RPM caused all tests to fail) |
+| `mistral-small-latest` | Mistral | 50 K | 50 | ~1 B/month | 128 K | Best monthly budget; 50 RPM too low — agent loops exhaust per-minute budget and cascade into 240 s timeouts |
+| `llama-3.3-70b-versatile` | Groq | 12 K | 1000 | 100 K TPD | 128 K | Stronger reasoning; one cold run exhausts the daily budget |
+| `qwen/qwen3-32b` | Groq | 6 K | 1000 | unknown | 128 K | Qwen3 architecture; 6 K TPM too tight for 8 K-char snapshots |
+| `llama3.1-8b` | Cerebras | 30 K | 5 | 1 M TPD | 8 K (free cap) | Vast daily budget; 5 RPM + 8 K ctx rules it out for ReAct chains with large snapshots |
 
-**Switching model:** change the `model:` line in `tests/opencheck/tests.yaml` and update `OPENAI_BASE_URL` + `OPENAI_API_KEY` in `_e2e-opencheck.yml` secrets/env to point at the new provider's OpenAI-compat endpoint.
+**Switching model:** change the `model:` line in `tests/opencheck/tests.yaml` and update `OPENAI_BASE_URL` + `OPENAI_API_KEY` in `_e2e-opencheck.yml` env to point at the new provider's OpenAI-compat endpoint.
 
 ## Open questions / known unknowns
 
