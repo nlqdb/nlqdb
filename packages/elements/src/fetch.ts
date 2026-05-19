@@ -107,7 +107,8 @@ export async function fetchAsk(p: AskParams): Promise<AskOutcome> {
     };
   }
 
-  if (response.status === 401 || response.status === 403) {
+  // 403 carries the structured `feature_gated` body (GLOBAL-027); only 401 collapses.
+  if (response.status === 401) {
     return { ok: false, failure: { kind: "auth", status: response.status } };
   }
 
