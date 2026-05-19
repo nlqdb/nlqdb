@@ -32,9 +32,9 @@ jobs:
 
       - uses: ./.github/actions/setup
 
-      # Trusted Publishing requires npm CLI ≥ 11.5.1; Node 22 ships npm 10.x.
-      - name: Upgrade npm to v11
-        run: npm install -g npm@11
+      # Node 22's bundled npm 10.9.7 covers `npm publish` + provenance; when
+      # flipping to OIDC, upgrade to ≥ 11.5.1 via corepack (npm/cli#9151 blocks
+      # the direct `npm install -g npm@11` path).
 
       # Add a filter entry as each `@nlqdb/*` package un-gates (see .changeset/README.md).
       - name: Build publishable packages
