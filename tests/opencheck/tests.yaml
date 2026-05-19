@@ -82,6 +82,9 @@ tests:
       verify: text containing "Provisioned with" is visible in the
       result, and a table section headed "Users" with columns id,
       name, email is rendered.
+      STOP here — do NOT click any "Sign in" link, "Sign in to
+      continue" button, or any other navigation element. The test
+      is complete once the result is verified on this page.
 
   - name: "#add-row-redirects-to-auth"
     case: |
