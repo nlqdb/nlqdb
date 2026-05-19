@@ -1,0 +1,17 @@
+#!/bin/sh
+# Phase 2 placeholder. Lives in apps/coming-soon/ because nlqdb.com
+# still serves that worker until the DNS flip to apps/web (see
+# apps/web/wrangler.toml). Replace with the signed-tarball installer
+# once SK-CLI-002's release pipeline ships.
+cat >&2 <<'EOF'
+nlq — the nlqdb CLI
+
+Distribution channels aren't live yet (Phase 2, pre-release). Build
+from source — requires Go 1.22+:
+
+  git clone https://github.com/nlqdb/nlqdb
+  cd nlqdb/cli && go build -o ~/.local/bin/nlq ./cmd/nlq
+
+Release progress: https://github.com/nlqdb/nlqdb/issues?q=label%3Acli
+EOF
+exit 1
