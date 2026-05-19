@@ -1,14 +1,81 @@
 #!/bin/sh
-# SK-CLI-002 placeholder — swap for the signed-tarball installer when the release pipeline ships.
-cat >&2 <<'EOF'
-nlq — the nlqdb CLI
+# nlq installer (SK-CLI-002). Resolves the latest cli-v* GitHub Release,
+# verifies sha256 against the release's checksums.txt, and lands the binary
+# at $NLQ_INSTALL_DIR (default ~/.local/bin/nlq).
+set -eu
 
-Distribution channels aren't live yet (Phase 2, pre-release). Build
-from source — requires Go 1.22+:
+repo="nlqdb/nlqdb"
+prefix="${NLQ_INSTALL_DIR:-$HOME/.local/bin}"
+bin="$prefix/nlq"
 
-  git clone https://github.com/nlqdb/nlqdb
-  cd nlqdb/cli && go build -o ~/.local/bin/nlq ./cmd/nlq
+err() { printf 'nlq install: %s\n' "$*" >&2; exit 1; }
+info() { printf 'nlq install: %s\n' "$*" >&2; }
 
-Release progress: https://github.com/nlqdb/nlqdb/issues?q=label%3Acli
-EOF
-exit 1
+for dep in curl tar awk uname mktemp; do
+  command -v "$dep" >/dev/null 2>&1 || err "missing required tool '$dep'"
+done
+
+# goreleaser names archives nlq_<ver>_<os>_<arch>.tar.gz where os is
+# `linux` or `macOS` and arch is `x86_64` or `arm64` (per cli/.goreleaser.yml).
+case "$(uname -s)" in
+  Linux)  os_part="linux" ;;
+  Darwin) os_part="macOS" ;;
+  *) err "unsupported OS '$(uname -s)' — build from source: https://github.com/$repo/tree/main/cli" ;;
+esac
+case "$(uname -m)" in
+  x86_64|amd64)  arch_part="x86_64" ;;
+  arm64|aarch64) arch_part="arm64" ;;
+  *) err "unsupported arch '$(uname -m)' — amd64 and arm64 only" ;;
+esac
+
+# /releases/latest redirects to /releases/tag/<tag>; following it without an
+# API token avoids the unauthenticated rate limit on api.github.com.
+resolved="$(curl -fsSLI -o /dev/null -w '%{url_effective}' \
+  "https://github.com/$repo/releases/latest" 2>/dev/null || true)"
+case "$resolved" in
+  *"/releases/tag/cli-v"*)
+    tag="${resolved##*/tag/}"
+    version="${tag#cli-v}"
+    ;;
+  *)
+    err "no published nlq release yet. Build from source:
+  git clone https://github.com/$repo
+  cd nlqdb/cli && go build -o '$bin' ./cmd/nlq" ;;
+esac
+
+archive="nlq_${version}_${os_part}_${arch_part}.tar.gz"
+base="https://github.com/$repo/releases/download/$tag"
+
+tmp="$(mktemp -d "${TMPDIR:-/tmp}/nlq-install.XXXXXX")"
+trap 'rm -rf "$tmp"' EXIT INT TERM
+
+info "downloading $archive"
+curl -fsSL -o "$tmp/$archive"      "$base/$archive"      || err "download failed: $base/$archive"
+curl -fsSL -o "$tmp/checksums.txt" "$base/checksums.txt" || err "checksums download failed"
+
+expected="$(awk -v f="$archive" '$2 == f { print $1 }' "$tmp/checksums.txt")"
+[ -n "$expected" ] || err "$archive missing from checksums.txt"
+if command -v sha256sum >/dev/null 2>&1; then
+  actual="$(sha256sum "$tmp/$archive" | awk '{print $1}')"
+elif command -v shasum >/dev/null 2>&1; then
+  actual="$(shasum -a 256 "$tmp/$archive" | awk '{print $1}')"
+else
+  err "no sha256sum or shasum on PATH"
+fi
+[ "$actual" = "$expected" ] || err "sha256 mismatch (expected $expected, got $actual)"
+
+tar -xzf "$tmp/$archive" -C "$tmp" nlq || err "extract failed"
+mkdir -p "$prefix"
+# `install -m 0755` is atomic + sets perms in one call; survives a running
+# `nlq` process on Linux (replaces inode rather than truncating).
+if command -v install >/dev/null 2>&1; then
+  install -m 0755 "$tmp/nlq" "$bin" || err "write to '$bin' failed (set NLQ_INSTALL_DIR to override)"
+else
+  cp "$tmp/nlq" "$bin" && chmod 0755 "$bin" || err "write to '$bin' failed"
+fi
+
+info "nlq $version installed to $bin"
+case ":$PATH:" in
+  *":$prefix:"*) ;;
+  *) info "note: $prefix is not on PATH — add: export PATH=\"$prefix:\$PATH\"" ;;
+esac
