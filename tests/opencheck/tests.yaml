@@ -88,20 +88,19 @@ tests:
 
   - name: "#add-row-redirects-to-auth"
     case: |
-      The session is already on the marketing page with the hero
-      create form visible (the form is always visible — no keyboard
-      shortcut needed). A "Provisioned with" result is shown below
-      the form from the previous test. The text input with placeholder
-      "an orders tracker" is now EMPTY — it was cleared after the
-      previous submission. Do NOT navigate away from this page. Do
-      NOT re-create the users table.
-      Start by calling browser_snapshot to confirm the page state
-      and get valid element refs for the current session.
-      Click the text input (placeholder "an orders tracker") and type
+      Step 1 — Navigate to the base URL (the marketing page).
+      Step 2 — Call browser_snapshot and confirm the hero input
+      with placeholder "an orders tracker" is visible. Do NOT
+      re-create the users table — a previous session provisioned
+      one already.
+      Step 3 — Click the text input (placeholder "an orders
+      tracker") and type
         add a new row: name='Alice', email='alice@example.com'
-      then press Enter (as a SEPARATE step after typing — do NOT use
-      the submit parameter on browser_type). Wait for navigation.
-      Verify the URL ends up containing "/auth/sign-in".
+      Step 4 — Press Enter as a SEPARATE tool call (do NOT use
+      the submit parameter on browser_type).
+      Step 5 — Wait for the page to navigate AWAY from the base
+      URL. The destination URL must contain "/auth/sign-in".
+      Verify the URL contains "/auth/sign-in".
       Do not submit the sign-in form yet.
 
   - name: "#mock-sign-in"
@@ -115,21 +114,20 @@ tests:
 
   - name: "#authed-state-preserved"
     case: |
-      The browser just signed in and is on /app (possibly with a
-      ?db= query param). Do NOT navigate away. Take a
-      browser_snapshot and verify: the left sidebar shows at least
-      one entry whose visible text contains "users" (any casing;
-      does not need to be highlighted or aria-selected — just
-      visible).
+      Navigate to "/app". The previous test signed in, so the
+      session cookie is valid. Take a browser_snapshot and verify:
+      the left sidebar shows at least one entry whose visible text
+      contains "users" (any casing; does not need to be highlighted
+      or aria-selected — just visible).
 
   - name: "#submit-prefilled-row"
     case: |
-      The browser is currently on /app with a ?db= query parameter
-      in the URL (e.g. /app/?db=db_users_info_XXXXXX). Do NOT call
-      browser_navigate. Do NOT modify the URL. Do NOT go to /app
-      without the ?db= param — that breaks the page. Stay exactly
-      where you are. Click the chat textarea (placeholder "Ask about
-      your data…"). If the textarea already contains "add a new row:
+      Navigate to "/app". In the left sidebar find the database
+      entry whose name contains "users" and click it. Wait for the
+      URL to contain "?db=" before continuing (clicking the entry
+      pins the db in the URL).
+      Click the chat textarea (placeholder "Ask about your data…").
+      If the textarea already contains "add a new row:
       name='Alice', email='alice@example.com'" submit it directly
       (press Enter or click Send). If the textarea is empty, type
       that prompt fresh and then submit. If a confirm/diff chip
