@@ -1,7 +1,11 @@
 # `@nlqdb/*` npm releases via changesets — opens a "Version Packages"
 # PR from pending `.changeset/*.md` notes; merging that PR publishes.
-# Publish step is gated until per-package builds emit dist/ — see
-# .changeset/README.md.
+# Per-package gate is `"private": true` in each package.json; un-gated
+# packages emit `dist/` and are picked up by `changeset publish`.
+# Auth: Trusted Publishing (OIDC) by default per SK-CIPERM-003;
+# NPM_TOKEN is bootstrap-only for a package's first publish (chicken-
+# and-egg — Trusted Publisher config requires the package to exist on
+# npm). See .changeset/README.md for per-package setup.
 
 name: Release npm
 
@@ -21,7 +25,7 @@ permissions:
 
 jobs:
   release:
-    name: changesets version + (publish — gated)
+    name: changesets version + publish
     runs-on: ubuntu-latest
     timeout-minutes: 8
     steps:
@@ -33,6 +37,19 @@ jobs:
 
       - uses: ./.github/actions/setup
 
+      # Trusted Publishing requires npm CLI ≥ 11.5.1; Node 22 ships
+      # npm 10.x. Upgrade so `changeset publish` (which shells out to
+      # `npm publish` per package) speaks the OIDC handshake.
+      - name: Upgrade npm to ≥ 11.5.1
+        run: npm install -g npm@latest
+
+      # Build every un-gated `@nlqdb/*` package so `changeset publish`
+      # has `dist/` to ship. The filter only matches packages with a
+      # `build` script, so gated packages (no build script) are silently
+      # skipped without failing the job.
+      - name: Build publishable packages
+        run: bun run --filter='@nlqdb/sdk' build
+
       - name: Create Version PR or publish
         uses: changesets/action@v1
         with:
@@ -42,4 +59,10 @@ jobs:
           title: "chore(release): version packages"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Bootstrap-only. Remove once every un-gated `@nlqdb/*`
+          # package has a Trusted Publisher configured on npmjs.com.
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          # Auto-generate provenance attestations on every publish
+          # (works under both OIDC and NPM_TOKEN paths, but only the
+          # OIDC path produces verified attestations on npmjs.com).
+          NPM_CONFIG_PROVENANCE: "true"

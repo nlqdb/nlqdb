@@ -479,12 +479,30 @@ URL `pr-<N>-nlqdb-mcp-server.<subdomain>.workers.dev` on every push.
 `@nlqdb/*` packages publish via changesets. Workflow:
 `.github/workflows/release-npm.yml` opens a "Version Packages" PR
 when any `.changeset/*.md` files land on main; merging the
-"Version Packages" PR would publish (currently gated — see
-`.changeset/README.md`). Authors run `bun run changeset` alongside
+"Version Packages" PR publishes any package whose `package.json` is
+not `"private": true`. Authors run `bun run changeset` alongside
 their change to drop a release note.
 
-Required secret to enable publishing: `NPM_TOKEN` (npm Automation
-token on the `@nlqdb` scope).
+Auth path (per [`SK-CIPERM-003`](features/ci-permissions/FEATURE.md)):
+- **Default — Trusted Publishing (OIDC).** Workflow declares
+  `id-token: write`; npm matches the claim to the configured
+  publisher (`nlqdb/nlqdb` repo, `release-npm.yml` workflow) on each
+  publish. No long-lived secret. Provenance attestations
+  auto-generate (`NPM_CONFIG_PROVENANCE: true` is set on the job).
+- **Bootstrap-only — `NPM_TOKEN`.** Required for the *first* publish
+  of any new `@nlqdb/*` package, because Trusted Publishers can only
+  be configured on a package that already exists on npm. After the
+  first publish lands, configure the publisher at
+  `npmjs.com/package/@nlqdb/<name>/access` (fields in
+  `.changeset/README.md`) and stop relying on `NPM_TOKEN` for that
+  package.
+
+Per-package un-gating steps + Trusted Publisher field values live in
+[`.changeset/README.md`](../.changeset/README.md) — the canonical
+operator runbook for npm releases.
+
+Current state: `@nlqdb/sdk` un-gated (bootstrap publish pending);
+remaining `@nlqdb/*` packages still `"private": true`.
 
 ### CLI releases (`cli/` → GitHub Releases + Homebrew)
 
