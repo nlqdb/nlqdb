@@ -69,9 +69,12 @@ mkdir -p "$prefix"
 # `install -m 0755` is atomic + sets perms in one call; survives a running
 # `nlq` process on Linux (replaces inode rather than truncating).
 if command -v install >/dev/null 2>&1; then
-  install -m 0755 "$tmp/nlq" "$bin" || err "write to '$bin' failed (set NLQ_INSTALL_DIR to override)"
+  install -m 0755 "$tmp/nlq" "$bin" \
+    || err "write to '$bin' failed (set NLQ_INSTALL_DIR to override)"
 else
-  cp "$tmp/nlq" "$bin" && chmod 0755 "$bin" || err "write to '$bin' failed"
+  cp "$tmp/nlq" "$bin" \
+    || err "write to '$bin' failed (set NLQ_INSTALL_DIR to override)"
+  chmod 0755 "$bin"
 fi
 
 info "nlq $version installed to $bin"
