@@ -1,4 +1,12 @@
-// Dispatch-lane builders per SK-QUAL-004 / SK-LLM-017.
+// Dispatch-lane builders per SK-QUAL-004 / SK-LLM-017 / SK-QUAL-009.
+//
+// Three lanes:
+//   • `free`              — strict-$0 chain + exec-retry (scaffolded).
+//   • `frontier`          — single-model frontier, unscaffolded.
+//                           Informational ablation reference.
+//   • `agentic-frontier`  — same model as `frontier` + exec-retry. The
+//                           Phase 2 ≥ 80% BIRD-dev EM floor is reachable
+//                           on this lane per `SK-QUAL-009`.
 
 import {
   createGeminiProvider,
@@ -21,15 +29,27 @@ export type EvalEnv = {
   // Distinct env var from OPENROUTER_API_KEY so a fork PR can never accidentally pull a paid frontier key.
   OPENROUTER_FRONTIER_API_KEY?: string;
   FRONTIER_MODEL?: string;
+  // Toggle the `agentic-frontier` lane. Same key as `frontier` is reused
+  // — same model + exec-retry is the cleanest ablation. Defaults off so
+  // a free-only run still ships green.
+  RUN_AGENTIC_FRONTIER?: string;
 };
 
 // Frontier reference model — Claude Sonnet 4.6 because its published BIRD-dev score is the closest cross-vendor comparable.
 export const DEFAULT_FRONTIER_MODEL = "anthropic/claude-sonnet-4.6";
 
+// Production retry budget per `apps/api/src/ask/retry.ts::RETRY_MAX_ATTEMPTS`.
+// The eval matches it so the harness measures what production ships.
+const AGENTIC_MAX_ATTEMPTS = 3;
+
 export type Lane = {
   lane: DispatchLane;
   router: LLMRouter;
   modelHint: string;
+  // SK-QUAL-009 — inclusive max plan() attempts per question. 1 = no
+  // retry. The runner threads this into `withExecRetry`; only lanes
+  // with `> 1` actually loop.
+  maxAttempts: number;
 };
 
 function buildFreeLane(env: EvalEnv): Lane | null {
@@ -50,22 +70,48 @@ function buildFreeLane(env: EvalEnv): Lane | null {
     providers,
     chains: { plan: ["gemini", "groq", "workers-ai", "openrouter"] },
   });
-  return { lane: "free", router, modelHint: "free-chain" };
+  // Free chain is scaffolded per SK-QUAL-009 so the "scaffolding compounds with the model"
+  // bet is testable end-to-end.
+  return { lane: "free", router, modelHint: "free-chain", maxAttempts: AGENTIC_MAX_ATTEMPTS };
+}
+
+function frontierProvider(env: EvalEnv, model: string) {
+  return createOpenRouterProvider({
+    apiKey: env.OPENROUTER_FRONTIER_API_KEY ?? "",
+    models: { plan: model },
+  });
 }
 
 function buildFrontierLane(env: EvalEnv): Lane | null {
   if (!env.OPENROUTER_FRONTIER_API_KEY) return null;
   const model = env.FRONTIER_MODEL ?? DEFAULT_FRONTIER_MODEL;
   // One provider per model — SK-LLM-017 will widen this when GPT-5 / Gemini 2.5 Pro join the frontier chain.
-  const provider = createOpenRouterProvider({
-    apiKey: env.OPENROUTER_FRONTIER_API_KEY,
-    models: { plan: model },
-  });
   const router = createLLMRouter({
-    providers: [provider],
+    providers: [frontierProvider(env, model)],
     chains: { plan: ["openrouter"] },
   });
-  return { lane: "frontier", router, modelHint: model };
+  // Unscaffolded — preserves the single-model ablation reference per SK-QUAL-004.
+  return { lane: "frontier", router, modelHint: model, maxAttempts: 1 };
+}
+
+function buildAgenticFrontierLane(env: EvalEnv): Lane | null {
+  if (!env.OPENROUTER_FRONTIER_API_KEY) return null;
+  // Opt-in: `frontier` may run informationally without firing the
+  // agentic loop's 3× provider RPS. Truthy string ("1"/"true"/"yes")
+  // opts in.
+  const optIn = (env.RUN_AGENTIC_FRONTIER ?? "").toLowerCase();
+  if (optIn !== "1" && optIn !== "true" && optIn !== "yes") return null;
+  const model = env.FRONTIER_MODEL ?? DEFAULT_FRONTIER_MODEL;
+  const router = createLLMRouter({
+    providers: [frontierProvider(env, model)],
+    chains: { plan: ["openrouter"] },
+  });
+  return {
+    lane: "agentic-frontier",
+    router,
+    modelHint: model,
+    maxAttempts: AGENTIC_MAX_ATTEMPTS,
+  };
 }
 
 export function buildLanes(env: EvalEnv): Lane[] {
@@ -74,7 +120,14 @@ export function buildLanes(env: EvalEnv): Lane[] {
   if (free) lanes.push(free);
   const frontier = buildFrontierLane(env);
   if (frontier) lanes.push(frontier);
+  const agenticFrontier = buildAgenticFrontierLane(env);
+  if (agenticFrontier) lanes.push(agenticFrontier);
   return lanes;
 }
 
-export const _testing = { buildFreeLane, buildFrontierLane };
+export const _testing = {
+  buildFreeLane,
+  buildFrontierLane,
+  buildAgenticFrontierLane,
+  AGENTIC_MAX_ATTEMPTS,
+};

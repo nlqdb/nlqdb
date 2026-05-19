@@ -114,11 +114,19 @@ export type FeatureEvalWeeklyEvent = {
   runId: string;
   dataset: string;
   questionCount: number;
-  // EA per dispatch lane. Keyed by lane name (`"free"`, `"frontier"`).
-  // Object (not array) so the LogSnag tags map flattens 1:1.
+  // EA per dispatch lane. Keyed by lane name (`"free"`, `"frontier"`,
+  // `"agentic-frontier"`). Object (not array) so the LogSnag tags map
+  // flattens 1:1.
   laneExecutionAccuracy: Record<string, number>;
-  // SK-QUAL-004 headline KPI. Null when only one lane ran.
+  // Single-model frontier delta — informational per `SK-QUAL-004`. Null
+  // when the `frontier` lane didn't run.
   freeVsFrontierDelta: number | null;
+  // SK-QUAL-009 — the headline KPI per `GLOBAL-025`: free chain vs.
+  // exec-retry-scaffolded frontier. Phase 2 floor ≤ 25 pp, Phase 3 ≤ 16
+  // pp. Null when the `agentic-frontier` lane didn't run. Optional in
+  // the type so pre-3c producers (the deployed Worker before this PR)
+  // still pass typecheck on the consumer side.
+  freeVsAgenticFrontierDelta?: number | null;
 };
 
 // `feature.eval.regression` fires only when a regression trigger flags

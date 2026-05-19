@@ -105,6 +105,8 @@ export type EvalIngestPayload = {
     question_count: number;
     lanes: Array<{ lane: string; execution_accuracy: number }>;
     free_vs_frontier_delta: number | null;
+    // SK-QUAL-009 — optional so a pre-3c producer's payload still validates.
+    free_vs_agentic_frontier_delta?: number | null;
     baseline?: {
       lanes: Array<{
         lane: string;
@@ -145,13 +147,17 @@ function isValidPayload(value: unknown): value is EvalIngestPayload {
     question_count?: unknown;
     lanes?: unknown;
     free_vs_frontier_delta?: unknown;
+    free_vs_agentic_frontier_delta?: unknown;
   };
+  const validDelta = (v: unknown) => v === null || v === undefined || typeof v === "number";
   return (
     typeof r.run_at === "string" &&
     typeof r.dataset === "string" &&
     typeof r.question_count === "number" &&
     Array.isArray(r.lanes) &&
-    (r.free_vs_frontier_delta === null || typeof r.free_vs_frontier_delta === "number")
+    validDelta(r.free_vs_frontier_delta) &&
+    r.free_vs_frontier_delta !== undefined &&
+    validDelta(r.free_vs_agentic_frontier_delta)
   );
 }
 
@@ -176,6 +182,9 @@ export function recordEvalReport(
       report.lanes.map((l) => [l.lane, l.execution_accuracy]),
     ),
     freeVsFrontierDelta: report.free_vs_frontier_delta,
+    // SK-QUAL-009 headline KPI. Pre-3c reports omit the field; default
+    // to `null` so the LogSnag sink sees a uniform "lane didn't run" signal.
+    freeVsAgenticFrontierDelta: report.free_vs_agentic_frontier_delta ?? null,
   };
   pendingEmits.push(events.emit(weekly));
   if (report.baseline) {

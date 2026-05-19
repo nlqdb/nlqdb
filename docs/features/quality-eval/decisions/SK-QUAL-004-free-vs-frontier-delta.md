@@ -33,14 +33,26 @@ Parent feature: [`quality-eval/FEATURE.md`](../FEATURE.md).
   assumed single-model frontier could clear 88%; revised based on
   live leaderboard verification 2026-05-19.
 - **Consequence in code:** `tools/eval/lanes.ts` selects the dispatch
-  lane per run; the same questions are evaluated through both lanes
-  back-to-back so the delta is per-question, not per-run-average
-  (cancels noise). BYOLLM lane is also instrumented when an opt-in
-  eval key is configured, but does not gate any floor — BYOLLM
-  accuracy depends on the user's key, not on our work.
-  `report.free_vs_frontier_delta` keeps its name (back-compat with
-  slice-1 baselines); the field stores the agentic-frontier delta once
-  that lane ships.
+  lane per run; the same questions are evaluated through every
+  configured lane back-to-back so the delta is per-question, not
+  per-run-average (cancels noise). BYOLLM lane is also instrumented
+  when an opt-in eval key is configured, but does not gate any floor —
+  BYOLLM accuracy depends on the user's key, not on our work.
+  **Slice-3c shipping shape (`SK-QUAL-009`):** the report carries two
+  delta fields side-by-side so the meaning of the headline number is
+  unambiguous across phase boundaries: `free_vs_frontier_delta`
+  retains its slice-1 meaning (free vs. single-model frontier —
+  informational per this decision), and the new
+  `free_vs_agentic_frontier_delta` is the headline KPI per
+  [`GLOBAL-025`](../../../decisions/GLOBAL-025-north-star.md). The
+  earlier draft of this block proposed overwriting the single field
+  once the agentic lane shipped; that was discarded during slice-3c
+  implementation because a single field that switches meaning makes
+  the McNemar / Spearman comparisons unreadable on the LogSnag card,
+  and the per-lane EA values are still required to interpret either
+  delta. Both fields land on `EvalReport`, on
+  `FeatureEvalWeeklyEvent`, and on the LogSnag `Eval weekly` card
+  (`delta-agentic` tag for the headline; description carries both).
 - **Alternatives rejected:**
   - One average accuracy number — hides which lane is regressing.
   - Per-tier accuracy without a delta — forces every reader to do the

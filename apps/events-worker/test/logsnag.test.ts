@@ -139,7 +139,32 @@ describe("buildPayload", () => {
         "ea-frontier": "66.00",
       },
     });
+    // Single-model delta still surfaced; agentic-delta absent because
+    // the agentic lane didn't run on a pre-3c producer.
     expect(out.description).toContain("24.00 pts");
+    expect((out.tags as Record<string, string>)["delta-agentic"]).toBeUndefined();
+  });
+
+  it("SK-QUAL-009: surfaces the agentic-frontier lane + headline delta tag when the new field is set", () => {
+    const out = buildPayload("nlqdb", {
+      name: "feature.eval.weekly",
+      runId: "2026-05-18T04:00:00Z",
+      dataset: "bird-mini-dev-sqlite",
+      questionCount: 500,
+      laneExecutionAccuracy: { free: 0.42, frontier: 0.66, "agentic-frontier": 0.82 },
+      freeVsFrontierDelta: 0.24,
+      freeVsAgenticFrontierDelta: 0.4,
+    });
+    expect(out).toMatchObject({
+      tags: {
+        "ea-free": "42.00",
+        "ea-frontier": "66.00",
+        "ea-agentic-frontier": "82.00",
+        "delta-agentic": "40.00",
+      },
+    });
+    expect(out.description).toContain("agentic-Δ 40.00 pts");
+    expect(out.description).toContain("single-Δ 24.00 pts");
   });
 
   it("maps feature.eval.regression with notify=true and trigger tag (SK-QUAL-002)", () => {

@@ -169,7 +169,53 @@ describe("recordEvalReport — SK-QUAL-002 internal cron ingestion", () => {
       questionCount: 500,
       laneExecutionAccuracy: { free: 0.42, frontier: 0.66 },
       freeVsFrontierDelta: 0.24,
+      // SK-QUAL-009: pre-3c producers omit the agentic field; ingest
+      // defaults to null so LogSnag sees a uniform "lane didn't run" signal.
+      freeVsAgenticFrontierDelta: null,
     });
+  });
+
+  it("SK-QUAL-009: flows free_vs_agentic_frontier_delta through to the typed event when set", () => {
+    const events: EventEmitter = { emit: vi.fn().mockResolvedValue(undefined) };
+    const payload = {
+      report: {
+        run_at: "2026-05-18T04:00:00Z",
+        dataset: "bird-mini-dev-sqlite",
+        question_count: 500,
+        lanes: [
+          { lane: "free", execution_accuracy: 0.42 },
+          { lane: "frontier", execution_accuracy: 0.66 },
+          { lane: "agentic-frontier", execution_accuracy: 0.82 },
+        ],
+        free_vs_frontier_delta: 0.24,
+        free_vs_agentic_frontier_delta: 0.4,
+      },
+    };
+    const result = recordEvalReport(events, `Bearer ${TOKEN}`, TOKEN, payload);
+    expect(result.status).toBe(202);
+    const emitted = (events.emit as ReturnType<typeof vi.fn>).mock.calls[0]?.[0];
+    expect(emitted).toMatchObject({
+      name: "feature.eval.weekly",
+      laneExecutionAccuracy: { free: 0.42, frontier: 0.66, "agentic-frontier": 0.82 },
+      freeVsFrontierDelta: 0.24,
+      freeVsAgenticFrontierDelta: 0.4,
+    });
+  });
+
+  it("SK-QUAL-009: rejects a malformed free_vs_agentic_frontier_delta (string masquerading as number)", () => {
+    const events: EventEmitter = { emit: vi.fn().mockResolvedValue(undefined) };
+    const payload = {
+      report: {
+        run_at: "2026-05-18T04:00:00Z",
+        dataset: "bird-mini-dev-sqlite",
+        question_count: 500,
+        lanes: [{ lane: "free", execution_accuracy: 0.42 }],
+        free_vs_frontier_delta: null,
+        free_vs_agentic_frontier_delta: "0.4",
+      },
+    };
+    const result = recordEvalReport(events, `Bearer ${TOKEN}`, TOKEN, payload);
+    expect(result.status).toBe(400);
   });
 
   it("emits one weekly + one regression per (lane, trigger) when baseline regressions are present", () => {
