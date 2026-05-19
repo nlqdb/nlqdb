@@ -2,15 +2,26 @@
 
 export type DispatchLane = "free" | "frontier";
 
-// Shape mirrors `birdsql/bird_mini_dev` on HuggingFace; extras kept optional so the runner doesn't couple to BIRD versions.
-export type BirdQuestion = {
+// Datasets the runner can dispatch — extend when SK-QUAL-007 follow-ups land.
+export type EvalDataset = "bird-mini-dev-sqlite" | "spider2-lite-sqlite";
+
+// Generic question shape — BIRD and Spider 2.0-lite both fit. `evidence` is
+// BIRD-only (annotator hint); `instance_id` is Spider-only (string row key);
+// `sql` is empty when the dataset row has no usable gold SQL (Spider rows
+// scored via the multi-CSV result-set path per `SK-QUAL-007`).
+export type EvalQuestion = {
   question_id: number;
   db_id: string;
   question: string;
   evidence: string;
   sql: string;
   difficulty?: "simple" | "moderate" | "challenging";
+  instance_id?: string;
 };
+
+// Legacy alias — kept so existing imports + the `baseline-2026-06-15.json`
+// type hints don't break while callers migrate to `EvalQuestion`.
+export type BirdQuestion = EvalQuestion;
 
 export type ScoreOutcome =
   | "match"
@@ -31,6 +42,9 @@ export type QuestionResult = {
   latency_ms: number;
   // Capped at 240 chars per GLOBAL-012 ("one-sentence errors").
   error?: string;
+  // Spider 2.0-lite carries a string row key (`local003`) we preserve for
+  // baseline-pair joining and debugging. Omitted on BIRD rows.
+  instance_id?: string;
 };
 
 export type LaneSummary = {
@@ -50,7 +64,7 @@ export type LaneSummary = {
 export type EvalReport = {
   // ISO-8601 UTC; the slice-2 baseline snapshot pins off this per SK-QUAL-005.
   run_at: string;
-  dataset: "bird-mini-dev-sqlite";
+  dataset: EvalDataset;
   question_count: number;
   lanes: LaneSummary[];
   // Headline KPI per SK-QUAL-004; `null` when only one lane ran.

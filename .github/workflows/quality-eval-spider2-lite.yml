@@ -1,0 +1,147 @@
+# quality-eval — Spider 2.0-lite SQLite-subset free-vs-frontier run.
+# SK-QUAL-007: 24-of-135 `local###` rows scored against gold SQL today;
+# slice 3b adds multi-CSV result-set scoring for the remaining 111.
+# Same weekly cadence as BIRD per SK-QUAL-002 — staggered by one day so
+# the two runs don't share a free-tier RPM ceiling.
+
+name: Quality eval — Spider 2.0-lite
+
+on:
+  # Weekly Tue 04:00 UTC — one day after BIRD's Monday slot per
+  # quality-eval-bird-mini.yml. Tuesday gives the free-tier providers
+  # a 24h gap so a Monday outage doesn't poison the Spider run.
+  schedule:
+    - cron: "0 4 * * 2"
+  workflow_dispatch:
+    inputs:
+      limit:
+        description: "Question count (Spider 2.0-lite SQLite subset caps at 135)"
+        default: "135"
+        required: false
+      include_frontier:
+        description: "Run the frontier lane too (paid OpenRouter)"
+        type: boolean
+        default: false
+      skip_emit:
+        description: "Skip POSTing the report to /v1/events/eval (default false)"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+# Allow only one run at a time — same rationale as BIRD: provider
+# rate limits + the shared cache key.
+concurrency:
+  group: quality-eval-spider2-lite
+  cancel-in-progress: false
+
+jobs:
+  run:
+    name: Run Spider 2.0-lite SQLite
+    runs-on: ubuntu-latest
+    # 135 questions × ~1s p50 × N lanes is ~5 min; LLM tail can push
+    # to ~15 min. 60 min ceiling absorbs single-provider degradation.
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - uses: ./.github/actions/setup
+
+      # Spider 2.0-lite's questions JSONL + gold SQL files live in the
+      # upstream GitHub repo; the SQLite database files are on Google
+      # Drive (per the upstream README quickstart). gdown handles the
+      # interstitial confirm token. Keyed by workflow hash so a config
+      # change forces a refresh.
+      - name: Cache Spider 2.0-lite fixtures
+        id: spider2-cache
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: spider2_data
+          key: spider2-lite-v1-${{ hashFiles('.github/workflows/quality-eval-spider2-lite.yml') }}
+
+      - name: Download Spider 2.0-lite (when cache miss)
+        if: steps.spider2-cache.outputs.cache-hit != 'true'
+        run: |
+          set -euo pipefail
+          mkdir -p spider2_data/gold-sql spider2_data/resource/databases/spider2-localdb
+          # SQLite database files — Google Drive (upstream README §1).
+          # File ID `1coEVsCZq-Xvj9p2TnhBFoFTsY-UoYGmG` from
+          # github.com/xlang-ai/Spider2/tree/main/spider2-lite README.
+          pip install --quiet --user gdown
+          ~/.local/bin/gdown --fuzzy \
+            "https://drive.google.com/file/d/1coEVsCZq-Xvj9p2TnhBFoFTsY-UoYGmG/view?usp=sharing" \
+            -O spider2_data/spider2-localdb.zip
+          unzip -q spider2_data/spider2-localdb.zip -d spider2_data/resource/databases/spider2-localdb
+          rm -f spider2_data/spider2-localdb.zip
+
+      - name: Run quality-eval
+        working-directory: tools/eval
+        env:
+          # Free chain — same provider keys as production.
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          CF_AI_TOKEN: ${{ secrets.CF_AI_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          # Frontier chain — opt-in for manual runs. Weekly cron skips
+          # frontier to preserve the OpenRouter paid budget.
+          OPENROUTER_FRONTIER_API_KEY: ${{ inputs.include_frontier == true && secrets.OPENROUTER_FRONTIER_API_KEY || '' }}
+          EVAL_API_URL: ${{ vars.EVAL_API_URL || 'https://app.nlqdb.com' }}
+          EVAL_INGEST_TOKEN: ${{ secrets.EVAL_INGEST_TOKEN }}
+          SKIP_EMIT: ${{ inputs.skip_emit == true }}
+        run: |
+          set -euo pipefail
+          limit="${{ inputs.limit || '135' }}"
+          # Event-pipeline emit: skip on workflow_dispatch when the
+          # operator opted out, or when the token is unset.
+          emit_args=""
+          if [ "$SKIP_EMIT" != "true" ] && [ -n "${EVAL_INGEST_TOKEN:-}" ]; then
+            emit_args="--emit-url $EVAL_API_URL --emit-token $EVAL_INGEST_TOKEN"
+          fi
+          # No baseline diff in slice 3a — `baseline-2026-06-15.json`
+          # is BIRD-only. Slice 3b will mint a Spider baseline once
+          # the 111-row multi-CSV scorer lands and EA stabilises.
+          # shellcheck disable=SC2086  # word-splitting on optional args is intentional
+          bun src/runner.ts \
+            --dataset spider2-lite-sqlite \
+            --data-dir ../../spider2_data \
+            --limit "$limit" \
+            --out results \
+            $emit_args
+
+      - name: Upload report JSON
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: always()
+        with:
+          name: quality-eval-spider2-lite-${{ github.run_id }}
+          path: tools/eval/results/*.json
+          retention-days: 90
+
+      # Same step-summary shape as BIRD so the operator's eye doesn't
+      # have to context-switch between the two reports.
+      - name: Emit run summary
+        if: always()
+        run: |
+          set -euo pipefail
+          latest=$(ls -t tools/eval/results/*.json 2>/dev/null | head -1 || true)
+          if [ -z "$latest" ]; then
+            echo "::warning::No results JSON produced (runner failed)."
+            exit 0
+          fi
+          {
+            echo "## quality-eval — Spider 2.0-lite SQLite"
+            echo ""
+            jq -r '
+              "Run at: " + .run_at,
+              "Dataset: " + .dataset,
+              "Questions: " + (.question_count | tostring),
+              "",
+              "| Lane | Match | Attempted | EA (scored) | Gold errors | p50 ms | p95 ms |",
+              "|---|---|---|---|---|---|---|",
+              (.lanes[] | "| " + .lane + " | " + (.match | tostring) + " | " + (.attempted | tostring) + " | " + ((.execution_accuracy * 100 | tostring) + "%") + " | " + (.gold_error | tostring) + " | " + (.p50_latency_ms | tostring) + " | " + (.p95_latency_ms | tostring) + " |"),
+              "",
+              "Free-vs-frontier delta: " + (if .free_vs_frontier_delta == null then "n/a" else ((.free_vs_frontier_delta * 100 | tostring) + " pts") end),
+              "",
+              "Note (SK-QUAL-007): 24 of 135 rows ship gold SQL today. The remaining 111 emit `gold_error` until slice 3b lands the multi-CSV result-set scorer; EA above is over the 24 scoreable rows only."
+            ' "$latest"
+          } >> "$GITHUB_STEP_SUMMARY"

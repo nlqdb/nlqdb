@@ -1,18 +1,21 @@
-// quality-eval harness — BIRD Mini-Dev driver. Usage:
-//   bun src/runner.ts --data-dir ./bird_data --limit 500 --out tools/eval/results
+// quality-eval harness — multi-dataset driver. Usage:
+//   bun src/runner.ts --dataset bird-mini-dev-sqlite --data-dir ./bird_data --limit 500
+//   bun src/runner.ts --dataset spider2-lite-sqlite --data-dir ./spider2-lite
 // All real provider calls require env vars (see lanes.ts); no key → one-sentence error per GLOBAL-012.
 
 import { parseArgs } from "node:util";
 
 import { compareToBaseline, readBaseline } from "./baseline.ts";
 import { loadBirdMini } from "./datasets/bird-mini.ts";
+import { loadSpider2Lite } from "./datasets/spider2-lite.ts";
 import { emitEvalReport } from "./emit.ts";
 import { buildLanes, type Lane } from "./lanes.ts";
 import { writeReport } from "./output.ts";
 import { scoreOne } from "./score.ts";
 import type {
-  BirdQuestion,
   DispatchLane,
+  EvalDataset,
+  EvalQuestion,
   EvalReport,
   LaneSummary,
   QuestionResult,
@@ -23,6 +26,9 @@ const PREDICTED_SQL_CAP = 4096;
 const ERROR_MSG_CAP = 240;
 
 export type RunOptions = {
+  // Which dataset to dispatch — defaults to `bird-mini-dev-sqlite` so
+  // existing callers (and the runner.test.ts assertions) keep working.
+  dataset?: EvalDataset;
   dataDir?: string;
   questionsJsonPath?: string;
   questionsJsonUrl?: string;
@@ -43,7 +49,34 @@ export type RunOptions = {
   writeReport?: typeof writeReport;
   readBaseline?: typeof readBaseline;
   emitEvalReport?: typeof emitEvalReport;
+  loadDataset?: (opts: RunOptions) => Promise<LoadedDataset>;
 };
+
+// Loader abstraction so the runner doesn't bind to a specific dataset
+// loader's option shape — `loadBirdMini` / `loadSpider2Lite` adapt to this.
+export type LoadedDataset = {
+  questions: EvalQuestion[];
+  resolveDbPath: (db_id: string) => Promise<string | null>;
+};
+
+async function loadDatasetByName(opts: RunOptions): Promise<LoadedDataset> {
+  const name: EvalDataset = opts.dataset ?? "bird-mini-dev-sqlite";
+  if (name === "spider2-lite-sqlite") {
+    return loadSpider2Lite({
+      dataDir: opts.dataDir,
+      questionsJsonlPath: opts.questionsJsonPath,
+      questionsJsonlUrl: opts.questionsJsonUrl,
+      limit: opts.limit,
+    });
+  }
+  // BIRD Mini-Dev — the default.
+  return loadBirdMini({
+    dataDir: opts.dataDir,
+    questionsJsonPath: opts.questionsJsonPath,
+    questionsJsonUrl: opts.questionsJsonUrl,
+    limit: opts.limit,
+  });
+}
 
 function pct(n: number, d: number): number {
   return d === 0 ? 0 : Math.round((n / d) * 10_000) / 10_000;
@@ -118,7 +151,7 @@ async function introspectSchema(dbPath: string): Promise<string> {
 
 async function runOneQuestion(
   lane: Lane,
-  question: BirdQuestion,
+  question: EvalQuestion,
   dbPath: string | null,
   schemaCache: Map<string, string>,
   sqlTimeoutMs?: number,
@@ -128,6 +161,7 @@ async function runOneQuestion(
     question_id: question.question_id,
     db_id: question.db_id,
     lane: lane.lane,
+    ...(question.instance_id ? { instance_id: question.instance_id } : {}),
   } as const;
   if (!dbPath) {
     return {
@@ -137,6 +171,21 @@ async function runOneQuestion(
       model: lane.modelHint,
       latency_ms: 0,
       error: `missing SQLite fixture for db_id=${question.db_id}`,
+    };
+  }
+  // Spider 2.0-lite (SK-QUAL-007): 111 of 135 local rows carry no gold SQL
+  // file — the canonical eval scores them against multi-CSV gold result-sets
+  // (deferred to slice 3b). Skip the LLM call so we don't burn quota on a
+  // row we can't score; report `gold_error` so it's excluded from the EA
+  // denominator and visible in the report.
+  if (question.sql.trim().length === 0) {
+    return {
+      ...ids,
+      outcome: "gold_error",
+      predicted_sql: "",
+      model: lane.modelHint,
+      latency_ms: 0,
+      error: "no gold SQL — scored via multi-CSV path (deferred to slice 3b)",
     };
   }
   let schema = schemaCache.get(question.db_id);
@@ -218,12 +267,9 @@ export async function runEval(opts: RunOptions = {}): Promise<EvalReport> {
       "no dispatch lanes configured — set at least one of GEMINI_API_KEY/GROQ_API_KEY/OPENROUTER_API_KEY (free) or OPENROUTER_FRONTIER_API_KEY",
     );
   }
-  const dataset = await loadBirdMini({
-    dataDir: opts.dataDir,
-    questionsJsonPath: opts.questionsJsonPath,
-    questionsJsonUrl: opts.questionsJsonUrl,
-    limit: opts.limit,
-  });
+  const datasetName: EvalDataset = opts.dataset ?? "bird-mini-dev-sqlite";
+  const loader = opts.loadDataset ?? loadDatasetByName;
+  const dataset = await loader(opts);
   const schemaCache = new Map<string, string>();
   const results: QuestionResult[] = [];
   for (const question of dataset.questions) {
@@ -242,7 +288,7 @@ export async function runEval(opts: RunOptions = {}): Promise<EvalReport> {
       : null;
   const report: EvalReport = {
     run_at: new Date().toISOString(),
-    dataset: "bird-mini-dev-sqlite",
+    dataset: datasetName,
     question_count: dataset.questions.length,
     lanes: laneSummaries,
     free_vs_frontier_delta: delta,
@@ -279,10 +325,22 @@ export async function runEval(opts: RunOptions = {}): Promise<EvalReport> {
   return report;
 }
 
+const KNOWN_DATASETS: readonly EvalDataset[] = [
+  "bird-mini-dev-sqlite",
+  "spider2-lite-sqlite",
+] as const;
+
+function parseDatasetFlag(raw: string | undefined): EvalDataset | undefined {
+  if (!raw) return undefined;
+  if ((KNOWN_DATASETS as readonly string[]).includes(raw)) return raw as EvalDataset;
+  throw new Error(`unknown --dataset: ${raw} (expected one of: ${KNOWN_DATASETS.join(", ")})`);
+}
+
 function parseCliArgs(): RunOptions {
   const { values } = parseArgs({
     args: process.argv.slice(2),
     options: {
+      dataset: { type: "string" },
       "data-dir": { type: "string" },
       "questions-json": { type: "string" },
       limit: { type: "string" },
@@ -300,6 +358,8 @@ function parseCliArgs(): RunOptions {
     allowPositionals: false,
   });
   const out: RunOptions = {};
+  const dataset = parseDatasetFlag(values.dataset);
+  if (dataset) out.dataset = dataset;
   if (values["data-dir"]) out.dataDir = values["data-dir"];
   if (values["questions-json"]) out.questionsJsonPath = values["questions-json"];
   if (values.limit) out.limit = Number.parseInt(values.limit, 10);
@@ -324,7 +384,7 @@ if (import.meta.main) {
     .then((r) => {
       const free = r.lanes.find((l) => l.lane === "free");
       const frontier = r.lanes.find((l) => l.lane === "frontier");
-      console.info("nlqdb quality-eval — BIRD Mini-Dev SQLite");
+      console.info(`nlqdb quality-eval — ${r.dataset}`);
       console.info(`  questions   : ${r.question_count}`);
       if (free) {
         console.info(

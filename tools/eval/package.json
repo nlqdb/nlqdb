@@ -6,7 +6,8 @@
   "scripts": {
     "test": "bun test",
     "typecheck": "tsc --noEmit",
-    "bird-mini": "bun src/runner.ts"
+    "bird-mini": "bun src/runner.ts --dataset bird-mini-dev-sqlite",
+    "spider2-lite": "bun src/runner.ts --dataset spider2-lite-sqlite"
   },
   "dependencies": {
     "@nlqdb/events": "workspace:*",

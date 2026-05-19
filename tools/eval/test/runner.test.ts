@@ -322,6 +322,60 @@ describe("runEval — end-to-end with mocked routers", () => {
     expect(report.lanes[0]?.attempted).toBe(2);
   });
 
+  it("dispatches `--dataset spider2-lite-sqlite` through the injected loader and tags the report (SK-QUAL-007)", async () => {
+    const report = await runEval({
+      dataset: "spider2-lite-sqlite",
+      outDir,
+      buildLanes: () => [
+        {
+          lane: "free",
+          modelHint: "free-fake",
+          router: {
+            ...fakeRouter("SELECT 1"),
+            plan: async (): Promise<PlanResponse> => ({
+              sql: "SELECT COUNT(*) FROM pet WHERE species='cat'",
+              model: "fake",
+              confidence: 1,
+            }),
+          },
+        },
+      ],
+      // Tiny Spider-shaped fixture: one row with gold SQL (matches the
+      // 24-of-135 path), one without (matches the 111-of-135 path).
+      loadDataset: async () => ({
+        questions: [
+          {
+            question_id: 0,
+            instance_id: "local003",
+            db_id: "pets",
+            question: "How many cats?",
+            evidence: "",
+            sql: "SELECT COUNT(*) FROM pet WHERE species='cat'",
+          },
+          {
+            question_id: 1,
+            instance_id: "local007",
+            db_id: "pets",
+            question: "Career batting averages",
+            evidence: "",
+            // Empty gold SQL → SK-QUAL-007 short-circuit to gold_error.
+            sql: "",
+          },
+        ],
+        resolveDbPath: async () => join(dir, "dev_databases", "pets", "pets.sqlite"),
+      }),
+      writeReport: async () => "stub.json",
+    });
+    expect(report.dataset).toBe("spider2-lite-sqlite");
+    const free = report.lanes.find((l) => l.lane === "free");
+    // 1 match + 1 short-circuited gold_error → EA over the 1 scoreable row.
+    expect(free?.match).toBe(1);
+    expect(free?.gold_error).toBe(1);
+    expect(free?.execution_accuracy).toBe(1);
+    expect(report.results.find((r) => r.question_id === 0)?.instance_id).toBe("local003");
+    expect(report.results.find((r) => r.question_id === 1)?.error).toMatch(/no gold SQL/);
+  });
+
   it("does not emit when only one of emit-url/emit-token is set (caller forgot one)", async () => {
     const emitMock = mock(async () => ({ accepted: true, status: 202 }));
     await runEval({

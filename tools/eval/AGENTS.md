@@ -13,7 +13,8 @@ Before editing under `tools/eval/`:
 
 | If you touch… | Read first |
 |---|---|
-| `src/datasets/**`, the BIRD loader, gold-SQL fields | `docs/features/quality-eval/FEATURE.md` (`SK-QUAL-003`) |
+| `src/datasets/bird-mini.ts`, BIRD loader, gold-SQL fields | `docs/features/quality-eval/FEATURE.md` (`SK-QUAL-003`) |
+| `src/datasets/spider2-lite.ts`, Spider 2.0-lite `local###` loader | `docs/features/quality-eval/FEATURE.md` (`SK-QUAL-003`, `SK-QUAL-007`) |
 | `src/score.ts`, the EX (execution-accuracy) scorer | `docs/features/quality-eval/FEATURE.md` (`SK-QUAL-001`) |
 | `src/lanes.ts`, dispatch-lane selection | `docs/features/quality-eval/FEATURE.md` (`SK-QUAL-004`) + `docs/features/llm-router/decisions/SK-LLM-017-hosted-premium-chain.md` |
 | `src/runner.ts`, the runner, CI workflow | `docs/features/quality-eval/decisions/SK-QUAL-002-weekly-cron.md` + `FEATURE.md` (`SK-QUAL-005`) |
@@ -34,8 +35,10 @@ tools/eval/
 │   ├── significance.ts    # McNemar exact-binomial + Edwards' chi-squared
 │   ├── emit.ts            # POST report to /v1/events/eval (typed event fanout)
 │   ├── output.ts          # JSON report writer
-│   ├── types.ts           # canonical types — BirdQuestion, EvalReport, etc.
-│   └── datasets/bird-mini.ts  # birdsql/bird_mini_dev loader (HF + on-disk)
+│   ├── types.ts           # canonical types — EvalQuestion, EvalReport, etc.
+│   └── datasets/
+│       ├── bird-mini.ts      # birdsql/bird_mini_dev loader (HF + on-disk)
+│       └── spider2-lite.ts   # xlang-ai/Spider2 SQLite-subset loader (local### prefix)
 ├── test/                  # bun test unit tests (no real LLM, no network)
 ├── results/               # report JSON output (gitignored except .keep)
 └── baseline-2026-06-15.json  # pinned canonical baseline (SK-QUAL-005)
@@ -66,6 +69,14 @@ bun run --filter @nlqdb/eval bird-mini -- \
   --baseline tools/eval/baseline-2026-06-15.json \
   --emit-url https://app.nlqdb.com \
   --emit-token "$EVAL_INGEST_TOKEN"
+
+# Spider 2.0-lite SQLite subset (135 questions; 24 ship gold SQL, 111
+# emit gold_error pending the slice 3b CSV-result path per SK-QUAL-007).
+# Fixtures from upstream Google Drive — see the README quickstart in
+# https://github.com/xlang-ai/Spider2/tree/main/spider2-lite
+bun run --filter @nlqdb/eval spider2-lite -- \
+  --data-dir ./spider2-lite \
+  --out tools/eval/results
 ```
 
 ## Conventions
