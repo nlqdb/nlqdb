@@ -153,8 +153,7 @@ jobs:
             process.stdout.write(JSON.stringify(msg) + "\n");
           });
 
-          // Wait for readline to drain before exiting, so no trailing
-          // JSON lines are lost if the child exits with data still buffered.
+          // Drain readline before exiting so no buffered JSON lines are lost when the child exits.
           let childExitCode = null;
           let childSignal = null;
           child.on("exit", (code, signal) => {
@@ -168,9 +167,7 @@ jobs:
           chmod +x "$cli"
           echo "patched $cli"
 
-      # opencheck's YAML parser does NOT interpolate env vars; substitute
-      # the placeholder before invocation. Writing to a new file (not
-      # mutating the checked-in tests.yaml) keeps the working tree clean.
+      # opencheck's YAML parser doesn't interpolate env vars — substitute at invocation time into a temp file (keeps working tree clean).
       - name: Render tests.yaml with runtime baseUrl
         working-directory: tests/opencheck
         run: |
