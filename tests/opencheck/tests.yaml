@@ -1,46 +1,6 @@
-# E2E flow for nlqdb: anonymous → table-create → mutation-gate → mock-auth →
-# authed-state-preserved → write → UX coverage (informative read, count,
-# trace pane, vague prompt, missing-table, Cmd+K palette) → delete-row →
-# second-db-create → delete-db-while-signed-in → sign-out →
-# sign-in-again → delete-remaining-db. Covers SK-HDC-016 (typed-name
-# confirm dialog) across both authed sessions so cleanup runs whether
-# or not the session survived between deletes.
-# Run by .github/workflows/e2e-opencheck.yml (workflow_dispatch — external scheduler).
-#
-# Runtime substitution: the caller workflow renders `__BASE_URL__` to the
-# per-run preview alias via `sed` before invoking `bunx opencheck`.
-#
-# LLM: OpenRouter → Mistral Small 3.2 via OpenAI-compat (https://openrouter.ai).
-# Current: `mistralai/mistral-small-3.2-24b-instruct` via OpenRouter
-# Budget: paid tier, ~$0.06/run (500K tokens @ $0.075/M in + $0.20/M out), no RPM cap.
-# Fallback: Groq llama-3.3-70b-versatile (GROQ_API_KEY) — 1000 RPM, 100K TPD.
-#
-# Pivot history (newest first — researched 2026-05-19):
-#  10. mistralai/mistral-small-3.2-24b-instruct [CURRENT] — OpenRouter; switched from
-#      Mistral direct API (run #40): 50 RPM causes 240s test timeouts in the agentic
-#      loop. 9 of 20 tests timed out. OpenRouter paid tier removes the RPM cap while
-#      routing to the same Mistral Small model. Cost: ~$0.06/run. Boolean tool calls
-#      correct (verified 2026-05-19). Accessible via OPENROUTER_API_KEY.
-#   9. mistral-small-latest — Mistral direct, 50 RPM; switched back from Groq (run #42):
-#      llama-4-scout sends `submit: "true"` (string) for boolean browser_type param
-#      → 400 tool call validation error → stale-ref spiral → 24-min test stuck.
-#   8. meta-llama/llama-4-scout-17b-16e-instruct — Groq, 30K TPM, 500K TPD, 1000 RPM,
-#      512K ctx; switched from Mistral for run #39: 50 RPM cascade in run #38
-#   7. mistral-small-latest — Mistral, 50K TPM, ~1B/month, 128K ctx, 50 RPM;
-#      switched from Groq after Groq TPD exhausted on run #32
-#   6. meta-llama/llama-4-scout-17b-16e-instruct — Groq; exhausted 500K TPD on run #32
-#   5. llama-3.3-70b-versatile — Groq, 12K TPM, 100K TPD (not 1M as assumed)
-#   4. openai/gpt-oss-120b — Groq, 8K TPM + hidden reasoning_tokens → 85-90s/call
-#   3. llama-4-scout early — Groq, 500K TPD but quota drained by debug runs
-#   2. OpenRouter qwen3-coder:free — 429 on first call; shared upstream pool
-#   1. Gemini 2.5 Flash — 10 RPM ceiling; 75-87s silent-retry tax
-#
-# Top 5 models for agentic/tool-use (verified live 2026-05-19 18:00 UTC — see FEATURE.md for full table):
-#   1. OpenRouter mistralai/mistral-small-3.2-24b-instruct (paid) — no RPM/TPD cap, ~$0.06/run, correct booleans; CURRENT
-#   2. Groq qwen/qwen3-32b — 60 RPM, 6K TPM, 500K TPD, 131K ctx; best free TPD; correct booleans (no documented issues)
-#   3. Google gemini-2.5-flash — 15 RPM, 1M TPM, 1500 RPD, 1M ctx; verify boolean false via OpenAI compat before switching
-#   4. Groq llama-3.3-70b-versatile — 1000 RPM, 12K TPM, 100K TPD, 128K ctx; correct booleans; TPD too small for full run
-#   5. Mistral mistral-small-latest (direct) — 50 RPM, 50K TPM, ~1B/month; correct booleans; 50 RPM causes 240s timeouts
+# E2E flow: anonymous → table-create → mutation-gate → mock-auth → write → UX coverage → delete → sign-out → cleanup.
+# Runtime: caller workflow substitutes __BASE_URL__ via sed before invoking bunx opencheck (see .github/workflows/e2e-opencheck.yml).
+# LLM: OpenRouter mistralai/mistral-small-3.2-24b-instruct (paid — no RPM cap, ~$0.06/run). Model table: docs/features/e2e-coverage/FEATURE.md.
 
 baseUrl: "__BASE_URL__"
 modelProvider: "openai"

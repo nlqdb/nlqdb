@@ -1,20 +1,5 @@
-# Reusable: run opencheck against a given baseUrl via the OpenAI-compatible endpoint.
-# The `workflow_call` trigger means this file never appears in the
-# manual-dispatch list — callers (see `e2e-opencheck.yml`) drive it.
-#
-# Why OpenAI-compat (and not provider-specific LangChain packages):
-#   opencheck v0.3.0 pins `@langchain/core ^1.1.24` (the LangChain JS v1
-#   ecosystem). Provider-specific LangChain packages outside the v1
-#   range cause a peer-dep split (two copies of core at runtime, broken
-#   types). `@langchain/openai` v1.4.5 is on the same v1 ecosystem and
-#   works cleanly. Both Groq and Mistral expose OpenAI-compatible endpoints,
-#   so swapping providers is an env-var change with no code changes.
-#
-# Current: OpenRouter → mistralai/mistral-small-3.2-24b-instruct. No per-minute cap
-#   on OpenRouter paid tier; ~$0.06 per 500 K-token run. Mistral direct API has 50 RPM
-#   which causes 240 s test timeouts in the agentic loop (see pivot #10 in tests.yaml).
-# Fallback: Groq llama-3.3-70b-versatile (GROQ_API_KEY) — 1000 RPM, correct booleans;
-#   only 100 K TPD so split tests across two runs. Groq llama-4-scout has a boolean bug.
+# Reusable: run opencheck against a given baseUrl via the OpenAI-compatible endpoint (workflow_call only — callers drive it).
+# OpenAI-compat: opencheck pins @langchain/core ^1.1.24 (v1 ecosystem); @langchain/openai v1.4.5 matches; Groq + Mistral + OpenRouter all expose compatible endpoints — provider swap is env-var only.
 
 name: E2E opencheck (reusable)
 
@@ -54,9 +39,7 @@ jobs:
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
 
-      # The opencheck deps tree (LangChain v1 + Playwright MCP) is heavy
-      # and intentionally NOT in root `workspaces:` to keep the global
-      # CI install lean. Install locally instead.
+      # opencheck deps intentionally excluded from root workspaces (LangChain v1 + Playwright MCP would bloat global CI install).
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
           bun-version-file: package.json
@@ -187,10 +170,7 @@ jobs:
           bunx opencheck --config tests-runtime.yaml 2>&1 | tee /tmp/opencheck-output.txt
           echo "exit_code=${PIPESTATUS[0]}" >> "$GITHUB_OUTPUT"
 
-      # opencheck writes Playwright traces + videos into
-      # `.opencheck-recordings/`. Always upload, even on success — first
-      # successful run lets us validate the artifact path; failure runs
-      # drag the trace.zip into trace.playwright.dev for triage.
+      # Always upload even on success — failure runs drag trace.zip into trace.playwright.dev for triage.
       - name: Upload recordings
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
