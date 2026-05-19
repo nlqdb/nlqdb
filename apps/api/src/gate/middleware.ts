@@ -1,21 +1,7 @@
-// `gatePreAlpha` — Hono middleware that implements `GLOBAL-027`.
-//
-// Order in the route chain: `requirePrincipal` → `gatePreAlpha` → handler.
-// The middleware is mounted explicitly per route in `index.ts`
-// (`SK-GATE-004`): `POST /v1/ask`, `POST /v1/run`,
-// `POST /v1/databases`, `POST /v1/chat/messages`. Listing surfaces
-// are deliberately untouched.
-//
-// Flow per request:
-//   1. Read `EVAL_BASELINE`. If `gateState === "open"` → `next()`. No IO.
-//   2. Read both bypass primitives in parallel. Any hit → `next()`.
-//   3. Else → emit `feature.requested.early_access` (fire-and-forget)
-//      and return 403 `feature_gated` with the live progress payload.
-//
-// One OTel span `nlqdb.gate.check` per call with attributes for the
-// outcome, bypass reason, and the two lane numbers. The two KV reads
-// ride the parent route span (no extra span — they're regional KV,
-// not "external" in the `GLOBAL-014` sense).
+// `gatePreAlpha` — `GLOBAL-027` middleware. Mounted after `requirePrincipal`
+// (or `requireSession`) on the four "do-work" routes (`SK-GATE-004`).
+// The two KV reads ride the parent route span — regional KV isn't an
+// "external call" in the `GLOBAL-014` sense, so no separate span.
 
 import type { NlqSurface } from "@nlqdb/events";
 import { trace } from "@opentelemetry/api";
@@ -36,10 +22,6 @@ export const INVITE_CODE_HEADER = "x-invite-code";
 
 const WAITLIST_URL = "https://nlqdb.com/#waitlist";
 
-/**
- * Body of a 403 `feature_gated` response. Mirrors the SDK's
- * `ApiErrorBody` extension exactly so consumers can rely on shape.
- */
 export type FeatureGatedBody = {
   error: {
     status: "feature_gated";
@@ -87,16 +69,11 @@ function setLaneAttrs(
 
 export type GateDeps = {
   kv: KVNamespace;
-  // Optional — production wires the queue binding; tests inject undefined
-  // and the emitter no-ops. Same pattern as `buildEventEmitter`.
   eventsQueue: Queue | undefined;
 };
 
-// Common shape the gate reads from the request, regardless of which
-// auth middleware (`requirePrincipal` for `/v1/ask` / `/v1/run`;
-// `requireSession` for `/v1/databases` / `/v1/chat/messages`) ran
-// upstream. `allowlistKey` is the value looked up under
-// `gate:user:<key>`; `null` for principals without an account.
+// Auth-source-agnostic view: `requirePrincipal` sets `principal`,
+// `requireSession` sets `session`. The gate reads whichever is present.
 type GateSubject = {
   kind: Principal["kind"] | "session";
   principalId: string;
@@ -157,11 +134,8 @@ export function makeGatePreAlpha(deps: GateDeps): MiddlewareHandler<{
           isInviteValid(deps.kv, inviteHeader),
         ]);
 
-        // Surface KV errors on the span without crashing the request
-        // (fail-closed at the bypass layer per `bypass.ts` header).
-        // An operator who sees `nlqdb.gate.kv_error` non-empty in
-        // traces knows to investigate KV health before assuming a
-        // genuine pre-alpha block.
+        // Surface KV trouble on the span so operators can distinguish
+        // a real pre-alpha block from a KV outage masquerading as one.
         if (allowlistOutcome.error || inviteOutcome.error) {
           span.setAttribute(
             "nlqdb.gate.kv_error",
@@ -181,15 +155,11 @@ export function makeGatePreAlpha(deps: GateDeps): MiddlewareHandler<{
         }
 
         span.setAttribute("nlqdb.gate.outcome", "block");
-        // Distinguish "no invite presented" from "invite presented
-        // but invalid" — the latter is signal for brute-force guess
-        // attempts. Operators can alert on a spike in
-        // `bypass_reason=invite_invalid` from a single principal.
+        // `invite_invalid` is the brute-force-guess signature; operators
+        // can alert on a spike per principal.
         span.setAttribute("nlqdb.gate.bypass_reason", inviteAttempted ? "invite_invalid" : "none");
 
-        // `SK-GATE-006` — fire-and-forget demand-signal emit. Per
-        // `GLOBAL-024`, every "not yet" path produces a typed event.
-        // `executionCtx` is absent in some unit-test flows; tolerate it.
+        // `SK-GATE-006`. `executionCtx` is absent in unit-test contexts.
         if (subject) {
           const ctx = tryGetExecutionCtx(c);
           if (ctx) {

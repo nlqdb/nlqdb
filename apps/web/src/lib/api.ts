@@ -37,8 +37,7 @@ export interface CreateResult {
   sampleRows: { table: string; values: CreateRow }[];
 }
 
-// GLOBAL-027 / SK-GATE-005 — eval-baseline progress carried on every
-// `feature_gated` 403. Shape mirrors `@nlqdb/sdk`'s `GateProgress`.
+// Mirrors `@nlqdb/sdk`'s `GateProgress` (`GLOBAL-027` / `SK-GATE-005`).
 export interface GateProgress {
   bird_accuracy: number | null;
   spider_accuracy: number | null;
@@ -62,8 +61,6 @@ export type CreateError =
     }
   | { kind: "unauthorized" }
   | { kind: "goal_unclear" }
-  // GLOBAL-027 — pre-alpha gate is closed. Surface renders the
-  // progress bar + waitlist CTA.
   | { kind: "feature_gated"; gate: GateProgress; waitlistUrl: string; message: string }
   | { kind: "server_error"; status: number };
 
@@ -118,9 +115,8 @@ export async function postAskCreate(
 
   if (res.status === 428) return { ok: false, error: { kind: "challenge_required" } };
   if (res.status === 403) {
-    // GLOBAL-027 — pre-alpha gate. Body is always JSON with the
-    // `feature_gated` envelope; anything else is treated as a
-    // generic 403 server error.
+    // `GLOBAL-027` pre-alpha gate envelope. Anything else 403 falls
+    // through to a generic server_error.
     try {
       const body = (await res.json()) as { error?: FeatureGatedEnvelope };
       if (body.error?.status === "feature_gated") {
@@ -134,9 +130,7 @@ export async function postAskCreate(
           },
         };
       }
-    } catch {
-      // not json — fall through to generic server_error
-    }
+    } catch {}
     return { ok: false, error: { kind: "server_error", status: 403 } };
   }
   if (res.status === 429) {

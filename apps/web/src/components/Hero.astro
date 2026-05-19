@@ -3,11 +3,8 @@
 // chat (SK-WEB-002 / SK-WEB-008). Backed by the same `<CreateForm>`
 // React island as `/app/new`; both routes hit `/v1/ask` with an
 // anonymous bearer (SK-ANON-008), gated by the global anon cap
-// (SK-ANON-010), the prompt-persistence guarantee (SK-ANON-011), and
-// the pre-alpha eval-baseline gate (`GLOBAL-027`). The submission
-// itself is gated at the API; the form renders unconditionally so
-// the visitor sees the call-to-action and the progress-bar response
-// when the gate is closed.
+// (SK-ANON-010), prompt-persistence (SK-ANON-011), and the
+// `GLOBAL-027` pre-alpha gate.
 
 import CreateForm from "./CreateForm.tsx";
 

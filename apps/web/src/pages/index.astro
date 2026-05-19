@@ -21,11 +21,6 @@ import Base from "../layouts/Base.astro";
 
     <main>
       <AuthedHomeBanner />
-      {/* Hero renders unconditionally — the marketing chrome AND the
-          live <CreateForm>. Submission is gated server-side by
-          `GLOBAL-027`'s pre-alpha gate (`apps/api/src/gate/`); the
-          form renders the BIRD/Spider progress bar + waitlist CTA
-          when the gate is closed. */}
       <Hero />
       <Carousel examples={SHOWCASE_EXAMPLES} />
       <Waitlist />

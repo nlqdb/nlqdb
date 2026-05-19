@@ -629,11 +629,8 @@ h3 {
   gap: 8px;
 }
 
-/* GLOBAL-027 — pre-alpha gate progress UI. Rendered inside
-   `.createform__error-wrap` when `error.kind === "feature_gated"`.
-   Visually subordinate to the form above (same dark error palette)
-   but with two progress bars so the visitor sees how close the
-   product is to opening. */
+/* `GLOBAL-027` pre-alpha gate progress UI — rendered inside
+   `.createform__error-wrap` when `error.kind === "feature_gated"`. */
 .createform__gate {
   grid-column: 1 / -1;
   display: flex;

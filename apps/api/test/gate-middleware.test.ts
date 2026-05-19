@@ -1,11 +1,10 @@
-// Integration tests for `gatePreAlpha`. Use a real `Hono` app +
-// `app.request()` so the middleware chain (`requirePrincipal` →
-// `gatePreAlpha` → handler) exercises through the actual Hono context
-// surface, not a synthetic mock.
+// Integration tests for `gatePreAlpha`. Use a real Hono app +
+// `app.request()` so the middleware chain exercises through the actual
+// context surface, not a synthetic mock.
 //
-// The test file ASSUMES `EVAL_BASELINE` reports closed today (BIRD
-// 0.318, Spider null). If a future cron lands an open state these
-// tests have to be updated alongside the middleware removal PR.
+// Assumes `EVAL_BASELINE` reports closed today (BIRD 0.318, Spider
+// null). When both lanes clear, these tests get updated alongside the
+// middleware-removal PR.
 
 import { Hono } from "hono";
 import { describe, expect, it } from "vitest";
@@ -116,9 +115,9 @@ describe("gatePreAlpha — allowlist bypass (SK-GATE-003)", () => {
   });
 
   it("does NOT pass anon principals on the allowlist path (anon has no account)", async () => {
-    // Even if a stray gate:user:anon:* somehow exists, anon's
-    // allowlistKey is null from accountTenantIdFromPrincipal so the
-    // lookup short-circuits.
+    // anon's allowlistKey is null from accountTenantIdFromPrincipal,
+    // so a stray `gate:user:anon:*` row can't accidentally let anon
+    // bypass.
     const kv = fakeKv({ "gate:user:anon:0123456789abcdef": "1" });
     const app = buildAnonApp(kv);
     const res = await app.request("/v1/ask", {
@@ -195,20 +194,12 @@ describe("gatePreAlpha — fail-closed when KV is unreachable (robustness)", () 
       method: "POST",
       headers: { authorization: ANON_BEARER, "x-invite-code": "ANY" },
     });
-    // Fail-closed: KV down means we can't prove a bypass, so the
-    // caller sees the actionable 403 progress body, not a generic
-    // 500 from the parent error handler.
     expect(res.status).toBe(403);
     const body = (await res.json()) as { error: { status: string } };
     expect(body.error.status).toBe("feature_gated");
   });
 
   it("a real allowlist hit still works even if a transient KV error happens elsewhere", async () => {
-    // Sanity: the fail-closed branch doesn't accidentally block real
-    // allowlist hits. (Construction: allowlist read succeeds, invite
-    // read throws on the decoy — but only because the principal has
-    // no header. The allowlist hit short-circuits before the decoy
-    // matters anyway.)
     const kv = fakeKv({ "gate:user:u_partner": "1" });
     const app = buildSessionApp(kv, "u_partner");
     const res = await app.request("/v1/databases", { method: "POST" });
@@ -217,15 +208,9 @@ describe("gatePreAlpha — fail-closed when KV is unreachable (robustness)", () 
 });
 
 describe("gatePreAlpha — surfaces invite-attempted-but-invalid for abuse detection", () => {
-  // The span attribute `nlqdb.gate.bypass_reason = "invite_invalid"`
-  // distinguishes genuine pre-alpha visitors (no header) from
-  // brute-force guess attempts (header present but wrong). We can't
-  // assert the span attr directly without instrumenting the OTel
-  // SDK here; the assertion is the response shape — a blocked
-  // request with an invalid code still returns the standard gate
-  // body, no information leak about whether the header was even
-  // attempted.
   it("invalid-code attempts return the same 403 shape as no-code requests", async () => {
+    // The discriminant is on the span (`bypass_reason=invite_invalid`),
+    // not in the response — that's the no-information-leak property.
     const app = buildAnonApp(fakeKv());
     const withHeader = await app.request("/v1/ask", {
       method: "POST",

@@ -89,8 +89,6 @@ describe("isInviteValid — codes stored hashed, lookup timing constant", () => 
 });
 
 describe("bypass — allowlist + invite run in parallel", () => {
-  // The middleware kicks both off via Promise.all; this asserts the
-  // primitives are independently awaitable (no shared state).
   it("two concurrent calls on the same KV don't deadlock or share state", async () => {
     const { kv } = fakeKv({ "gate:user:u_1": "1" });
     const results = await Promise.all([isUserAllowlisted(kv, "u_1"), isInviteValid(kv, "unknown")]);
@@ -99,11 +97,6 @@ describe("bypass — allowlist + invite run in parallel", () => {
 });
 
 describe("bypass — fail-closed on KV outage (SK-GATE-003 hardening)", () => {
-  // Post the June 2026 Cloudflare KV incident, the explicit Cloudflare
-  // guidance is to catch KV exceptions in middleware rather than let
-  // them propagate. The gate fails closed: the caller treats the KV
-  // outage as "no bypass", returns 403 with the progress body, and the
-  // operator sees the failure via the `nlqdb.gate.kv_error` span attr.
   function brokenKv(): KVNamespace {
     return {
       get: vi.fn().mockRejectedValue(new Error("KV down")),
@@ -123,9 +116,6 @@ describe("bypass — fail-closed on KV outage (SK-GATE-003 hardening)", () => {
   });
 
   it("isInviteValid swallows decoy-read failures (timing not correctness)", async () => {
-    // No invite header → decoy read → throws → still returns hit:false.
-    // No error surfaced because the decoy is for timing shape, not
-    // signal — surfacing it would be a false positive operator alert.
     const outcome = await isInviteValid(brokenKv(), null);
     expect(outcome).toEqual({ hit: false });
   });

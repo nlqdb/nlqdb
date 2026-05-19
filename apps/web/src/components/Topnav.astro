@@ -7,11 +7,6 @@
 // Marketing-side caveat (`SK-WEB-009`): probe returns null on
 // `nlqdb.com` because the session cookie is host-only on
 // `app.nlqdb.com` — authed visitors see the "Sign in" link.
-//
-// (The legacy Cmd+G tester gate was removed alongside `GLOBAL-027`'s
-// server-side eval gate: hiding the UI client-side was security-by-
-// obscurity; the API now enforces the gate and the form / sign-in
-// link render unconditionally.)
 interface Props {
   current?: "manifesto" | "chat";
 }

@@ -239,10 +239,7 @@ export type ApiErrorCode =
   // SK-DB-010: 400 returned when `engine` is set to a string that's
   // not in the allowed engine set on `/v1/ask` or `/v1/databases`.
   | "invalid_engine"
-  // GLOBAL-027 / SK-GATE-005: 403 returned by `gatePreAlpha` on every
-  // "do-work" surface until the free chain crosses BIRD ≥ 0.65 AND
-  // Spider ≥ 0.75. Body carries `gate.*` (current vs. target) and
-  // `waitlist_url`. Not recoverable — `isRecoverable` rejects all 4xx.
+  // `GLOBAL-027` / `SK-GATE-005` — 403 with `gate` + `waitlist_url`. Terminal.
   | "feature_gated"
   // SDK-only sentinels — never sent by the API.
   | "unknown_error"
@@ -260,17 +257,13 @@ export type CandidateDb = { id: string; slug: string };
 // Null when the pinned id couldn't be resolved (stale URL param).
 export type PinnedDb = { id: string; slug: string };
 
-// GLOBAL-027 / SK-GATE-005 — eval-baseline snapshot carried on every
-// `feature_gated` envelope. Lane accuracies are `number | null`;
-// `null` means the lane hasn't shipped yet (today: Spider per
-// `SK-QUAL-003` slice 3). Surfaces render the pair as a progress bar
-// — "0.42 / 0.65" for met-or-below lanes, "not yet measured" for null.
+// `GLOBAL-027` / `SK-GATE-005` — eval-baseline snapshot on every
+// `feature_gated` envelope. Null lane = "not yet measured".
 export type GateProgress = {
   bird_accuracy: number | null;
   spider_accuracy: number | null;
   bird_target: number;
   spider_target: number;
-  /** ISO-8601 UTC timestamp of the eval run that produced these numbers. */
   measured_at: string;
 };
 
@@ -334,13 +327,7 @@ export type FetchLike = (input: RequestInfo | URL, init?: RequestInit) => Promis
 type ClientOptionsBase = {
   baseUrl?: string;
   fetch?: FetchLike;
-  /**
-   * GLOBAL-027 — design-partner invite code sent as `X-Invite-Code`
-   * on every request. Bypasses the pre-alpha gate when the server's
-   * `gate:invite:<sha256-prefix>` KV set contains the code's hash.
-   * Storage is server-side hashed; the SDK forwards plaintext over
-   * TLS only. Safe to omit; safe to set on any auth mode.
-   */
+  /** `GLOBAL-027` — sent as `X-Invite-Code`; bypasses the pre-alpha gate. */
   inviteCode?: string;
 };
 

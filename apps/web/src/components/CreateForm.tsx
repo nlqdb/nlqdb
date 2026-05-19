@@ -301,16 +301,14 @@ function messageFor(error: CreateError): string {
     case "goal_unclear":
       return "Try describing what you want to build, e.g. 'a messages database' or 'an orders tracker'.";
     case "feature_gated":
-      // Handled by FeatureGatedView; the messageFor() return value is
-      // unused on this branch but kept for switch exhaustiveness.
+      // Rendered by FeatureGatedView; the return value is unused.
       return error.message;
     case "server_error":
       return "Couldn't create the DB — try again.";
   }
 }
 
-// GLOBAL-027 — progress bar + waitlist CTA. Two lanes (BIRD + Spider)
-// each rendered as "current / target" or "not yet measured" when null.
+// `GLOBAL-027` progress bar + waitlist CTA.
 function FeatureGatedView({ error }: { error: Extract<CreateError, { kind: "feature_gated" }> }) {
   const { gate, message, waitlistUrl } = error;
   return (

@@ -140,9 +140,7 @@ func renderAPIError(cmd *cobra.Command, err error) error {
 	return err
 }
 
-// renderFeatureGated prints the GLOBAL-027 pre-alpha gate body as one
-// sentence + progress line + waitlist URL — the CLI equivalent of the
-// web surface's progress bar.
+// `GLOBAL-027` — CLI counterpart of `FeatureGatedView` in the web app.
 func renderFeatureGated(cmd *cobra.Command, apiErr *api.APIError) {
 	message := apiErr.Message
 	if message == "" {

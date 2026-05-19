@@ -1,15 +1,11 @@
-// Integration-suite gate bypass. The `GLOBAL-027` pre-alpha gate is
-// closed today (BIRD 0.318, Spider null), which would block every
-// existing `/v1/ask` / `/v1/run` / `POST /v1/databases` /
-// `POST /v1/chat/messages` integration test with 403 `feature_gated`.
-// To keep the existing seams (principal-gate, body-parse, orchestrator
-// behavior) testable, this setup pre-seeds the test Miniflare KV with
-// a known invite code; failing tests opt in by sending
-// `X-Invite-Code: TEST_INVITE` and clear the gate.
+// `GLOBAL-027` is closed today, which would block every existing
+// `/v1/ask` / `/v1/run` / `POST /v1/databases` / `POST /v1/chat/messages`
+// integration test with 403 `feature_gated`. This setup seeds an
+// invite code into Miniflare's per-test KV; failing tests opt in by
+// sending `X-Invite-Code: TEST_INVITE` and clear the gate.
 //
-// **Do NOT use this code in production.** It only exists in the
-// per-test isolated KV namespace (`isolatedStorage: true` in
-// vitest.config.ts), so it never escapes the test fixture.
+// DO NOT reuse this code in production. `isolatedStorage: true` in
+// vitest.config.ts keeps it inside the test fixture.
 
 import { env } from "cloudflare:test";
 import { beforeAll } from "vitest";

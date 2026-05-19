@@ -44,8 +44,6 @@ func New(baseURL string, identity auth.Identity) *Client {
 	}
 }
 
-// WithInviteCode threads a GLOBAL-027 design-partner invite into the
-// client. Returns the receiver so callers can chain (`api.New(...).WithInviteCode(...)`).
 func (c *Client) WithInviteCode(code string) *Client {
 	c.InviteCode = code
 	return c
