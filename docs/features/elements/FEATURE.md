@@ -10,7 +10,7 @@ when-to-load:
 # Feature: Elements
 
 **One-liner:** `<nlq-data>` (reads) and `<nlq-action>` (writes) custom elements for framework-free embedding.
-**Status:** partial (Phase 2) — `<nlq-data>` v0.1 implemented (Slice 10); `<nlq-action>` v0.1 ships in this slice. The action element supports preview→confirm via [`SK-TRUST-001`](../trust-ux/FEATURE.md)'s diff hop, cookie-session auth (cross-origin write-token deferred per [`SK-ELEM-011`](decisions/SK-ELEM-011-action-cookie-session-only.md)), and FormData-into-goal serialization ([`SK-ELEM-013`](decisions/SK-ELEM-013-action-form-context-in-goal.md)). `card-grid` / `chart` templates and `pk_live_*` cross-origin issuance remain on the original Slice 11+ list.
+**Status:** partial (Phase 2) — `<nlq-data>` v0.1 implemented (Slice 10); `<nlq-action>` v0.1 ships in this slice. The action element supports preview→confirm via [`SK-TRUST-001`](../trust-ux/FEATURE.md)'s diff hop, cookie-session auth (cross-origin write-token deferred per [`SK-ELEM-011`](decisions/SK-ELEM-011-action-cookie-session-only.md)), and FormData-into-goal serialization ([`SK-ELEM-013`](decisions/SK-ELEM-013-action-form-context-in-goal.md)). Pre-alpha `feature_gated` responses render the waitlist CTA inline on both elements ([`SK-ELEM-014`](decisions/SK-ELEM-014-feature-gated-inline-cta.md)). `card-grid` / `chart` templates and `pk_live_*` cross-origin issuance remain on the original Slice 11+ list.
 **Owners (code):** `packages/elements/**`
 **Cross-refs:** docs/architecture.md §3.5 (the bet) · §14.5 (happy path) · docs/architecture.md §3 (matrix) · `packages/elements/README.md`
 
@@ -43,6 +43,7 @@ Canonical bodies live in [`decisions/`](decisions/) — one file per `SK-ELEM-NN
 - [**SK-ELEM-011**](decisions/SK-ELEM-011-action-cookie-session-only.md) — `<nlq-action>` v0.1 supports cookie-session auth only; cross-origin write-token deferred.
 - [**SK-ELEM-012**](decisions/SK-ELEM-012-action-two-click-commit.md) — Two-click commit: preview then Apply (the `SK-TRUST-001` user confirmation).
 - [**SK-ELEM-013**](decisions/SK-ELEM-013-action-form-context-in-goal.md) — Form data serialized into the goal text; no new `/v1/ask` shape.
+- [**SK-ELEM-014**](decisions/SK-ELEM-014-feature-gated-inline-cta.md) — Render the `feature_gated` waitlist CTA inline; surface the structured 403 body on `kind: "api"` (401 stays `auth`).
 
 ## GLOBALs governing this feature
 

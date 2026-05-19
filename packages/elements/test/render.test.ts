@@ -66,13 +66,106 @@ describe("renderState — error", () => {
     expect(html).toContain("Network error: Failed to fetch");
   });
 
-  it("renders auth errors with a generic 'authentication required' message", () => {
+  it("renders 401 auth errors with a generic 'authentication required' message", () => {
     const html = renderState({ kind: "error", failure: { kind: "auth", status: 401 } }, "table");
     expect(html).toContain('data-kind="auth"');
     expect(html).toContain("Authentication required.");
-    // The status code is in the dispatched event detail, not the
-    // visible text — ensures generic styling matches both 401 and 403.
+    // The status code is in the dispatched event detail, not the visible text.
     expect(html).not.toContain("401");
+  });
+
+  it("renders the feature_gated CTA inline (SK-ELEM-014)", () => {
+    const html = renderState(
+      {
+        kind: "error",
+        failure: {
+          kind: "api",
+          status: 403,
+          error: {
+            status: "feature_gated",
+            message: "nlqdb is pre-alpha — join the waitlist for early access.",
+            action: "Join the waitlist",
+            waitlist_url: "https://nlqdb.com/#waitlist",
+            gate: {
+              bird_accuracy: 0.318,
+              spider_accuracy: null,
+              bird_target: 0.65,
+              spider_target: 0.75,
+              measured_at: "2026-05-18T22:42:29.917Z",
+            },
+          },
+        },
+      },
+      "table",
+    );
+    expect(html).toContain('data-kind="gated"');
+    expect(html).toContain('role="status"');
+    expect(html).toContain("join the waitlist for early access");
+    expect(html).toContain('href="https://nlqdb.com/#waitlist"');
+    expect(html).toContain('rel="noopener noreferrer"');
+    expect(html).toContain("Join the waitlist");
+    expect(html).toContain("BIRD: 31.8% / 65% target");
+    expect(html).toContain("Spider: not yet reporting (75% target)");
+  });
+
+  it("strips hostile waitlist_url protocols (javascript:, data:, relative)", () => {
+    const make = (url: unknown) =>
+      renderState(
+        {
+          kind: "error",
+          failure: {
+            kind: "api",
+            status: 403,
+            error: {
+              status: "feature_gated",
+              action: "Join the waitlist",
+              waitlist_url: url,
+              gate: {
+                bird_accuracy: null,
+                spider_accuracy: null,
+                bird_target: 0.65,
+                spider_target: 0.75,
+              },
+            },
+          },
+        },
+        "table",
+      );
+    for (const url of ["javascript:alert(1)", "data:text/html,<script>", "/relative", 42, null]) {
+      const html = make(url);
+      // Falls back to the generic api-error rendering (no link, no nlq-gated container).
+      expect(html).not.toContain("nlq-gated");
+      expect(html).toContain("Error 403: feature_gated");
+    }
+  });
+
+  it("escapes hostile action/message text in the gated card", () => {
+    const html = renderState(
+      {
+        kind: "error",
+        failure: {
+          kind: "api",
+          status: 403,
+          error: {
+            status: "feature_gated",
+            message: '<img src=x onerror="x">',
+            action: "<script>x</script>",
+            waitlist_url: "https://nlqdb.com/#waitlist",
+            gate: {
+              bird_accuracy: 0.5,
+              bird_target: 0.65,
+              spider_accuracy: null,
+              spider_target: 0.75,
+            },
+          },
+        },
+      },
+      "table",
+    );
+    expect(html).not.toContain("<img");
+    expect(html).not.toContain("<script");
+    expect(html).toContain("&lt;img");
+    expect(html).toContain("&lt;script");
   });
 
   it("renders structured 4xx api errors with status + slug", () => {

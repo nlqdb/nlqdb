@@ -107,7 +107,10 @@ export async function fetchAsk(p: AskParams): Promise<AskOutcome> {
     };
   }
 
-  if (response.status === 401 || response.status === 403) {
+  // 401 has no useful structured body in practice — collapse to `auth`.
+  // 403 carries the `feature_gated` envelope (GLOBAL-027) with waitlist URL
+  // + live BIRD/Spider numbers; fall through so the renderer can use it.
+  if (response.status === 401) {
     return { ok: false, failure: { kind: "auth", status: response.status } };
   }
 

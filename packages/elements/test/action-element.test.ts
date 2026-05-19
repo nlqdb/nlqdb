@@ -239,6 +239,43 @@ describe("<nlq-action> auth + validation", () => {
     await settle();
     expect(el.innerHTML).toContain("sql_rejected");
   });
+
+  it("renders the feature_gated CTA without a retry button (SK-ELEM-014)", async () => {
+    const fetchMock = vi.fn(async () =>
+      jsonResponse(
+        {
+          error: {
+            status: "feature_gated",
+            message: "nlqdb is pre-alpha — join the waitlist for early access.",
+            action: "Join the waitlist",
+            waitlist_url: "https://nlqdb.com/#waitlist",
+            gate: {
+              bird_accuracy: 0.318,
+              spider_accuracy: null,
+              bird_target: 0.65,
+              spider_target: 0.75,
+              measured_at: "2026-05-18T22:42:29.917Z",
+            },
+          },
+        },
+        { status: 403 },
+      ),
+    );
+    const el = makeAction({ goal: "add an order", db: "orders", fetchMock });
+
+    const errors: CustomEvent[] = [];
+    el.addEventListener("nlq-action:error", (e) => errors.push(e as CustomEvent));
+
+    clickButton(el);
+    await settle();
+    expect(errors.length).toBe(1);
+    const detail = errors[0]?.detail as { kind: string; status: number };
+    expect(detail.kind).toBe("api");
+    expect(detail.status).toBe(403);
+    expect(el.innerHTML).toContain('data-kind="gated"');
+    expect(el.innerHTML).toContain("Join the waitlist");
+    expect(el.querySelector('[data-action="retry"]')).toBeNull();
+  });
 });
 
 describe("<nlq-action> on-success behaviours", () => {

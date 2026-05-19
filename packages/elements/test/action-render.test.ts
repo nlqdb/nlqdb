@@ -163,4 +163,34 @@ describe("renderActionState — error", () => {
     expect(html).not.toContain("<script>alert");
     expect(html).toContain("&lt;script&gt;");
   });
+
+  it("renders the feature_gated CTA without a retry button (SK-ELEM-014)", () => {
+    // Pre-alpha gate isn't transient — retry would just 403 again, so the
+    // action element drops the retry button and shows just the waitlist CTA.
+    const html = renderError({
+      kind: "error",
+      failure: {
+        kind: "api",
+        status: 403,
+        error: {
+          status: "feature_gated",
+          message: "nlqdb is pre-alpha — join the waitlist for early access.",
+          action: "Join the waitlist",
+          waitlist_url: "https://nlqdb.com/#waitlist",
+          gate: {
+            bird_accuracy: 0.318,
+            spider_accuracy: null,
+            bird_target: 0.65,
+            spider_target: 0.75,
+            measured_at: "2026-05-18T22:42:29.917Z",
+          },
+        },
+      },
+      label: "Submit",
+    });
+    expect(html).toContain('data-kind="gated"');
+    expect(html).toContain('href="https://nlqdb.com/#waitlist"');
+    expect(html).toContain("Join the waitlist");
+    expect(html).not.toContain('data-action="retry"');
+  });
 });

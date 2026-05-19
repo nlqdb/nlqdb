@@ -29,9 +29,11 @@ export function renderState(state: NlqState, template: string): string {
 }
 
 // Error HTML carries `data-kind` so consumers can style auth /
-// network / api differently without parsing the message text.
+// network / api / gated differently without parsing the message text.
 // Message is always escaped — API messages can echo user-supplied SQL.
 export function errorHtml(failure: AskFailure): string {
+  const gated = gatedBody(failure);
+  if (gated) return gatedHtml(gated);
   const message = errorMessage(failure);
   return `<div class="nlq-error" data-kind="${failure.kind}">${escapeHtml(message)}</div>`;
 }
@@ -55,4 +57,87 @@ function errorMessage(failure: AskFailure): string {
     return `Rate limit reached (${err["count"] as number} of ${err["limit"] as number} requests used). Please wait a moment, then try again.`;
   }
   return `Error ${failure.status}: ${slug}`;
+}
+
+// `feature_gated` (GLOBAL-027) body shape — narrowed from `ApiErrorBody`.
+// `gate` fields are best-effort; absent / wrong-typed values fall back to
+// a plain message + waitlist link.
+type GatedBody = {
+  action: string;
+  waitlistUrl: string;
+  message?: string;
+  bird?: LaneNumbers;
+  spider?: LaneNumbers;
+};
+type LaneNumbers = { accuracy: number | null; target: number };
+
+export function gatedBody(failure: AskFailure): GatedBody | null {
+  if (failure.kind !== "api") return null;
+  const err = failure.error;
+  if (typeof err === "string" || err.status !== "feature_gated") return null;
+  const waitlistUrl = safeUrl(err["waitlist_url"]);
+  if (!waitlistUrl) return null;
+  const action = typeof err["action"] === "string" ? err["action"] : "Join the waitlist";
+  const message = typeof err["message"] === "string" ? err["message"] : undefined;
+  const gate = err["gate"];
+  const lanes =
+    gate && typeof gate === "object"
+      ? {
+          bird: laneNumbers(
+            (gate as Record<string, unknown>)["bird_accuracy"],
+            (gate as Record<string, unknown>)["bird_target"],
+          ),
+          spider: laneNumbers(
+            (gate as Record<string, unknown>)["spider_accuracy"],
+            (gate as Record<string, unknown>)["spider_target"],
+          ),
+        }
+      : { bird: undefined, spider: undefined };
+  return { action, waitlistUrl, message, bird: lanes.bird, spider: lanes.spider };
+}
+
+function laneNumbers(accuracy: unknown, target: unknown): LaneNumbers | undefined {
+  if (typeof target !== "number") return undefined;
+  const acc = accuracy === null ? null : typeof accuracy === "number" ? accuracy : undefined;
+  if (acc === undefined) return undefined;
+  return { accuracy: acc, target };
+}
+
+// http(s) only — strips `javascript:` / `data:` / relative inputs even
+// though the server controls this URL today (defense-in-depth per OWASP
+// XSS prevention cheat sheet). Returns the normalized URL on success.
+function safeUrl(raw: unknown): string | null {
+  if (typeof raw !== "string") return null;
+  try {
+    const url = new URL(raw);
+    if (url.protocol !== "https:" && url.protocol !== "http:") return null;
+    return url.toString();
+  } catch {
+    return null;
+  }
+}
+
+export function gatedHtml(body: GatedBody): string {
+  const heading = body.message ?? "nlqdb is pre-alpha — join the waitlist for early access.";
+  const progress = laneProgress(body);
+  const progressHtml = progress
+    ? `<div class="nlq-gated-progress">${escapeHtml(progress)}</div>`
+    : "";
+  return `<div class="nlq-error nlq-gated" data-kind="gated" role="status"><div class="nlq-gated-message">${escapeHtml(heading)}</div><a class="nlq-gated-cta" href="${escapeHtml(body.waitlistUrl)}" target="_blank" rel="noopener noreferrer">${escapeHtml(body.action)}</a>${progressHtml}</div>`;
+}
+
+function laneProgress(body: { bird?: LaneNumbers; spider?: LaneNumbers }): string {
+  const parts: string[] = [];
+  const bird = formatLane("BIRD", body.bird);
+  const spider = formatLane("Spider", body.spider);
+  if (bird) parts.push(bird);
+  if (spider) parts.push(spider);
+  return parts.join(" · ");
+}
+
+function formatLane(label: string, lane: LaneNumbers | undefined): string | null {
+  if (!lane) return null;
+  const target = `${Math.round(lane.target * 100)}% target`;
+  if (lane.accuracy === null) return `${label}: not yet reporting (${target})`;
+  return `${label}: ${(lane.accuracy * 100).toFixed(1)}% / ${target}`;
 }

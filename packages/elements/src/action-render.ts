@@ -2,6 +2,7 @@
 // SK-TRUST-001 render-before-commit gate (Apply is the confirmation).
 
 import type { AskDiff, AskFailure } from "./fetch.ts";
+import { gatedBody, gatedHtml } from "./render.ts";
 import { escapeHtml } from "./templates.ts";
 
 export type NlqActionState =
@@ -58,6 +59,10 @@ function successHtml(rowCount: number, label: string): string {
 }
 
 function errorHtml(failure: AskFailure, label: string): string {
+  // Pre-alpha gate is not transient — show the CTA card with no retry
+  // button (clicking retry would just 403 again).
+  const gated = gatedBody(failure);
+  if (gated) return gatedHtml(gated);
   const message = errorMessage(failure);
   return `<div class="nlq-action-error" data-action-state="error" data-kind="${failure.kind}">${escapeHtml(message)}</div>
 <button type="button" class="nlq-action-btn" data-action-state="retry" data-action="retry">${escapeHtml(label)}</button>`;
