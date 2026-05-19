@@ -4,6 +4,15 @@ Parent feature: [`quality-eval/FEATURE.md`](../FEATURE.md). Parent decision:
 [`SK-QUAL-003`](../FEATURE.md#sk-qual-003) (three-dataset canon — BIRD-dev +
 Spider 2.0-lite SQLite + internal `db.create` eval).
 
+**Status:** scoring contract **superseded by
+[`SK-QUAL-008`](./SK-QUAL-008-spider2-lite-multi-csv-scorer.md)**
+(slice 3b, 2026-05-19). The file-layout fields (canonical
+`local###` regex + path-traversal guards + canonical disk layout under
+`resource/databases/spider2-localdb/`) still apply; the gold-SQL
+hydration path described below was removed in slice 3b. All 135
+SQLite rows now score via the canonical Spider 2.0 multi-CSV
+evaluator.
+
 - **Decision:** The Spider 2.0-lite loader fetches the canonical
   `spider2-lite.jsonl` from the upstream GitHub repo
   (`xlang-ai/Spider2@main`, MIT-licensed, 547 rows), filters to the

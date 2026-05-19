@@ -11,7 +11,7 @@ import { loadSpider2Lite } from "./datasets/spider2-lite.ts";
 import { emitEvalReport } from "./emit.ts";
 import { buildLanes, type Lane } from "./lanes.ts";
 import { writeReport } from "./output.ts";
-import { scoreOne } from "./score.ts";
+import { scoreOne, scoreOneSpider2 } from "./score.ts";
 import type {
   DispatchLane,
   EvalDataset,
@@ -175,15 +175,19 @@ async function runOneQuestion(
       error: `missing SQLite fixture for db_id=${question.db_id}`,
     };
   }
-  // SK-QUAL-007: short-circuit Spider rows with no gold SQL to `gold_error` before the LLM call so we don't burn free-tier quota on a row that can't be scored.
-  if (question.sql.trim().length === 0) {
+  // Short-circuit rows that carry no gold of any shape — neither BIRD gold
+  // SQL (slice 3a) nor Spider 2.0 multi-CSV gold (slice 3b / SK-QUAL-008).
+  // We do this before the LLM call so a row that can't be scored never burns
+  // free-tier quota.
+  const hasSpider2Gold = Boolean(question.spider2 && question.spider2.gold_tables.length > 0);
+  if (question.sql.trim().length === 0 && !hasSpider2Gold) {
     return {
       ...ids,
       outcome: "gold_error",
       predicted_sql: "",
       model: lane.modelHint,
       latency_ms: 0,
-      error: "no gold SQL — scored via multi-CSV path (deferred to slice 3b)",
+      error: "no gold SQL or gold CSV available for this instance",
     };
   }
   let schema = schemaCache.get(question.db_id);
@@ -228,15 +232,24 @@ async function runOneQuestion(
     };
   }
   const latency_ms = Date.now() - start;
-  // scoreOne can throw if the SQLite file itself is corrupt; treat as a per-question gold_error so one bad fixture doesn't kill a 500-question run.
+  // scoreOne can throw if the SQLite file itself is corrupt; treat as a per-question gold_error so one bad fixture doesn't kill a 500-question run. Spider 2.0 rows go through the multi-CSV path (SK-QUAL-008); everything else uses BIRD's gold-SQL EX path.
   let score: Awaited<ReturnType<typeof scoreOne>>;
   try {
-    score = await scoreOne({
-      dbPath,
-      goldSql: question.sql,
-      predictedSql: predicted,
-      timeoutMs: sqlTimeoutMs,
-    });
+    score = question.spider2
+      ? await scoreOneSpider2({
+          dbPath,
+          predictedSql: predicted,
+          goldTables: question.spider2.gold_tables,
+          conditionCols: question.spider2.condition_cols,
+          ignoreOrder: question.spider2.ignore_order,
+          timeoutMs: sqlTimeoutMs,
+        })
+      : await scoreOne({
+          dbPath,
+          goldSql: question.sql,
+          predictedSql: predicted,
+          timeoutMs: sqlTimeoutMs,
+        });
   } catch (err) {
     return {
       ...ids,

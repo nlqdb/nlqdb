@@ -14,8 +14,9 @@ Before editing under `tools/eval/`:
 | If you touch… | Read first |
 |---|---|
 | `src/datasets/bird-mini.ts`, BIRD loader, gold-SQL fields | `docs/features/quality-eval/FEATURE.md` (`SK-QUAL-003`) |
-| `src/datasets/spider2-lite.ts`, Spider 2.0-lite `local###` loader | `docs/features/quality-eval/FEATURE.md` (`SK-QUAL-003`, `SK-QUAL-007`) |
-| `src/score.ts`, the EX (execution-accuracy) scorer | `docs/features/quality-eval/FEATURE.md` (`SK-QUAL-001`) |
+| `src/datasets/spider2-lite.ts`, Spider 2.0-lite `local###` loader, gold-CSV fetch | `docs/features/quality-eval/FEATURE.md` (`SK-QUAL-003`, `SK-QUAL-007`, `SK-QUAL-008`) |
+| `src/csv.ts`, pandas-CSV parser + column type inference (Spider 2.0 gold ingest) | `docs/features/quality-eval/decisions/SK-QUAL-008-spider2-lite-multi-csv-scorer.md` |
+| `src/score.ts`, the EX (BIRD) scorer **and** the Spider 2.0 multi-CSV comparator port | `docs/features/quality-eval/FEATURE.md` (`SK-QUAL-001`, `SK-QUAL-008`) |
 | `src/lanes.ts`, dispatch-lane selection | `docs/features/quality-eval/FEATURE.md` (`SK-QUAL-004`) + `docs/features/llm-router/decisions/SK-LLM-017-hosted-premium-chain.md` |
 | `src/runner.ts`, the runner, CI workflow | `docs/features/quality-eval/decisions/SK-QUAL-002-weekly-cron.md` + `FEATURE.md` (`SK-QUAL-005`) |
 | `src/baseline.ts`, baseline comparison + regression detection | `docs/features/quality-eval/decisions/SK-QUAL-002-weekly-cron.md` + `decisions/SK-QUAL-006-mcnemar-paired-test.md` |
@@ -29,16 +30,17 @@ Before editing under `tools/eval/`:
 tools/eval/
 ├── src/
 │   ├── runner.ts          # main entry — accepts --baseline + --emit-url/--emit-token
-│   ├── score.ts           # execution-accuracy (multiset compare, gold/exec error)
+│   ├── score.ts           # BIRD EX scorer + Spider 2.0 multi-CSV pandas-comparator port (SK-QUAL-008)
+│   ├── csv.ts             # minimal RFC-4180 CSV parser + column type inference (SK-QUAL-008)
 │   ├── lanes.ts           # free / frontier router builders
 │   ├── baseline.ts        # read baseline JSON, per-lane diff, McNemar trigger
 │   ├── significance.ts    # McNemar exact-binomial + Edwards' chi-squared
 │   ├── emit.ts            # POST report to /v1/events/eval (typed event fanout)
 │   ├── output.ts          # JSON report writer
-│   ├── types.ts           # canonical types — EvalQuestion, EvalReport, etc.
+│   ├── types.ts           # canonical types — EvalQuestion, EvalReport, Spider2EvalPayload
 │   └── datasets/
 │       ├── bird-mini.ts      # birdsql/bird_mini_dev loader (HF + on-disk)
-│       └── spider2-lite.ts   # xlang-ai/Spider2 SQLite-subset loader (local### prefix)
+│       └── spider2-lite.ts   # xlang-ai/Spider2 SQLite-subset loader + gold-CSV / eval-JSONL hydration (local### prefix)
 ├── test/                  # bun test unit tests (no real LLM, no network)
 ├── results/               # report JSON output (gitignored except .keep)
 └── baseline-2026-06-15.json  # pinned canonical baseline (SK-QUAL-005)
@@ -70,12 +72,14 @@ bun run --filter @nlqdb/eval bird-mini -- \
   --emit-url https://app.nlqdb.com \
   --emit-token "$EVAL_INGEST_TOKEN"
 
-# Spider 2.0-lite SQLite subset (135 questions; 24 ship gold SQL, 111
-# emit gold_error pending the slice 3b CSV-result path per SK-QUAL-007).
-# Fixtures from upstream Google Drive — see the README quickstart in
-# https://github.com/xlang-ai/Spider2/tree/main/spider2-lite
+# Spider 2.0-lite SQLite subset (all 135 `local###` questions score via
+# the canonical multi-CSV comparator per SK-QUAL-008). Fixtures from
+# upstream — SQLite DBs from Google Drive (see the README quickstart in
+# https://github.com/xlang-ai/Spider2/tree/main/spider2-lite) and the
+# gold tree via a sparse clone of `evaluation_suite/gold/` into the
+# same `--data-dir` root.
 bun run --filter @nlqdb/eval spider2-lite -- \
-  --data-dir ./spider2-lite \
+  --data-dir ./spider2_data \
   --out tools/eval/results
 ```
 
@@ -84,9 +88,13 @@ bun run --filter @nlqdb/eval spider2-lite -- \
 - **No real LLM in PR CI.** Unit tests stub the router; the weekly
   workflows `.github/workflows/quality-eval-{bird-mini,spider2-lite}.yml`
   are the only places real provider keys run.
-- **EX (execution match) only.** Exact-match is gameable (BIRD's
-  rationale + 2024 leaderboard collapse). When ORDER BY is present in
-  gold SQL, comparison is sequence-strict; otherwise multiset.
+- **EX (execution match) on BIRD; canonical multi-CSV column-comparator on Spider 2.0.**
+  Exact-match is gameable (BIRD's rationale + 2024 leaderboard collapse).
+  BIRD: when ORDER BY is present in gold SQL, comparison is sequence-strict;
+  otherwise multiset. Spider 2.0 (`SK-QUAL-008`): predicted result-set's
+  columns are matched against any of the per-instance gold CSV(s) using the
+  same 1e-2 abs tolerance + `ignore_order` sort key that upstream's
+  `compare_pandas_table` uses — don't drift these two invariants.
 - **Errors capped to 240 chars.** GLOBAL-012 — one-sentence errors.
   Result JSON stays small.
 - **`predicted_sql` capped to 4 KB** in the report so a runaway model

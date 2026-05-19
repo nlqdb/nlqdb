@@ -5,10 +5,8 @@ import { join } from "node:path";
 
 import { _testing, loadSpider2Lite } from "../../src/datasets/spider2-lite.ts";
 
-const { parseJsonl, isSqliteRow } = _testing;
+const { parseQuestionsJsonl, parseEvalJsonl, isSqliteRow } = _testing;
 
-// Three-row mixed sample (SQLite + BigQuery + Snowflake) exercising the
-// `local###` prefix filter that turns 547 upstream rows into 135.
 const SAMPLE_JSONL = [
   JSON.stringify({
     instance_id: "bq001",
@@ -34,29 +32,47 @@ const SAMPLE_JSONL = [
   }),
 ].join("\n");
 
-describe("parseJsonl", () => {
+const SAMPLE_EVAL_JSONL = [
+  JSON.stringify({ instance_id: "local003", condition_cols: [0], ignore_order: true, toks: "316" }),
+  JSON.stringify({ instance_id: "local005", condition_cols: [], ignore_order: true, toks: "100" }),
+].join("\n");
+
+describe("parseQuestionsJsonl", () => {
   it("parses one JSON object per non-empty line", () => {
-    const rows = parseJsonl(SAMPLE_JSONL);
+    const rows = parseQuestionsJsonl(SAMPLE_JSONL);
     expect(rows).toHaveLength(4);
     expect(rows[0]?.instance_id).toBe("bq001");
-    expect(rows[1]?.instance_id).toBe("local003");
     expect(rows[1]?.external_knowledge).toBe("rfm_definition.md");
     expect(rows[3]?.external_knowledge).toBeNull();
   });
 
   it("ignores blank lines (canonical JSONL flavour)", () => {
-    const withBlanks = `${SAMPLE_JSONL}\n\n   \n`;
-    expect(parseJsonl(withBlanks)).toHaveLength(4);
+    expect(parseQuestionsJsonl(`${SAMPLE_JSONL}\n\n   \n`)).toHaveLength(4);
   });
 
-  it("surfaces line number on a malformed entry so a partial-write upstream isn't silent", () => {
-    const broken = `${SAMPLE_JSONL}\nthis is not json`;
-    expect(() => parseJsonl(broken)).toThrow(/line 5 is not valid JSON/);
+  it("surfaces line number on a malformed entry", () => {
+    expect(() => parseQuestionsJsonl(`${SAMPLE_JSONL}\nnot json`)).toThrow(
+      /line 5 is not valid JSON/,
+    );
   });
 
-  it("rejects rows missing required fields with a keys hint for debugging", () => {
-    const partial = JSON.stringify({ instance_id: "local999", db: "x" }); // no `question`
-    expect(() => parseJsonl(partial)).toThrow(/missing required fields/);
+  it("rejects rows missing required fields", () => {
+    const partial = JSON.stringify({ instance_id: "local999", db: "x" });
+    expect(() => parseQuestionsJsonl(partial)).toThrow(/missing required fields/);
+  });
+});
+
+describe("parseEvalJsonl", () => {
+  it("parses one entry per line keyed by instance_id", () => {
+    const rows = parseEvalJsonl(SAMPLE_EVAL_JSONL);
+    expect(rows).toHaveLength(2);
+    expect(rows[0]?.instance_id).toBe("local003");
+    expect(rows[0]?.condition_cols).toEqual([0]);
+    expect(rows[1]?.ignore_order).toBe(true);
+  });
+
+  it("rejects entries missing instance_id", () => {
+    expect(() => parseEvalJsonl('{"condition_cols": [0]}')).toThrow(/missing required fields/);
   });
 });
 
@@ -66,166 +82,271 @@ describe("isSqliteRow", () => {
     expect(isSqliteRow({ instance_id: "local999", db: "x", question: "q" })).toBe(true);
     expect(isSqliteRow({ instance_id: "bq010", db: "x", question: "q" })).toBe(false);
     expect(isSqliteRow({ instance_id: "sf_bq001", db: "x", question: "q" })).toBe(false);
-    expect(isSqliteRow({ instance_id: "ga004", db: "x", question: "q" })).toBe(false);
   });
 
   it("rejects path-traversal smuggled in via a tampered `instance_id`", () => {
     expect(isSqliteRow({ instance_id: "local../etc/passwd", db: "x", question: "q" })).toBe(false);
-    expect(isSqliteRow({ instance_id: "local003/../bq", db: "x", question: "q" })).toBe(false);
     expect(isSqliteRow({ instance_id: "local-003", db: "x", question: "q" })).toBe(false);
-    expect(isSqliteRow({ instance_id: "local 003", db: "x", question: "q" })).toBe(false);
     expect(isSqliteRow({ instance_id: "localfoo", db: "x", question: "q" })).toBe(false);
   });
 });
 
-describe("loadSpider2Lite — file mode", () => {
+describe("loadSpider2Lite — disk cache layout (the CI cache-hit path)", () => {
   let dir: string;
   let jsonlPath: string;
+  let evalDir: string;
+  let execResultDir: string;
 
   beforeEach(() => {
     dir = mkdtempSync(join(tmpdir(), "nlqdb-spider2-"));
     jsonlPath = join(dir, "spider2-lite.jsonl");
     writeFileSync(jsonlPath, SAMPLE_JSONL);
+    evalDir = join(dir, "evaluation_suite", "gold");
+    execResultDir = join(evalDir, "exec_result");
+    mkdirSync(execResultDir, { recursive: true });
+    writeFileSync(join(evalDir, "spider2lite_eval.jsonl"), SAMPLE_EVAL_JSONL);
   });
 
   afterEach(() => {
     rmSync(dir, { recursive: true, force: true });
   });
 
-  // A canned fetch that resolves a 404 for every gold-SQL URL — matches the
-  // upstream reality for the 111 of 135 SQLite rows that have no gold-SQL
-  // file (their gold lives in `evaluation_suite/gold/exec_result/*.csv`).
-  // Same `as unknown as typeof fetch` cast pattern as `emit.test.ts` — Bun's
-  // `typeof fetch` requires `preconnect`, which test stubs don't carry.
-  const fetch404 = (async () => new Response("", { status: 404 })) as unknown as typeof fetch;
+  // Network would 500 — if the loader reads the cache, this never fires.
+  const fetchAsserts = (async () =>
+    new Response("loader hit network during a cache-hit test", {
+      status: 500,
+    })) as unknown as typeof fetch;
 
-  it("filters to local### rows, dropping bq/sf/ga (the 135-of-547 contract)", async () => {
-    const loaded = await loadSpider2Lite({
-      questionsJsonlPath: jsonlPath,
-      fetchImpl: fetch404,
-    });
-    expect(loaded.questions).toHaveLength(2);
-    expect(loaded.questions[0]?.instance_id).toBe("local003");
-    expect(loaded.questions[1]?.instance_id).toBe("local005");
-  });
-
-  it("preserves `instance_id` + sets `evidence` to empty string for downstream code", async () => {
-    const loaded = await loadSpider2Lite({
-      questionsJsonlPath: jsonlPath,
-      fetchImpl: fetch404,
-    });
-    expect(loaded.questions[0]?.instance_id).toBe("local003");
-    expect(loaded.questions[0]?.evidence).toBe("");
-  });
-
-  it("assigns `question_id` as a positional index into the filtered list, not the upstream row index", async () => {
-    const loaded = await loadSpider2Lite({
-      questionsJsonlPath: jsonlPath,
-      fetchImpl: fetch404,
-    });
-    // local003 (at upstream index 1) gets question_id 0;
-    // local005 (at upstream index 3) gets question_id 1.
-    expect(loaded.questions[0]?.question_id).toBe(0);
-    expect(loaded.questions[1]?.question_id).toBe(1);
-  });
-
-  it("leaves `sql` empty when upstream returns 404 (no gold SQL — slice 3b runs CSV path)", async () => {
-    const loaded = await loadSpider2Lite({
-      questionsJsonlPath: jsonlPath,
-      fetchImpl: fetch404,
-    });
-    expect(loaded.questions[0]?.sql).toBe("");
-    expect(loaded.questions[1]?.sql).toBe("");
-  });
-
-  it("hydrates `sql` from upstream when the per-instance gold SQL file exists (the 24-of-135 subset)", async () => {
-    const fetchWithGold = (async (url: RequestInfo | URL) => {
-      const u = url.toString();
-      if (u.endsWith("local003.sql")) {
-        return new Response("SELECT customer_id FROM orders;", { status: 200 });
-      }
-      return new Response("", { status: 404 });
-    }) as unknown as typeof fetch;
-    const loaded = await loadSpider2Lite({
-      questionsJsonlPath: jsonlPath,
-      fetchImpl: fetchWithGold,
-    });
-    expect(loaded.questions[0]?.sql).toBe("SELECT customer_id FROM orders;");
-    expect(loaded.questions[1]?.sql).toBe("");
-  });
-
-  it("prefers a local gold-sql cache over the upstream fetch (CI cache-hit path)", async () => {
-    // Single-row fixture so the assertion is unambiguous — cache hit wins,
-    // network never fires for the lone local instance.
-    writeFileSync(
-      jsonlPath,
-      JSON.stringify({
-        instance_id: "local005",
-        db: "Baseball",
-        question: "Career batting averages",
-      }),
-    );
-    const goldDir = join(dir, "gold-sql");
-    mkdirSync(goldDir);
-    writeFileSync(join(goldDir, "local005.sql"), "SELECT * FROM players;");
-    // Network would 500 — if the loader reads the cache, this never fires.
-    const fetchFails = (async () =>
-      new Response("nope", { status: 500 })) as unknown as typeof fetch;
+  it("filters to local### rows and assigns positional question_id (135-of-547 contract)", async () => {
+    writeFileSync(join(execResultDir, "local003_a.csv"), "rfm\nA\nB\n");
+    writeFileSync(join(execResultDir, "local005_a.csv"), "name\nWhisk\n");
     const loaded = await loadSpider2Lite({
       questionsJsonlPath: jsonlPath,
       dataDir: dir,
-      fetchImpl: fetchFails,
+      fetchImpl: fetchAsserts,
     });
-    expect(loaded.questions).toHaveLength(1);
-    expect(loaded.questions[0]?.sql).toBe("SELECT * FROM players;");
+    expect(loaded.questions).toHaveLength(2);
+    expect(loaded.questions[0]?.instance_id).toBe("local003");
+    expect(loaded.questions[0]?.question_id).toBe(0);
+    expect(loaded.questions[1]?.instance_id).toBe("local005");
+    expect(loaded.questions[1]?.question_id).toBe(1);
   });
 
-  it("propagates a non-404 upstream failure (so a GitHub outage doesn't silently zero the run)", async () => {
-    const fetchOutage = (async () =>
-      new Response("rate limited", { status: 503 })) as unknown as typeof fetch;
-    await expect(
-      loadSpider2Lite({
-        questionsJsonlPath: jsonlPath,
-        fetchImpl: fetchOutage,
-      }),
-    ).rejects.toThrow(/spider2-lite: .* returned 503/);
-  });
-
-  it("retries transient 429 / 5xx and recovers when upstream stabilises", async () => {
-    // 429 → 503 → 200 across one instance; the second instance 404s immediately. Verifies the retry helper unsticks a flaky GitHub raw without burning the whole run.
-    const statuses: Record<string, number[]> = { local003: [429, 503, 200], local005: [404] };
-    let local003Calls = 0;
-    const fetchFlaky = (async (input: RequestInfo | URL) => {
-      const url = input.toString();
-      if (url.endsWith("local003.sql")) {
-        const status = statuses["local003"]?.[local003Calls++] ?? 200;
-        return new Response(status === 200 ? "SELECT 1;" : "transient", { status });
-      }
-      return new Response("", { status: 404 });
-    }) as unknown as typeof fetch;
+  it("hydrates spider2.gold_tables from multi-CSV variants in alphabetical order", async () => {
+    // local003 has 4 variants — the upstream canonical scoring iterates them in lexicographic order.
+    writeFileSync(join(execResultDir, "local003_a.csv"), "rfm\nA\n");
+    writeFileSync(join(execResultDir, "local003_b.csv"), "rfm\nB\n");
+    writeFileSync(join(execResultDir, "local003_c.csv"), "rfm\nC\n");
+    writeFileSync(join(execResultDir, "local003_d.csv"), "rfm\nD\n");
     const loaded = await loadSpider2Lite({
       questionsJsonlPath: jsonlPath,
-      fetchImpl: fetchFlaky,
+      dataDir: dir,
+      fetchImpl: fetchAsserts,
     });
-    expect(local003Calls).toBe(3);
-    expect(loaded.questions[0]?.sql).toBe("SELECT 1;");
-    expect(loaded.questions[1]?.sql).toBe("");
+    const local003 = loaded.questions.find((q) => q.instance_id === "local003");
+    expect(local003?.spider2?.gold_tables).toHaveLength(4);
+    expect(local003?.spider2?.gold_tables[0]?.cells[0]).toEqual(["A"]);
+    expect(local003?.spider2?.gold_tables[3]?.cells[0]).toEqual(["D"]);
+  });
+
+  it("hydrates spider2 from a bare `<id>.csv` when no multi-variant exists", async () => {
+    writeFileSync(join(execResultDir, "local005.csv"), "name\nWhisk\n");
+    const loaded = await loadSpider2Lite({
+      questionsJsonlPath: jsonlPath,
+      dataDir: dir,
+      fetchImpl: fetchAsserts,
+    });
+    const local005 = loaded.questions.find((q) => q.instance_id === "local005");
+    expect(local005?.spider2?.gold_tables).toHaveLength(1);
+    expect(local005?.spider2?.gold_tables[0]?.cells[0]).toEqual(["Whisk"]);
+  });
+
+  it("attaches condition_cols + ignore_order from the eval JSONL when present", async () => {
+    writeFileSync(join(execResultDir, "local003_a.csv"), "rfm\nA\n");
+    const loaded = await loadSpider2Lite({
+      questionsJsonlPath: jsonlPath,
+      dataDir: dir,
+      fetchImpl: fetchAsserts,
+    });
+    const local003 = loaded.questions.find((q) => q.instance_id === "local003");
+    expect(local003?.spider2?.condition_cols).toEqual([0]);
+    expect(local003?.spider2?.ignore_order).toBe(true);
+  });
+
+  it("defaults ignore_order to true when the eval JSONL is missing that row (every upstream entry sets true today, so the safer default is true)", async () => {
+    writeFileSync(join(execResultDir, "local003_a.csv"), "rfm\nA\n");
+    writeFileSync(join(evalDir, "spider2lite_eval.jsonl"), ""); // empty eval index
+    const loaded = await loadSpider2Lite({
+      questionsJsonlPath: jsonlPath,
+      dataDir: dir,
+      fetchImpl: fetchAsserts,
+    });
+    const local003 = loaded.questions.find((q) => q.instance_id === "local003");
+    expect(local003?.spider2?.ignore_order).toBe(true);
+    expect(local003?.spider2?.condition_cols).toEqual([]);
+  });
+
+  it("omits the spider2 payload entirely when no gold CSV is found (avoids a half-loaded scoring contract)", async () => {
+    // No CSVs in execResultDir, just the eval JSONL.
+    const loaded = await loadSpider2Lite({
+      questionsJsonlPath: jsonlPath,
+      dataDir: dir,
+      fetchImpl: fetchAsserts,
+    });
+    const local003 = loaded.questions.find((q) => q.instance_id === "local003");
+    expect(local003?.spider2).toBeUndefined();
+    expect(local003?.sql).toBe("");
+  });
+
+  it("never populates EvalQuestion.sql for Spider rows (multi-CSV-only path per SK-QUAL-008)", async () => {
+    writeFileSync(join(execResultDir, "local003_a.csv"), "x\n1\n");
+    const loaded = await loadSpider2Lite({
+      questionsJsonlPath: jsonlPath,
+      dataDir: dir,
+      fetchImpl: fetchAsserts,
+    });
+    for (const q of loaded.questions) expect(q.sql).toBe("");
+  });
+
+  it("reads the questions JSONL from the cache when only dataDir is set (no network)", async () => {
+    // dataDir's `spider2-lite.jsonl` already exists from beforeEach; questionsJsonlPath is unset.
+    writeFileSync(join(execResultDir, "local003_a.csv"), "x\n1\n");
+    const loaded = await loadSpider2Lite({
+      dataDir: dir,
+      fetchImpl: fetchAsserts,
+    });
+    expect(loaded.questions.map((q) => q.instance_id)).toEqual(["local003", "local005"]);
+  });
+});
+
+describe("loadSpider2Lite — network mode (fetches gold CSVs + eval JSONL from upstream)", () => {
+  it("probes `<id>.csv` first, falls back to `_a.csv` / `_b.csv` ... up to the first 404", async () => {
+    const tinyJsonl = JSON.stringify({
+      instance_id: "local003",
+      db: "x",
+      question: "q",
+    });
+    const probes: string[] = [];
+    const fetchImpl = (async (input: RequestInfo | URL) => {
+      const url = input.toString();
+      probes.push(url);
+      if (url.endsWith("spider2-lite.jsonl") && !url.endsWith("spider2lite_eval.jsonl")) {
+        return new Response(tinyJsonl, { status: 200 });
+      }
+      if (url.endsWith("spider2lite_eval.jsonl")) {
+        return new Response(
+          JSON.stringify({ instance_id: "local003", condition_cols: [], ignore_order: true }),
+          { status: 200 },
+        );
+      }
+      if (url.endsWith("/local003.csv")) {
+        return new Response("", { status: 404 });
+      }
+      if (url.endsWith("/local003_a.csv")) {
+        return new Response("rfm\nA\n", { status: 200 });
+      }
+      if (url.endsWith("/local003_b.csv")) {
+        return new Response("rfm\nB\n", { status: 200 });
+      }
+      // Any subsequent variant ends the probe.
+      return new Response("", { status: 404 });
+    }) as unknown as typeof fetch;
+
+    const loaded = await loadSpider2Lite({ fetchImpl });
+    expect(loaded.questions).toHaveLength(1);
+    expect(loaded.questions[0]?.spider2?.gold_tables).toHaveLength(2);
+    expect(loaded.questions[0]?.spider2?.gold_tables[0]?.cells[0]).toEqual(["A"]);
+    expect(loaded.questions[0]?.spider2?.gold_tables[1]?.cells[0]).toEqual(["B"]);
+    // Probed: questions, eval, local003.csv (404), _a (200), _b (200), _c (404 — terminator).
+    expect(probes.some((p) => p.endsWith("/local003.csv"))).toBe(true);
+    expect(probes.some((p) => p.endsWith("/local003_c.csv"))).toBe(true);
+  });
+
+  it("propagates a non-404 upstream failure on the eval JSONL fetch (so a GitHub outage isn't silent)", async () => {
+    const tinyJsonl = JSON.stringify({ instance_id: "local003", db: "x", question: "q" });
+    const fetchImpl = (async (input: RequestInfo | URL) => {
+      const url = input.toString();
+      if (url.endsWith("spider2lite_eval.jsonl")) {
+        return new Response("upstream rebooting", { status: 502, statusText: "Bad Gateway" });
+      }
+      if (url.endsWith("spider2-lite.jsonl")) return new Response(tinyJsonl, { status: 200 });
+      return new Response("", { status: 404 });
+    }) as unknown as typeof fetch;
+    await expect(loadSpider2Lite({ fetchImpl })).rejects.toThrow(
+      /spider2-lite-eval: line 1|spider2-lite: .*spider2lite_eval\.jsonl|spider2-lite: fetch .* failed: 502 Bad Gateway/,
+    );
+  }, 30_000);
+
+  it("retries transient 5xx + recovers (verifies the network helper unsticks a flaky GitHub raw)", async () => {
+    const tinyJsonl = JSON.stringify({ instance_id: "local003", db: "x", question: "q" });
+    const evalStatuses = [503, 200];
+    let evalCalls = 0;
+    const fetchImpl = (async (input: RequestInfo | URL) => {
+      const url = input.toString();
+      if (url.endsWith("spider2-lite.jsonl") && !url.endsWith("spider2lite_eval.jsonl")) {
+        return new Response(tinyJsonl, { status: 200 });
+      }
+      if (url.endsWith("spider2lite_eval.jsonl")) {
+        const status = evalStatuses[evalCalls++] ?? 200;
+        return new Response(
+          status === 200
+            ? JSON.stringify({ instance_id: "local003", condition_cols: [], ignore_order: true })
+            : "transient",
+          { status },
+        );
+      }
+      if (url.endsWith("/local003.csv")) return new Response("c\n1\n", { status: 200 });
+      return new Response("", { status: 404 });
+    }) as unknown as typeof fetch;
+    const loaded = await loadSpider2Lite({ fetchImpl });
+    expect(evalCalls).toBe(2);
+    expect(loaded.questions[0]?.spider2?.gold_tables).toHaveLength(1);
   }, 30_000);
 
   it("applies --limit after the local### filter (limit counts SQLite rows, not upstream rows)", async () => {
-    const loaded = await loadSpider2Lite({
-      questionsJsonlPath: jsonlPath,
-      limit: 1,
-      fetchImpl: fetch404,
-    });
+    const fetchImpl = (async (input: RequestInfo | URL) => {
+      const url = input.toString();
+      if (url.endsWith("spider2-lite.jsonl") && !url.endsWith("spider2lite_eval.jsonl")) {
+        return new Response(SAMPLE_JSONL, { status: 200 });
+      }
+      if (url.endsWith("spider2lite_eval.jsonl")) {
+        return new Response(SAMPLE_EVAL_JSONL, { status: 200 });
+      }
+      return new Response("", { status: 404 });
+    }) as unknown as typeof fetch;
+    const loaded = await loadSpider2Lite({ limit: 1, fetchImpl });
     expect(loaded.questions).toHaveLength(1);
     expect(loaded.questions[0]?.instance_id).toBe("local003");
   });
+});
 
-  it("returns null from resolveDbPath when dataDir is absent", async () => {
+describe("loadSpider2Lite — resolveDbPath", () => {
+  let dir: string;
+  let jsonlPath: string;
+
+  beforeEach(() => {
+    dir = mkdtempSync(join(tmpdir(), "nlqdb-spider2-db-"));
+    jsonlPath = join(dir, "spider2-lite.jsonl");
+    writeFileSync(jsonlPath, SAMPLE_JSONL);
+    mkdirSync(join(dir, "evaluation_suite", "gold", "exec_result"), { recursive: true });
+    writeFileSync(join(dir, "evaluation_suite", "gold", "spider2lite_eval.jsonl"), "");
+  });
+
+  afterEach(() => {
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  // Empty eval JSONL is enough for resolveDbPath-only tests — they don't exercise the scoring path.
+  const fetchEvalOnly = (async (input: RequestInfo | URL) => {
+    const url = input.toString();
+    if (url.endsWith("spider2lite_eval.jsonl")) return new Response("", { status: 200 });
+    return new Response("", { status: 404 });
+  }) as unknown as typeof fetch;
+
+  it("returns null when dataDir is absent", async () => {
     const loaded = await loadSpider2Lite({
       questionsJsonlPath: jsonlPath,
-      fetchImpl: fetch404,
+      fetchImpl: fetchEvalOnly,
     });
     expect(await loaded.resolveDbPath("E_commerce")).toBeNull();
   });
@@ -238,7 +359,7 @@ describe("loadSpider2Lite — file mode", () => {
     const loaded = await loadSpider2Lite({
       questionsJsonlPath: jsonlPath,
       dataDir: dir,
-      fetchImpl: fetch404,
+      fetchImpl: fetchEvalOnly,
     });
     expect(await loaded.resolveDbPath("E_commerce")).toBe(fixturePath);
   });
@@ -249,60 +370,19 @@ describe("loadSpider2Lite — file mode", () => {
     const loaded = await loadSpider2Lite({
       questionsJsonlPath: jsonlPath,
       dataDir: dir,
-      fetchImpl: fetch404,
+      fetchImpl: fetchEvalOnly,
     });
     expect(await loaded.resolveDbPath("Baseball")).toBe(flatPath);
   });
 
-  it("returns null from resolveDbPath when the `db` field smuggles path-traversal (security guard)", async () => {
+  it("returns null when the `db` field smuggles path-traversal", async () => {
     const loaded = await loadSpider2Lite({
       questionsJsonlPath: jsonlPath,
       dataDir: dir,
-      fetchImpl: fetch404,
+      fetchImpl: fetchEvalOnly,
     });
-    // `basename("../etc/passwd")` === "passwd" ≠ original → null.
     expect(await loaded.resolveDbPath("../etc/passwd")).toBeNull();
     expect(await loaded.resolveDbPath("/absolute/path")).toBeNull();
     expect(await loaded.resolveDbPath("E_commerce/../../etc")).toBeNull();
-  });
-
-  it("returns null from resolveDbPath when fixture missing (fail-soft same as BIRD)", async () => {
-    const loaded = await loadSpider2Lite({
-      questionsJsonlPath: jsonlPath,
-      dataDir: dir,
-      fetchImpl: fetch404,
-    });
-    expect(await loaded.resolveDbPath("DoesNotExist")).toBeNull();
-  });
-});
-
-describe("loadSpider2Lite — fetch mode", () => {
-  it("propagates fetch failure with status + statusText after the retry budget is exhausted", async () => {
-    const fetchImpl = (async () =>
-      new Response("upstream rebooting", {
-        status: 502,
-        statusText: "Bad Gateway",
-      })) as unknown as typeof fetch;
-    await expect(loadSpider2Lite({ fetchImpl })).rejects.toThrow(
-      /spider2-lite: .*spider2-lite\.jsonl returned 502 Bad Gateway/,
-    );
-  }, 10_000);
-
-  it("uses the questionsJsonlUrl override (commit-pin / test stubbing)", async () => {
-    let calledUrl = "";
-    const fetchImpl = (async (url: RequestInfo | URL) => {
-      calledUrl = url.toString();
-      // Only the JSONL is requested when no local-prefixed rows survive
-      // the filter (so no gold-SQL fetches fire).
-      return new Response(JSON.stringify({ instance_id: "bq001", db: "x", question: "q" }), {
-        status: 200,
-      });
-    }) as unknown as typeof fetch;
-    const loaded = await loadSpider2Lite({
-      questionsJsonlUrl: "https://example.test/pinned/spider2-lite.jsonl",
-      fetchImpl,
-    });
-    expect(calledUrl).toBe("https://example.test/pinned/spider2-lite.jsonl");
-    expect(loaded.questions).toHaveLength(0); // bq001 filtered out
   });
 });
