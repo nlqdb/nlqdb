@@ -26,8 +26,7 @@ const PREDICTED_SQL_CAP = 4096;
 const ERROR_MSG_CAP = 240;
 
 export type RunOptions = {
-  // Which dataset to dispatch — defaults to `bird-mini-dev-sqlite` so
-  // existing callers (and the runner.test.ts assertions) keep working.
+  // Defaults to `bird-mini-dev-sqlite` for back-compat with slice-1 callers.
   dataset?: EvalDataset;
   dataDir?: string;
   questionsJsonPath?: string;
@@ -52,8 +51,7 @@ export type RunOptions = {
   loadDataset?: (opts: RunOptions) => Promise<LoadedDataset>;
 };
 
-// Loader abstraction so the runner doesn't bind to a specific dataset
-// loader's option shape — `loadBirdMini` / `loadSpider2Lite` adapt to this.
+// Common loader shape so the runner doesn't bind to one dataset's option-bag — `loadBirdMini` / `loadSpider2Lite` both adapt to this.
 export type LoadedDataset = {
   questions: EvalQuestion[];
   resolveDbPath: (db_id: string) => Promise<string | null>;
@@ -107,10 +105,7 @@ function summariseLane(lane: DispatchLane, results: QuestionResult[]): LaneSumma
   const attempted = filtered.length;
   const scoreable = attempted - tally.gold_error;
   const ea = pct(tally.match, scoreable);
-  // Exclude `gold_error` rows from the latency percentile — Spider 2.0-lite
-  // short-circuits 111 of 135 to `gold_error` with `latency_ms: 0` per
-  // SK-QUAL-007, which would otherwise collapse p50 toward zero and hide
-  // real regression in the rows that *did* hit the LLM.
+  // Exclude `gold_error` rows from the latency percentile — Spider 2.0-lite's `latency_ms: 0` short-circuit (SK-QUAL-007) would otherwise collapse p50 to zero.
   const sortedLatencies = filtered
     .filter((r) => r.outcome !== "gold_error")
     .map((r) => r.latency_ms)
@@ -180,11 +175,7 @@ async function runOneQuestion(
       error: `missing SQLite fixture for db_id=${question.db_id}`,
     };
   }
-  // Spider 2.0-lite (SK-QUAL-007): 111 of 135 local rows carry no gold SQL
-  // file — the canonical eval scores them against multi-CSV gold result-sets
-  // (deferred to slice 3b). Skip the LLM call so we don't burn quota on a
-  // row we can't score; report `gold_error` so it's excluded from the EA
-  // denominator and visible in the report.
+  // SK-QUAL-007: short-circuit Spider rows with no gold SQL to `gold_error` before the LLM call so we don't burn free-tier quota on a row that can't be scored.
   if (question.sql.trim().length === 0) {
     return {
       ...ids,
@@ -281,10 +272,11 @@ export async function runEval(opts: RunOptions = {}): Promise<EvalReport> {
   const results: QuestionResult[] = [];
   for (const question of dataset.questions) {
     const dbPath = await dataset.resolveDbPath(question.db_id);
-    for (const lane of lanes) {
-      const r = await runOneQuestion(lane, question, dbPath, schemaCache, opts.sqlTimeoutMs);
-      results.push(r);
-    }
+    // Lanes use distinct providers (no shared rate limit) so running them concurrently halves wall-time without doubling provider RPS.
+    const laneResults = await Promise.all(
+      lanes.map((lane) => runOneQuestion(lane, question, dbPath, schemaCache, opts.sqlTimeoutMs)),
+    );
+    results.push(...laneResults);
   }
   const laneSummaries = lanes.map((l) => summariseLane(l.lane, results));
   const free = laneSummaries.find((l) => l.lane === "free");
