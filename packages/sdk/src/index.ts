@@ -1,18 +1,22 @@
-// @nlqdb/sdk — typed HTTP client for the nlqdb /v1 API.
-//
-// Two auth modes (mutually exclusive):
-//   • apiKey: 'sk_…'             server-to-server (Node, Bun, Workers)
-//   • withCredentials: true      browser, riding the session cookie
-//
-// Runtime-agnostic: only depends on global fetch.
-//
-// Error contract: every method throws `NlqdbApiError` on failure —
-// non-2xx, network failure, abort, and non-JSON proxy response. The
-// error carries a discriminant `code` (mirrors the API's
-// `error.status`, plus SDK-only sentinels `unknown_error`,
-// `non_json_response`, `network_error`, `aborted`) and the HTTP
-// status (0 for transport-level failures). Consumers `try/catch` and
-// discriminate on `err.code`.
+/**
+ * @module @nlqdb/sdk
+ *
+ * Typed HTTP client for the nlqdb /v1 API.
+ *
+ * Two auth modes (mutually exclusive):
+ *   - `apiKey: 'sk_…'`         server-to-server (Node, Bun, Workers)
+ *   - `withCredentials: true`  browser, riding the session cookie
+ *
+ * Runtime-agnostic: only depends on global fetch.
+ *
+ * Error contract: every method throws `NlqdbApiError` on failure —
+ * non-2xx, network failure, abort, and non-JSON proxy response. The
+ * error carries a discriminant `code` (mirrors the API's
+ * `error.status`, plus SDK-only sentinels `unknown_error`,
+ * `non_json_response`, `network_error`, `aborted`) and the HTTP
+ * status (0 for transport-level failures). Consumers `try/catch` and
+ * discriminate on `err.code`.
+ */
 
 export type AskRequest = {
   goal: string;
@@ -147,7 +151,7 @@ export type TraceEvent =
 export type Engine = "postgres" | "clickhouse";
 
 // One DB row in a `listDatabases` response. `pkLive` is the
-// publishable per-DB key used to inline into <nlq-data> snippets
+// publishable per-DB key used to inline into `<nlq-data>` snippets
 // (SK-WEB-007); when null the surface falls back to the anonymous
 // device's pk_live (SK-ANON-006).
 export type DatabaseSummary = {
