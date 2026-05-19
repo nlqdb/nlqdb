@@ -10,11 +10,12 @@
 #   works cleanly. Both Groq and Mistral expose OpenAI-compatible endpoints,
 #   so swapping providers is an env-var change with no code changes.
 #
-# Current: Groq llama-4-scout-17b-16e-instruct. 30 K TPM, 1000 RPM, 500 K TPD.
-# Fallback: Mistral mistral-small-latest — 50 K TPM, 50 RPM, ~1 B tokens/month.
-#   Use Mistral if Groq's 500 K TPD is exhausted. Return to Groq the next day
-#   (daily quota resets). Update OPENAI_API_KEY/OPENAI_BASE_URL
-#   and model in tests.yaml (see full pivot log there).
+# Current: Mistral mistral-small-latest. 50 K TPM, ~1 B tokens/month, 50 RPM.
+# Fallback: Groq llama-4-scout-17b-16e-instruct — 30 K TPM, 1000 RPM, 500 K TPD.
+#   Groq has a boolean-encoding bug: sends `submit: "true"` (string) instead of
+#   bool → 400 tool-call validation → test spiral. Return to Groq only if the
+#   bug is fixed upstream. Update OPENAI_API_KEY/OPENAI_BASE_URL and model in
+#   tests.yaml (see full pivot log there).
 
 name: E2E opencheck (reusable)
 
@@ -58,7 +59,7 @@ jobs:
       # identical. Swap provider by changing LLM_API_KEY + OPENAI_BASE_URL
       # + model in tests.yaml (see pivot log there).
       OPENAI_API_KEY: ${{ secrets.LLM_API_KEY }}
-      OPENAI_BASE_URL: https://api.groq.com/openai/v1
+      OPENAI_BASE_URL: https://api.mistral.ai/v1
       # Dump every LangChain step (model start/end, tool calls, tool
       # results) to stdout so the job log captures the full agent
       # loop. Without this we only see opencheck's high-level
