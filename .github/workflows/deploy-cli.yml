@@ -1,0 +1,105 @@
+# Auto-deploy nlq CLI on push to main. Runs e2e first; on success,
+# auto-bumps patch from the latest cli-v* tag, pushes the new tag,
+# and invokes release-cli.yml → goreleaser publishes the GitHub
+# Release with changelog + cross-platform tarballs + checksums + SBOM.
+# Major / minor bumps stay manual (push `cli-vX.Y.0` by hand).
+
+name: Deploy CLI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "cli/**"
+      - "tests/e2e/cli/**"
+      - ".github/workflows/deploy-cli.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-cli
+  cancel-in-progress: false
+
+permissions: {}
+
+jobs:
+  e2e:
+    name: cli e2e
+    uses: ./.github/workflows/e2e-cli.yml
+    permissions:
+      contents: read
+
+  tag:
+    name: auto-bump + tag
+    needs: e2e
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    outputs:
+      tag: ${{ steps.ver.outputs.tag }}
+      skipped: ${{ steps.check.outputs.skip }}
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          fetch-depth: 0
+
+      # Idempotency — if HEAD already has a cli-v* tag, a previous run
+      # already shipped this SHA. Skip cleanly instead of erroring.
+      - name: Skip if HEAD already tagged
+        id: check
+        run: |
+          set -euo pipefail
+          existing=$(git tag --points-at HEAD --list 'cli-v*' | head -n1)
+          if [ -n "$existing" ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "HEAD already tagged: $existing" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      # Skips prereleases (cli-v0.1.0-rc.1 etc) so a `rc` never seeds the
+      # patch bump; `--sort=-v:refname` is semver-aware so 0.10.0 > 0.9.0.
+      - name: Compute next patch version
+        if: steps.check.outputs.skip != 'true'
+        id: ver
+        run: |
+          set -euo pipefail
+          last=$(git tag --list 'cli-v*' --sort=-v:refname \
+            | grep -E '^cli-v[0-9]+\.[0-9]+\.[0-9]+$' \
+            | head -n1 || true)
+          if [ -z "$last" ]; then
+            next="cli-v0.1.0"
+          else
+            ver=${last#cli-v}
+            IFS='.' read -r major minor patch <<<"$ver"
+            next="cli-v${major}.${minor}.$((patch + 1))"
+          fi
+          echo "tag=$next" >> "$GITHUB_OUTPUT"
+          {
+            echo "## Auto-bump"
+            echo
+            echo "- Previous: \`${last:-<none>}\`"
+            echo "- Next:     \`$next\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Create and push tag
+        if: steps.check.outputs.skip != 'true'
+        env:
+          TAG: ${{ steps.ver.outputs.tag }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "$TAG" -m "Auto-released $TAG"
+          git push origin "$TAG"
+
+  release:
+    name: goreleaser
+    needs: tag
+    if: needs.tag.outputs.skipped != 'true'
+    uses: ./.github/workflows/release-cli.yml
+    permissions:
+      contents: write
+    secrets: inherit
+    with:
+      tag: ${{ needs.tag.outputs.tag }}

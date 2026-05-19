@@ -1,13 +1,22 @@
-# Manual-trigger CLI e2e — hermetic, see docs/features/e2e-coverage/FEATURE.md SK-E2E-002/004.
+# Manual + reusable CLI e2e — hermetic testscript fixtures.
+# Called by deploy-cli.yml on push to main, and runs on PRs touching
+# cli/. See docs/features/e2e-coverage/FEATURE.md SK-E2E-002/004.
 
 name: E2E CLI
 
 on:
   workflow_dispatch:
+  workflow_call:
+  pull_request:
+    branches: [main]
+    paths:
+      - "cli/**"
+      - "tests/e2e/cli/**"
+      - ".github/workflows/e2e-cli.yml"
 
 concurrency:
-  group: e2e-cli
-  cancel-in-progress: false
+  group: e2e-cli-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions: {}
 

@@ -1,9 +1,10 @@
-# `nlq` CLI releases via goreleaser on `cli-v*` tag push. Cross-
-# compiles linux/darwin × amd64/arm64, attaches archives + SBOM to
-# a GitHub Release. Homebrew tap bump runs in the same goreleaser
-# pass and requires HOMEBREW_TAP_GITHUB_TOKEN to be set on the repo
-# — otherwise the brews step fails after the Release is already
-# created. Set the secret before tagging.
+# `nlq` CLI releases via goreleaser. Triggers:
+#   - tag push (`cli-v*`) — manual semver bumps
+#   - workflow_dispatch — re-run a tag that already exists on origin
+#   - workflow_call — invoked by deploy-cli.yml after auto-tag
+# Cross-compiles linux/darwin × amd64/arm64, attaches archives + SBOM
+# + checksums to a GitHub Release with goreleaser-generated changelog
+# (cli/.goreleaser.yml). Homebrew tap bump requires HOMEBREW_TAP_GITHUB_TOKEN.
 
 name: Release CLI
 
@@ -16,9 +17,15 @@ on:
       tag:
         description: "Tag to release (must already exist on origin, e.g. cli-v0.1.0)"
         required: true
+  workflow_call:
+    inputs:
+      tag:
+        description: "Tag to release (must already exist on origin)"
+        required: true
+        type: string
 
 concurrency:
-  group: release-cli-${{ github.ref }}
+  group: release-cli-${{ inputs.tag || github.ref }}
   cancel-in-progress: false
 
 permissions:
@@ -33,9 +40,9 @@ jobs:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
         with:
           fetch-depth: 0
-          ref: ${{ github.event.inputs.tag || github.ref }}
+          ref: ${{ inputs.tag || github.ref }}
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
         with:
           go-version-file: cli/go.mod
           cache-dependency-path: cli/go.sum

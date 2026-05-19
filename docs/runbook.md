@@ -488,10 +488,27 @@ token on the `@nlqdb` scope).
 
 ### CLI releases (`cli/` → GitHub Releases + Homebrew)
 
-The `nlq` Go binary releases via goreleaser on `cli-v*` tag push.
-Workflow: `.github/workflows/release-cli.yml`. Cross-compiles
-linux/darwin × amd64/arm64, attaches archives to a GitHub Release,
-and pushes an updated formula to `nlqdb/homebrew-tap`.
+The `nlq` Go binary releases via goreleaser. Three paths reach it:
+
+- **Auto-deploy on push to main** — `.github/workflows/deploy-cli.yml`
+  fires when `cli/**`, `tests/e2e/cli/**`, or that workflow itself
+  changes on main. It runs the CLI e2e fixtures, auto-bumps the patch
+  from the latest `cli-v[0-9]+.[0-9]+.[0-9]+` tag (seed: `cli-v0.1.0`
+  if none exist), pushes the new tag, and invokes `release-cli.yml`
+  via `workflow_call`. Push to main = patch release. Idempotent: if
+  HEAD is already tagged, the release job skips.
+- **Manual `cli-v*` tag push** — `git tag -a cli-vX.Y.Z … && git push
+  origin cli-vX.Y.Z` fires `release-cli.yml` directly. Use this for
+  minor or major bumps (auto-deploy only bumps patch).
+- **`workflow_dispatch`** on `release-cli.yml` — re-release an
+  existing tag (e.g., to retry a partial release).
+
+All three paths run `goreleaser release --clean` in `cli/`:
+cross-compiles linux/darwin × amd64/arm64, attaches archives + SBOM +
+`checksums.txt` to a GitHub Release with auto-generated changelog,
+and pushes an updated formula to `nlqdb/homebrew-tap`. The installer
+at `https://nlqdb.com/install` (`apps/web/public/install`) resolves
+the latest tag via `/releases/latest` and verifies sha256.
 
 Required secret to enable the Homebrew step: `HOMEBREW_TAP_GITHUB_TOKEN`
 (fine-grained PAT scoped to `nlqdb/homebrew-tap`, `contents: write`).
