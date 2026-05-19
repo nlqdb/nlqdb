@@ -4,10 +4,7 @@ import { highlight } from "../lib/highlight";
 import CodeBlock from "./CodeBlock.astro";
 import Tabs from "./Tabs.astro";
 
-// Tabbed code-example panel (DESIGN §3.1). Three install methods,
-// content sourced from `data/snippets`, highlighted at build time.
-// Each copy click bubbles `nlqdb:snippet-copied`; we relay to the
-// DESIGN-spec'd `home.snippet_copied` for the analytics funnel.
+// Tabbed code-example panel (DESIGN §3.1). Content sourced from `data/snippets`, highlighted at build time; each copy click bubbles `nlqdb:snippet-copied` and we relay to `home.snippet_copied` for the analytics funnel.
 
 const tabs = snippets.map(({ id, label, sub }) => ({ id, label, sub }));
 
@@ -172,10 +169,7 @@ const rendered = Object.fromEntries(
 </section>
 
 <script>
-  // Relay the generic `nlqdb:snippet-copied` event up to the
-  // DESIGN §3.1 analytics name. `surface` is the snippet id (cli /
-  // html / sdk) — leading indicator for which framework wrapper to
-  // ship next.
+  // Relay the generic `nlqdb:snippet-copied` event up to the DESIGN §3.1 analytics name; `surface` is the snippet id (one of `data/snippets.ts`'s entries) — leading indicator for which surface to invest in next.
   for (const root of document.querySelectorAll<HTMLElement>(".codepanel")) {
     root.addEventListener("nlqdb:snippet-copied", (e) => {
       const detail = (e as CustomEvent<{ id: string | null }>).detail;
