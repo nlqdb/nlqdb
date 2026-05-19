@@ -10,40 +10,41 @@
 # Runtime substitution: the caller workflow renders `__BASE_URL__` to the
 # per-run preview alias via `sed` before invoking `bunx opencheck`.
 #
-# LLM: Mistral via OpenAI-compat (https://docs.mistral.ai/api/).
-# Current: `mistral-small-latest`
-# Budget: 50K TPM, ~1B tokens/month, 50 RPM, 128K ctx.
-# Fallback: swap to Groq llama-3.3-70b-versatile + update OPENAI_BASE_URL in workflow.
+# LLM: OpenRouter → Mistral Small 3.2 via OpenAI-compat (https://openrouter.ai).
+# Current: `mistralai/mistral-small-3.2-24b-instruct` via OpenRouter
+# Budget: paid tier, ~$0.06/run (500K tokens @ $0.075/M in + $0.20/M out), no RPM cap.
+# Fallback: Groq llama-3.3-70b-versatile (GROQ_API_KEY) — 1000 RPM, 100K TPD.
 #
 # Pivot history (newest first — researched 2026-05-19):
-#   9. mistral-small-latest [CURRENT] — Mistral; switched back from Groq — run #42:
+#  10. mistralai/mistral-small-3.2-24b-instruct [CURRENT] — OpenRouter; switched from
+#      Mistral direct API (run #40): 50 RPM causes 240s test timeouts in the agentic
+#      loop. 9 of 20 tests timed out. OpenRouter paid tier removes the RPM cap while
+#      routing to the same Mistral Small model. Cost: ~$0.06/run. Boolean tool calls
+#      correct (verified 2026-05-19). Accessible via OPENROUTER_API_KEY.
+#   9. mistral-small-latest — Mistral direct, 50 RPM; switched back from Groq (run #42):
 #      llama-4-scout sends `submit: "true"` (string) for boolean browser_type param
 #      → 400 tool call validation error → stale-ref spiral → 24-min test stuck.
-#      Mistral handles JSON schema booleans correctly; 50 RPM is safe now that
-#      pkill self-kill cascade is fixed.
-#   8. meta-llama/llama-4-scout-17b-16e-instruct — Groq, 30K TPM, 500K TPD,
-#      1000 RPM, 512K ctx; switched from Mistral for run #39: 50 RPM cascade in
-#      run #38 (caused by pkill self-kill bug, now fixed)
-#   7. mistral-small-latest — Mistral, 50K TPM, ~1B/month, 128K ctx,
-#      50 RPM; switched from Groq after Groq TPD exhausted on run #32
-#   6. meta-llama/llama-4-scout-17b-16e-instruct — Groq, 30K TPM, 500K TPD,
-#      1000 RPM, 512K ctx; exhausted 500K TPD on single run #32 (2026-05-18)
+#   8. meta-llama/llama-4-scout-17b-16e-instruct — Groq, 30K TPM, 500K TPD, 1000 RPM,
+#      512K ctx; switched from Mistral for run #39: 50 RPM cascade in run #38
+#   7. mistral-small-latest — Mistral, 50K TPM, ~1B/month, 128K ctx, 50 RPM;
+#      switched from Groq after Groq TPD exhausted on run #32
+#   6. meta-llama/llama-4-scout-17b-16e-instruct — Groq; exhausted 500K TPD on run #32
 #   5. llama-3.3-70b-versatile — Groq, 12K TPM, 100K TPD (not 1M as assumed)
 #   4. openai/gpt-oss-120b — Groq, 8K TPM + hidden reasoning_tokens → 85-90s/call
 #   3. llama-4-scout early — Groq, 500K TPD but quota drained by debug runs
 #   2. OpenRouter qwen3-coder:free — 429 on first call; shared upstream pool
 #   1. Gemini 2.5 Flash — 10 RPM ceiling; 75-87s silent-retry tax
 #
-# Top 5 free LLM models for agentic/tool-use (verified 2026-05-19 via live rate-limit API checks):
-#   1. Groq meta-llama/llama-4-scout-17b-16e-instruct — 30K TPM, 1000 RPM, 500K TPD, 512K ctx; fastest ReAct; current
-#   2. Mistral mistral-small-latest — 50K TPM, 50 RPM, ~1B/month, 128K ctx; huge monthly budget; RPM too low for agentic loops
-#   3. Groq llama-3.3-70b-versatile — 12K TPM, 1000 RPM, 100K TPD, 128K ctx; stronger reasoning, tighter daily budget
-#   4. Groq qwen/qwen3-32b — 6K TPM, 1000 RPM, 128K ctx; Qwen3 architecture; tight TPM rules it out as sole model
-#   5. Cerebras llama3.1-8b — 30K TPM, 1M TPD, 5 RPM, 8K ctx (free cap); vast daily budget; 8K ctx too small for snapshots
+# Top 5 free LLM models for agentic/tool-use (verified live 2026-05-19 18:00 UTC):
+#   1. Groq llama-3.3-70b-versatile — 12K TPM, 1000 RPM, 100K TPD, 128K ctx; correct booleans; strong reasoning; daily limit too small for a 500K-token run
+#   2. Groq meta-llama/llama-4-scout-17b-16e-instruct — 30K TPM, 1000 RPM, 500K TPD, 512K ctx; BROKEN booleans (sends "true" as string)
+#   3. OpenRouter google/gemma-4-31b-it:free — correct booleans (verified); upstream throttled sporadically; unknown stable RPM
+#   4. OpenRouter google/gemma-4-26b-a4b-it:free — correct booleans (verified); MoE variant, lower latency; same upstream throttle risk
+#   5. Mistral mistral-small-latest (direct) — 50K TPM, 50 RPM, ~1B/month, 128K ctx; correct booleans; 50 RPM causes 240s agentic timeouts
 
 baseUrl: "__BASE_URL__"
 modelProvider: "openai"
-model: "mistral-small-latest"
+model: "mistralai/mistral-small-3.2-24b-instruct"
 
 # Persistent session shares cookies + localStorage across tests so the
 # agent doesn't have to re-walk the prereq chain from a clean profile
