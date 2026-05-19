@@ -12,8 +12,10 @@ import type {
   SummarizeRequest,
 } from "@nlqdb/llm";
 import type { Lane } from "../src/lanes.ts";
-import { runEval } from "../src/runner.ts";
+import { _testing, runEval } from "../src/runner.ts";
 import type { EvalReport } from "../src/types.ts";
+
+const { parseDatasetFlag } = _testing;
 
 type StubRouter = Lane["router"];
 
@@ -322,6 +324,60 @@ describe("runEval — end-to-end with mocked routers", () => {
     expect(report.lanes[0]?.attempted).toBe(2);
   });
 
+  it("dispatches `--dataset spider2-lite-sqlite` through the injected loader and tags the report (SK-QUAL-007)", async () => {
+    const report = await runEval({
+      dataset: "spider2-lite-sqlite",
+      outDir,
+      buildLanes: () => [
+        {
+          lane: "free",
+          modelHint: "free-fake",
+          router: {
+            ...fakeRouter("SELECT 1"),
+            plan: async (): Promise<PlanResponse> => ({
+              sql: "SELECT COUNT(*) FROM pet WHERE species='cat'",
+              model: "fake",
+              confidence: 1,
+            }),
+          },
+        },
+      ],
+      // Tiny Spider-shaped fixture: one row with gold SQL (matches the
+      // 24-of-135 path), one without (matches the 111-of-135 path).
+      loadDataset: async () => ({
+        questions: [
+          {
+            question_id: 0,
+            instance_id: "local003",
+            db_id: "pets",
+            question: "How many cats?",
+            evidence: "",
+            sql: "SELECT COUNT(*) FROM pet WHERE species='cat'",
+          },
+          {
+            question_id: 1,
+            instance_id: "local007",
+            db_id: "pets",
+            question: "Career batting averages",
+            evidence: "",
+            // Empty gold SQL → SK-QUAL-007 short-circuit to gold_error.
+            sql: "",
+          },
+        ],
+        resolveDbPath: async () => join(dir, "dev_databases", "pets", "pets.sqlite"),
+      }),
+      writeReport: async () => "stub.json",
+    });
+    expect(report.dataset).toBe("spider2-lite-sqlite");
+    const free = report.lanes.find((l) => l.lane === "free");
+    // 1 match + 1 short-circuited gold_error → EA over the 1 scoreable row.
+    expect(free?.match).toBe(1);
+    expect(free?.gold_error).toBe(1);
+    expect(free?.execution_accuracy).toBe(1);
+    expect(report.results.find((r) => r.question_id === 0)?.instance_id).toBe("local003");
+    expect(report.results.find((r) => r.question_id === 1)?.error).toMatch(/no gold SQL/);
+  });
+
   it("does not emit when only one of emit-url/emit-token is set (caller forgot one)", async () => {
     const emitMock = mock(async () => ({ accepted: true, status: 202 }));
     await runEval({
@@ -348,5 +404,98 @@ describe("runEval — end-to-end with mocked routers", () => {
       emitEvalReport: emitMock as unknown as typeof import("../src/emit.ts").emitEvalReport,
     });
     expect(emitMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("summariseLane — latency stats exclude gold_error (SK-QUAL-007)", () => {
+  let dir: string;
+  let outDir: string;
+
+  beforeEach(() => {
+    dir = mkdtempSync(join(tmpdir(), "nlqdb-lane-"));
+    const dbDir = join(dir, "dev_databases", "pets");
+    mkdirSync(dbDir, { recursive: true });
+    const db = new Database(join(dbDir, "pets.sqlite"));
+    db.exec("CREATE TABLE pet (id INTEGER PRIMARY KEY, name TEXT);");
+    db.exec("INSERT INTO pet VALUES (1,'whisk');");
+    db.close();
+    outDir = join(dir, "out");
+  });
+
+  afterEach(() => {
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it("does not let SK-QUAL-007 short-circuits with latency_ms=0 collapse the percentile", async () => {
+    // Mixed dataset: one row with gold SQL (latency = LLM call time),
+    // three rows without gold SQL (SK-QUAL-007 short-circuit → latency_ms=0).
+    // p50 across all four would be 0; the fix should report the LLM call's
+    // latency instead.
+    const report = await runEval({
+      dataset: "spider2-lite-sqlite",
+      outDir,
+      buildLanes: () => [
+        {
+          lane: "free",
+          modelHint: "free-fake",
+          router: {
+            ...fakeRouter("SELECT 1"),
+            plan: async (): Promise<PlanResponse> => {
+              // Simulated p50-equivalent latency on the one scoreable row.
+              await new Promise((r) => setTimeout(r, 5));
+              return { sql: "SELECT id FROM pet", model: "fake", confidence: 1 };
+            },
+          },
+        },
+      ],
+      loadDataset: async () => ({
+        questions: [
+          {
+            question_id: 0,
+            instance_id: "local003",
+            db_id: "pets",
+            question: "ids?",
+            evidence: "",
+            sql: "SELECT id FROM pet",
+          },
+          ...[1, 2, 3].map((i) => ({
+            question_id: i,
+            instance_id: `local00${i + 3}`,
+            db_id: "pets",
+            question: "no gold",
+            evidence: "",
+            sql: "",
+          })),
+        ],
+        resolveDbPath: async () => join(dir, "dev_databases", "pets", "pets.sqlite"),
+      }),
+      writeReport: async () => "stub.json",
+    });
+    const free = report.lanes.find((l) => l.lane === "free");
+    expect(free?.gold_error).toBe(3);
+    expect(free?.match).toBe(1);
+    // The single scoreable row's latency drives the percentile; the three
+    // short-circuited rows are filtered out before sorting.
+    expect(free?.p50_latency_ms).toBeGreaterThan(0);
+    expect(free?.p95_latency_ms).toBeGreaterThan(0);
+  });
+});
+
+describe("parseDatasetFlag — CLI guard", () => {
+  it("returns undefined when the flag is absent so the runner defaults to BIRD", () => {
+    expect(parseDatasetFlag(undefined)).toBeUndefined();
+    expect(parseDatasetFlag("")).toBeUndefined();
+  });
+
+  it("passes a known dataset name through verbatim", () => {
+    expect(parseDatasetFlag("bird-mini-dev-sqlite")).toBe("bird-mini-dev-sqlite");
+    expect(parseDatasetFlag("spider2-lite-sqlite")).toBe("spider2-lite-sqlite");
+  });
+
+  it("throws on an unknown dataset (fail-loud per GLOBAL-012, not silent fall-through to BIRD)", () => {
+    expect(() => parseDatasetFlag("bogus")).toThrow(/unknown --dataset: bogus/);
+    // Error message lists the valid options so an operator can fix their command.
+    expect(() => parseDatasetFlag("bogus")).toThrow(/bird-mini-dev-sqlite/);
+    expect(() => parseDatasetFlag("bogus")).toThrow(/spider2-lite-sqlite/);
   });
 });

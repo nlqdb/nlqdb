@@ -113,14 +113,21 @@ KPI columns:
 **Frontier definition (revised 2026-05 per the BIRD-2026 leaderboard
 reality).** "Frontier" in the floors below means **agentic-orchestrated
 frontier** (Agentar-class: planner + validator + retry + ensembling on a
-frontier model) — the system class whose published BIRD-dev EM clears
-80% (Agentar-Scale-SQL 81.67% test, ReViSQL 87-91%). Pure **single-model
+frontier model) — the system class on the leading edge of the canonical
+BIRD-dev leaderboard. **Canonical-set SOTA 2026 sits at ~77-82%**:
+AskData+GPT-4o 77.64% dev / 81.95% test (current #1); Agentar-Scale-SQL
+74.90% dev / 81.67% test ([arXiv:2509.24403](https://arxiv.org/abs/2509.24403)).
+The ~93% figures from 2026 papers like ReViSQL
+([arXiv:2603.20004](https://arxiv.org/html/2603.20004v2)) are measured on
+the **Arcwise-corrected** variant
+([arXiv:2601.08778](https://arxiv.org/abs/2601.08778), corrects 52.8% of
+Mini-Dev annotations), **not** on canonical BIRD-dev. Pure **single-model
 frontier** (Sonnet 4.6 / GPT-5 / Gemini 2.5 Pro, no orchestration) tops
-out at ~73% on BIRD-dev in 2026 and is reported *informationally* on a
-separate row below. nlqdb's own engine work IS the agentic orchestration;
-the moat thesis is "our scaffolding closes the agentic-vs-single-model
-gap faster than the gap to humans grows", measured by the
-free-vs-agentic-frontier delta.
+out at ~73% on canonical BIRD-dev in 2026 (Gemini-SQL 73.27% dev) and is
+reported *informationally* on a separate row below. nlqdb's own engine
+work IS the agentic orchestration; the moat thesis is "our scaffolding
+closes the agentic-vs-single-model gap faster than the gap to humans
+grows", measured by the free-vs-agentic-frontier delta.
 
 | KPI | Baseline (2026-05) | Phase 2 floor | Phase 3 floor | Alert | Owner |
 |---|---|---|---|---|---|
