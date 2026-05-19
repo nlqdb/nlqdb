@@ -70,7 +70,6 @@ describe("renderState — error", () => {
     const html = renderState({ kind: "error", failure: { kind: "auth", status: 401 } }, "table");
     expect(html).toContain('data-kind="auth"');
     expect(html).toContain("Authentication required.");
-    // The status code is in the dispatched event detail, not the visible text.
     expect(html).not.toContain("401");
   });
 
@@ -133,7 +132,6 @@ describe("renderState — error", () => {
       );
     for (const url of ["javascript:alert(1)", "data:text/html,<script>", "/relative", 42, null]) {
       const html = make(url);
-      // Falls back to the generic api-error rendering (no link, no nlq-gated container).
       expect(html).not.toContain("nlq-gated");
       expect(html).toContain("Error 403: feature_gated");
     }

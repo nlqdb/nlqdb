@@ -59,8 +59,7 @@ function successHtml(rowCount: number, label: string): string {
 }
 
 function errorHtml(failure: AskFailure, label: string): string {
-  // Pre-alpha gate is not transient — show the CTA card with no retry
-  // button (clicking retry would just 403 again).
+  // Gated state is non-transient — show the CTA without a retry button (clicking would just 403 again).
   const gated = gatedBody(failure);
   if (gated) return gatedHtml(gated);
   const message = errorMessage(failure);

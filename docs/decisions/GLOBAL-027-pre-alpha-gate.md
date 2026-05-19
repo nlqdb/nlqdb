@@ -135,6 +135,14 @@
     unconditionally — the **Cmd+G chord and `[data-cmdg-gate]`
     attributes are deleted in this PR** because the server-side gate
     supersedes them.
+  - Elements (`packages/elements/`): `fetch.ts` routes 403 through
+    `kind: "api"` so the structured body reaches the renderer;
+    `render.ts` / `action-render.ts` detect `error.status ===
+    "feature_gated"` and emit an inline card with the server's
+    message, an `<a href>` to `error.waitlist_url` (http/https
+    allowlist), and the live BIRD / Spider lane progress. The
+    `<nlq-action>` variant drops the retry button — the gate is not
+    transient. See [`SK-ELEM-014`](../features/elements/decisions/SK-ELEM-014-feature-gated-inline-cta.md).
   - One new OTel span `nlqdb.gate.check` per request with attributes
     `gate.outcome` (`pass` | `block`), `gate.bypass_reason`
     (`none` | `allowlist` | `invite_code` | `open`),

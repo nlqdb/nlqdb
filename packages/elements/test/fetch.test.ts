@@ -122,8 +122,6 @@ describe("fetchAsk", () => {
   });
 
   it("surfaces the structured body for 403 (feature_gated etc.) as kind=api", async () => {
-    // 403 carries `feature_gated` per GLOBAL-027 — the renderer needs the
-    // waitlist URL + lane numbers, so we no longer collapse 403 to `auth`.
     const gatedBody = {
       error: {
         status: "feature_gated",

@@ -165,8 +165,6 @@ describe("renderActionState — error", () => {
   });
 
   it("renders the feature_gated CTA without a retry button (SK-ELEM-014)", () => {
-    // Pre-alpha gate isn't transient — retry would just 403 again, so the
-    // action element drops the retry button and shows just the waitlist CTA.
     const html = renderError({
       kind: "error",
       failure: {

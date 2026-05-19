@@ -28,9 +28,7 @@ export function renderState(state: NlqState, template: string): string {
   }
 }
 
-// Error HTML carries `data-kind` so consumers can style auth /
-// network / api / gated differently without parsing the message text.
-// Message is always escaped — API messages can echo user-supplied SQL.
+// `data-kind` lets consumers style network/auth/api/gated states distinctly without parsing text.
 export function errorHtml(failure: AskFailure): string {
   const gated = gatedBody(failure);
   if (gated) return gatedHtml(gated);
@@ -59,9 +57,7 @@ function errorMessage(failure: AskFailure): string {
   return `Error ${failure.status}: ${slug}`;
 }
 
-// `feature_gated` (GLOBAL-027) body shape — narrowed from `ApiErrorBody`.
-// `gate` fields are best-effort; absent / wrong-typed values fall back to
-// a plain message + waitlist link.
+// Narrowed view of the `feature_gated` body (GLOBAL-027); optional fields tolerate API drift.
 type GatedBody = {
   action: string;
   waitlistUrl: string;
@@ -77,41 +73,34 @@ export function gatedBody(failure: AskFailure): GatedBody | null {
   if (typeof err === "string" || err.status !== "feature_gated") return null;
   const waitlistUrl = safeUrl(err["waitlist_url"]);
   if (!waitlistUrl) return null;
-  const action = typeof err["action"] === "string" ? err["action"] : "Join the waitlist";
-  const message = typeof err["message"] === "string" ? err["message"] : undefined;
-  const gate = err["gate"];
-  const lanes =
-    gate && typeof gate === "object"
-      ? {
-          bird: laneNumbers(
-            (gate as Record<string, unknown>)["bird_accuracy"],
-            (gate as Record<string, unknown>)["bird_target"],
-          ),
-          spider: laneNumbers(
-            (gate as Record<string, unknown>)["spider_accuracy"],
-            (gate as Record<string, unknown>)["spider_target"],
-          ),
-        }
-      : { bird: undefined, spider: undefined };
-  return { action, waitlistUrl, message, bird: lanes.bird, spider: lanes.spider };
+  const gate = asRecord(err["gate"]);
+  return {
+    action: typeof err["action"] === "string" ? err["action"] : "Join the waitlist",
+    waitlistUrl,
+    message: typeof err["message"] === "string" ? err["message"] : undefined,
+    bird: gate ? laneNumbers(gate["bird_accuracy"], gate["bird_target"]) : undefined,
+    spider: gate ? laneNumbers(gate["spider_accuracy"], gate["spider_target"]) : undefined,
+  };
+}
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null;
 }
 
 function laneNumbers(accuracy: unknown, target: unknown): LaneNumbers | undefined {
   if (typeof target !== "number") return undefined;
-  const acc = accuracy === null ? null : typeof accuracy === "number" ? accuracy : undefined;
-  if (acc === undefined) return undefined;
-  return { accuracy: acc, target };
+  if (accuracy !== null && typeof accuracy !== "number") return undefined;
+  return { accuracy, target };
 }
 
-// http(s) only — strips `javascript:` / `data:` / relative inputs even
-// though the server controls this URL today (defense-in-depth per OWASP
-// XSS prevention cheat sheet). Returns the normalized URL on success.
+// http(s)-only allowlist guards against `javascript:` / `data:` URIs reaching `href` (OWASP XSS cheat sheet).
 function safeUrl(raw: unknown): string | null {
   if (typeof raw !== "string") return null;
   try {
     const url = new URL(raw);
-    if (url.protocol !== "https:" && url.protocol !== "http:") return null;
-    return url.toString();
+    return url.protocol === "https:" || url.protocol === "http:" ? url.toString() : null;
   } catch {
     return null;
   }
@@ -127,12 +116,9 @@ export function gatedHtml(body: GatedBody): string {
 }
 
 function laneProgress(body: { bird?: LaneNumbers; spider?: LaneNumbers }): string {
-  const parts: string[] = [];
-  const bird = formatLane("BIRD", body.bird);
-  const spider = formatLane("Spider", body.spider);
-  if (bird) parts.push(bird);
-  if (spider) parts.push(spider);
-  return parts.join(" · ");
+  return [formatLane("BIRD", body.bird), formatLane("Spider", body.spider)]
+    .filter((s): s is string => s !== null)
+    .join(" · ");
 }
 
 function formatLane(label: string, lane: LaneNumbers | undefined): string | null {

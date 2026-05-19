@@ -18,7 +18,7 @@ when-to-load:
 **One-liner:** Every "do-work" surface (SDK · CLI · MCP · `<nlq-data>` · web hero / chat) refuses with HTTP 403 `feature_gated` until the free chain clears BIRD ≥ 0.65 AND Spider ≥ 0.75; design-partner allowlist + invite codes bypass.
 **Status:** implemented (Slice 1 — closed). The gate is **active** today (BIRD 0.318, Spider not yet measured) and will remove itself when both thresholds clear.
 **Contribution to north-star:** UX (zero accidental impressions of bad NL→SQL on strangers) and engine quality (the gate surfaces the weekly BIRD/Spider numbers as a hard product constraint, not a metric). Per [`GLOBAL-025`](../../decisions/GLOBAL-025-north-star.md) the trade is explicit: onboarding throughput degrades while the gate is live; that's the deal until the eval crosses.
-**Owners (code):** `apps/api/src/gate/**`, `packages/sdk/src/index.ts` (error code), `cli/internal/{api,cmd}/**` (`--invite-code`), `apps/web/src/{lib,components}/**` (progress bar), `apps/docs/src/content/docs/pre-alpha.mdx` + sidebar pin (gate-state page), `examples/{html,curl,cli}/README.md` (one-paragraph callouts that render into the autogen tutorials).
+**Owners (code):** `apps/api/src/gate/**`, `packages/sdk/src/index.ts` (error code), `cli/internal/{api,cmd}/**` (`--invite-code`), `apps/web/src/{lib,components}/**` (progress bar), `packages/elements/src/{fetch,render,action-render}.ts` (inline CTA per [`SK-ELEM-014`](../elements/decisions/SK-ELEM-014-feature-gated-inline-cta.md)), `apps/docs/src/content/docs/pre-alpha.mdx` + sidebar pin (gate-state page), `examples/{html,curl,cli}/README.md` (one-paragraph callouts that render into the autogen tutorials).
 **Cross-refs:** [`GLOBAL-027`](../../decisions/GLOBAL-027-pre-alpha-gate.md) (canonical) · [`quality-eval/FEATURE.md`](../quality-eval/FEATURE.md) (source of the threshold numbers) · [`anonymous-mode/FEATURE.md`](../anonymous-mode/FEATURE.md) (anon gate ordering) · [`web-app/FEATURE.md`](../web-app/FEATURE.md) (Cmd+G removal).
 
 ## Touchpoints — read this feature before editing
@@ -35,6 +35,8 @@ when-to-load:
 - `apps/web/src/components/CreateForm.tsx` — hero submission failure surface
 - `apps/web/src/components/chat/ChatPanel.tsx` — chat reply gated state + render
 - `apps/web/src/components/Waitlist.astro` — homepage `#waitlist` anchor target for the CTA
+- `packages/elements/src/fetch.ts` — 403 flows through `kind: "api"` so the structured body reaches the renderer
+- `packages/elements/src/render.ts` / `action-render.ts` — `<nlq-data>` / `<nlq-action>` render the inline waitlist CTA (see [`SK-ELEM-014`](../elements/decisions/SK-ELEM-014-feature-gated-inline-cta.md))
 
 ## Decisions
 
