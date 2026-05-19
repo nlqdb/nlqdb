@@ -629,10 +629,9 @@ h3 {
   gap: 8px;
 }
 
-/* `GLOBAL-027` pre-alpha gate progress UI — rendered inside
-   `.createform__error-wrap` when `error.kind === "feature_gated"`. */
-.createform__gate {
-  grid-column: 1 / -1;
+/* `GLOBAL-027` pre-alpha gate progress UI — shared between CreateForm
+   and ChatPanel via `components/FeatureGatedView.tsx`. */
+.feature-gate {
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -642,18 +641,18 @@ h3 {
   color: #f3e3c0;
   font-family: var(--mono);
 }
-.createform__gate-message {
+.feature-gate__message {
   margin: 0;
   font-size: 14px;
   line-height: 1.4;
 }
-.createform__gate-lanes {
+.feature-gate__lanes {
   margin: 0;
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 10px;
 }
-.createform__gate-lane {
+.feature-gate__lane {
   display: grid;
   grid-template-columns: auto 1fr;
   grid-template-areas:
@@ -662,7 +661,7 @@ h3 {
   align-items: baseline;
   gap: 4px 8px;
 }
-.createform__gate-lane-label {
+.feature-gate__lane-label {
   grid-area: label;
   margin: 0;
   font-size: 12px;
@@ -670,28 +669,28 @@ h3 {
   text-transform: uppercase;
   color: #d2a352;
 }
-.createform__gate-lane-value {
+.feature-gate__lane-value {
   grid-area: value;
   margin: 0;
   font-size: 13px;
   text-align: right;
 }
-.createform__gate-bar {
+.feature-gate__bar {
   grid-area: bar;
   height: 4px;
   background: #2a2014;
   border: 1px solid #54442a;
   overflow: hidden;
 }
-.createform__gate-bar-fill {
+.feature-gate__bar-fill {
   height: 100%;
   background: #d2a352;
   transition: width 240ms ease-out;
 }
-.createform__gate-lane--met .createform__gate-bar-fill {
+.feature-gate__lane--met .feature-gate__bar-fill {
   background: #6ad27c;
 }
-.createform__gate-cta {
+.feature-gate__cta {
   align-self: flex-start;
 }
 
