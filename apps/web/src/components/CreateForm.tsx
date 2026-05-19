@@ -195,6 +195,7 @@ function CreateFormInner({ apiBase }: CreateFormProps) {
                 message={error.message}
                 gate={error.gate}
                 waitlistUrl={error.waitlistUrl}
+                surface="createform"
               />
             ) : (
               <p className="createform__error">{messageFor(error)}</p>
@@ -385,4 +386,3 @@ function messageFor(error: CreateError): string {
       return "Couldn't create the DB — try again.";
   }
 }
-

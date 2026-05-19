@@ -1,18 +1,18 @@
 import type { GateProgress } from "../lib/api";
+import { emit } from "../lib/logsnag";
 
-// `GLOBAL-027` pre-alpha gate progress UI — friendly 403 envelope with
-// the eval-baseline snapshot and a waitlist CTA. Rendered by every
-// surface that calls `/v1/ask` (CreateForm, ChatPanel).
+// `GLOBAL-027` 403 envelope renderer — shared by CreateForm and ChatPanel so the gate UX stays consistent.
 
 interface Props {
   message: string;
   gate: GateProgress;
   waitlistUrl: string;
+  surface: "createform" | "chat";
 }
 
-export function FeatureGatedView({ message, gate, waitlistUrl }: Props) {
+export function FeatureGatedView({ message, gate, waitlistUrl, surface }: Props) {
   return (
-    <div className="feature-gate">
+    <div className="feature-gate" role="status" aria-live="polite">
       <p className="feature-gate__message">{message}</p>
       <dl className="feature-gate__lanes">
         <GateLane label="BIRD" accuracy={gate.bird_accuracy} target={gate.bird_target} />
@@ -23,6 +23,7 @@ export function FeatureGatedView({ message, gate, waitlistUrl }: Props) {
         href={waitlistUrl}
         target="_blank"
         rel="noreferrer"
+        onClick={() => emit("home.gate_cta_clicked", { surface })}
       >
         Join the waitlist
       </a>

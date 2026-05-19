@@ -78,9 +78,7 @@ type ReplyState =
   // behaviour was a generic "That query was rejected" via the read/
   // write SQL allowlist's disallowed_verb path.
   | { kind: "clarify"; pinnedDb: { id: string; slug: string } | null }
-  // GLOBAL-027 / SK-GATE-005 — pre-alpha gate 403. Render the friendly
-  // message + eval-baseline lanes + waitlist CTA instead of the
-  // generic "Something went wrong" string.
+  // GLOBAL-027 / SK-GATE-005 — typed pre-alpha 403 with eval lanes + waitlist CTA, distinct from generic `error`.
   | { kind: "feature_gated"; message: string; waitlistUrl: string; gate: GateProgress }
   | { kind: "error"; message: string };
 
@@ -446,9 +444,7 @@ function ChatPanelInner({ apiBase }: ChatPanelProps) {
           }));
           return;
         }
-        // GLOBAL-027 / SK-GATE-005: pre-alpha 403. Surface the typed
-        // gate envelope (friendly message + eval lanes + waitlist CTA)
-        // instead of falling through to "Something went wrong".
+        // GLOBAL-027 / SK-GATE-005 — narrow on the typed 403 before falling through to the generic error path.
         if (
           err instanceof NlqdbApiError &&
           err.code === "feature_gated" &&
@@ -457,7 +453,8 @@ function ChatPanelInner({ apiBase }: ChatPanelProps) {
         ) {
           const gate = err.body.gate;
           const waitlistUrl = err.body.waitlist_url;
-          const message = err.body.message ?? "nlqdb is pre-alpha — join the waitlist for early access.";
+          const message =
+            err.body.message ?? "nlqdb is pre-alpha — join the waitlist for early access.";
           updateReply(replyId, (reply) => ({
             ...reply,
             state: { kind: "feature_gated", message, waitlistUrl, gate },
@@ -902,7 +899,12 @@ function ReplyView({
         <DiffChip diff={needsConfirm} onApprove={onApprove} onCancel={onCancel} />
       ) : null}
       {gated ? (
-        <FeatureGatedView message={gated.message} gate={gated.gate} waitlistUrl={gated.waitlistUrl} />
+        <FeatureGatedView
+          message={gated.message}
+          gate={gated.gate}
+          waitlistUrl={gated.waitlistUrl}
+          surface="chat"
+        />
       ) : null}
       {error ? <p className="chat-reply__error">{error}</p> : null}
       {ok && rows && rows.length > 0 ? (
