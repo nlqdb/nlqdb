@@ -17,7 +17,7 @@ export const snippets: readonly Snippet[] = [
   {
     id: "cli",
     label: "CLI",
-    sub: "one binary, three verbs",
+    sub: "one binary, two verbs",
     lang: "bash",
     source: `# 1. install (curl, brew, npm — pick one)
 curl -fsSL https://nlqdb.com/install | sh
