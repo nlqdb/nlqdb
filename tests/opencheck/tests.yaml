@@ -112,16 +112,20 @@ tests:
 
   - name: "#submit-prefilled-row"
     case: |
-      The session is on /app. Do NOT re-navigate. Click the chat
-      textarea (placeholder "Ask about your data…"). If the textarea
-      already contains "add a new row: name='Alice',
-      email='alice@example.com'" submit it directly (press Enter or
-      click Send). If the textarea is empty, type that prompt fresh
-      and then submit. If a confirm/diff chip appears (e.g. "This
-      will insert 1 row"), press Enter again or click "Approve". If
-      the response shows "Couldn't reach the database" or any
-      connectivity error, wait 5 seconds and submit the same prompt
-      again. Verify a row with name "Alice" and email
+      The browser is currently on /app with a ?db= query parameter
+      in the URL (e.g. /app/?db=db_users_info_XXXXXX). Do NOT call
+      browser_navigate. Do NOT modify the URL. Do NOT go to /app
+      without the ?db= param — that breaks the page. Stay exactly
+      where you are. Click the chat textarea (placeholder "Ask about
+      your data…"). If the textarea already contains "add a new row:
+      name='Alice', email='alice@example.com'" submit it directly
+      (press Enter or click Send). If the textarea is empty, type
+      that prompt fresh and then submit. If a confirm/diff chip
+      appears (e.g. "This will insert 1 row"), click the "Approve"
+      button inside the dialog (do NOT type in the confirm input —
+      click the button). If the response shows "Couldn't reach the
+      database" or any connectivity error, wait 5 seconds and submit
+      the same prompt again. Verify a row with name "Alice" and email
       "alice@example.com" appears in the users table.
 
   - name: "#read-shows-informative-data"
