@@ -4,6 +4,8 @@ The whole app is one file. No build step, no framework, no package manager.
 
 ## Step 0 — Get your key (60 seconds)
 
+> **Pre-alpha:** the API is gated today ([`GLOBAL-027`](../../docs/decisions/GLOBAL-027-pre-alpha-gate.md)). `<nlq-data>` succeeds only if the account behind your `pk_live_` key is on the design-partner allowlist; everyone else lands on the [`Join the waitlist`](https://nlqdb.com/#waitlist) CTA after **Create the DB**. Invite-code bypass ships on the `X-Invite-Code`-aware surfaces (curl / CLI / SDK / MCP), not the browser element — full surface table at [`docs.nlqdb.com/pre-alpha/`](https://docs.nlqdb.com/pre-alpha/).
+
 The snippet below needs a `pk_live_` key scoped to your database. You don't generate one separately — the chat hands it to you, already inlined.
 
 1. Open **[nlqdb.com](https://nlqdb.com)** and describe what you're building in one sentence (e.g. *"a personal book library — title, author, genre, rating, finished_at"*). Hit **Create the DB**.

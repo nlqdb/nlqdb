@@ -3,9 +3,19 @@ title: MCP setup
 description: Connect Claude Desktop, Cursor, Zed, Windsurf, VS Code Continue, or Cline to nlqdb.
 ---
 
+import { Aside } from "@astrojs/starlight/components";
+
 nlqdb speaks MCP (Model Context Protocol) so any host that supports it —
 Claude Desktop, Cursor, Zed, Windsurf, VS Code Continue, Cline — can call
 `nlqdb_query`, `nlqdb_list_databases`, and `nlqdb_describe` directly.
+
+<Aside type="caution" title="Pre-alpha">
+  Tool calls return `feature_gated` today unless your account is allowlisted
+  or you supply an invite code. If you have a code, paste
+  `"NLQDB_INVITE_CODE": "..."` into the host's per-server `env` map (every
+  host in the list above supports this). See [pre-alpha access](/pre-alpha/)
+  for the full picture.
+</Aside>
 
 ## Install paths
 
