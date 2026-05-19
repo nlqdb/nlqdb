@@ -12,7 +12,14 @@
   },
   "homepage": "https://nlqdb.com",
   "bugs": "https://github.com/nlqdb/nlqdb/issues",
-  "keywords": ["nlqdb", "sdk", "natural-language", "database", "sql", "llm"],
+  "keywords": [
+    "nlqdb",
+    "sdk",
+    "natural-language",
+    "database",
+    "sql",
+    "llm"
+  ],
   "engines": {
     "node": ">=18"
   },
@@ -21,7 +28,9 @@
   "exports": {
     ".": "./src/index.ts"
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "publishConfig": {
     "main": "./dist/index.js",
     "types": "./dist/index.d.ts",
