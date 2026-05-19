@@ -40,6 +40,7 @@ nlq "how many orders today, by drink"`,
 <!-- describe what you want; the DB is created on first call -->
 <nlq-data
   goal="today's orders, newest first, with customer + total"
+  db="orders"
   api-key="pk_live_..."
   template="table"
   refresh="5s"
@@ -50,15 +51,16 @@ nlq "how many orders today, by drink"`,
     label: "SDK",
     sub: "fetch is the SDK",
     lang: "ts",
-    source: `import { nlq } from "@nlqdb/sdk";
+    source: `import { createClient } from "@nlqdb/sdk";
 
-const client = nlq({ apiKey: process.env.NLQDB_KEY! });
+const client = createClient({ apiKey: process.env.NLQDB_KEY! });
 
 // no schema, no SQL, no ORM. one verb.
-const { data, trace } = await client.ask(
-  "today's orders, newest first",
-);
+const res = await client.ask({
+  goal: "today's orders, newest first",
+  dbId: "orders",
+});
 
-console.table(data);`,
+if (res.status === "ok") console.table(res.rows);`,
   },
 ];

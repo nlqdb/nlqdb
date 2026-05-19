@@ -30,6 +30,7 @@ import type {
   AskOk,
   CandidateDb,
   DatabaseSummary,
+  GateProgress,
   SelectedDbEcho,
   TraceEvent,
 } from "@nlqdb/sdk";
@@ -39,6 +40,7 @@ import { getChatClient } from "../../lib/chat-client";
 import { deriveSlug, displayName } from "../../lib/names";
 import { clearPending, loadPending } from "../../lib/prompt-storage";
 import ErrorBoundary from "../ErrorBoundary";
+import { FeatureGatedView } from "../FeatureGatedView";
 import Answer from "./Answer";
 import CopySnippet from "./CopySnippet";
 import { matchesValidMessageShape } from "./chat-validate";
@@ -76,6 +78,10 @@ type ReplyState =
   // behaviour was a generic "That query was rejected" via the read/
   // write SQL allowlist's disallowed_verb path.
   | { kind: "clarify"; pinnedDb: { id: string; slug: string } | null }
+  // GLOBAL-027 / SK-GATE-005 — pre-alpha gate 403. Render the friendly
+  // message + eval-baseline lanes + waitlist CTA instead of the
+  // generic "Something went wrong" string.
+  | { kind: "feature_gated"; message: string; waitlistUrl: string; gate: GateProgress }
   | { kind: "error"; message: string };
 
 type Reply = {
@@ -440,6 +446,24 @@ function ChatPanelInner({ apiBase }: ChatPanelProps) {
           }));
           return;
         }
+        // GLOBAL-027 / SK-GATE-005: pre-alpha 403. Surface the typed
+        // gate envelope (friendly message + eval lanes + waitlist CTA)
+        // instead of falling through to "Something went wrong".
+        if (
+          err instanceof NlqdbApiError &&
+          err.code === "feature_gated" &&
+          err.body?.gate &&
+          err.body.waitlist_url
+        ) {
+          const gate = err.body.gate;
+          const waitlistUrl = err.body.waitlist_url;
+          const message = err.body.message ?? "nlqdb is pre-alpha — join the waitlist for early access.";
+          updateReply(replyId, (reply) => ({
+            ...reply,
+            state: { kind: "feature_gated", message, waitlistUrl, gate },
+          }));
+          return;
+        }
         updateReply(replyId, (reply) => ({
           ...reply,
           state: { kind: "error", message: messageFor(err) },
@@ -781,6 +805,7 @@ function ReplyView({
   const created = reply.state.kind === "created" ? reply.state : null;
   const ambiguous = reply.state.kind === "ambiguous" ? reply.state : null;
   const clarify = reply.state.kind === "clarify" ? reply.state : null;
+  const gated = reply.state.kind === "feature_gated" ? reply.state : null;
   const error = reply.state.kind === "error" ? reply.state.message : null;
   const pending = reply.state.kind === "pending";
 
@@ -875,6 +900,9 @@ function ReplyView({
       <Data rows={rows} rowCount={rowCount} pending={pending} />
       {needsConfirm ? (
         <DiffChip diff={needsConfirm} onApprove={onApprove} onCancel={onCancel} />
+      ) : null}
+      {gated ? (
+        <FeatureGatedView message={gated.message} gate={gated.gate} waitlistUrl={gated.waitlistUrl} />
       ) : null}
       {error ? <p className="chat-reply__error">{error}</p> : null}
       {ok && rows && rows.length > 0 ? (

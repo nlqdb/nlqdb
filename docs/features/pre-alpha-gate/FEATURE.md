@@ -31,7 +31,10 @@ when-to-load:
 - `cli/internal/api/client.go` — `X-Invite-Code` header
 - `cli/internal/cmd/{root,ask,run}.go` — `--invite-code` flag, gate error rendering
 - `apps/web/src/lib/api.ts` — `feature_gated` discriminant on `CreateError`
-- `apps/web/src/components/CreateForm.tsx` — progress bar + waitlist CTA
+- `apps/web/src/components/FeatureGatedView.tsx` — shared progress bar + waitlist CTA
+- `apps/web/src/components/CreateForm.tsx` — hero submission failure surface
+- `apps/web/src/components/chat/ChatPanel.tsx` — chat reply gated state + render
+- `apps/web/src/components/Waitlist.astro` — homepage `#waitlist` anchor target for the CTA
 
 ## Decisions
 
