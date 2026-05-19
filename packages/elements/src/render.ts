@@ -75,12 +75,16 @@ export function gatedBody(failure: AskFailure): GatedBody | null {
   if (!waitlistUrl) return null;
   const gate = asRecord(err["gate"]);
   return {
-    action: typeof err["action"] === "string" ? err["action"] : "Join the waitlist",
+    action: nonEmpty(err["action"]) ?? "Join the waitlist",
     waitlistUrl,
-    message: typeof err["message"] === "string" ? err["message"] : undefined,
+    message: nonEmpty(err["message"]),
     bird: gate ? laneNumbers(gate["bird_accuracy"], gate["bird_target"]) : undefined,
     spider: gate ? laneNumbers(gate["spider_accuracy"], gate["spider_target"]) : undefined,
   };
+}
+
+function nonEmpty(value: unknown): string | undefined {
+  return typeof value === "string" && value.trim().length > 0 ? value : undefined;
 }
 
 function asRecord(value: unknown): Record<string, unknown> | null {

@@ -137,6 +137,27 @@ describe("renderState — error", () => {
     }
   });
 
+  it("falls back when the gated body has empty action / message strings", () => {
+    const html = renderState(
+      {
+        kind: "error",
+        failure: {
+          kind: "api",
+          status: 403,
+          error: {
+            status: "feature_gated",
+            message: "   ",
+            action: "",
+            waitlist_url: "https://nlqdb.com/#waitlist",
+          },
+        },
+      },
+      "table",
+    );
+    expect(html).toContain("Join the waitlist");
+    expect(html).toContain("nlqdb is pre-alpha — join the waitlist for early access.");
+  });
+
   it("escapes hostile action/message text in the gated card", () => {
     const html = renderState(
       {
