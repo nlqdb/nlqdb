@@ -188,8 +188,29 @@ describe("loadSpider2Lite — file mode", () => {
         questionsJsonlPath: jsonlPath,
         fetchImpl: fetchOutage,
       }),
-    ).rejects.toThrow(/gold SQL fetch for local003 failed: 503/);
+    ).rejects.toThrow(/spider2-lite: .* returned 503/);
   });
+
+  it("retries transient 429 / 5xx and recovers when upstream stabilises", async () => {
+    // 429 → 503 → 200 across one instance; the second instance 404s immediately. Verifies the retry helper unsticks a flaky GitHub raw without burning the whole run.
+    const statuses: Record<string, number[]> = { local003: [429, 503, 200], local005: [404] };
+    let local003Calls = 0;
+    const fetchFlaky = (async (input: RequestInfo | URL) => {
+      const url = input.toString();
+      if (url.endsWith("local003.sql")) {
+        const status = statuses["local003"]?.[local003Calls++] ?? 200;
+        return new Response(status === 200 ? "SELECT 1;" : "transient", { status });
+      }
+      return new Response("", { status: 404 });
+    }) as unknown as typeof fetch;
+    const loaded = await loadSpider2Lite({
+      questionsJsonlPath: jsonlPath,
+      fetchImpl: fetchFlaky,
+    });
+    expect(local003Calls).toBe(3);
+    expect(loaded.questions[0]?.sql).toBe("SELECT 1;");
+    expect(loaded.questions[1]?.sql).toBe("");
+  }, 30_000);
 
   it("applies --limit after the local### filter (limit counts SQLite rows, not upstream rows)", async () => {
     const loaded = await loadSpider2Lite({
@@ -256,16 +277,16 @@ describe("loadSpider2Lite — file mode", () => {
 });
 
 describe("loadSpider2Lite — fetch mode", () => {
-  it("propagates fetch failure with status + statusText (no silent retry)", async () => {
+  it("propagates fetch failure with status + statusText after the retry budget is exhausted", async () => {
     const fetchImpl = (async () =>
       new Response("upstream rebooting", {
         status: 502,
         statusText: "Bad Gateway",
       })) as unknown as typeof fetch;
     await expect(loadSpider2Lite({ fetchImpl })).rejects.toThrow(
-      /fetch .*spider2-lite\.jsonl failed: 502 Bad Gateway/,
+      /spider2-lite: .*spider2-lite\.jsonl returned 502 Bad Gateway/,
     );
-  });
+  }, 10_000);
 
   it("uses the questionsJsonlUrl override (commit-pin / test stubbing)", async () => {
     let calledUrl = "";
