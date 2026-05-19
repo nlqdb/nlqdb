@@ -35,6 +35,9 @@ export default defineConfig(async () => {
           test: {
             name: "unit",
             include: [
+              "test/gate-check.test.ts",
+              "test/gate-bypass.test.ts",
+              "test/gate-middleware.test.ts",
               "test/orchestrate.test.ts",
               "test/plan-cache.test.ts",
               "test/sql-validate.test.ts",
@@ -118,7 +121,7 @@ export default defineConfig(async () => {
               "test/databases-delete.test.ts",
               "test/run.test.ts",
             ],
-            setupFiles: ["./test/apply-migrations.ts"],
+            setupFiles: ["./test/apply-migrations.ts", "./test/seed-gate-bypass.ts"],
           },
         },
       ],

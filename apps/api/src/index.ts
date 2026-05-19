@@ -57,6 +57,7 @@ import { deriveSlug, displayName, listDatabasesForTenant } from "./databases/lis
 import { resolveDb } from "./db-registry.ts";
 import { sweepAnonDatabases } from "./db-sweep/sweep.ts";
 import { recordEvalReport, recordWishlist } from "./events-feature.ts";
+import { makeGatePreAlpha } from "./gate/middleware.ts";
 import {
   isAllowedEngine,
   MAX_GOAL_LENGTH,
@@ -231,6 +232,12 @@ const requirePrincipal = makeRequirePrincipal({
   lookupSkKey: (key) => lookupSkKeyImpl(env.DB, env.BETTER_AUTH_SECRET, key),
   bumpKeyLastUsed: (keyId) => bumpKeyLastUsedImpl(env.DB, keyId),
 });
+
+// `GLOBAL-027` pre-alpha gate. Mounted on the four "do-work" routes
+// only (`SK-GATE-004`): `POST /v1/ask`, `POST /v1/run`,
+// `POST /v1/databases`, `POST /v1/chat/messages`. Listings are
+// untouched.
+const gatePreAlpha = makeGatePreAlpha({ kv: env.KV, eventsQueue: env.EVENTS_QUEUE });
 
 // Per-request telemetry install + flush. setupTelemetry is idempotent
 // — first call per isolate wins; later calls return the cached handle.
@@ -478,7 +485,7 @@ if (env.MOCK_IDP === "1") {
 // internal JWT here (docs/architecture.md §4.4) and verify it on the receiving
 // end. In-isolate today, so signing would be cargo-culting (see
 // commit 1a body for the rationale).
-app.post("/v1/ask", requirePrincipal, async (c) => {
+app.post("/v1/ask", requirePrincipal, gatePreAlpha, async (c) => {
   const tracer = trace.getTracer("@nlqdb/api");
   return tracer.startActiveSpan("nlqdb.ask", async (span) => {
     const principal = c.var.principal as Principal;
@@ -1107,7 +1114,7 @@ app.use("/v1/run", (c, next) => {
   return handler(c, next);
 });
 
-app.post("/v1/run", requirePrincipal, async (c) => {
+app.post("/v1/run", requirePrincipal, gatePreAlpha, async (c) => {
   const tracer = trace.getTracer("@nlqdb/api");
   return tracer.startActiveSpan("nlqdb.run", async (span) => {
     try {
@@ -1820,7 +1827,7 @@ app.get("/v1/databases", requirePrincipal, async (c) => {
 // do not yet pay through that same gate. The gap is bounded by
 // `requireSession` (no anon traffic) and tenant scope (a user can
 // only thrash their own DBs), so it's accepted for Phase 1.
-app.post("/v1/databases", requireSession, async (c) => {
+app.post("/v1/databases", requireSession, gatePreAlpha, async (c) => {
   const tracer = trace.getTracer("@nlqdb/api");
   return tracer.startActiveSpan("nlqdb.databases.create", async (span) => {
     const session = c.var.session;
@@ -2011,7 +2018,7 @@ app.delete("/v1/databases/:id", requireSession, async (c) => {
   });
 });
 
-app.post("/v1/chat/messages", requireSession, async (c) => {
+app.post("/v1/chat/messages", requireSession, gatePreAlpha, async (c) => {
   const tracer = trace.getTracer("@nlqdb/api");
   return tracer.startActiveSpan("nlqdb.chat.turn", async (span) => {
     const session = c.var.session;

@@ -29,6 +29,9 @@ type Client struct {
 	Identity   auth.Identity
 	UserAgent  string
 	MaxRetries int
+	// GLOBAL-027 — when non-empty, sent as `X-Invite-Code` on every
+	// request. Set via `--invite-code` or `NLQDB_INVITE_CODE`.
+	InviteCode string
 }
 
 func New(baseURL string, identity auth.Identity) *Client {
@@ -39,6 +42,24 @@ func New(baseURL string, identity auth.Identity) *Client {
 		UserAgent:  useragent.String(),
 		MaxRetries: maxAttempts,
 	}
+}
+
+// WithInviteCode threads a GLOBAL-027 design-partner invite into the
+// client. Returns the receiver so callers can chain (`api.New(...).WithInviteCode(...)`).
+func (c *Client) WithInviteCode(code string) *Client {
+	c.InviteCode = code
+	return c
+}
+
+// GateProgress mirrors @nlqdb/sdk's `GateProgress` shape — carried on
+// every `feature_gated` envelope (GLOBAL-027 / SK-GATE-005). Lane
+// accuracies are pointers so `null` round-trips distinctly from 0.0.
+type GateProgress struct {
+	BirdAccuracy   *float64 `json:"bird_accuracy"`
+	SpiderAccuracy *float64 `json:"spider_accuracy"`
+	BirdTarget     float64  `json:"bird_target"`
+	SpiderTarget   float64  `json:"spider_target"`
+	MeasuredAt     string   `json:"measured_at"`
 }
 
 // APIError carries the API's typed `status` discriminant plus the
@@ -52,6 +73,9 @@ type APIError struct {
 	Message    string
 	Path       string
 	Raw        json.RawMessage
+	// GLOBAL-027 — populated only on `feature_gated` envelopes.
+	Gate        *GateProgress
+	WaitlistURL string
 }
 
 func (e *APIError) Error() string {
@@ -133,6 +157,9 @@ func (c *Client) send(ctx context.Context, method, path string, body []byte, ide
 	if idemKey != "" {
 		req.Header.Set("Idempotency-Key", idemKey)
 	}
+	if c.InviteCode != "" {
+		req.Header.Set("X-Invite-Code", c.InviteCode)
+	}
 
 	res, err := c.HTTP.Do(req)
 	if err != nil {
@@ -192,16 +219,20 @@ func extractError(status int, path string, data []byte) *APIError {
 	}
 
 	var asObject struct {
-		Status  string `json:"status"`
-		Code    string `json:"code"`
-		Action  string `json:"action"`
-		Message string `json:"message"`
-		Reason  string `json:"reason"`
+		Status      string        `json:"status"`
+		Code        string        `json:"code"`
+		Action      string        `json:"action"`
+		Message     string        `json:"message"`
+		Reason      string        `json:"reason"`
+		WaitlistURL string        `json:"waitlist_url"`
+		Gate        *GateProgress `json:"gate"`
 	}
 	if err := json.Unmarshal(generic.Error, &asObject); err == nil && asObject.Status != "" {
 		out.Status = asObject.Status
 		out.Code = asObject.Code
 		out.Action = asObject.Action
+		out.WaitlistURL = asObject.WaitlistURL
+		out.Gate = asObject.Gate
 		switch {
 		case asObject.Message != "":
 			out.Message = asObject.Message

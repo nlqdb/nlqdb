@@ -3,12 +3,11 @@
 // chat (SK-WEB-002 / SK-WEB-008). Backed by the same `<CreateForm>`
 // React island as `/app/new`; both routes hit `/v1/ask` with an
 // anonymous bearer (SK-ANON-008), gated by the global anon cap
-// (SK-ANON-010) and the prompt-persistence guarantee (SK-ANON-011).
-//
-// `Hero.tsx` is intentionally retired — its old fixture client used
-// `/v1/demo/ask`, which no longer exists. The component is replaced
-// in-place by the marketing-chrome wordmark + lede + sub above the
-// shared form below.
+// (SK-ANON-010), the prompt-persistence guarantee (SK-ANON-011), and
+// the pre-alpha eval-baseline gate (`GLOBAL-027`). The submission
+// itself is gated at the API; the form renders unconditionally so
+// the visitor sees the call-to-action and the progress-bar response
+// when the gate is closed.
 
 import CreateForm from "./CreateForm.tsx";
 
@@ -33,11 +32,5 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
   </p>
   <p class="hero__credo">Built with an obsessive standard for user experience.</p>
 
-  {/* Form gated behind Cmd+G; the marketing chrome above renders
-      unconditionally. The shared Cmd+G keydown handler in
-      `apps/web/src/components/Topnav.astro` toggles every
-      `[data-cmdg-gate]` element in lockstep. */}
-  <div id="hero-gate" data-cmdg-gate hidden>
-    <CreateForm client:load apiBase={apiBase} />
-  </div>
+  <CreateForm client:load apiBase={apiBase} />
 </section>

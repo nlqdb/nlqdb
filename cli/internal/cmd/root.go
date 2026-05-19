@@ -14,9 +14,10 @@ import (
 )
 
 type globalFlags struct {
-	json     bool
-	noUpdate bool
-	apiURL   string
+	json       bool
+	noUpdate   bool
+	apiURL     string
+	inviteCode string
 }
 
 func New() *cobra.Command {
@@ -35,6 +36,10 @@ func New() *cobra.Command {
 	root.PersistentFlags().BoolVar(&g.json, "json", false, "emit JSON output (default: human)")
 	root.PersistentFlags().BoolVar(&g.noUpdate, "no-update-check", false, "skip the once-per-day update check")
 	root.PersistentFlags().StringVar(&g.apiURL, "api-url", "", "override the API base URL (default: from config or https://app.nlqdb.com)")
+	// GLOBAL-027 — design-partner invite code sent as `X-Invite-Code`
+	// on every request. Falls back to `NLQDB_INVITE_CODE` env var so
+	// CI / shell setups can set it once and forget it.
+	root.PersistentFlags().StringVar(&g.inviteCode, "invite-code", os.Getenv("NLQDB_INVITE_CODE"), "design-partner invite code that bypasses the pre-alpha gate (env: NLQDB_INVITE_CODE)")
 
 	cfg, cfgErr := config.Load()
 	if cfgErr != nil {

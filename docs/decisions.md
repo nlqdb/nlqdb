@@ -54,6 +54,7 @@ grep -rn 'GLOBAL-007' docs/features/
 | [GLOBAL-024](./decisions/GLOBAL-024-demand-signal-telemetry.md) | Demand-signal telemetry on every "not yet" path | every surface, events-pipeline | active |
 | [GLOBAL-025](./decisions/GLOBAL-025-north-star.md) | North-star: engine quality (NL→SQL + data-engine layers; "frontier" = agentic-orchestrated per 2026-05 revision), onboarding, UX, performance — explicit KPIs | every feature | active |
 | [GLOBAL-026](./decisions/GLOBAL-026-llm-strategy-byollm-hosted-premium.md) | LLM strategy: free chain forever, BYOLLM for everyone, hosted premium on paid (flat sub + included request allowance + soft-meter overage, 0% markup) | llm-router, premium-tier, stripe-billing, api-keys | active |
+| [GLOBAL-027](./decisions/GLOBAL-027-pre-alpha-gate.md) | Pre-alpha gate — every "do-work" surface returns 403 `feature_gated` until BIRD ≥ 0.65 AND Spider ≥ 0.75 on the free chain; design-partner allowlist + invite codes bypass | pre-alpha-gate, anonymous-mode, web-app, sdk, cli, mcp-server, quality-eval, ask-pipeline | active |
 
 ## Adding a new GLOBAL
 

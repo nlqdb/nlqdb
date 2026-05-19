@@ -21,15 +21,11 @@ import Base from "../layouts/Base.astro";
 
     <main>
       <AuthedHomeBanner />
-      {/* Hero's marketing chrome (wordmark, lede, sub) renders
-          unconditionally; the live <CreateForm> inside is gated
-          behind Cmd+G (Ctrl+G on non-Mac) via the `#hero-gate` div
-          in `apps/web/src/components/Hero.astro`. The shared
-          keydown handler lives in `Topnav.astro` and toggles every
-          `[data-cmdg-gate]` element on the page in lockstep
-          (currently the hero form + the Sign-in link in the nav).
-          State persists in localStorage so the tester sees both on
-          every reload from the same browser. */}
+      {/* Hero renders unconditionally — the marketing chrome AND the
+          live <CreateForm>. Submission is gated server-side by
+          `GLOBAL-027`'s pre-alpha gate (`apps/api/src/gate/`); the
+          form renders the BIRD/Spider progress bar + waitlist CTA
+          when the gate is closed. */}
       <Hero />
       <Carousel examples={SHOWCASE_EXAMPLES} />
       <Waitlist />

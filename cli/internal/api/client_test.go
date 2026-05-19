@@ -274,3 +274,71 @@ func TestRevokeKey404Surfaces(t *testing.T) {
 		t.Fatalf("expected typed 404 key_not_found, got %v", err)
 	}
 }
+
+// GLOBAL-027 — the client surfaces the `feature_gated` envelope with
+// its progress block and waitlist URL intact so the renderer can show
+// "BIRD 31.8% / 65%" without re-parsing `Raw`.
+func TestFeatureGatedSurfacesGateBlock(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("X-Invite-Code") != "" {
+			t.Errorf("client must not send X-Invite-Code when none is configured")
+		}
+		w.WriteHeader(http.StatusForbidden)
+		_, _ = w.Write([]byte(`{"error":{
+			"status": "feature_gated",
+			"message": "nlqdb is pre-alpha — join the waitlist for early access.",
+			"action": "Join the waitlist",
+			"waitlist_url": "https://nlqdb.com/#waitlist",
+			"gate": {
+				"bird_accuracy": 0.318,
+				"spider_accuracy": null,
+				"bird_target": 0.65,
+				"spider_target": 0.75,
+				"measured_at": "2026-05-18T22:42:29.917Z"
+			}
+		}}`))
+	}))
+	defer srv.Close()
+	c := New(srv.URL, auth.Identity{Kind: auth.KindSignedIn, Token: "session_x"})
+	_, err := c.Ask(context.Background(), AskRequest{Goal: "anything"})
+	var apiErr *APIError
+	if !errors.As(err, &apiErr) {
+		t.Fatalf("expected APIError, got %v", err)
+	}
+	if apiErr.Status != "feature_gated" {
+		t.Errorf("Status = %q, want feature_gated", apiErr.Status)
+	}
+	if apiErr.WaitlistURL == "" {
+		t.Error("WaitlistURL is empty — surface can't render the CTA")
+	}
+	if apiErr.Gate == nil {
+		t.Fatal("Gate is nil — progress UI has nothing to render")
+	}
+	if apiErr.Gate.BirdAccuracy == nil || *apiErr.Gate.BirdAccuracy != 0.318 {
+		t.Errorf("Gate.BirdAccuracy = %v, want 0.318", apiErr.Gate.BirdAccuracy)
+	}
+	if apiErr.Gate.SpiderAccuracy != nil {
+		t.Errorf("Gate.SpiderAccuracy = %v, want nil (unmeasured)", apiErr.Gate.SpiderAccuracy)
+	}
+	if apiErr.Gate.BirdTarget != 0.65 || apiErr.Gate.SpiderTarget != 0.75 {
+		t.Errorf("targets = (%v, %v), want (0.65, 0.75)", apiErr.Gate.BirdTarget, apiErr.Gate.SpiderTarget)
+	}
+}
+
+// GLOBAL-027 — `--invite-code` flows through to the wire header.
+func TestInviteCodeFlowsToXInviteCodeHeader(t *testing.T) {
+	var seen string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		seen = r.Header.Get("X-Invite-Code")
+		w.WriteHeader(http.StatusOK)
+		_ = json.NewEncoder(w).Encode(map[string]any{"status": "ok", "rows": []any{}, "rowCount": 0, "trace": map[string]any{"sql": "", "plan_id": "", "confidence": 0, "model": "", "cache_hit": false}})
+	}))
+	defer srv.Close()
+	c := New(srv.URL, auth.Identity{Kind: auth.KindSignedIn, Token: "session_x"}).WithInviteCode("NLQDB-EARLY-2026")
+	if _, err := c.Ask(context.Background(), AskRequest{Goal: "ping"}); err != nil {
+		t.Fatalf("Ask: %v", err)
+	}
+	if seen != "NLQDB-EARLY-2026" {
+		t.Errorf("X-Invite-Code = %q, want NLQDB-EARLY-2026", seen)
+	}
+}

@@ -180,6 +180,8 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
   - *In this feature:* SK-TRUST-002 shipped — `AskResult` carries the `trace: { sql, plan_id, confidence, model, cache_hit }` block on every successful response; top-level `sql` / `cached` were removed (cleaner-shape > backwards compat per CLAUDE.md P5). The SSE `plan` event is the streaming form of the same record. Writes/DDL responses carry the `diff` block for [`SK-TRUST-001`](../trust-ux/FEATURE.md) (planned); the orchestrator short-circuits to `low_confidence` per [`SK-TRUST-003`](../trust-ux/FEATURE.md) (planned) before `db.execute`.
 - **GLOBAL-024** — Demand-signal telemetry on every "not yet" path.
   - *In this feature:* 4xx `unsupported_verb` rejections (DDL via `/v1/ask`) emit `feature.requested.ddl_via_ask`; `low_confidence` refusals emit `feature.requested.ambiguous_goal`; `db_full` write-cap hits emit `feature.requested.larger_db`.
+- **GLOBAL-027** — Pre-alpha gate.
+  - *In this feature:* `gatePreAlpha` is the second middleware in the `/v1/ask` chain (after `requirePrincipal`, before any orchestrator code). A closed gate short-circuits to 403 before parse / classifier / route-ask fire — zero LLM cost on blocked traffic. See [`pre-alpha-gate/FEATURE.md`](../pre-alpha-gate/FEATURE.md).
 
 ## Open questions / known unknowns
 

@@ -35,7 +35,7 @@ func dbListCmd(g *globalFlags) *cobra.Command {
 			}
 			ctx, cancel := context.WithTimeout(cmd.Context(), 30*time.Second)
 			defer cancel()
-			rows, err := api.New(g.apiURL, id).ListDatabases(ctx)
+			rows, err := api.New(g.apiURL, id).WithInviteCode(g.inviteCode).ListDatabases(ctx)
 			if err != nil {
 				return renderAPIError(cmd, err)
 			}

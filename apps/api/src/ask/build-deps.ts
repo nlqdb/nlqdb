@@ -10,10 +10,10 @@
 import { env } from "cloudflare:workers";
 import { neon } from "@neondatabase/serverless";
 import type { Row } from "@nlqdb/db";
-import { type EventEmitter, makeNoopEmitter, makeQueueEmitter } from "@nlqdb/events";
 import { dbDurationMs } from "@nlqdb/otel";
 import { SpanStatusCode, trace } from "@opentelemetry/api";
 import { resolveDb } from "../db-registry.ts";
+import { buildEventEmitter } from "../events-emitter.ts";
 import { getLLMRouter } from "../llm-router.ts";
 import { makeFirstQueryTracker } from "./first-query.ts";
 import type { OrchestrateDeps } from "./orchestrate.ts";
@@ -137,12 +137,8 @@ function detectSqlOperation(sql: string): string {
   return m ? m[0].toUpperCase() : "UNKNOWN";
 }
 
-// Returns the production queue-backed emitter when the binding is
-// present (always in deployed Workers + `wrangler dev --remote`). Falls
-// back to a no-op for unit/integration tests and any environment where
-// the binding is unset, so tests don't need to mock a queue. Exported
-// because the Stripe webhook path also needs it (no orchestrateAsk
-// involvement, just product events).
-export function buildEventEmitter(queue: Queue | undefined): EventEmitter {
-  return queue ? makeQueueEmitter(queue) : makeNoopEmitter();
-}
+// `buildEventEmitter` moved to `apps/api/src/events-emitter.ts` so
+// callers that don't import `cloudflare:workers` (notably the gate
+// middleware exercised by unit-pool tests) can use it directly.
+// Re-exported here so existing imports keep compiling.
+export { buildEventEmitter } from "../events-emitter.ts";

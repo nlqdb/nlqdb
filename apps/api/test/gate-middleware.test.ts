@@ -1,0 +1,177 @@
+// Integration tests for `gatePreAlpha`. Use a real `Hono` app +
+// `app.request()` so the middleware chain (`requirePrincipal` →
+// `gatePreAlpha` → handler) exercises through the actual Hono context
+// surface, not a synthetic mock.
+//
+// The test file ASSUMES `EVAL_BASELINE` reports closed today (BIRD
+// 0.318, Spider null). If a future cron lands an open state these
+// tests have to be updated alongside the middleware removal PR.
+
+import { Hono } from "hono";
+import { describe, expect, it } from "vitest";
+import { makeGatePreAlpha } from "../src/gate/middleware.ts";
+import type { RequireSessionVariables } from "../src/middleware.ts";
+import {
+  makeRequirePrincipal,
+  type RequirePrincipalVariables,
+  sha256Hex,
+} from "../src/principal.ts";
+
+type Variables = RequirePrincipalVariables & RequireSessionVariables;
+
+function fakeKv(initial: Record<string, string> = {}): KVNamespace {
+  const store = new Map(Object.entries(initial));
+  return {
+    get: async (key: string) => store.get(key) ?? null,
+    put: async (key: string, value: string) => {
+      store.set(key, value);
+    },
+    delete: async (key: string) => {
+      store.delete(key);
+    },
+    list: async () => ({ keys: [], list_complete: true, cursor: "" }),
+    getWithMetadata: async () => ({ value: null, metadata: null, cacheStatus: null }),
+  } as unknown as KVNamespace;
+}
+
+function buildAnonApp(kv: KVNamespace) {
+  const app = new Hono<{ Variables: Variables }>();
+  const requirePrincipal = makeRequirePrincipal({
+    getSession: async () => null,
+    isRevoked: async () => false,
+  });
+  const gatePreAlpha = makeGatePreAlpha({ kv, eventsQueue: undefined });
+  app.post("/v1/ask", requirePrincipal, gatePreAlpha, (c) => c.json({ ok: true }));
+  return app;
+}
+
+function buildSessionApp(kv: KVNamespace, userId: string) {
+  const app = new Hono<{ Variables: Variables }>();
+  const gatePreAlpha = makeGatePreAlpha({ kv, eventsQueue: undefined });
+  app.post(
+    "/v1/databases",
+    async (c, next) => {
+      c.set("session", {
+        user: { id: userId, email: "x@x.test" },
+        session: { token: "tok_x", userId },
+      });
+      return next();
+    },
+    gatePreAlpha,
+    (c) => c.json({ ok: true }),
+  );
+  return app;
+}
+
+const ANON_BEARER = "Bearer anon_test_0123456789abcdef";
+
+describe("gatePreAlpha — closed branch (today: BIRD 0.318, Spider null)", () => {
+  it("blocks an anon /v1/ask with 403 feature_gated + progress payload", async () => {
+    const app = buildAnonApp(fakeKv());
+    const res = await app.request("/v1/ask", {
+      method: "POST",
+      headers: { authorization: ANON_BEARER },
+    });
+    expect(res.status).toBe(403);
+    const body = (await res.json()) as {
+      error: {
+        status: string;
+        message: string;
+        action: string;
+        waitlist_url: string;
+        gate: {
+          bird_accuracy: number;
+          spider_accuracy: number | null;
+          bird_target: number;
+          spider_target: number;
+          measured_at: string;
+        };
+      };
+    };
+    expect(body.error.status).toBe("feature_gated");
+    expect(body.error.action).toBe("Join the waitlist");
+    expect(body.error.waitlist_url).toMatch(/waitlist/);
+    expect(body.error.gate.bird_target).toBe(0.65);
+    expect(body.error.gate.spider_target).toBe(0.75);
+    expect(body.error.gate.bird_accuracy).toBeGreaterThan(0); // current free-chain value
+    expect(body.error.gate.spider_accuracy).toBeNull(); // SK-QUAL-003 slice 3 unshipped
+  });
+
+  it("blocks an authed-session /v1/databases POST with the same shape", async () => {
+    const app = buildSessionApp(fakeKv(), "u_alice");
+    const res = await app.request("/v1/databases", { method: "POST" });
+    expect(res.status).toBe(403);
+    const body = (await res.json()) as { error: { status: string } };
+    expect(body.error.status).toBe("feature_gated");
+  });
+});
+
+describe("gatePreAlpha — allowlist bypass (SK-GATE-003)", () => {
+  it("passes a session whose user_id is in gate:user:*", async () => {
+    const kv = fakeKv({ "gate:user:u_partner": "1" });
+    const app = buildSessionApp(kv, "u_partner");
+    const res = await app.request("/v1/databases", { method: "POST" });
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ ok: true });
+  });
+
+  it("does NOT pass anon principals on the allowlist path (anon has no account)", async () => {
+    // Even if a stray gate:user:anon:* somehow exists, anon's
+    // allowlistKey is null from accountTenantIdFromPrincipal so the
+    // lookup short-circuits.
+    const kv = fakeKv({ "gate:user:anon:0123456789abcdef": "1" });
+    const app = buildAnonApp(kv);
+    const res = await app.request("/v1/ask", {
+      method: "POST",
+      headers: { authorization: ANON_BEARER },
+    });
+    expect(res.status).toBe(403);
+  });
+});
+
+describe("gatePreAlpha — invite-code bypass (SK-GATE-003)", () => {
+  it("passes when X-Invite-Code matches a hashed entry in KV", async () => {
+    const code = "NLQDB-PARTNER-001";
+    const hash = await sha256Hex(code, 32);
+    const kv = fakeKv({ [`gate:invite:${hash}`]: "1" });
+    const app = buildAnonApp(kv);
+    const res = await app.request("/v1/ask", {
+      method: "POST",
+      headers: { authorization: ANON_BEARER, "x-invite-code": code },
+    });
+    expect(res.status).toBe(200);
+  });
+
+  it("rejects an unknown invite code with the gate body", async () => {
+    const app = buildAnonApp(fakeKv());
+    const res = await app.request("/v1/ask", {
+      method: "POST",
+      headers: { authorization: ANON_BEARER, "x-invite-code": "WRONG" },
+    });
+    expect(res.status).toBe(403);
+  });
+
+  it("an anon caller with a valid invite code clears the gate (GLOBAL-007: no login wall)", async () => {
+    const code = "open-sesame";
+    const hash = await sha256Hex(code, 32);
+    const kv = fakeKv({ [`gate:invite:${hash}`]: "1" });
+    const app = buildAnonApp(kv);
+    const res = await app.request("/v1/ask", {
+      method: "POST",
+      headers: { authorization: ANON_BEARER, "x-invite-code": code },
+    });
+    expect(res.status).toBe(200);
+  });
+});
+
+describe("gatePreAlpha — bypass precedence is OR (any hit passes)", () => {
+  it("allowlisted user with a wrong invite code still passes via the allowlist", async () => {
+    const kv = fakeKv({ "gate:user:u_partner": "1" });
+    const app = buildSessionApp(kv, "u_partner");
+    const res = await app.request("/v1/databases", {
+      method: "POST",
+      headers: { "x-invite-code": "WRONG" },
+    });
+    expect(res.status).toBe(200);
+  });
+});

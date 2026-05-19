@@ -127,6 +127,8 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 - **GLOBAL-020** — No "pick a region", no config files in the first 60s.
 - **GLOBAL-023** — Trust UX baseline.
   - *In this feature:* the chat panel renders the diff inline before commit (per `SK-TRUST-001`), the trace pane sits below the answer with collapsed-by-default state (per `SK-TRUST-002`), and low-confidence refusals surface as click-to-disambiguate chips (per `SK-TRUST-003`). See [`trust-ux/FEATURE.md`](../trust-ux/FEATURE.md).
+- **GLOBAL-027** — Pre-alpha gate.
+  - *In this feature:* the legacy Cmd+G chord reveal and every `[data-cmdg-gate]` attribute were removed; the hero `<CreateForm>` and the "Sign in" link now render unconditionally. Submission failure renders the BIRD/Spider progress bar + waitlist CTA inside `apps/web/src/components/CreateForm.tsx` (`FeatureGatedView`). See [`pre-alpha-gate/FEATURE.md`](../pre-alpha-gate/FEATURE.md).
 
 ## Open questions / known unknowns
 
