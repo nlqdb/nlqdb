@@ -37,7 +37,7 @@ const rendered = Object.fromEntries(
 <section class="codepanel" aria-labelledby="codepanel-title" data-api-base={apiBase}>
   <header class="codepanel__head">
     <h2 class="codepanel__title" id="codepanel-title">
-      Three ways in. Same backend &mdash; the one that doesn&rsquo;t exist.
+      Pick a way in. Same backend &mdash; the one that doesn&rsquo;t exist.
     </h2>
     <p class="codepanel__lede">
       Each snippet is the entire integration. No boilerplate omitted, no
@@ -63,12 +63,52 @@ const rendered = Object.fromEntries(
         copyLabel={`Copy ${rendered.html.label} snippet`}
       />
     </Fragment>
+    <Fragment slot="react">
+      <CodeBlock
+        id={rendered.react.domId}
+        lang={rendered.react.lang}
+        highlightedHtml={rendered.react.highlightedHtml}
+        copyLabel={`Copy ${rendered.react.label} snippet`}
+      />
+    </Fragment>
+    <Fragment slot="vue">
+      <CodeBlock
+        id={rendered.vue.domId}
+        lang={rendered.vue.lang}
+        highlightedHtml={rendered.vue.highlightedHtml}
+        copyLabel={`Copy ${rendered.vue.label} snippet`}
+      />
+    </Fragment>
     <Fragment slot="sdk">
       <CodeBlock
         id={rendered.sdk.domId}
         lang={rendered.sdk.lang}
         highlightedHtml={rendered.sdk.highlightedHtml}
         copyLabel={`Copy ${rendered.sdk.label} snippet`}
+      />
+    </Fragment>
+    <Fragment slot="curl">
+      <CodeBlock
+        id={rendered.curl.domId}
+        lang={rendered.curl.lang}
+        highlightedHtml={rendered.curl.highlightedHtml}
+        copyLabel={`Copy ${rendered.curl.label} snippet`}
+      />
+    </Fragment>
+    <Fragment slot="mcp">
+      <CodeBlock
+        id={rendered.mcp.domId}
+        lang={rendered.mcp.lang}
+        highlightedHtml={rendered.mcp.highlightedHtml}
+        copyLabel={`Copy ${rendered.mcp.label} snippet`}
+      />
+    </Fragment>
+    <Fragment slot="swift">
+      <CodeBlock
+        id={rendered.swift.domId}
+        lang={rendered.swift.lang}
+        highlightedHtml={rendered.swift.highlightedHtml}
+        copyLabel={`Copy ${rendered.swift.label} snippet`}
       />
     </Fragment>
   </Tabs>
