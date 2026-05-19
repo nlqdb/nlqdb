@@ -20,8 +20,8 @@ when-to-load:
 
 ## Touchpoints — read this feature before editing
 
-- `tools/eval/` — benchmark runner (slices 1 + 2 shipped):
-  - `src/runner.ts` — main driver, CLI entry, lane loop, baseline + emit integration
+- `tools/eval/` — benchmark runner (slices 1 + 2 + 3a shipped):
+  - `src/runner.ts` — multi-dataset driver, CLI entry, lane loop, baseline + emit integration
   - `src/score.ts` — execution-accuracy scorer (multiset / sequence-strict)
   - `src/lanes.ts` — free + single-model frontier router builders
   - `src/baseline.ts` — read baseline JSON + per-lane diff + McNemar (`SK-QUAL-006`)
@@ -31,7 +31,8 @@ when-to-load:
   - `src/datasets/spider2-lite.ts` — Spider 2.0-lite SQLite-subset loader (`SK-QUAL-007`); fetches from `xlang-ai/Spider2@main` raw (HF mirror is stale per 2026-05-19 verification)
   - `src/output.ts` — JSON report writer
   - `baseline-2026-06-15.json` — pinned canonical baseline (`SK-QUAL-005`)
-- `.github/workflows/quality-eval-bird-mini.yml` — weekly Mon 04:00 UTC + manual dispatch
+- `.github/workflows/quality-eval-bird-mini.yml` — BIRD Mini-Dev weekly cron, Mon 04:00 UTC + manual dispatch
+- `.github/workflows/quality-eval-spider2-lite.yml` — Spider 2.0-lite weekly cron, Tue 04:00 UTC + manual dispatch (`SK-QUAL-007`)
 - `apps/api/src/events-feature.ts::recordEvalReport` — bearer-token cron ingestion
 - `apps/api/src/index.ts` — `POST /v1/events/eval` route wiring
 - `packages/events/src/types.ts` — `FeatureEvalWeeklyEvent`, `FeatureEvalRegressionEvent`
@@ -48,7 +49,7 @@ when-to-load:
 - **Decision:** The eval harness runs two open benchmarks: **BIRD** (Big Bench for Industrial Database; messy real-world schemas — BIRD Mini-Dev ships 500 questions across 11 SQLite DBs, with MySQL + Postgres transpilations added 2025-07) and **Spider 2.0-lite** (SQLite subset only — the upstream `xlang-ai/Spider2@main` ships **547 rows** total across BigQuery (180) / Snowflake (207) / SQLite (135) / Google-Analytics SF (25); DuckDB lives in the separate `spider2-dbt` dataset, not lite; zero Postgres rows. Cross-engine generalisation evidence comes from BIRD's dialect transpilations instead). Accuracy is reported separately for each tier of the [`llm-router`](../llm-router/FEATURE.md) — Tier 1 (cheap classify), Tier 2 (Sonnet plan), Tier 3 (Opus hard) — and separately with and without the semantic-layer scaffolding.
 - **Core value:** Bullet-proof, Honest latency
 - **Why:** A single accuracy number averaged across tiers hides the failure mode (Opus is fine, Tier 1 misroutes). Per-tier reporting tells us *which model* to retrain / swap / cap. BIRD is the standard "messy real-world" benchmark and the closest analogue to the schemas users build with `db.create`. Spider 2.0 covers dialect / cross-domain generalization that BIRD doesn't. Both are public; results stay comparable to published research.
-- **Consequence in code:** `tools/eval/src/runner.ts` (shipped slice 1) loads BIRD Mini-Dev, calls `packages/llm/src/router.ts::plan()` with the question + schema, executes the generated SQL against the BIRD SQLite fixtures, and compares the result-set to the gold answer. Per-lane accuracy lands in `tools/eval/results/<iso>.json`; baseline diff + event emission ship in slice 2 per `SK-QUAL-002`. Spider 2.0-lite SQLite loader ships in slice 3. The harness is a tool, not a CI gate (see `SK-QUAL-002`).
+- **Consequence in code:** `tools/eval/src/runner.ts` (shipped slice 1) loads BIRD Mini-Dev, calls `packages/llm/src/router.ts::plan()` with the question + schema, executes the generated SQL against the BIRD SQLite fixtures, and compares the result-set to the gold answer. Per-lane accuracy lands in `tools/eval/results/<iso>.json`; baseline diff + event emission ship in slice 2 per `SK-QUAL-002`. Spider 2.0-lite SQLite loader ships in slice 3a (24-of-135 rows scored via gold SQL per [`SK-QUAL-007`](#sk-qual-007); slice 3b lifts the remaining 111 via the multi-CSV result-set path). The harness is a tool, not a CI gate (see `SK-QUAL-002`).
 - **Alternatives rejected:**
   - Bespoke internal benchmark — non-comparable to research; no external validity.
   - WikiSQL only — too easy; saturated by 2024.

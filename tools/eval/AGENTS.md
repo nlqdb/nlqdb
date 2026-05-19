@@ -81,9 +81,9 @@ bun run --filter @nlqdb/eval spider2-lite -- \
 
 ## Conventions
 
-- **No real LLM in PR CI.** Unit tests stub the router; the daily
-  workflow `.github/workflows/quality-eval-bird-mini.yml` is the only
-  place real provider keys run.
+- **No real LLM in PR CI.** Unit tests stub the router; the weekly
+  workflows `.github/workflows/quality-eval-{bird-mini,spider2-lite}.yml`
+  are the only places real provider keys run.
 - **EX (execution match) only.** Exact-match is gameable (BIRD's
   rationale + 2024 leaderboard collapse). When ORDER BY is present in
   gold SQL, comparison is sequence-strict; otherwise multiset.

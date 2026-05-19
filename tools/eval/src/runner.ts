@@ -107,7 +107,14 @@ function summariseLane(lane: DispatchLane, results: QuestionResult[]): LaneSumma
   const attempted = filtered.length;
   const scoreable = attempted - tally.gold_error;
   const ea = pct(tally.match, scoreable);
-  const sortedLatencies = filtered.map((r) => r.latency_ms).sort((a, b) => a - b);
+  // Exclude `gold_error` rows from the latency percentile — Spider 2.0-lite
+  // short-circuits 111 of 135 to `gold_error` with `latency_ms: 0` per
+  // SK-QUAL-007, which would otherwise collapse p50 toward zero and hide
+  // real regression in the rows that *did* hit the LLM.
+  const sortedLatencies = filtered
+    .filter((r) => r.outcome !== "gold_error")
+    .map((r) => r.latency_ms)
+    .sort((a, b) => a - b);
   return {
     lane,
     attempted,
@@ -406,4 +413,4 @@ if (import.meta.main) {
     });
 }
 
-export const _testing = { summariseLane, percentile, introspectSchema };
+export const _testing = { summariseLane, percentile, introspectSchema, parseDatasetFlag };

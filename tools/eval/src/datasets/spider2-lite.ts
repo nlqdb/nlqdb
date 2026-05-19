@@ -22,7 +22,6 @@ import type { EvalQuestion } from "../types.ts";
 // record the slice-3 baseline so leaderboard churn can't bump our numbers.
 const SPIDER2_LITE_JSONL_URL =
   "https://raw.githubusercontent.com/xlang-ai/Spider2/main/spider2-lite/spider2-lite.jsonl";
-// Gold SQL files live in the same repo at one file per instance.
 const SPIDER2_LITE_GOLD_SQL_URL_BASE =
   "https://raw.githubusercontent.com/xlang-ai/Spider2/main/spider2-lite/evaluation_suite/gold/sql/";
 // `instance_id` prefix that flags an SQLite-flavoured row (vs `bq###` / `sf###` / `ga###`).
@@ -56,12 +55,8 @@ export type LoadedSpider2Lite = {
   resolveDbPath: (db_id: string) => Promise<string | null>;
 };
 
-// Spider 2.0-lite JSONL is one object per line. Each row carries
-// `instance_id`, `db`, `question`, `external_knowledge`; gold SQL lives in
-// a separate per-instance file. We don't ingest `external_knowledge` here —
-// it points at a markdown filename whose body would have to be fetched
-// from `resource/documents/` — that lands in a follow-up slice so this PR
-// stays loader-only.
+// `external_knowledge` is a filename pointing at `resource/documents/<file>.md`;
+// we capture it but don't fetch the body (deferred to a follow-up slice).
 export type RawSpider2LiteEntry = {
   instance_id: string;
   db: string;
