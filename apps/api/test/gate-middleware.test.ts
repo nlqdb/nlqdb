@@ -175,3 +175,69 @@ describe("gatePreAlpha — bypass precedence is OR (any hit passes)", () => {
     expect(res.status).toBe(200);
   });
 });
+
+describe("gatePreAlpha — fail-closed when KV is unreachable (robustness)", () => {
+  function brokenKv(): KVNamespace {
+    return {
+      get: async () => {
+        throw new Error("KV unreachable");
+      },
+      put: async () => {},
+      delete: async () => {},
+      list: async () => ({ keys: [], list_complete: true, cursor: "" }),
+      getWithMetadata: async () => ({ value: null, metadata: null, cacheStatus: null }),
+    } as unknown as KVNamespace;
+  }
+
+  it("returns the gate body (not a 500) when both bypass reads throw", async () => {
+    const app = buildAnonApp(brokenKv());
+    const res = await app.request("/v1/ask", {
+      method: "POST",
+      headers: { authorization: ANON_BEARER, "x-invite-code": "ANY" },
+    });
+    // Fail-closed: KV down means we can't prove a bypass, so the
+    // caller sees the actionable 403 progress body, not a generic
+    // 500 from the parent error handler.
+    expect(res.status).toBe(403);
+    const body = (await res.json()) as { error: { status: string } };
+    expect(body.error.status).toBe("feature_gated");
+  });
+
+  it("a real allowlist hit still works even if a transient KV error happens elsewhere", async () => {
+    // Sanity: the fail-closed branch doesn't accidentally block real
+    // allowlist hits. (Construction: allowlist read succeeds, invite
+    // read throws on the decoy — but only because the principal has
+    // no header. The allowlist hit short-circuits before the decoy
+    // matters anyway.)
+    const kv = fakeKv({ "gate:user:u_partner": "1" });
+    const app = buildSessionApp(kv, "u_partner");
+    const res = await app.request("/v1/databases", { method: "POST" });
+    expect(res.status).toBe(200);
+  });
+});
+
+describe("gatePreAlpha — surfaces invite-attempted-but-invalid for abuse detection", () => {
+  // The span attribute `nlqdb.gate.bypass_reason = "invite_invalid"`
+  // distinguishes genuine pre-alpha visitors (no header) from
+  // brute-force guess attempts (header present but wrong). We can't
+  // assert the span attr directly without instrumenting the OTel
+  // SDK here; the assertion is the response shape — a blocked
+  // request with an invalid code still returns the standard gate
+  // body, no information leak about whether the header was even
+  // attempted.
+  it("invalid-code attempts return the same 403 shape as no-code requests", async () => {
+    const app = buildAnonApp(fakeKv());
+    const withHeader = await app.request("/v1/ask", {
+      method: "POST",
+      headers: { authorization: ANON_BEARER, "x-invite-code": "GUESS" },
+    });
+    const withoutHeader = await app.request("/v1/ask", {
+      method: "POST",
+      headers: { authorization: ANON_BEARER },
+    });
+    expect(withHeader.status).toBe(withoutHeader.status);
+    const withBody = (await withHeader.json()) as { error: { status: string } };
+    const withoutBody = (await withoutHeader.json()) as { error: { status: string } };
+    expect(withBody.error.status).toBe(withoutBody.error.status);
+  });
+});

@@ -151,24 +151,44 @@ export function makeGatePreAlpha(deps: GateDeps): MiddlewareHandler<{
         span.setAttribute("nlqdb.principal.kind", subject?.kind ?? "unknown");
 
         const inviteHeader = c.req.header(INVITE_CODE_HEADER) ?? null;
-        const [allowlisted, invited] = await Promise.all([
+        const inviteAttempted = (inviteHeader ?? "").trim().length > 0;
+        const [allowlistOutcome, inviteOutcome] = await Promise.all([
           isUserAllowlisted(deps.kv, subject?.allowlistKey ?? null),
           isInviteValid(deps.kv, inviteHeader),
         ]);
 
-        if (allowlisted) {
+        // Surface KV errors on the span without crashing the request
+        // (fail-closed at the bypass layer per `bypass.ts` header).
+        // An operator who sees `nlqdb.gate.kv_error` non-empty in
+        // traces knows to investigate KV health before assuming a
+        // genuine pre-alpha block.
+        if (allowlistOutcome.error || inviteOutcome.error) {
+          span.setAttribute(
+            "nlqdb.gate.kv_error",
+            allowlistOutcome.error ?? inviteOutcome.error ?? "",
+          );
+        }
+
+        if (allowlistOutcome.hit) {
           span.setAttribute("nlqdb.gate.outcome", "pass");
           span.setAttribute("nlqdb.gate.bypass_reason", "allowlist");
           return await next();
         }
-        if (invited) {
+        if (inviteOutcome.hit) {
           span.setAttribute("nlqdb.gate.outcome", "pass");
           span.setAttribute("nlqdb.gate.bypass_reason", "invite_code");
           return await next();
         }
 
         span.setAttribute("nlqdb.gate.outcome", "block");
-        span.setAttribute("nlqdb.gate.bypass_reason", "none");
+        // Distinguish "no invite presented" from "invite presented
+        // but invalid" — the latter is signal for brute-force guess
+        // attempts. Operators can alert on a spike in
+        // `bypass_reason=invite_invalid` from a single principal.
+        span.setAttribute(
+          "nlqdb.gate.bypass_reason",
+          inviteAttempted ? "invite_invalid" : "none",
+        );
 
         // `SK-GATE-006` — fire-and-forget demand-signal emit. Per
         // `GLOBAL-024`, every "not yet" path produces a typed event.

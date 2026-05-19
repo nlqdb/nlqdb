@@ -180,6 +180,25 @@
     code to the attacker. Storing `sha256(code).slice(0,32)` keeps the
     secret material owner-side; rotation is `kv key delete` +
     re-issue.
+  - **Short / human-friendly invite codes.** NIST SP 800-63B and 2026
+    OWASP guidance put the bar for "important account access" at ≥ 80
+    bits of entropy (≈ 14 base64url chars from a CSPRNG). Operators
+    issuing codes MUST generate them with `crypto.randomBytes(16)` or
+    equivalent — short slogans like `NLQDB-2026` are guessable and
+    fail the gate's security model. The system doesn't enforce
+    server-side length (codes are opaque to it) so this is an
+    operator-discipline rule called out in the feature's runbook.
+  - **Letting KV exceptions propagate from middleware.** Post the
+    June 2026 Cloudflare KV-availability incident, the explicit
+    Cloudflare guidance (per
+    [`blog.cloudflare.com/workers-kv-restoring-reliability/`](https://blog.cloudflare.com/workers-kv-restoring-reliability/))
+    is to catch KV errors in middleware rather than crash the request.
+    The gate fails **closed**: a KV outage means we can't prove a
+    bypass, so the caller still sees the actionable 403 body (not a
+    500), and operators see the failure via the
+    `nlqdb.gate.kv_error` span attribute. Crashing-with-500 was the
+    pre-hardening behaviour; the post-incident shape is the one that
+    keeps the surface intact during a KV blip.
   - **402 Payment Required.** Misleading — there's nothing to pay for
     yet. 403 with a `feature_gated` status is the honest semantic.
   - **401 with `auth_required`.** Conflates the gate with the

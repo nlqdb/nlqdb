@@ -30,60 +30,60 @@ function fakeKv(initial: Record<string, string> = {}): {
 }
 
 describe("isUserAllowlisted", () => {
-  it("returns true when the principal id is present under gate:user:<id>", async () => {
+  it("returns hit:true when the principal id is present under gate:user:<id>", async () => {
     const { kv } = fakeKv({ "gate:user:u_design_partner": "1" });
-    expect(await isUserAllowlisted(kv, "u_design_partner")).toBe(true);
+    expect(await isUserAllowlisted(kv, "u_design_partner")).toEqual({ hit: true });
   });
 
-  it("returns false for an absent id", async () => {
+  it("returns hit:false for an absent id", async () => {
     const { kv } = fakeKv();
-    expect(await isUserAllowlisted(kv, "u_stranger")).toBe(false);
+    expect(await isUserAllowlisted(kv, "u_stranger")).toEqual({ hit: false });
   });
 
   it("short-circuits on null id without a KV read (anon, no account)", async () => {
     const { kv, getCalls } = fakeKv();
-    expect(await isUserAllowlisted(kv, null)).toBe(false);
+    expect(await isUserAllowlisted(kv, null)).toEqual({ hit: false });
     expect(getCalls).toEqual([]);
   });
 });
 
 describe("isInviteValid — codes stored hashed, lookup timing constant", () => {
-  it("returns true when the hashed code is present", async () => {
+  it("returns hit:true when the hashed code is present", async () => {
     const code = "NLQDB-EARLY-2026";
     const hash = await sha256Hex(code, 32);
     const { kv } = fakeKv({ [`gate:invite:${hash}`]: "1" });
-    expect(await isInviteValid(kv, code)).toBe(true);
+    expect(await isInviteValid(kv, code)).toEqual({ hit: true });
   });
 
-  it("returns false for an unknown code", async () => {
+  it("returns hit:false for an unknown code", async () => {
     const { kv } = fakeKv();
-    expect(await isInviteValid(kv, "GUESS-2026")).toBe(false);
+    expect(await isInviteValid(kv, "GUESS-2026")).toEqual({ hit: false });
   });
 
   it("trims surrounding whitespace before hashing", async () => {
     const code = "NLQDB-EARLY-2026";
     const hash = await sha256Hex(code, 32);
     const { kv } = fakeKv({ [`gate:invite:${hash}`]: "1" });
-    expect(await isInviteValid(kv, `  ${code}\n`)).toBe(true);
+    expect(await isInviteValid(kv, `  ${code}\n`)).toEqual({ hit: true });
   });
 
   it("issues a decoy KV read when the header is absent (constant timing)", async () => {
     const { kv, getCalls } = fakeKv();
-    expect(await isInviteValid(kv, null)).toBe(false);
+    expect(await isInviteValid(kv, null)).toEqual({ hit: false });
     expect(getCalls.length).toBe(1);
     expect(getCalls[0]).toMatch(/^gate:invite:/);
   });
 
   it("issues a decoy KV read when the header is empty", async () => {
     const { kv, getCalls } = fakeKv();
-    expect(await isInviteValid(kv, "")).toBe(false);
+    expect(await isInviteValid(kv, "")).toEqual({ hit: false });
     expect(getCalls.length).toBe(1);
   });
 
   it("never stores or looks up the plaintext code", async () => {
     const code = "secret-code-do-not-leak";
     const { kv, getCalls } = fakeKv({ [`gate:invite:plain-${code}`]: "1" });
-    expect(await isInviteValid(kv, code)).toBe(false);
+    expect(await isInviteValid(kv, code)).toEqual({ hit: false });
     expect(getCalls.every((k) => !k.includes(code))).toBe(true);
   });
 });
@@ -97,13 +97,39 @@ describe("bypass — allowlist + invite run in parallel", () => {
       isUserAllowlisted(kv, "u_1"),
       isInviteValid(kv, "unknown"),
     ]);
-    expect(results).toEqual([true, false]);
+    expect(results).toEqual([{ hit: true }, { hit: false }]);
   });
+});
 
-  it("KV errors propagate (fail-safe at the caller)", async () => {
-    const kv = {
+describe("bypass — fail-closed on KV outage (SK-GATE-003 hardening)", () => {
+  // Post the June 2026 Cloudflare KV incident, the explicit Cloudflare
+  // guidance is to catch KV exceptions in middleware rather than let
+  // them propagate. The gate fails closed: the caller treats the KV
+  // outage as "no bypass", returns 403 with the progress body, and the
+  // operator sees the failure via the `nlqdb.gate.kv_error` span attr.
+  function brokenKv(): KVNamespace {
+    return {
       get: vi.fn().mockRejectedValue(new Error("KV down")),
     } as unknown as KVNamespace;
-    await expect(isUserAllowlisted(kv, "u_x")).rejects.toThrow("KV down");
+  }
+
+  it("isUserAllowlisted returns hit:false + error message on KV throw", async () => {
+    const outcome = await isUserAllowlisted(brokenKv(), "u_x");
+    expect(outcome.hit).toBe(false);
+    expect(outcome.error).toBe("KV down");
+  });
+
+  it("isInviteValid returns hit:false + error message on KV throw", async () => {
+    const outcome = await isInviteValid(brokenKv(), "any-code");
+    expect(outcome.hit).toBe(false);
+    expect(outcome.error).toBe("KV down");
+  });
+
+  it("isInviteValid swallows decoy-read failures (timing not correctness)", async () => {
+    // No invite header → decoy read → throws → still returns hit:false.
+    // No error surfaced because the decoy is for timing shape, not
+    // signal — surfacing it would be a false positive operator alert.
+    const outcome = await isInviteValid(brokenKv(), null);
+    expect(outcome).toEqual({ hit: false });
   });
 });

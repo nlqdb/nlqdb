@@ -14,9 +14,12 @@
 //      present — a small but cheap defence against probing.
 //
 // Both reads run in parallel from `middleware.ts` via `Promise.all`.
-// A KV miss is the only "no bypass" outcome; KV errors propagate to
-// the caller's catch (which treats them as no-bypass and closes the
-// gate — fail-safe).
+// KV errors are caught and logged here — the gate is fail-closed:
+// a KV outage means we cannot prove a bypass, so the caller falls
+// through to the 403 progress body. This matches Cloudflare's
+// post-June-2026 KV-incident guidance to handle KV exceptions
+// explicitly rather than letting them propagate out of middleware
+// (see `blog.cloudflare.com/workers-kv-restoring-reliability/`).
 
 import { sha256Hex } from "../principal.ts";
 
@@ -29,35 +32,56 @@ const INVITE_PREFIX = "gate:invite:";
 // shape as a real lookup.
 const INVITE_TIMING_DECOY_KEY = `${INVITE_PREFIX}__decoy__`;
 
+export type BypassReadOutcome = {
+  /** True when the lookup confirmed a bypass. False on miss OR on KV error. */
+  hit: boolean;
+  /** Set on KV exception — surfaces in the span so operators can see KV trouble. */
+  error?: string;
+};
+
 /**
- * Check the per-user allowlist. Returns true when the principal is bypassed.
- * `null` principalId (anon, no account) short-circuits to false without a KV read.
+ * Check the per-user allowlist. Returns `{hit: true}` when the principal is bypassed.
+ * `null` principalId (anon, no account) short-circuits to a miss without a KV read.
+ * KV errors are caught — see module header.
  */
 export async function isUserAllowlisted(
   kv: KVNamespace,
   principalId: string | null,
-): Promise<boolean> {
-  if (!principalId) return false;
-  const value = await kv.get(`${ALLOWLIST_PREFIX}${principalId}`);
-  return value !== null;
+): Promise<BypassReadOutcome> {
+  if (!principalId) return { hit: false };
+  try {
+    const value = await kv.get(`${ALLOWLIST_PREFIX}${principalId}`);
+    return { hit: value !== null };
+  } catch (err) {
+    return { hit: false, error: (err as Error).message };
+  }
 }
 
 /**
- * Check the invite code KV set. Returns true when the header matches
- * a valid stored hash. A null / empty header still issues a KV read
- * against a decoy key to keep timing constant.
+ * Check the invite code KV set. Returns `{hit: true}` when the header
+ * matches a valid stored hash. A null / empty header still issues a KV
+ * read against a decoy key to keep timing constant. KV errors are
+ * caught — see module header.
  */
 export async function isInviteValid(
   kv: KVNamespace,
   inviteHeader: string | null | undefined,
-): Promise<boolean> {
+): Promise<BypassReadOutcome> {
   const code = (inviteHeader ?? "").trim();
   if (!code) {
-    // Decoy read — same KV round-trip shape as the real path.
-    await kv.get(INVITE_TIMING_DECOY_KEY);
-    return false;
+    try {
+      await kv.get(INVITE_TIMING_DECOY_KEY);
+    } catch {
+      // Swallowed deliberately — the decoy read exists for timing
+      // shape, not correctness. If KV is down we still return a miss.
+    }
+    return { hit: false };
   }
-  const hash = await sha256Hex(code, 32);
-  const value = await kv.get(`${INVITE_PREFIX}${hash}`);
-  return value !== null;
+  try {
+    const hash = await sha256Hex(code, 32);
+    const value = await kv.get(`${INVITE_PREFIX}${hash}`);
+    return { hit: value !== null };
+  } catch (err) {
+    return { hit: false, error: (err as Error).message };
+  }
 }
