@@ -9,7 +9,7 @@ Standalone landing page. No backend, no auth — purely static + Cloudflare Page
 
 ## Features relevant to this area
 
-_Static landing page (intentionally minimal). The `/install` file is a Phase-2 placeholder for [SK-CLI-002](../../docs/features/cli/decisions/SK-CLI-002-distribution-channels.md)'s curl-pipe-sh entry point — swap for the signed-tarball installer once the release pipeline ships. Follow the GLOBAL-NNN decisions only._
+_No feature-specific feature — this area is intentionally minimal (static / landing only). Follow the GLOBAL-NNN decisions only._
 
 ## Commands
 

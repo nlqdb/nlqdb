@@ -35,7 +35,7 @@ Deferred to follow-up slices — gated on server endpoints that don't exist yet:
 - `cli/**` (the canonical source tree once Phase 2 starts)
 - npm shim `@nlqdb/cli` distribution
 - Homebrew tap `nlqdb/tap`
-- `https://nlqdb.com/install` (curl-pipe-sh entry point — placeholder at `apps/coming-soon/install` until [SK-CLI-002](decisions/SK-CLI-002-distribution-channels.md)'s release pipeline ships)
+- `https://nlqdb.com/install` (curl-pipe-sh entry point — placeholder at `apps/web/public/install` until [SK-CLI-002](decisions/SK-CLI-002-distribution-channels.md)'s release pipeline ships)
 - OS keychains via `zalando/go-keyring` (Keychain / libsecret / Credential Manager)
 - AES-GCM fallback file at `~/.config/nlqdb/credentials.enc` (machine-keyed)
 - Non-secret prefs at `~/.config/nlqdb/config.toml`
