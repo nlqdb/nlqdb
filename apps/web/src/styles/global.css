@@ -906,6 +906,20 @@ h3 {
   padding: clamp(40px, 8vw, 96px) 24px;
   min-height: 60vh;
 }
+/* The boot-fallback sits at the end of <body> in source order, so a
+   stray reveal would otherwise flow under whatever the page already
+   painted (e.g. the site footer). Pinning it as a fixed overlay
+   means a reveal always replaces the view it interrupts — defence
+   in depth alongside the boot-script gate that suppresses reveals
+   after DOMContentLoaded. ErrorBoundary stays in-flow because it
+   replaces an island's own children. */
+#boot-fallback:not([hidden]) {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: var(--bg-base);
+  overflow-y: auto;
+}
 .err-boundary__card,
 .boot-fallback__card {
   border: 2px solid var(--border-strong);

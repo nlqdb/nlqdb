@@ -7,11 +7,12 @@
 //
 // Pair this with `Base.astro`'s pre-hydration `boot-fallback` block —
 // that one catches `error` / `unhandledrejection` for crashes that
-// happen BEFORE React mounts (chunk-load failures, top-level eval
-// errors). ErrorBoundary catches throws DURING render / lifecycle.
-// We also set `window.__nlqdbBooted = true` on mount so the
-// pre-hydration handler stops revealing its panel for post-React
-// errors — those belong to the boundary, not the boot-fallback.
+// happen BEFORE the page renders (chunk-load failures, top-level
+// eval errors). ErrorBoundary catches throws DURING render /
+// lifecycle. We also set `window.__nlqdbBooted = true` on mount as
+// belt-and-braces — `Base.astro` already sets it on
+// `DOMContentLoaded` so static pages close the gate too, but
+// duplicating it here keeps the post-React invariant explicit.
 //
 // Reports go through `lib/error-report.ts` so the boundary and the
 // pre-hydration handler share one payload shape + dedup + abuse

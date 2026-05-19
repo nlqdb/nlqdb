@@ -49,12 +49,15 @@ const jsonLd = {
     <slot />
 
     {/* SK-WEB-001 — pre-hydration fallback. Catches crashes that fire
-        BEFORE React mounts (chunk-load failures, top-level eval errors).
-        Hidden by default; the inline script below reveals it on
-        `window.error` / `unhandledrejection`, gated on `__nlqdbBooted`
-        — once a React island mounts and sets that flag, ErrorBoundary
-        owns the recovery UI and this handler stops over-painting on
-        ad-blocker / extension noise. The markup is plain HTML so it
+        BEFORE the page renders (chunk-load failures, top-level eval
+        errors). Hidden by default; the inline script below reveals it
+        on `window.error` / `unhandledrejection` strictly within the
+        boot window — `DOMContentLoaded` flips `__nlqdbBooted` so any
+        later throw belongs to ErrorBoundary (React islands) or the
+        report pipeline, not this panel. Cross-origin and extension
+        events are filtered out entirely. CSS pins the revealed panel
+        as a fixed full-page overlay so it never paints under
+        already-rendered content. The markup is plain HTML so it
         renders even when the JS bundle never executes. */}
     <div id="boot-fallback" hidden role="alert">
       <div class="boot-fallback__card">
@@ -83,6 +86,21 @@ const jsonLd = {
           if (r && r.message) return String(r.message);
           if (typeof r === "string") return r;
           return "Unhandled error.";
+        }
+        // Hand-copy of `lib/boot-fallback.ts#isExternalNoise`. This
+        // script is `is:inline` (must run before any bundle) so it
+        // can't import; the TS module exists so the rule is unit-
+        // tested in `lib/boot-fallback.test.ts`. Keep in sync.
+        function isExternalNoise(e, message) {
+          if (message === "Script error.") return true;
+          var filename = e && e.filename ? String(e.filename) : "";
+          if (!filename) return false;
+          if (filename.indexOf("chrome-extension://") === 0) return true;
+          if (filename.indexOf("moz-extension://") === 0) return true;
+          if (filename.indexOf("safari-web-extension://") === 0) return true;
+          if (filename.indexOf("safari-extension://") === 0) return true;
+          if (filename.indexOf("webkit-masked-url://") === 0) return true;
+          return false;
         }
         // W3C Trace Context — mint a fresh traceparent per report so
         // the server-side span attaches to it. Duplicates the helper
@@ -125,10 +143,13 @@ const jsonLd = {
           } catch (_) {}
         }
         function reveal(message) {
-          // Once React has mounted, ErrorBoundary owns recovery UI.
-          // Skipping reveal here prevents extension / ad-blocker
-          // noise (`window.error` fires for any script throw, ours or
-          // not) from painting a "broken" panel over a healthy page.
+          // Past DOMContentLoaded the page has rendered; any further
+          // throw belongs to ErrorBoundary (React islands) or the
+          // report pipeline. Revealing here would only paint a fake
+          // "broken" panel under healthy content. The CSS overlay
+          // rule is a second line of defence in case this guard ever
+          // regresses — the panel covers the viewport, never flows
+          // under the footer.
           if (window.__nlqdbBooted) {
             report(message);
             return;
@@ -145,8 +166,23 @@ const jsonLd = {
           } catch (_) {}
           report(message);
         }
-        window.addEventListener("error", function (e) { reveal(extractMessage(e)); });
-        window.addEventListener("unhandledrejection", function (e) { reveal(extractMessage(e)); });
+        function onError(e) {
+          var message = extractMessage(e);
+          if (isExternalNoise(e, message)) return;
+          reveal(message);
+        }
+        window.addEventListener("error", onError);
+        window.addEventListener("unhandledrejection", onError);
+        // Close the reveal gate as soon as the static HTML is parsed.
+        // This is what makes the fix robust on every page — including
+        // marketing pages with no React island. ErrorBoundary still
+        // sets the same flag on mount; whichever fires first wins.
+        function markBooted() { window.__nlqdbBooted = true; }
+        if (document.readyState === "loading") {
+          document.addEventListener("DOMContentLoaded", markBooted);
+        } else {
+          markBooted();
+        }
         document.addEventListener("DOMContentLoaded", function () {
           var btn = document.getElementById("boot-fallback-reload");
           if (btn) btn.addEventListener("click", function () { location.reload(); });
