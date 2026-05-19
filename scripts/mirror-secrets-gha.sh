@@ -99,6 +99,9 @@ SECRETS=(
   # Preview CI (preview-app.yml) — Neon ephemeral branches + mock IdP
   NEON_PROJECT_ID
   PREVIEW_BETTER_AUTH_SECRET
+  # npm publish (release-npm.yml) — changesets/action authenticates as
+  # this token when publishing @nlqdb/* packages.
+  NPM_TOKEN
 )
 
 say "Mirroring .envrc → GitHub Actions secrets in $REPO"
