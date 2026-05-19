@@ -38,10 +38,12 @@ jobs:
     with:
       base_url: ${{ needs.deploy-staging.outputs.base_url }}
     # Explicit secrets list keeps the reusable's surface auditable.
-    # LLM_API_KEY = current provider key (Groq; swap to MISTRAL_API_KEY when
-    # Groq daily quota is exhausted — also update OPENAI_BASE_URL + model in tests.yaml).
+    # LLM_API_KEY = current provider key (Mistral; Groq llama-4-scout has a boolean
+    # encoding bug — sends `submit: "true"` (string) instead of bool → 400 errors.
+    # Swap to GROQ_API_KEY + update OPENAI_BASE_URL + model in tests.yaml if Mistral
+    # 50 RPM becomes an issue (only a problem if tests cascade-fail; see pivot log).
     secrets:
-      LLM_API_KEY: ${{ secrets.GROQ_API_KEY }}
+      LLM_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
 
   cleanup:
     name: Delete Neon branch

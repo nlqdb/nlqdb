@@ -114,6 +114,14 @@ export function makeGatePreAlpha(deps: GateDeps): MiddlewareHandler<{
     const tracer = trace.getTracer("@nlqdb/api");
     return tracer.startActiveSpan("nlqdb.gate.check", async (span) => {
       try {
+        // E2E staging bypass: `--var GATE_OPEN:1` in `_e2e-staging.yml`.
+        // MUST remain unset in production (GLOBAL-027 / SK-GATE-003).
+        if ((c.env as Cloudflare.Env).GATE_OPEN === "1") {
+          span.setAttribute("nlqdb.gate.outcome", "pass");
+          span.setAttribute("nlqdb.gate.bypass_reason", "env_bypass");
+          return await next();
+        }
+
         const state = gateState(EVAL_BASELINE);
         setLaneAttrs(span, "bird", state.bird);
         setLaneAttrs(span, "spider", state.spider);

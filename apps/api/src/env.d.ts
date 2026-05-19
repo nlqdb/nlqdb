@@ -122,8 +122,15 @@ declare global {
       // so synthetic events can be POSTed against /v1/stripe/webhook
       // without configuring STRIPE_WEBHOOK_SECRET. The dispatcher,
       // idempotency insert, and downstream emit all run real.
+      //
+      // GATE_OPEN=1: bypasses the GLOBAL-027 pre-alpha gate entirely
+      // so the E2E staging environment can exercise the full create→
+      // write→delete flow without waiting for eval thresholds to clear.
+      // MUST remain unset in production — injected via `--var` in the
+      // E2E staging workflow only.
       MOCK_IDP?: string;
       MOCK_STRIPE?: string;
+      GATE_OPEN?: string;
 
       // Tinybird credentials for the W5 workload analyser (`SK-MIGRATE-001`).
       // The cron reads `query_log` via the Tinybird adapter and
