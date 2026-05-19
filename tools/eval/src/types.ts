@@ -1,14 +1,26 @@
 // Canonical eval-harness types per SK-QUAL-001's execution-accuracy metric.
 
+import type { GoldTable } from "./csv.ts";
+
 export type DispatchLane = "free" | "frontier";
 
 // Datasets the runner can dispatch — extend when SK-QUAL-007 follow-ups land.
 export type EvalDataset = "bird-mini-dev-sqlite" | "spider2-lite-sqlite";
 
+// SK-QUAL-008 — per-instance metadata from `evaluation_suite/gold/spider2lite_eval.jsonl`
+// drives the multi-CSV column-major comparator. `condition_cols` carries either
+// a flat `number[]` (broadcast across all golds) or a `number[][]` (per-gold);
+// the scorer normalises both shapes the same way the upstream Python does.
+export type Spider2EvalPayload = {
+  gold_tables: GoldTable[];
+  condition_cols: number[] | number[][];
+  ignore_order: boolean;
+};
+
 // Generic question shape — BIRD and Spider 2.0-lite both fit. `evidence` is
-// BIRD-only (annotator hint); `instance_id` is Spider-only (string row key);
-// `sql` is empty when the dataset row has no usable gold SQL (Spider rows
-// scored via the multi-CSV result-set path per `SK-QUAL-007`).
+// BIRD-only (annotator hint); `instance_id` + `spider2` are Spider-only.
+// `sql` is empty for Spider rows (the multi-CSV gold lives in `spider2`
+// per SK-QUAL-008); BIRD rows always populate it.
 export type EvalQuestion = {
   question_id: number;
   db_id: string;
@@ -17,6 +29,7 @@ export type EvalQuestion = {
   sql: string;
   difficulty?: "simple" | "moderate" | "challenging";
   instance_id?: string;
+  spider2?: Spider2EvalPayload;
 };
 
 // Legacy alias — kept so existing imports + the `baseline-2026-06-15.json`

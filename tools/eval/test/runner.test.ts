@@ -324,7 +324,7 @@ describe("runEval — end-to-end with mocked routers", () => {
     expect(report.lanes[0]?.attempted).toBe(2);
   });
 
-  it("dispatches `--dataset spider2-lite-sqlite` through the injected loader and tags the report (SK-QUAL-007)", async () => {
+  it("dispatches `--dataset spider2-lite-sqlite` to the multi-CSV scorer for rows with a spider2 payload (SK-QUAL-008)", async () => {
     const report = await runEval({
       dataset: "spider2-lite-sqlite",
       outDir,
@@ -335,32 +335,37 @@ describe("runEval — end-to-end with mocked routers", () => {
           router: {
             ...fakeRouter("SELECT 1"),
             plan: async (): Promise<PlanResponse> => ({
-              sql: "SELECT COUNT(*) FROM pet WHERE species='cat'",
+              sql: "SELECT name FROM pet WHERE species='cat'",
               model: "fake",
               confidence: 1,
             }),
           },
         },
       ],
-      // Tiny Spider-shaped fixture: one row with gold SQL (matches the
-      // 24-of-135 path), one without (matches the 111-of-135 path).
+      // Two Spider-shaped rows: one with a spider2 payload (multi-CSV path)
+      // matches the prediction; the other has no gold of any kind and
+      // short-circuits to gold_error.
       loadDataset: async () => ({
         questions: [
           {
             question_id: 0,
             instance_id: "local003",
             db_id: "pets",
-            question: "How many cats?",
+            question: "Cat names?",
             evidence: "",
-            sql: "SELECT COUNT(*) FROM pet WHERE species='cat'",
+            sql: "",
+            spider2: {
+              gold_tables: [{ columns: ["name"], cells: [["whisk", "milo"]] }],
+              condition_cols: [],
+              ignore_order: true,
+            },
           },
           {
             question_id: 1,
             instance_id: "local007",
             db_id: "pets",
-            question: "Career batting averages",
+            question: "No gold",
             evidence: "",
-            // Empty gold SQL → SK-QUAL-007 short-circuit to gold_error.
             sql: "",
           },
         ],
@@ -370,12 +375,59 @@ describe("runEval — end-to-end with mocked routers", () => {
     });
     expect(report.dataset).toBe("spider2-lite-sqlite");
     const free = report.lanes.find((l) => l.lane === "free");
-    // 1 match + 1 short-circuited gold_error → EA over the 1 scoreable row.
     expect(free?.match).toBe(1);
     expect(free?.gold_error).toBe(1);
     expect(free?.execution_accuracy).toBe(1);
     expect(report.results.find((r) => r.question_id === 0)?.instance_id).toBe("local003");
-    expect(report.results.find((r) => r.question_id === 1)?.error).toMatch(/no gold SQL/);
+    expect(report.results.find((r) => r.question_id === 1)?.error).toMatch(
+      /no gold SQL or gold CSV/,
+    );
+  });
+
+  it("returns mismatch when the prediction doesn't match any gold CSV variant (multi-gold path)", async () => {
+    const report = await runEval({
+      dataset: "spider2-lite-sqlite",
+      outDir,
+      buildLanes: () => [
+        {
+          lane: "free",
+          modelHint: "free-fake",
+          router: {
+            ...fakeRouter("SELECT 1"),
+            plan: async (): Promise<PlanResponse> => ({
+              sql: "SELECT name FROM pet",
+              model: "fake",
+              confidence: 1,
+            }),
+          },
+        },
+      ],
+      loadDataset: async () => ({
+        questions: [
+          {
+            question_id: 0,
+            instance_id: "local003",
+            db_id: "pets",
+            question: "Cat names?",
+            evidence: "",
+            sql: "",
+            spider2: {
+              gold_tables: [
+                { columns: ["name"], cells: [["nope1"]] },
+                { columns: ["name"], cells: [["nope2"]] },
+              ],
+              condition_cols: [],
+              ignore_order: true,
+            },
+          },
+        ],
+        resolveDbPath: async () => join(dir, "dev_databases", "pets", "pets.sqlite"),
+      }),
+      writeReport: async () => "stub.json",
+    });
+    const free = report.lanes.find((l) => l.lane === "free");
+    expect(free?.match).toBe(0);
+    expect(free?.mismatch).toBe(1);
   });
 
   it("does not emit when only one of emit-url/emit-token is set (caller forgot one)", async () => {

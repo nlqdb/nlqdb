@@ -4,9 +4,17 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { _testing, scoreOne } from "../src/score.ts";
+import type { GoldTable } from "../src/csv.ts";
+import {
+  _testing,
+  compareMultiPandasTable,
+  comparePandasTable,
+  normaliseConditionCols,
+  scoreOne,
+  scoreOneSpider2,
+} from "../src/score.ts";
 
-const { canonicalize, rowsMatch, hasOrderBy, normalizeSql } = _testing;
+const { canonicalize, rowsMatch, hasOrderBy, normalizeSql, vectorsMatch, cellsEqual } = _testing;
 
 describe("canonicalize", () => {
   it("treats null and undefined the same", () => {
@@ -143,5 +151,288 @@ describe("scoreOne — against an on-disk SQLite fixture", () => {
       predictedSql: "SELECT name FROM pet ORDER BY id ASC",
     });
     expect(r.outcome).toBe("mismatch");
+  });
+});
+
+// SK-QUAL-008 — canonical pandas-comparator port. Tests verify the three
+// invariants that must not drift from upstream (`evaluation_suite/evaluate_utils.py`):
+// numeric tolerance = 1e-2, ignore_order sorts on (null, str, is-numeric),
+// and `condition_cols` restricts gold but never restricts the prediction.
+describe("cellsEqual", () => {
+  it("treats null and undefined as equivalent NaN sentinels", () => {
+    expect(cellsEqual(null, null)).toBe(true);
+    expect(cellsEqual(null, undefined)).toBe(true);
+  });
+
+  it("applies the 1e-2 absolute tolerance on numeric pairs", () => {
+    expect(cellsEqual(1.005, 1.0)).toBe(true);
+    expect(cellsEqual(1.02, 1.0)).toBe(false);
+    expect(cellsEqual(100, 100.005)).toBe(true);
+  });
+
+  it("treats a number and its string representation as a mismatch (pandas dtype-divergence rule)", () => {
+    expect(cellsEqual(5, "5")).toBe(false);
+  });
+
+  it("uses string equality otherwise", () => {
+    expect(cellsEqual("abc", "abc")).toBe(true);
+    expect(cellsEqual("abc", "abd")).toBe(false);
+  });
+});
+
+describe("vectorsMatch", () => {
+  it("sequence-strict when ignoreOrder=false", () => {
+    expect(vectorsMatch([1, 2, 3], [1, 2, 3], false)).toBe(true);
+    expect(vectorsMatch([1, 2, 3], [3, 2, 1], false)).toBe(false);
+  });
+
+  it("ignores order when ignoreOrder=true", () => {
+    expect(vectorsMatch([1, 2, 3], [3, 2, 1], true)).toBe(true);
+  });
+
+  it("returns false when lengths differ even under ignoreOrder", () => {
+    expect(vectorsMatch([1, 2], [1, 2, 3], true)).toBe(false);
+  });
+
+  it("uses the (null, str, is-numeric) sort key — numeric 5 and string '5' end adjacent but unequal under cellsEqual", () => {
+    // Predicted as string "5" should NOT match gold as number 5 even with sort.
+    expect(vectorsMatch([5, 5], ["5", "5"], true)).toBe(false);
+  });
+
+  it("respects null in sorted multisets without crashing on the comparator", () => {
+    expect(vectorsMatch([null, 1, 2], [2, 1, null], true)).toBe(true);
+  });
+});
+
+describe("comparePandasTable", () => {
+  it("matches when every gold column finds any matching pred column", () => {
+    const pred = [
+      [1, 2, 3],
+      ["a", "b", "c"],
+    ];
+    const gold = [["a", "b", "c"]];
+    expect(comparePandasTable(pred, gold, [], true)).toBe(true);
+  });
+
+  it("mismatches when a gold column has no matching pred column", () => {
+    const pred = [[1, 2, 3]];
+    const gold = [["a", "b", "c"]];
+    expect(comparePandasTable(pred, gold, [], true)).toBe(false);
+  });
+
+  it("restricts gold to condition_cols, leaves pred unrestricted", () => {
+    const pred = [
+      ["x", "y", "z"],
+      [1, 2, 3],
+    ];
+    // Gold has 3 cols; only col 1 must find a pred match.
+    const gold = [
+      ["a", "b", "c"],
+      ["x", "y", "z"],
+      [99, 99, 99],
+    ];
+    expect(comparePandasTable(pred, gold, [1], true)).toBe(true);
+    // Col 0 must match — it shouldn't.
+    expect(comparePandasTable(pred, gold, [0], true)).toBe(false);
+  });
+
+  it("returns false when condition_cols points past the last gold column", () => {
+    expect(comparePandasTable([], [["a"]], [5], true)).toBe(false);
+  });
+});
+
+describe("normaliseConditionCols", () => {
+  it("broadcasts a flat number[] across multiple golds", () => {
+    expect(normaliseConditionCols([1, 2], 3)).toEqual([
+      [1, 2],
+      [1, 2],
+      [1, 2],
+    ]);
+  });
+
+  it("passes a per-gold number[][] through verbatim", () => {
+    expect(normaliseConditionCols([[1], [2], [3]], 3)).toEqual([[1], [2], [3]]);
+  });
+
+  it("treats empty list as no restriction on any gold", () => {
+    expect(normaliseConditionCols([], 2)).toEqual([[], []]);
+  });
+
+  it("treats [[]] as no restriction on any gold (canonical Python edge case)", () => {
+    expect(normaliseConditionCols([[]], 2)).toEqual([[], []]);
+  });
+
+  it("treats null/undefined as no restriction", () => {
+    expect(normaliseConditionCols(null, 2)).toEqual([[], []]);
+    expect(normaliseConditionCols(undefined, 2)).toEqual([[], []]);
+  });
+
+  it("passes a single-gold flat list verbatim (no broadcast when goldCount=1)", () => {
+    expect(normaliseConditionCols([0], 1)).toEqual([[0]]);
+  });
+});
+
+describe("compareMultiPandasTable", () => {
+  const goldA: GoldTable = { columns: ["x"], cells: [["a", "b"]] };
+  const goldB: GoldTable = { columns: ["x"], cells: [["a", "z"]] };
+
+  it("returns match when prediction matches any of the multi-gold tables", () => {
+    const pred = [["b", "a"]];
+    expect(compareMultiPandasTable(pred, [goldA, goldB], [], true)).toBe(true);
+  });
+
+  it("returns mismatch when prediction matches none of the multi-gold tables", () => {
+    const pred = [["q", "r"]];
+    expect(compareMultiPandasTable(pred, [goldA, goldB], [], true)).toBe(false);
+  });
+
+  it("applies per-gold condition_cols when provided as number[][]", () => {
+    // Two golds, both have two columns. Pred has only one column that matches gold col 0 of gold A.
+    const gA: GoldTable = {
+      columns: ["x", "y"],
+      cells: [
+        ["a", "b"],
+        [1, 2],
+      ],
+    };
+    const gB: GoldTable = {
+      columns: ["x", "y"],
+      cells: [
+        ["q", "r"],
+        [3, 4],
+      ],
+    };
+    const pred = [["b", "a"]];
+    // Force gA to check col 1 only (numeric → mismatch with pred string col).
+    // Force gB to check col 0 only (string "q","r" — mismatch).
+    expect(compareMultiPandasTable(pred, [gA, gB], [[1], [0]], true)).toBe(false);
+    // Now check gA col 0 (matches) — should win regardless of gB.
+    expect(compareMultiPandasTable(pred, [gA, gB], [[0], [1]], true)).toBe(true);
+  });
+
+  it("returns false when goldTables is empty (canonical: nothing to match against)", () => {
+    expect(compareMultiPandasTable([["a"]], [], [], true)).toBe(false);
+  });
+});
+
+describe("scoreOneSpider2 — execution + multi-CSV scoring", () => {
+  let dir: string;
+  let dbPath: string;
+
+  beforeEach(() => {
+    dir = mkdtempSync(join(tmpdir(), "nlqdb-spider2score-"));
+    dbPath = join(dir, "fixture.sqlite");
+    const db = new Database(dbPath);
+    db.exec("CREATE TABLE pet (id INTEGER PRIMARY KEY, name TEXT, species TEXT);");
+    db.exec(
+      "INSERT INTO pet (id, name, species) VALUES (1,'whisk','cat'),(2,'rex','dog'),(3,'milo','cat');",
+    );
+    db.close();
+  });
+
+  afterEach(() => {
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it("scores match when predicted SELECT yields a column matching the gold CSV", async () => {
+    const gold: GoldTable = { columns: ["name"], cells: [["whisk", "milo"]] };
+    const r = await scoreOneSpider2({
+      dbPath,
+      predictedSql: "SELECT name FROM pet WHERE species='cat'",
+      goldTables: [gold],
+      conditionCols: [],
+      ignoreOrder: true,
+    });
+    expect(r.outcome).toBe("match");
+  });
+
+  it("scores mismatch when no pred column matches", async () => {
+    const gold: GoldTable = { columns: ["name"], cells: [["nope"]] };
+    const r = await scoreOneSpider2({
+      dbPath,
+      predictedSql: "SELECT name FROM pet",
+      goldTables: [gold],
+      conditionCols: [],
+      ignoreOrder: true,
+    });
+    expect(r.outcome).toBe("mismatch");
+  });
+
+  it("scores match when prediction has extra columns alongside the matching one", async () => {
+    const gold: GoldTable = { columns: ["name"], cells: [["whisk", "milo"]] };
+    const r = await scoreOneSpider2({
+      dbPath,
+      predictedSql: "SELECT id, name, species FROM pet WHERE species='cat'",
+      goldTables: [gold],
+      conditionCols: [],
+      ignoreOrder: true,
+    });
+    expect(r.outcome).toBe("match");
+  });
+
+  it("uses condition_cols to restrict gold (broadcast across multi-gold)", async () => {
+    // Gold has two columns; condition_cols restricts to col 0 only.
+    const gold: GoldTable = {
+      columns: ["name", "id"],
+      cells: [
+        ["whisk", "milo"],
+        [1, 3],
+      ],
+    };
+    const r = await scoreOneSpider2({
+      dbPath,
+      predictedSql: "SELECT name FROM pet WHERE species='cat'",
+      goldTables: [gold],
+      conditionCols: [0],
+      ignoreOrder: true,
+    });
+    expect(r.outcome).toBe("match");
+  });
+
+  it("scores exec_error on broken predicted SQL", async () => {
+    const r = await scoreOneSpider2({
+      dbPath,
+      predictedSql: "SELECT FROM",
+      goldTables: [{ columns: ["x"], cells: [[1]] }],
+      conditionCols: [],
+      ignoreOrder: true,
+    });
+    expect(r.outcome).toBe("exec_error");
+    expect(r.error).toBeTruthy();
+  });
+
+  it("scores no_sql when predicted SQL is empty", async () => {
+    const r = await scoreOneSpider2({
+      dbPath,
+      predictedSql: "",
+      goldTables: [{ columns: ["x"], cells: [[1]] }],
+      conditionCols: [],
+      ignoreOrder: true,
+    });
+    expect(r.outcome).toBe("no_sql");
+  });
+
+  it("scores gold_error when no gold tables are provided (defensive guard)", async () => {
+    const r = await scoreOneSpider2({
+      dbPath,
+      predictedSql: "SELECT 1",
+      goldTables: [],
+      conditionCols: [],
+      ignoreOrder: true,
+    });
+    expect(r.outcome).toBe("gold_error");
+  });
+
+  it("uses tolerance on numeric columns (matches Spider 2.0's 1e-2 abs_tol)", async () => {
+    // Predicted query yields 3 (count), gold has 3.005 — should still match.
+    const gold: GoldTable = { columns: ["c"], cells: [[3.005]] };
+    const r = await scoreOneSpider2({
+      dbPath,
+      predictedSql: "SELECT COUNT(*) AS c FROM pet",
+      goldTables: [gold],
+      conditionCols: [],
+      ignoreOrder: true,
+    });
+    expect(r.outcome).toBe("match");
   });
 });

@@ -1,8 +1,10 @@
 # quality-eval — Spider 2.0-lite SQLite-subset free-vs-frontier run.
-# SK-QUAL-007: 24-of-135 `local###` rows scored against gold SQL today;
-# slice 3b adds multi-CSV result-set scoring for the remaining 111.
-# Same weekly cadence as BIRD per SK-QUAL-002 — staggered by one day so
-# the two runs don't share a free-tier RPM ceiling.
+# SK-QUAL-007 + SK-QUAL-008: all 135 `local###` rows scored via the
+# canonical multi-CSV result-set evaluator (column-major comparator with
+# 1e-2 numeric tolerance + per-instance `condition_cols` / `ignore_order`
+# from `evaluation_suite/gold/spider2lite_eval.jsonl`). Same weekly
+# cadence as BIRD per SK-QUAL-002 — staggered by one day so the two runs
+# don't share a free-tier RPM ceiling.
 
 name: Quality eval — Spider 2.0-lite
 
@@ -47,23 +49,41 @@ jobs:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
       - uses: ./.github/actions/setup
 
-      # Spider 2.0-lite's questions JSONL + gold SQL files live in the
-      # upstream GitHub repo; the SQLite database files are on Google
-      # Drive (per the upstream README quickstart). gdown handles the
-      # interstitial confirm token. Keyed by workflow hash so a config
-      # change forces a refresh.
+      # Spider 2.0-lite has two upstream pieces:
+      #   (1) The questions JSONL + the `evaluation_suite/gold/` tree
+      #       (`spider2lite_eval.jsonl` + 135 instances × 1–4 multi-CSV
+      #       gold result-set files) — both live in xlang-ai/Spider2 on
+      #       GitHub. We sparse-clone just `spider2-lite/` (~2 MB).
+      #   (2) The SQLite database files (~150 MB unzipped) hosted on
+      #       Google Drive per the upstream README quickstart. gdown
+      #       handles Drive's interstitial confirm token.
+      # Bumping the cache key forces a fresh download on the next run.
       - name: Cache Spider 2.0-lite fixtures
         id: spider2-cache
         uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         with:
           path: spider2_data
-          key: spider2-lite-v1-${{ hashFiles('.github/workflows/quality-eval-spider2-lite.yml') }}
+          key: spider2-lite-v2-${{ hashFiles('.github/workflows/quality-eval-spider2-lite.yml') }}
 
       - name: Download Spider 2.0-lite (when cache miss)
         if: steps.spider2-cache.outputs.cache-hit != 'true'
         run: |
           set -euo pipefail
-          mkdir -p spider2_data/gold-sql spider2_data/resource/databases/spider2-localdb
+          mkdir -p spider2_data/resource/databases/spider2-localdb
+          # Gold tree (eval metadata + multi-CSV gold answers) — sparse
+          # clone `spider2-lite/evaluation_suite/gold/` from upstream.
+          # `--filter=blob:none` defers blob fetches until checkout, so
+          # the initial clone stays metadata-only; `--sparse` then narrows
+          # the checkout to one subdirectory (~2 MB on disk vs ~150 MB
+          # for the full repo).
+          tmp_clone=$(mktemp -d)
+          git clone --depth 1 --filter=blob:none --sparse \
+            https://github.com/xlang-ai/Spider2 "$tmp_clone"
+          (cd "$tmp_clone" && git sparse-checkout set spider2-lite/evaluation_suite/gold spider2-lite/spider2-lite.jsonl)
+          mkdir -p spider2_data/evaluation_suite
+          cp -r "$tmp_clone/spider2-lite/evaluation_suite/gold" spider2_data/evaluation_suite/gold
+          cp "$tmp_clone/spider2-lite/spider2-lite.jsonl" spider2_data/spider2-lite.jsonl
+          rm -rf "$tmp_clone"
           # SQLite database files — Google Drive (upstream README §1).
           # File ID `1coEVsCZq-Xvj9p2TnhBFoFTsY-UoYGmG` from
           # github.com/xlang-ai/Spider2/tree/main/spider2-lite README.
@@ -142,6 +162,6 @@ jobs:
               "",
               "Free-vs-frontier delta: " + (if .free_vs_frontier_delta == null then "n/a" else ((.free_vs_frontier_delta * 100 | tostring) + " pts") end),
               "",
-              "Note (SK-QUAL-007): 24 of 135 rows ship gold SQL today. The remaining 111 emit `gold_error` until slice 3b lands the multi-CSV result-set scorer; EA above is over the 24 scoreable rows only."
+              "Note (SK-QUAL-008): all 135 `local###` rows now score via the canonical Spider 2.0 multi-CSV evaluator (column-major comparator, 1e-2 abs tolerance, per-instance `condition_cols` / `ignore_order`). `gold_error` here means the instance had no gold CSV in the cached `evaluation_suite/gold/exec_result/` tree, not a routing short-circuit."
             ' "$latest"
           } >> "$GITHUB_STEP_SUMMARY"

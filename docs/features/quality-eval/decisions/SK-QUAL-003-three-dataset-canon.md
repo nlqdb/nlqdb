@@ -20,11 +20,14 @@ Parent feature: [`quality-eval/FEATURE.md`](../FEATURE.md).
   upstream ships **547 rows total** (180 BigQuery, 207 Snowflake, 135
   SQLite, 25 GA-on-Snowflake; zero Postgres rows; DuckDB lives in the
   separate `spider2-dbt` dataset). We restrict to the **135 `local###`
-  rows**; of those, **24 ship a gold SQL file** and the remaining 111
-  are scored via the canonical multi-CSV result-set path (slice 3b per
-  [`SK-QUAL-007`](./SK-QUAL-007-spider2-lite-loader.md)). Cross-engine
-  generalisation evidence comes from BIRD's dialect transpilations
-  (added 2025-07) instead.
+  rows**; all 135 are scored via the canonical multi-CSV result-set
+  path (slice 3b per
+  [`SK-QUAL-008`](./SK-QUAL-008-spider2-lite-multi-csv-scorer.md);
+  slice-3a loader contract from
+  [`SK-QUAL-007`](./SK-QUAL-007-spider2-lite-loader.md) governs file
+  layout + path-traversal guards). Cross-engine generalisation
+  evidence comes from BIRD's dialect transpilations (added 2025-07)
+  instead.
 - **Core value:** Bullet-proof, Honest latency, Free
 - **Why:** Public benchmarks are gameable and stale — BIRD's
   distribution doesn't match a `db.create` schema, and Spider 2.0's
@@ -43,10 +46,13 @@ Parent feature: [`quality-eval/FEATURE.md`](../FEATURE.md).
   canonical 547. Corrected 2026-05.
 - **Consequence in code:** `tools/eval/src/datasets/` ships three
   loaders: `bird-mini.ts` (shipped slice 1), `spider2-lite.ts` (shipped
-  slice 3a — 135 SQLite questions; 24 scored, 111 deferred to slice 3b
-  per [`SK-QUAL-007`](./SK-QUAL-007-spider2-lite-loader.md)), and
-  `internal.ts` (slice 3 — reads `db.create` accepted-answer rows from
-  a dedicated R2 bucket with `principal.id` stripped at write time per
+  slices 3a + 3b — all 135 SQLite questions scored via the canonical
+  multi-CSV evaluator per
+  [`SK-QUAL-007`](./SK-QUAL-007-spider2-lite-loader.md) +
+  [`SK-QUAL-008`](./SK-QUAL-008-spider2-lite-multi-csv-scorer.md)),
+  and `internal.ts` (slice 3 — reads `db.create` accepted-answer rows
+  from a dedicated R2 bucket with `principal.id` stripped at write
+  time per
   [`GLOBAL-024`](../../../decisions/GLOBAL-024-demand-signal-telemetry.md)'s
   privacy contract). The weekly cron runs all three once slice 3
   lands. The Grafana panel shows three lines, plus the
