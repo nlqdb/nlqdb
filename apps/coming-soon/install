@@ -1,8 +1,5 @@
 #!/bin/sh
-# Phase 2 placeholder. Lives in apps/coming-soon/ because nlqdb.com
-# still serves that worker until the DNS flip to apps/web (see
-# apps/web/wrangler.toml). Replace with the signed-tarball installer
-# once SK-CLI-002's release pipeline ships.
+# SK-CLI-002 placeholder — swap for the signed-tarball installer when the release pipeline ships.
 cat >&2 <<'EOF'
 nlq — the nlqdb CLI
 
