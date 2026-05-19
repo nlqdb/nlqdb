@@ -10,13 +10,16 @@
 # Runtime substitution: the caller workflow renders `__BASE_URL__` to the
 # per-run preview alias via `sed` before invoking `bunx opencheck`.
 #
-# LLM: Mistral via OpenAI-compat (https://docs.mistral.ai/api/).
-# Current: `mistral-small-latest`
-# Budget: 50K TPM, ~1B tokens/month, 50 RPM, 128K ctx.
-# Fallback: swap to Groq llama-4-scout + update OPENAI_BASE_URL in workflow.
+# LLM: Groq via OpenAI-compat (https://console.groq.com/docs/openai).
+# Current: `meta-llama/llama-4-scout-17b-16e-instruct`
+# Budget: 30K TPM, 1000 RPM, 500K TPD, 512K ctx.
+# Fallback: swap to Mistral mistral-small-latest + update OPENAI_BASE_URL in workflow.
 #
-# Pivot history (newest first — researched 2026-05-18):
-#   7. mistral-small-latest [CURRENT] — Mistral, 50K TPM, ~1B/month, 128K ctx,
+# Pivot history (newest first — researched 2026-05-19):
+#   8. meta-llama/llama-4-scout-17b-16e-instruct [CURRENT] — Groq, 30K TPM, 500K TPD,
+#      1000 RPM, 512K ctx; switched back from Mistral — run #38: Mistral 50 RPM
+#      caused cascade 240s timeouts once per-minute budget hit
+#   7. mistral-small-latest — Mistral, 50K TPM, ~1B/month, 128K ctx,
 #      50 RPM; switched from Groq after Groq TPD exhausted on run #32
 #   6. meta-llama/llama-4-scout-17b-16e-instruct — Groq, 30K TPM, 500K TPD,
 #      1000 RPM, 512K ctx; exhausted 500K TPD on single run #32 (2026-05-18)
@@ -26,16 +29,16 @@
 #   2. OpenRouter qwen3-coder:free — 429 on first call; shared upstream pool
 #   1. Gemini 2.5 Flash — 10 RPM ceiling; 75-87s silent-retry tax
 #
-# Top 5 free LLM models for agentic/tool-use (verified 2026-05-18):
-#   1. Groq meta-llama/llama-4-scout-17b-16e-instruct — 30K TPM, 500K TPD, 512K ctx, fast ReAct; our primary
-#   2. Mistral mistral-small-latest — 50K TPM, 50 RPM, ~1B tokens/month, 128K ctx; best TPM headroom
-#   3. Groq llama-3.3-70b-versatile — 12K TPM, 100K TPD, 128K ctx; stronger reasoning, tighter daily budget
-#   4. Cerebras llama3.1-8b — 30K TPM, 1M TPD, 5 RPM, 8K ctx (free cap); high daily but RPM+ctx constrained
-#   5. NVIDIA NIM meta/llama-3.1-70b-instruct — credits-based, 40 RPM, 128K ctx; reliable fallback
+# Top 5 free LLM models for agentic/tool-use (verified 2026-05-19 via live rate-limit API checks):
+#   1. Groq meta-llama/llama-4-scout-17b-16e-instruct — 30K TPM, 1000 RPM, 500K TPD, 512K ctx; fastest ReAct; current
+#   2. Mistral mistral-small-latest — 50K TPM, 50 RPM, ~1B/month, 128K ctx; huge monthly budget; RPM too low for agentic loops
+#   3. Groq llama-3.3-70b-versatile — 12K TPM, 1000 RPM, 100K TPD, 128K ctx; stronger reasoning, tighter daily budget
+#   4. Groq qwen/qwen3-32b — 6K TPM, 1000 RPM, 128K ctx; Qwen3 architecture; tight TPM rules it out as sole model
+#   5. Cerebras llama3.1-8b — 30K TPM, 1M TPD, 5 RPM, 8K ctx (free cap); vast daily budget; 8K ctx too small for snapshots
 
 baseUrl: "__BASE_URL__"
 modelProvider: "openai"
-model: "mistral-small-latest"
+model: "meta-llama/llama-4-scout-17b-16e-instruct"
 
 # Persistent session shares cookies + localStorage across tests so the
 # agent doesn't have to re-walk the prereq chain from a clean profile
@@ -229,10 +232,11 @@ tests:
 
   - name: "#sign-out"
     case: |
-      #api-keys-mint-and-revoke, then navigate back to "/app", open
-      the topnav user menu and click "Sign out". Verify the URL is
-      no longer "/app" and the topnav shows a "Sign in" link instead
-      of the user menu.
+      #api-keys-mint-and-revoke, then navigate back to "/app". In
+      the top navigation bar there is a direct "Sign out" button
+      (no dropdown or user-menu needed — it is visible directly in
+      the primary nav). Click it. Verify the URL is no longer "/app"
+      and the "Sign out" button is no longer in the nav.
 
   - name: "#sign-in-again"
     case: |
@@ -247,11 +251,14 @@ tests:
 
   - name: "#delete-remaining-db"
     case: |
-      #sign-in-again, then in the sidebar click the "×" button on
-      the remaining database row whose name starts with "users"
-      (aria-label "Delete users…"). When the modal opens, copy the
-      exact name from the <code> block into the confirmation input,
-      then click "Delete". Verify the dialog closes and the
-      sidebar's database list is now empty (only the "All
-      databases" item remains; the rail shows "No databases yet —
-      create one." or no DB rows).
+      #sign-in-again. Delete ALL database entries in the sidebar
+      whose names start with "users" (there may be one or more
+      due to prior test runs). For each such entry: click its "×"
+      button (aria-label starts with "Delete "), copy the exact
+      name shown in the <code> block in the modal into the
+      confirmation input (must match character-for-character,
+      including spaces), click "Delete", and wait for the dialog
+      to close before proceeding to the next. After all "users*"
+      entries are gone, verify the sidebar's database list is
+      empty (only the "All databases" item remains and the rail
+      shows "No databases yet — create one." or no DB rows).
