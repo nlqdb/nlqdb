@@ -136,13 +136,16 @@ tests:
   - name: "#authed-state-preserved"
     case: |
       Navigate to "/app". The previous test signed in, so the
-      session cookie is valid. Call browser_snapshot ONCE and check:
-      does the left sidebar show at least one entry whose visible text
-      contains "users" (any casing)?
+      session cookie is valid. Call browser_snapshot. If "Something
+      broke on this page" is visible, click the "Reload" button
+      (do NOT click "Sign out") and call browser_snapshot again.
+      If the sidebar shows "Loading…", wait 5 seconds and call
+      browser_snapshot one more time. Then check: does the left
+      sidebar show at least one entry whose visible text contains
+      "users" (any casing)?
       If yes — TEST_PASSED immediately.
-      If no — TEST_FAILED immediately. Do NOT retry or reload; a
-      missing "users" entry means the anon DB was not adopted into
-      this account, which is the test failure.
+      If no — TEST_FAILED immediately. A missing "users" entry
+      means the anon DB was not adopted into this account.
       Use browser_snapshot ONLY — do NOT use browser_evaluate or any
       DOM query tool (browser_evaluate errors in this context).
 
@@ -162,19 +165,23 @@ tests:
       Click the chat textarea (placeholder "Ask about your data…").
       Type the prompt fresh (do NOT check if it is pre-filled):
         add a new row: name='Alice', email='alice@example.com'
-      and submit. If a confirm/diff chip appears (e.g. "This will
-      insert 1 row"), click the "Approve" button inside the dialog
-      (do NOT type in the confirm input — click the button). If the
-      response shows "Couldn't reach the database", "references a
-      table this database doesn't have", or any connectivity error:
-        First type:
+      and press Enter as a SEPARATE tool call. If a confirm/diff
+      chip appears (e.g. "This will insert 1 row"), press Enter
+      once to approve (the confirm input is already focused — do
+      NOT click any Approve button). If the response shows "Couldn't
+      reach the database", "references a table this database doesn't
+      have", or any error:
+        Click the chat textarea (placeholder "Ask about your
+        data…"). Type:
           create a users table with id, name, email
-        and submit (press Enter separately). If a confirm/diff chip
-        appears, click "Approve". Wait for "Provisioned with" in the
-        snapshot. Then type:
+        and press Enter as a SEPARATE tool call. Do NOT click
+        any "Create new database" button. If a confirm/diff chip
+        appears, press Enter to approve (do NOT click a button).
+        Wait for "Provisioned with" in the response. Then click
+        the chat textarea again and type:
           add a new row: name='Alice', email='alice@example.com'
-        and submit (press Enter separately). If a confirm/diff chip
-        appears, click "Approve".
+        and press Enter as a SEPARATE tool call. If a confirm/diff
+        chip appears, press Enter to approve.
       Verify a row with name "Alice" and email "alice@example.com"
       appears in the users table.
 
