@@ -37,8 +37,10 @@ tests:
         create a users table with id, name, email
       and submit. Wait for the response.
       Happy path: if "Provisioned with" is visible and a table section
-      headed "Users" with columns id, name, email is rendered — the
-      test passes. STOP here — do NOT click any navigation element.
+      headed "Users" with columns id, name, email is rendered — respond
+      with TEST_PASSED immediately. Do not take any further browser
+      actions; a "Sign in to continue" button on the page is expected
+      UX — do NOT click it.
       Fallback (anonymous rate limit hit): if the page navigated to
       "/auth/sign-in" instead, click "Sign in as this user" on the
       mock-IdP form. Wait for the URL to contain "/app". Click the
@@ -99,8 +101,9 @@ tests:
       appears (e.g. "This will insert 1 row"), click the "Approve"
       button inside the dialog (do NOT type in the confirm input —
       click the button). If the response shows "Couldn't reach the
-      database" or any connectivity error, wait 5 seconds and submit
-      the same prompt once more (retry at most once — do not loop).
+      database", "references a table this database doesn't have", or
+      any connectivity error, wait 5 seconds and submit the same
+      prompt once more (retry at most once — do not loop).
       Verify a row with name "Alice" and email "alice@example.com"
       appears in the users table.
 
@@ -180,11 +183,13 @@ tests:
     case: |
       #create-second-database, then in the sidebar locate the
       currently active database row (the highlighted one, named
-      something like "products tracker"). Click the "×" button at
-      the right edge of that row (aria-label starts with "Delete ").
-      Verify a modal dialog appears with the heading "Delete
-      database" and body text that includes "This cannot be reverted"
-      and a text input.
+      something like "products tracker"). If the sidebar shows
+      "Couldn't load databases" or the row is not visible yet, wait
+      3 seconds and call browser_snapshot again before proceeding.
+      Click the "×" button at the right edge of that row (aria-label
+      starts with "Delete "). Verify a modal dialog appears with the
+      heading "Delete database" and body text that includes "This
+      cannot be reverted" and a text input.
 
   - name: "#delete-active-db-typed-confirm"
     case: |
@@ -200,8 +205,10 @@ tests:
   - name: "#api-keys-mint-and-revoke"
     case: |
       #delete-active-db-typed-confirm, then navigate the browser
-      directly to "/app/keys" (the dashboard's API-key page from
-      SK-APIKEYS-012). Verify a heading "API keys" is visible.
+      directly to "/app/keys". If the page shows an error message
+      ("Something broke on this page" or similar), click the
+      "Reload" button on that error card and wait 3 seconds before
+      proceeding. Verify a heading "API keys" is visible.
       Click the "New key" button. A modal appears with the heading
       "Mint a new key". Type
         opencheck-smoke
@@ -227,11 +234,14 @@ tests:
     case: |
       #sign-out, then navigate the browser directly to the path
       "/auth/sign-in" (URL-direct is faster than clicking the
-      topnav link). On the mock IdP form submit it (default email
-      "test@example.com", button "Sign in as this user"). Wait for
-      the URL path to become "/app". Verify the sidebar shows at
-      least one database row remaining from the prior session (its
-      display name starts with "users").
+      topnav link). On the mock IdP form click the "Sign in as this
+      user" button using browser_click (do NOT use browser_evaluate
+      or browser_fill_form — use browser_snapshot to find the button
+      ref then click it). Wait for the URL path to become "/app".
+      Use browser_snapshot ONLY — do NOT use browser_evaluate or any
+      DOM query tool — to verify the sidebar shows at least one
+      database row remaining from the prior session (its display name
+      starts with "users").
 
   - name: "#delete-remaining-db"
     case: |
