@@ -1,0 +1,204 @@
+---
+// CLI device-flow approval (`SK-CLI-006` / `SK-AUTH-004`). The polling
+// CLI opens `verification_uri_complete` here; one click POSTs the
+// `user_code` to `/v1/auth/device/approve`, which mints an `sk_live_`
+// bound to this session and stashes it for the CLI's next poll.
+
+import Footer from "../components/Footer.astro";
+import Topnav from "../components/Topnav.astro";
+import Base from "../layouts/Base.astro";
+
+const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
+---
+<Base
+  title="Sign in to the CLI — nlqdb"
+  description="Approve a new nlq CLI device."
+>
+  <div class="page page--cli" id="cli-shell" data-api-base={apiBase} hidden>
+    <Topnav current="chat" />
+    <main class="page__main page__main--cli">
+      <section class="cli-approve">
+        <h1>Sign in to the nlq CLI</h1>
+        <p class="cli-approve__desc">
+          The CLI on your computer is asking permission to sign in as
+          <strong id="cli-user-email">you</strong>. Make sure the code below
+          matches the one printed in your terminal.
+        </p>
+        <div class="cli-approve__code-row">
+          <span class="cli-approve__label">Code</span>
+          <code class="cli-approve__code" id="cli-user-code">—</code>
+        </div>
+        <div class="cli-approve__actions">
+          <button class="cli-approve__btn" id="cli-approve-btn" type="button">
+            Approve this device
+          </button>
+        </div>
+        <p class="cli-approve__hint" id="cli-status" hidden></p>
+      </section>
+    </main>
+    <Footer />
+  </div>
+</Base>
+
+<script>
+  import { fetchSession } from "../lib/session";
+
+  const shell = document.getElementById("cli-shell");
+  if (shell) {
+    const apiBase = ((shell as HTMLElement).dataset["apiBase"] ?? "").replace(/\/$/, "");
+    const params = new URLSearchParams(location.search);
+    const rawCode = (params.get("code") ?? "").trim();
+    const codeEl = document.getElementById("cli-user-code");
+    const emailEl = document.getElementById("cli-user-email");
+    const btn = document.getElementById("cli-approve-btn") as HTMLButtonElement | null;
+    const status = document.getElementById("cli-status");
+
+    function setStatus(text: string, kind: "ok" | "err" | "info" = "info") {
+      if (!status) return;
+      status.textContent = text;
+      status.hidden = false;
+      status.dataset["kind"] = kind;
+    }
+
+    if (!rawCode) {
+      if (codeEl) codeEl.textContent = "(missing)";
+      if (btn) btn.disabled = true;
+      setStatus(
+        "No code in the URL. Re-run `nlq login` and open the link it prints.",
+        "err",
+      );
+    } else if (codeEl) {
+      codeEl.textContent = rawCode;
+    }
+
+    void (async () => {
+      const user = await fetchSession(apiBase);
+      if (!user) {
+        const returnTo = `${location.pathname}${location.search}${location.hash}`;
+        const signInUrl = new URL("/auth/sign-in", location.origin);
+        signInUrl.searchParams.set("return_to", returnTo);
+        location.replace(signInUrl.toString());
+        return;
+      }
+      if (emailEl && user.email) emailEl.textContent = user.email;
+      shell.hidden = false;
+    })();
+
+    btn?.addEventListener("click", async () => {
+      if (!rawCode) return;
+      btn.disabled = true;
+      setStatus("Approving…", "info");
+      try {
+        const res = await fetch(`${apiBase}/v1/auth/device/approve`, {
+          method: "POST",
+          credentials: "include",
+          headers: { "content-type": "application/json", accept: "application/json" },
+          body: JSON.stringify({ user_code: rawCode }),
+        });
+        if (res.ok) {
+          setStatus(
+            "✓ You're signed in to the CLI. You can close this tab and return to your terminal.",
+            "ok",
+          );
+          btn.hidden = true;
+          return;
+        }
+        let err: { error?: string } = {};
+        try {
+          err = (await res.json()) as { error?: string };
+        } catch {
+          // Fall through to generic message.
+        }
+        if (err.error === "invalid_user_code") {
+          setStatus(
+            "Code expired or invalid. Re-run `nlq login` to get a fresh one.",
+            "err",
+          );
+        } else if (err.error === "already_approved") {
+          setStatus(
+            "This device was already approved. Check your terminal — sign-in may already be complete.",
+            "info",
+          );
+        } else {
+          setStatus(`Approval failed (${err.error ?? res.status}). Try again.`, "err");
+          btn.disabled = false;
+        }
+      } catch (e) {
+        setStatus(`Approval failed: ${(e as Error).message}. Try again.`, "err");
+        btn.disabled = false;
+      }
+    });
+  }
+</script>
+
+<style>
+  .page--cli {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+  .page__main--cli {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem 1rem;
+  }
+  .cli-approve {
+    max-width: 32rem;
+    text-align: center;
+  }
+  .cli-approve h1 {
+    margin: 0 0 0.5rem;
+    font-size: 1.5rem;
+  }
+  .cli-approve__desc {
+    color: var(--text-muted, #555);
+    margin: 0 0 1.5rem;
+  }
+  .cli-approve__code-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    padding: 1rem 1.5rem;
+    border: 1px solid var(--border, #ddd);
+    border-radius: 0.5rem;
+    background: var(--surface, #fafafa);
+    margin-bottom: 1.5rem;
+  }
+  .cli-approve__label {
+    text-transform: uppercase;
+    font-size: 0.75rem;
+    letter-spacing: 0.08em;
+    color: var(--text-muted, #777);
+  }
+  .cli-approve__code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 1.25rem;
+    letter-spacing: 0.1em;
+  }
+  .cli-approve__btn {
+    padding: 0.625rem 1.25rem;
+    font-size: 1rem;
+    border-radius: 0.375rem;
+    border: 1px solid var(--accent, #1a73e8);
+    background: var(--accent, #1a73e8);
+    color: #fff;
+    cursor: pointer;
+  }
+  .cli-approve__btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+  .cli-approve__hint {
+    margin-top: 1rem;
+    font-size: 0.875rem;
+  }
+  .cli-approve__hint[data-kind="ok"] {
+    color: var(--success, #137333);
+  }
+  .cli-approve__hint[data-kind="err"] {
+    color: var(--danger, #c5221f);
+  }
+</style>

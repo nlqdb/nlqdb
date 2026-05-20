@@ -63,6 +63,7 @@ export default defineConfig(async () => {
               "test/events-feature.test.ts",
               "test/mock-email-sink.test.ts",
               "test/oauth-mcp-bridge.test.ts",
+              "test/device-flow.test.ts",
               "test/workload-analyser/*.test.ts",
               "src/databases/list.test.ts",
               "src/db-create/*.test.ts",

@@ -47,6 +47,13 @@ import { makeRecentTablesStore } from "./ask/recent-tables.ts";
 import { withStageRetry } from "./ask/retry.ts";
 import { ROUTE_CONFIDENCE_FLOOR, routeAsk } from "./ask/route-ask.ts";
 import type { AskError, OrchestrateEvent, SelectedDbEcho } from "./ask/types.ts";
+import {
+  approveDevice,
+  defaultRandomUserCode,
+  defaultRandomHex as deviceFlowRandomHex,
+  initDeviceFlow,
+  pollDeviceToken,
+} from "./auth/device-flow.ts";
 import { listInbox } from "./auth/mock-email-sink.ts";
 import { handleMockSignIn, mockSignInFormHtml } from "./auth/mock-idp.ts";
 import { auth, REVOCATION_KEY_PREFIX } from "./auth.ts";
@@ -1727,6 +1734,124 @@ app.post("/v1/oauth/mcp-callback/redeem", async (c) => {
       span.recordException(e);
       span.setStatus({ code: SpanStatusCode.ERROR, message: e.message });
       span.setAttribute("nlqdb.oauth.mcp_callback_redeem.outcome", "internal_error");
+      return c.json({ error: "internal_error" }, 500);
+    } finally {
+      span.end();
+    }
+  });
+});
+
+// Device-flow login per SK-AUTH-004 + SK-CLI-006. Three endpoints:
+//   POST /v1/auth/device          — public; mints device_code + user_code.
+//   POST /v1/auth/device/approve  — session-gated; mints sk_live_ for the device.
+//   POST /v1/auth/device/token    — public; polled by the CLI until approved.
+// V1 issues an sk_live_ (long-lived, revocable via /app/keys) rather than
+// refresh+access JWTs — see device-flow.ts header for the rationale.
+app.post("/v1/auth/device", async (c) => {
+  const tracer = trace.getTracer("@nlqdb/api");
+  return tracer.startActiveSpan("nlqdb.auth.device.init", async (span) => {
+    try {
+      const webOrigin =
+        c.env.MAGIC_LINK_WEB_ORIGIN ??
+        (typeof auth.options.baseURL === "string" ? auth.options.baseURL : "https://app.nlqdb.com");
+      const result = await initDeviceFlow({
+        kv: c.env.KV,
+        randomHex: deviceFlowRandomHex,
+        randomUserCode: defaultRandomUserCode,
+        now: () => Math.floor(Date.now() / 1000),
+        webOrigin,
+      });
+      span.setAttribute("nlqdb.auth.device.init.outcome", "ok");
+      return c.json(result);
+    } catch (err) {
+      const e = err as Error;
+      span.recordException(e);
+      span.setStatus({ code: SpanStatusCode.ERROR, message: e.message });
+      span.setAttribute("nlqdb.auth.device.init.outcome", "internal_error");
+      return c.json({ error: "internal_error" }, 500);
+    } finally {
+      span.end();
+    }
+  });
+});
+
+app.post("/v1/auth/device/approve", requireSession, async (c) => {
+  const tracer = trace.getTracer("@nlqdb/api");
+  return tracer.startActiveSpan("nlqdb.auth.device.approve", async (span) => {
+    try {
+      const session = c.var.session;
+      span.setAttribute("nlqdb.user.id", session.user.id);
+      const raw = await parseJsonBody<{ user_code?: unknown }>(c);
+      if (!raw.ok) {
+        span.setAttribute("nlqdb.auth.device.approve.outcome", "invalid_json");
+        return c.json({ error: "invalid_json" }, 400);
+      }
+      const userCode = typeof raw.body.user_code === "string" ? raw.body.user_code.trim() : "";
+      if (!userCode) {
+        span.setAttribute("nlqdb.auth.device.approve.outcome", "missing_user_code");
+        return c.json({ error: "missing_user_code" }, 400);
+      }
+      // mintSkLiveKey rides a callback so an already-approved double-click
+      // never spends a fresh sk_live_ — the mint only fires once the
+      // user_code has been validated and is still pending.
+      const outcome = await approveDevice(
+        userCode,
+        session.user.id,
+        async () => {
+          const { plaintext } = await mintSkLiveKey(
+            c.env.DB,
+            c.env.BETTER_AUTH_SECRET,
+            session.user.id,
+            "nlq CLI",
+          );
+          return plaintext;
+        },
+        { kv: c.env.KV, now: () => Math.floor(Date.now() / 1000) },
+      );
+      if (!outcome.ok) {
+        span.setAttribute("nlqdb.auth.device.approve.outcome", outcome.error);
+        return c.json({ error: outcome.error }, outcome.status);
+      }
+      span.setAttribute("nlqdb.auth.device.approve.outcome", "ok");
+      return c.json({ approved: true });
+    } catch (err) {
+      const e = err as Error;
+      span.recordException(e);
+      span.setStatus({ code: SpanStatusCode.ERROR, message: e.message });
+      span.setAttribute("nlqdb.auth.device.approve.outcome", "internal_error");
+      return c.json({ error: "internal_error" }, 500);
+    } finally {
+      span.end();
+    }
+  });
+});
+
+app.post("/v1/auth/device/token", async (c) => {
+  const tracer = trace.getTracer("@nlqdb/api");
+  return tracer.startActiveSpan("nlqdb.auth.device.token", async (span) => {
+    try {
+      const raw = await parseJsonBody<{ device_code?: unknown }>(c);
+      if (!raw.ok) {
+        span.setAttribute("nlqdb.auth.device.token.outcome", "invalid_json");
+        return c.json({ error: "invalid_json" }, 400);
+      }
+      const deviceCode = typeof raw.body.device_code === "string" ? raw.body.device_code : "";
+      if (!deviceCode.startsWith("dev_")) {
+        span.setAttribute("nlqdb.auth.device.token.outcome", "invalid_device_code");
+        return c.json({ error: "invalid_device_code" }, 400);
+      }
+      const outcome = await pollDeviceToken(deviceCode, { kv: c.env.KV });
+      if (!outcome.ok) {
+        span.setAttribute("nlqdb.auth.device.token.outcome", outcome.error);
+        return c.json({ error: outcome.error }, outcome.status);
+      }
+      span.setAttribute("nlqdb.auth.device.token.outcome", "ok");
+      return c.json({ access_token: outcome.bearer, token_type: "Bearer" });
+    } catch (err) {
+      const e = err as Error;
+      span.recordException(e);
+      span.setStatus({ code: SpanStatusCode.ERROR, message: e.message });
+      span.setAttribute("nlqdb.auth.device.token.outcome", "internal_error");
       return c.json({ error: "internal_error" }, 500);
     } finally {
       span.end();

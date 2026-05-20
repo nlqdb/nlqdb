@@ -30,7 +30,7 @@ func registerWhoami(root *cobra.Command, g *globalFlags) {
 			}
 
 			if errors.Is(err, auth.ErrNoIdentity) {
-				fmt.Fprintln(cmd.OutOrStdout(), "identity: (none) — set NLQDB_API_KEY or run `nlq login` (device-flow ships in the next slice)")
+				fmt.Fprintln(cmd.OutOrStdout(), "identity: (none) — run `nlq login` to sign in, or set NLQDB_API_KEY")
 			} else {
 				fmt.Fprintf(cmd.OutOrStdout(), "identity: %s (%s)\n", id.Kind, auth.Redacted(id.Token))
 			}

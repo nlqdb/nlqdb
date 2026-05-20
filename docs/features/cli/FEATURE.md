@@ -21,9 +21,10 @@ when-to-load:
 
 **Raw-SQL escape hatch:** `nlq run [--db <id>] <sql>` ships — backed by `POST /v1/run` ([`SK-SDK-009`](../sdk/FEATURE.md), [`GLOBAL-015`](../../decisions/GLOBAL-015-power-user-escape-hatch.md)). Same allow-list as `/v1/ask` (SELECT / INSERT / UPDATE / DELETE / WITH / EXPLAIN / SHOW); DDL still rejected. SQL can ride positional args or stdin (`cat schema.sql | nlq run --db finance`). `--db` resolution mirrors `nlq ask`: explicit flag wins, else the active DB from `state.json`.
 
+**Device-flow login** ships — `nlq login` runs the full OAuth 2.0 Device Authorization Grant against `POST /v1/auth/device` + `POST /v1/auth/device/token` (per `SK-AUTH-004` / `SK-CLI-006`); the browser-approval page lives at `app.nlqdb.com/cli`. The minted `sk_live_` lands in the OS keychain (`SK-CLI-009`).
+
 Deferred to follow-up slices — gated on server endpoints that don't exist yet:
-- `nlq login` device-flow (needs `POST /v1/auth/device` per `SK-AUTH-004`).
-- `nlq mcp install` config-write (needs the device-flow session for `POST /v1/keys` to mint `sk_mcp_*`; the cobra command is wired to print the deferral hint).
+- `nlq mcp install` config-write — the device-flow login above unblocks `POST /v1/keys` for `sk_mcp_*` minting, but the cobra-side config-write helper still prints the deferral hint; lands as a small follow-up.
 - `nlq chat` REPL (UX-only deferral; design intact).
 - `nlq keys rotate <id>` (needs `POST /v1/keys/:id/rotate` per [`SK-APIKEYS-005`](../api-keys/decisions/SK-APIKEYS-005-rotation-grace.md)).
 - `nlq connection <db>` (needs API to expose `connection_url` on `GET /v1/databases` rows).
@@ -82,7 +83,7 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 
 ## Open questions / known unknowns
 
-- **Device-flow server endpoints.** `nlq login` / `nlq logout` / `nlq mcp install` are stubbed (return a "ships in the next slice" error) until `POST /v1/auth/device` + `POST /v1/auth/device/token` land per `SK-AUTH-004`. The credential storage layer is already in place — the missing piece is the wire endpoints. The CLI's `auth.Resolve` already returns `KindSignedIn` when a refresh token exists in the keychain, so the rollout is "land the endpoints, wire the device-flow polling loop, done."
+- ~~**Device-flow server endpoints.**~~ Shipped — `POST /v1/auth/device`, `POST /v1/auth/device/approve`, `POST /v1/auth/device/token` live in `apps/api/src/index.ts` (pure-function pieces in `apps/api/src/auth/device-flow.ts`). The approval UI is `apps/web/src/pages/cli.astro`. The CLI verb in `cli/internal/cmd/login.go` opens `verification_uri_complete` (with `--no-browser` fallback) and polls until the bearer arrives. V1 issues an `sk_live_` rather than a refresh+access JWT pair (see `SK-CLI-006`); the slot name `SlotRefreshToken` is sticky to avoid a keychain migration.
 - ~~**`nlq run` (raw SQL escape hatch).**~~ Shipped — `POST /v1/run` lives in `apps/api/src/run/orchestrate.ts`; the CLI verb in `cli/internal/cmd/run.go`; the TS SDK's `client.runSql()` in `packages/sdk/src/index.ts`. All three landed in one slice per `GLOBAL-002` / `GLOBAL-003`.
 - **`nlq chat` REPL.** A separate slice; intentionally deferred because the typed-line UX is non-trivial and the bootstrap focuses on the goal-first single-command path.
 - **`nlq keys rotate`.** `list` + `revoke` ship. Rotation needs `POST /v1/keys/:id/rotate` plus the 60-day grace + webhook + events-pipeline rotation event per [`SK-APIKEYS-005`](../api-keys/decisions/SK-APIKEYS-005-rotation-grace.md). Lands as one slice with those.
