@@ -41,6 +41,11 @@ tests:
         create a users table with id, name, email
       then press Enter as a SEPARATE browser_key_down call (do NOT
       use submit: true on browser_type). Wait for the page to settle.
+      If the page shows "Something broke on this page." (a React error
+      boundary with a Reload button): use browser_snapshot to find the
+      Reload button ref and click it. Then retry once: navigate to the
+      base URL, click the hero input, type the prompt again, and press
+      Enter again. Do not retry more than once.
       Step 2 — Call browser_snapshot and read the page URL from the
       snapshot. Do NOT use browser_evaluate at any point in this test
       (browser_evaluate errors in this context — always use
@@ -249,15 +254,18 @@ tests:
 
   - name: "#delete-active-db-dialog-opens"
     case: |
-      #create-second-database, then in the sidebar locate the
-      currently active database row (the highlighted one, named
-      something like "products tracker"). If the sidebar shows
-      "Couldn't load databases" or the row is not visible yet, wait
-      3 seconds and call browser_snapshot again before proceeding.
-      Click the "×" button at the right edge of that row (aria-label
-      starts with "Delete "). Verify a modal dialog appears with the
-      heading "Delete database" and body text that includes "This
-      cannot be reverted" and a text input.
+      The browser is signed in and the sidebar (aria-label "Your
+      databases") shows at least two database entries from previous
+      tests — do NOT re-create any databases. Call browser_snapshot.
+      Locate the currently active (highlighted) database row. If the
+      sidebar shows "Couldn't load databases" or no database rows are
+      visible, wait 3 seconds and call browser_snapshot again; do
+      this at most 3 times total. If after 3 attempts the sidebar is
+      still not loading, the test fails.
+      Click the "×" button at the right edge of the active database
+      row (aria-label starts with "Delete "). Verify a modal dialog
+      appears with the heading "Delete database" and body text that
+      includes "This cannot be reverted" and a text input.
 
   - name: "#delete-active-db-typed-confirm"
     case: |
