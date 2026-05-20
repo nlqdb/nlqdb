@@ -1,6 +1,6 @@
 {
   "name": "@nlqdb/cli",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Shim that installs the nlq CLI binary for the host platform.",
   "type": "commonjs",
   "license": "FSL-1.1-ALv2",
