@@ -82,10 +82,10 @@ tests:
 
   - name: "#submit-prefilled-row"
     case: |
-      Navigate to "/app". In the left sidebar find the database
-      entry whose name contains "users" and click it. Wait for the
-      URL to contain "?db=" before continuing (clicking the entry
-      pins the db in the URL).
+      Navigate to "/app". The app auto-pins the newest database on
+      load (ORDER BY created_at DESC); wait for "?db=" to appear in
+      the URL before continuing — do NOT manually click a database
+      entry in the sidebar.
       Click the chat textarea (placeholder "Ask about your data…").
       If the textarea already contains "add a new row:
       name='Alice', email='alice@example.com'" submit it directly
