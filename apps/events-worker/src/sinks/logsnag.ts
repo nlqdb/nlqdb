@@ -198,14 +198,30 @@ function buildPayloadBody(project: string, event: ProductEvent): LogSnagPayload 
           trigger: event.trigger,
         },
       };
-    case "ask.completed":
     case "user.waitlist_joined":
-      // Not LogSnag-routed. `ask.completed` flows to Tinybird
-      // `query_log` (`SK-EVENTS-009`); `user.waitlist_joined` has no
-      // sink mapping yet (`SK-EVENTS-006` — quota-bounded). The
-      // dispatcher in `apps/events-worker/src/index.ts` filters these
-      // before reaching `buildPayload`; this branch exists so the
-      // discriminated-union exhaustiveness check still passes.
+      // SK-EVENTS-006 amendment — pre-alpha volume is well below the 2,500/mo quota; null persona degrades to `unspecified` (form lets you skip).
+      return {
+        project,
+        channel: "users",
+        event: "Waitlist Joined",
+        description: event.persona
+          ? `Waitlist signup: ${event.email} (${event.persona})`
+          : `Waitlist signup: ${event.email}`,
+        icon: "📝",
+        notify: true,
+        user_id: event.emailHash,
+        tags: {
+          email: event.email,
+          persona: event.persona ?? "unspecified",
+          source: event.source,
+        },
+      };
+    case "ask.completed":
+      // Not LogSnag-routed — flows to Tinybird `query_log`
+      // (`SK-EVENTS-009`). The dispatcher in
+      // `apps/events-worker/src/index.ts` filters this before reaching
+      // `buildPayload`; this branch exists so the discriminated-union
+      // exhaustiveness check still passes.
       throw new Error(`logsnag sink received non-routed event: ${event.name}`);
     default: {
       const _exhaustive: never = event;

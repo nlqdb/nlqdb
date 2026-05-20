@@ -93,6 +93,16 @@ export type FeatureRequestedEarlyAccessEvent = {
 // click, or the LogSnag dashboard surfaces an unknown tag.
 export type WishlistSurface = "vscode" | "jetbrains" | "slack" | "discord";
 
+// Closed union of waitlist persona slugs. Must match `WAITLIST_PERSONAS` in `apps/api/src/waitlist.ts` and the `<option>` values in `apps/web/src/components/Waitlist.astro`; anchored in `docs/research/personas.md` (P1–P6 + `other`).
+export type WaitlistPersona =
+  | "solo-builder"
+  | "agent-builder"
+  | "data-analyst"
+  | "backend-engineer"
+  | "student"
+  | "analytics-engineer"
+  | "other";
+
 // `home.surface_wishlist` is the queued counterpart of the marketing-page
 // DOM event of the same name (`apps/web/src/components/CodePanel.astro`).
 // The marketing visitor may have no auth at all — `principalId` falls
@@ -151,7 +161,14 @@ export type FeatureEvalRegressionEvent = {
 export type ProductEvent =
   | { name: "user.first_query"; userId: string; dbId: string }
   | { name: "user.registered"; userId: string; email: string }
-  | { name: "user.waitlist_joined"; emailHash: string; source: string }
+  | {
+      name: "user.waitlist_joined";
+      emailHash: string;
+      email: string;
+      // Null when the signup didn't disclose; validated server-side against `WAITLIST_PERSONAS` in `apps/api/src/waitlist.ts`.
+      persona: WaitlistPersona | null;
+      source: string;
+    }
   | {
       name: "billing.subscription_created";
       userId: string;

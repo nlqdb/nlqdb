@@ -13,13 +13,29 @@
 //     so the response isn't blocked on queue latency — `pendingEmit`
 //     is the deferred promise the handler hands to the runtime.
 
-import type { EventEmitter, ProductEvent } from "@nlqdb/events";
+import type { EventEmitter, ProductEvent, WaitlistPersona } from "@nlqdb/events";
 import { makeKvThrottle } from "./lib/kv-throttle.ts";
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const MAX_EMAIL_LEN = 254;
 const RATE_WINDOW_SECONDS = 60;
 const RATE_MAX = 5;
+
+// Runtime mirror of `WaitlistPersona` in `packages/events/src/types.ts`; typecheck below guarantees they drift together.
+const WAITLIST_PERSONAS: ReadonlySet<WaitlistPersona> = new Set<WaitlistPersona>([
+  "solo-builder",
+  "agent-builder",
+  "data-analyst",
+  "backend-engineer",
+  "student",
+  "analytics-engineer",
+  "other",
+]);
+
+function normalizePersona(value: unknown): WaitlistPersona | null {
+  if (typeof value !== "string" || value.length === 0) return null;
+  return WAITLIST_PERSONAS.has(value as WaitlistPersona) ? (value as WaitlistPersona) : null;
+}
 
 export type WaitlistDeps = {
   db: D1Database;
@@ -58,6 +74,7 @@ export async function joinWaitlist(
   email: unknown,
   clientIp: string | null,
   source: string | null = null,
+  persona: unknown = null,
 ): Promise<WaitlistResult> {
   if (typeof email !== "string") {
     return { status: 400, body: { error: { status: "invalid_email" } } };
@@ -67,6 +84,8 @@ export async function joinWaitlist(
     return { status: 400, body: { error: { status: "invalid_email" } } };
   }
   const normalized = trimmed.toLowerCase();
+  // Off-list personas degrade to null rather than 400 — keeps the signup path lenient under the "any well-formed email → 200" privacy contract.
+  const personaSlug = normalizePersona(persona);
 
   // `clientIp === null` means the request reached us without a
   // `cf-connecting-ip` header. In production behind Cloudflare that
@@ -95,10 +114,10 @@ export async function joinWaitlist(
   try {
     inserted = await deps.db
       .prepare(
-        "INSERT INTO waitlist (email_hash, email, source) VALUES (?, ?, ?) " +
+        "INSERT INTO waitlist (email_hash, email, source, persona) VALUES (?, ?, ?, ?) " +
           "ON CONFLICT(email_hash) DO NOTHING RETURNING 1 AS ok",
       )
-      .bind(hash, normalized, source)
+      .bind(hash, normalized, source, personaSlug)
       .first<{ ok: number }>();
   } catch {
     return { status: 500, body: { error: { status: "internal" } } };
@@ -112,6 +131,8 @@ export async function joinWaitlist(
   const event: ProductEvent = {
     name: "user.waitlist_joined",
     emailHash: hash,
+    email: normalized,
+    persona: personaSlug,
     source: source ?? "web",
   };
   // Default envelope id is `${name}.${emailHash}` for this event

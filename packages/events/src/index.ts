@@ -28,6 +28,7 @@ export type {
   HomeSurfaceWishlistEvent,
   NlqSurface,
   ProductEvent,
+  WaitlistPersona,
   WishlistSurface,
 } from "./types.ts";
 
