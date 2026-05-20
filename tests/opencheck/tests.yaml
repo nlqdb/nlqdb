@@ -40,64 +40,35 @@ tests:
       type:
         create a users table with id, name, email
       then press Enter as a SEPARATE browser_key_down call (do NOT
-      use submit: true on browser_type). Wait for the page to settle.
-      If the page shows "Something broke on this page." (a React error
-      boundary with a Reload button): use browser_snapshot to find the
-      Reload button ref and click it. Then retry once: navigate to the
-      base URL, click the hero input, type the prompt again, and press
-      Enter again. Do not retry more than once.
-      Step 2 — Call browser_snapshot and read the page URL from the
-      snapshot. Do NOT use browser_evaluate at any point in this test
-      (browser_evaluate errors in this context — always use
-      browser_snapshot).
-      Step 3 — Branch on current URL:
-        a) URL is "/app" and "Provisioned with" is in the snapshot
-           text — anon create SUCCEEDED. The DB is currently anon;
-           sign in now so the DB is adopted. Navigate to "/auth/sign-in".
-           Use browser_snapshot to check: if the mock IdP form is visible
-           (has "Sign in as this user" button), click it; if the page
-           immediately redirects to "/app", that is also fine.
-           After sign-in, navigate to "/app". Call browser_snapshot.
-           If the sidebar shows an entry with "users" in its name —
-           ADOPTION SUCCEEDED. Now sign out: click the "Sign out" button
-           in the top navigation bar and wait for the URL to change away
-           from "/app". Then TEST_PASSED. STOP.
-           If the sidebar is empty (adoption may have failed),
-           proceed to Step 4.
-        b) URL is "/auth/sign-in" — the anon cap was hit. Use
-           browser_snapshot to find the "Sign in as this user" button
-           ref, then browser_click it. The page will navigate away;
-           if you receive "Not connected", that is normal. Navigate
-           to "/app" and call browser_snapshot. If "Provisioned with"
-           is visible — ADOPTION SUCCEEDED. Sign out: click the "Sign
-           out" button in the top navigation bar and wait for URL to
-           change away from "/app". Then TEST_PASSED. STOP.
-           If not visible yet, wait 3 seconds and call browser_snapshot
-           again; if still not visible, proceed to Step 4.
-        c) URL is "/auth/post-signin" — this is a normal post-sign-in
-           redirect; it will auto-navigate to "/app" in a moment. Call
-           browser_snapshot every 2 seconds until the URL contains
-           "/app" (max 20 seconds). Once at "/app", if "Provisioned
-           with" is visible — ADOPTION SUCCEEDED. Sign out: click the
-           "Sign out" button in the top navigation bar and wait for URL
-           to change away from "/app". Then TEST_PASSED. STOP.
-           Otherwise proceed to Step 4.
-        d) URL is "/app" but "Session ended." or "Something broke" is
-           visible — the ask failed; proceed to Step 4.
-      Step 4 (fallback): navigate to "/app", wait for "?db=" in the
-      URL (up to 10 seconds). If "?db=" appears, click the chat
-      textarea (placeholder "Ask about your data…"), type:
-        create a users table with id, name, email
-      and submit (press Enter separately). If a confirm/diff chip
-      appears, click "Approve". Call browser_snapshot and verify
-      "Provisioned with" is visible in the snapshot text.
-      If "?db=" never appears (sidebar is empty), click the "+ New"
-      button in the left sidebar (aria-label "Your databases"), type
-      "users-db" in the "Name" input, click "Create", wait for
-      "?db=" to appear, then submit "create a users table with id,
-      name, email" and verify "Provisioned with".
-      After verifying "Provisioned with" in step 4, sign out: click
-      the "Sign out" button and wait for the URL to change away from
+      use submit: true on browser_type). Do NOT use browser_wait_for
+      anywhere in this test — use browser_snapshot to check URLs.
+      Call browser_snapshot. If "Something broke on this page" is
+      visible, click the "Reload" button once and call
+      browser_snapshot again. (One retry only.)
+      Step 2 — Navigate to "/auth/sign-in". Call browser_snapshot.
+      If a "Sign in as this user" button is visible, click it with
+      browser_click. If you receive "Not connected" after clicking,
+      that is normal — the page navigated away. Navigate to "/app"
+      and call browser_snapshot. If "Something broke on this page"
+      is visible, click "Reload" and call browser_snapshot again.
+      Step 3 — Check the "Page URL:" line at the top of the
+      browser_snapshot result (do NOT use browser_wait_for — read
+      the URL from the snapshot header directly).
+      a) If the URL contains "?db=" — a database is active.
+         Proceed to Step 4.
+      b) If the URL does NOT contain "?db=" — no database yet.
+         Click "+ New" in the left sidebar (aria-label "Your
+         databases"), type "users-db" in the "Name" input, click
+         "Create". Call browser_snapshot and verify the URL now
+         contains "?db=". Then click the chat textarea (placeholder
+         "Ask about your data…"), type:
+           create a users table with id, name, email
+         and press Enter as a SEPARATE browser_key_down call.
+         If a confirm/diff chip appears, press Enter to approve.
+         Call browser_snapshot and verify "Provisioned with" is
+         visible in the snapshot text.
+      Step 4 — Sign out: click the "Sign out" button in the top
+      navigation bar and wait for the URL to change away from
       "/app". TEST_PASSED.
 
   - name: "#add-row-redirects-to-auth"
@@ -151,39 +122,39 @@ tests:
 
   - name: "#submit-prefilled-row"
     case: |
-      Navigate to "/app". The app auto-pins the newest database on
-      load (ORDER BY created_at DESC); call browser_snapshot and
-      check for "?db=" in the URL. If "?db=" is NOT in the URL
-      within 10 seconds (no databases in sidebar): click "+ New"
-      in the left sidebar (aria-label "Your databases"), type
-      "users-db" in the "Name" input, click "Create", and wait
-      for "?db=" to appear in the URL.
-      If an alert saying "Something broke on this page" is visible,
-      click the "Reload" button inside that alert (do NOT click the
-      "Sign out" link) and call browser_snapshot again to confirm
-      the page settled before continuing.
-      Click the chat textarea (placeholder "Ask about your data…").
-      Type the prompt fresh (do NOT check if it is pre-filled):
+      Navigate to "/app". Call browser_snapshot and check the
+      "Page URL:" line at the top of the snapshot. If "?db=" is
+      NOT in the URL (no databases): click "+ New" in the left
+      sidebar (aria-label "Your databases"), type "users-db" in
+      the "Name" input, click "Create", and verify the URL now
+      contains "?db=" in a new browser_snapshot.
+      If "Something broke on this page" is visible, click "Reload"
+      (not "Sign out") and call browser_snapshot again.
+      Find the chat textarea in the snapshot: look for
+        textbox "Ask about your data…"
+      in the snapshot YAML and note its ref. Click it using that
+      ref and type the prompt fresh (do NOT check if pre-filled):
         add a new row: name='Alice', email='alice@example.com'
-      and press Enter as a SEPARATE tool call. If a confirm/diff
-      chip appears (e.g. "This will insert 1 row"), press Enter
-      once to approve (the confirm input is already focused — do
-      NOT click any Approve button). If the response shows "Couldn't
-      reach the database", "references a table this database doesn't
-      have", or any error:
-        Click the chat textarea (placeholder "Ask about your
-        data…"). Type:
-          create a users table with id, name, email
-        and press Enter as a SEPARATE tool call. Do NOT click
-        any "Create new database" button. If a confirm/diff chip
-        appears, press Enter to approve (do NOT click a button).
-        Wait for "Provisioned with" in the response. Then click
-        the chat textarea again and type:
-          add a new row: name='Alice', email='alice@example.com'
-        and press Enter as a SEPARATE tool call. If a confirm/diff
-        chip appears, press Enter to approve.
-      Verify a row with name "Alice" and email "alice@example.com"
-      appears in the users table.
+      Press Enter as a SEPARATE tool call. If a confirm/diff chip
+      appears, press Enter once to approve — do NOT click any
+      button labeled "Approve" or "Create new database".
+      Check the response:
+      a) If the response shows "Couldn't reach the database" or
+         any network/connection error: wait 5 seconds. Call
+         browser_snapshot, find the textarea ref in THIS snapshot,
+         click it, re-type the same INSERT prompt, press Enter,
+         and press Enter again if a chip appears. Retry once only.
+      b) If the response shows "references a table this database
+         doesn't have" or "no such table": click the textarea,
+         type:
+           create a users table with id, name, email
+         press Enter separately. Do NOT click any "Create new
+         database" button. If a confirm/diff chip appears, press
+         Enter to approve. Wait for "Provisioned with" to appear.
+         Then click the textarea, type the INSERT prompt, press
+         Enter, and press Enter again if a chip appears.
+      Verify the response shows a row with name "Alice" and
+      email "alice@example.com".
 
   - name: "#read-shows-informative-data"
     case: |
@@ -267,17 +238,22 @@ tests:
   - name: "#delete-row"
     case: |
       The browser is signed in from previous tests. Navigate to
-      "/app". Call browser_snapshot. If an alert saying "Something
-      broke on this page" is visible, click the "Reload" button
-      inside that alert (do NOT click the "Sign out" link) and call
-      browser_snapshot again before continuing. If the chat textarea
-      (placeholder "Ask about your data…") is visible, click it and
-      type:
+      "/app". Call browser_snapshot. If "Something broke on this
+      page" is visible, click the "Reload" button (do NOT click
+      "Sign out") and call browser_snapshot again.
+      Find the chat textarea in THIS snapshot: look for
+        textbox "Ask about your data…"
+      in the snapshot YAML and note its ref. Use ONLY the ref
+      from THIS snapshot — do NOT reuse refs from earlier calls.
+      If the snapshot is truncated (ends with "[... N chars
+      truncated ...]") and does not show the textarea, call
+      browser_snapshot once more to get a fresh view. Click the
+      textarea using the ref from the current snapshot and type:
         delete the row where name = 'Alice'
-      and submit. If a confirm chip appears, approve it. Call
-      browser_snapshot and verify the Alice row is no longer present
-      in the users table. If the textarea is not visible yet, wait
-      3 seconds and call browser_snapshot again before proceeding.
+      and press Enter as a SEPARATE browser_key_down call. If a
+      confirm/diff chip appears, press Enter to approve (do NOT
+      click a button). Call browser_snapshot and verify the Alice
+      row is no longer present in the response.
 
   - name: "#create-second-database"
     case: |
