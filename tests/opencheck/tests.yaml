@@ -53,10 +53,14 @@ tests:
       is visible, click "Reload" and call browser_snapshot again.
       Step 3 — Check the "Page URL:" line at the top of the
       browser_snapshot result (do NOT use browser_wait_for — read
-      the URL from the snapshot header directly).
+      the URL from the snapshot header directly). If the URL shows
+      just "/app" without "?db=", wait 3 seconds and call
+      browser_snapshot again before deciding — the app may still
+      be loading the database list.
       a) If the URL contains "?db=" — a database is active.
          Proceed to Step 4.
-      b) If the URL does NOT contain "?db=" — no database yet.
+      b) If the URL still does NOT contain "?db=" after waiting —
+         no database yet.
          Click "+ New" in the left sidebar (aria-label "Your
          databases"), type "users-db" in the "Name" input, click
          "Create". Call browser_snapshot and verify the URL now
@@ -230,13 +234,12 @@ tests:
   - name: "#cmdk-palette-discoverable"
     case: |
       Navigate to "/app". Call browser_snapshot to confirm the URL
-      contains "/app". Click once on the page OUTSIDE the chat
-      textarea (e.g. click the heading or sidebar area) to ensure
-      the chat textarea is NOT focused. Then press Ctrl+K (Cmd+K on
-      Mac). Verify a modal appears with placeholder "Type a command…"
-      and action labels including at least two of "New database",
-      "Copy embed snippet", "API keys", "Sign out". Press Escape
-      and verify the modal closes.
+      contains "/app". Press Escape once to make sure no textarea or
+      dialog is focused (do NOT navigate away). Then press Ctrl+K
+      (Cmd+K on Mac). Verify a modal appears with placeholder
+      "Type a command…" and action labels including at least two of
+      "New database", "Copy embed snippet", "API keys", "Sign out".
+      Press Escape and verify the modal closes.
 
   - name: "#delete-row"
     case: |
