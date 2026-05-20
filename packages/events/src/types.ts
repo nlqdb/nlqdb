@@ -151,7 +151,16 @@ export type FeatureEvalRegressionEvent = {
 export type ProductEvent =
   | { name: "user.first_query"; userId: string; dbId: string }
   | { name: "user.registered"; userId: string; email: string }
-  | { name: "user.waitlist_joined"; emailHash: string; source: string }
+  | {
+      name: "user.waitlist_joined";
+      emailHash: string;
+      email: string;
+      // Slugged persona id from `docs/research/personas.md` (P1–P6) or
+      // `other`; null when the signup didn't disclose. Validated server-
+      // side against `WAITLIST_PERSONAS` in `apps/api/src/waitlist.ts`.
+      persona: string | null;
+      source: string;
+    }
   | {
       name: "billing.subscription_created";
       userId: string;

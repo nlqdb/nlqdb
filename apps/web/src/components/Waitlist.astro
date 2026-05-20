@@ -28,6 +28,21 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
       class="waitlist__field"
       aria-label="Email address"
     />
+    <select
+      id="waitlist-persona"
+      name="persona"
+      class="waitlist__field"
+      aria-label="Which best describes you? (optional)"
+    >
+      <option value="">Which best describes you? (optional)</option>
+      <option value="solo-builder">Solo builder / founder</option>
+      <option value="agent-builder">Building LLM agents or assistants</option>
+      <option value="data-analyst">Analyst / PM / ops (data-curious)</option>
+      <option value="backend-engineer">Backend engineer at a small startup</option>
+      <option value="student">Student / learning to code</option>
+      <option value="analytics-engineer">Analytics / observability engineer</option>
+      <option value="other">Other</option>
+    </select>
     <button type="submit" id="waitlist-submit" class="btn btn--accent waitlist__submit">
       Join the waitlist
     </button>
@@ -46,6 +61,7 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
   if (form) {
     const apiBase = (form.dataset["apiBase"] ?? "").replace(/\/$/, "");
     const emailInput = document.getElementById("waitlist-email") as HTMLInputElement;
+    const personaInput = document.getElementById("waitlist-persona") as HTMLSelectElement;
     const submitBtn = document.getElementById("waitlist-submit") as HTMLButtonElement;
     const errorEl = document.getElementById("waitlist-error") as HTMLParagraphElement;
     const doneEl = document.getElementById("waitlist-done") as HTMLDivElement;
@@ -65,10 +81,11 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
       const idle = submitBtn.textContent ?? "Join the waitlist";
       submitBtn.textContent = "Submitting…";
       try {
+        const persona = personaInput?.value || null;
         const res = await fetch(`${apiBase}/v1/waitlist`, {
           method: "POST",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({ email }),
+          body: JSON.stringify({ email, persona }),
         });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         form.hidden = true;

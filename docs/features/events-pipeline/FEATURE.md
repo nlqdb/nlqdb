@@ -77,13 +77,11 @@ when-to-load:
 
 ### SK-EVENTS-006 — Canonical event-name schema: `<domain>.<verb_noun>`, snake_dot, lowercase
 
-- **Decision:** Event names follow `<domain>.<verb_noun>` (e.g. `user.registered`, `user.first_query`, `billing.subscription_created`, `billing.subscription_canceled`). Domains today: `user`, `billing`. **No `trial.*` events** (the free tier IS the trial — see `docs/architecture.md §5`). **Sign-ins are deliberately not emitted** — they would dominate the LogSnag 2,500/mo free quota with no founder signal.
+- **Decision:** Event names follow `<domain>.<verb_noun>` (e.g. `user.registered`, `billing.subscription_created`). Domains today: `user`, `billing`, `ask`, `feature`, `home`. **No `trial.*`** — the free tier IS the trial (`docs/architecture.md §5`). Sign-ins are not emitted — would dominate the LogSnag 2,500/mo quota with no founder signal. `user.waitlist_joined` IS routed to LogSnag (channel `users`, `notify: true`, persona tag); pre-alpha volume is 0/mo so the quota concern is theoretical — revisit if we cross ~500/mo.
 - **Core value:** Free, Simple, Honest latency
-- **Why:** A consistent naming scheme keeps LogSnag / future PostHog dashboards readable without a translation layer. The 2,500/mo quota is a hard constraint on what's worth emitting — the rule "fire only one-shot lifecycle events" is what keeps the free-tier sink viable. Trial events would lie about a funnel that doesn't exist.
-- **Consequence in code:** Reviewers reject names like `userSignedIn` (camelCase), `user-first-query` (kebab), `signin` (no domain). Reviewers reject any new event that fires more than once per user-lifecycle without an explicit cost analysis (e.g. PostHog wired alongside LogSnag with its own quota). The Stripe webhook deliberately does not emit `billing.subscription_updated` (`SK-STRIPE-005`); update is pure state sync.
-- **Alternatives rejected:**
-  - Per-team naming conventions — LogSnag's UI fragments into incomparable groups within a quarter.
-  - Emit every signal "for completeness" — exhausts the free-tier sink quota and adds zero founder signal.
+- **Why:** Consistent naming keeps LogSnag dashboards readable without a translation layer. The 2,500/mo quota is the hard constraint on what's worth routing; high-volume or noisy signals would burn it. Trial events would lie about a funnel that doesn't exist.
+- **Consequence in code:** Reviewers reject `userSignedIn` (camelCase), `signin` (no domain). New events firing more than once per user-lifecycle need an explicit cost analysis. Stripe deliberately omits `billing.subscription_updated` (`SK-STRIPE-005`); update is pure state sync.
+- **Alternatives rejected:** Per-team naming (LogSnag UI fragments); emit-everything (burns quota with no founder signal).
 
 ### SK-EVENTS-007 — PostHog as a future second sink, gated on a real cohort question
 

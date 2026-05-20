@@ -83,7 +83,45 @@ describe("joinWaitlist", () => {
     expect(events.emit).toHaveBeenCalledTimes(1);
     expect(events.emit.mock.calls[0]?.[0]).toMatchObject({
       name: "user.waitlist_joined",
+      email: "user@example.com",
+      persona: null,
       source: "web",
+    });
+  });
+
+  it("passes a valid persona through to the emitted event", async () => {
+    const events = { emit: vi.fn().mockResolvedValue(undefined) };
+    const out = await joinWaitlist(
+      { db: stubDb({ insertResult: { ok: 1 } }), kv: stubKv(), events },
+      "p@example.com",
+      "1.2.3.4",
+      "web",
+      "solo-builder",
+    );
+    expect(out.status).toBe(200);
+    if (out.status !== 200) throw new Error("unreachable");
+    await out.pendingEmit;
+    expect(events.emit.mock.calls[0]?.[0]).toMatchObject({
+      name: "user.waitlist_joined",
+      persona: "solo-builder",
+    });
+  });
+
+  it("normalises an off-list persona to null without rejecting the signup", async () => {
+    const events = { emit: vi.fn().mockResolvedValue(undefined) };
+    const out = await joinWaitlist(
+      { db: stubDb({ insertResult: { ok: 1 } }), kv: stubKv(), events },
+      "p@example.com",
+      "1.2.3.4",
+      "web",
+      "wizard",
+    );
+    expect(out.status).toBe(200);
+    if (out.status !== 200) throw new Error("unreachable");
+    await out.pendingEmit;
+    expect(events.emit.mock.calls[0]?.[0]).toMatchObject({
+      name: "user.waitlist_joined",
+      persona: null,
     });
   });
 

@@ -1277,7 +1277,7 @@ app.use("/v1/waitlist", credentialedCors);
 app.use("/v1/events/*", credentialedCors);
 
 app.post("/v1/waitlist", async (c) => {
-  const body = await parseJsonBody<{ email?: unknown }>(c);
+  const body = await parseJsonBody<{ email?: unknown; persona?: unknown }>(c);
   if (!body.ok) return c.json({ error: { status: "invalid_email" } }, 400);
   const result = await joinWaitlist(
     {
@@ -1288,6 +1288,7 @@ app.post("/v1/waitlist", async (c) => {
     body.body.email,
     c.req.header("cf-connecting-ip") ?? null,
     "web",
+    body.body.persona,
   );
   // Fire-and-forget: 200 ships before the queue producer resolves.
   // Nested guards so a future 200-shaped variant without `pendingEmit`

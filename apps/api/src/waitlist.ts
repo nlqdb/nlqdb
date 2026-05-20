@@ -21,6 +21,27 @@ const MAX_EMAIL_LEN = 254;
 const RATE_WINDOW_SECONDS = 60;
 const RATE_MAX = 5;
 
+// Closed set of persona slugs. Mirrors `docs/research/personas.md`
+// P1–P6 plus `other`. Server-side allowlist prevents tag pollution in
+// the LogSnag dashboard from a forged client.
+export const WAITLIST_PERSONAS = [
+  "solo-builder",
+  "agent-builder",
+  "data-analyst",
+  "backend-engineer",
+  "student",
+  "analytics-engineer",
+  "other",
+] as const;
+export type WaitlistPersona = (typeof WAITLIST_PERSONAS)[number];
+
+function normalizePersona(value: unknown): WaitlistPersona | null {
+  if (typeof value !== "string" || value.length === 0) return null;
+  return (WAITLIST_PERSONAS as readonly string[]).includes(value)
+    ? (value as WaitlistPersona)
+    : null;
+}
+
 export type WaitlistDeps = {
   db: D1Database;
   kv: KVNamespace;
@@ -58,6 +79,7 @@ export async function joinWaitlist(
   email: unknown,
   clientIp: string | null,
   source: string | null = null,
+  persona: unknown = null,
 ): Promise<WaitlistResult> {
   if (typeof email !== "string") {
     return { status: 400, body: { error: { status: "invalid_email" } } };
@@ -67,6 +89,11 @@ export async function joinWaitlist(
     return { status: 400, body: { error: { status: "invalid_email" } } };
   }
   const normalized = trimmed.toLowerCase();
+  // Unknown / off-list personas degrade to null rather than 400 — the
+  // form's <select> caps the legitimate set, so anything else is
+  // either a stale client or a probe; silent normalisation keeps the
+  // signup path lenient (privacy contract: any well-formed email → 200).
+  const personaSlug = normalizePersona(persona);
 
   // `clientIp === null` means the request reached us without a
   // `cf-connecting-ip` header. In production behind Cloudflare that
@@ -95,10 +122,10 @@ export async function joinWaitlist(
   try {
     inserted = await deps.db
       .prepare(
-        "INSERT INTO waitlist (email_hash, email, source) VALUES (?, ?, ?) " +
+        "INSERT INTO waitlist (email_hash, email, source, persona) VALUES (?, ?, ?, ?) " +
           "ON CONFLICT(email_hash) DO NOTHING RETURNING 1 AS ok",
       )
-      .bind(hash, normalized, source)
+      .bind(hash, normalized, source, personaSlug)
       .first<{ ok: number }>();
   } catch {
     return { status: 500, body: { error: { status: "internal" } } };
@@ -112,6 +139,8 @@ export async function joinWaitlist(
   const event: ProductEvent = {
     name: "user.waitlist_joined",
     emailHash: hash,
+    email: normalized,
+    persona: personaSlug,
     source: source ?? "web",
   };
   // Default envelope id is `${name}.${emailHash}` for this event
