@@ -1,20 +1,5 @@
-# Reusable: run opencheck against a given baseUrl via the OpenAI-compatible endpoint.
-# The `workflow_call` trigger means this file never appears in the
-# manual-dispatch list — callers (see `e2e-opencheck.yml`) drive it.
-#
-# Why OpenAI-compat (and not provider-specific LangChain packages):
-#   opencheck v0.3.0 pins `@langchain/core ^1.1.24` (the LangChain JS v1
-#   ecosystem). Provider-specific LangChain packages outside the v1
-#   range cause a peer-dep split (two copies of core at runtime, broken
-#   types). `@langchain/openai` v1.4.5 is on the same v1 ecosystem and
-#   works cleanly. Both Groq and Mistral expose OpenAI-compatible endpoints,
-#   so swapping providers is an env-var change with no code changes.
-#
-# Current: OpenRouter → mistralai/mistral-small-3.2-24b-instruct. No per-minute cap
-#   on OpenRouter paid tier; ~$0.06 per 500 K-token run. Mistral direct API has 50 RPM
-#   which causes 240 s test timeouts in the agentic loop (see pivot #10 in tests.yaml).
-# Fallback: Groq llama-3.3-70b-versatile (GROQ_API_KEY) — 1000 RPM, correct booleans;
-#   only 100 K TPD so split tests across two runs. Groq llama-4-scout has a boolean bug.
+# Reusable: run opencheck against a given baseUrl via the OpenAI-compatible endpoint (workflow_call only — callers drive it).
+# OpenAI-compat: opencheck pins @langchain/core ^1.1.24 (v1 ecosystem); @langchain/openai v1.4.5 matches; Groq + Mistral + OpenRouter all expose compatible endpoints — provider swap is env-var only.
 
 name: E2E opencheck (reusable)
 
@@ -54,9 +39,7 @@ jobs:
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
 
-      # The opencheck deps tree (LangChain v1 + Playwright MCP) is heavy
-      # and intentionally NOT in root `workspaces:` to keep the global
-      # CI install lean. Install locally instead.
+      # opencheck deps intentionally excluded from root workspaces (LangChain v1 + Playwright MCP would bloat global CI install).
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
           bun-version-file: package.json
@@ -122,12 +105,23 @@ jobs:
           if (userDataDirArg) {
             const dir = userDataDirArg.slice("--user-data-dir=".length);
             const lock = path.join(dir, "SingletonLock");
-            if (fs.existsSync(lock)) {
-              try { spawnSync("pkill", ["-TERM", "-f", `user-data-dir=${dir}`], { stdio: "ignore" }); } catch {}
+            // Always kill — Chromium can be orphaned with lock removed after non-timeout exits.
+            // pgrep finds stale PIDs; filter own PID to avoid self-kill (wrapper argv also has user-data-dir).
+            const pgrepOut = spawnSync("pgrep", ["-f", `user-data-dir=${dir}`], { encoding: "utf8" });
+            const stalePids = (pgrepOut.stdout || "").trim().split("\n")
+              .filter(p => p.trim() && p.trim() !== String(process.pid));
+            if (stalePids.length > 0) {
+              for (const pid of stalePids) {
+                try { spawnSync("kill", ["-TERM", pid.trim()], { stdio: "ignore" }); } catch {}
+              }
               const deadline = Date.now() + 3000;
               while (fs.existsSync(lock) && Date.now() < deadline) spawnSync("sleep", ["0.1"]);
-              try { fs.unlinkSync(lock); } catch {}
+              for (const pid of stalePids) {
+                try { spawnSync("kill", ["-KILL", pid.trim()], { stdio: "ignore" }); } catch {}
+              }
+              spawnSync("sleep", ["0.5"]);
             }
+            try { fs.unlinkSync(lock); } catch {}
           }
 
           // 2. Inject --no-sandbox and spawn the real CLI as a child.
@@ -167,6 +161,24 @@ jobs:
           chmod +x "$cli"
           echo "patched $cli"
 
+      # Patch opencheck system prompt: replace "prefer browser_evaluate" with browser_snapshot guidance.
+      # browser_evaluate runs code in the BROWSER context — Playwright API (page.*) is not available there,
+      # causing "not well-serializable" / "Not connected" loops with mistral-small.
+      - name: Patch opencheck — fix browser_evaluate system-prompt guidance
+        working-directory: tests/opencheck
+        run: |
+          agent_ts="node_modules/opencheck/src/agent/agent-factory.ts"
+          sed -i \
+            's|"Token efficiency:",|"Important: browser_evaluate runs in the BROWSER context — page.* Playwright API is NOT available inside it.",|' \
+            "$agent_ts"
+          sed -i \
+            's|"- Prefer browser_evaluate (returns only the JS result, not the full page tree) over",|"- Use browser_snapshot to read page state and check elements, text, or loading states.",|' \
+            "$agent_ts"
+          sed -i \
+            's|"  browser_snapshot for checking elements, text, loading states, and polling.",|"- Only use browser_evaluate for pure browser JS (document.querySelector etc.) — never pass page.* API.",|' \
+            "$agent_ts"
+          echo "patched $agent_ts"
+
       # opencheck's YAML parser doesn't interpolate env vars — substitute at invocation time into a temp file (keeps working tree clean).
       - name: Render tests.yaml with runtime baseUrl
         working-directory: tests/opencheck
@@ -187,10 +199,7 @@ jobs:
           bunx opencheck --config tests-runtime.yaml 2>&1 | tee /tmp/opencheck-output.txt
           echo "exit_code=${PIPESTATUS[0]}" >> "$GITHUB_OUTPUT"
 
-      # opencheck writes Playwright traces + videos into
-      # `.opencheck-recordings/`. Always upload, even on success — first
-      # successful run lets us validate the artifact path; failure runs
-      # drag the trace.zip into trace.playwright.dev for triage.
+      # Always upload even on success — failure runs drag trace.zip into trace.playwright.dev for triage.
       - name: Upload recordings
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1

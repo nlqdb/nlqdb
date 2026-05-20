@@ -127,15 +127,15 @@ commentary is nested under the rule.
 
 ## Free LLM model selection (opencheck)
 
-Top 5 models for agentic/tool-use E2E runs — verified live 2026-05-19 18:00 UTC. Each run ~360–500 K tokens (20 tests × ~6–10 calls × ~1–2 K tokens/call after snapshot truncation).
+Top 5 models for agentic/tool-use E2E runs — verified live 2026-05-20 via API rate-limit headers + Groq docs. Each run ~360–500 K tokens (20 tests × ~6–10 calls × ~1–2 K tokens/call after snapshot truncation).
 
 | Model | Provider | TPM | RPM | Daily | Context | Notes |
 |---|---|---|---|---|---|---|
-| `mistralai/mistral-small-3.2-24b-instruct` | OpenRouter (paid) | no cap | no cap | ~$0.06/run | 128 K | **Current.** Paid tier removes RPM cap; correct booleans (verified); uses OPENROUTER_API_KEY |
-| `qwen/qwen3-32b` | Groq | 6 K | 60 | 500 K TPD | 131 K | Best free TPD; 6K TPM = ~5 calls/min at 1.2K-token calls; correct booleans (no documented issues) |
-| `gemini-2.5-flash` | Google AI | 1 M | 15 | 1 500 RPD | 1 M | 15 RPM is OK for sequential tests; boolean `false` unverified via OpenAI compat; test before switching |
-| `llama-3.3-70b-versatile` | Groq | 12 K | 1000 | 100 K TPD | 128 K | Correct booleans (verified); 100 K TPD too small for a 500 K-token run |
-| `mistral-small-latest` | Mistral (direct) | 50 K | 50 | ~1 B/mo | 128 K | 50 RPM causes 240 s timeouts (run #40: 9/20 failed); huge monthly budget if rate is OK |
+| `mistralai/mistral-small-3.2-24b-instruct` | OpenRouter (paid) | no cap | no cap | ~$0.06/run | 128 K | **Current.** Paid tier; correct booleans (verified); OPENROUTER_API_KEY; ~$35 budget remaining 2026-05-20 |
+| `llama-3.3-70b-versatile` | Groq | 12 K | 1000 | 500 K TPD | 128 K | Correct booleans (verified live); 500K TPD fits a single full run; best free option |
+| `qwen/qwen3-32b` | Groq | 6 K | 1000 | 500 K TPD | 131 K | 1000 RPM (live-verified; old docs said 60 — incorrect); 6K TPM = ~5 LLM calls/min |
+| `gemini-2.5-flash` | Google AI | 1 M | 15 | 1 500 RPD | 1 M | 15 RPM ok for sequential tests; verify boolean `false` via OpenAI compat before switching |
+| `qwen-3-235b-a22b-instruct-2507` | Cerebras | 30 K | 5 | 1 M TPD | 131 K | Highest TPD; 5 RPM bottleneck means ~2 min/test — tight against 240 s timeout; tool-use unverified |
 
 **Switching:** update `model:` in `tests/opencheck/tests.yaml`, `OPENAI_BASE_URL` in `_e2e-opencheck.yml`, and the secret in `e2e-opencheck.yml` (`LLM_API_KEY` source).
 

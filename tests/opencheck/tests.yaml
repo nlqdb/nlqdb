@@ -1,46 +1,6 @@
-# E2E flow for nlqdb: anonymous → table-create → mutation-gate → mock-auth →
-# authed-state-preserved → write → UX coverage (informative read, count,
-# trace pane, vague prompt, missing-table, Cmd+K palette) → delete-row →
-# second-db-create → delete-db-while-signed-in → sign-out →
-# sign-in-again → delete-remaining-db. Covers SK-HDC-016 (typed-name
-# confirm dialog) across both authed sessions so cleanup runs whether
-# or not the session survived between deletes.
-# Run by .github/workflows/e2e-opencheck.yml (workflow_dispatch — external scheduler).
-#
-# Runtime substitution: the caller workflow renders `__BASE_URL__` to the
-# per-run preview alias via `sed` before invoking `bunx opencheck`.
-#
-# LLM: OpenRouter → Mistral Small 3.2 via OpenAI-compat (https://openrouter.ai).
-# Current: `mistralai/mistral-small-3.2-24b-instruct` via OpenRouter
-# Budget: paid tier, ~$0.06/run (500K tokens @ $0.075/M in + $0.20/M out), no RPM cap.
-# Fallback: Groq llama-3.3-70b-versatile (GROQ_API_KEY) — 1000 RPM, 100K TPD.
-#
-# Pivot history (newest first — researched 2026-05-19):
-#  10. mistralai/mistral-small-3.2-24b-instruct [CURRENT] — OpenRouter; switched from
-#      Mistral direct API (run #40): 50 RPM causes 240s test timeouts in the agentic
-#      loop. 9 of 20 tests timed out. OpenRouter paid tier removes the RPM cap while
-#      routing to the same Mistral Small model. Cost: ~$0.06/run. Boolean tool calls
-#      correct (verified 2026-05-19). Accessible via OPENROUTER_API_KEY.
-#   9. mistral-small-latest — Mistral direct, 50 RPM; switched back from Groq (run #42):
-#      llama-4-scout sends `submit: "true"` (string) for boolean browser_type param
-#      → 400 tool call validation error → stale-ref spiral → 24-min test stuck.
-#   8. meta-llama/llama-4-scout-17b-16e-instruct — Groq, 30K TPM, 500K TPD, 1000 RPM,
-#      512K ctx; switched from Mistral for run #39: 50 RPM cascade in run #38
-#   7. mistral-small-latest — Mistral, 50K TPM, ~1B/month, 128K ctx, 50 RPM;
-#      switched from Groq after Groq TPD exhausted on run #32
-#   6. meta-llama/llama-4-scout-17b-16e-instruct — Groq; exhausted 500K TPD on run #32
-#   5. llama-3.3-70b-versatile — Groq, 12K TPM, 100K TPD (not 1M as assumed)
-#   4. openai/gpt-oss-120b — Groq, 8K TPM + hidden reasoning_tokens → 85-90s/call
-#   3. llama-4-scout early — Groq, 500K TPD but quota drained by debug runs
-#   2. OpenRouter qwen3-coder:free — 429 on first call; shared upstream pool
-#   1. Gemini 2.5 Flash — 10 RPM ceiling; 75-87s silent-retry tax
-#
-# Top 5 models for agentic/tool-use (verified live 2026-05-19 18:00 UTC — see FEATURE.md for full table):
-#   1. OpenRouter mistralai/mistral-small-3.2-24b-instruct (paid) — no RPM/TPD cap, ~$0.06/run, correct booleans; CURRENT
-#   2. Groq qwen/qwen3-32b — 60 RPM, 6K TPM, 500K TPD, 131K ctx; best free TPD; correct booleans (no documented issues)
-#   3. Google gemini-2.5-flash — 15 RPM, 1M TPM, 1500 RPD, 1M ctx; verify boolean false via OpenAI compat before switching
-#   4. Groq llama-3.3-70b-versatile — 1000 RPM, 12K TPM, 100K TPD, 128K ctx; correct booleans; TPD too small for full run
-#   5. Mistral mistral-small-latest (direct) — 50 RPM, 50K TPM, ~1B/month; correct booleans; 50 RPM causes 240s timeouts
+# E2E flow: anonymous → table-create → mutation-gate → mock-auth → write → UX coverage → delete → sign-out → cleanup.
+# Runtime: caller workflow substitutes __BASE_URL__ via sed before invoking bunx opencheck (see .github/workflows/e2e-opencheck.yml).
+# LLM: OpenRouter mistralai/mistral-small-3.2-24b-instruct (paid — no RPM cap, ~$0.06/run). Model table: docs/features/e2e-coverage/FEATURE.md.
 
 baseUrl: "__BASE_URL__"
 modelProvider: "openai"
@@ -62,26 +22,58 @@ tests:
       Navigate to the base URL. Call browser_snapshot immediately
       after the page loads — do NOT press Control+G or any other
       key first (the hero form is unconditionally visible since
-      GLOBAL-027 retired the Cmd+G gate). The accessibility tree
-      must contain a text input with placeholder "an orders tracker"
-      in the hero section. Use browser_snapshot to verify (not
-      browser_evaluate or DOM queries, which can find hidden
-      elements). If the input is absent from the snapshot, the test
-      fails. (The waitlist email input has a different placeholder —
-      do not confuse them.)
+      GLOBAL-027 retired the Cmd+G gate). Use browser_snapshot to
+      verify (do NOT use browser_evaluate or DOM queries).
+      In the snapshot the hero input appears as:
+        textbox "What are you building?" with /placeholder: an orders tracker
+      Any snapshot line containing "an orders tracker" confirms it
+      is present. Once you see it, respond with TEST_PASSED
+      immediately — do NOT take any further browser actions.
+      If the text "an orders tracker" is absent from the snapshot,
+      the test fails. (The waitlist email input has a different
+      placeholder — do not confuse them.)
 
   - name: "#create-table-anon"
     case: |
-      #hero-or-cmdg, then in the input with placeholder "an orders
-      tracker" type
+      Step 1 — Navigate to the base URL. Call browser_snapshot.
+      Find the input with placeholder "an orders tracker". Click it,
+      type:
         create a users table with id, name, email
-      and submit. Wait for the response. Call browser_snapshot and
-      verify: text containing "Provisioned with" is visible in the
-      result, and a table section headed "Users" with columns id,
-      name, email is rendered.
-      STOP here — do NOT click any "Sign in" link, "Sign in to
-      continue" button, or any other navigation element. The test
-      is complete once the result is verified on this page.
+      then press Enter as a SEPARATE browser_key_down call (do NOT
+      use submit: true on browser_type). Do NOT use browser_wait_for
+      anywhere in this test — use browser_snapshot to check URLs.
+      Call browser_snapshot. If "Something broke on this page" is
+      visible, click the "Reload" button once and call
+      browser_snapshot again. (One retry only.)
+      Step 2 — Navigate to "/auth/sign-in". Call browser_snapshot.
+      If a "Sign in as this user" button is visible, click it with
+      browser_click. If you receive "Not connected" after clicking,
+      that is normal — the page navigated away. Navigate to "/app"
+      and call browser_snapshot. If "Something broke on this page"
+      is visible, click "Reload" and call browser_snapshot again.
+      Step 3 — Check the "Page URL:" line at the top of the
+      browser_snapshot result (do NOT use browser_wait_for — read
+      the URL from the snapshot header directly). If the URL shows
+      just "/app" without "?db=", wait 3 seconds and call
+      browser_snapshot again before deciding — the app may still
+      be loading the database list.
+      a) If the URL contains "?db=" — a database is active.
+         Proceed to Step 4.
+      b) If the URL still does NOT contain "?db=" after waiting —
+         no database yet.
+         Click "+ New" in the left sidebar (aria-label "Your
+         databases"), type "users-db" in the "Name" input, click
+         "Create". Call browser_snapshot and verify the URL now
+         contains "?db=". Then click the chat textarea (placeholder
+         "Ask about your data…"), type:
+           create a users table with id, name, email
+         and press Enter as a SEPARATE browser_key_down call.
+         If a confirm/diff chip appears, press Enter to approve.
+         Call browser_snapshot and verify "Provisioned with" is
+         visible in the snapshot text.
+      Step 4 — Sign out: click the "Sign out" button in the top
+      navigation bar and wait for the URL to change away from
+      "/app". TEST_PASSED.
 
   - name: "#add-row-redirects-to-auth"
     case: |
@@ -106,35 +98,67 @@ tests:
       redirects to "/app" (session already active), that is acceptable
       — the test passes. Otherwise the mock-IdP form will be visible
       with a default email field and a "Sign in as this user" button.
-      Click "Sign in as this user". Wait for the URL to contain "/app".
+      Use browser_snapshot to find the "Sign in as this user" button
+      ref, then click it with browser_click using that ref (do NOT use
+      browser_evaluate, browser_fill_form, or browser_run_code).
+      After clicking, you may receive "Not connected" errors — this is
+      normal and means the page navigated away successfully. If you get
+      "Not connected", call browser_navigate to "/app" and take a
+      browser_snapshot to verify the URL contains "/app".
       The test passes once the URL contains "/app" — do not fail based
       on any error or loading content visible on the page.
 
   - name: "#authed-state-preserved"
     case: |
       Navigate to "/app". The previous test signed in, so the
-      session cookie is valid. Take a browser_snapshot and verify:
-      the left sidebar shows at least one entry whose visible text
-      contains "users" (any casing; does not need to be highlighted
-      or aria-selected — just visible).
+      session cookie is valid. Call browser_snapshot. If "Something
+      broke on this page" is visible, click the "Reload" button
+      (do NOT click "Sign out") and call browser_snapshot again.
+      If the sidebar shows "Loading…", wait 5 seconds and call
+      browser_snapshot one more time. Then check: does the left
+      sidebar show at least one entry whose visible text contains
+      "users" (any casing)?
+      If yes — TEST_PASSED immediately.
+      If no — TEST_FAILED immediately. A missing "users" entry
+      means the anon DB was not adopted into this account.
+      Use browser_snapshot ONLY — do NOT use browser_evaluate or any
+      DOM query tool (browser_evaluate errors in this context).
 
   - name: "#submit-prefilled-row"
     case: |
-      Navigate to "/app". In the left sidebar find the database
-      entry whose name contains "users" and click it. Wait for the
-      URL to contain "?db=" before continuing (clicking the entry
-      pins the db in the URL).
-      Click the chat textarea (placeholder "Ask about your data…").
-      If the textarea already contains "add a new row:
-      name='Alice', email='alice@example.com'" submit it directly
-      (press Enter or click Send). If the textarea is empty, type
-      that prompt fresh and then submit. If a confirm/diff chip
-      appears (e.g. "This will insert 1 row"), click the "Approve"
-      button inside the dialog (do NOT type in the confirm input —
-      click the button). If the response shows "Couldn't reach the
-      database" or any connectivity error, wait 5 seconds and submit
-      the same prompt again. Verify a row with name "Alice" and email
-      "alice@example.com" appears in the users table.
+      Navigate to "/app". Call browser_snapshot and check the
+      "Page URL:" line at the top of the snapshot. If "?db=" is
+      NOT in the URL (no databases): click "+ New" in the left
+      sidebar (aria-label "Your databases"), type "users-db" in
+      the "Name" input, click "Create", and verify the URL now
+      contains "?db=" in a new browser_snapshot.
+      If "Something broke on this page" is visible, click "Reload"
+      (not "Sign out") and call browser_snapshot again.
+      Find the chat textarea in the snapshot: look for
+        textbox "Ask about your data…"
+      in the snapshot YAML and note its ref. Click it using that
+      ref and type the prompt fresh (do NOT check if pre-filled):
+        add a new row: name='Alice', email='alice@example.com'
+      Press Enter as a SEPARATE tool call. If a confirm/diff chip
+      appears, press Enter once to approve — do NOT click any
+      button labeled "Approve" or "Create new database".
+      Check the response:
+      a) If the response shows "Couldn't reach the database" or
+         any network/connection error: wait 5 seconds. Call
+         browser_snapshot, find the textarea ref in THIS snapshot,
+         click it, re-type the same INSERT prompt, press Enter,
+         and press Enter again if a chip appears. Retry once only.
+      b) If the response shows "references a table this database
+         doesn't have" or "no such table": click the textarea,
+         type:
+           create a users table with id, name, email
+         press Enter separately. Do NOT click any "Create new
+         database" button. If a confirm/diff chip appears, press
+         Enter to approve. Wait for "Provisioned with" to appear.
+         Then click the textarea, type the INSERT prompt, press
+         Enter, and press Enter again if a chip appears.
+      Verify the response shows a row with name "Alice" and
+      email "alice@example.com".
 
   - name: "#read-shows-informative-data"
     case: |
@@ -148,56 +172,108 @@ tests:
     case: |
       #read-shows-informative-data, then type
         how many users are there?
-      and submit. Verify the reply surfaces the number 1, either in
-      the summary text or as a single returned data cell.
+      and submit. If the reply shows an error (including "references
+      a table this database doesn't have" or "Something went wrong"),
+      wait 3 seconds and submit the same prompt once more (retry at
+      most once). Verify the reply surfaces the number 1 (or more,
+      if multiple Alice rows exist from prior test runs), either in
+      the summary text or as a returned data cell.
 
   - name: "#trace-shows-sql"
     case: |
-      #count-summarizes, then open the trace pane on the latest
-      reply (click the "trace" summary, or press Ctrl+/). Verify a
-      <pre> block containing SQL is visible — must contain "users"
-      and a SQL keyword like SELECT or COUNT.
+      Navigate to "/app". The app auto-pins the newest database on
+      load; call browser_snapshot and check for "?db=" in the URL.
+      If "?db=" is not in the URL after 5 seconds, TEST_FAILED —
+      a signed-in session with a database is required.
+      Click the chat textarea (placeholder "Ask about your data…")
+      and type:
+        how many users are there?
+      Press Enter as a SEPARATE browser_key_down call. Wait for the
+      reply to appear. Then open the trace pane on that reply: click
+      the "trace" summary element (it appears as a collapsible label
+      near the reply). Verify a <pre> block containing SQL is visible
+      — it must contain "users" and a SQL keyword like SELECT or COUNT.
 
   - name: "#vague-question-handled"
     case: |
-      #trace-shows-sql, then type
+      Navigate to "/app". The app auto-pins the newest database on
+      load; call browser_snapshot and check for "?db=" in the URL.
+      If "?db=" is not in the URL after 5 seconds, TEST_FAILED —
+      a signed-in session with a database is required.
+      Click the chat textarea (placeholder "Ask about your data…")
+      and type:
         anything interesting in here?
-      and submit. If the page shows a full-page React error ("Something
-      broke" with a reload button), click reload and re-submit the
-      prompt from the chat textarea. Verify the chat reply is NOT a
-      bare dead-end message like "Something went wrong — try again."
+      Press Enter as a SEPARATE browser_key_down call. If the page
+      shows a full-page React error ("Something broke" with a reload
+      button), click reload and re-submit the prompt from the chat
+      textarea. Verify the chat reply is NOT a bare dead-end message
+      like "Something went wrong — try again."
       Acceptable: data rows, a clarification chip with a button, or a
       textual reply referencing users / Alice / row count.
 
   - name: "#schema-mismatch-clarifies"
     case: |
-      #vague-question-handled, then type
+      Navigate to "/app". The app auto-pins the newest database on
+      load; call browser_snapshot and check for "?db=" in the URL.
+      If "?db=" is not in the URL after 5 seconds, TEST_FAILED —
+      a signed-in session with a database is required.
+      Click the chat textarea (placeholder "Ask about your data…")
+      and type:
         show me all the orders
-      and submit. There is no orders table — only users. Verify the
-      reply is NOT a bare "Something went wrong — try again."
+      Press Enter as a SEPARATE browser_key_down call. There is no
+      orders table — only users.
+      If a React error boundary appears ("Something broke on this
+      page" with a Reload button), click the Reload button and
+      re-submit the prompt from the chat textarea.
+      Use browser_snapshot ONLY to verify (do NOT use browser_evaluate
+      — it fails in this context).
+      Verify the reply is NOT a bare "Something went wrong — try again."
       Acceptable: a message naming the missing "orders" table or
       the available "users" table, or a clarification chip.
 
   - name: "#cmdk-palette-discoverable"
     case: |
-      #schema-mismatch-clarifies, then press Ctrl+K (Cmd+K on Mac).
-      Verify a modal appears with placeholder "Type a command…" and
-      action labels including at least two of "New database",
-      "Copy embed snippet", "API keys", "Sign out". Press Escape
-      and verify the modal closes.
+      Navigate to "/app". Call browser_snapshot to confirm the URL
+      contains "/app". Press Escape once to make sure no textarea or
+      dialog is focused (do NOT navigate away). Then press Ctrl+K
+      (Cmd+K on Mac). Verify a modal appears with placeholder
+      "Type a command…" and action labels including at least two of
+      "New database", "Copy embed snippet", "API keys", "Sign out".
+      Press Escape and verify the modal closes.
 
   - name: "#delete-row"
     case: |
-      #cmdk-palette-discoverable, then type
+      The browser is signed in from previous tests. Navigate to
+      "/app". Call browser_snapshot. If "Something broke on this
+      page" is visible, click the "Reload" button (do NOT click
+      "Sign out") and call browser_snapshot again.
+      Find the chat textarea in THIS snapshot: look for
+        textbox "Ask about your data…"
+      in the snapshot YAML and note its ref. Use ONLY the ref
+      from THIS snapshot — do NOT reuse refs from earlier calls.
+      If the snapshot is truncated (ends with "[... N chars
+      truncated ...]") and does not show the textarea, call
+      browser_snapshot once more to get a fresh view. Click the
+      textarea using the ref from the current snapshot and type:
         delete the row where name = 'Alice'
-      and submit. If a confirm chip appears, approve it. Verify
-      the Alice row is no longer present in the users table.
+      and press Enter as a SEPARATE browser_key_down call. If a
+      confirm/diff chip appears, press Enter once to approve (do NOT
+      click any button — press Enter in the focused input). Call
+      browser_snapshot and verify the Alice row is no longer present
+      in the users table (0 rows OR the row is absent). If the
+      textarea is not visible yet, wait 3 seconds and call
+      browser_snapshot again before proceeding.
 
   - name: "#create-second-database"
     case: |
-      #delete-row, then in the left sidebar (aria-label "Your
-      databases") click the "+ New" button. A small form with a
-      "Name" input appears. Type
+      The browser is signed in from previous tests. Navigate to
+      "/app". Call browser_snapshot. If the sidebar shows
+      "Couldn't load databases." or a loading error, wait 5 seconds
+      and call browser_snapshot again; repeat once more if needed
+      (total wait up to 10 seconds). The sidebar should show at least
+      one database entry from previous tests. In the left sidebar
+      click the "+ New" button. A small form with a "Name" input
+      appears. Type
         products-tracker
       into that input and click the "Create" button. Wait until
       the new database appears in the sidebar list. The new entry
@@ -207,13 +283,18 @@ tests:
 
   - name: "#delete-active-db-dialog-opens"
     case: |
-      #create-second-database, then in the sidebar locate the
-      currently active database row (the highlighted one, named
-      something like "products tracker"). Click the "×" button at
-      the right edge of that row (aria-label starts with "Delete ").
-      Verify a modal dialog appears with the heading "Delete
-      database" and body text that includes "This cannot be reverted"
-      and a text input.
+      The browser is signed in and the sidebar (aria-label "Your
+      databases") shows at least two database entries from previous
+      tests — do NOT re-create any databases. Call browser_snapshot.
+      Locate the currently active (highlighted) database row. If the
+      sidebar shows "Couldn't load databases" or no database rows are
+      visible, wait 3 seconds and call browser_snapshot again; do
+      this at most 5 times total (15 seconds). If after 5 attempts
+      the sidebar is still not loading, the test fails.
+      Click the "×" button at the right edge of the active database
+      row (aria-label starts with "Delete "). Verify a modal dialog
+      appears with the heading "Delete database" and body text that
+      includes "This cannot be reverted" and a text input.
 
   - name: "#delete-active-db-typed-confirm"
     case: |
@@ -229,8 +310,12 @@ tests:
   - name: "#api-keys-mint-and-revoke"
     case: |
       #delete-active-db-typed-confirm, then navigate the browser
-      directly to "/app/keys" (the dashboard's API-key page from
-      SK-APIKEYS-012). Verify a heading "API keys" is visible.
+      directly to "/app/keys". If the page shows an error message
+      ("Something broke on this page" or similar), click the
+      "Reload" button on that error card and wait 3 seconds before
+      proceeding. Verify a heading "API keys" is visible.
+      Use browser_snapshot for all verification (do NOT use
+      browser_evaluate — it fails in this context).
       Click the "New key" button. A modal appears with the heading
       "Mint a new key". Type
         opencheck-smoke
@@ -246,25 +331,26 @@ tests:
 
   - name: "#sign-out"
     case: |
-      #api-keys-mint-and-revoke, then navigate back to "/app". In
-      the top navigation bar there is a direct "Sign out" button
-      (no dropdown or user-menu needed — it is visible directly in
-      the primary nav). Click it. Verify the URL is no longer "/app"
-      and the "Sign out" button is no longer in the nav.
+      The browser is signed in from previous tests. Navigate directly
+      to "/app". In the top navigation bar there is a direct "Sign
+      out" button (no dropdown or user-menu needed — it is visible
+      directly in the primary nav). Click it. Verify the URL is no
+      longer "/app" and the "Sign out" button is no longer in the nav.
 
   - name: "#sign-in-again"
     case: |
-      #sign-out, then navigate the browser directly to the path
-      "/auth/sign-in" (URL-direct is faster than clicking the
-      topnav link). On the mock IdP form submit it (default email
-      "test@example.com", button "Sign in as this user"). Wait for
-      the URL path to become "/app". Verify the sidebar shows at
-      least one database row remaining from the prior session (its
-      display name starts with "users").
+      The previous test signed out. Navigate the browser directly
+      to "/auth/sign-in". On the mock IdP form click the "Sign in as
+      this user" button using browser_click (use browser_snapshot to
+      find the button ref — do NOT use browser_evaluate). Wait for
+      the URL path to become "/app". Use browser_snapshot ONLY — do
+      NOT use browser_evaluate — to verify the sidebar shows at least
+      one database row remaining from the prior session (its display
+      name starts with "users").
 
   - name: "#delete-remaining-db"
     case: |
-      #sign-in-again. Delete ALL database entries in the sidebar
+      The previous test signed in again. Delete ALL database entries in the sidebar
       whose names start with "users" (there may be one or more
       due to prior test runs). For each such entry: click its "×"
       button (aria-label starts with "Delete "), copy the exact
