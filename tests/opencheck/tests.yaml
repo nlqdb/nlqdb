@@ -35,20 +35,27 @@ tests:
       #hero-or-cmdg, then in the input with placeholder "an orders
       tracker" type
         create a users table with id, name, email
-      and submit. Wait for the response.
-      Happy path: if "Provisioned with" is visible and a table section
-      headed "Users" with columns id, name, email is rendered — respond
-      with TEST_PASSED immediately. Do not take any further browser
-      actions; a "Sign in to continue" button on the page is expected
-      UX — do NOT click it.
-      Fallback (anonymous rate limit hit): if the page navigated to
-      "/auth/sign-in" instead, click "Sign in as this user" on the
-      mock-IdP form. Wait for the URL to contain "/app". Click the
-      chat textarea (placeholder "Ask about your data…"), type:
+      and submit. Wait for the response and call browser_snapshot.
+      Outcome A — success: "Provisioned with" is visible and a table
+      section headed "Users" with columns id, name, email is rendered
+      — test passes. Do NOT click any navigation element; a "Sign in
+      to continue" button on the page is expected UX — do NOT click it.
+      Outcome B — anonymous rate limit (URL contains "/auth/sign-in"):
+      click "Sign in as this user", wait for the URL to contain "/app",
+      click the chat textarea (placeholder "Ask about your data…"),
+      type:
         create a users table with id, name, email
       and submit. If a confirm/diff chip appears, click "Approve".
-      Verify "Provisioned with" is visible and a table section headed
-      "Users" with columns id, name, email is rendered.
+      Verify "Provisioned with" is visible and a Users table with
+      columns id, name, email is rendered.
+      Outcome C — API error (URL contains "/app" but "Session ended."
+      is visible in the chat OR an error alert "Something broke" is
+      shown): click the chat textarea (placeholder "Ask about your
+      data…"), wait 3 seconds, type:
+        create a users table with id, name, email
+      and submit. If a confirm/diff chip appears, click "Approve".
+      Verify "Provisioned with" is visible and a Users table with
+      columns id, name, email is rendered.
 
   - name: "#add-row-redirects-to-auth"
     case: |
@@ -162,7 +169,10 @@ tests:
 
   - name: "#delete-row"
     case: |
-      #cmdk-palette-discoverable, then type
+      The browser is signed in from previous tests. Navigate to
+      "/app" and wait for "?db=" to appear in the URL — do NOT
+      click a database entry in the sidebar. Click the chat textarea
+      (placeholder "Ask about your data…"), type:
         delete the row where name = 'Alice'
       and submit. If a confirm chip appears, approve it. Verify
       the Alice row is no longer present in the users table.
@@ -224,14 +234,15 @@ tests:
 
   - name: "#sign-out"
     case: |
-      #api-keys-mint-and-revoke, then navigate back to "/app". In
-      the top navigation bar there is a direct "Sign out" button
-      (no dropdown or user-menu needed — it is visible directly in
-      the primary nav). Click it. Verify the URL is no longer "/app"
-      and the "Sign out" button is no longer in the nav.
+      The browser is signed in from previous tests. Navigate directly
+      to "/app". In the top navigation bar there is a direct "Sign
+      out" button (no dropdown or user-menu needed — it is visible
+      directly in the primary nav). Click it. Verify the URL is no
+      longer "/app" and the "Sign out" button is no longer in the nav.
 
   - name: "#sign-in-again"
     case: |
+<<<<<<< HEAD
       #sign-out, then navigate the browser directly to the path
       "/auth/sign-in" (URL-direct is faster than clicking the
       topnav link). On the mock IdP form click the "Sign in as this
@@ -242,10 +253,18 @@ tests:
       DOM query tool — to verify the sidebar shows at least one
       database row remaining from the prior session (its display name
       starts with "users").
+=======
+      The previous test signed out. Navigate the browser directly
+      to "/auth/sign-in". On the mock IdP form submit it (default
+      email "test@example.com", button "Sign in as this user"). Wait
+      for the URL path to become "/app". Verify the sidebar shows at
+      least one database row remaining from the prior session (its
+      display name starts with "users").
+>>>>>>> b907fe8 (e2e: fix reference-chain timeouts and API error recovery)
 
   - name: "#delete-remaining-db"
     case: |
-      #sign-in-again. Delete ALL database entries in the sidebar
+      The previous test signed in again. Delete ALL database entries in the sidebar
       whose names start with "users" (there may be one or more
       due to prior test runs). For each such entry: click its "×"
       button (aria-label starts with "Delete "), copy the exact
