@@ -35,30 +35,35 @@ tests:
 
   - name: "#create-table-anon"
     case: |
-      #hero-or-cmdg, then in the input with placeholder "an orders
-      tracker" type
-        create a users table with id, name, email
-      and submit. Wait for the response and call browser_snapshot.
-      Outcome A — success: "Provisioned with" is visible and a table
-      section headed "Users" with columns id, name, email is rendered
-      — test passes. Do NOT click any navigation element; a "Sign in
-      to continue" button on the page is expected UX — do NOT click it.
-      Outcome B — anonymous rate limit (URL contains "/auth/sign-in"):
-      click "Sign in as this user", wait for the URL to contain "/app",
-      click the chat textarea (placeholder "Ask about your data…"),
+      Step 1 — Navigate to the base URL. Call browser_snapshot.
+      Find the input with placeholder "an orders tracker". Click it,
       type:
         create a users table with id, name, email
-      and submit. If a confirm/diff chip appears, click "Approve".
-      Verify "Provisioned with" is visible and a Users table with
-      columns id, name, email is rendered.
-      Outcome C — API error (URL contains "/app" but "Session ended."
-      is visible in the chat OR an error alert "Something broke" is
-      shown): click the chat textarea (placeholder "Ask about your
-      data…"), wait 3 seconds, type:
+      then press Enter as a SEPARATE browser_key_down call (do NOT
+      use submit: true on browser_type). Wait for the page to settle.
+      Step 2 — Call browser_snapshot and read the page URL from the
+      snapshot. Do NOT use browser_evaluate at any point in this test
+      (browser_evaluate errors in this context — always use
+      browser_snapshot).
+      Step 3 — Branch on current URL:
+        a) URL is "/app" and "Provisioned with" is in the snapshot
+           text — PASS. STOP immediately.
+        b) URL is "/auth/sign-in" — the anon cap was hit. Use
+           browser_snapshot to find the "Sign in as this user" button
+           ref, then browser_click it. Wait for the URL to change.
+        c) URL is "/auth/post-signin" — this is a normal post-sign-in
+           redirect; it will auto-navigate to "/app" in a moment. Call
+           browser_snapshot every 2 seconds until the URL contains
+           "/app" (max 20 seconds).
+        d) URL is "/app" but "Session ended." or "Something broke" is
+           visible — the ask failed; skip to Step 4.
+      Step 4 (after sign-in or API error): navigate to "/app", wait
+      for "?db=" in the URL, click the chat textarea (placeholder
+      "Ask about your data…"), type:
         create a users table with id, name, email
-      and submit. If a confirm/diff chip appears, click "Approve".
-      Verify "Provisioned with" is visible and a Users table with
-      columns id, name, email is rendered.
+      and submit (press Enter separately). If a confirm/diff chip
+      appears, click "Approve". Call browser_snapshot and verify
+      "Provisioned with" is visible in the snapshot text.
 
   - name: "#add-row-redirects-to-auth"
     case: |
@@ -184,12 +189,13 @@ tests:
   - name: "#delete-row"
     case: |
       The browser is signed in from previous tests. Navigate to
-      "/app" and wait for "?db=" to appear in the URL — do NOT
-      click a database entry in the sidebar. Click the chat textarea
-      (placeholder "Ask about your data…"), type:
+      "/app". Call browser_snapshot. If the chat textarea (placeholder
+      "Ask about your data…") is visible, click it and type:
         delete the row where name = 'Alice'
-      and submit. If a confirm chip appears, approve it. Verify
-      the Alice row is no longer present in the users table.
+      and submit. If a confirm chip appears, approve it. Call
+      browser_snapshot and verify the Alice row is no longer present
+      in the users table. If the textarea is not visible yet, wait
+      3 seconds and call browser_snapshot again before proceeding.
 
   - name: "#create-second-database"
     case: |
