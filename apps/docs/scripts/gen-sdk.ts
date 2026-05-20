@@ -97,20 +97,13 @@ function stampFile(path: string): void {
   writeFileSync(path, next);
 }
 
-// TypeDoc emits cross-refs as filesystem-relative paths (`[Engine](Engine.mdx)`,
-// `[ApiErrorCode](../type-aliases/ApiErrorCode.mdx)`). Astro Starlight lowercases
-// filenames and serves each non-index page at a trailing-slash URL — so
-// `type-aliases/Engine.mdx` lives at `/reference/sdk/type-aliases/engine/`. Because
-// the trailing slash makes the URL behave like a directory, a relative link
-// `../type-aliases/apierrorcode/` from `classes/nlqdbapierror/` resolves to
-// `classes/type-aliases/apierrorcode/` (404) instead of `type-aliases/apierrorcode/`.
-// Resolve each link against the source file's directory and emit an absolute URL so
-// resolution is independent of the rendered page's depth; preserve case-sensitive #fragments.
+// Absolute URLs: Starlight serves each non-index page at a trailing-slash URL, so resolving TypeDoc's filesystem-relative cross-refs against the rendered URL drops the parent directory and 404s every non-index cross-ref.
 function rewriteLinks(body: string, sourceRelPath: string): string {
   const sourceDir = posix.dirname(sourceRelPath);
   return body.replace(
     /\]\(([^)#\s]+)\.mdx(#[^)]*)?\)/g,
-    (_m, linkPath: string, hash = "") => {
+    (match, linkPath: string, hash = "") => {
+      if (/^(https?:|mailto:|\/)/.test(linkPath)) return match;
       const resolved = posix.normalize(posix.join(sourceDir, linkPath)).toLowerCase();
       return `](${URL_BASE}/${resolved}/${hash})`;
     },
