@@ -131,9 +131,12 @@ tests:
   - name: "#submit-prefilled-row"
     case: |
       Navigate to "/app". The app auto-pins the newest database on
-      load (ORDER BY created_at DESC); wait for "?db=" to appear in
-      the URL before continuing — do NOT manually click a database
-      entry in the sidebar.
+      load (ORDER BY created_at DESC); call browser_snapshot and
+      check for "?db=" in the URL. If "?db=" is NOT in the URL
+      within 10 seconds (no databases in sidebar): click "+ New"
+      in the left sidebar (aria-label "Your databases"), type
+      "users-db" in the "Name" input, click "Create", and wait
+      for "?db=" to appear in the URL.
       Click the chat textarea (placeholder "Ask about your data…").
       If the textarea already contains "add a new row:
       name='Alice', email='alice@example.com'" submit it directly
