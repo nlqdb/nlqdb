@@ -127,10 +127,13 @@ tests:
   - name: "#authed-state-preserved"
     case: |
       Navigate to "/app". The previous test signed in, so the
-      session cookie is valid. Call browser_snapshot and verify:
-      the left sidebar shows at least one entry whose visible text
-      contains "users" (any casing; does not need to be highlighted
-      or aria-selected — just visible).
+      session cookie is valid. Call browser_snapshot ONCE and check:
+      does the left sidebar show at least one entry whose visible text
+      contains "users" (any casing)?
+      If yes — TEST_PASSED immediately.
+      If no — TEST_FAILED immediately. Do NOT retry or reload; a
+      missing "users" entry means the anon DB was not adopted into
+      this account, which is the test failure.
       Use browser_snapshot ONLY — do NOT use browser_evaluate or any
       DOM query tool (browser_evaluate errors in this context).
 
@@ -187,27 +190,47 @@ tests:
 
   - name: "#trace-shows-sql"
     case: |
-      #count-summarizes, then open the trace pane on the latest
-      reply (click the "trace" summary, or press Ctrl+/). Verify a
-      <pre> block containing SQL is visible — must contain "users"
-      and a SQL keyword like SELECT or COUNT.
+      Navigate to "/app". The app auto-pins the newest database on
+      load; call browser_snapshot and check for "?db=" in the URL.
+      If "?db=" is not in the URL after 5 seconds, TEST_FAILED —
+      a signed-in session with a database is required.
+      Click the chat textarea (placeholder "Ask about your data…")
+      and type:
+        how many users are there?
+      Press Enter as a SEPARATE browser_key_down call. Wait for the
+      reply to appear. Then open the trace pane on that reply: click
+      the "trace" summary element (it appears as a collapsible label
+      near the reply). Verify a <pre> block containing SQL is visible
+      — it must contain "users" and a SQL keyword like SELECT or COUNT.
 
   - name: "#vague-question-handled"
     case: |
-      #trace-shows-sql, then type
+      Navigate to "/app". The app auto-pins the newest database on
+      load; call browser_snapshot and check for "?db=" in the URL.
+      If "?db=" is not in the URL after 5 seconds, TEST_FAILED —
+      a signed-in session with a database is required.
+      Click the chat textarea (placeholder "Ask about your data…")
+      and type:
         anything interesting in here?
-      and submit. If the page shows a full-page React error ("Something
-      broke" with a reload button), click reload and re-submit the
-      prompt from the chat textarea. Verify the chat reply is NOT a
-      bare dead-end message like "Something went wrong — try again."
+      Press Enter as a SEPARATE browser_key_down call. If the page
+      shows a full-page React error ("Something broke" with a reload
+      button), click reload and re-submit the prompt from the chat
+      textarea. Verify the chat reply is NOT a bare dead-end message
+      like "Something went wrong — try again."
       Acceptable: data rows, a clarification chip with a button, or a
       textual reply referencing users / Alice / row count.
 
   - name: "#schema-mismatch-clarifies"
     case: |
-      #vague-question-handled, then type
+      Navigate to "/app". The app auto-pins the newest database on
+      load; call browser_snapshot and check for "?db=" in the URL.
+      If "?db=" is not in the URL after 5 seconds, TEST_FAILED —
+      a signed-in session with a database is required.
+      Click the chat textarea (placeholder "Ask about your data…")
+      and type:
         show me all the orders
-      and submit. There is no orders table — only users.
+      Press Enter as a SEPARATE browser_key_down call. There is no
+      orders table — only users.
       If a React error boundary appears ("Something broke on this
       page" with a Reload button), click the Reload button and
       re-submit the prompt from the chat textarea.
@@ -242,9 +265,11 @@ tests:
 
   - name: "#create-second-database"
     case: |
-      #delete-row, then in the left sidebar (aria-label "Your
-      databases") click the "+ New" button. A small form with a
-      "Name" input appears. Type
+      The browser is signed in from previous tests. Navigate to
+      "/app". Call browser_snapshot. The sidebar (aria-label "Your
+      databases") should show at least one database entry from
+      previous tests. In the left sidebar click the "+ New" button.
+      A small form with a "Name" input appears. Type
         products-tracker
       into that input and click the "Create" button. Wait until
       the new database appears in the sidebar list. The new entry
