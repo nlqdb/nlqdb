@@ -242,25 +242,14 @@ tests:
 
   - name: "#sign-in-again"
     case: |
-<<<<<<< HEAD
-      #sign-out, then navigate the browser directly to the path
-      "/auth/sign-in" (URL-direct is faster than clicking the
-      topnav link). On the mock IdP form click the "Sign in as this
-      user" button using browser_click (do NOT use browser_evaluate
-      or browser_fill_form — use browser_snapshot to find the button
-      ref then click it). Wait for the URL path to become "/app".
-      Use browser_snapshot ONLY — do NOT use browser_evaluate or any
-      DOM query tool — to verify the sidebar shows at least one
-      database row remaining from the prior session (its display name
-      starts with "users").
-=======
       The previous test signed out. Navigate the browser directly
-      to "/auth/sign-in". On the mock IdP form submit it (default
-      email "test@example.com", button "Sign in as this user"). Wait
-      for the URL path to become "/app". Verify the sidebar shows at
-      least one database row remaining from the prior session (its
-      display name starts with "users").
->>>>>>> b907fe8 (e2e: fix reference-chain timeouts and API error recovery)
+      to "/auth/sign-in". On the mock IdP form click the "Sign in as
+      this user" button using browser_click (use browser_snapshot to
+      find the button ref — do NOT use browser_evaluate). Wait for
+      the URL path to become "/app". Use browser_snapshot ONLY — do
+      NOT use browser_evaluate — to verify the sidebar shows at least
+      one database row remaining from the prior session (its display
+      name starts with "users").
 
   - name: "#delete-remaining-db"
     case: |
