@@ -47,23 +47,43 @@ tests:
       browser_snapshot).
       Step 3 — Branch on current URL:
         a) URL is "/app" and "Provisioned with" is in the snapshot
-           text — PASS. STOP immediately.
+           text — anon create SUCCEEDED. The DB is currently anon;
+           sign in now so subsequent tests run as an authenticated
+           user who owns this DB. Navigate to "/auth/sign-in". Use
+           browser_snapshot to check: if the mock IdP form is visible
+           (has "Sign in as this user" button), click it; if the page
+           immediately redirects to "/app", that is also fine.
+           After sign-in, navigate to "/app". Call browser_snapshot.
+           If the sidebar shows an entry with "users" in its name —
+           PASS. STOP immediately.
         b) URL is "/auth/sign-in" — the anon cap was hit. Use
            browser_snapshot to find the "Sign in as this user" button
-           ref, then browser_click it. Wait for the URL to change.
+           ref, then browser_click it. The page will navigate away;
+           if you receive "Not connected", that is normal. Navigate
+           to "/app" and call browser_snapshot. If "Provisioned with"
+           is visible — PASS. STOP immediately. If not visible yet,
+           wait 3 seconds and call browser_snapshot again; if still
+           not visible, proceed to Step 4.
         c) URL is "/auth/post-signin" — this is a normal post-sign-in
            redirect; it will auto-navigate to "/app" in a moment. Call
            browser_snapshot every 2 seconds until the URL contains
-           "/app" (max 20 seconds).
+           "/app" (max 20 seconds). Once at "/app", if "Provisioned
+           with" is visible — PASS. STOP immediately. Otherwise
+           proceed to Step 4.
         d) URL is "/app" but "Session ended." or "Something broke" is
-           visible — the ask failed; skip to Step 4.
-      Step 4 (after sign-in or API error): navigate to "/app", wait
-      for "?db=" in the URL, click the chat textarea (placeholder
-      "Ask about your data…"), type:
+           visible — the ask failed; proceed to Step 4.
+      Step 4 (fallback): navigate to "/app", wait for "?db=" in the
+      URL (up to 10 seconds). If "?db=" appears, click the chat
+      textarea (placeholder "Ask about your data…"), type:
         create a users table with id, name, email
       and submit (press Enter separately). If a confirm/diff chip
       appears, click "Approve". Call browser_snapshot and verify
       "Provisioned with" is visible in the snapshot text.
+      If "?db=" never appears (sidebar is empty), click the "+ New"
+      button in the left sidebar (aria-label "Your databases"), type
+      "users-db" in the "Name" input, click "Create", wait for
+      "?db=" to appear, then submit "create a users table with id,
+      name, email" and verify "Provisioned with".
 
   - name: "#add-row-redirects-to-auth"
     case: |
@@ -123,8 +143,15 @@ tests:
       button inside the dialog (do NOT type in the confirm input —
       click the button). If the response shows "Couldn't reach the
       database", "references a table this database doesn't have", or
-      any connectivity error, wait 5 seconds and submit the same
-      prompt once more (retry at most once — do not loop).
+      any connectivity error:
+        First type:
+          create a users table with id, name, email
+        and submit (press Enter separately). If a confirm/diff chip
+        appears, click "Approve". Wait for "Provisioned with" in the
+        snapshot. Then type:
+          add a new row: name='Alice', email='alice@example.com'
+        and submit (press Enter separately). If a confirm/diff chip
+        appears, click "Approve".
       Verify a row with name "Alice" and email "alice@example.com"
       appears in the users table.
 
