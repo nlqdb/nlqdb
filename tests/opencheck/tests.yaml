@@ -138,16 +138,18 @@ tests:
       in the left sidebar (aria-label "Your databases"), type
       "users-db" in the "Name" input, click "Create", and wait
       for "?db=" to appear in the URL.
+      If an alert saying "Something broke on this page" is visible,
+      click the "Reload" button inside that alert (do NOT click the
+      "Sign out" link) and call browser_snapshot again to confirm
+      the page settled before continuing.
       Click the chat textarea (placeholder "Ask about your data…").
-      If the textarea already contains "add a new row:
-      name='Alice', email='alice@example.com'" submit it directly
-      (press Enter or click Send). If the textarea is empty, type
-      that prompt fresh and then submit. If a confirm/diff chip
-      appears (e.g. "This will insert 1 row"), click the "Approve"
-      button inside the dialog (do NOT type in the confirm input —
-      click the button). If the response shows "Couldn't reach the
-      database", "references a table this database doesn't have", or
-      any connectivity error:
+      Type the prompt fresh (do NOT check if it is pre-filled):
+        add a new row: name='Alice', email='alice@example.com'
+      and submit. If a confirm/diff chip appears (e.g. "This will
+      insert 1 row"), click the "Approve" button inside the dialog
+      (do NOT type in the confirm input — click the button). If the
+      response shows "Couldn't reach the database", "references a
+      table this database doesn't have", or any connectivity error:
         First type:
           create a users table with id, name, email
         and submit (press Enter separately). If a confirm/diff chip
@@ -171,11 +173,12 @@ tests:
     case: |
       #read-shows-informative-data, then type
         how many users are there?
-      and submit. If the reply shows an error or "Something went
-      wrong", wait 3 seconds and submit the same prompt once more.
-      Verify the reply surfaces the number 1 (or more, if multiple
-      Alice rows exist from prior test runs), either in the summary
-      text or as a returned data cell.
+      and submit. If the reply shows an error (including "references
+      a table this database doesn't have" or "Something went wrong"),
+      wait 3 seconds and submit the same prompt once more (retry at
+      most once). Verify the reply surfaces the number 1 (or more,
+      if multiple Alice rows exist from prior test runs), either in
+      the summary text or as a returned data cell.
 
   - name: "#trace-shows-sql"
     case: |
@@ -220,8 +223,12 @@ tests:
   - name: "#delete-row"
     case: |
       The browser is signed in from previous tests. Navigate to
-      "/app". Call browser_snapshot. If the chat textarea (placeholder
-      "Ask about your data…") is visible, click it and type:
+      "/app". Call browser_snapshot. If an alert saying "Something
+      broke on this page" is visible, click the "Reload" button
+      inside that alert (do NOT click the "Sign out" link) and call
+      browser_snapshot again before continuing. If the chat textarea
+      (placeholder "Ask about your data…") is visible, click it and
+      type:
         delete the row where name = 'Alice'
       and submit. If a confirm chip appears, approve it. Call
       browser_snapshot and verify the Alice row is no longer present
