@@ -100,14 +100,11 @@ function stampFile(path: string): void {
 // Absolute URLs: Starlight serves each non-index page at a trailing-slash URL, so resolving TypeDoc's filesystem-relative cross-refs against the rendered URL drops the parent directory and 404s every non-index cross-ref.
 function rewriteLinks(body: string, sourceRelPath: string): string {
   const sourceDir = posix.dirname(sourceRelPath);
-  return body.replace(
-    /\]\(([^)#\s]+)\.mdx(#[^)]*)?\)/g,
-    (match, linkPath: string, hash = "") => {
-      if (/^(https?:|mailto:|\/)/.test(linkPath)) return match;
-      const resolved = posix.normalize(posix.join(sourceDir, linkPath)).toLowerCase();
-      return `](${URL_BASE}/${resolved}/${hash})`;
-    },
-  );
+  return body.replace(/\]\(([^)#\s]+)\.mdx(#[^)]*)?\)/g, (match, linkPath: string, hash = "") => {
+    if (/^(https?:|mailto:|\/)/.test(linkPath)) return match;
+    const resolved = posix.normalize(posix.join(sourceDir, linkPath)).toLowerCase();
+    return `](${URL_BASE}/${resolved}/${hash})`;
+  });
 }
 
 // YAML double-quoted string escapes both `\` and `"`; covers anything TypeDoc emits as a title.
