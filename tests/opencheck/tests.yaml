@@ -35,13 +35,18 @@ tests:
       #hero-or-cmdg, then in the input with placeholder "an orders
       tracker" type
         create a users table with id, name, email
-      and submit. Wait for the response. Call browser_snapshot and
-      verify: text containing "Provisioned with" is visible in the
-      result, and a table section headed "Users" with columns id,
-      name, email is rendered.
-      STOP here — do NOT click any "Sign in" link, "Sign in to
-      continue" button, or any other navigation element. The test
-      is complete once the result is verified on this page.
+      and submit. Wait for the response.
+      Happy path: if "Provisioned with" is visible and a table section
+      headed "Users" with columns id, name, email is rendered — the
+      test passes. STOP here — do NOT click any navigation element.
+      Fallback (anonymous rate limit hit): if the page navigated to
+      "/auth/sign-in" instead, click "Sign in as this user" on the
+      mock-IdP form. Wait for the URL to contain "/app". Click the
+      chat textarea (placeholder "Ask about your data…"), type:
+        create a users table with id, name, email
+      and submit. If a confirm/diff chip appears, click "Approve".
+      Verify "Provisioned with" is visible and a table section headed
+      "Users" with columns id, name, email is rendered.
 
   - name: "#add-row-redirects-to-auth"
     case: |
