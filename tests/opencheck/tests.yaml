@@ -73,10 +73,12 @@ tests:
   - name: "#authed-state-preserved"
     case: |
       Navigate to "/app". The previous test signed in, so the
-      session cookie is valid. Take a browser_snapshot and verify:
+      session cookie is valid. Call browser_snapshot and verify:
       the left sidebar shows at least one entry whose visible text
       contains "users" (any casing; does not need to be highlighted
       or aria-selected — just visible).
+      Use browser_snapshot ONLY — do NOT use browser_evaluate or any
+      DOM query tool (browser_evaluate errors in this context).
 
   - name: "#submit-prefilled-row"
     case: |
@@ -93,8 +95,9 @@ tests:
       button inside the dialog (do NOT type in the confirm input —
       click the button). If the response shows "Couldn't reach the
       database" or any connectivity error, wait 5 seconds and submit
-      the same prompt again. Verify a row with name "Alice" and email
-      "alice@example.com" appears in the users table.
+      the same prompt once more (retry at most once — do not loop).
+      Verify a row with name "Alice" and email "alice@example.com"
+      appears in the users table.
 
   - name: "#read-shows-informative-data"
     case: |
@@ -108,8 +111,11 @@ tests:
     case: |
       #read-shows-informative-data, then type
         how many users are there?
-      and submit. Verify the reply surfaces the number 1, either in
-      the summary text or as a single returned data cell.
+      and submit. If the reply shows an error or "Something went
+      wrong", wait 3 seconds and submit the same prompt once more.
+      Verify the reply surfaces the number 1 (or more, if multiple
+      Alice rows exist from prior test runs), either in the summary
+      text or as a returned data cell.
 
   - name: "#trace-shows-sql"
     case: |

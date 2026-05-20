@@ -109,6 +109,9 @@ jobs:
               try { spawnSync("pkill", ["-TERM", "-f", `user-data-dir=${dir}`], { stdio: "ignore" }); } catch {}
               const deadline = Date.now() + 3000;
               while (fs.existsSync(lock) && Date.now() < deadline) spawnSync("sleep", ["0.1"]);
+              // Force-kill any Chromium that ignored SIGTERM (happens after test timeouts).
+              try { spawnSync("pkill", ["-KILL", "-f", `user-data-dir=${dir}`], { stdio: "ignore" }); } catch {}
+              spawnSync("sleep", ["0.5"]);
               try { fs.unlinkSync(lock); } catch {}
             }
           }
