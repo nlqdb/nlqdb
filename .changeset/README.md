@@ -21,9 +21,12 @@ A package is publishable when its `package.json` is **not**
 `"private": true` are skipped by `changeset publish` automatically.
 
 Status:
-- `@nlqdb/sdk` — un-gated; bootstrap publish pending.
-- `@nlqdb/cli` — un-gated; bootstrap publish pending (npm shim that
-  downloads the `nlq` Go binary on `postinstall`).
+- `@nlqdb/sdk` — un-gated; bootstrap published at `0.1.0` from
+  maintainer machine on 2026-05-20. Configure Trusted Publisher on
+  npmjs.com (see below) so subsequent publishes flow via OIDC.
+- `@nlqdb/cli` — un-gated; bootstrap published at `0.1.0` (npm shim
+  that downloads the `nlq` Go binary on `postinstall`). Configure
+  Trusted Publisher on npmjs.com (see below).
 - Everything else in `packages/*` — still gated.
 
 To un-gate a new package:
@@ -63,18 +66,21 @@ To un-gate a new package:
    `release-npm.yml` before the changesets action.
 4. Configure Trusted Publishing on the package (see below).
 
-## Authentication: Trusted Publishing (OIDC), with `NPM_TOKEN` as bootstrap
+## Authentication: Trusted Publishing (OIDC)
 
 Per [`SK-CIPERM-003`](../docs/features/ci-permissions/FEATURE.md), the
-default publish path is npm's Trusted Publishing — the `release` job
-mints an OIDC token (`id-token: write`) and npm verifies the claim
-against the configured GitHub repo + workflow. No long-lived secret.
+publish path is npm's Trusted Publishing — the `release` job mints an
+OIDC token (`id-token: write`) and npm verifies the claim against the
+configured GitHub repo + workflow. No long-lived secret in CI; npm
+auto-attaches SLSA v1 provenance on OIDC publishes.
 
-**Chicken-and-egg:** Trusted Publishers can only be configured on a
-package that **already exists** on npm. The very first publish for a
-new package therefore uses `NPM_TOKEN`; immediately after, configure
-the Trusted Publisher on `npmjs.com/package/@nlqdb/<name>/access` and
-drop `NPM_TOKEN` from future runs.
+**Chicken-and-egg (one-time per new package):** Trusted Publishers
+can only be configured on a package that **already exists** on npm.
+Publish the first version manually from a maintainer machine
+(`npx --yes -p npm@latest -- npm publish --no-provenance --access public`)
+with the user's npm session (`npm login --auth-type=web`), then
+configure the Trusted Publisher fields below. The next CI publish
+flows via OIDC.
 
 ### Trusted Publisher fields (one-time, per package)
 
@@ -90,10 +96,6 @@ On `npmjs.com/package/@nlqdb/<name>/access` → **Trusted Publisher**:
 
 Then **Publishing access** → "Require two-factor authentication and
 disallow tokens" to lock out token-based fallback for that package.
-
-`NPM_TOKEN` stays in repo secrets while at least one package is on
-the bootstrap path; remove when all `@nlqdb/*` packages are on
-Trusted Publishing (the open question tracked in `SK-CIPERM-003`).
 
 ## Skipping a changeset
 
