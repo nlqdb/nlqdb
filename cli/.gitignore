@@ -1,0 +1,2 @@
+# goreleaser stages a copy of the repo-root LICENSE next to .goreleaser.yml.
+LICENSE.txt

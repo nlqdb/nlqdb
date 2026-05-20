@@ -1,5 +1,5 @@
 # Release config for the `nlq` CLI. Triggered by release-cli.yml on
-# `cli-v*` tag push. Local dry-run:
+# `v*` tag push. Local dry-run:
 #   cd cli && goreleaser release --snapshot --clean --skip=publish
 
 version: 2
@@ -9,6 +9,8 @@ project_name: nlq
 before:
   hooks:
     - go mod tidy
+    # Repo LICENSE lives at the root; stage a copy next to .goreleaser.yml so the archive picks it up.
+    - sh -c 'cp ../LICENSE LICENSE.txt'
 
 builds:
   - id: nlq
@@ -31,7 +33,8 @@ archives:
       {{- if eq .Arch "amd64" }}x86_64
       {{- else }}{{ .Arch }}{{ end }}
     files:
-      - LICENSE*
+      - src: LICENSE.txt
+        dst: LICENSE
       - README.md
 
 checksum:

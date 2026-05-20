@@ -195,9 +195,11 @@ jobs:
     strategy:
       matrix:
         # `test` is optional — framework-compiler-only packages skip it.
+        # Directories live under packages/; `cli-shim` ships as `@nlqdb/cli`.
         pkg:
           [
             astro,
+            cli-shim,
             db,
             elements,
             llm,

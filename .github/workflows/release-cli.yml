@@ -1,5 +1,5 @@
 # `nlq` CLI releases via goreleaser. Triggers:
-#   - tag push (`cli-v*`) — manual semver bumps
+#   - tag push (`v*`) — manual semver bumps
 #   - workflow_dispatch — re-run a tag that already exists on origin
 #   - workflow_call — invoked by deploy-cli.yml after auto-tag
 # Cross-compiles linux/darwin × amd64/arm64, attaches archives + SBOM
@@ -11,11 +11,11 @@ name: Release CLI
 on:
   push:
     tags:
-      - "cli-v*"
+      - "v*"
   workflow_dispatch:
     inputs:
       tag:
-        description: "Tag to release (must already exist on origin, e.g. cli-v0.1.0)"
+        description: "Tag to release (must already exist on origin, e.g. v0.1.0)"
         required: true
   workflow_call:
     inputs:
@@ -47,32 +47,30 @@ jobs:
           go-version-file: cli/go.mod
           cache-dependency-path: cli/go.sum
 
-      # Strip the `cli-` monorepo prefix so goreleaser v2's strict semver
-      # parser accepts current + previous tags (`tag_prefix` is PRO only).
-      - name: Resolve semver tags
-        id: ver
+      # Find the previous v* tag, ignoring any legacy `cli-v*` from older
+      # tagging schemes so the auto-changelog window stays inside the new
+      # scheme. Empty when this is the first v* release — goreleaser then
+      # walks back to the initial commit.
+      - name: Compute previous v* tag
+        id: prev
         run: |
           set -euo pipefail
-          raw="${{ inputs.tag || github.ref_name }}"
-          echo "tag=${raw#cli-}" >> "$GITHUB_OUTPUT"
-          prev_raw=$(git tag --list 'cli-v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname \
-            | grep -E '^cli-v[0-9]+\.[0-9]+\.[0-9]+$' \
-            | grep -v -x "$raw" \
+          current="${{ inputs.tag || github.ref_name }}"
+          prev=$(git tag --list 'v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname \
+            | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' \
+            | grep -v -x "$current" \
             | head -n1 || true)
-          echo "prev=${prev_raw#cli-}" >> "$GITHUB_OUTPUT"
+          echo "tag=$prev" >> "$GITHUB_OUTPUT"
 
       # Syft generates the SPDX SBOM that goreleaser attaches to the release.
       - uses: anchore/sbom-action/download-syft@v0
 
-      # --skip=validate is required because GORELEASER_CURRENT_TAG doesn't
-      # match a real git tag on HEAD (the real tag is `cli-vX.Y.Z`).
       - uses: goreleaser/goreleaser-action@v6
         with:
           version: "~> v2"
-          args: release --clean --skip=validate
+          args: release --clean
           workdir: cli
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GORELEASER_CURRENT_TAG: ${{ steps.ver.outputs.tag }}
-          GORELEASER_PREVIOUS_TAG: ${{ steps.ver.outputs.prev }}
           HOMEBREW_TAP_GITHUB_TOKEN: ${{ secrets.HOMEBREW_TAP_GITHUB_TOKEN }}
+          GORELEASER_PREVIOUS_TAG: ${{ steps.prev.outputs.tag }}

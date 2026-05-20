@@ -33,9 +33,9 @@ Deferred to follow-up slices — gated on server endpoints that don't exist yet:
 ## Touchpoints — read this feature before editing
 
 - `cli/**` (the canonical source tree once Phase 2 starts)
-- npm shim `@nlqdb/cli` distribution
+- npm shim `@nlqdb/cli` (`packages/cli-shim/`) — postinstall downloads + verifies the matching Go binary from the GitHub Release pinned to the package's version, with `tar` extraction and sha256 verification against `checksums.txt`; workspace-aware (no-op inside the source monorepo)
 - Homebrew tap `nlqdb/tap`
-- `https://nlqdb.com/install` (curl-pipe-sh entry point — installer at `apps/web/public/install` resolves the latest `cli-v*` GitHub Release, verifies sha256, lands the binary at `$NLQ_INSTALL_DIR` or `~/.local/bin/nlq`; falls back to build-from-source until the first `cli-v*` tag is cut, per [SK-CLI-002](decisions/SK-CLI-002-distribution-channels.md))
+- `https://nlqdb.com/install` (curl-pipe-sh entry point — installer at `apps/web/public/install` resolves the latest `v*` GitHub Release, verifies sha256, lands the binary at `$NLQ_INSTALL_DIR` or `~/.local/bin/nlq`; falls back to build-from-source until the first `v*` tag is cut, per [SK-CLI-002](decisions/SK-CLI-002-distribution-channels.md))
 - OS keychains via `zalando/go-keyring` (Keychain / libsecret / Credential Manager)
 - AES-GCM fallback file at `~/.config/nlqdb/credentials.enc` (machine-keyed)
 - Non-secret prefs at `~/.config/nlqdb/config.toml`
