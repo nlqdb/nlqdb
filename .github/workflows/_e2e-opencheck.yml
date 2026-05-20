@@ -106,12 +106,21 @@ jobs:
             const dir = userDataDirArg.slice("--user-data-dir=".length);
             const lock = path.join(dir, "SingletonLock");
             if (fs.existsSync(lock)) {
-              try { spawnSync("pkill", ["-TERM", "-f", `user-data-dir=${dir}`], { stdio: "ignore" }); } catch {}
-              const deadline = Date.now() + 3000;
-              while (fs.existsSync(lock) && Date.now() < deadline) spawnSync("sleep", ["0.1"]);
-              // Force-kill any Chromium that ignored SIGTERM (happens after test timeouts).
-              try { spawnSync("pkill", ["-KILL", "-f", `user-data-dir=${dir}`], { stdio: "ignore" }); } catch {}
-              spawnSync("sleep", ["0.5"]);
+              // pgrep finds stale PIDs; filter own PID to avoid self-kill (our argv also contains user-data-dir).
+              const pgrepOut = spawnSync("pgrep", ["-f", `user-data-dir=${dir}`], { encoding: "utf8" });
+              const stalePids = (pgrepOut.stdout || "").trim().split("\n")
+                .filter(p => p.trim() && p.trim() !== String(process.pid));
+              if (stalePids.length > 0) {
+                for (const pid of stalePids) {
+                  try { spawnSync("kill", ["-TERM", pid.trim()], { stdio: "ignore" }); } catch {}
+                }
+                const deadline = Date.now() + 3000;
+                while (fs.existsSync(lock) && Date.now() < deadline) spawnSync("sleep", ["0.1"]);
+                for (const pid of stalePids) {
+                  try { spawnSync("kill", ["-KILL", pid.trim()], { stdio: "ignore" }); } catch {}
+                }
+                spawnSync("sleep", ["0.5"]);
+              }
               try { fs.unlinkSync(lock); } catch {}
             }
           }
