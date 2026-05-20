@@ -1,7 +1,7 @@
 # `@nlqdb/*` npm releases via changesets. Per-package gate is
 # `"private": true`; un-gated packages emit `dist/` and ship.
-# Auth path documented in .changeset/README.md (Trusted Publishing
-# default per SK-CIPERM-003; NPM_TOKEN bootstrap for first publish).
+# Auth path: OIDC trusted publishing (SK-CIPERM-003) — no NPM_TOKEN.
+# Trusted Publisher config per package: see .changeset/README.md.
 
 name: Release npm
 
@@ -32,9 +32,16 @@ jobs:
 
       - uses: ./.github/actions/setup
 
-      # Node 22's bundled npm 10.9.7 covers `npm publish` + provenance; when
-      # flipping to OIDC, upgrade to ≥ 11.5.1 via corepack (npm/cli#9151 blocks
-      # the direct `npm install -g npm@11` path).
+      # OIDC trusted publishing requires npm >= 11.5.1; the shared setup pins
+      # Node 22 (bundled npm 10.9.7). Override to Node 24 (bundles npm 11.x)
+      # here, with registry-url so .npmrc primes the OIDC-aware endpoint.
+      # Skipping a direct `npm install -g npm@latest` step on purpose: it hits
+      # npm/cli#9151 when jumping major versions, and Node 24's bundled npm
+      # already clears the OIDC threshold.
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: "24"
+          registry-url: "https://registry.npmjs.org"
 
       # Add a filter entry as each `@nlqdb/*` package un-gates (see .changeset/README.md).
       - name: Build publishable packages
@@ -49,7 +56,3 @@ jobs:
           title: "chore(release): version packages"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # Bootstrap-only: remove once every un-gated @nlqdb/* has a Trusted Publisher configured.
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-          # Sigstore-signed provenance attestations on every publish (works under both NPM_TOKEN and OIDC paths).
-          NPM_CONFIG_PROVENANCE: "true"
