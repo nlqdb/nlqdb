@@ -55,7 +55,8 @@ tests:
            immediately redirects to "/app", that is also fine.
            After sign-in, navigate to "/app". Call browser_snapshot.
            If the sidebar shows an entry with "users" in its name —
-           PASS. STOP immediately.
+           PASS. STOP immediately. If the sidebar is empty (adoption
+           may have failed), proceed to Step 4.
         b) URL is "/auth/sign-in" — the anon cap was hit. Use
            browser_snapshot to find the "Sign in as this user" button
            ref, then browser_click it. The page will navigate away;
