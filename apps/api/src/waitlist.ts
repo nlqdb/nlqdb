@@ -13,7 +13,7 @@
 //     so the response isn't blocked on queue latency — `pendingEmit`
 //     is the deferred promise the handler hands to the runtime.
 
-import type { EventEmitter, ProductEvent } from "@nlqdb/events";
+import type { EventEmitter, ProductEvent, WaitlistPersona } from "@nlqdb/events";
 import { makeKvThrottle } from "./lib/kv-throttle.ts";
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -21,10 +21,8 @@ const MAX_EMAIL_LEN = 254;
 const RATE_WINDOW_SECONDS = 60;
 const RATE_MAX = 5;
 
-// Closed set of persona slugs. Mirrors `docs/research/personas.md`
-// P1–P6 plus `other`. Server-side allowlist prevents tag pollution in
-// the LogSnag dashboard from a forged client.
-export const WAITLIST_PERSONAS = [
+// Runtime mirror of `WaitlistPersona` in `packages/events/src/types.ts`; typecheck below guarantees they drift together.
+const WAITLIST_PERSONAS: ReadonlySet<WaitlistPersona> = new Set<WaitlistPersona>([
   "solo-builder",
   "agent-builder",
   "data-analyst",
@@ -32,14 +30,11 @@ export const WAITLIST_PERSONAS = [
   "student",
   "analytics-engineer",
   "other",
-] as const;
-export type WaitlistPersona = (typeof WAITLIST_PERSONAS)[number];
+]);
 
 function normalizePersona(value: unknown): WaitlistPersona | null {
   if (typeof value !== "string" || value.length === 0) return null;
-  return (WAITLIST_PERSONAS as readonly string[]).includes(value)
-    ? (value as WaitlistPersona)
-    : null;
+  return WAITLIST_PERSONAS.has(value as WaitlistPersona) ? (value as WaitlistPersona) : null;
 }
 
 export type WaitlistDeps = {
@@ -89,10 +84,7 @@ export async function joinWaitlist(
     return { status: 400, body: { error: { status: "invalid_email" } } };
   }
   const normalized = trimmed.toLowerCase();
-  // Unknown / off-list personas degrade to null rather than 400 — the
-  // form's <select> caps the legitimate set, so anything else is
-  // either a stale client or a probe; silent normalisation keeps the
-  // signup path lenient (privacy contract: any well-formed email → 200).
+  // Off-list personas degrade to null rather than 400 — keeps the signup path lenient under the "any well-formed email → 200" privacy contract.
   const personaSlug = normalizePersona(persona);
 
   // `clientIp === null` means the request reached us without a

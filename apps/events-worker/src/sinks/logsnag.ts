@@ -199,10 +199,7 @@ function buildPayloadBody(project: string, event: ProductEvent): LogSnagPayload 
         },
       };
     case "user.waitlist_joined":
-      // SK-EVENTS-006 amendment — routed to LogSnag now that we know
-      // pre-alpha volume is well below the 2,500/mo quota. `persona`
-      // surfaces in tags so the operator can see ICP mix at a glance;
-      // null degrades to `unspecified` (form lets you skip the choice).
+      // SK-EVENTS-006 amendment — pre-alpha volume is well below the 2,500/mo quota; null persona degrades to `unspecified` (form lets you skip).
       return {
         project,
         channel: "users",

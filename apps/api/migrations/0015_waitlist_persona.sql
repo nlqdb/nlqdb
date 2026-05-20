@@ -1,9 +1,3 @@
--- Persona selection on waitlist signup. Optional self-identification
--- from a fixed list anchored in `docs/research/personas.md` (P1–P6).
--- Value is the slugged persona id (e.g. `solo-builder`, `agent-builder`,
--- `data-analyst`, `backend-engineer`, `student`, `analytics-engineer`,
--- `other`); existing rows stay NULL (pre-feature signups had no choice).
--- Validation lives in `apps/api/src/waitlist.ts` — the column is plain
--- TEXT so the list can evolve without a migration.
+-- Optional persona slug on waitlist signup; values from `WAITLIST_PERSONAS` in `apps/api/src/waitlist.ts` (mirrors `docs/research/personas.md`).
 
 ALTER TABLE waitlist ADD COLUMN persona TEXT;
