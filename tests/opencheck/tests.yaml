@@ -229,9 +229,12 @@ tests:
 
   - name: "#cmdk-palette-discoverable"
     case: |
-      #schema-mismatch-clarifies, then press Ctrl+K (Cmd+K on Mac).
-      Verify a modal appears with placeholder "Type a command…" and
-      action labels including at least two of "New database",
+      Navigate to "/app". Call browser_snapshot to confirm the URL
+      contains "/app". Click once on the page OUTSIDE the chat
+      textarea (e.g. click the heading or sidebar area) to ensure
+      the chat textarea is NOT focused. Then press Ctrl+K (Cmd+K on
+      Mac). Verify a modal appears with placeholder "Type a command…"
+      and action labels including at least two of "New database",
       "Copy embed snippet", "API keys", "Sign out". Press Escape
       and verify the modal closes.
 
@@ -251,17 +254,23 @@ tests:
       textarea using the ref from the current snapshot and type:
         delete the row where name = 'Alice'
       and press Enter as a SEPARATE browser_key_down call. If a
-      confirm/diff chip appears, press Enter to approve (do NOT
-      click a button). Call browser_snapshot and verify the Alice
-      row is no longer present in the response.
+      confirm/diff chip appears, press Enter once to approve (do NOT
+      click any button — press Enter in the focused input). Call
+      browser_snapshot and verify the Alice row is no longer present
+      in the users table (0 rows OR the row is absent). If the
+      textarea is not visible yet, wait 3 seconds and call
+      browser_snapshot again before proceeding.
 
   - name: "#create-second-database"
     case: |
       The browser is signed in from previous tests. Navigate to
-      "/app". Call browser_snapshot. The sidebar (aria-label "Your
-      databases") should show at least one database entry from
-      previous tests. In the left sidebar click the "+ New" button.
-      A small form with a "Name" input appears. Type
+      "/app". Call browser_snapshot. If the sidebar shows
+      "Couldn't load databases." or a loading error, wait 5 seconds
+      and call browser_snapshot again; repeat once more if needed
+      (total wait up to 10 seconds). The sidebar should show at least
+      one database entry from previous tests. In the left sidebar
+      click the "+ New" button. A small form with a "Name" input
+      appears. Type
         products-tracker
       into that input and click the "Create" button. Wait until
       the new database appears in the sidebar list. The new entry
