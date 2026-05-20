@@ -161,6 +161,24 @@ jobs:
           chmod +x "$cli"
           echo "patched $cli"
 
+      # Patch opencheck system prompt: replace "prefer browser_evaluate" with browser_snapshot guidance.
+      # browser_evaluate runs code in the BROWSER context — Playwright API (page.*) is not available there,
+      # causing "not well-serializable" / "Not connected" loops with mistral-small.
+      - name: Patch opencheck — fix browser_evaluate system-prompt guidance
+        working-directory: tests/opencheck
+        run: |
+          agent_ts="node_modules/opencheck/src/agent/agent-factory.ts"
+          sed -i \
+            's|"Token efficiency:",|"Important: browser_evaluate runs in the BROWSER context — page.* Playwright API is NOT available inside it.",|' \
+            "$agent_ts"
+          sed -i \
+            's|"- Prefer browser_evaluate (returns only the JS result, not the full page tree) over",|"- Use browser_snapshot to read page state and check elements, text, or loading states.",|' \
+            "$agent_ts"
+          sed -i \
+            's|"  browser_snapshot for checking elements, text, loading states, and polling.",|"- Only use browser_evaluate for pure browser JS (document.querySelector etc.) — never pass page.* API.",|' \
+            "$agent_ts"
+          echo "patched $agent_ts"
+
       # opencheck's YAML parser doesn't interpolate env vars — substitute at invocation time into a temp file (keeps working tree clean).
       - name: Render tests.yaml with runtime baseUrl
         working-directory: tests/opencheck

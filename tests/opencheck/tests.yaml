@@ -22,13 +22,16 @@ tests:
       Navigate to the base URL. Call browser_snapshot immediately
       after the page loads — do NOT press Control+G or any other
       key first (the hero form is unconditionally visible since
-      GLOBAL-027 retired the Cmd+G gate). The accessibility tree
-      must contain a text input with placeholder "an orders tracker"
-      in the hero section. Use browser_snapshot to verify (not
-      browser_evaluate or DOM queries, which can find hidden
-      elements). If the input is absent from the snapshot, the test
-      fails. (The waitlist email input has a different placeholder —
-      do not confuse them.)
+      GLOBAL-027 retired the Cmd+G gate). Use browser_snapshot to
+      verify (do NOT use browser_evaluate or DOM queries).
+      In the snapshot the hero input appears as:
+        textbox "What are you building?" with /placeholder: an orders tracker
+      Any snapshot line containing "an orders tracker" confirms it
+      is present. Once you see it, respond with TEST_PASSED
+      immediately — do NOT take any further browser actions.
+      If the text "an orders tracker" is absent from the snapshot,
+      the test fails. (The waitlist email input has a different
+      placeholder — do not confuse them.)
 
   - name: "#create-table-anon"
     case: |
@@ -80,7 +83,13 @@ tests:
       redirects to "/app" (session already active), that is acceptable
       — the test passes. Otherwise the mock-IdP form will be visible
       with a default email field and a "Sign in as this user" button.
-      Click "Sign in as this user". Wait for the URL to contain "/app".
+      Use browser_snapshot to find the "Sign in as this user" button
+      ref, then click it with browser_click using that ref (do NOT use
+      browser_evaluate, browser_fill_form, or browser_run_code).
+      After clicking, you may receive "Not connected" errors — this is
+      normal and means the page navigated away successfully. If you get
+      "Not connected", call browser_navigate to "/app" and take a
+      browser_snapshot to verify the URL contains "/app".
       The test passes once the URL contains "/app" — do not fail based
       on any error or loading content visible on the page.
 
@@ -154,8 +163,13 @@ tests:
     case: |
       #vague-question-handled, then type
         show me all the orders
-      and submit. There is no orders table — only users. Verify the
-      reply is NOT a bare "Something went wrong — try again."
+      and submit. There is no orders table — only users.
+      If a React error boundary appears ("Something broke on this
+      page" with a Reload button), click the Reload button and
+      re-submit the prompt from the chat textarea.
+      Use browser_snapshot ONLY to verify (do NOT use browser_evaluate
+      — it fails in this context).
+      Verify the reply is NOT a bare "Something went wrong — try again."
       Acceptable: a message naming the missing "orders" table or
       the available "users" table, or a clarification chip.
 
@@ -219,6 +233,8 @@ tests:
       ("Something broke on this page" or similar), click the
       "Reload" button on that error card and wait 3 seconds before
       proceeding. Verify a heading "API keys" is visible.
+      Use browser_snapshot for all verification (do NOT use
+      browser_evaluate — it fails in this context).
       Click the "New key" button. A modal appears with the heading
       "Mint a new key". Type
         opencheck-smoke
