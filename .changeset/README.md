@@ -22,6 +22,8 @@ A package is publishable when its `package.json` is **not**
 
 Status:
 - `@nlqdb/sdk` — un-gated; bootstrap publish pending.
+- `@nlqdb/cli` — un-gated; bootstrap publish pending (npm shim that
+  downloads the `nlq` Go binary on `postinstall`).
 - Everything else in `packages/*` — still gated.
 
 To un-gate a new package:

@@ -129,6 +129,13 @@
         "astro": "^5.0.0",
       },
     },
+    "packages/cli-shim": {
+      "name": "@nlqdb/cli",
+      "version": "0.0.0",
+      "bin": {
+        "nlq": "./bin/nlq.cjs",
+      },
+    },
     "packages/db": {
       "name": "@nlqdb/db",
       "version": "0.0.0",
@@ -762,6 +769,8 @@
     "@nlqdb/api": ["@nlqdb/api@workspace:apps/api"],
 
     "@nlqdb/astro": ["@nlqdb/astro@workspace:packages/astro"],
+
+    "@nlqdb/cli": ["@nlqdb/cli@workspace:packages/cli-shim"],
 
     "@nlqdb/coming-soon": ["@nlqdb/coming-soon@workspace:apps/coming-soon"],
 

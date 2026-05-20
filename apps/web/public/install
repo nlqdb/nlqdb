@@ -1,5 +1,5 @@
 #!/bin/sh
-# nlq installer (SK-CLI-002). Resolves the latest cli-v* GitHub Release,
+# nlq installer (SK-CLI-002). Resolves the latest v* GitHub Release,
 # verifies sha256 against the release's checksums.txt, and lands the binary
 # at $NLQ_INSTALL_DIR (default ~/.local/bin/nlq).
 set -eu
@@ -33,9 +33,9 @@ esac
 resolved="$(curl -fsSLI -o /dev/null -w '%{url_effective}' \
   "https://github.com/$repo/releases/latest" 2>/dev/null || true)"
 case "$resolved" in
-  *"/releases/tag/cli-v"*)
+  *"/releases/tag/v"*)
     tag="${resolved##*/tag/}"
-    version="${tag#cli-v}"
+    version="${tag#v}"
     ;;
   *)
     err "no published nlq release yet. Build from source:

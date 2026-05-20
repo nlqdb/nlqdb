@@ -511,13 +511,13 @@ The `nlq` Go binary releases via goreleaser. Three paths reach it:
 - **Auto-deploy on push to main** — `.github/workflows/deploy-cli.yml`
   fires when `cli/**`, `tests/e2e/cli/**`, or that workflow itself
   changes on main. It runs the CLI e2e fixtures, auto-bumps the patch
-  from the latest `cli-v[0-9]+.[0-9]+.[0-9]+` tag (seed: `cli-v0.1.0`
-  if none exist), pushes the new tag, and invokes `release-cli.yml`
-  via `workflow_call`. Push to main = patch release. Idempotent: if
-  HEAD is already tagged, the release job skips.
-- **Manual `cli-v*` tag push** — `git tag -a cli-vX.Y.Z … && git push
-  origin cli-vX.Y.Z` fires `release-cli.yml` directly. Use this for
-  minor or major bumps (auto-deploy only bumps patch).
+  from the latest `v[0-9]+.[0-9]+.[0-9]+` tag (seed: `v0.1.0` if none
+  exist), pushes the new tag, and invokes `release-cli.yml` via
+  `workflow_call`. Push to main = patch release. Idempotent: if HEAD
+  is already tagged, the release job skips.
+- **Manual `v*` tag push** — `git tag -a vX.Y.Z … && git push origin
+  vX.Y.Z` fires `release-cli.yml` directly. Use this for minor or
+  major bumps (auto-deploy only bumps patch).
 - **`workflow_dispatch`** on `release-cli.yml` — re-release an
   existing tag (e.g., to retry a partial release).
 
@@ -526,7 +526,10 @@ cross-compiles linux/darwin × amd64/arm64, attaches archives + SBOM +
 `checksums.txt` to a GitHub Release with auto-generated changelog,
 and pushes an updated formula to `nlqdb/homebrew-tap`. The installer
 at `https://nlqdb.com/install` (`apps/web/public/install`) resolves
-the latest tag via `/releases/latest` and verifies sha256.
+the latest tag via `/releases/latest` and verifies sha256. The npm
+shim `@nlqdb/cli` (`packages/cli-shim/`) ships via the changesets
+release (separate workflow, `release-npm.yml`) and reuses the same
+archive + checksums on `postinstall`.
 
 Required secret to enable the Homebrew step: `HOMEBREW_TAP_GITHUB_TOKEN`
 (fine-grained PAT scoped to `nlqdb/homebrew-tap`, `contents: write`).
@@ -534,6 +537,19 @@ Without it the GitHub Release still creates; only the tap bump
 silently skips.
 
 Local dry-run: `cd cli && goreleaser release --snapshot --clean --skip=publish`.
+
+Coordinating an npm shim release with the CLI binary release:
+
+1. The CLI binary release ships first via `deploy-cli.yml` (or a
+   manual `v*` tag push). After it completes, the GitHub Release
+   at `v<X.Y.Z>` carries the `nlq_<X.Y.Z>_<os>_<arch>.tar.gz` +
+   `checksums.txt` assets the npm shim's `postinstall` will fetch.
+2. Add a changeset bumping `@nlqdb/cli` to `<X.Y.Z>` (or merge a
+   PR that does so).
+3. Merge the "Version Packages" PR opened by `release-npm.yml` —
+   that publishes `@nlqdb/cli@<X.Y.Z>` to npm. The shim's
+   `postinstall.mjs` reads its own `package.json` version, so the
+   user's `npm i -g @nlqdb/cli` lands the matching binary.
 
 ### Preview environments
 

@@ -1,8 +1,8 @@
 # Auto-deploy nlq CLI on push to main. Runs e2e first; on success,
-# auto-bumps patch from the latest cli-v* tag, pushes the new tag,
-# and invokes release-cli.yml → goreleaser publishes the GitHub
-# Release with changelog + cross-platform tarballs + checksums + SBOM.
-# Major / minor bumps stay manual (push `cli-vX.Y.0` by hand).
+# auto-bumps patch from the latest v* tag, pushes the new tag, and
+# invokes release-cli.yml → goreleaser publishes the GitHub Release
+# with changelog + cross-platform tarballs + checksums + SBOM. Major /
+# minor bumps stay manual (push `vX.Y.0` by hand).
 
 name: Deploy CLI
 
@@ -43,13 +43,15 @@ jobs:
         with:
           fetch-depth: 0
 
-      # Idempotency — if HEAD already has a cli-v* tag, a previous run
+      # Idempotency — if HEAD already has a v* tag, a previous run
       # already shipped this SHA. Skip cleanly instead of erroring.
       - name: Skip if HEAD already tagged
         id: check
         run: |
           set -euo pipefail
-          existing=$(git tag --points-at HEAD --list 'cli-v*' | head -n1)
+          existing=$(git tag --points-at HEAD --list 'v[0-9]*.[0-9]*.[0-9]*' \
+            | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' \
+            | head -n1 || true)
           if [ -n "$existing" ]; then
             echo "skip=true" >> "$GITHUB_OUTPUT"
             echo "HEAD already tagged: $existing" >> "$GITHUB_STEP_SUMMARY"
@@ -57,22 +59,22 @@ jobs:
             echo "skip=false" >> "$GITHUB_OUTPUT"
           fi
 
-      # Skips prereleases (cli-v0.1.0-rc.1 etc) so a `rc` never seeds the
+      # Skips prereleases (v0.1.0-rc.1 etc) so an `rc` never seeds the
       # patch bump; `--sort=-v:refname` is semver-aware so 0.10.0 > 0.9.0.
       - name: Compute next patch version
         if: steps.check.outputs.skip != 'true'
         id: ver
         run: |
           set -euo pipefail
-          last=$(git tag --list 'cli-v*' --sort=-v:refname \
-            | grep -E '^cli-v[0-9]+\.[0-9]+\.[0-9]+$' \
+          last=$(git tag --list 'v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname \
+            | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' \
             | head -n1 || true)
           if [ -z "$last" ]; then
-            next="cli-v0.1.0"
+            next="v0.1.0"
           else
-            ver=${last#cli-v}
+            ver=${last#v}
             IFS='.' read -r major minor patch <<<"$ver"
-            next="cli-v${major}.${minor}.$((patch + 1))"
+            next="v${major}.${minor}.$((patch + 1))"
           fi
           echo "tag=$next" >> "$GITHUB_OUTPUT"
           {

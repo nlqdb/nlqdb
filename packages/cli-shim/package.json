@@ -1,0 +1,52 @@
+{
+  "name": "@nlqdb/cli",
+  "version": "0.0.0",
+  "description": "Shim that installs the nlq CLI binary for the host platform.",
+  "type": "commonjs",
+  "license": "FSL-1.1-ALv2",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nlqdb/nlqdb.git",
+    "directory": "packages/cli-shim"
+  },
+  "homepage": "https://nlqdb.com",
+  "bugs": "https://github.com/nlqdb/nlqdb/issues",
+  "keywords": [
+    "nlqdb",
+    "nlq",
+    "cli",
+    "natural-language",
+    "database",
+    "sql",
+    "llm"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "os": [
+    "darwin",
+    "linux"
+  ],
+  "cpu": [
+    "x64",
+    "arm64"
+  ],
+  "bin": {
+    "nlq": "./bin/nlq.cjs"
+  },
+  "files": [
+    "bin/nlq.cjs",
+    "scripts/postinstall.mjs",
+    "README.md"
+  ],
+  "scripts": {
+    "postinstall": "node ./scripts/postinstall.mjs",
+    "build": "node --check ./bin/nlq.cjs && node --check ./scripts/postinstall.mjs",
+    "typecheck": "node --check ./bin/nlq.cjs && node --check ./scripts/postinstall.mjs && node --check ./scripts/postinstall.test.mjs",
+    "test": "node --test ./scripts/postinstall.test.mjs"
+  },
+  "publishConfig": {
+    "provenance": true,
+    "access": "public"
+  }
+}
