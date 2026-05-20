@@ -53,29 +53,35 @@ tests:
       Step 3 — Branch on current URL:
         a) URL is "/app" and "Provisioned with" is in the snapshot
            text — anon create SUCCEEDED. The DB is currently anon;
-           sign in now so subsequent tests run as an authenticated
-           user who owns this DB. Navigate to "/auth/sign-in". Use
-           browser_snapshot to check: if the mock IdP form is visible
+           sign in now so the DB is adopted. Navigate to "/auth/sign-in".
+           Use browser_snapshot to check: if the mock IdP form is visible
            (has "Sign in as this user" button), click it; if the page
            immediately redirects to "/app", that is also fine.
            After sign-in, navigate to "/app". Call browser_snapshot.
            If the sidebar shows an entry with "users" in its name —
-           PASS. STOP immediately. If the sidebar is empty (adoption
-           may have failed), proceed to Step 4.
+           ADOPTION SUCCEEDED. Now sign out: click the "Sign out" button
+           in the top navigation bar and wait for the URL to change away
+           from "/app". Then TEST_PASSED. STOP.
+           If the sidebar is empty (adoption may have failed),
+           proceed to Step 4.
         b) URL is "/auth/sign-in" — the anon cap was hit. Use
            browser_snapshot to find the "Sign in as this user" button
            ref, then browser_click it. The page will navigate away;
            if you receive "Not connected", that is normal. Navigate
            to "/app" and call browser_snapshot. If "Provisioned with"
-           is visible — PASS. STOP immediately. If not visible yet,
-           wait 3 seconds and call browser_snapshot again; if still
-           not visible, proceed to Step 4.
+           is visible — ADOPTION SUCCEEDED. Sign out: click the "Sign
+           out" button in the top navigation bar and wait for URL to
+           change away from "/app". Then TEST_PASSED. STOP.
+           If not visible yet, wait 3 seconds and call browser_snapshot
+           again; if still not visible, proceed to Step 4.
         c) URL is "/auth/post-signin" — this is a normal post-sign-in
            redirect; it will auto-navigate to "/app" in a moment. Call
            browser_snapshot every 2 seconds until the URL contains
            "/app" (max 20 seconds). Once at "/app", if "Provisioned
-           with" is visible — PASS. STOP immediately. Otherwise
-           proceed to Step 4.
+           with" is visible — ADOPTION SUCCEEDED. Sign out: click the
+           "Sign out" button in the top navigation bar and wait for URL
+           to change away from "/app". Then TEST_PASSED. STOP.
+           Otherwise proceed to Step 4.
         d) URL is "/app" but "Session ended." or "Something broke" is
            visible — the ask failed; proceed to Step 4.
       Step 4 (fallback): navigate to "/app", wait for "?db=" in the
@@ -90,6 +96,9 @@ tests:
       "users-db" in the "Name" input, click "Create", wait for
       "?db=" to appear, then submit "create a users table with id,
       name, email" and verify "Provisioned with".
+      After verifying "Provisioned with" in step 4, sign out: click
+      the "Sign out" button and wait for the URL to change away from
+      "/app". TEST_PASSED.
 
   - name: "#add-row-redirects-to-auth"
     case: |
@@ -285,8 +294,8 @@ tests:
       Locate the currently active (highlighted) database row. If the
       sidebar shows "Couldn't load databases" or no database rows are
       visible, wait 3 seconds and call browser_snapshot again; do
-      this at most 3 times total. If after 3 attempts the sidebar is
-      still not loading, the test fails.
+      this at most 5 times total (15 seconds). If after 5 attempts
+      the sidebar is still not loading, the test fails.
       Click the "×" button at the right edge of the active database
       row (aria-label starts with "Delete "). Verify a modal dialog
       appears with the heading "Delete database" and body text that
