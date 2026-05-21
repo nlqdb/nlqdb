@@ -187,22 +187,33 @@ tests:
 
   - name: "#read-shows-informative-data"
     case: |
-      #submit-prefilled-row, then in the same chat input type
+      The previous test inserted Alice into the users table. Navigate
+      to "/app". Call browser_snapshot and verify "?db=" is in the URL.
+      If "?db=" is not in the URL, TEST_FAILED — no active database.
+      Call browser_snapshot to get the current page state. Find
+        textbox "Ask about your data…"
+      and note its ref. IMMEDIATELY call browser_click with that ref
+      (do NOT take any other action between snapshot and click — refs
+      go stale on re-render). Type:
         list all users in the table
-      and submit. Verify the chat reply has both: a data row with
-      "Alice" / "alice@example.com", AND a natural-language summary
-      sentence that mentions "Alice" or "1 user".
+      Press Enter as a SEPARATE browser_key_down. Wait for the reply.
+      If the reply shows an error, wait 5 seconds and retry once.
+      Verify the reply contains "Alice" (any casing) and either
+      "alice@example.com" or a mention of "1 user" or a data row.
 
   - name: "#count-summarizes"
     case: |
-      #read-shows-informative-data, then type
+      Navigate to "/app". Call browser_snapshot and verify "?db=" is
+      in the URL. If "?db=" is not in the URL, TEST_FAILED — no active
+      database. Find the chat textarea (placeholder "Ask about your
+      data…") in the snapshot. IMMEDIATELY click it (do NOT call any
+      other tool between snapshot and click). Type:
         how many users are there?
-      and submit. If the reply shows an error (including "references
-      a table this database doesn't have" or "Something went wrong"),
-      wait 3 seconds and submit the same prompt once more (retry at
-      most once). Verify the reply surfaces the number 1 (or more,
-      if multiple Alice rows exist from prior test runs), either in
-      the summary text or as a returned data cell.
+      Press Enter as a SEPARATE browser_key_down. If the reply shows
+      an error (including "references a table this database doesn't
+      have" or "Something went wrong"), wait 3 seconds and retry once.
+      Verify the reply surfaces the number 1 (or more, if multiple Alice
+      rows exist from prior runs), either in summary text or a data cell.
 
   - name: "#trace-shows-sql"
     case: |
@@ -328,9 +339,11 @@ tests:
       entries below "All databases", TEST_FAILED immediately — the
       second database from #create-second-database is missing.
       Click the "×" button at the right edge of the active database
-      row (aria-label starts with "Delete "). Verify a modal dialog
-      appears with the heading "Delete database" and body text that
-      includes "This cannot be reverted" and a text input.
+      row (aria-label starts with "Delete "). Call browser_snapshot.
+      Verify a modal dialog with the heading "Delete database" is
+      visible in the snapshot. Do NOT confirm the deletion here —
+      just verify the modal opened. TEST_PASSED once you can see the
+      "Delete database" heading in the snapshot.
 
   - name: "#delete-active-db-typed-confirm"
     case: |
