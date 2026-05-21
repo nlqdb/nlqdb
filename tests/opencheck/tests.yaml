@@ -227,15 +227,15 @@ tests:
       the snapshot. IMMEDIATELY click it and type:
         how many users are there?
       Press Enter as a SEPARATE browser_key_down call. Wait 5 seconds
-      for the reply to appear. Now scroll to the bottom of the page
-      so the trace element is visible: call browser_evaluate with
-      exactly this JavaScript (no page.* API):
-        window.scrollTo(0, document.body.scrollHeight)
-      Then call browser_snapshot. In the snapshot look for a "trace"
-      disclosure or summary element near the most recent reply. Click
-      it. Call browser_snapshot and verify a <pre> block containing
-      SQL is visible. The SQL must contain "users" (any casing) and
-      at least one of: select, count, from (case-insensitive).
+      for the reply to appear. Press Escape to blur the textarea (this
+      returns focus to the page body). Then press the End key once
+      (browser_key_down key="End") to scroll to the bottom of the
+      page where the most recent reply and its trace element appear.
+      Wait 1 second. Call browser_snapshot. In the snapshot look for a
+      "trace" disclosure or summary element near the most recent reply.
+      Click it. Call browser_snapshot and verify a <pre> block
+      containing SQL is visible. The SQL must contain "users" (any
+      casing) and at least one of: select, count, from (case-insensitive).
 
   - name: "#vague-question-handled"
     case: |
