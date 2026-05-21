@@ -36,13 +36,13 @@ Canonical bodies live in [`decisions/`](decisions/) — one file per `SK-CMP-NNN
 ## GLOBALs governing this feature
 
 - **GLOBAL-024** — Demand-signal telemetry on every "not yet" path.
-  - *In this feature:* the "Email us / browse all comparisons" footer on every page is the demand-signal trap for tools we don't yet compare against. Page-view analytics aren't wired today (no browser analytics on `nlqdb.com`); when they are (open question in `web-app`), the slug surfaces directly as a `feature.requested.comparison.<slug>` cohort.
+  - *In this feature:* the "Try this query →" button emits `vs.try_query_clicked` with `{slug, goal}` via the existing `lib/logsnag.ts` emitter — gives funnel visibility per competitor without needing a browser-analytics provider. The "Email us / browse all comparisons" footer is the demand-signal trap for tools we don't yet compare against. Full page-view analytics aren't wired today (open question in `web-app`); when they are, the slug surfaces directly as a `feature.requested.comparison.<slug>` cohort.
 - **GLOBAL-025** — North-star compass.
   - *In this feature:* the KPI advanced is **onboarding** — every page CTA points at `/app/new` (anonymous mode); the comparison page is the third-party-keyword on-ramp the homepage can't be.
 
 ## Open questions / known unknowns
 
-- **Page-view analytics.** No browser-side analytics on `nlqdb.com` today; the §3.5 ICP-validation plan calls for PostHog Cloud free tier. Until that lands, comparison-page traction is measurable only via server access logs + sitemap-indexed search-console impressions.
+- **Page-view analytics.** No browser-side analytics on `nlqdb.com` today; the §3.5 ICP-validation plan calls for PostHog Cloud free tier. Per-page views are measurable only via server access logs + sitemap-indexed search-console impressions until that lands. The CTA-click signal (`vs.try_query_clicked` to LogSnag) lands per-slug funnel data in the meantime.
 - **Per-competitor OG image.** Pages currently inherit the site default OG. A per-slug OG image generator (e.g. Workers + Satori) would boost share-CTR meaningfully; deferred until at least 5 comparisons ship and a Cloudflare Pages OG endpoint is up.
 - **Backfill from `docs/competitors.md`.** The competitor doc lists ~25 tools; we've shipped 3. The decision rule for which to ship next: persona-weighted threat × keyword volume — i.e. start with Outerbase (P1/P4) and AskYourDatabase (P3/P4) next.
 - **Auto-translate to docs.nlqdb.com.** The docs Starlight site doesn't surface comparisons yet; should the docs nav include a "vs" section pointing at marketing? Likely yes, but cross-origin nav UX needs a separate slice.
