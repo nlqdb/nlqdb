@@ -82,6 +82,7 @@ import { cryptoProvider, stripe as stripeClient } from "./stripe/client.ts";
 import { processWebhook } from "./stripe/webhook.ts";
 import { verifyTurnstile } from "./turnstile.ts";
 import { runIcpScrape } from "./icp-scrape.ts";
+import { runIcpScore } from "./icp-score.ts";
 import { makeEmailSender } from "./email.ts";
 import { joinWaitlist } from "./waitlist.ts";
 import { runWorkloadAnalyser } from "./workload-analyser/index.ts";
@@ -2544,15 +2545,40 @@ async function scheduled(
       return;
     }
 
-    // ICP pain-signal scraper — Monday 06:00 UTC.
+    // ICP pain-signal scraper + scorer — Monday 06:00 UTC.
     if (controller.cron === ICP_SCRAPE_CRON) {
-      const result = await runIcpScrape({
+      const scrapeResult = await runIcpScrape({
         kv: envBindings.KV,
         logsnagToken: envBindings.LOGSNAG_TOKEN,
         logsnagProject: envBindings.LOGSNAG_PROJECT,
         ghToken: envBindings.GH_TOKEN,
       });
-      console.info(JSON.stringify({ msg: "icp_scrape_completed", ...result }));
+      console.info(
+        JSON.stringify({
+          msg: "icp_scrape_completed",
+          newItems: scrapeResult.newItems,
+          skipped: scrapeResult.skipped,
+          sources: scrapeResult.sources,
+        }),
+      );
+      if (scrapeResult.items.length > 0) {
+        const scoreResult = await runIcpScore(scrapeResult.items, {
+          kv: envBindings.KV,
+          groqApiKey: envBindings.GROQ_API_KEY,
+          geminiApiKey: envBindings.GEMINI_API_KEY,
+        }).catch((err) => {
+          console.error(
+            JSON.stringify({
+              msg: "icp_score_failed",
+              message: err instanceof Error ? err.message : String(err),
+            }),
+          );
+          return null;
+        });
+        if (scoreResult) {
+          console.info(JSON.stringify({ msg: "icp_score_completed", ...scoreResult }));
+        }
+      }
       return;
     }
 

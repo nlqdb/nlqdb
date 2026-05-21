@@ -10,9 +10,9 @@ when-to-load:
 
 # Feature: ICP Mining
 
-**One-liner:** A Monday 06:00 UTC cron scrapes HN Algolia and Reddit for ICP-relevant pain signals, deduplicates against a KV seen-set, and stores raw items as `icp:item:*` for downstream analysis.
-**Status:** implemented (Slice 1 — data collection). LLM scoring and evidence-file generation are Phase 2 (SK-ICP-002 / SK-ICP-003 — not yet scheduled).
-**Owners (code):** `apps/api/src/icp-scrape.ts`, `apps/api/test/icp-scrape.test.ts`, `apps/api/wrangler.toml` (cron `0 6 * * 1`).
+**One-liner:** A Monday 06:00 UTC cron scrapes HN Algolia and Reddit (16 subreddits, 10 HN queries) for ICP pain signals, deduplicates via KV, stores raw items as `icp:item:*`, and immediately scores them 0–10 per persona via the free LLM chain.
+**Status:** implemented (Slice 1 — data collection SK-ICP-001; Slice 2 — LLM scoring SK-ICP-002). Evidence-file generation is Phase 2 (SK-ICP-003).
+**Owners (code):** `apps/api/src/icp-scrape.ts`, `apps/api/src/icp-score.ts`, `apps/api/test/icp-scrape.test.ts`, `apps/api/test/icp-score.test.ts`, `apps/api/wrangler.toml` (cron `0 6 * * 1`).
 **Cross-refs:** [`docs/research/automated-icp-validation-plan.md §2`](../../research/automated-icp-validation-plan.md) · [`docs/research/personas.md`](../../research/personas.md) · [`GLOBAL-028`](../../decisions/GLOBAL-028-acquisition-progress-tracker.md).
 
 ## Touchpoints — read this feature doc before editing
@@ -40,9 +40,20 @@ when-to-load:
 - **GLOBAL-028** — Acquisition progress tracker.
   - *In this feature:* this cron implements §2.1–§2.2 of [`automated-icp-validation-plan.md`](../../research/automated-icp-validation-plan.md). Progress is recorded in that file.
 
+### SK-ICP-002 — LLM scoring of raw items immediately after each weekly scrape
+
+- **Decision:** After `runIcpScrape` collects new items, `runIcpScore` (called in the same `0 6 * * 1` cron run) runs a regex pain-word prefilter, then calls Groq `llama-3.1-8b-instant` (Gemini `gemini-2.5-flash` fallback) in batches of 20 to score each item 0–10 against P1/P2/P3/P6 personas. Items where every persona scores below 5 are discarded; the rest are stored as `icp:scored:<YYYYMMDD>:<source>:<id>` (30-day KV TTL). The scorer never blocks the 200 response — it is invoked with `.catch` in the cron handler so a total LLM failure still logs and returns cleanly.
+- **Core value:** Simple, Bullet-proof
+- **Why:** Raw items sitting in KV are not evidence. Scoring on the same Monday run transforms the weekly signal harvest into a ranked, persona-tagged set that a future clustering step (SK-ICP-003) can read directly, without needing a separate data-pull cron.
+- **Consequence in code:** `apps/api/src/icp-score.ts` is the single owner. `IcpItem` is now exported from `icp-scrape.ts`. `IcpScrapeResult.items` carries the newly stored items for handoff. `runIcpScore` wraps each LLM batch in an `nlqdb.icp.score` OTel span with `provider`, `batch_size`, and `raw_count` attributes. No new env bindings — `GROQ_API_KEY` and `GEMINI_API_KEY` are already present.
+- **Alternatives rejected:** Separate scoring cron (requires listing KV keys — KV list is not available on free Workers; would need a second data structure to track unseen items); storing scores in D1 (introduces migration for a phase-1 experiment; KV TTL is sufficient while evidence volumes are small).
+
+### SK-ICP-001 — Weekly HN + Reddit scrape writing raw items to KV (expanded — 2026-05-21)
+
+The source list was widened in the same PR as SK-ICP-002: HN queries grew from 5 → 10 (adding MCP server, Postgres setup, Retool alternative, vector DB, pgvector); Reddit grew from 3 → 16 subreddit/query pairs (adding r/SaaS, r/webdev, r/nextjs, r/SQL, r/PostgreSQL, r/programming, r/learnprogramming, r/devops, r/ClaudeAI, r/LangChain, r/MachineLearning, r/Database, r/clickhouse). Budget impact: max ~500 items/week × 2 KV writes = 1,000 writes/week, inside the 7,000/week free ceiling.
+
 ## Open questions / known unknowns
 
-- **LLM scoring (SK-ICP-002)** — Phase 2 slice: run the free-chain persona-fit rubric (§2.3) against `icp:item:*` after each weekly scrape. Writes scored rows to `icp:scored:*` and produces the monthly `docs/research/icp-evidence-<yyyy-mm>.md`.
-- **Evidence-file generation (SK-ICP-003)** — Phase 2: weekly batch to cluster top-100 scored rows into 5–7 themes and open a PR with the updated evidence file.
+- **Evidence-file generation (SK-ICP-003)** — Phase 2: weekly batch to cluster top-100 scored rows into 5–7 themes and write `docs/research/icp-evidence-<yyyy-mm>.md` (via GitHub API `PUT /repos/…/contents/…` so the cron can commit without a local git clone).
 - **R2 upgrade** — When evidence files exceed KV practical limits, migrate raw storage from KV to `r2://nlqdb-icp-raw/`. Free tier for both; KV is the simpler path for now.
-- **GitHub issue source** — `GH_TOKEN` is already in env (SK-ICP-001 passes it as `deps.ghToken`). A Phase 2 slice can add `is:issue "text to sql"` queries once the basic scrape shape is proven.
+- **GitHub issue source** — `GH_TOKEN` is already in env. A Phase 2 slice can add `is:issue "text to sql"` queries once scoring proves signal quality.

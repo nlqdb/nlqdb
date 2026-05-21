@@ -6,7 +6,7 @@
 > every PR that implements a section here must update `## Current status`
 > and append a row to `## Progress log`.
 
-> **Status:** in progress — §1.4 and §2 shipped 2026-05-21. §1.1, §1.2,
+> **Status:** in progress — §1.4, §2.2 (collection), §2.3 (scoring) shipped 2026-05-21. §1.1, §1.2,
 > §1.3, §3, §4 not yet started.
 >
 > **Context.** Every advertised surface ([progress.md §0](../progress.md))
@@ -35,7 +35,7 @@
 | Anonymous loop completions | ≥ 50 | 0 — gate open path unblocked as of this PR |
 | Signed-in users (invite-redeemed) | ≥ 10 | 0 — first invites will ship on next waitlist signup |
 | Sean Ellis Q1 responses | ≥ 20 | 0 — survey not yet wired |
-| Primary ICP shortlist | exactly 1 | not yet — first scrape runs Mon 2026-05-26 |
+| Primary ICP shortlist | exactly 1 | not yet — first scored run Mon 2026-05-26 |
 | TTFV p50 | ≤ 60s | not measured |
 | First-query success | ≥ 60% | not measured |
 
@@ -212,7 +212,18 @@ language"`, `is:issue "ai agent" memory`, `is:issue prisma migration`
 - Reddit via direct `.json` listings (no key for public read). HN via Algolia.
 - Budget guard: ≤100 items/week × 2 KV writes each, well inside free tier.
 
-### 2.3 LLM cluster — persona-fit rubric
+### 2.3 LLM scoring — persona-fit rubric
+
+> **✅ IMPLEMENTED 2026-05-21 (Steps 1–2 — filter + score):**
+> `runIcpScore` in `icp-score.ts` runs immediately after each weekly scrape in the same cron slot.
+> Step 1 (filter): regex prefilter on pain words (hate, frustrat, stuck, wish, verbose, boilerplate, …) applied to `title + text`.
+> Step 2 (score): Groq `llama-3.1-8b-instant` → Gemini `gemini-2.5-flash` fallback scores each passing item 0–10 for P1/P2/P3/P6; OTel span `nlqdb.icp.score` per batch.
+> Items with max persona score < 5 are discarded; the rest stored as `icp:scored:<YYYYMMDD>:<source>:<id>` (30d KV TTL).
+> Step 3 (cluster) and Step 4 (evidence-file generation to git) remain Phase 2 (SK-ICP-003).
+>
+> **Source expansion (same PR):** HN queries 5 → 10 (added MCP server, Postgres setup, Retool alternative, vector DB, pgvector). Reddit 3 → 16 subreddit/query pairs (full plan §2.1 list).
+
+LLM cluster — persona-fit rubric (Steps 3–4 below remain Phase 2):
 
 1. **Filter** (free chain): regex prefilter on `pain | annoyed | hate
    | wish | stuck on | spent N hours | why is X so hard | any
@@ -537,3 +548,4 @@ Per [GLOBAL-028](../decisions/GLOBAL-028-acquisition-progress-tracker.md): every
 |---|---|---|---|---|
 | 2026-05-21 | §1.4 gate-valve | Auto-issue invite codes on waitlist signup | `waitlist-invite.ts`: 128-bit code, KV store, 30d TTL, 200/week cap. Resend email via `makeEmailSender`. Web: `invite.ts` captures `?invite=<code>`, stores in `localStorage`, forwards as `X-Invite-Code` header. | Shipped. First production invites will go out on next new waitlist signup. |
 | 2026-05-21 | §2.2 scrape stack | Weekly ICP pain-signal scrape | `icp-scrape.ts`: HN Algolia (5 queries) + Reddit (3 subreddit/query pairs). KV dedup + storage. LogSnag `#icp-mining` notification. Cron `0 6 * * 1`. | Shipped. First run 2026-05-26 06:00 UTC. |
+| 2026-05-21 | §2.3 LLM scoring (steps 1–2) | Pain-word prefilter + persona scoring | `icp-score.ts`: regex prefilter → Groq `llama-3.1-8b-instant` (Gemini fallback) scores each item 0–10 for P1/P2/P3/P6; items with max score < 5 discarded; survivors to `icp:scored:*` KV (30d TTL). OTel span per batch. Source expansion: HN 5→10 queries, Reddit 3→16 subreddit pairs. | Shipped. Scores available from first scrape 2026-05-26. |

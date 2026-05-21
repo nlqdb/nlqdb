@@ -26,9 +26,10 @@ export type IcpScrapeResult = {
   newItems: number;
   skipped: number;
   sources: Record<string, number>;
+  items: IcpItem[];
 };
 
-type IcpItem = {
+export type IcpItem = {
   id: string;
   source: string;
   title: string;
@@ -67,6 +68,11 @@ const HN_QUERIES = [
   "ai+agent+memory",
   "hate+writing+sql",
   "sql+is+too+hard",
+  "MCP+server",
+  "Postgres+setup",
+  "Retool+alternative",
+  "vector+DB",
+  "pgvector",
 ];
 
 async function fetchHn(
@@ -151,6 +157,19 @@ const REDDIT_QUERIES: Array<{ subreddit: string; query: string }> = [
   { subreddit: "sideproject", query: "database" },
   { subreddit: "LocalLLaMA", query: "memory agent" },
   { subreddit: "dataengineering", query: "sql" },
+  { subreddit: "SaaS", query: "database" },
+  { subreddit: "webdev", query: "database" },
+  { subreddit: "nextjs", query: "database" },
+  { subreddit: "SQL", query: "alternative" },
+  { subreddit: "PostgreSQL", query: "natural language" },
+  { subreddit: "programming", query: "sql alternative" },
+  { subreddit: "learnprogramming", query: "sql help" },
+  { subreddit: "devops", query: "database" },
+  { subreddit: "ClaudeAI", query: "memory" },
+  { subreddit: "LangChain", query: "database" },
+  { subreddit: "MachineLearning", query: "vector store" },
+  { subreddit: "Database", query: "natural language" },
+  { subreddit: "clickhouse", query: "query" },
 ];
 
 const REDDIT_UA = "nlqdb-icp-bot/1.0 (+https://nlqdb.com; contact: hello@nlqdb.com)";
@@ -314,6 +333,7 @@ export async function runIcpScrape(deps: IcpScrapeDeps): Promise<IcpScrapeResult
   let newItems = 0;
   let skipped = 0;
   const sources: Record<string, number> = {};
+  const storedItems: IcpItem[] = [];
 
   const writePromises: Promise<void>[] = [];
 
@@ -337,11 +357,12 @@ export async function runIcpScrape(deps: IcpScrapeDeps): Promise<IcpScrapeResult
 
     newItems++;
     sources[item.source] = (sources[item.source] ?? 0) + 1;
+    storedItems.push(item);
   }
 
   await Promise.all(writePromises);
 
-  const result: IcpScrapeResult = { newItems, skipped, sources };
+  const result: IcpScrapeResult = { newItems, skipped, sources, items: storedItems };
 
   // LogSnag notification — failure is non-fatal.
   if (deps.logsnagToken && deps.logsnagProject) {
