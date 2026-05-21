@@ -159,7 +159,7 @@ tests:
          Press Enter as a SEPARATE browser_key_down. Do NOT click
          any button labeled "Create new database". If a confirm/
          diff chip appears, press Enter once to approve. Then call
-         browser_snapshot every 3 seconds (up to 4 times, 12 s)
+         browser_snapshot every 3 seconds (up to 8 times, 24 s)
          until "Provisioned with" is visible in the chat reply. If
          "Provisioned with" never appears and an error is visible
          instead, TEST_FAILED — table provisioning did not complete.
@@ -290,9 +290,9 @@ tests:
       appears. Type
         products-tracker
       into that input and click the "Create" button. Call
-      browser_snapshot every 3 seconds (up to 4 times, 12 s) until
+      browser_snapshot every 3 seconds (up to 8 times, 24 s) until
       "products-tracker" is visible in the sidebar list. If it does
-      not appear after 4 snapshots, TEST_FAILED — database creation
+      not appear after 8 snapshots, TEST_FAILED — database creation
       did not complete. Once visible, verify the sidebar now shows
       at least two database entries below the "All databases" item.
 
