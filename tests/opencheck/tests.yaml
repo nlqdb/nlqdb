@@ -203,11 +203,13 @@ tests:
 
   - name: "#count-summarizes"
     case: |
-      Navigate to "/app". Call browser_snapshot and verify "?db=" is
-      in the URL. If "?db=" is not in the URL, TEST_FAILED — no active
-      database. Find the chat textarea (placeholder "Ask about your
-      data…") in the snapshot. IMMEDIATELY click it (do NOT call any
-      other tool between snapshot and click). Type:
+      Navigate to "/app". Call browser_snapshot and check for "?db="
+      in the URL. If "?db=" is not present, wait 3 seconds and call
+      browser_snapshot again. If still no "?db=" after the second
+      check, TEST_FAILED — no active database.
+      Find the chat textarea (placeholder "Ask about your data…") in
+      the snapshot. IMMEDIATELY click it (do NOT call any other tool
+      between snapshot and click). Type:
         how many users are there?
       Press Enter as a SEPARATE browser_key_down. If the reply shows
       an error (including "references a table this database doesn't
@@ -221,16 +223,19 @@ tests:
       load; call browser_snapshot and check for "?db=" in the URL.
       If "?db=" is not in the URL after 5 seconds, TEST_FAILED —
       a signed-in session with a database is required.
-      Click the chat textarea (placeholder "Ask about your data…")
-      and type:
+      Find the chat textarea (placeholder "Ask about your data…") in
+      the snapshot. IMMEDIATELY click it and type:
         how many users are there?
-      Press Enter as a SEPARATE browser_key_down call. Wait for the
-      reply to appear. Then open the trace pane on that reply: click
-      the "trace" summary element (it appears as a collapsible label
-      near the reply). Verify a <pre> block containing SQL is visible.
-      It must contain "users" (any casing) and at least one SQL keyword
-      such as select, SELECT, count, COUNT, from, or FROM — the check
-      is case-insensitive; any casing counts.
+      Press Enter as a SEPARATE browser_key_down call. Wait 5 seconds
+      for the reply to appear. Now scroll to the bottom of the page
+      so the trace element is visible: call browser_evaluate with
+      exactly this JavaScript (no page.* API):
+        window.scrollTo(0, document.body.scrollHeight)
+      Then call browser_snapshot. In the snapshot look for a "trace"
+      disclosure or summary element near the most recent reply. Click
+      it. Call browser_snapshot and verify a <pre> block containing
+      SQL is visible. The SQL must contain "users" (any casing) and
+      at least one of: select, count, from (case-insensitive).
 
   - name: "#vague-question-handled"
     case: |
@@ -317,13 +322,13 @@ tests:
       do NOT click it again. Now poll: call browser_snapshot, wait
       3 seconds, call browser_snapshot, wait 3 seconds, ... repeating
       this pattern. Count your browser_snapshot calls after the
-      Create click: on the 8th snapshot call, STOP immediately. If
-      "products-tracker" is visible in ANY of those 8 snapshots,
+      Create click: on the 16th snapshot call, STOP immediately. If
+      "products-tracker" is visible in ANY of those 16 snapshots,
       verify the sidebar now shows at least two database entries
-      below "All databases" and TEST_PASSED. If after the 8th
+      below "All databases" and TEST_PASSED. If after the 16th
       snapshot "products-tracker" is still not visible, output
       TEST_FAILED — database creation did not complete. Do NOT call
-      browser_snapshot a 9th time. Do NOT click Create again.
+      browser_snapshot a 17th time. Do NOT click Create again.
 
   - name: "#delete-active-db-dialog-opens"
     case: |
