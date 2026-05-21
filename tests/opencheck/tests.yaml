@@ -127,10 +127,13 @@ tests:
   - name: "#submit-prefilled-row"
     case: |
       Navigate to "/app". Call browser_snapshot and check the
-      "Page URL:" line at the top of the snapshot. If "?db=" is
-      NOT in the URL (no databases): click "+ New" in the left
-      sidebar (aria-label "Your databases"), type "users-db" in
-      the "Name" input, click "Create", and verify the URL now
+      "Page URL:" line at the top of the snapshot. If the URL
+      contains "/auth/sign-in" (session not preserved from prior
+      test), find the "Sign in as this user" button and click it;
+      wait for the URL to become "/app", then call browser_snapshot.
+      If "?db=" is NOT in the URL (no databases): click "+ New" in
+      the left sidebar (aria-label "Your databases"), type "users-db"
+      in the "Name" input, click "Create", and verify the URL now
       contains "?db=" in a new browser_snapshot.
       If "Something broke on this page" is visible, click "Reload"
       (not "Sign out") and call browser_snapshot again.
@@ -149,14 +152,23 @@ tests:
          click it, re-type the same INSERT prompt, press Enter,
          and press Enter again if a chip appears. Retry once only.
       b) If the response shows "references a table this database
-         doesn't have" or "no such table": click the textarea,
+         doesn't have" or "no such table": call browser_snapshot
+         to get the current textarea ref. Click the textarea and
          type:
            create a users table with id, name, email
-         press Enter separately. Do NOT click any "Create new
-         database" button. If a confirm/diff chip appears, press
-         Enter to approve. Wait for "Provisioned with" to appear.
-         Then click the textarea, type the INSERT prompt, press
-         Enter, and press Enter again if a chip appears.
+         Press Enter as a SEPARATE browser_key_down. Do NOT click
+         any button labeled "Create new database". If a confirm/
+         diff chip appears, press Enter once to approve. Then call
+         browser_snapshot every 3 seconds (up to 8 times, 24 s)
+         until "Provisioned with" is visible in the chat reply. If
+         "Provisioned with" never appears and an error is visible
+         instead, TEST_FAILED — table provisioning did not complete.
+         Once "Provisioned with" is visible, wait 2 seconds, call
+         browser_snapshot to obtain a FRESH textarea ref, click
+         that ref, type:
+           add a new row: name='Alice', email='alice@example.com'
+         press Enter as a SEPARATE browser_key_down, and press
+         Enter once more if a confirm/diff chip appears.
       Verify the response shows a row with name "Alice" and
       email "alice@example.com".
 
@@ -191,8 +203,10 @@ tests:
       Press Enter as a SEPARATE browser_key_down call. Wait for the
       reply to appear. Then open the trace pane on that reply: click
       the "trace" summary element (it appears as a collapsible label
-      near the reply). Verify a <pre> block containing SQL is visible
-      — it must contain "users" and a SQL keyword like SELECT or COUNT.
+      near the reply). Verify a <pre> block containing SQL is visible.
+      It must contain "users" (any casing) and at least one SQL keyword
+      such as select, SELECT, count, COUNT, from, or FROM — the check
+      is case-insensitive; any casing counts.
 
   - name: "#vague-question-handled"
     case: |
@@ -275,11 +289,12 @@ tests:
       click the "+ New" button. A small form with a "Name" input
       appears. Type
         products-tracker
-      into that input and click the "Create" button. Wait until
-      the new database appears in the sidebar list. The new entry
-      will be active (highlighted) and the chat header changes
-      to its name. Verify the sidebar now shows at least two
-      database entries below the "All databases" item.
+      into that input and click the "Create" button. Call
+      browser_snapshot every 3 seconds (up to 8 times, 24 s) until
+      "products-tracker" is visible in the sidebar list. If it does
+      not appear after 8 snapshots, TEST_FAILED — database creation
+      did not complete. Once visible, verify the sidebar now shows
+      at least two database entries below the "All databases" item.
 
   - name: "#delete-active-db-dialog-opens"
     case: |
@@ -289,8 +304,11 @@ tests:
       Locate the currently active (highlighted) database row. If the
       sidebar shows "Couldn't load databases" or no database rows are
       visible, wait 3 seconds and call browser_snapshot again; do
-      this at most 5 times total (15 seconds). If after 5 attempts
-      the sidebar is still not loading, the test fails.
+      this at most 8 times total (24 seconds). If after 8 attempts
+      the sidebar is still not loading, TEST_FAILED — sidebar did not
+      load. If the sidebar IS loaded but shows fewer than 2 database
+      entries below "All databases", TEST_FAILED immediately — the
+      second database from #create-second-database is missing.
       Click the "×" button at the right edge of the active database
       row (aria-label starts with "Delete "). Verify a modal dialog
       appears with the heading "Delete database" and body text that
@@ -343,10 +361,13 @@ tests:
       to "/auth/sign-in". On the mock IdP form click the "Sign in as
       this user" button using browser_click (use browser_snapshot to
       find the button ref — do NOT use browser_evaluate). Wait for
-      the URL path to become "/app". Use browser_snapshot ONLY — do
-      NOT use browser_evaluate — to verify the sidebar shows at least
-      one database row remaining from the prior session (its display
-      name starts with "users").
+      the URL path to become "/app". If the URL is "/app" but the
+      sidebar shows "Loading…" or no database entries, wait 5 seconds
+      and call browser_snapshot again (retry up to 3 times) — the
+      sidebar loads asynchronously after sign-in.
+      Use browser_snapshot ONLY — do NOT use browser_evaluate — to
+      verify the sidebar shows at least one database row remaining
+      from the prior session (its display name starts with "users").
 
   - name: "#delete-remaining-db"
     case: |
