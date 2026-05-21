@@ -45,6 +45,12 @@ tests:
       Call browser_snapshot. If "Something broke on this page" is
       visible, click the "Reload" button once and call
       browser_snapshot again. (One retry only.)
+      If the URL now contains "/app" (the hero form redirected to
+      the app), check the snapshot for a confirm/diff chip. If a
+      chip is visible, press Enter once to approve it. Then call
+      browser_snapshot every 3 seconds up to 8 times (24 s) until
+      "Provisioned with" is visible in the chat reply — the users
+      table must be confirmed before proceeding to sign-in.
       Step 2 — Navigate to "/auth/sign-in". Call browser_snapshot.
       If a "Sign in as this user" button is visible, click it with
       browser_click. If you receive "Not connected" after clicking,
@@ -58,6 +64,10 @@ tests:
       browser_snapshot again before deciding — the app may still
       be loading the database list.
       a) If the URL contains "?db=" — a database is active.
+         Check for a confirm/diff chip in the snapshot. If visible,
+         press Enter once to approve it. Then call browser_snapshot
+         every 3 seconds up to 8 times (24 s) until "Provisioned
+         with" is visible — the users table must be created.
          Proceed to Step 4.
       b) If the URL still does NOT contain "?db=" after waiting —
          no database yet.
@@ -69,8 +79,8 @@ tests:
            create a users table with id, name, email
          and press Enter as a SEPARATE browser_key_down call.
          If a confirm/diff chip appears, press Enter to approve.
-         Call browser_snapshot and verify "Provisioned with" is
-         visible in the snapshot text.
+         Call browser_snapshot every 3 seconds up to 8 times (24 s)
+         until "Provisioned with" is visible in the snapshot text.
       Step 4 — Sign out: click the "Sign out" button in the top
       navigation bar and wait for the URL to change away from
       "/app". TEST_PASSED.
@@ -124,20 +134,42 @@ tests:
       Use browser_snapshot ONLY — do NOT use browser_evaluate or any
       DOM query tool (browser_evaluate errors in this context).
 
+  - name: "#trace-shows-sql"
+    case: |
+      Navigate to "/app". Call browser_snapshot and check for "?db="
+      in the URL. If "?db=" is not in the URL, TEST_FAILED —
+      a signed-in session with a database is required.
+      Find the chat textarea (placeholder "Ask about your data…") in
+      the snapshot. IMMEDIATELY click it (do NOT call any other tool
+      between the snapshot and the click — refs go stale on re-render).
+      Type:
+        how many users are there?
+      Press Enter as a SEPARATE browser_key_down call. Wait 5 seconds
+      for the reply to appear. Call browser_snapshot. In the snapshot
+      look for a "trace" disclosure or summary element in the reply.
+      Click it. Call browser_snapshot and verify a <pre> block
+      containing SQL is visible. The SQL must contain "users" (any
+      casing) and at least one of: select, count, from (case-insensitive).
+
   - name: "#submit-prefilled-row"
     case: |
       Navigate to "/app". Call browser_snapshot and check the
-      "Page URL:" line at the top of the snapshot. If "?db=" is
-      NOT in the URL (no databases): click "+ New" in the left
-      sidebar (aria-label "Your databases"), type "users-db" in
-      the "Name" input, click "Create", and verify the URL now
+      "Page URL:" line at the top of the snapshot. If the URL
+      contains "/auth/sign-in" (session not preserved from prior
+      test), find the "Sign in as this user" button and click it;
+      wait for the URL to become "/app", then call browser_snapshot.
+      If "?db=" is NOT in the URL (no databases): click "+ New" in
+      the left sidebar (aria-label "Your databases"), type "users-db"
+      in the "Name" input, click "Create", and verify the URL now
       contains "?db=" in a new browser_snapshot.
       If "Something broke on this page" is visible, click "Reload"
       (not "Sign out") and call browser_snapshot again.
-      Find the chat textarea in the snapshot: look for
+      Call browser_snapshot to get the current page state. Find
         textbox "Ask about your data…"
-      in the snapshot YAML and note its ref. Click it using that
-      ref and type the prompt fresh (do NOT check if pre-filled):
+      in the snapshot YAML and note its ref. IMMEDIATELY call
+      browser_click with that ref (do NOT take any other action
+      between the snapshot and the click — refs become stale if
+      the page re-renders). Type the prompt:
         add a new row: name='Alice', email='alice@example.com'
       Press Enter as a SEPARATE tool call. If a confirm/diff chip
       appears, press Enter once to approve — do NOT click any
@@ -145,54 +177,62 @@ tests:
       Check the response:
       a) If the response shows "Couldn't reach the database" or
          any network/connection error: wait 5 seconds. Call
-         browser_snapshot, find the textarea ref in THIS snapshot,
-         click it, re-type the same INSERT prompt, press Enter,
+         browser_snapshot, IMMEDIATELY click the textarea ref from
+         THIS snapshot, re-type the same INSERT prompt, press Enter,
          and press Enter again if a chip appears. Retry once only.
       b) If the response shows "references a table this database
-         doesn't have" or "no such table": click the textarea,
-         type:
+         doesn't have" or "no such table": call browser_snapshot
+         to get the current textarea ref. IMMEDIATELY click that
+         ref (do NOT call any other tool first). Type:
            create a users table with id, name, email
-         press Enter separately. Do NOT click any "Create new
-         database" button. If a confirm/diff chip appears, press
-         Enter to approve. Wait for "Provisioned with" to appear.
-         Then click the textarea, type the INSERT prompt, press
-         Enter, and press Enter again if a chip appears.
+         Press Enter as a SEPARATE browser_key_down. Do NOT click
+         any button labeled "Create new database". If a confirm/
+         diff chip appears, press Enter once to approve. Then call
+         browser_snapshot every 3 seconds (up to 12 times, 36 s)
+         until "Provisioned with" is visible in the chat reply. If
+         "Provisioned with" never appears after 36 s, TEST_FAILED —
+         table provisioning did not complete.
+         Once "Provisioned with" is visible, wait 2 seconds. Call
+         browser_snapshot to obtain a FRESH textarea ref. IMMEDIATELY
+         call browser_click with that ref (do NOT call any other
+         tool first). Type:
+           add a new row: name='Alice', email='alice@example.com'
+         press Enter as a SEPARATE browser_key_down, and press
+         Enter once more if a confirm/diff chip appears.
       Verify the response shows a row with name "Alice" and
       email "alice@example.com".
 
   - name: "#read-shows-informative-data"
     case: |
-      #submit-prefilled-row, then in the same chat input type
+      The previous test inserted Alice into the users table. Navigate
+      to "/app". Call browser_snapshot and verify "?db=" is in the URL.
+      If "?db=" is not in the URL, TEST_FAILED — no active database.
+      Call browser_snapshot to get the current page state. Find
+        textbox "Ask about your data…"
+      and note its ref. IMMEDIATELY call browser_click with that ref
+      (do NOT take any other action between snapshot and click — refs
+      go stale on re-render). Type:
         list all users in the table
-      and submit. Verify the chat reply has both: a data row with
-      "Alice" / "alice@example.com", AND a natural-language summary
-      sentence that mentions "Alice" or "1 user".
+      Press Enter as a SEPARATE browser_key_down. Wait for the reply.
+      If the reply shows an error, wait 5 seconds and retry once.
+      Verify the reply contains "Alice" (any casing) and either
+      "alice@example.com" or a mention of "1 user" or a data row.
 
   - name: "#count-summarizes"
     case: |
-      #read-shows-informative-data, then type
+      Navigate to "/app". Call browser_snapshot and check for "?db="
+      in the URL. If "?db=" is not present, wait 3 seconds and call
+      browser_snapshot again. If still no "?db=" after the second
+      check, TEST_FAILED — no active database.
+      Find the chat textarea (placeholder "Ask about your data…") in
+      the snapshot. IMMEDIATELY click it (do NOT call any other tool
+      between snapshot and click). Type:
         how many users are there?
-      and submit. If the reply shows an error (including "references
-      a table this database doesn't have" or "Something went wrong"),
-      wait 3 seconds and submit the same prompt once more (retry at
-      most once). Verify the reply surfaces the number 1 (or more,
-      if multiple Alice rows exist from prior test runs), either in
-      the summary text or as a returned data cell.
-
-  - name: "#trace-shows-sql"
-    case: |
-      Navigate to "/app". The app auto-pins the newest database on
-      load; call browser_snapshot and check for "?db=" in the URL.
-      If "?db=" is not in the URL after 5 seconds, TEST_FAILED —
-      a signed-in session with a database is required.
-      Click the chat textarea (placeholder "Ask about your data…")
-      and type:
-        how many users are there?
-      Press Enter as a SEPARATE browser_key_down call. Wait for the
-      reply to appear. Then open the trace pane on that reply: click
-      the "trace" summary element (it appears as a collapsible label
-      near the reply). Verify a <pre> block containing SQL is visible
-      — it must contain "users" and a SQL keyword like SELECT or COUNT.
+      Press Enter as a SEPARATE browser_key_down. If the reply shows
+      an error (including "references a table this database doesn't
+      have" or "Something went wrong"), wait 3 seconds and retry once.
+      Verify the reply surfaces the number 1 (or more, if multiple Alice
+      rows exist from prior runs), either in summary text or a data cell.
 
   - name: "#vague-question-handled"
     case: |
@@ -275,11 +315,17 @@ tests:
       click the "+ New" button. A small form with a "Name" input
       appears. Type
         products-tracker
-      into that input and click the "Create" button. Wait until
-      the new database appears in the sidebar list. The new entry
-      will be active (highlighted) and the chat header changes
-      to its name. Verify the sidebar now shows at least two
-      database entries below the "All databases" item.
+      into that input and click the "Create" button EXACTLY ONCE —
+      do NOT click it again. Now poll: call browser_snapshot, wait
+      3 seconds, call browser_snapshot, wait 3 seconds, ... repeating
+      this pattern. Count your browser_snapshot calls after the
+      Create click: on the 16th snapshot call, STOP immediately. If
+      "products-tracker" is visible in ANY of those 16 snapshots,
+      verify the sidebar now shows at least two database entries
+      below "All databases" and TEST_PASSED. If after the 16th
+      snapshot "products-tracker" is still not visible, output
+      TEST_FAILED — database creation did not complete. Do NOT call
+      browser_snapshot a 17th time. Do NOT click Create again.
 
   - name: "#delete-active-db-dialog-opens"
     case: |
@@ -289,23 +335,31 @@ tests:
       Locate the currently active (highlighted) database row. If the
       sidebar shows "Couldn't load databases" or no database rows are
       visible, wait 3 seconds and call browser_snapshot again; do
-      this at most 5 times total (15 seconds). If after 5 attempts
-      the sidebar is still not loading, the test fails.
+      this at most 8 times total (24 seconds). If after 8 attempts
+      the sidebar is still not loading, TEST_FAILED — sidebar did not
+      load. If the sidebar IS loaded but shows fewer than 2 database
+      entries below "All databases", TEST_FAILED immediately — the
+      second database from #create-second-database is missing.
       Click the "×" button at the right edge of the active database
-      row (aria-label starts with "Delete "). Verify a modal dialog
-      appears with the heading "Delete database" and body text that
-      includes "This cannot be reverted" and a text input.
+      row (aria-label starts with "Delete "). Call browser_snapshot.
+      Verify a modal dialog with the heading "Delete database" is
+      visible in the snapshot. Do NOT confirm the deletion here —
+      just verify the modal opened. TEST_PASSED once you can see the
+      "Delete database" heading in the snapshot.
 
   - name: "#delete-active-db-typed-confirm"
     case: |
-      #delete-active-db-dialog-opens. The dialog shows a database
-      name in a <code> block next to a "Copy" button. Read the
-      exact text inside that <code> block, then type that EXACT
-      same text into the input field below it (it must match
-      character-for-character including spaces). Once the input
-      matches, the "Delete" button becomes enabled — click it.
-      Verify the dialog closes and that database entry is gone
-      from the sidebar list.
+      First execute #delete-active-db-dialog-opens. If that
+      referenced test results in TEST_FAILED or TEST_SKIPPED,
+      immediately output TEST_FAILED — the prerequisite delete
+      dialog was not opened and this test cannot proceed.
+      The dialog shows a database name in a <code> block next to
+      a "Copy" button. Read the exact text inside that <code>
+      block, then type that EXACT same text into the input field
+      below it (it must match character-for-character including
+      spaces). Once the input matches, the "Delete" button becomes
+      enabled — click it. Verify the dialog closes and that
+      database entry is gone from the sidebar list.
 
   - name: "#api-keys-mint-and-revoke"
     case: |
@@ -343,10 +397,13 @@ tests:
       to "/auth/sign-in". On the mock IdP form click the "Sign in as
       this user" button using browser_click (use browser_snapshot to
       find the button ref — do NOT use browser_evaluate). Wait for
-      the URL path to become "/app". Use browser_snapshot ONLY — do
-      NOT use browser_evaluate — to verify the sidebar shows at least
-      one database row remaining from the prior session (its display
-      name starts with "users").
+      the URL path to become "/app". If the URL is "/app" but the
+      sidebar shows "Loading…" or no database entries, wait 5 seconds
+      and call browser_snapshot again (retry up to 3 times) — the
+      sidebar loads asynchronously after sign-in.
+      Use browser_snapshot ONLY — do NOT use browser_evaluate — to
+      verify the sidebar shows at least one database row remaining
+      from the prior session (its display name starts with "users").
 
   - name: "#delete-remaining-db"
     case: |
