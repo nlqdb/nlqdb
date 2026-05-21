@@ -81,6 +81,8 @@ import { orchestrateRun, type RunError } from "./run/orchestrate.ts";
 import { cryptoProvider, stripe as stripeClient } from "./stripe/client.ts";
 import { processWebhook } from "./stripe/webhook.ts";
 import { verifyTurnstile } from "./turnstile.ts";
+import { runIcpScrape } from "./icp-scrape.ts";
+import { makeEmailSender } from "./email.ts";
 import { joinWaitlist } from "./waitlist.ts";
 import { runWorkloadAnalyser } from "./workload-analyser/index.ts";
 
@@ -1284,6 +1286,10 @@ app.post("/v1/waitlist", async (c) => {
       db: c.env.DB,
       kv: c.env.KV,
       events: buildEventEmitter(c.env.EVENTS_QUEUE),
+      emailSender: makeEmailSender({
+        apiKey: c.env.RESEND_API_KEY,
+        from: c.env.RESEND_FROM ?? "nlqdb <hello@nlqdb.com>",
+      }),
     },
     body.body.email,
     c.req.header("cf-connecting-ip") ?? null,
@@ -2470,6 +2476,7 @@ app.on(["POST", "GET"], "/api/auth/*", async (c) => {
 // would burn D1 quotas + LLM credits firing 210x/day).
 const NEON_KEEP_WARM_CRON = "*/4 13-21 * * 1-5";
 const WORKLOAD_ANALYSER_CRON = "0 4 * * *";
+const ICP_SCRAPE_CRON = "0 6 * * 1";
 
 // W5 daily workload-analyser cron handler (`SK-MIGRATE-001`). Schedule
 // is `0 4 * * *` UTC, configured in `wrangler.toml`'s `[triggers]`.
@@ -2534,6 +2541,18 @@ async function scheduled(
           }),
         );
       }
+      return;
+    }
+
+    // ICP pain-signal scraper — Monday 06:00 UTC.
+    if (controller.cron === ICP_SCRAPE_CRON) {
+      const result = await runIcpScrape({
+        kv: envBindings.KV,
+        logsnagToken: envBindings.LOGSNAG_TOKEN,
+        logsnagProject: envBindings.LOGSNAG_PROJECT,
+        ghToken: envBindings.GH_TOKEN,
+      });
+      console.info(JSON.stringify({ msg: "icp_scrape_completed", ...result }));
       return;
     }
 

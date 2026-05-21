@@ -148,6 +148,18 @@ declare global {
       // unset the route returns 503 — matches the unconfigured-sink
       // posture used by Tinybird / Stripe webhooks.
       EVAL_INGEST_TOKEN?: string;
+
+      // LogSnag credentials for product-event notifications. Used by
+      // the ICP pain-signal scraper (`0 6 * * 1` cron) and may be
+      // shared with apps/events-worker for other channels. When unset,
+      // the scraper skips the LogSnag notification (non-fatal).
+      LOGSNAG_TOKEN?: string;
+      LOGSNAG_PROJECT?: string;
+
+      // GitHub Personal Access Token. Reserved for future GH-issue
+      // pain-signal scraping. When unset, the ICP scraper skips the
+      // GitHub source.
+      GH_TOKEN?: string;
     }
   }
 }
