@@ -127,10 +127,13 @@ tests:
   - name: "#submit-prefilled-row"
     case: |
       Navigate to "/app". Call browser_snapshot and check the
-      "Page URL:" line at the top of the snapshot. If "?db=" is
-      NOT in the URL (no databases): click "+ New" in the left
-      sidebar (aria-label "Your databases"), type "users-db" in
-      the "Name" input, click "Create", and verify the URL now
+      "Page URL:" line at the top of the snapshot. If the URL
+      contains "/auth/sign-in" (session not preserved from prior
+      test), find the "Sign in as this user" button and click it;
+      wait for the URL to become "/app", then call browser_snapshot.
+      If "?db=" is NOT in the URL (no databases): click "+ New" in
+      the left sidebar (aria-label "Your databases"), type "users-db"
+      in the "Name" input, click "Create", and verify the URL now
       contains "?db=" in a new browser_snapshot.
       If "Something broke on this page" is visible, click "Reload"
       (not "Sign out") and call browser_snapshot again.
@@ -286,11 +289,12 @@ tests:
       click the "+ New" button. A small form with a "Name" input
       appears. Type
         products-tracker
-      into that input and click the "Create" button. Wait until
-      the new database appears in the sidebar list. The new entry
-      will be active (highlighted) and the chat header changes
-      to its name. Verify the sidebar now shows at least two
-      database entries below the "All databases" item.
+      into that input and click the "Create" button. Call
+      browser_snapshot every 3 seconds (up to 4 times, 12 s) until
+      "products-tracker" is visible in the sidebar list. If it does
+      not appear after 4 snapshots, TEST_FAILED — database creation
+      did not complete. Once visible, verify the sidebar now shows
+      at least two database entries below the "All databases" item.
 
   - name: "#delete-active-db-dialog-opens"
     case: |
@@ -301,7 +305,10 @@ tests:
       sidebar shows "Couldn't load databases" or no database rows are
       visible, wait 3 seconds and call browser_snapshot again; do
       this at most 8 times total (24 seconds). If after 8 attempts
-      the sidebar is still not loading, the test fails.
+      the sidebar is still not loading, TEST_FAILED — sidebar did not
+      load. If the sidebar IS loaded but shows fewer than 2 database
+      entries below "All databases", TEST_FAILED immediately — the
+      second database from #create-second-database is missing.
       Click the "×" button at the right edge of the active database
       row (aria-label starts with "Delete "). Verify a modal dialog
       appears with the heading "Delete database" and body text that
