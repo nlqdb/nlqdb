@@ -1,0 +1,429 @@
+---
+// One template, N comparison pages — generated at build via
+// `getStaticPaths()` from `data/competitors.ts`. AEO patterning:
+// direct-answer capsule above the fold, named-competitor in H1 + FAQ,
+// FAQPage + Article JSON-LD, working `<nlq-data>` embed as proof.
+
+import Footer from "../../components/Footer.astro";
+import Topnav from "../../components/Topnav.astro";
+import { COMPETITORS, type ComparisonClaim, competitorBySlug } from "../../data/competitors";
+import Base from "../../layouts/Base.astro";
+
+export function getStaticPaths() {
+  return COMPETITORS.map((c) => ({ params: { slug: c.slug } }));
+}
+
+const { slug } = Astro.params;
+const c = competitorBySlug(slug as string);
+if (!c) {
+  return Astro.redirect("/vs");
+}
+
+const pageTitle = `nlqdb vs ${c.name} — natural-language databases`;
+const description = c.oneLiner;
+const canonical = `/vs/${c.slug}`;
+
+const claimGlyph: Record<ComparisonClaim, string> = {
+  shipped: "✓",
+  partial: "◐",
+  no: "—",
+};
+const claimLabel: Record<ComparisonClaim, string> = {
+  shipped: "Yes",
+  partial: "Partial",
+  no: "No",
+};
+
+const faqJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  mainEntity: c.faqs.map((f) => ({
+    "@type": "Question",
+    name: f.q,
+    acceptedAnswer: { "@type": "Answer", text: f.a },
+  })),
+};
+---
+<Base title={pageTitle} description={description} canonical={canonical}>
+  <div class="page">
+    <Topnav current="vs" />
+
+    <main class="vs">
+      <header class="vs__head">
+        <p class="vs__kicker">Comparison</p>
+        <h1 class="vs__title">nlqdb vs {c.name}</h1>
+        <p class="vs__lede">{description}</p>
+        <p class="vs__sub">
+          Persona this comparison serves: <strong>{c.persona}</strong>. {c.name}'s positioning:
+          <a href={c.url} rel="nofollow noopener noreferrer" target="_blank">{c.tagline}</a>
+        </p>
+      </header>
+
+      <section class="vs__decision" aria-label="Direct answer">
+        <div class="vs__choice vs__choice--us">
+          <h2 class="vs__choice-title">When to choose nlqdb</h2>
+          <ul>
+            {c.whenChooseUs.map((b) => <li>{b}</li>)}
+          </ul>
+        </div>
+        <div class="vs__choice vs__choice--them">
+          <h2 class="vs__choice-title">When to choose {c.name}</h2>
+          <ul>
+            {c.whenChooseThem.map((b) => <li>{b}</li>)}
+          </ul>
+        </div>
+      </section>
+
+      <section class="vs__demo" aria-label={`Code snippet for the goal "${c.demo.goal}"`}>
+        <h2 class="vs__h2">In your HTML</h2>
+        <p class="vs__demo-why">{c.demo.why}</p>
+        <div class="vs__demo-card">
+          <div class="vs__demo-prompt">
+            <span class="vs__demo-arrow">&gt;</span>
+            <code>{c.demo.goal}</code>
+          </div>
+          <pre class="vs__demo-snippet"><code>{`<nlq-data goal="${c.demo.goal}"></nlq-data>`}</code></pre>
+          <div class="vs__demo-footer">
+            <p class="vs__demo-note">
+              Drop the tag in any HTML page. The first query mints a database;
+              subsequent queries reuse it. No keys, no schema setup.
+            </p>
+            <button
+              type="button"
+              class="vs__try-btn"
+              data-try-goal={c.demo.goal}
+            >
+              Try this query &rarr;
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <section class="vs__table-wrap" aria-labelledby="vs-table-title">
+        <h2 class="vs__h2" id="vs-table-title">Feature parity, honest</h2>
+        <table class="vs__table">
+          <thead>
+            <tr>
+              <th scope="col">Feature</th>
+              <th scope="col">nlqdb</th>
+              <th scope="col">{c.name}</th>
+              <th scope="col" class="vs__th-note">Note</th>
+            </tr>
+          </thead>
+          <tbody>
+            {
+              c.features.map((row) => (
+                <tr>
+                  <th scope="row">{row.feature}</th>
+                  <td class={`vs__claim vs__claim--${row.us}`} aria-label={claimLabel[row.us]}>
+                    <span aria-hidden="true">{claimGlyph[row.us]}</span>
+                  </td>
+                  <td class={`vs__claim vs__claim--${row.them}`} aria-label={claimLabel[row.them]}>
+                    <span aria-hidden="true">{claimGlyph[row.them]}</span>
+                  </td>
+                  <td class="vs__note">{row.note ?? ""}</td>
+                </tr>
+              ))
+            }
+          </tbody>
+        </table>
+        <p class="vs__legend">
+          <span class="vs__claim vs__claim--shipped" aria-hidden="true">✓</span> shipped &nbsp;·&nbsp;
+          <span class="vs__claim vs__claim--partial" aria-hidden="true">◐</span> partial &nbsp;·&nbsp;
+          <span class="vs__claim vs__claim--no" aria-hidden="true">—</span> not shipped
+        </p>
+      </section>
+
+      <section class="vs__faqs" aria-labelledby="vs-faqs-title">
+        <h2 class="vs__h2" id="vs-faqs-title">Questions buyers ask</h2>
+        <dl>
+          {
+            c.faqs.map((f) => (
+              <div class="vs__faq">
+                <dt>{f.q}</dt>
+                <dd>{f.a}</dd>
+              </div>
+            ))
+          }
+        </dl>
+      </section>
+
+      <section class="vs__cta">
+        <h2 class="vs__h2">Try nlqdb in 30 seconds</h2>
+        <p>No sign-in. The anonymous database lasts 72 hours; adopt it with one click if you keep it.</p>
+        <a class="vs__cta-btn" href="/app/new">Start with a goal &rarr;</a>
+        <p class="vs__cta-meta">
+          Want a comparison against another tool?{" "}
+          <a href="mailto:hello@nlqdb.com?subject=Comparison request">Email us</a> or browse
+          <a href="/vs"> all comparisons</a>.
+        </p>
+      </section>
+    </main>
+
+    <Footer />
+  </div>
+
+  <script is:inline type="application/ld+json" set:html={JSON.stringify(faqJsonLd)} />
+  <script>
+    // "Try this query" → seed the anonymous-create input via the same
+    // `nlqdb_draft` localStorage slot CreateForm rehydrates from
+    // (SK-ANON-011), then navigate. No URL param so the goal can't
+    // be sniffed from referrer / access logs.
+    import { saveDraft } from "../../lib/prompt-storage";
+    document.querySelectorAll<HTMLButtonElement>(".vs__try-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const goal = btn.dataset["tryGoal"] ?? "";
+        if (goal) saveDraft(goal);
+        location.assign("/app/new");
+      });
+    });
+  </script>
+</Base>
+
+<style>
+  .vs {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: clamp(32px, 5vw, 64px) clamp(16px, 4vw, 32px);
+  }
+  .vs__kicker {
+    font-family: var(--mono);
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--fg-dim);
+    font-size: 13px;
+    margin: 0 0 12px;
+  }
+  .vs__title {
+    font-family: var(--mono);
+    font-size: clamp(28px, 4.5vw, 44px);
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+    margin: 0 0 16px;
+  }
+  .vs__lede {
+    font-size: clamp(16px, 1.8vw, 18px);
+    color: var(--fg);
+    max-width: 60ch;
+    margin: 0 0 16px;
+  }
+  .vs__sub {
+    color: var(--fg-dim);
+    font-size: 14px;
+    margin: 0 0 48px;
+    max-width: 60ch;
+  }
+  .vs__h2 {
+    font-family: var(--mono);
+    font-size: clamp(20px, 2.4vw, 26px);
+    letter-spacing: -0.01em;
+    margin: 0 0 16px;
+  }
+  .vs__decision {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 24px;
+    margin-bottom: 64px;
+  }
+  @media (min-width: 720px) {
+    .vs__decision {
+      grid-template-columns: 1fr 1fr;
+    }
+  }
+  .vs__choice {
+    padding: 24px;
+    border: 2px solid var(--border-strong);
+    background: var(--bg-elev);
+  }
+  .vs__choice--us {
+    border-color: var(--accent);
+  }
+  .vs__choice-title {
+    font-family: var(--mono);
+    font-size: 16px;
+    margin: 0 0 12px;
+  }
+  .vs__choice ul {
+    margin: 0;
+    padding-left: 18px;
+    color: var(--fg);
+    font-size: 15px;
+    line-height: 1.55;
+  }
+  .vs__choice li + li {
+    margin-top: 8px;
+  }
+  .vs__demo {
+    margin-bottom: 64px;
+  }
+  .vs__demo-why {
+    color: var(--fg-dim);
+    margin: 0 0 16px;
+    max-width: 60ch;
+  }
+  .vs__demo-card {
+    border: 2px solid var(--border-strong);
+    background: var(--bg-elev);
+    padding: 20px;
+  }
+  .vs__demo-prompt {
+    display: flex;
+    gap: 12px;
+    align-items: baseline;
+    font-family: var(--mono);
+    font-size: 15px;
+    margin-bottom: 16px;
+  }
+  .vs__demo-arrow {
+    color: var(--accent);
+  }
+  .vs__demo-snippet {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    padding: 12px;
+    margin: 0 0 12px;
+    overflow-x: auto;
+    font-size: 13px;
+  }
+  .vs__demo-snippet code {
+    font-family: var(--mono);
+  }
+  .vs__demo-footer {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+  @media (min-width: 560px) {
+    .vs__demo-footer {
+      flex-direction: row;
+      justify-content: space-between;
+      align-items: center;
+    }
+  }
+  .vs__demo-note {
+    color: var(--fg-dim);
+    font-size: 13px;
+    margin: 0;
+    max-width: 42ch;
+  }
+  .vs__try-btn {
+    align-self: flex-start;
+    padding: 10px 18px;
+    font-family: var(--mono);
+    font-size: 14px;
+    background: var(--accent);
+    color: var(--accent-fg);
+    border: 2px solid var(--accent-fg);
+    box-shadow: 3px 3px 0 0 var(--accent-fg);
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .vs__try-btn:hover {
+    transform: translate(-1px, -1px);
+    box-shadow: 4px 4px 0 0 var(--accent-fg);
+  }
+  .vs__table-wrap {
+    margin-bottom: 64px;
+    overflow-x: auto;
+  }
+  .vs__table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+  }
+  .vs__table th,
+  .vs__table td {
+    text-align: left;
+    padding: 12px 8px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+  }
+  .vs__table thead th {
+    font-family: var(--mono);
+    color: var(--fg-dim);
+    text-transform: uppercase;
+    font-size: 12px;
+    letter-spacing: 0.06em;
+    border-bottom: 2px solid var(--border-strong);
+  }
+  .vs__table tbody th {
+    font-weight: 500;
+    color: var(--fg);
+  }
+  .vs__claim {
+    font-family: var(--mono);
+    text-align: center;
+    width: 60px;
+  }
+  .vs__claim--shipped {
+    color: var(--accent);
+  }
+  .vs__claim--partial {
+    color: var(--fg-dim);
+  }
+  .vs__claim--no {
+    color: var(--fg-dim);
+    opacity: 0.5;
+  }
+  .vs__note {
+    color: var(--fg-dim);
+    font-size: 13px;
+    line-height: 1.4;
+  }
+  .vs__legend {
+    font-size: 13px;
+    color: var(--fg-dim);
+    margin: 12px 0 0;
+  }
+  .vs__faqs {
+    margin-bottom: 64px;
+  }
+  .vs__faqs dl {
+    margin: 0;
+  }
+  .vs__faq {
+    padding: 16px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .vs__faq dt {
+    font-weight: 600;
+    margin: 0 0 8px;
+    color: var(--fg);
+  }
+  .vs__faq dd {
+    margin: 0;
+    color: var(--fg);
+    line-height: 1.55;
+  }
+  .vs__cta {
+    padding: 32px;
+    border: 2px solid var(--accent);
+    background: var(--bg-elev);
+    text-align: center;
+  }
+  .vs__cta p {
+    color: var(--fg-dim);
+    margin: 0 0 20px;
+  }
+  .vs__cta-btn {
+    display: inline-block;
+    padding: 14px 28px;
+    background: var(--accent);
+    color: var(--accent-fg);
+    font-family: var(--mono);
+    text-decoration: none;
+    border: 2px solid var(--accent-fg);
+    box-shadow: 4px 4px 0 0 var(--accent-fg);
+  }
+  .vs__cta-btn:hover {
+    transform: translate(-2px, -2px);
+    box-shadow: 6px 6px 0 0 var(--accent-fg);
+  }
+  .vs__cta-meta {
+    margin: 24px 0 0;
+    font-size: 13px;
+  }
+  .vs__cta-meta a {
+    color: var(--accent);
+  }
+</style>
