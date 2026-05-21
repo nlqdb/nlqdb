@@ -134,6 +134,23 @@ tests:
       Use browser_snapshot ONLY — do NOT use browser_evaluate or any
       DOM query tool (browser_evaluate errors in this context).
 
+  - name: "#trace-shows-sql"
+    case: |
+      Navigate to "/app". Call browser_snapshot and check for "?db="
+      in the URL. If "?db=" is not in the URL, TEST_FAILED —
+      a signed-in session with a database is required.
+      Find the chat textarea (placeholder "Ask about your data…") in
+      the snapshot. IMMEDIATELY click it (do NOT call any other tool
+      between the snapshot and the click — refs go stale on re-render).
+      Type:
+        how many users are there?
+      Press Enter as a SEPARATE browser_key_down call. Wait 5 seconds
+      for the reply to appear. Call browser_snapshot. In the snapshot
+      look for a "trace" disclosure or summary element in the reply.
+      Click it. Call browser_snapshot and verify a <pre> block
+      containing SQL is visible. The SQL must contain "users" (any
+      casing) and at least one of: select, count, from (case-insensitive).
+
   - name: "#submit-prefilled-row"
     case: |
       Navigate to "/app". Call browser_snapshot and check the
@@ -216,26 +233,6 @@ tests:
       have" or "Something went wrong"), wait 3 seconds and retry once.
       Verify the reply surfaces the number 1 (or more, if multiple Alice
       rows exist from prior runs), either in summary text or a data cell.
-
-  - name: "#trace-shows-sql"
-    case: |
-      Navigate to "/app". The app auto-pins the newest database on
-      load; call browser_snapshot and check for "?db=" in the URL.
-      If "?db=" is not in the URL after 5 seconds, TEST_FAILED —
-      a signed-in session with a database is required.
-      Find the chat textarea (placeholder "Ask about your data…") in
-      the snapshot. IMMEDIATELY click it and type:
-        how many users are there?
-      Press Enter as a SEPARATE browser_key_down call. Wait 5 seconds
-      for the reply to appear. Press Escape to blur the textarea (this
-      returns focus to the page body). Then press the End key once
-      (browser_key_down key="End") to scroll to the bottom of the
-      page where the most recent reply and its trace element appear.
-      Wait 1 second. Call browser_snapshot. In the snapshot look for a
-      "trace" disclosure or summary element near the most recent reply.
-      Click it. Call browser_snapshot and verify a <pre> block
-      containing SQL is visible. The SQL must contain "users" (any
-      casing) and at least one of: select, count, from (case-insensitive).
 
   - name: "#vague-question-handled"
     case: |
