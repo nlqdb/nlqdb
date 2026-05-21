@@ -1,0 +1,10 @@
+# SK-CMP-004 — `llms.txt` ships as a build-time endpoint, not a hand-edited static file
+
+- **Decision:** `apps/web/src/pages/llms.txt.ts` is the canonical source of `nlqdb.com/llms.txt`. It generates the file at build time from `data/competitors.ts` (and any future structured page index) so the comparisons list stays in sync without a separate edit. The previously static `apps/web/public/llms.txt` is deleted.
+- **Core value:** Effortless UX, Bullet-proof
+- **Why:** The 2025 community `llms.txt` spec (`llmstxt.org`) is a markdown index of a site's primary pages, fetched routinely by Claude Desktop, Perplexity, Cursor, Windsurf, Cline, Aider, and GitHub Copilot when an IDE-agent is pointed at a site. The 2026 adoption rate is ≈10% of crawled sites (SE Ranking 300k-domain study). Keeping it in sync by hand is the failure mode that voids the value — a 2-month-stale `llms.txt` is worse than no file at all, because agents will cite outdated comparison pages and miss new ones. An endpoint that imports the same data the routes import collapses the failure mode entirely.
+- **Consequence in code:** A new `/vs/<slug>` ships by adding a `Competitor` row; `llms.txt` rebuilds automatically (Astro static build). The endpoint sets `content-type: text/plain` so curl-fetching the file from a terminal renders as text. Future Phase 2 endpoints (e.g. `llms-full.txt` with embedded body content per the spec) layer on the same generator.
+- **Alternatives rejected:**
+  - "Keep the hand-edited public/llms.txt" — guaranteed-to-rot pattern; the spec is small enough that this rots even with the best intentions.
+  - "Ship a build script that writes public/llms.txt before astro build" — adds a build step; the Astro endpoint is the same shape with zero new tooling.
+  - "Don't ship llms.txt at all" — leaves on the floor the one AEO surface that Claude Desktop and Perplexity *do* read (per the 2026 spec-adoption guides cited in the feature doc).

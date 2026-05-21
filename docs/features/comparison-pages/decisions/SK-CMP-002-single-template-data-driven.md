@@ -1,0 +1,10 @@
+# SK-CMP-002 — One Astro template + one typed data file; adding a competitor is a one-file edit
+
+- **Decision:** All `/vs/<competitor>` pages render from a single `pages/vs/[slug].astro` template using Astro's `getStaticPaths()` over the `COMPETITORS` array in `data/competitors.ts`. The sitemap and `llms.txt` also iterate that array. Adding a competitor means editing one file (`competitors.ts`) and `docs/competitors.md`; no template churn, no per-page styles, no parallel slug lists to keep in sync.
+- **Core value:** Effortless UX (for the maintainer), Bullet-proof
+- **Why:** The §3.5 plan calls for 15–25 comparison pages over time. With a hand-rolled page per competitor the maintenance cost climbs linearly — styles drift, copy patterns diverge, AEO/JSON-LD blocks get out of sync. A single template guarantees every page emits FAQPage JSON-LD, has the same comparison-table semantics for crawlers, and ships the working `<nlq-data>` demo. The data-driven shape also enables aggregation (the index page, llms.txt links, future "you might also like" cross-links) without a second data source.
+- **Consequence in code:** `data/competitors.ts` is the only place a `Competitor` lives; `pages/vs/[slug].astro` is the only place a comparison page is styled; `pages/sitemap.xml.ts` and `pages/llms.txt.ts` import from `data/competitors.ts`. Future cross-links (e.g. "also see /vs/X") read the same array, never a hardcoded slug.
+- **Alternatives rejected:**
+  - "One Markdown file per competitor" — readable but loses TypeScript validation; nothing stops a typo from shipping a half-rendered FAQ block.
+  - "Astro Content Collections (Zod schema)" — over-engineered for ~25 items; the inline `Competitor` type plus TypeScript is enough.
+  - "Hand-roll each page" — fails the maintenance-cost test the moment we hit page 4.

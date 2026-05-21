@@ -1,0 +1,10 @@
+# SK-CMP-003 — Every comparison page emits FAQPage JSON-LD with 4–6 Q&A pairs
+
+- **Decision:** Every `/vs/<competitor>` page renders 4–6 FAQ pairs sourced from `competitor.faqs` and emits a `FAQPage` JSON-LD block alongside the existing `SoftwareApplication` schema from `Base.astro`. At least one FAQ question must name the competitor verbatim ("Can I keep my Supabase database…", "Is nlqdb's NL→SQL quality competitive with Vanna's?") so AEO crawlers can match the buyer query.
+- **Core value:** Honest latency, Effortless UX
+- **Why:** Per HubSpot's 2026 AEO playbook and Goodie's 2026 LLM-citation study, FAQ Q&A pairs are the highest-leverage format an LLM can lift verbatim into a chat answer. ChatGPT, Perplexity, and Claude all preferentially cite pages with `FAQPage` structured data when answering comparison queries. The named-competitor question is essential because SEO rewards exact-match queries — buyers searching `"supabase alternative"` expect to see the named brand in the answers, not the questions.
+- **Consequence in code:** TypeScript `faqs: ComparisonFaq[]` (no `?`); review rejects PRs with fewer than 4 FAQs. The `[slug].astro` template hardcodes the JSON-LD emission so a future contributor cannot accidentally ship a comparison without it. Answers are 2–3 sentences, declarative, and link sparingly.
+- **Alternatives rejected:**
+  - "Skip JSON-LD, just visible FAQs" — leaves AEO value on the table; the structured-data lift is ≈ free.
+  - "Generic Article schema only" — `FAQPage` is the format Perplexity/Claude weight highest for comparison queries (per the 2026 AEO guides cited above).
+  - "Auto-generated FAQs via LLM at build time" — quality control is too low; FAQs are the trust-building work on the page and must be written by a human who knows the actual product limits.
