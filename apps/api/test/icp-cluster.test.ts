@@ -163,7 +163,7 @@ describe("runIcpCluster", () => {
     const result = await runIcpCluster({ kv, ghToken: "tok", groqApiKey: "gq", fetch: fetcher });
 
     const putCall = (fetcher as ReturnType<typeof vi.fn>).mock.calls.find(
-      ([, opts]: [unknown, { method?: string }]) => opts?.method === "PUT",
+      (args) => (args[1] as { method?: string } | undefined)?.method === "PUT",
     ) as [string, { body?: string }] | undefined;
 
     const rawBody = putCall?.[1].body ?? "{}";
@@ -314,12 +314,11 @@ describe("runIcpCluster", () => {
       fetch: fetcher,
     });
 
-    const logsnagCall = (fetcher as ReturnType<typeof vi.fn>).mock.calls.find(
-      ([u]: [unknown]) => {
-        const urlStr = typeof u === "string" ? u : (u as URL | Request).toString();
-        return urlStr.includes("logsnag.com");
-      },
-    );
+    const logsnagCall = (fetcher as ReturnType<typeof vi.fn>).mock.calls.find((args) => {
+      const u = args[0];
+      const urlStr = typeof u === "string" ? u : (u as URL | Request).toString();
+      return urlStr.includes("logsnag.com");
+    });
     expect(logsnagCall).toBeDefined();
   });
 });
