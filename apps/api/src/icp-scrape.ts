@@ -155,7 +155,7 @@ const GH_ISSUE_QUERIES = [
   'is:issue "natural language" database',
   'is:issue "ai agent" memory store',
   'is:issue "query builder" too verbose',
-  'is:issue prisma migration overhead',
+  "is:issue prisma migration overhead",
 ];
 
 const GH_SEARCH_URL = "https://api.github.com/search/issues";
@@ -183,9 +183,7 @@ async function fetchGitHubIssues(
         });
         span.setAttribute("http.response.status_code", res.status);
         if (!res.ok) {
-          console.warn(
-            JSON.stringify({ msg: "icp_gh_fetch_error", query: q, status: res.status }),
-          );
+          console.warn(JSON.stringify({ msg: "icp_gh_fetch_error", query: q, status: res.status }));
           span.end();
           return;
         }

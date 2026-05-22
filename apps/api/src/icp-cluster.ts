@@ -42,8 +42,7 @@ const PERSONAS: ReadonlyArray<{ id: PersonaKey; label: string; description: stri
   {
     id: "p2",
     label: "P2 — Agent Builder",
-    description:
-      "LLM/agent builders needing natural-language persistence without schema ceremony",
+    description: "LLM/agent builders needing natural-language persistence without schema ceremony",
   },
   {
     id: "p3",
@@ -148,13 +147,14 @@ function parseClusters(text: string): Cluster[] {
   try {
     const json = JSON.parse(text) as { clusters?: unknown[] };
     if (!Array.isArray(json.clusters)) {
-      console.warn(JSON.stringify({ msg: "icp_cluster_parse_unexpected_shape", text: text.slice(0, 100) }));
+      console.warn(
+        JSON.stringify({ msg: "icp_cluster_parse_unexpected_shape", text: text.slice(0, 100) }),
+      );
       return [];
     }
     return json.clusters
       .filter(
-        (c): c is Record<string, unknown> =>
-          typeof c === "object" && c !== null && "label" in c,
+        (c): c is Record<string, unknown> => typeof c === "object" && c !== null && "label" in c,
       )
       .map((c) => ({
         label: String(c["label"] ?? "").slice(0, 50),
@@ -166,7 +166,8 @@ function parseClusters(text: string): Cluster[] {
           : [],
       }));
   } catch {
-    if (text) console.warn(JSON.stringify({ msg: "icp_cluster_parse_failed", text: text.slice(0, 100) }));
+    if (text)
+      console.warn(JSON.stringify({ msg: "icp_cluster_parse_failed", text: text.slice(0, 100) }));
     return [];
   }
 }
