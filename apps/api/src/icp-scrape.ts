@@ -92,9 +92,7 @@ async function fetchHn(
         const res = await fetcher(url);
         span.setAttribute("http.response.status_code", res.status);
         if (!res.ok) {
-          console.warn(
-            JSON.stringify({ msg: "icp_hn_fetch_error", query: q, status: res.status }),
-          );
+          console.warn(JSON.stringify({ msg: "icp_hn_fetch_error", query: q, status: res.status }));
           span.end();
           return;
         }

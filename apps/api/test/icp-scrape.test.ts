@@ -3,7 +3,7 @@
 
 import type { Span } from "@opentelemetry/api";
 import { describe, expect, it, vi } from "vitest";
-import { runIcpScrape, type IcpScrapeDeps } from "../src/icp-scrape.ts";
+import { type IcpScrapeDeps, runIcpScrape } from "../src/icp-scrape.ts";
 
 // Map-backed KV stub mirroring the pattern in waitlist.test.ts.
 function stubKv(initial: Record<string, string> = {}): KVNamespace {
@@ -76,7 +76,11 @@ function makeFetch(overrides: Record<string, string | null> = {}): typeof fetch 
         return { ok: false, status: 503, json: async () => ({}) } as unknown as Response;
       }
       const bodyStr: string = body;
-      return { ok: true, status: 200, json: async () => JSON.parse(bodyStr) } as unknown as Response;
+      return {
+        ok: true,
+        status: 200,
+        json: async () => JSON.parse(bodyStr),
+      } as unknown as Response;
     }
     // Default: return empty results for HN and Reddit.
     if (urlStr.includes("hn.algolia.com")) {
@@ -149,15 +153,21 @@ describe("runIcpScrape", () => {
     expect(result.sources["hn"]).toBe(1);
     expect(result.sources["reddit"]).toBe(1);
 
-    const putCalls = (kv.put as ReturnType<typeof vi.fn>).mock.calls as Array<[string, ...unknown[]]>;
+    const putCalls = (kv.put as ReturnType<typeof vi.fn>).mock.calls as Array<
+      [string, ...unknown[]]
+    >;
 
     // Both seen-keys should be written.
     expect(putCalls.some(([k]) => k.startsWith("icp:seen:hn:story-abc"))).toBe(true);
     expect(putCalls.some(([k]) => k.startsWith("icp:seen:reddit:reddit-xyz"))).toBe(true);
 
     // Both item-keys should be written.
-    expect(putCalls.some(([k]) => k.includes("icp:item:") && k.includes(":hn:story-abc"))).toBe(true);
-    expect(putCalls.some(([k]) => k.includes("icp:item:") && k.includes(":reddit:reddit-xyz"))).toBe(true);
+    expect(putCalls.some(([k]) => k.includes("icp:item:") && k.includes(":hn:story-abc"))).toBe(
+      true,
+    );
+    expect(
+      putCalls.some(([k]) => k.includes("icp:item:") && k.includes(":reddit:reddit-xyz")),
+    ).toBe(true);
   });
 
   it("skips already-seen items (dedup works)", async () => {

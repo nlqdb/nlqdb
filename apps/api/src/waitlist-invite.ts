@@ -8,7 +8,7 @@ import { sha256Hex } from "./principal.ts";
 const INVITE_PREFIX = "gate:invite:";
 const CAP_PREFIX = "wl:invite-cap:";
 const INVITE_TTL_SECONDS = 30 * 24 * 60 * 60; // 30 days
-const CAP_TTL_SECONDS = 8 * 24 * 60 * 60;     // 8-day window — outlasts one full week
+const CAP_TTL_SECONDS = 8 * 24 * 60 * 60; // 8-day window — outlasts one full week
 
 export function generateInviteCode(): string {
   const bytes = new Uint8Array(16);
@@ -45,7 +45,10 @@ export async function tryIssueInvite(kv: KVNamespace, weekCap: number): Promise<
   return code;
 }
 
-export function buildInviteEmail(_email: string, code: string): { subject: string; text: string; html: string } {
+export function buildInviteEmail(
+  _email: string,
+  code: string,
+): { subject: string; text: string; html: string } {
   const link = `https://app.nlqdb.com/?invite=${code}`;
   return {
     subject: "You're in — your nlqdb invite",

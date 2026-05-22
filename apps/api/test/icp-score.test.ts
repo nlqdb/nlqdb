@@ -3,8 +3,8 @@
 // relevance floor, graceful handling of malformed LLM responses.
 
 import { describe, expect, it, vi } from "vitest";
-import type { IcpItem } from "../src/icp-scrape.ts";
 import { runIcpScore } from "../src/icp-score.ts";
+import type { IcpItem } from "../src/icp-scrape.ts";
 
 function makeItem(overrides: Partial<IcpItem> = {}): IcpItem {
   return {
@@ -42,9 +42,7 @@ function groqResponse(results: object[]): Response {
 function geminiResponse(results: object[]): Response {
   return new Response(
     JSON.stringify({
-      candidates: [
-        { content: { parts: [{ text: JSON.stringify({ results }) }] } },
-      ],
+      candidates: [{ content: { parts: [{ text: JSON.stringify({ results }) }] } }],
     }),
     { status: 200, headers: { "content-type": "application/json" } },
   );
@@ -120,9 +118,7 @@ describe("runIcpScore", () => {
   });
 
   it("handles malformed LLM response without throwing", async () => {
-    const fetcher = vi.fn().mockResolvedValue(
-      new Response("not json at all {{", { status: 200 }),
-    );
+    const fetcher = vi.fn().mockResolvedValue(new Response("not json at all {{", { status: 200 }));
 
     await expect(
       runIcpScore([makeItem()], { kv: stubKv(), groqApiKey: "key", fetch: fetcher }),

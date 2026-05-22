@@ -212,7 +212,13 @@ describe("joinWaitlist", () => {
     const kv = stubKv({ [capKey]: "200" });
     const emailSender = vi.fn();
     const out = await joinWaitlist(
-      { db: stubDb({ insertResult: { ok: 1 } }), kv, events: eventsStub, emailSender, inviteCap: 200 },
+      {
+        db: stubDb({ insertResult: { ok: 1 } }),
+        kv,
+        events: eventsStub,
+        emailSender,
+        inviteCap: 200,
+      },
       "capped@example.com",
       "1.2.3.4",
     );

@@ -56,6 +56,7 @@ import { makeChatStore } from "./chat/store.ts";
 import { deriveSlug, displayName, listDatabasesForTenant } from "./databases/list.ts";
 import { resolveDb } from "./db-registry.ts";
 import { sweepAnonDatabases } from "./db-sweep/sweep.ts";
+import { makeEmailSender } from "./email.ts";
 import { recordEvalReport, recordWishlist } from "./events-feature.ts";
 import { makeGatePreAlpha } from "./gate/middleware.ts";
 import {
@@ -66,6 +67,8 @@ import {
   parseJsonBody,
   parseRunBody,
 } from "./http.ts";
+import { runIcpScore } from "./icp-score.ts";
+import { runIcpScrape } from "./icp-scrape.ts";
 import { getLLMRouter } from "./llm-router.ts";
 import { makeRequireSession, type RequireSessionVariables } from "./middleware.ts";
 import { handleMcpCallback, handleMcpCallbackRedeem } from "./oauth-mcp-bridge.ts";
@@ -81,9 +84,6 @@ import { orchestrateRun, type RunError } from "./run/orchestrate.ts";
 import { cryptoProvider, stripe as stripeClient } from "./stripe/client.ts";
 import { processWebhook } from "./stripe/webhook.ts";
 import { verifyTurnstile } from "./turnstile.ts";
-import { runIcpScrape } from "./icp-scrape.ts";
-import { runIcpScore } from "./icp-score.ts";
-import { makeEmailSender } from "./email.ts";
 import { joinWaitlist } from "./waitlist.ts";
 import { runWorkloadAnalyser } from "./workload-analyser/index.ts";
 

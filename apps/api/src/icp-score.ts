@@ -90,7 +90,11 @@ function itemsToUserMsg(batch: IcpItem[]): string {
   );
 }
 
-async function callGroq(batch: IcpItem[], apiKey: string, fetcher: typeof fetch): Promise<RawScore[]> {
+async function callGroq(
+  batch: IcpItem[],
+  apiKey: string,
+  fetcher: typeof fetch,
+): Promise<RawScore[]> {
   const res = await fetcher(GROQ_URL, {
     method: "POST",
     headers: { "content-type": "application/json", authorization: `Bearer ${apiKey}` },
@@ -121,7 +125,11 @@ async function callGemini(
     headers: { "content-type": "application/json" },
     body: JSON.stringify({
       contents: [{ parts: [{ text: `${SYSTEM_PROMPT}\n\n${itemsToUserMsg(batch)}` }] }],
-      generationConfig: { responseMimeType: "application/json", temperature: 0, maxOutputTokens: 2000 },
+      generationConfig: {
+        responseMimeType: "application/json",
+        temperature: 0,
+        maxOutputTokens: 2000,
+      },
     }),
   });
   if (!res.ok) throw new Error(`Gemini ${res.status}`);
@@ -144,9 +152,7 @@ export async function runIcpScore(items: IcpItem[], deps: IcpScoreDeps): Promise
   if (items.length === 0) return { scored: 0, skipped: 0, stored: 0 };
 
   const fetcher = deps.fetch ?? fetch;
-  const candidates = items.filter((item) =>
-    PAIN_REGEX.test(`${item.title} ${item.text ?? ""}`),
-  );
+  const candidates = items.filter((item) => PAIN_REGEX.test(`${item.title} ${item.text ?? ""}`));
   const skipped = items.length - candidates.length;
 
   if (candidates.length === 0 || (!deps.groqApiKey && !deps.geminiApiKey)) {
