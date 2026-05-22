@@ -26,5 +26,7 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
   // Provision the anonymous-mode token early so it's in localStorage
   // before CreateForm.tsx hydrates (SK-ANON-001).
   import { getOrMintAnonToken } from "../../lib/anon";
+  import { captureInviteFromUrl } from "../../lib/invite";
   getOrMintAnonToken();
+  captureInviteFromUrl();
 </script>

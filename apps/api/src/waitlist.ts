@@ -14,7 +14,9 @@
 //     is the deferred promise the handler hands to the runtime.
 
 import type { EventEmitter, ProductEvent, WaitlistPersona } from "@nlqdb/events";
+import type { EmailSender } from "./email.ts";
 import { makeKvThrottle } from "./lib/kv-throttle.ts";
+import { buildInviteEmail, tryIssueInvite } from "./waitlist-invite.ts";
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const MAX_EMAIL_LEN = 254;
@@ -41,6 +43,8 @@ export type WaitlistDeps = {
   db: D1Database;
   kv: KVNamespace;
   events: EventEmitter;
+  emailSender?: EmailSender;
+  inviteCap?: number;
 };
 
 export type WaitlistResult =
@@ -138,7 +142,19 @@ export async function joinWaitlist(
   // Default envelope id is `${name}.${emailHash}` for this event
   // (packages/events/src/index.ts:85-86) — same string we'd pass
   // explicitly. Let the producer SDK derive it.
-  const pendingEmit = deps.events.emit(event);
+  let pendingEmit: Promise<unknown> = deps.events.emit(event);
+  if (deps.emailSender) {
+    const sender = deps.emailSender;
+    const cap = deps.inviteCap ?? 200;
+    const pendingInvite = tryIssueInvite(deps.kv, cap)
+      .then((code) => {
+        if (!code) return;
+        const msg = buildInviteEmail(normalized, code);
+        return sender({ to: normalized, ...msg });
+      })
+      .catch((err) => console.warn("waitlist: invite email failed", err));
+    pendingEmit = Promise.all([pendingEmit, pendingInvite]);
+  }
   return { status: 200, body: { received: true }, pendingEmit };
 }
 

@@ -85,7 +85,7 @@ Before documenting any decision or plan:
 - **D1. Resolve open questions first** — Don't document vague decisions. **Push the user to answer open questions** before you document.
 - **D2. Never document ambiguity** — Vague or ambiguous decisions are worse than no documentation. If it's not clear enough to document, it's not ready.
 - **D3. Clarity always increases** — When documenting, **the next steps must be clearer than before**. Never document in a way that leaves the reader more confused.
-- **D4. No doc over 20 KB** — When a markdown file would cross 20 KB, split it before adding text and route from the §5 path map / §6 long-form index / feature index so agents land on the right shard. Edits to a file already over 20 KB must net-shrink it.
+- **D4. No doc over 20 KB** — When a markdown file would cross 20 KB, split it before adding text and route from the §5 path map / §6 long-form index / feature index so agents land on the right shard. Edits to a file already over 20 KB must net-shrink it. **Exception ([GLOBAL-028](docs/decisions/GLOBAL-028-acquisition-progress-tracker.md)):** `docs/research/automated-icp-validation-plan.md` is the only file exempt from this cap — it is the canonical acquisition progress tracker and grows as experiments accumulate.
 
 ### P5. Keep functions simple. Keep high level architecture simple.
 
@@ -188,6 +188,7 @@ manually before editing.)
 | `apps/docs/**`, `docs.nlqdb.com` Starlight site | `docs/features/docs-site/FEATURE.md` |
 | `.github/workflows/**`, `nlqdb/actions/**` (CI permissions) | `docs/features/ci-permissions/FEATURE.md` |
 | `tests/personas/**`, `tests/opencheck/**`, `tests/e2e/**`, `examples/**/e2e/**`, `.github/workflows/e2e*.yml`, `.github/workflows/_e2e-*.yml`, `packages/nlqdb-rb/spec/e2e/**`, `packages/nlqdb-rs/tests/e2e/**` | `docs/features/e2e-coverage/FEATURE.md` |
+| `apps/api/src/icp-scrape.ts`, `apps/api/test/icp-scrape.test.ts`, `docs/research/automated-icp-validation-plan.md`, `docs/research/icp-evidence-*.md` | `docs/features/icp-mining/FEATURE.md` |
 
 Per-area `AGENTS.md` files (e.g. `packages/db/AGENTS.md`) repeat just
 their slice of this table, so you don't need the full root view when

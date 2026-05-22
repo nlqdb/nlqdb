@@ -1,9 +1,13 @@
 # Automated ICP Validation Plan
 
-> **Status:** research / proposal — not a canonical decision. Promote
-> pieces into feature `SK-*` blocks or new `GLOBAL-NNN` when they
-> resolve. Per [`CLAUDE.md`](../../CLAUDE.md) §2 P4 (D1), don't document
-> resolutions before they're answered.
+> **Governance ([GLOBAL-028](../decisions/GLOBAL-028-acquisition-progress-tracker.md)):**
+> This is the canonical acquisition progress tracker. It is the **only**
+> file in the repo exempt from the 20 KB cap. All updates are agent-ran:
+> every PR that implements a section here must update `## Current status`
+> and append a row to `## Progress log`.
+
+> **Status:** in progress — §1.4, §2.2 (collection), §2.3 (scoring) shipped 2026-05-21. §1.1, §1.2,
+> §1.3, §3, §4 not yet started.
 >
 > **Context.** Every advertised surface ([progress.md §0](../progress.md))
 > shipped; zero validated users.
@@ -21,6 +25,21 @@
 > [GLOBAL-025](../decisions/GLOBAL-025-north-star.md) ·
 > [GLOBAL-027](../decisions/GLOBAL-027-pre-alpha-gate.md) ·
 > [founder-playbook.md](../founder-playbook.md).
+
+---
+
+## Current status (updated 2026-05-21)
+
+| KPI | Target | Status |
+|---|---|---|
+| Anonymous loop completions | ≥ 50 | 0 — gate open path unblocked as of this PR |
+| Signed-in users (invite-redeemed) | ≥ 10 | 0 — first invites will ship on next waitlist signup |
+| Sean Ellis Q1 responses | ≥ 20 | 0 — survey not yet wired |
+| Primary ICP shortlist | exactly 1 | not yet — first scored run Mon 2026-05-26 |
+| TTFV p50 | ≤ 60s | not measured |
+| First-query success | ≥ 60% | not measured |
+
+---
 
 ## 0. Goals and non-goals
 
@@ -129,6 +148,13 @@ no email infra.
 Either way: gate must open for §3 visitors or §2/§3 are wasted.
 Flagged in §6.
 
+> **✅ IMPLEMENTED 2026-05-21 (Option A — auto-issue on signup):**
+> `POST /v1/waitlist` now auto-issues a 128-bit invite code to every new
+> signup via Resend. Cap: 200/week. Code TTL: 30 days. Browser side:
+> `?invite=<code>` URL param captured on the homepage and `/app/new`,
+> stored in `localStorage["nlqdb_invite"]`, forwarded as `X-Invite-Code`
+> header on every `/v1/ask` call. Canonical decision: SK-GATE-007.
+
 ---
 
 ## 2. Phase B — Automated ICP discovery (Weeks 1–2, parallel to §1)
@@ -171,16 +197,33 @@ language"`, `is:issue "ai agent" memory`, `is:issue prisma migration`
 
 ### 2.2 Scrape stack — one Worker, free chain, weekly cron
 
+> **✅ IMPLEMENTED 2026-05-21 (Slice 1 — data collection):**
+> `runIcpScrape` added to the existing `nlqdb-api` Worker as a cron
+> (`0 6 * * 1`, Mon 06:00 UTC). Sources: HN Algolia (5 queries) + Reddit
+> (3 subreddit/query pairs). Dedup via `icp:seen:<source>:<id>` KV (90d
+> TTL). Items stored as `icp:item:<YYYYMMDD>:<source>:<id>` KV (30d TTL).
+> LogSnag `#icp-mining` notified after each run. GH source and R2 upgrade
+> are Phase 2 (SK-ICP-002, SK-ICP-003). Canonical decision: SK-ICP-001.
+
 - One Cloudflare cron Worker runs Mon 06:00 UTC (same slot as
   [quality-eval](../features/quality-eval/FEATURE.md) — share infra).
   Pulls last week's posts + comments; dedupes by `(source, item_id)`;
-  writes raw to `r2://nlqdb-icp-raw/yyyy-mm-dd/`.
-- Reddit via [PRAW](https://praw.readthedocs.io) or direct `.json`
-  listings (no key for public read). HN via Algolia. GH via existing
-  `GITHUB_TOKEN`.
-- Budget guard: ≤50 MB/week fetch (R2 free = 10 GB).
+  writes raw to KV (R2 upgrade tracked as open question in icp-mining FEATURE.md).
+- Reddit via direct `.json` listings (no key for public read). HN via Algolia.
+- Budget guard: ≤100 items/week × 2 KV writes each, well inside free tier.
 
-### 2.3 LLM cluster — persona-fit rubric
+### 2.3 LLM scoring — persona-fit rubric
+
+> **✅ IMPLEMENTED 2026-05-21 (Steps 1–2 — filter + score):**
+> `runIcpScore` in `icp-score.ts` runs immediately after each weekly scrape in the same cron slot.
+> Step 1 (filter): regex prefilter on pain words (hate, frustrat, stuck, wish, verbose, boilerplate, …) applied to `title + text`.
+> Step 2 (score): Groq `llama-3.1-8b-instant` → Gemini `gemini-2.5-flash` fallback scores each passing item 0–10 for P1/P2/P3/P6; OTel span `nlqdb.icp.score` per batch.
+> Items with max persona score < 5 are discarded; the rest stored as `icp:scored:<YYYYMMDD>:<source>:<id>` (30d KV TTL).
+> Step 3 (cluster) and Step 4 (evidence-file generation to git) remain Phase 2 (SK-ICP-003).
+>
+> **Source expansion (same PR):** HN queries 5 → 10 (added MCP server, Postgres setup, Retool alternative, vector DB, pgvector). Reddit 3 → 16 subreddit/query pairs (full plan §2.1 list).
+
+LLM cluster — persona-fit rubric (Steps 3–4 below remain Phase 2):
 
 1. **Filter** (free chain): regex prefilter on `pain | annoyed | hate
    | wish | stuck on | spent N hours | why is X so hard | any
@@ -494,3 +537,15 @@ When results land, promote pieces per [CLAUDE.md §10](../../CLAUDE.md):
   1 priority ordering.
 
 Until then, this file is the working plan, not a decision record.
+
+---
+
+## Progress log
+
+Per [GLOBAL-028](../decisions/GLOBAL-028-acquisition-progress-tracker.md): every PR that implements a section appends a row here.
+
+| Date | Phase | What | How | Result |
+|---|---|---|---|---|
+| 2026-05-21 | §1.4 gate-valve | Auto-issue invite codes on waitlist signup | `waitlist-invite.ts`: 128-bit code, KV store, 30d TTL, 200/week cap. Resend email via `makeEmailSender`. Web: `invite.ts` captures `?invite=<code>`, stores in `localStorage`, forwards as `X-Invite-Code` header. | Shipped. First production invites will go out on next new waitlist signup. |
+| 2026-05-21 | §2.2 scrape stack | Weekly ICP pain-signal scrape | `icp-scrape.ts`: HN Algolia (5 queries) + Reddit (3 subreddit/query pairs). KV dedup + storage. LogSnag `#icp-mining` notification. Cron `0 6 * * 1`. | Shipped. First run 2026-05-26 06:00 UTC. |
+| 2026-05-21 | §2.3 LLM scoring (steps 1–2) | Pain-word prefilter + persona scoring | `icp-score.ts`: regex prefilter → Groq `llama-3.1-8b-instant` (Gemini fallback) scores each item 0–10 for P1/P2/P3/P6; items with max score < 5 discarded; survivors to `icp:scored:*` KV (30d TTL). OTel span per batch. Source expansion: HN 5→10 queries, Reddit 3→16 subreddit pairs. | Shipped. Scores available from first scrape 2026-05-26. |

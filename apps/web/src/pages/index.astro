@@ -39,5 +39,8 @@ import Base from "../layouts/Base.astro";
   // Mints even when the hero is gated — no cost; useful when the
   // visitor crosses to /app/new from the carousel / footer.
   import { getOrMintAnonToken } from "../lib/anon";
+  // Capture ?invite=<code> from invite email links (SK-GATE-007).
+  import { captureInviteFromUrl } from "../lib/invite";
   getOrMintAnonToken();
+  captureInviteFromUrl();
 </script>

@@ -56,6 +56,7 @@ import { makeChatStore } from "./chat/store.ts";
 import { deriveSlug, displayName, listDatabasesForTenant } from "./databases/list.ts";
 import { resolveDb } from "./db-registry.ts";
 import { sweepAnonDatabases } from "./db-sweep/sweep.ts";
+import { makeEmailSender } from "./email.ts";
 import { recordEvalReport, recordWishlist } from "./events-feature.ts";
 import { makeGatePreAlpha } from "./gate/middleware.ts";
 import {
@@ -66,6 +67,8 @@ import {
   parseJsonBody,
   parseRunBody,
 } from "./http.ts";
+import { runIcpScore } from "./icp-score.ts";
+import { runIcpScrape } from "./icp-scrape.ts";
 import { getLLMRouter } from "./llm-router.ts";
 import { makeRequireSession, type RequireSessionVariables } from "./middleware.ts";
 import { handleMcpCallback, handleMcpCallbackRedeem } from "./oauth-mcp-bridge.ts";
@@ -1284,6 +1287,10 @@ app.post("/v1/waitlist", async (c) => {
       db: c.env.DB,
       kv: c.env.KV,
       events: buildEventEmitter(c.env.EVENTS_QUEUE),
+      emailSender: makeEmailSender({
+        apiKey: c.env.RESEND_API_KEY,
+        from: c.env.RESEND_FROM ?? "nlqdb <hello@nlqdb.com>",
+      }),
     },
     body.body.email,
     c.req.header("cf-connecting-ip") ?? null,
@@ -2470,6 +2477,7 @@ app.on(["POST", "GET"], "/api/auth/*", async (c) => {
 // would burn D1 quotas + LLM credits firing 210x/day).
 const NEON_KEEP_WARM_CRON = "*/4 13-21 * * 1-5";
 const WORKLOAD_ANALYSER_CRON = "0 4 * * *";
+const ICP_SCRAPE_CRON = "0 6 * * 1";
 
 // W5 daily workload-analyser cron handler (`SK-MIGRATE-001`). Schedule
 // is `0 4 * * *` UTC, configured in `wrangler.toml`'s `[triggers]`.
@@ -2533,6 +2541,43 @@ async function scheduled(
             message: err instanceof Error ? err.message : String(err),
           }),
         );
+      }
+      return;
+    }
+
+    // ICP pain-signal scraper + scorer — Monday 06:00 UTC.
+    if (controller.cron === ICP_SCRAPE_CRON) {
+      const scrapeResult = await runIcpScrape({
+        kv: envBindings.KV,
+        logsnagToken: envBindings.LOGSNAG_TOKEN,
+        logsnagProject: envBindings.LOGSNAG_PROJECT,
+        ghToken: envBindings.GH_TOKEN,
+      });
+      console.info(
+        JSON.stringify({
+          msg: "icp_scrape_completed",
+          newItems: scrapeResult.newItems,
+          skipped: scrapeResult.skipped,
+          sources: scrapeResult.sources,
+        }),
+      );
+      if (scrapeResult.items.length > 0) {
+        const scoreResult = await runIcpScore(scrapeResult.items, {
+          kv: envBindings.KV,
+          groqApiKey: envBindings.GROQ_API_KEY,
+          geminiApiKey: envBindings.GEMINI_API_KEY,
+        }).catch((err) => {
+          console.error(
+            JSON.stringify({
+              msg: "icp_score_failed",
+              message: err instanceof Error ? err.message : String(err),
+            }),
+          );
+          return null;
+        });
+        if (scoreResult) {
+          console.info(JSON.stringify({ msg: "icp_score_completed", ...scoreResult }));
+        }
       }
       return;
     }

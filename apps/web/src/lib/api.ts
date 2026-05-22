@@ -14,6 +14,7 @@
 // to wire CreateForm.tsx end-to-end.
 
 import { getOrMintAnonToken } from "./anon";
+import { getStoredInviteCode } from "./invite";
 
 export type CreateRow = Record<string, string | number | boolean | null>;
 
@@ -92,6 +93,10 @@ export async function postAskCreate(
   };
   if (options.turnstileToken) {
     headers["cf-turnstile-response"] = options.turnstileToken;
+  }
+  const inviteCode = getStoredInviteCode();
+  if (inviteCode) {
+    headers["x-invite-code"] = inviteCode;
   }
 
   const res = await fetch(`${apiBase.replace(/\/$/, "")}/v1/ask`, {
