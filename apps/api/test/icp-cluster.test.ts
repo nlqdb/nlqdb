@@ -77,7 +77,12 @@ describe("runIcpCluster", () => {
   it("returns written=false immediately for empty KV", async () => {
     const kv = stubKv();
     const result = await runIcpCluster({ kv, ghToken: "tok" });
-    expect(result).toEqual({ personaItems: {}, clustered: 0, written: false });
+    expect(result).toEqual({
+      personaItems: {},
+      clustered: 0,
+      written: false,
+      primaryStatus: "no_signal",
+    });
   });
 
   it("returns written=false when all KV values are missing after listing", async () => {
@@ -345,5 +350,118 @@ describe("runIcpCluster", () => {
       return urlStr.includes("logsnag.com");
     });
     expect(logsnagCall).toBeDefined();
+  });
+
+  it("sends User-Agent header on every GitHub call (REST API rejects no-UA with 403)", async () => {
+    const item = makeScored("ua1");
+    const kv = stubKv({ "icp:scored:20260522:hn:ua1": JSON.stringify(item) });
+
+    const fetcher = vi.fn(async (url: string | URL | Request, opts?: { method?: string }) => {
+      const urlStr = typeof url === "string" ? url : url instanceof URL ? url.href : url.url;
+      if (urlStr.includes("groq.com")) return makeClusterResponse(CLUSTER_PAYLOAD);
+      if (urlStr.includes("github.com")) {
+        if (opts?.method === "PUT") return makeGhPutResponse();
+        return makeGhNotFound();
+      }
+      return new Response("{}", { status: 200 });
+    }) as unknown as typeof fetch;
+
+    await runIcpCluster({ kv, ghToken: "tok", groqApiKey: "gq", fetch: fetcher });
+
+    const ghCalls = (fetcher as ReturnType<typeof vi.fn>).mock.calls.filter((args) => {
+      const u = args[0];
+      const s = typeof u === "string" ? u : (u as URL | Request).toString();
+      return s.includes("github.com");
+    });
+    expect(ghCalls.length).toBeGreaterThanOrEqual(2); // GET + PUT
+    for (const call of ghCalls) {
+      const opts = call[1] as { headers?: Record<string, string> } | undefined;
+      expect(opts?.headers?.["User-Agent"]).toBeDefined();
+    }
+  });
+
+  it("§2.4 verdict: confirms primary when one persona ≥3× runner-up and ≥30 quotes", async () => {
+    // 35 P1 items + 5 P2 items → P1 weight 35*8 = 280, P2 weight 5*7 = 35; ratio 8× → confirmed.
+    const scored: Record<string, string> = {};
+    for (let i = 0; i < 35; i++) {
+      scored[`icp:scored:20260522:hn:p1-${i}`] = JSON.stringify(makeScored(`p1-${i}`, "p1"));
+    }
+    for (let i = 0; i < 5; i++) {
+      scored[`icp:scored:20260522:hn:p2-${i}`] = JSON.stringify(makeScored(`p2-${i}`, "p2"));
+    }
+    const kv = stubKv(scored);
+
+    let written: string | undefined;
+    const fetcher = vi.fn(
+      async (url: string | URL | Request, opts?: { method?: string; body?: string }) => {
+        const urlStr = typeof url === "string" ? url : url instanceof URL ? url.href : url.url;
+        if (urlStr.includes("groq.com")) return makeClusterResponse(CLUSTER_PAYLOAD);
+        if (urlStr.includes("github.com")) {
+          if (opts?.method === "PUT") {
+            const body = JSON.parse(opts.body ?? "{}") as { content?: string };
+            written = body.content ? atob(body.content) : undefined;
+            return makeGhPutResponse();
+          }
+          return makeGhNotFound();
+        }
+        return new Response("{}", { status: 200 });
+      },
+    ) as unknown as typeof fetch;
+
+    const result = await runIcpCluster({ kv, ghToken: "tok", groqApiKey: "gq", fetch: fetcher });
+
+    expect(result.primaryStatus).toBe("primary_confirmed");
+    expect(result.primaryIcp).toContain("P1");
+    expect(written).toBeDefined();
+    expect(written).toContain("Primary ICP confirmed");
+    expect(written).toContain("§2.4 Decision rule");
+  });
+
+  it("§2.4 verdict: directional when leader has <30 quotes", async () => {
+    const item = makeScored("d1");
+    const kv = stubKv({ "icp:scored:20260522:hn:d1": JSON.stringify(item) });
+
+    const fetcher = vi.fn(async (url: string | URL | Request, opts?: { method?: string }) => {
+      const urlStr = typeof url === "string" ? url : url instanceof URL ? url.href : url.url;
+      if (urlStr.includes("groq.com")) return makeClusterResponse(CLUSTER_PAYLOAD);
+      if (urlStr.includes("github.com")) {
+        if (opts?.method === "PUT") return makeGhPutResponse();
+        return makeGhNotFound();
+      }
+      return new Response("{}", { status: 200 });
+    }) as unknown as typeof fetch;
+
+    const result = await runIcpCluster({ kv, ghToken: "tok", groqApiKey: "gq", fetch: fetcher });
+    expect(result.primaryStatus).toBe("directional");
+    expect(result.primaryIcp).toContain("P1");
+  });
+
+  it("clamps LLM-hallucinated cluster.count to the input item count", async () => {
+    // Single input item but LLM claims count=999 in the cluster.
+    const item = makeScored("c1");
+    const kv = stubKv({ "icp:scored:20260522:hn:c1": JSON.stringify(item) });
+
+    let writtenMd: string | undefined;
+    const inflatedCluster = [{ ...CLUSTER_PAYLOAD[0], count: 999 }];
+    const fetcher = vi.fn(
+      async (url: string | URL | Request, opts?: { method?: string; body?: string }) => {
+        const urlStr = typeof url === "string" ? url : url instanceof URL ? url.href : url.url;
+        if (urlStr.includes("groq.com")) return makeClusterResponse(inflatedCluster);
+        if (urlStr.includes("github.com")) {
+          if (opts?.method === "PUT") {
+            const b = JSON.parse(opts.body ?? "{}") as { content?: string };
+            writtenMd = b.content ? atob(b.content) : undefined;
+            return makeGhPutResponse();
+          }
+          return makeGhNotFound();
+        }
+        return new Response("{}", { status: 200 });
+      },
+    ) as unknown as typeof fetch;
+
+    await runIcpCluster({ kv, ghToken: "tok", groqApiKey: "gq", fetch: fetcher });
+    expect(writtenMd).toBeDefined();
+    expect(writtenMd).not.toContain("| 999 |"); // hallucinated count must not appear
+    expect(writtenMd).toContain("| 1 |"); // clamped to the actual item count
   });
 });

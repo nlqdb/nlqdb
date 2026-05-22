@@ -1,15 +1,9 @@
-// ICP pain-signal scraper — weekly cron (`0 6 * * 1`).
-//
-// Queries HN Algolia and Reddit for ICP-relevant pain signals (SQL
-// friction, NL-to-database UX, AI memory) and stores raw items in KV
-// for downstream analysis. One bad source never kills the others —
-// per-source errors are caught and counted.
-//
-// KV key schema:
-//   icp:seen:<source>:<id>  → "1"         TTL 90 days  (dedup)
-//   icp:item:<YYYYMMDD>:<source>:<id> → JSON  TTL 30 days  (raw item)
+// SK-ICP-001 (HN+Reddit) + SK-ICP-004 (GitHub Issues). Writes raw items to KV at icp:seen:<source>:<id> (90d) + icp:item:<YYYYMMDD>:<source>:<id> (30d).
 
 import { type Span, trace } from "@opentelemetry/api";
+
+// Per-fetch wall-clock cap; protects the cron from a stalled upstream.
+const FETCH_TIMEOUT_MS = 10_000;
 
 export type IcpScrapeDeps = {
   kv: KVNamespace;
@@ -89,7 +83,7 @@ async function fetchHn(
 
     const doFetch = async (span: Span) => {
       try {
-        const res = await fetcher(url);
+        const res = await fetcher(url, { signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) });
         span.setAttribute("http.response.status_code", res.status);
         if (!res.ok) {
           console.warn(JSON.stringify({ msg: "icp_hn_fetch_error", query: q, status: res.status }));
@@ -160,6 +154,8 @@ const GH_ISSUE_QUERIES = [
 
 const GH_SEARCH_URL = "https://api.github.com/search/issues";
 const GH_DATE_FILTER = "created:>2025-11-01";
+// GitHub rejects requests with no User-Agent (403) per their REST API contract.
+const GH_USER_AGENT = "nlqdb-icp-bot";
 
 async function fetchGitHubIssues(
   fetcher: typeof fetch,
@@ -178,8 +174,10 @@ async function fetchGitHubIssues(
           headers: {
             Accept: "application/vnd.github+json",
             Authorization: `Bearer ${ghToken}`,
+            "User-Agent": GH_USER_AGENT,
             "X-GitHub-Api-Version": "2022-11-28",
           },
+          signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
         });
         span.setAttribute("http.response.status_code", res.status);
         if (!res.ok) {
@@ -187,18 +185,23 @@ async function fetchGitHubIssues(
           span.end();
           return;
         }
-        const json = (await res.json()) as { items?: GhIssue[] };
+        const json = (await res.json()) as { items?: GhIssue[]; incomplete_results?: boolean };
         const issues = json.items ?? [];
+        if (json.incomplete_results) {
+          console.warn(JSON.stringify({ msg: "icp_gh_incomplete_results", query: q }));
+        }
         span.setAttribute("nlqdb.icp.source", "github");
         span.setAttribute("nlqdb.icp.items", issues.length);
         for (const issue of issues) {
+          const ms = new Date(issue.created_at).getTime();
+          if (!Number.isFinite(ms)) continue;
           items.push({
             id: `gh-${issue.id}`,
             source: "github",
             title: issue.title,
             url: issue.html_url,
             text: issue.body?.slice(0, 500) || undefined,
-            ts: Math.floor(new Date(issue.created_at).getTime() / 1000),
+            ts: Math.floor(ms / 1000),
           });
         }
       } catch (err) {
@@ -270,12 +273,15 @@ async function fetchReddit(
 
   for (const { subreddit, query } of REDDIT_QUERIES) {
     const encodedQuery = encodeURIComponent(query);
-    const url = `https://www.reddit.com/r/${subreddit}/search.json?q=${encodedQuery}&sort=new&limit=25&t=week`;
+    // restrict_sr=on scopes the search to the subreddit; without it Reddit
+    // returns site-wide results even on the /r/<sub>/search.json endpoint.
+    const url = `https://www.reddit.com/r/${subreddit}/search.json?q=${encodedQuery}&restrict_sr=on&sort=new&limit=25&t=week`;
 
     const doFetch = async (span: Span) => {
       try {
         const res = await fetcher(url, {
           headers: { "User-Agent": REDDIT_UA },
+          signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
         });
         span.setAttribute("http.response.status_code", res.status);
         if (!res.ok) {
@@ -358,6 +364,7 @@ async function notifyLogSnag(
         event: "Weekly Scrape",
         description: `${result.newItems} new pain signals (HN: ${result.sources["hn"] ?? 0}, Reddit: ${result.sources["reddit"] ?? 0}, GH: ${result.sources["github"] ?? 0})`,
       }),
+      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
     });
     if (!res.ok) {
       console.warn(JSON.stringify({ msg: "icp_logsnag_error", status: res.status }));

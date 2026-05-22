@@ -9,6 +9,15 @@ const DEFAULT_REPO = "nlqdb/nlqdb";
 const SCORED_KEY_PREFIX = "icp:scored:";
 const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
 const GEMINI_BASE = "https://generativelanguage.googleapis.com/v1beta/models";
+// GitHub REST rejects no-User-Agent requests with 403.
+const GH_USER_AGENT = "nlqdb-icp-bot";
+// Per-fetch wall-clock cap (LLM + GitHub + LogSnag); protects the cron from stalled upstreams.
+const FETCH_TIMEOUT_MS = 15_000;
+
+// §2.4 decision-rule thresholds. Surfaced verbatim in the evidence markdown so
+// the founder reads the verdict, not just the raw counts.
+const PRIMARY_RATIO = 3; // top persona must outweigh the runner-up by this factor
+const PRIMARY_MIN_QUOTES = 30; // and have at least this many items
 
 export type IcpClusterDeps = {
   kv: KVNamespace;
@@ -28,6 +37,10 @@ export type IcpClusterResult = {
   personaItems: Record<string, number>;
   clustered: number;
   written: boolean;
+  // §2.4 verdict: human-readable summary surfaced in markdown + LogSnag.
+  // Undefined means "fewer than two personas with data" (no signal yet).
+  primaryIcp?: string;
+  primaryStatus: "primary_confirmed" | "directional" | "no_signal";
 };
 
 type PersonaKey = "p1" | "p2" | "p3" | "p6";
@@ -191,6 +204,7 @@ async function callGroqCluster(
       temperature: 0,
       max_tokens: 2000,
     }),
+    signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
   });
   if (!res.ok) throw new Error(`Groq ${res.status}`);
   const json = (await res.json()) as { choices?: Array<{ message?: { content?: string } }> };
@@ -215,6 +229,7 @@ async function callGeminiCluster(
         maxOutputTokens: 2000,
       },
     }),
+    signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
   });
   if (!res.ok) throw new Error(`Gemini ${res.status}`);
   const json = (await res.json()) as {
@@ -277,7 +292,9 @@ async function clusterPersona(
     }
   });
 
-  return clusters;
+  // Clamp LLM-claimed counts to the input — models routinely hallucinate larger
+  // numbers, and the markdown is presented as evidence.
+  return clusters.map((c) => ({ ...c, count: Math.min(c.count, items.length) }));
 }
 
 // --- Evidence markdown ---
@@ -295,45 +312,96 @@ function escMd(s: string): string {
   return s.replace(/\|/g, "\\|").replace(/\n/g, " ");
 }
 
+type PersonaWeight = { id: PersonaKey; label: string; weight: number; count: number };
+type Verdict = {
+  status: "primary_confirmed" | "directional" | "no_signal";
+  primaryLabel?: string;
+  line: string;
+};
+
+// §2.4 rule: one persona ≥PRIMARY_RATIO× any other AND ≥PRIMARY_MIN_QUOTES items
+// ⇒ primary_confirmed. Two within 30% AND together ≥60% of weight ⇒ directional.
+// Else ⇒ no_signal. Weight = items × avg own-persona score.
+function decideVerdict(weights: PersonaWeight[]): Verdict {
+  const ranked = [...weights].filter((w) => w.count > 0).sort((a, b) => b.weight - a.weight);
+  if (ranked.length === 0) {
+    return { status: "no_signal", line: "No persona has scored items yet." };
+  }
+  const top = ranked[0];
+  if (!top) {
+    return { status: "no_signal", line: "No persona has scored items yet." };
+  }
+  if (ranked.length === 1) {
+    if (top.count >= PRIMARY_MIN_QUOTES) {
+      return {
+        status: "primary_confirmed",
+        primaryLabel: top.label,
+        line: `**Primary ICP confirmed: ${top.label}** (${top.count} quotes, sole persona with signal).`,
+      };
+    }
+    return {
+      status: "directional",
+      primaryLabel: top.label,
+      line: `Directional: ${top.label} leads with ${top.count} quotes; need ≥${PRIMARY_MIN_QUOTES} for primary.`,
+    };
+  }
+  const runnerUp = ranked[1];
+  if (
+    runnerUp &&
+    top.count >= PRIMARY_MIN_QUOTES &&
+    top.weight >= PRIMARY_RATIO * runnerUp.weight
+  ) {
+    return {
+      status: "primary_confirmed",
+      primaryLabel: top.label,
+      line: `**Primary ICP confirmed: ${top.label}** (${top.count} quotes; ≥${PRIMARY_RATIO}× weighted signal of runner-up).`,
+    };
+  }
+  return {
+    status: "directional",
+    primaryLabel: top.label,
+    line: `Directional: ${top.label} leads (${top.count} quotes), but not yet ≥${PRIMARY_RATIO}× runner-up at ≥${PRIMARY_MIN_QUOTES} quotes.`,
+  };
+}
+
 function generateMarkdown(
   groups: Record<PersonaKey, IcpScoredItem[]>,
   clustersByPersona: Record<PersonaKey, Cluster[]>,
   generatedAt: number,
-): string {
+): { markdown: string; verdict: Verdict } {
   const month = yyyymm(generatedAt);
   const dateStr = isoDate(generatedAt);
   const totalItems = Object.values(groups).reduce((s, arr) => s + arr.length, 0);
+
+  const weights: PersonaWeight[] = PERSONAS.map((p) => {
+    const its = groups[p.id];
+    const avg = its.length === 0 ? 0 : its.reduce((s, i) => s + i[p.id], 0) / its.length;
+    return { id: p.id, label: p.label, weight: its.length * avg, count: its.length };
+  });
+
+  const verdict = decideVerdict(weights);
 
   const lines: string[] = [
     `# ICP Evidence — ${month}`,
     "",
     `> Auto-generated ${dateStr}. ${totalItems} scored items across ${PERSONAS.length} personas.`,
     "",
+    `## §2.4 Decision rule`,
+    "",
+    verdict.line,
+    "",
     "## Persona summary",
     "",
-    "| Persona | Items | Clusters |",
-    "|---|---|---|",
+    "| Persona | Items | Clusters | Weighted score |",
+    "|---|---|---|---|",
   ];
 
-  for (const p of PERSONAS) {
-    lines.push(`| ${p.label} | ${groups[p.id].length} | ${clustersByPersona[p.id].length} |`);
+  for (const w of weights) {
+    lines.push(
+      `| ${w.label} | ${w.count} | ${clustersByPersona[w.id].length} | ${w.weight.toFixed(1)} |`,
+    );
   }
-
-  // Primary ICP: persona with highest items × average score (weighted signal).
-  let primaryLabel = PERSONAS[0]?.label ?? "P1 — Solo Builder";
-  let topWeight = 0;
-  for (const p of PERSONAS) {
-    const its = groups[p.id];
-    if (its.length === 0) continue;
-    const avg = its.reduce((s, i) => s + i[p.id], 0) / its.length;
-    const w = its.length * avg;
-    if (w > topWeight) {
-      topWeight = w;
-      primaryLabel = p.label;
-    }
-  }
-
-  lines.push("", `Primary ICP signal: **${primaryLabel}** (highest weighted score).`, "");
+  lines.push("");
 
   for (const p of PERSONAS) {
     const its = groups[p.id];
@@ -342,10 +410,19 @@ function generateMarkdown(
     lines.push(`## ${p.label} (${its.length} items, ${cls.length} clusters)`, "");
 
     if (cls.length > 0) {
-      lines.push("### Clusters", "", "| # | Label | Count | Best quote |", "|---|---|---|---|");
+      lines.push(
+        "### Clusters",
+        "",
+        "| # | Label | Count | Best quote | Sources |",
+        "|---|---|---|---|---|",
+      );
       cls.forEach((c, i) => {
         const q = c.best_quote ? `"${escMd(c.best_quote)}"` : "—";
-        lines.push(`| ${i + 1} | ${escMd(c.label)} | ${c.count} | ${q} |`);
+        const urls = c.top_urls
+          .slice(0, 3)
+          .map((u, j) => `[${j + 1}](${u})`)
+          .join(" ");
+        lines.push(`| ${i + 1} | ${escMd(c.label)} | ${c.count} | ${q} | ${urls || "—"} |`);
       });
       lines.push("");
     }
@@ -361,7 +438,7 @@ function generateMarkdown(
     }
   }
 
-  return lines.join("\n");
+  return { markdown: lines.join("\n"), verdict };
 }
 
 // --- GitHub Contents API ---
@@ -387,8 +464,10 @@ async function getFileSha(
     headers: {
       Accept: "application/vnd.github+json",
       Authorization: `Bearer ${ghToken}`,
+      "User-Agent": GH_USER_AGENT,
       "X-GitHub-Api-Version": "2022-11-28",
     },
+    signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
   });
   if (res.status === 404) return undefined;
   if (!res.ok) throw new Error(`GH GET ${res.status}`);
@@ -417,10 +496,12 @@ async function writeFile(
     headers: {
       Accept: "application/vnd.github+json",
       Authorization: `Bearer ${ghToken}`,
+      "User-Agent": GH_USER_AGENT,
       "X-GitHub-Api-Version": "2022-11-28",
       "Content-Type": "application/json",
     },
     body: JSON.stringify(body),
+    signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
   });
   if (!res.ok) {
     const text = await res.text().catch(() => "");
@@ -446,8 +527,9 @@ async function notifyLogSnag(
         project,
         channel: "icp-mining",
         event: "Evidence File Updated",
-        description: `${month}: ${result.clustered} clusters. Written: ${result.written}.`,
+        description: `${month}: ${result.clustered} clusters · ${result.primaryIcp ?? "no primary signal yet"}. Written: ${result.written}.`,
       }),
+      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
     });
     if (!res.ok)
       console.warn(JSON.stringify({ msg: "icp_cluster_logsnag_error", status: res.status }));
@@ -477,10 +559,12 @@ export async function runIcpCluster(deps: IcpClusterDeps): Promise<IcpClusterRes
     })();
 
   const keys = await listAllScoredKeys(deps.kv);
-  if (keys.length === 0) return { personaItems: {}, clustered: 0, written: false };
+  if (keys.length === 0)
+    return { personaItems: {}, clustered: 0, written: false, primaryStatus: "no_signal" };
 
   const allItems = await readScoredItems(deps.kv, keys);
-  if (allItems.length === 0) return { personaItems: {}, clustered: 0, written: false };
+  if (allItems.length === 0)
+    return { personaItems: {}, clustered: 0, written: false, primaryStatus: "no_signal" };
 
   const groups = groupByBestPersona(allItems);
 
@@ -508,7 +592,7 @@ export async function runIcpCluster(deps: IcpClusterDeps): Promise<IcpClusterRes
 
   const now = Date.now();
   const month = yyyymm(now);
-  const markdown = generateMarkdown(groups, clustersByPersona, now);
+  const { markdown, verdict } = generateMarkdown(groups, clustersByPersona, now);
   const filePath = `docs/research/icp-evidence-${month}.md`;
 
   let written = false;
@@ -541,7 +625,13 @@ export async function runIcpCluster(deps: IcpClusterDeps): Promise<IcpClusterRes
     }
   });
 
-  const result: IcpClusterResult = { personaItems, clustered, written };
+  const result: IcpClusterResult = {
+    personaItems,
+    clustered,
+    written,
+    primaryIcp: verdict.primaryLabel,
+    primaryStatus: verdict.status,
+  };
 
   if (deps.logsnagToken && deps.logsnagProject) {
     await notifyLogSnag(fetcher, deps.logsnagToken, deps.logsnagProject, result, month);

@@ -43,6 +43,7 @@ const RELEVANCE_FLOOR = 5;
 const BATCH_SIZE = 20;
 const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
 const GEMINI_BASE = "https://generativelanguage.googleapis.com/v1beta/models";
+const FETCH_TIMEOUT_MS = 15_000;
 
 const PAIN_REGEX =
   /\b(hate|annoy|frustrat|tired of|sick of|wish|stuck|spent.*hour|why is.*so hard|too hard|alternative to|replace|can't stand|nightmare|painful|verbose|boilerplate|overhead|overkill|tedious|can not|cannot)\b/i;
@@ -108,6 +109,7 @@ async function callGroq(
       temperature: 0,
       max_tokens: 2000,
     }),
+    signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
   });
   if (!res.ok) throw new Error(`Groq ${res.status}`);
   const json = (await res.json()) as { choices?: Array<{ message?: { content?: string } }> };
@@ -131,6 +133,7 @@ async function callGemini(
         maxOutputTokens: 2000,
       },
     }),
+    signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
   });
   if (!res.ok) throw new Error(`Gemini ${res.status}`);
   const json = (await res.json()) as {
