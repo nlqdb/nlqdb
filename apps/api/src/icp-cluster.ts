@@ -477,20 +477,17 @@ export async function runIcpCluster(deps: IcpClusterDeps): Promise<IcpClusterRes
       };
     })();
 
-  // 1. Collect all scored items from KV.
   const keys = await listAllScoredKeys(deps.kv);
   if (keys.length === 0) return { personaItems: {}, clustered: 0, written: false };
 
   const allItems = await readScoredItems(deps.kv, keys);
   if (allItems.length === 0) return { personaItems: {}, clustered: 0, written: false };
 
-  // 2. Group by best persona, cap at TOP_N each.
   const groups = groupByBestPersona(allItems);
 
   const personaItems: Record<string, number> = {};
   for (const p of PERSONAS) personaItems[p.id] = groups[p.id].length;
 
-  // 3. Cluster each persona in parallel; errors per persona are non-fatal.
   const clustersByPersona: Record<PersonaKey, Cluster[]> = { p1: [], p2: [], p3: [], p6: [] };
   await Promise.all(
     PERSONAS.map(async (p) => {
@@ -510,33 +507,40 @@ export async function runIcpCluster(deps: IcpClusterDeps): Promise<IcpClusterRes
 
   const clustered = Object.values(clustersByPersona).reduce((s, arr) => s + arr.length, 0);
 
-  // 4. Generate evidence markdown and write to GitHub.
   const now = Date.now();
   const month = yyyymm(now);
   const markdown = generateMarkdown(groups, clustersByPersona, now);
   const filePath = `docs/research/icp-evidence-${month}.md`;
 
   let written = false;
-  try {
-    const sha = await getFileSha(fetcher, deps.ghToken, repo, filePath);
-    await writeFile(
-      fetcher,
-      deps.ghToken,
-      repo,
-      filePath,
-      markdown,
-      `chore(icp): update evidence file ${month}`,
-      sha,
-    );
-    written = true;
-  } catch (err) {
-    console.error(
-      JSON.stringify({
-        msg: "icp_cluster_github_write_failed",
-        message: err instanceof Error ? err.message : String(err),
-      }),
-    );
-  }
+  await tracer.startActiveSpan("nlqdb.icp.github_write", async (span: Span) => {
+    span.setAttribute("nlqdb.icp.file_path", filePath);
+    try {
+      const sha = await getFileSha(fetcher, deps.ghToken, repo, filePath);
+      span.setAttribute("nlqdb.icp.file_exists", sha !== undefined);
+      await writeFile(
+        fetcher,
+        deps.ghToken,
+        repo,
+        filePath,
+        markdown,
+        `chore(icp): update evidence file ${month}`,
+        sha,
+      );
+      written = true;
+    } catch (err) {
+      span.recordException(err as Error);
+      console.error(
+        JSON.stringify({
+          msg: "icp_cluster_github_write_failed",
+          message: err instanceof Error ? err.message : String(err),
+        }),
+      );
+    } finally {
+      span.setAttribute("nlqdb.icp.written", written);
+      span.end();
+    }
+  });
 
   const result: IcpClusterResult = { personaItems, clustered, written };
 

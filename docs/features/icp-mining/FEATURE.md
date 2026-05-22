@@ -40,9 +40,9 @@ when-to-load:
 ## GLOBALs governing this feature
 
 - **GLOBAL-013** — Free-tier bundle budget.
-  - *In this feature:* all sources (HN Algolia, Reddit) are free non-commercial APIs. KV write volume (≤ 100 items/week × 2 keys each) is well inside the 1k writes/day free ceiling.
+  - *In this feature:* all sources (HN Algolia, Reddit, GitHub Issues) are free non-commercial APIs. KV write volume (≤ 500 items/week × 2 keys each = 1,000 writes/week) and cluster read volume (≤ 2 list ops + ~500 get ops/week) are inside the free-tier ceilings (7,000 writes/day, 1,000 list ops/day, unlimited reads).
 - **GLOBAL-014** — OTel span on every external call.
-  - *In this feature:* each HN and Reddit fetch is wrapped in `nlqdb.icp.fetch.hn` / `nlqdb.icp.fetch.reddit` spans with `nlqdb.icp.source` and `nlqdb.icp.items` attributes.
+  - *In this feature:* HN/Reddit fetches → `nlqdb.icp.fetch.hn` / `nlqdb.icp.fetch.reddit`; GitHub Issues fetch → `nlqdb.icp.fetch.github`; LLM scoring → `nlqdb.icp.score`; per-persona clustering → `nlqdb.icp.cluster`; GitHub evidence-file write → `nlqdb.icp.github_write`. All spans carry relevant attributes (source, item count, provider, file path, written status).
 - **GLOBAL-028** — Acquisition progress tracker.
   - *In this feature:* this cron implements §2.1–§2.4 of [`automated-icp-validation-plan.md`](../../research/automated-icp-validation-plan.md). Progress is recorded in that file.
 
@@ -52,7 +52,7 @@ when-to-load:
 - **Core value:** Simple, Bullet-proof
 - **Why:** Raw items sitting in KV are not evidence. Scoring on the same Monday run transforms the weekly signal harvest into a ranked, persona-tagged set that a future clustering step (SK-ICP-003) can read directly, without needing a separate data-pull cron.
 - **Consequence in code:** `apps/api/src/icp-score.ts` is the single owner. `IcpItem` is now exported from `icp-scrape.ts`. `IcpScrapeResult.items` carries the newly stored items for handoff. `runIcpScore` wraps each LLM batch in an `nlqdb.icp.score` OTel span with `provider`, `batch_size`, and `raw_count` attributes. No new env bindings — `GROQ_API_KEY` and `GEMINI_API_KEY` are already present.
-- **Alternatives rejected:** Separate scoring cron (requires listing KV keys — KV list is not available on free Workers; would need a second data structure to track unseen items); storing scores in D1 (introduces migration for a phase-1 experiment; KV TTL is sufficient while evidence volumes are small).
+- **Alternatives rejected:** Separate scoring cron (would need to identify which raw items are unscored — either by listing all `icp:item:*` keys and re-checking each, or by maintaining a separate "pending-score" queue; co-running with the scraper and passing items directly is simpler and eliminates the coordination overhead); storing scores in D1 (introduces migration for a phase-1 experiment; KV TTL is sufficient while evidence volumes are small).
 
 ### SK-ICP-001 — Weekly HN + Reddit scrape writing raw items to KV (expanded — 2026-05-21)
 
