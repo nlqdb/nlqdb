@@ -156,9 +156,7 @@ declare global {
       LOGSNAG_TOKEN?: string;
       LOGSNAG_PROJECT?: string;
 
-      // GitHub Personal Access Token. Reserved for future GH-issue
-      // pain-signal scraping. When unset, the ICP scraper skips the
-      // GitHub source.
+      // GitHub Personal Access Token. Used by SK-ICP-004 (scrape GitHub Issues) and SK-ICP-003 (write evidence file). When unset, both are skipped.
       GH_TOKEN?: string;
     }
   }

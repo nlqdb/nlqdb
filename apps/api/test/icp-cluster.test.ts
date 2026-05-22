@@ -105,9 +105,8 @@ describe("runIcpCluster", () => {
     const kv = stubKv({ "icp:scored:20260522:hn:a1": JSON.stringify(item) });
     const fetcher = vi.fn();
     const result = await runIcpCluster({ kv, ghToken: "tok", fetch: fetcher });
-    // No LLM key → no clusters, but GitHub write is still attempted (empty evidence file).
-    // GitHub fetch should NOT have been called for LLM, but IS called for GH API.
     expect(result.clustered).toBe(0);
+    expect(result.written).toBe(false);
   });
 
   it("writes evidence file to GitHub for new file (no existing SHA)", async () => {
@@ -225,6 +224,35 @@ describe("runIcpCluster", () => {
 
     expect(result.clustered).toBeGreaterThan(0);
     expect(result.written).toBe(true);
+  });
+
+  it("does not retry Gemini when Gemini is the only provider and it fails", async () => {
+    const item = makeScored("e2");
+    const kv = stubKv({ "icp:scored:20260522:hn:e2": JSON.stringify(item) });
+    let geminiCallCount = 0;
+
+    const fetcher = vi.fn(async (url: string | URL | Request, opts?: { method?: string }) => {
+      const urlStr = typeof url === "string" ? url : url instanceof URL ? url.href : url.url;
+      if (urlStr.includes("generativelanguage.googleapis.com")) {
+        geminiCallCount++;
+        return new Response("Service unavailable", { status: 503 });
+      }
+      if (urlStr.includes("github.com")) {
+        if (opts?.method === "PUT") return makeGhPutResponse();
+        return makeGhNotFound();
+      }
+      return new Response("{}", { status: 200 });
+    }) as unknown as typeof fetch;
+
+    const result = await runIcpCluster({
+      kv,
+      ghToken: "tok",
+      geminiApiKey: "gm", // no groqApiKey — Gemini-only mode
+      fetch: fetcher,
+    });
+
+    expect(geminiCallCount).toBe(1); // called once, not retried
+    expect(result.clustered).toBe(0);
   });
 
   it("gracefully handles malformed LLM cluster JSON without throwing", async () => {

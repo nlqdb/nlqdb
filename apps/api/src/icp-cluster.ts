@@ -147,7 +147,10 @@ function itemsToMsg(
 function parseClusters(text: string): Cluster[] {
   try {
     const json = JSON.parse(text) as { clusters?: unknown[] };
-    if (!Array.isArray(json.clusters)) return [];
+    if (!Array.isArray(json.clusters)) {
+      console.warn(JSON.stringify({ msg: "icp_cluster_parse_unexpected_shape", text: text.slice(0, 100) }));
+      return [];
+    }
     return json.clusters
       .filter(
         (c): c is Record<string, unknown> =>
@@ -240,9 +243,9 @@ async function clusterPersona(
         clusters = await callGeminiCluster(persona, items, deps.geminiApiKey, fetcher);
         span.setAttribute("nlqdb.icp.cluster.provider", "gemini");
       }
-    } catch (groqErr) {
-      span.recordException(groqErr as Error);
-      if (deps.geminiApiKey) {
+    } catch (err) {
+      span.recordException(err as Error);
+      if (deps.groqApiKey && deps.geminiApiKey) {
         try {
           clusters = await callGeminiCluster(persona, items, deps.geminiApiKey, fetcher);
           span.setAttribute("nlqdb.icp.cluster.provider", "gemini-fallback");
@@ -259,9 +262,10 @@ async function clusterPersona(
       } else {
         console.error(
           JSON.stringify({
-            msg: "icp_cluster_groq_failed",
+            msg: "icp_cluster_primary_failed",
             persona: persona.id,
-            message: groqErr instanceof Error ? groqErr.message : String(groqErr),
+            provider: deps.groqApiKey ? "groq" : "gemini",
+            message: err instanceof Error ? err.message : String(err),
           }),
         );
       }
@@ -366,7 +370,7 @@ function encodeBase64(str: string): string {
   const CHUNK = 0x8000;
   const parts: string[] = [];
   for (let i = 0; i < bytes.byteLength; i += CHUNK) {
-    parts.push(String.fromCharCode(...(bytes.subarray(i, i + CHUNK) as unknown as number[])));
+    parts.push(String.fromCharCode(...Array.from(bytes.subarray(i, i + CHUNK))));
   }
   return btoa(parts.join(""));
 }
@@ -420,6 +424,7 @@ async function writeFile(
     const text = await res.text().catch(() => "");
     throw new Error(`GH PUT ${res.status}: ${text.slice(0, 200)}`);
   }
+  await res.text().catch(() => {});
 }
 
 // --- LogSnag ---
