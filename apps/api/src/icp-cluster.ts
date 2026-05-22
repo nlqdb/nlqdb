@@ -1,13 +1,4 @@
-// ICP evidence-file generator — SK-ICP-003.
-// Lists all scored KV items (last 30-day TTL window), clusters them per
-// persona via the free LLM chain (Groq → Gemini fallback), then writes
-// docs/research/icp-evidence-<yyyy-mm>.md to GitHub via Contents API.
-//
-// KV read pattern:
-//   list icp:scored:*          → paginated key names
-//   get  icp:scored:<key>      → IcpScoredItem JSON
-//
-// GitHub write: PUT /repos/{repo}/contents/{path}  (SHA from prior GET)
+// SK-ICP-003: reads icp:scored:* KV keys (written by icp-score.ts), clusters per persona, writes monthly evidence file to GitHub.
 
 import { type Span, trace } from "@opentelemetry/api";
 import type { IcpScoredItem } from "./icp-score.ts";
@@ -102,12 +93,13 @@ async function readScoredItems(kv: KVNamespace, keys: string[]): Promise<IcpScor
   for (let i = 0; i < keys.length; i += BATCH) {
     const batch = keys.slice(i, i + BATCH);
     const values = await Promise.all(batch.map((k) => kv.get(k)));
-    for (const v of values) {
+    for (let j = 0; j < values.length; j++) {
+      const v = values[j];
       if (!v) continue;
       try {
         items.push(JSON.parse(v) as IcpScoredItem);
       } catch {
-        // Skip malformed entries silently.
+        console.warn(JSON.stringify({ msg: "icp_cluster_malformed_kv", key: batch[j] }));
       }
     }
   }
