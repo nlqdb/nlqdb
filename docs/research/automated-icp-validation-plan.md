@@ -6,7 +6,7 @@
 > every PR that implements a section here must update `## Current status`
 > and append a row to `## Progress log`.
 
-> **Status:** in progress — §1.4, §2.2 (collection), §2.3 (scoring) shipped 2026-05-21. §1.1, §1.2,
+> **Status:** in progress — §1.4, §2.2 (collection), §2.3 (all steps), §2.1 GitHub Issues source shipped 2026-05-22. §1.1, §1.2,
 > §1.3, §3, §4 not yet started.
 >
 > **Context.** Every advertised surface ([progress.md §0](../progress.md))
@@ -28,14 +28,14 @@
 
 ---
 
-## Current status (updated 2026-05-21)
+## Current status (updated 2026-05-22)
 
 | KPI | Target | Status |
 |---|---|---|
-| Anonymous loop completions | ≥ 50 | 0 — gate open path unblocked as of this PR |
+| Anonymous loop completions | ≥ 50 | 0 — gate open path unblocked as of 2026-05-21 |
 | Signed-in users (invite-redeemed) | ≥ 10 | 0 — first invites will ship on next waitlist signup |
 | Sean Ellis Q1 responses | ≥ 20 | 0 — survey not yet wired |
-| Primary ICP shortlist | exactly 1 | not yet — first scored run Mon 2026-05-26 |
+| Primary ICP shortlist | exactly 1 | not yet — first evidence file will auto-generate Mon 2026-05-26 |
 | TTFV p50 | ≤ 60s | not measured |
 | First-query success | ≥ 60% | not measured |
 
@@ -173,7 +173,7 @@ verbatim quotes per priority persona, clustered.
 |---|---|---|---|
 | Reddit listings | `r/X.json` ([2026 pricing](https://painonsocial.com/blog/how-much-does-reddit-api-cost) — free for non-commercial) | Y | P1/P2/P3/P5 |
 | Hacker News | [HN Algolia](https://hn.algolia.com/api) | Y | P1/P2/P6 |
-| GitHub issues | [search/issues](https://docs.github.com/en/rest/search/search) (5k/hr authed) | Y | P1/P2/P6 |
+| GitHub issues | [search/issues](https://docs.github.com/en/rest/search/search) (30 RPM authed) | Y | P1/P2/P6 ✅ shipped |
 | Indie Hackers | RSS / scrape (low rate) | Y | P1 |
 | Stack Overflow | [SE API](https://api.stackexchange.com) (10k/day) | Y | P1/P3/P6 |
 | Discord publics | webhook bridges on specific guilds | Y if invited | P2 |
@@ -191,9 +191,7 @@ hang out").
 database`, `agent memory`, `MCP server`, `Postgres setup`, `Retool
 alternative`, `Metabase too slow`, `vector DB`, `pgvector`.
 
-**GH issue queries:** `is:issue "text to sql"`, `is:issue "natural
-language"`, `is:issue "ai agent" memory`, `is:issue prisma migration`
-— filter `created:>2025-11-01` to keep signal current.
+**GH issue queries:** `is:issue "text to sql"`, `is:issue "natural language" database`, `is:issue "ai agent" memory store`, `is:issue "query builder" too verbose`, `is:issue prisma migration overhead` — filter `created:>2025-11-01` to keep signal current.
 
 ### 2.2 Scrape stack — one Worker, free chain, weekly cron
 
@@ -202,8 +200,12 @@ language"`, `is:issue "ai agent" memory`, `is:issue prisma migration`
 > (`0 6 * * 1`, Mon 06:00 UTC). Sources: HN Algolia (5 queries) + Reddit
 > (3 subreddit/query pairs). Dedup via `icp:seen:<source>:<id>` KV (90d
 > TTL). Items stored as `icp:item:<YYYYMMDD>:<source>:<id>` KV (30d TTL).
-> LogSnag `#icp-mining` notified after each run. GH source and R2 upgrade
-> are Phase 2 (SK-ICP-002, SK-ICP-003). Canonical decision: SK-ICP-001.
+> LogSnag `#icp-mining` notified after each run. Canonical decision: SK-ICP-001.
+>
+> **✅ EXPANDED 2026-05-22 (GitHub Issues source — SK-ICP-004):**
+> When `GH_TOKEN` is set, `runIcpScrape` additionally queries GitHub Search
+> Issues API (5 queries, `created:>2025-11-01`, 10 results each). Items
+> stored as `source: "github"`, deduped same as HN/Reddit.
 
 - One Cloudflare cron Worker runs Mon 06:00 UTC (same slot as
   [quality-eval](../features/quality-eval/FEATURE.md) — share infra).
@@ -219,11 +221,11 @@ language"`, `is:issue "ai agent" memory`, `is:issue prisma migration`
 > Step 1 (filter): regex prefilter on pain words (hate, frustrat, stuck, wish, verbose, boilerplate, …) applied to `title + text`.
 > Step 2 (score): Groq `llama-3.1-8b-instant` → Gemini `gemini-2.5-flash` fallback scores each passing item 0–10 for P1/P2/P3/P6; OTel span `nlqdb.icp.score` per batch.
 > Items with max persona score < 5 are discarded; the rest stored as `icp:scored:<YYYYMMDD>:<source>:<id>` (30d KV TTL).
-> Step 3 (cluster) and Step 4 (evidence-file generation to git) remain Phase 2 (SK-ICP-003).
+> Steps 3–4 landed 2026-05-22 — see the block below.
 >
 > **Source expansion (same PR):** HN queries 5 → 10 (added MCP server, Postgres setup, Retool alternative, vector DB, pgvector). Reddit 3 → 16 subreddit/query pairs (full plan §2.1 list).
 
-LLM cluster — persona-fit rubric (Steps 3–4 below remain Phase 2):
+LLM cluster — persona-fit rubric (all four steps implemented as of 2026-05-22):
 
 1. **Filter** (free chain): regex prefilter on `pain | annoyed | hate
    | wish | stuck on | spent N hours | why is X so hard | any
@@ -235,9 +237,17 @@ LLM cluster — persona-fit rubric (Steps 3–4 below remain Phase 2):
 3. **Cluster** (weekly batch, free chain): top 100 rows per persona →
    5–7 themed clusters with a one-sentence label + strongest verbatim
    quote per cluster.
-4. **Persist** to `docs/research/icp-evidence-<yyyy-mm>.md` via the
-   nightly release-please PR flow. Row shape:
-   `| score | persona | quote | source | date |`.
+4. **Persist** to `docs/research/icp-evidence-<yyyy-mm>.md` via GitHub
+   Contents API `PUT` (checks existing SHA; writes directly to `main`).
+   Evidence file includes cluster table + top-20 raw items per persona.
+
+> **✅ IMPLEMENTED 2026-05-22 (Steps 3–4 — cluster + evidence file):**
+> `runIcpCluster` in `icp-cluster.ts` lists all `icp:scored:*` KV keys
+> (paginated), groups by best persona (top-100 each), calls Groq →
+> Gemini fallback to cluster into 5–7 themes per persona, generates
+> `docs/research/icp-evidence-<yyyy-mm>.md`, and writes it to GitHub
+> via Contents API. First evidence file will auto-generate Mon 2026-05-26.
+> Canonical decisions: SK-ICP-003 (cluster), SK-ICP-004 (GitHub Issues source).
 
 Anthropic's case study on structured LLM analysis of interviews
 ([HN Dec 2025](https://news.ycombinator.com/item?id=46331877))
@@ -549,3 +559,5 @@ Per [GLOBAL-028](../decisions/GLOBAL-028-acquisition-progress-tracker.md): every
 | 2026-05-21 | §1.4 gate-valve | Auto-issue invite codes on waitlist signup | `waitlist-invite.ts`: 128-bit code, KV store, 30d TTL, 200/week cap. Resend email via `makeEmailSender`. Web: `invite.ts` captures `?invite=<code>`, stores in `localStorage`, forwards as `X-Invite-Code` header. | Shipped. First production invites will go out on next new waitlist signup. |
 | 2026-05-21 | §2.2 scrape stack | Weekly ICP pain-signal scrape | `icp-scrape.ts`: HN Algolia (5 queries) + Reddit (3 subreddit/query pairs). KV dedup + storage. LogSnag `#icp-mining` notification. Cron `0 6 * * 1`. | Shipped. First run 2026-05-26 06:00 UTC. |
 | 2026-05-21 | §2.3 LLM scoring (steps 1–2) | Pain-word prefilter + persona scoring | `icp-score.ts`: regex prefilter → Groq `llama-3.1-8b-instant` (Gemini fallback) scores each item 0–10 for P1/P2/P3/P6; items with max score < 5 discarded; survivors to `icp:scored:*` KV (30d TTL). OTel span per batch. Source expansion: HN 5→10 queries, Reddit 3→16 subreddit pairs. | Shipped. Scores available from first scrape 2026-05-26. |
+| 2026-05-22 | §2.3 LLM clustering (steps 3–4) | Cluster scored items + write evidence file | `icp-cluster.ts`: lists all `icp:scored:*` KV keys (paginated), groups by best persona (top-100 each), calls Groq → Gemini to cluster into 5–7 themes, generates `docs/research/icp-evidence-<yyyy-mm>.md`, writes to GitHub via Contents API PUT (checks existing SHA). Non-fatal: GitHub write failure returns `written: false` without killing cron. | Shipped. First evidence file 2026-05-26. |
+| 2026-05-22 | §2.1 GitHub Issues source | Add GitHub Search Issues as scrape source | `icp-scrape.ts`: 5 queries (`is:issue "text to sql"`, natural language database, etc.) via GitHub Search Issues API with `GH_TOKEN` auth, `created:>2025-11-01` filter. Per-query errors caught. Items stored with `source: "github"`. | Shipped. Active from first run 2026-05-26 when `GH_TOKEN` is set. |

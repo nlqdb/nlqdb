@@ -260,4 +260,128 @@ describe("runIcpScrape", () => {
     // Every network call should have gone through our stub, not global fetch.
     expect(customFetch).toHaveBeenCalled();
   });
+
+  describe("GitHub Issues source", () => {
+    function ghSearchResponse(id: number) {
+      return JSON.stringify({
+        items: [
+          {
+            id,
+            title: `GH Issue ${id}`,
+            body: "I hate writing SQL queries for every new table",
+            html_url: `https://github.com/org/repo/issues/${id}`,
+            created_at: "2026-05-01T10:00:00Z",
+          },
+        ],
+      });
+    }
+
+    it("fetches GitHub issues when ghToken is provided", async () => {
+      const kv = stubKv();
+      const stubFetch: typeof fetch = vi.fn(async (url: string | URL | Request) => {
+        const urlStr = typeof url === "string" ? url : url instanceof URL ? url.href : url.url;
+        if (urlStr.includes("api.github.com/search/issues")) {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => JSON.parse(ghSearchResponse(9001)),
+          } as unknown as Response;
+        }
+        if (urlStr.includes("hn.algolia.com")) {
+          return { ok: true, status: 200, json: async () => ({ hits: [] }) } as unknown as Response;
+        }
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ data: { children: [] } }),
+        } as unknown as Response;
+      }) as unknown as typeof fetch;
+
+      const result = await runIcpScrape({
+        kv,
+        fetch: stubFetch,
+        tracer: stubTracer,
+        ghToken: "gh-test-token",
+      });
+
+      expect(result.sources["github"]).toBeGreaterThanOrEqual(1);
+      expect(result.newItems).toBeGreaterThanOrEqual(1);
+
+      const putCalls = (kv.put as ReturnType<typeof vi.fn>).mock.calls as Array<
+        [string, ...unknown[]]
+      >;
+      expect(putCalls.some(([k]) => k.includes(":github:"))).toBe(true);
+    });
+
+    it("skips GitHub source when ghToken is absent", async () => {
+      const kv = stubKv();
+      const stubFetch: typeof fetch = vi.fn(async (url: string | URL | Request) => {
+        const urlStr = typeof url === "string" ? url : url instanceof URL ? url.href : url.url;
+        if (urlStr.includes("api.github.com")) {
+          throw new Error("Should not call GitHub without a token");
+        }
+        if (urlStr.includes("hn.algolia.com")) {
+          return { ok: true, status: 200, json: async () => ({ hits: [] }) } as unknown as Response;
+        }
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ data: { children: [] } }),
+        } as unknown as Response;
+      }) as unknown as typeof fetch;
+
+      await expect(
+        runIcpScrape({ kv, fetch: stubFetch, tracer: stubTracer }),
+      ).resolves.not.toThrow();
+    });
+
+    it("handles GitHub 403 error gracefully — other sources still complete", async () => {
+      const kv = stubKv();
+      const stubFetch: typeof fetch = vi.fn(async (url: string | URL | Request) => {
+        const urlStr = typeof url === "string" ? url : url instanceof URL ? url.href : url.url;
+        if (urlStr.includes("api.github.com")) {
+          return { ok: false, status: 403, json: async () => ({}) } as unknown as Response;
+        }
+        if (urlStr.includes("query=text+to+sql")) {
+          return {
+            ok: true,
+            status: 200,
+            json: async () =>
+              JSON.parse(
+                JSON.stringify({
+                  hits: [
+                    {
+                      objectID: "hn-1",
+                      title: "HN Story",
+                      url: "https://example.com",
+                      points: 5,
+                      created_at_i: Math.floor(Date.now() / 1000) - 3600,
+                    },
+                  ],
+                }),
+              ),
+          } as unknown as Response;
+        }
+        if (urlStr.includes("hn.algolia.com")) {
+          return { ok: true, status: 200, json: async () => ({ hits: [] }) } as unknown as Response;
+        }
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ data: { children: [] } }),
+        } as unknown as Response;
+      }) as unknown as typeof fetch;
+
+      const result = await runIcpScrape({
+        kv,
+        fetch: stubFetch,
+        tracer: stubTracer,
+        ghToken: "gh-test-token",
+      });
+
+      // HN item should still have been stored despite GitHub failing.
+      expect(result.sources["hn"]).toBeGreaterThanOrEqual(1);
+      expect(result.sources["github"]).toBeUndefined();
+    });
+  });
 });

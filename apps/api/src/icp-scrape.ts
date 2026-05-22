@@ -140,6 +140,96 @@ async function fetchHn(
   return items;
 }
 
+// --- GitHub Issues ---
+
+type GhIssue = {
+  id: number;
+  title: string;
+  body?: string;
+  html_url: string;
+  created_at: string;
+};
+
+const GH_ISSUE_QUERIES = [
+  'is:issue "text to sql"',
+  'is:issue "natural language" database',
+  'is:issue "ai agent" memory store',
+  'is:issue "query builder" too verbose',
+  "is:issue prisma migration overhead",
+];
+
+const GH_SEARCH_URL = "https://api.github.com/search/issues";
+const GH_DATE_FILTER = "created:>2025-11-01";
+
+async function fetchGitHubIssues(
+  fetcher: typeof fetch,
+  ghToken: string,
+  tracer: IcpScrapeDeps["tracer"],
+): Promise<IcpItem[]> {
+  const items: IcpItem[] = [];
+
+  for (const q of GH_ISSUE_QUERIES) {
+    const query = encodeURIComponent(`${q} ${GH_DATE_FILTER}`);
+    const url = `${GH_SEARCH_URL}?q=${query}&sort=created&order=desc&per_page=10`;
+
+    const doFetch = async (span: Span) => {
+      try {
+        const res = await fetcher(url, {
+          headers: {
+            Accept: "application/vnd.github+json",
+            Authorization: `Bearer ${ghToken}`,
+            "X-GitHub-Api-Version": "2022-11-28",
+          },
+        });
+        span.setAttribute("http.response.status_code", res.status);
+        if (!res.ok) {
+          console.warn(JSON.stringify({ msg: "icp_gh_fetch_error", query: q, status: res.status }));
+          span.end();
+          return;
+        }
+        const json = (await res.json()) as { items?: GhIssue[] };
+        const issues = json.items ?? [];
+        span.setAttribute("nlqdb.icp.source", "github");
+        span.setAttribute("nlqdb.icp.items", issues.length);
+        for (const issue of issues) {
+          items.push({
+            id: `gh-${issue.id}`,
+            source: "github",
+            title: issue.title,
+            url: issue.html_url,
+            text: issue.body?.slice(0, 500) || undefined,
+            ts: Math.floor(new Date(issue.created_at).getTime() / 1000),
+          });
+        }
+      } catch (err) {
+        span.recordException(err as Error);
+        console.error(
+          JSON.stringify({
+            msg: "icp_gh_fetch_exception",
+            query: q,
+            message: err instanceof Error ? err.message : String(err),
+          }),
+        );
+      } finally {
+        span.end();
+      }
+    };
+
+    if (tracer) {
+      await tracer.startActiveSpan("nlqdb.icp.fetch.github", doFetch);
+    } else {
+      const noopSpan = {
+        setAttribute: () => {},
+        recordException: () => {},
+        end: () => {},
+      } as unknown as Span;
+      await doFetch(noopSpan);
+    }
+  }
+
+  return items;
+}
+
 // --- Reddit ---
 
 type RedditPost = {
@@ -266,7 +356,7 @@ async function notifyLogSnag(
         project,
         channel: "icp-mining",
         event: "Weekly Scrape",
-        description: `${result.newItems} new pain signals (HN: ${result.sources["hn"] ?? 0}, Reddit: ${result.sources["reddit"] ?? 0})`,
+        description: `${result.newItems} new pain signals (HN: ${result.sources["hn"] ?? 0}, Reddit: ${result.sources["reddit"] ?? 0}, GH: ${result.sources["github"] ?? 0})`,
       }),
     });
     if (!res.ok) {
@@ -301,7 +391,7 @@ export async function runIcpScrape(deps: IcpScrapeDeps): Promise<IcpScrapeResult
   const dateStr = yyyymmdd(now);
 
   // Fetch all sources; per-source errors are already caught inside each helper.
-  const [hnItems, redditItems] = await Promise.all([
+  const [hnItems, redditItems, ghItems] = await Promise.all([
     fetchHn(fetcher, sevenDaysAgoUnix, tracer).catch((err) => {
       console.error(
         JSON.stringify({
@@ -320,9 +410,20 @@ export async function runIcpScrape(deps: IcpScrapeDeps): Promise<IcpScrapeResult
       );
       return [] as IcpItem[];
     }),
+    deps.ghToken
+      ? fetchGitHubIssues(fetcher, deps.ghToken, tracer).catch((err) => {
+          console.error(
+            JSON.stringify({
+              msg: "icp_gh_source_failed",
+              message: err instanceof Error ? err.message : String(err),
+            }),
+          );
+          return [] as IcpItem[];
+        })
+      : ([] as IcpItem[]),
   ]);
 
-  const allItems = [...hnItems, ...redditItems];
+  const allItems = [...hnItems, ...redditItems, ...ghItems];
 
   // Batch dedup check in parallel.
   const seenKeys = allItems.map((item) => `icp:seen:${item.source}:${item.id}`);

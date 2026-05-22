@@ -67,6 +67,7 @@ import {
   parseJsonBody,
   parseRunBody,
 } from "./http.ts";
+import { runIcpCluster } from "./icp-cluster.ts";
 import { runIcpScore } from "./icp-score.ts";
 import { runIcpScrape } from "./icp-scrape.ts";
 import { getLLMRouter } from "./llm-router.ts";
@@ -2545,7 +2546,7 @@ async function scheduled(
       return;
     }
 
-    // ICP pain-signal scraper + scorer — Monday 06:00 UTC.
+    // ICP pain-signal scraper + scorer + evidence-file generator — Monday 06:00 UTC.
     if (controller.cron === ICP_SCRAPE_CRON) {
       const scrapeResult = await runIcpScrape({
         kv: envBindings.KV,
@@ -2577,6 +2578,27 @@ async function scheduled(
         });
         if (scoreResult) {
           console.info(JSON.stringify({ msg: "icp_score_completed", ...scoreResult }));
+        }
+      }
+      if (envBindings.GH_TOKEN) {
+        const clusterResult = await runIcpCluster({
+          kv: envBindings.KV,
+          groqApiKey: envBindings.GROQ_API_KEY,
+          geminiApiKey: envBindings.GEMINI_API_KEY,
+          ghToken: envBindings.GH_TOKEN,
+          logsnagToken: envBindings.LOGSNAG_TOKEN,
+          logsnagProject: envBindings.LOGSNAG_PROJECT,
+        }).catch((err) => {
+          console.error(
+            JSON.stringify({
+              msg: "icp_cluster_failed",
+              message: err instanceof Error ? err.message : String(err),
+            }),
+          );
+          return null;
+        });
+        if (clusterResult) {
+          console.info(JSON.stringify({ msg: "icp_cluster_completed", ...clusterResult }));
         }
       }
       return;
