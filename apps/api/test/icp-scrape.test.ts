@@ -383,5 +383,136 @@ describe("runIcpScrape", () => {
       expect(result.sources["hn"]).toBeGreaterThanOrEqual(1);
       expect(result.sources["github"]).toBeUndefined();
     });
+
+    it("sends a User-Agent header on every GitHub call (GitHub returns 403 without one)", async () => {
+      const kv = stubKv();
+      const seenHeaders: Array<Record<string, string>> = [];
+      const stubFetch: typeof fetch = vi.fn(
+        async (url: string | URL | Request, init?: { headers?: Record<string, string> }) => {
+          const urlStr = typeof url === "string" ? url : url instanceof URL ? url.href : url.url;
+          if (urlStr.includes("api.github.com")) {
+            seenHeaders.push(init?.headers ?? {});
+            return {
+              ok: true,
+              status: 200,
+              json: async () => JSON.parse(ghSearchResponse(7777)),
+            } as unknown as Response;
+          }
+          if (urlStr.includes("hn.algolia.com")) {
+            return {
+              ok: true,
+              status: 200,
+              json: async () => ({ hits: [] }),
+            } as unknown as Response;
+          }
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({ data: { children: [] } }),
+          } as unknown as Response;
+        },
+      ) as unknown as typeof fetch;
+
+      await runIcpScrape({ kv, fetch: stubFetch, tracer: stubTracer, ghToken: "t" });
+
+      expect(seenHeaders.length).toBeGreaterThan(0);
+      for (const h of seenHeaders) {
+        expect(h["User-Agent"]).toBeTruthy();
+      }
+    });
+
+    it("skips GitHub issues whose created_at is unparseable (no NaN ts in KV)", async () => {
+      const kv = stubKv();
+      // Only the first GH query returns data; the rest return empty so we can
+      // assert exactly which items make it past the NaN guard.
+      let firstQueryServed = false;
+      const stubFetch: typeof fetch = vi.fn(async (url: string | URL | Request) => {
+        const urlStr = typeof url === "string" ? url : url instanceof URL ? url.href : url.url;
+        if (urlStr.includes("api.github.com")) {
+          if (firstQueryServed) {
+            return {
+              ok: true,
+              status: 200,
+              json: async () => ({ items: [] }),
+            } as unknown as Response;
+          }
+          firstQueryServed = true;
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({
+              items: [
+                {
+                  id: 1,
+                  title: "Good issue",
+                  html_url: "https://github.com/x/y/issues/1",
+                  created_at: "2026-05-01T10:00:00Z",
+                  body: "ok",
+                },
+                {
+                  id: 2,
+                  title: "Bad issue",
+                  html_url: "https://github.com/x/y/issues/2",
+                  created_at: "not-a-date",
+                  body: "ok",
+                },
+              ],
+            }),
+          } as unknown as Response;
+        }
+        if (urlStr.includes("hn.algolia.com")) {
+          return { ok: true, status: 200, json: async () => ({ hits: [] }) } as unknown as Response;
+        }
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ data: { children: [] } }),
+        } as unknown as Response;
+      }) as unknown as typeof fetch;
+
+      const result = await runIcpScrape({
+        kv,
+        fetch: stubFetch,
+        tracer: stubTracer,
+        ghToken: "t",
+      });
+
+      const putCalls = (kv.put as ReturnType<typeof vi.fn>).mock.calls as Array<
+        [string, string, ...unknown[]]
+      >;
+      const itemPuts = putCalls.filter(
+        ([k]) => k.startsWith("icp:item:") && k.includes(":github:"),
+      );
+      expect(itemPuts.length).toBe(1);
+      for (const [, value] of itemPuts) {
+        const stored = JSON.parse(value) as { ts: number };
+        expect(Number.isFinite(stored.ts)).toBe(true);
+      }
+      expect(result.sources["github"]).toBe(1);
+    });
+  });
+
+  it("Reddit search URLs include restrict_sr=on so results stay subreddit-scoped", async () => {
+    const kv = stubKv();
+    const seenUrls: string[] = [];
+    const stubFetch: typeof fetch = vi.fn(async (url: string | URL | Request) => {
+      const urlStr = typeof url === "string" ? url : url instanceof URL ? url.href : url.url;
+      if (urlStr.includes("reddit.com")) seenUrls.push(urlStr);
+      if (urlStr.includes("hn.algolia.com")) {
+        return { ok: true, status: 200, json: async () => ({ hits: [] }) } as unknown as Response;
+      }
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({ data: { children: [] } }),
+      } as unknown as Response;
+    }) as unknown as typeof fetch;
+
+    await runIcpScrape({ kv, fetch: stubFetch, tracer: stubTracer });
+
+    expect(seenUrls.length).toBeGreaterThan(0);
+    for (const u of seenUrls) {
+      expect(u).toContain("restrict_sr=on");
+    }
   });
 });

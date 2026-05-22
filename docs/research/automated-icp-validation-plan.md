@@ -6,8 +6,7 @@
 > every PR that implements a section here must update `## Current status`
 > and append a row to `## Progress log`.
 
-> **Status:** in progress — §1.4, §2.2 (collection), §2.3 (all steps), §2.1 GitHub Issues source shipped 2026-05-22. §1.1, §1.2,
-> §1.3, §3, §4 not yet started.
+> **Status:** in progress — §1.4, §2.2 (collection), §2.3 (all steps), §2.1 GitHub Issues source, §2.4 verdict automation shipped 2026-05-22. §1.1 (stranger-test), §1.2 (KPI dashboard), §1.3 (in-app survey), §3 (acquisition surfaces), §4 (PMF capture) not yet started — **the pipeline collects signal but no surface yet measures whether invited users land safely**. First cron fires Mon 2026-05-26 06:00 UTC; until then no real ICP evidence has been written.
 >
 > **Context.** Every advertised surface ([progress.md §0](../progress.md))
 > shipped; zero validated users.
@@ -35,9 +34,16 @@
 | Anonymous loop completions | ≥ 50 | 0 — gate open path unblocked as of 2026-05-21 |
 | Signed-in users (invite-redeemed) | ≥ 10 | 0 — first invites will ship on next waitlist signup |
 | Sean Ellis Q1 responses | ≥ 20 | 0 — survey not yet wired |
-| Primary ICP shortlist | exactly 1 | not yet — first evidence file will auto-generate Mon 2026-05-26 |
+| Primary ICP shortlist | exactly 1 | not yet — verdict logic shipped 2026-05-22; first evidence file auto-generates Mon 2026-05-26 |
 | TTFV p50 | ≤ 60s | not measured |
 | First-query success | ≥ 60% | not measured |
+
+**Honest gap (acquisition-risk):** the pipeline now identifies pain at
+scale and the gate-valve issues invites, but **§1.1 stranger-test, §1.2
+KPI dashboard, and §1.3 in-app survey are still unshipped** — meaning we
+can pull people in but can't yet detect whether they landed on a working
+flow or churned silently. Before any §3 acquisition surface goes live,
+those three are the next correctness bar.
 
 ---
 
@@ -263,6 +269,15 @@ validates this is higher-quality than human coding.
 
 Decision = founder reads the evidence file on a Sunday. No human is
 interviewed.
+
+> **✅ IMPLEMENTED 2026-05-22 (verdict automation):**
+> `runIcpCluster` now applies the rule itself: each evidence file opens
+> with a `§2.4 Decision rule` block stating `primary_confirmed`,
+> `directional`, or `no_signal` and naming the leading persona. The same
+> verdict is exposed on `IcpClusterResult.{primaryStatus, primaryIcp}` —
+> the cron's `icp_cluster_completed` log and the per-run LogSnag entry
+> carry it too, so the founder learns the answer without opening the
+> file. Canonical decision: SK-ICP-003.
 
 ---
 
@@ -561,3 +576,4 @@ Per [GLOBAL-028](../decisions/GLOBAL-028-acquisition-progress-tracker.md): every
 | 2026-05-21 | §2.3 LLM scoring (steps 1–2) | Pain-word prefilter + persona scoring | `icp-score.ts`: regex prefilter → Groq `llama-3.1-8b-instant` (Gemini fallback) scores each item 0–10 for P1/P2/P3/P6; items with max score < 5 discarded; survivors to `icp:scored:*` KV (30d TTL). OTel span per batch. Source expansion: HN 5→10 queries, Reddit 3→16 subreddit pairs. | Shipped. Scores available from first scrape 2026-05-26. |
 | 2026-05-22 | §2.3 LLM clustering (steps 3–4) | Cluster scored items + write evidence file | `icp-cluster.ts`: lists all `icp:scored:*` KV keys (paginated), groups by best persona (top-100 each), calls Groq → Gemini to cluster into 5–7 themes, generates `docs/research/icp-evidence-<yyyy-mm>.md`, writes to GitHub via Contents API PUT (checks existing SHA). Non-fatal: GitHub write failure returns `written: false` without killing cron. | Shipped. First evidence file 2026-05-26. |
 | 2026-05-22 | §2.1 GitHub Issues source | Add GitHub Search Issues as scrape source | `icp-scrape.ts`: 5 queries (`is:issue "text to sql"`, natural language database, etc.) via GitHub Search Issues API with `GH_TOKEN` auth, `created:>2025-11-01` filter. Per-query errors caught. Items stored with `source: "github"`. | Shipped. Active from first run 2026-05-26 when `GH_TOKEN` is set. |
+| 2026-05-22 | §2.4 verdict + harden pipeline | Surface decision-rule verdict in evidence file; fix correctness gaps before first cron run | `icp-cluster.ts`: §2.4 rule (≥3× ratio AND ≥30 quotes) computed per run, surfaced as `## §2.4 Decision rule` block at top of `icp-evidence-<yyyy-mm>.md` and as `IcpClusterResult.{primaryStatus, primaryIcp}` in cron logs + LogSnag. Clamps LLM-hallucinated `cluster.count` to actual group size; renders cluster `top_urls` in markdown. `icp-scrape.ts`: Reddit URLs now carry `restrict_sr=on` (without it the search returns site-wide results, polluting persona signal); GitHub Search + Contents API calls now send `User-Agent: nlqdb-icp-bot` (REST rejects no-UA with 403); GitHub issues with unparseable `created_at` are dropped before KV write; `incomplete_results: true` is logged. All external HTTP gains `AbortSignal.timeout(10–15s)`. | Shipped. First evidence file 2026-05-26 will already include the verdict; the Reddit corpus stays subreddit-scoped from run #1 forward. |
