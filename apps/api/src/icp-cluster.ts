@@ -166,6 +166,7 @@ function parseClusters(text: string): Cluster[] {
           : [],
       }));
   } catch {
+    if (text) console.warn(JSON.stringify({ msg: "icp_cluster_parse_failed", text: text.slice(0, 100) }));
     return [];
   }
 }

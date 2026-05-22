@@ -1,7 +1,4 @@
-// Unit tests for the ICP evidence-file generator (SK-ICP-003).
-// Covers: empty KV, happy path (items → clusters → GitHub write),
-// new vs. existing file (SHA handling), GitHub write failures,
-// LLM failure per persona, LogSnag notification.
+// Unit tests for SK-ICP-003 (ICP evidence-file generator — runIcpCluster).
 
 import { describe, expect, it, vi } from "vitest";
 import { runIcpCluster } from "../src/icp-cluster.ts";
