@@ -57,6 +57,7 @@ export default defineConfig(async () => {
               "test/waitlist.test.ts",
               "test/icp-scrape.test.ts",
               "test/icp-score.test.ts",
+              "test/icp-cluster.test.ts",
               "test/kv-throttle.test.ts",
               "test/anon-adopt.test.ts",
               "test/anon-stash.test.ts",

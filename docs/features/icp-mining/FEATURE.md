@@ -1,24 +1,30 @@
 ---
 name: icp-mining
-description: Weekly cron that scrapes HN Algolia and Reddit for ICP pain signals, deduplicates them, and stores raw items in KV for persona validation and content generation.
+description: Weekly cron that scrapes HN Algolia, Reddit, and GitHub Issues for ICP pain signals, scores them per persona via the free LLM chain, clusters them into themes, and writes a monthly evidence file to GitHub.
 when-to-load:
   globs:
     - apps/api/src/icp-scrape.ts
+    - apps/api/src/icp-score.ts
+    - apps/api/src/icp-cluster.ts
     - apps/api/test/icp-scrape.test.ts
-  topics: [icp, scrape, pain-signal, cron, acquisition]
+    - apps/api/test/icp-score.test.ts
+    - apps/api/test/icp-cluster.test.ts
+  topics: [icp, scrape, pain-signal, cron, acquisition, evidence]
 ---
 
 # Feature: ICP Mining
 
-**One-liner:** A Monday 06:00 UTC cron scrapes HN Algolia and Reddit (16 subreddits, 10 HN queries) for ICP pain signals, deduplicates via KV, stores raw items as `icp:item:*`, and immediately scores them 0–10 per persona via the free LLM chain.
-**Status:** implemented (Slice 1 — data collection SK-ICP-001; Slice 2 — LLM scoring SK-ICP-002). Evidence-file generation is Phase 2 (SK-ICP-003).
-**Owners (code):** `apps/api/src/icp-scrape.ts`, `apps/api/src/icp-score.ts`, `apps/api/test/icp-scrape.test.ts`, `apps/api/test/icp-score.test.ts`, `apps/api/wrangler.toml` (cron `0 6 * * 1`).
+**One-liner:** A Monday 06:00 UTC cron scrapes HN Algolia, Reddit (16 subreddits), and GitHub Issues; deduplicates via KV; scores 0–10 per persona via Groq → Gemini; clusters into 5–7 themes per persona; writes `docs/research/icp-evidence-<yyyy-mm>.md` to GitHub.
+**Status:** implemented (SK-ICP-001 collection; SK-ICP-002 scoring; SK-ICP-003 clustering + evidence file; SK-ICP-004 GitHub Issues source).
+**Owners (code):** `apps/api/src/icp-scrape.ts`, `apps/api/src/icp-score.ts`, `apps/api/src/icp-cluster.ts`, `apps/api/test/icp-scrape.test.ts`, `apps/api/test/icp-score.test.ts`, `apps/api/test/icp-cluster.test.ts`, `apps/api/wrangler.toml` (cron `0 6 * * 1`).
 **Cross-refs:** [`docs/research/automated-icp-validation-plan.md §2`](../../research/automated-icp-validation-plan.md) · [`docs/research/personas.md`](../../research/personas.md) · [`GLOBAL-028`](../../decisions/GLOBAL-028-acquisition-progress-tracker.md).
 
 ## Touchpoints — read this feature doc before editing
 
-- `apps/api/src/icp-scrape.ts` — `runIcpScrape(deps)` main entry; `IcpScrapeDeps`, `IcpScrapeResult` types
-- `apps/api/wrangler.toml` `[triggers].crons` — must stay in sync with `ICP_SCRAPE_CRON` constant in `index.ts`
+- `apps/api/src/icp-scrape.ts` — `runIcpScrape(deps)`; calls HN, Reddit, GitHub Issues
+- `apps/api/src/icp-score.ts` — `runIcpScore(items, deps)`; Groq → Gemini scoring
+- `apps/api/src/icp-cluster.ts` — `runIcpCluster(deps)`; KV list → LLM cluster → GitHub write
+- `apps/api/wrangler.toml` `[triggers].crons` — must stay in sync with `ICP_SCRAPE_CRON` in `index.ts`
 - `apps/api/src/env.d.ts` — `LOGSNAG_TOKEN`, `LOGSNAG_PROJECT`, `GH_TOKEN` bindings
 
 ## Decisions
@@ -38,7 +44,7 @@ when-to-load:
 - **GLOBAL-014** — OTel span on every external call.
   - *In this feature:* each HN and Reddit fetch is wrapped in `nlqdb.icp.fetch.hn` / `nlqdb.icp.fetch.reddit` spans with `nlqdb.icp.source` and `nlqdb.icp.items` attributes.
 - **GLOBAL-028** — Acquisition progress tracker.
-  - *In this feature:* this cron implements §2.1–§2.2 of [`automated-icp-validation-plan.md`](../../research/automated-icp-validation-plan.md). Progress is recorded in that file.
+  - *In this feature:* this cron implements §2.1–§2.4 of [`automated-icp-validation-plan.md`](../../research/automated-icp-validation-plan.md). Progress is recorded in that file.
 
 ### SK-ICP-002 — LLM scoring of raw items immediately after each weekly scrape
 
@@ -52,8 +58,23 @@ when-to-load:
 
 The source list was widened in the same PR as SK-ICP-002: HN queries grew from 5 → 10 (adding MCP server, Postgres setup, Retool alternative, vector DB, pgvector); Reddit grew from 3 → 16 subreddit/query pairs (adding r/SaaS, r/webdev, r/nextjs, r/SQL, r/PostgreSQL, r/programming, r/learnprogramming, r/devops, r/ClaudeAI, r/LangChain, r/MachineLearning, r/Database, r/clickhouse). Budget impact: max ~500 items/week × 2 KV writes = 1,000 writes/week, inside the 7,000/week free ceiling.
 
+### SK-ICP-003 — Cluster scored items per persona and write monthly evidence file to GitHub
+
+- **Decision:** After each weekly scrape+score run, `runIcpCluster` lists all `icp:scored:*` KV keys (paginated, covers the full 30-day TTL window), groups items by their highest-scoring persona (top-100 per persona), calls Groq `llama-3.1-8b-instant` → Gemini `gemini-2.5-flash` fallback to cluster each persona's items into 5–7 themes, generates `docs/research/icp-evidence-<yyyy-mm>.md`, and writes it to GitHub via `PUT /repos/nlqdb/nlqdb/contents/…` (checking existing SHA with a prior GET to enable update vs. create). Cluster step is non-fatal: a total LLM or GitHub failure is caught, logged, and returns `written: false` without killing the cron.
+- **Core value:** Simple, Bullet-proof
+- **Why:** Scored items sitting in KV are not actionable. The evidence file is the primary deliverable the founder needs to make the ICP decision (§2.4 rule). Writing directly to GitHub via the Contents API keeps the cron self-contained — no git clone, no CI step, no external storage outside what already exists. KV `list` is available on the Workers free tier (1,000 list ops/day; this uses ≤2/week).
+- **Consequence in code:** `apps/api/src/icp-cluster.ts` is the single owner. `runIcpCluster` is called in `index.ts` after `runIcpScore`, gated on `GH_TOKEN` being set. OTel span `nlqdb.icp.cluster` per persona with `persona`, `item_count`, `cluster.count`, `cluster.provider` attributes. No new env bindings required — `GH_TOKEN`, `GROQ_API_KEY`, `GEMINI_API_KEY`, `LOGSNAG_TOKEN` are already declared.
+- **Alternatives rejected:** Separate cron (adds complexity, a second entry point, a second KV list op); D1 for cluster storage (migration overhead, KV TTL is sufficient); writing to a branch + PR (correct but over-engineered for a data file the founder reads, not reviews).
+
+### SK-ICP-004 — GitHub Issues as an additional pain-signal source
+
+- **Decision:** When `GH_TOKEN` is set, `runIcpScrape` also queries the GitHub Search Issues API (`/search/issues`) for 5 queries targeting NL-to-SQL and agent-memory pain (filtered `created:>2025-11-01`, 10 results each). Issues are stored with `source: "github"` and `id: "gh-<issue.id>"` to avoid collisions with HN/Reddit IDs. Per-query errors are caught; a failing GitHub query never kills the other sources.
+- **Core value:** Simple, Bullet-proof
+- **Why:** GitHub issues are a high-signal source for developer pain: they are intentional, well-described bug/feature requests from actual practitioners, not casual social posts. The authenticated GitHub Search API allows 30 RPM — 5 queries/week is trivially within budget. `GH_TOKEN` was already in `env.d.ts` but unused.
+- **Consequence in code:** `apps/api/src/icp-scrape.ts` gains `fetchGitHubIssues`. `IcpScrapeDeps.ghToken` (already declared as `string | undefined`) now actually drives GitHub API calls in addition to being passed downstream to `runIcpCluster`. LogSnag description includes GitHub count.
+- **Alternatives rejected:** Separate GH-specific scraper (unnecessary complexity; existing scraper pattern handles it cleanly); unauthenticated GH API (60 RPM limit, no benefit when token is already available).
+
 ## Open questions / known unknowns
 
-- **Evidence-file generation (SK-ICP-003)** — Phase 2: weekly batch to cluster top-100 scored rows into 5–7 themes and write `docs/research/icp-evidence-<yyyy-mm>.md` (via GitHub API `PUT /repos/…/contents/…` so the cron can commit without a local git clone).
 - **R2 upgrade** — When evidence files exceed KV practical limits, migrate raw storage from KV to `r2://nlqdb-icp-raw/`. Free tier for both; KV is the simpler path for now.
-- **GitHub issue source** — `GH_TOKEN` is already in env. A Phase 2 slice can add `is:issue "text to sql"` queries once scoring proves signal quality.
+- **§2.4 decision rule automation** — Currently the founder reads the evidence file manually. A future slice could automate the "one persona ≥3× score of any other" check and post a LogSnag alert when the threshold is met.
