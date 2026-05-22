@@ -191,9 +191,7 @@ hang out").
 database`, `agent memory`, `MCP server`, `Postgres setup`, `Retool
 alternative`, `Metabase too slow`, `vector DB`, `pgvector`.
 
-**GH issue queries:** `is:issue "text to sql"`, `is:issue "natural
-language"`, `is:issue "ai agent" memory`, `is:issue prisma migration`
-— filter `created:>2025-11-01` to keep signal current.
+**GH issue queries:** `is:issue "text to sql"`, `is:issue "natural language" database`, `is:issue "ai agent" memory store`, `is:issue "query builder" too verbose`, `is:issue prisma migration overhead` — filter `created:>2025-11-01` to keep signal current.
 
 ### 2.2 Scrape stack — one Worker, free chain, weekly cron
 
@@ -223,7 +221,7 @@ language"`, `is:issue "ai agent" memory`, `is:issue prisma migration`
 > Step 1 (filter): regex prefilter on pain words (hate, frustrat, stuck, wish, verbose, boilerplate, …) applied to `title + text`.
 > Step 2 (score): Groq `llama-3.1-8b-instant` → Gemini `gemini-2.5-flash` fallback scores each passing item 0–10 for P1/P2/P3/P6; OTel span `nlqdb.icp.score` per batch.
 > Items with max persona score < 5 are discarded; the rest stored as `icp:scored:<YYYYMMDD>:<source>:<id>` (30d KV TTL).
-> Step 3 (cluster) and Step 4 (evidence-file generation to git) remain Phase 2 (SK-ICP-003).
+> Steps 3–4 landed 2026-05-22 — see the block below.
 >
 > **Source expansion (same PR):** HN queries 5 → 10 (added MCP server, Postgres setup, Retool alternative, vector DB, pgvector). Reddit 3 → 16 subreddit/query pairs (full plan §2.1 list).
 
