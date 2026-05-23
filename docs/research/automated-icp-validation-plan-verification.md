@@ -4,28 +4,32 @@
 > · [GLOBAL-030](../decisions/GLOBAL-030-evidence-grade-acquisition-tracker-edits.md)):**
 > Mirror of [`automated-icp-validation-plan.md`](./automated-icp-validation-plan.md).
 > Every `FLOW-NNN` below appears in that file with the same ID. The
-> impl plan tracks *what is shipped* (sub-tasks, SK-* refs, %
-> implemented); this file tracks *what has been walked end-to-end by
-> an agent* (steps, credentials, last-verified date, outcome log).
-> Adding, modifying, or superseding a `FLOW-NNN` updates BOTH files
-> in the same PR. This file is one of two markdown files exempt from
-> [`CLAUDE.md §2 P4 D4`](../../CLAUDE.md)'s 20 KB cap — the other is
-> the impl plan ([`GLOBAL-028`](../decisions/GLOBAL-028-acquisition-progress-tracker.md)).
+> impl plan tracks *what is shipped*; this file tracks *what has
+> been walked end-to-end by an agent*. Adding, modifying, or
+> superseding a `FLOW-NNN` updates BOTH files in the same PR. Both
+> files exempt from the 20 KB cap per
+> [`GLOBAL-028`](../decisions/GLOBAL-028-acquisition-progress-tracker.md) /
+> [`GLOBAL-029`](../decisions/GLOBAL-029-acquisition-verification-tracker.md).
 
-> **Status:** scaffolding shipped 2026-05-23. 0 / 7 flows fully passed;
-> 3 / 7 have partial curl-only passes recorded 2026-05-23 (FLOW-001,
-> FLOW-002, FLOW-003); FLOW-002 also carries a failed step 8 on the
-> CTA telemetry + gate continuation. The mirror impl plan now has §8
-> `User flows · implementation tracker` with the same 7 flows; flows
-> currently average 84% implementation coverage. A full Playwright walk
-> is still pending for every flow; curl is sufficient for the static
-> AEO assertions but cannot drive client events, draft hydration, or
-> the gate-bearing first-query submit. The curl-observable subset of
-> FLOW-001/002/003 is now automated by [`scripts/verify-flows.sh`](../../scripts/verify-flows.sh)
-> (49 assertions across the 5 solve slugs and 3 vs slugs; runs against
-> `NLQDB_BASE_URL`, defaulting to `https://nlqdb.com`); the script is
-> the canonical re-verification entry point so future agents don't
-> re-discover the same assertions ad-hoc each PR.
+> **Operator loop.** You (the agent) are the cron. The founder runs
+> one prompt periodically — that's the whole human loop. No
+> notifications go back to the founder; nothing in this file
+> "fires" anywhere. On every run: read the impl plan's "What the
+> next agent should pick" priority list, walk the relevant flow(s)
+> from this file (start with [`scripts/verify-flows.sh`](../../scripts/verify-flows.sh)
+> to catch static regressions in under 2 s), record outcome rows
+> below, open a PR. A failed flow IS the next agent's #1 — not a
+> ping to anyone.
+
+> **Status (2026-05-23):** 0 / 7 flows fully passed. 3 / 7 have
+> curl-only partial passes (FLOW-001, FLOW-002, FLOW-003 — all 8
+> AEO slugs covered). FLOW-002 carries a failed step 8 (CTA
+> telemetry + gate continuation) — that failure routes back as
+> priority #4 in the impl plan's pick-list, not as a notification.
+> Full Playwright walks are still pending for every flow; the
+> §1.1 stranger-test Playwright primitive (impl plan priority #1)
+> is what closes the gap from "curl-observable static" to
+> "stranger lands and gets first-value."
 
 ---
 
@@ -53,18 +57,27 @@
 
 ## How an agent uses this file
 
-You (the agent) read one `FLOW-NNN` block, perform every step against
-the real deployed surface (not a mock, not a local dev server unless
-the block says so), and write the outcome back to the same block.
-Treat this section as a binding playbook.
+You (the agent) ARE the cron. The founder runs one prompt; the rest
+of the loop — pick a slice, verify it, write evidence, open a PR —
+is yours. Don't notify the founder of anything; failures route back
+into the impl plan's priority list as the next agent's #1.
+
+You read one `FLOW-NNN` block, perform every step against the real
+deployed surface (not a mock, not a local dev server unless the block
+says so), and write the outcome back to the same block. Treat this
+section as a binding playbook.
 
 ### 1. Pick a flow
 
-If the operator named one, use that. Otherwise, pick the topmost
-`not yet attempted` flow whose `Required credentials` you can satisfy
-without asking. If no flow is satisfiable without asking, pick
-FLOW-001 (zero credentials) and start there — failing that's the most
-informative gap.
+Default: run [`scripts/verify-flows.sh`](../../scripts/verify-flows.sh)
+first (49 static assertions across FLOW-001/002/003 in under 2 s, zero
+credentials). If it exits non-zero, fix the regression it surfaced
+before walking anything new — that failure is the highest-leverage
+work. If it exits 0, then pick the topmost `not yet attempted` flow
+whose `Required credentials` you can satisfy without asking. If no
+flow is satisfiable without asking, pick FLOW-001 (zero credentials)
+and walk the browser-only steps the script can't cover — that's
+where the §1.1 stranger-test gap actually lives.
 
 ### 2. Read the whole block before doing anything
 
