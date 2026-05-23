@@ -1,7 +1,8 @@
 # Automated ICP Validation Plan
 
 > **Governance ([GLOBAL-028](../decisions/GLOBAL-028-acquisition-progress-tracker.md)
-> · [GLOBAL-029](../decisions/GLOBAL-029-acquisition-verification-tracker.md)):**
+> · [GLOBAL-029](../decisions/GLOBAL-029-acquisition-verification-tracker.md)
+> · [GLOBAL-030](../decisions/GLOBAL-030-evidence-grade-acquisition-tracker-edits.md)):**
 > This is the canonical acquisition **implementation** progress tracker.
 > Its mirror, [`automated-icp-validation-plan-verification.md`](./automated-icp-validation-plan-verification.md),
 > is the canonical **verification** tracker — every `FLOW-NNN` in §8
@@ -9,9 +10,10 @@
 > the 20 KB cap and both are agent-ran: every PR that implements a
 > section here must update `## Current status` and append a row to
 > `## Progress log`; every PR that adds, modifies, or supersedes a
-> flow updates BOTH files in lockstep.
+> flow updates BOTH files in lockstep. Evidence/status edits must name
+> the agent-run verification artifact and pass the GLOBAL-030 self-review.
 
-> **Status:** in progress — §1.4, §2.2 (collection), §2.3 (all steps), §2.1 GitHub Issues source, §2.4 verdict automation shipped 2026-05-22. §3.1 first 5 hand-curated solve pages shipped 2026-05-23 (paraphrased search-intent `<h1>` per SK-SOLVE-001 — verbatim cluster quotes pending the 2026-05-26 first cluster file). §8 user-flow tracker shipped 2026-05-23 (7 mirrored flows; average implementation 86%, verification 0% — the gap restated per-flow). §1.1 (stranger-test), §1.2 (KPI dashboard), §1.3 (in-app survey), the rest of §3 (gallery, reply queue), §4 (PMF capture) not yet started — **the pipeline collects signal and the AEO surfaces (vs + solve) are live, but no surface yet measures whether invited users land safely**. First ICP cron fires Mon 2026-05-26 06:00 UTC; until then no real ICP evidence has been written.
+> **Status:** in progress — §1.4, §2.2 (collection), §2.3 (all steps), §2.1 GitHub Issues source, §2.4 verdict automation shipped 2026-05-22. §3.1 first 5 hand-curated solve pages shipped 2026-05-23 (paraphrased search-intent `<h1>` per SK-SOLVE-001 — verbatim cluster quotes pending the 2026-05-26 first cluster file). §8 user-flow tracker shipped 2026-05-23 (7 mirrored flows; average implementation 84%, 0/7 flows passed verification; FLOW-002 attempted 2026-05-23 and failed at the client-event assertion, then a manual continuation hit the pre-alpha 403 gate on `/v1/ask`). §1.1 (stranger-test), §1.2 (KPI dashboard), §1.3 (in-app survey), the rest of §3 (gallery, reply queue), §4 (PMF capture) not yet started — **the pipeline collects signal and the AEO surfaces (vs + solve) are live, but no surface yet measures whether invited users land safely**. First ICP cron fires Mon 2026-05-26 06:00 UTC; until then no real ICP evidence has been written.
 >
 > **Context.** Every advertised surface ([progress.md §0](../progress.md))
 > shipped; zero validated users.
@@ -28,11 +30,12 @@
 > [GLOBAL-024](../decisions/GLOBAL-024-demand-signal-telemetry.md) ·
 > [GLOBAL-025](../decisions/GLOBAL-025-north-star.md) ·
 > [GLOBAL-027](../decisions/GLOBAL-027-pre-alpha-gate.md) ·
-> [founder-playbook.md](../founder-playbook.md).
+> [founder-playbook.md](../founder-playbook.md) ·
+> [GLOBAL-030](../decisions/GLOBAL-030-evidence-grade-acquisition-tracker-edits.md).
 
 ---
 
-## Current status (updated 2026-05-22)
+## Current status (updated 2026-05-23)
 
 | KPI | Target | Status |
 |---|---|---|
@@ -53,6 +56,15 @@ any large acquisition push (Show HN, Product Hunt — §3.3) goes live;
 the static AEO surfaces (§3.1, §3.5 partial via comparison pages) ship
 first because their failure mode is "no traffic", not "broken funnel
 for inbound traffic".
+
+**Verified 2026-05-23:** FLOW-002's deployed static `/solve` surface
+passes the no-credential static and draft checks (`FAQPage` + `HowTo`
+JSON-LD, honest-limits section, `nlqdb_draft` seeded, `/app/new`
+rehydrated), but no `solve.try_query_clicked` hook event was observed;
+a manual continuation to first-query submit fails with `403 feature_gated` from
+`https://app.nlqdb.com/v1/ask`. Treat `/solve` as an acquisition surface
+that can educate and collect intent, not as a verified first-value path,
+until the gate bypass is present in that journey.
 
 ---
 
@@ -266,7 +278,7 @@ LLM cluster — persona-fit rubric (all four steps implemented as of 2026-05-22)
 
 Anthropic's case study on structured LLM analysis of interviews
 ([HN Dec 2025](https://news.ycombinator.com/item?id=46331877))
-validates this is higher-quality than human coding.
+is a useful reference for structured LLM-assisted theme extraction, not proof that the pipeline is better than human coding.
 
 ### 2.4 Decision rule — narrow to 1 ICP
 
@@ -310,8 +322,7 @@ outrank) · JSON-LD `HowTo` + mirror to
 as working example.
 
 **Volume:** 15–25 pages by W3. Workers template + LLM fill-in from
-cluster data; founder merges PR; no by-hand writing. Gartner: 50% of
-search volume → AI chatbots by 2028
+cluster data; founder merges PR; no by-hand writing. Gartner forecasts large organic-search disruption by 2028
 ([2026 trend report](https://painonsocial.com/blog/best-pain-point-tool)).
 AEO earns impressions now.
 
@@ -326,8 +337,8 @@ AEO earns impressions now.
 > 3-5 FAQs (FAQPage JSON-LD), HowTo JSON-LD, ≥2 cited enduring
 > discussion-hub URLs (no rot-prone single-thread URLs per SK-SOLVE-003).
 > Sitemap + llms.txt updated automatically from the data file. "Try
-> this query" CTA emits `solve.try_query_clicked` to LogSnag with `{slug, goal}`
-> and seeds the `nlqdb_draft` localStorage slot before navigating to
+> this query" CTA calls the client `emit("solve.try_query_clicked")` hook and
+> seeds the `nlqdb_draft` localStorage slot before navigating to
 > `/app/new`. **Deviation from plan literal wording:** `<h1>` is the
 > paraphrased natural-language search query rather than a verbatim
 > cluster quote — until the 2026-05-26 first cluster file lands there
@@ -620,7 +631,7 @@ observable on demand.
 | Flow | Persona | Sub-tasks shipped | Verification | Mirror |
 |---|---|---|---|---|
 | FLOW-001 | P1 solo builder | 5 / 7 (71%) | not yet attempted | [verify](./automated-icp-validation-plan-verification.md#flow-001--anonymous-first-happy-path) |
-| FLOW-002 | P3 analyst | 5 / 6 (83%) | not yet attempted | [verify](./automated-icp-validation-plan-verification.md#flow-002--pain-driven-aeo-inbound-search--solveslug--first-query) |
+| FLOW-002 | P3 analyst | 5 / 6 (83%) | failed 2026-05-23 step 8 | [verify](./automated-icp-validation-plan-verification.md#flow-002--pain-driven-aeo-inbound-search--solveslug--first-query) |
 | FLOW-003 | P3 / P4 | 5 / 5 (100%) | not yet attempted | [verify](./automated-icp-validation-plan-verification.md#flow-003--comparison-driven-inbound-search--vscompetitor--first-query) |
 | FLOW-004 | P1 solo builder | 5 / 6 (83%) | not yet attempted | [verify](./automated-icp-validation-plan-verification.md#flow-004--waitlist-signup--invite-email--gate-bypass) |
 | FLOW-005 | P2 agent builder | 5 / 6 (83%) | not yet attempted | [verify](./automated-icp-validation-plan-verification.md#flow-005--agent-self-provisions-db-via-mcp) |
@@ -628,8 +639,9 @@ observable on demand.
 | FLOW-007 | P1 / P3 | 5 / 6 (83%) | not yet attempted | [verify](./automated-icp-validation-plan-verification.md#flow-007--adopt-anonymous-db-on-signup) |
 
 **Honest takeaway:** every flow is ≥71% implemented but **0 of 7**
-have been walked end-to-end by an agent. The impl-vs-verify gap is
-the §1.1 stranger-test gap, restated per-flow. The verification
+have passed an end-to-end agent walk. FLOW-002 has one failed
+deployed-surface attempt; the rest are unattempted. The impl-vs-verify
+gap is the §1.1 stranger-test gap, restated per-flow. The verification
 mirror exists to close it.
 
 ### FLOW-001 — Anonymous-first happy path
@@ -656,7 +668,7 @@ mirror exists to close it.
   - [x] `/solve/<slug>` static AEO surface — [`SK-SOLVE-001`](../features/solve-pages/decisions/SK-SOLVE-001-search-intent-h1.md)
   - [x] Mandatory honest-limits section — [`SK-SOLVE-002`](../features/solve-pages/decisions/SK-SOLVE-002-honest-limits-mandatory.md)
   - [x] Enduring discussion-hub citations — [`SK-SOLVE-003`](../features/solve-pages/decisions/SK-SOLVE-003-enduring-source-citations.md)
-  - [x] CTA seeds `nlqdb_draft` + emits `solve.try_query_clicked`
+  - [x] CTA seeds `nlqdb_draft`; click-event delivery is not yet verified (see mirror)
   - [x] `/app/new` rehydrates draft on mount — [`SK-ANON-011`](../features/anonymous-mode/FEATURE.md)
   - [ ] `<h1>` amended to verbatim cluster quote once cluster file lands (future `SK-SOLVE-004`)
 - **Progress:** 5 / 6 · **83%**
@@ -692,7 +704,7 @@ mirror exists to close it.
 
 - **Persona:** P2 Agent Builder
 - **Mirror:** [verification.md FLOW-005](./automated-icp-validation-plan-verification.md#flow-005--agent-self-provisions-db-via-mcp)
-- **Source signal:** [r/LocalLLaMA "agent memory"](https://www.reddit.com/r/LocalLLaMA/search/?q=agent+memory) · [r/LangChain "memory"](https://www.reddit.com/r/LangChain/search/?q=memory) · [HN "MCP server"](https://hn.algolia.com/?q=MCP+server)
+- **Source signal:** [r/LocalLLaMA "agent memory"](https://www.reddit.com/r/LocalLLaMA/search/?q=agent+memory) · [r/LangChain "memory"](https://www.reddit.com/r/LangChain/search/?q=memory) · [r/ClaudeAI "memory"](https://www.reddit.com/r/ClaudeAI/search/?q=memory) · [HN "MCP server"](https://hn.algolia.com/?q=MCP+server)
 - **Implementation sub-tasks:**
   - [x] `mcp.nlqdb.com` Worker — [`apps/mcp`](../../apps/mcp)
   - [x] `create_database` tool exposed — [`mcp-server`](../features/mcp-server/FEATURE.md)
@@ -749,5 +761,7 @@ Per [GLOBAL-028](../decisions/GLOBAL-028-acquisition-progress-tracker.md): every
 | 2026-05-22 | §2.3 LLM clustering (steps 3–4) | Cluster scored items + write evidence file | `icp-cluster.ts`: lists all `icp:scored:*` KV keys (paginated), groups by best persona (top-100 each), calls Groq → Gemini to cluster into 5–7 themes, generates `docs/research/icp-evidence-<yyyy-mm>.md`, writes to GitHub via Contents API PUT (checks existing SHA). Non-fatal: GitHub write failure returns `written: false` without killing cron. | Shipped. First evidence file 2026-05-26. |
 | 2026-05-22 | §2.1 GitHub Issues source | Add GitHub Search Issues as scrape source | `icp-scrape.ts`: 5 queries (`is:issue "text to sql"`, natural language database, etc.) via GitHub Search Issues API with `GH_TOKEN` auth, `created:>2025-11-01` filter. Per-query errors caught. Items stored with `source: "github"`. | Shipped. Active from first run 2026-05-26 when `GH_TOKEN` is set. |
 | 2026-05-22 | §2.4 verdict + harden pipeline | Surface decision-rule verdict in evidence file; fix correctness gaps before first cron run | `icp-cluster.ts`: §2.4 rule (≥3× ratio AND ≥30 quotes) computed per run, surfaced as `## §2.4 Decision rule` block at top of `icp-evidence-<yyyy-mm>.md` and as `IcpClusterResult.{primaryStatus, primaryIcp}` in cron logs + LogSnag. Clamps LLM-hallucinated `cluster.count` to actual group size; renders cluster `top_urls` in markdown. `icp-scrape.ts`: Reddit URLs now carry `restrict_sr=on` (without it the search returns site-wide results, polluting persona signal); GitHub Search + Contents API calls now send `User-Agent: nlqdb-icp-bot` (REST rejects no-UA with 403); GitHub issues with unparseable `created_at` are dropped before KV write; `incomplete_results: true` is logged. All external HTTP gains `AbortSignal.timeout(10–15s)`. | Shipped. First evidence file 2026-05-26 will already include the verdict; the Reddit corpus stays subreddit-scoped from run #1 forward. |
-| 2026-05-23 | §3.1 pain-driven solve pages (first 5) | Hand-curated AEO surface; 5 pages ahead of the 2026-05-26 first cluster file | `apps/web/src/data/solve.ts` (typed source of truth, 5 entries); `apps/web/src/pages/solve/[slug].astro` (single Astro template, getStaticPaths); `apps/web/src/pages/solve/index.astro` (page index at `/solve`); `apps/web/src/data/solve.test.ts` (12 data-integrity tests pinning AEO invariants: unique kebab slugs, ≤60-word oneLiner, ≥3 howNlqdbAnswers, ≥2 whatItDoesnt limits, ≥3 FAQs ≤80-word answers, ≥2 enduring source URLs starting with `https://`). Sitemap + llms.txt updated to enumerate solve slugs alongside vs slugs. "Try this query" CTA emits `solve.try_query_clicked` LogSnag event + seeds `nlqdb_draft` localStorage. FAQPage + HowTo JSON-LD per page. Self-canonical `<link rel="canonical">`. New feature record at `docs/features/solve-pages/` with SK-SOLVE-001 (search-intent `<h1>`, not fabricated verbatim quotes — paraphrase is honest until cluster file lands), SK-SOLVE-002 (mandatory "What nlqdb doesn't do" section per AEO honest-trade-off rule), SK-SOLVE-003 (≥2 enduring discussion-hub URLs, never single-thread URLs that can rot). `CLAUDE.md §5` path map updated. | Shipped. Sitemap now lists 12 URLs (was 7); llms.txt now exposes a `## Solve pages` block to LLM-IDE crawlers (Claude Desktop, Perplexity, Cursor, Cline, Aider, Copilot). |
-| 2026-05-23 | §8 user-flow tracker scaffolding (GLOBAL-029) | Mirror impl/verify trackers — 7 flows defined; `GLOBAL-029` declared | `docs/decisions/GLOBAL-029-acquisition-verification-tracker.md` (new); `docs/research/automated-icp-validation-plan-verification.md` (new mirror file, also exempt from 20 KB cap); §8 added to this file with the 7 mirrored FLOW-001..007 blocks (P1-P4 personas, anchored in enduring Reddit/HN discussion-hub citations per SK-SOLVE-003); `docs/decisions.md` index gains the GLOBAL-029 row; `GLOBAL-028` body updated to cross-ref the mirror. Each flow lists implementation sub-tasks (with SK-* refs) on this side and walkthrough steps + required credentials + outcome log on the mirror side. Status dashboard: 7 flows, avg 86% implementation, 0% verification — the impl-vs-verify gap restated per-flow is exactly the §1.1 stranger-test gap the mirror exists to close. | Shipped. Mirror integrity check (diff of `## FLOW-NNN` headers across both files) emits empty diff; both files are agent-ran from here on. |
+| 2026-05-23 | §3.1 pain-driven solve pages (first 5) | Hand-curated AEO surface; 5 pages ahead of the 2026-05-26 first cluster file | `apps/web/src/data/solve.ts` (typed source of truth, 5 entries); `apps/web/src/pages/solve/[slug].astro` (single Astro template, getStaticPaths); `apps/web/src/pages/solve/index.astro` (page index at `/solve`); `apps/web/src/data/solve.test.ts` (12 data-integrity tests pinning AEO invariants: unique kebab slugs, ≤60-word oneLiner, ≥3 howNlqdbAnswers, ≥2 whatItDoesnt limits, ≥3 FAQs ≤80-word answers, ≥2 enduring source URLs starting with `https://`). Sitemap + llms.txt updated to enumerate solve slugs alongside vs slugs. "Try this query" CTA calls the client event hook and seeds `nlqdb_draft` localStorage; FLOW-002 verification has not proven event delivery yet. FAQPage + HowTo JSON-LD per page. Self-canonical `<link rel="canonical">`. New feature record at `docs/features/solve-pages/` with SK-SOLVE-001 (search-intent `<h1>`, not fabricated verbatim quotes — paraphrase is honest until cluster file lands), SK-SOLVE-002 (mandatory "What nlqdb doesn't do" section per AEO honest-trade-off rule), SK-SOLVE-003 (≥2 enduring discussion-hub URLs, never single-thread URLs that can rot). `CLAUDE.md §5` path map updated. | Shipped. Sitemap now lists 12 URLs (was 7); llms.txt now exposes a `## Solve pages` block to LLM-IDE crawlers (Claude Desktop, Perplexity, Cursor, Cline, Aider, Copilot). |
+| 2026-05-23 | §8 user-flow tracker scaffolding (GLOBAL-029) | Mirror impl/verify trackers — 7 flows defined; `GLOBAL-029` declared | `docs/decisions/GLOBAL-029-acquisition-verification-tracker.md` (new); `docs/research/automated-icp-validation-plan-verification.md` (new mirror file, also exempt from 20 KB cap); §8 added to this file with the 7 mirrored FLOW-001..007 blocks (P1-P4 personas, anchored in enduring Reddit/HN discussion-hub citations per SK-SOLVE-003); `docs/decisions.md` index gains the GLOBAL-029 row; `GLOBAL-028` body updated to cross-ref the mirror. Each flow lists implementation sub-tasks (with SK-* refs) on this side and walkthrough steps + required credentials + outcome log on the mirror side. Status dashboard: 7 flows, avg 84% implementation, 0% verification — the impl-vs-verify gap restated per-flow is exactly the §1.1 stranger-test gap the mirror exists to close. | Shipped. Mirror integrity check (diff of `## FLOW-NNN` headers across both files) emits empty diff; both files are agent-ran from here on. |
+| 2026-05-23 | §8 FLOW-002 verification + tracker hardening | Attempted the first no-credential AEO inbound walk before adding new flows | Deployed-surface Playwright walk against `https://nlqdb.com/solve/cheap-internal-dashboard`: static checks passed (`FAQPage` + `HowTo`, honest-limits, `nlqdb_draft`, `/app/new` rehydrate), but an injected `window.__nlqdb_logsnag` spy observed no `solve.try_query_clicked` event; manual continuation posted to `https://app.nlqdb.com/v1/ask` and returned `403 feature_gated`. Added `GLOBAL-030` evidence-grade tracker rule and CI mirror-ID check so future `FLOW-NNN` drift fails automatically. | FLOW-002 failed step 8; acquisition can educate from `/solve`, but CTA telemetry and first value still need verification/fix before this counts as a working inbound path. |
+| 2026-05-23 | §2.3 evidence-file cron readiness | Ensure first ICP cron can write evidence and notify without manual Worker-secret drift | Added `GH_TOKEN`, `LOGSNAG_TOKEN`, and `LOGSNAG_PROJECT` to the API Worker secret mirror; added `GH_TOKEN` to `.env.example`, GitHub Actions secret mirroring, and `verify-secrets.sh`. Env inspection in this agent found `GEMINI_API_KEY` present but `GH_TOKEN`/LogSnag absent locally, confirming the current shell could not prove production evidence-write readiness by value. | Shipped as ops unblock. First cron can only write `icp-evidence-<yyyy-mm>.md` when `GH_TOKEN` is provisioned as a repo secret / Worker secret; the mirror scripts now include it. |

@@ -95,7 +95,10 @@ select_secrets() {
         CF_AI_TOKEN
         DATABASE_URL
         GEMINI_API_KEY
+        GH_TOKEN
         GROQ_API_KEY
+        LOGSNAG_TOKEN
+        LOGSNAG_PROJECT
         OPENROUTER_API_KEY
         OAUTH_GITHUB_CLIENT_ID
         OAUTH_GITHUB_CLIENT_SECRET
@@ -202,14 +205,14 @@ fi
 # --- remote mode --------------------------------------------------------
 if [[ "$MODE" == "remote" ]]; then
   say "Pushing to Cloudflare Workers ($WORKER_NAME) via wrangler secret bulk"
-  # Build JSON via jq's $ARGS.named — values arrive through fd-passed
-  # --arg, never through argv. One wrangler call atomically updates all
-  # secrets; partial failures roll back as a unit.
-  declare -a jq_args
-  for i in "${!names[@]}"; do
-    jq_args+=(--arg "${names[$i]}" "${values[$i]}")
-  done
-  json=$(jq -n "${jq_args[@]}" '$ARGS.named')
+  # Build JSON from a NUL-delimited stream so secret values never
+  # appear in argv. One wrangler call atomically updates all secrets;
+  # partial failures roll back as a unit.
+  json=$(
+    for i in "${!names[@]}"; do
+      printf '%s\0%s\0' "${names[$i]}" "${values[$i]}"
+    done | jq -Rs 'split("\u0000") as $parts | reduce range(0; ($parts | length) - 1; 2) as $i ({}; .[$parts[$i]] = $parts[$i + 1])'
+  )
   # `bunx wrangler` resolves the workspace-pinned wrangler from
   # node_modules without requiring node_modules/.bin on PATH —
   # works the same locally and in CI.

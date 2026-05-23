@@ -38,7 +38,7 @@ Canonical bodies live in [`decisions/`](decisions/) — one file per `SK-SOLVE-N
 ## GLOBALs governing this feature
 
 - **GLOBAL-024** — Demand-signal telemetry on every "not yet" path.
-  - *In this feature:* the "Try this query →" button emits `solve.try_query_clicked` with `{slug, goal}` via the existing `lib/logsnag.ts` emitter — same shape as `vs.try_query_clicked` (`comparison-pages`), so the events-pipeline funnel slices both surfaces uniformly. Future per-page conversion analytics depend on the page-view-analytics open question in `web-app/FEATURE.md`.
+  - *In this feature:* the "Try this query →" button calls `emit("solve.try_query_clicked", {slug, goal})` via `lib/logsnag.ts`, which no-ops unless the late-bound `window.__nlqdb_logsnag` hook is present. FLOW-002 verification on 2026-05-23 did not observe the hook event with an injected spy, so per-slug funnel data is not yet proven.
 - **GLOBAL-025** — North-star compass.
   - *In this feature:* the KPI advanced is **onboarding** — every page CTA points at `/app/new` (anonymous mode); the solve page is the search-intent on-ramp the homepage can't be. KPI degraded: none.
 - **GLOBAL-028** — Acquisition progress tracker.
@@ -49,7 +49,7 @@ Canonical bodies live in [`decisions/`](decisions/) — one file per `SK-SOLVE-N
 - **Verbatim cluster quotes once 2026-05-26 cluster file lands.** The §3.1 plan calls for verbatim cluster quotes as `<h1>`; SK-SOLVE-001 chose paraphrased search-intent questions in the interim. Once the first cluster file lands, a follow-up SK is needed to amend `searchTitle` to the verbatim cluster label when one is available — likely SK-SOLVE-004.
 - **Auto-generation from cluster output.** A natural extension of `icp-cluster.ts` is to draft new `/solve/<slug>` entries from each persona's top cluster and open a PR with the candidate `SolveEntry`. Founder approval (per `automated-icp-validation-plan.md §3.6` reply-queue spirit) gates publication. Deferred until ≥3 cluster files exist and the draft quality is observable.
 - **Per-page OG image.** Pages currently inherit the site default OG. A per-slug OG image generator would boost share-CTR; same open question as the sibling `comparison-pages` feature.
-- **Page-view analytics.** Same open question as `comparison-pages` — no browser-side analytics on `nlqdb.com` today; the §3.5 ICP-validation plan calls for PostHog Cloud free tier. Per-page views are measurable only via server access logs + sitemap-indexed search-console impressions until that lands. The CTA-click signal (`solve.try_query_clicked` to LogSnag) gives per-slug funnel data in the meantime.
+- **Page-view analytics.** Same open question as `comparison-pages` — no browser-side analytics on `nlqdb.com` today; the §3.5 ICP-validation plan calls for PostHog Cloud free tier. Per-page views are measurable only via server access logs + sitemap-indexed search-console impressions until that lands. The CTA-click hook is intended to give per-slug funnel data, but FLOW-002 verification has not yet proven production delivery.
 
 ## Why this exists
 

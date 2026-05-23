@@ -8,6 +8,8 @@
 
 set -u
 
+FAIL_COUNT=0
+
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$REPO_ROOT" || exit 1
 
@@ -22,7 +24,7 @@ source .envrc 2>/dev/null || true
 
 say()  { printf '\n\033[1;34m== %s ==\033[0m\n' "$*"; }
 ok()   { printf '  \033[1;32m✓\033[0m %s\n' "$*"; }
-fail() { printf '  \033[1;31m✗\033[0m %s  — %s\n' "$1" "$2"; }
+fail() { printf '  \033[1;31m✗\033[0m %s  — %s\n' "$1" "$2"; FAIL_COUNT=$((FAIL_COUNT + 1)); }
 skip() { printf '  \033[2m· skip %s (not set)\033[0m\n' "$*"; }
 
 # check_present <var_name> [<min_len=16>]
@@ -200,6 +202,14 @@ check_github_oauth_pair() {
 check_github_oauth_pair OAUTH_GITHUB_CLIENT_ID     OAUTH_GITHUB_CLIENT_SECRET
 check_github_oauth_pair OAUTH_GITHUB_CLIENT_ID_DEV OAUTH_GITHUB_CLIENT_SECRET_DEV
 
+say "GitHub API"
+check_http GH_TOKEN \
+  -H "Authorization: Bearer ${GH_TOKEN:-MISSING}" \
+  -H "Accept: application/vnd.github+json" \
+  -H "X-GitHub-Api-Version: 2022-11-28" \
+  "https://api.github.com/rate_limit" \
+  --match '"rate"'
+
 say "Email (Resend)"
 # Resend API: GET /domains lists configured sending domains. Smallest
 # privilege endpoint that responds the same regardless of provisioning
@@ -374,3 +384,7 @@ else
 fi
 
 echo ""
+if (( FAIL_COUNT > 0 )); then
+  printf '  \033[1;31m✗\033[0m verify-secrets  — %d check(s) failed\n' "$FAIL_COUNT"
+  exit 1
+fi
