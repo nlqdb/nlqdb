@@ -4,23 +4,32 @@
 > · [GLOBAL-030](../decisions/GLOBAL-030-evidence-grade-acquisition-tracker-edits.md)):**
 > Mirror of [`automated-icp-validation-plan.md`](./automated-icp-validation-plan.md).
 > Every `FLOW-NNN` below appears in that file with the same ID. The
-> impl plan tracks *what is shipped* (sub-tasks, SK-* refs, %
-> implemented); this file tracks *what has been walked end-to-end by
-> an agent* (steps, credentials, last-verified date, outcome log).
-> Adding, modifying, or superseding a `FLOW-NNN` updates BOTH files
-> in the same PR. This file is one of two markdown files exempt from
-> [`CLAUDE.md §2 P4 D4`](../../CLAUDE.md)'s 20 KB cap — the other is
-> the impl plan ([`GLOBAL-028`](../decisions/GLOBAL-028-acquisition-progress-tracker.md)).
+> impl plan tracks *what is shipped*; this file tracks *what has
+> been walked end-to-end by an agent*. Adding, modifying, or
+> superseding a `FLOW-NNN` updates BOTH files in the same PR. Both
+> files exempt from the 20 KB cap per
+> [`GLOBAL-028`](../decisions/GLOBAL-028-acquisition-progress-tracker.md) /
+> [`GLOBAL-029`](../decisions/GLOBAL-029-acquisition-verification-tracker.md).
 
-> **Status:** scaffolding shipped 2026-05-23. 0 / 7 flows fully passed;
-> 3 / 7 have partial curl-only passes recorded 2026-05-23 (FLOW-001,
-> FLOW-002, FLOW-003); FLOW-002 also carries a failed step 8 on the
-> CTA telemetry + gate continuation. The mirror impl plan now has §8
-> `User flows · implementation tracker` with the same 7 flows; flows
-> currently average 84% implementation coverage. A full Playwright walk
-> is still pending for every flow; curl is sufficient for the static
-> AEO assertions but cannot drive client events, draft hydration, or
-> the gate-bearing first-query submit.
+> **Operator loop.** You (the agent) are the cron. The founder runs
+> one prompt periodically — that's the whole human loop. No
+> notifications go back to the founder; nothing in this file
+> "fires" anywhere. On every run: read the impl plan's "What the
+> next agent should pick" priority list, walk the relevant flow(s)
+> from this file (start with [`scripts/verify-flows.sh`](../../scripts/verify-flows.sh)
+> to catch static regressions in under 2 s), record outcome rows
+> below, open a PR. A failed flow IS the next agent's #1 — not a
+> ping to anyone.
+
+> **Status (2026-05-23):** 0 / 7 flows fully passed. 3 / 7 have
+> curl-only partial passes (FLOW-001, FLOW-002, FLOW-003 — all 8
+> AEO slugs covered). FLOW-002 carries a failed step 8 (CTA
+> telemetry + gate continuation) — that failure routes back as
+> priority #4 in the impl plan's pick-list, not as a notification.
+> Full Playwright walks are still pending for every flow; the
+> §1.1 stranger-test Playwright primitive (impl plan priority #1)
+> is what closes the gap from "curl-observable static" to
+> "stranger lands and gets first-value."
 
 ---
 
@@ -28,9 +37,9 @@
 
 | Flow | Persona | Verification status | Last verified | Mirror impl % |
 |---|---|---|---|---|
-| FLOW-001 | P1 solo builder | partial — curl steps 1–2 passed; 3–9 need browser | 2026-05-23 | 5/7 (71%) |
-| FLOW-002 | P3 analyst | failed 2026-05-23 step 8 — curl steps 1, 3, 4 re-pass | 2026-05-23 | 5/6 (83%) |
-| FLOW-003 | P3 / P4 | partial — curl steps 1, 2, 4, 9 passed; 5–8 need browser | 2026-05-23 | 5/5 (100%) |
+| FLOW-001 | P1 solo builder | partial — curl steps 1–2 re-pass via `verify-flows.sh`; 3–9 need browser | 2026-05-23 | 5/7 (71%) |
+| FLOW-002 | P3 analyst | failed 2026-05-23 step 8; curl steps 1, 3, 4 re-pass across all 5 slugs via `verify-flows.sh` | 2026-05-23 | 5/6 (83%) |
+| FLOW-003 | P3 / P4 | partial — curl steps 1, 2, 4, 9 re-pass across all 3 slugs via `verify-flows.sh`; 5–8 need browser | 2026-05-23 | 5/5 (100%) |
 | FLOW-004 | P1 solo builder | not yet attempted | — | 5/6 (83%) |
 | FLOW-005 | P2 agent builder | not yet attempted | — | 5/6 (83%) |
 | FLOW-006 | P4 backend engineer | not yet attempted | — | 5/6 (83%) |
@@ -48,18 +57,27 @@
 
 ## How an agent uses this file
 
-You (the agent) read one `FLOW-NNN` block, perform every step against
-the real deployed surface (not a mock, not a local dev server unless
-the block says so), and write the outcome back to the same block.
-Treat this section as a binding playbook.
+You (the agent) ARE the cron. The founder runs one prompt; the rest
+of the loop — pick a slice, verify it, write evidence, open a PR —
+is yours. Don't notify the founder of anything; failures route back
+into the impl plan's priority list as the next agent's #1.
+
+You read one `FLOW-NNN` block, perform every step against the real
+deployed surface (not a mock, not a local dev server unless the block
+says so), and write the outcome back to the same block. Treat this
+section as a binding playbook.
 
 ### 1. Pick a flow
 
-If the operator named one, use that. Otherwise, pick the topmost
-`not yet attempted` flow whose `Required credentials` you can satisfy
-without asking. If no flow is satisfiable without asking, pick
-FLOW-001 (zero credentials) and start there — failing that's the most
-informative gap.
+Default: run [`scripts/verify-flows.sh`](../../scripts/verify-flows.sh)
+first (49 static assertions across FLOW-001/002/003 in under 2 s, zero
+credentials). If it exits non-zero, fix the regression it surfaced
+before walking anything new — that failure is the highest-leverage
+work. If it exits 0, then pick the topmost `not yet attempted` flow
+whose `Required credentials` you can satisfy without asking. If no
+flow is satisfiable without asking, pick FLOW-001 (zero credentials)
+and walk the browser-only steps the script can't cover — that's
+where the §1.1 stranger-test gap actually lives.
 
 ### 2. Read the whole block before doing anything
 
@@ -87,7 +105,11 @@ If the MCP server can be exercised via the `@modelcontextprotocol/inspector`
 CLI without a real client, use that. The walkthrough steps describe the
 *user-visible behaviour* — the tool you use to provoke and observe it
 is your judgement call, as long as the assertion is what the user would
-see.
+see. For the curl-observable subset of FLOW-001/002/003 there is now an
+agent-runnable script: `bash scripts/verify-flows.sh` (override
+`NLQDB_BASE_URL` to walk a preview deployment); use it instead of
+re-discovering the same assertions ad-hoc. Steps it can't cover are
+printed inline so you don't claim a pass on them.
 
 ### 5. Record the outcome in the per-flow log
 
@@ -198,6 +220,7 @@ requires credentials, that itself is the failure.
 | Date | Agent | State | ttfvMs | Notes |
 |---|---|---|---|---|
 | 2026-05-23 | composer-1 | partial steps 1–2 | — | curl-only walk: `GET https://nlqdb.com/` → 200 (93 KB), hero `<form>` rendered with `placeholder="an orders tracker"` matching the `/orders\|tracker\|building/i` contract. Steps 3–9 require a browser (anonymous device-token issuance, `/v1/ask` POST with TTFV timer, trace toggle, clipboard, follow-up query) and were not exercised in this PR — Playwright not available on the agent VM. |
+| 2026-05-23 | composer-2 | partial steps 1–2 | — | `scripts/verify-flows.sh` re-run against `https://nlqdb.com`: `GET /` → 200 (93,605 bytes); hero placeholder `"an orders tracker"` still matches the `/orders\|tracker\|building/i` contract. Steps 3–9 unchanged — still need a browser context. |
 
 ---
 
@@ -271,10 +294,13 @@ None.
 |---|---|---|---|---|
 | 2026-05-23 | gpt-5.5 | failed step 8 | cheap-internal-dashboard | Deployed Playwright walk passed steps 1-7 (`FAQPage` + `HowTo`, honest-limits, `nlqdb_draft`, `/app/new` rehydrate), but an injected `window.__nlqdb_logsnag` spy observed no `solve.try_query_clicked`; manual continuation to submit returned `403 feature_gated` from `https://app.nlqdb.com/v1/ask`. |
 | 2026-05-23 | composer-1 | partial steps 1, 3, 4 | cheap-internal-dashboard | curl-only re-verification before adding the Stack Overflow source: page still 200, `FAQPage` + `HowTo` JSON-LD both present (1 each), "What nlqdb doesn't do here" section still rendered. Steps 5–9 (CTA click, draft hydrate, `/app/new` rehydrate, event spy, first-query) not re-attempted — Playwright not available; the prior 2026-05-23 failure on step 8 stands as the binding gap. |
+| 2026-05-23 | composer-2 | partial steps 1, 3, 4 | all 5 slugs | `scripts/verify-flows.sh` re-walk against `https://nlqdb.com`: every slug (`cheap-internal-dashboard`, `give-ai-agent-persistent-memory`, `skip-postgres-setup-side-project`, `natural-language-sql-without-training-data`, `ship-leaderboard-no-sql`) returns `307 → https://nlqdb.com/solve/<slug>/` and the final `200` body carries `"@type": "FAQPage"`, `"@type": "HowTo"`, and a "What nlqdb doesn't do here" section. Trailing-slash redirect is new evidence — see Triage. Steps 5–9 still need a browser; the prior step 8 failure stands. |
 
 ### Triage
 
 The first failed assertion is CTA telemetry: the static page wrote the draft and navigated, but the injected event spy saw no `solve.try_query_clicked`. A manual continuation then reached `/app/new` with the expected draft and hit `403 feature_gated` on first query, so FLOW-002 needs both event-hook verification/fix and an invite-bearing journey (or explicit waitlist detour) before it can count as a verified first-value acquisition path.
+
+**Trailing-slash redirect (2026-05-23, composer-2):** the deployed CDN now serves `/solve/<slug>` only via `307 → /solve/<slug>/`. A curl probe without `-L` (or without the trailing slash) gets HTTP 307 + 0 bytes and looks like a regression; with `-L` (or against the trailing-slash URL) every slug returns 200. `scripts/verify-flows.sh` follows redirects and additionally records the redirect chain as informational, so future agents don't re-discover this on every PR. No content regression — the static AEO surface is intact.
 
 ---
 
@@ -336,6 +362,7 @@ None.
 | Date | Agent | State | Slug walked | Notes |
 |---|---|---|---|---|
 | 2026-05-23 | composer-1 | partial steps 1, 2, 4, 9 | supabase | curl-only walk: `GET https://nlqdb.com/vs/supabase` → 200; `<h1 class="vs__title">nlqdb vs Supabase</h1>` matches the template; `FAQPage` JSON-LD present (1); `/llms.txt` lists all 3 vs slugs (`mem0`, `supabase`, `vanna`) — step 9 smoke check passes. Steps 3 (DOM "When to choose Supabase" section), 5–8 (CTA click, draft hydrate, prefill, first-query submit) require a browser and are unattempted. |
+| 2026-05-23 | composer-2 | partial steps 1, 2, 4, 9 | all 3 slugs | `scripts/verify-flows.sh` re-walk: every slug (`supabase`, `vanna`, `mem0`) returns `307 → /vs/<slug>/` and the final 200 body matches `<h1[^>]*>nlqdb vs <Name></h1>` (Supabase / Vanna AI / Mem0) and carries a `"@type": "FAQPage"` JSON-LD block. `/llms.txt` (200, 4,357 bytes) enumerates every vs slug AND every solve slug (5/5). `/sitemap.xml` (200) lists 12 `<loc>` entries — the floor the script enforces. Steps 3, 5–8 still require a browser. |
 
 ---
 

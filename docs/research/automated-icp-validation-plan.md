@@ -13,16 +13,47 @@
 > flow updates BOTH files in lockstep. Evidence/status edits must name
 > the agent-run verification artifact and pass the GLOBAL-030 self-review.
 
-> **Status:** in progress — §1.4, §2.2 (collection), §2.3 (all steps), §2.1 GitHub Issues source, §2.4 verdict automation shipped 2026-05-22. §3.1 first 5 hand-curated solve pages shipped 2026-05-23 (paraphrased search-intent `<h1>` per SK-SOLVE-001 — verbatim cluster quotes pending the 2026-05-26 first cluster file). §8 user-flow tracker shipped 2026-05-23 (7 mirrored flows; average implementation 84%; FLOW-001 / FLOW-002 / FLOW-003 each have curl-only partial passes recorded 2026-05-23 against the deployed AEO surfaces, full Playwright walks still pending; FLOW-002's CTA telemetry and gate continuation remain failed). §2.1 Stack Overflow source shipped 2026-05-23 — fourth scrape source live; live API probe returned 1 fresh `postgresql/setup` question with `quota_remaining=299`. §1.1 (stranger-test), §1.2 (KPI dashboard), §1.3 (in-app survey), the rest of §3 (gallery, reply queue), §4 (PMF capture) not yet started — **the pipeline collects signal and the AEO surfaces (vs + solve) are live, but no surface yet measures whether invited users land safely**. First ICP cron fires Mon 2026-05-26 06:00 UTC; until then no real ICP evidence has been written.
+> **Operator loop — read this first.** The founder runs one prompt
+> periodically. That is the entire human input. No notifications go
+> back to the founder; no LogSnag bell, no inbox, no triage queue.
+> Each agent run *is* the cron: read this preamble, pick the
+> top-priority slice from "What the next agent should pick" below,
+> do it, verify it against the real deployed surface, write evidence
+> in this file's `## Progress log` and (for flows) the verification
+> mirror, open a PR. If verification fails, that failure IS the next
+> priority — don't pile on new surfaces on top of a broken funnel.
 >
-> **Context.** Every advertised surface ([progress.md §0](../progress.md))
-> shipped; zero validated users.
-> [`founder-playbook.md`](../founder-playbook.md) assumes 1:1 calls; the
-> founder rejects 1:1 calls.
-> The [pre-alpha-gate](../features/pre-alpha-gate/FEATURE.md) returns
-> 403 on every "do-work" surface today (BIRD 0.318, Spider not measured).
-> So "get real users" needs a release-valve and "validate" needs to be
-> async.
+> **Shipped ≠ verified ≠ useful.** Counting shipped surfaces lies to
+> us by design. The only progress that matters is "a stranger landed
+> and got first-value." §1.1 stranger-test, §1.2 KPI dashboard, and
+> §1.3 in-app survey are the anti-self-deception layer; until they
+> ship, *every other acquisition surface's KPI is suspect* — we can
+> drive traffic without knowing whether it converts, churns, or
+> bounces silently. That's the bar §3 cannot legitimately clear yet.
+>
+> **What the next agent run should pick (2026-05-23, in order — items 1–3 outrank 4+ unconditionally):**
+> 1. **§1.1 stranger-test** — Playwright cron from a non-Worker IP, 25 seeded prompts × 4 personas, daily JSON. The anti-self-deception primitive. [`scripts/verify-flows.sh`](../../scripts/verify-flows.sh) is the curl subset shipped 2026-05-23 (49 static assertions); Playwright closes the "user lands and bounces" gap that curl can't see.
+> 2. **§1.2 KPI dashboard** — [`SK-ONBOARD-005`](../features/onboarding/FEATURE.md) pulled forward from 2026-06-01. 5 tiles on `nlqdb.com/build-log`: TTFV p50/p95, success rate, drop-off, first→second, gate-block. Doubles as build-in-public (§3.2).
+> 3. **§1.3 in-app survey** — PostHog free tier; Sean Ellis Q1 after 2nd query + 7d; persona-extraction follow-up; drop-off recovery on `first_query.failed`.
+> 4. **FLOW-002 step 8 fix** — `solve.try_query_clicked` not observed in deployed walk; first-query gate returns `403 feature_gated`. Binding gap on the only AEO surface that's live.
+> 5. **§3.1 next 10 solve pages** — from the 2026-05-26 first cluster file (verbatim quotes; supersedes paraphrased `<h1>` per SK-SOLVE-001's deviation note).
+> 6. **§3.5 `examples/` per cluster + `nlqdb.com/gallery`** — only after #1–#3 (don't drive traffic to an unmeasured funnel).
+> 7. **Show HN / Product Hunt push (§3.3)** — only after #1–#6.
+>
+> **What's shipped today** (evidence in `## Progress log`, not prose):
+> §1.4 gate-valve · §2.2 collection (HN+Reddit+GH+SO) · §2.3 scoring +
+> clustering + verdict · §2.1 GitHub Issues + Stack Overflow sources ·
+> §3.1 first 5 solve pages (paraphrased `<h1>`) · §8 mirrored flow
+> trackers (7 flows, avg 84% implementation, 0% full verification) ·
+> [`scripts/verify-flows.sh`](../../scripts/verify-flows.sh) (49 static
+> assertions, agent-runnable, no operator action). First ICP cron
+> fires Mon 2026-05-26 06:00 UTC.
+>
+> **Context.** Every advertised surface
+> ([`progress.md §0`](../progress.md)) shipped; zero validated users.
+> [`founder-playbook.md`](../founder-playbook.md) assumes 1:1 calls;
+> the founder rejects them — that's why "get real users" needs §1.4's
+> release-valve and "validate" needs to be async per §1.3 / §4.
 >
 > **Cross-refs:** [personas.md](./personas.md) ·
 > [email-and-marketing.md](./email-and-marketing.md) ·
@@ -30,7 +61,6 @@
 > [GLOBAL-024](../decisions/GLOBAL-024-demand-signal-telemetry.md) ·
 > [GLOBAL-025](../decisions/GLOBAL-025-north-star.md) ·
 > [GLOBAL-027](../decisions/GLOBAL-027-pre-alpha-gate.md) ·
-> [founder-playbook.md](../founder-playbook.md) ·
 > [GLOBAL-030](../decisions/GLOBAL-030-evidence-grade-acquisition-tracker-edits.md).
 
 ---
@@ -39,61 +69,55 @@
 
 | KPI | Target | Status |
 |---|---|---|
-| Anonymous loop completions | ≥ 50 | 0 — gate open path unblocked as of 2026-05-21 |
-| Signed-in users (invite-redeemed) | ≥ 10 | 0 — first invites will ship on next waitlist signup |
-| Sean Ellis Q1 responses | ≥ 20 | 0 — survey not yet wired |
-| Primary ICP shortlist | exactly 1 | not yet — verdict logic shipped 2026-05-22; first evidence file auto-generates Mon 2026-05-26 |
-| TTFV p50 | ≤ 60s | not measured |
-| First-query success | ≥ 60% | not measured |
+| Anonymous loop completions | ≥ 50 | 0 — gate open path unblocked 2026-05-21; **unmeasured until §1.2 ships** |
+| Signed-in users (invite-redeemed) | ≥ 10 | 0 — first invites ship on next waitlist signup |
+| Sean Ellis Q1 responses | ≥ 20 | 0 — survey not wired (§1.3) |
+| Primary ICP shortlist | exactly 1 | pending first cron Mon 2026-05-26 (verdict logic shipped 2026-05-22) |
+| TTFV p50 | ≤ 60 s | **not measured** (§1.2) |
+| First-query success | ≥ 60% | **not measured** (§1.2) |
+| Stranger-test passes | 100% daily | static subset only via [`scripts/verify-flows.sh`](../../scripts/verify-flows.sh); Playwright (§1.1) unshipped |
 
-**Honest gap (acquisition-risk):** the pipeline now identifies pain at
-scale, the gate-valve issues invites, and the first AEO surfaces (vs +
-solve) earn impressions, but **§1.1 stranger-test, §1.2 KPI dashboard,
-and §1.3 in-app survey are still unshipped** — meaning we can pull
-people in but can't yet detect whether they landed on a working flow or
-churned silently. Those three remain the next correctness bar before
-any large acquisition push (Show HN, Product Hunt — §3.3) goes live;
-the static AEO surfaces (§3.1, §3.5 partial via comparison pages) ship
-first because their failure mode is "no traffic", not "broken funnel
-for inbound traffic".
-
-**Verified 2026-05-23:** FLOW-002's deployed static `/solve` surface
-passes the no-credential static and draft checks (`FAQPage` + `HowTo`
-JSON-LD, honest-limits section, `nlqdb_draft` seeded, `/app/new`
-rehydrated), but no `solve.try_query_clicked` hook event was observed;
-a manual continuation to first-query submit fails with `403 feature_gated` from
-`https://app.nlqdb.com/v1/ask`. Treat `/solve` as an acquisition surface
-that can educate and collect intent, not as a verified first-value path,
-until the gate bypass is present in that journey. Re-verified 2026-05-23
-(this PR) via curl-only static probes — same outcome on the static
-checks; the CTA + gate failure modes still require a Playwright run to
-re-attempt. FLOW-001 hero form and FLOW-003 `/vs/<slug>` template + JSON-LD
-have curl-only partial passes recorded for the first time.
+The preamble's "What the next agent should pick" is the canonical
+priority order; this table is the receipts. The bolded "not measured"
+rows ARE the §1.1/§1.2/§1.3 blocker restated as KPI gaps.
 
 ---
 
 ## 0. Goals and non-goals
 
-**Goal — 6 weeks, $0 ongoing spend, zero 1:1 calls, land on:**
+**Goal — 6 weeks, $0 ongoing spend, zero 1:1 calls, zero founder
+notifications, land on:**
 
-- **One primary ICP** with 5+ verbatim pain quotes in an evidence file.
-- **≥50 anonymous + ≥10 signed-in users** through the onboarding loop
+- One primary ICP with 5+ verbatim pain quotes in an evidence file.
+- ≥50 anonymous + ≥10 signed-in users through the onboarding loop
   against a real LLM (not canned demo).
-- **≥20 Sean-Ellis Q1 responses** with distribution attached.
-- **A live dashboard** the founder refreshes weekly to make
-  promote/iterate/cut calls — Calendly never opens.
+- ≥20 Sean-Ellis Q1 responses with distribution attached.
+- A dashboard the founder can glance at when they want to, never
+  has to. Promote/iterate/cut signals come from the data, not alerts.
+
+Operator model + measurement bar are in the top preamble — don't
+re-derive them here.
 
 **Non-goals.** Calls, cold email, paid ads, AppSumo, lifetime deals,
-new surfaces, persona expansion past P1/P2/P3/P6.
+new surfaces, persona expansion past P1/P2/P3/P6, and any
+founder-facing notification channel (no LogSnag-to-founder, no
+on-failure email, no Slack ping — agents handle failures by
+re-prioritising, not by paging the operator).
 
 ---
 
-## 1. Phase A — Onboarding loop must work for a stranger (Week 1)
+## 1. Phase A — Anti-self-deception layer (BLOCKING — outranks all §3)
 
-The feature is documented ([`onboarding/FEATURE.md`](../features/onboarding/FEATURE.md),
-[`web-app/FEATURE.md`](../features/web-app/FEATURE.md)). Not done:
-end-to-end stranger-test, instrumented baselines, in-product survey
-trigger, gate release-valve. Fix all four before any external link.
+**This is the layer that detects "people land and bounce" within
+days, not months.** Until §1.1, §1.2, and §1.3 ship, no §3 KPI can
+be trusted — every visitor we drive is a coin-flip we can't measure.
+§1.4 (release-valve) shipped 2026-05-21 and unblocks traffic; the
+remaining three are the only reason any later acquisition push isn't
+a year-long self-deception. Surfaces are documented in
+[`onboarding/FEATURE.md`](../features/onboarding/FEATURE.md) and
+[`web-app/FEATURE.md`](../features/web-app/FEATURE.md); what isn't
+done is end-to-end stranger-test, instrumented baselines, and the
+in-product survey trigger.
 
 ### 1.1 Stranger-test the happy path with synthetic agents
 
@@ -784,3 +808,5 @@ Per [GLOBAL-028](../decisions/GLOBAL-028-acquisition-progress-tracker.md): every
 | 2026-05-23 | §2.3 evidence-file cron readiness | Ensure first ICP cron can write evidence and notify without manual Worker-secret drift | Added `GH_TOKEN`, `LOGSNAG_TOKEN`, and `LOGSNAG_PROJECT` to the API Worker secret mirror; added `GH_TOKEN` to `.env.example`, GitHub Actions secret mirroring, and `verify-secrets.sh`. Env inspection in this agent found `GEMINI_API_KEY` present but `GH_TOKEN`/LogSnag absent locally, confirming the current shell could not prove production evidence-write readiness by value. | Shipped as ops unblock. First cron can only write `icp-evidence-<yyyy-mm>.md` when `GH_TOKEN` is provisioned as a repo secret / Worker secret; the mirror scripts now include it. |
 | 2026-05-23 | §8 FLOW-001/002/003 curl re-verification | Walk the no-credential static surfaces with curl before adding new flows or sources | FLOW-001 step 1+2 pass: `https://nlqdb.com/` returns 200 and exposes hero `<form>` with `placeholder="an orders tracker"` matching the `/orders\|tracker\|building/i` contract. FLOW-002 steps 1, 3, 4 pass against `/solve/cheap-internal-dashboard`: 200 OK, `FAQPage` + `HowTo` JSON-LD blocks both present (1 each), "What nlqdb doesn't do here" section rendered. FLOW-003 steps 1, 2, 4, 9 pass against `/vs/supabase`: 200 OK, `<h1>nlqdb vs Supabase</h1>` matches the template, `FAQPage` JSON-LD present, `/llms.txt` enumerates all 3 vs slugs (`mem0`, `supabase`, `vanna`) and all 5 solve slugs; `/sitemap.xml` lists the same 12 URLs. Steps that require a browser context (CTA click, draft hydrate, first-query submit, gate-bypass) remain unattempted in this PR. | Shipped. Three flows now have first-time partial-pass evidence; FLOW-002's prior CTA/gate failure is still the binding gap. Verification mirror outcome logs and status dashboard updated. |
 | 2026-05-23 | §2.1 Stack Overflow source (SK-ICP-005) | Add the 4th ICP scrape source listed in §2.1 but never shipped | `apps/api/src/icp-scrape.ts` gains `fetchStackExchange` (Stack Exchange API 2.3 `/search/advanced`, `site=stackoverflow`, 5 tag+query pairs covering P1/P3/P4/P6 — `postgresql/setup`, `sqlalchemy/verbose`, `sql/natural language`, `prisma/migration`, `duckdb;clickhouse`; `pagesize=10`; `fromdate=now-7d`; anonymous quota 300/IP/day). New OTel span `nlqdb.icp.fetch.stackoverflow` carries `nlqdb.icp.se.quota_remaining`; `backoff` field is surfaced via `icp_se_backoff` warn-log. Items stored as `source: "stackoverflow"`, `id: "so-<question_id>"`; LogSnag description gains `SO: <n>`. Per-source error handling matches HN/Reddit/GitHub (one failing source never kills others). Live API probe from this environment returned 1 fresh question for `postgresql/setup` with `quota_remaining=299`, `backoff=None`; 14/14 `icp-scrape.test.ts` tests pass (3 new). | Shipped. Fourth source live for first cron Mon 2026-05-26. No new env binding required. |
+| 2026-05-23 | §8 verification automation + re-walk | Automate the curl-observable subset of FLOW-001/002/003 + re-verify three live sources before adding more scrape sources or flows | New `scripts/verify-flows.sh` (mirrors the `scripts/verify-secrets.sh` style: `ok`/`fail`/`note` per check, never prints secrets, 15 s per-fetch cap, exits non-zero on any failure, `NLQDB_BASE_URL` override for preview deployments). Walks 49 assertions: FLOW-001 step 1+2 against `/`; FLOW-002 step 1, 3, 4 against every shipped `/solve/<slug>` (5 slugs); FLOW-003 step 1, 2, 4 against every shipped `/vs/<slug>` (3 slugs); FLOW-003 step 9 against `/llms.txt` (enumerates 3 vs + 5 solve); a `/sitemap.xml` floor at 12 `<loc>` entries. Every assertion passed today against `https://nlqdb.com`. New static-surface evidence: `/solve/<slug>` and `/vs/<slug>` now `307 → trailing-slash` — the script follows redirects and records the chain so future curl-only agents don't re-discover it. Live re-probes today (with this VM's `GH_TOKEN` / `GROQ_API_KEY` / `GEMINI_API_KEY` / `LOGSNAG_*` / `RESEND_API_KEY` / `OPENROUTER_API_KEY` all present — correcting the 2026-05-23 entry that recorded `GH_TOKEN`/LogSnag as absent locally): Stack Exchange `/search/advanced?tagged=postgresql&q=setup` returned `items=1, quota_remaining=299, backoff=None`; GitHub `/search/issues?q=is:issue "text to sql" created:>2025-11-01` returned `total_count=1642, items=10, incomplete_results=false`. Verification mirror's FLOW-001/002/003 outcome logs each gain a new row; FLOW-002 triage gains a `Trailing-slash redirect` block. Second-pass self-review caught a silent-exit bug in the script (`var=$(fetch_body…)` swallowed `fail` output AND `FAIL_COUNT++` in a subshell); fixed in the same PR via a `FETCH_BODY_PATH` global return; negative-test failure count went from 8 visible / 19 actual to 19 visible / 19 actual. | Shipped. The mirror integrity check (`diff` of `^#{2,3} FLOW-[0-9]+` across both files) remains empty; future agents have a single one-command entry point for the static-surface acquisition assertions. |
+| 2026-05-23 | §0 + §1 + preamble framing (operator-loop + anti-self-deception) | Founder clarified: "I run one prompt; that's it. don't make me do more things." Existing docs encoded the *what* of acquisition but not the *how* of the operator loop — each cold agent had to re-derive that the founder is the cron-trigger and the agent is the cron-body. That gap let the prior commit drift toward a LogSnag-on-failure suggestion (which would have created a founder-facing notification channel — the exact thing the operator wants to escape). | Edited (not added) impl plan preamble: now leads with (a) operator-loop principle, (b) shipped≠verified principle, (c) explicit 7-item "What the next agent run should pick" priority list (§1.1 stranger-test → §1.2 KPI dashboard → §1.3 in-app survey → FLOW-002 step 8 fix → next 10 solve pages → gallery/examples → Show HN). Collapsed `Current status` + `Honest gap` + `Verified 2026-05-23` walls into one KPI table with explicit "not measured" markers on §1.2 KPIs and a new `Stranger-test passes` row. Trimmed §0 Goal (points at preamble for operator model, lists "founder-facing notification channels of any shape" as a non-goal). Renamed §1 intro to `Anti-self-deception layer (BLOCKING — outranks all §3)`. Verification mirror preamble + `How an agent uses this file §1` rewritten to: "you ARE the cron; default first action is `bash scripts/verify-flows.sh`; failures route back as priority #1, not notifications." No new sections, no new GLOBAL/SK, no GH Actions cron, no LogSnag-to-founder wiring. | Shipped. Cold agents now land on (1) you-are-the-cron, (2) today's priority #1 = §1.1 stranger-test, (3) `verify-flows.sh` as the default first action. The §1.1/§1.2/§1.3 anti-self-deception priority is load-bearing in the preamble, not buried. |
