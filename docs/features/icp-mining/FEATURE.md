@@ -1,6 +1,6 @@
 ---
 name: icp-mining
-description: Weekly cron that scrapes HN Algolia, Reddit, GitHub Issues, and Stack Overflow for ICP pain signals, scores them per persona via the free LLM chain, clusters them into themes, and writes a monthly evidence file to GitHub.
+description: Weekly cron that scrapes HN Algolia, Reddit, GitHub Issues, Stack Overflow, and Indie Hackers for ICP pain signals, scores them per persona via the free LLM chain, clusters them into themes, and writes a monthly evidence file to GitHub.
 when-to-load:
   globs:
     - apps/api/src/icp-scrape.ts
@@ -14,14 +14,14 @@ when-to-load:
 
 # Feature: ICP Mining
 
-**One-liner:** A Monday 06:00 UTC cron scrapes HN Algolia, Reddit (16 subreddits), GitHub Issues, and Stack Overflow; deduplicates via KV; scores 0–10 per persona via Groq → Gemini; clusters into 5–7 themes per persona; writes `docs/research/icp-evidence-<yyyy-mm>.md` to GitHub.
-**Status:** implemented (SK-ICP-001 collection; SK-ICP-002 scoring; SK-ICP-003 clustering + evidence file; SK-ICP-004 GitHub Issues source; SK-ICP-005 Stack Overflow source).
+**One-liner:** A Monday 06:00 UTC cron scrapes HN Algolia, Reddit (16 subreddits), GitHub Issues, Stack Overflow, and Indie Hackers; deduplicates via KV; scores 0–10 per persona via Groq → Gemini; clusters into 5–7 themes per persona; writes `docs/research/icp-evidence-<yyyy-mm>.md` to GitHub.
+**Status:** implemented (SK-ICP-001 collection; SK-ICP-002 scoring; SK-ICP-003 clustering + evidence file; SK-ICP-004 GitHub Issues source; SK-ICP-005 Stack Overflow source; SK-ICP-006 Indie Hackers source).
 **Owners (code):** `apps/api/src/icp-scrape.ts`, `apps/api/src/icp-score.ts`, `apps/api/src/icp-cluster.ts`, `apps/api/test/icp-scrape.test.ts`, `apps/api/test/icp-score.test.ts`, `apps/api/test/icp-cluster.test.ts`, `apps/api/wrangler.toml` (cron `0 6 * * 1`).
 **Cross-refs:** [`docs/research/automated-icp-validation-plan.md §2`](../../research/automated-icp-validation-plan.md) · [`docs/research/personas.md`](../../research/personas.md) · [`GLOBAL-028`](../../decisions/GLOBAL-028-acquisition-progress-tracker.md) · [`GLOBAL-030`](../../decisions/GLOBAL-030-evidence-grade-acquisition-tracker-edits.md).
 
 ## Touchpoints — read this feature doc before editing
 
-- `apps/api/src/icp-scrape.ts` — `runIcpScrape(deps)`; calls HN, Reddit, GitHub Issues, Stack Overflow
+- `apps/api/src/icp-scrape.ts` — `runIcpScrape(deps)`; calls HN, Reddit, GitHub Issues, Stack Overflow, Indie Hackers
 - `apps/api/src/icp-score.ts` — `runIcpScore(items, deps)`; Groq → Gemini scoring
 - `apps/api/src/icp-cluster.ts` — `runIcpCluster(deps)`; KV list → LLM cluster → GitHub write
 - `apps/api/wrangler.toml` `[triggers].crons` — must stay in sync with `ICP_SCRAPE_CRON` in `index.ts`
@@ -31,7 +31,7 @@ when-to-load:
 
 ### SK-ICP-001 — Weekly HN + Reddit scrape writing raw items to KV
 
-- **Decision:** A Cloudflare cron at `0 6 * * 1` (Monday 06:00 UTC) calls `runIcpScrape`, which queries HN Algolia (10 pain-keyword searches), Reddit (16 subreddit/query pairs), GitHub Issues (5 queries via Search API, when `GH_TOKEN` is set), and Stack Overflow (5 tag+query pairs via Stack Exchange API 2.3) for posts from the previous 7 days / `created:>2025-11-01` window. Each item is deduped via `icp:seen:<source>:<id>` (90-day KV TTL) and new items are written as `icp:item:<YYYYMMDD>:<source>:<id>` (30-day KV TTL, JSON). A LogSnag notification to `#icp-mining` reports the count of new vs. skipped items per source. Per-source errors are caught: one failing source never kills the others.
+- **Decision:** A Cloudflare cron at `0 6 * * 1` (Monday 06:00 UTC) calls `runIcpScrape`, which queries HN Algolia (10 pain-keyword searches), Reddit (16 subreddit/query pairs), GitHub Issues (5 queries via Search API, when `GH_TOKEN` is set), Stack Overflow (5 tag+query pairs via Stack Exchange API 2.3), and Indie Hackers (5 P1-pain queries via the `feed.indiehackers.world` JSON Feed) for posts from the previous 7 days / `created:>2025-11-01` window. Each item is deduped via `icp:seen:<source>:<id>` (90-day KV TTL) and new items are written as `icp:item:<YYYYMMDD>:<source>:<id>` (30-day KV TTL, JSON). A LogSnag notification to `#icp-mining` reports the count of new vs. skipped items per source. Per-source errors are caught: one failing source never kills the others.
 - **Core value:** Simple, Bullet-proof
 - **Why:** Mining public complaints at scale gives unfiltered language the personas actually use — persona docs today are hypotheses, not evidence. Storing raw items in KV costs nothing (Cloudflare free tier) and provides the input corpus for the Phase 2 LLM scorer without requiring any infrastructure beyond what is already provisioned. Running Monday morning (after a weekend of community activity) maximises signal. The dedup window (90 days) prevents re-processing the same posts across consecutive weeks while letting long-tail items cycle out.
 - **Consequence in code:** `apps/api/src/icp-scrape.ts` is the single owner. `IcpScrapeDeps.fetch` is overridable for tests; OTel spans wrap each external fetch (GLOBAL-014). The `scheduled()` handler in `apps/api/src/index.ts` dispatches on `ICP_SCRAPE_CRON` and logs `{ msg: "icp_scrape_completed", newItems, skipped, sources }`. `LOGSNAG_TOKEN` and `LOGSNAG_PROJECT` are optional; when absent the LogSnag step is skipped silently.
@@ -40,9 +40,9 @@ when-to-load:
 ## GLOBALs governing this feature
 
 - **GLOBAL-013** — Free-tier bundle budget.
-  - *In this feature:* all sources (HN Algolia, Reddit, GitHub Issues, Stack Exchange) are free non-commercial APIs. Stack Exchange anonymous quota is 300 requests/IP/day; this feature uses 5/week. KV write volume (≤ 600 items/week × 2 keys each = 1,200 writes/week) and cluster read volume (≤ 2 list ops + ~600 get ops/week) are inside the free-tier ceilings (7,000 writes/day, 1,000 list ops/day, unlimited reads).
+  - *In this feature:* all sources (HN Algolia, Reddit, GitHub Issues, Stack Exchange, Indie Hackers mirror) are free non-commercial APIs. Stack Exchange anonymous quota is 300 requests/IP/day; this feature uses 5/week. KV write volume (≤ 650 items/week × 2 keys each = 1,300 writes/week) and cluster read volume (≤ 2 list ops + ~650 get ops/week) are inside the free-tier ceilings (7,000 writes/day, 1,000 list ops/day, unlimited reads).
 - **GLOBAL-014** — OTel span on every external call.
-  - *In this feature:* HN/Reddit fetches → `nlqdb.icp.fetch.hn` / `nlqdb.icp.fetch.reddit`; GitHub Issues fetch → `nlqdb.icp.fetch.github`; Stack Overflow fetch → `nlqdb.icp.fetch.stackoverflow`; LLM scoring → `nlqdb.icp.score`; per-persona clustering → `nlqdb.icp.cluster`; GitHub evidence-file write → `nlqdb.icp.github_write`. All spans carry relevant attributes (source, item count, provider, file path, written status, and `nlqdb.icp.se.quota_remaining` for Stack Exchange).
+  - *In this feature:* HN/Reddit fetches → `nlqdb.icp.fetch.hn` / `nlqdb.icp.fetch.reddit`; GitHub Issues fetch → `nlqdb.icp.fetch.github`; Stack Overflow fetch → `nlqdb.icp.fetch.stackoverflow`; Indie Hackers fetch → `nlqdb.icp.fetch.indiehackers`; LLM scoring → `nlqdb.icp.score`; per-persona clustering → `nlqdb.icp.cluster`; GitHub evidence-file write → `nlqdb.icp.github_write`. All spans carry relevant attributes (source, item count, provider, file path, written status, and `nlqdb.icp.se.quota_remaining` for Stack Exchange).
 - **GLOBAL-028** — Acquisition progress tracker.
   - *In this feature:* this cron implements §2.1–§2.4 of [`automated-icp-validation-plan.md`](../../research/automated-icp-validation-plan.md). Progress is recorded in that file.
 - **GLOBAL-029** — Acquisition verification tracker.
@@ -82,7 +82,16 @@ when-to-load:
 - **Consequence in code:** `apps/api/src/icp-scrape.ts` gains `fetchStackExchange` and a fourth element in the `Promise.all`. Each call is wrapped in `nlqdb.icp.fetch.stackoverflow` (with `nlqdb.icp.se.quota_remaining` attribute) and an `AbortSignal.timeout(10s)`. The LogSnag description now reports `SO: <n>` alongside HN/Reddit/GH counts so the channel reads the new source without an extra notification.
 - **Alternatives rejected:** Registering a Stack Apps key (300/day anonymous is already 60× our weekly budget — auth adds a key to manage with no marginal capacity); `/search` instead of `/search/advanced` (advanced supports `tagged` constraints and `fromdate`, which keeps the 7-day window cheap server-side); polling `/questions` per-tag (would burn one quota slot per page even when nothing new landed).
 
+### SK-ICP-006 — Indie Hackers as an additional pain-signal source
+
+- **Decision:** `runIcpScrape` also queries the unofficial `feed.indiehackers.world` JSON Feed for 5 P1-pain queries (`database`, `boilerplate`, `side+project`, `first+paying`, `stack`). Each post is stored with `source: "indiehackers"` and `id: <slug>` extracted from the `/post/<slug>` URL path; posts whose URL doesn't match that contract or whose `date_modified` is unparseable are dropped before KV write. The mirror has no server-side date filter so the 7-day window is enforced client-side after parsing `date_modified`. The IH source is best-effort: it has no `Authorization` header, a 10-second `AbortSignal.timeout`, and per-source error isolation — a feed-mirror outage never kills HN, Reddit, GitHub, or Stack Overflow.
+- **Core value:** Simple, Bullet-proof
+- **Why:** Indie Hackers was listed in [`automated-icp-validation-plan.md §2.1`](../../research/automated-icp-validation-plan.md) as the P1 (Solo Builder) source from day one but never shipped — every other source skews P1/P2/P3/P4/P6 mixed. IH posts are launch-context complaints by definition ("here's the stack I shipped" / "first paying customer was hard because…"), which gives the cluster step language the other sources don't reach. Live probe 2026-05-23 confirmed: 100 items returned per query, ≈2 within the 7-day window (≈10 new IH items/week across 5 queries) — modest but unique P1 cohort signal.
+- **Consequence in code:** `apps/api/src/icp-scrape.ts` gains `fetchIndieHackers` and a fifth element in the `Promise.all`. Each call is wrapped in `nlqdb.icp.fetch.indiehackers` and the standard 10-second timeout. The LogSnag description reports `IH: <n>` alongside the other source counts. No new env binding (public JSON feed). Items without an extractable `/post/<id>` slug or with unparseable `date_modified` are dropped before KV write to keep dedup keys stable.
+- **Alternatives rejected:** Hit `indiehackers.com` directly (502s from any non-residential egress at probe time — Cloudflare bot challenge or rate-limit; no stable JSON endpoint); Apify `parseforge/indiehackers-posts-scraper` ($/run — breaks `GLOBAL-013`); scraping IH HTML ourselves (brittle, would burn the cron's wall-clock); `ihrss.io` (RSS only — JSON Feed is cheaper to parse on Workers); resolving each feed-mirror URL to its IH-canonical (the mirror's `/post/<slug>` 404s on direct GET, so there is no cheap canonical lookup — store the feed URL and rely on title + `content_html` for evidence trail).
+
 ## Open questions / known unknowns
 
 - **R2 upgrade** — When evidence files exceed KV practical limits, migrate raw storage from KV to `r2://nlqdb-icp-raw/`. Free tier for both; KV is the simpler path for now.
+- **IH canonical URL recovery** — SK-ICP-006 stores the `feed.indiehackers.world/post/<slug>` URL, which 404s on direct GET. The cluster step's evidence trail therefore cites the title + first 500 chars of `content_html`, not a clickable IH thread. If the founder needs IH-canonical URLs for §3.6 reply-to-pain, the next slice is parsing IH-thread URLs out of `content_html` (a content link sometimes appears as `<a href='https://www.indiehackers.com/...'>` inside the body); otherwise this is "good enough" signal for cluster input.
 - **LogSnag threshold alert** — Decision-rule verdict now surfaces in the evidence markdown and the `icp_cluster_completed` log. A separate LogSnag *channel-bell* event (only on transition into `primary_confirmed`) is the natural next slice; current implementation embeds the verdict in the existing per-run notification so we don't double-spam the channel.
