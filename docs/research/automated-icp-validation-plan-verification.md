@@ -1,6 +1,7 @@
 # Automated ICP Validation Plan — Verification
 
-> **Governance ([GLOBAL-029](../decisions/GLOBAL-029-acquisition-verification-tracker.md)):**
+> **Governance ([GLOBAL-029](../decisions/GLOBAL-029-acquisition-verification-tracker.md)
+> · [GLOBAL-030](../decisions/GLOBAL-030-evidence-grade-acquisition-tracker-edits.md)):**
 > Mirror of [`automated-icp-validation-plan.md`](./automated-icp-validation-plan.md).
 > Every `FLOW-NNN` below appears in that file with the same ID. The
 > impl plan tracks *what is shipped* (sub-tasks, SK-* refs, %
@@ -11,11 +12,11 @@
 > [`CLAUDE.md §2 P4 D4`](../../CLAUDE.md)'s 20 KB cap — the other is
 > the impl plan ([`GLOBAL-028`](../decisions/GLOBAL-028-acquisition-progress-tracker.md)).
 
-> **Status:** scaffolding shipped 2026-05-23. 0 / 7 flows verified.
+> **Status:** scaffolding shipped 2026-05-23. 0 / 7 flows passed; 1 / 7 attempted.
 > The mirror impl plan now has §8 `User flows · implementation tracker`
-> with the same 7 flows; flows currently average 70% implementation
-> coverage but 0% verification coverage — the impl/verify gap is the
-> point of this mirror.
+> with the same 7 flows; flows currently average 84% implementation
+> coverage and 0% pass coverage — the impl/verify gap is the point of
+> this mirror.
 
 ---
 
@@ -24,7 +25,7 @@
 | Flow | Persona | Verification status | Last verified | Mirror impl % |
 |---|---|---|---|---|
 | FLOW-001 | P1 solo builder | not yet attempted | — | 5/7 (71%) |
-| FLOW-002 | P3 analyst | not yet attempted | — | 5/6 (83%) |
+| FLOW-002 | P3 analyst | failed 2026-05-23 step 8 | 2026-05-23 | 5/6 (83%) |
 | FLOW-003 | P3 / P4 | not yet attempted | — | 5/5 (100%) |
 | FLOW-004 | P1 solo builder | not yet attempted | — | 5/6 (83%) |
 | FLOW-005 | P2 agent builder | not yet attempted | — | 5/6 (83%) |
@@ -238,10 +239,9 @@ None.
 7. Assert (after navigation completes): the URL is `/app/new`. The
    first form input on the page is pre-filled with the
    `nlqdb_draft` value.
-8. Assert: a `solve.try_query_clicked` event was emitted (check the
-   `window.__nlqdb_logsnag` global — easier than asserting a real
-   LogSnag-side delivery, which is a separate story; emission is the
-   client contract).
+8. Assert: the client calls the `solve.try_query_clicked` event hook by
+   injecting a `window.__nlqdb_logsnag` spy before the click. Real
+   LogSnag-side delivery remains a separate sink-health check.
 9. Submit the prefilled form. Continue as FLOW-001 step 5+
    (TTFV < 60 s, table renders, trace reveals SQL).
 
@@ -264,7 +264,11 @@ None.
 
 | Date | Agent | State | Slug walked | Notes |
 |---|---|---|---|---|
-| — | — | not yet attempted | — | — |
+| 2026-05-23 | gpt-5.5 | failed step 8 | cheap-internal-dashboard | Deployed Playwright walk passed steps 1-7 (`FAQPage` + `HowTo`, honest-limits, `nlqdb_draft`, `/app/new` rehydrate), but an injected `window.__nlqdb_logsnag` spy observed no `solve.try_query_clicked`; manual continuation to submit returned `403 feature_gated` from `https://app.nlqdb.com/v1/ask`. |
+
+### Triage
+
+The first failed assertion is CTA telemetry: the static page wrote the draft and navigated, but the injected event spy saw no `solve.try_query_clicked`. A manual continuation then reached `/app/new` with the expected draft and hit `403 feature_gated` on first query, so FLOW-002 needs both event-hook verification/fix and an invite-bearing journey (or explicit waitlist detour) before it can count as a verified first-value acquisition path.
 
 ---
 

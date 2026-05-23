@@ -163,6 +163,56 @@ jobs:
         if: steps.precheck.outputs.exists == 'true'
         run: uv run ruff check
 
+  acquisition-plan-mirror:
+    name: ICP tracker mirror integrity
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+
+      - name: Verify FLOW ids stay mirrored
+        run: |
+          python3 - <<'PY'
+          import pathlib
+          import re
+          import sys
+
+          root = pathlib.Path("docs/research")
+          impl = (root / "automated-icp-validation-plan.md").read_text()
+          verify = (root / "automated-icp-validation-plan-verification.md").read_text()
+          pattern = re.compile(r"^#{2,3}\s+(FLOW-\d+)", re.MULTILINE)
+          impl_ids = set(pattern.findall(impl))
+          verify_ids = set(pattern.findall(verify))
+          if impl_ids != verify_ids:
+            print("Implementation-only:", sorted(impl_ids - verify_ids))
+            print("Verification-only:", sorted(verify_ids - impl_ids))
+            sys.exit(1)
+          print("FLOW mirror ids:", ", ".join(sorted(impl_ids)))
+          PY
+
+      - name: Verify ICP secret wiring
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import sys
+
+          required = {
+            ".env.example": ["GH_TOKEN=", "LOGSNAG_TOKEN=", "LOGSNAG_PROJECT="],
+            "scripts/mirror-secrets-gha.sh": ["GH_TOKEN", "LOGSNAG_TOKEN", "LOGSNAG_PROJECT"],
+            "scripts/mirror-secrets-workers.sh": ["GH_TOKEN", "LOGSNAG_TOKEN", "LOGSNAG_PROJECT"],
+            "scripts/verify-secrets.sh": ["check_http GH_TOKEN", "LOGSNAG_TOKEN", "LOGSNAG_PROJECT"],
+          }
+          missing = []
+          for path, needles in required.items():
+            text = Path(path).read_text()
+            missing.extend(f"{path}: {needle}" for needle in needles if needle not in text)
+          if missing:
+            print("Missing ICP secret wiring:")
+            print("\n".join(missing))
+            sys.exit(1)
+          print("ICP secret wiring present")
+          PY
+
   test-api:
     name: apps/api (typecheck + vitest + wrangler dry-run)
     runs-on: ubuntu-latest
