@@ -363,6 +363,7 @@ None.
 |---|---|---|---|---|
 | 2026-05-23 | composer-1 | partial steps 1, 2, 4, 9 | supabase | curl-only walk: `GET https://nlqdb.com/vs/supabase` → 200; `<h1 class="vs__title">nlqdb vs Supabase</h1>` matches the template; `FAQPage` JSON-LD present (1); `/llms.txt` lists all 3 vs slugs (`mem0`, `supabase`, `vanna`) — step 9 smoke check passes. Steps 3 (DOM "When to choose Supabase" section), 5–8 (CTA click, draft hydrate, prefill, first-query submit) require a browser and are unattempted. |
 | 2026-05-23 | composer-2 | partial steps 1, 2, 4, 9 | all 3 slugs | `scripts/verify-flows.sh` re-walk: every slug (`supabase`, `vanna`, `mem0`) returns `307 → /vs/<slug>/` and the final 200 body matches `<h1[^>]*>nlqdb vs <Name></h1>` (Supabase / Vanna AI / Mem0) and carries a `"@type": "FAQPage"` JSON-LD block. `/llms.txt` (200, 4,357 bytes) enumerates every vs slug AND every solve slug (5/5). `/sitemap.xml` (200) lists 12 `<loc>` entries — the floor the script enforces. Steps 3, 5–8 still require a browser. |
+| 2026-05-23 | composer-3 | partial steps 1, 2, 4, 9 | all 3 slugs | Same `scripts/verify-flows.sh` re-walk after FLOW-008 source-health was added: every vs slug still 307 → trailing-slash → 200 with `<h1>` template-matching + FAQPage JSON-LD; `/llms.txt` enumerates all 3 vs + 5 solve slugs; `/sitemap.xml` still ≥ 12 `<loc>`. Steps 3, 5–8 still need a browser. |
 
 ---
 

@@ -167,6 +167,104 @@ if fetch_body "GET /sitemap.xml returns 200" "$BASE_URL/sitemap.xml"; then
   rm -f "$FETCH_BODY_PATH"
 fi
 
+# --- FLOW-008 — Weekly ICP scrape source-health probe --------------------
+
+# Same five upstreams the Mon 06:00 UTC cron in apps/api/src/icp-scrape.ts
+# pulls from. Per SK-ICP-007 the probe is best-effort: HN/SO/IH/GH must
+# answer (failure = real upstream regression), Reddit is advisory because
+# www.reddit.com serves 403 to most residential / datacentre egress
+# (the Worker's Cloudflare IP is the only canonical probe).
+
+ICP_SEVEN_DAYS_AGO=$(date -u -d '7 days ago' +%s 2>/dev/null || date -u -v-7d +%s)
+
+# Fetch a JSON URL with optional extra curl flags ($4..). On 200 sets
+# FETCH_BODY_PATH (caller cleans up). On non-200 prints `fail`/`note`
+# based on $3 ("fatal" or "advisory") and returns 1.
+fetch_json() {
+  FETCH_BODY_PATH=""
+  local label="$1" url="$2" severity="$3"; shift 3
+  local tmp status
+  tmp="$(mktemp -t nlqdb-verify-flows.XXXXXX)"
+  status=$(curl -sSL -m "$TIMEOUT_S" -o "$tmp" -w '%{http_code}' "$@" "$url" 2>/dev/null || true)
+  if [[ "$status" == "200" ]]; then
+    ok "$label (HTTP 200)"
+    FETCH_BODY_PATH="$tmp"
+    return 0
+  fi
+  if [[ "$severity" == "advisory" ]]; then
+    note "$label (HTTP $status — advisory; not failing the walk)"
+  else
+    fail "$label" "expected HTTP 200, got $status"
+  fi
+  rm -f "$tmp"
+  return 1
+}
+
+say "FLOW-008 — weekly ICP scrape source-health probe"
+
+# HN Algolia: > must be %3E (curl sends literal otherwise → 400).
+hn_url="https://hn.algolia.com/api/v1/search?query=text+to+sql&tags=story,comment&numericFilters=created_at_i%3E${ICP_SEVEN_DAYS_AGO}&hitsPerPage=10"
+if fetch_json "FLOW-008 source HN Algolia /api/v1/search" "$hn_url" fatal; then
+  if grep -q '"hits"' "$FETCH_BODY_PATH"; then
+    ok "  HN response carries \"hits\" key (JSON schema unchanged)"
+  else
+    fail "  HN response schema" "no \"hits\" key in body"
+  fi
+  rm -f "$FETCH_BODY_PATH"
+fi
+
+# Reddit: advisory because www.reddit.com 403s most non-CF egress.
+reddit_url="https://www.reddit.com/r/SaaS/search.json?q=retool+alternative&restrict_sr=on&sort=new&limit=5&t=week"
+fetch_json "FLOW-008 source Reddit /r/SaaS/search.json" "$reddit_url" advisory \
+  -A "nlqdb-icp-bot/1.0 (+https://nlqdb.com; contact: hello@nlqdb.com)" \
+  && rm -f "$FETCH_BODY_PATH"
+
+# GitHub Search Issues: only when GH_TOKEN is present locally (Worker
+# always has it; the agent VM frequently does not).
+if [[ -n "${GH_TOKEN:-}" ]]; then
+  gh_url='https://api.github.com/search/issues?q=is:issue+%22text+to+sql%22+created:%3E2025-11-01&per_page=5'
+  if fetch_json "FLOW-008 source GitHub /search/issues" "$gh_url" fatal \
+      -H "Authorization: Bearer $GH_TOKEN" \
+      -H "User-Agent: nlqdb-icp-bot" \
+      -H "Accept: application/vnd.github+json"; then
+    if grep -q '"total_count"' "$FETCH_BODY_PATH"; then
+      ok "  GH response carries \"total_count\" key (JSON schema unchanged)"
+    else
+      fail "  GH response schema" "no \"total_count\" key in body"
+    fi
+    rm -f "$FETCH_BODY_PATH"
+  fi
+else
+  note "FLOW-008 source GitHub: skipped (GH_TOKEN not set in this shell — Worker still uses its bound secret)"
+fi
+
+# Stack Exchange: no auth; quota_remaining surfaces capacity.
+so_url="https://api.stackexchange.com/2.3/search/advanced?site=stackoverflow&tagged=postgresql&q=setup&pagesize=5&fromdate=${ICP_SEVEN_DAYS_AGO}&sort=creation&order=desc"
+if fetch_json "FLOW-008 source Stack Exchange /search/advanced" "$so_url" fatal --compressed; then
+  quota=$(grep -oE '"quota_remaining":\s*[0-9]+' "$FETCH_BODY_PATH" | grep -oE '[0-9]+' | head -1)
+  if [[ -n "$quota" ]]; then
+    ok "  SO quota_remaining=$quota (300/IP/day cap; cron uses 5/week)"
+  else
+    fail "  SO response schema" "no quota_remaining in body"
+  fi
+  rm -f "$FETCH_BODY_PATH"
+fi
+
+# Indie Hackers: unofficial JSON Feed mirror.
+ih_url="https://feed.indiehackers.world/posts.json?q=database&exclude=link-post"
+if fetch_json "FLOW-008 source Indie Hackers /posts.json" "$ih_url" fatal \
+    -H "User-Agent: nlqdb-icp-bot/1.0 (+https://nlqdb.com; contact: hello@nlqdb.com)" \
+    -H "Accept: application/json"; then
+  if grep -q '"items"' "$FETCH_BODY_PATH"; then
+    ok "  IH response carries \"items\" key (JSON Feed schema unchanged)"
+  else
+    fail "  IH response schema" "no \"items\" key in body"
+  fi
+  rm -f "$FETCH_BODY_PATH"
+fi
+
+note "FLOW-008 cron-side checks (KV writes, evidence-file PUT, LogSnag publish) require the deployed Worker; this probe only proves upstream availability."
+
 # --- summary ------------------------------------------------------------
 
 echo ""

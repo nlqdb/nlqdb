@@ -210,7 +210,7 @@ working in one directory.
 | [`docs/progress.md`](docs/progress.md) | Platform integration tiers (P0–P3). |
 | [`docs/research-receipts.md`](docs/research-receipts.md) | Receipts for cited research. |
 | [`docs/competitors.md`](docs/competitors.md) | Competitive landscape — categories, threat matrix, gap analysis. |
-| [`docs/history/`](docs/history/) | Lessons learnt — one doc per operational topic (infra setup, Workers Versions GC, CI actions repo layout, etc.). |
+| [`docs/history/`](docs/history/) | Lessons learnt — one doc per operational topic. |
 | [`docs/research/`](docs/research/) | Strategic research — personas, LLM credits plan, email & marketing strategy, Phase 1 exit criteria, open design questions. |
 | [`docs/future/`](docs/future/) | Forward-looking plans not yet promoted to a feature — semantic-layer adoption, etc. Promote into the relevant feature once decisions are firm. |
 
