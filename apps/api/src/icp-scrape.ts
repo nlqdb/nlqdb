@@ -473,13 +473,7 @@ type IhFeed = {
 };
 
 // 5 P1-pain queries; the mirror runs full-text search across title + content_html, not tags.
-const INDIEHACKERS_QUERIES = [
-  "database",
-  "boilerplate",
-  "side+project",
-  "first+paying",
-  "stack",
-];
+const INDIEHACKERS_QUERIES = ["database", "boilerplate", "side+project", "first+paying", "stack"];
 
 const IH_FEED_URL = "https://feed.indiehackers.world/posts.json";
 const IH_USER_AGENT = "nlqdb-icp-bot/1.0 (+https://nlqdb.com; contact: hello@nlqdb.com)";
@@ -488,7 +482,7 @@ const IH_USER_AGENT = "nlqdb-icp-bot/1.0 (+https://nlqdb.com; contact: hello@nlq
 function ihIdFromUrl(url: string | undefined): string | null {
   if (!url) return null;
   const m = url.match(/\/post\/([a-zA-Z0-9-]+)/);
-  return m && m[1] ? m[1] : null;
+  return m?.[1] ?? null;
 }
 
 async function fetchIndieHackers(
@@ -509,9 +503,7 @@ async function fetchIndieHackers(
         });
         span.setAttribute("http.response.status_code", res.status);
         if (!res.ok) {
-          console.warn(
-            JSON.stringify({ msg: "icp_ih_fetch_error", query: q, status: res.status }),
-          );
+          console.warn(JSON.stringify({ msg: "icp_ih_fetch_error", query: q, status: res.status }));
           span.end();
           return;
         }

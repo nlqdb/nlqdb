@@ -616,7 +616,8 @@ describe("runIcpScrape", () => {
           {
             url: `https://feed.indiehackers.world/post/${id}`,
             title: `IH Post ${id}`,
-            content_html: "<p>I'm a solo founder and database setup is killing my side project.</p>",
+            content_html:
+              "<p>I'm a solo founder and database setup is killing my side project.</p>",
             date_modified: ts,
             author: { name: "Tester" },
           },
@@ -701,8 +702,7 @@ describe("runIcpScrape", () => {
       const stubFetch: typeof fetch = vi.fn(async (url: string | URL | Request) => {
         const urlStr = typeof url === "string" ? url : url instanceof URL ? url.href : url.url;
         if (urlStr.includes("feed.indiehackers.world")) {
-          // 30-day-old post — should be filtered out client-side because the
-          // mirror has no fromdate parameter.
+          // Mirror has no fromdate parameter, so stale posts must be filtered client-side.
           return {
             ok: true,
             status: 200,
