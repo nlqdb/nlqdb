@@ -6,6 +6,10 @@
 #   FLOW-001 step 1+2 (homepage hero)
 #   FLOW-002 step 1, 3, 4 (/solve/<slug> + FAQPage/HowTo JSON-LD + honest-limits)
 #   FLOW-003 step 1, 2, 4, 9 (/vs/<slug> + h1 + FAQPage JSON-LD + /llms.txt)
+#   FLOW-005 step 1+2 (mcp.nlqdb.com OAuth discovery — proves the MCP
+#                      server is reachable and advertises the auth surface;
+#                      tools/list itself still needs a real client)
+#   FLOW-008 source-health (HN / Reddit / GH / SO / IH — the cron upstreams)
 # Steps that need a browser, OAuth, or an inbox stay in the verification
 # mirror for the Playwright/FLOW-004+ pass; the script prints them as
 # `· requires browser` so future agents see them and don't claim a pass.
@@ -60,6 +64,40 @@ assert_match() {
   else
     fail "$label" "pattern not found: $pattern"
   fi
+}
+
+# Fetch a JSON URL with optional extra curl flags ($4..). On 200 sets
+# FETCH_BODY_PATH (caller cleans up). On non-200 prints `fail`/`note`
+# based on $3 ("fatal" or "advisory") and returns 1.
+#
+# Egress-policy aware: the agent's network may sit behind a managed-egress
+# proxy that returns 403 + `x-block-reason: hostname_blocked` for any
+# upstream the policy doesn't allow. The deployed Worker (the canonical
+# probe) doesn't share that block, so we treat the sandbox-egress 403 as
+# advisory regardless of the caller's severity choice.
+fetch_json() {
+  FETCH_BODY_PATH=""
+  local label="$1" url="$2" severity="$3"; shift 3
+  local tmp hdr status block_reason
+  tmp="$(mktemp -t nlqdb-verify-flows.XXXXXX)"
+  hdr="$(mktemp -t nlqdb-verify-flows-hdr.XXXXXX)"
+  status=$(curl -sSL -m "$TIMEOUT_S" -D "$hdr" -o "$tmp" -w '%{http_code}' "$@" "$url" 2>/dev/null || true)
+  block_reason=$(grep -i '^x-block-reason:' "$hdr" 2>/dev/null | head -1 | awk -F': *' '{print $2}' | tr -d '\r\n')
+  rm -f "$hdr"
+  if [[ "$status" == "200" ]]; then
+    ok "$label (HTTP 200)"
+    FETCH_BODY_PATH="$tmp"
+    return 0
+  fi
+  if [[ -n "$block_reason" ]]; then
+    note "$label (HTTP $status, x-block-reason=$block_reason — sandbox egress; Worker is canonical)"
+  elif [[ "$severity" == "advisory" ]]; then
+    note "$label (HTTP $status — advisory; not failing the walk)"
+  else
+    fail "$label" "expected HTTP 200, got $status"
+  fi
+  rm -f "$tmp"
+  return 1
 }
 
 # Asserts a 307 → 200 redirect chain exists from a non-trailing-slash URL
@@ -167,6 +205,42 @@ if fetch_body "GET /sitemap.xml returns 200" "$BASE_URL/sitemap.xml"; then
   rm -f "$FETCH_BODY_PATH"
 fi
 
+# --- FLOW-005 — MCP discovery (curl-observable subset, steps 1+2) --------
+
+# The MCP server uses OAuth (RFC 9728 protected-resource + RFC 8414
+# authorization-server metadata). The discovery endpoints are
+# unauthenticated by design, so an agent VM with no `sk_mcp_*` key can
+# still prove (a) the Worker is reachable, (b) it advertises the auth
+# surface, (c) the JSON contract is intact. The authenticated
+# `tools/list` walk (FLOW-005 step 3+) still needs an MCP client.
+
+MCP_URL="${NLQDB_MCP_URL:-https://mcp.nlqdb.com}"
+
+say "FLOW-005 — MCP discovery (curl-observable subset)"
+mcp_pr_url="$MCP_URL/.well-known/oauth-protected-resource"
+if fetch_json "FLOW-005 step 1 GET /.well-known/oauth-protected-resource" "$mcp_pr_url" fatal \
+    -H "Accept: application/json"; then
+  if grep -q "\"resource\":\"$MCP_URL\"" "$FETCH_BODY_PATH"; then
+    ok "  MCP protected-resource advertises resource=$MCP_URL"
+  else
+    fail "  MCP protected-resource schema" "resource field missing or does not match $MCP_URL"
+  fi
+  rm -f "$FETCH_BODY_PATH"
+fi
+mcp_as_url="$MCP_URL/.well-known/oauth-authorization-server"
+if fetch_json "FLOW-005 step 2 GET /.well-known/oauth-authorization-server" "$mcp_as_url" fatal \
+    -H "Accept: application/json"; then
+  if grep -q "\"issuer\":\"$MCP_URL\"" "$FETCH_BODY_PATH" \
+      && grep -q '"authorization_endpoint"' "$FETCH_BODY_PATH" \
+      && grep -q '"token_endpoint"' "$FETCH_BODY_PATH"; then
+    ok "  MCP AS metadata carries issuer + authorization_endpoint + token_endpoint"
+  else
+    fail "  MCP AS metadata schema" "issuer/authorization_endpoint/token_endpoint missing"
+  fi
+  rm -f "$FETCH_BODY_PATH"
+fi
+note "FLOW-005 steps 3-7 require an authenticated MCP client (tools/list, create_database, ask, run) and an sk_mcp_* key"
+
 # --- FLOW-008 — Weekly ICP scrape source-health probe --------------------
 
 # Same five upstreams the Mon 06:00 UTC cron in apps/api/src/icp-scrape.ts
@@ -176,29 +250,6 @@ fi
 # (the Worker's Cloudflare IP is the only canonical probe).
 
 ICP_SEVEN_DAYS_AGO=$(date -u -d '7 days ago' +%s 2>/dev/null || date -u -v-7d +%s)
-
-# Fetch a JSON URL with optional extra curl flags ($4..). On 200 sets
-# FETCH_BODY_PATH (caller cleans up). On non-200 prints `fail`/`note`
-# based on $3 ("fatal" or "advisory") and returns 1.
-fetch_json() {
-  FETCH_BODY_PATH=""
-  local label="$1" url="$2" severity="$3"; shift 3
-  local tmp status
-  tmp="$(mktemp -t nlqdb-verify-flows.XXXXXX)"
-  status=$(curl -sSL -m "$TIMEOUT_S" -o "$tmp" -w '%{http_code}' "$@" "$url" 2>/dev/null || true)
-  if [[ "$status" == "200" ]]; then
-    ok "$label (HTTP 200)"
-    FETCH_BODY_PATH="$tmp"
-    return 0
-  fi
-  if [[ "$severity" == "advisory" ]]; then
-    note "$label (HTTP $status — advisory; not failing the walk)"
-  else
-    fail "$label" "expected HTTP 200, got $status"
-  fi
-  rm -f "$tmp"
-  return 1
-}
 
 say "FLOW-008 — weekly ICP scrape source-health probe"
 
@@ -238,7 +289,9 @@ else
   note "FLOW-008 source GitHub: skipped (GH_TOKEN not set in this shell — Worker still uses its bound secret)"
 fi
 
-# Stack Exchange: no auth; quota_remaining surfaces capacity.
+# Stack Exchange: no auth; quota_remaining surfaces capacity. Like Reddit
+# this can return 403 + x-block-reason from a sandbox-egress proxy — the
+# fetch_json helper degrades that to an advisory note automatically.
 so_url="https://api.stackexchange.com/2.3/search/advanced?site=stackoverflow&tagged=postgresql&q=setup&pagesize=5&fromdate=${ICP_SEVEN_DAYS_AGO}&sort=creation&order=desc"
 if fetch_json "FLOW-008 source Stack Exchange /search/advanced" "$so_url" fatal --compressed; then
   quota=$(grep -oE '"quota_remaining":\s*[0-9]+' "$FETCH_BODY_PATH" | grep -oE '[0-9]+' | head -1)
