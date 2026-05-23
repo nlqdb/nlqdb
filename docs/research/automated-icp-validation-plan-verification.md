@@ -21,15 +21,19 @@
 > below, open a PR. A failed flow IS the next agent's #1 — not a
 > ping to anyone.
 
-> **Status (2026-05-23):** 0 / 7 flows fully passed. 3 / 7 have
-> curl-only partial passes (FLOW-001, FLOW-002, FLOW-003 — all 8
-> AEO slugs covered). FLOW-002 carries a failed step 8 (CTA
-> telemetry + gate continuation) — that failure routes back as
-> priority #4 in the impl plan's pick-list, not as a notification.
-> Full Playwright walks are still pending for every flow; the
-> §1.1 stranger-test Playwright primitive (impl plan priority #1)
-> is what closes the gap from "curl-observable static" to
-> "stranger lands and gets first-value."
+> **Status (2026-05-23):** 0 / 8 flows fully passed. FLOW-008 (cron
+> upstream-health) holds a curl-only pass against the 3 sources the
+> sandbox can reach (HN / GH / IH) and an advisory note for the 2 the
+> sandbox-egress proxy blocks (Reddit / Stack Exchange — the deployed
+> Worker is the canonical probe). FLOW-001 / FLOW-002 / FLOW-003 have
+> curl-only partial passes across all 8 AEO slugs; FLOW-005 has a new
+> curl-only partial pass on the OAuth discovery precondition.
+> FLOW-002 carries a failed step 8 (CTA telemetry + gate continuation)
+> — that failure routes back as priority #4 in the impl plan's
+> pick-list, not as a notification. Full Playwright walks are still
+> pending for every user-flow; the §1.1 stranger-test Playwright
+> primitive (impl plan priority #1) is what closes the gap from
+> "curl-observable static" to "stranger lands and gets first-value."
 
 ---
 
@@ -41,9 +45,10 @@
 | FLOW-002 | P3 analyst | failed 2026-05-23 step 8; curl steps 1, 3, 4 re-pass across all 5 slugs via `verify-flows.sh` | 2026-05-23 | 5/6 (83%) |
 | FLOW-003 | P3 / P4 | partial — curl steps 1, 2, 4, 9 re-pass across all 3 slugs via `verify-flows.sh`; 5–8 need browser | 2026-05-23 | 5/5 (100%) |
 | FLOW-004 | P1 solo builder | not yet attempted | — | 5/6 (83%) |
-| FLOW-005 | P2 agent builder | not yet attempted | — | 5/6 (83%) |
+| FLOW-005 | P2 agent builder | partial — OAuth discovery precondition passes via `verify-flows.sh`; walkthrough steps 1-7 need an authenticated MCP client | 2026-05-23 | 5/6 (83%) |
 | FLOW-006 | P4 backend engineer | not yet attempted | — | 5/6 (83%) |
 | FLOW-007 | P1 / P3 | not yet attempted | — | 5/6 (83%) |
+| FLOW-008 | cron / system | partial — curl probe of 5 sources passes (HN / GH / IH 200; Reddit / SO sandbox-egress advisory); cron-side KV writes + LogSnag publish need the deployed Worker | 2026-05-23 | 8/8 (100%) |
 
 **Verification states:**
 - `not yet attempted` — no agent has tried this flow.
@@ -70,14 +75,16 @@ section as a binding playbook.
 ### 1. Pick a flow
 
 Default: run [`scripts/verify-flows.sh`](../../scripts/verify-flows.sh)
-first (49 static assertions across FLOW-001/002/003 in under 2 s, zero
-credentials). If it exits non-zero, fix the regression it surfaced
-before walking anything new — that failure is the highest-leverage
-work. If it exits 0, then pick the topmost `not yet attempted` flow
-whose `Required credentials` you can satisfy without asking. If no
-flow is satisfiable without asking, pick FLOW-001 (zero credentials)
-and walk the browser-only steps the script can't cover — that's
-where the §1.1 stranger-test gap actually lives.
+first (curl-observable static subset of FLOW-001/002/003/005/008 in
+under 3 s, zero credentials; `NLQDB_BASE_URL` and `NLQDB_MCP_URL`
+override the deployed targets for preview verification). If it exits
+non-zero, fix the regression it surfaced before walking anything new
+— that failure is the highest-leverage work. If it exits 0, then pick
+the topmost `not yet attempted` flow whose `Required credentials` you
+can satisfy without asking. If no flow is satisfiable without asking,
+pick FLOW-001 (zero credentials) and walk the browser-only steps the
+script can't cover — that's where the §1.1 stranger-test gap actually
+lives.
 
 ### 2. Read the whole block before doing anything
 
@@ -221,6 +228,7 @@ requires credentials, that itself is the failure.
 |---|---|---|---|---|
 | 2026-05-23 | composer-1 | partial steps 1–2 | — | curl-only walk: `GET https://nlqdb.com/` → 200 (93 KB), hero `<form>` rendered with `placeholder="an orders tracker"` matching the `/orders\|tracker\|building/i` contract. Steps 3–9 require a browser (anonymous device-token issuance, `/v1/ask` POST with TTFV timer, trace toggle, clipboard, follow-up query) and were not exercised in this PR — Playwright not available on the agent VM. |
 | 2026-05-23 | composer-2 | partial steps 1–2 | — | `scripts/verify-flows.sh` re-run against `https://nlqdb.com`: `GET /` → 200 (93,605 bytes); hero placeholder `"an orders tracker"` still matches the `/orders\|tracker\|building/i` contract. Steps 3–9 unchanged — still need a browser context. |
+| 2026-05-23 | composer-4 | partial steps 1–2 | — | `scripts/verify-flows.sh` re-run with the new egress-policy-aware `fetch_json` and FLOW-005 discovery block: hero placeholder still matches; FLOW-005 OAuth discovery surface now also passes (see FLOW-005 outcome log). Steps 3–9 unchanged. |
 
 ---
 
@@ -295,6 +303,7 @@ None.
 | 2026-05-23 | gpt-5.5 | failed step 8 | cheap-internal-dashboard | Deployed Playwright walk passed steps 1-7 (`FAQPage` + `HowTo`, honest-limits, `nlqdb_draft`, `/app/new` rehydrate), but an injected `window.__nlqdb_logsnag` spy observed no `solve.try_query_clicked`; manual continuation to submit returned `403 feature_gated` from `https://app.nlqdb.com/v1/ask`. |
 | 2026-05-23 | composer-1 | partial steps 1, 3, 4 | cheap-internal-dashboard | curl-only re-verification before adding the Stack Overflow source: page still 200, `FAQPage` + `HowTo` JSON-LD both present (1 each), "What nlqdb doesn't do here" section still rendered. Steps 5–9 (CTA click, draft hydrate, `/app/new` rehydrate, event spy, first-query) not re-attempted — Playwright not available; the prior 2026-05-23 failure on step 8 stands as the binding gap. |
 | 2026-05-23 | composer-2 | partial steps 1, 3, 4 | all 5 slugs | `scripts/verify-flows.sh` re-walk against `https://nlqdb.com`: every slug (`cheap-internal-dashboard`, `give-ai-agent-persistent-memory`, `skip-postgres-setup-side-project`, `natural-language-sql-without-training-data`, `ship-leaderboard-no-sql`) returns `307 → https://nlqdb.com/solve/<slug>/` and the final `200` body carries `"@type": "FAQPage"`, `"@type": "HowTo"`, and a "What nlqdb doesn't do here" section. Trailing-slash redirect is new evidence — see Triage. Steps 5–9 still need a browser; the prior step 8 failure stands. |
+| 2026-05-23 | composer-4 | partial steps 1, 3, 4 | all 5 slugs | Same re-walk after the FLOW-005 + egress-policy script additions landed: every slug still 307 → trailing-slash → 200 with FAQPage + HowTo JSON-LD and the honest-limits section. Steps 5–9 still need a browser; step 8 failure stands. |
 
 ### Triage
 
@@ -364,6 +373,7 @@ None.
 | 2026-05-23 | composer-1 | partial steps 1, 2, 4, 9 | supabase | curl-only walk: `GET https://nlqdb.com/vs/supabase` → 200; `<h1 class="vs__title">nlqdb vs Supabase</h1>` matches the template; `FAQPage` JSON-LD present (1); `/llms.txt` lists all 3 vs slugs (`mem0`, `supabase`, `vanna`) — step 9 smoke check passes. Steps 3 (DOM "When to choose Supabase" section), 5–8 (CTA click, draft hydrate, prefill, first-query submit) require a browser and are unattempted. |
 | 2026-05-23 | composer-2 | partial steps 1, 2, 4, 9 | all 3 slugs | `scripts/verify-flows.sh` re-walk: every slug (`supabase`, `vanna`, `mem0`) returns `307 → /vs/<slug>/` and the final 200 body matches `<h1[^>]*>nlqdb vs <Name></h1>` (Supabase / Vanna AI / Mem0) and carries a `"@type": "FAQPage"` JSON-LD block. `/llms.txt` (200, 4,357 bytes) enumerates every vs slug AND every solve slug (5/5). `/sitemap.xml` (200) lists 12 `<loc>` entries — the floor the script enforces. Steps 3, 5–8 still require a browser. |
 | 2026-05-23 | composer-3 | partial steps 1, 2, 4, 9 | all 3 slugs | Same `scripts/verify-flows.sh` re-walk after FLOW-008 source-health was added: every vs slug still 307 → trailing-slash → 200 with `<h1>` template-matching + FAQPage JSON-LD; `/llms.txt` enumerates all 3 vs + 5 solve slugs; `/sitemap.xml` still ≥ 12 `<loc>`. Steps 3, 5–8 still need a browser. |
+| 2026-05-23 | composer-4 | partial steps 1, 2, 4, 9 | all 3 slugs | Same re-walk after FLOW-005 + egress-policy script additions: every vs slug 307 → 200 with the template `<h1>` and FAQPage JSON-LD; `/llms.txt` still enumerates all 3 vs + 5 solve slugs; `/sitemap.xml` still 12 `<loc>`. Steps 3, 5–8 still need a browser. |
 
 ---
 
@@ -505,7 +515,7 @@ provision and query in English."
 
 | Date | Agent | State | Tools confirmed | Notes |
 |---|---|---|---|---|
-| — | — | not yet attempted | — | — |
+| 2026-05-23 | composer-4 | partial (discovery precondition) | OAuth metadata (no tools confirmed) | `scripts/verify-flows.sh` curl-only probe against `https://mcp.nlqdb.com`: `/.well-known/oauth-protected-resource` → 200 with `resource=https://mcp.nlqdb.com`; `/.well-known/oauth-authorization-server` → 200 with `issuer=https://mcp.nlqdb.com`, `authorization_endpoint`, `token_endpoint`. These two endpoints are the precondition the MCP inspector consumes during its handshake in walkthrough step 1 — a 4xx/5xx here would block step 1 outright. Unauthenticated `POST /mcp tools/list` returns `401 invalid_token` — the auth wall is intact. Walkthrough steps 1-7 (inspector transport handshake, `tools/list`, `create_database`, `ask`, `run`) need an MCP inspector + `sk_mcp_*` key and are unattempted in this PR. |
 
 ---
 
@@ -642,6 +652,94 @@ losing my rows."
 | Date | Agent | State | Rows preserved? | Notes |
 |---|---|---|---|---|
 | — | — | not yet attempted | — | — |
+
+---
+
+## FLOW-008 — Weekly ICP scrape source-health
+
+**Persona:** cron / system (no user persona — this is the data pipeline)
+**Mirror:** [`automated-icp-validation-plan.md §8 FLOW-008`](./automated-icp-validation-plan.md)
+
+### Source signal
+
+The signal this flow proves is "the Mon 06:00 UTC cron can still reach
+the 5 upstreams it depends on". A silent upstream schema change or
+endpoint move only surfaces today after the LogSnag count drops to
+zero; this flow makes the failure agent-observable before the cron
+fires. Per [`SK-ICP-007`](../features/icp-mining/FEATURE.md) the probe
+is best-effort: the 5 sources are the same ones listed in
+[`automated-icp-validation-plan.md §2.1`](./automated-icp-validation-plan.md).
+
+### Required tools
+
+- `curl` (the agent VM's stdlib is enough).
+- `bash` ≥ 4.
+
+### Required credentials
+
+- `GH_TOKEN` (optional) for the GitHub Search probe. When absent the
+  script skips that single probe with a note; the deployed Worker still
+  uses its own bound secret.
+- No other credentials. The Stack Exchange and Indie Hackers probes
+  are anonymous; HN Algolia is public; Reddit is unauthenticated.
+
+### Walkthrough steps
+
+1. From the repo root, run `bash scripts/verify-flows.sh`. The script
+   exits non-zero on any fatal assertion.
+2. Assert: HN Algolia `/api/v1/search` returns 200 AND the body
+   contains a `"hits"` key. Failure ⇒ HN Algolia schema/endpoint
+   regression — the cron's `fetchHN` will start returning empty.
+3. Assert: GitHub `/search/issues` returns 200 AND the body contains
+   `"total_count"` (only when `GH_TOKEN` is set; otherwise this step
+   is skipped with a note).
+4. Assert: Indie Hackers `/posts.json` returns 200 AND the body
+   contains an `"items"` key.
+5. Reddit `/r/SaaS/search.json` and Stack Exchange `/search/advanced`
+   may return 200 (good — record the `quota_remaining` for SO) OR
+   they may return 403 with `x-block-reason: hostname_blocked`
+   (sandbox-egress proxy block — the script downgrades to an advisory
+   note since the deployed Worker is the canonical probe). Any other
+   non-200 ⇒ real upstream regression.
+
+### Pass criteria
+
+- HN + IH probes return 200 with the contract keys.
+- GH probe is either 200-with-key OR skipped-no-token.
+- Reddit + SO probes are either 200-with-quota-key OR advisory
+  egress-block notes. Any other 4xx/5xx fails the walk.
+- Script exits 0.
+
+### If blocked
+
+- HN 5xx for the whole walk window → `blocked upstream` (HN Algolia
+  outage). Re-run within an hour.
+- GH 401 with `GH_TOKEN` set → `failed step 3`; the token rotated or
+  was revoked. Mint a new PAT and update the Worker secret per
+  [`scripts/mirror-secrets-workers.sh`](../../scripts/mirror-secrets-workers.sh).
+- IH 502 from the unofficial mirror → `blocked upstream`; the mirror
+  is single-instance and occasionally rate-limits. The cron's per-source
+  catch isolates IH from killing the rest.
+
+### Outcome log
+
+| Date | Agent | State | Notes |
+|---|---|---|---|
+| 2026-05-23 | composer-4 | partial steps 1-5 (upstream availability) | `scripts/verify-flows.sh` against `https://nlqdb.com` + `https://mcp.nlqdb.com`: HN 200 (`hits` present), GH 200 (`total_count=1644` live-probed today), IH 200 (`items` present). Reddit + Stack Exchange both 403 with `x-block-reason: hostname_blocked` from the sandbox-egress proxy — degraded to advisory per the script's helper. Cron-side checks (KV writes, evidence-file PUT, LogSnag publish) require the deployed Worker and remain a separate post-cron audit. |
+
+### Triage
+
+**Sandbox egress vs real upstream (2026-05-23, composer-4):** the
+agent VM sits behind a managed-egress proxy that returns
+`HTTP 403, x-block-reason: hostname_blocked` for `www.reddit.com`
+and `api.stackexchange.com`. A naive curl call from the agent VM
+will see this as a hard failure; the deployed Worker's Cloudflare
+egress is the canonical probe because it doesn't share the block.
+The `fetch_json` helper in `scripts/verify-flows.sh` reads the
+`x-block-reason` response header and degrades any non-200 carrying
+it to an advisory note, regardless of the caller's severity choice.
+No content regression — the cron itself runs on the Worker and is
+unaffected.
 
 ---
 
