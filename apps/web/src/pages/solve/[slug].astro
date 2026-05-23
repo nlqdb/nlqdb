@@ -1,0 +1,395 @@
+---
+// One template, N pain-driven pages — generated at build via
+// `getStaticPaths()` from `data/solve.ts`. AEO patterning: direct-
+// answer capsule above the fold, named search query in <h1>, FAQPage
+// + HowTo JSON-LD, honest "what nlqdb doesn't do" section, cited
+// public-discussion hubs as evidence trail.
+
+import Footer from "../../components/Footer.astro";
+import Topnav from "../../components/Topnav.astro";
+import { SOLVE_ENTRIES, solveBySlug } from "../../data/solve";
+import Base from "../../layouts/Base.astro";
+
+export function getStaticPaths() {
+  return SOLVE_ENTRIES.map((s) => ({ params: { slug: s.slug } }));
+}
+
+const { slug } = Astro.params;
+const s = solveBySlug(slug as string);
+if (!s) {
+  return Astro.redirect("/solve");
+}
+
+const pageTitle = `${s.searchTitle} — nlqdb`;
+const description = s.oneLiner;
+const canonical = `/solve/${s.slug}`;
+
+const faqJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  mainEntity: s.faqs.map((f) => ({
+    "@type": "Question",
+    name: f.q,
+    acceptedAnswer: { "@type": "Answer", text: f.a },
+  })),
+};
+
+// HowTo JSON-LD — per §3.1 of automated-icp-validation-plan.md. The
+// three steps map to the canonical anonymous-mode arc: read, embed,
+// adopt. Cited-source heuristics on Perplexity / ChatGPT lift
+// structured HowTo step text into "how to" answer boxes.
+const howToJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "HowTo",
+  name: s.searchTitle,
+  description: s.oneLiner,
+  totalTime: "PT2M",
+  tool: [{ "@type": "HowToTool", name: "<nlq-data> element" }],
+  step: [
+    {
+      "@type": "HowToStep",
+      name: "Drop the element in your HTML",
+      text: `Add <nlq-data goal="${s.demoGoal}"></nlq-data> to any page. No build step, no script tag besides the loader.`,
+    },
+    {
+      "@type": "HowToStep",
+      name: "First answer mints the database",
+      text: "The first request provisions a real Postgres database in the user's anonymous-mode tenant. The schema is inferred from the goal; subsequent goals reuse the same DB.",
+    },
+    {
+      "@type": "HowToStep",
+      name: "Adopt to keep it past 72 hours",
+      text: "Anonymous databases auto-sweep after 72 hours unless adopted. Sign in and click 'Adopt this database' to re-key it to your account with no data loss.",
+    },
+  ],
+};
+---
+<Base title={pageTitle} description={description} canonical={canonical}>
+  <div class="page">
+    <Topnav />
+
+    <main class="solve">
+      <header class="solve__head">
+        <p class="solve__kicker">Solve · {s.persona}</p>
+        <h1 class="solve__title">{s.searchTitle}</h1>
+        <p class="solve__lede">{s.oneLiner}</p>
+        <p class="solve__context">{s.painContext}</p>
+      </header>
+
+      <section class="solve__demo" aria-label={`Code snippet for the goal "${s.demoGoal}"`}>
+        <h2 class="solve__h2">Drop this in your HTML</h2>
+        <p class="solve__demo-why">{s.demoWhy}</p>
+        <div class="solve__demo-card">
+          <div class="solve__demo-prompt">
+            <span class="solve__demo-arrow">&gt;</span>
+            <code>{s.demoGoal}</code>
+          </div>
+          <pre class="solve__demo-snippet"><code>{`<nlq-data goal="${s.demoGoal}"></nlq-data>`}</code></pre>
+          <div class="solve__demo-footer">
+            <p class="solve__demo-note">
+              First query mints a Postgres database in your anonymous tenant; the
+              compiled SQL appears under the trace toggle so you can audit it
+              before trusting the answer.
+            </p>
+            <button
+              type="button"
+              class="solve__try-btn"
+              data-try-goal={s.demoGoal}
+              data-solve-slug={s.slug}
+            >
+              Try this query &rarr;
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <section class="solve__answers" aria-labelledby="solve-answers-title">
+        <h2 class="solve__h2" id="solve-answers-title">What nlqdb actually does for this</h2>
+        <ul class="solve__bullets">
+          {s.howNlqdbAnswers.map((b) => <li>{b}</li>)}
+        </ul>
+      </section>
+
+      <section class="solve__limits" aria-labelledby="solve-limits-title">
+        <h2 class="solve__h2" id="solve-limits-title">What nlqdb doesn't do here</h2>
+        <ul class="solve__bullets solve__bullets--limits">
+          {s.whatItDoesnt.map((b) => <li>{b}</li>)}
+        </ul>
+      </section>
+
+      <section class="solve__faqs" aria-labelledby="solve-faqs-title">
+        <h2 class="solve__h2" id="solve-faqs-title">Questions buyers ask</h2>
+        <dl>
+          {
+            s.faqs.map((f) => (
+              <div class="solve__faq">
+                <dt>{f.q}</dt>
+                <dd>{f.a}</dd>
+              </div>
+            ))
+          }
+        </dl>
+      </section>
+
+      <section class="solve__sources" aria-labelledby="solve-sources-title">
+        <h2 class="solve__h2" id="solve-sources-title">Where this pain shows up in public</h2>
+        <p class="solve__sources-lede">
+          Enduring discussion hubs where you can verify the theme without
+          taking our word for it. We don't quote individual posts; we cite
+          search-result and subreddit URLs that stay live as new threads land.
+        </p>
+        <ul class="solve__sources-list">
+          {
+            s.sources.map((src) => (
+              <li>
+                <a href={src.url} rel="nofollow noopener noreferrer" target="_blank">
+                  {src.label}
+                </a>
+              </li>
+            ))
+          }
+        </ul>
+      </section>
+
+      <section class="solve__cta">
+        <h2 class="solve__h2">Try nlqdb in 30 seconds</h2>
+        <p>
+          No sign-in. The anonymous database lasts 72 hours; adopt it with one
+          click if you keep it.
+        </p>
+        <a class="solve__cta-btn" href="/app/new">Start with a goal &rarr;</a>
+        <p class="solve__cta-meta">
+          Looking at this from a different angle?{" "}
+          <a href="/solve">Browse all solve pages</a>
+          {" "}or{" "}
+          <a href="/vs">browse competitor comparisons</a>.
+        </p>
+      </section>
+    </main>
+
+    <Footer />
+  </div>
+
+  <script is:inline type="application/ld+json" set:html={JSON.stringify(faqJsonLd)} />
+  <script is:inline type="application/ld+json" set:html={JSON.stringify(howToJsonLd)} />
+  <script>
+    // "Try this query" → seed the anonymous-create input via the same
+    // `nlqdb_draft` localStorage slot CreateForm rehydrates from
+    // (SK-ANON-011), emit a per-slug demand signal (GLOBAL-024), then
+    // navigate. No URL param so the goal can't be sniffed from
+    // referrer / access logs.
+    import { emit } from "../../lib/logsnag";
+    import { saveDraft } from "../../lib/prompt-storage";
+    document.querySelectorAll<HTMLButtonElement>(".solve__try-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const goal = btn.dataset["tryGoal"] ?? "";
+        const slug = btn.dataset["solveSlug"] ?? "";
+        if (goal) saveDraft(goal);
+        emit("solve.try_query_clicked", { slug, goal });
+        location.assign("/app/new");
+      });
+    });
+  </script>
+</Base>
+
+<style>
+  .solve {
+    max-width: 880px;
+    margin: 0 auto;
+    padding: clamp(32px, 5vw, 64px) clamp(16px, 4vw, 32px);
+  }
+  .solve__kicker {
+    font-family: var(--mono);
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--fg-dim);
+    font-size: 13px;
+    margin: 0 0 12px;
+  }
+  .solve__title {
+    font-family: var(--mono);
+    font-size: clamp(24px, 4vw, 38px);
+    letter-spacing: -0.02em;
+    line-height: 1.15;
+    margin: 0 0 16px;
+  }
+  .solve__lede {
+    font-size: clamp(16px, 1.8vw, 18px);
+    color: var(--fg);
+    max-width: 62ch;
+    margin: 0 0 20px;
+  }
+  .solve__context {
+    color: var(--fg-dim);
+    font-size: 15px;
+    line-height: 1.55;
+    max-width: 62ch;
+    margin: 0 0 48px;
+  }
+  .solve__h2 {
+    font-family: var(--mono);
+    font-size: clamp(18px, 2.4vw, 24px);
+    letter-spacing: -0.01em;
+    margin: 0 0 16px;
+  }
+  .solve__demo {
+    margin-bottom: 56px;
+  }
+  .solve__demo-why {
+    color: var(--fg-dim);
+    margin: 0 0 16px;
+    max-width: 62ch;
+  }
+  .solve__demo-card {
+    border: 2px solid var(--border-strong);
+    background: var(--bg-elev);
+    padding: 20px;
+  }
+  .solve__demo-prompt {
+    display: flex;
+    gap: 12px;
+    align-items: baseline;
+    font-family: var(--mono);
+    font-size: 15px;
+    margin-bottom: 16px;
+  }
+  .solve__demo-arrow {
+    color: var(--accent);
+  }
+  .solve__demo-snippet {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    padding: 12px;
+    margin: 0 0 12px;
+    overflow-x: auto;
+    font-size: 13px;
+  }
+  .solve__demo-snippet code {
+    font-family: var(--mono);
+  }
+  .solve__demo-footer {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+  @media (min-width: 560px) {
+    .solve__demo-footer {
+      flex-direction: row;
+      justify-content: space-between;
+      align-items: center;
+    }
+  }
+  .solve__demo-note {
+    color: var(--fg-dim);
+    font-size: 13px;
+    margin: 0;
+    max-width: 44ch;
+  }
+  .solve__try-btn {
+    align-self: flex-start;
+    padding: 10px 18px;
+    font-family: var(--mono);
+    font-size: 14px;
+    background: var(--accent);
+    color: var(--accent-fg);
+    border: 2px solid var(--accent-fg);
+    box-shadow: 3px 3px 0 0 var(--accent-fg);
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .solve__try-btn:hover {
+    transform: translate(-1px, -1px);
+    box-shadow: 4px 4px 0 0 var(--accent-fg);
+  }
+  .solve__answers,
+  .solve__limits {
+    margin-bottom: 56px;
+  }
+  .solve__bullets {
+    margin: 0;
+    padding-left: 20px;
+    color: var(--fg);
+    font-size: 15px;
+    line-height: 1.6;
+    max-width: 62ch;
+  }
+  .solve__bullets li + li {
+    margin-top: 10px;
+  }
+  .solve__bullets--limits {
+    color: var(--fg-dim);
+  }
+  .solve__faqs {
+    margin-bottom: 56px;
+  }
+  .solve__faqs dl {
+    margin: 0;
+  }
+  .solve__faq {
+    padding: 16px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .solve__faq dt {
+    font-weight: 600;
+    margin: 0 0 8px;
+    color: var(--fg);
+  }
+  .solve__faq dd {
+    margin: 0;
+    color: var(--fg);
+    line-height: 1.55;
+  }
+  .solve__sources {
+    margin-bottom: 56px;
+  }
+  .solve__sources-lede {
+    color: var(--fg-dim);
+    font-size: 14px;
+    margin: 0 0 12px;
+    max-width: 62ch;
+  }
+  .solve__sources-list {
+    margin: 0;
+    padding-left: 20px;
+    color: var(--fg);
+    font-size: 14px;
+    line-height: 1.55;
+  }
+  .solve__sources-list li + li {
+    margin-top: 8px;
+  }
+  .solve__sources-list a {
+    color: var(--accent);
+  }
+  .solve__cta {
+    padding: 32px;
+    border: 2px solid var(--accent);
+    background: var(--bg-elev);
+    text-align: center;
+  }
+  .solve__cta p {
+    color: var(--fg-dim);
+    margin: 0 0 20px;
+  }
+  .solve__cta-btn {
+    display: inline-block;
+    padding: 14px 28px;
+    background: var(--accent);
+    color: var(--accent-fg);
+    font-family: var(--mono);
+    text-decoration: none;
+    border: 2px solid var(--accent-fg);
+    box-shadow: 4px 4px 0 0 var(--accent-fg);
+  }
+  .solve__cta-btn:hover {
+    transform: translate(-2px, -2px);
+    box-shadow: 6px 6px 0 0 var(--accent-fg);
+  }
+  .solve__cta-meta {
+    margin: 24px 0 0;
+    font-size: 13px;
+  }
+  .solve__cta-meta a {
+    color: var(--accent);
+  }
+</style>

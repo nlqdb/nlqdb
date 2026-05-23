@@ -1,0 +1,65 @@
+---
+name: solve-pages
+description: `/solve/<slug>` pain-driven AEO pages — one page per recurring natural-language search query; each answers the question with a working `<nlq-data>` embed and names what nlqdb doesn't do.
+when-to-load:
+  globs:
+    - apps/web/src/data/solve.ts
+    - apps/web/src/data/solve.test.ts
+    - apps/web/src/pages/solve/**
+    - apps/web/src/pages/llms.txt.ts
+    - apps/web/src/pages/sitemap.xml.ts
+  topics: [solve, aeo, seo, acquisition, pain-page, llms-txt]
+---
+
+# Feature: Solve Pages
+
+**One-liner:** `/solve/<slug>` pain-driven AEO pages — one page per recurring natural-language search query; each answers the question with a working `<nlq-data>` embed and names what nlqdb doesn't do.
+**Status:** implemented (Phase 1, partial) — 5 hand-curated pages shipped: cheap-internal-dashboard (P3), give-ai-agent-persistent-memory (P2), skip-postgres-setup-side-project (P1), natural-language-sql-without-training-data (P3), ship-leaderboard-no-sql (P1). Implements [`docs/research/automated-icp-validation-plan.md §3.1`](../../research/automated-icp-validation-plan.md) ahead of cluster-driven entries (first cluster file 2026-05-26).
+**Owners (code):** `apps/web/src/data/solve.ts`, `apps/web/src/data/solve.test.ts`, `apps/web/src/pages/solve/**`, `apps/web/src/pages/llms.txt.ts`, `apps/web/src/pages/sitemap.xml.ts`
+**Cross-refs:** [`docs/research/automated-icp-validation-plan.md §3.1`](../../research/automated-icp-validation-plan.md) · [`docs/features/comparison-pages/FEATURE.md`](../comparison-pages/FEATURE.md) (sibling AEO surface) · [`docs/features/icp-mining/FEATURE.md`](../icp-mining/FEATURE.md) (future source of verbatim cluster quotes) · [`docs/features/web-app/FEATURE.md`](../web-app/FEATURE.md)
+
+## Touchpoints — read this feature before editing
+
+- `apps/web/src/data/solve.ts` — typed source of truth (one object per page)
+- `apps/web/src/data/solve.test.ts` — data-integrity tests pinning the AEO invariants
+- `apps/web/src/pages/solve/[slug].astro` — single dynamic template using `getStaticPaths()`
+- `apps/web/src/pages/solve/index.astro` — solve-page index (`/solve`)
+- `apps/web/src/pages/llms.txt.ts` — LLM-readable site index (auto-includes new slugs)
+- `apps/web/src/pages/sitemap.xml.ts` — XML sitemap (auto-includes new slugs)
+
+## Decisions
+
+Canonical bodies live in [`decisions/`](decisions/) — one file per `SK-SOLVE-NNN`.
+
+- [**SK-SOLVE-001**](decisions/SK-SOLVE-001-search-intent-h1.md) — Every solve page uses a natural-language search query as `<h1>`, not a fabricated "verbatim" quote.
+- [**SK-SOLVE-002**](decisions/SK-SOLVE-002-honest-limits-mandatory.md) — Every solve page ships a "What nlqdb doesn't do here" section.
+- [**SK-SOLVE-003**](decisions/SK-SOLVE-003-enduring-source-citations.md) — Every solve page cites ≥2 enduring discussion-hub URLs, never single-thread URLs.
+
+## GLOBALs governing this feature
+
+- **GLOBAL-024** — Demand-signal telemetry on every "not yet" path.
+  - *In this feature:* the "Try this query →" button emits `solve.try_query_clicked` with `{slug, goal}` via the existing `lib/logsnag.ts` emitter — same shape as `vs.try_query_clicked` (`comparison-pages`), so the events-pipeline funnel slices both surfaces uniformly. Future per-page conversion analytics depend on the page-view-analytics open question in `web-app/FEATURE.md`.
+- **GLOBAL-025** — North-star compass.
+  - *In this feature:* the KPI advanced is **onboarding** — every page CTA points at `/app/new` (anonymous mode); the solve page is the search-intent on-ramp the homepage can't be. KPI degraded: none.
+- **GLOBAL-028** — Acquisition progress tracker.
+  - *In this feature:* the implementation of [`automated-icp-validation-plan.md §3.1`](../../research/automated-icp-validation-plan.md). Progress is recorded in that file.
+
+## Open questions / known unknowns
+
+- **Verbatim cluster quotes once 2026-05-26 cluster file lands.** The §3.1 plan calls for verbatim cluster quotes as `<h1>`; SK-SOLVE-001 chose paraphrased search-intent questions in the interim. Once the first cluster file lands, a follow-up SK is needed to amend `searchTitle` to the verbatim cluster label when one is available — likely SK-SOLVE-004.
+- **Auto-generation from cluster output.** A natural extension of `icp-cluster.ts` is to draft new `/solve/<slug>` entries from each persona's top cluster and open a PR with the candidate `SolveEntry`. Founder approval (per `automated-icp-validation-plan.md §3.6` reply-queue spirit) gates publication. Deferred until ≥3 cluster files exist and the draft quality is observable.
+- **Per-page OG image.** Pages currently inherit the site default OG. A per-slug OG image generator would boost share-CTR; same open question as the sibling `comparison-pages` feature.
+- **Page-view analytics.** Same open question as `comparison-pages` — no browser-side analytics on `nlqdb.com` today; the §3.5 ICP-validation plan calls for PostHog Cloud free tier. Per-page views are measurable only via server access logs + sitemap-indexed search-console impressions until that lands. The CTA-click signal (`solve.try_query_clicked` to LogSnag) gives per-slug funnel data in the meantime.
+
+## Why this exists
+
+Buyers searching `"how do I add a database to a side project"` or `"retool alternative cheap"` are at the decision moment for a specific pain. A comparison page (`/vs/<competitor>`) wins when the buyer already named the competitor; a solve page (`/solve/<pain>`) wins earlier in the funnel — when the buyer has named the pain but not the tool. Together the two AEO surfaces cover the search-intent ladder.
+
+The [`automated-icp-validation-plan.md §3.1`](../../research/automated-icp-validation-plan.md) calls for these as one of the §3 "tractor beams"; this feature ships them ahead of the ICP-mining cluster pipeline so the AEO surface earns impressions during W2 of the plan's calendar, not W3+.
+
+## How to add a new solve page
+
+1. Add an entry to `apps/web/src/data/solve.ts` — fill all required fields (TypeScript will flag missing ones; the data tests pin the AEO invariants).
+2. Run `bun run --filter @nlqdb/web check && bun run --filter @nlqdb/web test` — astro-check + data-integrity tests both pass.
+3. The sitemap and llms.txt pick up the new slug automatically.
+4. If the entry is drawn from a specific ICP-mining cluster, cross-link in the source label so the evidence trail is one click from the page.

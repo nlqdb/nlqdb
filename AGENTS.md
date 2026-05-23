@@ -156,7 +156,7 @@ manually before editing.)
 | If you touch… | Read first |
 |---|---|
 | `apps/api/src/routes/auth/**`, `packages/auth-internal/**` | `docs/features/auth/FEATURE.md` |
-| `apps/api/src/api-keys.ts`, `apps/api/src/index.ts` `/v1/keys*` routes, `apps/web/src/pages/app/keys.astro`, `apps/web/src/components/keys/**`, anything `api-key` related | `docs/features/api-keys/FEATURE.md` |
+| `apps/api/src/api-keys.ts`, `apps/web/src/pages/app/keys.astro`, `apps/web/src/components/keys/**` | `docs/features/api-keys/FEATURE.md` |
 | `apps/api/src/ask/**`, the `/v1/ask` pipeline | `docs/features/ask-pipeline/FEATURE.md` |
 | `apps/api/src/run/**`, the `POST /v1/run` raw-SQL escape hatch (`GLOBAL-015`) | `docs/features/sdk/FEATURE.md` (`SK-SDK-009`) + `docs/features/cli/FEATURE.md` (`nlq run`) + `docs/features/sql-allowlist/FEATURE.md` (validator reuse) |
 | write/DDL diff preview, `confidence`, response `trace` block | `docs/features/trust-ux/FEATURE.md` |
@@ -184,11 +184,12 @@ manually before editing.)
 | `packages/mcp/**`, `apps/mcp/**` | `docs/features/mcp-server/FEATURE.md` |
 | `apps/web/**` (onboarding, anonymous mode) | `docs/features/web-app/FEATURE.md` |
 | `apps/web/src/data/competitors.ts`, `apps/web/src/pages/vs/**`, `apps/web/src/pages/llms.txt.ts` | `docs/features/comparison-pages/FEATURE.md` |
+| `apps/web/src/data/solve.ts`, `apps/web/src/pages/solve/**` | `docs/features/solve-pages/FEATURE.md` |
 | `apps/web/src/onboarding/**`, signup flow, first-query path | `docs/features/onboarding/FEATURE.md` |
 | `apps/docs/**`, `docs.nlqdb.com` Starlight site | `docs/features/docs-site/FEATURE.md` |
 | `.github/workflows/**`, `nlqdb/actions/**` (CI permissions) | `docs/features/ci-permissions/FEATURE.md` |
 | `tests/personas/**`, `tests/opencheck/**`, `tests/e2e/**`, `examples/**/e2e/**`, `.github/workflows/e2e*.yml`, `.github/workflows/_e2e-*.yml`, `packages/nlqdb-rb/spec/e2e/**`, `packages/nlqdb-rs/tests/e2e/**` | `docs/features/e2e-coverage/FEATURE.md` |
-| `apps/api/src/icp-scrape.ts`, `apps/api/test/icp-scrape.test.ts`, `docs/research/automated-icp-validation-plan.md`, `docs/research/icp-evidence-*.md` | `docs/features/icp-mining/FEATURE.md` |
+| `apps/api/src/icp-*.ts`, `docs/research/automated-icp-validation-plan.md`, `docs/research/icp-evidence-*.md` | `docs/features/icp-mining/FEATURE.md` |
 
 Per-area `AGENTS.md` files (e.g. `packages/db/AGENTS.md`) repeat just
 their slice of this table, so you don't need the full root view when

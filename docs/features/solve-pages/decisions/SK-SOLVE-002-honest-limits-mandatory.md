@@ -1,0 +1,10 @@
+# SK-SOLVE-002 — Every solve page ships a "What nlqdb doesn't do here" section
+
+- **Decision:** Every `/solve/<slug>` page renders a `whatItDoesnt` block with ≥2 honest bullets naming the limits of nlqdb's answer for that specific search query. The block sits between "What nlqdb actually does" and the FAQ — visible above the fold on desktop, mandatory in the data shape, type-checked by the build. A page that ships without honest limits fails the data-integrity test and the build.
+- **Core value:** Bullet-proof, Honest latency
+- **Why:** The Grow & Convert 2026 SaaS benchmark cited in [`SK-CMP-001`](../../comparison-pages/decisions/SK-CMP-001-honest-trade-offs.md) generalises: pages that name their own limits convert at ~13.8% vs ~2–5% for one-sided pages. AEO crawlers (Perplexity, ChatGPT, Claude) explicitly demote one-sided citations because users notice them and stop clicking. The honest-limits block is what earns the citation; without it, the page is indistinguishable from competitor SEO sludge and the LLM picks a better-detailed answer elsewhere. This rule mirrors [`SK-CMP-001`](../../comparison-pages/decisions/SK-CMP-001-honest-trade-offs.md) ("When to choose them" on `/vs/` pages) so the same discipline applies across both AEO surfaces.
+- **Consequence in code:** `apps/web/src/data/solve.ts`'s `SolveEntry.whatItDoesnt: string[]` is required (no `?`). `solve.test.ts` asserts `≥2` bullets per entry. The template's `solve__limits` section renders the array under a dedicated `<h2>` so the limits aren't buried in a footer.
+- **Alternatives rejected:**
+  - **Move limits into FAQ** — buyers skim the page before reading the FAQ; a section labelled "What it doesn't do" is the honest surface, and burying it makes the page look one-sided even when it isn't.
+  - **Make `whatItDoesnt` optional** — invites pages to ship without it the moment a writer is in a hurry. Required shape + test enforcement makes the omission impossible.
+  - **Single combined "trade-offs" section** — conflates "what we do" with "what we don't"; the AEO citation pattern favours discrete sections that LLMs can lift independently.

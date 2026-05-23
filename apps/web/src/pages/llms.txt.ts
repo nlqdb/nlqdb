@@ -1,12 +1,13 @@
 import type { APIRoute } from "astro";
 import { COMPETITORS } from "../data/competitors";
+import { SOLVE_ENTRIES } from "../data/solve";
 
 // `llms.txt` — community spec (https://llmstxt.org) the LLM-IDE
 // ecosystem (Claude Desktop, Perplexity, Cursor, Windsurf, Cline,
 // Aider, GitHub Copilot) routinely fetches as a markdown index. We
-// serve it via an endpoint so the comparison-page list stays in sync
-// with `data/competitors.ts` — adding a `/vs/<slug>` is a one-file
-// edit, not a two-file edit.
+// serve it via an endpoint so the comparison-page list + solve-page
+// list stay in sync with their data files — adding a `/vs/<slug>` or
+// `/solve/<slug>` is a one-file edit, not a multi-file edit.
 
 const SITE = "https://nlqdb.com";
 
@@ -21,6 +22,11 @@ const PRIMARY_LINKS = [
     title: "Comparisons",
     path: "/vs",
     desc: "Honest side-by-side against adjacent tools (Supabase, Vanna, Mem0, …).",
+  },
+  {
+    title: "Solve pages",
+    path: "/solve",
+    desc: "One page per recurring search query; each answers the question with a working snippet and names what nlqdb doesn't do.",
   },
 ];
 
@@ -45,6 +51,10 @@ export const GET: APIRoute = () => {
     PRIMARY_LINKS.map((l) => `- [${l.title}](${SITE}${l.path}): ${l.desc}`).join("\n") +
     `\n\n## Comparisons\n\n` +
     COMPETITORS.map((c) => `- [nlqdb vs ${c.name}](${SITE}/vs/${c.slug}): ${c.oneLiner}`).join(
+      "\n",
+    ) +
+    `\n\n## Solve pages\n\n` +
+    SOLVE_ENTRIES.map((s) => `- [${s.searchTitle}](${SITE}/solve/${s.slug}): ${s.oneLiner}`).join(
       "\n",
     ) +
     `\n\n## Optional\n\n` +
