@@ -31,9 +31,13 @@ ok()   { printf '  \033[1;32m✓\033[0m %s\n' "$*"; }
 fail() { printf '  \033[1;31m✗\033[0m %s  — %s\n' "$1" "$2"; FAIL_COUNT=$((FAIL_COUNT + 1)); }
 note() { printf '  \033[2m· %s\033[0m\n' "$*"; }
 
-# Fetches a URL following redirects; on success caches body to a tmp file
-# whose path is echoed on stdout. On failure echoes empty + returns 1.
+# Fetches a URL following redirects. On success: prints `ok`, sets
+# FETCH_BODY_PATH to the tmp file, returns 0. On failure: prints `fail`
+# (which increments FAIL_COUNT in this shell — must NOT be invoked from a
+# $(...) subshell or the count is lost), clears FETCH_BODY_PATH, returns 1.
+FETCH_BODY_PATH=""
 fetch_body() {
+  FETCH_BODY_PATH=""
   local label="$1" url="$2"
   local tmp status
   tmp="$(mktemp -t nlqdb-verify-flows.XXXXXX)"
@@ -43,7 +47,9 @@ fetch_body() {
     rm -f "$tmp"
     return 1
   fi
-  printf '%s' "$tmp"
+  ok "$label"
+  FETCH_BODY_PATH="$tmp"
+  return 0
 }
 
 # Asserts a grep -E pattern matches the body file at least once.
@@ -80,14 +86,12 @@ assert_trailing_slash_redirect() {
 # --- FLOW-001 — Anonymous-first happy path (steps 1+2) -------------------
 
 say "FLOW-001 — homepage hero (curl-observable subset)"
-body=$(fetch_body "FLOW-001 step 1: GET / returns 200" "$BASE_URL/") || true
-if [[ -n "${body:-}" && -f "$body" ]]; then
-  ok "FLOW-001 step 1: GET / returns 200"
+if fetch_body "FLOW-001 step 1: GET / returns 200" "$BASE_URL/"; then
   assert_match \
     "FLOW-001 step 2: hero <form> placeholder matches /orders|tracker|building/i" \
-    "$body" \
+    "$FETCH_BODY_PATH" \
     'placeholder="[^"]*(orders|tracker|building)[^"]*"'
-  rm -f "$body"
+  rm -f "$FETCH_BODY_PATH"
 fi
 note "FLOW-001 steps 3-9 require a browser (anon device token, /v1/ask POST, trace toggle, clipboard, follow-up)"
 
@@ -112,12 +116,12 @@ for slug in "${SOLVE_SLUGS[@]}"; do
   # follow redirects see HTTP 307 + 0 bytes — record the redirect once
   # per walk so future verifiers don't re-discover it on every PR.
   assert_trailing_slash_redirect "FLOW-002 redirect probe ($slug)" "$BASE_URL/solve/$slug"
-  body=$(fetch_body "FLOW-002 step 1 GET /solve/$slug/ returns 200" "$BASE_URL/solve/$slug/") || continue
-  ok "FLOW-002 step 1 GET /solve/$slug/ returns 200"
-  assert_match "FLOW-002 step 3 FAQPage JSON-LD present ($slug)"  "$body" '"@type":\s*"FAQPage"'
-  assert_match "FLOW-002 step 3 HowTo JSON-LD present ($slug)"     "$body" '"@type":\s*"HowTo"'
-  assert_match "FLOW-002 step 4 honest-limits section present ($slug)" "$body" "What nlqdb doesn't do here"
-  rm -f "$body"
+  if fetch_body "FLOW-002 step 1 GET /solve/$slug/ returns 200" "$BASE_URL/solve/$slug/"; then
+    assert_match "FLOW-002 step 3 FAQPage JSON-LD present ($slug)"  "$FETCH_BODY_PATH" '"@type":\s*"FAQPage"'
+    assert_match "FLOW-002 step 3 HowTo JSON-LD present ($slug)"     "$FETCH_BODY_PATH" '"@type":\s*"HowTo"'
+    assert_match "FLOW-002 step 4 honest-limits section present ($slug)" "$FETCH_BODY_PATH" "What nlqdb doesn't do here"
+    rm -f "$FETCH_BODY_PATH"
+  fi
 done
 note "FLOW-002 steps 5-9 require a browser (CTA click, draft hydrate, /app/new rehydrate, event spy, first-query)"
 
@@ -131,40 +135,36 @@ for i in "${!VS_SLUGS[@]}"; do
   slug="${VS_SLUGS[$i]}"
   title="${VS_TITLES[$i]}"
   assert_trailing_slash_redirect "FLOW-003 redirect probe ($slug)" "$BASE_URL/vs/$slug"
-  body=$(fetch_body "FLOW-003 step 1 GET /vs/$slug/ returns 200" "$BASE_URL/vs/$slug/") || continue
-  ok "FLOW-003 step 1 GET /vs/$slug/ returns 200"
-  assert_match "FLOW-003 step 2 <h1> matches 'nlqdb vs $title' ($slug)" "$body" "<h1[^>]*>nlqdb vs $title</h1>"
-  assert_match "FLOW-003 step 4 FAQPage JSON-LD present ($slug)" "$body" '"@type":\s*"FAQPage"'
-  rm -f "$body"
+  if fetch_body "FLOW-003 step 1 GET /vs/$slug/ returns 200" "$BASE_URL/vs/$slug/"; then
+    assert_match "FLOW-003 step 2 <h1> matches 'nlqdb vs $title' ($slug)" "$FETCH_BODY_PATH" "<h1[^>]*>nlqdb vs $title</h1>"
+    assert_match "FLOW-003 step 4 FAQPage JSON-LD present ($slug)" "$FETCH_BODY_PATH" '"@type":\s*"FAQPage"'
+    rm -f "$FETCH_BODY_PATH"
+  fi
 done
 
 say "FLOW-003 step 9 — /llms.txt enumerates every vs + solve slug"
-body=$(fetch_body "FLOW-003 step 9 GET /llms.txt returns 200" "$BASE_URL/llms.txt") || true
-if [[ -n "${body:-}" && -f "$body" ]]; then
-  ok "FLOW-003 step 9 GET /llms.txt returns 200"
+if fetch_body "FLOW-003 step 9 GET /llms.txt returns 200" "$BASE_URL/llms.txt"; then
   for slug in "${VS_SLUGS[@]}"; do
-    assert_match "  /llms.txt lists vs/$slug" "$body" "/vs/$slug"
+    assert_match "  /llms.txt lists vs/$slug" "$FETCH_BODY_PATH" "/vs/$slug"
   done
   for slug in "${SOLVE_SLUGS[@]}"; do
-    assert_match "  /llms.txt lists solve/$slug" "$body" "/solve/$slug"
+    assert_match "  /llms.txt lists solve/$slug" "$FETCH_BODY_PATH" "/solve/$slug"
   done
-  rm -f "$body"
+  rm -f "$FETCH_BODY_PATH"
 fi
 
 # /sitemap.xml as the cheapest smoke test that the marketing-side build
 # isn't a partial — 12 URLs today (5 solve + 3 vs + 4 root pages). The
 # floor matches the shipped surface; new slugs raise it.
 say "Sitemap floor — every shipped slug must appear"
-body=$(fetch_body "GET /sitemap.xml returns 200" "$BASE_URL/sitemap.xml") || true
-if [[ -n "${body:-}" && -f "$body" ]]; then
-  ok "GET /sitemap.xml returns 200"
-  loc_count=$(grep -oE '<loc>[^<]*</loc>' "$body" | wc -l | tr -d ' ')
+if fetch_body "GET /sitemap.xml returns 200" "$BASE_URL/sitemap.xml"; then
+  loc_count=$(grep -oE '<loc>[^<]*</loc>' "$FETCH_BODY_PATH" | wc -l | tr -d ' ')
   if (( loc_count >= 12 )); then
     ok "/sitemap.xml has $loc_count <loc> entries (floor 12)"
   else
     fail "/sitemap.xml" "expected ≥12 <loc> entries, got $loc_count"
   fi
-  rm -f "$body"
+  rm -f "$FETCH_BODY_PATH"
 fi
 
 # --- summary ------------------------------------------------------------
