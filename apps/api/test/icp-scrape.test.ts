@@ -702,7 +702,6 @@ describe("runIcpScrape", () => {
       const stubFetch: typeof fetch = vi.fn(async (url: string | URL | Request) => {
         const urlStr = typeof url === "string" ? url : url instanceof URL ? url.href : url.url;
         if (urlStr.includes("feed.indiehackers.world")) {
-          // Mirror has no fromdate parameter, so stale posts must be filtered client-side.
           return {
             ok: true,
             status: 200,
@@ -734,7 +733,6 @@ describe("runIcpScrape", () => {
             json: async () => ({
               items: [
                 {
-                  // Malformed: no /post/<id> path — dedup id would be unstable.
                   url: "https://feed.indiehackers.world/something-else",
                   title: "Malformed URL",
                   date_modified: new Date().toISOString(),

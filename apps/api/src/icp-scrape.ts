@@ -478,7 +478,6 @@ const INDIEHACKERS_QUERIES = ["database", "boilerplate", "side+project", "first+
 const IH_FEED_URL = "https://feed.indiehackers.world/posts.json";
 const IH_USER_AGENT = "nlqdb-icp-bot/1.0 (+https://nlqdb.com; contact: hello@nlqdb.com)";
 
-// Returns the `/post/<slug>` segment for stable dedup, or null to drop the item.
 function ihIdFromUrl(url: string | undefined): string | null {
   if (!url) return null;
   const m = url.match(/\/post\/([a-zA-Z0-9-]+)/);
@@ -497,19 +496,19 @@ async function fetchIndieHackers(
 
     const doFetch = async (span: Span) => {
       try {
+        span.setAttribute("nlqdb.icp.source", "indiehackers");
         const res = await fetcher(url, {
           headers: { "User-Agent": IH_USER_AGENT, Accept: "application/json" },
           signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
         });
         span.setAttribute("http.response.status_code", res.status);
         if (!res.ok) {
+          span.setAttribute("nlqdb.icp.items", 0);
           console.warn(JSON.stringify({ msg: "icp_ih_fetch_error", query: q, status: res.status }));
-          span.end();
           return;
         }
         const json = (await res.json()) as IhFeed;
         const hits = json.items ?? [];
-        span.setAttribute("nlqdb.icp.source", "indiehackers");
         span.setAttribute("nlqdb.icp.items", hits.length);
         for (const hit of hits) {
           const id = ihIdFromUrl(hit.url);
