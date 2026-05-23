@@ -1,4 +1,4 @@
-// SK-ICP-001 (HN+Reddit) + SK-ICP-004 (GitHub Issues). Writes raw items to KV at icp:seen:<source>:<id> (90d) + icp:item:<YYYYMMDD>:<source>:<id> (30d).
+// SK-ICP-001 (HN+Reddit) + SK-ICP-004 (GitHub Issues) + SK-ICP-005 (Stack Exchange). Writes raw items to KV at icp:seen:<source>:<id> (90d) + icp:item:<YYYYMMDD>:<source>:<id> (30d).
 
 import { type Span, trace } from "@opentelemetry/api";
 
@@ -343,6 +343,119 @@ async function fetchReddit(
   return items;
 }
 
+// --- Stack Exchange (Stack Overflow) ---
+
+type SeQuestion = {
+  question_id: number;
+  title: string;
+  body?: string;
+  link: string;
+  creation_date: number;
+  score?: number;
+  tags?: string[];
+};
+
+type SeResponse = {
+  items?: SeQuestion[];
+  has_more?: boolean;
+  quota_remaining?: number;
+  // Stack Exchange returns `backoff` (seconds) on throttling; honour it.
+  backoff?: number;
+};
+
+// 5 queries × 1/week is trivially inside the anonymous 300/IP/day quota.
+const STACKEXCHANGE_QUERIES: Array<{ tagged: string; q?: string }> = [
+  { tagged: "postgresql", q: "setup" },
+  { tagged: "sqlalchemy", q: "verbose" },
+  { tagged: "sql", q: "natural language" },
+  { tagged: "prisma", q: "migration" },
+  { tagged: "duckdb;clickhouse" },
+];
+
+const SE_SEARCH_URL = "https://api.stackexchange.com/2.3/search/advanced";
+const SE_SITE = "stackoverflow";
+
+async function fetchStackExchange(
+  fetcher: typeof fetch,
+  sevenDaysAgoUnix: number,
+  tracer: IcpScrapeDeps["tracer"],
+): Promise<IcpItem[]> {
+  const items: IcpItem[] = [];
+
+  for (const { tagged, q } of STACKEXCHANGE_QUERIES) {
+    const params = new URLSearchParams({
+      site: SE_SITE,
+      tagged,
+      sort: "creation",
+      order: "desc",
+      pagesize: "10",
+      fromdate: String(sevenDaysAgoUnix),
+    });
+    if (q) params.set("q", q);
+    const url = `${SE_SEARCH_URL}?${params.toString()}`;
+
+    const doFetch = async (span: Span) => {
+      try {
+        const res = await fetcher(url, {
+          signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+        });
+        span.setAttribute("http.response.status_code", res.status);
+        if (!res.ok) {
+          console.warn(JSON.stringify({ msg: "icp_se_fetch_error", tagged, status: res.status }));
+          span.end();
+          return;
+        }
+        const json = (await res.json()) as SeResponse;
+        const hits = json.items ?? [];
+        // Surface backoff so an operator notices throttling before the quota burns.
+        if (typeof json.backoff === "number" && json.backoff > 0) {
+          console.warn(JSON.stringify({ msg: "icp_se_backoff", tagged, backoff: json.backoff }));
+        }
+        span.setAttribute("nlqdb.icp.source", "stackoverflow");
+        span.setAttribute("nlqdb.icp.items", hits.length);
+        if (typeof json.quota_remaining === "number") {
+          span.setAttribute("nlqdb.icp.se.quota_remaining", json.quota_remaining);
+        }
+        for (const hit of hits) {
+          items.push({
+            id: `so-${hit.question_id}`,
+            source: "stackoverflow",
+            title: hit.title,
+            url: hit.link,
+            text: hit.body?.slice(0, 500) || undefined,
+            score: hit.score,
+            ts: hit.creation_date,
+          });
+        }
+      } catch (err) {
+        span.recordException(err as Error);
+        console.error(
+          JSON.stringify({
+            msg: "icp_se_fetch_exception",
+            tagged,
+            message: err instanceof Error ? err.message : String(err),
+          }),
+        );
+      } finally {
+        span.end();
+      }
+    };
+
+    if (tracer) {
+      await tracer.startActiveSpan("nlqdb.icp.fetch.stackoverflow", doFetch);
+    } else {
+      const noopSpan = {
+        setAttribute: () => {},
+        recordException: () => {},
+        end: () => {},
+      } as unknown as Span;
+      await doFetch(noopSpan);
+    }
+  }
+
+  return items;
+}
+
 // --- LogSnag notification ---
 
 async function notifyLogSnag(
@@ -362,7 +475,7 @@ async function notifyLogSnag(
         project,
         channel: "icp-mining",
         event: "Weekly Scrape",
-        description: `${result.newItems} new pain signals (HN: ${result.sources["hn"] ?? 0}, Reddit: ${result.sources["reddit"] ?? 0}, GH: ${result.sources["github"] ?? 0})`,
+        description: `${result.newItems} new pain signals (HN: ${result.sources["hn"] ?? 0}, Reddit: ${result.sources["reddit"] ?? 0}, GH: ${result.sources["github"] ?? 0}, SO: ${result.sources["stackoverflow"] ?? 0})`,
       }),
       signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
     });
@@ -398,7 +511,7 @@ export async function runIcpScrape(deps: IcpScrapeDeps): Promise<IcpScrapeResult
   const dateStr = yyyymmdd(now);
 
   // Fetch all sources; per-source errors are already caught inside each helper.
-  const [hnItems, redditItems, ghItems] = await Promise.all([
+  const [hnItems, redditItems, ghItems, seItems] = await Promise.all([
     fetchHn(fetcher, sevenDaysAgoUnix, tracer).catch((err) => {
       console.error(
         JSON.stringify({
@@ -428,9 +541,18 @@ export async function runIcpScrape(deps: IcpScrapeDeps): Promise<IcpScrapeResult
           return [] as IcpItem[];
         })
       : ([] as IcpItem[]),
+    fetchStackExchange(fetcher, sevenDaysAgoUnix, tracer).catch((err) => {
+      console.error(
+        JSON.stringify({
+          msg: "icp_se_source_failed",
+          message: err instanceof Error ? err.message : String(err),
+        }),
+      );
+      return [] as IcpItem[];
+    }),
   ]);
 
-  const allItems = [...hnItems, ...redditItems, ...ghItems];
+  const allItems = [...hnItems, ...redditItems, ...ghItems, ...seItems];
 
   // Batch dedup check in parallel.
   const seenKeys = allItems.map((item) => `icp:seen:${item.source}:${item.id}`);

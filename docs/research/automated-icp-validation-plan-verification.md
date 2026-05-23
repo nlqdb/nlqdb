@@ -12,11 +12,15 @@
 > [`CLAUDE.md §2 P4 D4`](../../CLAUDE.md)'s 20 KB cap — the other is
 > the impl plan ([`GLOBAL-028`](../decisions/GLOBAL-028-acquisition-progress-tracker.md)).
 
-> **Status:** scaffolding shipped 2026-05-23. 0 / 7 flows passed; 1 / 7 attempted.
-> The mirror impl plan now has §8 `User flows · implementation tracker`
-> with the same 7 flows; flows currently average 84% implementation
-> coverage and 0% pass coverage — the impl/verify gap is the point of
-> this mirror.
+> **Status:** scaffolding shipped 2026-05-23. 0 / 7 flows fully passed;
+> 3 / 7 have partial curl-only passes recorded 2026-05-23 (FLOW-001,
+> FLOW-002, FLOW-003); FLOW-002 also carries a failed step 8 on the
+> CTA telemetry + gate continuation. The mirror impl plan now has §8
+> `User flows · implementation tracker` with the same 7 flows; flows
+> currently average 84% implementation coverage. A full Playwright walk
+> is still pending for every flow; curl is sufficient for the static
+> AEO assertions but cannot drive client events, draft hydration, or
+> the gate-bearing first-query submit.
 
 ---
 
@@ -24,9 +28,9 @@
 
 | Flow | Persona | Verification status | Last verified | Mirror impl % |
 |---|---|---|---|---|
-| FLOW-001 | P1 solo builder | not yet attempted | — | 5/7 (71%) |
-| FLOW-002 | P3 analyst | failed 2026-05-23 step 8 | 2026-05-23 | 5/6 (83%) |
-| FLOW-003 | P3 / P4 | not yet attempted | — | 5/5 (100%) |
+| FLOW-001 | P1 solo builder | partial — curl steps 1–2 passed; 3–9 need browser | 2026-05-23 | 5/7 (71%) |
+| FLOW-002 | P3 analyst | failed 2026-05-23 step 8 — curl steps 1, 3, 4 re-pass | 2026-05-23 | 5/6 (83%) |
+| FLOW-003 | P3 / P4 | partial — curl steps 1, 2, 4, 9 passed; 5–8 need browser | 2026-05-23 | 5/5 (100%) |
 | FLOW-004 | P1 solo builder | not yet attempted | — | 5/6 (83%) |
 | FLOW-005 | P2 agent builder | not yet attempted | — | 5/6 (83%) |
 | FLOW-006 | P4 backend engineer | not yet attempted | — | 5/6 (83%) |
@@ -35,6 +39,7 @@
 **Verification states:**
 - `not yet attempted` — no agent has tried this flow.
 - `passed YYYY-MM-DD` — agent completed every step within pass criteria.
+- `partial YYYY-MM-DD steps A,B,…` — agent walked a subset (typically the static / HTTP-observable steps via curl) and recorded results; remaining steps need a richer tool (Playwright, MCP inspector, OAuth account, email inbox). Not a pass.
 - `failed YYYY-MM-DD step N` — agent reached step N; assertion failed; outcome log carries the trace.
 - `blocked credentials` — agent could not complete because a credential it does not possess is required; founder has been asked.
 - `blocked upstream` — a third-party (Resend, GitHub OAuth, free-chain LLM, Cloudflare) was returning unhealthy responses unrelated to nlqdb code.
@@ -192,7 +197,7 @@ requires credentials, that itself is the failure.
 
 | Date | Agent | State | ttfvMs | Notes |
 |---|---|---|---|---|
-| — | — | not yet attempted | — | — |
+| 2026-05-23 | composer-1 | partial steps 1–2 | — | curl-only walk: `GET https://nlqdb.com/` → 200 (93 KB), hero `<form>` rendered with `placeholder="an orders tracker"` matching the `/orders\|tracker\|building/i` contract. Steps 3–9 require a browser (anonymous device-token issuance, `/v1/ask` POST with TTFV timer, trace toggle, clipboard, follow-up query) and were not exercised in this PR — Playwright not available on the agent VM. |
 
 ---
 
@@ -265,6 +270,7 @@ None.
 | Date | Agent | State | Slug walked | Notes |
 |---|---|---|---|---|
 | 2026-05-23 | gpt-5.5 | failed step 8 | cheap-internal-dashboard | Deployed Playwright walk passed steps 1-7 (`FAQPage` + `HowTo`, honest-limits, `nlqdb_draft`, `/app/new` rehydrate), but an injected `window.__nlqdb_logsnag` spy observed no `solve.try_query_clicked`; manual continuation to submit returned `403 feature_gated` from `https://app.nlqdb.com/v1/ask`. |
+| 2026-05-23 | composer-1 | partial steps 1, 3, 4 | cheap-internal-dashboard | curl-only re-verification before adding the Stack Overflow source: page still 200, `FAQPage` + `HowTo` JSON-LD both present (1 each), "What nlqdb doesn't do here" section still rendered. Steps 5–9 (CTA click, draft hydrate, `/app/new` rehydrate, event spy, first-query) not re-attempted — Playwright not available; the prior 2026-05-23 failure on step 8 stands as the binding gap. |
 
 ### Triage
 
@@ -329,7 +335,7 @@ None.
 
 | Date | Agent | State | Slug walked | Notes |
 |---|---|---|---|---|
-| — | — | not yet attempted | — | — |
+| 2026-05-23 | composer-1 | partial steps 1, 2, 4, 9 | supabase | curl-only walk: `GET https://nlqdb.com/vs/supabase` → 200; `<h1 class="vs__title">nlqdb vs Supabase</h1>` matches the template; `FAQPage` JSON-LD present (1); `/llms.txt` lists all 3 vs slugs (`mem0`, `supabase`, `vanna`) — step 9 smoke check passes. Steps 3 (DOM "When to choose Supabase" section), 5–8 (CTA click, draft hydrate, prefill, first-query submit) require a browser and are unattempted. |
 
 ---
 

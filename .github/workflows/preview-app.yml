@@ -222,13 +222,19 @@ jobs:
 
       # Sticky comment — single comment per PR, edited in place.
       # `if: always()` so a deploy failure still updates the comment.
+      # GitHub occasionally returns 401 Bad credentials for valid GITHUB_TOKENs
+      # mid-flight; retry on 401 (default exempts include it) and fail-soft so a
+      # comment-only outage never red-marks a successful preview deploy.
       - name: Sticky preview comment
         if: always()
+        continue-on-error: true
         uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7.1.0
         env:
           DEPLOY_OUTCOME: ${{ steps.deploy.outcome }}
           NEON_OUTCOME: ${{ steps.neon.outcome }}
         with:
+          retries: 3
+          retry-exempt-status-codes: 400,403,404,422
           script: |
             const deployOutcome = process.env.DEPLOY_OUTCOME ?? '';
             const neonOutcome = process.env.NEON_OUTCOME ?? '';
