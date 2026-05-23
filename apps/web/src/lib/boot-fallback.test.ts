@@ -66,3 +66,14 @@ test("Base.astro inline copy of EXTENSION_PREFIXES stays in sync", () => {
     expect(baseAstro).toContain(`"${prefix}"`);
   }
 });
+
+// Pin every `#boot-fallback` selector to `:not([hidden])` (or `[hidden]`) — an ID rule (0,1,0,0) outranks UA `[hidden] { display: none }` (0,0,1,0) and paints the panel below the footer on every page.
+test("every #boot-fallback CSS selector is gated on the hidden attribute", () => {
+  const css = readFileSync(new URL("../styles/global.css", import.meta.url), "utf-8");
+  const stripped = css.replace(/\/\*[\s\S]*?\*\//g, "");
+  const selectors = stripped.match(/#boot-fallback(?![-\w])[^\s,{]*/g) ?? [];
+  expect(selectors.length).toBeGreaterThan(0);
+  for (const selector of selectors) {
+    expect(selector).toMatch(/^#boot-fallback(:not\(\[hidden\]\)|\[hidden\])$/);
+  }
+});
