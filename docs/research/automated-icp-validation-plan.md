@@ -13,7 +13,7 @@
 > flow updates BOTH files in lockstep. Evidence/status edits must name
 > the agent-run verification artifact and pass the GLOBAL-030 self-review.
 
-> **Status:** in progress — §1.4, §2.2 (collection), §2.3 (all steps), §2.1 GitHub Issues source, §2.4 verdict automation shipped 2026-05-22. §3.1 first 5 hand-curated solve pages shipped 2026-05-23 (paraphrased search-intent `<h1>` per SK-SOLVE-001 — verbatim cluster quotes pending the 2026-05-26 first cluster file). §8 user-flow tracker shipped 2026-05-23 (7 mirrored flows; average implementation 84%, 0/7 flows passed verification; FLOW-002 attempted 2026-05-23 and failed at the client-event assertion, then a manual continuation hit the pre-alpha 403 gate on `/v1/ask`). §1.1 (stranger-test), §1.2 (KPI dashboard), §1.3 (in-app survey), the rest of §3 (gallery, reply queue), §4 (PMF capture) not yet started — **the pipeline collects signal and the AEO surfaces (vs + solve) are live, but no surface yet measures whether invited users land safely**. First ICP cron fires Mon 2026-05-26 06:00 UTC; until then no real ICP evidence has been written.
+> **Status:** in progress — §1.4, §2.2 (collection), §2.3 (all steps), §2.1 GitHub Issues source, §2.4 verdict automation shipped 2026-05-22. §3.1 first 5 hand-curated solve pages shipped 2026-05-23 (paraphrased search-intent `<h1>` per SK-SOLVE-001 — verbatim cluster quotes pending the 2026-05-26 first cluster file). §8 user-flow tracker shipped 2026-05-23 (7 mirrored flows; average implementation 84%; FLOW-001 / FLOW-002 / FLOW-003 each have curl-only partial passes recorded 2026-05-23 against the deployed AEO surfaces, full Playwright walks still pending; FLOW-002's CTA telemetry and gate continuation remain failed). §2.1 Stack Overflow source shipped 2026-05-23 — fourth scrape source live; live API probe returned 1 fresh `postgresql/setup` question with `quota_remaining=299`. §1.1 (stranger-test), §1.2 (KPI dashboard), §1.3 (in-app survey), the rest of §3 (gallery, reply queue), §4 (PMF capture) not yet started — **the pipeline collects signal and the AEO surfaces (vs + solve) are live, but no surface yet measures whether invited users land safely**. First ICP cron fires Mon 2026-05-26 06:00 UTC; until then no real ICP evidence has been written.
 >
 > **Context.** Every advertised surface ([progress.md §0](../progress.md))
 > shipped; zero validated users.
@@ -64,7 +64,11 @@ rehydrated), but no `solve.try_query_clicked` hook event was observed;
 a manual continuation to first-query submit fails with `403 feature_gated` from
 `https://app.nlqdb.com/v1/ask`. Treat `/solve` as an acquisition surface
 that can educate and collect intent, not as a verified first-value path,
-until the gate bypass is present in that journey.
+until the gate bypass is present in that journey. Re-verified 2026-05-23
+(this PR) via curl-only static probes — same outcome on the static
+checks; the CTA + gate failure modes still require a Playwright run to
+re-attempt. FLOW-001 hero form and FLOW-003 `/vs/<slug>` template + JSON-LD
+have curl-only partial passes recorded for the first time.
 
 ---
 
@@ -202,7 +206,7 @@ verbatim quotes per priority persona, clustered.
 | Hacker News | [HN Algolia](https://hn.algolia.com/api) | Y | P1/P2/P6 |
 | GitHub issues | [search/issues](https://docs.github.com/en/rest/search/search) (30 RPM authed) | Y | P1/P2/P6 ✅ shipped |
 | Indie Hackers | RSS / scrape (low rate) | Y | P1 |
-| Stack Overflow | [SE API](https://api.stackexchange.com) (10k/day) | Y | P1/P3/P6 |
+| Stack Overflow | [SE API 2.3](https://api.stackexchange.com) (anon 300/IP/day) | Y | P1/P3/P4/P6 ✅ shipped |
 | Discord publics | webhook bridges on specific guilds | Y if invited | P2 |
 | F5Bot | keyword email alerts | Y | all |
 | X/Twitter | — | **skip** (no free post-2023) | — |
@@ -233,6 +237,15 @@ alternative`, `Metabase too slow`, `vector DB`, `pgvector`.
 > When `GH_TOKEN` is set, `runIcpScrape` additionally queries GitHub Search
 > Issues API (5 queries, `created:>2025-11-01`, 10 results each). Items
 > stored as `source: "github"`, deduped same as HN/Reddit.
+>
+> **✅ EXPANDED 2026-05-23 (Stack Overflow source — SK-ICP-005):**
+> `runIcpScrape` additionally queries the Stack Exchange API 2.3
+> `/search/advanced` endpoint (`site=stackoverflow`, 5 tag+query pairs,
+> 7-day `fromdate`, anonymous quota 300/IP/day). Items stored as
+> `source: "stackoverflow"`, `id: "so-<question_id>"`; LogSnag adds
+> `SO: <n>` to the per-run line. Live API probe 2026-05-23 from this
+> environment returned 1 fresh `postgresql/setup` question with
+> `quota_remaining=299`, `backoff=None`.
 
 - One Cloudflare cron Worker runs Mon 06:00 UTC (same slot as
   [quality-eval](../features/quality-eval/FEATURE.md) — share infra).
@@ -630,17 +643,21 @@ observable on demand.
 
 | Flow | Persona | Sub-tasks shipped | Verification | Mirror |
 |---|---|---|---|---|
-| FLOW-001 | P1 solo builder | 5 / 7 (71%) | not yet attempted | [verify](./automated-icp-validation-plan-verification.md#flow-001--anonymous-first-happy-path) |
-| FLOW-002 | P3 analyst | 5 / 6 (83%) | failed 2026-05-23 step 8 | [verify](./automated-icp-validation-plan-verification.md#flow-002--pain-driven-aeo-inbound-search--solveslug--first-query) |
-| FLOW-003 | P3 / P4 | 5 / 5 (100%) | not yet attempted | [verify](./automated-icp-validation-plan-verification.md#flow-003--comparison-driven-inbound-search--vscompetitor--first-query) |
+| FLOW-001 | P1 solo builder | 5 / 7 (71%) | partial (curl steps 1–2 passed 2026-05-23) | [verify](./automated-icp-validation-plan-verification.md#flow-001--anonymous-first-happy-path) |
+| FLOW-002 | P3 analyst | 5 / 6 (83%) | failed 2026-05-23 step 8 (re-verified curl steps 1, 3, 4 pass) | [verify](./automated-icp-validation-plan-verification.md#flow-002--pain-driven-aeo-inbound-search--solveslug--first-query) |
+| FLOW-003 | P3 / P4 | 5 / 5 (100%) | partial (curl steps 1, 2, 4, 9 passed 2026-05-23) | [verify](./automated-icp-validation-plan-verification.md#flow-003--comparison-driven-inbound-search--vscompetitor--first-query) |
 | FLOW-004 | P1 solo builder | 5 / 6 (83%) | not yet attempted | [verify](./automated-icp-validation-plan-verification.md#flow-004--waitlist-signup--invite-email--gate-bypass) |
 | FLOW-005 | P2 agent builder | 5 / 6 (83%) | not yet attempted | [verify](./automated-icp-validation-plan-verification.md#flow-005--agent-self-provisions-db-via-mcp) |
 | FLOW-006 | P4 backend engineer | 5 / 6 (83%) | not yet attempted | [verify](./automated-icp-validation-plan-verification.md#flow-006--sdk-runsql-escape-hatch) |
 | FLOW-007 | P1 / P3 | 5 / 6 (83%) | not yet attempted | [verify](./automated-icp-validation-plan-verification.md#flow-007--adopt-anonymous-db-on-signup) |
 
 **Honest takeaway:** every flow is ≥71% implemented but **0 of 7**
-have passed an end-to-end agent walk. FLOW-002 has one failed
-deployed-surface attempt; the rest are unattempted. The impl-vs-verify
+have passed an end-to-end agent walk. FLOW-001 / FLOW-002 / FLOW-003 each
+have curl-only partial passes on the steps a headless HTTP client can
+exercise (homepage hero markup, JSON-LD blocks, honest-limits section,
+template H1, sitemap + llms.txt enumeration); none of those flows have a
+full Playwright walk yet, and FLOW-002 still fails on CTA telemetry +
+post-CTA gate. FLOW-004–FLOW-007 are still unattempted. The impl-vs-verify
 gap is the §1.1 stranger-test gap, restated per-flow. The verification
 mirror exists to close it.
 
@@ -765,3 +782,5 @@ Per [GLOBAL-028](../decisions/GLOBAL-028-acquisition-progress-tracker.md): every
 | 2026-05-23 | §8 user-flow tracker scaffolding (GLOBAL-029) | Mirror impl/verify trackers — 7 flows defined; `GLOBAL-029` declared | `docs/decisions/GLOBAL-029-acquisition-verification-tracker.md` (new); `docs/research/automated-icp-validation-plan-verification.md` (new mirror file, also exempt from 20 KB cap); §8 added to this file with the 7 mirrored FLOW-001..007 blocks (P1-P4 personas, anchored in enduring Reddit/HN discussion-hub citations per SK-SOLVE-003); `docs/decisions.md` index gains the GLOBAL-029 row; `GLOBAL-028` body updated to cross-ref the mirror. Each flow lists implementation sub-tasks (with SK-* refs) on this side and walkthrough steps + required credentials + outcome log on the mirror side. Status dashboard: 7 flows, avg 84% implementation, 0% verification — the impl-vs-verify gap restated per-flow is exactly the §1.1 stranger-test gap the mirror exists to close. | Shipped. Mirror integrity check (diff of `## FLOW-NNN` headers across both files) emits empty diff; both files are agent-ran from here on. |
 | 2026-05-23 | §8 FLOW-002 verification + tracker hardening | Attempted the first no-credential AEO inbound walk before adding new flows | Deployed-surface Playwright walk against `https://nlqdb.com/solve/cheap-internal-dashboard`: static checks passed (`FAQPage` + `HowTo`, honest-limits, `nlqdb_draft`, `/app/new` rehydrate), but an injected `window.__nlqdb_logsnag` spy observed no `solve.try_query_clicked` event; manual continuation posted to `https://app.nlqdb.com/v1/ask` and returned `403 feature_gated`. Added `GLOBAL-030` evidence-grade tracker rule and CI mirror-ID check so future `FLOW-NNN` drift fails automatically. | FLOW-002 failed step 8; acquisition can educate from `/solve`, but CTA telemetry and first value still need verification/fix before this counts as a working inbound path. |
 | 2026-05-23 | §2.3 evidence-file cron readiness | Ensure first ICP cron can write evidence and notify without manual Worker-secret drift | Added `GH_TOKEN`, `LOGSNAG_TOKEN`, and `LOGSNAG_PROJECT` to the API Worker secret mirror; added `GH_TOKEN` to `.env.example`, GitHub Actions secret mirroring, and `verify-secrets.sh`. Env inspection in this agent found `GEMINI_API_KEY` present but `GH_TOKEN`/LogSnag absent locally, confirming the current shell could not prove production evidence-write readiness by value. | Shipped as ops unblock. First cron can only write `icp-evidence-<yyyy-mm>.md` when `GH_TOKEN` is provisioned as a repo secret / Worker secret; the mirror scripts now include it. |
+| 2026-05-23 | §8 FLOW-001/002/003 curl re-verification | Walk the no-credential static surfaces with curl before adding new flows or sources | FLOW-001 step 1+2 pass: `https://nlqdb.com/` returns 200 and exposes hero `<form>` with `placeholder="an orders tracker"` matching the `/orders\|tracker\|building/i` contract. FLOW-002 steps 1, 3, 4 pass against `/solve/cheap-internal-dashboard`: 200 OK, `FAQPage` + `HowTo` JSON-LD blocks both present (1 each), "What nlqdb doesn't do here" section rendered. FLOW-003 steps 1, 2, 4, 9 pass against `/vs/supabase`: 200 OK, `<h1>nlqdb vs Supabase</h1>` matches the template, `FAQPage` JSON-LD present, `/llms.txt` enumerates all 3 vs slugs (`mem0`, `supabase`, `vanna`) and all 5 solve slugs; `/sitemap.xml` lists the same 12 URLs. Steps that require a browser context (CTA click, draft hydrate, first-query submit, gate-bypass) remain unattempted in this PR. | Shipped. Three flows now have first-time partial-pass evidence; FLOW-002's prior CTA/gate failure is still the binding gap. Verification mirror outcome logs and status dashboard updated. |
+| 2026-05-23 | §2.1 Stack Overflow source (SK-ICP-005) | Add the 4th ICP scrape source listed in §2.1 but never shipped | `apps/api/src/icp-scrape.ts` gains `fetchStackExchange` (Stack Exchange API 2.3 `/search/advanced`, `site=stackoverflow`, 5 tag+query pairs covering P1/P3/P4/P6 — `postgresql/setup`, `sqlalchemy/verbose`, `sql/natural language`, `prisma/migration`, `duckdb;clickhouse`; `pagesize=10`; `fromdate=now-7d`; anonymous quota 300/IP/day). New OTel span `nlqdb.icp.fetch.stackoverflow` carries `nlqdb.icp.se.quota_remaining`; `backoff` field is surfaced via `icp_se_backoff` warn-log. Items stored as `source: "stackoverflow"`, `id: "so-<question_id>"`; LogSnag description gains `SO: <n>`. Per-source error handling matches HN/Reddit/GitHub (one failing source never kills others). Live API probe from this environment returned 1 fresh question for `postgresql/setup` with `quota_remaining=299`, `backoff=None`; 14/14 `icp-scrape.test.ts` tests pass (3 new). | Shipped. Fourth source live for first cron Mon 2026-05-26. No new env binding required. |

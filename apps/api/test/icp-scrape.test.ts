@@ -261,6 +261,121 @@ describe("runIcpScrape", () => {
     expect(customFetch).toHaveBeenCalled();
   });
 
+  describe("Stack Exchange (Stack Overflow) source", () => {
+    function seResponse(questionId: number) {
+      return JSON.stringify({
+        items: [
+          {
+            question_id: questionId,
+            title: `SO Question ${questionId}`,
+            body: "Why is Postgres setup so painful for a small project?",
+            link: `https://stackoverflow.com/questions/${questionId}/why`,
+            creation_date: Math.floor(Date.now() / 1000) - 3600,
+            score: 7,
+            tags: ["postgresql"],
+          },
+        ],
+        quota_remaining: 299,
+      });
+    }
+
+    it("fetches Stack Exchange questions and stores them with source=stackoverflow", async () => {
+      const kv = stubKv();
+      const stubFetch: typeof fetch = vi.fn(async (url: string | URL | Request) => {
+        const urlStr = typeof url === "string" ? url : url instanceof URL ? url.href : url.url;
+        if (urlStr.includes("api.stackexchange.com")) {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => JSON.parse(seResponse(424242)),
+          } as unknown as Response;
+        }
+        if (urlStr.includes("hn.algolia.com")) {
+          return { ok: true, status: 200, json: async () => ({ hits: [] }) } as unknown as Response;
+        }
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ data: { children: [] } }),
+        } as unknown as Response;
+      }) as unknown as typeof fetch;
+
+      const result = await runIcpScrape({ kv, fetch: stubFetch, tracer: stubTracer });
+      expect(result.sources["stackoverflow"]).toBeGreaterThanOrEqual(1);
+
+      const putCalls = (kv.put as ReturnType<typeof vi.fn>).mock.calls as Array<
+        [string, ...unknown[]]
+      >;
+      expect(putCalls.some(([k]) => k.startsWith("icp:seen:stackoverflow:so-424242"))).toBe(true);
+      expect(
+        putCalls.some(([k]) => k.includes("icp:item:") && k.includes(":stackoverflow:so-424242")),
+      ).toBe(true);
+    });
+
+    it("requests scoped by tag, site=stackoverflow, and fromdate (7-day window)", async () => {
+      const kv = stubKv();
+      const seenUrls: string[] = [];
+      const stubFetch: typeof fetch = vi.fn(async (url: string | URL | Request) => {
+        const urlStr = typeof url === "string" ? url : url instanceof URL ? url.href : url.url;
+        if (urlStr.includes("api.stackexchange.com")) {
+          seenUrls.push(urlStr);
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({ items: [] }),
+          } as unknown as Response;
+        }
+        if (urlStr.includes("hn.algolia.com")) {
+          return { ok: true, status: 200, json: async () => ({ hits: [] }) } as unknown as Response;
+        }
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ data: { children: [] } }),
+        } as unknown as Response;
+      }) as unknown as typeof fetch;
+
+      await runIcpScrape({ kv, fetch: stubFetch, tracer: stubTracer });
+
+      expect(seenUrls.length).toBeGreaterThan(0);
+      for (const u of seenUrls) {
+        expect(u).toContain("site=stackoverflow");
+        expect(u).toContain("tagged=");
+        expect(u).toMatch(/fromdate=\d+/);
+        expect(u).toContain("sort=creation");
+      }
+    });
+
+    it("handles Stack Exchange 502 error gracefully — other sources still complete", async () => {
+      const kv = stubKv();
+      const stubFetch: typeof fetch = vi.fn(async (url: string | URL | Request) => {
+        const urlStr = typeof url === "string" ? url : url instanceof URL ? url.href : url.url;
+        if (urlStr.includes("api.stackexchange.com")) {
+          return { ok: false, status: 502, json: async () => ({}) } as unknown as Response;
+        }
+        if (urlStr.includes("query=text+to+sql")) {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => JSON.parse(hnResponse("hn-x")),
+          } as unknown as Response;
+        }
+        if (urlStr.includes("hn.algolia.com")) {
+          return { ok: true, status: 200, json: async () => ({ hits: [] }) } as unknown as Response;
+        }
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ data: { children: [] } }),
+        } as unknown as Response;
+      }) as unknown as typeof fetch;
+
+      const result = await runIcpScrape({ kv, fetch: stubFetch, tracer: stubTracer });
+      expect(result.sources["hn"]).toBeGreaterThanOrEqual(1);
+      expect(result.sources["stackoverflow"]).toBeUndefined();
+    });
+  });
+
   describe("GitHub Issues source", () => {
     function ghSearchResponse(id: number) {
       return JSON.stringify({
