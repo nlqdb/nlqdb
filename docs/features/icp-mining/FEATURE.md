@@ -45,6 +45,8 @@ when-to-load:
   - *In this feature:* HN/Reddit fetches → `nlqdb.icp.fetch.hn` / `nlqdb.icp.fetch.reddit`; GitHub Issues fetch → `nlqdb.icp.fetch.github`; LLM scoring → `nlqdb.icp.score`; per-persona clustering → `nlqdb.icp.cluster`; GitHub evidence-file write → `nlqdb.icp.github_write`. All spans carry relevant attributes (source, item count, provider, file path, written status).
 - **GLOBAL-028** — Acquisition progress tracker.
   - *In this feature:* this cron implements §2.1–§2.4 of [`automated-icp-validation-plan.md`](../../research/automated-icp-validation-plan.md). Progress is recorded in that file.
+- **GLOBAL-029** — Acquisition verification tracker.
+  - *In this feature:* once the first cluster file lands (Mon 2026-05-26), §8 `FLOW-NNN` blocks in `automated-icp-validation-plan.md` get amended with verbatim cluster labels; the mirrored verification blocks gain new walkthrough steps proving the cluster→`/solve/` auto-suggestion path (open question in this feature). Implementation and verification trackers stay in lockstep per the GLOBAL.
 
 ### SK-ICP-002 — LLM scoring of raw items immediately after each weekly scrape
 

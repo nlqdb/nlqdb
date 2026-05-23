@@ -56,6 +56,7 @@ grep -rn 'GLOBAL-007' docs/features/
 | [GLOBAL-026](./decisions/GLOBAL-026-llm-strategy-byollm-hosted-premium.md) | LLM strategy: free chain forever, BYOLLM for everyone, hosted premium on paid (flat sub + included request allowance + soft-meter overage, 0% markup) | llm-router, premium-tier, stripe-billing, api-keys | active |
 | [GLOBAL-027](./decisions/GLOBAL-027-pre-alpha-gate.md) | Pre-alpha gate — every "do-work" surface returns 403 `feature_gated` until BIRD ≥ 0.65 AND Spider ≥ 0.75 on the free chain; design-partner allowlist + invite codes bypass | pre-alpha-gate, anonymous-mode, web-app, sdk, cli, mcp-server, quality-eval, ask-pipeline | active |
 | [GLOBAL-028](./decisions/GLOBAL-028-acquisition-progress-tracker.md) | `docs/research/automated-icp-validation-plan.md` is the canonical acquisition progress tracker; the only doc allowed to exceed 20 KB; all updates are agent-ran | icp-mining, web-app | active |
+| [GLOBAL-029](./decisions/GLOBAL-029-acquisition-verification-tracker.md) | `docs/research/automated-icp-validation-plan-verification.md` mirrors the impl plan; tracks per-flow walkthrough-by-agent status; also exempt from the 20 KB cap | icp-mining, web-app | active |
 
 ## Adding a new GLOBAL
 
