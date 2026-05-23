@@ -6,9 +6,10 @@
 #   FLOW-001 step 1+2 (homepage hero)
 #   FLOW-002 step 1, 3, 4 (/solve/<slug> + FAQPage/HowTo JSON-LD + honest-limits)
 #   FLOW-003 step 1, 2, 4, 9 (/vs/<slug> + h1 + FAQPage JSON-LD + /llms.txt)
-#   FLOW-005 step 1+2 (mcp.nlqdb.com OAuth discovery — proves the MCP
-#                      server is reachable and advertises the auth surface;
-#                      tools/list itself still needs a real client)
+#   FLOW-005 discovery (mcp.nlqdb.com OAuth metadata — precondition of
+#                       the inspector handshake in walkthrough step 1;
+#                       step 1's transport + steps 2-7 still need a
+#                       real MCP client)
 #   FLOW-008 source-health (HN / Reddit / GH / SO / IH — the cron upstreams)
 # Steps that need a browser, OAuth, or an inbox stay in the verification
 # mirror for the Playwright/FLOW-004+ pass; the script prints them as
@@ -205,20 +206,21 @@ if fetch_body "GET /sitemap.xml returns 200" "$BASE_URL/sitemap.xml"; then
   rm -f "$FETCH_BODY_PATH"
 fi
 
-# --- FLOW-005 — MCP discovery (curl-observable subset, steps 1+2) --------
+# --- FLOW-005 — MCP discovery (precondition of walkthrough step 1) -------
 
 # The MCP server uses OAuth (RFC 9728 protected-resource + RFC 8414
 # authorization-server metadata). The discovery endpoints are
 # unauthenticated by design, so an agent VM with no `sk_mcp_*` key can
 # still prove (a) the Worker is reachable, (b) it advertises the auth
-# surface, (c) the JSON contract is intact. The authenticated
-# `tools/list` walk (FLOW-005 step 3+) still needs an MCP client.
+# surface, (c) the JSON contract is intact. The MCP inspector consumes
+# these endpoints during its own handshake — failing them blocks the
+# walkthrough's step 1 outright.
 
 MCP_URL="${NLQDB_MCP_URL:-https://mcp.nlqdb.com}"
 
-say "FLOW-005 — MCP discovery (curl-observable subset)"
+say "FLOW-005 — MCP discovery (precondition of walkthrough step 1)"
 mcp_pr_url="$MCP_URL/.well-known/oauth-protected-resource"
-if fetch_json "FLOW-005 step 1 GET /.well-known/oauth-protected-resource" "$mcp_pr_url" fatal \
+if fetch_json "FLOW-005 discovery: GET /.well-known/oauth-protected-resource" "$mcp_pr_url" fatal \
     -H "Accept: application/json"; then
   if grep -q "\"resource\":\"$MCP_URL\"" "$FETCH_BODY_PATH"; then
     ok "  MCP protected-resource advertises resource=$MCP_URL"
@@ -228,7 +230,7 @@ if fetch_json "FLOW-005 step 1 GET /.well-known/oauth-protected-resource" "$mcp_
   rm -f "$FETCH_BODY_PATH"
 fi
 mcp_as_url="$MCP_URL/.well-known/oauth-authorization-server"
-if fetch_json "FLOW-005 step 2 GET /.well-known/oauth-authorization-server" "$mcp_as_url" fatal \
+if fetch_json "FLOW-005 discovery: GET /.well-known/oauth-authorization-server" "$mcp_as_url" fatal \
     -H "Accept: application/json"; then
   if grep -q "\"issuer\":\"$MCP_URL\"" "$FETCH_BODY_PATH" \
       && grep -q '"authorization_endpoint"' "$FETCH_BODY_PATH" \
@@ -239,15 +241,16 @@ if fetch_json "FLOW-005 step 2 GET /.well-known/oauth-authorization-server" "$mc
   fi
   rm -f "$FETCH_BODY_PATH"
 fi
-note "FLOW-005 steps 3-7 require an authenticated MCP client (tools/list, create_database, ask, run) and an sk_mcp_* key"
+note "FLOW-005 walkthrough steps 1-7 (inspector handshake, tools/list, create_database, ask, run) still require an authenticated MCP client and an sk_mcp_* key"
 
 # --- FLOW-008 — Weekly ICP scrape source-health probe --------------------
 
 # Same five upstreams the Mon 06:00 UTC cron in apps/api/src/icp-scrape.ts
-# pulls from. Per SK-ICP-007 the probe is best-effort: HN/SO/IH/GH must
-# answer (failure = real upstream regression), Reddit is advisory because
-# www.reddit.com serves 403 to most residential / datacentre egress
-# (the Worker's Cloudflare IP is the only canonical probe).
+# pulls from. Per SK-ICP-007 the probe is best-effort: HN/IH must answer;
+# GH is fatal-when-GH_TOKEN-set, else skipped; Reddit + Stack Exchange
+# may 403 with `x-block-reason: hostname_blocked` from a managed-egress
+# proxy and fetch_json degrades that to an advisory note automatically
+# (the Worker's Cloudflare IP is the only canonical probe for those two).
 
 ICP_SEVEN_DAYS_AGO=$(date -u -d '7 days ago' +%s 2>/dev/null || date -u -v-7d +%s)
 

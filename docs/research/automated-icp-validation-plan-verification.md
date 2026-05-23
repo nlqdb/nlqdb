@@ -27,7 +27,7 @@
 > sandbox-egress proxy blocks (Reddit / Stack Exchange — the deployed
 > Worker is the canonical probe). FLOW-001 / FLOW-002 / FLOW-003 have
 > curl-only partial passes across all 8 AEO slugs; FLOW-005 has a new
-> curl-only partial pass on the OAuth discovery surface (steps 1+2).
+> curl-only partial pass on the OAuth discovery precondition.
 > FLOW-002 carries a failed step 8 (CTA telemetry + gate continuation)
 > — that failure routes back as priority #4 in the impl plan's
 > pick-list, not as a notification. Full Playwright walks are still
@@ -45,7 +45,7 @@
 | FLOW-002 | P3 analyst | failed 2026-05-23 step 8; curl steps 1, 3, 4 re-pass across all 5 slugs via `verify-flows.sh` | 2026-05-23 | 5/6 (83%) |
 | FLOW-003 | P3 / P4 | partial — curl steps 1, 2, 4, 9 re-pass across all 3 slugs via `verify-flows.sh`; 5–8 need browser | 2026-05-23 | 5/5 (100%) |
 | FLOW-004 | P1 solo builder | not yet attempted | — | 5/6 (83%) |
-| FLOW-005 | P2 agent builder | partial — curl steps 1+2 (OAuth discovery) pass via `verify-flows.sh`; 3–7 need an authenticated MCP client | 2026-05-23 | 5/6 (83%) |
+| FLOW-005 | P2 agent builder | partial — OAuth discovery precondition passes via `verify-flows.sh`; walkthrough steps 1-7 need an authenticated MCP client | 2026-05-23 | 5/6 (83%) |
 | FLOW-006 | P4 backend engineer | not yet attempted | — | 5/6 (83%) |
 | FLOW-007 | P1 / P3 | not yet attempted | — | 5/6 (83%) |
 | FLOW-008 | cron / system | partial — curl probe of 5 sources passes (HN / GH / IH 200; Reddit / SO sandbox-egress advisory); cron-side KV writes + LogSnag publish need the deployed Worker | 2026-05-23 | 8/8 (100%) |
@@ -515,7 +515,7 @@ provision and query in English."
 
 | Date | Agent | State | Tools confirmed | Notes |
 |---|---|---|---|---|
-| 2026-05-23 | composer-4 | partial steps 1+2 | OAuth discovery (no tools confirmed) | `scripts/verify-flows.sh` curl-only probe against `https://mcp.nlqdb.com`: `/.well-known/oauth-protected-resource` → 200 with `resource=https://mcp.nlqdb.com`; `/.well-known/oauth-authorization-server` → 200 with `issuer=https://mcp.nlqdb.com`, `authorization_endpoint`, `token_endpoint`. Unauthenticated `POST /mcp tools/list` returns `401 invalid_token` — the auth wall is intact. Steps 3–7 (`tools/list`, `create_database`, `ask`, `run`) need an MCP inspector + `sk_mcp_*` key and are unattempted in this PR. |
+| 2026-05-23 | composer-4 | partial (discovery precondition) | OAuth metadata (no tools confirmed) | `scripts/verify-flows.sh` curl-only probe against `https://mcp.nlqdb.com`: `/.well-known/oauth-protected-resource` → 200 with `resource=https://mcp.nlqdb.com`; `/.well-known/oauth-authorization-server` → 200 with `issuer=https://mcp.nlqdb.com`, `authorization_endpoint`, `token_endpoint`. These two endpoints are the precondition the MCP inspector consumes during its handshake in walkthrough step 1 — a 4xx/5xx here would block step 1 outright. Unauthenticated `POST /mcp tools/list` returns `401 invalid_token` — the auth wall is intact. Walkthrough steps 1-7 (inspector transport handshake, `tools/list`, `create_database`, `ask`, `run`) need an MCP inspector + `sk_mcp_*` key and are unattempted in this PR. |
 
 ---
 
