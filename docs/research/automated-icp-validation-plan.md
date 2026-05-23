@@ -6,7 +6,7 @@
 > every PR that implements a section here must update `## Current status`
 > and append a row to `## Progress log`.
 
-> **Status:** in progress — §1.4, §2.2 (collection), §2.3 (all steps), §2.1 GitHub Issues source, §2.4 verdict automation shipped 2026-05-22. §1.1 (stranger-test), §1.2 (KPI dashboard), §1.3 (in-app survey), §3 (acquisition surfaces), §4 (PMF capture) not yet started — **the pipeline collects signal but no surface yet measures whether invited users land safely**. First cron fires Mon 2026-05-26 06:00 UTC; until then no real ICP evidence has been written.
+> **Status:** in progress — §1.4, §2.2 (collection), §2.3 (all steps), §2.1 GitHub Issues source, §2.4 verdict automation shipped 2026-05-22. §3.1 first 5 hand-curated solve pages shipped 2026-05-23 (paraphrased search-intent `<h1>` per SK-SOLVE-001 — verbatim cluster quotes pending the 2026-05-26 first cluster file). §1.1 (stranger-test), §1.2 (KPI dashboard), §1.3 (in-app survey), the rest of §3 (gallery, reply queue), §4 (PMF capture) not yet started — **the pipeline collects signal and the AEO surfaces (vs + solve) are live, but no surface yet measures whether invited users land safely**. First ICP cron fires Mon 2026-05-26 06:00 UTC; until then no real ICP evidence has been written.
 >
 > **Context.** Every advertised surface ([progress.md §0](../progress.md))
 > shipped; zero validated users.
@@ -39,11 +39,15 @@
 | First-query success | ≥ 60% | not measured |
 
 **Honest gap (acquisition-risk):** the pipeline now identifies pain at
-scale and the gate-valve issues invites, but **§1.1 stranger-test, §1.2
-KPI dashboard, and §1.3 in-app survey are still unshipped** — meaning we
-can pull people in but can't yet detect whether they landed on a working
-flow or churned silently. Before any §3 acquisition surface goes live,
-those three are the next correctness bar.
+scale, the gate-valve issues invites, and the first AEO surfaces (vs +
+solve) earn impressions, but **§1.1 stranger-test, §1.2 KPI dashboard,
+and §1.3 in-app survey are still unshipped** — meaning we can pull
+people in but can't yet detect whether they landed on a working flow or
+churned silently. Those three remain the next correctness bar before
+any large acquisition push (Show HN, Product Hunt — §3.3) goes live;
+the static AEO surfaces (§3.1, §3.5 partial via comparison pages) ship
+first because their failure mode is "no traffic", not "broken funnel
+for inbound traffic".
 
 ---
 
@@ -305,6 +309,26 @@ cluster data; founder merges PR; no by-hand writing. Gartner: 50% of
 search volume → AI chatbots by 2028
 ([2026 trend report](https://painonsocial.com/blog/best-pain-point-tool)).
 AEO earns impressions now.
+
+> **✅ IMPLEMENTED 2026-05-23 (first 5 hand-curated pages — pre-cluster):**
+> `apps/web/src/data/solve.ts` (typed source of truth) + `apps/web/src/pages/solve/[slug].astro`
+> (single Astro template, getStaticPaths). 5 pages shipped:
+> `/solve/cheap-internal-dashboard` (P3), `/solve/give-ai-agent-persistent-memory` (P2),
+> `/solve/skip-postgres-setup-side-project` (P1), `/solve/natural-language-sql-without-training-data` (P3),
+> `/solve/ship-leaderboard-no-sql` (P1). Each page: AEO direct-answer
+> capsule, `<nlq-data>` snippet embed, "What nlqdb actually does"
+> bullets, mandatory "What nlqdb doesn't do here" honest-limits section,
+> 3-5 FAQs (FAQPage JSON-LD), HowTo JSON-LD, ≥2 cited enduring
+> discussion-hub URLs (no rot-prone single-thread URLs per SK-SOLVE-003).
+> Sitemap + llms.txt updated automatically from the data file. "Try
+> this query" CTA emits `solve.try_query_clicked` to LogSnag with `{slug, goal}`
+> and seeds the `nlqdb_draft` localStorage slot before navigating to
+> `/app/new`. **Deviation from plan literal wording:** `<h1>` is the
+> paraphrased natural-language search query rather than a verbatim
+> cluster quote — until the 2026-05-26 first cluster file lands there
+> is no verbatim quote to cite without fabricating one, and SK-SOLVE-001
+> records the trade-off. Canonical decisions: SK-SOLVE-001/002/003 in
+> [`docs/features/solve-pages/`](../features/solve-pages/FEATURE.md).
 
 ### 3.2 Build-in-public — scheduled, never DMed
 
@@ -577,3 +601,4 @@ Per [GLOBAL-028](../decisions/GLOBAL-028-acquisition-progress-tracker.md): every
 | 2026-05-22 | §2.3 LLM clustering (steps 3–4) | Cluster scored items + write evidence file | `icp-cluster.ts`: lists all `icp:scored:*` KV keys (paginated), groups by best persona (top-100 each), calls Groq → Gemini to cluster into 5–7 themes, generates `docs/research/icp-evidence-<yyyy-mm>.md`, writes to GitHub via Contents API PUT (checks existing SHA). Non-fatal: GitHub write failure returns `written: false` without killing cron. | Shipped. First evidence file 2026-05-26. |
 | 2026-05-22 | §2.1 GitHub Issues source | Add GitHub Search Issues as scrape source | `icp-scrape.ts`: 5 queries (`is:issue "text to sql"`, natural language database, etc.) via GitHub Search Issues API with `GH_TOKEN` auth, `created:>2025-11-01` filter. Per-query errors caught. Items stored with `source: "github"`. | Shipped. Active from first run 2026-05-26 when `GH_TOKEN` is set. |
 | 2026-05-22 | §2.4 verdict + harden pipeline | Surface decision-rule verdict in evidence file; fix correctness gaps before first cron run | `icp-cluster.ts`: §2.4 rule (≥3× ratio AND ≥30 quotes) computed per run, surfaced as `## §2.4 Decision rule` block at top of `icp-evidence-<yyyy-mm>.md` and as `IcpClusterResult.{primaryStatus, primaryIcp}` in cron logs + LogSnag. Clamps LLM-hallucinated `cluster.count` to actual group size; renders cluster `top_urls` in markdown. `icp-scrape.ts`: Reddit URLs now carry `restrict_sr=on` (without it the search returns site-wide results, polluting persona signal); GitHub Search + Contents API calls now send `User-Agent: nlqdb-icp-bot` (REST rejects no-UA with 403); GitHub issues with unparseable `created_at` are dropped before KV write; `incomplete_results: true` is logged. All external HTTP gains `AbortSignal.timeout(10–15s)`. | Shipped. First evidence file 2026-05-26 will already include the verdict; the Reddit corpus stays subreddit-scoped from run #1 forward. |
+| 2026-05-23 | §3.1 pain-driven solve pages (first 5) | Hand-curated AEO surface; 5 pages ahead of the 2026-05-26 first cluster file | `apps/web/src/data/solve.ts` (typed source of truth, 5 entries); `apps/web/src/pages/solve/[slug].astro` (single Astro template, getStaticPaths); `apps/web/src/pages/solve/index.astro` (page index at `/solve`); `apps/web/src/data/solve.test.ts` (12 data-integrity tests pinning AEO invariants: unique kebab slugs, ≤60-word oneLiner, ≥3 howNlqdbAnswers, ≥2 whatItDoesnt limits, ≥3 FAQs ≤80-word answers, ≥2 enduring source URLs starting with `https://`). Sitemap + llms.txt updated to enumerate solve slugs alongside vs slugs. "Try this query" CTA emits `solve.try_query_clicked` LogSnag event + seeds `nlqdb_draft` localStorage. FAQPage + HowTo JSON-LD per page. Self-canonical `<link rel="canonical">`. New feature record at `docs/features/solve-pages/` with SK-SOLVE-001 (search-intent `<h1>`, not fabricated verbatim quotes — paraphrase is honest until cluster file lands), SK-SOLVE-002 (mandatory "What nlqdb doesn't do" section per AEO honest-trade-off rule), SK-SOLVE-003 (≥2 enduring discussion-hub URLs, never single-thread URLs that can rot). `CLAUDE.md §5` path map updated. | Shipped. Sitemap now lists 12 URLs (was 7); llms.txt now exposes a `## Solve pages` block to LLM-IDE crawlers (Claude Desktop, Perplexity, Cursor, Cline, Aider, Copilot). |
