@@ -29,7 +29,9 @@
 # but not yet read at runtime — promote to the SECRETS array below
 # once the edge starts minting internal JWTs.
 #
-# Prereqs: gh authenticated, admin/maintainer access to nlqdb/nlqdb.
+# Prereqs: gh authenticated (keyring / `gh auth login`), admin/maintainer
+# access to nlqdb/nlqdb. Do NOT point `gh` at the ICP fine-grained PAT in
+# `GH_TOKEN` — gh CLI reads that env var and it lacks Actions-secrets scope.
 
 set -euo pipefail
 
@@ -43,17 +45,30 @@ ok()   { printf '  \033[1;32m✓\033[0m %s\n' "$*"; }
 fail() { printf '  \033[1;31m✗\033[0m %s — %s\n' "$1" "$2"; }
 skip() { printf '  \033[2m· skip %s (not set in .envrc)\033[0m\n' "$*"; }
 
+# gh CLI prefers the GH_TOKEN env var over `gh auth login` credentials.
+# Our Worker/GHA secret named GH_TOKEN is a fine-grained ICP PAT (Issues +
+# Contents only) — it cannot call Actions-secrets APIs. Always invoke gh
+# with GH_TOKEN unset; .envrc values are read from shell variables instead.
+gh_cli() { env -u GH_TOKEN gh "$@"; }
+
 # --- preflight ----------------------------------------------------------
 [[ -f .envrc ]] || { fail "preflight" ".envrc not found at $REPO_ROOT — run scripts/bootstrap-dev.sh first"; exit 1; }
 command -v gh >/dev/null 2>&1 || { fail "preflight" "gh not installed — run scripts/bootstrap-dev.sh first"; exit 1; }
-gh auth status >/dev/null 2>&1 || { fail "preflight" "gh not authenticated — run: gh auth login"; exit 1; }
-gh repo view "$REPO" >/dev/null 2>&1 || { fail "preflight" "no access to $REPO — check token scope"; exit 1; }
 
-# Source .envrc without echoing.
+# Source .envrc without echoing (may export GH_TOKEN — that's fine).
 set -a
 # shellcheck disable=SC1091
 source .envrc
 set +a
+
+gh_cli auth status >/dev/null 2>&1 || {
+  fail "preflight" "gh not authenticated — run: gh auth login (needs repo admin for Actions secrets; do not rely on GH_TOKEN env)"
+  exit 1
+}
+gh_cli repo view "$REPO" >/dev/null 2>&1 || {
+  fail "preflight" "no access to $REPO — check gh auth token scope (repo admin)"
+  exit 1
+}
 
 # --- canonical mirror list ----------------------------------------------
 # Order = .env.example for easy diff. Add new secrets here AND in
@@ -141,11 +156,11 @@ for name in "${SECRETS[@]}"; do
   # and stores "-" (1 char) instead of reading stdin. That bug wiped
   # 29 GHA secrets to "-" on 2026-04-27; CI silently broke for hours.
   # Stdin path keeps the value out of argv / ps / shell history.
-  if printf '%s' "$val" | gh secret set "$name" --repo "$REPO" >/dev/null 2>&1; then
+  if printf '%s' "$val" | gh_cli secret set "$name" --repo "$REPO" >/dev/null 2>&1; then
     ok "$name (${#val} chars)"
     set_count=$((set_count + 1))
   else
-    fail "$name" "gh secret set failed"
+    fail "$name" "gh secret set failed (if GH_TOKEN is in .envrc: gh CLI was hijacked — this script now unsets it; re-run, or run: gh auth login)"
     fail_count=$((fail_count + 1))
   fi
 done
@@ -175,8 +190,8 @@ say "Done"
 ok "$set_count secrets mirrored"
 [[ $skip_count -gt 0 ]] && printf '  \033[2m· %d skipped (empty in .envrc — provision later)\033[0m\n' "$skip_count"
 [[ $suspicious_count -gt 0 ]] && printf '  \033[1;31m✗ %d refused (value < %d chars — looks truncated)\033[0m\n' "$suspicious_count" "$SUSPICIOUSLY_SHORT"
-[[ $fail_count -gt 0 ]] && printf '  \033[1;31m✗ %d failed — check gh auth status, repo permissions, token scope\033[0m\n' "$fail_count"
+[[ $fail_count -gt 0 ]] && printf '  \033[1;31m✗ %d failed — run: env -u GH_TOKEN gh auth status; needs repo admin (not the ICP GH_TOKEN PAT)\033[0m\n' "$fail_count"
 echo ""
-echo "Verify with: gh secret list -R $REPO"
+echo "Verify with: env -u GH_TOKEN gh secret list -R $REPO"
 [[ $fail_count -gt 0 || $suspicious_count -gt 0 ]] && exit 1
 exit 0
