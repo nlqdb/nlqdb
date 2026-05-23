@@ -40,7 +40,7 @@ when-to-load:
 ## GLOBALs governing this feature
 
 - **GLOBAL-013** — Free-tier bundle budget.
-  - *In this feature:* all sources (HN Algolia, Reddit, GitHub Issues, Stack Exchange, Indie Hackers mirror) are free non-commercial APIs. Stack Exchange anonymous quota is 300 requests/IP/day; this feature uses 5/week. KV write volume (≤ 650 items/week × 2 keys each = 1,300 writes/week) and cluster read volume (≤ 2 list ops + ~650 get ops/week) are inside the free-tier ceilings (7,000 writes/day, 1,000 list ops/day, unlimited reads).
+  - *In this feature:* all five sources are free non-commercial APIs. Stack Exchange anon quota 300/IP/day; cron uses 5/week. Weekly KV cost (≤ 650 items × 2 writes + ≤ 2 list ops + ~650 reads) sits comfortably inside Workers free-tier ceilings.
 - **GLOBAL-014** — OTel span on every external call.
   - *In this feature:* HN/Reddit fetches → `nlqdb.icp.fetch.hn` / `nlqdb.icp.fetch.reddit`; GitHub Issues fetch → `nlqdb.icp.fetch.github`; Stack Overflow fetch → `nlqdb.icp.fetch.stackoverflow`; Indie Hackers fetch → `nlqdb.icp.fetch.indiehackers`; LLM scoring → `nlqdb.icp.score`; per-persona clustering → `nlqdb.icp.cluster`; GitHub evidence-file write → `nlqdb.icp.github_write`. All spans carry relevant attributes (source, item count, provider, file path, written status, and `nlqdb.icp.se.quota_remaining` for Stack Exchange).
 - **GLOBAL-028** — Acquisition progress tracker.

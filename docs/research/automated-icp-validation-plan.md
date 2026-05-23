@@ -41,13 +41,14 @@
 > 7. **Show HN / Product Hunt push (§3.3)** — only after #1–#6.
 >
 > **What's shipped today** (evidence in `## Progress log`, not prose):
-> §1.4 gate-valve · §2.2 collection (HN+Reddit+GH+SO) · §2.3 scoring +
-> clustering + verdict · §2.1 GitHub Issues + Stack Overflow sources ·
-> §3.1 first 5 solve pages (paraphrased `<h1>`) · §8 mirrored flow
-> trackers (7 flows, avg 84% implementation, 0% full verification) ·
+> §1.4 gate-valve · §2.2 collection (HN+Reddit+GH+SO+IH) · §2.3 scoring +
+> clustering + verdict · §2.1 GitHub Issues + Stack Overflow + Indie
+> Hackers sources · §3.1 first 5 solve pages (paraphrased `<h1>`) · §8
+> mirrored flow trackers (8 flows: 1 full pass = FLOW-008 upstream-health,
+> 3 partial = FLOW-001/002/003 static AEO, 4 unattempted = FLOW-004–007) ·
 > [`scripts/verify-flows.sh`](../../scripts/verify-flows.sh) (49 static
-> assertions, agent-runnable, no operator action). First ICP cron
-> fires Mon 2026-05-26 06:00 UTC.
+> assertions + 5 FLOW-008 cron-upstream probes, agent-runnable, no
+> operator action). First ICP cron fires Mon 2026-05-26 06:00 UTC.
 >
 > **Context.** Every advertised surface
 > ([`progress.md §0`](../progress.md)) shipped; zero validated users.
