@@ -20,6 +20,7 @@ import { buildInviteEmail, tryIssueInvite } from "./waitlist-invite.ts";
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const MAX_EMAIL_LEN = 254;
+const MAX_SOURCE_LEN = 100;
 const RATE_WINDOW_SECONDS = 60;
 const RATE_MAX = 5;
 
@@ -90,6 +91,12 @@ export async function joinWaitlist(
   const normalized = trimmed.toLowerCase();
   // Off-list personas degrade to null rather than 400 — keeps the signup path lenient under the "any well-formed email → 200" privacy contract.
   const personaSlug = normalizePersona(persona);
+  // Silently truncate source rather than 400 — callers should never send a long value, but a
+  // free-text referrer from a URL param could be arbitrarily long and the DB column is TEXT.
+  const boundedSource =
+    typeof source === "string" && source.length > MAX_SOURCE_LEN
+      ? source.slice(0, MAX_SOURCE_LEN)
+      : source;
 
   // `clientIp === null` means the request reached us without a
   // `cf-connecting-ip` header. In production behind Cloudflare that
@@ -121,7 +128,7 @@ export async function joinWaitlist(
         "INSERT INTO waitlist (email_hash, email, source, persona) VALUES (?, ?, ?, ?) " +
           "ON CONFLICT(email_hash) DO NOTHING RETURNING 1 AS ok",
       )
-      .bind(hash, normalized, source, personaSlug)
+      .bind(hash, normalized, boundedSource, personaSlug)
       .first<{ ok: number }>();
   } catch {
     return { status: 500, body: { error: { status: "internal" } } };
@@ -137,7 +144,7 @@ export async function joinWaitlist(
     emailHash: hash,
     email: normalized,
     persona: personaSlug,
-    source: source ?? "web",
+    source: boundedSource ?? "web",
   };
   // Default envelope id is `${name}.${emailHash}` for this event
   // (packages/events/src/index.ts:85-86) — same string we'd pass
@@ -149,7 +156,7 @@ export async function joinWaitlist(
     const pendingInvite = tryIssueInvite(deps.kv, cap)
       .then((code) => {
         if (!code) return;
-        const msg = buildInviteEmail(normalized, code);
+        const msg = buildInviteEmail(code);
         return sender({ to: normalized, ...msg });
       })
       .catch((err) => console.warn("waitlist: invite email failed", err));

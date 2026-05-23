@@ -45,10 +45,7 @@ export async function tryIssueInvite(kv: KVNamespace, weekCap: number): Promise<
   return code;
 }
 
-export function buildInviteEmail(
-  _email: string,
-  code: string,
-): { subject: string; text: string; html: string } {
+export function buildInviteEmail(code: string): { subject: string; text: string; html: string } {
   const link = `https://app.nlqdb.com/?invite=${code}`;
   return {
     subject: "You're in — your nlqdb invite",

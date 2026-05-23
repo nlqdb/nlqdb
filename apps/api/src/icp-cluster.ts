@@ -420,6 +420,7 @@ function generateMarkdown(
         const q = c.best_quote ? `"${escMd(c.best_quote)}"` : "—";
         const urls = c.top_urls
           .slice(0, 3)
+          .filter((u) => u.startsWith("https://") || u.startsWith("http://"))
           .map((u, j) => `[${j + 1}](${u})`)
           .join(" ");
         lines.push(`| ${i + 1} | ${escMd(c.label)} | ${c.count} | ${q} | ${urls || "—"} |`);
