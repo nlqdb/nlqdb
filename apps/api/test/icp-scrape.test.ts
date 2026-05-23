@@ -607,6 +607,186 @@ describe("runIcpScrape", () => {
     });
   });
 
+  describe("Indie Hackers source", () => {
+    function ihResponse(id: string, ageDays = 1) {
+      const ts = new Date(Date.now() - ageDays * 24 * 60 * 60 * 1000).toISOString();
+      return JSON.stringify({
+        version: "https://jsonfeed.org/version/1",
+        items: [
+          {
+            url: `https://feed.indiehackers.world/post/${id}`,
+            title: `IH Post ${id}`,
+            content_html: "<p>I'm a solo founder and database setup is killing my side project.</p>",
+            date_modified: ts,
+            author: { name: "Tester" },
+          },
+        ],
+      });
+    }
+
+    it("fetches Indie Hackers posts and stores them with source=indiehackers", async () => {
+      const kv = stubKv();
+      const stubFetch: typeof fetch = vi.fn(async (url: string | URL | Request) => {
+        const urlStr = typeof url === "string" ? url : url instanceof URL ? url.href : url.url;
+        if (urlStr.includes("feed.indiehackers.world")) {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => JSON.parse(ihResponse("a66b5fbe33")),
+          } as unknown as Response;
+        }
+        if (urlStr.includes("hn.algolia.com")) {
+          return { ok: true, status: 200, json: async () => ({ hits: [] }) } as unknown as Response;
+        }
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ data: { children: [] } }),
+        } as unknown as Response;
+      }) as unknown as typeof fetch;
+
+      const result = await runIcpScrape({ kv, fetch: stubFetch, tracer: stubTracer });
+      expect(result.sources["indiehackers"]).toBeGreaterThanOrEqual(1);
+
+      const putCalls = (kv.put as ReturnType<typeof vi.fn>).mock.calls as Array<
+        [string, ...unknown[]]
+      >;
+      expect(putCalls.some(([k]) => k.startsWith("icp:seen:indiehackers:a66b5fbe33"))).toBe(true);
+      expect(
+        putCalls.some(([k]) => k.includes("icp:item:") && k.includes(":indiehackers:a66b5fbe33")),
+      ).toBe(true);
+    });
+
+    it("requests the IH feed with q=, exclude=link-post, and the IH bot User-Agent", async () => {
+      const kv = stubKv();
+      const seen: Array<{ url: string; headers: Record<string, string> }> = [];
+      const stubFetch: typeof fetch = vi.fn(
+        async (url: string | URL | Request, init?: { headers?: Record<string, string> }) => {
+          const urlStr = typeof url === "string" ? url : url instanceof URL ? url.href : url.url;
+          if (urlStr.includes("feed.indiehackers.world")) {
+            seen.push({ url: urlStr, headers: init?.headers ?? {} });
+            return {
+              ok: true,
+              status: 200,
+              json: async () => ({ items: [] }),
+            } as unknown as Response;
+          }
+          if (urlStr.includes("hn.algolia.com")) {
+            return {
+              ok: true,
+              status: 200,
+              json: async () => ({ hits: [] }),
+            } as unknown as Response;
+          }
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({ data: { children: [] } }),
+          } as unknown as Response;
+        },
+      ) as unknown as typeof fetch;
+
+      await runIcpScrape({ kv, fetch: stubFetch, tracer: stubTracer });
+
+      expect(seen.length).toBeGreaterThan(0);
+      for (const { url, headers } of seen) {
+        expect(url).toMatch(/[?&]q=/);
+        expect(url).toContain("exclude=link-post");
+        expect(headers["User-Agent"]).toMatch(/nlqdb-icp-bot/);
+      }
+    });
+
+    it("drops IH posts older than the 7-day window (client-side filter)", async () => {
+      const kv = stubKv();
+      const stubFetch: typeof fetch = vi.fn(async (url: string | URL | Request) => {
+        const urlStr = typeof url === "string" ? url : url instanceof URL ? url.href : url.url;
+        if (urlStr.includes("feed.indiehackers.world")) {
+          // 30-day-old post — should be filtered out client-side because the
+          // mirror has no fromdate parameter.
+          return {
+            ok: true,
+            status: 200,
+            json: async () => JSON.parse(ihResponse("staleid", 30)),
+          } as unknown as Response;
+        }
+        if (urlStr.includes("hn.algolia.com")) {
+          return { ok: true, status: 200, json: async () => ({ hits: [] }) } as unknown as Response;
+        }
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ data: { children: [] } }),
+        } as unknown as Response;
+      }) as unknown as typeof fetch;
+
+      const result = await runIcpScrape({ kv, fetch: stubFetch, tracer: stubTracer });
+      expect(result.sources["indiehackers"]).toBeUndefined();
+    });
+
+    it("drops IH posts whose URL does not match the /post/<id> contract", async () => {
+      const kv = stubKv();
+      const stubFetch: typeof fetch = vi.fn(async (url: string | URL | Request) => {
+        const urlStr = typeof url === "string" ? url : url instanceof URL ? url.href : url.url;
+        if (urlStr.includes("feed.indiehackers.world")) {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({
+              items: [
+                {
+                  // Malformed: no /post/<id> path — dedup id would be unstable.
+                  url: "https://feed.indiehackers.world/something-else",
+                  title: "Malformed URL",
+                  date_modified: new Date().toISOString(),
+                },
+              ],
+            }),
+          } as unknown as Response;
+        }
+        if (urlStr.includes("hn.algolia.com")) {
+          return { ok: true, status: 200, json: async () => ({ hits: [] }) } as unknown as Response;
+        }
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ data: { children: [] } }),
+        } as unknown as Response;
+      }) as unknown as typeof fetch;
+
+      const result = await runIcpScrape({ kv, fetch: stubFetch, tracer: stubTracer });
+      expect(result.sources["indiehackers"]).toBeUndefined();
+    });
+
+    it("handles IH feed 502 gracefully — other sources still complete", async () => {
+      const kv = stubKv();
+      const stubFetch: typeof fetch = vi.fn(async (url: string | URL | Request) => {
+        const urlStr = typeof url === "string" ? url : url instanceof URL ? url.href : url.url;
+        if (urlStr.includes("feed.indiehackers.world")) {
+          return { ok: false, status: 502, json: async () => ({}) } as unknown as Response;
+        }
+        if (urlStr.includes("query=text+to+sql")) {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => JSON.parse(hnResponse("hn-y")),
+          } as unknown as Response;
+        }
+        if (urlStr.includes("hn.algolia.com")) {
+          return { ok: true, status: 200, json: async () => ({ hits: [] }) } as unknown as Response;
+        }
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ data: { children: [] } }),
+        } as unknown as Response;
+      }) as unknown as typeof fetch;
+
+      const result = await runIcpScrape({ kv, fetch: stubFetch, tracer: stubTracer });
+      expect(result.sources["hn"]).toBeGreaterThanOrEqual(1);
+      expect(result.sources["indiehackers"]).toBeUndefined();
+    });
+  });
+
   it("Reddit search URLs include restrict_sr=on so results stay subreddit-scoped", async () => {
     const kv = stubKv();
     const seenUrls: string[] = [];
