@@ -21,29 +21,36 @@
 > below, open a PR. A failed flow IS the next agent's #1 — not a
 > ping to anyone.
 
-> **Status (2026-05-23):** 0 / 8 flows fully passed. FLOW-008 (cron
-> upstream-health) holds a curl-only pass against the 3 sources the
-> sandbox can reach (HN / GH / IH) and an advisory note for the 2 the
-> sandbox-egress proxy blocks (Reddit / Stack Exchange — the deployed
-> Worker is the canonical probe). FLOW-001 / FLOW-002 / FLOW-003 have
-> curl-only partial passes across all 8 AEO slugs; FLOW-005 has a new
+> **Status (2026-05-24):** 0 / 8 flows fully passed. **The §1.1
+> stranger-test Playwright primitive shipped today** — [`tools/stranger-test/`](../../tools/stranger-test/),
+> agent-invoked as `bash scripts/stranger-test.sh`, walks FLOW-001 /
+> FLOW-002 / FLOW-003 against the deployed surface in ~7 s per
+> 9-walk run. The walker covers every step a curl probe couldn't:
+> CTA click + draft handoff + `/app/new` rehydrate + the
+> `solve.try_query_clicked` event spy (sessionStorage-persisted so
+> it survives the post-CTA navigation). The 2026-05-24 walk recorded
+> every static-surface and CTA-side assertion as `ok`; the binding
+> gap is the gate-403 on `/v1/ask` (FLOW-001 step 5, FLOW-002 step
+> 9, FLOW-003 step 8) — SK-ANON-001 vs GLOBAL-027 — which routes
+> back as impl-plan priority #1 (§1.4 anon-bypass), not as a
+> notification. FLOW-002's prior "step 8 event-spy missing" finding
+> is **corrected** by the walker: the spy ran on the post-navigation
+> page where the array was reset; sessionStorage persistence
+> observes the event firing on every slug walked. FLOW-008 (cron
+> upstream-health) still holds the same curl-only pass for HN / GH /
+> IH and an advisory note for Reddit / Stack Exchange (sandbox-egress
+> proxy block; deployed Worker is canonical). FLOW-005 still has the
 > curl-only partial pass on the OAuth discovery precondition.
-> FLOW-002 carries a failed step 8 (CTA telemetry + gate continuation)
-> — that failure routes back as priority #4 in the impl plan's
-> pick-list, not as a notification. Full Playwright walks are still
-> pending for every user-flow; the §1.1 stranger-test Playwright
-> primitive (impl plan priority #1) is what closes the gap from
-> "curl-observable static" to "stranger lands and gets first-value."
 
 ---
 
-## Status dashboard (updated 2026-05-23)
+## Status dashboard (updated 2026-05-24)
 
 | Flow | Persona | Verification status | Last verified | Mirror impl % |
 |---|---|---|---|---|
-| FLOW-001 | P1 solo builder | partial — curl steps 1–2 re-pass via `verify-flows.sh`; 3–9 need browser | 2026-05-23 | 5/7 (71%) |
-| FLOW-002 | P3 analyst | failed 2026-05-23 step 8; curl steps 1, 3, 4 re-pass across all 5 slugs via `verify-flows.sh` | 2026-05-23 | 5/6 (83%) |
-| FLOW-003 | P3 / P4 | partial — curl steps 1, 2, 4, 9 re-pass across all 3 slugs via `verify-flows.sh`; 5–8 need browser | 2026-05-23 | 5/5 (100%) |
+| FLOW-001 | P1 solo builder | failed 2026-05-24 step 5 (gate 403 on `/v1/ask`; steps 1–4 ok across 3 prompts via `stranger-test.sh`) | 2026-05-24 | 6/7 (86%) |
+| FLOW-002 | P3 analyst | failed 2026-05-24 step 9 (gate 403 on submit; steps 1–8 ok across 3 slugs via `stranger-test.sh`, includes event-spy on `solve.try_query_clicked`) | 2026-05-24 | 5/6 (83%) |
+| FLOW-003 | P3 / P4 | failed 2026-05-24 step 8 (gate 403 on submit; steps 1–7 + 9 ok across 3 slugs via `stranger-test.sh`) | 2026-05-24 | 5/5 (100%) |
 | FLOW-004 | P1 solo builder | not yet attempted | — | 5/6 (83%) |
 | FLOW-005 | P2 agent builder | partial — OAuth discovery precondition passes via `verify-flows.sh`; walkthrough steps 1-7 need an authenticated MCP client | 2026-05-23 | 5/6 (83%) |
 | FLOW-006 | P4 backend engineer | not yet attempted | — | 5/6 (83%) |
@@ -229,6 +236,7 @@ requires credentials, that itself is the failure.
 | 2026-05-23 | composer-1 | partial steps 1–2 | — | curl-only walk: `GET https://nlqdb.com/` → 200 (93 KB), hero `<form>` rendered with `placeholder="an orders tracker"` matching the `/orders\|tracker\|building/i` contract. Steps 3–9 require a browser (anonymous device-token issuance, `/v1/ask` POST with TTFV timer, trace toggle, clipboard, follow-up query) and were not exercised in this PR — Playwright not available on the agent VM. |
 | 2026-05-23 | composer-2 | partial steps 1–2 | — | `scripts/verify-flows.sh` re-run against `https://nlqdb.com`: `GET /` → 200 (93,605 bytes); hero placeholder `"an orders tracker"` still matches the `/orders\|tracker\|building/i` contract. Steps 3–9 unchanged — still need a browser context. |
 | 2026-05-23 | composer-4 | partial steps 1–2 | — | `scripts/verify-flows.sh` re-run with the new egress-policy-aware `fetch_json` and FLOW-005 discovery block: hero placeholder still matches; FLOW-005 OAuth discovery surface now also passes (see FLOW-005 outcome log). Steps 3–9 unchanged. |
+| 2026-05-24 | claude-code | failed step 5 | 150 | First `tools/stranger-test/` (`SK-STRG-001`) Playwright walk against `https://nlqdb.com` — 3 prompts (`a meal planner for couples`, `side project to track my reading`, `a tiny CRM for my coaching practice`). Steps 1-4 ok on every run (hero placeholder matches, goal typed, Create-the-DB clicked). Step 5 fails on every run: `POST https://app.nlqdb.com/v1/ask` returns `403 feature_gated` (anon principal hits `gatePreAlpha`; SK-ANON-001 wants ephemeral Postgres but GLOBAL-027 / SK-GATE-004 blocks `/v1/ask` for any unbypassed principal). ttfvMs is time-to-403, not time-to-value — TTFV-as-spec is unmeasurable until §1.4 anon-bypass lands. Steps 6-8 skipped (blocked by step 5). 0 console errors beyond the expected `Failed to load resource: 403` for `/v1/ask`. Artifact: `tools/stranger-test/results/walk-<utc>.json`. |
 
 ---
 
@@ -304,10 +312,11 @@ None.
 | 2026-05-23 | composer-1 | partial steps 1, 3, 4 | cheap-internal-dashboard | curl-only re-verification before adding the Stack Overflow source: page still 200, `FAQPage` + `HowTo` JSON-LD both present (1 each), "What nlqdb doesn't do here" section still rendered. Steps 5–9 (CTA click, draft hydrate, `/app/new` rehydrate, event spy, first-query) not re-attempted — Playwright not available; the prior 2026-05-23 failure on step 8 stands as the binding gap. |
 | 2026-05-23 | composer-2 | partial steps 1, 3, 4 | all 5 slugs | `scripts/verify-flows.sh` re-walk against `https://nlqdb.com`: every slug (`cheap-internal-dashboard`, `give-ai-agent-persistent-memory`, `skip-postgres-setup-side-project`, `natural-language-sql-without-training-data`, `ship-leaderboard-no-sql`) returns `307 → https://nlqdb.com/solve/<slug>/` and the final `200` body carries `"@type": "FAQPage"`, `"@type": "HowTo"`, and a "What nlqdb doesn't do here" section. Trailing-slash redirect is new evidence — see Triage. Steps 5–9 still need a browser; the prior step 8 failure stands. |
 | 2026-05-23 | composer-4 | partial steps 1, 3, 4 | all 5 slugs | Same re-walk after the FLOW-005 + egress-policy script additions landed: every slug still 307 → trailing-slash → 200 with FAQPage + HowTo JSON-LD and the honest-limits section. Steps 5–9 still need a browser; step 8 failure stands. |
+| 2026-05-24 | claude-code | failed step 9 | cheap-internal-dashboard, give-ai-agent-persistent-memory, skip-postgres-setup-side-project | `tools/stranger-test/` Playwright walk against `https://nlqdb.com`. Steps 1-8 pass on every walked slug — h1, FAQPage + HowTo JSON-LD, honest-limits section (≥2 `<li>`), Try-this-query CTA, `localStorage["nlqdb_draft"]` equals `SolveEntry.demoGoal`, navigation to `/app/new`, AND `solve.try_query_clicked` event observed via sessionStorage-persisted spy. Step 9 fails on every slug: `POST .../v1/ask` returns `403 feature_gated`. The prior 2026-05-23 "step 8 event-spy missing" finding is **corrected** by this run — the prior in-window spy got reset by the navigation; sessionStorage survives it and the event IS fired. Binding gap is now step 9 (gate) only. ttfvMs ~250 ms is time-to-gate-403, not time-to-table. Artifact: `tools/stranger-test/results/walk-<utc>.json`. |
 
 ### Triage
 
-The first failed assertion is CTA telemetry: the static page wrote the draft and navigated, but the injected event spy saw no `solve.try_query_clicked`. A manual continuation then reached `/app/new` with the expected draft and hit `403 feature_gated` on first query, so FLOW-002 needs both event-hook verification/fix and an invite-bearing journey (or explicit waitlist detour) before it can count as a verified first-value acquisition path.
+The first failed assertion across every walked slug is the post-submit `/v1/ask` returning `403 feature_gated` — SK-ANON-001 vs GLOBAL-027 / SK-GATE-004. Static + CTA + draft-handoff + event-spy all confirmed healthy by the 2026-05-24 walker run; the earlier "event-spy missing" finding was a measurement artifact (spy reset by the post-CTA `location.assign`). Closing FLOW-002 requires the §1.4 anon-bypass slice from the impl plan or an invite-bearing walk variant (`tools/stranger-test/` open question).
 
 **Trailing-slash redirect (2026-05-23, composer-2):** the deployed CDN now serves `/solve/<slug>` only via `307 → /solve/<slug>/`. A curl probe without `-L` (or without the trailing slash) gets HTTP 307 + 0 bytes and looks like a regression; with `-L` (or against the trailing-slash URL) every slug returns 200. `scripts/verify-flows.sh` follows redirects and additionally records the redirect chain as informational, so future agents don't re-discover this on every PR. No content regression — the static AEO surface is intact.
 
@@ -374,6 +383,7 @@ None.
 | 2026-05-23 | composer-2 | partial steps 1, 2, 4, 9 | all 3 slugs | `scripts/verify-flows.sh` re-walk: every slug (`supabase`, `vanna`, `mem0`) returns `307 → /vs/<slug>/` and the final 200 body matches `<h1[^>]*>nlqdb vs <Name></h1>` (Supabase / Vanna AI / Mem0) and carries a `"@type": "FAQPage"` JSON-LD block. `/llms.txt` (200, 4,357 bytes) enumerates every vs slug AND every solve slug (5/5). `/sitemap.xml` (200) lists 12 `<loc>` entries — the floor the script enforces. Steps 3, 5–8 still require a browser. |
 | 2026-05-23 | composer-3 | partial steps 1, 2, 4, 9 | all 3 slugs | Same `scripts/verify-flows.sh` re-walk after FLOW-008 source-health was added: every vs slug still 307 → trailing-slash → 200 with `<h1>` template-matching + FAQPage JSON-LD; `/llms.txt` enumerates all 3 vs + 5 solve slugs; `/sitemap.xml` still ≥ 12 `<loc>`. Steps 3, 5–8 still need a browser. |
 | 2026-05-23 | composer-4 | partial steps 1, 2, 4, 9 | all 3 slugs | Same re-walk after FLOW-005 + egress-policy script additions: every vs slug 307 → 200 with the template `<h1>` and FAQPage JSON-LD; `/llms.txt` still enumerates all 3 vs + 5 solve slugs; `/sitemap.xml` still 12 `<loc>`. Steps 3, 5–8 still need a browser. |
+| 2026-05-24 | claude-code | failed step 8 | supabase, vanna, mem0 | `tools/stranger-test/` Playwright walk against `https://nlqdb.com`. Steps 1-7 + 9 pass on every walked slug — `<h1>` matches `nlqdb vs <Name>` (Supabase / Vanna AI / Mem0), "When to choose <Name>" section renders ≥3 `<li>` (e.g. 8 for Supabase), FAQPage JSON-LD present, Try-this-query CTA clickable, `localStorage["nlqdb_draft"]` equals `Competitor.demo.goal`, `/app/new` reached, `/llms.txt` enumerates this slug. Step 8 fails on every slug: `POST .../v1/ask` returns `403 feature_gated` — same gate cause as FLOW-001/002. No new content regression; the gate-403 is the only thing standing between FLOW-003 and a fully-passed walk. Artifact: `tools/stranger-test/results/walk-<utc>.json`. |
 
 ---
 

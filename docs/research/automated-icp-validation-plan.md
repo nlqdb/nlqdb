@@ -31,24 +31,25 @@
 > drive traffic without knowing whether it converts, churns, or
 > bounces silently. That's the bar §3 cannot legitimately clear yet.
 >
-> **What the next agent run should pick (2026-05-23, in order — items 1–3 outrank 4+ unconditionally):**
-> 1. **§1.1 stranger-test** — Playwright cron from a non-Worker IP, 25 seeded prompts × 4 personas, daily JSON. The anti-self-deception primitive. [`scripts/verify-flows.sh`](../../scripts/verify-flows.sh) is the curl subset (FLOW-001/002/003/005/008 static surfaces, egress-policy aware); Playwright closes the "user lands and bounces" gap that curl can't see.
-> 2. **§1.2 KPI dashboard** — [`SK-ONBOARD-005`](../features/onboarding/FEATURE.md) pulled forward from 2026-06-01. 5 tiles on `nlqdb.com/build-log`: TTFV p50/p95, success rate, drop-off, first→second, gate-block. Doubles as build-in-public (§3.2).
+> **What the next agent run should pick (2026-05-24, in order — items 1–3 outrank 4+ unconditionally):**
+> 1. **§1.4 anonymous-mode gate-bypass.** The 2026-05-24 Playwright walk (`bash scripts/stranger-test.sh`) proved every FLOW-001/002/003 run gate-fails at `/v1/ask` with `403 feature_gated`. SK-ANON-001 promises ephemeral Postgres on first anonymous `/v1/ask`; GLOBAL-027 / SK-GATE-004 unconditionally 403 `/v1/ask` for anonymous principals. This is the [§6 flag #1](#6-things-flagged-to-the-founder-per-claudemd-p1) tension restated as walker evidence — a fix lands as a new `SK-GATE-008` (or supersession of SK-ANON-001) before §3 acquisition can convert any visitor.
+> 2. **§1.2 KPI dashboard** — [`SK-ONBOARD-005`](../features/onboarding/FEATURE.md) pulled forward from 2026-06-01. 5 tiles on `nlqdb.com/build-log`: TTFV p50/p95, success rate, drop-off, first→second, gate-block. The stranger-test now produces the per-walk JSON the dashboard can ingest. Doubles as build-in-public (§3.2).
 > 3. **§1.3 in-app survey** — PostHog free tier; Sean Ellis Q1 after 2nd query + 7d; persona-extraction follow-up; drop-off recovery on `first_query.failed`.
-> 4. **FLOW-002 step 8 fix** — `solve.try_query_clicked` not observed in deployed walk; first-query gate returns `403 feature_gated`. Binding gap on the only AEO surface that's live.
+> 4. **§1.1 daily cron + R2 archive.** Primitive shipped 2026-05-24 ([`SK-STRG-001`](../features/stranger-test/FEATURE.md)); the daily-cron + JSON-to-R2 + diff-against-prior-run slice is the remaining gap. Operator-loop intact: no LogSnag-on-regression — the next agent's pick-list IS the alert.
 > 5. **§3.1 next 10 solve pages** — from the 2026-05-26 first cluster file (verbatim quotes; supersedes paraphrased `<h1>` per SK-SOLVE-001's deviation note).
 > 6. **§3.5 `examples/` per cluster + `nlqdb.com/gallery`** — only after #1–#3 (don't drive traffic to an unmeasured funnel).
 > 7. **Show HN / Product Hunt push (§3.3)** — only after #1–#6.
 >
 > **What's shipped today** (evidence in `## Progress log`, not prose):
+> §1.1 stranger-test primitive ([`tools/stranger-test/`](../../tools/stranger-test/) — Playwright walker for FLOW-001/002/003; daily-cron unshipped) ·
 > §1.4 gate-valve · §2.2 collection (HN+Reddit+GH+SO+IH) · §2.3 scoring +
 > clustering + verdict · §2.1 GitHub Issues + Stack Overflow + Indie
 > Hackers sources · §3.1 first 5 solve pages (paraphrased `<h1>`) · §8
-> mirrored flow trackers (8 flows: 4 curl-partial = FLOW-001/002/003/005,
-> 1 cron source-health = FLOW-008, 3 unattempted = FLOW-004/006/007) ·
-> [`scripts/verify-flows.sh`](../../scripts/verify-flows.sh) (FLOW-001/002/003
-> static AEO + FLOW-005 MCP OAuth discovery + FLOW-008 5-source cron probe,
-> agent-runnable, egress-policy aware, no operator action). First ICP cron
+> mirrored flow trackers (8 flows: 3 walker-evidenced = FLOW-001/002/003,
+> 1 curl-partial = FLOW-005, 1 cron source-health = FLOW-008, 3 unattempted
+> = FLOW-004/006/007) · [`scripts/verify-flows.sh`](../../scripts/verify-flows.sh)
+> (curl-observable subset; egress-policy aware) · [`scripts/stranger-test.sh`](../../scripts/stranger-test.sh)
+> (browser-observable subset; sub-7s for 9 walks; no operator action). First ICP cron
 > fires Mon 2026-05-26 06:00 UTC.
 >
 > **Context.** Every advertised surface
@@ -67,21 +68,25 @@
 
 ---
 
-## Current status (updated 2026-05-23)
+## Current status (updated 2026-05-24)
 
 | KPI | Target | Status |
 |---|---|---|
-| Anonymous loop completions | ≥ 50 | 0 — gate open path unblocked 2026-05-21; **unmeasured until §1.2 ships** |
+| Anonymous loop completions | ≥ 50 | 0 — gate 403s every walked `/v1/ask` (2026-05-24 stranger-test); **acquisition cannot convert until §1.4 anon-bypass lands** |
 | Signed-in users (invite-redeemed) | ≥ 10 | 0 — first invites ship on next waitlist signup |
 | Sean Ellis Q1 responses | ≥ 20 | 0 — survey not wired (§1.3) |
 | Primary ICP shortlist | exactly 1 | pending first cron Mon 2026-05-26 (verdict logic shipped 2026-05-22) |
-| TTFV p50 | ≤ 60 s | **not measured** (§1.2) |
-| First-query success | ≥ 60% | **not measured** (§1.2) |
-| Stranger-test passes | 100% daily | static subset only via [`scripts/verify-flows.sh`](../../scripts/verify-flows.sh); Playwright (§1.1) unshipped |
+| TTFV p50 | ≤ 60 s | 156 ms time-to-`/v1/ask`-response on the 2026-05-24 walk — but every response is the gate 403, NOT first-value (§1.2 dashboard's status-split surfaces this honestly) |
+| First-query success | ≥ 60% | 0/9 walked runs reached a 200 on 2026-05-24 — same gate-403 cause as the anon-loop row |
+| Stranger-test passes | 100% daily | primitive shipped ([`SK-STRG-001`](../features/stranger-test/FEATURE.md), `bash scripts/stranger-test.sh`); 0/9 walked runs passed today because of the gate; daily cron unshipped |
 
 The preamble's "What the next agent should pick" is the canonical
-priority order; this table is the receipts. The bolded "not measured"
-rows ARE the §1.1/§1.2/§1.3 blocker restated as KPI gaps.
+priority order; this table is the receipts. The TTFV / first-query /
+stranger-test rows now have honest measurements thanks to the
+2026-05-24 walker — they are 0% not because the static surface is
+broken (FLOW-002 step 8 event-spy, FLOW-003 step 9 `/llms.txt`, every
+hero / FAQPage / honest-limits assertion passes) but because every
+`/v1/ask` returns `feature_gated`. §1.4 (priority #1) closes that.
 
 ---
 
@@ -123,26 +128,34 @@ in-product survey trigger.
 
 ### 1.1 Stranger-test the happy path with synthetic agents
 
-Headless Playwright loop from an IP we don't own (Workers cron in a
-different region, or free-tier Browserless) hits `nlqdb.com`, types a
-seeded "what are you building" prompt, completes anon
-`<CreateForm>`, opens `/app`, runs a 2nd query, copies the snippet.
-Pass = no 4xx (other than gate), no console error, TTFV < 60s p95.
+Headless Playwright walker from a non-Worker IP hits the deployed
+`nlqdb.com`, types a seeded "what are you building" prompt, submits
+the hero, runs a follow-up, and grades each step against the
+verification mirror's walkthrough. 25 seeded prompts pinned to the
+P1×10 / P2×8 / P3×4 / P6×3 split. Pass = every step ok, no 4xx
+(other than the gate's `feature_gated`), TTFV < 60 s p95.
 
-25 seeded prompts per persona:
-
-- **P1 Solo Builder** (×10): `"I'm building a meal planner for couples"`
-  · `"side project to track my reading"` · `"a tiny CRM for my coaching
-  practice"` · etc.
-- **P2 Agent Builder** (×8): `"give my Claude agent a place to remember
-  user facts across sessions"` · `"vector store for an autonomous
-  research agent"` · etc.
-- **P3 Analyst** (×4): `"I have a CSV of leads — which are already
-  customers"` · `"churn by acquisition channel last 6 months"` · etc.
-- **P6 SRE** (×3): `"p99 latency for checkout last 6h by tier"` · etc.
-
-Daily JSON to R2 + LogSnag ping on regression. Re-runs on every
-`apps/web` / `apps/api` PR.
+> **✅ PARTIAL IMPLEMENTED 2026-05-24 (primitive — daily cron unshipped):**
+> [`tools/stranger-test/`](../../tools/stranger-test/) ships a `bash scripts/stranger-test.sh`
+> walker covering FLOW-001 (homepage hero), FLOW-002 (`/solve/<slug>`),
+> and FLOW-003 (`/vs/<slug>`). One shared Chromium + per-walk contexts
+> (per [`SK-STRG-001`](../features/stranger-test/FEATURE.md)). 25
+> seeded prompts in `tools/stranger-test/src/personas.ts` ([P1×10,
+> P2×8, P3×4, P6×3](../features/stranger-test/FEATURE.md)). 9 walks
+> (3 prompts × 3 flows) complete in ~7 s with one shared browser; each
+> walk capped at 180 s by `withDeadline`. JSON output to
+> `tools/stranger-test/results/walk-<utc>.json`. Exit-code non-zero on
+> any failure; no LogSnag, no email, no webhook (operator loop
+> intact). Live 2026-05-24 walk against `https://nlqdb.com`: 0/9
+> passed; every run gate-fails at `/v1/ask` with `403 feature_gated`
+> (FLOW-001 step 5, FLOW-002 step 9, FLOW-003 step 8) — which proves
+> the binding gap is the §1.4 anon-bypass tension, NOT any
+> static-surface regression. FLOW-002's prior "step 8 event-hook
+> missing" finding is corrected: the spy ran on a freshly-navigated
+> page; with sessionStorage persistence the `solve.try_query_clicked`
+> event IS observed. Open: daily cron + R2 archive + diff-against-prior
+> JSON (see [`SK-STRG-001`](../features/stranger-test/FEATURE.md)
+> open questions).
 
 ### 1.2 Wire the four onboarding KPIs to a live dashboard
 
@@ -633,8 +646,11 @@ fully shut), because §3 then has nothing to point users at.
 
 When results land, promote pieces per [CLAUDE.md §10](../../CLAUDE.md):
 
-- §1.1 stranger-test → new `SK-WEB-011` in
-  [web-app/FEATURE.md](../features/web-app/FEATURE.md).
+- §1.1 stranger-test → new feature
+  [`stranger-test/FEATURE.md`](../features/stranger-test/FEATURE.md)
+  with `SK-STRG-001` (the primitive). Daily-cron / R2-archive /
+  diff-against-prior-run slices stay there as open questions until
+  shipped.
 - §1.2 KPI dashboard → pull baseline-date forward in existing
   [SK-ONBOARD-005](../features/onboarding/FEATURE.md).
 - §1.3 widget → new `docs/features/in-app-survey/FEATURE.md` once
@@ -682,30 +698,36 @@ observable on demand.
 
 | Flow | Persona | Sub-tasks shipped | Verification | Mirror |
 |---|---|---|---|---|
-| FLOW-001 | P1 solo builder | 5 / 7 (71%) | partial (curl steps 1–2 passed 2026-05-23) | [verify](./automated-icp-validation-plan-verification.md#flow-001--anonymous-first-happy-path) |
-| FLOW-002 | P3 analyst | 5 / 6 (83%) | failed 2026-05-23 step 8 (re-verified curl steps 1, 3, 4 pass) | [verify](./automated-icp-validation-plan-verification.md#flow-002--pain-driven-aeo-inbound-search--solveslug--first-query) |
-| FLOW-003 | P3 / P4 | 5 / 5 (100%) | partial (curl steps 1, 2, 4, 9 passed 2026-05-23) | [verify](./automated-icp-validation-plan-verification.md#flow-003--comparison-driven-inbound-search--vscompetitor--first-query) |
+| FLOW-001 | P1 solo builder | 6 / 7 (86%) | failed 2026-05-24 step 5 (gate 403 on `/v1/ask`; walker-evidenced across 3 prompts) | [verify](./automated-icp-validation-plan-verification.md#flow-001--anonymous-first-happy-path) |
+| FLOW-002 | P3 analyst | 5 / 6 (83%) | failed 2026-05-24 step 9 (steps 1–8 ok across 3 slugs; gate 403 on submit) | [verify](./automated-icp-validation-plan-verification.md#flow-002--pain-driven-aeo-inbound-search--solveslug--first-query) |
+| FLOW-003 | P3 / P4 | 5 / 5 (100%) | failed 2026-05-24 step 8 (steps 1–7 + 9 ok across 3 slugs; gate 403 on submit) | [verify](./automated-icp-validation-plan-verification.md#flow-003--comparison-driven-inbound-search--vscompetitor--first-query) |
 | FLOW-004 | P1 solo builder | 5 / 6 (83%) | not yet attempted | [verify](./automated-icp-validation-plan-verification.md#flow-004--waitlist-signup--invite-email--gate-bypass) |
 | FLOW-005 | P2 agent builder | 5 / 6 (83%) | partial (OAuth discovery precondition passed 2026-05-23) | [verify](./automated-icp-validation-plan-verification.md#flow-005--agent-self-provisions-db-via-mcp) |
 | FLOW-006 | P4 backend engineer | 5 / 6 (83%) | not yet attempted | [verify](./automated-icp-validation-plan-verification.md#flow-006--sdk-runsql-escape-hatch) |
 | FLOW-007 | P1 / P3 | 5 / 6 (83%) | not yet attempted | [verify](./automated-icp-validation-plan-verification.md#flow-007--adopt-anonymous-db-on-signup) |
 | FLOW-008 | cron / system | 8 / 8 (100%) | partial (curl probe of 5 sources passes 2026-05-23; Reddit/SO sandbox-egress advisory; cron-side checks need deployed Worker) | [verify](./automated-icp-validation-plan-verification.md#flow-008--weekly-icp-scrape-source-health) |
 
-**Honest takeaway:** every user-flow is ≥71% implemented but **0 of 7**
+**Honest takeaway:** every user-flow is ≥83% implemented but **0 of 7**
 user-flows have passed an end-to-end agent walk. FLOW-001 / FLOW-002 /
-FLOW-003 each have curl-only partial passes on the steps a headless HTTP
-client can exercise (homepage hero markup, JSON-LD blocks, honest-limits
-section, template H1, sitemap + llms.txt enumeration); FLOW-005 now has
-a curl-only partial pass on the OAuth discovery precondition (RFC 9728 +
+FLOW-003 now have **Playwright walker** evidence (`tools/stranger-test/`,
+[`SK-STRG-001`](../features/stranger-test/FEATURE.md)) on top of the
+prior curl-only partial passes: every static-surface and CTA-side
+assertion passes (homepage hero markup, FAQPage + HowTo JSON-LD,
+honest-limits section, template H1, sitemap + llms.txt enumeration,
+`nlqdb_draft` localStorage handoff, `/app/new` rehydrate,
+`solve.try_query_clicked` event with sessionStorage spy); the single
+binding gap for all three is the `403 feature_gated` returned by
+`/v1/ask` when an anonymous principal submits — the [§6 flag #1](#6-things-flagged-to-the-founder-per-claudemd-p1)
+SK-ANON-001 / GLOBAL-027 tension, walker-evidenced. FLOW-005 has a
+curl-only partial pass on the OAuth discovery precondition (RFC 9728 +
 RFC 8414 metadata — the inspector's handshake input; `tools/list` and
-beyond still need an authenticated MCP client). None of the user-flows
-have a full Playwright walk yet, and FLOW-002 still
-fails on CTA telemetry + post-CTA gate. FLOW-004 / FLOW-006 / FLOW-007
-are still unattempted. FLOW-008 (the cron source-health system-flow) is
-the one block fully exercised by `verify-flows.sh` modulo the
-sandbox-egress advisory for Reddit + Stack Exchange. The impl-vs-verify
-gap is the §1.1 stranger-test gap, restated per-flow. The verification
-mirror exists to close it.
+beyond still need an authenticated MCP client). FLOW-004 / FLOW-006 /
+FLOW-007 are still unattempted. FLOW-008 (the cron source-health
+system-flow) is the one block fully exercised by `verify-flows.sh`
+modulo the sandbox-egress advisory for Reddit + Stack Exchange. The
+impl-vs-verify gap is now resolved for FLOW-001/002/003 as a
+walker-runnable measurement; closing the gate-403 unblocks the actual
+pass.
 
 ### FLOW-001 — Anonymous-first happy path
 
@@ -719,8 +741,8 @@ mirror exists to close it.
   - [x] Trace toggle reveals compiled SQL — [`SK-WEB-005`](../features/web-app/FEATURE.md)
   - [x] Snippet copy fires `home.snippet_copied` — [`SK-WEB-003`](../features/web-app/FEATURE.md)
   - [ ] LLM-judge grades first-query success — [`SK-ONBOARD-005`](../features/onboarding/FEATURE.md) (baseline by 2026-06-01)
-  - [ ] §1.1 stranger-test (Playwright headless cron from external IP)
-- **Progress:** 5 / 7 · **71%**
+  - [x] §1.1 stranger-test primitive — [`SK-STRG-001`](../features/stranger-test/FEATURE.md) (`tools/stranger-test/`; daily cron + R2 archive still open)
+- **Progress:** 6 / 7 · **86%**
 
 ### FLOW-002 — Pain-driven AEO inbound (search → `/solve/<slug>` → first query)
 
@@ -850,3 +872,4 @@ Per [GLOBAL-028](../decisions/GLOBAL-028-acquisition-progress-tracker.md): every
 | 2026-05-23 | §0 + §1 + preamble framing (operator-loop + anti-self-deception) | Founder clarified: "I run one prompt; that's it. don't make me do more things." Existing docs encoded the *what* of acquisition but not the *how* of the operator loop — each cold agent had to re-derive that the founder is the cron-trigger and the agent is the cron-body. That gap let the prior commit drift toward a LogSnag-on-failure suggestion (which would have created a founder-facing notification channel — the exact thing the operator wants to escape). | Edited (not added) impl plan preamble: now leads with (a) operator-loop principle, (b) shipped≠verified principle, (c) explicit 7-item "What the next agent run should pick" priority list (§1.1 stranger-test → §1.2 KPI dashboard → §1.3 in-app survey → FLOW-002 step 8 fix → next 10 solve pages → gallery/examples → Show HN). Collapsed `Current status` + `Honest gap` + `Verified 2026-05-23` walls into one KPI table with explicit "not measured" markers on §1.2 KPIs and a new `Stranger-test passes` row. Trimmed §0 Goal (points at preamble for operator model, lists "founder-facing notification channels of any shape" as a non-goal). Renamed §1 intro to `Anti-self-deception layer (BLOCKING — outranks all §3)`. Verification mirror preamble + `How an agent uses this file §1` rewritten to: "you ARE the cron; default first action is `bash scripts/verify-flows.sh`; failures route back as priority #1, not notifications." No new sections, no new GLOBAL/SK, no GH Actions cron, no LogSnag-to-founder wiring. | Shipped. Cold agents now land on (1) you-are-the-cron, (2) today's priority #1 = §1.1 stranger-test, (3) `verify-flows.sh` as the default first action. The §1.1/§1.2/§1.3 anti-self-deception priority is load-bearing in the preamble, not buried. |
 | 2026-05-23 | §2.1 Indie Hackers source (SK-ICP-006) | Add the 5th and last source listed in §2.1 — IH was always planned for P1 (Solo Builder) signal but never shipped, leaving the source mix skewed away from launch-context complaints | `apps/api/src/icp-scrape.ts` gains `fetchIndieHackers` (unofficial `feed.indiehackers.world` JSON Feed; 5 P1-pain queries: `database`, `boilerplate`, `side+project`, `first+paying`, `stack`). Items stored as `source: "indiehackers"`, `id: <slug>` from `/post/<slug>` URL path. No env binding (public feed); 10 s `AbortSignal.timeout`; per-source error isolation matches HN/Reddit/GH/SO. Server-side date filter is unavailable on the mirror, so the 7-day window is enforced client-side after parsing `date_modified`; posts with unparseable date or non-conforming URL are dropped before KV write (stable dedup keys). New OTel span `nlqdb.icp.fetch.indiehackers`. LogSnag description gains `IH: <n>`. SK-ICP-006 documents the trade-offs (third-party mirror dependency, no IH-canonical click-through — title + `content_html` carry the evidence). Live probe from this VM 2026-05-23 against `?q=database&exclude=link-post`: `HTTP 200, items=100, kept=2, dropped_id=0, dropped_old=98` — confirms ≈10 fresh IH items/week across 5 queries, all URL slugs parseable. 19/19 `icp-scrape.test.ts` tests pass (5 new: success-path + URL/UA contract + 7-day client-side filter + malformed-URL drop + 502 graceful). | Shipped. Fifth source live for first cron Mon 2026-05-26. No new env binding required; `feed.indiehackers.world` outage is non-fatal per existing per-source `.catch` pattern. |
 | 2026-05-23 | §8 mirror sync + verify-flows hardening (SK-ICP-007 + FLOW-005 partial) | Close drift introduced by PR #265 — preamble claimed 8 flows and "SK-ICP-007 documenting the agent-runnable source-health primitive" but the `### FLOW-008` / `## FLOW-008` body sections never landed in either tracker and no `SK-ICP-007` block existed in `icp-mining/FEATURE.md`. Same agent run also caught a real verify-flows.sh false-positive: Stack Exchange returned `HTTP 403 x-block-reason: hostname_blocked` from the agent VM's managed-egress proxy and the script marked it fatal — Worker-IP-canonical means that's an advisory, not a regression. | `scripts/verify-flows.sh`: `fetch_json` now captures response headers via `-D` and degrades any non-200 carrying `x-block-reason:` to an advisory note regardless of severity (catches Reddit AND SO sandbox-egress 403s; HN/IH/GH outages stay fatal). New `FLOW-005 — MCP discovery (curl-observable subset)` block probes `https://mcp.nlqdb.com/.well-known/oauth-protected-resource` + `/.well-known/oauth-authorization-server` (RFC 9728 + RFC 8414), asserts `resource` / `issuer` / `authorization_endpoint` / `token_endpoint` — closes FLOW-005's OAuth discovery precondition (the metadata input the MCP inspector consumes during walkthrough step 1) with zero credentials; walkthrough steps 1-7 still need an authenticated MCP client. `NLQDB_MCP_URL` overrides for preview. `docs/research/automated-icp-validation-plan{,-verification}.md`: `### FLOW-008` (impl) + `## FLOW-008` (verify) bodies added with sub-tasks pointing at SK-ICP-001/003/004/005/006/007; status dashboards extended to 8 rows; FLOW-005 row flipped from `not yet attempted` to partial; outcome logs gained today's re-walk rows for FLOW-001/002/003 + first-ever row for FLOW-005 + FLOW-008. Preamble counts in both files reconciled to "4 partial / 1 cron-pass / 3 unattempted". `docs/features/icp-mining/FEATURE.md`: SK-ICP-007 entry added (5-field block); Status line updated; compensating shrinkage in SK-ICP-006 Why/Alternatives keeps the file at 20,412 bytes (under the 20 KB cap). Mirror integrity check (`diff` of `^#{2,3} FLOW-[0-9]+` headers) stays empty. Local re-run of `bash scripts/verify-flows.sh` against `https://nlqdb.com`: all assertions green (Reddit + SO advisory with the expected block-reason note). | Shipped. PR #265's drift is closed: `## FLOW-008` blocks now exist symmetrically, SK-ICP-007 is the canonical decision. The agent-VM-to-Worker egress gap is now visible in the script output, not a silent false-positive. |
+| 2026-05-24 | §1.1 stranger-test primitive (SK-STRG-001) + FLOW-001/002/003 walker re-verification | Ship the Playwright walker that closes the impl-vs-verify gap §1.1 has named for days; re-walk FLOW-001/002/003 against the deployed surface with real evidence before adding any new ICP source or flow | New workspace [`tools/stranger-test/`](../../tools/stranger-test/) (`@nlqdb/stranger-test`): `src/runner.ts` (CLI: `--base-url`, `--flows flow-001,flow-002,flow-003`, `--prompts`, `--out`, `--quiet`), `src/browser.ts` (one shared `chromium.launch` + per-walk `BrowserContext`, `withDeadline(180s)` per walk, `ignoreHTTPSErrors` for sandbox-proxy TLS, 401/429 ignored as expected), `src/personas.ts` (25 prompts pinned to the §1.1 paragraph: P1×10 / P2×8 / P3×4 / P6×3, no secret-looking strings), `src/flows/flow-00{1,2,3}.ts` (one walker per flow with steps mapped 1:1 to the mirror walkthrough). Bash wrapper [`scripts/stranger-test.sh`](../../scripts/stranger-test.sh) resolves the repo root and stamps `tools/stranger-test/results/walk-<utc>.json`; results gitignored except `.gitkeep`. 7/7 unit tests pass (`bun run --filter @nlqdb/stranger-test test`); typecheck green. Live 2026-05-24 walk against `https://nlqdb.com` (9 walks = 3 flows × 3 prompts, 6.6 s wall): 0 passed, 9 failed — every run gate-blocks at `/v1/ask` with `403 feature_gated` (FLOW-001 step 5, FLOW-002 step 9, FLOW-003 step 8) at ~150 ms p50, ~691 ms p95. **FLOW-002 step 8 finding corrected:** the prior 2026-05-23 walk reported `solve.try_query_clicked` missing; the new walker uses sessionStorage to persist the spy across `location.assign("/app/new")` and observes the event firing on every walked slug. The static surface is healthy; the gate is the binding gap. New feature [`docs/features/stranger-test/FEATURE.md`](../features/stranger-test/FEATURE.md) (SK-STRG-001) + `tools/stranger-test/AGENTS.md`. `CLAUDE.md` path map gained the `tools/stranger-test/**` entry (net-shrunk to stay under the 20 KB cap). Impl plan §1.1, §8 status dashboard, §8 FLOW-001 sub-tasks, §7 promotion path, Current status, and verification mirror outcome logs + status dashboard all updated in lockstep per GLOBAL-029/GLOBAL-030. | Shipped. The §1.1 anti-self-deception primitive exists as a one-command agent invocation. The walker exit-code is the regression signal; no LogSnag, no founder notification — the next agent run picks the binding §1.4 anon-bypass gap as priority #1, replacing the now-obsolete priority #1 / #4 entries the preamble carried. |

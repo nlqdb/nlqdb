@@ -48,6 +48,8 @@ bun-debug.log*
 
 # Quality-eval result snapshots — keep .gitkeep, ignore JSON
 tools/eval/results/*.json
+# Stranger-test walk JSON output — keep .gitkeep, ignore per-walk files
+tools/stranger-test/results/*.json
 # BIRD Mini-Dev fixtures (~6 GB) live outside the repo
 bird_data/
 tools/eval/bird_data/

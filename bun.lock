@@ -367,6 +367,15 @@
         "typescript": "^5.6.0",
       },
     },
+    "tools/stranger-test": {
+      "name": "@nlqdb/stranger-test",
+      "version": "0.0.0",
+      "devDependencies": {
+        "@playwright/test": "~1.49.0",
+        "@types/node": "^20.18.0",
+        "typescript": "^5.6.0",
+      },
+    },
   },
   "overrides": {
     "@modelcontextprotocol/sdk": "1.29.0",
@@ -803,6 +812,8 @@
     "@nlqdb/sdk": ["@nlqdb/sdk@workspace:packages/sdk"],
 
     "@nlqdb/solid": ["@nlqdb/solid@workspace:packages/solid"],
+
+    "@nlqdb/stranger-test": ["@nlqdb/stranger-test@workspace:tools/stranger-test"],
 
     "@nlqdb/svelte": ["@nlqdb/svelte@workspace:packages/svelte"],
 
