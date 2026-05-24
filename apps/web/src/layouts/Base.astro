@@ -40,15 +40,15 @@ const jsonLd = {
     <meta property="og:description" content={description} />
     <meta property="og:url" content={canonicalURL.toString()} />
     <meta name="twitter:card" content="summary_large_image" />
+    {/* Strips query/path from cross-origin Referer so `?invite=<code>` can't leak in the sub-100ms strip window. */}
+    <meta name="referrer" content="strict-origin-when-cross-origin" />
 
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
 
     <script is:inline type="application/ld+json" set:html={JSON.stringify(jsonLd)} />
 
     <script>
-      // SK-GATE-007 — capture `?invite=<code>` site-wide so press-launch URLs
-      // into `/solve/<slug>` and `/vs/<slug>` (impl plan §3.3 amendment) reach
-      // first-value, not the gate.
+      // SK-GATE-007 site-wide invite capture — see impl plan §3.3 amendment.
       import { captureInviteFromUrl } from "../lib/invite";
       captureInviteFromUrl();
     </script>

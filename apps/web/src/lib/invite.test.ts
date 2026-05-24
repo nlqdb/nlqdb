@@ -99,4 +99,16 @@ describe("captureInviteFromUrl", () => {
     (globalThis as unknown as { window?: unknown }).window = undefined;
     expect(() => captureInviteFromUrl()).not.toThrow();
   });
+
+  test("Safari private-browsing — swallows localStorage.setItem QuotaExceededError so Base.astro can't trip boot-fallback", () => {
+    setupWindow("https://nlqdb.com/?invite=ABCDEFGH");
+    const w = (globalThis as unknown as { window: { localStorage: Storage } }).window;
+    w.localStorage.setItem = () => {
+      const e = new Error("QuotaExceededError");
+      e.name = "QuotaExceededError";
+      throw e;
+    };
+    expect(() => captureInviteFromUrl()).not.toThrow();
+    expect(getStoredInviteCode()).toBeNull();
+  });
 });
