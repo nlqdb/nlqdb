@@ -9,13 +9,18 @@ const URL_PARAM = "invite";
 
 export function captureInviteFromUrl(): void {
   if (typeof window === "undefined") return;
-  const params = new URLSearchParams(window.location.search);
-  const code = params.get(URL_PARAM);
-  if (!code) return;
-  window.localStorage.setItem(STORAGE_KEY, code);
-  const clean = new URL(window.location.href);
-  clean.searchParams.delete(URL_PARAM);
-  window.history.replaceState(null, "", clean.toString());
+  // Safari Private Browsing throws QuotaExceededError on localStorage.setItem; swallow so Base.astro's site-wide call can't trip the boot-fallback overlay.
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const code = params.get(URL_PARAM);
+    if (!code) return;
+    window.localStorage.setItem(STORAGE_KEY, code);
+    const clean = new URL(window.location.href);
+    clean.searchParams.delete(URL_PARAM);
+    window.history.replaceState(null, "", clean.toString());
+  } catch {
+    /* private-browsing / sandboxed-iframe / locked-down CSP — silent */
+  }
 }
 
 export function getStoredInviteCode(): string | null {

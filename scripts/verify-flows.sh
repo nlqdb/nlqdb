@@ -216,14 +216,17 @@ fi
 # key invite.ts writes). One probe per surface (homepage + first solve +
 # first vs) is enough: same Base.astro, same bundle.
 
+# Bundle-name regex is Astro 5's current convention (`Base.astro_<rollup-tag>.<hash>.js`);
+# a major Astro bump that renames the prefix will false-fail this — see the
+# inline grep for `nlqdb_invite` (the real wiring assertion). Edit on bump.
 say "Site-wide ?invite= capture — Base.astro bundled invite-capture is loaded"
 INVITE_CAPTURE_PATHS=( "/" "/solve/${SOLVE_SLUGS[0]}/" "/vs/${VS_SLUGS[0]}/" )
 declare -a BASE_BUNDLE_SRCS=()
 for path in "${INVITE_CAPTURE_PATHS[@]}"; do
   if fetch_body "Base.astro invite-capture: GET $path" "$BASE_URL$path"; then
-    bundle_src=$(grep -oE '/_astro/Base\.astro_astro_type_script_index_0_lang\.[A-Za-z0-9_-]+\.js' "$FETCH_BODY_PATH" | head -1)
+    bundle_src=$(grep -oE '/_astro/Base\.astro_[A-Za-z0-9_.-]+\.js' "$FETCH_BODY_PATH" | head -1)
     if [[ -z "$bundle_src" ]]; then
-      fail "  Base.astro bundled <script> referenced on $path" "missing /_astro/Base.astro_astro_type_script_index_0_lang.<hash>.js"
+      fail "  Base.astro bundled <script> referenced on $path" "no /_astro/Base.astro_*.js src in HTML — site-wide capture regressed or Astro renamed the bundle prefix"
     else
       ok "  Base.astro bundled <script> referenced on $path"
       BASE_BUNDLE_SRCS+=("$bundle_src")
@@ -237,10 +240,10 @@ done
 if (( ${#BASE_BUNDLE_SRCS[@]} > 0 )); then
   bundle_src="${BASE_BUNDLE_SRCS[0]}"
   if fetch_body "  Base.astro bundle GET $bundle_src" "$BASE_URL$bundle_src"; then
-    invite_chunk=$(grep -oE '\./invite\.[A-Za-z0-9_-]+\.js' "$FETCH_BODY_PATH" | head -1 | sed 's|^\./||')
+    invite_chunk=$(grep -oE '\./invite\.[A-Za-z0-9_.-]+\.js' "$FETCH_BODY_PATH" | head -1 | sed 's|^\./||')
     rm -f "$FETCH_BODY_PATH"
     if [[ -z "$invite_chunk" ]]; then
-      fail "  Base.astro bundle invite-import" "no ./invite.<hash>.js import — Base.astro <script> regressed"
+      fail "  Base.astro bundle invite-import" "no ./invite.*.js import — Base.astro <script> regressed or rollup renamed the chunk"
     elif fetch_body "  Base.astro → /_astro/$invite_chunk" "$BASE_URL/_astro/$invite_chunk"; then
       if grep -q 'nlqdb_invite' "$FETCH_BODY_PATH"; then
         ok "  invite-capture chunk preserves nlqdb_invite literal (site-wide capture wired)"
