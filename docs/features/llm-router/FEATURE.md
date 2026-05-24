@@ -142,7 +142,7 @@ OpenRouter pins `plan` + `schema_infer` to `qwen/qwen3-coder:free` (480B MoE, 1M
 ### SK-LLM-018 — Schema-fidelity planner prompt + diagnostic retry framing
 
 **Body:** [`decisions/SK-LLM-018-schema-fidelity-prompt.md`](./decisions/SK-LLM-018-schema-fidelity-prompt.md).
-`PLAN_SYSTEM` gains schema-literal + verbatim-casing + dialect-strict + `Evidence:`-authoritative directives; `buildPlanUser`'s retry block reframes "different shape" as **diagnose-first, surgical-fix** (same Goal, schema-only identifiers, change only what the error names). Targets the BIRD free-chain gap (0.318 → 0.65 per [`SK-QUAL-005`](../quality-eval/FEATURE.md#sk-qual-005) / [`GLOBAL-025`](../../decisions/GLOBAL-025-north-star.md)); +3–5 pp evidence base: DIN-SQL / C3-SQL §4.1 / DAIL-SQL Table 3 schema-link; MAC-SQL §5.3 Refiner +4.63 pp surgical-fix retry.
+`PLAN_SYSTEM` gains schema-literal + verbatim-casing + dialect-strict + `Evidence:`-authoritative directives; `buildPlanUser`'s retry block reframes "different shape" as **diagnose-first, surgical-fix** (same Goal, schema-only identifiers, change only what the error names). Targets the BIRD free-chain gap (0.318 → 0.65 per [`SK-QUAL-005`](../quality-eval/FEATURE.md#sk-qual-005) / [`GLOBAL-025`](../../decisions/GLOBAL-025-north-star.md)); +3–5 pp evidence base: DIN-SQL / C3-SQL §4.1 / DAIL-SQL Table 3 schema-link; MAC-SQL §4.3 Refiner +4.63 pp surgical-fix retry.
 
 ### SK-LLM-013 — `PlanResponse` carries `model` + `confidence` for SK-TRUST-002
 

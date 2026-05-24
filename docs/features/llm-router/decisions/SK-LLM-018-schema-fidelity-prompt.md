@@ -9,7 +9,8 @@
   runner already concatenates in (`tools/eval/src/runner.ts` line
   216–218), the LLM applies its formulas and column hints rather than
   treating it as a hint; (c) **dialect-strict output** — no
-  cross-dialect features (no `TOP` for sqlite, no `LIMIT` for tsql).
+  cross-dialect features (no `TOP`/`PIVOT` for postgres or sqlite;
+  postgres-specific casts only when dialect is postgres).
   `buildPlanUser`'s `previousAttempt` block is reframed from "produce
   a different SQL shape" to a **diagnose-first, surgical-fix**
   prompt: same Goal, schema-only identifiers, change only what the
@@ -38,7 +39,7 @@
   whole-approach rewrites when the root cause was a typo or missing
   column. The surgical-fix discipline is grounded in **MAC-SQL**
   Refiner ([arXiv:2312.11242](https://arxiv.org/html/2312.11242v2))
-  §5.3 Table 3 ablation, which lifts BIRD-dev EX **+4.63 pp**
+  §4.3 Table 3 ablation, which lifts BIRD-dev EX **+4.63 pp**
   (54.76% → 59.39% with Refiner on) precisely because the corrected
   SQL stays close to the rejected one. **MAGIC**
   ([arXiv:2406.12692](https://arxiv.org/pdf/2406.12692)) supplies
