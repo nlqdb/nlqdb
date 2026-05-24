@@ -62,8 +62,9 @@ mkdir -p "$RESULTS_DIR"
 # dir; trap-removed on any exit path (including SIGINT between mint and
 # read). Mode 600 written by flow-004-walk.sh via umask 077; we also unset
 # the env var before forwarding to the Playwright runner so a misbehaving
-# child can't read the path indirectly.
-INVITE_SIDECAR="$RESULTS_DIR/.invite-${UTC_STAMP}.txt"
+# child can't read the path indirectly. Filename carries the PID so two
+# concurrent composers on the same UTC second cannot collide on read.
+INVITE_SIDECAR="$RESULTS_DIR/.invite-${UTC_STAMP}-$$.txt"
 INVITE_CODE=""
 
 cleanup() {

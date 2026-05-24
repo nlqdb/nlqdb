@@ -113,6 +113,16 @@ export function withInviteParam(path: string, inviteCode: string | null): string
   return `${path}${sep}invite=${encodeURIComponent(inviteCode)}`;
 }
 
+// Strip the `invite=` query value before a URL is interpolated into any
+// agent-readable surface (step description, stdout line, runner summary).
+// The raw code MUST NOT appear in JSON artifacts: SK-GATE-007 codes are
+// 30-day-TTL single-use gate bypasses, and the artifact dir is what the
+// daily cron uploads to GH Actions for 90 days. Returns the URL with the
+// invite value replaced by `<redacted>`; non-invite query params survive.
+export function redactInviteFromUrl(url: string): string {
+  return url.replace(/([?&]invite=)[^&#]*/gi, "$1<redacted>");
+}
+
 // Assertion shared by every flow when invite-bearing: prove
 // captureInviteFromUrl() persisted the code AND stripped the URL param.
 // Returns an `ok` step on success, a `fail` step on mismatch; the caller

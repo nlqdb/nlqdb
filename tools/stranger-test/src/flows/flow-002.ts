@@ -6,6 +6,7 @@ import type { Browser } from "@playwright/test";
 import {
   assertInviteCaptured,
   openSession,
+  redactInviteFromUrl,
   step,
   withDeadline,
   withInviteParam,
@@ -91,13 +92,17 @@ async function doWalk(
 
   try {
     const url = `${baseUrl}${withInviteParam(`/solve/${slug}/`, inviteCode)}`;
+    // SK-GATE-007 codes are 30-day-TTL single-use bypasses — never
+    // interpolate the raw URL into a step description; the JSON shipped
+    // to the cron artifact would carry the live code for 90 days.
+    const safeUrl = redactInviteFromUrl(url);
     const navResp = await page.goto(url, { waitUntil: "domcontentloaded", timeout: 30_000 });
     const navStatus = navResp?.status() ?? 0;
     if (navStatus !== 200) {
-      steps.push(step(1, `GET ${url} returns 200`, "fail", `status=${navStatus}`));
+      steps.push(step(1, `GET ${safeUrl} returns 200`, "fail", `status=${navStatus}`));
       failedStep = 1;
     } else {
-      steps.push(step(1, `GET ${url} returns 200`, "ok"));
+      steps.push(step(1, `GET ${safeUrl} returns 200`, "ok"));
     }
 
     if (inviteCode !== null && failedStep === null) {

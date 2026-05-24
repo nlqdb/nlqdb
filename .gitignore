@@ -50,6 +50,9 @@ bun-debug.log*
 tools/eval/results/*.json
 # Stranger-test walk JSON output — keep .gitkeep, ignore per-walk files
 tools/stranger-test/results/*.json
+# SK-STRG-004 composer invite sidecar (mode 600, trap-removed; mirror here
+# in case the trap is bypassed by a hard-kill)
+tools/stranger-test/results/.invite-*.txt
 # BIRD Mini-Dev fixtures (~6 GB) live outside the repo
 bird_data/
 tools/eval/bird_data/

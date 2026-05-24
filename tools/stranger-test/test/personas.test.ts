@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { percentile, withInviteParam } from "../src/browser.ts";
+import { percentile, redactInviteFromUrl, withInviteParam } from "../src/browser.ts";
 import { FLOW_PERSONA, PERSONA_PROMPTS } from "../src/personas.ts";
 
 // The seeded prompts double as the §1.1 "what shape of stranger
@@ -70,5 +70,43 @@ describe("withInviteParam (SK-STRG-004)", () => {
     expect(() => withInviteParam("/", "short")).toThrow(/invite code/i);
     expect(() => withInviteParam("/", "has spaces 123456")).toThrow(/invite code/i);
     expect(() => withInviteParam("/", `${"a".repeat(129)}`)).toThrow(/invite code/i);
+  });
+});
+
+describe("redactInviteFromUrl (SK-GATE-007 leak guard)", () => {
+  test("redacts ?invite= at start of query", () => {
+    expect(redactInviteFromUrl("https://nlqdb.com/?invite=abcd1234efgh5678")).toBe(
+      "https://nlqdb.com/?invite=<redacted>",
+    );
+  });
+
+  test("redacts &invite= after another param", () => {
+    expect(
+      redactInviteFromUrl("https://nlqdb.com/solve/foo/?utm_source=hn&invite=abcd1234efgh5678"),
+    ).toBe("https://nlqdb.com/solve/foo/?utm_source=hn&invite=<redacted>");
+  });
+
+  test("preserves params that follow invite=", () => {
+    expect(redactInviteFromUrl("https://nlqdb.com/?invite=abcd1234efgh5678&ref=x")).toBe(
+      "https://nlqdb.com/?invite=<redacted>&ref=x",
+    );
+  });
+
+  test("preserves fragments and stops redaction at #", () => {
+    expect(redactInviteFromUrl("https://nlqdb.com/?invite=abcd1234efgh5678#section")).toBe(
+      "https://nlqdb.com/?invite=<redacted>#section",
+    );
+  });
+
+  test("returns unchanged URL when no invite param is present", () => {
+    expect(redactInviteFromUrl("https://nlqdb.com/solve/foo/?utm_source=hn")).toBe(
+      "https://nlqdb.com/solve/foo/?utm_source=hn",
+    );
+  });
+
+  test("is case-insensitive on the param name (defence in depth)", () => {
+    expect(redactInviteFromUrl("https://nlqdb.com/?Invite=abcd1234efgh5678")).toBe(
+      "https://nlqdb.com/?Invite=<redacted>",
+    );
   });
 });

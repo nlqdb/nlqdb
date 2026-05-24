@@ -6,6 +6,7 @@ import type { Browser } from "@playwright/test";
 import {
   assertInviteCaptured,
   openSession,
+  redactInviteFromUrl,
   step,
   withDeadline,
   withInviteParam,
@@ -66,13 +67,15 @@ async function doWalk(
 
   try {
     const url = `${baseUrl}${withInviteParam(`/vs/${slug}/`, inviteCode)}`;
+    // SK-GATE-007 redaction — see flow-002.ts for rationale.
+    const safeUrl = redactInviteFromUrl(url);
     const navResp = await page.goto(url, { waitUntil: "domcontentloaded", timeout: 30_000 });
     const navStatus = navResp?.status() ?? 0;
     if (navStatus !== 200) {
-      steps.push(step(1, `GET ${url} returns 200`, "fail", `status=${navStatus}`));
+      steps.push(step(1, `GET ${safeUrl} returns 200`, "fail", `status=${navStatus}`));
       failedStep = 1;
     } else {
-      steps.push(step(1, `GET ${url} returns 200`, "ok"));
+      steps.push(step(1, `GET ${safeUrl} returns 200`, "ok"));
     }
 
     if (inviteCode !== null && failedStep === null) {
