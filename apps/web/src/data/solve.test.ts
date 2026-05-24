@@ -119,6 +119,7 @@ describe("SOLVE_ENTRIES data integrity", () => {
   });
 
   test("SOLVE_PERSONA_ORDER covers every persona key in SOLVE_PERSONAS exactly once", () => {
+    expect(new Set(SOLVE_PERSONA_ORDER).size).toBe(SOLVE_PERSONA_ORDER.length);
     const keys = Object.keys(SOLVE_PERSONAS).sort();
     const ordered = [...SOLVE_PERSONA_ORDER].sort();
     expect(ordered).toEqual(keys);

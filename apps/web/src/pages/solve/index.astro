@@ -12,6 +12,7 @@ const groupedByPersona = SOLVE_PERSONA_ORDER.map((persona) => ({
   persona,
   info: SOLVE_PERSONAS[persona],
   entries: SOLVE_ENTRIES.filter((s) => s.persona === persona),
+  sectionId: `group-${persona.split(" ").slice(1).join("-")}`,
 })).filter((g) => g.entries.length > 0);
 ---
 <Base
@@ -36,9 +37,9 @@ const groupedByPersona = SOLVE_PERSONA_ORDER.map((persona) => ({
 
       {
         groupedByPersona.map((g) => (
-          <section class="slvidx__group" aria-labelledby={`group-${g.persona.split(" ").slice(1).join("-")}`}>
+          <section class="slvidx__group" aria-labelledby={g.sectionId}>
             <header class="slvidx__group-head">
-              <h2 class="slvidx__group-title" id={`group-${g.persona.split(" ").slice(1).join("-")}`}>
+              <h2 class="slvidx__group-title" id={g.sectionId}>
                 {g.info.label}
               </h2>
               <p class="slvidx__group-desc">{g.info.description}</p>
