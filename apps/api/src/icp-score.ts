@@ -121,10 +121,10 @@ async function callGemini(
   apiKey: string,
   fetcher: typeof fetch,
 ): Promise<RawScore[]> {
-  const url = `${GEMINI_BASE}/gemini-2.5-flash:generateContent?key=${apiKey}`;
+  const url = `${GEMINI_BASE}/gemini-2.5-flash:generateContent`;
   const res = await fetcher(url, {
     method: "POST",
-    headers: { "content-type": "application/json" },
+    headers: { "content-type": "application/json", "x-goog-api-key": apiKey },
     body: JSON.stringify({
       contents: [{ parts: [{ text: `${SYSTEM_PROMPT}\n\n${itemsToUserMsg(batch)}` }] }],
       generationConfig: {
