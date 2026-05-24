@@ -131,6 +131,7 @@ CONTROL_BLOCKED="unknown"
 # Ctrl-C between account-create and token-fetch still cleans up. The trap
 # refreshes the JWT inline if MTM_TOKEN is empty — accounts are unique per
 # walk so the password is the only handle we keep.
+# shellcheck disable=SC2317  # body is invoked via `trap cleanup EXIT`
 cleanup() {
   if [[ -n "$ACCOUNT_ID" ]]; then
     if [[ -z "$MTM_TOKEN" && -n "${EMAIL:-}" && -n "${PASS:-}" ]]; then
