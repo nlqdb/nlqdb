@@ -314,6 +314,12 @@ if [[ "$CONTROL_BLOCKED" != "true" ]]; then
   WALK_STATE="inconclusive"
   WALK_NOTE="control HTTP $CTRL_STATUS error.status=$CTRL_ERR_STATUS — gate not blocking unbypassed traffic; SK-GATE-007 invariant unprovable"
   note "FLOW-004 INCONCLUSIVE — control was not blocked; cannot prove invite was honoured"
+elif [[ "$ASK_STATUS" == "0" ]]; then
+  # curl never got a response — DNS, TCP, TLS, or timeout failure. We
+  # can't claim the gate was bypassed because we never reached it.
+  WALK_STATE="blocked upstream"
+  WALK_NOTE="invite probe — curl returned no HTTP response (network / TLS / timeout)"
+  fail "FLOW-004 step 5" "curl returned no HTTP response on the invite probe"
 elif [[ "$ASK_ERR_STATUS" == "feature_gated" ]]; then
   WALK_STATE="failed step 5"
   WALK_NOTE="invite HTTP $ASK_STATUS still feature_gated — SK-GATE-007 regression (control was correctly blocked)"
