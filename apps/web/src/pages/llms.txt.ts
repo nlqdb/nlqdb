@@ -21,7 +21,7 @@ const PRIMARY_LINKS = [
   {
     title: "Comparisons",
     path: "/vs",
-    desc: "Honest side-by-side against adjacent tools (Supabase, Vanna, Mem0, …).",
+    desc: "Honest side-by-side against adjacent tools (Supabase, Vanna, Mem0, Outerbase, …).",
   },
   {
     title: "Solve pages",
