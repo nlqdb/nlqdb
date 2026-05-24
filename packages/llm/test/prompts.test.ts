@@ -13,10 +13,83 @@
 import { describe, expect, it } from "vitest";
 import {
   buildEngineClassifyUser,
+  buildPlanUser,
   buildRouteUser,
   ENGINE_CLASSIFY_SYSTEM,
+  PLAN_SYSTEM,
   ROUTE_SYSTEM,
 } from "../src/prompts.ts";
+
+describe("PLAN_SYSTEM (SK-LLM-018 schema-fidelity directives)", () => {
+  it("names the dialect-strict, single-statement contract", () => {
+    expect(PLAN_SYSTEM).toMatch(/single SQL statement for the named dialect/);
+    expect(PLAN_SYSTEM).toContain('"sql"');
+    expect(PLAN_SYSTEM).toContain("No prose, no code fences");
+  });
+
+  it("requires schema-literal identifiers + verbatim casing (DIN-SQL / C3-SQL schema-link)", () => {
+    expect(PLAN_SYSTEM).toMatch(
+      /Use only tables and columns that appear literally in the provided schema/,
+    );
+    expect(PLAN_SYSTEM).toMatch(/preserve identifier casing exactly/);
+  });
+
+  it("escalates BIRD's `Evidence:` block from hint to authoritative", () => {
+    expect(PLAN_SYSTEM).toMatch(/`Evidence:`/);
+    expect(PLAN_SYSTEM).toMatch(/authoritative annotator context/);
+  });
+});
+
+describe("buildPlanUser (SK-LLM-018 retry framing)", () => {
+  const baseReq = {
+    goal: "count cats",
+    schema: "CREATE TABLE pet (id INTEGER, species TEXT)",
+    dialect: "sqlite",
+  } as const;
+
+  it("emits dialect + schema + goal blocks on first attempt with no previousAttempt clutter", () => {
+    const out = buildPlanUser(baseReq);
+    expect(out).toContain("Dialect: sqlite");
+    expect(out).toContain("Schema:\nCREATE TABLE pet (id INTEGER, species TEXT)");
+    expect(out).toContain("Goal: count cats");
+    expect(out).not.toContain("Previous attempt");
+  });
+
+  it("renders the diagnostic retry block when previousAttempt is set", () => {
+    const out = buildPlanUser({
+      ...baseReq,
+      previousAttempt: { sql: "SELECT * FROM cat", error: "no such table: cat" },
+    });
+    expect(out).toContain("Previous attempt failed:");
+    expect(out).toContain("SQL: SELECT * FROM cat");
+    expect(out).toContain("Error: no such table: cat");
+    // The three diagnostic-first directives — same Goal, schema-only identifiers, surgical fix.
+    expect(out).toMatch(/Answer the same Goal/);
+    expect(out).toMatch(/Use only tables and columns from the Schema/);
+    expect(out).toMatch(/Diagnose the error first, then change only what the error names/);
+    // The pre-SK-LLM-018 "different shape" phrasing must be gone — it invited over-correction.
+    expect(out).not.toMatch(/different SQL shape/);
+  });
+
+  it("omits the SQL line when previousAttempt carries an error but no SQL (LLM-throw case)", () => {
+    const out = buildPlanUser({
+      ...baseReq,
+      previousAttempt: { error: "provider 503" },
+    });
+    expect(out).toContain("Error: provider 503");
+    expect(out).not.toMatch(/^SQL: /m);
+  });
+
+  it("caps the prior SQL at 500 chars so the retry prompt's token budget stays predictable", () => {
+    const longSql = "SELECT ".concat("col,".repeat(200), "x FROM t");
+    const out = buildPlanUser({
+      ...baseReq,
+      previousAttempt: { sql: longSql, error: "syntax" },
+    });
+    const sqlLine = out.split("\n").find((l) => l.startsWith("SQL: ")) ?? "";
+    expect(sqlLine.length - "SQL: ".length).toBeLessThanOrEqual(500);
+  });
+});
 
 describe("ENGINE_CLASSIFY_SYSTEM (SK-DB-010 / SK-MULTIENG-002)", () => {
   it("embeds the SK-MULTIENG-002 engine-fit table header verbatim", () => {

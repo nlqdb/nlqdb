@@ -10,9 +10,17 @@ import type {
   SummarizeRequest,
 } from "./types.ts";
 
+// SK-LLM-018 — schema-fidelity directives + dialect-strict output. The
+// schema-link / verbatim-casing bullets target the BIRD-dev free-chain
+// gap (DIN-SQL arXiv:2304.11015, C3-SQL arXiv:2307.07306, DAIL-SQL
+// arXiv:2308.15363 all show schema-link prompts ≈+3–5 pp on small
+// models). The `Evidence:` bullet leverages BIRD's annotator hints that
+// the runner already concatenates into the goal.
 export const PLAN_SYSTEM = [
   "You translate a natural-language goal into a single SQL statement for the named dialect.",
-  "Use the provided schema; do not invent tables or columns.",
+  "Use only tables and columns that appear literally in the provided schema; preserve identifier casing exactly.",
+  "When the goal includes an `Evidence:` block, treat it as authoritative annotator context — apply the formulas and column hints it names.",
+  "Emit SQL valid for the named dialect — no cross-dialect features (e.g. no TOP/PIVOT for postgres or sqlite; postgres-specific casts only when dialect is postgres).",
   'Respond with strict JSON: {"sql":"<single SQL statement, no trailing semicolon>"}.',
   "No prose, no code fences, no explanation.",
 ].join("\n");
@@ -75,16 +83,21 @@ export const ROUTE_SYSTEM = [
 export function buildPlanUser(req: PlanRequest): string {
   const parts = [`Dialect: ${req.dialect}`, `Schema:\n${req.schema}`, `Goal: ${req.goal}`];
   if (req.previousAttempt) {
-    // GLOBAL-022 — feed the prior attempt's failure back so the next
-    // SQL takes a different shape. SQL capped at 500 chars: enough to
-    // identify what failed without ballooning the prompt token count.
+    // GLOBAL-022 + SK-LLM-018 — diagnostic-first retry framing: keep the
+    // same goal, restrict to schema identifiers, change only what the
+    // error names. "Produce a different shape" used to invite the model
+    // to rewrite the whole approach when the root cause was a typo. SQL
+    // capped at 500 chars so the prompt token budget stays predictable.
     const sql = req.previousAttempt.sql?.slice(0, 500) ?? "";
     parts.push(
       [
         "Previous attempt failed:",
         sql ? `SQL: ${sql}` : null,
-        `Reason: ${req.previousAttempt.error}`,
-        "Produce a different SQL shape that avoids that error.",
+        `Error: ${req.previousAttempt.error}`,
+        "Re-plan to:",
+        "- Answer the same Goal stated above (do not redefine the question).",
+        "- Use only tables and columns from the Schema above.",
+        "- Diagnose the error first, then change only what the error names — not the overall approach.",
       ]
         .filter(Boolean)
         .join("\n"),

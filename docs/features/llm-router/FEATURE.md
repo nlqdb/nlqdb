@@ -10,7 +10,7 @@ when-to-load:
 # Feature: Llm Router
 
 **One-liner:** Model selection, fallback chain, prompt strategy, per-user credit accounting; three permanent dispatch lanes per [`GLOBAL-026`](../../decisions/GLOBAL-026-llm-strategy-byollm-hosted-premium.md) — free chain forever, BYOLLM every tier (0% markup), hosted-premium on paid (§6-gated Shape B meter).
-**Status:** implemented for the free chain (`SK-LLM-001..015`). `SK-LLM-016` (BYOLLM) and `SK-LLM-017` (hosted-premium chain) land in Phase 2 alongside `quality-eval`; the premium-chain meter stays dark until [`phase-plan.md §6`](../../phase-plan.md) trips.
+**Status:** implemented for the free chain (`SK-LLM-001..015` + `SK-LLM-018`). `SK-LLM-016` (BYOLLM) and `SK-LLM-017` (hosted-premium chain) land in Phase 2 alongside `quality-eval`; the premium-chain meter stays dark until [`phase-plan.md §6`](../../phase-plan.md) trips.
 
 **Contribution to north-star:** Engine quality — the router is the NL→SQL accuracy lever per [`GLOBAL-025`](../../decisions/GLOBAL-025-north-star.md). Free-chain scaffolding compounds when BYOLLM or hosted-premium swaps in a frontier model; `quality-eval`'s free-vs-frontier delta measures the compounding.
 
@@ -136,11 +136,13 @@ Third chain alongside `free` and `paid`: **`premium`** = Sonnet 4.6 + GPT-5 + Ge
 
 ### SK-LLM-015 — OpenRouter code-gen ops default to `qwen/qwen3-coder:free`
 
-- **Decision:** OpenRouter pins `plan` and `schema_infer` to `qwen/qwen3-coder:free` (480B MoE, 1M context); `route` / `summarize` / `engine_classify` stay on Llama `:free`.
-- **Core value:** Free, Bullet-proof, Honest latency
-- **Why:** Qwen-Coder lineage hits ~96% on text-to-SQL vs ~88% for Llama 3.3 70B, and 1M context fits goal+schema without truncation — strictly better on the two code-gen ops where OpenRouter actually fires.
-- **Consequence in code:** `packages/llm/src/providers/openrouter.ts` `DEFAULT_MODELS` change only; chain order in `apps/api/src/llm-router.ts` unchanged (OpenRouter stays universal fallback per SK-LLM-003).
-- **Alternatives rejected:** Promote OpenRouter to chain head (unmeasured latency through provider routing — defer to `quality-eval`); Qwen3-Coder for all five ops (overkill latency on cheap-tier ops); stay on Llama 3.3 70B (leaves ~8 accuracy points on the table on the operation we cache hardest).
+**Body:** [`decisions/SK-LLM-015-openrouter-codegen-default.md`](./decisions/SK-LLM-015-openrouter-codegen-default.md).
+OpenRouter pins `plan` + `schema_infer` to `qwen/qwen3-coder:free` (480B MoE, 1M context); cheap-tier ops (`route` / `summarize` / `engine_classify`) stay on Llama `:free`. Qwen-Coder ≈96% text-to-SQL vs ≈88% Llama 3.3 70B; chain order unchanged (OpenRouter remains universal fallback per `SK-LLM-003`).
+
+### SK-LLM-018 — Schema-fidelity planner prompt + diagnostic retry framing
+
+**Body:** [`decisions/SK-LLM-018-schema-fidelity-prompt.md`](./decisions/SK-LLM-018-schema-fidelity-prompt.md).
+`PLAN_SYSTEM` gains schema-literal + verbatim-casing + dialect-strict + `Evidence:`-authoritative directives; `buildPlanUser`'s retry block reframes "different shape" as **diagnose-first, surgical-fix** (same Goal, schema-only identifiers, change only what the error names). Targets the BIRD free-chain gap (0.318 → 0.65 per [`SK-QUAL-005`](../quality-eval/FEATURE.md#sk-qual-005) / [`GLOBAL-025`](../../decisions/GLOBAL-025-north-star.md)); +3–5 pp evidence base: DIN-SQL / C3-SQL §4.1 / DAIL-SQL Table 3 schema-link; MAC-SQL §4.3 Refiner +4.63 pp surgical-fix retry.
 
 ### SK-LLM-013 — `PlanResponse` carries `model` + `confidence` for SK-TRUST-002
 
@@ -165,8 +167,8 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 
 ## Open questions / known unknowns
 
-- **`nlqdb.plan.quality_score` shape and threshold.** `docs/features/llm-router/FEATURE.md` proposes a `(1 = clean, 0.5 = needed correction loop, 0 = rejected)` histogram. The exact bucket boundaries, the LLM-as-judge prompt, and the alert threshold for "this provider is silently degrading" are not yet specified.
-- **Prompt-template version pinning.** `SK-LLM-009` says system-prompt changes invalidate the prompt cache (intended). We don't yet have a place to record which template version produced which plan — a future debugging need. Open.
-- **Per-user credit accounting.** The feature description mentions "per-user credit accounting" but `docs/architecture.md §7` and `docs/features/llm-router/FEATURE.md` cover provider-level cost, not per-user usage metering. Lago is in `docs/architecture.md §6`'s stack as the metering backbone; the wiring from LLM router → Lago is not yet specified.
+- **`nlqdb.plan.quality_score` shape + threshold.** Histogram `(1=clean, 0.5=correction loop, 0=rejected)` proposed; bucket boundaries, LLM-as-judge prompt, and "provider silently degrading" alert threshold are unspecified.
+- **Prompt-template version pinning.** `SK-LLM-009` invalidates the prompt cache on system-prompt change (intended); no place yet records which template version produced which plan — debugging need.
+- **Per-user credit accounting.** Provider-level cost is covered; LLM router → Lago wiring for per-user metering (`docs/architecture.md §6`) is not yet specified.
 - **Failover behaviour when every provider in a chain fails.** Today the chain falls through providers; what happens when the last one fails? Bubble up an error envelope (per `GLOBAL-012`)? Retry the head with backoff? The router currently throws; the user-facing error semantics are open.
 - **Free-tier RPM ceiling visibility.** `docs/architecture.md §7.1` says "bursts queue briefly; 'queued — 2s' surfaced in UI." The queue mechanism is not yet implemented in the router; today bursts that exceed the provider's RPM fail-and-fall-through. Track in the rate-limit / observability features.
