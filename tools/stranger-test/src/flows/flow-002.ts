@@ -203,8 +203,19 @@ async function doWalk(
 
     if (failedStep === null) {
       await page.waitForURL(/\/app\/new\/?$/, { timeout: 10_000 }).catch(() => {});
-      const onAppNew = /\/app\/new\/?$/.test(page.url());
-      steps.push(step(7, "navigated to /app/new", onAppNew ? "ok" : "fail", `url=${page.url()}`));
+      const currentUrl = page.url();
+      const onAppNew = /\/app\/new\/?$/.test(currentUrl);
+      // Defence-in-depth — if captureInviteFromUrl fails to load (CSP / MIME /
+      // parse error / bundled-import network blip), the URL bar still carries
+      // `?invite=<RAW>` and would land in the 90-day cron artifact.
+      steps.push(
+        step(
+          7,
+          "navigated to /app/new",
+          onAppNew ? "ok" : "fail",
+          `url=${redactInviteFromUrl(currentUrl)}`,
+        ),
+      );
       if (!onAppNew) failedStep = 7;
     } else {
       steps.push(step(7, "navigated to /app/new", "skip", "blocked by earlier step"));

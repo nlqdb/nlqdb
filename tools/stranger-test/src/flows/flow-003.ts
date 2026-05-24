@@ -169,13 +169,15 @@ async function doWalk(
 
     if (failedStep === null) {
       await page.waitForURL(/\/app\/new\/?$/, { timeout: 10_000 }).catch(() => {});
-      const onAppNew = /\/app\/new\/?$/.test(page.url());
+      const currentUrl = page.url();
+      const onAppNew = /\/app\/new\/?$/.test(currentUrl);
+      // Defence-in-depth — same rationale as flow-002.ts step 7.
       steps.push(
         step(
           7,
           "navigated to /app/new with form prefilled",
           onAppNew ? "ok" : "fail",
-          `url=${page.url()}`,
+          `url=${redactInviteFromUrl(currentUrl)}`,
         ),
       );
       if (!onAppNew) failedStep = 7;
