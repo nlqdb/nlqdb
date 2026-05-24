@@ -10,7 +10,7 @@ when-to-load:
 # Feature: Llm Router
 
 **One-liner:** Model selection, fallback chain, prompt strategy, per-user credit accounting; three permanent dispatch lanes per [`GLOBAL-026`](../../decisions/GLOBAL-026-llm-strategy-byollm-hosted-premium.md) — free chain forever, BYOLLM every tier (0% markup), hosted-premium on paid (§6-gated Shape B meter).
-**Status:** implemented for the free chain (`SK-LLM-001..015`). `SK-LLM-016` (BYOLLM) and `SK-LLM-017` (hosted-premium chain) land in Phase 2 alongside `quality-eval`; the premium-chain meter stays dark until [`phase-plan.md §6`](../../phase-plan.md) trips.
+**Status:** implemented for the free chain (`SK-LLM-001..015` + `SK-LLM-018`). `SK-LLM-016` (BYOLLM) and `SK-LLM-017` (hosted-premium chain) land in Phase 2 alongside `quality-eval`; the premium-chain meter stays dark until [`phase-plan.md §6`](../../phase-plan.md) trips.
 
 **Contribution to north-star:** Engine quality — the router is the NL→SQL accuracy lever per [`GLOBAL-025`](../../decisions/GLOBAL-025-north-star.md). Free-chain scaffolding compounds when BYOLLM or hosted-premium swaps in a frontier model; `quality-eval`'s free-vs-frontier delta measures the compounding.
 
@@ -142,7 +142,7 @@ OpenRouter pins `plan` + `schema_infer` to `qwen/qwen3-coder:free` (480B MoE, 1M
 ### SK-LLM-018 — Schema-fidelity planner prompt + diagnostic retry framing
 
 **Body:** [`decisions/SK-LLM-018-schema-fidelity-prompt.md`](./decisions/SK-LLM-018-schema-fidelity-prompt.md).
-`PLAN_SYSTEM` gains schema-literal + verbatim-casing + dialect-strict + `Evidence:`-authoritative directives; `buildPlanUser`'s retry block reframes "different shape" as **diagnose-first, surgical-fix** (same Goal, schema-only identifiers, change only what the error names). Targets the BIRD free-chain gap (0.318 → 0.65 per [`SK-QUAL-005`](../quality-eval/FEATURE.md#sk-qual-005) / [`GLOBAL-025`](../../decisions/GLOBAL-025-north-star.md)); +3–5 pp evidence base: DIN-SQL / C3-SQL / DAIL-SQL schema-link, MAGIC / MAC-SQL surgical-fix retry.
+`PLAN_SYSTEM` gains schema-literal + verbatim-casing + dialect-strict + `Evidence:`-authoritative directives; `buildPlanUser`'s retry block reframes "different shape" as **diagnose-first, surgical-fix** (same Goal, schema-only identifiers, change only what the error names). Targets the BIRD free-chain gap (0.318 → 0.65 per [`SK-QUAL-005`](../quality-eval/FEATURE.md#sk-qual-005) / [`GLOBAL-025`](../../decisions/GLOBAL-025-north-star.md)); +3–5 pp evidence base: DIN-SQL / C3-SQL §4.1 / DAIL-SQL Table 3 schema-link; MAC-SQL §5.3 Refiner +4.63 pp surgical-fix retry.
 
 ### SK-LLM-013 — `PlanResponse` carries `model` + `confidence` for SK-TRUST-002
 

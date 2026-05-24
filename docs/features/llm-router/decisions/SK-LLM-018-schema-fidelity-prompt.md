@@ -25,20 +25,27 @@
   preamble). Schema-link prompts add **+3–5 pp** on small free
   models per the canonical NL→SQL literature: **DIN-SQL**
   ([arXiv:2304.11015](https://arxiv.org/abs/2304.11015)) — schema-link
-  decomposition is one of four pillars; **C3-SQL**
-  ([arXiv:2307.07306](https://arxiv.org/abs/2307.07306)) §3.2 schema
-  clear "use only columns from the schema" directive; **DAIL-SQL**
-  ([arXiv:2308.15363](https://arxiv.org/abs/2308.15363)) Table 3
-  schema-linking ablation. The retry reframe targets the
+  decomposition is one of four pillars and pins identifier-literal
+  prompting as the per-question first step; **C3-SQL**
+  ([arXiv:2307.07306](https://arxiv.org/abs/2307.07306)) §4.1 "Clear
+  Prompting" — the three-C's posture (Clear / Calibrated /
+  Consistent) governs the prompt-side fidelity language adopted
+  here; **DAIL-SQL** ([arXiv:2308.15363](https://arxiv.org/abs/2308.15363))
+  Table 3 ablates schema-linking as the largest single component
+  contribution. The retry reframe targets the
   [`SK-QUAL-009`](../../quality-eval/FEATURE.md#sk-qual-009)
   exec-retry loop — the prior "different shape" phrasing invited
   whole-approach rewrites when the root cause was a typo or missing
-  column. **MAGIC** ([arXiv:2406.12692](https://arxiv.org/pdf/2406.12692))
-  §3 explicitly recommends "small surgical change, not rewrite" as the
-  self-correction posture; **MAC-SQL** Refiner
-  ([arXiv:2312.11242](https://arxiv.org/html/2312.11242v2)) §6.2 ablates
-  +4.63 pp BIRD-dev EX precisely because the corrected SQL stays close
-  to the rejected one.
+  column. The surgical-fix discipline is grounded in **MAC-SQL**
+  Refiner ([arXiv:2312.11242](https://arxiv.org/html/2312.11242v2))
+  §5.3 Table 3 ablation, which lifts BIRD-dev EX **+4.63 pp**
+  (54.76% → 59.39% with Refiner on) precisely because the corrected
+  SQL stays close to the rejected one. **MAGIC**
+  ([arXiv:2406.12692](https://arxiv.org/pdf/2406.12692)) supplies
+  the broader iterative-self-correction frame — its adaptive
+  in-context guidelines are MAC-SQL's posture taken further; we
+  ship MAC-SQL's narrower contract first because it survives at
+  free-chain context budgets.
 - **Consequence in code:** `packages/llm/src/prompts.ts` —
   `PLAN_SYSTEM` extended (4 bullets → 6); `buildPlanUser`'s retry
   block renders three directive bullets in place of the single
