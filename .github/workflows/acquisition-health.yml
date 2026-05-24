@@ -1,0 +1,155 @@
+# Daily acquisition-health cron — runs the three agent-runnable walkers
+# against the production deployment and surfaces their JSON artifacts.
+#
+# Closes the two open questions in docs/features/stranger-test/FEATURE.md:
+# (a) §1.1 stranger-test daily cron + JSON archive,
+# (b) §1.4 FLOW-004 continuous regression watch.
+#
+# Why GitHub Actions and not a Cloudflare cron Worker: CF Workers cannot
+# host Chromium for the Playwright walker, and the stranger-IP rule in
+# automated-icp-validation-plan.md §1.1 requires egress that is NOT a
+# Worker. A GH Actions runner is a "stranger" by that definition.
+#
+# Why this workflow always exits 0: the operator-loop rule in
+# automated-icp-validation-plan.md preamble is "no founder-facing
+# notification channel of any shape." GitHub emails the repo owner when
+# a scheduled workflow fails on the default branch — a hard exit on a
+# walker failure would create that channel. Instead, the artifact JSON
+# carries the diagnosis and the next agent run picks the failure up as
+# its priority #1 (per the same preamble). Decision: SK-STRG-003.
+
+name: Acquisition health
+
+on:
+  # Daily 06:00 UTC — same slot as the weekly ICP scrape cron so the
+  # Resend-template / KV-key / middleware regression surface is checked
+  # before the next stranger lands. Cron times in actions/schedule are
+  # "best-effort" per GitHub docs (can drift up to ~15 min under load);
+  # acceptable here because the next agent run reads the latest artifact
+  # regardless of wall-clock slot.
+  schedule:
+    - cron: "0 6 * * *"
+  workflow_dispatch:
+    inputs:
+      base_url:
+        description: "Override the deployed surface (default: app.nlqdb.com / nlqdb.com)"
+        required: false
+      skip_flow_004:
+        description: "Skip the FLOW-004 invite-valve walk (saves 1 of 200/week SK-GATE-007 cap)"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+# Cron and manual triggers share a single in-flight slot — overlapping
+# runs would race on the same mail.tm inbox API quota (8 QPS).
+concurrency:
+  group: acquisition-health
+  cancel-in-progress: false
+
+jobs:
+  walk:
+    name: Walk FLOW-001/002/003/004 + verify-flows
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # SK-STRG-003: always succeed. Walker failures land in the artifact,
+    # not in the workflow exit code. continue-on-error on every step
+    # keeps the run green even when a deployed surface regressed.
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - uses: ./.github/actions/setup
+
+      - name: Cache Playwright browsers
+        id: pw-cache
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('tools/stranger-test/package.json') }}
+
+      - name: Install Playwright Chromium (when cache miss)
+        if: steps.pw-cache.outputs.cache-hit != 'true'
+        run: bunx --bun playwright install chromium --with-deps
+
+      - name: verify-flows (curl-observable static subset)
+        id: verify-flows
+        continue-on-error: true
+        env:
+          NLQDB_BASE_URL: ${{ inputs.base_url || 'https://nlqdb.com' }}
+        run: |
+          set +e
+          bash scripts/verify-flows.sh | tee tools/stranger-test/results/verify-flows.log
+          echo "exit_code=$?" >> "$GITHUB_OUTPUT"
+
+      - name: stranger-test (Playwright FLOW-001/002/003)
+        id: stranger-test
+        continue-on-error: true
+        env:
+          NLQDB_BASE_URL: ${{ inputs.base_url || 'https://nlqdb.com' }}
+        run: |
+          set +e
+          bash scripts/stranger-test.sh --prompts 3 --quiet \
+            --out tools/stranger-test/results/walk-cron.json
+          echo "exit_code=$?" >> "$GITHUB_OUTPUT"
+
+      - name: flow-004-walk (invite-valve end-to-end)
+        id: flow-004
+        if: ${{ inputs.skip_flow_004 != true }}
+        continue-on-error: true
+        env:
+          # SK-GATE-007 invite-valve is on app.nlqdb.com; verify-flows /
+          # stranger-test hit the marketing host nlqdb.com.
+          NLQDB_BASE_URL: ${{ inputs.base_url || 'https://app.nlqdb.com' }}
+          FLOW_004_OUT: tools/stranger-test/results/flow-004-cron.json
+        run: |
+          set +e
+          bash scripts/flow-004-walk.sh
+          echo "exit_code=$?" >> "$GITHUB_OUTPUT"
+
+      - name: Upload walker artifacts
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: always()
+        with:
+          name: acquisition-health-${{ github.run_id }}
+          path: tools/stranger-test/results/*
+          retention-days: 90
+
+      - name: Emit run summary
+        if: always()
+        run: |
+          set -u
+          {
+            echo "## Acquisition health — daily walk"
+            echo ""
+            echo "| Walker | Exit code | Artifact |"
+            echo "|---|---|---|"
+            echo "| verify-flows.sh | ${{ steps.verify-flows.outputs.exit_code || 'n/a' }} | verify-flows.log |"
+            echo "| stranger-test.sh | ${{ steps.stranger-test.outputs.exit_code || 'n/a' }} | walk-cron.json |"
+            echo "| flow-004-walk.sh | ${{ steps.flow-004.outputs.exit_code || 'skipped' }} | flow-004-cron.json |"
+            echo ""
+            flow004="tools/stranger-test/results/flow-004-cron.json"
+            if [ -f "$flow004" ]; then
+              echo "### FLOW-004 outcome"
+              jq -r '
+                "- state: " + .state,
+                "- gate_bypassed: " + (.gate_bypassed | tostring),
+                "- control_blocked: " + (.control_blocked | tostring),
+                "- email_latency_s: " + (.email_latency_s | tostring),
+                "- total_wall_s: " + (.total_wall_s | tostring),
+                "- ask_status: " + (.ask_status | tostring),
+                "- ask_error_status: " + (.ask_error_status // "" | tostring)
+              ' "$flow004"
+            fi
+            walk="tools/stranger-test/results/walk-cron.json"
+            if [ -f "$walk" ]; then
+              echo ""
+              echo "### stranger-test outcome"
+              jq -r '
+                "- total walks: " + (.summary.totalRuns | tostring),
+                "- passed: " + (.summary.passed | tostring),
+                "- failed: " + (.summary.failed | tostring),
+                "- ttfv p50 ms: " + (.summary.ttfvP50Ms // 0 | tostring),
+                "- ttfv p95 ms: " + (.summary.ttfvP95Ms // 0 | tostring)
+              ' "$walk" || true
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
