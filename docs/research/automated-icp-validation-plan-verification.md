@@ -437,49 +437,68 @@ query — all without any human in the loop.
 
 ### Walkthrough steps
 
-1. Open `https://nlqdb.com/` (fresh context).
-2. Scroll to `#waitlist` (or click the gate's "Join the waitlist"
-   CTA from any 403 surface).
-3. Submit the waitlist form with the agent's reachable email.
-4. Assert: the form acknowledges submission (a success message; do
-   NOT navigate away yet — capture the page state).
-5. Within 5 minutes, poll the inbox for an email `from:hello@nlqdb.com`
-   with subject matching `/invite|access|nlqdb/i`.
-6. Extract the `?invite=<code>` query parameter from the link in the
-   email body. (Resend HTML body parsing; the code is 128-bit
-   per [`SK-GATE-007`](../features/pre-alpha-gate/FEATURE.md).)
-7. Open `https://nlqdb.com/?invite=<code>` in the same browser
-   context. Assert: `localStorage["nlqdb_invite"]` is now set to
-   the code value.
-8. Type a goal in the hero and submit. Assert: `/v1/ask` request
-   in DevTools carries the `X-Invite-Code: <code>` header AND the
-   response status is 200 (not the 403 the same surface returns
-   without the code).
-9. Assert: subsequent `/v1/ask` requests in the same session continue
-   to carry the header (one-shot codes are still presented on every
-   request for audit; the consumption is server-side).
+1. Mint a throwaway mail.tm inbox (script: `POST api.mail.tm/accounts`
+   + `POST /token`; no key, no signup).
+2. `POST $NLQDB_BASE_URL/v1/waitlist` with the mail.tm address
+   (`source: "flow-004-walker"`); assert `200 {received: true}`.
+3. Poll `GET api.mail.tm/messages` every `FLOW_004_POLL_INTERVAL_S`
+   (default 10s) up to `FLOW_004_TIMEOUT_S` (default 300s) for an email
+   whose `from.address` matches `/nlqdb/i`. Resend SLA is sub-30 s for
+   transactional; the live 2026-05-24 walks observed 10–13 s.
+4. Extract `?invite=<code>` from the message text+html. The code is
+   128-bit base64url per [`SK-GATE-007`](../features/pre-alpha-gate/FEATURE.md);
+   match `/invite=[A-Za-z0-9_-]{16,}/`.
+5. **Control probe** — `POST $NLQDB_BASE_URL/v1/ask` with
+   `Authorization: Bearer anon_<uuid>` and NO `X-Invite-Code`. Assert:
+   `error.status="feature_gated"`. If control is NOT blocked the gate
+   is open globally and the walk is `inconclusive` — the SK-GATE-007
+   invariant is unprovable on this run (BIRD/Spider crossed the
+   threshold; the walker must not silently green-light).
+6. **Invite probe** — `POST $NLQDB_BASE_URL/v1/ask` with the same
+   anon bearer AND `X-Invite-Code: <code>`. Assert: response is NOT
+   `feature_gated`. Pass when `HTTP 200`; `partial` when non-200 +
+   non-`feature_gated` (gate bypassed; downstream owns the failure,
+   e.g. a transient LLM 422 on schema-infer).
+7. (Optional browser variant — open `https://nlqdb.com/?invite=<code>`
+   in a Playwright context and assert `localStorage["nlqdb_invite"]`
+   is set; covers the web-app's `?invite=` URL-param capture path,
+   tracked as the "Playwright invite-bearing slice" open question
+   in `stranger-test/FEATURE.md`.)
 
 ### Pass criteria
 
-- Steps 4-9 all pass.
-- Step 5 polling completes in under 5 minutes (Resend SLA is sub-30 s
-  for transactional; 5 min is the slack).
+- Step 5 control returns `error.status="feature_gated"` (proves the
+  gate is doing its job and the walker is exercising the bypass path,
+  not a globally-open gate).
+- Step 6 invite returns a response that is NOT `feature_gated`
+  (`HTTP 200` is the strict pass; non-200 non-`feature_gated` is
+  `partial`).
+- Step 3 polling completes inside `FLOW_004_TIMEOUT_S` (default 5 min).
 
 ### If blocked
 
-- No email arrives within 5 minutes → `blocked upstream` (Resend
-  outage) OR `failed step 5` (waitlist worker regression). Triage by
-  checking Resend dashboard logs.
-- Email arrives but no invite code in the body → `failed step 6`;
-  the Resend template regressed.
-- Code is set in localStorage but `/v1/ask` still returns 403 →
-  `failed step 8`; the gate's `X-Invite-Code` honouring regressed.
+- No email arrives within `FLOW_004_TIMEOUT_S` → `blocked upstream`
+  (Resend outage, mail.tm spam-filter, or waitlist cap exhausted —
+  the Worker silently emits no code when the cap is hit and still
+  returns 200, so the symptom is identical). Triage by checking the
+  Resend dashboard + the `wl:invite-cap:*` KV counter.
+- Email arrives but no `invite=` token in the body → `failed step 4`;
+  the Resend template regressed (the buildInviteEmail string moved).
+- Control probe (step 5) returns `200` instead of `feature_gated` →
+  `inconclusive`; the gate is open globally (BIRD ≥ 0.65 AND Spider ≥
+  0.75 per `eval-baseline.ts`). This is GOOD news for the product, but
+  the walker can no longer prove SK-GATE-007 is honoured — switch the
+  next slice to direct middleware probes.
+- Control blocked but invite returns `feature_gated` → `failed step 6`;
+  the gate's `X-Invite-Code` honouring regressed. This is the real
+  SK-GATE-007 regression signature.
 
 ### Outcome log
 
 | Date | Agent | State | Email arrived in (s) | Notes |
 |---|---|---|---|---|
-| 2026-05-24 | claude-code | passed | 13 | `bash scripts/flow-004-walk.sh` against `https://app.nlqdb.com`. mail.tm `wshu.net` inbox minted, `POST /v1/waitlist` 200, Resend invite email landed 13s later, `?invite=<code>` extracted, `POST /v1/ask` with `Authorization: Bearer anon_<uuid>` + `X-Invite-Code` returned **HTTP 200** (gate bypassed). Total wall-clock 18s. Closes the §1.4 invite-valve end-to-end verification gap that has been open since SK-GATE-007 shipped 2026-05-21. Artifact: `tools/stranger-test/results/flow-004-<utc>.json`. Walker primitive: SK-STRG-002. |
+| 2026-05-24 | claude-code | passed | 13 | `bash scripts/flow-004-walk.sh` against `https://app.nlqdb.com`. mail.tm `wshu.net` inbox minted, `POST /v1/waitlist` 200, Resend invite email landed 13s later, `?invite=<code>` extracted, `POST /v1/ask` with `Authorization: Bearer anon_<uuid>` + `X-Invite-Code` returned **HTTP 200** (gate bypassed). Total wall-clock 18s. Closes the §1.4 invite-valve end-to-end verification gap that has been open since SK-GATE-007 shipped 2026-05-21. Artifact: `tools/stranger-test/results/flow-004-2026-05-24T11-16-15Z.json`. Walker primitive: SK-STRG-002 (initial revision — no control probe). |
+| 2026-05-24 | claude-code | passed | 10 | Re-walk after independent self-review iteration. Walker now does a **control probe** (`/v1/ask` without invite — must be `feature_gated`) before the invite probe; only `passed` when both succeed, `inconclusive` if the gate is open globally. Control returned `403 feature_gated`, invite returned `HTTP 200`, total wall 15s. JSON now also carries `control_status` + `control_error_status` + `control_blocked` so future runs are self-validating across gate-state changes. Artifact: `tools/stranger-test/results/flow-004-2026-05-24T11-32-44Z.json`. |
 
 ---
 
