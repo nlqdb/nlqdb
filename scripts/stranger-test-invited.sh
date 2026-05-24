@@ -52,7 +52,6 @@ cd "$REPO_ROOT" || exit 1
 say()  { printf '\n\033[1;34m== %s ==\033[0m\n' "$*"; }
 ok()   { printf '  \033[1;32m✓\033[0m %s\n' "$*"; }
 fail() { printf '  \033[1;31m✗\033[0m %s  — %s\n' "$1" "$2"; }
-note() { printf '  \033[2m· %s\033[0m\n' "$*"; }
 
 UTC_STAMP="$(date -u +%Y-%m-%dT%H-%M-%SZ)"
 RESULTS_DIR="tools/stranger-test/results"
@@ -67,6 +66,7 @@ mkdir -p "$RESULTS_DIR"
 INVITE_SIDECAR="$RESULTS_DIR/.invite-${UTC_STAMP}-$$.txt"
 INVITE_CODE=""
 
+# shellcheck disable=SC2317  # body is invoked via `trap cleanup EXIT INT TERM`
 cleanup() {
   if [[ -f "$INVITE_SIDECAR" ]]; then rm -f "$INVITE_SIDECAR"; fi
   # Best-effort scrub of the in-process variable too.
