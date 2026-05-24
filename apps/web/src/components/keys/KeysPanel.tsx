@@ -1,9 +1,8 @@
-// API-key management dashboard (SK-APIKEYS-010 / SK-APIKEYS-011 /
-// SK-APIKEYS-012). `sk_mcp_*` is mint-only via OAuth-callback
-// (SK-APIKEYS-009) / `nlq mcp install`, not from this UI.
+// SK-APIKEYS-010-012; sk_mcp_* is mint-only via OAuth (SK-APIKEYS-009), not this UI.
 
 import { type KeyRecord, NlqdbApiError } from "@nlqdb/sdk";
 import { useEffect, useMemo, useRef, useState } from "react";
+import ErrorBoundary from "../ErrorBoundary";
 import { getChatClient } from "../../lib/chat-client";
 import { useFocusTrap, useRestoreFocusOnUnmount } from "../../lib/dialog";
 import { groupKeys, summarizeKey } from "./group";
@@ -17,7 +16,16 @@ type LoadState =
   | { kind: "ready"; keys: KeyRecord[] }
   | { kind: "error"; message: string };
 
-export default function KeysPanel({ apiBase }: KeysPanelProps) {
+export default function KeysPanel(props: KeysPanelProps) {
+  // SK-WEB-001 — every island ships behind ErrorBoundary so a render throw produces a visible fallback.
+  return (
+    <ErrorBoundary surface="KeysPanel">
+      <KeysPanelInner {...props} />
+    </ErrorBoundary>
+  );
+}
+
+function KeysPanelInner({ apiBase }: KeysPanelProps) {
   const [state, setState] = useState<LoadState>({ kind: "loading" });
   const [mintOpen, setMintOpen] = useState(false);
   const [confirmRevoke, setConfirmRevoke] = useState<KeyRecord | null>(null);
@@ -218,9 +226,7 @@ function KeyRow({
   );
 }
 
-// Copy-once mint dialog. Plaintext is shown exactly once on the mint
-// response (SK-APIKEYS-002) and dropped from state when the dialog
-// unmounts.
+// SK-APIKEYS-002: plaintext shown once at mint, dropped from state on unmount.
 function NewKeyDialog({
   apiBase,
   onCancel,
@@ -238,9 +244,7 @@ function NewKeyDialog({
   const inputRef = useRef<HTMLInputElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
   const closeBtnRef = useRef<HTMLButtonElement>(null);
-  // Ref-based in-flight guard. `setSubmitting(true)` is asynchronous,
-  // so a rapid second Enter-in-input can fire `submit` again before
-  // the `submitting` closure value updates; the ref flips synchronously.
+  // Ref guard: setSubmitting is async — ref flips synchronously to block double-submit.
   const inFlightRef = useRef(false);
   const abortRef = useRef<AbortController | null>(null);
 
@@ -254,16 +258,12 @@ function NewKeyDialog({
     inputRef.current?.focus();
   }, []);
 
-  // After mint, shift focus to the Close button so screen-reader
-  // users hear the action that completes the disclosure rather than
-  // re-reading the plaintext.
+  // Shift focus to Close after mint so screen readers announce the action, not the plaintext.
   useEffect(() => {
     if (minted) closeBtnRef.current?.focus();
   }, [minted]);
 
-  // Cancel any pending mint when the dialog unmounts so the user
-  // closing the dialog mid-flight doesn't leave a request to land
-  // against a dead component.
+  // Abort in-flight mint on unmount to avoid state updates on dead component.
   useEffect(() => {
     return () => abortRef.current?.abort();
   }, []);
@@ -416,10 +416,7 @@ function NewKeyDialog({
   );
 }
 
-// Single-confirm hard-revoke (SK-APIKEYS-011). No typed-name gate
-// (that's reserved for unrecoverable ops like `db.delete` per
-// SK-HDC-016) — minting a fresh key recovers from a finger-slip
-// revoke.
+// SK-APIKEYS-011: single-confirm revoke; no typed-name gate (SK-HDC-016 reserves that for unrecoverable ops).
 function RevokeDialog({
   apiBase,
   target,

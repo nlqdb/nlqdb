@@ -67,7 +67,13 @@ test("Base.astro inline copy of EXTENSION_PREFIXES stays in sync", () => {
   }
 });
 
-// Pin every `#boot-fallback` selector to `:not([hidden])` (or `[hidden]`) — an ID rule (0,1,0,0) outranks UA `[hidden] { display: none }` (0,0,1,0) and paints the panel below the footer on every page.
+// Primary guard: `[hidden]{display:none!important}` in global.css beats any author display rule.
+test("global.css includes the [hidden] display-none reset", () => {
+  const css = readFileSync(new URL("../styles/global.css", import.meta.url), "utf-8");
+  expect(css).toContain("[hidden] { display: none !important; }");
+});
+
+// Defense-in-depth: boot-fallback selectors also gated so no display rule leaks when hidden.
 test("every #boot-fallback CSS selector is gated on the hidden attribute", () => {
   const css = readFileSync(new URL("../styles/global.css", import.meta.url), "utf-8");
   const stripped = css.replace(/\/\*[\s\S]*?\*\//g, "");
