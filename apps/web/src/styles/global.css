@@ -646,6 +646,13 @@ h3 {
   font-size: 14px;
   line-height: 1.4;
 }
+.feature-gate__lanes-caption {
+  margin: 0;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #a98a4a;
+}
 .feature-gate__lanes {
   margin: 0;
   display: grid;

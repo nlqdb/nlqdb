@@ -31,14 +31,67 @@
 > drive traffic without knowing whether it converts, churns, or
 > bounces silently. That's the bar §3 cannot legitimately clear yet.
 >
+> **Real blocker is engine quality, not surfaces (2026-05-24 founder
+> directive).** Every advertised acquisition surface gate-403s at
+> `/v1/ask` because the free-chain BIRD is 0.318 (target 0.65) and
+> Spider is `null` (target 0.75) per
+> [`apps/api/src/gate/eval-baseline.ts`](../../apps/api/src/gate/eval-baseline.ts) /
+> [`SK-GATE-001`](../features/pre-alpha-gate/FEATURE.md#sk-gate-001) /
+> [`SK-GATE-002`](../features/pre-alpha-gate/FEATURE.md#sk-gate-002).
+> The gate is doing exactly what GLOBAL-027 asks it to ("don't show
+> bad NL→SQL to strangers") — *removing* the gate before BIRD/Spider
+> clear ships bad answers to every ICP we acquire, which is worse
+> than the current "0 validated users." The acquisition tracker's
+> bottleneck is therefore [`quality-eval`](../features/quality-eval/FEATURE.md)
+> velocity, not new surfaces. Acquisition work that *doesn't* move
+> BIRD/Spider is deferred until either threshold clears or the
+> §1.4 invite valve carries a stranger across the gate intact.
+>
 > **What the next agent run should pick (2026-05-24, in order — items 1–3 outrank 4+ unconditionally):**
-> 1. **§1.4 anonymous-mode gate-bypass.** The 2026-05-24 Playwright walk (`bash scripts/stranger-test.sh`) proved every FLOW-001/002/003 run gate-fails at `/v1/ask` with `403 feature_gated`. SK-ANON-001 promises ephemeral Postgres on first anonymous `/v1/ask`; GLOBAL-027 / SK-GATE-004 unconditionally 403 `/v1/ask` for anonymous principals. This is the [§6 flag #1](#6-things-flagged-to-the-founder-per-claudemd-p1) tension restated as walker evidence — a fix lands as a new `SK-GATE-008` (or supersession of SK-ANON-001) before §3 acquisition can convert any visitor.
-> 2. **§1.2 KPI dashboard** — [`SK-ONBOARD-005`](../features/onboarding/FEATURE.md) pulled forward from 2026-06-01. 5 tiles on `nlqdb.com/build-log`: TTFV p50/p95, success rate, drop-off, first→second, gate-block. The stranger-test now produces the per-walk JSON the dashboard can ingest. Doubles as build-in-public (§3.2).
-> 3. **§1.3 in-app survey** — PostHog free tier; Sean Ellis Q1 after 2nd query + 7d; persona-extraction follow-up; drop-off recovery on `first_query.failed`.
-> 4. **§1.1 daily cron + R2 archive.** Primitive shipped 2026-05-24 ([`SK-STRG-001`](../features/stranger-test/FEATURE.md)); the daily-cron + JSON-to-R2 + diff-against-prior-run slice is the remaining gap. Operator-loop intact: no LogSnag-on-regression — the next agent's pick-list IS the alert.
-> 5. **§3.1 next 10 solve pages** — from the 2026-05-26 first cluster file (verbatim quotes; supersedes paraphrased `<h1>` per SK-SOLVE-001's deviation note).
-> 6. **§3.5 `examples/` per cluster + `nlqdb.com/gallery`** — only after #1–#3 (don't drive traffic to an unmeasured funnel).
-> 7. **Show HN / Product Hunt push (§3.3)** — only after #1–#6.
+> 1. **Engine quality — close the BIRD gap and unblock the Spider lane.**
+>    BIRD 0.318 vs 0.65 target (49% of bar); Spider null vs 0.75 (loader
+>    + scorer shipped 2026-05-19 per [`SK-QUAL-007`](../features/quality-eval/FEATURE.md) +
+>    [`SK-QUAL-008`](../features/quality-eval/FEATURE.md) — first
+>    measurement seeds `eval-baseline.ts` on the next weekly cron).
+>    Highest-leverage pickable work, in order: (a) verify the next
+>    `quality-eval-spider2-lite.yml` cron run lands a real `spider_accuracy`
+>    in `eval-baseline.ts` (Tue 04:00 UTC; if the run failed, fix the
+>    pipeline before anything else); (b) close the free-vs-agentic-frontier
+>    delta surfaced by [`SK-QUAL-009`](../features/quality-eval/FEATURE.md) —
+>    every point that delta narrows is a point the free chain reclaims
+>    inside the gate; (c) push BIRD via free-chain scaffolding work
+>    (prompt + retry-on-exec-error already wired per `SK-QUAL-009`) —
+>    target +5pp/week until 0.65.
+> 2. **§1.4 invite-valve verification end-to-end.** SK-GATE-007 ships
+>    auto-issued invite codes on waitlist signup, but no agent has
+>    walked the full FLOW-004 (signup → Resend inbox → `?invite=` →
+>    gate bypass → first 200 on `/v1/ask`). Until that flow passes,
+>    the gate-valve is shipped-not-verified — strangers who land before
+>    BIRD/Spider clear can't get to first-value via the only path
+>    GLOBAL-027 permits.
+> 3. **§1.2 KPI dashboard** — [`SK-ONBOARD-005`](../features/onboarding/FEATURE.md)
+>    pulled forward; expose the `bird_accuracy` / `spider_accuracy` /
+>    gate-block-rate tiles alongside the onboarding tiles so the
+>    engine-quality bottleneck is visible from the same `build-log`
+>    panel. Doubles as build-in-public (§3.2).
+> 4. **§1.3 in-app survey** — PostHog free tier; Sean Ellis Q1 fires
+>    only after the invite-valve carried the user across the gate, so
+>    "what blocked you" is a real product question, not "the gate
+>    blocked me."
+> 5. **§1.1 daily cron + R2 archive.** Primitive shipped 2026-05-24
+>    ([`SK-STRG-001`](../features/stranger-test/FEATURE.md)); the
+>    daily-cron + JSON-to-R2 + diff-against-prior-run slice is the
+>    remaining gap. Walker re-runs are the leading indicator that the
+>    gate flipped open as BIRD/Spider cleared.
+> 6. **§3.1 next 10 solve pages** — only after #1–#2 (don't AEO-trap
+>    visitors into a gate-403 they can't cross; once invite-valve
+>    verified, each `/solve/` page can carry `?invite=` for press
+>    launches per §3.3).
+> 7. **§3.5 `examples/` per cluster + `nlqdb.com/gallery`** — only
+>    after #1–#5 (don't drive traffic to an unmeasured funnel).
+> 8. **Show HN / Product Hunt push (§3.3)** — only after #1–#7 AND
+>    either BIRD/Spider thresholds clear OR the invite-valve verifies
+>    end-to-end (the launch-URL `?invite=<code>` amendment in §3.3).
 >
 > **What's shipped today** (evidence in `## Progress log`, not prose):
 > §1.1 stranger-test primitive ([`tools/stranger-test/`](../../tools/stranger-test/) — Playwright walker for FLOW-001/002/003; daily-cron unshipped) ·
@@ -72,21 +125,26 @@
 
 | KPI | Target | Status |
 |---|---|---|
-| Anonymous loop completions | ≥ 50 | 0 — gate 403s every walked `/v1/ask` (2026-05-24 stranger-test); **acquisition cannot convert until §1.4 anon-bypass lands** |
-| Signed-in users (invite-redeemed) | ≥ 10 | 0 — first invites ship on next waitlist signup |
-| Sean Ellis Q1 responses | ≥ 20 | 0 — survey not wired (§1.3) |
+| Free-chain BIRD accuracy | ≥ 0.65 | **0.318** as of 2026-05-18 ([`eval-baseline.ts`](../../apps/api/src/gate/eval-baseline.ts)) — **the real acquisition bottleneck per the 2026-05-24 founder directive**; closing this lifts the gate for every surface §3 ships |
+| Free-chain Spider accuracy | ≥ 0.75 | **null** — loader + canonical multi-CSV scorer shipped 2026-05-19 ([`SK-QUAL-007`](../features/quality-eval/FEATURE.md) + [`SK-QUAL-008`](../features/quality-eval/FEATURE.md)); first measurement seeds `eval-baseline.ts` on the next [`quality-eval-spider2-lite.yml`](../../.github/workflows/quality-eval-spider2-lite.yml) Tue 04:00 UTC cron |
+| Anonymous loop completions | ≥ 50 | 0 — gate 403s every walked `/v1/ask` (2026-05-24 stranger-test); **stays 0 until BIRD/Spider clear OR §1.4 invite-valve verifies end-to-end** |
+| Signed-in users (invite-redeemed) | ≥ 10 | 0 — first invites ship on next waitlist signup; FLOW-004 inbox-receive walk still unverified |
+| Sean Ellis Q1 responses | ≥ 20 | 0 — survey not wired (§1.3); meaningful only after a user actually crosses the gate |
 | Primary ICP shortlist | exactly 1 | pending first cron Mon 2026-05-26 (verdict logic shipped 2026-05-22) |
-| TTFV p50 | ≤ 60 s | 156 ms time-to-`/v1/ask`-response on the 2026-05-24 walk — but every response is the gate 403, NOT first-value (§1.2 dashboard's status-split surfaces this honestly) |
+| TTFV p50 | ≤ 60 s | 156 ms time-to-`/v1/ask`-response on the 2026-05-24 walk — every response is the gate 403, NOT first-value |
 | First-query success | ≥ 60% | 0/9 walked runs reached a 200 on 2026-05-24 — same gate-403 cause as the anon-loop row |
 | Stranger-test passes | 100% daily | primitive shipped ([`SK-STRG-001`](../features/stranger-test/FEATURE.md), `bash scripts/stranger-test.sh`); 0/9 walked runs passed today because of the gate; daily cron unshipped |
 
 The preamble's "What the next agent should pick" is the canonical
-priority order; this table is the receipts. The TTFV / first-query /
-stranger-test rows now have honest measurements thanks to the
-2026-05-24 walker — they are 0% not because the static surface is
-broken (FLOW-002 step 8 event-spy, FLOW-003 step 9 `/llms.txt`, every
-hero / FAQPage / honest-limits assertion passes) but because every
-`/v1/ask` returns `feature_gated`. §1.4 (priority #1) closes that.
+priority order; this table is the receipts. Two BIRD/Spider rows lead
+because the gate is doing what GLOBAL-027 asks it to — every other 0%
+row in this table inherits from those two. The TTFV / first-query /
+stranger-test rows have honest measurements thanks to the 2026-05-24
+walker; they are 0% not because the static surface is broken
+(FLOW-002 step 8 event-spy, FLOW-003 step 9 `/llms.txt`, every hero /
+FAQPage / honest-limits assertion passes) but because every `/v1/ask`
+returns `feature_gated` until BIRD/Spider clear or the invite-valve
+carries the user across.
 
 ---
 
@@ -118,9 +176,20 @@ re-prioritising, not by paging the operator).
 **This is the layer that detects "people land and bounce" within
 days, not months.** Until §1.1, §1.2, and §1.3 ship, no §3 KPI can
 be trusted — every visitor we drive is a coin-flip we can't measure.
-§1.4 (release-valve) shipped 2026-05-21 and unblocks traffic; the
-remaining three are the only reason any later acquisition push isn't
-a year-long self-deception. Surfaces are documented in
+§1.4 (release-valve) shipped 2026-05-21 and unblocks traffic *for
+invite-bearing visitors only*; the remaining three are the only
+reason any later acquisition push isn't a year-long self-deception.
+
+**Engine quality sits above this whole layer.** Per the 2026-05-24
+founder directive, BIRD 0.318 and Spider `null` are the actual
+acquisition bottleneck: even if §1.1–§1.4 all ship, a stranger who
+crosses the gate via an invite still meets a free chain that's
+wrong roughly 2 out of 3 queries. That's a worse first-impression
+than the gate. So [`quality-eval`](../features/quality-eval/FEATURE.md)
+velocity is the real priority — this phase exists to keep §3
+honest *while* engine work lifts the gate.
+
+Surfaces are documented in
 [`onboarding/FEATURE.md`](../features/onboarding/FEATURE.md) and
 [`web-app/FEATURE.md`](../features/web-app/FEATURE.md); what isn't
 done is end-to-end stranger-test, instrumented baselines, and the
@@ -619,8 +688,16 @@ to supersede before §1.4 / §3.6 / §3.2 start.
    Gate is closed today; we can't get real users without a valve.
    §1.4 proposes auto-issued invite codes on waitlist signup OR
    launch-URL embedded codes. Either keeps the gate's spirit (no bad
-   NL→SQL at scale) while enabling §3. **Decision:** which valve;
-   what cap (default proposed: N=200/week).
+   NL→SQL at scale) while enabling §3. **Decision (2026-05-24):**
+   founder picked Option A — auto-issue invite codes on signup
+   (`SK-GATE-007`, capped 200/week, shipped 2026-05-21). Crucially
+   the founder also reaffirmed the gate's purpose: **don't remove
+   the gate to get strangers in; lift it by clearing the BIRD/Spider
+   thresholds.** That makes
+   [`quality-eval`](../features/quality-eval/FEATURE.md) velocity
+   the real acquisition gate, and acquisition surfaces are blocked
+   on either (a) BIRD ≥ 0.65 AND Spider ≥ 0.75 clearing, or (b) the
+   invite-valve verified end-to-end for the launch-URL path.
 2. **[founder-playbook.md §1–§2](../founder-playbook.md)** DM →
    Calendly → 30-min calls. Founder rejects. Plan replaces with §1.3
    (in-app survey for the 5 questions), §2 (mining pain at scale),
@@ -874,3 +951,4 @@ Per [GLOBAL-028](../decisions/GLOBAL-028-acquisition-progress-tracker.md): every
 | 2026-05-23 | §8 mirror sync + verify-flows hardening (SK-ICP-007 + FLOW-005 partial) | Close drift introduced by PR #265 — preamble claimed 8 flows and "SK-ICP-007 documenting the agent-runnable source-health primitive" but the `### FLOW-008` / `## FLOW-008` body sections never landed in either tracker and no `SK-ICP-007` block existed in `icp-mining/FEATURE.md`. Same agent run also caught a real verify-flows.sh false-positive: Stack Exchange returned `HTTP 403 x-block-reason: hostname_blocked` from the agent VM's managed-egress proxy and the script marked it fatal — Worker-IP-canonical means that's an advisory, not a regression. | `scripts/verify-flows.sh`: `fetch_json` now captures response headers via `-D` and degrades any non-200 carrying `x-block-reason:` to an advisory note regardless of severity (catches Reddit AND SO sandbox-egress 403s; HN/IH/GH outages stay fatal). New `FLOW-005 — MCP discovery (curl-observable subset)` block probes `https://mcp.nlqdb.com/.well-known/oauth-protected-resource` + `/.well-known/oauth-authorization-server` (RFC 9728 + RFC 8414), asserts `resource` / `issuer` / `authorization_endpoint` / `token_endpoint` — closes FLOW-005's OAuth discovery precondition (the metadata input the MCP inspector consumes during walkthrough step 1) with zero credentials; walkthrough steps 1-7 still need an authenticated MCP client. `NLQDB_MCP_URL` overrides for preview. `docs/research/automated-icp-validation-plan{,-verification}.md`: `### FLOW-008` (impl) + `## FLOW-008` (verify) bodies added with sub-tasks pointing at SK-ICP-001/003/004/005/006/007; status dashboards extended to 8 rows; FLOW-005 row flipped from `not yet attempted` to partial; outcome logs gained today's re-walk rows for FLOW-001/002/003 + first-ever row for FLOW-005 + FLOW-008. Preamble counts in both files reconciled to "4 partial / 1 cron-pass / 3 unattempted". `docs/features/icp-mining/FEATURE.md`: SK-ICP-007 entry added (5-field block); Status line updated; compensating shrinkage in SK-ICP-006 Why/Alternatives keeps the file at 20,412 bytes (under the 20 KB cap). Mirror integrity check (`diff` of `^#{2,3} FLOW-[0-9]+` headers) stays empty. Local re-run of `bash scripts/verify-flows.sh` against `https://nlqdb.com`: all assertions green (Reddit + SO advisory with the expected block-reason note). | Shipped. PR #265's drift is closed: `## FLOW-008` blocks now exist symmetrically, SK-ICP-007 is the canonical decision. The agent-VM-to-Worker egress gap is now visible in the script output, not a silent false-positive. |
 | 2026-05-24 | §1.1 stranger-test primitive (SK-STRG-001) + FLOW-001/002/003 walker re-verification | Ship the Playwright walker that closes the impl-vs-verify gap §1.1 has named for days; re-walk FLOW-001/002/003 against the deployed surface with real evidence before adding any new ICP source or flow | New workspace [`tools/stranger-test/`](../../tools/stranger-test/) (`@nlqdb/stranger-test`): `src/runner.ts` (CLI: `--base-url`, `--flows flow-001,flow-002,flow-003`, `--prompts`, `--out`, `--quiet`), `src/browser.ts` (one shared `chromium.launch` + per-walk `BrowserContext`, `withDeadline(180s)` per walk, `ignoreHTTPSErrors` for sandbox-proxy TLS, 401/429 ignored as expected), `src/personas.ts` (25 prompts pinned to the §1.1 paragraph: P1×10 / P2×8 / P3×4 / P6×3, no secret-looking strings), `src/flows/flow-00{1,2,3}.ts` (one walker per flow with steps mapped 1:1 to the mirror walkthrough). Bash wrapper [`scripts/stranger-test.sh`](../../scripts/stranger-test.sh) resolves the repo root and stamps `tools/stranger-test/results/walk-<utc>.json`; results gitignored except `.gitkeep`. 7/7 unit tests pass (`bun run --filter @nlqdb/stranger-test test`); typecheck green. Live 2026-05-24 walk against `https://nlqdb.com` (9 walks = 3 flows × 3 prompts, 6.6 s wall): 0 passed, 9 failed — every run gate-blocks at `/v1/ask` with `403 feature_gated` (FLOW-001 step 5, FLOW-002 step 9, FLOW-003 step 8) at ~150 ms p50, ~691 ms p95. **FLOW-002 step 8 finding corrected:** the prior 2026-05-23 walk reported `solve.try_query_clicked` missing; the new walker uses sessionStorage to persist the spy across `location.assign("/app/new")` and observes the event firing on every walked slug. The static surface is healthy; the gate is the binding gap. New feature [`docs/features/stranger-test/FEATURE.md`](../features/stranger-test/FEATURE.md) (SK-STRG-001) + `tools/stranger-test/AGENTS.md`. `CLAUDE.md` path map gained the `tools/stranger-test/**` entry (net-shrunk to stay under the 20 KB cap). Impl plan §1.1, §8 status dashboard, §8 FLOW-001 sub-tasks, §7 promotion path, Current status, and verification mirror outcome logs + status dashboard all updated in lockstep per GLOBAL-029/GLOBAL-030. | Shipped. The §1.1 anti-self-deception primitive exists as a one-command agent invocation. The walker exit-code is the regression signal; no LogSnag, no founder notification — the next agent run picks the binding §1.4 anon-bypass gap as priority #1, replacing the now-obsolete priority #1 / #4 entries the preamble carried. |
 | 2026-05-24 | §3.5 Outerbase comparison page (4th `/vs/<slug>`) + mirror re-verification + post-review iteration | Acquisition surface — fill the P4 backend-engineer slot the existing 3 `/vs/` pages don't cover. `/vs/outerbase` is the documented next-pick in [`comparison-pages/FEATURE.md`](../features/comparison-pages/FEATURE.md) Open questions ("persona-weighted threat × keyword volume — start with Outerbase next"). Outerbase is the "single product most in nlqdb's lane today" per [`docs/competitors.md §3`](../competitors.md) and is now Cloudflare-owned (2025-04-07 acquisition per the [official press release](https://www.cloudflare.com/press/press-releases/2025/cloudflare-acquires-outerbase-to-expand-developer-experience/)) — narrows the infra-differentiation lane and makes the chat-first / provisioning / `<nlq-data>` shape the only honest delta. | `apps/web/src/data/competitors.ts` gains the Outerbase entry (4th `Competitor`): persona `P4 backend engineer`, 4 `whenChooseUs` + 4 `whenChooseThem` bullets (SK-CMP-001), 11-row feature parity table, 6 FAQs (SK-CMP-003 4-6 range), all 6 naming "Outerbase" verbatim (SK-CMP-003 requires ≥1), demo goal `"today's failed background jobs grouped by service in the last 24 hours"`. `apps/web/src/pages/vs/[slug].astro` `getStaticPaths()` picks the new slug up unmodified per SK-CMP-002. `scripts/verify-flows.sh`: `VS_SLUGS` / `VS_TITLES` arrays gain `outerbase` / `Outerbase`; sitemap floor 12 → 13 (5 solve + 4 vs + 4 root). Live local `bun run build` from `apps/web/`: `/vs/outerbase/index.html` generated, sitemap 13 `<loc>` entries, `llms.txt` lists `vs/outerbase`. `docs/competitors.md` 3-place sync: (a) `§3` Outerbase entry corrects the stale "PlanetScale 2024" note (verified false against the Cloudflare press release + live WebFetch of `outerbase.com`) — Cloudflare 2025-04-07; engine list expanded to the verified 9; "Last verified" date stamped 2026-05-24; (b) `§1` PlanetScale entry threat-vector line updated — Outerbase no longer "owned by PlanetScale"; (c) summary threat-matrix row updated — "Cloudflare's stack (2025-04-07 acquisition)" replaces "PlanetScale backing". `docs/features/comparison-pages/FEATURE.md`: status line `3 → 4`; Open questions amended to note Outerbase shipped + the 3-place source-of-truth correction. **Independent self-review (sub-agent, opus 4.7) found 10 issues; this same row reflects the iteration that closed all 10:** (1) buyer-facing SK-* leak (3 sites) — SK-ANON-001 / SK-ONBOARD-004 / SK-WEB-005 references removed from `whenChooseUs` + the EZQL FAQ; (2) PlanetScale stale claim survived in `competitors.md` lines 46/249 — corrected; (3) acquisition date `2025-04-08` → `2025-04-07` (5 places: data file, competitors.md ×2, FEATURE.md, this Progress log); (4) P4 persona inconsistency on `whenChooseUs[0]` — reordered so trust/embed/greenfield bullets lead; (5) Outerbase tier name "Explorer" retired — "Free" used + specific 10/mo number softened to "documented per-month usage caps"; (6) HIPAA + SOC 2 row corrected from `them: shipped` → `them: partial` with Enterprise-only note (matches Outerbase's current pricing-page contract); (7) test-count claim corrected — `bun test apps/web/src/data` is 23/23 (the 93/93 figure is the full `apps/web/src` suite); (8/9/10) NIT-tier (nested-backtick artefact + comment scope) cleaned up. **Pre-deploy verification (post-iteration):** `bun run build` green; 13/13 sitemap entries; `bun test apps/web/src/data` 23/23 pass; full `bun test apps/web/src` 93/93 pass; `bunx astro check` 0 errors / 0 warnings; `shellcheck scripts/verify-flows.sh` 0 issues; `bunx biome check` exit 0 on this PR's diff; live `bash scripts/verify-flows.sh` against `https://nlqdb.com` returns exactly 4 expected pre-deploy failures (`/vs/outerbase/` 404, sitemap floor 12 < 13, `llms.txt` missing slug) — all clear post-`deploy-web.yml`. No `SK-CMP-NNN` added: the addition fits inside the existing data-driven contract per SK-CMP-002. | Shipped after one round of independent self-review iteration. Comparison page count 3 → 4; first `/vs/` page covering P4. Mirror integrity check (diff of `^#{2,3} FLOW-[0-9]+`) stays empty — no new flow added. FLOW-003 verification mirror outcome log gets the pre-deploy build-time row; the live-walk row appends after `deploy-web.yml` deploys `apps/web/dist`. Review artifact: PR #271 comment chain. |
+| 2026-05-24 | Gate UI evals caption + preamble redirect to engine quality | Founder directive (2026-05-24): ICP acquisition tracker priority list was leading with §1.4 anon-bypass even though the deployed gate is operating exactly as GLOBAL-027 requires — every walked `/v1/ask` 403s because BIRD 0.318 < 0.65 and Spider null < 0.75 in [`eval-baseline.ts`](../../apps/api/src/gate/eval-baseline.ts). Removing the gate before BIRD/Spider clear ships bad NL→SQL to every stranger we drive — worse than the current "0 validated users." Real bottleneck is [`quality-eval`](../features/quality-eval/FEATURE.md) velocity, not new surfaces. Founder also flagged that the gate progress block (`FeatureGatedView`) renders `BIRD 31.8% / 65%` and `Spider not yet measured` without telling visitors what BIRD/Spider are — strangers read raw acronyms. | `apps/web/src/components/FeatureGatedView.tsx`: added `<p className="feature-gate__lanes-caption" aria-hidden="true">evals</p>` above the existing `<dl className="feature-gate__lanes">` and labelled the `<dl>` with `aria-label="NL-to-SQL accuracy evals"` for SR users (caption stays `aria-hidden` to avoid double-announce). `apps/web/src/styles/global.css`: new `.feature-gate__lanes-caption` rule — 11px uppercase tracking-0.08em, `#a98a4a` (dimmed sibling of the existing `#d2a352` lane-label colour) so it reads as caption, not section heading. Visual contrast computed against the gate's `#1a1410` background per the WCAG 2.1 relative-luminance formula: 5.58:1, meets WCAG AA for normal text (≥ 4.5:1). `docs/research/automated-icp-validation-plan.md`: (a) preamble's "What the next agent should pick" list re-rooted — new priority #1 is engine quality (BIRD gap close + Spider lane verification + free-vs-agentic-frontier delta narrowing per [`SK-QUAL-009`](../features/quality-eval/FEATURE.md)); §1.4 was-#1 becomes new #2 reframed as "verify the invite-valve end-to-end" (because SK-GATE-007 shipped but no agent has walked FLOW-004 inbox-to-200); demoted §3 picks one slot each; (b) `Current status` KPI table gains two BIRD/Spider rows at the top with the real numbers + cron schedule; (c) §1 intro now states "engine quality sits above this whole layer" and explains why; (d) §6 flag #1 marked resolved (founder picked Option A invite codes AND reaffirmed "lift the gate by clearing thresholds, don't remove it"). `docs/research/automated-icp-validation-plan-verification.md`: preamble synced — leads with the engine-quality bottleneck, advises future agents to verify FLOW-004 (gate-bypass path) rather than re-walking FLOW-001/002/003 in a loop without an invite. Mirror integrity check: normalized FLOW header diff empty. No new GLOBAL/SK introduced — GLOBAL-028/029/030 already cover the doc's role as the canonical acquisition progress tracker, its 20 KB exemption, the agent-ran update contract, and the evidence-grade self-review requirement; the founder directive is a priority re-rooting, not a new cross-cutting rule. **Verification before implementing more ICP flows:** `bash scripts/verify-flows.sh` against `https://nlqdb.com` passes all curl-observable assertions (Reddit + SO sandbox-egress advisories as expected); deployed gate state confirmed via `curl -X POST https://app.nlqdb.com/v1/ask` returning the unauthorized envelope (gate sits behind requirePrincipal — gate-403 is the post-auth path the walker hits with a device token). | Shipped after independent self-review iteration. Acquisition tracker now points the next agent at `quality-eval` velocity, not new ICP surfaces. Gate UI tells visitors what BIRD/Spider are without changing layout. Mirror integrity check (normalized `^#{2,3} FLOW-[0-9]+`) empty. |

@@ -14,7 +14,10 @@ export function FeatureGatedView({ message, gate, waitlistUrl, surface }: Props)
   return (
     <div className="feature-gate" role="status" aria-live="polite">
       <p className="feature-gate__message">{message}</p>
-      <dl className="feature-gate__lanes">
+      <p className="feature-gate__lanes-caption" aria-hidden="true">
+        evals
+      </p>
+      <dl className="feature-gate__lanes" aria-label="NL-to-SQL accuracy evals">
         <GateLane label="BIRD" accuracy={gate.bird_accuracy} target={gate.bird_target} />
         <GateLane label="Spider" accuracy={gate.spider_accuracy} target={gate.spider_target} />
       </dl>
