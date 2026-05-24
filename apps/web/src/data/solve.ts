@@ -20,6 +20,46 @@ export type SolvePersona =
   | "P3 analyst"
   | "P4 backend engineer";
 
+// User-facing label + description per persona. The internal `P1..P4`
+// codes match docs/research/personas.md and are used for grouping /
+// telemetry only — they never appear in user-facing copy because the
+// code means nothing to a reader landing on the page from search.
+export type SolvePersonaInfo = {
+  label: string;
+  description: string;
+};
+
+export const SOLVE_PERSONAS: Record<SolvePersona, SolvePersonaInfo> = {
+  "P1 solo builder": {
+    label: "Solo builders",
+    description:
+      "Founders and single engineers shipping side-projects on weekends. Spend day one of every project wiring up Postgres, ORMs, and migrations before the app does anything useful — they'd rather skip that step and ship.",
+  },
+  "P2 agent builder": {
+    label: "Agent builders",
+    description:
+      "Engineers building LLM-powered agents that need to remember things across sessions. Structured memory has had no opinionated primitive — most teams stitch together a connection string, an ORM, and a hand-rolled migration loop before the agent's first tool call.",
+  },
+  "P3 analyst": {
+    label: "Analysts and PMs",
+    description:
+      "PMs, ops, and customer-success leads who can write SQL but resent it. Live in Metabase, Retool, and Excel — want one-off questions answered without filing a data ticket, and want internal dashboards that don't charge per viewer.",
+  },
+  "P4 backend engineer": {
+    label: "Backend engineers",
+    description:
+      "Engineers at small startups running their own Postgres. Want a natural-language admin layer over the database they already own — not a replacement for the data store underneath.",
+  },
+};
+
+// Canonical render order — matches the priority in docs/research/personas.md.
+export const SOLVE_PERSONA_ORDER: SolvePersona[] = [
+  "P1 solo builder",
+  "P2 agent builder",
+  "P3 analyst",
+  "P4 backend engineer",
+];
+
 export type SolveSource = {
   // Enduring URL (a search-result page, a subreddit, a pricing page, a
   // GitHub label) — not a single-thread URL that may rot. The reader

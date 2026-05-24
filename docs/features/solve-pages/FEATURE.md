@@ -20,10 +20,10 @@ when-to-load:
 
 ## Touchpoints — read this feature before editing
 
-- `apps/web/src/data/solve.ts` — typed source of truth (one object per page)
+- `apps/web/src/data/solve.ts` — typed source of truth (one object per page, plus `SOLVE_PERSONAS` user-facing labels/descriptions and `SOLVE_PERSONA_ORDER` render order)
 - `apps/web/src/data/solve.test.ts` — data-integrity tests pinning the AEO invariants
 - `apps/web/src/pages/solve/[slug].astro` — single dynamic template using `getStaticPaths()`
-- `apps/web/src/pages/solve/index.astro` — solve-page index (`/solve`)
+- `apps/web/src/pages/solve/index.astro` — solve-page index (`/solve`), grouped by user-facing persona label (internal `P1..P4` codes never reach rendered HTML)
 - `apps/web/src/pages/llms.txt.ts` — LLM-readable site index (auto-includes new slugs)
 - `apps/web/src/pages/sitemap.xml.ts` — XML sitemap (auto-includes new slugs)
 
