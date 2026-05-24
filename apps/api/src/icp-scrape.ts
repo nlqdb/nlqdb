@@ -44,6 +44,25 @@ function yyyymmdd(ts: number): string {
   return `${y}${m}${day}`;
 }
 
+function isoDate(ts: number): string {
+  return new Date(ts).toISOString().slice(0, 10);
+}
+
+// Runs `fn` with an active span if a tracer is provided, or a no-op span otherwise.
+function runSpan(
+  tracer: IcpScrapeDeps["tracer"],
+  name: string,
+  fn: (span: Span) => Promise<unknown>,
+): Promise<unknown> {
+  if (tracer) return tracer.startActiveSpan(name, fn);
+  const noop = {
+    setAttribute: () => {},
+    recordException: () => {},
+    end: () => {},
+  } as unknown as Span;
+  return fn(noop);
+}
+
 // --- HN Algolia ---
 
 type HnHit = {
@@ -119,16 +138,7 @@ async function fetchHn(
       }
     };
 
-    if (tracer) {
-      await tracer.startActiveSpan("nlqdb.icp.fetch.hn", doFetch);
-    } else {
-      const noopSpan = {
-        setAttribute: () => {},
-        recordException: () => {},
-        end: () => {},
-      } as unknown as Span;
-      await doFetch(noopSpan);
-    }
+    await runSpan(tracer, "nlqdb.icp.fetch.hn", doFetch);
   }
 
   return items;
@@ -153,19 +163,20 @@ const GH_ISSUE_QUERIES = [
 ];
 
 const GH_SEARCH_URL = "https://api.github.com/search/issues";
-const GH_DATE_FILTER = "created:>2025-11-01";
 // GitHub rejects requests with no User-Agent (403) per their REST API contract.
 const GH_USER_AGENT = "nlqdb-icp-bot";
 
 async function fetchGitHubIssues(
   fetcher: typeof fetch,
   ghToken: string,
+  sevenDaysAgoUnix: number,
   tracer: IcpScrapeDeps["tracer"],
 ): Promise<IcpItem[]> {
   const items: IcpItem[] = [];
+  const dateFilter = `created:>${isoDate(sevenDaysAgoUnix * 1000)}`;
 
   for (const q of GH_ISSUE_QUERIES) {
-    const query = encodeURIComponent(`${q} ${GH_DATE_FILTER}`);
+    const query = encodeURIComponent(`${q} ${dateFilter}`);
     const url = `${GH_SEARCH_URL}?q=${query}&sort=created&order=desc&per_page=10`;
 
     const doFetch = async (span: Span) => {
@@ -218,16 +229,7 @@ async function fetchGitHubIssues(
       }
     };
 
-    if (tracer) {
-      await tracer.startActiveSpan("nlqdb.icp.fetch.github", doFetch);
-    } else {
-      const noopSpan = {
-        setAttribute: () => {},
-        recordException: () => {},
-        end: () => {},
-      } as unknown as Span;
-      await doFetch(noopSpan);
-    }
+    await runSpan(tracer, "nlqdb.icp.fetch.github", doFetch);
   }
 
   return items;
@@ -328,16 +330,7 @@ async function fetchReddit(
       }
     };
 
-    if (tracer) {
-      await tracer.startActiveSpan("nlqdb.icp.fetch.reddit", doFetch);
-    } else {
-      const noopSpan = {
-        setAttribute: () => {},
-        recordException: () => {},
-        end: () => {},
-      } as unknown as Span;
-      await doFetch(noopSpan);
-    }
+    await runSpan(tracer, "nlqdb.icp.fetch.reddit", doFetch);
   }
 
   return items;
@@ -441,16 +434,7 @@ async function fetchStackExchange(
       }
     };
 
-    if (tracer) {
-      await tracer.startActiveSpan("nlqdb.icp.fetch.stackoverflow", doFetch);
-    } else {
-      const noopSpan = {
-        setAttribute: () => {},
-        recordException: () => {},
-        end: () => {},
-      } as unknown as Span;
-      await doFetch(noopSpan);
-    }
+    await runSpan(tracer, "nlqdb.icp.fetch.stackoverflow", doFetch);
   }
 
   return items;
@@ -541,16 +525,7 @@ async function fetchIndieHackers(
       }
     };
 
-    if (tracer) {
-      await tracer.startActiveSpan("nlqdb.icp.fetch.indiehackers", doFetch);
-    } else {
-      const noopSpan = {
-        setAttribute: () => {},
-        recordException: () => {},
-        end: () => {},
-      } as unknown as Span;
-      await doFetch(noopSpan);
-    }
+    await runSpan(tracer, "nlqdb.icp.fetch.indiehackers", doFetch);
   }
 
   return items;
@@ -631,7 +606,7 @@ export async function runIcpScrape(deps: IcpScrapeDeps): Promise<IcpScrapeResult
       return [] as IcpItem[];
     }),
     deps.ghToken
-      ? fetchGitHubIssues(fetcher, deps.ghToken, tracer).catch((err) => {
+      ? fetchGitHubIssues(fetcher, deps.ghToken, sevenDaysAgoUnix, tracer).catch((err) => {
           console.error(
             JSON.stringify({
               msg: "icp_gh_source_failed",
