@@ -170,7 +170,7 @@ in editors that support it; otherwise read manually before editing.)
 | any `POST`/`PATCH`/`DELETE` handler | `docs/features/idempotency/FEATURE.md` |
 | `packages/otel/**`, new spans / metrics | `docs/features/observability/FEATURE.md` |
 | `apps/api/src/billing/**`, Stripe webhooks | `docs/features/stripe-billing/FEATURE.md` |
-| `apps/api/src/billing/premium/**`, `apps/api/src/ask/model-picker.ts`, `packages/llm/src/chains/{paid,premium}.ts`, anything `model` preset / BYOLLM / spend-cap / hosted-premium meter related | `docs/features/premium-tier/FEATURE.md` + `decisions/SK-PREMIUM-{008,009}-*.md` |
+| `apps/api/src/billing/premium/**`, `apps/api/src/ask/model-picker.ts`, `packages/llm/src/chains/{paid,premium}.ts`, anything `model` preset / BYOLLM / spend-cap / hosted-premium meter related | `docs/features/premium-tier/FEATURE.md` |
 | `apps/events-worker/**`, `packages/events/**`, `apps/api/src/events-feature.ts`, `apps/api/src/ask/demand-signal.ts` | `docs/features/events-pipeline/FEATURE.md` |
 | `apps/api/src/workload-analyser/**`, `packages/db/src/clickhouse-tinybird/pipe-management.ts`, `apps/api/migrations/0008_workload_analyser_audit.sql` | `docs/features/engine-migration/FEATURE.md` |
 | rate-limit middleware (`apps/api/src/ask/rate-limit.ts`, `apps/api/src/principal.ts` `rateLimitBucketKey`, `apps/api/src/anon-rate-limit.ts`, `apps/api/src/anon-global-cap.ts`) | `docs/features/rate-limit/FEATURE.md` |
@@ -189,7 +189,7 @@ in editors that support it; otherwise read manually before editing.)
 | `.github/workflows/**`, `nlqdb/actions/**` (CI permissions) | `docs/features/ci-permissions/FEATURE.md` |
 | `tests/personas/**`, `tests/opencheck/**`, `tests/e2e/**`, `examples/**/e2e/**`, `.github/workflows/e2e*.yml`, `.github/workflows/_e2e-*.yml`, `packages/nlqdb-rb/spec/e2e/**`, `packages/nlqdb-rs/tests/e2e/**` | `docs/features/e2e-coverage/FEATURE.md` |
 | `apps/api/src/icp-*.ts`, `docs/research/automated-icp-validation-plan*.md`, `docs/research/icp-evidence-*.md` | `docs/features/icp-mining/FEATURE.md` |
-| `tools/stranger-test/**`, `scripts/stranger-test.sh` | `docs/features/stranger-test/FEATURE.md` |
+| `tools/stranger-test/**`, `scripts/stranger-test.sh`, `scripts/flow-004-walk.sh` | `docs/features/stranger-test/FEATURE.md` |
 
 Per-area `AGENTS.md` files (e.g. `packages/db/AGENTS.md`) repeat just
 their slice of this table, so you don't need the full root view when
