@@ -21,26 +21,40 @@
 > below, open a PR. A failed flow IS the next agent's #1 — not a
 > ping to anyone.
 
-> **Status (2026-05-24):** 0 / 8 flows fully passed. **The §1.1
-> stranger-test Playwright primitive shipped today** — [`tools/stranger-test/`](../../tools/stranger-test/),
-> agent-invoked as `bash scripts/stranger-test.sh`, walks FLOW-001 /
-> FLOW-002 / FLOW-003 against the deployed surface in ~7 s per
-> 9-walk run. The walker covers every step a curl probe couldn't:
-> CTA click + draft handoff + `/app/new` rehydrate + the
-> `solve.try_query_clicked` event spy (sessionStorage-persisted so
-> it survives the post-CTA navigation). The 2026-05-24 walk recorded
-> every static-surface and CTA-side assertion as `ok`; the binding
-> gap is the gate-403 on `/v1/ask` (FLOW-001 step 5, FLOW-002 step
-> 9, FLOW-003 step 8) — SK-ANON-001 vs GLOBAL-027 — which routes
-> back as impl-plan priority #1 (§1.4 anon-bypass), not as a
-> notification. FLOW-002's prior "step 8 event-spy missing" finding
-> is **corrected** by the walker: the spy ran on the post-navigation
-> page where the array was reset; sessionStorage persistence
-> observes the event firing on every slug walked. FLOW-008 (cron
-> upstream-health) still holds the same curl-only pass for HN / GH /
-> IH and an advisory note for Reddit / Stack Exchange (sandbox-egress
-> proxy block; deployed Worker is canonical). FLOW-005 still has the
-> curl-only partial pass on the OAuth discovery precondition.
+> **Status (2026-05-24):** 0 / 8 flows fully passed. **The real
+> bottleneck per the 2026-05-24 founder directive is engine quality,
+> not new flows:** every walked `/v1/ask` 403s because BIRD 0.318 vs
+> 0.65 target and Spider `null` vs 0.75 target per
+> [`apps/api/src/gate/eval-baseline.ts`](../../apps/api/src/gate/eval-baseline.ts) /
+> [`SK-GATE-001`](../features/pre-alpha-gate/FEATURE.md#sk-gate-001) /
+> [`SK-GATE-002`](../features/pre-alpha-gate/FEATURE.md#sk-gate-002).
+> The gate is doing what GLOBAL-027 asks it to. Future agents should
+> verify flows that exercise the gate-bypass path (FLOW-004 invite
+> redemption end-to-end) and otherwise wait for `quality-eval`
+> velocity to lift the gate naturally — re-walking FLOW-001/002/003
+> daily without an invite changes nothing the existing 2026-05-24
+> walk hasn't already proven.
+>
+> **The §1.1 stranger-test Playwright primitive shipped 2026-05-24** —
+> [`tools/stranger-test/`](../../tools/stranger-test/), agent-invoked
+> as `bash scripts/stranger-test.sh`, walks FLOW-001 / FLOW-002 /
+> FLOW-003 against the deployed surface in ~7 s per 9-walk run. The
+> walker covers every step a curl probe couldn't: CTA click + draft
+> handoff + `/app/new` rehydrate + the `solve.try_query_clicked`
+> event spy (sessionStorage-persisted so it survives the post-CTA
+> navigation). The 2026-05-24 walk recorded every static-surface
+> and CTA-side assertion as `ok`; the binding gap is the gate-403
+> on `/v1/ask` (FLOW-001 step 5, FLOW-002 step 9, FLOW-003 step 8)
+> — GLOBAL-027 / SK-GATE-002 gate is closed until BIRD/Spider clear
+> or an invite carries the user across. FLOW-002's prior "step 8
+> event-spy missing" finding is **corrected** by the walker: the spy
+> ran on the post-navigation page where the array was reset;
+> sessionStorage persistence observes the event firing on every slug
+> walked. FLOW-008 (cron upstream-health) still holds the same
+> curl-only pass for HN / GH / IH and an advisory note for Reddit /
+> Stack Exchange (sandbox-egress proxy block; deployed Worker is
+> canonical). FLOW-005 still has the curl-only partial pass on the
+> OAuth discovery precondition.
 
 ---
 
@@ -237,6 +251,7 @@ requires credentials, that itself is the failure.
 | 2026-05-23 | composer-2 | partial steps 1–2 | — | `scripts/verify-flows.sh` re-run against `https://nlqdb.com`: `GET /` → 200 (93,605 bytes); hero placeholder `"an orders tracker"` still matches the `/orders\|tracker\|building/i` contract. Steps 3–9 unchanged — still need a browser context. |
 | 2026-05-23 | composer-4 | partial steps 1–2 | — | `scripts/verify-flows.sh` re-run with the new egress-policy-aware `fetch_json` and FLOW-005 discovery block: hero placeholder still matches; FLOW-005 OAuth discovery surface now also passes (see FLOW-005 outcome log). Steps 3–9 unchanged. |
 | 2026-05-24 | claude-code | failed step 5 | 150 | First `tools/stranger-test/` (`SK-STRG-001`) Playwright walk against `https://nlqdb.com` — 3 prompts (`a meal planner for couples`, `side project to track my reading`, `a tiny CRM for my coaching practice`). Steps 1-4 ok on every run (hero placeholder matches, goal typed, Create-the-DB clicked). Step 5 fails on every run: `POST https://app.nlqdb.com/v1/ask` returns `403 feature_gated` (anon principal hits `gatePreAlpha`; SK-ANON-001 wants ephemeral Postgres but GLOBAL-027 / SK-GATE-004 blocks `/v1/ask` for any unbypassed principal). ttfvMs is time-to-403, not time-to-value — TTFV-as-spec is unmeasurable until §1.4 anon-bypass lands. Steps 6-8 skipped (blocked by step 5). 0 console errors beyond the expected `Failed to load resource: 403` for `/v1/ask`. Artifact: `tools/stranger-test/results/walk-<utc>.json`. |
+| 2026-05-24 | claude-code | unchanged — gate-403 reinterpreted | — | No new walk; the 2026-05-24 founder directive reinterprets this step-5 failure as *correct* gate behaviour (BIRD 0.318 / Spider null per `eval-baseline.ts`; GLOBAL-027 unambiguously requires the 403 until thresholds clear). Future runs against this URL without an invite code will keep failing identically — that's the gate working as specified, not a regression. The actionable verification is **FLOW-004** (invite-valve end-to-end: signup → Resend inbox → `?invite=` → 200 on `/v1/ask`), which has remained unattempted since SK-GATE-007 shipped 2026-05-21. Until either BIRD/Spider clear OR an agent walks FLOW-004 to a 200, this row stays the canonical FLOW-001 outcome. |
 
 ---
 
