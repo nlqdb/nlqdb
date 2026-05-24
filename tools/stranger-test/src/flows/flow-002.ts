@@ -3,7 +3,13 @@
 
 import type { Browser } from "@playwright/test";
 
-import { openSession, step, withDeadline } from "../browser.ts";
+import {
+  assertInviteCaptured,
+  openSession,
+  step,
+  withDeadline,
+  withInviteParam,
+} from "../browser.ts";
 import type { FlowRun, StepResult } from "../types.ts";
 
 // Pinned literal mirror of `apps/web/src/data/solve.ts` `demoGoal` values;
@@ -30,9 +36,10 @@ export async function walkFlow002(
   baseUrl: string,
   userAgent: string,
   browser: Browser,
+  inviteCode: string | null = null,
 ): Promise<FlowRun> {
   return withDeadline(`flow-002:${slug}`, WALK_DEADLINE_MS, () =>
-    doWalk(slug, baseUrl, userAgent, browser),
+    doWalk(slug, baseUrl, userAgent, browser, inviteCode),
   ).catch((e) => ({
     prompt: slug,
     state: "failed" as const,
@@ -52,6 +59,7 @@ async function doWalk(
   baseUrl: string,
   userAgent: string,
   browser: Browser,
+  inviteCode: string | null,
 ): Promise<FlowRun> {
   const expectedDraft = SLUG_DEMO_GOAL[slug];
   const session = await openSession({ baseUrl, userAgent, browser });
@@ -82,7 +90,7 @@ async function doWalk(
   });
 
   try {
-    const url = `${baseUrl}/solve/${slug}/`;
+    const url = `${baseUrl}${withInviteParam(`/solve/${slug}/`, inviteCode)}`;
     const navResp = await page.goto(url, { waitUntil: "domcontentloaded", timeout: 30_000 });
     const navStatus = navResp?.status() ?? 0;
     if (navStatus !== 200) {
@@ -90,6 +98,12 @@ async function doWalk(
       failedStep = 1;
     } else {
       steps.push(step(1, `GET ${url} returns 200`, "ok"));
+    }
+
+    if (inviteCode !== null && failedStep === null) {
+      const inviteStep = await assertInviteCaptured(page, 10, inviteCode);
+      steps.push(inviteStep);
+      if (inviteStep.status === "fail") failedStep = 10;
     }
 
     const h1Text =
@@ -227,12 +241,16 @@ async function doWalk(
     if (failedStep === null) {
       const submit = page.getByRole("button", { name: /create/i }).first();
       const t0 = Date.now();
-      const askWaiter = page.waitForResponse(
-        (r) => r.request().method() === "POST" && r.url().includes("/v1/ask"),
-        { timeout: ASK_TIMEOUT_MS },
-      );
-      await submit.click();
-      const askResp = await askWaiter.catch(() => null);
+      // `.catch` at construction — keeps Bun's strict unhandled-rejection
+      // detector happy when the page closes mid-flight; cron's Node tolerates
+      // either shape.
+      const askWaiter = page
+        .waitForResponse((r) => r.request().method() === "POST" && r.url().includes("/v1/ask"), {
+          timeout: ASK_TIMEOUT_MS,
+        })
+        .catch(() => null);
+      await submit.click().catch(() => {});
+      const askResp = await askWaiter;
       if (!askResp) {
         steps.push(
           step(9, "/v1/ask 200 + table within 60 s", "fail", "no /v1/ask response observed"),
@@ -243,12 +261,18 @@ async function doWalk(
         const status = askResp.status();
         const body = await askResp.text().catch(() => "");
         const gate = body.match(/"status":\s*"feature_gated"/);
+        // With invite + feature_gated = SK-GATE-007 regression signature.
+        const gateNote = gate
+          ? inviteCode === null
+            ? "feature_gated"
+            : "feature_gated WITH invite — SK-GATE-007 regression"
+          : "no";
         steps.push(
           step(
             9,
             "/v1/ask 200 + table within 60 s",
             status === 200 ? "ok" : "fail",
-            `status=${status} ttfvMs=${ttfvMs} gate=${gate ? "feature_gated" : "no"}`,
+            `status=${status} ttfvMs=${ttfvMs} gate=${gateNote}`,
           ),
         );
         if (status !== 200) failedStep = 9;

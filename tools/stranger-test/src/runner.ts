@@ -29,6 +29,11 @@ type Args = {
   prompts: number;
   out: string | null;
   quiet: boolean;
+  // SK-STRG-004 — when set, walkers navigate to `?invite=<code>` so the
+  // homepage's captureInviteFromUrl() can write localStorage["nlqdb_invite"]
+  // and the api.ts client forwards X-Invite-Code on /v1/ask. Inverts the
+  // gate-403 step from expected-fail to expected-200.
+  inviteCode: string | null;
 };
 
 function parseFlowsArg(raw: string | undefined): FlowId[] {
@@ -43,6 +48,10 @@ function parseFlowsArg(raw: string | undefined): FlowId[] {
   return out;
 }
 
+// 80-bit min per SK-GATE-003 invite-code entropy; base64url charset is the
+// shape the Resend template emits and `apps/web/src/lib/invite.ts` parses.
+const INVITE_CODE_RE = /^[A-Za-z0-9_-]{16,128}$/;
+
 function parseCliArgs(): Args {
   const { values } = parseArgs({
     options: {
@@ -51,10 +60,15 @@ function parseCliArgs(): Args {
       prompts: { type: "string" },
       out: { type: "string" },
       quiet: { type: "boolean" },
+      "invite-code": { type: "string" },
     },
     strict: true,
     allowPositionals: false,
   });
+  const inviteCodeRaw = values["invite-code"] ?? process.env["NLQDB_INVITE_CODE"] ?? null;
+  if (inviteCodeRaw !== null && !INVITE_CODE_RE.test(inviteCodeRaw)) {
+    throw new Error("invite code must match /[A-Za-z0-9_-]{16,128}/ (refusing to forward)");
+  }
   return {
     baseUrl: (values["base-url"] ?? process.env["NLQDB_BASE_URL"] ?? "https://nlqdb.com").replace(
       /\/$/,
@@ -64,6 +78,7 @@ function parseCliArgs(): Args {
     prompts: values["prompts"] ? Math.max(1, Number.parseInt(values["prompts"], 10)) : 3,
     out: values["out"] ?? null,
     quiet: values["quiet"] ?? false,
+    inviteCode: inviteCodeRaw,
   };
 }
 
@@ -85,7 +100,7 @@ async function runFlow001(args: Args, browser: Browser): Promise<FlowResult> {
   for (let i = 0; i < take; i++) {
     const prompt = pool[i] as string;
     if (!args.quiet) process.stdout.write(`  flow-001 prompt="${prompt}" ... `);
-    const r = await walkFlow001(prompt, args.baseUrl, USER_AGENT, browser);
+    const r = await walkFlow001(prompt, args.baseUrl, USER_AGENT, browser, args.inviteCode);
     if (!args.quiet)
       process.stdout.write(`${r.state}${r.failedStep ? ` step=${r.failedStep}` : ""}\n`);
     runs.push(r);
@@ -100,7 +115,7 @@ async function runFlow002(args: Args, browser: Browser): Promise<FlowResult> {
   for (let i = 0; i < take; i++) {
     const slug = SOLVE_SLUGS[i] as string;
     if (!args.quiet) process.stdout.write(`  flow-002 slug="${slug}" ... `);
-    const r = await walkFlow002(slug, args.baseUrl, USER_AGENT, browser);
+    const r = await walkFlow002(slug, args.baseUrl, USER_AGENT, browser, args.inviteCode);
     if (!args.quiet)
       process.stdout.write(`${r.state}${r.failedStep ? ` step=${r.failedStep}` : ""}\n`);
     runs.push(r);
@@ -115,7 +130,7 @@ async function runFlow003(args: Args, browser: Browser): Promise<FlowResult> {
   for (let i = 0; i < take; i++) {
     const slug = VS_SLUGS[i] as string;
     if (!args.quiet) process.stdout.write(`  flow-003 slug="${slug}" ... `);
-    const r = await walkFlow003(slug, args.baseUrl, USER_AGENT, browser);
+    const r = await walkFlow003(slug, args.baseUrl, USER_AGENT, browser, args.inviteCode);
     if (!args.quiet)
       process.stdout.write(`${r.state}${r.failedStep ? ` step=${r.failedStep}` : ""}\n`);
     runs.push(r);
@@ -126,8 +141,9 @@ async function runFlow003(args: Args, browser: Browser): Promise<FlowResult> {
 export async function main(): Promise<number> {
   const args = parseCliArgs();
   if (!args.quiet) {
+    const mode = args.inviteCode ? " mode=invite-bearing" : "";
     console.info(
-      `stranger-test → ${args.baseUrl} (flows=${args.flows.join(",")} prompts=${args.prompts})`,
+      `stranger-test → ${args.baseUrl} (flows=${args.flows.join(",")} prompts=${args.prompts}${mode})`,
     );
   }
 
@@ -157,6 +173,7 @@ export async function main(): Promise<number> {
     startedAt,
     finishedAt,
     durationMs,
+    inviteBearing: args.inviteCode !== null,
     flows,
     summary: {
       totalRuns: allRuns.length,

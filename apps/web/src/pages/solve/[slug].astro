@@ -178,8 +178,14 @@ const howToJsonLd = {
     // (SK-ANON-011), emit a per-slug demand signal (GLOBAL-024), then
     // navigate. No URL param so the goal can't be sniffed from
     // referrer / access logs.
+    import { captureInviteFromUrl } from "../../lib/invite";
     import { emit } from "../../lib/logsnag";
     import { saveDraft } from "../../lib/prompt-storage";
+    // SK-GATE-007: a stranger may land on /solve/<slug>?invite=<c> from a
+    // launch URL (Show HN, IH long-form, dev.to). Capture it here so the
+    // code survives the location.assign to /app/new — without this call
+    // location.assign drops the query string and the invite is lost.
+    captureInviteFromUrl();
     document.querySelectorAll<HTMLButtonElement>(".solve__try-btn").forEach((btn) => {
       btn.addEventListener("click", () => {
         const goal = btn.dataset["tryGoal"] ?? "";

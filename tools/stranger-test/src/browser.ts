@@ -2,6 +2,11 @@ import { type Browser, type BrowserContext, chromium, type Page } from "@playwri
 
 import type { StepResult } from "./types.ts";
 
+// 80-bit min per SK-GATE-003; the runner already validates this against
+// the CLI/env input, but a runtime guard here keeps the contract local
+// to the only function that writes the code into a navigation URL.
+const INVITE_CODE_RE = /^[A-Za-z0-9_-]{16,128}$/;
+
 export type SessionDeps = {
   baseUrl: string;
   userAgent: string;
@@ -91,4 +96,48 @@ export function percentile(values: number[], p: number): number | null {
   const sorted = [...values].sort((a, b) => a - b);
   const idx = Math.min(sorted.length - 1, Math.floor((p / 100) * sorted.length));
   return sorted[idx] ?? null;
+}
+
+// SK-STRG-004 — append `?invite=<code>` to the path the walker navigates
+// to. captureInviteFromUrl() in apps/web/src/lib/invite.ts reads it on
+// load and stores it in localStorage["nlqdb_invite"]; the api.ts client
+// then forwards X-Invite-Code on /v1/ask. `path` is the path-with-trailing-
+// slash the walker would otherwise have used (e.g. `/`, `/solve/foo/`,
+// `/vs/bar/`); a query string already present is preserved.
+export function withInviteParam(path: string, inviteCode: string | null): string {
+  if (inviteCode === null) return path;
+  if (!INVITE_CODE_RE.test(inviteCode)) {
+    throw new Error("invite code failed shape guard — refusing to forward to navigation URL");
+  }
+  const sep = path.includes("?") ? "&" : "?";
+  return `${path}${sep}invite=${encodeURIComponent(inviteCode)}`;
+}
+
+// Assertion shared by every flow when invite-bearing: prove
+// captureInviteFromUrl() persisted the code AND stripped the URL param.
+// Returns an `ok` step on success, a `fail` step on mismatch; the caller
+// owns the step number so it slots correctly into the per-flow sequence.
+export async function assertInviteCaptured(
+  page: Page,
+  stepNum: number,
+  expected: string,
+): Promise<StepResult> {
+  const stored = await page
+    .evaluate(() => window.localStorage.getItem("nlqdb_invite"))
+    .catch(() => null);
+  const urlClean = !page.url().includes("invite=");
+  const ok = stored === expected && urlClean;
+  // Never log the full code — `redact` shape matches scripts/flow-004-walk.sh.
+  const redact = (s: string | null) =>
+    s === null
+      ? "<null>"
+      : s.length < 12
+        ? `<short:${s.length}>`
+        : `${s.slice(0, 4)}..${s.slice(-4)}`;
+  return step(
+    stepNum,
+    "captureInviteFromUrl: localStorage.nlqdb_invite set, ?invite= stripped",
+    ok ? "ok" : "fail",
+    ok ? undefined : `stored=${redact(stored)} expected=${redact(expected)} urlClean=${urlClean}`,
+  );
 }
