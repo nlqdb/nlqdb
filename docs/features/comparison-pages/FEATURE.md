@@ -12,7 +12,7 @@ when-to-load:
 # Feature: Comparison Pages
 
 **One-liner:** `/vs/<competitor>` AEO/SEO pages — honest side-by-sides driving acquisition from buyers who already named the alternative.
-**Status:** implemented (Phase 1) — 3 comparison pages shipped: Supabase (P1), Vanna AI (P3), Mem0 (P2). Single template + typed data file; adding a new comparison is a one-file edit.
+**Status:** implemented (Phase 1) — 4 comparison pages shipped: Supabase (P1), Vanna AI (P3), Mem0 (P2), Outerbase (P4). Single template + typed data file; adding a new comparison is a one-file edit.
 **Owners (code):** `apps/web/src/data/competitors.ts`, `apps/web/src/pages/vs/**`, `apps/web/src/pages/llms.txt.ts`, `apps/web/src/pages/sitemap.xml.ts`
 **Cross-refs:** [`docs/research/automated-icp-validation-plan.md §3.5`](../../research/automated-icp-validation-plan.md) · [`docs/competitors.md`](../../competitors.md) · [`docs/features/web-app/FEATURE.md`](../web-app/FEATURE.md)
 
@@ -44,7 +44,7 @@ Canonical bodies live in [`decisions/`](decisions/) — one file per `SK-CMP-NNN
 
 - **Page-view analytics.** No browser-side analytics on `nlqdb.com` today; the §3.5 ICP-validation plan calls for PostHog Cloud free tier. Per-page views are measurable only via server access logs + sitemap-indexed search-console impressions until that lands. The CTA-click signal (`vs.try_query_clicked` to LogSnag) lands per-slug funnel data in the meantime.
 - **Per-competitor OG image.** Pages currently inherit the site default OG. A per-slug OG image generator (e.g. Workers + Satori) would boost share-CTR meaningfully; deferred until at least 5 comparisons ship and a Cloudflare Pages OG endpoint is up.
-- **Backfill from `docs/competitors.md`.** The competitor doc lists ~25 tools; we've shipped 3. The decision rule for which to ship next: persona-weighted threat × keyword volume — i.e. start with Outerbase (P1/P4) and AskYourDatabase (P3/P4) next.
+- **Backfill from `docs/competitors.md`.** The competitor doc lists ~25 tools; we've shipped 4 (Outerbase landed 2026-05-24 — P4 backend-engineer slot). Decision rule for the next one: persona-weighted threat × keyword volume — AskYourDatabase (P3/P4) or Retool AI (P4) is the natural next slice. Outerbase entry note: tagline reflects the Cloudflare acquisition (2025-04 per [Cloudflare press release](https://www.cloudflare.com/press/press-releases/2025/cloudflare-acquires-outerbase-to-expand-developer-experience/)); not the stale "PlanetScale acquired Outerbase" line that survived in `docs/competitors.md` pre-2026-05-24.
 - **Auto-translate to docs.nlqdb.com.** The docs Starlight site doesn't surface comparisons yet; should the docs nav include a "vs" section pointing at marketing? Likely yes, but cross-origin nav UX needs a separate slice.
 
 ## Why this exists

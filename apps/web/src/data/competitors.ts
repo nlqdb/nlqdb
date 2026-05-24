@@ -282,6 +282,114 @@ export const COMPETITORS: Competitor[] = [
       why: "The structured behavioural slice an agent extracts is nlqdb's lane; Mem0's lane is the unstructured fact recall.",
     },
   },
+  {
+    slug: "outerbase",
+    name: "Outerbase",
+    url: "https://www.outerbase.com",
+    // Acquired by Cloudflare 2025-04 per https://www.cloudflare.com/press/press-releases/2025/cloudflare-acquires-outerbase-to-expand-developer-experience/.
+    tagline:
+      "AI-assisted database interface (EZQL, spreadsheet editor, dashboards) for your existing Postgres / MySQL / SQLite / MongoDB / ClickHouse / Snowflake / BigQuery / Redshift / MSSQL.",
+    persona: "P4 backend engineer",
+    oneLiner:
+      "Pick Outerbase if you already run a production database and want an AI-assisted admin UI — spreadsheet edits, EZQL natural-language queries, dashboards — sitting on top of it. Pick nlqdb if you want the database itself provisioned, schema evolved via English, and one HTML element rendering answers in your own app.",
+    whenChooseUs: [
+      "You don't have a database yet — nlqdb provisions Postgres on the first query (`SK-ANON-001`).",
+      "You want to embed the answer in your product via one HTML element, not link a hosted admin UI.",
+      "An AI agent needs to provision its own database via MCP — `create_database` is the verb Outerbase doesn't ship.",
+      'Schema evolves via English (`"add a `priority` column"`) with a diff-before-apply preview (`SK-ONBOARD-004`).',
+    ],
+    whenChooseThem: [
+      "You already run a production Postgres / MySQL / Snowflake / BigQuery you can't migrate.",
+      "You want a spreadsheet-style editor + dashboards + data catalog UI — admin-tool shape, not a chat box.",
+      "Your engine isn't Postgres today (MySQL, MongoDB, Snowflake, BigQuery, ClickHouse, Redshift, MSSQL) — Outerbase ships across all of them now; nlqdb is Postgres-first (ClickHouse Phase 2).",
+      "HIPAA or SOC 2 Type 2 certification is a hard requirement today — nlqdb is pre-alpha and doesn't carry either yet.",
+    ],
+    features: [
+      { feature: "Owns the database (provisions + migrates)", us: "shipped", them: "no" },
+      { feature: "Natural-language → SQL", us: "shipped", them: "shipped" },
+      {
+        feature: "Auto-migration via NL ('add a column for tags')",
+        us: "shipped",
+        them: "no",
+        note: "Outerbase's editor edits rows + runs queries; schema-evolve via NL is not part of EZQL.",
+      },
+      {
+        feature: "Destructive-op diff preview before apply",
+        us: "shipped",
+        them: "partial",
+        note: "Outerbase's spreadsheet editor confirms row edits inline; the NL-side diff preview is unique to nlqdb.",
+      },
+      {
+        feature: "MCP server with provisioning verbs",
+        us: "shipped",
+        them: "no",
+        note: "Outerbase has no public MCP server today; nlqdb ships `create_database`, `ask`, `run`.",
+      },
+      {
+        feature: "HTML embed element (in-product render)",
+        us: "shipped",
+        them: "partial",
+        note: "Outerbase ships embeddable charts + an API; nlqdb's `<nlq-data>` is a vanilla web component for arbitrary HTML.",
+      },
+      {
+        feature: "Spreadsheet-style row editor / admin browse UI",
+        us: "no",
+        them: "shipped",
+      },
+      {
+        feature: "Dashboards + data catalog UI",
+        us: "no",
+        them: "shipped",
+      },
+      {
+        feature: "Multi-engine support beyond Postgres",
+        us: "partial",
+        them: "shipped",
+        note: "Outerbase: Postgres / MySQL / SQLite / MongoDB / ClickHouse / Snowflake / BigQuery / Redshift / MSSQL. nlqdb: Postgres in Phase 1; ClickHouse on the workload-analyser path.",
+      },
+      {
+        feature: "HIPAA + SOC 2 Type 2 compliance",
+        us: "no",
+        them: "shipped",
+      },
+      {
+        feature: "Unlimited free-tier natural-language queries",
+        us: "shipped",
+        them: "no",
+        note: "Outerbase Explorer caps at 10 EZQL questions/month; nlqdb free chain (Groq → Gemini) is rate-limited per principal, not per question/month.",
+      },
+    ],
+    faqs: [
+      {
+        q: "Outerbase was acquired by Cloudflare in 2025 — is nlqdb still relevant?",
+        a: "Different shape, same infra: both run on Cloudflare Workers, but Outerbase remains the admin-UI-on-your-existing-DB product, while nlqdb owns the database and ships an `<nlq-data>` element + MCP server for in-product render and agent provisioning. The acquisition signals demand for the category; it doesn't collapse Outerbase and nlqdb onto the same answer.",
+      },
+      {
+        q: "Can I point Outerbase at an nlqdb database, or nlqdb at an Outerbase-managed DB?",
+        a: "Not today. nlqdb's API speaks `/v1/ask` (English) and `/v1/run` (raw SQL with allow-list); Outerbase expects a connection string to a database it doesn't own. Bring-your-own-Postgres is on nlqdb's roadmap but isn't shipped — for an existing production DB today, Outerbase is the right shape.",
+      },
+      {
+        q: "How does nlqdb's NL→SQL compare to Outerbase's EZQL?",
+        a: "Both translate English into SQL; the differentiator isn't the translation, it's what surrounds it. nlqdb prompts directly from the live schema fingerprint plus a recent-tables hint and surfaces the compiled SQL under a `Cmd+/` trace toggle (`SK-WEB-005`). nlqdb also publishes BIRD Mini-Dev + Spider 2.0-lite accuracy weekly to `docs/features/quality-eval/`; Outerbase doesn't publish a single canonical benchmark.",
+      },
+      {
+        q: "Does nlqdb support MySQL, Snowflake, or BigQuery like Outerbase does?",
+        a: "Not today. nlqdb is Postgres-first in Phase 1; ClickHouse lands on the workload-analyser path. If your stack is MySQL / Snowflake / BigQuery / Redshift / MSSQL / MongoDB, Outerbase covers it natively and nlqdb does not.",
+      },
+      {
+        q: "Can my AI agent provision an Outerbase-managed DB the way it provisions an nlqdb database?",
+        a: "Outerbase is admin-UI shaped — it doesn't expose a `create_database` primitive an autonomous agent can call. nlqdb's MCP server (`mcp.nlqdb.com`) exposes `create_database`, `ask`, and `run` so a Claude / Cursor / Cline agent stands up its own data layer end-to-end.",
+      },
+      {
+        q: "Is nlqdb HIPAA or SOC 2 compliant like Outerbase?",
+        a: "No. nlqdb is pre-alpha; neither certification is in place yet. If you're shipping a regulated product today, Outerbase (HIPAA + SOC 2 Type 2) is the honest pick; nlqdb's compliance roadmap is downstream of GA.",
+      },
+    ],
+    demo: {
+      goal: "today's failed background jobs grouped by service in the last 24 hours",
+      why: "The ops query a backend engineer runs from an internal dashboard — Outerbase renders it through a spreadsheet view on your existing DB; nlqdb mints the DB and answers the English goal in one element.",
+    },
+  },
 ];
 
 export function competitorBySlug(slug: string): Competitor | undefined {

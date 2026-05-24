@@ -166,8 +166,8 @@ note "FLOW-002 steps 5-9 require a browser (CTA click, draft hydrate, /app/new r
 
 # --- FLOW-003 — Comparison-driven inbound (steps 1, 2, 4, 9) -------------
 
-VS_SLUGS=(   "supabase" "vanna"     "mem0" )
-VS_TITLES=(  "Supabase" "Vanna AI"  "Mem0" )
+VS_SLUGS=(   "supabase" "vanna"    "mem0" "outerbase" )
+VS_TITLES=(  "Supabase" "Vanna AI" "Mem0" "Outerbase" )
 
 say "FLOW-003 — /vs/<slug> (curl-observable subset, all ${#VS_SLUGS[@]} slugs)"
 for i in "${!VS_SLUGS[@]}"; do
@@ -193,15 +193,15 @@ if fetch_body "FLOW-003 step 9 GET /llms.txt returns 200" "$BASE_URL/llms.txt"; 
 fi
 
 # /sitemap.xml as the cheapest smoke test that the marketing-side build
-# isn't a partial — 12 URLs today (5 solve + 3 vs + 4 root pages). The
+# isn't a partial — 13 URLs today (5 solve + 4 vs + 4 root pages). The
 # floor matches the shipped surface; new slugs raise it.
 say "Sitemap floor — every shipped slug must appear"
 if fetch_body "GET /sitemap.xml returns 200" "$BASE_URL/sitemap.xml"; then
   loc_count=$(grep -oE '<loc>[^<]*</loc>' "$FETCH_BODY_PATH" | wc -l | tr -d ' ')
-  if (( loc_count >= 12 )); then
-    ok "/sitemap.xml has $loc_count <loc> entries (floor 12)"
+  if (( loc_count >= 13 )); then
+    ok "/sitemap.xml has $loc_count <loc> entries (floor 13)"
   else
-    fail "/sitemap.xml" "expected ≥12 <loc> entries, got $loc_count"
+    fail "/sitemap.xml" "expected ≥13 <loc> entries, got $loc_count"
   fi
   rm -f "$FETCH_BODY_PATH"
 fi

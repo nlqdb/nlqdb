@@ -107,10 +107,10 @@ Enterprise BI with NL search baked in.
 These layer NL on top of admin or BI UIs. The ones with strong distribution (Retool, Metabase) are the hardest to displace.
 
 ### Outerbase — https://outerbase.com
-AI-assisted database admin UI: spreadsheet-like editing, NL queries, dashboards. Acquired by PlanetScale in 2024.
-- **Overlaps with:** P1 admin-chat, P3, P4 NL-over-Postgres.
-- **Gap nlqdb exploits:** Outerbase sits on top of *your* DB; nlqdb is the DB + chat in one. Also, the PlanetScale acquisition anchors them to Vitess/MySQL going forward.
-- **Threat vector:** **High.** The single product most in nlqdb's lane today.
+AI-assisted database interface: EZQL natural-language queries, spreadsheet-like editor, dashboards, data catalog. Multi-engine (Postgres / MySQL / SQLite / MongoDB / ClickHouse / Snowflake / BigQuery / Redshift / MSSQL). Acquired by **Cloudflare** on 2025-04-08 (corrected from the prior "PlanetScale 2024" note — see [Cloudflare press release](https://www.cloudflare.com/press/press-releases/2025/cloudflare-acquires-outerbase-to-expand-developer-experience/)).
+- **Overlaps with:** P1 admin-chat, P3, P4 NL-over-existing-DB.
+- **Gap nlqdb exploits:** Outerbase sits on top of *your* DB; nlqdb is the DB + chat + MCP-provisioning in one. The Cloudflare acquisition aligns Outerbase with Workers / D1 / Durable Objects / Agents SDK — same infra as nlqdb, different shape (admin-UI vs chat-first / `<nlq-data>` embed). The /vs/outerbase page ([SK-CMP-002](../features/comparison-pages/decisions/SK-CMP-002-single-template-data-driven.md)) is the canonical positioning.
+- **Threat vector:** **High.** The single product most in nlqdb's lane today; the Cloudflare alignment narrows the infra-differentiation lane.
 
 ### Basedash — https://basedash.com
 Admin UI with AI. ~$25/user/mo Team tier.
@@ -277,4 +277,4 @@ The scariest threats are (a) Supabase adding a first-class NL + agent story, and
 
 ---
 
-*Last verified: 2026-04-18. Pricing, URLs, and acquisitions change — re-check quarterly, especially anything in §1 (Managed Postgres) and §3 (AI admin) where consolidation is active.*
+*Last verified: 2026-05-24 (Outerbase ownership / engine list re-checked against the Cloudflare press release; rest of the doc last verified 2026-04-18). Pricing, URLs, and acquisitions change — re-check quarterly, especially anything in §1 (Managed Postgres) and §3 (AI admin) where consolidation is active.*
