@@ -175,7 +175,7 @@ if [[ -z "$ACCOUNT_ID" ]]; then
   write_outcome "blocked upstream" "mail.tm POST /accounts did not return an id"
   exit 1
 fi
-ok "mail.tm inbox provisioned: $EMAIL"
+ok "mail.tm inbox provisioned: $(redact "$EMAIL") @${EMAIL##*@}"
 
 TOKEN_JSON="$(curl -sS --max-time 15 -X POST "$MAIL_TM_BASE/token" \
   -H "Content-Type: application/json" \

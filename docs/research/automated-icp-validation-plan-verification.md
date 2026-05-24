@@ -21,7 +21,7 @@
 > below, open a PR. A failed flow IS the next agent's #1 — not a
 > ping to anyone.
 
-> **Status (2026-05-24):** **1 / 8 flows fully passed (FLOW-004).**
+> **Status (2026-05-24):** **1 / 8 flows fully passed (FLOW-004) — now under continuous regression watch.**
 > The 2026-05-24 founder directive named engine quality (BIRD 0.318 /
 > Spider `null` per
 > [`apps/api/src/gate/eval-baseline.ts`](../../apps/api/src/gate/eval-baseline.ts) /
@@ -30,14 +30,20 @@
 > as the binding bottleneck for FLOW-001/002/003 — the gate is doing
 > what GLOBAL-027 asks it to. FLOW-004 is the path that carries a
 > stranger across the gate before BIRD/Spider clear, and as of
-> 2026-05-24 it is **verified end-to-end** by
+> 2026-05-24 it is **verified twice end-to-end** by
 > [`scripts/flow-004-walk.sh`](../../scripts/flow-004-walk.sh)
 > ([`SK-STRG-002`](../features/stranger-test/FEATURE.md)): a mail.tm
 > throwaway inbox + curl walk landed `HTTP 200` on `/v1/ask` 18s after
-> waitlist signup (13s of which was Resend's transactional latency).
+> waitlist signup (11–13s of which was Resend's transactional latency).
+> The walk now runs **daily at 06:00 UTC** under
+> [`.github/workflows/acquisition-health.yml`](../../.github/workflows/acquisition-health.yml)
+> ([`SK-STRG-003`](../features/stranger-test/FEATURE.md)), which also
+> runs `verify-flows.sh` + `stranger-test.sh` and uploads all three
+> walkers' JSON results as a 90-day artifact. The workflow exits 0
+> unconditionally so no founder-facing email channel is created — the
+> next agent run reads the artifact via `mcp__github__list_workflow_runs`.
 > Future agents pick from: FLOW-006 (SDK runSql), FLOW-007 (anon→adopt),
-> the §1.1 stranger-test daily cron, or schedule
-> `scripts/flow-004-walk.sh` for continuous SK-GATE-007 regression watch.
+> or whatever regression the daily artifact surfaces.
 >
 > **The §1.1 stranger-test Playwright primitive shipped 2026-05-24** —
 > [`tools/stranger-test/`](../../tools/stranger-test/), agent-invoked
@@ -69,7 +75,7 @@
 | FLOW-001 | P1 solo builder | failed 2026-05-24 step 5 (gate 403 on `/v1/ask`; steps 1–4 ok across 3 prompts via `stranger-test.sh`) | 2026-05-24 | 6/7 (86%) |
 | FLOW-002 | P3 analyst | failed 2026-05-24 step 9 (gate 403 on submit; steps 1–8 ok across 3 slugs via `stranger-test.sh`, includes event-spy on `solve.try_query_clicked`) | 2026-05-24 | 5/6 (83%) |
 | FLOW-003 | P3 / P4 | failed 2026-05-24 step 8 (gate 403 on submit; steps 1–7 + 9 ok across 3 slugs via `stranger-test.sh`) | 2026-05-24 | 5/5 (100%) |
-| FLOW-004 | P1 solo builder | **passed 2026-05-24** (mail.tm inbox → Resend invite → `X-Invite-Code` → HTTP 200 on `/v1/ask`; 13s email latency, 18s wall) | 2026-05-24 | 6/6 (100%) |
+| FLOW-004 | P1 solo builder | **passed 2026-05-24** (3 walks: 18s/15s/18s wall, 13s/10s/11s email; daily cron under SK-STRG-003 from 06:00 UTC) | 2026-05-24 | 7/7 (100%) |
 | FLOW-005 | P2 agent builder | partial — OAuth discovery precondition passes via `verify-flows.sh`; walkthrough steps 1-7 need an authenticated MCP client | 2026-05-23 | 5/6 (83%) |
 | FLOW-006 | P4 backend engineer | not yet attempted | — | 5/6 (83%) |
 | FLOW-007 | P1 / P3 | not yet attempted | — | 5/6 (83%) |
@@ -499,6 +505,8 @@ query — all without any human in the loop.
 |---|---|---|---|---|
 | 2026-05-24 | claude-code | passed | 13 | `bash scripts/flow-004-walk.sh` against `https://app.nlqdb.com`. mail.tm `wshu.net` inbox minted, `POST /v1/waitlist` 200, Resend invite email landed 13s later, `?invite=<code>` extracted, `POST /v1/ask` with `Authorization: Bearer anon_<uuid>` + `X-Invite-Code` returned **HTTP 200** (gate bypassed). Total wall-clock 18s. Closes the §1.4 invite-valve end-to-end verification gap that has been open since SK-GATE-007 shipped 2026-05-21. Artifact: `tools/stranger-test/results/flow-004-2026-05-24T11-16-15Z.json`. Walker primitive: SK-STRG-002 (initial revision — no control probe). |
 | 2026-05-24 | claude-code | passed | 10 | Re-walk after independent self-review iteration. Walker now does a **control probe** (`/v1/ask` without invite — must be `feature_gated`) before the invite probe; only `passed` when both succeed, `inconclusive` if the gate is open globally. Control returned `403 feature_gated`, invite returned `HTTP 200`, total wall 15s. JSON now also carries `control_status` + `control_error_status` + `control_blocked` so future runs are self-validating across gate-state changes. Artifact: `tools/stranger-test/results/flow-004-2026-05-24T11-32-44Z.json`. |
+| 2026-05-24 | claude-code | passed | 11 | Pre-PR verification re-walk to align this mirror before shipping [`SK-STRG-003`](../features/stranger-test/FEATURE.md) (daily acquisition-health cron). Same control + invite shape: control returned `403 feature_gated`, invite returned `HTTP 200`, total wall 18s. Confirms SK-GATE-007 honour is still intact and the daily cron will start from a green baseline. Artifact: `tools/stranger-test/results/flow-004-2026-05-24T13-19-12Z.json`. Continuous watch shipped this PR via `.github/workflows/acquisition-health.yml` (`0 6 * * *` UTC, `continue-on-error: true` on every step, 90-day artifact retention) — exits 0 unconditionally so a future regression lands in the artifact JSON instead of in the founder's inbox. |
+| 2026-05-24 | claude-code | passed | 11 | Post-review walk after the PR #276 sub-agent (opus 4.7) review closed 4 MINOR findings: (M1) `redact()` now applied to the throwaway mail.tm address in `flow-004-walk.sh` stdout so the GH Actions log never exposes the full local-part; (M2) Playwright cache key now hashes `bun.lock` AND `tools/stranger-test/package.json` with `restore-keys` for incremental priming; (M3) workflow summary table now hoists `.state` from each walker's JSON so the agent re-fetching the run can react without downloading the artifact; (M4) verify-flows step now sets `pipefail` so `tee`'s exit can't mask the script's real exit code in `$GITHUB_OUTPUT`. Control returned `403 feature_gated`, invite returned `HTTP 200`, total wall 17s. Artifact: `tools/stranger-test/results/flow-004-2026-05-24T13-41-05Z.json`. |
 
 ---
 
