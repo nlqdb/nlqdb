@@ -43,7 +43,7 @@ Distributed SQLite (libSQL) with edge replicas. Free tier + Scaler ~$29/mo.
 ### PlanetScale — https://planetscale.com
 Managed Vitess (MySQL). Removed free tier in 2024, reintroduced a hobby option in 2025.
 - **Overlaps with:** Adjacent — not Postgres, different ecosystem.
-- **Threat vector:** Low for P1 (Postgres-first), but they now own Outerbase (see §3), which *is* a threat.
+- **Threat vector:** Low for P1 (Postgres-first). Note: Outerbase joined **Cloudflare** (not PlanetScale) per the 2025-04-07 acquisition — see §3.
 
 ### Render Postgres, Fly Postgres, Aiven
 Commodity managed Postgres at various price points. No NL / agent layer. Low threat individually, but collectively they define the "cheap, boring Postgres" baseline nlqdb must price against.
@@ -107,7 +107,7 @@ Enterprise BI with NL search baked in.
 These layer NL on top of admin or BI UIs. The ones with strong distribution (Retool, Metabase) are the hardest to displace.
 
 ### Outerbase — https://outerbase.com
-AI-assisted database interface: EZQL natural-language queries, spreadsheet-like editor, dashboards, data catalog. Multi-engine (Postgres / MySQL / SQLite / MongoDB / ClickHouse / Snowflake / BigQuery / Redshift / MSSQL). Acquired by **Cloudflare** on 2025-04-08 (corrected from the prior "PlanetScale 2024" note — see [Cloudflare press release](https://www.cloudflare.com/press/press-releases/2025/cloudflare-acquires-outerbase-to-expand-developer-experience/)).
+AI-assisted database interface: EZQL natural-language queries, spreadsheet-like editor, dashboards, data catalog. Multi-engine (Postgres / MySQL / SQLite / MongoDB / ClickHouse / Snowflake / BigQuery / Redshift / MSSQL). Acquired by **Cloudflare** on 2025-04-07 (corrected from the prior "PlanetScale 2024" note — see [Cloudflare press release](https://www.cloudflare.com/press/press-releases/2025/cloudflare-acquires-outerbase-to-expand-developer-experience/)).
 - **Overlaps with:** P1 admin-chat, P3, P4 NL-over-existing-DB.
 - **Gap nlqdb exploits:** Outerbase sits on top of *your* DB; nlqdb is the DB + chat + MCP-provisioning in one. The Cloudflare acquisition aligns Outerbase with Workers / D1 / Durable Objects / Agents SDK — same infra as nlqdb, different shape (admin-UI vs chat-first / `<nlq-data>` embed). The /vs/outerbase page ([SK-CMP-002](../features/comparison-pages/decisions/SK-CMP-002-single-template-data-driven.md)) is the canonical positioning.
 - **Threat vector:** **High.** The single product most in nlqdb's lane today; the Cloudflare alignment narrows the infra-differentiation lane.
@@ -246,7 +246,7 @@ OSS text-to-SQL toolkit.
 |---|---|---|---|
 | Supabase | Managed PG | P1 | Full BaaS with Studio UI + brand inertia |
 | Neon | Managed PG | P1, P2 | Serverless scale + branching for ephemeral agent DBs |
-| Outerbase | AI admin | P1, P4 | AI-native admin UI with PlanetScale backing |
+| Outerbase | AI admin | P1, P4 | AI-native admin UI on Cloudflare's stack (2025-04-07 acquisition) |
 | Retool (+ Retool AI) | Internal tools | P4 | Already installed; distribution moat |
 | Mem0 | Agent memory | P2 | Purpose-built agent memory; lighter weight |
 | Zep | Agent memory | P2 | Same lane as Mem0 |

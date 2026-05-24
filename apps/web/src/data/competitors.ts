@@ -286,23 +286,23 @@ export const COMPETITORS: Competitor[] = [
     slug: "outerbase",
     name: "Outerbase",
     url: "https://www.outerbase.com",
-    // Acquired by Cloudflare 2025-04 per https://www.cloudflare.com/press/press-releases/2025/cloudflare-acquires-outerbase-to-expand-developer-experience/.
+    // Acquired by Cloudflare 2025-04-07 per https://www.cloudflare.com/press/press-releases/2025/cloudflare-acquires-outerbase-to-expand-developer-experience/ (full landscape entry in docs/competitors.md §3).
     tagline:
       "AI-assisted database interface (EZQL, spreadsheet editor, dashboards) for your existing Postgres / MySQL / SQLite / MongoDB / ClickHouse / Snowflake / BigQuery / Redshift / MSSQL.",
     persona: "P4 backend engineer",
     oneLiner:
       "Pick Outerbase if you already run a production database and want an AI-assisted admin UI — spreadsheet edits, EZQL natural-language queries, dashboards — sitting on top of it. Pick nlqdb if you want the database itself provisioned, schema evolved via English, and one HTML element rendering answers in your own app.",
     whenChooseUs: [
-      "You don't have a database yet — nlqdb provisions Postgres on the first query (`SK-ANON-001`).",
-      "You want to embed the answer in your product via one HTML element, not link a hosted admin UI.",
+      "You want destructive operations and schema changes diff-previewed before they apply, even when an English request triggered them.",
+      "You want to embed the answer inside your own product via one HTML element, not link out to a hosted admin UI.",
+      "You're spinning up a new feature or service that needs its own database — nlqdb provisions Postgres on the first query.",
       "An AI agent needs to provision its own database via MCP — `create_database` is the verb Outerbase doesn't ship.",
-      'Schema evolves via English (`"add a `priority` column"`) with a diff-before-apply preview (`SK-ONBOARD-004`).',
     ],
     whenChooseThem: [
       "You already run a production Postgres / MySQL / Snowflake / BigQuery you can't migrate.",
       "You want a spreadsheet-style editor + dashboards + data catalog UI — admin-tool shape, not a chat box.",
       "Your engine isn't Postgres today (MySQL, MongoDB, Snowflake, BigQuery, ClickHouse, Redshift, MSSQL) — Outerbase ships across all of them now; nlqdb is Postgres-first (ClickHouse Phase 2).",
-      "HIPAA or SOC 2 Type 2 certification is a hard requirement today — nlqdb is pre-alpha and doesn't carry either yet.",
+      "HIPAA or SOC 2 Type 2 certification is a hard requirement today — Outerbase's Enterprise tier carries both; nlqdb is pre-alpha and carries neither yet.",
     ],
     features: [
       { feature: "Owns the database (provisions + migrates)", us: "shipped", them: "no" },
@@ -350,13 +350,14 @@ export const COMPETITORS: Competitor[] = [
       {
         feature: "HIPAA + SOC 2 Type 2 compliance",
         us: "no",
-        them: "shipped",
+        them: "partial",
+        note: "Outerbase's Enterprise tier carries both certifications; lower tiers don't surface them. nlqdb is pre-alpha and carries neither.",
       },
       {
         feature: "Unlimited free-tier natural-language queries",
         us: "shipped",
         them: "no",
-        note: "Outerbase Explorer caps at 10 EZQL questions/month; nlqdb free chain (Groq → Gemini) is rate-limited per principal, not per question/month.",
+        note: "Outerbase's Free tier ships documented per-month usage caps; nlqdb's free chain (Groq → Gemini) is rate-limited per principal, not per question/month.",
       },
     ],
     faqs: [
@@ -370,7 +371,7 @@ export const COMPETITORS: Competitor[] = [
       },
       {
         q: "How does nlqdb's NL→SQL compare to Outerbase's EZQL?",
-        a: "Both translate English into SQL; the differentiator isn't the translation, it's what surrounds it. nlqdb prompts directly from the live schema fingerprint plus a recent-tables hint and surfaces the compiled SQL under a `Cmd+/` trace toggle (`SK-WEB-005`). nlqdb also publishes BIRD Mini-Dev + Spider 2.0-lite accuracy weekly to `docs/features/quality-eval/`; Outerbase doesn't publish a single canonical benchmark.",
+        a: "Both translate English into SQL; the differentiator isn't the translation, it's what surrounds it. nlqdb prompts directly from the live schema fingerprint plus a recent-tables hint and surfaces the compiled SQL under a `Cmd+/` trace toggle. nlqdb also publishes BIRD Mini-Dev + Spider 2.0-lite accuracy weekly to `docs/features/quality-eval/`; Outerbase doesn't publish a single canonical benchmark.",
       },
       {
         q: "Does nlqdb support MySQL, Snowflake, or BigQuery like Outerbase does?",
@@ -382,7 +383,7 @@ export const COMPETITORS: Competitor[] = [
       },
       {
         q: "Is nlqdb HIPAA or SOC 2 compliant like Outerbase?",
-        a: "No. nlqdb is pre-alpha; neither certification is in place yet. If you're shipping a regulated product today, Outerbase (HIPAA + SOC 2 Type 2) is the honest pick; nlqdb's compliance roadmap is downstream of GA.",
+        a: "No. nlqdb is pre-alpha; neither certification is in place yet. If you're shipping a regulated product today, Outerbase's Enterprise tier (HIPAA + SOC 2 Type 2) is the honest pick; nlqdb's compliance roadmap is downstream of GA.",
       },
     ],
     demo: {
