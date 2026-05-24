@@ -1,7 +1,7 @@
 # Agents Guide — nlqdb
 
 Index for any agent (Claude Code, cold subagents, or human) editing this repo.
-Read this file fully **before** the first edit. Per-area `AGENTS.md` files
+Read fully **before** the first edit. Per-area `AGENTS.md` files
 narrow this guide to the directory you're working in.
 
 ## 1. What nlqdb is
@@ -148,10 +148,9 @@ package-specific commands.
 
 ## 5. Before-editing path map
 
-When the change you're about to make touches any of these paths, the
-listed feature is **mandatory pre-reading**. (Features auto-load via their
-`when-to-load.globs` field in editors that support it; otherwise read
-manually before editing.)
+When your change touches any of these paths, the listed feature is
+**mandatory pre-reading**. (Features auto-load via `when-to-load.globs`
+in editors that support it; otherwise read manually before editing.)
 
 | If you touch… | Read first |
 |---|---|
@@ -190,6 +189,7 @@ manually before editing.)
 | `.github/workflows/**`, `nlqdb/actions/**` (CI permissions) | `docs/features/ci-permissions/FEATURE.md` |
 | `tests/personas/**`, `tests/opencheck/**`, `tests/e2e/**`, `examples/**/e2e/**`, `.github/workflows/e2e*.yml`, `.github/workflows/_e2e-*.yml`, `packages/nlqdb-rb/spec/e2e/**`, `packages/nlqdb-rs/tests/e2e/**` | `docs/features/e2e-coverage/FEATURE.md` |
 | `apps/api/src/icp-*.ts`, `docs/research/automated-icp-validation-plan*.md`, `docs/research/icp-evidence-*.md` | `docs/features/icp-mining/FEATURE.md` |
+| `tools/stranger-test/**`, `scripts/stranger-test.sh` | `docs/features/stranger-test/FEATURE.md` |
 
 Per-area `AGENTS.md` files (e.g. `packages/db/AGENTS.md`) repeat just
 their slice of this table, so you don't need the full root view when
@@ -222,14 +222,13 @@ canonical status.
 ## 7. Common commands
 
 ```bash
-bun install                    # install workspaces
-bun run dev                        # run all dev servers (apps/*)
-bun run test                       # run all tests
-bun run typecheck                  # type-check the workspace
-bun run lint                       # lint
-bun run build                      # build all packages
-
-# bundle budget check (GLOBAL-013)
+bun install                  # install workspaces
+bun run dev                  # all dev servers (apps/*)
+bun run test                 # all tests
+bun run typecheck            # type-check the workspace
+bun run lint                 # lint
+bun run build                # build all packages
+# bundle budget check (GLOBAL-013):
 bun run --filter apps/api build && wrangler deploy --dry-run --outdir=/tmp/out
 ```
 
@@ -298,8 +297,8 @@ Touch path X
 
 Every SK-* and GLOBAL-* decision must have all five fields
 (Decision / Core value / Why / Consequence / Alternatives) — see
-[`docs/feature-conventions.md`](docs/feature-conventions.md) §4. Per P4 (D1–D3), if you
-can't fill all five or have open questions, don't document it yet.
+[`docs/feature-conventions.md`](docs/feature-conventions.md) §4.
+Per P4 (D1–D3), if you can't fill all five, don't document it yet.
 
 ### 10.2 Fixing a bug
 
