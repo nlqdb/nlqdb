@@ -208,7 +208,6 @@ export function NlqScript({ src = "https://elements.nlqdb.com/v1.js" }: NlqScrip
 }
 
 declare module "react" {
-  // biome-ignore lint/style/useNamingConvention: JSX namespace name is fixed by React.
   namespace JSX {
     interface IntrinsicElements {
       "nlq-data": DetailedHTMLProps<HTMLAttributes<HTMLElement>, HTMLElement> & {
