@@ -302,7 +302,10 @@ jobs:
         # scorer per docs/features/quality-eval/FEATURE.md (SK-QUAL-001).
         # The real-LLM run is the daily workflow `quality-eval-bird-mini`;
         # PRs only assert harness wiring (mocked router, ephemeral SQLite).
-        tool: [eval]
+        # Stranger-test is the §1.1 Playwright walker (SK-STRG-001); PRs
+        # only verify the typecheck + unit-test surface — the actual
+        # browser walk is agent-invoked via `bash scripts/stranger-test.sh`.
+        tool: [eval, stranger-test]
       fail-fast: false
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1

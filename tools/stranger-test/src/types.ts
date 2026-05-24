@@ -13,12 +13,15 @@ export type StepResult = {
   detail?: string;
 };
 
-export type RunState = "passed" | "failed" | "blocked";
+export type RunState = "passed" | "failed";
 
 export type FlowRun = {
   prompt: string;
   state: RunState;
   failedStep: number | null;
+  // Time from submit to first POST /v1/ask response. When the response is the
+  // gate 403 this is honestly "time-to-gate-block", not "time-to-value" — the
+  // §1.2 dashboard's status-split surfaces the distinction.
   ttfvMs: number | null;
   durationMs: number;
   steps: StepResult[];
@@ -32,7 +35,6 @@ export type FlowResult = {
   runs: FlowRun[];
   passed: number;
   failed: number;
-  blocked: number;
 };
 
 export type WalkResult = {
@@ -45,7 +47,6 @@ export type WalkResult = {
     totalRuns: number;
     passed: number;
     failed: number;
-    blocked: number;
     ttfvP50Ms: number | null;
     ttfvP95Ms: number | null;
   };

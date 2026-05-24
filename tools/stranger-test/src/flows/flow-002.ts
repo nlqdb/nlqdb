@@ -6,7 +6,12 @@ import type { Browser } from "@playwright/test";
 import { openSession, step, withDeadline } from "../browser.ts";
 import type { FlowRun, StepResult } from "../types.ts";
 
-const SLUG_DEMO_GOAL: Readonly<Record<string, string>> = {
+// Pinned literal mirror of `apps/web/src/data/solve.ts` `demoGoal` values;
+// drift between this map and the data file fails the walk loudly, which is
+// the regression detector we want — see `scripts/verify-flows.sh` for the
+// same pattern. `SOLVE_SLUGS` is exported so `runner.ts` has a single
+// source of truth (avoids duplication that would silently desync).
+export const SLUG_DEMO_GOAL: Readonly<Record<string, string>> = {
   "cheap-internal-dashboard": "today's orders aggregated by drink with revenue",
   "give-ai-agent-persistent-memory": "recent agent memory across threads in the last day",
   "skip-postgres-setup-side-project": "show recent customer contacts sorted by last touch",
@@ -14,6 +19,8 @@ const SLUG_DEMO_GOAL: Readonly<Record<string, string>> = {
     "feedback from the last 24 hours grouped by channel",
   "ship-leaderboard-no-sql": "top players by score for the current week",
 };
+
+export const SOLVE_SLUGS = Object.keys(SLUG_DEMO_GOAL) as readonly string[];
 
 const ASK_TIMEOUT_MS = 60_000;
 const WALK_DEADLINE_MS = 180_000;
@@ -76,8 +83,14 @@ async function doWalk(
 
   try {
     const url = `${baseUrl}/solve/${slug}/`;
-    await page.goto(url, { waitUntil: "domcontentloaded", timeout: 30_000 });
-    steps.push(step(1, `GET ${url} returns 200`, "ok"));
+    const navResp = await page.goto(url, { waitUntil: "domcontentloaded", timeout: 30_000 });
+    const navStatus = navResp?.status() ?? 0;
+    if (navStatus !== 200) {
+      steps.push(step(1, `GET ${url} returns 200`, "fail", `status=${navStatus}`));
+      failedStep = 1;
+    } else {
+      steps.push(step(1, `GET ${url} returns 200`, "ok"));
+    }
 
     const h1Text =
       (await page
@@ -93,7 +106,7 @@ async function doWalk(
         `h1=${h1Text.trim().slice(0, 80)}`,
       ),
     );
-    if (h1Text.trim().length === 0) failedStep = 2;
+    if (h1Text.trim().length === 0 && failedStep === null) failedStep = 2;
 
     const ldScripts = await page.locator('script[type="application/ld+json"]').allTextContents();
     const hasFaq = ldScripts.some((s) => s.includes('"FAQPage"'));
@@ -214,9 +227,10 @@ async function doWalk(
     if (failedStep === null) {
       const submit = page.getByRole("button", { name: /create/i }).first();
       const t0 = Date.now();
-      const askWaiter = page.waitForResponse((r) => r.url().includes("/v1/ask"), {
-        timeout: ASK_TIMEOUT_MS,
-      });
+      const askWaiter = page.waitForResponse(
+        (r) => r.request().method() === "POST" && r.url().includes("/v1/ask"),
+        { timeout: ASK_TIMEOUT_MS },
+      );
       await submit.click();
       const askResp = await askWaiter.catch(() => null);
       if (!askResp) {

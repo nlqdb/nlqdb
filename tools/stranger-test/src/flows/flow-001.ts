@@ -47,39 +47,63 @@ async function doWalk(
   let failedStep: number | null = null;
 
   try {
-    await page.goto(`${baseUrl}/`, { waitUntil: "domcontentloaded", timeout: 30_000 });
-    steps.push(step(1, "GET / returns 200", "ok"));
+    const navResp = await page.goto(`${baseUrl}/`, {
+      waitUntil: "domcontentloaded",
+      timeout: 30_000,
+    });
+    const navStatus = navResp?.status() ?? 0;
+    if (navStatus !== 200) {
+      steps.push(step(1, "GET / returns 200", "fail", `status=${navStatus}`));
+      failedStep = 1;
+    } else {
+      steps.push(step(1, "GET / returns 200", "ok"));
+    }
 
-    const hero = page.locator("input[placeholder],textarea[placeholder]").first();
-    const placeholder = await hero.getAttribute("placeholder", { timeout: 5_000 });
-    if (!placeholder || !HERO_PLACEHOLDER_RE.test(placeholder)) {
-      steps.push(
-        step(
-          2,
-          "hero placeholder matches /orders|tracker|building/i",
-          "fail",
-          `placeholder=${JSON.stringify(placeholder)}`,
-        ),
-      );
-      failedStep = 2;
+    if (failedStep === null) {
+      const hero = page.locator("input[placeholder],textarea[placeholder]").first();
+      const placeholder = await hero
+        .getAttribute("placeholder", { timeout: 5_000 })
+        .catch(() => null);
+      if (!placeholder || !HERO_PLACEHOLDER_RE.test(placeholder)) {
+        steps.push(
+          step(
+            2,
+            "hero placeholder matches /orders|tracker|building/i",
+            "fail",
+            `placeholder=${JSON.stringify(placeholder)}`,
+          ),
+        );
+        failedStep = 2;
+      } else {
+        steps.push(
+          step(
+            2,
+            "hero placeholder matches /orders|tracker|building/i",
+            "ok",
+            `placeholder=${placeholder}`,
+          ),
+        );
+      }
     } else {
       steps.push(
         step(
           2,
           "hero placeholder matches /orders|tracker|building/i",
-          "ok",
-          `placeholder=${placeholder}`,
+          "skip",
+          "blocked by earlier step",
         ),
       );
     }
 
     if (failedStep === null) {
+      const hero = page.locator("input[placeholder],textarea[placeholder]").first();
       await hero.fill(prompt);
       steps.push(step(3, "typed persona-seeded goal into hero", "ok"));
 
-      const askWaiter = page.waitForResponse((r) => r.url().includes("/v1/ask"), {
-        timeout: ASK_TIMEOUT_MS,
-      });
+      const askWaiter = page.waitForResponse(
+        (r) => r.request().method() === "POST" && r.url().includes("/v1/ask"),
+        { timeout: ASK_TIMEOUT_MS },
+      );
       const submit = page.getByRole("button", { name: /create/i }).first();
       const t0 = Date.now();
       await submit.click();
@@ -122,7 +146,14 @@ async function doWalk(
     // Remaining steps (trace toggle, snippet copy, second-query reuse) only
     // run when /v1/ask succeeded; otherwise they're skipped honestly.
     if (failedStep === null) {
-      const traceBtn = page.getByRole("button", { name: /trace|show sql|cmd/i }).first();
+      // The trace toggle is a `<summary>` inside `Trace.tsx`'s `<details>`;
+      // `<summary>` has no canonical ARIA role across browsers, so widen the
+      // selector to match summary text + ARIA-button + plain `<button>`.
+      const traceBtn = page
+        .locator(
+          'summary:has-text("trace"), [role="button"][aria-label*="trace" i], button:has-text("trace")',
+        )
+        .first();
       const traceFound = await traceBtn.isVisible({ timeout: 5_000 }).catch(() => false);
       if (!traceFound) {
         steps.push(step(6, "trace toggle visible", "fail", "no trace affordance found"));
@@ -184,19 +215,27 @@ async function doWalk(
     }
 
     if (failedStep === null) {
-      const followInput = page.locator("input[placeholder],textarea[placeholder]").last();
-      await followInput.fill(SECOND_PROMPT).catch(() => {});
+      // The post-first-query input is the chat composer; selectors-by-role
+      // outlast placeholder-text drift better than a `last()` placeholder match.
+      const followInput = page.getByRole("textbox").last();
       const t1 = Date.now();
-      const ask2 = await page
-        .waitForResponse((r) => r.url().includes("/v1/ask"), { timeout: ASK_TIMEOUT_MS })
-        .catch(() => null);
+      const ask2Waiter = page.waitForResponse(
+        (r) => r.request().method() === "POST" && r.url().includes("/v1/ask"),
+        { timeout: ASK_TIMEOUT_MS },
+      );
+      const filled = await followInput
+        .fill(SECOND_PROMPT)
+        .then(() => true)
+        .catch(() => false);
+      if (filled) await followInput.press("Enter").catch(() => {});
+      const ask2 = await ask2Waiter.catch(() => null);
       if (!ask2) {
         steps.push(
           step(
             8,
             "second /v1/ask within 60 s with same dbId",
             "fail",
-            "no second /v1/ask observed",
+            filled ? "no second /v1/ask observed" : "could not fill follow-up input",
           ),
         );
         failedStep = 8;

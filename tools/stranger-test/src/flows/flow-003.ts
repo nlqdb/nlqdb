@@ -6,11 +6,16 @@ import type { Browser } from "@playwright/test";
 import { openSession, step, withDeadline } from "../browser.ts";
 import type { FlowRun, StepResult } from "../types.ts";
 
-const SLUG_META: Readonly<Record<string, { title: string; goal: string }>> = {
+// Pinned literal mirror of `apps/web/src/data/competitors.ts` — drift fails
+// the walk loudly; same regression-detector intent as `verify-flows.sh`.
+// `VS_SLUGS` exported so `runner.ts` has a single source of truth.
+export const SLUG_META: Readonly<Record<string, { title: string; goal: string }>> = {
   supabase: { title: "Supabase", goal: "top 5 customers by revenue this month" },
   vanna: { title: "Vanna AI", goal: "monthly revenue trend for the last 12 months" },
   mem0: { title: "Mem0", goal: "users who logged in this week and viewed pricing" },
 };
+
+export const VS_SLUGS = Object.keys(SLUG_META) as readonly string[];
 
 const ASK_TIMEOUT_MS = 60_000;
 const WALK_DEADLINE_MS = 180_000;
@@ -53,8 +58,14 @@ async function doWalk(
 
   try {
     const url = `${baseUrl}/vs/${slug}/`;
-    await page.goto(url, { waitUntil: "domcontentloaded", timeout: 30_000 });
-    steps.push(step(1, `GET ${url} returns 200`, "ok"));
+    const navResp = await page.goto(url, { waitUntil: "domcontentloaded", timeout: 30_000 });
+    const navStatus = navResp?.status() ?? 0;
+    if (navStatus !== 200) {
+      steps.push(step(1, `GET ${url} returns 200`, "fail", `status=${navStatus}`));
+      failedStep = 1;
+    } else {
+      steps.push(step(1, `GET ${url} returns 200`, "ok"));
+    }
 
     const h1Text = (
       (await page
@@ -73,7 +84,7 @@ async function doWalk(
         `expected=${expectedH1 ?? "<unknown-slug>"} actual=${h1Text}`,
       ),
     );
-    if (!h1Ok) failedStep = 2;
+    if (!h1Ok && failedStep === null) failedStep = 2;
 
     const wtcLabel = meta ? `When to choose ${meta.title}` : null;
     if (wtcLabel) {
@@ -161,9 +172,10 @@ async function doWalk(
     if (failedStep === null) {
       const submit = page.getByRole("button", { name: /create/i }).first();
       const t0 = Date.now();
-      const askWaiter = page.waitForResponse((r) => r.url().includes("/v1/ask"), {
-        timeout: ASK_TIMEOUT_MS,
-      });
+      const askWaiter = page.waitForResponse(
+        (r) => r.request().method() === "POST" && r.url().includes("/v1/ask"),
+        { timeout: ASK_TIMEOUT_MS },
+      );
       await submit.click().catch(() => {});
       const askResp = await askWaiter.catch(() => null);
       if (!askResp) {

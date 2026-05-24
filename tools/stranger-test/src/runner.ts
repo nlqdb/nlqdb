@@ -16,20 +16,10 @@ import type { Browser } from "@playwright/test";
 
 import { launchBrowser, percentile } from "./browser.ts";
 import { walkFlow001 } from "./flows/flow-001.ts";
-import { walkFlow002 } from "./flows/flow-002.ts";
-import { walkFlow003 } from "./flows/flow-003.ts";
+import { SOLVE_SLUGS, walkFlow002 } from "./flows/flow-002.ts";
+import { VS_SLUGS, walkFlow003 } from "./flows/flow-003.ts";
 import { FLOW_PERSONA, PERSONA_PROMPTS } from "./personas.ts";
 import type { FlowId, FlowResult, FlowRun, PersonaId, WalkResult } from "./types.ts";
-
-const SOLVE_SLUGS = [
-  "cheap-internal-dashboard",
-  "give-ai-agent-persistent-memory",
-  "skip-postgres-setup-side-project",
-  "natural-language-sql-without-training-data",
-  "ship-leaderboard-no-sql",
-] as const;
-
-const VS_SLUGS = ["supabase", "vanna", "mem0"] as const;
 
 const USER_AGENT = "nlqdb-stranger-test/1.0 (+https://nlqdb.com; contact: hello@nlqdb.com)";
 
@@ -80,13 +70,11 @@ function parseCliArgs(): Args {
 function summarise(id: FlowId, persona: PersonaId, runs: FlowRun[]): FlowResult {
   let passed = 0;
   let failed = 0;
-  let blocked = 0;
   for (const r of runs) {
     if (r.state === "passed") passed++;
-    else if (r.state === "failed") failed++;
-    else blocked++;
+    else failed++;
   }
-  return { id, persona, runs, passed, failed, blocked };
+  return { id, persona, runs, passed, failed };
 }
 
 async function runFlow001(args: Args, browser: Browser): Promise<FlowResult> {
@@ -163,7 +151,6 @@ export async function main(): Promise<number> {
   const ttfvs = allRuns.map((r) => r.ttfvMs).filter((v): v is number => v !== null);
   const passed = allRuns.filter((r) => r.state === "passed").length;
   const failed = allRuns.filter((r) => r.state === "failed").length;
-  const blocked = allRuns.filter((r) => r.state === "blocked").length;
 
   const result: WalkResult = {
     baseUrl: args.baseUrl,
@@ -175,7 +162,6 @@ export async function main(): Promise<number> {
       totalRuns: allRuns.length,
       passed,
       failed,
-      blocked,
       ttfvP50Ms: percentile(ttfvs, 50),
       ttfvP95Ms: percentile(ttfvs, 95),
     },
@@ -192,12 +178,12 @@ export async function main(): Promise<number> {
 
   if (!args.quiet) {
     console.info(
-      `\n  → ${passed}/${allRuns.length} passed (failed=${failed} blocked=${blocked}) ` +
+      `\n  → ${passed}/${allRuns.length} passed (failed=${failed}) ` +
         `ttfv p50=${result.summary.ttfvP50Ms ?? "—"}ms p95=${result.summary.ttfvP95Ms ?? "—"}ms ` +
         `wall=${durationMs}ms`,
     );
   }
-  return failed > 0 || blocked > 0 ? 1 : 0;
+  return failed > 0 ? 1 : 0;
 }
 
 if (import.meta.main) {
