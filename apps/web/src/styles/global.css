@@ -896,17 +896,16 @@ h3 {
   }
 }
 
-/* SK-WEB-001 — ErrorBoundary + boot-fallback. Same visual treatment
-   so the user sees one consistent recovery panel whether the crash
-   happened pre- or post-hydration. */
+/* SK-WEB-001 — every `#boot-fallback` selector stays gated on `:not([hidden])` because an ID rule (0,1,0,0) outranks UA `[hidden] { display: none }` (0,0,1,0) and would otherwise paint the panel below the footer on every page. */
 .err-boundary,
-#boot-fallback {
+#boot-fallback:not([hidden]) {
   display: grid;
   place-items: center;
   padding: clamp(40px, 8vw, 96px) 24px;
+}
+.err-boundary {
   min-height: 60vh;
 }
-/* Pin the revealed pre-hydration panel as a fixed overlay so it never flows under already-painted content; `.err-boundary` stays in-flow because it replaces an island's own children. */
 #boot-fallback:not([hidden]) {
   position: fixed;
   inset: 0;
