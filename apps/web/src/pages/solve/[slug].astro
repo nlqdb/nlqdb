@@ -7,7 +7,7 @@
 
 import Footer from "../../components/Footer.astro";
 import Topnav from "../../components/Topnav.astro";
-import { SOLVE_ENTRIES, solveBySlug } from "../../data/solve";
+import { SOLVE_ENTRIES, SOLVE_PERSONAS, solveBySlug } from "../../data/solve";
 import Base from "../../layouts/Base.astro";
 
 export function getStaticPaths() {
@@ -70,7 +70,7 @@ const howToJsonLd = {
 
     <main class="solve">
       <header class="solve__head">
-        <p class="solve__kicker">Solve · {s.persona}</p>
+        <p class="solve__kicker">Solve · {SOLVE_PERSONAS[s.persona].label}</p>
         <h1 class="solve__title">{s.searchTitle}</h1>
         <p class="solve__lede">{s.oneLiner}</p>
         <p class="solve__context">{s.painContext}</p>

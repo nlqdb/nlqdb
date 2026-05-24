@@ -5,8 +5,14 @@
 
 import Footer from "../../components/Footer.astro";
 import Topnav from "../../components/Topnav.astro";
-import { SOLVE_ENTRIES } from "../../data/solve";
+import { SOLVE_ENTRIES, SOLVE_PERSONA_ORDER, SOLVE_PERSONAS } from "../../data/solve";
 import Base from "../../layouts/Base.astro";
+
+const groupedByPersona = SOLVE_PERSONA_ORDER.map((persona) => ({
+  persona,
+  info: SOLVE_PERSONAS[persona],
+  entries: SOLVE_ENTRIES.filter((s) => s.persona === persona),
+})).filter((g) => g.entries.length > 0);
 ---
 <Base
   title="Solve a specific problem with nlqdb — natural-language databases"
@@ -28,21 +34,28 @@ import Base from "../../layouts/Base.astro";
         </p>
       </header>
 
-      <ul class="slvidx__list">
-        {
-          SOLVE_ENTRIES.map((s) => (
-            <li class="slvidx__item">
-              <a href={`/solve/${s.slug}`} class="slvidx__link">
-                <div class="slvidx__row">
-                  <h2 class="slvidx__name">{s.searchTitle}</h2>
-                  <span class="slvidx__persona">{s.persona}</span>
-                </div>
-                <p class="slvidx__one-liner">{s.oneLiner}</p>
-              </a>
-            </li>
-          ))
-        }
-      </ul>
+      {
+        groupedByPersona.map((g) => (
+          <section class="slvidx__group" aria-labelledby={`group-${g.persona.split(" ").slice(1).join("-")}`}>
+            <header class="slvidx__group-head">
+              <h2 class="slvidx__group-title" id={`group-${g.persona.split(" ").slice(1).join("-")}`}>
+                {g.info.label}
+              </h2>
+              <p class="slvidx__group-desc">{g.info.description}</p>
+            </header>
+            <ul class="slvidx__list">
+              {g.entries.map((s) => (
+                <li class="slvidx__item">
+                  <a href={`/solve/${s.slug}`} class="slvidx__link">
+                    <h3 class="slvidx__name">{s.searchTitle}</h3>
+                    <p class="slvidx__one-liner">{s.oneLiner}</p>
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </section>
+        ))
+      }
 
       <section class="slvidx__cta">
         <h2>Have a problem we don't cover?</h2>
@@ -91,10 +104,30 @@ import Base from "../../layouts/Base.astro";
     font-family: var(--mono);
     font-size: 0.92em;
   }
+  .slvidx__group {
+    margin: 0 0 56px;
+  }
+  .slvidx__group-head {
+    margin: 0 0 20px;
+  }
+  .slvidx__group-title {
+    font-family: var(--mono);
+    font-size: clamp(20px, 2.6vw, 26px);
+    letter-spacing: -0.01em;
+    line-height: 1.2;
+    margin: 0 0 8px;
+  }
+  .slvidx__group-desc {
+    color: var(--fg-dim);
+    font-size: 14px;
+    line-height: 1.55;
+    max-width: 62ch;
+    margin: 0;
+  }
   .slvidx__list {
     list-style: none;
     padding: 0;
-    margin: 0 0 48px;
+    margin: 0;
     display: grid;
     gap: 16px;
   }
@@ -109,28 +142,12 @@ import Base from "../../layouts/Base.astro";
   .slvidx__link:hover {
     border-color: var(--accent);
   }
-  .slvidx__row {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: 16px;
-    margin-bottom: 8px;
-    flex-wrap: wrap;
-  }
   .slvidx__name {
     font-family: var(--mono);
     font-size: 16px;
-    margin: 0;
+    margin: 0 0 8px;
     color: var(--fg);
     line-height: 1.3;
-  }
-  .slvidx__persona {
-    font-family: var(--mono);
-    font-size: 12px;
-    color: var(--fg-dim);
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    white-space: nowrap;
   }
   .slvidx__one-liner {
     color: var(--fg-dim);
