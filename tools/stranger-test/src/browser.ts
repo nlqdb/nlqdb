@@ -39,16 +39,20 @@ export async function openSession(deps: SessionDeps): Promise<Session> {
   const page = await ctx.newPage();
   const consoleErrors: string[] = [];
   const httpErrors: string[] = [];
+  // Defence-in-depth — every push site that interpolates a URL or
+  // page-supplied string runs through `redactInviteFromUrl` before it
+  // lands in the JSON artifact. The redactor is a no-op on strings that
+  // don't carry `[?&]invite=`, so the cost is one regex per push.
   page.on("console", (msg) => {
-    if (msg.type() === "error") consoleErrors.push(msg.text().slice(0, 240));
+    if (msg.type() === "error") consoleErrors.push(redactInviteFromUrl(msg.text()).slice(0, 240));
   });
   page.on("pageerror", (e) => {
-    consoleErrors.push(`pageerror: ${e.message.slice(0, 240)}`);
+    consoleErrors.push(`pageerror: ${redactInviteFromUrl(e.message).slice(0, 240)}`);
   });
   page.on("response", (r) => {
     const s = r.status();
     if (s >= 400 && s < 600 && !IGNORED_STATUSES.has(s)) {
-      httpErrors.push(`${r.request().method()} ${s} ${r.url().slice(0, 200)}`);
+      httpErrors.push(`${r.request().method()} ${s} ${redactInviteFromUrl(r.url()).slice(0, 200)}`);
     }
   });
   return {
