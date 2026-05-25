@@ -82,7 +82,7 @@
 | FLOW-005 | P2 agent builder | partial — OAuth discovery precondition passes via `verify-flows.sh`; walkthrough steps 1-7 need an authenticated MCP client | 2026-05-23 | 5/6 (83%) |
 | FLOW-006 | P4 backend engineer | not yet attempted | — | 5/6 (83%) |
 | FLOW-007 | P1 / P3 | not yet attempted | — | 5/6 (83%) |
-| FLOW-008 | cron / system | partial — curl probe of 5 sources passes (HN / GH / IH 200; Reddit / SO sandbox-egress advisory); cron-side KV writes + LogSnag publish need the deployed Worker | 2026-05-23 | 8/8 (100%) |
+| FLOW-008 | cron / system | partial — curl probe of 6 sources passes (HN / GH / IH / Dev.to 200; Reddit / SO sandbox-egress advisory); cron-side KV writes + LogSnag publish need the deployed Worker | 2026-05-25 | 9/9 (100%) |
 
 **Verification states:**
 - `not yet attempted` — no agent has tried this flow.
@@ -740,11 +740,11 @@ losing my rows."
 ### Source signal
 
 The signal this flow proves is "the Mon 06:00 UTC cron can still reach
-the 5 upstreams it depends on". A silent upstream schema change or
+the 6 upstreams it depends on". A silent upstream schema change or
 endpoint move only surfaces today after the LogSnag count drops to
 zero; this flow makes the failure agent-observable before the cron
 fires. Per [`SK-ICP-007`](../features/icp-mining/FEATURE.md) the probe
-is best-effort: the 5 sources are the same ones listed in
+is best-effort: the 6 sources are the same ones listed in
 [`automated-icp-validation-plan.md §2.1`](./automated-icp-validation-plan.md).
 
 ### Required tools
@@ -778,10 +778,15 @@ is best-effort: the 5 sources are the same ones listed in
    (sandbox-egress proxy block — the script downgrades to an advisory
    note since the deployed Worker is the canonical probe). Any other
    non-200 ⇒ real upstream regression.
+6. Assert: Dev.to `/api/articles?tag=database&per_page=5&top=7` returns
+   200 AND the body is a top-level JSON array (per the Forem
+   [`/api/v1`](https://developers.forem.com/api/v1) contract). Failure ⇒
+   Forem schema/endpoint regression — the cron's `fetchDevto` will start
+   returning empty.
 
 ### Pass criteria
 
-- HN + IH probes return 200 with the contract keys.
+- HN + IH + Dev.to probes return 200 with the contract keys.
 - GH probe is either 200-with-key OR skipped-no-token.
 - Reddit + SO probes are either 200-with-quota-key OR advisory
   egress-block notes. Any other 4xx/5xx fails the walk.
@@ -797,12 +802,17 @@ is best-effort: the 5 sources are the same ones listed in
 - IH 502 from the unofficial mirror → `blocked upstream`; the mirror
   is single-instance and occasionally rate-limits. The cron's per-source
   catch isolates IH from killing the rest.
+- Dev.to non-200 → `blocked upstream`; Forem runs on Heroku with a
+  Cloudflare-fronted CDN, so a hard outage shows as 5xx with no
+  block-reason header. The cron's per-tag catch isolates Dev.to from
+  killing the rest.
 
 ### Outcome log
 
 | Date | Agent | State | Notes |
 |---|---|---|---|
 | 2026-05-23 | composer-4 | partial steps 1-5 (upstream availability) | `scripts/verify-flows.sh` against `https://nlqdb.com` + `https://mcp.nlqdb.com`: HN 200 (`hits` present), GH 200 (`total_count=1644` live-probed today), IH 200 (`items` present). Reddit + Stack Exchange both 403 with `x-block-reason: hostname_blocked` from the sandbox-egress proxy — degraded to advisory per the script's helper. Cron-side checks (KV writes, evidence-file PUT, LogSnag publish) require the deployed Worker and remain a separate post-cron audit. |
+| 2026-05-25 | claude-code | partial steps 1-6 (upstream availability) | `scripts/verify-flows.sh` against `https://nlqdb.com` + `https://mcp.nlqdb.com` after SK-ICP-008 added the Dev.to probe: HN 200 (`hits` present), GH 200 (`total_count` present), IH 200 (`items` present), **Dev.to 200 (top-level JSON array)** — live probe of `https://dev.to/api/articles?tag=database&per_page=5&top=7` returned 5 fresh articles inside the `top=7` 7-day window. Reddit + SO 403 `x-block-reason: hostname_blocked` (unchanged sandbox-egress advisory). Cron-side checks (KV writes, evidence-file PUT, LogSnag publish) remain a separate post-cron audit; the new `fetchDevto` matches the IH error-isolation pattern exactly so its regression surface is the response-schema contract that the probe pins. Pre-walk also: `flow-004-walk.sh` passed in 19s (control 403, invite 200) — full SK-GATE-007 invariant proof, gate is doing its job and the invite-valve is intact. |
 
 ### Triage
 

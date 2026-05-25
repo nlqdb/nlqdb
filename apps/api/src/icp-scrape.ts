@@ -1,9 +1,10 @@
-// SK-ICP-001 (HN+Reddit) + SK-ICP-004 (GitHub Issues) + SK-ICP-005 (Stack Exchange) + SK-ICP-006 (Indie Hackers). Writes raw items to KV at icp:seen:<source>:<id> (90d) + icp:item:<YYYYMMDD>:<source>:<id> (30d).
+// SK-ICP-001 (HN+Reddit) + SK-ICP-004 (GitHub Issues) + SK-ICP-005 (Stack Exchange) + SK-ICP-006 (Indie Hackers) + SK-ICP-008 (Dev.to). Writes raw items to KV at icp:seen:<source>:<id> (90d) + icp:item:<YYYYMMDD>:<source>:<id> (30d).
 
 import { type Span, trace } from "@opentelemetry/api";
 
 // Per-fetch wall-clock cap; protects the cron from a stalled upstream.
 const FETCH_TIMEOUT_MS = 10_000;
+const BOT_USER_AGENT = "nlqdb-icp-bot/1.0 (+https://nlqdb.com; contact: hello@nlqdb.com)";
 
 export type IcpScrapeDeps = {
   kv: KVNamespace;
@@ -265,8 +266,6 @@ const REDDIT_QUERIES: Array<{ subreddit: string; query: string }> = [
   { subreddit: "clickhouse", query: "query" },
 ];
 
-const REDDIT_UA = "nlqdb-icp-bot/1.0 (+https://nlqdb.com; contact: hello@nlqdb.com)";
-
 async function fetchReddit(
   fetcher: typeof fetch,
   tracer: IcpScrapeDeps["tracer"],
@@ -282,7 +281,7 @@ async function fetchReddit(
     const doFetch = async (span: Span) => {
       try {
         const res = await fetcher(url, {
-          headers: { "User-Agent": REDDIT_UA },
+          headers: { "User-Agent": BOT_USER_AGENT },
           signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
         });
         span.setAttribute("http.response.status_code", res.status);
@@ -460,7 +459,6 @@ type IhFeed = {
 const INDIEHACKERS_QUERIES = ["database", "boilerplate", "side+project", "first+paying", "stack"];
 
 const IH_FEED_URL = "https://feed.indiehackers.world/posts.json";
-const IH_USER_AGENT = "nlqdb-icp-bot/1.0 (+https://nlqdb.com; contact: hello@nlqdb.com)";
 
 function ihIdFromUrl(url: string | undefined): string | null {
   if (!url) return null;
@@ -482,7 +480,7 @@ async function fetchIndieHackers(
       try {
         span.setAttribute("nlqdb.icp.source", "indiehackers");
         const res = await fetcher(url, {
-          headers: { "User-Agent": IH_USER_AGENT, Accept: "application/json" },
+          headers: { "User-Agent": BOT_USER_AGENT, Accept: "application/json" },
           signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
         });
         span.setAttribute("http.response.status_code", res.status);
@@ -531,6 +529,83 @@ async function fetchIndieHackers(
   return items;
 }
 
+// --- Dev.to (Forem public API) ---
+
+// `dev.to/api/articles` is the documented Forem public API; SK-ICP-008 explains the trade-offs.
+type DevtoArticle = {
+  id?: number;
+  title?: string;
+  description?: string;
+  url?: string;
+  published_timestamp?: string;
+  public_reactions_count?: number;
+  tag_list?: string[];
+};
+
+// 5 tag queries covering P1/P3/P4/P6. `top=7` is the server-side 7-day filter.
+const DEVTO_QUERIES = ["database", "sql", "postgres", "webdev", "orm"];
+
+const DEVTO_ARTICLES_URL = "https://dev.to/api/articles";
+
+async function fetchDevto(
+  fetcher: typeof fetch,
+  tracer: IcpScrapeDeps["tracer"],
+): Promise<IcpItem[]> {
+  const items: IcpItem[] = [];
+
+  for (const tag of DEVTO_QUERIES) {
+    const url = `${DEVTO_ARTICLES_URL}?tag=${tag}&per_page=15&top=7`;
+
+    const doFetch = async (span: Span) => {
+      try {
+        span.setAttribute("nlqdb.icp.source", "devto");
+        const res = await fetcher(url, {
+          headers: { "User-Agent": BOT_USER_AGENT, Accept: "application/json" },
+          signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+        });
+        span.setAttribute("http.response.status_code", res.status);
+        if (!res.ok) {
+          span.setAttribute("nlqdb.icp.items", 0);
+          console.warn(JSON.stringify({ msg: "icp_devto_fetch_error", tag, status: res.status }));
+          return;
+        }
+        const json = (await res.json()) as DevtoArticle[];
+        const hits = Array.isArray(json) ? json : [];
+        span.setAttribute("nlqdb.icp.items", hits.length);
+        for (const hit of hits) {
+          if (typeof hit.id !== "number") continue;
+          const ms = hit.published_timestamp ? Date.parse(hit.published_timestamp) : NaN;
+          if (!Number.isFinite(ms)) continue;
+          items.push({
+            id: `devto-${hit.id}`,
+            source: "devto",
+            title: hit.title ?? "",
+            url: hit.url ?? "",
+            text: hit.description?.slice(0, 500) || undefined,
+            score: hit.public_reactions_count,
+            ts: Math.floor(ms / 1000),
+          });
+        }
+      } catch (err) {
+        span.recordException(err as Error);
+        console.error(
+          JSON.stringify({
+            msg: "icp_devto_fetch_exception",
+            tag,
+            message: err instanceof Error ? err.message : String(err),
+          }),
+        );
+      } finally {
+        span.end();
+      }
+    };
+
+    await runSpan(tracer, "nlqdb.icp.fetch.devto", doFetch);
+  }
+
+  return items;
+}
+
 // --- LogSnag notification ---
 
 async function notifyLogSnag(
@@ -550,7 +625,7 @@ async function notifyLogSnag(
         project,
         channel: "icp-mining",
         event: "Weekly Scrape",
-        description: `${result.newItems} new pain signals (HN: ${result.sources["hn"] ?? 0}, Reddit: ${result.sources["reddit"] ?? 0}, GH: ${result.sources["github"] ?? 0}, SO: ${result.sources["stackoverflow"] ?? 0}, IH: ${result.sources["indiehackers"] ?? 0})`,
+        description: `${result.newItems} new pain signals (HN: ${result.sources["hn"] ?? 0}, Reddit: ${result.sources["reddit"] ?? 0}, GH: ${result.sources["github"] ?? 0}, SO: ${result.sources["stackoverflow"] ?? 0}, IH: ${result.sources["indiehackers"] ?? 0}, DEV: ${result.sources["devto"] ?? 0})`,
       }),
       signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
     });
@@ -586,7 +661,7 @@ export async function runIcpScrape(deps: IcpScrapeDeps): Promise<IcpScrapeResult
   const dateStr = yyyymmdd(now);
 
   // Fetch all sources; per-source errors are already caught inside each helper.
-  const [hnItems, redditItems, ghItems, seItems, ihItems] = await Promise.all([
+  const [hnItems, redditItems, ghItems, seItems, ihItems, devtoItems] = await Promise.all([
     fetchHn(fetcher, sevenDaysAgoUnix, tracer).catch((err) => {
       console.error(
         JSON.stringify({
@@ -634,9 +709,18 @@ export async function runIcpScrape(deps: IcpScrapeDeps): Promise<IcpScrapeResult
       );
       return [] as IcpItem[];
     }),
+    fetchDevto(fetcher, tracer).catch((err) => {
+      console.error(
+        JSON.stringify({
+          msg: "icp_devto_source_failed",
+          message: err instanceof Error ? err.message : String(err),
+        }),
+      );
+      return [] as IcpItem[];
+    }),
   ]);
 
-  const allItems = [...hnItems, ...redditItems, ...ghItems, ...seItems, ...ihItems];
+  const allItems = [...hnItems, ...redditItems, ...ghItems, ...seItems, ...ihItems, ...devtoItems];
 
   // Batch dedup check in parallel.
   const seenKeys = allItems.map((item) => `icp:seen:${item.source}:${item.id}`);
