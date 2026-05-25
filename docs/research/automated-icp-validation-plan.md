@@ -342,7 +342,7 @@ hang out").
 database`, `agent memory`, `MCP server`, `Postgres setup`, `Retool
 alternative`, `Metabase too slow`, `vector DB`, `pgvector`.
 
-**GH issue queries:** `is:issue "text to sql"`, `is:issue "natural language" database`, `is:issue "ai agent" memory store`, `is:issue "query builder" too verbose`, `is:issue prisma migration overhead` — filter `created:>2025-11-01` to keep signal current.
+**GH issue queries:** `is:issue "text to sql"`, `is:issue "natural language" database`, `is:issue "ai agent" memory store`, `is:issue "query builder" too verbose`, `is:issue prisma migration overhead` — each appended with a rolling `created:>${last-7-day-iso-date}` filter to keep signal current.
 
 ### 2.2 Scrape stack — one Worker, free chain, weekly cron
 
@@ -355,8 +355,9 @@ alternative`, `Metabase too slow`, `vector DB`, `pgvector`.
 >
 > **✅ EXPANDED 2026-05-22 (GitHub Issues source — SK-ICP-004):**
 > When `GH_TOKEN` is set, `runIcpScrape` additionally queries GitHub Search
-> Issues API (5 queries, `created:>2025-11-01`, 10 results each). Items
-> stored as `source: "github"`, deduped same as HN/Reddit.
+> Issues API (5 queries, rolling `created:>${last-7-day-iso-date}` filter,
+> 10 results each). Items stored as `source: "github"`, deduped same as
+> HN/Reddit.
 >
 > **✅ EXPANDED 2026-05-23 (Stack Overflow source — SK-ICP-005):**
 > `runIcpScrape` additionally queries the Stack Exchange API 2.3
