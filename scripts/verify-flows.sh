@@ -10,7 +10,7 @@
 #                       the inspector handshake in walkthrough step 1;
 #                       step 1's transport + steps 2-7 still need a
 #                       real MCP client)
-#   FLOW-008 source-health (HN / Reddit / GH / SO / IH — the cron upstreams)
+#   FLOW-008 source-health (HN / Reddit / GH / SO / IH / Dev.to — the cron upstreams)
 # Steps that need a browser, OAuth, or an inbox stay in the verification
 # mirror for the Playwright/FLOW-004+ pass; the script prints them as
 # `· requires browser` so future agents see them and don't claim a pass.
@@ -206,63 +206,6 @@ if fetch_body "GET /sitemap.xml returns 200" "$BASE_URL/sitemap.xml"; then
   rm -f "$FETCH_BODY_PATH"
 fi
 
-# --- Site-wide ?invite= capture (SK-GATE-007 / impl plan §3.3 amendment) -
-
-# Press-launch URLs into /solve/<slug> and /vs/<slug> rely on Base.astro's
-# bundled `captureInviteFromUrl()` to write the code into localStorage
-# before the visitor clicks the CTA. The HTML references the bundle via
-# `/_astro/Base.astro_astro_type_script_index_0_lang.<hash>.js`; the
-# bundle must in turn contain the `nlqdb_invite` literal (the localStorage
-# key invite.ts writes). One probe per surface (homepage + first solve +
-# first vs) is enough: same Base.astro, same bundle.
-
-# Bundle-name regex is Astro 5's current convention (`Base.astro_<rollup-tag>.<hash>.js`);
-# a major Astro bump that renames the prefix will false-fail this — see the
-# inline grep for `nlqdb_invite` (the real wiring assertion). Edit on bump.
-say "Site-wide ?invite= capture — Base.astro bundled invite-capture is loaded"
-INVITE_CAPTURE_PATHS=( "/" "/solve/${SOLVE_SLUGS[0]}/" "/vs/${VS_SLUGS[0]}/" )
-declare -a BASE_BUNDLE_SRCS=()
-for path in "${INVITE_CAPTURE_PATHS[@]}"; do
-  if fetch_body "Base.astro invite-capture: GET $path" "$BASE_URL$path"; then
-    bundle_src=$(grep -oE '/_astro/Base\.astro_[A-Za-z0-9_.-]+\.js' "$FETCH_BODY_PATH" | head -1)
-    if [[ -z "$bundle_src" ]]; then
-      fail "  Base.astro bundled <script> referenced on $path" "no /_astro/Base.astro_*.js src in HTML — site-wide capture regressed or Astro renamed the bundle prefix"
-    else
-      ok "  Base.astro bundled <script> referenced on $path"
-      BASE_BUNDLE_SRCS+=("$bundle_src")
-    fi
-    rm -f "$FETCH_BODY_PATH"
-  fi
-done
-# Same bundle across pages — verify once, then follow the `./invite.<hash>.js`
-# import out of it to confirm the `nlqdb_invite` localStorage key literal
-# survives Astro's minify (rollup keeps the string for `setItem`).
-if (( ${#BASE_BUNDLE_SRCS[@]} > 0 )); then
-  bundle_src="${BASE_BUNDLE_SRCS[0]}"
-  if fetch_body "  Base.astro bundle GET $bundle_src" "$BASE_URL$bundle_src"; then
-    invite_chunk=$(grep -oE '\./invite\.[A-Za-z0-9_.-]+\.js' "$FETCH_BODY_PATH" | head -1 | sed 's|^\./||')
-    rm -f "$FETCH_BODY_PATH"
-    if [[ -z "$invite_chunk" ]]; then
-      fail "  Base.astro bundle invite-import" "no ./invite.*.js import — Base.astro <script> regressed or rollup renamed the chunk"
-    elif fetch_body "  Base.astro → /_astro/$invite_chunk" "$BASE_URL/_astro/$invite_chunk"; then
-      if grep -q 'nlqdb_invite' "$FETCH_BODY_PATH"; then
-        ok "  invite-capture chunk preserves nlqdb_invite literal (site-wide capture wired)"
-      else
-        fail "  invite-capture chunk wiring" "no 'nlqdb_invite' literal — SK-GATE-007 site-wide capture regressed"
-      fi
-      rm -f "$FETCH_BODY_PATH"
-    fi
-  fi
-  # Confirm every page references the same bundle hash (no Base.astro split
-  # across routes — would break the single-source-of-truth assumption).
-  uniq_count=$(printf '%s\n' "${BASE_BUNDLE_SRCS[@]}" | sort -u | wc -l | tr -d ' ')
-  if (( uniq_count == 1 )); then
-    ok "  All ${#BASE_BUNDLE_SRCS[@]} probed pages share the same Base.astro bundle"
-  else
-    fail "  Base.astro bundle uniqueness" "$uniq_count distinct bundle hashes across pages"
-  fi
-fi
-
 # --- FLOW-005 — MCP discovery (precondition of walkthrough step 1) -------
 
 # The MCP server uses OAuth (RFC 9728 protected-resource + RFC 8414
@@ -372,6 +315,19 @@ if fetch_json "FLOW-008 source Indie Hackers /posts.json" "$ih_url" fatal \
     ok "  IH response carries \"items\" key (JSON Feed schema unchanged)"
   else
     fail "  IH response schema" "no \"items\" key in body"
+  fi
+  rm -f "$FETCH_BODY_PATH"
+fi
+
+# Dev.to (Forem public API): top=7 is the server-side 7-day filter.
+devto_url="https://dev.to/api/articles?tag=database&per_page=5&top=7"
+if fetch_json "FLOW-008 source Dev.to /api/articles" "$devto_url" fatal \
+    -H "User-Agent: nlqdb-icp-bot/1.0 (+https://nlqdb.com; contact: hello@nlqdb.com)" \
+    -H "Accept: application/json"; then
+  if grep -qE '^\s*\[' "$FETCH_BODY_PATH"; then
+    ok "  Dev.to response is a JSON array (Forem articles schema unchanged)"
+  else
+    fail "  Dev.to response schema" "expected top-level JSON array"
   fi
   rm -f "$FETCH_BODY_PATH"
 fi

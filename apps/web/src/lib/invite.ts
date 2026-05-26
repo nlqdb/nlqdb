@@ -6,6 +6,8 @@
 
 const STORAGE_KEY = "nlqdb_invite";
 const URL_PARAM = "invite";
+// Allows base64url chars only; 256 chars is a generous upper bound that prevents localStorage pollution.
+const INVITE_CODE_PATTERN = /^[A-Za-z0-9_-]{1,256}$/;
 
 export function captureInviteFromUrl(): void {
   if (typeof window === "undefined") return;
@@ -13,7 +15,7 @@ export function captureInviteFromUrl(): void {
   try {
     const params = new URLSearchParams(window.location.search);
     const code = params.get(URL_PARAM);
-    if (!code) return;
+    if (!code || !INVITE_CODE_PATTERN.test(code)) return;
     window.localStorage.setItem(STORAGE_KEY, code);
     const clean = new URL(window.location.href);
     clean.searchParams.delete(URL_PARAM);

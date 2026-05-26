@@ -9,6 +9,8 @@ when-to-load:
     - cli/internal/api/client.go
     - cli/internal/cmd/*.go
     - apps/web/src/lib/api.ts
+    - apps/web/src/lib/invite.ts
+    - apps/web/src/layouts/Base.astro
     - apps/web/src/components/CreateForm.tsx
   topics: [gate, pre-alpha, waitlist, invite-code, eval-baseline, allowlist]
 ---

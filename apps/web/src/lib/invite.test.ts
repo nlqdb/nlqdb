@@ -100,6 +100,15 @@ describe("captureInviteFromUrl", () => {
     expect(() => captureInviteFromUrl()).not.toThrow();
   });
 
+  test("rejects oversized or malformed invite codes — prevents localStorage pollution", () => {
+    const { storage } = setupWindow(`https://nlqdb.com/?invite=${"x".repeat(300)}`);
+    captureInviteFromUrl();
+    expect(storage.getItem("nlqdb_invite")).toBeNull();
+    const { storage: s2 } = setupWindow("https://nlqdb.com/?invite=bad+code!");
+    captureInviteFromUrl();
+    expect(s2.getItem("nlqdb_invite")).toBeNull();
+  });
+
   test("Safari private-browsing — swallows localStorage.setItem QuotaExceededError so Base.astro can't trip boot-fallback", () => {
     setupWindow("https://nlqdb.com/?invite=ABCDEFGH");
     const w = (globalThis as unknown as { window: { localStorage: Storage } }).window;

@@ -40,7 +40,7 @@ const jsonLd = {
     <meta property="og:description" content={description} />
     <meta property="og:url" content={canonicalURL.toString()} />
     <meta name="twitter:card" content="summary_large_image" />
-    {/* Strips query/path from cross-origin Referer so `?invite=<code>` can't leak in the sub-100ms strip window. */}
+    {/* Prevents invite code leaking via Referer on cross-origin clicks before history.replaceState runs. */}
     <meta name="referrer" content="strict-origin-when-cross-origin" />
 
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />

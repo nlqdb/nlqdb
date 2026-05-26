@@ -21,7 +21,7 @@
 > below, open a PR. A failed flow IS the next agent's #1 — not a
 > ping to anyone.
 
-> **Status (2026-05-24):** **1 / 8 flows fully passed (FLOW-004) — now under continuous regression watch; site-wide `?invite=` capture extends the gate-bypass to `/solve/<slug>` and `/vs/<slug>` press-launch URLs pre-deploy (SK-GATE-007 Consequence updated; `verify-flows.sh` carries the agent-runnable probe).**
+> **Status (2026-05-24):** **1 / 8 flows fully passed (FLOW-004) — now under continuous regression watch.**
 > The 2026-05-24 founder directive named engine quality (BIRD 0.318 /
 > Spider `null` per
 > [`apps/api/src/gate/eval-baseline.ts`](../../apps/api/src/gate/eval-baseline.ts) /
@@ -72,14 +72,14 @@
 
 | Flow | Persona | Verification status | Last verified | Mirror impl % |
 |---|---|---|---|---|
-| FLOW-001 | P1 solo builder | failed 2026-05-24 step 5 (gate 403 on `/v1/ask`; steps 1–4 ok across 3 prompts via `stranger-test.sh`) | 2026-05-24 | 7/8 (88%) |
-| FLOW-002 | P3 analyst | failed 2026-05-24 step 9 (gate 403 on submit; steps 1–8 ok across 3 slugs via `stranger-test.sh`, includes event-spy on `solve.try_query_clicked`); site-wide invite-capture chunk green on local dist (pre-deploy) | 2026-05-24 | 6/7 (86%) |
-| FLOW-003 | P3 / P4 | failed 2026-05-24 step 8 (gate 403 on submit; steps 1–7 + 9 ok across 3 slugs via `stranger-test.sh`); site-wide invite-capture chunk green on local dist (pre-deploy) | 2026-05-24 | 6/6 (100%) |
-| FLOW-004 | P1 solo builder | **passed 2026-05-24** (4 walks: 18s/15s/18s/21s wall, 13s/10s/11s/11s email; daily cron under SK-STRG-003 from 06:00 UTC) | 2026-05-24 | 7/7 (100%) |
+| FLOW-001 | P1 solo builder | failed 2026-05-24 step 5 (gate 403 on `/v1/ask`; steps 1–4 ok across 3 prompts via `stranger-test.sh`) | 2026-05-24 | 6/7 (86%) |
+| FLOW-002 | P3 analyst | failed 2026-05-24 step 9 (gate 403 on submit; steps 1–8 ok across 3 slugs via `stranger-test.sh`, includes event-spy on `solve.try_query_clicked`) | 2026-05-24 | 5/6 (83%) |
+| FLOW-003 | P3 / P4 | failed 2026-05-24 step 8 (gate 403 on submit; steps 1–7 + 9 ok across 3 slugs via `stranger-test.sh`) | 2026-05-24 | 5/5 (100%) |
+| FLOW-004 | P1 solo builder | **passed 2026-05-24** (3 walks: 18s/15s/18s wall, 13s/10s/11s email; daily cron under SK-STRG-003 from 06:00 UTC) | 2026-05-24 | 7/7 (100%) |
 | FLOW-005 | P2 agent builder | partial — OAuth discovery precondition passes via `verify-flows.sh`; walkthrough steps 1-7 need an authenticated MCP client | 2026-05-23 | 5/6 (83%) |
 | FLOW-006 | P4 backend engineer | not yet attempted | — | 5/6 (83%) |
 | FLOW-007 | P1 / P3 | not yet attempted | — | 5/6 (83%) |
-| FLOW-008 | cron / system | partial — curl probe of 5 sources passes (HN / GH / IH 200; Reddit / SO sandbox-egress advisory); cron-side KV writes + LogSnag publish need the deployed Worker; site-wide invite-capture chunk probe green on local dist | 2026-05-24 | 9/9 (100%) |
+| FLOW-008 | cron / system | partial — curl probe of 6 sources passes (HN / GH / IH / Dev.to 200; Reddit / SO sandbox-egress advisory); cron-side KV writes + LogSnag publish need the deployed Worker | 2026-05-25 | 9/9 (100%) |
 
 **Verification states:**
 - `not yet attempted` — no agent has tried this flow.
@@ -262,7 +262,6 @@ requires credentials, that itself is the failure.
 | 2026-05-23 | composer-4 | partial steps 1–2 | — | `scripts/verify-flows.sh` re-run with the new egress-policy-aware `fetch_json` and FLOW-005 discovery block: hero placeholder still matches; FLOW-005 OAuth discovery surface now also passes (see FLOW-005 outcome log). Steps 3–9 unchanged. |
 | 2026-05-24 | claude-code | failed step 5 | 150 | First `tools/stranger-test/` (`SK-STRG-001`) Playwright walk against `https://nlqdb.com` — 3 prompts (`a meal planner for couples`, `side project to track my reading`, `a tiny CRM for my coaching practice`). Steps 1-4 ok on every run (hero placeholder matches, goal typed, Create-the-DB clicked). Step 5 fails on every run: `POST https://app.nlqdb.com/v1/ask` returns `403 feature_gated` (anon principal hits `gatePreAlpha`; SK-ANON-001 wants ephemeral Postgres but GLOBAL-027 / SK-GATE-004 blocks `/v1/ask` for any unbypassed principal). ttfvMs is time-to-403, not time-to-value — TTFV-as-spec is unmeasurable until §1.4 anon-bypass lands. Steps 6-8 skipped (blocked by step 5). 0 console errors beyond the expected `Failed to load resource: 403` for `/v1/ask`. Artifact: `tools/stranger-test/results/walk-<utc>.json`. |
 | 2026-05-24 | claude-code | unchanged — gate-403 reinterpreted | — | No new walk; the 2026-05-24 founder directive reinterprets this step-5 failure as *correct* gate behaviour (BIRD 0.318 / Spider null per `eval-baseline.ts`; GLOBAL-027 unambiguously requires the 403 until thresholds clear). Future runs against this URL without an invite code will keep failing identically — that's the gate working as specified, not a regression. The actionable verification is **FLOW-004** (invite-valve end-to-end: signup → Resend inbox → `?invite=` → 200 on `/v1/ask`), which has remained unattempted since SK-GATE-007 shipped 2026-05-21. Until either BIRD/Spider clear OR an agent walks FLOW-004 to a 200, this row stays the canonical FLOW-001 outcome. |
-| 2026-05-24 | claude-code | pre-deploy build (site-wide invite-capture) | — | Static-surface artifact only; no new live walk. `apps/web/src/layouts/Base.astro` now imports + calls `captureInviteFromUrl()` site-wide (SK-GATE-007); `verify-flows.sh` gained a new probe that fetches the Base.astro bundle, follows the `./invite.<hash>.js` import, and asserts the `nlqdb_invite` localStorage key literal is preserved. Against `https://nlqdb.com` the probe returns 3 expected failures (the deployed bundle pre-dates this PR; turns green after `deploy-web.yml`); against the local `apps/web/dist` served on `python3 -m http.server 9999` the probe returns 12/12 green. `bun test apps/web/src/lib/invite.test.ts` → 7/7 pass (no-op, captures homepage, captures `/solve/<slug>`, captures `/vs/<slug>`, idempotent, preserves other params, SSR-safe). Live walk re-pass against this surface requires the deploy to land AND a real invite code; tracked under the `tools/stranger-test/` `--invite-code` open question. |
 
 ---
 
@@ -294,17 +293,7 @@ None.
 
 1. Open `https://nlqdb.com/solve/cheap-internal-dashboard` (one of
    the five shipped slugs per [`SK-SOLVE-001`](../features/solve-pages/decisions/SK-SOLVE-001-search-intent-h1.md);
-   rotate across runs through the full set). For the
-   invite-bearing variant (Show HN / dev.to / IH long-form press
-   launches per [impl plan §3.3 amendment](./automated-icp-validation-plan.md#33-show-hn--product-hunt--single-shot-gate-aware)),
-   append `?invite=<code>` — `Base.astro` runs `captureInviteFromUrl()`
-   site-wide (SK-GATE-007), so `localStorage["nlqdb_invite"]` is set
-   on landing and `?invite=` is stripped from the URL bar before the
-   CTA click; subsequent `/v1/ask` rides the invite header. The agent-
-   runnable proxy for this contract is the
-   `Site-wide ?invite= capture` block in [`scripts/verify-flows.sh`](../../scripts/verify-flows.sh)
-   — it greps the bundled chunk for the `nlqdb_invite` localStorage
-   key without needing a real code.
+   rotate across runs through the full set).
 2. Assert: `<h1>` matches `SolveEntry.searchTitle` for that slug.
    The data file is [`apps/web/src/data/solve.ts`](../../apps/web/src/data/solve.ts);
    read it for the expected string.
@@ -349,7 +338,6 @@ None.
 | 2026-05-23 | composer-2 | partial steps 1, 3, 4 | all 5 slugs | `scripts/verify-flows.sh` re-walk against `https://nlqdb.com`: every slug (`cheap-internal-dashboard`, `give-ai-agent-persistent-memory`, `skip-postgres-setup-side-project`, `natural-language-sql-without-training-data`, `ship-leaderboard-no-sql`) returns `307 → https://nlqdb.com/solve/<slug>/` and the final `200` body carries `"@type": "FAQPage"`, `"@type": "HowTo"`, and a "What nlqdb doesn't do here" section. Trailing-slash redirect is new evidence — see Triage. Steps 5–9 still need a browser; the prior step 8 failure stands. |
 | 2026-05-23 | composer-4 | partial steps 1, 3, 4 | all 5 slugs | Same re-walk after the FLOW-005 + egress-policy script additions landed: every slug still 307 → trailing-slash → 200 with FAQPage + HowTo JSON-LD and the honest-limits section. Steps 5–9 still need a browser; step 8 failure stands. |
 | 2026-05-24 | claude-code | failed step 9 | cheap-internal-dashboard, give-ai-agent-persistent-memory, skip-postgres-setup-side-project | `tools/stranger-test/` Playwright walk against `https://nlqdb.com`. Steps 1-8 pass on every walked slug — h1, FAQPage + HowTo JSON-LD, honest-limits section (≥2 `<li>`), Try-this-query CTA, `localStorage["nlqdb_draft"]` equals `SolveEntry.demoGoal`, navigation to `/app/new`, AND `solve.try_query_clicked` event observed via sessionStorage-persisted spy. Step 9 fails on every slug: `POST .../v1/ask` returns `403 feature_gated`. The prior 2026-05-23 "step 8 event-spy missing" finding is **corrected** by this run — the prior in-window spy got reset by the navigation; sessionStorage survives it and the event IS fired. Binding gap is now step 9 (gate) only. ttfvMs ~250 ms is time-to-gate-403, not time-to-table. Artifact: `tools/stranger-test/results/walk-<utc>.json`. |
-| 2026-05-24 | claude-code | pre-deploy build (site-wide invite-capture) | all 5 slugs (local dist) | Static-surface artifact only. `apps/web/src/layouts/Base.astro` now imports + calls `captureInviteFromUrl()` site-wide (SK-GATE-007); step 1 walkthrough updated to describe the new invite-bearing variant (`?invite=<code>` on the landing URL). Probe against `https://nlqdb.com` returns 3 expected pre-deploy failures (deployed bundle pre-dates this PR — turns green after `deploy-web.yml`); probe against the local `apps/web/dist` served on `python3 -m http.server 9999` returns 12/12 green for every walked surface. `bun test apps/web/src/lib/invite.test.ts` 7/7 pass pins the localStorage capture + URL-strip contract. Steps 5-9 (live invite-bearing walk that reaches HTTP 200 on `/v1/ask`) tracked under the `tools/stranger-test/` `--invite-code` open question. |
 
 ### Triage
 
@@ -385,12 +373,7 @@ None.
 ### Walkthrough steps
 
 1. Open `https://nlqdb.com/vs/supabase` (rotate through `vanna`,
-   `mem0`, `outerbase` across runs). For the invite-bearing variant
-   (press launches per [impl plan §3.3 amendment](./automated-icp-validation-plan.md#33-show-hn--product-hunt--single-shot-gate-aware)),
-   append `?invite=<code>` — `Base.astro` captures it site-wide
-   (SK-GATE-007); the `Site-wide ?invite= capture` block in
-   [`scripts/verify-flows.sh`](../../scripts/verify-flows.sh) is the
-   credential-free proxy for the capture contract.
+   `mem0` across runs).
 2. Assert: `<h1>` is `nlqdb vs <Name>` for that slug per the
    `[slug].astro` template.
 3. Assert: a "When to choose <Name>" section exists with ≥3 `<li>`
@@ -427,7 +410,6 @@ None.
 | 2026-05-23 | composer-4 | partial steps 1, 2, 4, 9 | all 3 slugs | Same re-walk after FLOW-005 + egress-policy script additions: every vs slug 307 → 200 with the template `<h1>` and FAQPage JSON-LD; `/llms.txt` still enumerates all 3 vs + 5 solve slugs; `/sitemap.xml` still 12 `<loc>`. Steps 3, 5–8 still need a browser. |
 | 2026-05-24 | claude-code | failed step 8 | supabase, vanna, mem0 | `tools/stranger-test/` Playwright walk against `https://nlqdb.com`. Steps 1-7 + 9 pass on every walked slug — `<h1>` matches `nlqdb vs <Name>` (Supabase / Vanna AI / Mem0), "When to choose <Name>" section renders ≥3 `<li>` (e.g. 8 for Supabase), FAQPage JSON-LD present, Try-this-query CTA clickable, `localStorage["nlqdb_draft"]` equals `Competitor.demo.goal`, `/app/new` reached, `/llms.txt` enumerates this slug. Step 8 fails on every slug: `POST .../v1/ask` returns `403 feature_gated` — same gate cause as FLOW-001/002. No new content regression; the gate-403 is the only thing standing between FLOW-003 and a fully-passed walk. Artifact: `tools/stranger-test/results/walk-<utc>.json`. |
 | 2026-05-24 | claude-code | pre-deploy build (outerbase) | outerbase | New `/vs/outerbase` page added in this PR; not yet on the deployed `https://nlqdb.com`. Build-time verification only: `bun run build` from `apps/web/` emitted `dist/vs/outerbase/index.html` with `<h1 class="vs__title">nlqdb vs Outerbase</h1>` matching the FLOW-003 step 2 regex, FAQPage JSON-LD block present (1 occurrence), 4 `whenChooseThem` bullets render under "When to choose Outerbase", `dist/sitemap.xml` lists 13 `<loc>` entries (4 vs + 5 solve + 4 root), `dist/llms.txt` enumerates `vs/outerbase`. Live `bash scripts/verify-flows.sh` against `https://nlqdb.com` returns exactly 4 expected pre-deploy failures (`/vs/outerbase/` 404, sitemap floor 12 < 13, `llms.txt` missing slug) — the only 4 failures of the entire walk. Steps 5-8 (browser walk against the deployed page) come on the next agent run after `deploy-web.yml` ships `apps/web/dist` to `https://nlqdb.com`. The gate-403 binding gap stands for the live walk per the 2026-05-24 stranger-test row. |
-| 2026-05-24 | claude-code | pre-deploy build (site-wide invite-capture) | supabase, vanna, mem0, outerbase (local dist) | Static-surface artifact only. `Base.astro` now imports + calls `captureInviteFromUrl()` site-wide (SK-GATE-007); step 1 walkthrough updated for the invite-bearing variant. Probe against `https://nlqdb.com` returns 3 expected pre-deploy failures (deployed bundle pre-dates this PR — turns green after `deploy-web.yml`); probe against local `apps/web/dist` served on `python3 -m http.server 9999` returns 12/12 green for every walked surface. Live invite-bearing walk that reaches HTTP 200 on `/v1/ask` tracked under the `tools/stranger-test/` `--invite-code` open question. |
 
 ---
 
@@ -525,7 +507,6 @@ query — all without any human in the loop.
 | 2026-05-24 | claude-code | passed | 10 | Re-walk after independent self-review iteration. Walker now does a **control probe** (`/v1/ask` without invite — must be `feature_gated`) before the invite probe; only `passed` when both succeed, `inconclusive` if the gate is open globally. Control returned `403 feature_gated`, invite returned `HTTP 200`, total wall 15s. JSON now also carries `control_status` + `control_error_status` + `control_blocked` so future runs are self-validating across gate-state changes. Artifact: `tools/stranger-test/results/flow-004-2026-05-24T11-32-44Z.json`. |
 | 2026-05-24 | claude-code | passed | 11 | Pre-PR verification re-walk to align this mirror before shipping [`SK-STRG-003`](../features/stranger-test/FEATURE.md) (daily acquisition-health cron). Same control + invite shape: control returned `403 feature_gated`, invite returned `HTTP 200`, total wall 18s. Confirms SK-GATE-007 honour is still intact and the daily cron will start from a green baseline. Artifact: `tools/stranger-test/results/flow-004-2026-05-24T13-19-12Z.json`. Continuous watch shipped this PR via `.github/workflows/acquisition-health.yml` (`0 6 * * *` UTC, `continue-on-error: true` on every step, 90-day artifact retention) — exits 0 unconditionally so a future regression lands in the artifact JSON instead of in the founder's inbox. |
 | 2026-05-24 | claude-code | passed | 11 | Post-review walk after the PR #276 sub-agent (opus 4.7) review closed 4 MINOR findings: (M1) `redact()` now applied to the throwaway mail.tm address in `flow-004-walk.sh` stdout so the GH Actions log never exposes the full local-part; (M2) Playwright cache key now hashes `bun.lock` AND `tools/stranger-test/package.json` with `restore-keys` for incremental priming; (M3) workflow summary table now hoists `.state` from each walker's JSON so the agent re-fetching the run can react without downloading the artifact; (M4) verify-flows step now sets `pipefail` so `tee`'s exit can't mask the script's real exit code in `$GITHUB_OUTPUT`. Control returned `403 feature_gated`, invite returned `HTTP 200`, total wall 17s. Artifact: `tools/stranger-test/results/flow-004-2026-05-24T13-41-05Z.json`. |
-| 2026-05-24 | claude-code | passed | 11 | Pre-implementation verification re-walk before shipping the site-wide invite-capture move (SK-GATE-007 extension to `Base.astro`). Same control + invite shape: control returned `403 feature_gated`, invite returned `HTTP 200`, total wall 21s. Re-confirms the invite-valve invariant the new site-wide capture extends to `/solve/<slug>?invite=` and `/vs/<slug>?invite=` press-launch URLs. Artifact: `tools/stranger-test/results/flow-004-2026-05-24T16-14-15Z.json`. |
 
 ---
 
@@ -741,11 +722,11 @@ losing my rows."
 ### Source signal
 
 The signal this flow proves is "the Mon 06:00 UTC cron can still reach
-the 5 upstreams it depends on". A silent upstream schema change or
+the 6 upstreams it depends on". A silent upstream schema change or
 endpoint move only surfaces today after the LogSnag count drops to
 zero; this flow makes the failure agent-observable before the cron
 fires. Per [`SK-ICP-007`](../features/icp-mining/FEATURE.md) the probe
-is best-effort: the 5 sources are the same ones listed in
+is best-effort: the 6 sources are the same ones listed in
 [`automated-icp-validation-plan.md §2.1`](./automated-icp-validation-plan.md).
 
 ### Required tools
@@ -779,10 +760,15 @@ is best-effort: the 5 sources are the same ones listed in
    (sandbox-egress proxy block — the script downgrades to an advisory
    note since the deployed Worker is the canonical probe). Any other
    non-200 ⇒ real upstream regression.
+6. Assert: Dev.to `/api/articles?tag=database&per_page=5&top=7` returns
+   200 AND the body is a top-level JSON array (per the Forem
+   [`/api/v1`](https://developers.forem.com/api/v1) contract). Failure ⇒
+   Forem schema/endpoint regression — the cron's `fetchDevto` will start
+   returning empty.
 
 ### Pass criteria
 
-- HN + IH probes return 200 with the contract keys.
+- HN + IH + Dev.to probes return 200 with the contract keys.
 - GH probe is either 200-with-key OR skipped-no-token.
 - Reddit + SO probes are either 200-with-quota-key OR advisory
   egress-block notes. Any other 4xx/5xx fails the walk.
@@ -798,13 +784,17 @@ is best-effort: the 5 sources are the same ones listed in
 - IH 502 from the unofficial mirror → `blocked upstream`; the mirror
   is single-instance and occasionally rate-limits. The cron's per-source
   catch isolates IH from killing the rest.
+- Dev.to non-200 → `blocked upstream`; Forem runs on Heroku with a
+  Cloudflare-fronted CDN, so a hard outage shows as 5xx with no
+  block-reason header. The cron's per-tag catch isolates Dev.to from
+  killing the rest.
 
 ### Outcome log
 
 | Date | Agent | State | Notes |
 |---|---|---|---|
 | 2026-05-23 | composer-4 | partial steps 1-5 (upstream availability) | `scripts/verify-flows.sh` against `https://nlqdb.com` + `https://mcp.nlqdb.com`: HN 200 (`hits` present), GH 200 (`total_count=1644` live-probed today), IH 200 (`items` present). Reddit + Stack Exchange both 403 with `x-block-reason: hostname_blocked` from the sandbox-egress proxy — degraded to advisory per the script's helper. Cron-side checks (KV writes, evidence-file PUT, LogSnag publish) require the deployed Worker and remain a separate post-cron audit. |
-| 2026-05-24 | claude-code | partial steps 1-5 (upstream availability) + site-wide invite-capture probe pre-deploy | Same `scripts/verify-flows.sh` against `https://nlqdb.com` re-run before implementing the site-wide `?invite=` capture move: HN 200 (`hits` present), GH 200, IH 200 (Reddit + SO sandbox-egress advisory as expected). New `Site-wide ?invite= capture` block returns 3 expected failures against the live deploy (deployed Base.astro pre-dates this PR — the probe correctly identifies pre-deploy state and turns green after `deploy-web.yml`). Same script against local `apps/web/dist` served on `python3 -m http.server 9999` returns 12/12 green for the new block; HN/IH/GH still green; Reddit/SO advisory (local-host has the same egress block for those upstreams). Cron-side KV/LogSnag still require the deployed Worker. |
+| 2026-05-25 | claude-code | partial steps 1-6 (upstream availability) | `scripts/verify-flows.sh` against `https://nlqdb.com` + `https://mcp.nlqdb.com` after SK-ICP-008 added the Dev.to probe: HN 200 (`hits` present), GH 200 (`total_count` present), IH 200 (`items` present), **Dev.to 200 (top-level JSON array)** — live probe of `https://dev.to/api/articles?tag=database&per_page=5&top=7` returned 5 fresh articles inside the `top=7` 7-day window. Reddit + SO 403 `x-block-reason: hostname_blocked` (unchanged sandbox-egress advisory). Cron-side checks (KV writes, evidence-file PUT, LogSnag publish) remain a separate post-cron audit; the new `fetchDevto` matches the IH error-isolation pattern exactly so its regression surface is the response-schema contract that the probe pins. Pre-walk also: `flow-004-walk.sh` passed in 19s (control 403, invite 200) — full SK-GATE-007 invariant proof, gate is doing its job and the invite-valve is intact. |
 
 ### Triage
 
