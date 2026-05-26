@@ -4,6 +4,8 @@ import { type Span, trace } from "@opentelemetry/api";
 
 // Per-fetch wall-clock cap; protects the cron from a stalled upstream.
 const FETCH_TIMEOUT_MS = 10_000;
+// Shared User-Agent for all ICP scrape requests (Reddit, Indie Hackers, Dev.to).
+const BOT_USER_AGENT = "nlqdb-icp-bot/1.0 (+https://nlqdb.com; contact: hello@nlqdb.com)";
 
 export type IcpScrapeDeps = {
   kv: KVNamespace;
@@ -265,8 +267,6 @@ const REDDIT_QUERIES: Array<{ subreddit: string; query: string }> = [
   { subreddit: "clickhouse", query: "query" },
 ];
 
-const REDDIT_UA = "nlqdb-icp-bot/1.0 (+https://nlqdb.com; contact: hello@nlqdb.com)";
-
 async function fetchReddit(
   fetcher: typeof fetch,
   tracer: IcpScrapeDeps["tracer"],
@@ -282,7 +282,7 @@ async function fetchReddit(
     const doFetch = async (span: Span) => {
       try {
         const res = await fetcher(url, {
-          headers: { "User-Agent": REDDIT_UA },
+          headers: { "User-Agent": BOT_USER_AGENT },
           signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
         });
         span.setAttribute("http.response.status_code", res.status);
@@ -460,7 +460,6 @@ type IhFeed = {
 const INDIEHACKERS_QUERIES = ["database", "boilerplate", "side+project", "first+paying", "stack"];
 
 const IH_FEED_URL = "https://feed.indiehackers.world/posts.json";
-const IH_USER_AGENT = "nlqdb-icp-bot/1.0 (+https://nlqdb.com; contact: hello@nlqdb.com)";
 
 function ihIdFromUrl(url: string | undefined): string | null {
   if (!url) return null;
@@ -482,7 +481,7 @@ async function fetchIndieHackers(
       try {
         span.setAttribute("nlqdb.icp.source", "indiehackers");
         const res = await fetcher(url, {
-          headers: { "User-Agent": IH_USER_AGENT, Accept: "application/json" },
+          headers: { "User-Agent": BOT_USER_AGENT, Accept: "application/json" },
           signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
         });
         span.setAttribute("http.response.status_code", res.status);
@@ -562,7 +561,7 @@ async function fetchDevto(
       try {
         span.setAttribute("nlqdb.icp.source", "devto");
         const res = await fetcher(url, {
-          headers: { "User-Agent": IH_USER_AGENT, Accept: "application/json" },
+          headers: { "User-Agent": BOT_USER_AGENT, Accept: "application/json" },
           signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
         });
         span.setAttribute("http.response.status_code", res.status);
