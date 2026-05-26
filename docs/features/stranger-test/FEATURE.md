@@ -6,6 +6,7 @@ when-to-load:
     - tools/stranger-test/**
     - scripts/stranger-test.sh
     - scripts/flow-004-walk.sh
+    - scripts/stranger-test-invited.sh
   topics: [acquisition, verification, stranger-test, playwright, anti-self-deception, invite-valve]
 ---
 
@@ -13,7 +14,7 @@ when-to-load:
 
 **One-liner:** `bash scripts/stranger-test.sh` launches a headless Chromium, walks FLOW-001 (homepage hero), FLOW-002 (`/solve/<slug>`), and FLOW-003 (`/vs/<slug>`) against the deployed surface with seeded prompts rotated across P1/P2/P3/P6, and emits one JSON outcome — pass / fail / blocked per run, TTFV p50/p95, plus per-step detail — to `tools/stranger-test/results/walk-<utc>.json`. `bash scripts/flow-004-walk.sh` is the curl-only sibling that walks SK-GATE-007 end-to-end via a throwaway mail.tm inbox.
 **Status:** implemented (SK-STRG-001 — Playwright primitive; SK-STRG-002 — FLOW-004 mail.tm walker; SK-STRG-003 — daily GH Actions cron `acquisition-health.yml` walks all three scripts at 06:00 UTC and uploads the JSON results as a 90-day artifact, exits 0 unconditionally so no founder-facing email channel is created; R2 archive + diff-against-prior-run remain open).
-**Owners (code):** `tools/stranger-test/src/`, `scripts/stranger-test.sh`, `scripts/flow-004-walk.sh`.
+**Owners (code):** `tools/stranger-test/src/`, `scripts/stranger-test.sh`, `scripts/flow-004-walk.sh`, `scripts/stranger-test-invited.sh`.
 **Cross-refs:** [`docs/research/automated-icp-validation-plan.md §1.1`](../../research/automated-icp-validation-plan.md) · [`docs/research/automated-icp-validation-plan-verification.md`](../../research/automated-icp-validation-plan-verification.md) · [`GLOBAL-025`](../../decisions/GLOBAL-025-north-star.md) · [`GLOBAL-028`](../../decisions/GLOBAL-028-acquisition-progress-tracker.md) · [`GLOBAL-030`](../../decisions/GLOBAL-030-evidence-grade-acquisition-tracker-edits.md).
 
 ## Touchpoints — read this feature before editing
