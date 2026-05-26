@@ -548,7 +548,6 @@ type DevtoArticle = {
 const DEVTO_QUERIES = ["database", "sql", "postgres", "webdev", "orm"];
 
 const DEVTO_ARTICLES_URL = "https://dev.to/api/articles";
-const DEVTO_USER_AGENT = "nlqdb-icp-bot/1.0 (+https://nlqdb.com; contact: hello@nlqdb.com)";
 
 async function fetchDevto(
   fetcher: typeof fetch,
@@ -563,7 +562,7 @@ async function fetchDevto(
       try {
         span.setAttribute("nlqdb.icp.source", "devto");
         const res = await fetcher(url, {
-          headers: { "User-Agent": DEVTO_USER_AGENT, Accept: "application/json" },
+          headers: { "User-Agent": IH_USER_AGENT, Accept: "application/json" },
           signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
         });
         span.setAttribute("http.response.status_code", res.status);
