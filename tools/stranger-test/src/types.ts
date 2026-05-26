@@ -42,6 +42,10 @@ export type WalkResult = {
   startedAt: string;
   finishedAt: string;
   durationMs: number;
+  // True when the walker prepended `?invite=<c>` to the navigation URL
+  // (SK-STRG-004). The §1.2 dashboard reads this to split TTFV by mode —
+  // the gate-403 path and the invite-200 path are different distributions.
+  inviteBearing: boolean;
   flows: FlowResult[];
   summary: {
     totalRuns: number;

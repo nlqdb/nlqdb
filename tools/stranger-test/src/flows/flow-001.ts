@@ -3,7 +3,13 @@
 
 import type { Browser } from "@playwright/test";
 
-import { openSession, step, withDeadline } from "../browser.ts";
+import {
+  assertInviteCaptured,
+  openSession,
+  step,
+  withDeadline,
+  withInviteParam,
+} from "../browser.ts";
 import type { FlowRun, StepResult } from "../types.ts";
 
 const HERO_PLACEHOLDER_RE = /orders|tracker|building/i;
@@ -16,9 +22,10 @@ export async function walkFlow001(
   baseUrl: string,
   userAgent: string,
   browser: Browser,
+  inviteCode: string | null = null,
 ): Promise<FlowRun> {
   return withDeadline(`flow-001:${prompt}`, WALK_DEADLINE_MS, () =>
-    doWalk(prompt, baseUrl, userAgent, browser),
+    doWalk(prompt, baseUrl, userAgent, browser, inviteCode),
   ).catch((e) => ({
     prompt,
     state: "failed" as const,
@@ -38,6 +45,7 @@ async function doWalk(
   baseUrl: string,
   userAgent: string,
   browser: Browser,
+  inviteCode: string | null,
 ): Promise<FlowRun> {
   const session = await openSession({ baseUrl, userAgent, browser });
   const { page, consoleErrors, httpErrors, close } = session;
@@ -47,7 +55,8 @@ async function doWalk(
   let failedStep: number | null = null;
 
   try {
-    const navResp = await page.goto(`${baseUrl}/`, {
+    const navPath = withInviteParam("/", inviteCode);
+    const navResp = await page.goto(`${baseUrl}${navPath}`, {
       waitUntil: "domcontentloaded",
       timeout: 30_000,
     });
@@ -57,6 +66,12 @@ async function doWalk(
       failedStep = 1;
     } else {
       steps.push(step(1, "GET / returns 200", "ok"));
+    }
+
+    if (inviteCode !== null && failedStep === null) {
+      const inviteStep = await assertInviteCaptured(page, 9, inviteCode);
+      steps.push(inviteStep);
+      if (inviteStep.status === "fail") failedStep = 9;
     }
 
     if (failedStep === null) {
@@ -100,16 +115,21 @@ async function doWalk(
       await hero.fill(prompt);
       steps.push(step(3, "typed persona-seeded goal into hero", "ok"));
 
-      const askWaiter = page.waitForResponse(
-        (r) => r.request().method() === "POST" && r.url().includes("/v1/ask"),
-        { timeout: ASK_TIMEOUT_MS },
-      );
+      // `.catch` attached at construction time — under Bun runtime an early
+      // page-close rejection between waitForResponse() and `await` can land
+      // as an unhandled rejection (the cron+CI Node runtime tolerates the
+      // later `.catch`; Bun is stricter).
+      const askWaiter = page
+        .waitForResponse((r) => r.request().method() === "POST" && r.url().includes("/v1/ask"), {
+          timeout: ASK_TIMEOUT_MS,
+        })
+        .catch(() => null);
       const submit = page.getByRole("button", { name: /create/i }).first();
       const t0 = Date.now();
-      await submit.click();
+      await submit.click().catch(() => {});
       steps.push(step(4, "submit (clicked Create the DB)", "ok"));
 
-      const askResp = await askWaiter.catch(() => null);
+      const askResp = await askWaiter;
       if (!askResp) {
         steps.push(
           step(5, "/v1/ask responded within 60 s", "fail", "no /v1/ask response observed"),
@@ -130,12 +150,20 @@ async function doWalk(
         } else {
           const body = await askResp.text().catch(() => "");
           const gateMatch = body.match(/"status":\s*"feature_gated"/);
+          // With an invite, feature_gated IS the SK-GATE-007 regression signature
+          // (header dropped, KV miss, middleware bug). Without an invite, it is
+          // the expected gate behaviour until BIRD/Spider clear.
+          const gateNote = gateMatch
+            ? inviteCode === null
+              ? "feature_gated"
+              : "feature_gated WITH invite — SK-GATE-007 regression"
+            : body.slice(0, 120);
           steps.push(
             step(
               5,
               "/v1/ask 200 + result table within 60 s",
               "fail",
-              `status=${status} ttfvMs=${ttfvMs} gate=${gateMatch ? "feature_gated" : body.slice(0, 120)}`,
+              `status=${status} ttfvMs=${ttfvMs} gate=${gateNote}`,
             ),
           );
           failedStep = 5;
@@ -219,16 +247,17 @@ async function doWalk(
       // outlast placeholder-text drift better than a `last()` placeholder match.
       const followInput = page.getByRole("textbox").last();
       const t1 = Date.now();
-      const ask2Waiter = page.waitForResponse(
-        (r) => r.request().method() === "POST" && r.url().includes("/v1/ask"),
-        { timeout: ASK_TIMEOUT_MS },
-      );
+      const ask2Waiter = page
+        .waitForResponse((r) => r.request().method() === "POST" && r.url().includes("/v1/ask"), {
+          timeout: ASK_TIMEOUT_MS,
+        })
+        .catch(() => null);
       const filled = await followInput
         .fill(SECOND_PROMPT)
         .then(() => true)
         .catch(() => false);
       if (filled) await followInput.press("Enter").catch(() => {});
-      const ask2 = await ask2Waiter.catch(() => null);
+      const ask2 = await ask2Waiter;
       if (!ask2) {
         steps.push(
           step(

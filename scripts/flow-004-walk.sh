@@ -34,6 +34,13 @@
 #   • sends ONE Resend email from `hello@nlqdb.com` (3k/mo free tier)
 #
 # Output JSON: tools/stranger-test/results/flow-004-<utc>.json (gitignored).
+#
+# Composition seam (SK-STRG-004): set `FLOW_004_INVITE_OUT=<path>` to also
+# write the raw invite code to that path (mode 600) after step 3. Used by
+# `scripts/stranger-test-invited.sh` to mint an invite and hand it to the
+# Playwright walker. Caller MUST read-and-delete immediately — codes are
+# single-use, 30-day TTL, and bypass the SK-GATE-007 closure.
+#
 # Exit codes:
 #   0  passed (control blocked + invite 200)
 #   1  failed at a definite step (state in JSON; gate did NOT honour invite)
@@ -258,6 +265,16 @@ fi
 # round-trip (which has its own timer on T_WAITLIST should we ever care).
 EMAIL_LATENCY_S=$(( EMAIL_ARRIVED_AT - T_POLL_START ))
 ok "invite email arrived in ${EMAIL_LATENCY_S}s, code $(redact "$INVITE_CODE")"
+
+# SK-STRG-004 composition seam — hand the raw code to a sibling walker
+# (e.g. stranger-test-invited.sh) via a mode-600 sidecar file. Gated on
+# an explicit env var so the default behaviour stays "code never leaves
+# this script."
+if [[ -n "${FLOW_004_INVITE_OUT:-}" ]]; then
+  mkdir -p "$(dirname "$FLOW_004_INVITE_OUT")"
+  ( umask 077 && printf '%s' "$INVITE_CODE" > "$FLOW_004_INVITE_OUT" )
+  note "invite code written to $FLOW_004_INVITE_OUT (mode 600) for composition"
+fi
 
 # --- step 4: control probe — /v1/ask WITHOUT invite (must be blocked) ----
 
