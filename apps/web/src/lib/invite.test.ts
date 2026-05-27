@@ -111,4 +111,11 @@ describe("captureInviteFromUrl", () => {
     expect(() => captureInviteFromUrl()).not.toThrow();
     expect(getStoredInviteCode()).toBeNull();
   });
+
+  test("rejects oversized codes (> 128 chars) — no localStorage write", () => {
+    const oversized = "A".repeat(129);
+    const { storage } = setupWindow(`https://nlqdb.com/?invite=${oversized}`);
+    captureInviteFromUrl();
+    expect(storage.getItem("nlqdb_invite")).toBeNull();
+  });
 });

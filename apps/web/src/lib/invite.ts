@@ -6,14 +6,15 @@
 
 const STORAGE_KEY = "nlqdb_invite";
 const URL_PARAM = "invite";
+// Server generates 22-char base64url; cap at 128 to reject oversized payloads before localStorage/header.
+const MAX_CODE_LEN = 128;
 
 export function captureInviteFromUrl(): void {
   if (typeof window === "undefined") return;
-  // Safari Private Browsing throws QuotaExceededError on localStorage.setItem; swallow so Base.astro's site-wide call can't trip the boot-fallback overlay.
   try {
     const params = new URLSearchParams(window.location.search);
     const code = params.get(URL_PARAM);
-    if (!code) return;
+    if (!code || code.length > MAX_CODE_LEN) return;
     window.localStorage.setItem(STORAGE_KEY, code);
     const clean = new URL(window.location.href);
     clean.searchParams.delete(URL_PARAM);
