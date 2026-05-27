@@ -2,9 +2,9 @@
 
 import { type KeyRecord, NlqdbApiError } from "@nlqdb/sdk";
 import { useEffect, useMemo, useRef, useState } from "react";
-import ErrorBoundary from "../ErrorBoundary";
 import { getChatClient } from "../../lib/chat-client";
 import { useFocusTrap, useRestoreFocusOnUnmount } from "../../lib/dialog";
+import ErrorBoundary from "../ErrorBoundary";
 import { groupKeys, summarizeKey } from "./group";
 
 interface KeysPanelProps {
