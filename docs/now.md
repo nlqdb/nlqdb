@@ -51,15 +51,16 @@ Managed-Tinybird path from `SK-MULTIENG-002` unaffected.
 
 ## 5. BYO OTel collectors
 
-[`byo-otel/FEATURE.md`](./features/byo-otel/FEATURE.md) — planned
-stub. **Direction unresolved (P4 / D1 / D2 — don't write code until
-this is answered):** is this (a) user-configurable OTLP exporter
-destination so nlqdb's emitted telemetry goes to *your* Grafana /
-Honeycomb / Datadog / self-hosted collector — small, additive, fits
-[`GLOBAL-019`](./decisions/GLOBAL-019-apache2-open-source-core.md); or
-(b) nlqdb ingests user telemetry — the
-[`otel-grafana-pivot`](./research/otel-grafana-pivot.md) strategic
-pivot. Two different products. Resolve before code lands.
+[`byo-otel/FEATURE.md`](./features/byo-otel/FEATURE.md)
+(`SK-BYOTEL-001`). Direction pinned to **egress** —
+per-tenant configurable OTLP exporter destination so nlqdb's
+emitted telemetry (per
+[`observability/FEATURE.md`](./features/observability/FEATURE.md))
+ships to your Grafana / Honeycomb / Datadog / self-hosted collector.
+Fits [`GLOBAL-019`](./decisions/GLOBAL-019-apache2-open-source-core.md).
+Ingress (the [`otel-grafana-pivot`](./research/otel-grafana-pivot.md))
+is a separate strategic pivot, not this feature. Next: slice 1
+resolves config unit + dual-emit + sampling + KEK envelope.
 
 ---
 
