@@ -62,7 +62,9 @@ body {
 }
 
 /* Author styles always beat UA styles regardless of specificity, so UA `[hidden]{display:none}` is unreliable without this. */
-[hidden] { display: none !important; }
+[hidden] {
+  display: none !important;
+}
 
 a {
   color: var(--fg);

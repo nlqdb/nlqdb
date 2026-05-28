@@ -70,7 +70,7 @@ test("Base.astro inline copy of EXTENSION_PREFIXES stays in sync", () => {
 // Primary guard: `[hidden]{display:none!important}` in global.css beats any author display rule.
 test("global.css includes the [hidden] display-none reset", () => {
   const css = readFileSync(new URL("../styles/global.css", import.meta.url), "utf-8");
-  expect(css).toContain("[hidden] { display: none !important; }");
+  expect(css).toMatch(/\[hidden\]\s*\{\s*display:\s*none\s*!important/s);
 });
 
 // Defense-in-depth: boot-fallback selectors also gated so no display rule leaks when hidden.
