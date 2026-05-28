@@ -13,6 +13,8 @@ nlqdb answers. The full pitch and architecture are in
 [`docs/architecture.md`](docs/architecture.md). Design-partner research is in
 [`docs/runbook.md §10`](docs/runbook.md).
 
+**Active focus → [`docs/now.md`](docs/now.md)** — current priorities; read first.
+
 ### North-star — what every PR moves
 
 Four pillars per
@@ -23,9 +25,8 @@ KPI in the PR body. The bet: **great on free LLMs ⇒ invincible on
 frontier LLMs** — scaffolding compounds with the model. LLM strategy per
 [`GLOBAL-026`](docs/decisions/GLOBAL-026-llm-strategy-byollm-hosted-premium.md):
 free chain forever · BYOLLM every tier (0% markup) · hosted premium
-on paid (flat sub + included request allowance + soft-meter overage,
-no carryover, opt-in fallback-to-free).
-[`quality-eval`](docs/features/quality-eval/FEATURE.md) → Phase 2;
+on paid (Shape B; §6-gated).
+[`quality-eval`](docs/features/quality-eval/FEATURE.md):
 free-vs-frontier delta = headline KPI.
 
 ## 2. Five behavioral principles (non-negotiable)

@@ -890,7 +890,7 @@ Ranked by how much of Phase 1 capacity they deserve.
 | Agent giving itself memory via MCP | P2 | **P0** | MCP server is the first item in the Phase 2 distribution slice (see `docs/phase-plan.md §4`); Phase 1 must still flow for an agent-shaped first call. |
 | Non-engineer answering a one-off question from a CSV | P3 | **P1** | Requires CSV upload. Ship it. |
 | Solo dev using chat as an admin UI over their own nlqdb | P1 | **P1** | Falls out of P0 naturally. |
-| Startup team using chat as admin UI over *their own* PG | P4 | **Phase 4+ (signal-gated)** | Needs BYO-connection per `docs/architecture.md §3.6.7`; moves forward only if P4 inbound trips the `docs/phase-plan.md §6` trigger. |
+| Startup team using chat as admin UI over *their own* PG | P4 | **Active (`SK-DB-011`)** | BYO-connection per `docs/architecture.md §3.6.7`; promoted from Phase 4+; not yet shipped. |
 | Scheduled/recurring queries ("email me this weekly") | P3 | **Phase 2** | Useful but not foundational. |
 | Destructive ops with NL-diff preview | P1, P4 | **Phase 1.5 (`GLOBAL-023` SK-TRUST-001)** | Trust-building. Ships with the trust-UX slice. |
 | Sharing a query result by link | P3, P1 | **P1** | Cheap to build, high word-of-mouth. |
@@ -915,7 +915,7 @@ Priya is a growth PM at a 30-person SaaS. Thursday afternoon a conference vendor
 
 #### 10.2.4 P4 — Dmitri (Backend Engineer at a Small Startup)
 
-Dmitri is on-call at a 20-person startup. Support escalates: a pricing bug double-charged ~180 customers between 11pm and midnight. Instead of writing a one-off refund script, he opens the team workspace pointed at their existing Postgres, types the refund in plain English, and reviews the generated diff (183 rows, $2,104 total) before approving. The audit log captures who ran it, and the Retool page he would've had to build doesn't need to exist. *(Requires "bring your own Postgres" mode — Phase 4+ signal-gated per `docs/phase-plan.md §6` / §7. Aspirational for this persona until P4 inbound trips the trigger.)*
+Dmitri is on-call at a 20-person startup. Support escalates: a pricing bug double-charged ~180 customers between 11pm and midnight. Instead of writing a one-off refund script, he opens the team workspace pointed at their existing Postgres, types the refund in plain English, and reviews the generated diff (183 rows, $2,104 total) before approving. The audit log captures who ran it, and the Retool page he would've had to build doesn't need to exist. *(Requires "bring your own Postgres" mode — now in active development per `SK-DB-011`; not yet shipped.)*
 
 Representative query example: `"migrate users from plan 'starter' to 'basic'"` (with diff preview, per [`docs/features/onboarding/FEATURE.md` SK-ONBOARD-004](../docs/features/onboarding/FEATURE.md)).
 

@@ -281,23 +281,19 @@ trips, lighting the lane is a flag flip, not a refactor.
 
 ## 7. Phase 4+ — Beyond v1
 
-- **BYO Postgres** (`POST /v1/db/connect`) — shape locked in
+- **BYO Postgres** (`POST /v1/db/connect`) — **promoted out of Phase 4+
+  to active development** per [`SK-DB-011`](./features/db-adapter/decisions/SK-DB-011-byo-postgres-promoted.md);
+  the signal-gate is superseded. Shape unchanged —
   [`architecture.md` §3.6.7](./architecture.md#367-byo-postgres-phase-4-decided-shape).
-  Moves forward only if P4-persona inbound (signal-gated, not
-  phase-gated).
-- **BYO ClickHouse** (`POST /v1/db/connect`) — same `registerByoDb`
-  provisioner path as BYO Postgres ([`architecture.md §3.6.7`](./architecture.md#367-byo-postgres-phase-4-decided-shape)),
-  with two differences: (a) ClickHouse's native HTTP interface means
-  Workers proxies directly — no TCP socket or Hyperdrive required;
-  (b) schema introspection reads `system.columns` instead of
-  `pg_catalog`. Signal-gated on P6-persona inbound (see
-  [`personas.md`](./research/personas.md#p6--the-analytics--observability-engineer));
-  not phase-gated. The Phase 3 managed-CH path via Tinybird is
-  unaffected — that is a separate internal-engine decision. Not the
-  same as the managed OTel ingestion pivot in
-  [`otel-grafana-pivot.md`](./research/otel-grafana-pivot.md), which
-  explores nlqdb owning the storage layer; BYO ClickHouse is an NL
-  query skin over the user's existing cluster.
+- **BYO ClickHouse** (`POST /v1/db/connect`) — **promoted to active**
+  per [`SK-MULTIENG-005`](./features/multi-engine-adapter/decisions/SK-MULTIENG-005-byo-clickhouse-promoted.md);
+  same `registerByoDb` path as BYO Postgres
+  ([`architecture.md §3.6.7`](./architecture.md#367-byo-postgres-phase-4-decided-shape)).
+  Engine-specifics (native HTTP, `system.columns` introspection) and
+  the superseded P6 signal-gate live in that SK. The Phase 3
+  managed-CH path via Tinybird and the managed-OTel ingestion pivot
+  ([`otel-grafana-pivot.md`](./research/otel-grafana-pivot.md)) are
+  separate and unaffected.
 - Enterprise (SSO, audit log, on-prem).
 - More engines (TimescaleDB, Typesense, pgvector at scale).
 - `<nlq-stream>` real-time element.

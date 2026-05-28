@@ -36,8 +36,8 @@ surfaces (HTTP / SDK / CLI / MCP / elements) in one PR per
 `POST /v1/db/connect`, `provisionDb` vs `registerByoDb` split,
 AES-GCM blob with Workers-held KEK, validator from `sql-allowlist`
 applies unchanged. All surfaces in one PR per `GLOBAL-003`.
-[`phase-plan.md §7`](./phase-plan.md) still lists this under Phase 4+;
-bring that into sync in the same PR that lands the work.
+[`phase-plan.md §7`](./phase-plan.md) marks it promoted; shape per
+§3.6.7 unchanged.
 
 ## 4. BYO ClickHouse
 
