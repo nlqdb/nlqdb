@@ -10,7 +10,7 @@ when-to-load:
 # Feature: Multi Engine Adapter
 
 **One-liner:** Adapters beyond Postgres — Phase 3 expansion to ClickHouse via Tinybird (next), with Redis / D1 evaluated and deferred.
-**Status:** decisions firm (`SK-MULTIENG-001..004`); ClickHouse/Tinybird adapter implementation pending.
+**Status:** decisions firm (`SK-MULTIENG-001..005`); ClickHouse/Tinybird adapter implementation pending. `SK-MULTIENG-005` promotes BYO ClickHouse from Phase 4+ to active (workstream not yet started).
 **Owners (code):** `packages/db/**`
 **Cross-refs:** `db-adapter/FEATURE.md` (Phase 0 PG adapter; `SK-DB-009/010` evolve the contract for multi-engine) · `engine-migration/FEATURE.md` (auto-migration is decoupled — see `SK-MULTIENG-002` *Consequence*) · `docs/phase-plan.md` (Phase plan, §11 engine verdict)
 
@@ -83,6 +83,21 @@ when-to-load:
   - Universal validator — engines have incommensurable grammars; one parser cannot cover them.
   - Lift OTel up out of the adapter — caller doesn't have the engine-native operation; cardinality risk.
   - Block all anon traffic on first non-PG engine — overkill; the global cap already deflects abuse.
+
+### SK-MULTIENG-005 — BYO ClickHouse promoted from Phase 4+ to active development; same `registerByoDb` path as BYO Postgres
+
+**Body:** [`decisions/SK-MULTIENG-005-byo-clickhouse-promoted.md`](./decisions/SK-MULTIENG-005-byo-clickhouse-promoted.md).
+BYO ClickHouse ships active, not Phase 4+; the `phase-plan.md §7`
+P6-persona-inbound gate is superseded. Same `registerByoDb`
+provisioner path as
+[`SK-DB-011`](../db-adapter/decisions/SK-DB-011-byo-postgres-promoted.md);
+two engine-specific differences pin: native HTTP (no
+Hyperdrive / TCP socket — Workers proxy directly) and `system.columns`
+introspection instead of `pg_catalog`. Validator allowlist
+(`SK-MULTIENG-004`) is the load-bearing DDL guard since
+ClickHouse `readonly = 1` does not block DDL. Managed Tinybird path
+from `SK-MULTIENG-002` unaffected — `engine: "clickhouse"` now picks
+between managed-Tinybird and BYO at connect time.
 
 ## GLOBALs governing this feature
 
