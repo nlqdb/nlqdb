@@ -11,16 +11,18 @@ const MAX_CODE_LEN = 128;
 
 export function captureInviteFromUrl(): void {
   if (typeof window === "undefined") return;
+  const params = new URLSearchParams(window.location.search);
+  const code = params.get(URL_PARAM);
+  if (!code || code.length > MAX_CODE_LEN) return;
+  const clean = new URL(window.location.href);
+  clean.searchParams.delete(URL_PARAM);
   try {
-    const params = new URLSearchParams(window.location.search);
-    const code = params.get(URL_PARAM);
-    if (!code || code.length > MAX_CODE_LEN) return;
+    // localStorage.setItem throws QuotaExceededError in Safari private mode;
+    // replaceState throws SecurityError in sandboxed iframes.
     window.localStorage.setItem(STORAGE_KEY, code);
-    const clean = new URL(window.location.href);
-    clean.searchParams.delete(URL_PARAM);
     window.history.replaceState(null, "", clean.toString());
   } catch {
-    /* private-browsing / sandboxed-iframe / locked-down CSP — silent */
+    /* private-browsing / sandboxed-iframe — silent */
   }
 }
 
