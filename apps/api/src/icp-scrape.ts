@@ -164,8 +164,6 @@ const GH_ISSUE_QUERIES = [
 ];
 
 const GH_SEARCH_URL = "https://api.github.com/search/issues";
-// GitHub rejects requests with no User-Agent (403) per their REST API contract.
-const GH_USER_AGENT = "nlqdb-icp-bot";
 
 async function fetchGitHubIssues(
   fetcher: typeof fetch,
@@ -186,7 +184,7 @@ async function fetchGitHubIssues(
           headers: {
             Accept: "application/vnd.github+json",
             Authorization: `Bearer ${ghToken}`,
-            "User-Agent": GH_USER_AGENT,
+            "User-Agent": BOT_USER_AGENT,
             "X-GitHub-Api-Version": "2022-11-28",
           },
           signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
