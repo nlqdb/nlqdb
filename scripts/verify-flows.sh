@@ -10,7 +10,7 @@
 #                       the inspector handshake in walkthrough step 1;
 #                       step 1's transport + steps 2-7 still need a
 #                       real MCP client)
-#   FLOW-008 source-health (HN / Reddit / GH / SO / IH — the cron upstreams)
+#   FLOW-008 source-health (HN / Reddit / GH / SO / IH / Dev.to — the cron upstreams)
 # Steps that need a browser, OAuth, or an inbox stay in the verification
 # mirror for the Playwright/FLOW-004+ pass; the script prints them as
 # `· requires browser` so future agents see them and don't claim a pass.
@@ -372,6 +372,19 @@ if fetch_json "FLOW-008 source Indie Hackers /posts.json" "$ih_url" fatal \
     ok "  IH response carries \"items\" key (JSON Feed schema unchanged)"
   else
     fail "  IH response schema" "no \"items\" key in body"
+  fi
+  rm -f "$FETCH_BODY_PATH"
+fi
+
+# Dev.to (Forem public API): top=7 is the server-side 7-day filter.
+devto_url="https://dev.to/api/articles?tag=database&per_page=5&top=7"
+if fetch_json "FLOW-008 source Dev.to /api/articles" "$devto_url" fatal \
+    -H "User-Agent: nlqdb-icp-bot/1.0 (+https://nlqdb.com; contact: hello@nlqdb.com)" \
+    -H "Accept: application/json"; then
+  if grep -qE '^\s*\[' "$FETCH_BODY_PATH"; then
+    ok "  Dev.to response is a JSON array (Forem articles schema unchanged)"
+  else
+    fail "  Dev.to response schema" "expected top-level JSON array"
   fi
   rm -f "$FETCH_BODY_PATH"
 fi

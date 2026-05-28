@@ -61,6 +61,11 @@ body {
   text-rendering: optimizeLegibility;
 }
 
+/* Author styles always beat UA styles regardless of specificity, so UA `[hidden]{display:none}` is unreliable without this. */
+[hidden] {
+  display: none !important;
+}
+
 a {
   color: var(--fg);
   text-decoration: underline;
@@ -121,14 +126,7 @@ h3 {
   align-items: center;
 }
 
-/* Authed slot — revealed by the topnav probe (lib/session.ts).
- * Hidden by default so the anon UX is the no-flash default
- * during the round-trip to /api/auth/get-session. */
-/* `:not([hidden])` is load-bearing: the bare `.topnav__authed`
- * selector wins over the UA `[hidden] { display: none }` rule
- * (equal specificity, author CSS wins), which would leak the
- * "Open chat / Sign out" affordances to anonymous visitors before
- * the session probe resolves. */
+/* `:not([hidden])` keeps flex styles off the hidden slot until the auth probe resolves (defense-in-depth with the `[hidden]` reset above). */
 .topnav__authed:not([hidden]) {
   display: inline-flex;
   align-items: center;
@@ -903,7 +901,7 @@ h3 {
   }
 }
 
-/* SK-WEB-001 — every `#boot-fallback` selector stays gated on `:not([hidden])` because an ID rule (0,1,0,0) outranks UA `[hidden] { display: none }` (0,0,1,0) and would otherwise paint the panel below the footer on every page. */
+/* SK-WEB-001 — `:not([hidden])` guards are defense-in-depth; the `[hidden]` reset above is the primary fix for the ID-rule specificity issue. */
 .err-boundary,
 #boot-fallback:not([hidden]) {
   display: grid;

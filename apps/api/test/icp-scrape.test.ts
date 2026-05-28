@@ -785,6 +785,153 @@ describe("runIcpScrape", () => {
     });
   });
 
+  describe("Dev.to source", () => {
+    function devtoResponse(id: number) {
+      return JSON.stringify([
+        {
+          id,
+          title: `Dev.to Article ${id}`,
+          description: "I keep wiring up Postgres for every side project and it's killing me.",
+          url: `https://dev.to/tester/devto-article-${id}-abc`,
+          published_timestamp: new Date(Date.now() - 3600 * 1000).toISOString(),
+          public_reactions_count: 42,
+          tag_list: ["database", "sql"],
+        },
+      ]);
+    }
+
+    it("fetches Dev.to articles and stores them with source=devto and id=devto-<id>", async () => {
+      const kv = stubKv();
+      const stubFetch: typeof fetch = vi.fn(async (url: string | URL | Request) => {
+        const urlStr = typeof url === "string" ? url : url instanceof URL ? url.href : url.url;
+        if (urlStr.includes("dev.to/api/articles")) {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => JSON.parse(devtoResponse(3718736)),
+          } as unknown as Response;
+        }
+        if (urlStr.includes("hn.algolia.com")) {
+          return { ok: true, status: 200, json: async () => ({ hits: [] }) } as unknown as Response;
+        }
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ data: { children: [] } }),
+        } as unknown as Response;
+      }) as unknown as typeof fetch;
+
+      const result = await runIcpScrape({ kv, fetch: stubFetch, tracer: stubTracer });
+      expect(result.sources["devto"]).toBeGreaterThanOrEqual(1);
+
+      const putCalls = (kv.put as ReturnType<typeof vi.fn>).mock.calls as Array<
+        [string, ...unknown[]]
+      >;
+      expect(putCalls.some(([k]) => k === "icp:seen:devto:devto-3718736")).toBe(true);
+      expect(
+        putCalls.some(([k]) => k.startsWith("icp:item:") && k.endsWith(":devto:devto-3718736")),
+      ).toBe(true);
+    });
+
+    it("requests Dev.to with the bot User-Agent and the top=7 server-side 7-day filter", async () => {
+      const kv = stubKv();
+      const seen: Array<{ url: string; headers: Record<string, string> }> = [];
+      const stubFetch: typeof fetch = vi.fn(
+        async (url: string | URL | Request, init?: { headers?: Record<string, string> }) => {
+          const urlStr = typeof url === "string" ? url : url instanceof URL ? url.href : url.url;
+          if (urlStr.includes("dev.to/api/articles")) {
+            seen.push({ url: urlStr, headers: init?.headers ?? {} });
+            return { ok: true, status: 200, json: async () => [] } as unknown as Response;
+          }
+          if (urlStr.includes("hn.algolia.com")) {
+            return {
+              ok: true,
+              status: 200,
+              json: async () => ({ hits: [] }),
+            } as unknown as Response;
+          }
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({ data: { children: [] } }),
+          } as unknown as Response;
+        },
+      ) as unknown as typeof fetch;
+
+      await runIcpScrape({ kv, fetch: stubFetch, tracer: stubTracer });
+
+      expect(seen.length).toBeGreaterThan(0);
+      for (const { url, headers } of seen) {
+        expect(url).toMatch(/[?&]tag=/);
+        expect(url).toContain("top=7");
+        expect(headers["User-Agent"]).toMatch(/nlqdb-icp-bot/);
+      }
+    });
+
+    it("drops Dev.to articles whose published_timestamp is unparseable", async () => {
+      const kv = stubKv();
+      const stubFetch: typeof fetch = vi.fn(async (url: string | URL | Request) => {
+        const urlStr = typeof url === "string" ? url : url instanceof URL ? url.href : url.url;
+        if (urlStr.includes("dev.to/api/articles")) {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => [
+              {
+                id: 999,
+                title: "Bad date",
+                url: "https://dev.to/x/y-999",
+                published_timestamp: "not-a-date",
+                public_reactions_count: 0,
+                tag_list: [],
+              },
+            ],
+          } as unknown as Response;
+        }
+        if (urlStr.includes("hn.algolia.com")) {
+          return { ok: true, status: 200, json: async () => ({ hits: [] }) } as unknown as Response;
+        }
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ data: { children: [] } }),
+        } as unknown as Response;
+      }) as unknown as typeof fetch;
+
+      const result = await runIcpScrape({ kv, fetch: stubFetch, tracer: stubTracer });
+      expect(result.sources["devto"]).toBeUndefined();
+    });
+
+    it("handles Dev.to 503 gracefully — other sources still complete", async () => {
+      const kv = stubKv();
+      const stubFetch: typeof fetch = vi.fn(async (url: string | URL | Request) => {
+        const urlStr = typeof url === "string" ? url : url instanceof URL ? url.href : url.url;
+        if (urlStr.includes("dev.to/api/articles")) {
+          return { ok: false, status: 503, json: async () => ({}) } as unknown as Response;
+        }
+        if (urlStr.includes("query=text+to+sql")) {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => JSON.parse(hnResponse("hn-devto-fail")),
+          } as unknown as Response;
+        }
+        if (urlStr.includes("hn.algolia.com")) {
+          return { ok: true, status: 200, json: async () => ({ hits: [] }) } as unknown as Response;
+        }
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ data: { children: [] } }),
+        } as unknown as Response;
+      }) as unknown as typeof fetch;
+
+      const result = await runIcpScrape({ kv, fetch: stubFetch, tracer: stubTracer });
+      expect(result.sources["hn"]).toBeGreaterThanOrEqual(1);
+      expect(result.sources["devto"]).toBeUndefined();
+    });
+  });
+
   it("Reddit search URLs include restrict_sr=on so results stay subreddit-scoped", async () => {
     const kv = stubKv();
     const seenUrls: string[] = [];
