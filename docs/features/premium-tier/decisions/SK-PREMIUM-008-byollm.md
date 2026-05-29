@@ -7,7 +7,7 @@ Parent feature: [`premium-tier/FEATURE.md`](../FEATURE.md). Parent GLOBAL:
   one or more provider keys (Anthropic / OpenAI / Gemini / OpenRouter). When
   selected, the router dispatches through their key at **0% markup** per
   [`GLOBAL-026`](../../../decisions/GLOBAL-026-llm-strategy-byollm-hosted-premium.md).
-  Keys live encrypted in `api_keys` with `scope = "byollm"`; KEK is a Workers
+  Keys live encrypted in a dedicated `byollm_keys` table; KEK is a Workers
   Secret. Per GLOBAL-026 precedence: per-request `x-nlq-byollm-key` header
   (signed-in only) > account-stored > hosted-premium > free. Failures
   (revoked / expired / rate-limited) **fail loud** per
@@ -19,9 +19,13 @@ Parent feature: [`premium-tier/FEATURE.md`](../FEATURE.md). Parent GLOBAL:
      (generic OpenAI-compatible endpoint deferred).
   2. **AI Gateway** — through-Gateway with `BYOLLM_<user_id>` namespace;
      eat the cold-cache hop to keep telemetry unified (`SK-LLM-004`).
-  3. **Storage** — encrypted blob in `api_keys` + KEK in Workers Secret;
+  3. **Storage** — dedicated `byollm_keys` table (migrations 0016 + 0017),
+     AES-GCM encrypted with HKDF-SHA-256(KEK); KEK in Workers Secret;
      revocation instant per
      [`GLOBAL-018`](../../../decisions/GLOBAL-018-instant-revocation.md).
+     Separate table rather than extending `api_keys`: no key-hash lookup,
+     no `db_id` scope, and an `llm_provider` discriminant avoids a
+     CHECK-constraint migration on `api_keys`.
   4. **Spend cap** — BYOLLM bypasses *our* cap (we don't bill it); emits
      `nlqdb.byollm.spend_estimate_usd_cents` so the dashboard shows
      estimated cost.
@@ -29,22 +33,26 @@ Parent feature: [`premium-tier/FEATURE.md`](../FEATURE.md). Parent GLOBAL:
      quota not ours, and feeds eval signal from heavy users back into the
      engine (`SK-QUAL-004`).
   6. **Failure modes** — 4xx fail-loud; silent fallback is the dark
-     pattern.
+     pattern. D1 infra errors on the stored-key lookup fall through to the
+     free chain with `nlqdb.ask.byollm_source = "fallthrough_d1_error"` on
+     the span — never completely silent.
   7. **Privacy + Pro** — Pro accounts storing a BYOLLM key require a
      per-key retention-off checkbox + audit log entry; otherwise refuse.
   8. **MCP** — server-side only; MCP hosts opt requests into BYOLLM via
      a `byollm: true` tool parameter, never carry the key.
-- **Consequence in code:** Migration adds `api_keys.scope = "byollm"` +
-  `api_keys.provider`. Endpoints `POST/GET/DELETE /v1/keys/byollm`
+- **Consequence in code:** Migrations 0016 + 0017 create the `byollm_keys`
+  table with a partial UNIQUE index enforcing one active key per
+  `(tenant_id, llm_provider)`. Endpoints `POST/GET/DELETE /v1/keys/byollm`
   accept `Idempotency-Key` per
   [`GLOBAL-005`](../../../decisions/GLOBAL-005-idempotency-key.md).
-  Surface parity per
-  [`GLOBAL-003`](../../../decisions/GLOBAL-003-all-surfaces-one-pr.md):
-  `/app/keys` UI section, MCP `byollm` param, SDK `client.byollm.*`,
-  CLI `nlq byollm *`, `<nlq-data byollm>` (cookie-session only —
-  never raw key in HTML). OTel:
-  `llm.dispatch_lane = "byollm"`, `llm.byollm_provider`, key value
-  redacted.
+  POST response is `{ id, provider, last4 }` — plaintext key is NOT echoed
+  back. OTel on the ask/chat span: `nlqdb.ask.byollm_provider`,
+  `nlqdb.ask.byollm_source` (`"header"` | `"stored"` | `"fallthrough_d1_error"`);
+  key value is never an attribute.
+  **Surface gap (GLOBAL-003 / SK-PREMIUM-005):** SDK `client.byollm.*`,
+  CLI `nlq byollm *`, MCP `byollm` param, `<nlq-data byollm>`, and
+  `/app/keys` UI are deferred — tracked in Open questions in
+  [`premium-tier/FEATURE.md`](../FEATURE.md).
 - **Alternatives rejected:**
   - **Paid-tier-only BYOLLM** — leaves heavy free-tier abusers no
     escape valve; rejected by GLOBAL-026.

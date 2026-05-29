@@ -1010,7 +1010,10 @@ app.post("/v1/ask", requirePrincipal, gatePreAlpha, async (c) => {
             span.end();
             return c.json({ error: { status: "llm_failed" as const } }, 502);
           }
-          // Other D1 / infra errors: fall through to free chain.
+          // Other D1 / infra errors: fall through to free chain with an
+          // observable signal so dashboards can detect and alert.
+          span.setAttribute("nlqdb.ask.byollm_source", "fallthrough_d1_error");
+          span.recordException(err as Error);
         }
       }
     }
@@ -1894,7 +1897,7 @@ app.post("/v1/keys/byollm", requireSession, async (c) => {
         span.setAttribute("nlqdb.byollm.store.outcome", "invalid_body");
         return c.json({ error: "invalid_body" }, 400);
       }
-      const { provider, key } = body.value;
+      const { provider, key } = body.body;
       if (typeof provider !== "string" || !isBYOLLMProvider(provider)) {
         span.setAttribute("nlqdb.byollm.store.outcome", "invalid_provider");
         return c.json(
@@ -1947,16 +1950,38 @@ app.get("/v1/keys/byollm", requireSession, async (c) => {
 });
 
 // `DELETE /v1/keys/byollm/:id` — hard-revoke a BYOLLM key by id.
+// Idempotent by nature (already_revoked → 200). Idempotency-Key dedup
+// per GLOBAL-005 so retried deletes return the same body byte-for-byte.
 app.delete("/v1/keys/byollm/:id", requireSession, async (c) => {
   const tracer = trace.getTracer("@nlqdb/api");
   return tracer.startActiveSpan("nlqdb.byollm.revoke", async (span) => {
     try {
       const session = c.var.session;
+      const tenantId = session.user.id;
       const keyId = c.req.param("id");
-      const outcome = await revokeBYOLLMKey(c.env.DB, c.env.KV, session.user.id, keyId);
+
+      // Idempotency-Key dedup (GLOBAL-005).
+      const idempKey = c.req.header("idempotency-key");
+      if (idempKey) {
+        const kvKey = `${BYOLLM_IDEMP_PREFIX}${tenantId}:del:${idempKey}`;
+        const cached = await c.env.KV.get(kvKey);
+        if (cached) {
+          span.setAttribute("nlqdb.byollm.revoke.outcome", "idempotent_replay");
+          return c.json(JSON.parse(cached) as object, 200);
+        }
+      }
+
+      const outcome = await revokeBYOLLMKey(c.env.DB, c.env.KV, tenantId, keyId);
       span.setAttribute("nlqdb.byollm.revoke.outcome", outcome);
       if (outcome === "not_found") return c.json({ error: "not_found" }, 404);
-      return c.json({ revoked: true, id: keyId });
+      const responseBody = { revoked: true, id: keyId };
+      if (idempKey) {
+        const kvKey = `${BYOLLM_IDEMP_PREFIX}${tenantId}:del:${idempKey}`;
+        await c.env.KV.put(kvKey, JSON.stringify(responseBody), {
+          expirationTtl: BYOLLM_IDEMP_TTL,
+        });
+      }
+      return c.json(responseBody);
     } catch (err) {
       const e = err as Error;
       span.recordException(e);
@@ -2226,7 +2251,10 @@ app.post("/v1/chat/messages", requireSession, gatePreAlpha, async (c) => {
           span.end();
           return c.json({ error: "byollm_decrypt_error" }, 502);
         }
-        // Other D1 / infra errors: fall through to free chain.
+        // Other D1 / infra errors: fall through to free chain with an
+        // observable signal so dashboards can detect and alert.
+        span.setAttribute("nlqdb.chat.byollm_source", "fallthrough_d1_error");
+        span.recordException(err as Error);
       }
     }
     const askFn = isDemo

@@ -161,6 +161,25 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 
 The 8-point BYOK decision tree that previously lived here is resolved by [`SK-PREMIUM-008`](./decisions/SK-PREMIUM-008-byollm.md) (see its `Why` field). Historical case-for / case-against context lives in that file's `## Resolution history` section.
 
+### SK-PREMIUM-008 surface gap (GLOBAL-003 / SK-PREMIUM-005)
+
+BYOLLM key management landed API-only (Phase 2 slice 1). The remaining
+surfaces required by `GLOBAL-003` are deferred and tracked here explicitly
+per `SK-PREMIUM-005` ("A PR that ships only one surface lands the others as
+TODO blocks in the same PR"):
+
+- **SDK** — `client.byollm.store(provider, key)`, `client.byollm.list()`,
+  `client.byollm.revoke(id)` — add to `packages/sdk/src/byollm.ts`.
+- **CLI** — `nlq byollm add <provider>`, `nlq byollm list`,
+  `nlq byollm remove <id>` — add to `cli/cmd/byollm.go`.
+- **MCP** — `byollm` param on tool descriptors so MCP hosts can opt
+  requests into BYOLLM without carrying the key —
+  add to `packages/mcp/src/tools/`.
+- **Elements** — `<nlq-data byollm>` (cookie-session only, never raw key
+  in HTML) — add to `packages/elements/src/attributes.ts`.
+- **Web** — `/app/keys` UI section to paste + manage provider keys —
+  add to `apps/web/src/components/keys/`.
+
 ### Other open questions
 
 - **Hard-plan classifier confidence threshold.** `SK-LLM-001` names the `hard` tier but pins no confidence number. The CTA in `SK-PREMIUM-004` fires on "hard plan" verdict, so the threshold directly drives upsell frequency. Strawman: 0.85 confidence → `hard_plan` true; tunable per env var; A/B-able once we have traffic.
