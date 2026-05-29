@@ -1,3 +1,5 @@
+export type { ByollmProviderOptions } from "./providers/byollm.ts";
+export { createByollmProvider } from "./providers/byollm.ts";
 export type { GeminiProviderOptions } from "./providers/gemini.ts";
 export { createGeminiProvider } from "./providers/gemini.ts";
 export type { GroqProviderOptions } from "./providers/groq.ts";

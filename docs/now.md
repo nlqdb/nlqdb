@@ -21,10 +21,14 @@ itself. Headline KPI: free-vs-agentic-frontier delta per
 [`llm-router/FEATURE.md`](./features/llm-router/FEATURE.md)
 (`SK-LLM-016`). Resolved by
 [`GLOBAL-026`](./decisions/GLOBAL-026-llm-strategy-byollm-hosted-premium.md);
-no payment infra required. Next: ship the dispatch slice end-to-end —
+no payment infra required. Landed: the provider factory
+([`SK-LLM-019`](./features/llm-router/decisions/SK-LLM-019-byollm-provider-factory.md))
+— `createByollmProvider` proxies the user's own key through AI Gateway's
+unified endpoint and resolves the `BYOLLM_<user_id>` namespace to a
+per-tenant `cf-aig-cache-key`. Next: the dispatch wiring —
 `api_keys.scope = "byollm"`, per-request `x-nlq-byollm-key` header,
-AI-Gateway `BYOLLM_<user_id>` namespace, fail-loud per
-[`GLOBAL-012`](./decisions/GLOBAL-012-one-sentence-errors.md). All
+lane-select middleware, fail-loud per
+[`GLOBAL-012`](./decisions/GLOBAL-012-one-sentence-errors.md), and all
 surfaces (HTTP / SDK / CLI / MCP / elements) in one PR per
 [`GLOBAL-003`](./decisions/GLOBAL-003-all-surfaces-one-pr.md).
 

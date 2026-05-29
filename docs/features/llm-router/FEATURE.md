@@ -9,13 +9,13 @@ when-to-load:
 
 # Feature: Llm Router
 
-**One-liner:** Model selection, fallback chain, prompt strategy, per-user credit accounting; three permanent dispatch lanes per [`GLOBAL-026`](../../decisions/GLOBAL-026-llm-strategy-byollm-hosted-premium.md) — free chain forever, BYOLLM every tier (0% markup), hosted-premium on paid (§6-gated Shape B meter).
-**Status:** implemented for the free chain (`SK-LLM-001..015` + `SK-LLM-018`). `SK-LLM-016` (BYOLLM) and `SK-LLM-017` (hosted-premium chain) land in Phase 2 alongside `quality-eval`; the premium-chain meter stays dark until [`phase-plan.md §6`](../../phase-plan.md) trips.
+**One-liner:** Model selection, fallback chain, prompt strategy, per-user credit accounting; three permanent dispatch lanes per [`GLOBAL-026`](../../decisions/GLOBAL-026-llm-strategy-byollm-hosted-premium.md) — free chain, BYOLLM, hosted-premium.
+**Status:** implemented for the free chain (`SK-LLM-001..015` + `SK-LLM-018`). BYOLLM (`SK-LLM-016`) is partial — provider factory (`SK-LLM-019`) ships, dispatch wiring pending. `SK-LLM-017` (hosted-premium chain) lands in Phase 2 alongside `quality-eval`; the premium-chain meter stays dark until [`phase-plan.md §6`](../../phase-plan.md) trips.
 
 **Contribution to north-star:** Engine quality — the router is the NL→SQL accuracy lever per [`GLOBAL-025`](../../decisions/GLOBAL-025-north-star.md). Free-chain scaffolding compounds when BYOLLM or hosted-premium swaps in a frontier model; `quality-eval`'s free-vs-frontier delta measures the compounding.
 
 **Owners (code):** `packages/llm/**`
-**Cross-refs:** docs/architecture.md §7 (AI model selection), §7.1 (Strict-$0) · docs/performance.md §4 Slice 4, §2.2 (cache-miss latency), §3 (span/metric catalog) · `docs/features/hosted-db-create/FEATURE.md` (SK-HDC-001/002 route through this router)
+**Cross-refs:** docs/architecture.md §7, §7.1 · docs/performance.md §4 Slice 4, §2.2, §3 · `docs/features/hosted-db-create/FEATURE.md` (SK-HDC-001/002 route through this router)
 
 ## Touchpoints — read this feature before editing
 
@@ -122,31 +122,36 @@ when-to-load:
 ### SK-LLM-014 — Hedged-request race on free-tier chains for planner-tier ops
 
 **Body:** [`decisions/SK-LLM-014-hedged-request-race.md`](./decisions/SK-LLM-014-hedged-request-race.md).
-`LLMRouterOptions.hedge` opts an op into a two-way hedged race after `afterMs` head-start; loser aborted with `HEDGE_LOST` so the breaker doesn't trip on the cancel. Free-tier chains only. Production wires `schema_infer` + `plan` at `afterMs: 800`. Empirical (trace `285b805cee6e2688768d9ffcd75a86fe`): ~5 s saved on the bad case, unchanged on the happy case. Cites Dean & Barroso "Tail at Scale" (CACM 2013) — trade ~1.05× provider RPS for the timeout-tail. Alternatives rejected: always-hedge (1.5× waste), lower per-attempt timeout (same tail), hedge on paid chains (doubles per-token bill), race-all (combinatorial waste).
+`LLMRouterOptions.hedge` opts an op into a two-way hedged race after `afterMs` head-start; loser aborted with `HEDGE_LOST` so the breaker doesn't trip on the cancel. Free-tier chains only; production wires `schema_infer` + `plan` at `afterMs: 800` (~5 s saved on the bad case, unchanged on the happy case). Rationale (Dean & Barroso "Tail at Scale", CACM 2013), empirical trace, and alternatives in the sharded body.
 
 ### SK-LLM-016 — BYOLLM dispatch lane: per-request override → account-stored → hosted-premium → free
 
 **Body:** [`decisions/SK-LLM-016-byollm-dispatch.md`](./decisions/SK-LLM-016-byollm-dispatch.md).
-Four-step dispatch precedence per `GLOBAL-026`: per-request `x-nlq-byollm-key` header → account-stored key → hosted-premium → free. Routes through AI Gateway namespace `BYOLLM_<user_id>`; failures fail loud per `GLOBAL-012`. Key-handling in [`SK-PREMIUM-008`](../premium-tier/decisions/SK-PREMIUM-008-byollm.md).
+Four-step dispatch precedence per `GLOBAL-026`: per-request `x-nlq-byollm-key` header → account-stored key → hosted-premium → free. Routes through AI Gateway; failures fail loud per `GLOBAL-012`. Key-handling in [`SK-PREMIUM-008`](../premium-tier/decisions/SK-PREMIUM-008-byollm.md). Provider half implemented in [`SK-LLM-019`](#sk-llm-019).
+
+### SK-LLM-019 — BYOLLM provider factory: AI Gateway unified endpoint + `cf-aig-cache-key` tenant namespace
+
+**Body:** [`decisions/SK-LLM-019-byollm-provider-factory.md`](./decisions/SK-LLM-019-byollm-provider-factory.md).
+`createByollmProvider` builds a `Provider` from the user's own key + model, routed through AI Gateway's OpenAI-compatible `compat/chat/completions` endpoint. Pins key pass-through (0% markup), `<upstream>/<model>` qualifier, and the tenant cache namespace — `SK-LLM-016`'s `BYOLLM_<user_id>` resolves to `cf-aig-cache-key = BYOLLM_<userId>_<sha256(request)>` (prefix isolates tenants; hash keeps caching). Provider primitive only; `GLOBAL-003` parity deferred to the dispatch-wiring PR.
 
 ### SK-LLM-017 — Hosted-premium chain: separate provider list, §6-gated meter, never available on free
 
 **Body:** [`decisions/SK-LLM-017-hosted-premium-chain.md`](./decisions/SK-LLM-017-hosted-premium-chain.md).
-Third chain alongside `free` and `paid`: **`premium`** = Sonnet 4.6 + GPT-5 + Gemini 2.5 Pro. Fires only when `principal.tier !== "free"` AND (`model === "best"` or auto-classified hard-plan) AND `PREMIUM_METER_LIVE` (§6-gated). Pre-§6 dark; trace surfaces `pending_premium_launch: true`. Shape B commercial form in [`SK-PREMIUM-009`](../premium-tier/decisions/SK-PREMIUM-009-hosted-premium-meter.md).
+Third chain alongside `free` and `paid`: **`premium`** = Sonnet 4.6 + GPT-5 + Gemini 2.5 Pro. Fires only when `principal.tier !== "free"` AND (`model === "best"` or auto-classified hard-plan) AND `PREMIUM_METER_LIVE` (§6-gated). Pre-§6 dark. Shape B commercial form in [`SK-PREMIUM-009`](../premium-tier/decisions/SK-PREMIUM-009-hosted-premium-meter.md).
 
 ### SK-LLM-015 — OpenRouter code-gen ops default to `qwen/qwen3-coder:free`
 
 **Body:** [`decisions/SK-LLM-015-openrouter-codegen-default.md`](./decisions/SK-LLM-015-openrouter-codegen-default.md).
-OpenRouter pins `plan` + `schema_infer` to `qwen/qwen3-coder:free` (480B MoE, 1M context); cheap-tier ops (`route` / `summarize` / `engine_classify`) stay on Llama `:free`. Qwen-Coder ≈96% text-to-SQL vs ≈88% Llama 3.3 70B; chain order unchanged (OpenRouter remains universal fallback per `SK-LLM-003`).
+OpenRouter pins `plan` + `schema_infer` to `qwen/qwen3-coder:free`; cheap-tier ops stay on Llama `:free`. Qwen-Coder ≈96% text-to-SQL vs ≈88% Llama 3.3 70B; chain order unchanged (OpenRouter remains universal fallback per `SK-LLM-003`).
 
 ### SK-LLM-018 — Schema-fidelity planner prompt + diagnostic retry framing
 
 **Body:** [`decisions/SK-LLM-018-schema-fidelity-prompt.md`](./decisions/SK-LLM-018-schema-fidelity-prompt.md).
-`PLAN_SYSTEM` gains schema-literal + verbatim-casing + dialect-strict + `Evidence:`-authoritative directives; `buildPlanUser`'s retry block reframes "different shape" as **diagnose-first, surgical-fix** (same Goal, schema-only identifiers, change only what the error names). Targets the BIRD free-chain gap (0.318 → 0.65 per [`SK-QUAL-005`](../quality-eval/FEATURE.md#sk-qual-005) / [`GLOBAL-025`](../../decisions/GLOBAL-025-north-star.md)); +3–5 pp evidence base: DIN-SQL / C3-SQL §4.1 / DAIL-SQL Table 3 schema-link; MAC-SQL §4.3 Refiner +4.63 pp surgical-fix retry.
+`PLAN_SYSTEM` gains schema-literal + verbatim-casing + dialect-strict + `Evidence:`-authoritative directives; `buildPlanUser`'s retry block reframes "different shape" as **diagnose-first, surgical-fix**. Targets the BIRD free-chain gap (0.318 → 0.65 per [`SK-QUAL-005`](../quality-eval/FEATURE.md#sk-qual-005)); evidence base in the sharded body.
 
 ### SK-LLM-013 — `PlanResponse` carries `model` + `confidence` for SK-TRUST-002
 
-**Body:** [`decisions/SK-LLM-013-plan-response-shape.md`](./decisions/SK-LLM-013-plan-response-shape.md) (relocated unchanged). `PlanResponse` widens to `{ sql, model, confidence }`; `confidence` ships as a `1.0` placeholder until `quality-eval` calibrates per-tier floors per `SK-TRUST-003`. `nlqdb.cache.plan.write` stores both fields so cache-hits return the original miss's values.
+**Body:** [`decisions/SK-LLM-013-plan-response-shape.md`](./decisions/SK-LLM-013-plan-response-shape.md). `PlanResponse` widens to `{ sql, model, confidence }`; `confidence` ships as a `1.0` placeholder until `quality-eval` calibrates per-tier floors per `SK-TRUST-003`. The plan cache stores both fields so hits return the miss's values.
 
 ## GLOBALs governing this feature
 
@@ -162,7 +167,7 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
     hops (one attempt per provider) before propagating the error.
 - **GLOBAL-025** — North-star: engine quality, onboarding, UX — each with explicit KPIs.
   - *In this feature:* the router IS the engine north-star's mechanism on the NL→SQL layer; the free-vs-frontier delta KPI runs `quality-eval` against this router's free chain vs its hosted-premium chain.
-- **GLOBAL-026** — LLM strategy: free chain forever, BYOLLM for everyone, hosted premium on paid (flat sub + included monthly request allowance + soft-meter overage, 0% markup).
+- **GLOBAL-026** — LLM strategy: free chain forever, BYOLLM for everyone, hosted premium on paid.
   - *In this feature:* owns dispatch precedence (`SK-LLM-016`) and the hosted-premium chain wiring (`SK-LLM-017`); commercial shape in `premium-tier/FEATURE.md`.
 
 ## Open questions / known unknowns
