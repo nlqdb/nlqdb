@@ -1,0 +1,7 @@
+# SK-LLM-001 — Tiered routing — never send all traffic to a frontier model
+
+- **Decision:** LLM traffic is split across tiers by job: hot-path routing (Tier 1, cheap nano), schema embedding (Tier 1), NL→plan workhorse (Tier 2, ~80% of cost), hard-plan / multi-engine reasoning (Tier 3, ≤5%), result summarization (Tier 1). Each tier names a specific model for paid and a free fallback. Frontier models never receive all traffic.
+- **Core value:** Free, Fast, Bullet-proof
+- **Why:** A flat "use the best model for everything" policy turns every route-or-summarize step into a Sonnet-priced call. Tiering captures the reality that 80%+ of LLM calls are cheap intents (route the request, summarize 5 rows) where a nano model is indistinguishable in quality from a frontier model. The plan tier is where quality matters, and that's where we spend the money.
+- **Consequence in code:** The router exposes operations `{route, plan, summarize, schema_infer, engine_classify}` today, with `hard` and `embed` planned. Callers pass the operation they need; the router chooses the model. New operations require a `SK-LLM-NNN` decision (e.g. `SK-LLM-012` for `schema_infer`) and a row in the catalog at `docs/performance.md §3.1` + `docs/architecture.md §7`. Sending all traffic to one model is a CI-asserted regression (cost-test).
+- **Alternatives rejected:** Always-frontier — predictable bills that scale linearly with traffic. Always-cheapest — `nl→plan` accuracy collapses below the 70% bar; per-call manual model pick leaks model decisions into 50 call sites.

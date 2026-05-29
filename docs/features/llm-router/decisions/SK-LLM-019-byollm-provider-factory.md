@@ -18,8 +18,8 @@ decision). Parent GLOBAL:
     `GLOBAL-026`. It is never persisted in a span/log (auth header
     only).
   - **Model qualifier.** The user's one chosen model is sent as
-    `<upstream>/<model>` (e.g. `openai/gpt-5.2`) for every operation,
-    as the unified endpoint requires.
+    `<upstream>/<model>` (e.g. `openai/gpt-5.2`, `anthropic/claude-4-5-sonnet`)
+    for every operation, as the unified endpoint requires.
   - **Tenant cache namespace.** `SK-LLM-016`'s abstract
     "namespace `BYOLLM_<user_id>`" resolves to the
     **`cf-aig-cache-key` header** set to

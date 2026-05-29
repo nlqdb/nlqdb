@@ -24,9 +24,9 @@ export type ByollmProviderOptions = {
   // upstream as `Authorization: Bearer …` — billed to the user, never
   // stored in a span or log (only ever sent in the auth header).
   apiKey: string;
-  // Upstream provider slug as AI Gateway names it: `openai`,
-  // `anthropic`, `google-ai-studio`, `groq`, … . Prefixed onto the
-  // model for the unified endpoint.
+  // Upstream provider slug as AI Gateway names it for the unified
+  // endpoint's `<provider>/<model>` form: `openai`, `anthropic`,
+  // `groq`, `google`, … . Prefixed onto the model.
   upstream: string;
   // Model id as the upstream names it (e.g. `gpt-5.2`). The user picks
   // one model; every operation uses it.
@@ -77,6 +77,14 @@ export function createByollmProvider(opts: ByollmProviderOptions): Provider {
     .map(([k]) => k);
   if (missing.length > 0) {
     throw new Error(`createByollmProvider: missing required option(s): ${missing.join(", ")}`);
+  }
+  // `userId` is interpolated into the `cf-aig-cache-key` header value —
+  // constrain it to header-safe chars (Better-Auth ids already are) so
+  // it can never carry control chars into the header (GLOBAL-012).
+  if (!/^[A-Za-z0-9_-]+$/.test(opts.userId)) {
+    throw new Error(
+      `createByollmProvider: userId must match [A-Za-z0-9_-]+ (got "${opts.userId}")`,
+    );
   }
 
   const qualifiedModel = `${opts.upstream}/${opts.model}`;

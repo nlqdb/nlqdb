@@ -124,4 +124,9 @@ describe("createByollmProvider", () => {
     expect(() => createByollmProvider({ ...base, accountId: "" })).toThrow(/accountId/);
     expect(() => createByollmProvider({ ...base, apiKey: "" })).toThrow(/apiKey/);
   });
+
+  it("rejects a userId that isn't header-safe", () => {
+    expect(() => createByollmProvider({ ...base, userId: "bad\nid" })).toThrow(/userId/);
+    expect(() => createByollmProvider({ ...base, userId: "a b" })).toThrow(/userId/);
+  });
 });
