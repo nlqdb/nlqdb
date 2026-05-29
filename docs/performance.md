@@ -241,6 +241,9 @@ Always use these label keys; never invent variants like `tenant`, `tenant-id`, `
 | `reason` (on `llm.failover.total`) | bounded     | Existing `FailoverReason` set + `hedge_lost` (SK-LLM-014, the loser-cancelled signal). |
 | `nlqdb.cron`            | bounded (~3)        | Span attribute on `db.query` keep-warm pings (SK-HDC-014). Values pinned to the cron expressions in `wrangler.toml`. |
 | `nlqdb.llm.hedge_lost`  | 2 (boolean)         | Span-only attribute on `llm.<op>` spans when the leg was cancelled by a hedge winner (SK-LLM-014). Lets Tempo filter `hedge_lost=true` to count cancellations without conflating with real errors. Not a metric label. |
+| `llm.dispatch_lane`     | 3                   | Span-only attribute on the ask-pipeline span (SK-LLM-020). `byollm` / `premium` / `free` — the lane `selectDispatchLane` picked. Not a metric label. |
+| `llm.billed_to`         | 2                   | Span-only attribute (SK-LLM-020). `byollm` (user's own key, 0% markup) / `hosted` (nlqdb pays). Not a metric label. |
+| `llm.byollm_provider`   | Low (~5)            | Span-only attribute on the byollm lane only (SK-LLM-020). AI Gateway upstream slug (`openai` / `anthropic` / `groq` / `google` / …) — **not** the model (which rides `llm.model`). Not a metric label. |
 
 **Cardinality rule:** total combined series < 8 k (Grafana Cloud free
 tier ceiling at 10 k, leave 2 k headroom). The above bounds are

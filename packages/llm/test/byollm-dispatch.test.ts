@@ -1,0 +1,104 @@
+import { describe, expect, it } from "vitest";
+import {
+  type ByollmCredential,
+  buildByollmRouter,
+  dispatchLaneAttributes,
+  selectDispatchLane,
+} from "../src/byollm-dispatch.ts";
+import { AllProvidersFailedError } from "../src/router.ts";
+import { mockFetch, openAIChatResponse } from "./_fixtures.ts";
+
+const header: ByollmCredential = {
+  apiKey: "sk-header",
+  upstream: "anthropic",
+  model: "claude-4-5-sonnet",
+};
+const account: ByollmCredential = { apiKey: "sk-account", upstream: "openai", model: "gpt-5.2" };
+
+describe("selectDispatchLane (SK-LLM-016 precedence)", () => {
+  it("header key wins over everything", () => {
+    const sel = selectDispatchLane({
+      headerCredential: header,
+      accountCredential: account,
+      premiumEligible: true,
+    });
+    expect(sel).toEqual({ lane: "byollm", credential: header, source: "header" });
+  });
+
+  it("account key wins when no header key", () => {
+    const sel = selectDispatchLane({ accountCredential: account, premiumEligible: true });
+    expect(sel).toEqual({ lane: "byollm", credential: account, source: "account" });
+  });
+
+  it("premium when eligible and no BYOLLM key", () => {
+    expect(selectDispatchLane({ premiumEligible: true })).toEqual({ lane: "premium" });
+  });
+
+  it("free is the floor", () => {
+    expect(selectDispatchLane({})).toEqual({ lane: "free" });
+    expect(selectDispatchLane({ headerCredential: null, accountCredential: null })).toEqual({
+      lane: "free",
+    });
+  });
+});
+
+describe("dispatchLaneAttributes", () => {
+  it("byollm: lane + billed_to=byollm + upstream slug, never the key", () => {
+    const attrs = dispatchLaneAttributes({ lane: "byollm", credential: header, source: "header" });
+    expect(attrs).toEqual({
+      "llm.dispatch_lane": "byollm",
+      "llm.billed_to": "byollm",
+      "llm.byollm_provider": "anthropic",
+    });
+    expect(JSON.stringify(attrs)).not.toContain("sk-header");
+  });
+
+  it("premium / free are billed to the host", () => {
+    expect(dispatchLaneAttributes({ lane: "premium" })).toEqual({
+      "llm.dispatch_lane": "premium",
+      "llm.billed_to": "hosted",
+    });
+    expect(dispatchLaneAttributes({ lane: "free" })).toEqual({
+      "llm.dispatch_lane": "free",
+      "llm.billed_to": "hosted",
+    });
+  });
+});
+
+describe("buildByollmRouter", () => {
+  const gw = { accountId: "acc", gatewayId: "gw", userId: "user-A" };
+
+  it("routes every op through the user's key at the AI Gateway unified endpoint", async () => {
+    const seen: { url: string; auth: string | null; model: string }[] = [];
+    const fetch = mockFetch([
+      {
+        match: /gateway\.ai\.cloudflare\.com/,
+        respond: async (req) => {
+          const body = (await req.clone().json()) as { model: string };
+          seen.push({ url: req.url, auth: req.headers.get("authorization"), model: body.model });
+          return openAIChatResponse(JSON.stringify({ sql: "SELECT 1" }));
+        },
+      },
+    ]);
+    const router = buildByollmRouter({ credential: account, ...gw });
+    await router.plan({ goal: "g", schema: "s", dialect: "postgres" }, { fetch });
+    expect(seen[0]?.url).toBe(
+      "https://gateway.ai.cloudflare.com/v1/acc/gw/compat/chat/completions",
+    );
+    expect(seen[0]?.auth).toBe("Bearer sk-account");
+    expect(seen[0]?.model).toBe("openai/gpt-5.2");
+  });
+
+  it("fails loud (no free-chain fallback) when the user's key errors — SK-LLM-016", async () => {
+    const fetch = mockFetch([
+      {
+        match: /gateway\.ai\.cloudflare\.com/,
+        respond: () => new Response("nope", { status: 500 }),
+      },
+    ]);
+    const router = buildByollmRouter({ credential: account, ...gw });
+    await expect(
+      router.plan({ goal: "g", schema: "s", dialect: "postgres" }, { fetch }),
+    ).rejects.toBeInstanceOf(AllProvidersFailedError);
+  });
+});
