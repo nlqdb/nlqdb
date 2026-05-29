@@ -449,8 +449,8 @@ export const COMPETITORS: Competitor[] = [
       {
         feature: "Destructive-op diff preview before apply",
         us: "shipped",
-        them: "partial",
-        note: "Wren AI surfaces validation hints and structured error feedback on generated SQL; the NL-side diff preview before write/DDL apply is unique to nlqdb.",
+        them: "no",
+        note: "Wren AI is a context layer over existing warehouses and does not perform DDL; diff preview before write/DDL apply is unique to nlqdb.",
       },
       { feature: "HTML embed element (in-product render)", us: "shipped", them: "no" },
       {
