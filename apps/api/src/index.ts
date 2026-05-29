@@ -1946,9 +1946,24 @@ app.post("/v1/keys/byollm", requireSession, async (c) => {
 
 // `GET /v1/keys/byollm` — list the caller's BYOLLM keys (active + revoked).
 app.get("/v1/keys/byollm", requireSession, async (c) => {
-  const session = c.var.session;
-  const keys = await listBYOLLMKeys(c.env.DB, session.user.id);
-  return c.json({ keys });
+  const tracer = trace.getTracer("@nlqdb/api");
+  return tracer.startActiveSpan("nlqdb.byollm.list", async (span) => {
+    try {
+      const session = c.var.session;
+      const keys = await listBYOLLMKeys(c.env.DB, session.user.id);
+      span.setAttribute("nlqdb.byollm.list.count", keys.length);
+      span.setAttribute("nlqdb.byollm.list.outcome", "ok");
+      return c.json({ keys });
+    } catch (err) {
+      const e = err as Error;
+      span.recordException(e);
+      span.setStatus({ code: SpanStatusCode.ERROR, message: e.message });
+      span.setAttribute("nlqdb.byollm.list.outcome", "internal_error");
+      return c.json({ error: "internal_error" }, 500);
+    } finally {
+      span.end();
+    }
+  });
 });
 
 // `DELETE /v1/keys/byollm/:id` — hard-revoke a BYOLLM key by id.
