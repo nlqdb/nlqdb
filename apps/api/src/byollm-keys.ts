@@ -115,26 +115,26 @@ export async function revokeBYOLLMKey(
 // Resolves the active BYOLLM key for a tenant and decrypts it.
 // Returns null when no active key is stored (falls through to free chain).
 // `provider` is optional — when set, returns only that provider's key.
-// Without `provider`, returns the first active key (alphabetical by provider).
+// Without `provider`, returns the most recently stored active key.
 export async function resolveBYOLLMKey(
   d1: D1Database,
   kek: string,
   tenantId: string,
   provider?: BYOLLMProvider,
 ): Promise<{ llmProvider: BYOLLMProvider; plaintextKey: string } | null> {
-  const query = provider
-    ? "SELECT llm_provider, encrypted_key FROM byollm_keys " +
-      "WHERE tenant_id = ? AND llm_provider = ? AND revoked_at IS NULL LIMIT 1"
-    : "SELECT llm_provider, encrypted_key FROM byollm_keys " +
-      "WHERE tenant_id = ? AND revoked_at IS NULL ORDER BY llm_provider LIMIT 1";
-
   const row = provider
     ? await d1
-        .prepare(query)
+        .prepare(
+          "SELECT llm_provider, encrypted_key FROM byollm_keys " +
+            "WHERE tenant_id = ? AND llm_provider = ? AND revoked_at IS NULL LIMIT 1",
+        )
         .bind(tenantId, provider)
         .first<{ llm_provider: BYOLLMProvider; encrypted_key: string }>()
     : await d1
-        .prepare(query)
+        .prepare(
+          "SELECT llm_provider, encrypted_key FROM byollm_keys " +
+            "WHERE tenant_id = ? AND revoked_at IS NULL ORDER BY created_at DESC LIMIT 1",
+        )
         .bind(tenantId)
         .first<{ llm_provider: BYOLLMProvider; encrypted_key: string }>();
 

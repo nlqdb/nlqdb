@@ -988,9 +988,16 @@ app.post("/v1/ask", requirePrincipal, gatePreAlpha, async (c) => {
       const hKey = c.req.header("x-nlq-byollm-key");
       if (hProvider && hKey && isBYOLLMProvider(hProvider)) {
         byollmRouter = createByollmRouter(buildBYOLLMProvider(hProvider, hKey));
+        span.setAttribute("nlqdb.ask.byollm_provider", hProvider);
+        span.setAttribute("nlqdb.ask.byollm_source", "header");
       } else {
         // Account-stored key (second precedence).
-        byollmRouter = (await resolveBYOLLMRouterForTenant(c.env, tenantId)) ?? undefined;
+        const resolved = await resolveBYOLLMRouterForTenant(c.env, tenantId);
+        if (resolved) {
+          byollmRouter = resolved.router;
+          span.setAttribute("nlqdb.ask.byollm_provider", resolved.provider);
+          span.setAttribute("nlqdb.ask.byollm_source", "stored");
+        }
       }
     }
     const deps = buildAskDeps(c.env, byollmRouter);
@@ -2168,14 +2175,13 @@ app.post("/v1/chat/messages", requireSession, gatePreAlpha, async (c) => {
     const isDemo = parsed.body.dbId === DEMO_DB_ID;
     // BYOLLM: resolve stored key for the session user so chat also
     // dispatches through their provider when configured.
-    const chatByollmRouter = isDemo
-      ? undefined
-      : (await resolveBYOLLMRouterForTenant(c.env, session.user.id).catch(() => null)) ??
-        undefined;
+    const chatByollm = isDemo
+      ? null
+      : await resolveBYOLLMRouterForTenant(c.env, session.user.id).catch(() => null);
     const askFn = isDemo
       ? askFnFromDemoFixtures()
       : (req: Parameters<Parameters<typeof postChatMessage>[0]["ask"]>[0]) =>
-          orchestrateAsk(buildAskDeps(c.env, chatByollmRouter), req);
+          orchestrateAsk(buildAskDeps(c.env, chatByollm?.router), req);
 
     const outcome = await postChatMessage(
       {
@@ -2314,11 +2320,14 @@ function buildSignInUrl(referer: string | undefined): string {
 async function resolveBYOLLMRouterForTenant(
   envBindings: Cloudflare.Env,
   tenantId: string,
-): Promise<LLMRouter | null> {
+): Promise<{ router: LLMRouter; provider: BYOLLMProvider } | null> {
   const kek = envBindings.BYOLLM_KEK ?? envBindings.BETTER_AUTH_SECRET;
   const stored = await resolveBYOLLMKey(envBindings.DB, kek, tenantId).catch(() => null);
   if (!stored) return null;
-  return createByollmRouter(buildBYOLLMProvider(stored.llmProvider, stored.plaintextKey));
+  return {
+    router: createByollmRouter(buildBYOLLMProvider(stored.llmProvider, stored.plaintextKey)),
+    provider: stored.llmProvider,
+  };
 }
 
 function buildBYOLLMProvider(
