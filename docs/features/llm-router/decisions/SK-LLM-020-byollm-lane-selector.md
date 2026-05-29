@@ -27,11 +27,12 @@ Parent GLOBAL:
     No hedge — `SK-LLM-014` hedging is free-tier-only and there is a
     single provider.
   - **`dispatchLaneAttributes(sel)`** — bounded-cardinality span
-    attributes for the chosen lane: `llm.dispatch_lane`, `llm.billed_to`
-    (`byollm` for the user's key, `hosted` otherwise), and — byollm lane
-    only — `llm.byollm_provider` (the AI Gateway upstream slug, ~5
-    values, **not** the model). The key value is never emitted. Catalogued
-    in [`docs/performance.md §3.3`](../../../performance.md).
+    attributes for the chosen lane, value sets pinned by `GLOBAL-026`:
+    `llm.dispatch_lane` (`free` / `byollm` / `premium`), `llm.billed_to`
+    (`platform` / `byollm` / `metered`), and — byollm lane only —
+    `llm.byollm_provider` (the AI Gateway upstream slug, ~5 values,
+    **not** the model). The key value is never emitted. Catalogued in
+    [`docs/performance.md §3.3`](../../../performance.md).
 - **Core value:** Free, Bullet-proof, Effortless UX
 - **Why:** The precedence ordering is the one piece of `SK-LLM-016` that
   must never drift between surfaces (HTTP / SDK / CLI / MCP / elements)

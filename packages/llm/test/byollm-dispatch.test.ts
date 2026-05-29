@@ -53,14 +53,14 @@ describe("dispatchLaneAttributes", () => {
     expect(JSON.stringify(attrs)).not.toContain("sk-header");
   });
 
-  it("premium / free are billed to the host", () => {
+  it("premium → metered, free → platform (GLOBAL-026 taxonomy)", () => {
     expect(dispatchLaneAttributes({ lane: "premium" })).toEqual({
       "llm.dispatch_lane": "premium",
-      "llm.billed_to": "hosted",
+      "llm.billed_to": "metered",
     });
     expect(dispatchLaneAttributes({ lane: "free" })).toEqual({
       "llm.dispatch_lane": "free",
-      "llm.billed_to": "hosted",
+      "llm.billed_to": "platform",
     });
   });
 });
@@ -100,5 +100,11 @@ describe("buildByollmRouter", () => {
     await expect(
       router.plan({ goal: "g", schema: "s", dialect: "postgres" }, { fetch }),
     ).rejects.toBeInstanceOf(AllProvidersFailedError);
+  });
+
+  it("fails loud at construction on a blank/whitespace key (GLOBAL-012)", () => {
+    expect(() => buildByollmRouter({ credential: { ...account, apiKey: "   " }, ...gw })).toThrow(
+      /apiKey/,
+    );
   });
 });

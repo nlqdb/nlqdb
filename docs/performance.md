@@ -234,16 +234,14 @@ Always use these label keys; never invent variants like `tenant`, `tenant-id`, `
 | `llm.model`            | Low (~10)            | Provider-specific; pin via env config.             |
 | `db.system`            | 2                    | `postgresql` (PG); `other_sql` (ClickHouse via Tinybird). |
 | `route`                | Low (~20)            | `/v1/ask`, `/v1/health`, `/v1/auth/*`.             |
-| `status_class`         | 5                    | `2xx` / `3xx` / `4xx` / `5xx` / `transport` (NOT raw status). The `transport` value is reserved for fetch-throws (no HTTP status); used by the query_log failures counter (`SK-EVENTS-009`). |
-| `principal_kind`       | 2                    | `user` / `anon` — used on the `nlqdb.recent_tables.entries` gauge (`SK-ASK-012`). Derived from the principal-id prefix; never per-request. |
-| `nlqdb.surface`        | 5                    | `hero` / `chat` / `embed` / `mcp` / `cli`. Span attribute on `nlqdb.ask`, `nlqdb.chat.turn`, `nlqdb.databases.create`; also rides on `feature.*` events (`SK-EVENTS-010`). Derived once via `surfaceFromPrincipal()`. |
-| `status` (on `llm.calls.total`) | 3              | `ok` / `error` / `hedge_lost` (SK-LLM-014). `hedge_lost` covers cancelled hedge legs; dashboards filter `status="error"` for real failures only. |
-| `reason` (on `llm.failover.total`) | bounded     | Existing `FailoverReason` set + `hedge_lost` (SK-LLM-014, the loser-cancelled signal). |
-| `nlqdb.cron`            | bounded (~3)        | Span attribute on `db.query` keep-warm pings (SK-HDC-014). Values pinned to the cron expressions in `wrangler.toml`. |
-| `nlqdb.llm.hedge_lost`  | 2 (boolean)         | Span-only attribute on `llm.<op>` spans when the leg was cancelled by a hedge winner (SK-LLM-014). Lets Tempo filter `hedge_lost=true` to count cancellations without conflating with real errors. Not a metric label. |
-| `llm.dispatch_lane`     | 3                   | Span-only attribute on the ask-pipeline span (SK-LLM-020). `byollm` / `premium` / `free` — the lane `selectDispatchLane` picked. Not a metric label. |
-| `llm.billed_to`         | 2                   | Span-only attribute (SK-LLM-020). `byollm` (user's own key, 0% markup) / `hosted` (nlqdb pays). Not a metric label. |
-| `llm.byollm_provider`   | Low (~5)            | Span-only attribute on the byollm lane only (SK-LLM-020). AI Gateway upstream slug (`openai` / `anthropic` / `groq` / `google` / …) — **not** the model (which rides `llm.model`). Not a metric label. |
+| `status_class`         | 5                    | `2xx` / `3xx` / `4xx` / `5xx` / `transport` (NOT raw status). `transport` = fetch-throws (no HTTP status), used by the query_log failures counter (`SK-EVENTS-009`). |
+| `principal_kind`       | 2                    | `user` / `anon` — on the `nlqdb.recent_tables.entries` gauge (`SK-ASK-012`); from the principal-id prefix, never per-request. |
+| `nlqdb.surface`        | 5                    | `hero` / `chat` / `embed` / `mcp` / `cli`. Span attr on `nlqdb.ask`, `nlqdb.chat.turn`, `nlqdb.databases.create` + `feature.*` events (`SK-EVENTS-010`); derived once via `surfaceFromPrincipal()`. |
+| `status` (on `llm.calls.total`) | 3              | `ok` / `error` / `hedge_lost` (SK-LLM-014, cancelled hedge legs); filter `status="error"` for real failures. |
+| `reason` (on `llm.failover.total`) | bounded     | `FailoverReason` set + `hedge_lost` (SK-LLM-014). |
+| `nlqdb.cron`            | bounded (~3)        | On `db.query` keep-warm pings (SK-HDC-014); pinned to `wrangler.toml` crons. |
+| `nlqdb.llm.hedge_lost`  | 2 (boolean)         | Span-only on `llm.<op>` spans for a hedge-cancelled leg (SK-LLM-014); filter `hedge_lost=true`. Not a metric label. |
+| `llm.dispatch_lane` / `llm.billed_to` / `llm.byollm_provider` | 3 / 3 / ~5 | Span-only on the ask span (SK-LLM-020, GLOBAL-026): lane `free`/`byollm`/`premium`; billed-to `platform`/`byollm`/`metered`; byollm upstream slug (not the model). Not metric labels. |
 
 **Cardinality rule:** total combined series < 8 k (Grafana Cloud free
 tier ceiling at 10 k, leave 2 k headroom). The above bounds are

@@ -1,17 +1,8 @@
-// BYOLLM dispatch-lane selection (SK-LLM-016 / GLOBAL-026).
-//
-// `SK-LLM-019` landed the provider half — `createByollmProvider`, which
-// proxies a user's own key through AI Gateway. This module is the other
-// load-bearing, unit-testable core of `SK-LLM-016`: the four-step lane
-// precedence and the single-provider router that runs the BYOLLM lane.
-//
-// What this module deliberately does NOT do (apps/api owns it, in the
-// dispatch-wiring PR that also closes GLOBAL-003 surface parity): read
-// the `x-nlq-byollm-key` header, decrypt the `api_keys.scope="byollm"`
-// blob, or decide premium eligibility. Those need DB + KEK access this
-// package must stay free of. The caller resolves credentials and passes
-// them in; `selectDispatchLane` is the single source of truth for the
-// ordering so it can never drift between surfaces.
+// BYOLLM dispatch-lane selection — the decision half of SK-LLM-016
+// (provider half: SK-LLM-019). Pure + I/O-free: the caller resolves
+// credentials + premium eligibility (header / DB / KEK access stays in
+// apps/api) and this applies the precedence, so the ordering can't drift
+// between surfaces. See decisions/SK-LLM-020-byollm-lane-selector.md.
 
 import { createByollmProvider } from "./providers/byollm.ts";
 import { createLLMRouter, type LLMRouter } from "./router.ts";
@@ -96,7 +87,9 @@ export type ByollmRouterOptions = {
 // The router still gives us the canonical `llm.<op>` span + `gen_ai.*`
 // semconv for free. No hedge: hedging duplicates the request to a second
 // provider, there is only one here, and every BYOLLM call is the user's
-// real money (SK-LLM-014 is free-tier-only).
+// real money (SK-LLM-014 is free-tier-only). The router is built per
+// request (one credential each) — cheap, and the circuit breaker is
+// inert on a single-provider chain anyway, so no caching is needed here.
 export function buildByollmRouter(opts: ByollmRouterOptions): LLMRouter {
   const provider = createByollmProvider({
     apiKey: opts.credential.apiKey,
@@ -120,19 +113,27 @@ export function buildByollmRouter(opts: ByollmRouterOptions): LLMRouter {
   });
 }
 
-// Span attributes for the chosen lane (SK-LLM-016), set by apps/api on
-// the ask-pipeline span once the lane is selected. The key value is
-// never included — only the lane, who's billed, and (for byollm) the
-// upstream slug. `llm.byollm_provider` is the upstream (`openai`/… , ~5
-// values), NOT the model, so cardinality stays bounded
-// (docs/performance.md §3.3).
+// Bounded, key-redacted span attributes for the chosen lane, set by
+// apps/api on the ask-pipeline span. Value sets pinned by GLOBAL-026:
+// `llm.billed_to ∈ {platform, byollm, metered}`. `llm.byollm_provider`
+// is the AI Gateway upstream slug (~5 values), NOT the model (which
+// rides `llm.model`), so cardinality stays bounded (performance.md §3.3).
 export function dispatchLaneAttributes(sel: DispatchSelection): Record<string, string> {
-  if (sel.lane === "byollm") {
-    return {
-      "llm.dispatch_lane": "byollm",
-      "llm.billed_to": "byollm",
-      "llm.byollm_provider": sel.credential.upstream,
-    };
+  switch (sel.lane) {
+    case "byollm":
+      return {
+        "llm.dispatch_lane": "byollm",
+        "llm.billed_to": "byollm",
+        "llm.byollm_provider": sel.credential.upstream,
+      };
+    case "premium":
+      return { "llm.dispatch_lane": "premium", "llm.billed_to": "metered" };
+    case "free":
+      return { "llm.dispatch_lane": "free", "llm.billed_to": "platform" };
+    default: {
+      // Exhaustiveness guard — a new lane must add its mapping here.
+      const _never: never = sel;
+      return _never;
+    }
   }
-  return { "llm.dispatch_lane": sel.lane, "llm.billed_to": "hosted" };
 }
