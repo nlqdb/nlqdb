@@ -132,9 +132,9 @@ The personas are ordered by **priority for Phase 1 onboarding**. We optimize the
 - `"users who signed up via the iOS promo link in March"`
 - `"migrate users from plan 'starter' to 'basic'"` (with diff preview)
 
-**Real-life use case.** Dmitri is on-call at a 20-person startup. Support escalates: a pricing bug double-charged ~180 customers between 11pm and midnight. Instead of writing a one-off refund script, he opens the team workspace pointed at their existing Postgres, types the refund in plain English, and reviews the generated diff (183 rows, $2,104 total) before approving. The audit log captures who ran it, and the Retool page he would've had to build doesn't need to exist. *(Requires "bring your own Postgres" mode — Phase 4+, signal-gated per `docs/phase-plan.md §6` / §7.)*
+**Real-life use case.** Dmitri is on-call at a 20-person startup. Support escalates: a pricing bug double-charged ~180 customers between 11pm and midnight. Instead of writing a one-off refund script, he opens the team workspace pointed at their existing Postgres, types the refund in plain English, and reviews the generated diff (183 rows, $2,104 total) before approving. The audit log captures who ran it, and the Retool page he would've had to build doesn't need to exist. *(Requires BYO-Postgres mode — active development per `SK-DB-011`; not yet shipped.)*
 
-**Phase 1 treatment.** This persona needs "bring your own Postgres" mode, which is **Phase 4+, signal-gated** (it punches a hole in the auto-migration story; design shape is locked in `docs/architecture.md §3.6.7`). **Park.** Tell them "we'll email you" and we will. P4 inbound is one of the demand signals in [`docs/phase-plan.md §6`](../phase-plan.md) — enough inbound moves BYO forward.
+**Phase 1 treatment.** This persona needs "bring your own Postgres" mode — **now in active development** per [`SK-DB-011`](../features/db-adapter/decisions/SK-DB-011-byo-postgres-promoted.md) (design shape locked in `docs/architecture.md §3.6.7`). Not yet shipped: capture inbound and tell them "we'll email you" when it lands.
 
 ---
 
@@ -190,7 +190,7 @@ The personas are ordered by **priority for Phase 1 onboarding**. We optimize the
 
 **Real-life use case.** Yuki is on-call at a 40-person startup running SigNoz on self-hosted ClickHouse. At 9am Monday an alert fires: checkout p99 at 4s. Instead of joining `otel_traces` with `otel_logs` by hand in the ClickHouse console, Yuki opens the nlqdb chat pointed at their cluster: `"which services contributed to the checkout latency spike between 8:45 and 9:10"` — ranked breakdown in under 2s. Then: `"top error messages from those services during that window"`. Five minutes of chat replaces 45 minutes of SQL and dashboard-hopping.
 
-**Phase 1 treatment.** Acknowledge on the homepage as an inbound capture signal ("Already running ClickHouse? Tell us"). No product work until the signal gate trips — shape and signal mechanics live in `docs/phase-plan.md §7`. Do not conflate with the managed OTel ingestion pivot in [`otel-grafana-pivot.md`](./otel-grafana-pivot.md): P6 is an NL query skin over the user's existing ClickHouse, not nlqdb owning the storage.
+**Phase 1 treatment.** **Now in active development** per [`SK-MULTIENG-005`](../features/multi-engine-adapter/decisions/SK-MULTIENG-005-byo-clickhouse-promoted.md); until it ships, acknowledge inbound on the homepage ("Already running ClickHouse? Tell us"). Do not conflate with the managed OTel ingestion pivot in [`otel-grafana-pivot.md`](./otel-grafana-pivot.md): P6 is an NL query skin over the user's existing ClickHouse, not nlqdb owning the storage.
 
 **Open questions (resolve before promoting to a feature).**
 - **Read-only enforcement is non-trivial in ClickHouse.** `readonly = 1` does *not* block DDL — TRUNCATE, DROP, ALTER still execute. Safe BYO requires `readonly = 1` + `allow_ddl = 0` + RBAC `GRANT SELECT`, or extending `sql-allowlist` to ClickHouse grammar. ClickHouse's own `mcp-clickhouse` ships with this gap open.
@@ -234,8 +234,8 @@ Ranked by how much of Phase 1 capacity they deserve.
 | Agent giving itself memory via MCP | P2 | **P0** | MCP server is the first item in the Phase 2 distribution slice (see `docs/phase-plan.md §4`); Phase 1 must still flow for an agent-shaped first call. |
 | Non-engineer answering a one-off question from a CSV | P3 | **P1** | Requires CSV upload. Ship it. |
 | Solo dev using chat as an admin UI over their own nlqdb | P1 | **P1** | Falls out of P0 naturally. |
-| Startup team using chat as admin UI over *their own* PG | P4 | **Phase 4+ (signal-gated)** | Needs BYO-connection per `docs/architecture.md §3.6.7`; moves forward only if P4 inbound trips the `docs/phase-plan.md §6` trigger. |
-| SRE / data engineer querying their existing ClickHouse | P6 | **Phase 4+ (signal-gated)** | BYO ClickHouse via HTTP — easier on Workers than BYO Postgres. Signal gate in `docs/phase-plan.md §7`. |
+| Startup team using chat as admin UI over *their own* PG | P4 | **Active (`SK-DB-011`)** | BYO-connection per `docs/architecture.md §3.6.7`; promoted from Phase 4+; not yet shipped. |
+| SRE / data engineer querying their existing ClickHouse | P6 | **Active (`SK-MULTIENG-005`)** | BYO ClickHouse via HTTP — easier on Workers than BYO Postgres; promoted from Phase 4+. |
 | Scheduled/recurring queries ("email me this weekly") | P3 | **Phase 2** | Useful but not foundational. |
 | Destructive ops with NL-diff preview | P1, P4 | **Phase 1.5 (`GLOBAL-023` SK-TRUST-001)** | Trust-building. Ships with the trust-UX slice. |
 | Sharing a query result by link | P3, P1 | **P1** | Cheap to build, high word-of-mouth. |

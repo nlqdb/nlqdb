@@ -105,14 +105,13 @@ when-to-load:
 
 ### SK-DB-009 — Engine-tagged Plan + `AsyncIterable<Row>` result; `meta` for engine extras
 
-- **Decision:** The public adapter signature widens (from `SK-DB-001`) to `execute(plan, signal?: AbortSignal): EngineResult` where `plan` is a discriminated union by `engine` and `EngineResult = AsyncIterable<Row> & { meta }` with `Row = Record<string, unknown>`. Each adapter projects its native result shape into row-shape; engine extras (column schema, command tag, batch count) travel on `meta`. The Postgres adapter keeps its `(sql, params)` underlying call shape; only the public type widens.
-- **Core value:** Simple, Bullet-proof
-- **Why:** Anchored by `SK-MULTIENG-001`. ADBC-shaped row streaming gives one renderer/summariser surface; one Result type per engine multiplies consumer narrowing across `<nlq-data>`, the summariser, and the plan-cache hit log. `AbortSignal` is the standard Workers cancellation primitive.
-- **Consequence in code:** `packages/db/src/types.ts` exports `EnginePlan = PgPlan | ChPlan | …`, `Row`, `EngineMeta`, and `EngineResult`. The PG adapter's `EnginePlan` variant is `{ engine: "postgres", sql, params }`; new adapters add their own variant. Tests stub the `query` injection seam (`SK-DB-006`) unchanged.
-- **Alternatives rejected:**
-  - Discriminated `EngineResult` union — pushes engine-narrowing onto every consumer.
-  - Per-adapter Result types — fragments the renderer/summariser surface.
-  - Substrait IR — heavy abstraction tax for an LLM that emits engine grammars directly.
+**Body:** [`decisions/SK-DB-009-engine-tagged-result.md`](./decisions/SK-DB-009-engine-tagged-result.md).
+Public adapter signature widens to `execute(plan, signal?): EngineResult`;
+`plan` discriminated by `engine`, `EngineResult = AsyncIterable<Row> & { meta }`.
+Each adapter projects native results into rows; engine extras travel
+on `meta`. The PG adapter's underlying `(sql, params)` shape per
+`SK-DB-001` is preserved; only the public type widens. Anchored by
+`SK-MULTIENG-001`.
 
 ### SK-DB-010 — `engine?` on `db.create`: classifier-default with optional override
 
@@ -124,6 +123,17 @@ when-to-load:
   - Always require `engine` — breaks `GLOBAL-020`.
   - Always classify (no override) — breaks `GLOBAL-015`.
   - Add a second endpoint per engine — breaks `GLOBAL-017`.
+
+### SK-DB-011 — BYO Postgres promoted from Phase 4+ to active development
+
+**Body:** [`decisions/SK-DB-011-byo-postgres-promoted.md`](./decisions/SK-DB-011-byo-postgres-promoted.md).
+BYO Postgres ships active; the `phase-plan.md §7` signal-gate is
+superseded. Shape unchanged from
+[`architecture.md §3.6.7`](../../architecture.md#367-byo-postgres-phase-4-decided-shape):
+`/v1/db/connect`, `provisionDb` vs `registerByoDb` split (already
+done per `SK-HDC-007`), AES-GCM blob + Workers-held KEK,
+validator/role/reject-list as defined there. Surface parity per
+`GLOBAL-003`. KEK rotation = open sub-question.
 
 ## GLOBALs governing this feature
 
@@ -151,6 +161,6 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 - **Per-tenant role + RLS wiring** — `SK-DB-007` describes the model but the adapter today does not yet emit `SET LOCAL search_path` / `SET LOCAL ROLE` before queries; consumers must wrap calls themselves. Centralising that on the adapter (or a thin per-tenant adapter wrapper) is open work — risk is forgetting the SET LOCAL on a new code path.
 - **Phase 2b dedicated-branch upgrade** — needs a `branch_id` column on the `databases` row and a provisioner branch-create path. Decision shape locked (DESIGN §3.6.6); implementation deferred until paid tier exists.
 - **Phase 3 multi-engine** — *resolved by `SK-DB-009` + `SK-MULTIENG-001`.* Public signature widens to `execute(plan, signal?)` returning `EngineResult = AsyncIterable<Row> & { meta }`; engine-specific extras travel on `meta`. Per-engine result projection (Redis KV → `{key, value}` rows; ClickHouse Pipe response → row stream) lives in each adapter.
-- **Phase 4 BYO Postgres** — `POST /v1/db/connect { connection_url, name? }` is the agreed shape (DESIGN §3.6.7). Open: per-db encrypted blob in D1 with a Workers-held KEK — KEK rotation procedure isn't designed yet.
+- **BYO Postgres — KEK rotation procedure.** Shape and timing resolved by [`SK-DB-011`](#sk-db-011). Remaining open: the per-db AES-GCM blob has a Workers-held KEK; the rotation procedure (envelope unwrap + re-wrap, key-version column on `databases`) is not yet designed. Pin before the first prod BYO connection.
 - **Statement timeout / cost cap** — referenced as the executor's job (`SK-SQLAL-007`), but the adapter is the lowest layer with the actual query handle. Open: should the adapter accept a `timeout_ms` / `max_rows` option, or should the executor wrap?
 - **Side-effecting Postgres functions** — `pg_sleep`, `dblink`, `lo_import`, `pg_read_file`, `COPY ... FROM PROGRAM` are not blocked at any layer today (cross-link to `sql-allowlist` Open Questions).
