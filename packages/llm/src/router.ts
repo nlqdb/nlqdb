@@ -752,3 +752,17 @@ function classifyError(err: unknown, signal: AbortSignal): FailoverReason {
 // Sentinel passed to AbortController.abort() when a hedged race
 // cancels the losing leg. Exported so tests can assert on it.
 export const HEDGE_LOST = "nlqdb.llm.hedge_lost";
+
+// Single-provider router for BYOLLM dispatch (SK-PREMIUM-008).
+// Fail-loud: no fallback chain — ProviderErrors propagate directly so
+// the orchestrator surfaces them as `llm_failed` and the caller knows
+// their key failed (never silently falls through to the free chain).
+export function createByollmRouter(provider: Provider): LLMRouter {
+  return {
+    route: (req, opts) => provider.route(req, opts),
+    plan: (req, opts) => provider.plan(req, opts),
+    summarize: (req, opts) => provider.summarize(req, opts),
+    schemaInfer: (req, opts) => provider.schemaInfer(req, opts),
+    engineClassify: (req, opts) => provider.engineClassify(req, opts),
+  };
+}

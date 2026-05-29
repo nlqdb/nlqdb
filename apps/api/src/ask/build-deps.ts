@@ -10,6 +10,7 @@
 import { env } from "cloudflare:workers";
 import { neon } from "@neondatabase/serverless";
 import type { Row } from "@nlqdb/db";
+import type { LLMRouter } from "@nlqdb/llm";
 import { dbDurationMs } from "@nlqdb/otel";
 import { SpanStatusCode, trace } from "@opentelemetry/api";
 import { resolveDb } from "../db-registry.ts";
@@ -22,11 +23,17 @@ import { makeRateLimiter } from "./rate-limit.ts";
 import { makeRecentTablesStore } from "./recent-tables.ts";
 import { DbConfigError, type DbRecord, type QueryResult } from "./types.ts";
 
-export function buildAskDeps(envBindings: Cloudflare.Env): OrchestrateDeps {
+// `byollmRouter` — when a tenant has a BYOLLM key configured, the caller
+// resolves it and passes the single-provider router here so it takes
+// dispatch precedence over the free chain (SK-PREMIUM-008 step 2).
+export function buildAskDeps(
+  envBindings: Cloudflare.Env,
+  byollmRouter?: LLMRouter,
+): OrchestrateDeps {
   return {
     resolveDb: (id, tenantId) => resolveDb(envBindings.DB, id, tenantId),
     planCache: makePlanCache(envBindings.KV),
-    llm: getLLMRouter(),
+    llm: byollmRouter ?? getLLMRouter(),
     exec: buildExec,
     rateLimiter: makeRateLimiter(envBindings.DB),
     firstQuery: makeFirstQueryTracker(envBindings.KV),

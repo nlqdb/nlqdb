@@ -9,7 +9,7 @@
 // `SK-DB-010` / `SK-MULTIENG-002` (span `llm.engine_classify`).
 // embed lands later alongside the embeddings pipeline.
 
-export type ProviderName = "gemini" | "groq" | "workers-ai" | "openrouter";
+export type ProviderName = "gemini" | "groq" | "workers-ai" | "openrouter" | "anthropic" | "openai";
 
 export type LLMOperation = "route" | "plan" | "summarize" | "schema_infer" | "engine_classify";
 

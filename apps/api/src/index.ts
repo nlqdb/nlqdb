@@ -40,6 +40,14 @@ import {
   revokeKeyById,
 } from "./api-keys.ts";
 import { buildAskDeps, buildEventEmitter } from "./ask/build-deps.ts";
+import {
+  type BYOLLMProvider,
+  isBYOLLMProvider,
+  listBYOLLMKeys,
+  resolveBYOLLMKey,
+  revokeBYOLLMKey,
+  storeBYOLLMKey,
+} from "./byollm-keys.ts";
 import { emitFeatureSignal } from "./ask/demand-signal.ts";
 import { orchestrateAsk } from "./ask/orchestrate.ts";
 import { kickoffAskPrelude, resolveAnonEngineOverride, seedFromPinnedDb } from "./ask/prelude.ts";
@@ -70,6 +78,14 @@ import {
 import { runIcpCluster } from "./icp-cluster.ts";
 import { runIcpScore } from "./icp-score.ts";
 import { runIcpScrape } from "./icp-scrape.ts";
+import {
+  createAnthropicProvider,
+  createByollmRouter,
+  createGeminiProvider,
+  createOpenAIProvider,
+  createOpenRouterProvider,
+  type LLMRouter,
+} from "@nlqdb/llm";
 import { getLLMRouter } from "./llm-router.ts";
 import { makeRequireSession, type RequireSessionVariables } from "./middleware.ts";
 import { handleMcpCallback, handleMcpCallbackRedeem } from "./oauth-mcp-bridge.ts";
@@ -961,7 +977,23 @@ app.post("/v1/ask", requirePrincipal, gatePreAlpha, async (c) => {
       }
     }
 
-    const deps = buildAskDeps(c.env);
+    // BYOLLM dispatch (SK-PREMIUM-008): account principals may supply a
+    // key via header (per-request) or stored account key. Anon/pk_live
+    // always fall through to the free chain.
+    let byollmRouter: LLMRouter | undefined;
+    const tenantId = accountTenantIdFromPrincipal(principal);
+    if (tenantId) {
+      // Per-request header override (highest precedence).
+      const hProvider = c.req.header("x-nlq-byollm-provider");
+      const hKey = c.req.header("x-nlq-byollm-key");
+      if (hProvider && hKey && isBYOLLMProvider(hProvider)) {
+        byollmRouter = createByollmRouter(buildBYOLLMProvider(hProvider, hKey));
+      } else {
+        // Account-stored key (second precedence).
+        byollmRouter = (await resolveBYOLLMRouterForTenant(c.env, tenantId)) ?? undefined;
+      }
+    }
+    const deps = buildAskDeps(c.env, byollmRouter);
     // After the SK-ASK-009 resolution above, `dbId` is guaranteed to
     // be set — either by the caller, by the 1-DB auto-target, or by
     // routeAsk (recent-table fast-path / slug fast-path / LLM pick).
@@ -1802,6 +1834,94 @@ app.get("/v1/keys/:hash/status", requirePrincipal, async (c) => {
   });
 });
 
+// ─── BYOLLM key management (SK-PREMIUM-008) ─────────────────────────────────
+//
+// Three session-only endpoints for users to store, list, and revoke their
+// own LLM provider keys. Keys are encrypted at rest with AES-GCM; the
+// plaintext is returned once at store time and never again.
+//
+// `POST /v1/llm-keys` — store a BYOLLM key. Body: { provider, key }.
+//   Revokes any prior active key for the same provider before inserting.
+//   Returns { id, provider, last4, key } — the plaintext `key` is the
+//   only time it appears in a response; subsequent reads return `last4` only.
+//
+// `GET /v1/llm-keys` — list the caller's BYOLLM keys (active + revoked).
+//   Returns { keys: BYOLLMKeyRecord[] }.
+//
+// `DELETE /v1/llm-keys/:id` — revoke a BYOLLM key by id.
+
+app.use("/v1/llm-keys", credentialedCors);
+app.use("/v1/llm-keys/*", credentialedCors);
+
+app.post("/v1/llm-keys", requireSession, async (c) => {
+  const tracer = trace.getTracer("@nlqdb/api");
+  return tracer.startActiveSpan("nlqdb.byollm.store", async (span) => {
+    try {
+      const session = c.var.session;
+      const tenantId = session.user.id;
+      const body = await parseJsonBody<{ provider?: unknown; key?: unknown }>(c);
+      if (!body.ok) {
+        span.setAttribute("nlqdb.byollm.store.outcome", "invalid_body");
+        return c.json({ error: "invalid_body" }, 400);
+      }
+      const { provider, key } = body.value;
+      if (typeof provider !== "string" || !isBYOLLMProvider(provider)) {
+        span.setAttribute("nlqdb.byollm.store.outcome", "invalid_provider");
+        return c.json(
+          {
+            error: "invalid_provider",
+            supported: ["anthropic", "openai", "gemini", "openrouter"],
+          },
+          400,
+        );
+      }
+      if (typeof key !== "string" || key.trim().length < 8) {
+        span.setAttribute("nlqdb.byollm.store.outcome", "invalid_key");
+        return c.json({ error: "invalid_key" }, 400);
+      }
+      const kek = c.env.BYOLLM_KEK ?? c.env.BETTER_AUTH_SECRET;
+      const result = await storeBYOLLMKey(c.env.DB, kek, tenantId, provider, key.trim());
+      span.setAttribute("nlqdb.byollm.store.provider", provider);
+      span.setAttribute("nlqdb.byollm.store.outcome", "stored");
+      return c.json({ id: result.id, provider, last4: key.trim().slice(-4), key: key.trim() }, 201);
+    } catch (err) {
+      const e = err as Error;
+      span.recordException(e);
+      span.setStatus({ code: SpanStatusCode.ERROR, message: e.message });
+      return c.json({ error: "internal_error" }, 500);
+    } finally {
+      span.end();
+    }
+  });
+});
+
+app.get("/v1/llm-keys", requireSession, async (c) => {
+  const session = c.var.session;
+  const keys = await listBYOLLMKeys(c.env.DB, session.user.id);
+  return c.json({ keys });
+});
+
+app.delete("/v1/llm-keys/:id", requireSession, async (c) => {
+  const tracer = trace.getTracer("@nlqdb/api");
+  return tracer.startActiveSpan("nlqdb.byollm.revoke", async (span) => {
+    try {
+      const session = c.var.session;
+      const keyId = c.req.param("id");
+      const outcome = await revokeBYOLLMKey(c.env.DB, session.user.id, keyId);
+      span.setAttribute("nlqdb.byollm.revoke.outcome", outcome);
+      if (outcome === "not_found") return c.json({ error: "not_found" }, 404);
+      return c.json({ revoked: true, id: keyId });
+    } catch (err) {
+      const e = err as Error;
+      span.recordException(e);
+      span.setStatus({ code: SpanStatusCode.ERROR, message: e.message });
+      return c.json({ error: "internal_error" }, 500);
+    } finally {
+      span.end();
+    }
+  });
+});
+
 // `GET /v1/databases` — left-rail data source for the chat surface
 // (apps/web/src/components/chat/LeftRail.tsx) and the MCP server's
 // `nlqdb_list_databases` tool (packages/mcp). Tenant-scoped read of
@@ -2046,10 +2166,16 @@ app.post("/v1/chat/messages", requireSession, gatePreAlpha, async (c) => {
     // hitting `db_not_found` on every chat send. See
     // `chat/demo-shortcut.ts` for the rationale.
     const isDemo = parsed.body.dbId === DEMO_DB_ID;
+    // BYOLLM: resolve stored key for the session user so chat also
+    // dispatches through their provider when configured.
+    const chatByollmRouter = isDemo
+      ? undefined
+      : (await resolveBYOLLMRouterForTenant(c.env, session.user.id).catch(() => null)) ??
+        undefined;
     const askFn = isDemo
       ? askFnFromDemoFixtures()
       : (req: Parameters<Parameters<typeof postChatMessage>[0]["ask"]>[0]) =>
-          orchestrateAsk(buildAskDeps(c.env), req);
+          orchestrateAsk(buildAskDeps(c.env, chatByollmRouter), req);
 
     const outcome = await postChatMessage(
       {
@@ -2180,6 +2306,35 @@ function buildSignInUrl(referer: string | undefined): string {
     }
   }
   return url.toString();
+}
+
+// Resolves a BYOLLM router from the account-stored key for a tenant.
+// Returns null when no active key is stored — caller falls through to the
+// free LLM chain. Errors are swallowed so a D1 blip doesn't break /v1/ask.
+async function resolveBYOLLMRouterForTenant(
+  envBindings: Cloudflare.Env,
+  tenantId: string,
+): Promise<LLMRouter | null> {
+  const kek = envBindings.BYOLLM_KEK ?? envBindings.BETTER_AUTH_SECRET;
+  const stored = await resolveBYOLLMKey(envBindings.DB, kek, tenantId).catch(() => null);
+  if (!stored) return null;
+  return createByollmRouter(buildBYOLLMProvider(stored.llmProvider, stored.plaintextKey));
+}
+
+function buildBYOLLMProvider(
+  provider: BYOLLMProvider,
+  key: string,
+): import("@nlqdb/llm").Provider {
+  switch (provider) {
+    case "anthropic":
+      return createAnthropicProvider({ apiKey: key });
+    case "openai":
+      return createOpenAIProvider({ apiKey: key });
+    case "gemini":
+      return createGeminiProvider({ apiKey: key });
+    case "openrouter":
+      return createOpenRouterProvider({ apiKey: key });
+  }
 }
 
 // Typed over `AskError["status"]` so adding a new error variant fails

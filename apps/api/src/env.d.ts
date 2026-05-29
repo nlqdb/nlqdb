@@ -156,6 +156,12 @@ declare global {
       LOGSNAG_TOKEN?: string;
       LOGSNAG_PROJECT?: string;
 
+      // AES-GCM key-encryption key for BYOLLM keys at rest (SK-PREMIUM-008).
+      // When unset, falls back to BETTER_AUTH_SECRET with a domain prefix
+      // so `wrangler dev` works without extra secrets. Set via
+      // `wrangler secret put BYOLLM_KEK` in production.
+      BYOLLM_KEK?: string;
+
       // GitHub Personal Access Token. Used by SK-ICP-004 (scrape GitHub Issues) and SK-ICP-003 (write evidence file). When unset, both are skipped.
       GH_TOKEN?: string;
     }
