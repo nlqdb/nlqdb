@@ -168,6 +168,8 @@ const credentialedCors = cors({
     "cf-turnstile-response",
     "idempotency-key",
     "traceparent",
+    "x-nlq-byollm-provider",
+    "x-nlq-byollm-key",
   ],
   allowMethods: ["GET", "POST", "DELETE", "OPTIONS"],
   maxAge: 86400,
@@ -1905,7 +1907,17 @@ app.post("/v1/keys/byollm", requireSession, async (c) => {
         return c.json({ error: "invalid_key" }, 400);
       }
       const kek = resolveByollmKek(c.env);
-      const result = await storeBYOLLMKey(c.env.DB, c.env.KV, kek, tenantId, provider, key.trim());
+      let result: { id: string };
+      try {
+        result = await storeBYOLLMKey(c.env.DB, c.env.KV, kek, tenantId, provider, key.trim());
+      } catch (err) {
+        // D1 UNIQUE constraint violation = concurrent store for same provider.
+        if (err instanceof Error && err.message.includes("UNIQUE constraint failed")) {
+          span.setAttribute("nlqdb.byollm.store.outcome", "conflict");
+          return c.json({ error: "concurrent_store_conflict" }, 409);
+        }
+        throw err;
+      }
       span.setAttribute("nlqdb.byollm.store.provider", provider);
       span.setAttribute("nlqdb.byollm.store.outcome", "stored");
       const responseBody = { id: result.id, provider, last4: key.trim().slice(-4) };
@@ -2212,7 +2224,7 @@ app.post("/v1/chat/messages", requireSession, gatePreAlpha, async (c) => {
           span.recordException(err as Error);
           span.setStatus({ code: SpanStatusCode.ERROR, message: (err as Error).message });
           span.end();
-          return c.json({ error: "byollm_decrypt_error" }, 500);
+          return c.json({ error: "byollm_decrypt_error" }, 502);
         }
         // Other D1 / infra errors: fall through to free chain.
       }
@@ -2353,12 +2365,14 @@ function buildSignInUrl(referer: string | undefined): string {
   return url.toString();
 }
 
-// Returns the KEK for BYOLLM encryption. Falls back to BETTER_AUTH_SECRET with
-// a warning so local dev without BYOLLM_KEK still works.
+// Returns the KEK for BYOLLM encryption. Falls back to BETTER_AUTH_SECRET for
+// local dev; throws if both are unset so misconfiguration is loud, not silent.
 function resolveByollmKek(envBindings: Cloudflare.Env): string {
   if (envBindings.BYOLLM_KEK) return envBindings.BYOLLM_KEK;
-  console.warn("[byollm] BYOLLM_KEK unset — falling back to BETTER_AUTH_SECRET for dev");
-  return envBindings.BETTER_AUTH_SECRET ?? "";
+  const fallback = envBindings.BETTER_AUTH_SECRET;
+  if (!fallback) throw new Error("BYOLLM_KEK and BETTER_AUTH_SECRET are both unset");
+  console.warn("[byollm] BYOLLM_KEK unset — using BETTER_AUTH_SECRET as KEK (dev only)");
+  return fallback;
 }
 
 // Resolves a BYOLLM router from the account-stored key for a tenant.

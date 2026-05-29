@@ -1,7 +1,7 @@
 // BYOLLM key storage and retrieval (SK-PREMIUM-008).
 //
 // Keys are stored AES-GCM encrypted at rest using a KEK from Workers Secret
-// (BYOLLM_KEK, or BETTER_AUTH_SECRET with a domain prefix as fallback for dev).
+// (BYOLLM_KEK, or BETTER_AUTH_SECRET as fallback for dev — resolved by caller).
 // At most one active key per (tenant, provider) — enforced by UNIQUE partial
 // index on (tenant_id, llm_provider) WHERE revoked_at IS NULL.
 //
@@ -126,12 +126,6 @@ export async function revokeBYOLLMKey(
   return row ? "already_revoked" : "not_found";
 }
 
-// Resolves the active BYOLLM key for a tenant and decrypts it.
-// Uses a KV cache (TTL 60s) to avoid a D1 round-trip when the common case is
-// "no key configured". Throws BYOLLMDecryptError when a row exists but the KEK
-// can't decrypt it — caller must surface this as a fail-loud error per
-// SK-PREMIUM-008 point 6 (never silent fallback on key errors).
-// Returns null only when no active row exists.
 export class BYOLLMDecryptError extends Error {
   constructor(tenantId: string) {
     super(`BYOLLM key decryption failed for tenant ${tenantId} — check BYOLLM_KEK`);
@@ -139,43 +133,29 @@ export class BYOLLMDecryptError extends Error {
   }
 }
 
+// Resolves the active BYOLLM key for a tenant and decrypts it.
+// Returns null when no active row exists. Throws BYOLLMDecryptError on KEK
+// mismatch — caller must fail loud, never fall back silently (SK-PREMIUM-008 point 6).
 export async function resolveBYOLLMKey(
   d1: D1Database,
   kv: KVNamespace,
   kek: string,
   tenantId: string,
-  provider?: BYOLLMProvider,
 ): Promise<{ llmProvider: BYOLLMProvider; plaintextKey: string } | null> {
-  // Fast path: KV negative cache — skip D1 when we know the tenant has no key.
-  // Only used when no specific provider is requested (the common dispatch path).
-  if (!provider) {
-    const cached = await kv.get(`${KV_PREFIX}${tenantId}`).catch(() => undefined);
-    if (cached === "0") return null;
-  }
+  // Fast path: KV negative cache — skip D1 on the common "no key configured" path.
+  const cached = await kv.get(`${KV_PREFIX}${tenantId}`).catch(() => undefined);
+  if (cached === "0") return null;
 
-  const row = provider
-    ? await d1
-        .prepare(
-          "SELECT llm_provider, encrypted_key FROM byollm_keys " +
-            "WHERE tenant_id = ? AND llm_provider = ? AND revoked_at IS NULL LIMIT 1",
-        )
-        .bind(tenantId, provider)
-        .first<{ llm_provider: BYOLLMProvider; encrypted_key: string }>()
-    : await d1
-        .prepare(
-          "SELECT llm_provider, encrypted_key FROM byollm_keys " +
-            "WHERE tenant_id = ? AND revoked_at IS NULL ORDER BY created_at DESC LIMIT 1",
-        )
-        .bind(tenantId)
-        .first<{ llm_provider: BYOLLMProvider; encrypted_key: string }>();
+  const row = await d1
+    .prepare(
+      "SELECT llm_provider, encrypted_key FROM byollm_keys " +
+        "WHERE tenant_id = ? AND revoked_at IS NULL ORDER BY created_at DESC LIMIT 1",
+    )
+    .bind(tenantId)
+    .first<{ llm_provider: BYOLLMProvider; encrypted_key: string }>();
 
   if (!row) {
-    // Cache the negative result — common case for tenants who haven't stored a key.
-    if (!provider) {
-      await kv
-        .put(`${KV_PREFIX}${tenantId}`, "0", { expirationTtl: KV_TTL })
-        .catch(() => null);
-    }
+    await kv.put(`${KV_PREFIX}${tenantId}`, "0", { expirationTtl: KV_TTL }).catch(() => null);
     return null;
   }
 

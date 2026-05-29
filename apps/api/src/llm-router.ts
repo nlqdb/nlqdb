@@ -39,6 +39,16 @@ export type BYOLLMGatewayBases = {
 export function getByollmGatewayBases(): BYOLLMGatewayBases {
   const accountId = env.AI_GATEWAY_ACCOUNT_ID;
   const gatewayId = env.AI_GATEWAY_ID;
+  const haveAccount = Boolean(accountId);
+  const haveGateway = Boolean(gatewayId);
+  if (haveAccount !== haveGateway) {
+    console.warn(
+      `[llm-router] AI Gateway partially configured: ` +
+        `AI_GATEWAY_ACCOUNT_ID=${haveAccount ? "set" : "unset"}, ` +
+        `AI_GATEWAY_ID=${haveGateway ? "set" : "unset"}. ` +
+        `Both must be set for BYOLLM calls to route via Cloudflare AI Gateway.`,
+    );
+  }
   if (!accountId || !gatewayId) return {};
   const base = `https://gateway.ai.cloudflare.com/v1/${accountId}/${gatewayId}`;
   return {

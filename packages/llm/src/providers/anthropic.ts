@@ -101,9 +101,9 @@ async function anthropicChat(
       "parse",
     );
   }
-  // Re-prepend the prefill character stripped by the API so parseJsonResponse
-  // receives a complete JSON object, not a fragment starting at the second char.
-  return jsonMode ? `{${text}` : text;
+  // Anthropic strips the assistant prefill `{` from the response; re-prepend it.
+  // Guard: if the model echoes the brace anyway, don't double it.
+  return jsonMode ? (text.startsWith("{") ? text : `{${text}`) : text;
 }
 
 export function createAnthropicProvider(opts: AnthropicProviderOptions): Provider {
