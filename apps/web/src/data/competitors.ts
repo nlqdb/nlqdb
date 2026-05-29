@@ -394,7 +394,7 @@ export const COMPETITORS: Competitor[] = [
   {
     slug: "wrenai",
     name: "Wren AI",
-    // Canonical commercial URL; the OSS repo is github.com/Canner/WrenAI (Apache 2.0, full landscape entry in docs/competitors.md §2).
+    // Commercial homepage; OSS at github.com/Canner/WrenAI (see docs/competitors.md §2).
     url: "https://getwren.ai",
     tagline:
       "Open-source context layer for AI agents — Modeling Definition Language (MDL) semantic model plus row- and column-level access controls over your existing warehouse.",
@@ -402,16 +402,16 @@ export const COMPETITORS: Competitor[] = [
     oneLiner:
       "Pick Wren AI if you already run a warehouse (BigQuery, Snowflake, PostgreSQL, DuckDB) and want a semantic model — models, metrics, cubes, RLAC/CLAC — governing every English question an AI agent asks. Pick nlqdb if you want the database itself provisioned, schema evolved via English, and answers rendered inside your app from one HTML element.",
     whenChooseUs: [
-      "You're spinning up a new feature or service that needs its own database — nlqdb provisions Postgres on the first query.",
-      "You want destructive operations and schema changes diff-previewed before they apply, even when an English request triggered them.",
-      "You want one HTML element rendering the answer inside your own product, not a hosted analytics surface.",
-      "An AI agent needs to provision its own database via MCP — `create_database` is the verb Wren AI's context layer doesn't ship.",
+      "You need a new database — nlqdb provisions Postgres on the first query.",
+      "You want destructive operations and schema changes diff-previewed before they apply, even when triggered by English.",
+      "You want one HTML element rendering the answer in-product, not a hosted analytics surface.",
+      "Your agent provisions its own DB via MCP — Wren AI's skills query an existing warehouse.",
     ],
     whenChooseThem: [
       "You already run a production warehouse (BigQuery, Snowflake, PostgreSQL, DuckDB, …) you can't migrate.",
       "Your team needs a defined semantic model — metrics, cubes, relationships — governing every NL question.",
       "Row- or column-level access controls must apply before any AI agent reads a row.",
-      "SOC 2 Type II certification is a hard buyer requirement today — Wren AI carries it across all plans.",
+      "SOC 2 Type II is required — Wren AI carries it on paid plans only.",
     ],
     features: [
       { feature: "Owns the database (provisions + migrates)", us: "shipped", them: "no" },
@@ -456,8 +456,8 @@ export const COMPETITORS: Competitor[] = [
       {
         feature: "SOC 2 Type II certification",
         us: "no",
-        them: "shipped",
-        note: "Wren AI carries SOC 2 Type II across all plans per its public pricing page; nlqdb is pre-alpha and carries neither SOC 2 nor HIPAA yet.",
+        them: "partial",
+        note: "Wren AI's public pricing page lists SOC 2 Type II on the Essential and Enterprise plans only; the Free plan lists no compliance bullets. nlqdb is pre-alpha and carries neither SOC 2 nor HIPAA yet.",
       },
       {
         feature: "Unlimited free-tier natural-language queries",
@@ -469,13 +469,13 @@ export const COMPETITORS: Competitor[] = [
         feature: "Open source / self-hostable",
         us: "partial",
         them: "shipped",
-        note: "Wren AI ships under Apache 2.0 on github.com/Canner/WrenAI. nlqdb is source-available on Functional Source License 1.1-ALv2 today; the LICENSE auto-converts to Apache 2.0 after two years (FSL 'ALv2 Future License' clause).",
+        note: "Wren AI is multi-licensed: Apache 2.0 covers `core/`, `sdk/`, `skills/`, `examples/`, and root files; `docs/` is CC-BY-4.0; future modules may land under AGPL-3.0-only per the LICENSE file. nlqdb is source-available on Functional Source License 1.1-ALv2 today; the LICENSE auto-converts to Apache 2.0 after two years (FSL 'ALv2 Future License' clause).",
       },
     ],
     faqs: [
       {
         q: "How does nlqdb's NL→SQL compare to Wren AI's MDL-driven approach?",
-        a: "Wren AI requires you to author a Modeling Definition Language file — models, metrics, cubes, relationships — that the LLM consults before writing SQL; the result is governed and reproducible but takes upfront semantic-modelling work. nlqdb prompts directly from the live Postgres schema fingerprint plus a recent-tables hint, with no MDL step. nlqdb publishes BIRD Mini-Dev + Spider 2.0-lite scores weekly to `docs/features/quality-eval/`; Wren AI does not publish a single canonical accuracy benchmark.",
+        a: "Wren AI requires you to author a Modeling Definition Language file — models, metrics, cubes, relationships — that the LLM consults before writing SQL; the result is governed and reproducible but takes upfront semantic-modelling work. nlqdb prompts directly from the live Postgres schema fingerprint plus a recent-tables hint, with no MDL step. nlqdb publishes BIRD Mini-Dev + Spider 2.0-lite scores weekly to `docs/features/quality-eval/`; as of May 2026, Wren AI does not publish a single canonical accuracy benchmark.",
       },
       {
         q: "Can I point Wren AI at an nlqdb database?",
@@ -487,15 +487,15 @@ export const COMPETITORS: Competitor[] = [
       },
       {
         q: "Is nlqdb SOC 2 certified like Wren AI?",
-        a: "No. nlqdb is pre-alpha; SOC 2 Type II is not in place yet. Wren AI's public pricing page documents SOC 2 Type II across all plans (Free, Essential, Enterprise). If you're shipping a regulated product today, Wren AI's compliance posture is honest; nlqdb's compliance roadmap is downstream of GA.",
+        a: "No. nlqdb is pre-alpha; SOC 2 Type II is not in place yet. As of May 2026, Wren AI's public pricing page lists SOC 2 Type II on the Essential and Enterprise plans only — the Free plan does not carry it. If you're shipping a regulated product today on a Wren AI paid tier, that compliance posture is honest; nlqdb's compliance roadmap is downstream of GA.",
       },
       {
         q: "Can my AI agent provision a Wren-AI-managed warehouse the way it provisions an nlqdb database?",
         a: "Wren AI is a context layer plus agent toolkit — its Python SDK and LangChain bindings let an agent issue NL queries against an MDL-modelled data source, but the warehouse itself must already exist. nlqdb's MCP server (`mcp.nlqdb.com`) exposes `create_database`, `ask`, and `run`, so a Claude / Cursor / Cline agent stands up its own Postgres plus schema end-to-end without a human in the loop.",
       },
       {
-        q: "Wren AI is Apache 2.0 open source — why not just self-host that?",
-        a: "Pick Wren AI's OSS distribution if you want to self-host, audit, and modify the context layer against your own warehouse. Pick nlqdb if you want the database, schema migrations, MCP-driven agent provisioning, and the HTML embed shipped as one product. nlqdb is source-available on Functional Source License 1.1-ALv2 today; the LICENSE auto-converts to Apache 2.0 after two years per the FSL 'ALv2 Future License' clause.",
+        q: "Wren AI is open source — why not just self-host that?",
+        a: "Pick Wren AI's OSS distribution if you want to self-host, audit, and modify the context layer against your own warehouse. The Canner/WrenAI repo is multi-licensed: Apache 2.0 covers `core/`, `sdk/`, `skills/`, `examples/`, and root files; `docs/` is CC-BY-4.0; future modules may land under AGPL-3.0-only per the LICENSE file. Pick nlqdb if you want the database, schema migrations, MCP-driven agent provisioning, and the HTML embed shipped as one product. nlqdb is source-available on Functional Source License 1.1-ALv2 today; the LICENSE auto-converts to Apache 2.0 after two years per the FSL 'ALv2 Future License' clause.",
       },
     ],
     demo: {

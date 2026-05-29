@@ -193,8 +193,11 @@ if fetch_body "FLOW-003 step 9 GET /llms.txt returns 200" "$BASE_URL/llms.txt"; 
 fi
 
 # /sitemap.xml as the cheapest smoke test that the marketing-side build
-# isn't a partial — 14 URLs today (5 solve + 5 vs + 4 root pages). The
-# floor matches the shipped surface; new slugs raise it.
+# isn't a partial — 14 URLs today = SOLVE_ENTRIES.length (5) + COMPETITORS.length (5)
+# + STATIC_ROUTES.length (4: "/", "/manifesto", "/vs", "/solve") per
+# apps/web/src/pages/sitemap.xml.ts. The floor is hand-bumped against those data
+# files; every new /solve/ or /vs/ slug raises it by one. `>=` means an
+# under-bump leaks a regression silently rather than breaking the build.
 say "Sitemap floor — every shipped slug must appear"
 if fetch_body "GET /sitemap.xml returns 200" "$BASE_URL/sitemap.xml"; then
   loc_count=$(grep -oE '<loc>[^<]*</loc>' "$FETCH_BODY_PATH" | wc -l | tr -d ' ')
