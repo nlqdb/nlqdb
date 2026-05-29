@@ -21,6 +21,11 @@ export type ChatRequest = {
   // Forwarded into the request body verbatim. Most callers leave this
   // undefined — the provider's defaults are fine.
   temperature?: number;
+  // Extra request headers, merged *under* the fixed `content-type` /
+  // `authorization` (which always win, so a caller can never silently
+  // clobber auth). The BYOLLM provider uses this to carry AI Gateway
+  // control headers (`cf-aig-cache-key`, `cf-aig-authorization`).
+  headers?: Record<string, string>;
 };
 
 export async function openAICompatibleChat(req: ChatRequest, opts?: CallOpts): Promise<string> {
@@ -37,6 +42,7 @@ export async function openAICompatibleChat(req: ChatRequest, opts?: CallOpts): P
     res = await fetchFn(req.url, {
       method: "POST",
       headers: {
+        ...req.headers,
         "content-type": "application/json",
         authorization: `Bearer ${req.apiKey}`,
       },

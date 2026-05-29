@@ -9,7 +9,13 @@
 // `SK-DB-010` / `SK-MULTIENG-002` (span `llm.engine_classify`).
 // embed lands later alongside the embeddings pipeline.
 
-export type ProviderName = "gemini" | "groq" | "workers-ai" | "openrouter";
+// `"byollm"` is the per-tenant bring-your-own-key lane (SK-LLM-016):
+// one provider whose upstream model + credentials are supplied by the
+// signed-in user and proxied through Cloudflare AI Gateway. The
+// upstream model (`openai/gpt-5.2`, `anthropic/claude-4-5-sonnet`, …)
+// rides the `llm.model` span attribute, so the single `byollm` label
+// keeps the failover/cache metric cardinality bounded.
+export type ProviderName = "gemini" | "groq" | "workers-ai" | "openrouter" | "byollm";
 
 export type LLMOperation = "route" | "plan" | "summarize" | "schema_infer" | "engine_classify";
 
