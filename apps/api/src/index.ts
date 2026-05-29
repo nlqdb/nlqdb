@@ -5,6 +5,14 @@ import {
   createTinybirdAdapter,
   type Engine,
 } from "@nlqdb/db";
+import {
+  createAnthropicProvider,
+  createByollmRouter,
+  createGeminiProvider,
+  createOpenAIProvider,
+  createOpenRouterProvider,
+  type LLMRouter,
+} from "@nlqdb/llm";
 import { authEventsTotal, redactPii, setupTelemetry } from "@nlqdb/otel";
 import {
   isValidSpanId,
@@ -40,15 +48,6 @@ import {
   revokeKeyById,
 } from "./api-keys.ts";
 import { buildAskDeps, buildEventEmitter } from "./ask/build-deps.ts";
-import {
-  type BYOLLMProvider,
-  BYOLLMDecryptError,
-  isBYOLLMProvider,
-  listBYOLLMKeys,
-  resolveBYOLLMKey,
-  revokeBYOLLMKey,
-  storeBYOLLMKey,
-} from "./byollm-keys.ts";
 import { emitFeatureSignal } from "./ask/demand-signal.ts";
 import { orchestrateAsk } from "./ask/orchestrate.ts";
 import { kickoffAskPrelude, resolveAnonEngineOverride, seedFromPinnedDb } from "./ask/prelude.ts";
@@ -59,6 +58,15 @@ import type { AskError, OrchestrateEvent, SelectedDbEcho } from "./ask/types.ts"
 import { listInbox } from "./auth/mock-email-sink.ts";
 import { handleMockSignIn, mockSignInFormHtml } from "./auth/mock-idp.ts";
 import { auth, REVOCATION_KEY_PREFIX } from "./auth.ts";
+import {
+  BYOLLMDecryptError,
+  type BYOLLMProvider,
+  isBYOLLMProvider,
+  listBYOLLMKeys,
+  resolveBYOLLMKey,
+  revokeBYOLLMKey,
+  storeBYOLLMKey,
+} from "./byollm-keys.ts";
 import { askFnFromDemoFixtures, DEMO_DB_ID } from "./chat/demo-shortcut.ts";
 import { postChatMessage } from "./chat/orchestrate.ts";
 import { makeChatStore } from "./chat/store.ts";
@@ -79,14 +87,6 @@ import {
 import { runIcpCluster } from "./icp-cluster.ts";
 import { runIcpScore } from "./icp-score.ts";
 import { runIcpScrape } from "./icp-scrape.ts";
-import {
-  createAnthropicProvider,
-  createByollmRouter,
-  createGeminiProvider,
-  createOpenAIProvider,
-  createOpenRouterProvider,
-  type LLMRouter,
-} from "@nlqdb/llm";
 import { getByollmGatewayBases, getLLMRouter } from "./llm-router.ts";
 import { makeRequireSession, type RequireSessionVariables } from "./middleware.ts";
 import { handleMcpCallback, handleMcpCallbackRedeem } from "./oauth-mcp-bridge.ts";
@@ -990,7 +990,9 @@ app.post("/v1/ask", requirePrincipal, gatePreAlpha, async (c) => {
       const hProvider = c.req.header("x-nlq-byollm-provider");
       const hKey = c.req.header("x-nlq-byollm-key");
       if (hProvider && hKey && isBYOLLMProvider(hProvider)) {
-        byollmRouter = createByollmRouter(buildBYOLLMProvider(hProvider, hKey, getByollmGatewayBases()));
+        byollmRouter = createByollmRouter(
+          buildBYOLLMProvider(hProvider, hKey, getByollmGatewayBases()),
+        );
         span.setAttribute("nlqdb.ask.byollm_provider", hProvider);
         span.setAttribute("nlqdb.ask.byollm_source", "header");
       } else {

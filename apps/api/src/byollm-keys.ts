@@ -72,10 +72,7 @@ export async function storeBYOLLMKey(
 }
 
 // Returns all keys for a tenant (active + revoked), newest first.
-export async function listBYOLLMKeys(
-  d1: D1Database,
-  tenantId: string,
-): Promise<BYOLLMKeyRecord[]> {
+export async function listBYOLLMKeys(d1: D1Database, tenantId: string): Promise<BYOLLMKeyRecord[]> {
   const res = await d1
     .prepare(
       "SELECT id, llm_provider, last_4, created_at, revoked_at FROM byollm_keys " +
