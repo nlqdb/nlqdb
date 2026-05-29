@@ -1,5 +1,9 @@
 # SK-LLM-004 — Cloudflare AI Gateway sits in front of every paid provider
 
+Parent feature: [`llm-router/FEATURE.md`](../FEATURE.md). Sharded out
+unchanged to keep that doc under the 20 KB cap per `CLAUDE.md` §2 D4 —
+this body is verbatim, only the location moved.
+
 - **Decision:** Every paid-provider call routes through Cloudflare AI Gateway URLs (`gateway.ai.cloudflare.com/v1/{acc}/{gw}/{provider}/...`). The gateway provides identical-prompt caching (sub-100 ms hits), per-provider quotas, and a single observability surface across providers.
 - **Core value:** Free, Fast, Honest latency
 - **Why:** AI Gateway's prompt cache lands sub-100 ms responses on identical prompts (huge win for the same-question-twice pattern). It also gives us one log surface across Anthropic / OpenAI / Gemini, which is the only realistic way to compare provider quality at runtime (see `nlqdb.plan.quality_score` in `docs/features/llm-router/FEATURE.md`). The gateway costs nothing on the Free plan.

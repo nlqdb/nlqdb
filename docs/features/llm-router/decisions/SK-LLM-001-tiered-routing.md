@@ -1,5 +1,9 @@
 # SK-LLM-001 — Tiered routing — never send all traffic to a frontier model
 
+Parent feature: [`llm-router/FEATURE.md`](../FEATURE.md). Sharded out
+unchanged to keep that doc under the 20 KB cap per `CLAUDE.md` §2 D4 —
+this body is verbatim, only the location moved.
+
 - **Decision:** LLM traffic is split across tiers by job: hot-path routing (Tier 1, cheap nano), schema embedding (Tier 1), NL→plan workhorse (Tier 2, ~80% of cost), hard-plan / multi-engine reasoning (Tier 3, ≤5%), result summarization (Tier 1). Each tier names a specific model for paid and a free fallback. Frontier models never receive all traffic.
 - **Core value:** Free, Fast, Bullet-proof
 - **Why:** A flat "use the best model for everything" policy turns every route-or-summarize step into a Sonnet-priced call. Tiering captures the reality that 80%+ of LLM calls are cheap intents (route the request, summarize 5 rows) where a nano model is indistinguishable in quality from a frontier model. The plan tier is where quality matters, and that's where we spend the money.

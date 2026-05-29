@@ -1,5 +1,9 @@
 # SK-LLM-009 — Prompt caching on every provider that supports it (~80% input reduction)
 
+Parent feature: [`llm-router/FEATURE.md`](../FEATURE.md). Sharded out
+unchanged to keep that doc under the 20 KB cap per `CLAUDE.md` §2 D4 —
+this body is verbatim, only the location moved.
+
 - **Decision:** Every paid-provider call uses the provider's prompt-caching feature (Anthropic prompt caching, OpenAI cached tokens, Gemini context caching, AI Gateway response cache). System prompts and few-shot examples are written once per chain so the cache hits.
 - **Core value:** Free, Fast, Honest latency
 - **Why:** System-prompt + schema-context tokens dominate input cost on the plan tier. Provider prompt caching (paired with AI Gateway response caching) cuts ~80% of input cost on repeated patterns (per `docs/architecture.md §7` cost-control rule 3). Without it, we burn credit on the same system prompt thousands of times a day.

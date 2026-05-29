@@ -1,5 +1,9 @@
 # SK-LLM-006 — `gen_ai.*` OTel semconv on every LLM span; spans use canonical names from the catalog
 
+Parent feature: [`llm-router/FEATURE.md`](../FEATURE.md). Sharded out
+unchanged to keep that doc under the 20 KB cap per `CLAUDE.md` §2 D4 —
+this body is verbatim, only the location moved.
+
 - **Decision:** Every LLM call emits an OTel span using the canonical names from `docs/performance.md §3.1` (`llm.route`, `llm.plan`, `llm.summarize`, `llm.schema_infer`, `llm.engine_classify`) with `gen_ai.system`, `gen_ai.request.model`, `gen_ai.response.model` attributes (OTel semconv 1.37). Provider, model, operation, and outcome are first-class labels; cardinality budgets are in `docs/performance.md §3.3`.
 - **Core value:** Honest latency, Bullet-proof, Fast
 - **Why:** The runtime decision of "which provider answered this call" is invisible without spans — and that is the most expensive question to answer the wrong way (a provider quality drop costs accuracy across every cache miss). `gen_ai.*` semconv is the cross-vendor standard that lets dashboards in Grafana / Honeycomb / Axiom share one schema. The explicit cardinality budget keeps Grafana free-tier costs flat.

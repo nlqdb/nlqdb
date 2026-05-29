@@ -1,5 +1,9 @@
 # SK-LLM-012 — `schema_infer` is a distinct router operation, not an alias of `plan`
 
+Parent feature: [`llm-router/FEATURE.md`](../FEATURE.md). Sharded out
+unchanged to keep that doc under the 20 KB cap per `CLAUDE.md` §2 D4 —
+this body is verbatim, only the location moved.
+
 - **Decision:** Hosted db.create's schema-inference call is its own router operation (`router.schemaInfer(...)` → span `llm.schema_infer`), not a re-use of `plan`. The two share the planner-tier provider chain and model defaults, but they ship distinct system prompts (`packages/llm/src/prompts/schema-inference.ts` vs the SQL-shaped `PLAN_SYSTEM`), distinct request shapes (`{goal}` vs `{goal, schema, dialect}`), and distinct response shapes (`{plan: Record<string, unknown>}` vs `{sql: string}`).
 - **Core value:** Honest latency, Bullet-proof, Simple
 - **Why:** `plan` is the hot-path NL→SQL operation on every cache-miss `/v1/ask`; `schema_infer` runs once per database, ever. Folding them under one op forces shared prompt + span + dashboards onto two ops with different cost profiles, latency budgets (`schema_infer` 8000 ms vs `plan` 5000 ms), and quality requirements (typed-plan emit vs SQL emit). The distinct span name `llm.schema_infer` is what hosted-db-create's GLOBAL-014 commentary calls out.
