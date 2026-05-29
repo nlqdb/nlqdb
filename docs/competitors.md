@@ -54,6 +54,13 @@ Commodity managed Postgres at various price points. No NL / agent layer. Low thr
 
 These translate natural language into SQL against *your existing database*. They don't own the data layer — they're a translator. nlqdb's answer: owning the DB lets us do auto-migration and destructive-op diff preview that a pure translator can't.
 
+### Wren AI — https://getwren.ai (OSS: https://github.com/Canner/WrenAI)
+Open-source context layer for AI agents — Modeling Definition Language (MDL) semantic model (models, columns, relationships, views, cubes, metrics) plus row- and column-level access controls on top of an existing warehouse. Apache 2.0; 15k+ GitHub stars; cloud + self-host. Apache DataFusion engine documents 22+ data sources (PostgreSQL, BigQuery, Snowflake, DuckDB, …). SOC 2 Type II across all plans per public pricing page.
+- **Overlaps with:** P3 (semantic-layer + governed NL→SQL is the analyst-org pitch), P2 (Python SDK + LangChain bindings + Claude Code skill bundle position it as agent infrastructure).
+- **Gap nlqdb exploits:** Wren AI doesn't own the database — it sits on a warehouse you already run, so DB provisioning, NL-driven schema migration, and `<nlq-data>` in-product render are not in its lane. `create_database` over MCP is whitespace Wren AI's context layer doesn't address.
+- **Threat vector:** **High for governed-analyst orgs.** SOC 2 + RLAC/CLAC + 22 engines is a compliance-first answer nlqdb cannot match in Phase 1; OSS + 15k stars gives it a self-host moat.
+- **Last verified:** 2026-05-29 (WebFetch of getwren.ai homepage + pricing + github.com/Canner/WrenAI README).
+
 ### Vanna AI — https://vanna.ai
 OSS + cloud text-to-SQL trained on your schema and prior queries. Free OSS, commercial tiers above.
 - **Overlaps with:** P3 (chat over existing DB), partially P4.
@@ -252,6 +259,7 @@ OSS text-to-SQL toolkit.
 | Zep | Agent memory | P2 | Same lane as Mem0 |
 | Julius AI | NL analytics | P3 | Cheap, consumer-grade CSV + NL workflow |
 | Vanna AI | Text-to-SQL | P3, P4 | OSS + flexible layer on existing DB |
+| Wren AI | Text-to-SQL (semantic-layer) | P3, P2 | MDL semantic model + RLAC/CLAC + SOC 2 + 22 engines; Apache 2.0 self-host moat |
 | AskYourDatabase | Text-to-SQL | P3, P4 | Low-friction "chat with my DB" vector |
 | MCP Postgres servers | Agent tooling | P2 | Free + standard; gap narrows if they add provisioning |
 | Basedash | AI admin | P4 | AI-aware admin UI for small teams |

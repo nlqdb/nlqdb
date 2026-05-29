@@ -391,6 +391,118 @@ export const COMPETITORS: Competitor[] = [
       why: "The ops query a backend engineer runs from an internal dashboard — Outerbase renders it through a spreadsheet view on your existing DB; nlqdb mints the DB and answers the English goal in one element.",
     },
   },
+  {
+    slug: "wrenai",
+    name: "Wren AI",
+    // Canonical commercial URL; the OSS repo is github.com/Canner/WrenAI (Apache 2.0, full landscape entry in docs/competitors.md §2).
+    url: "https://getwren.ai",
+    tagline:
+      "Open-source context layer for AI agents — Modeling Definition Language (MDL) semantic model plus row- and column-level access controls over your existing warehouse.",
+    persona: "P3 analyst",
+    oneLiner:
+      "Pick Wren AI if you already run a warehouse (BigQuery, Snowflake, PostgreSQL, DuckDB) and want a semantic model — models, metrics, cubes, RLAC/CLAC — governing every English question an AI agent asks. Pick nlqdb if you want the database itself provisioned, schema evolved via English, and answers rendered inside your app from one HTML element.",
+    whenChooseUs: [
+      "You're spinning up a new feature or service that needs its own database — nlqdb provisions Postgres on the first query.",
+      "You want destructive operations and schema changes diff-previewed before they apply, even when an English request triggered them.",
+      "You want one HTML element rendering the answer inside your own product, not a hosted analytics surface.",
+      "An AI agent needs to provision its own database via MCP — `create_database` is the verb Wren AI's context layer doesn't ship.",
+    ],
+    whenChooseThem: [
+      "You already run a production warehouse (BigQuery, Snowflake, PostgreSQL, DuckDB, …) you can't migrate.",
+      "Your team needs a defined semantic model — metrics, cubes, relationships — governing every NL question.",
+      "Row- or column-level access controls must apply before any AI agent reads a row.",
+      "SOC 2 Type II certification is a hard buyer requirement today — Wren AI carries it across all plans.",
+    ],
+    features: [
+      { feature: "Owns the database (provisions + migrates)", us: "shipped", them: "no" },
+      { feature: "Natural-language → SQL", us: "shipped", them: "shipped" },
+      {
+        feature: "Auto-migration via NL ('add a column for tags')",
+        us: "shipped",
+        them: "no",
+        note: "Wren AI sits on warehouses owned elsewhere; schema migration is not in its lane.",
+      },
+      {
+        feature: "Semantic model / MDL with metrics + cubes",
+        us: "no",
+        them: "shipped",
+        note: "Wren AI's MDL (models, columns, relationships, views, cubes, metrics) is the differentiator over translator-only tools; nlqdb's contract is 'the live schema is the semantic layer'.",
+      },
+      {
+        feature: "Row- and column-level access controls",
+        us: "no",
+        them: "shipped",
+        note: "Wren AI's RLAC/CLAC are part of the MDL primitive; nlqdb's per-DB `sk_live_*` keys scope by database, not by row or column.",
+      },
+      {
+        feature: "Multi-engine support beyond Postgres",
+        us: "partial",
+        them: "shipped",
+        note: "Wren AI's Apache DataFusion engine documents 22+ data sources including PostgreSQL, BigQuery, Snowflake, and DuckDB. nlqdb is Postgres-first in Phase 1; ClickHouse lands on the workload-analyser path.",
+      },
+      {
+        feature: "MCP server with provisioning verbs",
+        us: "shipped",
+        them: "no",
+        note: "Wren AI ships a Python SDK, LangChain/LangGraph bindings, and skill bundles for Claude Code; no public MCP primitive for `create_database`.",
+      },
+      {
+        feature: "Destructive-op diff preview before apply",
+        us: "shipped",
+        them: "partial",
+        note: "Wren AI surfaces validation hints and structured error feedback on generated SQL; the NL-side diff preview before write/DDL apply is unique to nlqdb.",
+      },
+      { feature: "HTML embed element (in-product render)", us: "shipped", them: "no" },
+      {
+        feature: "SOC 2 Type II certification",
+        us: "no",
+        them: "shipped",
+        note: "Wren AI carries SOC 2 Type II across all plans per its public pricing page; nlqdb is pre-alpha and carries neither SOC 2 nor HIPAA yet.",
+      },
+      {
+        feature: "Unlimited free-tier natural-language queries",
+        us: "shipped",
+        them: "partial",
+        note: "Wren AI's Free plan documents a 20-monthly-credit allowance (plus 80 credits for the first 14 days). nlqdb's free chain (Groq → Gemini) is rate-limited per principal, not per question/month.",
+      },
+      {
+        feature: "Open source / self-hostable",
+        us: "partial",
+        them: "shipped",
+        note: "Wren AI ships under Apache 2.0 on github.com/Canner/WrenAI. nlqdb is source-available on Functional Source License 1.1-ALv2 today; the LICENSE auto-converts to Apache 2.0 after two years (FSL 'ALv2 Future License' clause).",
+      },
+    ],
+    faqs: [
+      {
+        q: "How does nlqdb's NL→SQL compare to Wren AI's MDL-driven approach?",
+        a: "Wren AI requires you to author a Modeling Definition Language file — models, metrics, cubes, relationships — that the LLM consults before writing SQL; the result is governed and reproducible but takes upfront semantic-modelling work. nlqdb prompts directly from the live Postgres schema fingerprint plus a recent-tables hint, with no MDL step. nlqdb publishes BIRD Mini-Dev + Spider 2.0-lite scores weekly to `docs/features/quality-eval/`; Wren AI does not publish a single canonical accuracy benchmark.",
+      },
+      {
+        q: "Can I point Wren AI at an nlqdb database?",
+        a: "Yes — nlqdb provisions Postgres, and Wren AI lists PostgreSQL as one of its 22+ supported sources, so the connection string nlqdb returns slots in as a Wren AI data source. The reverse (nlqdb querying a Wren-AI-managed warehouse) is not supported today: nlqdb owns the database it queries, and bring-your-own-Postgres is on the roadmap rather than shipped.",
+      },
+      {
+        q: "Does nlqdb ship a semantic layer like Wren AI's MDL?",
+        a: "No. nlqdb's contract is 'the live schema is the semantic layer' — the schema fingerprint plus recent-tables hint is what the LLM sees, and `<nlq-data>` answers are written against that directly. If your team needs cubes, metrics, or row- and column-level access controls on top of the warehouse, Wren AI's MDL is the right shape and nlqdb does not replicate it today.",
+      },
+      {
+        q: "Is nlqdb SOC 2 certified like Wren AI?",
+        a: "No. nlqdb is pre-alpha; SOC 2 Type II is not in place yet. Wren AI's public pricing page documents SOC 2 Type II across all plans (Free, Essential, Enterprise). If you're shipping a regulated product today, Wren AI's compliance posture is honest; nlqdb's compliance roadmap is downstream of GA.",
+      },
+      {
+        q: "Can my AI agent provision a Wren-AI-managed warehouse the way it provisions an nlqdb database?",
+        a: "Wren AI is a context layer plus agent toolkit — its Python SDK and LangChain bindings let an agent issue NL queries against an MDL-modelled data source, but the warehouse itself must already exist. nlqdb's MCP server (`mcp.nlqdb.com`) exposes `create_database`, `ask`, and `run`, so a Claude / Cursor / Cline agent stands up its own Postgres plus schema end-to-end without a human in the loop.",
+      },
+      {
+        q: "Wren AI is Apache 2.0 open source — why not just self-host that?",
+        a: "Pick Wren AI's OSS distribution if you want to self-host, audit, and modify the context layer against your own warehouse. Pick nlqdb if you want the database, schema migrations, MCP-driven agent provisioning, and the HTML embed shipped as one product. nlqdb is source-available on Functional Source License 1.1-ALv2 today; the LICENSE auto-converts to Apache 2.0 after two years per the FSL 'ALv2 Future License' clause.",
+      },
+    ],
+    demo: {
+      goal: "current month's signups grouped by acquisition channel",
+      why: "An analyst question Wren AI's MDL would resolve via a `signups` model and a `channel` dimension on your existing warehouse; nlqdb mints the Postgres database and answers the same English goal against the live schema in one element.",
+    },
+  },
 ];
 
 export function competitorBySlug(slug: string): Competitor | undefined {
