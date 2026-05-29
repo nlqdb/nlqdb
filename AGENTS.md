@@ -25,8 +25,8 @@ KPI in the PR body. The bet: **great on free LLMs ⇒ invincible on
 frontier LLMs** — scaffolding compounds with the model. LLM strategy per
 [`GLOBAL-026`](docs/decisions/GLOBAL-026-llm-strategy-byollm-hosted-premium.md):
 free chain forever · BYOLLM every tier (0% markup) · hosted premium
-on paid (Shape B; §6-gated).
-[`quality-eval`](docs/features/quality-eval/FEATURE.md):
+on paid (flat sub + allowance + overage; §6-gated).
+[`quality-eval`](docs/features/quality-eval/FEATURE.md) → Phase 2;
 free-vs-frontier delta = headline KPI.
 
 ## 2. Five behavioral principles (non-negotiable)
@@ -161,7 +161,7 @@ in editors that support it; otherwise read manually before editing.)
 | `apps/api/src/run/**`, the `POST /v1/run` raw-SQL escape hatch (`GLOBAL-015`) | `docs/features/sdk/FEATURE.md` (`SK-SDK-009`) + `docs/features/cli/FEATURE.md` + `docs/features/sql-allowlist/FEATURE.md` |
 | write/DDL diff preview, `confidence`, response `trace` block | `docs/features/trust-ux/FEATURE.md` |
 | `apps/api/src/db-create/**`, `apps/api/src/ask/classifier.ts`, `apps/api/src/ask/sql-validate-ddl.ts` | `docs/features/hosted-db-create/FEATURE.md` |
-| `apps/api/src/gate/**`, `gatePreAlpha` middleware on `/v1/ask` `/v1/run` `POST /v1/databases` `POST /v1/chat/messages`, `X-Invite-Code` header, `gate:user:*` / `gate:invite:*` KV keys | `docs/features/pre-alpha-gate/FEATURE.md` |
+| `apps/api/src/gate/**`, gatePreAlpha middleware, X-Invite-Code header, gate KV keys | `docs/features/pre-alpha-gate/FEATURE.md` |
 | `apps/api/src/plan-cache/**`, plan storage | `docs/features/plan-cache/FEATURE.md` |
 | `packages/llm/**`, model routing, prompts | `docs/features/llm-router/FEATURE.md` |
 | `tools/eval/**`, `.github/workflows/quality-eval-*.yml` (BIRD/Spider NL-accuracy harness) | `docs/features/quality-eval/FEATURE.md` |
@@ -169,7 +169,7 @@ in editors that support it; otherwise read manually before editing.)
 | `packages/db/**` | `docs/features/db-adapter/FEATURE.md` |
 | anything touching `schema_hash`, schema fingerprinting | `docs/features/schema-widening/FEATURE.md` |
 | any `POST`/`PATCH`/`DELETE` handler | `docs/features/idempotency/FEATURE.md` |
-| `packages/otel/**`, new spans / metrics | `docs/features/observability/FEATURE.md` |
+| `packages/otel/**`, new spans / metrics | `docs/features/observability/FEATURE.md` · `docs/features/byo-otel/FEATURE.md` |
 | `apps/api/src/billing/**`, Stripe webhooks | `docs/features/stripe-billing/FEATURE.md` |
 | `apps/api/src/billing/premium/**`, `apps/api/src/ask/model-picker.ts`, `packages/llm/src/chains/{paid,premium}.ts`, `model` preset / BYOLLM / spend-cap / hosted-premium meter | `docs/features/premium-tier/FEATURE.md` |
 | `apps/events-worker/**`, `packages/events/**`, `apps/api/src/events-feature.ts`, `apps/api/src/ask/demand-signal.ts` | `docs/features/events-pipeline/FEATURE.md` |
