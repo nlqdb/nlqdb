@@ -405,7 +405,7 @@ export const COMPETITORS: Competitor[] = [
       "You need a new database — nlqdb provisions Postgres on the first query.",
       "You want destructive operations and schema changes diff-previewed before they apply, even when triggered by English.",
       "You want one HTML element rendering the answer in-product, not a hosted analytics surface.",
-      "Your agent provisions its own DB via MCP — Wren AI's skills query an existing warehouse.",
+      "You need an agent calling MCP `create_database` — Wren AI's skills query an existing warehouse.",
     ],
     whenChooseThem: [
       "You already run a production warehouse (BigQuery, Snowflake, PostgreSQL, DuckDB, …) you can't migrate.",
@@ -487,7 +487,7 @@ export const COMPETITORS: Competitor[] = [
       },
       {
         q: "Is nlqdb SOC 2 certified like Wren AI?",
-        a: "No. nlqdb is pre-alpha; SOC 2 Type II is not in place yet. As of May 2026, Wren AI's public pricing page lists SOC 2 Type II on the Essential and Enterprise plans only — the Free plan does not carry it. If you're shipping a regulated product today on a Wren AI paid tier, that compliance posture is honest; nlqdb's compliance roadmap is downstream of GA.",
+        a: "No. nlqdb is pre-alpha; SOC 2 Type II is not in place yet. As of May 2026, Wren AI's public pricing page lists SOC 2 Type II on the Essential and Enterprise plans only — the Free plan does not carry it. If you're shipping a regulated product on a Wren AI paid tier today, that compliance posture is honest; nlqdb's compliance roadmap is downstream of GA.",
       },
       {
         q: "Can my AI agent provision a Wren-AI-managed warehouse the way it provisions an nlqdb database?",
