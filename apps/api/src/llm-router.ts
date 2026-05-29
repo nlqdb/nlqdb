@@ -27,6 +27,28 @@ type GatewayBases = {
   workersAi?: string;
 };
 
+// Gateway base URLs for BYOLLM providers (SK-PREMIUM-008 point 2:
+// through-Gateway with unified telemetry per SK-LLM-004).
+export type BYOLLMGatewayBases = {
+  anthropic?: string;
+  openai?: string;
+  gemini?: string;
+  openrouter?: string;
+};
+
+export function getByollmGatewayBases(): BYOLLMGatewayBases {
+  const accountId = env.AI_GATEWAY_ACCOUNT_ID;
+  const gatewayId = env.AI_GATEWAY_ID;
+  if (!accountId || !gatewayId) return {};
+  const base = `https://gateway.ai.cloudflare.com/v1/${accountId}/${gatewayId}`;
+  return {
+    anthropic: `${base}/anthropic/v1`,
+    openai: `${base}/openai/v1`,
+    gemini: `${base}/google-ai-studio/v1beta/models`,
+    openrouter: `${base}/openrouter/api/v1`,
+  };
+}
+
 // Translate AI_GATEWAY_ACCOUNT_ID + AI_GATEWAY_ID into per-provider
 // `baseUrl` overrides. Both must be set — partial config is a deploy
 // bug: silently going direct (and skipping the gateway's caching,

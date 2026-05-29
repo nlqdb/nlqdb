@@ -33,6 +33,7 @@ async function anthropicChat(
   base: string,
   model: string,
   messages: ChatMessage[],
+  jsonMode: boolean,
   opts: CallOpts,
 ): Promise<string> {
   const fetchFn = opts.fetch ?? globalThis.fetch;
@@ -45,6 +46,12 @@ async function anthropicChat(
   const userMessages = messages
     .filter((m) => m.role !== "system")
     .map((m) => ({ role: m.role as "user" | "assistant", content: m.content }));
+
+  // Anthropic has no native response_format; prefill `{` to steer the model
+  // into starting its reply as JSON (documented Anthropic technique for JSON output).
+  if (jsonMode) {
+    userMessages.push({ role: "assistant", content: "{" });
+  }
 
   const body = {
     model,
@@ -94,7 +101,9 @@ async function anthropicChat(
       "parse",
     );
   }
-  return text;
+  // Re-prepend the prefill character stripped by the API so parseJsonResponse
+  // receives a complete JSON object, not a fragment starting at the second char.
+  return jsonMode ? `{${text}` : text;
 }
 
 export function createAnthropicProvider(opts: AnthropicProviderOptions): Provider {
@@ -102,7 +111,7 @@ export function createAnthropicProvider(opts: AnthropicProviderOptions): Provide
   return createChatProvider({
     name: "anthropic",
     models: { ...DEFAULT_MODELS, ...opts.models },
-    callChat: ({ model, messages, opts: callOpts }) =>
-      anthropicChat(opts.apiKey, base, model, messages, callOpts),
+    callChat: ({ model, messages, jsonMode, opts: callOpts }) =>
+      anthropicChat(opts.apiKey, base, model, messages, jsonMode, callOpts),
   });
 }

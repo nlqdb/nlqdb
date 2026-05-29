@@ -2,11 +2,14 @@
 //
 // Keys are stored AES-GCM encrypted at rest using a KEK from Workers Secret
 // (BYOLLM_KEK, or BETTER_AUTH_SECRET with a domain prefix as fallback for dev).
-// At most one active key per (tenant, provider) — storing a new key for the
-// same provider revokes the prior one so the table stays clean.
+// At most one active key per (tenant, provider) — enforced by UNIQUE partial
+// index on (tenant_id, llm_provider) WHERE revoked_at IS NULL.
 //
-// Encryption: SHA-256(KEK) → 256-bit AES-GCM key. IV is random 12 bytes,
+// Encryption: HKDF-SHA-256(KEK) → 256-bit AES-GCM key. IV is random 12 bytes,
 // stored prepended to the ciphertext as base64(IV ‖ ciphertext).
+//
+// Caching: KV stores a "has active key?" TTL-60s boolean per tenant so every
+// /v1/ask for tenants without BYOLLM configured avoids a D1 round-trip.
 
 export type BYOLLMProvider = "anthropic" | "openai" | "gemini" | "openrouter";
 
@@ -29,10 +32,14 @@ export type BYOLLMKeyRecord = {
   revokedAt: number | null;
 };
 
+const KV_PREFIX = "byollm:tenant:";
+const KV_TTL = 60; // seconds
+
 // Stores a BYOLLM key, revoking any prior active key for the same provider.
-// Returns the new row id.
+// Invalidates the KV "has active key?" cache so the next ask picks up the change.
 export async function storeBYOLLMKey(
   d1: D1Database,
+  kv: KVNamespace,
   kek: string,
   tenantId: string,
   provider: BYOLLMProvider,
@@ -42,8 +49,8 @@ export async function storeBYOLLMKey(
   const last4 = plaintextKey.slice(-4);
   const id = crypto.randomUUID();
 
-  // Revoke any prior active key for this provider before insert so the
-  // unique-active invariant holds. Single D1 transaction via batch.
+  // D1 batch is wrapped in an implicit transaction — if the INSERT fails
+  // (e.g. UNIQUE violation from a concurrent request), the revoke also rolls back.
   await d1.batch([
     d1
       .prepare(
@@ -59,6 +66,8 @@ export async function storeBYOLLMKey(
       .bind(id, tenantId, provider, encrypted, last4),
   ]);
 
+  // Invalidate so next ask doesn't serve a stale negative cache hit.
+  await kv.delete(`${KV_PREFIX}${tenantId}`).catch(() => null);
   return { id };
 }
 
@@ -92,8 +101,10 @@ export async function listBYOLLMKeys(
 export type RevokeOutcome = "revoked" | "already_revoked" | "not_found";
 
 // Hard-revokes a key by id, tenant-scoped. Idempotent.
+// Invalidates the KV cache so the next ask uses the free chain.
 export async function revokeBYOLLMKey(
   d1: D1Database,
+  kv: KVNamespace,
   tenantId: string,
   keyId: string,
 ): Promise<RevokeOutcome> {
@@ -104,7 +115,10 @@ export async function revokeBYOLLMKey(
     )
     .bind(keyId, tenantId)
     .run();
-  if (upd.meta.changes === 1) return "revoked";
+  if (upd.meta.changes === 1) {
+    await kv.delete(`${KV_PREFIX}${tenantId}`).catch(() => null);
+    return "revoked";
+  }
   const row = await d1
     .prepare("SELECT 1 AS hit FROM byollm_keys WHERE id = ? AND tenant_id = ?")
     .bind(keyId, tenantId)
@@ -113,15 +127,32 @@ export async function revokeBYOLLMKey(
 }
 
 // Resolves the active BYOLLM key for a tenant and decrypts it.
-// Returns null when no active key is stored (falls through to free chain).
-// `provider` is optional — when set, returns only that provider's key.
-// Without `provider`, returns the most recently stored active key.
+// Uses a KV cache (TTL 60s) to avoid a D1 round-trip when the common case is
+// "no key configured". Throws BYOLLMDecryptError when a row exists but the KEK
+// can't decrypt it — caller must surface this as a fail-loud error per
+// SK-PREMIUM-008 point 6 (never silent fallback on key errors).
+// Returns null only when no active row exists.
+export class BYOLLMDecryptError extends Error {
+  constructor(tenantId: string) {
+    super(`BYOLLM key decryption failed for tenant ${tenantId} — check BYOLLM_KEK`);
+    this.name = "BYOLLMDecryptError";
+  }
+}
+
 export async function resolveBYOLLMKey(
   d1: D1Database,
+  kv: KVNamespace,
   kek: string,
   tenantId: string,
   provider?: BYOLLMProvider,
 ): Promise<{ llmProvider: BYOLLMProvider; plaintextKey: string } | null> {
+  // Fast path: KV negative cache — skip D1 when we know the tenant has no key.
+  // Only used when no specific provider is requested (the common dispatch path).
+  if (!provider) {
+    const cached = await kv.get(`${KV_PREFIX}${tenantId}`).catch(() => undefined);
+    if (cached === "0") return null;
+  }
+
   const row = provider
     ? await d1
         .prepare(
@@ -138,22 +169,52 @@ export async function resolveBYOLLMKey(
         .bind(tenantId)
         .first<{ llm_provider: BYOLLMProvider; encrypted_key: string }>();
 
-  if (!row) return null;
+  if (!row) {
+    // Cache the negative result — common case for tenants who haven't stored a key.
+    if (!provider) {
+      await kv
+        .put(`${KV_PREFIX}${tenantId}`, "0", { expirationTtl: KV_TTL })
+        .catch(() => null);
+    }
+    return null;
+  }
 
-  const plaintextKey = await decryptKey(kek, row.encrypted_key);
+  // Decryption failure = KEK mismatch → throw so the caller can fail loud
+  // (not silently route to the free chain — that's the dark pattern).
+  let plaintextKey: string;
+  try {
+    plaintextKey = await decryptKey(kek, row.encrypted_key);
+  } catch {
+    throw new BYOLLMDecryptError(tenantId);
+  }
   return { llmProvider: row.llm_provider, plaintextKey };
 }
 
-// ─── AES-GCM crypto ─────────────────────────────────────────────────────────
+// ─── AES-GCM crypto with HKDF key derivation ────────────────────────────────
 
-// Domain-separate the KEK from other secrets that may share the same
-// underlying string (e.g. BETTER_AUTH_SECRET fallback in dev).
+// HKDF-SHA-256 is the RFC 9709 standard for deriving an AES-GCM key from a
+// secret. Proper extract-and-expand with a fixed info label gives stronger
+// domain separation than raw SHA-256.
 async function deriveAesKey(kek: string): Promise<CryptoKey> {
-  const raw = await crypto.subtle.digest(
-    "SHA-256",
-    new TextEncoder().encode(`nlqdb.byollm.kek:${kek}`),
+  const keyMaterial = await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(kek),
+    "HKDF",
+    false,
+    ["deriveKey"],
   );
-  return crypto.subtle.importKey("raw", raw, { name: "AES-GCM" }, false, ["encrypt", "decrypt"]);
+  return crypto.subtle.deriveKey(
+    {
+      name: "HKDF",
+      hash: "SHA-256",
+      salt: new Uint8Array(32), // zero salt — KEK is already high-entropy
+      info: new TextEncoder().encode("nlqdb.byollm.aes-gcm-key"),
+    },
+    keyMaterial,
+    { name: "AES-GCM", length: 256 },
+    false,
+    ["encrypt", "decrypt"],
+  );
 }
 
 async function encryptKey(kek: string, plaintext: string): Promise<string> {
