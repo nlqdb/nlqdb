@@ -166,8 +166,8 @@ note "FLOW-002 steps 5-9 require a browser (CTA click, draft hydrate, /app/new r
 
 # --- FLOW-003 — Comparison-driven inbound (steps 1, 2, 4, 9) -------------
 
-VS_SLUGS=(   "supabase" "vanna"    "mem0" "outerbase" )
-VS_TITLES=(  "Supabase" "Vanna AI" "Mem0" "Outerbase" )
+VS_SLUGS=(   "supabase" "vanna"    "mem0" "outerbase" "wrenai"  )
+VS_TITLES=(  "Supabase" "Vanna AI" "Mem0" "Outerbase" "Wren AI" )
 
 say "FLOW-003 — /vs/<slug> (curl-observable subset, all ${#VS_SLUGS[@]} slugs)"
 for i in "${!VS_SLUGS[@]}"; do
@@ -193,15 +193,18 @@ if fetch_body "FLOW-003 step 9 GET /llms.txt returns 200" "$BASE_URL/llms.txt"; 
 fi
 
 # /sitemap.xml as the cheapest smoke test that the marketing-side build
-# isn't a partial — 13 URLs today (5 solve + 4 vs + 4 root pages). The
-# floor matches the shipped surface; new slugs raise it.
+# isn't a partial — 14 URLs today = SOLVE_ENTRIES.length (5) + COMPETITORS.length (5)
+# + STATIC_ROUTES.length (4: "/", "/manifesto", "/vs", "/solve") per
+# apps/web/src/pages/sitemap.xml.ts. The floor is hand-bumped against those data
+# files; every new /solve/ or /vs/ slug raises it by one. `>=` means an
+# under-bump leaks a regression silently rather than breaking the build.
 say "Sitemap floor — every shipped slug must appear"
 if fetch_body "GET /sitemap.xml returns 200" "$BASE_URL/sitemap.xml"; then
   loc_count=$(grep -oE '<loc>[^<]*</loc>' "$FETCH_BODY_PATH" | wc -l | tr -d ' ')
-  if (( loc_count >= 13 )); then
-    ok "/sitemap.xml has $loc_count <loc> entries (floor 13)"
+  if (( loc_count >= 14 )); then
+    ok "/sitemap.xml has $loc_count <loc> entries (floor 14)"
   else
-    fail "/sitemap.xml" "expected ≥13 <loc> entries, got $loc_count"
+    fail "/sitemap.xml" "expected ≥14 <loc> entries, got $loc_count"
   fi
   rm -f "$FETCH_BODY_PATH"
 fi
