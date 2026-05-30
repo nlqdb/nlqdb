@@ -10,6 +10,7 @@
 import { env } from "cloudflare:workers";
 import { neon } from "@neondatabase/serverless";
 import type { Row } from "@nlqdb/db";
+import type { LLMRouter } from "@nlqdb/llm";
 import { dbDurationMs } from "@nlqdb/otel";
 import { SpanStatusCode, trace } from "@opentelemetry/api";
 import { resolveDb } from "../db-registry.ts";
@@ -22,11 +23,15 @@ import { makeRateLimiter } from "./rate-limit.ts";
 import { makeRecentTablesStore } from "./recent-tables.ts";
 import { DbConfigError, type DbRecord, type QueryResult } from "./types.ts";
 
-export function buildAskDeps(envBindings: Cloudflare.Env): OrchestrateDeps {
+// `llm` defaults to the shared free-tier router (`getLLMRouter`). The
+// `/v1/ask` handler passes a per-request override when a BYOLLM lane is
+// selected (`resolveAskRouter`), so the swap lands here, not duplicated
+// per call site.
+export function buildAskDeps(envBindings: Cloudflare.Env, llm?: LLMRouter): OrchestrateDeps {
   return {
     resolveDb: (id, tenantId) => resolveDb(envBindings.DB, id, tenantId),
     planCache: makePlanCache(envBindings.KV),
-    llm: getLLMRouter(),
+    llm: llm ?? getLLMRouter(),
     exec: buildExec,
     rateLimiter: makeRateLimiter(envBindings.DB),
     firstQuery: makeFirstQueryTracker(envBindings.KV),

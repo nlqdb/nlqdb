@@ -40,6 +40,7 @@ import {
   revokeKeyById,
 } from "./api-keys.ts";
 import { buildAskDeps, buildEventEmitter } from "./ask/build-deps.ts";
+import { BYOLLM_HEADER, parseByollmHeader, resolveAskRouter } from "./ask/byollm.ts";
 import { emitFeatureSignal } from "./ask/demand-signal.ts";
 import { orchestrateAsk } from "./ask/orchestrate.ts";
 import { kickoffAskPrelude, resolveAnonEngineOverride, seedFromPinnedDb } from "./ask/prelude.ts";
@@ -505,6 +506,42 @@ app.post("/v1/ask", requirePrincipal, gatePreAlpha, async (c) => {
     }
     span.setAttribute("nlqdb.ask.goal_preview", redactPii(parsed.body.goal).slice(0, 200));
 
+    // SK-LLM-016 step 1 — per-request BYOLLM key (signed-in only). When
+    // `x-nlq-byollm-key` is present the whole ask dispatches through the
+    // user's own provider key at 0% markup (GLOBAL-026) instead of the
+    // free chain. Anon / API-key principals may not carry it: a raw
+    // provider key must ride a first-party session, never a header an
+    // un-audited MCP host or `pk_live_` embed could replay (SK-PREMIUM-008
+    // point 8). The credential never enters a span/log — only the bounded
+    // `llm.byollm_provider` slug does (resolveAskRouter).
+    let byollmCredential: import("@nlqdb/llm").ByollmCredential | null = null;
+    const byollmHeaderRaw = c.req.header(BYOLLM_HEADER);
+    if (byollmHeaderRaw !== undefined && byollmHeaderRaw.trim() !== "") {
+      if (principal.kind !== "user") {
+        span.setAttribute("nlqdb.ask.outcome", "byollm_requires_session");
+        span.end();
+        return c.json(
+          {
+            error: {
+              status: "byollm_requires_session" as const,
+              message: `${BYOLLM_HEADER} requires a signed-in session; sign in to use your own LLM key.`,
+            },
+          },
+          400,
+        );
+      }
+      const parsedKey = parseByollmHeader(byollmHeaderRaw);
+      if (!parsedKey.ok) {
+        span.setAttribute("nlqdb.ask.outcome", "byollm_invalid_key");
+        span.end();
+        return c.json(
+          { error: { status: "invalid_byollm_key" as const, message: parsedKey.message } },
+          400,
+        );
+      }
+      byollmCredential = parsedKey.credential;
+    }
+
     const accept = c.req.header("accept") ?? "";
     const wantsSse = accept.includes("text/event-stream");
     const wantsJsonOnly = accept.includes("application/json") && !accept.includes("*/*");
@@ -961,7 +998,34 @@ app.post("/v1/ask", requirePrincipal, gatePreAlpha, async (c) => {
       }
     }
 
-    const deps = buildAskDeps(c.env);
+    // Resolve the dispatch lane (free vs the per-request BYOLLM key) and
+    // annotate the ask span with the redacted lane attributes. The free
+    // router is the cached singleton, so the non-BYOLLM path costs nothing
+    // extra; the BYOLLM path builds a single-provider router per request.
+    const routing = resolveAskRouter({
+      headerCredential: byollmCredential,
+      freeRouter: getLLMRouter(),
+      gateway: { accountId: c.env.AI_GATEWAY_ACCOUNT_ID, gatewayId: c.env.AI_GATEWAY_ID },
+      userId: principal.id,
+    });
+    if (!routing.ok) {
+      span.setAttribute("nlqdb.ask.outcome", "byollm_gateway_unconfigured");
+      span.end();
+      return c.json(
+        {
+          error: {
+            status: "byollm_unavailable" as const,
+            message:
+              "BYOLLM is not configured on this deployment; remove the x-nlq-byollm-key header to use the built-in models.",
+          },
+        },
+        503,
+      );
+    }
+    for (const [key, value] of Object.entries(routing.attributes)) {
+      span.setAttribute(key, value);
+    }
+    const deps = buildAskDeps(c.env, routing.router);
     // After the SK-ASK-009 resolution above, `dbId` is guaranteed to
     // be set — either by the caller, by the 1-DB auto-target, or by
     // routeAsk (recent-table fast-path / slug fast-path / LLM pick).
