@@ -74,10 +74,13 @@ export type ByollmDispatchResult =
 // GLOBAL-012) when the selected BYOLLM credential is structurally
 // invalid — never demotes a present key to a lower lane.
 export function resolveByollmDispatch(input: ByollmDispatchInput): ByollmDispatchResult {
-  // Strict precedence: a present override wins outright; only when it's
-  // absent does the stored key get a look. `??` (not `||`) so a
-  // credential object is never skipped — emptiness is the provider
-  // factory's fail-loud concern, not this selector's.
+  // Strict precedence: a present override wins outright; the stored key
+  // is consulted only when no override is present. For the
+  // `ByollmCredential | undefined` contract a present value is always a
+  // truthy, non-nullish object, so the `source` ternary and the
+  // credential `??` always agree on which key won. A present-but-empty
+  // credential is the provider factory's fail-loud concern, not this
+  // selector's.
   const source: "override" | "stored" | undefined = input.override
     ? "override"
     : input.stored

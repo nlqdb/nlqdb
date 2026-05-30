@@ -52,7 +52,12 @@ implemented the provider half. Parent GLOBAL:
   SDK / CLI / MCP / elements parity — is the **dispatch-wiring** slice
   still tracked in [`SK-LLM-016`](./SK-LLM-016-byollm-dispatch.md)
   *Consequence in code*. `GLOBAL-003` parity is deferred to that PR,
-  not violated here.
+  not violated here. Two contracts that slice must honour: (a) feed
+  `byollmChains()` into `createLLMRouter({ chains })` so the
+  no-fallback shape actually reaches the router, and (b) translate the
+  factory's construction-time `throw` (a plain developer-facing
+  `Error`) into a user-facing `GLOBAL-012` envelope at the request
+  boundary.
 - **Alternatives rejected:**
   - **Resolve credentials (DB + KEK + header) inside this function.**
     Couples the pure precedence logic to D1, the Workers KEK Secret and
