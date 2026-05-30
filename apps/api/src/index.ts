@@ -157,6 +157,9 @@ const credentialedCors = cors({
     "cf-turnstile-response",
     "idempotency-key",
     "traceparent",
+    // SK-LLM-021 — the signed-in-only BYOLLM lane is cookie-session, so it
+    // rides this credentialed handler; without it browsers abort the preflight.
+    "x-nlq-byollm-key",
   ],
   allowMethods: ["GET", "POST", "DELETE", "OPTIONS"],
   maxAge: 86400,
