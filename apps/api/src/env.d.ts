@@ -58,6 +58,15 @@ declare global {
       // POST /v1/stripe/webhook — when absent, the route returns 503.
       STRIPE_WEBHOOK_SECRET?: string;
 
+      // KEK for the bring-your-own secret-at-rest envelope (`GLOBAL-031`,
+      // `src/secret-envelope.ts`) — the single Workers-held key that seals
+      // BYOLLM account keys and BYO Postgres/ClickHouse connection URLs.
+      // High-entropy string (e.g. `openssl rand -base64 32`). Optional at
+      // type level: when absent, BYO-secret storage routes return 503
+      // (`kekFromEnv` → operator-config gap), so `wrangler dev` and tests
+      // that don't touch BYO storage still run.
+      BYO_SECRET_KEK?: string;
+
       // Cloudflare Turnstile secret for the anonymous-create burst
       // gate (SK-ANON-007). Optional at type level: when absent the
       // burst gate skips Turnstile verification (fail-open) so

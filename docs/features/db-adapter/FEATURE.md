@@ -154,6 +154,8 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
     owner table); the `D1Database` typed binding flowing through
     `db-registry.ts` is target-state platform-db consumer code, not a
     db-adapter concern.
+- **GLOBAL-031** — One AES-256-GCM at-rest envelope + one Workers-held KEK for every BYO secret.
+  - *In this feature:* the BYO Postgres `connection_url` (`SK-DB-011`, `architecture.md §3.6.7`) is sealed by `apps/api/src/secret-envelope.ts` with context `dbconn:<dbId>` before it lands in the D1 row; `registerByoDb` reads it back via `openSecret`. The adapter still receives a plaintext DSN at execute time — the envelope is the storage boundary, not the adapter contract.
 
 ## Open questions / known unknowns
 

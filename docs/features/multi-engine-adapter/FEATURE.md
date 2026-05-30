@@ -111,6 +111,7 @@ Canonical text in [`docs/decisions.md`](../../decisions.md). Features reference 
 - **GLOBAL-015** — Power-user escape hatch. *In this feature:* `SK-DB-010` `engine?` override; `SK-MULTIENG-004` raw-SQL/command escape hatches per engine.
 - **GLOBAL-017** — One way to do each thing. *In this feature:* no new endpoints; `engine` is a field on existing `db.create`, never a new path.
 - **GLOBAL-020** — No "pick a region" in the first 60 s. *In this feature:* engine defaults to classifier inference; explicit field is power-user-only.
+- **GLOBAL-031** — One AES-256-GCM at-rest envelope + one Workers-held KEK for every BYO secret. *In this feature:* the BYO ClickHouse connection URL (`SK-MULTIENG-005`) is sealed by `apps/api/src/secret-envelope.ts` with context `dbconn:<dbId>`, identical to BYO Postgres — the native-HTTP transport and `system.columns` introspection differ, the at-rest scheme does not.
 
 ## Phase 3 architecture (reference)
 
