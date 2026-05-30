@@ -20,6 +20,8 @@ import {
   selectDispatchLane,
 } from "@nlqdb/llm";
 
+export type { ByollmCredential } from "@nlqdb/llm";
+
 // Canonical header name (`SK-PREMIUM-008`). Lower-case — Hono normalises
 // header lookups, but keeping the constant lower-case matches the wire.
 export const BYOLLM_HEADER = "x-nlq-byollm-key";

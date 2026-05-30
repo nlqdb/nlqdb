@@ -20,9 +20,15 @@ selector). Key-handling parent: [`SK-PREMIUM-008`](../../premium-tier/decisions/
   could replay, per `SK-PREMIUM-008` point 8). Accepted providers are the AI
   Gateway compat-endpoint slugs `openai` / `anthropic` / `google-ai-studio`
   (verified 2026-05); an unknown slug fails loud at the edge rather than
-  404-ing at the gateway. A BYOLLM key with AI Gateway unconfigured returns a
-  one-sentence 503. `buildAskDeps` gains an optional `llm` override so the
-  per-request router swap lands in one place.
+  404-ing at the gateway. The lane is resolved once, before `routeAsk`, and
+  threaded through the **whole query path** — route classifier + plan +
+  summarize — so a BYOLLM ask runs end-to-end on the user's key and fails
+  loud as one unit if the key is bad, never half on their key and half on
+  ours. The **create / DDL path** (`runCreatePath` → `buildDbCreateDeps`)
+  keeps the free router this slice and is left unlabelled (tracked). A BYOLLM
+  key with AI Gateway unconfigured returns a one-sentence 503. `buildAskDeps`
+  gains an optional `llm` override so the per-request router swap lands in
+  one place.
 - **Core value:** Free, Effortless UX, Honest latency, Bullet-proof
 - **Why:** `SK-LLM-019`/`SK-LLM-020` shipped the provider + the pure
   precedence but explicitly deferred the apps/api wiring; this is that wiring

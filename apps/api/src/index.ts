@@ -40,7 +40,12 @@ import {
   revokeKeyById,
 } from "./api-keys.ts";
 import { buildAskDeps, buildEventEmitter } from "./ask/build-deps.ts";
-import { BYOLLM_HEADER, parseByollmHeader, resolveAskRouter } from "./ask/byollm.ts";
+import {
+  BYOLLM_HEADER,
+  type ByollmCredential,
+  parseByollmHeader,
+  resolveAskRouter,
+} from "./ask/byollm.ts";
 import { emitFeatureSignal } from "./ask/demand-signal.ts";
 import { orchestrateAsk } from "./ask/orchestrate.ts";
 import { kickoffAskPrelude, resolveAnonEngineOverride, seedFromPinnedDb } from "./ask/prelude.ts";
@@ -507,14 +512,16 @@ app.post("/v1/ask", requirePrincipal, gatePreAlpha, async (c) => {
     span.setAttribute("nlqdb.ask.goal_preview", redactPii(parsed.body.goal).slice(0, 200));
 
     // SK-LLM-016 step 1 — per-request BYOLLM key (signed-in only). When
-    // `x-nlq-byollm-key` is present the whole ask dispatches through the
-    // user's own provider key at 0% markup (GLOBAL-026) instead of the
-    // free chain. Anon / API-key principals may not carry it: a raw
-    // provider key must ride a first-party session, never a header an
-    // un-audited MCP host or `pk_live_` embed could replay (SK-PREMIUM-008
-    // point 8). The credential never enters a span/log — only the bounded
+    // `x-nlq-byollm-key` is present the query path (route + plan +
+    // summarize) dispatches through the user's own provider key at 0%
+    // markup (GLOBAL-026) instead of the free chain; the create/DDL path
+    // stays on the free chain this slice (tracked in premium-tier). Anon /
+    // API-key principals may not carry it: a raw provider key must ride a
+    // first-party session, never a header an un-audited MCP host or
+    // `pk_live_` embed could replay (SK-PREMIUM-008 point 8). The
+    // credential never enters a span/log — only the bounded
     // `llm.byollm_provider` slug does (resolveAskRouter).
-    let byollmCredential: import("@nlqdb/llm").ByollmCredential | null = null;
+    let byollmCredential: ByollmCredential | null = null;
     const byollmHeaderRaw = c.req.header(BYOLLM_HEADER);
     if (byollmHeaderRaw !== undefined && byollmHeaderRaw.trim() !== "") {
       if (principal.kind !== "user") {
@@ -815,6 +822,36 @@ app.post("/v1/ask", requirePrincipal, gatePreAlpha, async (c) => {
       return runCreatePath();
     }
 
+    // Resolve the dispatch lane once (free vs the per-request BYOLLM key)
+    // so routeAsk, plan and summarize all ride the same router — a BYOLLM
+    // ask runs end-to-end on the user's key (and fails loud as one unit if
+    // the key is bad), never half on their key and half on ours. The free
+    // router is the cached singleton, so the non-BYOLLM path costs nothing
+    // extra; the BYOLLM path builds one single-provider router per request.
+    // Lane span attributes are stamped on the query path only (below), so
+    // the create branches — which keep the free DDL router — aren't
+    // mislabelled.
+    const routing = resolveAskRouter({
+      headerCredential: byollmCredential,
+      freeRouter: getLLMRouter(),
+      gateway: { accountId: c.env.AI_GATEWAY_ACCOUNT_ID, gatewayId: c.env.AI_GATEWAY_ID },
+      userId: principal.id,
+    });
+    if (!routing.ok) {
+      span.setAttribute("nlqdb.ask.outcome", "byollm_gateway_unconfigured");
+      span.end();
+      return c.json(
+        {
+          error: {
+            status: "byollm_unavailable" as const,
+            message:
+              "BYOLLM is not configured on this deployment; remove the x-nlq-byollm-key header to use the built-in models.",
+          },
+        },
+        503,
+      );
+    }
+
     // SK-ASK-009 + SK-ASK-014 prelude — routeAsk runs on every authed
     // /v1/ask (with or without a pinned dbId), in parallel with the
     // tenant DB list. Dispatch after routeAsk:
@@ -866,7 +903,7 @@ app.post("/v1/ask", requirePrincipal, gatePreAlpha, async (c) => {
           candidates: [] as ReturnType<typeof toCandidates>,
           output: await withStageRetry("route", () =>
             routeAsk(
-              { llm: getLLMRouter() },
+              { llm: routing.router },
               {
                 goal: parsed.body.goal,
                 dbs: [],
@@ -879,7 +916,7 @@ app.post("/v1/ask", requirePrincipal, gatePreAlpha, async (c) => {
       const candidates = toCandidates(dbs);
       const output = await withStageRetry("route", () =>
         routeAsk(
-          { llm: getLLMRouter() },
+          { llm: routing.router },
           {
             goal: parsed.body.goal,
             dbs: candidates,
@@ -998,30 +1035,10 @@ app.post("/v1/ask", requirePrincipal, gatePreAlpha, async (c) => {
       }
     }
 
-    // Resolve the dispatch lane (free vs the per-request BYOLLM key) and
-    // annotate the ask span with the redacted lane attributes. The free
-    // router is the cached singleton, so the non-BYOLLM path costs nothing
-    // extra; the BYOLLM path builds a single-provider router per request.
-    const routing = resolveAskRouter({
-      headerCredential: byollmCredential,
-      freeRouter: getLLMRouter(),
-      gateway: { accountId: c.env.AI_GATEWAY_ACCOUNT_ID, gatewayId: c.env.AI_GATEWAY_ID },
-      userId: principal.id,
-    });
-    if (!routing.ok) {
-      span.setAttribute("nlqdb.ask.outcome", "byollm_gateway_unconfigured");
-      span.end();
-      return c.json(
-        {
-          error: {
-            status: "byollm_unavailable" as const,
-            message:
-              "BYOLLM is not configured on this deployment; remove the x-nlq-byollm-key header to use the built-in models.",
-          },
-        },
-        503,
-      );
-    }
+    // Now on the query/write path — stamp the redacted lane attributes
+    // (the create branches above returned on the free DDL router and are
+    // deliberately left unlabelled) and build the orchestrator deps on the
+    // lane resolved above.
     for (const [key, value] of Object.entries(routing.attributes)) {
       span.setAttribute(key, value);
     }
