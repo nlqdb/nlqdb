@@ -46,7 +46,9 @@ const client = createClient({
 `provider` is one of `openai` / `anthropic` / `google-ai-studio`. The
 key is sent only on `/v1/ask`, never on other endpoints. `createClient`
 throws if `byollm` is paired with `apiKey` (the API rejects the lane on
-bearer keys), or if a part is empty / contains a `:`.
+bearer keys), if any part is empty or holds a control character, or if
+`provider` / `model` contain a `:` (the key may — it is the unsplit
+remainder).
 
 ## Surface
 
