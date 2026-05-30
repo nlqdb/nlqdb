@@ -381,37 +381,37 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
     persona: "P1 solo builder",
     searchTitle: "How do I add a database column without writing a migration file?",
     oneLiner:
-      "If your project needs a new column or table and you don't want to author, run, and roll back a migration file, ask in English — nlqdb generates the `ALTER TABLE ADD COLUMN` (always nullable per `SK-DB-008`), shows the diff, and applies it on a second Enter.",
+      "If your project needs a new column or table and you don't want to author, run, and roll back a migration file, ask in English — nlqdb generates `ALTER TABLE … ADD COLUMN … NULL`, shows the diff, and applies it on a second Enter.",
     painContext:
       "Adding a field is the most repeated friction in early-product development. Every new requirement spawns a migration file, an `ALTER TABLE`, a coordinated deploy, and a rollback path — and every framework's migration tool (Prisma, Drizzle, Knex, Flyway, sqlx) still wants the change authored in SQL or a typed DSL before the app can read it.",
     demoGoal: "signups by referrer in the last 7 days",
     demoWhy:
-      'A query that touches a column a new feature would have introduced — the kind of read that normally arrives one PR after the schema migration that added "referrer" — answered straight from the English goal.',
+      'The first answer mints the table from your goal — schema-inference, not widening yet. To exercise widening directly on the anonymous DB, ask `"add a country column to signups"` after the first reply and watch the diff-and-confirm gate fire on a nullable `ADD COLUMN`.',
     howNlqdbAnswers: [
-      'Schema-widening verbs are English: `"add a referrer column to signups"` emits `ALTER TABLE signups ADD COLUMN referrer TEXT NULL` (`SK-DB-008`) — the destructive-op confirm gate (`SK-ONBOARD-004`) shows the diff before commit.',
-      "Logical fields, once observed, never get dropped from the planner's view (`GLOBAL-004`) — the plan cache stays valid across additive growth, so a widening query doesn't pay a re-plan tax.",
-      "The compiled DDL lands in the trace block (`SK-WEB-005`) and the per-DB audit log — the change history is the artifact; no migration folder needs hand-curation.",
+      'Schema-widening verbs are English: `"add a referrer column to signups"` emits `ALTER TABLE signups ADD COLUMN referrer TEXT NULL`; the diff-and-confirm gate previews the change before commit.',
+      "Logical fields, once observed, never get dropped from the planner's view — the plan cache stays valid across additive growth, so a widening query doesn't pay a re-plan tax.",
+      "The compiled DDL lands in the trace block under every reply — the change history is the trace, not a Git-tracked migrations folder you hand-curate.",
     ],
     whatItDoesnt: [
-      "No destructive DDL via natural language — `DROP COLUMN`, `RENAME`, and type changes still require an explicit SQL migration via `POST /v1/run` (`GLOBAL-015`); the widening contract is one-way on purpose.",
-      "No version-controlled migration files for replaying on another environment — change history lives in the audit log, not a Git-tracked folder. For team-replayable migrations the explicit-SQL escape hatch remains the path.",
+      "No destructive DDL via natural language — `DROP COLUMN`, `RENAME`, and type changes still require an explicit SQL migration via the `runSql` escape hatch; the widening contract is one-way on purpose.",
+      "No separate audit-log endpoint today — the trace block under each reply is the change-history surface. For team-replayable migrations the explicit-SQL escape hatch remains the path.",
     ],
     faqs: [
       {
         q: "Does nlqdb replace migration files entirely for early-stage projects?",
-        a: "For additive changes (new columns, new tables) yes — the English verb plus `SK-ONBOARD-004`'s diff-and-confirm gate is the migration. Destructive changes (`DROP`, `RENAME`, type narrowing) still need an explicit SQL migration via the `runSql` escape hatch; the widening-only contract (`GLOBAL-004`) is intentional, not a gap.",
+        a: "For additive changes (new columns, new tables) yes — the English verb plus the diff-and-confirm gate is the migration. Destructive changes (`DROP`, `RENAME`, type narrowing) still need an explicit SQL migration via the `runSql` escape hatch; the widening-only contract is intentional, not a gap.",
       },
       {
         q: "What gets written when I ask to add a column?",
-        a: "`ALTER TABLE <table> ADD COLUMN <name> <type> NULL` — always nullable, never with a default that backfills (`SK-DB-008`). The destructive-op confirm gate (`SK-ONBOARD-004`) shows the SQL + row-count impact (0 affected for `ADD COLUMN NULL` on Postgres) before commit.",
+        a: "`ALTER TABLE <table> ADD COLUMN <name> <type> NULL` — always nullable, never with a default that backfills. The diff-and-confirm gate shows the SQL and the row-count impact before commit.",
       },
       {
         q: "How do I get a SQL migration file out of nlqdb for a teammate to apply?",
-        a: "The trace block (`SK-WEB-005`) under every reply renders the compiled DDL; copy it into your repo's migration folder if your workflow needs one. The per-DB audit log is also queryable via `POST /v1/run` and exports the same DDL with timestamps and author tags.",
+        a: "The trace block under every reply renders the compiled DDL; copy it into your repo's migrations folder if your workflow needs one. There is no separate audit-log endpoint today — the trace is the audit surface.",
       },
       {
         q: "What if I ask to drop a column by mistake?",
-        a: "`DROP COLUMN` is on the sql-allowlist denylist for natural-language flow — the planner refuses it and routes you to `POST /v1/run` instead, where the SQL is yours to author. The widening-only contract means accidental drops via chat are structurally prevented, not merely warned against.",
+        a: "`DROP COLUMN` is on the sql-allowlist denylist for natural-language flow — the planner refuses it and routes you to the `runSql` escape hatch instead, where the SQL is yours to author. The widening-only contract means accidental drops via chat are structurally prevented, not merely warned against.",
       },
     ],
     sources: [
