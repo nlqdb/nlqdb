@@ -30,7 +30,9 @@ decision). Parent GLOBAL:
 
   Gateway auth (`cf-aig-authorization: Bearer <token>`) is sent only
   when an authenticated gateway token is supplied. The factory fails
-  loud (`GLOBAL-012`) at construction on any missing required option.
+  loud (`GLOBAL-012`) at construction on any missing — or blank /
+  whitespace-only — required option (a `"   "` key is truthy but only
+  surfaces as a confusing upstream 401).
 - **Core value:** Free, Bullet-proof, Effortless UX
 - **Why:** A pure provider factory is the load-bearing, unit-testable
   core of `SK-LLM-016` — it reuses the existing `createChatProvider` +

@@ -64,6 +64,14 @@ describe("resolveByollmDispatch — fail-loud, no silent fallback (GLOBAL-012)",
       /userId/,
     );
   });
+
+  it("throws on a whitespace-only key instead of routing a confusing upstream 401", () => {
+    // A `"   "` apiKey is truthy, so a blank-check alone would let it
+    // through to a confusing upstream 401 — fail loud at construction.
+    expect(() => resolveByollmDispatch({ ...base, stored: { ...cred, apiKey: "   " } })).toThrow(
+      /apiKey/,
+    );
+  });
 });
 
 describe("resolveByollmDispatch — provider wiring", () => {

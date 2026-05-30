@@ -72,8 +72,11 @@ export function createByollmProvider(opts: ByollmProviderOptions): Provider {
     gatewayId: opts.gatewayId,
     userId: opts.userId,
   };
+  // Reject blank AND whitespace-only values: a `"   "` key is truthy
+  // but produces a confusing upstream 401, not an obvious config error
+  // — so fail loud at construction (GLOBAL-012).
   const missing = Object.entries(required)
-    .filter(([, v]) => !v)
+    .filter(([, v]) => !v || v.trim() === "")
     .map(([k]) => k);
   if (missing.length > 0) {
     throw new Error(`createByollmProvider: missing required option(s): ${missing.join(", ")}`);
