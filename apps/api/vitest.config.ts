@@ -37,6 +37,7 @@ export default defineConfig(async () => {
             include: [
               "test/gate-check.test.ts",
               "test/gate-bypass.test.ts",
+              "test/byollm.test.ts",
               "test/gate-middleware.test.ts",
               "test/orchestrate.test.ts",
               "test/plan-cache.test.ts",

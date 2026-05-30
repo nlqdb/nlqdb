@@ -31,11 +31,19 @@ per-tenant `cf-aig-cache-key` — plus the lane selector
 header→account→premium→free precedence), `buildByollmRouter` (single-provider
 lane router, no free-chain failover, fail-loud per
 [`GLOBAL-012`](./decisions/GLOBAL-012-one-sentence-errors.md)), and the
-redacted `llm.dispatch_lane` span attributes. Next: the apps/api wiring —
-credential resolution (`x-nlq-byollm-key` header + `api_keys.scope = "byollm"`
-KEK-decrypt), premium-eligibility, the lane-select middleware on `/v1/ask`,
-and all surfaces (HTTP / SDK / CLI / MCP / elements) in one PR per
-[`GLOBAL-003`](./decisions/GLOBAL-003-all-surfaces-one-pr.md).
+redacted `llm.dispatch_lane` span attributes. The per-request
+`x-nlq-byollm-key` header lane is now wired on the HTTP `/v1/ask` surface
+([`SK-LLM-021`](./features/llm-router/decisions/SK-LLM-021-byollm-header-wiring.md)):
+`apps/api/src/ask/byollm.ts` parses the `<provider>:<model>:<key>` value,
+gates it signed-in-only (fail-loud per
+[`GLOBAL-012`](./decisions/GLOBAL-012-one-sentence-errors.md)), and
+`resolveAskRouter` swaps in `buildByollmRouter` (accepting the AI Gateway
+compat slugs `openai` / `anthropic` / `google-ai-studio`). Next: account-stored
+credential resolution (`api_keys.scope = "byollm"` KEK-decrypt + the
+`/v1/keys/byollm` endpoints), premium-eligibility, and `GLOBAL-003` surface
+parity (SDK / CLI / MCP / elements + `/app/keys`) — tracked in
+[`premium-tier/FEATURE.md`](./features/premium-tier/FEATURE.md) Open questions
+per [`GLOBAL-003`](./decisions/GLOBAL-003-all-surfaces-one-pr.md).
 
 ## 3. BYO Postgres
 

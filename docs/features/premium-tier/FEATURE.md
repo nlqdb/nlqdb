@@ -163,22 +163,20 @@ The 8-point BYOK decision tree that previously lived here is resolved by [`SK-PR
 
 ### Other open questions
 
-- **Hard-plan classifier confidence threshold.** `SK-LLM-001` names the `hard` tier but pins no confidence number. The CTA in `SK-PREMIUM-004` fires on "hard plan" verdict, so the threshold directly drives upsell frequency. Strawman: 0.85 confidence → `hard_plan` true; tunable per env var; A/B-able once we have traffic.
-- **Quality-score histogram.** `docs/features/llm-router/FEATURE.md` proposes `nlqdb.plan.quality_score` (1 = clean, 0.5 = correction loop, 0 = rejected). The CTA's persuasiveness depends on showing the customer their measured quality delta on the strict-$0 chain. Histogram shape + LLM-as-judge prompt + statistical confidence interval all open.
-- **Lago wiring for usage metering.** `docs/phase-plan.md §6` calls for Lago-on-Fly as the metering layer batched into Stripe; the LLM-router → Lago path is not yet wired (`llm-router/FEATURE.md` Open questions). Premium-tier billing depends on this path; it must land before `SK-PREMIUM-002` ships.
-- **Per-key spend cap UI.** `SK-PREMIUM-006` defines the data model but not the dashboard — where does the cap live in the UI? DB settings page or API-keys page or both? Probably both, with the API-keys page as the canonical write surface.
-- **Dunning when the add-on payment fails.** Stripe `invoice.payment_failed` for the metered LLM-tokens line — does the add-on pause (drop to strict-$0) immediately, after one retry, or after the standard Stripe dunning period? `stripe-billing/FEATURE.md` Open questions cover dunning broadly; premium-tier needs the specific behavior pinned.
-- **Anonymous-mode interaction.** Anonymous users don't have a Stripe customer; they can't enable premium. The CTA from `SK-PREMIUM-004` should *not* appear for anonymous-mode users — but the "create-an-account-and-upgrade" path is the natural cross-sell. Behavior open.
-- **Reseller / agency case.** An agency that runs five client accounts wants one consolidated bill for premium-models usage across all of them. Out of scope for v1 (per-account billing only); deferred to Enterprise.
+- **Hard-plan classifier confidence threshold.** `SK-LLM-001` names the `hard` tier but pins no number, and the `SK-PREMIUM-004` CTA fires on the "hard plan" verdict, so it drives upsell frequency. Strawman: 0.85 → `hard_plan` true; env-tunable, A/B-able with traffic.
+- **Quality-score histogram.** `llm-router/FEATURE.md` proposes `nlqdb.plan.quality_score` (1 = clean, 0.5 = correction loop, 0 = rejected); the CTA's pull depends on showing the customer their quality delta on the strict-$0 chain. Histogram shape + judge prompt + confidence interval all open.
+- **Lago wiring for usage metering.** `docs/phase-plan.md §6` calls for Lago-on-Fly batched into Stripe; the LLM-router → Lago path is unwired and must land before `SK-PREMIUM-002` ships.
+- **Per-key spend cap UI.** `SK-PREMIUM-006` defines the data model but not the dashboard. Likely both the DB settings and API-keys pages, with API-keys as the canonical write surface.
+- **Dunning when the add-on payment fails.** On Stripe `invoice.payment_failed` for the metered line, does the add-on drop to strict-$0 immediately, after one retry, or after standard dunning? `stripe-billing/FEATURE.md` covers dunning broadly; premium-tier needs the specific behavior.
+- **Anonymous-mode interaction.** Anonymous users have no Stripe customer and can't enable premium, so the `SK-PREMIUM-004` CTA should *not* show for them — but "create-an-account-and-upgrade" is the natural cross-sell. Open.
+- **Reseller / agency case.** One consolidated premium bill across an agency's client accounts is out of scope for v1 (per-account only); deferred to Enterprise.
+- **BYOLLM surface parity (GLOBAL-003 tracked gap).** The per-request `x-nlq-byollm-key` lane ships on HTTP `/v1/ask` only (`SK-LLM-021`). Still unbuilt: SDK `client.byollm.*`, CLI `nlq byollm *`, MCP `byollm` param, `<nlq-data byollm>` (cookie-session only), and account-stored `/v1/keys/byollm` + `/app/keys` UI. Tracked here per `GLOBAL-003`'s "annotate as a gap" allowance; closes in the surface-parity PR.
+- **OpenRouter is not on the AI Gateway compat endpoint.** `SK-PREMIUM-008` §1 lists OpenRouter, but the `/compat/chat/completions` endpoint `SK-LLM-019` uses doesn't serve it (verified 2026-05). `SK-LLM-021` accepts `openai` / `anthropic` / `google-ai-studio` only. Decide whether OpenRouter BYOLLM drops, routes through its own provider path, or waits for compat support — then amend `SK-PREMIUM-008`.
 
 ## Source pointers
 
-- `docs/architecture.md §6` — Premium-models pricing row (the design-locked starting point)
-- `docs/architecture.md §8` — AI model selection (model catalog: Sonnet 4.6, Opus 4.7, GPT-5)
-- `docs/architecture.md §5` — Premium models add-on (pricing exposition)
-- `docs/architecture.md §5` — Honest billing rules (no surprise bills)
-- `docs/features/llm-router/FEATURE.md` — credit-program landscape; tier-aware routing flow
-- `docs/features/llm-router/FEATURE.md` — `SK-LLM-007` (chain selector), `SK-LLM-008` (privacy), `SK-LLM-009` (prompt caching), `SK-LLM-010` (plan-cache first)
-- `docs/features/stripe-billing/FEATURE.md` — `SK-STRIPE-004` (Checkout linkage), Open questions (dunning, Lago wiring)
+- `docs/architecture.md` — §6 pricing row · §8 model catalog (Sonnet 4.6, Opus 4.7, GPT-5) · §5 add-on + honest-billing rules
+- `docs/features/llm-router/FEATURE.md` — credit landscape, tier-aware flow; `SK-LLM-007`/`008`/`009`/`010`
+- `docs/features/stripe-billing/FEATURE.md` — `SK-STRIPE-004`; Open: dunning, Lago wiring
 - `docs/features/rate-limit/FEATURE.md` — Open: per-key spend cap
-- `docs/features/web-app/FEATURE.md` — `SK-WEB-005` (three-part chat reply, the trace surface the CTA hooks into)
+- `docs/features/web-app/FEATURE.md` — `SK-WEB-005` (three-part reply, the trace surface the CTA hooks into)
