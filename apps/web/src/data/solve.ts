@@ -376,59 +376,6 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
       },
     ],
   },
-  {
-    slug: "no-migration-files-database",
-    persona: "P1 solo builder",
-    searchTitle: "How do I add a database column without writing a migration file?",
-    oneLiner:
-      "If your project needs a new column or table and you don't want to author, run, and roll back a migration file, ask in English — nlqdb generates `ALTER TABLE … ADD COLUMN … NULL`, shows the diff, and applies it on a second Enter.",
-    painContext:
-      "Adding a field is the most repeated friction in early-product development. Every new requirement spawns a migration file, an `ALTER TABLE`, a coordinated deploy, and a rollback path — and every framework's migration tool (Prisma, Drizzle, Knex, Flyway, sqlx) still wants the change authored in SQL or a typed DSL before the app can read it.",
-    demoGoal: "signups by referrer in the last 7 days",
-    demoWhy:
-      'The first answer mints the table from your goal — schema-inference, not widening yet. To exercise widening directly on the anonymous DB, ask `"add a country column to signups"` after the first reply and watch the diff-and-confirm gate fire on a nullable `ADD COLUMN`.',
-    howNlqdbAnswers: [
-      'Schema-widening verbs are English: `"add a referrer column to signups"` emits `ALTER TABLE signups ADD COLUMN referrer TEXT NULL`; the diff-and-confirm gate previews the change before commit.',
-      "Logical fields, once observed, never get dropped from the planner's view — the plan cache stays valid across additive growth, so a widening query doesn't pay a re-plan tax.",
-      "The compiled DDL lands in the trace block under every reply — the change history is the trace, not a Git-tracked migrations folder you hand-curate.",
-    ],
-    whatItDoesnt: [
-      "No destructive DDL via natural language — `DROP COLUMN`, `RENAME`, and type changes still require an explicit SQL migration via the `runSql` escape hatch; the widening contract is one-way on purpose.",
-      "No separate audit-log endpoint today — the trace block under each reply is the change-history surface. For team-replayable migrations the explicit-SQL escape hatch remains the path.",
-    ],
-    faqs: [
-      {
-        q: "Does nlqdb replace migration files entirely for early-stage projects?",
-        a: "For additive changes (new columns, new tables) yes — the English verb plus the diff-and-confirm gate is the migration. Destructive changes (`DROP`, `RENAME`, type narrowing) still need an explicit SQL migration via the `runSql` escape hatch; the widening-only contract is intentional, not a gap.",
-      },
-      {
-        q: "What gets written when I ask to add a column?",
-        a: "`ALTER TABLE <table> ADD COLUMN <name> <type> NULL` — always nullable, never with a default that backfills. The diff-and-confirm gate shows the SQL and the row-count impact before commit.",
-      },
-      {
-        q: "How do I get a SQL migration file out of nlqdb for a teammate to apply?",
-        a: "The trace block under every reply renders the compiled DDL; copy it into your repo's migrations folder if your workflow needs one. There is no separate audit-log endpoint today — the trace is the audit surface.",
-      },
-      {
-        q: "What if I ask to drop a column by mistake?",
-        a: "`DROP COLUMN` is on the sql-allowlist denylist for natural-language flow — the planner refuses it and routes you to the `runSql` escape hatch instead, where the SQL is yours to author. The widening-only contract means accidental drops via chat are structurally prevented, not merely warned against.",
-      },
-    ],
-    sources: [
-      {
-        url: "https://hn.algolia.com/?q=prisma+migration",
-        label: 'HN search: "prisma migration" — recurring threads on schema-change overhead.',
-      },
-      {
-        url: "https://www.reddit.com/r/webdev/search/?q=database+migration",
-        label: 'r/webdev — "database migration" recurring discussion.',
-      },
-      {
-        url: "https://hn.algolia.com/?q=schema+migration",
-        label: 'HN search: "schema migration" — repeated complaints on migration tooling friction.',
-      },
-    ],
-  },
 ];
 
 export function solveBySlug(slug: string): SolveEntry | undefined {
