@@ -51,11 +51,19 @@ export type SealOptions = {
 };
 
 // Derive the AES-GCM content key from the KEK via HKDF-SHA256. Cheap
-// enough to run per call; we never cache a CryptoKey across requests.
+// enough to run per call; we never cache a CryptoKey across requests. The
+// KEK is trimmed here — the single derivation point — so seal and open
+// agree on the key even if a caller bypasses `kekFromEnv` (which trims) and
+// passes a whitespace-padded value; the blank check above already rejects
+// an all-whitespace KEK.
 async function deriveContentKey(kek: string): Promise<CryptoKey> {
-  const ikm = await crypto.subtle.importKey("raw", new TextEncoder().encode(kek), "HKDF", false, [
-    "deriveKey",
-  ]);
+  const ikm = await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(kek.trim()),
+    "HKDF",
+    false,
+    ["deriveKey"],
+  );
   return crypto.subtle.deriveKey(
     { name: "HKDF", hash: "SHA-256", salt: HKDF_SALT, info: HKDF_INFO },
     ikm,

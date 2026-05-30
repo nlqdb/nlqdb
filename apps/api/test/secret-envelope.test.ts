@@ -40,6 +40,11 @@ describe("authentication and context binding", () => {
     );
   });
 
+  it("treats a whitespace-padded KEK as the trimmed KEK (seal/open agree)", async () => {
+    const sealed = await sealSecret("secret", { kek: `  ${KEK}  `, context: CTX });
+    expect(await openSecret(sealed, { kek: KEK, context: CTX })).toBe("secret");
+  });
+
   it("refuses to open under a different KEK", async () => {
     const sealed = await sealSecret("secret", { kek: KEK, context: CTX });
     await expect(openSecret(sealed, { kek: `${KEK}-other`, context: CTX })).rejects.toThrow(
