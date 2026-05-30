@@ -1,3 +1,10 @@
+export type {
+  ByollmCredential,
+  ByollmDispatchInput,
+  ByollmDispatchResult,
+  DispatchLane,
+} from "./byollm-dispatch.ts";
+export { byollmChains, resolveByollmDispatch } from "./byollm-dispatch.ts";
 export type { ByollmProviderOptions } from "./providers/byollm.ts";
 export { createByollmProvider } from "./providers/byollm.ts";
 export type { GeminiProviderOptions } from "./providers/gemini.ts";

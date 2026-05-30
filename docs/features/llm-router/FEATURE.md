@@ -10,7 +10,7 @@ when-to-load:
 # Feature: Llm Router
 
 **One-liner:** Model selection, fallback chain, prompt strategy, per-user credit accounting; three permanent dispatch lanes per [`GLOBAL-026`](../../decisions/GLOBAL-026-llm-strategy-byollm-hosted-premium.md) — free chain, BYOLLM, hosted-premium.
-**Status:** implemented for the free chain (`SK-LLM-001..015` + `SK-LLM-018`). BYOLLM (`SK-LLM-016`) is partial — provider factory (`SK-LLM-019`) ships, dispatch wiring pending. `SK-LLM-017` (hosted-premium chain) lands in Phase 2 alongside `quality-eval`; the premium-chain meter stays dark until [`phase-plan.md §6`](../../phase-plan.md) trips.
+**Status:** implemented for the free chain (`SK-LLM-001..015` + `SK-LLM-018`). BYOLLM (`SK-LLM-016`) is partial — provider factory (`SK-LLM-019`) + dispatch-precedence resolver (`SK-LLM-020`) ship; the surface wiring (header parse, KEK key storage, middleware, all surfaces) is pending. `SK-LLM-017` (hosted-premium chain) lands in Phase 2 alongside `quality-eval`; the premium-chain meter stays dark until [`phase-plan.md §6`](../../phase-plan.md) trips.
 
 **Contribution to north-star:** Engine quality — the router is the NL→SQL accuracy lever per [`GLOBAL-025`](../../decisions/GLOBAL-025-north-star.md). Free-chain scaffolding compounds when BYOLLM or hosted-premium swaps in a frontier model; `quality-eval`'s free-vs-frontier delta measures the compounding.
 
@@ -97,6 +97,11 @@ Four-step dispatch precedence per `GLOBAL-026`: per-request `x-nlq-byollm-key` h
 
 **Body:** [`decisions/SK-LLM-019-byollm-provider-factory.md`](./decisions/SK-LLM-019-byollm-provider-factory.md).
 `createByollmProvider` builds a `Provider` from the user's own key + model, routed through AI Gateway's OpenAI-compatible `compat/chat/completions` endpoint. Pins key pass-through (0% markup), `<upstream>/<model>` qualifier, and the tenant cache namespace — `SK-LLM-016`'s `BYOLLM_<user_id>` resolves to `cf-aig-cache-key = BYOLLM_<userId>_<sha256(request)>` (prefix isolates tenants; hash keeps caching). Provider primitive only; `GLOBAL-003` parity deferred to the dispatch-wiring PR.
+
+### SK-LLM-020 — BYOLLM dispatch resolver: pure precedence core, no-fallback chain, fail-loud on a present key
+
+**Body:** [`decisions/SK-LLM-020-byollm-dispatch-resolver.md`](./decisions/SK-LLM-020-byollm-dispatch-resolver.md).
+`resolveByollmDispatch` is the pure precedence half of `SK-LLM-016` (as `SK-LLM-019` was the provider half): resolved-credentials in → lane out (`byollm` with a built provider + winning `source` / `premium` / `free`). A present key commits to the byollm lane and fails loud at construction (`GLOBAL-012`) rather than demoting; `byollmChains()` returns single-entry `["byollm"]` chains so no-silent-fallback is structural. Surface wiring (header / KEK storage / middleware / all surfaces) stays deferred to the `SK-LLM-016` slice.
 
 ### SK-LLM-017 — Hosted-premium chain: separate provider list, §6-gated meter, never available on free
 

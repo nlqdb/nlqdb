@@ -21,14 +21,21 @@ itself. Headline KPI: free-vs-agentic-frontier delta per
 [`llm-router/FEATURE.md`](./features/llm-router/FEATURE.md)
 (`SK-LLM-016`). Resolved by
 [`GLOBAL-026`](./decisions/GLOBAL-026-llm-strategy-byollm-hosted-premium.md);
-no payment infra required. Landed: the provider factory
+no payment infra required. Landed (provider-side core, no user-facing
+surface yet): the provider factory
 ([`SK-LLM-019`](./features/llm-router/decisions/SK-LLM-019-byollm-provider-factory.md))
 — `createByollmProvider` proxies the user's own key through AI Gateway's
 unified endpoint and resolves the `BYOLLM_<user_id>` namespace to a
-per-tenant `cf-aig-cache-key`. Next: the dispatch wiring —
-`api_keys.scope = "byollm"`, per-request `x-nlq-byollm-key` header,
-lane-select middleware, fail-loud per
-[`GLOBAL-012`](./decisions/GLOBAL-012-one-sentence-errors.md), and all
+per-tenant `cf-aig-cache-key` — and the dispatch-precedence resolver
+([`SK-LLM-020`](./features/llm-router/decisions/SK-LLM-020-byollm-dispatch-resolver.md))
+— `resolveByollmDispatch` picks the lane (override → stored → premium →
+free), failing loud per
+[`GLOBAL-012`](./decisions/GLOBAL-012-one-sentence-errors.md) on a
+present-but-broken key, and `byollmChains()` makes no-silent-fallback
+structural. Next: the surface wiring —
+`api_keys.scope = "byollm"` (KEK-encrypted storage), per-request
+`x-nlq-byollm-key` header parse, the lane-select middleware that calls
+`resolveByollmDispatch` and stamps `llm.dispatch_lane`, and all
 surfaces (HTTP / SDK / CLI / MCP / elements) in one PR per
 [`GLOBAL-003`](./decisions/GLOBAL-003-all-surfaces-one-pr.md).
 
