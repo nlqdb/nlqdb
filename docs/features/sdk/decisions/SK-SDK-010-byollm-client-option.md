@@ -16,11 +16,16 @@ Parent GLOBAL:
   etc. — so the secret stays off endpoints that have no use for it. The
   lane is signed-in only (`SK-LLM-021`), so `byollm` requires
   `withCredentials: true`; pairing it with `apiKey` (or no auth) throws at
-  construction. The colon-join and its validation (non-empty parts; no `:`
-  in `provider` / `model`, since the server splits on the first two colons
-  and the key is the unsplit remainder) live in one tested helper, so a
-  mis-shaped credential fails loud here (`GLOBAL-012`) rather than as an
-  opaque upstream 4xx.
+  construction. The colon-join and its validation live in one tested
+  helper: `provider` is lower-cased to match the server, parts must be
+  non-empty, `provider` / `model` must not contain the `:` the server
+  splits on (the key may, as the unsplit remainder), and no part may
+  contain a control char (CR/LF would smuggle extra headers). A mis-shaped
+  credential fails loud here (`GLOBAL-012`) rather than as an opaque
+  downstream error. An *unrecognised* provider slug is not rejected at
+  construction — the typed enum is open-ended so a new slug needs no SDK
+  bump, and the server's 400 is the single source of truth for the
+  evolving allowlist.
 - **Core value:** Free, Effortless UX, Bullet-proof
 - **Why:** `SK-LLM-021` wired the header on `/v1/ask` but left every code
   surface (`GLOBAL-001`: the SDK is the only HTTP client) unable to set it
@@ -35,9 +40,10 @@ Parent GLOBAL:
   `ByollmProvider` + `ByollmCredential`, adds `byollm?` to
   `ClientOptionsBase`, builds + validates the header once in `createClient`
   (throwing on `byollm` without `withCredentials`, or on an empty /
-  colon-bearing part), and merges it into the `ask` + `askStream` requests
-  only. Tests assert header presence on `/v1/ask`, absence on
-  `/v1/databases`, and all three construction-time throws.
+  colon-bearing / control-char-bearing part), and merges it into the
+  `ask` + `askStream` requests only. Tests assert header presence on
+  `/v1/ask`, absence on `/v1/databases`, the SSE path, provider
+  lower-casing, and every construction-time throw.
 - **Alternatives rejected:**
   - Per-request `byollm` on `ask(req, opts)` — the key is a persistent
     credential, not a per-call routing hint; a client-level option avoids

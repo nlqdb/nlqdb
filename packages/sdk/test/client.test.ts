@@ -906,4 +906,43 @@ describe("createClient", () => {
       }),
     ).toThrow(/must not contain a colon/);
   });
+
+  it("createClient: throws when byollm is set with no auth at all (anonymous)", () => {
+    expect(() =>
+      createClient({ byollm: { provider: "openai", model: "gpt-5.2", key: "sk-test" } }),
+    ).toThrow(/requires `withCredentials: true`/);
+  });
+
+  it("createClient: throws when a byollm value contains a control character (CRLF injection)", () => {
+    expect(() =>
+      createClient({
+        withCredentials: true,
+        byollm: { provider: "openai", model: "gpt-5.2", key: "sk-test\r\nx-evil: 1" },
+      }),
+    ).toThrow(/control characters/);
+  });
+
+  it("ask: lower-cases the byollm provider to match the server's normalisation", async () => {
+    let capturedInit: RequestInit | undefined;
+    const fakeFetch: FetchLike = async (_url, init) => {
+      capturedInit = init;
+      return new Response(
+        JSON.stringify({
+          status: "ok",
+          rows: [],
+          rowCount: 0,
+          trace: { sql: "s", plan_id: "p", confidence: 1, model: "x", cache_hit: false },
+        }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      );
+    };
+    const client = createClient({
+      withCredentials: true,
+      byollm: { provider: "Anthropic", model: "claude-sonnet-4-6", key: "sk-ant" },
+      fetch: fakeFetch,
+    });
+    await client.ask({ goal: "x", dbId: "db_1" });
+    const headers = capturedInit?.headers as Record<string, string>;
+    expect(headers["x-nlq-byollm-key"]).toBe("anthropic:claude-sonnet-4-6:sk-ant");
+  });
 });

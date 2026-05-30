@@ -122,8 +122,7 @@ when-to-load:
 `x-nlq-byollm-key` header (`SK-LLM-021`) on `ask()` / `askStream()` only,
 dispatching through the user's own LLM key at 0% markup (`GLOBAL-026`).
 Signed-in only, so `byollm` requires `withCredentials: true`; a mis-shaped
-credential fails loud at construction (`GLOBAL-012`). The SDK half of the
-BYOLLM surface-parity gap in `premium-tier/FEATURE.md`.
+credential fails loud at construction (`GLOBAL-012`).
 
 ## GLOBALs governing this feature
 

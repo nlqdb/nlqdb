@@ -338,7 +338,10 @@ export type FetchLike = (input: RequestInfo | URL, init?: RequestInit) => Promis
 // `x-nlq-byollm-key` lane — the AI Gateway compat-endpoint providers
 // (`SK-LLM-021`, verified 2026-05). OpenRouter is listed in
 // `SK-PREMIUM-008` but not yet on the compat endpoint, so it is not
-// here. Open-ended so a new slug doesn't force an SDK bump to compile.
+// here. Open-ended so a new slug doesn't force an SDK bump to compile;
+// the trade-off is that an unrecognised slug surfaces as the server's
+// one-sentence 400, not at construction — the SDK validates shape, not
+// the evolving provider allowlist it would otherwise have to track.
 export type ByollmProvider = "openai" | "anthropic" | "google-ai-studio" | (string & {});
 
 // SK-SDK-010 — the caller's own provider key, dispatched at 0% markup
@@ -1093,12 +1096,16 @@ function randomId(): string {
 }
 
 // SK-SDK-010 — validate + assemble the `x-nlq-byollm-key` value once,
-// at construction. Provider and model are rejected when empty or when
-// they contain the `:` the server splits on (the key may contain `:`
-// because it is the unsplit remainder). Fails loud (GLOBAL-012) so a
-// mis-shaped credential surfaces here, not as an opaque upstream 4xx.
+// at construction. Provider is lower-cased to match the server's
+// normalisation; provider/model are rejected when empty or when they
+// contain the `:` the server splits on (the key may contain `:` because
+// it is the unsplit remainder); all parts are rejected if they contain
+// a control char (CR/LF would let a value smuggle extra headers, and
+// `fetch` would otherwise throw an opaque `TypeError`). Fails loud
+// (GLOBAL-012) so a mis-shaped credential surfaces here as one sentence,
+// not as an opaque downstream error.
 function buildByollmHeader(cred: ByollmCredential): string {
-  const provider = cred.provider.trim();
+  const provider = cred.provider.trim().toLowerCase();
   const model = cred.model.trim();
   const key = cred.key.trim();
   if (!provider || !model || !key) {
@@ -1107,7 +1114,14 @@ function buildByollmHeader(cred: ByollmCredential): string {
   if (provider.includes(":") || model.includes(":")) {
     throw new Error("@nlqdb/sdk: `byollm.provider` and `byollm.model` must not contain a colon.");
   }
-  return `${provider}:${model}:${key}`;
+  const value = `${provider}:${model}:${key}`;
+  for (let i = 0; i < value.length; i++) {
+    const code = value.charCodeAt(i);
+    if (code < 0x20 || code === 0x7f) {
+      throw new Error("@nlqdb/sdk: `byollm` values must not contain control characters.");
+    }
+  }
+  return value;
 }
 
 // Normalize the API's TWO error envelope shapes into a single
