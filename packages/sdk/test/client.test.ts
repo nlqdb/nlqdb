@@ -807,4 +807,142 @@ describe("createClient", () => {
       expect(e.code).toBe("forbidden");
     }
   });
+
+  // SK-SDK-010 — BYOLLM lane: the caller's own provider key rides
+  // `x-nlq-byollm-key` on `/v1/ask` only, signed-in only.
+  it("ask: attaches the x-nlq-byollm-key header on /v1/ask when byollm is set", async () => {
+    let capturedInit: RequestInit | undefined;
+    const fakeFetch: FetchLike = async (_url, init) => {
+      capturedInit = init;
+      return new Response(
+        JSON.stringify({
+          status: "ok",
+          rows: [],
+          rowCount: 0,
+          trace: { sql: "select 1", plan_id: "h:q", confidence: 1, model: "x", cache_hit: false },
+        }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      );
+    };
+    const client = createClient({
+      withCredentials: true,
+      byollm: { provider: "anthropic", model: "claude-sonnet-4-6", key: "sk-ant-abc:123" },
+      fetch: fakeFetch,
+    });
+    await client.ask({ goal: "users", dbId: "db_1" });
+    const headers = capturedInit?.headers as Record<string, string>;
+    // Key contains a colon — it survives intact as the unsplit remainder.
+    expect(headers["x-nlq-byollm-key"]).toBe("anthropic:claude-sonnet-4-6:sk-ant-abc:123");
+    expect(capturedInit?.credentials).toBe("include");
+  });
+
+  it("ask: keeps the byollm key OFF endpoints that don't dispatch LLM calls", async () => {
+    let capturedInit: RequestInit | undefined;
+    const fakeFetch: FetchLike = async (_url, init) => {
+      capturedInit = init;
+      return new Response(JSON.stringify({ databases: [] }), { status: 200 });
+    };
+    const client = createClient({
+      withCredentials: true,
+      byollm: { provider: "openai", model: "gpt-5.2", key: "sk-test" },
+      fetch: fakeFetch,
+    });
+    await client.listDatabases();
+    const headers = capturedInit?.headers as Record<string, string>;
+    expect(headers["x-nlq-byollm-key"]).toBeUndefined();
+  });
+
+  it("askStream: attaches the byollm header on the SSE request", async () => {
+    let capturedInit: RequestInit | undefined;
+    const sse =
+      'event: plan\ndata: {"trace":{"sql":"select 1","plan_id":"h:q","confidence":1,"model":"x","cache_hit":false}}\n\nevent: done\ndata: {"status":"ok"}\n\n';
+    const fakeFetch: FetchLike = async (_url, init) => {
+      capturedInit = init;
+      const body = new ReadableStream<Uint8Array>({
+        start(controller) {
+          controller.enqueue(new TextEncoder().encode(sse));
+          controller.close();
+        },
+      });
+      return new Response(body, {
+        status: 200,
+        headers: { "content-type": "text/event-stream" },
+      });
+    };
+    const client = createClient({
+      withCredentials: true,
+      byollm: { provider: "anthropic", model: "claude-sonnet-4-6", key: "sk-ant" },
+      fetch: fakeFetch,
+    });
+    const out = await client.askStream({ goal: "users", dbId: "db_1" }, {});
+    const headers = capturedInit?.headers as Record<string, string>;
+    expect(headers["x-nlq-byollm-key"]).toBe("anthropic:claude-sonnet-4-6:sk-ant");
+    expect(out.trace.sql).toBe("select 1");
+  });
+
+  it("createClient: throws when byollm is set without withCredentials (signed-in only)", () => {
+    expect(() =>
+      createClient({
+        apiKey: "sk_live_test",
+        byollm: { provider: "openai", model: "gpt-5.2", key: "sk-test" },
+      }),
+    ).toThrow(/requires `withCredentials: true`/);
+  });
+
+  it("createClient: throws when a byollm part is empty", () => {
+    expect(() =>
+      createClient({
+        withCredentials: true,
+        byollm: { provider: "openai", model: "", key: "sk-test" },
+      }),
+    ).toThrow(/non-empty/);
+  });
+
+  it("createClient: throws when provider or model contains a colon (would mis-split)", () => {
+    expect(() =>
+      createClient({
+        withCredentials: true,
+        byollm: { provider: "openai", model: "gpt:5", key: "sk-test" },
+      }),
+    ).toThrow(/must not contain a colon/);
+  });
+
+  it("createClient: throws when byollm is set with no auth at all (anonymous)", () => {
+    expect(() =>
+      createClient({ byollm: { provider: "openai", model: "gpt-5.2", key: "sk-test" } }),
+    ).toThrow(/requires `withCredentials: true`/);
+  });
+
+  it("createClient: throws when a byollm value contains a control character (CRLF injection)", () => {
+    expect(() =>
+      createClient({
+        withCredentials: true,
+        byollm: { provider: "openai", model: "gpt-5.2", key: "sk-test\r\nx-evil: 1" },
+      }),
+    ).toThrow(/control characters/);
+  });
+
+  it("ask: lower-cases the byollm provider to match the server's normalisation", async () => {
+    let capturedInit: RequestInit | undefined;
+    const fakeFetch: FetchLike = async (_url, init) => {
+      capturedInit = init;
+      return new Response(
+        JSON.stringify({
+          status: "ok",
+          rows: [],
+          rowCount: 0,
+          trace: { sql: "s", plan_id: "p", confidence: 1, model: "x", cache_hit: false },
+        }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      );
+    };
+    const client = createClient({
+      withCredentials: true,
+      byollm: { provider: "Anthropic", model: "claude-sonnet-4-6", key: "sk-ant" },
+      fetch: fakeFetch,
+    });
+    await client.ask({ goal: "x", dbId: "db_1" });
+    const headers = capturedInit?.headers as Record<string, string>;
+    expect(headers["x-nlq-byollm-key"]).toBe("anthropic:claude-sonnet-4-6:sk-ant");
+  });
 });

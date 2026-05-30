@@ -31,6 +31,25 @@ Passing both is a runtime error. The discriminated-union types
 enforce this at compile time too; the runtime guard catches `as any`
 escapes and JS callers.
 
+## BYOLLM — route asks through your own provider key
+
+Bring your own LLM key and `ask()` / `askStream()` dispatch through it
+at 0% markup (`SK-SDK-010`):
+
+```ts
+const client = createClient({
+  withCredentials: true, // signed-in only — never a bearer or anonymous call
+  byollm: { provider: "anthropic", model: "claude-sonnet-4-6", key: "sk-ant-…" },
+});
+```
+
+`provider` is one of `openai` / `anthropic` / `google-ai-studio`. The
+key is sent only on `/v1/ask`, never on other endpoints. `createClient`
+throws if `byollm` is paired with `apiKey` (the API rejects the lane on
+bearer keys), if any part is empty or holds a control character, or if
+`provider` / `model` contain a `:` (the key may — it is the unsplit
+remainder).
+
 ## Surface
 
 ```ts

@@ -115,6 +115,15 @@ when-to-load:
   - Two methods (`runSelect` + `runMutation`) — the SQL allow-list is already the discriminator; doubling the method surface adds no semantic value and breaks the GLOBAL-017 "one way to do each thing" rule.
 - **Source:** canonical here · referenced from `docs/features/cli/FEATURE.md` `SK-CLI-003` and from `docs/phase-plan.md §4` Phase 2 deliverable 3.
 
+### SK-SDK-010 — `byollm` client option carries the caller's own provider key on `ask()` / `askStream()`
+
+**Body:** [`decisions/SK-SDK-010-byollm-client-option.md`](./decisions/SK-SDK-010-byollm-client-option.md).
+`createClient({ byollm: { provider, model, key } })` sends the
+`x-nlq-byollm-key` header (`SK-LLM-021`) on `ask()` / `askStream()` only,
+dispatching through the user's own LLM key at 0% markup (`GLOBAL-026`).
+Signed-in only, so `byollm` requires `withCredentials: true`; a mis-shaped
+credential fails loud at construction (`GLOBAL-012`).
+
 ## GLOBALs governing this feature
 
 Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; index in [`docs/decisions.md`](../../decisions.md)). The list below names the rules that constrain this feature; any feature-local commentary is nested under the rule.
@@ -133,6 +142,7 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
   - *In this feature:* see `SK-SDK-008` for the canonical implementation. `packages/sdk/src/index.ts` `call<T>` is the wire-layer retry loop (transport failures + transient 5xx, up to 3 attempts, reusing the auto-generated `Idempotency-Key` from `SK-SDK-006`). The 401 path stays single-retry per `SK-SDK-005`.
 - **GLOBAL-023** — Trust UX baseline.
   - *In this feature:* both `ask()` and `runSql()` responses include the `trace` block (`SK-TRUST-002`); surfaces render it.
+- **GLOBAL-026** — BYOLLM via the `byollm` client option (`SK-SDK-010`).
 - **GLOBAL-027** — Pre-alpha gate.
   - *In this feature:* `ApiErrorCode` gained `"feature_gated"`; `ApiErrorBody` gained optional `gate`, `action`, `waitlist_url` fields (plus the `GateProgress` type); `createClient()` accepts an `inviteCode` option forwarded as `X-Invite-Code`. `isRecoverable` treats `feature_gated` as terminal (no retry). See [`pre-alpha-gate/FEATURE.md`](../pre-alpha-gate/FEATURE.md).
 
