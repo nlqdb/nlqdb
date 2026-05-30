@@ -334,6 +334,28 @@ export type ChatMessage =
 // `preconnect` method that test stubs shouldn't have to provide).
 export type FetchLike = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
 
+// BYOLLM (`SK-PREMIUM-008`) provider slugs the API accepts on the
+// `x-nlq-byollm-key` lane — the AI Gateway compat-endpoint providers
+// (`SK-LLM-021`, verified 2026-05). OpenRouter is listed in
+// `SK-PREMIUM-008` but not yet on the compat endpoint, so it is not
+// here. Open-ended so a new slug doesn't force an SDK bump to compile.
+export type ByollmProvider = "openai" | "anthropic" | "google-ai-studio" | (string & {});
+
+// SK-SDK-010 — the caller's own provider key, dispatched at 0% markup
+// per `GLOBAL-026`. Server-side this is the `<provider>:<model>:<key>`
+// header (`SK-LLM-021`); the SDK takes the parts separately so the
+// colon-joining (and its escaping hazards) live in one tested place.
+// The key never leaves the caller's process except in the request to
+// `/v1/ask`, and only when this is set.
+export type ByollmCredential = {
+  provider: ByollmProvider;
+  // Raw upstream model id (e.g. `gpt-5.2`, `claude-sonnet-4-6`). BYOLLM
+  // is the escape hatch where the user owns the model choice, so unlike
+  // the hosted `model` preset (`SK-PREMIUM-003`) this is the literal id.
+  model: string;
+  key: string;
+};
+
 // Discriminated so the type system rejects callers that pass both
 // auth modes — sending a server-side bearer over a browser cookie is
 // a leak waiting to happen. Both-omitted is allowed (anonymous calls
@@ -343,6 +365,13 @@ type ClientOptionsBase = {
   fetch?: FetchLike;
   /** `GLOBAL-027` — sent as `X-Invite-Code`; bypasses the pre-alpha gate. */
   inviteCode?: string;
+  /**
+   * `SK-PREMIUM-008` / `SK-LLM-021` — route `ask()` / `askStream()`
+   * through your own provider key at 0% markup. Signed-in only: the API
+   * rejects this lane on bearer (`apiKey`) and anonymous calls, so it
+   * requires `withCredentials: true` — `createClient` throws otherwise.
+   */
+  byollm?: ByollmCredential;
 };
 
 // Argument to `createClient()`; the union picks one auth mode at compile time so a server bearer cannot ride a browser cookie.
@@ -520,6 +549,14 @@ export type NlqClient = {
 
 const DEFAULT_BASE_URL = "https://app.nlqdb.com";
 
+// SK-LLM-021 — the BYOLLM wire header. Lower-case to match the wire
+// (Hono normalises lookups, but the constant stays canonical). The
+// value is `<provider>:<model>:<key>`; the server splits on the first
+// two colons so a colon in the key survives, which is why the SDK
+// rejects a colon in `provider` / `model` rather than emitting a value
+// the server would mis-split.
+const BYOLLM_HEADER = "x-nlq-byollm-key";
+
 // GLOBAL-022 — wire-layer retry budget. Three attempts per call: the
 // first plus two retries. Aligns with the server-side per-stage budget
 // so end-to-end transient resilience is high without unbounded loops.
@@ -552,6 +589,17 @@ export function createClient(opts: ClientOptions = {}): NlqClient {
   if (optsAny.apiKey && optsAny.withCredentials) {
     throw new Error(
       "@nlqdb/sdk: pass either `apiKey` (server) or `withCredentials: true` (browser), not both. Sending a server-side bearer over a browser cookie risks leaking the key.",
+    );
+  }
+
+  // SK-SDK-010 — fail loud at construction (GLOBAL-012) when BYOLLM is
+  // misconfigured, rather than shipping a request the API will 400. The
+  // lane is signed-in only (`SK-LLM-021`), so a bearer / anonymous key
+  // can never carry it — require the cookie session.
+  const byollmHeader = opts.byollm ? buildByollmHeader(opts.byollm) : undefined;
+  if (byollmHeader && !opts.withCredentials) {
+    throw new Error(
+      "@nlqdb/sdk: `byollm` requires `withCredentials: true` — the API accepts a bring-your-own provider key only on a signed-in session, never a bearer or anonymous call.",
     );
   }
 
@@ -605,7 +653,11 @@ export function createClient(opts: ClientOptions = {}): NlqClient {
     try {
       res = await fetcher(`${baseUrl}/v1/ask`, {
         method: "POST",
-        headers: { ...baseHeaders, accept: "text/event-stream" },
+        headers: {
+          ...baseHeaders,
+          accept: "text/event-stream",
+          ...(byollmHeader ? { [BYOLLM_HEADER]: byollmHeader } : {}),
+        },
         body: JSON.stringify(req),
         signal: opts.signal,
         ...(credentials ? { credentials } : {}),
@@ -783,6 +835,9 @@ export function createClient(opts: ClientOptions = {}): NlqClient {
         method: "POST",
         body: JSON.stringify(req),
         signal: callOpts?.signal,
+        // BYOLLM rides `/v1/ask` only — the key stays off every other
+        // endpoint that has no use for it (`SK-SDK-010`).
+        ...(byollmHeader ? { headers: { [BYOLLM_HEADER]: byollmHeader } } : {}),
       }),
     askStream: streamAsk,
     runSql: (req, callOpts) =>
@@ -1035,6 +1090,24 @@ function randomId(): string {
     out += (bytes[i] ?? 0).toString(16).padStart(2, "0");
   }
   return out;
+}
+
+// SK-SDK-010 — validate + assemble the `x-nlq-byollm-key` value once,
+// at construction. Provider and model are rejected when empty or when
+// they contain the `:` the server splits on (the key may contain `:`
+// because it is the unsplit remainder). Fails loud (GLOBAL-012) so a
+// mis-shaped credential surfaces here, not as an opaque upstream 4xx.
+function buildByollmHeader(cred: ByollmCredential): string {
+  const provider = cred.provider.trim();
+  const model = cred.model.trim();
+  const key = cred.key.trim();
+  if (!provider || !model || !key) {
+    throw new Error("@nlqdb/sdk: `byollm` requires non-empty `provider`, `model`, and `key`.");
+  }
+  if (provider.includes(":") || model.includes(":")) {
+    throw new Error("@nlqdb/sdk: `byollm.provider` and `byollm.model` must not contain a colon.");
+  }
+  return `${provider}:${model}:${key}`;
 }
 
 // Normalize the API's TWO error envelope shapes into a single

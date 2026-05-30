@@ -38,10 +38,12 @@ redacted `llm.dispatch_lane` span attributes. The per-request
 gates it signed-in-only (fail-loud per
 [`GLOBAL-012`](./decisions/GLOBAL-012-one-sentence-errors.md)), and
 `resolveAskRouter` swaps in `buildByollmRouter` (accepting the AI Gateway
-compat slugs `openai` / `anthropic` / `google-ai-studio`). Next: account-stored
-credential resolution (`api_keys.scope = "byollm"` KEK-decrypt + the
-`/v1/keys/byollm` endpoints), premium-eligibility, and `GLOBAL-003` surface
-parity (SDK / CLI / MCP / elements + `/app/keys`) — tracked in
+compat slugs `openai` / `anthropic` / `google-ai-studio`). The TypeScript
+SDK now sets that header via the `byollm` client option
+([`SK-SDK-010`](./features/sdk/FEATURE.md), signed-in only). Next:
+account-stored credential resolution (`api_keys.scope = "byollm"` KEK-decrypt
++ the `/v1/keys/byollm` endpoints), premium-eligibility, and `GLOBAL-003`
+surface parity (CLI / MCP / elements + `/app/keys`) — tracked in
 [`premium-tier/FEATURE.md`](./features/premium-tier/FEATURE.md) Open questions
 per [`GLOBAL-003`](./decisions/GLOBAL-003-all-surfaces-one-pr.md).
 
