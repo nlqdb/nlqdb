@@ -156,6 +156,8 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
   - *In this feature:* Hosted-premium routing and BYOLLM are the levers for the engine north-star (frontier accuracy on real schemas). `SK-PREMIUM-010`'s instrumentation-first cost-per-query histogram is the input to the Phase 3 unit-economics KPI.
 - **GLOBAL-026** — LLM strategy: free chain forever, BYOLLM for everyone, hosted premium on paid (flat sub + included monthly request allowance + soft-meter overage, 0% markup).
   - *In this feature:* This feature owns the commercial shape of the upgrade lanes; `llm-router/FEATURE.md` owns the dispatch precedence (`SK-LLM-016`, `SK-LLM-017`).
+- **GLOBAL-031** — One AES-256-GCM at-rest envelope + one Workers-held KEK for every BYO secret.
+  - *In this feature:* `SK-PREMIUM-008`'s account-stored BYOLLM keys (`api_keys.scope = "byollm"`) seal through `apps/api/src/secret-envelope.ts` (context `byollm:<userId>`) — this is the at-rest primitive the account-stored lane was blocked on; per-request `x-nlq-byollm-key` keys are never persisted, so they don't touch the envelope.
 
 ## Open questions / known unknowns
 

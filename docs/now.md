@@ -40,9 +40,15 @@ gates it signed-in-only (fail-loud per
 `resolveAskRouter` swaps in `buildByollmRouter` (accepting the AI Gateway
 compat slugs `openai` / `anthropic` / `google-ai-studio`). The TypeScript
 SDK now sets that header via the `byollm` client option
-([`SK-SDK-010`](./features/sdk/FEATURE.md), signed-in only). Next:
-account-stored credential resolution (`api_keys.scope = "byollm"` KEK-decrypt
-+ the `/v1/keys/byollm` endpoints), premium-eligibility, and `GLOBAL-003`
+([`SK-SDK-010`](./features/sdk/FEATURE.md), signed-in only). The at-rest
+primitive the account-stored lane was blocked on has landed:
+[`GLOBAL-031`](./decisions/GLOBAL-031-byo-secret-envelope.md)'s
+`apps/api/src/secret-envelope.ts` — one AES-256-GCM envelope + one
+Workers-held KEK (`BYO_SECRET_KEK`), AAD-bound per owner — is the shared
+seal for both BYOLLM keys and BYO Postgres/ClickHouse URLs. Next:
+account-stored credential resolution (`api_keys.scope = "byollm"`
+`sealSecret`/`openSecret` + the `/v1/keys/byollm` endpoints),
+premium-eligibility, and `GLOBAL-003`
 surface parity (CLI / MCP / elements + `/app/keys`) — tracked in
 [`premium-tier/FEATURE.md`](./features/premium-tier/FEATURE.md) Open questions
 per [`GLOBAL-003`](./decisions/GLOBAL-003-all-surfaces-one-pr.md).
@@ -53,8 +59,10 @@ per [`GLOBAL-003`](./decisions/GLOBAL-003-all-surfaces-one-pr.md).
 (`SK-DB-011`). Promoted from Phase 4+ to active. Shape locked in
 [`architecture.md §3.6.7`](./architecture.md#367-byo-postgres-phase-4-decided-shape):
 `POST /v1/db/connect`, `provisionDb` vs `registerByoDb` split,
-AES-GCM blob with Workers-held KEK, validator from `sql-allowlist`
-applies unchanged. All surfaces in one PR per `GLOBAL-003`.
+AES-GCM blob with Workers-held KEK (now the shared
+[`GLOBAL-031`](./decisions/GLOBAL-031-byo-secret-envelope.md)
+`secret-envelope.ts` seal, context `dbconn:<dbId>`), validator from
+`sql-allowlist` applies unchanged. All surfaces in one PR per `GLOBAL-003`.
 [`phase-plan.md §7`](./phase-plan.md) marks it promoted; shape per
 §3.6.7 unchanged.
 
@@ -62,7 +70,9 @@ applies unchanged. All surfaces in one PR per `GLOBAL-003`.
 
 [`multi-engine-adapter/FEATURE.md`](./features/multi-engine-adapter/FEATURE.md)
 (`SK-MULTIENG-005`). Promoted from Phase 4+ to active. Same
-`registerByoDb` path as BYO Postgres; differences: native HTTP (no
+`registerByoDb` path as BYO Postgres (same
+[`GLOBAL-031`](./decisions/GLOBAL-031-byo-secret-envelope.md) at-rest
+seal); differences: native HTTP (no
 Hyperdrive / TCP socket) and `system.columns` introspection.
 Validator + OTel + anon posture per
 [`SK-MULTIENG-004`](./features/multi-engine-adapter/FEATURE.md#sk-multieng-004).

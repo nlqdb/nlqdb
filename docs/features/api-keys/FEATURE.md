@@ -51,6 +51,8 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 - **GLOBAL-018** — Revocation is instant and visible across devices.
   - *In this feature:* `DELETE /v1/keys/:id` ([`SK-APIKEYS-011`](decisions/SK-APIKEYS-011-hard-revoke.md)) is the revoke surface. Propagation to live MCP sessions is ≤ 1 s through `SK-MCP-014`'s DO revalidation cache; `lookupSkKey` filters `revoked_at IS NULL` at the source so cookie sessions and CLI bearers see the revocation on their next request.
 - **GLOBAL-008** — One Better Auth identity across all surfaces.
+- **GLOBAL-031** — One AES-256-GCM at-rest envelope + one Workers-held KEK for every BYO secret.
+  - *In this feature:* `scope = "byollm"` rows store the provider key as a `secret-envelope.ts` blob (context `byollm:<userId>`), not the HMAC hash used for nlqdb-minted `sk_*`/`pk_*` keys — those stay one-way per `SK-APIKEYS-008` since we never read them back; BYO keys we must decrypt to dispatch, hence the reversible AAD-bound envelope.
 
 ## Open questions / known unknowns
 

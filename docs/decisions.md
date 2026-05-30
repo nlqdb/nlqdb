@@ -58,6 +58,7 @@ grep -rn 'GLOBAL-007' docs/features/
 | [GLOBAL-028](./decisions/GLOBAL-028-acquisition-progress-tracker.md) | `docs/research/automated-icp-validation-plan.md` is the canonical acquisition progress tracker; one of two tracker docs allowed to exceed 20 KB; all updates are agent-ran | icp-mining, web-app | active |
 | [GLOBAL-029](./decisions/GLOBAL-029-acquisition-verification-tracker.md) | `docs/research/automated-icp-validation-plan-verification.md` mirrors the impl plan; tracks per-flow walkthrough-by-agent status; also exempt from the 20 KB cap | icp-mining, web-app | active |
 | [GLOBAL-030](./decisions/GLOBAL-030-evidence-grade-acquisition-tracker-edits.md) | Evidence-grade acquisition tracker edits require verification artifacts, synced mirrors, and self-review | icp-mining, web-app | active |
+| [GLOBAL-031](./decisions/GLOBAL-031-byo-secret-envelope.md) | One AES-256-GCM at-rest envelope (`secret-envelope.ts`) + one Workers-held KEK for every bring-your-own secret — BYOLLM keys and BYO Postgres/ClickHouse URLs; AAD-bound to owner, fail-loud on missing KEK | premium-tier, db-adapter, multi-engine-adapter, api-keys | active |
 
 ## Adding a new GLOBAL
 
