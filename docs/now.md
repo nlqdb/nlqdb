@@ -21,15 +21,20 @@ itself. Headline KPI: free-vs-agentic-frontier delta per
 [`llm-router/FEATURE.md`](./features/llm-router/FEATURE.md)
 (`SK-LLM-016`). Resolved by
 [`GLOBAL-026`](./decisions/GLOBAL-026-llm-strategy-byollm-hosted-premium.md);
-no payment infra required. Landed: the provider factory
+no payment infra required. Landed in `packages/llm`: the provider factory
 ([`SK-LLM-019`](./features/llm-router/decisions/SK-LLM-019-byollm-provider-factory.md))
 — `createByollmProvider` proxies the user's own key through AI Gateway's
 unified endpoint and resolves the `BYOLLM_<user_id>` namespace to a
-per-tenant `cf-aig-cache-key`. Next: the dispatch wiring —
-`api_keys.scope = "byollm"`, per-request `x-nlq-byollm-key` header,
-lane-select middleware, fail-loud per
-[`GLOBAL-012`](./decisions/GLOBAL-012-one-sentence-errors.md), and all
-surfaces (HTTP / SDK / CLI / MCP / elements) in one PR per
+per-tenant `cf-aig-cache-key` — plus the lane selector
+([`SK-LLM-020`](./features/llm-router/decisions/SK-LLM-020-byollm-lane-selector.md)):
+`selectDispatchLane` (the single source of truth for the
+header→account→premium→free precedence), `buildByollmRouter` (single-provider
+lane router, no free-chain failover, fail-loud per
+[`GLOBAL-012`](./decisions/GLOBAL-012-one-sentence-errors.md)), and the
+redacted `llm.dispatch_lane` span attributes. Next: the apps/api wiring —
+credential resolution (`x-nlq-byollm-key` header + `api_keys.scope = "byollm"`
+KEK-decrypt), premium-eligibility, the lane-select middleware on `/v1/ask`,
+and all surfaces (HTTP / SDK / CLI / MCP / elements) in one PR per
 [`GLOBAL-003`](./decisions/GLOBAL-003-all-surfaces-one-pr.md).
 
 ## 3. BYO Postgres
