@@ -167,6 +167,13 @@ declare global {
 
       // GitHub Personal Access Token. Used by SK-ICP-004 (scrape GitHub Issues) and SK-ICP-003 (write evidence file). When unset, both are skipped.
       GH_TOKEN?: string;
+
+      // Reddit application-only OAuth (SK-ICP-010). Confidential "web app"
+      // client_credentials pair used by the ICP scraper's Reddit source.
+      // When both are set the cron reads oauth.reddit.com (100 QPM/client);
+      // when absent it falls back to the anonymous www.reddit.com endpoint.
+      REDDIT_CLIENT_ID?: string;
+      REDDIT_CLIENT_SECRET?: string;
     }
   }
 }

@@ -1197,4 +1197,96 @@ describe("runIcpScrape", () => {
       expect(u).toContain("restrict_sr=on");
     }
   });
+
+  it("uses application-only OAuth when Reddit creds are provided (SK-ICP-010)", async () => {
+    const kv = stubKv();
+    const searchUrls: string[] = [];
+    let tokenAuth: string | undefined;
+    let searchAuth: string | undefined;
+    const stubFetch: typeof fetch = vi.fn(
+      async (url: string | URL | Request, init?: RequestInit) => {
+        const urlStr = typeof url === "string" ? url : url instanceof URL ? url.href : url.url;
+        const headers = (init?.headers ?? {}) as Record<string, string>;
+        if (urlStr.includes("hn.algolia.com")) {
+          return { ok: true, status: 200, json: async () => ({ hits: [] }) } as unknown as Response;
+        }
+        if (urlStr.includes("/api/v1/access_token")) {
+          tokenAuth = headers["Authorization"];
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({ access_token: "tok-123" }),
+          } as unknown as Response;
+        }
+        if (urlStr.includes("oauth.reddit.com")) {
+          searchUrls.push(urlStr);
+          searchAuth = headers["Authorization"];
+          return {
+            ok: true,
+            status: 200,
+            json: async () => JSON.parse(redditResponse("rdt-oauth")),
+          } as unknown as Response;
+        }
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ data: { children: [] } }),
+        } as unknown as Response;
+      },
+    ) as unknown as typeof fetch;
+
+    const result = await runIcpScrape({
+      kv,
+      fetch: stubFetch,
+      tracer: stubTracer,
+      redditClientId: "cid",
+      redditClientSecret: "csec",
+    });
+
+    expect(tokenAuth).toBe(`Basic ${btoa("cid:csec")}`);
+    expect(searchAuth).toBe("bearer tok-123");
+    expect(searchUrls.length).toBeGreaterThan(0);
+    for (const u of searchUrls) {
+      expect(u).toContain("oauth.reddit.com");
+      expect(u).toContain("restrict_sr=on");
+    }
+    expect(result.sources["reddit"]).toBeGreaterThanOrEqual(1);
+  });
+
+  it("falls back to the anonymous Reddit host when the OAuth token mint fails (SK-ICP-010)", async () => {
+    const kv = stubKv();
+    const searchUrls: string[] = [];
+    const stubFetch: typeof fetch = vi.fn(async (url: string | URL | Request) => {
+      const urlStr = typeof url === "string" ? url : url instanceof URL ? url.href : url.url;
+      if (urlStr.includes("hn.algolia.com")) {
+        return { ok: true, status: 200, json: async () => ({ hits: [] }) } as unknown as Response;
+      }
+      if (urlStr.includes("/api/v1/access_token")) {
+        return { ok: false, status: 401, json: async () => ({}) } as unknown as Response;
+      }
+      if (urlStr.includes("reddit.com")) {
+        searchUrls.push(urlStr);
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ data: { children: [] } }),
+        } as unknown as Response;
+      }
+      return { ok: true, status: 200, json: async () => ({}) } as unknown as Response;
+    }) as unknown as typeof fetch;
+
+    await runIcpScrape({
+      kv,
+      fetch: stubFetch,
+      tracer: stubTracer,
+      redditClientId: "cid",
+      redditClientSecret: "csec",
+    });
+
+    expect(searchUrls.length).toBeGreaterThan(0);
+    for (const u of searchUrls) {
+      expect(u).toContain("www.reddit.com");
+      expect(u).toContain("search.json");
+    }
+  });
 });

@@ -1,4 +1,4 @@
-// SK-ICP-001 (HN+Reddit) + SK-ICP-004 (GitHub Issues) + SK-ICP-005 (Stack Exchange) + SK-ICP-006 (Indie Hackers) + SK-ICP-008 (Dev.to) + SK-ICP-009 (GitHub Discussions). Writes raw items to KV at icp:seen:<source>:<id> (90d) + icp:item:<YYYYMMDD>:<source>:<id> (30d).
+// SK-ICP-001 (HN+Reddit) + SK-ICP-004 (GitHub Issues) + SK-ICP-005 (Stack Exchange) + SK-ICP-006 (Indie Hackers) + SK-ICP-008 (Dev.to) + SK-ICP-009 (GitHub Discussions) + SK-ICP-010 (Reddit application-only OAuth). Writes raw items to KV at icp:seen:<source>:<id> (90d) + icp:item:<YYYYMMDD>:<source>:<id> (30d).
 
 import { type Span, trace } from "@opentelemetry/api";
 
@@ -11,6 +11,11 @@ export type IcpScrapeDeps = {
   logsnagToken?: string;
   logsnagProject?: string;
   ghToken?: string;
+  // Reddit application-only OAuth (SK-ICP-010). When both are set the Reddit
+  // source mints a client_credentials token and reads oauth.reddit.com;
+  // when absent it falls back to the anonymous www.reddit.com endpoint.
+  redditClientId?: string;
+  redditClientSecret?: string;
   fetch?: typeof fetch;
   tracer?: {
     startActiveSpan: (name: string, fn: (span: Span) => Promise<unknown>) => Promise<unknown>;
@@ -384,22 +389,93 @@ const REDDIT_QUERIES: Array<{ subreddit: string; query: string }> = [
   { subreddit: "clickhouse", query: "query" },
 ];
 
+// Application-only OAuth token endpoint + host (SK-ICP-010). The
+// client_credentials grant needs no Reddit user account; the bearer token
+// lifts the request off the heavily-throttled anonymous www.reddit.com path
+// (which the sandbox egress proxy 403s, per SK-ICP-007) onto the 100-QPM
+// per-client oauth.reddit.com surface.
+const REDDIT_TOKEN_URL = "https://www.reddit.com/api/v1/access_token";
+const REDDIT_OAUTH_HOST = "https://oauth.reddit.com";
+const REDDIT_ANON_HOST = "https://www.reddit.com";
+
+// Mints an application-only bearer token. Returns null on any failure so the
+// caller transparently degrades to the anonymous host — auth is an upgrade,
+// not a hard dependency.
+async function fetchRedditToken(
+  fetcher: typeof fetch,
+  clientId: string,
+  clientSecret: string,
+  tracer: IcpScrapeDeps["tracer"],
+): Promise<string | null> {
+  let token: string | null = null;
+
+  const doFetch = async (span: Span) => {
+    try {
+      const res = await fetcher(REDDIT_TOKEN_URL, {
+        method: "POST",
+        headers: {
+          Authorization: `Basic ${btoa(`${clientId}:${clientSecret}`)}`,
+          "Content-Type": "application/x-www-form-urlencoded",
+          "User-Agent": BOT_USER_AGENT,
+        },
+        body: "grant_type=client_credentials",
+        signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+      });
+      span.setAttribute("http.response.status_code", res.status);
+      if (!res.ok) {
+        console.warn(JSON.stringify({ msg: "icp_reddit_token_error", status: res.status }));
+        return;
+      }
+      const json = (await res.json()) as { access_token?: string };
+      token = json.access_token ?? null;
+      span.setAttribute("nlqdb.icp.reddit.authed", token !== null);
+    } catch (err) {
+      span.recordException(err as Error);
+      console.error(
+        JSON.stringify({
+          msg: "icp_reddit_token_exception",
+          message: err instanceof Error ? err.message : String(err),
+        }),
+      );
+    } finally {
+      span.end();
+    }
+  };
+
+  await runSpan(tracer, "nlqdb.icp.reddit.token", doFetch);
+  return token;
+}
+
 async function fetchReddit(
   fetcher: typeof fetch,
   tracer: IcpScrapeDeps["tracer"],
+  clientId?: string,
+  clientSecret?: string,
 ): Promise<IcpItem[]> {
   const items: IcpItem[] = [];
+
+  // One token per cron run, reused across all subreddit queries.
+  const token =
+    clientId && clientSecret
+      ? await fetchRedditToken(fetcher, clientId, clientSecret, tracer)
+      : null;
+  const host = token ? REDDIT_OAUTH_HOST : REDDIT_ANON_HOST;
+  const headers: Record<string, string> = { "User-Agent": BOT_USER_AGENT };
+  if (token) headers["Authorization"] = `bearer ${token}`;
 
   for (const { subreddit, query } of REDDIT_QUERIES) {
     const encodedQuery = encodeURIComponent(query);
     // restrict_sr=on scopes the search to the subreddit; without it Reddit
-    // returns site-wide results even on the /r/<sub>/search.json endpoint.
-    const url = `https://www.reddit.com/r/${subreddit}/search.json?q=${encodedQuery}&restrict_sr=on&sort=new&limit=25&t=week`;
+    // returns site-wide results. oauth.reddit.com serves JSON directly; the
+    // anonymous host needs the .json suffix.
+    const path = `/r/${subreddit}/${token ? "search" : "search.json"}?q=${encodedQuery}&restrict_sr=on&sort=new&limit=25&t=week`;
+    const url = `${host}${path}`;
 
     const doFetch = async (span: Span) => {
       try {
+        span.setAttribute("nlqdb.icp.reddit.authed", token !== null);
         const res = await fetcher(url, {
-          headers: { "User-Agent": BOT_USER_AGENT },
+          headers,
           signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
         });
         span.setAttribute("http.response.status_code", res.status);
@@ -790,7 +866,7 @@ export async function runIcpScrape(deps: IcpScrapeDeps): Promise<IcpScrapeResult
         );
         return [] as IcpItem[];
       }),
-      fetchReddit(fetcher, tracer).catch((err) => {
+      fetchReddit(fetcher, tracer, deps.redditClientId, deps.redditClientSecret).catch((err) => {
         console.error(
           JSON.stringify({
             msg: "icp_reddit_source_failed",

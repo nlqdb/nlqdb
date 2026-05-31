@@ -327,11 +327,31 @@ if fetch_json "FLOW-008 source HN Algolia /api/v1/search" "$hn_url" fatal; then
   rm -f "$FETCH_BODY_PATH"
 fi
 
-# Reddit: advisory because www.reddit.com 403s most non-CF egress.
-reddit_url="https://www.reddit.com/r/SaaS/search.json?q=retool+alternative&restrict_sr=on&sort=new&limit=5&t=week"
-fetch_json "FLOW-008 source Reddit /r/SaaS/search.json" "$reddit_url" advisory \
-  -A "nlqdb-icp-bot/1.0 (+https://nlqdb.com; contact: hello@nlqdb.com)" \
-  && rm -f "$FETCH_BODY_PATH"
+# Reddit (SK-ICP-010): when REDDIT_CLIENT_ID/SECRET are set, mint an
+# application-only token and probe oauth.reddit.com (the path the cron
+# takes); otherwise fall back to the anonymous www.reddit.com endpoint.
+# Advisory either way — both hosts 403 with x-block-reason from non-CF
+# egress, which fetch_json degrades to a note automatically.
+reddit_ua="nlqdb-icp-bot/1.0 (+https://nlqdb.com; contact: hello@nlqdb.com)"
+if [[ -n "${REDDIT_CLIENT_ID:-}" && -n "${REDDIT_CLIENT_SECRET:-}" ]]; then
+  reddit_token=$(curl -s -u "${REDDIT_CLIENT_ID}:${REDDIT_CLIENT_SECRET}" \
+    -A "$reddit_ua" -d grant_type=client_credentials \
+    "https://www.reddit.com/api/v1/access_token" \
+    | grep -oE '"access_token":\s*"[^"]+"' | grep -oE '[^"]+$' || true)
+  if [[ -n "$reddit_token" ]]; then
+    reddit_url="https://oauth.reddit.com/r/SaaS/search?q=retool+alternative&restrict_sr=on&sort=new&limit=5&t=week"
+    fetch_json "FLOW-008 source Reddit oauth.reddit.com (app-only)" "$reddit_url" advisory \
+      -A "$reddit_ua" -H "Authorization: bearer $reddit_token" \
+      && rm -f "$FETCH_BODY_PATH"
+  else
+    note "FLOW-008 source Reddit: REDDIT_CLIENT_ID/SECRET set but token mint failed — check the credential pair"
+  fi
+else
+  reddit_url="https://www.reddit.com/r/SaaS/search.json?q=retool+alternative&restrict_sr=on&sort=new&limit=5&t=week"
+  fetch_json "FLOW-008 source Reddit /r/SaaS/search.json (anon)" "$reddit_url" advisory \
+    -A "$reddit_ua" \
+    && rm -f "$FETCH_BODY_PATH"
+fi
 
 # GitHub Search Issues: only when GH_TOKEN is present locally (Worker
 # always has it; the agent VM frequently does not).
