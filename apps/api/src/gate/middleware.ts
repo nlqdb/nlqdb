@@ -74,12 +74,7 @@ type GateOutcome = "pass" | "block";
 // `nlqdb.gate.check` span (per-request debugging) and the
 // `nlqdb.gate.checks.total` counter (SK-GATE-008 — the funnel survives
 // Tempo's 30-day retention so block rate / redemptions stay queryable).
-function recordOutcome(
-  span: Span,
-  outcome: GateOutcome,
-  reason: string,
-  principalKind: string,
-) {
+function recordOutcome(span: Span, outcome: GateOutcome, reason: string, principalKind: string) {
   span.setAttribute("nlqdb.gate.outcome", outcome);
   span.setAttribute("nlqdb.gate.bypass_reason", reason);
   gateChecksTotal().add(1, {
@@ -183,12 +178,7 @@ export function makeGatePreAlpha(deps: GateDeps): MiddlewareHandler<{
 
         // `invite_invalid` is the brute-force-guess signature; operators
         // can alert on a spike per principal.
-        recordOutcome(
-          span,
-          "block",
-          inviteAttempted ? "invite_invalid" : "none",
-          principalKind,
-        );
+        recordOutcome(span, "block", inviteAttempted ? "invite_invalid" : "none", principalKind);
 
         // `SK-GATE-006`. `executionCtx` is absent in unit-test contexts.
         if (subject) {
