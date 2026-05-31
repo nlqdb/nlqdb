@@ -26,6 +26,9 @@ on:
       PREVIEW_BETTER_AUTH_SECRET: { required: true }
       CLOUDFLARE_API_TOKEN: { required: true }
       CLOUDFLARE_ACCOUNT_ID: { required: true }
+      # App LLM key for the preview's /v1/ask + NL db-create (free chain → Groq first).
+      # Optional: only the web-journey caller (opencheck) passes it (SK-E2E-003).
+      GROQ_API_KEY: { required: false }
 
 permissions: {}
 
@@ -92,10 +95,17 @@ jobs:
           WRANGLER_OUTPUT_FILE_DIRECTORY: ${{ github.workspace }}/wrangler-out
           DATABASE_URL: ${{ steps.neon.outputs.database_url }}
           BETTER_AUTH_SECRET: ${{ secrets.PREVIEW_BETTER_AUTH_SECRET }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           PREVIEW_BASE_URL: "https://${{ env.E2E_PREVIEW_ALIAS }}-nlqdb-api.omer-hochman.workers.dev"
         run: |
           set -euo pipefail
           mkdir -p "$WRANGLER_OUTPUT_FILE_DIRECTORY"
+          # Only the web-journey caller passes GROQ_API_KEY; omit the flag when absent
+          # so examples-live keeps deploying without an app LLM key (SK-E2E-003).
+          llm_var=()
+          if [ -n "${GROQ_API_KEY:-}" ]; then
+            llm_var=(--var "GROQ_API_KEY:${GROQ_API_KEY}")
+          fi
           bunx wrangler versions upload \
             --message "${{ inputs.wrangler_message }}" \
             --preview-alias "${E2E_PREVIEW_ALIAS}" \
@@ -106,7 +116,8 @@ jobs:
             --var "BETTER_AUTH_URL:${PREVIEW_BASE_URL}" \
             --var "MAGIC_LINK_WEB_ORIGIN:${PREVIEW_BASE_URL}" \
             --var "DATABASE_URL:${DATABASE_URL}" \
-            --var "BETTER_AUTH_SECRET:${BETTER_AUTH_SECRET}"
+            --var "BETTER_AUTH_SECRET:${BETTER_AUTH_SECRET}" \
+            "${llm_var[@]}"
 
       - name: Extract preview URL
         env:
