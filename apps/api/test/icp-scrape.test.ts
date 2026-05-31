@@ -607,6 +607,248 @@ describe("runIcpScrape", () => {
     });
   });
 
+  describe("GitHub Discussions source", () => {
+    function ghDiscussionResponse(nodeId: string, ageHours = 2) {
+      const ts = new Date(Date.now() - ageHours * 3600 * 1000).toISOString();
+      return JSON.stringify({
+        data: {
+          search: {
+            edges: [
+              {
+                node: {
+                  id: nodeId,
+                  title: `GH Discussion ${nodeId}`,
+                  url: `https://github.com/owner/repo/discussions/${nodeId.slice(-3)}`,
+                  body: "How are people wiring up agent memory on Postgres for production?",
+                  createdAt: ts,
+                },
+              },
+            ],
+          },
+          rateLimit: { remaining: 4999 },
+        },
+      });
+    }
+
+    function isGhGraphql(urlStr: string): boolean {
+      return urlStr.endsWith("api.github.com/graphql");
+    }
+
+    it("fetches GitHub Discussions via POST /graphql when ghToken is provided", async () => {
+      const kv = stubKv();
+      const stubFetch: typeof fetch = vi.fn(async (url: string | URL | Request) => {
+        const urlStr = typeof url === "string" ? url : url instanceof URL ? url.href : url.url;
+        if (isGhGraphql(urlStr)) {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => JSON.parse(ghDiscussionResponse("D_kw_test_1")),
+          } as unknown as Response;
+        }
+        if (urlStr.includes("api.github.com/search/issues")) {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({ items: [] }),
+          } as unknown as Response;
+        }
+        if (urlStr.includes("hn.algolia.com")) {
+          return { ok: true, status: 200, json: async () => ({ hits: [] }) } as unknown as Response;
+        }
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ data: { children: [] } }),
+        } as unknown as Response;
+      }) as unknown as typeof fetch;
+
+      const result = await runIcpScrape({
+        kv,
+        fetch: stubFetch,
+        tracer: stubTracer,
+        ghToken: "gh-test-token",
+      });
+
+      expect(result.sources["github_discussions"]).toBeGreaterThanOrEqual(1);
+
+      const putCalls = (kv.put as ReturnType<typeof vi.fn>).mock.calls as Array<
+        [string, ...unknown[]]
+      >;
+      expect(putCalls.some(([k]) => k === "icp:seen:github_discussions:ghd-D_kw_test_1")).toBe(
+        true,
+      );
+      expect(
+        putCalls.some(
+          ([k]) => k.startsWith("icp:item:") && k.endsWith(":github_discussions:ghd-D_kw_test_1"),
+        ),
+      ).toBe(true);
+    });
+
+    it("sends POST with Bearer token, bot User-Agent, and a `created:>` date filter", async () => {
+      const kv = stubKv();
+      const seen: Array<{
+        method?: string;
+        headers: Record<string, string>;
+        body: string;
+      }> = [];
+      const stubFetch: typeof fetch = vi.fn(
+        async (
+          url: string | URL | Request,
+          init?: { method?: string; headers?: Record<string, string>; body?: string },
+        ) => {
+          const urlStr = typeof url === "string" ? url : url instanceof URL ? url.href : url.url;
+          if (isGhGraphql(urlStr)) {
+            seen.push({
+              method: init?.method,
+              headers: init?.headers ?? {},
+              body: init?.body ?? "",
+            });
+            return {
+              ok: true,
+              status: 200,
+              json: async () => ({ data: { search: { edges: [] } } }),
+            } as unknown as Response;
+          }
+          if (urlStr.includes("hn.algolia.com")) {
+            return {
+              ok: true,
+              status: 200,
+              json: async () => ({ hits: [] }),
+            } as unknown as Response;
+          }
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({ data: { children: [] } }),
+          } as unknown as Response;
+        },
+      ) as unknown as typeof fetch;
+
+      await runIcpScrape({
+        kv,
+        fetch: stubFetch,
+        tracer: stubTracer,
+        ghToken: "gh-test-token",
+      });
+
+      expect(seen.length).toBeGreaterThan(0);
+      for (const { method, headers, body } of seen) {
+        expect(method).toBe("POST");
+        expect(headers["Authorization"]).toBe("Bearer gh-test-token");
+        expect(headers["User-Agent"]).toMatch(/nlqdb-icp-bot/);
+        expect(headers["Content-Type"]).toBe("application/json");
+        expect(body).toContain("DISCUSSION");
+        expect(body).toMatch(/created:>\d{4}-\d{2}-\d{2}/);
+      }
+    });
+
+    it("skips GitHub Discussions when ghToken is absent (no GraphQL call made)", async () => {
+      const kv = stubKv();
+      const stubFetch: typeof fetch = vi.fn(async (url: string | URL | Request) => {
+        const urlStr = typeof url === "string" ? url : url instanceof URL ? url.href : url.url;
+        if (isGhGraphql(urlStr)) {
+          throw new Error("Should not call GitHub Discussions without a token");
+        }
+        if (urlStr.includes("hn.algolia.com")) {
+          return { ok: true, status: 200, json: async () => ({ hits: [] }) } as unknown as Response;
+        }
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ data: { children: [] } }),
+        } as unknown as Response;
+      }) as unknown as typeof fetch;
+
+      await expect(
+        runIcpScrape({ kv, fetch: stubFetch, tracer: stubTracer }),
+      ).resolves.not.toThrow();
+    });
+
+    it("treats a GraphQL `errors` body as a soft failure — other sources still complete", async () => {
+      const kv = stubKv();
+      const stubFetch: typeof fetch = vi.fn(async (url: string | URL | Request) => {
+        const urlStr = typeof url === "string" ? url : url instanceof URL ? url.href : url.url;
+        if (isGhGraphql(urlStr)) {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({ errors: [{ message: "rate limit exceeded" }] }),
+          } as unknown as Response;
+        }
+        if (urlStr.includes("query=text+to+sql")) {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => JSON.parse(hnResponse("hn-ghd-fail")),
+          } as unknown as Response;
+        }
+        if (urlStr.includes("hn.algolia.com")) {
+          return { ok: true, status: 200, json: async () => ({ hits: [] }) } as unknown as Response;
+        }
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ data: { children: [] } }),
+        } as unknown as Response;
+      }) as unknown as typeof fetch;
+
+      const result = await runIcpScrape({
+        kv,
+        fetch: stubFetch,
+        tracer: stubTracer,
+        ghToken: "gh-test-token",
+      });
+      expect(result.sources["hn"]).toBeGreaterThanOrEqual(1);
+      expect(result.sources["github_discussions"]).toBeUndefined();
+    });
+
+    it("drops discussions whose createdAt is unparseable (no NaN ts in KV)", async () => {
+      const kv = stubKv();
+      const stubFetch: typeof fetch = vi.fn(async (url: string | URL | Request) => {
+        const urlStr = typeof url === "string" ? url : url instanceof URL ? url.href : url.url;
+        if (isGhGraphql(urlStr)) {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({
+              data: {
+                search: {
+                  edges: [
+                    {
+                      node: {
+                        id: "D_kw_bad_date",
+                        title: "Bad date",
+                        url: "https://github.com/x/y/discussions/1",
+                        body: null,
+                        createdAt: "not-a-date",
+                      },
+                    },
+                  ],
+                },
+              },
+            }),
+          } as unknown as Response;
+        }
+        if (urlStr.includes("hn.algolia.com")) {
+          return { ok: true, status: 200, json: async () => ({ hits: [] }) } as unknown as Response;
+        }
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ data: { children: [] } }),
+        } as unknown as Response;
+      }) as unknown as typeof fetch;
+
+      const result = await runIcpScrape({
+        kv,
+        fetch: stubFetch,
+        tracer: stubTracer,
+        ghToken: "gh-test-token",
+      });
+      expect(result.sources["github_discussions"]).toBeUndefined();
+    });
+  });
+
   describe("Indie Hackers source", () => {
     function ihResponse(id: string, ageDays = 1) {
       const ts = new Date(Date.now() - ageDays * 24 * 60 * 60 * 1000).toISOString();

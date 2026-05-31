@@ -82,7 +82,7 @@
 | FLOW-005 | P2 agent builder | partial — OAuth discovery precondition passes via `verify-flows.sh`; walkthrough steps 1-7 need an authenticated MCP client | 2026-05-23 | 5/6 (83%) |
 | FLOW-006 | P4 backend engineer | not yet attempted | — | 5/6 (83%) |
 | FLOW-007 | P1 / P3 | not yet attempted | — | 5/6 (83%) |
-| FLOW-008 | cron / system | partial — curl probe of 6 sources passes (HN / GH / IH / Dev.to 200; Reddit / SO sandbox-egress advisory); cron-side KV writes + LogSnag publish need the deployed Worker | 2026-05-25 | 9/9 (100%) |
+| FLOW-008 | cron / system | partial — curl probe of 7 sources passes (HN / GH / GHD / IH / Dev.to 200; Reddit / SO sandbox-egress advisory); cron-side KV writes + LogSnag publish need the deployed Worker | 2026-05-31 | 10/10 (100%) |
 
 **Verification states:**
 - `not yet attempted` — no agent has tried this flow.
@@ -742,11 +742,11 @@ losing my rows."
 ### Source signal
 
 The signal this flow proves is "the Mon 06:00 UTC cron can still reach
-the 6 upstreams it depends on". A silent upstream schema change or
+the 7 upstreams it depends on". A silent upstream schema change or
 endpoint move only surfaces today after the LogSnag count drops to
 zero; this flow makes the failure agent-observable before the cron
 fires. Per [`SK-ICP-007`](../features/icp-mining/FEATURE.md) the probe
-is best-effort: the 6 sources are the same ones listed in
+is best-effort: the 7 sources are the same ones listed in
 [`automated-icp-validation-plan.md §2.1`](./automated-icp-validation-plan.md).
 
 ### Required tools
@@ -756,9 +756,11 @@ is best-effort: the 6 sources are the same ones listed in
 
 ### Required credentials
 
-- `GH_TOKEN` (optional) for the GitHub Search probe. When absent the
-  script skips that single probe with a note; the deployed Worker still
-  uses its own bound secret.
+- `GH_TOKEN` (optional) for both the GitHub Search Issues probe AND
+  the GitHub Discussions GraphQL probe (same token authorises both —
+  the `public_repo` read scope returns Issues via REST and DISCUSSION
+  nodes via GraphQL). When absent the script skips both probes with
+  a single note; the deployed Worker still uses its own bound secret.
 - No other credentials. The Stack Exchange and Indie Hackers probes
   are anonymous; HN Algolia is public; Reddit is unauthenticated.
 
@@ -771,16 +773,23 @@ is best-effort: the 6 sources are the same ones listed in
    regression — the cron's `fetchHN` will start returning empty.
 3. Assert: GitHub `/search/issues` returns 200 AND the body contains
    `"total_count"` (only when `GH_TOKEN` is set; otherwise this step
-   is skipped with a note).
-4. Assert: Indie Hackers `/posts.json` returns 200 AND the body
+   AND step 4 are both skipped with a single note).
+4. Assert (gated on the same `GH_TOKEN`): GitHub GraphQL POST to
+   `/graphql` with a `search(query: \"text to sql\", type: DISCUSSION, first: 1) { discussionCount }`
+   payload returns 200 AND the body contains `"discussionCount"`. Failure
+   with `GH_TOKEN` present ⇒ either the PAT lost the scope GraphQL
+   needs to resolve DISCUSSION nodes OR the GraphQL endpoint moved —
+   the cron's `fetchGitHubDiscussions` (SK-ICP-009) will start
+   returning empty.
+5. Assert: Indie Hackers `/posts.json` returns 200 AND the body
    contains an `"items"` key.
-5. Reddit `/r/SaaS/search.json` and Stack Exchange `/search/advanced`
+6. Reddit `/r/SaaS/search.json` and Stack Exchange `/search/advanced`
    may return 200 (good — record the `quota_remaining` for SO) OR
    they may return 403 with `x-block-reason: hostname_blocked`
    (sandbox-egress proxy block — the script downgrades to an advisory
    note since the deployed Worker is the canonical probe). Any other
    non-200 ⇒ real upstream regression.
-6. Assert: Dev.to `/api/articles?tag=database&per_page=5&top=7` returns
+7. Assert: Dev.to `/api/articles?tag=database&per_page=5&top=7` returns
    200 AND the body is a top-level JSON array (per the Forem
    [`/api/v1`](https://developers.forem.com/api/v1) contract). Failure ⇒
    Forem schema/endpoint regression — the cron's `fetchDevto` will start
@@ -789,7 +798,8 @@ is best-effort: the 6 sources are the same ones listed in
 ### Pass criteria
 
 - HN + IH + Dev.to probes return 200 with the contract keys.
-- GH probe is either 200-with-key OR skipped-no-token.
+- Both GitHub probes (Issues REST + Discussions GraphQL) are either
+  200-with-key OR skipped-no-token together.
 - Reddit + SO probes are either 200-with-quota-key OR advisory
   egress-block notes. Any other 4xx/5xx fails the walk.
 - Script exits 0.
@@ -798,9 +808,16 @@ is best-effort: the 6 sources are the same ones listed in
 
 - HN 5xx for the whole walk window → `blocked upstream` (HN Algolia
   outage). Re-run within an hour.
-- GH 401 with `GH_TOKEN` set → `failed step 3`; the token rotated or
-  was revoked. Mint a new PAT and update the Worker secret per
+- GH 401 with `GH_TOKEN` set on either step 3 (Issues REST) or step 4
+  (Discussions GraphQL) → `failed step <3|4>`; the token rotated, was
+  revoked, or lost a scope. Mint a new PAT (must retain `public_repo`
+  read for REST AND GraphQL) and update the Worker secret per
   [`scripts/mirror-secrets-workers.sh`](../../scripts/mirror-secrets-workers.sh).
+- GraphQL `errors` body on step 4 with `GH_TOKEN` set ⇒ `failed step 4`
+  unless the message is `RATE_LIMITED` (in which case the next agent run
+  inherits headroom; surface in the outcome log but do not block the
+  walk — the cron's per-source `.catch` already isolates this from the
+  other 6 sources).
 - IH 502 from the unofficial mirror → `blocked upstream`; the mirror
   is single-instance and occasionally rate-limits. The cron's per-source
   catch isolates IH from killing the rest.
@@ -815,6 +832,7 @@ is best-effort: the 6 sources are the same ones listed in
 |---|---|---|---|
 | 2026-05-23 | composer-4 | partial steps 1-5 (upstream availability) | `scripts/verify-flows.sh` against `https://nlqdb.com` + `https://mcp.nlqdb.com`: HN 200 (`hits` present), GH 200 (`total_count=1644` live-probed today), IH 200 (`items` present). Reddit + Stack Exchange both 403 with `x-block-reason: hostname_blocked` from the sandbox-egress proxy — degraded to advisory per the script's helper. Cron-side checks (KV writes, evidence-file PUT, LogSnag publish) require the deployed Worker and remain a separate post-cron audit. |
 | 2026-05-25 | claude-code | partial steps 1-6 (upstream availability) | `scripts/verify-flows.sh` against `https://nlqdb.com` + `https://mcp.nlqdb.com` after SK-ICP-008 added the Dev.to probe: HN 200 (`hits` present), GH 200 (`total_count` present), IH 200 (`items` present), **Dev.to 200 (top-level JSON array)** — live probe of `https://dev.to/api/articles?tag=database&per_page=5&top=7` returned 5 fresh articles inside the `top=7` 7-day window. Reddit + SO 403 `x-block-reason: hostname_blocked` (unchanged sandbox-egress advisory). Cron-side checks (KV writes, evidence-file PUT, LogSnag publish) remain a separate post-cron audit; the new `fetchDevto` matches the IH error-isolation pattern exactly so its regression surface is the response-schema contract that the probe pins. Pre-walk also: `flow-004-walk.sh` passed in 19s (control 403, invite 200) — full SK-GATE-007 invariant proof, gate is doing its job and the invite-valve is intact. |
+| 2026-05-31 | claude-code | partial steps 1-7 (upstream availability) | Verification-first run before any code edit, per GLOBAL-030: (a) mirror integrity check `diff <(grep -oE '^#{2,3} FLOW-[0-9]+' impl) <(... verif)` ⇒ empty, both trackers in sync; (b) `bash scripts/verify-flows.sh` against `https://nlqdb.com` ⇒ all curl-observable assertions green pre-edit (HN/GH/IH/Dev.to 200, Reddit/SO sandbox-egress advisory, `flow-005` MCP discovery 200, every `/solve/` + `/vs/` slug 200, sitemap floor 14, `Base.astro` invite-capture loaded site-wide); (c) live probe of `api.github.com/graphql` with the env's `GH_TOKEN` ⇒ `viewer.login=omerhochman`, `rateLimit{cost:1, remaining:4998, limit:5000}` confirming the PAT authorises GraphQL `DISCUSSION` searches without a new scope. After landing SK-ICP-009 in `apps/api/src/icp-scrape.ts` + tests + `scripts/verify-flows.sh` step 4 (new), re-walked the script: **GitHub Discussions probe 200 with `"discussionCount"` present** — full FLOW-008 status now `partial steps 1-7` (Reddit/SO still sandbox-egress advisory; cron-side KV/LogSnag still need the deployed Worker). Post-edit `bun --filter @nlqdb/api test test/icp-scrape.test.ts` ⇒ 28/28 pass (5 new tests cover POST + Bearer + bot UA + `DISCUSSION` body + `created:>` filter, absent-token short-circuit, GraphQL `errors` soft failure, unparseable `createdAt` drop, basic store-and-dedup). Mirror integrity check post-edit ⇒ still empty (no new FLOW added; FLOW-008 sub-tasks gained one on each side). |
 
 ### Triage
 
