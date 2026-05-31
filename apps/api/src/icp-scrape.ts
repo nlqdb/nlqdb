@@ -1,4 +1,4 @@
-// SK-ICP-001 (HN+Reddit) + SK-ICP-004 (GitHub Issues) + SK-ICP-005 (Stack Exchange) + SK-ICP-006 (Indie Hackers) + SK-ICP-008 (Dev.to). Writes raw items to KV at icp:seen:<source>:<id> (90d) + icp:item:<YYYYMMDD>:<source>:<id> (30d).
+// SK-ICP-001 (HN+Reddit) + SK-ICP-004 (GitHub Issues) + SK-ICP-005 (Stack Exchange) + SK-ICP-006 (Indie Hackers) + SK-ICP-008 (Dev.to) + SK-ICP-009 (GitHub Discussions). Writes raw items to KV at icp:seen:<source>:<id> (90d) + icp:item:<YYYYMMDD>:<source>:<id> (30d).
 
 import { type Span, trace } from "@opentelemetry/api";
 
@@ -229,6 +229,126 @@ async function fetchGitHubIssues(
     };
 
     await runSpan(tracer, "nlqdb.icp.fetch.github", doFetch);
+  }
+
+  return items;
+}
+
+// --- GitHub Discussions (GraphQL) ---
+
+type GhDiscussionNode = {
+  id: string;
+  title: string;
+  url: string;
+  body?: string;
+  createdAt: string;
+};
+
+const GH_DISCUSSION_QUERIES = [
+  "text to sql",
+  "natural language database",
+  "agent memory store",
+  "prisma migration",
+  "supabase setup",
+];
+
+const GH_GRAPHQL_URL = "https://api.github.com/graphql";
+
+const GH_DISCUSSION_GRAPHQL = `query($q: String!) {
+  search(query: $q, type: DISCUSSION, first: 10) {
+    edges { node { ... on Discussion { id title url body createdAt } } }
+  }
+  rateLimit { remaining }
+}`;
+
+async function fetchGitHubDiscussions(
+  fetcher: typeof fetch,
+  ghToken: string,
+  sevenDaysAgoUnix: number,
+  tracer: IcpScrapeDeps["tracer"],
+): Promise<IcpItem[]> {
+  const items: IcpItem[] = [];
+  const dateFilter = `created:>${isoDate(sevenDaysAgoUnix * 1000)}`;
+
+  for (const q of GH_DISCUSSION_QUERIES) {
+    const searchQuery = `${q} ${dateFilter}`;
+    const requestBody = JSON.stringify({
+      query: GH_DISCUSSION_GRAPHQL,
+      variables: { q: searchQuery },
+    });
+
+    const doFetch = async (span: Span) => {
+      try {
+        const res = await fetcher(GH_GRAPHQL_URL, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${ghToken}`,
+            "User-Agent": BOT_USER_AGENT,
+            "X-GitHub-Api-Version": "2022-11-28",
+          },
+          body: requestBody,
+          signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+        });
+        span.setAttribute("http.response.status_code", res.status);
+        if (!res.ok) {
+          console.warn(
+            JSON.stringify({ msg: "icp_ghd_fetch_error", query: q, status: res.status }),
+          );
+          return;
+        }
+        const json = (await res.json()) as {
+          data?: {
+            search?: { edges?: Array<{ node: GhDiscussionNode | null }> };
+            rateLimit?: { remaining?: number };
+          };
+          errors?: Array<{ message?: string }>;
+        };
+        if (json.errors && json.errors.length > 0) {
+          console.warn(
+            JSON.stringify({
+              msg: "icp_ghd_graphql_errors",
+              query: q,
+              errors: json.errors.map((e) => e.message ?? "").slice(0, 3),
+            }),
+          );
+          return;
+        }
+        const edges = json.data?.search?.edges ?? [];
+        span.setAttribute("nlqdb.icp.source", "github_discussions");
+        span.setAttribute("nlqdb.icp.items", edges.length);
+        if (typeof json.data?.rateLimit?.remaining === "number") {
+          span.setAttribute("nlqdb.icp.ghd.rate_remaining", json.data.rateLimit.remaining);
+        }
+        for (const edge of edges) {
+          const node = edge?.node;
+          if (!node?.id || !node.url) continue;
+          const ms = Date.parse(node.createdAt);
+          if (!Number.isFinite(ms)) continue;
+          items.push({
+            id: `ghd-${node.id}`,
+            source: "github_discussions",
+            title: node.title ?? "",
+            url: node.url,
+            text: node.body?.slice(0, 500) || undefined,
+            ts: Math.floor(ms / 1000),
+          });
+        }
+      } catch (err) {
+        span.recordException(err as Error);
+        console.error(
+          JSON.stringify({
+            msg: "icp_ghd_fetch_exception",
+            query: q,
+            message: err instanceof Error ? err.message : String(err),
+          }),
+        );
+      } finally {
+        span.end();
+      }
+    };
+
+    await runSpan(tracer, "nlqdb.icp.fetch.github_discussions", doFetch);
   }
 
   return items;
@@ -623,7 +743,7 @@ async function notifyLogSnag(
         project,
         channel: "icp-mining",
         event: "Weekly Scrape",
-        description: `${result.newItems} new pain signals (HN: ${result.sources["hn"] ?? 0}, Reddit: ${result.sources["reddit"] ?? 0}, GH: ${result.sources["github"] ?? 0}, SO: ${result.sources["stackoverflow"] ?? 0}, IH: ${result.sources["indiehackers"] ?? 0}, DEV: ${result.sources["devto"] ?? 0})`,
+        description: `${result.newItems} new pain signals (HN: ${result.sources["hn"] ?? 0}, Reddit: ${result.sources["reddit"] ?? 0}, GH: ${result.sources["github"] ?? 0}, GHD: ${result.sources["github_discussions"] ?? 0}, SO: ${result.sources["stackoverflow"] ?? 0}, IH: ${result.sources["indiehackers"] ?? 0}, DEV: ${result.sources["devto"] ?? 0})`,
       }),
       signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
     });
@@ -659,66 +779,87 @@ export async function runIcpScrape(deps: IcpScrapeDeps): Promise<IcpScrapeResult
   const dateStr = yyyymmdd(now);
 
   // Fetch all sources; per-source errors are already caught inside each helper.
-  const [hnItems, redditItems, ghItems, seItems, ihItems, devtoItems] = await Promise.all([
-    fetchHn(fetcher, sevenDaysAgoUnix, tracer).catch((err) => {
-      console.error(
-        JSON.stringify({
-          msg: "icp_hn_source_failed",
-          message: err instanceof Error ? err.message : String(err),
-        }),
-      );
-      return [] as IcpItem[];
-    }),
-    fetchReddit(fetcher, tracer).catch((err) => {
-      console.error(
-        JSON.stringify({
-          msg: "icp_reddit_source_failed",
-          message: err instanceof Error ? err.message : String(err),
-        }),
-      );
-      return [] as IcpItem[];
-    }),
-    deps.ghToken
-      ? fetchGitHubIssues(fetcher, deps.ghToken, sevenDaysAgoUnix, tracer).catch((err) => {
-          console.error(
-            JSON.stringify({
-              msg: "icp_gh_source_failed",
-              message: err instanceof Error ? err.message : String(err),
-            }),
-          );
-          return [] as IcpItem[];
-        })
-      : ([] as IcpItem[]),
-    fetchStackExchange(fetcher, sevenDaysAgoUnix, tracer).catch((err) => {
-      console.error(
-        JSON.stringify({
-          msg: "icp_se_source_failed",
-          message: err instanceof Error ? err.message : String(err),
-        }),
-      );
-      return [] as IcpItem[];
-    }),
-    fetchIndieHackers(fetcher, sevenDaysAgoUnix, tracer).catch((err) => {
-      console.error(
-        JSON.stringify({
-          msg: "icp_ih_source_failed",
-          message: err instanceof Error ? err.message : String(err),
-        }),
-      );
-      return [] as IcpItem[];
-    }),
-    fetchDevto(fetcher, tracer).catch((err) => {
-      console.error(
-        JSON.stringify({
-          msg: "icp_devto_source_failed",
-          message: err instanceof Error ? err.message : String(err),
-        }),
-      );
-      return [] as IcpItem[];
-    }),
-  ]);
+  const [hnItems, redditItems, ghItems, ghdItems, seItems, ihItems, devtoItems] = await Promise.all(
+    [
+      fetchHn(fetcher, sevenDaysAgoUnix, tracer).catch((err) => {
+        console.error(
+          JSON.stringify({
+            msg: "icp_hn_source_failed",
+            message: err instanceof Error ? err.message : String(err),
+          }),
+        );
+        return [] as IcpItem[];
+      }),
+      fetchReddit(fetcher, tracer).catch((err) => {
+        console.error(
+          JSON.stringify({
+            msg: "icp_reddit_source_failed",
+            message: err instanceof Error ? err.message : String(err),
+          }),
+        );
+        return [] as IcpItem[];
+      }),
+      deps.ghToken
+        ? fetchGitHubIssues(fetcher, deps.ghToken, sevenDaysAgoUnix, tracer).catch((err) => {
+            console.error(
+              JSON.stringify({
+                msg: "icp_gh_source_failed",
+                message: err instanceof Error ? err.message : String(err),
+              }),
+            );
+            return [] as IcpItem[];
+          })
+        : ([] as IcpItem[]),
+      deps.ghToken
+        ? fetchGitHubDiscussions(fetcher, deps.ghToken, sevenDaysAgoUnix, tracer).catch((err) => {
+            console.error(
+              JSON.stringify({
+                msg: "icp_ghd_source_failed",
+                message: err instanceof Error ? err.message : String(err),
+              }),
+            );
+            return [] as IcpItem[];
+          })
+        : ([] as IcpItem[]),
+      fetchStackExchange(fetcher, sevenDaysAgoUnix, tracer).catch((err) => {
+        console.error(
+          JSON.stringify({
+            msg: "icp_se_source_failed",
+            message: err instanceof Error ? err.message : String(err),
+          }),
+        );
+        return [] as IcpItem[];
+      }),
+      fetchIndieHackers(fetcher, sevenDaysAgoUnix, tracer).catch((err) => {
+        console.error(
+          JSON.stringify({
+            msg: "icp_ih_source_failed",
+            message: err instanceof Error ? err.message : String(err),
+          }),
+        );
+        return [] as IcpItem[];
+      }),
+      fetchDevto(fetcher, tracer).catch((err) => {
+        console.error(
+          JSON.stringify({
+            msg: "icp_devto_source_failed",
+            message: err instanceof Error ? err.message : String(err),
+          }),
+        );
+        return [] as IcpItem[];
+      }),
+    ],
+  );
 
-  const allItems = [...hnItems, ...redditItems, ...ghItems, ...seItems, ...ihItems, ...devtoItems];
+  const allItems = [
+    ...hnItems,
+    ...redditItems,
+    ...ghItems,
+    ...ghdItems,
+    ...seItems,
+    ...ihItems,
+    ...devtoItems,
+  ];
 
   // Batch dedup check in parallel.
   const seenKeys = allItems.map((item) => `icp:seen:${item.source}:${item.id}`);

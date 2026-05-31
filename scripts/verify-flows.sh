@@ -348,6 +348,24 @@ if [[ -n "${GH_TOKEN:-}" ]]; then
     fi
     rm -f "$FETCH_BODY_PATH"
   fi
+
+  # GitHub Discussions (GraphQL): same auth as Issues; one trivial query
+  # proves the GraphQL endpoint still resolves the DISCUSSION type and
+  # surfaces `rateLimit`. Worker pulls 5 queries/week × cost=1 (≪ 5000/hr).
+  ghd_query='{"query":"query { search(query: \"text to sql\", type: DISCUSSION, first: 1) { discussionCount } rateLimit { remaining } }"}'
+  if fetch_json "FLOW-008 source GitHub /graphql (Discussions)" "https://api.github.com/graphql" fatal \
+      -X POST \
+      -H "Authorization: Bearer $GH_TOKEN" \
+      -H "User-Agent: nlqdb-icp-bot" \
+      -H "Content-Type: application/json" \
+      --data-raw "$ghd_query"; then
+    if grep -q '"discussionCount"' "$FETCH_BODY_PATH"; then
+      ok "  GH Discussions response carries \"discussionCount\" (GraphQL DISCUSSION type resolves)"
+    else
+      fail "  GH Discussions response schema" "no \"discussionCount\" key in body"
+    fi
+    rm -f "$FETCH_BODY_PATH"
+  fi
 else
   note "FLOW-008 source GitHub: skipped (GH_TOKEN not set in this shell — Worker still uses its bound secret)"
 fi
