@@ -32,6 +32,11 @@ type Client struct {
 	// GLOBAL-027 — when non-empty, sent as `X-Invite-Code` on every
 	// request. Set via `--invite-code` or `NLQDB_INVITE_CODE`.
 	InviteCode string
+	// SK-CLI-016 — when non-empty, the `<provider>:<model>:<key>` BYOLLM
+	// header value. Only `doAsk` sets it (via `WithByollm`); a raw
+	// provider key must never ride `run`/`keys`/`databases` calls, so it
+	// is scoped by being attached to the ask-only client.
+	Byollm string
 }
 
 func New(baseURL string, identity auth.Identity) *Client {
@@ -46,6 +51,14 @@ func New(baseURL string, identity auth.Identity) *Client {
 
 func (c *Client) WithInviteCode(code string) *Client {
 	c.InviteCode = code
+	return c
+}
+
+// WithByollm sets the `x-nlq-byollm-key` header for this client's calls
+// (SK-CLI-016). Call it only on the ask client — the value is a raw
+// provider key and has no business on any other endpoint.
+func (c *Client) WithByollm(header string) *Client {
+	c.Byollm = header
 	return c
 }
 
@@ -157,6 +170,9 @@ func (c *Client) send(ctx context.Context, method, path string, body []byte, ide
 	}
 	if c.InviteCode != "" {
 		req.Header.Set("X-Invite-Code", c.InviteCode)
+	}
+	if c.Byollm != "" {
+		req.Header.Set("x-nlq-byollm-key", c.Byollm)
 	}
 
 	res, err := c.HTTP.Do(req)

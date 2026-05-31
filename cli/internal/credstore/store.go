@@ -23,6 +23,10 @@ type Slot string
 const (
 	SlotAnonToken    Slot = "anon_token"
 	SlotRefreshToken Slot = "refresh_token"
+	// SlotByollm holds the `<provider>:<model>:<key>` BYOLLM value
+	// (SK-CLI-016). A user's own LLM key is a secret, so it rides the
+	// keychain like the session tokens — never config.toml.
+	SlotByollm Slot = "byollm_key"
 )
 
 var (
