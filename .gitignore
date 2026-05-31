@@ -78,3 +78,6 @@ packages/nlqdb-rb/*.gem
 *.tfstate
 *.tfstate.*
 .terraform/
+
+# Tinybird CLI local auth (contains workspace token — never commit)
+.tinyb

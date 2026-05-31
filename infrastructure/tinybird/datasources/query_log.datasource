@@ -42,4 +42,4 @@ SCHEMA >
 ENGINE "MergeTree"
 ENGINE_PARTITION_KEY "toYYYYMMDD(ts)"
 ENGINE_SORTING_KEY "schema_hash, query_hash, ts"
-ENGINE_TTL "ts + INTERVAL 90 DAY"
+ENGINE_TTL "toDateTime(ts) + toIntervalDay(90)"
