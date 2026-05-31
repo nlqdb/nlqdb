@@ -6,8 +6,9 @@
 // null). When both lanes clear, these tests get updated alongside the
 // middleware-removal PR.
 
+import { createTestTelemetry, type TestTelemetry } from "@nlqdb/otel/test";
 import { Hono } from "hono";
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { makeGatePreAlpha } from "../src/gate/middleware.ts";
 import type { RequireSessionVariables } from "../src/middleware.ts";
 import {
@@ -204,6 +205,56 @@ describe("gatePreAlpha — fail-closed when KV is unreachable (robustness)", () 
     const app = buildSessionApp(kv, "u_partner");
     const res = await app.request("/v1/databases", { method: "POST" });
     expect(res.status).toBe(200);
+  });
+});
+
+describe("gatePreAlpha — nlqdb.gate.checks.total counter (SK-GATE-008)", () => {
+  let telemetry: TestTelemetry;
+  beforeEach(() => {
+    telemetry = createTestTelemetry();
+  });
+  afterEach(() => {
+    telemetry.reset();
+  });
+
+  async function point(outcome: string, reason: string, principalKind: string) {
+    await telemetry.collectMetrics();
+    const counter = telemetry.metricExporter
+      .getMetrics()
+      .flatMap((rm) => rm.scopeMetrics.flatMap((sm) => sm.metrics))
+      .find((m) => m.descriptor.name === "nlqdb.gate.checks.total");
+    return counter?.dataPoints.find(
+      (dp) =>
+        dp.attributes["outcome"] === outcome &&
+        dp.attributes["bypass_reason"] === reason &&
+        dp.attributes["principal_kind"] === principalKind,
+    );
+  }
+
+  it("increments {block, none, anon} when an anon caller bounces with no code", async () => {
+    const app = buildAnonApp(fakeKv());
+    await app.request("/v1/ask", { method: "POST", headers: { authorization: ANON_BEARER } });
+    expect(await point("block", "none", "anon")).toBeDefined();
+  });
+
+  it("increments {block, invite_invalid, anon} on a wrong-code attempt", async () => {
+    const app = buildAnonApp(fakeKv());
+    await app.request("/v1/ask", {
+      method: "POST",
+      headers: { authorization: ANON_BEARER, "x-invite-code": "WRONG" },
+    });
+    expect(await point("block", "invite_invalid", "anon")).toBeDefined();
+  });
+
+  it("increments {pass, invite_code, anon} on a valid redemption", async () => {
+    const code = "open-sesame";
+    const hash = await sha256Hex(code, 32);
+    const app = buildAnonApp(fakeKv({ [`gate:invite:${hash}`]: "1" }));
+    await app.request("/v1/ask", {
+      method: "POST",
+      headers: { authorization: ANON_BEARER, "x-invite-code": code },
+    });
+    expect(await point("pass", "invite_code", "anon")).toBeDefined();
   });
 });
 
