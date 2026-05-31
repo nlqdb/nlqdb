@@ -12,7 +12,7 @@ when-to-load:
 # Feature: Engine Migration
 
 **One-liner:** Phase 3 reshape loop — daily workload analyser creates Tinybird Pipes for hot ClickHouse fingerprints and writes advisory audit rows for hot Postgres ones; cross-engine migration still planned.
-**Status:** partial — intra-engine reshape live (`SK-MIGRATE-001..006`); cross-engine migration (PG ↔ ClickHouse / Redis / Mongo) still planned.
+**Status:** partial — intra-engine reshape live (`SK-MIGRATE-001..006`) + PG index advisory designed (`SK-MIGRATE-007`, not yet built); cross-engine migration (PG ↔ ClickHouse / Redis / Mongo) still planned.
 **Owners (code):** `apps/api/src/workload-analyser/**`, `packages/db/src/clickhouse-tinybird/pipe-management.ts`, `apps/api/migrations/0008_workload_analyser_audit.sql`
 **Cross-refs:** `multi-engine-adapter/FEATURE.md` `SK-MULTIENG-003` (the rule this feature operationalises) · `events-pipeline/FEATURE.md` `SK-EVENTS-009` (the `query_log` Data Source the analyser reads) · `plan-cache/FEATURE.md` `SK-PLAN-002` (cache key must outlive reshape) · `docs/phase-plan.md §5` (Migration Orchestrator + Workload Analyzer) · `docs/phase-plan.md §5` (Phase 3 exit criteria — auto-migration is the gate) · `docs/performance.md §3.1` (`nlqdb.workload_analyser.*` spans)
 
@@ -93,6 +93,18 @@ when-to-load:
   - Retry inside the cron — ties up the cron's wall-clock and produces the same wedged state if the upstream is genuinely down. Tomorrow is always a better retry boundary.
   - Cross-day idempotency — would suppress recovery from a transient day-1 failure; per-day is the right grain.
 
+### SK-MIGRATE-007 — `pg_index_suggestion` advisory reshape kind; candidates captured at plan time, promoted by the daily cron
+
+- **Decision:** A third reshape kind, `pg_index_suggestion`, ships advisory-only. Index *candidates* are extracted at plan time in the `/v1/ask` pipeline — where the full planned SQL is in hand — as an anonymisation-safe access descriptor `{table, equalityCols[], rangeCols[], orderByCols[]}` derived from the plan's WHERE / JOIN / ORDER BY clauses (column identifiers only, never values). Candidates are written to a D1 `index_candidates` table keyed by `(db_id, schema_hash, index_signature)`. The daily cron promotes a candidate to a `pg_index_suggestion` audit row only when its backing `(db_id, schema_hash, query_hash)` fingerprint clears the **same** `SK-MIGRATE-002` thresholds. The audit row's `after_json` carries the proposed `CREATE INDEX CONCURRENTLY …` DDL text. nlqdb never executes the DDL.
+- **Core value:** Bullet-proof, Honest latency, Effortless UX
+- **Why:** An index suggestion needs column-level predicate data; `query_log` carries only hashes under `events-pipeline` `SK-EVENTS-009`, so the cron alone cannot derive one. Capturing the access descriptor at plan time reads SQL already in memory — zero new exposure of the `query_log` contract, and the identifiers are the user's own schema on their own `db_id` (no values, no cross-tenant data). Promoting through the existing thresholds surfaces only genuinely hot patterns, reusing the one tuned policy. Advisory-only matches `SK-MIGRATE-003`: issuing PG DDL under load on a shared Neon branch (`SK-DB-007`) is the wrong shape for a cron; an operator (later, the user) reviews it. The suggestion names `CONCURRENTLY` — the only lock-safe way to build an index on a live table.
+- **Consequence in code:** The plan emit point in `apps/api/src/ask/**` extracts the access descriptor and writes an `index_candidates` row (idempotent on `index_signature`). `apps/api/migrations/0009_index_candidates.sql` adds the table. `analyse.ts` gains a `pg_index_suggestion` variant of `ReshapeProposal` and joins promoted fingerprints to their candidates; `cron.ts`'s `dispatchReshape` switch gains a third arm `dispatchPgIndexSuggestion` that writes the audit row only (no Tinybird call). `/v1/ask`'s advisory hook (`SK-MIGRATE-005`) generalises `pipe_advisory` to also surface `index_advisory` within the 24h window. Reviewers reject any path that issues `CREATE INDEX` from the cron — the kind is advisory by definition; auto-apply is a future SK-MIGRATE.
+- **Alternatives rejected:**
+  - Widen `query_log` with a structured access-pattern column (Approach A) — modifies the most sensitive contract in the system (`SK-EVENTS-009`) to move work into the cron that the ask pipeline can already do for free with the real SQL in hand.
+  - Derive columns from `plan_shape` — a SHA-256; opaque by design, no column data.
+  - Auto-apply from the cron — even a concurrent build consumes IO and a brief lock on a shared Neon branch; advisory-first until there is ground truth, mirroring `SK-MIGRATE-003`.
+  - A separate `index-advisor` feature — the analyser already owns hot-fingerprint detection, thresholds, the audit table, and the `/v1/ask` advisory surface; a third kind is one switch arm, not new infra (P5).
+
 ## GLOBALs governing this feature
 
 Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; index in [`docs/decisions.md`](../../decisions.md)). The list below names the rules that constrain this feature; any feature-local commentary is nested under the rule.
@@ -110,48 +122,11 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 
 ## Open questions / known unknowns
 
-These remain after `SK-MIGRATE-001..006` and become follow-up SK-MIGRATE blocks when answered.
-
-### Cross-engine migration (PG ↔ ClickHouse, later PG ↔ Redis / Mongo)
-
-- **Shadow-write path.** Where the shadow write happens (executor / orchestrator / fan-out worker) without moving the primary-write latency budget.
-- **Backfill throttling.** Rate limit on backfill against the source DB; how to measure current load.
-- **Dual-read sampling rate.** Concrete percentage TBD (`docs/phase-plan.md §5` says "a sample").
-- **Divergence handling.** Page recipient + auto-rollback contract (rewind vs freeze) undecided.
-- **Atomic cutover.** Per-db routing pointer location (D1 / KV / Durable Object) and flip-consistency guarantee undecided.
-- **Rollback procedure.** Post-cutover regression detection; source-engine warm grace window length.
-
-### Schema mapping (cross-engine)
-
-- **PG → ClickHouse translation.** First migration pair; workload-analyser-driven MV path is the principal target (see `SK-MULTIENG-003`). PG ↔ Redis / Mongo deferred.
-- **Index translation.** Per-engine index DSLs; the Orchestrator must translate, not just dump rows.
-- **Constraint translation.** FK / NOT NULL / CHECK absent natively on Mongo / Redis; location post-migration (validator / app / shadow PG) undecided.
-
-### Verification
-
-- **Held-out benchmark.** Composition, scoring rubric, human-DBA baselines all TBD (Phase 2 exit gate).
-- **Chaos testing.** Protocol for "cross-engine migration corrupts data" mitigation undecided.
-- **Restore drill cadence.** Whether weekly is enough during a live migration, or tighter loops, undecided.
-
-### Routing through Pipes (intra-engine, deferred from W5)
-
-- **Read-path routing.** v1 creates Pipes but `/v1/ask` does not route through them. Next SK-MIGRATE picks up adapter-side Pipe lookup by `(schema_hash, query_hash)` and the dispatch decision (always-Pipe / A-B / flag).
-- **Pipe deletion lifecycle.** Cold-Pipe drop trigger (cron pass? on-demand?) and inactivity threshold undecided.
-
-### User experience (cross-engine)
-
-- **Notification policy.** Email on migration? Probably no for infra events; audit-log-style entry probably yes.
-- **Tier-up triggered by migration.** Free-tier DB pushed onto an engine the tier doesn't include — migrate and bill, or surface upgrade path? Pricing interaction open.
-
-### Cross-phase concerns
-
-- **Plan-cache key on cross-engine migration.** `GLOBAL-006` keys plans by `(schema_hash, query_hash)` with no `engine` dimension. Whether old plans survive a Mongo / Redis migration, or the key needs widening, is open.
-- **Schema widening across engines.** `GLOBAL-004` was specified for Postgres semantics; Mongo / Redis widening rules TBD.
-- **Idempotency-store consistency during migration.** Dual-write idempotency under cutover; replay divergence risk on the new engine.
+Open after `SK-MIGRATE-001..007` — intra-engine (Pipe read-path routing, Pipe deletion lifecycle, `SK-MIGRATE-007` index-advisory follow-ups: auto-apply / existing-index de-dup / cost-benefit annotation) and cross-engine (migration mechanics, cross-engine schema & index translation, verification, UX, cross-phase). Full list in [`open-questions.md`](./open-questions.md); each becomes a follow-up SK-MIGRATE block when answered.
 
 ## Phase-3 cross-engine entry checklist
 
-`SK-MIGRATE-001..006` cover intra-engine reshape v1. Cross-engine migration is gated on `docs/phase-plan.md §5` (held-out benchmark + dual-read + Phase 2 exit metrics) and on `SK-MULTIENG-NNN` for the target engine.
+`SK-MIGRATE-001..006` cover intra-engine reshape v1; `SK-MIGRATE-007` adds the PG index advisory (design landed, build pending). Cross-engine migration is gated on `docs/phase-plan.md §5` (held-out benchmark + dual-read + Phase 2 exit metrics) and on `SK-MULTIENG-NNN` for the target engine.
 
 ## Source pointers
 
