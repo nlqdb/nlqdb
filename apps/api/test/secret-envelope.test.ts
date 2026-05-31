@@ -78,6 +78,14 @@ describe("malformed envelopes", () => {
     await expect(openSecret("nbe1.AAAA", { kek: KEK, context: CTX })).rejects.toThrow(/truncated/);
   });
 
+  it("rejects a payload too short to hold the IV + GCM tag", async () => {
+    // 24 base64url chars = 18 decoded bytes: past the IV (12) but below the
+    // IV + 16-byte tag floor, so it can never be a real GCM envelope.
+    await expect(openSecret(`nbe1.${"A".repeat(24)}`, { kek: KEK, context: CTX })).rejects.toThrow(
+      /truncated/,
+    );
+  });
+
   it("rejects a non-base64url payload", async () => {
     await expect(openSecret("nbe1.***not base64***", { kek: KEK, context: CTX })).rejects.toThrow(
       /base64url/,
