@@ -64,3 +64,11 @@ STRIPE_WEBHOOK_SECRET=
 # OpenTelemetry (Grafana Cloud).
 GRAFANA_OTLP_ENDPOINT=
 GRAFANA_OTLP_AUTHORIZATION=
+
+# ICP mining (docs/features/icp-mining). GitHub token gates the GitHub
+# Issues/Discussions sources + the evidence-file write; Reddit needs
+# app-only OAuth creds (SK-ICP-011) or the source self-skips. Missing
+# any of these just disables the matching source — the cron still runs.
+GH_TOKEN=
+REDDIT_CLIENT_ID=
+REDDIT_CLIENT_SECRET=

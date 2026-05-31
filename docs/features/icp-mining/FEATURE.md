@@ -15,7 +15,7 @@ when-to-load:
 # Feature: ICP Mining
 
 **One-liner:** A Monday 06:00 UTC cron scrapes HN Algolia, Reddit (16 subreddits), GitHub Issues, GitHub Discussions, Stack Overflow, Indie Hackers, and Dev.to; deduplicates via KV; scores 0–10 per persona via Groq → Gemini; clusters into 5–7 themes per persona; writes `docs/research/icp-evidence-<yyyy-mm>.md` to GitHub.
-**Status:** implemented (SK-ICP-001 collection; SK-ICP-002 scoring; SK-ICP-003 clustering + evidence file; SK-ICP-004 GitHub Issues; SK-ICP-005 Stack Overflow; SK-ICP-006 Indie Hackers; SK-ICP-007 source-health probe; SK-ICP-008 Dev.to source; SK-ICP-009 GitHub Discussions source; SK-ICP-010 prefilter dropped — LLM relevance floor is the only scoring gate).
+**Status:** implemented (SK-ICP-001 collection; SK-ICP-002 scoring; SK-ICP-003 clustering + evidence file; SK-ICP-004 GitHub Issues; SK-ICP-005 Stack Overflow; SK-ICP-006 Indie Hackers; SK-ICP-007 source-health probe; SK-ICP-008 Dev.to source; SK-ICP-009 GitHub Discussions source; SK-ICP-010 prefilter dropped — LLM relevance floor is the only scoring gate; SK-ICP-011 Reddit app-only OAuth).
 **Owners (code):** `apps/api/src/icp-scrape.ts`, `apps/api/src/icp-score.ts`, `apps/api/src/icp-cluster.ts`, `apps/api/test/icp-scrape.test.ts`, `apps/api/test/icp-score.test.ts`, `apps/api/test/icp-cluster.test.ts`, `apps/api/wrangler.toml` (cron `0 6 * * 1`).
 **Cross-refs:** [`docs/research/automated-icp-validation-plan.md §2`](../../research/automated-icp-validation-plan.md) · [`docs/research/personas.md`](../../research/personas.md) · [`GLOBAL-028`](../../decisions/GLOBAL-028-acquisition-progress-tracker.md) · [`GLOBAL-030`](../../decisions/GLOBAL-030-evidence-grade-acquisition-tracker-edits.md).
 
@@ -121,9 +121,17 @@ Every scraped item now goes to the LLM scorer (`RELEVANCE_FLOOR = 5` is the only
 supersedes the prefilter clause of SK-ICP-002. The old `title + text` regex was title-only
 in practice and discarded almost everything — why the 2026-05 file held one item.
 
+### SK-ICP-011 — Reddit via app-only OAuth (`client_credentials`), KV-cached token
+
+**Body:** [`decisions/SK-ICP-011-reddit-oauth.md`](./decisions/SK-ICP-011-reddit-oauth.md).
+The anonymous Reddit endpoint returned **403 on all 16 queries** (2026-05-31 live run) —
+datacenter-IP bot blocking. Reddit now mints an app-only `client_credentials` token
+(`REDDIT_CLIENT_ID` / `REDDIT_CLIENT_SECRET`, KV-cached at `icp:reddit:token`) and searches
+via `oauth.reddit.com`; absent creds → source self-skips, gated like the `GH_TOKEN` sources.
+
 ## Open questions / known unknowns
 
 - **R2 upgrade** — When evidence files exceed KV practical limits, migrate raw storage from KV to `r2://nlqdb-icp-raw/`. Free tier for both; KV is the simpler path for now.
 - **IH canonical URL recovery** — SK-ICP-006 stores the `feed.indiehackers.world/post/<slug>` URL which 404s on direct GET; cluster cites title + first 500 chars of `content_html` instead. If §3.6 reply-to-pain needs IH-canonical URLs, parse them from `content_html` (occasionally carries an `indiehackers.com` link); otherwise "good enough" for cluster input.
 - **LogSnag threshold alert** — Verdict already surfaces in the evidence markdown + `icp_cluster_completed` log. A channel-bell event on transition into `primary_confirmed` is the natural next slice; embedding in the per-run line for now avoids double-spam.
-- **Source liveness (verify before trusting a harvest)** — two sources can silently contribute ~0: (a) **Reddit** — `fetchReddit` is unauthenticated and Reddit blocks anonymous bots from datacenter IPs (Workers egress), so the 16 queries likely 403/429; if the `nlqdb.icp.fetch.reddit` span shows blocks, add an app-only OAuth token or drop it. (b) **GitHub Issues + Discussions** (SK-ICP-004/009) are gated on `GH_TOKEN`; if unset in prod they yield nothing. Confirm `icp_scrape_completed.sources` carries non-zero `reddit` / `github` / `github_discussions` on the next run.
+- **Source liveness (verify before trusting a harvest)** — credential-gated sources self-skip silently if their secrets are unset in prod: **Reddit** (`REDDIT_CLIENT_ID` / `REDDIT_CLIENT_SECRET`, SK-ICP-011) and **GitHub Issues + Discussions** (`GH_TOKEN`, SK-ICP-004/009). After the next run, confirm `icp_scrape_completed.sources` carries non-zero `reddit` / `github` / `github_discussions`; a 2026-05-31 local run also showed **Stack Exchange 403** (likely sandbox IP — re-check from the deployed Worker, register an SE key if it persists).
