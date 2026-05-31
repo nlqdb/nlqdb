@@ -70,7 +70,7 @@ func doAsk(ctx context.Context, cmd *cobra.Command, g *globalFlags, p askParams)
 	// here with a precise message instead of a guaranteed-400 round-trip.
 	if cred, ok := loadByollm(); ok {
 		if id.Kind != auth.KindSignedIn {
-			printErr(cmd, "byollm: your own LLM key needs a signed-in session — run `nlq login`, or `nlq byollm clear` to use the built-in models.")
+			printErr(cmd, "byollm: %s", byollmNeedsSession)
 			return errors.New("byollm requires signed-in session")
 		}
 		client = client.WithByollm(cred.Header())
@@ -144,7 +144,7 @@ func renderAPIError(cmd *cobra.Command, err error) error {
 	case "rate_limited":
 		printErr(cmd, "rate-limited — wait a moment, then retry.")
 	case "byollm_requires_session":
-		printErr(cmd, "your own LLM key needs a signed-in session — run `nlq login`, or `nlq byollm clear` to use the built-in models.")
+		printErr(cmd, "%s", byollmNeedsSession)
 	case "invalid_byollm_key":
 		printErr(cmd, "stored BYOLLM key was rejected — re-set it with `nlq byollm set`, or `nlq byollm clear` to use the built-in models.")
 	case "byollm_unavailable":
