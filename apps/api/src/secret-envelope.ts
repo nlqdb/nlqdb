@@ -30,6 +30,7 @@
 
 const AES_KEY_BITS = 256;
 const IV_BYTES = 12; // 96-bit IV — NIST SP 800-38D's recommended GCM length.
+const TAG_BYTES = 16; // 128-bit GCM tag — Web Crypto's default, appended to the ciphertext.
 
 // Versioned tag (`nlqdb byo envelope v1`) so a future format change is a
 // new prefix, not an ambiguous re-parse. The envelope is one compact
@@ -113,7 +114,10 @@ export async function openSecret(envelope: string, opts: SealOptions): Promise<s
   } catch {
     throw new Error("openSecret: envelope payload is not valid base64url.");
   }
-  if (packed.length <= IV_BYTES) throw new Error("openSecret: envelope is truncated.");
+  // A valid payload is IV ‖ ciphertext ‖ 128-bit tag, so anything that
+  // can't even hold the IV and tag is structurally truncated — reject it
+  // here rather than leaning on decrypt to fail on an impossible input.
+  if (packed.length <= IV_BYTES + TAG_BYTES) throw new Error("openSecret: envelope is truncated.");
 
   const iv = packed.subarray(0, IV_BYTES);
   const ciphertext = packed.subarray(IV_BYTES);
