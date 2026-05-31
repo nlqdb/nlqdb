@@ -342,3 +342,36 @@ func TestInviteCodeFlowsToXInviteCodeHeader(t *testing.T) {
 		t.Errorf("X-Invite-Code = %q, want NLQDB-EARLY-2026", seen)
 	}
 }
+
+// The BYOLLM header is a raw provider secret (SK-CLI-016): it must ride a
+// call only when WithByollm is set, and never by default.
+func TestByollmHeaderOnlyWhenSet(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		set  bool
+		want string
+	}{
+		{"default-omits", false, ""},
+		{"set-attaches", true, "openai:gpt-5.2:sk-secret"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var seen string
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				seen = r.Header.Get("x-nlq-byollm-key")
+				w.WriteHeader(http.StatusOK)
+				_ = json.NewEncoder(w).Encode(map[string]any{"status": "ok", "rows": []any{}, "rowCount": 0, "trace": map[string]any{"sql": "", "plan_id": "", "confidence": 0, "model": "", "cache_hit": false}})
+			}))
+			defer srv.Close()
+			c := New(srv.URL, auth.Identity{Kind: auth.KindSignedIn, Token: "session_x"})
+			if tc.set {
+				c = c.WithByollm("openai:gpt-5.2:sk-secret")
+			}
+			if _, err := c.Ask(context.Background(), AskRequest{Goal: "ping"}); err != nil {
+				t.Fatalf("Ask: %v", err)
+			}
+			if seen != tc.want {
+				t.Errorf("x-nlq-byollm-key = %q, want %q", seen, tc.want)
+			}
+		})
+	}
+}

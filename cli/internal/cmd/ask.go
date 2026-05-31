@@ -63,6 +63,19 @@ func doAsk(ctx context.Context, cmd *cobra.Command, g *globalFlags, p askParams)
 	}
 	client := api.New(g.apiURL, id).WithInviteCode(g.inviteCode)
 
+	// SK-CLI-016 — attach a stored BYOLLM key so the ask dispatches
+	// through the user's own provider at 0% markup (GLOBAL-026). The
+	// server accepts the lane on a signed-in session only
+	// (`byollm_requires_session`), so pre-empt the other identity kinds
+	// here with a precise message instead of a guaranteed-400 round-trip.
+	if cred, ok := loadByollm(); ok {
+		if id.Kind != auth.KindSignedIn {
+			printErr(cmd, "byollm: %s", byollmNeedsSession)
+			return errors.New("byollm requires signed-in session")
+		}
+		client = client.WithByollm(cred.Header())
+	}
+
 	req := api.AskRequest{
 		Goal:    p.goal,
 		Engine:  p.engine,
@@ -130,6 +143,12 @@ func renderAPIError(cmd *cobra.Command, err error) error {
 		printErr(cmd, "database not found — try `nlq db list` to see what's available.")
 	case "rate_limited":
 		printErr(cmd, "rate-limited — wait a moment, then retry.")
+	case "byollm_requires_session":
+		printErr(cmd, "%s", byollmNeedsSession)
+	case "invalid_byollm_key":
+		printErr(cmd, "stored BYOLLM key was rejected — re-set it with `nlq byollm set`, or `nlq byollm clear` to use the built-in models.")
+	case "byollm_unavailable":
+		printErr(cmd, "BYOLLM isn't configured on this deployment — run `nlq byollm clear` to use the built-in models.")
 	case "auth_required", "unauthorized":
 		renderAuthRequired(cmd, apiErr)
 	case "feature_gated":

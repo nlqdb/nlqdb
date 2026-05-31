@@ -19,6 +19,8 @@ when-to-load:
 
 **Key-management verbs:** `nlq keys list` and `nlq keys revoke <id>` ship — backed by `GET /v1/keys` ([`SK-APIKEYS-010`](../api-keys/decisions/SK-APIKEYS-010-list-endpoint.md)) and `DELETE /v1/keys/:id` ([`SK-APIKEYS-011`](../api-keys/decisions/SK-APIKEYS-011-hard-revoke.md)).
 
+**BYOLLM verbs:** `nlq byollm set|status|clear` ship ([`SK-CLI-016`](decisions/SK-CLI-016-byollm-keychain.md)) — store your own provider key in the keychain so `nlq ask` dispatches through it at 0% markup ([`GLOBAL-026`](../../decisions/GLOBAL-026-llm-strategy-byollm-hosted-premium.md)). Signed-in only (the `x-nlq-byollm-key` lane, [`SK-LLM-021`](../llm-router/decisions/SK-LLM-021-byollm-header-wiring.md)); the CLI half of the `GLOBAL-003` surface-parity gap, SDK sibling of [`SK-SDK-010`](../sdk/decisions/SK-SDK-010-byollm-client-option.md).
+
 **Raw-SQL escape hatch:** `nlq run [--db <id>] <sql>` ships — backed by `POST /v1/run` ([`SK-SDK-009`](../sdk/FEATURE.md), [`GLOBAL-015`](../../decisions/GLOBAL-015-power-user-escape-hatch.md)). Same allow-list as `/v1/ask` (SELECT / INSERT / UPDATE / DELETE / WITH / EXPLAIN / SHOW); DDL still rejected. SQL can ride positional args or stdin (`cat schema.sql | nlq run --db finance`). `--db` resolution mirrors `nlq ask`: explicit flag wins, else the active DB from `state.json`.
 
 Deferred to follow-up slices — gated on server endpoints that don't exist yet:
@@ -60,6 +62,7 @@ Canonical bodies live in [`decisions/`](decisions/) — one file per `SK-CLI-NNN
 - [**SK-CLI-013**](decisions/SK-CLI-013-active-db-state.md) — Active DB in `~/.config/nlqdb/state.json`; no `nlq init` and no project-level config in v1.
 - [**SK-CLI-014**](decisions/SK-CLI-014-no-client-telemetry.md) — No client-side telemetry pipeline; events ride the SDK's API calls.
 - [**SK-CLI-015**](decisions/SK-CLI-015-update-check.md) — Background update check ≤ once/day; stderr only; auto-off in CI; explicit `nlq update` for curl-installed binaries.
+- [**SK-CLI-016**](decisions/SK-CLI-016-byollm-keychain.md) — `nlq byollm set|status|clear` stores the BYOLLM key in the keychain; `nlq ask` rides it signed-in only (SDK sibling of `SK-SDK-010`).
 
 ## GLOBALs governing this feature
 

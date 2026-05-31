@@ -7,9 +7,11 @@ devs / agents who don't want a browser.
 Bootstrap slice ships: `nlq ask`, `nlq run`, `nlq new`, bare
 `nlq "…"`, `nlq db list`, `nlq db create`, `nlq query`, `nlq use`,
 `nlq whoami`, `nlq logout`, `nlq mcp detect`, `nlq update`,
-`nlq keys list`, `nlq keys revoke <id>`, plus `--json` /
-`--version` / `--help`. Auth: `NLQDB_API_KEY` env-key (CI escape
-hatch) or anonymous device token in the OS keychain (default).
+`nlq keys list`, `nlq keys revoke <id>`,
+`nlq byollm set|status|clear` (bring your own LLM key, 0% markup),
+plus `--json` / `--version` / `--help`. Auth: `NLQDB_API_KEY`
+env-key (CI escape hatch) or anonymous device token in the OS
+keychain (default).
 
 Verbs deferred to follow-up slices (gated on server endpoints not
 yet shipped): `nlq login` device-flow, `nlq mcp install` key-write,
