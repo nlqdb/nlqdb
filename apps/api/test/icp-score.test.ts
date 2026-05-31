@@ -1,6 +1,6 @@
-// Unit tests for the ICP scoring pipeline (SK-ICP-002).
-// Verifies: pain-word prefilter, LLM call + parse, Gemini fallback,
-// relevance floor, graceful handling of malformed LLM responses.
+// Unit tests for the ICP scoring pipeline (SK-ICP-002; prefilter dropped per SK-ICP-010).
+// Verifies: every item reaches the LLM (no regex prefilter), LLM call + parse,
+// Gemini fallback, relevance floor, graceful handling of malformed LLM responses.
 
 import { describe, expect, it, vi } from "vitest";
 import { runIcpScore } from "../src/icp-score.ts";
@@ -57,11 +57,19 @@ describe("runIcpScore", () => {
     expect(result).toEqual({ scored: 0, skipped: 0, stored: 0 });
   });
 
-  it("skips items that don't match the pain regex", async () => {
+  it("sends every item to the LLM (no pain-word prefilter)", async () => {
+    // A neutral title with no emotional pain words still reaches the scorer;
+    // the LLM relevance floor — not a regex — decides whether it's stored.
     const neutral = makeItem({ title: "New project announcement", text: "Launching soon" });
-    const result = await runIcpScore([neutral], { kv: stubKv(), groqApiKey: "key" });
-    expect(result.scored).toBe(0);
-    expect(result.skipped).toBe(1);
+    const scores = [{ id: "abc123", p1: 1, p2: 0, p3: 0, p6: 0, quote: "" }];
+    const fetcher = vi.fn().mockResolvedValue(groqResponse(scores));
+    const result = await runIcpScore([neutral], {
+      kv: stubKv(),
+      groqApiKey: "key",
+      fetch: fetcher,
+    });
+    expect(result.scored).toBe(1);
+    expect(result.skipped).toBe(0);
     expect(result.stored).toBe(0);
   });
 
@@ -125,9 +133,10 @@ describe("runIcpScore", () => {
     ).resolves.not.toThrow();
   });
 
-  it("returns skipped=all when no LLM key is provided and items pass prefilter", async () => {
+  it("returns skipped=all when no LLM key is provided", async () => {
     const result = await runIcpScore([makeItem()], { kv: stubKv() });
     expect(result.scored).toBe(0);
+    expect(result.skipped).toBe(1);
     expect(result.stored).toBe(0);
   });
 });

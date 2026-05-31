@@ -15,7 +15,7 @@ when-to-load:
 # Feature: ICP Mining
 
 **One-liner:** A Monday 06:00 UTC cron scrapes HN Algolia, Reddit (16 subreddits), GitHub Issues, GitHub Discussions, Stack Overflow, Indie Hackers, and Dev.to; deduplicates via KV; scores 0–10 per persona via Groq → Gemini; clusters into 5–7 themes per persona; writes `docs/research/icp-evidence-<yyyy-mm>.md` to GitHub.
-**Status:** implemented (SK-ICP-001 collection; SK-ICP-002 scoring; SK-ICP-003 clustering + evidence file; SK-ICP-004 GitHub Issues; SK-ICP-005 Stack Overflow; SK-ICP-006 Indie Hackers; SK-ICP-007 source-health probe; SK-ICP-008 Dev.to source; SK-ICP-009 GitHub Discussions source).
+**Status:** implemented (SK-ICP-001 collection; SK-ICP-002 scoring; SK-ICP-003 clustering + evidence file; SK-ICP-004 GitHub Issues; SK-ICP-005 Stack Overflow; SK-ICP-006 Indie Hackers; SK-ICP-007 source-health probe; SK-ICP-008 Dev.to source; SK-ICP-009 GitHub Discussions source; SK-ICP-010 prefilter dropped — LLM relevance floor is the only scoring gate).
 **Owners (code):** `apps/api/src/icp-scrape.ts`, `apps/api/src/icp-score.ts`, `apps/api/src/icp-cluster.ts`, `apps/api/test/icp-scrape.test.ts`, `apps/api/test/icp-score.test.ts`, `apps/api/test/icp-cluster.test.ts`, `apps/api/wrangler.toml` (cron `0 6 * * 1`).
 **Cross-refs:** [`docs/research/automated-icp-validation-plan.md §2`](../../research/automated-icp-validation-plan.md) · [`docs/research/personas.md`](../../research/personas.md) · [`GLOBAL-028`](../../decisions/GLOBAL-028-acquisition-progress-tracker.md) · [`GLOBAL-030`](../../decisions/GLOBAL-030-evidence-grade-acquisition-tracker-edits.md).
 
@@ -52,7 +52,7 @@ when-to-load:
 
 ### SK-ICP-002 — LLM scoring of raw items immediately after each weekly scrape
 
-- **Decision:** After `runIcpScrape` collects new items, `runIcpScore` (same cron run) regex-prefilters on pain words, then calls Groq `llama-3.1-8b-instant` (Gemini `gemini-2.5-flash` fallback) in batches of 20 to score each item 0–10 against P1/P2/P3/P6. Items where every persona scores < 5 are discarded; the rest stored as `icp:scored:<YYYYMMDD>:<source>:<id>` (30d KV TTL). The scorer is `.catch`-wrapped in `index.ts` so a total LLM failure still logs and returns cleanly.
+- **Decision:** After `runIcpScrape` collects new items, `runIcpScore` (same cron run) ~~regex-prefilters on pain words, then~~ calls Groq `llama-3.1-8b-instant` (Gemini `gemini-2.5-flash` fallback) in batches of 20 to score each item 0–10 against P1/P2/P3/P6. Items where every persona scores < 5 are discarded; the rest stored as `icp:scored:<YYYYMMDD>:<source>:<id>` (30d KV TTL). The scorer is `.catch`-wrapped in `index.ts` so a total LLM failure still logs and returns cleanly. **(Prefilter clause superseded by SK-ICP-010.)**
 - **Core value:** Simple, Bullet-proof
 - **Why:** Raw items in KV are not evidence. Scoring on the same Monday run transforms the weekly harvest into a ranked, persona-tagged set that SK-ICP-003 can read directly — no separate data-pull cron needed.
 - **Consequence in code:** `apps/api/src/icp-score.ts` is the single owner. `IcpItem` exported from `icp-scrape.ts`. `IcpScrapeResult.items` carries the new items for handoff. `runIcpScore` wraps each batch in an `nlqdb.icp.score` span with `provider`, `batch_size`, `raw_count`. No new env bindings.
@@ -108,14 +108,22 @@ when-to-load:
 
 ### SK-ICP-009 — GitHub Discussions as the 7th pain-signal source via GraphQL
 
-- **Decision:** When `GH_TOKEN` is set, `runIcpScrape` POSTs `api.github.com/graphql` with `search(query: $q, type: DISCUSSION, first: 10)` for 5 P1/P2/P4/P6 queries (`text to sql`, `natural language database`, `agent memory store`, `prisma migration`, `supabase setup`), augmented with the same `created:>${isoDate(sevenDaysAgoUnix)}` filter SK-ICP-004 uses. Stored as `source: "github_discussions"`, `id: "ghd-<node.id>"` (prefix prevents collision with `gh-<issue.id>`). Unparseable `createdAt` is dropped; a GraphQL `errors` body is a soft failure isolated from the 6 other sources. Shares `BOT_USER_AGENT`, `FETCH_TIMEOUT_MS` (10s), `runSpan`, `isoDate`. Live probe 2026-05-31: `discussionCount=8478` for "text to sql"; `created:>2026-05-24` returns 9 fresh discussions including `moorcheh-ai/memanto/discussions/564 — "How are you handling persistent memory in your CrewAI workflows?"` (P2 quote prior sources never caught). `rateLimit.cost=1` × 5/week against 5000-pt/hr.
-- **Core value:** Simple, Bullet-proof
-- **Why:** Discussions are where Supabase/Drizzle/Prisma/CrewAI/LangChain/Vercel route "I'm stuck on X" questions; Issues only catches the bug-report subset. The prior 6-source mix under-samples **P2 (agent builder)** — CrewAI/LangChain/Mem0/vector-DB Discussions are exactly the long-form P2 signal the cluster step needs. The `GH_TOKEN` SK-ICP-004 already uses authorises GraphQL `DISCUSSION` (no new scope).
-- **Consequence in code:** `apps/api/src/icp-scrape.ts` gains `fetchGitHubDiscussions` and a 7th `Promise.all` element (gated on `deps.ghToken`, same isolation as Issues). Span `nlqdb.icp.fetch.github_discussions` carries source + item count + status code + `nlqdb.icp.ghd.rate_remaining` (no second API hit). LogSnag adds `GHD: <n>` between `GH:` and `SO:`. `scripts/verify-flows.sh` FLOW-008 gains a `POST /graphql` probe inside the existing `GH_TOKEN` block, asserting `"discussionCount"`. Tests pin POST + Bearer + bot UA + `DISCUSSION` body + `created:>` filter; absent-token short-circuit; GraphQL-error soft failure; unparseable-`createdAt` drop.
-- **Alternatives rejected:** REST `/repos/{owner}/{repo}/discussions` (no global search; per-repo enumeration burns quota); REST Search (no `type:discussion` — GraphQL-only as of 2026-05); more Issues queries (different surface — Issues skews bug, Discussions skews Q&A); a separate `GHD_TOKEN` (`GH_TOKEN`'s `public_repo` already returns DISCUSSION); fetching comments (`node.body` is enough).
+**Body:** [`decisions/SK-ICP-009-github-discussions.md`](./decisions/SK-ICP-009-github-discussions.md).
+When `GH_TOKEN` is set, `runIcpScrape` POSTs `api.github.com/graphql`
+`search(type: DISCUSSION)` for 5 queries with the SK-ICP-004 `created:>` filter; stored as
+`source: "github_discussions"`, `id: "ghd-<node.id>"`, soft-failing isolated from the other
+6 sources. Targets the **P2 (agent builder)** long-form signal Issues miss (CrewAI/LangChain/Mem0).
+
+### SK-ICP-010 — Drop the pain-word regex prefilter; LLM relevance floor is the only gate
+
+**Body:** [`decisions/SK-ICP-010-drop-prefilter.md`](./decisions/SK-ICP-010-drop-prefilter.md).
+Every scraped item now goes to the LLM scorer (`RELEVANCE_FLOOR = 5` is the only gate);
+supersedes the prefilter clause of SK-ICP-002. The old `title + text` regex was title-only
+in practice and discarded almost everything — why the 2026-05 file held one item.
 
 ## Open questions / known unknowns
 
 - **R2 upgrade** — When evidence files exceed KV practical limits, migrate raw storage from KV to `r2://nlqdb-icp-raw/`. Free tier for both; KV is the simpler path for now.
 - **IH canonical URL recovery** — SK-ICP-006 stores the `feed.indiehackers.world/post/<slug>` URL which 404s on direct GET; cluster cites title + first 500 chars of `content_html` instead. If §3.6 reply-to-pain needs IH-canonical URLs, parse them from `content_html` (occasionally carries an `indiehackers.com` link); otherwise "good enough" for cluster input.
 - **LogSnag threshold alert** — Verdict already surfaces in the evidence markdown + `icp_cluster_completed` log. A channel-bell event on transition into `primary_confirmed` is the natural next slice; embedding in the per-run line for now avoids double-spam.
+- **Source liveness (verify before trusting a harvest)** — two sources can silently contribute ~0: (a) **Reddit** — `fetchReddit` is unauthenticated and Reddit blocks anonymous bots from datacenter IPs (Workers egress), so the 16 queries likely 403/429; if the `nlqdb.icp.fetch.reddit` span shows blocks, add an app-only OAuth token or drop it. (b) **GitHub Issues + Discussions** (SK-ICP-004/009) are gated on `GH_TOKEN`; if unset in prod they yield nothing. Confirm `icp_scrape_completed.sources` carries non-zero `reddit` / `github` / `github_discussions` on the next run.

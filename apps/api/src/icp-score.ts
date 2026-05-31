@@ -1,7 +1,8 @@
-// ICP pain-signal scorer — SK-ICP-002.
-// Runs after each weekly scrape: regex-prefilters raw items, then calls
-// the free-chain LLM (Groq → Gemini fallback) to score 0–10 per persona.
-// Items scoring below RELEVANCE_FLOOR on every persona are discarded.
+// ICP pain-signal scorer — SK-ICP-002, prefilter dropped per SK-ICP-010.
+// Runs after each weekly scrape: sends every scraped item to the free-chain
+// LLM (Groq → Gemini fallback) to score 0–10 per persona. The LLM score plus
+// RELEVANCE_FLOOR is the only relevance gate — items scoring below the floor
+// on every persona are discarded.
 //
 // KV key schema:
 //   icp:scored:<YYYYMMDD>:<source>:<id>  → JSON IcpScoredItem  TTL 30 days
@@ -44,9 +45,6 @@ const BATCH_SIZE = 20;
 const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
 const GEMINI_BASE = "https://generativelanguage.googleapis.com/v1beta/models";
 const FETCH_TIMEOUT_MS = 15_000;
-
-const PAIN_REGEX =
-  /\b(hate|annoy|frustrat|tired of|sick of|wish|stuck|spent.*hour|why is.*so hard|too hard|alternative to|replace|can't stand|nightmare|painful|verbose|boilerplate|overhead|overkill|tedious|can not|cannot)\b/i;
 
 // Concise rubric kept inline — importing from personas.md MD is not viable in Workers.
 const SYSTEM_PROMPT = `Score social-media posts for fit with nlqdb — a tool that lets developers query databases in plain English instead of SQL.
@@ -155,10 +153,8 @@ export async function runIcpScore(items: IcpItem[], deps: IcpScoreDeps): Promise
   if (items.length === 0) return { scored: 0, skipped: 0, stored: 0 };
 
   const fetcher = deps.fetch ?? fetch;
-  const candidates = items.filter((item) => PAIN_REGEX.test(`${item.title} ${item.text ?? ""}`));
-  const skipped = items.length - candidates.length;
 
-  if (candidates.length === 0 || (!deps.groqApiKey && !deps.geminiApiKey)) {
+  if (!deps.groqApiKey && !deps.geminiApiKey) {
     return { scored: 0, skipped: items.length, stored: 0 };
   }
 
@@ -175,8 +171,8 @@ export async function runIcpScore(items: IcpItem[], deps: IcpScoreDeps): Promise
   const dateStr = yyyymmdd(Date.now());
   let stored = 0;
 
-  for (let i = 0; i < candidates.length; i += BATCH_SIZE) {
-    const batch = candidates.slice(i, i + BATCH_SIZE);
+  for (let i = 0; i < items.length; i += BATCH_SIZE) {
+    const batch = items.slice(i, i + BATCH_SIZE);
     let rawScores: RawScore[] = [];
 
     const doScore = async (span: Span) => {
@@ -247,5 +243,5 @@ export async function runIcpScore(items: IcpItem[], deps: IcpScoreDeps): Promise
     await Promise.all(writes);
   }
 
-  return { scored: candidates.length, skipped, stored };
+  return { scored: items.length, skipped: 0, stored };
 }
