@@ -411,7 +411,8 @@ if fetch_json "FLOW-008 source Dev.to /api/articles" "$devto_url" fatal \
 fi
 
 # Bluesky (AT Protocol AppView): api.bsky.app is the no-auth read endpoint;
-# public.api.bsky.app 403s from cloud egress IPs (Bunny CDN block) as of 2026-06.
+# public.api.bsky.app 403'd from this agent VM 2026-06-01 (BunnyCDN block;
+# not re-verified from CF Workers egress — open question in icp-mining/FEATURE.md).
 bsky_since="$(date -u -d '7 days ago' +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || date -u -v-7d +%Y-%m-%dT%H:%M:%SZ)"
 bsky_url="https://api.bsky.app/xrpc/app.bsky.feed.searchPosts?q=text+to+sql&limit=5&sort=latest&since=${bsky_since}"
 if fetch_json "FLOW-008 source Bluesky /xrpc/app.bsky.feed.searchPosts" "$bsky_url" fatal \
