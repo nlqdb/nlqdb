@@ -1,4 +1,4 @@
-// SK-ICP-001 (HN+Reddit) + SK-ICP-004 (GitHub Issues) + SK-ICP-005 (Stack Exchange) + SK-ICP-006 (Indie Hackers) + SK-ICP-008 (Dev.to) + SK-ICP-009 (GitHub Discussions) + SK-ICP-010 (Bluesky). Writes raw items to KV at icp:seen:<source>:<id> (90d) + icp:item:<YYYYMMDD>:<source>:<id> (30d).
+// SK-ICP-001 (HN+Reddit) + SK-ICP-004 (GitHub Issues) + SK-ICP-005 (Stack Exchange) + SK-ICP-006 (Indie Hackers) + SK-ICP-008 (Dev.to) + SK-ICP-009 (GitHub Discussions) + SK-ICP-012 (Bluesky). Writes raw items to KV at icp:seen:<source>:<id> (90d) + icp:item:<YYYYMMDD>:<source>:<id> (30d).
 
 import { type Span, trace } from "@opentelemetry/api";
 
@@ -726,7 +726,7 @@ async function fetchDevto(
 
 // --- Bluesky (AT Protocol public AppView) ---
 
-// `api.bsky.app` is the AT Protocol AppView's no-auth read endpoint; SK-ICP-010
+// `api.bsky.app` is the AT Protocol AppView's no-auth read endpoint; SK-ICP-012
 // explains the trade-offs vs `public.api.bsky.app` (403 from this agent VM
 // 2026-06-01; not re-verified from CF Workers egress).
 type BskyPostRecord = {
