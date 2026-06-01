@@ -301,7 +301,10 @@ describe("runIcpScrape", () => {
     const stubFetch: typeof fetch = vi.fn(
       async (url: string | URL | Request, init?: RequestInit) => {
         const urlStr = typeof url === "string" ? url : url instanceof URL ? url.href : url.url;
-        calls.push({ url: urlStr, auth: (init?.headers as Record<string, string>)?.["Authorization"] });
+        calls.push({
+          url: urlStr,
+          auth: (init?.headers as Record<string, string>)?.["Authorization"],
+        });
         if (urlStr.includes("access_token")) return redditTokenResponse();
         if (urlStr.includes("r/sideproject")) {
           return {
