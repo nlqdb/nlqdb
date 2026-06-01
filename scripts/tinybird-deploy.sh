@@ -35,4 +35,7 @@ if [ ${#args[@]} -eq 0 ]; then
 fi
 
 cd "$PROJECT"
+# `yes` may exit 141 (SIGPIPE) once `tb` stops reading; with pipefail that
+# would mask a successful deploy, so propagate `tb`'s status, not the pipe's.
+set +o pipefail
 yes | tb --cloud --host "$HOST" --token "$TINYBIRD_TOKEN" deploy "${args[@]}"
