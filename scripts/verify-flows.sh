@@ -10,7 +10,7 @@
 #                       the inspector handshake in walkthrough step 1;
 #                       step 1's transport + steps 2-7 still need a
 #                       real MCP client)
-#   FLOW-008 source-health (HN / Reddit / GH / SO / IH / Dev.to — the cron upstreams)
+#   FLOW-008 source-health (HN / Reddit / GH / SO / IH / Dev.to / Bluesky — the cron upstreams)
 # Steps that need a browser, OAuth, or an inbox stay in the verification
 # mirror for the Playwright/FLOW-004+ pass; the script prints them as
 # `· requires browser` so future agents see them and don't claim a pass.
@@ -406,6 +406,21 @@ if fetch_json "FLOW-008 source Dev.to /api/articles" "$devto_url" fatal \
     ok "  Dev.to response is a JSON array (Forem articles schema unchanged)"
   else
     fail "  Dev.to response schema" "expected top-level JSON array"
+  fi
+  rm -f "$FETCH_BODY_PATH"
+fi
+
+# Bluesky (AT Protocol AppView): api.bsky.app is the no-auth read endpoint;
+# public.api.bsky.app 403s from cloud egress IPs (Bunny CDN block) as of 2026-06.
+bsky_since="$(date -u -d '7 days ago' +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || date -u -v-7d +%Y-%m-%dT%H:%M:%SZ)"
+bsky_url="https://api.bsky.app/xrpc/app.bsky.feed.searchPosts?q=text+to+sql&limit=5&sort=latest&since=${bsky_since}"
+if fetch_json "FLOW-008 source Bluesky /xrpc/app.bsky.feed.searchPosts" "$bsky_url" fatal \
+    -H "User-Agent: nlqdb-icp-bot/1.0 (+https://nlqdb.com; contact: hello@nlqdb.com)" \
+    -H "Accept: application/json"; then
+  if grep -q '"posts"' "$FETCH_BODY_PATH"; then
+    ok "  Bluesky response carries \"posts\" key (AppView searchPosts schema unchanged)"
+  else
+    fail "  Bluesky response schema" "no \"posts\" key in body"
   fi
   rm -f "$FETCH_BODY_PATH"
 fi

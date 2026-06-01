@@ -1,4 +1,4 @@
-// SK-ICP-001 (HN+Reddit) + SK-ICP-004 (GitHub Issues) + SK-ICP-005 (Stack Exchange) + SK-ICP-006 (Indie Hackers) + SK-ICP-008 (Dev.to) + SK-ICP-009 (GitHub Discussions). Writes raw items to KV at icp:seen:<source>:<id> (90d) + icp:item:<YYYYMMDD>:<source>:<id> (30d).
+// SK-ICP-001 (HN+Reddit) + SK-ICP-004 (GitHub Issues) + SK-ICP-005 (Stack Exchange) + SK-ICP-006 (Indie Hackers) + SK-ICP-008 (Dev.to) + SK-ICP-009 (GitHub Discussions) + SK-ICP-010 (Bluesky). Writes raw items to KV at icp:seen:<source>:<id> (90d) + icp:item:<YYYYMMDD>:<source>:<id> (30d).
 
 import { type Span, trace } from "@opentelemetry/api";
 
@@ -724,6 +724,119 @@ async function fetchDevto(
   return items;
 }
 
+// --- Bluesky (AT Protocol public AppView) ---
+
+// `api.bsky.app` is the AT Protocol AppView's no-auth read endpoint; SK-ICP-010
+// explains the trade-offs vs `public.api.bsky.app` (which 403s from cloud egress
+// IPs in 2026-06).
+type BskyPostRecord = {
+  $type?: string;
+  text?: string;
+  createdAt?: string;
+};
+
+type BskyPost = {
+  uri: string;
+  cid: string;
+  author?: { handle?: string };
+  record?: BskyPostRecord;
+  likeCount?: number;
+  replyCount?: number;
+  repostCount?: number;
+};
+
+// 5 queries covering P1/P2/P3/P6; researcher+practitioner mix is the unique angle.
+const BLUESKY_QUERIES = [
+  "text to sql",
+  "agent memory",
+  "natural language database",
+  "vector database",
+  "rag pipeline",
+];
+
+const BSKY_SEARCH_URL = "https://api.bsky.app/xrpc/app.bsky.feed.searchPosts";
+
+// `at://did:.../app.bsky.feed.post/<rkey>` → rkey is the last path segment.
+function bskyRkeyFromUri(uri: string | undefined): string | null {
+  if (!uri) return null;
+  const m = uri.match(/\/app\.bsky\.feed\.post\/([^/]+)$/);
+  return m?.[1] ?? null;
+}
+
+async function fetchBluesky(
+  fetcher: typeof fetch,
+  sevenDaysAgoUnix: number,
+  tracer: IcpScrapeDeps["tracer"],
+): Promise<IcpItem[]> {
+  const items: IcpItem[] = [];
+  const sinceIso = new Date(sevenDaysAgoUnix * 1000).toISOString();
+
+  for (const q of BLUESKY_QUERIES) {
+    const params = new URLSearchParams({
+      q,
+      limit: "25",
+      sort: "latest",
+      since: sinceIso,
+    });
+    const url = `${BSKY_SEARCH_URL}?${params.toString()}`;
+
+    const doFetch = async (span: Span) => {
+      try {
+        span.setAttribute("nlqdb.icp.source", "bluesky");
+        const res = await fetcher(url, {
+          headers: { "User-Agent": BOT_USER_AGENT, Accept: "application/json" },
+          signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+        });
+        span.setAttribute("http.response.status_code", res.status);
+        if (!res.ok) {
+          span.setAttribute("nlqdb.icp.items", 0);
+          console.warn(
+            JSON.stringify({ msg: "icp_bsky_fetch_error", query: q, status: res.status }),
+          );
+          return;
+        }
+        const json = (await res.json()) as { posts?: BskyPost[] };
+        const hits = json.posts ?? [];
+        span.setAttribute("nlqdb.icp.items", hits.length);
+        for (const post of hits) {
+          if (!post.cid) continue;
+          const handle = post.author?.handle;
+          const rkey = bskyRkeyFromUri(post.uri);
+          if (!handle || !rkey) continue;
+          const ms = post.record?.createdAt ? Date.parse(post.record.createdAt) : NaN;
+          if (!Number.isFinite(ms)) continue;
+          const text = (post.record?.text ?? "").trim();
+          if (!text) continue;
+          items.push({
+            id: `bsky-${post.cid}`,
+            source: "bluesky",
+            title: text.slice(0, 80),
+            url: `https://bsky.app/profile/${handle}/post/${rkey}`,
+            text: text.slice(0, 500),
+            score: post.likeCount,
+            ts: Math.floor(ms / 1000),
+          });
+        }
+      } catch (err) {
+        span.recordException(err as Error);
+        console.error(
+          JSON.stringify({
+            msg: "icp_bsky_fetch_exception",
+            query: q,
+            message: err instanceof Error ? err.message : String(err),
+          }),
+        );
+      } finally {
+        span.end();
+      }
+    };
+
+    await runSpan(tracer, "nlqdb.icp.fetch.bluesky", doFetch);
+  }
+
+  return items;
+}
+
 // --- LogSnag notification ---
 
 async function notifyLogSnag(
@@ -743,7 +856,7 @@ async function notifyLogSnag(
         project,
         channel: "icp-mining",
         event: "Weekly Scrape",
-        description: `${result.newItems} new pain signals (HN: ${result.sources["hn"] ?? 0}, Reddit: ${result.sources["reddit"] ?? 0}, GH: ${result.sources["github"] ?? 0}, GHD: ${result.sources["github_discussions"] ?? 0}, SO: ${result.sources["stackoverflow"] ?? 0}, IH: ${result.sources["indiehackers"] ?? 0}, DEV: ${result.sources["devto"] ?? 0})`,
+        description: `${result.newItems} new pain signals (HN: ${result.sources["hn"] ?? 0}, Reddit: ${result.sources["reddit"] ?? 0}, GH: ${result.sources["github"] ?? 0}, GHD: ${result.sources["github_discussions"] ?? 0}, SO: ${result.sources["stackoverflow"] ?? 0}, IH: ${result.sources["indiehackers"] ?? 0}, DEV: ${result.sources["devto"] ?? 0}, BSKY: ${result.sources["bluesky"] ?? 0})`,
       }),
       signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
     });
@@ -779,8 +892,8 @@ export async function runIcpScrape(deps: IcpScrapeDeps): Promise<IcpScrapeResult
   const dateStr = yyyymmdd(now);
 
   // Fetch all sources; per-source errors are already caught inside each helper.
-  const [hnItems, redditItems, ghItems, ghdItems, seItems, ihItems, devtoItems] = await Promise.all(
-    [
+  const [hnItems, redditItems, ghItems, ghdItems, seItems, ihItems, devtoItems, bskyItems] =
+    await Promise.all([
       fetchHn(fetcher, sevenDaysAgoUnix, tracer).catch((err) => {
         console.error(
           JSON.stringify({
@@ -848,8 +961,16 @@ export async function runIcpScrape(deps: IcpScrapeDeps): Promise<IcpScrapeResult
         );
         return [] as IcpItem[];
       }),
-    ],
-  );
+      fetchBluesky(fetcher, sevenDaysAgoUnix, tracer).catch((err) => {
+        console.error(
+          JSON.stringify({
+            msg: "icp_bsky_source_failed",
+            message: err instanceof Error ? err.message : String(err),
+          }),
+        );
+        return [] as IcpItem[];
+      }),
+    ]);
 
   const allItems = [
     ...hnItems,
@@ -859,6 +980,7 @@ export async function runIcpScrape(deps: IcpScrapeDeps): Promise<IcpScrapeResult
     ...seItems,
     ...ihItems,
     ...devtoItems,
+    ...bskyItems,
   ];
 
   // Batch dedup check in parallel.

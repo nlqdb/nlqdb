@@ -82,7 +82,7 @@
 | FLOW-005 | P2 agent builder | partial — OAuth discovery precondition passes via `verify-flows.sh`; walkthrough steps 1-7 need an authenticated MCP client | 2026-05-23 | 5/6 (83%) |
 | FLOW-006 | P4 backend engineer | not yet attempted | — | 5/6 (83%) |
 | FLOW-007 | P1 / P3 | not yet attempted | — | 5/6 (83%) |
-| FLOW-008 | cron / system | partial — curl probe of 7 sources passes (HN / GH / GHD / IH / Dev.to 200; Reddit / SO sandbox-egress advisory); cron-side KV writes + LogSnag publish need the deployed Worker | 2026-05-31 | 10/10 (100%) |
+| FLOW-008 | cron / system | partial — curl probe of 8 sources passes (HN / GH / GHD / IH / Dev.to / Bluesky 200; Reddit / SO sandbox-egress advisory); cron-side KV writes + LogSnag publish need the deployed Worker | 2026-06-01 | 11/11 (100%) |
 
 **Verification states:**
 - `not yet attempted` — no agent has tried this flow.
@@ -742,11 +742,11 @@ losing my rows."
 ### Source signal
 
 The signal this flow proves is "the Mon 06:00 UTC cron can still reach
-the 7 upstreams it depends on". A silent upstream schema change or
+the 8 upstreams it depends on". A silent upstream schema change or
 endpoint move only surfaces today after the LogSnag count drops to
 zero; this flow makes the failure agent-observable before the cron
 fires. Per [`SK-ICP-007`](../features/icp-mining/FEATURE.md) the probe
-is best-effort: the 7 sources are the same ones listed in
+is best-effort: the 8 sources are the same ones listed in
 [`automated-icp-validation-plan.md §2.1`](./automated-icp-validation-plan.md).
 
 ### Required tools
@@ -794,10 +794,17 @@ is best-effort: the 7 sources are the same ones listed in
    [`/api/v1`](https://developers.forem.com/api/v1) contract). Failure ⇒
    Forem schema/endpoint regression — the cron's `fetchDevto` will start
    returning empty.
+8. Assert: Bluesky `api.bsky.app/xrpc/app.bsky.feed.searchPosts?q=text+to+sql&limit=5&sort=latest&since=<isoSeven>`
+   returns 200 AND the body contains a `"posts"` key (per the
+   [AT Protocol AppView contract](https://docs.bsky.app/docs/api/app-bsky-feed-search-posts)).
+   Failure ⇒ AT Protocol AppView schema/endpoint regression — the cron's
+   `fetchBluesky` (SK-ICP-010) will start returning empty.
+   `public.api.bsky.app` 403s from cloud-egress IPs (Bunny-CDN block);
+   the probe uses the canonical `api.bsky.app` Express AppView.
 
 ### Pass criteria
 
-- HN + IH + Dev.to probes return 200 with the contract keys.
+- HN + IH + Dev.to + Bluesky probes return 200 with the contract keys.
 - Both GitHub probes (Issues REST + Discussions GraphQL) are either
   200-with-key OR skipped-no-token together.
 - Reddit + SO probes are either 200-with-quota-key OR advisory
@@ -825,6 +832,13 @@ is best-effort: the 7 sources are the same ones listed in
   Cloudflare-fronted CDN, so a hard outage shows as 5xx with no
   block-reason header. The cron's per-tag catch isolates Dev.to from
   killing the rest.
+- Bluesky non-200 from `api.bsky.app` → `blocked upstream`; the AT
+  Protocol AppView is documented as no-auth with "generous" rate-limits
+  so 429 should be vanishingly rare for 5 calls/week, but if it appears
+  the cron's per-query `.catch` isolates Bluesky from killing the rest.
+  A 403 specifically from `public.api.bsky.app` is the well-known
+  cloud-egress block — switch the probe back to `api.bsky.app` (the
+  canonical Express AppView), don't open a credential ticket.
 
 ### Outcome log
 
@@ -833,6 +847,7 @@ is best-effort: the 7 sources are the same ones listed in
 | 2026-05-23 | composer-4 | partial steps 1-5 (upstream availability) | `scripts/verify-flows.sh` against `https://nlqdb.com` + `https://mcp.nlqdb.com`: HN 200 (`hits` present), GH 200 (`total_count=1644` live-probed today), IH 200 (`items` present). Reddit + Stack Exchange both 403 with `x-block-reason: hostname_blocked` from the sandbox-egress proxy — degraded to advisory per the script's helper. Cron-side checks (KV writes, evidence-file PUT, LogSnag publish) require the deployed Worker and remain a separate post-cron audit. |
 | 2026-05-25 | claude-code | partial steps 1-6 (upstream availability) | `scripts/verify-flows.sh` against `https://nlqdb.com` + `https://mcp.nlqdb.com` after SK-ICP-008 added the Dev.to probe: HN 200 (`hits` present), GH 200 (`total_count` present), IH 200 (`items` present), **Dev.to 200 (top-level JSON array)** — live probe of `https://dev.to/api/articles?tag=database&per_page=5&top=7` returned 5 fresh articles inside the `top=7` 7-day window. Reddit + SO 403 `x-block-reason: hostname_blocked` (unchanged sandbox-egress advisory). Cron-side checks (KV writes, evidence-file PUT, LogSnag publish) remain a separate post-cron audit; the new `fetchDevto` matches the IH error-isolation pattern exactly so its regression surface is the response-schema contract that the probe pins. Pre-walk also: `flow-004-walk.sh` passed in 19s (control 403, invite 200) — full SK-GATE-007 invariant proof, gate is doing its job and the invite-valve is intact. |
 | 2026-05-31 | claude-code | partial steps 1-7 (upstream availability) | Verification-first run before any code edit, per GLOBAL-030: (a) mirror integrity check `diff <(grep -oE '^#{2,3} FLOW-[0-9]+' impl) <(... verif)` ⇒ empty, both trackers in sync; (b) `bash scripts/verify-flows.sh` against `https://nlqdb.com` ⇒ all curl-observable assertions green pre-edit (HN/GH/IH/Dev.to 200, Reddit/SO sandbox-egress advisory, `flow-005` MCP discovery 200, every `/solve/` + `/vs/` slug 200, sitemap floor 14, `Base.astro` invite-capture loaded site-wide); (c) live probe of `api.github.com/graphql` with the env's `GH_TOKEN` ⇒ `viewer.login=omerhochman`, `rateLimit{cost:1, remaining:4998, limit:5000}` confirming the PAT authorises GraphQL `DISCUSSION` searches without a new scope. After landing SK-ICP-009 in `apps/api/src/icp-scrape.ts` + tests + `scripts/verify-flows.sh` step 4 (new), re-walked the script: **GitHub Discussions probe 200 with `"discussionCount"` present** — full FLOW-008 status now `partial steps 1-7` (Reddit/SO still sandbox-egress advisory; cron-side KV/LogSnag still need the deployed Worker). Post-edit `bun --filter @nlqdb/api test test/icp-scrape.test.ts` ⇒ 28/28 pass (5 new tests cover POST + Bearer + bot UA + `DISCUSSION` body + `created:>` filter, absent-token short-circuit, GraphQL `errors` soft failure, unparseable `createdAt` drop, basic store-and-dedup). Mirror integrity check post-edit ⇒ still empty (no new FLOW added; FLOW-008 sub-tasks gained one on each side). |
+| 2026-06-01 | claude-code | partial steps 1-8 (upstream availability) | Verification-first run before any code edit, per GLOBAL-030: (a) mirror integrity check (`diff` of `^#{2,3} FLOW-[0-9]+` headers across both trackers) ⇒ empty pre-edit; (b) `bash scripts/verify-flows.sh` against `https://nlqdb.com` ⇒ all curl-observable assertions green pre-edit (including the 7 existing source-health probes; Reddit/SO sandbox-egress advisory as expected); (c) `bash scripts/flow-004-walk.sh` against `https://app.nlqdb.com` ⇒ **passed in 18s wall** (mail.tm `wshu.net` inbox, waitlist 200, Resend invite in 10s, control 403 + invite 200 — SK-GATE-007 invariant honoured). BEFORE writing any code, live-probed the AT Protocol AppView from this VM: (1) `public.api.bsky.app/xrpc/app.bsky.feed.searchPosts` ⇒ HTTP 403 from BunnyCDN (cloud-egress block on the public mirror, observed on the agent VM 2026-06-01); (2) `api.bsky.app/xrpc/app.bsky.feed.searchPosts?q=text+to+sql&limit=5&sort=latest&since=<isoSeven>` ⇒ HTTP 200 with `{posts, cursor}` shape, 5 fresh posts in the past 7d including the P2 quote `"My SQL bot dies after two questions! Did you read the JP Morgan study?"` that the prior 7 sources never caught; (3) `agent memory` / `vector database` / `rag pipeline` / `supabase` each returned 10 fresh posts; (4) `bsky.app/robots.txt` ⇒ `Allow: /` (no scrape-deny); (5) `docs.bsky.app/docs/advanced-guides/rate-limits` documents AppView read endpoints as no-auth with "generous rate-limits" — cron's 5 calls/week is trivially inside. After landing SK-ICP-010 in `apps/api/src/icp-scrape.ts` + 5 tests + `scripts/verify-flows.sh` step 8 (new, cross-compatible `date -u -d '7 days ago'` / `date -u -v-7d` idiom), re-walked the script: **Bluesky probe 200 with `"posts"` present** — full FLOW-008 status now `partial steps 1-8` (Reddit/SO still sandbox-egress advisory; cron-side KV/LogSnag still need the deployed Worker). Post-edit `bun --filter @nlqdb/api test test/icp-scrape.test.ts` ⇒ 33/33 pass (5 new tests pin the `q`+`sort=latest`+`since=` URL contract with a since-value-within-60s check, URL rebuild from `at://.../app.bsky.feed.post/<rkey>`, unparseable-`createdAt` drop, non-`app.bsky.feed.post` URI drop, 503 graceful). Mirror integrity check post-edit ⇒ still empty (no new FLOW added; FLOW-008 sub-tasks gained one on each side). |
 
 ### Triage
 
