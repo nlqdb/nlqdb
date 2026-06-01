@@ -727,10 +727,9 @@ async function fetchDevto(
 // --- Bluesky (AT Protocol public AppView) ---
 
 // `api.bsky.app` is the AT Protocol AppView's no-auth read endpoint; SK-ICP-010
-// explains the trade-offs vs `public.api.bsky.app` (which 403s from cloud egress
-// IPs in 2026-06).
+// explains the trade-offs vs `public.api.bsky.app` (403 from this agent VM
+// 2026-06-01; not re-verified from CF Workers egress).
 type BskyPostRecord = {
-  $type?: string;
   text?: string;
   createdAt?: string;
 };
@@ -741,8 +740,6 @@ type BskyPost = {
   author?: { handle?: string };
   record?: BskyPostRecord;
   likeCount?: number;
-  replyCount?: number;
-  repostCount?: number;
 };
 
 // 5 queries covering P1/P2/P3/P6; researcher+practitioner mix is the unique angle.
@@ -756,10 +753,12 @@ const BLUESKY_QUERIES = [
 
 const BSKY_SEARCH_URL = "https://api.bsky.app/xrpc/app.bsky.feed.searchPosts";
 
-// `at://did:.../app.bsky.feed.post/<rkey>` → rkey is the last path segment.
+// `at://did:.../app.bsky.feed.post/<rkey>` → rkey. Real Bluesky rkeys are
+// base32-sortable TIDs (lowercase a-z + 0-9); pin the charset so junk URIs
+// (`<script>`, query strings, fragments) never propagate into the stored URL.
 function bskyRkeyFromUri(uri: string | undefined): string | null {
   if (!uri) return null;
-  const m = uri.match(/\/app\.bsky\.feed\.post\/([^/]+)$/);
+  const m = uri.match(/\/app\.bsky\.feed\.post\/([a-z0-9]+)$/);
   return m?.[1] ?? null;
 }
 
@@ -770,8 +769,12 @@ async function fetchBluesky(
 ): Promise<IcpItem[]> {
   const items: IcpItem[] = [];
   const sinceIso = new Date(sevenDaysAgoUnix * 1000).toISOString();
+  // Stop the bleeding: a single 429 from the AppView means the remaining
+  // queries in this run will almost certainly 429 too and harden the throttle.
+  let rateLimited = false;
 
   for (const q of BLUESKY_QUERIES) {
+    if (rateLimited) break;
     const params = new URLSearchParams({
       q,
       limit: "25",
@@ -788,6 +791,9 @@ async function fetchBluesky(
           signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
         });
         span.setAttribute("http.response.status_code", res.status);
+        if (res.status === 429) {
+          rateLimited = true;
+        }
         if (!res.ok) {
           span.setAttribute("nlqdb.icp.items", 0);
           console.warn(

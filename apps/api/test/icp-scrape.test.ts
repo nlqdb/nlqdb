@@ -1268,6 +1268,7 @@ describe("runIcpScrape", () => {
       const sevenDaysAgoMs = Date.now() - 7 * 24 * 60 * 60 * 1000;
       for (const { url, headers } of seen) {
         expect(url).toMatch(/[?&]q=/);
+        expect(url).toContain("limit=25");
         expect(url).toContain("sort=latest");
         expect(url).toMatch(/[?&]since=/);
         expect(headers["User-Agent"]).toMatch(/nlqdb-icp-bot/);
@@ -1277,6 +1278,31 @@ describe("runIcpScrape", () => {
         const sinceMs = m ? Date.parse(decodeURIComponent(m[1] ?? "")) : NaN;
         expect(Math.abs(sinceMs - sevenDaysAgoMs)).toBeLessThan(60_000);
       }
+    });
+
+    it("short-circuits the remaining queries after the AppView returns 429", async () => {
+      const kv = stubKv();
+      let bskyCalls = 0;
+      const stubFetch: typeof fetch = vi.fn(async (url: string | URL | Request) => {
+        const urlStr = typeof url === "string" ? url : url instanceof URL ? url.href : url.url;
+        if (urlStr.includes("api.bsky.app")) {
+          bskyCalls++;
+          return { ok: false, status: 429, json: async () => ({}) } as unknown as Response;
+        }
+        if (urlStr.includes("hn.algolia.com")) {
+          return { ok: true, status: 200, json: async () => ({ hits: [] }) } as unknown as Response;
+        }
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ data: { children: [] } }),
+        } as unknown as Response;
+      }) as unknown as typeof fetch;
+
+      await runIcpScrape({ kv, fetch: stubFetch, tracer: stubTracer });
+
+      // 5 queries are configured; only the first one should hit the wire after a 429.
+      expect(bskyCalls).toBe(1);
     });
 
     it("drops Bluesky posts whose record.createdAt is unparseable", async () => {
