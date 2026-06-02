@@ -1,6 +1,6 @@
 ---
 name: icp-mining
-description: Weekly cron that scrapes HN Algolia, Reddit, GitHub Issues, GitHub Discussions, Stack Overflow, Indie Hackers, and Dev.to for ICP pain signals, scores them per persona via the free LLM chain, clusters them into themes, and writes a monthly evidence file to GitHub.
+description: Weekly cron that scrapes HN Algolia, Reddit, GitHub Issues, GitHub Discussions, Stack Overflow, Indie Hackers, Dev.to, and Bluesky for ICP pain signals, scores them per persona via the free LLM chain, clusters them into themes, and writes a monthly evidence file to GitHub.
 when-to-load:
   globs:
     - apps/api/src/icp-scrape.ts
@@ -14,14 +14,14 @@ when-to-load:
 
 # Feature: ICP Mining
 
-**One-liner:** A Monday 06:00 UTC cron scrapes HN Algolia, Reddit (16 subreddits), GitHub Issues, GitHub Discussions, Stack Overflow, Indie Hackers, and Dev.to; deduplicates via KV; scores 0–10 per persona via Groq → Gemini; clusters into 5–7 themes per persona; writes `docs/research/icp-evidence-<yyyy-mm>.md` to GitHub.
-**Status:** implemented (SK-ICP-001 collection; SK-ICP-002 scoring; SK-ICP-003 clustering + evidence file; SK-ICP-004 GitHub Issues; SK-ICP-005 Stack Overflow; SK-ICP-006 Indie Hackers; SK-ICP-007 source-health probe; SK-ICP-008 Dev.to source; SK-ICP-009 GitHub Discussions source; SK-ICP-010 prefilter dropped — LLM relevance floor is the only scoring gate; SK-ICP-011 Reddit app-only OAuth).
+**One-liner:** A Monday 06:00 UTC cron scrapes HN Algolia, Reddit (16 subreddits), GitHub Issues, GitHub Discussions, Stack Overflow, Indie Hackers, Dev.to, and Bluesky; deduplicates via KV; scores 0–10 per persona via Groq → Gemini; clusters into 5–7 themes per persona; writes `docs/research/icp-evidence-<yyyy-mm>.md` to GitHub.
+**Status:** implemented (SK-ICP-001 collection; SK-ICP-002 scoring; SK-ICP-003 clustering + evidence file; SK-ICP-004 GitHub Issues; SK-ICP-005 Stack Overflow; SK-ICP-006 Indie Hackers; SK-ICP-007 source-health probe; SK-ICP-008 Dev.to source; SK-ICP-009 GitHub Discussions source; SK-ICP-010 prefilter dropped — LLM relevance floor is the only scoring gate; SK-ICP-011 Reddit app-only OAuth; SK-ICP-012 Bluesky source).
 **Owners (code):** `apps/api/src/icp-scrape.ts`, `apps/api/src/icp-score.ts`, `apps/api/src/icp-cluster.ts`, `apps/api/test/icp-scrape.test.ts`, `apps/api/test/icp-score.test.ts`, `apps/api/test/icp-cluster.test.ts`, `apps/api/wrangler.toml` (cron `0 6 * * 1`).
 **Cross-refs:** [`docs/research/automated-icp-validation-plan.md §2`](../../research/automated-icp-validation-plan.md) · [`docs/research/personas.md`](../../research/personas.md) · [`GLOBAL-028`](../../decisions/GLOBAL-028-acquisition-progress-tracker.md) · [`GLOBAL-030`](../../decisions/GLOBAL-030-evidence-grade-acquisition-tracker-edits.md).
 
 ## Touchpoints — read this feature doc before editing
 
-- `apps/api/src/icp-scrape.ts` — `runIcpScrape(deps)`; calls HN, Reddit, GitHub Issues, GitHub Discussions, Stack Overflow, Indie Hackers, Dev.to
+- `apps/api/src/icp-scrape.ts` — `runIcpScrape(deps)`; calls HN, Reddit, GitHub Issues, GitHub Discussions, Stack Overflow, Indie Hackers, Dev.to, Bluesky
 - `apps/api/src/icp-score.ts` — `runIcpScore(items, deps)`; Groq → Gemini scoring
 - `apps/api/src/icp-cluster.ts` — `runIcpCluster(deps)`; KV list → LLM cluster → GitHub write
 - `apps/api/wrangler.toml` `[triggers].crons` — must stay in sync with `ICP_SCRAPE_CRON` in `index.ts`
@@ -42,13 +42,14 @@ Canonical bodies live in [`decisions/`](decisions/) — one file per `SK-ICP-NNN
 - [**SK-ICP-009**](decisions/SK-ICP-009-github-discussions.md) — GitHub Discussions source via GraphQL — the P2 (agent-builder) long-form signal Issues miss.
 - [**SK-ICP-010**](decisions/SK-ICP-010-drop-prefilter.md) — Drop the pain-word regex prefilter; the LLM relevance floor is the only scoring gate. Supersedes the prefilter clause of SK-ICP-002.
 - [**SK-ICP-011**](decisions/SK-ICP-011-reddit-oauth.md) — Reddit via app-only OAuth (`client_credentials`, KV-cached token); the anonymous endpoint 403s datacenter bots.
+- [**SK-ICP-012**](decisions/SK-ICP-012-bluesky.md) — Bluesky source via the AT Protocol AppView (`api.bsky.app` `searchPosts`, server-side `since`, no auth) — reaches the researcher+practitioner demographic the prior 7 sources under-sample.
 
 ## GLOBALs governing this feature
 
 - **GLOBAL-013** — Free-tier bundle budget.
-  - *In this feature:* all seven sources are free public APIs. Stack Exchange anon quota 300/IP/day; cron uses 5/week. Dev.to public API allows ~3 RPS unauthenticated; cron uses 5 sequential calls/week. GitHub GraphQL primary-rate-limit is 5000 points/hour authenticated; the Discussions search costs 1 point/query × 5/week. Weekly KV cost (≤ 775 items × 2 writes + ≤ 2 list ops + ~775 reads) sits comfortably inside Workers free-tier ceilings.
+  - *In this feature:* all eight sources are free public APIs. Stack Exchange anon quota 300/IP/day; cron uses 5/week. Dev.to public API allows ~3 RPS unauthenticated; cron uses 5/week. GitHub GraphQL is 5000 points/hour authenticated; Discussions costs 1 point/query × 5/week. Bluesky `api.bsky.app` AppView is unauthenticated with documented "generous rate-limits"; cron uses 5/week. Weekly KV cost (≤ 900 items × 2 writes + ≤ 2 list ops + ~900 reads) sits comfortably inside Workers free-tier ceilings.
 - **GLOBAL-014** — OTel span on every external call.
-  - *In this feature:* per-source fetch spans `nlqdb.icp.fetch.{hn,reddit,github,github_discussions,stackoverflow,indiehackers,devto}` (each with source + item count + status code; GitHub Discussions adds `nlqdb.icp.ghd.rate_remaining`; Stack Exchange adds `nlqdb.icp.se.quota_remaining`); `nlqdb.icp.reddit.token` (SK-ICP-011 app-only OAuth mint, with status code); `nlqdb.icp.score` (provider, batch size, raw count); `nlqdb.icp.cluster` (persona, item count, cluster count, provider); `nlqdb.icp.github_write` (file path, written status).
+  - *In this feature:* per-source fetch spans `nlqdb.icp.fetch.{hn,reddit,github,github_discussions,stackoverflow,indiehackers,devto,bluesky}` (each with source + item count + status code; GitHub Discussions adds `nlqdb.icp.ghd.rate_remaining`; Stack Exchange adds `nlqdb.icp.se.quota_remaining`); `nlqdb.icp.reddit.token` (SK-ICP-011 app-only OAuth mint, with status code); `nlqdb.icp.score` (provider, batch size, raw count); `nlqdb.icp.cluster` (persona, item count, cluster count, provider); `nlqdb.icp.github_write` (file path, written status).
 - **GLOBAL-028** — Acquisition progress tracker.
   - *In this feature:* this cron implements §2.1–§2.4 of [`automated-icp-validation-plan.md`](../../research/automated-icp-validation-plan.md). Progress is recorded in that file.
 - **GLOBAL-029** — Acquisition verification tracker.
@@ -62,3 +63,4 @@ Canonical bodies live in [`decisions/`](decisions/) — one file per `SK-ICP-NNN
 - **IH canonical URL recovery** — SK-ICP-006 stores the `feed.indiehackers.world/post/<slug>` URL which 404s on direct GET; cluster cites title + first 500 chars of `content_html` instead. If §3.6 reply-to-pain needs IH-canonical URLs, parse them from `content_html` (occasionally carries an `indiehackers.com` link); otherwise "good enough" for cluster input.
 - **LogSnag threshold alert** — Verdict already surfaces in the evidence markdown + `icp_cluster_completed` log. A channel-bell event on transition into `primary_confirmed` is the natural next slice; embedding in the per-run line for now avoids double-spam.
 - **Source liveness (verify before trusting a harvest)** — credential-gated sources self-skip silently if their secrets are unset in prod: **Reddit** (`REDDIT_CLIENT_ID` / `REDDIT_CLIENT_SECRET`, SK-ICP-011) and **GitHub Issues + Discussions** (`GH_TOKEN`, SK-ICP-004/009). After the next run, confirm `icp_scrape_completed.sources` carries non-zero `reddit` / `github` / `github_discussions`; a 2026-05-31 local run also showed **Stack Exchange 403** (likely sandbox IP — re-check from the deployed Worker, register an SE key if it persists).
+- **`public.api.bsky.app` re-probe from CF Workers egress** — SK-ICP-012 picked `api.bsky.app` after the public-mirror 403’d from this agent VM; a one-call `wrangler dev` re-probe would confirm whether the cron can use the cached host in prod.

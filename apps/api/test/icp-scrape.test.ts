@@ -1288,6 +1288,235 @@ describe("runIcpScrape", () => {
     });
   });
 
+  describe("Bluesky source", () => {
+    function bskyResponse(cid: string, handle = "alice.bsky.social", rkey = "3kabcdef123") {
+      return JSON.stringify({
+        posts: [
+          {
+            uri: `at://did:plc:fakedid/app.bsky.feed.post/${rkey}`,
+            cid,
+            author: { handle },
+            record: {
+              $type: "app.bsky.feed.post",
+              text: "My text-to-SQL agent forgets schema across turns; anyone hit this?",
+              createdAt: new Date(Date.now() - 3600 * 1000).toISOString(),
+            },
+            likeCount: 7,
+            replyCount: 2,
+            repostCount: 1,
+          },
+        ],
+        cursor: "next-cursor",
+      });
+    }
+
+    it("fetches Bluesky posts and stores them with source=bluesky and id=bsky-<cid>", async () => {
+      const kv = stubKv();
+      const stubFetch: typeof fetch = vi.fn(async (url: string | URL | Request) => {
+        const urlStr = typeof url === "string" ? url : url instanceof URL ? url.href : url.url;
+        if (urlStr.includes("api.bsky.app")) {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => JSON.parse(bskyResponse("bafycid123")),
+          } as unknown as Response;
+        }
+        if (urlStr.includes("hn.algolia.com")) {
+          return { ok: true, status: 200, json: async () => ({ hits: [] }) } as unknown as Response;
+        }
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ data: { children: [] } }),
+        } as unknown as Response;
+      }) as unknown as typeof fetch;
+
+      const result = await runIcpScrape({ kv, fetch: stubFetch, tracer: stubTracer });
+      expect(result.sources["bluesky"]).toBeGreaterThanOrEqual(1);
+
+      const putCalls = (kv.put as ReturnType<typeof vi.fn>).mock.calls as Array<
+        [string, ...unknown[]]
+      >;
+      expect(putCalls.some(([k]) => k === "icp:seen:bluesky:bsky-bafycid123")).toBe(true);
+      const itemCall = putCalls.find(
+        ([k]) => k.startsWith("icp:item:") && k.endsWith(":bluesky:bsky-bafycid123"),
+      );
+      expect(itemCall).toBeDefined();
+      const stored = JSON.parse(itemCall?.[1] as string);
+      expect(stored.url).toBe("https://bsky.app/profile/alice.bsky.social/post/3kabcdef123");
+      expect(stored.score).toBe(7);
+    });
+
+    it("requests Bluesky with sort=latest, a since=<7d> filter, and the bot User-Agent", async () => {
+      const kv = stubKv();
+      const seen: Array<{ url: string; headers: Record<string, string> }> = [];
+      const stubFetch: typeof fetch = vi.fn(
+        async (url: string | URL | Request, init?: { headers?: Record<string, string> }) => {
+          const urlStr = typeof url === "string" ? url : url instanceof URL ? url.href : url.url;
+          if (urlStr.includes("api.bsky.app")) {
+            seen.push({ url: urlStr, headers: init?.headers ?? {} });
+            return {
+              ok: true,
+              status: 200,
+              json: async () => ({ posts: [] }),
+            } as unknown as Response;
+          }
+          if (urlStr.includes("hn.algolia.com")) {
+            return {
+              ok: true,
+              status: 200,
+              json: async () => ({ hits: [] }),
+            } as unknown as Response;
+          }
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({ data: { children: [] } }),
+          } as unknown as Response;
+        },
+      ) as unknown as typeof fetch;
+
+      await runIcpScrape({ kv, fetch: stubFetch, tracer: stubTracer });
+
+      expect(seen.length).toBeGreaterThan(0);
+      const sevenDaysAgoMs = Date.now() - 7 * 24 * 60 * 60 * 1000;
+      for (const { url, headers } of seen) {
+        expect(url).toMatch(/[?&]q=/);
+        expect(url).toContain("limit=25");
+        expect(url).toContain("sort=latest");
+        expect(url).toMatch(/[?&]since=/);
+        expect(headers["User-Agent"]).toMatch(/nlqdb-icp-bot/);
+
+        // since= value must be within 60s of seven-days-ago to confirm the rolling window.
+        const m = url.match(/[?&]since=([^&]+)/);
+        const sinceMs = m ? Date.parse(decodeURIComponent(m[1] ?? "")) : NaN;
+        expect(Math.abs(sinceMs - sevenDaysAgoMs)).toBeLessThan(60_000);
+      }
+    });
+
+    it("short-circuits the remaining queries after the AppView returns 429", async () => {
+      const kv = stubKv();
+      let bskyCalls = 0;
+      const stubFetch: typeof fetch = vi.fn(async (url: string | URL | Request) => {
+        const urlStr = typeof url === "string" ? url : url instanceof URL ? url.href : url.url;
+        if (urlStr.includes("api.bsky.app")) {
+          bskyCalls++;
+          return { ok: false, status: 429, json: async () => ({}) } as unknown as Response;
+        }
+        if (urlStr.includes("hn.algolia.com")) {
+          return { ok: true, status: 200, json: async () => ({ hits: [] }) } as unknown as Response;
+        }
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ data: { children: [] } }),
+        } as unknown as Response;
+      }) as unknown as typeof fetch;
+
+      await runIcpScrape({ kv, fetch: stubFetch, tracer: stubTracer });
+
+      // 5 queries are configured; only the first one should hit the wire after a 429.
+      expect(bskyCalls).toBe(1);
+    });
+
+    it("drops Bluesky posts whose record.createdAt is unparseable", async () => {
+      const kv = stubKv();
+      const stubFetch: typeof fetch = vi.fn(async (url: string | URL | Request) => {
+        const urlStr = typeof url === "string" ? url : url instanceof URL ? url.href : url.url;
+        if (urlStr.includes("api.bsky.app")) {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({
+              posts: [
+                {
+                  uri: "at://did:plc:x/app.bsky.feed.post/badtime",
+                  cid: "bafycid-bad",
+                  author: { handle: "x.bsky.social" },
+                  record: { text: "hi", createdAt: "not-a-date" },
+                },
+              ],
+            }),
+          } as unknown as Response;
+        }
+        if (urlStr.includes("hn.algolia.com")) {
+          return { ok: true, status: 200, json: async () => ({ hits: [] }) } as unknown as Response;
+        }
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ data: { children: [] } }),
+        } as unknown as Response;
+      }) as unknown as typeof fetch;
+
+      const result = await runIcpScrape({ kv, fetch: stubFetch, tracer: stubTracer });
+      expect(result.sources["bluesky"]).toBeUndefined();
+    });
+
+    it("drops Bluesky posts whose uri does not match the app.bsky.feed.post contract", async () => {
+      const kv = stubKv();
+      const stubFetch: typeof fetch = vi.fn(async (url: string | URL | Request) => {
+        const urlStr = typeof url === "string" ? url : url instanceof URL ? url.href : url.url;
+        if (urlStr.includes("api.bsky.app")) {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({
+              posts: [
+                {
+                  uri: "at://did:plc:x/app.bsky.feed.repost/abc",
+                  cid: "bafycid-repost",
+                  author: { handle: "x.bsky.social" },
+                  record: { text: "hi", createdAt: new Date().toISOString() },
+                },
+              ],
+            }),
+          } as unknown as Response;
+        }
+        if (urlStr.includes("hn.algolia.com")) {
+          return { ok: true, status: 200, json: async () => ({ hits: [] }) } as unknown as Response;
+        }
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ data: { children: [] } }),
+        } as unknown as Response;
+      }) as unknown as typeof fetch;
+
+      const result = await runIcpScrape({ kv, fetch: stubFetch, tracer: stubTracer });
+      expect(result.sources["bluesky"]).toBeUndefined();
+    });
+
+    it("handles Bluesky 503 gracefully — other sources still complete", async () => {
+      const kv = stubKv();
+      const stubFetch: typeof fetch = vi.fn(async (url: string | URL | Request) => {
+        const urlStr = typeof url === "string" ? url : url instanceof URL ? url.href : url.url;
+        if (urlStr.includes("api.bsky.app")) {
+          return { ok: false, status: 503, json: async () => ({}) } as unknown as Response;
+        }
+        if (urlStr.includes("query=text+to+sql")) {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => JSON.parse(hnResponse("hn-bsky-fail")),
+          } as unknown as Response;
+        }
+        if (urlStr.includes("hn.algolia.com")) {
+          return { ok: true, status: 200, json: async () => ({ hits: [] }) } as unknown as Response;
+        }
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ data: { children: [] } }),
+        } as unknown as Response;
+      }) as unknown as typeof fetch;
+
+      const result = await runIcpScrape({ kv, fetch: stubFetch, tracer: stubTracer });
+      expect(result.sources["hn"]).toBeGreaterThanOrEqual(1);
+      expect(result.sources["bluesky"]).toBeUndefined();
+    });
+  });
+
   it("Reddit search URLs include restrict_sr=on so results stay subreddit-scoped", async () => {
     const kv = stubKv();
     const seenUrls: string[] = [];
