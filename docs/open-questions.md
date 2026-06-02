@@ -4,4 +4,6 @@
 
 ## Blocking for human
 
+- (#300) After `deploy-web.yml` ships `apps/web/dist`, run `bash scripts/verify-flows.sh` against `https://nlqdb.com` to confirm `/vs/askyourdatabase/` resolves (pre-deploy it returns the 4 expected 404/floor failures). Post-deploy = inherently after-merge; not a CI gate.
+- (#300) `apps/api smoke` CI job is red due to the Neon Free-plan 10-branch quota (HTTP 422 on branch create), not PR content. Prune stale closed-PR Neon branches (`pr-125`, `pr-197`, `pr-208`) so the smoke job can go green; this needs operator access to the Neon project.
 - (#295) Set `REDDIT_CLIENT_ID` / `REDDIT_CLIENT_SECRET` Worker secrets (Reddit app-only OAuth needs manual app approval per Reddit's Nov-2025 policy) — until then the ICP scraper self-skips Reddit, losing the primary P1/P3 signal vein (SK-ICP-011).

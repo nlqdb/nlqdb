@@ -503,6 +503,116 @@ export const COMPETITORS: Competitor[] = [
       why: "An analyst question Wren AI's MDL would resolve via a `signups` model and a `channel` dimension on your existing warehouse; nlqdb mints the Postgres database and answers the same English goal against the live schema in one element.",
     },
   },
+  {
+    slug: "askyourdatabase",
+    name: "AskYourDatabase",
+    url: "https://askyourdatabase.com",
+    tagline:
+      "Chat-style AI Data Analyst over an existing database — Desktop App for internal-tool use and an embeddable Website Chatbot for customer-facing BI, across BigQuery, MSSQL, MySQL, PostgreSQL, and Snowflake.",
+    persona: "P3 analyst",
+    oneLiner:
+      "Pick AskYourDatabase if you already run BigQuery, MSSQL, MySQL, PostgreSQL, or Snowflake and want a chat assistant — desktop or embedded — answering English questions over that warehouse with charts and a dashboard builder. Pick nlqdb if you want the database itself provisioned, schema evolved via English, and answers rendered inside your product from one HTML element.",
+    whenChooseUs: [
+      "You need the database itself — nlqdb provisions Postgres on the first query.",
+      "An AI agent should provision and migrate its own database via MCP.",
+      "You want destructive operations diff-previewed in plain English before they apply.",
+      "You want one HTML element rendering the answer in-product, not a chatbot widget.",
+    ],
+    whenChooseThem: [
+      "You already run BigQuery, MSSQL, MySQL, PostgreSQL, or Snowflake and can't migrate.",
+      "Credentials must stay on a local machine — their Desktop App never uploads them.",
+      "Your team needs a customer-facing BI chatbot with built-in dashboard builder and embedding.",
+      "On-premise deployment is required — their Enterprise plan ships that today.",
+    ],
+    features: [
+      {
+        feature: "Owns the database (provisions + migrates)",
+        us: "shipped",
+        them: "no",
+        note: "AskYourDatabase connects to an already-existing warehouse; provisioning is out of scope by design.",
+      },
+      { feature: "Natural-language → SQL", us: "shipped", them: "shipped" },
+      {
+        feature: "Auto-migration via NL ('add a column for tags')",
+        us: "shipped",
+        them: "no",
+        note: "AskYourDatabase is read-focused with optional CRUD on the Dashboard Builder; English-driven schema changes are not part of the product.",
+      },
+      {
+        feature: "Destructive-op diff preview before apply",
+        us: "shipped",
+        them: "no",
+        note: "AskYourDatabase sanitises AI-generated SQL and recommends a read-only DB user for SELECT-only workloads; a per-operation diff preview the user confirms is unique to nlqdb.",
+      },
+      {
+        feature: "MCP server (agent-callable)",
+        us: "shipped",
+        them: "no",
+        note: "nlqdb's MCP server exposes `nlqdb_query`, `nlqdb_list_databases`, `nlqdb_describe` — `nlqdb_query` materialises Postgres on first reference, no separate create-DB tool needed. AskYourDatabase ships REST APIs (Ask, Messages, New Chat); no MCP surface today.",
+      },
+      {
+        feature: "Embeddable HTML in product",
+        us: "shipped",
+        them: "partial",
+        note: "AskYourDatabase's Website Chatbot embeds a chat widget on any page; nlqdb's `<nlq-data>` is a goal-shaped element answering inline in the product layout, not a chat surface.",
+      },
+      {
+        feature: "Customer-facing BI chatbot + dashboard builder",
+        us: "partial",
+        them: "shipped",
+        note: "AskYourDatabase ships a real-time Dashboard Builder plus chatbot embed targeted at customer-facing BI; nlqdb today renders one in-product answer per `<nlq-data>` element rather than a hosted chatbot.",
+      },
+      {
+        feature: "Multi-engine support beyond Postgres",
+        us: "partial",
+        them: "shipped",
+        note: "AskYourDatabase documents BigQuery, MSSQL, MySQL, PostgreSQL, and Snowflake as supported engines. nlqdb is Postgres-first in Phase 1; ClickHouse lands on the workload-analyser path.",
+      },
+      { feature: "Anonymous mode (try before sign-in)", us: "shipped", them: "no" },
+      {
+        feature: "SOC 2 Type 2 certification",
+        us: "no",
+        them: "partial",
+        note: "AskYourDatabase's public security portal documents an in-progress SOC 2 Type 2 audit, originally anticipated to complete December 2025 — check their current security page for the live status. nlqdb is pre-alpha and carries neither SOC 2 nor HIPAA today.",
+      },
+      {
+        feature: "On-premise / self-hosted deployment",
+        us: "no",
+        them: "shipped",
+        note: "AskYourDatabase ships an Enterprise on-premise deployment option; nlqdb is Cloudflare-Workers-hosted in Phase 1.",
+      },
+    ],
+    faqs: [
+      {
+        q: "Can I keep my existing Postgres or MySQL database and use AskYourDatabase the way I'd use nlqdb?",
+        a: "AskYourDatabase is built for that case — you point the Desktop App or Website Chatbot at an existing warehouse (BigQuery, MSSQL, MySQL, PostgreSQL, Snowflake) and the product does not provision anything new. nlqdb today owns the database it queries; bring-your-own-Postgres is on the roadmap, not shipped. If your data already lives in BigQuery or Snowflake, AskYourDatabase is the right shape; if you're starting from zero or want an AI agent to stand the database up, nlqdb is.",
+      },
+      {
+        q: "How does AskYourDatabase's chatbot embed compare to nlqdb's `<nlq-data>` element?",
+        a: "AskYourDatabase's Website Chatbot embeds a chat widget — your users open a conversation, ask questions, and the widget renders answers, charts, and follow-up turns. nlqdb's `<nlq-data>` is a goal-shaped HTML element: it takes one English question via attribute and renders the answer inline in your product layout, with a trace toggle revealing the compiled SQL. Pick the chatbot if the shape your customer expects is conversation; pick the element if the shape is in-product UI.",
+      },
+      {
+        q: "Is AskYourDatabase SOC 2 certified?",
+        a: "AskYourDatabase's public security portal (verified June 2026) documents an in-progress SOC 2 Type 2 audit, originally anticipated to complete December 2025 — the certification is not yet attested on the free product, and the live security page is the source of truth for the current status. nlqdb is pre-alpha and carries neither SOC 2 nor HIPAA today. If a documented compliance posture is required, their Enterprise on-premise deployment may also be relevant — it keeps the data inside your network perimeter.",
+      },
+      {
+        q: "Can an AI agent provision its own database with AskYourDatabase the way it can with nlqdb's MCP server?",
+        a: "AskYourDatabase exposes REST APIs (Ask API, Messages API, New Chat API) over an already-connected database — an agent can drive the chatbot but cannot stand up the underlying warehouse. nlqdb's MCP server (`mcp.nlqdb.com`) exposes `nlqdb_query`, `nlqdb_list_databases`, and `nlqdb_describe`; `nlqdb_query` materialises Postgres plus schema on first reference (no separate create-DB verb the agent has to learn), so a Claude / Cursor / Cline agent stands up its own data layer end-to-end without a human in the loop.",
+      },
+      {
+        q: "What about destructive SQL — does AskYourDatabase preview the operation before it runs?",
+        a: "AskYourDatabase's security portal documents query sanitisation against the AI-generated SQL plus an explicit recommendation to whitelist their fixed IP and use a read-only DB user for SELECT-only workloads. nlqdb's contract is different — write and DDL operations trigger a diff preview the user must confirm before the operation applies, with the compiled SQL visible in the trace.",
+      },
+      {
+        q: "Why pick nlqdb over AskYourDatabase if my data already lives in MySQL?",
+        a: "If your data already lives in MySQL and the shape you need is 'embed a chat over the warehouse', AskYourDatabase is the right pick today — nlqdb is Postgres-first in Phase 1 and bring-your-own-MySQL is not shipped. nlqdb wins when you (a) need the database itself plus English-driven migrations, (b) want an AI agent to provision the warehouse end-to-end via MCP, or (c) want one HTML element answering a goal in-product rather than a chat widget.",
+      },
+    ],
+    demo: {
+      goal: "this month's signups grouped by acquisition channel, top 10 only",
+      why: "An analyst question AskYourDatabase would answer via the Desktop App or embed-chat over your existing warehouse; nlqdb mints the Postgres database and renders the answer in one `<nlq-data>` element against the live schema.",
+    },
+  },
 ];
 
 export function competitorBySlug(slug: string): Competitor | undefined {
