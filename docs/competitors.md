@@ -260,7 +260,7 @@ OSS text-to-SQL toolkit.
 | Julius AI | NL analytics | P3 | Cheap, consumer-grade CSV + NL workflow |
 | Vanna AI | Text-to-SQL | P3, P4 | OSS + flexible layer on existing DB |
 | Wren AI | Text-to-SQL (semantic-layer) | P3, P2 | MDL semantic model + RLAC/CLAC + SOC 2 (paid plans) + 22 engines; Apache-2.0-core / multi-license self-host moat |
-| AskYourDatabase | Text-to-SQL | P3, P4 | Low-friction "chat with my DB" + Dashboard Builder + embeddable Website Chatbot across BigQuery/Snowflake/MSSQL/MySQL/Postgres; Enterprise on-prem |
+| AskYourDatabase | Text-to-SQL | P3, P4 | Low-friction "chat with my DB" + Dashboard Builder + embeddable Website Chatbot across BigQuery, MSSQL, MySQL, PostgreSQL, Snowflake; Enterprise on-prem |
 | MCP Postgres servers | Agent tooling | P2 | Free + standard; gap narrows if they add provisioning |
 | Basedash | AI admin | P4 | AI-aware admin UI for small teams |
 | Metabase Metabot | BI + NL | P3 | OSS distribution + familiar BI UX |
