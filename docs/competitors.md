@@ -80,10 +80,10 @@ Open-source web chat that connects to your DB and generates SQL.
 - **Threat vector:** Low — it's a utility, not a product.
 
 ### AskYourDatabase — https://askyourdatabase.com
-ChatGPT-style interface over your DB. Free trial, ~$19–49/mo tiers.
+Two-product chat-style AI Data Analyst over your existing database: Desktop App (creds + query execution stay on your machine) and Website Chatbot (cloud-hosted, embeddable, with a Dashboard Builder). Engines documented on the public pricing/footer: BigQuery, MSSQL, MySQL, PostgreSQL, Snowflake. Models: Anthropic Claude 4.6 Sonnet + Claude Haiku 4.5 + OpenAI GPT-4.1. Plans: Desktop "Ultimate" $49/mo (priced to move to $69) · Website Chatbot "Scale" $149/mo (1000 questions/mo, 6 chatbots) · "Established" $329/mo (1500 questions/mo, unlimited chatbots, own branding) · Enterprise custom (on-premise). Per their public security portal (verified 2026-06-02), the SOC 2 Type 2 audit is publicly initiated with the first complete report anticipated December 2025 (not yet certified on free product) and the Chatbot product stores encrypted credentials plus conversation history on their servers; the Desktop App keeps credentials and query execution local.
 - **Overlaps with:** P3, P4 ("chat with my DB" angle).
-- **Gap nlqdb exploits:** Read-heavy; limited write/destructive workflows; no DB provisioning.
-- **Threat vector:** Medium for P3 specifically. This is exactly the "one-off question" vector.
+- **Gap nlqdb exploits:** Connects to an already-existing warehouse — no provisioning verb, no English-driven DDL, no MCP `create_database`, no in-product `<nlq-data>` element (chat widget is the only embed shape).
+- **Threat vector:** Medium for P3 specifically. This is exactly the "one-off question" vector; the Dashboard Builder + embeddable chatbot extends it into customer-facing BI which nlqdb does not target today. The `/vs/askyourdatabase` page ([SK-CMP-002](../features/comparison-pages/decisions/SK-CMP-002-single-template-data-driven.md)) is the canonical positioning.
 
 ### Julius AI — https://julius.ai
 NL data analysis over uploaded CSVs and connected DBs. ~$20/mo individual plans.
@@ -260,7 +260,7 @@ OSS text-to-SQL toolkit.
 | Julius AI | NL analytics | P3 | Cheap, consumer-grade CSV + NL workflow |
 | Vanna AI | Text-to-SQL | P3, P4 | OSS + flexible layer on existing DB |
 | Wren AI | Text-to-SQL (semantic-layer) | P3, P2 | MDL semantic model + RLAC/CLAC + SOC 2 (paid plans) + 22 engines; Apache-2.0-core / multi-license self-host moat |
-| AskYourDatabase | Text-to-SQL | P3, P4 | Low-friction "chat with my DB" vector |
+| AskYourDatabase | Text-to-SQL | P3, P4 | Low-friction "chat with my DB" + Dashboard Builder + embeddable Website Chatbot across BigQuery/Snowflake/MSSQL/MySQL/Postgres; Enterprise on-prem |
 | MCP Postgres servers | Agent tooling | P2 | Free + standard; gap narrows if they add provisioning |
 | Basedash | AI admin | P4 | AI-aware admin UI for small teams |
 | Metabase Metabot | BI + NL | P3 | OSS distribution + familiar BI UX |
