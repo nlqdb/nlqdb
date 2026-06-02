@@ -52,7 +52,7 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
   - *In this feature:* `DELETE /v1/keys/:id` ([`SK-APIKEYS-011`](decisions/SK-APIKEYS-011-hard-revoke.md)) is the revoke surface. Propagation to live MCP sessions is ≤ 1 s through `SK-MCP-014`'s DO revalidation cache; `lookupSkKey` filters `revoked_at IS NULL` at the source so cookie sessions and CLI bearers see the revocation on their next request.
 - **GLOBAL-008** — One Better Auth identity across all surfaces.
 - **GLOBAL-031** — One AES-256-GCM at-rest envelope + one Workers-held KEK for every BYO secret.
-  - *In this feature:* `scope = "byollm"` rows store the provider key as a `secret-envelope.ts` blob (context `byollm:<userId>`), not the HMAC hash used for nlqdb-minted `sk_*`/`pk_*` keys — those stay one-way per `SK-APIKEYS-008` since we never read them back; BYO keys we must decrypt to dispatch, hence the reversible AAD-bound envelope.
+  - *In this feature:* `scope = "byollm"` rows (`key_type = "byollm"`) store the provider key as a `secret-envelope.ts` blob in `key_hash` (context `byollm:<tenantId>`), not the HMAC hash used for nlqdb-minted `sk_*`/`pk_*` keys — those stay one-way per `SK-APIKEYS-008` since we never read them back; BYO keys we must decrypt to dispatch, hence the reversible AAD-bound envelope. Concrete row schema + the `key_type` CHECK extension live in [`SK-PREMIUM-012`](../premium-tier/decisions/SK-PREMIUM-012-account-stored-byollm-storage.md); `listKeysByTenant` filters these rows out so they never appear in the bearer-key list.
 
 ## Open questions / known unknowns
 

@@ -18,20 +18,20 @@ when-to-load:
 **One-liner:** Two LLM upgrade lanes per [`GLOBAL-026`](../../decisions/GLOBAL-026-llm-strategy-byollm-hosted-premium.md): **BYOLLM** (every tier including free; the user's provider key, 0% markup) and **hosted premium** on paid plans (frontier routing — Sonnet 4.6 / GPT-5 / Gemini 2.5 Pro — under Shape B: flat sub + included monthly request allowance + soft-meter overage at provider list + 0% markup), with surface-parity model picker and per-key spend cap.
 **Status:** partial. BYOLLM (`SK-PREMIUM-008`) and the hosted-premium architectural slot ship in Phase 2 alongside `quality-eval`. The hosted-premium meter (`SK-PREMIUM-009`) is gated behind [`phase-plan.md §6`](../../phase-plan.md) and turns on by feature-flag when §6 trips.
 
-**Contribution to north-star:** Engine quality (the hosted-premium chain and BYOLLM give heavy users access to frontier-model accuracy on real schemas, feeding `quality-eval`'s free-vs-frontier delta KPI per [`GLOBAL-025`](../../decisions/GLOBAL-025-north-star.md)) and UX (request-denominated Shape B + opt-in fallback per `SK-PREMIUM-011` keep the boundary honest, removing the "first-token bill" surprise).
-**Owners (code):** none yet — `apps/api/src/billing/**`, `apps/api/src/ask/**`, `packages/llm/**`, `apps/web/**`, `cli/`, `packages/sdk/**`, `packages/elements/**`, `packages/mcp/**` will all carry slices.
-**Cross-refs:** docs/architecture.md §6 (pricing — Premium-models row) · docs/architecture.md §8 (AI model selection — model catalog) · docs/architecture.md §5 (Premium models add-on) · `docs/features/llm-router/FEATURE.md` (`SK-LLM-007` tier-aware chain selector, `SK-LLM-008` Pro-tier privacy, `SK-LLM-009` prompt caching) · `docs/features/stripe-billing/FEATURE.md` (`SK-STRIPE-004` Checkout linkage) · `docs/features/rate-limit/FEATURE.md` (per-key spend cap is open) · `docs/features/web-app/FEATURE.md` (CTA surface) · `docs/features/sdk/FEATURE.md` / `cli/FEATURE.md` / `mcp-server/FEATURE.md` / `elements/FEATURE.md` (surface-parity per `GLOBAL-003`)
+**Contribution to north-star:** Engine quality (hosted-premium + BYOLLM give heavy users frontier-model accuracy on real schemas, feeding `quality-eval`'s free-vs-frontier delta KPI per [`GLOBAL-025`](../../decisions/GLOBAL-025-north-star.md)) and UX (request-denominated Shape B + opt-in fallback per `SK-PREMIUM-011` keep the boundary honest, no "first-token bill" surprise).
+**Owners (code):** none yet — `apps/api/src/{billing,ask}/**`, `packages/{llm,sdk,elements,mcp}/**`, `apps/web/**`, `cli/` will all carry slices.
+**Cross-refs:** docs/architecture.md §5/§6/§8 (add-on · pricing row · model catalog) · `llm-router/FEATURE.md` (`SK-LLM-007` chain selector, `SK-LLM-008` Pro privacy, `SK-LLM-009` caching) · `stripe-billing/FEATURE.md` (`SK-STRIPE-004` Checkout) · `rate-limit/FEATURE.md` (spend cap open) · `web-app/FEATURE.md` (CTA) · `sdk` / `cli` / `mcp-server` / `elements` FEATUREs (surface parity per `GLOBAL-003`)
 
 ## Touchpoints — read this feature before editing
 
-- `apps/api/src/billing/premium/**` (planned — pricing, metering, spend-cap enforcement)
-- `apps/api/src/ask/model-picker.ts` (planned — request → chain selector input)
-- `apps/web/src/components/PremiumCta*` (planned — in-context upgrade CTA)
-- `packages/llm/src/chains/paid.ts` (planned — premium chain definition)
-- `packages/sdk/src/options/model.ts` (planned — `model: "auto" | "fast" | "best"` option)
-- `cli/cmd/model.go` (planned — `nlq model set <preset>` and `--model` flag)
-- `packages/mcp/src/tools/model.ts` (planned — MCP capability surface)
-- `packages/elements/src/attributes.ts` (planned — `model` attribute on `<nlq-data>`)
+- `apps/api/src/billing/premium/**` (planned — pricing, metering, spend-cap)
+- `apps/api/src/ask/model-picker.ts` (planned — request → chain selector)
+- `apps/web/src/components/PremiumCta*` (planned — in-context CTA)
+- `packages/llm/src/chains/paid.ts` (planned — premium chain)
+- `packages/sdk/src/options/model.ts` (planned — `model` option)
+- `cli/cmd/model.go` (planned — `nlq model set` + `--model`)
+- `packages/mcp/src/tools/model.ts` (planned — MCP surface)
+- `packages/elements/src/attributes.ts` (planned — `<nlq-data model>`)
 
 ## Decisions
 
@@ -120,6 +120,11 @@ Three guardrails protect the included allowance from `SK-PREMIUM-009`: per-query
 **Body:** [`decisions/SK-PREMIUM-011-overflow-policy.md`](./decisions/SK-PREMIUM-011-overflow-policy.md).
 At allowance exhaustion, the per-account `users.overflow_policy` decides behavior: default `"meter"` continues at metered overage; opt-in `"fallback"` routes the rest of the billing period through the free chain with `overflow_fallback: true` surfaced in trace (never silent — `GLOBAL-023`). Per-key spend cap from `SK-PREMIUM-006` is the absolute ceiling regardless of policy.
 
+### SK-PREMIUM-012 — Account-stored BYOLLM credential: `api_keys` row schema + resolution
+
+**Body:** [`decisions/SK-PREMIUM-012-account-stored-byollm-storage.md`](./decisions/SK-PREMIUM-012-account-stored-byollm-storage.md).
+Pins SK-PREMIUM-008's storage mechanics: the account-stored key is an `api_keys` row (`scope = "byollm"`, `key_type = "byollm"`) holding the GLOBAL-031 sealed envelope in `key_hash` (reversible blob, not the HMAC), one row/account, hard-DELETE clear. Session-only `POST/GET/DELETE /v1/keys/byollm` + the `/v1/ask` step-2 lane (`resolveAskRouter` `accountCredential`, fail-loud) ship here; `llm.byollm_source ∈ {header, account}` labels the lane.
+
 ### SK-PREMIUM-007 — Plan cache stays product-funded; cap accounting starts at the LLM call site
 
 - **Decision:** Plan-cache hits (per `SK-LLM-010` / `GLOBAL-006`) cost the customer **zero LLM tokens** even when premium is enabled — the plan-cache lookup short-circuits before any LLM call site. The metering hook is wired at the LLM router span boundary, not at the `/v1/ask` request boundary, so a cached plan that runs against a premium-enabled DB never appears on the LLM-tokens invoice line. The customer's per-DB queries-over-the-included-50k counter still ticks (Pro pricing line, `docs/architecture.md §6`); only the LLM-tokens add-on line is gated behind a real LLM call.
@@ -157,7 +162,7 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 - **GLOBAL-026** — LLM strategy: free chain forever, BYOLLM for everyone, hosted premium on paid (flat sub + included monthly request allowance + soft-meter overage, 0% markup).
   - *In this feature:* This feature owns the commercial shape of the upgrade lanes; `llm-router/FEATURE.md` owns the dispatch precedence (`SK-LLM-016`, `SK-LLM-017`).
 - **GLOBAL-031** — One AES-256-GCM at-rest envelope + one Workers-held KEK for every BYO secret.
-  - *In this feature:* `SK-PREMIUM-008`'s account-stored BYOLLM keys (`api_keys.scope = "byollm"`) seal through `apps/api/src/secret-envelope.ts` (context `byollm:<userId>`) — this is the at-rest primitive the account-stored lane was blocked on; per-request `x-nlq-byollm-key` keys are never persisted, so they don't touch the envelope.
+  - *In this feature:* account-stored BYOLLM keys (`api_keys` `scope = "byollm"`, envelope in `key_hash`; `SK-PREMIUM-012`) seal through `secret-envelope.ts` (context `byollm:<tenantId>`); per-request `x-nlq-byollm-key` keys are never persisted, so they don't touch the envelope.
 
 ## Open questions / known unknowns
 
@@ -165,15 +170,15 @@ The 8-point BYOK decision tree that previously lived here is resolved by [`SK-PR
 
 ### Other open questions
 
-- **Hard-plan classifier confidence threshold.** `SK-LLM-001` names the `hard` tier but pins no number, and the `SK-PREMIUM-004` CTA fires on the "hard plan" verdict, so it drives upsell frequency. Strawman: 0.85 → `hard_plan` true; env-tunable, A/B-able with traffic.
-- **Quality-score histogram.** `llm-router/FEATURE.md` proposes `nlqdb.plan.quality_score` (1 = clean, 0.5 = correction loop, 0 = rejected); the CTA's pull depends on showing the customer their quality delta on the strict-$0 chain. Histogram shape + judge prompt + confidence interval all open.
-- **Lago wiring for usage metering.** `docs/phase-plan.md §6` calls for Lago-on-Fly batched into Stripe; the LLM-router → Lago path is unwired and must land before `SK-PREMIUM-002` ships.
-- **Per-key spend cap UI.** `SK-PREMIUM-006` defines the data model but not the dashboard. Likely both the DB settings and API-keys pages, with API-keys as the canonical write surface.
-- **Dunning when the add-on payment fails.** On Stripe `invoice.payment_failed` for the metered line, does the add-on drop to strict-$0 immediately, after one retry, or after standard dunning? `stripe-billing/FEATURE.md` covers dunning broadly; premium-tier needs the specific behavior.
-- **Anonymous-mode interaction.** Anonymous users have no Stripe customer and can't enable premium, so the `SK-PREMIUM-004` CTA should *not* show for them — but "create-an-account-and-upgrade" is the natural cross-sell. Open.
-- **Reseller / agency case.** One consolidated premium bill across an agency's client accounts is out of scope for v1 (per-account only); deferred to Enterprise.
-- **BYOLLM surface parity (GLOBAL-003 tracked gap).** The `x-nlq-byollm-key` lane ships on HTTP `/v1/ask` (`SK-LLM-021`), the TS SDK ([`SK-SDK-010`](../sdk/decisions/SK-SDK-010-byollm-client-option.md)), and the CLI (`nlq byollm set|status|clear`, [`SK-CLI-016`](../cli/decisions/SK-CLI-016-byollm-keychain.md)). Still unbuilt: MCP `byollm` param, `<nlq-data byollm>` (cookie-session only), and account-stored `/v1/keys/byollm` + `/app/keys` UI. Closes in the surface-parity PR.
-- **OpenRouter is not on the AI Gateway compat endpoint.** `SK-PREMIUM-008` §1 lists OpenRouter, but the `/compat/chat/completions` endpoint `SK-LLM-019` uses doesn't serve it (verified 2026-05). `SK-LLM-021` accepts `openai` / `anthropic` / `google-ai-studio` only. Decide whether OpenRouter BYOLLM drops, routes through its own provider path, or waits for compat support — then amend `SK-PREMIUM-008`.
+- **Hard-plan classifier confidence threshold.** `SK-LLM-001` names the `hard` tier but pins no number, and the `SK-PREMIUM-004` CTA fires on it, so it drives upsell frequency. Strawman: 0.85 → `hard_plan` true; env-tunable, A/B-able.
+- **Quality-score histogram.** `llm-router/FEATURE.md` proposes `nlqdb.plan.quality_score` (1 = clean, 0.5 = correction loop, 0 = rejected); the CTA's pull depends on showing the quality delta on the strict-$0 chain. Shape + judge prompt + CI open.
+- **Lago wiring for usage metering.** Per `docs/phase-plan.md §6` (Lago-on-Fly → Stripe); the LLM-router → Lago path is unwired and must land before `SK-PREMIUM-002` ships.
+- **Per-key spend cap UI.** `SK-PREMIUM-006` defines the data model but not the dashboard — likely DB-settings + API-keys pages, API-keys canonical.
+- **Dunning when the add-on payment fails.** On Stripe `invoice.payment_failed` for the metered line, drop to strict-$0 immediately, after one retry, or after standard dunning? `stripe-billing/FEATURE.md` covers dunning broadly; the specific behavior is open.
+- **Anonymous-mode interaction.** Anon users have no Stripe customer and can't enable premium, so the `SK-PREMIUM-004` CTA should *not* show — but "create-an-account-and-upgrade" is the natural cross-sell. Open.
+- **Reseller / agency case.** One consolidated premium bill across an agency's clients is out of scope for v1 (per-account only); deferred to Enterprise.
+- **BYOLLM surface parity (GLOBAL-003 tracked gap).** Header lane: HTTP `/v1/ask` (`SK-LLM-021`), TS SDK ([`SK-SDK-010`](../sdk/decisions/SK-SDK-010-byollm-client-option.md)), CLI (`SK-CLI-016`). Account-stored lane: HTTP `POST/GET/DELETE /v1/keys/byollm` + `/v1/ask` step-2 resolution (`SK-PREMIUM-012`). Still unbuilt: MCP `byollm` param (depends on the account lane it now has), `<nlq-data byollm>` (cookie-session), SDK/CLI `byollm` store verbs, and the `/app/keys` UI. Closes in the surface-parity PR.
+- **OpenRouter is not on the AI Gateway compat endpoint.** `SK-PREMIUM-008` §1 lists OpenRouter, but the `/compat/chat/completions` endpoint (`SK-LLM-019`) doesn't serve it (verified 2026-05); `SK-LLM-021` accepts `openai` / `anthropic` / `google-ai-studio` only. Decide: drop OpenRouter BYOLLM, route it through its own provider path, or wait for compat — then amend `SK-PREMIUM-008`.
 
 ## Source pointers
 
