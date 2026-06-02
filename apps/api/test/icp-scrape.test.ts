@@ -66,6 +66,18 @@ function redditResponse(id: string) {
   });
 }
 
+// App-only OAuth token response Reddit returns before any search (SK-ICP-011).
+function redditTokenResponse(): Response {
+  return {
+    ok: true,
+    status: 200,
+    json: async () => ({ access_token: "test-reddit-token", expires_in: 3600 }),
+  } as unknown as Response;
+}
+
+// Reddit creds to exercise the OAuth path in tests.
+const REDDIT_CREDS = { redditClientId: "test-id", redditClientSecret: "test-secret" };
+
 // Returns a fetch stub that succeeds for all URLs by default.
 function makeFetch(overrides: Record<string, string | null> = {}): typeof fetch {
   return vi.fn(async (url: string | URL | Request) => {
@@ -129,6 +141,7 @@ describe("runIcpScrape", () => {
       if (urlStr.includes("hn.algolia.com")) {
         return { ok: true, status: 200, json: async () => ({ hits: [] }) } as unknown as Response;
       }
+      if (urlStr.includes("access_token")) return redditTokenResponse();
       if (urlStr.includes("r/sideproject")) {
         return {
           ok: true,
@@ -146,7 +159,12 @@ describe("runIcpScrape", () => {
       return { ok: true, status: 200, json: async () => ({}) } as unknown as Response;
     }) as unknown as typeof fetch;
 
-    const result = await runIcpScrape({ kv, fetch: stubFetch, tracer: stubTracer });
+    const result = await runIcpScrape({
+      kv,
+      fetch: stubFetch,
+      tracer: stubTracer,
+      ...REDDIT_CREDS,
+    });
 
     expect(result.newItems).toBe(2);
     expect(result.skipped).toBe(0);
@@ -175,6 +193,8 @@ describe("runIcpScrape", () => {
     const kv = stubKv({
       "icp:seen:hn:story-abc": "1",
       "icp:seen:reddit:reddit-xyz": "1",
+      // Pre-seed a cached Reddit token so dedup asserts no extra writes.
+      "icp:reddit:token": "test-reddit-token",
     });
 
     const stubFetch: typeof fetch = vi.fn(async (url: string | URL | Request) => {
@@ -189,6 +209,7 @@ describe("runIcpScrape", () => {
       if (urlStr.includes("hn.algolia.com")) {
         return { ok: true, status: 200, json: async () => ({ hits: [] }) } as unknown as Response;
       }
+      if (urlStr.includes("access_token")) return redditTokenResponse();
       if (urlStr.includes("r/sideproject")) {
         return {
           ok: true,
@@ -207,7 +228,12 @@ describe("runIcpScrape", () => {
     }) as unknown as typeof fetch;
 
     const initialPutCount = (kv.put as ReturnType<typeof vi.fn>).mock.calls.length;
-    const result = await runIcpScrape({ kv, fetch: stubFetch, tracer: stubTracer });
+    const result = await runIcpScrape({
+      kv,
+      fetch: stubFetch,
+      tracer: stubTracer,
+      ...REDDIT_CREDS,
+    });
 
     expect(result.newItems).toBe(0);
     expect(result.skipped).toBe(2);
@@ -225,6 +251,7 @@ describe("runIcpScrape", () => {
       if (urlStr.includes("hn.algolia.com")) {
         throw new Error("HN network failure");
       }
+      if (urlStr.includes("access_token")) return redditTokenResponse();
       if (urlStr.includes("r/sideproject")) {
         return {
           ok: true,
@@ -242,13 +269,100 @@ describe("runIcpScrape", () => {
       return { ok: true, status: 200, json: async () => ({}) } as unknown as Response;
     }) as unknown as typeof fetch;
 
-    const result = await runIcpScrape({ kv, fetch: stubFetch, tracer: stubTracer });
+    const result = await runIcpScrape({
+      kv,
+      fetch: stubFetch,
+      tracer: stubTracer,
+      ...REDDIT_CREDS,
+    });
 
     // Reddit item should still be stored.
     expect(result.sources["reddit"]).toBeGreaterThanOrEqual(1);
     expect(result.newItems).toBeGreaterThanOrEqual(1);
     // No HN items (source threw).
     expect(result.sources["hn"]).toBeUndefined();
+  });
+
+  it("skips Reddit entirely when OAuth credentials are absent (SK-ICP-011)", async () => {
+    const kv = stubKv();
+    const fetcher = makeFetch();
+    const result = await runIcpScrape({ kv, fetch: fetcher, tracer: stubTracer });
+
+    // No credentials → no token call, no oauth.reddit.com search, no reddit items.
+    const calledUrls = (fetcher as ReturnType<typeof vi.fn>).mock.calls.map(([u]) => String(u));
+    expect(calledUrls.some((u) => u.includes("access_token"))).toBe(false);
+    expect(calledUrls.some((u) => u.includes("oauth.reddit.com"))).toBe(false);
+    expect(result.sources["reddit"]).toBeUndefined();
+  });
+
+  it("fetches Reddit via oauth.reddit.com with a bearer token (SK-ICP-011)", async () => {
+    const kv = stubKv();
+    const calls: Array<{ url: string; auth?: string }> = [];
+    const stubFetch: typeof fetch = vi.fn(
+      async (url: string | URL | Request, init?: RequestInit) => {
+        const urlStr = typeof url === "string" ? url : url instanceof URL ? url.href : url.url;
+        calls.push({
+          url: urlStr,
+          auth: (init?.headers as Record<string, string>)?.["Authorization"],
+        });
+        if (urlStr.includes("access_token")) return redditTokenResponse();
+        if (urlStr.includes("r/sideproject")) {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => JSON.parse(redditResponse("reddit-oauth")),
+          } as unknown as Response;
+        }
+        if (urlStr.includes("hn.algolia.com")) {
+          return { ok: true, status: 200, json: async () => ({ hits: [] }) } as unknown as Response;
+        }
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ data: { children: [] } }),
+        } as unknown as Response;
+      },
+    ) as unknown as typeof fetch;
+
+    const result = await runIcpScrape({
+      kv,
+      fetch: stubFetch,
+      tracer: stubTracer,
+      ...REDDIT_CREDS,
+    });
+
+    expect(result.sources["reddit"]).toBeGreaterThanOrEqual(1);
+    // Token minted once via Basic auth; searches hit oauth host with a bearer.
+    expect(calls.some((c) => c.url.includes("access_token") && c.auth?.startsWith("Basic "))).toBe(
+      true,
+    );
+    const search = calls.find((c) => c.url.includes("oauth.reddit.com/r/sideproject"));
+    expect(search?.auth).toBe("Bearer test-reddit-token");
+  });
+
+  it("caches the Reddit token in KV and reuses it across the run (SK-ICP-011)", async () => {
+    const kv = stubKv();
+    let tokenCalls = 0;
+    const stubFetch: typeof fetch = vi.fn(async (url: string | URL | Request) => {
+      const urlStr = typeof url === "string" ? url : url instanceof URL ? url.href : url.url;
+      if (urlStr.includes("access_token")) {
+        tokenCalls++;
+        return redditTokenResponse();
+      }
+      if (urlStr.includes("hn.algolia.com")) {
+        return { ok: true, status: 200, json: async () => ({ hits: [] }) } as unknown as Response;
+      }
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({ data: { children: [] } }),
+      } as unknown as Response;
+    }) as unknown as typeof fetch;
+
+    await runIcpScrape({ kv, fetch: stubFetch, tracer: stubTracer, ...REDDIT_CREDS });
+    // 16 subreddit searches in the run, but only one token mint.
+    expect(tokenCalls).toBe(1);
+    expect(await kv.get("icp:reddit:token")).toBe("test-reddit-token");
   });
 
   it("respects the fetch override — no real network calls are made", async () => {
@@ -1408,7 +1522,8 @@ describe("runIcpScrape", () => {
     const seenUrls: string[] = [];
     const stubFetch: typeof fetch = vi.fn(async (url: string | URL | Request) => {
       const urlStr = typeof url === "string" ? url : url instanceof URL ? url.href : url.url;
-      if (urlStr.includes("reddit.com")) seenUrls.push(urlStr);
+      if (urlStr.includes("access_token")) return redditTokenResponse();
+      if (urlStr.includes("oauth.reddit.com")) seenUrls.push(urlStr);
       if (urlStr.includes("hn.algolia.com")) {
         return { ok: true, status: 200, json: async () => ({ hits: [] }) } as unknown as Response;
       }
@@ -1419,7 +1534,7 @@ describe("runIcpScrape", () => {
       } as unknown as Response;
     }) as unknown as typeof fetch;
 
-    await runIcpScrape({ kv, fetch: stubFetch, tracer: stubTracer });
+    await runIcpScrape({ kv, fetch: stubFetch, tracer: stubTracer, ...REDDIT_CREDS });
 
     expect(seenUrls.length).toBeGreaterThan(0);
     for (const u of seenUrls) {

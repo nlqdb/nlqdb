@@ -1,4 +1,4 @@
-// SK-ICP-001 (HN+Reddit) + SK-ICP-004 (GitHub Issues) + SK-ICP-005 (Stack Exchange) + SK-ICP-006 (Indie Hackers) + SK-ICP-008 (Dev.to) + SK-ICP-009 (GitHub Discussions) + SK-ICP-012 (Bluesky). Writes raw items to KV at icp:seen:<source>:<id> (90d) + icp:item:<YYYYMMDD>:<source>:<id> (30d).
+// SK-ICP-001 (HN) + SK-ICP-004 (GitHub Issues) + SK-ICP-005 (Stack Exchange) + SK-ICP-006 (Indie Hackers) + SK-ICP-008 (Dev.to) + SK-ICP-009 (GitHub Discussions) + SK-ICP-011 (Reddit app-only OAuth) + SK-ICP-012 (Bluesky). Writes raw items to KV at icp:seen:<source>:<id> (90d) + icp:item:<YYYYMMDD>:<source>:<id> (30d).
 
 import { type Span, trace } from "@opentelemetry/api";
 
@@ -11,6 +11,8 @@ export type IcpScrapeDeps = {
   logsnagToken?: string;
   logsnagProject?: string;
   ghToken?: string;
+  redditClientId?: string;
+  redditClientSecret?: string;
   fetch?: typeof fetch;
   tracer?: {
     startActiveSpan: (name: string, fn: (span: Span) => Promise<unknown>) => Promise<unknown>;
@@ -384,22 +386,80 @@ const REDDIT_QUERIES: Array<{ subreddit: string; query: string }> = [
   { subreddit: "clickhouse", query: "query" },
 ];
 
+// Reddit blocks anonymous bots from datacenter IPs (verified 403 on all 16
+// queries, 2026-05-31), so SK-ICP-011 routes through app-only OAuth: a
+// `client_credentials` token from www.reddit.com, then oauth.reddit.com for
+// search. The token (≈1h TTL) is cached in KV so one run reuses it across all
+// 16 queries and across weekly runs until it expires.
+const REDDIT_TOKEN_URL = "https://www.reddit.com/api/v1/access_token";
+const REDDIT_TOKEN_KV_KEY = "icp:reddit:token";
+
+async function getRedditToken(
+  fetcher: typeof fetch,
+  kv: KVNamespace,
+  clientId: string,
+  clientSecret: string,
+  tracer: IcpScrapeDeps["tracer"],
+): Promise<string | null> {
+  const cached = await kv.get(REDDIT_TOKEN_KV_KEY);
+  if (cached) return cached;
+
+  let token: string | null = null;
+  await runSpan(tracer, "nlqdb.icp.reddit.token", async (span: Span) => {
+    try {
+      const res = await fetcher(REDDIT_TOKEN_URL, {
+        method: "POST",
+        headers: {
+          Authorization: `Basic ${btoa(`${clientId}:${clientSecret}`)}`,
+          "Content-Type": "application/x-www-form-urlencoded",
+          "User-Agent": BOT_USER_AGENT,
+        },
+        body: "grant_type=client_credentials",
+        signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+      });
+      span.setAttribute("http.response.status_code", res.status);
+      if (!res.ok) {
+        console.warn(JSON.stringify({ msg: "icp_reddit_token_error", status: res.status }));
+        return;
+      }
+      const json = (await res.json()) as { access_token?: string; expires_in?: number };
+      if (!json.access_token) return;
+      token = json.access_token;
+      // KV min TTL is 60s; refresh a minute before Reddit expires the token.
+      const ttl = Math.max(60, (json.expires_in ?? 3600) - 60);
+      await kv.put(REDDIT_TOKEN_KV_KEY, token, { expirationTtl: ttl });
+    } catch (err) {
+      span.recordException(err as Error);
+      console.error(
+        JSON.stringify({
+          msg: "icp_reddit_token_exception",
+          message: err instanceof Error ? err.message : String(err),
+        }),
+      );
+    } finally {
+      span.end();
+    }
+  });
+  return token;
+}
+
 async function fetchReddit(
   fetcher: typeof fetch,
+  token: string,
   tracer: IcpScrapeDeps["tracer"],
 ): Promise<IcpItem[]> {
   const items: IcpItem[] = [];
 
   for (const { subreddit, query } of REDDIT_QUERIES) {
     const encodedQuery = encodeURIComponent(query);
-    // restrict_sr=on scopes the search to the subreddit; without it Reddit
-    // returns site-wide results even on the /r/<sub>/search.json endpoint.
-    const url = `https://www.reddit.com/r/${subreddit}/search.json?q=${encodedQuery}&restrict_sr=on&sort=new&limit=25&t=week`;
+    // restrict_sr=on scopes the search to the subreddit; oauth.reddit.com
+    // returns the same JSON shape as the public endpoint, minus the bot block.
+    const url = `https://oauth.reddit.com/r/${subreddit}/search?q=${encodedQuery}&restrict_sr=on&sort=new&limit=25&t=week`;
 
     const doFetch = async (span: Span) => {
       try {
         const res = await fetcher(url, {
-          headers: { "User-Agent": BOT_USER_AGENT },
+          headers: { "User-Agent": BOT_USER_AGENT, Authorization: `Bearer ${token}` },
           signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
         });
         span.setAttribute("http.response.status_code", res.status);
@@ -897,6 +957,14 @@ export async function runIcpScrape(deps: IcpScrapeDeps): Promise<IcpScrapeResult
   const sevenDaysAgoUnix = Math.floor(now / 1000) - 7 * 24 * 60 * 60;
   const dateStr = yyyymmdd(now);
 
+  // Reddit needs an app-only OAuth token before any search (SK-ICP-011). When
+  // credentials are absent or the token call fails, Reddit is skipped — never
+  // falls back to the anonymous endpoint, which bots are blocked from.
+  const redditToken =
+    deps.redditClientId && deps.redditClientSecret
+      ? await getRedditToken(fetcher, deps.kv, deps.redditClientId, deps.redditClientSecret, tracer)
+      : null;
+
   // Fetch all sources; per-source errors are already caught inside each helper.
   const [hnItems, redditItems, ghItems, ghdItems, seItems, ihItems, devtoItems, bskyItems] =
     await Promise.all([
@@ -909,15 +977,17 @@ export async function runIcpScrape(deps: IcpScrapeDeps): Promise<IcpScrapeResult
         );
         return [] as IcpItem[];
       }),
-      fetchReddit(fetcher, tracer).catch((err) => {
-        console.error(
-          JSON.stringify({
-            msg: "icp_reddit_source_failed",
-            message: err instanceof Error ? err.message : String(err),
-          }),
-        );
-        return [] as IcpItem[];
-      }),
+      redditToken
+        ? fetchReddit(fetcher, redditToken, tracer).catch((err) => {
+            console.error(
+              JSON.stringify({
+                msg: "icp_reddit_source_failed",
+                message: err instanceof Error ? err.message : String(err),
+              }),
+            );
+            return [] as IcpItem[];
+          })
+        : ([] as IcpItem[]),
       deps.ghToken
         ? fetchGitHubIssues(fetcher, deps.ghToken, sevenDaysAgoUnix, tracer).catch((err) => {
             console.error(

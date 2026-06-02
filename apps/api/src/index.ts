@@ -2806,6 +2806,8 @@ async function scheduled(
         logsnagToken: envBindings.LOGSNAG_TOKEN,
         logsnagProject: envBindings.LOGSNAG_PROJECT,
         ghToken: envBindings.GH_TOKEN,
+        redditClientId: envBindings.REDDIT_CLIENT_ID,
+        redditClientSecret: envBindings.REDDIT_CLIENT_SECRET,
       });
       console.info(
         JSON.stringify({
