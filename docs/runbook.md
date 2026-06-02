@@ -84,18 +84,12 @@ re-enable via Cloudflare later).
 | Stripe           | `omer.hochman@gmail.com`  | Test mode (no card)               | Merchant: Switzerland / CHF; descriptor `NLQDB.COM`; webhook secret ⏳ Phase 0 §3 |
 | Grafana Cloud    | `omer.hochman@gmail.com`  | Free                              | Stack `nlqdb` on `us-east-2`, instance `1609127`, access policy `nlqdb-phase0-telemetry` |
 | LogSnag          | `omer.hochman@gmail.com`  | Free (2,500 events/mo)            | Sole sink for `packages/events`; verified end-to-end (first `/v1/ask` produced an event) |
+| Tinybird         | `omer.hochman@gmail.com`  | Free Forever (10 GB, 1k reads/day)| Workspace `omer` (`us-east-1`, Forward). **Dual role:** the ClickHouse engine (`packages/db/clickhouse-tinybird`) **and** the `query_log` events sink (`SK-EVENTS-009`). `query_log` Data Source **live** — deploy datafiles with `scripts/tinybird-deploy.sh`. Worker token scope `DATASOURCE:APPEND` |
 | Docker Hub       | **SKIPPED**               | —                                 | Using `ghcr.io/nlqdb` instead (paid-only org tier) |
 
 **Not yet provisioned**:
 
 - Stripe webhook secret — needs `apps/api` (Phase 0 §3) to host the endpoint.
-- Tinybird (`TINYBIRD_TOKEN`, optional `TINYBIRD_API_BASE`) — Phase 3 /
-  W4. Free Forever tier (10 GB, 1k reads/day; writes don't count). Token
-  scope: `DATASOURCE:APPEND` on the `query_log` Data Source. Tinybird
-  auths by token alone — the workspace is implicit in the token's scope.
-  Provision the Data Source from
-  `infrastructure/tinybird/datasources/query_log.datasource` before
-  flipping the secrets on (see `SK-EVENTS-009`).
 
 **Explicitly deferred** (re-evaluate if a real cohort question lands):
 
