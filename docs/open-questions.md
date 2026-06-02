@@ -4,4 +4,6 @@
 
 ## Blocking for human
 
+- (#300) After `deploy-web.yml` ships `apps/web/dist`, run `bash scripts/verify-flows.sh` against `https://nlqdb.com` to confirm `/vs/askyourdatabase/` resolves (pre-deploy it returns the 4 expected 404/floor failures). Post-deploy = inherently after-merge; not a CI gate.
+- (#300) `apps/api smoke` CI job is red due to the Neon Free-plan 10-branch quota (HTTP 422 on branch create), not PR content. Prune stale closed-PR Neon branches (`pr-125`, `pr-197`, `pr-208`) so the smoke job can go green; this needs operator access to the Neon project.
 - (#297) Configure the `GROQ_API_KEY` repository secret (the app LLM key for the opencheck preview worker). Without it the `E2E (opencheck)` workflow still deploys but every `/v1/ask` + NL db-create call hangs (240s timeout). Set it in repo Settings → Secrets → Actions for the e2e web journey to pass.
