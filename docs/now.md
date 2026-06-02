@@ -47,11 +47,16 @@ lane was blocked on has landed:
 [`GLOBAL-031`](./decisions/GLOBAL-031-byo-secret-envelope.md)'s
 `apps/api/src/secret-envelope.ts` — one AES-256-GCM envelope + one
 Workers-held KEK (`BYO_SECRET_KEK`), AAD-bound per owner — is the shared
-seal for both BYOLLM keys and BYO Postgres/ClickHouse URLs. Next:
-account-stored credential resolution (`api_keys.scope = "byollm"`
-`sealSecret`/`openSecret` + the `/v1/keys/byollm` endpoints),
-premium-eligibility, and `GLOBAL-003`
-surface parity (MCP / elements + `/app/keys`) — tracked in
+seal for both BYOLLM keys and BYO Postgres/ClickHouse URLs. The
+account-stored lane now rides it
+([`SK-PREMIUM-012`](./features/premium-tier/decisions/SK-PREMIUM-012-account-stored-byollm-storage.md)):
+an `api_keys` `scope = "byollm"` row (sealed envelope in `key_hash`, context
+`byollm:<tenantId>`, one per account), session-only
+`POST/GET/DELETE /v1/keys/byollm`, and the `/v1/ask` step-2 resolution
+(`resolveAskRouter`'s `accountCredential`, fail-loud on an unopenable blob;
+`llm.byollm_source ∈ {header, account}`).
+Next: premium-eligibility, and `GLOBAL-003` surface parity (MCP `byollm`
+param, SDK/CLI store verbs, elements + `/app/keys`) — tracked in
 [`premium-tier/FEATURE.md`](./features/premium-tier/FEATURE.md) Open questions
 per [`GLOBAL-003`](./decisions/GLOBAL-003-all-surfaces-one-pr.md).
 

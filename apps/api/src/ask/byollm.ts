@@ -6,11 +6,12 @@
 // pipeline runs on, so the wire format and the signed-in-only gate live
 // in one tested place rather than inline in the route handler.
 //
-// Scope: header lane only. Account-stored keys (`api_keys.scope="byollm"`,
-// KEK-decrypt) and the hosted-premium chain (`SK-LLM-017`, dark pre-§6)
-// are not wired here — both stay on the free router. Surface parity
-// (SDK/CLI/MCP/elements) is tracked as a gap in `premium-tier/FEATURE.md`
-// per `GLOBAL-003`.
+// Scope: header lane (parse) + the free/header/account router resolution.
+// The account-stored credential is loaded + decrypted by
+// `byollm-account.ts` (KEK-decrypt) and passed in here; the hosted-premium
+// chain (`SK-LLM-017`, dark pre-§6) still stays on the free router. Surface
+// parity (SDK/CLI/MCP/elements) is tracked as a gap in
+// `premium-tier/FEATURE.md` per `GLOBAL-003`.
 
 import {
   type ByollmCredential,
@@ -83,20 +84,26 @@ export type ResolveAskRouterResult =
   // request is well-formed, the platform just can't serve the lane).
   | { ok: false; reason: "gateway_unconfigured" };
 
-// Resolve the ask-pipeline router from the per-request credential.
-// Header credential → BYOLLM router through the user's own key; otherwise
-// the free router. (Account-stored + premium lanes aren't wired this
-// slice; `selectDispatchLane` still owns the precedence so adding them is
-// a one-field change.) Returns the redacted `llm.dispatch_lane` span
-// attributes alongside, so the caller annotates the existing ask span
-// without a second source of truth. Pure + I/O-free.
+// Resolve the ask-pipeline router from the resolved credentials.
+// Precedence (SK-LLM-016, applied by `selectDispatchLane`): per-request
+// header key → account-stored key → free router. A BYOLLM lane (either
+// source) dispatches through the user's own key; otherwise the free
+// router. (The premium lane isn't wired this slice; `selectDispatchLane`
+// still owns the full precedence.) Returns the redacted `llm.dispatch_lane`
+// span attributes alongside, so the caller annotates the existing ask span
+// without a second source of truth. Pure + I/O-free — the caller resolves
+// and decrypts the account credential before calling.
 export function resolveAskRouter(args: {
   headerCredential: ByollmCredential | null;
+  accountCredential?: ByollmCredential | null;
   freeRouter: LLMRouter;
   gateway: { accountId?: string; gatewayId?: string };
   userId: string;
 }): ResolveAskRouterResult {
-  const selection = selectDispatchLane({ headerCredential: args.headerCredential });
+  const selection = selectDispatchLane({
+    headerCredential: args.headerCredential,
+    accountCredential: args.accountCredential ?? null,
+  });
   const attributes = dispatchLaneAttributes(selection);
   if (selection.lane !== "byollm") {
     return { ok: true, router: args.freeRouter, attributes };

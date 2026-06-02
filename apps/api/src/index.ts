@@ -56,6 +56,12 @@ import type { AskError, OrchestrateEvent, SelectedDbEcho } from "./ask/types.ts"
 import { listInbox } from "./auth/mock-email-sink.ts";
 import { handleMockSignIn, mockSignInFormHtml } from "./auth/mock-idp.ts";
 import { auth, REVOCATION_KEY_PREFIX } from "./auth.ts";
+import {
+  byollmStatus,
+  clearByollmCredential,
+  loadByollmCredential,
+  storeByollmCredential,
+} from "./byollm-account.ts";
 import { askFnFromDemoFixtures, DEMO_DB_ID } from "./chat/demo-shortcut.ts";
 import { postChatMessage } from "./chat/orchestrate.ts";
 import { makeChatStore } from "./chat/store.ts";
@@ -834,8 +840,35 @@ app.post("/v1/ask", requirePrincipal, gatePreAlpha, async (c) => {
     // Lane span attributes are stamped on the query path only (below), so
     // the create branches — which keep the free DDL router — aren't
     // mislabelled.
+    // SK-LLM-016 step 2 — account-stored BYOLLM key. Only when the request
+    // carried no header key (step 1 wins) and the principal is a signed-in
+    // user (a stored key is decryptable, so it must ride a first-party
+    // session, same threat model as the header lane). One indexed D1 read +
+    // a decrypt; a stored-but-unopenable key fails loud (GLOBAL-012) rather
+    // than silently dropping to the free chain (SK-PREMIUM-008 point 6).
+    let accountCredential: ByollmCredential | null = null;
+    if (!byollmCredential && principal.kind === "user") {
+      try {
+        accountCredential = await loadByollmCredential(c.env.DB, c.env, principal.id);
+      } catch {
+        span.setAttribute("nlqdb.ask.outcome", "byollm_unavailable");
+        span.end();
+        return c.json(
+          {
+            error: {
+              status: "byollm_unavailable" as const,
+              message:
+                "Your stored BYOLLM key could not be unsealed; re-add it under your account keys.",
+            },
+          },
+          503,
+        );
+      }
+    }
+
     const routing = resolveAskRouter({
       headerCredential: byollmCredential,
+      accountCredential,
       freeRouter: getLLMRouter(),
       gateway: { accountId: c.env.AI_GATEWAY_ACCOUNT_ID, gatewayId: c.env.AI_GATEWAY_ID },
       userId: principal.id,
@@ -848,7 +881,7 @@ app.post("/v1/ask", requirePrincipal, gatePreAlpha, async (c) => {
           error: {
             status: "byollm_unavailable" as const,
             message:
-              "BYOLLM is not configured on this deployment; remove the x-nlq-byollm-key header to use the built-in models.",
+              "BYOLLM is not configured on this deployment; the built-in models are still available.",
           },
         },
         503,
@@ -1713,6 +1746,142 @@ app.get("/v1/keys", requireSession, async (c) => {
       span.recordException(e);
       span.setStatus({ code: SpanStatusCode.ERROR, message: e.message });
       span.setAttribute("nlqdb.keys.list.outcome", "internal_error");
+      return c.json({ error: "internal_error" }, 500);
+    } finally {
+      span.end();
+    }
+  });
+});
+
+// `/v1/keys/byollm` — account-stored BYOLLM credential (SK-PREMIUM-008,
+// SK-PREMIUM-012). Session-only (a decryptable key must ride a first-party
+// session, never a leakable bearer key — same threat model as the
+// `x-nlq-byollm-key` header lane and the mint route). Registered before
+// `/v1/keys/:id` so the static `byollm` segment wins over the param route.
+// One credential per account: POST upserts, DELETE clears.
+//
+// `Idempotency-Key` (GLOBAL-005): both mutations are idempotent by
+// construction — POST upserts by tenant and its response carries no
+// volatile field (provider/model/last4 only), so a retry returns the same
+// body byte-for-byte; DELETE is terminal. No dedup store is needed. The
+// header is already CORS-allowed.
+app.post("/v1/keys/byollm", requireSession, async (c) => {
+  const tracer = trace.getTracer("@nlqdb/api");
+  return tracer.startActiveSpan("nlqdb.keys.byollm.set", async (span) => {
+    try {
+      const session = c.var.session;
+      span.setAttribute("nlqdb.user.id", session.user.id);
+      const raw = await parseJsonBody<{ provider?: unknown; model?: unknown; key?: unknown }>(c);
+      if (!raw.ok) {
+        span.setAttribute("nlqdb.keys.byollm.set.outcome", "invalid_json");
+        return c.json({ error: "invalid_json" }, 400);
+      }
+      const provider = typeof raw.body.provider === "string" ? raw.body.provider : "";
+      const model = typeof raw.body.model === "string" ? raw.body.model : "";
+      const key = typeof raw.body.key === "string" ? raw.body.key : "";
+      const result = await storeByollmCredential(c.env.DB, c.env, session.user.id, {
+        provider,
+        model,
+        apiKey: key,
+      });
+      if (!result.ok) {
+        span.setAttribute("nlqdb.keys.byollm.set.outcome", result.reason);
+        if (result.reason === "kek_unconfigured") {
+          return c.json(
+            {
+              error: {
+                status: "byollm_unavailable" as const,
+                message: "BYOLLM key storage is not configured on this deployment.",
+              },
+            },
+            503,
+          );
+        }
+        return c.json(
+          { error: { status: "invalid_byollm_key" as const, message: result.message } },
+          400,
+        );
+      }
+      // The provider slug is the only bounded value worth a span attribute;
+      // the model rides `llm.model` on the dispatch span, the key never does.
+      span.setAttribute("nlqdb.keys.byollm.set.outcome", "ok");
+      span.setAttribute("llm.byollm_provider", result.provider);
+      return c.json({
+        configured: true,
+        provider: result.provider,
+        model: result.model,
+        last4: result.last4,
+      });
+    } catch (err) {
+      const e = err as Error;
+      span.recordException(e);
+      span.setStatus({ code: SpanStatusCode.ERROR, message: e.message });
+      span.setAttribute("nlqdb.keys.byollm.set.outcome", "internal_error");
+      return c.json({ error: "internal_error" }, 500);
+    } finally {
+      span.end();
+    }
+  });
+});
+
+// `GET /v1/keys/byollm` — status only; never returns the key or the sealed
+// blob (`last4` is the display field, SK-APIKEYS-002). `configured: false`
+// with no `credential` is the empty state, distinct from a 503 platform gap.
+app.get("/v1/keys/byollm", requireSession, async (c) => {
+  const tracer = trace.getTracer("@nlqdb/api");
+  return tracer.startActiveSpan("nlqdb.keys.byollm.status", async (span) => {
+    try {
+      const session = c.var.session;
+      span.setAttribute("nlqdb.user.id", session.user.id);
+      const result = await byollmStatus(c.env.DB, c.env, session.user.id);
+      if (!result.ok) {
+        span.setAttribute("nlqdb.keys.byollm.status.outcome", "kek_unconfigured");
+        return c.json(
+          {
+            error: {
+              status: "byollm_unavailable" as const,
+              message: "BYOLLM key storage is not configured on this deployment.",
+            },
+          },
+          503,
+        );
+      }
+      span.setAttribute("nlqdb.keys.byollm.status.outcome", "ok");
+      span.setAttribute("nlqdb.keys.byollm.configured", result.status !== null);
+      return c.json(
+        result.status === null
+          ? { configured: false }
+          : { configured: true, credential: result.status },
+      );
+    } catch (err) {
+      const e = err as Error;
+      span.recordException(e);
+      span.setStatus({ code: SpanStatusCode.ERROR, message: e.message });
+      span.setAttribute("nlqdb.keys.byollm.status.outcome", "internal_error");
+      return c.json({ error: "internal_error" }, 500);
+    } finally {
+      span.end();
+    }
+  });
+});
+
+// `DELETE /v1/keys/byollm` — hard-clear the stored credential (the sealed
+// blob is removed, the instant-revocation GLOBAL-018 wants). Idempotent:
+// `cleared: false` when there was nothing to clear.
+app.delete("/v1/keys/byollm", requireSession, async (c) => {
+  const tracer = trace.getTracer("@nlqdb/api");
+  return tracer.startActiveSpan("nlqdb.keys.byollm.clear", async (span) => {
+    try {
+      const session = c.var.session;
+      span.setAttribute("nlqdb.user.id", session.user.id);
+      const { cleared } = await clearByollmCredential(c.env.DB, session.user.id);
+      span.setAttribute("nlqdb.keys.byollm.clear.outcome", cleared ? "cleared" : "absent");
+      return c.json({ ok: true, cleared });
+    } catch (err) {
+      const e = err as Error;
+      span.recordException(e);
+      span.setStatus({ code: SpanStatusCode.ERROR, message: e.message });
+      span.setAttribute("nlqdb.keys.byollm.clear.outcome", "internal_error");
       return c.json({ error: "internal_error" }, 500);
     } finally {
       span.end();
