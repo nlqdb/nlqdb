@@ -22,6 +22,8 @@ Parent feature: [`premium-tier/FEATURE.md`](../FEATURE.md). Parent GLOBAL:
   3. **Storage** — encrypted blob in `api_keys` + KEK in Workers Secret;
      revocation instant per
      [`GLOBAL-018`](../../../decisions/GLOBAL-018-instant-revocation.md).
+     Row schema (envelope in `key_hash`, `scope = "byollm"`) pinned by
+     [`SK-PREMIUM-012`](./SK-PREMIUM-012-account-stored-byollm-storage.md).
   4. **Spend cap** — BYOLLM bypasses *our* cap (we don't bill it); emits
      `nlqdb.byollm.spend_estimate_usd_cents` so the dashboard shows
      estimated cost.
@@ -35,8 +37,8 @@ Parent feature: [`premium-tier/FEATURE.md`](../FEATURE.md). Parent GLOBAL:
   8. **MCP** — server-side only; MCP hosts opt requests into BYOLLM via
      a `byollm: true` tool parameter, never carry the key.
 - **Consequence in code:** Migration adds `api_keys.scope = "byollm"` +
-  `api_keys.provider`. Endpoints `POST/GET/DELETE /v1/keys/byollm`
-  accept `Idempotency-Key` per
+  `api_keys.provider` (row schema in `SK-PREMIUM-012`). Endpoints
+  `POST/GET/DELETE /v1/keys/byollm` accept `Idempotency-Key` per
   [`GLOBAL-005`](../../../decisions/GLOBAL-005-idempotency-key.md).
   Surface parity per
   [`GLOBAL-003`](../../../decisions/GLOBAL-003-all-surfaces-one-pr.md):

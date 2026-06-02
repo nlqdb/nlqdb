@@ -203,9 +203,12 @@ export type KeyRecord = {
 export async function listKeysByTenant(d1: D1Database, tenantId: string): Promise<KeyRecord[]> {
   const res = await d1
     .prepare(
+      // `scope = "byollm"` rows are managed via `/v1/keys/byollm`, not the
+      // bearer-key list — excluded so a provider key's last-4 never shows
+      // up among the minted `pk_*`/`sk_*` keys (SK-PREMIUM-012).
       "SELECT id, key_type, last_4, name, db_id, mcp_host, device_id, " +
         "last_used_at, created_at, revoked_at FROM api_keys " +
-        "WHERE tenant_id = ? " +
+        "WHERE tenant_id = ? AND key_type != 'byollm' " +
         "ORDER BY (revoked_at IS NOT NULL), created_at DESC",
     )
     .bind(tenantId)

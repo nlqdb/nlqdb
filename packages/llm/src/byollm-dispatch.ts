@@ -117,7 +117,8 @@ export function buildByollmRouter(opts: ByollmRouterOptions): LLMRouter {
 // apps/api on the ask-pipeline span. Value sets pinned by GLOBAL-026:
 // `llm.billed_to ∈ {platform, byollm, metered}`. `llm.byollm_provider`
 // is the AI Gateway upstream slug (~5 values), NOT the model (which
-// rides `llm.model`), so cardinality stays bounded (performance.md §3.3).
+// rides `llm.model`); `llm.byollm_source ∈ {header, account}` — both
+// bounded, so cardinality stays low (performance.md §3.3).
 export function dispatchLaneAttributes(sel: DispatchSelection): Record<string, string> {
   switch (sel.lane) {
     case "byollm":
@@ -125,6 +126,7 @@ export function dispatchLaneAttributes(sel: DispatchSelection): Record<string, s
         "llm.dispatch_lane": "byollm",
         "llm.billed_to": "byollm",
         "llm.byollm_provider": sel.credential.upstream,
+        "llm.byollm_source": sel.source,
       };
     case "premium":
       return { "llm.dispatch_lane": "premium", "llm.billed_to": "metered" };

@@ -43,14 +43,24 @@ describe("selectDispatchLane (SK-LLM-016 precedence)", () => {
 });
 
 describe("dispatchLaneAttributes", () => {
-  it("byollm: lane + billed_to=byollm + upstream slug, never the key", () => {
+  it("byollm: lane + billed_to=byollm + upstream slug + source, never the key", () => {
     const attrs = dispatchLaneAttributes({ lane: "byollm", credential: header, source: "header" });
     expect(attrs).toEqual({
       "llm.dispatch_lane": "byollm",
       "llm.billed_to": "byollm",
       "llm.byollm_provider": "anthropic",
+      "llm.byollm_source": "header",
     });
     expect(JSON.stringify(attrs)).not.toContain("sk-header");
+  });
+
+  it("byollm: source reflects the account lane when the credential is account-stored", () => {
+    const attrs = dispatchLaneAttributes({
+      lane: "byollm",
+      credential: account,
+      source: "account",
+    });
+    expect(attrs["llm.byollm_source"]).toBe("account");
   });
 
   it("premium → metered, free → platform (GLOBAL-026 taxonomy)", () => {

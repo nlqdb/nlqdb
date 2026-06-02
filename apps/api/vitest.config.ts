@@ -123,6 +123,8 @@ export default defineConfig(async () => {
               "test/magic-link.test.ts",
               "test/errors-web.test.ts",
               "test/keys-mint.test.ts",
+              "test/byollm-account.test.ts",
+              "test/byollm-endpoints.test.ts",
               "test/databases-delete.test.ts",
               "test/run.test.ts",
             ],

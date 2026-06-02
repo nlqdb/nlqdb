@@ -10,7 +10,7 @@ when-to-load:
 # Feature: Llm Router
 
 **One-liner:** Model selection, fallback chain, prompt strategy, per-user credit accounting; three permanent dispatch lanes per [`GLOBAL-026`](../../decisions/GLOBAL-026-llm-strategy-byollm-hosted-premium.md) — free chain, BYOLLM, hosted-premium.
-**Status:** implemented for the free chain (`SK-LLM-001..015` + `SK-LLM-018`). BYOLLM (`SK-LLM-016`) is partial — provider factory (`SK-LLM-019`) + lane selector / single-provider lane router (`SK-LLM-020`) ship, and the per-request `x-nlq-byollm-key` header lane is now wired on the HTTP `/v1/ask` surface (`SK-LLM-021`); account-stored-key resolution + `GLOBAL-003` surface parity remain pending (tracked in `premium-tier/FEATURE.md` Open questions). `SK-LLM-017` (hosted-premium chain) lands in Phase 2 alongside `quality-eval`; the premium-chain meter stays dark until [`phase-plan.md §6`](../../phase-plan.md) trips.
+**Status:** implemented for the free chain (`SK-LLM-001..015` + `SK-LLM-018`). BYOLLM (`SK-LLM-016`) is partial — provider factory (`SK-LLM-019`) + lane selector / single-provider lane router (`SK-LLM-020`) ship, the per-request `x-nlq-byollm-key` header lane is wired on HTTP `/v1/ask` (`SK-LLM-021`), and the account-stored lane (step 2) now resolves on `/v1/ask` via `api_keys` `scope = "byollm"` ([`SK-PREMIUM-012`](../premium-tier/decisions/SK-PREMIUM-012-account-stored-byollm-storage.md)); `GLOBAL-003` surface parity (MCP/SDK/CLI/elements/`/app/keys`) remains pending (tracked in `premium-tier/FEATURE.md` Open questions). `SK-LLM-017` (hosted-premium chain) lands in Phase 2 alongside `quality-eval`; the premium-chain meter stays dark until [`phase-plan.md §6`](../../phase-plan.md) trips.
 
 **Contribution to north-star:** Engine quality — the router is the NL→SQL accuracy lever per [`GLOBAL-025`](../../decisions/GLOBAL-025-north-star.md). Free-chain scaffolding compounds when BYOLLM or hosted-premium swaps in a frontier model; `quality-eval`'s free-vs-frontier delta measures the compounding.
 
@@ -101,7 +101,7 @@ Four-step dispatch precedence per `GLOBAL-026`: per-request `x-nlq-byollm-key` h
 ### SK-LLM-020 — BYOLLM lane selector + single-provider lane router
 
 **Body:** [`decisions/SK-LLM-020-byollm-lane-selector.md`](./decisions/SK-LLM-020-byollm-lane-selector.md).
-`byollm-dispatch.ts` adds three pure primitives: `selectDispatchLane` (the single source of truth for `SK-LLM-016`'s header→account→premium→free precedence), `buildByollmRouter` (single-provider lane router — no free-chain failover, fail-loud per `GLOBAL-012`), and `dispatchLaneAttributes` (bounded `llm.dispatch_lane` / `llm.billed_to` / `llm.byollm_provider` span attributes, key redacted). The package stays free of header/DB/KEK access; `GLOBAL-003` surface parity stays deferred to the dispatch-wiring PR.
+`byollm-dispatch.ts` adds three pure primitives: `selectDispatchLane` (the single source of truth for `SK-LLM-016`'s header→account→premium→free precedence), `buildByollmRouter` (single-provider lane router — no free-chain failover, fail-loud per `GLOBAL-012`), and `dispatchLaneAttributes` (bounded `llm.dispatch_lane` / `llm.billed_to` / `llm.byollm_provider` / `llm.byollm_source` span attributes, key redacted). The package stays free of header/DB/KEK access; `GLOBAL-003` surface parity stays deferred to the dispatch-wiring PR.
 
 ### SK-LLM-021 — BYOLLM header wiring on `/v1/ask`: signed-in-only `x-nlq-byollm-key`, fail-loud, free-router fallthrough
 
