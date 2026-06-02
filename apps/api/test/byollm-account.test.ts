@@ -8,7 +8,7 @@
 
 import { env } from "cloudflare:test";
 import { afterEach, describe, expect, it } from "vitest";
-import { listKeysByTenant } from "../src/api-keys.ts";
+import { listKeysByTenant, revokeKeyById } from "../src/api-keys.ts";
 import {
   byollmStatus,
   clearByollmCredential,
@@ -57,6 +57,33 @@ describe("storeByollmCredential", () => {
     });
     const keys = await listKeysByTenant(env.DB, "t1b");
     expect(keys).toEqual([]); // managed via /v1/keys/byollm, not the key list
+  });
+
+  it("can't be revoked through the bearer-key revoke surface (defense-in-depth)", async () => {
+    await storeByollmCredential(env.DB, KEK, "t1c", {
+      provider: "openai",
+      model: "gpt-5.2",
+      apiKey: KEY,
+    });
+    const id = (
+      await env.DB.prepare(
+        "SELECT id FROM api_keys WHERE tenant_id = 't1c' AND key_type = 'byollm'",
+      ).first<{ id: string }>()
+    )?.id;
+    expect(id).toBeTruthy();
+    // `revokeKeyById` filters `key_type != 'byollm'`, so it can't touch the row.
+    expect(await revokeKeyById(env.DB, "t1c", id as string)).toBe("not_found");
+    expect(await loadByollmCredential(env.DB, KEK, "t1c")).not.toBeNull();
+  });
+
+  it("rejects a blank provider with the required-fields message", async () => {
+    const res = await storeByollmCredential(env.DB, KEK, "t1d", {
+      provider: "  ",
+      model: "gpt-5.2",
+      apiKey: KEY,
+    });
+    expect(res.ok).toBe(false);
+    if (!res.ok && res.reason === "invalid") expect(res.message).toContain("are all required");
   });
 
   it("lower-cases the provider slug and round-trips the exact key on load", async () => {

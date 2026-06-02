@@ -75,7 +75,7 @@ export async function storeByollmCredential(
   const provider = input.provider.trim().toLowerCase();
   const model = input.model.trim();
   const apiKey = input.apiKey.trim();
-  if (model === "" || apiKey === "") {
+  if (provider === "" || model === "" || apiKey === "") {
     return { ok: false, reason: "invalid", message: "provider, model, and key are all required." };
   }
   if (!SUPPORTED.has(provider)) {

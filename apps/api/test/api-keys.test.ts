@@ -386,7 +386,10 @@ describe("revokeKeyById", () => {
     expect(outcome).toBe("revoked");
     expect(updates).toHaveLength(1);
     expect(updates[0]?.sql).toContain("UPDATE api_keys SET revoked_at = unixepoch()");
-    expect(updates[0]?.sql).toContain("WHERE id = ? AND tenant_id = ? AND revoked_at IS NULL");
+    expect(updates[0]?.sql).toContain("WHERE id = ? AND tenant_id = ?");
+    // BYOLLM rows are managed via /v1/keys/byollm, never this bearer surface.
+    expect(updates[0]?.sql).toContain("key_type != 'byollm'");
+    expect(updates[0]?.sql).toContain("revoked_at IS NULL");
     expect(updates[0]?.params).toEqual(["k_1", "u_alice"]);
   });
 

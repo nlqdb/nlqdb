@@ -257,16 +257,21 @@ export async function revokeKeyById(
   tenantId: string,
   keyId: string,
 ): Promise<RevokeOutcome> {
+  // `key_type != 'byollm'` keeps this bearer-key revoke surface from ever
+  // touching a stored BYOLLM credential (those are managed via
+  // `DELETE /v1/keys/byollm`); defense-in-depth, not just id non-disclosure.
   const upd = await d1
     .prepare(
       "UPDATE api_keys SET revoked_at = unixepoch() " +
-        "WHERE id = ? AND tenant_id = ? AND revoked_at IS NULL",
+        "WHERE id = ? AND tenant_id = ? AND key_type != 'byollm' AND revoked_at IS NULL",
     )
     .bind(keyId, tenantId)
     .run();
   if (upd.meta.changes === 1) return "revoked";
   const row = await d1
-    .prepare("SELECT 1 AS hit FROM api_keys WHERE id = ? AND tenant_id = ?")
+    .prepare(
+      "SELECT 1 AS hit FROM api_keys WHERE id = ? AND tenant_id = ? AND key_type != 'byollm'",
+    )
     .bind(keyId, tenantId)
     .first<{ hit: number }>();
   return row ? "already_revoked" : "not_found";
