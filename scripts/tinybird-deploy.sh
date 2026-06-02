@@ -12,7 +12,8 @@
 # Requires the workspace admin token (DATASOURCES:CREATE) — NOT the
 # DATASOURCE:APPEND token the worker runs with:
 #   TINYBIRD_TOKEN     — admin token (required)
-#   TINYBIRD_API_BASE  — regional API host (optional; EU gateway default)
+#   TINYBIRD_API_BASE  — regional API host (optional; defaults to the
+#                        global gateway https://api.tinybird.co)
 #
 # Pass --check for a dry-run validation that applies nothing.
 set -euo pipefail
