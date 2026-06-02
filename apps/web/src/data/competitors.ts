@@ -508,10 +508,10 @@ export const COMPETITORS: Competitor[] = [
     name: "AskYourDatabase",
     url: "https://askyourdatabase.com",
     tagline:
-      "Chat-style AI Data Analyst over an existing database — Desktop App for internal-tool use and an embeddable Website Chatbot for customer-facing BI, across BigQuery, Snowflake, MSSQL, MySQL, and PostgreSQL.",
+      "Chat-style AI Data Analyst over an existing database — Desktop App for internal-tool use and an embeddable Website Chatbot for customer-facing BI, across BigQuery, MSSQL, MySQL, PostgreSQL, and Snowflake.",
     persona: "P3 analyst",
     oneLiner:
-      "Pick AskYourDatabase if you already run BigQuery, PostgreSQL, MySQL, MSSQL, or Snowflake and want a chat assistant — desktop or embedded — answering English questions over that warehouse with charts and a dashboard builder. Pick nlqdb if you want the database itself provisioned, schema evolved via English, and answers rendered inside your product from one HTML element.",
+      "Pick AskYourDatabase if you already run BigQuery, MSSQL, MySQL, PostgreSQL, or Snowflake and want a chat assistant — desktop or embedded — answering English questions over that warehouse with charts and a dashboard builder. Pick nlqdb if you want the database itself provisioned, schema evolved via English, and answers rendered inside your product from one HTML element.",
     whenChooseUs: [
       "You need the database itself — nlqdb provisions Postgres on the first query.",
       "An AI agent should provision and migrate its own database via MCP.",
@@ -519,7 +519,7 @@ export const COMPETITORS: Competitor[] = [
       "You want one HTML element rendering the answer in-product, not a chatbot widget.",
     ],
     whenChooseThem: [
-      "You already run BigQuery, Snowflake, MSSQL, MySQL, or Postgres and can't migrate.",
+      "You already run BigQuery, MSSQL, MySQL, PostgreSQL, or Snowflake and can't migrate.",
       "Credentials must stay on a local machine — their Desktop App never uploads them.",
       "Your team needs a customer-facing BI chatbot with built-in dashboard builder and embedding.",
       "On-premise deployment is required — their Enterprise plan ships that today.",
@@ -545,10 +545,10 @@ export const COMPETITORS: Competitor[] = [
         note: "AskYourDatabase sanitises AI-generated SQL and recommends a read-only DB user for SELECT-only workloads; a per-operation diff preview the user confirms is unique to nlqdb.",
       },
       {
-        feature: "MCP server with provisioning verbs",
+        feature: "MCP server (agent-callable)",
         us: "shipped",
         them: "no",
-        note: "AskYourDatabase ships REST APIs (Ask, Messages, New Chat); no MCP `create_database` primitive today.",
+        note: "nlqdb's MCP server exposes `nlqdb_query`, `nlqdb_list_databases`, `nlqdb_describe` — `nlqdb_query` materialises Postgres on first reference, no separate create-DB tool needed. AskYourDatabase ships REST APIs (Ask, Messages, New Chat); no MCP surface today.",
       },
       {
         feature: "Embeddable HTML in product",
@@ -570,16 +570,10 @@ export const COMPETITORS: Competitor[] = [
       },
       { feature: "Anonymous mode (try before sign-in)", us: "shipped", them: "no" },
       {
-        feature: "Free tier (unmetered NL queries)",
-        us: "shipped",
-        them: "no",
-        note: "AskYourDatabase's pricing page lists paid Desktop / Website Chatbot / Enterprise plans with monthly question caps; nlqdb's free chain (Groq → Gemini) is rate-limited per principal, not per question/month.",
-      },
-      {
         feature: "SOC 2 Type 2 certification",
         us: "no",
         them: "partial",
-        note: "AskYourDatabase's public security portal documents an in-progress SOC 2 Type 2 audit with the first complete report anticipated December 2025; check their current security page for the latest status. nlqdb is pre-alpha and carries neither SOC 2 nor HIPAA today.",
+        note: "AskYourDatabase's public security portal documents an in-progress SOC 2 Type 2 audit, originally anticipated to complete December 2025 — check their current security page for the live status. nlqdb is pre-alpha and carries neither SOC 2 nor HIPAA today.",
       },
       {
         feature: "On-premise / self-hosted deployment",
@@ -591,7 +585,7 @@ export const COMPETITORS: Competitor[] = [
     faqs: [
       {
         q: "Can I keep my existing Postgres or MySQL database and use AskYourDatabase the way I'd use nlqdb?",
-        a: "AskYourDatabase is built for that case — you point the Desktop App or Website Chatbot at an existing warehouse (BigQuery, Snowflake, PostgreSQL, MySQL, MSSQL) and the product does not provision anything new. nlqdb today owns the database it queries; bring-your-own-Postgres is on the roadmap, not shipped. If your data already lives in BigQuery or Snowflake, AskYourDatabase is the right shape; if you're starting from zero or want an AI agent to stand the database up, nlqdb is.",
+        a: "AskYourDatabase is built for that case — you point the Desktop App or Website Chatbot at an existing warehouse (BigQuery, MSSQL, MySQL, PostgreSQL, Snowflake) and the product does not provision anything new. nlqdb today owns the database it queries; bring-your-own-Postgres is on the roadmap, not shipped. If your data already lives in BigQuery or Snowflake, AskYourDatabase is the right shape; if you're starting from zero or want an AI agent to stand the database up, nlqdb is.",
       },
       {
         q: "How does AskYourDatabase's chatbot embed compare to nlqdb's `<nlq-data>` element?",
@@ -599,11 +593,11 @@ export const COMPETITORS: Competitor[] = [
       },
       {
         q: "Is AskYourDatabase SOC 2 certified?",
-        a: "As of May 2026, AskYourDatabase's public security portal documents that the SOC 2 Type 2 audit process has been initiated with the first complete report anticipated December 2025; check their current security page for the up-to-date status. nlqdb is pre-alpha and carries neither SOC 2 nor HIPAA today. If a documented compliance posture is required, their Enterprise on-premise deployment may also be relevant — it keeps the data inside your network perimeter.",
+        a: "AskYourDatabase's public security portal (verified June 2026) documents an in-progress SOC 2 Type 2 audit, originally anticipated to complete December 2025 — the certification is not yet attested on the free product, and the live security page is the source of truth for the current status. nlqdb is pre-alpha and carries neither SOC 2 nor HIPAA today. If a documented compliance posture is required, their Enterprise on-premise deployment may also be relevant — it keeps the data inside your network perimeter.",
       },
       {
         q: "Can an AI agent provision its own database with AskYourDatabase the way it can with nlqdb's MCP server?",
-        a: "AskYourDatabase exposes REST APIs (Ask API, Messages API, New Chat API) over an already-connected database — an agent can drive the chatbot but cannot stand up the underlying warehouse. nlqdb's MCP server (`mcp.nlqdb.com`) exposes `create_database`, `ask`, and `run`, so a Claude / Cursor / Cline agent stands up its own Postgres plus schema end-to-end without a human in the loop.",
+        a: "AskYourDatabase exposes REST APIs (Ask API, Messages API, New Chat API) over an already-connected database — an agent can drive the chatbot but cannot stand up the underlying warehouse. nlqdb's MCP server (`mcp.nlqdb.com`) exposes `nlqdb_query`, `nlqdb_list_databases`, and `nlqdb_describe`; `nlqdb_query` materialises Postgres plus schema on first reference (no separate create-DB verb the agent has to learn), so a Claude / Cursor / Cline agent stands up its own data layer end-to-end without a human in the loop.",
       },
       {
         q: "What about destructive SQL — does AskYourDatabase preview the operation before it runs?",
