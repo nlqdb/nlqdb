@@ -1,0 +1,7 @@
+# Open questions — human action queue
+
+> The single file the founder reads. Only items that genuinely need a human: actions a human must take, or decisions an agent could not make even after web-research + consulting the codebase's core values. Keep each a very short bullet. Delete a bullet once resolved.
+
+## Blocking for human
+
+- (#295) Set `REDDIT_CLIENT_ID` / `REDDIT_CLIENT_SECRET` Worker secrets (Reddit app-only OAuth needs manual app approval per Reddit's Nov-2025 policy) — until then the ICP scraper self-skips Reddit, losing the primary P1/P3 signal vein (SK-ICP-011).
