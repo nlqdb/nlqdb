@@ -4,7 +4,8 @@
 // "external call" in the `GLOBAL-014` sense, so no separate span.
 
 import type { NlqSurface } from "@nlqdb/events";
-import { trace } from "@opentelemetry/api";
+import { gateChecksTotal } from "@nlqdb/otel";
+import { type Span, trace } from "@opentelemetry/api";
 import type { MiddlewareHandler } from "hono";
 import { buildEventEmitter } from "../events-emitter.ts";
 import type { RequireSessionVariables } from "../middleware.ts";
@@ -67,6 +68,22 @@ function setLaneAttrs(
   }
 }
 
+type GateOutcome = "pass" | "block";
+
+// Records the gate decision in both places it needs to live: the
+// `nlqdb.gate.check` span (per-request debugging) and the
+// `nlqdb.gate.checks.total` counter (SK-GATE-008 — the funnel survives
+// Tempo's 30-day retention so block rate / redemptions stay queryable).
+function recordOutcome(span: Span, outcome: GateOutcome, reason: string, principalKind: string) {
+  span.setAttribute("nlqdb.gate.outcome", outcome);
+  span.setAttribute("nlqdb.gate.bypass_reason", reason);
+  gateChecksTotal().add(1, {
+    outcome,
+    bypass_reason: reason,
+    principal_kind: principalKind,
+  });
+}
+
 export type GateDeps = {
   kv: KVNamespace;
   eventsQueue: Queue | undefined;
@@ -114,11 +131,14 @@ export function makeGatePreAlpha(deps: GateDeps): MiddlewareHandler<{
     const tracer = trace.getTracer("@nlqdb/api");
     return tracer.startActiveSpan("nlqdb.gate.check", async (span) => {
       try {
+        const subject = subjectFromContext(c);
+        const principalKind = subject?.kind ?? "unknown";
+        span.setAttribute("nlqdb.principal.kind", principalKind);
+
         // E2E staging bypass: `--var GATE_OPEN:1` in `_e2e-staging.yml`.
         // MUST remain unset in production (GLOBAL-027 / SK-GATE-003).
         if ((c.env as Cloudflare.Env | undefined)?.GATE_OPEN === "1") {
-          span.setAttribute("nlqdb.gate.outcome", "pass");
-          span.setAttribute("nlqdb.gate.bypass_reason", "env_bypass");
+          recordOutcome(span, "pass", "env_bypass", principalKind);
           return await next();
         }
 
@@ -127,13 +147,9 @@ export function makeGatePreAlpha(deps: GateDeps): MiddlewareHandler<{
         setLaneAttrs(span, "spider", state.spider);
 
         if (state.kind === "open") {
-          span.setAttribute("nlqdb.gate.outcome", "pass");
-          span.setAttribute("nlqdb.gate.bypass_reason", "open");
+          recordOutcome(span, "pass", "open", principalKind);
           return await next();
         }
-
-        const subject = subjectFromContext(c);
-        span.setAttribute("nlqdb.principal.kind", subject?.kind ?? "unknown");
 
         const inviteHeader = c.req.header(INVITE_CODE_HEADER) ?? null;
         const inviteAttempted = (inviteHeader ?? "").trim().length > 0;
@@ -152,20 +168,17 @@ export function makeGatePreAlpha(deps: GateDeps): MiddlewareHandler<{
         }
 
         if (allowlistOutcome.hit) {
-          span.setAttribute("nlqdb.gate.outcome", "pass");
-          span.setAttribute("nlqdb.gate.bypass_reason", "allowlist");
+          recordOutcome(span, "pass", "allowlist", principalKind);
           return await next();
         }
         if (inviteOutcome.hit) {
-          span.setAttribute("nlqdb.gate.outcome", "pass");
-          span.setAttribute("nlqdb.gate.bypass_reason", "invite_code");
+          recordOutcome(span, "pass", "invite_code", principalKind);
           return await next();
         }
 
-        span.setAttribute("nlqdb.gate.outcome", "block");
         // `invite_invalid` is the brute-force-guess signature; operators
         // can alert on a spike per principal.
-        span.setAttribute("nlqdb.gate.bypass_reason", inviteAttempted ? "invite_invalid" : "none");
+        recordOutcome(span, "block", inviteAttempted ? "invite_invalid" : "none", principalKind);
 
         // `SK-GATE-006`. `executionCtx` is absent in unit-test contexts.
         if (subject) {

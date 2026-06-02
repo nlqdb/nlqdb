@@ -196,13 +196,14 @@ Counters (suffix `.total`):
 
 - `nlqdb.requests.total{route, status_class}` — every request.
 - `nlqdb.cache.plan.hits.total` / `nlqdb.cache.plan.misses.total`.
-- `nlqdb.llm.calls.total{provider, operation, status}` — `status ∈ {ok, error, hedge_lost}`. `hedge_lost` (SK-LLM-014) covers cancelled hedge legs; dashboards filter `status="error"` for real failures only.
-- `nlqdb.llm.failover.total{from_provider, to_provider, reason}` — `reason` includes `hedge_lost` (SK-LLM-014, the loser-cancelled signal) on top of the failure reasons.
+- `nlqdb.llm.calls.total{provider, operation, status}` — `status ∈ {ok, error, hedge_lost}` (SK-LLM-014 cancelled hedge legs; filter `status="error"` for real failures).
+- `nlqdb.llm.failover.total{from_provider, to_provider, reason}` — `reason` includes `hedge_lost` (SK-LLM-014) plus the failure reasons.
 - `nlqdb.errors.total{class, route}`.
 - `nlqdb.auth.events.total{type, outcome}` — sign-in / refresh / logout.
-- `nlqdb.events.sink.query_log.failures.total{status_class}` — Tinybird `query_log` write failures (non-2xx HTTP or fetch threw). Used as the trip signal for the events-worker's circuit-breaker (`SK-EVENTS-009`).
+- `nlqdb.events.sink.query_log.failures.total{status_class}` — Tinybird `query_log` write failures (non-2xx or fetch threw). Trip signal for the events-worker circuit-breaker (`SK-EVENTS-009`).
 - `nlqdb.retry.total{stage, reason}` — GLOBAL-022 retries (SK-ASK-013, SK-SDK-008). `stage ∈ {route, plan, exec, sdk}`. Attempts, not requests. Sustained climb = release-blocking.
-- `nlqdb.mcp.auth.failures.total{error_code, status}` — `SK-MCP-009` slice 3c. Hosted-MCP `OAuthProvider` error responses, fired from its `onError` callback. `error_code` ∈ workers-oauth-provider 0.6's set: `invalid_request | invalid_client | invalid_client_metadata | invalid_grant | invalid_target | invalid_token | not_implemented | temporarily_unavailable | unsupported_grant_type`. `status` ∈ {400, 401, 404, 405, 413, 429, 501} (429 fires when the OAuth grants KV store throws `temporarily_unavailable`). Used to distinguish probe traffic from genuine misconfiguration without sampling raw request volume.
+- `nlqdb.gate.checks.total{outcome, bypass_reason, principal_kind}` — SK-GATE-008 pre-alpha-gate funnel (label values in §3.3).
+- `nlqdb.mcp.auth.failures.total{error_code, status}` — `SK-MCP-009` slice 3c. Hosted-MCP `OAuthProvider` error responses from its `onError` callback. `error_code` ∈ workers-oauth-provider 0.6's set (`invalid_request`, `invalid_client`, `invalid_grant`, `invalid_token`, `temporarily_unavailable`, …); `status` is the HTTP code. Distinguishes probe traffic from misconfiguration.
 
 Histograms (latency in ms — explicit `_ms` suffix):
 
@@ -218,7 +219,7 @@ Other histograms (non-latency):
 Gauges:
 
 - `nlqdb.tenants.active{window}` — sampled hourly.
-- `nlqdb.recent_tables.entries{principal_kind}` — post-touch MRU length (`SK-ASK-012`). `principal_kind ∈ {user, anon}`; cardinality 2.
+- `nlqdb.recent_tables.entries{principal_kind}` — post-touch MRU length (`SK-ASK-012`).
 
 ### 3.3 Label conventions
 
@@ -235,7 +236,8 @@ Always use these label keys; never invent variants like `tenant`, `tenant-id`, `
 | `db.system`            | 2                    | `postgresql` (PG); `other_sql` (ClickHouse via Tinybird). |
 | `route`                | Low (~20)            | `/v1/ask`, `/v1/health`, `/v1/auth/*`.             |
 | `status_class`         | 5                    | `2xx` / `3xx` / `4xx` / `5xx` / `transport` (NOT raw status). `transport` = fetch-throws (no HTTP status), used by the query_log failures counter (`SK-EVENTS-009`). |
-| `principal_kind`       | 2                    | `user` / `anon` — on the `nlqdb.recent_tables.entries` gauge (`SK-ASK-012`); from the principal-id prefix, never per-request. |
+| `principal_kind`       | ~7                   | Principal kind, never an id (`user`/`anon`/`pk_live`/`sk_live`/`sk_mcp`/`session`/`unknown`). On `nlqdb.recent_tables.entries` (`SK-ASK-012`) + `nlqdb.gate.checks.total` (`SK-GATE-008`). |
+| `outcome` / `bypass_reason` | 2 / 6           | On `nlqdb.gate.checks.total` (`SK-GATE-008`): `{pass,block}` / `{env_bypass,open,allowlist,invite_code,invite_invalid,none}`. |
 | `nlqdb.surface`        | 5                    | `hero` / `chat` / `embed` / `mcp` / `cli`. Span attr on `nlqdb.ask`, `nlqdb.chat.turn`, `nlqdb.databases.create` + `feature.*` events (`SK-EVENTS-010`); derived once via `surfaceFromPrincipal()`. |
 | `status` (on `llm.calls.total`) | 3              | `ok` / `error` / `hedge_lost` (SK-LLM-014, cancelled hedge legs); filter `status="error"` for real failures. |
 | `reason` (on `llm.failover.total`) | bounded     | `FailoverReason` set + `hedge_lost` (SK-LLM-014). |
