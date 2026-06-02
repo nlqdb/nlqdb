@@ -203,9 +203,12 @@ export type KeyRecord = {
 export async function listKeysByTenant(d1: D1Database, tenantId: string): Promise<KeyRecord[]> {
   const res = await d1
     .prepare(
+      // `scope = "byollm"` rows are managed via `/v1/keys/byollm`, not the
+      // bearer-key list — excluded so a provider key's last-4 never shows
+      // up among the minted `pk_*`/`sk_*` keys (SK-PREMIUM-012).
       "SELECT id, key_type, last_4, name, db_id, mcp_host, device_id, " +
         "last_used_at, created_at, revoked_at FROM api_keys " +
-        "WHERE tenant_id = ? " +
+        "WHERE tenant_id = ? AND key_type != 'byollm' " +
         "ORDER BY (revoked_at IS NOT NULL), created_at DESC",
     )
     .bind(tenantId)
@@ -254,16 +257,21 @@ export async function revokeKeyById(
   tenantId: string,
   keyId: string,
 ): Promise<RevokeOutcome> {
+  // `key_type != 'byollm'` keeps this bearer-key revoke surface from ever
+  // touching a stored BYOLLM credential (those are managed via
+  // `DELETE /v1/keys/byollm`); defense-in-depth, not just id non-disclosure.
   const upd = await d1
     .prepare(
       "UPDATE api_keys SET revoked_at = unixepoch() " +
-        "WHERE id = ? AND tenant_id = ? AND revoked_at IS NULL",
+        "WHERE id = ? AND tenant_id = ? AND key_type != 'byollm' AND revoked_at IS NULL",
     )
     .bind(keyId, tenantId)
     .run();
   if (upd.meta.changes === 1) return "revoked";
   const row = await d1
-    .prepare("SELECT 1 AS hit FROM api_keys WHERE id = ? AND tenant_id = ?")
+    .prepare(
+      "SELECT 1 AS hit FROM api_keys WHERE id = ? AND tenant_id = ? AND key_type != 'byollm'",
+    )
     .bind(keyId, tenantId)
     .first<{ hit: number }>();
   return row ? "already_revoked" : "not_found";

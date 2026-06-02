@@ -78,7 +78,7 @@ describe("resolveAskRouter", () => {
     });
   });
 
-  it("builds a BYOLLM router + redacted lane attributes when a credential is present", () => {
+  it("builds a BYOLLM router + redacted lane attributes when a header credential is present", () => {
     const res = resolveAskRouter({
       headerCredential: { upstream: "openai", model: "gpt-5.2", apiKey: "sk-secret" },
       freeRouter: FREE,
@@ -92,10 +92,59 @@ describe("resolveAskRouter", () => {
         "llm.dispatch_lane": "byollm",
         "llm.billed_to": "byollm",
         "llm.byollm_provider": "openai",
+        "llm.byollm_source": "header",
       });
       // The key never appears in the span attributes.
       expect(JSON.stringify(res.attributes)).not.toContain("sk-secret");
     }
+  });
+
+  it("uses the account-stored credential (source=account) when no header key is present", () => {
+    const res = resolveAskRouter({
+      headerCredential: null,
+      accountCredential: { upstream: "anthropic", model: "claude-4-5-sonnet", apiKey: "sk-acct" },
+      freeRouter: FREE,
+      gateway,
+      userId: "user_abc",
+    });
+    expect(res.ok).toBe(true);
+    if (res.ok) {
+      expect(res.router).not.toBe(FREE);
+      expect(res.attributes).toEqual({
+        "llm.dispatch_lane": "byollm",
+        "llm.billed_to": "byollm",
+        "llm.byollm_provider": "anthropic",
+        "llm.byollm_source": "account",
+      });
+      expect(JSON.stringify(res.attributes)).not.toContain("sk-acct");
+    }
+  });
+
+  it("header credential wins over an account-stored credential (SK-LLM-016 precedence)", () => {
+    const res = resolveAskRouter({
+      headerCredential: { upstream: "openai", model: "gpt-5.2", apiKey: "sk-header" },
+      accountCredential: { upstream: "anthropic", model: "claude-4-5-sonnet", apiKey: "sk-acct" },
+      freeRouter: FREE,
+      gateway,
+      userId: "user_abc",
+    });
+    expect(res.ok).toBe(true);
+    if (res.ok) expect(res.attributes["llm.byollm_source"]).toBe("header");
+  });
+
+  it("falls through to the free router when neither header nor account credential is present", () => {
+    const res = resolveAskRouter({
+      headerCredential: null,
+      accountCredential: null,
+      freeRouter: FREE,
+      gateway,
+      userId: "u1",
+    });
+    expect(res).toEqual({
+      ok: true,
+      router: FREE,
+      attributes: { "llm.dispatch_lane": "free", "llm.billed_to": "platform" },
+    });
   });
 
   it("reports gateway_unconfigured when a BYOLLM key arrives but AI Gateway is unset", () => {
