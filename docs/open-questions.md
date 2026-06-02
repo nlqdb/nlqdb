@@ -4,5 +4,7 @@
 
 ## Blocking for human
 
+- (#300) After `deploy-web.yml` ships `apps/web/dist`, run `bash scripts/verify-flows.sh` against `https://nlqdb.com` to confirm `/vs/askyourdatabase/` resolves (pre-deploy it returns the 4 expected 404/floor failures). Post-deploy = inherently after-merge; not a CI gate.
+- (#300) `apps/api smoke` CI job is red due to the Neon Free-plan 10-branch quota (HTTP 422 on branch create), not PR content. Prune stale closed-PR Neon branches (`pr-125`, `pr-197`, `pr-208`) so the smoke job can go green; this needs operator access to the Neon project.
 - (#298) Bluesky source picked `api.bsky.app` because `public.api.bsky.app` 403'd from the agent VM (BunnyCDN block); confirm the chosen host actually reaches the AppView from the deployed CF Workers egress (one `wrangler dev` re-probe) — only verifiable from prod egress.
 - (#298) Confirm the unauthenticated `api.bsky.app` AppView rate-limit posture holds for the weekly cron from production egress (docs say "generous, no-auth"; cron uses 5 calls/week) — liveness not re-verified from CF egress.
