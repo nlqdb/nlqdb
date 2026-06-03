@@ -127,17 +127,52 @@ commentary is nested under the rule.
 
 ## Free LLM model selection (opencheck)
 
-Top 5 models for agentic/tool-use E2E runs — verified live 2026-05-21 via API rate-limit headers + Groq docs. Each run ~360–500 K tokens (20 tests × ~6–10 calls × ~1–2 K tokens/call after snapshot truncation).
+**Policy: FREE MODELS ONLY** (GLOBAL-013 — $0 free tier). The
+`LLM_API_KEY` secret in `e2e-opencheck.yml` MUST source from a free
+provider (Groq, Gemini, Cerebras, OpenRouter `:free`). It MUST NOT source
+from `OPENROUTER_API_KEY` against a paid model slug — that incident was
+on 2026-05-21 (Mistral Small 3.2 paid, ~$14 burned) and reverted to free
+on 2026-06-03.
 
-| Model | Provider | TPM | RPM | Daily | Context | Notes |
+Top 5 free models for agentic/tool-use E2E runs — verified live
+2026-06-03 via live `tools` round-trip + rate-limit headers. Each run
+~360–500 K tokens (20 tests × ~6–10 calls × ~1–2 K tokens/call after
+snapshot truncation).
+
+| Model | Provider | TPM | RPM | Daily | Context | Notes (researched 2026-06-03) |
 |---|---|---|---|---|---|---|
-| `mistralai/mistral-small-3.2-24b-instruct` | OpenRouter (paid) | no cap | no cap | ~$0.06/run | 128 K | **Current.** Paid tier; correct booleans (verified); OPENROUTER_API_KEY; $25.98 of $40 remaining 2026-05-21 |
-| `llama-3.3-70b-versatile` | Groq | 12 K | 1000 | 500 K TPD | 131 K | Correct booleans (verified live 2026-05-21); 500K TPD fits one full run; best free fallback |
-| `qwen/qwen3-32b` | Groq | 12 K | 1000 | 500 K TPD | 131 K | 12K TPM confirmed 2026-05-21 (same tier as llama); 1000 RPM live-verified |
-| `gemini-2.5-flash` | Google AI | 1 M | 15 | 1 500 RPD | 1 M | 1M context confirmed 2026-05-21 via models API; 15 RPM ok for sequential tests; verify boolean `false` via OpenAI compat before switching |
-| `qwen-3-235b-a22b-instruct-2507` | Cerebras | 30 K | 5 | 2 400 RPD | 131 K | 5 RPM confirmed 2026-05-21; ~2 min/test tight against 240 s timeout; tool-use unverified |
+| `llama-3.3-70b-versatile` | Groq | 12 K | 1000 | 500 K TPD | 131 K | **Current.** Tool-call verified live 2026-06-03 (one-shot `tools` round-trip); 500K TPD fits one full run; uses `GROQ_API_KEY`. |
+| `openai/gpt-oss-120b` | Groq | 12 K | 1000 | 500 K TPD | 131 K | Tool-call verified live 2026-06-03; reasoning-tuned; same Groq quota — swap by `model:` only. |
+| `qwen/qwen3-32b` | Groq | 12 K | 1000 | 500 K TPD | 131 K | Same Groq tier; useful if llama tool-call regresses; verify with a `tools` curl before swap. |
+| `gemini-2.5-flash` | Google AI | 1 M | 15 | 1 500 RPD | 1 M | 1500 RPD; 15 RPM OK for sequential persistent-mode; tool-use unverified for opencheck — verify before swap. `GEMINI_API_KEY`. |
+| `openai/gpt-oss-120b:free` | OpenRouter `:free` | shared | shared | shared free pool | 131 K | 0% markup free slug; fallback if Groq daily cap hit. `OPENROUTER_API_KEY` works against `:free` slugs without billing — confirm `usage_daily: 0` after the run. |
 
-**Switching:** update `model:` in `tests/opencheck/tests.yaml`, `OPENAI_BASE_URL` in `_e2e-opencheck.yml`, and the secret in `e2e-opencheck.yml` (`LLM_API_KEY` source).
+**Switching:** update `model:` in `tests/opencheck/tests.yaml`,
+`OPENAI_BASE_URL` in `_e2e-opencheck.yml`, and the secret source in
+`e2e-opencheck.yml` (`LLM_API_KEY`). Always re-test a fresh provider's
+tool-call shape with a one-shot `curl … /chat/completions` before
+pushing.
+
+## Opencheck progress tracker (daily iteration)
+
+Long-running stabilisation across days — short notes per iteration so
+progress is visible without re-reading every run log. Append-only.
+
+| Date | Branch | Change | Outcome |
+|---|---|---|---|
+| 2026-05-20 | claude/e2e-comment-cleanup | repeated reruns of same config | all failed (cascade from `#submit-prefilled-row` 240 s timeout) |
+| 2026-05-21 | claude/nice-meitner-2BAev | swapped to paid Mistral Small via OpenRouter | failed; **policy violation** (paid model used) — burned ~$14 of OpenRouter credit |
+| 2026-05-31 | main | rerun on main | failed; `#submit-prefilled-row` + 5 cascaded failures (model also hallucinated `/app/databases` → 404 in `#api-keys-mint-and-revoke` — route does not exist in `apps/web/src/pages/app/`) |
+| 2026-06-03 | claude/determined-cannon-rcvyd | revert to FREE: Groq `llama-3.3-70b-versatile`; comments forbid paid; tool-call live-verified | pending — first free-only run after policy violation |
+
+**Cascade hypothesis:** `sessionMode: persistent` means a single timed-out
+test (typically `#submit-prefilled-row`) starves the entire downstream
+suite of the database it expected. Splits to consider if this run still
+cascades: (a) carve the suite into two opencheck configs — anon +
+auth-bootstrap (tests 1–5) and write/UX/delete (tests 6–20) — running as
+separate jobs that share the same `e2e` Neon branch; (b) seed fixtures
+via API directly before write-path tests instead of relying on the model
+to navigate.
 
 ## Open questions / known unknowns
 
