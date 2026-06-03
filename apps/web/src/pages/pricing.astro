@@ -38,6 +38,7 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
           <ul class="pricing__features">
             <li>1,000 queries / month</li>
             <li>500 MB per database</li>
+            <li>Pauses after 7 days idle (resumes in &lt;2s)</li>
             <li>7-day backups</li>
             <li>Free LLM chain — forever</li>
             <li>Paste your own provider key (BYO-LLM) at 0% markup</li>
@@ -150,7 +151,7 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
 <script>
   // Upgrade CTA handler. Checks auth state, creates a Stripe Checkout
   // Session via POST /v1/billing/checkout, redirects to the session URL.
-  // Unauthenticated clicks redirect to sign-in with a `next=pricing` hint.
+  // Unauthenticated clicks redirect to sign-in with a `return_to=/pricing` hint.
 
   import { fetchSession } from "../lib/session";
 
@@ -165,8 +166,8 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
       if (!user) {
         const signinUrl =
           location.hostname === "nlqdb.com" || location.hostname === "www.nlqdb.com"
-            ? `https://app.nlqdb.com/auth/sign-in?next=pricing`
-            : `/auth/sign-in?next=pricing`;
+            ? `https://app.nlqdb.com/auth/sign-in?return_to=/pricing`
+            : `/auth/sign-in?return_to=/pricing`;
         window.location.assign(signinUrl);
         return;
       }
@@ -185,8 +186,8 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
 
         if (!res.ok) {
           const body = await res.json<{ error?: string }>().catch(() => ({}));
-          if (res.status === 503 && body.error === "plan_not_configured") {
-            // Price IDs not yet configured — show a helpful message.
+          if (res.status === 503) {
+            // Price IDs or Stripe key not yet configured — show a helpful message.
             btn.textContent = "Not available yet";
             return;
           }

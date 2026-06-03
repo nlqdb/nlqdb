@@ -1397,6 +1397,7 @@ app.post("/v1/run", requirePrincipal, gatePreAlpha, async (c) => {
 // the browser.)
 app.use("/v1/waitlist", credentialedCors);
 app.use("/v1/events/*", credentialedCors);
+app.use("/v1/billing/*", credentialedCors);
 
 app.post("/v1/waitlist", async (c) => {
   const body = await parseJsonBody<{ email?: unknown; persona?: unknown }>(c);
@@ -1578,9 +1579,7 @@ app.post("/v1/stripe/webhook", async (c) => {
 app.post("/v1/billing/checkout", requireSession, async (c) => {
   const session = c.var.session;
 
-  const raw = await parseJsonBody<{ plan?: unknown; success_url?: unknown; cancel_url?: unknown }>(
-    c,
-  );
+  const raw = await parseJsonBody<{ plan?: unknown }>(c);
   if (!raw.ok) {
     return c.json({ error: "invalid_json" }, 400);
   }
@@ -1595,12 +1594,8 @@ app.post("/v1/billing/checkout", requireSession, async (c) => {
   }
 
   const origin = new URL(c.req.url).origin;
-  const successUrl =
-    typeof raw.body.success_url === "string"
-      ? raw.body.success_url
-      : `${origin}/app?checkout=success`;
-  const cancelUrl =
-    typeof raw.body.cancel_url === "string" ? raw.body.cancel_url : `${origin}/pricing`;
+  const successUrl = `${origin}/app?checkout=success`;
+  const cancelUrl = `${origin}/pricing`;
 
   const result = await createCheckoutSession(
     {
