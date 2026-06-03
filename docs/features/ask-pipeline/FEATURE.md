@@ -160,6 +160,26 @@ when-to-load:
 - **Consequence in code:** `orchestrate.ts:350` matches `"42P01" | "3F000"` plus the two regex fallbacks, sets the seven span attributes, and emits the JSON log line under `{event: "schema_mismatch"}`. `reason` is `"schema_missing"` for 3F000-shaped errors and `"table_missing"` for 42P01. Tests in `apps/api/test/orchestrate.test.ts` assert no retry on either shape and the logged JSON carries the expected fields.
 - **Alternatives rejected:** Pre-flight `pg_namespace` check on every `/v1/ask` — extra Neon round-trip on the hot path for a < 5% cohort. Auto-drop the orphan D1 row on 3F000 — couples the orchestrator to registry mutation. Keep `db_unreachable` (no envelope change) — burns 3 retries and the surface can't render a recovery CTA. Span attributes only (no `console.error`) — head-sampling loses the rare orphan-schema events.
 
+### SK-ASK-020 — `summarize` failure returns rows + a summarize-error envelope, never 5xx
+
+- **Decision:** If `exec` succeeds but the optional `summarize` step fails, the response returns the **rows** (and the `trace` block) with a `summary: { error: { code, message } }` marker instead of a prose summary. The call is a `200` with data, not a `5xx`.
+- **Core value:** Bullet-proof by design, Honest latency, Effortless UX
+- **Why:** `summarize` is a cosmetic, best-effort layer on top of a correct result set — throwing the whole call away because the prose narration failed would discard data the user actually asked for and turn a degraded success into a total failure. The user sees their rows; the missing summary is an honest, scoped error. Resolved per `GLOBAL-033` (UX/recoverable → degrade gracefully) and consistent with `GLOBAL-022`.
+- **Consequence in code:** The orchestrator wraps `summarize` in its own try/catch; on failure it sets the `summary.error` envelope and returns the already-executed rows. The SSE form emits the `rows` event followed by a `summary` event carrying the error. `summarize` failures are not retried as a whole-call failure (the rows are already committed/returned).
+- **Alternatives rejected:**
+  - **5xx the whole call** — throws away a correct result over a non-essential step; worst UX for the most common summarize failure (LLM rate-limit).
+  - **Silently omit the summary** — the surface can't tell "no summary requested" from "summary failed"; the explicit error marker is honest.
+
+### SK-ASK-021 — Idempotency dedupe is consulted on the write branch only
+
+- **Decision:** `/v1/ask` consults the idempotency dedupe store only when the routed `kind` is a mutation (`create` / `extend` / write); pure-query asks (`kind=query`) skip it entirely.
+- **Core value:** Bullet-proof, Simple, Performance
+- **Why:** A read is naturally idempotent — re-running it has no side effect, so a dedupe record is pure overhead (an extra D1 write on the hot read path for no safety gain). The write branch is where `GLOBAL-005` actually bites; `kind=create` dedupes on the `(identity, Idempotency-Key)` shape like any mutation, so a retried "make me a tracker" can't create two DBs. Resolved per `GLOBAL-033` (Simple + Performance).
+- **Consequence in code:** The middleware reads the route decision (`route-ask.ts`) and only enters the dedupe path for mutating kinds; query asks bypass it. Pairs with `SK-IDEMP-011` (the route's idempotency mode is `header-key` for the write branch, effectively `exempt` for reads).
+- **Alternatives rejected:**
+  - **Dedupe every `/v1/ask`** — wastes a D1 write per read with no correctness gain; reads are already idempotent.
+  - **Never dedupe `/v1/ask`** — violates `GLOBAL-005` for the `create`/write branch where a retry can double-create.
+
 ## The LLM loop
 
 Canonical step order is SK-ASK-002 (edge → auth → rate-limit → hash → plan-cache → (hit: validate → exec) | (miss: route → plan → SQL-validate → exec → cache-write) → optional summarize). Intentional reinventions on this path — grammar-constrained SQL decoder, foreign-key-aware schema embedding, learned query-shape classifier — are catalogued in `docs/guidelines.md §7`.
@@ -185,12 +205,12 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 
 ## Open questions / known unknowns
 
-- **Streaming protocol for live trace.** `SK-ASK-008` and `GLOBAL-011` require a live trace, but the wire protocol (SSE? chunked JSON? OTel-over-WS?) is not yet pinned. SDK's `onTrace` hook in `packages/sdk` will fix the surface API; the wire format is open.
-- **Failure-mode for partial results.** If `exec` succeeds but `summarize` fails, do we return the rows + a summarize-error envelope, or 5xx the whole call? Design.md doesn't decide. Leaning toward "rows + envelope" so the user sees data, but needs an explicit `SK-ASK-NNN`.
-- **Idempotency on `/v1/ask`.** `GLOBAL-005` says every mutation accepts `Idempotency-Key`. `/v1/ask` is sometimes a query (no mutation), sometimes a write. Confirm whether the dedupe store is consulted for the write branch only or for every call (and what `kind=create` deduping looks like).
-- **Null-pick disambiguator cache TTL.** `disambiguate-db.ts` caches `chosenId: null` for 7 days under `(tenantId, goalHash, dbsetHash)`; dbsetHash evicts on DB add/remove but a false-null is sticky for that window. Options: don't cache nulls (cheap LLM hit on retry) vs. 1 h TTL (bounded staleness). Needs a decision (new `SK-ASK-NNN`).
-- **SK-ASK-014 follow-ups.** (a) Typed-plan extend-schema pipeline so "Add it to *<slug>*" works — `kind=extend` route + compiler + `sql-validate-ddl.ts` widening + table-card re-embed (`SK-HDC-NNN`). (b) Latency audit — classify-every-send adds ~150 ms p50 to dbId-pinned hot path; confirm PERFORMANCE §2.1/§2.2 still holds.
-- **OpenAPI schema for `apps/api`.** SK-DOCS-003 slice (d) is blocked on this. Decide: emit `apps/api/openapi.yaml` from the route table (a generator pass over `apps/api/src/index.ts` and the route modules) so `apps/docs/scripts/gen-api.ts` (widdershins) can fill the `/reference/http-api/` page. Until then docs.nlqdb.com links readers at the SDK reference (canonical wire shape per `GLOBAL-001`).
+- **Streaming protocol for live trace** — Not open: the live trace rides **SSE** (Hono `streamSSE` on `/v1/ask`, the `plan_pending → plan → rows → summary` event schema in `apps/api/src/ask/types.ts`). The SDK `onTrace` hook consumes the same stream. "chunked JSON / OTel-over-WS" were the alternatives; SSE is what shipped, so this is resolved per `GLOBAL-033` (reuse what's built).
+- **Null-pick disambiguator cache** — Not applicable: there is no `disambiguate-db.ts` and no null cache. `route-ask.ts` disambiguates on **every** send (`SK-ASK-014`), so the "false-null sticky for 7 days" concern doesn't exist. Adding a 1h cache would contradict classify-every-send (and P5) — closed as moot.
+- **SK-ASK-014 follow-ups.** **Parked until** a P3 user requests it: (a) typed-plan `kind=extend` pipeline so "Add it to *<slug>*" works (route + compiler + `sql-validate-ddl.ts` widening + table-card re-embed). (b) Latency audit — confirm classify-every-send's ~150 ms p50 still fits `performance.md §2.1/§2.2` once Phase 1 traffic lands.
+- **OpenAPI schema for `apps/api`.** **Parked until** the docs HTTP-API page (`SK-DOCS-003` slice d) is prioritised — the SDK reference is the canonical wire shape (`GLOBAL-001`) and `docs.nlqdb.com` links there in the interim, so the generator is a nice-to-have, not a blocker.
+
+> Partial-results and `/v1/ask` idempotency were open here; resolved as `SK-ASK-020` / `SK-ASK-021` above.
 
 ## Happy path walkthrough
 

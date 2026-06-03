@@ -1,6 +1,6 @@
 # Open questions — human action queue
 
-> The single file the founder reads. Only items that genuinely need a human: actions a human must take, or decisions an agent could not make even after web-research + consulting the codebase's core values. Keep each a very short bullet. Delete a bullet once resolved.
+> The single file the founder reads. Per [`GLOBAL-033`](./decisions/GLOBAL-033-resolution-defaults.md), agents resolve value-decidable questions themselves — this file is **only** for what a human must do: operator actions an agent can't perform (set a prod secret, prune Neon, re-probe from production egress) and genuine money / strategy / legal bets. Keep each a very short bullet. Delete a bullet once resolved.
 
 ## Blocking for human
 

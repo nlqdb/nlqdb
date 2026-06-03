@@ -94,5 +94,5 @@ When Phase 2 work begins, decisions from this doc move into:
 - `semantic.yml` shape and registry layout → `SK-HDC-NNN` in `hosted-db-create/FEATURE.md`.
 
 Once promoted, this doc becomes a back-reference (delete the
-duplicated body and link forward) — same convention as
-`docs/research/open-questions.md`.
+duplicated body and link forward) — the promote-or-park convention in
+[`GLOBAL-033`](../decisions/GLOBAL-033-resolution-defaults.md).

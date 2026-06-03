@@ -14,7 +14,7 @@
 > - [`docs/competitors.md`](../competitors.md) — current competitor scan (DB / NL-to-SQL / agent)
 > - [`docs/future/semantic-layer.md`](../future/semantic-layer.md) — same "exploratory, not yet promoted" template
 > - [`docs/features/observability/FEATURE.md`](../features/observability/FEATURE.md) — current OTel posture (we *emit* OTel; we don't *ingest* it)
-> - [`docs/research/open-questions.md §3`](../research/open-questions.md) — adjacent open question (NL as embeddable lib in users' apps)
+> - [`docs/phase-plan.md §7`](../phase-plan.md) — the NL-as-embeddable-library bet (parked-with-trigger per `GLOBAL-033`)
 
 ---
 

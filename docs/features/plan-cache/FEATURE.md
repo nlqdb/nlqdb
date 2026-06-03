@@ -113,7 +113,7 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 
 ## Open questions / known unknowns
 
-- **Cache-warming on cold KV namespaces.** First-time deploys start with an empty KV. We don't currently warm the cache from the LLM router — every first user pays an LLM call. Decide whether to ship a one-time bulk pre-warm for canonical demo queries, or accept the cold-start cost.
-- **Cross-region KV replication latency.** Workers KV is eventually consistent across regions (sub-60s typical). A write in Frankfurt may take seconds to be visible in Sydney. For our Phase 0 / 1 single-region traffic this is moot, but worth flagging before global Phase 2 rollout.
-- **Disappearance-event hard-stop UX.** `SK-PLAN-008` says a vanished observed field is a hard-stop. The user-facing story for "your plan was invalidated because field X is gone" is not specified — error code, message, recovery path. Open question for the schema-widening feature.
-- **Pin-eviction policy.** `SK-PLAN-005` says LRU evicts pins like any other plan. Should human-pinned plans be exempt from LRU? Probably yes for a power-user feature, but the design doesn't decide.
+- **Pin-eviction policy** — Resolved per `GLOBAL-033`: **pins stay LRU-evictable** (confirms `SK-PLAN-005`, no exemption). A pin is a cache hint that survives because it's hot, not a durable store; exempting pins would add an eviction-class branch (against the Simple value) for a power-user edge that re-pins cheaply on next use.
+- **Parked until global Phase 2 rollout:** cross-region KV replication latency (eventually-consistent, sub-60s; moot for single-region Phase 0/1).
+- **Parked until measured cold-start pain:** cache-warming on cold KV (every first user pays one LLM call today; decide a bulk pre-warm of canonical demo queries only if the cold-start cost shows up).
+- **Disappearance-event hard-stop UX** — cross-ref, owned by `schema-widening` (error code / message / recovery path for "field X vanished"); not a plan-cache decision.

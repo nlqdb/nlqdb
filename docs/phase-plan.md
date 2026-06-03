@@ -259,43 +259,40 @@ first contact with traffic. The cost ladder in
 same rule: free to build before the signal, no spending or charging
 until it trips.
 
-**Reconciliation with the persona-validation plan.** The
-"2 convert to paid Hobby" criterion in
-[`personas.md §10.4`](./research/personas.md) is downstream of this
-trigger — it can only be measured after Stripe live ships. Persona
-validation for Phase 1 close therefore requires: (a) all the
-qualitative criteria in personas.md, AND (b) the §6 trigger has
-tripped and Stripe live has shipped, OR (c) deliberate decision to
-ship without paid validation if §6 hasn't tripped within the
-quarter.
+**Reconciliation with the persona-validation plan.** The "2 convert to paid
+Hobby" criterion in [`personas.md §10.4`](./research/personas.md) is downstream
+of this trigger (measurable only after Stripe live ships). Phase 1 close
+therefore requires: (a) all personas.md qualitative criteria, AND (b) §6 has
+tripped and Stripe live shipped, OR (c) a deliberate decision to ship without
+paid validation if §6 hasn't tripped within the quarter.
 
 **What is *not* §6-gated.** Per
 [`GLOBAL-026`](./decisions/GLOBAL-026-llm-strategy-byollm-hosted-premium.md),
-**BYOLLM ships in Phase 2** for every tier (no payment infra needed)
-and the **architectural slot for hosted-premium dispatch** lands in
-the same slice (router precedence, span names, schema columns). What
-§6 actually gates is the *meter firing*: until §6 trips, the
-hosted-premium lane is feature-flagged dark, and there is no path
-from "I'm a paid user" to "we billed Stripe for tokens". When §6
-trips, lighting the lane is a flag flip, not a refactor.
+**BYOLLM ships in Phase 2** for every tier (no payment infra needed) and the
+**hosted-premium dispatch slot** lands in the same slice (router precedence,
+span names, schema columns). §6 gates only the *meter firing*: until it trips
+the hosted-premium lane is flagged dark with no path from "paid user" to "we
+billed Stripe for tokens". Lighting it is then a flag flip, not a refactor.
+
+**Scaling triggers (infra, not billing; `GLOBAL-033`):** shard / migrate the
+single D1 at **70% of its daily-read quota (rolling 7-day) or 10k DAU**,
+whichever first; stay single-region us-east through Phase 2 and add an EU Neon
+read-replica when the **first EU paying customer** signs (latency-, not
+capacity-driven).
 
 ---
 
 ## 7. Phase 4+ — Beyond v1
 
-- **BYO Postgres** (`POST /v1/db/connect`) — **promoted out of Phase 4+
-  to active development** per [`SK-DB-011`](./features/db-adapter/decisions/SK-DB-011-byo-postgres-promoted.md);
-  the signal-gate is superseded. Shape unchanged —
-  [`architecture.md` §3.6.7](./architecture.md#367-byo-postgres-phase-4-decided-shape).
-- **BYO ClickHouse** (`POST /v1/db/connect`) — **promoted to active**
-  per [`SK-MULTIENG-005`](./features/multi-engine-adapter/decisions/SK-MULTIENG-005-byo-clickhouse-promoted.md);
-  same `registerByoDb` path as BYO Postgres
-  ([`architecture.md §3.6.7`](./architecture.md#367-byo-postgres-phase-4-decided-shape)).
-  Engine-specifics (native HTTP, `system.columns` introspection) and
-  the superseded P6 signal-gate live in that SK. The Phase 3
-  managed-CH path via Tinybird and the managed-OTel ingestion pivot
-  ([`otel-grafana-pivot.md`](./research/otel-grafana-pivot.md)) are
-  separate and unaffected.
+- **BYO Postgres + BYO ClickHouse** (`POST /v1/db/connect`) — **promoted out
+  of Phase 4+ to active dev** per [`SK-DB-011`](./features/db-adapter/decisions/SK-DB-011-byo-postgres-promoted.md)
+  / [`SK-MULTIENG-005`](./features/multi-engine-adapter/decisions/SK-MULTIENG-005-byo-clickhouse-promoted.md);
+  shared `registerByoDb` path, shape in [`architecture.md §3.6.7`](./architecture.md#367-byo-postgres-phase-4-decided-shape).
+  Engine-specifics + the superseded signal-gate live in those SKs.
+- **Embeddable NL library** ("Stripe of NL-Q" — their app, their end-users) and
+  **notebook-style multi-query docs** — both **parked** as speculative scope
+  (`GLOBAL-033`): revisit only when a paying / design-partner customer asks. A
+  notebook is a BI tool (`architecture.md §8` not-building).
 - Enterprise (SSO, audit log, on-prem).
 - More engines (TimescaleDB, Typesense, pgvector at scale).
 - `<nlq-stream>` real-time element.
