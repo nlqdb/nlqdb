@@ -53,6 +53,17 @@ function stubClient(overrides: Partial<NlqClient> = {}): NlqClient {
       // exists only to satisfy the NlqClient interface.
       throw new Error("mintKey not stubbed");
     },
+    setByollm: async () => {
+      // BYOLLM account-store verbs (SK-SDK-011) aren't an MCP tool yet
+      // (tracked GLOBAL-003 gap); the stubs only satisfy the interface.
+      throw new Error("setByollm not stubbed");
+    },
+    getByollmStatus: async () => {
+      throw new Error("getByollmStatus not stubbed");
+    },
+    clearByollm: async () => {
+      throw new Error("clearByollm not stubbed");
+    },
   };
   return { ...base, ...overrides };
 }

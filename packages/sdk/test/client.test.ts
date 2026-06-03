@@ -945,4 +945,142 @@ describe("createClient", () => {
     const headers = capturedInit?.headers as Record<string, string>;
     expect(headers["x-nlq-byollm-key"]).toBe("anthropic:claude-sonnet-4-6:sk-ant");
   });
+
+  // SK-SDK-011 — account-stored BYOLLM verbs: the persistent lane over
+  // `POST/GET/DELETE /v1/keys/byollm`, session-only.
+  it("setByollm: POSTs {provider,model,key} with credentials + auto Idempotency-Key", async () => {
+    let capturedUrl = "";
+    let capturedInit: RequestInit | undefined;
+    const fakeFetch: FetchLike = async (url, init) => {
+      capturedUrl = String(url);
+      capturedInit = init;
+      return new Response(
+        JSON.stringify({
+          configured: true,
+          provider: "anthropic",
+          model: "claude-sonnet-4-6",
+          last4: "c123",
+        }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      );
+    };
+    const client = createClient({ withCredentials: true, fetch: fakeFetch });
+    const out = await client.setByollm({
+      provider: "anthropic",
+      model: "claude-sonnet-4-6",
+      key: "sk-ant-c123",
+    });
+
+    expect(capturedUrl).toBe("https://app.nlqdb.com/v1/keys/byollm");
+    expect(capturedInit?.method).toBe("POST");
+    expect(capturedInit?.credentials).toBe("include");
+    const headers = capturedInit?.headers as Record<string, string>;
+    expect(headers["idempotency-key"]).toBeTruthy();
+    expect(JSON.parse(String(capturedInit?.body))).toEqual({
+      provider: "anthropic",
+      model: "claude-sonnet-4-6",
+      key: "sk-ant-c123",
+    });
+    expect(out).toEqual({
+      configured: true,
+      provider: "anthropic",
+      model: "claude-sonnet-4-6",
+      last4: "c123",
+    });
+  });
+
+  it("getByollmStatus: GETs /v1/keys/byollm and returns the empty state", async () => {
+    let capturedInit: RequestInit | undefined;
+    const fakeFetch: FetchLike = async (_url, init) => {
+      capturedInit = init;
+      return new Response(JSON.stringify({ configured: false }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    };
+    const client = createClient({ withCredentials: true, fetch: fakeFetch });
+    const out = await client.getByollmStatus();
+
+    expect(capturedInit?.method ?? "GET").toBe("GET");
+    expect(capturedInit?.credentials).toBe("include");
+    expect(out).toEqual({ configured: false });
+  });
+
+  it("getByollmStatus: returns the stored credential display view (never the key)", async () => {
+    const credential = {
+      provider: "openai",
+      model: "gpt-5.2",
+      last4: "ef01",
+      updatedAt: 1717000000,
+    };
+    const fakeFetch: FetchLike = async () =>
+      new Response(JSON.stringify({ configured: true, credential }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    const client = createClient({ withCredentials: true, fetch: fakeFetch });
+    const out = await client.getByollmStatus();
+    expect(out).toEqual({ configured: true, credential });
+  });
+
+  it("clearByollm: DELETEs /v1/keys/byollm and reports whether a row was removed", async () => {
+    let capturedInit: RequestInit | undefined;
+    const fakeFetch: FetchLike = async (_url, init) => {
+      capturedInit = init;
+      return new Response(JSON.stringify({ ok: true, cleared: true }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    };
+    const client = createClient({ withCredentials: true, fetch: fakeFetch });
+    const out = await client.clearByollm();
+
+    expect(capturedInit?.method).toBe("DELETE");
+    expect(capturedInit?.credentials).toBe("include");
+    expect(out).toEqual({ ok: true, cleared: true });
+  });
+
+  it("setByollm/getByollmStatus/clearByollm: throw without withCredentials (session-only)", () => {
+    const noopFetch: FetchLike = async () => new Response("{}", { status: 200 });
+    const bearer = createClient({ apiKey: "sk_live_x", fetch: noopFetch });
+    expect(() => bearer.setByollm({ provider: "openai", model: "gpt-5.2", key: "sk" })).toThrow(
+      /requires `withCredentials: true`/,
+    );
+    expect(() => bearer.getByollmStatus()).toThrow(/requires `withCredentials: true`/);
+    expect(() => bearer.clearByollm()).toThrow(/requires `withCredentials: true`/);
+  });
+
+  it("setByollm: throws when a part is empty before any request goes out", () => {
+    let called = false;
+    const fakeFetch: FetchLike = async () => {
+      called = true;
+      return new Response("{}", { status: 200 });
+    };
+    const client = createClient({ withCredentials: true, fetch: fakeFetch });
+    expect(() => client.setByollm({ provider: "openai", model: "", key: "sk" })).toThrow(
+      /non-empty/,
+    );
+    expect(called).toBe(false);
+  });
+
+  it("setByollm: surfaces a 503 byollm_unavailable as NlqdbApiError", async () => {
+    const fakeFetch: FetchLike = async () =>
+      new Response(
+        JSON.stringify({
+          error: { status: "byollm_unavailable", message: "BYOLLM key storage is not configured." },
+        }),
+        { status: 503, headers: { "content-type": "application/json" } },
+      );
+    const client = createClient({ withCredentials: true, fetch: fakeFetch });
+    try {
+      await client.setByollm({ provider: "openai", model: "gpt-5.2", key: "sk" });
+      expect.fail("should have thrown");
+    } catch (err) {
+      expect(err).toBeInstanceOf(NlqdbApiError);
+      const e = err as NlqdbApiError;
+      expect(e.httpStatus).toBe(503);
+      expect(e.code).toBe("byollm_unavailable");
+      expect(e.path).toBe("/v1/keys/byollm");
+    }
+  });
 });

@@ -473,6 +473,40 @@ export type OAuthBridgeRedemption = {
   bearer_hash: string;
 };
 
+// SK-SDK-011 — account-stored BYOLLM credential, the persistent
+// counterpart to the per-request `byollm` *option* (`SK-SDK-010`). The
+// option attaches a key to each `ask()` over `x-nlq-byollm-key`; these
+// verbs persist one credential server-side (sealed at rest per
+// `GLOBAL-031`) so every later session dispatches through it without
+// re-sending the key. One credential per account; `setByollm` upserts.
+// The key is write-only — it is never returned by any verb (`last4` is
+// the sole display affordance, `SK-APIKEYS-002`).
+export type ByollmStoredCredential = {
+  provider: string;
+  model: string;
+  last4: string;
+  updatedAt: number;
+};
+
+// `getByollmStatus()` result. `{ configured: false }` is the empty
+// "add your key" state — distinct from a thrown error (a `503`
+// `byollm_unavailable` means the deployment can't store keys at all).
+export type ByollmStatusResponse =
+  | { configured: false }
+  | { configured: true; credential: ByollmStoredCredential };
+
+// `setByollm()` echo — provider/model/last4 only; never the key.
+export type ByollmSetResult = {
+  configured: true;
+  provider: string;
+  model: string;
+  last4: string;
+};
+
+// `clearByollm()` result. Idempotent: `cleared: false` when there was
+// nothing stored, so retrying scripts don't have to special-case it.
+export type ClearByollmResult = { ok: true; cleared: boolean };
+
 // The typed client returned by `createClient()` — the only HTTP surface per `GLOBAL-001`.
 export type NlqClient = {
   // Returns the union AskOk | AskCreateResult — callers narrow on the
@@ -548,6 +582,23 @@ export type NlqClient = {
     code: string,
     opts?: { signal?: AbortSignal },
   ): Promise<OAuthBridgeRedemption>;
+  // SK-SDK-011 — account-stored BYOLLM credential verbs (`POST/GET/DELETE
+  // /v1/keys/byollm`). Session-only: a decryptable stored key must ride a
+  // first-party cookie session, never a leakable bearer — these throw
+  // when the client was not built with `withCredentials: true`, the same
+  // signed-in guard the per-request `byollm` option enforces. `setByollm`
+  // upserts the single per-account credential; the key is sent only on
+  // this POST and is never returned by any verb.
+  setByollm(
+    cred: ByollmCredential,
+    opts?: { signal?: AbortSignal; idempotencyKey?: string },
+  ): Promise<ByollmSetResult>;
+  // Status only — never returns the key (`SK-APIKEYS-002`); `{ configured:
+  // false }` is the empty state surfaces render as "add your key".
+  getByollmStatus(opts?: { signal?: AbortSignal }): Promise<ByollmStatusResponse>;
+  // Hard-clear the stored credential (instant revocation, `GLOBAL-018`).
+  // Idempotent: `cleared: false` when there was nothing to clear.
+  clearByollm(opts?: { signal?: AbortSignal; idempotencyKey?: string }): Promise<ClearByollmResult>;
 };
 
 const DEFAULT_BASE_URL = "https://app.nlqdb.com";
@@ -609,6 +660,17 @@ export function createClient(opts: ClientOptions = {}): NlqClient {
   const baseUrl = (opts.baseUrl ?? DEFAULT_BASE_URL).replace(/\/$/, "");
   const fetcher = opts.fetch ?? globalThis.fetch;
   const credentials = opts.withCredentials ? ("include" as const) : undefined;
+
+  // SK-SDK-011 — the account-stored BYOLLM verbs hit session-only routes;
+  // fail loud here (`GLOBAL-012`) rather than let the API 401 a bearer
+  // call. Mirrors the construction-time guard the `byollm` option uses.
+  function assertSession(method: string): void {
+    if (!opts.withCredentials) {
+      throw new Error(
+        `@nlqdb/sdk: \`${method}\` requires \`withCredentials: true\` — account-stored BYOLLM keys live behind a signed-in session, never a bearer or anonymous call.`,
+      );
+    }
+  }
 
   // Hoist auth + content-type once per client. `call` shallow-copies
   // before merging per-request headers — avoids reallocating the
@@ -908,6 +970,40 @@ export function createClient(opts: ClientOptions = {}): NlqClient {
         body: JSON.stringify({ code }),
         signal: callOpts?.signal,
       }),
+    setByollm: (cred, callOpts) => {
+      assertSession("setByollm");
+      // Non-empty guard mirrors `buildByollmHeader` so a mis-shaped
+      // credential fails loud here rather than as a guaranteed API 400.
+      // The colon / control-char checks the header lane needs don't apply
+      // — these parts travel as JSON fields, not a colon-joined header.
+      if (!cred.provider || !cred.model || !cred.key) {
+        throw new Error(
+          "@nlqdb/sdk: `setByollm` requires non-empty `provider`, `model`, and `key`.",
+        );
+      }
+      return call<ByollmSetResult>("/v1/keys/byollm", {
+        method: "POST",
+        body: JSON.stringify({ provider: cred.provider, model: cred.model, key: cred.key }),
+        signal: callOpts?.signal,
+        ...(callOpts?.idempotencyKey
+          ? { headers: { "idempotency-key": callOpts.idempotencyKey } }
+          : {}),
+      });
+    },
+    getByollmStatus: (callOpts) => {
+      assertSession("getByollmStatus");
+      return call<ByollmStatusResponse>("/v1/keys/byollm", { signal: callOpts?.signal });
+    },
+    clearByollm: (callOpts) => {
+      assertSession("clearByollm");
+      return call<ClearByollmResult>("/v1/keys/byollm", {
+        method: "DELETE",
+        signal: callOpts?.signal,
+        ...(callOpts?.idempotencyKey
+          ? { headers: { "idempotency-key": callOpts.idempotencyKey } }
+          : {}),
+      });
+    },
   };
 }
 

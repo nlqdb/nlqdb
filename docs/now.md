@@ -54,11 +54,15 @@ an `api_keys` `scope = "byollm"` row (sealed envelope in `key_hash`, context
 `byollm:<tenantId>`, one per account), session-only
 `POST/GET/DELETE /v1/keys/byollm`, and the `/v1/ask` step-2 resolution
 (`resolveAskRouter`'s `accountCredential`, fail-loud on an unopenable blob;
-`llm.byollm_source ∈ {header, account}`).
-Next: premium-eligibility, and `GLOBAL-003` surface parity (MCP `byollm`
-param, SDK/CLI store verbs, elements + `/app/keys`) — tracked in
-[`premium-tier/FEATURE.md`](./features/premium-tier/FEATURE.md) Open questions
-per [`GLOBAL-003`](./decisions/GLOBAL-003-all-surfaces-one-pr.md).
+`llm.byollm_source ∈ {header, account}`). The TypeScript SDK now wraps that
+account lane
+([`SK-SDK-011`](./features/sdk/FEATURE.md)): `setByollm` / `getByollmStatus`
+/ `clearByollm` (signed-in only; key write-only).
+Next: premium-eligibility, and the remaining `GLOBAL-003` surface parity
+(MCP `byollm` param, CLI account-store verbs, elements + `/app/keys`) —
+tracked in [`premium-tier/FEATURE.md`](./features/premium-tier/FEATURE.md)
+Open questions per
+[`GLOBAL-003`](./decisions/GLOBAL-003-all-surfaces-one-pr.md).
 
 ## 3. BYO Postgres
 
