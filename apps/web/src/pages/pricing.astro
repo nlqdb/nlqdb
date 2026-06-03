@@ -185,7 +185,6 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
         });
 
         if (!res.ok) {
-          const body = await res.json<{ error?: string }>().catch(() => ({}));
           if (res.status === 503) {
             // Price IDs or Stripe key not yet configured — show a helpful message.
             btn.textContent = "Not available yet";
@@ -194,7 +193,7 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
           throw new Error(`checkout failed: ${res.status}`);
         }
 
-        const { url } = await res.json<{ url: string }>();
+        const { url } = (await res.json()) as { url: string };
         window.location.assign(url);
       } catch {
         btn.disabled = false;

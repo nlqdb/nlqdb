@@ -3,10 +3,7 @@
 
 import type Stripe from "stripe";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import {
-  createCheckoutSession,
-  type CheckoutDeps,
-} from "../src/stripe/checkout.ts";
+import { type CheckoutDeps, createCheckoutSession } from "../src/stripe/checkout.ts";
 
 // Minimal Stripe checkout.sessions.create stub.
 function makeStubDeps(

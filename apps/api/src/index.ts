@@ -94,8 +94,8 @@ import {
   surfaceFromPrincipal,
 } from "./principal.ts";
 import { orchestrateRun, type RunError } from "./run/orchestrate.ts";
+import { type CheckoutPlan, createCheckoutSession } from "./stripe/checkout.ts";
 import { cryptoProvider, stripe as stripeClient } from "./stripe/client.ts";
-import { createCheckoutSession, type CheckoutPlan } from "./stripe/checkout.ts";
 import { processWebhook } from "./stripe/webhook.ts";
 import { verifyTurnstile } from "./turnstile.ts";
 import { joinWaitlist } from "./waitlist.ts";
