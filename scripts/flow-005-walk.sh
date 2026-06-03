@@ -212,8 +212,11 @@ INIT_AUTH="${INIT_AUTH//$'\n'/}"
 # prefix which matches both forms.
 INIT_CHALLENGE_URL="$(printf '%s' "$INIT_AUTH" | grep -oE 'resource_metadata=("[^"]+"|[^,[:space:]]+)' | head -1 | sed -e 's/^resource_metadata=//' -e 's/^"//' -e 's/"$//')"
 
+# Bash 4 `${VAR,,}` lowercase folding keeps the guard case-insensitive to
+# match the case-insensitive grep extraction above (RFC 7235 §2.1 — auth-
+# scheme names are case-insensitive).
 if [[ "$INIT_STATUS" == "401" ]] \
-    && [[ "$INIT_AUTH" == Bearer* ]] \
+    && [[ "${INIT_AUTH,,}" == bearer* ]] \
     && [[ "$INIT_AUTH" == *"resource_metadata="* ]] \
     && [[ "$INIT_AUTH" == *"error=\"invalid_token\""* || "$INIT_AUTH" == *"error=invalid_token"* ]]; then
   assert_pass "initialize 401 with Bearer + resource_metadata + error=invalid_token"
@@ -246,7 +249,7 @@ TL_AUTH="$(grep -i '^www-authenticate:' "$TL_HDR" 2>/dev/null | sed 's/^[Ww][Ww]
 TL_AUTH="${TL_AUTH//$'\n'/}"
 
 if [[ "$TL_STATUS" == "401" ]] \
-    && [[ "$TL_AUTH" == Bearer* ]] \
+    && [[ "${TL_AUTH,,}" == bearer* ]] \
     && [[ "$TL_AUTH" == *"resource_metadata="* ]] \
     && [[ "$TL_AUTH" == *"error=\"invalid_token\""* || "$TL_AUTH" == *"error=invalid_token"* ]]; then
   assert_pass "tools/list 401 with the same Bearer + resource_metadata challenge"
