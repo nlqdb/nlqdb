@@ -156,12 +156,13 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 - **GLOBAL-014** — OTel span on every external call (DB, LLM, HTTP, queue).
 - **GLOBAL-021** — Each external system has one canonical owning module. *In this feature:* the events-worker owns `EVENTS_QUEUE` (consumer); `packages/events/` owns the producer types. Tinybird HTTP is owned by `packages/db/clickhouse-tinybird/` — `SK-EVENTS-009`'s sink imports `writeQueryLog` rather than POSTing directly. Owner-to-owner library dependency is explicitly allowed by GLOBAL-021.
 - **GLOBAL-024** — Demand-signal telemetry on every "not yet" path. *In this feature:* `SK-EVENTS-010` + `SK-EVENTS-011`.
+- **GLOBAL-034** — Analytics stack. *In this feature:* PostHog Cloud, when wired, is a second sink draining `EVENTS_QUEUE` server-side (no client SDK); pageviews stay on Cloudflare Web Analytics.
 - **GLOBAL-027** — Pre-alpha gate. *In this feature:* the new `feature.requested.early_access` variant of `ProductEvent` is dedup-keyed `(name, principalId, utcDay)` like its siblings and lands on the LogSnag `#north-star` channel alongside the weekly eval summaries so the gate-block rate sits next to the eval delta in the digest.
 
 ## Open questions / known unknowns
 
 - **DLQ activation threshold** — Decided: wire the DLQ when `nlqdb.events.dropped` exceeds 500/day for 2 consecutive days (≈15% of the 3.3K-msg/day budget). Below that the TTL-based dead-letter pattern is cheaper. Document in `apps/events-worker/README.md` when the Grafana alert is wired.
-- **PostHog wiring criteria.** "Real cohort question SQL can't answer" is qualitative. Capture a concrete checklist before wiring.
+- **PostHog wiring criteria** — Resolved by [`GLOBAL-034`](../../decisions/GLOBAL-034-analytics-stack.md): PostHog is the Phase-2-optional sink. **Parked until** a named funnel/cohort/retention question is filed that a one-off SQL query against D1/Neon demonstrably can't answer — that ticket is the trigger and the spec for the first PostHog event set.
 - **Schema evolution** — Decided: `ProductEvent` changes must be additive-only (new fields must be optional with a default). Non-additive changes (rename, remove, type change) require a two-step deploy: step 1 adds the new shape as optional alongside the old; step 2 (next deploy) drops the old shape once all producers are updated.
 - **Queue free-tier ceiling** — Alert threshold: > 7 000 ops/day (70% of 10K). Wire as a Grafana alert on `nlqdb.events.queue_ops`.
 - **Inbound-email sink.** Cloudflare Email Routing is wired separately; decide whether a future `support.email_received` event flows through this pipeline.

@@ -140,6 +140,7 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
   - *In this feature:* the chat panel renders the diff inline before commit (per `SK-TRUST-001`), the trace pane sits below the answer with collapsed-by-default state (per `SK-TRUST-002`), and low-confidence refusals surface as click-to-disambiguate chips (per `SK-TRUST-003`). See [`trust-ux/FEATURE.md`](../trust-ux/FEATURE.md).
 - **GLOBAL-027** — Pre-alpha gate.
   - *In this feature:* the legacy Cmd+G chord reveal and every `[data-cmdg-gate]` attribute were removed; the hero `<CreateForm>` and the "Sign in" link now render unconditionally. The `feature_gated` 403 renders via the shared `apps/web/src/components/FeatureGatedView.tsx` (BIRD/Spider progress bar + "Join the waitlist" CTA), reused by both the hero CreateForm and the chat panel (`apps/web/src/components/chat/ChatPanel.tsx` narrows `NlqdbApiError.code === "feature_gated"` to a typed `feature_gated` reply state instead of falling through to "Something went wrong"). The CTA links to `https://nlqdb.com/#waitlist`; the homepage waitlist `<section id="waitlist">` is the anchor target. See [`pre-alpha-gate/FEATURE.md`](../pre-alpha-gate/FEATURE.md).
+- **GLOBAL-034** — Analytics stack (Cloudflare Web Analytics for pageviews; PostHog Phase-2-optional).
 - **GLOBAL-032** — Top-5 user flows canonical.
   - *In this feature:* the marketing site hosts four of the canonical-five inbound surfaces — FLOW-001 (homepage hero), FLOW-002 (`/solve/<slug>`), FLOW-003 (`/vs/<competitor>`), FLOW-004 (waitlist signup) — each walked daily by `stranger-test.sh` (001/002/003) or `flow-004-walk.sh` (004) under `acquisition-health.yml`, so a regression in any of those templates surfaces in the artifact within 24 h.
 
@@ -148,7 +149,6 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 - **Promote session cookie name to literal `__Host-…session`.** Same-origin chat shipped in `SK-WEB-009`, so the architectural prerequisite is already met. The remaining blocker is Better Auth v1.6.9, which hardcodes a `__Secure-` prefix in `cookies/index.mjs:30` with no override. Options: upgrade Better Auth to a version that exposes the prefix as configurable, post-process every `Set-Cookie` header at the worker edge, or fork the cookies layer. Defer until Better Auth ships a fix or the cookie name needs to satisfy a specific audit.
 - **Sharing a query result by link.** P1-priority surface per `docs/runbook.md §10` — implementation slice not yet scoped.
 - **CSV upload.** Required for P3 (data-curious analyst) per `docs/runbook.md §10`. Deferred to Phase 2 alongside CLI.
-- **Plausible vs Plausible-self-hosted.** `docs/architecture.md §3.1` says "Plausible, self-hosted"; `docs/phase-plan.md` lists Plausible without qualifier. Reconcile when wiring web analytics.
 - **Marketing-site live ticker source-of-truth.** Data-pipe (which sample, what redaction, which OTel attributes) undecided.
 
 ## Happy path walkthroughs

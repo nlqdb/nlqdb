@@ -43,13 +43,14 @@ Canonical bodies live in [`decisions/`](decisions/) — one file per `SK-SOLVE-N
   - *In this feature:* the KPI advanced is **onboarding** — every page CTA points at `/app/new` (anonymous mode); the solve page is the search-intent on-ramp the homepage can't be. KPI degraded: none.
 - **GLOBAL-028** — Acquisition progress tracker.
   - *In this feature:* the implementation of [`automated-icp-validation-plan.md §3.1`](../../research/automated-icp-validation-plan.md). Progress is recorded in that file.
+- **GLOBAL-034** — Analytics stack (Cloudflare Web Analytics for pageviews; PostHog Phase-2-optional).
 
 ## Open questions / known unknowns
 
 - **Verbatim cluster quotes once 2026-05-26 cluster file lands.** The §3.1 plan calls for verbatim cluster quotes as `<h1>`; SK-SOLVE-001 chose paraphrased search-intent questions in the interim. Once the first cluster file lands, a follow-up SK is needed to amend `searchTitle` to the verbatim cluster label when one is available — likely SK-SOLVE-004.
 - **Auto-generation from cluster output.** A natural extension of `icp-cluster.ts` is to draft new `/solve/<slug>` entries from each persona's top cluster and open a PR with the candidate `SolveEntry`. Founder approval (per `automated-icp-validation-plan.md §3.6` reply-queue spirit) gates publication. Deferred until ≥3 cluster files exist and the draft quality is observable.
 - **Per-page OG image.** Pages currently inherit the site default OG. A per-slug OG image generator would boost share-CTR; same open question as the sibling `comparison-pages` feature.
-- **Page-view analytics.** Same open question as `comparison-pages` — no browser-side analytics on `nlqdb.com` today; the §3.5 ICP-validation plan calls for PostHog Cloud free tier. Per-page views are measurable only via server access logs + sitemap-indexed search-console impressions until that lands. The CTA-click hook is intended to give per-slug funnel data, but FLOW-002 verification has not yet proven production delivery.
+- **Page-view analytics** — Resolved by [`GLOBAL-034`](../../decisions/GLOBAL-034-analytics-stack.md): per-page views ride **Cloudflare Web Analytics** (not PostHog); **parked until** the `apps/web` analytics-wiring slice. Per-slug CTA funnel data flows via the LogSnag click hook today (FLOW-002 production-delivery verification still pending).
 
 ## Why this exists
 

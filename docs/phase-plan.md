@@ -78,7 +78,7 @@ in <2s p50; CI green in <90s; provider failover exercised; $0 spent.
   pre-inlined.
 - API keys: `pk_live_` (per-db, read-only) + `sk_live_` (account-scoped)
   from dashboard.
-- Resend (magic link), Sentry, Plausible, LogSnag wired.
+- Resend (magic link), Sentry, Cloudflare Web Analytics (`GLOBAL-034`), LogSnag wired.
 
 **Exit gate:** 4/5 unguided user-tests complete 60s on-ramp; p50 < 400ms
 (cache hit); p95 < 1.5s (cache miss); Lighthouse 100/100/100/100; still

@@ -86,9 +86,10 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 
 - **GLOBAL-013** — Free-tier bundle budget. *In this feature:* the static-assets build must fit Workers' free-tier limits (no Workers script execution per request — assets only).
 - **GLOBAL-017** — One way to do each thing. *In this feature:* one docs site, one host. Don't fork "internal" vs "external" docs sites — internal stays in-repo, external is `docs.nlqdb.com`.
+- **GLOBAL-034** — Analytics stack. *In this feature:* the docs site embeds the same Cloudflare Web Analytics beacon as `apps/web`; no separate analytics provider.
 
 ## Open questions / known unknowns
 
 - **HTTP API reference (slice d).** Blocked on `apps/api` emitting an OpenAPI schema (tracked under `ask-pipeline/FEATURE.md` Open questions). The `/reference/http-api/` page currently links readers at the SDK reference, which carries the canonical wire shape per `GLOBAL-001`. When the schema lands, wire `apps/docs/scripts/gen-api.ts` (widdershins) and remove the placeholder.
 - **Search.** Starlight's built-in Pagefind covers v0. Algolia DocSearch (free for OSS) is the upgrade path if/when content grows past ~50 pages.
-- **Analytics.** Cloudflare Web Analytics (free, no SDK) is the plan — wire it up alongside `apps/web` in the same task; see `docs/research/email-and-marketing.md §4`.
+- **Analytics** — Resolved by [`GLOBAL-034`](../../decisions/GLOBAL-034-analytics-stack.md): Cloudflare Web Analytics (free, no SDK). **Parked until** the `apps/web` analytics-wiring slice, which drops the same CF beacon `<script>` here in the same task.

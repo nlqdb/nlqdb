@@ -153,6 +153,5 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 ## Open questions / known unknowns
 
 - **SSE / streaming replay** — Resolved per `GLOBAL-033`: an SSE stream is not byte-idempotent (timestamps interleave), so a retried streaming request falls through to a **fresh stream** and the client reconciles. `SK-IDEMP-003` byte-exact replay applies to the buffered JSON path only. Wire the carve-out alongside the middleware (the `header-key` mode skips replay when the response is `text/event-stream`).
-- **Cross-surface dedup** — Not open: per `SK-IDEMP-002` CLI and web share one `user_id`, so the same key across surfaces collides **on purpose** (one identity, one mutation). The SDK retry helper (`SK-IDEMP-007`) must therefore not namespace keys by surface.
 
 > The dedupe-store TTL, body-mismatch behaviour, anonymous identity, and the waitlist/read carve-out were open here; they are now `SK-IDEMP-008..011` above. The middleware itself is still unbuilt — these pin its contract before it lands.
