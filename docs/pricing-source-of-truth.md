@@ -62,7 +62,7 @@ API version pinned to `2026-04-22.dahlia` via the `stripe` npm SDK (see `SK-STRI
 ### Checkout creation endpoint (this PR)
 
 - `POST /v1/billing/checkout` — `requireSession`-gated, creates a Stripe Checkout Session.
-  - Accepts `{ plan: "hobby" | "pro", success_url?, cancel_url? }`.
+  - Accepts `{ plan: "hobby" | "pro" }`; success/cancel URLs derived server-side from the request origin (not client-supplied — closes open-redirect).
   - Returns `{ url }` for client-side redirect.
   - Idempotency-Key header forwarded to Stripe.
   - OTel span: `nlqdb.billing.checkout.create`.

@@ -1569,8 +1569,9 @@ app.post("/v1/stripe/webhook", async (c) => {
 // `POST /v1/billing/checkout` — create a Stripe Checkout Session for
 // Hobby or Pro plan subscription (SK-STRIPE-004).
 //
-// Requires a signed-in session (`requireSession`). Accepts
-// `{ plan: "hobby" | "pro", success_url?, cancel_url? }`.
+// Requires a signed-in session (`requireSession`). Accepts `{ plan:
+// "hobby" | "pro" }`; success/cancel URLs are derived server-side from
+// the request origin (never client-supplied, to close the open-redirect).
 // Returns `{ url }` for client-side redirect to Stripe-hosted checkout.
 // Forwards `Idempotency-Key` to Stripe (GLOBAL-005).
 //
