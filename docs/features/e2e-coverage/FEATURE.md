@@ -29,16 +29,10 @@ when-to-load:
 - `tests/e2e/sdk/` — SDK contract-test harness (vitest + MSW cassettes)
 - `tests/e2e/mcp/` — MCP server harness (Inspector + in-memory transport)
 - `tests/e2e/examples/` — cross-example shared utilities
-- `examples/*/e2e/` — per-example smoke tests (`<framework>/e2e/smoke.spec.*`)
-- `packages/nlqdb-rb/spec/e2e/` — Ruby SDK skeleton (pending, not in CI)
-- `packages/nlqdb-rs/tests/e2e/` — Rust SDK skeleton (`#[ignore]`, not in CI)
-- `.github/workflows/e2e-cli.yml` — CLI testscript surface (workflow_dispatch)
-- `.github/workflows/e2e-sdk.yml` — SDK cassette surface (workflow_dispatch)
-- `.github/workflows/e2e-mcp.yml` — MCP InMemoryTransport surface (workflow_dispatch)
-- `.github/workflows/e2e-examples.yml` — examples surface (workflow_dispatch with `live` input)
-- `.github/workflows/e2e-opencheck.yml` — web entry point (workflow_dispatch)
-- `.github/workflows/_e2e-staging.yml` — shared ephemeral-preview spin-up (workflow_call; called by `e2e-opencheck.yml` and `e2e-examples.yml` when `live=true`)
-- `.github/workflows/_e2e-opencheck.yml` — opencheck test runner (workflow_call)
+- `examples/*/e2e/` — per-example smoke tests (`smoke.spec.*`)
+- `packages/nlqdb-{rb/spec,rs/tests}/e2e/` — Ruby (`pending`) + Rust (`#[ignore]`) SDK skeletons, not in CI
+- `.github/workflows/e2e-{cli,sdk,mcp,examples,opencheck}.yml` — one `workflow_dispatch` surface each (`e2e-examples.yml` takes a `live` input)
+- `.github/workflows/_e2e-{staging,opencheck}.yml` — reusable (`workflow_call`) preview spin-up + opencheck runner
 
 ## Decisions
 
@@ -68,7 +62,7 @@ when-to-load:
 
 - **Decision:** Contract-style tests (SDK request/response shape; CLI command parsing; MCP tool schema conformance) use **MSW cassettes** (`tests/e2e/*/cassettes/`) — recorded once against the live API, committed, replayed in CI. Journey-style tests (a persona's end-to-end flow) run against a **live ephemeral staging** (the existing Neon-branch + Workers-preview pattern from `e2e-opencheck.yml`) and lean on the [`plan-cache`](../plan-cache/FEATURE.md) (GLOBAL-006: content-addressed plans) to dedupe identical LLM calls across journeys. Cassette re-recording is opt-in via `RECORD=1` env var.
 - **Core value:** Free, Fast, Bullet-proof
-- **Why:** Contract tests must be hermetic so they can run hundreds of times a day on contributor laptops without touching the LLM provider — cassettes give that for ~$0 and millisecond runtimes. Journey tests must catch real LLM-and-pipeline drift, so a live-but-cache-mediated path is correct: the first identical query in a journey burns one LLM call; subsequent journeys that re-issue the same query hit `plan_cache` and never reach Groq. The free-tier rate-limit landscape (Groq 30 RPM / 1k RPD; OpenRouter `:free` shared pool ungoverned; Gemini 10 RPM) means we *must* be cache-aware — the existing opencheck infra learned this expensively (see comment block at top of `tests/opencheck/tests.yaml`); we do not relearn it.
+- **Why:** Contract tests must be hermetic so they can run hundreds of times a day on contributor laptops without touching the LLM provider — cassettes give that for ~$0 and millisecond runtimes. Journey tests must catch real LLM-and-pipeline drift, so a live-but-cache-mediated path is correct: the first identical query in a journey burns one LLM call; subsequent journeys that re-issue the same query hit `plan_cache` and never reach Groq. The free-tier rate-limit landscape (see the model table below) means we *must* be cache-aware — the opencheck infra learned this expensively (comment block at top of `tests/opencheck/tests.yaml`); we do not relearn it.
 - **Consequence in code:** Cassettes live under `tests/e2e/<surface>/cassettes/` and are checked in. Contract tests fail closed if their cassette is missing (no silent live-fetch). Journey workflows (`e2e-opencheck.yml`; `e2e-examples.yml` with `live=true`) spin up a single ephemeral staging URL per run and never spin up their own LLM provider. `tests/e2e/sdk/_lib/cassette.ts` is the per-surface MSW-style helper. No new LLM credentials cross any test boundary beyond `GROQ_API_KEY`, which is passed only to the web journey workflow.
 - **Alternatives rejected:**
   - All-live LLM — non-deterministic and expensive; burns rate-limit budget on every contributor PR.
@@ -127,55 +121,44 @@ commentary is nested under the rule.
 
 ## Free LLM model selection (opencheck)
 
-**Policy: FREE MODELS ONLY** (GLOBAL-013 — $0 free tier). The
-`LLM_API_KEY` secret in `e2e-opencheck.yml` MUST source from a free
-provider (Groq, Gemini, Cerebras, OpenRouter `:free`). It MUST NOT source
-from `OPENROUTER_API_KEY` against a paid model slug — that incident was
-on 2026-05-21 (Mistral Small 3.2 paid, ~$14 burned) and reverted to free
-on 2026-06-03.
+**Policy: FREE MODELS ONLY** (GLOBAL-013). `LLM_API_KEY` in
+`e2e-opencheck.yml` MUST source from a free provider (Groq, Gemini,
+Cerebras, OpenRouter `:free`) — never `OPENROUTER_API_KEY` against a paid
+slug (2026-05-21: Mistral Small 3.2 paid, ~$14 burned; reverted 2026-06-03).
 
-Top 5 free models for agentic/tool-use E2E runs — verified live
-2026-06-03 via live `tools` round-trip + rate-limit headers. Each run
-~360–500 K tokens (20 tests × ~6–10 calls × ~1–2 K tokens/call after
-snapshot truncation).
+Free models for tool-use runs (verified 2026-06-03 via live `tools`
+round-trip); each run ~360–500 K tokens.
 
-| Model | Provider | TPM | RPM | Daily | Context | Notes (researched 2026-06-03) |
+| Model | Provider | TPM | RPM | Daily | Ctx | Notes |
 |---|---|---|---|---|---|---|
-| `llama-3.3-70b-versatile` | Groq | 12 K | 1000 | 500 K TPD | 131 K | **Current.** Tool-call verified live 2026-06-03 (one-shot `tools` round-trip); 500K TPD fits one full run; uses `GROQ_API_KEY`. |
-| `openai/gpt-oss-120b` | Groq | 12 K | 1000 | 500 K TPD | 131 K | Tool-call verified live 2026-06-03; reasoning-tuned; same Groq quota — swap by `model:` only. |
-| `qwen/qwen3-32b` | Groq | 12 K | 1000 | 500 K TPD | 131 K | Same Groq tier; useful if llama tool-call regresses; verify with a `tools` curl before swap. |
-| `gemini-2.5-flash` | Google AI | 1 M | 15 | 1 500 RPD | 1 M | 1500 RPD; 15 RPM OK for sequential persistent-mode; tool-use unverified for opencheck — verify before swap. `GEMINI_API_KEY`. |
-| `openai/gpt-oss-120b:free` | OpenRouter `:free` | shared | shared | shared free pool | 131 K | 0% markup free slug; fallback if Groq daily cap hit. `OPENROUTER_API_KEY` works against `:free` slugs without billing — confirm `usage_daily: 0` after the run. |
+| `llama-3.3-70b-versatile` | Groq | 12 K | 1000 | 500 K | 131 K | **Current.** Tool-call verified; `GROQ_API_KEY`. |
+| `openai/gpt-oss-120b` | Groq | 12 K | 1000 | 500 K | 131 K | Verified; reasoning-tuned; swap by `model:` only. |
+| `qwen/qwen3-32b` | Groq | 12 K | 1000 | 500 K | 131 K | Same tier; fallback if llama regresses; verify first. |
+| `gemini-2.5-flash` | Google AI | 1 M | 15 | 1500 | 1 M | `GEMINI_API_KEY`; tool-use unverified — verify first. |
+| `openai/gpt-oss-120b:free` | OpenRouter `:free` | shared | shared | shared | 131 K | 0% markup; fallback if Groq cap hit; confirm no billing. |
 
-**Switching:** update `model:` in `tests/opencheck/tests.yaml`,
-`OPENAI_BASE_URL` in `_e2e-opencheck.yml`, and the secret source in
-`e2e-opencheck.yml` (`LLM_API_KEY`). Always re-test a fresh provider's
-tool-call shape with a one-shot `curl … /chat/completions` before
-pushing.
+**Switching:** edit `model:` (`tests/opencheck/tests.yaml`),
+`OPENAI_BASE_URL` (`_e2e-opencheck.yml`), and the `LLM_API_KEY` source
+(`e2e-opencheck.yml`); re-test the provider's tool-call shape with a
+one-shot `curl … /chat/completions` first.
 
-## Opencheck progress tracker (daily iteration)
+## Opencheck progress tracker (append-only)
 
-Long-running stabilisation across days — short notes per iteration so
-progress is visible without re-reading every run log. Append-only.
+| Date | Change | Outcome |
+|---|---|---|
+| 2026-05-20 | reruns of same config | all failed — cascade from `#submit-prefilled-row` 240 s timeout |
+| 2026-05-21 | swap to paid Mistral via OpenRouter | failed; **policy violation** (paid) — ~$14 burned |
+| 2026-05-31 | rerun on main | failed; cascade + model hallucinated `/app/databases` → 404 (route absent) |
+| 2026-06-03 | revert to FREE Groq `llama-3.3-70b-versatile`; comments forbid paid | pending — first free-only run post-violation |
 
-| Date | Branch | Change | Outcome |
-|---|---|---|---|
-| 2026-05-20 | claude/e2e-comment-cleanup | repeated reruns of same config | all failed (cascade from `#submit-prefilled-row` 240 s timeout) |
-| 2026-05-21 | claude/nice-meitner-2BAev | swapped to paid Mistral Small via OpenRouter | failed; **policy violation** (paid model used) — burned ~$14 of OpenRouter credit |
-| 2026-05-31 | main | rerun on main | failed; `#submit-prefilled-row` + 5 cascaded failures (model also hallucinated `/app/databases` → 404 in `#api-keys-mint-and-revoke` — route does not exist in `apps/web/src/pages/app/`) |
-| 2026-06-03 | claude/determined-cannon-rcvyd | revert to FREE: Groq `llama-3.3-70b-versatile`; comments forbid paid; tool-call live-verified | pending — first free-only run after policy violation |
-
-**Cascade hypothesis:** `sessionMode: persistent` means a single timed-out
-test (typically `#submit-prefilled-row`) starves the entire downstream
-suite of the database it expected. Splits to consider if this run still
-cascades: (a) carve the suite into two opencheck configs — anon +
-auth-bootstrap (tests 1–5) and write/UX/delete (tests 6–20) — running as
-separate jobs that share the same `e2e` Neon branch; (b) seed fixtures
-via API directly before write-path tests instead of relying on the model
-to navigate.
+**Cascade hypothesis:** `sessionMode: persistent` lets one timed-out test
+(`#submit-prefilled-row`) starve downstream tests of the DB they expect.
+If it recurs: (a) split into two opencheck configs — bootstrap (1–5) +
+write/UX/delete (6–20) — sharing the `e2e` Neon branch; (b) seed fixtures
+via API before write-path tests.
 
 ## Open questions / known unknowns
 
-- **Cassette staleness cron.** Cassettes are committed and replayed; if the live API's wire shape drifts, cassettes lie until re-recorded. Decide whether to run a weekly cron that re-records cassettes against staging and opens a PR with the diff (similar pattern to [`quality-eval/FEATURE.md`](../quality-eval/FEATURE.md)'s weekly accuracy cron) or to leave re-recording manual until staleness bites. Lean: manual until first staleness incident; promote to cron if it bites more than once.
-- **Per-PR e2e for high-risk paths.** Today every e2e is manual. Some changes (e.g. `apps/api/src/ask/**`) carry a higher regression risk; we may want a narrow PR-trigger that runs only one persona's journey when a specific path glob matches. Lean: do not add until a real regression escapes; the existing PR-time unit + integration tests already catch most.
-- **Visual regression for elements.** `<nlq-data>` is a web component; rendering regressions today are caught only by opencheck's natural-language assertions. Decide whether to add Playwright screenshot diffing (e.g. `expect(page).toHaveScreenshot()`) in the elements/examples surfaces. Lean: defer until a CSS regression escapes opencheck; screenshot diffs are notoriously flaky in headless CI.
+- **Cassette staleness cron.** Cassettes are committed and replayed; if the live API's wire shape drifts they lie until re-recorded. Decide whether to run a weekly re-record-and-PR cron (cf. [`quality-eval/FEATURE.md`](../quality-eval/FEATURE.md)) or keep it manual. Lean: manual until staleness bites more than once.
+- **Per-PR e2e for high-risk paths.** Today every e2e is manual. High-risk changes (e.g. `apps/api/src/ask/**`) might warrant a narrow PR-trigger running one persona's journey on a path-glob match. Lean: defer until a real regression escapes PR-time unit + integration tests.
+- **Visual regression for elements.** `<nlq-data>` rendering regressions are caught today only by opencheck's NL assertions. Decide whether to add Playwright screenshot diffing in the elements/examples surfaces. Lean: defer until a CSS regression escapes; headless screenshot diffs are flaky.

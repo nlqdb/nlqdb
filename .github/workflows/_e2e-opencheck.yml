@@ -168,7 +168,7 @@ jobs:
 
       # Patch opencheck system prompt: replace "prefer browser_evaluate" with browser_snapshot guidance.
       # browser_evaluate runs code in the BROWSER context — Playwright API (page.*) is not available there,
-      # causing "not well-serializable" / "Not connected" loops with mistral-small.
+      # causing "not well-serializable" / "Not connected" loops (model-agnostic; first hit on mistral-small).
       - name: Patch opencheck — fix browser_evaluate system-prompt guidance
         working-directory: tests/opencheck
         run: |
