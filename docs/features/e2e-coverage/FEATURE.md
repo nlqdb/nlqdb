@@ -128,6 +128,6 @@ out per D4 so the tracker can grow without breaching the 20 KB cap.
 
 ## Open questions / known unknowns
 
-- **Cassette staleness cron.** Cassettes are committed and replayed; if the live API's wire shape drifts they lie until re-recorded. Decide whether to run a weekly re-record-and-PR cron (cf. [`quality-eval/FEATURE.md`](../quality-eval/FEATURE.md)) or keep it manual. Lean: manual until staleness bites more than once.
-- **Per-PR e2e for high-risk paths.** Today every e2e is manual. High-risk changes (e.g. `apps/api/src/ask/**`) might warrant a narrow PR-trigger running one persona's journey on a path-glob match. Lean: defer until a real regression escapes PR-time unit + integration tests.
-- **Visual regression for elements.** `<nlq-data>` rendering regressions are caught today only by opencheck's NL assertions. Decide whether to add Playwright screenshot diffing in the elements/examples surfaces. Lean: defer until a CSS regression escapes; headless screenshot diffs are flaky.
+- **Cassette staleness cron — Parked until a stale cassette masks a real wire-drift twice** (`GLOBAL-033` speculative-scope). Cassettes stay manually re-recorded; the weekly re-record cron lands only on the second masked drift.
+- **Per-PR e2e for high-risk paths — Parked until a regression escapes PR-time tests** (`GLOBAL-033` speculative-scope). A path-glob persona walk on `apps/api/src/ask/**` lands the first time a real regression reaches a manual e2e.
+- **Visual regression for elements — Parked until a CSS regression escapes** (`GLOBAL-033` speculative-scope; screenshot diffs are flaky). opencheck NL assertions cover rendering today; Playwright diffing waits for the first unnoticed CSS regression.
