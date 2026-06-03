@@ -194,8 +194,7 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 
 ## Open questions / known unknowns
 
-- **MCP-side anonymous identity.** Every MCP call carries a host-scoped key minted at install. Whether a "try-before-install" flow needs a server-issued one-shot anon key is open.
-- **Pressure-sweep eviction order.** `docs/runbook.md §9.3` drops oldest when total bytes > 300 MB. Whether to weight by size (biggest-and-oldest first) is undecided.
+- **Pressure-sweep eviction order** — Decided per P5 (keep simple): oldest-first, no size weighting. A high-churn DB that creates many small DBs is already bounded by the per-device 1-create cap (`SK-ANON-012`); adding a size dimension adds a branch for negligible benefit.
 - **Cross-device anonymous continuity.** Per-device identity (browser `localStorage`, CLI keychain) is Phase 1; cross-device unification (paste-a-code handshake) is deferred to Phase 2.
 - **Browser-storage clearing.** Clearing `localStorage` before signing in loses access to the anonymous DB (device-token hash is the only handle). No recovery path designed.
 

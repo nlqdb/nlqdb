@@ -113,7 +113,5 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 
 ## Open questions / known unknowns
 
-- **Pin-eviction policy** — Resolved per `GLOBAL-033`: **pins stay LRU-evictable** (confirms `SK-PLAN-005`, no exemption). A pin is a cache hint that survives because it's hot, not a durable store; exempting pins would add an eviction-class branch (against the Simple value) for a power-user edge that re-pins cheaply on next use.
 - **Parked until global Phase 2 rollout:** cross-region KV replication latency (eventually-consistent, sub-60s; moot for single-region Phase 0/1).
 - **Parked until measured cold-start pain:** cache-warming on cold KV (every first user pays one LLM call today; decide a bulk pre-warm of canonical demo queries only if the cold-start cost shows up).
-- **Disappearance-event hard-stop UX** — cross-ref, owned by `schema-widening` (error code / message / recovery path for "field X vanished"); not a plan-cache decision.

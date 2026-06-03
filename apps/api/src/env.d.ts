@@ -60,8 +60,6 @@ declare global {
       // Stripe secret key for outbound API calls (Checkout Session creation).
       // When absent, POST /v1/billing/checkout returns 503.
       STRIPE_SECRET_KEY?: string;
-      // Stripe publishable key — passed to the frontend for future Stripe.js flows.
-      STRIPE_PUBLISHABLE_KEY?: string;
       // Stripe price IDs for the subscription plans. Set via `wrangler secret put`.
       // Absent → POST /v1/billing/checkout returns 503 plan_not_configured.
       STRIPE_PRICE_HOBBY?: string;

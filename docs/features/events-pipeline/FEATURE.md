@@ -160,10 +160,10 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 
 ## Open questions / known unknowns
 
-- **DLQ activation threshold.** No agreed dropped-event rate that triggers DLQ wiring; document the threshold (e.g. > X drops/day for 3 days) in `apps/events-worker/README.md`.
+- **DLQ activation threshold** — Decided: wire the DLQ when `nlqdb.events.dropped` exceeds 500/day for 2 consecutive days (≈15% of the 3.3K-msg/day budget). Below that the TTL-based dead-letter pattern is cheaper. Document in `apps/events-worker/README.md` when the Grafana alert is wired.
 - **PostHog wiring criteria.** "Real cohort question SQL can't answer" is qualitative. Capture a concrete checklist before wiring.
-- **Schema evolution.** Adding a field to an existing `ProductEvent` variant breaks `typecheck` for older producers in flight during deploy. Document a migration recipe before a non-additive change lands.
-- **Queue free-tier ceiling.** 10K ops/day = ~3.3K msgs/day at 3 ops/msg. Head-room is thin; capture a "hot signal" alert when daily ops cross 70%.
+- **Schema evolution** — Decided: `ProductEvent` changes must be additive-only (new fields must be optional with a default). Non-additive changes (rename, remove, type change) require a two-step deploy: step 1 adds the new shape as optional alongside the old; step 2 (next deploy) drops the old shape once all producers are updated.
+- **Queue free-tier ceiling** — Alert threshold: > 7 000 ops/day (70% of 10K). Wire as a Grafana alert on `nlqdb.events.queue_ops`.
 - **Inbound-email sink.** Cloudflare Email Routing is wired separately; decide whether a future `support.email_received` event flows through this pipeline.
 - **Wishlist global cap (SK-EVENTS-011).** Only per-IP throttle (10/min). Distributed-IP abuse can exceed the Queue free-tier ceiling at request time even though producer-side dedup bounds LogSnag burn. Add a daily global cap on `/v1/events/wishlist` when `nlqdb.events.wishlist` shows abuse.
 - **`feature.requested.ddl_via_run` event.** `/v1/run` (`SK-SDK-009`) currently emits `feature.requested.heavier_tier` on anon rate-limit hits but does NOT fire a DDL-attempt event (the existing `ddl_via_ask` event name would mislabel raw-SQL traffic as ask-path). The `surface` qualifier on every `feature.requested.*` event already disambiguates chat vs cli vs mcp, so the demand-signal funnel can already slice. If raw-SQL DDL volume becomes a meaningful share of the signal, mint a dedicated `feature.requested.ddl_via_run` variant in `packages/events/src/types.ts` and wire it from `apps/api/src/index.ts` `/v1/run` handler.
