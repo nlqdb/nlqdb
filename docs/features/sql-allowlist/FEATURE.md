@@ -88,10 +88,30 @@ when-to-load:
 - **Decision:** Role-level isolation (`pg_read_all_data`, `search_path` scoping), Row-Level Security policies, statement timeout, EXPLAIN cost cap, and the transactional wrapper are NOT enforced by `sql-validate.ts`. They live at the Neon connection pool, the per-schema provisioner, and the executor (`apps/api/src/ask/orchestrate.ts`) respectively.
 - **Core value:** Bullet-proof, Simple
 - **Why:** Validation is one layer of layered defense (`SK-SQLAL-001`); coupling it to runtime concerns (timeouts, transactions) blurs the boundary and makes both layers harder to reason about. Each layer has one job.
-- **Consequence in code:** A reviewer asking "why doesn't sql-validate enforce timeouts?" gets pointed here. Side-effecting function rejection (`pg_sleep`, `dblink`, `lo_import`, `pg_read_file`, `COPY ... FROM PROGRAM`) is an Open Question — currently NOT enforced anywhere; tracked below.
+- **Consequence in code:** A reviewer asking "why doesn't sql-validate enforce timeouts?" gets pointed here. Statement timeout / cost cap / transactional wrapper remain the executor's job (still unwired — tracked in `db-adapter`). Side-effecting function rejection moved *into* the validator in `SK-SQLAL-008` (it's a parse-time decision, not a runtime one).
 - **Alternatives rejected:**
   - Move timeout enforcement into the validator — the validator runs at parse time, before execution, with no executor context.
   - Move RLS into application code — defeats the purpose of RLS (database-enforced).
+
+### SK-SQLAL-008 — Side-effecting functions rejected at the AST walk
+
+- **Decision:** `validateSql()` rejects a closed set of side-effecting functions anywhere in the AST with reason `disallowed_function`: the `pg_sleep*` family (connection-pinning DoS), `dblink*` (network egress), `lo_import` / `lo_export` / `pg_read_file` / `pg_read_binary_file` / `pg_ls_dir` / `pg_stat_file` (server-side file IO), and `pg_logical_emit_message`. `COPY ... FROM PROGRAM` is already rejected one layer earlier — `copy` is not in `ALLOWED_LEADING`.
+- **Core value:** Bullet-proof
+- **Why:** `pg_sleep(3600)` is callable by *any* role and pins a connection for the duration — a trivial DoS — and the statement-timeout layer that was supposed to bound it is still unwired (`db-adapter` open question). The file-IO functions are blocked at the PG level by Neon's non-superuser role, but listing them here makes the reject *attributed* (`disallowed_function`) rather than surfacing as an opaque Postgres permission error, and holds the layered-guardrails line (`SK-SQLAL-001`) if a future engine or BYO connection runs as a more privileged role. Resolved per `GLOBAL-033` (security trade-off → layered guardrails) — was previously an open question relying on a single control.
+- **Consequence in code:** `DISALLOWED_FUNCTIONS` is a closed set in `sql-validate.ts`; `walkForRejected()` tests every `type:"function"`/`"aggr_func"` node's name against it via `containsDisallowedFunction` (recurses string leaves under `name` so it's robust to node-sql-parser's version-dependent name shape). Adding a dangerous function = one line in the set + a test row.
+- **Alternatives rejected:**
+  - Rely on Neon's non-superuser role alone — misses `pg_sleep` (any role can call it) and breaks the moment a more-privileged engine/connection is added.
+  - Rely on a statement timeout — not wired, and a timeout still wastes the connection for its duration.
+
+### SK-SQLAL-009 — Multi-statement input rejected
+
+- **Decision:** A statement that `node-sql-parser` parses into more than one sibling statement is rejected with `multi_statement`, before the per-statement walk.
+- **Core value:** Bullet-proof, Simple
+- **Why:** `SELECT 1; DELETE FROM x WHERE id=1` parses as two statements; the per-statement walk clears each (the DELETE *has* a WHERE), so a benign-looking lead statement smuggles a second one past the guardrails. A plan is exactly one statement — rejecting `>1` is fail-closed and matches the `architecture.md §3.6.5` "multi-statement rejected" contract that was previously only asserted in prose. Resolved per `GLOBAL-033` (security trade-off → fail-closed).
+- **Consequence in code:** `validateSql()` returns `{ ok:false, reason:"multi_statement" }` when `asts.length > 1`. (`WITH … SELECT` is a single statement and is unaffected.)
+- **Alternatives rejected:**
+  - Trust the per-statement walk to catch everything — it only catches *rejected* patterns; two benign statements both pass.
+  - A leading-`;`-count regex — string-level counting trips on semicolons inside string literals; the parser's statement split is authoritative.
 
 ## GLOBALs governing this feature
 
@@ -100,9 +120,8 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 - **GLOBAL-015** — Power users always have an escape hatch.
   - *In this feature:*
     **Interaction note:** `/v1/run` ships in Phase 2 (`apps/api/src/run/orchestrate.ts`, backing CLI `nlq run` + SDK `client.runSql()`). It reuses this validator unchanged — `/v1/run` skips the LLM, not the validator. The orchestrator calls `validateSql()` at the same point `/v1/ask` does; pk_live keys reject writes one step earlier at the leading-verb gate (`SK-APIKEYS-003`). Future work that loosens this needs to update both this feature and `GLOBAL-015` in the same PR.
+- **GLOBAL-033** — Resolution defaults (close open questions from the values).
 
 ## Open questions / known unknowns
 
-- **Side-effecting function rejection** — `pg_sleep`, `dblink`, `lo_import`, `pg_read_file`, `COPY ... FROM PROGRAM`, and similar are NOT currently rejected. The file header notes a TODO to add an AST function-name walk; tracked in `docs/phase-plan.md`. Reviewers should flag PRs that touch the validator without addressing this.
-- **Semantic-aware allow-list** — Phase 2 (DESIGN §17 line 1508) plans an optional pass that verifies referenced columns belong to dimensions/metrics declared in `semantic.yml`. Mis-references would fail with `semantic_violation` instead of leaking schema. Not implemented yet; plan-cache key construction would need to fold in the semantic.yml fingerprint when this lands (DESIGN §17 line 1509).
-- **Multi-statement queries** — current behaviour rejects via the leading-verb gate when the second statement starts with a rejected verb, or via the AST walk for any embedded rejected pattern. The DESIGN §3.6.5 table claims "Multi-statement rejected"; verify whether `node-sql-parser` reliably emits the second statement as a sibling AST node for the walk to catch, or whether we need an explicit statement-count check at the top.
+- **Parked until `semantic.yml` ships (Phase 2):** semantic-aware allow-list — an optional pass (DESIGN §17) verifying referenced columns belong to dimensions/metrics declared in `semantic.yml`, failing with `semantic_violation` instead of leaking schema. Plan-cache key construction folds in the semantic.yml fingerprint when this lands.

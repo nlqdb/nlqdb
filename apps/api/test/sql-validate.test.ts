@@ -23,7 +23,29 @@ describe("validateSql", () => {
       ["REVOKE ALL ON users FROM public", "grant_or_revoke"],
       ["VACUUM users", "disallowed_verb"],
       ["CREATE TABLE foo (id int)", "disallowed_verb"],
+      // Multi-statement (SK-SQLAL-009): a benign lead can't smuggle a second.
+      ["SELECT 1; SELECT 2", "multi_statement"],
+      ["SELECT 1; DELETE FROM x WHERE id = 1", "multi_statement"],
       ["", "empty"],
+    ])("rejects %j with reason %s", (sql, reason) => {
+      const result = validateSql(sql);
+      expect(result.ok).toBe(false);
+      if (!result.ok) expect(result.reason).toBe(reason);
+    });
+  });
+
+  // Side-effecting functions (SK-SQLAL-008): pg_sleep is a
+  // connection-pinning DoS callable by any role; dblink / lo_* /
+  // pg_read_file are server-side IO. Rejected anywhere in the tree.
+  describe("rejects side-effecting functions", () => {
+    it.each([
+      ["SELECT pg_sleep(10)", "disallowed_function"],
+      ["select PG_SLEEP(5)", "disallowed_function"],
+      ["SELECT * FROM users WHERE pg_sleep(5) IS NULL", "disallowed_function"],
+      ["WITH x AS (SELECT pg_sleep(3)) SELECT 1", "disallowed_function"],
+      ["SELECT pg_read_file('/etc/passwd')", "disallowed_function"],
+      ["SELECT dblink('host=evil', 'select 1')", "disallowed_function"],
+      ["SELECT lo_import('/etc/passwd')", "disallowed_function"],
     ])("rejects %j with reason %s", (sql, reason) => {
       const result = validateSql(sql);
       expect(result.ok).toBe(false);
@@ -42,6 +64,10 @@ describe("validateSql", () => {
       "EXPLAIN SELECT * FROM users",
       "EXPLAIN VERBOSE SELECT * FROM users",
       "SHOW search_path",
+      // Legit functions that share the function-call AST shape must pass.
+      "SELECT count(*) FROM users",
+      "SELECT max(total) FROM orders",
+      "SELECT now()",
     ])("accepts %j", (sql) => {
       expect(validateSql(sql)).toEqual({ ok: true });
     });
