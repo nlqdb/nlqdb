@@ -1063,6 +1063,29 @@ describe("createClient", () => {
     expect(called).toBe(false);
   });
 
+  it("setByollm: surfaces a 400 invalid_byollm_key (unsupported provider) as NlqdbApiError", async () => {
+    const fakeFetch: FetchLike = async () =>
+      new Response(
+        JSON.stringify({
+          error: { status: "invalid_byollm_key", message: 'provider "cohere" is not supported.' },
+        }),
+        { status: 400, headers: { "content-type": "application/json" } },
+      );
+    const client = createClient({ withCredentials: true, fetch: fakeFetch });
+    try {
+      // Shape is valid (non-empty), so the SDK sends it; the server is the
+      // source of truth for the evolving provider allowlist (SK-SDK-010).
+      await client.setByollm({ provider: "cohere", model: "command-r", key: "co-key" });
+      expect.fail("should have thrown");
+    } catch (err) {
+      expect(err).toBeInstanceOf(NlqdbApiError);
+      const e = err as NlqdbApiError;
+      expect(e.httpStatus).toBe(400);
+      expect(e.code).toBe("invalid_byollm_key");
+      expect(e.path).toBe("/v1/keys/byollm");
+    }
+  });
+
   it("setByollm: surfaces a 503 byollm_unavailable as NlqdbApiError", async () => {
     const fakeFetch: FetchLike = async () =>
       new Response(

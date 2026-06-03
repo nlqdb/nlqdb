@@ -251,6 +251,10 @@ export type ApiErrorCode =
   | "invalid_engine"
   // `GLOBAL-027` / `SK-GATE-005` — 403 with `gate` + `waitlist_url`. Terminal.
   | "feature_gated"
+  // SK-SDK-011: the account-stored BYOLLM verbs — 400 on a mis-shaped
+  // credential, 503 when the deployment can't seal keys (KEK unset).
+  | "invalid_byollm_key"
+  | "byollm_unavailable"
   // SDK-only sentinels — never sent by the API.
   | "unknown_error"
   | "non_json_response"
