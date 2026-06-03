@@ -71,7 +71,33 @@
 
 ---
 
-## Status dashboard (updated 2026-05-24)
+## The five user flows that matter most (canonical per [GLOBAL-032](../decisions/GLOBAL-032-top-5-user-flows-canonical.md))
+
+Of the eight `FLOW-NNN` blocks below, five carry the inbound funnel:
+**FLOW-001 / FLOW-002 / FLOW-003 / FLOW-004 / FLOW-005**. The remaining
+three are either post-acquisition (FLOW-006 SDK escape hatch, FLOW-007
+anonymous-DB adoption) or a system pipeline (FLOW-008 cron source-health).
+[`GLOBAL-032`](../decisions/GLOBAL-032-top-5-user-flows-canonical.md)
+mandates each canonical flow has at least one agent-runnable walker that
+ran against the deployed surface inside the last seven days; a walker
+stale beyond that bar is the next agent's priority #1.
+
+| # | Flow | Persona | Canonical walker | Last verified | Outcome |
+|---|---|---|---|---|---|
+| 1 | FLOW-001 | P1 Solo Builder | `bash scripts/stranger-test.sh` (+ `bash scripts/stranger-test-invited.sh`) | 2026-05-24 | passed (invite-bearing — first-ever HTTP 200 on `/v1/ask`); unbypassed baseline gate-403 per GLOBAL-027 |
+| 2 | FLOW-002 | P3 Data-Curious Analyst | `bash scripts/stranger-test.sh` (+ invite variant) | 2026-05-24 | static + CTA + draft + event-spy green; gate-403 at step 9 expected per GLOBAL-027 |
+| 3 | FLOW-003 | P3 / P4 | `bash scripts/stranger-test.sh` (+ invite variant) | 2026-06-02 | every static + CTA + draft + `/llms.txt` assertion green across all 6 vs slugs; gate-403 at step 8 expected per GLOBAL-027 |
+| 4 | FLOW-004 | P1 invited | `bash scripts/flow-004-walk.sh` | 2026-06-03 | passed in 19s (control 403 + invite HTTP 200; SK-GATE-007 invariant honoured); under continuous daily watch |
+| 5 | FLOW-005 | P2 Agent Builder | `bash scripts/flow-005-walk.sh` ([`SK-STRG-005`](../features/stranger-test/FEATURE.md)) | 2026-06-03 | passed 6/6 in 4s (RFC 9728 root + scoped discovery, RFC 8414 AS metadata, `initialize` + `tools/list` 401 with `WWW-Authenticate` challenge URL matching scoped discovery) |
+
+The daily [`acquisition-health.yml`](../../.github/workflows/acquisition-health.yml)
+cron re-runs each walker every 24 h so the seven-day freshness bar is
+met by default; regressions land in the artifact JSON, not in a
+founder-facing inbox.
+
+---
+
+## Status dashboard (updated 2026-06-03)
 
 | Flow | Persona | Verification status | Last verified | Mirror impl % |
 |---|---|---|---|---|
@@ -79,7 +105,7 @@
 | FLOW-002 | P3 analyst | failed 2026-05-24 step 9 baseline (gate 403); invite-bearing walk **discovered + fixed missing `captureInviteFromUrl` call on `/solve/<slug>`** — post-deploy re-walk pending | 2026-05-24 | 5/6 (83%) |
 | FLOW-003 | P3 / P4 | failed 2026-05-24 step 8 baseline (gate 403); invite-bearing walk **discovered + fixed missing `captureInviteFromUrl` call on `/vs/<slug>`** — post-deploy re-walk pending; **2026-05-29 5th slug `/vs/wrenai` added (pre-deploy build green; live walk pending `deploy-web.yml`)**; **2026-06-02 6th slug `/vs/askyourdatabase` added (pre-deploy build green; live walk pending `deploy-web.yml`)** | 2026-06-02 | 5/5 (100%) |
 | FLOW-004 | P1 solo builder | **passed 2026-05-24** (3 walks: 18s/15s/18s wall, 13s/10s/11s email; daily cron under SK-STRG-003 from 06:00 UTC) | 2026-05-24 | 7/7 (100%) |
-| FLOW-005 | P2 agent builder | partial — OAuth discovery precondition passes via `verify-flows.sh`; walkthrough steps 1-7 need an authenticated MCP client | 2026-05-23 | 5/6 (83%) |
+| FLOW-005 | P2 agent builder | **passed 2026-06-03 (no-credential subset, SK-STRG-005)** — `bash scripts/flow-005-walk.sh` 6/6 in 4s (discovery + auth wall + challenge URL); walkthrough steps 6+ (authenticated `tools/list`, `create_database`, `ask`, `run`) still need an `sk_mcp_*` key | 2026-06-03 | 6/7 (86%) |
 | FLOW-006 | P4 backend engineer | not yet attempted | — | 5/6 (83%) |
 | FLOW-007 | P1 / P3 | not yet attempted | — | 5/6 (83%) |
 | FLOW-008 | cron / system | partial — curl probe of 8 sources passes (HN / GH / GHD / IH / Dev.to / Bluesky 200; Reddit / SO sandbox-egress advisory); cron-side KV writes + LogSnag publish need the deployed Worker | 2026-06-01 | 11/11 (100%) |
@@ -548,54 +574,102 @@ provision and query in English."
 
 ### Required tools
 
-- The official MCP inspector ([`@modelcontextprotocol/inspector`](https://www.npmjs.com/package/@modelcontextprotocol/inspector))
-  OR a real MCP-aware client (Claude Desktop, Cursor, Cline). The
-  inspector is the headless option and the canonical agent path.
+- For the **no-credential subset (steps 1-5, SK-STRG-005)**: `bash scripts/flow-005-walk.sh`. HTTP-only (curl + jq), no
+  Playwright, no MCP inspector. Exercises RFC 9728 root + scoped
+  resource-metadata, RFC 8414 AS metadata, and the unauthenticated
+  `initialize` + `tools/list` 401-with-challenge contract. ≤ 4 s wall.
+- For the **credentialed subset (steps 6+)**: the official MCP inspector
+  ([`@modelcontextprotocol/inspector`](https://www.npmjs.com/package/@modelcontextprotocol/inspector))
+  OR a real MCP-aware client (Claude Desktop, Cursor, Cline, ChatGPT desktop).
 - The MCP HTTP transport URL: `https://mcp.nlqdb.com`.
 
 ### Required credentials
 
-- An `sk_mcp_*` API key OR an invite code to mint one. If the agent
-  has neither, ask the founder per `### 3.` of the preamble.
+- **None for steps 1-5** (the SK-STRG-005 walker covers everything an
+  MCP client hits before it asks the user for a key).
+- **`sk_mcp_*` API key OR an invite code** for steps 6+ (`tools/list`
+  with auth, `create_database`, `ask`, `run`). If the agent has
+  neither, ask the founder per `### 3.` of the preamble.
 
 ### Walkthrough steps
 
-1. Start the MCP inspector against `https://mcp.nlqdb.com` (Streamable
+**No-credential subset (steps 1-5, SK-STRG-005 walker):** run
+`bash scripts/flow-005-walk.sh` against `https://mcp.nlqdb.com` and read
+the JSON outcome. The walker performs each step end-to-end; the agent
+asserts `state == "passed"` in the JSON, NOT the individual HTTP calls.
+
+1. `GET https://mcp.nlqdb.com/.well-known/oauth-protected-resource` →
+   200; body's `resource` field equals `https://mcp.nlqdb.com` (RFC 9728
+   root variant). The inspector + every MCP client begins discovery here.
+2. `GET https://mcp.nlqdb.com/.well-known/oauth-protected-resource/mcp` →
+   200; body's `resource` field equals `https://mcp.nlqdb.com/mcp` (RFC
+   9728 §3.1 resource-scoped variant; the URL the auth-wall challenge
+   points at in step 4).
+3. `GET https://mcp.nlqdb.com/.well-known/oauth-authorization-server` →
+   200; body carries `issuer`, `authorization_endpoint`, `token_endpoint`
+   (RFC 8414).
+4. `POST https://mcp.nlqdb.com/mcp` with the JSON-RPC `initialize`
+   request and no `Authorization` header → 401 with
+   `WWW-Authenticate: Bearer realm="OAuth", resource_metadata="<url>", error="invalid_token"`;
+   the `<url>` MUST equal step 2's URL (RFC 9728 §5.1 — the challenge
+   resource_metadata must be the discovery endpoint a fresh client can
+   reach without context).
+5. `POST https://mcp.nlqdb.com/mcp` with `tools/list` and no auth → same
+   401 + same challenge shape (proves the wall isn't method-specific).
+
+**Credentialed subset (steps 6+, needs `sk_mcp_*` key):**
+
+6. Start the MCP inspector against `https://mcp.nlqdb.com` (Streamable
    HTTP transport): `bunx @modelcontextprotocol/inspector https://mcp.nlqdb.com`.
-2. Assert: the server's `tools/list` response includes
+7. Assert: the server's `tools/list` response includes
    `create_database`, `ask`, and `run`. See [`docs/features/mcp-server/FEATURE.md`](../features/mcp-server/FEATURE.md).
-3. Call `create_database` with an English goal:
+8. Call `create_database` with an English goal:
    `{"goal": "a memory store for my research assistant"}`.
-4. Assert: the response contains a `dbId` and a freshly-provisioned
+9. Assert: the response contains a `dbId` and a freshly-provisioned
    schema description.
-5. Call `ask` with the new `dbId` and a goal:
-   `{"dbId": "<from step 4>", "goal": "list everything I've stored"}`.
-6. Assert: the response includes a typed table (possibly empty on a
-   fresh DB) and a `sql` field. The SQL is the audit surface per
-   [`GLOBAL-023`](../decisions/GLOBAL-023-trust-ux-baseline.md).
-7. Call `run` with a parameterised insert: `{"dbId": "<id>", "sql":
-   "INSERT INTO facts (k, v) VALUES ($1, $2)", "params": ["pref", "celsius"]}`.
-   Assert: 200 status AND the row appears on a follow-up `ask`.
+10. Call `ask` with the new `dbId` and a goal:
+    `{"dbId": "<from step 9>", "goal": "list everything I've stored"}`.
+11. Assert: the response includes a typed table (possibly empty on a
+    fresh DB) and a `sql` field. The SQL is the audit surface per
+    [`GLOBAL-023`](../decisions/GLOBAL-023-trust-ux-baseline.md).
+12. Call `run` with a parameterised insert: `{"dbId": "<id>", "sql":
+    "INSERT INTO facts (k, v) VALUES ($1, $2)", "params": ["pref", "celsius"]}`.
+    Assert: 200 status AND the row appears on a follow-up `ask`.
 
 ### Pass criteria
 
-- Every assertion in steps 2-7 passes.
-- Total wall-clock under 90 s (MCP handshake adds latency vs HTTP).
+- **No-credential subset (steps 1-5):** `bash scripts/flow-005-walk.sh`
+  exits 0 AND the JSON outcome has `state == "passed"` AND every one of
+  `discovery_ok`, `auth_wall_ok`, `challenge_url_matches` is `true`.
+  Wall-clock under 30 s (5 HTTP calls; the walker times each at 15 s).
+- **Credentialed subset (steps 6+):** every assertion in steps 7-12
+  passes. Total wall under 90 s (MCP handshake adds latency vs HTTP).
 
 ### If blocked
 
-- MCP transport handshake fails → `blocked upstream` (CF) or
-  `failed step 1` (mcp-server regression).
+- `flow-005-walk.sh` returns `failed discovery` → the Worker / route
+  regression; one of the three discovery endpoints stopped serving 200
+  with the expected contract. `apps/mcp` regression.
+- `flow-005-walk.sh` returns `failed auth wall` → the `WWW-Authenticate`
+  header dropped or no longer carries `resource_metadata` + `error="invalid_token"`.
+  Every MCP client now fails handshake silently — escalate.
+- `flow-005-walk.sh` returns `failed challenge URL` → the challenge's
+  `resource_metadata` URL no longer matches step 2's scoped discovery
+  URL. A fresh MCP client can't reach the discovery endpoint pointed
+  at by the challenge — handshake breaks. `apps/mcp` regression.
+- MCP transport handshake fails (step 6) → `blocked upstream` (CF) or
+  `failed step 6` (mcp-server regression).
 - `tools/list` is missing one of `create_database` / `ask` / `run`
-  → `failed step 2`; mcp-server regression.
-- 401 on the auth header → `blocked credentials`; the `sk_mcp_*` key
-  is missing or rotated.
+  (step 7) → `failed step 7`; mcp-server regression.
+- 401 on the auth header (step 6+) → `blocked credentials`; the `sk_mcp_*`
+  key is missing or rotated.
 
 ### Outcome log
 
 | Date | Agent | State | Tools confirmed | Notes |
 |---|---|---|---|---|
 | 2026-05-23 | composer-4 | partial (discovery precondition) | OAuth metadata (no tools confirmed) | `scripts/verify-flows.sh` curl-only probe against `https://mcp.nlqdb.com`: `/.well-known/oauth-protected-resource` → 200 with `resource=https://mcp.nlqdb.com`; `/.well-known/oauth-authorization-server` → 200 with `issuer=https://mcp.nlqdb.com`, `authorization_endpoint`, `token_endpoint`. These two endpoints are the precondition the MCP inspector consumes during its handshake in walkthrough step 1 — a 4xx/5xx here would block step 1 outright. Unauthenticated `POST /mcp tools/list` returns `401 invalid_token` — the auth wall is intact. Walkthrough steps 1-7 (inspector transport handshake, `tools/list`, `create_database`, `ask`, `run`) need an MCP inspector + `sk_mcp_*` key and are unattempted in this PR. |
+| 2026-06-03 | claude-code | **passed (no-credential subset, SK-STRG-005)** | discovery endpoints + auth-wall challenge | First `bash scripts/flow-005-walk.sh` (`SK-STRG-005`) run against `https://mcp.nlqdb.com` from this agent VM. 6/6 assertions green in 4s wall: (1) RFC 9728 root resource-metadata `resource=https://mcp.nlqdb.com`; (2) RFC 9728 scoped resource-metadata `resource=https://mcp.nlqdb.com/mcp`; (3) RFC 8414 AS metadata carries `issuer` + `authorization_endpoint` + `token_endpoint`; (4) `POST /mcp initialize` no auth → 401 `WWW-Authenticate: Bearer realm="OAuth", resource_metadata="https://mcp.nlqdb.com/.well-known/oauth-protected-resource/mcp", error="invalid_token"` AND `resource_metadata` URL matches step 2 (RFC 9728 §5.1); (5) `POST /mcp tools/list` no auth → same 401 + same challenge shape. JSON artifact `state:"passed"`, `discovery_ok:true`, `auth_wall_ok:true`, `challenge_url_matches:true`. Walker added to the daily `acquisition-health.yml` cron — regressions land in the artifact JSON, not in any inbox. Walkthrough steps 6+ (`tools/list` authed, `create_database`, `ask`, `run`) still need an `sk_mcp_*` key and remain `blocked credentials` until the founder provisions one or the agent mints one via FLOW-004 + SK-MCP key issuance. |
 
 ---
 

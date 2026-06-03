@@ -1,9 +1,12 @@
-# Daily acquisition-health cron — runs the three agent-runnable walkers
-# against the production deployment and surfaces their JSON artifacts.
+# Daily acquisition-health cron — runs every agent-runnable walker
+# (verify-flows + stranger-test + flow-004 + flow-005) against the
+# production deployment and surfaces their JSON artifacts.
 #
-# Closes the two open questions in docs/features/stranger-test/FEATURE.md:
+# Closes the open questions in docs/features/stranger-test/FEATURE.md:
 # (a) §1.1 stranger-test daily cron + JSON archive,
-# (b) §1.4 FLOW-004 continuous regression watch.
+# (b) §1.4 FLOW-004 continuous regression watch,
+# and satisfies the GLOBAL-032 seven-day walker-freshness rule by
+# re-running the canonical-five walkers every 24 h.
 #
 # Why GitHub Actions and not a Cloudflare cron Worker: CF Workers cannot
 # host Chromium for the Playwright walker, and the stranger-IP rule in
@@ -34,6 +37,9 @@ on:
       base_url:
         description: "Override the deployed surface (default: app.nlqdb.com / nlqdb.com)"
         required: false
+      mcp_url:
+        description: "Override the MCP host for the FLOW-005 walker (default: mcp.nlqdb.com)"
+        required: false
       skip_flow_004:
         description: "Skip the FLOW-004 invite-valve walk (saves 1 of 200/week SK-GATE-007 cap)"
         type: boolean
@@ -50,7 +56,7 @@ concurrency:
 
 jobs:
   walk:
-    name: Walk FLOW-001/002/003/004 + verify-flows
+    name: Walk FLOW-001/002/003/004/005 + verify-flows
     runs-on: ubuntu-latest
     timeout-minutes: 15
     # SK-STRG-003: always succeed. Walker failures land in the artifact,
@@ -114,6 +120,23 @@ jobs:
           bash scripts/flow-004-walk.sh
           echo "exit_code=$?" >> "$GITHUB_OUTPUT"
 
+      - name: flow-005-walk (MCP discovery + auth-wall)
+        id: flow-005
+        continue-on-error: true
+        env:
+          # FLOW-005 lives on mcp.nlqdb.com (a separate host from the
+          # marketing / app surfaces). The walker consumes no credentials
+          # per SK-STRG-005 — only the RFC 9728 / RFC 8414 discovery
+          # endpoints and the 401-with-challenge path. Preview-MCP
+          # overrides land as a separate input when the first preview
+          # MCP environment exists; today the production host is canonical.
+          NLQDB_MCP_URL: ${{ inputs.mcp_url || 'https://mcp.nlqdb.com' }}
+          FLOW_005_OUT: tools/stranger-test/results/flow-005-cron.json
+        run: |
+          set +e
+          bash scripts/flow-005-walk.sh
+          echo "exit_code=$?" >> "$GITHUB_OUTPUT"
+
       - name: Upload walker artifacts
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         if: always()
@@ -127,10 +150,12 @@ jobs:
         run: |
           set -u
           flow004="tools/stranger-test/results/flow-004-cron.json"
+          flow005="tools/stranger-test/results/flow-005-cron.json"
           walk="tools/stranger-test/results/walk-cron.json"
           # Read the canonical `state` from the JSON artifacts so the agent
           # re-fetching the summary can react without downloading the bundle.
           flow004_state="$([ -f "$flow004" ] && jq -r '.state // "missing"' "$flow004" || echo "skipped")"
+          flow005_state="$([ -f "$flow005" ] && jq -r '.state // "missing"' "$flow005" || echo "missing")"
           walk_state="missing"
           if [ -f "$walk" ]; then
             walk_state="$(jq -r 'if .summary.failed > 0 then "failed (\(.summary.failed)/\(.summary.totalRuns))" else "passed (\(.summary.passed)/\(.summary.totalRuns))" end' "$walk")"
@@ -144,6 +169,7 @@ jobs:
             echo "| verify-flows.sh | ${vf_state} | ${{ steps.verify-flows.outputs.exit_code || 'n/a' }} | verify-flows.log |"
             echo "| stranger-test.sh | ${walk_state} | ${{ steps.stranger-test.outputs.exit_code || 'n/a' }} | walk-cron.json |"
             echo "| flow-004-walk.sh | ${flow004_state} | ${{ steps.flow-004.outputs.exit_code || 'skipped' }} | flow-004-cron.json |"
+            echo "| flow-005-walk.sh | ${flow005_state} | ${{ steps.flow-005.outputs.exit_code || 'n/a' }} | flow-005-cron.json |"
             echo ""
             if [ -f "$flow004" ]; then
               echo "### FLOW-004 outcome"
@@ -156,6 +182,19 @@ jobs:
                 "- ask_status: " + (.ask_status | tostring),
                 "- ask_error_status: " + (.ask_error_status // "" | tostring)
               ' "$flow004"
+            fi
+            if [ -f "$flow005" ]; then
+              echo ""
+              echo "### FLOW-005 outcome"
+              jq -r '
+                "- state: " + .state,
+                "- discovery_ok: " + (.discovery_ok | tostring),
+                "- auth_wall_ok: " + (.auth_wall_ok | tostring),
+                "- challenge_url_matches: " + (.challenge_url_matches | tostring),
+                "- checks_passed: " + (.checks_passed | tostring),
+                "- checks_failed: " + (.checks_failed | tostring),
+                "- total_wall_s: " + (.total_wall_s | tostring)
+              ' "$flow005"
             fi
             if [ -f "$walk" ]; then
               echo ""
