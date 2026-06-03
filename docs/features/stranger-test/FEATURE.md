@@ -6,6 +6,7 @@ when-to-load:
     - tools/stranger-test/**
     - scripts/stranger-test.sh
     - scripts/flow-004-walk.sh
+    - scripts/flow-005-walk.sh
   topics: [acquisition, verification, stranger-test, playwright, anti-self-deception, invite-valve]
 ---
 

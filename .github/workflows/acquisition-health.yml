@@ -1,9 +1,12 @@
-# Daily acquisition-health cron — runs the three agent-runnable walkers
-# against the production deployment and surfaces their JSON artifacts.
+# Daily acquisition-health cron — runs every agent-runnable walker
+# (verify-flows + stranger-test + flow-004 + flow-005) against the
+# production deployment and surfaces their JSON artifacts.
 #
-# Closes the two open questions in docs/features/stranger-test/FEATURE.md:
+# Closes the open questions in docs/features/stranger-test/FEATURE.md:
 # (a) §1.1 stranger-test daily cron + JSON archive,
-# (b) §1.4 FLOW-004 continuous regression watch.
+# (b) §1.4 FLOW-004 continuous regression watch,
+# and satisfies the GLOBAL-032 seven-day walker-freshness rule by
+# re-running the canonical-five walkers every 24 h.
 #
 # Why GitHub Actions and not a Cloudflare cron Worker: CF Workers cannot
 # host Chromium for the Playwright walker, and the stranger-IP rule in
