@@ -124,6 +124,17 @@ dispatching through the user's own LLM key at 0% markup (`GLOBAL-026`).
 Signed-in only, so `byollm` requires `withCredentials: true`; a mis-shaped
 credential fails loud at construction (`GLOBAL-012`).
 
+### SK-SDK-011 — account-stored BYOLLM verbs: `setByollm` / `getByollmStatus` / `clearByollm`
+
+**Body:** [`decisions/SK-SDK-011-account-stored-byollm-verbs.md`](./decisions/SK-SDK-011-account-stored-byollm-verbs.md).
+Three verbs over `POST/GET/DELETE /v1/keys/byollm` (`SK-PREMIUM-012`):
+`setByollm({ provider, model, key })` upserts the single per-account
+credential, `getByollmStatus()` reports `configured` + a key-free display
+view, `clearByollm()` hard-clears it. The persistent counterpart to the
+per-request `byollm` option (`SK-SDK-010`); the key is write-only (`last4`
+only). Signed-in only — the verbs throw unless built with
+`withCredentials: true` (`GLOBAL-012`).
+
 ## GLOBALs governing this feature
 
 Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; index in [`docs/decisions.md`](../../decisions.md)). The list below names the rules that constrain this feature; any feature-local commentary is nested under the rule.
@@ -131,8 +142,9 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 - **GLOBAL-001** — SDK is the only HTTP client.
 - **GLOBAL-002** — Behavior parity across surfaces.
 - **GLOBAL-003** — New capabilities ship to all surfaces in one PR.
-  - *In this feature:* `runSql()` (`SK-SDK-009`) ships in the same PR as CLI `nlq run` and any `/v1/run` HTTP-surface change — no surface lags.
+  - *In this feature:* `runSql()` (`SK-SDK-009`) ships in the same PR as CLI `nlq run` and any `/v1/run` HTTP-surface change — no surface lags. `SK-SDK-011` adds the SDK half of the account-stored BYOLLM lane (HTTP + web `/app/keys` already shipped); the MCP `byollm` param, `<nlq-data byollm>`, and CLI account-store verbs stay the tracked surface gap in `premium-tier/FEATURE.md` Open questions.
 - **GLOBAL-005** — Every mutation accepts `Idempotency-Key`.
+  - *In this feature:* `setByollm` / `clearByollm` (`SK-SDK-011`) auto-generate the key per `SK-SDK-006` like every other mutating verb.
 - **GLOBAL-009** — Tokens refresh silently — never surface a 401.
 - **GLOBAL-012** — Errors are one sentence with the next action.
 - **GLOBAL-014** — OTel span on every external call (DB, LLM, HTTP, queue).
@@ -142,7 +154,7 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
   - *In this feature:* see `SK-SDK-008` for the canonical implementation. `packages/sdk/src/index.ts` `call<T>` is the wire-layer retry loop (transport failures + transient 5xx, up to 3 attempts, reusing the auto-generated `Idempotency-Key` from `SK-SDK-006`). The 401 path stays single-retry per `SK-SDK-005`.
 - **GLOBAL-023** — Trust UX baseline.
   - *In this feature:* both `ask()` and `runSql()` responses include the `trace` block (`SK-TRUST-002`); surfaces render it.
-- **GLOBAL-026** — BYOLLM via the `byollm` client option (`SK-SDK-010`).
+- **GLOBAL-026** — BYOLLM via the per-request `byollm` client option (`SK-SDK-010`) and the account-stored verbs `setByollm` / `getByollmStatus` / `clearByollm` (`SK-SDK-011`).
 - **GLOBAL-027** — Pre-alpha gate.
   - *In this feature:* `ApiErrorCode` gained `"feature_gated"`; `ApiErrorBody` gained optional `gate`, `action`, `waitlist_url` fields (plus the `GateProgress` type); `createClient()` accepts an `inviteCode` option forwarded as `X-Invite-Code`. `isRecoverable` treats `feature_gated` as terminal (no retry). See [`pre-alpha-gate/FEATURE.md`](../pre-alpha-gate/FEATURE.md).
 

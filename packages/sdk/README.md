@@ -50,6 +50,21 @@ bearer keys), if any part is empty or holds a control character, or if
 `provider` / `model` contain a `:` (the key may — it is the unsplit
 remainder).
 
+Prefer to **store** the key once instead of passing it on every call?
+The account-stored verbs persist one credential server-side (sealed at
+rest) so every later session dispatches through it (`SK-SDK-011`):
+
+```ts
+const client = createClient({ withCredentials: true });
+await client.setByollm({ provider: "anthropic", model: "claude-sonnet-4-6", key: "sk-ant-…" });
+await client.getByollmStatus(); // { configured: true, credential: { provider, model, last4, updatedAt } }
+await client.clearByollm();     // { ok: true, cleared: true }
+```
+
+The stored key is write-only — no verb ever returns it (`last4` is the
+only display field). These verbs are signed-in only, so they throw
+unless the client was built with `withCredentials: true`.
+
 ## Surface
 
 ```ts
@@ -57,6 +72,9 @@ client.ask({ goal, dbId }, { signal? })           // POST /v1/ask
 client.runSql({ db, sql }, { signal?, idempotencyKey? }) // POST /v1/run
 client.listChat({ signal? })                       // GET  /v1/chat/messages
 client.postChat({ goal, dbId }, { signal? })       // POST /v1/chat/messages
+client.setByollm({ provider, model, key })         // POST   /v1/keys/byollm
+client.getByollmStatus()                           // GET    /v1/keys/byollm
+client.clearByollm()                               // DELETE /v1/keys/byollm
 ```
 
 `runSql` is the `GLOBAL-015` escape hatch: same allow-list as `/v1/ask`
