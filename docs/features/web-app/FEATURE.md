@@ -148,7 +148,6 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 - **Promote session cookie name to literal `__Host-…session`.** Same-origin chat shipped in `SK-WEB-009`, so the architectural prerequisite is already met. The remaining blocker is Better Auth v1.6.9, which hardcodes a `__Secure-` prefix in `cookies/index.mjs:30` with no override. Options: upgrade Better Auth to a version that exposes the prefix as configurable, post-process every `Set-Cookie` header at the worker edge, or fork the cookies layer. Defer until Better Auth ships a fix or the cookie name needs to satisfy a specific audit.
 - **Sharing a query result by link.** P1-priority surface per `docs/runbook.md §10` — implementation slice not yet scoped.
 - **CSV upload.** Required for P3 (data-curious analyst) per `docs/runbook.md §10`. Deferred to Phase 2 alongside CLI.
-- **Plausible vs Plausible-self-hosted.** `docs/architecture.md §3.1` says "Plausible, self-hosted"; `docs/phase-plan.md` lists Plausible without qualifier. Reconcile when wiring web analytics.
 - **Marketing-site live ticker source-of-truth.** Data-pipe (which sample, what redaction, which OTel attributes) undecided.
 
 ## Happy path walkthroughs

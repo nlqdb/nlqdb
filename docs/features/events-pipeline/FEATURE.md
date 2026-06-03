@@ -160,9 +160,7 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 
 ## Open questions / known unknowns
 
-- **DLQ activation threshold** — Decided: wire the DLQ when `nlqdb.events.dropped` exceeds 500/day for 2 consecutive days (≈15% of the 3.3K-msg/day budget). Below that the TTL-based dead-letter pattern is cheaper. Document in `apps/events-worker/README.md` when the Grafana alert is wired.
 - **PostHog wiring criteria.** "Real cohort question SQL can't answer" is qualitative. Capture a concrete checklist before wiring.
-- **Schema evolution** — Decided: `ProductEvent` changes must be additive-only (new fields must be optional with a default). Non-additive changes (rename, remove, type change) require a two-step deploy: step 1 adds the new shape as optional alongside the old; step 2 (next deploy) drops the old shape once all producers are updated.
 - **Queue free-tier ceiling** — Alert threshold: > 7 000 ops/day (70% of 10K). Wire as a Grafana alert on `nlqdb.events.queue_ops`.
 - **Inbound-email sink.** Cloudflare Email Routing is wired separately; decide whether a future `support.email_received` event flows through this pipeline.
 - **Wishlist global cap (SK-EVENTS-011).** Only per-IP throttle (10/min). Distributed-IP abuse can exceed the Queue free-tier ceiling at request time even though producer-side dedup bounds LogSnag burn. Add a daily global cap on `/v1/events/wishlist` when `nlqdb.events.wishlist` shows abuse.

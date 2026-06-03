@@ -58,5 +58,3 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 
 - **Passkey UX details (when promoted on second visit).** Better Auth ships passkey primitives, but the prompt copy / when-to-show heuristic is not yet specified. Track in the auth slice when the second-visit UX lands.
 - **Phase 2 RBAC trigger.** `SK-AUTH-006` defers RBAC until "two paying customers ask." We don't yet have an explicit way to count those requests in the support tracker. Add a `rbac_request` tag to the customer-feedback intake when Phase 2 starts.
-- **`session.cookieCache` failure mode under KV outage** — Resolved by [`SK-AUTH-020`](decisions/SK-AUTH-020-cookie-cache-fail-open-on-kv-outage.md): fail open (trust a valid cookie to its expiry; revocation resumes when KV recovers).
-- **Magic-link domain verification.** Done — `nlqdb.com` verified in Resend (DKIM `resend._domainkey`, SPF + MX on `send.nlqdb.com`). Magic-link sign-in is unblocked on the email-delivery side; remaining work is UI only.
