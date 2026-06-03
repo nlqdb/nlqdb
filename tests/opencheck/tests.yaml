@@ -1,10 +1,15 @@
 # E2E flow: anonymous → table-create → mutation-gate → mock-auth → write → UX coverage → delete → sign-out → cleanup.
 # Runtime: caller workflow substitutes __BASE_URL__ via sed before invoking bunx opencheck (see .github/workflows/e2e-opencheck.yml).
-# LLM: OpenRouter mistralai/mistral-small-3.2-24b-instruct (paid — no RPM cap, ~$0.06/run). Model table: docs/features/e2e-coverage/FEATURE.md.
+#
+# LLM policy: FREE MODELS ONLY (GLOBAL-013 — $0 free tier). Never set a paid model here, even on OpenRouter — see top-5 table in
+# docs/features/e2e-coverage/FEATURE.md `Free LLM model selection (opencheck)`. Switch by editing this `model:`, `OPENAI_BASE_URL`
+# in `_e2e-opencheck.yml`, and the secret name in `e2e-opencheck.yml` (`LLM_API_KEY` source).
+#
+# Current: Groq `llama-3.3-70b-versatile` (free, tool-use verified 2026-06-03; 12K TPM / 1000 RPM / 500K TPD).
 
 baseUrl: "__BASE_URL__"
 modelProvider: "openai"
-model: "mistralai/mistral-small-3.2-24b-instruct"
+model: "llama-3.3-70b-versatile"
 
 # Persistent mode: auth cookie + localStorage persist across tests; page resets to about:blank each test (wrapper kills/restarts playwright-mcp).
 sessionMode: "persistent"

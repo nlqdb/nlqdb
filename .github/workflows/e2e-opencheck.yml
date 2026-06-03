@@ -41,9 +41,11 @@ jobs:
     with:
       base_url: ${{ needs.deploy-staging.outputs.base_url }}
     # Explicit secrets list keeps the reusable's surface auditable.
-    # LLM_API_KEY = OpenRouter key (Mistral Small 3.2; no RPM cap). Model table + switching guide: docs/features/e2e-coverage/FEATURE.md.
+    # FREE-ONLY per GLOBAL-013: LLM_API_KEY = Groq (llama-3.3-70b-versatile; 12K TPM / 1000 RPM / 500K TPD).
+    # Never source from OPENROUTER_API_KEY here — that key is paid-tier and was misused by a prior agent.
+    # Model + provider table + switching guide: docs/features/e2e-coverage/FEATURE.md.
     secrets:
-      LLM_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+      LLM_API_KEY: ${{ secrets.GROQ_API_KEY }}
 
   cleanup:
     name: Delete Neon branch

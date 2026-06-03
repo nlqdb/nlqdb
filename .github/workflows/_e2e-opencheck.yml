@@ -1,5 +1,9 @@
 # Reusable: run opencheck against a given baseUrl via the OpenAI-compatible endpoint (workflow_call only — callers drive it).
 # OpenAI-compat: opencheck pins @langchain/core ^1.1.24 (v1 ecosystem); @langchain/openai v1.4.5 matches; Groq + Mistral + OpenRouter all expose compatible endpoints — provider swap is env-var only.
+#
+# LLM policy: FREE MODELS ONLY (GLOBAL-013 — $0 free tier). Never wire a paid endpoint here even via OpenRouter — see top-5 free
+# table in docs/features/e2e-coverage/FEATURE.md `Free LLM model selection (opencheck)`. The `OPENAI_BASE_URL` below must match
+# the provider that serves the `model:` value in `tests/opencheck/tests.yaml`.
 
 name: E2E opencheck (reusable)
 
@@ -33,7 +37,8 @@ jobs:
       BASE_URL: ${{ inputs.base_url }}
       # ChatOpenAI reads OPENAI_API_KEY + OPENAI_BASE_URL; update both + model in tests.yaml to swap provider.
       OPENAI_API_KEY: ${{ secrets.LLM_API_KEY }}
-      OPENAI_BASE_URL: https://openrouter.ai/api/v1
+      # Provider endpoint — must match `tests/opencheck/tests.yaml` `model:`. Free-only per GLOBAL-013.
+      OPENAI_BASE_URL: https://api.groq.com/openai/v1
       # Full agent loop in job log; ~5-10x log volume; drop once cases stabilise.
       LANGCHAIN_VERBOSE: "true"
     steps:
@@ -163,7 +168,7 @@ jobs:
 
       # Patch opencheck system prompt: replace "prefer browser_evaluate" with browser_snapshot guidance.
       # browser_evaluate runs code in the BROWSER context — Playwright API (page.*) is not available there,
-      # causing "not well-serializable" / "Not connected" loops with mistral-small.
+      # causing "not well-serializable" / "Not connected" loops (model-agnostic; first hit on mistral-small).
       - name: Patch opencheck — fix browser_evaluate system-prompt guidance
         working-directory: tests/opencheck
         run: |
