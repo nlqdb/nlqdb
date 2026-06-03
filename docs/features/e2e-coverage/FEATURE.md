@@ -149,13 +149,16 @@ one-shot `curl … /chat/completions` first.
 | 2026-05-20 | reruns of same config | all failed — cascade from `#submit-prefilled-row` 240 s timeout |
 | 2026-05-21 | swap to paid Mistral via OpenRouter | failed; **policy violation** (paid) — ~$14 burned |
 | 2026-05-31 | rerun on main | failed; cascade + model hallucinated `/app/databases` → 404 (route absent) |
-| 2026-06-03 | revert to FREE Groq `llama-3.3-70b-versatile`; comments forbid paid | pending — first free-only run post-violation |
+| 2026-06-03 | first free-only run (Groq `llama-3.3-70b-versatile`, run [26890333007](https://github.com/nlqdb/nlqdb/actions/runs/26890333007)) | **cancelled at 60-min ceiling** — key worked (~1.9k agent-loop emissions, no dead-key hang); **`/app/databases` hallucination did NOT recur** (0 mentions); but `#submit-prefilled-row` + 169 nav-timeout markers → persistent-mode cascade **persists**. Triggers remediation (a)+(b) below. |
 
-**Cascade hypothesis:** `sessionMode: persistent` lets one timed-out test
-(`#submit-prefilled-row`) starve downstream tests of the DB they expect.
-If it recurs: (a) split into two opencheck configs — bootstrap (1–5) +
-write/UX/delete (6–20) — sharing the `e2e` Neon branch; (b) seed fixtures
-via API before write-path tests.
+**Cascade confirmed (2026-06-03, run 26890333007):** `sessionMode: persistent`
+lets one timed-out test (`#submit-prefilled-row`) starve downstream tests of
+the DB they expect — the run burned the full 60-min ceiling without finishing
+(169 nav-timeout markers). **Remediation TODO (now triggered):** (a) split into
+two opencheck configs — bootstrap (1–5) + write/UX/delete (6–20) — sharing the
+`e2e` Neon branch; (b) seed fixtures via API before write-path tests. The
+`/app/databases` hallucination from 2026-05-31 did **not** recur on the free
+Groq model, so that case is no longer a blocker.
 
 ## Open questions / known unknowns
 
