@@ -238,24 +238,26 @@ disappointed" ≥ 40% (PMF) — measured monthly per
 
 ---
 
-## 6. Monetization + scaling trigger (replaces the old "Stripe in Phase 2")
+## 6. Monetization + scaling trigger
 
-Stripe live, Lago metering, and Listmonk marketing email are **not**
-scheduled by phase. They ship when one of three demand-signals trips —
-whichever happens first:
+**Building** the payment flow is never gated — implement it, ship it in
+Stripe **test mode**, and keep the live button behind a flag. What a
+demand-signal gates is **turning it on for real users**: Stripe **live**
+mode, real charges, the exposed live pricing button, Lago metering,
+Listmonk marketing email, and cost-incurring scaling (Cloudflare Pro,
+Neon Launch). None of those turn on by phase number; they turn on when
+one signal trips — whichever happens first:
 
-| Signal | Threshold | Implication |
+| Signal | Threshold | What it unlocks |
 |---|---|---|
-| Unsolicited inbound asking how to pay | ≥ 5 across GH / Discord / email | Revealed preference. Founder-led pricing conversation. Ship Stripe Checkout in test mode + a $1 founding-supporter button as a hard-signal layer. |
-| Test-mode Stripe Checkout completion rate (if shipped) | ≥ 30% over 50 sessions | Strong-enough signal to commit to Stripe live + Hobby $10 + Lago. |
+| Unsolicited inbound asking how to pay | ≥ 5 across GH / Discord / email | Revealed preference. Founder-led pricing conversation; turn the live button on (a $1 founding-supporter tier is a cheap hard-signal layer). |
+| Test-mode Stripe Checkout completion rate | ≥ 30% over 50 sessions | Strong enough to commit to Stripe live + Hobby $10 + Lago. |
 
-The thresholds above are starting heuristics, not measured truths —
-adjust on first contact with traffic. Until one trips, **no
-payment-infra engineering work happens**. The cost ladder in
-[`README.md`](../README.md) already says "pay only when someone pays
-you"; this section is the operational form of that rule. Same logic
-applies to scaling work (Cloudflare Pro, Neon Launch, etc.) — see
-the cost ladder in README.
+Thresholds are starting heuristics, not measured truths — adjust on
+first contact with traffic. The cost ladder in
+[`README.md`](../README.md) ("pay only when someone pays you") is the
+same rule: free to build before the signal, no spending or charging
+until it trips.
 
 **Reconciliation with the persona-validation plan.** The
 "2 convert to paid Hobby" criterion in
