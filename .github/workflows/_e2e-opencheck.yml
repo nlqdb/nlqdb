@@ -39,8 +39,9 @@ jobs:
       OPENAI_API_KEY: ${{ secrets.LLM_API_KEY }}
       # Provider endpoint — must match `tests/opencheck/tests.yaml` `model:`. Free-only per GLOBAL-013.
       OPENAI_BASE_URL: https://api.groq.com/openai/v1
-      # Full agent loop in job log; ~5-10x log volume; drop once cases stabilise.
-      LANGCHAIN_VERBOSE: "true"
+      # Opt-in debug: flip to "true" to dump the full agent loop (~5-10x log
+      # volume) when triaging a stuck case. Off by default — keeps job logs readable.
+      LANGCHAIN_VERBOSE: "false"
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
 
