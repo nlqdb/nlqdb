@@ -91,6 +91,7 @@ select_secrets() {
     api)
       SECRETS=(
         BETTER_AUTH_SECRET
+        BYO_SECRET_KEK
         CLOUDFLARE_ACCOUNT_ID
         CF_AI_TOKEN
         DATABASE_URL

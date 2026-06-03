@@ -109,6 +109,8 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 - **Stripe Tax activation.** Test-mode is configured (`NLQDB.COM` descriptor, Switzerland/CHF merchant). Live-mode + Stripe Tax flip is a Phase 2 task — capture the activation steps in `docs/runbook.md §6` when it lands.
 - **Lago wiring.** PLAN §6 / DESIGN §6 calls for Lago-on-Fly as the usage-metering layer batched into Stripe; not yet wired. Slice TBD in Phase 2.
 - **Live-mode webhook secret.** `STRIPE_WEBHOOK_SECRET` today is the test-mode value; cutting over needs a coordinated `wrangler secret put` + Stripe Dashboard endpoint update; document the rollover playbook in `docs/runbook.md §6`.
+- **⭐ TODO (make go-live config-only) — self-service billing portal.** There is no `POST /v1/billing/portal`, so a live customer can't cancel or update their card without emailing support (operator does it in the Stripe Dashboard). Build a Stripe Billing Portal endpoint (`stripe.billingPortal.sessions.create({ customer, return_url })`, 503 when `STRIPE_SECRET_KEY` absent — same config-gate pattern as checkout) plus a "Manage billing" link in `/app`. Web-only by the same GLOBAL-003 precedent as `/v1/billing/checkout` (not in SDK/CLI/MCP). Reserve `SK-STRIPE-008`. Building it is **never §6-gated** (it only functions once live secrets exist); shipping it now keeps the eventual live flip a pure set-secrets step.
+- **⭐ TODO (cleanup) — `STRIPE_PUBLISHABLE_KEY` is unused.** Declared in `apps/api/src/env.d.ts` but never read: checkout is fully server-side (redirect to the Stripe-hosted session URL), so no client-side Stripe.js key is needed. Drop the declaration and don't list it as a go-live secret. Verified 2026-06-03.
 
 ## Billing constraints and philosophy
 
