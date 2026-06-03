@@ -445,7 +445,7 @@ jobs:
 
 Moved to its own file to keep this doc under the 20 KB D4 shard cap.
 The phase plan is the canonical roadmap: items per phase, exit gates,
-the §6 monetization trigger that supersedes the old "Stripe in Phase 2".
+the §6 monetization + scaling trigger.
 
 → [**`./phase-plan.md`**](./phase-plan.md)
 

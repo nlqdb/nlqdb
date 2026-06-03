@@ -8,7 +8,7 @@
 // `nlqdb.com` because the session cookie is host-only on
 // `app.nlqdb.com` — authed visitors see the "Sign in" link.
 interface Props {
-  current?: "manifesto" | "chat" | "vs";
+  current?: "manifesto" | "chat" | "vs" | "pricing";
 }
 const { current } = Astro.props;
 const inChat = current === "chat";
@@ -28,6 +28,12 @@ const inChat = current === "chat";
       aria-current={current === "vs" ? "page" : undefined}
     >
       Compare
+    </a>
+    <a
+      href="/pricing"
+      aria-current={current === "pricing" ? "page" : undefined}
+    >
+      Pricing
     </a>
     <a href="mailto:hello@nlqdb.com">Contact</a>
 
