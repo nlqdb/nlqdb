@@ -103,6 +103,23 @@ done
 
 mkdir -p "$(dirname "$OUT_PATH")"
 
+# Track tmp files so a Ctrl-C between steps doesn't leak across 365
+# cron runs/year — mirrors `scripts/flow-004-walk.sh`'s trap discipline.
+declare -a TMP_PATHS=()
+mktemp_tracked() {
+  local p
+  p="$(mktemp -t "$1.XXXXXX")"
+  TMP_PATHS+=("$p")
+  printf '%s' "$p"
+}
+# shellcheck disable=SC2317  # invoked via `trap cleanup EXIT`
+cleanup() {
+  if (( ${#TMP_PATHS[@]} > 0 )); then
+    rm -f "${TMP_PATHS[@]}"
+  fi
+}
+trap cleanup EXIT
+
 T_START=$(date +%s)
 CHECKS_PASSED=0
 CHECKS_FAILED=0
@@ -119,7 +136,7 @@ assert_fail() { CHECKS_FAILED=$((CHECKS_FAILED + 1)); fail "$1" "$2"; }
 # --- step 1: RFC 9728 protected-resource (root) ---------------------------
 
 say "FLOW-005 step 1 — GET $MCP_URL/.well-known/oauth-protected-resource"
-PR_TMP="$(mktemp -t nlqdb-flow-005.XXXXXX)"
+PR_TMP="$(mktemp_tracked nlqdb-flow-005)"
 PR_STATUS="$(curl -sS --max-time "$TIMEOUT_S" -o "$PR_TMP" -w '%{http_code}' \
   -H "Accept: application/json" \
   "$MCP_URL/.well-known/oauth-protected-resource" 2>/dev/null || true)"
@@ -139,7 +156,7 @@ rm -f "$PR_TMP"
 # --- step 2: RFC 9728 protected-resource (scoped /mcp variant) ------------
 
 say "FLOW-005 step 2 — GET $EXPECTED_CHALLENGE_URL (resource-scoped variant)"
-SCOPED_TMP="$(mktemp -t nlqdb-flow-005.XXXXXX)"
+SCOPED_TMP="$(mktemp_tracked nlqdb-flow-005)"
 SCOPED_STATUS="$(curl -sS --max-time "$TIMEOUT_S" -o "$SCOPED_TMP" -w '%{http_code}' \
   -H "Accept: application/json" \
   "$EXPECTED_CHALLENGE_URL" 2>/dev/null || true)"
@@ -159,7 +176,7 @@ rm -f "$SCOPED_TMP"
 # --- step 3: RFC 8414 authorization-server metadata -----------------------
 
 say "FLOW-005 step 3 — GET $MCP_URL/.well-known/oauth-authorization-server"
-AS_TMP="$(mktemp -t nlqdb-flow-005.XXXXXX)"
+AS_TMP="$(mktemp_tracked nlqdb-flow-005)"
 AS_STATUS="$(curl -sS --max-time "$TIMEOUT_S" -o "$AS_TMP" -w '%{http_code}' \
   -H "Accept: application/json" \
   "$MCP_URL/.well-known/oauth-authorization-server" 2>/dev/null || true)"
@@ -181,8 +198,8 @@ fi
 # --- step 4: POST /mcp initialize — unauthenticated must 401 + challenge --
 
 say "FLOW-005 step 4 — POST $MCP_URL/mcp initialize (must 401 + WWW-Authenticate)"
-INIT_HDR="$(mktemp -t nlqdb-flow-005-hdr.XXXXXX)"
-INIT_BODY="$(mktemp -t nlqdb-flow-005-body.XXXXXX)"
+INIT_HDR="$(mktemp_tracked nlqdb-flow-005-hdr)"
+INIT_BODY="$(mktemp_tracked nlqdb-flow-005-body)"
 INIT_PAYLOAD='{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"flow-005-walker","version":"1.0"}}}'
 INIT_STATUS="$(curl -sS --max-time "$TIMEOUT_S" -D "$INIT_HDR" -o "$INIT_BODY" -w '%{http_code}' \
   -X POST "$MCP_URL/mcp" \
@@ -190,13 +207,17 @@ INIT_STATUS="$(curl -sS --max-time "$TIMEOUT_S" -D "$INIT_HDR" -o "$INIT_BODY" -
   -H "Accept: application/json, text/event-stream" \
   -d "$INIT_PAYLOAD" 2>/dev/null || true)"
 INIT_AUTH="$(grep -i '^www-authenticate:' "$INIT_HDR" 2>/dev/null | head -1 | sed 's/^[Ww][Ww][Ww]-[Aa]uthenticate:[[:space:]]*//' | tr -d '\r\n')"
-INIT_CHALLENGE_URL="$(printf '%s' "$INIT_AUTH" | grep -oE 'resource_metadata="[^"]+"' | head -1 | sed 's/^resource_metadata="//; s/"$//')"
+# RFC 7235 §2.1 + RFC 7230 §3.2.6 allow auth-param value as token OR quoted-string;
+# accept both so a spec-compliant server emitting `resource_metadata=<token>` (unquoted)
+# doesn't false-fail. Substring assertions below use the literal `resource_metadata=`
+# prefix which matches both forms.
+INIT_CHALLENGE_URL="$(printf '%s' "$INIT_AUTH" | grep -oE 'resource_metadata=("[^"]+"|[^,[:space:]]+)' | head -1 | sed -e 's/^resource_metadata=//' -e 's/^"//' -e 's/"$//')"
 
 if [[ "$INIT_STATUS" == "401" ]] \
     && [[ "$INIT_AUTH" == Bearer* ]] \
     && [[ "$INIT_AUTH" == *"resource_metadata="* ]] \
-    && [[ "$INIT_AUTH" == *"error=\"invalid_token\""* ]]; then
-  assert_pass "initialize 401 with Bearer + resource_metadata + error=\"invalid_token\""
+    && [[ "$INIT_AUTH" == *"error=\"invalid_token\""* || "$INIT_AUTH" == *"error=invalid_token"* ]]; then
+  assert_pass "initialize 401 with Bearer + resource_metadata + error=invalid_token"
   WALL_PASS_COUNT=$((WALL_PASS_COUNT + 1))
   if [[ "$INIT_CHALLENGE_URL" == "$EXPECTED_CHALLENGE_URL" ]]; then
     assert_pass "  challenge resource_metadata URL matches scoped discovery (RFC 9728 §5.1)"
@@ -214,8 +235,8 @@ rm -f "$INIT_HDR" "$INIT_BODY"
 # --- step 5: POST /mcp tools/list — same challenge shape ------------------
 
 say "FLOW-005 step 5 — POST $MCP_URL/mcp tools/list (must 401 + same challenge)"
-TL_HDR="$(mktemp -t nlqdb-flow-005-hdr.XXXXXX)"
-TL_BODY="$(mktemp -t nlqdb-flow-005-body.XXXXXX)"
+TL_HDR="$(mktemp_tracked nlqdb-flow-005-hdr)"
+TL_BODY="$(mktemp_tracked nlqdb-flow-005-body)"
 TL_PAYLOAD='{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}'
 TL_STATUS="$(curl -sS --max-time "$TIMEOUT_S" -D "$TL_HDR" -o "$TL_BODY" -w '%{http_code}' \
   -X POST "$MCP_URL/mcp" \
@@ -227,7 +248,7 @@ TL_AUTH="$(grep -i '^www-authenticate:' "$TL_HDR" 2>/dev/null | head -1 | sed 's
 if [[ "$TL_STATUS" == "401" ]] \
     && [[ "$TL_AUTH" == Bearer* ]] \
     && [[ "$TL_AUTH" == *"resource_metadata="* ]] \
-    && [[ "$TL_AUTH" == *"error=\"invalid_token\""* ]]; then
+    && [[ "$TL_AUTH" == *"error=\"invalid_token\""* || "$TL_AUTH" == *"error=invalid_token"* ]]; then
   assert_pass "tools/list 401 with the same Bearer + resource_metadata challenge"
   WALL_PASS_COUNT=$((WALL_PASS_COUNT + 1))
 else
@@ -244,14 +265,16 @@ fi
 
 TOTAL_WALL_S=$(( $(date +%s) - T_START ))
 
+TOTAL_CHECKS=$((CHECKS_PASSED + CHECKS_FAILED))
+
 echo ""
 if (( CHECKS_FAILED == 0 )); then
-  write_outcome "passed" "discovery + auth-wall + challenge URL all green ($CHECKS_PASSED/$CHECKS_PASSED checks in ${TOTAL_WALL_S}s)"
-  ok "FLOW-005 step 5 PASS — discovery green, auth-wall returns RFC 9728 challenge"
+  write_outcome "passed" "discovery + auth-wall + challenge URL all green ($CHECKS_PASSED/$TOTAL_CHECKS checks in ${TOTAL_WALL_S}s)"
+  ok "FLOW-005 PASS — discovery green, auth-wall returns RFC 9728 challenge matching scoped discovery"
   ok "outcome JSON written to $OUT_PATH"
   echo ""
   printf '  \033[1;32m✓\033[0m flow-005 walk passed in %ds (%d/%d checks)\n' \
-    "$TOTAL_WALL_S" "$CHECKS_PASSED" "$((CHECKS_PASSED + CHECKS_FAILED))"
+    "$TOTAL_WALL_S" "$CHECKS_PASSED" "$TOTAL_CHECKS"
   exit 0
 fi
 
@@ -269,5 +292,5 @@ fi
 write_outcome "$state" "$CHECKS_FAILED check(s) failed; see stdout for the first failed assertion"
 echo ""
 printf '  \033[1;31m✗\033[0m flow-005 walk %s — %d/%d checks failed against %s\n' \
-  "$state" "$CHECKS_FAILED" "$((CHECKS_PASSED + CHECKS_FAILED))" "$MCP_URL"
+  "$state" "$CHECKS_FAILED" "$TOTAL_CHECKS" "$MCP_URL"
 exit 1
