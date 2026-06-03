@@ -65,7 +65,6 @@ OUT_PATH="${FLOW_005_OUT:-tools/stranger-test/results/flow-005-$UTC_STAMP.json}"
 say()  { printf '\n\033[1;34m== %s ==\033[0m\n' "$*"; }
 ok()   { printf '  \033[1;32m✓\033[0m %s\n' "$*"; }
 fail() { printf '  \033[1;31m✗\033[0m %s  — %s\n' "$1" "$2"; }
-note() { printf '  \033[2m· %s\033[0m\n' "$*"; }
 
 # Writes a single outcome JSON line. Uniform shape across success/failure
 # so the daily acquisition-health.yml summary can read `.state` without
