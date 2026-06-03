@@ -4,7 +4,8 @@ Parent feature: [`premium-tier/FEATURE.md`](../FEATURE.md). Parent GLOBAL:
 [`GLOBAL-026`](../../../decisions/GLOBAL-026-llm-strategy-byollm-hosted-premium.md).
 
 - **Decision:** Any authenticated user — free, Hobby, Pro, Enterprise — stores
-  one or more provider keys (Anthropic / OpenAI / Gemini / OpenRouter). When
+  one or more provider keys (Anthropic / OpenAI / Gemini — the providers the
+  AI Gateway compat endpoint serves, `SK-LLM-021`). When
   selected, the router dispatches through their key at **0% markup** per
   [`GLOBAL-026`](../../../decisions/GLOBAL-026-llm-strategy-byollm-hosted-premium.md).
   Keys live encrypted in `api_keys` with `scope = "byollm"`; KEK is a Workers
@@ -15,8 +16,14 @@ Parent feature: [`premium-tier/FEATURE.md`](../FEATURE.md). Parent GLOBAL:
   silent fallback.
 - **Core value:** Free, Bullet-proof, Effortless UX, Honest latency
 - **Why (resolves the 8-point tree previously held Open):**
-  1. **Providers** — Anthropic + OpenAI + Gemini + OpenRouter
-     (generic OpenAI-compatible endpoint deferred).
+  1. **Providers** — Anthropic + OpenAI + Gemini, i.e. the `anthropic` /
+     `openai` / `google-ai-studio` providers the AI Gateway
+     `/compat/chat/completions` endpoint serves (`SK-LLM-021`). **OpenRouter
+     was dropped from BYOLLM** — the compat endpoint doesn't serve it
+     (verified 2026-05) and a bespoke per-provider path isn't worth it for
+     a capability nobody has asked for (`GLOBAL-033`); OpenRouter stays
+     reachable via the free / hosted chain (`SK-LLM-015`). Generic
+     OpenAI-compatible endpoint deferred.
   2. **AI Gateway** — through-Gateway with `BYOLLM_<user_id>` namespace;
      eat the cold-cache hop to keep telemetry unified (`SK-LLM-004`).
   3. **Storage** — encrypted blob in `api_keys` + KEK in Workers Secret;

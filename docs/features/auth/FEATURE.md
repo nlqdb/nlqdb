@@ -43,6 +43,7 @@ Canonical bodies live in [`decisions/`](decisions/) — one file per `SK-AUTH-NN
 - [**SK-AUTH-017**](decisions/SK-AUTH-017-canary-real-idp-gate.md) — Canary worker is the real-IdP integration gate between PR previews (mock) and production.
 - [**SK-AUTH-018**](decisions/SK-AUTH-018-mock-idp-mock-stripe-preview-flags.md) — Preview-only `MOCK_IDP` / `MOCK_STRIPE` flags bypass external IdP, Resend, and Stripe round-trips.
 - [**SK-AUTH-019**](decisions/SK-AUTH-019-sign-out-bypasses-origin-check.md) — `/api/auth/sign-out` bypasses `originCheckMiddleware` via direct `auth.api.signOut`.
+- [**SK-AUTH-020**](decisions/SK-AUTH-020-cookie-cache-fail-open-on-kv-outage.md) — On a KV outage the revocation check fails open: a valid cookie is trusted to its expiry (availability over the tighter revocation window).
 
 ## GLOBALs governing this feature
 
@@ -57,5 +58,5 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 
 - **Passkey UX details (when promoted on second visit).** Better Auth ships passkey primitives, but the prompt copy / when-to-show heuristic is not yet specified. Track in the auth slice when the second-visit UX lands.
 - **Phase 2 RBAC trigger.** `SK-AUTH-006` defers RBAC until "two paying customers ask." We don't yet have an explicit way to count those requests in the support tracker. Add a `rbac_request` tag to the customer-feedback intake when Phase 2 starts.
-- **`session.cookieCache` failure mode under KV outage.** The `(cookie cache, revocation check)` pair in `SK-AUTH-007` assumes KV is reachable. If KV is unreachable, do we fail-closed (deny) or fail-open (trust the cookie until expiry)? Design.md doesn't decide. Open.
+- **`session.cookieCache` failure mode under KV outage** — Resolved by [`SK-AUTH-020`](decisions/SK-AUTH-020-cookie-cache-fail-open-on-kv-outage.md): fail open (trust a valid cookie to its expiry; revocation resumes when KV recovers).
 - **Magic-link domain verification.** Done — `nlqdb.com` verified in Resend (DKIM `resend._domainkey`, SPF + MX on `send.nlqdb.com`). Magic-link sign-in is unblocked on the email-delivery side; remaining work is UI only.

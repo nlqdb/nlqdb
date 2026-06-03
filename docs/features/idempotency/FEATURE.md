@@ -99,6 +99,46 @@ when-to-load:
   - Per-attempt keys — defeats the purpose; every retry looks like a new request to the server.
   - Force callers to pass a key always — pushes the responsibility to every surface; high chance someone forgets.
 
+### SK-IDEMP-008 — Dedupe store TTL: 24h, swept daily
+
+- **Decision:** The idempotency dedupe store retains records for **24 hours**; expiry is a daily D1 sweep (`docs/runbook.md §9`), not a per-row TTL.
+- **Core value:** Bullet-proof, Simple
+- **Why:** Mirrors Stripe's 24h idempotency window — long enough to cover any realistic client retry (network blips, queued jobs, a user re-running a CLI command minutes later), short enough that the table stays small. D1 has no native row TTL, and the daily sweep job already exists, so a sweep is free; per-row expiry would mean a timestamp index + a scheduled delete we don't need. Resolved per `GLOBAL-033` (pin-a-number → mirror the proven incumbent).
+- **Consequence in code:** Records carry an `created_at`; the §9 sweep deletes `created_at < now() - 24h`. The window is a single constant so it's env-tunable if a slow-retry surface ever needs longer.
+- **Alternatives rejected:**
+  - **Per-row TTL** — D1 has none; emulating it is more moving parts than the existing sweep.
+  - **1h** — too short for a queued job or a human re-running a command.
+  - **Indefinite** — unbounded table growth for no correctness gain past the retry horizon.
+
+### SK-IDEMP-009 — Same key + different body → `409 idempotency_key_in_use`
+
+- **Decision:** A request reusing an `Idempotency-Key` with a **different** request body is rejected with `idempotency_key_in_use` (mirrors Stripe). A body hash is stored alongside `(user_id, key)` and compared on replay.
+- **Core value:** Bullet-proof, Effortless UX (errors that say what to do next, `GLOBAL-012`)
+- **Why:** A key bound to one body that arrives with another is a programming error (a client recycled a key), not a transient retry — failing loud surfaces the bug instead of silently running an unintended mutation or silently returning the wrong cached response. The body hash makes the check O(1). Resolved per `GLOBAL-033` (security/correctness → fail-closed, mirror the incumbent).
+- **Consequence in code:** The dedupe row stores `SHA-256(canonical-body)`; on a key hit the middleware compares hashes — match → replay the stored response, mismatch → `409`. (The mint endpoints' redact-on-replay annotation, `SK-APIKEYS-013`, still applies to what gets stored.)
+- **Alternatives rejected:**
+  - **Fall through to a fresh request** — hides the client bug and can double-execute a mutation under a recycled key.
+  - **Ignore the body entirely** — returns a stale response for a genuinely different request.
+
+### SK-IDEMP-010 — Anonymous dedupe identity is the device-token hash
+
+- **Decision:** For anonymous-mode requests (no Better Auth `user_id`), the dedupe store keys on the **device-token hash** the anon principal already carries — the same value used everywhere else as the anon identity. No separate `(device_id, key)` namespace.
+- **Core value:** Simple ("one way to do each thing")
+- **Why:** The anon principal is already identified by its device-token hash across rate-limiting and ownership; reusing it for dedupe means one identity concept, not two. A parallel namespace would be a second thing to keep in sync. Resolved per `GLOBAL-033` (Simple value).
+- **Consequence in code:** The middleware reads the dedupe identity from the resolved principal (`apps/api/src/principal.ts`) — `user.id` for authed, device-token hash for anon — so the `(identity, key)` row shape is uniform. Cross-link: `anonymous-mode/FEATURE.md`.
+- **Alternatives rejected:**
+  - **Parallel `(device_id, key)` namespace** — a second code path to maintain for no behavioural gain.
+
+### SK-IDEMP-011 — Per-route idempotency mode (`natural-key` | `header-key` | `exempt`)
+
+- **Decision:** The middleware reads an explicit per-route idempotency mode instead of inferring read-vs-write. `/v1/waitlist` declares `natural-key` (dedup on email, `SK-IDEMP-004`); unauth idempotent reads declare `exempt`; everything mutating defaults to `header-key` (the `GLOBAL-005` write rule).
+- **Core value:** Simple, Bullet-proof
+- **Why:** The interim hack classified `/v1/waitlist` as a "read" so the write-needs-a-key 400 wouldn't fire — which is a lie that the next person debugging the classifier trips over. An explicit per-route mode states the intent at the route definition, where it's visible. Resolved per `GLOBAL-033` (Simple → state intent, don't infer).
+- **Consequence in code:** Routes carry an idempotency mode in their registration; the middleware switches on it. A new mutating route with no mode declared fails closed to `header-key` (the safe default).
+- **Alternatives rejected:**
+  - **Keep the classify-as-read hack** — mislabels a write, surprises the next reader.
+  - **Infer from HTTP method** — `POST /v1/waitlist` is a write by method but idempotent by natural key; method alone can't express that.
+
 ## GLOBALs governing this feature
 
 Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; index in [`docs/decisions.md`](../../decisions.md)). The list below names the rules that constrain this feature; any feature-local commentary is nested under the rule.
@@ -112,9 +152,7 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 
 ## Open questions / known unknowns
 
-- **Dedupe-store TTL.** GLOBAL-005 says "bounded-TTL store" but does not pin a number. Stripe uses 24h on their idempotency store; that is a defensible default. D1 row TTL would be implemented as a periodic sweep job (see `docs/runbook.md` §9 daily sweeps), not a per-row expiry. Open: pin the TTL + sweep cadence before the middleware lands.
-- **Key reuse with a different body** — Stripe returns `400 idempotency_key_in_use` if a retry uses the same key with a different body. We have not decided whether to mirror that or to fall through to a fresh request. Recommended: mirror Stripe (mismatch is a programming error, not a transient hiccup). Storing a body hash alongside `(user_id, key)` makes the check cheap.
-- **Replay scope for SSE / streaming responses** — `SK-IDEMP-003` covers JSON; the orchestrator's SSE path (DESIGN §14.6 streaming) is unclear. Likely answer: an SSE stream is not idempotent in the byte-exact sense (timestamps interleave); a retry should fall through to a fresh stream and let the client reconcile. Decision pending.
-- **`/v1/waitlist` vs general path** — waitlist's natural-key dedupe is correct (`SK-IDEMP-004`), but it does NOT enforce the "writes require Idempotency-Key" 400 rule (`SK-IDEMP-001`). Waitlist is unauth + idempotent on email by construction; classifying it as "read" for the auto-classifier is a hack but works. Cleaner: a per-route opt-out flag for the middleware.
-- **Anonymous-mode `user_id`** — `SK-IDEMP-002` keys on `user_id`, but anonymous-mode requests have a device token, not a Better Auth user ID. Open: do we use the anonymous device token as the `user_id` for dedupe purposes, or do we have a parallel `(device_id, key)` namespace? Cross-link to the `anonymous-mode` feature.
-- **Cross-surface dedup** — if a user issues the same mutation via CLI and via web with the same key, do they collide? Per `SK-IDEMP-002` they share `user_id` so yes — that is the desired behaviour (one identity, one mutation). Confirm in the SDK retry helper that cross-surface key reuse is feature, not bug.
+- **SSE / streaming replay** — Resolved per `GLOBAL-033`: an SSE stream is not byte-idempotent (timestamps interleave), so a retried streaming request falls through to a **fresh stream** and the client reconciles. `SK-IDEMP-003` byte-exact replay applies to the buffered JSON path only. Wire the carve-out alongside the middleware (the `header-key` mode skips replay when the response is `text/event-stream`).
+- **Cross-surface dedup** — Not open: per `SK-IDEMP-002` CLI and web share one `user_id`, so the same key across surfaces collides **on purpose** (one identity, one mutation). The SDK retry helper (`SK-IDEMP-007`) must therefore not namespace keys by surface.
+
+> The dedupe-store TTL, body-mismatch behaviour, anonymous identity, and the waitlist/read carve-out were open here; they are now `SK-IDEMP-008..011` above. The middleware itself is still unbuilt — these pin its contract before it lands.

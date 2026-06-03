@@ -35,10 +35,17 @@
 //   - Row-Level Security policies — applied per-schema by the
 //     provisioner.
 //   - Statement timeout, EXPLAIN cost cap, transactional wrapper —
-//     applied by the executor in `apps/api/src/ask/orchestrate.ts`.
-//   - Side-effecting function rejection (`pg_sleep`, `dblink`,
-//     `lo_import`, `pg_read_file`, `COPY ... FROM PROGRAM`) — TODO
-//     to add as an AST function-name walk; tracked in IMPLEMENTATION.md.
+//     the executor's job (still unwired; tracked in db-adapter).
+//   - `COPY ... FROM PROGRAM` and friends — `copy` isn't in
+//     ALLOWED_LEADING, so the leading-verb gate already rejects it.
+//
+// Side-effecting function rejection (`pg_sleep`, `dblink`, `lo_import`,
+// `pg_read_file`, …) IS covered here, via the AST function-name walk
+// (SK-SQLAL-008 / GLOBAL-033): Neon's non-superuser role blocks the
+// file/program functions at the PG level, but `pg_sleep` is callable by
+// any role and no other active layer catches it — one plan could pin a
+// connection for an hour. Layered guardrails (research-receipts §1) over
+// trusting a single control.
 
 import { Parser } from "node-sql-parser";
 
@@ -53,6 +60,8 @@ export type SqlRejectReason =
   | "grant_or_revoke"
   | "alter_statement"
   | "disallowed_verb"
+  | "disallowed_function"
+  | "multi_statement"
   | "parse_failed"
   | "empty";
 
@@ -95,6 +104,28 @@ const ALLOWED_LEADING = new Set([
   "with",
   "explain",
   "show",
+]);
+
+// Side-effecting functions rejected anywhere in the tree (SK-SQLAL-008).
+// `pg_sleep*` is a connection-pinning DoS callable by any role; the rest
+// are server-side file / network IO that Neon's non-superuser role
+// already blocks at the PG level — listed here as defense-in-depth so
+// the reject is attributed (`disallowed_function`) rather than surfacing
+// as a raw Postgres permission error.
+const DISALLOWED_FUNCTIONS = new Set([
+  "pg_sleep",
+  "pg_sleep_for",
+  "pg_sleep_until",
+  "dblink",
+  "dblink_exec",
+  "dblink_connect",
+  "lo_import",
+  "lo_export",
+  "pg_read_file",
+  "pg_read_binary_file",
+  "pg_ls_dir",
+  "pg_stat_file",
+  "pg_logical_emit_message",
 ]);
 
 // EXPLAIN ANALYZE actually executes the wrapped statement on Postgres
@@ -187,6 +218,12 @@ export function validateSql(rawSql: string): SqlValidationResult {
     return { ok: false, reason: "parse_failed" };
   }
 
+  // Multi-statement reject (SK-SQLAL-009). `SELECT 1; DELETE FROM x
+  // WHERE id=1` parses as two sibling statements; the per-statement
+  // walk below would clear each one, so a benign-looking lead statement
+  // can smuggle a second. A plan is exactly one statement — fail closed.
+  if (asts.length > 1) return { ok: false, reason: "multi_statement" };
+
   for (const root of asts) {
     const embedded = walkForRejected(root);
     if (embedded) return { ok: false, reason: embedded };
@@ -233,9 +270,25 @@ function walkForRejected(node: unknown): SqlRejectReason | null {
   if (type === "delete" && !obj["where"] && ("from" in obj || "table" in obj || "name" in obj)) {
     return "delete_without_where";
   }
+  // Side-effecting function calls (SK-SQLAL-008). node-sql-parser tags a
+  // call as type:"function"/"aggr_func"; the name lives under `name` as
+  // either a bare string or a `{name:[{value}]}` node depending on
+  // version, so test every string leaf under `name`.
+  if ((type === "function" || type === "aggr_func") && containsDisallowedFunction(obj["name"])) {
+    return "disallowed_function";
+  }
   for (const value of Object.values(obj)) {
     const hit = walkForRejected(value);
     if (hit) return hit;
   }
   return null;
+}
+
+function containsDisallowedFunction(nameNode: unknown): boolean {
+  if (typeof nameNode === "string") return DISALLOWED_FUNCTIONS.has(nameNode.toLowerCase());
+  if (Array.isArray(nameNode)) return nameNode.some(containsDisallowedFunction);
+  if (nameNode && typeof nameNode === "object") {
+    return Object.values(nameNode as Record<string, unknown>).some(containsDisallowedFunction);
+  }
+  return false;
 }

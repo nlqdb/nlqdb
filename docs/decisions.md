@@ -60,6 +60,7 @@ grep -rn 'GLOBAL-007' docs/features/
 | [GLOBAL-030](./decisions/GLOBAL-030-evidence-grade-acquisition-tracker-edits.md) | Evidence-grade acquisition tracker edits require verification artifacts, synced mirrors, and self-review | icp-mining, web-app | active |
 | [GLOBAL-031](./decisions/GLOBAL-031-byo-secret-envelope.md) | One AES-256-GCM at-rest envelope (`secret-envelope.ts`) + one Workers-held KEK for every bring-your-own secret — BYOLLM keys and BYO Postgres/ClickHouse URLs; AAD-bound to owner, fail-loud on missing KEK | premium-tier, db-adapter, multi-engine-adapter, api-keys | active |
 | [GLOBAL-032](./decisions/GLOBAL-032-top-5-user-flows-canonical.md) | The five canonical user flows in the acquisition tracker (FLOW-001/002/003/004/005); each must have at least one agent-runnable end-to-end walker that ran against the deployed surface within the last seven days | icp-mining, stranger-test, web-app, mcp-server | active |
+| [GLOBAL-033](./decisions/GLOBAL-033-resolution-defaults.md) | Resolution defaults — close open questions from the documented values via a default ladder; escalate only genuine money/strategy/legal bets; parked items rewritten as "Parked until `<trigger>`" | every feature | active |
 
 ## Adding a new GLOBAL
 

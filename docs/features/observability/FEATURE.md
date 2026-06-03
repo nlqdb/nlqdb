@@ -125,6 +125,16 @@ when-to-load:
 - **Consequence in code:** `packages/otel/package.json` adds `@opentelemetry/context-async-hooks ^2.7.1`. Shared `enableContextManager()` helper called from both setup paths; idempotent. Regression test asserts a child span from inside `await Promise.resolve()` shares its parent's `traceId` and `parentSpanContext.spanId`.
 - **Alternatives rejected:** `@microlabs/otel-cf-workers` (larger surface than the fix needs); manual `context.with(...)` at every async boundary (doesn't scale).
 
+### SK-OBS-011 — Exceptions → Sentry; traces + metrics → Grafana; spans still `recordException`
+
+- **Decision:** Error/exception triage lives in **Sentry** (5k errors/mo free); traces and metrics go to **Grafana Cloud** via OTel. The two are not redundant: spans still call `span.recordException` so the Grafana side sees the error in the trace timeline, but Sentry is the canonical exception-grouping / alerting UI.
+- **Core value:** Honest latency, Simple
+- **Why:** The boundary was ambiguous (DESIGN §5.4 lists both). Pinning it: Sentry is purpose-built for exception grouping, release-tracking, and noise suppression — re-deriving that in Grafana is wasted effort; OTel traces/metrics are purpose-built for latency/rates — Sentry can't show a span tree. `recordException` on spans keeps the trace self-describing without making Grafana the alerting surface. Resolved per `GLOBAL-033` (build-vs-adopt → use each tool for its job).
+- **Consequence in code:** Uncaught + explicitly-captured exceptions report to Sentry; `setupTelemetry` exports spans/metrics to Grafana; the span-level `recordException` (already wired) stays. No exception-grouping logic is built on the Grafana side.
+- **Alternatives rejected:**
+  - **OTel-only (drop Sentry)** — Grafana error-tracking is less mature for grouping/alerting; we'd rebuild Sentry badly.
+  - **Sentry-only** — loses the span tree and metric histograms OTel gives for free.
+
 ## GLOBALs governing this feature
 
 Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; index in [`docs/decisions.md`](../../decisions.md)). The list below names the rules that constrain this feature; any feature-local commentary is nested under the rule.
@@ -140,10 +150,8 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 
 ## Open questions / known unknowns
 
-- **Tail-based sampling.** `SK-OBS-003` defers tail-based to a future collector hop. If the cache-hit 1% sample misses interesting outliers, we may want a "slowest 5% of cache hits, always" rule — that needs a collector that can buffer and decide post-hoc. Open: do we add a Workers-side Durable Object as a collector, or rely on Grafana Cloud's tail sampler if/when it becomes free-tier-eligible?
-- **`onTrace` SDK hook (GLOBAL-011)**. The Consequence-in-code names an `onTrace` hook on the SDK that surfaces consume. Not yet implemented; tracking under the `sdk` feature. Until it lands, web/CLI build their own trace renderers from the SSE event stream — works but couples the surface to the orchestrator's event shape.
-- **Live-trace ↔ OTel span tree alignment.** `apps/web` renders user-facing trace events (`plan_pending → plan → rows → summary` per `apps/api/src/ask/types.ts`). Those names don't match the OTel span tree (`nlqdb.cache.plan.lookup`, `nlqdb.sql.validate`, …). Open: do we converge the names, or keep two vocabularies (system-facing OTel + user-facing trace) on purpose? Current view: keep separate — system observability and user-facing latency display are different audiences.
-- **Histogram bucket calibration.** `docs/performance.md §5` pins 8 buckets (5ms, 25ms, 100ms, 250ms, 500ms, 1s, 2.5s, 5s). After Phase 1 traffic lands, we should recalibrate against measured p50/p99 — the SLOs in §1 imply buckets at 200ms (cache hit p50), 1.5s (cache miss p50), 3.5s (cache miss p99), but we picked round numbers for the initial pass. Recalibration requires a metrics-replay tool we don't have yet.
-- **Sentry vs OTel overlap.** DESIGN §5.4 line 743 lists Sentry (5k errors/mo free) AND OpenTelemetry → Grafana Cloud as "ops telemetry." The boundary is unclear: do exceptions go to both? Default we picked is exceptions → Sentry, traces + metrics → Grafana; spans record exceptions via `span.recordException` so the Grafana side still sees them. Decision worth pinning explicitly when both are wired up.
-- **Cardinality of `db.operation` for DDL "VERB NOUN" pairs.** `SK-DB-005` says `db.operation` is `VERB NOUN` for DDL — that adds ~10 noun phrases. Estimate is "naturally bounded" but not asserted in CI. Open: add a CI assertion that the active set of `db.operation` values stays under (say) 50, with an alert if breached.
-- **Dashboards-as-code provisioning.** PERFORMANCE §6 pins dashboards live in `ops/grafana/dashboards/` as JSON, deployed via Grafana's `/api/dashboards/db` endpoint from CI. Initial dashboards are deferred until Phase 1 traffic warrants a tuned view; spans + metrics are already exported. Open: what's the trigger for landing the initial dashboards — first paying user, or first SLO breach?
+- **Live-trace ↔ OTel span-tree alignment** — Resolved per `GLOBAL-033`: **keep two vocabularies on purpose.** The user-facing trace (`plan_pending → plan → rows → summary`) and the system OTel span tree (`nlqdb.cache.plan.lookup`, …) serve different audiences (a user watching latency vs an operator debugging); converging them would force one audience onto the other's names. No change.
+- **Sentry vs OTel boundary** — Resolved by [`SK-OBS-011`](#sk-obs-011): exceptions → Sentry, traces + metrics → Grafana, spans still `recordException`.
+- **`onTrace` SDK hook (GLOBAL-011)** — cross-ref, owned by the `sdk` feature; until it lands web/CLI render the SSE stream directly. Not an observability decision.
+- **`db.operation` cardinality CI assertion** — Resolved per `GLOBAL-033` (silent-drift → add the cheap assertion): add a CI check that the active `db.operation` set stays < 50. **Parked until** enough DDL noun-phrases exist to make drift plausible (Phase 3 multi-engine) — the set is ~30 verbs + ~10 nouns today, far under the cap.
+- **Parked until Phase 1 traffic lands:** tail-based sampling (revisit if the cache-hit 1% sample proves lossy; needs a buffering collector — DO vs Grafana tail sampler decided then), histogram bucket recalibration (needs a metrics-replay tool we don't have), and dashboards-as-code (trigger: first SLO breach or first paying user, whichever first; spans + metrics already export).

@@ -170,15 +170,14 @@ The 8-point BYOK decision tree that previously lived here is resolved by [`SK-PR
 
 ### Other open questions
 
-- **Hard-plan classifier confidence threshold.** `SK-LLM-001` names the `hard` tier but pins no number, and the `SK-PREMIUM-004` CTA fires on it, so it drives upsell frequency. Strawman: 0.85 → `hard_plan` true; env-tunable, A/B-able.
-- **Quality-score histogram.** `llm-router/FEATURE.md` proposes `nlqdb.plan.quality_score` (1 = clean, 0.5 = correction loop, 0 = rejected); the CTA's pull depends on showing the quality delta on the strict-$0 chain. Shape + judge prompt + CI open.
-- **Lago wiring for usage metering.** Per `docs/phase-plan.md §6` (Lago-on-Fly → Stripe); the LLM-router → Lago path is unwired and must land before `SK-PREMIUM-002` ships.
-- **Per-key spend cap UI.** `SK-PREMIUM-006` defines the data model but not the dashboard — likely DB-settings + API-keys pages, API-keys canonical.
-- **Dunning when the add-on payment fails.** On Stripe `invoice.payment_failed` for the metered line, drop to strict-$0 immediately, after one retry, or after standard dunning? `stripe-billing/FEATURE.md` covers dunning broadly; the specific behavior is open.
-- **Anonymous-mode interaction.** Anon users have no Stripe customer and can't enable premium, so the `SK-PREMIUM-004` CTA should *not* show — but "create-an-account-and-upgrade" is the natural cross-sell. Open.
-- **Reseller / agency case.** One consolidated premium bill across an agency's clients is out of scope for v1 (per-account only); deferred to Enterprise.
-- **BYOLLM surface parity (GLOBAL-003 tracked gap).** Header lane: HTTP `/v1/ask` (`SK-LLM-021`), TS SDK ([`SK-SDK-010`](../sdk/decisions/SK-SDK-010-byollm-client-option.md)), CLI (`SK-CLI-016`). Account-stored lane: HTTP `POST/GET/DELETE /v1/keys/byollm` + `/v1/ask` step-2 resolution (`SK-PREMIUM-012`), and TS SDK store verbs `setByollm` / `getByollmStatus` / `clearByollm` (`SK-SDK-011`). Still unbuilt: MCP `byollm` param (depends on the account lane it now has), `<nlq-data byollm>` (cookie-session), the CLI account-store verbs (the existing `nlq byollm` keychain is the header lane, `SK-CLI-016`), and the `/app/keys` UI. Closes in the surface-parity PR.
-- **OpenRouter is not on the AI Gateway compat endpoint.** `SK-PREMIUM-008` §1 lists OpenRouter, but the `/compat/chat/completions` endpoint (`SK-LLM-019`) doesn't serve it (verified 2026-05); `SK-LLM-021` accepts `openai` / `anthropic` / `google-ai-studio` only. Decide: drop OpenRouter BYOLLM, route it through its own provider path, or wait for compat — then amend `SK-PREMIUM-008`.
+- **Hard-plan classifier confidence threshold** — Resolved by [`SK-LLM-022`](../llm-router/decisions/SK-LLM-022-hard-plan-confidence-threshold.md): `confidence < 0.75 ⇒ hard_plan`, env-tunable.
+- **OpenRouter on the AI Gateway compat endpoint** — Resolved: dropped from BYOLLM (compat doesn't serve it; `SK-LLM-021` accepts `anthropic`/`openai`/`google-ai-studio`). Amended in [`SK-PREMIUM-008`](./decisions/SK-PREMIUM-008-byollm.md) §1; OpenRouter stays reachable via the free/hosted chain.
+- **Dunning when the add-on payment fails** — Resolved per `GLOBAL-033` (cost → `GLOBAL-026` free chain forever): on Stripe `invoice.payment_failed` for the metered line, retry once (standard Stripe dunning), then **fall back to the strict-$0 free chain** — never block the product. The add-on re-enables on a successful charge. `stripe-billing/FEATURE.md` owns the dunning mechanics.
+- **Anonymous-mode interaction** — Resolved per `GLOBAL-033` (UX): anon principals have no Stripe customer, so the `SK-PREMIUM-004` premium CTA does **not** render for them; the create-an-account cross-sell takes its place on that surface.
+- **Parked until the surface-parity PR (GLOBAL-003 tracked gap):** BYOLLM surfaces still unbuilt — MCP `byollm` param, `<nlq-data byollm>` (cookie-session), CLI account-store verbs, `/app/keys` UI. Header lane (`SK-LLM-021`, `SK-SDK-010`, `SK-CLI-016`) + account lane (`SK-PREMIUM-012`, `SK-SDK-011`) already shipped.
+- **Parked until `quality-eval` Phase 2:** `nlqdb.plan.quality_score` histogram (shape + judge prompt + CI) — the CTA's quality-delta pull depends on it.
+- **Parked until Lago wiring (Phase 2, blocks `SK-PREMIUM-002`):** the LLM-router → Lago usage-metering path (`phase-plan.md §6`); and the per-key spend-cap **UI** (`SK-PREMIUM-006` has the data model; dashboard lives on the API-keys + DB-settings pages).
+- **Parked to Enterprise:** reseller / agency consolidated billing — v1 is per-account only.
 
 ## Source pointers
 

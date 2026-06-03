@@ -127,6 +127,10 @@ OpenRouter pins `plan` + `schema_infer` to `qwen/qwen3-coder:free`; cheap-tier o
 
 **Body:** [`decisions/SK-LLM-013-plan-response-shape.md`](./decisions/SK-LLM-013-plan-response-shape.md). `PlanResponse` widens to `{ sql, model, confidence }`; `confidence` ships as a `1.0` placeholder until `quality-eval` calibrates per-tier floors per `SK-TRUST-003`. The plan cache stores both fields so hits return the miss's values.
 
+### SK-LLM-022 — Hard-plan confidence threshold = 0.75 (env-tunable)
+
+**Body:** [`decisions/SK-LLM-022-hard-plan-confidence-threshold.md`](./decisions/SK-LLM-022-hard-plan-confidence-threshold.md). `confidence < 0.75 ⇒ hard_plan = true`; the threshold is env-tunable (`HARD_PLAN_CONFIDENCE_THRESHOLD`). Pins the `SK-LLM-001` "hard" tier and drives the `SK-PREMIUM-004` upsell CTA.
+
 ## GLOBALs governing this feature
 
 Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; index in [`docs/decisions.md`](../../decisions.md)). The list below names the rules that constrain this feature; any feature-local commentary is nested under the rule.
@@ -146,8 +150,8 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 
 ## Open questions / known unknowns
 
-- **`nlqdb.plan.quality_score` shape + threshold.** Histogram `(1=clean, 0.5=correction loop, 0=rejected)` proposed; bucket boundaries, LLM-as-judge prompt, and "provider silently degrading" alert threshold are unspecified.
-- **Prompt-template version pinning.** `SK-LLM-009` invalidates the prompt cache on system-prompt change (intended); no place yet records which template version produced which plan — debugging need.
-- **Per-user credit accounting.** Provider-level cost is covered; LLM router → Lago wiring for per-user metering (`docs/architecture.md §6`) is not yet specified.
-- **Failover behaviour when every provider in a chain fails.** Today the chain falls through providers; what happens when the last one fails? Bubble up an error envelope (per `GLOBAL-012`)? Retry the head with backoff? The router currently throws; the user-facing error semantics are open.
-- **Free-tier RPM ceiling visibility.** `docs/architecture.md §7.1` says "bursts queue briefly; 'queued — 2s' surfaced in UI." The queue mechanism is not yet implemented in the router; today bursts that exceed the provider's RPM fail-and-fall-through. Track in the rate-limit / observability features.
+- **Failover when every provider in a chain fails** — Resolved per `GLOBAL-033` (error semantics → `GLOBAL-012`): on chain exhaustion the router throws a structured `provider_chain_exhausted` error envelope (one-sentence, actionable) — it does **not** retry the head with backoff (the head already failed this request; a fresh `/v1/ask` re-enters the chain). Wire the envelope shape when the surfaces render it.
+- **Parked until `quality-eval` Phase 2:** `nlqdb.plan.quality_score` histogram shape + LLM-as-judge prompt + "provider silently degrading" alert threshold — depends on the judge harness landing.
+- **Parked until Lago wiring (Phase 2):** per-user credit accounting (`architecture.md §6`); provider-level cost is already covered.
+- **Parked until a debugging need forces it:** prompt-template version pinning — decided shape is to stamp the template version hash on `PlanResponse` + the plan-cache entry; cheap to add when a plan-provenance question actually arises.
+- **Parked until burst abuse shows up:** free-tier RPM queue ("queued — 2s" UX, `architecture.md §7.1`); today bursts over a provider's RPM fail-and-fall-through. Owned jointly with `rate-limit` / `observability`.
