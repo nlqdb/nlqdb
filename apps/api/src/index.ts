@@ -95,6 +95,7 @@ import {
 } from "./principal.ts";
 import { orchestrateRun, type RunError } from "./run/orchestrate.ts";
 import { cryptoProvider, stripe as stripeClient } from "./stripe/client.ts";
+import { createCheckoutSession, type CheckoutPlan } from "./stripe/checkout.ts";
 import { processWebhook } from "./stripe/webhook.ts";
 import { verifyTurnstile } from "./turnstile.ts";
 import { joinWaitlist } from "./waitlist.ts";
@@ -1561,6 +1562,60 @@ app.post("/v1/stripe/webhook", async (c) => {
   if (result.status === 200 && result.archive) {
     c.executionCtx.waitUntil(result.archive);
   }
+  return c.json(result.body, result.status);
+});
+
+// `POST /v1/billing/checkout` — create a Stripe Checkout Session for
+// Hobby or Pro plan subscription (SK-STRIPE-004).
+//
+// Requires a signed-in session (`requireSession`). Accepts
+// `{ plan: "hobby" | "pro", success_url?, cancel_url? }`.
+// Returns `{ url }` for client-side redirect to Stripe-hosted checkout.
+// Forwards `Idempotency-Key` to Stripe (GLOBAL-005).
+//
+// 503 when STRIPE_SECRET_KEY or the plan price ID is not configured.
+// 400 for an invalid plan value. 500 for Stripe API failures.
+app.post("/v1/billing/checkout", requireSession, async (c) => {
+  const session = c.var.session;
+
+  const raw = await parseJsonBody<{ plan?: unknown; success_url?: unknown; cancel_url?: unknown }>(
+    c,
+  );
+  if (!raw.ok) {
+    return c.json({ error: "invalid_json" }, 400);
+  }
+
+  const plan = raw.body.plan;
+  if (plan !== "hobby" && plan !== "pro") {
+    return c.json({ error: "invalid_plan", allowed: ["hobby", "pro"] }, 400);
+  }
+
+  if (!c.env.STRIPE_SECRET_KEY) {
+    return c.json({ error: "billing_not_configured" }, 503);
+  }
+
+  const origin = new URL(c.req.url).origin;
+  const successUrl =
+    typeof raw.body.success_url === "string"
+      ? raw.body.success_url
+      : `${origin}/app?checkout=success`;
+  const cancelUrl =
+    typeof raw.body.cancel_url === "string" ? raw.body.cancel_url : `${origin}/pricing`;
+
+  const result = await createCheckoutSession(
+    {
+      stripeSecretKey: c.env.STRIPE_SECRET_KEY,
+      priceIdHobby: c.env.STRIPE_PRICE_HOBBY ?? "",
+      priceIdPro: c.env.STRIPE_PRICE_PRO ?? "",
+      userId: session.user.id,
+      userEmail: session.user.email,
+      idempotencyKey: c.req.header("Idempotency-Key") ?? null,
+    },
+    plan as CheckoutPlan,
+    successUrl,
+    cancelUrl,
+  );
+
   return c.json(result.body, result.status);
 });
 

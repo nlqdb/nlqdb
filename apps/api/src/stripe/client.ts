@@ -1,36 +1,33 @@
-// Stripe SDK singleton for the Workers runtime.
-//
-// Slice 7 only consumes Stripe webhooks (no outbound API calls), so
-// the API key is a placeholder. When the Phase 1 Checkout slice lands,
-// swap to `env.STRIPE_SECRET_KEY` from `cloudflare:workers`.
+// Stripe SDK helpers for the Workers runtime.
 //
 // `createFetchHttpClient` + `createSubtleCryptoProvider` route the SDK
-// through Web Crypto + native fetch, which is what Workers can run
-// (the default Node http module isn't available even with
-// `nodejs_compat`). The crypto provider is passed per-call to
+// through Web Crypto + native fetch (Node http isn't available on Workers
+// even with nodejs_compat). The crypto provider is passed per-call to
 // `constructEventAsync`; the http client is set on the constructor.
 //
-// `apiVersion` is pinned to `2026-04-22.dahlia` — the dashboard
-// webhook endpoint is created with the same version so dispatched
-// payload shapes match what the SDK types expect. Webhook signature
-// verification is API-version-agnostic; the pin matters when we
-// start making outbound calls in Phase 1.
+// `STRIPE_API_VERSION` is pinned to `2026-04-22.dahlia`. Bumping the SDK
+// is the supported way to advance — see SK-STRIPE-007 and the runbook
+// for the bump procedure.
 //
-// Bumping the SDK is the supported way to advance: stripe-node
-// types `LatestApiVersion = typeof ApiVersion`, and the runtime
-// `Stripe.API_VERSION` constant moves with each release. If we want
-// a newer version we bump the SDK and update this literal in lock-step
-// — keeping the API version older than the SDK would silently fall
-// back to whatever the API decides. See the runbook entry for the
-// full bump procedure.
+// `newStripeClient(secretKey)` creates a fresh instance per request for
+// outbound API calls (Checkout creation, etc.). Webhook verification uses
+// the `webhooks` property from any instance — only the signature, not the
+// key, matters there, so the key value is irrelevant for that path.
 
 import Stripe from "stripe";
 
 export const STRIPE_API_VERSION = "2026-04-22.dahlia" as const;
 
-export const stripe = new Stripe("sk_placeholder_webhook_only", {
-  apiVersion: STRIPE_API_VERSION,
-  httpClient: Stripe.createFetchHttpClient(),
-});
+export function newStripeClient(secretKey: string): Stripe {
+  return new Stripe(secretKey, {
+    apiVersion: STRIPE_API_VERSION,
+    httpClient: Stripe.createFetchHttpClient(),
+  });
+}
+
+// Singleton used by the webhook route solely for `stripe.webhooks.constructEventAsync`.
+// The key is irrelevant for signature verification, which depends only on
+// STRIPE_WEBHOOK_SECRET passed per-request.
+export const stripe = newStripeClient("sk_placeholder_webhook_only");
 
 export const cryptoProvider = Stripe.createSubtleCryptoProvider();

@@ -1,0 +1,414 @@
+---
+import Footer from "../components/Footer.astro";
+import Topnav from "../components/Topnav.astro";
+import Base from "../layouts/Base.astro";
+
+// PUBLIC_API_BASE is "" on app.nlqdb.com (relative URLs work),
+// and "https://app.nlqdb.com" on nlqdb.com (marketing origin).
+const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
+---
+
+<Base
+  title="Pricing — nlqdb"
+  description="Free forever. Upgrade when you need more. No credit card for the free tier, ever."
+  canonical="/pricing"
+>
+  <div class="page">
+    <Topnav />
+
+    <main class="pricing">
+      <header class="pricing__head">
+        <h1 class="pricing__title">Simple, honest pricing</h1>
+        <p class="pricing__sub">
+          Free forever. No credit card to start. Upgrade only when you need to.
+        </p>
+      </header>
+
+      <div class="pricing__grid">
+
+        <!-- Free -->
+        <div class="pricing__card">
+          <div class="pricing__card-header">
+            <span class="pricing__tier">Free</span>
+            <div class="pricing__price">
+              <span class="pricing__amount">$0</span>
+              <span class="pricing__cadence">/ month</span>
+            </div>
+          </div>
+          <ul class="pricing__features">
+            <li>1,000 queries / month</li>
+            <li>500 MB per database</li>
+            <li>7-day backups</li>
+            <li>Free LLM chain — forever</li>
+            <li>Paste your own provider key (BYO-LLM) at 0% markup</li>
+          </ul>
+          <a href="/app" class="btn pricing__cta pricing__cta--secondary">Start for free &rarr;</a>
+        </div>
+
+        <!-- Hobby -->
+        <div class="pricing__card pricing__card--featured">
+          <div class="pricing__card-header">
+            <span class="pricing__tier">Hobby</span>
+            <div class="pricing__price">
+              <span class="pricing__amount">$10</span>
+              <span class="pricing__cadence">/ month</span>
+            </div>
+          </div>
+          <ul class="pricing__features">
+            <li>50,000 queries / month</li>
+            <li>5 GB per database</li>
+            <li>No database pausing</li>
+            <li>30-day backups</li>
+            <li>Email support</li>
+            <li>Everything in Free</li>
+          </ul>
+          <button
+            type="button"
+            class="btn pricing__cta pricing__cta--primary"
+            data-plan="hobby"
+            data-api-base={apiBase}
+          >
+            Upgrade to Hobby &rarr;
+          </button>
+        </div>
+
+        <!-- Pro -->
+        <div class="pricing__card">
+          <div class="pricing__card-header">
+            <span class="pricing__tier">Pro</span>
+            <div class="pricing__price">
+              <span class="pricing__amount">$25</span>
+              <span class="pricing__cadence">/ month +&nbsp;usage</span>
+            </div>
+          </div>
+          <ul class="pricing__features">
+            <li>50,000 queries included + $0.0005 / extra query</li>
+            <li>5 GB included + $0.10 / GB-month extra</li>
+            <li>Hard cap opt-in (no surprise bills)</li>
+            <li>Everything in Hobby</li>
+          </ul>
+          <button
+            type="button"
+            class="btn pricing__cta pricing__cta--secondary"
+            data-plan="pro"
+            data-api-base={apiBase}
+          >
+            Upgrade to Pro &rarr;
+          </button>
+        </div>
+
+        <!-- Enterprise -->
+        <div class="pricing__card">
+          <div class="pricing__card-header">
+            <span class="pricing__tier">Enterprise</span>
+            <div class="pricing__price">
+              <span class="pricing__amount">Custom</span>
+            </div>
+          </div>
+          <ul class="pricing__features">
+            <li>VPC peering</li>
+            <li>SAML SSO</li>
+            <li>Audit-log export</li>
+            <li>On-premises deployment</li>
+            <li>Annual billing</li>
+          </ul>
+          <a href="mailto:hello@nlqdb.com" class="btn pricing__cta pricing__cta--secondary">
+            Contact us &rarr;
+          </a>
+        </div>
+
+      </div>
+
+      <!-- BYOLLM callout -->
+      <section class="pricing__byollm">
+        <h2 class="pricing__byollm-title">Bring your own LLM — free on every tier</h2>
+        <p>
+          Paste an Anthropic, OpenAI, Gemini, or OpenRouter key in <a href="/app/keys">Settings &rarr; Keys</a>.
+          Your queries route through your key at <strong>0% markup</strong>. Works on the free tier, no card needed.
+        </p>
+      </section>
+
+      <!-- Honest billing rules -->
+      <section class="pricing__rules">
+        <h2 class="pricing__rules-title">Honest billing — hard rules</h2>
+        <ul class="pricing__rules-list">
+          <li><strong>No credit card for the free tier, ever.</strong> Not "to verify identity." Not for "spam protection." No.</li>
+          <li><strong>Hitting a limit rate-limits — never silently upgrades.</strong> You'll see a clear message; you decide what to do next.</li>
+          <li><strong>Soft cap email at 80%</strong> of your monthly budget. Hard cap at 100%. No surprise bills.</li>
+          <li><strong>Export is always free.</strong> Your data is yours. One click, any time.</li>
+          <li><strong>Cancellation is one click.</strong> No call, no chat, no exit survey.</li>
+          <li><strong>First charge confirmation.</strong> Email before the first charge with the exact amount and date.</li>
+          <li><strong>Downgrade is as easy as upgrade.</strong> One click. Pro-rated refund on the unused portion.</li>
+        </ul>
+      </section>
+    </main>
+
+    <Footer />
+  </div>
+</Base>
+
+<script>
+  // Upgrade CTA handler. Checks auth state, creates a Stripe Checkout
+  // Session via POST /v1/billing/checkout, redirects to the session URL.
+  // Unauthenticated clicks redirect to sign-in with a `next=pricing` hint.
+
+  import { fetchSession } from "../lib/session";
+
+  const buttons = document.querySelectorAll<HTMLButtonElement>("button[data-plan]");
+
+  for (const btn of buttons) {
+    btn.addEventListener("click", async () => {
+      const plan = btn.dataset.plan as "hobby" | "pro";
+      const apiBase = (btn.dataset.apiBase ?? "").replace(/\/$/, "");
+
+      const user = await fetchSession();
+      if (!user) {
+        const signinUrl =
+          location.hostname === "nlqdb.com" || location.hostname === "www.nlqdb.com"
+            ? `https://app.nlqdb.com/auth/sign-in?next=pricing`
+            : `/auth/sign-in?next=pricing`;
+        window.location.assign(signinUrl);
+        return;
+      }
+
+      btn.disabled = true;
+      const original = btn.textContent;
+      btn.textContent = "Redirecting…";
+
+      try {
+        const res = await fetch(`${apiBase}/v1/billing/checkout`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ plan }),
+          credentials: "include",
+        });
+
+        if (!res.ok) {
+          const body = await res.json<{ error?: string }>().catch(() => ({}));
+          if (res.status === 503 && body.error === "plan_not_configured") {
+            // Price IDs not yet configured — show a helpful message.
+            btn.textContent = "Not available yet";
+            return;
+          }
+          throw new Error(`checkout failed: ${res.status}`);
+        }
+
+        const { url } = await res.json<{ url: string }>();
+        window.location.assign(url);
+      } catch {
+        btn.disabled = false;
+        btn.textContent = original;
+        alert("Something went wrong. Please try again or email hello@nlqdb.com.");
+      }
+    });
+  }
+</script>
+
+<style>
+  .pricing {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 4rem 1.5rem 6rem;
+  }
+
+  .pricing__head {
+    text-align: center;
+    margin-bottom: 3rem;
+  }
+
+  .pricing__title {
+    font-family: var(--mono);
+    font-size: clamp(2rem, 5vw, 3.5rem);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    margin: 0 0 0.75rem;
+  }
+
+  .pricing__sub {
+    color: var(--fg-dim);
+    font-size: 1.1rem;
+    margin: 0;
+  }
+
+  .pricing__grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 4rem;
+  }
+
+  .pricing__card {
+    background: var(--bg-elev);
+    border: 1px solid var(--border);
+    padding: 2rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+
+  .pricing__card--featured {
+    border-color: var(--accent);
+    box-shadow: var(--shadow-hard-accent);
+  }
+
+  .pricing__card-header {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .pricing__tier {
+    font-family: var(--mono);
+    font-size: 0.8rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+
+  .pricing__card--featured .pricing__tier {
+    color: var(--accent);
+  }
+
+  .pricing__price {
+    display: flex;
+    align-items: baseline;
+    gap: 0.25rem;
+  }
+
+  .pricing__amount {
+    font-family: var(--mono);
+    font-size: 2.25rem;
+    font-weight: 700;
+    line-height: 1;
+  }
+
+  .pricing__cadence {
+    color: var(--fg-dim);
+    font-size: 0.875rem;
+  }
+
+  .pricing__features {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    flex: 1;
+  }
+
+  .pricing__features li {
+    font-size: 0.9rem;
+    padding-left: 1.25rem;
+    position: relative;
+  }
+
+  .pricing__features li::before {
+    content: "→";
+    position: absolute;
+    left: 0;
+    color: var(--accent);
+    font-family: var(--mono);
+  }
+
+  .pricing__cta {
+    width: 100%;
+    text-align: center;
+    cursor: pointer;
+    text-decoration: none;
+    display: block;
+    padding: 0.75rem 1.25rem;
+    font-family: var(--mono);
+    font-size: 0.875rem;
+    font-weight: 600;
+    border: 2px solid var(--fg);
+    background: transparent;
+    color: var(--fg);
+    transition: background 0.1s, color 0.1s;
+  }
+
+  .pricing__cta--primary {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--accent-fg);
+    box-shadow: var(--shadow-hard-accent);
+  }
+
+  .pricing__cta--primary:hover {
+    background: var(--fg);
+    border-color: var(--fg);
+    color: var(--bg);
+  }
+
+  .pricing__cta--secondary:hover {
+    background: var(--fg);
+    color: var(--bg);
+  }
+
+  .pricing__cta:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  .pricing__byollm {
+    background: var(--bg-elev);
+    border: 1px solid var(--border);
+    padding: 2rem;
+    margin-bottom: 2.5rem;
+  }
+
+  .pricing__byollm-title {
+    font-family: var(--mono);
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin: 0 0 0.75rem;
+  }
+
+  .pricing__byollm p {
+    margin: 0;
+    color: var(--fg-dim);
+    font-size: 0.95rem;
+    line-height: 1.65;
+  }
+
+  .pricing__rules {
+    border-top: 1px solid var(--border);
+    padding-top: 2.5rem;
+  }
+
+  .pricing__rules-title {
+    font-family: var(--mono);
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin: 0 0 1.25rem;
+  }
+
+  .pricing__rules-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .pricing__rules-list li {
+    font-size: 0.9rem;
+    color: var(--fg-dim);
+    padding-left: 1.25rem;
+    position: relative;
+    line-height: 1.55;
+  }
+
+  .pricing__rules-list li::before {
+    content: "·";
+    position: absolute;
+    left: 0;
+    color: var(--accent);
+    font-weight: 700;
+  }
+
+  .pricing__rules-list strong {
+    color: var(--fg);
+  }
+</style>

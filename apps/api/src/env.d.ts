@@ -57,6 +57,15 @@ declare global {
       // Stripe webhook signature verification (Slice 7). Required for
       // POST /v1/stripe/webhook — when absent, the route returns 503.
       STRIPE_WEBHOOK_SECRET?: string;
+      // Stripe secret key for outbound API calls (Checkout Session creation).
+      // When absent, POST /v1/billing/checkout returns 503.
+      STRIPE_SECRET_KEY?: string;
+      // Stripe publishable key — passed to the frontend for future Stripe.js flows.
+      STRIPE_PUBLISHABLE_KEY?: string;
+      // Stripe price IDs for the subscription plans. Set via `wrangler secret put`.
+      // Absent → POST /v1/billing/checkout returns 503 plan_not_configured.
+      STRIPE_PRICE_HOBBY?: string;
+      STRIPE_PRICE_PRO?: string;
 
       // KEK for the bring-your-own secret-at-rest envelope (`GLOBAL-031`,
       // `src/secret-envelope.ts`) — the single Workers-held key that seals
