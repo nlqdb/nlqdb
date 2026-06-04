@@ -69,7 +69,7 @@ export function parseConnectionUrl(raw: string): ParseConnectionUrlResult {
   // libpq allows a comma-separated host list for failover; WHATWG `URL`
   // keeps the comma in `hostname`, which no driver would accept. Reject it
   // deterministically rather than seal a host string that can't connect —
-  // multi-host BYO connections are a later slice (SK-DB-012).
+  // multi-host BYO is a later slice, a deliberate departure per `SK-DB-012`.
   if (url.hostname.includes(",")) {
     return {
       ok: false,
