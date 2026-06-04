@@ -41,6 +41,8 @@ declare global {
       CF_AI_TOKEN?: string;
       CLOUDFLARE_ACCOUNT_ID?: string;
       OPENROUTER_API_KEY?: string;
+      // Cerebras — leads the planner-tier free chain (SK-LLM-023).
+      CEREBRAS_API_KEY?: string;
       // Cloudflare AI Gateway. When both are set every provider call
       // is proxied through the gateway for caching, retries, fallback,
       // and unified observability. Keys remain ours; gateway just proxies.

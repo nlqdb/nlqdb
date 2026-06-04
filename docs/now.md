@@ -13,6 +13,10 @@ slices 1–3c shipped. Next: first weekly measurement seeds
 BIRD ≥ 0.65 / Spider ≥ 0.75 thresholds clear and the gate removes
 itself. Headline KPI: free-vs-agentic-frontier delta per
 [`SK-QUAL-004`](./features/quality-eval/decisions/SK-QUAL-004-free-vs-frontier-delta.md).
+**Progress bar** (what's tried / not-tried, every number sourced):
+[`progress/quality-score-source-of-truth.md`](./progress/quality-score-source-of-truth.md).
+Latest lever: Cerebras (Qwen-3-235B) leads the free planner chain
+([`SK-LLM-023`](./features/llm-router/decisions/SK-LLM-023-cerebras-planner-tier.md)).
 
 ## 2. BYOLLM (every tier, 0% markup)
 

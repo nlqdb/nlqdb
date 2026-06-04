@@ -205,10 +205,11 @@ working in one directory.
 | [`docs/architecture.md`](docs/architecture.md) | System architecture, surface specs, tech-stack rationale, risks. Phase plan extracted to `phase-plan.md`. |
 | [`docs/phase-plan.md`](docs/phase-plan.md) | **Canonical phase plan** — per-phase items, exit gates, the §6 monetization + scaling trigger. |
 | [`docs/runbook.md`](docs/runbook.md) | Operations: env vars, secrets, deploy, recovery. Design-partner reference (§10). |
-| [`docs/founder-playbook.md`](docs/founder-playbook.md) | Design-partner recruitment, Sean Ellis interview script, inbound triage SLA — the founder-time work that lives next to the engineering plan. |
+| [`docs/founder-playbook.md`](docs/founder-playbook.md) | Design-partner recruitment, Sean Ellis interview script, inbound triage SLA. |
 | [`docs/performance.md`](docs/performance.md) | Span/metric/label catalog + perf goals. |
 | [`docs/guidelines.md`](docs/guidelines.md) | Code-review heuristics, the four habits. |
 | [`docs/progress.md`](docs/progress.md) | Platform integration tiers (P0–P3). |
+| [`docs/progress/quality-score-source-of-truth.md`](docs/progress/quality-score-source-of-truth.md) | Engine-quality progress bar — what's tried / not-tried, every number sourced. |
 | [`docs/research-receipts.md`](docs/research-receipts.md) | Receipts for cited research. |
 | [`docs/competitors.md`](docs/competitors.md) | Competitive landscape — categories, threat matrix, gap analysis. |
 | [`docs/history/`](docs/history/) | Lessons learnt — one doc per operational topic. |
