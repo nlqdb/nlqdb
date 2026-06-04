@@ -43,55 +43,27 @@ tests:
 
   - name: "#create-table-anon"
     case: |
-      Step 1 — Navigate to the base URL. Call browser_snapshot.
-      Find the input with placeholder "an orders tracker". Click it,
-      type:
+      Navigate to the base URL. Call browser_snapshot. Find the input
+      with placeholder "an orders tracker". Click it and type:
         create a users table with id, name, email
-      then press Enter as a SEPARATE browser_key_down call (do NOT
-      use submit: true on browser_type). Do NOT use browser_wait_for
-      anywhere in this test — use browser_snapshot to check URLs.
-      Call browser_snapshot. If "Something broke on this page" is
-      visible, click the "Reload" button once and call
-      browser_snapshot again. (One retry only.)
-      If the URL now contains "/app" (the hero form redirected to
-      the app), check the snapshot for a confirm/diff chip. If a
-      chip is visible, press Enter once to approve it. Then call
-      browser_snapshot every 3 seconds up to 8 times (24 s) until
-      "Provisioned with" is visible in the chat reply — the users
-      table must be confirmed before proceeding to sign-in.
-      Step 2 — Navigate to "/auth/sign-in". Call browser_snapshot.
-      If a "Sign in as this user" button is visible, click it with
-      browser_click. If you receive "Not connected" after clicking,
-      that is normal — the page navigated away. Navigate to "/app"
-      and call browser_snapshot. If "Something broke on this page"
-      is visible, click "Reload" and call browser_snapshot again.
-      Step 3 — Check the "Page URL:" line at the top of the
-      browser_snapshot result (do NOT use browser_wait_for — read
-      the URL from the snapshot header directly). If the URL shows
-      just "/app" without "?db=", wait 3 seconds and call
-      browser_snapshot again before deciding — the app may still
-      be loading the database list.
-      a) If the URL contains "?db=" — a database is active.
-         Check for a confirm/diff chip in the snapshot. If visible,
-         press Enter once to approve it. Then call browser_snapshot
-         every 3 seconds up to 8 times (24 s) until "Provisioned
-         with" is visible — the users table must be created.
-         Proceed to Step 4.
-      b) If the URL still does NOT contain "?db=" after waiting —
-         no database yet.
-         Click "+ New" in the left sidebar (aria-label "Your
-         databases"), type "users-db" in the "Name" input, click
-         "Create". Call browser_snapshot and verify the URL now
-         contains "?db=". Then click the chat textarea (placeholder
-         "Ask about your data…"), type:
-           create a users table with id, name, email
-         and press Enter as a SEPARATE browser_key_down call.
-         If a confirm/diff chip appears, press Enter to approve.
-         Call browser_snapshot every 3 seconds up to 8 times (24 s)
-         until "Provisioned with" is visible in the snapshot text.
-      Step 4 — Sign out: click the "Sign out" button in the top
-      navigation bar and wait for the URL to change away from
-      "/app". TEST_PASSED.
+      Press Enter as a SEPARATE browser_key_down call (do NOT use submit: true).
+      Poll for the redirect to "/app": call browser_snapshot, check the
+      "Page URL:" line at the top. If still the base URL (not "/app"), wait
+      3 seconds and call browser_snapshot again — repeat up to 6 times (18 s).
+      If after 6 polls the URL has not reached "/app", TEST_FAILED.
+      Once the URL contains "/app": call browser_snapshot. If "Something broke
+      on this page" is visible, click "Reload" once and call browser_snapshot.
+      Check the snapshot for a confirm/diff chip. If visible, press Enter once
+      to approve. Call browser_snapshot every 3 seconds up to 8 times (24 s)
+      until "Provisioned with" is visible in the chat reply.
+      Navigate to "/auth/sign-in". Call browser_snapshot. If "Sign in as this
+      user" is visible, click it with browser_click. If you receive
+      "Not connected", navigate to "/app". Call browser_snapshot. Poll: if
+      the URL shows "/app" without "?db=", wait 3 seconds and call
+      browser_snapshot again, up to 5 times (15 s). If "?db=" never appears,
+      TEST_FAILED — the anon DB was not adopted into the signed-in account.
+      Once "?db=" is in the URL: click the "Sign out" button in the top
+      navigation bar. Wait for the URL to leave "/app". TEST_PASSED.
 
   - name: "#add-row-redirects-to-auth"
     case: |
