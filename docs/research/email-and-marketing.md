@@ -11,7 +11,7 @@ revoke, global sign-out), DB-paused notification. Fallback: AWS SES
 ## 2. Marketing email — Listmonk (self-hosted, SES)
 
 Opt-in newsletter, launch announcements, weekly build-in-public digest.
-Plausible for click-through. No third-party tracking pixels.
+Cloudflare Web Analytics ([`GLOBAL-034`](../decisions/GLOBAL-034-analytics-stack.md)) for click-through. No third-party tracking pixels.
 
 ## 3. Content strategy
 

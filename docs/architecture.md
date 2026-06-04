@@ -124,7 +124,7 @@ Canonical: `web-app/FEATURE.md` (`SK-WEB-001..007`). Cloudflare Pages, Lighthous
 
 Above the fold: goal-first input ("What are you building?"), tabbed code-example panel (CLI · HTML · React · Vue · SDK · curl · MCP · Swift against the same demo DB — full list in [`apps/web/src/data/snippets.ts`](../apps/web/src/data/snippets.ts)), "what this replaces" strip, live anonymized query ticker.
 
-**Creative direction:** neo-brutalist + terminal — thick borders, hard shadows, JetBrains Mono headlines, Acid Lime `#C6F432` on near-black `#0B0F0A`. No stock photos, no cookie banner (Cloudflare Web Analytics — `GLOBAL-034`).
+**Creative direction:** neo-brutalist + terminal — thick borders, hard shadows, JetBrains Mono headlines, Acid Lime `#C6F432` on near-black `#0B0F0A`. No stock photos, no cookie banner.
 
 Surfaces promised on the home page live in [`progress.md §0`](./progress.md#0-surface-status-matrix--single-source-of-truth) — the canonical status table, mirrored into [`apps/web/src/components/CodePanel.astro`](../apps/web/src/components/CodePanel.astro). When a status flips, edit progress.md §0 first; this prose intentionally does not duplicate the table (per `AGENTS.md` P3).
 
@@ -341,7 +341,7 @@ Canonical: `GLOBAL-013` (strict-$0 free tier) + [`GLOBAL-026`](./decisions/GLOBA
 | Payments | Stripe | 0% until first charge |
 | Usage metering | Lago (self-hosted) | OSS, free |
 | App errors | Sentry | 5k errors/mo |
-| Web analytics | Cloudflare Web Analytics | Free, GDPR-exempt, no SDK (`GLOBAL-034`) |
+| Web analytics | Cloudflare Web Analytics | Free, no SDK (`GLOBAL-034`) |
 | Product events | LogSnag | 2,500 events/mo, 3 seats |
 | Backend traces | Grafana Cloud | 10k metrics, 50GB logs |
 | Long-running compute | Fly.io | 3 small machines, 3GB volumes |
