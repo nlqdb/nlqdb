@@ -5,7 +5,7 @@
 # FREE MODELS ONLY (GLOBAL-013 — $0 free tier). NEVER use a paid model here.
 # On OpenRouter, ONLY slugs ending in :free are free — the bare slug (no :free) is PAID.
 # Top-5 free LLM models for opencheck (researched 2026-06-04T07:00Z via live API + verified tool-call):
-#   1. Groq llama-3.3-70b-versatile     — 12K TPM / 1K RPM / 500K TPD; tool-use verified; used in suite-A
+#   1. Groq llama-3.3-70b-versatile     — 12K TPM / 1K RPM / 100K TPD (account cap); tool-use verified; used in suite-A
 #   2. Groq openai/gpt-oss-120b         — 8K TPM / 1K RPM; reasoning-tuned; separate TPM pool; current suite-B model
 #   3. Groq openai/gpt-oss-20b          — 8K TPM / 1K RPM; lighter/faster; separate TPM pool; suite-C model
 #   4. Cerebras gpt-oss-120b            — 30K TPM / 1M TPD; tool-use verified; BUT 5 RPM (too slow for agent loops)
