@@ -1,0 +1,112 @@
+# Suite A — Bootstrap (5 tests, ~10-15 min, ~90K tokens).
+# Tests the anonymous → create-table → redirect → sign-in → auth-preserved path.
+# Runs first; Suite B and C depend on the users DB this suite creates in Neon.
+#
+# FREE MODELS ONLY (GLOBAL-013 — $0 free tier). NEVER use a paid model here.
+# On OpenRouter, ONLY slugs ending in :free are free — the bare slug (no :free) is PAID.
+# Top-5 free LLM models for opencheck (researched 2026-06-04T07:00Z via live API + verified tool-call):
+#   1. Groq llama-3.3-70b-versatile     — 12K TPM / 1K RPM / 100K TPD (account cap); tool-use verified; current suite-A model
+#   2. Groq openai/gpt-oss-120b         — 8K TPM / 1K RPM; reasoning-tuned; separate TPM pool; suite-B model
+#   3. Groq openai/gpt-oss-20b          — 8K TPM / 1K RPM; lighter/faster; separate TPM pool; suite-C model
+#   4. Cerebras gpt-oss-120b            — 30K TPM / 1M TPD; tool-use verified; BUT 5 RPM (too slow for agent loops)
+#   5. OpenRouter openai/gpt-oss-120b:free — $0 with :free suffix; shared quota; fallback when Groq TPD exhausted
+# NOT usable: qwen/qwen3-32b (tool-call fails on Groq), llama-4-scout (type coercion error on number params).
+# Switch: edit model: below + OPENAI_BASE_URL in _e2e-opencheck.yml + LLM_API_KEY source in e2e-opencheck.yml.
+
+baseUrl: "__BASE_URL__"
+modelProvider: "openai"
+model: "llama-3.3-70b-versatile"
+
+sessionMode: "persistent"
+timeout: 240000
+
+recording:
+  trace: true
+  video: false
+
+tests:
+  - name: "#hero-or-cmdg"
+    case: |
+      Navigate to the base URL. Call browser_snapshot immediately
+      after the page loads — do NOT press Control+G or any other
+      key first (the hero form is unconditionally visible since
+      GLOBAL-027 retired the Cmd+G gate). Use browser_snapshot to
+      verify (do NOT use browser_evaluate or DOM queries).
+      In the snapshot the hero input appears as:
+        textbox "What are you building?" with /placeholder: an orders tracker
+      Any snapshot line containing "an orders tracker" confirms it
+      is present. Once you see it, respond with TEST_PASSED
+      immediately — do NOT take any further browser actions.
+      If the text "an orders tracker" is absent from the snapshot,
+      the test fails. (The waitlist email input has a different
+      placeholder — do not confuse them.)
+
+  - name: "#create-table-anon"
+    case: |
+      Navigate to the base URL. Call browser_snapshot. Find the input
+      with placeholder "an orders tracker". Click it and type:
+        create a users table with id, name, email
+      Press Enter as a SEPARATE browser_key_down call (do NOT use submit: true).
+      The form calls the API — DB creation (LLM inference + schema provision)
+      takes 15-60 s. The page does NOT redirect; stay on the base URL and poll:
+      call browser_snapshot every 5 seconds up to 12 times (60 s) until
+      "Provisioned with" is visible anywhere on the page. If after 12 polls
+      "Provisioned with" is still absent, TEST_FAILED — DB creation timed out.
+      Once "Provisioned with" is visible: navigate to "/auth/sign-in". Call
+      browser_snapshot. If "Sign in as this user" is visible, click it with
+      browser_click. If you receive "Not connected", navigate to "/app".
+      Call browser_snapshot. Poll: if the URL shows "/app" without "?db=",
+      wait 3 seconds and call browser_snapshot again, up to 5 times (15 s).
+      If "?db=" never appears, TEST_FAILED — the anon DB was not adopted
+      into the signed-in account.
+      Once "?db=" is in the URL: click the "Sign out" button in the top
+      navigation bar. Wait for the URL to leave "/app". TEST_PASSED.
+
+  - name: "#add-row-redirects-to-auth"
+    case: |
+      Step 1 — Navigate to the base URL (the marketing page).
+      Step 2 — Call browser_snapshot and confirm the hero input
+      with placeholder "an orders tracker" is visible. Do NOT
+      re-create the users table — a previous session provisioned
+      one already.
+      Step 3 — Click the text input (placeholder "an orders
+      tracker") and type
+        add a new row: name='Alice', email='alice@example.com'
+      Step 4 — Press Enter as a SEPARATE tool call (do NOT use
+      the submit parameter on browser_type).
+      Step 5 — Wait for the page to navigate AWAY from the base
+      URL. The destination URL must contain "/auth/sign-in".
+      Verify the URL contains "/auth/sign-in".
+      Do not submit the sign-in form yet.
+
+  - name: "#mock-sign-in"
+    case: |
+      Navigate directly to "/auth/sign-in". If the page immediately
+      redirects to "/app" (session already active), that is acceptable
+      — the test passes. Otherwise the mock-IdP form will be visible
+      with a default email field and a "Sign in as this user" button.
+      Use browser_snapshot to find the "Sign in as this user" button
+      ref, then click it with browser_click using that ref (do NOT use
+      browser_evaluate, browser_fill_form, or browser_run_code).
+      After clicking, you may receive "Not connected" errors — this is
+      normal and means the page navigated away successfully. If you get
+      "Not connected", call browser_navigate to "/app" and take a
+      browser_snapshot to verify the URL contains "/app".
+      The test passes once the URL contains "/app" — do not fail based
+      on any error or loading content visible on the page.
+
+  - name: "#authed-state-preserved"
+    case: |
+      Navigate to "/app". The previous test signed in, so the
+      session cookie is valid. Call browser_snapshot. If "Something
+      broke on this page" is visible, click the "Reload" button
+      (do NOT click "Sign out") and call browser_snapshot again.
+      If the sidebar shows "Loading…", wait 5 seconds and call
+      browser_snapshot one more time. Then check: does the left
+      sidebar show at least one entry whose visible text contains
+      "users" (any casing)?
+      If yes — TEST_PASSED immediately.
+      If no — TEST_FAILED immediately. A missing "users" entry
+      means the anon DB was not adopted into this account.
+      Use browser_snapshot ONLY — do NOT use browser_evaluate or any
+      DOM query tool (browser_evaluate errors in this context).

@@ -1,0 +1,157 @@
+# Suite B — Read/Write (8 tests, ~15-20 min, ~130K tokens).
+# Depends on Suite A having created the users DB + users table in Neon.
+# Starts with a fresh browser session; #b-setup signs in and verifies state.
+#
+# FREE MODELS ONLY (GLOBAL-013 — $0 free tier). NEVER use a paid model here.
+# On OpenRouter, ONLY slugs ending in :free are free — the bare slug (no :free) is PAID.
+# Top-5 free LLM models for opencheck (researched 2026-06-04T07:00Z via live API + verified tool-call):
+#   1. Groq llama-3.3-70b-versatile     — 12K TPM / 1K RPM / 100K TPD (account cap); tool-use verified; used in suite-A
+#   2. Groq openai/gpt-oss-120b         — 8K TPM / 1K RPM; reasoning-tuned; separate TPM pool; current suite-B model
+#   3. Groq openai/gpt-oss-20b          — 8K TPM / 1K RPM; lighter/faster; separate TPM pool; suite-C model
+#   4. Cerebras gpt-oss-120b            — 30K TPM / 1M TPD; tool-use verified; BUT 5 RPM (too slow for agent loops)
+#   5. OpenRouter openai/gpt-oss-120b:free — $0 with :free suffix; shared quota; fallback when Groq TPD exhausted
+# NOT usable: qwen/qwen3-32b (tool-call fails on Groq), llama-4-scout (type coercion error on number params).
+# Switch: edit model: below + OPENAI_BASE_URL in _e2e-opencheck.yml + LLM_API_KEY source in e2e-opencheck.yml.
+
+baseUrl: "__BASE_URL__"
+modelProvider: "openai"
+model: "openai/gpt-oss-120b"
+
+sessionMode: "persistent"
+timeout: 240000
+
+recording:
+  trace: true
+  video: false
+
+tests:
+  - name: "#b-setup"
+    case: |
+      Navigate directly to "/auth/sign-in". Call browser_snapshot.
+      If the URL contains "/app" (already signed in), skip the sign-in step.
+      Otherwise find the "Sign in as this user" button and click it with browser_click.
+      If you receive "Not connected", navigate to "/app" and call browser_snapshot.
+      Now verify the URL contains "/app". Then poll: call browser_snapshot, wait 3 seconds,
+      repeat up to 5 times until "?db=" appears in the URL. The users DB created in
+      Suite A should auto-load in the sidebar. If after 5 polls "?db=" is still absent,
+      TEST_FAILED — Suite A must have run successfully first and the users DB must exist.
+      Once "?db=" is visible in the URL, TEST_PASSED.
+
+  - name: "#trace-shows-sql"
+    case: |
+      Navigate to "/app". Call browser_snapshot and check for "?db="
+      in the URL. If "?db=" is not in the URL, TEST_FAILED —
+      a signed-in session with a database is required.
+      Find the chat textarea (placeholder "Ask about your data…") in
+      the snapshot. IMMEDIATELY click it (do NOT call any other tool
+      between the snapshot and the click — refs go stale on re-render).
+      Type:
+        how many users are there?
+      Press Enter as a SEPARATE browser_key_down call. Wait 5 seconds
+      for the reply to appear. Call browser_snapshot. In the snapshot
+      look for a "trace" disclosure or summary element in the reply.
+      Click it. Call browser_snapshot and verify a <pre> block
+      containing SQL is visible. The SQL must contain "users" (any
+      casing) and at least one of: select, count, from (case-insensitive).
+
+  - name: "#submit-prefilled-row"
+    case: |
+      Navigate to "/app". Call browser_snapshot and check the "Page URL:"
+      line. If "?db=" is NOT in the URL, TEST_FAILED — no active database.
+      Find the chat textarea (placeholder "Ask about your data…") in the
+      snapshot and note its ref. IMMEDIATELY call browser_click with that ref
+      (do NOT call any other tool first — refs go stale on re-render).
+      Type:
+        add a new row: name='Alice', email='alice@example.com'
+      Press Enter as a SEPARATE browser_key_down call.
+      If a confirm/diff chip appears, press Enter once to approve — do NOT
+      click any button labeled "Approve" or "Create new database".
+      Wait 5 seconds and call browser_snapshot.
+      If the response shows "references a table this database doesn't have"
+      or "no such table" — TEST_FAILED — the users table is missing
+      (Suite A must have created it successfully).
+      If the response shows a network/connection error, wait 5 seconds and
+      retry once: get a fresh browser_snapshot, IMMEDIATELY click the textarea
+      ref from that snapshot, retype the same prompt, press Enter, approve
+      any chip. Then call browser_snapshot.
+      Verify the response shows a row with name "Alice" and
+      email "alice@example.com".
+
+  - name: "#read-shows-informative-data"
+    case: |
+      The previous test inserted Alice into the users table. Navigate
+      to "/app". Call browser_snapshot and verify "?db=" is in the URL.
+      If "?db=" is not in the URL, TEST_FAILED — no active database.
+      Call browser_snapshot to get the current page state. Find
+        textbox "Ask about your data…"
+      and note its ref. IMMEDIATELY call browser_click with that ref
+      (do NOT take any other action between snapshot and click — refs
+      go stale on re-render). Type:
+        list all users in the table
+      Press Enter as a SEPARATE browser_key_down. Wait for the reply.
+      If the reply shows an error, wait 5 seconds and retry once.
+      Verify the reply contains "Alice" (any casing) and either
+      "alice@example.com" or a mention of "1 user" or a data row.
+
+  - name: "#count-summarizes"
+    case: |
+      Navigate to "/app". Call browser_snapshot and check for "?db="
+      in the URL. If "?db=" is not present, wait 3 seconds and call
+      browser_snapshot again. If still no "?db=" after the second
+      check, TEST_FAILED — no active database.
+      Find the chat textarea (placeholder "Ask about your data…") in
+      the snapshot. IMMEDIATELY click it (do NOT call any other tool
+      between snapshot and click). Type:
+        how many users are there?
+      Press Enter as a SEPARATE browser_key_down. If the reply shows
+      an error (including "references a table this database doesn't
+      have" or "Something went wrong"), wait 3 seconds and retry once.
+      Verify the reply surfaces the number 1 (or more, if multiple Alice
+      rows exist from prior runs), either in summary text or a data cell.
+
+  - name: "#vague-question-handled"
+    case: |
+      Navigate to "/app". The app auto-pins the newest database on
+      load; call browser_snapshot and check for "?db=" in the URL.
+      If "?db=" is not in the URL after 5 seconds, TEST_FAILED —
+      a signed-in session with a database is required.
+      Click the chat textarea (placeholder "Ask about your data…")
+      and type:
+        anything interesting in here?
+      Press Enter as a SEPARATE browser_key_down call. If the page
+      shows a full-page React error ("Something broke" with a reload
+      button), click reload and re-submit the prompt from the chat
+      textarea. Verify the chat reply is NOT a bare dead-end message
+      like "Something went wrong — try again."
+      Acceptable: data rows, a clarification chip with a button, or a
+      textual reply referencing users / Alice / row count.
+
+  - name: "#schema-mismatch-clarifies"
+    case: |
+      Navigate to "/app". The app auto-pins the newest database on
+      load; call browser_snapshot and check for "?db=" in the URL.
+      If "?db=" is not in the URL after 5 seconds, TEST_FAILED —
+      a signed-in session with a database is required.
+      Click the chat textarea (placeholder "Ask about your data…")
+      and type:
+        show me all the orders
+      Press Enter as a SEPARATE browser_key_down call. There is no
+      orders table — only users.
+      If a React error boundary appears ("Something broke on this
+      page" with a Reload button), click the Reload button and
+      re-submit the prompt from the chat textarea.
+      Use browser_snapshot ONLY to verify (do NOT use browser_evaluate
+      — it fails in this context).
+      Verify the reply is NOT a bare "Something went wrong — try again."
+      Acceptable: a message naming the missing "orders" table or
+      the available "users" table, or a clarification chip.
+
+  - name: "#cmdk-palette-discoverable"
+    case: |
+      Navigate to "/app". Call browser_snapshot to confirm the URL
+      contains "/app". Press Escape once to make sure no textarea or
+      dialog is focused (do NOT navigate away). Then press Ctrl+K
+      (Cmd+K on Mac). Verify a modal appears with placeholder
+      "Type a command…" and action labels including at least two of
+      "New database", "Copy embed snippet", "API keys", "Sign out".
+      Press Escape and verify the modal closes.

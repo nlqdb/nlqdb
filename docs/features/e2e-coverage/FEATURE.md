@@ -119,46 +119,12 @@ commentary is nested under the rule.
 - **GLOBAL-014** — OTel span on every external call.
   - *In this feature:* journey tests run against a real staging API, so every external call already has a span by the time it reaches the persona test. The test harness does not introduce its own external calls outside of staging itself.
 
-## Free LLM model selection (opencheck)
+## Opencheck operations (model selection + run log)
 
-**Policy: FREE MODELS ONLY** (GLOBAL-013). `LLM_API_KEY` in
-`e2e-opencheck.yml` MUST source from a free provider (Groq, Gemini,
-Cerebras, OpenRouter `:free`) — never `OPENROUTER_API_KEY` against a paid
-slug (2026-05-21: Mistral Small 3.2 paid, ~$14 burned; reverted 2026-06-03).
-
-Free models for tool-use runs (verified 2026-06-03 via live `tools`
-round-trip); each run ~360–500 K tokens.
-
-| Model | Provider | TPM | RPM | Daily | Ctx | Notes |
-|---|---|---|---|---|---|---|
-| `llama-3.3-70b-versatile` | Groq | 12 K | 1000 | 500 K | 131 K | **Current.** Tool-call verified; `GROQ_API_KEY`. |
-| `openai/gpt-oss-120b` | Groq | 12 K | 1000 | 500 K | 131 K | Verified; reasoning-tuned; swap by `model:` only. |
-| `qwen/qwen3-32b` | Groq | 12 K | 1000 | 500 K | 131 K | Same tier; fallback if llama regresses; verify first. |
-| `gemini-2.5-flash` | Google AI | 1 M | 15 | 1500 | 1 M | `GEMINI_API_KEY`; tool-use unverified — verify first. |
-| `openai/gpt-oss-120b:free` | OpenRouter `:free` | shared | shared | shared | 131 K | 0% markup; fallback if Groq cap hit; confirm no billing. |
-
-**Switching:** edit `model:` (`tests/opencheck/tests.yaml`),
-`OPENAI_BASE_URL` (`_e2e-opencheck.yml`), and the `LLM_API_KEY` source
-(`e2e-opencheck.yml`); re-test the provider's tool-call shape with a
-one-shot `curl … /chat/completions` first.
-
-## Opencheck progress tracker (append-only)
-
-| Date | Change | Outcome |
-|---|---|---|
-| 2026-05-20 | reruns of same config | all failed — cascade from `#submit-prefilled-row` 240 s timeout |
-| 2026-05-21 | swap to paid Mistral via OpenRouter | failed; **policy violation** (paid) — ~$14 burned |
-| 2026-05-31 | rerun on main | failed; cascade + model hallucinated `/app/databases` → 404 (route absent) |
-| 2026-06-03 | first free-only run (Groq `llama-3.3-70b-versatile`, run [26890333007](https://github.com/nlqdb/nlqdb/actions/runs/26890333007)) | **cancelled at 60-min ceiling** — key worked (~1.9k agent-loop emissions, no dead-key hang); **`/app/databases` hallucination did NOT recur** (0 mentions); but `#submit-prefilled-row` + 169 nav-timeout markers → persistent-mode cascade **persists**. Triggers remediation (a)+(b) below. |
-
-**Cascade confirmed (2026-06-03, run 26890333007):** `sessionMode: persistent`
-lets one timed-out test (`#submit-prefilled-row`) starve downstream tests of
-the DB they expect — the run burned the full 60-min ceiling without finishing
-(169 nav-timeout markers). **Remediation TODO (now triggered):** (a) split into
-two opencheck configs — bootstrap (1–5) + write/UX/delete (6–20) — sharing the
-`e2e` Neon branch; (b) seed fixtures via API before write-path tests. The
-`/app/databases` hallucination from 2026-05-31 did **not** recur on the free
-Groq model, so that case is no longer a blocker.
+Operator reference — the free-model table (Groq/Cerebras/OpenRouter `:free`
+only per GLOBAL-013), the model-switching steps, and the append-only run
+tracker live in [`opencheck-operations.md`](opencheck-operations.md). Split
+out per D4 so the tracker can grow without breaching the 20 KB cap.
 
 ## Open questions / known unknowns
 

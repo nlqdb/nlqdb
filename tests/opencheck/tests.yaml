@@ -1,11 +1,16 @@
-# E2E flow: anonymous → table-create → mutation-gate → mock-auth → write → UX coverage → delete → sign-out → cleanup.
+# Full E2E suite (all 20 tests) — reference file; production runs use the split suite files (tests-a/b/c-*.yaml).
 # Runtime: caller workflow substitutes __BASE_URL__ via sed before invoking bunx opencheck (see .github/workflows/e2e-opencheck.yml).
 #
-# LLM policy: FREE MODELS ONLY (GLOBAL-013 — $0 free tier). Never set a paid model here, even on OpenRouter — see top-5 table in
-# docs/features/e2e-coverage/FEATURE.md `Free LLM model selection (opencheck)`. Switch by editing this `model:`, `OPENAI_BASE_URL`
-# in `_e2e-opencheck.yml`, and the secret name in `e2e-opencheck.yml` (`LLM_API_KEY` source).
-#
-# Current: Groq `llama-3.3-70b-versatile` (free, tool-use verified 2026-06-03; 12K TPM / 1000 RPM / 500K TPD).
+# FREE MODELS ONLY (GLOBAL-013 — $0 free tier). NEVER set a paid model here, even on OpenRouter.
+# On OpenRouter, ONLY slugs ending in :free are free — the bare slug (no :free) is PAID.
+# Top-5 free LLM models for opencheck (researched 2026-06-04T07:00Z via live API + verified tool-call):
+#   1. Groq llama-3.3-70b-versatile     — 12K TPM / 1K RPM / 500K TPD; tool-use verified; current default; suite-A
+#   2. Groq openai/gpt-oss-120b         — 8K TPM / 1K RPM; reasoning-tuned; separate per-model TPM pool; suite-B
+#   3. Groq openai/gpt-oss-20b          — 8K TPM / 1K RPM; lighter/faster; separate per-model TPM pool; suite-C
+#   4. Cerebras gpt-oss-120b            — 30K TPM / 1M TPD; tool-use verified 2026-06-04; BUT 5 RPM (too slow for agent loops)
+#   5. OpenRouter openai/gpt-oss-120b:free — $0 with :free suffix; shared quota; fallback when Groq TPD exhausted
+# NOT usable: qwen/qwen3-32b (tool-call fails on Groq), llama-4-scout (type coercion error on number params).
+# Switch: edit model: below + OPENAI_BASE_URL in _e2e-opencheck.yml + LLM_API_KEY source in e2e-opencheck.yml.
 
 baseUrl: "__BASE_URL__"
 modelProvider: "openai"
@@ -40,55 +45,24 @@ tests:
 
   - name: "#create-table-anon"
     case: |
-      Step 1 — Navigate to the base URL. Call browser_snapshot.
-      Find the input with placeholder "an orders tracker". Click it,
-      type:
+      Navigate to the base URL. Call browser_snapshot. Find the input
+      with placeholder "an orders tracker". Click it and type:
         create a users table with id, name, email
-      then press Enter as a SEPARATE browser_key_down call (do NOT
-      use submit: true on browser_type). Do NOT use browser_wait_for
-      anywhere in this test — use browser_snapshot to check URLs.
-      Call browser_snapshot. If "Something broke on this page" is
-      visible, click the "Reload" button once and call
-      browser_snapshot again. (One retry only.)
-      If the URL now contains "/app" (the hero form redirected to
-      the app), check the snapshot for a confirm/diff chip. If a
-      chip is visible, press Enter once to approve it. Then call
-      browser_snapshot every 3 seconds up to 8 times (24 s) until
-      "Provisioned with" is visible in the chat reply — the users
-      table must be confirmed before proceeding to sign-in.
-      Step 2 — Navigate to "/auth/sign-in". Call browser_snapshot.
-      If a "Sign in as this user" button is visible, click it with
-      browser_click. If you receive "Not connected" after clicking,
-      that is normal — the page navigated away. Navigate to "/app"
-      and call browser_snapshot. If "Something broke on this page"
-      is visible, click "Reload" and call browser_snapshot again.
-      Step 3 — Check the "Page URL:" line at the top of the
-      browser_snapshot result (do NOT use browser_wait_for — read
-      the URL from the snapshot header directly). If the URL shows
-      just "/app" without "?db=", wait 3 seconds and call
-      browser_snapshot again before deciding — the app may still
-      be loading the database list.
-      a) If the URL contains "?db=" — a database is active.
-         Check for a confirm/diff chip in the snapshot. If visible,
-         press Enter once to approve it. Then call browser_snapshot
-         every 3 seconds up to 8 times (24 s) until "Provisioned
-         with" is visible — the users table must be created.
-         Proceed to Step 4.
-      b) If the URL still does NOT contain "?db=" after waiting —
-         no database yet.
-         Click "+ New" in the left sidebar (aria-label "Your
-         databases"), type "users-db" in the "Name" input, click
-         "Create". Call browser_snapshot and verify the URL now
-         contains "?db=". Then click the chat textarea (placeholder
-         "Ask about your data…"), type:
-           create a users table with id, name, email
-         and press Enter as a SEPARATE browser_key_down call.
-         If a confirm/diff chip appears, press Enter to approve.
-         Call browser_snapshot every 3 seconds up to 8 times (24 s)
-         until "Provisioned with" is visible in the snapshot text.
-      Step 4 — Sign out: click the "Sign out" button in the top
-      navigation bar and wait for the URL to change away from
-      "/app". TEST_PASSED.
+      Press Enter as a SEPARATE browser_key_down call (do NOT use submit: true).
+      The form calls the API — DB creation (LLM inference + schema provision)
+      takes 15-60 s. The page does NOT redirect; stay on the base URL and poll:
+      call browser_snapshot every 5 seconds up to 12 times (60 s) until
+      "Provisioned with" is visible anywhere on the page. If after 12 polls
+      "Provisioned with" is still absent, TEST_FAILED — DB creation timed out.
+      Once "Provisioned with" is visible: navigate to "/auth/sign-in". Call
+      browser_snapshot. If "Sign in as this user" is visible, click it with
+      browser_click. If you receive "Not connected", navigate to "/app".
+      Call browser_snapshot. Poll: if the URL shows "/app" without "?db=",
+      wait 3 seconds and call browser_snapshot again, up to 5 times (15 s).
+      If "?db=" never appears, TEST_FAILED — the anon DB was not adopted
+      into the signed-in account.
+      Once "?db=" is in the URL: click the "Sign out" button in the top
+      navigation bar. Wait for the URL to leave "/app". TEST_PASSED.
 
   - name: "#add-row-redirects-to-auth"
     case: |
