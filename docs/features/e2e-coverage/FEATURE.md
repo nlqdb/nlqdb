@@ -119,44 +119,12 @@ commentary is nested under the rule.
 - **GLOBAL-014** — OTel span on every external call.
   - *In this feature:* journey tests run against a real staging API, so every external call already has a span by the time it reaches the persona test. The test harness does not introduce its own external calls outside of staging itself.
 
-## Free LLM model selection (opencheck)
+## Opencheck operations (model selection + run log)
 
-**Policy: FREE MODELS ONLY** (GLOBAL-013). `LLM_API_KEY` in
-`e2e-opencheck.yml` MUST source from a free provider (Groq, Cerebras,
-OpenRouter `:free` only) — never a paid slug. On OpenRouter, `:free` suffix
-is required; the bare slug (no `:free`) is paid tier
-(2026-05-21: Mistral Small 3.2 paid ~$14 burned; reverted 2026-06-03).
-
-Each Groq model has its own per-model TPM pool; the three active suites draw
-from separate pools: llama (12K TPM), gpt-oss-120b (8K TPM), gpt-oss-20b (8K TPM).
-Total per full 3-suite run: ~360–500 K tokens across all suites.
-
-| Model | Provider | TPM | RPM | Daily | Ctx | Notes |
-|---|---|---|---|---|---|---|
-| `llama-3.3-70b-versatile` | Groq | 12 K | 1000 | 500 K | 131 K | **Suite A.** Tool-call verified 2026-06-03. |
-| `openai/gpt-oss-120b` | Groq | 8 K | 1000 | 500 K | 131 K | **Suite B.** Reasoning-tuned; separate TPM pool; tool-call verified 2026-06-04. |
-| `openai/gpt-oss-20b` | Groq | 8 K | 1000 | 500 K | 131 K | **Suite C.** Lighter/faster; separate TPM pool; tool-call verified 2026-06-04. |
-| `gpt-oss-120b` | Cerebras | 30 K | 5 | 1 M | 131 K | Tool-call verified 2026-06-04; 5 RPM too slow for agent loops (~32 calls/min needed). |
-| `openai/gpt-oss-120b:free` | OpenRouter `:free` | shared | shared | shared | 131 K | $0; fallback when Groq TPD exhausted; `:free` suffix required. |
-| ~~`qwen/qwen3-32b`~~ | Groq | — | — | — | — | **Not usable** — tool-call fails entirely on Groq (verified 2026-06-04). |
-| ~~`llama-4-scout-17b-16e`~~ | Groq | — | — | — | — | **Not usable** — returns number params as strings; Groq schema validation rejects (verified 2026-06-04). |
-
-**Switching:** edit `model:` in the target suite YAML
-(`tests/opencheck/tests-{a,b,c}-*.yaml`),
-`OPENAI_BASE_URL` (`_e2e-opencheck.yml`), and the `LLM_API_KEY` source
-(`e2e-opencheck.yml`); re-verify the provider's tool-call shape with a
-one-shot `curl … /chat/completions` first.
-
-## Opencheck progress tracker (append-only)
-
-| Date | Change | Outcome |
-|---|---|---|
-| 2026-05-20 → 05-31 | reruns / paid-Mistral swap / main rerun | all failed — cascade from `#submit-prefilled-row` 240 s timeout; **05-21 policy violation** (paid Mistral via OpenRouter, ~$14 burned); 05-31 also hallucinated `/app/databases` → 404 |
-| 2026-06-03 | first free-only run (Groq `llama-3.3-70b-versatile`, run [26890333007](https://github.com/nlqdb/nlqdb/actions/runs/26890333007)) | **cancelled at 60-min ceiling** — key worked (~1.9k agent-loop emissions, no dead-key hang); `/app/databases` hallucination did NOT recur; but `#submit-prefilled-row` + 169 nav-timeout markers → persistent-mode cascade **persists**. Triggers remediation (a)+(b) below. |
-| 2026-06-04 | 3-suite split (A: bootstrap 5 / B: read-write 8 / C: cleanup 9); separate Groq model per suite (independent TPM pools); `#submit-prefilled-row` simplified to fail-fast (no table-creation recovery); `_e2e-opencheck.yml` gains a `config_file` input; top-5 model list inlined in all YAML comments | **split infra confirmed** — cascade isolated to Suite A. Run [26924055024](https://github.com/nlqdb/nlqdb/actions/runs/26924055024): `#hero-or-cmdg` ✅; `#create-table-anon` 240 s timeout |
-| 2026-06-04 | Root-cause `#create-table-anon`: it polled for an `/app` redirect that never happens — `CreateForm.tsx` shows "Provisioned with…" in place on the marketing page (SK-ANON-012 first-call succeeds in place; the second anon call redirects to `/auth/sign-in`, not `/app`). Rewrote to poll for "Provisioned with" then navigate to `/auth/sign-in` manually | runs [26924879778](https://github.com/nlqdb/nlqdb/actions/runs/26924879778) / [26925791614](https://github.com/nlqdb/nlqdb/actions/runs/26925791614) / [26926706549](https://github.com/nlqdb/nlqdb/actions/runs/26926706549) — all 5 tests still 240 s timeout, no recordings (LLM never issued browser calls); Groq direct API OK from container ⇒ suspected GHA-runner network / hung MCP server. `LANGCHAIN_VERBOSE` used transiently to diagnose, reverted to `false` |
-
-**Cascade root-cause (2026-06-03):** `sessionMode: persistent` + one timed-out test (`#submit-prefilled-row`) starved downstream tests of their expected DB state — run burned the full 60-min ceiling (169 nav-timeout markers). **Remediation (a) SHIPPED 2026-06-04:** split into three suites (A/B/C), each starting with a fresh browser session and an explicit sign-in setup step; `#submit-prefilled-row` simplified to fail-fast on missing table (no 36s table-creation recovery loop). **Remediation (b) parked:** API-seeded fixtures held until the suite split proves insufficient.
+Operator reference — the free-model table (Groq/Cerebras/OpenRouter `:free`
+only per GLOBAL-013), the model-switching steps, and the append-only run
+tracker live in [`opencheck-operations.md`](opencheck-operations.md). Split
+out per D4 so the tracker can grow without breaching the 20 KB cap.
 
 ## Open questions / known unknowns
 
