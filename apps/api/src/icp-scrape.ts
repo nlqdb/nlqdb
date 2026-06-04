@@ -1,4 +1,4 @@
-// SK-ICP-001 (HN) + SK-ICP-004 (GitHub Issues) + SK-ICP-005 (Stack Exchange) + SK-ICP-006 (Indie Hackers) + SK-ICP-008 (Dev.to) + SK-ICP-009 (GitHub Discussions) + SK-ICP-011 (Reddit app-only OAuth) + SK-ICP-012 (Bluesky). Writes raw items to KV at icp:seen:<source>:<id> (90d) + icp:item:<YYYYMMDD>:<source>:<id> (30d).
+// SK-ICP-001 (HN) + SK-ICP-004 (GitHub Issues) + SK-ICP-005 (Stack Exchange) + SK-ICP-006 (Indie Hackers) + SK-ICP-008 (Dev.to) + SK-ICP-009 (GitHub Discussions) + SK-ICP-011 (Reddit app-only OAuth) + SK-ICP-012 (Bluesky) + SK-ICP-013 (Mastodon). Writes raw items to KV at icp:seen:<source>:<id> (90d) + icp:item:<YYYYMMDD>:<source>:<id> (30d).
 
 import { type Span, trace } from "@opentelemetry/api";
 
@@ -903,6 +903,125 @@ async function fetchBluesky(
   return items;
 }
 
+// --- Mastodon (mastodon.social public hashtag timeline) ---
+
+// mastodon.social is the largest public AP instance and federates posts from
+// thousands of others. The /api/v1/timelines/tag/<tag> endpoint is documented
+// as `OAuth: Public` (https://docs.joinmastodon.org/methods/timelines/) — no
+// auth needed. robots.txt allows /api/v1/timelines/tag/* for non-GPTBot UAs.
+// Rate limit: 300 reads / 5 min per IP (X-RateLimit-Remaining header) — cron
+// uses 5 calls / week.
+const MASTODON_QUERIES = ["postgres", "database", "sql", "llm", "rag"];
+
+const MASTODON_TIMELINE_URL = "https://mastodon.social/api/v1/timelines/tag";
+
+type MastodonPost = {
+  id?: string;
+  created_at?: string;
+  url?: string;
+  content?: string;
+  favourites_count?: number;
+  sensitive?: boolean;
+};
+
+// Mastodon `content` is HTML. Strip tags + decode the entities the Forem-style
+// renderer actually emits before storage so the LLM scoring/clustering pass
+// sees plain language. Anything we miss is harmless (the next pass sees raw
+// `&amp;` style text); the goal is "no <p>/<br>/<a> markup leaking into the
+// evidence file or the LogSnag description."
+function stripMastodonHtml(html: string): string {
+  return html
+    .replace(/<br\s*\/?>/gi, " ")
+    .replace(/<\/p>/gi, " ")
+    .replace(/<[^>]+>/g, "")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+async function fetchMastodon(
+  fetcher: typeof fetch,
+  sevenDaysAgoUnix: number,
+  tracer: IcpScrapeDeps["tracer"],
+): Promise<IcpItem[]> {
+  const items: IcpItem[] = [];
+  let rateLimited = false;
+
+  for (const tag of MASTODON_QUERIES) {
+    if (rateLimited) break;
+    const params = new URLSearchParams({ limit: "25", local: "false" });
+    const url = `${MASTODON_TIMELINE_URL}/${encodeURIComponent(tag)}?${params.toString()}`;
+
+    const doFetch = async (span: Span) => {
+      try {
+        span.setAttribute("nlqdb.icp.source", "mastodon");
+        const res = await fetcher(url, {
+          headers: { "User-Agent": BOT_USER_AGENT, Accept: "application/json" },
+          signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+        });
+        span.setAttribute("http.response.status_code", res.status);
+        const remaining = Number(res.headers.get("x-ratelimit-remaining"));
+        if (Number.isFinite(remaining)) {
+          span.setAttribute("nlqdb.icp.mastodon.rate_remaining", remaining);
+        }
+        if (res.status === 429) {
+          rateLimited = true;
+        }
+        if (!res.ok) {
+          span.setAttribute("nlqdb.icp.items", 0);
+          console.warn(
+            JSON.stringify({ msg: "icp_mastodon_fetch_error", tag, status: res.status }),
+          );
+          return;
+        }
+        const json = (await res.json()) as MastodonPost[];
+        const hits = Array.isArray(json) ? json : [];
+        span.setAttribute("nlqdb.icp.items", hits.length);
+        for (const post of hits) {
+          if (!post.id || !post.url || !post.created_at) continue;
+          // Skip NSFW-flagged content — the evidence file is product-public.
+          if (post.sensitive) continue;
+          const ms = Date.parse(post.created_at);
+          if (!Number.isFinite(ms)) continue;
+          const tsSec = Math.floor(ms / 1000);
+          if (tsSec < sevenDaysAgoUnix) continue;
+          const stripped = stripMastodonHtml(post.content ?? "");
+          if (!stripped) continue;
+          items.push({
+            id: `mast-${post.id}`,
+            source: "mastodon",
+            title: stripped.slice(0, 80),
+            url: post.url,
+            text: stripped.slice(0, 500),
+            score: post.favourites_count,
+            ts: tsSec,
+          });
+        }
+      } catch (err) {
+        span.recordException(err as Error);
+        console.error(
+          JSON.stringify({
+            msg: "icp_mastodon_fetch_exception",
+            tag,
+            message: err instanceof Error ? err.message : String(err),
+          }),
+        );
+      } finally {
+        span.end();
+      }
+    };
+
+    await runSpan(tracer, "nlqdb.icp.fetch.mastodon", doFetch);
+  }
+
+  return items;
+}
+
 // --- LogSnag notification ---
 
 async function notifyLogSnag(
@@ -922,7 +1041,7 @@ async function notifyLogSnag(
         project,
         channel: "icp-mining",
         event: "Weekly Scrape",
-        description: `${result.newItems} new pain signals (HN: ${result.sources["hn"] ?? 0}, Reddit: ${result.sources["reddit"] ?? 0}, GH: ${result.sources["github"] ?? 0}, GHD: ${result.sources["github_discussions"] ?? 0}, SO: ${result.sources["stackoverflow"] ?? 0}, IH: ${result.sources["indiehackers"] ?? 0}, DEV: ${result.sources["devto"] ?? 0}, BSKY: ${result.sources["bluesky"] ?? 0})`,
+        description: `${result.newItems} new pain signals (HN: ${result.sources["hn"] ?? 0}, Reddit: ${result.sources["reddit"] ?? 0}, GH: ${result.sources["github"] ?? 0}, GHD: ${result.sources["github_discussions"] ?? 0}, SO: ${result.sources["stackoverflow"] ?? 0}, IH: ${result.sources["indiehackers"] ?? 0}, DEV: ${result.sources["devto"] ?? 0}, BSKY: ${result.sources["bluesky"] ?? 0}, MAST: ${result.sources["mastodon"] ?? 0})`,
       }),
       signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
     });
@@ -966,87 +1085,105 @@ export async function runIcpScrape(deps: IcpScrapeDeps): Promise<IcpScrapeResult
       : null;
 
   // Fetch all sources; per-source errors are already caught inside each helper.
-  const [hnItems, redditItems, ghItems, ghdItems, seItems, ihItems, devtoItems, bskyItems] =
-    await Promise.all([
-      fetchHn(fetcher, sevenDaysAgoUnix, tracer).catch((err) => {
-        console.error(
-          JSON.stringify({
-            msg: "icp_hn_source_failed",
-            message: err instanceof Error ? err.message : String(err),
-          }),
-        );
-        return [] as IcpItem[];
-      }),
-      redditToken
-        ? fetchReddit(fetcher, redditToken, tracer).catch((err) => {
-            console.error(
-              JSON.stringify({
-                msg: "icp_reddit_source_failed",
-                message: err instanceof Error ? err.message : String(err),
-              }),
-            );
-            return [] as IcpItem[];
-          })
-        : ([] as IcpItem[]),
-      deps.ghToken
-        ? fetchGitHubIssues(fetcher, deps.ghToken, sevenDaysAgoUnix, tracer).catch((err) => {
-            console.error(
-              JSON.stringify({
-                msg: "icp_gh_source_failed",
-                message: err instanceof Error ? err.message : String(err),
-              }),
-            );
-            return [] as IcpItem[];
-          })
-        : ([] as IcpItem[]),
-      deps.ghToken
-        ? fetchGitHubDiscussions(fetcher, deps.ghToken, sevenDaysAgoUnix, tracer).catch((err) => {
-            console.error(
-              JSON.stringify({
-                msg: "icp_ghd_source_failed",
-                message: err instanceof Error ? err.message : String(err),
-              }),
-            );
-            return [] as IcpItem[];
-          })
-        : ([] as IcpItem[]),
-      fetchStackExchange(fetcher, sevenDaysAgoUnix, tracer).catch((err) => {
-        console.error(
-          JSON.stringify({
-            msg: "icp_se_source_failed",
-            message: err instanceof Error ? err.message : String(err),
-          }),
-        );
-        return [] as IcpItem[];
-      }),
-      fetchIndieHackers(fetcher, sevenDaysAgoUnix, tracer).catch((err) => {
-        console.error(
-          JSON.stringify({
-            msg: "icp_ih_source_failed",
-            message: err instanceof Error ? err.message : String(err),
-          }),
-        );
-        return [] as IcpItem[];
-      }),
-      fetchDevto(fetcher, tracer).catch((err) => {
-        console.error(
-          JSON.stringify({
-            msg: "icp_devto_source_failed",
-            message: err instanceof Error ? err.message : String(err),
-          }),
-        );
-        return [] as IcpItem[];
-      }),
-      fetchBluesky(fetcher, sevenDaysAgoUnix, tracer).catch((err) => {
-        console.error(
-          JSON.stringify({
-            msg: "icp_bsky_source_failed",
-            message: err instanceof Error ? err.message : String(err),
-          }),
-        );
-        return [] as IcpItem[];
-      }),
-    ]);
+  const [
+    hnItems,
+    redditItems,
+    ghItems,
+    ghdItems,
+    seItems,
+    ihItems,
+    devtoItems,
+    bskyItems,
+    mastItems,
+  ] = await Promise.all([
+    fetchHn(fetcher, sevenDaysAgoUnix, tracer).catch((err) => {
+      console.error(
+        JSON.stringify({
+          msg: "icp_hn_source_failed",
+          message: err instanceof Error ? err.message : String(err),
+        }),
+      );
+      return [] as IcpItem[];
+    }),
+    redditToken
+      ? fetchReddit(fetcher, redditToken, tracer).catch((err) => {
+          console.error(
+            JSON.stringify({
+              msg: "icp_reddit_source_failed",
+              message: err instanceof Error ? err.message : String(err),
+            }),
+          );
+          return [] as IcpItem[];
+        })
+      : ([] as IcpItem[]),
+    deps.ghToken
+      ? fetchGitHubIssues(fetcher, deps.ghToken, sevenDaysAgoUnix, tracer).catch((err) => {
+          console.error(
+            JSON.stringify({
+              msg: "icp_gh_source_failed",
+              message: err instanceof Error ? err.message : String(err),
+            }),
+          );
+          return [] as IcpItem[];
+        })
+      : ([] as IcpItem[]),
+    deps.ghToken
+      ? fetchGitHubDiscussions(fetcher, deps.ghToken, sevenDaysAgoUnix, tracer).catch((err) => {
+          console.error(
+            JSON.stringify({
+              msg: "icp_ghd_source_failed",
+              message: err instanceof Error ? err.message : String(err),
+            }),
+          );
+          return [] as IcpItem[];
+        })
+      : ([] as IcpItem[]),
+    fetchStackExchange(fetcher, sevenDaysAgoUnix, tracer).catch((err) => {
+      console.error(
+        JSON.stringify({
+          msg: "icp_se_source_failed",
+          message: err instanceof Error ? err.message : String(err),
+        }),
+      );
+      return [] as IcpItem[];
+    }),
+    fetchIndieHackers(fetcher, sevenDaysAgoUnix, tracer).catch((err) => {
+      console.error(
+        JSON.stringify({
+          msg: "icp_ih_source_failed",
+          message: err instanceof Error ? err.message : String(err),
+        }),
+      );
+      return [] as IcpItem[];
+    }),
+    fetchDevto(fetcher, tracer).catch((err) => {
+      console.error(
+        JSON.stringify({
+          msg: "icp_devto_source_failed",
+          message: err instanceof Error ? err.message : String(err),
+        }),
+      );
+      return [] as IcpItem[];
+    }),
+    fetchBluesky(fetcher, sevenDaysAgoUnix, tracer).catch((err) => {
+      console.error(
+        JSON.stringify({
+          msg: "icp_bsky_source_failed",
+          message: err instanceof Error ? err.message : String(err),
+        }),
+      );
+      return [] as IcpItem[];
+    }),
+    fetchMastodon(fetcher, sevenDaysAgoUnix, tracer).catch((err) => {
+      console.error(
+        JSON.stringify({
+          msg: "icp_mastodon_source_failed",
+          message: err instanceof Error ? err.message : String(err),
+        }),
+      );
+      return [] as IcpItem[];
+    }),
+  ]);
 
   const allItems = [
     ...hnItems,
@@ -1057,6 +1194,7 @@ export async function runIcpScrape(deps: IcpScrapeDeps): Promise<IcpScrapeResult
     ...ihItems,
     ...devtoItems,
     ...bskyItems,
+    ...mastItems,
   ];
 
   // Batch dedup check in parallel.
