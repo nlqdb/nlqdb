@@ -285,7 +285,7 @@ the Phase 1 schema-per-DB model on a single shared branch, an
 anonymous schema with a few tables and modest data sits in the
 ~100-500 KB range. That puts the cap at roughly **1,000 to 5,000
 anonymous dbs before pressure** — not negligible at any meaningful
-traction. The cost ladder in `README.md` says the next upgrade
+traction. The [cost ladder](./cost-ladder.md) says the next upgrade
 ($19/mo Neon Launch) is gated on "Neon DB exceeds 0.5 GB or needs
 no-pause"; we should use that gate, not blow through it.
 
