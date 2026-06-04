@@ -52,7 +52,7 @@ jobs:
       OPENAI_BASE_URL: https://api.groq.com/openai/v1
       # Opt-in debug: flip to "true" to dump the full agent loop (~5-10x log
       # volume) when triaging a stuck case. Off by default — keeps job logs readable.
-      LANGCHAIN_VERBOSE: "false"
+      LANGCHAIN_VERBOSE: "true"
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
 
