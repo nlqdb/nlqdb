@@ -3,7 +3,7 @@
 
 import type Stripe from "stripe";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { type PortalDeps, createPortalSession } from "../src/stripe/portal.ts";
+import { createPortalSession, type PortalDeps } from "../src/stripe/portal.ts";
 
 function makeStubDeps(overrides: Partial<PortalDeps> = {}): PortalDeps {
   return {
