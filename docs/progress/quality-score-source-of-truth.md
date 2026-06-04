@@ -41,7 +41,7 @@ on the entire inbound funnel — moving it is moving acquisition, and the
 | KPI (free chain) | Now | Gate floor (GLOBAL-027) | Phase-2 floor (GLOBAL-025) | Source |
 |---|---|---|---|---|
 | BIRD-dev EX | **0.318** (159/500) | ≥ 0.65 | ≥ 0.60 | `tools/eval/baseline-2026-06-15.json` (run 2026-05-18); cited 31.8% in GLOBAL-027 |
-| Spider 2.0-lite EX | **null** (not yet measured) | ≥ 0.75 | — | loader+scorer shipped (`SK-QUAL-007`/`SK-QUAL-008`); first measure pending Tue cron |
+| Spider 2.0-lite EX | **null** (not yet measured) | ≥ 0.75 | report only (Phase-3 ≥ 0.15) | loader+scorer shipped (`SK-QUAL-007`/`SK-QUAL-008`); first measure pending Tue cron |
 | free-vs-agentic-frontier delta | **null** (lane not yet run) | — | ≤ 25 pp (`SK-QUAL-004`) | `SK-QUAL-004`; agentic lane opt-in (`SK-QUAL-009`) |
 
 **BIRD baseline failure breakdown** (the 500-question run, for targeting):
@@ -144,5 +144,6 @@ implementing (`CLAUDE.md` §P4).
 > `quality-eval-bird-mini.yml` cron after T1 lands. It must run with the
 > `CEREBRAS_API_KEY` GitHub Actions secret set (see PR description — a
 > human must add it to repo secrets and the Worker if not already
-> mirrored); without it the router silently falls back to the
-> Gemini-first chain and the bar does not move.
+> mirrored); without it the chain falls over to the Gemini-first
+> order (eval lane omits Cerebras; prod auth-fails-over) and the bar
+> does not move.

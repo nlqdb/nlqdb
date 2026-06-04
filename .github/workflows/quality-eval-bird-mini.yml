@@ -99,7 +99,7 @@ jobs:
         env:
           # Free chain — same provider keys as production.
           # CEREBRAS_API_KEY leads the planner tier per SK-LLM-023; absent
-          # key → the router skips Cerebras and the chain falls back to Gemini.
+          # key → the chain falls over to the Gemini-first order.
           CEREBRAS_API_KEY: ${{ secrets.CEREBRAS_API_KEY }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}

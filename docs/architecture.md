@@ -373,7 +373,7 @@ Canonical: `llm-router/FEATURE.md` (`SK-LLM-001..011`). Tables below are at-a-gl
 | Job | Provider | Free limit | Card |
 |---|---|---|---|
 | Classification | Groq — Llama 3.1 8B Instant | 14,400 RPD / 500k TPD | No |
-| NL → query plan | Cerebras Qwen-3-235B → Gemini 2.5 Flash (SK-LLM-023) | 1M TPD / 500 RPD | No |
+| NL → query plan | Cerebras Qwen-3-235B → Gemini 2.5 Flash (SK-LLM-023) | 1M tok/day Cerebras / 500 RPD Gemini | No |
 | Hard-plan fallback | Google AI Studio — Gemini 2.5 Pro | 100 RPD | No |
 | Summarization | Groq — Llama 3.3 70B / Qwen3 32B | 1,000 RPD | No |
 | Embeddings | Cloudflare Workers AI — bge-base-en-v1.5 | 10,000 Neurons/day | No |
