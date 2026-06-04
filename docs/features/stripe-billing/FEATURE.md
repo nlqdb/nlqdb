@@ -95,14 +95,14 @@ when-to-load:
 
 ### SK-STRIPE-008 — Self-service billing portal via a Stripe-hosted session; entry point on `/pricing`
 
-- **Decision:** `POST /v1/billing/portal` (`requireSession`-gated) looks up the caller's `stripe_customer_id` from the `customers` D1 table and creates a Stripe-hosted Billing Portal session (`stripe.billingPortal.sessions.create({ customer, return_url })`). `return_url` is derived server-side from the request origin (`${origin}/app`), never client-supplied. Forwards `Idempotency-Key` to Stripe. `503 billing_not_configured` when `STRIPE_SECRET_KEY` is absent; `404 no_customer` when the user has no `customers` row; `500 internal` on Stripe API failure. The web entry point is a "Manage billing" control on `/pricing`, revealed only once the auth probe resolves authed. Web-only — not in SDK/CLI/MCP.
+- **Decision:** `POST /v1/billing/portal` (`requireSession`-gated) looks up the caller's `stripe_customer_id` from `customers` and creates a Stripe-hosted Billing Portal session (`stripe.billingPortal.sessions.create({ customer, return_url })`). `return_url` is derived server-side (`${origin}/app`), never client-supplied. Forwards `Idempotency-Key`. `503` when `STRIPE_SECRET_KEY` is absent; `404 no_customer` when the user has no `customers` row; `500` on Stripe failure. Web entry point: a "Manage billing" control on `/pricing`, shown only to authed users. Web-only (GLOBAL-003), like checkout.
 - **Core value:** Honest latency, Seamless auth, Simple
-- **Why:** The no-dark-patterns rules require one-click cancel, card update, and downgrade. Stripe's hosted portal delivers all of them and stays PCI-compliant without us building card forms — the same "let Stripe host it" stance as checkout (SK-STRIPE-004). Building it now (it's inert until live secrets exist) keeps the eventual live flip a pure set-secrets step, with no code change in the critical go-live window. Deriving `return_url` server-side reuses the open-redirect closure already proven on checkout.
-- **Consequence in code:** `apps/api/src/stripe/portal.ts` is a pure function (deps in, `{url}` out) mirroring `checkout.ts`; the route in `index.ts` owns the D1 customer lookup and origin derivation. OTel span `nlqdb.billing.portal.create` carries `nlqdb.user.id` + `nlqdb.billing.portal_session_id`. The pricing page's "Manage billing" button maps `404 → "No active subscription yet"` and `503 → "Not available yet"` rather than erroring. Per GLOBAL-003 this is a web-only surface, consistent with the `/v1/billing/checkout` precedent.
+- **Why:** The no-dark-patterns rules require one-click cancel, card update, and downgrade; Stripe's hosted portal delivers all three and stays PCI-compliant without us building card forms — the same "let Stripe host it" stance as checkout (SK-STRIPE-004). It's inert until live secrets exist, so building it now keeps the eventual live flip a pure set-secrets step.
+- **Consequence in code:** `apps/api/src/stripe/portal.ts` is a pure function (deps in, `{url}` out) mirroring `checkout.ts`; the route owns the D1 lookup + origin derivation. OTel span `nlqdb.billing.portal.create` carries `nlqdb.user.id` + `nlqdb.billing.portal_session_id`. The `/pricing` button maps `404 → "No active subscription yet"`, `503 → "Not available yet"`.
 - **Alternatives rejected:**
-  - Build cancel/update-card UI ourselves — re-implements PCI-sensitive flows Stripe already hosts; a maintenance and compliance liability for zero differentiation.
+  - Build cancel/update-card UI ourselves — re-implements PCI-sensitive flows Stripe already hosts; a liability for zero differentiation.
   - Accept a client-supplied `return_url` — open-redirect vector; the origin is the only trustworthy source.
-  - Gate the build on §6 / live mode — the endpoint is inert without live secrets anyway; shipping early removes code risk from the go-live window.
+  - Gate the build on §6 / live mode — inert without live secrets anyway; shipping early removes code risk from the go-live window.
 
 ## GLOBALs governing this feature
 
@@ -120,7 +120,7 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 - **Stripe Tax activation.** Test-mode is configured (`NLQDB.COM` descriptor, Switzerland/CHF merchant). Live-mode + Stripe Tax flip is a Phase 2 task — capture the activation steps in `docs/runbook.md §6` when it lands.
 - **Lago wiring.** PLAN §6 / DESIGN §6 calls for Lago-on-Fly as the usage-metering layer batched into Stripe; not yet wired. Slice TBD in Phase 2.
 - **Live-mode webhook secret.** `STRIPE_WEBHOOK_SECRET` today is the test-mode value; cutting over needs a coordinated `wrangler secret put` + Stripe Dashboard endpoint update; document the rollover playbook in `docs/runbook.md §6`.
-- **Billing Portal Dashboard config.** `SK-STRIPE-008` ships the endpoint, but the portal's feature set (which plans are switchable, cancel-immediately vs end-of-period, invoice history) is configured in the Stripe Dashboard → Billing → Customer portal. `sessions.create` errors until a portal configuration is saved in test mode. Capture the activation steps in `docs/runbook.md §6` alongside the price-ID setup.
+- **Billing Portal Dashboard config.** `SK-STRIPE-008` ships the endpoint, but `sessions.create` errors until a portal configuration (switchable plans, cancel behaviour, invoice history) is saved in the Stripe Dashboard → Billing → Customer portal. Capture the activation steps in `docs/runbook.md §6` alongside price-ID setup.
 
 ## Billing constraints and philosophy
 

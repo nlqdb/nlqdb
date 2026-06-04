@@ -53,6 +53,7 @@ export default defineConfig(async () => {
               "test/first-query.test.ts",
               "test/stripe-webhook.test.ts",
               "test/stripe-checkout.test.ts",
+              "test/stripe-portal.test.ts",
               "test/chat-orchestrate.test.ts",
               "test/email.test.ts",
               "test/demo.test.ts",
