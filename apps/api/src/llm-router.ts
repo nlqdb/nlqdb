@@ -83,7 +83,8 @@ export function getLLMRouter(): LLMRouter {
       // 8B first; the prompt is short and the budget is 1500 ms).
       route: ["groq", "gemini", "workers-ai", "openrouter"],
       // SK-LLM-023 — Cerebras (gpt-oss-120b) leads the planner tier; on a
-      // 429/context-cap it fails over to the prior Gemini-first order.
+      // 429 (free-tier per-minute token/request quota) it fails over to the
+      // prior Gemini-first order.
       plan: ["cerebras", "gemini", "groq", "workers-ai", "openrouter"],
       summarize: ["groq", "gemini", "workers-ai", "openrouter"],
       // SK-LLM-012: schema_infer is its own operation but shares the

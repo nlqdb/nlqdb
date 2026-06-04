@@ -45,17 +45,17 @@ describe("createCerebrasProvider", () => {
     expect(res.sql).toBe("SELECT 2");
   });
 
-  it("4xx (context-cap / rate-limit) becomes ProviderError so the router fails over", async () => {
+  it("429 (free-tier per-minute token quota) becomes ProviderError so the router fails over", async () => {
     const provider = createCerebrasProvider({ apiKey });
     const fetch = mockFetch([
       {
         match: /api\.cerebras\.ai/,
-        respond: () => new Response("context_length_exceeded", { status: 400 }),
+        respond: () => new Response("token_quota_exceeded", { status: 429 }),
       },
     ]);
     await expect(
       provider.plan({ goal: "g", schema: "s", dialect: "sqlite" }, { fetch }),
-    ).rejects.toMatchObject({ reason: "http_4xx", status: 400 } satisfies Partial<ProviderError>);
+    ).rejects.toMatchObject({ reason: "http_4xx", status: 429 } satisfies Partial<ProviderError>);
   });
 
   it("network error becomes ProviderError reason=network", async () => {
