@@ -115,6 +115,17 @@ describe("parseConnectionUrl — rejects unusable input (GLOBAL-012)", () => {
     expect(result.message).toMatch(/database/i);
   });
 
+  it("rejects a comma-separated multi-host URL", () => {
+    // WHATWG URL keeps the comma in hostname ("h1,h2"); reject it rather
+    // than seal an unconnectable host. The port-bearing form throws and is
+    // reported as malformed, which is also a rejection.
+    const result = parseConnectionUrl("postgres://u:p@h1,h2/db");
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.message).toMatch(/host/i);
+    expect(parseConnectionUrl("postgresql://h1:5432,h2:5433/db").ok).toBe(false);
+  });
+
   it("rejects a multi-segment path", () => {
     const result = parseConnectionUrl("postgres://host/db/extra");
     expect(result.ok).toBe(false);

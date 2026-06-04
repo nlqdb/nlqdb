@@ -24,7 +24,13 @@ Seal/open primitive: [`apps/api/src/secret-envelope.ts`](../../../../apps/api/sr
   `redactConnectionUrl(raw)` is the log/error-path convenience: it returns
   the redacted form, or a fixed `<unparseable connection URL>` sentinel that
   never echoes the raw input, so an unparseable value still embedding a
-  secret can't leak.
+  secret can't leak. Two deliberate departures from libpq's looser parser:
+  the database name is **required** (libpq defaults it to the username) — a
+  BYO URL with no target database is almost always a mis-paste, and the
+  connect flow needs a concrete database to introspect; and a comma-separated
+  multi-host failover list is **rejected this slice** (WHATWG `URL` would keep
+  the comma in the host string, which no driver accepts) — multi-host BYO is a
+  later slice, so it fails loud now rather than sealing an unconnectable host.
 - **Core value:** Bullet-proof, Simple, Open source
 - **Why:** `SK-DB-011` / §3.6.7 commit to "per-db AES-GCM blob" storage and
   to the CLI / chat / SDK echoing the connection, but a credential string is

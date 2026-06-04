@@ -66,6 +66,16 @@ export function parseConnectionUrl(raw: string): ParseConnectionUrlResult {
   if (url.hostname === "") {
     return { ok: false, message: `Connection URL is missing a host; use ${SHAPE_HINT}.` };
   }
+  // libpq allows a comma-separated host list for failover; WHATWG `URL`
+  // keeps the comma in `hostname`, which no driver would accept. Reject it
+  // deterministically rather than seal a host string that can't connect —
+  // multi-host BYO connections are a later slice (SK-DB-012).
+  if (url.hostname.includes(",")) {
+    return {
+      ok: false,
+      message: `Connection URL has more than one host, which isn't supported yet; pass a single host (${SHAPE_HINT}).`,
+    };
+  }
 
   // A libpq URI carries exactly one path segment — the database name.
   const database = url.pathname.replace(/^\//, "");
