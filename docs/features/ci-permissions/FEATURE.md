@@ -89,10 +89,10 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 
 ## Open questions / known unknowns
 
-- **Repo-default `permissions:`.** GitHub allows org-wide setting of "default `GITHUB_TOKEN` permissions" — should we set this to `read` org-wide (defense in depth) or stay with the workflow-level explicit declarations only? Probably both, once `actionlint` self-test is reliable.
-- **Per-environment scoping.** GitHub Environments support `permissions:` overrides per environment — useful for staging vs prod. Not yet used; revisit when staging environment lands in Phase 2.
+- **Repo-default `permissions:`** — Resolved per `GLOBAL-033` (security → layered guardrails): the canonical control is the workflow-level explicit `permissions:` block (`SK-CIPERM-002`), which already fails closed and is visible in the diff. Flipping the org-wide *default* `GITHUB_TOKEN` permissions to `read` is a redundant second layer behind a GitHub org-settings click (a human action), so it's a defense-in-depth nice-to-have, not a gap. **Parked until** the `actionlint` self-test (`SK-CIPERM-005`) is enforced org-wide and the click is worth making.
+- **Per-environment scoping** — **Parked until** a staging GitHub Environment lands (Phase 2); workflow-level scoping covers the single-environment world today.
 - **`NPM_TOKEN` deprecation.** When does the long-lived `NPM_TOKEN` fallback in `SK-CIPERM-003` become forbidden rather than supported? Probably after every package on `@nlqdb/*` is on Trusted Publishing — track in `nlqdb/actions`'s release-pipeline issues, not here.
-- **Org-wide `actionlint` enforcement.** Whether to run the `SK-CIPERM-005` self-test on every consumer repo (via a reusable test workflow) or only in `nlqdb/actions`. Phase 2 decision; not blocking.
+- **Org-wide `actionlint` enforcement** — **Parked until** Phase 2 (a second consumer repo exists); the `SK-CIPERM-005` self-test runs in `nlqdb/actions` today and a reusable test workflow is the obvious extension when there's a second repo to point it at.
 
 ## Source
 

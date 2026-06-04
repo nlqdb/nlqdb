@@ -91,5 +91,5 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 ## Open questions / known unknowns
 
 - **HTTP API reference (slice d).** Blocked on `apps/api` emitting an OpenAPI schema (tracked under `ask-pipeline/FEATURE.md` Open questions). The `/reference/http-api/` page currently links readers at the SDK reference, which carries the canonical wire shape per `GLOBAL-001`. When the schema lands, wire `apps/docs/scripts/gen-api.ts` (widdershins) and remove the placeholder.
-- **Search.** Starlight's built-in Pagefind covers v0. Algolia DocSearch (free for OSS) is the upgrade path if/when content grows past ~50 pages.
+- **Search** — Resolved per `GLOBAL-033` (build-vs-adopt → adopt the mature default; speculative-scope → don't pre-build): Starlight's built-in Pagefind ships now and covers v0. **Parked until** the docs grow past ~50 pages — Algolia DocSearch (free for OSS) is the drop-in upgrade then, not before.
 - **Analytics** — Resolved by [`GLOBAL-034`](../../decisions/GLOBAL-034-analytics-stack.md): Cloudflare Web Analytics (free, no SDK). **Parked until** the `apps/web` analytics-wiring slice, which drops the same CF beacon `<script>` here in the same task.
