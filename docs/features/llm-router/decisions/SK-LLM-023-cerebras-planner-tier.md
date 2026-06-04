@@ -38,17 +38,17 @@ failover order behind the new head.
   router per `SK-LLM-006`, one new bounded label value). Cerebras is
   routed **direct** (no AI Gateway base yet) — the provider-agnostic
   plan cache (`SK-LLM-010`) is the real cache layer, so the gateway gap
-  is cosmetic; gatewaying Cerebras is a follow-up. The free-tier
-  **8,192-token context cap** means a schema that overflows it returns
-  a 4xx → the router fails over to Gemini next in chain, so
-  large-schema questions degrade gracefully rather than erroring to the
+  is cosmetic; gatewaying Cerebras is a follow-up. On a **429** (the
+  30 RPM free cap) or a rare schema over the **64K free-tier context**
+  the call returns a 4xx → the router fails over to Gemini next in
+  chain, so the chain degrades gracefully rather than erroring to the
   user.
 - **Alternatives rejected:**
   - **Append Cerebras last (capacity backstop only)** — barely moves
     accuracy because the free chain rarely fully fails; the lever is
     the *primary* planner model, so it must lead.
-  - **Swap Gemini out entirely** — loses the large-schema fallback the
-    8,192-token cap requires; keep Gemini as the immediate failover.
+  - **Swap Gemini out entirely** — loses the immediate failover the
+    30 RPM cap (and the rare >64K schema) needs; keep Gemini behind it.
   - **Add Mistral / NVIDIA / Cohere instead** — all card-free too, but
     none serve a model at Qwen-3-235B's NL→SQL quality *and* Cerebras's
     throughput; they remain candidate failover entries if Cerebras's

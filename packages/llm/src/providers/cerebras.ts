@@ -4,9 +4,10 @@
 // so it leads the `plan` / `schema_infer` chains and almost always wins the
 // SK-LLM-014 hedge before the head-start fires.
 //
-// Free tier (verified 2026-06): 1M tokens/day, no card, 30 RPM, 8,192-token
-// context cap. A schema that overflows the cap 4xx's → the router fails over
-// to Gemini next in chain, so large-schema questions degrade gracefully.
+// Free tier (verified 2026-06): 1M tokens/day, no card, 30 RPM, 64K-token
+// context for Qwen-3-235B (131K paid). On a 429 (30 RPM) or a rare >64K
+// schema the call 4xx's → the router fails over to Gemini next in chain,
+// so the chain degrades gracefully.
 // OpenAI-compatible chat-completions, so it reuses `openAICompatibleChat`.
 
 import type { LLMOperation, Provider } from "../types.ts";
