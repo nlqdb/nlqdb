@@ -122,24 +122,29 @@ commentary is nested under the rule.
 ## Free LLM model selection (opencheck)
 
 **Policy: FREE MODELS ONLY** (GLOBAL-013). `LLM_API_KEY` in
-`e2e-opencheck.yml` MUST source from a free provider (Groq, Gemini,
-Cerebras, OpenRouter `:free`) — never `OPENROUTER_API_KEY` against a paid
-slug (2026-05-21: Mistral Small 3.2 paid, ~$14 burned; reverted 2026-06-03).
+`e2e-opencheck.yml` MUST source from a free provider (Groq, Cerebras,
+OpenRouter `:free` only) — never a paid slug. On OpenRouter, `:free` suffix
+is required; the bare slug (no `:free`) is paid tier
+(2026-05-21: Mistral Small 3.2 paid ~$14 burned; reverted 2026-06-03).
 
-Free models for tool-use runs (verified 2026-06-03 via live `tools`
-round-trip); each run ~360–500 K tokens.
+Each Groq model has its own per-model TPM pool; the three active suites draw
+from separate pools: llama (12K TPM), gpt-oss-120b (8K TPM), qwen3-32b (6K TPM).
+Total per full 3-suite run: ~360–500 K tokens across all suites.
 
 | Model | Provider | TPM | RPM | Daily | Ctx | Notes |
 |---|---|---|---|---|---|---|
-| `llama-3.3-70b-versatile` | Groq | 12 K | 1000 | 500 K | 131 K | **Current.** Tool-call verified; `GROQ_API_KEY`. |
-| `openai/gpt-oss-120b` | Groq | 12 K | 1000 | 500 K | 131 K | Verified; reasoning-tuned; swap by `model:` only. |
-| `qwen/qwen3-32b` | Groq | 12 K | 1000 | 500 K | 131 K | Same tier; fallback if llama regresses; verify first. |
-| `gemini-2.5-flash` | Google AI | 1 M | 15 | 1500 | 1 M | `GEMINI_API_KEY`; tool-use unverified — verify first. |
-| `openai/gpt-oss-120b:free` | OpenRouter `:free` | shared | shared | shared | 131 K | 0% markup; fallback if Groq cap hit; confirm no billing. |
+| `llama-3.3-70b-versatile` | Groq | 12 K | 1000 | 500 K | 131 K | **Suite A.** Tool-call verified 2026-06-03. |
+| `openai/gpt-oss-120b` | Groq | 8 K | 1000 | 500 K | 131 K | **Suite B.** Reasoning-tuned; separate TPM pool; tool-call verified 2026-06-04. |
+| `openai/gpt-oss-20b` | Groq | 8 K | 1000 | 500 K | 131 K | **Suite C.** Lighter/faster; separate TPM pool; tool-call verified 2026-06-04. |
+| `gpt-oss-120b` | Cerebras | 30 K | 5 | 1 M | 131 K | Tool-call verified 2026-06-04; 5 RPM too slow for agent loops (~32 calls/min needed). |
+| `openai/gpt-oss-120b:free` | OpenRouter `:free` | shared | shared | shared | 131 K | $0; fallback when Groq TPD exhausted; `:free` suffix required. |
+| ~~`qwen/qwen3-32b`~~ | Groq | — | — | — | — | **Not usable** — tool-call fails entirely on Groq (verified 2026-06-04). |
+| ~~`llama-4-scout-17b-16e`~~ | Groq | — | — | — | — | **Not usable** — returns number params as strings; Groq schema validation rejects (verified 2026-06-04). |
 
-**Switching:** edit `model:` (`tests/opencheck/tests.yaml`),
+**Switching:** edit `model:` in the target suite YAML
+(`tests/opencheck/tests-{a,b,c}-*.yaml`),
 `OPENAI_BASE_URL` (`_e2e-opencheck.yml`), and the `LLM_API_KEY` source
-(`e2e-opencheck.yml`); re-test the provider's tool-call shape with a
+(`e2e-opencheck.yml`); re-verify the provider's tool-call shape with a
 one-shot `curl … /chat/completions` first.
 
 ## Opencheck progress tracker (append-only)
@@ -150,15 +155,9 @@ one-shot `curl … /chat/completions` first.
 | 2026-05-21 | swap to paid Mistral via OpenRouter | failed; **policy violation** (paid) — ~$14 burned |
 | 2026-05-31 | rerun on main | failed; cascade + model hallucinated `/app/databases` → 404 (route absent) |
 | 2026-06-03 | first free-only run (Groq `llama-3.3-70b-versatile`, run [26890333007](https://github.com/nlqdb/nlqdb/actions/runs/26890333007)) | **cancelled at 60-min ceiling** — key worked (~1.9k agent-loop emissions, no dead-key hang); **`/app/databases` hallucination did NOT recur** (0 mentions); but `#submit-prefilled-row` + 169 nav-timeout markers → persistent-mode cascade **persists**. Triggers remediation (a)+(b) below. |
+| 2026-06-04 | 3-suite split (A: bootstrap 5 tests / B: read-write 8 tests / C: cleanup 9 tests); separate Groq model per suite for independent TPM pools; simplified `#submit-prefilled-row` (removed table-creation recovery path — fail fast); `_e2e-opencheck.yml` extended with `config_file` input; top-5 model list added inline to all YAML comments | **shipped to branch** — first run pending |
 
-**Cascade confirmed (2026-06-03, run 26890333007):** `sessionMode: persistent`
-lets one timed-out test (`#submit-prefilled-row`) starve downstream tests of
-the DB they expect — the run burned the full 60-min ceiling without finishing
-(169 nav-timeout markers). **Remediation TODO (now triggered):** (a) split into
-two opencheck configs — bootstrap (1–5) + write/UX/delete (6–20) — sharing the
-`e2e` Neon branch; (b) seed fixtures via API before write-path tests. The
-`/app/databases` hallucination from 2026-05-31 did **not** recur on the free
-Groq model, so that case is no longer a blocker.
+**Cascade root-cause (2026-06-03):** `sessionMode: persistent` + one timed-out test (`#submit-prefilled-row`) starved downstream tests of their expected DB state — run burned the full 60-min ceiling (169 nav-timeout markers). **Remediation (a) SHIPPED 2026-06-04:** split into three suites (A/B/C), each starting with a fresh browser session and an explicit sign-in setup step; `#submit-prefilled-row` simplified to fail-fast on missing table (no 36s table-creation recovery loop). **Remediation (b) parked:** API-seeded fixtures held until the suite split proves insufficient.
 
 ## Open questions / known unknowns
 

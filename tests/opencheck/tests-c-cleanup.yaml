@@ -1,0 +1,177 @@
+# Suite C — UX + Cleanup (9 tests, ~15-20 min, ~140K tokens).
+# Depends on Suite B having added Alice to the users table.
+# Starts with a fresh browser session; #c-setup signs in and verifies state.
+#
+# FREE MODELS ONLY (GLOBAL-013 — $0 free tier). NEVER use a paid model here.
+# On OpenRouter, ONLY slugs ending in :free are free — the bare slug (no :free) is PAID.
+# Top-5 free LLM models for opencheck (researched 2026-06-04T07:00Z via live API + verified tool-call):
+#   1. Groq llama-3.3-70b-versatile     — 12K TPM / 1K RPM / 500K TPD; tool-use verified; used in suite-A
+#   2. Groq openai/gpt-oss-120b         — 8K TPM / 1K RPM; reasoning-tuned; separate TPM pool; used in suite-B
+#   3. Groq openai/gpt-oss-20b          — 8K TPM / 1K RPM; lighter/faster; separate TPM pool; current suite-C model
+#   4. Cerebras gpt-oss-120b            — 30K TPM / 1M TPD but only 5 RPM (too slow for opencheck agent loops)
+#   5. OpenRouter openai/gpt-oss-120b:free — $0, shared quota; use :free suffix; fallback when Groq TPD exhausted
+# NOT usable: qwen/qwen3-32b (tool-call fails on Groq), llama-4-scout (type coercion error on number params).
+# Switch: edit model: below + OPENAI_BASE_URL in _e2e-opencheck.yml + LLM_API_KEY source in e2e-opencheck.yml.
+
+baseUrl: "__BASE_URL__"
+modelProvider: "openai"
+model: "openai/gpt-oss-20b"
+
+sessionMode: "persistent"
+timeout: 240000
+
+recording:
+  trace: true
+  video: false
+
+tests:
+  - name: "#c-setup"
+    case: |
+      Navigate directly to "/auth/sign-in". Call browser_snapshot.
+      If the URL contains "/app" (already signed in), skip the sign-in step.
+      Otherwise find the "Sign in as this user" button and click it with browser_click.
+      If you receive "Not connected", navigate to "/app" and call browser_snapshot.
+      Now verify the URL contains "/app". Then poll: call browser_snapshot, wait 3 seconds,
+      repeat up to 5 times until "?db=" appears in the URL. The users DB must exist
+      from Suite A and Alice must have been inserted by Suite B.
+      If after 5 polls "?db=" is still absent, TEST_FAILED — Suite A and B must have run first.
+      Once "?db=" is visible in the URL, TEST_PASSED.
+
+  - name: "#delete-row"
+    case: |
+      The browser is signed in from previous tests. Navigate to
+      "/app". Call browser_snapshot. If "Something broke on this
+      page" is visible, click the "Reload" button (do NOT click
+      "Sign out") and call browser_snapshot again.
+      Find the chat textarea in THIS snapshot: look for
+        textbox "Ask about your data…"
+      in the snapshot YAML and note its ref. Use ONLY the ref
+      from THIS snapshot — do NOT reuse refs from earlier calls.
+      If the snapshot is truncated (ends with "[... N chars
+      truncated ...]") and does not show the textarea, call
+      browser_snapshot once more to get a fresh view. Click the
+      textarea using the ref from the current snapshot and type:
+        delete the row where name = 'Alice'
+      and press Enter as a SEPARATE browser_key_down call. If a
+      confirm/diff chip appears, press Enter once to approve (do NOT
+      click any button — press Enter in the focused input). Call
+      browser_snapshot and verify the Alice row is no longer present
+      in the users table (0 rows OR the row is absent). If the
+      textarea is not visible yet, wait 3 seconds and call
+      browser_snapshot again before proceeding.
+
+  - name: "#create-second-database"
+    case: |
+      The browser is signed in from previous tests. Navigate to
+      "/app". Call browser_snapshot. If the sidebar shows
+      "Couldn't load databases." or a loading error, wait 5 seconds
+      and call browser_snapshot again; repeat once more if needed
+      (total wait up to 10 seconds). The sidebar should show at least
+      one database entry from previous tests. In the left sidebar
+      click the "+ New" button. A small form with a "Name" input
+      appears. Type
+        products-tracker
+      into that input and click the "Create" button EXACTLY ONCE —
+      do NOT click it again. Now poll: call browser_snapshot, wait
+      3 seconds, call browser_snapshot, wait 3 seconds, ... repeating
+      this pattern. Count your browser_snapshot calls after the
+      Create click: on the 16th snapshot call, STOP immediately. If
+      "products-tracker" is visible in ANY of those 16 snapshots,
+      verify the sidebar now shows at least two database entries
+      below "All databases" and TEST_PASSED. If after the 16th
+      snapshot "products-tracker" is still not visible, output
+      TEST_FAILED — database creation did not complete. Do NOT call
+      browser_snapshot a 17th time. Do NOT click Create again.
+
+  - name: "#delete-active-db-dialog-opens"
+    case: |
+      The browser is signed in and the sidebar (aria-label "Your
+      databases") shows at least two database entries from previous
+      tests — do NOT re-create any databases. Call browser_snapshot.
+      Locate the currently active (highlighted) database row. If the
+      sidebar shows "Couldn't load databases" or no database rows are
+      visible, wait 3 seconds and call browser_snapshot again; do
+      this at most 8 times total (24 seconds). If after 8 attempts
+      the sidebar is still not loading, TEST_FAILED — sidebar did not
+      load. If the sidebar IS loaded but shows fewer than 2 database
+      entries below "All databases", TEST_FAILED immediately — the
+      second database from #create-second-database is missing.
+      Click the "×" button at the right edge of the active database
+      row (aria-label starts with "Delete "). Call browser_snapshot.
+      Verify a modal dialog with the heading "Delete database" is
+      visible in the snapshot. Do NOT confirm the deletion here —
+      just verify the modal opened. TEST_PASSED once you can see the
+      "Delete database" heading in the snapshot.
+
+  - name: "#delete-active-db-typed-confirm"
+    case: |
+      The "Delete database" modal is open from the previous test.
+      Call browser_snapshot. The dialog shows a database name in a
+      <code> block next to a "Copy" button. Read the exact text inside
+      that <code> block, then type that EXACT same text into the input
+      field below it (it must match character-for-character including
+      spaces). Once the input matches, the "Delete" button becomes
+      enabled — click it. Verify the dialog closes and that database
+      entry is gone from the sidebar list.
+      If the modal is NOT open (previous test closed it or it timed
+      out), open it again: find the active database row in the sidebar,
+      click its "×" button (aria-label starts with "Delete "), verify
+      the "Delete database" heading is visible, then proceed with the
+      typed confirmation above.
+
+  - name: "#api-keys-mint-and-revoke"
+    case: |
+      Navigate the browser directly to "/app/keys". If the page shows
+      an error message ("Something broke on this page" or similar),
+      click the "Reload" button on that error card and wait 3 seconds
+      before proceeding. Verify a heading "API keys" is visible.
+      Use browser_snapshot for all verification (do NOT use
+      browser_evaluate — it fails in this context).
+      Click the "New key" button. A modal appears with the heading
+      "Mint a new key". Type
+        opencheck-smoke
+      into the "Label (optional)" input and click the "Mint" button.
+      The modal heading swaps to "Copy your new key" and a <code>
+      block contains a string starting with "sk_live_". Click
+      the "Done" button to close the dialog. Verify a key row with
+      the label "opencheck-smoke" is now present in the list.
+      Click "Revoke" on that row, then in the confirm dialog
+      ("Revoke this key?") click the "Revoke" button. Verify the
+      row moves to the "Revoked" group (the "Active" group no
+      longer contains the "opencheck-smoke" row).
+
+  - name: "#sign-out"
+    case: |
+      The browser is signed in from previous tests. Navigate directly
+      to "/app". In the top navigation bar there is a direct "Sign
+      out" button (no dropdown or user-menu needed — it is visible
+      directly in the primary nav). Click it. Verify the URL is no
+      longer "/app" and the "Sign out" button is no longer in the nav.
+
+  - name: "#sign-in-again"
+    case: |
+      The previous test signed out. Navigate the browser directly
+      to "/auth/sign-in". On the mock IdP form click the "Sign in as
+      this user" button using browser_click (use browser_snapshot to
+      find the button ref — do NOT use browser_evaluate). Wait for
+      the URL path to become "/app". If the URL is "/app" but the
+      sidebar shows "Loading…" or no database entries, wait 5 seconds
+      and call browser_snapshot again (retry up to 3 times) — the
+      sidebar loads asynchronously after sign-in.
+      Use browser_snapshot ONLY — do NOT use browser_evaluate — to
+      verify the sidebar shows at least one database row remaining
+      from the prior session (its display name starts with "users").
+
+  - name: "#delete-remaining-db"
+    case: |
+      The previous test signed in again. Delete ALL database entries in the sidebar
+      whose names start with "users" (there may be one or more
+      due to prior test runs). For each such entry: click its "×"
+      button (aria-label starts with "Delete "), copy the exact
+      name shown in the <code> block in the modal into the
+      confirmation input (must match character-for-character,
+      including spaces), click "Delete", and wait for the dialog
+      to close before proceeding to the next. After all "users*"
+      entries are gone, verify the sidebar's database list is
+      empty (only the "All databases" item remains and the rail
+      shows "No databases yet — create one." or no DB rows).

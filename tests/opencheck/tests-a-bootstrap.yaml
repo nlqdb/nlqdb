@@ -1,0 +1,143 @@
+# Suite A — Bootstrap (5 tests, ~10-15 min, ~90K tokens).
+# Tests the anonymous → create-table → redirect → sign-in → auth-preserved path.
+# Runs first; Suite B and C depend on the users DB this suite creates in Neon.
+#
+# FREE MODELS ONLY (GLOBAL-013 — $0 free tier). NEVER use a paid model here.
+# On OpenRouter, ONLY slugs ending in :free are free — the bare slug (no :free) is PAID.
+# Top-5 free LLM models for opencheck (researched 2026-06-04T07:00Z via live API + verified tool-call):
+#   1. Groq llama-3.3-70b-versatile     — 12K TPM / 1K RPM / 500K TPD; tool-use verified; current suite-A model
+#   2. Groq openai/gpt-oss-120b         — 8K TPM / 1K RPM; reasoning-tuned; separate TPM pool; suite-B model
+#   3. Groq openai/gpt-oss-20b          — 8K TPM / 1K RPM; lighter/faster; separate TPM pool; suite-C model
+#   4. Cerebras gpt-oss-120b            — 30K TPM / 1M TPD; tool-use verified; BUT 5 RPM (too slow for agent loops)
+#   5. OpenRouter openai/gpt-oss-120b:free — $0 with :free suffix; shared quota; fallback when Groq TPD exhausted
+# NOT usable: qwen/qwen3-32b (tool-call fails on Groq), llama-4-scout (type coercion error on number params).
+# Switch: edit model: below + OPENAI_BASE_URL in _e2e-opencheck.yml + LLM_API_KEY source in e2e-opencheck.yml.
+
+baseUrl: "__BASE_URL__"
+modelProvider: "openai"
+model: "llama-3.3-70b-versatile"
+
+sessionMode: "persistent"
+timeout: 240000
+
+recording:
+  trace: true
+  video: false
+
+tests:
+  - name: "#hero-or-cmdg"
+    case: |
+      Navigate to the base URL. Call browser_snapshot immediately
+      after the page loads — do NOT press Control+G or any other
+      key first (the hero form is unconditionally visible since
+      GLOBAL-027 retired the Cmd+G gate). Use browser_snapshot to
+      verify (do NOT use browser_evaluate or DOM queries).
+      In the snapshot the hero input appears as:
+        textbox "What are you building?" with /placeholder: an orders tracker
+      Any snapshot line containing "an orders tracker" confirms it
+      is present. Once you see it, respond with TEST_PASSED
+      immediately — do NOT take any further browser actions.
+      If the text "an orders tracker" is absent from the snapshot,
+      the test fails. (The waitlist email input has a different
+      placeholder — do not confuse them.)
+
+  - name: "#create-table-anon"
+    case: |
+      Step 1 — Navigate to the base URL. Call browser_snapshot.
+      Find the input with placeholder "an orders tracker". Click it,
+      type:
+        create a users table with id, name, email
+      then press Enter as a SEPARATE browser_key_down call (do NOT
+      use submit: true on browser_type). Do NOT use browser_wait_for
+      anywhere in this test — use browser_snapshot to check URLs.
+      Call browser_snapshot. If "Something broke on this page" is
+      visible, click the "Reload" button once and call
+      browser_snapshot again. (One retry only.)
+      If the URL now contains "/app" (the hero form redirected to
+      the app), check the snapshot for a confirm/diff chip. If a
+      chip is visible, press Enter once to approve it. Then call
+      browser_snapshot every 3 seconds up to 8 times (24 s) until
+      "Provisioned with" is visible in the chat reply — the users
+      table must be confirmed before proceeding to sign-in.
+      Step 2 — Navigate to "/auth/sign-in". Call browser_snapshot.
+      If a "Sign in as this user" button is visible, click it with
+      browser_click. If you receive "Not connected" after clicking,
+      that is normal — the page navigated away. Navigate to "/app"
+      and call browser_snapshot. If "Something broke on this page"
+      is visible, click "Reload" and call browser_snapshot again.
+      Step 3 — Check the "Page URL:" line at the top of the
+      browser_snapshot result (do NOT use browser_wait_for — read
+      the URL from the snapshot header directly). If the URL shows
+      just "/app" without "?db=", wait 3 seconds and call
+      browser_snapshot again before deciding — the app may still
+      be loading the database list.
+      a) If the URL contains "?db=" — a database is active.
+         Check for a confirm/diff chip in the snapshot. If visible,
+         press Enter once to approve it. Then call browser_snapshot
+         every 3 seconds up to 8 times (24 s) until "Provisioned
+         with" is visible — the users table must be created.
+         Proceed to Step 4.
+      b) If the URL still does NOT contain "?db=" after waiting —
+         no database yet.
+         Click "+ New" in the left sidebar (aria-label "Your
+         databases"), type "users-db" in the "Name" input, click
+         "Create". Call browser_snapshot and verify the URL now
+         contains "?db=". Then click the chat textarea (placeholder
+         "Ask about your data…"), type:
+           create a users table with id, name, email
+         and press Enter as a SEPARATE browser_key_down call.
+         If a confirm/diff chip appears, press Enter to approve.
+         Call browser_snapshot every 3 seconds up to 8 times (24 s)
+         until "Provisioned with" is visible in the snapshot text.
+      Step 4 — Sign out: click the "Sign out" button in the top
+      navigation bar and wait for the URL to change away from
+      "/app". TEST_PASSED.
+
+  - name: "#add-row-redirects-to-auth"
+    case: |
+      Step 1 — Navigate to the base URL (the marketing page).
+      Step 2 — Call browser_snapshot and confirm the hero input
+      with placeholder "an orders tracker" is visible. Do NOT
+      re-create the users table — a previous session provisioned
+      one already.
+      Step 3 — Click the text input (placeholder "an orders
+      tracker") and type
+        add a new row: name='Alice', email='alice@example.com'
+      Step 4 — Press Enter as a SEPARATE tool call (do NOT use
+      the submit parameter on browser_type).
+      Step 5 — Wait for the page to navigate AWAY from the base
+      URL. The destination URL must contain "/auth/sign-in".
+      Verify the URL contains "/auth/sign-in".
+      Do not submit the sign-in form yet.
+
+  - name: "#mock-sign-in"
+    case: |
+      Navigate directly to "/auth/sign-in". If the page immediately
+      redirects to "/app" (session already active), that is acceptable
+      — the test passes. Otherwise the mock-IdP form will be visible
+      with a default email field and a "Sign in as this user" button.
+      Use browser_snapshot to find the "Sign in as this user" button
+      ref, then click it with browser_click using that ref (do NOT use
+      browser_evaluate, browser_fill_form, or browser_run_code).
+      After clicking, you may receive "Not connected" errors — this is
+      normal and means the page navigated away successfully. If you get
+      "Not connected", call browser_navigate to "/app" and take a
+      browser_snapshot to verify the URL contains "/app".
+      The test passes once the URL contains "/app" — do not fail based
+      on any error or loading content visible on the page.
+
+  - name: "#authed-state-preserved"
+    case: |
+      Navigate to "/app". The previous test signed in, so the
+      session cookie is valid. Call browser_snapshot. If "Something
+      broke on this page" is visible, click the "Reload" button
+      (do NOT click "Sign out") and call browser_snapshot again.
+      If the sidebar shows "Loading…", wait 5 seconds and call
+      browser_snapshot one more time. Then check: does the left
+      sidebar show at least one entry whose visible text contains
+      "users" (any casing)?
+      If yes — TEST_PASSED immediately.
+      If no — TEST_FAILED immediately. A missing "users" entry
+      means the anon DB was not adopted into this account.
+      Use browser_snapshot ONLY — do NOT use browser_evaluate or any
+      DOM query tool (browser_evaluate errors in this context).

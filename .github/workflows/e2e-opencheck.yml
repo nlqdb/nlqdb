@@ -1,5 +1,17 @@
 # Manual-trigger web e2e (opencheck) against an ephemeral preview.
+# Runs 3 sequential suites (A→B→C); each suite draws from a separate Groq per-model TPM pool.
 # Shares the `e2e-staging` concurrency group with e2e-examples.yml.
+#
+# Suite split rationale: the full suite hit the 60-min GHA ceiling due to cascade from one
+# long-running test. Each suite now runs in ~15-20 min independently, giving clear per-suite
+# pass/fail signal. B only runs if A passes (state dependency); C only runs if B passes.
+#
+# FREE MODELS ONLY — never use OPENROUTER_API_KEY with a non-:free slug (paid tier).
+# Suite-A: Groq llama-3.3-70b-versatile  (12K TPM, tool-call verified 2026-06-04)
+# Suite-B: Groq openai/gpt-oss-120b      (8K TPM, separate pool, tool-call verified 2026-06-04)
+# Suite-C: Groq openai/gpt-oss-20b       (8K TPM, separate pool, tool-call verified 2026-06-04)
+# NOT usable: qwen/qwen3-32b (tool-call fails), llama-4-scout (type coercion error on number params)
+# Model table + switching guide: docs/features/e2e-coverage/FEATURE.md
 
 name: E2E (opencheck)
 
@@ -31,26 +43,52 @@ jobs:
       # journey hangs on every LLM call (240s opencheck timeout). SK-E2E-003.
       GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
 
-  opencheck:
-    name: Run E2E
+  # Suite A — Bootstrap: anonymous → create table → redirect → sign-in → verify adoption.
+  # Model: Groq llama-3.3-70b-versatile (12K TPM). Creates the users DB for suites B+C.
+  opencheck-a:
+    name: "Suite A — Bootstrap"
     needs: deploy-staging
-    # Reusable-workflow permissions can only be reduced; caller must grant at least what the callee asks for.
     permissions:
       contents: read
     uses: ./.github/workflows/_e2e-opencheck.yml
     with:
       base_url: ${{ needs.deploy-staging.outputs.base_url }}
-    # Explicit secrets list keeps the reusable's surface auditable.
-    # FREE-ONLY per GLOBAL-013: LLM_API_KEY = Groq (llama-3.3-70b-versatile; 12K TPM / 1000 RPM / 500K TPD).
-    # Never source from OPENROUTER_API_KEY here — that key is paid-tier and was misused by a prior agent.
-    # Model + provider table + switching guide: docs/features/e2e-coverage/FEATURE.md.
+      config_file: tests-a-bootstrap.yaml
+    secrets:
+      LLM_API_KEY: ${{ secrets.GROQ_API_KEY }}
+
+  # Suite B — Read/Write: sign-in → trace SQL → insert Alice → read/count/vague/mismatch → CMD+K.
+  # Model: Groq openai/gpt-oss-120b (8K TPM, separate pool from suite-A). Needs users DB from A.
+  opencheck-b:
+    name: "Suite B — Read/Write"
+    needs: [deploy-staging, opencheck-a]
+    permissions:
+      contents: read
+    uses: ./.github/workflows/_e2e-opencheck.yml
+    with:
+      base_url: ${{ needs.deploy-staging.outputs.base_url }}
+      config_file: tests-b-write.yaml
+    secrets:
+      LLM_API_KEY: ${{ secrets.GROQ_API_KEY }}
+
+  # Suite C — UX/Cleanup: sign-in → delete-row → create 2nd DB → delete DB → API keys → sign-out → cleanup.
+  # Model: Groq openai/gpt-oss-20b (8K TPM, separate pool from gpt-oss-120b). Needs Alice row from suite-B.
+  opencheck-c:
+    name: "Suite C — UX/Cleanup"
+    needs: [deploy-staging, opencheck-b]
+    permissions:
+      contents: read
+    uses: ./.github/workflows/_e2e-opencheck.yml
+    with:
+      base_url: ${{ needs.deploy-staging.outputs.base_url }}
+      config_file: tests-c-cleanup.yaml
     secrets:
       LLM_API_KEY: ${{ secrets.GROQ_API_KEY }}
 
   cleanup:
     name: Delete Neon branch
-    needs: [deploy-staging, opencheck]
-    # `always()` runs cleanup even when opencheck failed; Neon Free's 10-branch ceiling makes orphans expensive.
+    needs: [deploy-staging, opencheck-a, opencheck-b, opencheck-c]
+    # `always()` runs cleanup even when suites failed or were skipped; Neon Free's 10-branch ceiling makes orphans expensive.
     if: always() && needs.deploy-staging.result == 'success'
     runs-on: ubuntu-latest
     timeout-minutes: 3

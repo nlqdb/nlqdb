@@ -1,9 +1,15 @@
-# Reusable: run opencheck against a given baseUrl via the OpenAI-compatible endpoint (workflow_call only — callers drive it).
-# OpenAI-compat: opencheck pins @langchain/core ^1.1.24 (v1 ecosystem); @langchain/openai v1.4.5 matches; Groq + Mistral + OpenRouter all expose compatible endpoints — provider swap is env-var only.
+# Reusable: run one opencheck suite against a given baseUrl via the OpenAI-compatible endpoint (workflow_call only — callers drive it).
+# OpenAI-compat: opencheck pins @langchain/core ^1.1.24 (v1 ecosystem); @langchain/openai v1.4.5 matches; Groq + OpenRouter :free all expose compatible endpoints.
 #
-# LLM policy: FREE MODELS ONLY (GLOBAL-013 — $0 free tier). Never wire a paid endpoint here even via OpenRouter — see top-5 free
-# table in docs/features/e2e-coverage/FEATURE.md `Free LLM model selection (opencheck)`. The `OPENAI_BASE_URL` below must match
-# the provider that serves the `model:` value in `tests/opencheck/tests.yaml`.
+# FREE MODELS ONLY (GLOBAL-013 — $0 free tier). NEVER wire a paid model here, even via OpenRouter — :free suffix required on OpenRouter slugs.
+# Top-5 free LLM models for opencheck (researched 2026-06-04T07:00Z via live API + tool-call verified):
+#   1. Groq llama-3.3-70b-versatile     — 12K TPM / 1K RPM / 500K TPD; tool-use verified; suite-A default
+#   2. Groq openai/gpt-oss-120b         — 8K TPM / 1K RPM; reasoning-tuned; separate per-model TPM pool; suite-B default
+#   3. Groq openai/gpt-oss-20b          — 8K TPM / 1K RPM; lighter/faster; separate per-model TPM pool; suite-C default
+#   4. Cerebras gpt-oss-120b            — 30K TPM / 1M TPD; tool-use verified; BUT only 5 RPM (too slow for agent loops)
+#   5. OpenRouter openai/gpt-oss-120b:free — $0 with :free suffix; shared quota; fallback when Groq TPD exhausted
+# NOT usable: qwen/qwen3-32b (tool-call fails on Groq), llama-4-scout (type coercion error on number params).
+# Switch: edit `model:` in the suite YAML + OPENAI_BASE_URL below + LLM_API_KEY source in the caller workflow.
 
 name: E2E opencheck (reusable)
 
@@ -14,6 +20,11 @@ on:
         description: "Base URL the E2E flow runs against (per-run staging URL)."
         required: true
         type: string
+      config_file:
+        description: "opencheck config file relative to tests/opencheck/ (default: tests.yaml)."
+        required: false
+        type: string
+        default: "tests.yaml"
     secrets:
       LLM_API_KEY:
         description: "LLM API key for the active provider. Surfaced via OPENAI_API_KEY + provider-specific OPENAI_BASE_URL."
@@ -59,13 +70,14 @@ jobs:
           restore-keys: |
             playwright-${{ runner.os }}-
 
-      # Skip LLM re-derivation on unchanged UI; keyed on app + tests.yaml; cleared below and re-saved fresh.
+      # Skip LLM re-derivation on unchanged UI; keyed on app + config file; cleared below and re-saved fresh.
       - name: Restore opencheck step cache
         uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         with:
           path: tests/opencheck/.opencheck-cache
-          key: opencheck-cache-${{ runner.os }}-${{ hashFiles('apps/web/src/**', 'apps/api/src/**', 'tests/opencheck/tests.yaml') }}
+          key: opencheck-cache-${{ runner.os }}-${{ inputs.config_file }}-${{ hashFiles('apps/web/src/**', 'apps/api/src/**', format('tests/opencheck/{0}', inputs.config_file)) }}
           restore-keys: |
+            opencheck-cache-${{ runner.os }}-${{ inputs.config_file }}-
             opencheck-cache-${{ runner.os }}-
 
       # Always start fresh — stale plans omit steps from prior page state; post-job hook re-saves fresh ones.
@@ -186,11 +198,13 @@ jobs:
           echo "patched $agent_ts"
 
       # opencheck's YAML parser doesn't interpolate env vars — substitute at invocation time into a temp file (keeps working tree clean).
-      - name: Render tests.yaml with runtime baseUrl
+      - name: Render config with runtime baseUrl
         working-directory: tests/opencheck
+        env:
+          CONFIG_FILE: ${{ inputs.config_file }}
         run: |
-          sed "s|__BASE_URL__|${BASE_URL}|g" tests.yaml > tests-runtime.yaml
-          echo "::group::rendered tests-runtime.yaml"
+          sed "s|__BASE_URL__|${BASE_URL}|g" "${CONFIG_FILE}" > tests-runtime.yaml
+          echo "::group::rendered ${CONFIG_FILE} → tests-runtime.yaml"
           cat tests-runtime.yaml
           echo "::endgroup::"
 
@@ -210,7 +224,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: opencheck-recordings-${{ github.run_id }}
+          name: opencheck-recordings-${{ inputs.config_file }}-${{ github.run_id }}
           path: tests/opencheck/.opencheck-recordings/
           if-no-files-found: ignore
           retention-days: 30
@@ -221,9 +235,10 @@ jobs:
         env:
           EXIT_CODE: ${{ steps.oc.outputs.exit_code }}
           STAGING_URL: ${{ inputs.base_url }}
+          CONFIG_FILE: ${{ inputs.config_file }}
         run: |
           {
-            echo "## opencheck results"
+            echo "## opencheck results — ${CONFIG_FILE}"
             echo
             if [ "$EXIT_CODE" = "0" ]; then
               echo "✅ All tests passed"
@@ -231,8 +246,9 @@ jobs:
               echo "❌ Tests failed (exit code $EXIT_CODE)"
             fi
             echo
+            echo "- Suite config: \`${CONFIG_FILE}\`"
             echo "- Staging URL: $STAGING_URL"
-            echo "- Recordings: see the \`opencheck-recordings-${{ github.run_id }}\` artifact on this run."
+            echo "- Recordings: see the \`opencheck-recordings-${CONFIG_FILE}-${{ github.run_id }}\` artifact on this run."
             echo "- Trace viewer: drag \`trace.zip\` into https://trace.playwright.dev"
             echo
             echo "### Run log (last 800 KB)"
