@@ -85,9 +85,10 @@ implementing (`CLAUDE.md` §P4).
 1. **Few-shot exemplars in the plan prompt (DAIL-SQL).** Masked-question
    similarity few-shot is the single biggest prompt-only jump in the
    literature (est. +5–8 pp; DAIL-SQL arXiv:2308.15363). Not yet tried —
-   `PLAN_SYSTEM` is zero-shot. gpt-oss-120b's 131K context leaves ample
-   room for exemplars; measure exemplar count vs EX. **Highest expected
-   ROI.**
+   `PLAN_SYSTEM` is zero-shot. gpt-oss-120b's 131K window fits exemplars;
+   the binding free-tier limit is the per-minute token quota, so few-shot
+   trades daily token budget for accuracy — measure exemplar count vs EX.
+   **Highest expected ROI.**
 2. **Schema-linking / value retrieval (M-Schema + column pruning).**
    Feed only the goal-relevant subset of the schema + sample
    cell-values, in the M-Schema representation (est. +3–6 pp; reduces

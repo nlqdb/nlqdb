@@ -5,10 +5,11 @@
 // and almost always wins the SK-LLM-014 hedge before the head-start fires.
 // Model id verified against the live `/v1/models` for our key (2026-06).
 //
-// Free tier (verified 2026-06): 1M tokens/day, no card, 30 RPM; model
-// context window is 131K. On a 429 (the 30 RPM cap) or an over-long schema
-// the call 4xx's → the router fails over to Gemini next in chain, so the
-// chain degrades gracefully.
+// Free tier (verified live 2026-06): no card, 1M tokens/day, with tight
+// per-minute token + request quotas — a `429 token_quota_exceeded` is the
+// binding limit (observed live), well before the model's 131K context. On
+// a 429 the call fails over to Gemini next in chain, so the chain degrades
+// gracefully.
 // OpenAI-compatible chat-completions, so it reuses `openAICompatibleChat`.
 
 import type { LLMOperation, Provider } from "../types.ts";

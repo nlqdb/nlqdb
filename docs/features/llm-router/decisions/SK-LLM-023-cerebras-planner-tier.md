@@ -40,20 +40,21 @@ failover order behind the new head.
   router per `SK-LLM-006`, one new bounded label value). Cerebras is
   routed **direct** (no AI Gateway base yet) — the provider-agnostic
   plan cache (`SK-LLM-010`) is the real cache layer, so the gateway gap
-  is cosmetic; gatewaying Cerebras is a follow-up. On a **429** (the
-  30 RPM free cap) or a schema beyond the model's **131K context** the
-  call returns a 4xx → the router fails over to Gemini next in chain,
-  so the chain degrades gracefully rather than erroring to the user.
+  is cosmetic; gatewaying Cerebras is a follow-up. The binding free-tier
+  limit is the per-minute token/request quota — a `429
+  token_quota_exceeded` (observed live, well before the model's 131K
+  context) → the router fails over to Gemini next in chain, so the chain
+  degrades gracefully rather than erroring to the user.
 - **Alternatives rejected:**
   - **Append Cerebras last (capacity backstop only)** — barely moves
     accuracy because the free chain rarely fully fails; the lever is
     the *primary* planner model, so it must lead.
   - **Swap Gemini out entirely** — loses the immediate failover the
-    30 RPM cap (and rare over-long schemas) needs; keep Gemini behind it.
+    tight free-tier per-minute quota needs; keep Gemini behind it.
   - **Add Mistral / NVIDIA / Cohere instead** — all card-free too, but
     none serve a model at `gpt-oss-120b`'s reasoning quality *and* Cerebras's
     throughput; they remain candidate failover entries if Cerebras's
     measured delta disappoints.
-  - **Lead the cheap tier (`route`) with Cerebras too** — its 30 RPM
-    free cap is unsuited to the hot path, and an 8B model already
-    suffices for triage per `SK-LLM-001`.
+  - **Lead the cheap tier (`route`) with Cerebras too** — the tight
+    free-tier per-minute quota is unsuited to the hot path, and an 8B
+    model already suffices for triage per `SK-LLM-001`.
