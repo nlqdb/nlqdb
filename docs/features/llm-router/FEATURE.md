@@ -150,7 +150,7 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 
 ## Open questions / known unknowns
 
-- **Failover when every provider in a chain fails** — Resolved per `GLOBAL-033` (error semantics → `GLOBAL-012`): on chain exhaustion the router throws a structured `provider_chain_exhausted` error envelope (one-sentence, actionable) — it does **not** retry the head with backoff (the head already failed this request; a fresh `/v1/ask` re-enters the chain). Wire the envelope shape when the surfaces render it.
+- **Failover when every provider in a chain fails** — Decided shape (per `GLOBAL-033` error semantics → `GLOBAL-012`): throw a structured `provider_chain_exhausted` envelope (one-sentence, actionable); **no** head-retry with backoff (the head already failed this request; a fresh `/v1/ask` re-enters the chain). **Parked until** the surfaces render it — the typed envelope isn't emitted in `packages/llm` yet.
 - **Parked until `quality-eval` Phase 2:** `nlqdb.plan.quality_score` histogram shape + LLM-as-judge prompt + "provider silently degrading" alert threshold — depends on the judge harness landing.
 - **Parked until Lago wiring (Phase 2):** per-user credit accounting (`architecture.md §6`); provider-level cost is already covered.
 - **Parked until a debugging need forces it:** prompt-template version pinning — decided shape is to stamp the template version hash on `PlanResponse` + the plan-cache entry; cheap to add when a plan-provenance question actually arises.

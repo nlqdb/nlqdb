@@ -205,8 +205,6 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 
 ## Open questions / known unknowns
 
-- **Streaming protocol for live trace** — Not open: the live trace rides **SSE** (Hono `streamSSE` on `/v1/ask`, the `plan_pending → plan → rows → summary` event schema in `apps/api/src/ask/types.ts`). The SDK `onTrace` hook consumes the same stream. "chunked JSON / OTel-over-WS" were the alternatives; SSE is what shipped, so this is resolved per `GLOBAL-033` (reuse what's built).
-- **Null-pick disambiguator cache** — Not applicable: there is no `disambiguate-db.ts` and no null cache. `route-ask.ts` disambiguates on **every** send (`SK-ASK-014`), so the "false-null sticky for 7 days" concern doesn't exist. Adding a 1h cache would contradict classify-every-send (and P5) — closed as moot.
 - **SK-ASK-014 follow-ups.** **Parked until** a P3 user requests it: (a) typed-plan `kind=extend` pipeline so "Add it to *<slug>*" works (route + compiler + `sql-validate-ddl.ts` widening + table-card re-embed). (b) Latency audit — confirm classify-every-send's ~150 ms p50 still fits `performance.md §2.1/§2.2` once Phase 1 traffic lands.
 - **OpenAPI schema for `apps/api`.** **Parked until** the docs HTTP-API page (`SK-DOCS-003` slice d) is prioritised — the SDK reference is the canonical wire shape (`GLOBAL-001`) and `docs.nlqdb.com` links there in the interim, so the generator is a nice-to-have, not a blocker.
 

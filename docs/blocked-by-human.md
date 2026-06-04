@@ -1,10 +1,15 @@
 # Blocked by Human
 
-Short-lived list of actions only a human can take, or suggestions needing human approval
-before they can be applied to the guidelines. Remove each line once done.
+The single file the founder reads. Per [`GLOBAL-033`](./decisions/GLOBAL-033-resolution-defaults.md),
+agents resolve value-decidable questions themselves; this file is **only** for
+what a human must do — operator actions an agent can't perform (set a prod
+secret, click through a console, prune a DB) and genuine money / strategy /
+legal bets — or a suggestion needing human approval before it can amend the
+guidelines. Keep each a very short bullet. Delete a bullet once done.
 
 ## Human actions (clicks, secrets, legal)
 
-- **`wrangler secret put API_KEY_SECRET`** — Phase 2: create a dedicated HMAC secret for API key signing separate from `BETTER_AUTH_SECRET` (`SK-APIKEYS-008`). Rotate one without invalidating the other.
-- **Stripe live-mode flip** — When going live: (1) update webhook endpoint in Stripe Dashboard → copy new `whsec_…` secret, then `wrangler secret put STRIPE_WEBHOOK_SECRET`; (2) activate Stripe Tax in live mode (Stripe Dashboard → Tax → Enable); (3) remove `STRIPE_PUBLISHABLE_KEY` from the go-live secrets checklist in `docs/runbook.md §6` (it's unused — confirmed 2026-06-03).
-- **Anthropic Connectors Directory submission** — Fill out `https://clau.de/mcp-directory-submission`. Pre-requisite engineering (Origin-header validation in `apps/mcp/src/index.ts` + branded logo 256×256 SVG) can be done without this, but the form itself requires a human.
+- **Stripe live-mode go-live** (your call — gated on the [`phase-plan.md §6`](phase-plan.md) demand signal: ≥5 inbound "how do I pay" OR ≥30% test-checkout completion over 50 sessions). Steps, all human: create live products + price IDs; add the live webhook endpoint (Dashboard → copy `whsec_…`); enable Stripe Tax in live mode; then `wrangler secret put` for `STRIPE_SECRET_KEY` / `STRIPE_PRICE_HOBBY` / `STRIPE_PRICE_PRO` / `STRIPE_WEBHOOK_SECRET`. Until then the flow stays in test mode and `/v1/billing/checkout` 503s. Config-only after the surrounding ⭐ TODOs in `stripe-billing/FEATURE.md` ship (self-service portal; drop unused `STRIPE_PUBLISHABLE_KEY`).
+- **`wrangler secret put API_KEY_SECRET`** — Phase 2: a dedicated HMAC secret for API-key signing, separate from `BETTER_AUTH_SECRET` (`SK-APIKEYS-008`), so one can rotate without invalidating the other.
+- **Reddit ICP source** — set `REDDIT_CLIENT_ID` / `REDDIT_CLIENT_SECRET` after manually approving a Reddit OAuth app (Reddit's Nov-2025 policy needs a human). The source self-skips until they're wired (`SK-ICP-011`).
+- **Anthropic Connectors Directory submission** — fill out `https://clau.de/mcp-directory-submission`. Engineering prereqs (Origin-header validation in `apps/mcp/src/index.ts` + branded 256×256 SVG logo) can ship without this; the form itself needs a human.

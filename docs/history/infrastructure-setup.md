@@ -103,7 +103,7 @@ Both zones use **Cloudflare Email Routing** (Free plan feature; included with th
 | **Cloudflare** — Pages, Workers, KV, D1, R2, Queues, Workers AI, Durable Objects | Capture `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_API_TOKEN` (scoped), `CF_AI_TOKEN`. |
 | **Neon** — Postgres 17 GA | `NEON_API_KEY`. Every Neon project uses Postgres 17. **Neon Auth is OFF** on every project — auth lives in Cloudflare Workers via Better Auth; Neon Auth tables would pollute tenant schemas. |
 | **Upstash** — Redis | `UPSTASH_REDIS_REST_TOKEN`. |
-| **Fly.io** — Listmonk / Plausible / Lago | `FLY_API_TOKEN`. |
+| **Fly.io** — Listmonk / Lago | `FLY_API_TOKEN`. |
 
 ---
 
@@ -143,7 +143,7 @@ Optional (apply Day 1, don't block): Anthropic / OpenAI / Google Cloud for Start
 | Service | Key | Notes |
 | :------ | :-- | :---- |
 | **Sentry** | `SENTRY_DSN` | 5k errors/mo free. |
-| **Plausible** | self-hosted on Fly | No SaaS key. Phase 1. |
+| **Cloudflare Web Analytics** | beacon, no key | Free, no SDK, no cookie banner. Pageview analytics per `GLOBAL-034` (replaced the dropped self-hosted Plausible plan). |
 | **Grafana Cloud OTLP** | `GRAFANA_CLOUD_API_KEY`, `GRAFANA_CLOUD_INSTANCE_ID`, `GRAFANA_OTLP_ENDPOINT` | Stack `nlqdb` on `us-east-2`, instance `1609127`, access policy `nlqdb-phase0-telemetry` with `metrics:write` + `logs:write` + `traces:write`. Live-verified via empty OTLP envelope POST. |
 | **LogSnag** | `LOGSNAG_TOKEN`, `LOGSNAG_PROJECT` | Sole product-event sink for now. Free tier 2,500 events/mo. Sign-ins deliberately **not** emitted — they would dominate the quota. If `LOGSNAG_TOKEN` is absent on the consumer Worker, the sink ack-and-drops (unit-tested) so dev + CI never need real credentials. |
 | **PostHog Cloud** | `POSTHOG_API_KEY`, `POSTHOG_HOST` | **Phase 2, optional** — only if a cohort / funnel / retention question lands that SQL on D1/Neon can't answer. Wires into `packages/events` as a second sink; call sites stay unchanged. |

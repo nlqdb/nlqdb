@@ -205,8 +205,9 @@ The founder activities above only become signal when paired with the
 in-product events from [`GLOBAL-024`](./decisions/GLOBAL-024-demand-signal-telemetry.md):
 verbatim interview quotes get tagged to `feature.requested.*` events,
 "how do I pay you" inbound gets logged under `billing.inbound_intent`,
-Show-HN traffic shows up in Plausible alongside `feature.requested.*`
-spikes. Treat the two halves as one signal-capture system. The
+Show-HN traffic shows up in Cloudflare Web Analytics
+([`GLOBAL-034`](./decisions/GLOBAL-034-analytics-stack.md)) alongside
+`feature.requested.*` spikes. Treat the two halves as one signal-capture system. The
 exhaustive "refuse" list (cold outbound, paid ads, AppSumo lifetime
 deals, discounts to design partners, etc.) lives in
 [`email-and-marketing.md §3`](./research/email-and-marketing.md) — not
