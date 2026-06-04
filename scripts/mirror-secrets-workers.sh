@@ -92,6 +92,7 @@ select_secrets() {
       SECRETS=(
         BETTER_AUTH_SECRET
         BYO_SECRET_KEK
+        CEREBRAS_API_KEY
         CLOUDFLARE_ACCOUNT_ID
         CF_AI_TOKEN
         DATABASE_URL

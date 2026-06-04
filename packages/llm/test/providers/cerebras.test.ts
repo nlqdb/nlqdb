@@ -21,17 +21,16 @@ describe("createCerebrasProvider", () => {
     expect(res.sql).toBe("SELECT 1");
   });
 
-  it("model() defaults the planner tier to Qwen-3-235B and cheap tier to a small model", () => {
+  it("model() defaults the planner tier to gpt-oss-120b", () => {
     const provider = createCerebrasProvider({ apiKey });
-    expect(provider.model("plan")).toBe("qwen-3-235b-a22b-instruct-2507");
-    expect(provider.model("schema_infer")).toBe("qwen-3-235b-a22b-instruct-2507");
-    expect(provider.model("route")).toBe("llama3.1-8b");
+    expect(provider.model("plan")).toBe("gpt-oss-120b");
+    expect(provider.model("schema_infer")).toBe("gpt-oss-120b");
   });
 
   it("custom models override the defaults per operation", () => {
-    const provider = createCerebrasProvider({ apiKey, models: { plan: "qwen-3-32b" } });
-    expect(provider.model("plan")).toBe("qwen-3-32b");
-    expect(provider.model("schema_infer")).toBe("qwen-3-235b-a22b-instruct-2507");
+    const provider = createCerebrasProvider({ apiKey, models: { plan: "zai-glm-4.7" } });
+    expect(provider.model("plan")).toBe("zai-glm-4.7");
+    expect(provider.model("schema_infer")).toBe("gpt-oss-120b");
   });
 
   it("baseUrl override targets the AI Gateway path", async () => {

@@ -27,7 +27,7 @@ export type EvalEnv = {
   OPENROUTER_API_KEY?: string;
   CF_AI_TOKEN?: string;
   CLOUDFLARE_ACCOUNT_ID?: string;
-  // SK-LLM-023 — Cerebras (Qwen-3-235B) leads the planner-tier free chain.
+  // SK-LLM-023 — Cerebras (gpt-oss-120b) leads the planner-tier free chain.
   CEREBRAS_API_KEY?: string;
   // Distinct env var from OPENROUTER_API_KEY so a fork PR can never accidentally pull a paid frontier key.
   OPENROUTER_FRONTIER_API_KEY?: string;

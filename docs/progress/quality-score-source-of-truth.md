@@ -69,7 +69,7 @@ the cited paper/ablation.
 
 | # | Lever | How exactly | How much | Canonical home / status |
 |---|---|---|---|---|
-| T1 | **Cerebras (Qwen-3-235B) leads the planner tier** | New free provider `createCerebrasProvider`; `plan`/`schema_infer` chain → `[cerebras, gemini, groq, workers-ai, openrouter]`, identical in eval + prod | **est. large, pending measure** — strongest card-free open NL→SQL model replaces Gemini-Flash as primary planner; next cron produces the delta vs 0.318 | [`SK-LLM-023`](../features/llm-router/decisions/SK-LLM-023-cerebras-planner-tier.md) — shipped, **awaiting first cron** |
+| T1 | **Cerebras (gpt-oss-120b) leads the planner tier** | New free provider `createCerebrasProvider`; `plan`/`schema_infer` chain → `[cerebras, gemini, groq, workers-ai, openrouter]`, identical in eval + prod | **est. large, pending measure** — frontier-class open reasoning model (≈ o4-mini), card-free, replaces Gemini-Flash as primary planner; next cron produces the delta vs 0.318 | [`SK-LLM-023`](../features/llm-router/decisions/SK-LLM-023-cerebras-planner-tier.md) — shipped, **awaiting first cron** |
 | T2 | **Agentic exec-retry scaffold** | `withExecRetry` wraps `plan()→score()`, bounded 3 attempts, exec-error-only, threads `previousAttempt` | **est. +4.6 pp** (MAC-SQL Refiner BIRD-dev ablation, arXiv:2312.11242) | [`SK-QUAL-009`](../features/quality-eval/FEATURE.md) — shipped on `free` + `agentic-frontier` lanes |
 | T3 | **Schema-fidelity planner prompt** | `PLAN_SYSTEM` directives: schema-link only literal tables/cols, verbatim casing, dialect-strict, use BIRD `Evidence:` | **est. +3–5 pp** on small models (DIN/C3/DAIL-SQL) | [`SK-LLM-018`](../features/llm-router/decisions/SK-LLM-018-schema-fidelity-prompt.md) — shipped |
 | T4 | **BIRD `evidence` fed into the goal** | runner concatenates annotator evidence into the plan goal | published BIRD scores are non-comparable without it (parity, not gain) | `runner.ts::runOneQuestion` — shipped |
@@ -85,9 +85,9 @@ implementing (`CLAUDE.md` §P4).
 1. **Few-shot exemplars in the plan prompt (DAIL-SQL).** Masked-question
    similarity few-shot is the single biggest prompt-only jump in the
    literature (est. +5–8 pp; DAIL-SQL arXiv:2308.15363). Not yet tried —
-   `PLAN_SYSTEM` is zero-shot. Cerebras's 64K free-tier context leaves
-   ample room for exemplars; measure exemplar count vs EX. **Highest
-   expected ROI.**
+   `PLAN_SYSTEM` is zero-shot. gpt-oss-120b's 131K context leaves ample
+   room for exemplars; measure exemplar count vs EX. **Highest expected
+   ROI.**
 2. **Schema-linking / value retrieval (M-Schema + column pruning).**
    Feed only the goal-relevant subset of the schema + sample
    cell-values, in the M-Schema representation (est. +3–6 pp; reduces

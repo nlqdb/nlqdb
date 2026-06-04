@@ -36,7 +36,7 @@ Every LLM call routes through one `createLLMRouter()` adapter over a cost-ordere
 ### SK-LLM-003 — Day-1 strict-$0 chain: Gemini Flash → Groq → Workers-AI → OpenRouter free
 
 **Body:** [`decisions/SK-LLM-003-strict-zero-chain.md`](./decisions/SK-LLM-003-strict-zero-chain.md).
-`plan` chain `[gemini_flash_free, groq_llama70b_free, openrouter_free]` (+`workers_ai` non-US backup); `route` on `groq_llama8b_free`. Every entry has a no-card free tier (`GLOBAL-013` card-free guarantee); env-var configured (`LLM_CHAIN_*`), rotating is a redeploy. **Current head-of-chain on the planner tier:** Cerebras (Qwen-3-235B) per [`SK-LLM-023`](#sk-llm-023) — this list is the failover order behind it.
+`plan` chain `[gemini_flash_free, groq_llama70b_free, openrouter_free]` (+`workers_ai` non-US backup); `route` on `groq_llama8b_free`. Every entry has a no-card free tier (`GLOBAL-013` card-free guarantee); env-var configured (`LLM_CHAIN_*`), rotating is a redeploy. **Current head-of-chain on the planner tier:** Cerebras (gpt-oss-120b) per [`SK-LLM-023`](#sk-llm-023) — this list is the failover order behind it.
 
 ### SK-LLM-004 — Cloudflare AI Gateway sits in front of every paid provider
 
@@ -131,10 +131,10 @@ OpenRouter pins `plan` + `schema_infer` to `qwen/qwen3-coder:free`; cheap-tier o
 
 **Body:** [`decisions/SK-LLM-022-hard-plan-confidence-threshold.md`](./decisions/SK-LLM-022-hard-plan-confidence-threshold.md). `confidence < 0.75 ⇒ hard_plan = true`; the threshold is env-tunable (`HARD_PLAN_CONFIDENCE_THRESHOLD`). Pins the `SK-LLM-001` "hard" tier and drives the `SK-PREMIUM-004` upsell CTA.
 
-### SK-LLM-023 — Cerebras (Qwen-3-235B) leads the strict-$0 planner-tier chain
+### SK-LLM-023 — Cerebras (gpt-oss-120b) leads the strict-$0 planner-tier chain
 
 **Body:** [`decisions/SK-LLM-023-cerebras-planner-tier.md`](./decisions/SK-LLM-023-cerebras-planner-tier.md).
-Adds a fifth free provider (`createCerebrasProvider`, OpenAI-compatible, `CEREBRAS_API_KEY`) leading the `plan` / `schema_infer` chain with Qwen-3-235B-Instruct-2507: `[cerebras, gemini, groq, workers-ai, openrouter]`. Extends — does not supersede — [`SK-LLM-003`](#sk-llm-003). Motivated by the 31.8% free-chain BIRD baseline that blocks the `GLOBAL-027` gate (and every top-5 ICP flow); the eval free lane carries the identical chain so the cron measures the delta. Routed direct (gatewaying is a follow-up); a 429 (30 RPM) or rare >64K-context schema fails over to Gemini.
+Adds a fifth free provider (`createCerebrasProvider`, OpenAI-compatible, `CEREBRAS_API_KEY`) leading the `plan` / `schema_infer` chain with OpenAI `gpt-oss-120b` (model id verified live): `[cerebras, gemini, groq, workers-ai, openrouter]`. Extends — does not supersede — [`SK-LLM-003`](#sk-llm-003). Motivated by the 31.8% free-chain BIRD baseline that blocks the `GLOBAL-027` gate (and every top-5 ICP flow); the eval free lane carries the identical chain so the cron measures the delta. Routed direct (gatewaying is a follow-up); a 429 (30 RPM) or an over-long schema fails over to Gemini.
 
 ## GLOBALs governing this feature
 

@@ -63,7 +63,7 @@ export function getLLMRouter(): LLMRouter {
   if (cached) return cached;
   const gw = aiGatewayBases(env.AI_GATEWAY_ACCOUNT_ID, env.AI_GATEWAY_ID);
   const providers = [
-    // SK-LLM-023 — Cerebras leads the planner tier (Qwen-3-235B). Routed
+    // SK-LLM-023 — Cerebras leads the planner tier (gpt-oss-120b). Routed
     // direct (not via AI Gateway yet); the provider-agnostic plan cache
     // (SK-LLM-010) is the real cache layer, so the gateway gap is cosmetic.
     createCerebrasProvider({ apiKey: env.CEREBRAS_API_KEY ?? "" }),
@@ -82,7 +82,7 @@ export function getLLMRouter(): LLMRouter {
       // SK-ASK-009 — merged routeAsk rides the cheap-tier chain (Groq
       // 8B first; the prompt is short and the budget is 1500 ms).
       route: ["groq", "gemini", "workers-ai", "openrouter"],
-      // SK-LLM-023 — Cerebras (Qwen-3-235B) leads the planner tier; on a
+      // SK-LLM-023 — Cerebras (gpt-oss-120b) leads the planner tier; on a
       // 429/context-cap it fails over to the prior Gemini-first order.
       plan: ["cerebras", "gemini", "groq", "workers-ai", "openrouter"],
       summarize: ["groq", "gemini", "workers-ai", "openrouter"],
