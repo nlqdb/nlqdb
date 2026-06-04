@@ -77,12 +77,28 @@ API version pinned to `2026-04-22.dahlia` via the `stripe` npm SDK (see `SK-STRI
 - CTA buttons call `POST /v1/billing/checkout` (authed) or redirect to sign-in (anon).
 - "Pricing" link added to `Topnav.astro`.
 
+### Self-service billing portal (SK-STRIPE-008 — this PR)
+
+- `POST /v1/billing/portal` — `requireSession`-gated. Looks up the caller's
+  `stripe_customer_id` from `customers`, creates a Stripe-hosted Billing Portal
+  session (`stripe.billingPortal.sessions.create`), returns `{ url }`.
+  - `return_url` derived server-side (`${origin}/app`) — never client-supplied.
+  - `503 billing_not_configured` (no `STRIPE_SECRET_KEY`); `404 no_customer`
+    (never subscribed); `500 internal` on Stripe failure.
+  - Forwards `Idempotency-Key`. OTel span: `nlqdb.billing.portal.create`.
+- `apps/api/src/stripe/portal.ts` — pure function mirroring `checkout.ts`.
+- "Manage billing" control on `/pricing`, revealed only for authed users;
+  maps 404 → "No active subscription yet", 503 → "Not available yet".
+- Inert until live secrets exist → shipping now makes the go-live flip
+  config-only (no code change in the critical window).
+
 ---
 
 ## What is next
 
 1. **Create Stripe products and price IDs** in the Stripe Dashboard (test mode) and set `STRIPE_PRICE_HOBBY` / `STRIPE_PRICE_PRO` via `wrangler secret put`. Without these the checkout returns 503. Also **enable Stripe Tax** in the Dashboard (`automatic_tax: { enabled: true }` is sent on every session; `sessions.create` 500s if Stripe Tax is not activated on the account).
 2. **`/app?checkout=success` landing**: add a success banner to the chat page that appears when `?checkout=success` is in the URL.
+2b. **Activate the Stripe Customer Portal** in the Dashboard (test mode → Billing → Customer portal): save a portal configuration (switchable plans, cancel behaviour, invoice history). `POST /v1/billing/portal` errors until one exists.
 3. **Dunning UX**: `invoice.payment_failed` → in-app banner + email. Currently only state-synced (SK-STRIPE-005 open question).
 4. **§6 trigger measurement**: once Stripe price IDs are set and checkout is live in test mode, track completion rate toward the 30%/50-sessions threshold.
 5. **Live mode flip**: when §6 trips, replace test-mode keys with live-mode keys via `wrangler secret put` + update Stripe Dashboard webhook endpoint.

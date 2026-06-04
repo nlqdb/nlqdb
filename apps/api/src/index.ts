@@ -96,6 +96,7 @@ import {
 import { orchestrateRun, type RunError } from "./run/orchestrate.ts";
 import { type CheckoutPlan, createCheckoutSession } from "./stripe/checkout.ts";
 import { cryptoProvider, stripe as stripeClient } from "./stripe/client.ts";
+import { createPortalSession } from "./stripe/portal.ts";
 import { processWebhook } from "./stripe/webhook.ts";
 import { verifyTurnstile } from "./turnstile.ts";
 import { joinWaitlist } from "./waitlist.ts";
@@ -1610,6 +1611,50 @@ app.post("/v1/billing/checkout", requireSession, async (c) => {
     plan as CheckoutPlan,
     successUrl,
     cancelUrl,
+  );
+
+  return c.json(result.body, result.status);
+});
+
+// `POST /v1/billing/portal` — open the Stripe-hosted Billing Portal so a
+// subscriber can update their card, switch plan, download invoices, or
+// cancel (one click, no dark patterns — SK-STRIPE-008).
+//
+// Requires a signed-in session (`requireSession`). No request body: the
+// `return_url` is derived server-side from the request origin (never
+// client-supplied, same open-redirect closure as checkout). The caller's
+// Stripe customer is looked up from the `customers` D1 table; a user who
+// never checked out has no row → 404 no_customer. Forwards
+// `Idempotency-Key` to Stripe (GLOBAL-005).
+//
+// 503 when STRIPE_SECRET_KEY is not configured. 500 for Stripe API failures.
+app.post("/v1/billing/portal", requireSession, async (c) => {
+  const session = c.var.session;
+
+  if (!c.env.STRIPE_SECRET_KEY) {
+    return c.json({ error: "billing_not_configured" }, 503);
+  }
+
+  const customer = await c.env.DB.prepare(
+    "SELECT stripe_customer_id FROM customers WHERE user_id = ?",
+  )
+    .bind(session.user.id)
+    .first<{ stripe_customer_id: string }>();
+
+  if (!customer?.stripe_customer_id) {
+    return c.json({ error: "no_customer" }, 404);
+  }
+
+  const origin = new URL(c.req.url).origin;
+
+  const result = await createPortalSession(
+    {
+      stripeSecretKey: c.env.STRIPE_SECRET_KEY,
+      stripeCustomerId: customer.stripe_customer_id,
+      userId: session.user.id,
+      idempotencyKey: c.req.header("Idempotency-Key") ?? null,
+    },
+    `${origin}/app`,
   );
 
   return c.json(result.body, result.status);

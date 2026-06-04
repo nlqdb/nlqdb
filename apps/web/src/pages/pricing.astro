@@ -120,6 +120,22 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
 
       </div>
 
+      <!-- Manage billing — revealed only for signed-in users (SK-STRIPE-008) -->
+      <section class="pricing__manage" id="pricing-manage" hidden>
+        <p>
+          Already subscribed?
+          <button
+            type="button"
+            class="pricing__manage-link"
+            id="pricing-manage-btn"
+            data-api-base={apiBase}
+          >
+            Manage billing
+          </button>
+          — update your card, switch plan, download invoices, or cancel.
+        </p>
+      </section>
+
       <!-- BYOLLM callout -->
       <section class="pricing__byollm">
         <h2 class="pricing__byollm-title">Bring your own LLM — free on every tier</h2>
@@ -202,6 +218,45 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
       }
     });
   }
+
+  // "Manage billing" — revealed only once the auth probe resolves authed.
+  // POSTs /v1/billing/portal and redirects to the Stripe-hosted portal.
+  // 404 no_customer = signed in but never subscribed → guide to upgrade.
+  const manageSection = document.getElementById("pricing-manage");
+  const manageBtn = document.getElementById("pricing-manage-btn") as HTMLButtonElement | null;
+
+  void (async () => {
+    const user = await fetchSession();
+    if (user && manageSection) manageSection.hidden = false;
+  })();
+
+  manageBtn?.addEventListener("click", async () => {
+    const apiBase = (manageBtn.dataset.apiBase ?? "").replace(/\/$/, "");
+    manageBtn.disabled = true;
+    const original = manageBtn.textContent;
+    manageBtn.textContent = "Redirecting…";
+    try {
+      const res = await fetch(`${apiBase}/v1/billing/portal`, {
+        method: "POST",
+        credentials: "include",
+      });
+      if (res.status === 404) {
+        manageBtn.textContent = "No active subscription yet";
+        return;
+      }
+      if (res.status === 503) {
+        manageBtn.textContent = "Not available yet";
+        return;
+      }
+      if (!res.ok) throw new Error(`portal failed: ${res.status}`);
+      const { url } = (await res.json()) as { url: string };
+      window.location.assign(url);
+    } catch {
+      manageBtn.disabled = false;
+      manageBtn.textContent = original;
+      alert("Something went wrong. Please try again or email hello@nlqdb.com.");
+    }
+  });
 </script>
 
 <style>
@@ -346,6 +401,29 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
   }
 
   .pricing__cta:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  .pricing__manage {
+    text-align: center;
+    margin-bottom: 2.5rem;
+    color: var(--fg-dim);
+    font-size: 0.95rem;
+  }
+
+  .pricing__manage-link {
+    background: none;
+    border: none;
+    padding: 0;
+    color: var(--accent);
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+    text-decoration: underline;
+  }
+
+  .pricing__manage-link:disabled {
     opacity: 0.6;
     cursor: not-allowed;
   }
