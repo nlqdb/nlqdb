@@ -115,14 +115,13 @@ on `meta`. The PG adapter's underlying `(sql, params)` shape per
 
 ### SK-DB-010 — `engine?` on `db.create`: classifier-default with optional override
 
-- **Decision:** `db.create({ goal, engine? })` accepts an optional `engine: Engine`. If omitted, the classifier infers the engine from `goal` text using the engine-fit table in `SK-MULTIENG-002` (the prompt embeds it verbatim). Explicit `engine` overrides the classifier and skips its LLM call. Surface parity (`GLOBAL-003`): SDK / CLI (`--engine=…`) / MCP (`nlqdb_list_databases` returns `engine` per row) all carry the field; the web embed (`<nlq-data>`) does not (auto-create binds engine).
-- **Core value:** Effortless UX, Simple
-- **Why:** `GLOBAL-020` says no config in the first 60 s — default = inferred. `GLOBAL-015` says power users get an escape hatch — explicit override is that hatch. Two paths cover both audiences without adding a second endpoint (`GLOBAL-017`).
-- **Consequence in code:** `apps/api/src/db-create/orchestrate.ts` calls a new `classifyEngine(goal)` step before schema inference when `engine` is unset. Default fallback is `"postgres"` if classifier confidence is below threshold. The `databases` row in D1 stores `engine` as a non-null column; existing rows back-fill to `"postgres"`.
-- **Alternatives rejected:**
-  - Always require `engine` — breaks `GLOBAL-020`.
-  - Always classify (no override) — breaks `GLOBAL-015`.
-  - Add a second endpoint per engine — breaks `GLOBAL-017`.
+**Body:** [`decisions/SK-DB-010-engine-on-db-create.md`](./decisions/SK-DB-010-engine-on-db-create.md).
+`db.create({ goal, engine? })` takes an optional `engine`; omitted ⇒ the
+classifier infers it from `goal` (`SK-MULTIENG-002` table), explicit ⇒
+overrides and skips the LLM call. Default fallback `"postgres"`. Surface
+parity per `GLOBAL-003` (SDK / CLI `--engine=…` / MCP); the web embed
+auto-binds. Satisfies `GLOBAL-020` (no config) + `GLOBAL-015` (escape hatch)
+without a second endpoint (`GLOBAL-017`).
 
 ### SK-DB-011 — BYO Postgres promoted from Phase 4+ to active development
 
@@ -135,11 +134,27 @@ done per `SK-HDC-007`), AES-GCM blob + Workers-held KEK,
 validator/role/reject-list as defined there. Surface parity per
 `GLOBAL-003`. KEK rotation = open sub-question.
 
+### SK-DB-012 — BYO connection URL: validate at the wire boundary, store sealed, display redacted
+
+**Body:** [`decisions/SK-DB-012-byo-connection-url-handling.md`](./decisions/SK-DB-012-byo-connection-url-handling.md).
+One pure module — `packages/db/src/connection-url.ts` — parses + validates
+a user-supplied Postgres `connection_url` (fail loud per `GLOBAL-012`) and
+produces a password- and query-stripped `redacted` form
+(`postgres://user@host:port/database`) that is the only representation
+allowed on a span, log, CLI prompt, or SDK envelope; the full URL is sealed
+verbatim (`GLOBAL-031`, context `dbconn:<dbId>`). Lives in `packages/db/`
+per `GLOBAL-021` and ships ahead of its callers like `secret-envelope.ts`;
+internal primitive, so no `GLOBAL-003` obligation of its own.
+
 ## GLOBALs governing this feature
 
 Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; index in [`docs/decisions.md`](../../decisions.md)). The list below names the rules that constrain this feature; any feature-local commentary is nested under the rule.
 
 - **GLOBAL-004** — Logical schemas widen; physical layout reshapes.
+- **GLOBAL-012** — Errors are one sentence with the next action.
+  - *In this feature:* `parseConnectionUrl` (`SK-DB-012`) rejects an unusable BYO `connection_url` at the wire boundary with a one-sentence next action, never echoing the secret.
+- **GLOBAL-013** — $0/month for the free tier; Workers free-tier bundle ≤ 3 MiB compressed.
+  - *In this feature:* the `connection-url.ts` primitive (`SK-DB-012`) is zero-dependency (WHATWG `URL` only), so it adds no measurable weight to the bundle.
 - **GLOBAL-014** — OTel span on every external call (DB, LLM, HTTP, queue).
 - **GLOBAL-015** — Power users always have an escape hatch.
 - **GLOBAL-021** — Each external system has one canonical owning module.
