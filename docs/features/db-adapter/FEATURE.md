@@ -115,14 +115,13 @@ on `meta`. The PG adapter's underlying `(sql, params)` shape per
 
 ### SK-DB-010 — `engine?` on `db.create`: classifier-default with optional override
 
-- **Decision:** `db.create({ goal, engine? })` accepts an optional `engine: Engine`. If omitted, the classifier infers the engine from `goal` text using the engine-fit table in `SK-MULTIENG-002` (the prompt embeds it verbatim). Explicit `engine` overrides the classifier and skips its LLM call. Surface parity (`GLOBAL-003`): SDK / CLI (`--engine=…`) / MCP (`nlqdb_list_databases` returns `engine` per row) all carry the field; the web embed (`<nlq-data>`) does not (auto-create binds engine).
-- **Core value:** Effortless UX, Simple
-- **Why:** `GLOBAL-020` says no config in the first 60 s — default = inferred. `GLOBAL-015` says power users get an escape hatch — explicit override is that hatch. Two paths cover both audiences without adding a second endpoint (`GLOBAL-017`).
-- **Consequence in code:** `apps/api/src/db-create/orchestrate.ts` calls a new `classifyEngine(goal)` step before schema inference when `engine` is unset. Default fallback is `"postgres"` if classifier confidence is below threshold. The `databases` row in D1 stores `engine` as a non-null column; existing rows back-fill to `"postgres"`.
-- **Alternatives rejected:**
-  - Always require `engine` — breaks `GLOBAL-020`.
-  - Always classify (no override) — breaks `GLOBAL-015`.
-  - Add a second endpoint per engine — breaks `GLOBAL-017`.
+**Body:** [`decisions/SK-DB-010-engine-on-db-create.md`](./decisions/SK-DB-010-engine-on-db-create.md).
+`db.create({ goal, engine? })` takes an optional `engine`; omitted ⇒ the
+classifier infers it from `goal` (`SK-MULTIENG-002` table), explicit ⇒
+overrides and skips the LLM call. Default fallback `"postgres"`. Surface
+parity per `GLOBAL-003` (SDK / CLI `--engine=…` / MCP); the web embed
+auto-binds. Satisfies `GLOBAL-020` (no config) + `GLOBAL-015` (escape hatch)
+without a second endpoint (`GLOBAL-017`).
 
 ### SK-DB-011 — BYO Postgres promoted from Phase 4+ to active development
 
