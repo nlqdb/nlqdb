@@ -50,6 +50,12 @@ export {
   QueryLogWriteError,
   writeQueryLog,
 } from "./clickhouse-tinybird/query-log.ts";
+export type { ParseConnectionUrlResult, ParsedConnectionUrl } from "./connection-url.ts";
+export {
+  parseConnectionUrl,
+  redactConnectionUrl,
+  UNPARSEABLE_CONNECTION_URL,
+} from "./connection-url.ts";
 export type { PostgresAdapterOptions, PostgresQueryFn } from "./postgres.ts";
 export { createPostgresAdapter } from "./postgres.ts";
 export type {

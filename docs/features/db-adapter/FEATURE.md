@@ -135,11 +135,27 @@ done per `SK-HDC-007`), AES-GCM blob + Workers-held KEK,
 validator/role/reject-list as defined there. Surface parity per
 `GLOBAL-003`. KEK rotation = open sub-question.
 
+### SK-DB-012 — BYO connection URL: validate at the wire boundary, store sealed, display redacted
+
+**Body:** [`decisions/SK-DB-012-byo-connection-url-handling.md`](./decisions/SK-DB-012-byo-connection-url-handling.md).
+One pure module — `packages/db/src/connection-url.ts` — parses + validates
+a user-supplied Postgres `connection_url` (fail loud per `GLOBAL-012`) and
+produces a password- and query-stripped `redacted` form
+(`postgres://user@host:port/database`) that is the only representation
+allowed on a span, log, CLI prompt, or SDK envelope; the full URL is sealed
+verbatim (`GLOBAL-031`, context `dbconn:<dbId>`). Lives in `packages/db/`
+per `GLOBAL-021` and ships ahead of its callers like `secret-envelope.ts`;
+internal primitive, so no `GLOBAL-003` obligation of its own.
+
 ## GLOBALs governing this feature
 
 Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; index in [`docs/decisions.md`](../../decisions.md)). The list below names the rules that constrain this feature; any feature-local commentary is nested under the rule.
 
 - **GLOBAL-004** — Logical schemas widen; physical layout reshapes.
+- **GLOBAL-012** — Errors are one sentence with the next action.
+  - *In this feature:* `parseConnectionUrl` (`SK-DB-012`) rejects an unusable BYO `connection_url` at the wire boundary with a one-sentence next action, never echoing the secret.
+- **GLOBAL-013** — $0/month for the free tier; Workers free-tier bundle ≤ 3 MiB compressed.
+  - *In this feature:* the `connection-url.ts` primitive (`SK-DB-012`) is zero-dependency (WHATWG `URL` only), so it adds no measurable weight to the bundle.
 - **GLOBAL-014** — OTel span on every external call (DB, LLM, HTTP, queue).
 - **GLOBAL-015** — Power users always have an escape hatch.
 - **GLOBAL-021** — Each external system has one canonical owning module.

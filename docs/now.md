@@ -75,7 +75,16 @@ AES-GCM blob with Workers-held KEK (now the shared
 `secret-envelope.ts` seal, context `dbconn:<dbId>`), validator from
 `sql-allowlist` applies unchanged. All surfaces in one PR per `GLOBAL-003`.
 [`phase-plan.md §7`](./phase-plan.md) marks it promoted; shape per
-§3.6.7 unchanged.
+§3.6.7 unchanged. First connect-path primitive landed:
+`packages/db/src/connection-url.ts`
+([`SK-DB-012`](./features/db-adapter/decisions/SK-DB-012-byo-connection-url-handling.md))
+— `parseConnectionUrl` validates the `connection_url` at the wire boundary
+(fail-loud per [`GLOBAL-012`](./decisions/GLOBAL-012-one-sentence-errors.md))
+and yields the password/query-stripped redacted display that is the only
+form allowed on a span/log/UI; the full URL still rides the `GLOBAL-031`
+seal. Pure, zero-dep, owned by `packages/db` per `GLOBAL-021`, shipped ahead
+of its callers like `secret-envelope.ts`. Next: `connect.ts` +
+`registerByoDb` wiring + the `GLOBAL-003` surface set.
 
 ## 4. BYO ClickHouse
 
