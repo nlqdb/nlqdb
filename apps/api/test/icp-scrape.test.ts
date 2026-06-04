@@ -1517,6 +1517,403 @@ describe("runIcpScrape", () => {
     });
   });
 
+  describe("Mastodon source", () => {
+    function mastodonResponse(
+      id: string,
+      content = "<p>my <em>postgres</em> setup is painful</p>",
+    ) {
+      return JSON.stringify([
+        {
+          id,
+          url: `https://mastodon.social/@dev/statuses/${id}`,
+          created_at: new Date(Date.now() - 3600 * 1000).toISOString(),
+          content,
+          favourites_count: 4,
+          sensitive: false,
+        },
+      ]);
+    }
+
+    it("fetches Mastodon posts, strips HTML, and stores them with source=mastodon and id=mast-<id>", async () => {
+      const kv = stubKv();
+      const stubFetch: typeof fetch = vi.fn(async (url: string | URL | Request) => {
+        const urlStr = typeof url === "string" ? url : url instanceof URL ? url.href : url.url;
+        if (urlStr.includes("mastodon.social/api/v1/timelines/tag")) {
+          return {
+            ok: true,
+            status: 200,
+            headers: new Headers({ "x-ratelimit-remaining": "299" }),
+            json: async () => JSON.parse(mastodonResponse("116690000000000001")),
+          } as unknown as Response;
+        }
+        if (urlStr.includes("hn.algolia.com")) {
+          return { ok: true, status: 200, json: async () => ({ hits: [] }) } as unknown as Response;
+        }
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ data: { children: [] } }),
+        } as unknown as Response;
+      }) as unknown as typeof fetch;
+
+      const result = await runIcpScrape({ kv, fetch: stubFetch, tracer: stubTracer });
+      expect(result.sources["mastodon"]).toBeGreaterThanOrEqual(1);
+
+      const putCalls = (kv.put as ReturnType<typeof vi.fn>).mock.calls as Array<
+        [string, ...unknown[]]
+      >;
+      expect(putCalls.some(([k]) => k === "icp:seen:mastodon:mast-116690000000000001")).toBe(true);
+      const itemCall = putCalls.find(
+        ([k]) => k.startsWith("icp:item:") && k.endsWith(":mastodon:mast-116690000000000001"),
+      );
+      expect(itemCall).toBeDefined();
+      const stored = JSON.parse(itemCall?.[1] as string);
+      // HTML tags must be stripped from the stored text — the LLM scoring pass
+      // sees plain language, never <p>/<em>/<a> markup leaking through.
+      expect(stored.text).toBe("my postgres setup is painful");
+      expect(stored.title).toBe("my postgres setup is painful");
+      expect(stored.url).toBe("https://mastodon.social/@dev/statuses/116690000000000001");
+      expect(stored.score).toBe(4);
+    });
+
+    it("requests Mastodon with limit=25, local=false, and the bot User-Agent", async () => {
+      const kv = stubKv();
+      const seen: Array<{ url: string; headers: Record<string, string> }> = [];
+      const stubFetch: typeof fetch = vi.fn(
+        async (url: string | URL | Request, init?: { headers?: Record<string, string> }) => {
+          const urlStr = typeof url === "string" ? url : url instanceof URL ? url.href : url.url;
+          if (urlStr.includes("mastodon.social/api/v1/timelines/tag")) {
+            seen.push({ url: urlStr, headers: init?.headers ?? {} });
+            return {
+              ok: true,
+              status: 200,
+              headers: new Headers(),
+              json: async () => [],
+            } as unknown as Response;
+          }
+          if (urlStr.includes("hn.algolia.com")) {
+            return {
+              ok: true,
+              status: 200,
+              json: async () => ({ hits: [] }),
+            } as unknown as Response;
+          }
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({ data: { children: [] } }),
+          } as unknown as Response;
+        },
+      ) as unknown as typeof fetch;
+
+      await runIcpScrape({ kv, fetch: stubFetch, tracer: stubTracer });
+
+      expect(seen.length).toBeGreaterThan(0);
+      for (const { url, headers } of seen) {
+        expect(url).toContain("limit=25");
+        expect(url).toContain("local=false");
+        expect(headers["User-Agent"]).toMatch(/nlqdb-icp-bot/);
+        // Tag path-segment encoded — never raw whitespace, never query-string injection.
+        expect(url).toMatch(/\/timelines\/tag\/[a-zA-Z0-9%]+\?/);
+      }
+    });
+
+    it("short-circuits the remaining queries after a 429 from Mastodon", async () => {
+      const kv = stubKv();
+      let mastCalls = 0;
+      const stubFetch: typeof fetch = vi.fn(async (url: string | URL | Request) => {
+        const urlStr = typeof url === "string" ? url : url instanceof URL ? url.href : url.url;
+        if (urlStr.includes("mastodon.social/api/v1/timelines/tag")) {
+          mastCalls++;
+          return {
+            ok: false,
+            status: 429,
+            headers: new Headers({ "x-ratelimit-remaining": "0" }),
+            json: async () => ({}),
+          } as unknown as Response;
+        }
+        if (urlStr.includes("hn.algolia.com")) {
+          return { ok: true, status: 200, json: async () => ({ hits: [] }) } as unknown as Response;
+        }
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ data: { children: [] } }),
+        } as unknown as Response;
+      }) as unknown as typeof fetch;
+
+      await runIcpScrape({ kv, fetch: stubFetch, tracer: stubTracer });
+
+      // 5 tags are configured; only the first one hits the wire on a 429.
+      expect(mastCalls).toBe(1);
+    });
+
+    it("drops Mastodon posts older than the rolling 7-day window", async () => {
+      const kv = stubKv();
+      const eightDaysAgoIso = new Date(Date.now() - 8 * 24 * 3600 * 1000).toISOString();
+      const stubFetch: typeof fetch = vi.fn(async (url: string | URL | Request) => {
+        const urlStr = typeof url === "string" ? url : url instanceof URL ? url.href : url.url;
+        if (urlStr.includes("mastodon.social/api/v1/timelines/tag")) {
+          return {
+            ok: true,
+            status: 200,
+            headers: new Headers(),
+            json: async () => [
+              {
+                id: "old-1",
+                url: "https://mastodon.social/@x/statuses/old-1",
+                created_at: eightDaysAgoIso,
+                content: "<p>old pain</p>",
+                favourites_count: 1,
+              },
+            ],
+          } as unknown as Response;
+        }
+        if (urlStr.includes("hn.algolia.com")) {
+          return { ok: true, status: 200, json: async () => ({ hits: [] }) } as unknown as Response;
+        }
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ data: { children: [] } }),
+        } as unknown as Response;
+      }) as unknown as typeof fetch;
+
+      const result = await runIcpScrape({ kv, fetch: stubFetch, tracer: stubTracer });
+      expect(result.sources["mastodon"]).toBeUndefined();
+    });
+
+    it("drops Mastodon posts flagged sensitive (NSFW) — evidence file is product-public", async () => {
+      const kv = stubKv();
+      const stubFetch: typeof fetch = vi.fn(async (url: string | URL | Request) => {
+        const urlStr = typeof url === "string" ? url : url instanceof URL ? url.href : url.url;
+        if (urlStr.includes("mastodon.social/api/v1/timelines/tag")) {
+          return {
+            ok: true,
+            status: 200,
+            headers: new Headers(),
+            json: async () => [
+              {
+                id: "nsfw-1",
+                url: "https://mastodon.social/@x/statuses/nsfw-1",
+                created_at: new Date().toISOString(),
+                content: "<p>still pain about sql</p>",
+                favourites_count: 0,
+                sensitive: true,
+              },
+            ],
+          } as unknown as Response;
+        }
+        if (urlStr.includes("hn.algolia.com")) {
+          return { ok: true, status: 200, json: async () => ({ hits: [] }) } as unknown as Response;
+        }
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ data: { children: [] } }),
+        } as unknown as Response;
+      }) as unknown as typeof fetch;
+
+      const result = await runIcpScrape({ kv, fetch: stubFetch, tracer: stubTracer });
+      expect(result.sources["mastodon"]).toBeUndefined();
+    });
+
+    it("omits the rate_remaining span attribute when the response header is absent", async () => {
+      // Regression test for the `Number(null) === 0` bug: a missing
+      // x-ratelimit-remaining header must NOT be recorded as `rate_remaining=0`
+      // (indistinguishable from a near-exhausted bucket).
+      const recordedAttrs: Array<{ key: string; value: unknown }> = [];
+      const spyTracer: IcpScrapeDeps["tracer"] = {
+        startActiveSpan: async (name: string, fn: (span: Span) => Promise<unknown>) => {
+          const spy = {
+            setAttribute: (key: string, value: unknown) => {
+              if (name === "nlqdb.icp.fetch.mastodon") {
+                recordedAttrs.push({ key, value });
+              }
+            },
+            recordException: () => {},
+            end: () => {},
+          } as unknown as Span;
+          return fn(spy);
+        },
+      };
+
+      const kv = stubKv();
+      const stubFetch: typeof fetch = vi.fn(async (url: string | URL | Request) => {
+        const urlStr = typeof url === "string" ? url : url instanceof URL ? url.href : url.url;
+        if (urlStr.includes("mastodon.social/api/v1/timelines/tag")) {
+          return {
+            ok: true,
+            status: 200,
+            headers: new Headers(), // no x-ratelimit-remaining
+            json: async () => [],
+          } as unknown as Response;
+        }
+        if (urlStr.includes("hn.algolia.com")) {
+          return { ok: true, status: 200, json: async () => ({ hits: [] }) } as unknown as Response;
+        }
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ data: { children: [] } }),
+        } as unknown as Response;
+      }) as unknown as typeof fetch;
+
+      await runIcpScrape({ kv, fetch: stubFetch, tracer: spyTracer });
+
+      expect(recordedAttrs.some((a) => a.key === "nlqdb.icp.mastodon.rate_remaining")).toBe(false);
+    });
+
+    it("drops Mastodon posts whose visibility is not public (author opted out of indexing)", async () => {
+      const kv = stubKv();
+      const stubFetch: typeof fetch = vi.fn(async (url: string | URL | Request) => {
+        const urlStr = typeof url === "string" ? url : url instanceof URL ? url.href : url.url;
+        if (urlStr.includes("mastodon.social/api/v1/timelines/tag")) {
+          return {
+            ok: true,
+            status: 200,
+            headers: new Headers(),
+            json: async () => [
+              {
+                id: "unlisted-1",
+                url: "https://mastodon.social/@x/statuses/unlisted-1",
+                created_at: new Date().toISOString(),
+                content: "<p>opted out of indexing</p>",
+                favourites_count: 0,
+                visibility: "unlisted",
+              },
+            ],
+          } as unknown as Response;
+        }
+        if (urlStr.includes("hn.algolia.com")) {
+          return { ok: true, status: 200, json: async () => ({ hits: [] }) } as unknown as Response;
+        }
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ data: { children: [] } }),
+        } as unknown as Response;
+      }) as unknown as typeof fetch;
+
+      const result = await runIcpScrape({ kv, fetch: stubFetch, tracer: stubTracer });
+      expect(result.sources["mastodon"]).toBeUndefined();
+    });
+
+    it("drops Mastodon posts whose url is not http(s) — federation trust boundary", async () => {
+      const kv = stubKv();
+      const stubFetch: typeof fetch = vi.fn(async (url: string | URL | Request) => {
+        const urlStr = typeof url === "string" ? url : url instanceof URL ? url.href : url.url;
+        if (urlStr.includes("mastodon.social/api/v1/timelines/tag")) {
+          return {
+            ok: true,
+            status: 200,
+            headers: new Headers(),
+            json: async () => [
+              {
+                id: "badurl-1",
+                url: "javascript:alert(1)",
+                created_at: new Date().toISOString(),
+                content: "<p>still has content</p>",
+                favourites_count: 0,
+              },
+            ],
+          } as unknown as Response;
+        }
+        if (urlStr.includes("hn.algolia.com")) {
+          return { ok: true, status: 200, json: async () => ({ hits: [] }) } as unknown as Response;
+        }
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ data: { children: [] } }),
+        } as unknown as Response;
+      }) as unknown as typeof fetch;
+
+      const result = await runIcpScrape({ kv, fetch: stubFetch, tracer: stubTracer });
+      expect(result.sources["mastodon"]).toBeUndefined();
+    });
+
+    it("decodes &amp;lt; to the literal &lt; (not <) — &amp; is decoded last", async () => {
+      // The user typed the four-character text "&lt;" in their post; Mastodon's
+      // renderer emits "&amp;lt;" on the wire. The decoded value MUST remain
+      // "&lt;" (the literal entity, not "<") so the LLM scoring pass sees the
+      // author's actual words.
+      const kv = stubKv();
+      const stubFetch: typeof fetch = vi.fn(async (url: string | URL | Request) => {
+        const urlStr = typeof url === "string" ? url : url instanceof URL ? url.href : url.url;
+        if (urlStr.includes("mastodon.social/api/v1/timelines/tag")) {
+          return {
+            ok: true,
+            status: 200,
+            headers: new Headers(),
+            json: async () => [
+              {
+                id: "html-entity-1",
+                url: "https://mastodon.social/@x/statuses/html-entity-1",
+                created_at: new Date().toISOString(),
+                content: "<p>How to escape &amp;lt; in HTML</p>",
+                favourites_count: 0,
+              },
+            ],
+          } as unknown as Response;
+        }
+        if (urlStr.includes("hn.algolia.com")) {
+          return { ok: true, status: 200, json: async () => ({ hits: [] }) } as unknown as Response;
+        }
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ data: { children: [] } }),
+        } as unknown as Response;
+      }) as unknown as typeof fetch;
+
+      await runIcpScrape({ kv, fetch: stubFetch, tracer: stubTracer });
+      const putCalls = (kv.put as ReturnType<typeof vi.fn>).mock.calls as Array<
+        [string, ...unknown[]]
+      >;
+      const itemCall = putCalls.find(
+        ([k]) => k.startsWith("icp:item:") && k.endsWith(":mastodon:mast-html-entity-1"),
+      );
+      expect(itemCall).toBeDefined();
+      const stored = JSON.parse(itemCall?.[1] as string);
+      expect(stored.text).toBe("How to escape &lt; in HTML");
+    });
+
+    it("handles Mastodon 503 gracefully — other sources still complete", async () => {
+      const kv = stubKv();
+      const stubFetch: typeof fetch = vi.fn(async (url: string | URL | Request) => {
+        const urlStr = typeof url === "string" ? url : url instanceof URL ? url.href : url.url;
+        if (urlStr.includes("mastodon.social/api/v1/timelines/tag")) {
+          return {
+            ok: false,
+            status: 503,
+            headers: new Headers(),
+            json: async () => ({}),
+          } as unknown as Response;
+        }
+        if (urlStr.includes("query=text+to+sql")) {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => JSON.parse(hnResponse("hn-mast-fail")),
+          } as unknown as Response;
+        }
+        if (urlStr.includes("hn.algolia.com")) {
+          return { ok: true, status: 200, json: async () => ({ hits: [] }) } as unknown as Response;
+        }
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ data: { children: [] } }),
+        } as unknown as Response;
+      }) as unknown as typeof fetch;
+
+      const result = await runIcpScrape({ kv, fetch: stubFetch, tracer: stubTracer });
+      expect(result.sources["hn"]).toBeGreaterThanOrEqual(1);
+      expect(result.sources["mastodon"]).toBeUndefined();
+    });
+  });
+
   it("Reddit search URLs include restrict_sr=on so results stay subreddit-scoped", async () => {
     const kv = stubKv();
     const seenUrls: string[] = [];

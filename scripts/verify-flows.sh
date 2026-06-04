@@ -10,7 +10,7 @@
 #                       the inspector handshake in walkthrough step 1;
 #                       step 1's transport + steps 2-7 still need a
 #                       real MCP client)
-#   FLOW-008 source-health (HN / Reddit / GH / SO / IH / Dev.to / Bluesky — the cron upstreams)
+#   FLOW-008 source-health (HN / Reddit / GH / SO / IH / Dev.to / Bluesky / Mastodon — the cron upstreams)
 # Steps that need a browser, OAuth, or an inbox stay in the verification
 # mirror for the Playwright/FLOW-004+ pass; the script prints them as
 # `· requires browser` so future agents see them and don't claim a pass.
@@ -422,6 +422,22 @@ if fetch_json "FLOW-008 source Bluesky /xrpc/app.bsky.feed.searchPosts" "$bsky_u
     ok "  Bluesky response carries \"posts\" key (AppView searchPosts schema unchanged)"
   else
     fail "  Bluesky response schema" "no \"posts\" key in body"
+  fi
+  rm -f "$FETCH_BODY_PATH"
+fi
+
+# Mastodon (SK-ICP-013): mastodon.social /api/v1/timelines/tag/<tag> is a
+# public unauthenticated read endpoint (300 req / 5 min per IP). robots.txt
+# allows /api/v1/timelines/tag/* for non-GPTBot UAs; ours is nlqdb-icp-bot.
+mast_url="https://mastodon.social/api/v1/timelines/tag/postgres?limit=5&local=false"
+if fetch_json "FLOW-008 source Mastodon /api/v1/timelines/tag" "$mast_url" fatal \
+    -H "User-Agent: nlqdb-icp-bot/1.0 (+https://nlqdb.com; contact: hello@nlqdb.com)" \
+    -H "Accept: application/json"; then
+  # Mastodon returns a top-level JSON array (status[]) per docs.joinmastodon.org.
+  if grep -qE '^\s*\[' "$FETCH_BODY_PATH"; then
+    ok "  Mastodon response is a JSON array (timelines/tag schema unchanged)"
+  else
+    fail "  Mastodon response schema" "expected top-level JSON array"
   fi
   rm -f "$FETCH_BODY_PATH"
 fi
