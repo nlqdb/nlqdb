@@ -922,24 +922,24 @@ type MastodonPost = {
   content?: string;
   favourites_count?: number;
   sensitive?: boolean;
+  visibility?: string;
 };
 
-// Mastodon `content` is HTML. Strip tags + decode the entities the Forem-style
-// renderer actually emits before storage so the LLM scoring/clustering pass
-// sees plain language. Anything we miss is harmless (the next pass sees raw
-// `&amp;` style text); the goal is "no <p>/<br>/<a> markup leaking into the
-// evidence file or the LogSnag description."
+// Strip tags + decode the entities Mastodon's renderer emits so the LLM
+// scoring/clustering pass sees plain language, never `<p>` / `<br>` / `<a>`
+// markup. `&amp;` is decoded LAST so a literal `&amp;lt;` in the source
+// (a how-to about entities) doesn't collapse to `<` mid-pass.
 function stripMastodonHtml(html: string): string {
   return html
     .replace(/<br\s*\/?>/gi, " ")
     .replace(/<\/p>/gi, " ")
     .replace(/<[^>]+>/g, "")
     .replace(/&nbsp;/g, " ")
-    .replace(/&amp;/g, "&")
     .replace(/&lt;/g, "<")
     .replace(/&gt;/g, ">")
     .replace(/&quot;/g, '"')
     .replace(/&#39;/g, "'")
+    .replace(/&amp;/g, "&")
     .replace(/\s+/g, " ")
     .trim();
 }
@@ -965,15 +965,21 @@ async function fetchMastodon(
           signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
         });
         span.setAttribute("http.response.status_code", res.status);
-        const remaining = Number(res.headers.get("x-ratelimit-remaining"));
-        if (Number.isFinite(remaining)) {
-          span.setAttribute("nlqdb.icp.mastodon.rate_remaining", remaining);
+        // Only record the budget sensor when the header is present;
+        // `Number(null) === 0` would falsely signal "near exhausted."
+        const rawRemaining = res.headers.get("x-ratelimit-remaining");
+        if (rawRemaining !== null) {
+          const remaining = Number(rawRemaining);
+          if (Number.isFinite(remaining)) {
+            span.setAttribute("nlqdb.icp.mastodon.rate_remaining", remaining);
+          }
         }
         if (res.status === 429) {
           rateLimited = true;
         }
         if (!res.ok) {
-          span.setAttribute("nlqdb.icp.items", 0);
+          span.setAttribute("nlqdb.icp.items_returned", 0);
+          span.setAttribute("nlqdb.icp.items_stored", 0);
           console.warn(
             JSON.stringify({ msg: "icp_mastodon_fetch_error", tag, status: res.status }),
           );
@@ -981,11 +987,19 @@ async function fetchMastodon(
         }
         const json = (await res.json()) as MastodonPost[];
         const hits = Array.isArray(json) ? json : [];
-        span.setAttribute("nlqdb.icp.items", hits.length);
+        span.setAttribute("nlqdb.icp.items_returned", hits.length);
+        let storedThisTag = 0;
         for (const post of hits) {
           if (!post.id || !post.url || !post.created_at) continue;
-          // Skip NSFW-flagged content — the evidence file is product-public.
+          // Reject non-http(s) URLs — federated `url` is server-set on the
+          // origin instance; a malicious instance returning `javascript:`
+          // or `data:` would otherwise land in the evidence file.
+          if (!post.url.startsWith("https://") && !post.url.startsWith("http://")) continue;
+          // Skip NSFW-flagged + non-public posts — `unlisted` is the
+          // author's bulk-indexing opt-out, `direct`/`private` won't appear
+          // on a hashtag timeline but the guard is cheap insurance.
           if (post.sensitive) continue;
+          if (post.visibility && post.visibility !== "public") continue;
           const ms = Date.parse(post.created_at);
           if (!Number.isFinite(ms)) continue;
           const tsSec = Math.floor(ms / 1000);
@@ -1001,7 +1015,9 @@ async function fetchMastodon(
             score: post.favourites_count,
             ts: tsSec,
           });
+          storedThisTag++;
         }
+        span.setAttribute("nlqdb.icp.items_stored", storedThisTag);
       } catch (err) {
         span.recordException(err as Error);
         console.error(

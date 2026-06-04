@@ -1718,6 +1718,167 @@ describe("runIcpScrape", () => {
       expect(result.sources["mastodon"]).toBeUndefined();
     });
 
+    it("omits the rate_remaining span attribute when the response header is absent", async () => {
+      // Regression test for the `Number(null) === 0` bug: a missing
+      // x-ratelimit-remaining header must NOT be recorded as `rate_remaining=0`
+      // (indistinguishable from a near-exhausted bucket).
+      const recordedAttrs: Array<{ key: string; value: unknown }> = [];
+      const spyTracer: IcpScrapeDeps["tracer"] = {
+        startActiveSpan: async (name: string, fn: (span: Span) => Promise<unknown>) => {
+          const spy = {
+            setAttribute: (key: string, value: unknown) => {
+              if (name === "nlqdb.icp.fetch.mastodon") {
+                recordedAttrs.push({ key, value });
+              }
+            },
+            recordException: () => {},
+            end: () => {},
+          } as unknown as Span;
+          return fn(spy);
+        },
+      };
+
+      const kv = stubKv();
+      const stubFetch: typeof fetch = vi.fn(async (url: string | URL | Request) => {
+        const urlStr = typeof url === "string" ? url : url instanceof URL ? url.href : url.url;
+        if (urlStr.includes("mastodon.social/api/v1/timelines/tag")) {
+          return {
+            ok: true,
+            status: 200,
+            headers: new Headers(), // no x-ratelimit-remaining
+            json: async () => [],
+          } as unknown as Response;
+        }
+        if (urlStr.includes("hn.algolia.com")) {
+          return { ok: true, status: 200, json: async () => ({ hits: [] }) } as unknown as Response;
+        }
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ data: { children: [] } }),
+        } as unknown as Response;
+      }) as unknown as typeof fetch;
+
+      await runIcpScrape({ kv, fetch: stubFetch, tracer: spyTracer });
+
+      expect(recordedAttrs.some((a) => a.key === "nlqdb.icp.mastodon.rate_remaining")).toBe(false);
+    });
+
+    it("drops Mastodon posts whose visibility is not public (author opted out of indexing)", async () => {
+      const kv = stubKv();
+      const stubFetch: typeof fetch = vi.fn(async (url: string | URL | Request) => {
+        const urlStr = typeof url === "string" ? url : url instanceof URL ? url.href : url.url;
+        if (urlStr.includes("mastodon.social/api/v1/timelines/tag")) {
+          return {
+            ok: true,
+            status: 200,
+            headers: new Headers(),
+            json: async () => [
+              {
+                id: "unlisted-1",
+                url: "https://mastodon.social/@x/statuses/unlisted-1",
+                created_at: new Date().toISOString(),
+                content: "<p>opted out of indexing</p>",
+                favourites_count: 0,
+                visibility: "unlisted",
+              },
+            ],
+          } as unknown as Response;
+        }
+        if (urlStr.includes("hn.algolia.com")) {
+          return { ok: true, status: 200, json: async () => ({ hits: [] }) } as unknown as Response;
+        }
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ data: { children: [] } }),
+        } as unknown as Response;
+      }) as unknown as typeof fetch;
+
+      const result = await runIcpScrape({ kv, fetch: stubFetch, tracer: stubTracer });
+      expect(result.sources["mastodon"]).toBeUndefined();
+    });
+
+    it("drops Mastodon posts whose url is not http(s) — federation trust boundary", async () => {
+      const kv = stubKv();
+      const stubFetch: typeof fetch = vi.fn(async (url: string | URL | Request) => {
+        const urlStr = typeof url === "string" ? url : url instanceof URL ? url.href : url.url;
+        if (urlStr.includes("mastodon.social/api/v1/timelines/tag")) {
+          return {
+            ok: true,
+            status: 200,
+            headers: new Headers(),
+            json: async () => [
+              {
+                id: "badurl-1",
+                url: "javascript:alert(1)",
+                created_at: new Date().toISOString(),
+                content: "<p>still has content</p>",
+                favourites_count: 0,
+              },
+            ],
+          } as unknown as Response;
+        }
+        if (urlStr.includes("hn.algolia.com")) {
+          return { ok: true, status: 200, json: async () => ({ hits: [] }) } as unknown as Response;
+        }
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ data: { children: [] } }),
+        } as unknown as Response;
+      }) as unknown as typeof fetch;
+
+      const result = await runIcpScrape({ kv, fetch: stubFetch, tracer: stubTracer });
+      expect(result.sources["mastodon"]).toBeUndefined();
+    });
+
+    it("decodes &amp;lt; to the literal &lt; (not <) — &amp; is decoded last", async () => {
+      // The user typed the four-character text "&lt;" in their post; Mastodon's
+      // renderer emits "&amp;lt;" on the wire. The decoded value MUST remain
+      // "&lt;" (the literal entity, not "<") so the LLM scoring pass sees the
+      // author's actual words.
+      const kv = stubKv();
+      const stubFetch: typeof fetch = vi.fn(async (url: string | URL | Request) => {
+        const urlStr = typeof url === "string" ? url : url instanceof URL ? url.href : url.url;
+        if (urlStr.includes("mastodon.social/api/v1/timelines/tag")) {
+          return {
+            ok: true,
+            status: 200,
+            headers: new Headers(),
+            json: async () => [
+              {
+                id: "html-entity-1",
+                url: "https://mastodon.social/@x/statuses/html-entity-1",
+                created_at: new Date().toISOString(),
+                content: "<p>How to escape &amp;lt; in HTML</p>",
+                favourites_count: 0,
+              },
+            ],
+          } as unknown as Response;
+        }
+        if (urlStr.includes("hn.algolia.com")) {
+          return { ok: true, status: 200, json: async () => ({ hits: [] }) } as unknown as Response;
+        }
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ data: { children: [] } }),
+        } as unknown as Response;
+      }) as unknown as typeof fetch;
+
+      await runIcpScrape({ kv, fetch: stubFetch, tracer: stubTracer });
+      const putCalls = (kv.put as ReturnType<typeof vi.fn>).mock.calls as Array<
+        [string, ...unknown[]]
+      >;
+      const itemCall = putCalls.find(
+        ([k]) => k.startsWith("icp:item:") && k.endsWith(":mastodon:mast-html-entity-1"),
+      );
+      expect(itemCall).toBeDefined();
+      const stored = JSON.parse(itemCall?.[1] as string);
+      expect(stored.text).toBe("How to escape &lt; in HTML");
+    });
+
     it("handles Mastodon 503 gracefully — other sources still complete", async () => {
       const kv = stubKv();
       const stubFetch: typeof fetch = vi.fn(async (url: string | URL | Request) => {
