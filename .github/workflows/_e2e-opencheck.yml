@@ -21,10 +21,9 @@ on:
         required: true
         type: string
       config_file:
-        description: "opencheck config file relative to tests/opencheck/ (default: tests.yaml)."
-        required: false
+        description: "opencheck config file relative to tests/opencheck/ (e.g. tests-a-bootstrap.yaml)."
+        required: true
         type: string
-        default: "tests.yaml"
     secrets:
       LLM_API_KEY:
         description: "LLM API key for the active provider. Surfaced via OPENAI_API_KEY + provider-specific OPENAI_BASE_URL."
