@@ -29,7 +29,7 @@ when-to-load:
   - **Why:** Astro is already in `apps/web`, so the toolchain is shared. Starlight is the Astro team's docs preset and handles search, sidebar, code blocks, dark mode out of the box. Workers Static Assets is the lighter sibling of Cloudflare Pages and is the platform Cloudflare is steering toward; it gives us one `wrangler deploy` per surface and one cert auto-provisioned via `custom_domain = true`, matching the `apps/mcp` pattern.
   - **Consequence in code:** New docs pages are `.mdx` files under `apps/docs/src/content/docs/`; the sidebar is hand-edited in `astro.config.mjs`. No Cloudflare adapter — Astro pre-renders everything. PRs that introduce a server-rendered route here fail review (the site must remain fully static so it can be served by Static Assets with no Worker code).
   - **Alternatives considered:**
-    - **Mintlify** — best DX in the category, but $150/mo above 2 users; violates the `$0/mo while no paying customers` rule from `README.md §"Cost ladder"`.
+    - **Mintlify** — best DX in the category, but $150/mo above 2 users; violates the `$0/mo while no paying customers` rule from the [cost ladder](../../cost-ladder.md).
     - **Docusaurus** — React-based; works, but Astro already in the stack means Starlight has zero new toolchain cost.
     - **Cloudflare Pages git integration** — `docs/history/ci-actions-repo-layout.md` documents the move *away* from Pages git integrations for `apps/web` and `packages/elements` in favour of GH-Actions-driven `wrangler deploy`; matching that pattern keeps the deploy model uniform across surfaces.
 

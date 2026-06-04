@@ -254,10 +254,9 @@ one signal trips — whichever happens first:
 | Test-mode Stripe Checkout completion rate | ≥ 30% over 50 sessions | Strong enough to commit to Stripe live + Hobby $10 + Lago. |
 
 Thresholds are starting heuristics, not measured truths — adjust on
-first contact with traffic. The cost ladder in
-[`README.md`](../README.md) ("pay only when someone pays you") is the
-same rule: free to build before the signal, no spending or charging
-until it trips.
+first contact with traffic. The [cost ladder](./cost-ladder.md)
+("pay only when someone pays you") is the same rule: free to build
+before the signal, no spending or charging until it trips.
 
 **Reconciliation with the persona-validation plan.** The "2 convert to paid
 Hobby" criterion in [`personas.md §10.4`](./research/personas.md) is downstream

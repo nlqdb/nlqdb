@@ -794,10 +794,9 @@ puts every db on a single shared Neon branch as a Postgres schema.
 A typical anonymous schema with a few tables and modest data sits
 in the **100-500 KB range**. That gives a ceiling of roughly
 **1,000-5,000 anonymous dbs before pressure** — not negligible at
-any meaningful traction. The cost ladder in [`README.md`](../README.md)
-gates the next upgrade ($19/mo Neon Launch) on "Neon DB exceeds
-0.5 GB or needs no-pause"; the policy below is designed to use
-that gate, not blow through it.
+any meaningful traction. The [cost ladder](./cost-ladder.md) gates
+the next upgrade ($19/mo Neon Launch) on "Neon DB exceeds 0.5 GB or
+needs no-pause"; the policy below uses that gate, not blow through it.
 
 ### 9.2 Policy
 
@@ -835,7 +834,7 @@ The 300 MB pressure threshold leaves **200 MB headroom** on the
 | ≥ 200 MB | **warn** — Slack post `#nlqdb-ops`, no automatic action |
 | ≥ 280 MB | **urgent** — pager ping + dashboard banner; pressure-sweep is imminent |
 | ≥ 300 MB | sweep runs automatically; emits `db.pressure_sweep_started` |
-| ≥ 450 MB total project (anonymous + adopted) | escalate to Neon Launch ($19/mo); follow [`README.md` cost ladder](../README.md) |
+| ≥ 450 MB total project (anonymous + adopted) | escalate to Neon Launch ($19/mo); follow the [cost ladder](./cost-ladder.md) |
 
 ### 9.5 Manual sweep (for ops, not automation)
 
