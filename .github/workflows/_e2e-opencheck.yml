@@ -208,9 +208,9 @@ jobs:
             "$agent_ts"
           echo "patched $agent_ts"
 
-      # Add 30s per-call HTTP timeout to the LLM client. Without this, a hung Groq response burns the
+      # Add 30s per-call HTTP timeout to the LLM client. Without this, a hung provider response burns the
       # entire 240s test budget silently — no error, no recording, just a timeout at the test level.
-      # 30s is plenty for any real LLM response; if Groq doesn't reply in 30s it's effectively down.
+      # 30s is plenty for any real LLM response; if the provider doesn't reply in 30s it's effectively down.
       - name: Patch opencheck — add 30s per-call LLM timeout
         working-directory: tests/opencheck
         run: |
@@ -242,7 +242,7 @@ jobs:
           echo "::endgroup::"
 
       # Fail-fast: confirm the LLM API responds before burning 20+ min on opencheck. Without this, a silent
-      # Groq outage or an empty/expired LLM_API_KEY causes every test to hang for 240s with zero output.
+      # provider outage or an empty/expired LLM_API_KEY causes every test to hang for 240s with zero output.
       - name: Pre-flight — verify LLM API connectivity
         shell: bash
         env:
