@@ -1,4 +1,13 @@
 export type {
+  ParseClickhouseUrlResult,
+  ParsedClickhouseUrl,
+} from "./clickhouse-connection-url.ts";
+export {
+  parseClickhouseUrl,
+  redactClickhouseUrl,
+  UNPARSEABLE_CLICKHOUSE_URL,
+} from "./clickhouse-connection-url.ts";
+export type {
   TinybirdAdapterOptions,
   TinybirdHttpClient,
   TinybirdRequest,
