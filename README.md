@@ -37,11 +37,11 @@ live in some form (see the surface table below).
 
 While we're proving query accuracy, the **do-work endpoints are gated**.
 Until our natural-language → SQL accuracy clears a public bar (BIRD ≥ 0.65
-and Spider 2.0 ≥ 0.75 on the free model chain), requests from accounts
-that aren't design partners get a friendly `feature_gated` response — with
-the current scores and a waitlist link — instead of a possibly-wrong
-answer. Design partners get an invite code that bypasses the gate, and the
-gate removes itself automatically once both thresholds clear. See
+and Spider 2.0 ≥ 0.75 on the free model chain), un-invited requests get a
+friendly `feature_gated` response — the current scores plus a waitlist
+link — instead of a possibly-wrong answer. **Joining the waitlist emails
+you an invite code** that opens the gate; it then removes itself
+automatically once both thresholds clear. See
 [`GLOBAL-027`](./docs/decisions/GLOBAL-027-pre-alpha-gate.md) and
 [`docs.nlqdb.com/pre-alpha/`](https://docs.nlqdb.com/pre-alpha/).
 
