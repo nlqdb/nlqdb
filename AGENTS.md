@@ -204,16 +204,17 @@ working in one directory.
 | [`docs/feature-conventions.md`](docs/feature-conventions.md) | How `docs/features/` is structured. Read before adding/editing a feature. |
 | [`docs/architecture.md`](docs/architecture.md) | System architecture, surface specs, tech-stack rationale, risks. Phase plan extracted to `phase-plan.md`. |
 | [`docs/phase-plan.md`](docs/phase-plan.md) | **Canonical phase plan** — per-phase items, exit gates, the §6 monetization + scaling trigger. |
-| [`docs/runbook.md`](docs/runbook.md) | Operations: env vars, secrets, deploy, recovery. Design-partner reference (§10). |
-| [`docs/founder-playbook.md`](docs/founder-playbook.md) | Design-partner recruitment, Sean Ellis interview script, inbound triage SLA — the founder-time work that lives next to the engineering plan. |
+| [`docs/runbook.md`](docs/runbook.md) | Operations: env, secrets, deploy, recovery; design-partner ref (§10). |
+| [`docs/founder-playbook.md`](docs/founder-playbook.md) | Design-partner recruitment, Sean Ellis interview script, inbound triage SLA. |
 | [`docs/performance.md`](docs/performance.md) | Span/metric/label catalog + perf goals. |
 | [`docs/guidelines.md`](docs/guidelines.md) | Code-review heuristics, the four habits. |
 | [`docs/progress.md`](docs/progress.md) | Platform integration tiers (P0–P3). |
+| [`docs/progress/quality-score-source-of-truth.md`](docs/progress/quality-score-source-of-truth.md) | Engine-quality progress bar: tried / not-tried, sourced. |
 | [`docs/research-receipts.md`](docs/research-receipts.md) | Receipts for cited research. |
-| [`docs/competitors.md`](docs/competitors.md) | Competitive landscape — categories, threat matrix, gap analysis. |
-| [`docs/history/`](docs/history/) | Lessons learnt — one doc per operational topic. |
-| [`docs/research/`](docs/research/) | Strategic research — personas, LLM credits plan, email & marketing strategy, Phase 1 exit criteria, open design questions. |
-| [`docs/future/`](docs/future/) | Forward-looking plans not yet promoted to a feature — semantic-layer adoption, etc. Promote into the relevant feature once decisions are firm. |
+| [`docs/competitors.md`](docs/competitors.md) | Competitive landscape — threat matrix + gap analysis. |
+| [`docs/history/`](docs/history/) | Lessons learnt — one doc per topic. |
+| [`docs/research/`](docs/research/) | Strategic research — personas, LLM credits, marketing, Phase 1 exit, open questions. |
+| [`docs/future/`](docs/future/) | Forward-looking plans not yet promoted to a feature (e.g. semantic-layer). Promote once decisions are firm. |
 
 These exist for depth; they are not loaded into every session by
 default. The `docs/features/` directory is the front door for any

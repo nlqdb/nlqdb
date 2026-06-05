@@ -13,6 +13,8 @@ export {
 } from "./byollm-dispatch.ts";
 export type { ByollmProviderOptions } from "./providers/byollm.ts";
 export { createByollmProvider } from "./providers/byollm.ts";
+export type { CerebrasProviderOptions } from "./providers/cerebras.ts";
+export { createCerebrasProvider } from "./providers/cerebras.ts";
 export type { GeminiProviderOptions } from "./providers/gemini.ts";
 export { createGeminiProvider } from "./providers/gemini.ts";
 export type { GroqProviderOptions } from "./providers/groq.ts";

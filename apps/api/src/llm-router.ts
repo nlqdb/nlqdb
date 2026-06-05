@@ -10,6 +10,7 @@
 
 import { env } from "cloudflare:workers";
 import {
+  createCerebrasProvider,
   createGeminiProvider,
   createGroqProvider,
   createLLMRouter,
@@ -62,6 +63,10 @@ export function getLLMRouter(): LLMRouter {
   if (cached) return cached;
   const gw = aiGatewayBases(env.AI_GATEWAY_ACCOUNT_ID, env.AI_GATEWAY_ID);
   const providers = [
+    // SK-LLM-023 — Cerebras leads the planner tier (gpt-oss-120b). Routed
+    // direct (not via AI Gateway yet); the provider-agnostic plan cache
+    // (SK-LLM-010) is the real cache layer, so the gateway gap is cosmetic.
+    createCerebrasProvider({ apiKey: env.CEREBRAS_API_KEY ?? "" }),
     createGroqProvider({ apiKey: env.GROQ_API_KEY ?? "", baseUrl: gw.groq }),
     createGeminiProvider({ apiKey: env.GEMINI_API_KEY ?? "", baseUrl: gw.gemini }),
     createWorkersAIProvider({
@@ -77,12 +82,15 @@ export function getLLMRouter(): LLMRouter {
       // SK-ASK-009 — merged routeAsk rides the cheap-tier chain (Groq
       // 8B first; the prompt is short and the budget is 1500 ms).
       route: ["groq", "gemini", "workers-ai", "openrouter"],
-      plan: ["gemini", "groq", "workers-ai", "openrouter"],
+      // SK-LLM-023 — Cerebras (gpt-oss-120b) leads the planner tier; on a
+      // 429 (free-tier per-minute token/request quota) it fails over to the
+      // prior Gemini-first order.
+      plan: ["cerebras", "gemini", "groq", "workers-ai", "openrouter"],
       summarize: ["groq", "gemini", "workers-ai", "openrouter"],
       // SK-LLM-012: schema_infer is its own operation but shares the
       // planner-tier provider chain — same ordering as `plan` so it
       // hits the JSON-strongest provider first.
-      schema_infer: ["gemini", "groq", "workers-ai", "openrouter"],
+      schema_infer: ["cerebras", "gemini", "groq", "workers-ai", "openrouter"],
       // SK-DB-010: engine-classifier rides the cheap-tier chain.
       engine_classify: ["groq", "gemini", "workers-ai", "openrouter"],
     },

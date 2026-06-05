@@ -373,17 +373,17 @@ Canonical: `llm-router/FEATURE.md` (`SK-LLM-001..011`). Tables below are at-a-gl
 | Job | Provider | Free limit | Card |
 |---|---|---|---|
 | Classification | Groq — Llama 3.1 8B Instant | 14,400 RPD / 500k TPD | No |
-| NL → query plan | Google AI Studio — Gemini 2.5 Flash | 500 RPD / 250k TPM | No |
+| NL → query plan | Cerebras gpt-oss-120b → Gemini 2.5 Flash (SK-LLM-023) | 1M tok/day Cerebras / 500 RPD Gemini | No |
 | Hard-plan fallback | Google AI Studio — Gemini 2.5 Pro | 100 RPD | No |
 | Summarization | Groq — Llama 3.3 70B / Qwen3 32B | 1,000 RPD | No |
 | Embeddings | Cloudflare Workers AI — bge-base-en-v1.5 | 10,000 Neurons/day | No |
 | Universal fallback | OpenRouter — `qwen/qwen3-coder:free` (plan / schema_infer); Llama 3.x `:free` (route / summarize) | 50 RPD anon / 1,000 RPD after a one-time $10 deposit | No (deposit unlocks the 1k tier and is kept even if balance falls to $0) |
 
-**Capacity:** ~500 plan generations/day + ~14,400 classifications/day → ~2–4k user queries/day after the plan cache. Covers Phase 1 with headroom.
+**Capacity:** ~500 plan + ~14,400 classify/day → ~2–4k queries/day after the plan cache.
 
 **Total cost to add intelligence Day 1: $0.**
 
-Env vars: `GEMINI_API_KEY`, `GROQ_API_KEY`, `CF_AI_TOKEN`, `OPENROUTER_API_KEY`. The free chain stays the **permanent** free-tier path per [`GLOBAL-026`](./decisions/GLOBAL-026-llm-strategy-byollm-hosted-premium.md); BYOLLM + hosted-premium are the upgrade paths.
+Env vars: `CEREBRAS_API_KEY`, `GEMINI_API_KEY`, `GROQ_API_KEY`, `CF_AI_TOKEN`, `OPENROUTER_API_KEY`. The free chain stays the **permanent** free-tier path per [`GLOBAL-026`](./decisions/GLOBAL-026-llm-strategy-byollm-hosted-premium.md); BYOLLM + hosted-premium are the upgrade paths.
 
 ### 7.2 Cost-control mitigations, in priority order
 

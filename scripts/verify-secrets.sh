@@ -127,6 +127,11 @@ else
 fi
 
 say "LLM providers"
+check_http CEREBRAS_API_KEY \
+  -H "Authorization: Bearer ${CEREBRAS_API_KEY:-MISSING}" \
+  "https://api.cerebras.ai/v1/models" \
+  --match '"id"'
+
 check_http GEMINI_API_KEY \
   "https://generativelanguage.googleapis.com/v1beta/models?key=${GEMINI_API_KEY:-MISSING}" \
   --match '"models"'
