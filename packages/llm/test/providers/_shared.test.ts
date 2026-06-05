@@ -37,7 +37,9 @@ describe("parseJsonResponse", () => {
     });
 
     it("throws (rather than recovering) when the brace never closes", () => {
-      expect(() => parseJsonResponse('thinking... {"sql":"SELECT 1"')).toThrow(/not parseable JSON/);
+      expect(() => parseJsonResponse('thinking... {"sql":"SELECT 1"')).toThrow(
+        /not parseable JSON/,
+      );
     });
   });
 });
