@@ -49,22 +49,22 @@ tests:
         create a users table with id, name, email
       Press Enter as a SEPARATE browser_key_down call (do NOT use submit: true).
       The form calls the API — DB creation (LLM inference + schema provision)
-      takes 15-60 s. The page does NOT redirect; stay on the base URL and poll:
-      call browser_snapshot every 5 seconds up to 12 times (60 s) until
-      "Provisioned with" is visible anywhere on the page. If after 12 polls
-      "Provisioned with" is still absent, TEST_FAILED — DB creation timed out.
-      Once "Provisioned with" is visible: navigate to "/auth/sign-in". Call
-      browser_snapshot. If "Sign in as this user" is visible, click it with
-      browser_click. If you receive "Not connected", navigate to "/app".
-      Call browser_snapshot. Poll: if the URL shows "/app" without "?db=",
-      wait 3 seconds and call browser_snapshot again, up to 5 times (15 s).
-      If "?db=" never appears, TEST_FAILED — the anon DB was not adopted
-      into the signed-in account.
-      Once "?db=" is in the URL: click the "Sign out" button in the top
-      navigation bar. Wait for the URL to leave "/app". TEST_PASSED.
+      takes 15-60 s. The page does NOT redirect (SK-ANON-012: the anonymous
+      device's 1st /v1/ask call provisions the DB in place). Stay on the base
+      URL and poll: call browser_snapshot every 5 seconds up to 12 times (60 s)
+      until "Provisioned with" is visible anywhere on the page. If after 12
+      polls "Provisioned with" is still absent, TEST_FAILED — DB creation timed
+      out. Once "Provisioned with" is visible, TEST_PASSED immediately — do NOT
+      sign in and do NOT navigate away. Stay anonymous: the next test exercises
+      the per-device auth wall on the 2nd anonymous call, which only fires while
+      still signed out.
 
   - name: "#add-row-redirects-to-auth"
     case: |
+      This is the anonymous device's SECOND /v1/ask call. The previous test
+      used the device's one free call (SK-ANON-012), so a 2nd anonymous
+      submission must hit the per-device cap and redirect to sign-in. Do NOT
+      sign in before this test — it must run while still anonymous.
       Step 1 — Navigate to the base URL (the marketing page).
       Step 2 — Call browser_snapshot and confirm the hero input
       with placeholder "an orders tracker" is visible. Do NOT
