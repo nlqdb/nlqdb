@@ -29,6 +29,14 @@ Parent feature: [`llm-router/FEATURE.md`](../FEATURE.md).
   the fallback runs only after strict parse already threw, so the happy
   path (the overwhelming common case with `response_format` set) is
   byte-for-byte unchanged and can't regress.
+  **Observability:** a recovery silently turns a former `parse` failure
+  into a success, so the per-call recovery *rate* is not counted today.
+  The aggregate effect is already visible on the weekly cron (the
+  `no_sql` → `match` shift in the eval report), so the per-call counter
+  is **parked** — decided shape when a leak-rate regression makes it
+  worth wiring: a bounded `nlqdb.llm.json_recovered.total{op}` counter
+  incremented at the router boundary (`router.ts`, the only layer that
+  holds the meter — `_shared.ts` stays pure per `GLOBAL-021`).
 - **Alternatives rejected:**
   - **`indexOf("{")` … `lastIndexOf("}")` slice** — simpler, but
     unbalanced: a trailing prose sentence containing a `}` (or a second

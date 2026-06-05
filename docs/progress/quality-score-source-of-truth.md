@@ -69,11 +69,12 @@ item 4). The 283 mismatches are the separate SQL-reasoning gap.
 
 ## 3. What we have tried (with how, and how much)
 
-Newest at top. The `#` is a stable row id (assigned in order added, so
-**T7/T8 are this PR's levers** and **T1 is the Cerebras head** — the
-dominant lever); it is not a rank. "How much" = the measured or
-evidence-based size of the lever; **measured** numbers come from the
-harness, **est.** from the cited paper/ablation.
+Rows run reverse-chronological (newest first): **T7/T8 (this PR) → T1
+(Cerebras head) → T2…T6**. The `#` is a stable row id (assigned in order
+added), **not** a rank — read recency from the row order and the
+"Canonical home / status" column, not from the number. "How much" = the
+measured or evidence-based size of the lever; **measured** numbers come
+from the harness, **est.** from the cited paper/ablation.
 
 | # | Lever | How exactly | How much | Canonical home / status |
 |---|---|---|---|---|
