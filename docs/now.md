@@ -15,7 +15,13 @@ itself. Headline KPI: free-vs-agentic-frontier delta per
 [`SK-QUAL-004`](./features/quality-eval/decisions/SK-QUAL-004-free-vs-frontier-delta.md).
 **Progress bar** (what's tried / not-tried, every number sourced):
 [`progress/quality-score-source-of-truth.md`](./progress/quality-score-source-of-truth.md).
-Latest lever: Cerebras (gpt-oss-120b) leads the free planner chain
+Latest levers: free-chain planner robustness — greedy-decoding parity on
+the Workers AI leg
+([`SK-LLM-024`](./features/llm-router/decisions/SK-LLM-024-greedy-decoding-parity.md))
++ a JSON-recovery fallback for the `gpt-oss-120b` reasoning head's
+preamble leaks
+([`SK-LLM-025`](./features/llm-router/decisions/SK-LLM-025-json-recovery-fallback.md)),
+on top of the Cerebras head
 ([`SK-LLM-023`](./features/llm-router/decisions/SK-LLM-023-cerebras-planner-tier.md)).
 
 ## 2. BYOLLM (every tier, 0% markup)

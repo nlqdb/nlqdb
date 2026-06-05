@@ -10,7 +10,7 @@ when-to-load:
 # Feature: Llm Router
 
 **One-liner:** Model selection, fallback chain, prompt strategy, per-user credit accounting; three permanent dispatch lanes per [`GLOBAL-026`](../../decisions/GLOBAL-026-llm-strategy-byollm-hosted-premium.md) — free chain, BYOLLM, hosted-premium.
-**Status:** implemented for the free chain (`SK-LLM-001..015` + `SK-LLM-018` + `SK-LLM-023`). BYOLLM (`SK-LLM-016`) is partial — provider factory (`SK-LLM-019`) + lane selector / single-provider lane router (`SK-LLM-020`) ship, the per-request `x-nlq-byollm-key` header lane is wired on HTTP `/v1/ask` (`SK-LLM-021`), and the account-stored lane (step 2) now resolves on `/v1/ask` via `api_keys` `scope = "byollm"` ([`SK-PREMIUM-012`](../premium-tier/decisions/SK-PREMIUM-012-account-stored-byollm-storage.md)); `GLOBAL-003` surface parity (MCP/SDK/CLI/elements/`/app/keys`) remains pending (tracked in `premium-tier/FEATURE.md` Open questions). `SK-LLM-017` (hosted-premium chain) lands in Phase 2 alongside `quality-eval`; the premium-chain meter stays dark until [`phase-plan.md §6`](../../phase-plan.md) trips.
+**Status:** implemented for the free chain (`SK-LLM-001..015` + `SK-LLM-018` + `SK-LLM-023..025`). BYOLLM (`SK-LLM-016`) is partial — provider factory (`SK-LLM-019`) + lane selector / single-provider lane router (`SK-LLM-020`) ship, the per-request `x-nlq-byollm-key` header lane is wired on HTTP `/v1/ask` (`SK-LLM-021`), and the account-stored lane (step 2) now resolves on `/v1/ask` via `api_keys` `scope = "byollm"` ([`SK-PREMIUM-012`](../premium-tier/decisions/SK-PREMIUM-012-account-stored-byollm-storage.md)); `GLOBAL-003` surface parity (MCP/SDK/CLI/elements/`/app/keys`) remains pending (tracked in `premium-tier/FEATURE.md` Open questions). `SK-LLM-017` (hosted-premium chain) lands in Phase 2 alongside `quality-eval`; the premium-chain meter stays dark until [`phase-plan.md §6`](../../phase-plan.md) trips.
 
 **Contribution to north-star:** Engine quality — the router is the NL→SQL accuracy lever per [`GLOBAL-025`](../../decisions/GLOBAL-025-north-star.md). Free-chain scaffolding compounds when BYOLLM or hosted-premium swaps in a frontier model; `quality-eval`'s free-vs-frontier delta measures the compounding.
 
@@ -135,6 +135,28 @@ OpenRouter pins `plan` + `schema_infer` to `qwen/qwen3-coder:free`; cheap-tier o
 
 **Body:** [`decisions/SK-LLM-023-cerebras-planner-tier.md`](./decisions/SK-LLM-023-cerebras-planner-tier.md).
 Adds a fifth free provider (`createCerebrasProvider`, OpenAI-compatible, `CEREBRAS_API_KEY`) leading the `plan` / `schema_infer` chain with OpenAI `gpt-oss-120b` (model id verified live): `[cerebras, gemini, groq, workers-ai, openrouter]`. Extends — does not supersede — [`SK-LLM-003`](#sk-llm-003). Motivated by the 31.8% free-chain BIRD baseline that blocks the `GLOBAL-027` gate (and every top-5 ICP flow); the eval free lane carries the identical chain so the cron measures the delta. Routed direct (gatewaying is a follow-up); a 429 from the free-tier per-minute quota fails over to Gemini.
+
+### SK-LLM-024 — Deterministic greedy decoding (temperature 0) across the whole free planner chain
+
+**Body:** [`decisions/SK-LLM-024-greedy-decoding-parity.md`](./decisions/SK-LLM-024-greedy-decoding-parity.md).
+Every free `plan` / `schema_infer` leg decodes greedily at
+`temperature: 0`. Cerebras / Groq / OpenRouter / Gemini already pin it;
+this brings the Workers AI leg into parity (its native `/ai/run` body
+had inherited Cloudflare's stochastic 0.6 default). Greedy decoding is
+the single-pass text-to-SQL EX standard and makes the weekly baseline
+reproducible for the [`SK-QUAL-006`](../quality-eval/FEATURE.md#sk-qual-006)
+McNemar paired test. One line + one test; no new config surface.
+
+### SK-LLM-025 — Recover the JSON object from reasoning-model preamble leaks before failing the parse
+
+**Body:** [`decisions/SK-LLM-025-json-recovery-fallback.md`](./decisions/SK-LLM-025-json-recovery-fallback.md).
+`parseJsonResponse` gains a string-aware balanced-`{…}` recovery
+fallback that runs only after strict `JSON.parse` throws — targeting the
+reasoning head ([`SK-LLM-023`](#sk-llm-023) `gpt-oss-120b`) leaking
+preamble text into structured output (Groq / OpenAI `gpt-oss` reports,
+2026-06). Strictly additive: it converts current `parse` → `no_sql`
+losses into matches on every leg and every dataset, and can't regress
+the happy path.
 
 ## GLOBALs governing this feature
 

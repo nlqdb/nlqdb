@@ -55,6 +55,22 @@ describe("createWorkersAIProvider", () => {
     expect(res.summary).toBe("the answer");
   });
 
+  it("sends temperature 0 for greedy decoding parity with the rest of the chain (SK-LLM-024)", async () => {
+    const provider = createWorkersAIProvider({ accountId, apiToken });
+    let body: { temperature?: number } = {};
+    const fetch = mockFetch([
+      {
+        match: /api\.cloudflare\.com/,
+        respond: async (req) => {
+          body = (await req.clone().json()) as { temperature?: number };
+          return workersAIResponse(JSON.stringify({ sql: "SELECT 1" }));
+        },
+      },
+    ]);
+    await provider.plan({ goal: "g", schema: "s", dialect: "postgres" }, { fetch });
+    expect(body.temperature).toBe(0);
+  });
+
   it("model() returns the @cf/-prefixed model id", () => {
     const provider = createWorkersAIProvider({ accountId, apiToken });
     expect(provider.model("route")).toBe("@cf/meta/llama-3.1-8b-instruct");

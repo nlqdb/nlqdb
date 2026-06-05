@@ -17,8 +17,42 @@ export function parseJsonResponse<T>(raw: string): T {
   try {
     return JSON.parse(stripped) as T;
   } catch {
+    // SK-LLM-025 — reasoning models at the chain head (gpt-oss-120b)
+    // leak preamble/think-text around the JSON even under
+    // response_format, so recover the first balanced object before
+    // giving up. Strictly additive: it only runs after strict parse
+    // already threw, so it can't regress the happy path.
+    const recovered = firstBalancedObject(stripped);
+    if (recovered) {
+      try {
+        return JSON.parse(recovered) as T;
+      } catch {
+        // fall through — recovered span wasn't valid JSON either.
+      }
+    }
     throw new ProviderError(`response not parseable JSON: ${truncate(raw, 200)}`, "parse");
   }
+}
+
+// Return the first brace-balanced `{…}` span, or null. String-aware so
+// braces inside string literals don't unbalance the scan.
+function firstBalancedObject(s: string): string | null {
+  const start = s.indexOf("{");
+  if (start === -1) return null;
+  let depth = 0;
+  let inString = false;
+  let escaped = false;
+  for (let i = start; i < s.length; i++) {
+    const ch = s[i];
+    if (inString) {
+      if (escaped) escaped = false;
+      else if (ch === "\\") escaped = true;
+      else if (ch === '"') inString = false;
+    } else if (ch === '"') inString = true;
+    else if (ch === "{") depth++;
+    else if (ch === "}" && --depth === 0) return s.slice(start, i + 1);
+  }
+  return null;
 }
 
 // Cap strings before they end up in error messages or logs. Keeps
