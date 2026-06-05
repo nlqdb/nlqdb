@@ -40,9 +40,11 @@ tests:
 
   - name: "#trace-shows-sql"
     case: |
-      Navigate to "/app". Call browser_snapshot and check for "?db="
-      in the URL. If "?db=" is not in the URL, TEST_FAILED —
-      a signed-in session with a database is required.
+      Navigate to "/app". The app auto-pins the newest database on load,
+      adding "?db=" to the URL within a few seconds. Poll: call
+      browser_snapshot, and if "?db=" is not yet in the URL wait 3 seconds
+      and snapshot again, up to 5 times. If "?db=" is still absent after 5
+      polls, TEST_FAILED — a signed-in session with a database is required.
       Find the chat textarea (placeholder "Ask about your data…") in
       the snapshot. IMMEDIATELY click it (do NOT call any other tool
       between the snapshot and the click — refs go stale on re-render).
@@ -57,8 +59,11 @@ tests:
 
   - name: "#submit-prefilled-row"
     case: |
-      Navigate to "/app". Call browser_snapshot and check the "Page URL:"
-      line. If "?db=" is NOT in the URL, TEST_FAILED — no active database.
+      Navigate to "/app". The app auto-pins the newest database on load,
+      adding "?db=" to the URL within a few seconds. Poll: call
+      browser_snapshot, and if "?db=" is not yet in the URL wait 3 seconds
+      and snapshot again, up to 5 times. If "?db=" is still absent after 5
+      polls, TEST_FAILED — no active database.
       Find the chat textarea (placeholder "Ask about your data…") in the
       snapshot and note its ref. IMMEDIATELY call browser_click with that ref
       (do NOT call any other tool first — refs go stale on re-render).
@@ -81,8 +86,11 @@ tests:
   - name: "#read-shows-informative-data"
     case: |
       The previous test inserted Alice into the users table. Navigate
-      to "/app". Call browser_snapshot and verify "?db=" is in the URL.
-      If "?db=" is not in the URL, TEST_FAILED — no active database.
+      to "/app". The app auto-pins the newest database on load, adding
+      "?db=" to the URL within a few seconds. Poll: call browser_snapshot,
+      and if "?db=" is not yet in the URL wait 3 seconds and snapshot again,
+      up to 5 times. If "?db=" is still absent after 5 polls, TEST_FAILED —
+      no active database.
       Call browser_snapshot to get the current page state. Find
         textbox "Ask about your data…"
       and note its ref. IMMEDIATELY call browser_click with that ref
@@ -150,9 +158,12 @@ tests:
   - name: "#cmdk-palette-discoverable"
     case: |
       Navigate to "/app". Call browser_snapshot to confirm the URL
-      contains "/app". Press Escape once to make sure no textarea or
+      contains "/app". Wait 3 seconds for the app shell to finish loading
+      (the Cmd+K handler mounts with the chat shell), then call
+      browser_snapshot again. Press Escape once to make sure no textarea or
       dialog is focused (do NOT navigate away). Then press Ctrl+K
-      (Cmd+K on Mac). Verify a modal appears with placeholder
+      (Cmd+K on Mac). If no modal appears within 2 seconds, press Ctrl+K
+      once more. Verify a modal appears with placeholder
       "Type a command…" and action labels including at least two of
       "New database", "Copy embed snippet", "API keys", "Sign out".
       Press Escape and verify the modal closes.
