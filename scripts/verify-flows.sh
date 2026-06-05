@@ -266,6 +266,38 @@ if (( ${#BASE_BUNDLE_SRCS[@]} > 0 )); then
   fi
 fi
 
+# --- Invite-valve CORS preflight (SK-GATE-007) --------------------------
+
+# The browser forwards the invite as `X-Invite-Code` on the cross-origin
+# `/v1/ask` POST (apps/web/src/lib/api.ts). A custom request header makes
+# the browser issue a CORS preflight; if the API's `Access-Control-Allow-
+# Headers` omits `x-invite-code` the real fetch is aborted and every
+# invited stranger silently 403s — a browser-only failure curl walkers
+# miss because curl never preflights (this guard closes that gap). Skipped
+# when web + API share an origin (preview/localhost: no preflight at all).
+API_URL="${NLQDB_API_URL:-https://app.nlqdb.com}"
+WEB_ORIGIN="${BASE_URL%/}"
+say "Invite-valve CORS preflight — /v1/ask must allow X-Invite-Code (SK-GATE-007)"
+if [[ "$API_URL" == "$WEB_ORIGIN" ]]; then
+  note "web + API share origin ($WEB_ORIGIN) — browser issues no preflight; check skipped"
+else
+  cors_hdrs="$(mktemp -t nlqdb-verify-cors.XXXXXX)"
+  cors_status=$(curl -sS -m "$TIMEOUT_S" -D "$cors_hdrs" -o /dev/null -X OPTIONS "$API_URL/v1/ask" \
+    -H "Origin: $WEB_ORIGIN" \
+    -H "Access-Control-Request-Method: POST" \
+    -H "Access-Control-Request-Headers: content-type,x-invite-code" \
+    -w '%{http_code}' 2>/dev/null || true)
+  allow_hdrs="$(grep -i '^access-control-allow-headers:' "$cors_hdrs" | tr '[:upper:]' '[:lower:]' || true)"
+  rm -f "$cors_hdrs"
+  if [[ "$cors_status" != "204" && "$cors_status" != "200" ]]; then
+    fail "invite-valve preflight" "OPTIONS $API_URL/v1/ask from $WEB_ORIGIN (HTTP $cors_status)"
+  elif [[ "$allow_hdrs" == *x-invite-code* ]]; then
+    ok "preflight allows x-invite-code (invited-browser first-value path open)"
+  else
+    fail "invite-valve preflight" "Access-Control-Allow-Headers omits x-invite-code — invited browser /v1/ask aborts"
+  fi
+fi
+
 # --- FLOW-005 — MCP discovery (precondition of walkthrough step 1) -------
 
 # The MCP server uses OAuth (RFC 9728 protected-resource + RFC 8414

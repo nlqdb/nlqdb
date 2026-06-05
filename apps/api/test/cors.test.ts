@@ -52,4 +52,16 @@ describe("/v1/ask CORS preflight", () => {
     const res = await preflight("https://random.example", "content-type");
     expect(res.headers.get("access-control-allow-origin")).toBeNull();
   });
+
+  // Regression pin (SK-GATE-007): the browser client (apps/web/src/lib/api.ts)
+  // forwards `x-invite-code` cross-origin on `/v1/ask`. If it's dropped from
+  // `allowHeaders` the preflight aborts and the invited-stranger first-value
+  // path silently 403s — invisible to curl walkers, which don't preflight.
+  it("allows every header the web client sends from a trusted origin", async () => {
+    const res = await preflight("https://nlqdb.com", "content-type, authorization, x-invite-code");
+    const allowed = (res.headers.get("access-control-allow-headers") ?? "").toLowerCase();
+    for (const h of ["content-type", "authorization", "cf-turnstile-response", "x-invite-code"]) {
+      expect(allowed).toContain(h);
+    }
+  });
 });
