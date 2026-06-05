@@ -46,10 +46,16 @@ on the entire inbound funnel — moving it is moving acquisition, and the
 
 **BIRD baseline failure breakdown** (the 500-question run, for targeting):
 match 159 · **mismatch 283** · **no_sql 51** · exec_error 7 · gold_error 0.
-The 51 `no_sql` (10.2%) are questions where the planner emitted no
-parseable SQL JSON at all — a pure instruction-following loss a stronger
-planner recovers cheaply; the 283 mismatches are the real SQL-reasoning
-gap.
+**All 51** `no_sql` (10.2%) carry the error `llm.plan: all providers in
+chain failed` — 33× (`gemini:circuit_open, groq:circuit_open…`), 17×
+(`gemini:circuit_open, groq:http_4xx…`), 1× (`gemini:network…`), counted
+across `baseline-2026-06-15.json` `results[]`. They are a **free-tier
+capacity / rate-limit exhaustion** loss — the circuit breaker
+(`SK-LLM-005`) opened on the planner head and the chain ran out of
+fallbacks — **not** an instruction-following loss. A stronger *head*
+model (T1) only clears these when it has spare per-minute quota at that
+instant; the direct lever for them is more independent free capacity (§4
+item 4). The 283 mismatches are the separate SQL-reasoning gap.
 
 > **How these numbers are produced.** `tools/eval/src/runner.ts` drives
 > `packages/llm/src/router.ts::plan()` over each dataset, executes the
@@ -99,11 +105,21 @@ implementing (`CLAUDE.md` §P4).
    Dominated at 2× cost on *frontier* (`SK-QUAL-004` open question) but
    **on the free chain the tokens are free** — worth an explicit
    measured ablation before dismissing.
-4. **Diversify free planner providers as failover quality, not just
-   capacity.** `MISTRAL_API_KEY`, `NVIDIA_API_KEY` (build.nvidia.com),
-   `COHERE_TRIAL_API_KEY` are all card-free and present in the eval/CI
-   env but unused. Candidate failover entries behind Cerebras if its
-   measured delta disappoints (`SK-LLM-023` alternatives).
+4. **Capacity backstop for the 10.2% chain-exhaustion `no_sql`.** §2
+   re-verifies that **all 51** `no_sql` are `all providers in chain failed`
+   (not reasoning losses), so a stronger planner *head* (T1) does not by
+   itself clear them — and a low-RPM head (Cerebras free tier is ~5 RPM /
+   30K TPM, verified against Cerebras docs 2026-06) can even *raise*
+   chain-exhaustion under load (measure on the next cron, §5). The direct
+   lever is more independent free capacity: `MISTRAL_API_KEY`,
+   `NVIDIA_API_KEY` (build.nvidia.com) are card-free, present in the
+   eval/CI env, and unused (`COHERE_TRIAL_API_KEY` is a time-boxed *trial*
+   → fails `GLOBAL-013`). **Open decision (not yet taken):** `SK-LLM-023`
+   rejected a capacity backstop on the rationale that "the free chain
+   rarely fully fails"; the baseline's 10.2% full-chain-failure rate
+   contradicts that, so whether to add a tail backstop / extra failover
+   entry is a live `SK-LLM-*` decision to raise with the owner before
+   implementing (`CLAUDE.md` §P1).
 5. **Corrected-set evaluation (BIRD Mini-Dev 52.8% annotation errors).**
    Score against the UIUC `Arcwise-Plat-SQL`/`-Plat` corrected variants
    and report Spearman rank-correlation vs canonical (not McNemar —
@@ -132,6 +148,12 @@ implementing (`CLAUDE.md` §P4).
   or neither.
 - **PR CI firing real keys.** Real provider calls on a PR leak the
   card-free budget and make CI flaky (`SK-QUAL-002`). Keep it mocked.
+- **A low-RPM provider at the chain *head* can starve capacity.** The
+  Cerebras free tier is ~5 RPM / 30K TPM (verified against Cerebras docs,
+  2026-06); leading the planner with it (T1) must be checked on the next
+  cron for whether it *raises* the §2 chain-exhaustion `no_sql` rate, not
+  only whether it lifts EX — a head that 429s before its fallbacks
+  recover trades reasoning gain for availability loss.
 
 ## 6. Verification log
 
@@ -139,7 +161,8 @@ implementing (`CLAUDE.md` §P4).
 |---|---|---|
 | 2026-05-18 | Free-chain BIRD baseline = 0.318 (159/500) | `baseline-2026-06-15.json` |
 | 2026-06-04 | All 5 ICP flows verified reaching gate-403 (engine bottleneck) | `automated-icp-validation-plan.md` §0.5 table |
-| 2026-06-04 | **T1 shipped** — Cerebras planner lane (`SK-LLM-023`); awaiting first cron to measure delta vs 0.318 | this PR |
+| 2026-06-04 | **T1 shipped** — Cerebras planner lane (`SK-LLM-023`); awaiting first cron to measure delta vs 0.318 | #317 |
+| 2026-06-05 | **Correction (evidence-based):** all 51 baseline `no_sql` re-verified as chain-exhaustion (`all providers in chain failed`; 33 + 17 + 1 by breaker reason), **not** instruction-following losses — §2 + §4 + §5 updated; capacity-backstop framed as an open decision against `SK-LLM-023`'s "rarely fully fails" rationale | `baseline-2026-06-15.json` `results[]` (script-counted) |
 
 > **Next measurement that moves this bar:** the first
 > `quality-eval-bird-mini.yml` cron after T1 lands. It must run with the
