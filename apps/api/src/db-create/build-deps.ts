@@ -20,7 +20,7 @@
 // Owner of `@neondatabase/serverless` remains `packages/db/`; this
 // import is the documented one-file carve-out.
 import { neon } from "@neondatabase/serverless";
-import { mintPkLiveKey } from "../api-keys.ts";
+import { apiKeyHmacSecret, mintPkLiveKey } from "../api-keys.ts";
 import { makeRecentTablesStore } from "../ask/recent-tables.ts";
 import { validateCompiledDdl } from "../ask/sql-validate-ddl.ts";
 import { getLLMRouter } from "../llm-router.ts";
@@ -104,7 +104,7 @@ export function buildDbCreateDeps(
       recentTables: makeRecentTablesStore(envBindings.KV),
       // SK-APIKEYS-001: mint pk_live_ key for the newly-provisioned DB.
       mintPkLive: (dbId, tenantId) =>
-        mintPkLiveKey(envBindings.DB, envBindings.BETTER_AUTH_SECRET, dbId, tenantId),
+        mintPkLiveKey(envBindings.DB, apiKeyHmacSecret(envBindings), dbId, tenantId),
       // SK-HDC-013: off-critical-path tail steps. Optional — omit in
       // tests / scheduled-handler callers that don't need to defer.
       ...(waitUntil !== undefined ? { waitUntil } : {}),

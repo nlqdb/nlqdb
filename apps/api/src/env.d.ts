@@ -25,6 +25,14 @@ declare global {
 
       BETTER_AUTH_SECRET: string;
 
+      // Dedicated HMAC secret for API-key hashing (SK-APIKEYS-014).
+      // Optional: `apiKeyHmacSecret()` falls back to BETTER_AUTH_SECRET
+      // when unset, so dev / test / un-migrated deploys keep working
+      // unchanged. Set it (to the current BETTER_AUTH_SECRET value, for a
+      // zero-rehash migration) to decouple key-hash HMAC from
+      // session-signing HMAC — then either secret rotates independently.
+      API_KEY_SECRET?: string;
+
       OAUTH_GITHUB_CLIENT_ID: string;
       OAUTH_GITHUB_CLIENT_SECRET: string;
       OAUTH_GITHUB_CLIENT_ID_DEV: string;

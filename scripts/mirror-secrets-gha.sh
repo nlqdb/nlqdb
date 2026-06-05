@@ -25,6 +25,11 @@
 # minted on one don't verify on the other (the OAuth-init outage on
 # 2026-05-08 traced back to this missing on prod). `.envrc` stays the
 # single source of truth; this script keeps GHA + Worker in sync.
+# `API_KEY_SECRET` (SK-APIKEYS-014) is the dedicated API-key HMAC secret.
+# It is seeded to the BETTER_AUTH_SECRET value (zero-rehash migration);
+# the deploy workflow pushes it to the prod Worker the same way. Once set
+# it must stay constant or every minted key-hash stops verifying — rotate
+# it deliberately, independently of BETTER_AUTH_SECRET.
 # `INTERNAL_JWT_SECRET` is scaffolded in `.envrc` per `SK-AUTH-005`
 # but not yet read at runtime — promote to the SECRETS array below
 # once the edge starts minting internal JWTs.
@@ -75,6 +80,7 @@ gh_cli repo view "$REPO" >/dev/null 2>&1 || {
 # .env.example simultaneously; CI references must use these exact names.
 SECRETS=(
   BETTER_AUTH_SECRET
+  API_KEY_SECRET
   CLOUDFLARE_ACCOUNT_ID
   CLOUDFLARE_API_TOKEN
   CF_AI_TOKEN

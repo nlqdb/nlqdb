@@ -29,6 +29,7 @@ import { makeGlobalAnonLimiter } from "./anon-global-cap.ts";
 import { makeAnonRateLimiter } from "./anon-rate-limit.ts";
 import { buildSetCookie, signAnonStash } from "./anon-stash.ts";
 import {
+  apiKeyHmacSecret,
   bumpKeyLastUsed as bumpKeyLastUsedImpl,
   getKeyStatusByHash,
   hmacHex,
@@ -253,8 +254,8 @@ const requireSession = makeRequireSession(sessionResolver);
 // SK-APIKEYS-001, SK-MCP-010 slice 1).
 const requirePrincipal = makeRequirePrincipal({
   ...sessionResolver,
-  lookupPkLiveKey: (key) => lookupPkLiveKeyImpl(env.DB, env.BETTER_AUTH_SECRET, key),
-  lookupSkKey: (key) => lookupSkKeyImpl(env.DB, env.BETTER_AUTH_SECRET, key),
+  lookupPkLiveKey: (key) => lookupPkLiveKeyImpl(env.DB, apiKeyHmacSecret(env), key),
+  lookupSkKey: (key) => lookupSkKeyImpl(env.DB, apiKeyHmacSecret(env), key),
   bumpKeyLastUsed: (keyId) => bumpKeyLastUsedImpl(env.DB, keyId),
 });
 
@@ -1767,7 +1768,7 @@ app.post("/v1/keys", requireSession, async (c) => {
         const name = trimmedName.length > 0 ? trimmedName : null;
         const { id, plaintext } = await mintSkLiveKey(
           c.env.DB,
-          c.env.BETTER_AUTH_SECRET,
+          apiKeyHmacSecret(c.env),
           session.user.id,
           name,
         );
@@ -1798,7 +1799,7 @@ app.post("/v1/keys", requireSession, async (c) => {
       }
       const { id, plaintext } = await mintSkMcpKey(
         c.env.DB,
-        c.env.BETTER_AUTH_SECRET,
+        apiKeyHmacSecret(c.env),
         session.user.id,
         host,
         device,
@@ -2048,12 +2049,12 @@ app.post("/v1/oauth/mcp-callback", requireSession, async (c) => {
         mintKey: async (ctx, userId, mcpHost, deviceId) => {
           const { plaintext } = await mintSkMcpKey(
             ctx.env.DB,
-            ctx.env.BETTER_AUTH_SECRET,
+            apiKeyHmacSecret(ctx.env),
             userId,
             mcpHost,
             deviceId,
           );
-          const hash = await hmacHex(ctx.env.BETTER_AUTH_SECRET, plaintext);
+          const hash = await hmacHex(apiKeyHmacSecret(ctx.env), plaintext);
           return { plaintext, hash };
         },
         setOutcome: (_ctx, outcome) =>
