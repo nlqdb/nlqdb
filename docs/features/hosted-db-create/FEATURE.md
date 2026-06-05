@@ -196,10 +196,10 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 
 ## Open questions / known unknowns
 
-- **Classifier accuracy on ambiguous goals** — "show me last week's signups for my coffee shop" could be `kind=create` (no db yet) or `kind=query` (db exists). Resolution is per-surface (SK-HDC-005), but the classifier's confidence threshold for routing to create vs prompting for clarification isn't yet tuned. Open: do we pick a single threshold, or tier it per-surface?
+- **Classifier confidence threshold — Resolved** (`GLOBAL-033`): one env-tunable threshold gates create-vs-clarify (mirrors `SK-LLM-022`'s `0.75`); the *response* to a low-confidence goal stays per-surface (`SK-HDC-005`). One knob, per-surface routing — not a threshold per surface.
 - **`SchemaPlan` type-system breadth** — Phase 1 ships `text / int / numeric / timestamptz / uuid / boolean / jsonb`. Open: when does `enum` (Postgres native) land — Phase 1 or Phase 2? `enum` interacts with `SK-DB-008` (schemas only widen) because adding an enum value is `ALTER TYPE`, not `ADD COLUMN`.
-- **Multi-statement transactional boundary** — `BEGIN; CREATE SCHEMA; CREATE TABLEs; INSERT samples; INSERT INTO databases; pgvector cards; COMMIT;` is the happy path. Open: if pgvector embedding fails (Workers AI rate limit) after the schema is created, do we ROLLBACK the whole thing or COMMIT and queue the embed? The latter leaks an un-embedded db; the former wastes a successful schema create. Cross-link to `events-pipeline` for the queue option.
-- **Phase 4 BYO connect introspection cost** — `pg_catalog` reads + LLM-written table-card descriptions on first connect. Open: do we charge for the connect-time embedding work against the user's free-tier credits, or absorb it as onboarding cost? Cross-link to `llm-router` SK-LLM-* (credit accounting).
+- **Multi-statement transactional boundary — Resolved** (`GLOBAL-033`, goal-first): schema + sample rows + `databases` row commit atomically; pgvector embedding is decoupled — best-effort, idempotent, retried (`events-pipeline`), never rolling back a provision. A Workers-AI rate-limit can't cost the user their DB; an un-embedded DB degrades semantic search until retry, not data loss.
+- **Phase 4 BYO connect introspection cost — Resolved** (`GLOBAL-033` → `GLOBAL-026` free chain): **absorb** the one-time connect-time `pg_catalog` read + table-card embedding as onboarding cost; never bill the first connect against free-tier credits. Gating first value behind cost is the one thing the free chain forbids.
 
 ## Semantic layer — Phase 2 design
 
