@@ -69,12 +69,17 @@ item 4). The 283 mismatches are the separate SQL-reasoning gap.
 
 ## 3. What we have tried (with how, and how much)
 
-Ordered newest first. "How much" = the measured or evidence-based size
-of the lever; **measured** numbers come from the harness, **est.** from
-the cited paper/ablation.
+Rows run reverse-chronological (newest first): **T7/T8 (this PR) → T1
+(Cerebras head) → T2…T6**. The `#` is a stable row id (assigned in order
+added), **not** a rank — read recency from the row order and the
+"Canonical home / status" column, not from the number. "How much" = the
+measured or evidence-based size of the lever; **measured** numbers come
+from the harness, **est.** from the cited paper/ablation.
 
 | # | Lever | How exactly | How much | Canonical home / status |
 |---|---|---|---|---|
+| T7 | **JSON-recovery fallback for reasoning-head preamble leaks** | `parseJsonResponse` extracts the first brace-balanced `{…}` (string-aware) when strict parse throws; runs only after the strict path fails | **est. small but every-leg** — recovers `parse`→`no_sql` losses caused by the `gpt-oss-120b` reasoning head leaking preamble text into structured output (Groq/OpenAI `gpt-oss` reports, 2026-06); forward-looking for the new head, strictly additive (can't regress the happy path) | [`SK-LLM-025`](../features/llm-router/decisions/SK-LLM-025-json-recovery-fallback.md) — shipped (this PR), **awaiting first cron** |
+| T8 | **Greedy decoding parity (temperature 0) on the Workers AI leg** | `workers-ai.ts` body `{ messages }` → `{ messages, temperature: 0 }`, matching Cerebras/Gemini/Groq/OpenRouter (Workers AI default is a stochastic 0.6) | **reproducibility-positive; small, unmeasured EX** on the 4th-in-chain leg — greedy is the single-pass text-to-SQL EX standard, and a deterministic leg keeps the `SK-QUAL-006` McNemar baseline clean | [`SK-LLM-024`](../features/llm-router/decisions/SK-LLM-024-greedy-decoding-parity.md) — shipped (this PR) |
 | T1 | **Cerebras (gpt-oss-120b) leads the planner tier** | New free provider `createCerebrasProvider`; `plan`/`schema_infer` chain → `[cerebras, gemini, groq, workers-ai, openrouter]`, identical in eval + prod | **est. large, pending measure** — frontier-class open reasoning model (≈ o4-mini), card-free, replaces Gemini-Flash as primary planner; next cron produces the delta vs 0.318 | [`SK-LLM-023`](../features/llm-router/decisions/SK-LLM-023-cerebras-planner-tier.md) — shipped, **awaiting first cron** |
 | T2 | **Agentic exec-retry scaffold** | `withExecRetry` wraps `plan()→score()`, bounded 3 attempts, exec-error-only, threads `previousAttempt` | **est. +4.6 pp** (MAC-SQL Refiner BIRD-dev ablation, arXiv:2312.11242) | [`SK-QUAL-009`](../features/quality-eval/FEATURE.md) — shipped on `free` + `agentic-frontier` lanes |
 | T3 | **Schema-fidelity planner prompt** | `PLAN_SYSTEM` directives: schema-link only literal tables/cols, verbatim casing, dialect-strict, use BIRD `Evidence:` | **est. +3–5 pp** on small models (DIN/C3/DAIL-SQL) | [`SK-LLM-018`](../features/llm-router/decisions/SK-LLM-018-schema-fidelity-prompt.md) — shipped |
@@ -154,6 +159,13 @@ implementing (`CLAUDE.md` §P4).
   cron for whether it *raises* the §2 chain-exhaustion `no_sql` rate, not
   only whether it lifts EX — a head that 429s before its fallbacks
   recover trades reasoning gain for availability loss.
+- **A non-deterministic free-chain leg.** Greedy `temperature: 0` on
+  every planner leg (T8 / `SK-LLM-024`) is a reproducibility invariant:
+  a stochastic leg flips per-question outcomes run-to-run, inflating the
+  `SK-QUAL-006` McNemar discordant cells and making the cron measure a
+  system that varies between runs. Don't reintroduce sampling on the
+  single-pass planner (self-consistency-N, §4 #3, samples on a *separate*
+  code path if it ever lands).
 
 ## 6. Verification log
 
@@ -163,11 +175,16 @@ implementing (`CLAUDE.md` §P4).
 | 2026-06-04 | All 5 ICP flows verified reaching gate-403 (engine bottleneck) | `automated-icp-validation-plan.md` §0.5 table |
 | 2026-06-04 | **T1 shipped** — Cerebras planner lane (`SK-LLM-023`); awaiting first cron to measure delta vs 0.318 | #317 |
 | 2026-06-05 | **Correction (evidence-based):** all 51 baseline `no_sql` re-verified as chain-exhaustion (`all providers in chain failed`; 33 + 17 + 1 by breaker reason), **not** instruction-following losses — §2 + §4 + §5 updated; capacity-backstop framed as an open decision against `SK-LLM-023`'s "rarely fully fails" rationale | `baseline-2026-06-15.json` `results[]` (script-counted) |
+| 2026-06-05 | **Free-chain planner robustness shipped (this PR):** greedy-decoding parity on the Workers AI leg (T8 / `SK-LLM-024`) + reasoning-preamble JSON-recovery fallback (T7 / `SK-LLM-025`). Both land before the first post-T1 cron, so that cron measures the combined T1+T7+T8 effect; neither is measured yet | `packages/llm` unit tests green; evidence base in the SK-LLM-024/025 bodies |
 
 > **Next measurement that moves this bar:** the first
-> `quality-eval-bird-mini.yml` cron after T1 lands. It must run with the
-> `CEREBRAS_API_KEY` GitHub Actions secret set (see PR description — a
-> human must add it to repo secrets and the Worker if not already
-> mirrored); without it the chain falls over to the Gemini-first
-> order (eval lane omits Cerebras; prod auth-fails-over) and the bar
-> does not move.
+> `quality-eval-bird-mini.yml` (Mon) + `quality-eval-spider2-lite.yml`
+> (Tue) cron after T1/T7/T8 land — it measures the **combined** effect of
+> the Cerebras head plus this PR's two robustness levers, not T1 alone.
+> Both workflows already wire `CEREBRAS_API_KEY` + the four other
+> card-free free-chain keys (`GEMINI_API_KEY`, `GROQ_API_KEY`,
+> `OPENROUTER_API_KEY`, `CF_AI_TOKEN`/`CLOUDFLARE_ACCOUNT_ID`), and all
+> five are mirrored to GitHub Actions secrets by
+> [`scripts/mirror-secrets-gha.sh`](../../scripts/mirror-secrets-gha.sh)
+> (and verified by `scripts/verify-secrets.sh`), so the cron runs the
+> real Cerebras-led chain unattended — no human step required.

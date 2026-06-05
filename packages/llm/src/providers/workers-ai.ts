@@ -54,7 +54,11 @@ async function workersAIChat(
         "content-type": "application/json",
         authorization: `Bearer ${apiToken}`,
       },
-      body: JSON.stringify({ messages }),
+      // SK-LLM-024 — greedy (temperature 0) decoding parity with the rest
+      // of the free planner chain. Workers AI's default is 0.6 (stochastic);
+      // single-pass text-to-SQL EX is measured under greedy decoding, and a
+      // deterministic leg keeps the weekly baseline reproducible (SK-QUAL-006).
+      body: JSON.stringify({ messages, temperature: 0 }),
       signal: opts.signal,
     });
   } catch (err) {
