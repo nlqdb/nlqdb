@@ -19,17 +19,27 @@ URI, so it gets its own parallel parser"). Seal/open primitive:
   anything `fetch` could not use. Two ClickHouse-specific shapes pin here,
   both following the HTTP interface (the only transport Workers can reach per
   `SK-MULTIENG-005`):
-  - **The native-protocol schemes are rejected with a pointer, not silently
-    dropped.** `clickhouse://` / `clickhousedb://` / `clickhouses://` / `tcp://`
-    are valid ClickHouse URLs that address the TCP interface (ports 9000 /
-    9440) Workers can't open — so the rejection names the scheme and points at
-    the HTTP interface (`http://` :8123 / `https://` :8443), turning a common
+  - **The ClickHouse client DSN schemes are rejected with a pointer, not
+    silently dropped.** `clickhouse://` / `clickhousedb://` / `clickhouses://`
+    / `clickhouse+http://` / `tcp://` are driver / SQLAlchemy connection
+    schemes, not the plain HTTP-interface URL nlqdb `fetch`es (and
+    `clickhouse://` may even mean native TCP on port 9000 in
+    `clickhouse-driver`) — so the rejection names the scheme and points at the
+    HTTP endpoint (`http://` :8123 / `https://` :8443) without asserting a
+    transport that depends on which library produced the URL, turning a common
     mis-paste into an actionable error rather than an opaque connect failure.
   - **The database comes from the `?database=` query param, not the path.**
     The ClickHouse HTTP interface reads the target database from `?database=`
     (and defaults it to `default`), ignoring any path segment — so the parser
     resolves `database` from the query, defaulting to `"default"`, and never
-    reads a path segment as the database the way the libpq parser does.
+    reads a path segment as the database the way the libpq parser does. A
+    **database-bearing path with no `?database=`** (a clickhouse-connect /
+    SQLAlchemy DSN paste like `…/mydb`) is **rejected** rather than adopted:
+    the adapter connects via the sealed *original* URL, where ClickHouse
+    ignores the path and queries `default`, so adopting `mydb` would make
+    introspection and execution silently disagree. A path *with* an explicit
+    `?database=` is kept as a reverse-proxy prefix (the query param is
+    authoritative).
 
   It returns a `redacted` display form, `https://user@host:port/?database=db`,
   **rebuilt from an allowlist of safe parts only** (scheme, user, host:port,
@@ -102,6 +112,13 @@ URI, so it gets its own parallel parser"). Seal/open primitive:
     denylist misses the next secret-bearing key; rebuilding the redacted form
     from an allowlist of safe parts is the only leak-proof rule. The dropped
     settings still apply — they ride the sealed blob.
+  - **Adopt a database-bearing path (`…/mydb`) as the target database.** The
+    adapter connects via the sealed *original* URL, which ClickHouse's HTTP
+    interface evaluates with the path ignored and the database defaulted to
+    `default`; adopting `mydb` into the parsed result would make
+    `system.columns` introspection (which uses the parsed database) disagree
+    with what the queries actually hit. Rejecting loudly is the only honest
+    choice for a pure parser that doesn't also rewrite the connect URL.
   - **Pass the raw URL straight to `fetch` and let it fail.** The error is
     opaque and arrives after a network round trip; a wire-boundary 400 is
     faster and actionable, and a `clickhouse://` paste would fail with no hint

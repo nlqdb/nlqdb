@@ -101,9 +101,10 @@ primitive landed: `packages/db/src/clickhouse-connection-url.ts`
 ([`SK-MULTIENG-006`](./features/multi-engine-adapter/decisions/SK-MULTIENG-006-byo-clickhouse-connection-url.md))
 — `parseClickhouseUrl` validates the HTTP-interface `connection_url` at the
 wire boundary (fail-loud per
-[`GLOBAL-012`](./decisions/GLOBAL-012-one-sentence-errors.md); native-protocol
-`clickhouse://` rejected with a pointer to the HTTP interface) and yields a
-redacted display **rebuilt from an allowlist of safe parts** — so the password
+[`GLOBAL-012`](./decisions/GLOBAL-012-one-sentence-errors.md); a ClickHouse
+client DSN scheme — `clickhouse://` … — or a database-in-the-path paste is
+rejected with a pointer to the plain HTTP endpoint) and yields a redacted
+display **rebuilt from an allowlist of safe parts** — so the password
 (userinfo *or* `?password=` query param per the ClickHouse HTTP docs) and every
 other query setting are structurally absent; the full URL rides the
 `GLOBAL-031` seal. The deliberate ClickHouse parallel of `SK-DB-012` (the

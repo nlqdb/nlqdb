@@ -104,17 +104,22 @@ between managed-Tinybird and BYO at connect time.
 **Body:** [`decisions/SK-MULTIENG-006-byo-clickhouse-connection-url.md`](./decisions/SK-MULTIENG-006-byo-clickhouse-connection-url.md).
 One pure module — `packages/db/src/clickhouse-connection-url.ts` — parses +
 validates a user-supplied ClickHouse HTTP-interface `connection_url` (scheme
-∈ `http:` / `https:`, single host; native-protocol `clickhouse://` rejected
-with a pointer to the HTTP interface; database from `?database=`, default
-`default`) and fails loud per `GLOBAL-012`. The `redacted` form
-(`https://user@host:port/?database=db`) is **rebuilt from an allowlist of
-safe parts**, so the password — which the HTTP interface can carry in the
-userinfo *or* a `?password=` query param — and every other query setting are
+∈ `http:` / `https:`, single host; database from `?database=`, default
+`default`) and fails loud per `GLOBAL-012`. Two ClickHouse-shaped rejections
+keep a mis-paste from connecting wrong: a ClickHouse **client DSN scheme**
+(`clickhouse://` / `clickhousedb://` / `tcp://` …) is rejected with a pointer
+to the plain HTTP endpoint, and a **database-bearing path with no `?database=`**
+(a clickhouse-connect / SQLAlchemy DSN like `…/mydb`) is rejected rather than
+silently connecting to `default`. The `redacted` form
+(`https://user@host:port/?database=db`) is **rebuilt from an allowlist of safe
+parts**, so the password — which the HTTP interface can carry in the userinfo
+*or* a `?password=` query param — and every other query setting are
 structurally absent; the full URL rides the `GLOBAL-031` seal (context
-`dbconn:<dbId>`). The deliberate ClickHouse parallel of `SK-DB-012`
-(`SK-DB-002` parallel-adapter pattern), shipped ahead of its `connect.ts` /
-`introspect-clickhouse.ts` callers like `secret-envelope.ts` was; internal
-primitive, so no `GLOBAL-003` obligation of its own.
+`dbconn:<dbId>`). The deliberate ClickHouse parallel of `SK-DB-012` (the
+`SK-DB-002` parallel-adapter pattern), shipped ahead of its `connect.ts` /
+`introspect-clickhouse.ts` callers as `secret-envelope.ts` and the Postgres
+`connection-url.ts` were before it; internal primitive, so no `GLOBAL-003`
+obligation of its own.
 
 ## GLOBALs governing this feature
 

@@ -88,6 +88,14 @@ describe("parseClickhouseUrl — accepts valid ClickHouse HTTP URLs", () => {
     expect(result.parsed.redacted).toBe("http://u@[::1]:8123/?database=db");
   });
 
+  it("keeps a reverse-proxy path prefix when the database is explicit in the query", () => {
+    const result = parseClickhouseUrl("https://host:8443/clickhouse/?database=events");
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.parsed.database).toBe("events");
+    expect(result.parsed.redacted).toBe("https://host:8443/clickhouse/?database=events");
+  });
+
   it("trims surrounding whitespace", () => {
     expect(parseClickhouseUrl("  https://host:8443/?database=db  ").ok).toBe(true);
   });
@@ -110,13 +118,30 @@ describe("parseClickhouseUrl — rejects unusable input (GLOBAL-012)", () => {
     expect(result.message).toMatch(/malformed/i);
   });
 
-  it("rejects the native TCP protocol scheme and points at the HTTP interface", () => {
-    const result = parseClickhouseUrl("clickhouse://u:p@host:9440/db");
+  it("rejects ClickHouse client DSN schemes and points at the plain HTTP endpoint", () => {
+    for (const raw of [
+      "clickhouse://u:p@host:9440/db",
+      "clickhousedb://u:p@host:8443/db",
+      "clickhouses://u:p@host/db",
+      "clickhouse+http://u:p@host:8123/db",
+    ]) {
+      const result = parseClickhouseUrl(raw);
+      expect(result.ok).toBe(false);
+      if (result.ok) continue;
+      expect(result.message).toMatch(/DSN/);
+      expect(result.message).toMatch(/http:\/\//);
+      expect(result.message).toMatch(/8123|8443/);
+      expect(result.message).not.toContain("p@"); // never echoes the credential
+    }
+  });
+
+  it("rejects a database-bearing path with no ?database= (DSN paste) without echoing the secret", () => {
+    const result = parseClickhouseUrl("https://reader:supersecret@host:8443/mydb");
     expect(result.ok).toBe(false);
     if (result.ok) return;
-    expect(result.message).toContain("clickhouse");
-    expect(result.message).toMatch(/HTTP interface/i);
-    expect(result.message).toMatch(/8123|8443/);
+    expect(result.message).toMatch(/path/i);
+    expect(result.message).toMatch(/query param|database=/i);
+    expect(result.message).not.toContain("supersecret");
   });
 
   it("rejects an unrelated scheme and names it", () => {

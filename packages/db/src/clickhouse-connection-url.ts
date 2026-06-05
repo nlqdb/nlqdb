@@ -14,9 +14,15 @@
 //   - validate at the wire boundary and fail loud with a one-sentence next
 //     action (`GLOBAL-012`) before the URL is handed to `fetch` or sealed
 //     (`GLOBAL-031`) — a clear 400 beats an opaque connect-time error;
-//   - reject the native-protocol schemes (`clickhouse:` / `tcp:`): Workers
-//     can only reach the HTTP interface, so a `clickhouse://` paste is an
-//     actionable mistake, not a transport we silently drop;
+//   - reject the ClickHouse client DSN schemes (`clickhouse:` /
+//     `clickhousedb:` / `tcp:` / `clickhouse+http:` …) with a pointer to the
+//     plain HTTP endpoint: those are driver / SQLAlchemy connection schemes,
+//     not the HTTP-interface URL nlqdb fetches, so the paste is an actionable
+//     mistake rather than a transport we silently accept;
+//   - reject a database-bearing path with no `?database=` (a clickhouse-connect
+//     / SQLAlchemy DSN paste like `…/mydb`): the HTTP interface reads the
+//     database from `?database=` and ignores the path, so adopting it would
+//     query a database the sealed URL never selects — fail loud instead;
 //   - the redacted display form is rebuilt from an allowlist of safe parts
 //     (scheme, user, host:port, database) only — never copied through — so
 //     the password (carried in the userinfo *and*/or the `?password=` query
@@ -30,10 +36,20 @@
 
 const CLICKHOUSE_SCHEMES = new Set(["http:", "https:"]);
 
-// ClickHouse's native-protocol schemes — valid ClickHouse URLs, but they
-// address the TCP interface (ports 9000 / 9440) which Workers can't open
-// (`SK-MULTIENG-005`). Named so the rejection can point at the fix.
-const NATIVE_PROTOCOL_SCHEMES = new Set(["clickhouse:", "clickhousedb:", "clickhouses:", "tcp:"]);
+// ClickHouse client DSN schemes (driver / SQLAlchemy). They're valid for a
+// ClickHouse client library but aren't the plain HTTP endpoint nlqdb fetches —
+// `clickhouse://` may even mean native TCP (port 9000) in `clickhouse-driver`,
+// while `clickhousedb://` / `clickhouse+http://` are the SQLAlchemy HTTP
+// dialect. Named so the rejection can point at the fix without asserting a
+// transport that depends on which library produced the URL.
+const CLICKHOUSE_CLIENT_SCHEMES = new Set([
+  "clickhouse:",
+  "clickhousedb:",
+  "clickhouses:",
+  "clickhouse+http:",
+  "clickhouse+https:",
+  "tcp:",
+]);
 
 const SHAPE_HINT = "https://user:password@host:8443/?database=name";
 
@@ -99,10 +115,10 @@ export function parseClickhouseUrl(raw: string): ParseClickhouseUrlResult {
   if (!CLICKHOUSE_SCHEMES.has(url.protocol)) {
     // `url.protocol` is normalised and credential-free, so echoing it is safe.
     const scheme = url.protocol.replace(/:$/, "");
-    if (NATIVE_PROTOCOL_SCHEMES.has(url.protocol)) {
+    if (CLICKHOUSE_CLIENT_SCHEMES.has(url.protocol)) {
       return {
         ok: false,
-        message: `Connection URL scheme "${scheme}" is the native TCP protocol, which isn't reachable here; use the HTTP interface — http:// (port 8123) or https:// (port 8443).`,
+        message: `Connection URL scheme "${scheme}" is a ClickHouse client DSN scheme; pass the plain HTTP endpoint — http:// (port 8123) or https:// (port 8443).`,
       };
     }
     return {
@@ -129,6 +145,19 @@ export function parseClickhouseUrl(raw: string): ParseClickhouseUrlResult {
   const dbParam = url.searchParams.get("database");
   const database = dbParam && dbParam !== "" ? dbParam : DEFAULT_DATABASE;
 
+  // A database-bearing path with no `?database=` is a clickhouse-connect /
+  // SQLAlchemy DSN paste (`…/mydb`). ClickHouse's HTTP interface reads the db
+  // from the query param and ignores the path, so the queries would silently
+  // hit `default`, not `mydb` — reject rather than connect to the wrong db. A
+  // path *with* an explicit `?database=` is treated as a reverse-proxy prefix
+  // and kept (the query param is authoritative).
+  if (!dbParam && url.pathname !== "/" && url.pathname !== "") {
+    return {
+      ok: false,
+      message: `Connection URL puts the database in the path; ClickHouse's HTTP interface reads it from a query param, so use ${SHAPE_HINT}.`,
+    };
+  }
+
   // User: prefer the userinfo (URL-encoded, so decode for display), else the
   // `?user=` param (already decoded by `URLSearchParams`). Never the password.
   let user: string | null = null;
@@ -141,11 +170,14 @@ export function parseClickhouseUrl(raw: string): ParseClickhouseUrlResult {
 
   const port = url.port === "" ? null : Number(url.port);
   // Rebuilt from an allowlist — `url.host` is `hostname[:port]`, already
-  // bracketed for IPv6 (`[::1]:8443`) and credential-free. Building the
-  // redacted form from scratch (rather than mutating `url`) guarantees no
-  // unanticipated secret-bearing query param leaks through.
+  // bracketed for IPv6 (`[::1]:8443`) and credential-free; `url.pathname` (a
+  // reverse-proxy prefix, `/` for the common case) is path-only and carries no
+  // credential, so it is preserved. Building the redacted form from scratch
+  // (rather than mutating `url`) guarantees no unanticipated secret-bearing
+  // query param leaks through — the whole query is dropped bar the re-encoded
+  // database.
   const userPart = user ? `${encodeURIComponent(user)}@` : "";
-  const redacted = `${url.protocol}//${userPart}${url.host}/?database=${encodeURIComponent(database)}`;
+  const redacted = `${url.protocol}//${userPart}${url.host}${url.pathname}?database=${encodeURIComponent(database)}`;
 
   return {
     ok: true,
