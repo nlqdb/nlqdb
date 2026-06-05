@@ -163,9 +163,11 @@ the happy path.
 **Body:** [`decisions/SK-LLM-026-static-few-shot-plan-exemplars.md`](./decisions/SK-LLM-026-static-few-shot-plan-exemplars.md).
 `PLAN_SYSTEM` splits into `PLAN_DIRECTIVES` (`SK-LLM-018`) + a new
 exported `PLAN_FEW_SHOT` block of three static, dialect-portable
-Question→strict-JSON exemplars that *demonstrate* the four
-schema-fidelity behaviours (verbatim casing + JOIN, `Evidence:` formula
-application, top-N aggregation). Few-shot Question→SQL pairs are the
+Question→strict-JSON exemplars that, between them, *demonstrate* all four
+`SK-LLM-018` behaviours (verbatim casing + JOIN; `Evidence:` formula
+application; dialect-strict output — exemplar 3 is labelled `postgres`,
+1–2 `sqlite`, with a `LIMIT`-not-`TOP` top-N idiom; strict-JSON shape in
+every answer). Few-shot Question→SQL pairs are the
 biggest prompt-only text-to-SQL lever (DAIL-SQL
 [arXiv:2308.15363](https://arxiv.org/abs/2308.15363); optimal 3–5 shots),
 and the gain is largest on the small/open models the strict-$0 chain

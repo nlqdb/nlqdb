@@ -51,8 +51,13 @@ describe("PLAN_SYSTEM (SK-LLM-018 schema-fidelity directives)", () => {
 
 describe("PLAN_FEW_SHOT (SK-LLM-026 static few-shot exemplars)", () => {
   it("ships three Question→answer exemplars", () => {
-    expect(PLAN_FEW_SHOT.match(/^Dialect: sqlite$/gm)).toHaveLength(3);
+    expect(PLAN_FEW_SHOT.match(/^Dialect: /gm)).toHaveLength(3);
     expect(PLAN_FEW_SHOT.match(/^Goal: /gm)).toHaveLength(3);
+  });
+
+  it("varies the dialect line (sqlite + postgres) so dialect-strictness is demonstrated", () => {
+    expect(PLAN_FEW_SHOT.match(/^Dialect: sqlite$/gm)).toHaveLength(2);
+    expect(PLAN_FEW_SHOT.match(/^Dialect: postgres$/gm)).toHaveLength(1);
   });
 
   it("each answer is strict JSON of {sql} with no trailing semicolon (echoes PLAN_DIRECTIVES)", () => {

@@ -9,13 +9,20 @@ Parent feature: [`llm-router/FEATURE.md`](../FEATURE.md).
   `Dialect: / Schema: / Goal:` shape `buildPlanUser` already emits, and
   its answer is built with `JSON.stringify({ sql })` so the demonstrated
   output is guaranteed-valid strict JSON with no trailing semicolon — the
-  format the model must echo. The three exemplars demonstrate, in order:
-  (1) schema-literal identifiers + verbatim mixed-case/quoted casing + a
-  two-table JOIN; (2) applying a goal's `Evidence:` formula end-to-end;
-  (3) the top-N idiom (`GROUP BY … ORDER BY <agg> DESC LIMIT 1`). The set
-  is **static** — not similarity-retrieved — and dialect-portable (every
-  exemplar SQL is valid on both SQLite and Postgres, the two dialects the
-  one shared prompt serves per `PlanRequest.dialect`).
+  format the model must echo. Between them the three exemplars demonstrate
+  all four `SK-LLM-018` behaviours: (1) schema-literal identifiers +
+  verbatim mixed-case/quoted casing + a two-table JOIN (exemplar 1);
+  (2) applying a goal's `Evidence:` formula end-to-end (exemplar 2);
+  (3) **dialect-strict** output for the named dialect — exemplar 3's
+  `Dialect:` line is `postgres` while 1–2 are `sqlite`, so the model sees
+  the dialect line as a variable to honour, and the top-N idiom it shows
+  (`GROUP BY … ORDER BY <agg> DESC LIMIT 1`) is the `LIMIT`-not-`TOP`
+  form the directive demands for postgres; (4) the strict-JSON,
+  no-trailing-semicolon shape, carried by every answer. The set is
+  **static** — not similarity-retrieved — and every exemplar SQL is valid
+  on both SQLite and Postgres (the two dialects the one shared prompt
+  serves per `PlanRequest.dialect`), so the `postgres` label adds the
+  dialect-variation signal without a maintenance fork.
 - **Core value:** Engine quality, Free
 - **Why:** `PLAN_SYSTEM` was zero-shot; the planner is the dominant term
   in the 0.318 free-chain BIRD-dev baseline that blocks the `GLOBAL-027`
@@ -70,7 +77,8 @@ Parent feature: [`llm-router/FEATURE.md`](../FEATURE.md).
     keeps them out of the cache-busting per-request suffix and out of the
     retry-framing path.
   - **Dialect-specific exemplar sets (one for SQLite, one for Postgres).**
-    Doubles the surface and the maintenance for no measured gain — the
-    three chosen statements are already valid in both dialects, and the
-    `Dialect:` line plus the `SK-LLM-018` dialect-strict directive already
-    carry the dialect signal.
+    Doubles the surface and the maintenance for no measured gain. Instead,
+    the three chosen statements are valid in both dialects, and labelling
+    exemplar 3 `postgres` (1–2 `sqlite`) carries the dialect-variation
+    signal — the model sees the `Dialect:` line vary — from a single
+    portable set.

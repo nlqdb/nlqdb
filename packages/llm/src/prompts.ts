@@ -27,32 +27,41 @@ const PLAN_DIRECTIVES = [
 
 // SK-LLM-026 — static few-shot exemplars (DAIL-SQL arXiv:2308.15363).
 // Three compact, dialect-portable Question→strict-JSON demonstrations of
-// the PLAN_DIRECTIVES behaviours: schema-literal identifiers + verbatim
-// casing + JOIN; `Evidence:` formula application; top-N aggregation. The
-// answer is `JSON.stringify`-built so the wire shape is guaranteed-valid
-// strict JSON — the format the model must echo. Static (not
-// similarity-retrieved) keeps it zero-dep and token-bounded — the
-// retrieval gain is a separate future lever, and a fixed prefix is
+// the four PLAN_DIRECTIVES behaviours: schema-literal identifiers +
+// verbatim casing (+ JOIN); `Evidence:` formula application; dialect-strict
+// output for the named dialect (the `Dialect:` line varies — sqlite then
+// postgres — so the model sees it as a variable to honour); strict-JSON-
+// no-semicolon shape (`JSON.stringify`-built, so valid by construction).
+// Static (not similarity-retrieved) keeps it zero-dep and token-bounded —
+// the retrieval gain is a separate future lever, and a fixed prefix is
 // cache-friendly under SK-LLM-009.
-const planExample = (schema: string, goal: string, sql: string): string =>
-  ["Dialect: sqlite", "Schema:", schema, `Goal: ${goal}`, JSON.stringify({ sql })].join("\n");
+const planExample = (
+  dialect: "sqlite" | "postgres",
+  schema: string,
+  goal: string,
+  sql: string,
+): string =>
+  [`Dialect: ${dialect}`, "Schema:", schema, `Goal: ${goal}`, JSON.stringify({ sql })].join("\n");
 
 export const PLAN_FEW_SHOT = [
   "Examples — match this exact input→output shape:",
   "",
   planExample(
+    "sqlite",
     'CREATE TABLE "Album" (AlbumId INTEGER, Title TEXT, ArtistId INTEGER); CREATE TABLE "Artist" (ArtistId INTEGER, Name TEXT)',
     "How many albums does the artist named 'Queen' have?",
     `SELECT COUNT(*) FROM "Album" AS T1 JOIN "Artist" AS T2 ON T1.ArtistId = T2.ArtistId WHERE T2.Name = 'Queen'`,
   ),
   "",
   planExample(
+    "sqlite",
     "CREATE TABLE income (district_id INTEGER, residents INTEGER, total_income REAL)",
     "What is the income per resident in district 7?\nEvidence: income per resident = total_income / residents",
     "SELECT total_income / residents FROM income WHERE district_id = 7",
   ),
   "",
   planExample(
+    "postgres",
     "CREATE TABLE orders (id INTEGER, customer_id INTEGER, amount REAL)",
     "Which customer has the highest total order amount? Return their id.",
     "SELECT customer_id FROM orders GROUP BY customer_id ORDER BY SUM(amount) DESC LIMIT 1",
