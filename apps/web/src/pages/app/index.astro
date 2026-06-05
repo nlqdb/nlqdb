@@ -17,16 +17,17 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
   <div class="page page--chat" id="app-shell" data-api-base={apiBase} hidden>
     <Topnav current="chat" />
     <main class="page__main page__main--chat">
-      <aside id="checkout-banner" class="checkout-banner" role="status" hidden>
-        <p class="checkout-banner__text">
-          Payment received — thanks for upgrading. Your new plan is being
-          activated.
-        </p>
+      <!-- Empty, present-from-load role="status" region: the message text
+           is injected by JS (see below), which is the announcement path
+           screen readers fire on — exposing pre-filled text is unreliable. -->
+      <aside id="checkout-banner" class="checkout-banner" role="status">
+        <p class="checkout-banner__text" id="checkout-banner-text"></p>
         <button
           type="button"
           id="checkout-banner-dismiss"
           class="checkout-banner__dismiss"
           aria-label="Dismiss"
+          hidden
         >&times;</button>
       </aside>
       <ChatPanel client:only="react" apiBase={apiBase} />
@@ -59,7 +60,7 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
       shell.hidden = false;
 
       // Post-checkout confirmation (SK-WEB-011). Stripe Checkout redirects
-      // the subscriber here as `?checkout=success`; reveal a one-time banner
+      // the subscriber here as `?checkout=success`; show a one-time banner
       // and strip the param via replaceState so a refresh or shared link
       // doesn't replay it. Revealed only after the auth guard passes, so it
       // never flashes for anon visitors. Copy stays honest — the
@@ -67,7 +68,18 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
       // lands (SK-STRIPE-004), so we don't claim the plan is already active.
       const params = new URLSearchParams(location.search);
       if (params.get("checkout") === "success") {
-        document.getElementById("checkout-banner")?.removeAttribute("hidden");
+        const banner = document.getElementById("checkout-banner");
+        const text = document.getElementById("checkout-banner-text");
+        if (banner && text) {
+          banner.classList.add("checkout-banner--shown");
+          document.getElementById("checkout-banner-dismiss")?.removeAttribute("hidden");
+          // Inject on the next frame so the now-exposed region is registered
+          // empty first, then the content change triggers the announcement.
+          requestAnimationFrame(() => {
+            text.textContent =
+              "Payment received — thanks for upgrading. Your new plan is being activated.";
+          });
+        }
         params.delete("checkout");
         const query = params.toString();
         history.replaceState(
@@ -82,7 +94,10 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
   document
     .getElementById("checkout-banner-dismiss")
     ?.addEventListener("click", () => {
-      document.getElementById("checkout-banner")?.setAttribute("hidden", "");
+      document.getElementById("checkout-banner")?.classList.remove("checkout-banner--shown");
+      const text = document.getElementById("checkout-banner-text");
+      if (text) text.textContent = "";
+      document.getElementById("checkout-banner-dismiss")?.setAttribute("hidden", "");
     });
 </script>
 
@@ -91,10 +106,10 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
 </style>
 
 <style>
-  /* `:not([hidden])` is load-bearing — the bare `.checkout-banner` selector
-   * must outrank the UA `[hidden] { display: none }` rule (same pattern as
-   * AuthedHomeBanner) so the dismiss toggle re-hides it correctly. */
-  .checkout-banner:not([hidden]) {
+  /* The live region stays in the DOM at all times (empty → zero-height,
+   * invisible); only the `--shown` modifier paints the box, so revealing
+   * is a content injection the screen reader can announce. */
+  .checkout-banner--shown {
     display: flex;
     align-items: center;
     justify-content: space-between;
