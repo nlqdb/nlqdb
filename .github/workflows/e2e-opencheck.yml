@@ -1,22 +1,30 @@
 # Manual-trigger web e2e (opencheck) against an ephemeral preview.
-# Runs 3 sequential suites (A→B→C); each suite draws from a separate Groq per-model TPM pool.
+# Runs up to 3 sequential suites (A→B→C); the `depth` input selects how far to go (a | ab | abc).
+# B only runs if A passes (state dependency: B needs the users DB A creates); C only if B passes.
 # Shares the `e2e-staging` concurrency group with e2e-examples.yml.
 #
-# Suite split rationale: the full suite hit the 60-min GHA ceiling due to cascade from one
-# long-running test. Each suite now runs in ~15-20 min independently, giving clear per-suite
-# pass/fail signal. B only runs if A passes (state dependency); C only runs if B passes.
+# TOKEN-BUDGET DESIGN — root cause of the 2026-05→06 repeated failures:
+#   Groq's free tier has a ~100K-tokens/DAY ACCOUNT-LEVEL cap, shared across every Groq model
+#   (per-model pools are per-MINUTE only). The opencheck AGENT loop alone burns ~94K/run, so when
+#   both the agent and the staging app drew from Groq the day's budget 429'd before tests finished.
+#   Fix: the AGENT runs on OpenRouter `:free` ($0, its own budget); Groq's daily cap is reserved
+#   for the staging app's /v1/ask + NL db-create only (~20-40K/run — fits comfortably).
 #
-# FREE MODELS ONLY — never use OPENROUTER_API_KEY with a non-:free slug (paid tier).
-# Suite-A: Groq llama-3.3-70b-versatile  (12K TPM, tool-call verified 2026-06-04)
-# Suite-B: Groq openai/gpt-oss-120b      (8K TPM, separate pool, tool-call verified 2026-06-04)
-# Suite-C: Groq openai/gpt-oss-20b       (8K TPM, separate pool, tool-call verified 2026-06-04)
-# NOT usable: qwen/qwen3-32b (tool-call fails), llama-4-scout (type coercion error on number params)
-# Model table + switching guide: docs/features/e2e-coverage/FEATURE.md
+# FREE MODELS ONLY (GLOBAL-013). On OpenRouter ONLY a `:free` slug is $0 — a bare slug is PAID
+# (2026-05-21: a paid Mistral slug burned ~$14). Agent model (all suites): OpenRouter
+# openai/gpt-oss-120b:free — tool-call verified 2026-06-05.
+# Top-5 free models + switching guide: docs/features/e2e-coverage/opencheck-operations.md
 
 name: E2E (opencheck)
 
 on:
   workflow_dispatch:
+    inputs:
+      depth:
+        description: "How far to run the state-dependent chain (A→B→C). 'a' = fast ~15-min Suite-A-only signal."
+        type: choice
+        default: abc
+        options: [a, ab, abc]
 
 concurrency:
   group: e2e-staging
@@ -43,8 +51,11 @@ jobs:
       # journey hangs on every LLM call (240s opencheck timeout). SK-E2E-003.
       GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
 
+  # Agent on OpenRouter :free (own budget); app-side on Groq (deploy-staging). All suites share
+  # the OpenRouter account's free-model request budget (1000 req/day @ ≥$10 balance) — $0 tokens.
+
   # Suite A — Bootstrap: anonymous → create table → redirect → sign-in → verify adoption.
-  # Model: Groq llama-3.3-70b-versatile (12K TPM). Creates the users DB for suites B+C.
+  # Creates the users DB suites B+C depend on. Always runs (depth a | ab | abc).
   opencheck-a:
     name: "Suite A — Bootstrap"
     needs: deploy-staging
@@ -54,36 +65,44 @@ jobs:
     with:
       base_url: ${{ needs.deploy-staging.outputs.base_url }}
       config_file: tests-a-bootstrap.yaml
+      provider_base_url: https://openrouter.ai/api/v1
+      preflight_model: openai/gpt-oss-120b:free
     secrets:
-      LLM_API_KEY: ${{ secrets.GROQ_API_KEY }}
+      LLM_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
 
   # Suite B — Read/Write: sign-in → trace SQL → insert Alice → read/count/vague/mismatch → CMD+K.
-  # Model: Groq openai/gpt-oss-120b (8K TPM, separate pool from suite-A). Needs users DB from A.
+  # Needs the users DB from A. Runs only at depth ab | abc.
   opencheck-b:
     name: "Suite B — Read/Write"
     needs: [deploy-staging, opencheck-a]
+    if: ${{ inputs.depth != 'a' }}
     permissions:
       contents: read
     uses: ./.github/workflows/_e2e-opencheck.yml
     with:
       base_url: ${{ needs.deploy-staging.outputs.base_url }}
       config_file: tests-b-write.yaml
+      provider_base_url: https://openrouter.ai/api/v1
+      preflight_model: openai/gpt-oss-120b:free
     secrets:
-      LLM_API_KEY: ${{ secrets.GROQ_API_KEY }}
+      LLM_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
 
   # Suite C — UX/Cleanup: sign-in → delete-row → create 2nd DB → delete DB → API keys → sign-out → cleanup.
-  # Model: Groq openai/gpt-oss-20b (8K TPM, separate pool from gpt-oss-120b). Needs Alice row from suite-B.
+  # Needs the Alice row from B. Runs only at depth abc.
   opencheck-c:
     name: "Suite C — UX/Cleanup"
     needs: [deploy-staging, opencheck-b]
+    if: ${{ inputs.depth == 'abc' }}
     permissions:
       contents: read
     uses: ./.github/workflows/_e2e-opencheck.yml
     with:
       base_url: ${{ needs.deploy-staging.outputs.base_url }}
       config_file: tests-c-cleanup.yaml
+      provider_base_url: https://openrouter.ai/api/v1
+      preflight_model: openai/gpt-oss-120b:free
     secrets:
-      LLM_API_KEY: ${{ secrets.GROQ_API_KEY }}
+      LLM_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
 
   cleanup:
     name: Delete Neon branch

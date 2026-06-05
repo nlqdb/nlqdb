@@ -2,14 +2,15 @@
 # OpenAI-compat: opencheck pins @langchain/core ^1.1.24 (v1 ecosystem); @langchain/openai v1.4.5 matches; Groq + OpenRouter :free all expose compatible endpoints.
 #
 # FREE MODELS ONLY (GLOBAL-013 — $0 free tier). NEVER wire a paid model here, even via OpenRouter — :free suffix required on OpenRouter slugs.
-# Top-5 free LLM models for opencheck (researched 2026-06-04T07:00Z via live API + tool-call verified):
-#   1. Groq llama-3.3-70b-versatile     — 12K TPM / 1K RPM / 100K TPD (account cap, observed 2026-06-04); suite-A default
-#   2. Groq openai/gpt-oss-120b         — 8K TPM / 1K RPM; reasoning-tuned; separate per-model TPM pool; suite-B default
-#   3. Groq openai/gpt-oss-20b          — 8K TPM / 1K RPM; lighter/faster; separate per-model TPM pool; suite-C default
-#   4. Cerebras gpt-oss-120b            — 30K TPM / 1M TPD; tool-use verified; BUT only 5 RPM (too slow for agent loops)
-#   5. OpenRouter openai/gpt-oss-120b:free — $0 with :free suffix; shared quota; fallback when Groq TPD exhausted
+# Provider is caller-supplied (provider_base_url + preflight_model inputs); the suite YAML's `model:` must match.
+# Top-5 free LLM models for opencheck (researched 2026-06-05T01:00Z via live API + tool-call verified):
+#   1. OpenRouter openai/gpt-oss-120b:free — $0 ($10+ balance → 1000 req/day, 20 RPM); reasoning-tuned; CURRENT agent model.
+#   2. OpenRouter openai/gpt-oss-20b:free  — $0; lighter/faster; same OpenRouter free request budget.
+#   3. Groq llama-3.3-70b-versatile        — 12K TPM / 1K RPM but ~100K tokens/DAY ACCOUNT cap (shared across all Groq models).
+#   4. Groq openai/gpt-oss-120b            — 8K TPM; reasoning-tuned; shares the same Groq daily account cap.
+#   5. Cerebras gpt-oss-120b               — 30K TPM / 1M TPD; tool-use verified; BUT only 5 RPM (too slow for agent loops).
 # NOT usable: qwen/qwen3-32b (tool-call fails on Groq), llama-4-scout (type coercion error on number params).
-# Switch: edit `model:` in the suite YAML + OPENAI_BASE_URL below + LLM_API_KEY source in the caller workflow.
+# Switch provider: edit `model:` in the suite YAML + provider_base_url/preflight_model inputs + LLM_API_KEY source in the caller workflow.
 
 name: E2E opencheck (reusable)
 
@@ -24,6 +25,16 @@ on:
         description: "opencheck config file relative to tests/opencheck/ (e.g. tests-a-bootstrap.yaml)."
         required: true
         type: string
+      provider_base_url:
+        description: "OpenAI-compatible base URL for the agent LLM provider (must be free per GLOBAL-013)."
+        required: false
+        type: string
+        default: https://api.groq.com/openai/v1
+      preflight_model:
+        description: "Model id used by the pre-flight connectivity curl; must match the suite YAML's `model:` and exist on provider_base_url."
+        required: false
+        type: string
+        default: llama-3.3-70b-versatile
     secrets:
       LLM_API_KEY:
         description: "LLM API key for the active provider. Surfaced via OPENAI_API_KEY + provider-specific OPENAI_BASE_URL."
@@ -47,8 +58,9 @@ jobs:
       BASE_URL: ${{ inputs.base_url }}
       # ChatOpenAI reads OPENAI_API_KEY + OPENAI_BASE_URL; update both + the suite's `model:` to swap provider.
       OPENAI_API_KEY: ${{ secrets.LLM_API_KEY }}
-      # Provider endpoint — must match the `model:` in the active config file (inputs.config_file). Free-only per GLOBAL-013.
-      OPENAI_BASE_URL: https://api.groq.com/openai/v1
+      # Provider endpoint — caller-supplied so each suite can use an independent free-tier budget (GLOBAL-013).
+      # Must match the `model:` in the active config file (inputs.config_file).
+      OPENAI_BASE_URL: ${{ inputs.provider_base_url }}
       # Opt-in debug: flip to "true" to dump the full agent loop (~5-10x log
       # volume) when triaging a stuck case. Off by default — keeps job logs readable.
       LANGCHAIN_VERBOSE: "false"
@@ -233,17 +245,19 @@ jobs:
       # Groq outage or an empty/expired LLM_API_KEY causes every test to hang for 240s with zero output.
       - name: Pre-flight — verify LLM API connectivity
         shell: bash
+        env:
+          PREFLIGHT_MODEL: ${{ inputs.preflight_model }}
         run: |
           set -euo pipefail
-          echo "Testing ${OPENAI_BASE_URL}/chat/completions (10s timeout)..."
-          http_code=$(curl -s -o /tmp/groq-preflight.json -w "%{http_code}" \
+          echo "Testing ${OPENAI_BASE_URL}/chat/completions with ${PREFLIGHT_MODEL} (10s timeout)..."
+          http_code=$(curl -s -o /tmp/llm-preflight.json -w "%{http_code}" \
             --max-time 10 \
             -H "Authorization: Bearer ${OPENAI_API_KEY}" \
             -H "Content-Type: application/json" \
-            -d '{"model":"llama-3.3-70b-versatile","messages":[{"role":"user","content":"ping"}],"max_tokens":1}' \
+            -d "{\"model\":\"${PREFLIGHT_MODEL}\",\"messages\":[{\"role\":\"user\",\"content\":\"ping\"}],\"max_tokens\":1}" \
             "${OPENAI_BASE_URL}/chat/completions")
           echo "HTTP $http_code"
-          cat /tmp/groq-preflight.json
+          cat /tmp/llm-preflight.json
           if [ "$http_code" != "200" ]; then
             echo "ERROR: LLM API returned HTTP $http_code — aborting opencheck to avoid 20 min of silent timeouts"
             exit 1

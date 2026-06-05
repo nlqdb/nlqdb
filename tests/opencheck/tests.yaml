@@ -2,19 +2,20 @@
 # Runtime: caller workflow substitutes __BASE_URL__ via sed before invoking bunx opencheck (see .github/workflows/e2e-opencheck.yml).
 #
 # FREE MODELS ONLY (GLOBAL-013 — $0 free tier). NEVER set a paid model here, even on OpenRouter.
-# On OpenRouter, ONLY slugs ending in :free are free — the bare slug (no :free) is PAID.
-# Top-5 free LLM models for opencheck (researched 2026-06-04T07:00Z via live API + verified tool-call):
-#   1. Groq llama-3.3-70b-versatile     — 12K TPM / 1K RPM / 500K TPD; tool-use verified; current default; suite-A
-#   2. Groq openai/gpt-oss-120b         — 8K TPM / 1K RPM; reasoning-tuned; separate per-model TPM pool; suite-B
-#   3. Groq openai/gpt-oss-20b          — 8K TPM / 1K RPM; lighter/faster; separate per-model TPM pool; suite-C
-#   4. Cerebras gpt-oss-120b            — 30K TPM / 1M TPD; tool-use verified 2026-06-04; BUT 5 RPM (too slow for agent loops)
-#   5. OpenRouter openai/gpt-oss-120b:free — $0 with :free suffix; shared quota; fallback when Groq TPD exhausted
+# On OpenRouter, ONLY slugs ending in :free are $0 — the bare slug (no :free) is PAID (2026-05-21 burned ~$14).
+# Top-5 free LLM models for opencheck (researched 2026-06-05T01:00Z via live API + verified tool-call):
+#   1. OpenRouter openai/gpt-oss-120b:free — $0 ($10+ balance → 1000 req/day, 20 RPM); reasoning-tuned; CURRENT agent model.
+#   2. OpenRouter openai/gpt-oss-20b:free  — $0; lighter/faster; same OpenRouter free request budget.
+#   3. Groq llama-3.3-70b-versatile        — 12K TPM / 1K RPM but ~100K tokens/DAY ACCOUNT cap (shared across ALL Groq models).
+#   4. Groq openai/gpt-oss-120b            — 8K TPM; reasoning-tuned; shares the same Groq daily account cap.
+#   5. Cerebras gpt-oss-120b               — 30K TPM / 1M TPD; tool-use verified; BUT only 5 RPM (too slow for agent loops).
 # NOT usable: qwen/qwen3-32b (tool-call fails on Groq), llama-4-scout (type coercion error on number params).
-# Switch: edit model: below + OPENAI_BASE_URL in _e2e-opencheck.yml + LLM_API_KEY source in e2e-opencheck.yml.
+# Production runs use the split files (tests-a/b/c-*.yaml); this combined file is the reference index for persona docs.
+# Switch provider: edit model: below + provider_base_url/preflight_model in e2e-opencheck.yml + LLM_API_KEY source.
 
 baseUrl: "__BASE_URL__"
 modelProvider: "openai"
-model: "llama-3.3-70b-versatile"
+model: "openai/gpt-oss-120b:free"
 
 # Persistent mode: auth cookie + localStorage persist across tests; page resets to about:blank each test (wrapper kills/restarts playwright-mcp).
 sessionMode: "persistent"
