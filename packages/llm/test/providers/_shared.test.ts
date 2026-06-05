@@ -35,5 +35,9 @@ describe("parseJsonResponse", () => {
     it("still throws a parse error when no JSON object is present", () => {
       expect(() => parseJsonResponse("I cannot answer that.")).toThrow(/not parseable JSON/);
     });
+
+    it("throws (rather than recovering) when the brace never closes", () => {
+      expect(() => parseJsonResponse('thinking... {"sql":"SELECT 1"')).toThrow(/not parseable JSON/);
+    });
   });
 });
