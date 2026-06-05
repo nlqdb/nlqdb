@@ -17,10 +17,10 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
   <div class="page page--chat" id="app-shell" data-api-base={apiBase} hidden>
     <Topnav current="chat" />
     <main class="page__main page__main--chat">
-      <aside id="checkout-banner" class="checkout-banner" hidden>
+      <aside id="checkout-banner" class="checkout-banner" role="status" hidden>
         <p class="checkout-banner__text">
-          Payment received — thanks for upgrading. Your new limits are being
-          applied and an email receipt is on its way.
+          Payment received — thanks for upgrading. Your new plan is being
+          activated.
         </p>
         <button
           type="button"

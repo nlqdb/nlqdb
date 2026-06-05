@@ -98,10 +98,12 @@ API version pinned to `2026-04-22.dahlia` via the `stripe` npm SDK (see `SK-STRI
   one-time banner on the chat page, *after* the auth guard passes (no flash
   for anon visitors), then strips the param via `history.replaceState` so a
   refresh or shared link never replays it.
-- Copy is honest about pending state: "Payment received — your new limits are
-  being applied" — never claims the plan is active, because the `customers`
-  row is `incomplete` until `customer.subscription.created` lands
-  (SK-STRIPE-004).
+- Copy is honest about pending state — *"Payment received — thanks for
+  upgrading. Your new plan is being activated."* — never claims the plan is
+  active and promises no email receipt (config-dependent, fires on
+  `invoice.payment_succeeded`), because the `customers` row is `incomplete`
+  until `customer.subscription.created` lands (SK-STRIPE-004).
+- `role="status"` so screen readers announce the JS-revealed banner.
 - Pure markup + scoped CSS in `apps/web/src/pages/app/index.astro`; no new
   island, no API call (the webhook drives the actual state).
 
