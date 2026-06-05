@@ -769,7 +769,8 @@ NLQDB_BACKUP_DIR=/path/to/private/folder scripts/backup-envrc.sh
 | `TINYBIRD_TOKEN`       | app.tinybird.co → Workspace → Tokens → revoke + create with `DATASOURCE:APPEND` scope on `query_log`. Tinybird auths by token alone — the workspace is implicit in the token's scope. `TINYBIRD_API_BASE` is the regional gateway (only set for non-EU workspaces). |
 | `POSTHOG_API_KEY`      | app.posthog.com → Project settings → Project API Key. Public-ish (used client-side too); rotate via "Reset" in the same panel. |
 | `GOOGLE_CLIENT_*`      | GCP → APIs & Services → Credentials → reset secret (client ID stays)       |
-| `BETTER_AUTH_SECRET`   | `bun -e 'console.log(require("crypto").randomBytes(48).toString("base64url"))'` — rotating this invalidates every active session. |
+| `BETTER_AUTH_SECRET`   | `bun -e 'console.log(require("crypto").randomBytes(48).toString("base64url"))'` — rotating this invalidates every active session. No longer touches API-key hashes once `API_KEY_SECRET` is set (`SK-APIKEYS-014`). |
+| `API_KEY_SECRET`       | Same generator. Keys the API-key HMAC (`SK-APIKEYS-014`); `apiKeyHmacSecret()` falls back to `BETTER_AUTH_SECRET` when unset. **First migration:** seed it to the *current* `BETTER_AUTH_SECRET` value (zero re-hash). Rotating it later invalidates every minted `pk_live_` / `sk_live_` / `sk_mcp_` key — rotate deliberately. |
 | `INTERNAL_JWT_SECRET`  | Same generator as above. Workers-only; rotating is safe any time (30 s TTL). |
 
 ### When a domain goes wrong

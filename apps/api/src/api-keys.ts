@@ -10,10 +10,11 @@
 //     everywhere" to revoke only this type (the helper lands with
 //     the dashboard slice — see api-keys/FEATURE.md Open questions).
 //
-// Hashing: HMAC-SHA256(BETTER_AUTH_SECRET, plaintext_key) per
-// SK-APIKEYS-008. Argon2id is unavailable in the CF Workers runtime;
-// for random 128-bit keys HMAC-SHA256 is computationally equivalent.
-// See SK-APIKEYS-008 for the full rationale.
+// Hashing: HMAC-SHA256(apiKeyHmacSecret(env), plaintext_key) per
+// SK-APIKEYS-008. The secret is the dedicated `API_KEY_SECRET` when set,
+// else `BETTER_AUTH_SECRET` (SK-APIKEYS-014). Argon2id is unavailable in
+// the CF Workers runtime; for random 128-bit keys HMAC-SHA256 is
+// computationally equivalent. See SK-APIKEYS-008 for the full rationale.
 //
 // Security posture (every key type):
 //   - plaintext_key is returned ONCE at mint time and never stored
@@ -361,6 +362,22 @@ export async function hmacHex(secret: string, message: string): Promise<string> 
   return Array.from(new Uint8Array(sig))
     .map((b) => b.toString(16).padStart(2, "0"))
     .join("");
+}
+
+// Resolves the HMAC secret for all API-key hashing (SK-APIKEYS-014).
+// Prefers the dedicated `API_KEY_SECRET` so key-hash HMAC and
+// session-signing HMAC use independent keys — either rotates without
+// invalidating the other. Falls back to `BETTER_AUTH_SECRET` when unset
+// so dev / test / un-migrated deploys keep SK-APIKEYS-008's original
+// behaviour. Migrate with zero re-hash by setting `API_KEY_SECRET` to the
+// current `BETTER_AUTH_SECRET` value. This is the only place the choice is
+// made — mint, lookup, and the SK-MCP-014 status-probe hash all route
+// through it so the stored `key_hash` stays consistent across surfaces.
+export function apiKeyHmacSecret(env: {
+  API_KEY_SECRET?: string;
+  BETTER_AUTH_SECRET: string;
+}): string {
+  return env.API_KEY_SECRET || env.BETTER_AUTH_SECRET;
 }
 
 function randomHex(byteCount: number): string {

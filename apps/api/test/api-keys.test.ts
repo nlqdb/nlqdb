@@ -9,6 +9,7 @@
 
 import { describe, expect, it, vi } from "vitest";
 import {
+  apiKeyHmacSecret,
   bumpKeyLastUsed,
   listKeysByTenant,
   lookupPkLiveKey,
@@ -72,6 +73,19 @@ function stubDb(opts: StubOpts = {}): {
 }
 
 const SECRET = "test-secret-do-not-use-in-prod";
+
+describe("apiKeyHmacSecret (SK-APIKEYS-014)", () => {
+  it("prefers API_KEY_SECRET when set", () => {
+    expect(apiKeyHmacSecret({ API_KEY_SECRET: "dedicated", BETTER_AUTH_SECRET: "session" })).toBe(
+      "dedicated",
+    );
+  });
+
+  it("falls back to BETTER_AUTH_SECRET when API_KEY_SECRET is unset or empty", () => {
+    expect(apiKeyHmacSecret({ BETTER_AUTH_SECRET: "session" })).toBe("session");
+    expect(apiKeyHmacSecret({ API_KEY_SECRET: "", BETTER_AUTH_SECRET: "session" })).toBe("session");
+  });
+});
 
 describe("mintPkLiveKey", () => {
   // Bind order: (id, tenant_id, db_id, key_hash, last_4) — 5 params,
