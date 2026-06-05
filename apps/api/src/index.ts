@@ -168,6 +168,10 @@ const credentialedCors = cors({
     // SK-LLM-021 — the signed-in-only BYOLLM lane is cookie-session, so it
     // rides this credentialed handler; without it browsers abort the preflight.
     "x-nlq-byollm-key",
+    // SK-GATE-007 — the web client forwards the invite code as `X-Invite-Code`
+    // on the cross-origin `/v1/ask` POST; without it the browser preflight
+    // aborts and the invited-stranger first-value path silently 403s.
+    "x-invite-code",
   ],
   allowMethods: ["GET", "POST", "DELETE", "OPTIONS"],
   maxAge: 86400,

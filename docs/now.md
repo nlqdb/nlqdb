@@ -13,6 +13,10 @@ slices 1–3c shipped. Next: first weekly measurement seeds
 BIRD ≥ 0.65 / Spider ≥ 0.75 thresholds clear and the gate removes
 itself. Headline KPI: free-vs-agentic-frontier delta per
 [`SK-QUAL-004`](./features/quality-eval/decisions/SK-QUAL-004-free-vs-frontier-delta.md).
+**Progress bar** (what's tried / not-tried, every number sourced):
+[`progress/quality-score-source-of-truth.md`](./progress/quality-score-source-of-truth.md).
+Latest lever: Cerebras (gpt-oss-120b) leads the free planner chain
+([`SK-LLM-023`](./features/llm-router/decisions/SK-LLM-023-cerebras-planner-tier.md)).
 
 ## 2. BYOLLM (every tier, 0% markup)
 
@@ -96,7 +100,23 @@ seal); differences: native HTTP (no
 Hyperdrive / TCP socket) and `system.columns` introspection.
 Validator + OTel + anon posture per
 [`SK-MULTIENG-004`](./features/multi-engine-adapter/FEATURE.md#sk-multieng-004).
-Managed-Tinybird path from `SK-MULTIENG-002` unaffected.
+Managed-Tinybird path from `SK-MULTIENG-002` unaffected. First connect-path
+primitive landed: `packages/db/src/clickhouse-connection-url.ts`
+([`SK-MULTIENG-006`](./features/multi-engine-adapter/decisions/SK-MULTIENG-006-byo-clickhouse-connection-url.md))
+— `parseClickhouseUrl` validates the HTTP-interface `connection_url` at the
+wire boundary (fail-loud per
+[`GLOBAL-012`](./decisions/GLOBAL-012-one-sentence-errors.md); a ClickHouse
+client DSN scheme — `clickhouse://` … — or a database-in-the-path paste is
+rejected with a pointer to the plain HTTP endpoint) and yields a redacted
+display **rebuilt from an allowlist of safe parts** — so the password
+(userinfo *or* `?password=` query param per the ClickHouse HTTP docs) and every
+other query setting are structurally absent; the full URL rides the
+`GLOBAL-031` seal. The deliberate ClickHouse parallel of `SK-DB-012` (the
+`SK-DB-002` parallel-adapter pattern), pure, zero-dep, owned by `packages/db`
+per `GLOBAL-021`, shipped ahead of its `connect.ts` / `introspect-clickhouse.ts`
+callers. Next: those callers + the `registerByoDb` ClickHouse branch + the
+connect-time SSRF egress guard (open per `SK-MULTIENG-006` — a pure parser
+can't bound DNS-rebinding to a private host).
 
 ## 5. BYO OTel collectors
 

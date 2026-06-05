@@ -40,12 +40,12 @@ Web persona journeys are exercised by opencheck — [`tests/opencheck/tests.yaml
 After a change that could move a button, rename a chat affordance, change a confirm-dialog wording, or alter the trace pane:
 
 ```bash
-gh workflow run e2e-opencheck.yml      # opencheck (live LLM via Groq through plan-cache)
+gh workflow run e2e-opencheck.yml -f depth=a   # Suite-A-only (~15 min) fast signal; depth=abc for the full chain
 ```
 
-The legacy [`e2e-opencheck.yml`](../../.github/workflows/e2e-opencheck.yml) entry point continues to work as a backwards-compat alias for `surface=web`.
+The agent runs on a free OpenRouter `:free` model; the staging app's `/v1/ask` runs on Groq. See [`opencheck-operations.md`](../../docs/features/e2e-coverage/opencheck-operations.md) for the two-budget split and the free-model table.
 
-`tests/opencheck/.opencheck-cache` is checked into the GitHub Actions cache keyed on `apps/{api,web}/src/**` + `tests/opencheck/tests.yaml` — only changes to those paths force LLM re-derivation, which keeps Groq's 1k-RPD free tier comfortable across many runs per day.
+`tests/opencheck/.opencheck-cache` is restored from the GitHub Actions cache keyed on `apps/{api,web}/src/**` + the active suite config — only changes to those paths force the agent to re-derive plans, which keeps the free-tier request budget comfortable across runs.
 
 See [`docs/features/e2e-coverage/FEATURE.md`](../../docs/features/e2e-coverage/FEATURE.md) for the harness conventions.
 

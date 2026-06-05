@@ -21,6 +21,12 @@ describe("buildFreeLane", () => {
     const lane = buildFreeLane({ GEMINI_API_KEY: "k" });
     expect(lane?.maxAttempts).toBe(AGENTIC_MAX_ATTEMPTS);
   });
+
+  it("SK-LLM-023: CEREBRAS_API_KEY alone builds the free lane (Cerebras leads the chain)", () => {
+    const lane = buildFreeLane({ CEREBRAS_API_KEY: "k" });
+    expect(lane).not.toBeNull();
+    expect(lane?.lane).toBe("free");
+  });
 });
 
 describe("buildFrontierLane", () => {

@@ -128,6 +128,17 @@ when-to-load:
   - **Don't show a snippet at all; only show "Open chat →".** Drops to five clicks before the user sees their first HTML; loses the chance to teach the embed shape during the most-engaged moment of the session.
   - **Show a snippet with a working key gated behind a Turnstile.** Doubles the bot-defense surface area and still doesn't let the embed render against the just-created DB (the cap is per-device, not per-IP, and Turnstile doesn't reset it).
 
+### SK-WEB-011 — Post-checkout confirmation banner on `/app`, honest about pending subscription state
+
+- **Decision:** Stripe Checkout's `success_url` is `${origin}/app?checkout=success` (set in `apps/api/src/index.ts`). The `/app` auth-guard script, *after* the session probe passes, reads `?checkout=success`, reveals a dismissible one-time banner, and strips the param via `history.replaceState` so a refresh or shared link never replays it. Copy is exactly *"Payment received — thanks for upgrading. Your new plan is being activated."* — it does **not** claim the plan is already active, nor promise an email receipt (Stripe receipt emails are Dashboard-config-dependent and fire on `invoice.payment_succeeded`, not the checkout redirect), because the `customers` row is `incomplete` until `customer.subscription.created` lands (SK-STRIPE-004). The banner is a `role="status"` live region present (and empty) from page load; the message is **injected** as text on the success branch (not un-hidden pre-filled), which is the path screen readers reliably announce.
+- **Core value:** Honest latency, Effortless UX, Seamless auth
+- **Why:** A user who just paid lands back on the chat with zero acknowledgement otherwise — the wow-moment equivalent of a slammed door. But overclaiming ("You're on Hobby!") before the subscription confirms would lie on the exact surface where trust is most fragile. Revealing only after the auth guard passes avoids a flash for anon visitors; stripping the param keeps the success state non-permalinkable and non-replayable.
+- **Consequence in code:** Markup + scoped styles + reveal logic live entirely in `apps/web/src/pages/app/index.astro` — no new island, no API call (the webhook already drives state). The empty `<aside role="status">` stays in the DOM; a `--shown` modifier paints the box and a `requestAnimationFrame` defers the `textContent` injection one frame so the exposed-then-changed sequence triggers the announcement. No analytics event yet; the §6 funnel reads completion from Stripe (`checkout.session.completed`), not a client ping.
+- **Alternatives rejected:**
+  - Fetch the live subscription status on landing to tailor the copy — adds a round-trip and a new endpoint for a banner; the webhook is the source of truth and "being activated" is honest for both the pending and just-confirmed cases.
+  - Leave `?checkout=success` in the URL — a refresh or a shared/bookmarked link would replay the banner, and the success state isn't meaningfully permalinkable.
+  - Render the banner server-side / unconditionally and hide with JS — flashes for anon visitors before the auth guard resolves.
+
 ## GLOBALs governing this feature
 
 Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; index in [`docs/decisions.md`](../../decisions.md)). The list below names the rules that constrain this feature; any feature-local commentary is nested under the rule.

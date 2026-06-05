@@ -15,7 +15,7 @@
 // upstream model (`openai/gpt-5.2`, `anthropic/claude-4-5-sonnet`, …)
 // rides the `llm.model` span attribute, so the single `byollm` label
 // keeps the failover/cache metric cardinality bounded.
-export type ProviderName = "gemini" | "groq" | "workers-ai" | "openrouter" | "byollm";
+export type ProviderName = "gemini" | "groq" | "workers-ai" | "openrouter" | "cerebras" | "byollm";
 
 export type LLMOperation = "route" | "plan" | "summarize" | "schema_infer" | "engine_classify";
 
