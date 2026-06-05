@@ -12,7 +12,7 @@ when-to-load:
 **One-liner:** Stripe webhook ingest, subscription state, idempotent processing, R2 archive.
 **Status:** implemented (Slice 7 — PR #33; live-mode flip in Phase 2)
 **Owners (code):** `apps/api/src/stripe/**`, `apps/api/src/index.ts`, `POST /v1/stripe/webhook`
-**Cross-refs:** docs/architecture.md §6 (pricing) · docs/phase-plan.md (Phase 2 stripe slice) · docs/runbook.md §6 (webhook + R2 archive) · docs/performance.md §3.1 (`nlqdb.webhook.stripe` span) · §4 Slice 7 (instrumentation contract — `billing.subscription_created` / `billing.subscription_canceled` map 1:1; no `trial.*`) · §5 (100 % trace sampling on Stripe webhook) · `apps/api/src/stripe/webhook.ts` (canonical pipeline doc-comment)
+**Cross-refs:** docs/architecture.md §6 (pricing) · docs/phase-plan.md (Phase 2 stripe slice) · docs/runbook.md §6 (webhook + R2 archive) · docs/performance.md §3.1 (`nlqdb.webhook.stripe` span), §4 Slice 7 (instrumentation contract — `billing.subscription_created` / `billing.subscription_canceled` map 1:1; no `trial.*`), §5 (100 % trace sampling) · `apps/api/src/stripe/webhook.ts` (canonical pipeline doc-comment)
 
 ## Touchpoints — read this feature before editing
 
@@ -27,7 +27,7 @@ when-to-load:
 
 - **Decision:** `POST /v1/stripe/webhook` reads the body with `c.req.text()` (never `c.req.json()`) and verifies the `stripe-signature` header against `STRIPE_WEBHOOK_SECRET` via `Stripe.WebhookSignature.constructEventAsync` before any downstream work. Missing signature or verification failure → `400 invalid_signature`. Missing secret → `503 secret_unconfigured`.
 - **Core value:** Bullet-proof, Seamless auth
-- **Why:** Stripe authenticates webhooks by HMAC over the exact request bytes. Any JSON parser normalizes whitespace and key order, which silently invalidates the signature. A handler that "works in dev" against unsigned payloads is a security hole; making bad signatures the only way the route fails closed is the structural fix.
+- **Why:** Stripe authenticates webhooks by HMAC over the exact request bytes. Any JSON parser normalizes whitespace and key order, silently invalidating the signature. A handler that "works in dev" against unsigned payloads is a security hole; making bad signatures the only way the route fails closed is the structural fix.
 - **Consequence in code:** The route handler in `apps/api/src/index.ts` is forbidden from touching `c.req.json()` for this path. The Stripe SDK is initialised with `Stripe.createSubtleCryptoProvider()` at module load (Web Crypto on Workers) — Node `crypto` is unavailable. A missing webhook secret returns `503` with `error: "secret_unconfigured"` instead of silently bypassing verification.
 - **Alternatives rejected:**
   - Parse JSON first, then verify against `JSON.stringify(body)` — re-serialised bytes don't match the original; signatures fail randomly.
@@ -77,7 +77,7 @@ when-to-load:
 
 - **Decision:** After a successful insert, the route schedules the raw request body to R2 at `stripe-events/<yyyy>/<mm>/<dd>/<event_id>.json` via `c.executionCtx.waitUntil(result.archive)`. The 200 response ships before the R2 put completes. R2 failures increment `nlqdb.webhook.stripe.archive_failures.total`, emit a `stripe_r2_archive_failed` warn log, and do not retry. R2 binding (`ASSETS`) is optional — when undefined (dev / tests) the archive step is skipped silently.
 - **Core value:** Bullet-proof, Fast, Honest latency
-- **Why:** The Stripe Dashboard's "Resend webhook" button is rate-limited and history-bounded; for forensics or schema changes against historical events we need the original signed bytes. R2 is essentially free for this volume. Putting the archive on the response path would couple webhook latency to R2 — `waitUntil` runs the put after the 200 ships, keeping the response budget intact while preserving the audit trail.
+- **Why:** The Stripe Dashboard's "Resend webhook" button is rate-limited and history-bounded; for forensics or schema changes against historical events we need the original signed bytes. R2 is essentially free for this volume. Putting the archive on the response path would couple webhook latency to R2 — `waitUntil` runs the put after the 200 ships, keeping the response budget intact while preserving the trail.
 - **Consequence in code:** `processWebhook` returns the put promise on the result rather than awaiting it; the route handler in `index.ts` is responsible for `c.executionCtx.waitUntil(result.archive)`. R2 keys are date-partitioned for easy `glob-by-day` and future R2 lifecycle rules ("delete > 90 days"). The `stripe_events.payload_r2_key` column carries the key so `(event_id → archived bytes)` is queryable from D1 alone. **Cloudflare requires a payment method on file** to use R2 even at $0 usage (RUNBOOK §6); removing the payment method takes effect at the end of the billing period.
 - **Alternatives rejected:**
   - Inline `await` of the R2 put before responding — adds R2 p95 latency to every webhook, breaks Stripe's 30s acknowledgement budget on slow days.
@@ -115,46 +115,46 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 ## Open questions / known unknowns
 
 - **Dunning / failed-payment behaviour.** Slice 7 records `customer.subscription.updated` (state sync only) but doesn't surface `invoice.payment_failed` or `customer.subscription.past_due` to the user. Phase 2's flip to live mode will need a dunning UX (email + in-app banner) before paid Hobby goes public.
-- **R2 lifecycle policy** — Resolved per `GLOBAL-033` (pin-a-number → fail-safe): **90-day retention** on the date-partitioned keys. Stripe events are replayable from the Dashboard, so the bucket is a convenience cache, not a system of record; 90 days bounds storage while covering any realistic dispute/reconciliation window. Setting the rule is a one-time Cloudflare R2 config; **parked until** bucket size is load-bearing — capture it in `docs/runbook.md §6` then.
-- **DLQ for stuck events** — **Parked until** a `processed_at IS NULL` backlog appears (tracked under PLAN §11): the queryable NULL signal exists today; the ops cron + Grafana alert is wiring that lands the first time a dispatch failure goes unnoticed.
+- **R2 lifecycle policy** — Resolved per `GLOBAL-033` (pin-a-number → fail-safe): **90-day retention** on the date-partitioned keys. Stripe events are replayable from the Dashboard, so the bucket is a convenience cache, not a system of record; 90 days bounds storage while covering any realistic dispute window. The rule is a one-time Cloudflare R2 config; **parked until** bucket size is load-bearing — capture it in `docs/runbook.md §6` then.
+- **DLQ for stuck events** — **Parked until** a `processed_at IS NULL` backlog appears (PLAN §11): the queryable NULL signal exists today; the ops cron + Grafana alert is wiring that lands when a dispatch failure first slips by.
 - **Stripe Tax activation.** Test-mode is configured (`NLQDB.COM` descriptor, Switzerland/CHF merchant). Live-mode + Stripe Tax flip is a Phase 2 task — capture the activation steps in `docs/runbook.md §6` when it lands.
-- **Lago wiring.** PLAN §6 / DESIGN §6 calls for Lago-on-Fly as the usage-metering layer batched into Stripe; not yet wired. Slice TBD in Phase 2.
-- **Live-mode webhook secret.** `STRIPE_WEBHOOK_SECRET` today is the test-mode value; cutting over needs a coordinated `wrangler secret put` + Stripe Dashboard endpoint update; document the rollover playbook in `docs/runbook.md §6`.
-- **Billing Portal Dashboard config.** `SK-STRIPE-008` ships the endpoint, but `sessions.create` errors until a portal configuration (switchable plans, cancel behaviour, invoice history) is saved in the Stripe Dashboard → Billing → Customer portal. Capture the activation steps in `docs/runbook.md §6` alongside price-ID setup.
+- **Lago wiring.** PLAN §6 / DESIGN §6 calls for Lago-on-Fly as the usage-metering layer batched into Stripe; not yet wired. Phase 2 slice TBD.
+- **Live-mode webhook secret.** `STRIPE_WEBHOOK_SECRET` today is the test-mode value; cutover needs a coordinated `wrangler secret put` + Stripe Dashboard endpoint update; document the rollover playbook in `docs/runbook.md §6`.
+- **Billing Portal Dashboard config.** `SK-STRIPE-008` ships the endpoint, but `sessions.create` errors until a portal configuration (switchable plans, cancel behaviour, invoice history) is saved in the Stripe Dashboard → Billing → Customer portal. Capture the steps in `docs/runbook.md §6` alongside price-ID setup.
 
 ## Billing constraints and philosophy
 
 ### No dark patterns — hard rules
 
-These apply to every billing surface. Violating any one of them is a product defect, not a configuration choice:
+These apply to every billing surface. Violating any one is a product defect, not a config choice:
 
 - **No credit card for the free tier, ever.** Not "to verify identity." Not "for spam protection." No.
-- **The trial is the free tier itself.** There is no separate "14-day Pro trial" with a countdown. When a user exceeds free limits, rate-limit with a clear message — "You've used your 1,000 queries. Add a card to continue — or wait until next month." The user's data is never held hostage. Export is one click, always free.
-- **First charge confirmation.** When a card is added, email before the first charge: "You'll be billed $X on Y. Reply NO to cancel." No silent auto-upgrades from Hobby to Pro; tier changes require a deliberate click.
-- **Usage predictability.** Hard caps on Pro are opt-in; the default is a soft cap: email at 80% of the user's monthly budget, email + require a one-click extension at 100%. No surprise $4,000 bills. Ever.
+- **The trial is the free tier itself.** No separate "14-day Pro trial" with a countdown. When a user exceeds free limits, rate-limit with a clear message — "You've used your 1,000 queries. Add a card to continue — or wait until next month." Data is never held hostage; export is one click, always free.
+- **First charge confirmation.** When a card is added, email before the first charge: "You'll be billed $X on Y. Reply NO to cancel." No silent Hobby→Pro auto-upgrades; tier changes require a deliberate click.
+- **Usage predictability.** Hard caps on Pro are opt-in; the default is a soft cap: email at 80% of the monthly budget, email + require a one-click extension at 100%. No surprise $4,000 bills. Ever.
 - **Downgrade is as easy as upgrade.** One click. Pro-rated refund on the unused portion.
-- **Cancellation is one click** — no call, no chat, no exit survey. Optional exit survey *after* cancellation is acceptable.
+- **Cancellation is one click** — no call, no chat, no exit survey. An optional survey *after* cancellation is acceptable.
 
 ### Payment tech stack
 
-- **Stripe Billing** — invoicing + payment method capture. Checkout is Stripe-hosted; we do not build card forms.
-- **Lago** (self-hosted, open source) — usage metering in front of Stripe. Meters queries, LLM tokens, GB-mo. Emits invoice events to Stripe. Not yet wired (Phase 2).
-- **Stripe Tax** — enabled from day 1 in live mode. Handles VAT/GST automatically.
-- **Paddle** — optional Merchant of Record if we expand internationally before setting up entities. Deferred until needed.
+- **Stripe Billing** — invoicing + payment-method capture. Checkout is Stripe-hosted; we build no card forms.
+- **Lago** (self-hosted, open source) — usage metering in front of Stripe. Meters queries, LLM tokens, GB-mo; emits invoice events. Not yet wired (Phase 2).
+- **Stripe Tax** — enabled day 1 in live mode. Handles VAT/GST automatically.
+- **Paddle** — optional Merchant of Record if we expand internationally before setting up entities. Deferred.
 
 ### Things we will NOT do
 
-- Charge for the number of seats in Phase 1. The billing unit is the DB and the query, not the human.
+- Charge per seat in Phase 1. The billing unit is the DB and the query, not the human.
 - Gate features we'd have shipped anyway behind Pro to manufacture upgrade urgency.
-- Offer "lifetime deals" on AppSumo. That audience is not ours and the support cost is real.
-- Hide prices behind "Contact sales" for anything under the Enterprise tier.
+- Offer "lifetime deals" on AppSumo. That audience isn't ours and the support cost is real.
+- Hide prices behind "Contact sales" for anything below the Enterprise tier.
 
 ### Unit economics (napkin, Phase 1)
 
 | Tier | Our cost | Margin target |
 |---|---|---|
-| Free (100 queries/mo) | ~$0.15–$0.40 | — (CAC substitute) |
+| Free (100 queries/mo) | ~$0.15–0.40 | — (CAC substitute) |
 | Hobby ($10/mo) | ~$2–4 | 60–80% at target plan-cache hit rate |
-| Pro ($25/mo+) | — | 75%+ once self-hosted classifier is online |
+| Pro ($25/mo+) | — | 75%+ once self-hosted classifier online |
 
-**LLM cost is the dominant variable.** Plan cache hit rate (60–80% at maturity) is the primary lever. Small-model-first chain + batch embeddings + no summarization for structured-output API calls are the secondary levers.
+**LLM cost is the dominant variable.** Plan-cache hit rate (60–80% at maturity) is the primary lever; small-model-first chain + batch embeddings + no summarization for structured-output calls are secondary.
