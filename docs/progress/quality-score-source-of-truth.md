@@ -183,8 +183,8 @@ implementing (`CLAUDE.md` §P4).
 > the Cerebras head plus this PR's two robustness levers, not T1 alone.
 > Both workflows already wire `CEREBRAS_API_KEY` + the four other
 > card-free free-chain keys (`GEMINI_API_KEY`, `GROQ_API_KEY`,
-> `OPENROUTER_API_KEY`, `CF_AI_TOKEN`/`CLOUDFLARE_ACCOUNT_ID`); the run is
-> only as good as the repo **secrets** behind them, so a human must
-> confirm those five secrets exist in repo settings (see PR description).
-> Without `CEREBRAS_API_KEY` the chain falls over to the Gemini-first
-> order (eval lane omits Cerebras) and the bar does not move.
+> `OPENROUTER_API_KEY`, `CF_AI_TOKEN`/`CLOUDFLARE_ACCOUNT_ID`), and all
+> five are mirrored to GitHub Actions secrets by
+> [`scripts/mirror-secrets-gha.sh`](../../scripts/mirror-secrets-gha.sh)
+> (and verified by `scripts/verify-secrets.sh`), so the cron runs the
+> real Cerebras-led chain unattended — no human step required.
