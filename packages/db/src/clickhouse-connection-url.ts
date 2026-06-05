@@ -151,7 +151,7 @@ export function parseClickhouseUrl(raw: string): ParseClickhouseUrlResult {
   // hit `default`, not `mydb` — reject rather than connect to the wrong db. A
   // path *with* an explicit `?database=` is treated as a reverse-proxy prefix
   // and kept (the query param is authoritative).
-  if (!dbParam && url.pathname !== "/" && url.pathname !== "") {
+  if (!dbParam && url.pathname !== "/") {
     return {
       ok: false,
       message: `Connection URL puts the database in the path; ClickHouse's HTTP interface reads it from a query param, so use ${SHAPE_HINT}.`,
