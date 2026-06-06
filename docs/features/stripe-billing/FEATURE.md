@@ -17,7 +17,7 @@ when-to-load:
 ## Touchpoints — read this feature before editing
 
 - `apps/api/src/stripe/**`
-- `apps/api/src/index.ts` (`POST /v1/stripe/webhook`, `POST /v1/billing/checkout`, `POST /v1/billing/portal`, `GET /v1/billing/status` routes)
+- `apps/api/src/index.ts` (`/v1/stripe/webhook`, `/v1/billing/{checkout,portal,status}` routes)
 - D1 tables `stripe_events`, `customers` (schema in `apps/api/migrations/`)
 - R2 bucket `nlqdb-assets` (binding `ASSETS`)
 
@@ -104,16 +104,16 @@ when-to-load:
   - Accept a client-supplied `return_url` — open-redirect vector; the origin is the only trustworthy source.
   - Gate the build on §6 / live mode — inert without live secrets anyway; shipping early removes code risk from the go-live window.
 
-### SK-STRIPE-009 — `GET /v1/billing/status` is a pure D1 read that projects the caller's plan; the price→tier map stays server-side
+### SK-STRIPE-009 — `GET /v1/billing/status` is a pure D1 read projecting the caller's plan; price→tier map stays server-side
 
-- **Decision:** `GET /v1/billing/status` (`requireSession`-gated) returns `{ plan, status, currentPeriodEnd, cancelAtPeriodEnd, manageable }` from a single indexed `customers` read — **no Stripe API call**. `plan` maps the stored `price_id` against `STRIPE_PRICE_HOBBY` / `STRIPE_PRICE_PRO` (else `"unknown"`); no row → `{ plan: "free", status: "none", manageable: false }`. `status` is the Stripe status verbatim; `manageable` is true iff a row exists. `/pricing` reads it to badge the active tier and reveal "Manage billing" only when `manageable`. Web-only (GLOBAL-003), like checkout/portal.
+- **Decision:** `GET /v1/billing/status` (`requireSession`-gated) returns `{ plan, status, currentPeriodEnd, cancelAtPeriodEnd, manageable }` from a single indexed `customers` read — **no Stripe call**. `plan` maps the stored `price_id` against `STRIPE_PRICE_HOBBY`/`STRIPE_PRICE_PRO` (else `"unknown"`); no row → `{ plan: "free", status: "none", manageable: false }`. `status` is the Stripe status verbatim; `manageable` is true iff a row exists. Web-only (GLOBAL-003).
 - **Core value:** Honest latency, Simple, Effortless UX
-- **Why:** The page used to offer "Manage billing" to every signed-in user, so a free user who never checked out hit the portal's `404 no_customer`; and it could not show which tier a subscriber is on. A cheap read of the row the webhook keeps current fixes both with zero Stripe traffic, and mapping price→tier server-side keeps the price IDs out of the client bundle.
-- **Consequence in code:** `apps/api/src/stripe/billing-status.ts` is a pure resolver (row in, status out) mirroring `checkout.ts`/`portal.ts`; the route owns the D1 read and one `nlqdb.billing.status` span (`nlqdb.billing.plan` + `nlqdb.billing.subscription_status`) — one span per request, not per query (non-spammy). `manageable` stays true for a `canceled` row (the portal still serves invoices). `apps/web/src/pages/pricing.astro` badges "Current plan" only for statuses that still hold the tier (`active`/`trialing`/`past_due` — the last keeps the badge through the dunning grace window) and treats `unknown` as "don't badge"; the fetch is a progressive enhancement — failure leaves the page in its default state. No new env var (reuses the checkout price IDs).
+- **Why:** The page offered "Manage billing" to every signed-in user, so a free user who never checked out hit the portal's `404 no_customer`, and it could not show which tier a subscriber is on. A cheap read of the row the webhook keeps current fixes both with zero Stripe traffic; mapping price→tier server-side keeps the price IDs out of the client bundle.
+- **Consequence in code:** `apps/api/src/stripe/billing-status.ts` is a pure resolver (row in, status out) mirroring `checkout.ts`/`portal.ts`; the route owns the D1 read and one `nlqdb.billing.status` span (`nlqdb.billing.plan` + `nlqdb.billing.subscription_status`) per request, not per query. `manageable` stays true for a `canceled` row (portal still serves invoices). `apps/web/src/pages/pricing.astro` badges "Current plan" only for statuses that still hold the tier (`active`/`trialing`/`past_due` — the last keeps the badge through dunning) and treats `unknown` as "don't badge"; the fetch is a progressive enhancement — failure leaves the default state. No new env var (reuses the checkout price IDs).
 - **Alternatives rejected:**
   - Return the raw `customers` row — leaks the Stripe customer/subscription IDs for no UI need; the resolver projects only what the page renders.
-  - Map price→tier in the browser — ships the price IDs in the client bundle and duplicates the mapping checkout already owns server-side.
-  - Probe subscriber-ness via the portal's 404 — couples a read to a mutating Stripe call and only answers after a click; the status read answers on page load.
+  - Map price→tier in the browser — ships the price IDs in the client bundle and duplicates the mapping checkout owns server-side.
+  - Probe subscriber-ness via the portal's 404 — couples a read to a mutating Stripe call and only answers after a click; the status read answers on load.
 
 ## GLOBALs governing this feature
 
@@ -138,5 +138,4 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 The cross-cutting billing philosophy — no-dark-patterns hard rules, payment
 tech stack, things we won't do, and napkin unit economics — lives in
 [`billing-philosophy.md`](billing-philosophy.md) (split out per P4/D4 to keep
-this file under the 20 KB cap). It constrains every billing surface, not just
-the webhook handler this feature owns.
+this file under cap). It constrains every billing surface.
