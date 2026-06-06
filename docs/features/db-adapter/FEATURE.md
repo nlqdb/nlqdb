@@ -158,24 +158,25 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 - **GLOBAL-014** — OTel span on every external call (DB, LLM, HTTP, queue).
 - **GLOBAL-015** — Power users always have an escape hatch.
 - **GLOBAL-021** — Each external system has one canonical owning module.
-  - *In this feature:* `packages/db/` is the owner for the user-data
-    engines (Postgres via Neon today; ClickHouse via Tinybird in
-    Phase 3 per `SK-MULTIENG-002`; later Redis/D1). All
-    `@neondatabase/serverless` imports live in `@nlqdb/db`. Documented
-    exception: `apps/api/src/db-create/build-deps.ts` imports the Neon
-    client directly for the control-plane provisioner (CREATE SCHEMA /
-    role / RLS) — see `SK-HDC-*`. Cloudflare D1 is a **separate**
-    external system owned by `packages/platform-db/` (per the GLOBAL-021
-    owner table); the `D1Database` typed binding flowing through
-    `db-registry.ts` is target-state platform-db consumer code, not a
-    db-adapter concern.
+  - *In this feature:* `packages/db/` owns the user-data engines
+    (Postgres via Neon today; ClickHouse via Tinybird per
+    `SK-MULTIENG-002`; later Redis/D1); all `@neondatabase/serverless`
+    imports live in `@nlqdb/db`. Documented exception:
+    `apps/api/src/db-create/build-deps.ts` imports the Neon client for
+    the control-plane provisioner (`SK-HDC-*`). Cloudflare D1 is a
+    **separate** system owned by `packages/platform-db/`; the
+    `D1Database` binding through `db-registry.ts` is platform-db consumer
+    code, not a db-adapter concern.
 - **GLOBAL-031** — One AES-256-GCM at-rest envelope + one Workers-held KEK for every BYO secret.
-  - *In this feature:* the BYO Postgres `connection_url` (`SK-DB-011`, `architecture.md §3.6.7`) is sealed by `apps/api/src/secret-envelope.ts` with context `dbconn:<dbId>` before it lands in the D1 row; `registerByoDb` reads it back via `openSecret`. The adapter still receives a plaintext DSN at execute time — the envelope is the storage boundary, not the adapter contract.
+  - *In this feature:* the BYO Postgres `connection_url` (`SK-DB-011`, `architecture.md §3.6.7`) is sealed by `apps/api/src/secret-envelope.ts` (context `dbconn:<dbId>`) before the D1 row; `registerByoDb` reads it back via `openSecret`. The adapter still gets a plaintext DSN at execute time — the envelope is the storage boundary, not the adapter contract.
+- **GLOBAL-035** — One egress guard for every BYO outbound connection host.
+  - *In this feature:* the BYO Postgres connect path runs `guardEgressHost` (`packages/db/src/egress-guard.ts`) on the parsed `host` after `parseConnectionUrl` (`SK-DB-012`, shape-only); a literal private/loopback host is rejected fail-loud, a DNS name carries `needsDnsRecheck`.
 
 ## Open questions / known unknowns
 
-- **`engine?` surface parity gap (W3, GLOBAL-003)** — `SK-DB-010` lands the `engine?` field on the TypeScript SDK (`@nlqdb/sdk`), the HTTP API (`/v1/ask`, `POST /v1/databases`), and the `<nlq-data>` element (auto-bound, no surface change). The Go CLI (`cli/`), MCP server (`packages/mcp/`), Rust SDK (`packages/nlqdb-rs/`), and Ruby SDK (`packages/nlqdb-rb/`) do not yet expose `db.create`; their packages are scaffolds (no `go.mod`, no `db.create` method on the Rust/Ruby placeholder modules, no MCP tool wired in `packages/mcp/src/`). Per `GLOBAL-003`'s "tracked gap" clause, the W3 PR ships TS SDK + API; the four un-implemented surfaces inherit `engine?` via a one-line addition when their `db.create` methods first land. Tracker: this open question. Closes when each surface's first `db.create` PR exposes `engine?` directly — the row in the engine-fit table (`SK-MULTIENG-002`) plus the SDK + API contract (this feature) are the canonical reference any of those follow-ups builds against.
-- **Parked until the per-tenant adapter-wrapper slice:** role + RLS wiring. `SK-DB-007` describes the model but the adapter does not yet emit `SET LOCAL search_path` / `SET LOCAL ROLE` before queries; consumers wrap calls themselves. Centralising it on a thin per-tenant adapter wrapper closes the "forgot the SET LOCAL on a new code path" risk.
+- **`engine?` surface parity gap (W3, GLOBAL-003)** — `SK-DB-010` lands `engine?` on the TypeScript SDK (`@nlqdb/sdk`), the HTTP API (`/v1/ask`, `POST /v1/databases`), and `<nlq-data>` (auto-bound). The Go CLI, MCP server, and Rust/Ruby SDKs don't yet expose `db.create` (their packages are scaffolds), so per `GLOBAL-003`'s "tracked gap" clause the W3 PR ships TS SDK + API and the four inherit `engine?` via a one-line addition when their `db.create` first lands. Canonical reference for those follow-ups: the engine-fit table (`SK-MULTIENG-002`) + the SDK/API contract here.
+- **Parked until the per-tenant adapter-wrapper slice:** role + RLS wiring. `SK-DB-007` describes the model but the adapter doesn't yet emit `SET LOCAL search_path` / `SET LOCAL ROLE`; consumers wrap calls themselves. A thin per-tenant wrapper closes the "forgot the SET LOCAL on a new path" risk.
 - **Parked until the paid tier exists:** Phase 2b dedicated-branch upgrade — a `branch_id` column on `databases` + a provisioner branch-create path. Decision shape locked (DESIGN §3.6.6).
+- **DNS resolve-then-recheck for a BYO Postgres host (egress, `GLOBAL-035`).** `guardEgressHost` settles a literal IP synchronously but returns `needsDnsRecheck` for a hostname (a pure fn can't bound DNS rebinding). **Parked until** the `connect.ts` Postgres branch lands; same open item as `multi-engine-adapter` (one shared guard) — see its egress bullet for the resolve-vs-platform-policy decision.
 - **Parked until the first prod BYO connection:** BYO Postgres KEK rotation. The envelope + KEK are resolved by `SK-DB-011` / `GLOBAL-031`; the rotation procedure (unwrap + re-wrap, key-version column on `databases`) is not yet designed.
-- **Statement timeout / cost cap.** Resolved shape per `GLOBAL-033` (pin-the-where): the adapter accepts `timeout_ms` / `max_rows` options and the executor sets them — the adapter owns the query handle, so it's the right home. **Parked until** the statement-timeout slice lands. The `pg_sleep` DoS the timeout was meant to bound is now rejected upstream (`SK-SQLAL-008`), and other side-effecting functions are blocked there too — so this is no longer a security gap, only a resource-fairness one.
+- **Statement timeout / cost cap.** Shape per `GLOBAL-033`: the adapter accepts `timeout_ms` / `max_rows` and the executor sets them (the adapter owns the query handle). **Parked until** the statement-timeout slice lands. The `pg_sleep` DoS it was to bound is now rejected upstream (`SK-SQLAL-008`), so this is a resource-fairness gap, not a security one.

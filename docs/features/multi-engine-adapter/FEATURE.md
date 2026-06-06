@@ -10,9 +10,9 @@ when-to-load:
 # Feature: Multi Engine Adapter
 
 **One-liner:** Adapters beyond Postgres — Phase 3 expansion to ClickHouse via Tinybird (next), with Redis / D1 evaluated and deferred.
-**Status:** decisions firm (`SK-MULTIENG-001..006`); ClickHouse/Tinybird adapter implementation pending. `SK-MULTIENG-005` promotes BYO ClickHouse from Phase 4+ to active; first BYO connect-path primitive landed (`SK-MULTIENG-006` — `packages/db/src/clickhouse-connection-url.ts`, parse/validate/redact, parallel to the Postgres `SK-DB-012`). Adapter (`clickhouse-byo.ts`) + `system.columns` introspection pending.
+**Status:** decisions firm (`SK-MULTIENG-001..006`); ClickHouse/Tinybird adapter pending. `SK-MULTIENG-005` promotes BYO ClickHouse from Phase 4+ to active. BYO connect-path primitives landed: the connection-URL parser (`SK-MULTIENG-006` — `clickhouse-connection-url.ts`, parallel to Postgres `SK-DB-012`) and the shared egress guard (`GLOBAL-035` — `egress-guard.ts`). Adapter (`clickhouse-byo.ts`) + `system.columns` introspection + `connect.ts` wiring remain.
 **Owners (code):** `packages/db/**`
-**Cross-refs:** `db-adapter/FEATURE.md` (Phase 0 PG adapter; `SK-DB-009/010` evolve the contract for multi-engine) · `engine-migration/FEATURE.md` (auto-migration is decoupled — see `SK-MULTIENG-002` *Consequence*) · `docs/phase-plan.md` (Phase plan, §11 engine verdict)
+**Cross-refs:** `db-adapter/FEATURE.md` (PG adapter; `SK-DB-009/010` evolve the contract) · `engine-migration/FEATURE.md` (auto-migration decoupled, `SK-MULTIENG-002`) · `docs/phase-plan.md` §11
 
 ## Touchpoints — read this feature before editing
 
@@ -88,16 +88,14 @@ when-to-load:
 
 **Body:** [`decisions/SK-MULTIENG-005-byo-clickhouse-promoted.md`](./decisions/SK-MULTIENG-005-byo-clickhouse-promoted.md).
 BYO ClickHouse ships active, not Phase 4+; the `phase-plan.md §7`
-P6-persona-inbound gate is superseded. Same `registerByoDb`
-provisioner path as
-[`SK-DB-011`](../db-adapter/decisions/SK-DB-011-byo-postgres-promoted.md);
-two engine-specific differences pin: native HTTP (no
-Hyperdrive / TCP socket — Workers proxy directly) and `system.columns`
-introspection instead of `pg_catalog`. Validator allowlist
-(`SK-MULTIENG-004`) is the load-bearing DDL guard since
-ClickHouse `readonly = 1` does not block DDL. Managed Tinybird path
-from `SK-MULTIENG-002` unaffected — `engine: "clickhouse"` now picks
-between managed-Tinybird and BYO at connect time.
+P6-persona-inbound gate is superseded. Same `registerByoDb` path as
+[`SK-DB-011`](../db-adapter/decisions/SK-DB-011-byo-postgres-promoted.md),
+with two engine-specific differences: native HTTP (no Hyperdrive / TCP
+socket — Workers `fetch` directly) and `system.columns` introspection
+instead of `pg_catalog`. The validator allowlist (`SK-MULTIENG-004`) is
+the load-bearing DDL guard since ClickHouse `readonly = 1` doesn't block
+DDL. Managed Tinybird (`SK-MULTIENG-002`) unaffected — `engine:
+"clickhouse"` now picks managed-Tinybird vs. BYO at connect time.
 
 ### SK-MULTIENG-006 — BYO ClickHouse connection URL: validate at the wire boundary, store sealed, display redacted (HTTP interface)
 
@@ -106,20 +104,18 @@ One pure module — `packages/db/src/clickhouse-connection-url.ts` — parses +
 validates a user-supplied ClickHouse HTTP-interface `connection_url` (scheme
 ∈ `http:` / `https:`, single host; database from `?database=`, default
 `default`) and fails loud per `GLOBAL-012`. Two ClickHouse-shaped rejections
-keep a mis-paste from connecting wrong: a ClickHouse **client DSN scheme**
+keep a mis-paste from connecting wrong: a **client DSN scheme**
 (`clickhouse://` / `clickhousedb://` / `tcp://` …) is rejected with a pointer
 to the plain HTTP endpoint, and a **database-bearing path with no `?database=`**
-(a clickhouse-connect / SQLAlchemy DSN like `…/mydb`) is rejected rather than
-silently connecting to `default`. The `redacted` form
+(a clickhouse-connect / SQLAlchemy DSN like `…/mydb`) rather than silently
+connecting to `default`. The `redacted` form
 (`https://user@host:port/?database=db`) is **rebuilt from an allowlist of safe
-parts**, so the password — which the HTTP interface can carry in the userinfo
-*or* a `?password=` query param — and every other query setting are
-structurally absent; the full URL rides the `GLOBAL-031` seal (context
-`dbconn:<dbId>`). The deliberate ClickHouse parallel of `SK-DB-012` (the
-`SK-DB-002` parallel-adapter pattern), shipped ahead of its `connect.ts` /
-`introspect-clickhouse.ts` callers as `secret-envelope.ts` and the Postgres
-`connection-url.ts` were before it; internal primitive, so no `GLOBAL-003`
-obligation of its own.
+parts**, so the password (userinfo *or* a `?password=` query param) and every
+other query setting are structurally absent; the full URL rides the
+`GLOBAL-031` seal (context `dbconn:<dbId>`). The deliberate ClickHouse parallel
+of `SK-DB-012` (`SK-DB-002` parallel-adapter pattern), shipped ahead of its
+`connect.ts` / `introspect-clickhouse.ts` callers; internal primitive, so no
+`GLOBAL-003` obligation of its own.
 
 ## GLOBALs governing this feature
 
@@ -127,19 +123,20 @@ Canonical text in [`docs/decisions.md`](../../decisions.md). Features reference 
 
 - **GLOBAL-003** — New capabilities ship to all surfaces in one PR. *In this feature:* SDK/CLI/MCP all carry `engine` per `SK-DB-010`.
 - **GLOBAL-004** — Logical schemas widen; physical layout reshapes freely. *In this feature:* `SK-MULTIENG-003` lists per-engine application.
-- **GLOBAL-006** — Plans content-addressed by `(schema_hash, query_hash)`. *In this feature:* `schema_hash` is engine-specific via per-adapter introspection (`SK-MULTIENG-003`); no `engine` dimension added to the cache key.
-- **GLOBAL-012** — Errors are one sentence with the next action. *In this feature:* `parseClickhouseUrl` (`SK-MULTIENG-006`) rejects an unusable BYO `connection_url` at the wire boundary with a one-sentence next action (the native-protocol `clickhouse://` paste points at the HTTP interface), never echoing the secret.
-- **GLOBAL-013** — $0/month free tier; ≤ 3 MiB Workers bundle. *In this feature:* gates the engine list in `SK-MULTIENG-002`; the `clickhouse-connection-url.ts` primitive (`SK-MULTIENG-006`) is zero-dependency (WHATWG `URL` only), so it adds no measurable bundle weight.
+- **GLOBAL-006** — Plans content-addressed by `(schema_hash, query_hash)`. *In this feature:* `schema_hash` is engine-specific via per-adapter introspection (`SK-MULTIENG-003`); no `engine` dimension on the cache key.
+- **GLOBAL-012** — Errors are one sentence with the next action. *In this feature:* `parseClickhouseUrl` (`SK-MULTIENG-006`) and `guardEgressHost` (`GLOBAL-035`) reject an unusable BYO host at the wire boundary with a one-sentence next action, never echoing the secret.
+- **GLOBAL-013** — $0/month free tier; ≤ 3 MiB Workers bundle. *In this feature:* gates the engine list (`SK-MULTIENG-002`); the `clickhouse-connection-url.ts` + `egress-guard.ts` primitives are zero-dependency (WHATWG `URL` only), so add no measurable bundle weight.
 - **GLOBAL-014** — OTel span on every external call. *In this feature:* `SK-MULTIENG-004` pins per-engine attributes.
 - **GLOBAL-015** — Power-user escape hatch. *In this feature:* `SK-DB-010` `engine?` override; `SK-MULTIENG-004` raw-SQL/command escape hatches per engine.
 - **GLOBAL-017** — One way to do each thing. *In this feature:* no new endpoints; `engine` is a field on existing `db.create`, never a new path.
 - **GLOBAL-020** — No "pick a region" in the first 60 s. *In this feature:* engine defaults to classifier inference; explicit field is power-user-only.
-- **GLOBAL-021** — Each external system has one canonical owning module. *In this feature:* `packages/db/` owns the ClickHouse engine, so the BYO connection-URL shape (`SK-MULTIENG-006`) lives in `packages/db/src/clickhouse-connection-url.ts`, not re-implemented in the route handler.
-- **GLOBAL-031** — One AES-256-GCM at-rest envelope + one Workers-held KEK for every BYO secret. *In this feature:* the BYO ClickHouse connection URL (`SK-MULTIENG-005`) is sealed by `apps/api/src/secret-envelope.ts` with context `dbconn:<dbId>`, identical to BYO Postgres — the native-HTTP transport and `system.columns` introspection differ, the at-rest scheme does not. The redacted display form that is the only representation allowed off the seal is produced by `parseClickhouseUrl` (`SK-MULTIENG-006`).
+- **GLOBAL-021** — Each external system has one canonical owning module. *In this feature:* `packages/db/` owns the ClickHouse engine, so the BYO connection-URL shape (`SK-MULTIENG-006`) and egress guard (`GLOBAL-035`) live there, not in the route handler.
+- **GLOBAL-031** — One AES-256-GCM at-rest envelope + one Workers-held KEK for every BYO secret. *In this feature:* the BYO ClickHouse connection URL (`SK-MULTIENG-005`) is sealed by `apps/api/src/secret-envelope.ts` (context `dbconn:<dbId>`), identical to BYO Postgres — only the native-HTTP transport and `system.columns` introspection differ. The redacted display form (the only representation allowed off the seal) is produced by `parseClickhouseUrl` (`SK-MULTIENG-006`).
+- **GLOBAL-035** — One egress guard for every BYO outbound connection host. *In this feature:* BYO ClickHouse needs it most — the Worker `fetch()`es the user host directly (no Hyperdrive proxy), so `guardEgressHost` (`packages/db/src/egress-guard.ts`) runs on the parsed `host` before the first `fetch`, after `parseClickhouseUrl` (shape-only, `SK-MULTIENG-006`). The resolve-then-recheck for a `needsDnsRecheck` name is the egress open question below.
 
 ## Phase 3 architecture (reference)
 
-The workload analyser + migration orchestrator are owned by [`engine-migration/FEATURE.md`](../engine-migration/FEATURE.md). High-level: query log feeds the analyser; the analyser emits per-DB recommendations (Pipe creation inside an engine, or cross-engine migration); the orchestrator shadow-writes, dual-reads, and atomic-cuts-over via a per-DB routing pointer. Multi-DB (this feature) is decoupled — engine is fixed at `db.create` time; the analyser is a separate Phase-3 deliverable.
+The workload analyser + migration orchestrator are owned by [`engine-migration/FEATURE.md`](../engine-migration/FEATURE.md): query log feeds the analyser, which emits per-DB recommendations (Pipe creation, or cross-engine migration); the orchestrator shadow-writes, dual-reads, and atomic-cuts-over via a per-DB routing pointer. Multi-DB (this feature) is decoupled — engine is fixed at `db.create` time.
 
 ### Multi-tenancy & isolation
 - **Free / Hobby:** shared infra per engine (Neon shared branch via `SK-DB-007`; one Tinybird workspace with per-DB table-prefix scoping).
@@ -154,20 +151,19 @@ Genuinely open items after `SK-MULTIENG-001..006`; an unresolved one becomes a f
 - **Per-prefix anon isolation on Tinybird.** Sign-in-only at adapter launch; the per-prefix validator that enables anon-mode (`GLOBAL-007` parity) is its own follow-up — schema for table-prefix scoping is undecided.
 - **Statement timeout / cost cap.** Adapter is the lowest layer with the actual handle. Whether the adapter accepts `timeout_ms`/`max_rows` or the executor wraps remains open across all engines (cross-link to `db-adapter` open questions).
 - **Rate-limit dimensions.** Free-tier user hits Tinybird's 1 k reads/day before they hit our per-account rate limit; pre-emptive throttling vs. let-through-then-error is undecided.
-- **Egress / SSRF guard on the BYO ClickHouse host.** `SK-MULTIENG-006` validates the connection-URL *shape* but deliberately does not block a hostname that resolves to a private/metadata address — a pure parser can't (DNS rebinding defeats any literal-IP check). Because BYO ClickHouse has the Worker `fetch()` an arbitrary user-supplied host (no Hyperdrive proxy, unlike the Neon PG path), the egress guard (resolve-then-check, or a Cloudflare-level egress policy) belongs at the connect-time `fetch` boundary. Open: blocklist of private ranges vs. a platform egress control. Becomes a follow-up SK when the `connect.ts` ClickHouse branch lands.
+- **Egress / SSRF guard on the BYO ClickHouse host (`GLOBAL-035`).** The deterministic half landed: `guardEgressHost` rejects a literal private/loopback/link-local/metadata host (incl. the IPv4-mapped/-compatible/6to4/NAT64 IPv6 forms + decimal/hex/octal encodings) and the `localhost` / `metadata.google.internal` names, fail-loud per `GLOBAL-012`. **Still open** (a pure parser can't bound DNS rebinding): a hostname returns `needsDnsRecheck`, so the connect-time `fetch` boundary must resolve and re-guard each address — Worker-side resolve vs. a Cloudflare egress backstop is undecided. Follow-up SK when the `connect.ts` ClickHouse branch wires it. Shared with `db-adapter`.
 - **Cross-engine `nlq run` semantics — Resolved** (`GLOBAL-033`, Simple → one way): single `{db, sql}` payload — no discriminated shape, no engine tag on the wire. The DB record already carries the engine (`db-registry`), so the server dispatches the raw string to PG SQL / Tinybird Pipe SQL / (later) Redis by the DB's engine.
 
 ## Phase-3 entry checklist
 
-1. PG adapter (`SK-DB-001..008`) is stable; tests cover the `Engine` tag on the existing path.
-2. `EnginePlan` / `EngineResult` types land in `packages/db/src/types.ts` per `SK-DB-009`; PG adapter migrates onto them with no behaviour change.
-3. `engine?` field threads through SDK / CLI / MCP / classifier per `SK-DB-010` and `GLOBAL-003`.
+1. PG adapter (`SK-DB-001..008`) stable; tests cover the `Engine` tag on the existing path.
+2. `EnginePlan` / `EngineResult` types land in `types.ts` (`SK-DB-009`); PG adapter migrates onto them with no behaviour change.
+3. `engine?` field threads through SDK / CLI / MCP / classifier (`SK-DB-010`, `GLOBAL-003`).
 4. Tinybird adapter ships with validator, OTel attrs, sign-in-only anon posture.
-5. Engine-classifier prompt block in `packages/llm/src/prompts.ts` embeds the `SK-MULTIENG-002` engine-fit table verbatim.
+5. Engine-classifier prompt in `packages/llm/src/prompts.ts` embeds the `SK-MULTIENG-002` table.
 
 ## Source pointers
 
-- `docs/phase-plan.md` — Phase 3 slice list
-- `docs/architecture.md §11` — engine verdict table
-- [`db-adapter/FEATURE.md`](../db-adapter/FEATURE.md) — single-engine adapter reference (`SK-DB-001..008`); evolution to multi-engine via `SK-DB-009..010`
-- [`engine-migration/FEATURE.md`](../engine-migration/FEATURE.md) — workload analyser + migration orchestrator (decoupled deliverable)
+- `docs/phase-plan.md` — Phase 3 slices; `docs/architecture.md §11` — engine verdict table
+- [`db-adapter/FEATURE.md`](../db-adapter/FEATURE.md) — single-engine adapter (`SK-DB-001..008`); multi-engine via `SK-DB-009..010`
+- [`engine-migration/FEATURE.md`](../engine-migration/FEATURE.md) — workload analyser + migration orchestrator (decoupled)

@@ -95,8 +95,16 @@ AES-GCM blob with Workers-held KEK (now the shared
 and yields the password/query-stripped redacted display that is the only
 form allowed on a span/log/UI; the full URL still rides the `GLOBAL-031`
 seal. Pure, zero-dep, owned by `packages/db` per `GLOBAL-021`, shipped ahead
-of its callers like `secret-envelope.ts`. Next: `connect.ts` +
-`registerByoDb` wiring + the `GLOBAL-003` surface set.
+of its callers like `secret-envelope.ts`. The shared connect-time SSRF
+egress guard now also landed:
+[`GLOBAL-035`](./decisions/GLOBAL-035-byo-egress-guard.md)'s
+`packages/db/src/egress-guard.ts` — `guardEgressHost` rejects a literal
+private/loopback/link-local/metadata host (incl. the IPv4-mapped/6to4/NAT64
+IPv6 forms + decimal/hex/octal encodings, fail-loud per
+[`GLOBAL-012`](./decisions/GLOBAL-012-one-sentence-errors.md)) and flags a
+DNS name for the connect-time resolve-then-recheck a pure parser can't do.
+Next: `connect.ts` + `registerByoDb` wiring (calling `guardEgressHost`
+after the URL parse) + the `GLOBAL-003` surface set.
 
 ## 4. BYO ClickHouse
 
@@ -122,9 +130,13 @@ other query setting are structurally absent; the full URL rides the
 `GLOBAL-031` seal. The deliberate ClickHouse parallel of `SK-DB-012` (the
 `SK-DB-002` parallel-adapter pattern), pure, zero-dep, owned by `packages/db`
 per `GLOBAL-021`, shipped ahead of its `connect.ts` / `introspect-clickhouse.ts`
-callers. Next: those callers + the `registerByoDb` ClickHouse branch + the
-connect-time SSRF egress guard (open per `SK-MULTIENG-006` — a pure parser
-can't bound DNS-rebinding to a private host).
+callers. The connect-time SSRF egress guard's deterministic half landed as the
+shared [`GLOBAL-035`](./decisions/GLOBAL-035-byo-egress-guard.md)
+`packages/db/src/egress-guard.ts` (BYO ClickHouse needs it most — the
+Worker `fetch()`es the user host directly, no Hyperdrive proxy). Next:
+those callers + the `registerByoDb` ClickHouse branch wiring
+`guardEgressHost` in; the DNS resolve-then-recheck for a `needsDnsRecheck`
+name (a pure parser can't bound DNS-rebinding) stays open per `GLOBAL-035`.
 
 ## 5. BYO OTel collectors
 
