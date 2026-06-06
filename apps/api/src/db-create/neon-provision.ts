@@ -317,18 +317,13 @@ function sqlStateOf(err: unknown): string | undefined {
   return typeof code === "string" ? code : undefined;
 }
 
-// Map a Neon `transaction()` rejection to the existing
-// `ProvisionFailureReason` union by Postgres SQLSTATE class. The batch
-// runs prefix DDL → LLM DDL → RLS → sample inserts, so the failing
-// class pins the phase: class 22 (data exception) and 23 (integrity
-// violation) can only come from a sample-row value; class 42 (syntax /
-// undefined-object / access-rule) can only come from the DDL phase.
-// SK-HDC-017 widened this from a four-code lookup so the engine-quality
-// failures the FLOW-004 walker actually hits — 42704 (undefined type,
-// e.g. a hallucinated `TEXTT`), 42601 (syntax), 22P02 (bad sample value)
-// — surface as `ddl_execution_failed` / `sample_insert_failed` instead
-// of collapsing into the opaque `transaction_failed`. Only a genuinely
-// classless error (no SQLSTATE — infra) keeps the catch-all.
+// Map a Neon `transaction()` rejection to `ProvisionFailureReason` by
+// SQLSTATE class. The batch runs prefix DDL → LLM DDL → RLS → sample
+// inserts, so the class pins the phase: class 22/23 (data / integrity)
+// only from a sample-row value; class 42 from the DDL phase (usually
+// engine-quality DDL; the rarer 42501 privilege case is infra, told
+// apart by `error_sqlstate` on the span). No SQLSTATE (TLS / timeout)
+// is infra → the `transaction_failed` catch-all.
 function mapTransactionError(err: unknown): ProvisionFailureReason {
   const code = sqlStateOf(err);
   if (code === undefined) return "transaction_failed"; // infra (TLS / timeout)

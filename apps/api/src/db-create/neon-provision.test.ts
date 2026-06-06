@@ -635,10 +635,10 @@ describe("provisionDb — observability (GLOBAL-014, SK-OBS-005, SK-HDC-012)", (
     expect(querySpans).toHaveLength(0);
   });
 
-  it("marks the `db.transaction` span ERROR when the batch throws", async () => {
+  it("marks the `db.transaction` span ERROR and pins the SQLSTATE when the batch throws (SK-HDC-017)", async () => {
     const pg = makePgStub();
     const d1 = makeD1Stub();
-    pg.setTransactionFails({ code: "42P07", message: "duplicate table" });
+    pg.setTransactionFails({ code: "42704", message: 'type "textt" does not exist' });
     const args = makeArgs();
 
     await provisionDb({ pg: pg.pg, d1: d1.d1 }, args);
@@ -648,6 +648,34 @@ describe("provisionDb — observability (GLOBAL-014, SK-OBS-005, SK-HDC-012)", (
       .find((s) => s.name === "db.transaction");
     expect(txSpan).toBeDefined();
     expect(txSpan?.events.some((e) => e.name === "exception")).toBe(true);
+    expect(txSpan?.attributes["db.transaction.error_sqlstate"]).toBe("42704");
+  });
+
+  it("SK-HDC-017 — records `error_sqlstate=none` when the failure carries no SQLSTATE (infra)", async () => {
+    const pg = makePgStub();
+    const d1 = makeD1Stub();
+    pg.setTransactionFails({ message: "fetch failed: TLS error" });
+    const args = makeArgs();
+
+    await provisionDb({ pg: pg.pg, d1: d1.d1 }, args);
+
+    const txSpan = telemetry.spanExporter
+      .getFinishedSpans()
+      .find((s) => s.name === "db.transaction");
+    expect(txSpan?.attributes["db.transaction.error_sqlstate"]).toBe("none");
+  });
+
+  it("SK-HDC-017 — does NOT set `error_sqlstate` on a successful provision", async () => {
+    const pg = makePgStub();
+    const d1 = makeD1Stub();
+    const args = makeArgs();
+
+    await provisionDb({ pg: pg.pg, d1: d1.d1 }, args);
+
+    const txSpan = telemetry.spanExporter
+      .getFinishedSpans()
+      .find((s) => s.name === "db.transaction");
+    expect(txSpan?.attributes["db.transaction.error_sqlstate"]).toBeUndefined();
   });
 
   it("emits a `db.query` span when the cleanup path's DROP SCHEMA runs", async () => {

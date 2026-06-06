@@ -62,11 +62,17 @@
 >    inside the gate; (c) push BIRD via free-chain scaffolding work
 >    (prompt + retry-on-exec-error already wired per `SK-QUAL-009`) —
 >    target +5pp/week until 0.65.
-> 2. **§1.4 invite-valve regression watch — now continuous (2026-05-24
->    re-walk passed).** FLOW-004 passed again end-to-end via
+> 2. **§1.4 invite-valve — gate intact, but provision leg REGRESSED
+>    (2026-06-06 re-walk).** FLOW-004 via
 >    `scripts/flow-004-walk.sh` ([`SK-STRG-002`](../features/stranger-test/FEATURE.md))
->    — mail.tm → waitlist → Resend invite → `X-Invite-Code` → HTTP 200
->    on `/v1/ask` (11s email latency, 18s wall, control 403). The
+>    still proves the valve — control `403` + invite **bypasses the gate**
+>    (SK-GATE-007 intact) — but `/v1/ask` now returns **HTTP 500
+>    `provision_failed`/`transaction_failed`**: the hosted-DB provision
+>    leg fails (06-05 was 200, 06-04 was 422). Root cause is engine/data-
+>    quality DDL (priority #1), not the valve; SK-HDC-017 (this PR) makes
+>    the next walk name the SQLSTATE class so the break is attributable
+>    from the deployed surface. **This is the current #2 pick: confirm
+>    the provision 500 traces to bad generated DDL, not infra.** The
 >    daily cron is **shipped** as [`SK-STRG-003`](../features/stranger-test/FEATURE.md)
 >    ([`.github/workflows/acquisition-health.yml`](../../.github/workflows/acquisition-health.yml))
 >    — runs all three walkers at 06:00 UTC, uploads JSON results as a
@@ -104,12 +110,12 @@
 > §1.1 stranger-test primitive ([`tools/stranger-test/`](../../tools/stranger-test/) — Playwright walker for FLOW-001/002/003, now with [`SK-STRG-004`](../features/stranger-test/decisions/SK-STRG-004-invite-bearing-composer.md) invite-bearing variant) ·
 > §1.1+§1.4 **daily acquisition-health cron** (SK-STRG-003; [`acquisition-health.yml`](../../.github/workflows/acquisition-health.yml) walks all three scripts at 06:00 UTC, exits 0, 90-day artifact) ·
 > §1.1 **invite-bearing composer** ([`scripts/stranger-test-invited.sh`](../../scripts/stranger-test-invited.sh) — mints one invite via FLOW-004 then drives browser walks; 2026-05-24 first run reached HTTP 200 on `/v1/ask` for the first time AND caught + fixed a `captureInviteFromUrl` regression on `/solve/`+`/vs/`) ·
-> §1.4 gate-valve **end-to-end verified** ([`scripts/flow-004-walk.sh`](../../scripts/flow-004-walk.sh)
-> — mail.tm + curl walker; 6 passes 2026-05-24 across direct + composer invocations) ·
+> §1.4 gate-valve **shipped + walked** ([`scripts/flow-004-walk.sh`](../../scripts/flow-004-walk.sh)
+> — mail.tm + curl walker; gate-bypass invariant holds, but the 2026-06-06 walk hit a downstream provision **HTTP 500** — see `## Progress log` / FLOW-004 outcome) ·
 > §2.2 collection (HN+Reddit+GH+GHD+SO+IH+Dev.to+Bluesky+Mastodon) · §2.3 scoring + clustering + verdict · §2.1
 > GitHub Issues + GitHub Discussions + Stack Overflow + Indie Hackers + Dev.to + Bluesky + Mastodon sources · §3.1 first 5
 > solve pages (paraphrased `<h1>`; now invite-aware) · §8 mirrored flow trackers (8 flows:
-> 4 walker-evidenced = FLOW-001 (passed invite-bearing) + FLOW-002/003 (regression discovered + fixed) + **FLOW-004 (passed 6×)**,
+> 4 walker-evidenced = FLOW-001 (static-green, gate-403 by design) + FLOW-002/003 (static-green, gate-403 by design) + **FLOW-004 (gate-bypass intact; 2026-06-06 provision-leg 500 regression)**,
 > 1 curl-partial = FLOW-005, 1 cron source-health = FLOW-008, 2 unattempted
 > = FLOW-006/007) · [`scripts/verify-flows.sh`](../../scripts/verify-flows.sh)
 > (curl-observable subset; egress-policy aware) · [`scripts/stranger-test.sh`](../../scripts/stranger-test.sh)
@@ -907,18 +913,18 @@ the `Source signal` blocks below get amended with verbatim cluster
 labels; until then the sources cite the hubs where the theme is
 observable on demand.
 
-### Status dashboard (updated 2026-06-05)
+### Status dashboard (updated 2026-06-06)
 
 | Flow | Persona | Sub-tasks shipped | Verification | Mirror |
 |---|---|---|---|---|
-| FLOW-001 | P1 solo builder | 6 / 7 (86%) | **2026-06-05 re-walked** — baseline `bash scripts/stranger-test.sh` failed step 5 (gate 403 as documented per GLOBAL-027); invite-bearing `stranger-test-invited.sh` failed step 5 on a **CORS preflight regression** (`/v1/ask` `Access-Control-Allow-Headers` omitted `x-invite-code`, blocking every invited browser) — **fixed this PR** (SK-GATE-007 allow-list + `test/cors.test.ts` + verify-flows deployed-surface guard); 7-day freshness rule met | [verify](./automated-icp-validation-plan-verification.md#flow-001--anonymous-first-happy-path) |
-| FLOW-002 | P3 analyst | 5 / 6 (83%) | **2026-06-05 re-walked** — baseline `bash scripts/stranger-test.sh` failed step 9 (gate 403 as documented per GLOBAL-027); every static + CTA + draft + `solve.try_query_clicked` event-spy assertion green; 7-day freshness rule met | [verify](./automated-icp-validation-plan-verification.md#flow-002--pain-driven-aeo-inbound-search--solveslug--first-query) |
-| FLOW-003 | P3 / P4 | 5 / 5 (100%) | **2026-06-05 re-walked** — baseline `bash scripts/stranger-test.sh` failed step 8 (gate 403 as documented per GLOBAL-027); every static + CTA + draft + `/llms.txt` assertion green across 6 vs slugs; 7-day freshness rule met | [verify](./automated-icp-validation-plan-verification.md#flow-003--comparison-driven-inbound-search--vscompetitor--first-query) |
-| FLOW-004 | P1 solo builder | 7 / 7 (100%) | **2026-06-05 re-walked passed** — `bash scripts/flow-004-walk.sh` in 18s: control 403 + invite **HTTP 200** (gate honoured the code per SK-GATE-007; the 2026-06-04 downstream-422 has cleared) — full first-value restored | [verify](./automated-icp-validation-plan-verification.md#flow-004--waitlist-signup--invite-email--gate-bypass) |
-| FLOW-005 | P2 agent builder | 6 / 7 (86%) | **2026-06-05 re-walked passed (no-credential subset)** — `bash scripts/flow-005-walk.sh` 6/6 in 1s ([`SK-STRG-005`](../features/stranger-test/FEATURE.md)); credentialed steps (`tools/list` authed, `create_database`, `ask`, `run`) still need an `sk_mcp_*` key | [verify](./automated-icp-validation-plan-verification.md#flow-005--agent-self-provisions-db-via-mcp) |
+| FLOW-001 | P1 solo builder | 6 / 7 (86%) | **2026-06-06 re-walked** — Playwright `bash scripts/stranger-test.sh` steps 1–4 green on both seeded prompts; failed step 5 (gate 403 as documented per GLOBAL-027, `status=403 gate=feature_gated`). The SK-GATE-007 invited-browser CORS fix holds — `verify-flows.sh` preflight guard confirms `/v1/ask` `Access-Control-Allow-Headers` now lists `x-invite-code`; 7-day freshness rule met | [verify](./automated-icp-validation-plan-verification.md#flow-001--anonymous-first-happy-path) |
+| FLOW-002 | P3 analyst | 5 / 6 (83%) | **2026-06-06 re-walked** — baseline `bash scripts/stranger-test.sh` failed step 9 (gate 403 as documented per GLOBAL-027); every static + CTA + draft + `solve.try_query_clicked` event-spy assertion green; 7-day freshness rule met | [verify](./automated-icp-validation-plan-verification.md#flow-002--pain-driven-aeo-inbound-search--solveslug--first-query) |
+| FLOW-003 | P3 / P4 | 5 / 5 (100%) | **2026-06-06 re-walked** — baseline `bash scripts/stranger-test.sh` failed step 8 (gate 403 as documented per GLOBAL-027); every static + CTA + draft + `/llms.txt` assertion green across 6 vs slugs; 7-day freshness rule met | [verify](./automated-icp-validation-plan-verification.md#flow-003--comparison-driven-inbound-search--vscompetitor--first-query) |
+| FLOW-004 | P1 solo builder | 7 / 7 (100%) | **2026-06-06 re-walked partial — provisioning regression** — `bash scripts/flow-004-walk.sh` in 19s: control 403 ✓ + invite **bypassed the gate** ✓ (SK-GATE-007 intact), but `/v1/ask` returned **HTTP 500 `provision_failed`/`transaction_failed`** (06-05 was 200, 06-04 was 422 — the hosted-DB provision leg is flaky on engine/data quality, not the valve). SK-HDC-017 (this PR) makes the next walk name the SQLSTATE class; routed to engine-quality (preamble priority #1) | [verify](./automated-icp-validation-plan-verification.md#flow-004--waitlist-signup--invite-email--gate-bypass) |
+| FLOW-005 | P2 agent builder | 6 / 7 (86%) | **2026-06-06 re-walked passed (no-credential subset)** — `bash scripts/flow-005-walk.sh` 6/6 in 1s ([`SK-STRG-005`](../features/stranger-test/FEATURE.md)); credentialed steps (`tools/list` authed, `create_database`, `ask`, `run`) still need an `sk_mcp_*` key | [verify](./automated-icp-validation-plan-verification.md#flow-005--agent-self-provisions-db-via-mcp) |
 | FLOW-006 | P4 backend engineer | 5 / 6 (83%) | not yet attempted | [verify](./automated-icp-validation-plan-verification.md#flow-006--sdk-runsql-escape-hatch) |
 | FLOW-007 | P1 / P3 | 5 / 6 (83%) | not yet attempted | [verify](./automated-icp-validation-plan-verification.md#flow-007--adopt-anonymous-db-on-signup) |
-| FLOW-008 | cron / system | 12 / 12 (100%) | partial (curl probe of 9 sources passes 2026-06-04 including the new Mastodon `timelines/tag` probe; Reddit/SO sandbox-egress advisory; cron-side checks need deployed Worker) | [verify](./automated-icp-validation-plan-verification.md#flow-008--weekly-icp-scrape-source-health) |
+| FLOW-008 | cron / system | 12 / 12 (100%) | partial (curl probe of 9 sources passes 2026-06-06 incl. Mastodon `timelines/tag`; Reddit/SO sandbox-egress advisory; cron-side checks need deployed Worker) | [verify](./automated-icp-validation-plan-verification.md#flow-008--weekly-icp-scrape-source-health) |
 
 **Honest takeaway:** **FLOW-004 is the one canonical flow with a full
 end-to-end pass** — `flow-004-walk.sh` 2026-06-05 drove control-403 +
