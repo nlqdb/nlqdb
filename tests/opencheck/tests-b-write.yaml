@@ -162,15 +162,20 @@ tests:
       (the Cmd+K handler mounts with the chat shell), then call
       browser_snapshot again. Press Escape once to make sure no textarea or
       dialog is focused (do NOT navigate away).
-      Press Ctrl+K (Cmd+K on Mac) EXACTLY ONCE. The handler is a TOGGLE
-      (Ctrl+K open ↔ Ctrl+K close), so a second press CLOSES the palette —
-      never press Ctrl+K twice in a row. Wait 2 seconds, then call
-      browser_snapshot. If the modal is not visible yet, do NOT press
-      Ctrl+K again — just wait 2 seconds and call browser_snapshot again,
-      up to 3 times, to let it render. Only if all 3 re-snapshots still show
+      Open the command palette by calling browser_press_key EXACTLY ONCE
+      with key set to the SINGLE combined chord "ControlOrMeta+k"
+      (ControlOrMeta resolves to Ctrl on Linux CI and Cmd on macOS, and the
+      modifier is held while "k" is pressed). This must be ONE combined
+      keypress: do NOT press "Control" and "k" as separate keys, and do NOT
+      press a bare "k" — the app's window keydown handler only fires when the
+      Ctrl/Cmd modifier is set. The handler is a TOGGLE, so sending the chord
+      twice CLOSES the palette — never send it twice in a row. Wait 2
+      seconds, then call browser_snapshot. If the modal is not visible yet,
+      do NOT send the chord again — just wait 2 seconds and browser_snapshot
+      again, up to 3 times, to let it render. Only if all 3 re-snapshots show
       no modal and no "Type a command…" text: press Escape once to reset,
-      then press Ctrl+K exactly once more as a single final retry, wait 2
-      seconds, and browser_snapshot.
+      then send "ControlOrMeta+k" exactly once more as a single final retry,
+      wait 2 seconds, and browser_snapshot.
       Verify a modal appears with placeholder "Type a command…" and action
       labels including at least two of "New database", "Copy embed snippet",
       "API keys", "Sign out".
