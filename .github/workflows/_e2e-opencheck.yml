@@ -127,7 +127,13 @@ jobs:
           const path = require("path");
           const readline = require("readline");
 
-          const SNAP_LIMIT = 8000; // chars per content[].text block
+          const SNAP_LIMIT = 8000; // total chars kept per content[].text block
+          // Keep a trailing slice, not just the head: the chat composer + Send control render
+          // AFTER the message list in the DOM (apps/web ChatPanel.tsx), so head-only truncation
+          // hid their refs once the persistent-session history grew past ~8K chars — the agent
+          // then couldn't click "Ask about your data…" in the later read tests. A head+tail
+          // window keeps bottom-of-DOM interactive elements reachable at the same token budget.
+          const SNAP_TAIL = 2000;
 
           // 1. Profile lock cleanup — must run before spawning Chromium.
           const userDataDirArg = process.argv.find(a => a.startsWith("--user-data-dir="));
@@ -167,8 +173,10 @@ jobs:
             if (msg && msg.result && Array.isArray(msg.result.content)) {
               msg.result.content = msg.result.content.map((block) => {
                 if (block.type === "text" && typeof block.text === "string" && block.text.length > SNAP_LIMIT) {
+                  const head = block.text.slice(0, SNAP_LIMIT - SNAP_TAIL);
+                  const tail = block.text.slice(-SNAP_TAIL);
                   const dropped = block.text.length - SNAP_LIMIT;
-                  return { ...block, text: block.text.slice(0, SNAP_LIMIT) + `\n[... ${dropped} chars truncated by wrapper ...]` };
+                  return { ...block, text: `${head}\n[... ${dropped} chars truncated by wrapper ...]\n${tail}` };
                 }
                 return block;
               });
