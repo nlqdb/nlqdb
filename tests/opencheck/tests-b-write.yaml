@@ -161,9 +161,17 @@ tests:
       contains "/app". Wait 3 seconds for the app shell to finish loading
       (the Cmd+K handler mounts with the chat shell), then call
       browser_snapshot again. Press Escape once to make sure no textarea or
-      dialog is focused (do NOT navigate away). Then press Ctrl+K
-      (Cmd+K on Mac). If no modal appears within 2 seconds, press Ctrl+K
-      once more. Verify a modal appears with placeholder
-      "Type a command…" and action labels including at least two of
-      "New database", "Copy embed snippet", "API keys", "Sign out".
+      dialog is focused (do NOT navigate away).
+      Press Ctrl+K (Cmd+K on Mac) EXACTLY ONCE. The handler is a TOGGLE
+      (Ctrl+K open ↔ Ctrl+K close), so a second press CLOSES the palette —
+      never press Ctrl+K twice in a row. Wait 2 seconds, then call
+      browser_snapshot. If the modal is not visible yet, do NOT press
+      Ctrl+K again — just wait 2 seconds and call browser_snapshot again,
+      up to 3 times, to let it render. Only if all 3 re-snapshots still show
+      no modal and no "Type a command…" text: press Escape once to reset,
+      then press Ctrl+K exactly once more as a single final retry, wait 2
+      seconds, and browser_snapshot.
+      Verify a modal appears with placeholder "Type a command…" and action
+      labels including at least two of "New database", "Copy embed snippet",
+      "API keys", "Sign out".
       Press Escape and verify the modal closes.
