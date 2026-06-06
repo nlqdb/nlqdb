@@ -926,11 +926,15 @@ observable on demand.
 | FLOW-007 | P1 / P3 | 5 / 6 (83%) | not yet attempted | [verify](./automated-icp-validation-plan-verification.md#flow-007--adopt-anonymous-db-on-signup) |
 | FLOW-008 | cron / system | 12 / 12 (100%) | partial (curl probe of 9 sources passes 2026-06-06 incl. Mastodon `timelines/tag`; Reddit/SO sandbox-egress advisory; cron-side checks need deployed Worker) | [verify](./automated-icp-validation-plan-verification.md#flow-008--weekly-icp-scrape-source-health) |
 
-**Honest takeaway:** **FLOW-004 is the one canonical flow with a full
-end-to-end pass** — `flow-004-walk.sh` 2026-06-05 drove control-403 +
-invite-**HTTP 200** through a real mail.tm inbox (first-value across the
-gate via SK-GATE-007). FLOW-005's no-credential subset passes (6/6
-discovery + auth-wall). FLOW-001 / FLOW-002 / FLOW-003 have **Playwright
+**Honest takeaway:** **No canonical flow completes to first-value today
+(2026-06-06).** FLOW-004's gate-bypass invariant still holds — control-403
++ invite **bypasses the gate** via SK-GATE-007 — but the downstream
+provision leg **regressed to HTTP 500 `transaction_failed`** on the
+2026-06-06 walk (it was a full HTTP 200 on 2026-06-05; 06-04 was a 422),
+so the invited stranger's first query does not complete. The flake lives
+in the provision leg (engine/data-quality DDL per GLOBAL-027), not the
+valve; SK-HDC-017 makes the next walk name the SQLSTATE class. FLOW-005's
+no-credential subset passes (6/6 discovery + auth-wall). FLOW-001 / FLOW-002 / FLOW-003 have **Playwright
 walker** evidence (`tools/stranger-test/`,
 [`SK-STRG-001`](../features/stranger-test/FEATURE.md)): every
 static-surface and CTA-side assertion passes (homepage hero markup,
