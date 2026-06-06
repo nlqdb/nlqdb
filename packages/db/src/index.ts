@@ -65,6 +65,8 @@ export {
   redactConnectionUrl,
   UNPARSEABLE_CONNECTION_URL,
 } from "./connection-url.ts";
+export type { EgressGuardResult } from "./egress-guard.ts";
+export { guardEgressHost } from "./egress-guard.ts";
 export type { PostgresAdapterOptions, PostgresQueryFn } from "./postgres.ts";
 export { createPostgresAdapter } from "./postgres.ts";
 export type {
