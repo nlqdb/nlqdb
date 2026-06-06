@@ -219,15 +219,53 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
     });
   }
 
-  // "Manage billing" — revealed only once the auth probe resolves authed.
-  // POSTs /v1/billing/portal and redirects to the Stripe-hosted portal.
-  // 404 no_customer = signed in but never subscribed → guide to upgrade.
+  // Reflect the caller's real plan. GET /v1/billing/status is a plain D1
+  // read (no Stripe call), so this stays cheap and works before live keys
+  // exist. We badge the active tier and reveal "Manage billing" only for
+  // actual subscribers — a free user who never checked out would otherwise
+  // see the control and hit a 404 on click.
   const manageSection = document.getElementById("pricing-manage");
   const manageBtn = document.getElementById("pricing-manage-btn") as HTMLButtonElement | null;
 
+  // Stripe statuses that mean the subscriber currently has the tier's
+  // access (so the "Current plan" badge is honest). A canceled or
+  // incomplete row stays manageable but is not badged as the live plan.
+  const ACTIVE_STATUSES = new Set(["active", "trialing", "past_due"]);
+
   void (async () => {
     const user = await fetchSession();
-    if (user && manageSection) manageSection.hidden = false;
+    if (!user) return;
+
+    const apiBase = (manageBtn?.dataset.apiBase ?? "").replace(/\/$/, "");
+    let status: { plan: string; status: string; manageable: boolean } | null = null;
+    try {
+      const res = await fetch(`${apiBase}/v1/billing/status`, { credentials: "include" });
+      if (res.ok) status = await res.json();
+    } catch {
+      // Status is a progressive enhancement — on failure the page stays in
+      // its default state (upgrade CTAs live, manage hidden) rather than
+      // blocking the user.
+    }
+    if (!status) return;
+
+    if (status.manageable && manageSection) manageSection.hidden = false;
+    if (
+      (status.plan === "hobby" || status.plan === "pro") &&
+      ACTIVE_STATUSES.has(status.status)
+    ) {
+      const cta = document.querySelector<HTMLButtonElement>(`button[data-plan="${status.plan}"]`);
+      const header = cta?.closest(".pricing__card")?.querySelector(".pricing__card-header");
+      if (header) {
+        const badge = document.createElement("span");
+        badge.className = "pricing__badge";
+        badge.textContent = "Current plan";
+        header.prepend(badge);
+      }
+      if (cta) {
+        cta.disabled = true;
+        cta.textContent = "Current plan";
+      }
+    }
   })();
 
   manageBtn?.addEventListener("click", async () => {
@@ -403,6 +441,17 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
   .pricing__cta:disabled {
     opacity: 0.6;
     cursor: not-allowed;
+  }
+
+  .pricing__badge {
+    align-self: flex-start;
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--accent-fg);
+    background: var(--accent);
+    padding: 0.2rem 0.5rem;
   }
 
   .pricing__manage {
