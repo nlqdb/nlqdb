@@ -174,6 +174,12 @@ export async function provisionDb(
     } catch (err) {
       txSpan.recordException(err as Error);
       txSpan.setStatus({ code: SpanStatusCode.ERROR });
+      // SK-HDC-017 — pin the raw Postgres SQLSTATE on the span so the
+      // catch-all `transaction_failed` reason is no longer a black hole:
+      // an operator (or the FLOW-004 walker reading the deployed surface)
+      // can tell engine-quality DDL/data failures apart from infra. The
+      // code is a bounded 5-char string (or `none`) — no cardinality risk.
+      txSpan.setAttribute("db.transaction.error_sqlstate", sqlStateOf(err) ?? "none");
       const reason = mapTransactionError(err);
       return {
         tx: {
@@ -303,21 +309,27 @@ function buildSampleInsert(
   };
 }
 
-// Map a Neon `transaction()` rejection to the existing
-// `ProvisionFailureReason` union. Neon rejects with `NeonDbError`
-// carrying a Postgres SQLSTATE in `code`; everything else becomes
-// the catch-all `transaction_failed`.
-function mapTransactionError(err: unknown): ProvisionFailureReason {
+// Extract the Postgres SQLSTATE from a Neon `transaction()` rejection.
+// `NeonDbError` carries it in `code`; anything else (TLS reset, timeout
+// with no SQLSTATE) yields `undefined`.
+function sqlStateOf(err: unknown): string | undefined {
   const code = (err as { code?: string } | null)?.code;
-  if (code === "42P06") return "schema_already_exists"; // duplicate_schema
-  if (code === "42P07") return "ddl_execution_failed"; // duplicate_table
-  if (code === "42501") return "ddl_execution_failed"; // insufficient_privilege
-  // Sample-row inserts come last in the batch; check_violation /
-  // not_null_violation / foreign_key_violation map cleanly here even
-  // though Postgres returns them with different SQLSTATEs (23xxx).
-  // The DDL chunk above runs first so an integrity error after that
-  // implies an INSERT failure.
-  if (typeof code === "string" && code.startsWith("23")) return "sample_insert_failed";
+  return typeof code === "string" ? code : undefined;
+}
+
+// Map a Neon `transaction()` rejection to `ProvisionFailureReason` by
+// SQLSTATE class. The batch runs prefix DDL → LLM DDL → RLS → sample
+// inserts, so the class pins the phase: class 22/23 (data / integrity)
+// only from a sample-row value; class 42 from the DDL phase (usually
+// engine-quality DDL; the rarer 42501 privilege case is infra, told
+// apart by `error_sqlstate` on the span). No SQLSTATE (TLS / timeout)
+// is infra → the `transaction_failed` catch-all.
+function mapTransactionError(err: unknown): ProvisionFailureReason {
+  const code = sqlStateOf(err);
+  if (code === undefined) return "transaction_failed"; // infra (TLS / timeout)
+  if (code === "42P06") return "schema_already_exists"; // duplicate_schema — drives the orchestrator retry
+  if (code.startsWith("22") || code.startsWith("23")) return "sample_insert_failed"; // bad sample value / constraint
+  if (code.startsWith("42")) return "ddl_execution_failed"; // syntax / undefined object / privilege
   return "transaction_failed";
 }
 
