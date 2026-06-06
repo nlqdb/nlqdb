@@ -95,6 +95,7 @@ import {
   surfaceFromPrincipal,
 } from "./principal.ts";
 import { orchestrateRun, type RunError } from "./run/orchestrate.ts";
+import { type CustomerRow, resolveBillingStatus } from "./stripe/billing-status.ts";
 import { type CheckoutPlan, createCheckoutSession } from "./stripe/checkout.ts";
 import { cryptoProvider, stripe as stripeClient } from "./stripe/client.ts";
 import { createPortalSession } from "./stripe/portal.ts";
@@ -1663,6 +1664,38 @@ app.post("/v1/billing/portal", requireSession, async (c) => {
   );
 
   return c.json(result.body, result.status);
+});
+
+// `GET /v1/billing/status` — the caller's current subscription state so the
+// /pricing page can badge their active tier and reveal "Manage billing" only
+// to actual subscribers (SK-STRIPE-009). A plain indexed D1 read, no Stripe
+// call: it works before any live keys exist, returning
+// `{ plan: "free", status: "none", manageable: false }` for a free user.
+// Web-only (GLOBAL-003), like checkout/portal.
+app.get("/v1/billing/status", requireSession, async (c) => {
+  const tracer = trace.getTracer("@nlqdb/api");
+  return tracer.startActiveSpan("nlqdb.billing.status", async (span) => {
+    try {
+      const session = c.var.session;
+      span.setAttribute("nlqdb.user.id", session.user.id);
+      const row = await c.env.DB.prepare(
+        "SELECT status, price_id, current_period_end, cancel_at_period_end FROM customers WHERE user_id = ?",
+      )
+        .bind(session.user.id)
+        .first<CustomerRow>();
+      const status = resolveBillingStatus(row, c.env.STRIPE_PRICE_HOBBY, c.env.STRIPE_PRICE_PRO);
+      span.setAttribute("nlqdb.billing.plan", status.plan);
+      span.setAttribute("nlqdb.billing.subscription_status", status.status);
+      return c.json(status);
+    } catch (err) {
+      const e = err as Error;
+      span.recordException(e);
+      span.setStatus({ code: SpanStatusCode.ERROR, message: e.message });
+      return c.json({ error: "internal" }, 500);
+    } finally {
+      span.end();
+    }
+  });
 });
 
 // Chat surface (Slice 10 — docs/architecture.md §3.2 "Signed-in surface").

@@ -17,7 +17,7 @@ when-to-load:
 ## Touchpoints — read this feature before editing
 
 - `apps/api/src/stripe/**`
-- `apps/api/src/index.ts` (`POST /v1/stripe/webhook` route)
+- `apps/api/src/index.ts` (`/v1/stripe/webhook`, `/v1/billing/{checkout,portal,status}` routes)
 - D1 tables `stripe_events`, `customers` (schema in `apps/api/migrations/`)
 - R2 bucket `nlqdb-assets` (binding `ASSETS`)
 
@@ -104,6 +104,17 @@ when-to-load:
   - Accept a client-supplied `return_url` — open-redirect vector; the origin is the only trustworthy source.
   - Gate the build on §6 / live mode — inert without live secrets anyway; shipping early removes code risk from the go-live window.
 
+### SK-STRIPE-009 — `GET /v1/billing/status` is a pure D1 read projecting the caller's plan; price→tier map stays server-side
+
+- **Decision:** `GET /v1/billing/status` (`requireSession`-gated) returns `{ plan, status, currentPeriodEnd, cancelAtPeriodEnd, manageable }` from a single indexed `customers` read — **no Stripe call**. `plan` maps the stored `price_id` against `STRIPE_PRICE_HOBBY`/`STRIPE_PRICE_PRO` (else `"unknown"`); no row → `{ plan: "free", status: "none", manageable: false }`. `status` is the Stripe status verbatim; `manageable` is true iff a row exists. Web-only (GLOBAL-003).
+- **Core value:** Honest latency, Simple, Effortless UX
+- **Why:** The page offered "Manage billing" to every signed-in user, so a free user who never checked out hit the portal's `404 no_customer`, and it could not show which tier a subscriber is on. A cheap read of the row the webhook keeps current fixes both with zero Stripe traffic; mapping price→tier server-side keeps the price IDs out of the client bundle.
+- **Consequence in code:** `apps/api/src/stripe/billing-status.ts` is a pure resolver (row in, status out) mirroring `checkout.ts`/`portal.ts`; the route owns the D1 read and one `nlqdb.billing.status` span (`nlqdb.billing.plan` + `nlqdb.billing.subscription_status`) per request, not per query. `manageable` stays true for a `canceled` row (portal still serves invoices). `apps/web/src/pages/pricing.astro` badges "Current plan" only for statuses that still hold the tier (`active`/`trialing`/`past_due` — the last keeps the badge through dunning) and treats `unknown` as "don't badge"; the fetch is a progressive enhancement — failure leaves the default state. No new env var (reuses the checkout price IDs).
+- **Alternatives rejected:**
+  - Return the raw `customers` row — leaks the Stripe customer/subscription IDs for no UI need; the resolver projects only what the page renders.
+  - Map price→tier in the browser — ships the price IDs in the client bundle and duplicates the mapping checkout owns server-side.
+  - Probe subscriber-ness via the portal's 404 — couples a read to a mutating Stripe call and only answers after a click; the status read answers on load.
+
 ## GLOBALs governing this feature
 
 Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; index in [`docs/decisions.md`](../../decisions.md)). The list below names the rules that constrain this feature; any feature-local commentary is nested under the rule.
@@ -124,37 +135,7 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 
 ## Billing constraints and philosophy
 
-### No dark patterns — hard rules
-
-These apply to every billing surface. Violating any one is a product defect, not a config choice:
-
-- **No credit card for the free tier, ever.** Not "to verify identity." Not "for spam protection." No.
-- **The trial is the free tier itself.** No separate "14-day Pro trial" with a countdown. When a user exceeds free limits, rate-limit with a clear message — "You've used your 1,000 queries. Add a card to continue — or wait until next month." Data is never held hostage; export is one click, always free.
-- **First charge confirmation.** When a card is added, email before the first charge: "You'll be billed $X on Y. Reply NO to cancel." No silent Hobby→Pro auto-upgrades; tier changes require a deliberate click.
-- **Usage predictability.** Hard caps on Pro are opt-in; the default is a soft cap: email at 80% of the monthly budget, email + require a one-click extension at 100%. No surprise $4,000 bills. Ever.
-- **Downgrade is as easy as upgrade.** One click. Pro-rated refund on the unused portion.
-- **Cancellation is one click** — no call, no chat, no exit survey. An optional survey *after* cancellation is acceptable.
-
-### Payment tech stack
-
-- **Stripe Billing** — invoicing + payment-method capture. Checkout is Stripe-hosted; we build no card forms.
-- **Lago** (self-hosted, open source) — usage metering in front of Stripe. Meters queries, LLM tokens, GB-mo; emits invoice events. Not yet wired (Phase 2).
-- **Stripe Tax** — enabled day 1 in live mode. Handles VAT/GST automatically.
-- **Paddle** — optional Merchant of Record if we expand internationally before setting up entities. Deferred.
-
-### Things we will NOT do
-
-- Charge per seat in Phase 1. The billing unit is the DB and the query, not the human.
-- Gate features we'd have shipped anyway behind Pro to manufacture upgrade urgency.
-- Offer "lifetime deals" on AppSumo. That audience isn't ours and the support cost is real.
-- Hide prices behind "Contact sales" for anything below the Enterprise tier.
-
-### Unit economics (napkin, Phase 1)
-
-| Tier | Our cost | Margin target |
-|---|---|---|
-| Free (100 queries/mo) | ~$0.15–0.40 | — (CAC substitute) |
-| Hobby ($10/mo) | ~$2–4 | 60–80% at target plan-cache hit rate |
-| Pro ($25/mo+) | — | 75%+ once self-hosted classifier online |
-
-**LLM cost is the dominant variable.** Plan-cache hit rate (60–80% at maturity) is the primary lever; small-model-first chain + batch embeddings + no summarization for structured-output calls are secondary.
+The cross-cutting billing philosophy — no-dark-patterns hard rules, payment
+tech stack, things we won't do, and napkin unit economics — lives in
+[`billing-philosophy.md`](billing-philosophy.md) (split out per P4/D4 to keep
+this file under cap). It constrains every billing surface.

@@ -87,8 +87,9 @@ API version pinned to `2026-04-22.dahlia` via the `stripe` npm SDK (see `SK-STRI
     (never subscribed); `500 internal` on Stripe failure.
   - Forwards `Idempotency-Key`. OTel span: `nlqdb.billing.portal.create`.
 - `apps/api/src/stripe/portal.ts` — pure function mirroring `checkout.ts`.
-- "Manage billing" control on `/pricing`, revealed only for authed users;
-  maps 404 → "No active subscription yet", 503 → "Not available yet".
+- "Manage billing" control on `/pricing`, revealed only for actual
+  subscribers (gated on `GET /v1/billing/status` — see below); maps
+  404 → "No active subscription yet", 503 → "Not available yet".
 - Inert until live secrets exist → shipping now makes the go-live flip
   config-only (no code change in the critical window).
 
@@ -106,6 +107,23 @@ API version pinned to `2026-04-22.dahlia` via the `stripe` npm SDK (see `SK-STRI
 - `role="status"` so screen readers announce the JS-revealed banner.
 - Pure markup + scoped CSS in `apps/web/src/pages/app/index.astro`; no new
   island, no API call (the webhook drives the actual state).
+
+### Billing status read (SK-STRIPE-009 — this PR)
+
+- `GET /v1/billing/status` — `requireSession`-gated, a single indexed
+  `customers` read with **no Stripe API call**. Returns
+  `{ plan, status, currentPeriodEnd, cancelAtPeriodEnd, manageable }`;
+  `plan` maps the stored `price_id` to hobby/pro server-side (else
+  `unknown`), and a free user with no row → `{ plan: "free",
+  status: "none", manageable: false }`. OTel span `nlqdb.billing.status`.
+  Web-only (GLOBAL-003), like checkout/portal. Works before live keys
+  exist (it only reads what the webhook already persisted).
+- `apps/api/src/stripe/billing-status.ts` — pure resolver (row in, status
+  out) mirroring `checkout.ts`/`portal.ts`; the route owns the D1 read.
+- `/pricing` now badges the caller's active tier ("Current plan") and
+  reveals "Manage billing" only to actual subscribers — a free user no
+  longer sees a control that 404s on click. The fetch is a progressive
+  enhancement: a failure leaves the page in its default state.
 
 ---
 
