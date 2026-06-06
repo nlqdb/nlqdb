@@ -10,7 +10,7 @@ when-to-load:
 # Feature: Llm Router
 
 **One-liner:** Model selection, fallback chain, prompt strategy, per-user credit accounting; three permanent dispatch lanes per [`GLOBAL-026`](../../decisions/GLOBAL-026-llm-strategy-byollm-hosted-premium.md) — free chain, BYOLLM, hosted-premium.
-**Status:** implemented for the free chain (`SK-LLM-001..015` + `SK-LLM-018` + `SK-LLM-023..025`). BYOLLM (`SK-LLM-016`) is partial — provider factory (`SK-LLM-019`) + lane selector / single-provider lane router (`SK-LLM-020`) ship, the per-request `x-nlq-byollm-key` header lane is wired on HTTP `/v1/ask` (`SK-LLM-021`), and the account-stored lane (step 2) now resolves on `/v1/ask` via `api_keys` `scope = "byollm"` ([`SK-PREMIUM-012`](../premium-tier/decisions/SK-PREMIUM-012-account-stored-byollm-storage.md)); `GLOBAL-003` surface parity (MCP/SDK/CLI/elements/`/app/keys`) remains pending (tracked in `premium-tier/FEATURE.md` Open questions). `SK-LLM-017` (hosted-premium chain) lands in Phase 2 alongside `quality-eval`; the premium-chain meter stays dark until [`phase-plan.md §6`](../../phase-plan.md) trips.
+**Status:** implemented for the free chain (`SK-LLM-001..015` + `SK-LLM-018` + `SK-LLM-023..026`). BYOLLM (`SK-LLM-016`) is partial — provider factory (`SK-LLM-019`) + lane selector / single-provider lane router (`SK-LLM-020`) ship, the per-request `x-nlq-byollm-key` header lane is wired on HTTP `/v1/ask` (`SK-LLM-021`), and the account-stored lane (step 2) now resolves on `/v1/ask` via `api_keys` `scope = "byollm"` ([`SK-PREMIUM-012`](../premium-tier/decisions/SK-PREMIUM-012-account-stored-byollm-storage.md)); `GLOBAL-003` surface parity (MCP/SDK/CLI/elements/`/app/keys`) remains pending (tracked in `premium-tier/FEATURE.md` Open questions). `SK-LLM-017` (hosted-premium chain) lands in Phase 2 alongside `quality-eval`; the premium-chain meter stays dark until [`phase-plan.md §6`](../../phase-plan.md) trips.
 
 **Contribution to north-star:** Engine quality — the router is the NL→SQL accuracy lever per [`GLOBAL-025`](../../decisions/GLOBAL-025-north-star.md). Free-chain scaffolding compounds when BYOLLM or hosted-premium swaps in a frontier model; `quality-eval`'s free-vs-frontier delta measures the compounding.
 
@@ -157,6 +157,23 @@ preamble text into structured output (Groq / OpenAI `gpt-oss` reports,
 2026-06). Strictly additive: it converts current `parse` → `no_sql`
 losses into matches on every leg and every dataset, and can't regress
 the happy path.
+
+### SK-LLM-026 — Static few-shot exemplars in the planner prompt (DAIL-SQL)
+
+**Body:** [`decisions/SK-LLM-026-static-few-shot-plan-exemplars.md`](./decisions/SK-LLM-026-static-few-shot-plan-exemplars.md).
+`PLAN_SYSTEM` splits into `PLAN_DIRECTIVES` (`SK-LLM-018`) + a new
+exported `PLAN_FEW_SHOT` block of three static, dialect-portable
+Question→strict-JSON exemplars that, between them, *demonstrate* all four
+`SK-LLM-018` behaviours (verbatim casing + JOIN; `Evidence:` formula
+application; dialect-strict output — exemplar 3 is labelled `postgres`,
+1–2 `sqlite`, with a `LIMIT`-not-`TOP` top-N idiom; strict-JSON shape in
+every answer). Few-shot Question→SQL pairs are the
+biggest prompt-only text-to-SQL lever (DAIL-SQL
+[arXiv:2308.15363](https://arxiv.org/abs/2308.15363); optimal 3–5 shots),
+and the gain is largest on the small/open models the strict-$0 chain
+runs. Helps BIRD + Spider alike (dataset-agnostic), zero new dependency,
+no per-provider plumbing; the ≈250–350 added input tokens are the
+documented free-tier-quota tradeoff, measured on the next cron.
 
 ## GLOBALs governing this feature
 

@@ -1,7 +1,7 @@
-// System prompts for each operation. Intentionally placeholder-grade —
-// Slice 6 (`/v1/ask` E2E) tunes them with real schemas, few-shot
-// examples, and prompt-cache discipline (docs/architecture.md §8 cost-control rule 3).
-// Prompts live here so every provider reuses the same shape.
+// System prompts for each operation. Prompts live here so every provider
+// reuses the same shape. The planner prompt carries schema-fidelity
+// directives (SK-LLM-018) + static few-shot exemplars (SK-LLM-026);
+// prompt-cache discipline is per docs/architecture.md §8 cost-control rule 3.
 
 import type {
   EngineClassifyRequest,
@@ -16,7 +16,7 @@ import type {
 // arXiv:2308.15363 all show schema-link prompts ≈+3–5 pp on small
 // models). The `Evidence:` bullet leverages BIRD's annotator hints that
 // the runner already concatenates into the goal.
-export const PLAN_SYSTEM = [
+const PLAN_DIRECTIVES = [
   "You translate a natural-language goal into a single SQL statement for the named dialect.",
   "Use only tables and columns that appear literally in the provided schema; preserve identifier casing exactly.",
   "When the goal includes an `Evidence:` block, treat it as authoritative annotator context — apply the formulas and column hints it names.",
@@ -24,6 +24,51 @@ export const PLAN_SYSTEM = [
   'Respond with strict JSON: {"sql":"<single SQL statement, no trailing semicolon>"}.',
   "No prose, no code fences, no explanation.",
 ].join("\n");
+
+// SK-LLM-026 — static few-shot exemplars (DAIL-SQL arXiv:2308.15363).
+// Three compact, dialect-portable Question→strict-JSON demonstrations of
+// the four PLAN_DIRECTIVES behaviours: schema-literal identifiers +
+// verbatim casing (+ JOIN); `Evidence:` formula application; dialect-strict
+// output for the named dialect (the `Dialect:` line varies — sqlite then
+// postgres — so the model sees it as a variable to honour); strict-JSON-
+// no-semicolon shape (`JSON.stringify`-built, so valid by construction).
+// Static (not similarity-retrieved) keeps it zero-dep and token-bounded —
+// the retrieval gain is a separate future lever, and a fixed prefix is
+// cache-friendly under SK-LLM-009.
+const planExample = (
+  dialect: "sqlite" | "postgres",
+  schema: string,
+  goal: string,
+  sql: string,
+): string =>
+  [`Dialect: ${dialect}`, "Schema:", schema, `Goal: ${goal}`, JSON.stringify({ sql })].join("\n");
+
+export const PLAN_FEW_SHOT = [
+  "Examples — match this exact input→output shape:",
+  "",
+  planExample(
+    "sqlite",
+    'CREATE TABLE "Album" (AlbumId INTEGER, Title TEXT, ArtistId INTEGER); CREATE TABLE "Artist" (ArtistId INTEGER, Name TEXT)',
+    "How many albums does the artist named 'Queen' have?",
+    `SELECT COUNT(*) FROM "Album" AS T1 JOIN "Artist" AS T2 ON T1.ArtistId = T2.ArtistId WHERE T2.Name = 'Queen'`,
+  ),
+  "",
+  planExample(
+    "sqlite",
+    "CREATE TABLE income (district_id INTEGER, residents INTEGER, total_income REAL)",
+    "What is the income per resident in district 7?\nEvidence: income per resident = total_income / residents",
+    "SELECT total_income / residents FROM income WHERE district_id = 7",
+  ),
+  "",
+  planExample(
+    "postgres",
+    "CREATE TABLE orders (id INTEGER, customer_id INTEGER, amount REAL)",
+    "Which customer has the highest total order amount? Return their id.",
+    "SELECT customer_id FROM orders GROUP BY customer_id ORDER BY SUM(amount) DESC LIMIT 1",
+  ),
+].join("\n");
+
+export const PLAN_SYSTEM = `${PLAN_DIRECTIVES}\n\n${PLAN_FEW_SHOT}`;
 
 export const SUMMARIZE_SYSTEM = [
   "You summarize a small result set in plain English, in 1–3 sentences.",

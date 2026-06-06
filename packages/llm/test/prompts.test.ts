@@ -16,6 +16,7 @@ import {
   buildPlanUser,
   buildRouteUser,
   ENGINE_CLASSIFY_SYSTEM,
+  PLAN_FEW_SHOT,
   PLAN_SYSTEM,
   ROUTE_SYSTEM,
 } from "../src/prompts.ts";
@@ -37,6 +38,52 @@ describe("PLAN_SYSTEM (SK-LLM-018 schema-fidelity directives)", () => {
   it("escalates BIRD's `Evidence:` block from hint to authoritative", () => {
     expect(PLAN_SYSTEM).toMatch(/`Evidence:`/);
     expect(PLAN_SYSTEM).toMatch(/authoritative annotator context/);
+  });
+
+  it("appends the SK-LLM-026 few-shot exemplars after the directives", () => {
+    expect(PLAN_SYSTEM).toContain(PLAN_FEW_SHOT);
+    // Directives must precede the examples so the contract is read first.
+    expect(PLAN_SYSTEM.indexOf("Respond with strict JSON")).toBeLessThan(
+      PLAN_SYSTEM.indexOf(PLAN_FEW_SHOT),
+    );
+  });
+});
+
+describe("PLAN_FEW_SHOT (SK-LLM-026 static few-shot exemplars)", () => {
+  it("ships three Question→answer exemplars", () => {
+    expect(PLAN_FEW_SHOT.match(/^Dialect: /gm)).toHaveLength(3);
+    expect(PLAN_FEW_SHOT.match(/^Goal: /gm)).toHaveLength(3);
+  });
+
+  it("varies the dialect line (sqlite + postgres) so dialect-strictness is demonstrated", () => {
+    expect(PLAN_FEW_SHOT.match(/^Dialect: sqlite$/gm)).toHaveLength(2);
+    expect(PLAN_FEW_SHOT.match(/^Dialect: postgres$/gm)).toHaveLength(1);
+  });
+
+  it("each answer is strict JSON of {sql} with no trailing semicolon (echoes PLAN_DIRECTIVES)", () => {
+    const answers = PLAN_FEW_SHOT.split("\n").filter((l) => l.startsWith("{"));
+    expect(answers).toHaveLength(3);
+    for (const a of answers) {
+      const parsed = JSON.parse(a) as { sql: string };
+      expect(typeof parsed.sql).toBe("string");
+      expect(parsed.sql.length).toBeGreaterThan(0);
+      expect(parsed.sql.endsWith(";")).toBe(false);
+    }
+  });
+
+  it("demonstrates verbatim casing, the Evidence formula, and a top-N aggregation", () => {
+    // Mixed-case + quoted identifiers carried verbatim (SK-LLM-018 casing rule).
+    expect(PLAN_FEW_SHOT).toContain('"Album"');
+    expect(PLAN_FEW_SHOT).toContain("ArtistId");
+    // One exemplar applies an `Evidence:` formula end-to-end.
+    expect(PLAN_FEW_SHOT).toMatch(/Evidence: income per resident = total_income \/ residents/);
+    expect(PLAN_FEW_SHOT).toContain("total_income / residents");
+    // Top-N idiom: ORDER BY <agg> DESC LIMIT 1.
+    expect(PLAN_FEW_SHOT).toMatch(/ORDER BY SUM\(amount\) DESC LIMIT 1/);
+  });
+
+  it("carries no code fences (the exemplars model the no-fence contract)", () => {
+    expect(PLAN_FEW_SHOT).not.toContain("```");
   });
 });
 
