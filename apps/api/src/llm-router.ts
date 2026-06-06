@@ -14,6 +14,7 @@ import {
   createGeminiProvider,
   createGroqProvider,
   createLLMRouter,
+  createMistralProvider,
   createOpenRouterProvider,
   createWorkersAIProvider,
   type LLMRouter,
@@ -75,6 +76,10 @@ export function getLLMRouter(): LLMRouter {
       baseUrl: gw.workersAi,
     }),
     createOpenRouterProvider({ apiKey: env.OPENROUTER_API_KEY ?? "", baseUrl: gw.openrouter }),
+    // SK-LLM-028 — Mistral is the planner-tier capacity backstop at the
+    // chain tail. Routed direct (no AI Gateway base), same rationale as
+    // Cerebras. Fires only when every head provider is rate-limited out.
+    createMistralProvider({ apiKey: env.MISTRAL_API_KEY ?? "" }),
   ];
   cached = createLLMRouter({
     providers,
@@ -84,13 +89,14 @@ export function getLLMRouter(): LLMRouter {
       route: ["groq", "gemini", "workers-ai", "openrouter"],
       // SK-LLM-023 — Cerebras (gpt-oss-120b) leads the planner tier; on a
       // 429 (free-tier per-minute token/request quota) it fails over to the
-      // prior Gemini-first order.
-      plan: ["cerebras", "gemini", "groq", "workers-ai", "openrouter"],
+      // prior Gemini-first order. SK-LLM-028 appends Mistral as the tail
+      // capacity backstop for the full-chain-exhaustion no_sql losses.
+      plan: ["cerebras", "gemini", "groq", "workers-ai", "openrouter", "mistral"],
       summarize: ["groq", "gemini", "workers-ai", "openrouter"],
       // SK-LLM-012: schema_infer is its own operation but shares the
       // planner-tier provider chain — same ordering as `plan` so it
       // hits the JSON-strongest provider first.
-      schema_infer: ["cerebras", "gemini", "groq", "workers-ai", "openrouter"],
+      schema_infer: ["cerebras", "gemini", "groq", "workers-ai", "openrouter", "mistral"],
       // SK-DB-010: engine-classifier rides the cheap-tier chain.
       engine_classify: ["groq", "gemini", "workers-ai", "openrouter"],
     },

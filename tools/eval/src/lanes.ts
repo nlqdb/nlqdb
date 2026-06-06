@@ -13,6 +13,7 @@ import {
   createGeminiProvider,
   createGroqProvider,
   createLLMRouter,
+  createMistralProvider,
   createOpenRouterProvider,
   createWorkersAIProvider,
   type LLMRouter,
@@ -29,6 +30,8 @@ export type EvalEnv = {
   CLOUDFLARE_ACCOUNT_ID?: string;
   // SK-LLM-023 — Cerebras (gpt-oss-120b) leads the planner-tier free chain.
   CEREBRAS_API_KEY?: string;
+  // SK-LLM-028 — Mistral is the planner-tier capacity backstop at the chain tail.
+  MISTRAL_API_KEY?: string;
   // Distinct env var from OPENROUTER_API_KEY so a fork PR can never accidentally pull a paid frontier key.
   OPENROUTER_FRONTIER_API_KEY?: string;
   FRONTIER_MODEL?: string;
@@ -69,13 +72,15 @@ function buildFreeLane(env: EvalEnv): Lane | null {
   if (env.OPENROUTER_API_KEY) {
     providers.push(createOpenRouterProvider({ apiKey: env.OPENROUTER_API_KEY }));
   }
+  if (env.MISTRAL_API_KEY) providers.push(createMistralProvider({ apiKey: env.MISTRAL_API_KEY }));
   if (providers.length === 0) return null;
   // Chain order matches apps/api/src/llm-router.ts so the eval measures what
-  // production ships — Cerebras-led planner tier per SK-LLM-023. The router
-  // skips any provider whose key is absent, so a partial-key CI run still runs.
+  // production ships — Cerebras-led planner tier per SK-LLM-023, Mistral tail
+  // capacity backstop per SK-LLM-028. The router skips any provider whose key
+  // is absent, so a partial-key CI run still runs.
   const router = createLLMRouter({
     providers,
-    chains: { plan: ["cerebras", "gemini", "groq", "workers-ai", "openrouter"] },
+    chains: { plan: ["cerebras", "gemini", "groq", "workers-ai", "openrouter", "mistral"] },
   });
   // Free chain is scaffolded per SK-QUAL-009 so the "scaffolding compounds with the model"
   // bet is testable end-to-end.

@@ -102,6 +102,7 @@ select_secrets() {
         GROQ_API_KEY
         LOGSNAG_TOKEN
         LOGSNAG_PROJECT
+        MISTRAL_API_KEY
         OPENROUTER_API_KEY
         OAUTH_GITHUB_CLIENT_ID
         OAUTH_GITHUB_CLIENT_SECRET

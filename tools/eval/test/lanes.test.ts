@@ -27,6 +27,12 @@ describe("buildFreeLane", () => {
     expect(lane).not.toBeNull();
     expect(lane?.lane).toBe("free");
   });
+
+  it("SK-LLM-028: MISTRAL_API_KEY alone builds the free lane (Mistral is the chain-tail backstop)", () => {
+    const lane = buildFreeLane({ MISTRAL_API_KEY: "k" });
+    expect(lane).not.toBeNull();
+    expect(lane?.lane).toBe("free");
+  });
 });
 
 describe("buildFrontierLane", () => {
