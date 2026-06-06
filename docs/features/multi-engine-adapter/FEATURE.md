@@ -10,9 +10,9 @@ when-to-load:
 # Feature: Multi Engine Adapter
 
 **One-liner:** Adapters beyond Postgres — Phase 3 expansion to ClickHouse via Tinybird (next), with Redis / D1 evaluated and deferred.
-**Status:** decisions firm (`SK-MULTIENG-001..006`); ClickHouse/Tinybird adapter pending. `SK-MULTIENG-005` promotes BYO ClickHouse from Phase 4+ to active. BYO connect-path primitives landed: the connection-URL parser (`SK-MULTIENG-006` — `clickhouse-connection-url.ts`, parallel to Postgres `SK-DB-012`) and the shared egress guard (`GLOBAL-035` — `egress-guard.ts`). Adapter (`clickhouse-byo.ts`) + `system.columns` introspection + `connect.ts` wiring pending.
+**Status:** decisions firm (`SK-MULTIENG-001..006`); ClickHouse/Tinybird adapter pending. `SK-MULTIENG-005` promotes BYO ClickHouse from Phase 4+ to active. BYO connect-path primitives landed: the connection-URL parser (`SK-MULTIENG-006` — `clickhouse-connection-url.ts`, parallel to Postgres `SK-DB-012`) and the shared egress guard (`GLOBAL-035` — `egress-guard.ts`). Adapter (`clickhouse-byo.ts`) + `system.columns` introspection + `connect.ts` wiring remain.
 **Owners (code):** `packages/db/**`
-**Cross-refs:** `db-adapter/FEATURE.md` (PG adapter; `SK-DB-009/010` evolve the contract) · `engine-migration/FEATURE.md` (auto-migration decoupled, `SK-MULTIENG-002`) · `docs/phase-plan.md` (§11 engine verdict)
+**Cross-refs:** `db-adapter/FEATURE.md` (PG adapter; `SK-DB-009/010` evolve the contract) · `engine-migration/FEATURE.md` (auto-migration decoupled, `SK-MULTIENG-002`) · `docs/phase-plan.md` §11
 
 ## Touchpoints — read this feature before editing
 
@@ -151,7 +151,7 @@ Genuinely open items after `SK-MULTIENG-001..006`; an unresolved one becomes a f
 - **Per-prefix anon isolation on Tinybird.** Sign-in-only at adapter launch; the per-prefix validator that enables anon-mode (`GLOBAL-007` parity) is its own follow-up — schema for table-prefix scoping is undecided.
 - **Statement timeout / cost cap.** Adapter is the lowest layer with the actual handle. Whether the adapter accepts `timeout_ms`/`max_rows` or the executor wraps remains open across all engines (cross-link to `db-adapter` open questions).
 - **Rate-limit dimensions.** Free-tier user hits Tinybird's 1 k reads/day before they hit our per-account rate limit; pre-emptive throttling vs. let-through-then-error is undecided.
-- **Egress / SSRF guard on the BYO ClickHouse host (`GLOBAL-035`).** The deterministic half landed: `guardEgressHost` (`packages/db/src/egress-guard.ts`) rejects a literal private/loopback/link-local/metadata host (incl. the IPv4-mapped/-compatible/6to4/NAT64 IPv6 forms + decimal/hex/octal encodings) and the `localhost` / `metadata.google.internal` names, fail-loud per `GLOBAL-012`. **Still open** (a pure parser can't bound DNS rebinding): for a hostname the guard returns `needsDnsRecheck`, so the connect-time `fetch` boundary must resolve the name and re-guard each address — whether the Worker resolves itself or a Cloudflare egress policy backstops the rebinding window is undecided. Follow-up SK when the `connect.ts` ClickHouse branch wires it. Shared with `db-adapter` (one module).
+- **Egress / SSRF guard on the BYO ClickHouse host (`GLOBAL-035`).** The deterministic half landed: `guardEgressHost` rejects a literal private/loopback/link-local/metadata host (incl. the IPv4-mapped/-compatible/6to4/NAT64 IPv6 forms + decimal/hex/octal encodings) and the `localhost` / `metadata.google.internal` names, fail-loud per `GLOBAL-012`. **Still open** (a pure parser can't bound DNS rebinding): a hostname returns `needsDnsRecheck`, so the connect-time `fetch` boundary must resolve and re-guard each address — Worker-side resolve vs. a Cloudflare egress backstop is undecided. Follow-up SK when the `connect.ts` ClickHouse branch wires it. Shared with `db-adapter`.
 - **Cross-engine `nlq run` semantics — Resolved** (`GLOBAL-033`, Simple → one way): single `{db, sql}` payload — no discriminated shape, no engine tag on the wire. The DB record already carries the engine (`db-registry`), so the server dispatches the raw string to PG SQL / Tinybird Pipe SQL / (later) Redis by the DB's engine.
 
 ## Phase-3 entry checklist
@@ -160,10 +160,10 @@ Genuinely open items after `SK-MULTIENG-001..006`; an unresolved one becomes a f
 2. `EnginePlan` / `EngineResult` types land in `types.ts` (`SK-DB-009`); PG adapter migrates onto them with no behaviour change.
 3. `engine?` field threads through SDK / CLI / MCP / classifier (`SK-DB-010`, `GLOBAL-003`).
 4. Tinybird adapter ships with validator, OTel attrs, sign-in-only anon posture.
-5. Engine-classifier prompt in `packages/llm/src/prompts.ts` embeds the `SK-MULTIENG-002` table verbatim.
+5. Engine-classifier prompt in `packages/llm/src/prompts.ts` embeds the `SK-MULTIENG-002` table.
 
 ## Source pointers
 
-- `docs/phase-plan.md` — Phase 3 slice list; `docs/architecture.md §11` — engine verdict table
-- [`db-adapter/FEATURE.md`](../db-adapter/FEATURE.md) — single-engine adapter (`SK-DB-001..008`); multi-engine evolution via `SK-DB-009..010`
+- `docs/phase-plan.md` — Phase 3 slices; `docs/architecture.md §11` — engine verdict table
+- [`db-adapter/FEATURE.md`](../db-adapter/FEATURE.md) — single-engine adapter (`SK-DB-001..008`); multi-engine via `SK-DB-009..010`
 - [`engine-migration/FEATURE.md`](../engine-migration/FEATURE.md) — workload analyser + migration orchestrator (decoupled)
