@@ -55,7 +55,13 @@ capacity / rate-limit exhaustion** loss — the circuit breaker
 fallbacks — **not** an instruction-following loss. A stronger *head*
 model (T1) only clears these when it has spare per-minute quota at that
 instant; the direct lever for them is more independent free capacity (§4
-item 4). The 283 mismatches are the separate SQL-reasoning gap.
+item 4). The 283 mismatches are the separate SQL-reasoning gap; within it,
+two **prompt-addressable** sub-classes — extra-column projection (Open-SQL
+[arXiv:2405.06674](https://arxiv.org/pdf/2405.06674)) and SQLite
+integer-division truncation against BIRD's REAL-casting ratio gold — are
+targeted by **T10** (§3). Their share of the 283 is *unmeasured* until the
+next cron; the row's "How much" is a literature estimate, not a baseline
+count.
 
 > **How these numbers are produced.** `tools/eval/src/runner.ts` drives
 > `packages/llm/src/router.ts::plan()` over each dataset, executes the
@@ -69,8 +75,8 @@ item 4). The 283 mismatches are the separate SQL-reasoning gap.
 
 ## 3. What we have tried (with how, and how much)
 
-Rows run reverse-chronological (newest first): **T9 (this PR) → T7/T8 →
-T1 (Cerebras head) → T2…T6**. The `#` is a stable row id (assigned in
+Rows run reverse-chronological (newest first): **T10 (this PR) → T9 →
+T7/T8 → T1 (Cerebras head) → T2…T6**. The `#` is a stable row id (assigned in
 order added), **not** a rank — read recency from the row order and the
 "Canonical home / status" column, not from the number. "How much" = the
 measured or evidence-based size of the lever; **measured** numbers come
@@ -78,7 +84,8 @@ from the harness, **est.** from the cited paper/ablation.
 
 | # | Lever | How exactly | How much | Canonical home / status |
 |---|---|---|---|---|
-| T9 | **Static few-shot exemplars in the plan prompt (DAIL-SQL)** | `PLAN_SYSTEM` splits into `PLAN_DIRECTIVES` (`SK-LLM-018`) + a new `PLAN_FEW_SHOT` block of **3** static, dialect-portable Question→strict-JSON exemplars that between them demonstrate all four `SK-LLM-018` behaviours: verbatim casing + JOIN, `Evidence:`-formula application, dialect-strict output (exemplar 3 labelled `postgres` vs `sqlite`, `LIMIT`-not-`TOP` top-N idiom), and the strict-JSON shape; `JSON.stringify`-built answers, no per-provider plumbing | **est. moderate, pending measure** — few-shot Question→SQL pairs are the biggest prompt-only text-to-SQL lever (DAIL-SQL [arXiv:2308.15363](https://arxiv.org/abs/2308.15363); optimal 3–5 shots, diminishing past it; largest on the small/open models the free chain runs). The static set captures the **format/organization** half of DAIL-SQL's +5–8 pp; the similarity-retrieval half is a separate future lever (§4 #1). Dataset-agnostic ⇒ lifts **BIRD + Spider** alike. Adds ≈250–350 input tokens/call — the free-tier per-minute-quota tradeoff, measured on the next cron | [`SK-LLM-026`](../features/llm-router/decisions/SK-LLM-026-static-few-shot-plan-exemplars.md) — shipped (this PR), **awaiting first cron** |
+| T10 | **Result-shape directives: exact projection + REAL-cast ratios** | Two bullets added to `PLAN_DIRECTIVES` (`SK-LLM-018`): (1) select exactly the columns the goal asks for — no extra id/name/descriptive columns; (2) for a ratio/percentage of two integer columns, cast one operand to REAL (`CAST(x AS REAL)/y`) so SQLite doesn't integer-truncate. `SK-LLM-026` exemplar 2 refit to demonstrate the cast (its `total_income` → `INTEGER`). Prompt-only, no per-provider plumbing | **est. small–moderate, pending measure** — targets two mismatch sub-classes the schema-link rules don't: extra-column projection is a recognised EX failure even when logic is correct (Open-SQL [arXiv:2405.06674](https://arxiv.org/pdf/2405.06674)), and integer-division truncation diverges from BIRD's REAL-casting ratio gold ([SQLite forum 19569c70bb](https://sqlite.org/forum/info/19569c70bbe5b797)). The BIRD scorer keys rows by their full column set ⇒ projection lifts **BIRD**; the Spider scorer tolerates extra prediction columns (`score.ts:152`) ⇒ **never regresses Spider**. Adds ≈40 tokens/call (negligible vs T9) | [`SK-LLM-027`](../features/llm-router/decisions/SK-LLM-027-result-shape-directives.md) — shipped (this PR), **awaiting first cron** |
+| T9 | **Static few-shot exemplars in the plan prompt (DAIL-SQL)** | `PLAN_SYSTEM` splits into `PLAN_DIRECTIVES` (`SK-LLM-018`) + a new `PLAN_FEW_SHOT` block of **3** static, dialect-portable Question→strict-JSON exemplars that between them demonstrate all four `SK-LLM-018` behaviours: verbatim casing + JOIN, `Evidence:`-formula application, dialect-strict output (exemplar 3 labelled `postgres` vs `sqlite`, `LIMIT`-not-`TOP` top-N idiom), and the strict-JSON shape; `JSON.stringify`-built answers, no per-provider plumbing | **est. moderate, pending measure** — few-shot Question→SQL pairs are the biggest prompt-only text-to-SQL lever (DAIL-SQL [arXiv:2308.15363](https://arxiv.org/abs/2308.15363); optimal 3–5 shots, diminishing past it; largest on the small/open models the free chain runs). The static set captures the **format/organization** half of DAIL-SQL's +5–8 pp; the similarity-retrieval half is a separate future lever (§4 #1). Dataset-agnostic ⇒ lifts **BIRD + Spider** alike. Adds ≈250–350 input tokens/call — the free-tier per-minute-quota tradeoff, measured on the next cron | [`SK-LLM-026`](../features/llm-router/decisions/SK-LLM-026-static-few-shot-plan-exemplars.md) — shipped, **awaiting first cron** |
 | T7 | **JSON-recovery fallback for reasoning-head preamble leaks** | `parseJsonResponse` extracts the first brace-balanced `{…}` (string-aware) when strict parse throws; runs only after the strict path fails | **est. small but every-leg** — recovers `parse`→`no_sql` losses caused by the `gpt-oss-120b` reasoning head leaking preamble text into structured output (Groq/OpenAI `gpt-oss` reports, 2026-06); forward-looking for the new head, strictly additive (can't regress the happy path) | [`SK-LLM-025`](../features/llm-router/decisions/SK-LLM-025-json-recovery-fallback.md) — shipped, **awaiting first cron** |
 | T8 | **Greedy decoding parity (temperature 0) on the Workers AI leg** | `workers-ai.ts` body `{ messages }` → `{ messages, temperature: 0 }`, matching Cerebras/Gemini/Groq/OpenRouter (Workers AI default is a stochastic 0.6) | **reproducibility-positive; small, unmeasured EX** on the 4th-in-chain leg — greedy is the single-pass text-to-SQL EX standard, and a deterministic leg keeps the `SK-QUAL-006` McNemar baseline clean | [`SK-LLM-024`](../features/llm-router/decisions/SK-LLM-024-greedy-decoding-parity.md) — shipped |
 | T1 | **Cerebras (gpt-oss-120b) leads the planner tier** | New free provider `createCerebrasProvider`; `plan`/`schema_infer` chain → `[cerebras, gemini, groq, workers-ai, openrouter]`, identical in eval + prod | **est. large, pending measure** — frontier-class open reasoning model (≈ o4-mini), card-free, replaces Gemini-Flash as primary planner; next cron produces the delta vs 0.318 | [`SK-LLM-023`](../features/llm-router/decisions/SK-LLM-023-cerebras-planner-tier.md) — shipped, **awaiting first cron** |
@@ -181,13 +188,16 @@ implementing (`CLAUDE.md` §P4).
 | 2026-06-04 | **T1 shipped** — Cerebras planner lane (`SK-LLM-023`); awaiting first cron to measure delta vs 0.318 | #317 |
 | 2026-06-05 | **Correction (evidence-based):** all 51 baseline `no_sql` re-verified as chain-exhaustion (`all providers in chain failed`; 33 + 17 + 1 by breaker reason), **not** instruction-following losses — §2 + §4 + §5 updated; capacity-backstop framed as an open decision against `SK-LLM-023`'s "rarely fully fails" rationale | `baseline-2026-06-15.json` `results[]` (script-counted) |
 | 2026-06-05 | **Free-chain planner robustness shipped:** greedy-decoding parity on the Workers AI leg (T8 / `SK-LLM-024`) + reasoning-preamble JSON-recovery fallback (T7 / `SK-LLM-025`). Both land before the first post-T1 cron, so that cron measures the combined T1+T7+T8 effect; neither is measured yet | `packages/llm` unit tests green; evidence base in the SK-LLM-024/025 bodies |
-| 2026-06-05 | **Static few-shot exemplars shipped (this PR):** `PLAN_SYSTEM` gains a 3-shot `PLAN_FEW_SHOT` block (T9 / `SK-LLM-026`) demonstrating the `SK-LLM-018` schema-fidelity behaviours. Prompt-only, dataset-agnostic (BIRD + Spider), zero new dependency; not measured on a PR (`SK-QUAL-002`) — folds into the next cron's combined delta | `packages/llm` unit tests green (125 passing, incl. the new few-shot contract tests); evidence base in the `SK-LLM-026` body |
+| 2026-06-05 | **Static few-shot exemplars shipped:** `PLAN_SYSTEM` gains a 3-shot `PLAN_FEW_SHOT` block (T9 / `SK-LLM-026`) demonstrating the `SK-LLM-018` schema-fidelity behaviours. Prompt-only, dataset-agnostic (BIRD + Spider), zero new dependency; not measured on a PR (`SK-QUAL-002`) — folds into the next cron's combined delta | `packages/llm` unit tests green (125 passing, incl. the new few-shot contract tests); evidence base in the `SK-LLM-026` body |
+| 2026-06-06 | **Result-shape directives shipped (this PR):** `PLAN_DIRECTIVES` gains exact-projection + REAL-cast-ratio bullets (T10 / `SK-LLM-027`); `SK-LLM-026` exemplar 2 refit to demonstrate the cast. Verified against the scorers: BIRD's `canonicalize` keys rows by full column set (extra columns mismatch ⇒ projection lifts BIRD), Spider's `comparePandasTable` tolerates extra prediction columns (`score.ts:152` ⇒ no Spider regression). Prompt-only, ≈40 tokens/call; not measured on a PR (`SK-QUAL-002`) | `packages/llm` unit tests green (126 passing, incl. the new directive + cast-exemplar assertions); evidence base in the `SK-LLM-027` body |
+| 2026-06-06 | **Owner decision still pending (P1):** the §4 #4 capacity backstop for the 10.2% chain-exhaustion `no_sql` (add `MISTRAL_API_KEY` / `NVIDIA_API_KEY` as failover-tail entries — both keys present in CI env *and* in `scripts/mirror-secrets-gha.sh`) remains an unimplemented owner-gated decision against `SK-LLM-023`'s "free chain rarely fully fails" rationale. Not shipped here; surfaced in this PR's body for sign-off | `SK-LLM-023` Alternatives ("candidate failover entries if Cerebras's measured delta disappoints"); §2 10.2% breakdown |
 
 > **Next measurement that moves this bar:** the first
 > `quality-eval-bird-mini.yml` (Mon) + `quality-eval-spider2-lite.yml`
-> (Tue) cron after T1/T7/T8/T9 land — it measures the **combined** effect
-> of the Cerebras head plus this PR's static few-shot lever and the two
-> earlier robustness levers, not any one alone.
+> (Tue) cron after T1/T7/T8/T9/T10 land — it measures the **combined**
+> effect of the Cerebras head plus the static few-shot lever, this PR's
+> result-shape directives, and the two earlier robustness levers, not any
+> one alone.
 > Both workflows already wire `CEREBRAS_API_KEY` + the four other
 > card-free free-chain keys (`GEMINI_API_KEY`, `GROQ_API_KEY`,
 > `OPENROUTER_API_KEY`, `CF_AI_TOKEN`/`CLOUDFLARE_ACCOUNT_ID`), and all

@@ -15,9 +15,12 @@ itself. Headline KPI: free-vs-agentic-frontier delta per
 [`SK-QUAL-004`](./features/quality-eval/decisions/SK-QUAL-004-free-vs-frontier-delta.md).
 **Progress bar** (what's tried / not-tried, every number sourced):
 [`progress/quality-score-source-of-truth.md`](./progress/quality-score-source-of-truth.md).
-Latest levers: static few-shot exemplars in the planner prompt
+Latest levers: result-shape planner directives — exact projection +
+REAL-cast ratios
+([`SK-LLM-027`](./features/llm-router/decisions/SK-LLM-027-result-shape-directives.md)),
+on top of static few-shot exemplars in the planner prompt
 ([`SK-LLM-026`](./features/llm-router/decisions/SK-LLM-026-static-few-shot-plan-exemplars.md),
-DAIL-SQL), on top of free-chain planner robustness — greedy-decoding
+DAIL-SQL) and free-chain planner robustness — greedy-decoding
 parity on the Workers AI leg
 ([`SK-LLM-024`](./features/llm-router/decisions/SK-LLM-024-greedy-decoding-parity.md))
 + a JSON-recovery fallback for the `gpt-oss-120b` reasoning head's

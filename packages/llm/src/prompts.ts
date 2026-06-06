@@ -1,7 +1,8 @@
 // System prompts for each operation. Prompts live here so every provider
 // reuses the same shape. The planner prompt carries schema-fidelity
-// directives (SK-LLM-018) + static few-shot exemplars (SK-LLM-026);
-// prompt-cache discipline is per docs/architecture.md §8 cost-control rule 3.
+// directives (SK-LLM-018) + result-shape directives (SK-LLM-027) + static
+// few-shot exemplars (SK-LLM-026); prompt-cache discipline is per
+// docs/architecture.md §8 cost-control rule 3.
 
 import type {
   EngineClassifyRequest,
@@ -16,22 +17,33 @@ import type {
 // arXiv:2308.15363 all show schema-link prompts ≈+3–5 pp on small
 // models). The `Evidence:` bullet leverages BIRD's annotator hints that
 // the runner already concatenates into the goal.
+//
+// SK-LLM-027 — the two result-shape bullets (projection + REAL-cast)
+// target execution-accuracy mismatches the schema-fidelity bullets don't:
+// extra projected columns are a recognised EX failure even when the logic
+// is correct (Open-SQL arXiv:2405.06674), and SQLite integer-truncates
+// `int / int` so a ratio that should be fractional silently floors —
+// BIRD's `Evidence:` ratio gold itself casts to REAL.
 const PLAN_DIRECTIVES = [
   "You translate a natural-language goal into a single SQL statement for the named dialect.",
   "Use only tables and columns that appear literally in the provided schema; preserve identifier casing exactly.",
   "When the goal includes an `Evidence:` block, treat it as authoritative annotator context — apply the formulas and column hints it names.",
+  "Select exactly the columns the goal asks for, and only those — extra id/name/descriptive columns change the result set and fail execution-accuracy.",
+  "For a ratio or percentage of two integer columns, cast one operand to REAL (e.g. CAST(x AS REAL) / y) so the division is not integer-truncated.",
   "Emit SQL valid for the named dialect — no cross-dialect features (e.g. no TOP/PIVOT for postgres or sqlite; postgres-specific casts only when dialect is postgres).",
   'Respond with strict JSON: {"sql":"<single SQL statement, no trailing semicolon>"}.',
   "No prose, no code fences, no explanation.",
 ].join("\n");
 
 // SK-LLM-026 — static few-shot exemplars (DAIL-SQL arXiv:2308.15363).
-// Three compact, dialect-portable Question→strict-JSON demonstrations of
-// the four PLAN_DIRECTIVES behaviours: schema-literal identifiers +
-// verbatim casing (+ JOIN); `Evidence:` formula application; dialect-strict
-// output for the named dialect (the `Dialect:` line varies — sqlite then
-// postgres — so the model sees it as a variable to honour); strict-JSON-
-// no-semicolon shape (`JSON.stringify`-built, so valid by construction).
+// Compact, dialect-portable Question→strict-JSON demonstrations of the
+// PLAN_DIRECTIVES behaviours: schema-literal identifiers + verbatim casing
+// (+ JOIN); `Evidence:` formula application with the SK-LLM-027 REAL cast
+// for an integer ratio; minimal projection (COUNT(*) / a single requested
+// column, never an extra id/name); dialect-strict output for the named
+// dialect (the `Dialect:` line varies — sqlite then postgres — so the
+// model sees it as a variable to honour); strict-JSON-no-semicolon shape
+// (`JSON.stringify`-built, so valid by construction).
 // Static (not similarity-retrieved) keeps it zero-dep and token-bounded —
 // the retrieval gain is a separate future lever, and a fixed prefix is
 // cache-friendly under SK-LLM-009.
@@ -55,9 +67,9 @@ export const PLAN_FEW_SHOT = [
   "",
   planExample(
     "sqlite",
-    "CREATE TABLE income (district_id INTEGER, residents INTEGER, total_income REAL)",
+    "CREATE TABLE income (district_id INTEGER, residents INTEGER, total_income INTEGER)",
     "What is the income per resident in district 7?\nEvidence: income per resident = total_income / residents",
-    "SELECT total_income / residents FROM income WHERE district_id = 7",
+    "SELECT CAST(total_income AS REAL) / residents FROM income WHERE district_id = 7",
   ),
   "",
   planExample(
