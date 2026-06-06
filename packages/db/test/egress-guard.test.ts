@@ -67,6 +67,9 @@ describe("guardEgressHost — folds alternate IPv4 encodings before classifying"
     "127.1", // shorthand 127.0.0.1
     "0xa000005", // hex 10.0.0.5
     "2852039166", // decimal 169.254.169.254
+    "0xa.0.0.1", // mixed hex + dotted → 10.0.0.1
+    "127.0x0.0.1", // mixed dotted + hex → 127.0.0.1
+    "169.254.169.254.", // trailing-dot FQDN form of the metadata endpoint
   ])("blocks %s (canonicalises to a private address)", (host) => expectBlocked(host));
 
   it("allows a public decimal-encoded address", () => {
@@ -121,6 +124,7 @@ describe("guardEgressHost — DNS names", () => {
   it("blocks the loopback names a pure check can settle", () => {
     expectBlocked("localhost");
     expectBlocked("LOCALHOST");
+    expectBlocked("localhost."); // trailing-dot FQDN form
     expectBlocked("foo.localhost");
     expectBlocked("metadata.google.internal");
   });

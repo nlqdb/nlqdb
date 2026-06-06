@@ -24,10 +24,11 @@
 //     (`::ffff:a.b.c.d`), IPv4-compatible (`::a.b.c.d`), 6to4 (`2002:V4::`)
 //     and NAT64 (`64:ff9b::V4`) — which are the live 2026 SSRF-filter-bypass
 //     class (Symfony CVE-2026-48736, Discourse / Twenty / openclaw
-//     advisories). The decimal / hex / octal IPv4 encodings
-//     (`2130706433`, `0x7f000001`, `0177.0.0.1`) are folded by handing the
-//     host to the same WHATWG `URL` parser the transport uses, rather than
-//     re-implementing a bypass-prone decoder.
+//     advisories). The alternate IPv4 encodings — decimal (`2130706433`),
+//     hex (`0x7f000001`), octal (`0177.0.0.1`), mixed (`0xa.0.0.1`) and the
+//     trailing-dot FQDN form — are folded by handing the host to the same
+//     WHATWG `URL` parser the transport uses, rather than re-implementing a
+//     bypass-prone decoder.
 //   - A **hostname** can resolve to anything, and a pure function cannot
 //     bound DNS rebinding, so a name returns `{ ok: true, needsDnsRecheck:
 //     true }`: the connect-time caller must resolve it and re-run this guard
@@ -45,12 +46,6 @@ export type EgressGuardResult =
   | { ok: true; needsDnsRecheck: boolean }
   | { ok: false; message: string };
 
-// A numeric-looking host that isn't already a four-part dotted quad — a
-// decimal (`2130706433`), hex (`0x7f000001`), octal (`0177.0.0.1`), or
-// shorthand (`127.1`) IPv4 encoding. Matching this routes the host through
-// the WHATWG canonicaliser instead of treating it as a DNS name.
-const NUMERIC_HOST = /^(0x[0-9a-fA-F]+|[0-9.]+)$/;
-
 const NEXT_ACTION = "point the connection at a publicly reachable host.";
 
 // Classify the target of a BYO connection host. Pure + I/O-free.
@@ -64,7 +59,10 @@ export function guardEgressHost(host: string): EgressGuardResult {
   // not. Strip a bracket pair so both shapes reach the IPv6 path.
   const bare = trimmed.startsWith("[") && trimmed.endsWith("]") ? trimmed.slice(1, -1) : trimmed;
 
-  // IPv6 literal — the only host shape that carries a colon.
+  // IPv6 literal — the only host shape that carries a colon. Classify it
+  // directly: a bare resolved IPv6 (`::1`) can't round-trip through `new URL`
+  // (which demands brackets), and `ipv6ToBytes` already accepts both the
+  // dotted-tail and hextet textual forms.
   if (bare.includes(":")) {
     const bytes = ipv6ToBytes(bare);
     if (!bytes) {
@@ -77,36 +75,43 @@ export function guardEgressHost(host: string): EgressGuardResult {
     return label ? blocked(bare, label) : { ok: true, needsDnsRecheck: false };
   }
 
-  // Canonical dotted-quad IPv4.
-  const octets = parseIpv4Octets(bare);
-  if (octets) {
-    const label = classifyIpv4(octets);
-    return label ? blocked(bare, label) : { ok: true, needsDnsRecheck: false };
-  }
-
-  // A numeric-looking host that wasn't a dotted quad is an alternate IPv4
-  // encoding — let the same parser the transport uses canonicalise it, then
-  // re-classify. (Re-implementing the decimal/hex/octal decoder is the
-  // bypass-prone path the OWASP SSRF cheat-sheet warns against.)
-  if (NUMERIC_HOST.test(bare)) {
-    const canonical = canonicaliseHost(bare);
-    if (canonical && canonical !== bare) return guardEgressHost(canonical);
+  // Everything else: canonicalise through the same WHATWG `URL` parser the
+  // transport uses, so every alternate IPv4 encoding — decimal
+  // (`2130706433`), hex (`0x7f000001`), octal (`0177.0.0.1`), shorthand
+  // (`127.1`), mixed (`0xa.0.0.1`), and the trailing-dot form — collapses to
+  // the dotted quad `fetch` will actually connect to before we classify it.
+  // Re-implementing that decoder is the bypass-prone path the OWASP SSRF
+  // cheat-sheet warns against; deferring to `URL` keeps the guard and the
+  // transport in lockstep on what a host resolves to.
+  const canonical = canonicaliseHost(bare);
+  if (canonical === null) {
     return {
       ok: false,
       message: `Connection host "${bare}" is not a valid address; ${NEXT_ACTION}`,
     };
   }
 
-  // A DNS name: settle the two well-known internal names a pure check can,
-  // and defer everything else to the connect-time resolve-then-recheck.
-  const lower = bare.toLowerCase();
-  if (lower === "localhost" || lower.endsWith(".localhost")) {
-    return { ok: false, message: `Connection host "${bare}" is a loopback name; ${NEXT_ACTION}` };
+  const octets = parseIpv4Octets(canonical);
+  if (octets) {
+    const label = classifyIpv4(octets);
+    return label ? blocked(canonical, label) : { ok: true, needsDnsRecheck: false };
   }
-  if (lower === "metadata.google.internal") {
+
+  // A DNS name: settle the well-known internal names a pure check can, and
+  // defer everything else to the connect-time resolve-then-recheck. A
+  // trailing dot (`localhost.`, the FQDN form) still resolves to the same
+  // target, so strip one before matching.
+  const name = canonical.endsWith(".") ? canonical.slice(0, -1) : canonical;
+  if (name === "localhost" || name.endsWith(".localhost")) {
     return {
       ok: false,
-      message: `Connection host "${bare}" is a cloud-metadata name; ${NEXT_ACTION}`,
+      message: `Connection host "${canonical}" is a loopback name; ${NEXT_ACTION}`,
+    };
+  }
+  if (name === "metadata.google.internal") {
+    return {
+      ok: false,
+      message: `Connection host "${canonical}" is a cloud-metadata name; ${NEXT_ACTION}`,
     };
   }
   return { ok: true, needsDnsRecheck: true };
