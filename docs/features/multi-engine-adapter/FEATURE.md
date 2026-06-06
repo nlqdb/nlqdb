@@ -148,14 +148,14 @@ The workload analyser + migration orchestrator are owned by [`engine-migration/F
 
 ## Open questions / known unknowns
 
-These are the genuinely open items remaining after `SK-MULTIENG-001..004`. Each becomes a follow-up SK when answered.
+Genuinely open items after `SK-MULTIENG-001..006`; an unresolved one becomes a follow-up SK when answered.
 
-- **Connection-pool ownership for Tinybird.** Tinybird's HTTP API has no pool concept (matches Workers); confirm the adapter holds no client state across requests once `createTinybirdAdapter()` is wired.
+- **Connection-pool ownership for Tinybird — Resolved** (`GLOBAL-033`, reuse the Workers model): stateless adapter — Tinybird's HTTP API has no pool, so `createTinybirdAdapter()` holds no state across requests (one `fetch` per call, like PG).
 - **Per-prefix anon isolation on Tinybird.** Sign-in-only at adapter launch; the per-prefix validator that enables anon-mode (`GLOBAL-007` parity) is its own follow-up — schema for table-prefix scoping is undecided.
 - **Statement timeout / cost cap.** Adapter is the lowest layer with the actual handle. Whether the adapter accepts `timeout_ms`/`max_rows` or the executor wraps remains open across all engines (cross-link to `db-adapter` open questions).
 - **Rate-limit dimensions.** Free-tier user hits Tinybird's 1 k reads/day before they hit our per-account rate limit; pre-emptive throttling vs. let-through-then-error is undecided.
-- **Egress / SSRF guard on the BYO ClickHouse host.** `SK-MULTIENG-006` validates the connection-URL *shape* but deliberately does not block a hostname that resolves to a private/metadata address — a pure parser can't (DNS rebinding defeats any literal-IP check). Because BYO ClickHouse has the Worker `fetch()` an arbitrary user-supplied host (no Hyperdrive proxy, unlike the Neon PG path), the egress guard (resolve-then-check, or a Cloudflare-level egress policy) belongs at the connect-time `fetch` boundary. Open: where that guard lives and whether it's a blocklist of private ranges or a platform egress control. Becomes a follow-up SK when the `connect.ts` ClickHouse branch lands.
-- **Cross-engine `nlq run` semantics.** Power-user `nlq run` (`GLOBAL-015`) exists on PG today as raw SQL. Equivalent for ClickHouse via Tinybird = raw Pipe SQL; for Redis (later) = raw command. Mapping is per-engine but the surface is single — open whether the SDK accepts a discriminated `run` payload or a string + engine tag.
+- **Egress / SSRF guard on the BYO ClickHouse host.** `SK-MULTIENG-006` validates the connection-URL *shape* but deliberately does not block a hostname that resolves to a private/metadata address — a pure parser can't (DNS rebinding defeats any literal-IP check). Because BYO ClickHouse has the Worker `fetch()` an arbitrary user-supplied host (no Hyperdrive proxy, unlike the Neon PG path), the egress guard (resolve-then-check, or a Cloudflare-level egress policy) belongs at the connect-time `fetch` boundary. Open: blocklist of private ranges vs. a platform egress control. Becomes a follow-up SK when the `connect.ts` ClickHouse branch lands.
+- **Cross-engine `nlq run` semantics — Resolved** (`GLOBAL-033`, Simple → one way): single `{db, sql}` payload — no discriminated shape, no engine tag on the wire. The DB record already carries the engine (`db-registry`), so the server dispatches the raw string to PG SQL / Tinybird Pipe SQL / (later) Redis by the DB's engine.
 
 ## Phase-3 entry checklist
 

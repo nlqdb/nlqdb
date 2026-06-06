@@ -83,6 +83,6 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 
 ## Open questions / known unknowns
 
-- **Email verification timing.** Better Auth supports magic-link sign-in which doesn't require a separate verify step. If we add password auth later, the verification flow must not block the chat — the non-blocking banner approach (SK-ONBOARD-001) needs explicit implementation.
+- **Email verification timing — Resolved; Parked until password auth lands** (`GLOBAL-033`, UX → goal-first + speculative-scope). Magic-link sign-in (the default) needs no separate verify step, so there is nothing to block today. *If* password auth is ever added, verification uses the non-blocking banner (`SK-ONBOARD-001`) and never gates the chat — wired in that slice, not on spec.
 - **Anonymous DB promotion on signup.** When an anonymous user signs up, the `anon_*` DB should be promoted to their account. The exact promotion flow (rename, re-key, or link) is owned by `docs/features/anonymous-mode/FEATURE.md` and is not yet finalized.
 - **MCP confirmation UX.** SK-ONBOARD-004 says MCP waits for an `approve` follow-up query. The exact tool-call shape for this confirmation loop is TBD in `docs/features/mcp-server/FEATURE.md`.
