@@ -161,14 +161,13 @@ dataset, can't regress the happy path.
 **Body:** [`decisions/SK-LLM-026-static-few-shot-plan-exemplars.md`](./decisions/SK-LLM-026-static-few-shot-plan-exemplars.md).
 `PLAN_SYSTEM` splits into `PLAN_DIRECTIVES` (`SK-LLM-018`) + an exported
 `PLAN_FEW_SHOT` block of three static, dialect-portable
-Question→strict-JSON exemplars that, between them, *demonstrate* all four
-`SK-LLM-018` behaviours (verbatim casing + JOIN; `Evidence:` formula;
-dialect-strict output — exemplar 3 `postgres`, 1–2 `sqlite`; strict-JSON
-shape). Few-shot pairs are the biggest prompt-only text-to-SQL lever
-(DAIL-SQL [arXiv:2308.15363](https://arxiv.org/abs/2308.15363); optimal
-3–5 shots), largest on the small/open models the strict-$0 chain runs.
-Dataset-agnostic (BIRD + Spider), zero-dep, no per-provider plumbing;
-≈250–350 added tokens are the free-tier-quota tradeoff, measured next cron.
+Question→strict-JSON exemplars that *demonstrate* the `SK-LLM-018`
+behaviours (verbatim casing + JOIN; `Evidence:` formula; dialect-strict —
+exemplar 3 `postgres`, 1–2 `sqlite`; strict-JSON). Few-shot pairs are the
+biggest prompt-only text-to-SQL lever (DAIL-SQL
+[arXiv:2308.15363](https://arxiv.org/abs/2308.15363); optimal 3–5 shots),
+largest on the small/open models the strict-$0 chain runs. Dataset-agnostic
+(BIRD + Spider), zero-dep; ≈250–350 added tokens are the quota tradeoff.
 
 ### SK-LLM-027 — Result-shape directives in the planner prompt (exact projection + REAL-cast ratios)
 
@@ -178,9 +177,10 @@ don't catch: **exact projection** (extra columns are an EX failure —
 Open-SQL [arXiv:2405.06674](https://arxiv.org/pdf/2405.06674)) and
 **REAL-cast ratios** (SQLite floors `int / int`; BIRD ratio gold casts).
 BIRD's scorer keys rows by full column set ⇒ projection lifts BIRD;
-Spider's tolerates extra prediction columns ⇒ no Spider regression.
-`SK-LLM-026` exemplar 2 refit to demonstrate the cast. Prompt-only, ≈40
-tokens, measured next cron (`SK-QUAL-002`).
+Spider's `comparePandasTable` ignores extra pred columns ⇒ Spider-neutral
+for over-projection. Residual risks (under-projection; exact-scorer cast
+tail) are in the decision body. `SK-LLM-026` exemplar 2 refit to
+demonstrate the cast. Prompt-only, ≈40 tokens.
 
 ## GLOBALs governing this feature
 

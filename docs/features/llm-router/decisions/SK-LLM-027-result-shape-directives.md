@@ -29,16 +29,27 @@ bullets in the same block, demonstrated by the
   [arXiv:2305.03111](https://arxiv.org/pdf/2305.03111)). The BIRD scorer
   (`tools/eval/src/score.ts::canonicalize`) keys each row by its full column
   set, so an extra projected column is a hard mismatch; the Spider 2.0-lite
-  scorer (`comparePandasTable`) tolerates extra prediction columns, so the
-  directive lifts BIRD and never regresses Spider. **REAL cast:** SQLite
-  integer-divides `int / int` and truncates ([SQLite forum
+  scorer (`comparePandasTable`) only requires every gold column to find a
+  match and **ignores extra prediction columns**, so the directive lifts
+  BIRD and is Spider-neutral *for the dominant over-projection case*. The
+  one residual risk is symmetric for both scorers — *under*-projection, where
+  the model drops a column the gold needs. The directive's framing ("exactly
+  the columns the goal asks for") steers toward the gold's own minimal
+  projection rather than toward "fewer", so it bounds that tail without
+  eliminating it; the dominant error on a "helpful" reasoning head is the
+  *over*-projection it removes. **REAL cast:** SQLite integer-divides
+  `int / int` and truncates ([SQLite forum
   19569c70bb](https://sqlite.org/forum/info/19569c70bbe5b797)); BIRD's
-  `Evidence:` formulas are overwhelmingly ratios/percentages and the BIRD
-  gold itself casts to REAL, so a prediction that floors the ratio mismatches
-  gold. Both are prompt-only, dataset-agnostic, and demonstrated (not just
-  stated) per the `SK-LLM-026` few-shot thesis — the cheapest place to
-  convert mismatches into matches on the small/open models the strict-$0
-  chain runs.
+  `Evidence:` formulas are overwhelmingly ratios/percentages and that gold
+  predominantly casts to REAL, so a floored prediction mismatches it.
+  Honest residual: the BIRD scorer is *exact* (no numeric tolerance, unlike
+  Spider's `1e-2`), so on the minority of ratio golds that genuinely
+  integer-floor, a cast prediction would now mismatch — the
+  `two integer columns` scope and BIRD's dominant REAL-casting convention
+  make this net-positive in expectation, not risk-free. Both bullets are
+  prompt-only, dataset-agnostic, and demonstrated (not just stated) per the
+  `SK-LLM-026` few-shot thesis — the cheapest place to convert mismatches
+  into matches on the small/open models the strict-$0 chain runs.
 - **Consequence in code:** `packages/llm/src/prompts.ts` adds two strings to
   the `PLAN_DIRECTIVES` array and refits exemplar 2; `PLAN_SYSTEM` and the
   per-provider wiring are unchanged (every provider keeps importing the one
