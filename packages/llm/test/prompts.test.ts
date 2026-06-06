@@ -40,6 +40,14 @@ describe("PLAN_SYSTEM (SK-LLM-018 schema-fidelity directives)", () => {
     expect(PLAN_SYSTEM).toMatch(/authoritative annotator context/);
   });
 
+  it("carries the SK-LLM-027 result-shape directives (exact projection + REAL-cast ratio)", () => {
+    // Projection discipline — extra columns are a recognised EX mismatch.
+    expect(PLAN_SYSTEM).toMatch(/Select exactly the columns the goal asks for/);
+    // REAL cast — SQLite integer-truncates int/int division.
+    expect(PLAN_SYSTEM).toMatch(/cast one operand to REAL/);
+    expect(PLAN_SYSTEM).toContain("CAST(x AS REAL) / y");
+  });
+
   it("appends the SK-LLM-026 few-shot exemplars after the directives", () => {
     expect(PLAN_SYSTEM).toContain(PLAN_FEW_SHOT);
     // Directives must precede the examples so the contract is read first.
@@ -75,9 +83,10 @@ describe("PLAN_FEW_SHOT (SK-LLM-026 static few-shot exemplars)", () => {
     // Mixed-case + quoted identifiers carried verbatim (SK-LLM-018 casing rule).
     expect(PLAN_FEW_SHOT).toContain('"Album"');
     expect(PLAN_FEW_SHOT).toContain("ArtistId");
-    // One exemplar applies an `Evidence:` formula end-to-end.
+    // One exemplar applies an `Evidence:` formula end-to-end, with the
+    // SK-LLM-027 REAL cast since both operands are integer columns.
     expect(PLAN_FEW_SHOT).toMatch(/Evidence: income per resident = total_income \/ residents/);
-    expect(PLAN_FEW_SHOT).toContain("total_income / residents");
+    expect(PLAN_FEW_SHOT).toContain("CAST(total_income AS REAL) / residents");
     // Top-N idiom: ORDER BY <agg> DESC LIMIT 1.
     expect(PLAN_FEW_SHOT).toMatch(/ORDER BY SUM\(amount\) DESC LIMIT 1/);
   });

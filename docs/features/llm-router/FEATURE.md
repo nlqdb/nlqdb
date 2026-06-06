@@ -10,7 +10,7 @@ when-to-load:
 # Feature: Llm Router
 
 **One-liner:** Model selection, fallback chain, prompt strategy, per-user credit accounting; three permanent dispatch lanes per [`GLOBAL-026`](../../decisions/GLOBAL-026-llm-strategy-byollm-hosted-premium.md) — free chain, BYOLLM, hosted-premium.
-**Status:** implemented for the free chain (`SK-LLM-001..015` + `SK-LLM-018` + `SK-LLM-023..026`). BYOLLM (`SK-LLM-016`) is partial — provider factory (`SK-LLM-019`) + lane selector / single-provider lane router (`SK-LLM-020`) ship, the per-request `x-nlq-byollm-key` header lane is wired on HTTP `/v1/ask` (`SK-LLM-021`), and the account-stored lane (step 2) now resolves on `/v1/ask` via `api_keys` `scope = "byollm"` ([`SK-PREMIUM-012`](../premium-tier/decisions/SK-PREMIUM-012-account-stored-byollm-storage.md)); `GLOBAL-003` surface parity (MCP/SDK/CLI/elements/`/app/keys`) remains pending (tracked in `premium-tier/FEATURE.md` Open questions). `SK-LLM-017` (hosted-premium chain) lands in Phase 2 alongside `quality-eval`; the premium-chain meter stays dark until [`phase-plan.md §6`](../../phase-plan.md) trips.
+**Status:** implemented for the free chain (`SK-LLM-001..015` + `SK-LLM-018` + `SK-LLM-023..027`). BYOLLM (`SK-LLM-016`) is partial — provider factory (`SK-LLM-019`) + lane selector / single-provider lane router (`SK-LLM-020`) ship, the per-request `x-nlq-byollm-key` header lane is wired on HTTP `/v1/ask` (`SK-LLM-021`), and the account-stored lane resolves on `/v1/ask` via `api_keys` `scope = "byollm"` ([`SK-PREMIUM-012`](../premium-tier/decisions/SK-PREMIUM-012-account-stored-byollm-storage.md)); `GLOBAL-003` surface parity (MCP/SDK/CLI/elements/`/app/keys`) pending (tracked in `premium-tier/FEATURE.md`). `SK-LLM-017` (hosted-premium chain) lands in Phase 2 alongside `quality-eval`; its meter stays dark until [`phase-plan.md §6`](../../phase-plan.md) trips.
 
 **Contribution to north-star:** Engine quality — the router is the NL→SQL accuracy lever per [`GLOBAL-025`](../../decisions/GLOBAL-025-north-star.md). Free-chain scaffolding compounds when BYOLLM or hosted-premium swaps in a frontier model; `quality-eval`'s free-vs-frontier delta measures the compounding.
 
@@ -121,59 +121,66 @@ OpenRouter pins `plan` + `schema_infer` to `qwen/qwen3-coder:free`; cheap-tier o
 ### SK-LLM-018 — Schema-fidelity planner prompt + diagnostic retry framing
 
 **Body:** [`decisions/SK-LLM-018-schema-fidelity-prompt.md`](./decisions/SK-LLM-018-schema-fidelity-prompt.md).
-`PLAN_SYSTEM` gains schema-literal + verbatim-casing + dialect-strict + `Evidence:`-authoritative directives; `buildPlanUser`'s retry block reframes "different shape" as **diagnose-first, surgical-fix**. Targets the BIRD free-chain gap (0.318 → 0.65 per [`SK-QUAL-005`](../quality-eval/FEATURE.md#sk-qual-005)); evidence base in the sharded body.
+`PLAN_SYSTEM` gains schema-literal + verbatim-casing + dialect-strict + `Evidence:`-authoritative directives; `buildPlanUser`'s retry block reframes "different shape" as **diagnose-first, surgical-fix**. Targets the BIRD free-chain gap (0.318 → 0.65 per [`SK-QUAL-005`](../quality-eval/FEATURE.md#sk-qual-005)).
 
 ### SK-LLM-013 — `PlanResponse` carries `model` + `confidence` for SK-TRUST-002
 
-**Body:** [`decisions/SK-LLM-013-plan-response-shape.md`](./decisions/SK-LLM-013-plan-response-shape.md). `PlanResponse` widens to `{ sql, model, confidence }`; `confidence` ships as a `1.0` placeholder until `quality-eval` calibrates per-tier floors per `SK-TRUST-003`. The plan cache stores both fields so hits return the miss's values.
+**Body:** [`decisions/SK-LLM-013-plan-response-shape.md`](./decisions/SK-LLM-013-plan-response-shape.md). `PlanResponse` widens to `{ sql, model, confidence }`; `confidence` is a `1.0` placeholder until `quality-eval` calibrates per-tier floors (`SK-TRUST-003`). The plan cache stores both fields so hits return the miss's values.
 
 ### SK-LLM-022 — Hard-plan confidence threshold = 0.75 (env-tunable)
 
-**Body:** [`decisions/SK-LLM-022-hard-plan-confidence-threshold.md`](./decisions/SK-LLM-022-hard-plan-confidence-threshold.md). `confidence < 0.75 ⇒ hard_plan = true`; the threshold is env-tunable (`HARD_PLAN_CONFIDENCE_THRESHOLD`). Pins the `SK-LLM-001` "hard" tier and drives the `SK-PREMIUM-004` upsell CTA.
+**Body:** [`decisions/SK-LLM-022-hard-plan-confidence-threshold.md`](./decisions/SK-LLM-022-hard-plan-confidence-threshold.md). `confidence < 0.75 ⇒ hard_plan = true`, env-tunable (`HARD_PLAN_CONFIDENCE_THRESHOLD`). Pins the `SK-LLM-001` "hard" tier and drives the `SK-PREMIUM-004` upsell.
 
 ### SK-LLM-023 — Cerebras (gpt-oss-120b) leads the strict-$0 planner-tier chain
 
 **Body:** [`decisions/SK-LLM-023-cerebras-planner-tier.md`](./decisions/SK-LLM-023-cerebras-planner-tier.md).
-Adds a fifth free provider (`createCerebrasProvider`, OpenAI-compatible, `CEREBRAS_API_KEY`) leading the `plan` / `schema_infer` chain with OpenAI `gpt-oss-120b` (model id verified live): `[cerebras, gemini, groq, workers-ai, openrouter]`. Extends — does not supersede — [`SK-LLM-003`](#sk-llm-003). Motivated by the 31.8% free-chain BIRD baseline that blocks the `GLOBAL-027` gate (and every top-5 ICP flow); the eval free lane carries the identical chain so the cron measures the delta. Routed direct (gatewaying is a follow-up); a 429 from the free-tier per-minute quota fails over to Gemini.
+Adds a fifth free provider (`createCerebrasProvider`, OpenAI-compatible, `CEREBRAS_API_KEY`) leading the `plan` / `schema_infer` chain with OpenAI `gpt-oss-120b`: `[cerebras, gemini, groq, workers-ai, openrouter]`. Extends — does not supersede — [`SK-LLM-003`](#sk-llm-003). Motivated by the 31.8% free-chain BIRD baseline that blocks the `GLOBAL-027` gate; the eval free lane carries the identical chain so the cron measures the delta. Routed direct; a 429 from the per-minute quota fails over to Gemini.
 
 ### SK-LLM-024 — Deterministic greedy decoding (temperature 0) across the whole free planner chain
 
 **Body:** [`decisions/SK-LLM-024-greedy-decoding-parity.md`](./decisions/SK-LLM-024-greedy-decoding-parity.md).
 Every free `plan` / `schema_infer` leg decodes greedily at
 `temperature: 0`. Cerebras / Groq / OpenRouter / Gemini already pin it;
-this brings the Workers AI leg into parity (its native `/ai/run` body
-had inherited Cloudflare's stochastic 0.6 default). Greedy decoding is
-the single-pass text-to-SQL EX standard and makes the weekly baseline
-reproducible for the [`SK-QUAL-006`](../quality-eval/FEATURE.md#sk-qual-006)
-McNemar paired test. One line + one test; no new config surface.
+this brings the Workers AI leg into parity (its `/ai/run` body had
+inherited Cloudflare's stochastic 0.6). Greedy is the single-pass
+text-to-SQL EX standard and keeps the weekly baseline reproducible for the
+[`SK-QUAL-006`](../quality-eval/FEATURE.md#sk-qual-006) McNemar test.
 
 ### SK-LLM-025 — Recover the JSON object from reasoning-model preamble leaks before failing the parse
 
 **Body:** [`decisions/SK-LLM-025-json-recovery-fallback.md`](./decisions/SK-LLM-025-json-recovery-fallback.md).
-`parseJsonResponse` gains a string-aware balanced-`{…}` recovery
-fallback that runs only after strict `JSON.parse` throws — targeting the
-reasoning head ([`SK-LLM-023`](#sk-llm-023) `gpt-oss-120b`) leaking
-preamble text into structured output (Groq / OpenAI `gpt-oss` reports,
-2026-06). Strictly additive: it converts current `parse` → `no_sql`
-losses into matches on every leg and every dataset, and can't regress
-the happy path.
+`parseJsonResponse` gains a string-aware balanced-`{…}` recovery fallback
+that runs only after strict `JSON.parse` throws — targeting the reasoning
+head ([`SK-LLM-023`](#sk-llm-023) `gpt-oss-120b`) leaking preamble into
+structured output (Groq / OpenAI `gpt-oss` reports, 2026-06). Strictly
+additive: converts `parse` → `no_sql` losses into matches on every leg and
+dataset, can't regress the happy path.
 
 ### SK-LLM-026 — Static few-shot exemplars in the planner prompt (DAIL-SQL)
 
 **Body:** [`decisions/SK-LLM-026-static-few-shot-plan-exemplars.md`](./decisions/SK-LLM-026-static-few-shot-plan-exemplars.md).
-`PLAN_SYSTEM` splits into `PLAN_DIRECTIVES` (`SK-LLM-018`) + a new
-exported `PLAN_FEW_SHOT` block of three static, dialect-portable
+`PLAN_SYSTEM` splits into `PLAN_DIRECTIVES` (`SK-LLM-018`) + an exported
+`PLAN_FEW_SHOT` block of three static, dialect-portable
 Question→strict-JSON exemplars that, between them, *demonstrate* all four
-`SK-LLM-018` behaviours (verbatim casing + JOIN; `Evidence:` formula
-application; dialect-strict output — exemplar 3 is labelled `postgres`,
-1–2 `sqlite`, with a `LIMIT`-not-`TOP` top-N idiom; strict-JSON shape in
-every answer). Few-shot Question→SQL pairs are the
-biggest prompt-only text-to-SQL lever (DAIL-SQL
-[arXiv:2308.15363](https://arxiv.org/abs/2308.15363); optimal 3–5 shots),
-and the gain is largest on the small/open models the strict-$0 chain
-runs. Helps BIRD + Spider alike (dataset-agnostic), zero new dependency,
-no per-provider plumbing; the ≈250–350 added input tokens are the
-documented free-tier-quota tradeoff, measured on the next cron.
+`SK-LLM-018` behaviours (verbatim casing + JOIN; `Evidence:` formula;
+dialect-strict output — exemplar 3 `postgres`, 1–2 `sqlite`; strict-JSON
+shape). Few-shot pairs are the biggest prompt-only text-to-SQL lever
+(DAIL-SQL [arXiv:2308.15363](https://arxiv.org/abs/2308.15363); optimal
+3–5 shots), largest on the small/open models the strict-$0 chain runs.
+Dataset-agnostic (BIRD + Spider), zero-dep, no per-provider plumbing;
+≈250–350 added tokens are the free-tier-quota tradeoff, measured next cron.
+
+### SK-LLM-027 — Result-shape directives in the planner prompt (exact projection + REAL-cast ratios)
+
+**Body:** [`decisions/SK-LLM-027-result-shape-directives.md`](./decisions/SK-LLM-027-result-shape-directives.md).
+Two `PLAN_DIRECTIVES` bullets for the EX mismatches schema-link rules
+don't catch: **exact projection** (extra columns are an EX failure —
+Open-SQL [arXiv:2405.06674](https://arxiv.org/pdf/2405.06674)) and
+**REAL-cast ratios** (SQLite floors `int / int`; BIRD ratio gold casts).
+BIRD's scorer keys rows by full column set ⇒ projection lifts BIRD;
+Spider's tolerates extra prediction columns ⇒ no Spider regression.
+`SK-LLM-026` exemplar 2 refit to demonstrate the cast. Prompt-only, ≈40
+tokens, measured next cron (`SK-QUAL-002`).
 
 ## GLOBALs governing this feature
 
@@ -188,15 +195,15 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
     rather than retry the same one. The chain retries up to 3
     hops (one attempt per provider) before propagating the error.
 - **GLOBAL-025** — North-star: engine quality, onboarding, UX — each with explicit KPIs.
-  - *In this feature:* the router IS the engine north-star's mechanism on the NL→SQL layer; the free-vs-frontier delta KPI runs `quality-eval` against this router's free chain vs its hosted-premium chain.
+  - *In this feature:* the router IS the engine north-star's NL→SQL mechanism; the free-vs-frontier delta KPI runs `quality-eval` against this router's free vs hosted-premium chain.
 - **GLOBAL-026** — LLM strategy: free chain forever, BYOLLM for everyone, hosted premium on paid.
-  - *In this feature:* owns dispatch precedence (`SK-LLM-016`) and the hosted-premium chain wiring (`SK-LLM-017`); commercial shape in `premium-tier/FEATURE.md`.
+  - *In this feature:* owns dispatch precedence (`SK-LLM-016`) + hosted-premium chain wiring (`SK-LLM-017`); commercial shape in `premium-tier/FEATURE.md`.
 
 ## Open questions / known unknowns
 
-- **Failover when every provider in a chain fails** — Decided shape (per `GLOBAL-033` error semantics → `GLOBAL-012`): throw a structured `provider_chain_exhausted` envelope (one-sentence, actionable); **no** head-retry with backoff (the head already failed this request; a fresh `/v1/ask` re-enters the chain). **Parked until** the surfaces render it — the typed envelope isn't emitted in `packages/llm` yet.
-- **Parked until `quality-eval` Phase 2:** `nlqdb.plan.quality_score` histogram shape + LLM-as-judge prompt + "provider silently degrading" alert threshold — depends on the judge harness landing.
-- **Parked until Lago wiring (Phase 2):** per-user credit accounting (`architecture.md §6`); provider-level cost is already covered.
-- **Parked until a debugging need forces it:** prompt-template version pinning — decided shape is to stamp the template version hash on `PlanResponse` + the plan-cache entry; cheap to add when a plan-provenance question actually arises.
-- **Parked until a leak-rate regression forces it ([`SK-LLM-025`](#sk-llm-025)):** a per-call JSON-recovery-rate counter. The fallback silently converts a former `parse` failure into a success, so the recovery rate isn't counted per-call today; the weekly cron already surfaces the aggregate effect (the `no_sql` → `match` shift). Decided shape: a bounded `nlqdb.llm.json_recovered.total{op}` counter incremented at the `router.ts` boundary (the only layer holding the meter; `_shared.ts` stays pure per `GLOBAL-021`).
-- **Parked until burst abuse shows up:** free-tier RPM queue ("queued — 2s" UX, `architecture.md §7.1`); today bursts over a provider's RPM fail-and-fall-through. Owned jointly with `rate-limit` / `observability`.
+- **Failover when every provider in a chain fails** — Decided shape (per `GLOBAL-033` → `GLOBAL-012`): throw a structured `provider_chain_exhausted` envelope (one-sentence, actionable); **no** head-retry with backoff (a fresh `/v1/ask` re-enters the chain). **Parked until** the surfaces render it — the typed envelope isn't emitted in `packages/llm` yet.
+- **Parked until `quality-eval` Phase 2:** `nlqdb.plan.quality_score` histogram shape + LLM-as-judge prompt + "provider silently degrading" alert threshold — depends on the judge harness.
+- **Parked until Lago wiring (Phase 2):** per-user credit accounting (`architecture.md §6`); provider-level cost already covered.
+- **Parked until a debugging need forces it:** prompt-template version pinning — decided shape stamps the template version hash on `PlanResponse` + the plan-cache entry; cheap to add when a plan-provenance question arises.
+- **Parked until a leak-rate regression forces it ([`SK-LLM-025`](#sk-llm-025)):** a per-call JSON-recovery-rate counter. The weekly cron already surfaces the aggregate `no_sql` → `match` shift; decided shape is a bounded `nlqdb.llm.json_recovered.total{op}` counter at the `router.ts` boundary (`_shared.ts` stays pure per `GLOBAL-021`).
+- **Parked until burst abuse shows up:** free-tier RPM queue ("queued — 2s" UX, `architecture.md §7.1`); today bursts over a provider's RPM fail-and-fall-through. Owned with `rate-limit` / `observability`.
