@@ -13,7 +13,7 @@
   (`0.0.0.0/8`), or multicast / reserved (`224.0.0.0/3`, `ff00::/8`,
   `fec0::/10`) range is rejected — **including** the IPv6 transition
   forms that embed such a v4 (IPv4-mapped `::ffff:`, IPv4-compatible,
-  6to4 `2002::/16`, NAT64 `64:ff9b::/96`) and the decimal / hex / octal
+  6to4 `2002::/16`, NAT64 `64:ff9b::/32`) and the decimal / hex / octal
   IPv4 encodings. A **DNS name** can resolve to anything and a pure
   function cannot bound DNS rebinding, so a name returns
   `needsDnsRecheck: true`: the connect-time caller MUST resolve it and

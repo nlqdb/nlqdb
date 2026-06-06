@@ -24,7 +24,8 @@
 //     includes the
 //     IPv6 transition forms that *embed* such a v4 — IPv4-mapped
 //     (`::ffff:a.b.c.d`), IPv4-compatible (`::a.b.c.d`), 6to4 (`2002:V4::`)
-//     and NAT64 (`64:ff9b::V4`) — which are the live 2026 SSRF-filter-bypass
+//     and NAT64 (`64:ff9b::/32`, both well-known and local-use prefixes) —
+//     which are the live 2026 SSRF-filter-bypass
 //     class (Symfony CVE-2026-48736, Discourse / Twenty / openclaw
 //     advisories). The alternate IPv4 encodings — decimal (`2130706433`),
 //     hex (`0x7f000001`), octal (`0177.0.0.1`), mixed (`0xa.0.0.1`) and the
@@ -199,14 +200,11 @@ function classifyIpv6(bytes: number[]): string | null {
     return embedded(last4);
   }
   if (bytes.slice(0, 12).every((x) => x === 0)) return embedded(last4);
-  // 64:ff9b::/96 NAT64 well-known prefix.
-  if (
-    b0 === 0x00 &&
-    b1 === 0x64 &&
-    at(2) === 0xff &&
-    at(3) === 0x9b &&
-    bytes.slice(4, 12).every((x) => x === 0)
-  ) {
+  // NAT64 — the well-known `64:ff9b::/96` *and* the local-use `64:ff9b:1::/48`
+  // prefix (RFC 8215); both share the `64:ff9b::/32` umbrella and carry the
+  // embedded v4 in the last 32 bits. Matching only the `/96` form is the
+  // CVE-2026-46678 / HackerOne #3634400 bypass.
+  if (b0 === 0x00 && b1 === 0x64 && at(2) === 0xff && at(3) === 0x9b) {
     return embedded(last4);
   }
   // 2002::/16 6to4 — embedded v4 in bytes 2..6.

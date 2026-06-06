@@ -105,6 +105,8 @@ describe("guardEgressHost — unwraps IPv6 transition forms (CVE-2026 bypass cla
     "::ffff:10.0.0.1",
     "::127.0.0.1", // IPv4-compatible (deprecated)
     "64:ff9b::127.0.0.1", // NAT64 well-known prefix
+    "64:ff9b:1::7f00:1", // NAT64 local-use prefix /48 (CVE-2026-46678 / H1 #3634400)
+    "64:ff9b:1::a9fe:a9fe", // NAT64 local-use embedding the metadata IP
     "2002:7f00:1::", // 6to4 embedding 127.0.0.1
     "2002:a00:1::", // 6to4 embedding 10.0.0.1
   ])("blocks %s", (host) => expectBlocked(host));
