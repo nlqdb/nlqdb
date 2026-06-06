@@ -170,6 +170,7 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
   // Unauthenticated clicks redirect to sign-in with a `return_to=/pricing` hint.
 
   import { fetchSession } from "../lib/session";
+  import { fetchBillingStatus, openBillingPortal } from "../lib/billing";
 
   const buttons = document.querySelectorAll<HTMLButtonElement>("button[data-plan]");
 
@@ -236,16 +237,10 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
     const user = await fetchSession();
     if (!user) return;
 
-    const apiBase = (manageBtn?.dataset.apiBase ?? "").replace(/\/$/, "");
-    let status: { plan: string; status: string; manageable: boolean } | null = null;
-    try {
-      const res = await fetch(`${apiBase}/v1/billing/status`, { credentials: "include" });
-      if (res.ok) status = await res.json();
-    } catch {
-      // Status is a progressive enhancement — on failure the page stays in
-      // its default state (upgrade CTAs live, manage hidden) rather than
-      // blocking the user.
-    }
+    // Status is a progressive enhancement — on failure the page stays in
+    // its default state (upgrade CTAs live, manage hidden) rather than
+    // blocking the user.
+    const status = await fetchBillingStatus(manageBtn?.dataset.apiBase ?? "");
     if (!status) return;
 
     if (status.manageable && manageSection) manageSection.hidden = false;
@@ -269,31 +264,22 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
   })();
 
   manageBtn?.addEventListener("click", async () => {
-    const apiBase = (manageBtn.dataset.apiBase ?? "").replace(/\/$/, "");
     manageBtn.disabled = true;
     const original = manageBtn.textContent;
     manageBtn.textContent = "Redirecting…";
-    try {
-      const res = await fetch(`${apiBase}/v1/billing/portal`, {
-        method: "POST",
-        credentials: "include",
-      });
-      if (res.status === 404) {
-        manageBtn.textContent = "No active subscription yet";
-        return;
-      }
-      if (res.status === 503) {
-        manageBtn.textContent = "Not available yet";
-        return;
-      }
-      if (!res.ok) throw new Error(`portal failed: ${res.status}`);
-      const { url } = (await res.json()) as { url: string };
-      window.location.assign(url);
-    } catch {
-      manageBtn.disabled = false;
-      manageBtn.textContent = original;
-      alert("Something went wrong. Please try again or email hello@nlqdb.com.");
+    const outcome = await openBillingPortal(manageBtn.dataset.apiBase ?? "");
+    if (outcome === "ok") return; // browser is already navigating to Stripe
+    if (outcome === "no_customer") {
+      manageBtn.textContent = "No active subscription yet";
+      return;
     }
+    if (outcome === "not_configured") {
+      manageBtn.textContent = "Not available yet";
+      return;
+    }
+    manageBtn.disabled = false;
+    manageBtn.textContent = original;
+    alert("Something went wrong. Please try again or email hello@nlqdb.com.");
   });
 </script>
 

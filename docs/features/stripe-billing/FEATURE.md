@@ -125,7 +125,7 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 
 ## Open questions / known unknowns
 
-- **Dunning / failed-payment behaviour.** Slice 7 records `customer.subscription.updated` (state sync only) but doesn't surface `invoice.payment_failed` or `customer.subscription.past_due` to the user. Phase 2's flip to live mode will need a dunning UX (email + in-app banner) before paid Hobby goes public.
+- **Dunning / failed-payment behaviour.** In-app half shipped: `/app` shows a `past_due`/`unpaid` banner off `GET /v1/billing/status` (web-app `SK-WEB-012`), since `customer.subscription.updated` already state-syncs status. The email half (notify on `invoice.payment_failed`) stays open and gates live-mode paid Hobby.
 - **R2 lifecycle policy** — Resolved per `GLOBAL-033` (pin-a-number → fail-safe): **90-day retention** on the date-partitioned keys. Stripe events are replayable from the Dashboard, so the bucket is a convenience cache, not a system of record; 90 days bounds storage while covering any realistic dispute window. The rule is a one-time Cloudflare R2 config; **parked until** bucket size is load-bearing — capture it in `docs/runbook.md §6` then.
 - **DLQ for stuck events** — **Parked until** a `processed_at IS NULL` backlog appears (PLAN §11): the queryable NULL signal exists today; the ops cron + Grafana alert is wiring that lands when a dispatch failure first slips by.
 - **Stripe Tax activation.** Test-mode is configured (`NLQDB.COM` descriptor, Switzerland/CHF merchant). Live-mode + Stripe Tax flip is a Phase 2 task — capture the activation steps in `docs/runbook.md §6` when it lands.

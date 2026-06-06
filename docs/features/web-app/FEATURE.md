@@ -55,14 +55,7 @@ when-to-load:
 
 ### SK-WEB-004 — Demo endpoint `POST /v1/demo/ask`: no auth, canned fixtures, server-owned
 
-- **Status:** superseded by `SK-WEB-008`. The reproduction that prompted the supersession: submitting "Create a new workspace named omer" to the canned-fixture endpoint returned the orders-aggregation default with summary line *"Today's orders aggregated by drink (matching 'Create a new workspace named omer')"* — fixtures lying by accident under SK-WEB-003's "above the fold is runnable proof" mandate. The free-LLM-proxy concern that motivated this feature is now addressed by the global anon cap (`SK-ANON-010`) layered on the per-IP cap (`SK-ANON-004`).
-- **Decision:** The marketing-site live `<nlq-data>` and any third-party "try this in a scratch HTML" embed point at `endpoint="https://app.nlqdb.com/v1/demo/ask"`. The endpoint takes no auth, is CORS-permissive, returns canned fixtures keyed off the goal substring, and rate-limits per-IP at 10/min so it can't be abused as an LLM stand-in. The element stays pure — no demo branch in client code; the "demo" semantic lives server-side in `apps/api/src/demo.ts`.
-- **Core value:** Free, Bullet-proof, Honest latency
-- **Why:** The marketing site needs a live demo that costs us nothing per visitor and can't be turned into a free LLM proxy. Canned fixtures keep it free. Server-side semantics keep the embed code identical to what real users ship — paste-this-in-prod is the same code paste-this-on-marketing renders. Per-IP rate limit defends against abuse.
-- **Consequence in code:** `apps/api/src/demo.ts` owns the fixture map and the rate limit. `packages/elements` has zero "isDemo" branches. Real users' embeds hit `/v1/ask` with a session cookie or `pk_live_` key; the marketing site's embed hits `/v1/demo/ask` purely by virtue of its `endpoint` attribute. Per `docs/architecture.md §3`, the demo endpoint is the *first* shipped surface row.
-- **Alternatives rejected:**
-  - LLM behind the demo endpoint — turns the marketing site into a free Claude proxy.
-  - Per-visitor anonymous DB on the marketing site — works but burns Neon Free capacity for window-shoppers; canned fixtures are cheaper.
+- **Status:** superseded by `SK-WEB-008` — canned fixtures lied by accident the moment a goal missed the matcher, so the marketing demo now hits the real `/v1/ask` with an anon bearer. The free-LLM-proxy concern this guarded is now covered by the global anon cap (`SK-ANON-010`) over the per-IP cap (`SK-ANON-004`). See `SK-WEB-008` for the live rationale.
 
 ### SK-WEB-008 — Demo === real `/v1/ask` with anon bearer; canned fixtures live only in the static carousel
 
@@ -87,14 +80,7 @@ when-to-load:
 
 ### SK-WEB-006 — Cookie is `__Secure-session` with cross-subdomain `Domain=nlqdb.com`
 
-- **Status:** Superseded by `SK-WEB-009` once `apps/web` and `apps/api` were merged into a single same-origin worker. Historical context for `SK-AUTH-013` / `SK-AUTH-015` lives in those records.
-- **Decision:** Sign-in cookie is `__Secure-session` (HttpOnly, Secure, SameSite=Lax) with `Domain=nlqdb.com` so the same session covers `nlqdb.com` and `app.nlqdb.com`. `__Host-` is incompatible with `Domain=`.
-- **Core value:** Seamless auth, Bullet-proof, Effortless UX
-- **Why:** Pre-merge, one identity (`GLOBAL-008`) across two subdomains required one cookie that spanned both; `__Host-` couldn't carry `Domain=` so cross-subdomain forced the downgrade. Same-origin chat (`SK-WEB-009`) restores the path to `__Host-`.
-- **Consequence in code:** Pre-merge Better Auth set `crossSubDomainCookies: true`. Removed under `SK-WEB-009`.
-- **Alternatives rejected:**
-  - Keep `__Host-` + force same-origin chat in Phase 1 — too much churn at the time.
-  - Separate cookie per subdomain — fragments identity, breaks `GLOBAL-008`.
+- **Status:** Superseded by `SK-WEB-009` once `apps/web` and `apps/api` merged into one same-origin worker. Pre-merge, one identity (`GLOBAL-008`) across two subdomains needed a cookie that spanned both, and `__Host-` can't carry `Domain=` — so the cookie was downgraded to `__Secure-session` + `Domain=nlqdb.com` (Better Auth `crossSubDomainCookies: true`). The merge restores the path to `__Host-`. Historical context for `SK-AUTH-013` / `SK-AUTH-015` lives in those records.
 
 ### SK-WEB-009 — Host-only `__Secure-…session` cookie on `app.nlqdb.com` after the web/API merge
 
@@ -139,6 +125,16 @@ when-to-load:
   - Leave `?checkout=success` in the URL — a refresh or a shared/bookmarked link would replay the banner, and the success state isn't meaningfully permalinkable.
   - Render the banner server-side / unconditionally and hide with JS — flashes for anon visitors before the auth guard resolves.
 
+### SK-WEB-012 — In-app dunning banner on `/app`, driven by the live `past_due`/`unpaid` status
+
+- **Decision:** After the `/app` auth guard passes, the page reads `GET /v1/billing/status` (SK-STRIPE-009) in the background — off the render path, after the shell paints — and, only when `status` is `past_due` or `unpaid`, reveals a danger-tinted banner: *"Your last payment didn't go through. Update your payment method to keep your plan active."* with an "Update payment method" button that opens the hosted Billing Portal via `openBillingPortal` (SK-STRIPE-008). It is a `role="alert"` live region, empty from load with its text injected on reveal (same announce-on-injection trick as SK-WEB-011). The status fetch + portal open are shared with `/pricing` through `apps/web/src/lib/billing.ts`.
+- **Core value:** Honest latency, Effortless UX, Bullet-proof
+- **Why:** A failed renewal silently flips the subscription to `past_due`; Stripe retries on its dunning schedule but never redirects the user, so without an in-app signal the first thing a paying customer learns is that their plan stopped working. One cheap indexed read on a page they already open surfaces the one action that fixes it — update the card in the portal — turning an involuntary-churn event into a one-click recovery. This is the in-app half of the stripe-billing dunning open question; the email half stays open.
+- **Consequence in code:** Markup + scoped danger-tinted styles + reveal live in `apps/web/src/pages/app/index.astro`; the fetch (`fetchBillingStatus`) and portal open (`openBillingPortal`, 404/503/error outcomes) move to `apps/web/src/lib/billing.ts` and are reused by `/pricing` so neither path duplicates the fetch+redirect. The read is non-blocking (`void fetchBillingStatus(...).then(...)`) so the healthy/free majority pays nothing on the chat's critical render path. SK-WEB-011's "don't fetch status for a banner" applies only to the checkout-success surface, where a URL param already carries the signal; a payment failure has no redirect, so the live read is the only signal — and the endpoint it needs now exists.
+- **Alternatives rejected:**
+  - Block the shell reveal on the read — adds a round-trip to every chat load for a banner almost no one sees; the background fire keeps the page instant.
+  - Email only, no in-app banner — the user acts fastest where they already work; email deliverability is config-dependent and unproven (it stays the open other half).
+
 ## GLOBALs governing this feature
 
 Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; index in [`docs/decisions.md`](../../decisions.md)). The list below names the rules that constrain this feature; any feature-local commentary is nested under the rule.
@@ -157,10 +153,9 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 
 ## Open questions / known unknowns
 
-- **Promote session cookie name to literal `__Host-…session`.** Same-origin chat shipped in `SK-WEB-009`, so the architectural prerequisite is already met. The remaining blocker is Better Auth v1.6.9, which hardcodes a `__Secure-` prefix in `cookies/index.mjs:30` with no override. Options: upgrade Better Auth to a version that exposes the prefix as configurable, post-process every `Set-Cookie` header at the worker edge, or fork the cookies layer. Defer until Better Auth ships a fix or the cookie name needs to satisfy a specific audit.
+- **Promote session cookie name to literal `__Host-…session`.** The same-origin prerequisite shipped in `SK-WEB-009`; the remaining blocker is Better Auth v1.6.9 hardcoding a `__Secure-` prefix (`cookies/index.mjs:30`) with no override. Defer (upgrade, edge-rewrite `Set-Cookie`, or fork) until Better Auth exposes the prefix or an audit demands it.
 - **Sharing a query result by link.** P1-priority surface per `docs/runbook.md §10` — implementation slice not yet scoped.
 - **CSV upload.** Required for P3 (data-curious analyst) per `docs/runbook.md §10`. Deferred to Phase 2 alongside CLI.
-- **Marketing-site live ticker source-of-truth.** Data-pipe (which sample, what redaction, which OTel attributes) undecided.
 
 ## Happy path walkthroughs
 
