@@ -108,7 +108,7 @@ API version pinned to `2026-04-22.dahlia` via the `stripe` npm SDK (see `SK-STRI
 - Pure markup + scoped CSS in `apps/web/src/pages/app/index.astro`; no new
   island, no API call (the webhook drives the actual state).
 
-### Billing status read (SK-STRIPE-009 / SK-WEB-012 — this PR)
+### Billing status read (SK-STRIPE-009 — this PR)
 
 - `GET /v1/billing/status` — `requireSession`-gated, a single indexed
   `customers` read with **no Stripe API call**. Returns
