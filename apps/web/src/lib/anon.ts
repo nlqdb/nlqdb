@@ -24,6 +24,11 @@ export function getOrMintAnonToken(): string {
     throw new Error("getOrMintAnonToken must run in the browser");
   }
 
+  // This token is the *only* handle to the anonymous DB; there is no
+  // server-side recovery. Clearing localStorage before signing in mints a
+  // fresh token and orphans the old DB — adopting on sign-in is the only
+  // durable rescue. By design (privacy + simplicity); don't add a recovery
+  // path without a decision.
   const existing = window.localStorage.getItem(STORAGE_KEY);
   if (existing?.startsWith(PREFIX)) {
     return existing;

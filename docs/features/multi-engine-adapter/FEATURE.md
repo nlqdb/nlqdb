@@ -145,12 +145,9 @@ The workload analyser + migration orchestrator are owned by [`engine-migration/F
 
 ## Open questions / known unknowns
 
-Genuinely open items after `SK-MULTIENG-001..006`; an unresolved one becomes a follow-up SK when answered.
-
 - **Connection-pool ownership for Tinybird — Resolved** (`GLOBAL-033`, reuse the Workers model): stateless adapter — Tinybird's HTTP API has no pool, so `createTinybirdAdapter()` holds no state across requests (one `fetch` per call, like PG).
-- **Per-prefix anon isolation on Tinybird.** Sign-in-only at adapter launch; the per-prefix validator that enables anon-mode (`GLOBAL-007` parity) is its own follow-up — schema for table-prefix scoping is undecided.
-- **Statement timeout / cost cap.** Adapter is the lowest layer with the actual handle. Whether the adapter accepts `timeout_ms`/`max_rows` or the executor wraps remains open across all engines (cross-link to `db-adapter` open questions).
-- **Rate-limit dimensions.** Free-tier user hits Tinybird's 1 k reads/day before they hit our per-account rate limit; pre-emptive throttling vs. let-through-then-error is undecided.
+- **Per-prefix anon isolation on Tinybird — Parked until anon-on-Tinybird is asked for.** Sign-in-only at adapter launch; the per-prefix validator that enables anon-mode (`GLOBAL-007` parity) and its table-prefix scoping schema land only when a user wants anonymous Tinybird DBs — not on spec (`GLOBAL-033`, speculative-scope).
+- **Rate-limit dimensions — let-through-then-error** (resolved per `GLOBAL-033`, Simple/reuse + non-destructive read → bias to availability). A free-tier user can hit Tinybird's 1 k reads/day before our per-account limiter; we don't pre-emptively model each engine's quota — the adapter surfaces the provider 429 as our structured envelope (`GLOBAL-012`) and the existing limiter stays the single throttle.
 - **Egress / SSRF guard on the BYO ClickHouse host (`GLOBAL-035`).** The deterministic half landed: `guardEgressHost` rejects a literal private/loopback/link-local/metadata host (incl. the IPv4-mapped/-compatible/6to4/NAT64 IPv6 forms + decimal/hex/octal encodings) and the `localhost` / `metadata.google.internal` names, fail-loud per `GLOBAL-012`. **Still open** (a pure parser can't bound DNS rebinding): a hostname returns `needsDnsRecheck`, so the connect-time `fetch` boundary must resolve and re-guard each address — Worker-side resolve vs. a Cloudflare egress backstop is undecided. Follow-up SK when the `connect.ts` ClickHouse branch wires it. Shared with `db-adapter`.
 - **Cross-engine `nlq run` semantics — Resolved** (`GLOBAL-033`, Simple → one way): single `{db, sql}` payload — no discriminated shape, no engine tag on the wire. The DB record already carries the engine (`db-registry`), so the server dispatches the raw string to PG SQL / Tinybird Pipe SQL / (later) Redis by the DB's engine.
 
