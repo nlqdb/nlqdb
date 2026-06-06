@@ -420,6 +420,61 @@ describe("provisionDb — failure paths", () => {
     }
   });
 
+  it("SK-HDC-017 — data-exception SQLSTATE (22P02 bad sample value) → sample_insert_failed", async () => {
+    // 22P02 = invalid_text_representation — a free-chain sample row
+    // whose value doesn't parse for its column type. Class 22 can only
+    // come from the INSERT phase, so it maps with the 23xxx integrity
+    // class rather than the prior catch-all `transaction_failed`.
+    const pg = makePgStub();
+    const d1 = makeD1Stub();
+    pg.setTransactionFails({
+      code: "22P02",
+      message: 'invalid input syntax for type integer: "abc"',
+    });
+    const args = makeArgs();
+
+    const result = await provisionDb({ pg: pg.pg, d1: d1.d1 }, args);
+
+    expect(result.ok).toBe(false);
+    if (result.ok === false) {
+      expect(result.reason).toBe("sample_insert_failed");
+      expect(result.rolled_back).toBe(true);
+    }
+  });
+
+  it("SK-HDC-017 — undefined-object SQLSTATE (42704 hallucinated type) → ddl_execution_failed", async () => {
+    // 42704 = undefined_object — the free chain emitted DDL referencing
+    // a type Postgres doesn't know (e.g. `TEXTT`). Class 42 is the DDL
+    // phase; it now surfaces as `ddl_execution_failed` instead of the
+    // opaque `transaction_failed` that starved the FLOW-004 walker.
+    const pg = makePgStub();
+    const d1 = makeD1Stub();
+    pg.setTransactionFails({ code: "42704", message: 'type "textt" does not exist' });
+    const args = makeArgs();
+
+    const result = await provisionDb({ pg: pg.pg, d1: d1.d1 }, args);
+
+    expect(result.ok).toBe(false);
+    if (result.ok === false) {
+      expect(result.reason).toBe("ddl_execution_failed");
+      expect(result.rolled_back).toBe(true);
+    }
+  });
+
+  it("SK-HDC-017 — syntax-error SQLSTATE (42601) → ddl_execution_failed", async () => {
+    const pg = makePgStub();
+    const d1 = makeD1Stub();
+    pg.setTransactionFails({ code: "42601", message: "syntax error at or near" });
+    const args = makeArgs();
+
+    const result = await provisionDb({ pg: pg.pg, d1: d1.d1 }, args);
+
+    expect(result.ok).toBe(false);
+    if (result.ok === false) {
+      expect(result.reason).toBe("ddl_execution_failed");
+    }
+  });
+
   it("transaction failure without SQLSTATE → transaction_failed", async () => {
     const pg = makePgStub();
     const d1 = makeD1Stub();
