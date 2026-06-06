@@ -19,7 +19,9 @@
 // Contract (`GLOBAL-035`):
 //   - A **literal IP** is decided here, fail-loud per `GLOBAL-012`: any
 //     address in a loopback / private / link-local / unique-local /
-//     carrier-grade-NAT / this-host range is rejected. This includes the
+//     carrier-grade-NAT / this-host / multicast / reserved range is
+//     rejected (omitting multicast is the CVE-2025-8267 bypass). This
+//     includes the
 //     IPv6 transition forms that *embed* such a v4 — IPv4-mapped
 //     (`::ffff:a.b.c.d`), IPv4-compatible (`::a.b.c.d`), 6to4 (`2002:V4::`)
 //     and NAT64 (`64:ff9b::V4`) — which are the live 2026 SSRF-filter-bypass
@@ -161,6 +163,10 @@ function classifyIpv4(octets: [number, number, number, number]): string | null {
   if (a === 169 && b === 254) return "link-local 169.254.0.0/16 (cloud metadata)";
   if (a === 172 && b >= 16 && b <= 31) return "private 172.16.0.0/12";
   if (a === 192 && b === 168) return "private 192.168.0.0/16";
+  // Multicast (224.0.0.0/4) + reserved/broadcast (240.0.0.0/4 incl.
+  // 255.255.255.255): never a legitimate DB host, and omitting them is the
+  // CVE-2025-8267 SSRF-filter-bypass class.
+  if (a >= 224) return "multicast/reserved 224.0.0.0/3";
   return null;
 }
 
@@ -178,8 +184,10 @@ function classifyIpv6(bytes: number[]): string | null {
     if (at(15) === 1) return "IPv6 loopback ::1";
     if (at(15) === 0) return "IPv6 unspecified ::";
   }
+  if (b0 === 0xff) return "IPv6 multicast ff00::/8";
   if ((b0 & 0xfe) === 0xfc) return "IPv6 unique-local fc00::/7";
   if (b0 === 0xfe && (b1 & 0xc0) === 0x80) return "IPv6 link-local fe80::/10";
+  if (b0 === 0xfe && (b1 & 0xc0) === 0xc0) return "IPv6 site-local fec0::/10";
 
   const embedded = (octets: [number, number, number, number]): string | null => {
     const inner = classifyIpv4(octets);

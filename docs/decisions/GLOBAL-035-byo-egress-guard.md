@@ -9,8 +9,9 @@
   fail-loud (`GLOBAL-012`): any address in a loopback (`127.0.0.0/8`,
   `::1`), private (`10/8`, `172.16/12`, `192.168/16`, `fc00::/7`),
   link-local (`169.254.0.0/16` — the cloud-metadata endpoint —
-  `fe80::/10`), carrier-grade-NAT (`100.64.0.0/10`), or this-host
-  (`0.0.0.0/8`) range is rejected — **including** the IPv6 transition
+  `fe80::/10`), carrier-grade-NAT (`100.64.0.0/10`), this-host
+  (`0.0.0.0/8`), or multicast / reserved (`224.0.0.0/3`, `ff00::/8`,
+  `fec0::/10`) range is rejected — **including** the IPv6 transition
   forms that embed such a v4 (IPv4-mapped `::ffff:`, IPv4-compatible,
   6to4 `2002::/16`, NAT64 `64:ff9b::/96`) and the decimal / hex / octal
   IPv4 encodings. A **DNS name** can resolve to anything and a pure

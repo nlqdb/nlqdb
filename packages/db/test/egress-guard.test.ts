@@ -37,6 +37,10 @@ describe("guardEgressHost — blocks non-routable IPv4 literals", () => {
     "169.254.0.1",
     "100.64.0.1", // carrier-grade NAT (RFC 6598)
     "0.0.0.0",
+    "224.0.0.1", // multicast (224.0.0.0/4)
+    "239.255.255.250", // SSDP multicast
+    "240.0.0.1", // reserved (240.0.0.0/4)
+    "255.255.255.255", // broadcast
   ])("blocks %s", (host) => expectBlocked(host));
 
   it("names the cloud-metadata range so the error is actionable", () => {
@@ -87,6 +91,8 @@ describe("guardEgressHost — blocks non-routable IPv6 literals", () => {
     "fd12:3456::1", // unique-local
     "fe80::1", // link-local
     "[fe80::1]",
+    "ff02::1", // multicast (ff00::/8)
+    "fec0::1", // site-local (deprecated, fec0::/10)
   ])("blocks %s", (host) => expectBlocked(host));
 });
 
