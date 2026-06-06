@@ -133,8 +133,16 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
           btn.textContent = "Redirecting…";
           const outcome = await openBillingPortal(apiBase ?? "");
           if (outcome === "ok") return; // browser is already navigating to Stripe
+          if (outcome === "not_configured") {
+            // Live keys absent — leave the button disabled so it doesn't invite
+            // a retry that can't succeed yet (mirrors the /pricing manage button).
+            btn.textContent = "Not available yet";
+            return;
+          }
+          // no_customer is unreachable for a past_due row; on a transient error
+          // re-enable so the user can retry.
           btn.disabled = false;
-          btn.textContent = outcome === "not_configured" ? "Not available yet" : original;
+          btn.textContent = original;
           if (outcome === "error") {
             alert("Something went wrong. Please try again or email hello@nlqdb.com.");
           }

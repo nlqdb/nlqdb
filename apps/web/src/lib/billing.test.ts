@@ -3,9 +3,12 @@ import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { fetchBillingStatus, openBillingPortal } from "./billing.ts";
 
 const originalFetch = globalThis.fetch;
+let captured: { url: string; init?: RequestInit } | null = null;
 
 function mockFetch(response: Response | (() => never)) {
-  globalThis.fetch = (async () => {
+  captured = null;
+  globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+    captured = { url: String(input), init };
     if (typeof response === "function") response();
     return response as Response;
   }) as typeof fetch;
@@ -40,6 +43,9 @@ describe("fetchBillingStatus", () => {
     const status = await fetchBillingStatus("https://app.nlqdb.com/");
     expect(status?.plan).toBe("hobby");
     expect(status?.status).toBe("active");
+    // Trailing slash trimmed, session cookie ridden (the read is auth-gated).
+    expect(captured?.url).toBe("https://app.nlqdb.com/v1/billing/status");
+    expect(captured?.init?.credentials).toBe("include");
   });
 
   test("returns null on a non-ok response (progressive enhancement)", async () => {
@@ -65,6 +71,8 @@ describe("openBillingPortal", () => {
     );
     expect(await openBillingPortal("")).toBe("ok");
     expect(assigned).toBe("https://billing.stripe.com/s/123");
+    expect(captured?.init?.method).toBe("POST");
+    expect(captured?.init?.credentials).toBe("include");
   });
 
   test("maps 404 to no_customer without redirecting", async () => {
