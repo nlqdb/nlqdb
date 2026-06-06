@@ -14,7 +14,10 @@ describe("createMistralProvider", () => {
         respond: () => openAIChatResponse(JSON.stringify({ sql: "SELECT 1" })),
       },
     ]);
-    const res = await provider.plan({ goal: "test", schema: "t(a int)", dialect: "sqlite" }, { fetch });
+    const res = await provider.plan(
+      { goal: "test", schema: "t(a int)", dialect: "sqlite" },
+      { fetch },
+    );
     expect(res.sql).toBe("SELECT 1");
   });
 
