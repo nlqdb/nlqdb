@@ -45,9 +45,10 @@ backstop — see *Why*.
   Gateway base), same rationale as Cerebras — the provider-agnostic plan
   cache (`SK-LLM-010`) is the real cache layer. Both quality-eval
   workflows wire `MISTRAL_API_KEY`; `scripts/verify-secrets.sh` adds the
-  live `/v1/models` probe. A missing key → `not_configured`, skipped by the
-  router exactly like any other absent provider, so a partial-key run is
-  unaffected.
+  live `/v1/models` probe. An absent key is harmless either way: the eval
+  lane omits the unregistered provider (`not_configured`); production
+  registers it with an empty key (`?? ""`), which auth-fails (`http_4xx`,
+  excluded from the breaker) and — being the tail — changes nothing.
 - **Alternatives rejected:**
   - **NVIDIA NIM (`build.nvidia.com`) instead of / alongside Mistral** —
     card-free and OpenAI-compatible too, but its free tier is a finite
