@@ -402,22 +402,25 @@ elif [[ "$ASK_STATUS" == "200" ]]; then
     ok "FLOW-004 step 5 PASS — invite HTTP 200; first-value=$FIRST_VALUE_QUALITY (kind=create, ${TABLE_COUNT} tables seeded with ${ROW_COUNT} sample rows, engine=$ANSWER_MODEL)"
   else
     # First-value = a query answer. Quality = ok-status + SELECT-backed.
+    # else: a `query` AskResult (status=ok) or an unclassifiable 200
+    # (kind=unknown) — both graded here; quality requires ok-status +
+    # SELECT-backed SQL, so an `unknown` shape lands `degraded`.
     RESULT_STATUS="$(printf '%s' "$ASK_BODY_CONTENT" | jq -r '.status // ""' 2>/dev/null || true)"
     ROW_COUNT="$(printf '%s' "$ASK_BODY_CONTENT" | jq -r '.rowCount // 0' 2>/dev/null || echo 0)"
     ANSWER_MODEL="$(printf '%s' "$ASK_BODY_CONTENT" | jq -r '.trace.model // ""' 2>/dev/null || true)"
     CONFIDENCE="$(printf '%s' "$ASK_BODY_CONTENT" | jq -r '.trace.confidence // 0' 2>/dev/null || echo 0)"
-    local_sql="$(printf '%s' "$ASK_BODY_CONTENT" | jq -r '.trace.sql // ""' 2>/dev/null || true)"
+    query_sql="$(printf '%s' "$ASK_BODY_CONTENT" | jq -r '.trace.sql // ""' 2>/dev/null || true)"
     [[ "$ROW_COUNT" =~ ^[0-9]+$ ]] || ROW_COUNT=0
     [[ "$CONFIDENCE" =~ ^[0-9]+([.][0-9]+)?$ ]] || CONFIDENCE=0
-    if printf '%s' "$local_sql" | grep -qiE '^[[:space:]]*(with|select)'; then SQL_IS_SELECT="true"; else SQL_IS_SELECT="false"; fi
-    unset local_sql
+    if printf '%s' "$query_sql" | grep -qiE '^[[:space:]]*(with|select)'; then SQL_IS_SELECT="true"; else SQL_IS_SELECT="false"; fi
+    unset query_sql
     if [[ "$RESULT_STATUS" == "ok" && "$SQL_IS_SELECT" == "true" ]]; then
       FIRST_VALUE_QUALITY="ok"
     else
       FIRST_VALUE_QUALITY="degraded"
     fi
-    WALK_NOTE="control blocked (feature_gated); invite HTTP 200, first-value=$FIRST_VALUE_QUALITY (kind=query, status=$RESULT_STATUS rows=$ROW_COUNT conf=$CONFIDENCE) — gate honoured X-Invite-Code"
-    ok "FLOW-004 step 5 PASS — invite HTTP 200; first-value=$FIRST_VALUE_QUALITY (kind=query, status=$RESULT_STATUS, rows=$ROW_COUNT, confidence=$CONFIDENCE, model=$ANSWER_MODEL)"
+    WALK_NOTE="control blocked (feature_gated); invite HTTP 200, first-value=$FIRST_VALUE_QUALITY (kind=$FIRST_VALUE_KIND, status=$RESULT_STATUS rows=$ROW_COUNT conf=$CONFIDENCE) — gate honoured X-Invite-Code"
+    ok "FLOW-004 step 5 PASS — invite HTTP 200; first-value=$FIRST_VALUE_QUALITY (kind=$FIRST_VALUE_KIND, status=$RESULT_STATUS, rows=$ROW_COUNT, confidence=$CONFIDENCE, model=$ANSWER_MODEL)"
   fi
 else
   GATE_BYPASSED="true"
