@@ -25,10 +25,11 @@ same block.
     where the goal means `COUNT(DISTINCT <key>)`. The study's worked example
     counts molecules with a triple bond as `COUNT(*)` over a bond table that
     has many rows per molecule, where the gold counts `DISTINCT molecule_id`.
-    A one-to-many join silently inflates `COUNT(*)`, so the result is a
-    different number from gold — a hard EX mismatch under both the BIRD
-    multiset scorer (`tools/eval/src/score.ts::rowsMatch`, retained strict per
-    [`SK-QUAL-010`](../../quality-eval/decisions/SK-QUAL-010-bird-positional-tuple-parity.md))
+    A one-to-many join silently inflates `COUNT(*)` (our mechanistic read of
+    that example — E6 itself is the broader "wrong count object"), so the
+    result is a different number from gold — a hard EX mismatch under both the
+    BIRD multiset scorer (`tools/eval/src/score.ts::rowsMatch`, retained strict
+    per [`SK-QUAL-010`](../../quality-eval/decisions/SK-QUAL-010-bird-positional-tuple-parity.md))
     and the Spider column comparator (`comparePandasTable`).
   - **"Missing DISTINCT Keyword"** — a non-aggregate `SELECT` returns
     duplicate rows where the goal asks for distinct values. Extra duplicate
@@ -40,7 +41,11 @@ same block.
   scopes the rule to questions whose phrasing (*distinct / different /
   unique*) or join shape makes deduplication the gold behaviour, and stops the
   model from sprinkling `DISTINCT` onto queries where gold keeps duplicates —
-  the regression the strict multiset scorer would otherwise punish.
+  the regression both the strict BIRD multiset scorer
+  ([`SK-QUAL-010`](../../quality-eval/decisions/SK-QUAL-010-bird-positional-tuple-parity.md))
+  and the row-count-sensitive Spider comparator
+  ([`SK-QUAL-008`](../../quality-eval/decisions/SK-QUAL-008-spider2-lite-multi-csv-scorer.md),
+  `vectorsMatch` fails on a length mismatch) would otherwise punish.
 - **Consequence in code:** `packages/llm/src/prompts.ts` adds one string to
   the `PLAN_DIRECTIVES` array (≈50 input tokens per `plan` call — above the
   `SK-LLM-029` bullet, below the `SK-LLM-026` exemplar block; the per-minute
