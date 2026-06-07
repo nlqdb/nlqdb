@@ -76,14 +76,30 @@ describe("createGroqProvider", () => {
     expect(provider.model("plan")).toBe("llama-3.3-70b-versatile");
   });
 
-  it("4xx becomes ProviderError reason=http_4xx with status", async () => {
+  it("non-429 4xx becomes ProviderError reason=http_4xx with status", async () => {
     const provider = createGroqProvider({ apiKey });
     const fetch = mockFetch([
-      { match: /api\.groq\.com/, respond: () => new Response("rate limited", { status: 429 }) },
+      { match: /api\.groq\.com/, respond: () => new Response("bad request", { status: 400 }) },
     ]);
     await expect(provider.route(routeReq, { fetch })).rejects.toMatchObject({
       reason: "http_4xx",
+      status: 400,
+    } satisfies Partial<ProviderError>);
+  });
+
+  it("429 becomes ProviderError reason=rate_limited carrying Retry-After (SK-LLM-030)", async () => {
+    const provider = createGroqProvider({ apiKey });
+    const fetch = mockFetch([
+      {
+        match: /api\.groq\.com/,
+        respond: () =>
+          new Response("rate limited", { status: 429, headers: { "retry-after": "12" } }),
+      },
+    ]);
+    await expect(provider.route(routeReq, { fetch })).rejects.toMatchObject({
+      reason: "rate_limited",
       status: 429,
+      retryAfterMs: 12_000,
     } satisfies Partial<ProviderError>);
   });
 

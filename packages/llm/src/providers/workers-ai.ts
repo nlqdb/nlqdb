@@ -6,7 +6,7 @@
 
 import { type CallOpts, type LLMOperation, type Provider, ProviderError } from "../types.ts";
 import { createChatProvider } from "./_chat-provider.ts";
-import { httpReason, readBodySafe, truncate } from "./_shared.ts";
+import { httpError, truncate } from "./_shared.ts";
 import type { ChatMessage } from "./openai-compatible.ts";
 
 const DEFAULT_MODELS: Record<LLMOperation, string> = {
@@ -67,14 +67,7 @@ async function workersAIChat(
     throw new ProviderError(`POST workers-ai failed: ${e.message}`, "network");
   }
 
-  if (!res.ok) {
-    const bodySnippet = await readBodySafe(res);
-    throw new ProviderError(
-      `POST ${url} → ${res.status}: ${bodySnippet}`,
-      httpReason(res.status),
-      res.status,
-    );
-  }
+  if (!res.ok) throw await httpError(`POST ${url}`, res);
 
   let parsed: WorkersAIResponse;
   try {

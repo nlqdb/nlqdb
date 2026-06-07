@@ -85,3 +85,36 @@ export async function readBodySafe(res: Response, max = 200): Promise<string> {
 export function httpReason(status: number): "http_5xx" | "http_4xx" {
   return status >= 500 ? "http_5xx" : "http_4xx";
 }
+
+// SK-LLM-030 — parse a 429's `Retry-After` into milliseconds. RFC 9110
+// §10.2.3 permits two forms: delta-seconds (`"30"`) or an HTTP-date
+// (`"Wed, 21 Oct 2015 07:28:00 GMT"`). Returns undefined when the header
+// is absent or unparseable so the router falls back to its default
+// cooldown rather than trusting a bogus value; a past date clamps to 0.
+export function parseRetryAfter(headers: Headers): number | undefined {
+  const raw = headers.get("retry-after")?.trim();
+  if (!raw) return undefined;
+  if (/^\d+$/.test(raw)) return Number(raw) * 1000;
+  const whenMs = Date.parse(raw);
+  if (Number.isNaN(whenMs)) return undefined;
+  return Math.max(0, whenMs - Date.now());
+}
+
+// SK-LLM-030 — the single HTTP-status → FailoverReason mapping point.
+// A 429 is an unambiguous "back off now": it maps to `rate_limited` and
+// carries the server's `Retry-After` window so the router can open the
+// breaker for exactly that long. Every other non-2xx falls back to the
+// 5xx/4xx split. `label` is the caller's `POST <url>` prefix so the
+// message stays self-describing; the body is read once (best-effort).
+// Every provider routes its `!res.ok` branch through here, so all six
+// inherit rate-limit handling by construction — no per-provider logic.
+export async function httpError(label: string, res: Response): Promise<ProviderError> {
+  const message = `${label} → ${res.status}: ${await readBodySafe(res)}`;
+  if (res.status === 429) {
+    return new ProviderError(message, "rate_limited", {
+      status: 429,
+      retryAfterMs: parseRetryAfter(res.headers),
+    });
+  }
+  return new ProviderError(message, httpReason(res.status), { status: res.status });
+}
