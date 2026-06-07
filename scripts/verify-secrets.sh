@@ -146,6 +146,11 @@ check_http OPENROUTER_API_KEY \
   "https://openrouter.ai/api/v1/auth/key" \
   --match '"data"'
 
+check_http MISTRAL_API_KEY \
+  -H "Authorization: Bearer ${MISTRAL_API_KEY:-MISSING}" \
+  "https://api.mistral.ai/v1/models" \
+  --match '"id"'
+
 say "OAuth providers"
 # Google OAuth web-app client credentials don't support a
 # client_credentials grant, so a live "is this secret valid?" probe

@@ -106,6 +106,8 @@ jobs:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
           CF_AI_TOKEN: ${{ secrets.CF_AI_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          # SK-LLM-028 — Mistral planner-tier capacity backstop (chain tail).
+          MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
           # Frontier chain — opt-in for manual runs. Weekly cron skips
           # frontier to preserve the OpenRouter paid budget.  The agentic
           # lane (SK-QUAL-009) requires the same key + the explicit

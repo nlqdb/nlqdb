@@ -48,7 +48,13 @@ failover order behind the new head.
 - **Alternatives rejected:**
   - **Append Cerebras last (capacity backstop only)** — barely moves
     accuracy because the free chain rarely fully fails; the lever is
-    the *primary* planner model, so it must lead.
+    the *primary* planner model, so it must lead. (The "rarely fully
+    fails" premise was later refined by
+    [`SK-LLM-028`](./SK-LLM-028-mistral-capacity-backstop.md): the
+    baseline shows ~10% full-chain-exhaustion `no_sql` losses, so a
+    *separate* card-free provider — Mistral, not Cerebras — was added at
+    the tail purely for capacity. Cerebras still leads, so this rejection
+    of Cerebras-as-backstop stands.)
   - **Swap Gemini out entirely** — loses the immediate failover the
     tight free-tier per-minute quota needs; keep Gemini behind it.
   - **Add Mistral / NVIDIA / Cohere instead** — all card-free too, but

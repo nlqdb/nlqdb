@@ -19,6 +19,8 @@ export type { GeminiProviderOptions } from "./providers/gemini.ts";
 export { createGeminiProvider } from "./providers/gemini.ts";
 export type { GroqProviderOptions } from "./providers/groq.ts";
 export { createGroqProvider } from "./providers/groq.ts";
+export type { MistralProviderOptions } from "./providers/mistral.ts";
+export { createMistralProvider } from "./providers/mistral.ts";
 export type { OpenRouterProviderOptions } from "./providers/openrouter.ts";
 export { createOpenRouterProvider } from "./providers/openrouter.ts";
 export type { WorkersAIProviderOptions } from "./providers/workers-ai.ts";
