@@ -246,9 +246,11 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
   const manageSection = document.getElementById("pricing-manage");
   const manageBtn = document.getElementById("pricing-manage-btn") as HTMLButtonElement | null;
 
-  // Stripe statuses that mean the subscriber currently has the tier's
-  // access (so the "Current plan" badge is honest). A canceled or
-  // incomplete row stays manageable but is not badged as the live plan.
+  // Display hint only: statuses where the subscriber holds the tier, so the
+  // "Current plan" badge + "Switch plan" relabel are honest. It need NOT match
+  // the server's broader checkout guard — the 409 from /v1/billing/checkout is
+  // the authority, so a status it blocks but this omits still routes to the
+  // portal via the 409 handler above, just without the nicer label.
   const ACTIVE_STATUSES = new Set(["active", "trialing", "past_due"]);
 
   void (async () => {
