@@ -110,8 +110,12 @@ private/loopback/link-local/metadata host (incl. the IPv4-mapped/6to4/NAT64
 IPv6 forms + decimal/hex/octal encodings, fail-loud per
 [`GLOBAL-012`](./decisions/GLOBAL-012-one-sentence-errors.md)) and flags a
 DNS name for the connect-time resolve-then-recheck a pure parser can't do.
-Next: `connect.ts` + `registerByoDb` wiring (calling `guardEgressHost`
-after the URL parse) + the `GLOBAL-003` surface set.
+That recheck's pure composition now also landed — `guardEgressHostResolved`
+re-guards each address an injected DoH resolver returns, failing closed
+([`GLOBAL-035`](./decisions/GLOBAL-035-byo-egress-guard.md)). Next:
+`connect.ts` + `registerByoDb` wiring (calling `guardEgressHostResolved`
+after the URL parse, supplying the Workers DoH resolver) + the `GLOBAL-003`
+surface set.
 
 ## 4. BYO ClickHouse
 
@@ -140,10 +144,13 @@ per `GLOBAL-021`, shipped ahead of its `connect.ts` / `introspect-clickhouse.ts`
 callers. The connect-time SSRF egress guard's deterministic half landed as the
 shared [`GLOBAL-035`](./decisions/GLOBAL-035-byo-egress-guard.md)
 `packages/db/src/egress-guard.ts` (BYO ClickHouse needs it most — the
-Worker `fetch()`es the user host directly, no Hyperdrive proxy). Next:
-those callers + the `registerByoDb` ClickHouse branch wiring
-`guardEgressHost` in; the DNS resolve-then-recheck for a `needsDnsRecheck`
-name (a pure parser can't bound DNS-rebinding) stays open per `GLOBAL-035`.
+Worker `fetch()`es the user host directly, no Hyperdrive proxy), and its async
+sibling `guardEgressHostResolved` now closes the DNS resolve-then-recheck a
+pure parser can't bound — re-guarding each address an injected DoH resolver
+returns, failing closed. Next: those callers + the `registerByoDb` ClickHouse
+branch wiring `guardEgressHostResolved` in (supplying the Workers DoH
+resolver); the resolver impl + residual TOCTOU backstop stay open per
+`GLOBAL-035`.
 
 ## 5. BYO OTel collectors
 

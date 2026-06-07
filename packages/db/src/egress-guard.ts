@@ -120,6 +120,64 @@ export function guardEgressHost(host: string): EgressGuardResult {
   return { ok: true, needsDnsRecheck: true };
 }
 
+// A DNS resolver injected at the connect boundary. Workers has no `dns`
+// module, so the real implementation is a DNS-over-HTTPS lookup; tests pass a
+// stub. It returns every resolved address (A + AAAA) as text so each can be
+// re-classified by the synchronous guard. Injecting it keeps this module pure
+// and zero-dependency (`GLOBAL-021`, `GLOBAL-013`) and ships ahead of its
+// `connect.ts` callers, like the rest of the BYO connect-path primitive family.
+export type DnsResolver = (hostname: string) => Promise<string[]>;
+
+// The async half of `GLOBAL-035`: resolve a `needsDnsRecheck` host and re-run
+// the synchronous guard on every resolved address, closing the DNS-rebinding
+// window a pure check can't bound. A literal IP short-circuits (nothing left to
+// resolve). A name that resolves to *any* private/reserved address — or that
+// can't be resolved, resolves to nothing, or resolves to a non-address — is
+// rejected fail-closed and fail-loud (`GLOBAL-012`); an all-public resolve
+// returns `{ ok: true, needsDnsRecheck: false }`.
+export async function guardEgressHostResolved(
+  host: string,
+  resolve: DnsResolver,
+): Promise<EgressGuardResult> {
+  const initial = guardEgressHost(host);
+  if (!initial.ok || !initial.needsDnsRecheck) return initial;
+
+  let addresses: string[];
+  try {
+    addresses = await resolve(host);
+  } catch {
+    return {
+      ok: false,
+      message: `Connection host "${host}" could not be resolved; ${NEXT_ACTION}`,
+    };
+  }
+  if (addresses.length === 0) {
+    return {
+      ok: false,
+      message: `Connection host "${host}" did not resolve to any address; ${NEXT_ACTION}`,
+    };
+  }
+
+  for (const address of addresses) {
+    const verdict = guardEgressHost(address);
+    if (!verdict.ok) {
+      return {
+        ok: false,
+        message: `Connection host "${host}" resolves to a private or reserved address; ${NEXT_ACTION}`,
+      };
+    }
+    // A resolved entry should be a literal IP; a name back from the resolver is
+    // unverifiable here, so fail closed rather than connect to an unchecked target.
+    if (verdict.needsDnsRecheck) {
+      return {
+        ok: false,
+        message: `Connection host "${host}" could not be resolved to an address; ${NEXT_ACTION}`,
+      };
+    }
+  }
+  return { ok: true, needsDnsRecheck: false };
+}
+
 function blocked(host: string, label: string): EgressGuardResult {
   return {
     ok: false,

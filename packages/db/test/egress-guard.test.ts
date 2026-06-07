@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { guardEgressHost } from "../src/index.ts";
+import type { DnsResolver } from "../src/index.ts";
+import { guardEgressHost, guardEgressHostResolved } from "../src/index.ts";
 
 // GLOBAL-035 — the BYO connect-time egress guard. Two guarantees under test:
 // (1) every literal IP in a loopback / private / link-local / unique-local /
@@ -166,5 +167,74 @@ describe("guardEgressHost — malformed input fails safe", () => {
   it("trims surrounding whitespace", () => {
     const result = guardEgressHost("  10.0.0.1  ");
     expect(result.ok).toBe(false);
+  });
+});
+
+// GLOBAL-035 async half: resolve a needsDnsRecheck name and re-guard every
+// resolved address, closing the DNS-rebinding window the pure guard can't bound.
+describe("guardEgressHostResolved — resolve-then-recheck", () => {
+  const never: DnsResolver = () => Promise.reject(new Error("resolver should not run"));
+
+  it("short-circuits a literal IP without calling the resolver", async () => {
+    const result = await guardEgressHostResolved("8.8.8.8", never);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.needsDnsRecheck).toBe(false);
+  });
+
+  it("short-circuits a blocked literal without calling the resolver", async () => {
+    const result = await guardEgressHostResolved("127.0.0.1", never);
+    expect(result.ok).toBe(false);
+  });
+
+  it("allows a name that resolves only to public addresses", async () => {
+    const result = await guardEgressHostResolved("db.example.com", () =>
+      Promise.resolve(["93.184.216.34", "2606:2800:220:1::1"]),
+    );
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.needsDnsRecheck).toBe(false);
+  });
+
+  it("blocks a name that resolves to any private address (DNS-rebinding)", async () => {
+    const result = await guardEgressHostResolved("rebind.example.com", () =>
+      Promise.resolve(["93.184.216.34", "169.254.169.254"]),
+    );
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.message).toContain("private or reserved address");
+    expect(result.message).toContain("publicly reachable host");
+  });
+
+  it("blocks a name that resolves to an IPv4-mapped-IPv6 private address", async () => {
+    const result = await guardEgressHostResolved("rebind.example.com", () =>
+      Promise.resolve(["::ffff:169.254.169.254"]),
+    );
+    expect(result.ok).toBe(false);
+  });
+
+  it("fails closed when the resolver throws", async () => {
+    const result = await guardEgressHostResolved("db.example.com", () =>
+      Promise.reject(new Error("SERVFAIL")),
+    );
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.message).toContain("could not be resolved");
+  });
+
+  it("fails closed when the name resolves to nothing", async () => {
+    const result = await guardEgressHostResolved("db.example.com", () => Promise.resolve([]));
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.message).toContain("did not resolve");
+  });
+
+  it("fails closed when the resolver hands back a name instead of an address", async () => {
+    const result = await guardEgressHostResolved("db.example.com", () =>
+      Promise.resolve(["still.a.name"]),
+    );
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.message).toContain("could not be resolved to an address");
   });
 });

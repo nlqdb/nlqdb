@@ -39,11 +39,17 @@
   path) calls it after `parseConnectionUrl` / `parseClickhouseUrl` (which
   validate URL *shape* only and deliberately do not block a host) and,
   for a `needsDnsRecheck` name, again on each resolved address at
-  connect time. New BYO-engine callers import this module rather than
-  re-listing CIDRs. The DNS resolve-then-recheck wiring (where the Worker
-  resolves a name, and whether a Cloudflare-level egress policy backstops
-  the residual DNS-rebinding window) is the open follow-up tracked in the
-  two BYO features.
+  connect time. That resolve-then-recheck composition ships as the async
+  sibling `guardEgressHostResolved(host, resolve)` in the same module: it
+  short-circuits a literal IP, and for a name resolves via an injected
+  `DnsResolver` (Workers has no `dns` module — the real one is a
+  DNS-over-HTTPS lookup; the inject keeps the module pure + zero-dep) then
+  re-guards every returned address, failing **closed** (`GLOBAL-012`) on a
+  resolver error, an empty resolve, or any private/reserved/non-address
+  result. New BYO-engine callers import this module rather than re-listing
+  CIDRs. Still open in the two BYO features: the `connect.ts` `fetch`-boundary
+  wiring that supplies the DoH resolver, and whether a Cloudflare-level egress
+  policy backstops the residual TOCTOU window between resolve and connect.
 - **Alternatives rejected:**
   - **A check per feature** — divergence risk on a security control;
     doubles the surface where an IP-encoding bypass can land.
