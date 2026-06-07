@@ -1,10 +1,11 @@
-# Suite A — Bootstrap (5 tests, ~10-15 min, ~90K tokens).
-# Tests the anonymous → create-table → redirect → sign-in → auth-preserved path.
-# Runs first; Suite B and C depend on the users DB this suite creates in Neon.
+# Suite A — Bootstrap (5 tests, ~12-18 min, ~105K tokens).
+# Tests the anonymous → create-table → redirect → sign-in → auth-preserved →
+# queryable-table path (the last test reads the adopted table to prove it works).
+# Runs first; Suite B and C depend on the queryable users DB this suite creates.
 #
 # FREE MODELS ONLY (GLOBAL-013 — $0 free tier). NEVER use a paid model here.
 # On OpenRouter, ONLY slugs ending in :free are $0 — the bare slug (no :free) is PAID (2026-05-21 burned ~$14).
-# Top-5 free LLM models for opencheck (researched 2026-06-05T01:00Z via live API + verified tool-call):
+# Top-5 free LLM models for opencheck (researched 2026-06-07T01:10Z via live API: gpt-oss-120b:free tool-call returned cost:0, key balance $20.21, Groq daily budget fresh):
 #   1. OpenRouter openai/gpt-oss-120b:free — $0 ($10+ balance → 1000 req/day, 20 RPM); reasoning-tuned; CURRENT agent model.
 #   2. OpenRouter openai/gpt-oss-20b:free  — $0; lighter/faster; same OpenRouter free request budget.
 #   3. Groq llama-3.3-70b-versatile        — 12K TPM / 1K RPM but ~100K tokens/DAY ACCOUNT cap (shared across ALL Groq models).
@@ -105,9 +106,22 @@ tests:
       If the sidebar shows "Loading…", wait 5 seconds and call
       browser_snapshot one more time. Then check: does the left
       sidebar show at least one entry whose visible text contains
-      "users" (any casing)?
-      If yes — TEST_PASSED immediately.
-      If no — TEST_FAILED immediately. A missing "users" entry
-      means the anon DB was not adopted into this account.
+      "users" (any casing)? If no — TEST_FAILED immediately (the anon
+      DB was not adopted into this account).
+      If yes, verify the adopted users table is actually QUERYABLE — a
+      sidebar entry alone does NOT prove a queryable table, and this is
+      the real precondition Suite B depends on. Poll: call browser_snapshot,
+      and if "?db=" is not yet in the URL wait 3 seconds and snapshot again,
+      up to 5 times (the app auto-pins the newest DB). Then find the chat
+      textarea (placeholder "Ask about your data…") and IMMEDIATELY click
+      its ref (no other tool between snapshot and click). Type:
+        how many users are there?
+      Press Enter as a SEPARATE browser_key_down call. Wait 5 seconds and
+      call browser_snapshot. If the reply is a table-missing or error
+      message ("references a table this database doesn't have", "no such
+      table", or "Something went wrong") — TEST_FAILED: the bootstrap flow
+      did not leave a queryable users table. If the reply is a valid count
+      or data response — TEST_PASSED (a count of 0 is valid: the table
+      exists but stays empty until Suite B seeds Alice).
       Use browser_snapshot ONLY — do NOT use browser_evaluate or any
       DOM query tool (browser_evaluate errors in this context).
