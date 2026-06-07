@@ -115,6 +115,7 @@ tests:
       If the reply shows an error, wait 5 seconds and retry once.
       Verify the reply contains "Alice" (any casing) and either
       "alice@example.com" or a mention of "1 user" or a data row.
+      Conclude with TEST_PASSED or TEST_FAILED — do NOT skip this test.
 
   - name: "#count-summarizes"
     case: |
@@ -168,6 +169,7 @@ tests:
       Verify the reply is NOT a bare "Something went wrong — try again."
       Acceptable: a message naming the missing "orders" table or
       the available "users" table, or a clarification chip.
+      Conclude with TEST_PASSED or TEST_FAILED — do NOT skip this test.
 
   - name: "#cmdk-palette-discoverable"
     case: |
