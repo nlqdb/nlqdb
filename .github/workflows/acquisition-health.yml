@@ -180,7 +180,8 @@ jobs:
                 "- email_latency_s: " + (.email_latency_s | tostring),
                 "- total_wall_s: " + (.total_wall_s | tostring),
                 "- ask_status: " + (.ask_status | tostring),
-                "- ask_error_status: " + (.ask_error_status // "" | tostring)
+                "- ask_error_status: " + (.ask_error_status // "" | tostring),
+                "- first_value_quality: " + (.first_value_quality // "n/a" | tostring) + " (kind=" + (.first_value_kind // "n/a" | tostring) + ", " + (.table_count // 0 | tostring) + " tables, " + (.row_count // 0 | tostring) + " rows)"
               ' "$flow004"
             fi
             if [ -f "$flow005" ]; then

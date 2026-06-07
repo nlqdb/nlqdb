@@ -14,7 +14,11 @@
 #      about SK-GATE-007 (BIRD/Spider crossed the threshold).
 #   6. POST /v1/ask with `Authorization: Bearer anon_<uuid>` AND
 #      `X-Invite-Code: <code>` — assert the response is NOT
-#      `feature_gated` (the SK-GATE-007 regression signature).
+#      `feature_gated` (the SK-GATE-007 regression signature). On a 200,
+#      parse the AskResult body and record first-value *quality*
+#      (SK-STRG-006): result status, row count, engine confidence, model,
+#      and whether the answer is SELECT-backed — so the walk proves the
+#      invited stranger got a real answer, not a blank 200.
 #
 # The control + invite pair is what makes this a real regression detector
 # rather than a static "is the API up" check.
@@ -94,17 +98,30 @@ write_outcome() {
     --arg control_err_status "${CTRL_ERR_STATUS:-}" \
     --arg gate_bypassed "${GATE_BYPASSED:-false}" \
     --arg control_blocked "${CONTROL_BLOCKED:-unknown}" \
+    --arg first_value_kind "${FIRST_VALUE_KIND:-unknown}" \
+    --arg result_status "${RESULT_STATUS:-}" \
+    --arg answer_model "${ANSWER_MODEL:-}" \
+    --arg first_value_quality "${FIRST_VALUE_QUALITY:-unknown}" \
+    --arg sql_is_select "${SQL_IS_SELECT:-false}" \
     --arg notes "$notes" \
     --argjson email_latency_s "${EMAIL_LATENCY_S:-0}" \
     --argjson total_wall_s "${TOTAL_WALL_S:-0}" \
     --argjson ask_status "${ASK_STATUS:-0}" \
     --argjson control_status "${CTRL_STATUS:-0}" \
+    --argjson row_count "${ROW_COUNT:-0}" \
+    --argjson table_count "${TABLE_COUNT:-0}" \
+    --argjson answer_confidence "${CONFIDENCE:-0}" \
     '{utc:$utc, flow:"FLOW-004", base_url:$base, mail_tm_domain:$domain,
       state:$state, gate_bypassed:($gate_bypassed=="true"),
       control_blocked:$control_blocked,
       email_latency_s:$email_latency_s, total_wall_s:$total_wall_s,
       ask_status:$ask_status, ask_error_status:$ask_err_status,
       control_status:$control_status, control_error_status:$control_err_status,
+      first_value_kind:$first_value_kind, result_status:$result_status,
+      row_count:$row_count, table_count:$table_count,
+      answer_confidence:$answer_confidence, answer_model:$answer_model,
+      sql_is_select:($sql_is_select=="true"),
+      first_value_quality:$first_value_quality,
       notes:$notes}' \
     > "$OUT_PATH"
 }
@@ -133,6 +150,16 @@ CTRL_STATUS=0
 CTRL_ERR_STATUS=""
 GATE_BYPASSED="false"
 CONTROL_BLOCKED="unknown"
+# SK-STRG-006 — first-value *quality* of the invited stranger's HTTP 200,
+# not just reachability. Defaulted so every exit path emits a uniform JSON.
+FIRST_VALUE_KIND="unknown"
+RESULT_STATUS=""
+ROW_COUNT=0
+TABLE_COUNT=0
+CONFIDENCE=0
+ANSWER_MODEL=""
+SQL_IS_SELECT="false"
+FIRST_VALUE_QUALITY="unknown"
 
 # Trap is registered BEFORE any mail.tm side effect so a token-failure or
 # Ctrl-C between account-create and token-fetch still cleans up. The trap
@@ -344,8 +371,54 @@ elif [[ "$ASK_ERR_STATUS" == "feature_gated" ]]; then
 elif [[ "$ASK_STATUS" == "200" ]]; then
   GATE_BYPASSED="true"
   WALK_STATE="passed"
-  WALK_NOTE="control blocked (feature_gated); invite HTTP 200 — gate honoured X-Invite-Code"
-  ok "FLOW-004 step 5 PASS — control blocked, invite returned HTTP 200 (gate honoured the code)"
+  # SK-STRG-006 — assert first-value *quality*, not just reachability.
+  # `/v1/ask` returns one of two shapes (apps/api/src/index.ts): a
+  # `create` envelope (the invited stranger has 0 DBs, so the goal
+  # provisions one) or a `query` AskResult. Parse whichever arrived so
+  # the walk proves the stranger got real first-value — a seeded DB or a
+  # SELECT-backed answer — not a blank 200. Quality is recorded, never
+  # fatal (a 0-row query on a fresh DB is legitimate); it annotates the
+  # note, not the pass/fail state. SQL is read only to classify SELECT;
+  # it is never logged (could echo schema identifiers).
+  FIRST_VALUE_KIND="$(printf '%s' "$ASK_BODY_CONTENT" | jq -r 'if .kind=="create" then "create" elif .status=="ok" then "query" else "unknown" end' 2>/dev/null || echo unknown)"
+  if [[ "$FIRST_VALUE_KIND" == "create" ]]; then
+    # First-value = a provisioned, populated DB. Quality = the DB is real
+    # (dbId + schema) AND seeded (≥1 sample row across its tables).
+    RESULT_STATUS="create"
+    CREATE_DB="$(printf '%s' "$ASK_BODY_CONTENT" | jq -r '.db // ""' 2>/dev/null || true)"
+    CREATE_SCHEMA="$(printf '%s' "$ASK_BODY_CONTENT" | jq -r '.schemaName // ""' 2>/dev/null || true)"
+    ANSWER_MODEL="$(printf '%s' "$ASK_BODY_CONTENT" | jq -r '.engine // ""' 2>/dev/null || true)"
+    ROW_COUNT="$(printf '%s' "$ASK_BODY_CONTENT" | jq -r '(.sampleRows // []) | length' 2>/dev/null || echo 0)"
+    TABLE_COUNT="$(printf '%s' "$ASK_BODY_CONTENT" | jq -r '[(.sampleRows // [])[].table] | unique | length' 2>/dev/null || echo 0)"
+    [[ "$ROW_COUNT" =~ ^[0-9]+$ ]] || ROW_COUNT=0
+    [[ "$TABLE_COUNT" =~ ^[0-9]+$ ]] || TABLE_COUNT=0
+    if [[ -n "$CREATE_DB" && -n "$CREATE_SCHEMA" && "$ROW_COUNT" -ge 1 ]]; then
+      FIRST_VALUE_QUALITY="ok"
+    else
+      FIRST_VALUE_QUALITY="degraded"
+    fi
+    unset CREATE_DB CREATE_SCHEMA
+    WALK_NOTE="control blocked (feature_gated); invite HTTP 200, first-value=$FIRST_VALUE_QUALITY (kind=create, ${TABLE_COUNT} tables, ${ROW_COUNT} sample rows, engine=$ANSWER_MODEL) — gate honoured X-Invite-Code"
+    ok "FLOW-004 step 5 PASS — invite HTTP 200; first-value=$FIRST_VALUE_QUALITY (kind=create, ${TABLE_COUNT} tables seeded with ${ROW_COUNT} sample rows, engine=$ANSWER_MODEL)"
+  else
+    # First-value = a query answer. Quality = ok-status + SELECT-backed.
+    RESULT_STATUS="$(printf '%s' "$ASK_BODY_CONTENT" | jq -r '.status // ""' 2>/dev/null || true)"
+    ROW_COUNT="$(printf '%s' "$ASK_BODY_CONTENT" | jq -r '.rowCount // 0' 2>/dev/null || echo 0)"
+    ANSWER_MODEL="$(printf '%s' "$ASK_BODY_CONTENT" | jq -r '.trace.model // ""' 2>/dev/null || true)"
+    CONFIDENCE="$(printf '%s' "$ASK_BODY_CONTENT" | jq -r '.trace.confidence // 0' 2>/dev/null || echo 0)"
+    local_sql="$(printf '%s' "$ASK_BODY_CONTENT" | jq -r '.trace.sql // ""' 2>/dev/null || true)"
+    [[ "$ROW_COUNT" =~ ^[0-9]+$ ]] || ROW_COUNT=0
+    [[ "$CONFIDENCE" =~ ^[0-9]+([.][0-9]+)?$ ]] || CONFIDENCE=0
+    if printf '%s' "$local_sql" | grep -qiE '^[[:space:]]*(with|select)'; then SQL_IS_SELECT="true"; else SQL_IS_SELECT="false"; fi
+    unset local_sql
+    if [[ "$RESULT_STATUS" == "ok" && "$SQL_IS_SELECT" == "true" ]]; then
+      FIRST_VALUE_QUALITY="ok"
+    else
+      FIRST_VALUE_QUALITY="degraded"
+    fi
+    WALK_NOTE="control blocked (feature_gated); invite HTTP 200, first-value=$FIRST_VALUE_QUALITY (kind=query, status=$RESULT_STATUS rows=$ROW_COUNT conf=$CONFIDENCE) — gate honoured X-Invite-Code"
+    ok "FLOW-004 step 5 PASS — invite HTTP 200; first-value=$FIRST_VALUE_QUALITY (kind=query, status=$RESULT_STATUS, rows=$ROW_COUNT, confidence=$CONFIDENCE, model=$ANSWER_MODEL)"
+  fi
 else
   GATE_BYPASSED="true"
   WALK_STATE="partial"
