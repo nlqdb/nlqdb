@@ -49,7 +49,7 @@ Parent feature: [`llm-router/FEATURE.md`](../FEATURE.md).
   or any wire format. `packages/llm/test/prompts.test.ts` pins the
   contract: exactly three exemplars, every answer line parses as strict
   JSON `{sql}` with no trailing semicolon, the verbatim-casing / Evidence
-  / top-N demonstrations are present, and directives precede examples.
+  / NULL-safe-extremum demonstrations are present, and directives precede examples.
   The few-shot block is a **fixed prefix**, so it is cache-friendly under
   [`SK-LLM-009`](./SK-LLM-009-prompt-caching.md) on providers that support
   prompt caching. **Cost / capacity tradeoff (honest):** the exemplars
