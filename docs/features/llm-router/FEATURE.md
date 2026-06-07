@@ -169,10 +169,12 @@ tokens are the free-tier-quota tradeoff, measured next cron.
 
 **Body:** [`decisions/SK-LLM-027-result-shape-directives.md`](./decisions/SK-LLM-027-result-shape-directives.md).
 Two `PLAN_DIRECTIVES` bullets for EX mismatches schema-link rules miss —
-**exact projection** (extra columns fail EX) and **REAL-cast ratios**
-(SQLite floors `int / int`). Lifts BIRD (rows keyed by full column set),
-no Spider regression (extra prediction columns tolerated). `SK-LLM-026`
-exemplar 2 refit; prompt-only, ≈40 tokens, measured next cron.
+**exact projection** (extra columns change the result tuple ⇒ EX failure;
+Open-SQL [arXiv:2405.06674](https://arxiv.org/pdf/2405.06674)) and
+**REAL-cast ratios** (SQLite floors `int / int`; BIRD ratio gold casts).
+Lifts BIRD (positional-tuple comparison ⇒ extra columns mismatch); Spider
+tolerates extra prediction columns ⇒ no regression. `SK-LLM-026` exemplar
+2 refit; prompt-only, ≈40 tokens, measured next cron.
 
 ### SK-LLM-028 — Mistral is the strict-$0 planner-tier capacity backstop at the chain tail
 

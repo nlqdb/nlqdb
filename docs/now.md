@@ -15,7 +15,11 @@ itself. Headline KPI: free-vs-agentic-frontier delta per
 [`SK-QUAL-004`](./features/quality-eval/decisions/SK-QUAL-004-free-vs-frontier-delta.md).
 **Progress bar** (what's tried / not-tried, every number sourced):
 [`progress/quality-score-source-of-truth.md`](./progress/quality-score-source-of-truth.md).
-Latest levers: result-shape planner directives — exact projection +
+Latest levers: BIRD scorer parity — positional value tuples so output
+aliases/casing no longer false-mismatch correct values, matching canonical
+`evaluation.py`
+([`SK-QUAL-010`](./features/quality-eval/decisions/SK-QUAL-010-bird-positional-tuple-parity.md)),
+on top of result-shape planner directives — exact projection +
 REAL-cast ratios
 ([`SK-LLM-027`](./features/llm-router/decisions/SK-LLM-027-result-shape-directives.md)),
 on top of static few-shot exemplars in the planner prompt

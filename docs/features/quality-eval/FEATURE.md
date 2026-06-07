@@ -12,7 +12,7 @@ when-to-load:
 # Feature: Quality Eval
 
 **One-liner:** NL-to-SQL accuracy benchmarking — three-dataset canon (BIRD-dev + Spider 2.0-lite SQLite subset + internal `db.create` eval per [`SK-QUAL-003`](#sk-qual-003)) against the LLM router's free / BYOLLM / hosted-premium lanes; the **free-vs-agentic-frontier delta** (`SK-QUAL-004`) is the headline KPI for [`GLOBAL-025`](../../decisions/GLOBAL-025-north-star.md)'s engine north-star.
-**Status:** **Phase 2 — slices 1 + 2 + 3a + 3b + 3c shipped.** Slice 1 (BIRD Mini-Dev runner, EX scorer, free + single-model frontier lanes, weekly workflow) and slice 2 (baseline diff against `tools/eval/baseline-2026-06-15.json`; McNemar paired-binary per `SK-QUAL-006`; `feature.eval.{weekly,regression}` events via `POST /v1/events/eval` → Queues → LogSnag `#north-star`; weekly Mon 04:00 UTC cron) ran end-to-end on `main`. **Slice 3a (`SK-QUAL-007`)** landed the Spider 2.0-lite loader; **slice 3b (`SK-QUAL-008`)** ships the canonical multi-CSV comparator — a TypeScript port of `compare_pandas_table` / `compare_multi_pandas_table` (`tools/eval/src/score.ts::scoreOneSpider2`) + a pandas-CSV parser (`tools/eval/src/csv.ts`) so all 135 `local###` rows score via 1e-2-tolerance column comparison with per-instance `condition_cols` / `ignore_order` from `evaluation_suite/gold/spider2lite_eval.jsonl`. **Slice 3c (`SK-QUAL-009`) ships:** bounded `withExecRetry` helper (`tools/eval/src/exec-retry.ts`) wraps `plan() → score()` for the `free` + new `agentic-frontier` lanes (production retry budget 3, exec-error-only, threads `PlanRequest.previousAttempt` per `GLOBAL-022`); single-model `frontier` stays unscaffolded as the ablation reference; new headline KPI `free_vs_agentic_frontier_delta` lands on `EvalReport` + `FeatureEvalWeeklyEvent` + the LogSnag card. PR CI typechecks + unit-tests with mocked router and cached fixtures; real provider keys never fire on a PR. **Remaining for the Phase 2 exit gate:** internal `db.create` accepted-answer eval (depends on a privacy-stripped R2 export) and first weekly measurement of the new lane to seed `baseline-2026-06-15.json` + `apps/api/src/gate/eval-baseline.ts`. Promotion of [`docs/future/semantic-layer.md`](../../future/semantic-layer.md) still depends on this harness.
+**Status:** **Phase 2 — slices 1 + 2 + 3a + 3b + 3c shipped.** Slices 1 + 2 (BIRD Mini-Dev runner + EX scorer + free / single-model-frontier lanes; baseline diff against `tools/eval/baseline-2026-06-15.json`; McNemar per `SK-QUAL-006`; `feature.eval.{weekly,regression}` via `POST /v1/events/eval` → Queues → LogSnag `#north-star`; weekly Mon 04:00 UTC cron) ran end-to-end on `main`. Slice 3a (`SK-QUAL-007`) the Spider 2.0-lite loader; 3b (`SK-QUAL-008`) the canonical multi-CSV comparator; 3c (`SK-QUAL-009`) the `withExecRetry` scaffold + `agentic-frontier` lane + the `free_vs_agentic_frontier_delta` KPI — mechanics in each SK block below. PR CI typechecks + unit-tests with a mocked router and cached fixtures; real provider keys never fire on a PR. **Remaining for the Phase 2 exit gate:** internal `db.create` accepted-answer eval (depends on a privacy-stripped R2 export) and first weekly measurement of the new lane to seed `baseline-2026-06-15.json` + `apps/api/src/gate/eval-baseline.ts`. Promotion of [`docs/future/semantic-layer.md`](../../future/semantic-layer.md) still depends on this harness.
 
 **Contribution to north-star:** Engine quality, NL→SQL layer — this feature IS the measurement instrument. The three-dataset canon (`SK-QUAL-003`) feeds the BIRD-dev / Spider 2.0-lite KPIs and the free-vs-frontier delta in the [`GLOBAL-025`](../../decisions/GLOBAL-025-north-star.md) KPI table; the weekly cron in `SK-QUAL-002` is the alert-and-decision input.
 **Owners (code):** `tools/eval/**`, `packages/llm/**`, `.github/workflows/quality-eval-bird-mini.yml`
@@ -117,11 +117,8 @@ regressions that the threshold misses at N ≈ 500 (binomial SE ≈ 2.2 pp).
 ### SK-QUAL-007 — Spider 2.0-lite SQLite-subset loader (slice 3a) — superseded by `SK-QUAL-008` for the scoring contract
 
 **Body:** [`decisions/SK-QUAL-007-spider2-lite-loader.md`](./decisions/SK-QUAL-007-spider2-lite-loader.md).
-**Status:** scoring contract superseded by [`SK-QUAL-008`](#sk-qual-008);
-the file-layout / `local###` filter / path-traversal guard contracts
-documented in `SK-QUAL-007` still apply. The slice-3a gold-SQL
-hydration path is gone — canonical Spider 2.0 scoring is multi-CSV
-only.
+**Status:** scoring contract superseded by [`SK-QUAL-008`](#sk-qual-008); the
+file-layout / `local###` filter / path-traversal guard contracts still apply.
 
 ### SK-QUAL-008 — Spider 2.0-lite multi-CSV scorer (slice 3b) ports the canonical pandas comparator to TypeScript
 
@@ -135,26 +132,28 @@ fetches per-instance gold CSV(s) + `condition_cols` / `ignore_order`
 from `evaluation_suite/gold/`. Two invariants pinned by tests so the
 port can't drift: `abs_tol = 1e-2` matches `math.isclose`, and the
 `ignore_order` sort key `(x is None, str(x), is-numeric)` byte-matches
-Python. The Spider workflow sparse-clones `evaluation_suite/gold/`
-(~2 MB) into the cached `spider2_data/` so the loader resolves every
-gold CSV off-disk in CI.
+Python. The Spider workflow sparse-clones `evaluation_suite/gold/` into the
+cached `spider2_data/` so the loader resolves every gold CSV off-disk in CI.
 
 ### SK-QUAL-009 — Agentic exec-retry scaffold + `agentic-frontier` lane (slice 3c)
 
 **Body:** [`decisions/SK-QUAL-009-exec-retry-agentic-lane.md`](./decisions/SK-QUAL-009-exec-retry-agentic-lane.md).
-New `tools/eval/src/exec-retry.ts::withExecRetry` wraps `plan() →
-score()` in a bounded loop (`maxAttempts: 3`, exec-error-only,
-threads `PlanRequest.previousAttempt`). Two lanes scaffold (`free` +
-new `agentic-frontier`); single-model `frontier` stays unscaffolded
-as the ablation reference. New headline KPI
-`free_vs_agentic_frontier_delta` lands on `EvalReport` +
-`FeatureEvalWeeklyEvent` + the LogSnag card per `GLOBAL-025`. Evidence
-base: MAC-SQL Refiner ablates at +4.63 pp BIRD-dev EX
-([arXiv:2312.11242](https://arxiv.org/html/2312.11242v2)); CHESS Unit
-Tester ([arXiv:2405.16755](https://arxiv.org/html/2405.16755v1));
-MAGIC self-correction guidelines
-([arXiv:2406.12692](https://arxiv.org/pdf/2406.12692)). Production
-parallel: [`SK-LLM-017`](../llm-router/decisions/SK-LLM-017-hosted-premium-chain.md).
+New `tools/eval/src/exec-retry.ts::withExecRetry` wraps `plan() → score()`
+in a bounded loop (`maxAttempts: 3`, exec-error-only, threads
+`PlanRequest.previousAttempt`). Two lanes scaffold (`free` +
+`agentic-frontier`); single-model `frontier` stays the unscaffolded ablation
+reference. New headline KPI `free_vs_agentic_frontier_delta` lands on
+`EvalReport` + `FeatureEvalWeeklyEvent` + the LogSnag card per `GLOBAL-025`.
+Inference-time exec-retry evidence base is in the decision body.
+
+### SK-QUAL-010 — BIRD scorer compares positional value tuples (column names ignored), matching canonical `evaluation.py`
+
+**Body:** [`decisions/SK-QUAL-010-bird-positional-tuple-parity.md`](./decisions/SK-QUAL-010-bird-positional-tuple-parity.md).
+`scoreOne` + the Spider `rowsToColumnMajor` transpose read positional tuples
+(`.values()`) not name-keyed objects (`.all()`), so output aliases / casing
+no longer enter the comparison — matching canonical BIRD `set(fetchall())`.
+Multiset + ORDER-BY strictness (`SK-QUAL-008`) retained (conservative lower
+bound); first post-fix cron re-seeds the baseline (`SK-QUAL-005`).
 
 ## GLOBALs governing this feature
 

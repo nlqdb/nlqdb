@@ -40,41 +40,43 @@ on the entire inbound funnel — moving it is moving acquisition, and the
 
 | KPI (free chain) | Now | Gate floor (GLOBAL-027) | Phase-2 floor (GLOBAL-025) | Source |
 |---|---|---|---|---|
-| BIRD-dev EX | **0.318** (159/500) | ≥ 0.65 | ≥ 0.60 | `tools/eval/baseline-2026-06-15.json` (run 2026-05-18); cited 31.8% in GLOBAL-027 |
+| BIRD-dev EX | **0.318** (159/500) | ≥ 0.65 | ≥ 0.60 | `tools/eval/baseline-2026-06-15.json` (run 2026-05-18, **pre-T12 name-keyed scorer** — a lower bound; cited 31.8% in GLOBAL-027) |
 | Spider 2.0-lite EX | **null** (not yet measured) | ≥ 0.75 | report only (Phase-3 ≥ 0.15) | loader+scorer shipped (`SK-QUAL-007`/`SK-QUAL-008`); first measure pending Tue cron |
 | free-vs-agentic-frontier delta | **null** (lane not yet run) | — | ≤ 25 pp (`SK-QUAL-004`) | `SK-QUAL-004`; agentic lane opt-in (`SK-QUAL-009`) |
 
 **BIRD baseline failure breakdown** (the 500-question run, for targeting):
 match 159 · **mismatch 283** · **no_sql 51** · exec_error 7 · gold_error 0.
-**All 51** `no_sql` (10.2%) carry the error `llm.plan: all providers in
-chain failed` — 33× (`gemini:circuit_open, groq:circuit_open…`), 17×
-(`gemini:circuit_open, groq:http_4xx…`), 1× (`gemini:network…`), counted
-across `baseline-2026-06-15.json` `results[]`. They are a **free-tier
-capacity / rate-limit exhaustion** loss — the circuit breaker
+**All 51** `no_sql` (10.2%) carry `llm.plan: all providers in chain failed`
+(33 + 17 + 1 by breaker reason, counted across `baseline-2026-06-15.json`
+`results[]`). They are a **free-tier capacity / rate-limit exhaustion**
+loss — the circuit breaker
 (`SK-LLM-005`) opened on the planner head and the chain ran out of
 fallbacks — **not** an instruction-following loss. A stronger *head*
 model (T1) only clears these when it has spare per-minute quota at that
 instant; the direct lever is more independent free capacity, now shipped
 as the **Mistral tail backstop (T11, `SK-LLM-028`)**. The 283 mismatches
 are the separate SQL-reasoning gap; within it, two **prompt-addressable**
-sub-classes — extra-column projection and SQLite integer-division
-truncation vs BIRD's REAL-cast ratio gold — are targeted by **T10** (§3).
-Their share of the 283 is *unmeasured* until the next cron; the T10 "How
-much" is a literature estimate, not a baseline count.
+sub-classes — extra-column projection (Open-SQL
+[arXiv:2405.06674](https://arxiv.org/pdf/2405.06674)) and SQLite
+integer-division truncation vs BIRD's REAL-cast ratio gold — are targeted
+by **T10** (§3). A third, orthogonal slice is a *scorer* artifact (name-keyed
+scoring counted correct values with a differing alias/casing as `mismatch`) —
+**T12** removes it (§3). All shares of the 283 are *unmeasured* until the
+next cron; the rows' "How much" are literature/mechanism estimates, not
+baseline counts.
 
 > **How these numbers are produced.** `tools/eval/src/runner.ts` drives
-> `packages/llm/src/router.ts::plan()` over each dataset, executes the
-> SQL against the SQLite fixture, and scores execution-accuracy (BIRD
-> multiset EX / Spider multi-CSV per `SK-QUAL-008`). The weekly crons
-> ([`quality-eval-bird-mini.yml`](../../.github/workflows/quality-eval-bird-mini.yml)
-> Mon 04:00 UTC · [`quality-eval-spider2-lite.yml`](../../.github/workflows/quality-eval-spider2-lite.yml)
-> Tue 04:00 UTC) diff against `baseline-2026-06-15.json` and emit
-> `feature.eval.*`. **PR CI never fires real provider keys** — it
-> typechecks + unit-tests with a mocked router (`SK-QUAL-002`).
+> `router.ts::plan()` over each dataset, executes the SQL against the SQLite
+> fixture, and scores EX (BIRD positional-tuple multiset per `SK-QUAL-010` ·
+> Spider multi-CSV per `SK-QUAL-008`). The weekly crons
+> ([bird](../../.github/workflows/quality-eval-bird-mini.yml) Mon ·
+> [spider2](../../.github/workflows/quality-eval-spider2-lite.yml) Tue, 04:00
+> UTC) diff against `baseline-2026-06-15.json` and emit `feature.eval.*`.
+> **PR CI never fires real provider keys** — mocked router (`SK-QUAL-002`).
 
 ## 3. What we have tried (with how, and how much)
 
-Rows run reverse-chronological (newest first): **T11 (this PR) → T10 →
+Rows run reverse-chronological (newest first): **T12 (this PR) → T11 → T10 →
 T9 → T7/T8 → T1 (Cerebras head) → T2…T6**. The `#` is a stable row id (assigned in
 order added), **not** a rank — read recency from the row order and the
 "Canonical home / status" column, not from the number. "How much" = the
@@ -83,9 +85,10 @@ from the harness, **est.** from the cited paper/ablation.
 
 | # | Lever | How exactly | How much | Canonical home / status |
 |---|---|---|---|---|
-| T11 | **Mistral capacity backstop at the planner-chain tail** | `createMistralProvider` (`mistral-large-latest`, card-free renewable Experiment tier, verified live 2026-06) appended behind OpenRouter on `plan` / `schema_infer` in **both** production + eval (keeps the §5 eval-mirrors-production invariant). Fires only when the whole head chain is exhausted | **est. up to +10.2 pp BIRD ceiling, pending measure** — targets the 51/500 (10.2%) `all providers in chain failed` `no_sql` losses (§2) with an **independent** free-tier RPM pool the head chain doesn't share (a stronger *head* can't recover capacity losses). Tail-only ⇒ **strictly additive**: converts `no_sql → match` without touching a passing row, so it can lift BIRD/Spider and **cannot regress** them. Recovered share measured next cron | [`SK-LLM-028`](../features/llm-router/decisions/SK-LLM-028-mistral-capacity-backstop.md) — shipped (this PR), **awaiting first cron** |
-| T10 | **Result-shape directives: exact projection + REAL-cast ratios** | Two bullets added to `PLAN_DIRECTIVES` (`SK-LLM-018`): (1) select exactly the columns the goal asks for — no extra id/name/descriptive columns; (2) for a ratio/percentage of two integer columns, cast one operand to REAL (`CAST(x AS REAL)/y`) so SQLite doesn't integer-truncate. `SK-LLM-026` exemplar 2 refit to demonstrate the cast (its `total_income` → `INTEGER`). Prompt-only, no per-provider plumbing | **est. small–moderate, pending measure** — targets two mismatch sub-classes schema-link rules miss: extra-column projection (a recognised EX failure even when logic is correct — Open-SQL [arXiv:2405.06674](https://arxiv.org/pdf/2405.06674)) and integer-division truncation vs BIRD's REAL-cast ratio gold. BIRD keys rows by full column set ⇒ projection lifts **BIRD**; Spider tolerates extra prediction columns (`score.ts:152`) ⇒ **never regresses Spider**. Adds ≈40 tokens/call | [`SK-LLM-027`](../features/llm-router/decisions/SK-LLM-027-result-shape-directives.md) — shipped (this PR), **awaiting first cron** |
-| T9 | **Static few-shot exemplars in the plan prompt (DAIL-SQL)** | `PLAN_SYSTEM` splits into `PLAN_DIRECTIVES` (`SK-LLM-018`) + a `PLAN_FEW_SHOT` block of **3** static, dialect-portable Question→strict-JSON exemplars demonstrating all four `SK-LLM-018` behaviours; no per-provider plumbing | **est. moderate, pending measure** — few-shot Question→SQL pairs are the biggest prompt-only text-to-SQL lever (DAIL-SQL [arXiv:2308.15363](https://arxiv.org/abs/2308.15363); optimal 3–5 shots; largest on small/open models). The static set is the **format** half of DAIL-SQL's +5–8 pp; similarity-retrieval is a future lever (§4 #1). Dataset-agnostic ⇒ lifts **BIRD + Spider**. Adds ≈250–350 tokens/call — the free-tier quota tradeoff, measured next cron | [`SK-LLM-026`](../features/llm-router/decisions/SK-LLM-026-static-few-shot-plan-exemplars.md) — shipped, **awaiting first cron** |
+| T12 | **BIRD scorer parity: positional value tuples, column names ignored** | `scoreOne` reads result rows as positional tuples (bun:sqlite `.values()`) instead of name-keyed objects (`.all()`), so output aliases / function-name casing no longer enter the comparison — matching canonical BIRD `set(cursor.fetchall())` (verified against BIRD [`evaluation.py`](https://github.com/AlibabaResearch/DAMO-ConvAI/blob/main/bird/llm/src/evaluation.py), 2026-06). Spider `rowsToColumnMajor` transpose also moves to `.values()` so same-named predicted columns stay distinct. Multiset + ORDER-BY strictness retained (conservative lower bound) | **measurement fix that *removes deflation* — magnitude pending cron.** The 0.318 baseline was scored name-keyed, so an *unmeasured* share of its 283 mismatches were correct values penalised only for a differing alias/casing — those now score `match`. Lifts **BIRD**; the duplicate-column fix removes a rare **Spider** false-mismatch; neither regresses | [`SK-QUAL-010`](../features/quality-eval/decisions/SK-QUAL-010-bird-positional-tuple-parity.md) — shipped (this PR), **awaiting first cron + baseline re-seed** |
+| T11 | **Mistral capacity backstop at the planner-chain tail** | `createMistralProvider` (`mistral-large-latest`, card-free renewable Experiment tier, verified live 2026-06) appended behind OpenRouter on `plan` / `schema_infer` in **both** production + eval (§5 eval-mirrors-production). Fires only when the whole head chain is exhausted | **est. up to +10.2 pp BIRD ceiling, pending measure** — targets the 51/500 (10.2%) `all providers in chain failed` `no_sql` losses (§2) with an **independent** free-tier RPM pool the head chain doesn't share. Tail-only ⇒ **strictly additive**: converts `no_sql → match` without touching a passing row ⇒ can lift BIRD/Spider and **cannot regress** them. Recovered share measured next cron | [`SK-LLM-028`](../features/llm-router/decisions/SK-LLM-028-mistral-capacity-backstop.md) — shipped (this PR), **awaiting first cron** |
+| T10 | **Result-shape directives: exact projection + REAL-cast ratios** | Two `PLAN_DIRECTIVES` bullets (`SK-LLM-018`): select exactly the goal's columns (no extras); cast one operand of an integer ratio to REAL so SQLite doesn't truncate. `SK-LLM-026` exemplar 2 refit. Prompt-only | **est. small–moderate, pending measure** — two mismatch sub-classes schema-link rules miss: extra-column projection (Open-SQL [arXiv:2405.06674](https://arxiv.org/pdf/2405.06674)) and integer-division truncation vs BIRD's REAL-cast ratio gold. Extra columns change the tuple ⇒ lifts **BIRD**; Spider tolerates extra pred cols (`score.ts:152`) ⇒ no regression. ≈40 tokens/call | [`SK-LLM-027`](../features/llm-router/decisions/SK-LLM-027-result-shape-directives.md) — shipped (this PR), **awaiting first cron** |
+| T9 | **Static few-shot exemplars in the plan prompt (DAIL-SQL)** | `PLAN_SYSTEM` = `PLAN_DIRECTIVES` (`SK-LLM-018`) + a `PLAN_FEW_SHOT` block of **3** static Question→strict-JSON exemplars covering the four `SK-LLM-018` behaviours | **est. moderate, pending measure** — few-shot Question→SQL pairs are the biggest prompt-only lever (DAIL-SQL [arXiv:2308.15363](https://arxiv.org/abs/2308.15363); optimal 3–5 shots; largest on small/open models). Static = the **format** half of DAIL-SQL's +5–8 pp; retrieval is §4 #1. Dataset-agnostic ⇒ **BIRD + Spider**. ≈250–350 tokens/call | [`SK-LLM-026`](../features/llm-router/decisions/SK-LLM-026-static-few-shot-plan-exemplars.md) — shipped, **awaiting first cron** |
 | T7 | **JSON-recovery fallback for reasoning-head preamble leaks** | `parseJsonResponse` extracts the first brace-balanced `{…}` (string-aware) when strict parse throws; runs only after the strict path fails | **est. small but every-leg** — recovers `parse`→`no_sql` losses caused by the `gpt-oss-120b` reasoning head leaking preamble text into structured output (Groq/OpenAI `gpt-oss` reports, 2026-06); forward-looking for the new head, strictly additive (can't regress the happy path) | [`SK-LLM-025`](../features/llm-router/decisions/SK-LLM-025-json-recovery-fallback.md) — shipped, **awaiting first cron** |
 | T8 | **Greedy decoding parity (temperature 0) on the Workers AI leg** | `workers-ai.ts` body `{ messages }` → `{ messages, temperature: 0 }`, matching Cerebras/Gemini/Groq/OpenRouter (Workers AI default is a stochastic 0.6) | **reproducibility-positive; small, unmeasured EX** on the 4th-in-chain leg — greedy is the single-pass text-to-SQL EX standard, and a deterministic leg keeps the `SK-QUAL-006` McNemar baseline clean | [`SK-LLM-024`](../features/llm-router/decisions/SK-LLM-024-greedy-decoding-parity.md) — shipped |
 | T1 | **Cerebras (gpt-oss-120b) leads the planner tier** | New free provider `createCerebrasProvider`; `plan`/`schema_infer` chain → `[cerebras, gemini, groq, workers-ai, openrouter]`, identical in eval + prod | **est. large, pending measure** — frontier-class open reasoning model (≈ o4-mini), card-free, replaces Gemini-Flash as primary planner; next cron produces the delta vs 0.318 | [`SK-LLM-023`](../features/llm-router/decisions/SK-LLM-023-cerebras-planner-tier.md) — shipped, **awaiting first cron** |
@@ -120,15 +123,13 @@ implementing (`CLAUDE.md` §P4).
    Dominated at 2× cost on *frontier* (`SK-QUAL-004` open question) but
    **on the free chain the tokens are free** — worth an explicit
    measured ablation before dismissing.
-4. **A second card-free tail backstop beyond Mistral (T11).** Mistral
-   shipped as the tail capacity backstop (`SK-LLM-028`); a *second*
+4. **A second card-free tail backstop beyond Mistral (T11).** A *second*
    independent free-tier entry would further harden the 10.2%
    chain-exhaustion tail. `NVIDIA_API_KEY` (build.nvidia.com) is card-free
    + OpenAI-compatible but its free tier is a **finite ~5,000-credit pool**
-   (2026-06), not renewable — same `GLOBAL-013` sustainability failure as
-   the rejected `COHERE_TRIAL_API_KEY`, so **not** added until NVIDIA
-   exposes a renewable tier. Re-rank only if the T11 cron shows residual
-   chain-exhaustion `no_sql` after Mistral.
+   (2026-06), not renewable — same `GLOBAL-013` failure as the rejected
+   `COHERE_TRIAL_API_KEY`, so **not** added until NVIDIA exposes a renewable
+   tier. Re-rank only if the T11 cron shows residual chain-exhaustion `no_sql`.
 5. **Corrected-set evaluation (BIRD Mini-Dev 52.8% annotation errors).**
    Score against the UIUC `Arcwise-Plat-SQL`/`-Plat` corrected variants
    and report Spearman rank-correlation vs canonical (not McNemar —
@@ -179,17 +180,20 @@ implementing (`CLAUDE.md` §P4).
 | 2026-06-04 | All 5 ICP flows verified reaching gate-403 (engine bottleneck) | `automated-icp-validation-plan.md` §0.5 table |
 | 2026-06-04 | **T1 shipped** — Cerebras planner lane (`SK-LLM-023`); awaiting first cron to measure delta vs 0.318 | #317 |
 | 2026-06-05 | **Correction (evidence-based):** all 51 baseline `no_sql` re-verified as chain-exhaustion (`all providers in chain failed`; 33 + 17 + 1 by breaker reason), **not** instruction-following losses — §2 + §4 + §5 updated; capacity-backstop framed as an open decision against `SK-LLM-023`'s "rarely fully fails" rationale | `baseline-2026-06-15.json` `results[]` (script-counted) |
-| 2026-06-05 | **Free-chain planner robustness shipped:** greedy-decoding parity on the Workers AI leg (T8 / `SK-LLM-024`) + reasoning-preamble JSON-recovery fallback (T7 / `SK-LLM-025`). Both land before the first post-T1 cron, so that cron measures the combined T1+T7+T8 effect; neither is measured yet | `packages/llm` unit tests green; evidence base in the SK-LLM-024/025 bodies |
-| 2026-06-05 | **Static few-shot exemplars shipped:** `PLAN_SYSTEM` gains a 3-shot `PLAN_FEW_SHOT` block (T9 / `SK-LLM-026`) demonstrating the `SK-LLM-018` schema-fidelity behaviours. Prompt-only, dataset-agnostic (BIRD + Spider), zero new dependency; not measured on a PR (`SK-QUAL-002`) — folds into the next cron's combined delta | `packages/llm` unit tests green (125 passing, incl. the new few-shot contract tests); evidence base in the `SK-LLM-026` body |
-| 2026-06-06 | **Result-shape directives shipped (this PR):** `PLAN_DIRECTIVES` gains exact-projection + REAL-cast-ratio bullets (T10 / `SK-LLM-027`); `SK-LLM-026` exemplar 2 refit to demonstrate the cast. Verified against the scorers: BIRD's `canonicalize` keys rows by full column set (extra columns mismatch ⇒ projection lifts BIRD), Spider's `comparePandasTable` tolerates extra prediction columns (`score.ts:152` ⇒ no Spider regression). Prompt-only, ≈40 tokens/call; not measured on a PR (`SK-QUAL-002`) | `packages/llm` unit tests green (126 passing, incl. the new directive + cast-exemplar assertions); evidence base in the `SK-LLM-027` body |
-| 2026-06-06 | **Mistral tail capacity backstop shipped (T11 / `SK-LLM-028`):** `mistral-large-latest` (card-free renewable Experiment tier) appended behind OpenRouter on `plan` / `schema_infer` in production + eval, targeting the 10.2% chain-exhaustion `no_sql` losses with an independent free-tier RPM pool. Tail-only ⇒ strictly additive. Updates `SK-LLM-023`'s "rarely fully fails" premise (refuted by the baseline's 10.2%); `NVIDIA_API_KEY` left out (finite credit pool fails `GLOBAL-013`). `MISTRAL_API_KEY` is in CI env + `mirror-secrets-gha.sh`, so the cron runs unattended. Not measured on a PR (`SK-QUAL-002`) | `packages/llm` tests green (132 passing, incl. Mistral provider) + eval lanes green (incl. SK-LLM-028 free-lane wiring); `SK-LLM-028` body |
+| 2026-06-05 | **Planner robustness shipped:** greedy-decoding parity on the Workers AI leg (T8 / `SK-LLM-024`) + reasoning-preamble JSON-recovery fallback (T7 / `SK-LLM-025`); both fold into the first post-T1 cron, neither measured yet | `packages/llm` tests green; SK-LLM-024/025 bodies |
+| 2026-06-05 | **Static few-shot exemplars shipped:** 3-shot `PLAN_FEW_SHOT` block (T9 / `SK-LLM-026`); prompt-only, dataset-agnostic, zero-dep; folds into the next cron | `packages/llm` tests green (125); `SK-LLM-026` body |
+| 2026-06-06 | **Result-shape directives shipped:** `PLAN_DIRECTIVES` gains exact-projection + REAL-cast-ratio bullets (T10 / `SK-LLM-027`); `SK-LLM-026` exemplar 2 refit. Extra columns change the result tuple ⇒ projection lifts BIRD; Spider tolerates extra pred cols ⇒ no regression. ≈40 tokens/call | `packages/llm` tests green (126); `SK-LLM-027` body |
+| 2026-06-06 | **Mistral tail capacity backstop shipped (T11 / `SK-LLM-028`):** `mistral-large-latest` (card-free renewable Experiment tier) appended behind OpenRouter on `plan` / `schema_infer` in production + eval, targeting the 10.2% chain-exhaustion `no_sql` with an independent free-tier RPM pool. Tail-only ⇒ strictly additive. Updates `SK-LLM-023`'s "rarely fully fails" premise; `NVIDIA_API_KEY` left out (finite pool fails `GLOBAL-013`). `MISTRAL_API_KEY` in CI env + `mirror-secrets-gha.sh` | `packages/llm` tests green (132, incl. Mistral) + eval lanes green; `SK-LLM-028` body |
+| 2026-06-06 | **BIRD scorer parity shipped (T12 / `SK-QUAL-010`):** `scoreOne` + Spider `rowsToColumnMajor` read positional tuples (`.values()`) not name-keyed objects (`.all()`), so aliases/casing no longer false-mismatch correct values — matching canonical BIRD `set(fetchall())`. 0.318 is now a known lower bound; the first post-fix cron's McNemar diff is a one-time scorer migration that re-seeds the baseline (`SK-QUAL-005`) | `tools/eval` tests green (168, incl. alias-parity + column-swap + transpose); `evaluation.py` verified 2026-06 |
 
 > **Next measurement that moves this bar:** the first
 > `quality-eval-bird-mini.yml` (Mon) + `quality-eval-spider2-lite.yml`
-> (Tue) cron after T1/T7/T8/T9/T10/T11 land — it measures the **combined**
+> (Tue) cron after T1/T7/T8/T9/T10/T11/T12 land — it measures the **combined**
 > effect of the Cerebras head, the static few-shot + result-shape prompt
-> levers, this PR's Mistral tail capacity backstop, and the earlier
-> robustness levers, not any one alone.
+> levers, the Mistral tail capacity backstop, the earlier robustness
+> levers, **and the T12 scorer-parity fix**, not any one alone; that run
+> also re-seeds the baseline under the corrected scorer (`SK-QUAL-005`), so
+> its diff is read as a one-time migration.
 > Both workflows already wire `CEREBRAS_API_KEY` + the five other
 > card-free free-chain keys (`GEMINI_API_KEY`, `GROQ_API_KEY`,
 > `OPENROUTER_API_KEY`, `CF_AI_TOKEN`/`CLOUDFLARE_ACCOUNT_ID`,

@@ -14,7 +14,15 @@ import {
   scoreOneSpider2,
 } from "../src/score.ts";
 
-const { canonicalize, rowsMatch, hasOrderBy, normalizeSql, vectorsMatch, cellsEqual } = _testing;
+const {
+  canonicalize,
+  rowsMatch,
+  hasOrderBy,
+  normalizeSql,
+  vectorsMatch,
+  cellsEqual,
+  rowsToColumnMajor,
+} = _testing;
 
 describe("canonicalize", () => {
   it("treats null and undefined the same", () => {
@@ -24,6 +32,11 @@ describe("canonicalize", () => {
 
   it("emits stable form for objects regardless of key order", () => {
     expect(canonicalize({ a: 1, b: 2 })).toBe(canonicalize({ b: 2, a: 1 }));
+  });
+
+  it("normalises a bigint cell to its numeric form (no JSON.stringify throw)", () => {
+    expect(canonicalize(7n)).toBe(canonicalize(7));
+    expect(canonicalize([7n])).toBe(canonicalize([7]));
   });
 
   it("encodes Uint8Array via base64 so blob rows compare", () => {
@@ -104,6 +117,29 @@ describe("scoreOne — against an on-disk SQLite fixture", () => {
       predictedSql: "SELECT name FROM pet WHERE species = 'cat'",
     });
     expect(r.outcome).toBe("match");
+  });
+
+  // SK-QUAL-010 — canonical BIRD compares positional tuples (`set(fetchall())`),
+  // so a different output alias / function-name casing on identical values must
+  // still match. The pre-fix name-keyed comparison false-mismatched these.
+  it("ignores output column aliases (positional-tuple parity with canonical BIRD)", async () => {
+    const r = await scoreOne({
+      dbPath,
+      goldSql: "SELECT COUNT(*) FROM pet WHERE species='cat'",
+      predictedSql: "SELECT count(*) AS cat_total FROM pet WHERE species = 'cat'",
+    });
+    expect(r.outcome).toBe("match");
+  });
+
+  // Positional comparison also correctly *rejects* a column swap that the
+  // name-keyed form would have spuriously accepted — values are position-bound.
+  it("rejects a swapped column order (positional, not name-keyed)", async () => {
+    const r = await scoreOne({
+      dbPath,
+      goldSql: "SELECT id, species FROM pet WHERE id = 1",
+      predictedSql: "SELECT species, id FROM pet WHERE id = 1",
+    });
+    expect(r.outcome).toBe("mismatch");
   });
 
   it("scores mismatch when the predicted set differs", async () => {
@@ -201,6 +237,40 @@ describe("vectorsMatch", () => {
 
   it("respects null in sorted multisets without crashing on the comparator", () => {
     expect(vectorsMatch([null, 1, 2], [2, 1, null], true)).toBe(true);
+  });
+});
+
+// SK-QUAL-010 — positional transpose preserves duplicate-named columns that
+// a name-keyed object would have collapsed.
+describe("rowsToColumnMajor", () => {
+  it("transposes positional rows into column vectors", () => {
+    expect(
+      rowsToColumnMajor([
+        ["a", 1],
+        ["b", 2],
+      ]),
+    ).toEqual([
+      ["a", "b"],
+      [1, 2],
+    ]);
+  });
+
+  it("keeps two same-named predicted columns distinct (would collapse as object keys)", () => {
+    // `SELECT name, name` yields two positional columns; an object keyed by
+    // name would drop one. bigint normalises to number; null passes through.
+    expect(
+      rowsToColumnMajor([
+        ["x", "x"],
+        [null, 7n],
+      ]),
+    ).toEqual([
+      ["x", null],
+      ["x", 7],
+    ]);
+  });
+
+  it("returns [] for an empty result set", () => {
+    expect(rowsToColumnMajor([])).toEqual([]);
   });
 });
 
