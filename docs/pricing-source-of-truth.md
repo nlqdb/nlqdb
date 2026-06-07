@@ -125,13 +125,26 @@ API version pinned to `2026-04-22.dahlia` via the `stripe` npm SDK (see `SK-STRI
   longer sees a control that 404s on click. The fetch is a progressive
   enhancement: a failure leaves the page in its default state.
 
+### In-app dunning banner (SK-WEB-012 — this PR)
+
+- `/app` reads `GET /v1/billing/status` in the background (off the critical
+  render path) after the auth guard passes; when the subscription is
+  `past_due` or `unpaid` it reveals a danger-tinted `role="alert"` banner with
+  an "Update payment method" button that opens the Billing Portal.
+- Driven entirely by state the webhook already persists — no new Stripe call,
+  no new env var. This is the in-app half of the dunning UX; the email half
+  remains open.
+- New `apps/web/src/lib/billing.ts` (`fetchBillingStatus` / `openBillingPortal`)
+  now backs both `/pricing` and the banner, so the status-fetch + portal-redirect
+  logic lives in one place instead of being duplicated per page.
+
 ---
 
 ## What is next
 
 1. **Create Stripe products and price IDs** in the Stripe Dashboard (test mode) and set `STRIPE_PRICE_HOBBY` / `STRIPE_PRICE_PRO` via `wrangler secret put`. Without these the checkout returns 503. Also **enable Stripe Tax** in the Dashboard (`automatic_tax: { enabled: true }` is sent on every session; `sessions.create` 500s if Stripe Tax is not activated on the account).
 2. **Activate the Stripe Customer Portal** in the Dashboard (test mode → Billing → Customer portal): save a portal configuration (switchable plans, cancel behaviour, invoice history). `POST /v1/billing/portal` errors until one exists.
-3. **Dunning UX**: `invoice.payment_failed` → in-app banner + email. Currently only state-synced (SK-STRIPE-005 open question).
+3. **Dunning email**: `invoice.payment_failed` → email. The in-app banner shipped (SK-WEB-012); the email notification is the remaining half of the dunning UX.
 4. **§6 trigger measurement**: once Stripe price IDs are set and checkout is live in test mode, track completion rate toward the 30%/50-sessions threshold.
 5. **Live mode flip**: when §6 trips, replace test-mode keys with live-mode keys via `wrangler secret put` + update Stripe Dashboard webhook endpoint.
 6. **Premium models add-on** (`POST /v1/billing/checkout/premium { db_id }`): gated on §6 + Phase 2 `quality-eval` baseline.

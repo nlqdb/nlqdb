@@ -30,6 +30,19 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
           hidden
         >&times;</button>
       </aside>
+      <!-- Dunning banner (SK-WEB-012): an empty role="alert" region, present
+           from load; the text is injected only when GET /v1/billing/status
+           reports a past_due/unpaid subscription (the injection is what a
+           screen reader announces, same pattern as the checkout banner). -->
+      <aside id="dunning-banner" class="dunning-banner" role="alert">
+        <p class="dunning-banner__text" id="dunning-banner-text"></p>
+        <button
+          type="button"
+          id="dunning-banner-action"
+          class="dunning-banner__action"
+          hidden
+        >Update payment method</button>
+      </aside>
       <ChatPanel client:only="react" apiBase={apiBase} />
     </main>
     <Footer />
@@ -44,6 +57,7 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
   // doesn't see the chat in a broken-401 state. On hit, reveal
   // the shell so React hydration can take over.
   import { fetchSession } from "../../lib/session";
+  import { fetchBillingStatus, openBillingPortal } from "../../lib/billing";
 
   const shell = document.getElementById("app-shell");
   if (shell) {
@@ -88,6 +102,51 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
           `${location.pathname}${query ? `?${query}` : ""}${location.hash}`,
         );
       }
+
+      // Dunning banner (SK-WEB-012). A failed renewal flips the subscription
+      // to past_due/unpaid, and Stripe has no redirect for that, so we read
+      // the live status (a single indexed D1 read — SK-STRIPE-009) in the
+      // background — off the render path, after the shell already painted —
+      // and surface the banner only for that rare unhealthy case. Healthy
+      // and free users pay nothing visible.
+      void fetchBillingStatus(apiBase ?? "").then((status) => {
+        if (!status || (status.status !== "past_due" && status.status !== "unpaid")) return;
+        const banner = document.getElementById("dunning-banner");
+        const text = document.getElementById("dunning-banner-text");
+        document.getElementById("dunning-banner-action")?.removeAttribute("hidden");
+        if (!banner || !text) return;
+        banner.classList.add("dunning-banner--shown");
+        // Inject one frame later so the now-exposed alert region registers
+        // empty first, then the text change fires the announcement.
+        requestAnimationFrame(() => {
+          text.textContent =
+            "Your last payment didn't go through. Update your payment method to keep your plan active.";
+        });
+      });
+
+      document
+        .getElementById("dunning-banner-action")
+        ?.addEventListener("click", async (e) => {
+          const btn = e.currentTarget as HTMLButtonElement;
+          btn.disabled = true;
+          const original = btn.textContent;
+          btn.textContent = "Redirecting…";
+          const outcome = await openBillingPortal(apiBase ?? "");
+          if (outcome === "ok") return; // browser is already navigating to Stripe
+          if (outcome === "not_configured") {
+            // Live keys absent — leave the button disabled so it doesn't invite
+            // a retry that can't succeed yet (mirrors the /pricing manage button).
+            btn.textContent = "Not available yet";
+            return;
+          }
+          // no_customer is unreachable for a past_due row; on a transient error
+          // re-enable so the user can retry.
+          btn.disabled = false;
+          btn.textContent = original;
+          if (outcome === "error") {
+            alert("Something went wrong. Please try again or email hello@nlqdb.com.");
+          }
+        });
     })();
   }
 
@@ -140,5 +199,48 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
 
   .checkout-banner__dismiss:hover {
     color: var(--fg);
+  }
+
+  /* Same empty-until-shown live-region trick as the checkout banner, but
+   * danger-tinted (#ff7b7b is the project's destructive colour, see
+   * global.css .btn--danger) so a payment failure reads as urgent, not a
+   * success. */
+  .dunning-banner--shown {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin: 8px 16px 0;
+    padding: 14px 18px;
+    border: 1px solid #ff7b7b;
+    background: rgba(255, 123, 123, 0.08);
+    font-family: var(--mono);
+    font-size: 14px;
+  }
+
+  .dunning-banner__text {
+    margin: 0;
+    color: var(--fg);
+  }
+
+  .dunning-banner__action {
+    flex-shrink: 0;
+    padding: 8px 14px;
+    border: 1px solid #ff7b7b;
+    background: transparent;
+    color: var(--fg);
+    font-family: var(--mono);
+    font-size: 13px;
+    cursor: pointer;
+  }
+
+  .dunning-banner__action:hover {
+    background: #ff7b7b;
+    color: #1a0d0d;
+  }
+
+  .dunning-banner__action:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
   }
 </style>
