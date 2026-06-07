@@ -171,7 +171,7 @@ describe("guardEgressHost — malformed input fails safe", () => {
 });
 
 // GLOBAL-035 async half: resolve a needsDnsRecheck name and re-guard every
-// resolved address, closing the DNS-rebinding window the pure guard can't bound.
+// resolved address, narrowing the DNS-rebinding window the pure guard can't bound.
 describe("guardEgressHostResolved — resolve-then-recheck", () => {
   const never: DnsResolver = () => Promise.reject(new Error("resolver should not run"));
 

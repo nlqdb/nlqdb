@@ -145,9 +145,9 @@ callers. The connect-time SSRF egress guard's deterministic half landed as the
 shared [`GLOBAL-035`](./decisions/GLOBAL-035-byo-egress-guard.md)
 `packages/db/src/egress-guard.ts` (BYO ClickHouse needs it most — the
 Worker `fetch()`es the user host directly, no Hyperdrive proxy), and its async
-sibling `guardEgressHostResolved` now closes the DNS resolve-then-recheck a
-pure parser can't bound — re-guarding each address an injected DoH resolver
-returns, failing closed. Next: those callers + the `registerByoDb` ClickHouse
+sibling `guardEgressHostResolved` now lands the DNS resolve-then-recheck a
+pure parser can't do — re-guarding each address an injected DoH resolver
+returns, failing closed (narrowing, not closing, the rebind window). Next: those callers + the `registerByoDb` ClickHouse
 branch wiring `guardEgressHostResolved` in (supplying the Workers DoH
 resolver); the resolver impl + residual TOCTOU backstop stay open per
 `GLOBAL-035`.
