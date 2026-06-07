@@ -40,7 +40,7 @@ Apply these to every edit, regardless of what the user has asked for.
 canonical record of why the system is the way it is. If a request would
 violate one — even subtly — **stop and raise it with the user**, citing the
 specific ID(s). Don't rationalise around it. The user may decide to
-supersede the decision; if so, follow `P3`.
+supersede the decision, which results in changing it; if so, follow `P3`.
 
 ### P2. On any ambiguity or unfamiliar error, web-research first
 
@@ -309,7 +309,7 @@ Per P4 (D1–D3), if you can't fill all five, don't document it yet.
 2. **Does the bug contradict a documented decision?**
    - **Code wrong, decision right** → fix the code so it conforms. Normal bug fix.
    - **Decision wrong** (the bug is intended behaviour, but the behaviour is wrong) → **STOP.** Don't silently change behaviour. Per `P1`, raise it with the user, citing the specific `SK-*` or `GLOBAL-NNN` ID. The user decides whether to supersede.
-3. If you supersede a decision: add a new `SK-<PREFIX>-<next-N>` (or `GLOBAL-<next-N>`) with full 5 fields. Mark the old one `Status: superseded by <new-id>` — **don't delete or renumber. IDs are sticky.**
+3. If you supersede a decision: change the decision in its place - preferably by simplifying it, and fix all references to it.
 4. If your fix touches a `GLOBAL-NNN`, per `P3` update every place it's copied in the same PR (`grep -rn 'GLOBAL-NNN' docs/features/ docs/`).
 5. If the fix raises a question that's not yet decided, add it to that feature's `## Open questions / known unknowns`. Don't decide for the user.
 
