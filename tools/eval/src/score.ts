@@ -5,7 +5,7 @@ import type { GoldCell, GoldTable } from "./csv.ts";
 import type { ScoreOutcome } from "./types.ts";
 
 type SqliteDatabase = {
-  query: (sql: string) => { all: () => unknown[] };
+  query: (sql: string) => { all: () => unknown[]; values: () => unknown[][] };
   close: () => void;
 };
 
@@ -42,9 +42,15 @@ function trimError(err: unknown): string {
   return single.length > ERROR_MSG_CAP ? `${single.slice(0, ERROR_MSG_CAP - 1)}…` : single;
 }
 
-// Sorted-key JSON serialisation so multiset comparison is independent of SQLite's result column order; Uint8Array (blob rows) round-trips via base64.
+// Stable serialisation for the BIRD multiset comparison. Rows arrive as
+// positional tuples (`.values()`), so a tuple's cells compare by position;
+// nested objects fall back to sorted-key form, and Uint8Array (blob) cells
+// round-trip via base64.
 function canonicalize(row: unknown): string {
   if (row === null || row === undefined) return "null";
+  // `JSON.stringify` throws on bigint; normalise to the numeric form so a
+  // bigint cell compares equal to the same value returned as a number.
+  if (typeof row === "bigint") return JSON.stringify(Number(row));
   if (typeof row !== "object") return JSON.stringify(row);
   if (row instanceof Uint8Array) {
     return `b64:${Buffer.from(row).toString("base64")}`;
@@ -232,23 +238,29 @@ export type Spider2ScoreInput = {
   timeoutMs?: number;
 };
 
-// Converts bun:sqlite's row-of-objects into the column-major shape the
-// pandas comparator expects. Uses the first row's key order; SQLite preserves
-// SELECT-clause order so this matches what the model produced.
-function rowsToColumnMajor(rows: Record<string, unknown>[]): GoldCell[][] {
+// Transposes bun:sqlite's positional rows (`.values()`) into the column-major
+// shape the pandas comparator expects. Positional, not name-keyed: SQLite
+// emits values in SELECT-clause order, and same-named predicted columns
+// (e.g. `SELECT name, name`) would collapse under an object's keys but must
+// survive as distinct columns the gold can match against (SK-QUAL-010).
+function rowsToColumnMajor(rows: unknown[][]): GoldCell[][] {
   if (rows.length === 0) return [];
-  const keys = Object.keys(rows[0] ?? {});
-  return keys.map((k) =>
-    rows.map((r) => {
-      const v = r[k];
-      if (v === null || v === undefined) return null;
-      if (typeof v === "number" || typeof v === "string") return v;
-      if (typeof v === "bigint") return Number(v);
-      // SQLite BLOB / boolean / fall-through — keep as a string so the
-      // comparator at least gets a deterministic non-numeric value.
-      return String(v);
-    }),
-  );
+  const colCount = rows[0]?.length ?? 0;
+  const cols: GoldCell[][] = [];
+  for (let c = 0; c < colCount; c++) {
+    cols.push(
+      rows.map((r) => {
+        const v = r[c];
+        if (v === null || v === undefined) return null;
+        if (typeof v === "number" || typeof v === "string") return v;
+        if (typeof v === "bigint") return Number(v);
+        // SQLite BLOB / boolean / fall-through — keep as a string so the
+        // comparator at least gets a deterministic non-numeric value.
+        return String(v);
+      }),
+    );
+  }
+  return cols;
 }
 
 export async function scoreOneSpider2(input: Spider2ScoreInput): Promise<ScoreResult> {
@@ -264,9 +276,9 @@ export async function scoreOneSpider2(input: Spider2ScoreInput): Promise<ScoreRe
   const db = new Database(input.dbPath, { readonly: true });
   try {
     db.query(`PRAGMA busy_timeout = ${Math.max(1, Math.floor(timeoutMs))}`).all();
-    let predictedRows: Record<string, unknown>[];
+    let predictedRows: unknown[][];
     try {
-      predictedRows = db.query(predictedSql).all() as Record<string, unknown>[];
+      predictedRows = db.query(predictedSql).values();
     } catch (err) {
       return { outcome: "exec_error", error: trimError(err) };
     }
@@ -294,15 +306,20 @@ export async function scoreOne(input: ScoreInput): Promise<ScoreResult> {
   const db = new Database(input.dbPath, { readonly: true });
   try {
     db.query(`PRAGMA busy_timeout = ${Math.max(1, Math.floor(timeoutMs))}`).all();
-    let gold: unknown[];
+    // `.values()` (positional tuples), not `.all()` (name-keyed objects):
+    // canonical BIRD compares `set(cursor.fetchall())` over tuples, so output
+    // column names / aliases / function casing are ignored. `.all()` folded
+    // them into the row identity, false-mismatching correct answers whose
+    // aliases differed from gold (SK-QUAL-010).
+    let gold: unknown[][];
     try {
-      gold = db.query(goldSql).all();
+      gold = db.query(goldSql).values();
     } catch (err) {
       return { outcome: "gold_error", error: trimError(err) };
     }
-    let predicted: unknown[];
+    let predicted: unknown[][];
     try {
-      predicted = db.query(predictedSql).all();
+      predicted = db.query(predictedSql).values();
     } catch (err) {
       return { outcome: "exec_error", error: trimError(err) };
     }
