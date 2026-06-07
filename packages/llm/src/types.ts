@@ -43,9 +43,16 @@ export type LLMOperation = "route" | "plan" | "summarize" | "schema_infer" | "en
 // Cloudflare Workers AI returns HTTP 200 with `{success:false}`. It's
 // not an HTTP-class error, but it's not a transport or parse problem
 // either, so it gets its own bucket.
+//
+// `rate_limited` (SK-LLM-030) is an HTTP 429 — split out from
+// `http_4xx` because it's an unambiguous "back off now": the router
+// opens the provider's breaker for the server's `Retry-After` window
+// immediately (no 3-strike wait), and the eval reads it to decide
+// checkpoint-and-resume.
 export type FailoverReason =
   | "http_5xx"
   | "http_4xx"
+  | "rate_limited"
   | "network"
   | "timeout"
   | "parse"
@@ -171,12 +178,20 @@ export type Provider = {
 // classified `reason` so the router can stamp `nlqdb.llm.failover.total`
 // without re-classifying.
 export class ProviderError extends Error {
+  readonly status?: number;
+  // SK-LLM-030 — server back-off window from a 429's `Retry-After`, in
+  // ms. Set only when `reason === "rate_limited"`. The router opens the
+  // provider's breaker for (at least) this long; the eval reads it to
+  // decide checkpoint-and-resume.
+  readonly retryAfterMs?: number;
   constructor(
     message: string,
     public readonly reason: FailoverReason,
-    public readonly status?: number,
+    opts?: { status?: number; retryAfterMs?: number },
   ) {
     super(message);
     this.name = "ProviderError";
+    this.status = opts?.status;
+    this.retryAfterMs = opts?.retryAfterMs;
   }
 }

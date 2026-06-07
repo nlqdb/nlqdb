@@ -18,7 +18,8 @@ Before editing under `tools/eval/`:
 | `src/csv.ts`, pandas-CSV parser + column type inference (Spider 2.0 gold ingest) | `docs/features/quality-eval/decisions/SK-QUAL-008-spider2-lite-multi-csv-scorer.md` |
 | `src/score.ts`, the EX (BIRD) scorer **and** the Spider 2.0 multi-CSV comparator port | `docs/features/quality-eval/FEATURE.md` (`SK-QUAL-001`, `SK-QUAL-008`) |
 | `src/lanes.ts`, dispatch-lane selection | `docs/features/quality-eval/FEATURE.md` (`SK-QUAL-004`) + `docs/features/llm-router/decisions/SK-LLM-017-hosted-premium-chain.md` |
-| `src/runner.ts`, the runner, CI workflow | `docs/features/quality-eval/decisions/SK-QUAL-002-weekly-cron.md` + `FEATURE.md` (`SK-QUAL-005`) |
+| `src/runner.ts`, the runner, CI workflow | `docs/features/quality-eval/decisions/SK-QUAL-002-weekly-cron.md` + `FEATURE.md` (`SK-QUAL-005`, `SK-QUAL-011`) |
+| `src/checkpoint.ts`, resumable-runner checkpoint, `--sample-seed`, budget-stop | `docs/features/quality-eval/decisions/SK-QUAL-011-resumable-runner.md` |
 | `src/baseline.ts`, baseline comparison + regression detection | `docs/features/quality-eval/decisions/SK-QUAL-002-weekly-cron.md` + `decisions/SK-QUAL-006-mcnemar-paired-test.md` |
 | `src/significance.ts`, McNemar's test | `docs/features/quality-eval/decisions/SK-QUAL-006-mcnemar-paired-test.md` |
 | `src/emit.ts`, POST /v1/events/eval | `docs/features/quality-eval/decisions/SK-QUAL-002-weekly-cron.md` + `docs/features/events-pipeline/FEATURE.md` |

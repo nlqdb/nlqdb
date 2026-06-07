@@ -5,13 +5,22 @@
 
 import { parseArgs } from "node:util";
 
+import { AllProvidersFailedError } from "@nlqdb/llm";
+
 import { compareToBaseline, readBaseline } from "./baseline.ts";
+import {
+  appendCheckpoint,
+  checkpointKey,
+  checkpointPath,
+  completeCheckpoint,
+  loadCheckpoint,
+} from "./checkpoint.ts";
 import { loadBirdMini } from "./datasets/bird-mini.ts";
 import { loadSpider2Lite } from "./datasets/spider2-lite.ts";
 import { emitEvalReport } from "./emit.ts";
 import { type AttemptScore, withExecRetry } from "./exec-retry.ts";
 import { buildLanes, type Lane } from "./lanes.ts";
-import { writeReport } from "./output.ts";
+import { DEFAULT_RESULTS_DIR, writeReport } from "./output.ts";
 import { scoreOne, scoreOneSpider2 } from "./score.ts";
 import type {
   DispatchLane,
@@ -33,8 +42,18 @@ export type RunOptions = {
   questionsJsonPath?: string;
   questionsJsonUrl?: string;
   limit?: number;
+  // SK-QUAL-011 — deterministic sample seed for the smoke slice. When
+  // set, the runner picks `limit` questions from the *full* dataset via a
+  // seeded shuffle, so the same questions are compared run-to-run (a
+  // fixed seed turns the smoke EX into a stable signal, not noise from a
+  // different slice each run). Unset ⇒ the prior first-`limit` behaviour.
+  sampleSeed?: number;
   outDir?: string;
   sqlTimeoutMs?: number;
+  // Test-injection point for the report timestamp so a resumed run and a
+  // single-shot run can be compared deterministically. Production leaves
+  // it unset (wall-clock now).
+  runAt?: string;
   // SK-QUAL-002 / SK-QUAL-005 — when set, the runner loads the baseline
   // JSON, attaches `report.baseline` with per-lane deltas + McNemar
   // results, and (if `emitUrl` is also set) emits one `feature.eval.weekly`
@@ -91,6 +110,71 @@ function percentile(sorted: number[], p: number): number {
 function trimErr(err: unknown): string {
   const msg = err instanceof Error ? err.message : String(err);
   return msg.slice(0, ERROR_MSG_CAP);
+}
+
+// SK-QUAL-011 — raised when a `plan()` throw means the whole provider
+// chain is rate-limited (free-tier daily cap), as opposed to a genuine
+// per-question failure. The runner catches it, checkpoints, and exits
+// resumable rather than recording a spurious `no_sql`.
+class BudgetStopError extends Error {
+  constructor() {
+    super("budget stop: whole provider chain rate-limited");
+    this.name = "BudgetStopError";
+  }
+}
+
+// SK-QUAL-011 / SK-LLM-030 — the W1↔W2 contract. A whole-chain rate-limit
+// surfaces as `AllProvidersFailedError` where every attempt is
+// `rate_limited`. We stop at the first such question, before any breaker
+// flips a later attempt to `circuit_open`, so the literal `.every()`
+// check is sufficient. Mixed reasons (some 5xx) are genuine failures, not
+// a budget stop.
+function isChainRateLimited(err: unknown): boolean {
+  return (
+    err instanceof AllProvidersFailedError &&
+    err.attempts.length > 0 &&
+    err.attempts.every((a) => a.reason === "rate_limited")
+  );
+}
+
+// Seeded PRNG (mulberry32) — tiny, dependency-free, deterministic per seed.
+function mulberry32(seed: number): () => number {
+  let a = seed >>> 0;
+  return () => {
+    a = (a + 0x6d2b79f5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function byQuestionId(a: EvalQuestion, b: EvalQuestion): number {
+  if (a.question_id !== b.question_id) return a.question_id - b.question_id;
+  return (a.instance_id ?? "").localeCompare(b.instance_id ?? "");
+}
+
+// SK-QUAL-011 — pick `limit` questions deterministically from the full
+// set (seeded partial Fisher-Yates), then sort by id so the iteration
+// order is stable run-to-run regardless of the shuffle. Same (seed,
+// limit) ⇒ same slice in the same order ⇒ resumable + comparable.
+export function sampleQuestions(
+  questions: EvalQuestion[],
+  limit: number,
+  seed: number,
+): EvalQuestion[] {
+  if (questions.length <= limit) return [...questions].sort(byQuestionId);
+  const rng = mulberry32(seed);
+  const idx = questions.map((_, i) => i);
+  for (let i = 0; i < limit; i++) {
+    const j = i + Math.floor(rng() * (idx.length - i));
+    const tmp = idx[i] as number;
+    idx[i] = idx[j] as number;
+    idx[j] = tmp;
+  }
+  return idx
+    .slice(0, limit)
+    .map((i) => questions[i] as EvalQuestion)
+    .sort(byQuestionId);
 }
 
 function summariseLane(lane: DispatchLane, results: QuestionResult[]): LaneSummary {
@@ -251,9 +335,14 @@ async function runOneQuestion(
       score: scoreSql,
     });
   } catch (err) {
-    // A plan() throw bubbles out of the retry helper. Production's chain
-    // failover already exhausted; surface as no_sql with the original
-    // error — same shape as the pre-3c behaviour on a first-attempt throw.
+    // SK-QUAL-011 — a whole-chain rate-limit is a free-tier daily-cap
+    // budget stop, not a question failure: signal it so the runner
+    // checkpoints and resumes on the next dispatch rather than recording
+    // a spurious no_sql.
+    if (isChainRateLimited(err)) throw new BudgetStopError();
+    // Any other plan() throw bubbles out of the retry helper. Production's
+    // chain failover already exhausted; surface as no_sql with the
+    // original error — same shape as a pre-3c first-attempt throw.
     return {
       ...ids,
       outcome: "no_sql",
@@ -287,17 +376,81 @@ export async function runEval(opts: RunOptions = {}): Promise<EvalReport> {
   }
   const datasetName: EvalDataset = opts.dataset ?? "bird-mini-dev-sqlite";
   const loader = opts.loadDataset ?? loadDatasetByName;
-  const dataset = await loader(opts);
+  // Deterministic sampling pulls from the full set, so don't pre-truncate
+  // in the loader when a seed is given.
+  const loadOpts =
+    opts.sampleSeed !== undefined ? ({ ...opts, limit: undefined } as RunOptions) : opts;
+  const dataset = await loader(loadOpts);
+  const questions =
+    opts.sampleSeed !== undefined && opts.limit !== undefined
+      ? sampleQuestions(dataset.questions, opts.limit, opts.sampleSeed)
+      : dataset.questions;
+
+  // SK-QUAL-011 — resume from a checkpoint if one exists. Already-scored
+  // (question_id, lane) pairs are skipped and replayed verbatim into the
+  // final report.
+  const outDir = opts.outDir ?? DEFAULT_RESULTS_DIR;
+  // Sampled (smoke) runs checkpoint separately from the full run so the
+  // 4h smoke cadence and the weekly full pass never share a partial file.
+  const cpPath = checkpointPath(
+    outDir,
+    datasetName,
+    opts.sampleSeed !== undefined ? "smoke" : "full",
+  );
+  const checkpoint = await loadCheckpoint(cpPath);
+  const scored = new Map<string, QuestionResult>();
+  for (const r of checkpoint.results) scored.set(checkpointKey(r.question_id, r.lane), r);
+
   const schemaCache = new Map<string, string>();
-  const results: QuestionResult[] = [];
-  for (const question of dataset.questions) {
-    const dbPath = await dataset.resolveDbPath(question.db_id);
-    // Lanes use distinct providers (no shared rate limit) so running them concurrently halves wall-time without doubling provider RPS.
-    const laneResults = await Promise.all(
-      lanes.map((lane) => runOneQuestion(lane, question, dbPath, schemaCache, opts.sqlTimeoutMs)),
+  let budgetStopped = false;
+  for (const question of questions) {
+    const pending = lanes.filter(
+      (lane) => !scored.has(checkpointKey(question.question_id, lane.lane)),
     );
-    results.push(...laneResults);
+    if (pending.length === 0) continue;
+    const dbPath = await dataset.resolveDbPath(question.db_id);
+    // Lanes use distinct providers (no shared rate limit) so running them
+    // concurrently halves wall-time without doubling provider RPS. A
+    // BudgetStopError on one lane is caught and surfaced as a sentinel so
+    // the other lanes' completed work for this question is still kept.
+    const settled = await Promise.all(
+      pending.map(async (lane) => {
+        try {
+          const result = await runOneQuestion(
+            lane,
+            question,
+            dbPath,
+            schemaCache,
+            opts.sqlTimeoutMs,
+          );
+          return { result };
+        } catch (err) {
+          if (err instanceof BudgetStopError) return { budgetStop: true as const };
+          throw err;
+        }
+      }),
+    );
+    for (const s of settled) {
+      if ("budgetStop" in s) {
+        budgetStopped = true;
+        continue;
+      }
+      await appendCheckpoint(cpPath, s.result);
+      scored.set(checkpointKey(s.result.question_id, s.result.lane), s.result);
+    }
+    if (budgetStopped) break;
   }
+
+  // Assemble in deterministic (question, lane) order so a resumed run's
+  // report scoring is identical to a single-shot run's.
+  const results: QuestionResult[] = [];
+  for (const question of questions) {
+    for (const lane of lanes) {
+      const r = scored.get(checkpointKey(question.question_id, lane.lane));
+      if (r) results.push(r);
+    }
+  }
+
   const laneSummaries = lanes.map((l) => summariseLane(l.lane, results));
   const free = laneSummaries.find((l) => l.lane === "free");
   const frontier = laneSummaries.find((l) => l.lane === "frontier");
@@ -307,9 +460,9 @@ export async function runEval(opts: RunOptions = {}): Promise<EvalReport> {
       ? Math.round((paid.execution_accuracy - base.execution_accuracy) * 10_000) / 10_000
       : null;
   const report: EvalReport = {
-    run_at: new Date().toISOString(),
+    run_at: opts.runAt ?? new Date().toISOString(),
     dataset: datasetName,
-    question_count: dataset.questions.length,
+    question_count: questions.length,
     lanes: laneSummaries,
     free_vs_frontier_delta: deltaPp(frontier, free),
     // SK-QUAL-009 — headline KPI per GLOBAL-025. Null when either lane
@@ -317,6 +470,19 @@ export async function runEval(opts: RunOptions = {}): Promise<EvalReport> {
     free_vs_agentic_frontier_delta: deltaPp(agenticFrontier, free),
     results,
   };
+
+  const writer = opts.writeReport ?? writeReport;
+
+  // SK-QUAL-011 — budget stop: the whole chain is rate-limited (free-tier
+  // daily cap). Keep the checkpoint, mark the report resumable, write it
+  // for inspection, and DON'T emit. The next dispatch loads the
+  // checkpoint and finishes the remaining pairs.
+  if (budgetStopped) {
+    report.resumable = true;
+    await writer(report, opts.outDir);
+    return report;
+  }
+
   // Baseline diff + McNemar. Failures are converted to console warnings;
   // a missing or unreadable baseline must not block the weekly summary —
   // the operator sees the warning in the GH-Actions log and re-runs.
@@ -329,7 +495,6 @@ export async function runEval(opts: RunOptions = {}): Promise<EvalReport> {
       console.warn(`quality-eval: baseline ${opts.baselinePath} skipped: ${trimErr(err)}`);
     }
   }
-  const writer = opts.writeReport ?? writeReport;
   await writer(report, opts.outDir);
   // Event emission is last so an emit failure can never lose the JSON
   // report (the cron's primary artifact). Per SK-QUAL-002 the emission
@@ -345,6 +510,8 @@ export async function runEval(opts: RunOptions = {}): Promise<EvalReport> {
       );
     }
   }
+  // Run complete — drop the checkpoint so the next dispatch starts fresh.
+  await completeCheckpoint(cpPath);
   return report;
 }
 
@@ -367,6 +534,8 @@ function parseCliArgs(): RunOptions {
       "data-dir": { type: "string" },
       "questions-json": { type: "string" },
       limit: { type: "string" },
+      // SK-QUAL-011 — deterministic smoke-slice seed.
+      "sample-seed": { type: "string" },
       out: { type: "string" },
       "sql-timeout-ms": { type: "string" },
       // SK-QUAL-002 / SK-QUAL-005 — baseline comparison + event emission.
@@ -386,6 +555,7 @@ function parseCliArgs(): RunOptions {
   if (values["data-dir"]) out.dataDir = values["data-dir"];
   if (values["questions-json"]) out.questionsJsonPath = values["questions-json"];
   if (values.limit) out.limit = Number.parseInt(values.limit, 10);
+  if (values["sample-seed"]) out.sampleSeed = Number.parseInt(values["sample-seed"], 10);
   if (values.out) out.outDir = values.out;
   if (values["sql-timeout-ms"]) out.sqlTimeoutMs = Number.parseInt(values["sql-timeout-ms"], 10);
   if (values.baseline) out.baselinePath = values.baseline;
@@ -415,6 +585,12 @@ if (import.meta.main) {
       };
       console.info(`nlqdb quality-eval — ${r.dataset}`);
       console.info(`  questions           : ${r.question_count}`);
+      if (r.resumable) {
+        // SK-QUAL-011 — budget stop. The workflow keys off this line (and
+        // the report's `resumable: true`) to keep the checkpoint and
+        // re-dispatch instead of treating the partial run as final.
+        console.info("  resumable           : true (chain rate-limited — checkpoint kept)");
+      }
       summarise(
         "free",
         r.lanes.find((l) => l.lane === "free"),
@@ -441,4 +617,11 @@ if (import.meta.main) {
     });
 }
 
-export const _testing = { summariseLane, percentile, introspectSchema, parseDatasetFlag };
+export const _testing = {
+  summariseLane,
+  percentile,
+  introspectSchema,
+  parseDatasetFlag,
+  sampleQuestions,
+  isChainRateLimited,
+};

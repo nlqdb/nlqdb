@@ -6,7 +6,7 @@
 // `POST /v1/chat/completions` with a JSON body.
 
 import { type CallOpts, ProviderError } from "../types.ts";
-import { httpReason, readBodySafe, truncate } from "./_shared.ts";
+import { httpError, truncate } from "./_shared.ts";
 
 export type ChatMessage = { role: "system" | "user" | "assistant"; content: string };
 
@@ -55,14 +55,7 @@ export async function openAICompatibleChat(req: ChatRequest, opts?: CallOpts): P
     throw new ProviderError(`POST ${req.url} failed: ${e.message}`, "network");
   }
 
-  if (!res.ok) {
-    const bodySnippet = await readBodySafe(res);
-    throw new ProviderError(
-      `POST ${req.url} → ${res.status}: ${bodySnippet}`,
-      httpReason(res.status),
-      res.status,
-    );
-  }
+  if (!res.ok) throw await httpError(`POST ${req.url}`, res);
 
   let parsed: { choices?: Array<{ message?: { content?: string } }> };
   try {

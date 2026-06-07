@@ -45,17 +45,22 @@ describe("createCerebrasProvider", () => {
     expect(res.sql).toBe("SELECT 2");
   });
 
-  it("429 (free-tier per-minute token quota) becomes ProviderError so the router fails over", async () => {
+  it("429 (free-tier per-minute quota) becomes rate_limited carrying the Retry-After window (SK-LLM-030)", async () => {
     const provider = createCerebrasProvider({ apiKey });
     const fetch = mockFetch([
       {
         match: /api\.cerebras\.ai/,
-        respond: () => new Response("token_quota_exceeded", { status: 429 }),
+        respond: () =>
+          new Response("token_quota_exceeded", { status: 429, headers: { "retry-after": "30" } }),
       },
     ]);
     await expect(
       provider.plan({ goal: "g", schema: "s", dialect: "sqlite" }, { fetch }),
-    ).rejects.toMatchObject({ reason: "http_4xx", status: 429 } satisfies Partial<ProviderError>);
+    ).rejects.toMatchObject({
+      reason: "rate_limited",
+      status: 429,
+      retryAfterMs: 30_000,
+    } satisfies Partial<ProviderError>);
   });
 
   it("network error becomes ProviderError reason=network", async () => {

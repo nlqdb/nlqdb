@@ -111,6 +111,12 @@ export type EvalReport = {
   // weekly cron then emits `feature.eval.weekly` always + `feature.eval.regression`
   // per (lane, trigger) listed under `lanes[*].regressions`.
   baseline?: BaselineComparison;
+  // SK-QUAL-011 — true when the run stopped early because the whole
+  // provider chain was rate-limited (free-tier daily cap). The
+  // checkpoint is kept (not cleared), the report is NOT emitted, and the
+  // workflow re-dispatches; the next run loads the checkpoint and
+  // finishes the remaining pairs. Absent on a completed run.
+  resumable?: boolean;
 };
 
 // SK-QUAL-006 — paired McNemar result on per-question outcomes.

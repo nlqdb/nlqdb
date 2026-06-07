@@ -4,7 +4,7 @@
 
 import { type CallOpts, type LLMOperation, type Provider, ProviderError } from "../types.ts";
 import { createChatProvider } from "./_chat-provider.ts";
-import { httpReason, readBodySafe, truncate } from "./_shared.ts";
+import { httpError, truncate } from "./_shared.ts";
 import type { ChatMessage } from "./openai-compatible.ts";
 
 const DEFAULT_BASE = "https://generativelanguage.googleapis.com/v1beta/models";
@@ -84,14 +84,7 @@ async function geminiChat(
     throw new ProviderError(`POST gemini failed: ${e.message}`, "network");
   }
 
-  if (!res.ok) {
-    const bodySnippet = await readBodySafe(res);
-    throw new ProviderError(
-      `POST ${base}/${model}:generateContent → ${res.status}: ${bodySnippet}`,
-      httpReason(res.status),
-      res.status,
-    );
-  }
+  if (!res.ok) throw await httpError(`POST ${url}`, res);
 
   let parsed: GeminiResponse;
   try {

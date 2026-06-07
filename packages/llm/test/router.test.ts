@@ -195,7 +195,10 @@ describe("createLLMRouter — happy path", () => {
 describe("createLLMRouter — failover", () => {
   it("falls through on first provider failure and uses second", async () => {
     const a = fakeProvider("gemini", {
-      plan: new ProviderError("rate limited", "http_4xx", 429),
+      plan: new ProviderError("rate limited", "rate_limited", {
+        status: 429,
+        retryAfterMs: 30_000,
+      }),
     });
     const b = fakeProvider("groq");
     const router = createLLMRouter({
@@ -211,7 +214,7 @@ describe("createLLMRouter — failover", () => {
   // increments on forced provider failure.
   it("increments nlqdb.llm.failover.total{from,to,reason} once per fall-through", async () => {
     const a = fakeProvider("gemini", {
-      plan: new ProviderError("boom", "http_5xx", 503),
+      plan: new ProviderError("boom", "http_5xx", { status: 503 }),
     });
     const b = fakeProvider("groq");
     const router = createLLMRouter({
@@ -438,7 +441,7 @@ describe("createLLMRouter — circuit breaker", () => {
 
   it("opens after failureThreshold consecutive failures and skips the provider", async () => {
     const flaky = fakeProvider("gemini", {
-      plan: new ProviderError("upstream 502", "http_5xx", 502),
+      plan: new ProviderError("upstream 502", "http_5xx", { status: 502 }),
     });
     const healthy = fakeProvider("groq", { plan: { sql: "select 1" } });
     const router = createLLMRouter({
@@ -465,7 +468,7 @@ describe("createLLMRouter — circuit breaker", () => {
     const flaky = fakeProvider("gemini", {
       plan: () =>
         mode === "fail"
-          ? Promise.reject(new ProviderError("upstream 502", "http_5xx", 502))
+          ? Promise.reject(new ProviderError("upstream 502", "http_5xx", { status: 502 }))
           : Promise.resolve({ sql: "select 1" }),
     });
     const fallback = fakeProvider("groq", { plan: { sql: "fallback" } });
@@ -498,7 +501,7 @@ describe("createLLMRouter — circuit breaker", () => {
 
   it("emits llm.failover.total{reason: 'circuit_open'} when the breaker is open", async () => {
     const flaky = fakeProvider("gemini", {
-      plan: new ProviderError("upstream 502", "http_5xx", 502),
+      plan: new ProviderError("upstream 502", "http_5xx", { status: 502 }),
     });
     const healthy = fakeProvider("groq", { plan: { sql: "select 1" } });
     const router = createLLMRouter({
@@ -523,7 +526,7 @@ describe("createLLMRouter — circuit breaker", () => {
     // anything — operators can't tell the breaker fired vs. the request
     // never happening. Span carries gen_ai.* attrs + nlqdb.llm.circuit_open=true.
     const flaky = fakeProvider("gemini", {
-      plan: new ProviderError("upstream 502", "http_5xx", 502),
+      plan: new ProviderError("upstream 502", "http_5xx", { status: 502 }),
     });
     const healthy = fakeProvider("groq", { plan: { sql: "select 1" } });
     const router = createLLMRouter({
@@ -550,7 +553,7 @@ describe("createLLMRouter — circuit breaker", () => {
     // breaker just delays surfacing the real config error AND tricks
     // dashboards into thinking the upstream is unhealthy.
     const misconfigured = fakeProvider("gemini", {
-      plan: new ProviderError("invalid_api_key", "http_4xx", 401),
+      plan: new ProviderError("invalid_api_key", "http_4xx", { status: 401 }),
     });
     const healthy = fakeProvider("groq", { plan: { sql: "select 1" } });
     const router = createLLMRouter({
@@ -569,7 +572,7 @@ describe("createLLMRouter — circuit breaker", () => {
 
   it("403 also bypasses the breaker (forbidden = config, not outage)", async () => {
     const forbidden = fakeProvider("gemini", {
-      plan: new ProviderError("forbidden", "http_4xx", 403),
+      plan: new ProviderError("forbidden", "http_4xx", { status: 403 }),
     });
     const healthy = fakeProvider("groq", { plan: { sql: "select 1" } });
     const router = createLLMRouter({
@@ -583,24 +586,165 @@ describe("createLLMRouter — circuit breaker", () => {
     expect(forbidden.calls).toHaveLength(4);
   });
 
-  it("DOES count 429 as a breaker failure (rate limit signals real load)", async () => {
-    // 429 stays in the breaker bucket — at sustained rate-limit-exhaustion
-    // the provider IS effectively down for this caller and we want
-    // failover to trigger. (If the user wants per-status policy they can
-    // override at the router config.)
-    const ratelimited = fakeProvider("gemini", {
-      plan: new ProviderError("rate limited", "http_4xx", 429),
+  it("SK-LLM-030 — a non-429 4xx still uses the 3-strike path (not the 429 immediate-open path)", async () => {
+    // 400/422 etc. are not "back off now" signals — they go through the
+    // normal failureThreshold counter, unlike a 429 (covered below).
+    const flaky = fakeProvider("gemini", {
+      plan: new ProviderError("bad request", "http_4xx", { status: 400 }),
     });
     const healthy = fakeProvider("groq", { plan: { sql: "select 1" } });
     const router = createLLMRouter({
-      providers: [ratelimited, healthy],
+      providers: [flaky, healthy],
       chains: { plan: ["gemini", "groq"] },
-      circuitBreaker: { failureThreshold: 2, cooldownMs: 60_000 },
+      circuitBreaker: { failureThreshold: 3, cooldownMs: 60_000 },
     });
-    await router.plan({ goal: "g", schema: "s", dialect: "postgres" }); // counter 1
-    await router.plan({ goal: "g", schema: "s", dialect: "postgres" }); // counter 2 → opens
-    await router.plan({ goal: "g", schema: "s", dialect: "postgres" }); // skipped
-    expect(ratelimited.calls).toHaveLength(2);
+    // Three attempts hit gemini (counter 1→2→3, opens on the 3rd); a 429
+    // would have opened after the very first.
+    for (let i = 0; i < 3; i++) {
+      await router.plan({ goal: "g", schema: "s", dialect: "postgres" });
+    }
+    expect(flaky.calls).toHaveLength(3);
+    await router.plan({ goal: "g", schema: "s", dialect: "postgres" }); // breaker open → skipped
+    expect(flaky.calls).toHaveLength(3);
+  });
+});
+
+describe("createLLMRouter — rate-limit cooldown (SK-LLM-030)", () => {
+  it("a 429 opens the breaker immediately for the Retry-After window and rotates", async () => {
+    // A 429 is an unambiguous "back off now": unlike a flaky 5xx (which
+    // needs failureThreshold strikes), one 429 opens the breaker for the
+    // server's window. The next call within the window skips the
+    // rate-limited provider and rotates; after it, the provider is retried.
+    vi.useFakeTimers();
+    try {
+      // Base at a realistic epoch — the breaker's "never opened" sentinel
+      // is openedAt===0, so a fake clock at 0 would alias it.
+      const t0 = 1_700_000_000_000;
+      vi.setSystemTime(t0);
+      const limited = fakeProvider("gemini", {
+        plan: new ProviderError("rate limited", "rate_limited", {
+          status: 429,
+          retryAfterMs: 30_000,
+        }),
+      });
+      const healthy = fakeProvider("groq", { plan: { sql: "select 1" } });
+      const router = createLLMRouter({
+        providers: [limited, healthy],
+        chains: { plan: ["gemini", "groq"] },
+        // Low default cooldown so the test proves the 30s Retry-After
+        // window (not the 1s default) governs the breaker.
+        circuitBreaker: { failureThreshold: 3, cooldownMs: 1_000 },
+      });
+
+      // One 429 → breaker opens (no 3-strike wait), rotate to groq.
+      const r1 = await router.plan({ goal: "g", schema: "s", dialect: "postgres" });
+      expect(r1.sql).toBe("select 1");
+      expect(limited.calls).toHaveLength(1);
+      expect(healthy.calls).toHaveLength(1);
+
+      // Still inside the 30s window (and well past the 1s default): skipped.
+      vi.setSystemTime(t0 + 29_000);
+      await router.plan({ goal: "g", schema: "s", dialect: "postgres" });
+      expect(limited.calls).toHaveLength(1);
+
+      // After the window: breaker closed, gemini retried.
+      vi.setSystemTime(t0 + 31_000);
+      await router.plan({ goal: "g", schema: "s", dialect: "postgres" });
+      expect(limited.calls).toHaveLength(2);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("caps the honored cooldown so a long Retry-After can't wedge the router", async () => {
+    // A provider sending a 1-hour Retry-After must not pin the prod
+    // router for an hour — maxRateLimitCooldownMs caps it (default 5 min;
+    // 2s here). After the cap elapses the provider is retried.
+    vi.useFakeTimers();
+    try {
+      const t0 = 1_700_000_000_000;
+      vi.setSystemTime(t0);
+      const limited = fakeProvider("gemini", {
+        plan: new ProviderError("slow down", "rate_limited", {
+          status: 429,
+          retryAfterMs: 60 * 60_000, // 1 hour
+        }),
+      });
+      const healthy = fakeProvider("groq", { plan: { sql: "select 1" } });
+      const router = createLLMRouter({
+        providers: [limited, healthy],
+        chains: { plan: ["gemini", "groq"] },
+        circuitBreaker: { failureThreshold: 3, cooldownMs: 1_000 },
+        maxRateLimitCooldownMs: 2_000,
+      });
+      await router.plan({ goal: "g", schema: "s", dialect: "postgres" });
+      expect(limited.calls).toHaveLength(1);
+      // Past the 2s cap (but nowhere near the hour the server asked for).
+      vi.setSystemTime(t0 + 2_500);
+      await router.plan({ goal: "g", schema: "s", dialect: "postgres" });
+      expect(limited.calls).toHaveLength(2);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("a 429 (status 429) is NOT treated as an auth-bypass — the breaker opens", async () => {
+    // Regression guard: isAuthFailure keys off reason==='http_4xx' + status
+    // 401/403. A rate_limited error carries a 4xx-class status (429) but
+    // must NOT fall into the auth-bypass branch — it has to open the
+    // breaker. (If it were bypassed, gemini would be retried every call.)
+    const limited = fakeProvider("gemini", {
+      plan: new ProviderError("rate limited", "rate_limited", { status: 429 }),
+    });
+    const healthy = fakeProvider("groq", { plan: { sql: "select 1" } });
+    const router = createLLMRouter({
+      providers: [limited, healthy],
+      chains: { plan: ["gemini", "groq"] },
+      circuitBreaker: { failureThreshold: 3, cooldownMs: 60_000 },
+    });
+    await router.plan({ goal: "g", schema: "s", dialect: "postgres" }); // opens immediately
+    await router.plan({ goal: "g", schema: "s", dialect: "postgres" }); // gemini skipped
+    expect(limited.calls).toHaveLength(1);
+  });
+
+  it("emits nlqdb.llm.failover.total{reason: 'rate_limited'} on rotation", async () => {
+    const limited = fakeProvider("gemini", {
+      plan: new ProviderError("rate limited", "rate_limited", {
+        status: 429,
+        retryAfterMs: 30_000,
+      }),
+    });
+    const healthy = fakeProvider("groq", { plan: { sql: "select 1" } });
+    const router = createLLMRouter({
+      providers: [limited, healthy],
+      chains: { plan: ["gemini", "groq"] },
+    });
+    await router.plan({ goal: "g", schema: "s", dialect: "postgres" });
+    await telemetry.collectMetrics();
+    const failover = metric(telemetry, "nlqdb.llm.failover.total");
+    const point = failover?.dataPoints.find((dp) => dp.attributes["reason"] === "rate_limited");
+    expect(point, "expected a rate_limited failover point").toBeDefined();
+    expect(point?.attributes["from_provider"]).toBe("gemini");
+    expect(point?.attributes["to_provider"]).toBe("groq");
+  });
+
+  it("sets nlqdb.llm.retry_after_ms on the rate-limited attempt span", async () => {
+    const limited = fakeProvider("gemini", {
+      plan: new ProviderError("rate limited", "rate_limited", {
+        status: 429,
+        retryAfterMs: 30_000,
+      }),
+    });
+    const healthy = fakeProvider("groq", { plan: { sql: "select 1" } });
+    const router = createLLMRouter({
+      providers: [limited, healthy],
+      chains: { plan: ["gemini", "groq"] },
+    });
+    await router.plan({ goal: "g", schema: "s", dialect: "postgres" });
+    const span = telemetry.spanExporter
+      .getFinishedSpans()
+      .find((s) => s.attributes["llm.provider"] === "gemini");
+    expect(span?.attributes["nlqdb.llm.retry_after_ms"]).toBe(30_000);
   });
 });
 
@@ -653,7 +797,7 @@ describe("createLLMRouter — hedged race (SK-LLM-014)", () => {
     // in chain, we just see primary fail and we return that. (No 3rd
     // provider to fall through to.)
     const primary = fakeProvider("gemini", {
-      schemaInfer: new ProviderError("boom", "http_5xx", 500),
+      schemaInfer: new ProviderError("boom", "http_5xx", { status: 500 }),
     });
     const secondary = fakeProvider("groq", {
       schemaInfer: { plan: { from: "groq" } },
@@ -861,13 +1005,13 @@ describe("createLLMRouter — hedged race (SK-LLM-014)", () => {
     const primary = fakeProvider("gemini", {
       schemaInfer: async () => {
         await new Promise((r) => setTimeout(r, 20));
-        throw new ProviderError("boom1", "http_5xx", 503);
+        throw new ProviderError("boom1", "http_5xx", { status: 503 });
       },
     });
     const secondary = fakeProvider("groq", {
       schemaInfer: async () => {
         await new Promise((r) => setTimeout(r, 30));
-        throw new ProviderError("boom2", "http_5xx", 503);
+        throw new ProviderError("boom2", "http_5xx", { status: 503 });
       },
     });
     const third = fakeProvider("workers-ai", {

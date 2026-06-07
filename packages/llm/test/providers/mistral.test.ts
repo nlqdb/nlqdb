@@ -45,7 +45,7 @@ describe("createMistralProvider", () => {
     expect(res.sql).toBe("SELECT 2");
   });
 
-  it("429 (free-tier per-minute token quota) becomes ProviderError so the router fails over", async () => {
+  it("429 (free-tier per-minute quota) becomes rate_limited so the router backs off (SK-LLM-030)", async () => {
     const provider = createMistralProvider({ apiKey });
     const fetch = mockFetch([
       {
@@ -55,7 +55,10 @@ describe("createMistralProvider", () => {
     ]);
     await expect(
       provider.plan({ goal: "g", schema: "s", dialect: "sqlite" }, { fetch }),
-    ).rejects.toMatchObject({ reason: "http_4xx", status: 429 } satisfies Partial<ProviderError>);
+    ).rejects.toMatchObject({
+      reason: "rate_limited",
+      status: 429,
+    } satisfies Partial<ProviderError>);
   });
 
   it("network error becomes ProviderError reason=network", async () => {

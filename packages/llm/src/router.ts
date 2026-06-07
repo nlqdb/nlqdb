@@ -72,6 +72,12 @@ export type LLMRouterOptions = {
   // Avoids burning the wall-clock budget on a known-bad provider when
   // a healthy fallback exists. Defaults: 3 failures / 60s.
   circuitBreaker?: { failureThreshold: number; cooldownMs: number };
+  // SK-LLM-030 — upper bound on the per-incident cooldown a single 429's
+  // `Retry-After` may open the breaker for. Caps a provider that sends a
+  // multi-minute window from wedging the prod router (which rotates for
+  // latency). Defaults to 5 min; the eval sets it to Infinity to honor
+  // the server's full window for its checkpoint-and-resume decision.
+  maxRateLimitCooldownMs?: number;
   // SK-LLM-014 — Hedged-request races for operations marked here. After
   // `afterMs` head-start, fire the second eligible provider in parallel
   // with the first; whichever returns a usable result first wins, the
@@ -92,11 +98,17 @@ export type LLMRouterOptions = {
 
 const DEFAULT_BREAKER = { failureThreshold: 3, cooldownMs: 60_000 };
 
+// SK-LLM-030 — prod-safe ceiling on a 429-driven cooldown (5 min).
+const DEFAULT_MAX_RATE_LIMIT_COOLDOWN_MS = 5 * 60_000;
+
 type BreakerState = {
   consecutiveFailures: number;
   // ms-epoch when the breaker was opened (>0 means open until
   // openedAt + cooldownMs).
   openedAt: number;
+  // SK-LLM-030 — per-incident cooldown override (a 429's capped
+  // `Retry-After` window). Undefined ⇒ use the router-wide cooldownMs.
+  cooldownMsOverride?: number;
 };
 
 function makeBreakerStore(): Map<ProviderName, BreakerState> {
@@ -105,7 +117,7 @@ function makeBreakerStore(): Map<ProviderName, BreakerState> {
 
 function breakerOpen(state: BreakerState | undefined, now: number, cooldown: number): boolean {
   if (!state || state.openedAt === 0) return false;
-  return now - state.openedAt < cooldown;
+  return now - state.openedAt < (state.cooldownMsOverride ?? cooldown);
 }
 
 export type LLMRouter = {
@@ -197,6 +209,7 @@ export function createLLMRouter(opts: LLMRouterOptions): LLMRouter {
   for (const p of opts.providers) byName.set(p.name, p);
   const timeouts = { ...DEFAULT_TIMEOUTS_MS, ...opts.timeouts };
   const breaker = { ...DEFAULT_BREAKER, ...opts.circuitBreaker };
+  const maxRateLimitCooldownMs = opts.maxRateLimitCooldownMs ?? DEFAULT_MAX_RATE_LIMIT_COOLDOWN_MS;
   const breakerState = makeBreakerStore();
 
   // Tracer pinned to semconv 1.37 for our gen_ai.* attributes. The
@@ -263,6 +276,11 @@ export function createLLMRouter(opts: LLMRouterOptions): LLMRouter {
             span.recordException(wrapped);
             span.setStatus({ code: SpanStatusCode.ERROR, message: wrapped.message });
           }
+          // SK-LLM-030 — surface the server's back-off window so a trace
+          // explains why this provider's breaker opened on a 429.
+          if (err instanceof ProviderError && err.retryAfterMs !== undefined) {
+            span.setAttribute("nlqdb.llm.retry_after_ms", err.retryAfterMs);
+          }
           return { ok: false as const, reason, error: err };
         } finally {
           const elapsed = performance.now() - startedAt;
@@ -293,6 +311,20 @@ export function createLLMRouter(opts: LLMRouterOptions): LLMRouter {
   ): void {
     if (result.ok) {
       breakerState.set(name, { consecutiveFailures: 0, openedAt: 0 });
+      return;
+    }
+    // SK-LLM-030 — a 429 is an unambiguous "back off now", unlike a flaky
+    // 5xx: open the breaker immediately (no 3-strike wait) for the
+    // server's `Retry-After` window, floored at the default cooldown and
+    // capped so a long window can't wedge the router.
+    if (result.reason === "rate_limited") {
+      const retryAfterMs = (result.error as ProviderError | undefined)?.retryAfterMs ?? 0;
+      const cooldownMsOverride = Math.min(
+        Math.max(retryAfterMs, breaker.cooldownMs),
+        maxRateLimitCooldownMs,
+      );
+      const failures = (breakerState.get(name)?.consecutiveFailures ?? 0) + 1;
+      breakerState.set(name, { consecutiveFailures: failures, openedAt: now, cooldownMsOverride });
       return;
     }
     const skip =
@@ -498,23 +530,11 @@ export function createLLMRouter(opts: LLMRouterOptions): LLMRouter {
         throw asAbortError(callerOpts.signal.reason);
       }
 
-      // Update breaker. Only count "real" provider-health signals —
-      // skip:
-      //   • not_configured (config error, not a provider outage)
-      //   • parse          (more often our own bug than the provider's)
-      //   • 401/403        (bad/missing API key — a config bug; opening
-      //                     the breaker just delays surfacing it)
-      const skipBreaker =
-        result.reason === "not_configured" ||
-        result.reason === "parse" ||
-        isAuthFailure(result.reason, result.error);
-      if (!skipBreaker) {
-        const failures = (state?.consecutiveFailures ?? 0) + 1;
-        breakerState.set(name, {
-          consecutiveFailures: failures,
-          openedAt: failures >= breaker.failureThreshold ? now : 0,
-        });
-      }
+      // Update breaker. Shared with the hedged path so "what counts as a
+      // provider-health failure" lives in one place: rate_limited opens
+      // immediately (SK-LLM-030); 5xx / network / timeout count toward the
+      // 3-strike threshold; not_configured / parse / 401-403 are skipped.
+      updateBreakerFromResult(name, result, now);
 
       attempts.push({ provider: name, reason: result.reason, error: result.error });
       if (next) {

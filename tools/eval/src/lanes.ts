@@ -81,6 +81,10 @@ function buildFreeLane(env: EvalEnv): Lane | null {
   const router = createLLMRouter({
     providers,
     chains: { plan: ["cerebras", "gemini", "groq", "workers-ai", "openrouter", "mistral"] },
+    // SK-LLM-030 — honor a 429's full `Retry-After` window (prod caps it
+    // for latency). A long server back-off is exactly the signal the
+    // resumable runner checkpoints on rather than recording as no_sql.
+    maxRateLimitCooldownMs: Number.POSITIVE_INFINITY,
   });
   // Free chain is scaffolded per SK-QUAL-009 so the "scaffolding compounds with the model"
   // bet is testable end-to-end.
