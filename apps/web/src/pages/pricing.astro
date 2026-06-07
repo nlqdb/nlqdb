@@ -222,7 +222,14 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
           if (res.status === 409) {
             // Already subscribed (server backstop if the status pass was stale
             // or failed) — switch tier in the portal, where Stripe prorates.
-            await openBillingPortal(apiBase);
+            // openBillingPortal never throws, so restore the button here if it
+            // couldn't redirect rather than leaving it stuck on "Redirecting…".
+            const outcome = await openBillingPortal(apiBase);
+            if (outcome !== "ok") {
+              btn.disabled = false;
+              btn.textContent = original;
+              alert("Couldn't open the billing portal. Please try “Manage billing” below or email hello@nlqdb.com.");
+            }
             return;
           }
           throw new Error(`checkout failed: ${res.status}`);
