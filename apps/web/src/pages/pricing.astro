@@ -179,6 +179,18 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
       const plan = btn.dataset.plan as "hobby" | "pro";
       const apiBase = (btn.dataset.apiBase ?? "").replace(/\/$/, "");
 
+      // An existing subscriber changing tier goes through the Billing Portal
+      // (Stripe prorates), never a second Checkout — that would create a
+      // parallel subscription and double-bill (SK-STRIPE-010). The status
+      // pass below marks the non-current paid CTA with data-switch.
+      if (btn.dataset.switch === "1") {
+        const outcome = await openBillingPortal(apiBase);
+        if (outcome !== "ok") {
+          alert("Couldn't open the billing portal. Please try “Manage billing” below or email hello@nlqdb.com.");
+        }
+        return;
+      }
+
       const user = await fetchSession();
       if (!user) {
         const signinUrl =
@@ -207,6 +219,19 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
             btn.textContent = "Not available yet";
             return;
           }
+          if (res.status === 409) {
+            // Already subscribed (server backstop if the status pass was stale
+            // or failed) — switch tier in the portal, where Stripe prorates.
+            // openBillingPortal never throws, so restore the button here if it
+            // couldn't redirect rather than leaving it stuck on "Redirecting…".
+            const outcome = await openBillingPortal(apiBase);
+            if (outcome !== "ok") {
+              btn.disabled = false;
+              btn.textContent = original;
+              alert("Couldn't open the billing portal. Please try “Manage billing” below or email hello@nlqdb.com.");
+            }
+            return;
+          }
           throw new Error(`checkout failed: ${res.status}`);
         }
 
@@ -228,9 +253,11 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
   const manageSection = document.getElementById("pricing-manage");
   const manageBtn = document.getElementById("pricing-manage-btn") as HTMLButtonElement | null;
 
-  // Stripe statuses that mean the subscriber currently has the tier's
-  // access (so the "Current plan" badge is honest). A canceled or
-  // incomplete row stays manageable but is not badged as the live plan.
+  // Display hint only: statuses where the subscriber holds the tier, so the
+  // "Current plan" badge + "Switch plan" relabel are honest. It need NOT match
+  // the server's broader checkout guard — the 409 from /v1/billing/checkout is
+  // the authority, so a status it blocks but this omits still routes to the
+  // portal via the 409 handler above, just without the nicer label.
   const ACTIVE_STATUSES = new Set(["active", "trialing", "past_due"]);
 
   void (async () => {
@@ -248,17 +275,24 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
       (status.plan === "hobby" || status.plan === "pro") &&
       ACTIVE_STATUSES.has(status.status)
     ) {
-      const cta = document.querySelector<HTMLButtonElement>(`button[data-plan="${status.plan}"]`);
-      const header = cta?.closest(".pricing__card")?.querySelector(".pricing__card-header");
-      if (header) {
-        const badge = document.createElement("span");
-        badge.className = "pricing__badge";
-        badge.textContent = "Current plan";
-        header.prepend(badge);
-      }
-      if (cta) {
-        cta.disabled = true;
-        cta.textContent = "Current plan";
+      // Badge + lock the current plan; turn every other paid CTA into a
+      // portal-routed "Switch plan" so a subscriber never starts a second
+      // Checkout (which would double-bill — SK-STRIPE-010).
+      for (const cta of buttons) {
+        if (cta.dataset.plan === status.plan) {
+          const header = cta.closest(".pricing__card")?.querySelector(".pricing__card-header");
+          if (header) {
+            const badge = document.createElement("span");
+            badge.className = "pricing__badge";
+            badge.textContent = "Current plan";
+            header.prepend(badge);
+          }
+          cta.disabled = true;
+          cta.textContent = "Current plan";
+        } else {
+          cta.dataset.switch = "1";
+          cta.textContent = "Switch plan";
+        }
       }
     }
   })();

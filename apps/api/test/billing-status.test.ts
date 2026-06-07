@@ -1,7 +1,11 @@
 // Unit tests for the billing-status resolver (SK-STRIPE-009). Pure — no I/O.
 
 import { describe, expect, it } from "vitest";
-import { type CustomerRow, resolveBillingStatus } from "../src/stripe/billing-status.ts";
+import {
+  blocksNewCheckout,
+  type CustomerRow,
+  resolveBillingStatus,
+} from "../src/stripe/billing-status.ts";
 
 const HOBBY = "price_hobby_123";
 const PRO = "price_pro_456";
@@ -80,5 +84,30 @@ describe("resolveBillingStatus", () => {
     const result = resolveBillingStatus(row({ status: "canceled" }), HOBBY, PRO);
     expect(result.manageable).toBe(true);
     expect(result.status).toBe("canceled");
+  });
+});
+
+describe("blocksNewCheckout", () => {
+  it("allows checkout when the caller has no customers row", () => {
+    expect(blocksNewCheckout(undefined)).toBe(false);
+    expect(blocksNewCheckout(null)).toBe(false);
+  });
+
+  it("allows re-checkout from a terminal status", () => {
+    for (const status of ["canceled", "incomplete_expired"]) {
+      expect(blocksNewCheckout(status)).toBe(false);
+    }
+  });
+
+  it("blocks checkout while a live subscription exists", () => {
+    // `incomplete` is NOT terminal — its first invoice is payable for 23h, so
+    // a second Checkout would open a parallel chargeable subscription.
+    for (const status of ["active", "trialing", "past_due", "unpaid", "paused", "incomplete"]) {
+      expect(blocksNewCheckout(status)).toBe(true);
+    }
+  });
+
+  it("fails safe: blocks an unrecognized future status", () => {
+    expect(blocksNewCheckout("some_new_stripe_status")).toBe(true);
   });
 });

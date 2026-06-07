@@ -12,14 +12,9 @@ when-to-load:
 **One-liner:** Stripe webhook ingest, subscription state, idempotent processing, R2 archive.
 **Status:** implemented (Slice 7 — PR #33; live-mode flip in Phase 2)
 **Owners (code):** `apps/api/src/stripe/**`, `apps/api/src/index.ts`, `POST /v1/stripe/webhook`
-**Cross-refs:** docs/architecture.md §6 (pricing) · docs/phase-plan.md (Phase 2 stripe slice) · docs/runbook.md §6 (webhook + R2 archive) · docs/performance.md §3.1 (`nlqdb.webhook.stripe` span), §4 Slice 7 (instrumentation contract — `billing.subscription_created` / `billing.subscription_canceled` map 1:1; no `trial.*`), §5 (100 % trace sampling) · `apps/api/src/stripe/webhook.ts` (canonical pipeline doc-comment)
+**Cross-refs:** docs/architecture.md §6 (pricing) · docs/phase-plan.md (Phase 2 stripe slice) · docs/runbook.md §6 (webhook + R2 archive) · docs/performance.md §3.1 (`nlqdb.webhook.stripe` span), §4 Slice 7, §5 · `apps/api/src/stripe/webhook.ts` (canonical pipeline doc-comment)
 
-## Touchpoints — read this feature before editing
-
-- `apps/api/src/stripe/**`
-- `apps/api/src/index.ts` (`/v1/stripe/webhook`, `/v1/billing/{checkout,portal,status}` routes)
-- D1 tables `stripe_events`, `customers` (schema in `apps/api/migrations/`)
-- R2 bucket `nlqdb-assets` (binding `ASSETS`)
+**Touchpoints (read before editing):** `apps/api/src/stripe/**` · `apps/api/src/index.ts` (`/v1/stripe/webhook`, `/v1/billing/{checkout,portal,status}`) · D1 `stripe_events` + `customers` · R2 `nlqdb-assets` (binding `ASSETS`).
 
 ## Decisions
 
@@ -109,15 +104,23 @@ when-to-load:
 - **Decision:** `GET /v1/billing/status` (`requireSession`-gated) returns `{ plan, status, currentPeriodEnd, cancelAtPeriodEnd, manageable }` from a single indexed `customers` read — **no Stripe call**. `plan` maps the stored `price_id` against `STRIPE_PRICE_HOBBY`/`STRIPE_PRICE_PRO` (else `"unknown"`); no row → `{ plan: "free", status: "none", manageable: false }`. `status` is the Stripe status verbatim; `manageable` is true iff a row exists. Web-only (GLOBAL-003).
 - **Core value:** Honest latency, Simple, Effortless UX
 - **Why:** The page offered "Manage billing" to every signed-in user, so a free user who never checked out hit the portal's `404 no_customer`, and it could not show which tier a subscriber is on. A cheap read of the row the webhook keeps current fixes both with zero Stripe traffic; mapping price→tier server-side keeps the price IDs out of the client bundle.
-- **Consequence in code:** `apps/api/src/stripe/billing-status.ts` is a pure resolver (row in, status out) mirroring `checkout.ts`/`portal.ts`; the route owns the D1 read and one `nlqdb.billing.status` span (`nlqdb.billing.plan` + `nlqdb.billing.subscription_status`) per request, not per query. `manageable` stays true for a `canceled` row (portal still serves invoices). `apps/web/src/pages/pricing.astro` badges "Current plan" only for statuses that still hold the tier (`active`/`trialing`/`past_due` — the last keeps the badge through dunning) and treats `unknown` as "don't badge"; the fetch is a progressive enhancement — failure leaves the default state. No new env var (reuses the checkout price IDs).
+- **Consequence in code:** `apps/api/src/stripe/billing-status.ts` is a pure resolver (row in, status out) mirroring `checkout.ts`/`portal.ts`; the route owns the D1 read and one `nlqdb.billing.status` span per request. `manageable` stays true for a `canceled` row (portal still serves invoices). `pricing.astro` badges "Current plan" only for statuses that still hold the tier (`active`/`trialing`/`past_due`) and treats `unknown` as "don't badge"; the fetch is a progressive enhancement. No new env var (reuses the checkout price IDs).
 - **Alternatives rejected:**
   - Return the raw `customers` row — leaks the Stripe customer/subscription IDs for no UI need; the resolver projects only what the page renders.
   - Map price→tier in the browser — ships the price IDs in the client bundle and duplicates the mapping checkout owns server-side.
-  - Probe subscriber-ness via the portal's 404 — couples a read to a mutating Stripe call and only answers after a click; the status read answers on load.
+  - Probe subscriber-ness via the portal's 404 — couples a read to a mutating Stripe call and only answers after a click.
+
+### SK-STRIPE-010 — Checkout refuses a caller who already holds a live subscription; tier changes go through the Portal
+
+- **Decision:** `POST /v1/billing/checkout` reads `customers.status` first and returns `409 already_subscribed` unless the row is absent or in a Stripe *terminal* status (`canceled` / `incomplete_expired`). Every other status — incl. `incomplete` (first invoice payable 23h), `unpaid`, `paused` — keeps a live subscription, so the caller switches tier in the Portal (SK-STRIPE-008), where Stripe prorates; `/pricing` mirrors it (non-current paid CTA → "Switch plan" → Portal, 409 as the backstop).
+- **Core value:** Bullet-proof, Honest latency
+- **Why:** A second `mode: 'subscription'` Checkout opens a parallel Stripe customer + subscription and double-bills — a "surprise bill" `billing-philosophy.md` forbids. The guard fails safe: any non-terminal (incl. unrecognized future) status blocks.
+- **Consequence in code:** `blocksNewCheckout(status)` + `CHECKOUT_REOPEN_STATUSES` in `stripe/billing-status.ts` (pure, unit-tested); the route owns the one-row D1 read; no Stripe call on reject.
+- **Alternatives rejected:** Allowlist the *blocking* statuses — a new Stripe status would default to "allow" and double-bill. Reconcile later — refunds + support for a self-inflicted defect.
 
 ## GLOBALs governing this feature
 
-Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; index in [`docs/decisions.md`](../../decisions.md)). The list below names the rules that constrain this feature; any feature-local commentary is nested under the rule.
+Canonical text in [`docs/decisions/`](../../decisions/) (index in [`docs/decisions.md`](../../decisions.md)). These rules constrain this feature:
 
 - **GLOBAL-005** — Every mutation accepts `Idempotency-Key`.
 - **GLOBAL-013** — $0/month for the free tier; Workers free-tier bundle ≤ 3 MiB compressed.
@@ -125,17 +128,15 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 
 ## Open questions / known unknowns
 
-- **Dunning / failed-payment behaviour.** In-app half shipped: `/app` shows a `past_due`/`unpaid` banner off `GET /v1/billing/status` (web-app `SK-WEB-012`), since `customer.subscription.updated` already state-syncs status. The email half (notify on `invoice.payment_failed`) stays open and gates live-mode paid Hobby.
-- **R2 lifecycle policy** — Resolved per `GLOBAL-033` (pin-a-number → fail-safe): **90-day retention** on the date-partitioned keys. Stripe events are replayable from the Dashboard, so the bucket is a convenience cache, not a system of record; 90 days bounds storage while covering any realistic dispute window. The rule is a one-time Cloudflare R2 config; **parked until** bucket size is load-bearing — capture it in `docs/runbook.md §6` then.
-- **DLQ for stuck events** — **Parked until** a `processed_at IS NULL` backlog appears (PLAN §11): the queryable NULL signal exists today; the ops cron + Grafana alert is wiring that lands when a dispatch failure first slips by.
-- **Stripe Tax activation.** Test-mode is configured (`NLQDB.COM` descriptor, Switzerland/CHF merchant). Live-mode + Stripe Tax flip is a Phase 2 task — capture the activation steps in `docs/runbook.md §6` when it lands.
-- **Lago wiring.** PLAN §6 / DESIGN §6 calls for Lago-on-Fly as the usage-metering layer batched into Stripe; not yet wired. Phase 2 slice TBD.
-- **Live-mode webhook secret.** `STRIPE_WEBHOOK_SECRET` today is the test-mode value; cutover needs a coordinated `wrangler secret put` + Stripe Dashboard endpoint update; document the rollover playbook in `docs/runbook.md §6`.
-- **Billing Portal Dashboard config.** `SK-STRIPE-008` ships the endpoint, but `sessions.create` errors until a portal configuration (switchable plans, cancel behaviour, invoice history) is saved in the Stripe Dashboard → Billing → Customer portal. Capture the steps in `docs/runbook.md §6` alongside price-ID setup.
+- **Dunning email.** In-app half shipped: `/app` shows a `past_due`/`unpaid` banner off `GET /v1/billing/status` (web-app `SK-WEB-012`). The email half (notify on `invoice.payment_failed`) stays open and gates live-mode paid Hobby.
+- **R2 lifecycle policy** — Resolved (`GLOBAL-033`): **90-day retention** on the date-partitioned keys (events are Dashboard-replayable, so the bucket is a convenience cache). One-time Cloudflare R2 config; **parked until** bucket size is load-bearing.
+- **DLQ for stuck events** — **Parked until** a `processed_at IS NULL` backlog appears (PLAN §11): the queryable signal exists; the ops cron + alert is the wiring that lands when a dispatch first slips by.
+- **Lago wiring.** Lago-on-Fly as the usage-metering layer batched into Stripe (PLAN §6); not yet wired. Phase 2 slice TBD.
+- **Dashboard + live-mode cutover.** Endpoints are inert until the Stripe Dashboard is configured (price IDs, Stripe Tax, a saved Customer-portal config — `sessions.create` errors without one) and the test→live secret rollover runs (`wrangler secret put` + Dashboard webhook endpoint update). Capture the runbook in `docs/runbook.md §6` when the flip lands.
 
 ## Billing constraints and philosophy
 
-The cross-cutting billing philosophy — no-dark-patterns hard rules, payment
-tech stack, things we won't do, and napkin unit economics — lives in
-[`billing-philosophy.md`](billing-philosophy.md) (split out per P4/D4 to keep
-this file under cap). It constrains every billing surface.
+Cross-cutting billing philosophy — no-dark-patterns rules, payment stack,
+things we won't do, unit economics — lives in
+[`billing-philosophy.md`](billing-philosophy.md) and constrains every billing
+surface.

@@ -95,7 +95,11 @@ import {
   surfaceFromPrincipal,
 } from "./principal.ts";
 import { orchestrateRun, type RunError } from "./run/orchestrate.ts";
-import { type CustomerRow, resolveBillingStatus } from "./stripe/billing-status.ts";
+import {
+  blocksNewCheckout,
+  type CustomerRow,
+  resolveBillingStatus,
+} from "./stripe/billing-status.ts";
 import { type CheckoutPlan, createCheckoutSession } from "./stripe/checkout.ts";
 import { cryptoProvider, stripe as stripeClient } from "./stripe/client.ts";
 import { createPortalSession } from "./stripe/portal.ts";
@@ -1584,6 +1588,9 @@ app.post("/v1/stripe/webhook", async (c) => {
 //
 // 503 when STRIPE_SECRET_KEY or the plan price ID is not configured.
 // 400 for an invalid plan value. 500 for Stripe API failures.
+// 409 already_subscribed when the caller already holds a live subscription —
+// tier changes go through the Billing Portal so Stripe prorates; a second
+// Checkout would create a parallel subscription and double-bill (SK-STRIPE-010).
 app.post("/v1/billing/checkout", requireSession, async (c) => {
   const session = c.var.session;
 
@@ -1599,6 +1606,18 @@ app.post("/v1/billing/checkout", requireSession, async (c) => {
 
   if (!c.env.STRIPE_SECRET_KEY) {
     return c.json({ error: "billing_not_configured" }, 503);
+  }
+
+  const existing = await c.env.DB.prepare("SELECT status FROM customers WHERE user_id = ?")
+    .bind(session.user.id)
+    .first<{ status: string }>();
+  if (blocksNewCheckout(existing?.status)) {
+    // Rare by construction (the page routes subscribers to the Portal), so one
+    // structured line per reject is observable without being spammy.
+    console.info(
+      JSON.stringify({ msg: "checkout_blocked_already_subscribed", status: existing?.status }),
+    );
+    return c.json({ error: "already_subscribed" }, 409);
   }
 
   const origin = new URL(c.req.url).origin;

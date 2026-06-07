@@ -49,6 +49,23 @@ export function resolveBillingStatus(
   };
 }
 
+// Stripe's two *terminal* subscription statuses — no open invoice now, none
+// in future — so a fresh Checkout is the only path back (re-subscribe). Every
+// other status means a live subscription still exists, including `incomplete`
+// (its first invoice stays payable for 23h before it expires) and `unpaid` /
+// `paused`; tier changes for those go through the Billing Portal (Stripe
+// prorates), since a second `mode: 'subscription'` Checkout opens a brand-new
+// Stripe customer + parallel subscription and double-bills (SK-STRIPE-010).
+export const CHECKOUT_REOPEN_STATUSES = new Set(["canceled", "incomplete_expired"]);
+
+// True when an existing `customers.status` must block a new Checkout. Reads
+// fail-safe: a missing row (never subscribed) allows checkout, and any
+// non-terminal — including an unrecognized future Stripe status — blocks it,
+// so a duplicate subscription can never slip through.
+export function blocksNewCheckout(status: string | null | undefined): boolean {
+  return status != null && !CHECKOUT_REOPEN_STATUSES.has(status);
+}
+
 // Maps a Stripe price ID back to a tier name. "unknown" when the row has
 // no price yet (status `incomplete` between checkout and
 // subscription.created) or the env price IDs are unset/unrecognized — the
