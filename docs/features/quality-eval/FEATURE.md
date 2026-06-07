@@ -12,7 +12,7 @@ when-to-load:
 # Feature: Quality Eval
 
 **One-liner:** NL-to-SQL accuracy benchmarking — three-dataset canon (BIRD-dev + Spider 2.0-lite SQLite subset + internal `db.create` eval per [`SK-QUAL-003`](#sk-qual-003)) against the LLM router's free / BYOLLM / hosted-premium lanes; the **free-vs-agentic-frontier delta** (`SK-QUAL-004`) is the headline KPI for [`GLOBAL-025`](../../decisions/GLOBAL-025-north-star.md)'s engine north-star.
-**Status:** **Phase 2 — slices 1 + 2 + 3a + 3b + 3c shipped.** Slices 1 + 2 (BIRD Mini-Dev runner + EX scorer + free / single-model-frontier lanes; baseline diff against `tools/eval/baseline-2026-06-15.json`; McNemar per `SK-QUAL-006`; `feature.eval.{weekly,regression}` via `POST /v1/events/eval` → Queues → LogSnag `#north-star`; weekly Mon 04:00 UTC cron) ran end-to-end on `main`. Slice 3a (`SK-QUAL-007`) the Spider 2.0-lite loader; 3b (`SK-QUAL-008`) the canonical multi-CSV comparator; 3c (`SK-QUAL-009`) the `withExecRetry` scaffold + `agentic-frontier` lane + the `free_vs_agentic_frontier_delta` KPI — mechanics in each SK block below. PR CI typechecks + unit-tests with a mocked router and cached fixtures; real provider keys never fire on a PR. **Remaining for the Phase 2 exit gate:** internal `db.create` accepted-answer eval (depends on a privacy-stripped R2 export) and first weekly measurement of the new lane to seed `baseline-2026-06-15.json` + `apps/api/src/gate/eval-baseline.ts`. Promotion of [`docs/future/semantic-layer.md`](../../future/semantic-layer.md) still depends on this harness.
+**Status:** **Phase 2 — slices 1 + 2 + 3a + 3b + 3c shipped.** Slices 1 + 2 (BIRD Mini-Dev runner + EX scorer + free / single-model-frontier lanes; baseline diff against `tools/eval/baseline-2026-06-15.json`; McNemar per `SK-QUAL-006`; `feature.eval.{weekly,regression}` via `POST /v1/events/eval` → Queues → LogSnag `#north-star`; weekly Mon 04:00 UTC cron) ran end-to-end on `main`. Slice 3a (`SK-QUAL-007`) the Spider 2.0-lite loader; 3b (`SK-QUAL-008`) the canonical multi-CSV comparator; 3c (`SK-QUAL-009`) the `withExecRetry` scaffold + `agentic-frontier` lane + the `free_vs_agentic_frontier_delta` KPI — mechanics in each SK block below. PR CI typechecks + unit-tests with a mocked router and cached fixtures; real provider keys never fire on a PR. The runner is **resumable** (`SK-QUAL-011`) and runs on a **weekly canonical baseline + capped 4h smoke** cadence (`SK-QUAL-002`). **Remaining for the Phase 2 exit gate:** internal `db.create` accepted-answer eval (depends on a privacy-stripped R2 export) and first weekly measurement of the new lane to seed `baseline-2026-06-15.json` + `apps/api/src/gate/eval-baseline.ts`. Promotion of [`docs/future/semantic-layer.md`](../../future/semantic-layer.md) still depends on this harness.
 
 **Contribution to north-star:** Engine quality, NL→SQL layer — this feature IS the measurement instrument. The three-dataset canon (`SK-QUAL-003`) feeds the BIRD-dev / Spider 2.0-lite KPIs and the free-vs-frontier delta in the [`GLOBAL-025`](../../decisions/GLOBAL-025-north-star.md) KPI table; the weekly cron in `SK-QUAL-002` is the alert-and-decision input.
 **Owners (code):** `tools/eval/**`, `packages/llm/**`, `.github/workflows/quality-eval-bird-mini.yml`
@@ -32,9 +32,10 @@ when-to-load:
   - `src/datasets/bird-mini.ts` — HuggingFace `birdsql/bird_mini_dev` loader
   - `src/datasets/spider2-lite.ts` — Spider 2.0-lite SQLite-subset loader (`SK-QUAL-007` + `SK-QUAL-008`); hydrates per-instance gold CSV(s) + `condition_cols` / `ignore_order` from `xlang-ai/Spider2@main` (HF mirror is stale per 2026-05-19 verification)
   - `src/output.ts` — JSON report writer
+  - `src/checkpoint.ts` — resumable-runner checkpoint (load / append / complete) per `SK-QUAL-011`
   - `baseline-2026-06-15.json` — pinned canonical baseline (`SK-QUAL-005`)
-- `.github/workflows/quality-eval-bird-mini.yml` — BIRD Mini-Dev weekly cron, Mon 04:00 UTC + manual dispatch (`include_agentic_frontier` toggle wires `RUN_AGENTIC_FRONTIER=1` per `SK-QUAL-009`)
-- `.github/workflows/quality-eval-spider2-lite.yml` — Spider 2.0-lite weekly cron, Tue 04:00 UTC + manual dispatch (`SK-QUAL-007` + `SK-QUAL-009` agentic toggle)
+- `.github/workflows/quality-eval-bird-mini.yml` — BIRD: weekly full cron (Mon 04:00 UTC) + capped 4h `smoke` job (`SK-QUAL-011`) + manual dispatch (`include_agentic_frontier` → `RUN_AGENTIC_FRONTIER=1` per `SK-QUAL-009`)
+- `.github/workflows/quality-eval-spider2-lite.yml` — Spider: weekly full cron (Tue 04:00 UTC) + capped 4h `smoke` job + manual dispatch (`SK-QUAL-007` + `SK-QUAL-009` agentic toggle)
 - `apps/api/src/events-feature.ts::recordEvalReport` — bearer-token cron ingestion
 - `apps/api/src/index.ts` — `POST /v1/events/eval` route wiring
 - `packages/events/src/types.ts` — `FeatureEvalWeeklyEvent`, `FeatureEvalRegressionEvent`
@@ -95,15 +96,30 @@ shipped free + single-model-frontier; agentic lane lands in slice 3c with
   - No baseline date — "soon" never happens.
   - Baseline floor = whatever first measurement returns — ratchets us into accepting bad numbers as the new normal.
 
-### SK-QUAL-002 — Eval is a weekly cron, not a PR gate; thresholds drive *decisions*, not *merges*
+### SK-QUAL-002 — Eval cadence: weekly canonical baseline + capped 4h smoke; never a PR gate
 
 **Body:** [`decisions/SK-QUAL-002-weekly-cron.md`](./decisions/SK-QUAL-002-weekly-cron.md).
-Weekly Mon 04:00 UTC GitHub Actions cron (Workers Cron CPU + wall-clock
-limits rule it out). Regression alerts fire on **either** EA delta ≤ -5
-pp **or** McNemar p < 0.05 (`SK-QUAL-006`); both report separately.
-Runner POSTs `POST /v1/events/eval` with a bearer token; the API emits
-`feature.eval.weekly` always + one `feature.eval.regression` per
-(lane, trigger) through the canonical Cloudflare Queues → LogSnag pipeline.
+Two scheduled cadences, never per-PR/per-merge: the **weekly full pass**
+(BIRD Mon / Spider Tue 04:00 UTC) is canonical — diffs the baseline +
+emits `feature.eval.weekly` / `feature.eval.regression` (EA delta ≤ -5 pp
+**or** McNemar p < 0.05, `SK-QUAL-006`). A **capped 4h smoke** runs a
+fixed sampled slice (`--sample-seed`) only on engine change since
+`last_eval_sha` (≤6/day; `concurrency` coalesces onto latest HEAD),
+never emits, never overwrites the baseline. Decoupling cadence from merge
+volume avoids blowing the shared 1M/day free-tier cap; resilience via
+[`SK-QUAL-011`](#sk-qual-011).
+
+### SK-QUAL-011 — Resumable runner: checkpoint + budget-stop so a run survives a free-tier daily token cap
+
+**Body:** [`decisions/SK-QUAL-011-resumable-runner.md`](./decisions/SK-QUAL-011-resumable-runner.md).
+`tools/eval/src/checkpoint.ts` writes one JSONL line per scored
+`(question_id, lane)` pair; `runEval` skips done pairs and appends as it
+goes (deterministic `--sample-seed` order). When the whole chain is
+rate-limited (`AllProvidersFailedError` all-`rate_limited`, the
+[`SK-LLM-030`](../llm-router/decisions/SK-LLM-030-rate-limit-aware-failover.md)
+contract) the run **budget-stops**: keeps the checkpoint, marks the report
+`resumable: true`, doesn't emit, exits 0; the next dispatch resumes.
+Checkpoint + `last_eval_sha` persist via `actions/cache`.
 
 ### SK-QUAL-006 — McNemar's paired-binary test as a parallel regression trigger
 
@@ -174,7 +190,18 @@ Canonical text in [`docs/decisions/`](../../decisions/).
 ## Open questions / known unknowns
 
 - **Privacy** — Decided: no user data ever flows into the eval harness. The harness is for public benchmark data only (BIRD, Spider). Any PR that adds production schema sampling is a security defect.
-- **Validator integration.** **Resolved in slice 3c per [`SK-QUAL-009`](#sk-qual-009).** The eval harness now wraps `plan() → score()` in `withExecRetry` (`tools/eval/src/exec-retry.ts`) — bounded at the production retry budget (3 attempts per `apps/api/src/ask/retry.ts::RETRY_MAX_ATTEMPTS`), exec-error-only, threading `PlanRequest.previousAttempt` end-to-end. The inference-time exec-retry evidence base: **MAC-SQL's Refiner +4.63 pp on BIRD-dev EX ablation** ([arXiv:2312.11242](https://arxiv.org/html/2312.11242v2) §6.2 / Table 3, 54.76% → 59.39% with Refiner on), **CHESS's iterative Unit Tester** ([arXiv:2405.16755](https://arxiv.org/html/2405.16755v1), 65–71% BIRD), **MAGIC's in-context self-correction guidelines** ([arXiv:2406.12692](https://arxiv.org/pdf/2406.12692)), and **smolagents CodeAgent's ReAct loop**. **Earlier doc citation corrected 2026-05:** RetrySQL ([arXiv:2507.02529](https://arxiv.org/html/2507.02529v2)) is a **training-time** data-augmentation method (corrupted reasoning steps + `[BACK]` retry token during pre-training), **not inference-time exec-retry** — the +4 pp number is the training-time improvement on small open-source models. Self-consistency-N-vote and LLM-critic ensembles remain dominated at 2× cost ([Agentar-Scale-SQL arXiv:2509.24403](https://arxiv.org/abs/2509.24403), [CSC-SQL arXiv:2505.13271](https://arxiv.org/html/2505.13271v2)). The `sqlglot` pre-check is deliberately omitted — `bun:sqlite` exec raises on syntax errors directly, so a separate parse step is dead code at the eval layer.
-- **Hosted-premium / agentic-frontier lane.** **Slice 3c shipped per [`SK-QUAL-009`](#sk-qual-009)** — `agentic-frontier` lane wraps the existing single-model frontier provider in `withExecRetry` (opt-in via `RUN_AGENTIC_FRONTIER=1`), unscaffolded `frontier` retained as the ablation reference. The first weekly run with the opt-in toggle on seeds the new lane's row in `baseline-2026-06-15.json` and the gate's `apps/api/src/gate/eval-baseline.ts`. **Still open:** multi-model frontier expansion (GPT-5 + Gemini 2.5 Pro as separate provider entries so per-model accuracy is visible) — deferrable until the Sonnet 4.6 baseline lands. BYOLLM-lane instrumentation still depends on `SK-LLM-016` shipping.
-- **Spider 2.0-lite multi-CSV result-set scorer (slice 3b).** **Shipped** per [`SK-QUAL-008`](#sk-qual-008) — all 135 `local###` rows score via the canonical column-major comparator with per-instance `condition_cols` / `ignore_order` from `spider2lite_eval.jsonl`. Follow-up: pin a `xlang-ai/Spider2` commit SHA in the next Spider baseline snapshot so leaderboard churn shows up as a visible PR diff (placeholder under `SK-QUAL-005`).
-- **Corrected-set evaluation (VLDB/CIDR 2026 — `uiuc-kang-lab/text_to_sql_benchmarks`).** Two 2026 papers from the UIUC Kang group ([arXiv:2601.08778](https://arxiv.org/abs/2601.08778)) showed 52.8% (263/498) annotation errors in BIRD Mini-Dev and ship two corrected variants (`Arcwise-Plat-SQL` corrects only SQL; `Arcwise-Plat` corrects SQL + ambiguities + schema). Methodology: the canonical paper uses **Spearman's rank correlation** (rs ≈ 0.32, p ≈ 0.23 between original and corrected leaderboard rankings) for the dataset-vs-dataset comparison — McNemar is wrong here because the gold labels differ. Decide whether slice 3 should evaluate against *both* the canonical and corrected sets and report Spearman-correlation deltas — yes if it's a 50-LOC patch (load the second JSON, join by `question_id`, plumb the corrected gold through the same scorer); no if licensing is unclear. Lean: yes, with a license check on the corrected JSON before bundling.
+- **Deferred: a dedicated `feature.eval.smoke` event.** The 4h smoke
+  cadence (`SK-QUAL-002`) produces a CI artifact + run-summary table and
+  does **not** emit, keeping the weekly dashboard uncontaminated. A
+  first-class `feature.eval.smoke` event touches `packages/events`,
+  `recordEvalReport`, and the LogSnag sink — out of proportion to the
+  immediate need; promote when a smoke dashboard is actually wanted.
+- **Deferred: a hard token-budget counter in the runner.** Today the
+  budget guard is W2's rate-limit signal (a 429-saturated chain
+  budget-stops via `SK-QUAL-011`) plus the changed-since-`last_eval_sha`
+  gate. A pre-emptive per-day token ceiling is parked — we don't know each
+  free tier's true limit, and the reactive stop is self-calibrating.
+- **Validator integration.** **Resolved in slice 3c per [`SK-QUAL-009`](#sk-qual-009)** — `withExecRetry` wraps `plan() → score()`, bounded at the production retry budget (exec-error-only, threads `PlanRequest.previousAttempt`). Evidence base (MAC-SQL Refiner, CHESS, MAGIC; RetrySQL-is-training-time correction) in the SK-QUAL-009 body.
+- **Hosted-premium / agentic-frontier lane.** **Slice 3c shipped per [`SK-QUAL-009`](#sk-qual-009)** — `agentic-frontier` wraps the single-model frontier provider in `withExecRetry` (opt-in `RUN_AGENTIC_FRONTIER=1`); unscaffolded `frontier` stays the ablation reference. **Still open:** multi-model frontier expansion (GPT-5 + Gemini 2.5 Pro as separate provider entries) — deferrable until the Sonnet 4.6 baseline lands; BYOLLM-lane instrumentation still depends on `SK-LLM-016`.
+- **Spider 2.0-lite multi-CSV result-set scorer (slice 3b).** **Shipped** per [`SK-QUAL-008`](#sk-qual-008). Follow-up: pin a `xlang-ai/Spider2` commit SHA in the next Spider baseline so leaderboard churn shows up as a visible PR diff (placeholder under `SK-QUAL-005`).
+- **Corrected-set evaluation (VLDB/CIDR 2026 — `uiuc-kang-lab/text_to_sql_benchmarks`).** UIUC Kang ([arXiv:2601.08778](https://arxiv.org/abs/2601.08778)) found 52.8% annotation errors in BIRD Mini-Dev and ship two corrected variants. Open: evaluate against *both* canonical and corrected sets, reporting Spearman-rank deltas (not McNemar — gold labels differ). Lean yes if it's a ~50-LOC patch (join by `question_id`, same scorer) and the corrected JSON's license permits bundling.

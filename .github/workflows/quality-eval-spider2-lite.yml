@@ -9,11 +9,17 @@
 name: Quality eval — Spider 2.0-lite
 
 on:
-  # Weekly Tue 04:00 UTC — one day after BIRD's Monday slot per
-  # quality-eval-bird-mini.yml. Tuesday gives the free-tier providers
-  # a 24h gap so a Monday outage doesn't poison the Spider run.
   schedule:
+    # Weekly Tue 04:00 UTC — canonical full baseline, one day after BIRD's
+    # Monday slot. Tuesday gives the free-tier providers a 24h gap so a
+    # Monday outage doesn't poison the Spider run.
     - cron: "0 4 * * 2"
+    # SK-QUAL-011 — smoke cadence, every 4h offset by 30 min from BIRD so
+    # the two smoke runs don't collide on the shared free-tier RPM ceiling
+    # (concurrency below already serialises within this workflow). Runs the
+    # sampled slice only if engine files changed since the last measured
+    # SHA, or a checkpoint is pending.
+    - cron: "30 */4 * * *"
   workflow_dispatch:
     inputs:
       limit:
@@ -36,8 +42,9 @@ on:
 permissions:
   contents: read
 
-# Allow only one run at a time — same rationale as BIRD: provider
-# rate limits + the shared cache key.
+# SK-QUAL-011 — coalesce queued windows onto latest HEAD; not
+# cancel-in-progress (let a half-finished run complete). Same rationale
+# as BIRD.
 concurrency:
   group: quality-eval-spider2-lite
   cancel-in-progress: false
@@ -45,6 +52,8 @@ concurrency:
 jobs:
   run:
     name: Run Spider 2.0-lite SQLite
+    # Weekly full baseline + manual dispatch; the 4h smoke is the `smoke` job.
+    if: github.event.schedule != '30 */4 * * *'
     runs-on: ubuntu-latest
     # 135 questions × ~1s p50 × N lanes is ~5 min; LLM tail can push
     # to ~15 min. 60 min ceiling absorbs single-provider degradation.
@@ -181,3 +190,136 @@ jobs:
               "Note (SK-QUAL-008): all 135 `local###` rows now score via the canonical Spider 2.0 multi-CSV evaluator (column-major comparator, 1e-2 abs tolerance, per-instance `condition_cols` / `ignore_order`). `gold_error` here means the instance had no gold CSV in the cached `evaluation_suite/gold/exec_result/` tree, not a routing short-circuit."
             ' "$latest"
           } >> "$GITHUB_STEP_SUMMARY"
+
+  # SK-QUAL-011 — sampled smoke slice, every 4h, gated + resumable.
+  smoke:
+    name: Smoke EX (sampled, SK-QUAL-011)
+    if: github.event.schedule == '30 */4 * * *'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    # Fixed smoke slice (SK-QUAL-011) — same seed + limit every run.
+    env:
+      SMOKE_SEED: "20260607"
+      SMOKE_LIMIT: "40"
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/setup
+
+      - name: Cache Spider 2.0-lite fixtures
+        id: spider2-cache
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: spider2_data
+          key: spider2-lite-v2-${{ hashFiles('.github/workflows/quality-eval-spider2-lite.yml') }}
+
+      - name: Download Spider 2.0-lite (when cache miss)
+        if: steps.spider2-cache.outputs.cache-hit != 'true'
+        run: |
+          set -euo pipefail
+          mkdir -p spider2_data/resource/databases/spider2-localdb
+          tmp_clone=$(mktemp -d)
+          git clone --depth 1 --filter=blob:none --sparse \
+            https://github.com/xlang-ai/Spider2 "$tmp_clone"
+          (cd "$tmp_clone" && git sparse-checkout set spider2-lite/evaluation_suite/gold)
+          mkdir -p spider2_data/evaluation_suite
+          cp -r "$tmp_clone/spider2-lite/evaluation_suite/gold" spider2_data/evaluation_suite/gold
+          cp "$tmp_clone/spider2-lite/spider2-lite.jsonl" spider2_data/spider2-lite.jsonl
+          rm -rf "$tmp_clone"
+          pip install --quiet --user gdown
+          ~/.local/bin/gdown --fuzzy \
+            "https://drive.google.com/file/d/1coEVsCZq-Xvj9p2TnhBFoFTsY-UoYGmG/view?usp=sharing" \
+            -O spider2_data/spider2-localdb.zip
+          unzip -q spider2_data/spider2-localdb.zip -d spider2_data/resource/databases/spider2-localdb
+          rm -f spider2_data/spider2-localdb.zip
+
+      - name: Restore eval state
+        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: eval-state
+          key: eval-state-spider-${{ github.run_id }}
+          restore-keys: |
+            eval-state-spider-
+
+      - name: Smoke run (gated + resumable)
+        id: smoke
+        env:
+          CEREBRAS_API_KEY: ${{ secrets.CEREBRAS_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          CF_AI_TOKEN: ${{ secrets.CF_AI_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
+        run: |
+          set -euo pipefail
+          mkdir -p eval-state
+          last_sha="$(cat eval-state/last_eval_sha 2>/dev/null || true)"
+          pending=""
+          if ls eval-state/*.smoke.partial.jsonl >/dev/null 2>&1; then pending=1; fi
+          changed=1
+          if [ -n "$last_sha" ] && [ -z "$pending" ]; then
+            if git diff --quiet "$last_sha" HEAD -- packages/llm tools/eval; then changed=""; fi
+          fi
+          if [ -z "$pending" ] && [ -z "$changed" ]; then
+            echo "No engine change since ${last_sha} and no pending checkpoint — skipping smoke."
+            echo "status=skipped" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          bun tools/eval/src/runner.ts \
+            --dataset spider2-lite-sqlite \
+            --data-dir spider2_data \
+            --limit "$SMOKE_LIMIT" --sample-seed "$SMOKE_SEED" \
+            --out eval-state
+          latest=$(ls -t eval-state/*.json | head -1)
+          if jq -e '.resumable == true' "$latest" >/dev/null 2>&1; then
+            echo "Budget stop — checkpoint kept; next window resumes. last_eval_sha unchanged."
+            echo "status=resumable" >> "$GITHUB_OUTPUT"
+          else
+            git rev-parse HEAD > eval-state/last_eval_sha
+            echo "status=completed" >> "$GITHUB_OUTPUT"
+          fi
+          echo "report=$latest" >> "$GITHUB_OUTPUT"
+
+      - name: Smoke summary
+        if: steps.smoke.outputs.status != 'skipped'
+        run: |
+          set -euo pipefail
+          latest="${{ steps.smoke.outputs.report }}"
+          {
+            echo "## quality-eval — Spider smoke (sampled ${SMOKE_LIMIT}, seed ${SMOKE_SEED})"
+            echo ""
+            echo "Status: ${{ steps.smoke.outputs.status }}"
+            if [ -n "$latest" ] && [ -f "$latest" ]; then
+              jq -r '
+                "Run at: " + .run_at,
+                (if .resumable == true then "Resumable: true (chain rate-limited)" else "" end),
+                "",
+                "| Lane | Match | Attempted | Smoke EX |",
+                "|---|---|---|---|",
+                (.lanes[] | "| " + .lane + " | " + (.match | tostring) + " | " + (.attempted | tostring) + " | " + ((.execution_accuracy * 100 | tostring) + "%") + " |")
+              ' "$latest"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload smoke report
+        if: steps.smoke.outputs.status != 'skipped'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: quality-eval-spider2-smoke-${{ github.run_id }}
+          path: eval-state/*.json
+          retention-days: 30
+
+      - name: Prune reports from eval state
+        if: always()
+        run: |
+          set -euo pipefail
+          find eval-state -maxdepth 1 -name '*.json' -delete 2>/dev/null || true
+
+      - name: Save eval state
+        if: always()
+        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: eval-state
+          key: eval-state-spider-${{ github.run_id }}

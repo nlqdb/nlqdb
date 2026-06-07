@@ -1,19 +1,26 @@
 # quality-eval — BIRD Mini-Dev (SQLite) free-vs-frontier run.
-# SK-QUAL-002: weekly cron, not a PR gate. The harness output drives
-# decisions (semantic-layer promotion, regression alerting), not merges.
-# Engine north-star instrument per GLOBAL-025 / SK-QUAL-005 — baseline
-# JSON must exist by 2026-06-15 for the Phase 2 exit gate.
+# SK-QUAL-002: the canonical weekly cron + a capped 4h "smoke" cadence;
+# neither is a PR gate. The harness output drives decisions
+# (semantic-layer promotion, regression alerting), not merges. Engine
+# north-star instrument per GLOBAL-025 / SK-QUAL-005 — baseline JSON must
+# exist by 2026-06-15 for the Phase 2 exit gate. The resumable runner is
+# SK-QUAL-011.
 
 name: Quality eval — BIRD Mini-Dev
 
 on:
-  # Weekly Mon 04:00 UTC per SK-QUAL-002 (BIRD/Spider move on the scale
-  # of model releases; weekly is enough cadence to catch real
-  # regressions without burning free-tier daily provider quotas). 04:00
-  # UTC sits in the cross-region quiet window between US/EU traffic
-  # peaks. Monday gives the EU work-week the freshest signal.
   schedule:
+    # Weekly Mon 04:00 UTC — the canonical full 500-question baseline
+    # (SK-QUAL-002). 04:00 UTC sits in the cross-region quiet window;
+    # Monday gives the EU work-week the freshest signal.
     - cron: "0 4 * * 1"
+    # SK-QUAL-011 — smoke cadence, every 4h (≤6/day). Decoupled from merge
+    # volume: each window runs the sampled slice ONLY if engine files
+    # changed since the last measured SHA (or a checkpoint is pending), so
+    # 20 merges/day still cost ≤6 runs. `concurrency` below coalesces
+    # queued windows onto latest HEAD. Smoke never emits and never
+    # overwrites the canonical baseline.
+    - cron: "0 */4 * * *"
   workflow_dispatch:
     inputs:
       limit:
@@ -36,8 +43,11 @@ on:
 permissions:
   contents: read
 
-# Allow only one run at a time — provider rate limits + downloaded
-# fixtures cache shared via R2 (future) mean concurrent runs interfere.
+# SK-QUAL-011 — coalesce: at most one eval runs at a time; queued
+# triggers collapse onto a single run against latest HEAD (never two
+# evals competing for the shared free-tier budget). NOT cancel-in-progress
+# — a half-finished run is worth letting complete; collapse the queue
+# behind it.
 concurrency:
   group: quality-eval-bird-mini
   cancel-in-progress: false
@@ -45,6 +55,9 @@ concurrency:
 jobs:
   run:
     name: Run BIRD Mini-Dev
+    # Weekly full baseline + manual dispatch. The 4h smoke cadence runs in
+    # the `smoke` job below.
+    if: github.event.schedule != '0 */4 * * *'
     runs-on: ubuntu-latest
     # 500 questions × ~1s p50 latency × N lanes = ~10 min; bigger LLM
     # tail can push to ~25 min. The 60 min ceiling absorbs single-
@@ -205,3 +218,156 @@ jobs:
               ' "$latest"
             fi
           } >> "$GITHUB_STEP_SUMMARY"
+
+  # SK-QUAL-011 — sampled smoke slice, every 4h, gated + resumable.
+  smoke:
+    name: Smoke EX (sampled, SK-QUAL-011)
+    if: github.event.schedule == '0 */4 * * *'
+    runs-on: ubuntu-latest
+    # 150-question sample × free chain ≈ a few min; the ceiling absorbs a
+    # slow-provider tail. A budget stop (chain rate-limited) exits early.
+    timeout-minutes: 30
+    # Fixed smoke slice (SK-QUAL-011): same seed + limit every run so the
+    # smoke EX is a stable run-to-run signal, not noise from a new slice.
+    env:
+      SMOKE_SEED: "20260607"
+      SMOKE_LIMIT: "150"
+    steps:
+      # Full history so `git diff <last_eval_sha> HEAD` resolves an old SHA.
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/setup
+
+      - name: Cache BIRD Mini-Dev fixtures
+        id: bird-cache
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: bird_data
+          key: bird-mini-dev-v2-${{ hashFiles('.github/workflows/quality-eval-bird-mini.yml') }}
+
+      - name: Download BIRD Mini-Dev (when cache miss)
+        if: steps.bird-cache.outputs.cache-hit != 'true'
+        run: |
+          set -euo pipefail
+          mkdir -p bird_data
+          curl -fsSL \
+            "https://huggingface.co/datasets/birdsql/bird_mini_dev/resolve/main/data/mini_dev_sqlite-00000-of-00001.json" \
+            -o bird_data/mini_dev_sqlite.json
+          pip install --quiet --user gdown
+          ~/.local/bin/gdown --fuzzy \
+            "https://drive.google.com/file/d/13VLWIwpw5E3d5DUkMvzw7hvHE67a4XkG/view?usp=sharing" \
+            -O bird_data/mini_dev_v2.zip
+          unzip -q bird_data/mini_dev_v2.zip -d bird_data
+          if [ ! -d bird_data/dev_databases ]; then
+            found=$(find bird_data -maxdepth 3 -name "dev_databases" -type d | head -1)
+            if [ -z "$found" ]; then
+              echo "::error::dev_databases/ not found in BIRD Mini-Dev download"
+              exit 1
+            fi
+            ln -s "$(realpath "$found")" bird_data/dev_databases
+          fi
+          rm -f bird_data/mini_dev_v2.zip
+
+      # SK-QUAL-011 — eval state persists across smoke windows: the
+      # checkpoint (`*.smoke.partial.jsonl`) + `last_eval_sha`. Rolling
+      # key (run_id) + restore-keys prefix gives the standard
+      # restore-latest / save-new cache pattern.
+      - name: Restore eval state
+        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: eval-state
+          key: eval-state-bird-${{ github.run_id }}
+          restore-keys: |
+            eval-state-bird-
+
+      - name: Smoke run (gated + resumable)
+        id: smoke
+        env:
+          CEREBRAS_API_KEY: ${{ secrets.CEREBRAS_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          CF_AI_TOKEN: ${{ secrets.CF_AI_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
+        run: |
+          set -euo pipefail
+          mkdir -p eval-state
+          last_sha="$(cat eval-state/last_eval_sha 2>/dev/null || true)"
+          pending=""
+          if ls eval-state/*.smoke.partial.jsonl >/dev/null 2>&1; then pending=1; fi
+          # Gate: skip unless engine files changed since the last measured
+          # SHA, or a checkpoint is pending (a budget-stopped run to finish).
+          changed=1
+          if [ -n "$last_sha" ] && [ -z "$pending" ]; then
+            if git diff --quiet "$last_sha" HEAD -- packages/llm tools/eval; then changed=""; fi
+          fi
+          if [ -z "$pending" ] && [ -z "$changed" ]; then
+            echo "No engine change since ${last_sha} and no pending checkpoint — skipping smoke."
+            echo "status=skipped" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          # Smoke never emits and never touches the canonical baseline; the
+          # checkpoint + report land in eval-state/ so the cache persists them.
+          bun tools/eval/src/runner.ts \
+            --data-dir bird_data \
+            --questions-json bird_data/mini_dev_sqlite.json \
+            --limit "$SMOKE_LIMIT" --sample-seed "$SMOKE_SEED" \
+            --out eval-state
+          latest=$(ls -t eval-state/*.json | head -1)
+          if jq -e '.resumable == true' "$latest" >/dev/null 2>&1; then
+            # Budget stop (W2 rate-limit signal saturated the chain). Keep
+            # the checkpoint; do NOT advance last_eval_sha — the next 4h
+            # window resumes and finishes this SHA.
+            echo "Budget stop — checkpoint kept; next window resumes. last_eval_sha unchanged."
+            echo "status=resumable" >> "$GITHUB_OUTPUT"
+          else
+            git rev-parse HEAD > eval-state/last_eval_sha
+            echo "status=completed" >> "$GITHUB_OUTPUT"
+          fi
+          echo "report=$latest" >> "$GITHUB_OUTPUT"
+
+      - name: Smoke summary
+        if: steps.smoke.outputs.status != 'skipped'
+        run: |
+          set -euo pipefail
+          latest="${{ steps.smoke.outputs.report }}"
+          {
+            echo "## quality-eval — BIRD smoke (sampled ${SMOKE_LIMIT}, seed ${SMOKE_SEED})"
+            echo ""
+            echo "Status: ${{ steps.smoke.outputs.status }}"
+            if [ -n "$latest" ] && [ -f "$latest" ]; then
+              jq -r '
+                "Run at: " + .run_at,
+                (if .resumable == true then "Resumable: true (chain rate-limited)" else "" end),
+                "",
+                "| Lane | Match | Attempted | Smoke EX |",
+                "|---|---|---|---|",
+                (.lanes[] | "| " + .lane + " | " + (.match | tostring) + " | " + (.attempted | tostring) + " | " + ((.execution_accuracy * 100 | tostring) + "%") + " |")
+              ' "$latest"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload smoke report
+        if: steps.smoke.outputs.status != 'skipped'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: quality-eval-bird-smoke-${{ github.run_id }}
+          path: eval-state/*.json
+          retention-days: 30
+
+      # Prune full reports before caching so eval-state only carries the
+      # checkpoint + last_eval_sha across windows (reports are in the artifact).
+      - name: Prune reports from eval state
+        if: always()
+        run: |
+          set -euo pipefail
+          find eval-state -maxdepth 1 -name '*.json' -delete 2>/dev/null || true
+
+      - name: Save eval state
+        if: always()
+        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: eval-state
+          key: eval-state-bird-${{ github.run_id }}
