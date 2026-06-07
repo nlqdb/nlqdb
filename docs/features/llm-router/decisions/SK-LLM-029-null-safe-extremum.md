@@ -10,9 +10,10 @@ Neither is superseded.
 - **Decision:** `PLAN_DIRECTIVES` (`packages/llm/src/prompts.ts`) gains one
   result-correctness bullet after the REAL-cast bullet: "When selecting a
   single extreme row by ordering (`ORDER BY <col> ... LIMIT`), exclude NULLs
-  in the ordered column (`WHERE <col> IS NOT NULL`): in SQLite a NULL sorts
-  before every value, so an ascending LIMIT would return a NULL as a false
-  minimum." The `SK-LLM-026` exemplar 3 is refit from a `GROUP BY ... ORDER BY
+  in the ordered column (`WHERE <col> IS NOT NULL`) — a NULL is never the
+  intended extreme value, and in SQLite a NULL sorts before every value, so
+  an ascending LIMIT would return one as a false minimum." The `SK-LLM-026`
+  exemplar 3 is refit from a `GROUP BY ... ORDER BY
   SUM(amount) DESC LIMIT 1` aggregation to a direct extremum that demonstrates
   the new rule — `SELECT id FROM products WHERE price IS NOT NULL ORDER BY
   price ASC LIMIT 1` (still postgres dialect, still single-column projection,
