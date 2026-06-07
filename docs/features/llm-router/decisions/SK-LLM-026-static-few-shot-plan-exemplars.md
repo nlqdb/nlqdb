@@ -15,9 +15,10 @@ Parent feature: [`llm-router/FEATURE.md`](../FEATURE.md).
   (2) applying a goal's `Evidence:` formula end-to-end (exemplar 2);
   (3) **dialect-strict** output for the named dialect — exemplar 3's
   `Dialect:` line is `postgres` while 1–2 are `sqlite`, so the model sees
-  the dialect line as a variable to honour, and the top-N idiom it shows
-  (`GROUP BY … ORDER BY <agg> DESC LIMIT 1`) is the `LIMIT`-not-`TOP`
-  form the directive demands for postgres; (4) the strict-JSON,
+  the dialect line as a variable to honour, and the extremum idiom it shows
+  (`WHERE col IS NOT NULL … ORDER BY col ASC LIMIT 1`) is the
+  `LIMIT`-not-`TOP` form the directive demands for postgres and carries the
+  `SK-LLM-029` NULL guard; (4) the strict-JSON,
   no-trailing-semicolon shape, carried by every answer. The set is
   **static** — not similarity-retrieved — and every exemplar SQL is valid
   on both SQLite and Postgres (the two dialects the one shared prompt
@@ -48,7 +49,7 @@ Parent feature: [`llm-router/FEATURE.md`](../FEATURE.md).
   or any wire format. `packages/llm/test/prompts.test.ts` pins the
   contract: exactly three exemplars, every answer line parses as strict
   JSON `{sql}` with no trailing semicolon, the verbatim-casing / Evidence
-  / top-N demonstrations are present, and directives precede examples.
+  / NULL-safe-extremum demonstrations are present, and directives precede examples.
   The few-shot block is a **fixed prefix**, so it is cache-friendly under
   [`SK-LLM-009`](./SK-LLM-009-prompt-caching.md) on providers that support
   prompt caching. **Cost / capacity tradeoff (honest):** the exemplars

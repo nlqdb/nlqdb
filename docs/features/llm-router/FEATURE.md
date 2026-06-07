@@ -198,6 +198,17 @@ the 3-strike path now covers 5xx/network/timeout. Reuses
 `nlqdb.llm.failover.total{reason}` + one `nlqdb.llm.retry_after_ms` span
 attr; `AllProvidersFailedError.attempts[]` is the eval's resume hook.
 
+### SK-LLM-029 — NULL-safe extremum ordering directive in the planner prompt
+
+**Body:** [`decisions/SK-LLM-029-null-safe-extremum.md`](./decisions/SK-LLM-029-null-safe-extremum.md).
+One `PLAN_DIRECTIVES` bullet for BIRD's dirty-data NULL trait
+([arXiv:2305.03111](https://arxiv.org/pdf/2305.03111)): when selecting a
+single extreme row (`ORDER BY <col> ... LIMIT`), filter the ranked column
+(`WHERE <col> IS NOT NULL`) — SQLite sorts NULL before every value, so an
+ascending LIMIT returns a NULL as a false minimum. Dialect-portable (postgres
+defaults `NULLS LAST`, so the filter is never harmful). `SK-LLM-026` exemplar
+3 refit to demonstrate it; prompt-only, ≈25 tokens, measured next cron.
+
 ## GLOBALs governing this feature
 
 Canonical text in [`docs/decisions/`](../../decisions/) (index in [`docs/decisions.md`](../../decisions.md)); feature-local commentary nested under each rule.

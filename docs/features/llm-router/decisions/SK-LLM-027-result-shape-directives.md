@@ -17,7 +17,7 @@ bullets in the same block, demonstrated by the
   `total_income` becomes `INTEGER` (so both ratio operands are integer) and
   its answer becomes `SELECT CAST(total_income AS REAL) / residents …`. The
   existing exemplars 1 and 3 already demonstrate (1) — `COUNT(*)` and a
-  single requested `customer_id`, never an extra column.
+  single requested `id`, never an extra column.
 - **Core value:** Engine quality, Free
 - **Why:** The two dominant non-`no_sql` failure classes in the 0.318
   free-chain BIRD-dev baseline (`tools/eval/baseline-2026-06-15.json`: 283

@@ -48,6 +48,14 @@ describe("PLAN_SYSTEM (SK-LLM-018 schema-fidelity directives)", () => {
     expect(PLAN_SYSTEM).toContain("CAST(x AS REAL) / y");
   });
 
+  it("carries the SK-LLM-029 NULL-safe extremum directive (false-minimum guard)", () => {
+    // ORDER BY ... LIMIT extremum selection must filter NULLs on the ranked column.
+    expect(PLAN_SYSTEM).toMatch(/exclude NULLs in the ordered column/);
+    expect(PLAN_SYSTEM).toContain("WHERE <col> IS NOT NULL");
+    // Names the SQLite mechanism so the rule is auditable, not cargo-culted.
+    expect(PLAN_SYSTEM).toMatch(/a NULL sorts before every value/);
+  });
+
   it("appends the SK-LLM-026 few-shot exemplars after the directives", () => {
     expect(PLAN_SYSTEM).toContain(PLAN_FEW_SHOT);
     // Directives must precede the examples so the contract is read first.
@@ -79,7 +87,7 @@ describe("PLAN_FEW_SHOT (SK-LLM-026 static few-shot exemplars)", () => {
     }
   });
 
-  it("demonstrates verbatim casing, the Evidence formula, and a top-N aggregation", () => {
+  it("demonstrates verbatim casing, the Evidence formula, and the NULL-safe extremum (SK-LLM-029)", () => {
     // Mixed-case + quoted identifiers carried verbatim (SK-LLM-018 casing rule).
     expect(PLAN_FEW_SHOT).toContain('"Album"');
     expect(PLAN_FEW_SHOT).toContain("ArtistId");
@@ -87,8 +95,9 @@ describe("PLAN_FEW_SHOT (SK-LLM-026 static few-shot exemplars)", () => {
     // SK-LLM-027 REAL cast since both operands are integer columns.
     expect(PLAN_FEW_SHOT).toMatch(/Evidence: income per resident = total_income \/ residents/);
     expect(PLAN_FEW_SHOT).toContain("CAST(total_income AS REAL) / residents");
-    // Top-N idiom: ORDER BY <agg> DESC LIMIT 1.
-    expect(PLAN_FEW_SHOT).toMatch(/ORDER BY SUM\(amount\) DESC LIMIT 1/);
+    // Extremum idiom with the SK-LLM-029 NULL filter on the ranked column:
+    // an ascending LIMIT must guard against NULLs sorting first in SQLite.
+    expect(PLAN_FEW_SHOT).toMatch(/WHERE price IS NOT NULL ORDER BY price ASC LIMIT 1/);
   });
 
   it("carries no code fences (the exemplars model the no-fence contract)", () => {
