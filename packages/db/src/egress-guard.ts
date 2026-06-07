@@ -122,15 +122,17 @@ export function guardEgressHost(host: string): EgressGuardResult {
 
 // A DNS resolver injected at the connect boundary. Workers has no `dns`
 // module, so the real implementation is a DNS-over-HTTPS lookup; tests pass a
-// stub. It returns every resolved address (A + AAAA) as text so each can be
-// re-classified by the synchronous guard. Injecting it keeps this module pure
-// and zero-dependency (`GLOBAL-021`, `GLOBAL-013`) and ships ahead of its
-// `connect.ts` callers, like the rest of the BYO connect-path primitive family.
+// stub. It must return every resolved address (A + AAAA) as a bare textual IP
+// — never a name — so each can be re-classified by the synchronous guard.
+// Injecting it keeps this module pure and zero-dependency (`GLOBAL-021`,
+// `GLOBAL-013`) and ships ahead of its `connect.ts` callers, like the rest of
+// the BYO connect-path primitive family.
 export type DnsResolver = (hostname: string) => Promise<string[]>;
 
 // The async half of `GLOBAL-035`: resolve a `needsDnsRecheck` host and re-run
-// the synchronous guard on every resolved address, closing the DNS-rebinding
-// window a pure check can't bound. A literal IP short-circuits (nothing left to
+// the synchronous guard on every resolved address, narrowing the DNS-rebinding
+// window a pure check can't bound (full closure needs the connector to pin to
+// these validated IPs — the resolve→connect TOCTOU item the BYO features track). A literal IP short-circuits (nothing left to
 // resolve). A name that resolves to *any* private/reserved address — or that
 // can't be resolved, resolves to nothing, or resolves to a non-address — is
 // rejected fail-closed and fail-loud (`GLOBAL-012`); an all-public resolve
