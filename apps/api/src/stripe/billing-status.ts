@@ -49,6 +49,21 @@ export function resolveBillingStatus(
   };
 }
 
+// Statuses where the prior subscription is terminal, so a fresh Checkout is
+// the right path (re-subscribe). Any OTHER status means a live subscription
+// still exists and tier changes must go through the Billing Portal (Stripe
+// prorates) — a second `mode: 'subscription'` Checkout would create a
+// parallel subscription and double-bill (SK-STRIPE-010).
+export const CHECKOUT_REOPEN_STATUSES = new Set(["canceled", "incomplete", "incomplete_expired"]);
+
+// True when an existing `customers.status` must block a new Checkout. Reads
+// fail-safe: a missing row (never subscribed) allows checkout, and any
+// non-terminal — including an unrecognized future Stripe status — blocks it,
+// so a duplicate subscription can never slip through.
+export function blocksNewCheckout(status: string | null | undefined): boolean {
+  return status != null && !CHECKOUT_REOPEN_STATUSES.has(status);
+}
+
 // Maps a Stripe price ID back to a tier name. "unknown" when the row has
 // no price yet (status `incomplete` between checkout and
 // subscription.created) or the env price IDs are unset/unrecognized — the

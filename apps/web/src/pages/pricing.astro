@@ -179,6 +179,18 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
       const plan = btn.dataset.plan as "hobby" | "pro";
       const apiBase = (btn.dataset.apiBase ?? "").replace(/\/$/, "");
 
+      // An existing subscriber changing tier goes through the Billing Portal
+      // (Stripe prorates), never a second Checkout — that would create a
+      // parallel subscription and double-bill (SK-STRIPE-010). The status
+      // pass below marks the non-current paid CTA with data-switch.
+      if (btn.dataset.switch === "1") {
+        const outcome = await openBillingPortal(apiBase);
+        if (outcome !== "ok") {
+          alert("Couldn't open the billing portal. Please try “Manage billing” below or email hello@nlqdb.com.");
+        }
+        return;
+      }
+
       const user = await fetchSession();
       if (!user) {
         const signinUrl =
@@ -205,6 +217,12 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
           if (res.status === 503) {
             // Price IDs or Stripe key not yet configured — show a helpful message.
             btn.textContent = "Not available yet";
+            return;
+          }
+          if (res.status === 409) {
+            // Already subscribed (server backstop if the status pass was stale
+            // or failed) — switch tier in the portal, where Stripe prorates.
+            await openBillingPortal(apiBase);
             return;
           }
           throw new Error(`checkout failed: ${res.status}`);
@@ -248,17 +266,24 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
       (status.plan === "hobby" || status.plan === "pro") &&
       ACTIVE_STATUSES.has(status.status)
     ) {
-      const cta = document.querySelector<HTMLButtonElement>(`button[data-plan="${status.plan}"]`);
-      const header = cta?.closest(".pricing__card")?.querySelector(".pricing__card-header");
-      if (header) {
-        const badge = document.createElement("span");
-        badge.className = "pricing__badge";
-        badge.textContent = "Current plan";
-        header.prepend(badge);
-      }
-      if (cta) {
-        cta.disabled = true;
-        cta.textContent = "Current plan";
+      // Badge + lock the current plan; turn every other paid CTA into a
+      // portal-routed "Switch plan" so a subscriber never starts a second
+      // Checkout (which would double-bill — SK-STRIPE-010).
+      for (const cta of buttons) {
+        if (cta.dataset.plan === status.plan) {
+          const header = cta.closest(".pricing__card")?.querySelector(".pricing__card-header");
+          if (header) {
+            const badge = document.createElement("span");
+            badge.className = "pricing__badge";
+            badge.textContent = "Current plan";
+            header.prepend(badge);
+          }
+          cta.disabled = true;
+          cta.textContent = "Current plan";
+        } else {
+          cta.dataset.switch = "1";
+          cta.textContent = "Switch plan";
+        }
       }
     }
   })();
