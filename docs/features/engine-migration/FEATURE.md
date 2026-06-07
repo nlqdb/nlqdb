@@ -114,12 +114,7 @@ These remain after `SK-MIGRATE-001..006` and become follow-up SK-MIGRATE blocks 
 
 ### Cross-engine migration (PG ↔ ClickHouse, later PG ↔ Redis / Mongo)
 
-- **Shadow-write path.** Where the shadow write happens (executor / orchestrator / fan-out worker) without moving the primary-write latency budget.
-- **Backfill throttling.** Rate limit on backfill against the source DB; how to measure current load.
-- **Dual-read sampling rate.** Concrete percentage TBD (`docs/phase-plan.md §5` says "a sample").
-- **Divergence handling.** Page recipient + auto-rollback contract (rewind vs freeze) undecided.
-- **Atomic cutover.** Per-db routing pointer location (D1 / KV / Durable Object) and flip-consistency guarantee undecided.
-- **Rollback procedure.** Post-cutover regression detection; source-engine warm grace window length.
+- **Parked until the first PG→ClickHouse dual-run slice** (`GLOBAL-033`, speculative-scope → never design a migration mechanism before the migration pair is built). The dual-run forks — shadow-write location (executor / orchestrator / fan-out worker) within the primary-write latency budget, backfill throttle + load measurement, dual-read sampling %, divergence page-recipient + rollback contract (rewind vs freeze), atomic-cutover routing-pointer store (D1 / KV / DO) + flip consistency, and post-cutover regression detection + warm-grace window — all get decided together in that slice as `SK-MIGRATE` blocks. Redis / Mongo pairs defer further. No mechanism on spec.
 
 ### Schema mapping (cross-engine)
 
