@@ -141,11 +141,12 @@ API version pinned to `2026-04-22.dahlia` via the `stripe` npm SDK (see `SK-STRI
 ### Duplicate-subscription guard (SK-STRIPE-010 — this PR)
 
 - `POST /v1/billing/checkout` now reads the caller's `customers.status` first
-  and returns `409 already_subscribed` unless the row is absent or terminal
-  (`canceled` / `incomplete` / `incomplete_expired`). A second
-  `mode: 'subscription'` Checkout would create a *parallel* subscription and
-  double-bill — the honest-billing "no surprise bills" rule. The guard reads
-  fail-safe: any non-terminal (incl. unrecognized future) status blocks.
+  and returns `409 already_subscribed` unless the row is absent or in a Stripe
+  *terminal* status (`canceled` / `incomplete_expired`). `incomplete` (first
+  invoice payable for 23h), `unpaid`, and `paused` all keep a live subscription
+  and so block. A second `mode: 'subscription'` Checkout would open a parallel
+  subscription and double-bill — the honest-billing "no surprise bills" rule.
+  Fail-safe: any non-terminal (incl. unrecognized future) status blocks.
 - `blocksNewCheckout(status)` + `CHECKOUT_REOPEN_STATUSES` are a pure,
   unit-tested helper in `apps/api/src/stripe/billing-status.ts`; the route owns
   the single-row D1 read (no Stripe call on the reject path).

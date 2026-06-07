@@ -1612,6 +1612,11 @@ app.post("/v1/billing/checkout", requireSession, async (c) => {
     .bind(session.user.id)
     .first<{ status: string }>();
   if (blocksNewCheckout(existing?.status)) {
+    // Rare by construction (the page routes subscribers to the Portal), so one
+    // structured line per reject is observable without being spammy.
+    console.info(
+      JSON.stringify({ msg: "checkout_blocked_already_subscribed", status: existing?.status }),
+    );
     return c.json({ error: "already_subscribed" }, 409);
   }
 

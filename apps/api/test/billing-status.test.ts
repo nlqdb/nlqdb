@@ -94,13 +94,15 @@ describe("blocksNewCheckout", () => {
   });
 
   it("allows re-checkout from a terminal status", () => {
-    for (const status of ["canceled", "incomplete", "incomplete_expired"]) {
+    for (const status of ["canceled", "incomplete_expired"]) {
       expect(blocksNewCheckout(status)).toBe(false);
     }
   });
 
   it("blocks checkout while a live subscription exists", () => {
-    for (const status of ["active", "trialing", "past_due", "unpaid", "paused"]) {
+    // `incomplete` is NOT terminal — its first invoice is payable for 23h, so
+    // a second Checkout would open a parallel chargeable subscription.
+    for (const status of ["active", "trialing", "past_due", "unpaid", "paused", "incomplete"]) {
       expect(blocksNewCheckout(status)).toBe(true);
     }
   });

@@ -112,11 +112,11 @@ when-to-load:
 
 ### SK-STRIPE-010 — Checkout refuses a caller who already holds a live subscription; tier changes go through the Portal
 
-- **Decision:** `POST /v1/billing/checkout` reads `customers.status` first and returns `409 already_subscribed` unless the row is absent or terminal (`canceled` / `incomplete` / `incomplete_expired`). A subscriber changing tier goes to the Billing Portal (SK-STRIPE-008), where Stripe prorates; `/pricing` mirrors it (non-current paid CTA → "Switch plan" → Portal, with 409 as the backstop).
+- **Decision:** `POST /v1/billing/checkout` reads `customers.status` first and returns `409 already_subscribed` unless the row is absent or in a Stripe *terminal* status (`canceled` / `incomplete_expired`). Every other status — incl. `incomplete` (first invoice payable 23h), `unpaid`, `paused` — keeps a live subscription, so the caller switches tier in the Portal (SK-STRIPE-008), where Stripe prorates; `/pricing` mirrors it (non-current paid CTA → "Switch plan" → Portal, 409 as the backstop).
 - **Core value:** Bullet-proof, Honest latency
-- **Why:** A second `mode: 'subscription'` Checkout creates a *parallel* subscription and double-bills — a "surprise bill" `billing-philosophy.md` forbids. The guard reads fail-safe: any non-terminal status, including an unrecognized future one, blocks, so a duplicate can't slip through.
-- **Consequence in code:** `blocksNewCheckout(status)` + `CHECKOUT_REOPEN_STATUSES` live in `stripe/billing-status.ts` (pure, unit-tested); the route owns the single-row D1 read; no Stripe call on the reject path.
-- **Alternatives rejected:** Allowlist the *blocking* statuses — a new Stripe status would default to "allow" and double-bill; the terminal-allowlist fails safe. Reconcile duplicates later — refunds + support load for a self-inflicted defect.
+- **Why:** A second `mode: 'subscription'` Checkout opens a parallel Stripe customer + subscription and double-bills — a "surprise bill" `billing-philosophy.md` forbids. The guard fails safe: any non-terminal (incl. unrecognized future) status blocks.
+- **Consequence in code:** `blocksNewCheckout(status)` + `CHECKOUT_REOPEN_STATUSES` in `stripe/billing-status.ts` (pure, unit-tested); the route owns the one-row D1 read; no Stripe call on reject.
+- **Alternatives rejected:** Allowlist the *blocking* statuses — a new Stripe status would default to "allow" and double-bill. Reconcile later — refunds + support for a self-inflicted defect.
 
 ## GLOBALs governing this feature
 
