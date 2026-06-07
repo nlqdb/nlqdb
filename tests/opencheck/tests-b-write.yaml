@@ -4,7 +4,7 @@
 #
 # FREE MODELS ONLY (GLOBAL-013 — $0 free tier). NEVER use a paid model here.
 # On OpenRouter, ONLY slugs ending in :free are $0 — the bare slug (no :free) is PAID (2026-05-21 burned ~$14).
-# Top-5 free LLM models for opencheck (researched 2026-06-05T01:00Z via live API + verified tool-call):
+# Top-5 free LLM models for opencheck (researched 2026-06-07T01:10Z via live API: gpt-oss-120b:free tool-call returned cost:0, key balance $20.21, Groq daily budget fresh):
 #   1. OpenRouter openai/gpt-oss-120b:free — $0 ($10+ balance → 1000 req/day, 20 RPM); reasoning-tuned; CURRENT agent model.
 #   2. OpenRouter openai/gpt-oss-20b:free  — $0; lighter/faster; same OpenRouter free request budget.
 #   3. Groq llama-3.3-70b-versatile        — 12K TPM / 1K RPM but ~100K tokens/DAY ACCOUNT cap (shared across ALL Groq models).
@@ -36,7 +36,20 @@ tests:
       repeat up to 5 times until "?db=" appears in the URL. The users DB created in
       Suite A should auto-load in the sidebar. If after 5 polls "?db=" is still absent,
       TEST_FAILED — Suite A must have run successfully first and the users DB must exist.
-      Once "?db=" is visible in the URL, TEST_PASSED.
+      Once "?db=" is visible in the URL, seed the read-test fixture here so the
+      read tests do NOT depend on #submit-prefilled-row succeeding (that write
+      test stays an independent write-path check). Get a fresh browser_snapshot,
+      find the chat textarea (placeholder "Ask about your data…") and IMMEDIATELY
+      click its ref (no other tool between snapshot and click). Type:
+        add a new row: name='Alice', email='alice@example.com'
+      Press Enter as a SEPARATE browser_key_down call. If a confirm/diff chip
+      appears, press Enter once to approve (do NOT click any "Approve" or
+      "Create new database" button). Wait 5 seconds and call browser_snapshot,
+      then confirm a row with name "Alice" is shown. If it is not (error, or no
+      Alice row), retry the whole insert up to 2 more times (fresh snapshot →
+      click textarea → retype → Enter → approve chip → wait 5s → snapshot).
+      If Alice is confirmed seeded, TEST_PASSED. If Alice cannot be confirmed
+      after 3 attempts, TEST_FAILED.
 
   - name: "#trace-shows-sql"
     case: |
@@ -85,8 +98,9 @@ tests:
 
   - name: "#read-shows-informative-data"
     case: |
-      The previous test inserted Alice into the users table. Navigate
-      to "/app". The app auto-pins the newest database on load, adding
+      Setup (#b-setup) seeded Alice into the users table, independent of
+      #submit-prefilled-row — so this read test no longer cascades off the
+      write test. Navigate to "/app". The app auto-pins the newest database on load, adding
       "?db=" to the URL within a few seconds. Poll: call browser_snapshot,
       and if "?db=" is not yet in the URL wait 3 seconds and snapshot again,
       up to 5 times. If "?db=" is still absent after 5 polls, TEST_FAILED —
