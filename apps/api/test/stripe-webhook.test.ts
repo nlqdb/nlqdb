@@ -239,6 +239,24 @@ function makeSubscription(overrides: {
   } as unknown as Stripe.Subscription;
 }
 
+function makeInvoice(overrides: {
+  id?: string;
+  customer: string | null;
+  amountDue?: number;
+  currency?: string;
+  attemptCount?: number;
+  hostedInvoiceUrl?: string | null;
+}): Stripe.Invoice {
+  return {
+    id: overrides.id ?? "in_test",
+    customer: overrides.customer,
+    amount_due: overrides.amountDue ?? 1000,
+    currency: overrides.currency ?? "usd",
+    attempt_count: overrides.attemptCount ?? 1,
+    hosted_invoice_url: overrides.hostedInvoiceUrl ?? "https://pay.stripe.com/in_test",
+  } as unknown as Stripe.Invoice;
+}
+
 // -----------------------------------------------------------------------------
 // Common deps factory.
 
@@ -724,11 +742,83 @@ describe("processWebhook — customer.subscription.deleted", () => {
   });
 });
 
+describe("processWebhook — invoice.payment_failed (SK-STRIPE-011)", () => {
+  it("emits billing.payment_failed with a per-invoice dedup id; no DB write", async () => {
+    const invoice = makeInvoice({
+      id: "in_99",
+      customer: "cus_pf",
+      amountDue: 2500,
+      currency: "usd",
+      attemptCount: 2,
+      hostedInvoiceUrl: "https://pay.stripe.com/in_99",
+    });
+    const event = makeEventStub({
+      id: "evt_pf",
+      type: "invoice.payment_failed",
+      object: invoice,
+    });
+    const signer: WebhookSigner = {
+      constructEventAsync: vi.fn().mockResolvedValue(event),
+    };
+    const { deps, db, queue } = makeDeps({
+      signer,
+      db: makeFakeD1({
+        customers: [
+          {
+            user_id: "u_pf",
+            stripe_customer_id: "cus_pf",
+            stripe_subscription_id: "sub_pf",
+            status: "past_due",
+            current_period_end: 1748000000,
+            cancel_at_period_end: 0,
+            price_id: "price_pro",
+          },
+        ],
+      }),
+    });
+    await processWebhook(deps, "{}", "sig");
+    // Status is left untouched — subscription.updated owns it.
+    expect(db.customers.get("u_pf")?.status).toBe("past_due");
+    expect(queue.sent).toHaveLength(1);
+    expect(queue.sent[0]?.event).toEqual({
+      name: "billing.payment_failed",
+      userId: "u_pf",
+      customerId: "cus_pf",
+      invoiceId: "in_99",
+      amountDue: 2500,
+      currency: "usd",
+      attemptCount: 2,
+      hostedInvoiceUrl: "https://pay.stripe.com/in_99",
+    });
+    expect(queue.sent[0]?.id).toBe("billing.payment_failed.in_99");
+  });
+
+  it("skips emit + warns when no customers row maps the invoice customer", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const event = makeEventStub({
+      id: "evt_pf_orphan",
+      type: "invoice.payment_failed",
+      object: makeInvoice({ id: "in_orphan", customer: "cus_no_user" }),
+    });
+    const signer: WebhookSigner = {
+      constructEventAsync: vi.fn().mockResolvedValue(event),
+    };
+    const { deps, queue } = makeDeps({ signer });
+    const result = await processWebhook(deps, "{}", "sig");
+    expect(result.status).toBe(200);
+    expect(queue.sent).toHaveLength(0);
+    expect(warn).toHaveBeenCalled();
+    warn.mockRestore();
+  });
+});
+
 describe("processWebhook — unhandled event types", () => {
   it("records the event in stripe_events but does not dispatch", async () => {
     const event = makeEventStub({
       id: "evt_unhandled",
-      type: "invoice.payment_failed",
+      // invoice.payment_failed is now handled (SK-STRIPE-011); use a type
+      // that still falls through dispatchEvent's default arm.
+      type: "invoice.payment_succeeded",
       object: { id: "in_1" },
     });
     const signer: WebhookSigner = {

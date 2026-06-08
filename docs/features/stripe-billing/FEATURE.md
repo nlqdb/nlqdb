@@ -63,20 +63,15 @@ when-to-load:
 - **Decision:** Three Stripe events drive the customer state: `customer.subscription.created` (emits `billing.subscription_created`), `customer.subscription.updated` (writes new fields, no event emission), `customer.subscription.deleted` (sets `status = 'canceled'`, emits `billing.subscription_canceled`). LogSnag idempotency keys are `billing.subscription_created.<sub.id>` and `billing.subscription_canceled.<sub.id>`. **No `trial.*` events** — the free tier IS the trial (PLAN §5.3); Stripe-side trial periods are not used.
 - **Core value:** Simple, Honest latency, Free
 - **Why:** Updates fire frequently (price changes, plan moves, period rollovers) and would dominate the 2,500/mo LogSnag quota with no founder signal. Created/canceled are the lifecycle moments worth notifying. Scoping the LogSnag idempotency key to the subscription id (not the wrapping `Stripe.Event.id`, which `dispatchEvent` doesn't see) means duplicate created events from any Stripe retry path collapse cleanly.
-- **Consequence in code:** `handleSubscriptionUpdated` writes fields and returns — no `events.emit`. `handleSubscriptionCreated` and `handleSubscriptionDeleted` emit with explicit `{ id: "billing.subscription_*.<sub.id>" }` envelopes. Adding a new lifecycle event requires a new branch in `dispatchEvent`, a new variant in `packages/events/src/types.ts`, and a new `buildPayload()` case in `apps/events-worker/src/sinks/logsnag.ts` — see [SK-EVENTS-NNN] in the events-pipeline feature for the full producer contract.
+- **Consequence in code:** `handleSubscriptionUpdated` writes fields and returns — no `events.emit`. `handleSubscriptionCreated` and `handleSubscriptionDeleted` emit with explicit `{ id: "billing.subscription_*.<sub.id>" }` envelopes. This rule scopes the `customer.subscription.*` events only; the separate `invoice.payment_failed` event also emits (operator dunning alert — SK-STRIPE-011) and does not contradict it. Adding a new lifecycle event requires a new branch in `dispatchEvent`, a new variant in `packages/events/src/types.ts`, and a new `buildPayload()` case in `apps/events-worker/src/sinks/logsnag.ts` — see [SK-EVENTS-NNN] in the events-pipeline feature for the full producer contract.
 - **Alternatives rejected:**
   - Emit `billing.subscription_updated` — burns the quota for non-actionable churn signal.
   - Synthesise a `trial.*` event from `created.status = 'trialing'` — there is no Stripe trial period in the pricing; the synthesis would lie about the funnel.
 
 ### SK-STRIPE-006 — R2 archive of the raw signed payload, scheduled via `ctx.waitUntil`
 
-- **Decision:** After a successful insert, the route schedules the raw request body to R2 at `stripe-events/<yyyy>/<mm>/<dd>/<event_id>.json` via `c.executionCtx.waitUntil(result.archive)`. The 200 response ships before the R2 put completes. R2 failures increment `nlqdb.webhook.stripe.archive_failures.total`, emit a `stripe_r2_archive_failed` warn log, and do not retry. R2 binding (`ASSETS`) is optional — when undefined (dev / tests) the archive step is skipped silently.
-- **Core value:** Bullet-proof, Fast, Honest latency
-- **Why:** The Stripe Dashboard's "Resend webhook" button is rate-limited and history-bounded; for forensics or schema changes against historical events we need the original signed bytes. R2 is essentially free for this volume. Putting the archive on the response path would couple webhook latency to R2 — `waitUntil` runs the put after the 200 ships, keeping the response budget intact while preserving the trail.
-- **Consequence in code:** `processWebhook` returns the put promise on the result rather than awaiting it; the route handler in `index.ts` is responsible for `c.executionCtx.waitUntil(result.archive)`. R2 keys are date-partitioned for easy `glob-by-day` and future R2 lifecycle rules ("delete > 90 days"). The `stripe_events.payload_r2_key` column carries the key so `(event_id → archived bytes)` is queryable from D1 alone. **Cloudflare requires a payment method on file** to use R2 even at $0 usage (RUNBOOK §6); removing the payment method takes effect at the end of the billing period.
-- **Alternatives rejected:**
-  - Inline `await` of the R2 put before responding — adds R2 p95 latency to every webhook, breaks Stripe's 30s acknowledgement budget on slow days.
-  - Archive only on dispatch failure — loses the audit trail for the 99% case where everything works and we later want to replay.
+**Body:** [`decisions/SK-STRIPE-006-r2-archive.md`](./decisions/SK-STRIPE-006-r2-archive.md).
+After a successful insert the route archives the raw body to R2 at `stripe-events/<yyyy>/<mm>/<dd>/<event_id>.json` via `c.executionCtx.waitUntil` — the 200 ships first; R2 failures count + warn-log, never retry; binding optional. Date-partitioned keys feed the 90-day lifecycle rule; `stripe_events.payload_r2_key` makes `(event_id → bytes)` queryable from D1.
 
 ### SK-STRIPE-007 — Pin the Stripe SDK version; bumping the SDK is the supported way to advance the API version
 
@@ -118,6 +113,11 @@ when-to-load:
 - **Consequence in code:** `blocksNewCheckout(status)` + `CHECKOUT_REOPEN_STATUSES` in `stripe/billing-status.ts` (pure, unit-tested); the route owns the one-row D1 read; no Stripe call on reject.
 - **Alternatives rejected:** Allowlist the *blocking* statuses — a new Stripe status would default to "allow" and double-bill. Reconcile later — refunds + support for a self-inflicted defect.
 
+### SK-STRIPE-011 — `invoice.payment_failed` emits a per-invoice operator dunning alert; no DB write
+
+**Body:** [`decisions/SK-STRIPE-011-payment-failed-dunning-alert.md`](./decisions/SK-STRIPE-011-payment-failed-dunning-alert.md).
+The webhook handles `invoice.payment_failed` → emits `billing.payment_failed` (user resolved from `invoice.customer`; deduped per `invoice.id`) → LogSnag `billing` channel, `notify: true`. No DB write — the `past_due`/`unpaid` status is already synced by `customer.subscription.updated` (SK-STRIPE-005) and drives the in-app banner (web-app `SK-WEB-012`). This is the operator/founder half of dunning; the customer-facing email stays open.
+
 ## GLOBALs governing this feature
 
 Canonical text in [`docs/decisions/`](../../decisions/) (index in [`docs/decisions.md`](../../decisions.md)). These rules constrain this feature:
@@ -128,7 +128,7 @@ Canonical text in [`docs/decisions/`](../../decisions/) (index in [`docs/decisio
 
 ## Open questions / known unknowns
 
-- **Dunning email.** In-app half shipped: `/app` shows a `past_due`/`unpaid` banner off `GET /v1/billing/status` (web-app `SK-WEB-012`). The email half (notify on `invoice.payment_failed`) stays open and gates live-mode paid Hobby.
+- **Dunning email.** In-app banner shipped (web-app `SK-WEB-012`, off `GET /v1/billing/status`); the operator/founder alert shipped (`SK-STRIPE-011` — `invoice.payment_failed` → `billing.payment_failed` → LogSnag `billing` channel). The remaining half is the **customer-facing** email on payment failure — it needs an email-provider decision (none wired yet) and gates live-mode paid Hobby.
 - **R2 lifecycle policy** — Resolved (`GLOBAL-033`): **90-day retention** on the date-partitioned keys (events are Dashboard-replayable, so the bucket is a convenience cache). One-time Cloudflare R2 config; **parked until** bucket size is load-bearing.
 - **DLQ for stuck events** — **Parked until** a `processed_at IS NULL` backlog appears (PLAN §11): the queryable signal exists; the ops cron + alert is the wiring that lands when a dispatch first slips by.
 - **Lago wiring.** Lago-on-Fly as the usage-metering layer batched into Stripe (PLAN §6); not yet wired. Phase 2 slice TBD.

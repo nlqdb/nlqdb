@@ -154,13 +154,28 @@ API version pinned to `2026-04-22.dahlia` via the `stripe` npm SDK (see `SK-STRI
   opens the Billing Portal (Stripe prorates); the 409 is the server backstop if
   the status pass was stale or failed.
 
+### Operator dunning alert (SK-STRIPE-011 — this PR)
+
+- The webhook now handles `invoice.payment_failed` → emits `billing.payment_failed`
+  → LogSnag `billing` channel, `notify: true`. Founder gets a real-time alert on
+  an at-risk subscription so they can intervene before Stripe exhausts its dunning
+  retries (involuntary churn).
+- Deduped on `invoice.id`, so Stripe's ~4 automatic retries collapse to **one**
+  alert per at-risk invoice (quota-safe; LogSnag 2,500/mo).
+- No DB write and no new env var: the subscription's `past_due`/`unpaid` status is
+  already synced by `customer.subscription.updated` (drives the in-app banner,
+  SK-WEB-012). The user is resolved from `invoice.customer` only — robust against
+  Basil's relocation of `invoice.subscription` to `parent.subscription_details`.
+- This is the **operator/founder** half of dunning. The **customer-facing** email
+  on payment failure is still open (needs an email-provider decision).
+
 ---
 
 ## What is next
 
 1. **Create Stripe products and price IDs** in the Stripe Dashboard (test mode) and set `STRIPE_PRICE_HOBBY` / `STRIPE_PRICE_PRO` via `wrangler secret put`. Without these the checkout returns 503. Also **enable Stripe Tax** in the Dashboard (`automatic_tax: { enabled: true }` is sent on every session; `sessions.create` 500s if Stripe Tax is not activated on the account).
 2. **Activate the Stripe Customer Portal** in the Dashboard (test mode → Billing → Customer portal): save a portal configuration (switchable plans, cancel behaviour, invoice history). `POST /v1/billing/portal` errors until one exists.
-3. **Dunning email**: `invoice.payment_failed` → email. The in-app banner shipped (SK-WEB-012); the email notification is the remaining half of the dunning UX.
+3. **Customer dunning email**: notify the *customer* on payment failure. In-app banner (SK-WEB-012) and operator alert (SK-STRIPE-011) shipped; the customer email needs an email-provider decision (none wired yet) and gates live-mode paid Hobby.
 4. **§6 trigger measurement**: once Stripe price IDs are set and checkout is live in test mode, track completion rate toward the 30%/50-sessions threshold.
 5. **Live mode flip**: when §6 trips, replace test-mode keys with live-mode keys via `wrangler secret put` + update Stripe Dashboard webhook endpoint.
 6. **Premium models add-on** (`POST /v1/billing/checkout/premium { db_id }`): gated on §6 + Phase 2 `quality-eval` baseline.

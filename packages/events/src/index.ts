@@ -100,6 +100,13 @@ function defaultId(event: ProductEvent): string {
       return `${event.name}.${event.subscriptionId}`;
     case "billing.subscription_canceled":
       return `${event.name}.${event.subscriptionId}`;
+    case "billing.payment_failed":
+      // Per-invoice: Stripe re-fires invoice.payment_failed on every
+      // dunning retry, so one operator alert per at-risk invoice
+      // (SK-STRIPE-011). The Stripe handler also passes this id
+      // explicitly; keeping the default in sync means an omitted
+      // override still dedupes correctly.
+      return `${event.name}.${event.invoiceId}`;
     case "ask.completed":
       // High-volume event (every successful /v1/ask). No "natural" stable
       // id — multiple emissions of the same `(schema_hash, query_hash)`
