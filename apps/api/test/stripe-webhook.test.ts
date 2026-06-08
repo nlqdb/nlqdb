@@ -245,6 +245,8 @@ function makeInvoice(overrides: {
   amountDue?: number;
   currency?: string;
   attemptCount?: number;
+  // Omit the key entirely to model an unfinalized invoice where Stripe
+  // sends no `hosted_invoice_url` — exercises the handler's `?? null`.
   hostedInvoiceUrl?: string | null;
 }): Stripe.Invoice {
   return {
@@ -253,7 +255,7 @@ function makeInvoice(overrides: {
     amount_due: overrides.amountDue ?? 1000,
     currency: overrides.currency ?? "usd",
     attempt_count: overrides.attemptCount ?? 1,
-    hosted_invoice_url: overrides.hostedInvoiceUrl ?? "https://pay.stripe.com/in_test",
+    ...("hostedInvoiceUrl" in overrides ? { hosted_invoice_url: overrides.hostedInvoiceUrl } : {}),
   } as unknown as Stripe.Invoice;
 }
 
@@ -791,6 +793,41 @@ describe("processWebhook — invoice.payment_failed (SK-STRIPE-011)", () => {
       hostedInvoiceUrl: "https://pay.stripe.com/in_99",
     });
     expect(queue.sent[0]?.id).toBe("billing.payment_failed.in_99");
+  });
+
+  it("coerces a missing hosted_invoice_url to null on the emitted event", async () => {
+    // Unfinalized invoice: Stripe omits hosted_invoice_url. The handler's
+    // `?? null` must normalise it so the event shape stays closed.
+    const event = makeEventStub({
+      id: "evt_pf_nourl",
+      type: "invoice.payment_failed",
+      object: makeInvoice({ id: "in_nourl", customer: "cus_nourl" }),
+    });
+    const signer: WebhookSigner = {
+      constructEventAsync: vi.fn().mockResolvedValue(event),
+    };
+    const { deps, queue } = makeDeps({
+      signer,
+      db: makeFakeD1({
+        customers: [
+          {
+            user_id: "u_nourl",
+            stripe_customer_id: "cus_nourl",
+            stripe_subscription_id: "sub_nourl",
+            status: "past_due",
+            current_period_end: 1748000000,
+            cancel_at_period_end: 0,
+            price_id: "price_hobby",
+          },
+        ],
+      }),
+    });
+    await processWebhook(deps, "{}", "sig");
+    expect(queue.sent).toHaveLength(1);
+    expect(queue.sent[0]?.event).toMatchObject({
+      name: "billing.payment_failed",
+      hostedInvoiceUrl: null,
+    });
   });
 
   it("skips emit + warns when no customers row maps the invoice customer", async () => {

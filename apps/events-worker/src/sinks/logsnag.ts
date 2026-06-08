@@ -107,7 +107,7 @@ function buildPayloadBody(project: string, event: ProductEvent): LogSnagPayload 
         project,
         channel: "billing",
         event: "Payment Failed",
-        description: `${event.userId}: invoice payment failed (attempt ${event.attemptCount})`,
+        description: `${event.userId} payment failed (attempt ${event.attemptCount})`,
         icon: "⚠️",
         notify: true,
         user_id: event.userId,
