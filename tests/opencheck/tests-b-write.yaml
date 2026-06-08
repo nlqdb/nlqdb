@@ -2,9 +2,15 @@
 # Depends on Suite A having created the users DB + users table in Neon.
 # Starts with a fresh browser session; #b-setup signs in and verifies state.
 #
+# DETERMINISTIC DB PIN: every test selects the "users" DB from the sidebar by
+# name (real-user behaviour) instead of trusting the bare-/app newest-DB
+# auto-pin — a stray/empty DB can be newer than the users DB and win the pin,
+# which produced the "references a table this database doesn't have" cascade
+# (opencheck-operations.md, 2026-06-07 run 27088095446).
+#
 # FREE MODELS ONLY (GLOBAL-013 — $0 free tier). NEVER use a paid model here.
 # On OpenRouter, ONLY slugs ending in :free are $0 — the bare slug (no :free) is PAID (2026-05-21 burned ~$14).
-# Top-5 free LLM models for opencheck (researched 2026-06-07T01:10Z via live API: gpt-oss-120b:free tool-call returned cost:0, key balance $20.21, Groq daily budget fresh):
+# Top-5 free LLM models for opencheck (researched 2026-06-08T01:05Z via live API: gpt-oss-120b:free tool-call returned cost:0, key balance $20.21, usage_daily 0; Groq app-side HTTP 200 fresh):
 #   1. OpenRouter openai/gpt-oss-120b:free — $0 ($10+ balance → 1000 req/day, 20 RPM); reasoning-tuned; CURRENT agent model.
 #   2. OpenRouter openai/gpt-oss-20b:free  — $0; lighter/faster; same OpenRouter free request budget.
 #   3. Groq llama-3.3-70b-versatile        — 12K TPM / 1K RPM but ~100K tokens/DAY ACCOUNT cap (shared across ALL Groq models).
@@ -32,15 +38,21 @@ tests:
       If the URL contains "/app" (already signed in), skip the sign-in step.
       Otherwise find the "Sign in as this user" button and click it with browser_click.
       If you receive "Not connected", navigate to "/app" and call browser_snapshot.
-      Now verify the URL contains "/app". Then poll: call browser_snapshot, wait 3 seconds,
-      repeat up to 5 times until "?db=" appears in the URL. The users DB created in
-      Suite A should auto-load in the sidebar. If after 5 polls "?db=" is still absent,
-      TEST_FAILED — Suite A must have run successfully first and the users DB must exist.
-      Once "?db=" is visible in the URL, seed the read-test fixture here so the
-      read tests do NOT depend on #submit-prefilled-row succeeding (that write
-      test stays an independent write-path check). Get a fresh browser_snapshot,
-      find the chat textarea (placeholder "Ask about your data…") and IMMEDIATELY
-      click its ref (no other tool between snapshot and click). Type:
+      Now verify the URL contains "/app".
+      Pin the users database deterministically (do NOT rely on the newest-DB
+      auto-pin — a stray empty DB can be newer and win the pin): call
+      browser_snapshot and, in the left sidebar, find the database button whose
+      visible text contains "users" (the DB Suite A created) and click its ref.
+      Confirm "?db=" then appears in the URL (re-snapshot up to 5 times, 3s
+      apart, to let the sidebar finish loading). If no sidebar button contains
+      "users" after 5 re-snapshots, TEST_FAILED — Suite A must have run first
+      and created the users DB.
+      Once the users DB is pinned ("?db=" in the URL), seed the read-test
+      fixture here so the read tests do NOT depend on #submit-prefilled-row
+      succeeding (that write test stays an independent write-path check). Get a
+      fresh browser_snapshot, find the chat textarea (placeholder "Ask about
+      your data…") and IMMEDIATELY click its ref (no other tool between snapshot
+      and click). Type:
         add a new row: name='Alice', email='alice@example.com'
       Press Enter as a SEPARATE browser_key_down call. If a confirm/diff chip
       appears, press Enter once to approve (do NOT click any "Approve" or
@@ -53,11 +65,13 @@ tests:
 
   - name: "#trace-shows-sql"
     case: |
-      Navigate to "/app". The app auto-pins the newest database on load,
-      adding "?db=" to the URL within a few seconds. Poll: call
-      browser_snapshot, and if "?db=" is not yet in the URL wait 3 seconds
-      and snapshot again, up to 5 times. If "?db=" is still absent after 5
-      polls, TEST_FAILED — a signed-in session with a database is required.
+      Pin the users database deterministically (do NOT rely on the newest-DB
+      auto-pin — a stray empty DB can be newer): navigate to "/app", call
+      browser_snapshot, and in the left sidebar find the database button whose
+      visible text contains "users" and click its ref. Confirm "?db=" then
+      appears in the URL (re-snapshot up to 5 times, 3s apart). If no sidebar
+      button contains "users" after 5 re-snapshots, TEST_FAILED — a signed-in
+      session with the users DB is required.
       Find the chat textarea (placeholder "Ask about your data…") in
       the snapshot. IMMEDIATELY click it (do NOT call any other tool
       between the snapshot and the click — refs go stale on re-render).
@@ -72,11 +86,12 @@ tests:
 
   - name: "#submit-prefilled-row"
     case: |
-      Navigate to "/app". The app auto-pins the newest database on load,
-      adding "?db=" to the URL within a few seconds. Poll: call
-      browser_snapshot, and if "?db=" is not yet in the URL wait 3 seconds
-      and snapshot again, up to 5 times. If "?db=" is still absent after 5
-      polls, TEST_FAILED — no active database.
+      Pin the users database deterministically (do NOT rely on the newest-DB
+      auto-pin — a stray empty DB can be newer): navigate to "/app", call
+      browser_snapshot, and in the left sidebar find the database button whose
+      visible text contains "users" and click its ref. Confirm "?db=" then
+      appears in the URL (re-snapshot up to 5 times, 3s apart). If no sidebar
+      button contains "users" after 5 re-snapshots, TEST_FAILED — no users DB.
       Find the chat textarea (placeholder "Ask about your data…") in the
       snapshot and note its ref. IMMEDIATELY call browser_click with that ref
       (do NOT call any other tool first — refs go stale on re-render).
@@ -100,11 +115,13 @@ tests:
     case: |
       Setup (#b-setup) seeded Alice into the users table, independent of
       #submit-prefilled-row — so this read test no longer cascades off the
-      write test. Navigate to "/app". The app auto-pins the newest database on load, adding
-      "?db=" to the URL within a few seconds. Poll: call browser_snapshot,
-      and if "?db=" is not yet in the URL wait 3 seconds and snapshot again,
-      up to 5 times. If "?db=" is still absent after 5 polls, TEST_FAILED —
-      no active database.
+      write test.
+      Pin the users database deterministically (do NOT rely on the newest-DB
+      auto-pin — a stray empty DB can be newer): navigate to "/app", call
+      browser_snapshot, and in the left sidebar find the database button whose
+      visible text contains "users" and click its ref. Confirm "?db=" then
+      appears in the URL (re-snapshot up to 5 times, 3s apart). If no sidebar
+      button contains "users" after 5 re-snapshots, TEST_FAILED — no users DB.
       Call browser_snapshot to get the current page state. Find
         textbox "Ask about your data…"
       and note its ref. IMMEDIATELY call browser_click with that ref
@@ -119,10 +136,12 @@ tests:
 
   - name: "#count-summarizes"
     case: |
-      Navigate to "/app". Call browser_snapshot and check for "?db="
-      in the URL. If "?db=" is not present, wait 3 seconds and call
-      browser_snapshot again. If still no "?db=" after the second
-      check, TEST_FAILED — no active database.
+      Pin the users database deterministically (do NOT rely on the newest-DB
+      auto-pin — a stray empty DB can be newer): navigate to "/app", call
+      browser_snapshot, and in the left sidebar find the database button whose
+      visible text contains "users" and click its ref. Confirm "?db=" then
+      appears in the URL (re-snapshot up to 5 times, 3s apart). If no sidebar
+      button contains "users" after 5 re-snapshots, TEST_FAILED — no users DB.
       Find the chat textarea (placeholder "Ask about your data…") in
       the snapshot. IMMEDIATELY click it (do NOT call any other tool
       between snapshot and click). Type:
@@ -135,10 +154,13 @@ tests:
 
   - name: "#vague-question-handled"
     case: |
-      Navigate to "/app". The app auto-pins the newest database on
-      load; call browser_snapshot and check for "?db=" in the URL.
-      If "?db=" is not in the URL after 5 seconds, TEST_FAILED —
-      a signed-in session with a database is required.
+      Pin the users database deterministically (do NOT rely on the newest-DB
+      auto-pin — a stray empty DB can be newer): navigate to "/app", call
+      browser_snapshot, and in the left sidebar find the database button whose
+      visible text contains "users" and click its ref. Confirm "?db=" then
+      appears in the URL (re-snapshot up to 5 times, 3s apart). If no sidebar
+      button contains "users" after 5 re-snapshots, TEST_FAILED — a signed-in
+      session with the users DB is required.
       Click the chat textarea (placeholder "Ask about your data…")
       and type:
         anything interesting in here?
@@ -152,10 +174,13 @@ tests:
 
   - name: "#schema-mismatch-clarifies"
     case: |
-      Navigate to "/app". The app auto-pins the newest database on
-      load; call browser_snapshot and check for "?db=" in the URL.
-      If "?db=" is not in the URL after 5 seconds, TEST_FAILED —
-      a signed-in session with a database is required.
+      Pin the users database deterministically (do NOT rely on the newest-DB
+      auto-pin — a stray empty DB can be newer): navigate to "/app", call
+      browser_snapshot, and in the left sidebar find the database button whose
+      visible text contains "users" and click its ref. Confirm "?db=" then
+      appears in the URL (re-snapshot up to 5 times, 3s apart). If no sidebar
+      button contains "users" after 5 re-snapshots, TEST_FAILED — a signed-in
+      session with the users DB is required.
       Click the chat textarea (placeholder "Ask about your data…")
       and type:
         show me all the orders

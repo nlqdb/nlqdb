@@ -12,7 +12,7 @@
 #
 # FREE MODELS ONLY (GLOBAL-013). On OpenRouter ONLY a `:free` slug is $0 — a bare slug is PAID
 # (2026-05-21: a paid Mistral slug burned ~$14). Agent model (all suites): OpenRouter
-# openai/gpt-oss-120b:free — tool-call verified 2026-06-05.
+# openai/gpt-oss-120b:free — tool-call verified 2026-06-08 (cost:0, balance $20.21).
 # Top-5 free models + switching guide: docs/features/e2e-coverage/opencheck-operations.md
 
 name: E2E (opencheck)

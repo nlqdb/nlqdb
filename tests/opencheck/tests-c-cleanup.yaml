@@ -4,7 +4,7 @@
 #
 # FREE MODELS ONLY (GLOBAL-013 — $0 free tier). NEVER use a paid model here.
 # On OpenRouter, ONLY slugs ending in :free are $0 — the bare slug (no :free) is PAID (2026-05-21 burned ~$14).
-# Top-5 free LLM models for opencheck (researched 2026-06-07T01:10Z via live API: gpt-oss-120b:free tool-call returned cost:0, key balance $20.21, Groq daily budget fresh):
+# Top-5 free LLM models for opencheck (researched 2026-06-08T01:05Z via live API: gpt-oss-120b:free tool-call returned cost:0, key balance $20.21, usage_daily 0; Groq app-side HTTP 200 fresh):
 #   1. OpenRouter openai/gpt-oss-120b:free — $0 ($10+ balance → 1000 req/day, 20 RPM); reasoning-tuned; CURRENT agent model.
 #   2. OpenRouter openai/gpt-oss-20b:free  — $0; lighter/faster; same OpenRouter free request budget.
 #   3. Groq llama-3.3-70b-versatile        — 12K TPM / 1K RPM but ~100K tokens/DAY ACCOUNT cap (shared across ALL Groq models).
