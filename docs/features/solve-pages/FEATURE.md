@@ -49,7 +49,6 @@ Canonical bodies live in [`decisions/`](decisions/) — one file per `SK-SOLVE-N
 
 - **Verbatim cluster quotes once 2026-05-26 cluster file lands.** The §3.1 plan calls for verbatim cluster quotes as `<h1>`; SK-SOLVE-001 chose paraphrased search-intent questions in the interim. Once the first cluster file lands, a follow-up SK is needed to amend `searchTitle` to the verbatim cluster label when one is available — likely SK-SOLVE-004.
 - **Auto-generation from cluster output.** A natural extension of `icp-cluster.ts` is to draft new `/solve/<slug>` entries from each persona's top cluster and open a PR with the candidate `SolveEntry`. Founder approval (per `automated-icp-validation-plan.md §3.6` reply-queue spirit) gates publication. Deferred until ≥3 cluster files exist and the draft quality is observable.
-- **Per-page OG image.** Pages currently inherit the site default OG. A per-slug OG image generator would boost share-CTR; same open question as the sibling `comparison-pages` feature.
 - **Page-view analytics** — Resolved by [`GLOBAL-034`](../../decisions/GLOBAL-034-analytics-stack.md): per-page views ride **Cloudflare Web Analytics** (not PostHog); **parked until** the `apps/web` analytics-wiring slice. Per-slug CTA funnel data flows via the LogSnag click hook today (FLOW-002 production-delivery verification still pending).
 
 ## Why this exists

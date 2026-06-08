@@ -30,6 +30,10 @@ export function renderActionState(state: NlqActionState): string {
   }
 }
 
+// `type="button"`, never `"submit"`, on purpose: the host owns the
+// preview→confirm→apply state machine, so the button must not trigger a
+// native form submit (or Enter-to-submit). Embedders who want Enter-in-input
+// to fire the action add their own `<button form="<id>" type="submit" hidden>`.
 function buttonHtml(label: string, kind: string, disabled: boolean): string {
   const dis = disabled ? " disabled" : "";
   return `<button type="button" class="nlq-action-btn" data-action-state="${kind}"${dis}>${escapeHtml(label)}</button>`;

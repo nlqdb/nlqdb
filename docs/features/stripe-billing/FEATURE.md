@@ -128,7 +128,7 @@ Canonical text in [`docs/decisions/`](../../decisions/) (index in [`docs/decisio
 
 ## Open questions / known unknowns
 
-- **Dunning email.** In-app banner shipped (web-app `SK-WEB-012`, off `GET /v1/billing/status`); the operator/founder alert shipped (`SK-STRIPE-011` — `invoice.payment_failed` → `billing.payment_failed` → LogSnag `billing` channel). The remaining half is the **customer-facing** email on payment failure — it needs an email-provider decision (none wired yet) and gates live-mode paid Hobby.
+- **Dunning email — Parked until live-mode paid Hobby** (provider resolved per `GLOBAL-033`, reuse-what's-built). In-app banner shipped (web-app `SK-WEB-012`, off `GET /v1/billing/status`); the operator/founder alert shipped (`SK-STRIPE-011` — `invoice.payment_failed` → `billing.payment_failed` → LogSnag `billing` channel). The remaining **customer-facing** payment-failure email reuses the already-wired Resend transport (`apps/api/src/email.ts` `sendEmail`, `nlqdb.com` domain verified — same path as magic-link) — no new vendor. The template + the send in the `invoice.payment_failed` handler is the wiring that lands with live-mode paid Hobby.
 - **R2 lifecycle policy** — Resolved (`GLOBAL-033`): **90-day retention** on the date-partitioned keys (events are Dashboard-replayable, so the bucket is a convenience cache). One-time Cloudflare R2 config; **parked until** bucket size is load-bearing.
 - **DLQ for stuck events** — **Parked until** a `processed_at IS NULL` backlog appears (PLAN §11): the queryable signal exists; the ops cron + alert is the wiring that lands when a dispatch first slips by.
 - **Lago wiring.** Lago-on-Fly as the usage-metering layer batched into Stripe (PLAN §6); not yet wired. Phase 2 slice TBD.
