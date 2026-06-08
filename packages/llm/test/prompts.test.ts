@@ -66,6 +66,18 @@ describe("PLAN_SYSTEM (SK-LLM-018 schema-fidelity directives)", () => {
     expect(PLAN_SYSTEM).toMatch(/so intended duplicates are kept/);
   });
 
+  it("carries the SK-LLM-034 group-by-grain directive (Unaligned Aggregation Structure)", () => {
+    // Per-group aggregation needs a GROUP BY on the grouping column.
+    expect(PLAN_SYSTEM).toMatch(/when it asks for an aggregate per group/);
+    expect(PLAN_SYSTEM).toContain("GROUP BY that column");
+    // The guard that bounds the inverse regression (single overall total).
+    expect(PLAN_SYSTEM).toMatch(/when it asks for one overall total, omit GROUP BY/);
+    // Scoped to aggregate queries so a plain SELECT is never over-grouped into a DISTINCT.
+    expect(PLAN_SYSTEM).toMatch(
+      /In an aggregate query, every non-aggregated column in the SELECT must also appear in GROUP BY/,
+    );
+  });
+
   it("appends the SK-LLM-026 few-shot exemplars after the directives", () => {
     expect(PLAN_SYSTEM).toContain(PLAN_FEW_SHOT);
     // Directives must precede the examples so the contract is read first.

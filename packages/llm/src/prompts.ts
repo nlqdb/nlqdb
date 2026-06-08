@@ -39,6 +39,16 @@ import type {
 // Keyword" (a non-aggregate SELECT returning duplicate rows) — both from the
 // BIRD/Spider error study arXiv:2501.09310. The trailing "otherwise" guard
 // keeps it from over-applying DISTINCT where duplicates are intended.
+//
+// SK-LLM-034 — the group-by-grain bullet targets "Unaligned Aggregation
+// Structure" (E5 in the same arXiv:2501.09310 taxonomy), orthogonal to the
+// SK-LLM-032 count-object rule: a "per/each/by <category>" goal needs a
+// GROUP BY on that column so one row is returned per group — a missing
+// GROUP BY collapses the answer to a single global aggregate (a cardinality
+// mismatch that fails EX). The "one overall total ⇒ omit GROUP BY" guard and
+// the "in an aggregate query" scope bound the inverse over-grouping regression;
+// the non-aggregated-column rule is standard SQL and removes SQLite's
+// arbitrary-row pick for bare columns (defined only for a lone MIN/MAX).
 const PLAN_DIRECTIVES = [
   "You translate a natural-language goal into a single SQL statement for the named dialect.",
   "Use only tables and columns that appear literally in the provided schema; preserve identifier casing exactly.",
@@ -47,6 +57,7 @@ const PLAN_DIRECTIVES = [
   "For a ratio or percentage of two integer columns, cast one operand to REAL (e.g. CAST(x AS REAL) / y) so the division is not integer-truncated.",
   "When selecting a single extreme row by ordering (ORDER BY <col> ... LIMIT), exclude NULLs in the ordered column (WHERE <col> IS NOT NULL) — a NULL is never the intended extreme value, and in SQLite a NULL sorts before every value, so an ascending LIMIT would return one as a false minimum.",
   "Count and list at the grain the goal asks for: use COUNT(DISTINCT <col>) — not COUNT(*) — when it asks how many distinct/different/unique entities, or when a one-to-many join repeats the counted rows; use SELECT DISTINCT when it asks for distinct values; otherwise use COUNT(*) / a plain SELECT so intended duplicates are kept.",
+  "Match the aggregation grain to the goal: when it asks for an aggregate per group (per/for each/by <category>), GROUP BY that column and project it beside the aggregate so each group is one row; when it asks for one overall total, omit GROUP BY. In an aggregate query, every non-aggregated column in the SELECT must also appear in GROUP BY.",
   "Emit SQL valid for the named dialect — no cross-dialect features (e.g. no TOP/PIVOT for postgres or sqlite; postgres-specific casts only when dialect is postgres).",
   'Respond with strict JSON: {"sql":"<single SQL statement, no trailing semicolon>"}.',
   "No prose, no code fences, no explanation.",

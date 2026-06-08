@@ -212,6 +212,20 @@ bounds regression under the strict multiset scorer (`SK-QUAL-010`).
 Prompt-only, ≈50 tokens, directive-only (exemplar refit deferred so
 `SK-LLM-026`'s pending cron stays clean); measured next cron.
 
+### SK-LLM-034 — Group-by-grain directive in the planner prompt (per-group GROUP BY alignment)
+
+**Body:** [`decisions/SK-LLM-034-group-by-grain-directive.md`](./decisions/SK-LLM-034-group-by-grain-directive.md).
+One `PLAN_DIRECTIVES` bullet for **"Unaligned Aggregation Structure"** (E5 in
+the BIRD/Spider error study [arXiv:2501.09310](https://arxiv.org/pdf/2501.09310)),
+orthogonal to the `SK-LLM-032` count-object rule: a "per/each/by `<category>`"
+goal needs a `GROUP BY` on that column so one row is returned per group — a
+missing `GROUP BY` collapses the answer to a single global aggregate, a
+cardinality mismatch that fails EX. Standard SQL ⇒ dialect-portable ⇒ lifts
+BIRD + Spider; the "one overall total ⇒ omit GROUP BY" guard bounds the inverse
+regression, and the non-aggregated-column rule kills SQLite's silent
+arbitrary-row pick. Prompt-only, ≈45 tokens, directive-only (exemplar refit
+deferred so `SK-LLM-026`'s pending cron stays clean); measured next cron.
+
 ### SK-LLM-033 — Schema-inference prompt requires insertable sample rows
 
 **Body:** [`decisions/SK-LLM-033-schema-infer-insertable-sample-rows.md`](./decisions/SK-LLM-033-schema-infer-insertable-sample-rows.md).
