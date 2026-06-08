@@ -1,4 +1,4 @@
-# SK-LLM-032 — Schema-inference prompt requires insertable sample rows (FK-consistent, parent-first, NOT-NULL-complete)
+# SK-LLM-033 — Schema-inference prompt requires insertable sample rows (FK-consistent, parent-first, NOT-NULL-complete)
 
 Parent feature: [`llm-router/FEATURE.md`](../FEATURE.md). Extends the
 `SCHEMA_INFER_SYSTEM` prompt (`packages/llm/src/prompts/schema-inference.ts`,
