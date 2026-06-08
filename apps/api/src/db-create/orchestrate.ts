@@ -185,7 +185,9 @@ export async function orchestrateDbCreate(
   //    can't loop forever.
   // `provisionPlan` is normally the inferred plan; SK-HDC-018 may strip
   // its `sample_rows` on a `sample_insert_failed` retry. `collided`
-  // re-mints ids only on a `schema_already_exists` clash.
+  // re-mints ids only on a `schema_already_exists` clash. (The embed +
+  // recent-tables steps below keep using the full `plan` — they're
+  // schema concerns, not seed data.)
   let provisioned: Awaited<ReturnType<typeof deps.provision>> | undefined;
   let provisionPlan = plan;
   let collided = false;
