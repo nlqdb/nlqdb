@@ -55,12 +55,15 @@ fallbacks — **not** an instruction-following loss. A stronger *head*
 model (T1) only clears these when it has spare per-minute quota at that
 instant; the direct lever is more independent free capacity, now shipped
 as the **Mistral tail backstop (T11, `SK-LLM-028`)**. The 283 mismatches
-are the separate SQL-reasoning gap; within it, three **prompt-addressable**
+are the separate SQL-reasoning gap; within it, four **prompt-addressable**
 sub-classes — extra-column projection (Open-SQL
 [arXiv:2405.06674](https://arxiv.org/pdf/2405.06674)) and SQLite
 integer-division truncation vs BIRD's REAL-cast ratio gold (both **T10**),
-and NULL-as-false-minimum on unfiltered ascending extremum ordering (BIRD's
-dirty-data NULLs; SQLite sorts NULL first; **T13**) — are targeted in §3. A
+NULL-as-false-minimum on unfiltered ascending extremum ordering (BIRD's
+dirty-data NULLs; SQLite sorts NULL first; **T13**), and wrong count grain —
+`COUNT(*)` where `COUNT(DISTINCT key)` is meant (esp. across one-to-many
+joins) or a missing `DISTINCT` on a duplicate-bearing SELECT (**T14**) — are
+targeted in §3. A
 further, orthogonal slice is a *scorer* artifact (name-keyed
 scoring counted correct values with a differing alias/casing as `mismatch`) —
 **T12** removes it (§3). All shares of the 283 are *unmeasured* until the
@@ -77,14 +80,15 @@ baseline counts.
 
 ## 3. What we have tried (with how, and how much)
 
-Rows run reverse-chronological (newest first): **T13 (this PR) → T12 → T11 →
-T10 → T9 → T7/T8 → T1 (Cerebras head) → T2…T6**. The `#` is a stable row id,
+Rows run reverse-chronological (newest first): **T14 (this PR) → T13 → T12 →
+T11 → T10 → T9 → T7/T8 → T1 (Cerebras head) → T2…T6**. The `#` is a stable row id,
 not a rank — read recency from row order, not the number. "How much" is
 **measured** (from the harness) or **est.** (from the cited paper/ablation).
 
 | # | Lever | How exactly | How much | Canonical home / status |
 |---|---|---|---|---|
-| T13 | **NULL-safe extremum ordering directive** | One `PLAN_DIRECTIVES` bullet (`SK-LLM-018`): filter the ranked column (`WHERE <col> IS NOT NULL`) before an `ORDER BY … LIMIT` extremum. `SK-LLM-026` exemplar 3 refit to a direct `ORDER BY price ASC LIMIT 1` so the guard is demonstrated, not just stated. Prompt-only, ≈25 tokens | **est. small, pending measure** — a value-correctness sub-class the schema-link / projection / REAL-cast rules miss: SQLite sorts NULL first ([SQLite](https://www.sqlite.org/lang_select.html)), so an unfiltered ascending `LIMIT 1` returns a NULL as a false minimum on BIRD's dirty-data NULLs ([arXiv:2305.03111](https://arxiv.org/pdf/2305.03111)). Dialect-portable (postgres `NULLS LAST`) ⇒ lifts **BIRD**, plausibly **Spider**, regression-bounded | [`SK-LLM-029`](../features/llm-router/decisions/SK-LLM-029-null-safe-extremum.md) — shipped (this PR), **awaiting first cron** |
+| T14 | **Count-grain directive (COUNT DISTINCT vs COUNT(\*); SELECT DISTINCT)** | One `PLAN_DIRECTIVES` bullet (`SK-LLM-018`): count/list at the goal's grain — `COUNT(DISTINCT <col>)` (not `COUNT(*)`) for distinct/different/unique entities or counts across a one-to-many join, `SELECT DISTINCT` for distinct-value lists, otherwise keep intended duplicates. Prompt-only, ≈50 tokens; directive-only (no `SK-LLM-026` exemplar refit, so T9's cron stays clean) | **est. small–moderate, pending measure** — the two *named* §2 sub-classes (**Wrong COUNT Object** + **Missing DISTINCT**, [arXiv:2501.09310](https://arxiv.org/pdf/2501.09310)) the projection / REAL-cast / extremum rules miss. Dialect-portable ⇒ lifts **BIRD + Spider**; the "keep intended duplicates" guard bounds the over-`DISTINCT` regression both the BIRD and Spider row-count scorers would punish (detail in [`SK-LLM-032`](../features/llm-router/decisions/SK-LLM-032-count-grain-directive.md)) | [`SK-LLM-032`](../features/llm-router/decisions/SK-LLM-032-count-grain-directive.md) — shipped (this PR), **awaiting first cron** |
+| T13 | **NULL-safe extremum ordering directive** | One `PLAN_DIRECTIVES` bullet (`SK-LLM-018`): filter the ranked column (`WHERE <col> IS NOT NULL`) before an `ORDER BY … LIMIT` extremum. `SK-LLM-026` exemplar 3 refit to a direct `ORDER BY price ASC LIMIT 1` so the guard is demonstrated, not just stated. Prompt-only, ≈25 tokens | **est. small, pending measure** — a value-correctness sub-class the schema-link / projection / REAL-cast rules miss: SQLite sorts NULL first ([SQLite](https://www.sqlite.org/lang_select.html)), so an unfiltered ascending `LIMIT 1` returns a NULL as a false minimum on BIRD's dirty-data NULLs ([arXiv:2305.03111](https://arxiv.org/pdf/2305.03111)). Dialect-portable (postgres `NULLS LAST`) ⇒ lifts **BIRD**, plausibly **Spider**, regression-bounded | [`SK-LLM-029`](../features/llm-router/decisions/SK-LLM-029-null-safe-extremum.md) — shipped (#345), **awaiting first cron** |
 | T12 | **BIRD scorer parity: positional value tuples, column names ignored** | `scoreOne` reads result rows as positional tuples (bun:sqlite `.values()`) instead of name-keyed objects (`.all()`), so output aliases / function-name casing no longer enter the comparison — matching canonical BIRD `set(cursor.fetchall())` (verified against BIRD [`evaluation.py`](https://github.com/AlibabaResearch/DAMO-ConvAI/blob/main/bird/llm/src/evaluation.py), 2026-06). Spider `rowsToColumnMajor` transpose also moves to `.values()` so same-named predicted columns stay distinct. Multiset + ORDER-BY strictness retained (conservative lower bound) | **measurement fix that *removes deflation* — magnitude pending cron.** The 0.318 baseline was scored name-keyed, so an *unmeasured* share of its 283 mismatches were correct values penalised only for a differing alias/casing — those now score `match`. Lifts **BIRD**; the duplicate-column fix removes a rare **Spider** false-mismatch; neither regresses | [`SK-QUAL-010`](../features/quality-eval/decisions/SK-QUAL-010-bird-positional-tuple-parity.md) — shipped (#340), **awaiting first cron + baseline re-seed** |
 | T11 | **Mistral capacity backstop at the planner-chain tail** | `createMistralProvider` (`mistral-large-latest`, card-free renewable Experiment tier, verified live 2026-06) appended behind OpenRouter on `plan` / `schema_infer` in **both** production + eval (§5 eval-mirrors-production). Fires only when the whole head chain is exhausted | **est. up to +10.2 pp BIRD ceiling, pending measure** — targets the 51/500 (10.2%) `all providers in chain failed` `no_sql` losses (§2) with an **independent** free-tier RPM pool the head chain doesn't share. Tail-only ⇒ **strictly additive**: converts `no_sql → match` without touching a passing row ⇒ can lift BIRD/Spider and **cannot regress** them. Recovered share measured next cron | [`SK-LLM-028`](../features/llm-router/decisions/SK-LLM-028-mistral-capacity-backstop.md) — shipped (#338), **awaiting first cron** |
 | T10 | **Result-shape directives: exact projection + REAL-cast ratios** | Two `PLAN_DIRECTIVES` bullets (`SK-LLM-018`): select exactly the goal's columns (no extras); cast one operand of an integer ratio to REAL so SQLite doesn't truncate. `SK-LLM-026` exemplar 2 refit. Prompt-only | **est. small–moderate, pending measure** — two mismatch sub-classes schema-link rules miss: extra-column projection (Open-SQL [arXiv:2405.06674](https://arxiv.org/pdf/2405.06674)) and integer-division truncation vs BIRD's REAL-cast ratio gold. Extra columns change the tuple ⇒ lifts **BIRD**; Spider tolerates extra pred cols (`score.ts:152`) ⇒ no regression. ≈40 tokens/call | [`SK-LLM-027`](../features/llm-router/decisions/SK-LLM-027-result-shape-directives.md) — shipped, **awaiting first cron** |
@@ -181,10 +185,10 @@ The dated, evidence-referenced log of every shipped lever lives in
 
 > **Next measurement that moves this bar:** the first
 > `quality-eval-bird-mini.yml` (Mon) + `quality-eval-spider2-lite.yml`
-> (Tue) cron after T1/T7/T8/T9/T10/T11/T12/T13 land — it measures the **combined**
+> (Tue) cron after T1/T7/T8/T9/T10/T11/T12/T13/T14 land — it measures the **combined**
 > effect of the Cerebras head, the static few-shot + result-shape +
-> NULL-safe-extremum prompt levers, the Mistral tail capacity backstop, the
-> earlier robustness levers, **and the T12 scorer-parity fix**, not any one
+> NULL-safe-extremum + count-grain prompt levers, the Mistral tail capacity
+> backstop, the earlier robustness levers, **and the T12 scorer-parity fix**, not any one
 > alone; that run also re-seeds the baseline under the corrected scorer
 > (`SK-QUAL-005`), so its diff is read as a one-time migration.
 > Both workflows already wire all six card-free free-chain keys (`lanes.ts`),

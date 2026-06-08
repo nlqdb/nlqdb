@@ -209,6 +209,20 @@ ascending LIMIT returns a NULL as a false minimum. Dialect-portable (postgres
 defaults `NULLS LAST`, so the filter is never harmful). `SK-LLM-026` exemplar
 3 refit to demonstrate it; prompt-only, ≈25 tokens, measured next cron.
 
+### SK-LLM-032 — Count-grain directive in the planner prompt (COUNT(DISTINCT) vs COUNT(\*), and SELECT DISTINCT)
+
+**Body:** [`decisions/SK-LLM-032-count-grain-directive.md`](./decisions/SK-LLM-032-count-grain-directive.md).
+One `PLAN_DIRECTIVES` bullet for two named text-to-SQL error categories the
+projection / REAL-cast / extremum rules miss — **Wrong COUNT Object**
+(`COUNT(*)` where `COUNT(DISTINCT key)` is meant, esp. across a one-to-many
+join that repeats rows) and **Missing DISTINCT Keyword** (a non-aggregate
+SELECT returning duplicate rows), both from the BIRD/Spider error study
+[arXiv:2501.09310](https://arxiv.org/pdf/2501.09310). Standard SQL ⇒
+dialect-portable ⇒ lifts BIRD + Spider; the "otherwise keep duplicates" guard
+bounds regression under the strict multiset scorer (`SK-QUAL-010`).
+Prompt-only, ≈50 tokens, directive-only (exemplar refit deferred so
+`SK-LLM-026`'s pending cron stays clean); measured next cron.
+
 ## GLOBALs governing this feature
 
 Canonical text in [`docs/decisions/`](../../decisions/) (index in [`docs/decisions.md`](../../decisions.md)); feature-local commentary nested under each rule.

@@ -56,6 +56,16 @@ describe("PLAN_SYSTEM (SK-LLM-018 schema-fidelity directives)", () => {
     expect(PLAN_SYSTEM).toMatch(/a NULL sorts before every value/);
   });
 
+  it("carries the SK-LLM-032 count-grain directive (Wrong-COUNT-Object + Missing-DISTINCT)", () => {
+    // COUNT(DISTINCT key) over COUNT(*) when distinct entities are asked for.
+    expect(PLAN_SYSTEM).toContain("COUNT(DISTINCT <col>)");
+    expect(PLAN_SYSTEM).toMatch(/distinct\/different\/unique entities/);
+    // SELECT DISTINCT for distinct-value lists.
+    expect(PLAN_SYSTEM).toMatch(/use SELECT DISTINCT when it asks for distinct values/);
+    // The guard clause that keeps intended duplicates (regression bound).
+    expect(PLAN_SYSTEM).toMatch(/so intended duplicates are kept/);
+  });
+
   it("appends the SK-LLM-026 few-shot exemplars after the directives", () => {
     expect(PLAN_SYSTEM).toContain(PLAN_FEW_SHOT);
     // Directives must precede the examples so the contract is read first.

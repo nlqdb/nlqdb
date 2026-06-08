@@ -1,8 +1,8 @@
 // System prompts for each operation. Prompts live here so every provider
 // reuses the same shape. The planner prompt carries schema-fidelity
 // directives (SK-LLM-018) + result-shape directives (SK-LLM-027) +
-// NULL-safe extremum (SK-LLM-029) + static few-shot exemplars
-// (SK-LLM-026); prompt-cache discipline is per
+// NULL-safe extremum (SK-LLM-029) + count-grain (SK-LLM-032) + static
+// few-shot exemplars (SK-LLM-026); prompt-cache discipline is per
 // docs/architecture.md §8 cost-control rule 3.
 
 import type {
@@ -31,6 +31,14 @@ import type {
 // unfiltered `ORDER BY col ASC LIMIT 1` returns a NULL as a false minimum.
 // `WHERE col IS NOT NULL` is the dialect-portable form gold uses (postgres
 // defaults NULLS LAST, so the filter is also correct — never harmful — there).
+//
+// SK-LLM-032 — the count-grain bullet targets two named text-to-SQL error
+// categories the projection / REAL-cast / extremum rules don't: "Wrong
+// COUNT Object" (COUNT(*) where COUNT(DISTINCT key) is meant — e.g. counting
+// entities across a one-to-many join that repeats them) and "Missing DISTINCT
+// Keyword" (a non-aggregate SELECT returning duplicate rows) — both from the
+// BIRD/Spider error study arXiv:2501.09310. The trailing "otherwise" guard
+// keeps it from over-applying DISTINCT where duplicates are intended.
 const PLAN_DIRECTIVES = [
   "You translate a natural-language goal into a single SQL statement for the named dialect.",
   "Use only tables and columns that appear literally in the provided schema; preserve identifier casing exactly.",
@@ -38,6 +46,7 @@ const PLAN_DIRECTIVES = [
   "Select exactly the columns the goal asks for, and only those — extra id/name/descriptive columns change the result set and fail execution-accuracy.",
   "For a ratio or percentage of two integer columns, cast one operand to REAL (e.g. CAST(x AS REAL) / y) so the division is not integer-truncated.",
   "When selecting a single extreme row by ordering (ORDER BY <col> ... LIMIT), exclude NULLs in the ordered column (WHERE <col> IS NOT NULL) — a NULL is never the intended extreme value, and in SQLite a NULL sorts before every value, so an ascending LIMIT would return one as a false minimum.",
+  "Count and list at the grain the goal asks for: use COUNT(DISTINCT <col>) — not COUNT(*) — when it asks how many distinct/different/unique entities, or when a one-to-many join repeats the counted rows; use SELECT DISTINCT when it asks for distinct values; otherwise use COUNT(*) / a plain SELECT so intended duplicates are kept.",
   "Emit SQL valid for the named dialect — no cross-dialect features (e.g. no TOP/PIVOT for postgres or sqlite; postgres-specific casts only when dialect is postgres).",
   'Respond with strict JSON: {"sql":"<single SQL statement, no trailing semicolon>"}.',
   "No prose, no code fences, no explanation.",
