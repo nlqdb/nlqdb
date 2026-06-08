@@ -81,7 +81,7 @@ when-to-load:
 
 ### SK-HDC-005 — `dbId` resolution: deterministic fast-path then cheap-tier LLM, with confidence floor + visible echo
 
-**Status:** superseded by SK-ASK-009 (in `docs/features/ask-pipeline/FEATURE.md`). Full body retained in [`decisions/SK-HDC-005-dbid-resolution-superseded.md`](decisions/SK-HDC-005-dbid-resolution-superseded.md) per IDs-are-sticky.
+**Status:** superseded by SK-ASK-009 (`ask-pipeline/FEATURE.md`). Body: [`decisions/SK-HDC-005-dbid-resolution-superseded.md`](decisions/SK-HDC-005-dbid-resolution-superseded.md).
 
 ### SK-HDC-006 — Two validator paths: read/write (allowlist) vs DDL (allowlist + libpg_query parse)
 
@@ -175,15 +175,19 @@ when-to-load:
 
 ### SK-HDC-015 — Compiler auto-generates defaults for single-column integer/uuid primary keys
 
-Full body lives in [`decisions/SK-HDC-015-pk-auto-defaults.md`](decisions/SK-HDC-015-pk-auto-defaults.md) — following the `mcp-server` shard pattern so this FEATURE.md doesn't blow past `D4`'s 20 KB cap. New decisions land in `decisions/` by default.
+Full body: [`decisions/SK-HDC-015-pk-auto-defaults.md`](decisions/SK-HDC-015-pk-auto-defaults.md). Single-column int/uuid PKs with no LLM default get a compiler-applied identity / `gen_random_uuid()` default.
 
 ### SK-HDC-016 — `DELETE /v1/databases/:id` reuses `dropSchemaAndRegistry`; UI gates with typed-name confirmation
 
-Full body lives in [`decisions/SK-HDC-016-delete-database.md`](decisions/SK-HDC-016-delete-database.md). One-line summary: user-initiated delete shares one rollback primitive with the create-time compensation path (SK-HDC-011), and the chat surface gates it with a modal that requires the user to type the displayName before the Delete button enables.
+Full body: [`decisions/SK-HDC-016-delete-database.md`](decisions/SK-HDC-016-delete-database.md). User-delete shares the SK-HDC-011 rollback primitive; the chat surface gates it with a type-the-displayName confirm modal.
 
 ### SK-HDC-017 — Provisioner maps SQLSTATE classes and pins the raw SQLSTATE on the failure span
 
-Full body: [`decisions/SK-HDC-017-provision-sqlstate-fidelity.md`](decisions/SK-HDC-017-provision-sqlstate-fidelity.md). One-liner: a failed provision maps by SQLSTATE *class* (22/23 → `sample_insert_failed`, 42 → `ddl_execution_failed`, 42P06 → `schema_already_exists`; classless infra → `transaction_failed`) + records `db.transaction.error_sqlstate` on the span, so the FLOW-004 walker tells engine-quality DDL/data failures from infra. Motivated by the 2026-06-06 FLOW-004 `transaction_failed` regression.
+Full body: [`decisions/SK-HDC-017-provision-sqlstate-fidelity.md`](decisions/SK-HDC-017-provision-sqlstate-fidelity.md). A failed provision maps by SQLSTATE *class* (22/23 → `sample_insert_failed`, 42 → `ddl_execution_failed`, 42P06 → `schema_already_exists`; classless → `transaction_failed`) + pins `db.transaction.error_sqlstate` on the span, so the FLOW-004 walker tells engine/data failures from infra.
+
+### SK-HDC-018 — A constraint-violating sample row degrades to an un-seeded DB, never a 500
+
+Full body: [`decisions/SK-HDC-018-sample-insert-graceful-degradation.md`](decisions/SK-HDC-018-sample-insert-graceful-degradation.md). On `sample_insert_failed` (SQLSTATE 22/23, per SK-HDC-017) the orchestrator retries the provision **once** with `sample_rows: []` — the invited stranger gets a working un-seeded DB instead of `HTTP 500`; each attempt stays atomic (SK-HDC-012 / GLOBAL-033 untouched). Seed-quality lift: `SK-LLM-031`.
 
 ## GLOBALs governing this feature
 
@@ -200,10 +204,10 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 
 ## Open questions / known unknowns
 
-- **Classifier confidence threshold — Resolved** (`GLOBAL-033`): one env-tunable threshold gates create-vs-clarify (mirrors `SK-LLM-022`'s `0.75`); the *response* to a low-confidence goal stays per-surface (`SK-HDC-005`). One knob, per-surface routing — not a threshold per surface.
-- **`SchemaPlan` type-system breadth — native `enum` deferred to Phase 2** (resolved per `GLOBAL-033`, schemas-only-widen + Simple). Phase 1 ships `text / int / numeric / timestamptz / uuid / boolean / jsonb`; a constrained category is modelled as `text` (optionally `+ CHECK`). Postgres-native `enum` needs its own decision because adding a value is `ALTER TYPE`, not the `ADD COLUMN` widen `SK-DB-008` allows — **parked until** a user's goal actually needs the native type.
-- **Multi-statement transactional boundary — Resolved** (`GLOBAL-033`, goal-first): schema + sample rows + `databases` row commit atomically; pgvector embedding is decoupled — best-effort, idempotent, retried (`events-pipeline`), never rolling back a provision. A Workers-AI rate-limit can't cost the user their DB; an un-embedded DB degrades semantic search until retry, not data loss.
-- **Phase 4 BYO connect introspection cost — Resolved** (`GLOBAL-033` → `GLOBAL-026` free chain): **absorb** the one-time connect-time `pg_catalog` read + table-card embedding as onboarding cost; never bill the first connect against free-tier credits. Gating first value behind cost is the one thing the free chain forbids.
+- **Classifier confidence threshold — Resolved** (`GLOBAL-033`): one env-tunable threshold gates create-vs-clarify (mirrors `SK-LLM-022`'s `0.75`); the low-confidence *response* stays per-surface (`SK-HDC-005`). One knob, per-surface routing.
+- **`SchemaPlan` type breadth — native `enum` deferred to Phase 2** (resolved per `GLOBAL-033`). Phase 1 ships `text / int / numeric / timestamptz / uuid / boolean / jsonb`; a constrained category is `text` (optionally `+ CHECK`). Native `enum` needs its own decision (adding a value is `ALTER TYPE`, not the `ADD COLUMN` widen `SK-DB-008` allows) — **parked until** a goal needs it.
+- **Multi-statement transactional boundary — Resolved** (`GLOBAL-033`): schema + sample rows + `databases` row commit atomically; embedding is decoupled (best-effort, retried, never rolls back a provision — a rate-limit can't cost the user their DB), and a constraint-violating seed row degrades to an un-seeded DB rather than a 500 (`SK-HDC-018`), each attempt still atomic.
+- **Phase 4 BYO connect introspection cost — Resolved** (`GLOBAL-033`/`GLOBAL-026`): **absorb** the connect-time `pg_catalog` read + table-card embedding as onboarding cost; never bill the first connect. Gating first value behind cost is what the free chain forbids.
 
 ## Semantic layer — Phase 2 design
 

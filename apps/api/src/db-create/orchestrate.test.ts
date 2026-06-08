@@ -531,6 +531,59 @@ describe("orchestrateDbCreate", () => {
     });
   });
 
+  it("SK-HDC-018: retries once WITHOUT sample rows on sample_insert_failed, returning a committed DB with an empty seed set", async () => {
+    // A single LLM-authored sample row that violates its own schema
+    // (FK / NOT NULL / type → SQLSTATE 22/23 → `sample_insert_failed`)
+    // must not 500 the create. The orchestrator retries without seed
+    // data so the schema-complete DB still commits.
+    const provision = vi.fn(async (_d, args): Promise<ProvisionResult> => {
+      const callArgs = args as unknown as { plan: SchemaPlan; dbId: string; schemaName: string };
+      if (callArgs.plan.sample_rows.length > 0) {
+        return { ok: false, reason: "sample_insert_failed", rolled_back: true };
+      }
+      return { ok: true, dbId: callArgs.dbId, schemaName: callArgs.schemaName };
+    });
+
+    const deps = makeDeps({ provision });
+    const out = await orchestrateDbCreate(deps, ARGS);
+
+    expect(out.ok).toBe(true);
+    if (!out.ok) throw new Error("expected ok");
+    expect(provision).toHaveBeenCalledTimes(2);
+    // Same ids reused on the strip-retry (rolled-back schema is free) so
+    // the compiled DDL still matches the schema name.
+    expect(out.dbId).toBe(`db_orders_tracker_${FIXED_SUFFIX}`);
+    // Second attempt was handed a sample-free plan…
+    const secondArgs = provision.mock.calls[1]?.[1] as unknown as { plan: SchemaPlan };
+    expect(secondArgs.plan.sample_rows).toEqual([]);
+    // …and the response reports the actually-inserted (empty) seed set,
+    // never the original rows the DB doesn't hold.
+    expect(out.sampleRows).toEqual([]);
+  });
+
+  it("SK-HDC-018: a second sample_insert_failed surfaces provision_failed (no infinite retry)", async () => {
+    const provision = vi.fn(
+      async (): Promise<ProvisionResult> => ({
+        ok: false,
+        reason: "sample_insert_failed",
+        rolled_back: true,
+      }),
+    );
+
+    const deps = makeDeps({ provision });
+    const out = await orchestrateDbCreate(deps, ARGS);
+
+    // One attempt with seed data, one without; then give up.
+    expect(provision).toHaveBeenCalledTimes(2);
+    expect(out.ok).toBe(false);
+    if (out.ok) throw new Error("expected error");
+    expect(out.error).toEqual({
+      kind: "provision_failed",
+      reason: "sample_insert_failed",
+      rolled_back: true,
+    });
+  });
+
   it("does not retry on non-collision provision failures", async () => {
     const provision = vi.fn(
       async (): Promise<ProvisionResult> => ({
