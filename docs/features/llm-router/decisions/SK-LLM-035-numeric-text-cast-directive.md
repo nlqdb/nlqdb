@@ -12,10 +12,12 @@ block, orthogonal to each of them.
 - **Decision:** `PLAN_DIRECTIVES` (`packages/llm/src/prompts.ts`) gains one
   bullet, placed immediately after the `SK-LLM-027` REAL-cast-ratio bullet so
   the two numeric-cast rules read together: "When the schema declares a column
-  as TEXT but the goal compares, orders, sums, or averages it numerically, cast
-  it to a number (`CAST(<col> AS REAL)`) — a TEXT column is compared
-  lexicographically (so `'100'` sorts before `'9'` and a plain `ORDER BY` or `>`
-  mis-ranks); the cast is harmless when the values are already numeric." No
+  as TEXT but the goal compares, orders, or takes the min/max of it numerically,
+  cast it to a number (`CAST(<col> AS REAL)`) — a TEXT column is compared
+  lexicographically (so `'100'` sorts before `'9'` and a plain `ORDER BY`, `>`,
+  or `MIN`/`MAX` mis-ranks); the cast is harmless when the values are already
+  numeric." `SUM`/`AVG` are deliberately out of scope (SQLite already coerces a
+  TEXT operand to a number in those aggregates, so a cast is redundant there). No
   exemplar is refit (see *Alternatives rejected*).
 - **Core value:** Engine quality, Free
 - **Why:** **"Implicit Type Conversion"** is a named error type (C1, a logic
@@ -24,7 +26,7 @@ block, orthogonal to each of them.
   categories over BIRD + Spider). It is BIRD's signature real-world trap:
   columns declared `TEXT` that actually hold numeric strings. SQLite gives such
   a column **text affinity** and, absent a cast, compares it **lexicographically**
-  rather than numerically ([SQLite datatypes §3.3 / §4.2](https://sqlite.org/datatype3.html)) —
+  rather than numerically ([SQLite datatypes §3.1 *Column Affinity* + §4.2 *Type Conversions Prior To Comparison*](https://sqlite.org/datatype3.html)) —
   so `'100' < '9'` is true, `WHERE pct > 50` mis-filters, and a bare `ORDER BY`
   mis-ranks; the SQL runs without error and returns a silently wrong result that
   fails execution-accuracy under both the BIRD multiset scorer
@@ -43,12 +45,18 @@ block, orthogonal to each of them.
     rule to exactly the C1 case (a text-affinity column read off the DDL the
     runner already sends verbatim), so it never fires on a column already
     declared `INTEGER`/`REAL` and never rewrites string comparisons.
-  - **"harmless when the values are already numeric"** states the no-regression
-    invariant: `CAST('100' AS REAL)` and `CAST(100 AS REAL)` both yield the
-    numeric `100.0`, which the positional-tuple set scorers treat as equal to
-    the integer `100` (Python `100 == 100.0`; bun:sqlite `.values()` returns a
-    JS number either way), so adding the cast cannot turn a passing row into a
-    failing one.
+  - **"harmless when the values are already numeric"** plus the *numerical-use*
+    scope **bound** the regression (they are not an absolute invariant): inside
+    scope, `CAST('100' AS REAL)` and `CAST(100 AS REAL)` both yield the numeric
+    `100.0`, which the positional-tuple set scorers treat as equal to the integer
+    `100` (Python `100 == 100.0`; bun:sqlite `.values()` returns a JS number
+    either way), so a genuinely-numeric column never regresses. The residual risk
+    is a `TEXT` column that *looks* numeric but is semantically textual — a
+    zero-padded code (`CAST('007' AS REAL)` → `7`) or a currency string
+    (`CAST('$100' AS REAL)` → `0`); the scope clause (*the goal compares/orders
+    it numerically*) is the guard against casting those, and the planner's schema
+    judgement bounds it further — measured, like every prompt lever, on the next
+    cron.
 - **Consequence in code:** `packages/llm/src/prompts.ts` adds one string to the
   `PLAN_DIRECTIVES` array (≈55 input tokens per `plan` call — the per-minute
   free-tier-quota tradeoff the

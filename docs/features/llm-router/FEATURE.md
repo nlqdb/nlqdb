@@ -232,13 +232,14 @@ deferred so `SK-LLM-026`'s pending cron stays clean); measured next cron.
 One `PLAN_DIRECTIVES` bullet for **"Implicit Type Conversion"** (C1 in the
 BIRD/Spider error study [arXiv:2501.09310](https://arxiv.org/pdf/2501.09310)),
 orthogonal to the `SK-LLM-027` REAL-cast-ratio rule: when the schema declares a
-column `TEXT` but the goal compares/orders/aggregates it numerically, cast it
+column `TEXT` but the goal compares/orders/min-maxes it numerically, cast it
 (`CAST(<col> AS REAL)`) — SQLite gives a TEXT column text affinity and compares
-it lexicographically (`'100' < '9'`), silently returning a wrong result. Scoped
-to TEXT-declared columns (no false positives) and harmless when values are
-already numeric (no regression); BIRD-weighted, dialect-portable ⇒ plausibly
-lifts Spider too. Prompt-only, ≈55 tokens, directive-only (exemplar refit
-deferred so `SK-LLM-026`'s pending cron stays clean); measured next cron.
+it lexicographically (`'100' < '9'`), silently returning a wrong result. The
+*numerical-use* scope keeps the cast off `INTEGER`/`REAL` columns (no false
+positives) and bounds regression (a numeric string and its number cast equal);
+`SUM`/`AVG` are out of scope (SQLite already coerces TEXT there). BIRD-weighted,
+dialect-portable ⇒ plausibly lifts Spider too. Prompt-only, ≈55 tokens,
+directive-only (keeps `SK-LLM-026`'s pending cron clean); measured next cron.
 
 ### SK-LLM-033 — Schema-inference prompt requires insertable sample rows
 
