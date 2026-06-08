@@ -97,6 +97,29 @@ function buildPayloadBody(project: string, event: ProductEvent): LogSnagPayload 
           "price-id": event.priceId,
         },
       };
+    case "billing.payment_failed":
+      // SK-STRIPE-011 — operator dunning alert. `notify: true`: an at-risk
+      // subscription is actionable (reach out / watch the retry schedule).
+      // Deduped per invoice at the producer (SK-EVENTS-008) so Stripe's
+      // dunning retries don't re-page. Amount stays in minor units in the
+      // tag — no currency-decimal guessing in an internal alert.
+      return {
+        project,
+        channel: "billing",
+        event: "Payment Failed",
+        description: `${event.userId} payment failed (attempt ${event.attemptCount})`,
+        icon: "⚠️",
+        notify: true,
+        user_id: event.userId,
+        tags: {
+          "customer-id": event.customerId,
+          "invoice-id": event.invoiceId,
+          "attempt-count": String(event.attemptCount),
+          "amount-due-minor": String(event.amountDue),
+          currency: event.currency,
+          ...(event.hostedInvoiceUrl ? { "invoice-url": event.hostedInvoiceUrl } : {}),
+        },
+      };
     case "feature.requested.ddl_via_ask":
       return {
         project,

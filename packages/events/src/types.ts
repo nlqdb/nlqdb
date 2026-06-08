@@ -183,6 +183,23 @@ export type ProductEvent =
       subscriptionId: string;
       priceId: string;
     }
+  // `billing.payment_failed` is the operator dunning alert (SK-STRIPE-011),
+  // emitted on Stripe `invoice.payment_failed`. The customer's in-app
+  // banner is driven separately by the `past_due` status sync
+  // (SK-WEB-012); this event is the founder-side notification. Deduped per
+  // invoice at the producer so Stripe's dunning retries don't re-page
+  // (SK-EVENTS-008). `amountDue` is in the currency's minor units (Stripe
+  // convention); `hostedInvoiceUrl` is null until the invoice finalizes.
+  | {
+      name: "billing.payment_failed";
+      userId: string;
+      customerId: string;
+      invoiceId: string;
+      amountDue: number;
+      currency: string;
+      attemptCount: number;
+      hostedInvoiceUrl: string | null;
+    }
   | AskCompletedEvent
   | FeatureRequestedDdlViaAskEvent
   | FeatureRequestedHeavierTierEvent

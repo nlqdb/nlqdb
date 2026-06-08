@@ -267,6 +267,9 @@ async function dispatchEvent(deps: StripeWebhookDeps, event: Stripe.Event): Prom
     case "customer.subscription.deleted":
       await handleSubscriptionDeleted(deps, event.data.object as Stripe.Subscription);
       return;
+    case "invoice.payment_failed":
+      await handleInvoicePaymentFailed(deps, event.data.object as Stripe.Invoice);
+      return;
     default:
       return;
   }
@@ -386,6 +389,52 @@ async function handleSubscriptionDeleted(
   );
 }
 
+// invoice.payment_failed → operator dunning alert (SK-STRIPE-011). The
+// customer's subscription status is already moved to `past_due`/`unpaid`
+// by `customer.subscription.updated`, which drives the in-app banner
+// (SK-WEB-012), so this handler does NO DB write — it is purely the
+// founder-side notification trigger. We resolve the user via
+// `invoice.customer` only: the Basil API relocated `invoice.subscription`
+// to `parent.subscription_details`, but `customer` stays a top-level
+// string, so this path is robust across that move.
+async function handleInvoicePaymentFailed(
+  deps: StripeWebhookDeps,
+  invoice: Stripe.Invoice,
+): Promise<void> {
+  const customerId = typeof invoice.customer === "string" ? invoice.customer : null;
+  if (!customerId) return;
+
+  const userId = await lookupUserByCustomer(deps.db, customerId);
+  if (!userId) {
+    console.warn(
+      JSON.stringify({
+        level: "warn",
+        msg: "invoice_payment_failed_no_user_mapping",
+        invoice_id: invoice.id,
+        customer_id: customerId,
+      }),
+    );
+    return;
+  }
+
+  // Dedup on the invoice id so Stripe's dunning retries (each re-fires
+  // invoice.payment_failed) collapse to one operator alert per at-risk
+  // invoice — quota-safe per SK-EVENTS-008.
+  await deps.events.emit(
+    {
+      name: "billing.payment_failed",
+      userId,
+      customerId,
+      invoiceId: invoice.id,
+      amountDue: invoice.amount_due,
+      currency: invoice.currency,
+      attemptCount: invoice.attempt_count,
+      hostedInvoiceUrl: invoice.hosted_invoice_url ?? null,
+    },
+    { id: `billing.payment_failed.${invoice.id}` },
+  );
+}
+
 // Resolves a Stripe.Subscription's customer to an nlqdb user_id. Returns
 // null (with a warn log) when the customer isn't a string, or no
 // customers row matches — typical for out-of-band subs (Dashboard, CLI
@@ -397,11 +446,8 @@ async function resolveSubUser(
 ): Promise<{ userId: string; customerId: string } | null> {
   const customerId = typeof sub.customer === "string" ? sub.customer : null;
   if (!customerId) return null;
-  const row = await db
-    .prepare("SELECT user_id FROM customers WHERE stripe_customer_id = ?")
-    .bind(customerId)
-    .first<{ user_id: string }>();
-  if (!row) {
+  const userId = await lookupUserByCustomer(db, customerId);
+  if (!userId) {
     console.warn(
       JSON.stringify({
         level: "warn",
@@ -412,7 +458,19 @@ async function resolveSubUser(
     );
     return null;
   }
-  return { userId: row.user_id, customerId };
+  return { userId, customerId };
+}
+
+// The single `stripe_customer_id → user_id` lookup, shared by every
+// handler that maps a Stripe object back to an nlqdb user. Returns null
+// when no `customers` row matches; callers own the warn log so each can
+// name its own event shape.
+async function lookupUserByCustomer(db: D1Database, customerId: string): Promise<string | null> {
+  const row = await db
+    .prepare("SELECT user_id FROM customers WHERE stripe_customer_id = ?")
+    .bind(customerId)
+    .first<{ user_id: string }>();
+  return row?.user_id ?? null;
 }
 
 async function syncSubscriptionFields(

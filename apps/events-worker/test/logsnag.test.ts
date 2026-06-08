@@ -256,6 +256,48 @@ describe("buildPayload", () => {
       },
     });
   });
+
+  it("maps billing.payment_failed onto the billing channel with notify (SK-STRIPE-011)", () => {
+    const out = buildPayload("nlqdb", {
+      name: "billing.payment_failed",
+      userId: "u_5",
+      customerId: "cus_z",
+      invoiceId: "in_5",
+      amountDue: 2500,
+      currency: "usd",
+      attemptCount: 3,
+      hostedInvoiceUrl: "https://pay.stripe.com/in_5",
+    });
+    expect(out).toMatchObject({
+      project: "nlqdb",
+      channel: "billing",
+      event: "Payment Failed",
+      notify: true,
+      user_id: "u_5",
+      tags: {
+        "customer-id": "cus_z",
+        "invoice-id": "in_5",
+        "attempt-count": "3",
+        "amount-due-minor": "2500",
+        currency: "usd",
+        "invoice-url": "https://pay.stripe.com/in_5",
+      },
+    });
+  });
+
+  it("omits invoice-url tag when hostedInvoiceUrl is null", () => {
+    const out = buildPayload("nlqdb", {
+      name: "billing.payment_failed",
+      userId: "u_6",
+      customerId: "cus_w",
+      invoiceId: "in_6",
+      amountDue: 1000,
+      currency: "usd",
+      attemptCount: 1,
+      hostedInvoiceUrl: null,
+    });
+    expect(out.tags).not.toHaveProperty("invoice-url");
+  });
 });
 
 describe("publishToLogSnag", () => {

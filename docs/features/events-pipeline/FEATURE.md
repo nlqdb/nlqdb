@@ -80,17 +80,16 @@ when-to-load:
 - **Decision:** Event names follow `<domain>.<verb_noun>` (e.g. `user.registered`, `billing.subscription_created`). Domains today: `user`, `billing`, `ask`, `feature`, `home`. **No `trial.*`** — the free tier IS the trial (`docs/architecture.md §5`). Sign-ins are not emitted — would dominate the LogSnag 2,500/mo quota with no founder signal. `user.waitlist_joined` IS routed to LogSnag (channel `users`, `notify: true`, persona tag); pre-alpha volume is 0/mo so the quota concern is theoretical — revisit if we cross ~500/mo.
 - **Core value:** Free, Simple, Honest latency
 - **Why:** Consistent naming keeps LogSnag dashboards readable without a translation layer. The 2,500/mo quota is the hard constraint on what's worth routing; high-volume or noisy signals would burn it. Trial events would lie about a funnel that doesn't exist.
-- **Consequence in code:** Reviewers reject `userSignedIn` (camelCase), `signin` (no domain). New events firing more than once per user-lifecycle need an explicit cost analysis. Stripe deliberately omits `billing.subscription_updated` (`SK-STRIPE-005`); update is pure state sync.
+- **Consequence in code:** Reviewers reject `userSignedIn` (camelCase), `signin` (no domain). New events firing more than once per user-lifecycle need an explicit cost analysis. Stripe deliberately omits `billing.subscription_updated` (`SK-STRIPE-005`); update is pure state sync. `billing.payment_failed` (`SK-STRIPE-011`) is `notify: true` but dedupes per `invoice.id`, so dunning retries collapse to one alert per invoice.
 - **Alternatives rejected:** Per-team naming (LogSnag UI fragments); emit-everything (burns quota with no founder signal).
 
 ### SK-EVENTS-007 — PostHog as a future second sink, gated on a real cohort question
 
 - **Decision:** PostHog Cloud is held in reserve. Wiring is deferred until a real cohort / funnel / retention question lands that SQL on D1/Neon can't answer. When wired, it plugs into `apps/events-worker/src/sinks/posthog.ts` — call-sites stay unchanged. Server-side from the Worker only (no client SDK on the marketing site — would break Lighthouse 100s).
 - **Core value:** Free, Honest latency, Effortless UX
-- **Why:** PostHog Cloud is free for 1M events/mo but its client SDK adds ~30KB and a third-party fetch that hurts Lighthouse and contradicts the zero-tracking-pixel posture (DESIGN §5.4). Until a real cohort question lands, env vars stay empty and the sink no-ops via `SK-EVENTS-005`.
+- **Why:** PostHog Cloud is free for 1M events/mo but its client SDK adds ~30KB and a third-party fetch (DESIGN §5.4 — see the Decision). Until a real cohort question lands, env vars stay empty and the sink no-ops via `SK-EVENTS-005`.
 - **Consequence in code:** No PostHog client in `apps/api` or `apps/web`. When wiring, follow the four-place sync from `SK-EVENTS-005`. Until then, `apps/events-worker/src/sinks/` has only `logsnag.ts` + `query-log.ts`.
 - **Alternatives rejected:**
-  - PostHog client SDK on marketing site — destroys Lighthouse, contradicts no-tracking-pixel posture.
   - Wire PostHog now for redundancy — burns time on signal we can't yet act on.
 
 ### SK-EVENTS-008 — Retry exhaustion drops silently; DLQ deferred until OTel signal warrants it
