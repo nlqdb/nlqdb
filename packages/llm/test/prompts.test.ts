@@ -78,6 +78,17 @@ describe("PLAN_SYSTEM (SK-LLM-018 schema-fidelity directives)", () => {
     );
   });
 
+  it("carries the SK-LLM-035 numeric-text-cast directive (Implicit Type Conversion)", () => {
+    // A TEXT-declared column used numerically must be cast, or SQLite
+    // compares it lexicographically.
+    expect(PLAN_SYSTEM).toMatch(/When the schema declares a column as TEXT/);
+    expect(PLAN_SYSTEM).toContain("CAST(<col> AS REAL)");
+    // Names the SQLite mechanism so the rule is auditable, not cargo-culted.
+    expect(PLAN_SYSTEM).toMatch(/compared lexicographically/);
+    // The no-regression guard for already-numeric values.
+    expect(PLAN_SYSTEM).toMatch(/harmless when the values are already numeric/);
+  });
+
   it("appends the SK-LLM-026 few-shot exemplars after the directives", () => {
     expect(PLAN_SYSTEM).toContain(PLAN_FEW_SHOT);
     // Directives must precede the examples so the contract is read first.
