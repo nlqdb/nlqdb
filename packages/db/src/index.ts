@@ -65,6 +65,8 @@ export {
   redactConnectionUrl,
   UNPARSEABLE_CONNECTION_URL,
 } from "./connection-url.ts";
+export type { DohResolverOptions } from "./doh-resolver.ts";
+export { createDohResolver } from "./doh-resolver.ts";
 export type { DnsResolver, EgressGuardResult } from "./egress-guard.ts";
 export { guardEgressHost, guardEgressHostResolved } from "./egress-guard.ts";
 export type { PostgresAdapterOptions, PostgresQueryFn } from "./postgres.ts";

@@ -112,9 +112,13 @@ IPv6 forms + decimal/hex/octal encodings, fail-loud per
 DNS name for the connect-time resolve-then-recheck a pure parser can't do.
 That recheck's pure composition now also landed — `guardEgressHostResolved`
 re-guards each address an injected DoH resolver returns, failing closed
-([`GLOBAL-035`](./decisions/GLOBAL-035-byo-egress-guard.md)). Next:
+([`GLOBAL-035`](./decisions/GLOBAL-035-byo-egress-guard.md)) — and so has the
+production resolver it consumes: `packages/db/src/doh-resolver.ts`'s
+`createDohResolver`, a Cloudflare 1.1.1.1 DoH JSON lookup (A + AAAA in
+parallel, bare-IP answers only, `AbortController`-bounded, fail-loud, one
+`dns.resolve` span). Next:
 `connect.ts` + `registerByoDb` wiring (calling `guardEgressHostResolved`
-after the URL parse, supplying the Workers DoH resolver) + the `GLOBAL-003`
+after the URL parse, supplying `createDohResolver`) + the `GLOBAL-003`
 surface set.
 
 ## 4. BYO ClickHouse
@@ -147,10 +151,13 @@ shared [`GLOBAL-035`](./decisions/GLOBAL-035-byo-egress-guard.md)
 Worker `fetch()`es the user host directly, no Hyperdrive proxy), and its async
 sibling `guardEgressHostResolved` now lands the DNS resolve-then-recheck a
 pure parser can't do — re-guarding each address an injected DoH resolver
-returns, failing closed (narrowing, not closing, the rebind window). Next: those callers + the `registerByoDb` ClickHouse
-branch wiring `guardEgressHostResolved` in (supplying the Workers DoH
-resolver); the resolver impl + residual TOCTOU backstop stay open per
-`GLOBAL-035`.
+returns, failing closed (narrowing, not closing, the rebind window). The
+production resolver that injection needs now landed too —
+`packages/db/src/doh-resolver.ts`'s `createDohResolver` (shared with BYO
+Postgres; Cloudflare 1.1.1.1 DoH JSON, A + AAAA, bare-IP answers only,
+fail-loud). Next: those callers + the `registerByoDb` ClickHouse
+branch wiring `guardEgressHostResolved` in (supplying `createDohResolver`);
+the residual TOCTOU backstop stays open per `GLOBAL-035`.
 
 ## 5. BYO OTel collectors
 
