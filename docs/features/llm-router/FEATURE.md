@@ -157,57 +157,56 @@ on every leg, can't regress the happy path.
 ### SK-LLM-026 — Static few-shot exemplars in the planner prompt (DAIL-SQL)
 
 **Body:** [`decisions/SK-LLM-026-static-few-shot-plan-exemplars.md`](./decisions/SK-LLM-026-static-few-shot-plan-exemplars.md).
-`PLAN_SYSTEM` splits into `PLAN_DIRECTIVES` (`SK-LLM-018`) + a
-`PLAN_FEW_SHOT` block of three static Question→strict-JSON exemplars
-demonstrating all four `SK-LLM-018` behaviours. Few-shot pairs are the
-biggest prompt-only text-to-SQL lever (DAIL-SQL
-[arXiv:2308.15363](https://arxiv.org/abs/2308.15363); optimal 3–5 shots),
-largest on small/open models. Dataset-agnostic, zero-dep; ≈250–350 token
-free-tier-quota tradeoff measured next cron.
+`PLAN_SYSTEM` splits into `PLAN_DIRECTIVES` (`SK-LLM-018`) + a `PLAN_FEW_SHOT`
+block of three static Question→strict-JSON exemplars demonstrating all four
+`SK-LLM-018` behaviours. Few-shot is the biggest prompt-only text-to-SQL lever
+(DAIL-SQL [arXiv:2308.15363](https://arxiv.org/abs/2308.15363), 3–5 shots),
+largest on small models; ≈250–350 token tradeoff, measured next cron.
 
 ### SK-LLM-027 — Result-shape directives in the planner prompt (exact projection + REAL-cast ratios)
 
 **Body:** [`decisions/SK-LLM-027-result-shape-directives.md`](./decisions/SK-LLM-027-result-shape-directives.md).
 Two `PLAN_DIRECTIVES` bullets for EX mismatches schema-link rules miss —
-**exact projection** (extra columns change the result tuple ⇒ EX failure;
-Open-SQL [arXiv:2405.06674](https://arxiv.org/pdf/2405.06674)) and
-**REAL-cast ratios** (SQLite floors `int / int`; BIRD ratio gold casts).
-Lifts BIRD; Spider tolerates extra columns ⇒ no regression. Prompt-only,
-measured next cron.
+**exact projection** (extra columns change the result tuple ⇒ EX failure) and
+**REAL-cast ratios** (SQLite floors `int / int`; BIRD ratio gold casts). Lifts
+BIRD; Spider tolerates extra columns ⇒ no regression.
 
 ### SK-LLM-028 — Mistral is the strict-$0 planner-tier capacity backstop at the chain tail
 
 **Body:** [`decisions/SK-LLM-028-mistral-capacity-backstop.md`](./decisions/SK-LLM-028-mistral-capacity-backstop.md).
-Appends **Mistral** (`mistral-large-latest`, card-free Experiment tier)
+Appends **Mistral** (`mistral-large-latest`, card-free tier)
 behind OpenRouter on `plan` / `schema_infer`. Targets the baseline's
-**10.2% `all providers in chain failed` `no_sql` losses** with an
-independent free-tier RPM pool the head chain doesn't share. Tail-only ⇒
-strictly additive (lifts BIRD, dataset-agnostic ⇒ helps Spider). Updates
-`SK-LLM-023`'s "rarely fully fails" premise; measured next cron.
+**10.2% `all providers in chain failed` `no_sql` losses** with an independent
+free-tier RPM pool the head chain doesn't share. Tail-only ⇒ strictly additive
+(lifts BIRD, dataset-agnostic ⇒ helps Spider). Measured next cron.
 
 ### SK-LLM-030 — Rate-limit-aware failover + cooldown (a 429 honors the server's Retry-After window)
 
 **Body:** [`decisions/SK-LLM-030-rate-limit-aware-failover.md`](./decisions/SK-LLM-030-rate-limit-aware-failover.md).
-New `FailoverReason` `"rate_limited"` + `ProviderError.retryAfterMs`; one
-mapping point (`httpError` in `_shared.ts`) turns HTTP 429 into
-`rate_limited` carrying `parseRetryAfter`, so all six providers inherit it.
-The router opens the breaker **immediately** for
-`min(max(retryAfterMs, cooldownMs), maxRateLimitCooldownMs)` (5-min cap in
-prod; uncapped in the eval) then rotates. Refines [`SK-LLM-005`](#sk-llm-005):
-the 3-strike path now covers 5xx/network/timeout. Reuses
-`nlqdb.llm.failover.total{reason}` + one `nlqdb.llm.retry_after_ms` span
-attr; `AllProvidersFailedError.attempts[]` is the eval's resume hook.
+New `FailoverReason` `"rate_limited"` + `ProviderError.retryAfterMs`; one mapping
+point (`httpError` in `_shared.ts`) turns HTTP 429 into `rate_limited` carrying
+`parseRetryAfter`, so all six providers inherit it. The router opens the breaker
+**immediately** for `min(max(retryAfterMs, cooldownMs), maxRateLimitCooldownMs)`
+(5-min cap) then rotates. Refines [`SK-LLM-005`](#sk-llm-005): the 3-strike path
+now covers 5xx/network/timeout.
 
 ### SK-LLM-029 — NULL-safe extremum ordering directive in the planner prompt
 
 **Body:** [`decisions/SK-LLM-029-null-safe-extremum.md`](./decisions/SK-LLM-029-null-safe-extremum.md).
-One `PLAN_DIRECTIVES` bullet for BIRD's dirty-data NULL trait
-([arXiv:2305.03111](https://arxiv.org/pdf/2305.03111)): when selecting a
-single extreme row (`ORDER BY <col> ... LIMIT`), filter the ranked column
-(`WHERE <col> IS NOT NULL`) — SQLite sorts NULL before every value, so an
-ascending LIMIT returns a NULL as a false minimum. Dialect-portable (postgres
-defaults `NULLS LAST`, so the filter is never harmful). `SK-LLM-026` exemplar
-3 refit to demonstrate it; prompt-only, ≈25 tokens, measured next cron.
+One `PLAN_DIRECTIVES` bullet for BIRD's dirty-data NULL trait: on single-extreme-row
+selection, filter the ranked column (`WHERE <col> IS NOT NULL`) — SQLite sorts NULL
+first, so an ascending `LIMIT` returns a false minimum. Dialect-portable; `SK-LLM-026`
+exemplar 3 refit to demonstrate it; prompt-only, measured next cron.
+
+### SK-LLM-032 — Schema-inference prompt requires insertable sample rows
+
+**Body:** [`decisions/SK-LLM-032-schema-infer-insertable-sample-rows.md`](./decisions/SK-LLM-032-schema-infer-insertable-sample-rows.md).
+`SCHEMA_INFER_SYSTEM` gains a `sample_rows`-validity contract (parent rows
+first, FK values present, NOT-NULL complete) so the free chain stops emitting
+seed data that breaks its own plan — the 2026-06-08 FLOW-004
+`sample_insert_failed` 500. Probabilistic; the deterministic no-500 floor is
+[`SK-HDC-018`](../hosted-db-create/decisions/SK-HDC-018-sample-insert-graceful-degradation.md);
+measured via the daily FLOW-004 grade (SK-STRG-006).
 
 ### SK-LLM-032 — Count-grain directive in the planner prompt (COUNT(DISTINCT) vs COUNT(\*), and SELECT DISTINCT)
 
@@ -246,5 +245,5 @@ Canonical text in [`docs/decisions/`](../../decisions/) (index in [`docs/decisio
 - **Parked until `quality-eval` Phase 2:** `nlqdb.plan.quality_score` histogram shape + LLM-as-judge prompt + "provider silently degrading" alert threshold — depends on the judge harness.
 - **Parked until Lago wiring (Phase 2):** per-user credit accounting (`architecture.md §6`); provider-level cost already covered.
 - **Parked until a debugging need forces it:** prompt-template version pinning — decided shape stamps the template version hash on `PlanResponse` + the plan-cache entry; cheap to add when a plan-provenance question arises.
-- **Parked until a leak-rate regression forces it ([`SK-LLM-025`](#sk-llm-025)):** a per-call JSON-recovery-rate counter. The weekly cron already surfaces the aggregate `no_sql` → `match` shift; decided shape is a bounded `nlqdb.llm.json_recovered.total{op}` counter at the `router.ts` boundary (`_shared.ts` stays pure per `GLOBAL-021`).
+- **Parked until a leak-rate regression forces it ([`SK-LLM-025`](#sk-llm-025)):** a per-call JSON-recovery-rate counter (`nlqdb.llm.json_recovered.total{op}` at the `router.ts` boundary); the weekly cron already surfaces the aggregate `no_sql` → `match` shift.
 - **Parked until burst abuse shows up:** free-tier RPM queue ("queued — 2s" UX, `architecture.md §7.1`); today bursts over a provider's RPM fail-and-fall-through. Owned with `rate-limit` / `observability`.

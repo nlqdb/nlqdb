@@ -183,15 +183,24 @@ export async function orchestrateDbCreate(
   //    `schema_already_exists`. Retry up to 3 times with a fresh
   //    `randomSuffix()`; bounded so a misconfigured suffix generator
   //    can't loop forever.
+  // `provisionPlan` is normally the inferred plan; SK-HDC-018 may strip
+  // its `sample_rows` on a `sample_insert_failed` retry. `collided`
+  // re-mints ids only on a `schema_already_exists` clash. (The embed +
+  // recent-tables steps below keep using the full `plan` — they're
+  // schema concerns, not seed data.)
   let provisioned: Awaited<ReturnType<typeof deps.provision>> | undefined;
+  let provisionPlan = plan;
+  let collided = false;
+  let sampleRowsDropped = false;
   for (let attempt = 0; attempt < 3; attempt++) {
-    if (attempt > 0) {
+    if (collided) {
       ({ dbId, schemaName } = mintIds());
+      collided = false;
     }
     provisioned = await deps.provision(
       { pg: deps.pg, d1: deps.d1 },
       {
-        plan,
+        plan: provisionPlan,
         dbId,
         schemaName,
         ddl: compiled.statements,
@@ -207,7 +216,31 @@ export async function orchestrateDbCreate(
       },
     );
     if (provisioned.ok) break;
-    if (provisioned.reason !== "schema_already_exists") break;
+    if (provisioned.reason === "schema_already_exists") {
+      collided = true;
+      continue;
+    }
+    // SK-HDC-018 — graceful seed-data degradation. A sample row the LLM
+    // authored that violates its own schema (FK / NOT NULL / type =
+    // SQLSTATE class 22/23 → `sample_insert_failed` per SK-HDC-017) must
+    // not 500 the create: the schema is sound, only decorative seed data
+    // failed. Retry once without seed rows so the schema-complete DB still
+    // commits atomically (each attempt is one transaction — GLOBAL-033 /
+    // SK-HDC-012 hold). First-value degrades from "seeded demo" to "empty
+    // DB ready to fill", never to HTTP 500.
+    if (provisioned.reason === "sample_insert_failed" && !sampleRowsDropped) {
+      sampleRowsDropped = true;
+      provisionPlan = { ...plan, sample_rows: [] };
+      console.warn(
+        JSON.stringify({
+          msg: "provision_sample_rows_dropped",
+          dbId,
+          dropped: plan.sample_rows.length,
+        }),
+      );
+      continue;
+    }
+    break;
   }
   if (!provisioned?.ok) {
     const failure = provisioned ?? {
@@ -311,7 +344,10 @@ export async function orchestrateDbCreate(
       dimensions: plan.dimensions,
       foreign_keys: plan.foreign_keys,
     },
-    sampleRows: plan.sample_rows,
+    // The actually-provisioned seed set — empty when SK-HDC-018 dropped
+    // a constraint-violating sample row, so the response never claims
+    // rows the DB doesn't hold.
+    sampleRows: provisionPlan.sample_rows,
   };
 }
 

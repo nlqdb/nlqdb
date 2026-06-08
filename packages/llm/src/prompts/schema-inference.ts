@@ -51,6 +51,14 @@ export const SCHEMA_INFER_SYSTEM = [
   "Use realistic but small sample values. Never use Postgres reserved words",
   "(select, table, user, order, group, ...) as identifiers.",
   "metrics and dimensions are required arrays — emit [] when none, never omit.",
+  // SK-LLM-032 — sample rows are inserted under the foreign keys + NOT NULL
+  // constraints they declare; a row that violates them aborts the whole
+  // create. Constrain the LLM up front so seed data is insertable.
+  "sample_rows MUST satisfy the schema you designed: list a referenced",
+  "table's rows BEFORE rows that reference it; every foreign-key value MUST",
+  "equal a primary-key value present in an earlier sample row of the",
+  "referenced table; include every NOT NULL column. When unsure a row is",
+  "valid, emit fewer rows — never a row that breaks a constraint.",
 ].join("\n");
 
 export function buildSchemaInferUser(req: SchemaInferRequest): string {
