@@ -90,6 +90,22 @@ describe("createDohResolver — fails loud (GLOBAL-012)", () => {
     const resolve = createDohResolver({ fetchImpl: slowFetch, timeoutMs: 5 });
     await expect(resolve("db.example.com")).rejects.toThrow();
   });
+
+  it("aborts and throws when the body read (not just the headers) exceeds the timeout", async () => {
+    // Headers arrive immediately; the body stream then hangs until the
+    // resolver's AbortController fires. The timer must still cover this leg.
+    const slowBodyFetch = ((_url: string, init?: { signal?: AbortSignal }) =>
+      Promise.resolve({
+        ok: true,
+        status: 200,
+        json: () =>
+          new Promise((_res, reject) => {
+            init?.signal?.addEventListener("abort", () => reject(new Error("aborted")));
+          }),
+      })) as unknown as typeof fetch;
+    const resolve = createDohResolver({ fetchImpl: slowBodyFetch, timeoutMs: 5 });
+    await expect(resolve("db.example.com")).rejects.toThrow();
+  });
 });
 
 describe("createDohResolver — observability (GLOBAL-014)", () => {

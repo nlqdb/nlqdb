@@ -92,20 +92,23 @@ async function queryType(
   const url = `${endpoint}?name=${encodeURIComponent(hostname)}&type=${type}`;
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
-  let res: Response;
   try {
-    res = await fetchImpl(url, {
+    const res = await fetchImpl(url, {
       headers: { accept: "application/dns-json" },
       signal: controller.signal,
     });
+    if (!res.ok) {
+      throw new Error(`DoH lookup failed: HTTP ${res.status}`);
+    }
+    // Parse inside the abort window: a slow-streaming body must count against
+    // the same deadline as the headers, or the timeout can't fire on it.
+    const body = (await res.json()) as { Answer?: unknown };
+    // `Status` (NXDOMAIN/SERVFAIL/…) is deliberately ignored — it can only
+    // ever shrink the address set the caller re-guards, never widen it.
+    return extractAddresses(body, type);
   } finally {
     clearTimeout(timer);
   }
-  if (!res.ok) {
-    throw new Error(`DoH lookup failed: HTTP ${res.status}`);
-  }
-  const body = (await res.json()) as { Answer?: unknown };
-  return extractAddresses(body, type);
 }
 
 // Pull the `data` of every `Answer` entry matching the queried type. Defensive
