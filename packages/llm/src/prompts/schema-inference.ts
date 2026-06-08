@@ -51,7 +51,7 @@ export const SCHEMA_INFER_SYSTEM = [
   "Use realistic but small sample values. Never use Postgres reserved words",
   "(select, table, user, order, group, ...) as identifiers.",
   "metrics and dimensions are required arrays — emit [] when none, never omit.",
-  // SK-LLM-032 — sample rows are inserted under the foreign keys + NOT NULL
+  // SK-LLM-033 — sample rows are inserted under the foreign keys + NOT NULL
   // constraints they declare; a row that violates them aborts the whole
   // create. Constrain the LLM up front so seed data is insertable.
   "sample_rows MUST satisfy the schema you designed: list a referenced",

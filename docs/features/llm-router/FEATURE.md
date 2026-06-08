@@ -198,16 +198,6 @@ selection, filter the ranked column (`WHERE <col> IS NOT NULL`) — SQLite sorts
 first, so an ascending `LIMIT` returns a false minimum. Dialect-portable; `SK-LLM-026`
 exemplar 3 refit to demonstrate it; prompt-only, measured next cron.
 
-### SK-LLM-032 — Schema-inference prompt requires insertable sample rows
-
-**Body:** [`decisions/SK-LLM-032-schema-infer-insertable-sample-rows.md`](./decisions/SK-LLM-032-schema-infer-insertable-sample-rows.md).
-`SCHEMA_INFER_SYSTEM` gains a `sample_rows`-validity contract (parent rows
-first, FK values present, NOT-NULL complete) so the free chain stops emitting
-seed data that breaks its own plan — the 2026-06-08 FLOW-004
-`sample_insert_failed` 500. Probabilistic; the deterministic no-500 floor is
-[`SK-HDC-018`](../hosted-db-create/decisions/SK-HDC-018-sample-insert-graceful-degradation.md);
-measured via the daily FLOW-004 grade (SK-STRG-006).
-
 ### SK-LLM-032 — Count-grain directive in the planner prompt (COUNT(DISTINCT) vs COUNT(\*), and SELECT DISTINCT)
 
 **Body:** [`decisions/SK-LLM-032-count-grain-directive.md`](./decisions/SK-LLM-032-count-grain-directive.md).
@@ -221,6 +211,16 @@ dialect-portable ⇒ lifts BIRD + Spider; the "otherwise keep duplicates" guard
 bounds regression under the strict multiset scorer (`SK-QUAL-010`).
 Prompt-only, ≈50 tokens, directive-only (exemplar refit deferred so
 `SK-LLM-026`'s pending cron stays clean); measured next cron.
+
+### SK-LLM-033 — Schema-inference prompt requires insertable sample rows
+
+**Body:** [`decisions/SK-LLM-033-schema-infer-insertable-sample-rows.md`](./decisions/SK-LLM-033-schema-infer-insertable-sample-rows.md).
+`SCHEMA_INFER_SYSTEM` gains a `sample_rows`-validity contract (parent rows
+first, FK values present, NOT-NULL complete) so the free chain stops emitting
+seed data that breaks its own plan — the 2026-06-08 FLOW-004
+`sample_insert_failed` 500. Probabilistic; the deterministic no-500 floor is
+[`SK-HDC-018`](../hosted-db-create/decisions/SK-HDC-018-sample-insert-graceful-degradation.md);
+measured via the daily FLOW-004 grade (SK-STRG-006).
 
 ## GLOBALs governing this feature
 
