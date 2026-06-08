@@ -187,7 +187,7 @@ Full body: [`decisions/SK-HDC-017-provision-sqlstate-fidelity.md`](decisions/SK-
 
 ### SK-HDC-018 — A constraint-violating sample row degrades to an un-seeded DB, never a 500
 
-Full body: [`decisions/SK-HDC-018-sample-insert-graceful-degradation.md`](decisions/SK-HDC-018-sample-insert-graceful-degradation.md). On `sample_insert_failed` (SQLSTATE 22/23, per SK-HDC-017) the orchestrator retries the provision **once** with `sample_rows: []` — the invited stranger gets a working un-seeded DB instead of `HTTP 500`; each attempt stays atomic (SK-HDC-012 / GLOBAL-033 untouched). Seed-quality lift: `SK-LLM-031`.
+Full body: [`decisions/SK-HDC-018-sample-insert-graceful-degradation.md`](decisions/SK-HDC-018-sample-insert-graceful-degradation.md). On `sample_insert_failed` (SQLSTATE 22/23, per SK-HDC-017) the orchestrator retries the provision **once** with `sample_rows: []` — the invited stranger gets a working un-seeded DB instead of `HTTP 500`; each attempt stays atomic (SK-HDC-012 / GLOBAL-033 untouched). Seed-quality lift: `SK-LLM-032`.
 
 ## GLOBALs governing this feature
 

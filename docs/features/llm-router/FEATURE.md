@@ -198,9 +198,9 @@ selection, filter the ranked column (`WHERE <col> IS NOT NULL`) — SQLite sorts
 first, so an ascending `LIMIT` returns a false minimum. Dialect-portable; `SK-LLM-026`
 exemplar 3 refit to demonstrate it; prompt-only, measured next cron.
 
-### SK-LLM-031 — Schema-inference prompt requires insertable sample rows
+### SK-LLM-032 — Schema-inference prompt requires insertable sample rows
 
-**Body:** [`decisions/SK-LLM-031-schema-infer-insertable-sample-rows.md`](./decisions/SK-LLM-031-schema-infer-insertable-sample-rows.md).
+**Body:** [`decisions/SK-LLM-032-schema-infer-insertable-sample-rows.md`](./decisions/SK-LLM-032-schema-infer-insertable-sample-rows.md).
 `SCHEMA_INFER_SYSTEM` gains a `sample_rows`-validity contract (parent rows
 first, FK values present, NOT-NULL complete) so the free chain stops emitting
 seed data that breaks its own plan — the 2026-06-08 FLOW-004
