@@ -290,6 +290,9 @@ jobs:
         with:
           name: opencheck-recordings-${{ inputs.config_file }}-${{ github.run_id }}
           path: tests/opencheck/.opencheck-recordings/
+          # .opencheck-recordings is a dot-folder; upload-artifact@v4.4+ excludes hidden
+          # paths by default, which silently dropped every trace ("No files were found").
+          include-hidden-files: true
           if-no-files-found: ignore
           retention-days: 30
 
