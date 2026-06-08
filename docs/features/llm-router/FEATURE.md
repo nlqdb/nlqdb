@@ -209,9 +209,9 @@ ascending LIMIT returns a NULL as a false minimum. Dialect-portable (postgres
 defaults `NULLS LAST`, so the filter is never harmful). `SK-LLM-026` exemplar
 3 refit to demonstrate it; prompt-only, ≈25 tokens, measured next cron.
 
-### SK-LLM-031 — Count-grain directive in the planner prompt (COUNT(DISTINCT) vs COUNT(\*), and SELECT DISTINCT)
+### SK-LLM-032 — Count-grain directive in the planner prompt (COUNT(DISTINCT) vs COUNT(\*), and SELECT DISTINCT)
 
-**Body:** [`decisions/SK-LLM-031-count-grain-directive.md`](./decisions/SK-LLM-031-count-grain-directive.md).
+**Body:** [`decisions/SK-LLM-032-count-grain-directive.md`](./decisions/SK-LLM-032-count-grain-directive.md).
 One `PLAN_DIRECTIVES` bullet for two named text-to-SQL error categories the
 projection / REAL-cast / extremum rules miss — **Wrong COUNT Object**
 (`COUNT(*)` where `COUNT(DISTINCT key)` is meant, esp. across a one-to-many

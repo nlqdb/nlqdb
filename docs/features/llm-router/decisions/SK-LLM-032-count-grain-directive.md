@@ -1,4 +1,4 @@
-# SK-LLM-031 — Count-grain directive in the planner prompt (COUNT(DISTINCT) vs COUNT(\*), and SELECT DISTINCT)
+# SK-LLM-032 — Count-grain directive in the planner prompt (COUNT(DISTINCT) vs COUNT(\*), and SELECT DISTINCT)
 
 Parent feature: [`llm-router/FEATURE.md`](../FEATURE.md). Extends
 [`SK-LLM-018`](./SK-LLM-018-schema-fidelity-prompt.md) (the `PLAN_DIRECTIVES`

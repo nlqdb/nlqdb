@@ -1,7 +1,7 @@
 // System prompts for each operation. Prompts live here so every provider
 // reuses the same shape. The planner prompt carries schema-fidelity
 // directives (SK-LLM-018) + result-shape directives (SK-LLM-027) +
-// NULL-safe extremum (SK-LLM-029) + count-grain (SK-LLM-031) + static
+// NULL-safe extremum (SK-LLM-029) + count-grain (SK-LLM-032) + static
 // few-shot exemplars (SK-LLM-026); prompt-cache discipline is per
 // docs/architecture.md §8 cost-control rule 3.
 
@@ -32,7 +32,7 @@ import type {
 // `WHERE col IS NOT NULL` is the dialect-portable form gold uses (postgres
 // defaults NULLS LAST, so the filter is also correct — never harmful — there).
 //
-// SK-LLM-031 — the count-grain bullet targets two named text-to-SQL error
+// SK-LLM-032 — the count-grain bullet targets two named text-to-SQL error
 // categories the projection / REAL-cast / extremum rules don't: "Wrong
 // COUNT Object" (COUNT(*) where COUNT(DISTINCT key) is meant — e.g. counting
 // entities across a one-to-many join that repeats them) and "Missing DISTINCT

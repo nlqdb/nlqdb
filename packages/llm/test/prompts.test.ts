@@ -56,7 +56,7 @@ describe("PLAN_SYSTEM (SK-LLM-018 schema-fidelity directives)", () => {
     expect(PLAN_SYSTEM).toMatch(/a NULL sorts before every value/);
   });
 
-  it("carries the SK-LLM-031 count-grain directive (Wrong-COUNT-Object + Missing-DISTINCT)", () => {
+  it("carries the SK-LLM-032 count-grain directive (Wrong-COUNT-Object + Missing-DISTINCT)", () => {
     // COUNT(DISTINCT key) over COUNT(*) when distinct entities are asked for.
     expect(PLAN_SYSTEM).toContain("COUNT(DISTINCT <col>)");
     expect(PLAN_SYSTEM).toMatch(/distinct\/different\/unique entities/);
