@@ -4,7 +4,7 @@
 #
 # FREE MODELS ONLY (GLOBAL-013 — $0 free tier). NEVER use a paid model here.
 # On OpenRouter, ONLY slugs ending in :free are $0 — the bare slug (no :free) is PAID (2026-05-21 burned ~$14).
-# Top-5 free LLM models for opencheck (researched 2026-06-08T01:05Z via live API: gpt-oss-120b:free tool-call returned cost:0, key balance $20.21, usage_daily 0; Groq app-side HTTP 200 fresh):
+# Top-5 free LLM models for opencheck (researched 2026-06-09T01:10Z via live API: gpt-oss-120b:free tool-call returned cost:0, key balance $20.21, usage_daily 0; Groq app-side HTTP 200 fresh):
 #   1. OpenRouter openai/gpt-oss-120b:free — $0 ($10+ balance → 1000 req/day, 20 RPM); reasoning-tuned; CURRENT agent model.
 #   2. OpenRouter openai/gpt-oss-20b:free  — $0; lighter/faster; same OpenRouter free request budget.
 #   3. Groq llama-3.3-70b-versatile        — 12K TPM / 1K RPM but ~100K tokens/DAY ACCOUNT cap (shared across ALL Groq models).
@@ -32,16 +32,29 @@ tests:
       If the URL contains "/app" (already signed in), skip the sign-in step.
       Otherwise find the "Sign in as this user" button and click it with browser_click.
       If you receive "Not connected", navigate to "/app" and call browser_snapshot.
-      Now verify the URL contains "/app". Then poll: call browser_snapshot, wait 3 seconds,
-      repeat up to 5 times until "?db=" appears in the URL. The users DB must exist
-      from Suite A and Alice must have been inserted by Suite B.
-      If after 5 polls "?db=" is still absent, TEST_FAILED — Suite A and B must have run first.
-      Once "?db=" is visible in the URL, TEST_PASSED.
+      Now verify the URL contains "/app".
+      Pin the users database deterministically (do NOT rely on the newest-DB
+      auto-pin — a stray empty DB can be newer and win the pin): call
+      browser_snapshot and, in the left sidebar, find the database button whose
+      visible text contains "users" (the DB Suite A created, seeded with Alice by
+      Suite B) and click its ref. Confirm "?db=" then appears in the URL
+      (re-snapshot up to 5 times, 3s apart, to let the sidebar finish loading).
+      If no sidebar button contains "users" after 5 re-snapshots, TEST_FAILED —
+      Suite A and B must have run first.
+      Once the users DB is pinned ("?db=" in the URL), TEST_PASSED.
 
   - name: "#delete-row"
     case: |
-      The browser is signed in from previous tests. Navigate to
-      "/app". Call browser_snapshot. If "Something broke on this
+      The browser is signed in from previous tests.
+      Pin the users database deterministically (do NOT rely on the newest-DB
+      auto-pin — a stray empty DB can be newer and win the pin, so the delete
+      would target the wrong table and never find Alice): navigate to "/app",
+      call browser_snapshot, and in the left sidebar find the database button
+      whose visible text contains "users" and click its ref. Confirm "?db="
+      then appears in the URL (re-snapshot up to 5 times, 3s apart). If no
+      sidebar button contains "users" after 5 re-snapshots, TEST_FAILED — a
+      signed-in session with the users DB is required.
+      Call browser_snapshot. If "Something broke on this
       page" is visible, click the "Reload" button (do NOT click
       "Sign out") and call browser_snapshot again.
       Find the chat textarea in THIS snapshot: look for
