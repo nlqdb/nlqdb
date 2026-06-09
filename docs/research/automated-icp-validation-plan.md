@@ -176,7 +176,7 @@ This table is the single dashboard answer to "is the inbound funnel working toda
 | Sean Ellis Q1 responses | ≥ 20 | 0 — survey not wired (§1.3); meaningful only after a user actually crosses the gate |
 | Primary ICP shortlist | exactly 1 | pending first cron Mon 2026-05-26 (verdict logic shipped 2026-05-22) |
 | TTFV p50 | ≤ 60 s | anon walk (2026-06-09): ~177 ms time-to-`/v1/ask`-response — every anon response is the gate 403, NOT first-value. Invited walk (2026-06-09): control 403 + invite **200** in 15–18 s wall (mint-to-answer, incl. ~11 s mail.tm email latency) |
-| First-query success | ≥ 60% | anon: 0/6 walked runs reached a 200 (2026-06-09) — same gate-403 cause as the anon-loop row. Invited: **3/3 reached HTTP 200** (2026-06-09); 2/3 fully-seeded first-value, 1/3 un-seeded `degraded` |
+| First-query success | ≥ 60% | anon: 0/6 walked runs reached a 200 (2026-06-09) — same gate-403 cause as the anon-loop row. Invited: **3/3 reached HTTP 200** (2026-06-09); 1/3 fully-seeded first-value (CRM goal), 2/3 un-seeded `degraded` (meal-planner goal, reproduced 2/2) |
 | Stranger-test passes | 100% daily | primitive shipped ([`SK-STRG-001`](../features/stranger-test/FEATURE.md), `bash scripts/stranger-test.sh`); 0/9 walked runs passed today because of the gate; daily cron unshipped |
 
 The preamble's "What the next agent should pick" is the canonical
