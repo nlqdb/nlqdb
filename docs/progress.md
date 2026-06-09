@@ -56,10 +56,10 @@ What an "official" framework module adds beyond the universal `<nlq-data>` snipp
 | `@nlqdb/react`           | React 19                       | **P1 · Shipped** | Foundation for `@nlqdb/next`. Details in [`framework-wrappers/FEATURE.md`](./features/framework-wrappers/FEATURE.md). |
 | `@nlqdb/next`            | Next.js 15 App Router          | **P1 · Shipped** | Same. `/server` factory keeps `sk_live_*` off the bundle.                                  |
 | `@nlqdb/vue`             | Vue 3.5                        | **P1 · Shipped** | Foundation for `@nlqdb/nuxt`.                                                              |
-| `@nlqdb/nuxt`            | Nuxt 3 / 4 module              | **P1 · Shipped** | Module + `useNlq()` composable; injects elements CDN.                                      |
+| `@nlqdb/nuxt`            | Nuxt 4 module                  | **P1 · Shipped** | Module + `useNlq()` composable; injects elements CDN.                                      |
 | `@nlqdb/svelte`          | Svelte 5 (runes)               | **P1 · Shipped** | Foundation for `@nlqdb/sveltekit`.                                                         |
 | `@nlqdb/sveltekit`       | SvelteKit                      | **P1 · Shipped** | `<NlqHead>` + `/server` `nlqdbLoad()`.                                                     |
-| `@nlqdb/astro`           | Astro 5 integration            | **P1 · Shipped** | `astro:config:setup` injects the script.                                                   |
+| `@nlqdb/astro`           | Astro 6 integration            | **P1 · Shipped** | `astro:config:setup` injects the script.                                                   |
 | `@nlqdb/solid`           | SolidJS                        | **P1 · Shipped** | Attribute pass-through; lazy CE registration.                                              |
 
 ### Mobile + desktop

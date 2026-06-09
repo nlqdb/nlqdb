@@ -1,6 +1,6 @@
 # Packages · Astro — Agents Guide
 
-`@nlqdb/astro` — Astro 5 integration + `<NlqData />` component.
+`@nlqdb/astro` — Astro 6 integration + `<NlqData />` component.
 
 > Read root [`AGENTS.md`](../../AGENTS.md), then [`docs/features/framework-wrappers/FEATURE.md`](../../docs/features/framework-wrappers/FEATURE.md).
 

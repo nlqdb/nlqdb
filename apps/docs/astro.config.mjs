@@ -18,12 +18,15 @@ export default defineConfig({
           link: "/pre-alpha/",
           badge: { text: "gated", variant: "caution" },
         },
-        { label: "Tutorials", autogenerate: { directory: "tutorials" } },
+        { label: "Tutorials", items: [{ autogenerate: { directory: "tutorials" } }] },
         {
           label: "Reference",
           items: [
             { label: "HTTP API", link: "/reference/http-api/" },
-            { label: "SDK (TypeScript)", autogenerate: { directory: "reference/sdk" } },
+            {
+              label: "SDK (TypeScript)",
+              items: [{ autogenerate: { directory: "reference/sdk" } }],
+            },
           ],
         },
         { label: "MCP", link: "/mcp/" },

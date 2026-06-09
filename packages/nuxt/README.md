@@ -1,6 +1,6 @@
 # @nlqdb/nuxt
 
-Nuxt 3 / 4 module for [`<nlq-data>`](../elements). Auto-injects the elements CDN, registers `<NlqData>` as a global component, wires `compilerOptions.isCustomElement`, and exposes `useNlq()`.
+Nuxt 4 module for [`<nlq-data>`](../elements). Auto-injects the elements CDN, registers `<NlqData>` as a global component, wires `compilerOptions.isCustomElement`, and exposes `useNlq()`.
 
 ## Install
 

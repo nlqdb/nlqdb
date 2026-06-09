@@ -1,6 +1,6 @@
 # @nlqdb/astro
 
-Astro 5 integration for [`<nlq-data>`](../elements) + [`<nlq-action>`](../elements). Injects the elements CDN bundle on every page and ships typed `<NlqData />` and `<NlqAction />` Astro components.
+Astro 6 integration for [`<nlq-data>`](../elements) + [`<nlq-action>`](../elements). Injects the elements CDN bundle on every page and ships typed `<NlqData />` and `<NlqAction />` Astro components.
 
 ## Install
 
