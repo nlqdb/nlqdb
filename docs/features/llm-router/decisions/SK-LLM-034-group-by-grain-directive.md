@@ -61,7 +61,7 @@ block, orthogonal to each of them.
   unchanged — every provider keeps importing the one `PLAN_SYSTEM` constant.
   `packages/llm/test/prompts.test.ts` pins the bullet, including both its
   grouping clause and the overall-total guard. The combined effect is measured
-  on the first weekly cron after this lands, not on a PR (`SK-QUAL-002`).
+  on the next eval run after this lands, not on a PR (`SK-QUAL-002`).
 - **Alternatives rejected:**
   - **A blanket "always `GROUP BY` the first listed column" rule.** Over-broad:
     it would group single-aggregate questions and inflate the row count, the

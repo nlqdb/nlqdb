@@ -7,7 +7,7 @@ If this file disagrees with them, **they win**.
 ## 1. BIRD + Spider evals → engine north-star
 
 [`quality-eval/FEATURE.md`](./features/quality-eval/FEATURE.md). Phase 2
-slices 1–3c shipped. Next: first weekly measurement seeds
+slices 1–3c shipped. Next: a first manual eval run seeds
 `apps/api/src/gate/eval-baseline.ts` so
 [`GLOBAL-027`](./decisions/GLOBAL-027-pre-alpha-gate.md)'s
 BIRD ≥ 0.65 / Spider ≥ 0.75 thresholds clear and the gate removes

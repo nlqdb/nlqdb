@@ -74,9 +74,9 @@ Spider comparator this aligns the BIRD path with).
     `rowsToColumnMajor` transpose keeps two same-named columns distinct.
   - **Baseline migration (operational).** `baseline-2026-06-15.json` was
     scored with the pre-fix name-keyed comparator, so the first post-fix
-    cron's per-question diff (`SK-QUAL-006` McNemar / `SK-QUAL-002` 5-pp
+    run's per-question diff (`SK-QUAL-006` McNemar / `SK-QUAL-002` 5-pp
     threshold) conflates the scorer change with any model change and must
-    be read as a one-time scorer migration, not a regression. That cron's
+    be read as a one-time scorer migration, not a regression. That run's
     report re-seeds `baseline-2026-06-15.json` and
     `apps/api/src/gate/eval-baseline.ts` (`SK-QUAL-005` / `GLOBAL-027`)
     under the corrected scorer; thereafter diffs are model-only again.

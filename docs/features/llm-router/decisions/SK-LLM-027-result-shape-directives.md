@@ -47,8 +47,8 @@ bullets in the same block, demonstrated by the
   input tokens per `plan` call — far below the `SK-LLM-026` exemplar block,
   so the per-minute-quota tradeoff the
   [engine-quality source of truth](../../../progress/quality-score-source-of-truth.md)
-  §2 tracks is negligible. The combined effect is measured on the first
-  weekly cron after this lands, not on a PR (`SK-QUAL-002`).
+  §2 tracks is negligible. The combined effect is measured on the next
+  eval run after this lands, not on a PR (`SK-QUAL-002`).
 - **Alternatives rejected:**
   - **A blanket "cast every numeric division to REAL" rule.** Over-broad:
     on a column whose true value is integral the cast is a no-op under the

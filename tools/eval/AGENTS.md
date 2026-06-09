@@ -65,7 +65,7 @@ bun run --filter @nlqdb/eval bird-mini -- \
 OPENROUTER_FRONTIER_API_KEY=sk-... \
   bun run --filter @nlqdb/eval bird-mini -- --limit 50
 
-# Baseline comparison + event emission (the weekly cron path):
+# Baseline comparison + event emission (the full eval-run path):
 bun run --filter @nlqdb/eval bird-mini -- \
   --data-dir ./bird_data \
   --limit 500 \

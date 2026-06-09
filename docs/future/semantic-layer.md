@@ -10,7 +10,7 @@
 > **Promotion trigger:** promote into a feature **when the `quality-eval`
 > harness (see [`quality-eval/FEATURE.md`](../features/quality-eval/FEATURE.md))
 > reports NL-to-SQL accuracy on the *un-scaffolded* path below 75% for
-> two consecutive weekly runs.** Until that threshold trips, the
+> two consecutive eval runs.** Until that threshold trips, the
 > auto-baseline emitted by `db.create` (see
 > [`architecture.md §3.6.3`](../architecture.md)) is the only
 > semantic-layer surface. This replaces the previous time-based

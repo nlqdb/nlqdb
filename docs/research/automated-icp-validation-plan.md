@@ -52,10 +52,10 @@
 >    BIRD 0.318 vs 0.65 target (49% of bar); Spider null vs 0.75 (loader
 >    + scorer shipped 2026-05-19 per [`SK-QUAL-007`](../features/quality-eval/FEATURE.md) +
 >    [`SK-QUAL-008`](../features/quality-eval/FEATURE.md) — first
->    measurement seeds `eval-baseline.ts` on the next weekly cron).
+>    measurement seeds `eval-baseline.ts` on the next manual eval run).
 >    Highest-leverage pickable work, in order: (a) verify the next
->    `quality-eval-spider2-lite.yml` cron run lands a real `spider_accuracy`
->    in `eval-baseline.ts` (Tue 04:00 UTC; if the run failed, fix the
+>    `quality-eval-spider2-lite.yml` dispatch lands a real `spider_accuracy`
+>    in `eval-baseline.ts` (trigger it manually; if the run failed, fix the
 >    pipeline before anything else); (b) close the free-vs-agentic-frontier
 >    delta surfaced by [`SK-QUAL-009`](../features/quality-eval/FEATURE.md) —
 >    every point that delta narrows is a point the free chain reclaims
@@ -170,7 +170,7 @@ This table is the single dashboard answer to "is the inbound funnel working toda
 | KPI | Target | Status |
 |---|---|---|
 | Free-chain BIRD accuracy | ≥ 0.65 | **0.318** as of 2026-05-18 ([`eval-baseline.ts`](../../apps/api/src/gate/eval-baseline.ts)) — **the real acquisition bottleneck per the 2026-05-24 founder directive**; closing this lifts the gate for every surface §3 ships |
-| Free-chain Spider accuracy | ≥ 0.75 | **null** — loader + canonical multi-CSV scorer shipped 2026-05-19 ([`SK-QUAL-007`](../features/quality-eval/FEATURE.md) + [`SK-QUAL-008`](../features/quality-eval/FEATURE.md)); first measurement seeds `eval-baseline.ts` on the next [`quality-eval-spider2-lite.yml`](../../.github/workflows/quality-eval-spider2-lite.yml) Tue 04:00 UTC cron |
+| Free-chain Spider accuracy | ≥ 0.75 | **null** — loader + canonical multi-CSV scorer shipped 2026-05-19 ([`SK-QUAL-007`](../features/quality-eval/FEATURE.md) + [`SK-QUAL-008`](../features/quality-eval/FEATURE.md)); first measurement seeds `eval-baseline.ts` on the next [`quality-eval-spider2-lite.yml`](../../.github/workflows/quality-eval-spider2-lite.yml) manual dispatch |
 | Anonymous loop completions | ≥ 50 | 0 — gate 403s every walked `/v1/ask` (2026-05-24 stranger-test); **stays 0 until BIRD/Spider clear OR §1.4 invite-valve verifies end-to-end** |
 | Signed-in users (invite-redeemed) | ≥ 10 | 0 real-user (non-walker) redemptions. FLOW-004 gate-bypass is **intact** AND the downstream hosted-DB provision now returns **HTTP 200** (2026-06-09 ×3 walks) — the 2026-06-08 `sample_insert_failed` 500 cleared once SK-HDC-018 + SK-LLM-033 (#352) deployed. The invited stranger reaches a **working DB on every first query**; first-value seed quality is *prompt-variable* (CRM goal → 4 tables / 9 rows `ok`; meal-planner goal → un-seeded `degraded`, reproduced 2/2 — walker records `state:"passed_degraded"` per [SK-STRG-007](../features/stranger-test/FEATURE.md)). The funnel is end-to-end-green to a 200; seeding **every** goal is the open SK-LLM-033 lift. This row stays 0 until a real stranger (not the synthetic walker) redeems an invite |
 | Sean Ellis Q1 responses | ≥ 20 | 0 — survey not wired (§1.3); meaningful only after a user actually crosses the gate |
@@ -519,8 +519,7 @@ alternative`, `Metabase too slow`, `vector DB`, `pgvector`.
 > per search × 5 queries/week = 5 points against the 5000-point/hour
 > authenticated bucket.
 
-- One Cloudflare cron Worker runs Mon 06:00 UTC (same slot as
-  [quality-eval](../features/quality-eval/FEATURE.md) — share infra).
+- One Cloudflare cron Worker runs Mon 06:00 UTC.
   Pulls last week's posts + comments; dedupes by `(source, item_id)`;
   writes raw to KV (R2 upgrade tracked as open question in icp-mining FEATURE.md).
 - Reddit via direct `.json` listings (no key for public read). HN via Algolia.

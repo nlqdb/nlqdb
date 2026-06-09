@@ -1,7 +1,7 @@
 # SK-QUAL-006 — McNemar's paired-binary test as a parallel regression trigger
 
 Parent feature: [`quality-eval/FEATURE.md`](../FEATURE.md). Parent decision:
-[`SK-QUAL-002`](../FEATURE.md#sk-qual-002) (eval is a weekly cron and
+[`SK-QUAL-002`](../FEATURE.md#sk-qual-002) (eval runs on demand and
 emits `feature.eval.regression` on alert).
 
 - **Decision:** Per-lane regression alerting fires on **two parallel
@@ -45,6 +45,6 @@ emits `feature.eval.regression` on alert).
     awkward when both runs hit the same question set; McNemar's
     paired form is statistically tighter.
   - **CUSUM / EWMA changepoint detection** (per
-    `arxiv.org/html/2601.02957`) — overkill for weekly cadence;
-    deferred until we have 12+ weekly runs to fit a baseline
+    `arxiv.org/html/2601.02957`) — overkill at this cadence;
+    deferred until we have 12+ runs to fit a baseline
     distribution.

@@ -65,7 +65,7 @@ block, orthogonal to each of them.
   unchanged — every provider keeps importing the one `PLAN_SYSTEM` constant.
   `packages/llm/test/prompts.test.ts` pins the bullet, including the
   lexicographic mechanism and the already-numeric no-regression guard. The
-  combined effect is measured on the first weekly cron after this lands, not on
+  combined effect is measured on the next eval run after this lands, not on
   a PR (`SK-QUAL-002`).
 - **Alternatives rejected:**
   - **A blanket "always cast numeric-looking columns" rule.** Over-broad: it

@@ -1,4 +1,4 @@
-// Canonical eval-baseline source. The `quality-eval` weekly cron PRs
+// Canonical eval-baseline source. The `quality-eval` run PRs
 // updates to this file when a fresh BIRD/Spider run lands; there is no
 // runtime KV/D1 read for these values (`SK-GATE-001`).
 //

@@ -195,7 +195,7 @@ export const COMPETITORS: Competitor[] = [
       },
       {
         q: "Is nlqdb's NL→SQL quality competitive with Vanna's?",
-        a: "Both fine-tune the prompt against the live schema. nlqdb publishes BIRD Mini-Dev + Spider 2.0-lite scores weekly to `docs/features/quality-eval/`; Vanna doesn't publish a single canonical benchmark, so the honest answer is 'measure yours on your schema.'",
+        a: "Both fine-tune the prompt against the live schema. nlqdb publishes BIRD Mini-Dev + Spider 2.0-lite scores to `docs/features/quality-eval/`; Vanna doesn't publish a single canonical benchmark, so the honest answer is 'measure yours on your schema.'",
       },
       {
         q: "Do I need to write training examples like in Vanna?",
@@ -371,7 +371,7 @@ export const COMPETITORS: Competitor[] = [
       },
       {
         q: "How does nlqdb's NL→SQL compare to Outerbase's EZQL?",
-        a: "Both translate English into SQL; the differentiator isn't the translation, it's what surrounds it. nlqdb prompts directly from the live schema fingerprint plus a recent-tables hint and surfaces the compiled SQL under a `Cmd+/` trace toggle. nlqdb also publishes BIRD Mini-Dev + Spider 2.0-lite accuracy weekly to `docs/features/quality-eval/`; Outerbase doesn't publish a single canonical benchmark.",
+        a: "Both translate English into SQL; the differentiator isn't the translation, it's what surrounds it. nlqdb prompts directly from the live schema fingerprint plus a recent-tables hint and surfaces the compiled SQL under a `Cmd+/` trace toggle. nlqdb also publishes BIRD Mini-Dev + Spider 2.0-lite accuracy to `docs/features/quality-eval/`; Outerbase doesn't publish a single canonical benchmark.",
       },
       {
         q: "Does nlqdb support MySQL, Snowflake, or BigQuery like Outerbase does?",
@@ -475,7 +475,7 @@ export const COMPETITORS: Competitor[] = [
     faqs: [
       {
         q: "How does nlqdb's NL→SQL compare to Wren AI's MDL-driven approach?",
-        a: "Wren AI requires you to author a Modeling Definition Language file — models, metrics, cubes, relationships — that the LLM consults before writing SQL; the result is governed and reproducible but takes upfront semantic-modelling work. nlqdb prompts directly from the live Postgres schema fingerprint plus a recent-tables hint, with no MDL step. nlqdb publishes BIRD Mini-Dev + Spider 2.0-lite scores weekly to `docs/features/quality-eval/`; as of May 2026, Wren AI does not publish a single canonical accuracy benchmark.",
+        a: "Wren AI requires you to author a Modeling Definition Language file — models, metrics, cubes, relationships — that the LLM consults before writing SQL; the result is governed and reproducible but takes upfront semantic-modelling work. nlqdb prompts directly from the live Postgres schema fingerprint plus a recent-tables hint, with no MDL step. nlqdb publishes BIRD Mini-Dev + Spider 2.0-lite scores to `docs/features/quality-eval/`; as of May 2026, Wren AI does not publish a single canonical accuracy benchmark.",
       },
       {
         q: "Can I point Wren AI at an nlqdb database?",

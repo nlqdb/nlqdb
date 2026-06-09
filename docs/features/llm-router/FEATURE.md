@@ -214,5 +214,5 @@ Canonical text in [`docs/decisions/`](../../decisions/) (index in [`docs/decisio
 - **Parked until `quality-eval` Phase 2:** `nlqdb.plan.quality_score` histogram shape + LLM-as-judge prompt + "provider silently degrading" alert threshold — depends on the judge harness.
 - **Parked until Lago wiring (Phase 2):** per-user credit accounting (`architecture.md §6`); provider-level cost already covered.
 - **Parked until a debugging need forces it:** prompt-template version pinning — decided shape stamps the template version hash on `PlanResponse` + the plan-cache entry; cheap to add when a plan-provenance question arises.
-- **Parked until a leak-rate regression forces it ([`SK-LLM-025`](#sk-llm-025)):** a per-call JSON-recovery-rate counter (`nlqdb.llm.json_recovered.total{op}` at the `router.ts` boundary); the weekly cron already surfaces the aggregate `no_sql` → `match` shift.
+- **Parked until a leak-rate regression forces it ([`SK-LLM-025`](#sk-llm-025)):** a per-call JSON-recovery-rate counter (`nlqdb.llm.json_recovered.total{op}` at the `router.ts` boundary); the eval run already surfaces the aggregate `no_sql` → `match` shift.
 - **Parked until burst abuse shows up:** free-tier RPM queue ("queued — 2s" UX, `architecture.md §7.1`); today bursts over a provider's RPM fail-and-fall-through. Owned with `rate-limit` / `observability`.

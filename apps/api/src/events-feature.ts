@@ -91,7 +91,7 @@ async function deriveWishlistPrincipalId(ip: string): Promise<string> {
   return `wl:${await sha256Hex(`${ip}:${day}`, 16)}`;
 }
 
-// ---- POST /v1/events/eval — quality-eval cron ingestion (SK-QUAL-002) ----
+// ---- POST /v1/events/eval — quality-eval run ingestion (SK-QUAL-002) ----
 
 // Caller-supplied shape; we accept the harness's `EvalReport` plus the
 // optional `baseline` diff. The handler doesn't recompute either — the

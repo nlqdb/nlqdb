@@ -54,7 +54,7 @@ same block.
   §2 tracks stays small). `PLAN_SYSTEM` and the per-provider wiring are
   unchanged — every provider keeps importing the one `PLAN_SYSTEM` constant.
   `packages/llm/test/prompts.test.ts` pins the bullet, including its guard
-  clause. The combined effect is measured on the first weekly cron after this
+  clause. The combined effect is measured on the next eval run after this
   lands, not on a PR (`SK-QUAL-002`).
 - **Alternatives rejected:**
   - **A blanket "always `SELECT DISTINCT`" rule.** Over-broad: it would

@@ -32,7 +32,7 @@ failover order behind the new head.
   accuracy-positive. Its free tier (1M tokens/day, no card, verified
   2026-06) satisfies `GLOBAL-013`. The hypothesis — Cerebras-led free
   chain lifts BIRD/Spider EX — is measured, not assumed: the next
-  `quality-eval-bird-mini.yml` / `quality-eval-spider2-lite.yml` cron
+  `quality-eval-bird-mini.yml` / `quality-eval-spider2-lite.yml` dispatch
   produces the delta against `baseline-2026-06-15.json`.
 - **Consequence in code:** `createCerebrasProvider` reuses
   `openAICompatibleChat`; `ProviderName` gains `"cerebras"` (the OTel

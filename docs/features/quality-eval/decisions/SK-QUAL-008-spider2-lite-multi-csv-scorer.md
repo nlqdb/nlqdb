@@ -32,7 +32,7 @@ shipping the 24-of-135 gold-SQL path).
 - **Why:**
   - **Pure-TS port (vs subprocess to upstream `evaluate.py`).** The
     harness already runs on Bun; introducing pandas as a CI dependency
-    would force a Python install on every weekly run, double the
+    would force a Python install on every eval run, double the
     runtime ($BUN$ start vs $PY+PANDAS$ start), and split the
     comparator across two languages where the BIRD scorer is
     TS-native. A faithful port keeps the harness single-runtime and
@@ -99,7 +99,7 @@ shipping the 24-of-135 gold-SQL path).
     step-summary note to reflect "all 135 rows scoreable".
 - **Alternatives rejected:**
   - **Subprocess to `evaluate.py`.** Splits the harness across two
-    runtimes, adds a pandas dependency to the weekly cron, and
+    runtimes, adds a pandas dependency to the eval run, and
     doubles CI startup time without buying anything the TS port can't
     match (tests pin the two invariants that matter — tolerance + sort
     key).
@@ -113,8 +113,8 @@ shipping the 24-of-135 gold-SQL path).
     numbers would never compare cleanly to the upstream Spider 2.0
     leaderboard. Slice 3a was provisional; slice 3b normalises.
   - **Network-only loader (no on-disk cache as authoritative source).**
-    300 HTTP round-trips on every weekly run; flaky upstream =
-    flaky cron. Sparse-clone gives O(1) disk reads.
+    300 HTTP round-trips on every eval run; flaky upstream =
+    flaky scoring. Sparse-clone gives O(1) disk reads.
   - **Pull the whole upstream repo (`xlang-ai/Spider2` is ~50 MB).**
     Wastes bandwidth on assets we don't need; sparse-checkout
     restricts the working tree to `spider2-lite/` (~2 MB on disk).

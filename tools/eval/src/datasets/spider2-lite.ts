@@ -138,7 +138,7 @@ async function directoryExists(path: string): Promise<boolean> {
   }
 }
 
-// Retry transient errors (429 / 5xx / network) with exponential backoff so a single GitHub rate-limit or stream drop doesn't kill the weekly cron.
+// Retry transient errors (429 / 5xx / network) with exponential backoff so a single GitHub rate-limit or stream drop doesn't kill the eval run.
 async function fetchWithRetry(url: string, fetchImpl: typeof fetch): Promise<Response> {
   let lastError: unknown;
   for (let attempt = 0; attempt < FETCH_RETRIES; attempt++) {

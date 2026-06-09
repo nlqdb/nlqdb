@@ -287,7 +287,7 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
       "The query an ad-hoc analyst would run from a fresh schema is the no-training-data sweet spot — schema fingerprint + recent-tables hint is enough.",
     howNlqdbAnswers: [
       "Plans are content-addressed on `(goal-fingerprint, schema-hash)` (`GLOBAL-006`); a cache hit returns in single-digit ms and avoids a model call entirely.",
-      "Quality is measured weekly against BIRD Mini-Dev + Spider 2.0-lite and published to `docs/features/quality-eval/` — the numbers are visible, not asserted.",
+      "Quality is measured against BIRD Mini-Dev + Spider 2.0-lite and published to `docs/features/quality-eval/` — the numbers are visible, not asserted.",
       "Every reply renders the compiled SQL under a `Cmd+/` trace toggle (`SK-WEB-005`); you audit before you trust.",
     ],
     whatItDoesnt: [
@@ -297,7 +297,7 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
     faqs: [
       {
         q: "Is nlqdb's natural-language accuracy comparable to fine-tuned text-to-SQL?",
-        a: "We publish BIRD Mini-Dev + Spider 2.0-lite scores weekly to `docs/features/quality-eval/`. As of pre-alpha the BIRD score is below the gate threshold (which is why anonymous mode is the only open path on the marketing site today); measurement is honest and visible — not a marketing claim.",
+        a: "We publish BIRD Mini-Dev + Spider 2.0-lite scores to `docs/features/quality-eval/`. As of pre-alpha the BIRD score is below the gate threshold (which is why anonymous mode is the only open path on the marketing site today); measurement is honest and visible — not a marketing claim.",
       },
       {
         q: "Do I need to write training examples like Vanna AI requires?",
