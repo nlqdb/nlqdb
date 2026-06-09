@@ -395,7 +395,10 @@ elif [[ "$ASK_STATUS" == "200" ]]; then
     if [[ -n "$CREATE_DB" && -n "$CREATE_SCHEMA" && "$ROW_COUNT" -ge 1 ]]; then
       FIRST_VALUE_QUALITY="ok"
     else
+      # SK-STRG-007: an un-seeded `create` (the SK-HDC-018 fallback) is not
+      # first-value, so record it in `.state` (exit code stays 0 below).
       FIRST_VALUE_QUALITY="degraded"
+      WALK_STATE="passed_degraded"
     fi
     unset CREATE_DB CREATE_SCHEMA
     WALK_NOTE="control blocked (feature_gated); invite HTTP 200, first-value=$FIRST_VALUE_QUALITY (kind=create, ${TABLE_COUNT} tables, ${ROW_COUNT} sample rows, engine=$ANSWER_MODEL) — gate honoured X-Invite-Code"
@@ -440,6 +443,11 @@ ok "outcome JSON written to $OUT_PATH"
 case "$WALK_STATE" in
   passed)
     printf '\n  \033[1;32m✓\033[0m FLOW-004 walk passed in %ss (control blocked + invite 200)\n' "$TOTAL_WALL_S"
+    exit 0
+    ;;
+  passed_degraded)
+    # SK-STRG-007: gate-bypass passed (exit 0); first-value degraded in `.state`.
+    printf '\n  \033[1;33m!\033[0m FLOW-004 gate-bypass passed in %ss but first-value DEGRADED — invited stranger got an un-seeded DB (%s)\n' "$TOTAL_WALL_S" "$WALK_NOTE"
     exit 0
     ;;
   partial)
