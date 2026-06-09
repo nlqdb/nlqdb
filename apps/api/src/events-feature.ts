@@ -171,7 +171,7 @@ export function recordEvalReport(
   if (!isValidPayload(payload)) return { status: 400, reason: "invalid_body" };
   const { report } = payload;
   const pendingEmits: Promise<unknown>[] = [];
-  // Always emit the weekly summary so the SK-QUAL-002 weekly cadence
+  // Always emit the run summary so the SK-QUAL-002 eval report
   // reaches the dashboard regardless of whether a regression fired.
   const weekly: FeatureEvalWeeklyEvent = {
     name: "feature.eval.weekly",

@@ -484,7 +484,7 @@ export async function runEval(opts: RunOptions = {}): Promise<EvalReport> {
   }
 
   // Baseline diff + McNemar. Failures are converted to console warnings;
-  // a missing or unreadable baseline must not block the weekly summary —
+  // a missing or unreadable baseline must not block the run summary —
   // the operator sees the warning in the GH-Actions log and re-runs.
   if (opts.baselinePath) {
     const reader = opts.readBaseline ?? readBaseline;
