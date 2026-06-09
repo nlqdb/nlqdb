@@ -14,3 +14,9 @@ guidelines. Keep each a very short bullet. Delete a bullet once done.
 - **Confirm `MISTRAL_API_KEY` GitHub Actions repo secret is set** — the free-chain planner tail now backstops on Mistral (`SK-LLM-028`). Create a card-free Experiment-tier key (phone-verified, no card) and register it as the repo secret (plus `wrangler secret put` for the Worker). If the repo secret is missing the weekly eval cron silently omits the tail (`not_configured`) and the targeted ~10% full-chain-exhaustion `no_sql` recovery won't be measured. Card-free, so no billing risk — just verify it's present.
 - **Reddit ICP source** — set `REDDIT_CLIENT_ID` / `REDDIT_CLIENT_SECRET` after manually approving a Reddit OAuth app (Reddit's Nov-2025 policy needs a human). The source self-skips until they're wired (`SK-ICP-011`).
 - **Anthropic Connectors Directory submission** — fill out `https://clau.de/mcp-directory-submission`. Engineering prereqs (Origin-header validation in `apps/mcp/src/index.ts` + branded 256×256 SVG logo) can ship without this; the form itself needs a human.
+
+## Deferred dependency major-version bumps (security)
+
+Three `bun audit` advisories remain (1 moderate, 2 low) — each needs a breaking major bump, deferred to avoid a framework migration:
+- **astro 5 → 6** (`apps/web`, `apps/docs`, `packages/astro`) — clears `define:vars` XSS (moderate) + server-island replay (low); fixed only in astro ≥6.1.10. Needs a real Astro 5→6 migration.
+- **cookie ≥0.7.0** (low, via `@sveltejs/kit`) — SvelteKit still pins `cookie ^0.6.0` even at latest (upstream unfixed: sveltejs/kit#13089). A forced override would violate kit's range; wait for a kit release that bumps cookie.
