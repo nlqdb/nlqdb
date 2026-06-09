@@ -21,7 +21,7 @@ when-to-load:
 ## Touchpoints — read this feature before editing
 
 - `tools/eval/` — benchmark runner (slices 1 + 2 + 3a + 3b + 3c shipped):
-  - `src/runner.ts` — multi-dataset driver, CLI entry, lane loop, baseline + emit integration; wraps `plan() → score()` in `withExecRetry` for scaffolded lanes (`SK-QUAL-009`); routes Spider 2.0 rows to `scoreOneSpider2` (`SK-QUAL-008`)
+  - `src/runner.ts` — multi-dataset driver, CLI entry, lane loop, baseline + emit integration; wraps `plan() → score()` in `withExecRetry` for scaffolded lanes (`SK-QUAL-009`); routes Spider 2.0 rows to `scoreOneSpider2` (`SK-QUAL-008`); `--throttle-ms` paces a low-RPM free chain (`SK-QUAL-012`)
   - `src/exec-retry.ts` — `withExecRetry({maxAttempts, plan, request, score})` (`SK-QUAL-009`): bounded retry loop on `exec_error` only; threads previous SQL + error into `PlanRequest.previousAttempt`
   - `src/score.ts` — BIRD's multiset / sequence-strict EX scorer **plus** the Spider 2.0 multi-CSV `comparePandasTable` / `compareMultiPandasTable` port + `scoreOneSpider2` (`SK-QUAL-008`)
   - `src/csv.ts` — minimal RFC-4180 CSV parser + per-column type inference for pandas-emitted gold CSVs (`SK-QUAL-008`)
@@ -173,6 +173,17 @@ Inference-time exec-retry evidence base is in the decision body.
 no longer enter the comparison — matching canonical BIRD `set(fetchall())`.
 Multiset + ORDER-BY strictness (`SK-QUAL-008`) retained (conservative lower
 bound); first post-fix cron re-seeds the baseline (`SK-QUAL-005`).
+
+### SK-QUAL-012 — Inter-question throttle so a low-RPM free chain measures reasoning, not availability
+
+**Body:** [`decisions/SK-QUAL-012-throttle-paced-measurement.md`](./decisions/SK-QUAL-012-throttle-paced-measurement.md).
+Optional `--throttle-ms` (`RunOptions.throttleMs`, default 0 ⇒ unchanged)
+sleeps between questions so the ~5-RPM Cerebras planner head
+(`SK-LLM-023`) doesn't cascade every provider's circuit breaker open into a
+`no_sql` wall. The canonical free-chain number is produced with it on
+(≈3500 ms); it's a measurement-harness knob only — production
+(`apps/api/src/llm-router.ts`) is untouched. Complements the
+`SK-QUAL-011` budget-stop.
 
 ## GLOBALs governing this feature
 
