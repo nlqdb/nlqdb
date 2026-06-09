@@ -116,9 +116,18 @@ re-guards each address an injected DoH resolver returns, failing closed
 production resolver it consumes: `packages/db/src/doh-resolver.ts`'s
 `createDohResolver`, a Cloudflare 1.1.1.1 DoH JSON lookup (A + AAAA in
 parallel, bare-IP answers only, `AbortController`-bounded, fail-loud, one
-`dns.resolve` span). Next:
-`connect.ts` + `registerByoDb` wiring (calling `guardEgressHostResolved`
-after the URL parse, supplying `createDohResolver`) + the `GLOBAL-003`
+`dns.resolve` span). The composition that wires those primitives into one
+connect-time entry point now also landed:
+[`SK-DB-013`](./features/db-adapter/decisions/SK-DB-013-byo-connect-validation-pipeline.md)'s
+`packages/db/src/byo-connect.ts` — `validateByoConnection(engine, rawUrl, resolve)`
+parses the URL (`SK-DB-012`) then runs `guardEgressHostResolved` on the parsed
+host in a load-bearing parse-before-resolve order, the DoH resolver injected,
+returning the engine-tagged parsed connection or a fail-loud message
+([`GLOBAL-012`](./decisions/GLOBAL-012-one-sentence-errors.md)) that never echoes
+the secret; it stops at validation (no seal, no D1), staying pure + zero-dep and
+shared with BYO ClickHouse. Next:
+`connect.ts` + `registerByoDb` wiring (calling `validateByoConnection` with
+`createDohResolver()`, then sealing per `GLOBAL-031`) + the `GLOBAL-003`
 surface set.
 
 ## 4. BYO ClickHouse
@@ -155,9 +164,14 @@ returns, failing closed (narrowing, not closing, the rebind window). The
 production resolver that injection needs now landed too —
 `packages/db/src/doh-resolver.ts`'s `createDohResolver` (shared with BYO
 Postgres; Cloudflare 1.1.1.1 DoH JSON, A + AAAA, bare-IP answers only,
-fail-loud). Next: those callers + the `registerByoDb` ClickHouse
-branch wiring `guardEgressHostResolved` in (supplying `createDohResolver`);
-the residual TOCTOU backstop stays open per `GLOBAL-035`.
+fail-loud). The shared connect-time composition
+([`SK-DB-013`](./features/db-adapter/decisions/SK-DB-013-byo-connect-validation-pipeline.md)'s
+`validateByoConnection`, `packages/db/src/byo-connect.ts`) wires parse →
+`guardEgressHostResolved` into one entry point and takes an `engine:
+"clickhouse"` branch, so this path reuses it rather than re-assembling the
+ordering. Next: those callers + the `registerByoDb` ClickHouse branch calling
+`validateByoConnection` with `createDohResolver()`; the residual TOCTOU backstop
+stays open per `GLOBAL-035`.
 
 ## 5. BYO OTel collectors
 

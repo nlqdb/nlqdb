@@ -1,4 +1,10 @@
 export type {
+  ByoEngine,
+  ValidateByoConnectionResult,
+  ValidatedByoConnection,
+} from "./byo-connect.ts";
+export { validateByoConnection } from "./byo-connect.ts";
+export type {
   ParseClickhouseUrlResult,
   ParsedClickhouseUrl,
 } from "./clickhouse-connection-url.ts";
