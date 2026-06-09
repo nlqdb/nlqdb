@@ -27,7 +27,7 @@
   Open-state is computed in pure code from a typed constants module
   (`apps/api/src/gate/eval-baseline.ts`) shaped exactly like a
   `LaneSummary` slice of [`SK-QUAL-002`](../features/quality-eval/FEATURE.md)'s
-  weekly `EvalReport`. The weekly cron PRs an update to that file when
+  `EvalReport`. An eval run PRs an update to that file when
   it lands a new report; no runtime KV / D1 read for the threshold
   itself (the file IS the contract). When both thresholds clear the
   middleware short-circuits to `next()` with zero extra IO, and the

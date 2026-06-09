@@ -46,7 +46,7 @@ Neither is superseded.
   `plan` call — below the `SK-LLM-027` two-bullet add and far below the
   `SK-LLM-026` exemplar block, so the per-minute-quota tradeoff the
   [engine-quality source of truth](../../../progress/quality-score-source-of-truth.md)
-  §2 tracks is negligible. The effect is measured on the first weekly cron
+  §2 tracks is negligible. The effect is measured on the next eval run
   after this lands, not on a PR (`SK-QUAL-002`).
 - **Alternatives rejected:**
   - **`ORDER BY col ASC NULLS LAST` instead of a `WHERE` filter.** `NULLS

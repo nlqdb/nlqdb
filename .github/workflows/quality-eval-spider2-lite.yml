@@ -2,58 +2,55 @@
 # SK-QUAL-007 + SK-QUAL-008: all 135 `local###` rows scored via the
 # canonical multi-CSV result-set evaluator (column-major comparator with
 # 1e-2 numeric tolerance + per-instance `condition_cols` / `ignore_order`
-# from `evaluation_suite/gold/spider2lite_eval.jsonl`). Same weekly
-# cadence as BIRD per SK-QUAL-002 — staggered by one day so the two runs
-# don't share a free-tier RPM ceiling.
+# from `evaluation_suite/gold/spider2lite_eval.jsonl`). Manual on-demand
+# only per SK-QUAL-002 — the scheduled crons were retired. Two dispatch
+# modes: `full` (135q + emit) and `smoke` (sampled, no emit, resumable).
 
 name: Quality eval — Spider 2.0-lite
 
 on:
-  schedule:
-    # Weekly Tue 04:00 UTC — canonical full baseline, one day after BIRD's
-    # Monday slot. Tuesday gives the free-tier providers a 24h gap so a
-    # Monday outage doesn't poison the Spider run.
-    - cron: "0 4 * * 2"
-    # SK-QUAL-011 — smoke cadence, every 4h offset by 30 min from BIRD so
-    # the two smoke runs don't collide on the shared free-tier RPM ceiling
-    # (concurrency below already serialises within this workflow). Runs the
-    # sampled slice only if engine files changed since the last measured
-    # SHA, or a checkpoint is pending.
-    - cron: "30 */4 * * *"
+  # SK-QUAL-002 — manual on-demand only; the scheduled weekly + 4h smoke
+  # crons were retired. `mode` picks the full canonical pass or the sampled
+  # smoke; both are operator-triggered, never a PR gate.
   workflow_dispatch:
     inputs:
+      mode:
+        description: "full = 135q + emit · smoke = sampled slice, no emit"
+        type: choice
+        options: [full, smoke]
+        default: full
       limit:
-        description: "Question count (Spider 2.0-lite SQLite subset caps at 135)"
+        description: "Question count for full mode (Spider 2.0-lite SQLite subset caps at 135)"
         default: "135"
         required: false
       include_frontier:
-        description: "Run the frontier lane too (paid OpenRouter)"
+        description: "Run the frontier lane too (paid OpenRouter); full mode only"
         type: boolean
         default: false
       include_agentic_frontier:
-        description: "Run the SK-QUAL-009 agentic-frontier lane (exec-retry; ~3x provider RPS)"
+        description: "Run the SK-QUAL-009 agentic-frontier lane (exec-retry; ~3x provider RPS); full mode only"
         type: boolean
         default: false
       skip_emit:
-        description: "Skip POSTing the report to /v1/events/eval (default false)"
+        description: "Skip POSTing the report to /v1/events/eval (full mode; default false)"
         type: boolean
         default: false
 
 permissions:
   contents: read
 
-# SK-QUAL-011 — coalesce queued windows onto latest HEAD; not
-# cancel-in-progress (let a half-finished run complete). Same rationale
-# as BIRD.
+# Coalesce: at most one eval runs at a time; a second manual dispatch
+# queues behind the first rather than competing for the shared free-tier
+# budget. NOT cancel-in-progress — a half-finished run is worth letting
+# complete.
 concurrency:
   group: quality-eval-spider2-lite
   cancel-in-progress: false
 
 jobs:
   run:
-    name: Run Spider 2.0-lite SQLite
-    # Weekly full baseline + manual dispatch; the 4h smoke is the `smoke` job.
-    if: github.event.schedule != '30 */4 * * *'
+    name: Run Spider 2.0-lite SQLite (full)
+    if: inputs.mode != 'smoke'
     runs-on: ubuntu-latest
     # 135 questions × ~1s p50 × N lanes is ~5 min; LLM tail can push
     # to ~15 min. 60 min ceiling absorbs single-provider degradation.
@@ -124,11 +121,11 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           # SK-LLM-028 — Mistral planner-tier capacity backstop (chain tail).
           MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
-          # Frontier chain — opt-in for manual runs. Weekly cron skips
-          # frontier to preserve the OpenRouter paid budget.  The agentic
-          # lane (SK-QUAL-009) needs the same key + the explicit
-          # `include_agentic_frontier` toggle so `include_frontier=true`
-          # doesn't accidentally fire the 3x-RPS exec-retry budget.
+          # Frontier chain — opt-in per dispatch (default off to preserve
+          # the OpenRouter paid budget). The agentic lane (SK-QUAL-009)
+          # needs the same key + the explicit `include_agentic_frontier`
+          # toggle so `include_frontier=true` doesn't accidentally fire
+          # the 3x-RPS exec-retry budget.
           OPENROUTER_FRONTIER_API_KEY: ${{ (inputs.include_frontier == true || inputs.include_agentic_frontier == true) && secrets.OPENROUTER_FRONTIER_API_KEY || '' }}
           RUN_AGENTIC_FRONTIER: ${{ inputs.include_agentic_frontier == true && '1' || '' }}
           EVAL_API_URL: ${{ vars.EVAL_API_URL || 'https://app.nlqdb.com' }}
@@ -191,10 +188,12 @@ jobs:
             ' "$latest"
           } >> "$GITHUB_STEP_SUMMARY"
 
-  # SK-QUAL-011 — sampled smoke slice, every 4h, gated + resumable.
+  # SK-QUAL-011 — sampled smoke slice, manual dispatch (`mode: smoke`),
+  # resumable. No change-since-`last_eval_sha` gate: a manual dispatch is
+  # an intentional run. Smoke never emits and never overwrites the baseline.
   smoke:
     name: Smoke EX (sampled, SK-QUAL-011)
-    if: github.event.schedule == '30 */4 * * *'
+    if: inputs.mode == 'smoke'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     # Fixed smoke slice (SK-QUAL-011) — same seed + limit every run.
@@ -203,8 +202,6 @@ jobs:
       SMOKE_LIMIT: "40"
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
-        with:
-          fetch-depth: 0
       - uses: ./.github/actions/setup
 
       - name: Cache Spider 2.0-lite fixtures
@@ -234,6 +231,8 @@ jobs:
           unzip -q spider2_data/spider2-localdb.zip -d spider2_data/resource/databases/spider2-localdb
           rm -f spider2_data/spider2-localdb.zip
 
+      # SK-QUAL-011 — the smoke checkpoint persists across dispatches so a
+      # budget-stopped smoke resumes on the next `mode: smoke` dispatch.
       - name: Restore eval state
         uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         with:
@@ -242,7 +241,7 @@ jobs:
           restore-keys: |
             eval-state-spider-
 
-      - name: Smoke run (gated + resumable)
+      - name: Smoke run (resumable)
         id: smoke
         env:
           CEREBRAS_API_KEY: ${{ secrets.CEREBRAS_API_KEY }}
@@ -255,18 +254,6 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p eval-state
-          last_sha="$(cat eval-state/last_eval_sha 2>/dev/null || true)"
-          pending=""
-          if ls eval-state/*.smoke.partial.jsonl >/dev/null 2>&1; then pending=1; fi
-          changed=1
-          if [ -n "$last_sha" ] && [ -z "$pending" ]; then
-            if git diff --quiet "$last_sha" HEAD -- packages/llm tools/eval; then changed=""; fi
-          fi
-          if [ -z "$pending" ] && [ -z "$changed" ]; then
-            echo "No engine change since ${last_sha} and no pending checkpoint — skipping smoke."
-            echo "status=skipped" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
           bun tools/eval/src/runner.ts \
             --dataset spider2-lite-sqlite \
             --data-dir spider2_data \
@@ -274,16 +261,14 @@ jobs:
             --out eval-state
           latest=$(ls -t eval-state/*.json | head -1)
           if jq -e '.resumable == true' "$latest" >/dev/null 2>&1; then
-            echo "Budget stop — checkpoint kept; next window resumes. last_eval_sha unchanged."
+            echo "Budget stop — checkpoint kept; re-dispatch (mode: smoke) resumes."
             echo "status=resumable" >> "$GITHUB_OUTPUT"
           else
-            git rev-parse HEAD > eval-state/last_eval_sha
             echo "status=completed" >> "$GITHUB_OUTPUT"
           fi
           echo "report=$latest" >> "$GITHUB_OUTPUT"
 
       - name: Smoke summary
-        if: steps.smoke.outputs.status != 'skipped'
         run: |
           set -euo pipefail
           latest="${{ steps.smoke.outputs.report }}"
@@ -304,7 +289,6 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload smoke report
-        if: steps.smoke.outputs.status != 'skipped'
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: quality-eval-spider2-smoke-${{ github.run_id }}

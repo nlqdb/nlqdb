@@ -93,7 +93,7 @@ describe("recordWishlist", () => {
   });
 });
 
-describe("recordEvalReport — SK-QUAL-002 internal cron ingestion", () => {
+describe("recordEvalReport — SK-QUAL-002 internal run ingestion", () => {
   const TOKEN = "secret-token-1234567890abcdef";
 
   function makePayload(

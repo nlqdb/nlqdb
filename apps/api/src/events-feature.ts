@@ -91,7 +91,7 @@ async function deriveWishlistPrincipalId(ip: string): Promise<string> {
   return `wl:${await sha256Hex(`${ip}:${day}`, 16)}`;
 }
 
-// ---- POST /v1/events/eval — quality-eval cron ingestion (SK-QUAL-002) ----
+// ---- POST /v1/events/eval — quality-eval run ingestion (SK-QUAL-002) ----
 
 // Caller-supplied shape; we accept the harness's `EvalReport` plus the
 // optional `baseline` diff. The handler doesn't recompute either — the
@@ -171,7 +171,7 @@ export function recordEvalReport(
   if (!isValidPayload(payload)) return { status: 400, reason: "invalid_body" };
   const { report } = payload;
   const pendingEmits: Promise<unknown>[] = [];
-  // Always emit the weekly summary so the SK-QUAL-002 weekly cadence
+  // Always emit the run summary so the SK-QUAL-002 eval report
   // reaches the dashboard regardless of whether a regression fired.
   const weekly: FeatureEvalWeeklyEvent = {
     name: "feature.eval.weekly",

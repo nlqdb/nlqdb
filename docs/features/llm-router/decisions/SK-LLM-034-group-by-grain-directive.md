@@ -61,7 +61,7 @@ block, orthogonal to each of them.
   unchanged — every provider keeps importing the one `PLAN_SYSTEM` constant.
   `packages/llm/test/prompts.test.ts` pins the bullet, including both its
   grouping clause and the overall-total guard. The combined effect is measured
-  on the first weekly cron after this lands, not on a PR (`SK-QUAL-002`).
+  on the next eval run after this lands, not on a PR (`SK-QUAL-002`).
 - **Alternatives rejected:**
   - **A blanket "always `GROUP BY` the first listed column" rule.** Over-broad:
     it would group single-aggregate questions and inflate the row count, the
@@ -83,5 +83,5 @@ block, orthogonal to each of them.
     mis-placement is a different, lower-frequency error type and a mis-placed
     aggregate in `WHERE` is usually a hard exec-error (only 7/500 in the
     baseline), so its EX headroom is small. Folding two prompt changes into one
-    PR also blurs which moved the next cron. Parked as a backlog item, not
+    PR also blurs which moved the next eval run. Parked as a backlog item, not
     bundled here (`CLAUDE.md` §P5).

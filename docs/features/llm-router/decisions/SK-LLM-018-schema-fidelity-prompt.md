@@ -68,7 +68,7 @@
   (BIRD-Mini schemas already push 2–4 k tokens of DDL via
   `introspectSchema`); the schema-link directive is the cheaper first
   cut. Few-shot stays open for a follow-up if BIRD doesn't reach
-  ≥ 0.50 on the next weekly cron. **(2) Hard-fail when the LLM
+  ≥ 0.50 on the next eval run. **(2) Hard-fail when the LLM
   returns an identifier that doesn't appear in the schema.** The
   validator (`apps/api/src/ask/sql-validate.ts`) already does column-
   level checks downstream; pushing that signal earlier into the prompt

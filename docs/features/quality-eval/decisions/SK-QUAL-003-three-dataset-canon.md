@@ -54,7 +54,7 @@ Parent feature: [`quality-eval/FEATURE.md`](../FEATURE.md).
   from a dedicated R2 bucket with `principal.id` stripped at write
   time per
   [`GLOBAL-024`](../../../decisions/GLOBAL-024-demand-signal-telemetry.md)'s
-  privacy contract). The weekly cron runs all three once slice 3
+  privacy contract). An eval run covers all three once slice 3
   lands. The Grafana panel shows three lines, plus the
   free-vs-agentic-frontier delta as a separate panel.
 - **Alternatives rejected:**

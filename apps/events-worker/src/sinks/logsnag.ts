@@ -172,9 +172,9 @@ function buildPayloadBody(project: string, event: ProductEvent): LogSnagPayload 
         tags: { surface: event.surface },
       };
     case "feature.eval.weekly": {
-      // SK-QUAL-002: weekly summary lands in `#north-star`. Lane EAs
+      // SK-QUAL-002: the eval run summary lands in `#north-star`. Lane EAs
       // are emitted as separate tags so the LogSnag dashboard can chart
-      // them; `notify: false` because weekly snapshots are review-
+      // them; `notify: false` because eval snapshots are review-
       // cadence, not pager-cadence.
       const laneTags = Object.fromEntries(
         Object.entries(event.laneExecutionAccuracy).map(([lane, ea]) => [

@@ -94,8 +94,8 @@
     surface scope.
   - **Growth-style NSM** (DAU, conversion %) — premature pre-PMF;
     biases work toward distribution before quality is provable.
-  - **OKRs instead of KPIs** — quarterly noise; KPIs with weekly cron
-    + per-PR contribution line are tighter and lighter.
+  - **OKRs instead of KPIs** — quarterly noise; KPIs with a measurement
+    instrument + per-PR contribution line are tighter and lighter.
 
 ## KPI table — the unambiguous bar
 
@@ -205,8 +205,8 @@ headline user-visible numbers from `architecture.md §0`.
 
 ## How measurement is operationalized
 
-- **Instrument source.** Engine KPIs come from the weekly
-  `tools/eval/cron.ts` (see
+- **Instrument source.** Engine KPIs come from the on-demand
+  `tools/eval` runner (see
   [`SK-QUAL-002`](../features/quality-eval/FEATURE.md)). Onboarding
   and UX KPIs come from the existing event pipeline (`packages/events`,
   see [`GLOBAL-024`](./GLOBAL-024-demand-signal-telemetry.md)) plus

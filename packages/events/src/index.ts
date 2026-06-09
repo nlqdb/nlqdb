@@ -131,7 +131,7 @@ function defaultId(event: ProductEvent): string {
       // would erase the comparison.
       return `${event.name}.${event.principalId}.${event.surface}.${utcDay()}`;
     case "feature.eval.weekly":
-      // One weekly summary per run; `runId` is the eval-start ISO
+      // One summary per run; `runId` is the eval-start ISO
       // timestamp so workflow retries of the same run dedupe at the
       // sink. Dataset is part of the key so future Spider-2-lite runs
       // don't collide with BIRD Mini-Dev on the same day.

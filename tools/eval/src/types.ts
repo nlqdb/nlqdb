@@ -108,7 +108,7 @@ export type EvalReport = {
   free_vs_agentic_frontier_delta?: number | null;
   results: QuestionResult[];
   // Set when the runner was given a baseline file (SK-QUAL-002/006); the
-  // weekly cron then emits `feature.eval.weekly` always + `feature.eval.regression`
+  // run then emits `feature.eval.weekly` always + `feature.eval.regression`
   // per (lane, trigger) listed under `lanes[*].regressions`.
   baseline?: BaselineComparison;
   // SK-QUAL-011 — true when the run stopped early because the whole

@@ -12,9 +12,9 @@ when-to-load:
 # Feature: Quality Eval
 
 **One-liner:** NL-to-SQL accuracy benchmarking — three-dataset canon (BIRD-dev + Spider 2.0-lite SQLite subset + internal `db.create` eval per [`SK-QUAL-003`](#sk-qual-003)) against the LLM router's free / BYOLLM / hosted-premium lanes; the **free-vs-agentic-frontier delta** (`SK-QUAL-004`) is the headline KPI for [`GLOBAL-025`](../../decisions/GLOBAL-025-north-star.md)'s engine north-star.
-**Status:** **Phase 2 — slices 1 + 2 + 3a + 3b + 3c shipped.** Slices 1 + 2 (BIRD Mini-Dev runner + EX scorer + free / single-model-frontier lanes; baseline diff against `tools/eval/baseline-2026-06-15.json`; McNemar per `SK-QUAL-006`; `feature.eval.{weekly,regression}` via `POST /v1/events/eval` → Queues → LogSnag `#north-star`; weekly Mon 04:00 UTC cron) ran end-to-end on `main`. Slice 3a (`SK-QUAL-007`) the Spider 2.0-lite loader; 3b (`SK-QUAL-008`) the canonical multi-CSV comparator; 3c (`SK-QUAL-009`) the `withExecRetry` scaffold + `agentic-frontier` lane + the `free_vs_agentic_frontier_delta` KPI — mechanics in each SK block below. PR CI typechecks + unit-tests with a mocked router and cached fixtures; real provider keys never fire on a PR. The runner is **resumable** (`SK-QUAL-011`) and runs on a **weekly canonical baseline + capped 4h smoke** cadence (`SK-QUAL-002`). **Remaining for the Phase 2 exit gate:** internal `db.create` accepted-answer eval (depends on a privacy-stripped R2 export) and first weekly measurement of the new lane to seed `baseline-2026-06-15.json` + `apps/api/src/gate/eval-baseline.ts`. Promotion of [`docs/future/semantic-layer.md`](../../future/semantic-layer.md) still depends on this harness.
+**Status:** **Phase 2 — slices 1 + 2 + 3a + 3b + 3c shipped.** Slices 1 + 2 (BIRD Mini-Dev runner + EX scorer + free / single-model-frontier lanes; baseline diff against `tools/eval/baseline-2026-06-15.json`; McNemar per `SK-QUAL-006`; `feature.eval.{weekly,regression}` via `POST /v1/events/eval` → Queues → LogSnag `#north-star`; manual `workflow_dispatch` run) ran end-to-end on `main`. Slice 3a (`SK-QUAL-007`) the Spider 2.0-lite loader; 3b (`SK-QUAL-008`) the canonical multi-CSV comparator; 3c (`SK-QUAL-009`) the `withExecRetry` scaffold + `agentic-frontier` lane + the `free_vs_agentic_frontier_delta` KPI — mechanics in each SK block below. PR CI typechecks + unit-tests with a mocked router and cached fixtures; real provider keys never fire on a PR. The runner is **resumable** (`SK-QUAL-011`) and runs **manually on demand** (`SK-QUAL-002`). **Remaining for the Phase 2 exit gate:** internal `db.create` accepted-answer eval (depends on a privacy-stripped R2 export) and a first measurement of the new lane to seed `baseline-2026-06-15.json` + `apps/api/src/gate/eval-baseline.ts`. Promotion of [`docs/future/semantic-layer.md`](../../future/semantic-layer.md) still depends on this harness.
 
-**Contribution to north-star:** Engine quality, NL→SQL layer — this feature IS the measurement instrument. The three-dataset canon (`SK-QUAL-003`) feeds the BIRD-dev / Spider 2.0-lite KPIs and the free-vs-frontier delta in the [`GLOBAL-025`](../../decisions/GLOBAL-025-north-star.md) KPI table; the weekly cron in `SK-QUAL-002` is the alert-and-decision input.
+**Contribution to north-star:** Engine quality, NL→SQL layer — this feature IS the measurement instrument. The three-dataset canon (`SK-QUAL-003`) feeds the BIRD-dev / Spider 2.0-lite KPIs and the free-vs-frontier delta in the [`GLOBAL-025`](../../decisions/GLOBAL-025-north-star.md) KPI table; the on-demand run in `SK-QUAL-002` is the alert-and-decision input.
 **Owners (code):** `tools/eval/**`, `packages/llm/**`, `.github/workflows/quality-eval-bird-mini.yml`
 **Cross-refs:** [`docs/future/semantic-layer.md`](../../future/semantic-layer.md) (the moat this harness measures the need for) · `llm-router/FEATURE.md` (the system under test) · `trust-ux/FEATURE.md` (uses these metrics to calibrate `SK-TRUST-003` confidence floors) · [`docs/research-receipts.md §8`](../../research-receipts.md) (dbt 2026 semantic-layer accuracy research)
 
@@ -34,9 +34,9 @@ when-to-load:
   - `src/output.ts` — JSON report writer
   - `src/checkpoint.ts` — resumable-runner checkpoint (load / append / complete) per `SK-QUAL-011`
   - `baseline-2026-06-15.json` — pinned canonical baseline (`SK-QUAL-005`)
-- `.github/workflows/quality-eval-bird-mini.yml` — BIRD: weekly full cron (Mon 04:00 UTC) + capped 4h `smoke` job (`SK-QUAL-011`) + manual dispatch (`include_agentic_frontier` → `RUN_AGENTIC_FRONTIER=1` per `SK-QUAL-009`)
-- `.github/workflows/quality-eval-spider2-lite.yml` — Spider: weekly full cron (Tue 04:00 UTC) + capped 4h `smoke` job + manual dispatch (`SK-QUAL-007` + `SK-QUAL-009` agentic toggle)
-- `apps/api/src/events-feature.ts::recordEvalReport` — bearer-token cron ingestion
+- `.github/workflows/quality-eval-bird-mini.yml` — BIRD: manual `workflow_dispatch` only (`SK-QUAL-002`), `mode: full|smoke` (smoke = sampled + resumable per `SK-QUAL-011`); `include_agentic_frontier` → `RUN_AGENTIC_FRONTIER=1` per `SK-QUAL-009`
+- `.github/workflows/quality-eval-spider2-lite.yml` — Spider: manual `workflow_dispatch` only (`SK-QUAL-002`), `mode: full|smoke`; `SK-QUAL-007` loader + `SK-QUAL-009` agentic toggle
+- `apps/api/src/events-feature.ts::recordEvalReport` — bearer-token run ingestion
 - `apps/api/src/index.ts` — `POST /v1/events/eval` route wiring
 - `packages/events/src/types.ts` — `FeatureEvalWeeklyEvent`, `FeatureEvalRegressionEvent`
 - `apps/events-worker/src/sinks/logsnag.ts` — `#north-star` channel mappings
@@ -91,23 +91,24 @@ shipped free + single-model-frontier; agentic lane lands in slice 3c with
 - **Decision:** The Phase 2 exit gate requires recorded baseline values for every engine-quality KPI in the [`GLOBAL-025`](../../decisions/GLOBAL-025-north-star.md) table by **2026-06-15**. The Phase 2 floor (BIRD-dev EM ≥ 72% free / ≥ 88% frontier; delta ≤ 22 pts) is enforced from the moment baselines exist. If baselines are below the floor on first measurement, the slice does not regress them — it ships engine work until the floor is cleared.
 - **Core value:** Bullet-proof
 - **Why:** "Phase 2 KPI floors" is meaningless without a baseline date. 2026-06-15 leaves ~one month from harness ship to baseline measurement — enough to debug the runner, not enough to drift. If we miss this date, the Phase 2 rollover is blocked per [`GLOBAL-025`](../../decisions/GLOBAL-025-north-star.md) — that is the point.
-- **Consequence in code:** `tools/eval/baseline-2026-06-15.json` is the canonical baseline snapshot. The weekly cron diffs against it. PRs that touch `packages/llm/**` add a one-line note to their description naming which KPI they're moving.
+- **Consequence in code:** `tools/eval/baseline-2026-06-15.json` is the canonical baseline snapshot. A manual eval run diffs against it. PRs that touch `packages/llm/**` add a one-line note to their description naming which KPI they're moving.
 - **Alternatives rejected:**
   - No baseline date — "soon" never happens.
   - Baseline floor = whatever first measurement returns — ratchets us into accepting bad numbers as the new normal.
 
-### SK-QUAL-002 — Eval cadence: weekly canonical baseline + capped 4h smoke; never a PR gate
+### SK-QUAL-002 — Eval cadence: manual on-demand only; never a PR gate
 
 **Body:** [`decisions/SK-QUAL-002-weekly-cron.md`](./decisions/SK-QUAL-002-weekly-cron.md).
-Two scheduled cadences, never per-PR/per-merge: the **weekly full pass**
-(BIRD Mon / Spider Tue 04:00 UTC) is canonical — diffs the baseline +
-emits `feature.eval.weekly` / `feature.eval.regression` (EA delta ≤ -5 pp
-**or** McNemar p < 0.05, `SK-QUAL-006`). A **capped 4h smoke** runs a
-fixed sampled slice (`--sample-seed`) only on engine change since
-`last_eval_sha` (≤6/day; `concurrency` coalesces onto latest HEAD),
-never emits, never overwrites the baseline. Decoupling cadence from merge
-volume avoids blowing the shared 1M/day free-tier cap; resilience via
-[`SK-QUAL-011`](#sk-qual-011).
+Manual `workflow_dispatch` only, never per-PR/per-merge and never on a
+schedule. A `mode` input picks **full** (500 BIRD / 135 Spider, diffs the
+baseline + emits `feature.eval.weekly` / `feature.eval.regression`, EA
+delta ≤ -5 pp **or** McNemar p < 0.05, `SK-QUAL-006`) or **smoke**
+(sampled slice, no emit, resumable per `SK-QUAL-011`). Gating *decisions*
+not *merges* keeps the harness a measurement tool; on-demand (not
+scheduled) keeps the shared 1M/day free-tier cap available to live
+traffic. The prior weekly + 4h smoke **schedule** was retired; the smoke
+run is kept as a manual mode. Accepted trade-off: drift is unmeasured
+until an operator runs it. Resilience via [`SK-QUAL-011`](#sk-qual-011).
 
 ### SK-QUAL-011 — Resumable runner: checkpoint + budget-stop so a run survives a free-tier daily token cap
 
@@ -118,8 +119,10 @@ goes (deterministic `--sample-seed` order). When the whole chain is
 rate-limited (`AllProvidersFailedError` all-`rate_limited`, the
 [`SK-LLM-030`](../llm-router/decisions/SK-LLM-030-rate-limit-aware-failover.md)
 contract) the run **budget-stops**: keeps the checkpoint, marks the report
-`resumable: true`, doesn't emit, exits 0; the next dispatch resumes.
-Checkpoint + `last_eval_sha` persist via `actions/cache`.
+`resumable: true`, doesn't emit, exits 0 — a daily-cap hit reads as a
+pause, not a wall of `no_sql`. The operator re-dispatches once the cap
+resets; the smoke mode's checkpoint persists via `actions/cache`, so a
+budget-stopped smoke resumes on the next `mode: smoke` dispatch.
 
 ### SK-QUAL-006 — McNemar's paired-binary test as a parallel regression trigger
 
@@ -185,22 +188,22 @@ Canonical text in [`docs/decisions/`](../../decisions/).
 - **GLOBAL-026** — LLM strategy: free chain forever, BYOLLM for everyone, hosted premium on paid (flat sub + included monthly request allowance + soft-meter overage, 0% markup).
   - *In this feature:* eval runs through both the free chain and the hosted-premium chain (per `SK-QUAL-004`); BYOLLM lane instrumented when an opt-in eval key is configured but never used to gate a floor.
 - **GLOBAL-027** — Pre-alpha gate consumes the free-chain BIRD/Spider numbers this feature produces.
-  - *In this feature:* the weekly cron's report shape is the contract `apps/api/src/gate/eval-baseline.ts` mirrors. When a cron run lands new numbers, the follow-up PR amends `eval-baseline.ts` so the gate's threshold check sees fresh values. Lifecycle: when both lanes clear (BIRD ≥ 0.65 AND Spider ≥ 0.75), the gate's removal PR also retires `GLOBAL-027`. See [`pre-alpha-gate/FEATURE.md`](../pre-alpha-gate/FEATURE.md).
+  - *In this feature:* the eval run's report shape is the contract `apps/api/src/gate/eval-baseline.ts` mirrors. When a run lands new numbers, the follow-up PR amends `eval-baseline.ts` so the gate's threshold check sees fresh values. Lifecycle: when both lanes clear (BIRD ≥ 0.65 AND Spider ≥ 0.75), the gate's removal PR also retires `GLOBAL-027`. See [`pre-alpha-gate/FEATURE.md`](../pre-alpha-gate/FEATURE.md).
 
 ## Open questions / known unknowns
 
 - **Privacy** — Decided: no user data ever flows into the eval harness. The harness is for public benchmark data only (BIRD, Spider). Any PR that adds production schema sampling is a security defect.
-- **Deferred: a dedicated `feature.eval.smoke` event.** The 4h smoke
-  cadence (`SK-QUAL-002`) produces a CI artifact + run-summary table and
-  does **not** emit, keeping the weekly dashboard uncontaminated. A
+- **Deferred: a dedicated `feature.eval.smoke` event.** The smoke `mode`
+  (`SK-QUAL-002`) produces a CI artifact + run-summary table and does
+  **not** emit, keeping the weekly dashboard uncontaminated. A
   first-class `feature.eval.smoke` event touches `packages/events`,
   `recordEvalReport`, and the LogSnag sink — out of proportion to the
   immediate need; promote when a smoke dashboard is actually wanted.
 - **Deferred: a hard token-budget counter in the runner.** Today the
-  budget guard is W2's rate-limit signal (a 429-saturated chain
-  budget-stops via `SK-QUAL-011`) plus the changed-since-`last_eval_sha`
-  gate. A pre-emptive per-day token ceiling is parked — we don't know each
-  free tier's true limit, and the reactive stop is self-calibrating.
+  budget guard is W2's rate-limit signal — a 429-saturated chain
+  budget-stops via `SK-QUAL-011`. A pre-emptive per-day token ceiling is
+  parked — we don't know each free tier's true limit, and the reactive
+  stop is self-calibrating.
 - **Validator integration.** **Resolved in slice 3c per [`SK-QUAL-009`](#sk-qual-009)** — `withExecRetry` wraps `plan() → score()`, bounded at the production retry budget (exec-error-only, threads `PlanRequest.previousAttempt`). Evidence base (MAC-SQL Refiner, CHESS, MAGIC; RetrySQL-is-training-time correction) in the SK-QUAL-009 body.
 - **Hosted-premium / agentic-frontier lane.** **Slice 3c shipped per [`SK-QUAL-009`](#sk-qual-009)** — `agentic-frontier` wraps the single-model frontier provider in `withExecRetry` (opt-in `RUN_AGENTIC_FRONTIER=1`); unscaffolded `frontier` stays the ablation reference. **Still open:** multi-model frontier expansion (GPT-5 + Gemini 2.5 Pro as separate provider entries) — deferrable until the Sonnet 4.6 baseline lands; BYOLLM-lane instrumentation still depends on `SK-LLM-016`.
 - **Spider 2.0-lite multi-CSV result-set scorer (slice 3b).** **Shipped** per [`SK-QUAL-008`](#sk-qual-008). Follow-up: pin a `xlang-ai/Spider2` commit SHA in the next Spider baseline so leaderboard churn shows up as a visible PR diff (placeholder under `SK-QUAL-005`).

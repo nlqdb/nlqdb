@@ -17,7 +17,7 @@ Parent feature: [`llm-router/FEATURE.md`](../FEATURE.md).
   text-to-SQL literature is measured under greedy decoding (temperature
   0 = argmax at each step); sampling at 0.6 trades EX for diversity we
   don't use on a single-pass planner.
-  (b) **Reproducibility** — the weekly cron's McNemar paired-binary test
+  (b) **Reproducibility** — the eval's McNemar paired-binary test
   ([`SK-QUAL-006`](../../quality-eval/FEATURE.md#sk-qual-006)) pairs
   per-question outcomes between the baseline and the current run; a
   stochastic leg flips outcomes run-to-run, inflating the discordant

@@ -150,8 +150,8 @@ and shares the link — in under 60 seconds, no card, no config.
   chat REPL pending
 - ✓ `@nlqdb/sdk` — basic methods + `runSql`
 - ✓ Framework wrappers + native Swift package
-- ✓ Quality-eval harness (BIRD + Spider 2.0, weekly) — the free-vs-frontier
-  accuracy delta is the headline KPI
+- ✓ Quality-eval harness (BIRD + Spider 2.0, manual on-demand) — the
+  free-vs-frontier accuracy delta is the headline KPI
 - ~ Bring-your-own-LLM dispatch — HTTP lane live; remaining surfaces in
   progress
 - ◯ CSV upload in chat

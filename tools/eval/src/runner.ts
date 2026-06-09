@@ -42,10 +42,10 @@ export type RunOptions = {
   questionsJsonPath?: string;
   questionsJsonUrl?: string;
   limit?: number;
-  // SK-QUAL-011 — deterministic sample seed for the smoke slice. When
+  // SK-QUAL-011 — deterministic sample seed for a sampled run. When
   // set, the runner picks `limit` questions from the *full* dataset via a
   // seeded shuffle, so the same questions are compared run-to-run (a
-  // fixed seed turns the smoke EX into a stable signal, not noise from a
+  // fixed seed turns the sampled EX into a stable signal, not noise from a
   // different slice each run). Unset ⇒ the prior first-`limit` behaviour.
   sampleSeed?: number;
   outDir?: string;
@@ -390,8 +390,8 @@ export async function runEval(opts: RunOptions = {}): Promise<EvalReport> {
   // (question_id, lane) pairs are skipped and replayed verbatim into the
   // final report.
   const outDir = opts.outDir ?? DEFAULT_RESULTS_DIR;
-  // Sampled (smoke) runs checkpoint separately from the full run so the
-  // 4h smoke cadence and the weekly full pass never share a partial file.
+  // Sampled runs checkpoint separately from full runs so a sampled run and
+  // a full run never share a partial file.
   const cpPath = checkpointPath(
     outDir,
     datasetName,
@@ -484,7 +484,7 @@ export async function runEval(opts: RunOptions = {}): Promise<EvalReport> {
   }
 
   // Baseline diff + McNemar. Failures are converted to console warnings;
-  // a missing or unreadable baseline must not block the weekly summary —
+  // a missing or unreadable baseline must not block the run summary —
   // the operator sees the warning in the GH-Actions log and re-runs.
   if (opts.baselinePath) {
     const reader = opts.readBaseline ?? readBaseline;

@@ -59,7 +59,7 @@ Parent feature: [`llm-router/FEATURE.md`](../FEATURE.md).
   [engine-quality source of truth](../../../progress/quality-score-source-of-truth.md)
   §2 tracks. The set is kept to the literature-optimal **floor of 3** to
   bound that cost; the combined effect (EX lift vs token-budget pressure)
-  is measured on the first weekly cron after this lands — it is not
+  is measured on the next eval run after this lands — it is not
   measured on a PR (`SK-QUAL-002`).
 - **Alternatives rejected:**
   - **Similarity-retrieved exemplars (full DAIL-SQL).** The larger half
