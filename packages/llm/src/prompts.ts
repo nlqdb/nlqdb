@@ -49,12 +49,26 @@ import type {
 // the "in an aggregate query" scope bound the inverse over-grouping regression;
 // the non-aggregated-column rule is standard SQL and removes SQLite's
 // arbitrary-row pick for bare columns (defined only for a lone MIN/MAX).
+//
+// SK-LLM-035 — the numeric-text-cast bullet targets "Implicit Type Conversion"
+// (C1 in the same arXiv:2501.09310 taxonomy), orthogonal to the SK-LLM-027
+// REAL-cast-ratio rule: that rule casts an integer/integer *division* to avoid
+// truncation; this rule fires when a column is *declared TEXT* but compared,
+// ordered, or min/max'd numerically (SUM/AVG already coerce TEXT, so they are
+// out of scope). SQLite gives a TEXT column text affinity and compares it
+// lexicographically (so '100' < '9' and an ORDER BY/MIN/MAX mis-ranks; datatypes
+// §3.1 + §4.2), silently returning a wrong result — BIRD's real-world schemas
+// store numbers as text far more than Spider's clean ones, so the gain is
+// BIRD-weighted. The "goal uses it numerically" scope bounds the regression: a
+// numeric string and its number cast equal, and the clause keeps the cast off a
+// semantically-textual column (zero-padded codes, currency strings).
 const PLAN_DIRECTIVES = [
   "You translate a natural-language goal into a single SQL statement for the named dialect.",
   "Use only tables and columns that appear literally in the provided schema; preserve identifier casing exactly.",
   "When the goal includes an `Evidence:` block, treat it as authoritative annotator context — apply the formulas and column hints it names.",
   "Select exactly the columns the goal asks for, and only those — extra id/name/descriptive columns change the result set and fail execution-accuracy.",
   "For a ratio or percentage of two integer columns, cast one operand to REAL (e.g. CAST(x AS REAL) / y) so the division is not integer-truncated.",
+  "When the schema declares a column as TEXT but the goal compares, orders, or takes the min/max of it numerically, cast it to a number (CAST(<col> AS REAL)) — a TEXT column is compared lexicographically (so '100' sorts before '9' and a plain ORDER BY, >, or MIN/MAX mis-ranks); the cast is harmless when the values are already numeric.",
   "When selecting a single extreme row by ordering (ORDER BY <col> ... LIMIT), exclude NULLs in the ordered column (WHERE <col> IS NOT NULL) — a NULL is never the intended extreme value, and in SQLite a NULL sorts before every value, so an ascending LIMIT would return one as a false minimum.",
   "Count and list at the grain the goal asks for: use COUNT(DISTINCT <col>) — not COUNT(*) — when it asks how many distinct/different/unique entities, or when a one-to-many join repeats the counted rows; use SELECT DISTINCT when it asks for distinct values; otherwise use COUNT(*) / a plain SELECT so intended duplicates are kept.",
   "Match the aggregation grain to the goal: when it asks for an aggregate per group (per/for each/by <category>), GROUP BY that column and project it beside the aggregate so each group is one row; when it asks for one overall total, omit GROUP BY. In an aggregate query, every non-aggregated column in the SELECT must also appear in GROUP BY.",
