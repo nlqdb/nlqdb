@@ -178,12 +178,9 @@ bound); first post-fix cron re-seeds the baseline (`SK-QUAL-005`).
 
 **Body:** [`decisions/SK-QUAL-012-throttle-paced-measurement.md`](./decisions/SK-QUAL-012-throttle-paced-measurement.md).
 Optional `--throttle-ms` (`RunOptions.throttleMs`, default 0 ⇒ unchanged)
-sleeps between questions so the ~5-RPM Cerebras planner head
-(`SK-LLM-023`) doesn't cascade every provider's circuit breaker open into a
-`no_sql` wall. The canonical free-chain number is produced with it on
-(≈3500 ms); it's a measurement-harness knob only — production
-(`apps/api/src/llm-router.ts`) is untouched. Complements the
-`SK-QUAL-011` budget-stop.
+sleeps between questions so the ~5-RPM Cerebras head (`SK-LLM-023`) doesn't
+cascade every breaker open into a `no_sql` wall. Measurement-harness knob
+only — production is untouched. Complements the `SK-QUAL-011` budget-stop.
 
 ## GLOBALs governing this feature
 
@@ -204,18 +201,12 @@ Canonical text in [`docs/decisions/`](../../decisions/).
 ## Open questions / known unknowns
 
 - **Privacy** — Decided: no user data ever flows into the eval harness. The harness is for public benchmark data only (BIRD, Spider). Any PR that adds production schema sampling is a security defect.
-- **Deferred: a dedicated `feature.eval.smoke` event.** The smoke `mode`
-  (`SK-QUAL-002`) produces a CI artifact + run-summary table and does
-  **not** emit, keeping the weekly dashboard uncontaminated. A
-  first-class `feature.eval.smoke` event touches `packages/events`,
-  `recordEvalReport`, and the LogSnag sink — out of proportion to the
-  immediate need; promote when a smoke dashboard is actually wanted.
-- **Deferred: a hard token-budget counter in the runner.** Today the
-  budget guard is W2's rate-limit signal — a 429-saturated chain
-  budget-stops via `SK-QUAL-011`. A pre-emptive per-day token ceiling is
-  parked — we don't know each free tier's true limit, and the reactive
-  stop is self-calibrating.
-- **Validator integration.** **Resolved in slice 3c per [`SK-QUAL-009`](#sk-qual-009)** — `withExecRetry` wraps `plan() → score()`, bounded at the production retry budget (exec-error-only, threads `PlanRequest.previousAttempt`). Evidence base (MAC-SQL Refiner, CHESS, MAGIC; RetrySQL-is-training-time correction) in the SK-QUAL-009 body.
-- **Hosted-premium / agentic-frontier lane.** **Slice 3c shipped per [`SK-QUAL-009`](#sk-qual-009)** — `agentic-frontier` wraps the single-model frontier provider in `withExecRetry` (opt-in `RUN_AGENTIC_FRONTIER=1`); unscaffolded `frontier` stays the ablation reference. **Still open:** multi-model frontier expansion (GPT-5 + Gemini 2.5 Pro as separate provider entries) — deferrable until the Sonnet 4.6 baseline lands; BYOLLM-lane instrumentation still depends on `SK-LLM-016`.
-- **Spider 2.0-lite multi-CSV result-set scorer (slice 3b).** **Shipped** per [`SK-QUAL-008`](#sk-qual-008). Follow-up: pin a `xlang-ai/Spider2` commit SHA in the next Spider baseline so leaderboard churn shows up as a visible PR diff (placeholder under `SK-QUAL-005`).
+- **Deferred:** a dedicated `feature.eval.smoke` event (the smoke `mode`
+  produces a CI artifact only, no emit — promote when a smoke dashboard is
+  wanted); and a hard token-budget counter (the `SK-QUAL-011` reactive
+  budget-stop + `SK-QUAL-012` pacing cover it without guessing each tier's
+  true limit).
+- **Validator integration + agentic-frontier lane — shipped** per [`SK-QUAL-009`](#sk-qual-009) (`withExecRetry`; `agentic-frontier` opt-in via `RUN_AGENTIC_FRONTIER=1`, unscaffolded `frontier` stays the ablation reference). **Still open:** multi-model frontier (GPT-5 + Gemini 2.5 Pro as separate entries) — deferrable until the Sonnet 4.6 baseline lands; BYOLLM-lane instrumentation depends on `SK-LLM-016`.
+- **Spider 2.0-lite multi-CSV scorer — shipped** per [`SK-QUAL-008`](#sk-qual-008). Follow-up: pin a `xlang-ai/Spider2` commit SHA in the next Spider baseline so leaderboard churn shows as a PR diff.
+- **Canonical raw EX needs the 6-provider GHA dispatch.** First post-fix run (T17, 2026-06-09): free-tier per-minute TPM caps make full-DDL planning capacity-bound, so the agent env (4/6 providers) reports reasoning EX + a raw-EX lower bound — see `quality-score-source-of-truth.md` §2/§6.
 - **Corrected-set evaluation — Parked until the next BIRD baseline refresh** (`GLOBAL-033`, build-vs-adopt). UIUC Kang ([arXiv:2601.08778](https://arxiv.org/abs/2601.08778)) found 52.8% annotation errors in BIRD Mini-Dev, ship corrected variants (`uiuc-kang-lab/text_to_sql_benchmarks`). **Adopt iff** the license permits bundling **and** it stays a ~50-LOC scorer-reuse patch (join by `question_id`, report Spearman-rank deltas); else skip — canonical already moves the KPI.

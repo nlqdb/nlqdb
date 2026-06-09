@@ -33,8 +33,10 @@
 >
 > **Real blocker is engine quality, not surfaces (2026-05-24 founder
 > directive).** Every advertised acquisition surface gate-403s at
-> `/v1/ask` because the free-chain BIRD is 0.318 (target 0.65) and
-> Spider is `null` (target 0.75) per
+> `/v1/ask` because the free-chain BIRD raw EX is 0.35 (target 0.65) and
+> Spider is 0.10 (target 0.75) — both measured lower bounds as of
+> 2026-06-09; the capacity-independent reasoning EX is ≈0.52 BIRD / 0.33
+> Spider (up from the baseline's 0.354 BIRD) per
 > [`apps/api/src/gate/eval-baseline.ts`](../../apps/api/src/gate/eval-baseline.ts) /
 > [`SK-GATE-001`](../features/pre-alpha-gate/FEATURE.md#sk-gate-001) /
 > [`SK-GATE-002`](../features/pre-alpha-gate/FEATURE.md#sk-gate-002).
@@ -48,11 +50,11 @@
 > §1.4 invite valve carries a stranger across the gate intact.
 >
 > **What the next agent run should pick (2026-05-24, in order — items 1–3 outrank 4+ unconditionally):**
-> 1. **Engine quality — close the BIRD gap and unblock the Spider lane.**
->    BIRD 0.318 vs 0.65 target (49% of bar); Spider null vs 0.75 (loader
->    + scorer shipped 2026-05-19 per [`SK-QUAL-007`](../features/quality-eval/FEATURE.md) +
->    [`SK-QUAL-008`](../features/quality-eval/FEATURE.md) — first
->    measurement seeds `eval-baseline.ts` on the next manual eval run).
+> 1. **Engine quality — close the BIRD gap and lift the Spider lane.**
+>    BIRD raw EX 0.35 vs 0.65 target; reasoning EX ≈0.52 (was 0.354).
+>    Spider 0.10 vs 0.75, first-measured 2026-06-09 once the eval pipeline
+>    was unblocked (gdown fix, T17). The canonical 500-q / 6-provider
+>    re-seed of `eval-baseline.ts` is the now-unblocked GHA dispatch.
 >    Highest-leverage pickable work, in order: (a) verify the next
 >    `quality-eval-spider2-lite.yml` dispatch lands a real `spider_accuracy`
 >    in `eval-baseline.ts` (trigger it manually; if the run failed, fix the
@@ -169,8 +171,8 @@ This table is the single dashboard answer to "is the inbound funnel working toda
 
 | KPI | Target | Status |
 |---|---|---|
-| Free-chain BIRD accuracy | ≥ 0.65 | **0.318** as of 2026-05-18 ([`eval-baseline.ts`](../../apps/api/src/gate/eval-baseline.ts)) — **the real acquisition bottleneck per the 2026-05-24 founder directive**; closing this lifts the gate for every surface §3 ships |
-| Free-chain Spider accuracy | ≥ 0.75 | **null** — loader + canonical multi-CSV scorer shipped 2026-05-19 ([`SK-QUAL-007`](../features/quality-eval/FEATURE.md) + [`SK-QUAL-008`](../features/quality-eval/FEATURE.md)); first measurement seeds `eval-baseline.ts` on the next [`quality-eval-spider2-lite.yml`](../../.github/workflows/quality-eval-spider2-lite.yml) manual dispatch |
+| Free-chain BIRD accuracy | ≥ 0.65 | **raw EX 0.35** (measured lower bound, 2026-06-09, [`eval-baseline.ts`](../../apps/api/src/gate/eval-baseline.ts)); **reasoning EX ≈0.52, up from 0.354** — first measurement after the eval pipeline was unblocked (gdown fix, T17). **Still the acquisition bottleneck** (gate stays closed); closing it lifts the gate for every surface §3 ships |
+| Free-chain Spider accuracy | ≥ 0.75 | **raw EX 0.10** (first ever measured, 2026-06-09; reasoning EX 0.33) via [`SK-QUAL-007`](../features/quality-eval/FEATURE.md) + [`SK-QUAL-008`](../features/quality-eval/FEATURE.md). Canonical 500-q / 6-provider re-seed = the now-unblocked GHA [`quality-eval-spider2-lite.yml`](../../.github/workflows/quality-eval-spider2-lite.yml) dispatch |
 | Anonymous loop completions | ≥ 50 | 0 — gate 403s every walked `/v1/ask` (2026-05-24 stranger-test); **stays 0 until BIRD/Spider clear OR §1.4 invite-valve verifies end-to-end** |
 | Signed-in users (invite-redeemed) | ≥ 10 | 0 real-user (non-walker) redemptions. FLOW-004 gate-bypass is **intact** AND the downstream hosted-DB provision now returns **HTTP 200** (2026-06-09 ×3 walks) — the 2026-06-08 `sample_insert_failed` 500 cleared once SK-HDC-018 + SK-LLM-033 (#352) deployed. The invited stranger reaches a **working DB on every first query**; first-value seed quality is *prompt-variable* (CRM goal → 4 tables / 9 rows `ok`; meal-planner goal → un-seeded `degraded`, reproduced 2/2 — walker records `state:"passed_degraded"` per [SK-STRG-007](../features/stranger-test/FEATURE.md)). The funnel is end-to-end-green to a 200; seeding **every** goal is the open SK-LLM-033 lift. This row stays 0 until a real stranger (not the synthetic walker) redeems an invite |
 | Sean Ellis Q1 responses | ≥ 20 | 0 — survey not wired (§1.3); meaningful only after a user actually crosses the gate |
