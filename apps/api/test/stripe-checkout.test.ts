@@ -103,6 +103,10 @@ describe("createCheckoutSession", () => {
     );
     expect(capturedParams?.client_reference_id).toBe("user_123");
     expect(capturedParams?.mode).toBe("subscription");
+    // Carried onto the subscription too, so customer.subscription.created
+    // can resolve the user even if it beats checkout.session.completed
+    // (SK-STRIPE-012 — Stripe doesn't guarantee webhook ordering).
+    expect(capturedParams?.subscription_data?.metadata).toEqual({ nlqdb_user_id: "user_123" });
   });
 
   it("uses pro price ID for pro plan", async () => {

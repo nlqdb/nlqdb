@@ -169,6 +169,21 @@ API version pinned to `2026-04-22.dahlia` via the `stripe` npm SDK (see `SK-STRI
 - This is the **operator/founder** half of dunning. The **customer-facing** email
   on payment failure is still open (needs an email-provider decision).
 
+### Order-independent webhook linkage (SK-STRIPE-012 — this PR)
+
+- Stripe does not guarantee webhook delivery order, so
+  `customer.subscription.created` can arrive **before**
+  `checkout.session.completed`. Previously that dropped the
+  `billing.subscription_created` operator alert and left the row `incomplete`.
+- Checkout now stamps `subscription_data.metadata.nlqdb_user_id`; the
+  subscription handler resolves the user from it when no `customers` row
+  exists yet, creating the row via the same idempotent upsert
+  `checkout.session.completed` uses. Whichever event lands first creates the
+  row; the other upserts (ON CONFLICT touches only the Stripe ids, never
+  `status`). No new Stripe call, env var, or schema change.
+- Hardening only — no behaviour change in the normal (in-order) path; inert
+  until live keys exist.
+
 ---
 
 ## What is next

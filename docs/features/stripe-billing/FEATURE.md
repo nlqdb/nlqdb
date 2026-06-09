@@ -50,7 +50,7 @@ when-to-load:
 
 ### SK-STRIPE-004 — Customer linkage via `client_reference_id: userId` on Checkout Sessions
 
-- **Decision:** Every Phase 2 `Checkout.Session` MUST be created with `mode: 'subscription'` and `client_reference_id: userId`. The `checkout.session.completed` handler reads `client_reference_id` to link the Stripe customer to an `nlqdb` user; missing or non-string `client_reference_id` → log `checkout_completed_missing_ids` and skip rather than create an orphan `customers` row.
+- **Decision:** Every Phase 2 `Checkout.Session` MUST be created with `mode: 'subscription'`, `client_reference_id: userId`, **and** `subscription_data.metadata.nlqdb_user_id = userId` (the latter for SK-STRIPE-012). The `checkout.session.completed` handler reads `client_reference_id` to link the Stripe customer to an `nlqdb` user; missing or non-string `client_reference_id` → log `checkout_completed_missing_ids` and skip rather than create an orphan `customers` row.
 - **Core value:** Bullet-proof, Simple
 - **Why:** Stripe-side metadata is the only signal we control at Checkout time; an unlinked subscription leaves a customer who paid but has no nlqdb capability. Skipping with a warn log is recoverable (operator can backfill); creating an orphan row is not (the next event silently writes to the wrong user).
 - **Consequence in code:** The Checkout Session creation endpoint (Phase 2 slice — see `docs/phase-plan.md`) is required by review to set both fields. `handleCheckoutCompleted` defaults `status = 'incomplete'` until the subsequent `customer.subscription.created` event fires — checkout completion alone is not enough state to call the customer "active". The pair `(user_id, stripe_customer_id, stripe_subscription_id)` lives in the `customers` D1 table with `user_id` as the unique key.
@@ -117,6 +117,11 @@ After a successful insert the route archives the raw body to R2 at `stripe-event
 
 **Body:** [`decisions/SK-STRIPE-011-payment-failed-dunning-alert.md`](./decisions/SK-STRIPE-011-payment-failed-dunning-alert.md).
 The webhook handles `invoice.payment_failed` → emits `billing.payment_failed` (user resolved from `invoice.customer`; deduped per `invoice.id`) → LogSnag `billing` channel, `notify: true`. No DB write — the `past_due`/`unpaid` status is already synced by `customer.subscription.updated` (SK-STRIPE-005) and drives the in-app banner (web-app `SK-WEB-012`). This is the operator/founder half of dunning; the customer-facing email stays open.
+
+### SK-STRIPE-012 — The webhook pipeline is order-independent: `customer.subscription.created` self-heals the link from subscription metadata
+
+**Body:** [`decisions/SK-STRIPE-012-order-independent-linkage.md`](./decisions/SK-STRIPE-012-order-independent-linkage.md).
+Stripe doesn't guarantee webhook order, so `customer.subscription.created` can beat `checkout.session.completed`; the handler then resolves the user from `subscription_data.metadata.nlqdb_user_id` (SK-STRIPE-004) and creates the row via the same idempotent `upsertCustomerLink`. Whichever event lands first creates the row; the other upserts.
 
 ## GLOBALs governing this feature
 
