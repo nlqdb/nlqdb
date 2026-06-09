@@ -2,9 +2,9 @@
 // `app.request()` so the middleware chain exercises through the actual
 // context surface, not a synthetic mock.
 //
-// Assumes `EVAL_BASELINE` reports closed today (BIRD 0.318, Spider
-// null). When both lanes clear, these tests get updated alongside the
-// middleware-removal PR.
+// Assumes `EVAL_BASELINE` reports closed today (BIRD + Spider both
+// measured but below target). When both lanes clear, these tests get
+// updated alongside the middleware-removal PR.
 
 import { createTestTelemetry, type TestTelemetry } from "@nlqdb/otel/test";
 import { Hono } from "hono";
@@ -65,7 +65,7 @@ function buildSessionApp(kv: KVNamespace, userId: string) {
 
 const ANON_BEARER = "Bearer anon_test_0123456789abcdef";
 
-describe("gatePreAlpha — closed branch (today: BIRD 0.318, Spider null)", () => {
+describe("gatePreAlpha — closed branch (today: BIRD + Spider below target)", () => {
   it("blocks an anon /v1/ask with 403 feature_gated + progress payload", async () => {
     const app = buildAnonApp(fakeKv());
     const res = await app.request("/v1/ask", {
@@ -94,7 +94,9 @@ describe("gatePreAlpha — closed branch (today: BIRD 0.318, Spider null)", () =
     expect(body.error.gate.bird_target).toBe(0.65);
     expect(body.error.gate.spider_target).toBe(0.75);
     expect(body.error.gate.bird_accuracy).toBeGreaterThan(0); // current free-chain value
-    expect(body.error.gate.spider_accuracy).toBeNull(); // SK-QUAL-003 slice 3 unshipped
+    // Both lanes now measured (2026-06-09 first post-fix run) but below target.
+    expect(body.error.gate.spider_accuracy).toBeGreaterThan(0);
+    expect(body.error.gate.spider_accuracy as number).toBeLessThan(0.75);
   });
 
   it("blocks an authed-session /v1/databases POST with the same shape", async () => {

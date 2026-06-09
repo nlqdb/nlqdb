@@ -50,6 +50,12 @@ export type RunOptions = {
   sampleSeed?: number;
   outDir?: string;
   sqlTimeoutMs?: number;
+  // Inter-question pause (ms). Spaces the offered load so a low-RPM free
+  // chain (e.g. the Cerebras 5-RPM planner head, SK-LLM-023) stays under
+  // its per-minute limits and the rate-limit-aware failover / breaker can
+  // recover between questions instead of cascading every provider open
+  // into a `no_sql` wall. Default 0 ⇒ unchanged (PR CI / mocked router).
+  throttleMs?: number;
   // Test-injection point for the report timestamp so a resumed run and a
   // single-shot run can be compared deterministically. Production leaves
   // it unset (wall-clock now).
@@ -402,12 +408,17 @@ export async function runEval(opts: RunOptions = {}): Promise<EvalReport> {
   for (const r of checkpoint.results) scored.set(checkpointKey(r.question_id, r.lane), r);
 
   const schemaCache = new Map<string, string>();
+  const throttleMs = opts.throttleMs ?? 0;
   let budgetStopped = false;
+  let firstScored = true;
   for (const question of questions) {
     const pending = lanes.filter(
       (lane) => !scored.has(checkpointKey(question.question_id, lane.lane)),
     );
     if (pending.length === 0) continue;
+    // Space the offered load on a low-RPM free chain (opt-in; default 0).
+    if (throttleMs > 0 && !firstScored) await new Promise((r) => setTimeout(r, throttleMs));
+    firstScored = false;
     const dbPath = await dataset.resolveDbPath(question.db_id);
     // Lanes use distinct providers (no shared rate limit) so running them
     // concurrently halves wall-time without doubling provider RPS. A
@@ -538,6 +549,8 @@ function parseCliArgs(): RunOptions {
       "sample-seed": { type: "string" },
       out: { type: "string" },
       "sql-timeout-ms": { type: "string" },
+      // Inter-question pacing for low-RPM free chains (default 0).
+      "throttle-ms": { type: "string" },
       // SK-QUAL-002 / SK-QUAL-005 — baseline comparison + event emission.
       baseline: { type: "string" },
       // `emit-url` and `emit-token` go together; either both set (cron)
@@ -558,6 +571,7 @@ function parseCliArgs(): RunOptions {
   if (values["sample-seed"]) out.sampleSeed = Number.parseInt(values["sample-seed"], 10);
   if (values.out) out.outDir = values.out;
   if (values["sql-timeout-ms"]) out.sqlTimeoutMs = Number.parseInt(values["sql-timeout-ms"], 10);
+  if (values["throttle-ms"]) out.throttleMs = Number.parseInt(values["throttle-ms"], 10);
   if (values.baseline) out.baselinePath = values.baseline;
   // Both flags must be set together — fail loud per GLOBAL-012 if only
   // one is provided, so a typo in the workflow doesn't silently drop the

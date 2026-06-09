@@ -100,18 +100,19 @@ updated by the [quality-eval](https://github.com/nlqdb/nlqdb/tree/main/docs/feat
     "action": "Join the waitlist",
     "waitlist_url": "https://nlqdb.com/#waitlist",
     "gate": {
-      "bird_accuracy": 0.318,
-      "spider_accuracy": null,
+      "bird_accuracy": 0.35,
+      "spider_accuracy": 0.12,
       "bird_target": 0.65,
       "spider_target": 0.75,
-      "measured_at": "2026-05-18T22:42:29.917Z"
+      "measured_at": "2026-06-09T16:03:00.000Z"
     }
   }
 }
 ```
 
-`gate.spider_accuracy: null` means the Spider 2.0-lite loader hasn't shipped yet
-— the gate is structurally closed until both lanes report a numeric accuracy.
+A `null` accuracy means a lane hasn't been measured yet; today both lanes carry
+a number but stay below target, so the gate is structurally closed until both
+report an accuracy at or above their target.
 
 ## Why the gate exists
 

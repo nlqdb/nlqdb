@@ -101,8 +101,10 @@ jobs:
           # File ID `1coEVsCZq-Xvj9p2TnhBFoFTsY-UoYGmG` from
           # github.com/xlang-ai/Spider2/tree/main/spider2-lite README.
           pip install --quiet --user gdown
-          ~/.local/bin/gdown --fuzzy \
-            "https://drive.google.com/file/d/1coEVsCZq-Xvj9p2TnhBFoFTsY-UoYGmG/view?usp=sharing" \
+          # gdown 6 (2026-05) removed --fuzzy; the canonical uc?id= URL is
+          # accepted by every gdown version and auto-resolves Drive's
+          # large-file confirm token, so pass it directly.
+          ~/.local/bin/gdown "https://drive.google.com/uc?id=1coEVsCZq-Xvj9p2TnhBFoFTsY-UoYGmG" \
             -O spider2_data/spider2-localdb.zip
           unzip -q spider2_data/spider2-localdb.zip -d spider2_data/resource/databases/spider2-localdb
           rm -f spider2_data/spider2-localdb.zip
@@ -149,6 +151,7 @@ jobs:
             --data-dir ../../spider2_data \
             --limit "$limit" \
             --out results \
+            --throttle-ms 3000 \
             $emit_args
 
       - name: Upload report JSON
@@ -225,8 +228,10 @@ jobs:
           cp "$tmp_clone/spider2-lite/spider2-lite.jsonl" spider2_data/spider2-lite.jsonl
           rm -rf "$tmp_clone"
           pip install --quiet --user gdown
-          ~/.local/bin/gdown --fuzzy \
-            "https://drive.google.com/file/d/1coEVsCZq-Xvj9p2TnhBFoFTsY-UoYGmG/view?usp=sharing" \
+          # gdown 6 (2026-05) removed --fuzzy; the canonical uc?id= URL is
+          # accepted by every gdown version and auto-resolves Drive's
+          # large-file confirm token, so pass it directly.
+          ~/.local/bin/gdown "https://drive.google.com/uc?id=1coEVsCZq-Xvj9p2TnhBFoFTsY-UoYGmG" \
             -O spider2_data/spider2-localdb.zip
           unzip -q spider2_data/spider2-localdb.zip -d spider2_data/resource/databases/spider2-localdb
           rm -f spider2_data/spider2-localdb.zip
@@ -258,6 +263,7 @@ jobs:
             --dataset spider2-lite-sqlite \
             --data-dir spider2_data \
             --limit "$SMOKE_LIMIT" --sample-seed "$SMOKE_SEED" \
+            --throttle-ms 3000 \
             --out eval-state
           latest=$(ls -t eval-state/*.json | head -1)
           if jq -e '.resumable == true' "$latest" >/dev/null 2>&1; then
