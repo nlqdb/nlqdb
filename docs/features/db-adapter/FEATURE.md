@@ -146,6 +146,21 @@ verbatim (`GLOBAL-031`, context `dbconn:<dbId>`). Lives in `packages/db/`
 per `GLOBAL-021` and ships ahead of its callers like `secret-envelope.ts`;
 internal primitive, so no `GLOBAL-003` obligation of its own.
 
+### SK-DB-013 — BYO connect-time validation pipeline: one composition of parse → egress resolve-recheck, shared by both engines
+
+**Body:** [`decisions/SK-DB-013-byo-connect-validation-pipeline.md`](./decisions/SK-DB-013-byo-connect-validation-pipeline.md).
+One pure module — `packages/db/src/byo-connect.ts` — exposes
+`validateByoConnection(engine, rawUrl, resolve)`, the single connect-time
+validation entry point both the BYO Postgres (`SK-DB-011`) and BYO ClickHouse
+(`SK-MULTIENG-005`) connect branches call before sealing (`GLOBAL-031`). It runs
+the URL parser (`SK-DB-012` / `SK-MULTIENG-006`) then `guardEgressHostResolved`
+(`GLOBAL-035`) in a load-bearing parse-before-resolve order, with the DoH
+resolver injected, and returns the engine-tagged parsed connection or a fail-loud
+message (`GLOBAL-012`) that never echoes the secret. It stops at validation — no
+seal, no D1 — so it stays pure + zero-dep (`GLOBAL-013`, `GLOBAL-021`) and ships
+ahead of its `connect.ts` callers; internal primitive, so no `GLOBAL-003`
+obligation of its own.
+
 ## GLOBALs governing this feature
 
 Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; index in [`docs/decisions.md`](../../decisions.md)). The list below names the rules that constrain this feature; any feature-local commentary is nested under the rule.
@@ -177,6 +192,6 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 - **`engine?` surface parity gap (W3, GLOBAL-003)** — `SK-DB-010` lands `engine?` on the TypeScript SDK (`@nlqdb/sdk`), the HTTP API (`/v1/ask`, `POST /v1/databases`), and `<nlq-data>` (auto-bound). The Go CLI, MCP server, and Rust/Ruby SDKs don't yet expose `db.create` (their packages are scaffolds), so per `GLOBAL-003`'s "tracked gap" clause the W3 PR ships TS SDK + API and the four inherit `engine?` via a one-line addition when their `db.create` first lands.
 - **Parked until the per-tenant adapter-wrapper slice:** role + RLS wiring. `SK-DB-007` describes the model but the adapter doesn't yet emit `SET LOCAL search_path` / `SET LOCAL ROLE`; consumers wrap calls themselves. A thin per-tenant wrapper closes that "forgot the SET LOCAL" risk.
 - **Parked until the paid tier exists:** Phase 2b dedicated-branch upgrade — a `branch_id` column on `databases` + a provisioner branch-create path. Decision shape locked (DESIGN §3.6.6).
-- **DNS resolve-then-recheck (egress, `GLOBAL-035`).** Landed: `guardEgressHostResolved` re-guards every address an injected DoH resolver returns, failing closed, and the production resolver `createDohResolver` (`packages/db/src/doh-resolver.ts`, Cloudflare 1.1.1.1 DoH JSON) it consumes. **Parked until** the `connect.ts` Postgres branch wires the two together at the `fetch` boundary; shared with `multi-engine-adapter`.
+- **DNS resolve-then-recheck (egress, `GLOBAL-035`).** Landed: `guardEgressHostResolved` re-guards every address an injected DoH resolver returns, failing closed, and the production resolver `createDohResolver` (`packages/db/src/doh-resolver.ts`, Cloudflare 1.1.1.1 DoH JSON) it consumes. The composition that wires the two together — `validateByoConnection` (`SK-DB-013`, `packages/db/src/byo-connect.ts`) — has also landed; it parses then resolve-rechecks in one shared entry point. **Parked until** the `connect.ts` Postgres branch calls `validateByoConnection` with `createDohResolver()` at the `fetch` boundary, then seals; shared with `multi-engine-adapter`.
 - **Parked until the first prod BYO connection:** BYO Postgres KEK rotation. The envelope + KEK are resolved by `SK-DB-011` / `GLOBAL-031`; the rotation procedure (unwrap + re-wrap, key-version column on `databases`) is not yet designed.
 - **Statement timeout / cost cap.** Shape per `GLOBAL-033`: the adapter accepts `timeout_ms` / `max_rows` and the executor sets them (the adapter owns the query handle). **Parked until** the statement-timeout slice lands; a resource-fairness gap, not a security one (the `pg_sleep` DoS is now rejected upstream, `SK-SQLAL-008`).
