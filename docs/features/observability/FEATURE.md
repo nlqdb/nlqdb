@@ -150,6 +150,5 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 
 ## Open questions / known unknowns
 
-- **Live-trace ↔ OTel span-tree alignment** — Resolved per `GLOBAL-033`: **keep two vocabularies on purpose.** The user-facing trace (`plan_pending → plan → rows → summary`) and the system OTel span tree (`nlqdb.cache.plan.lookup`, …) serve different audiences (a user watching latency vs an operator debugging); converging them would force one audience onto the other's names. No change.
 - **`db.operation` cardinality CI assertion** — Resolved per `GLOBAL-033` (silent-drift → add the cheap assertion): add a CI check that the active `db.operation` set stays < 50. **Parked until** enough DDL noun-phrases exist to make drift plausible (Phase 3 multi-engine) — the set is ~30 verbs + ~10 nouns today, far under the cap.
 - **Parked until Phase 1 traffic lands:** tail-based sampling (revisit if the cache-hit 1% sample proves lossy; needs a buffering collector — DO vs Grafana tail sampler decided then), histogram bucket recalibration (needs a metrics-replay tool we don't have), and dashboards-as-code (trigger: first SLO breach or first paying user, whichever first; spans + metrics already export).
