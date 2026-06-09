@@ -19,9 +19,7 @@ modelProvider: "openai"
 model: "openai/gpt-oss-120b:free"
 
 sessionMode: "persistent"
-# 300s (not 240s): #delete-row does a users-DB-pinned NL delete + confirm chip +
-# verify + retry, ~18s/agent-step on the free reasoning model — same marginal
-# timing class as Suite B's writes. A real loop still trips the 30s/call cap.
+# 300s: #delete-row's NL delete is timing-marginal at 240s on the free model (same class as Suite B) — see opencheck-operations.md.
 timeout: 300000
 
 recording:

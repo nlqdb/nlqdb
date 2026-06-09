@@ -25,11 +25,7 @@ modelProvider: "openai"
 model: "openai/gpt-oss-120b:free"
 
 sessionMode: "persistent"
-# 300s (not 240s): the NL-write tests (#b-setup seed, #submit-prefilled-row) do
-# sign-in + users-DB pin + an app-side /v1/ask write + confirm chip + verify +
-# retry, ~18s/agent-step on the free reasoning model (large persistent snapshots,
-# 20 RPM). Traced steady progress timing out at 240s on a slow run (27178513899
-# #b-setup) — marginal timing, not a hang; a real loop still trips the 30s/call cap.
+# 300s: the NL-write tests are timing-marginal at 240s on the free model (traced, not a hang) — see opencheck-operations.md.
 timeout: 300000
 
 recording:
