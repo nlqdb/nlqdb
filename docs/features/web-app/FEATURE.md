@@ -155,7 +155,7 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 
 - **Promote session cookie name to literal `__Host-…session` — Parked until Better Auth exposes the prefix.** Same-origin chat shipped (`SK-WEB-009`); Better Auth v1.6.9 hardcodes `__Secure-` (`cookies/index.mjs:30`) with no override. Edge-rewrite `Set-Cookie` only if an audit demands it.
 - **Sharing a query result by link — Parked until the P1 share slice** (`GLOBAL-033`, reuse): renders the existing plan-cache entry (`GLOBAL-006`) read-only — no new store/auth, so it is wiring.
-- **CSV upload.** Required for P3 per `docs/runbook.md §10`. Deferred to Phase 2 alongside CLI.
+- **CSV upload — Parked until Phase 2** (`GLOBAL-033`); P3 per `docs/runbook.md §10`.
 
 ## Happy path walkthroughs
 

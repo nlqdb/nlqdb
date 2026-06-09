@@ -91,9 +91,5 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 
 - **Repo-default `permissions:`** — Resolved per `GLOBAL-033` (security → layered guardrails): the canonical control is the workflow-level explicit `permissions:` block (`SK-CIPERM-002`), which already fails closed and is visible in the diff. Flipping the org-wide *default* `GITHUB_TOKEN` permissions to `read` is a redundant second layer behind a GitHub org-settings click (a human action), so it's a defense-in-depth nice-to-have, not a gap. **Parked until** the `actionlint` self-test (`SK-CIPERM-005`) is enforced org-wide and the click is worth making.
 - **Per-environment scoping** — **Parked until** a staging GitHub Environment lands (Phase 2); workflow-level scoping covers the single-environment world today.
-- **`NPM_TOKEN` deprecation.** When does the long-lived `NPM_TOKEN` fallback in `SK-CIPERM-003` become forbidden rather than supported? Probably after every package on `@nlqdb/*` is on Trusted Publishing — track in `nlqdb/actions`'s release-pipeline issues, not here.
+- **`NPM_TOKEN` deprecation — Parked until every `@nlqdb/*` package is on Trusted Publishing** (`GLOBAL-033`, genuinely-deferred). The long-lived fallback in `SK-CIPERM-003` becomes forbidden then; tracked in `nlqdb/actions`'s release-pipeline issues.
 - **Org-wide `actionlint` enforcement** — **Parked until** Phase 2 (a second consumer repo exists); the `SK-CIPERM-005` self-test runs in `nlqdb/actions` today and a reusable test workflow is the obvious extension when there's a second repo to point it at.
-
-## Source
-
-Carried forward from pre-consolidation `docs/design.md §13.2` (deleted in PR #81 commit `fb6e8c9`). Repo layout, inputs, secrets, release-job gate live in `docs/history/ci-actions-repo-layout.md`; this feature is the canonical home for the permissions contract specifically because it's load-bearing for security and benefits from a SK-* decision record.
