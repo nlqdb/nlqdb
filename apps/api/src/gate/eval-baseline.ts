@@ -7,7 +7,7 @@
 // `docs/progress/quality-score-verification-log.md`). Both values are
 // **conservative measured lower bounds**: the measurement env ran only 4
 // of 6 free providers and free-tier per-minute TPM saturates on the
-// big-DDL schemas, so chain-exhaustion `no_sql` (30% BIRD / 70% Spider)
+// big-DDL schemas, so chain-exhaustion `no_sql` (30% BIRD / 35% Spider)
 // drags raw EX below the engine's capacity-independent reasoning EX
 // (match among questions that produced SQL: ~52% BIRD, ~19% Spider — up
 // from the 2026-05-18 baseline's 35.4% BIRD). A lower bound is the right
