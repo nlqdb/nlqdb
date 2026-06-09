@@ -138,93 +138,39 @@ Adds a fifth free provider (`createCerebrasProvider`, OpenAI-compatible, `CEREBR
 
 ### SK-LLM-024 — Deterministic greedy decoding (temperature 0) across the whole free planner chain
 
-**Body:** [`decisions/SK-LLM-024-greedy-decoding-parity.md`](./decisions/SK-LLM-024-greedy-decoding-parity.md).
-Every free `plan` / `schema_infer` leg decodes greedily at
-`temperature: 0` — brings the Workers AI leg (inherited Cloudflare's
-stochastic 0.6) into parity. Greedy is the single-pass text-to-SQL EX
-standard and keeps the weekly baseline reproducible for the
-[`SK-QUAL-006`](../quality-eval/FEATURE.md#sk-qual-006) McNemar test.
+**Body:** [`decisions/SK-LLM-024-greedy-decoding-parity.md`](./decisions/SK-LLM-024-greedy-decoding-parity.md). Every free `plan` / `schema_infer` leg decodes greedily at `temperature: 0` (reproducible baseline for the [`SK-QUAL-006`](../quality-eval/FEATURE.md#sk-qual-006) McNemar test).
 
 ### SK-LLM-025 — Recover the JSON object from reasoning-model preamble leaks before failing the parse
 
-**Body:** [`decisions/SK-LLM-025-json-recovery-fallback.md`](./decisions/SK-LLM-025-json-recovery-fallback.md).
-`parseJsonResponse` gains a string-aware balanced-`{…}` recovery fallback
-that runs only after strict `JSON.parse` throws — targeting the reasoning
-head ([`SK-LLM-023`](#sk-llm-023) `gpt-oss-120b`) leaking preamble into
-structured output. Strictly additive: recovers `parse` → `no_sql` losses
-on every leg, can't regress the happy path.
+**Body:** [`decisions/SK-LLM-025-json-recovery-fallback.md`](./decisions/SK-LLM-025-json-recovery-fallback.md). `parseJsonResponse` gains a balanced-`{…}` recovery fallback after strict `JSON.parse` throws — recovers reasoning-head ([`SK-LLM-023`](#sk-llm-023)) preamble leaks; additive.
 
 ### SK-LLM-026 — Static few-shot exemplars in the planner prompt (DAIL-SQL)
 
-**Body:** [`decisions/SK-LLM-026-static-few-shot-plan-exemplars.md`](./decisions/SK-LLM-026-static-few-shot-plan-exemplars.md).
-`PLAN_SYSTEM` splits into `PLAN_DIRECTIVES` (`SK-LLM-018`) + a `PLAN_FEW_SHOT`
-block of three static Question→strict-JSON exemplars demonstrating all four
-`SK-LLM-018` behaviours. Few-shot is the biggest prompt-only text-to-SQL lever
-(DAIL-SQL [arXiv:2308.15363](https://arxiv.org/abs/2308.15363), 3–5 shots),
-largest on small models; ≈250–350 token tradeoff, measured next cron.
+**Body:** [`decisions/SK-LLM-026-static-few-shot-plan-exemplars.md`](./decisions/SK-LLM-026-static-few-shot-plan-exemplars.md). `PLAN_SYSTEM` splits into `PLAN_DIRECTIVES` (`SK-LLM-018`) + a `PLAN_FEW_SHOT` block of three static Question→JSON exemplars (DAIL-SQL [arXiv:2308.15363](https://arxiv.org/abs/2308.15363)).
 
 ### SK-LLM-027 — Result-shape directives in the planner prompt (exact projection + REAL-cast ratios)
 
-**Body:** [`decisions/SK-LLM-027-result-shape-directives.md`](./decisions/SK-LLM-027-result-shape-directives.md).
-Two `PLAN_DIRECTIVES` bullets for EX mismatches schema-link rules miss —
-**exact projection** (extra columns change the result tuple ⇒ EX failure) and
-**REAL-cast ratios** (SQLite floors `int / int`; BIRD ratio gold casts). Lifts
-BIRD; Spider tolerates extra columns ⇒ no regression.
+**Body:** [`decisions/SK-LLM-027-result-shape-directives.md`](./decisions/SK-LLM-027-result-shape-directives.md). Two `PLAN_DIRECTIVES` bullets — exact projection and REAL-cast ratios.
 
 ### SK-LLM-028 — Mistral is the strict-$0 planner-tier capacity backstop at the chain tail
 
-**Body:** [`decisions/SK-LLM-028-mistral-capacity-backstop.md`](./decisions/SK-LLM-028-mistral-capacity-backstop.md).
-Appends **Mistral** (`mistral-large-latest`, card-free tier)
-behind OpenRouter on `plan` / `schema_infer`. Targets the baseline's
-**10.2% `all providers in chain failed` `no_sql` losses** with an independent
-free-tier RPM pool the head chain doesn't share. Tail-only ⇒ strictly additive
-(lifts BIRD, dataset-agnostic ⇒ helps Spider). Measured next cron.
+**Body:** [`decisions/SK-LLM-028-mistral-capacity-backstop.md`](./decisions/SK-LLM-028-mistral-capacity-backstop.md). Appends **Mistral** (`mistral-large-latest`, card-free) behind OpenRouter on `plan` / `schema_infer` — an independent free-tier RPM pool; tail-only ⇒ additive.
 
 ### SK-LLM-030 — Rate-limit-aware failover + cooldown (a 429 honors the server's Retry-After window)
 
-**Body:** [`decisions/SK-LLM-030-rate-limit-aware-failover.md`](./decisions/SK-LLM-030-rate-limit-aware-failover.md).
-New `FailoverReason` `"rate_limited"` + `ProviderError.retryAfterMs`; one mapping
-point (`httpError` in `_shared.ts`) turns HTTP 429 into `rate_limited` carrying
-`parseRetryAfter`, so all six providers inherit it. The router opens the breaker
-**immediately** for `min(max(retryAfterMs, cooldownMs), maxRateLimitCooldownMs)`
-(5-min cap) then rotates. Refines [`SK-LLM-005`](#sk-llm-005): the 3-strike path
-now covers 5xx/network/timeout.
+**Body:** [`decisions/SK-LLM-030-rate-limit-aware-failover.md`](./decisions/SK-LLM-030-rate-limit-aware-failover.md). New `FailoverReason "rate_limited"` + `retryAfterMs` mapped once in `httpError` (`_shared.ts`); the router opens the breaker for `min(max(retryAfterMs, cooldownMs), maxRateLimitCooldownMs)` (5-min cap). Refines [`SK-LLM-005`](#sk-llm-005).
 
 ### SK-LLM-029 — NULL-safe extremum ordering directive in the planner prompt
 
-**Body:** [`decisions/SK-LLM-029-null-safe-extremum.md`](./decisions/SK-LLM-029-null-safe-extremum.md).
-One `PLAN_DIRECTIVES` bullet for BIRD's dirty-data NULL trait: on single-extreme-row
-selection, filter the ranked column (`WHERE <col> IS NOT NULL`) — SQLite sorts NULL
-first, so an ascending `LIMIT` returns a false minimum. Dialect-portable; `SK-LLM-026`
-exemplar 3 refit to demonstrate it; prompt-only, measured next cron.
+**Body:** [`decisions/SK-LLM-029-null-safe-extremum.md`](./decisions/SK-LLM-029-null-safe-extremum.md). One `PLAN_DIRECTIVES` bullet: filter the ranked column (`WHERE <col> IS NOT NULL`) on single-extreme-row selection (SQLite sorts NULL first).
 
 ### SK-LLM-032 — Count-grain directive in the planner prompt (COUNT(DISTINCT) vs COUNT(\*), and SELECT DISTINCT)
 
-**Body:** [`decisions/SK-LLM-032-count-grain-directive.md`](./decisions/SK-LLM-032-count-grain-directive.md).
-One `PLAN_DIRECTIVES` bullet for two named text-to-SQL error categories the
-projection / REAL-cast / extremum rules miss — **Wrong COUNT Object**
-(`COUNT(*)` where `COUNT(DISTINCT key)` is meant, esp. across a one-to-many
-join that repeats rows) and **Missing DISTINCT Keyword** (a non-aggregate
-SELECT returning duplicate rows), both from the BIRD/Spider error study
-[arXiv:2501.09310](https://arxiv.org/pdf/2501.09310). Standard SQL ⇒
-dialect-portable ⇒ lifts BIRD + Spider; the "otherwise keep duplicates" guard
-bounds regression under the strict multiset scorer (`SK-QUAL-010`).
-Prompt-only, ≈50 tokens, directive-only (exemplar refit deferred so
-`SK-LLM-026`'s pending cron stays clean); measured next cron.
+**Body:** [`decisions/SK-LLM-032-count-grain-directive.md`](./decisions/SK-LLM-032-count-grain-directive.md). One `PLAN_DIRECTIVES` bullet for **Wrong COUNT Object** (`COUNT(*)` vs `COUNT(DISTINCT key)`) and **Missing DISTINCT** ([arXiv:2501.09310](https://arxiv.org/pdf/2501.09310)); a guard bounds regression under `SK-QUAL-010`.
 
 ### SK-LLM-034 — Group-by-grain directive in the planner prompt (per-group GROUP BY alignment)
 
-**Body:** [`decisions/SK-LLM-034-group-by-grain-directive.md`](./decisions/SK-LLM-034-group-by-grain-directive.md).
-One `PLAN_DIRECTIVES` bullet for **"Unaligned Aggregation Structure"** (E5 in
-the BIRD/Spider error study [arXiv:2501.09310](https://arxiv.org/pdf/2501.09310)),
-orthogonal to the `SK-LLM-032` count-object rule: a "per/each/by `<category>`"
-goal needs a `GROUP BY` on that column so one row is returned per group — a
-missing `GROUP BY` collapses the answer to a single global aggregate, a
-cardinality mismatch that fails EX. Standard SQL ⇒ dialect-portable ⇒ lifts
-BIRD + Spider; the "one overall total ⇒ omit GROUP BY" guard bounds the inverse
-regression, and the non-aggregated-column rule kills SQLite's silent
-arbitrary-row pick. Prompt-only, ≈45 tokens, directive-only (exemplar refit
-deferred so `SK-LLM-026`'s pending cron stays clean); measured next cron.
+**Body:** [`decisions/SK-LLM-034-group-by-grain-directive.md`](./decisions/SK-LLM-034-group-by-grain-directive.md). One `PLAN_DIRECTIVES` bullet for **Unaligned Aggregation Structure** (E5, [arXiv:2501.09310](https://arxiv.org/pdf/2501.09310)): a "per/each/by `<category>`" goal needs a `GROUP BY` on that column; a guard bounds the inverse regression.
 
 ### SK-LLM-035 — Numeric-text-cast directive in the planner prompt (cast TEXT-declared columns used numerically)
 
@@ -243,13 +189,7 @@ directive-only (keeps `SK-LLM-026`'s pending cron clean); measured next cron.
 
 ### SK-LLM-033 — Schema-inference prompt requires insertable sample rows
 
-**Body:** [`decisions/SK-LLM-033-schema-infer-insertable-sample-rows.md`](./decisions/SK-LLM-033-schema-infer-insertable-sample-rows.md).
-`SCHEMA_INFER_SYSTEM` gains a `sample_rows`-validity contract (parent rows
-first, FK values present, NOT-NULL complete) so the free chain stops emitting
-seed data that breaks its own plan — the 2026-06-08 FLOW-004
-`sample_insert_failed` 500. Probabilistic; the deterministic no-500 floor is
-[`SK-HDC-018`](../hosted-db-create/decisions/SK-HDC-018-sample-insert-graceful-degradation.md);
-measured via the daily FLOW-004 grade (SK-STRG-006).
+**Body:** [`decisions/SK-LLM-033-schema-infer-insertable-sample-rows.md`](./decisions/SK-LLM-033-schema-infer-insertable-sample-rows.md). `SCHEMA_INFER_SYSTEM` gains a `sample_rows`-validity contract (parent rows first, FK values present, NOT-NULL complete) so the free chain stops emitting seed data that breaks its own plan (the 2026-06-08 FLOW-004 `sample_insert_failed` 500); deterministic no-500 floor is [`SK-HDC-018`](../hosted-db-create/decisions/SK-HDC-018-sample-insert-graceful-degradation.md).
 
 ## GLOBALs governing this feature
 
