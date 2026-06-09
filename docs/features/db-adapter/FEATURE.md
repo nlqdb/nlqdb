@@ -149,17 +149,15 @@ internal primitive, so no `GLOBAL-003` obligation of its own.
 ### SK-DB-013 — BYO connect-time validation pipeline: one composition of parse → egress resolve-recheck, shared by both engines
 
 **Body:** [`decisions/SK-DB-013-byo-connect-validation-pipeline.md`](./decisions/SK-DB-013-byo-connect-validation-pipeline.md).
-One pure module — `packages/db/src/byo-connect.ts` — exposes
-`validateByoConnection(engine, rawUrl, resolve)`, the single connect-time
-validation entry point both the BYO Postgres (`SK-DB-011`) and BYO ClickHouse
-(`SK-MULTIENG-005`) connect branches call before sealing (`GLOBAL-031`). It runs
-the URL parser (`SK-DB-012` / `SK-MULTIENG-006`) then `guardEgressHostResolved`
-(`GLOBAL-035`) in a load-bearing parse-before-resolve order, with the DoH
-resolver injected, and returns the engine-tagged parsed connection or a fail-loud
-message (`GLOBAL-012`) that never echoes the secret. It stops at validation — no
-seal, no D1 — so it stays pure + zero-dep (`GLOBAL-013`, `GLOBAL-021`) and ships
-ahead of its `connect.ts` callers; internal primitive, so no `GLOBAL-003`
-obligation of its own.
+One pure module — `packages/db/src/byo-connect.ts`, `validateByoConnection(engine,
+rawUrl, resolve)` — is the single connect-time entry point both the BYO Postgres
+(`SK-DB-011`) and BYO ClickHouse (`SK-MULTIENG-005`) branches call before sealing:
+it runs the URL parser (`SK-DB-012` / `SK-MULTIENG-006`) then
+`guardEgressHostResolved` (`GLOBAL-035`, DoH resolver injected) in a load-bearing
+parse-before-resolve order, returning the engine-tagged parse or a fail-loud
+message. It stops at validation (no seal, no D1), so it stays pure + zero-dep and
+ships ahead of its `connect.ts` callers (internal primitive, no `GLOBAL-003`
+obligation).
 
 ## GLOBALs governing this feature
 
@@ -167,31 +165,26 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 
 - **GLOBAL-004** — Logical schemas widen; physical layout reshapes.
 - **GLOBAL-012** — Errors are one sentence with the next action.
-  - *In this feature:* `parseConnectionUrl` (`SK-DB-012`) rejects an unusable BYO `connection_url` at the wire boundary with a one-sentence next action, never echoing the secret.
 - **GLOBAL-013** — $0/month for the free tier; Workers free-tier bundle ≤ 3 MiB compressed.
-  - *In this feature:* the `connection-url.ts` primitive (`SK-DB-012`) is zero-dependency (WHATWG `URL` only), so it adds no measurable weight to the bundle.
 - **GLOBAL-014** — OTel span on every external call (DB, LLM, HTTP, queue).
 - **GLOBAL-015** — Power users always have an escape hatch.
 - **GLOBAL-021** — Each external system has one canonical owning module.
-  - *In this feature:* `packages/db/` owns the user-data engines
-    (Postgres via Neon today; ClickHouse via Tinybird per
-    `SK-MULTIENG-002`; later Redis/D1); all `@neondatabase/serverless`
-    imports live in `@nlqdb/db`. Documented exception:
-    `apps/api/src/db-create/build-deps.ts` imports the Neon client for
-    the control-plane provisioner (`SK-HDC-*`). Cloudflare D1 is a
-    **separate** system owned by `packages/platform-db/`; the
-    `D1Database` binding through `db-registry.ts` is platform-db consumer
-    code, not a db-adapter concern.
+  - *In this feature:* `packages/db/` owns the user-data engines; all
+    `@neondatabase/serverless` imports live in `@nlqdb/db`. Documented
+    exception: `apps/api/src/db-create/build-deps.ts` imports the Neon
+    client for the control-plane provisioner (`SK-HDC-*`). Cloudflare D1 is
+    a **separate** system owned by `packages/platform-db/` (the `D1Database`
+    binding through `db-registry.ts` is platform-db consumer code).
 - **GLOBAL-031** — One AES-256-GCM at-rest envelope + one Workers-held KEK for every BYO secret.
-  - *In this feature:* the BYO Postgres `connection_url` (`SK-DB-011`, `architecture.md §3.6.7`) is sealed by `apps/api/src/secret-envelope.ts` (context `dbconn:<dbId>`) before the D1 row; `registerByoDb` reads it back via `openSecret`. The adapter still gets a plaintext DSN at execute time — the envelope is the storage boundary, not the adapter contract.
+  - *In this feature:* the BYO Postgres `connection_url` (`SK-DB-011`) is sealed by `apps/api/src/secret-envelope.ts` (context `dbconn:<dbId>`) before the D1 row; `registerByoDb` reads it back via `openSecret`. The adapter still gets a plaintext DSN at execute time — the envelope is the storage boundary, not the adapter contract.
 - **GLOBAL-035** — One egress guard for every BYO outbound connection host.
-  - *In this feature:* the BYO Postgres connect path runs `guardEgressHost` (`packages/db/src/egress-guard.ts`) on the parsed `host` after `parseConnectionUrl` (`SK-DB-012`, shape-only); a literal private/loopback host is rejected fail-loud, a DNS name carries `needsDnsRecheck`.
+  - *In this feature:* the connect path guards the parsed `host` via `validateByoConnection` (`SK-DB-013`), composing `parseConnectionUrl` (`SK-DB-012`) then `guardEgressHostResolved`.
 
 ## Open questions / known unknowns
 
-- **`engine?` surface parity gap (W3, GLOBAL-003)** — `SK-DB-010` lands `engine?` on the TypeScript SDK (`@nlqdb/sdk`), the HTTP API (`/v1/ask`, `POST /v1/databases`), and `<nlq-data>` (auto-bound). The Go CLI, MCP server, and Rust/Ruby SDKs don't yet expose `db.create` (their packages are scaffolds), so per `GLOBAL-003`'s "tracked gap" clause the W3 PR ships TS SDK + API and the four inherit `engine?` via a one-line addition when their `db.create` first lands.
+- **`engine?` surface parity gap (W3, GLOBAL-003)** — `SK-DB-010` lands `engine?` on the TS SDK, the HTTP API, and `<nlq-data>` (auto-bound). The Go CLI, MCP, and Rust/Ruby SDKs don't yet expose `db.create` (scaffolds), so per `GLOBAL-003`'s "tracked gap" clause they inherit `engine?` via a one-line addition when their `db.create` first lands.
 - **Parked until the per-tenant adapter-wrapper slice:** role + RLS wiring. `SK-DB-007` describes the model but the adapter doesn't yet emit `SET LOCAL search_path` / `SET LOCAL ROLE`; consumers wrap calls themselves. A thin per-tenant wrapper closes that "forgot the SET LOCAL" risk.
 - **Parked until the paid tier exists:** Phase 2b dedicated-branch upgrade — a `branch_id` column on `databases` + a provisioner branch-create path. Decision shape locked (DESIGN §3.6.6).
-- **DNS resolve-then-recheck (egress, `GLOBAL-035`).** Landed: `guardEgressHostResolved` re-guards every address an injected DoH resolver returns, failing closed, and the production resolver `createDohResolver` (`packages/db/src/doh-resolver.ts`, Cloudflare 1.1.1.1 DoH JSON) it consumes. The composition that wires the two together — `validateByoConnection` (`SK-DB-013`, `packages/db/src/byo-connect.ts`) — has also landed; it parses then resolve-rechecks in one shared entry point. **Parked until** the `connect.ts` Postgres branch calls `validateByoConnection` with `createDohResolver()` at the `fetch` boundary, then seals; shared with `multi-engine-adapter`.
+- **DNS resolve-then-recheck (egress, `GLOBAL-035`).** Landed: `guardEgressHostResolved`, `createDohResolver` (`doh-resolver.ts`), and the composition that wires them — `validateByoConnection` (`SK-DB-013`). **Parked until** the `connect.ts` Postgres branch calls `validateByoConnection` with `createDohResolver()`, then seals; shared with `multi-engine-adapter`.
 - **Parked until the first prod BYO connection:** BYO Postgres KEK rotation. The envelope + KEK are resolved by `SK-DB-011` / `GLOBAL-031`; the rotation procedure (unwrap + re-wrap, key-version column on `databases`) is not yet designed.
 - **Statement timeout / cost cap.** Shape per `GLOBAL-033`: the adapter accepts `timeout_ms` / `max_rows` and the executor sets them (the adapter owns the query handle). **Parked until** the statement-timeout slice lands; a resource-fairness gap, not a security one (the `pg_sleep` DoS is now rejected upstream, `SK-SQLAL-008`).

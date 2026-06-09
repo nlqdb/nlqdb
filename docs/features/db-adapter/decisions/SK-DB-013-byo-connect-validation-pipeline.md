@@ -62,8 +62,9 @@ primitive (the step *after* this one): [`apps/api/src/secret-envelope.ts`](../..
   parse-before-resolve ordering (a bad shape and a literal private host both
   short-circuit without calling the resolver), the DNS-rebinding rejection, the
   fail-closed-on-resolver-error path, and that the password never survives into
-  the returned `redacted`. A third BYO engine adds one `if` branch here, not a
-  new composition.
+  the returned `redacted`. A third BYO engine adds one `case` to the parser
+  dispatch — a `never` exhaustiveness guard makes omitting it a compile error,
+  not a new composition.
 - **Alternatives rejected:**
   - **Assemble parse + guard + resolver in the route handler.** Two copies of
     the ordering (one per engine) drift; the first copy that guards before it

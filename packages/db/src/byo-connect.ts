@@ -60,17 +60,32 @@ export async function validateByoConnection(
   rawUrl: string,
   resolve: DnsResolver,
 ): Promise<ValidateByoConnectionResult> {
-  if (engine === "postgres") {
-    const parsed = parseConnectionUrl(rawUrl);
-    if (!parsed.ok) return parsed;
-    const egress = await guardEgressHostResolved(parsed.parsed.host, resolve);
-    if (!egress.ok) return egress;
-    return { ok: true, connection: { engine, parsed: parsed.parsed } };
-  }
-
-  const parsed = parseClickhouseUrl(rawUrl);
+  const parsed = parseForEngine(engine, rawUrl);
   if (!parsed.ok) return parsed;
-  const egress = await guardEgressHostResolved(parsed.parsed.host, resolve);
+  // Both parsed shapes carry `host`; the egress guard runs once, after the
+  // (cheap, I/O-free) parse and before the URL is sealed or fetched.
+  const egress = await guardEgressHostResolved(parsed.connection.parsed.host, resolve);
   if (!egress.ok) return egress;
-  return { ok: true, connection: { engine, parsed: parsed.parsed } };
+  return { ok: true, connection: parsed.connection };
+}
+
+// Dispatch to the engine's URL parser and tag the result. The `never`
+// exhaustiveness guard turns adding a third `ByoEngine` member into a compile
+// error here — the "add one branch" claim of `SK-DB-013` is type-enforced, not
+// a comment that can rot.
+function parseForEngine(engine: ByoEngine, rawUrl: string): ValidateByoConnectionResult {
+  switch (engine) {
+    case "postgres": {
+      const r = parseConnectionUrl(rawUrl);
+      return r.ok ? { ok: true, connection: { engine, parsed: r.parsed } } : r;
+    }
+    case "clickhouse": {
+      const r = parseClickhouseUrl(rawUrl);
+      return r.ok ? { ok: true, connection: { engine, parsed: r.parsed } } : r;
+    }
+    default: {
+      const exhaustive: never = engine;
+      return exhaustive;
+    }
+  }
 }
