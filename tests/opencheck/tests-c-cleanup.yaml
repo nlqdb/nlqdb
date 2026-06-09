@@ -45,34 +45,29 @@ tests:
 
   - name: "#delete-row"
     case: |
-      The browser is signed in from previous tests.
-      Pin the users database deterministically (do NOT rely on the newest-DB
-      auto-pin — a stray empty DB can be newer and win the pin, so the delete
-      would target the wrong table and never find Alice): navigate to "/app",
-      call browser_snapshot, and in the left sidebar find the database button
-      whose visible text contains "users" and click its ref. Confirm "?db="
-      then appears in the URL (re-snapshot up to 5 times, 3s apart). If no
-      sidebar button contains "users" after 5 re-snapshots, TEST_FAILED — a
-      signed-in session with the users DB is required.
-      Call browser_snapshot. If "Something broke on this
-      page" is visible, click the "Reload" button (do NOT click
-      "Sign out") and call browser_snapshot again.
-      Find the chat textarea in THIS snapshot: look for
-        textbox "Ask about your data…"
-      in the snapshot YAML and note its ref. Use ONLY the ref
-      from THIS snapshot — do NOT reuse refs from earlier calls.
-      If the snapshot is truncated (ends with "[... N chars
-      truncated ...]") and does not show the textarea, call
-      browser_snapshot once more to get a fresh view. Click the
-      textarea using the ref from the current snapshot and type:
+      The browser is signed in and #c-setup already pinned the users DB, so
+      this persistent session is already on "/app" with "?db=" in the URL.
+      Do NOT navigate to a bare "/app" — that drops the pin and selects a
+      different DB, so the delete would hit the wrong table and never find
+      Alice (re-navigating repeatedly is also what blew the 240s budget).
+      Call browser_snapshot on the CURRENT page. Only if the URL no longer
+      contains "?db=" (or "Something broke on this page" is shown), re-pin:
+      in the left sidebar click the database button whose visible text
+      contains "users", then confirm "?db=" is back in the URL.
+      Now do the delete, mirroring the proven Suite-B insert flow (bounded
+      retry, no improvised navigation): get a FRESH browser_snapshot, find
+      the chat textarea (placeholder "Ask about your data…") and IMMEDIATELY
+      click its ref — do NOT call any other tool between the snapshot and the
+      click (refs go stale on re-render). Type:
         delete the row where name = 'Alice'
-      and press Enter as a SEPARATE browser_key_down call. If a
-      confirm/diff chip appears, press Enter once to approve (do NOT
-      click any button — press Enter in the focused input). Call
-      browser_snapshot and verify the Alice row is no longer present
-      in the users table (0 rows OR the row is absent). If the
-      textarea is not visible yet, wait 3 seconds and call
-      browser_snapshot again before proceeding.
+      Press Enter as a SEPARATE browser_key_down call. If a confirm/diff chip
+      appears, press Enter once more to approve (do NOT click any button —
+      press Enter in the focused input). Wait 5 seconds, then call
+      browser_snapshot and verify no row with name "Alice" remains in the
+      users table. If Alice is still present, retry the whole delete ONCE
+      more (fresh snapshot → click textarea → retype → Enter → approve chip
+      → wait 5s → snapshot). TEST_PASSED when Alice is absent; TEST_FAILED if
+      Alice is still present after 2 attempts.
 
   - name: "#create-second-database"
     case: |
