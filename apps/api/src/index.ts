@@ -1476,8 +1476,8 @@ app.post("/v1/events/wishlist", async (c) => {
   });
 });
 
-// POST /v1/events/eval — bearer-authenticated cron ingestion for
-// SK-QUAL-002. The GH-Actions weekly runner POSTs its full eval report
+// POST /v1/events/eval — bearer-authenticated run ingestion for
+// SK-QUAL-002. The GH-Actions on-demand runner POSTs its full eval report
 // (plus baseline diff) here after every successful run; we mint the
 // `feature.eval.weekly` event + one `feature.eval.regression` per
 // triggered (lane, trigger) tuple, then fire-and-forget the queue
