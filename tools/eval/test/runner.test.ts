@@ -150,6 +150,24 @@ describe("runEval — end-to-end with mocked routers", () => {
     expect(reports).toHaveLength(1);
   });
 
+  it("throttleMs pauses between questions (SK-QUAL-012)", async () => {
+    // Two questions, one fast lane → exactly one inter-question pause
+    // (the first scored question is not delayed). Default 0 (every other
+    // test) takes no pause, so this isolates the throttle path.
+    const start = Date.now();
+    await runEval({
+      dataDir: dir,
+      questionsJsonPath: questionsPath,
+      outDir,
+      throttleMs: 200,
+      buildLanes: () => [
+        { lane: "free", modelHint: "f", maxAttempts: 1, router: fakeRouter("SELECT 1") },
+      ],
+      writeReport: async () => "stub.json",
+    });
+    expect(Date.now() - start).toBeGreaterThanOrEqual(180);
+  });
+
   it("reports no_sql when the router throws", async () => {
     const report = await runEval({
       dataDir: dir,

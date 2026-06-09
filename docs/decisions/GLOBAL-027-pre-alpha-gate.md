@@ -46,7 +46,7 @@
       "waitlist_url": "https://nlqdb.com/#waitlist",
       "gate": {
         "bird_accuracy": 0.35,
-        "spider_accuracy": 0.1,
+        "spider_accuracy": 0.12,
         "bird_target": 0.65,
         "spider_target": 0.75,
         "measured_at": "2026-06-09T16:03:00.000Z"
@@ -59,7 +59,7 @@
   lane hasn't been measured yet (it renders honestly as "not yet
   measured"). As of the 2026-06-09 first post-pipeline-fix run both
   lanes carry conservative measured lower bounds (BIRD 0.35, Spider
-  0.10) and both stay below target. Surfaces render the pair as a
+  0.12) and both stay below target. Surfaces render the pair as a
   progress bar.
 
 - **Core value:** Bullet-proof, Honest latency, Goal-first

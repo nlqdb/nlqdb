@@ -40,7 +40,7 @@ dominant term** in that number.
 |---|---|---|---|---|
 | **BIRD-dev reasoning EX** (match among questions that produced SQL — capacity-independent) | **≈ 0.52** (was **0.354**) | — | — | first post-fix run 2026-06-09: 53.4% smoke (39/73) · 54.2% paced (71/131) · 50.0% clean (21/42); baseline 159/449 (T17) |
 | BIRD-dev EX (raw — the gate metric) | **0.35** *(measured lower bound; was 0.318)* | ≥ 0.65 | ≥ 0.60 | clean 60-q run 2026-06-09, **capacity-bounded** (30% `no_sql`); canonical 500-q / 6-provider re-seed = the now-unblocked GHA dispatch (T17) |
-| Spider 2.0-lite EX (raw) | **0.10** *(first ever measured)* | ≥ 0.75 | report only (Phase-3 ≥ 0.15) | smoke 2026-06-09, capacity-bounded (70% `no_sql`); reasoning EX 0.33 (4/12 produced) |
+| Spider 2.0-lite EX (raw) | **0.12** *(first ever measured)* | ≥ 0.75 | report only (Phase-3 ≥ 0.15) | clean 40-q run 2026-06-09, capacity-bounded (35% `no_sql`); reasoning EX 0.19 (5/26 produced) |
 | free-vs-agentic-frontier delta | **null** (lane not yet run) | — | ≤ 25 pp (`SK-QUAL-004`) | `SK-QUAL-004`; agentic lane opt-in (`SK-QUAL-009`) |
 
 **Read the two BIRD rows together.** 2026-06-09 (T17) is the *first*
@@ -48,11 +48,11 @@ measurement of T1–T16 (the pipeline was broken the whole window). **Reasoning
 EX** — accuracy on the questions the chain answered — isolates SQL quality
 from capacity and rose **35.4% → ≈ 52%**. **Raw EX** also pays the
 chain-exhaustion `no_sql`, which the measurement env inflated to 30–70% (only
-4 of 6 providers live + per-minute-TPM saturation on big DDL), so raw EX is a
-**conservative lower bound** and the gate takes it by design. Production's
+4/6 providers + per-minute-TPM saturation on big DDL), so raw EX is a
+**conservative lower bound** the gate takes by design. Production's
 6-provider chain + the T11 backstop pull `no_sql` toward the baseline's 10.2%,
-so production raw EX sits between the rows (≈ 0.47); the GHA 500-q dispatch
-re-seeds the canonical number.
+so production raw EX should sit between the rows (**est. ≈0.47, not measured**); the GHA 500-q
+dispatch re-seeds the canonical number.
 
 **BIRD baseline failure breakdown** (the 500-question run, for targeting):
 match 159 · **mismatch 283** · **no_sql 51** · exec_error 7 · gold_error 0.
@@ -75,8 +75,7 @@ update (2026-06-09, T17):** the combined levers lifted reasoning EX 35.4% →
 ≈ 52% (§2); per-lever attribution waits on single-lever ablations. The §5
 capacity risk is now **verified** (Cerebras-5-RPM + free-tier TPM ⇒ `no_sql`
 dominates raw EX), which promotes backlog **#2 (schema-pruning, §4)** to the
-top capacity lever — a smaller planner prompt lifts per-minute throughput on
-big-DDL schemas.
+top capacity lever — a smaller planner prompt lifts per-minute throughput.
 
 > **How these numbers are produced.** `tools/eval/src/runner.ts` drives
 > `router.ts::plan()` against the SQLite fixture and scores EX (BIRD
@@ -89,14 +88,13 @@ big-DDL schemas.
 Rows run reverse-chronological (newest first): **T17 (this PR) → T16 → T15 → T14 → T13 → T12 →
 T11 → T10 → T9 → T7/T8 → T1 (Cerebras head) → T2…T6**. The `#` is a stable id,
 not a rank — read recency from row order. "How much" is **measured** (from the
-harness) or **est.** (from the cited paper/ablation). Every "awaiting first
-eval run" status on T1/T9–T16 was resolved by **T17** (the first run after the
-pipeline fix); they were measured *together*, so their combined effect is the
-§2 reasoning-EX move, not a per-lever number.
+harness) or **est.** (from the cited paper/ablation). T1/T9–T16's "awaiting
+first eval run" was resolved by **T17**; measured *together*, so their
+combined effect is the §2 reasoning-EX move, not per-lever numbers.
 
 | # | Lever | How exactly | How much | Canonical home / status |
 |---|---|---|---|---|
-| T17 | **Unblock + measure the eval pipeline (this PR)** | gdown 6.1.0 (2026-05-30) dropped `--fuzzy` ⇒ every `quality-eval-*.yml` run had exit-2'd at the fixture download since before T1 landed — so T1/T9–T16 were *never measured*. Fix: BIRD → Aliyun OSS direct mirror, Spider → canonical `uc?id=` URL; add `--throttle-ms` ([`SK-QUAL-012`](../features/quality-eval/decisions/SK-QUAL-012-throttle-paced-measurement.md)) to pace the low-RPM chain; then ran the free chain on real keys | **measured (first ever):** reasoning EX **35.4% → ≈ 52%** (BIRD, §2); Spider first-measured (reasoning 0.33 / raw 0.10). Raw EX a capacity-bounded lower bound (§2). Verifies the §5 Cerebras/TPM capacity risk | this PR — **shipped + measured**; canonical 500-q / 6-provider re-seed = GHA dispatch |
+| T17 | **Unblock + measure the eval pipeline (this PR)** | gdown 6.1.0 (2026-05-30) dropped `--fuzzy` ⇒ every `quality-eval-*.yml` run had exit-2'd at the fixture download since before T1 landed — so T1/T9–T16 were *never measured*. Fix: BIRD → Aliyun OSS direct mirror, Spider → canonical `uc?id=` URL; add `--throttle-ms` ([`SK-QUAL-012`](../features/quality-eval/decisions/SK-QUAL-012-throttle-paced-measurement.md)) to pace the low-RPM chain; then ran the free chain on real keys | **measured (first ever):** reasoning EX **35.4% → ≈ 52%** (BIRD, §2); Spider first-measured (reasoning 0.19 / raw 0.12). Raw EX a capacity-bounded lower bound (§2). Verifies the §5 Cerebras/TPM capacity risk | this PR — **shipped + measured**; canonical 500-q / 6-provider re-seed = GHA dispatch |
 | T16 | **Numeric-text-cast directive (CAST `TEXT`-declared columns used numerically)** | One `PLAN_DIRECTIVES` bullet (`SK-LLM-018`): when the schema declares a column `TEXT` but the goal compares/orders/min-maxes it numerically, `CAST(<col> AS REAL)`. Prompt-only, ≈55 tok | targets **Implicit Type Conversion** (C1, [arXiv:2501.09310](https://arxiv.org/pdf/2501.09310)) — SQLite compares TEXT lexicographically (`'100' < '9'`). Mechanism in the SK body | [`SK-LLM-035`](../features/llm-router/decisions/SK-LLM-035-numeric-text-cast-directive.md) — shipped (#356); **measured combined in T17** |
 | T15 | **Group-by-grain directive (per-group GROUP BY alignment)** | One `PLAN_DIRECTIVES` bullet (`SK-LLM-018`): `GROUP BY` the grouping column on a "per/each/by `<category>`" goal, omit it for one overall total, and every non-aggregated SELECT column must appear in `GROUP BY`. Prompt-only, ≈45 tok | targets **Unaligned Aggregation Structure** (E5, [arXiv:2501.09310](https://arxiv.org/pdf/2501.09310)). Mechanism in the SK body | [`SK-LLM-034`](../features/llm-router/decisions/SK-LLM-034-group-by-grain-directive.md) — shipped (#354); **measured combined in T17** |
 | T14 | **Count-grain directive (COUNT DISTINCT vs COUNT(\*); SELECT DISTINCT)** | One `PLAN_DIRECTIVES` bullet (`SK-LLM-018`): `COUNT(DISTINCT <col>)` for distinct entities / counts across a one-to-many join, `SELECT DISTINCT` for distinct-value lists, else keep duplicates. Prompt-only, ≈50 tok | targets **Wrong COUNT Object** + **Missing DISTINCT** ([arXiv:2501.09310](https://arxiv.org/pdf/2501.09310)). Mechanism in the SK body | [`SK-LLM-032`](../features/llm-router/decisions/SK-LLM-032-count-grain-directive.md) — shipped (#348); **measured combined in T17** |

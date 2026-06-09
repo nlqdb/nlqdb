@@ -1,4 +1,4 @@
-# SK-QUAL-012 — Inter-question throttle so a low-RPM free chain measures without a circuit-breaker cascade
+# SK-QUAL-012 — Inter-question throttle so a low-RPM free chain measures reasoning, not availability
 
 Parent feature: [`quality-eval/FEATURE.md`](../FEATURE.md). Parent decisions:
 [`SK-QUAL-011`](./SK-QUAL-011-resumable-runner.md) (the budget-stop the
@@ -10,9 +10,10 @@ can't), [`SK-LLM-023`](../../llm-router/decisions/SK-LLM-023-cerebras-planner-ti
 
 - **Decision:** The runner accepts an optional `--throttle-ms <n>`
   (`RunOptions.throttleMs`, default **0** ⇒ no behavioural change) that
-  sleeps `n` ms between questions. The canonical free-chain measurement is
-  produced **with throttle on** (≈3500 ms) so the offered load stays under
-  the chain's combined per-minute limits and the
+  sleeps `n` ms between questions. The workflows pass it **on** for real-key
+  dispatches (`3000 ms`; a bigger value is needed the more big-DDL schemas
+  saturate per-minute TPM) so the offered load stays under the chain's
+  combined per-minute limits and the
   [`SK-LLM-030`](../../llm-router/decisions/SK-LLM-030-rate-limit-aware-failover.md)
   failover + the `SK-LLM-005` circuit breaker can recover between
   questions instead of all providers' breakers opening at once into a
