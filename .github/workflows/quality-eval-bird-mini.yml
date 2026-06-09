@@ -1,32 +1,38 @@
 # quality-eval — BIRD Mini-Dev (SQLite) free-vs-frontier run.
 # SK-QUAL-002: manual on-demand only (workflow_dispatch); never a PR gate.
-# The harness output drives decisions (semantic-layer promotion,
-# regression alerting), not merges. Engine north-star instrument per
-# GLOBAL-025 / SK-QUAL-005 — baseline JSON must exist by 2026-06-15 for
-# the Phase 2 exit gate. The resumable runner is SK-QUAL-011.
+# Two dispatch modes — `full` (500q + baseline diff + emit) and `smoke`
+# (sampled slice, no emit, resumable). The harness output drives decisions
+# (semantic-layer promotion, regression alerting), not merges. Engine
+# north-star instrument per GLOBAL-025 / SK-QUAL-005 — baseline JSON must
+# exist by 2026-06-15 for the Phase 2 exit gate. Resumable runner: SK-QUAL-011.
 
 name: Quality eval — BIRD Mini-Dev
 
 on:
   # SK-QUAL-002 — manual on-demand only; the scheduled weekly + 4h smoke
-  # crons were retired. The harness is a measurement tool, run when an
-  # operator wants a fresh number, never a PR gate.
+  # crons were retired. `mode` picks the full canonical pass or the sampled
+  # smoke; both are operator-triggered, never a PR gate.
   workflow_dispatch:
     inputs:
+      mode:
+        description: "full = 500q + baseline + emit · smoke = sampled slice, no emit"
+        type: choice
+        options: [full, smoke]
+        default: full
       limit:
-        description: "Question count (BIRD Mini-Dev caps at 500)"
+        description: "Question count for full mode (BIRD Mini-Dev caps at 500)"
         default: "500"
         required: false
       include_frontier:
-        description: "Run the frontier lane too (paid OpenRouter)"
+        description: "Run the frontier lane too (paid OpenRouter); full mode only"
         type: boolean
         default: false
       include_agentic_frontier:
-        description: "Run the SK-QUAL-009 agentic-frontier lane (exec-retry; ~3x provider RPS)"
+        description: "Run the SK-QUAL-009 agentic-frontier lane (exec-retry; ~3x provider RPS); full mode only"
         type: boolean
         default: false
       skip_emit:
-        description: "Skip POSTing the report to /v1/events/eval (default false)"
+        description: "Skip POSTing the report to /v1/events/eval (full mode; default false)"
         type: boolean
         default: false
 
@@ -43,8 +49,8 @@ concurrency:
 
 jobs:
   run:
-    name: Run BIRD Mini-Dev
-    # Manual dispatch only.
+    name: Run BIRD Mini-Dev (full)
+    if: inputs.mode != 'smoke'
     runs-on: ubuntu-latest
     # 500 questions × ~1s p50 latency × N lanes = ~10 min; bigger LLM
     # tail can push to ~25 min. The 60 min ceiling absorbs single-
@@ -205,3 +211,138 @@ jobs:
               ' "$latest"
             fi
           } >> "$GITHUB_STEP_SUMMARY"
+
+  # SK-QUAL-011 — sampled smoke slice, manual dispatch (`mode: smoke`),
+  # resumable. No change-since-`last_eval_sha` gate: a manual dispatch is
+  # an intentional run, so it always executes the sampled slice. Smoke
+  # never emits and never overwrites the canonical baseline.
+  smoke:
+    name: Smoke EX (sampled, SK-QUAL-011)
+    if: inputs.mode == 'smoke'
+    runs-on: ubuntu-latest
+    # 150-question sample × free chain ≈ a few min; the ceiling absorbs a
+    # slow-provider tail. A budget stop (chain rate-limited) exits early.
+    timeout-minutes: 30
+    # Fixed smoke slice (SK-QUAL-011): same seed + limit every run so the
+    # smoke EX is a stable run-to-run signal, not noise from a new slice.
+    env:
+      SMOKE_SEED: "20260607"
+      SMOKE_LIMIT: "150"
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - uses: ./.github/actions/setup
+
+      - name: Cache BIRD Mini-Dev fixtures
+        id: bird-cache
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: bird_data
+          key: bird-mini-dev-v2-${{ hashFiles('.github/workflows/quality-eval-bird-mini.yml') }}
+
+      - name: Download BIRD Mini-Dev (when cache miss)
+        if: steps.bird-cache.outputs.cache-hit != 'true'
+        run: |
+          set -euo pipefail
+          mkdir -p bird_data
+          curl -fsSL \
+            "https://huggingface.co/datasets/birdsql/bird_mini_dev/resolve/main/data/mini_dev_sqlite-00000-of-00001.json" \
+            -o bird_data/mini_dev_sqlite.json
+          pip install --quiet --user gdown
+          ~/.local/bin/gdown --fuzzy \
+            "https://drive.google.com/file/d/13VLWIwpw5E3d5DUkMvzw7hvHE67a4XkG/view?usp=sharing" \
+            -O bird_data/mini_dev_v2.zip
+          unzip -q bird_data/mini_dev_v2.zip -d bird_data
+          if [ ! -d bird_data/dev_databases ]; then
+            found=$(find bird_data -maxdepth 3 -name "dev_databases" -type d | head -1)
+            if [ -z "$found" ]; then
+              echo "::error::dev_databases/ not found in BIRD Mini-Dev download"
+              exit 1
+            fi
+            ln -s "$(realpath "$found")" bird_data/dev_databases
+          fi
+          rm -f bird_data/mini_dev_v2.zip
+
+      # SK-QUAL-011 — the smoke checkpoint (`*.smoke.partial.jsonl`)
+      # persists across dispatches so a budget-stopped smoke resumes on the
+      # next `mode: smoke` dispatch. Rolling key (run_id) + restore-keys
+      # prefix gives the standard restore-latest / save-new cache pattern.
+      - name: Restore eval state
+        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: eval-state
+          key: eval-state-bird-${{ github.run_id }}
+          restore-keys: |
+            eval-state-bird-
+
+      - name: Smoke run (resumable)
+        id: smoke
+        env:
+          CEREBRAS_API_KEY: ${{ secrets.CEREBRAS_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          CF_AI_TOKEN: ${{ secrets.CF_AI_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
+        run: |
+          set -euo pipefail
+          mkdir -p eval-state
+          # Smoke never emits and never touches the canonical baseline; the
+          # checkpoint + report land in eval-state/ so the cache persists them.
+          bun tools/eval/src/runner.ts \
+            --data-dir bird_data \
+            --questions-json bird_data/mini_dev_sqlite.json \
+            --limit "$SMOKE_LIMIT" --sample-seed "$SMOKE_SEED" \
+            --out eval-state
+          latest=$(ls -t eval-state/*.json | head -1)
+          if jq -e '.resumable == true' "$latest" >/dev/null 2>&1; then
+            # Budget stop (W2 rate-limit signal saturated the chain). Keep
+            # the checkpoint; a re-dispatch resumes and finishes the slice.
+            echo "Budget stop — checkpoint kept; re-dispatch (mode: smoke) resumes."
+            echo "status=resumable" >> "$GITHUB_OUTPUT"
+          else
+            echo "status=completed" >> "$GITHUB_OUTPUT"
+          fi
+          echo "report=$latest" >> "$GITHUB_OUTPUT"
+
+      - name: Smoke summary
+        run: |
+          set -euo pipefail
+          latest="${{ steps.smoke.outputs.report }}"
+          {
+            echo "## quality-eval — BIRD smoke (sampled ${SMOKE_LIMIT}, seed ${SMOKE_SEED})"
+            echo ""
+            echo "Status: ${{ steps.smoke.outputs.status }}"
+            if [ -n "$latest" ] && [ -f "$latest" ]; then
+              jq -r '
+                "Run at: " + .run_at,
+                (if .resumable == true then "Resumable: true (chain rate-limited)" else "" end),
+                "",
+                "| Lane | Match | Attempted | Smoke EX |",
+                "|---|---|---|---|",
+                (.lanes[] | "| " + .lane + " | " + (.match | tostring) + " | " + (.attempted | tostring) + " | " + ((.execution_accuracy * 100 | tostring) + "%") + " |")
+              ' "$latest"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload smoke report
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: quality-eval-bird-smoke-${{ github.run_id }}
+          path: eval-state/*.json
+          retention-days: 30
+
+      # Prune full reports before caching so eval-state only carries the
+      # checkpoint across dispatches (reports are in the artifact).
+      - name: Prune reports from eval state
+        if: always()
+        run: |
+          set -euo pipefail
+          find eval-state -maxdepth 1 -name '*.json' -delete 2>/dev/null || true
+
+      - name: Save eval state
+        if: always()
+        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: eval-state
+          key: eval-state-bird-${{ github.run_id }}

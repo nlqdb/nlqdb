@@ -3,30 +3,36 @@
 # canonical multi-CSV result-set evaluator (column-major comparator with
 # 1e-2 numeric tolerance + per-instance `condition_cols` / `ignore_order`
 # from `evaluation_suite/gold/spider2lite_eval.jsonl`). Manual on-demand
-# only per SK-QUAL-002 — the scheduled crons were retired.
+# only per SK-QUAL-002 — the scheduled crons were retired. Two dispatch
+# modes: `full` (135q + emit) and `smoke` (sampled, no emit, resumable).
 
 name: Quality eval — Spider 2.0-lite
 
 on:
   # SK-QUAL-002 — manual on-demand only; the scheduled weekly + 4h smoke
-  # crons were retired. The harness is a measurement tool, run when an
-  # operator wants a fresh number, never a PR gate.
+  # crons were retired. `mode` picks the full canonical pass or the sampled
+  # smoke; both are operator-triggered, never a PR gate.
   workflow_dispatch:
     inputs:
+      mode:
+        description: "full = 135q + emit · smoke = sampled slice, no emit"
+        type: choice
+        options: [full, smoke]
+        default: full
       limit:
-        description: "Question count (Spider 2.0-lite SQLite subset caps at 135)"
+        description: "Question count for full mode (Spider 2.0-lite SQLite subset caps at 135)"
         default: "135"
         required: false
       include_frontier:
-        description: "Run the frontier lane too (paid OpenRouter)"
+        description: "Run the frontier lane too (paid OpenRouter); full mode only"
         type: boolean
         default: false
       include_agentic_frontier:
-        description: "Run the SK-QUAL-009 agentic-frontier lane (exec-retry; ~3x provider RPS)"
+        description: "Run the SK-QUAL-009 agentic-frontier lane (exec-retry; ~3x provider RPS); full mode only"
         type: boolean
         default: false
       skip_emit:
-        description: "Skip POSTing the report to /v1/events/eval (default false)"
+        description: "Skip POSTing the report to /v1/events/eval (full mode; default false)"
         type: boolean
         default: false
 
@@ -43,8 +49,8 @@ concurrency:
 
 jobs:
   run:
-    name: Run Spider 2.0-lite SQLite
-    # Manual dispatch only.
+    name: Run Spider 2.0-lite SQLite (full)
+    if: inputs.mode != 'smoke'
     runs-on: ubuntu-latest
     # 135 questions × ~1s p50 × N lanes is ~5 min; LLM tail can push
     # to ~15 min. 60 min ceiling absorbs single-provider degradation.
@@ -181,3 +187,123 @@ jobs:
               "Note (SK-QUAL-008): all 135 `local###` rows now score via the canonical Spider 2.0 multi-CSV evaluator (column-major comparator, 1e-2 abs tolerance, per-instance `condition_cols` / `ignore_order`). `gold_error` here means the instance had no gold CSV in the cached `evaluation_suite/gold/exec_result/` tree, not a routing short-circuit."
             ' "$latest"
           } >> "$GITHUB_STEP_SUMMARY"
+
+  # SK-QUAL-011 — sampled smoke slice, manual dispatch (`mode: smoke`),
+  # resumable. No change-since-`last_eval_sha` gate: a manual dispatch is
+  # an intentional run. Smoke never emits and never overwrites the baseline.
+  smoke:
+    name: Smoke EX (sampled, SK-QUAL-011)
+    if: inputs.mode == 'smoke'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    # Fixed smoke slice (SK-QUAL-011) — same seed + limit every run.
+    env:
+      SMOKE_SEED: "20260607"
+      SMOKE_LIMIT: "40"
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - uses: ./.github/actions/setup
+
+      - name: Cache Spider 2.0-lite fixtures
+        id: spider2-cache
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: spider2_data
+          key: spider2-lite-v2-${{ hashFiles('.github/workflows/quality-eval-spider2-lite.yml') }}
+
+      - name: Download Spider 2.0-lite (when cache miss)
+        if: steps.spider2-cache.outputs.cache-hit != 'true'
+        run: |
+          set -euo pipefail
+          mkdir -p spider2_data/resource/databases/spider2-localdb
+          tmp_clone=$(mktemp -d)
+          git clone --depth 1 --filter=blob:none --sparse \
+            https://github.com/xlang-ai/Spider2 "$tmp_clone"
+          (cd "$tmp_clone" && git sparse-checkout set spider2-lite/evaluation_suite/gold)
+          mkdir -p spider2_data/evaluation_suite
+          cp -r "$tmp_clone/spider2-lite/evaluation_suite/gold" spider2_data/evaluation_suite/gold
+          cp "$tmp_clone/spider2-lite/spider2-lite.jsonl" spider2_data/spider2-lite.jsonl
+          rm -rf "$tmp_clone"
+          pip install --quiet --user gdown
+          ~/.local/bin/gdown --fuzzy \
+            "https://drive.google.com/file/d/1coEVsCZq-Xvj9p2TnhBFoFTsY-UoYGmG/view?usp=sharing" \
+            -O spider2_data/spider2-localdb.zip
+          unzip -q spider2_data/spider2-localdb.zip -d spider2_data/resource/databases/spider2-localdb
+          rm -f spider2_data/spider2-localdb.zip
+
+      # SK-QUAL-011 — the smoke checkpoint persists across dispatches so a
+      # budget-stopped smoke resumes on the next `mode: smoke` dispatch.
+      - name: Restore eval state
+        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: eval-state
+          key: eval-state-spider-${{ github.run_id }}
+          restore-keys: |
+            eval-state-spider-
+
+      - name: Smoke run (resumable)
+        id: smoke
+        env:
+          CEREBRAS_API_KEY: ${{ secrets.CEREBRAS_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          CF_AI_TOKEN: ${{ secrets.CF_AI_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
+        run: |
+          set -euo pipefail
+          mkdir -p eval-state
+          bun tools/eval/src/runner.ts \
+            --dataset spider2-lite-sqlite \
+            --data-dir spider2_data \
+            --limit "$SMOKE_LIMIT" --sample-seed "$SMOKE_SEED" \
+            --out eval-state
+          latest=$(ls -t eval-state/*.json | head -1)
+          if jq -e '.resumable == true' "$latest" >/dev/null 2>&1; then
+            echo "Budget stop — checkpoint kept; re-dispatch (mode: smoke) resumes."
+            echo "status=resumable" >> "$GITHUB_OUTPUT"
+          else
+            echo "status=completed" >> "$GITHUB_OUTPUT"
+          fi
+          echo "report=$latest" >> "$GITHUB_OUTPUT"
+
+      - name: Smoke summary
+        run: |
+          set -euo pipefail
+          latest="${{ steps.smoke.outputs.report }}"
+          {
+            echo "## quality-eval — Spider smoke (sampled ${SMOKE_LIMIT}, seed ${SMOKE_SEED})"
+            echo ""
+            echo "Status: ${{ steps.smoke.outputs.status }}"
+            if [ -n "$latest" ] && [ -f "$latest" ]; then
+              jq -r '
+                "Run at: " + .run_at,
+                (if .resumable == true then "Resumable: true (chain rate-limited)" else "" end),
+                "",
+                "| Lane | Match | Attempted | Smoke EX |",
+                "|---|---|---|---|",
+                (.lanes[] | "| " + .lane + " | " + (.match | tostring) + " | " + (.attempted | tostring) + " | " + ((.execution_accuracy * 100 | tostring) + "%") + " |")
+              ' "$latest"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload smoke report
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: quality-eval-spider2-smoke-${{ github.run_id }}
+          path: eval-state/*.json
+          retention-days: 30
+
+      - name: Prune reports from eval state
+        if: always()
+        run: |
+          set -euo pipefail
+          find eval-state -maxdepth 1 -name '*.json' -delete 2>/dev/null || true
+
+      - name: Save eval state
+        if: always()
+        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: eval-state
+          key: eval-state-spider-${{ github.run_id }}

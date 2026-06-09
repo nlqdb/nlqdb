@@ -44,12 +44,15 @@ reverse.
   skip/append/complete, the `BudgetStopError` + `isChainRateLimited`
   detector, a `resumable?: boolean` on `EvalReport`, and a `runAt`
   test-injection seam (so a resumed run and a single-shot run compare
-  identically modulo wall-clock). The checkpoint lives on the runner's
-  working tree for the duration of a single dispatch; cross-dispatch
-  persistence (`actions/cache`) went away with the retired scheduled
-  smoke job ([`SK-QUAL-002`](./SK-QUAL-002-weekly-cron.md)), so a
-  budget-stopped manual run is simply re-dispatched after the cap resets
-  — a fresh full pass is correct, just slower.
+  identically modulo wall-clock). The smoke `mode`
+  ([`SK-QUAL-002`](./SK-QUAL-002-weekly-cron.md)) persists its
+  `*.smoke.partial.jsonl` checkpoint via `actions/cache` (rolling key), so
+  a budget-stopped smoke resumes on the next `mode: smoke` dispatch; the
+  full `run` job keeps its checkpoint only within a single dispatch, so a
+  budget-stopped full run is re-dispatched fresh after the cap resets.
+  Storage choice: **CI cache, not a committed results branch** — keeps the
+  eval out of git history; a cache eviction just restarts a pending smoke,
+  which is correct, just slower.
 - **Alternatives rejected:**
   - **Restart from scratch on a token cap** — wastes the completed work
     and, worse, records the un-run tail as `no_sql`, corrupting the EX.

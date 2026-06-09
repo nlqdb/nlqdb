@@ -34,8 +34,8 @@ when-to-load:
   - `src/output.ts` — JSON report writer
   - `src/checkpoint.ts` — resumable-runner checkpoint (load / append / complete) per `SK-QUAL-011`
   - `baseline-2026-06-15.json` — pinned canonical baseline (`SK-QUAL-005`)
-- `.github/workflows/quality-eval-bird-mini.yml` — BIRD: manual `workflow_dispatch` only (`SK-QUAL-002`); `include_agentic_frontier` → `RUN_AGENTIC_FRONTIER=1` per `SK-QUAL-009`
-- `.github/workflows/quality-eval-spider2-lite.yml` — Spider: manual `workflow_dispatch` only (`SK-QUAL-002`); `SK-QUAL-007` loader + `SK-QUAL-009` agentic toggle
+- `.github/workflows/quality-eval-bird-mini.yml` — BIRD: manual `workflow_dispatch` only (`SK-QUAL-002`), `mode: full|smoke` (smoke = sampled + resumable per `SK-QUAL-011`); `include_agentic_frontier` → `RUN_AGENTIC_FRONTIER=1` per `SK-QUAL-009`
+- `.github/workflows/quality-eval-spider2-lite.yml` — Spider: manual `workflow_dispatch` only (`SK-QUAL-002`), `mode: full|smoke`; `SK-QUAL-007` loader + `SK-QUAL-009` agentic toggle
 - `apps/api/src/events-feature.ts::recordEvalReport` — bearer-token cron ingestion
 - `apps/api/src/index.ts` — `POST /v1/events/eval` route wiring
 - `packages/events/src/types.ts` — `FeatureEvalWeeklyEvent`, `FeatureEvalRegressionEvent`
@@ -100,14 +100,15 @@ shipped free + single-model-frontier; agentic lane lands in slice 3c with
 
 **Body:** [`decisions/SK-QUAL-002-weekly-cron.md`](./decisions/SK-QUAL-002-weekly-cron.md).
 Manual `workflow_dispatch` only, never per-PR/per-merge and never on a
-schedule: a run does the full pass (500 BIRD / 135 Spider), diffs the
-baseline + emits `feature.eval.weekly` / `feature.eval.regression` (EA
-delta ≤ -5 pp **or** McNemar p < 0.05, `SK-QUAL-006`). Gating *decisions*
+schedule. A `mode` input picks **full** (500 BIRD / 135 Spider, diffs the
+baseline + emits `feature.eval.weekly` / `feature.eval.regression`, EA
+delta ≤ -5 pp **or** McNemar p < 0.05, `SK-QUAL-006`) or **smoke**
+(sampled slice, no emit, resumable per `SK-QUAL-011`). Gating *decisions*
 not *merges* keeps the harness a measurement tool; on-demand (not
 scheduled) keeps the shared 1M/day free-tier cap available to live
-traffic. The prior weekly + capped 4h smoke cadence was retired with the
-smoke job — accepted trade-off: drift is unmeasured until an operator
-runs it. Resilience via [`SK-QUAL-011`](#sk-qual-011).
+traffic. The prior weekly + 4h smoke **schedule** was retired; the smoke
+run is kept as a manual mode. Accepted trade-off: drift is unmeasured
+until an operator runs it. Resilience via [`SK-QUAL-011`](#sk-qual-011).
 
 ### SK-QUAL-011 — Resumable runner: checkpoint + budget-stop so a run survives a free-tier daily token cap
 
@@ -120,8 +121,8 @@ rate-limited (`AllProvidersFailedError` all-`rate_limited`, the
 contract) the run **budget-stops**: keeps the checkpoint, marks the report
 `resumable: true`, doesn't emit, exits 0 — a daily-cap hit reads as a
 pause, not a wall of `no_sql`. The operator re-dispatches once the cap
-resets (cross-dispatch `actions/cache` persistence went away with the
-retired smoke job).
+resets; the smoke mode's checkpoint persists via `actions/cache`, so a
+budget-stopped smoke resumes on the next `mode: smoke` dispatch.
 
 ### SK-QUAL-006 — McNemar's paired-binary test as a parallel regression trigger
 
@@ -192,6 +193,12 @@ Canonical text in [`docs/decisions/`](../../decisions/).
 ## Open questions / known unknowns
 
 - **Privacy** — Decided: no user data ever flows into the eval harness. The harness is for public benchmark data only (BIRD, Spider). Any PR that adds production schema sampling is a security defect.
+- **Deferred: a dedicated `feature.eval.smoke` event.** The smoke `mode`
+  (`SK-QUAL-002`) produces a CI artifact + run-summary table and does
+  **not** emit, keeping the weekly dashboard uncontaminated. A
+  first-class `feature.eval.smoke` event touches `packages/events`,
+  `recordEvalReport`, and the LogSnag sink — out of proportion to the
+  immediate need; promote when a smoke dashboard is actually wanted.
 - **Deferred: a hard token-budget counter in the runner.** Today the
   budget guard is W2's rate-limit signal — a 429-saturated chain
   budget-stops via `SK-QUAL-011`. A pre-emptive per-day token ceiling is
