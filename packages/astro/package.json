@@ -2,7 +2,7 @@
   "name": "@nlqdb/astro",
   "private": true,
   "version": "0.0.0",
-  "description": "Astro 5 integration — injects the elements CDN bundle in <head> and ships a typed <NlqData> component.",
+  "description": "Astro 6 integration — injects the elements CDN bundle in <head> and ships a typed <NlqData> component.",
   "type": "module",
   "sideEffects": false,
   "main": "src/index.ts",
@@ -16,11 +16,11 @@
   },
   "peerDependencies": {
     "@nlqdb/elements": "workspace:*",
-    "astro": "^5.0.0"
+    "astro": "^6.0.0"
   },
   "devDependencies": {
     "@nlqdb/elements": "workspace:*",
-    "astro": "^5.0.0",
+    "astro": "^6.4.4",
     "typescript": "^5.6.0"
   }
 }
