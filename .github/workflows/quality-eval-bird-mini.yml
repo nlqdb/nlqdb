@@ -52,18 +52,18 @@ jobs:
     name: Run BIRD Mini-Dev (full)
     if: inputs.mode != 'smoke'
     runs-on: ubuntu-latest
-    # 500 questions × ~1s p50 latency × N lanes = ~10 min; bigger LLM
-    # tail can push to ~25 min. The 60 min ceiling absorbs single-
-    # provider degradation without flaking the run.
-    timeout-minutes: 60
+    # 500 questions × (≈3 s throttle, SK-QUAL-012 + ~2 s LLM tail) ≈ 45 min;
+    # the 90 min ceiling absorbs single-provider degradation + exec-retry
+    # without flaking the run.
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
       - uses: ./.github/actions/setup
 
       # BIRD Mini-Dev's questions JSON is on HuggingFace; the SQLite
-      # database files (~50 MB compressed) are on Google Drive. gdown
-      # handles Drive's interstitial confirm token. Cached by SHA so
-      # subsequent runs skip the download.
+      # database files (~800 MB) ship in the minidev package on the
+      # Aliyun OSS mirror. Cached by SHA so subsequent runs skip the
+      # download.
       - name: Cache BIRD Mini-Dev fixtures
         id: bird-cache
         uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
@@ -80,16 +80,17 @@ jobs:
           curl -fsSL \
             "https://huggingface.co/datasets/birdsql/bird_mini_dev/resolve/main/data/mini_dev_sqlite-00000-of-00001.json" \
             -o bird_data/mini_dev_sqlite.json
-          # SQLite database files — Google Drive (BIRD distributes them
-          # only there). File ID from https://github.com/bird-bench/mini_dev README.
-          pip install --quiet --user gdown
-          ~/.local/bin/gdown --fuzzy \
-            "https://drive.google.com/file/d/13VLWIwpw5E3d5DUkMvzw7hvHE67a4XkG/view?usp=sharing" \
-            -O bird_data/mini_dev_v2.zip
+          # SQLite databases — BIRD's minidev package, direct from the
+          # Aliyun OSS mirror named in the upstream README. Replaces the
+          # prior gdown/Google-Drive path: gdown 6 removed --fuzzy (2026-05)
+          # and Drive rate-limits CI; a direct HTTPS curl is robust.
+          curl -fSL --retry 4 --retry-delay 5 --retry-all-errors \
+            "https://bird-bench.oss-cn-beijing.aliyuncs.com/minidev.zip" \
+            -o bird_data/mini_dev_v2.zip
           unzip -q bird_data/mini_dev_v2.zip -d bird_data
-          # Normalise layout — gdown unzips into a versioned subdir we
-          # don't want the harness to depend on. Symlink the contents
-          # into the canonical layout `bird_data/dev_databases/`.
+          # Normalise layout — minidev.zip nests dev_databases under
+          # minidev/MINIDEV/. Symlink it into the canonical
+          # `bird_data/dev_databases/` the loader expects.
           if [ ! -d bird_data/dev_databases ]; then
             found=$(find bird_data -maxdepth 3 -name "dev_databases" -type d | head -1)
             if [ -z "$found" ]; then
@@ -152,6 +153,7 @@ jobs:
             --questions-json ../../bird_data/mini_dev_sqlite.json \
             --limit "$limit" \
             --out results \
+            --throttle-ms 3000 \
             $baseline_arg \
             $emit_args
 
@@ -247,10 +249,13 @@ jobs:
           curl -fsSL \
             "https://huggingface.co/datasets/birdsql/bird_mini_dev/resolve/main/data/mini_dev_sqlite-00000-of-00001.json" \
             -o bird_data/mini_dev_sqlite.json
-          pip install --quiet --user gdown
-          ~/.local/bin/gdown --fuzzy \
-            "https://drive.google.com/file/d/13VLWIwpw5E3d5DUkMvzw7hvHE67a4XkG/view?usp=sharing" \
-            -O bird_data/mini_dev_v2.zip
+          # SQLite databases — BIRD's minidev package, direct from the
+          # Aliyun OSS mirror named in the upstream README. Replaces the
+          # prior gdown/Google-Drive path: gdown 6 removed --fuzzy (2026-05)
+          # and Drive rate-limits CI; a direct HTTPS curl is robust.
+          curl -fSL --retry 4 --retry-delay 5 --retry-all-errors \
+            "https://bird-bench.oss-cn-beijing.aliyuncs.com/minidev.zip" \
+            -o bird_data/mini_dev_v2.zip
           unzip -q bird_data/mini_dev_v2.zip -d bird_data
           if [ ! -d bird_data/dev_databases ]; then
             found=$(find bird_data -maxdepth 3 -name "dev_databases" -type d | head -1)
@@ -293,6 +298,7 @@ jobs:
             --data-dir bird_data \
             --questions-json bird_data/mini_dev_sqlite.json \
             --limit "$SMOKE_LIMIT" --sample-seed "$SMOKE_SEED" \
+            --throttle-ms 3000 \
             --out eval-state
           latest=$(ls -t eval-state/*.json | head -1)
           if jq -e '.resumable == true' "$latest" >/dev/null 2>&1; then

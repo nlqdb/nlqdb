@@ -81,3 +81,7 @@ packages/nlqdb-rb/*.gem
 
 # Tinybird CLI local auth (contains workspace token — never commit)
 .tinyb
+
+# quality-eval fixtures — downloaded at runtime (BIRD minidev / Spider 2.0-lite), never committed
+/bird_data/
+/spider2_data/
