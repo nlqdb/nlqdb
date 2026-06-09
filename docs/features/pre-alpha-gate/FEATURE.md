@@ -23,7 +23,7 @@ when-to-load:
 
 ## Touchpoints — read this feature before editing
 
-- `apps/api/src/gate/eval-baseline.ts` — typed constants; cron updates via PR
+- `apps/api/src/gate/eval-baseline.ts` — typed constants; an eval run updates via PR
 - `apps/api/src/gate/check.ts` — pure decision function (no IO)
 - `apps/api/src/gate/middleware.ts` — Hono middleware (mounts after `requirePrincipal`)
 - `apps/api/src/index.ts` — `/v1/ask`, `/v1/run`, `POST /v1/databases`, `POST /v1/chat/messages` route definitions
@@ -45,7 +45,7 @@ when-to-load:
 - **Decision:** The BIRD/Spider numbers used by `check.ts` come from `apps/api/src/gate/eval-baseline.ts` — a typed module exporting `{ bird_accuracy, spider_accuracy, bird_target, spider_target, measured_at }`. The [`quality-eval`](../quality-eval/FEATURE.md) run amends the file via PR after each successful run; no runtime fetch.
 - **Core value:** Fast, Honest latency, Simple
 - **Why:** The hot path (`POST /v1/ask`) cannot afford an additional KV round-trip for a value that changes rarely (only when an operator re-runs the eval). A flat-file constant is faster (zero IO) and reviewable (every threshold update is a diff humans can sanity-check before deploy). The freshness gap is acceptable because the gate is a "is the product ready" decision, not a rate limit — a stale "no" is still a correct "no".
-- **Consequence in code:** `eval-baseline.ts` is the only place these numbers exist. A test pins the shape so the cron's PR cannot land a malformed file. `check.ts` reads the module statically; no async, no try/catch.
+- **Consequence in code:** `eval-baseline.ts` is the only place these numbers exist. A test pins the shape so the eval run's PR cannot land a malformed file. `check.ts` reads the module statically; no async, no try/catch.
 - **Alternatives rejected:** KV read per request (adds 5–20 ms p50 on the hot path; the gate's freshness needs don't justify the cost); D1 row + cache (more code, same staleness story, more failure modes); GitHub Actions secret injected as a Worker env var (changes require a deploy roundtrip — slower than a PR merge).
 
 ### SK-GATE-002 — Two thresholds, ANDed: BIRD ≥ 0.65 AND Spider ≥ 0.75

@@ -36,7 +36,7 @@ when-to-load:
   - `baseline-2026-06-15.json` — pinned canonical baseline (`SK-QUAL-005`)
 - `.github/workflows/quality-eval-bird-mini.yml` — BIRD: manual `workflow_dispatch` only (`SK-QUAL-002`), `mode: full|smoke` (smoke = sampled + resumable per `SK-QUAL-011`); `include_agentic_frontier` → `RUN_AGENTIC_FRONTIER=1` per `SK-QUAL-009`
 - `.github/workflows/quality-eval-spider2-lite.yml` — Spider: manual `workflow_dispatch` only (`SK-QUAL-002`), `mode: full|smoke`; `SK-QUAL-007` loader + `SK-QUAL-009` agentic toggle
-- `apps/api/src/events-feature.ts::recordEvalReport` — bearer-token cron ingestion
+- `apps/api/src/events-feature.ts::recordEvalReport` — bearer-token run ingestion
 - `apps/api/src/index.ts` — `POST /v1/events/eval` route wiring
 - `packages/events/src/types.ts` — `FeatureEvalWeeklyEvent`, `FeatureEvalRegressionEvent`
 - `apps/events-worker/src/sinks/logsnag.ts` — `#north-star` channel mappings

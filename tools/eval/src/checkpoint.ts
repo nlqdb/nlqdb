@@ -12,7 +12,7 @@ import type { DispatchLane, EvalDataset, QuestionResult } from "./types.ts";
 
 // Per-(dataset, variant) partial file. The dataset name keeps a BIRD
 // run's checkpoint from colliding with a Spider run's; the variant keeps
-// the 4h sampled smoke slice from colliding with the weekly full run
+// the sampled smoke slice from colliding with the full run
 // (different question sets must never share a checkpoint). `variant`
 // defaults to "full"; the runner passes "smoke" for sampled runs.
 export function checkpointPath(dir: string, dataset: EvalDataset, variant = "full"): string {

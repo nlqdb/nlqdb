@@ -115,7 +115,7 @@ export type HomeSurfaceWishlistEvent = {
 };
 
 // `feature.eval.*` is the quality-eval domain (SK-QUAL-002). Emitted by
-// the weekly GH-Actions cron after the BIRD Mini-Dev pass completes.
+// the on-demand GH-Actions run after the BIRD Mini-Dev pass completes.
 // Per-run dedup is on `runId` (the ISO timestamp the eval started) so
 // a retry of the same workflow run can't double-count a regression.
 export type FeatureEvalWeeklyEvent = {
