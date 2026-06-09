@@ -221,12 +221,14 @@ function makeSubscription(overrides: {
   cancelAtPeriodEnd?: boolean;
   priceId?: string;
   currentPeriodEnd?: number;
+  metadata?: Record<string, string>;
 }): Stripe.Subscription {
   return {
     id: overrides.id ?? "sub_test",
     customer: overrides.customer,
     status: overrides.status ?? "active",
     cancel_at_period_end: overrides.cancelAtPeriodEnd ?? false,
+    metadata: overrides.metadata ?? {},
     items: {
       data: [
         {
@@ -637,7 +639,50 @@ describe("processWebhook — customer.subscription.created", () => {
     expect(queue.sent[0]?.id).toBe("billing.subscription_created.sub_99");
   });
 
-  it("skips emit + UPDATE when no customers row matches the customer_id", async () => {
+  // SK-STRIPE-012 — Stripe doesn't guarantee event ordering, so this event
+  // can beat checkout.session.completed. With no customers row yet, the
+  // handler self-heals via subscription_data.metadata.nlqdb_user_id: it
+  // creates the row, syncs fields, and still emits subscription_created.
+  it("creates the row + emits from metadata when checkout.session.completed hasn't landed", async () => {
+    const sub = makeSubscription({
+      id: "sub_ooo",
+      customer: "cus_ooo",
+      status: "active",
+      priceId: "price_hobby",
+      currentPeriodEnd: 1750000000,
+      metadata: { nlqdb_user_id: "u_ooo" },
+    });
+    const event = makeEventStub({
+      id: "evt_sub_ooo",
+      type: "customer.subscription.created",
+      object: sub,
+    });
+    const signer: WebhookSigner = {
+      constructEventAsync: vi.fn().mockResolvedValue(event),
+    };
+    // Empty DB — no customers row exists when this event arrives.
+    const { deps, db, queue } = makeDeps({ signer });
+    const result = await processWebhook(deps, "{}", "sig");
+    expect(result.status).toBe(200);
+    expect(db.customers.get("u_ooo")).toMatchObject({
+      user_id: "u_ooo",
+      stripe_customer_id: "cus_ooo",
+      stripe_subscription_id: "sub_ooo",
+      status: "active",
+      price_id: "price_hobby",
+    });
+    expect(queue.sent).toHaveLength(1);
+    expect(queue.sent[0]?.event).toEqual({
+      name: "billing.subscription_created",
+      userId: "u_ooo",
+      customerId: "cus_ooo",
+      subscriptionId: "sub_ooo",
+      priceId: "price_hobby",
+    });
+    expect(queue.sent[0]?.id).toBe("billing.subscription_created.sub_ooo");
+  });
+
+  it("skips emit + UPDATE when no customers row matches and no metadata link exists", async () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     const sub = makeSubscription({
       id: "sub_orphan",

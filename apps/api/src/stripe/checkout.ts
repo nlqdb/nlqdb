@@ -53,6 +53,12 @@ export async function createCheckoutSession(
       const params: Stripe.Checkout.SessionCreateParams = {
         mode: "subscription",
         client_reference_id: deps.userId,
+        // Stamp the nlqdb user id onto the *subscription* too, not just the
+        // session. Stripe doesn't guarantee webhook ordering, so
+        // customer.subscription.created can land before
+        // checkout.session.completed; the subscription handler resolves the
+        // user from this metadata and self-heals the link (SK-STRIPE-012).
+        subscription_data: { metadata: { nlqdb_user_id: deps.userId } },
         line_items: [{ price: priceId, quantity: 1 }],
         success_url: successUrl,
         cancel_url: cancelUrl,

@@ -275,11 +275,12 @@ async function dispatchEvent(deps: StripeWebhookDeps, event: Stripe.Event): Prom
   }
 }
 
-// Slice 7's only path that creates a customers row. The Phase 1 Checkout
-// endpoint MUST set `client_reference_id: userId` and use mode='subscription'
-// — that's the contract this handler depends on. Without client_reference_id
-// we can't link the Stripe customer to a user, so we log and skip rather
-// than create an orphan row.
+// The normal path that creates a customers row (subscription.created is the
+// out-of-order fallback — SK-STRIPE-012). The Checkout endpoint MUST set
+// `client_reference_id: userId` and use mode='subscription' — that's the
+// contract this handler depends on. Without client_reference_id we can't link
+// the Stripe customer to a user, so we log and skip rather than create an
+// orphan row.
 async function handleCheckoutCompleted(
   deps: StripeWebhookDeps,
   session: Stripe.Checkout.Session,
@@ -305,28 +306,43 @@ async function handleCheckoutCompleted(
   // Status is unknown at checkout-complete (subscription state arrives
   // via the subsequent customer.subscription.created event). Default to
   // 'incomplete' until that fires.
-  await deps.db
-    .prepare(
-      "INSERT INTO customers (user_id, stripe_customer_id, stripe_subscription_id, status) " +
-        "VALUES (?, ?, ?, 'incomplete') " +
-        "ON CONFLICT(user_id) DO UPDATE SET " +
-        "stripe_customer_id = excluded.stripe_customer_id, " +
-        "stripe_subscription_id = excluded.stripe_subscription_id, " +
-        "updated_at = unixepoch()",
-    )
-    .bind(userId, stripeCustomerId, stripeSubscriptionId)
-    .run();
+  await upsertCustomerLink(deps.db, userId, stripeCustomerId, stripeSubscriptionId);
 }
 
 async function handleSubscriptionCreated(
   deps: StripeWebhookDeps,
   sub: Stripe.Subscription,
 ): Promise<void> {
-  const resolved = await resolveSubUser(deps.db, sub);
-  if (!resolved) return;
+  const customerId = typeof sub.customer === "string" ? sub.customer : null;
+  if (!customerId) return;
+
+  // Normal path: checkout.session.completed already created the customers
+  // row, so the stripe_customer_id lookup hits. Out-of-order path (Stripe
+  // doesn't guarantee event ordering — https://docs.stripe.com/webhooks):
+  // this event beats checkout.session.completed, so no row exists yet. Fall
+  // back to the nlqdb user id stamped onto the subscription via
+  // subscription_data.metadata at checkout and create the row here, so a
+  // paid customer is never left unlinked (SK-STRIPE-012).
+  let userId = await lookupUserByCustomer(deps.db, customerId);
+  if (!userId) {
+    const metaUserId = readUserIdFromMetadata(sub);
+    if (!metaUserId) {
+      console.warn(
+        JSON.stringify({
+          level: "warn",
+          msg: "subscription_created_no_user_mapping",
+          subscription_id: sub.id,
+          customer_id: customerId,
+        }),
+      );
+      return;
+    }
+    await upsertCustomerLink(deps.db, metaUserId, customerId, sub.id);
+    userId = metaUserId;
+  }
 
   const fields = extractSubscriptionFields(sub);
-  await syncSubscriptionFields(deps.db, sub, fields, resolved.userId);
+  await syncSubscriptionFields(deps.db, sub, fields, userId);
 
   if (!fields.priceId) {
     warnMissingPriceId("subscription_created_missing_price", sub);
@@ -338,8 +354,8 @@ async function handleSubscriptionCreated(
   await deps.events.emit(
     {
       name: "billing.subscription_created",
-      userId: resolved.userId,
-      customerId: resolved.customerId,
+      userId,
+      customerId,
       subscriptionId: sub.id,
       priceId: fields.priceId,
     },
@@ -459,6 +475,38 @@ async function resolveSubUser(
     return null;
   }
   return { userId, customerId };
+}
+
+// Idempotent `user_id → (stripe_customer_id, stripe_subscription_id)` link.
+// Shared by checkout.session.completed (the normal row creator) and the
+// out-of-order subscription.created fallback. Defaults status to
+// 'incomplete'; ON CONFLICT touches only the Stripe ids so a re-run can't
+// clobber a status the subscription.* handlers already synced.
+async function upsertCustomerLink(
+  db: D1Database,
+  userId: string,
+  customerId: string,
+  subscriptionId: string | null,
+): Promise<void> {
+  await db
+    .prepare(
+      "INSERT INTO customers (user_id, stripe_customer_id, stripe_subscription_id, status) " +
+        "VALUES (?, ?, ?, 'incomplete') " +
+        "ON CONFLICT(user_id) DO UPDATE SET " +
+        "stripe_customer_id = excluded.stripe_customer_id, " +
+        "stripe_subscription_id = excluded.stripe_subscription_id, " +
+        "updated_at = unixepoch()",
+    )
+    .bind(userId, customerId, subscriptionId)
+    .run();
+}
+
+// Reads the nlqdb user id off `subscription_data.metadata` (set at
+// checkout). Returns null for the legacy/out-of-band case where it's
+// absent, so the caller falls through to its warn-and-skip path.
+function readUserIdFromMetadata(sub: Stripe.Subscription): string | null {
+  const value = sub.metadata?.["nlqdb_user_id"];
+  return typeof value === "string" && value.length > 0 ? value : null;
 }
 
 // The single `stripe_customer_id → user_id` lookup, shared by every
