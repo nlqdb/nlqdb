@@ -83,5 +83,5 @@ block, orthogonal to each of them.
     mis-placement is a different, lower-frequency error type and a mis-placed
     aggregate in `WHERE` is usually a hard exec-error (only 7/500 in the
     baseline), so its EX headroom is small. Folding two prompt changes into one
-    PR also blurs which moved the next cron. Parked as a backlog item, not
+    PR also blurs which moved the next eval run. Parked as a backlog item, not
     bundled here (`CLAUDE.md` §P5).

@@ -185,7 +185,7 @@ it lexicographically (`'100' < '9'`), silently returning a wrong result. The
 positives) and bounds regression (a numeric string and its number cast equal);
 `SUM`/`AVG` are out of scope (SQLite already coerces TEXT there). BIRD-weighted,
 dialect-portable ⇒ plausibly lifts Spider too. Prompt-only, ≈55 tokens,
-directive-only (keeps `SK-LLM-026`'s pending cron clean); measured next cron.
+directive-only (keeps `SK-LLM-026`'s pending measurement clean); measured on the next eval run.
 
 ### SK-LLM-033 — Schema-inference prompt requires insertable sample rows
 
