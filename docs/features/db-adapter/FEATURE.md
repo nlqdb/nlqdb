@@ -149,15 +149,13 @@ internal primitive, so no `GLOBAL-003` obligation of its own.
 ### SK-DB-013 — BYO connect-time validation pipeline: one composition of parse → egress resolve-recheck, shared by both engines
 
 **Body:** [`decisions/SK-DB-013-byo-connect-validation-pipeline.md`](./decisions/SK-DB-013-byo-connect-validation-pipeline.md).
-One pure module — `packages/db/src/byo-connect.ts`, `validateByoConnection(engine,
-rawUrl, resolve)` — is the single connect-time entry point both the BYO Postgres
-(`SK-DB-011`) and BYO ClickHouse (`SK-MULTIENG-005`) branches call before sealing:
-it runs the URL parser (`SK-DB-012` / `SK-MULTIENG-006`) then
-`guardEgressHostResolved` (`GLOBAL-035`, DoH resolver injected) in a load-bearing
-parse-before-resolve order, returning the engine-tagged parse or a fail-loud
-message. It stops at validation (no seal, no D1), so it stays pure + zero-dep and
-ships ahead of its `connect.ts` callers (internal primitive, no `GLOBAL-003`
-obligation).
+`packages/db/src/byo-connect.ts`'s `validateByoConnection(engine, rawUrl, resolve)`
+is the single connect-time entry point both the BYO Postgres (`SK-DB-011`) and BYO
+ClickHouse (`SK-MULTIENG-005`) branches call before sealing: it runs the URL parser
+(`SK-DB-012` / `SK-MULTIENG-006`) then `guardEgressHostResolved` (`GLOBAL-035`, DoH
+resolver injected) in a load-bearing parse-before-resolve order, returning the
+engine-tagged parse or a fail-loud message. Pure + zero-dep, stops at validation
+(no seal, no D1), ships ahead of its `connect.ts` callers; internal primitive.
 
 ## GLOBALs governing this feature
 
@@ -177,8 +175,7 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
     binding through `db-registry.ts` is platform-db consumer code).
 - **GLOBAL-031** — One AES-256-GCM at-rest envelope + one Workers-held KEK for every BYO secret.
   - *In this feature:* the BYO Postgres `connection_url` (`SK-DB-011`) is sealed by `apps/api/src/secret-envelope.ts` (context `dbconn:<dbId>`) before the D1 row; `registerByoDb` reads it back via `openSecret`. The adapter still gets a plaintext DSN at execute time — the envelope is the storage boundary, not the adapter contract.
-- **GLOBAL-035** — One egress guard for every BYO outbound connection host.
-  - *In this feature:* the connect path guards the parsed `host` via `validateByoConnection` (`SK-DB-013`), composing `parseConnectionUrl` (`SK-DB-012`) then `guardEgressHostResolved`.
+- **GLOBAL-035** — One egress guard for every BYO outbound connection host (the connect path applies it via `validateByoConnection`, `SK-DB-013`).
 
 ## Open questions / known unknowns
 
