@@ -126,10 +126,10 @@ nlqdb/
 │   ├── react/           # @nlqdb/react — typed React 19 wrapper
 │   ├── next/            # @nlqdb/next — Next 15 helpers + RSC server factory
 │   ├── vue/             # @nlqdb/vue — Vue 3.5 component
-│   ├── nuxt/            # @nlqdb/nuxt — Nuxt 3 module
+│   ├── nuxt/            # @nlqdb/nuxt — Nuxt 4 module
 │   ├── svelte/          # @nlqdb/svelte — Svelte 5 component
 │   ├── sveltekit/       # @nlqdb/sveltekit — load() + <NlqHead>
-│   ├── astro/           # @nlqdb/astro — Astro 5 integration
+│   ├── astro/           # @nlqdb/astro — Astro 6 integration
 │   ├── solid/           # @nlqdb/solid — SolidJS component
 │   ├── nlqdb-swift/     # Swift 6 Package (iOS / macOS / Linux)
 │   ├── db/              # engine-agnostic DB adapter

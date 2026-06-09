@@ -1,6 +1,6 @@
 # Packages · Nuxt — Agents Guide
 
-`@nlqdb/nuxt` — Nuxt 3 / 4 module that auto-registers `<NlqData>`, injects the elements CDN, and exposes `useNlq()`.
+`@nlqdb/nuxt` — Nuxt 4 module that auto-registers `<NlqData>`, injects the elements CDN, and exposes `useNlq()`.
 
 > Read root [`AGENTS.md`](../../AGENTS.md) first, then [`docs/features/framework-wrappers/FEATURE.md`](../../docs/features/framework-wrappers/FEATURE.md).
 
