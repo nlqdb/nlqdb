@@ -1,6 +1,8 @@
 # Manual-trigger web e2e (opencheck) against an ephemeral preview.
 # Runs up to 3 sequential suites (A→B→C); the `depth` input selects how far to go (a | ab | abc).
-# B only runs if A passes (state dependency: B needs the users DB A creates); C only if B passes.
+# Suites are sequential (order-only `needs`, to protect the shared Groq daily budget) but each runs
+# and reports INDEPENDENTLY — B/C are no longer skipped when an upstream suite fails, so every run
+# yields a per-suite verdict instead of one fragile chained signal (see the opencheck-b/c `if:` notes).
 # Shares the `e2e-staging` concurrency group with e2e-examples.yml.
 #
 # TOKEN-BUDGET DESIGN — root cause of the 2026-05→06 repeated failures:
@@ -12,7 +14,7 @@
 #
 # FREE MODELS ONLY (GLOBAL-013). On OpenRouter ONLY a `:free` slug is $0 — a bare slug is PAID
 # (2026-05-21: a paid Mistral slug burned ~$14). Agent model (all suites): OpenRouter
-# openai/gpt-oss-120b:free — tool-call verified 2026-06-08 (cost:0, balance $20.21).
+# openai/gpt-oss-120b:free — tool-call verified 2026-06-10 (usage.cost:0, balance ~$74.54).
 # Top-5 free models + switching guide: docs/features/e2e-coverage/opencheck-operations.md
 
 name: E2E (opencheck)
@@ -70,12 +72,19 @@ jobs:
     secrets:
       LLM_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
 
-  # Suite B — Read/Write: sign-in → trace SQL → insert Alice → read/count/vague/mismatch → CMD+K.
-  # Needs the users DB from A. Runs only at depth ab | abc.
+  # Suite B — Read/Write: sign-in → pin "users" DB by name → trace SQL → insert Alice → read/count/vague/mismatch → CMD+K.
+  # Runs whenever the deploy is up and depth != 'a' — EVEN IF Suite A failed. `needs: opencheck-a` is
+  # ORDER-ONLY here (keeps suites sequential so the shared Groq daily budget never spikes; the whole
+  # A→B→C app-side draw is ~20-40K, well under the 100K/day cap — the ~94K consumer is the agent, on
+  # OpenRouter :free). It is NOT a success gate: A's dominant flake is GLOBAL-027 (the bootstrapped DB
+  # exists but isn't queryable as "users"), so the DB is still present and B can pin it by name for an
+  # independent read/write signal. Turning B's skip into a signal is the fix for the documented
+  # "no sense of progress" trap — one A flake used to zero out all of B+C.
   opencheck-b:
     name: "Suite B — Read/Write"
     needs: [deploy-staging, opencheck-a]
-    if: ${{ inputs.depth != 'a' }}
+    # `!cancelled()` (not `always()`): run on Suite-A success OR failure, but still honour a manual run cancel.
+    if: ${{ !cancelled() && needs.deploy-staging.result == 'success' && inputs.depth != 'a' }}
     permissions:
       contents: read
     uses: ./.github/workflows/_e2e-opencheck.yml
@@ -87,12 +96,17 @@ jobs:
     secrets:
       LLM_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
 
-  # Suite C — UX/Cleanup: sign-in → delete-row → create 2nd DB → delete DB → API keys → sign-out → cleanup.
-  # Needs the Alice row from B. Runs only at depth abc.
+  # Suite C — UX/Cleanup: sign-in → pin "users" DB by name → delete-row → create 2nd DB → delete DB → API keys → sign-out → cleanup.
+  # Runs at depth abc EVEN IF Suite A or B failed (same order-only `needs`, budget rationale, and
+  # pin-by-name as B above). C's cleanup tests still depend on B having seeded the Alice row (it does
+  # not re-seed), but running-and-reporting instead of skipping converts a B flake into a visible
+  # per-suite verdict + persisted trace rather than a black hole — every abc run now yields up to three
+  # independent per-suite verdicts instead of one fragile chained one.
   opencheck-c:
     name: "Suite C — UX/Cleanup"
     needs: [deploy-staging, opencheck-b]
-    if: ${{ inputs.depth == 'abc' }}
+    # `!cancelled()` (not `always()`): run on Suite-B success OR failure, but still honour a manual run cancel.
+    if: ${{ !cancelled() && needs.deploy-staging.result == 'success' && inputs.depth == 'abc' }}
     permissions:
       contents: read
     uses: ./.github/workflows/_e2e-opencheck.yml
