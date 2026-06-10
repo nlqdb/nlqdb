@@ -87,10 +87,14 @@ mkdir -p "$RESULTS_DIR"
 # Sidecar holding the raw invite code; trap-removed on every exit path.
 INVITE_SIDECAR="$RESULTS_DIR/.invite-sq-${UTC_STAMP}-$$.txt"
 INVITE_CODE=""
+# Reusable temp file for per-goal response bodies. `mktemp` (not a
+# predictable `/tmp/...$$` path) avoids symlink/clobber races on a shared tmp.
+BODY_TMP="$(mktemp "${TMPDIR:-/tmp}/flow-sq-body.XXXXXX")"
 
 # shellcheck disable=SC2317  # body is invoked via `trap cleanup EXIT INT TERM`
 cleanup() {
   if [[ -f "$INVITE_SIDECAR" ]]; then rm -f "$INVITE_SIDECAR"; fi
+  if [[ -n "${BODY_TMP:-}" && -f "$BODY_TMP" ]]; then rm -f "$BODY_TMP"; fi
   INVITE_CODE=""
 }
 trap cleanup EXIT INT TERM
@@ -143,15 +147,14 @@ while IFS= read -r GOAL; do
   ANON_TOKEN="anon_${UUID}"
   ASK_BODY="$(jq -nc --arg g "$GOAL" '{goal:$g}')"
 
-  STATUS="$(curl -sS --max-time 60 -o /tmp/flow-sq-body.$$ -w '%{http_code}' \
+  STATUS="$(curl -sS --max-time 60 -o "$BODY_TMP" -w '%{http_code}' \
     -X POST "$BASE_URL/v1/ask" \
     -H "Content-Type: application/json" \
     -H "Authorization: Bearer $ANON_TOKEN" \
     -H "X-Invite-Code: $INVITE_CODE" \
     -d "$ASK_BODY" 2>/dev/null || true)"
   STATUS="${STATUS:-0}"
-  BODY="$(cat /tmp/flow-sq-body.$$ 2>/dev/null || true)"
-  rm -f /tmp/flow-sq-body.$$
+  BODY="$(cat "$BODY_TMP" 2>/dev/null || true)"
 
   KIND="unknown"
   QUALITY="errored"
