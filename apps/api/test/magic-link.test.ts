@@ -19,7 +19,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const ORIGIN = "https://example.com";
 
 function extractMagicLinkUrl(logs: string[]): string {
-  // Dev-stub log format (src/email.ts):
+  // Dev-stub log format (@nlqdb/email):
   //   [email:dev-stub] to=… subject=… body=<text containing the URL>
   // Email links go through `/auth/continue?next=<encoded verify URL>`
   // (prefetch protection — docs/architecture.md §4.3); decode `next` to get the

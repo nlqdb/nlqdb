@@ -18,6 +18,7 @@
       "dependencies": {
         "@neondatabase/serverless": "^1.1.0",
         "@nlqdb/db": "workspace:*",
+        "@nlqdb/email": "workspace:*",
         "@nlqdb/events": "workspace:*",
         "@nlqdb/llm": "workspace:*",
         "@nlqdb/otel": "workspace:*",
@@ -65,6 +66,7 @@
       "version": "0.0.0",
       "dependencies": {
         "@nlqdb/db": "workspace:*",
+        "@nlqdb/email": "workspace:*",
         "@nlqdb/events": "workspace:*",
         "@nlqdb/otel": "workspace:*",
         "@opentelemetry/api": "^1.9.0",
@@ -158,6 +160,15 @@
       "devDependencies": {
         "esbuild": "^0.25.0",
         "happy-dom": "^20.10.2",
+        "typescript": "^5.6.0",
+        "vitest": "^4.1.0",
+      },
+    },
+    "packages/email": {
+      "name": "@nlqdb/email",
+      "version": "0.0.0",
+      "devDependencies": {
+        "@cloudflare/workers-types": "latest",
         "typescript": "^5.6.0",
         "vitest": "^4.1.0",
       },
@@ -796,6 +807,8 @@
     "@nlqdb/docs": ["@nlqdb/docs@workspace:apps/docs"],
 
     "@nlqdb/elements": ["@nlqdb/elements@workspace:packages/elements"],
+
+    "@nlqdb/email": ["@nlqdb/email@workspace:packages/email"],
 
     "@nlqdb/eval": ["@nlqdb/eval@workspace:tools/eval"],
 

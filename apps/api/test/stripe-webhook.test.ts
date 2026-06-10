@@ -250,6 +250,8 @@ function makeInvoice(overrides: {
   // Omit the key entirely to model an unfinalized invoice where Stripe
   // sends no `hosted_invoice_url` — exercises the handler's `?? null`.
   hostedInvoiceUrl?: string | null;
+  // Likewise omit to model Stripe sending no `customer_email`.
+  customerEmail?: string | null;
 }): Stripe.Invoice {
   return {
     id: overrides.id ?? "in_test",
@@ -258,6 +260,7 @@ function makeInvoice(overrides: {
     currency: overrides.currency ?? "usd",
     attempt_count: overrides.attemptCount ?? 1,
     ...("hostedInvoiceUrl" in overrides ? { hosted_invoice_url: overrides.hostedInvoiceUrl } : {}),
+    ...("customerEmail" in overrides ? { customer_email: overrides.customerEmail } : {}),
   } as unknown as Stripe.Invoice;
 }
 
@@ -798,6 +801,7 @@ describe("processWebhook — invoice.payment_failed (SK-STRIPE-011)", () => {
       currency: "usd",
       attemptCount: 2,
       hostedInvoiceUrl: "https://pay.stripe.com/in_99",
+      customerEmail: "payer@example.com",
     });
     const event = makeEventStub({
       id: "evt_pf",
@@ -831,6 +835,7 @@ describe("processWebhook — invoice.payment_failed (SK-STRIPE-011)", () => {
       name: "billing.payment_failed",
       userId: "u_pf",
       customerId: "cus_pf",
+      customerEmail: "payer@example.com",
       invoiceId: "in_99",
       amountDue: 2500,
       currency: "usd",
@@ -872,6 +877,7 @@ describe("processWebhook — invoice.payment_failed (SK-STRIPE-011)", () => {
     expect(queue.sent[0]?.event).toMatchObject({
       name: "billing.payment_failed",
       hostedInvoiceUrl: null,
+      customerEmail: null,
     });
   });
 

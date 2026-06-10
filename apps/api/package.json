@@ -19,6 +19,7 @@
   "dependencies": {
     "@neondatabase/serverless": "^1.1.0",
     "@nlqdb/db": "workspace:*",
+    "@nlqdb/email": "workspace:*",
     "@nlqdb/events": "workspace:*",
     "@nlqdb/llm": "workspace:*",
     "@nlqdb/otel": "workspace:*",

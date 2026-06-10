@@ -60,6 +60,7 @@ here in the same PR that introduces them.
 | Cloudflare R2 | `apps/api/src/billing/` | Single-use today (Stripe payload archive). Pick a dedicated owner before second use case. |
 | Cloudflare KV | TBD | Confirm whether used in runtime; add row when first use lands. |
 | Turnstile | `apps/api/src/turnstile.ts` (server) + `apps/web/src/lib/turnstile.ts` (client) | Cross-process: each surface has one owner module for its half. |
+| Resend (email) | `packages/email/` (`makeEmailSender`) | Single `fetch` boundary (no SDK). Both senders import it: `apps/api` (Better Auth magic-link, sync/fail-loud) and `apps/events-worker` (billing dunning, async/best-effort, `SK-STRIPE-013`). |
 | Workers Secret Store | TBD | Add row when the first programmatic Secret Store API call lands. |
 
 ## Migration backlog (this GLOBAL is being adopted incrementally)

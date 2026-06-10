@@ -1,11 +1,11 @@
-// Unit tests for the Resend email sender shim. Verifies the
-// dev-stub fallback (no API key), the prod fetch payload shape,
-// the timeout path, and — critically — that Resend's response body
-// (which echoes destination email + sender) does NOT leak into the
-// thrown error.
+// Unit tests for the Resend email sender. Verifies the dev-stub
+// fallback (no API key), the prod fetch payload shape, the optional
+// idempotency-key header, the timeout path, and — critically — that
+// Resend's response body (which echoes destination email + sender) does
+// NOT leak into the thrown error.
 
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { makeEmailSender } from "../src/email.ts";
+import { makeEmailSender } from "../src/index.ts";
 
 describe("makeEmailSender", () => {
   afterEach(() => {
@@ -44,6 +44,8 @@ describe("makeEmailSender", () => {
     const headers = call[1].headers as Record<string, string>;
     expect(headers["authorization"]).toBe("Bearer re_test_key");
     expect(headers["content-type"]).toBe("application/json");
+    // No idempotency key unless the caller passes one.
+    expect(headers).not.toHaveProperty("idempotency-key");
     const body = JSON.parse(call[1].body as string);
     expect(body).toEqual({
       from: "nlqdb <hello@nlqdb.com>",
@@ -52,6 +54,14 @@ describe("makeEmailSender", () => {
       text: "click",
       html: "<a>click</a>",
     });
+  });
+
+  it("sets the Idempotency-Key header when the message carries one", async () => {
+    const fetchMock = vi.fn<typeof fetch>(async () => new Response("{}", { status: 200 }));
+    const send = makeEmailSender({ apiKey: "re_x", from: "x", fetch: fetchMock });
+    await send({ to: "a@b.com", subject: "s", text: "t", idempotencyKey: "evt-123" });
+    const call = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect((call[1].headers as Record<string, string>)["idempotency-key"]).toBe("evt-123");
   });
 
   it("throws on non-2xx but does NOT echo the response body in the thrown error", async () => {

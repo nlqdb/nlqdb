@@ -27,6 +27,14 @@ declare global {
 
       GRAFANA_OTLP_ENDPOINT?: string;
       GRAFANA_OTLP_AUTHORIZATION?: string;
+
+      // Resend (SK-STRIPE-013 customer dunning email). When unset the
+      // dunning-email sink no-ops — same dev/unconfigured posture as the
+      // LogSnag + Tinybird sinks above. `RESEND_FROM` is optional and
+      // falls back to the shared verified sender (`DEFAULT_FROM` from
+      // `@nlqdb/email`).
+      RESEND_API_KEY?: string;
+      RESEND_FROM?: string;
     }
   }
 }

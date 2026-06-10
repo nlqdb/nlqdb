@@ -405,14 +405,16 @@ async function handleSubscriptionDeleted(
   );
 }
 
-// invoice.payment_failed → operator dunning alert (SK-STRIPE-011). The
-// customer's subscription status is already moved to `past_due`/`unpaid`
-// by `customer.subscription.updated`, which drives the in-app banner
-// (SK-WEB-012), so this handler does NO DB write — it is purely the
-// founder-side notification trigger. We resolve the user via
+// invoice.payment_failed → dunning. One emitted event drives both halves at
+// the sink: the operator LogSnag alert (SK-STRIPE-011) and the customer
+// reminder email (SK-STRIPE-013). The customer's subscription status is
+// already moved to `past_due`/`unpaid` by `customer.subscription.updated`,
+// which drives the in-app banner (SK-WEB-012), so this handler does NO DB
+// write — it is purely the notification trigger. We resolve the user via
 // `invoice.customer` only: the Basil API relocated `invoice.subscription`
 // to `parent.subscription_details`, but `customer` stays a top-level
-// string, so this path is robust across that move.
+// string, so this path is robust across that move. `customer_email` rides
+// along so the email sink needs no extra Stripe/DB read.
 async function handleInvoicePaymentFailed(
   deps: StripeWebhookDeps,
   invoice: Stripe.Invoice,
@@ -441,6 +443,7 @@ async function handleInvoicePaymentFailed(
       name: "billing.payment_failed",
       userId,
       customerId,
+      customerEmail: typeof invoice.customer_email === "string" ? invoice.customer_email : null,
       invoiceId: invoice.id,
       amountDue: invoice.amount_due,
       currency: invoice.currency,

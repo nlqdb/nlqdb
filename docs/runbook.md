@@ -721,7 +721,7 @@ NLQDB_BACKUP_DIR=/path/to/private/folder scripts/backup-envrc.sh
 >   is what gets stored.
 > - **2026-04-27 — `RESEND_API_KEY` only mirrored to GH, not to
 >   Worker.** GH Actions had it (CI workflows happy) but the
->   deployed Worker didn't, so `email.ts` fell through to the dev
+>   deployed Worker didn't, so `@nlqdb/email` fell through to the dev
 >   stub that just `console.log`s and returns. Magic-link sends
 >   reported HTTP 200 but no email ever reached Resend. Diagnosed
 >   via `wrangler secret list | grep RESEND_API_KEY` — empty.

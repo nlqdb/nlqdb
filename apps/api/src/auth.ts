@@ -13,6 +13,7 @@
 // any cookie-cached session whose row is gone (≤2s revocation guarantee).
 
 import { env } from "cloudflare:workers";
+import { DEFAULT_FROM, makeEmailSender } from "@nlqdb/email";
 import { trace } from "@opentelemetry/api";
 import { betterAuth } from "better-auth";
 import { createAuthMiddleware } from "better-auth/api";
@@ -23,7 +24,6 @@ import { buildClearCookie, readStashCookie, verifyAnonStash } from "./anon-stash
 import { hashEmail, makeMagicLinkThrottle } from "./auth/magic-link-throttle.ts";
 import { sinkEmail } from "./auth/mock-email-sink.ts";
 import { captureVerifyUrl } from "./auth/mock-idp.ts";
-import { makeEmailSender } from "./email.ts";
 
 // `isDev` is the localhost gate — only the literal `development` value
 // (set in `apps/api/.dev.vars` for `wrangler dev`) takes the dev path.
@@ -59,10 +59,9 @@ const webOrigin = env.MAGIC_LINK_WEB_ORIGIN ?? WEB_ORIGIN_DEFAULT;
 const MAGIC_LINK_DEFAULT_REDIRECT = `${webOrigin}/app`;
 const magicLinkRedirect = env.MAGIC_LINK_REDIRECT_URL ?? MAGIC_LINK_DEFAULT_REDIRECT;
 
-const RESEND_FROM_DEFAULT = "nlqdb <hello@nlqdb.com>";
 const sendEmail = makeEmailSender({
   apiKey: env.RESEND_API_KEY,
-  from: env.RESEND_FROM ?? RESEND_FROM_DEFAULT,
+  from: env.RESEND_FROM ?? DEFAULT_FROM,
 });
 
 // Per-email send throttle. Better Auth's built-in rate limit is per-IP

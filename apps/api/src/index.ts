@@ -5,6 +5,7 @@ import {
   createTinybirdAdapter,
   type Engine,
 } from "@nlqdb/db";
+import { makeEmailSender } from "@nlqdb/email";
 import { authEventsTotal, redactPii, setupTelemetry } from "@nlqdb/otel";
 import {
   isValidSpanId,
@@ -69,7 +70,6 @@ import { makeChatStore } from "./chat/store.ts";
 import { deriveSlug, displayName, listDatabasesForTenant } from "./databases/list.ts";
 import { resolveDb } from "./db-registry.ts";
 import { sweepAnonDatabases } from "./db-sweep/sweep.ts";
-import { makeEmailSender } from "./email.ts";
 import { recordEvalReport, recordWishlist } from "./events-feature.ts";
 import { makeGatePreAlpha } from "./gate/middleware.ts";
 import {
