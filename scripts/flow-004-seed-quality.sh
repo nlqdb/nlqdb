@@ -147,6 +147,9 @@ while IFS= read -r GOAL; do
   ANON_TOKEN="anon_${UUID}"
   ASK_BODY="$(jq -nc --arg g "$GOAL" '{goal:$g}')"
 
+  # Truncate first: `curl -o` does not clear the file on a connection
+  # failure (it emits `000`), so a stale prior body could otherwise be read.
+  : > "$BODY_TMP"
   STATUS="$(curl -sS --max-time 60 -o "$BODY_TMP" -w '%{http_code}' \
     -X POST "$BASE_URL/v1/ask" \
     -H "Content-Type: application/json" \
