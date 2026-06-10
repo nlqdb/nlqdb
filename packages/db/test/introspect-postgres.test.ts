@@ -131,6 +131,65 @@ describe("introspectPostgres", () => {
     ]);
   });
 
+  it("keeps same-named foreign keys on different tables separate", async () => {
+    // Constraint names are unique per table, not per schema — two tables can
+    // both own an `fk_account`. Keying the FK group on the name alone would
+    // merge them into one corrupt FK.
+    const { query } = stubQuery({
+      columns: [
+        { table_name: "invoices", column_name: "account_id", data_type: "integer", not_null: true },
+        { table_name: "orders", column_name: "account_id", data_type: "integer", not_null: true },
+      ],
+      // Ordered by (from_table, conname, ord) as the query returns them.
+      foreignKeys: [
+        {
+          constraint_name: "fk_account",
+          from_table: "invoices",
+          from_column: "account_id",
+          to_table: "accounts",
+          to_column: "id",
+          ord: 1,
+        },
+        {
+          constraint_name: "fk_account",
+          from_table: "orders",
+          from_column: "account_id",
+          to_table: "accounts",
+          to_column: "id",
+          ord: 1,
+        },
+      ],
+    });
+    const schema = await introspectPostgres(query, "public");
+    expect(schema.foreignKeys).toEqual([
+      {
+        fromTable: "invoices",
+        fromColumns: ["account_id"],
+        toTable: "accounts",
+        toColumns: ["id"],
+      },
+      {
+        fromTable: "orders",
+        fromColumns: ["account_id"],
+        toTable: "accounts",
+        toColumns: ["id"],
+      },
+    ]);
+  });
+
+  it("excludes child partitions from every query (NOT relispartition)", async () => {
+    // The partition filter lives in SQL (the DB applies it), so the unit guard
+    // is that all three queries carry it — otherwise one logical partitioned
+    // table leaks back as parent + N child partitions, and PG 11+ clones its
+    // FKs onto every child.
+    const { query, calls } = stubQuery({});
+    await introspectPostgres(query, "public");
+    expect(calls).toHaveLength(3);
+    for (const call of calls) {
+      expect(call.sql).toContain("NOT c.relispartition");
+    }
+  });
+
   it("returns an empty read-model for a schema with no tables", async () => {
     const { query } = stubQuery({});
     const schema = await introspectPostgres(query, "empty");

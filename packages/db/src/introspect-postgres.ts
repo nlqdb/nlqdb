@@ -23,10 +23,12 @@
 // (the classic `information_schema` kcu↔ccu join cartesian-products composite FKs;
 // the catalog arrays don't).
 //
-// Restricted to ordinary + partitioned tables (`relkind IN ('r','p')`) — the
-// literal "existing table" of the decided shape. Views / materialized views are
-// a later, explicit decision, not a silent inclusion that would present a view
-// as a table.
+// Scope is the logical, queryable "existing table": ordinary + partitioned tables
+// (`relkind IN ('r','p')`) that are not themselves a partition (`NOT relispartition`).
+// Excluding `relispartition` rows drops the child partitions — which would otherwise
+// duplicate one logical table as parent + N children, and (PG 11+) clone its foreign
+// keys onto every child. Views / materialized views are a later, explicit decision,
+// not a silent inclusion that would present a view as a table.
 
 import { dbDurationMs } from "@nlqdb/otel";
 import { SpanStatusCode, trace } from "@opentelemetry/api";
@@ -74,6 +76,7 @@ JOIN pg_catalog.pg_class c ON c.oid = a.attrelid
 JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
 WHERE n.nspname = $1
   AND c.relkind IN ('r', 'p')
+  AND NOT c.relispartition
   AND a.attnum > 0
   AND NOT a.attisdropped
 ORDER BY c.relname, a.attnum`;
@@ -87,7 +90,7 @@ JOIN pg_catalog.pg_namespace n ON n.oid = con.connamespace
 JOIN pg_catalog.pg_class c ON c.oid = con.conrelid
 JOIN LATERAL unnest(con.conkey) WITH ORDINALITY AS k(attnum, ord) ON true
 JOIN pg_catalog.pg_attribute a ON a.attrelid = con.conrelid AND a.attnum = k.attnum
-WHERE n.nspname = $1 AND con.contype = 'p' AND c.relkind IN ('r', 'p')
+WHERE n.nspname = $1 AND con.contype = 'p' AND c.relkind IN ('r', 'p') AND NOT c.relispartition
 ORDER BY c.relname, k.ord`;
 
 const FOREIGN_KEYS_SQL = `
@@ -104,8 +107,8 @@ JOIN pg_catalog.pg_class rc ON rc.oid = con.confrelid
 JOIN LATERAL unnest(con.conkey, con.confkey) WITH ORDINALITY AS k(conkey, confkey, ord) ON true
 JOIN pg_catalog.pg_attribute fa ON fa.attrelid = con.conrelid  AND fa.attnum = k.conkey
 JOIN pg_catalog.pg_attribute ra ON ra.attrelid = con.confrelid AND ra.attnum = k.confkey
-WHERE n.nspname = $1 AND con.contype = 'f'
-ORDER BY con.conname, k.ord`;
+WHERE n.nspname = $1 AND con.contype = 'f' AND c.relkind IN ('r', 'p') AND NOT c.relispartition
+ORDER BY c.relname, con.conname, k.ord`;
 
 // Introspect one schema of a live Postgres database into a faithful read-model.
 // `query` is the injected seam (`SK-DB-006`) — production passes a function
@@ -189,11 +192,15 @@ function assemble(
     if (t) t.primaryKey.push(String(row["column_name"]));
   }
 
-  // Group FK rows by constraint name (rows arrive ordered by `(conname, ord)`),
-  // so consecutive rows of one constraint append its column pairs in order.
+  // Group FK rows by `(from_table, constraint_name)`: a constraint name is
+  // unique per table, not per schema, so two tables can both own an
+  // `fk_account` — keying on the name alone would merge them into one corrupt
+  // FK. The `\0` joiner can't occur in a Postgres identifier, so the pair can't
+  // alias. Rows arrive ordered by `(from_table, conname, ord)`, so each
+  // constraint's column pairs append in order.
   const fks = new Map<string, IntrospectedForeignKey>();
   for (const row of fkRows) {
-    const key = String(row["constraint_name"]);
+    const key = `${String(row["from_table"])}\0${String(row["constraint_name"])}`;
     let fk = fks.get(key);
     if (!fk) {
       fk = {

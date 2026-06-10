@@ -24,10 +24,15 @@ Pins the introspection clause of the decided BYO shape
   `numeric(10,2)`, `text[]`, enum names) — not `information_schema.columns`,
   which flattens those to `ARRAY` / `USER-DEFINED`. Composite primary/foreign
   keys keep correct column order via `unnest(...) WITH ORDINALITY` over the
-  `smallint[]` `conkey`/`confkey` catalog arrays. Scope is ordinary +
-  partitioned tables (`relkind IN ('r','p')`) — the literal "existing table" of
-  the decided shape; views are a later explicit decision, not a silent
-  inclusion. Emits **one** `db.introspect` span for the whole connect-time read
+  `smallint[]` `conkey`/`confkey` catalog arrays, and the FK read-model is
+  grouped on `(from_table, constraint_name)` — a constraint name is unique per
+  table, not per schema, so keying on the name alone would merge two tables'
+  same-named FKs. Scope is the logical queryable table: ordinary + partitioned
+  tables (`relkind IN ('r','p')`) that aren't themselves a partition
+  (`NOT relispartition`), so child partitions don't leak one logical table back
+  as parent + N children (nor, on PG 11+, clone its FKs onto every child); views
+  are a later explicit decision, not a silent inclusion. Emits **one**
+  `db.introspect` span for the whole connect-time read
   ([`GLOBAL-014`](../../../decisions/GLOBAL-014-otel-on-external-calls.md)) —
   not one per query — recording into `nlqdb.db.duration_ms{operation=introspect}`,
   and throws fail-loud ([`GLOBAL-012`](../../../decisions/GLOBAL-012-one-sentence-errors.md))
@@ -60,9 +65,10 @@ Pins the introspection clause of the decided BYO shape
   read-model into the `schema_text`/`schema_hash` it seals + writes to D1, and
   surfaces a thrown introspection error as the connect 4xx/5xx. Tests in
   `packages/db/test/introspect-postgres.test.ts` pin column/PK ordering, the
-  composite-FK grouping, the empty-schema shape, the bound-parameter (never
-  interpolated) contract, and the single-span / `operation=introspect`
-  observability contract. A future `introspect-clickhouse.ts` is the
+  composite-FK grouping, same-named-FK-on-different-tables separation, the
+  child-partition exclusion guard (all three queries carry `NOT relispartition`),
+  the empty-schema shape, the bound-parameter (never interpolated) contract, and
+  the single-span / `operation=introspect` observability contract. A future `introspect-clickhouse.ts` is the
   `SK-MULTIENG` parallel (`system.columns`), not a generalisation of this
   Postgres-specific catalog reader.
 - **Alternatives rejected:**
