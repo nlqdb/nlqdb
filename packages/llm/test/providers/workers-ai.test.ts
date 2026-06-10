@@ -46,6 +46,28 @@ describe("createWorkersAIProvider", () => {
     expect(res.sql).toBe("SELECT 5");
   });
 
+  it("plan accepts an object-shaped result.response (llama-3.3 pre-parses JSON output, SK-LLM-036)", async () => {
+    const provider = createWorkersAIProvider({ accountId, apiToken });
+    const fetch = mockFetch([
+      {
+        match: /api\.cloudflare\.com/,
+        respond: () => jsonResponse({ result: { response: { sql: "SELECT 7" } }, success: true }),
+      },
+    ]);
+    const res = await provider.plan({ goal: "g", schema: "s", dialect: "postgres" }, { fetch });
+    expect(res.sql).toBe("SELECT 7");
+  });
+
+  it("missing result.response still fails with reason=parse", async () => {
+    const provider = createWorkersAIProvider({ accountId, apiToken });
+    const fetch = mockFetch([
+      { match: /api\.cloudflare\.com/, respond: () => jsonResponse({ result: {}, success: true }) },
+    ]);
+    await expect(
+      provider.plan({ goal: "g", schema: "s", dialect: "postgres" }, { fetch }),
+    ).rejects.toMatchObject({ reason: "parse" } satisfies Partial<ProviderError>);
+  });
+
   it("summarize returns trimmed text", async () => {
     const provider = createWorkersAIProvider({ accountId, apiToken });
     const fetch = mockFetch([

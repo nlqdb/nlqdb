@@ -5,6 +5,7 @@
 // few-shot exemplars (SK-LLM-026); prompt-cache discipline is per
 // docs/architecture.md §8 cost-control rule 3.
 
+import { pruneSchemaForGoal } from "./schema-prune.ts";
 import type {
   EngineClassifyRequest,
   PlanRequest,
@@ -181,7 +182,11 @@ export const ROUTE_SYSTEM = [
 ].join("\n");
 
 export function buildPlanUser(req: PlanRequest): string {
-  const parts = [`Dialect: ${req.dialect}`, `Schema:\n${req.schema}`, `Goal: ${req.goal}`];
+  // SK-LLM-037 — goal-relevant schema pruning. A retry gets the full
+  // schema: the failed attempt is exactly the case where the pruned view
+  // may have hidden the table the error names.
+  const schema = req.previousAttempt ? req.schema : pruneSchemaForGoal(req.schema, req.goal);
+  const parts = [`Dialect: ${req.dialect}`, `Schema:\n${schema}`, `Goal: ${req.goal}`];
   if (req.previousAttempt) {
     // GLOBAL-022 + SK-LLM-018 — diagnostic-first retry framing: keep the
     // same goal, restrict to schema identifiers, change only what the
