@@ -10,7 +10,7 @@
 #
 # FREE MODELS ONLY (GLOBAL-013 — $0 free tier). NEVER use a paid model here.
 # On OpenRouter, ONLY slugs ending in :free are $0 — the bare slug (no :free) is PAID (2026-05-21 burned ~$14).
-# Top-5 free LLM models for opencheck (researched 2026-06-09T01:10Z via live API: gpt-oss-120b:free tool-call returned cost:0, key balance $20.21, usage_daily 0; Groq app-side HTTP 200 fresh):
+# Top-5 free LLM models for opencheck (researched 2026-06-10T01:08Z via live API: gpt-oss-120b:free tool-call returned usage.cost:0, key balance ~$74.54 [100 credits − 25.46 used], Groq app-side HTTP 200 with 999 req / 11963 TPM remaining):
 #   1. OpenRouter openai/gpt-oss-120b:free — $0 ($10+ balance → 1000 req/day, 20 RPM); reasoning-tuned; CURRENT agent model.
 #   2. OpenRouter openai/gpt-oss-20b:free  — $0; lighter/faster; same OpenRouter free request budget.
 #   3. Groq llama-3.3-70b-versatile        — 12K TPM / 1K RPM but ~100K tokens/DAY ACCOUNT cap (shared across ALL Groq models).
@@ -131,6 +131,11 @@ tests:
         list all users in the table
       Press Enter as a SEPARATE browser_key_down. Wait for the reply.
       If the reply shows an error, wait 5 seconds and retry once.
+      If after that retry the reply STILL contains "references a table
+      this database doesn't have" or "no such table", TEST_FAILED
+      IMMEDIATELY — the users table is not queryable (an upstream
+      GLOBAL-027 bootstrap failure, not a read-path bug); do NOT keep
+      retrying, it only burns the 300s budget.
       Verify the reply contains "Alice" (any casing) and either
       "alice@example.com" or a mention of "1 user" or a data row.
       Conclude with TEST_PASSED or TEST_FAILED — do NOT skip this test.
@@ -150,6 +155,10 @@ tests:
       Press Enter as a SEPARATE browser_key_down. If the reply shows
       an error (including "references a table this database doesn't
       have" or "Something went wrong"), wait 3 seconds and retry once.
+      If after that retry the reply STILL contains "references a table
+      this database doesn't have" or "no such table", TEST_FAILED
+      IMMEDIATELY — an upstream GLOBAL-027 bootstrap failure, not a
+      read-path bug; do NOT keep retrying.
       Verify the reply surfaces the number 1 (or more, if multiple Alice
       rows exist from prior runs), either in summary text or a data cell.
 
@@ -168,7 +177,11 @@ tests:
       Press Enter as a SEPARATE browser_key_down call. If the page
       shows a full-page React error ("Something broke" with a reload
       button), click reload and re-submit the prompt from the chat
-      textarea. Verify the chat reply is NOT a bare dead-end message
+      textarea. If the reply contains "references a table this database
+      doesn't have" or "no such table", TEST_FAILED IMMEDIATELY — an
+      upstream GLOBAL-027 bootstrap failure, not a read-path bug; do
+      NOT keep retrying.
+      Verify the chat reply is NOT a bare dead-end message
       like "Something went wrong — try again."
       Acceptable: data rows, a clarification chip with a button, or a
       textual reply referencing users / Alice / row count.

@@ -4,7 +4,7 @@
 #
 # FREE MODELS ONLY (GLOBAL-013 — $0 free tier). NEVER use a paid model here.
 # On OpenRouter, ONLY slugs ending in :free are $0 — the bare slug (no :free) is PAID (2026-05-21 burned ~$14).
-# Top-5 free LLM models for opencheck (researched 2026-06-09T01:10Z via live API: gpt-oss-120b:free tool-call returned cost:0, key balance $20.21, usage_daily 0; Groq app-side HTTP 200 fresh):
+# Top-5 free LLM models for opencheck (researched 2026-06-10T01:08Z via live API: gpt-oss-120b:free tool-call returned usage.cost:0, key balance ~$74.54 [100 credits − 25.46 used], Groq app-side HTTP 200 with 999 req / 11963 TPM remaining):
 #   1. OpenRouter openai/gpt-oss-120b:free — $0 ($10+ balance → 1000 req/day, 20 RPM); reasoning-tuned; CURRENT agent model.
 #   2. OpenRouter openai/gpt-oss-20b:free  — $0; lighter/faster; same OpenRouter free request budget.
 #   3. Groq llama-3.3-70b-versatile        — 12K TPM / 1K RPM but ~100K tokens/DAY ACCOUNT cap (shared across ALL Groq models).
@@ -141,14 +141,19 @@ tests:
       "Mint a new key". Type
         opencheck-smoke
       into the "Label (optional)" input and click the "Mint" button.
-      The modal heading swaps to "Copy your new key" and a <code>
-      block contains a string starting with "sk_live_". Click
-      the "Done" button to close the dialog. Verify a key row with
-      the label "opencheck-smoke" is now present in the list.
+      Minting is an async API round-trip, so re-snapshot up to 4
+      times, 2s apart, until the modal heading swaps to "Copy your
+      new key" and a <code> block contains a string starting with
+      "sk_live_" (do NOT re-click "Mint" — just re-snapshot). Click
+      the "Done" button to close the dialog. The new row is appended
+      to the list asynchronously, so re-snapshot up to 4 times, 2s
+      apart, until a key row with the label "opencheck-smoke" is
+      present (TEST_FAILED only if still absent after the 4th).
       Click "Revoke" on that row, then in the confirm dialog
-      ("Revoke this key?") click the "Revoke" button. Verify the
-      row moves to the "Revoked" group (the "Active" group no
-      longer contains the "opencheck-smoke" row).
+      ("Revoke this key?") click the "Revoke" button. Re-snapshot up
+      to 4 times, 2s apart, until the row moves to the "Revoked"
+      group (the "Active" group no longer contains the
+      "opencheck-smoke" row), then TEST_PASSED.
 
   - name: "#sign-out"
     case: |
