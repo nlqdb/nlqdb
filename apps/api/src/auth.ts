@@ -13,6 +13,7 @@
 // any cookie-cached session whose row is gone (≤2s revocation guarantee).
 
 import { env } from "cloudflare:workers";
+import { makeEmailSender } from "@nlqdb/email";
 import { trace } from "@opentelemetry/api";
 import { betterAuth } from "better-auth";
 import { createAuthMiddleware } from "better-auth/api";
@@ -23,7 +24,6 @@ import { buildClearCookie, readStashCookie, verifyAnonStash } from "./anon-stash
 import { hashEmail, makeMagicLinkThrottle } from "./auth/magic-link-throttle.ts";
 import { sinkEmail } from "./auth/mock-email-sink.ts";
 import { captureVerifyUrl } from "./auth/mock-idp.ts";
-import { makeEmailSender } from "./email.ts";
 
 // `isDev` is the localhost gate — only the literal `development` value
 // (set in `apps/api/.dev.vars` for `wrangler dev`) takes the dev path.

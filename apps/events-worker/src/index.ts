@@ -24,9 +24,15 @@
 // apps/api so spans correlate via `service.name`.
 
 import type { QueryLogEntry } from "@nlqdb/db";
+import { makeEmailSender } from "@nlqdb/email";
 import type { EventEnvelope } from "@nlqdb/events";
 import { setupTelemetry } from "@nlqdb/otel";
 import { trace } from "@opentelemetry/api";
+import {
+  buildDunningEmail,
+  DUNNING_FROM_DEFAULT,
+  type PaymentFailedEvent,
+} from "./sinks/dunning-email.ts";
 import { publishToLogSnag } from "./sinks/logsnag.ts";
 import { publishToQueryLog } from "./sinks/query-log.ts";
 
@@ -102,6 +108,14 @@ async function dispatchLogSnag(env: Cloudflare.Env, msg: Message<EventEnvelope>)
         msg.body.event,
         msg.body.id,
       );
+      // billing.payment_failed also reminds the customer by email
+      // (SK-STRIPE-013). Best-effort: its failure must NOT retry the
+      // message — that would re-page the operator (the LogSnag alert above
+      // is the source of truth). So this runs after the ack-deciding
+      // publish and swallows its own errors.
+      if (msg.body.event.name === "billing.payment_failed") {
+        await maybeSendDunningEmail(env, msg.body.event, msg.body.id);
+      }
       // Logged at info level (no PII — id is `<event>.<userId>`, which
       // is opaque). Cheap insurance for `wrangler tail` debugging in
       // prod when an OTel pipeline isn't already attached.
@@ -112,6 +126,49 @@ async function dispatchLogSnag(env: Cloudflare.Env, msg: Message<EventEnvelope>)
       span.recordException(error);
       console.error(`dispatch failed ${msg.body.event.name} id=${msg.body.id}: ${error.message}`);
       msg.retry();
+    } finally {
+      span.end();
+    }
+  });
+}
+
+// Customer dunning email (SK-STRIPE-013) — best-effort side-effect of a
+// billing.payment_failed dispatch. Inert until RESEND_API_KEY is set (the
+// same dev/unconfigured posture as the LogSnag + Tinybird sinks) and when
+// Stripe gave us no `customer_email`. Its own child span records the
+// outcome and any send error; it never throws, so a Resend outage can't
+// retry the message and re-page the operator.
+async function maybeSendDunningEmail(
+  env: Cloudflare.Env,
+  event: PaymentFailedEvent,
+  idempotencyKey: string,
+): Promise<void> {
+  const tracer = trace.getTracer("@nlqdb/events-worker");
+  await tracer.startActiveSpan("nlqdb.billing.dunning_email", async (span) => {
+    try {
+      if (!env.RESEND_API_KEY) {
+        span.setAttribute("nlqdb.billing.dunning_outcome", "skipped_unconfigured");
+        return;
+      }
+      if (!event.customerEmail) {
+        span.setAttribute("nlqdb.billing.dunning_outcome", "skipped_no_email");
+        return;
+      }
+      const send = makeEmailSender({
+        apiKey: env.RESEND_API_KEY,
+        from: env.RESEND_FROM ?? DUNNING_FROM_DEFAULT,
+      });
+      // Idempotency-keyed on the per-invoice envelope id so a Cloudflare
+      // Queue redelivery within Resend's 24h window can't double-send.
+      await send({ to: event.customerEmail, ...buildDunningEmail(event), idempotencyKey });
+      span.setAttribute("nlqdb.billing.dunning_outcome", "sent");
+    } catch (err) {
+      const error = err instanceof Error ? err : new Error(String(err));
+      span.recordException(error);
+      span.setAttribute("nlqdb.billing.dunning_outcome", "error");
+      // Swallowed by design — see the call site. The operator already
+      // got the LogSnag page; this email is the best-effort second half.
+      console.error(`dunning email failed id=${idempotencyKey}: ${error.message}`);
     } finally {
       span.end();
     }

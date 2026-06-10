@@ -14,7 +14,7 @@ when-to-load:
 **Owners (code):** `apps/api/src/stripe/**`, `apps/api/src/index.ts`, `POST /v1/stripe/webhook`
 **Cross-refs:** docs/architecture.md §6 (pricing) · docs/phase-plan.md (Phase 2 stripe slice) · docs/runbook.md §6 (webhook + R2 archive) · docs/performance.md §3.1 (`nlqdb.webhook.stripe` span), §4 Slice 7, §5 · `apps/api/src/stripe/webhook.ts` (canonical pipeline doc-comment)
 
-**Touchpoints (read before editing):** `apps/api/src/stripe/**` · `apps/api/src/index.ts` (`/v1/stripe/webhook`, `/v1/billing/{checkout,portal,status}`) · D1 `stripe_events` + `customers` · R2 `nlqdb-assets` (binding `ASSETS`).
+**Touchpoints (read before editing):** `apps/api/src/stripe/**` · `apps/api/src/index.ts` (`/v1/stripe/webhook`, `/v1/billing/{checkout,portal,status}`) · `apps/events-worker/src/sinks/dunning-email.ts` (SK-STRIPE-013) · D1 `stripe_events` + `customers` · R2 `nlqdb-assets` (binding `ASSETS`).
 
 ## Decisions
 
@@ -107,21 +107,23 @@ After a successful insert the route archives the raw body to R2 at `stripe-event
 
 ### SK-STRIPE-010 — Checkout refuses a caller who already holds a live subscription; tier changes go through the Portal
 
-- **Decision:** `POST /v1/billing/checkout` reads `customers.status` first and returns `409 already_subscribed` unless the row is absent or in a Stripe *terminal* status (`canceled` / `incomplete_expired`). Every other status — incl. `incomplete` (first invoice payable 23h), `unpaid`, `paused` — keeps a live subscription, so the caller switches tier in the Portal (SK-STRIPE-008), where Stripe prorates; `/pricing` mirrors it (non-current paid CTA → "Switch plan" → Portal, 409 as the backstop).
-- **Core value:** Bullet-proof, Honest latency
-- **Why:** A second `mode: 'subscription'` Checkout opens a parallel Stripe customer + subscription and double-bills — a "surprise bill" `billing-philosophy.md` forbids. The guard fails safe: any non-terminal (incl. unrecognized future) status blocks.
-- **Consequence in code:** `blocksNewCheckout(status)` + `CHECKOUT_REOPEN_STATUSES` in `stripe/billing-status.ts` (pure, unit-tested); the route owns the one-row D1 read; no Stripe call on reject.
-- **Alternatives rejected:** Allowlist the *blocking* statuses — a new Stripe status would default to "allow" and double-bill. Reconcile later — refunds + support for a self-inflicted defect.
+**Body:** [`decisions/SK-STRIPE-010-checkout-duplicate-guard.md`](./decisions/SK-STRIPE-010-checkout-duplicate-guard.md).
+`POST /v1/billing/checkout` returns `409 already_subscribed` unless the `customers` row is absent or in a *terminal* status (`canceled` / `incomplete_expired`); every other status keeps a live subscription, so tier changes go through the Portal (SK-STRIPE-008), where Stripe prorates. A second `mode: 'subscription'` Checkout would double-bill. `blocksNewCheckout` fails safe — any non-terminal status (incl. unrecognized future ones) blocks.
 
 ### SK-STRIPE-011 — `invoice.payment_failed` emits a per-invoice operator dunning alert; no DB write
 
 **Body:** [`decisions/SK-STRIPE-011-payment-failed-dunning-alert.md`](./decisions/SK-STRIPE-011-payment-failed-dunning-alert.md).
-The webhook handles `invoice.payment_failed` → emits `billing.payment_failed` (user resolved from `invoice.customer`; deduped per `invoice.id`) → LogSnag `billing` channel, `notify: true`. No DB write — the `past_due`/`unpaid` status is already synced by `customer.subscription.updated` (SK-STRIPE-005) and drives the in-app banner (web-app `SK-WEB-012`). This is the operator/founder half of dunning; the customer-facing email stays open.
+`invoice.payment_failed` → emits `billing.payment_failed` (user from `invoice.customer`; deduped per `invoice.id`) → LogSnag `billing` channel, `notify: true`. No DB write — `customer.subscription.updated` (SK-STRIPE-005) owns the `past_due` status that drives the in-app banner (web-app `SK-WEB-012`). Operator half of dunning; the customer email is `SK-STRIPE-013`.
 
 ### SK-STRIPE-012 — The webhook pipeline is order-independent: `customer.subscription.created` self-heals the link from subscription metadata
 
 **Body:** [`decisions/SK-STRIPE-012-order-independent-linkage.md`](./decisions/SK-STRIPE-012-order-independent-linkage.md).
 Stripe doesn't guarantee webhook order, so `customer.subscription.created` can beat `checkout.session.completed`; the handler then resolves the user from `subscription_data.metadata.nlqdb_user_id` (SK-STRIPE-004) and creates the row via the same idempotent `upsertCustomerLink`. Whichever event lands first creates the row; the other upserts.
+
+### SK-STRIPE-013 — Customer dunning email rides the existing `billing.payment_failed` event into a Resend sink
+
+**Body:** [`decisions/SK-STRIPE-013-customer-dunning-email.md`](./decisions/SK-STRIPE-013-customer-dunning-email.md).
+The customer reminder ships from the events-worker `billing.payment_failed` sink (not the webhook hot path): `customerEmail` rides the event, and the worker sends one idempotency-keyed email through the `@nlqdb/email` owner (GLOBAL-021) beside the operator LogSnag alert. Best-effort (its failure never retries the message); inert until `RESEND_API_KEY` is set.
 
 ## GLOBALs governing this feature
 
@@ -133,7 +135,7 @@ Canonical text in [`docs/decisions/`](../../decisions/) (index in [`docs/decisio
 
 ## Open questions / known unknowns
 
-- **Dunning email — Parked until live-mode paid Hobby** (provider resolved per `GLOBAL-033`, reuse-what's-built). In-app banner shipped (web-app `SK-WEB-012`, off `GET /v1/billing/status`); the operator/founder alert shipped (`SK-STRIPE-011` — `invoice.payment_failed` → `billing.payment_failed` → LogSnag `billing` channel). The remaining **customer-facing** payment-failure email reuses the already-wired Resend transport (`apps/api/src/email.ts` `sendEmail`, `nlqdb.com` domain verified — same path as magic-link) — no new vendor. The template + the send in the `invoice.payment_failed` handler is the wiring that lands with live-mode paid Hobby.
+- **Dunning email — Resolved (`SK-STRIPE-013`).** All three halves now ship: operator alert (`SK-STRIPE-011`), in-app banner (web-app `SK-WEB-012`), and the customer reminder email from the events-worker `billing.payment_failed` sink. Inert until `RESEND_API_KEY` + live subscriptions exist; the go-live flip is config-only.
 - **R2 lifecycle policy** — Resolved (`GLOBAL-033`): **90-day retention** on the date-partitioned keys (events are Dashboard-replayable, so the bucket is a convenience cache). One-time Cloudflare R2 config; **parked until** bucket size is load-bearing.
 - **DLQ for stuck events** — **Parked until** a `processed_at IS NULL` backlog appears (PLAN §11): the queryable signal exists; the ops cron + alert is the wiring that lands when a dispatch first slips by.
 - **Lago wiring.** Lago-on-Fly as the usage-metering layer batched into Stripe (PLAN §6); not yet wired. Phase 2 slice TBD.

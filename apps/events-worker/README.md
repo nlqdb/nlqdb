@@ -8,6 +8,11 @@ its sink(s). Phase 0 has two sinks:
   W5 input). Per `GLOBAL-021`, the Tinybird HTTP boundary lives in
   `@nlqdb/db/clickhouse-tinybird/query-log.ts`; this worker imports
   `writeQueryLog` and never holds a Tinybird token of its own.
+- **Dunning email** — customer reminder on `billing.payment_failed`
+  (`SK-STRIPE-013`), sent beside the LogSnag operator alert. Best-effort:
+  its failure never retries the message. The Resend transport is the
+  `@nlqdb/email` owner (`GLOBAL-021`); this worker only builds the body
+  (`src/sinks/dunning-email.ts`).
 
 Architecture rationale lives in [`docs/features/events-pipeline/FEATURE.md`](../../docs/features/events-pipeline/FEATURE.md) and
 [`docs/history/infrastructure-setup.md §6`](../../docs/history/infrastructure-setup.md#6-observability). This README covers
@@ -74,6 +79,10 @@ bun run --cwd apps/events-worker test
 - **Tinybird token unset** → ack-and-drop, same pattern as LogSnag.
   Tinybird auths by token alone; no separate workspace identifier is
   needed.
+- **Dunning email send fails / `RESEND_API_KEY` unset / no `customer_email`**
+  → swallowed (logged + `nlqdb.billing.dunning_outcome` span attribute);
+  never retries the message. The LogSnag operator alert is the source of
+  truth, so a Resend outage must not re-page it.
 
 When retry-exhaustion drops start showing in OTel, configure a DLQ:
 add a second queue, then in `wrangler.toml`:

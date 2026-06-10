@@ -122,6 +122,8 @@ select_secrets() {
         TINYBIRD_TOKEN
         TINYBIRD_API_BASE
         GRAFANA_OTLP_ENDPOINT
+        # Customer dunning email (SK-STRIPE-013) — same Resend key as apps/api.
+        RESEND_API_KEY
       )
       ;;
   esac

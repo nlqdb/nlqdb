@@ -166,8 +166,27 @@ API version pinned to `2026-04-22.dahlia` via the `stripe` npm SDK (see `SK-STRI
   already synced by `customer.subscription.updated` (drives the in-app banner,
   SK-WEB-012). The user is resolved from `invoice.customer` only — robust against
   Basil's relocation of `invoice.subscription` to `parent.subscription_details`.
-- This is the **operator/founder** half of dunning. The **customer-facing** email
-  on payment failure is still open (needs an email-provider decision).
+- This is the **operator/founder** half of dunning; the customer-facing email is
+  the companion `SK-STRIPE-013` (below).
+
+### Customer dunning email (SK-STRIPE-013 — this PR)
+
+- Completes dunning's third half: the **customer** now gets an honest, low-pressure
+  reminder email on `invoice.payment_failed`, alongside the operator alert
+  (SK-STRIPE-011) and the in-app banner (SK-WEB-012).
+- Sent from the **events-worker**, not the webhook handler: the same already-emitted
+  `billing.payment_failed` event now carries `customerEmail` (from
+  `invoice.customer_email`), and a `dunning-email.ts` sink builds the message
+  beside the LogSnag operator alert. Per SK-EVENTS-001 a Resend round-trip stays
+  off the webhook's response path; the webhook's 200 is unaffected.
+- The Resend transport is now the shared **`@nlqdb/email`** owner (GLOBAL-021),
+  also used by magic-link — no new vendor, no second Resend wire surface. The send
+  is **best-effort** (a Resend failure never retries the message / re-pages the
+  operator) and **idempotency-keyed** per invoice so a queue redelivery can't
+  double-send.
+- Inert until `RESEND_API_KEY` is set on the events-worker (added to its secret
+  subset) and a real `invoice.payment_failed` fires — the go-live flip is
+  config-only.
 
 ### Order-independent webhook linkage (SK-STRIPE-012 — this PR)
 
@@ -190,7 +209,7 @@ API version pinned to `2026-04-22.dahlia` via the `stripe` npm SDK (see `SK-STRI
 
 1. **Create Stripe products and price IDs** in the Stripe Dashboard (test mode) and set `STRIPE_PRICE_HOBBY` / `STRIPE_PRICE_PRO` via `wrangler secret put`. Without these the checkout returns 503. Also **enable Stripe Tax** in the Dashboard (`automatic_tax: { enabled: true }` is sent on every session; `sessions.create` 500s if Stripe Tax is not activated on the account).
 2. **Activate the Stripe Customer Portal** in the Dashboard (test mode → Billing → Customer portal): save a portal configuration (switchable plans, cancel behaviour, invoice history). `POST /v1/billing/portal` errors until one exists.
-3. **Customer dunning email**: notify the *customer* on payment failure. In-app banner (SK-WEB-012) and operator alert (SK-STRIPE-011) shipped; the customer email needs an email-provider decision (none wired yet) and gates live-mode paid Hobby.
+3. **Set `RESEND_API_KEY` on the events-worker** (`cd apps/events-worker && bun run secrets:remote`, or the deploy workflow self-heals it) so the SK-STRIPE-013 customer dunning email actually sends in test mode. Without it the send no-ops.
 4. **§6 trigger measurement**: once Stripe price IDs are set and checkout is live in test mode, track completion rate toward the 30%/50-sessions threshold.
 5. **Live mode flip**: when §6 trips, replace test-mode keys with live-mode keys via `wrangler secret put` + update Stripe Dashboard webhook endpoint.
 6. **Premium models add-on** (`POST /v1/billing/checkout/premium { db_id }`): gated on §6 + Phase 2 `quality-eval` baseline.

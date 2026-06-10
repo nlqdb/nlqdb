@@ -13,8 +13,8 @@
 //     so the response isn't blocked on queue latency — `pendingEmit`
 //     is the deferred promise the handler hands to the runtime.
 
+import type { EmailSender } from "@nlqdb/email";
 import type { EventEmitter, ProductEvent, WaitlistPersona } from "@nlqdb/events";
-import type { EmailSender } from "./email.ts";
 import { makeKvThrottle } from "./lib/kv-throttle.ts";
 import { buildInviteEmail, tryIssueInvite } from "./waitlist-invite.ts";
 
