@@ -75,6 +75,13 @@ export type { DohResolverOptions } from "./doh-resolver.ts";
 export { createDohResolver } from "./doh-resolver.ts";
 export type { DnsResolver, EgressGuardResult } from "./egress-guard.ts";
 export { guardEgressHost, guardEgressHostResolved } from "./egress-guard.ts";
+export type {
+  IntrospectedColumn,
+  IntrospectedForeignKey,
+  IntrospectedSchema,
+  IntrospectedTable,
+} from "./introspect-postgres.ts";
+export { introspectPostgres } from "./introspect-postgres.ts";
 export type { PostgresAdapterOptions, PostgresQueryFn } from "./postgres.ts";
 export { createPostgresAdapter } from "./postgres.ts";
 export type {
