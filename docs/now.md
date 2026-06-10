@@ -125,10 +125,22 @@ host in a load-bearing parse-before-resolve order, the DoH resolver injected,
 returning the engine-tagged parsed connection or a fail-loud message
 ([`GLOBAL-012`](./decisions/GLOBAL-012-one-sentence-errors.md)) that never echoes
 the secret; it stops at validation (no seal, no D1), staying pure + zero-dep and
-shared with BYO ClickHouse. Next:
-`connect.ts` + `registerByoDb` wiring (calling `validateByoConnection` with
-`createDohResolver()`, then sealing per `GLOBAL-031`) + the `GLOBAL-003`
-surface set.
+shared with BYO ClickHouse. The connect-time read of the user's *existing* schema
+now also landed:
+[`SK-DB-014`](./features/db-adapter/decisions/SK-DB-014-byo-postgres-introspection.md)'s
+`packages/db/src/introspect-postgres.ts` — `introspectPostgres(query, schema)`
+turns a live BYO schema into a faithful read-model (columns ordered by
+`attnum` + `format_type` types + nullability, ordered primary/foreign keys) via
+three fixed `pg_catalog` queries (never one-per-table; composite keys stay
+ordinal-aligned via `unnest`, the schema always bound as `$1`), all under one
+`db.introspect` span ([`GLOBAL-014`](./decisions/GLOBAL-014-otel-on-external-calls.md))
+and fail-loud ([`GLOBAL-012`](./decisions/GLOBAL-012-one-sentence-errors.md)) on a
+query error so the caller never seals a half-read schema. It reads through the
+injected `SK-DB-006` query seam, shipped ahead of its `registerByoDb` caller.
+Next: `connect.ts` + `registerByoDb` wiring (validate via `validateByoConnection`
+with `createDohResolver()` → open → `introspectPostgres` → render
+`schema_text`/`schema_hash` → seal per `GLOBAL-031`) + the `GLOBAL-003` surface
+set.
 
 ## 4. BYO ClickHouse
 
