@@ -278,6 +278,24 @@ describe("events-worker queue consumer", () => {
     expect(msgs[0]?.ack).toHaveBeenCalledTimes(1);
   });
 
+  it("sends the dunning email even when LogSnag is unconfigured (decoupled sinks)", async () => {
+    const fetchMock = routedFetch(() => new Response("{}", { status: 200 }));
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+    const { batch, msgs } = makeBatch([paymentFailed]);
+    // RESEND set, LogSnag NOT — the email must still go out.
+    const env = { RESEND_API_KEY: "re_test" } as Cloudflare.Env;
+
+    if (!handler.queue) throw new Error("expected default export to define a queue handler");
+    await handler.queue(batch, env, ctx);
+
+    const calls = fetchMock.mock.calls as unknown as [string, RequestInit][];
+    expect(calls.some(([u]) => u.includes("api.resend.com"))).toBe(true);
+    expect(calls.some(([u]) => u.includes("api.logsnag.com"))).toBe(false);
+    expect(msgs[0]?.ack).toHaveBeenCalledTimes(1);
+    expect(msgs[0]?.retry).not.toHaveBeenCalled();
+  });
+
   it("acks-and-drops ask.completed when Tinybird is unconfigured", async () => {
     const fetchMock = vi.fn();
     globalThis.fetch = fetchMock as unknown as typeof fetch;

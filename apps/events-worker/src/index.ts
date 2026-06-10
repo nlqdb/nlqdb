@@ -24,15 +24,11 @@
 // apps/api so spans correlate via `service.name`.
 
 import type { QueryLogEntry } from "@nlqdb/db";
-import { makeEmailSender } from "@nlqdb/email";
+import { DEFAULT_FROM, makeEmailSender } from "@nlqdb/email";
 import type { EventEnvelope } from "@nlqdb/events";
 import { setupTelemetry } from "@nlqdb/otel";
 import { trace } from "@opentelemetry/api";
-import {
-  buildDunningEmail,
-  DUNNING_FROM_DEFAULT,
-  type PaymentFailedEvent,
-} from "./sinks/dunning-email.ts";
+import { buildDunningEmail, type PaymentFailedEvent } from "./sinks/dunning-email.ts";
 import { publishToLogSnag } from "./sinks/logsnag.ts";
 import { publishToQueryLog } from "./sinks/query-log.ts";
 
@@ -68,38 +64,48 @@ export default {
 
 // Split the batch by destination sink, then dispatch each group.
 // `ask.completed` flows to Tinybird in one HTTP call; everything else
-// goes to LogSnag one-by-one (its API has no bulk submission).
+// goes to its sink(s) one-by-one (LogSnag has no bulk submission).
 async function drainBatch(env: Cloudflare.Env, batch: MessageBatch<EventEnvelope>): Promise<void> {
   const queryLogMsgs: Message<EventEnvelope>[] = [];
-  const logSnagMsgs: Message<EventEnvelope>[] = [];
+  const sinkMsgs: Message<EventEnvelope>[] = [];
   for (const msg of batch.messages) {
     if (msg.body.event.name === "ask.completed") {
       queryLogMsgs.push(msg);
     } else {
-      logSnagMsgs.push(msg);
+      sinkMsgs.push(msg);
     }
   }
-  await Promise.all([drainQueryLog(env, queryLogMsgs), drainLogSnag(env, logSnagMsgs)]);
+  await Promise.all([drainQueryLog(env, queryLogMsgs), drainToSinks(env, sinkMsgs)]);
 }
 
-// LogSnag dispatch — same shape as before. Each event is its own HTTP
-// call; ack/retry per message.
-async function drainLogSnag(env: Cloudflare.Env, msgs: Message<EventEnvelope>[]): Promise<void> {
+// Per-message dispatch to the non-query-log sinks. Each event is its own
+// HTTP call; ack/retry per message.
+async function drainToSinks(env: Cloudflare.Env, msgs: Message<EventEnvelope>[]): Promise<void> {
   for (const msg of msgs) {
-    await dispatchLogSnag(env, msg);
+    await dispatchToSinks(env, msg);
   }
 }
 
-async function dispatchLogSnag(env: Cloudflare.Env, msg: Message<EventEnvelope>): Promise<void> {
+// Dispatches one message to its sink(s): the LogSnag operator alert (which
+// decides ack vs retry) plus, for billing.payment_failed, the customer
+// dunning email (SK-STRIPE-013). The email is an independent best-effort
+// sink — gated only on its own RESEND_API_KEY and run first, so it still
+// fires when LogSnag is unconfigured/rotated out, and never throws, so it
+// can't flip the message's ack/retry below.
+async function dispatchToSinks(env: Cloudflare.Env, msg: Message<EventEnvelope>): Promise<void> {
   const tracer = trace.getTracer("@nlqdb/events-worker");
   await tracer.startActiveSpan("nlqdb.events.dispatch", async (span) => {
     span.setAttribute("nlqdb.event.id", msg.body.id);
     span.setAttribute("nlqdb.event.type", msg.body.event.name);
     try {
+      if (msg.body.event.name === "billing.payment_failed") {
+        await maybeSendDunningEmail(env, msg.body.event, msg.body.id);
+      }
       if (!env.LOGSNAG_TOKEN || !env.LOGSNAG_PROJECT) {
-        // Unconfigured sink: ack-and-drop rather than retry forever.
-        // The trace span on the parent already records the event id, so
-        // an operator missing config can find dropped events in OTel.
+        // Operator-alert sink unconfigured: ack-and-drop rather than retry
+        // forever. The trace span already records the event id, so an
+        // operator missing config can find dropped events in OTel. The
+        // dunning email above is unaffected — it has its own gate.
         msg.ack();
         return;
       }
@@ -108,14 +114,6 @@ async function dispatchLogSnag(env: Cloudflare.Env, msg: Message<EventEnvelope>)
         msg.body.event,
         msg.body.id,
       );
-      // billing.payment_failed also reminds the customer by email
-      // (SK-STRIPE-013). Best-effort: its failure must NOT retry the
-      // message — that would re-page the operator (the LogSnag alert above
-      // is the source of truth). So this runs after the ack-deciding
-      // publish and swallows its own errors.
-      if (msg.body.event.name === "billing.payment_failed") {
-        await maybeSendDunningEmail(env, msg.body.event, msg.body.id);
-      }
       // Logged at info level (no PII — id is `<event>.<userId>`, which
       // is opaque). Cheap insurance for `wrangler tail` debugging in
       // prod when an OTel pipeline isn't already attached.
@@ -156,7 +154,7 @@ async function maybeSendDunningEmail(
       }
       const send = makeEmailSender({
         apiKey: env.RESEND_API_KEY,
-        from: env.RESEND_FROM ?? DUNNING_FROM_DEFAULT,
+        from: env.RESEND_FROM ?? DEFAULT_FROM,
       });
       // Idempotency-keyed on the per-invoice envelope id so a Cloudflare
       // Queue redelivery within Resend's 24h window can't double-send.

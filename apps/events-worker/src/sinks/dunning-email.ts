@@ -9,10 +9,6 @@
 import type { EmailMessage } from "@nlqdb/email";
 import type { ProductEvent } from "@nlqdb/events";
 
-// Default sender mirrors `apps/api/src/auth.ts` so dunning and magic-link
-// mail share one verified from-address; `RESEND_FROM` overrides both.
-export const DUNNING_FROM_DEFAULT = "nlqdb <hello@nlqdb.com>";
-
 export type PaymentFailedEvent = Extract<ProductEvent, { name: "billing.payment_failed" }>;
 
 // Honest, low-pressure reminder: states what happened, links the customer

@@ -82,7 +82,9 @@ bun run --cwd apps/events-worker test
 - **Dunning email send fails / `RESEND_API_KEY` unset / no `customer_email`**
   → swallowed (logged + `nlqdb.billing.dunning_outcome` span attribute);
   never retries the message. The LogSnag operator alert is the source of
-  truth, so a Resend outage must not re-page it.
+  truth, so a Resend outage must not re-page it. The email is gated only on
+  its own `RESEND_API_KEY`, independent of LogSnag config — it still fires
+  if the operator alert is unconfigured.
 
 When retry-exhaustion drops start showing in OTel, configure a DLQ:
 add a second queue, then in `wrangler.toml`:

@@ -28,6 +28,11 @@
 // `wrangler dev` exercise sends end-to-end without a Resend account; the
 // dev console prints the body.
 
+// The verified Resend sender. Callers default to this when `RESEND_FROM`
+// is unset; it lives with the owner so magic-link and dunning can't drift
+// to different from-addresses (GLOBAL-021).
+export const DEFAULT_FROM = "nlqdb <hello@nlqdb.com>";
+
 export type EmailMessage = {
   to: string;
   subject: string;
