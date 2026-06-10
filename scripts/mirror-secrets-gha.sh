@@ -157,6 +157,15 @@ for name in "${SECRETS[@]}"; do
     suspicious_count=$((suspicious_count + 1))
     continue
   fi
+  # Refuse a value that is itself an unexpanded shell reference — a
+  # single-quoted `export NAME='$OTHER'` in .envrc. Observed 2026-06-10:
+  # CF_AI_TOKEN held the literal string '$CLOUDFLARE_API_TOKEN'; mirroring
+  # it would replace a working GHA secret with garbage that 401s.
+  if [[ "$val" == \$* ]]; then
+    fail "$name" "value starts with '\$' — looks like an unexpanded reference (fix .envrc quoting)"
+    suspicious_count=$((suspicious_count + 1))
+    continue
+  fi
   # `gh secret set` reads from stdin when --body is OMITTED entirely.
   # NEVER use `--body -` — gh CLI v2.x interprets the dash literally
   # and stores "-" (1 char) instead of reading stdin. That bug wiped

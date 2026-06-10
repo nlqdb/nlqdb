@@ -10,7 +10,7 @@ when-to-load:
 # Feature: Llm Router
 
 **One-liner:** Model selection, fallback chain, prompt strategy, per-user credit accounting; three permanent dispatch lanes per [`GLOBAL-026`](../../decisions/GLOBAL-026-llm-strategy-byollm-hosted-premium.md) — free chain, BYOLLM, hosted-premium.
-**Status:** implemented for the free chain (`SK-LLM-001..015` + `SK-LLM-018` + `SK-LLM-023..028` + `SK-LLM-030`). BYOLLM (`SK-LLM-016`) is partial — provider factory (`SK-LLM-019`) + lane selector / single-provider lane router (`SK-LLM-020`) ship, the per-request `x-nlq-byollm-key` header lane is wired on HTTP `/v1/ask` (`SK-LLM-021`), and the account-stored lane resolves on `/v1/ask` via `api_keys` `scope = "byollm"` ([`SK-PREMIUM-012`](../premium-tier/decisions/SK-PREMIUM-012-account-stored-byollm-storage.md)); `GLOBAL-003` surface parity (MCP/SDK/CLI/elements/`/app/keys`) pending (tracked in `premium-tier/FEATURE.md`). `SK-LLM-017` (hosted-premium chain) lands in Phase 2 alongside `quality-eval`; its meter stays dark until [`phase-plan.md §6`](../../phase-plan.md) trips.
+**Status:** implemented for the free chain (`SK-LLM-001..015` + `SK-LLM-018` + `SK-LLM-023..030` + `SK-LLM-032..037`). BYOLLM (`SK-LLM-016`) is partial — provider factory (`SK-LLM-019`) + lane selector / single-provider lane router (`SK-LLM-020`) ship, the per-request `x-nlq-byollm-key` header lane is wired on HTTP `/v1/ask` (`SK-LLM-021`), and the account-stored lane resolves on `/v1/ask` via `api_keys` `scope = "byollm"` ([`SK-PREMIUM-012`](../premium-tier/decisions/SK-PREMIUM-012-account-stored-byollm-storage.md)); `GLOBAL-003` surface parity (MCP/SDK/CLI/elements/`/app/keys`) pending (tracked in `premium-tier/FEATURE.md`). `SK-LLM-017` (hosted-premium chain) lands in Phase 2 alongside `quality-eval`; its meter stays dark until [`phase-plan.md §6`](../../phase-plan.md) trips.
 
 **Contribution to north-star:** Engine quality — the router is the NL→SQL accuracy lever per [`GLOBAL-025`](../../decisions/GLOBAL-025-north-star.md). Free-chain scaffolding compounds when BYOLLM or hosted-premium swaps in a frontier model; `quality-eval`'s free-vs-frontier delta measures the compounding.
 
@@ -186,6 +186,24 @@ positives) and bounds regression (a numeric string and its number cast equal);
 `SUM`/`AVG` are out of scope (SQLite already coerces TEXT there). BIRD-weighted,
 dialect-portable ⇒ plausibly lifts Spider too. Prompt-only, ≈55 tokens,
 directive-only (keeps `SK-LLM-026`'s pending measurement clean); measured on the next eval run.
+
+### SK-LLM-036 — Workers AI: accept the object-shaped `result.response` a JSON-emitting model returns
+
+**Body:** [`decisions/SK-LLM-036-workers-ai-structured-response.md`](./decisions/SK-LLM-036-workers-ai-structured-response.md).
+The Workers AI REST endpoint returns valid-JSON model output **pre-parsed as
+an object** (verified live 2026-06-10); the provider's string-only check
+rejected exactly the successful `plan` calls (`workers-ai:parse`), running the
+free chain as 5-of-6. Accept string *or* object; re-serialize objects so
+`parseJsonResponse` stays the single JSON entry point.
+
+### SK-LLM-037 — Goal-relevant schema pruning in the planner prompt (recall-first, table-granular)
+
+**Body:** [`decisions/SK-LLM-037-goal-relevant-schema-pruning.md`](./decisions/SK-LLM-037-goal-relevant-schema-pruning.md).
+`buildPlanUser` prunes the embedded schema via the pure
+`pruneSchemaForGoal`: keep token-matched tables + their `REFERENCES`
+closure, full schema on any doubt (small schema, zero matches, ≥ 0.9 kept,
+unparseable, retry). Offline-verified on BIRD-dev 500: 99.8% gold-table
+recall, −7.1% schema chars (Spider 2.0-lite: −26.5%).
 
 ### SK-LLM-033 — Schema-inference prompt requires insertable sample rows
 
