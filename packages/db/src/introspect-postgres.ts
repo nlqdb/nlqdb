@@ -157,11 +157,11 @@ export async function introspectPostgres(
   );
 }
 
-// Fold the three flat result sets into the nested read-model. Each query's
-// `ORDER BY` is load-bearing: columns by `(table, attnum)`, PK rows by key seq,
-// FK rows by `(from_table, conname, ord)` so one constraint's pairs stay
-// contiguous (see the FK loop) — a single in-order pass then preserves all
-// ordering without re-sorting.
+// Fold the three flat result sets into the nested read-model. Within a row set
+// each query's `ORDER BY` is load-bearing: columns by `(table, attnum)`, PK rows
+// by key seq, FK rows by `(from_table, conname, ord)` so one constraint's pairs
+// stay contiguous (see the FK loop). The final table + FK lists are then sorted
+// in JS so the read-model is deterministic regardless of result-set order.
 function assemble(
   columnRows: Record<string, unknown>[],
   pkRows: Record<string, unknown>[],
@@ -219,9 +219,14 @@ function assemble(
 
   return {
     schema,
-    // Stable table order so a re-introspect produces an identical read-model
-    // (and a stable `schema_text`/`schema_hash` downstream).
+    // Stable table + FK order so a re-introspect produces an identical
+    // read-model (and a stable `schema_text`/`schema_hash` downstream) without
+    // depending on a query's `ORDER BY` surviving a future edit.
     tables: [...tables.values()].sort((a, b) => a.name.localeCompare(b.name)),
-    foreignKeys: [...fks.values()],
+    foreignKeys: [...fks.values()].sort(
+      (a, b) =>
+        a.fromTable.localeCompare(b.fromTable) ||
+        a.fromColumns.join().localeCompare(b.fromColumns.join()),
+    ),
   };
 }

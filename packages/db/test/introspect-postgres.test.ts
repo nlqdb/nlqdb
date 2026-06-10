@@ -177,6 +177,37 @@ describe("introspectPostgres", () => {
     ]);
   });
 
+  it("emits foreign keys in a deterministic order regardless of row order", async () => {
+    // The read-model feeds a stable `schema_hash` downstream, so FK order must
+    // not depend on the result-set order. Rows arrive reverse-sorted here.
+    const { query } = stubQuery({
+      columns: [
+        { table_name: "orders", column_name: "account_id", data_type: "integer", not_null: true },
+        { table_name: "invoices", column_name: "account_id", data_type: "integer", not_null: true },
+      ],
+      foreignKeys: [
+        {
+          constraint_name: "fk_account",
+          from_table: "orders",
+          from_column: "account_id",
+          to_table: "accounts",
+          to_column: "id",
+          ord: 1,
+        },
+        {
+          constraint_name: "fk_account",
+          from_table: "invoices",
+          from_column: "account_id",
+          to_table: "accounts",
+          to_column: "id",
+          ord: 1,
+        },
+      ],
+    });
+    const schema = await introspectPostgres(query, "public");
+    expect(schema.foreignKeys.map((fk) => fk.fromTable)).toEqual(["invoices", "orders"]);
+  });
+
   it("excludes child partitions from every query (NOT relispartition)", async () => {
     // The partition filter lives in SQL (the DB applies it), so the unit guard
     // is that all three queries carry it — otherwise one logical partitioned
