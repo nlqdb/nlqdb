@@ -170,16 +170,18 @@ while IFS= read -r GOAL; do
       if [[ -n "$C_DB" && -n "$C_SCHEMA" && "$ROWS" -ge 1 ]]; then QUALITY="ok"; else QUALITY="degraded"; fi
       unset C_DB C_SCHEMA
     else
-      # A `query` on a fresh principal is unexpected for FLOW-004 (no prior
-      # DB); record it as a non-create outcome rather than seed quality.
-      QUALITY="degraded"
+      # A non-`create` 200 (a `query` against a pre-existing DB, or an
+      # unclassifiable shape) has no seed quality to grade, so it is excluded
+      # from the ratio (counted as `errored`, not `degraded`) — the ratio is
+      # over classified creates only, per SK-STRG-008.
+      QUALITY="errored"
     fi
   fi
 
   case "$QUALITY" in
     ok)       OK_COUNT=$(( OK_COUNT + 1 ));       ok "goal seeded OK — $TABLES tables / $ROWS rows" ;;
     degraded) DEGRADED_COUNT=$(( DEGRADED_COUNT + 1 )); warn "goal first-value DEGRADED (kind=$KIND, $TABLES tables / $ROWS rows, http=$STATUS)" ;;
-    *)        ERRORED_COUNT=$(( ERRORED_COUNT + 1 )); warn "goal errored (http=$STATUS, kind=$KIND)" ;;
+    *)        ERRORED_COUNT=$(( ERRORED_COUNT + 1 )); warn "goal not a gradable create — excluded from ratio (http=$STATUS, kind=$KIND)" ;;
   esac
 
   GOAL_JSON="$(jq -c \
@@ -199,8 +201,10 @@ done <<< "$GOALS_RAW"
 INVITE_CODE=""
 
 # seeded_ok_ratio is over goals that returned a classifiable create
-# (ok + degraded); errored goals (network / non-200) are excluded so an
-# upstream blip doesn't masquerade as a seeding failure.
+# (ok + degraded); everything else is `errored` and excluded — network
+# failures, non-200s, AND non-create 200s (a `query`/unknown shape has no
+# seed quality to grade) — so neither an upstream blip nor a non-create
+# response masquerades as a seeding failure.
 CLASSIFIED=$(( OK_COUNT + DEGRADED_COUNT ))
 if (( CLASSIFIED > 0 )); then
   RATIO="$(jq -nc --argjson ok "$OK_COUNT" --argjson n "$CLASSIFIED" '($ok / $n * 100 | round) / 100')"
