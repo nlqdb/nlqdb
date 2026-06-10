@@ -157,9 +157,11 @@ export async function introspectPostgres(
   );
 }
 
-// Fold the three flat result sets into the nested read-model. Column rows are
-// already ordered by `(table, attnum)` and PK/FK rows by key order, so a single
-// in-order pass preserves column and key ordering without re-sorting.
+// Fold the three flat result sets into the nested read-model. Each query's
+// `ORDER BY` is load-bearing: columns by `(table, attnum)`, PK rows by key seq,
+// FK rows by `(from_table, conname, ord)` so one constraint's pairs stay
+// contiguous (see the FK loop) — a single in-order pass then preserves all
+// ordering without re-sorting.
 function assemble(
   columnRows: Record<string, unknown>[],
   pkRows: Record<string, unknown>[],
