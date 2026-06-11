@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 
-import { fetchBillingStatus, openBillingPortal } from "./billing.ts";
+import { fetchBillingStatus, formatPlanEndDate, openBillingPortal } from "./billing.ts";
 
 const originalFetch = globalThis.fetch;
 let captured: { url: string; init?: RequestInit } | null = null;
@@ -58,6 +58,22 @@ describe("fetchBillingStatus", () => {
       throw new Error("offline");
     });
     expect(await fetchBillingStatus("")).toBeNull();
+  });
+});
+
+describe("formatPlanEndDate", () => {
+  test("formats a Stripe unix-seconds timestamp as a calendar date", () => {
+    // 2026-04-22T00:00:00Z. Asserting the year + a 3-letter month keeps the
+    // test locale/timezone-agnostic (the exact day can shift by TZ).
+    const out = formatPlanEndDate(1776556800);
+    expect(out).toContain("2026");
+    expect(out).toMatch(/Apr/i);
+  });
+
+  test("returns null for a null, non-finite, or unparseable timestamp", () => {
+    expect(formatPlanEndDate(null)).toBeNull();
+    expect(formatPlanEndDate(Number.NaN)).toBeNull();
+    expect(formatPlanEndDate(Number.POSITIVE_INFINITY)).toBeNull();
   });
 });
 

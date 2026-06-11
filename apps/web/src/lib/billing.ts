@@ -14,6 +14,19 @@ export type BillingStatus = {
 
 const trimBase = (apiBase: string) => apiBase.replace(/\/$/, "");
 
+// Formats a Stripe `current_period_end` (unix *seconds*) as a short calendar
+// date for honest "your plan ends on …" messaging. Returns null when the
+// timestamp is absent or unparseable so callers fall back to label-only copy.
+// Rendered in the viewer's local timezone (no `timeZone` override) on purpose:
+// the instant is when access lapses, so the local calendar day is the one the
+// user actually loses the plan on — not the UTC day.
+export function formatPlanEndDate(epochSeconds: number | null): string | null {
+  if (epochSeconds == null || !Number.isFinite(epochSeconds)) return null;
+  const d = new Date(epochSeconds * 1000);
+  if (Number.isNaN(d.getTime())) return null;
+  return d.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+}
+
 // GET /v1/billing/status — a single indexed D1 read, no Stripe call. Returns
 // null on any failure so callers treat status as a progressive enhancement.
 export async function fetchBillingStatus(apiBase: string): Promise<BillingStatus | null> {

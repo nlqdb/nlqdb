@@ -203,6 +203,21 @@ API version pinned to `2026-04-22.dahlia` via the `stripe` npm SDK (see `SK-STRI
 - Hardening only — no behaviour change in the normal (in-order) path; inert
   until live keys exist.
 
+### Scheduled-cancellation transparency on /pricing (SK-WEB-013 — this PR)
+
+- A subscriber who cancels keeps access until period end (Stripe sets
+  `cancel_at_period_end`, status stays `active`). `/pricing` now reads that
+  from `GET /v1/billing/status` and badges the current-plan card *"Ends
+  {date}"* (from `current_period_end`) instead of a silent "Current plan",
+  and turns that tier's CTA into a one-click **"Resubscribe"** routed through
+  the Billing Portal (Stripe un-cancels). Closes the honest-billing
+  "no silent lapse" gap.
+- Pure frontend: reads only state the webhook already persists — no new Stripe
+  call, endpoint, env var, or schema. `formatPlanEndDate` (unix-seconds →
+  locale date) is a unit-tested helper in `apps/web/src/lib/billing.ts`,
+  shared with the other billing surfaces. SK-STRIPE-010's no-double-bill guard
+  still holds (the CTA reuses the prorated portal path, never a 2nd Checkout).
+
 ---
 
 ## What is next
