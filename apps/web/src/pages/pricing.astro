@@ -170,7 +170,7 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
   // Unauthenticated clicks redirect to sign-in with a `return_to=/pricing` hint.
 
   import { fetchSession } from "../lib/session";
-  import { fetchBillingStatus, openBillingPortal } from "../lib/billing";
+  import { fetchBillingStatus, formatPlanEndDate, openBillingPortal } from "../lib/billing";
 
   const buttons = document.querySelectorAll<HTMLButtonElement>("button[data-plan]");
 
@@ -275,6 +275,13 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
       (status.plan === "hobby" || status.plan === "pro") &&
       ACTIVE_STATUSES.has(status.status)
     ) {
+      // A subscriber who cancelled keeps access until period end (Stripe sets
+      // cancel_at_period_end, status stays `active`). Surfacing the end date is
+      // an honest-billing duty (no silent lapse) and the CTA stays live as a
+      // one-click "Resubscribe" — Stripe un-cancels in the portal (SK-WEB-013).
+      const ending = status.cancelAtPeriodEnd;
+      const endDate = ending ? formatPlanEndDate(status.currentPeriodEnd) : null;
+
       // Badge + lock the current plan; turn every other paid CTA into a
       // portal-routed "Switch plan" so a subscriber never starts a second
       // Checkout (which would double-bill — SK-STRIPE-010).
@@ -283,12 +290,17 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
           const header = cta.closest(".pricing__card")?.querySelector(".pricing__card-header");
           if (header) {
             const badge = document.createElement("span");
-            badge.className = "pricing__badge";
-            badge.textContent = "Current plan";
+            badge.className = ending ? "pricing__badge pricing__badge--ending" : "pricing__badge";
+            badge.textContent = ending ? (endDate ? `Ends ${endDate}` : "Ending") : "Current plan";
             header.prepend(badge);
           }
-          cta.disabled = true;
-          cta.textContent = "Current plan";
+          if (ending) {
+            cta.dataset.switch = "1";
+            cta.textContent = "Resubscribe";
+          } else {
+            cta.disabled = true;
+            cta.textContent = "Current plan";
+          }
         } else {
           cta.dataset.switch = "1";
           cta.textContent = "Switch plan";
@@ -472,6 +484,14 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
     color: var(--accent-fg);
     background: var(--accent);
     padding: 0.2rem 0.5rem;
+  }
+
+  /* Scheduled-to-cancel: neutral outline, not the accent fill — it's the
+     user's own choice ending, not an error, but it must read distinctly. */
+  .pricing__badge--ending {
+    color: var(--fg-dim);
+    background: transparent;
+    border: 1px solid var(--border-strong);
   }
 
   .pricing__manage {
