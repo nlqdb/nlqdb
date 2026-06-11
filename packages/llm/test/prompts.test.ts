@@ -189,6 +189,37 @@ describe("buildPlanUser (SK-LLM-018 retry framing)", () => {
   });
 });
 
+describe("buildPlanUser (SK-LLM-037 schema pruning wiring)", () => {
+  // Six tables over the pruning floors; only `pet` (+ its REFERENCES
+  // closure target `owner`) relates to the goal.
+  const pad = `-- ${"x".repeat(300)}`;
+  const bigSchema = [
+    `CREATE TABLE owner (ownerId INTEGER PRIMARY KEY, city TEXT) ${pad}`,
+    `CREATE TABLE pet (petId INTEGER, species TEXT, ownerId INTEGER REFERENCES owner(ownerId)) ${pad}`,
+    `CREATE TABLE invoice (invoiceId INTEGER, amount REAL) ${pad}`,
+    `CREATE TABLE clinic (clinicId INTEGER, address TEXT) ${pad}`,
+    `CREATE TABLE supplier (supplierId INTEGER, region TEXT) ${pad}`,
+    `CREATE TABLE warehouse (warehouseId INTEGER, capacity INTEGER) ${pad}`,
+  ].join(";\n");
+
+  it("prunes the schema to goal-relevant tables on the first attempt", () => {
+    const out = buildPlanUser({ goal: "count pet species", schema: bigSchema, dialect: "sqlite" });
+    expect(out).toContain("CREATE TABLE pet");
+    expect(out).toContain("CREATE TABLE owner"); // REFERENCES closure
+    expect(out).not.toContain("CREATE TABLE warehouse");
+  });
+
+  it("sends the full schema on a retry — the pruned view may be what failed", () => {
+    const out = buildPlanUser({
+      goal: "count pet species",
+      schema: bigSchema,
+      dialect: "sqlite",
+      previousAttempt: { sql: "SELECT 1", error: "no such table: warehouse" },
+    });
+    expect(out).toContain("CREATE TABLE warehouse");
+  });
+});
+
 describe("ENGINE_CLASSIFY_SYSTEM (SK-DB-010 / SK-MULTIENG-002)", () => {
   it("embeds the SK-MULTIENG-002 engine-fit table header verbatim", () => {
     expect(ENGINE_CLASSIFY_SYSTEM).toContain(

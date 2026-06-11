@@ -15,7 +15,13 @@ itself. Headline KPI: free-vs-agentic-frontier delta per
 [`SK-QUAL-004`](./features/quality-eval/decisions/SK-QUAL-004-free-vs-frontier-delta.md).
 **Progress bar** (what's tried / not-tried, every number sourced):
 [`progress/quality-score-source-of-truth.md`](./progress/quality-score-source-of-truth.md).
-Latest levers: BIRD scorer parity — positional value tuples so output
+Latest levers: the Workers-AI planner leg revived — the REST endpoint
+returns valid-JSON output pre-parsed as an object and the string-only
+check had dead-ended every successful `plan` call
+([`SK-LLM-036`](./features/llm-router/decisions/SK-LLM-036-workers-ai-structured-response.md)),
+plus recall-first goal-relevant schema pruning in the planner prompt
+([`SK-LLM-037`](./features/llm-router/decisions/SK-LLM-037-goal-relevant-schema-pruning.md)),
+on top of BIRD scorer parity — positional value tuples so output
 aliases/casing no longer false-mismatch correct values, matching canonical
 `evaluation.py`
 ([`SK-QUAL-010`](./features/quality-eval/decisions/SK-QUAL-010-bird-positional-tuple-parity.md)),
