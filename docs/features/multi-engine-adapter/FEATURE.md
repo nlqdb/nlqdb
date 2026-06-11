@@ -10,7 +10,7 @@ when-to-load:
 # Feature: Multi Engine Adapter
 
 **One-liner:** Adapters beyond Postgres — Phase 3 expansion to ClickHouse via Tinybird (next), with Redis / D1 evaluated and deferred.
-**Status:** decisions firm (`SK-MULTIENG-001..006`); ClickHouse/Tinybird adapter pending. `SK-MULTIENG-005` promotes BYO ClickHouse from Phase 4+ to active. BYO connect-path primitives landed: the connection-URL parser (`SK-MULTIENG-006` — `clickhouse-connection-url.ts`, parallel to Postgres `SK-DB-012`) and the shared egress guard (`GLOBAL-035` — `egress-guard.ts`). Adapter (`clickhouse-byo.ts`) + `system.columns` introspection + `connect.ts` wiring remain.
+**Status:** decisions firm (`SK-MULTIENG-001..007`); ClickHouse/Tinybird adapter pending. `SK-MULTIENG-005` promotes BYO ClickHouse from Phase 4+ to active. BYO connect-path primitives landed: the connection-URL parser (`SK-MULTIENG-006` — `clickhouse-connection-url.ts`, parallel to Postgres `SK-DB-012`), the shared egress guard (`GLOBAL-035` — `egress-guard.ts`), and `system.columns` introspection (`SK-MULTIENG-007` — `introspect-clickhouse.ts`, parallel to Postgres `SK-DB-014`). Adapter (`clickhouse-byo.ts`) + `connect.ts` wiring remain.
 **Owners (code):** `packages/db/**`
 **Cross-refs:** `db-adapter/FEATURE.md` (PG adapter; `SK-DB-009/010` evolve the contract) · `engine-migration/FEATURE.md` (auto-migration decoupled, `SK-MULTIENG-002`) · `docs/phase-plan.md` §11
 
@@ -72,17 +72,16 @@ when-to-load:
 
 ### SK-MULTIENG-004 — Per-engine validator path, OTel attributes, and anon-mode posture
 
-- **Decision:** Each adapter ships a sibling validator and OTel attribute mapping. Anon-mode (`GLOBAL-007`) is opt-in per engine.
-  - **Validators:** PG = `libpg_query` (existing `sql-validate.ts`). Tinybird/ClickHouse = Pipe-name + table-name allowlist + dialect parse for raw-SQL escape hatch (`sqlglot`-equivalent). Redis (when shipped) = command allowlist (verbs are a finite set). Mongo (if ever) = `mongodb-js/stage-validator`. Each adapter's validator lives at `packages/db/src/<engine>/validator.ts`.
-  - **OTel:** every span = `db.query`. Canonical `db.system` per engine — `postgresql`, `redis`, `mongodb` (stable in semconv v1.27+); ClickHouse lacks a canonical value, emit `other_sql`. Required attributes per engine: PG = `db.namespace, db.operation.name, db.query.text`; Redis = `db.operation.name`; Mongo = `db.collection.name, db.operation.name, db.namespace` (no `db.query.text` — privacy convention).
-  - **Anon-mode:** PG path keeps schema-per-anon. Tinybird launches **sign-in-only** — the global anon rate-limit (`anon-global-cap.ts`) gates anon traffic away from non-PG engines until per-prefix isolation is hardened. Adding anon-mode on an engine = a follow-up SK block, not part of the adapter-launch slice.
-- **Core value:** Bullet-proof, Honest latency
-- **Why:** OSS validators exist where they exist; hand-rolling allowlists is bounded only for engines with finite verb sets. Per-engine OTel attributes are a `GLOBAL-014` parity requirement; canonical `db.system` values are in the spec for the engines that have them. Anon-mode parity is engine-by-engine work; gating Tinybird sign-in-only at launch keeps the multi-tenant prefix isolation off the critical path.
-- **Consequence in code:** New adapter PR template = `<engine>/{adapter,validator,otel-attrs}.ts` + an entry in the engine-fit table (`SK-MULTIENG-002`) + a one-line classifier-prompt edit (`packages/llm/src/prompts.ts`). Anon-mode wiring on a new engine is its own follow-up PR.
-- **Alternatives rejected:**
-  - Universal validator — engines have incommensurable grammars; one parser cannot cover them.
-  - Lift OTel up out of the adapter — caller doesn't have the engine-native operation; cardinality risk.
-  - Block all anon traffic on first non-PG engine — overkill; the global cap already deflects abuse.
+**Body:** [`decisions/SK-MULTIENG-004-per-engine-validator-otel-anon.md`](./decisions/SK-MULTIENG-004-per-engine-validator-otel-anon.md).
+Each adapter ships a sibling validator + OTel attribute mapping; anon-mode
+(`GLOBAL-007`) is opt-in per engine. Validators are per-grammar (PG `libpg_query`;
+ClickHouse/Tinybird Pipe + table allowlist; Redis command allowlist). OTel: every
+span is `db.query` with the canonical `db.system` per engine — `postgresql` /
+`redis` / `mongodb`, and `other_sql` for ClickHouse (no canonical semconv value).
+Anon-mode launches sign-in-only on the first non-PG engine; the global anon cap
+deflects abuse until per-prefix isolation is hardened. New-adapter PR template:
+`<engine>/{adapter,validator,otel-attrs}.ts` + an engine-fit-table row
+(`SK-MULTIENG-002`) + a one-line classifier-prompt edit.
 
 ### SK-MULTIENG-005 — BYO ClickHouse promoted from Phase 4+ to active development; same `registerByoDb` path as BYO Postgres
 
@@ -116,6 +115,24 @@ other query setting are structurally absent; the full URL rides the
 of `SK-DB-012` (`SK-DB-002` parallel-adapter pattern), shipped ahead of its
 `connect.ts` / `introspect-clickhouse.ts` callers; internal primitive, so no
 `GLOBAL-003` obligation of its own.
+
+### SK-MULTIENG-007 — BYO ClickHouse connect-time schema introspection: two fixed `system.*` queries into a faithful read-model
+
+**Body:** [`decisions/SK-MULTIENG-007-byo-clickhouse-introspection.md`](./decisions/SK-MULTIENG-007-byo-clickhouse-introspection.md).
+One pure-seam module — `packages/db/src/introspect-clickhouse.ts` —
+`introspectClickhouse(query, database)` reads a live BYO ClickHouse schema into a
+faithful read-model via two fixed `system.*` queries (`system.tables` for the
+authoritative table list + effective `primary_key` expression, `system.columns`
+for verbatim column types), run concurrently, never one-per-table. The
+ClickHouse parallel of Postgres `SK-DB-014`, not a generalisation: ClickHouse has
+no foreign keys (none in the read-model), its primary key is an expression
+(surfaced verbatim from `system.tables`, never reconstructed from a column-order
+guess), and nullability lives in the type (`Nullable(T)`, derived from the
+outermost wrapper — `Array(Nullable(...))` stays non-nullable). Views /
+materialized views / temp tables are excluded in SQL. One `db.introspect` span
+(`db.system=other_sql` per `SK-MULTIENG-004`, `GLOBAL-014`), fail-loud on a query
+error (`GLOBAL-012`). Internal primitive shipped ahead of its `clickhouse-byo.ts`
+/ `registerByoDb` callers, so no `GLOBAL-003` obligation of its own.
 
 ## GLOBALs governing this feature
 
