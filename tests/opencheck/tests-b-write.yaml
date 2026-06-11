@@ -171,8 +171,10 @@ tests:
       appears in the URL (re-snapshot up to 5 times, 3s apart). If no sidebar
       button contains "users" after 5 re-snapshots, TEST_FAILED — a signed-in
       session with the users DB is required.
-      Click the chat textarea (placeholder "Ask about your data…")
-      and type:
+      Call browser_snapshot, find the chat textarea (placeholder "Ask about
+      your data…") and note its ref. IMMEDIATELY call browser_click with that
+      ref (do NOT take any other action between snapshot and click — refs go
+      stale on re-render). Type:
         anything interesting in here?
       Press Enter as a SEPARATE browser_key_down call. If the page
       shows a full-page React error ("Something broke" with a reload
@@ -195,8 +197,10 @@ tests:
       appears in the URL (re-snapshot up to 5 times, 3s apart). If no sidebar
       button contains "users" after 5 re-snapshots, TEST_FAILED — a signed-in
       session with the users DB is required.
-      Click the chat textarea (placeholder "Ask about your data…")
-      and type:
+      Call browser_snapshot, find the chat textarea (placeholder "Ask about
+      your data…") and note its ref. IMMEDIATELY call browser_click with that
+      ref (do NOT take any other action between snapshot and click — refs go
+      stale on re-render). Type:
         show me all the orders
       Press Enter as a SEPARATE browser_key_down call. There is no
       orders table — only users.
