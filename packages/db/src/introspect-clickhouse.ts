@@ -18,7 +18,7 @@
 // The `database` is always a bound `{database:String}` server-side parameter,
 // never interpolated.
 //
-// Two ClickHouse-specific shapes the Postgres reader has no analogue for:
+// Three ClickHouse-specific shapes the Postgres reader has no analogue for:
 //   • No foreign keys. ClickHouse has none; the read-model carries no FK field
 //     rather than inventing an empty one.
 //   • The primary key is an *expression*, not a column list. `system.tables`
@@ -88,8 +88,10 @@ export type IntrospectedClickhouseSchema = {
 // Both queries take the target database as `{database:String}` (bound
 // server-side, never interpolated). `system.tables` is the authoritative table
 // set — `engine NOT LIKE '%View%'` drops View / MaterializedView / LiveView /
-// WindowView, and `is_temporary = 0` drops session-temporary tables — so a
-// column whose table isn't in this set (a view's column) is dropped on assembly.
+// WindowView (and keeps every other queryable engine: MergeTree, Dictionary,
+// Distributed, Buffer, …), and `is_temporary = 0` drops session-temporary
+// tables — so a column whose table isn't in this set (a view's column) is
+// dropped on assembly.
 const TABLES_SQL = `SELECT name, primary_key
 FROM system.tables
 WHERE database = {database:String}
