@@ -76,6 +76,13 @@ export { createDohResolver } from "./doh-resolver.ts";
 export type { DnsResolver, EgressGuardResult } from "./egress-guard.ts";
 export { guardEgressHost, guardEgressHostResolved } from "./egress-guard.ts";
 export type {
+  ClickhouseQueryFn,
+  IntrospectedClickhouseColumn,
+  IntrospectedClickhouseSchema,
+  IntrospectedClickhouseTable,
+} from "./introspect-clickhouse.ts";
+export { introspectClickhouse } from "./introspect-clickhouse.ts";
+export type {
   IntrospectedColumn,
   IntrospectedForeignKey,
   IntrospectedSchema,

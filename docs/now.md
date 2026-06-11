@@ -181,9 +181,30 @@ fail-loud). The shared connect-time composition
 `validateByoConnection`, `packages/db/src/byo-connect.ts`) wires parse →
 `guardEgressHostResolved` into one entry point and takes an `engine:
 "clickhouse"` branch, so this path reuses it rather than re-assembling the
-ordering. Next: those callers + the `registerByoDb` ClickHouse branch calling
-`validateByoConnection` with `createDohResolver()`; the residual TOCTOU backstop
-stays open per `GLOBAL-035`.
+ordering. The connect-time read of the user's *existing* schema now also landed —
+the deliberate ClickHouse parallel of Postgres `SK-DB-014`:
+[`SK-MULTIENG-007`](./features/multi-engine-adapter/decisions/SK-MULTIENG-007-byo-clickhouse-introspection.md)'s
+`packages/db/src/introspect-clickhouse.ts` — `introspectClickhouse(query, database)`
+reads a live BYO schema into a faithful read-model via two fixed `system.*`
+queries (`system.tables` for the authoritative table list + effective
+`primary_key` *expression*, `system.columns` for verbatim column types), run
+concurrently, never one-per-table. Not a generalisation of the PG reader:
+ClickHouse has no foreign keys (none in the model), its primary key is an
+expression surfaced verbatim (never reconstructed from a column-order guess), and
+nullability lives in the type — derived from the *outermost* wrapper so
+`LowCardinality(Nullable(String))` is nullable but `Array(Nullable(String))`
+stays non-nullable. Views / materialized views / temp tables are excluded in SQL
+so none leaks back as a table. One `db.introspect` span (`db.system=other_sql`
+per [`SK-MULTIENG-004`](./features/multi-engine-adapter/FEATURE.md#sk-multieng-004),
+[`GLOBAL-014`](./decisions/GLOBAL-014-otel-on-external-calls.md)), fail-loud
+([`GLOBAL-012`](./decisions/GLOBAL-012-one-sentence-errors.md)) on a query error
+so the caller never seals a half-read schema. It reads through an injected
+`ClickhouseQueryFn` seam (the parallel of `SK-DB-006`'s), shipped ahead of its
+`clickhouse-byo.ts` / `registerByoDb` callers. Next: the `clickhouse-byo.ts`
+adapter + the `registerByoDb` ClickHouse branch (validate via
+`validateByoConnection` with `createDohResolver()` → open → `introspectClickhouse`
+→ render `schema_text`/`schema_hash` → seal per `GLOBAL-031`) + the `GLOBAL-003`
+surface set; the residual TOCTOU backstop stays open per `GLOBAL-035`.
 
 ## 5. BYO OTel collectors
 
