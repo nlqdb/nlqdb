@@ -107,46 +107,16 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
   - *In this feature:* every Tinybird Pipes-management call emits a `db.query` span (`db.system=other_sql`, `db.operation.name ∈ {PIPE_CREATE, PIPE_DROP, PIPE_GET}`); the cron emits `nlqdb.workload_analyser.run` (parent) and `nlqdb.workload_analyser.reshape` (per proposal).
 - **GLOBAL-021** — Each external system has one canonical owning module.
   - *In this feature:* all Tinybird HTTP — read of `query_log` and Pipes management — flows through `packages/db/src/clickhouse-tinybird/`. The analyser imports typed methods (`createPipe` / `dropPipe` / `getPipe` / the existing `createTinybirdAdapter`); no `fetch(...tinybird...)` call sits in `apps/api/src/workload-analyser/`.
+- **GLOBAL-026** — LLM strategy: free chain forever; never gate first value behind cost.
+  - *In this feature:* the tier-up-on-migration default migrates the DB and never blocks or bills on the migration itself (Open questions); the pricing interaction is a founder bet the conservative default unblocks.
 
 ## Open questions / known unknowns
 
-These remain after `SK-MIGRATE-001..006` and become follow-up SK-MIGRATE blocks when answered.
-
-### Cross-engine migration (PG ↔ ClickHouse, later PG ↔ Redis / Mongo)
-
-- **Parked until the first PG→ClickHouse dual-run slice** (`GLOBAL-033`, speculative-scope → never design a migration mechanism before the migration pair is built). The dual-run forks — shadow-write location (executor / orchestrator / fan-out worker) within the primary-write latency budget, backfill throttle + load measurement, dual-read sampling %, divergence page-recipient + rollback contract (rewind vs freeze), atomic-cutover routing-pointer store (D1 / KV / DO) + flip consistency, and post-cutover regression detection + warm-grace window — all get decided together in that slice as `SK-MIGRATE` blocks. Redis / Mongo pairs defer further. No mechanism on spec.
-
-### Schema mapping (cross-engine)
-
-- **PG → ClickHouse translation.** First migration pair; workload-analyser-driven MV path is the principal target (see `SK-MULTIENG-003`). PG ↔ Redis / Mongo deferred.
-- **Index translation.** Per-engine index DSLs; the Orchestrator must translate, not just dump rows.
-- **Constraint translation.** FK / NOT NULL / CHECK absent natively on Mongo / Redis; location post-migration (validator / app / shadow PG) undecided.
-
-### Verification
-
-- **Held-out benchmark.** Composition, scoring rubric, human-DBA baselines all TBD (Phase 2 exit gate).
-- **Chaos testing.** Protocol for "cross-engine migration corrupts data" mitigation undecided.
-- **Restore drill cadence.** Whether weekly is enough during a live migration, or tighter loops, undecided.
-
-### Routing through Pipes (intra-engine, deferred from W5)
-
-- **Read-path routing.** v1 creates Pipes but `/v1/ask` does not route through them. Next SK-MIGRATE picks up adapter-side Pipe lookup by `(schema_hash, query_hash)` and the dispatch decision (always-Pipe / A-B / flag).
-- **Pipe deletion lifecycle.** Cold-Pipe drop trigger (cron pass? on-demand?) and inactivity threshold undecided.
-
-### User experience (cross-engine)
-
-- **Notification policy.** Email on migration? Probably no for infra events; audit-log-style entry probably yes.
-- **Tier-up triggered by migration.** Free-tier DB pushed onto an engine the tier doesn't include — migrate and bill, or surface upgrade path? Pricing interaction open.
-
-### Cross-phase concerns
-
-- **Plan-cache key on cross-engine migration.** `GLOBAL-006` keys plans by `(schema_hash, query_hash)` with no `engine` dimension. Whether old plans survive a Mongo / Redis migration, or the key needs widening, is open.
-- **Schema widening across engines.** `GLOBAL-004` was specified for Postgres semantics; Mongo / Redis widening rules TBD.
-- **Idempotency-store consistency during migration.** Dual-write idempotency under cutover; replay divergence risk on the new engine.
-
-## Phase-3 cross-engine entry checklist
-
-`SK-MIGRATE-001..006` cover intra-engine reshape v1. Cross-engine migration is gated on `docs/phase-plan.md §5` (held-out benchmark + dual-read + Phase 2 exit metrics) and on `SK-MULTIENG-NNN` for the target engine.
+- **Cross-engine migration mechanism — Parked until the first PG→ClickHouse dual-run slice** (`GLOBAL-033`, speculative-scope → never design a migration mechanism before the migration pair is built). One slice decides the whole mechanism together as `SK-MIGRATE` blocks: shadow-write location + backfill throttle + dual-read sampling %, divergence recipient + rollback contract (rewind vs freeze), atomic-cutover routing-pointer store + flip consistency, schema/index/constraint translation (FK/NOT NULL/CHECK landing-site on engines that lack them natively), cross-engine schema widening (`GLOBAL-004` is PG-shaped today), and idempotency-store consistency under cutover. Redis / Mongo pairs defer further. Enumerating each fork on spec is the bug `GLOBAL-033` names; they resolve in that slice. Verification (held-out benchmark, chaos, restore-drill cadence) is the `docs/phase-plan.md §5` exit gate, not a per-fork question.
+- **Plan-cache key on engine change — Resolved** (`GLOBAL-033`, bullet-proof → make the bad state unreachable): a migration is a schema event, so it drops the DB's cached plans and the next `/v1/ask` re-plans against the new engine. `GLOBAL-006` keeps its `(schema_hash, query_hash)` key — adding an `engine` dimension to serve plans across a one-way migration is carrying a stale plan that may not compile on the new engine.
+- **Migration notifications — Resolved** (`GLOBAL-033`, UX → reuse what's built): no email for an infra-level event; the `SK-MIGRATE-005` audit row is the record, surfaced like the existing `pipe_advisory` trace line. A user-facing email lands only if a migration is ever user-initiated.
+- **Tier-up triggered by migration — Resolved, conservative default** (`GLOBAL-033`/`GLOBAL-026`, free chain forever → never gate value behind cost): migrate the DB and never block or bill on the migration itself; surface the upgrade path asynchronously. The pricing interaction is a Phase-3 founder bet the conservative default unblocks; the founder overrides async if the economics demand it.
+- **Read-path routing through Pipes (intra-engine) — Parked until the next SK-MIGRATE read-path slice.** v1 creates Pipes but `/v1/ask` does not route through them; that slice picks up adapter-side Pipe lookup by `(schema_hash, query_hash)`, the dispatch decision (always-Pipe / A-B / flag), and the cold-Pipe deletion trigger + inactivity threshold.
 
 ## Source pointers
 

@@ -16,10 +16,10 @@ spans/metrics/logs ship to the user's own OTel collector instead of
 
 **Status:** partial — direction pinned to **egress** per
 [`SK-BYOTEL-001`](#sk-byotel-001) (user-configurable OTLP exporter
-destination). Configuration model + dual-emit + sampling inheritance
-are the next-up sub-decisions, captured under
-[Open questions §2](#2-egress-design-sub-questions). No code yet —
-slice 1 lands once those resolve.
+destination); configuration model resolved per
+[`SK-BYOTEL-002`](#sk-byotel-002). No code yet — slice 1 is now wiring,
+parked until a user with an existing OTel stack asks (or the Phase 2 BYO
+slice, whichever first).
 
 **Contribution to north-star:** UX (per
 [`GLOBAL-019`](../../decisions/GLOBAL-019-apache2-open-source-core.md),
@@ -81,9 +81,8 @@ out of scope here until §1 resolves) ·
   off the principal. The configuration unit (per-DB vs per-account),
   dual-emit-vs-replace behavior, sampling inheritance from
   [`SK-OBS-003`](../observability/FEATURE.md#sk-obs-003), and
-  auth-header secret-at-rest envelope are sub-decisions tracked in
-  [Open questions §2](#2-egress-design-sub-questions) — slice 1 PR
-  resolves them.
+  auth-header secret-at-rest envelope are resolved by
+  [`SK-BYOTEL-002`](#sk-byotel-002).
 - **Alternatives rejected:**
   - **Ingress (nlqdb receives user telemetry).** Different product
     (storage + receiver + retention). Routed to the
@@ -97,6 +96,46 @@ out of scope here until §1 resolves) ·
     (`GLOBAL-019`) without waiting for traffic. Per D1, resolve
     open questions; per D3, clarity always increases.
 
+### SK-BYOTEL-002 — Egress configuration model: per-account, dual-emit default, inherit `SK-OBS-003` sampling, reuse the `SK-DB-011` KEK envelope
+
+- **Decision:** The four slice-1 design forks resolve from the values
+  (`GLOBAL-033`), so slice 1 is wiring, not a fresh design pass:
+  **(a) per-account**, not per-DB — one `otel_exporter_config` row keyed
+  on the account; **(b) dual-emit by default** (nlqdb backend + the
+  user's collector), with a per-account `replace` toggle to send only to
+  the user's collector; **(c) the user collector inherits**
+  [`SK-OBS-003`](../observability/FEATURE.md#sk-obs-003)'s path-aware
+  sampling — no second sampling vocabulary; **(d) the auth header reuses
+  the [`SK-DB-011`](../db-adapter/decisions/SK-DB-011-byo-postgres-promoted.md)
+  KEK envelope** for secret-at-rest.
+- **Core value:** Simple, Effortless UX, Bullet-proof
+- **Why:** Each fork has one answer the values already fix
+  (`GLOBAL-033`): per-account because per-DB explodes the config surface
+  for a need no user has voiced (Simple); dual-emit because it keeps
+  nlqdb's support visibility (Honest) and the cost is ~1 extra batched
+  export per `forceFlush`, far inside the Workers 50-subrequest budget
+  (`GLOBAL-013`); inherit sampling because one sampling rule across both
+  destinations is the "one way to do each thing" default (Simple) and a
+  per-collector knob is a parallel config to maintain for no asked-for
+  benefit; reuse the KEK envelope because `GLOBAL-021` wants one canonical
+  envelope for tenant secrets — a second one is drift.
+- **Consequence in code:** `otel_exporter_config` is a per-account D1 row
+  (`{ endpoint, auth_header_sealed, signals, mode: "dual" | "replace" }`).
+  `packages/otel/src/index.ts` reads it and composes a second OTLP
+  exporter behind the existing path-aware sampler; `apps/api/src/index.ts`
+  selects it off the principal's account. The auth header seals/unseals
+  through the same KEK path as `SK-DB-011`. No per-DB column, no
+  per-collector sampler config.
+- **Alternatives rejected:**
+  - **Per-DB config** — config-surface explosion for a need no user has
+    voiced; revisit only if a user wants different collectors per DB.
+  - **Replace-only (drop nlqdb's copy)** — loses support visibility,
+    which is the honest default; offered as an opt-in toggle instead.
+  - **Independent per-collector sampling** — a second sampling vocabulary
+    to maintain and reason about; violates Simple.
+  - **A new secret envelope for the auth header** — second canonical
+    owner for tenant secrets; violates `GLOBAL-021`.
+
 ## GLOBALs governing this feature
 
 Canonical text in [`docs/decisions/`](../../decisions/) (one file per
@@ -104,36 +143,20 @@ GLOBAL; index in [`docs/decisions.md`](../../decisions.md)). The list
 below names the rules that constrain this feature; feature-local
 commentary is added once direction is pinned.
 
+- **GLOBAL-013** — $0/month free tier; ≤ 3 MiB Workers bundle.
+  - *In this feature:* `SK-BYOTEL-002`'s dual-emit default costs ~1 extra
+    batched export per `forceFlush`, kept inside the Workers
+    50-subrequest budget.
 - **GLOBAL-014** — OTel span on every external call.
 - **GLOBAL-019** — Free + Open Source core; Cloud is convenience, not a moat.
 - **GLOBAL-021** — Each external system has one canonical owning module.
+  - *In this feature:* `SK-BYOTEL-002` reuses the `SK-DB-011` KEK envelope
+    for the exporter auth header rather than minting a second one.
 
 ## Open questions / known unknowns
 
-### §1. Direction — resolved
-
-Resolved by [`SK-BYOTEL-001`](#sk-byotel-001): direction is **egress**.
-The ingress alternative remains the
-[`otel-grafana-pivot.md`](../../research/otel-grafana-pivot.md) §5
-promotion path, not this feature.
-
-### §2. Egress design sub-questions
-
-Slice 1 PR resolves these:
-
-- **Per-DB or per-account?** Lean per-account — per-DB explodes the
-  config surface and almost no user wants different collectors per
-  DB.
-- **Dual-emit (nlqdb backend + user collector) or replace?** Dual-emit
-  by default is honest — keeps support visibility — but doubles
-  outbound fan-out per request; trade-off against the Workers
-  free-tier 50-subrequest budget.
-- **Sampling inheritance.** Does the user collector inherit
-  [`SK-OBS-003`](../observability/FEATURE.md#sk-obs-003)'s path-aware
-  sampling (100% cache-miss / 1% cache-hit / 0% health / 100% 5xx),
-  or set its own?
-- **Auth-header secret-at-rest envelope.** Lean reuse the same KEK
-  envelope as
-  [`SK-DB-011`](../db-adapter/decisions/SK-DB-011-byo-postgres-promoted.md)
-  — keeps [`GLOBAL-021`](../../decisions/GLOBAL-021-external-system-ownership.md)
-  clean (one canonical envelope for tenant secrets).
+- **Slice-1 build — Parked until a user with an existing OTel stack
+  asks** (or the Phase 2 BYO slice, whichever first). Direction
+  (`SK-BYOTEL-001`) and the full configuration model (`SK-BYOTEL-002`)
+  are locked, so the slice is wiring against `otel_exporter_config`, not
+  a fresh design pass.
