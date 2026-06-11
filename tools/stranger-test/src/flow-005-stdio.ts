@@ -140,7 +140,7 @@ async function handshake(): Promise<Handshake> {
     command: process.execPath, // the bun/node running this walker
     args: [BIN_PATH],
     env: { ...(process.env as Record<string, string>), NLQDB_API_KEY: STARTUP_KEY },
-    stderr: "pipe",
+    stderr: "inherit", // surface a failing child's fatal stderr for triage
   });
   const client = new Client({ name: "flow-005-stdio-walker", version: "1.0" });
   try {
