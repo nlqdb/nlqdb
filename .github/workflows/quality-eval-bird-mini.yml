@@ -170,8 +170,15 @@ jobs:
             $baseline_arg \
             $emit_args
 
-      - name: Save full-run checkpoint
+      # A completed run deletes its checkpoint (SK-QUAL-011), so only save
+      # when a budget-stop left one behind.
+      - name: Check for checkpoint
+        id: ckpt
         if: always()
+        run: echo "exists=$(compgen -G 'tools/eval/results/*.partial.jsonl' > /dev/null && echo true || echo false)" >> "$GITHUB_OUTPUT"
+
+      - name: Save full-run checkpoint
+        if: always() && steps.ckpt.outputs.exists == 'true'
         uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         with:
           path: tools/eval/results/*.partial.jsonl
