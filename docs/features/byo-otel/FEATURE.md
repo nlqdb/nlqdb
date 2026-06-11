@@ -143,9 +143,15 @@ GLOBAL; index in [`docs/decisions.md`](../../decisions.md)). The list
 below names the rules that constrain this feature; feature-local
 commentary is added once direction is pinned.
 
+- **GLOBAL-013** — $0/month free tier; ≤ 3 MiB Workers bundle.
+  - *In this feature:* `SK-BYOTEL-002`'s dual-emit default costs ~1 extra
+    batched export per `forceFlush`, kept inside the Workers
+    50-subrequest budget.
 - **GLOBAL-014** — OTel span on every external call.
 - **GLOBAL-019** — Free + Open Source core; Cloud is convenience, not a moat.
 - **GLOBAL-021** — Each external system has one canonical owning module.
+  - *In this feature:* `SK-BYOTEL-002` reuses the `SK-DB-011` KEK envelope
+    for the exporter auth header rather than minting a second one.
 
 ## Open questions / known unknowns
 

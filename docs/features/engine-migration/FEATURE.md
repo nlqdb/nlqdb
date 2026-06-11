@@ -107,6 +107,8 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
   - *In this feature:* every Tinybird Pipes-management call emits a `db.query` span (`db.system=other_sql`, `db.operation.name ∈ {PIPE_CREATE, PIPE_DROP, PIPE_GET}`); the cron emits `nlqdb.workload_analyser.run` (parent) and `nlqdb.workload_analyser.reshape` (per proposal).
 - **GLOBAL-021** — Each external system has one canonical owning module.
   - *In this feature:* all Tinybird HTTP — read of `query_log` and Pipes management — flows through `packages/db/src/clickhouse-tinybird/`. The analyser imports typed methods (`createPipe` / `dropPipe` / `getPipe` / the existing `createTinybirdAdapter`); no `fetch(...tinybird...)` call sits in `apps/api/src/workload-analyser/`.
+- **GLOBAL-026** — LLM strategy: free chain forever; never gate first value behind cost.
+  - *In this feature:* the tier-up-on-migration default migrates the DB and never blocks or bills on the migration itself (Open questions); the pricing interaction is a founder bet the conservative default unblocks.
 
 ## Open questions / known unknowns
 
