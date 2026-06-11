@@ -17,6 +17,9 @@ const trimBase = (apiBase: string) => apiBase.replace(/\/$/, "");
 // Formats a Stripe `current_period_end` (unix *seconds*) as a short calendar
 // date for honest "your plan ends on …" messaging. Returns null when the
 // timestamp is absent or unparseable so callers fall back to label-only copy.
+// Rendered in the viewer's local timezone (no `timeZone` override) on purpose:
+// the instant is when access lapses, so the local calendar day is the one the
+// user actually loses the plan on — not the UTC day.
 export function formatPlanEndDate(epochSeconds: number | null): string | null {
   if (epochSeconds == null || !Number.isFinite(epochSeconds)) return null;
   const d = new Date(epochSeconds * 1000);

@@ -184,10 +184,14 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
       // parallel subscription and double-bill (SK-STRIPE-010). The status
       // pass below marks the non-current paid CTA with data-switch.
       if (btn.dataset.switch === "1") {
+        btn.disabled = true;
+        const original = btn.textContent;
+        btn.textContent = "Redirecting…";
         const outcome = await openBillingPortal(apiBase);
-        if (outcome !== "ok") {
-          alert("Couldn't open the billing portal. Please try “Manage billing” below or email hello@nlqdb.com.");
-        }
+        if (outcome === "ok") return; // browser is already navigating to Stripe
+        btn.disabled = false;
+        btn.textContent = original;
+        alert("Couldn't open the billing portal. Please try “Manage billing” below or email hello@nlqdb.com.");
         return;
       }
 
