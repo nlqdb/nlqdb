@@ -68,8 +68,10 @@
 > walked. FLOW-008 (cron upstream-health) still holds the same
 > curl-only pass for HN / GH / IH and an advisory note for Reddit /
 > Stack Exchange (sandbox-egress proxy block; deployed Worker is
-> canonical). FLOW-005 still has the curl-only partial pass on the
-> OAuth discovery precondition.
+> canonical). FLOW-005 now passes the no-credential subset on **both**
+> SK-MCP-001 transports — hosted discovery + auth-wall (SK-STRG-005) and
+> the local-stdio `initialize` + `tools/list` catalog (SK-STRG-009);
+> authenticated tool invocation stays in the credentialed mirror.
 
 ---
 
@@ -86,11 +88,11 @@ stale beyond that bar is the next agent's priority #1.
 
 | # | Flow | Persona | Canonical walker | Last verified | Outcome |
 |---|---|---|---|---|---|
-| 1 | FLOW-001 | P1 Solo Builder | `bash scripts/stranger-test.sh` (+ `bash scripts/stranger-test-invited.sh`) | 2026-06-10 | Playwright walk (browser build 1223): steps 1–4 green on both seeded prompts; gate-403 at step 5 per GLOBAL-027 (`feature_gated`). The SK-GATE-007 invited-browser CORS fix holds — `verify-flows.sh` preflight guard allows `x-invite-code` |
-| 2 | FLOW-002 | P3 Data-Curious Analyst | `bash scripts/stranger-test.sh` (+ invite variant) | 2026-06-10 | every static + CTA + draft + `solve.try_query_clicked` event-spy assertion green across the probed slugs; gate-403 at step 9 expected per GLOBAL-027 |
-| 3 | FLOW-003 | P3 / P4 | `bash scripts/stranger-test.sh` (+ invite variant) | 2026-06-10 | every static + CTA + draft + `/llms.txt` assertion green across all 6 vs slugs (incl. askyourdatabase); gate-403 at step 8 expected per GLOBAL-027 |
-| 4 | FLOW-004 | P1 invited | `bash scripts/flow-004-walk.sh` (+ `bash scripts/flow-004-seed-quality.sh`, SK-STRG-008) | 2026-06-10 | **passed_degraded — gate-bypass intact; first-value seed-quality now MEASURED.** Control 403 ✓ + invite **bypassed the gate** ✓ (SK-GATE-007 intact) AND `/v1/ask` **HTTP 200** (the 2026-06-08 `sample_insert_failed` 500 stays cleared — SK-HDC-018 + SK-LLM-033 #352 deployed). SK-STRG-008 probe (one invite / 4 goals) → **`seeded_ok_ratio = 0.25`**: "a habit tracker" → `ok` (4 tables / 12 rows); "a tiny CRM" (previously `ok`), meal-planner, reading-list → `degraded` un-seeded (0/0). 3/4 land an empty DB — seeding every goal is the open SK-LLM-033 lift |
-| 5 | FLOW-005 | P2 Agent Builder | `bash scripts/flow-005-walk.sh` ([`SK-STRG-005`](../features/stranger-test/FEATURE.md)) | 2026-06-10 | passed 6/6 in <1s (RFC 9728 root + scoped discovery, RFC 8414 AS metadata, `initialize` + `tools/list` 401 with `WWW-Authenticate` challenge URL matching scoped discovery) |
+| 1 | FLOW-001 | P1 Solo Builder | `bash scripts/stranger-test.sh` (+ `bash scripts/stranger-test-invited.sh`) | 2026-06-11 | Playwright walk (browser build 1223): steps 1–4 green on both seeded prompts; gate-403 at step 5 per GLOBAL-027 (`feature_gated`). The SK-GATE-007 invited-browser CORS fix holds — `verify-flows.sh` preflight guard allows `x-invite-code` |
+| 2 | FLOW-002 | P3 Data-Curious Analyst | `bash scripts/stranger-test.sh` (+ invite variant) | 2026-06-11 | every static + CTA + draft + `solve.try_query_clicked` event-spy assertion green across the probed slugs; gate-403 at step 9 expected per GLOBAL-027 |
+| 3 | FLOW-003 | P3 / P4 | `bash scripts/stranger-test.sh` (+ invite variant) | 2026-06-11 | every static + CTA + draft + `/llms.txt` assertion green across all 6 vs slugs (incl. askyourdatabase); gate-403 at step 8 expected per GLOBAL-027 |
+| 4 | FLOW-004 | P1 invited | `bash scripts/flow-004-walk.sh` (+ `bash scripts/flow-004-seed-quality.sh`, SK-STRG-008) | 2026-06-11 | **passed_degraded — gate-bypass intact; first-value seed-quality MEASURED.** Control 403 ✓ + invite **bypassed the gate** ✓ (SK-GATE-007 intact) AND `/v1/ask` **HTTP 200** (the 2026-06-08 `sample_insert_failed` 500 stays cleared — SK-HDC-018 + SK-LLM-033 #352 deployed). Today's default-goal walk → first-value `degraded` (0/0), consistent with the 2026-06-10 `seeded_ok_ratio = 0.25` probe (only "a habit tracker" of 4 goals seeded). Seeding every goal is the open SK-LLM-033 lift |
+| 5 | FLOW-005 | P2 Agent Builder | `bash scripts/flow-005-walk.sh` (hosted, [`SK-STRG-005`](../features/stranger-test/FEATURE.md)) + `bash scripts/flow-005-stdio-walk.sh` (local-stdio, [`SK-STRG-009`](../features/stranger-test/FEATURE.md)) | 2026-06-11 | **both transports green.** Hosted: 6/6 in 1s (RFC 9728 root + scoped discovery, RFC 8414 AS metadata, `initialize` + `tools/list` 401 with `WWW-Authenticate` challenge URL matching scoped discovery). Stdio: 16/16 in 0.3s (real `@nlqdb/mcp` binary `initialize` + `tools/list` over OS pipes; catalog = `nlqdb_query`/`nlqdb_list_databases`/`nlqdb_describe`, no `create_database` tool). Authenticated tool invocation stays credentialed-mirror |
 
 The daily [`acquisition-health.yml`](../../.github/workflows/acquisition-health.yml)
 cron re-runs each walker every 24 h so the seven-day freshness bar is
@@ -99,15 +101,15 @@ founder-facing inbox.
 
 ---
 
-## Status dashboard (updated 2026-06-10)
+## Status dashboard (updated 2026-06-11)
 
 | Flow | Persona | Verification status | Last verified | Mirror impl % |
 |---|---|---|---|---|
-| FLOW-001 | P1 solo builder | **2026-06-10 re-walked** — Playwright `bash scripts/stranger-test.sh --prompts 2` (browser build 1223) steps 1–4 green on both seeded prompts; failed step 5 (gate 403 per GLOBAL-027, `feature_gated`). The SK-GATE-007 invited-browser CORS fix holds — `verify-flows.sh` preflight guard confirms `/v1/ask` `Access-Control-Allow-Headers` lists `x-invite-code`; GLOBAL-032 7-day freshness rule met | 2026-06-10 | 6/7 (86%) |
-| FLOW-002 | P3 analyst | **2026-06-10 re-walked** — `bash scripts/stranger-test.sh` baseline failed step 9 (gate 403 as documented per GLOBAL-027); every static + CTA + draft + sessionStorage-persisted `solve.try_query_clicked` event-spy assertion green | 2026-06-10 | 5/6 (83%) |
-| FLOW-003 | P3 / P4 | **2026-06-10 re-walked** — `bash scripts/stranger-test.sh` baseline failed step 8 (gate 403 as documented per GLOBAL-027); every static + CTA + draft + `/llms.txt` assertion green across all 6 vs slugs (supabase / vanna / mem0 / outerbase / wrenai / askyourdatabase) | 2026-06-10 | 5/5 (100%) |
-| FLOW-004 | P1 solo builder | **2026-06-10 re-walked passed_degraded — gate-bypass intact; first-value seed-quality now MEASURED** — `bash scripts/flow-004-walk.sh`: control `403 feature_gated` ✓ + invite **bypassed the gate** ✓ (SK-GATE-007 intact) AND `/v1/ask` returned **HTTP 200**. The 2026-06-08 `sample_insert_failed` 500 stays cleared (SK-HDC-018 + SK-LLM-033 #352 deployed). The SK-STRG-008 probe (`bash scripts/flow-004-seed-quality.sh`, one invite / 4 goals) measured **`seeded_ok_ratio = 0.25`**: "a habit tracker" → `ok` (4 tables / 12 rows); "a tiny CRM" (previously `ok`), meal-planner, reading-list → `degraded` un-seeded (0/0). Funnel green to a 200; 3/4 land an empty DB — seeding every goal is the open SK-LLM-033 lift | 2026-06-10 | 10/10 (100%) |
-| FLOW-005 | P2 agent builder | **2026-06-10 re-walked passed (no-credential subset, SK-STRG-005)** — `bash scripts/flow-005-walk.sh` 6/6 in <1s (discovery + auth wall + challenge URL); walkthrough steps 6+ (authenticated `tools/list`, `create_database`, `ask`, `run`) still need an `sk_mcp_*` key | 2026-06-10 | 6/7 (86%) |
+| FLOW-001 | P1 solo builder | **2026-06-11 re-walked** — Playwright `bash scripts/stranger-test.sh --prompts 2` (browser build 1223) steps 1–4 green on both seeded prompts; failed step 5 (gate 403 per GLOBAL-027, `feature_gated`). The SK-GATE-007 invited-browser CORS fix holds — `verify-flows.sh` preflight guard confirms `/v1/ask` `Access-Control-Allow-Headers` lists `x-invite-code`; GLOBAL-032 7-day freshness rule met | 2026-06-11 | 6/7 (86%) |
+| FLOW-002 | P3 analyst | **2026-06-11 re-walked** — `bash scripts/stranger-test.sh` baseline failed step 9 (gate 403 as documented per GLOBAL-027); every static + CTA + draft + sessionStorage-persisted `solve.try_query_clicked` event-spy assertion green | 2026-06-11 | 5/6 (83%) |
+| FLOW-003 | P3 / P4 | **2026-06-11 re-walked** — `bash scripts/stranger-test.sh` baseline failed step 8 (gate 403 as documented per GLOBAL-027); every static + CTA + draft + `/llms.txt` assertion green across all 6 vs slugs (supabase / vanna / mem0 / outerbase / wrenai / askyourdatabase) | 2026-06-11 | 5/5 (100%) |
+| FLOW-004 | P1 solo builder | **2026-06-11 re-walked passed_degraded — gate-bypass intact; first-value seed-quality MEASURED** — `bash scripts/flow-004-walk.sh`: control `403 feature_gated` ✓ + invite **bypassed the gate** ✓ (SK-GATE-007 intact) AND `/v1/ask` returned **HTTP 200**. The 2026-06-08 `sample_insert_failed` 500 stays cleared (SK-HDC-018 + SK-LLM-033 #352 deployed). Today's default-goal walk → first-value `degraded` (0/0), consistent with the 2026-06-10 SK-STRG-008 probe **`seeded_ok_ratio = 0.25`** (only "a habit tracker" of 4 goals seeded). Funnel green to a 200; seeding every goal is the open SK-LLM-033 lift | 2026-06-11 | 10/10 (100%) |
+| FLOW-005 | P2 agent builder | **2026-06-11 re-walked passed — both SK-MCP-001 transports** — hosted `bash scripts/flow-005-walk.sh` 6/6 in 1s (discovery + auth wall + challenge URL, SK-STRG-005); local-stdio `bash scripts/flow-005-stdio-walk.sh` 16/16 in 0.3s (real `@nlqdb/mcp` `initialize` + `tools/list` catalog = `nlqdb_query`/`nlqdb_list_databases`/`nlqdb_describe`, no `create_database` tool, SK-STRG-009). Authenticated tool *invocation* still needs an `sk_mcp_*` key | 2026-06-11 | 7/8 (88%) |
 | FLOW-006 | P4 backend engineer | not yet attempted | — | 5/6 (83%) |
 | FLOW-007 | P1 / P3 | not yet attempted | — | 5/6 (83%) |
 | FLOW-008 | cron / system | partial — curl probe of 9 sources passes (HN / GH / GHD / IH / Dev.to / Bluesky / Mastodon 200; Reddit / SO sandbox-egress advisory); cron-side KV writes + LogSnag publish need the deployed Worker | 2026-06-06 | 12/12 (100%) |
@@ -622,24 +624,35 @@ provision and query in English."
 - [r/ClaudeAI — "memory"](https://www.reddit.com/r/ClaudeAI/search/?q=memory)
 - [HN search — "MCP server"](https://hn.algolia.com/?q=MCP+server)
 
+FLOW-005 runs over both [`SK-MCP-001`](../features/mcp-server/decisions/SK-MCP-001-two-transports.md) transports — the **hosted** Streamable-HTTP server (`mcp.nlqdb.com`) and the **local-stdio** npm-fallback. Each has its own no-credential walker.
+
 ### Required tools
 
-- For the **no-credential subset (steps 1-5, SK-STRG-005)**: `bash scripts/flow-005-walk.sh`. HTTP-only (curl + jq), no
+- For the **hosted no-credential subset (steps 1-5, SK-STRG-005)**: `bash scripts/flow-005-walk.sh`. HTTP-only (curl + jq), no
   Playwright, no MCP inspector. Exercises RFC 9728 root + scoped
   resource-metadata, RFC 8414 AS metadata, and the unauthenticated
   `initialize` + `tools/list` 401-with-challenge contract. ≤ 4 s wall.
+- For the **stdio no-credential subset (step 5b, SK-STRG-009)**: `bash scripts/flow-005-stdio-walk.sh`. Spawns the real `@nlqdb/mcp`
+  binary and drives a real MCP `initialize` + `tools/list` handshake over
+  OS pipes (no network — both served from the in-memory registry).
+  Asserts the tool catalog an npm-fallback install discovers. ~0.3 s wall.
 - For the **credentialed subset (steps 6+)**: the official MCP inspector
   ([`@modelcontextprotocol/inspector`](https://www.npmjs.com/package/@modelcontextprotocol/inspector))
-  OR a real MCP-aware client (Claude Desktop, Cursor, Cline, ChatGPT desktop).
+  OR a real MCP-aware client (Claude Desktop, Cursor, Cline, ChatGPT desktop),
+  OR the local-stdio transport with a real key (`NLQDB_API_KEY=<sk_…> bunx @nlqdb/mcp`).
 - The MCP HTTP transport URL: `https://mcp.nlqdb.com`.
 
 ### Required credentials
 
-- **None for steps 1-5** (the SK-STRG-005 walker covers everything an
-  MCP client hits before it asks the user for a key).
-- **`sk_mcp_*` API key OR an invite code** for steps 6+ (`tools/list`
-  with auth, `create_database`, `ask`, `run`). If the agent has
-  neither, ask the founder per `### 3.` of the preamble.
+- **None for steps 1-5 and step 5b** (the SK-STRG-005 + SK-STRG-009
+  walkers cover everything an MCP client hits before it asks the user
+  for a key — discovery, the auth wall, and the tool catalog).
+- **`sk_mcp_*` / `sk_live_*` API key OR an invite code** for steps 6+
+  (authenticated `nlqdb_list_databases` / `nlqdb_describe`, and
+  `nlqdb_query` against a real DB). If the agent has neither, ask the
+  founder per `### 3.` of the preamble — no such key is mintable in-env
+  (keys are stateful in D1; the hosted `/mcp` endpoint needs an
+  OAuth-minted token).
 
 ### Walkthrough steps
 
@@ -667,31 +680,51 @@ asserts `state == "passed"` in the JSON, NOT the individual HTTP calls.
 5. `POST https://mcp.nlqdb.com/mcp` with `tools/list` and no auth → same
    401 + same challenge shape (proves the wall isn't method-specific).
 
-**Credentialed subset (steps 6+, needs `sk_mcp_*` key):**
+**Stdio no-credential subset (step 5b, SK-STRG-009 walker):** run
+`bash scripts/flow-005-stdio-walk.sh` and read the JSON outcome.
+
+5b. The walker spawns the real `@nlqdb/mcp` binary, completes the MCP
+    `initialize` handshake, calls `tools/list`, and asserts the catalog
+    an npm-fallback install discovers: exactly `nlqdb_query`
+    (destructiveHint), `nlqdb_list_databases` (readOnlyHint), and
+    `nlqdb_describe` (readOnlyHint) with their input-schema keys, and
+    **no `create_database` / `ask` / `run` tool** (create is implicit
+    via `nlqdb_query` per [`SK-MCP-002`](../features/mcp-server/decisions/SK-MCP-002-three-tools.md)).
+    Assert `state == "passed"` AND `protocol_ok` AND `catalog_ok`.
+
+**Credentialed subset (steps 6+, needs `sk_mcp_*` / `sk_live_*` key):**
 
 6. Start the MCP inspector against `https://mcp.nlqdb.com` (Streamable
-   HTTP transport): `bunx @modelcontextprotocol/inspector https://mcp.nlqdb.com`.
-7. Assert: the server's `tools/list` response includes
-   `create_database`, `ask`, and `run`. See [`docs/features/mcp-server/FEATURE.md`](../features/mcp-server/FEATURE.md).
-8. Call `create_database` with an English goal:
-   `{"goal": "a memory store for my research assistant"}`.
-9. Assert: the response contains a `dbId` and a freshly-provisioned
-   schema description.
-10. Call `ask` with the new `dbId` and a goal:
-    `{"dbId": "<from step 9>", "goal": "list everything I've stored"}`.
-11. Assert: the response includes a typed table (possibly empty on a
-    fresh DB) and a `sql` field. The SQL is the audit surface per
-    [`GLOBAL-023`](../decisions/GLOBAL-023-trust-ux-baseline.md).
-12. Call `run` with a parameterised insert: `{"dbId": "<id>", "sql":
-    "INSERT INTO facts (k, v) VALUES ($1, $2)", "params": ["pref", "celsius"]}`.
-    Assert: 200 status AND the row appears on a follow-up `ask`.
+   HTTP transport): `bunx @modelcontextprotocol/inspector https://mcp.nlqdb.com`,
+   or the local-stdio transport with a key: `NLQDB_API_KEY=<sk_…> bunx @nlqdb/mcp`.
+7. Assert: `tools/list` returns exactly `nlqdb_query`,
+   `nlqdb_list_databases`, `nlqdb_describe` (no `create_database` / `ask` /
+   `run` — verified credential-free by `flow-005-stdio-walk.sh`). See
+   [`docs/features/mcp-server/FEATURE.md`](../features/mcp-server/FEATURE.md).
+8. Call `nlqdb_query` with `{"db": "research-memory", "q": "create a
+   place to store facts with a key and a value, then show me everything"}`
+   — the DB is materialised on first reference (implicit create, no
+   separate create tool).
+9. Assert: the response carries `db_created: true`, a `trace.sql` field
+   (the audit surface per [`GLOBAL-023`](../decisions/GLOBAL-023-trust-ux-baseline.md)),
+   and a typed (possibly empty) `rows` array.
+10. Call `nlqdb_list_databases` (no args) → assert the new `research-memory`
+    DB appears with its engine (needs a user-scoped key).
+11. Call `nlqdb_describe` with `{"db": "research-memory"}` → assert the
+    schema metadata (slug, engine, schema name).
+12. Call `nlqdb_query` with a destructive goal → assert
+    `requires_confirm: true` + a `diff` body; re-call with `confirm: true`
+    → assert the write commits and the row appears on a follow-up read.
 
 ### Pass criteria
 
-- **No-credential subset (steps 1-5):** `bash scripts/flow-005-walk.sh`
+- **Hosted no-credential subset (steps 1-5):** `bash scripts/flow-005-walk.sh`
   exits 0 AND the JSON outcome has `state == "passed"` AND every one of
   `discovery_ok`, `auth_wall_ok`, `challenge_url_matches` is `true`.
   Wall-clock under 30 s (5 HTTP calls; the walker times each at 15 s).
+- **Stdio no-credential subset (step 5b):** `bash scripts/flow-005-stdio-walk.sh`
+  exits 0 AND the JSON outcome has `state == "passed"` AND both
+  `protocol_ok` and `catalog_ok` are `true`.
 - **Credentialed subset (steps 6+):** every assertion in steps 7-12
   passes. Total wall under 90 s (MCP handshake adds latency vs HTTP).
 
@@ -707,10 +740,17 @@ asserts `state == "passed"` in the JSON, NOT the individual HTTP calls.
   `resource_metadata` URL no longer matches step 2's scoped discovery
   URL. A fresh MCP client can't reach the discovery endpoint pointed
   at by the challenge — handshake breaks. `apps/mcp` regression.
+- `flow-005-stdio-walk.sh` returns `failed` with `catalog_ok:false` → the
+  tool catalog regressed (a renamed/extra tool, a dropped trust-annotation
+  hint, a changed input-schema key); every npm-fallback install breaks at
+  use time. `@nlqdb/mcp` regression. `state:"error"` (exit 2) → the binary
+  failed to spawn or handshake (a build / dependency regression).
 - MCP transport handshake fails (step 6) → `blocked upstream` (CF) or
   `failed step 6` (mcp-server regression).
-- `tools/list` is missing one of `create_database` / `ask` / `run`
-  (step 7) → `failed step 7`; mcp-server regression.
+- `tools/list` is missing one of `nlqdb_query` / `nlqdb_list_databases` /
+  `nlqdb_describe`, or exposes a `create_database` / `ask` / `run` tool
+  (step 7) → `failed step 7`; mcp-server regression (and `flow-005-stdio-walk.sh`
+  would already be red).
 - 401 on the auth header (step 6+) → `blocked credentials`; the `sk_mcp_*`
   key is missing or rotated.
 
@@ -726,6 +766,8 @@ asserts `state == "passed"` in the JSON, NOT the individual HTTP calls.
 | 2026-06-08 | claude-code | **passed (no-credential subset, SK-STRG-005)** | discovery endpoints + auth-wall challenge | GLOBAL-032 freshness re-walk: `bash scripts/flow-005-walk.sh` against `https://mcp.nlqdb.com` 6/6 in 1s wall — RFC 9728 root + scoped resource-metadata, RFC 8414 AS metadata, `initialize` + `tools/list` 401 with `WWW-Authenticate` challenge URL matching the scoped discovery (all unchanged). Walkthrough steps 6+ still need an `sk_mcp_*` key. Artifact: `tools/stranger-test/results/flow-005-2026-06-08T01-35-09Z.json`. |
 | 2026-06-09 | claude-code | **passed (no-credential subset, SK-STRG-005)** | discovery endpoints + auth-wall challenge | GLOBAL-032 freshness re-walk: `bash scripts/flow-005-walk.sh` against `https://mcp.nlqdb.com` 6/6 in 2s wall — RFC 9728 root + scoped resource-metadata, RFC 8414 AS metadata, `initialize` + `tools/list` 401 with `WWW-Authenticate` challenge URL matching the scoped discovery (all unchanged). Walkthrough steps 6+ still need an `sk_mcp_*` key. Artifact: `tools/stranger-test/results/flow-005-2026-06-09T01-35-22Z.json`. |
 | 2026-06-10 | claude-code | **passed (no-credential subset, SK-STRG-005)** | discovery endpoints + auth-wall challenge | GLOBAL-032 freshness re-walk: `bash scripts/flow-005-walk.sh` against `https://mcp.nlqdb.com` 6/6 in <1s wall — RFC 9728 root + scoped resource-metadata, RFC 8414 AS metadata, `initialize` + `tools/list` 401 with `WWW-Authenticate` challenge URL matching the scoped discovery (all unchanged). Walkthrough steps 6+ still need an `sk_mcp_*` key. Artifact: `tools/stranger-test/results/flow-005-2026-06-10T01-36-57Z.json`. |
+| 2026-06-11 | claude-code | **passed (hosted no-credential subset, SK-STRG-005)** | discovery endpoints + auth-wall challenge | GLOBAL-032 freshness re-walk: `bash scripts/flow-005-walk.sh` against `https://mcp.nlqdb.com` 6/6 in 1s wall — RFC 9728 root + scoped resource-metadata, RFC 8414 AS metadata, `initialize` + `tools/list` 401 with `WWW-Authenticate` challenge URL matching the scoped discovery (all unchanged). Artifact: `tools/stranger-test/results/flow-005-2026-06-11T01-35-38Z.json`. |
+| 2026-06-11 | claude-code | **passed (stdio no-credential subset, SK-STRG-009)** | `initialize` + `tools/list` tool catalog | First-ever stdio-transport walk — closes the FLOW-005 local-stdio (npm-fallback) e2e gap. `bash scripts/flow-005-stdio-walk.sh` spawned the real `@nlqdb/mcp` binary and drove a real MCP `initialize` + `tools/list` handshake over OS pipes (no network): **16/16 checks in 0.3s**. serverInfo `{"name":"@nlqdb/mcp"}`; capabilities `{"tools":{"listChanged":true}}`; catalog = `nlqdb_query` (destructiveHint, input `{db,q,confirm}`) + `nlqdb_list_databases` (readOnlyHint, `{}`) + `nlqdb_describe` (readOnlyHint, `{db}`); asserted **no `create_database`/`nlqdb_create_database`/`ask`/`run` tool**. JSON artifact `state:"passed"`, `protocol_ok:true`, `catalog_ok:true`. This walk corrected the credentialed walkthrough's stale `create_database`/`ask`/`run` tool names (steps 6-12) to the real `SK-MCP-002` catalog. Authenticated tool *invocation* still needs a key. Artifact: `tools/stranger-test/results/flow-005-stdio-2026-06-11T01-46-12-678Z.json`. |
 
 ---
 
