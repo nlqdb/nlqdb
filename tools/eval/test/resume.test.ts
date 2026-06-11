@@ -14,7 +14,7 @@ import type { Lane } from "../src/lanes.ts";
 import { _testing, runEval } from "../src/runner.ts";
 import type { EvalQuestion, EvalReport } from "../src/types.ts";
 
-const { sampleQuestions, isChainRateLimited } = _testing;
+const { sampleQuestions, isChainCapacityExhausted } = _testing;
 
 const QUESTIONS = [
   {
@@ -101,15 +101,30 @@ describe("SK-QUAL-011 — sampleQuestions", () => {
   });
 });
 
-describe("SK-QUAL-011 — isChainRateLimited", () => {
-  it("is true only when every attempt is rate_limited", () => {
-    expect(isChainRateLimited(RATE_LIMITED)).toBe(true);
+describe("SK-QUAL-013 — isChainCapacityExhausted", () => {
+  it("is true when every attempt is rate_limited or circuit_open", () => {
+    expect(isChainCapacityExhausted(RATE_LIMITED)).toBe(true);
+    // The post-429 shape: the breaker opened on an earlier question, so
+    // later questions see circuit_open — same capacity exhaustion.
+    const breakerWall = new AllProvidersFailedError("wall", [
+      { provider: "gemini", reason: "circuit_open", error: undefined },
+      { provider: "groq", reason: "circuit_open", error: undefined },
+    ]);
+    expect(isChainCapacityExhausted(breakerWall)).toBe(true);
+    const mixedCapacity = new AllProvidersFailedError("mixed-capacity", [
+      { provider: "gemini", reason: "rate_limited", error: new Error("429") },
+      { provider: "groq", reason: "circuit_open", error: undefined },
+    ]);
+    expect(isChainCapacityExhausted(mixedCapacity)).toBe(true);
+  });
+
+  it("is false for genuine failures (any non-capacity reason) and non-chain errors", () => {
     const mixed = new AllProvidersFailedError("mixed", [
       { provider: "gemini", reason: "rate_limited", error: new Error("429") },
       { provider: "groq", reason: "http_5xx", error: new Error("503") },
     ]);
-    expect(isChainRateLimited(mixed)).toBe(false);
-    expect(isChainRateLimited(new Error("plain"))).toBe(false);
+    expect(isChainCapacityExhausted(mixed)).toBe(false);
+    expect(isChainCapacityExhausted(new Error("plain"))).toBe(false);
   });
 });
 
@@ -162,6 +177,64 @@ describe("SK-QUAL-011 — runner resume + budget stop", () => {
     expect(report.results).toHaveLength(1);
     expect(report.results[0]?.question_id).toBe(0);
     // Checkpoint kept for the next dispatch.
+    expect(existsSync(checkpointPath(outDir, "bird-mini-dev-sqlite"))).toBe(true);
+  });
+
+  it("SK-QUAL-013: waits once on capacity exhaustion and keeps measuring when the chain recovers", async () => {
+    let planCalls = 0;
+    const report = await runEval({
+      dataDir: dir,
+      questionsJsonPath: questionsPath,
+      outDir,
+      runAt: "2026-06-07T00:00:00Z",
+      capacityWaitMs: 5,
+      // Q1's first plan() hits a breaker wall; the post-wait retry recovers.
+      buildLanes: () =>
+        [
+          freeLane(async (req) => {
+            planCalls++;
+            if (req.goal.includes("Newest") && planCalls === 2) {
+              throw new AllProvidersFailedError("wall", [
+                { provider: "gemini", reason: "circuit_open", error: undefined },
+                { provider: "groq", reason: "rate_limited", error: new Error("429") },
+              ]);
+            }
+            return { sql: correctSql(req.goal), model: "free-m", confidence: 1 };
+          }),
+        ] as Lane[],
+      writeReport: async () => "stub.json",
+    });
+
+    expect(report.resumable).toBeUndefined();
+    expect(report.lanes.find((l) => l.lane === "free")?.match).toBe(2);
+    expect(report.lanes.find((l) => l.lane === "free")?.no_sql).toBe(0);
+  });
+
+  it("SK-QUAL-013: budget-stops when the chain is still exhausted after the one wait", async () => {
+    const report = await runEval({
+      dataDir: dir,
+      questionsJsonPath: questionsPath,
+      outDir,
+      runAt: "2026-06-07T00:00:00Z",
+      capacityWaitMs: 5,
+      buildLanes: () =>
+        [
+          freeLane(async (req) => {
+            if (req.goal.includes("Newest")) {
+              throw new AllProvidersFailedError("wall", [
+                { provider: "gemini", reason: "circuit_open", error: undefined },
+                { provider: "groq", reason: "circuit_open", error: undefined },
+              ]);
+            }
+            return { sql: correctSql(req.goal), model: "free-m", confidence: 1 };
+          }),
+        ] as Lane[],
+      writeReport: async () => "stub.json",
+    });
+
+    expect(report.resumable).toBe(true);
+    // Q0 scored; Q1 paused for the next dispatch — never recorded as no_sql.
+    expect(report.results).toHaveLength(1);
     expect(existsSync(checkpointPath(outDir, "bird-mini-dev-sqlite"))).toBe(true);
   });
 

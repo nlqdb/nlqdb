@@ -56,6 +56,13 @@ export type RunOptions = {
   // recover between questions instead of cascading every provider open
   // into a `no_sql` wall. Default 0 ⇒ unchanged (PR CI / mocked router).
   throttleMs?: number;
+  // SK-QUAL-013 — one bounded in-run wait (ms) when the whole chain is
+  // rate-limit exhausted, before budget-stopping. Long enough to outlast
+  // the default 60 s breaker cooldown, a per-minute quota window recovers
+  // and the run keeps measuring; a daily-cap exhaustion doesn't, and the
+  // second consecutive exhaustion budget-stops. Default 0 ⇒ immediate
+  // budget-stop (PR CI / mocked router unchanged).
+  capacityWaitMs?: number;
   // Test-injection point for the report timestamp so a resumed run and a
   // single-shot run can be compared deterministically. Production leaves
   // it unset (wall-clock now).
@@ -129,17 +136,20 @@ class BudgetStopError extends Error {
   }
 }
 
-// SK-QUAL-011 / SK-LLM-030 — the W1↔W2 contract. A whole-chain rate-limit
+// SK-QUAL-013 / SK-LLM-030 — a chain exhausted purely by rate limits
 // surfaces as `AllProvidersFailedError` where every attempt is
-// `rate_limited`. We stop at the first such question, before any breaker
-// flips a later attempt to `circuit_open`, so the literal `.every()`
-// check is sufficient. Mixed reasons (some 5xx) are genuine failures, not
-// a budget stop.
-function isChainRateLimited(err: unknown): boolean {
+// `rate_limited` or `circuit_open` (a 429 opens the breaker for the
+// server's `Retry-After` window, so the questions *after* the first 429
+// see `circuit_open`, not `rate_limited` — the 2026-06-11 500-q run
+// recorded 246 all-`circuit_open` rows as `no_sql` without a single LLM
+// call). Capacity exhaustion is a pause (wait, then budget-stop +
+// resume), never a scored `no_sql`. Mixed reasons (some 5xx / network /
+// parse) are genuine failures, not a budget stop.
+function isChainCapacityExhausted(err: unknown): boolean {
   return (
     err instanceof AllProvidersFailedError &&
     err.attempts.length > 0 &&
-    err.attempts.every((a) => a.reason === "rate_limited")
+    err.attempts.every((a) => a.reason === "rate_limited" || a.reason === "circuit_open")
   );
 }
 
@@ -253,8 +263,9 @@ async function runOneQuestion(
   dbPath: string | null,
   schemaCache: Map<string, string>,
   sqlTimeoutMs?: number,
+  capacityWaitMs = 0,
 ): Promise<QuestionResult> {
-  const start = Date.now();
+  let start = Date.now();
   const ids = {
     question_id: question.question_id,
     db_id: question.db_id,
@@ -333,30 +344,43 @@ async function runOneQuestion(
   };
 
   let retryResult: Awaited<ReturnType<typeof withExecRetry>>;
-  try {
-    retryResult = await withExecRetry({
-      maxAttempts: lane.maxAttempts,
-      plan: (req) => lane.router.plan(req),
-      request: { goal: enrichedGoal, schema, dialect: "sqlite" },
-      score: scoreSql,
-    });
-  } catch (err) {
-    // SK-QUAL-011 — a whole-chain rate-limit is a free-tier daily-cap
-    // budget stop, not a question failure: signal it so the runner
-    // checkpoints and resumes on the next dispatch rather than recording
-    // a spurious no_sql.
-    if (isChainRateLimited(err)) throw new BudgetStopError();
-    // Any other plan() throw bubbles out of the retry helper. Production's
-    // chain failover already exhausted; surface as no_sql with the
-    // original error — same shape as a pre-3c first-attempt throw.
-    return {
-      ...ids,
-      outcome: "no_sql",
-      predicted_sql: "",
-      model: lane.modelHint,
-      latency_ms: Date.now() - start,
-      error: trimErr(err),
-    };
+  let waitedForCapacity = false;
+  for (;;) {
+    try {
+      retryResult = await withExecRetry({
+        maxAttempts: lane.maxAttempts,
+        plan: (req) => lane.router.plan(req),
+        request: { goal: enrichedGoal, schema, dialect: "sqlite" },
+        score: scoreSql,
+      });
+      break;
+    } catch (err) {
+      // SK-QUAL-013 — a rate-limit-exhausted chain is a capacity pause,
+      // not a question failure: wait once (a per-minute window + the 60 s
+      // breaker cooldown recover), then budget-stop so the runner
+      // checkpoints and resumes on the next dispatch rather than
+      // recording a spurious no_sql.
+      if (isChainCapacityExhausted(err)) {
+        if (capacityWaitMs > 0 && !waitedForCapacity) {
+          waitedForCapacity = true;
+          await new Promise((r) => setTimeout(r, capacityWaitMs));
+          start = Date.now(); // the wait is harness pacing, not question latency
+          continue;
+        }
+        throw new BudgetStopError();
+      }
+      // Any other plan() throw bubbles out of the retry helper. Production's
+      // chain failover already exhausted; surface as no_sql with the
+      // original error — same shape as a pre-3c first-attempt throw.
+      return {
+        ...ids,
+        outcome: "no_sql",
+        predicted_sql: "",
+        model: lane.modelHint,
+        latency_ms: Date.now() - start,
+        error: trimErr(err),
+      };
+    }
   }
   const latency_ms = Date.now() - start;
   return {
@@ -433,6 +457,7 @@ export async function runEval(opts: RunOptions = {}): Promise<EvalReport> {
             dbPath,
             schemaCache,
             opts.sqlTimeoutMs,
+            opts.capacityWaitMs ?? 0,
           );
           return { result };
         } catch (err) {
@@ -551,6 +576,8 @@ function parseCliArgs(): RunOptions {
       "sql-timeout-ms": { type: "string" },
       // Inter-question pacing for low-RPM free chains (default 0).
       "throttle-ms": { type: "string" },
+      // SK-QUAL-013 — one bounded wait before a capacity budget-stop (default 0).
+      "capacity-wait-ms": { type: "string" },
       // SK-QUAL-002 / SK-QUAL-005 — baseline comparison + event emission.
       baseline: { type: "string" },
       // `emit-url` and `emit-token` go together; either both set (cron)
@@ -572,6 +599,8 @@ function parseCliArgs(): RunOptions {
   if (values.out) out.outDir = values.out;
   if (values["sql-timeout-ms"]) out.sqlTimeoutMs = Number.parseInt(values["sql-timeout-ms"], 10);
   if (values["throttle-ms"]) out.throttleMs = Number.parseInt(values["throttle-ms"], 10);
+  if (values["capacity-wait-ms"])
+    out.capacityWaitMs = Number.parseInt(values["capacity-wait-ms"], 10);
   if (values.baseline) out.baselinePath = values.baseline;
   // Both flags must be set together — fail loud per GLOBAL-012 if only
   // one is provided, so a typo in the workflow doesn't silently drop the
@@ -637,5 +666,5 @@ export const _testing = {
   introspectSchema,
   parseDatasetFlag,
   sampleQuestions,
-  isChainRateLimited,
+  isChainCapacityExhausted,
 };

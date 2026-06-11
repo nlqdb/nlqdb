@@ -109,6 +109,18 @@ jobs:
           unzip -q spider2_data/spider2-localdb.zip -d spider2_data/resource/databases/spider2-localdb
           rm -f spider2_data/spider2-localdb.zip
 
+      # SK-QUAL-013 — a capacity budget-stop keeps its checkpoint; the
+      # cache lets a re-dispatch of the SAME commit resume instead of
+      # re-burning quota. Keyed by sha so two code versions never share a
+      # canonical run's partial scores.
+      - name: Restore full-run checkpoint
+        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: tools/eval/results/*.partial.jsonl
+          key: eval-full-spider-${{ github.sha }}-${{ github.run_id }}
+          restore-keys: |
+            eval-full-spider-${{ github.sha }}-
+
       - name: Run quality-eval
         working-directory: tools/eval
         env:
@@ -152,7 +164,15 @@ jobs:
             --limit "$limit" \
             --out results \
             --throttle-ms 3000 \
+            --capacity-wait-ms 65000 \
             $emit_args
+
+      - name: Save full-run checkpoint
+        if: always()
+        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: tools/eval/results/*.partial.jsonl
+          key: eval-full-spider-${{ github.sha }}-${{ github.run_id }}
 
       - name: Upload report JSON
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
@@ -180,6 +200,7 @@ jobs:
               "Run at: " + .run_at,
               "Dataset: " + .dataset,
               "Questions: " + (.question_count | tostring),
+              (if .resumable == true then "Resumable: true (capacity budget-stop — re-dispatch this commit to resume)" else empty end),
               "",
               "| Lane | Match | Attempted | EA (scored) | Gold errors | p50 ms | p95 ms |",
               "|---|---|---|---|---|---|---|",
@@ -264,6 +285,7 @@ jobs:
             --data-dir spider2_data \
             --limit "$SMOKE_LIMIT" --sample-seed "$SMOKE_SEED" \
             --throttle-ms 3000 \
+            --capacity-wait-ms 65000 \
             --out eval-state
           latest=$(ls -t eval-state/*.json | head -1)
           if jq -e '.resumable == true' "$latest" >/dev/null 2>&1; then

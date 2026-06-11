@@ -21,7 +21,7 @@ when-to-load:
 ## Touchpoints — read this feature before editing
 
 - `tools/eval/` — benchmark runner (slices 1 + 2 + 3a + 3b + 3c shipped):
-  - `src/runner.ts` — multi-dataset driver, CLI entry, lane loop, baseline + emit integration; wraps `plan() → score()` in `withExecRetry` for scaffolded lanes (`SK-QUAL-009`); routes Spider 2.0 rows to `scoreOneSpider2` (`SK-QUAL-008`); `--throttle-ms` paces a low-RPM free chain (`SK-QUAL-012`)
+  - `src/runner.ts` — multi-dataset driver, CLI entry, lane loop, baseline + emit integration; wraps `plan() → score()` in `withExecRetry` for scaffolded lanes (`SK-QUAL-009`); routes Spider 2.0 rows to `scoreOneSpider2` (`SK-QUAL-008`); `--throttle-ms` paces a low-RPM free chain (`SK-QUAL-012`); `--capacity-wait-ms` + the widened budget-stop keep a rate-limit breaker wall out of the scores (`SK-QUAL-013`)
   - `src/exec-retry.ts` — `withExecRetry({maxAttempts, plan, request, score})` (`SK-QUAL-009`): bounded retry loop on `exec_error` only; threads previous SQL + error into `PlanRequest.previousAttempt`
   - `src/score.ts` — BIRD's multiset / sequence-strict EX scorer **plus** the Spider 2.0 multi-CSV `comparePandasTable` / `compareMultiPandasTable` port + `scoreOneSpider2` (`SK-QUAL-008`)
   - `src/csv.ts` — minimal RFC-4180 CSV parser + per-column type inference for pandas-emitted gold CSVs (`SK-QUAL-008`)
@@ -181,6 +181,17 @@ Optional `--throttle-ms` (`RunOptions.throttleMs`, default 0 ⇒ unchanged)
 sleeps between questions so the ~5-RPM Cerebras head (`SK-LLM-023`) doesn't
 cascade every breaker open into a `no_sql` wall. Measurement-harness knob
 only — production is untouched. Complements the `SK-QUAL-011` budget-stop.
+
+### SK-QUAL-013 — Capacity-honest budget stop: a rate-limit breaker wall pauses the run, never scores `no_sql`
+
+**Body:** [`decisions/SK-QUAL-013-capacity-honest-budget-stop.md`](./decisions/SK-QUAL-013-capacity-honest-budget-stop.md).
+Budget-stop fires on **capacity exhaustion** (every attempt `rate_limited`
+**or** `circuit_open` — a 429 opens the breaker for its `Retry-After`
+window, so the wall after the first 429 reads `circuit_open`), after one
+bounded `--capacity-wait-ms` wait-and-retry (workflows: 65 s; default 0).
+Full-mode workflows cache the checkpoint by commit SHA so a re-dispatch
+resumes. Fixes the 2026-06-11 500-q run scoring 246 breaker-wall rows as
+`no_sql` without a single LLM call.
 
 ## GLOBALs governing this feature
 
