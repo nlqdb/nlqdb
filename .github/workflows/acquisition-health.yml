@@ -137,6 +137,19 @@ jobs:
           bash scripts/flow-005-walk.sh
           echo "exit_code=$?" >> "$GITHUB_OUTPUT"
 
+      - name: flow-005-stdio-walk (MCP local-stdio transport catalog)
+        id: flow-005-stdio
+        continue-on-error: true
+        env:
+          # The stdio transport (SK-MCP-001 npm fallback) spawns the local
+          # @nlqdb/mcp binary — no network, no host override needed. Asserts
+          # the tool catalog an npm-fallback install discovers (SK-STRG-009).
+          FLOW_005_STDIO_OUT: tools/stranger-test/results/flow-005-stdio-cron.json
+        run: |
+          set +e
+          bash scripts/flow-005-stdio-walk.sh
+          echo "exit_code=$?" >> "$GITHUB_OUTPUT"
+
       - name: Upload walker artifacts
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         if: always()
@@ -151,11 +164,13 @@ jobs:
           set -u
           flow004="tools/stranger-test/results/flow-004-cron.json"
           flow005="tools/stranger-test/results/flow-005-cron.json"
+          flow005stdio="tools/stranger-test/results/flow-005-stdio-cron.json"
           walk="tools/stranger-test/results/walk-cron.json"
           # Read the canonical `state` from the JSON artifacts so the agent
           # re-fetching the summary can react without downloading the bundle.
           flow004_state="$([ -f "$flow004" ] && jq -r '.state // "missing"' "$flow004" || echo "skipped")"
           flow005_state="$([ -f "$flow005" ] && jq -r '.state // "missing"' "$flow005" || echo "missing")"
+          flow005stdio_state="$([ -f "$flow005stdio" ] && jq -r '.state // "missing"' "$flow005stdio" || echo "missing")"
           walk_state="missing"
           if [ -f "$walk" ]; then
             walk_state="$(jq -r 'if .summary.failed > 0 then "failed (\(.summary.failed)/\(.summary.totalRuns))" else "passed (\(.summary.passed)/\(.summary.totalRuns))" end' "$walk")"
@@ -170,6 +185,7 @@ jobs:
             echo "| stranger-test.sh | ${walk_state} | ${{ steps.stranger-test.outputs.exit_code || 'n/a' }} | walk-cron.json |"
             echo "| flow-004-walk.sh | ${flow004_state} | ${{ steps.flow-004.outputs.exit_code || 'skipped' }} | flow-004-cron.json |"
             echo "| flow-005-walk.sh | ${flow005_state} | ${{ steps.flow-005.outputs.exit_code || 'n/a' }} | flow-005-cron.json |"
+            echo "| flow-005-stdio-walk.sh | ${flow005stdio_state} | ${{ steps.flow-005-stdio.outputs.exit_code || 'n/a' }} | flow-005-stdio-cron.json |"
             echo ""
             if [ -f "$flow004" ]; then
               echo "### FLOW-004 outcome"
@@ -196,6 +212,19 @@ jobs:
                 "- checks_failed: " + (.checks_failed | tostring),
                 "- total_wall_s: " + (.total_wall_s | tostring)
               ' "$flow005"
+            fi
+            if [ -f "$flow005stdio" ]; then
+              echo ""
+              echo "### FLOW-005 stdio-transport outcome"
+              jq -r '
+                "- state: " + .state,
+                "- protocol_ok: " + (.protocol_ok | tostring),
+                "- catalog_ok: " + (.catalog_ok | tostring),
+                "- tools: " + ((.tools // []) | join(", ")),
+                "- checks_passed: " + (.checks_passed | tostring),
+                "- checks_failed: " + (.checks_failed | tostring),
+                "- total_wall_s: " + (.total_wall_s | tostring)
+              ' "$flow005stdio"
             fi
             if [ -f "$walk" ]; then
               echo ""
