@@ -22,7 +22,7 @@ Your machine works. Your compass is broken — in one specific, fixable place.
    (the API token lacks the analytics scope). The only feedback nlqdb has ever
    received is from itself.
 3. **The quality loop is open, not closed.** 12 planner levers (SK-LLM-023…035)
-   shipped blind; one aggregate measurement ever (2026-06-09); the canonical
+   shipped blind; one aggregate measurement since they landed (2026-06-09); the canonical
    re-seed has sat in `blocked-by-human.md` waiting for a click. Agents optimize
    what they can see — merged PRs, resolved open questions — because the number
    that matters is measured roughly never.
@@ -43,7 +43,7 @@ a this-week checklist below.
 | Gate thresholds | BIRD ≥ 0.65 AND Spider ≥ 0.75 | GLOBAL-027 |
 | Spider 2.0-lite world SOTA | ~72 (closed, frontier agentic); ~35–45 (published methods) | [leaderboard](https://spider2-sql.github.io/), [ReFoRCE 36.56](https://arxiv.org/abs/2502.00675), [DecisionX 71.84](https://cxotoday.com/media-coverage/bengalurus-decisionx-ranks-2-globally-on-spider-2-0-lite-the-worlds-hardest-enterprise-reasoning-benchmark/) |
 | BIRD-dev canonical SOTA | ~73–77 dev (frontier / agentic) | GLOBAL-025 §KPI (your own, correct) |
-| Eval runs ever | 1 (levers T1–T16 measured as one bundle) | `docs/progress/quality-score-source-of-truth.md` |
+| Eval runs since the 12 levers shipped | 1 (T1–T16 measured as one bundle, 2026-06-09; one pre-lever baseline 2026-05-18) | `docs/progress/quality-score-source-of-truth.md` |
 | Docs corpus | 286 md files, ~2.1 MB; 10+ files over the 20 KB cap | `find docs` |
 | Commit rate | 50 commits / 6 days, ~7 agent lanes | `git log` |
 | Design-partner interviews / outreach sent | 0 / 0 | `founder-playbook.md`, `icp-evidence-2026-05.md` |
@@ -107,7 +107,8 @@ Three problems:
    checkout**; BYO ClickHouse introspection before one user has connected one
    Postgres.
 2. **The doc-churn lane.** "Resolve 10 open questions per GLOBAL-033" ships
-   ~daily. GLOBAL-033 is a good escalation valve, but a *daily quota* of
+   ~daily. GLOBAL-033 (resolve open questions from the documented values
+   instead of escalating) is a good rule, but a *daily quota* of
    resolved questions manufactures decisions for the sake of resolution — the
    opposite of D5. Retire it as a routine; apply GLOBAL-033 inline when an
    agent actually hits an open question.
@@ -193,7 +194,7 @@ Specific issues:
   (runbook 53 KB, anonymous-mode 38 KB, hosted-db-create 35 KB…). Either
   enforce with a CI check or drop the rule.
 - **`now.md` is the worst offender stylistically.** Its five sections are
-  1,000-word run-on paragraphs where every clause cites three IDs. An agent
+  ~1,500 words of run-on paragraphs where every clause cites three IDs. An agent
   (or you) cannot extract "what's next" without reading all of it. Rewrite
   each section as: *Goal · Done (link list) · Next (one line) · Number it
   moves*. Ten lines per priority, max.
@@ -246,7 +247,7 @@ Founder (clicks only, ~1 hour total):
    secrets; submit the MCP directory form.
 4. Approve the first Show-HN draft when lane 3 produces it.
 
-Agents (this week's reprompted routine):
+Agents (this week's reprompted routine — applies only if you adopt R2):
 1. Build persona-bench (questions from `personas.md` over self-created schemas).
 2. Build `docs/scorecard.md` + the daily regenerator, bot-filtered.
 3. Rewrite `now.md` in the §6 format; add the 20 KB CI check.
