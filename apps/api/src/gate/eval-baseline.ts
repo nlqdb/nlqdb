@@ -20,7 +20,7 @@ export type EvalBaseline = {
 
 export const EVAL_BASELINE = {
   bird_accuracy: 0.522,
-  spider_accuracy: 0.17,
+  spider_accuracy: 0.1704,
   bird_target: 0.65,
   spider_target: 0.75,
   measured_at: "2026-06-12T07:30:09.249Z",

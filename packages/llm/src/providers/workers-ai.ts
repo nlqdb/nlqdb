@@ -92,7 +92,9 @@ async function workersAIChat(
   // SK-LLM-036 — re-serialize an object-shaped response so the shared
   // JSON-response parsing sees the same wire shape as every other leg;
   // rejecting it had structurally dead-ended this provider on `plan`.
-  if (text !== null && typeof text === "object") return JSON.stringify(text);
+  if (text !== null && typeof text === "object" && !Array.isArray(text)) {
+    return JSON.stringify(text);
+  }
   throw new ProviderError(
     `POST ${url} → 200 missing result.response (got ${truncate(JSON.stringify(parsed), 120)})`,
     "parse",

@@ -17,10 +17,13 @@ reverse.
   deterministic — `--sample-seed` picks a fixed slice from the full set
   via a seeded shuffle, sorted by id — so "skip done" is a set lookup and
   a resumed run produces the same scoring as a single-shot run. When the
-  whole provider chain is rate-limited (`AllProvidersFailedError` with
-  `attempts.every(a => a.reason === "rate_limited")`, the
-  [`SK-LLM-030`](../../llm-router/decisions/SK-LLM-030-rate-limit-aware-failover.md)
-  contract), the runner treats it as a **budget stop**: it keeps the
+  whole provider chain is capacity-exhausted (`AllProvidersFailedError`
+  with every attempt `rate_limited` **or** `circuit_open` — the predicate
+  [`SK-QUAL-013`](./SK-QUAL-013-capacity-honest-budget-stop.md) widened
+  after the original all-`rate_limited` check missed the post-429 breaker
+  wall; breaker semantics per
+  [`SK-LLM-030`](../../llm-router/decisions/SK-LLM-030-rate-limit-aware-failover.md)),
+  the runner treats it as a **budget stop**: it keeps the
   checkpoint, marks the report `resumable: true`, **does not emit**, and
   exits 0 — so a daily-cap hit reads as a pause, not a wall of `no_sql`
   rows. The operator re-dispatches once the cap resets.
@@ -33,16 +36,17 @@ reverse.
   the quota ran out, resume when it recovers — exactly what an on-demand
   [`SK-QUAL-002`](./SK-QUAL-002-weekly-cron.md) full pass needs to finish
   even when it brushes the daily cap. Detecting the stop
-  off W2's `rate_limited` reason (rather than a token counter) keeps it
-  honest and dependency-free: we stop at the first fully-rate-limited
-  question, before any breaker flips a later attempt to `circuit_open`,
-  so the literal `.every(rate_limited)` check is sufficient; mixed
-  reasons (a real 5xx) stay a genuine `no_sql`, not a budget stop.
+  off the failover reasons (rather than a token counter) keeps it honest
+  and dependency-free; mixed reasons (a real 5xx) stay a genuine
+  `no_sql`, not a budget stop. The exact predicate is
+  [`SK-QUAL-013`](./SK-QUAL-013-capacity-honest-budget-stop.md)'s —
+  a 429 opens the breaker for its `Retry-After` window, so an exhausted
+  chain reads `circuit_open`, not `rate_limited`, after the first hit.
 - **Consequence in code:** `tools/eval/src/checkpoint.ts` (load / append /
   complete / `checkpointKey` / `checkpointPath`); `runner.ts` gains
   `--sample-seed` + deterministic `sampleQuestions`, checkpoint
-  skip/append/complete, the `BudgetStopError` + `isChainRateLimited`
-  detector, a `resumable?: boolean` on `EvalReport`, and a `runAt`
+  skip/append/complete, the `BudgetStopError` + `isChainCapacityExhausted`
+  detector (`SK-QUAL-013`), a `resumable?: boolean` on `EvalReport`, and a `runAt`
   test-injection seam (so a resumed run and a single-shot run compare
   identically modulo wall-clock). The smoke `mode`
   ([`SK-QUAL-002`](./SK-QUAL-002-weekly-cron.md)) persists its

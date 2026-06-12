@@ -46,7 +46,7 @@
       "waitlist_url": "https://nlqdb.com/#waitlist",
       "gate": {
         "bird_accuracy": 0.522,
-        "spider_accuracy": 0.17,
+        "spider_accuracy": 0.1704,
         "bird_target": 0.65,
         "spider_target": 0.75,
         "measured_at": "2026-06-12T07:30:09.249Z"
@@ -58,7 +58,7 @@
   `gate.{bird,spider}_accuracy` are `number | null`; `null` means a
   lane hasn't been measured yet (it renders honestly as "not yet
   measured"). As of the 2026-06-12 first complete canonical runs both
-  lanes carry measured values (BIRD 0.522, Spider 0.17) and both stay
+  lanes carry measured values (BIRD 0.522, Spider 0.1704) and both stay
   below target. Surfaces render the pair as a
   progress bar.
 

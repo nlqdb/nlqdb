@@ -521,10 +521,10 @@ export async function runEval(opts: RunOptions = {}): Promise<EvalReport> {
 
   const writer = opts.writeReport ?? writeReport;
 
-  // SK-QUAL-011 — budget stop: the whole chain is rate-limited (free-tier
-  // daily cap). Keep the checkpoint, mark the report resumable, write it
-  // for inspection, and DON'T emit. The next dispatch loads the
-  // checkpoint and finishes the remaining pairs.
+  // SK-QUAL-011/SK-QUAL-013 — budget stop: the chain is capacity-exhausted
+  // (rate-limited / breaker-walled). Keep the checkpoint, mark the report
+  // resumable, write it for inspection, and DON'T emit. The next dispatch
+  // loads the checkpoint and finishes the remaining pairs.
   if (budgetStopped) {
     report.resumable = true;
     await writer(report, opts.outDir);
