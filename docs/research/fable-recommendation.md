@@ -11,9 +11,10 @@ Your machine works. Your compass is broken — in one specific, fixable place.
 1. **The front door is locked behind an impossible number.** GLOBAL-027 gates
    every do-work endpoint on Spider 2.0-lite ≥ 0.75. Your own GLOBAL-025 records
    the 2026 Spider 2.0 frontier at 5–23% and sets a Phase-3 *floor* of 15%.
-   Published SOTA on Spider 2.0-lite is ~37% for open methods and ~72% for the
-   best closed agentic system (Oracle SOMA-SQL / DecisionX 71.84, Apr 2026) —
-   on frontier models, not free ones. **The gate can never self-remove.** Until
+   On the Spider 2.0-lite leaderboard (checked 2026-06-12), the best published
+   method scores ~55% (ReFoRCE + o3) and the best closed agentic system 73.13
+   (DivSkill-SQL) — on frontier models, not free ones. **The gate can never
+   self-remove.** Until
    it changes, no human can ever use the product, so no feedback loop can exist,
    so "lost" is the structurally correct feeling — it is not a personal failure.
 2. **The company has zero external contact, measured.** Production D1 today:
@@ -41,7 +42,7 @@ a this-week checklist below.
 | BIRD-dev EX (free chain) | 0.35 (lower bound, 1 run, 2026-06-09) | `apps/api/src/gate/eval-baseline.ts` |
 | Spider 2.0-lite EX (free chain) | 0.12 | same |
 | Gate thresholds | BIRD ≥ 0.65 AND Spider ≥ 0.75 | GLOBAL-027 |
-| Spider 2.0-lite world SOTA | ~72 (closed, frontier agentic); ~35–45 (published methods) | [leaderboard](https://spider2-sql.github.io/), [ReFoRCE 36.56](https://arxiv.org/abs/2502.00675), [DecisionX 71.84](https://cxotoday.com/media-coverage/bengalurus-decisionx-ranks-2-globally-on-spider-2-0-lite-the-worlds-hardest-enterprise-reasoning-benchmark/) |
+| Spider 2.0-lite world SOTA | 73.13 (DivSkill-SQL, closed frontier agentic); 55.21 (best published, [ReFoRCE + o3](https://arxiv.org/abs/2502.00675)) | [leaderboard](https://spider2-sql.github.io/), checked 2026-06-12 |
 | BIRD-dev canonical SOTA | ~73–77 dev (frontier / agentic) | GLOBAL-025 §KPI (your own, correct) |
 | Eval runs since the 12 levers shipped | 1 (T1–T16 measured as one bundle, 2026-06-09; one pre-lever baseline 2026-05-18) | `docs/progress/quality-score-source-of-truth.md` |
 | Docs corpus | 286 md files, ~2.1 MB; 10+ files over the 20 KB cap | `find docs` |
@@ -90,7 +91,7 @@ company from reality.
   ≥ 0.60, Spider report-only) are the defensible ones.
 
 This supersedes part of GLOBAL-027 — your call, not mine. But note the gate's
-own "Why" says it "buys time before strangers form an opinion." Seven weeks in,
+own "Why" says it "buys time … before strangers form an opinion." Seven weeks in,
 the measured number of strangers with any opinion is zero. The narrative-risk
 trade has been all cost, no benefit.
 
