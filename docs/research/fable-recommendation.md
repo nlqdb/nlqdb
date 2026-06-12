@@ -8,15 +8,13 @@ sourced. This doc raises decisions per P1; it changes nothing by itself.*
 
 Your machine works. Your compass is broken — in one specific, fixable place.
 
-1. **The front door is locked behind an impossible number.** GLOBAL-027 gates
-   every do-work endpoint on Spider 2.0-lite ≥ 0.75. Your own GLOBAL-025 records
-   the 2026 Spider 2.0 frontier at 5–23% and sets a Phase-3 *floor* of 15%.
-   On the Spider 2.0-lite leaderboard (checked 2026-06-12), the best published
-   method scores ~55% (ReFoRCE + o3) and the best closed agentic system 73.13
-   (DivSkill-SQL) — on frontier models, not free ones. **The gate can never
-   self-remove.** Until
-   it changes, no human can ever use the product, so no feedback loop can exist,
-   so "lost" is the structurally correct feeling — it is not a personal failure.
+1. **The front door looked locked behind an impossible number — resolved
+   2026-06-12 (§2).** GLOBAL-027 gates every do-work endpoint on Spider
+   2.0-lite ≥ 0.75; the best closed agentic system on the leaderboard (checked
+   2026-06-12) scores 73.13, so the gate can never self-remove on its own.
+   The founder's call: the already-merged invite-valve (waitlist signup →
+   auto-emailed invite code) **is** the open door; the thresholds stay as a
+   progress bar, not a lock. The bottleneck is traffic, not the gate.
 2. **The company has zero external contact, measured.** Production D1 today:
    7 users (you ×3 + 4 test accounts), 66 waitlist rows of which 62 are your own
    stranger-test bots, 3 are probes, and 1 is you. Web analytics are unreadable
@@ -26,11 +24,14 @@ Your machine works. Your compass is broken — in one specific, fixable place.
    shipped blind; one aggregate measurement since they landed (2026-06-09); the canonical
    re-seed has sat in `blocked-by-human.md` waiting for a click. Agents optimize
    what they can see — merged PRs, resolved open questions — because the number
-   that matters is measured roughly never.
+   that matters is measured roughly never. *(Update, same day: the re-seed ran
+   — BIRD 0.522, Spider 0.1704 — and the newest lever wave shipped WITH
+   same-seed before/after smokes. The loop is starting to close; §8 tracks
+   what's left.)*
 
-The fix is one recalibration decision, one closed loop, and re-pointing ~3 of
-the 7 daily agents from *building* to *measuring and distributing*. Details and
-a this-week checklist below.
+The fix: the door decision is resolved (§2), the quality loop is closing
+(§8), and ~3 of the 7 daily agents re-point from *building* to *measuring
+and distributing*. Status checklist in §8; the operating loop in §9.
 
 ## 1. Ground truth (measured 2026-06-12)
 
@@ -54,9 +55,9 @@ Read that table as a sentence: *a 7-week-old company with a working product
 pipeline, world-class process discipline, zero users by design, and one
 quality measurement.*
 
-## 2. The structural bug: GLOBAL-027 contradicts GLOBAL-025 (P1 escalation)
+## 2. The structural bug: GLOBAL-027 contradicts GLOBAL-025 (resolved 2026-06-12)
 
-This is the load-bearing finding, raised per P1 for your decision:
+This was the load-bearing finding, raised per P1 — resolution at the end:
 
 - GLOBAL-025 (north-star) — correctly calibrated. Spider 2.0-lite free chain:
   Phase 2 "report only", Phase 3 floor **≥ 15%**. It even says: "The Spider 2.0
@@ -67,33 +68,21 @@ This is the load-bearing finding, raised per P1 for your decision:
   above the best closed frontier-agentic system on Earth, and likely a
   Spider-1.0 number applied to Spider 2.0 (75–85% EX was normal on Spider 1.0).
 
-Consequences while this stands: FLOW-001/002/003 fail at gate-403 *by design*,
-the waitlist converts nobody (there's nobody to convert), Sean Ellis can never
-run, every onboarding/UX/distribution KPI reads zero, and all four north-star
-pillars except engine quality are unmeasurable. One decision quarantines the
-company from reality.
+What this section missed on first writing: the SK-GATE-007 invite-valve was
+already merged and verified (`waitlist-invite.ts` — every waitlist signup is
+auto-emailed an invite code, 200/week cap; `scripts/flow-004-walk.sh` walks it
+end-to-end to a 200, re-verified 2026-06-12). A stranger CAN reach a first
+answer today with one email click; only the anonymous instant paths
+(FLOW-001/002/003) stay 403 by design.
 
-**Recommendation R1 — recalibrate the gate to a user-relevant bar.**
-
-- Replace the academic gate with a **persona-bench gate**: ~50–100 NL questions
-  drawn from `personas.md`'s representative queries over schemas nlqdb itself
-  creates (5–20 tables — your actual ICP shape, not 1000-column enterprise
-  warehouses). Gate on e.g. ≥ 80% there. Your users are Maya with a side
-  project, not a Snowflake analyst; BIRD/Spider measure the wrong difficulty.
-- Keep BIRD + Spider exactly as GLOBAL-025 already treats them: tracked KPIs
-  with floors and alerts, the free-vs-frontier delta as the headline — but not
-  a launch lock.
-- Keep the gate *mechanism* (it's well built); change `eval-baseline.ts`'s
-  contract to the persona-bench number. Label the product pre-alpha loudly;
-  GLOBAL-023 trust-UX (confidence, diff preview) already does the
-  expectation-setting the gate was bought for.
-- If you keep any academic threshold, GLOBAL-025's own Phase-2 floors (BIRD
-  ≥ 0.60, Spider report-only) are the defensible ones.
-
-This supersedes part of GLOBAL-027 — your call, not mine. But note the gate's
-own "Why" says it "buys time … before strangers form an opinion." Seven weeks in,
-the measured number of strangers with any opinion is zero. The narrative-risk
-trade has been all cost, no benefit.
+**Resolution (founder, 2026-06-12): R1 is closed — the valve is the door.**
+The BIRD/Spider thresholds are deliberately NOT rebased: they stay as the
+public progress bar (GLOBAL-025 treatment), the gate middleware stays until
+they clear or real-user evidence motivates a rebase, and agents must not
+re-escalate the mismatch (recorded in GLOBAL-027 §Lifecycle). What survives
+as agent work: build the **persona-bench** — ~50–100 NL questions from
+`personas.md` over nlqdb-created 5–20-table schemas (the actual ICP shape) —
+as a tracked, user-relevant quality number alongside BIRD/Spider.
 
 ## 3. The daily agents: rebuild around the loop, not the backlog
 
@@ -124,7 +113,7 @@ Three problems:
 |---|---|---|---|
 | 1 | **Scorecard** | Pull eval results, D1 counts, CF analytics, LogSnag → regenerate `docs/scorecard.md` (one page, ≤ 5 KB) → flag the worst number | all (read-only) |
 | 2 | **Eval loop** | Pick ONE lever → run mini-eval (fixed 60-q slice) before/after → merge only if Δ ≥ 0, else revert + record | persona-bench %, BIRD % |
-| 3 | **Distribution** | Produce one publishable artifact/day: Show-HN draft, dev.to post, answer to a real SO/Reddit thread, comparison-page improvement, directory submission. Queue in `blocked-by-human.md` for one-click approval | external visits, real waitlist rows |
+| 3 | **Distribution** | Produce one publishable artifact/day: Show-HN draft, dev.to post, answer to a real SO/Reddit thread, comparison-page improvement, directory submission. Queue in `docs/research/distribution-queue.md`; founder reviews weekly | external visits, real waitlist rows |
 | 4 | **User evidence** | ICP mining toward the ≥30-quote bar; draft (not send) outreach to authors of mined pain-quotes; in-product Sean Ellis survey slice | scored quotes, survey responses |
 | 5 | **Stranger test** | Keep as-is — it's genuinely good — plus: alert when a *real* (non-bot) email enters the funnel | funnel pass-rate |
 | 6 | **Feature** | One lane, demand-ordered: finish BYO Postgres end-to-end before ClickHouse/OTel; billing lane frozen until first "how do I pay" | TTFV, first-query success |
@@ -142,8 +131,9 @@ You don't need sales or calls. You need **published artifacts + an open door +
 honest measurement**. All async, all free, all agent-draftable with you as the
 one-click approver:
 
-1. **Open the door** (R1) — nothing else on this list works while every visitor
-   gets a 403.
+1. **Open the door — done.** The invite-valve carries every waitlist signup
+   across the gate (verified 2026-06-12); only the anonymous instant paths
+   still 403.
 2. **Launch posts, in order of effort:** Show HN ("a database you talk to, no
    backend — built and run ~entirely by Claude Code" is itself a hook),
    lobste.rs, r/SideProject + r/Database, Hacker News comment presence on
@@ -153,7 +143,7 @@ one-click approver:
    pain-threads; the distribution agent writes a genuinely helpful answer that
    mentions nlqdb once. This is the no-sales version of outreach.
 4. **AEO you already built:** `/solve/*`, `/vs/*`, `llms.txt`, MCP directory
-   submission (sitting in blocked-by-human — submit it). These are inbound
+   submission (form submitted 2026-06-12 — §8). These are inbound
    channels that work while you sleep, but today nothing measures whether they
    receive a single visit → see §5.
 5. **In-product Sean Ellis** instead of interview calls: after a user's Nth
@@ -179,12 +169,12 @@ one page, one table, committed (so trends live in git history):
 - Ops: p50/p95 ask latency, error rate, $ spend (should be ~0).
 - One line: "worst number this week" + which lane owns it.
 
-Plumbing gaps found today, all free to fix: the Cloudflare API token lacks
-`Zone Analytics:Read` (grant it — then agent #1 can pull real pageviews);
-PostHog key is ingestion-only (per GLOBAL-034 it's Phase-2-optional — CF Web
+Plumbing gaps found today, all free to fix: the CF token's
+`Zone Analytics:Read` was granted by the founder 2026-06-12 (scorecard agent
+verifies on its first pull); PostHog key is ingestion-only (per GLOBAL-034 it's Phase-2-optional — CF Web
 Analytics + D1 + LogSnag suffice for now); `GH_TOKEN_WORKFLOW` may already
-allow agents to `workflow_dispatch` the eval — test it and delete that
-blocked-by-human bullet if so.
+allow agents to `workflow_dispatch` the eval — the `/daily` scorecard step
+verifies on its first dispatch.
 
 ## 6. Docs: yes, too many — and the style optimizes for the wrong reader
 
@@ -221,8 +211,8 @@ startups have.
 What's missing is one category: **contact**. Every technique used so far
 observes users from orbit; none has put the product in front of one stranger or
 put one question to one human. The personas' willingness-to-pay numbers are
-guesses wearing tables. Until the gate opens, this cannot improve — which is
-why R1 is the research recommendation too.
+guesses wearing tables. The valve now opens the gate for anyone who signs up —
+distribution (§4) is the missing half.
 
 Cheap techniques you haven't used (all async, $0, agent-runnable):
 
@@ -238,27 +228,76 @@ Cheap techniques you haven't used (all async, $0, agent-runnable):
 - **In-product micro-surveys** (Sean Ellis + "what did you expect this query
   to return?") — feedback at the moment of failure beats any interview.
 
-## 8. This week
+## 8. Status — done vs left (updated 2026-06-12, evening)
 
-Founder (clicks only, ~1 hour total):
-1. Decide R1 (gate recalibration) — the one decision everything else waits on.
-2. Run the two eval `workflow_dispatch`es (or let an agent try with
-   `GH_TOKEN_WORKFLOW` first).
-3. Grant the CF token `Zone Analytics:Read`; confirm the Cerebras/Mistral repo
-   secrets; submit the MCP directory form.
-4. Approve the first Show-HN draft when lane 3 produces it.
+Done same day this doc was written:
 
-Agents (this week's reprompted routine — applies only if you adopt R2):
-1. Build persona-bench (questions from `personas.md` over self-created schemas).
-2. Build `docs/scorecard.md` + the daily regenerator, bot-filtered.
-3. Rewrite `now.md` in the §6 format; add the 20 KB CI check.
-4. Retire the daily open-questions quota; freeze the billing lane.
-5. Start the distribution queue (one artifact/day into blocked-by-human).
+- ✅ **R1 resolved** (founder): the merged invite-valve is the door; thresholds
+  stay a progress bar — §2 Resolution + GLOBAL-027 §Lifecycle.
+- ✅ **Canonical 6-provider eval re-seed ran.** BIRD 0.522 (261/500,
+  chain-exhaustion `no_sql` 51 → 3), Spider 0.1704. BIRD is now **12.8 pp from
+  its 0.65 bar**.
+- ✅ **Per-lever measurement adopted.** SK-LLM-036/037 shipped with same-seed
+  before/after smokes (BIRD 37.3 → 51.3, Spider 15 → 25) plus the
+  capacity-honest budget-stop (SK-QUAL-013). This is R2's core habit.
+- ✅ CF token `Zone Analytics:Read` granted (founder; scorecard agent verifies
+  on first pull) · MCP directory form submitted (first outbound artifact) ·
+  `now.md` §1 trimmed · this doc relocated to `docs/research/`.
+- ✅ `blocked-by-human.md` cut to the two deliberate deferrals (Stripe
+  live-mode, Reddit OAuth). The Suite-A hedge call is delegated to the
+  measured-delta loop (e2e-coverage → Open questions).
+- ✅ **Daily agent prompt** codified — `.claude/commands/daily.md` (§9 as one
+  executable loop).
 
-The honest close: you haven't been failing to make progress — you've been
-making excellent progress at industrial speed toward a door you locked from
-the inside, while measuring everything except the two numbers that matter
-(does the engine answer real users' questions; does any real user exist). Open
-the door to a deliberately small crowd, close the eval loop, and the same
-seven agents that produced 50 PRs in 6 days become a growth machine instead of
-a feature factory.
+Left — all agent-side; the founder's only standing job is the §9 weekly session:
+
+- ☐ **Persona-bench** (§2) — the user-relevant quality number.
+- ☐ **`docs/scorecard.md` + daily regenerator** (bot-filtered funnel + engine
+  numbers + "worst number this week"). The first `/daily` run creates it.
+- ☐ **Distribution queue** — zero publishable artifacts yet; still zero
+  external humans (D1 re-checked today). One draft/day into
+  `docs/research/distribution-queue.md`.
+- ☐ In-product Sean Ellis micro-survey; 20 KB CI check; retire the daily
+  open-questions quota. (Billing-lane freeze is codified — `/daily` rule 5.)
+
+## 9. The repeatable process
+
+The loop that turns 7 agents into compounding progress — one page, no new
+tooling. Runnable form: [`.claude/commands/daily.md`](../../.claude/commands/daily.md).
+
+**Daily (agents, in order):**
+
+1. **Measure first.** Scorecard agent regenerates `docs/scorecard.md` from
+   live sources (D1 counts bot-filtered, latest eval results, CF analytics
+   once readable, LogSnag) and names the **worst number**. Until the file
+   exists, the agent creates it — that's day one's whole job.
+2. **One lever per lane, measured.** Every lane agent starts by quoting the
+   scorecard number it will move and ends with the same number re-measured:
+   engine lanes via the same-seed smoke (the SK-LLM-036/037 pattern, now
+   proven), funnel lanes via the stranger-test walkers. Δ ≥ 0 merges; Δ < 0
+   reverts with a one-line note. An agent that can't name its number does
+   deletion/cleanup (D5) instead of building.
+3. **One artifact out.** Distribution agent drafts one publishable thing
+   (post, answer, submission) into `docs/research/distribution-queue.md`;
+   the founder approves at the weekly session. Publishing is a daily
+   output, not a launch event. `blocked-by-human.md` stays reserved for
+   true human-only blockers.
+4. **Review gate.** The merge agent rejects any PR whose body names no
+   measured delta — the existing CLAUDE.md §8 quality gates plus one line.
+
+**Weekly (one founder session, ~30 min, the only meeting the company has):**
+
+1. Read `docs/scorecard.md` — the trend, not the day.
+2. Clear `blocked-by-human.md` — every bullet gets decided, clicked, or
+   explicitly deferred with a trigger. Nothing sits twice.
+3. Dispatch (or let the agent dispatch) the canonical eval; the weekly delta
+   is the company's heartbeat.
+4. Pick next week's single focus number and write it at the top of the
+   scorecard. Lanes that don't serve it run at half effort.
+
+**The invariant** behind both cadences: *no change without a number, no number
+without a next change.* Measure → pick the worst number → smallest change →
+re-measure → publish or revert → repeat. The engine lane already runs this
+loop (+17 pp on BIRD in a day); the door is open via the valve. The scorecard
+plus the distribution queue extend the same loop to the only numbers that
+ultimately matter: real strangers reaching real first answers.

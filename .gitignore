@@ -12,7 +12,9 @@ node_modules/
 .env.*.local
 *.pem
 *.key
-.claude
+# Claude Code: commit shared commands, ignore local settings
+.claude/*
+!.claude/commands/
 
 # Build / cache
 dist/
