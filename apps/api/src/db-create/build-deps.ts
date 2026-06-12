@@ -20,6 +20,7 @@
 // Owner of `@neondatabase/serverless` remains `packages/db/`; this
 // import is the documented one-file carve-out.
 import { neon } from "@neondatabase/serverless";
+import { fingerprintSchema } from "@nlqdb/db";
 import { apiKeyHmacSecret, mintPkLiveKey } from "../api-keys.ts";
 import { makeRecentTablesStore } from "../ask/recent-tables.ts";
 import { validateCompiledDdl } from "../ask/sql-validate-ddl.ts";
@@ -169,19 +170,10 @@ function defaultRandomSuffix(): string {
 // the JSON-canonicalised plan — keys are stable insertion-order
 // in Zod-validated objects, so JSON.stringify is enough today.
 // If we add Map/Set fields later this needs a canonical-JSON
-// helper.
+// helper. The hash function itself is the shared `fingerprintSchema`
+// (`@nlqdb/db`) so the hosted and BYO paths produce one column shape.
 function defaultSchemaHash(plan: SchemaPlan): string {
-  // FNV-1a 32-bit — non-cryptographic, fast, deterministic, fine
-  // for cache fingerprinting (we don't need collision resistance
-  // against adversaries here; only stability across calls). 8 hex
-  // chars is plenty for the schema_hash column's fingerprint role.
-  let hash = 0x811c9dc5;
-  const json = JSON.stringify(plan);
-  for (let i = 0; i < json.length; i++) {
-    hash = (hash ^ json.charCodeAt(i)) >>> 0;
-    hash = Math.imul(hash, 0x01000193) >>> 0;
-  }
-  return hash.toString(16).padStart(8, "0");
+  return fingerprintSchema(JSON.stringify(plan));
 }
 
 // No-op embed stub. Returns a resolved Promise so the orchestrator's
