@@ -33,10 +33,10 @@
 >
 > **Real blocker is engine quality, not surfaces (2026-05-24 founder
 > directive).** Every advertised acquisition surface gate-403s at
-> `/v1/ask` because the free-chain BIRD raw EX is 0.35 (target 0.65) and
-> Spider is 0.12 (target 0.75) — both measured lower bounds as of
-> 2026-06-09; the capacity-independent reasoning EX is ≈0.52 BIRD / 0.19
-> Spider (up from the baseline's 0.354 BIRD) per
+> `/v1/ask` because the free-chain BIRD raw EX is 0.522 (target 0.65) and
+> Spider is 0.1704 (target 0.75) — first complete 6-provider canonical
+> runs, 2026-06-12 (reasoning EX 0.525 BIRD / 0.232 Spider; up from raw
+> 0.35 / 0.12 lower bounds on 2026-06-09) per
 > [`apps/api/src/gate/eval-baseline.ts`](../../apps/api/src/gate/eval-baseline.ts) /
 > [`SK-GATE-001`](../features/pre-alpha-gate/FEATURE.md#sk-gate-001) /
 > [`SK-GATE-002`](../features/pre-alpha-gate/FEATURE.md#sk-gate-002).
@@ -51,19 +51,19 @@
 >
 > **What the next agent run should pick (2026-05-24, in order — items 1–3 outrank 4+ unconditionally):**
 > 1. **Engine quality — close the BIRD gap and lift the Spider lane.**
->    BIRD raw EX 0.35 vs 0.65 target; reasoning EX ≈0.52 (was 0.354).
->    Spider 0.12 vs 0.75, first-measured 2026-06-09 once the eval pipeline
->    was unblocked (gdown fix, T17). The canonical 500-q / 6-provider
->    re-seed of `eval-baseline.ts` is the now-unblocked GHA dispatch.
->    Highest-leverage pickable work, in order: (a) verify the next
->    `quality-eval-spider2-lite.yml` dispatch lands a real `spider_accuracy`
->    in `eval-baseline.ts` (trigger it manually; if the run failed, fix the
->    pipeline before anything else); (b) close the free-vs-agentic-frontier
->    delta surfaced by [`SK-QUAL-009`](../features/quality-eval/FEATURE.md) —
+>    BIRD raw EX 0.522 vs 0.65 target; Spider 0.1704 vs 0.75. The
+>    canonical 500-q / 135-q 6-provider re-seed of `eval-baseline.ts`
+>    landed 2026-06-12 (GHA run IDs + artifacts in
+>    [`quality-score-verification-log.md`](../progress/quality-score-verification-log.md)).
+>    Highest-leverage pickable work, in order: (a) close the
+>    free-vs-agentic-frontier delta surfaced by
+>    [`SK-QUAL-009`](../features/quality-eval/FEATURE.md) —
 >    every point that delta narrows is a point the free chain reclaims
->    inside the gate; (c) push BIRD via free-chain scaffolding work
+>    inside the gate; (b) push BIRD via free-chain scaffolding work
 >    (prompt + retry-on-exec-error already wired per `SK-QUAL-009`) —
->    target +5pp/week until 0.65.
+>    target +5pp/week until 0.65; Spider's residual 36 `no_sql` are
+>    oversized-DDL request failures, so deeper schema pruning is the
+>    named lever.
 > 2. **§1.4 invite-valve — VERIFIED end-to-end to a 200 (deployed
 >    2026-06-09); open item is first-value seed *quality*, not
 >    reachability.** FLOW-004 via `scripts/flow-004-walk.sh`
@@ -180,8 +180,8 @@ This table is the single dashboard answer to "is the inbound funnel working toda
 
 | KPI | Target | Status |
 |---|---|---|
-| Free-chain BIRD accuracy | ≥ 0.65 | **raw EX 0.35** (measured lower bound, 2026-06-09, [`eval-baseline.ts`](../../apps/api/src/gate/eval-baseline.ts)); **reasoning EX ≈0.52, up from 0.354** — first measurement after the eval pipeline was unblocked (gdown fix, T17). **Still the acquisition bottleneck** (gate stays closed); closing it lifts the gate for every surface §3 ships |
-| Free-chain Spider accuracy | ≥ 0.75 | **raw EX 0.12** (first ever measured, 2026-06-09; reasoning EX 0.19) via [`SK-QUAL-007`](../features/quality-eval/FEATURE.md) + [`SK-QUAL-008`](../features/quality-eval/FEATURE.md). Canonical 500-q / 6-provider re-seed = the now-unblocked GHA [`quality-eval-spider2-lite.yml`](../../.github/workflows/quality-eval-spider2-lite.yml) dispatch |
+| Free-chain BIRD accuracy | ≥ 0.65 | **raw EX 0.522** (first complete canonical 500-q 6-provider GHA run, 2026-06-12, [`eval-baseline.ts`](../../apps/api/src/gate/eval-baseline.ts); reasoning EX 0.525; was 0.35 lower bound on 2026-06-09). **Still the acquisition bottleneck** (gate stays closed); closing it lifts the gate for every surface §3 ships |
+| Free-chain Spider accuracy | ≥ 0.75 | **raw EX 0.1704** (first complete canonical 135-q 6-provider GHA run, 2026-06-12; reasoning EX 0.232; was 0.12 on 2026-06-09) via [`SK-QUAL-007`](../features/quality-eval/FEATURE.md) + [`SK-QUAL-008`](../features/quality-eval/FEATURE.md); run IDs + artifacts in [`quality-score-verification-log.md`](../progress/quality-score-verification-log.md) |
 | Anonymous loop completions | ≥ 50 | 0 — gate 403s every walked `/v1/ask` (2026-05-24 stranger-test); **stays 0 until BIRD/Spider clear OR §1.4 invite-valve verifies end-to-end** |
 | Signed-in users (invite-redeemed) | ≥ 10 | 0 real-user (non-walker) redemptions. FLOW-004 gate-bypass is **intact** AND `/v1/ask` returns **HTTP 200** with an invite (2026-06-12 walks) — the 2026-06-08 `sample_insert_failed` 500 stays cleared (SK-HDC-018 + SK-LLM-033 #352). First-value seed quality **lifted ~0.25 → ~0.75**: the SK-STRG-008 probe re-ran live 2026-06-12 — two same-set 4-goal runs both **`seeded_ok_ratio = 0.75`** (stable; only "a meal planner for couples" degraded), up from the 2026-06-10 single-run 0.25; a wider 8-goal run recorded **4 `provision_failed`** (HTTP 422 `infer_failed`) at ratio 0.75 (`flow-004-seed-quality-2026-06-12T02-04-02Z.json`), and across three 8-goal runs the wide ratio varied **0.6–0.8** with 3–4 `provision_failed` each (LLM variance). Lift not yet causally isolated (planner directives since 06-10 vs LLM variance). Most goals now seed, but a meaningful fraction either degrade (empty DB) or 422 (no DB) — closing that is the open SK-LLM-033 / engine-quality lift. This row stays 0 until a real stranger (not the synthetic walker) redeems an invite |
 | Sean Ellis Q1 responses | ≥ 20 | 0 — survey not wired (§1.3); meaningful only after a user actually crosses the gate |

@@ -114,6 +114,9 @@ SECRETS=(
   GRAFANA_CLOUD_API_KEY
   LOGSNAG_TOKEN
   LOGSNAG_PROJECT
+  # quality-eval-*.yml — bearer for POST /v1/events/eval; without it a
+  # full eval run silently skips the feature.eval.* emit (SK-QUAL-002).
+  EVAL_INGEST_TOKEN
   TINYBIRD_TOKEN
   TINYBIRD_API_BASE
   POSTHOG_API_KEY
@@ -154,6 +157,15 @@ for name in "${SECRETS[@]}"; do
   # downstream auth errors.
   if [[ ${#val} -lt $SUSPICIOUSLY_SHORT ]]; then
     fail "$name" "value is only ${#val} chars — refusing to push (looks truncated; check .envrc)"
+    suspicious_count=$((suspicious_count + 1))
+    continue
+  fi
+  # Refuse a value that is itself an unexpanded shell reference — a
+  # single-quoted `export NAME='$OTHER'` in .envrc. Observed 2026-06-10:
+  # CF_AI_TOKEN held the literal string '$CLOUDFLARE_API_TOKEN'; mirroring
+  # it would replace a working GHA secret with garbage that 401s.
+  if [[ "$val" == \$* ]]; then
+    fail "$name" "value starts with '\$' — looks like an unexpanded reference (fix .envrc quoting)"
     suspicious_count=$((suspicious_count + 1))
     continue
   fi

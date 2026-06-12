@@ -12,7 +12,7 @@ when-to-load:
 # Feature: Quality Eval
 
 **One-liner:** NL-to-SQL accuracy benchmarking — three-dataset canon (BIRD-dev + Spider 2.0-lite SQLite subset + internal `db.create` eval per [`SK-QUAL-003`](#sk-qual-003)) against the LLM router's free / BYOLLM / hosted-premium lanes; the **free-vs-agentic-frontier delta** (`SK-QUAL-004`) is the headline KPI for [`GLOBAL-025`](../../decisions/GLOBAL-025-north-star.md)'s engine north-star.
-**Status:** **Phase 2 — slices 1 + 2 + 3a + 3b + 3c shipped.** Slices 1 + 2 (BIRD Mini-Dev runner + EX scorer + free / single-model-frontier lanes; baseline diff against `tools/eval/baseline-2026-06-15.json`; McNemar per `SK-QUAL-006`; `feature.eval.{weekly,regression}` via `POST /v1/events/eval` → Queues → LogSnag `#north-star`; manual `workflow_dispatch` run) ran end-to-end on `main`. Slice 3a (`SK-QUAL-007`) the Spider 2.0-lite loader; 3b (`SK-QUAL-008`) the canonical multi-CSV comparator; 3c (`SK-QUAL-009`) the `withExecRetry` scaffold + `agentic-frontier` lane + the `free_vs_agentic_frontier_delta` KPI — mechanics in each SK block below. PR CI typechecks + unit-tests with a mocked router and cached fixtures; real provider keys never fire on a PR. The runner is **resumable** (`SK-QUAL-011`) and runs **manually on demand** (`SK-QUAL-002`). **Remaining for the Phase 2 exit gate:** internal `db.create` accepted-answer eval (depends on a privacy-stripped R2 export) and a first measurement of the new lane to seed `baseline-2026-06-15.json` + `apps/api/src/gate/eval-baseline.ts`. Promotion of [`docs/future/semantic-layer.md`](../../future/semantic-layer.md) still depends on this harness.
+**Status:** **Phase 2 — slices 1 + 2 + 3a + 3b + 3c shipped.** Slices 1 + 2 (BIRD Mini-Dev runner + EX scorer + free / single-model-frontier lanes; baseline diff against `tools/eval/baseline-2026-06-15.json`; McNemar per `SK-QUAL-006`; `feature.eval.{weekly,regression}` via `POST /v1/events/eval` → Queues → LogSnag `#north-star`; manual `workflow_dispatch` run) ran end-to-end on `main`. Slice 3a (`SK-QUAL-007`) the Spider 2.0-lite loader; 3b (`SK-QUAL-008`) the canonical multi-CSV comparator; 3c (`SK-QUAL-009`) the `withExecRetry` scaffold + `agentic-frontier` lane + the `free_vs_agentic_frontier_delta` KPI — mechanics in each SK block below. PR CI typechecks + unit-tests with a mocked router and cached fixtures; real provider keys never fire on a PR. The runner is **resumable** (`SK-QUAL-011`; full runs resume across dispatches per `SK-QUAL-013`) and runs **manually on demand** (`SK-QUAL-002`). The canonical 6-provider runs landed 2026-06-12 (BIRD raw EX 0.522, Spider 0.1704), seeding `baseline-2026-06-15.json` + `apps/api/src/gate/eval-baseline.ts`. **Remaining for the Phase 2 exit gate:** internal `db.create` accepted-answer eval (depends on a privacy-stripped R2 export). Promotion of [`docs/future/semantic-layer.md`](../../future/semantic-layer.md) still depends on this harness.
 
 **Contribution to north-star:** Engine quality, NL→SQL layer — this feature IS the measurement instrument. The three-dataset canon (`SK-QUAL-003`) feeds the BIRD-dev / Spider 2.0-lite KPIs and the free-vs-frontier delta in the [`GLOBAL-025`](../../decisions/GLOBAL-025-north-star.md) KPI table; the on-demand run in `SK-QUAL-002` is the alert-and-decision input.
 **Owners (code):** `tools/eval/**`, `packages/llm/**`, `.github/workflows/quality-eval-bird-mini.yml`
@@ -21,7 +21,7 @@ when-to-load:
 ## Touchpoints — read this feature before editing
 
 - `tools/eval/` — benchmark runner (slices 1 + 2 + 3a + 3b + 3c shipped):
-  - `src/runner.ts` — multi-dataset driver, CLI entry, lane loop, baseline + emit integration; wraps `plan() → score()` in `withExecRetry` for scaffolded lanes (`SK-QUAL-009`); routes Spider 2.0 rows to `scoreOneSpider2` (`SK-QUAL-008`); `--throttle-ms` paces a low-RPM free chain (`SK-QUAL-012`)
+  - `src/runner.ts` — multi-dataset driver, CLI entry, lane loop, baseline + emit integration; wraps `plan() → score()` in `withExecRetry` for scaffolded lanes (`SK-QUAL-009`); routes Spider 2.0 rows to `scoreOneSpider2` (`SK-QUAL-008`); `--throttle-ms` paces a low-RPM free chain (`SK-QUAL-012`); `--capacity-wait-ms` + the widened budget-stop keep a rate-limit breaker wall out of the scores (`SK-QUAL-013`)
   - `src/exec-retry.ts` — `withExecRetry({maxAttempts, plan, request, score})` (`SK-QUAL-009`): bounded retry loop on `exec_error` only; threads previous SQL + error into `PlanRequest.previousAttempt`
   - `src/score.ts` — BIRD's multiset / sequence-strict EX scorer **plus** the Spider 2.0 multi-CSV `comparePandasTable` / `compareMultiPandasTable` port + `scoreOneSpider2` (`SK-QUAL-008`)
   - `src/csv.ts` — minimal RFC-4180 CSV parser + per-column type inference for pandas-emitted gold CSVs (`SK-QUAL-008`)
@@ -49,16 +49,13 @@ when-to-load:
 
 ### SK-QUAL-001 — Benchmark canon: BIRD (real-world) + Spider 2.0 (multi-dialect); accuracy reported by tier
 
-- **Decision:** The eval harness runs two open benchmarks: **BIRD** (Big Bench for Industrial Database; messy real-world schemas — BIRD Mini-Dev ships 500 questions across 11 SQLite DBs, with MySQL + Postgres transpilations added 2025-07) and **Spider 2.0-lite** (SQLite subset only — the upstream `xlang-ai/Spider2@main` ships **547 rows** total across BigQuery (180) / Snowflake (207) / SQLite (135) / Google-Analytics SF (25); DuckDB lives in the separate `spider2-dbt` dataset, not lite; zero Postgres rows. Cross-engine generalisation evidence comes from BIRD's dialect transpilations instead). Accuracy is reported separately for each tier of the [`llm-router`](../llm-router/FEATURE.md) — Tier 1 (cheap classify), Tier 2 (Sonnet plan), Tier 3 (Opus hard) — and separately with and without the semantic-layer scaffolding.
-- **Core value:** Bullet-proof, Honest latency
-- **Why:** A single accuracy number averaged across tiers hides the failure mode (Opus is fine, Tier 1 misroutes). Per-tier reporting tells us *which model* to retrain / swap / cap. BIRD is the standard "messy real-world" benchmark and the closest analogue to the schemas users build with `db.create`. Spider 2.0 covers dialect / cross-domain generalization that BIRD doesn't. Both are public; results stay comparable to published research.
-- **Consequence in code:** `tools/eval/src/runner.ts` (shipped slice 1) loads BIRD Mini-Dev, calls `packages/llm/src/router.ts::plan()` with the question + schema, executes the generated SQL against the BIRD SQLite fixtures, and compares the result-set to the gold answer. Per-lane accuracy lands in `tools/eval/results/<iso>.json`; baseline diff + event emission ship in slice 2 per `SK-QUAL-002`. Spider 2.0-lite SQLite loader ships in slice 3a per [`SK-QUAL-007`](#sk-qual-007); slice 3b ([`SK-QUAL-008`](#sk-qual-008)) ships the canonical multi-CSV scorer so all 135 `local###` rows contribute. The harness is a tool, not a CI gate (see `SK-QUAL-002`).
-- **Alternatives rejected:**
-  - Bespoke internal benchmark — non-comparable to research; no external validity.
-  - WikiSQL only — too easy; saturated by 2024.
-  - Spider 1.0 only — superseded; 2.0 covers more dialects.
-  - Single averaged accuracy number — hides per-tier regression, the actionable signal.
-  - **Spider 2.0 full set including BQ/Snowflake via transpilation** — adds a transpilation-bug failure mode the harness can't distinguish from a model-quality regression; SQLite subset is the honest call (corrected 2026-05).
+**Body:** [`decisions/SK-QUAL-001-benchmark-canon.md`](./decisions/SK-QUAL-001-benchmark-canon.md).
+Two open benchmarks — BIRD Mini-Dev (500 SQLite questions, messy
+real-world schemas) and Spider 2.0-lite (SQLite subset only; the full-set
+BQ/Snowflake transpilation was rejected as a confound). Accuracy reports
+per router tier, never as one averaged number; results stay comparable
+to published research. The harness is a tool, not a CI gate
+(`SK-QUAL-002`).
 
 ### SK-QUAL-003 — Three-dataset canon: BIRD-dev + Spider 2.0-lite (SQLite subset) + internal `db.create` eval (the third dataset is the one that matters most)
 
@@ -182,6 +179,17 @@ sleeps between questions so the ~5-RPM Cerebras head (`SK-LLM-023`) doesn't
 cascade every breaker open into a `no_sql` wall. Measurement-harness knob
 only — production is untouched. Complements the `SK-QUAL-011` budget-stop.
 
+### SK-QUAL-013 — Capacity-honest budget stop: a rate-limit breaker wall pauses the run, never scores `no_sql`
+
+**Body:** [`decisions/SK-QUAL-013-capacity-honest-budget-stop.md`](./decisions/SK-QUAL-013-capacity-honest-budget-stop.md).
+Budget-stop fires on **capacity exhaustion** (every attempt `rate_limited`
+**or** `circuit_open` — a 429 opens the breaker for its `Retry-After`
+window, so the wall after the first 429 reads `circuit_open`), after one
+bounded `--capacity-wait-ms` wait-and-retry (workflows: 65 s; default 0).
+Full-mode workflows cache the checkpoint by commit SHA so a re-dispatch
+resumes. Fixes the 2026-06-11 500-q run scoring 246 breaker-wall rows as
+`no_sql` without a single LLM call.
+
 ## GLOBALs governing this feature
 
 Canonical text in [`docs/decisions/`](../../decisions/).
@@ -208,5 +216,5 @@ Canonical text in [`docs/decisions/`](../../decisions/).
   true limit).
 - **Validator integration + agentic-frontier lane — shipped** per [`SK-QUAL-009`](#sk-qual-009) (`withExecRetry`; `agentic-frontier` opt-in via `RUN_AGENTIC_FRONTIER=1`, unscaffolded `frontier` stays the ablation reference). **Still open:** multi-model frontier (GPT-5 + Gemini 2.5 Pro as separate entries) — deferrable until the Sonnet 4.6 baseline lands; BYOLLM-lane instrumentation depends on `SK-LLM-016`.
 - **Spider 2.0-lite multi-CSV scorer — shipped** per [`SK-QUAL-008`](#sk-qual-008). Follow-up: pin a `xlang-ai/Spider2` commit SHA in the next Spider baseline so leaderboard churn shows as a PR diff.
-- **Canonical raw EX needs the 6-provider GHA dispatch.** First post-fix run (T17, 2026-06-09): free-tier per-minute TPM caps make full-DDL planning capacity-bound, so the agent env (4/6 providers) reports reasoning EX + a raw-EX lower bound — see `quality-score-source-of-truth.md` §2/§6.
+- **Canonical raw EX — seeded 2026-06-12** (BIRD 0.522 / Spider 0.1704, full 6-provider GHA runs, resumed per `SK-QUAL-013`). Spider's residual `no_sql` (36/135) is oversized-DDL request failures on its biggest schemas — the open lever is deeper schema pruning / column-level linking, tracked in `quality-score-source-of-truth.md` §4.
 - **Corrected-set evaluation — Parked until the next BIRD baseline refresh** (`GLOBAL-033`, build-vs-adopt). UIUC Kang ([arXiv:2601.08778](https://arxiv.org/abs/2601.08778)) found 52.8% annotation errors in BIRD Mini-Dev, ship corrected variants (`uiuc-kang-lab/text_to_sql_benchmarks`). **Adopt iff** the license permits bundling **and** it stays a ~50-LOC scorer-reuse patch (join by `question_id`, report Spearman-rank deltas); else skip — canonical already moves the KPI.
