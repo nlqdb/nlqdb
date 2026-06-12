@@ -8,9 +8,13 @@ If this file disagrees with them, **they win**.
 
 [`quality-eval/FEATURE.md`](./features/quality-eval/FEATURE.md). Phase 2
 slices 1–3c shipped and the measured numbers now seed
-`apps/api/src/gate/eval-baseline.ts`; next is closing the gap to
-[`GLOBAL-027`](./decisions/GLOBAL-027-pre-alpha-gate.md)'s
-BIRD ≥ 0.65 / Spider ≥ 0.75 thresholds so the gate removes itself.
+`apps/api/src/gate/eval-baseline.ts`. Engine quality is the standalone
+north-star number — keep pushing BIRD/Spider regardless of the gate.
+The pre-alpha door is invite-only and **open** (`X-Invite-Code` /
+allowlist); per [`GLOBAL-027`](./decisions/GLOBAL-027-pre-alpha-gate.md)
+the BIRD ≥ 0.65 / Spider ≥ 0.75 auto-open is a dormant frontier
+backstop, not the launch trigger — public launch is a deliberate
+decision at a persona-bench bar.
 Headline KPI: free-vs-agentic-frontier delta per
 [`SK-QUAL-004`](./features/quality-eval/decisions/SK-QUAL-004-free-vs-frontier-delta.md).
 **Progress bar** (every lever + number, sourced):

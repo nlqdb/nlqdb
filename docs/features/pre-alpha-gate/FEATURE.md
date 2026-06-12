@@ -16,8 +16,8 @@ when-to-load:
 # Feature: Pre-Alpha Gate
 
 **One-liner:** Every "do-work" surface (SDK · CLI · MCP · `<nlq-data>` · web hero / chat) refuses with HTTP 403 `feature_gated` until the free chain clears BIRD ≥ 0.65 AND Spider ≥ 0.75; design-partner allowlist + invite codes bypass.
-**Status:** implemented (Slice 1 — closed). The gate is **active** today (BIRD 0.522, Spider 0.1704 — first complete canonical runs, 2026-06-12; both below target) and will remove itself when both thresholds clear.
-**Contribution to north-star:** UX (zero accidental impressions of bad NL→SQL on strangers) and engine quality (the gate surfaces the weekly BIRD/Spider numbers as a hard product constraint, not a metric). Per [`GLOBAL-025`](../../decisions/GLOBAL-025-north-star.md) the trade is explicit: onboarding throughput degrades while the gate is live; that's the deal until the eval crosses.
+**Status:** implemented (Slice 1 — closed). The gate is **active**; the live pre-alpha door is **invite/allowlist** and open. BIRD 0.522 / Spider 0.1704 (2026-06-12, below the auto-open backstop). Public launch to un-invited traffic is a deliberate decision at a persona-bench bar, **not** an eval crossing — see [`GLOBAL-027`](../../decisions/GLOBAL-027-pre-alpha-gate.md).
+**Contribution to north-star:** UX (zero accidental impressions of bad NL→SQL on strangers) and engine quality (the gate surfaces the BIRD/Spider numbers as a hard product constraint, not a metric). Per [`GLOBAL-025`](../../decisions/GLOBAL-025-north-star.md) the trade is explicit: onboarding is bounded to the invited crowd until the deliberate public launch.
 **Owners (code):** `apps/api/src/gate/**`, `packages/sdk/src/index.ts` (error code), `cli/internal/{api,cmd}/**` (`--invite-code`), `apps/web/src/{lib,components}/**` (progress bar), `packages/elements/src/{fetch,render,action-render}.ts` (inline CTA per [`SK-ELEM-014`](../elements/decisions/SK-ELEM-014-feature-gated-inline-cta.md)), `apps/docs/src/content/docs/pre-alpha.mdx` + sidebar pin (gate-state page), `examples/{html,curl,cli}/README.md` (one-paragraph callouts that render into the autogen tutorials).
 **Cross-refs:** [`GLOBAL-027`](../../decisions/GLOBAL-027-pre-alpha-gate.md) (canonical) · [`quality-eval/FEATURE.md`](../quality-eval/FEATURE.md) (source of the threshold numbers) · [`anonymous-mode/FEATURE.md`](../anonymous-mode/FEATURE.md) (anon gate ordering) · [`web-app/FEATURE.md`](../web-app/FEATURE.md) (Cmd+G removal).
 
@@ -34,7 +34,6 @@ when-to-load:
 - `apps/web/src/components/FeatureGatedView.tsx` — shared progress bar + waitlist CTA
 - `apps/web/src/components/CreateForm.tsx` — hero submission failure surface
 - `apps/web/src/components/chat/ChatPanel.tsx` — chat reply gated state + render
-- `apps/web/src/components/Waitlist.astro` — homepage `#waitlist` anchor target for the CTA
 - `packages/elements/src/fetch.ts` — 403 flows through `kind: "api"` so the structured body reaches the renderer
 - `packages/elements/src/render.ts` / `action-render.ts` — `<nlq-data>` / `<nlq-action>` render the inline waitlist CTA (see [`SK-ELEM-014`](../elements/decisions/SK-ELEM-014-feature-gated-inline-cta.md))
 
@@ -121,12 +120,12 @@ below names the rules that constrain this feature.
 - **GLOBAL-024** — Demand-signal telemetry on every "not yet" path.
   - *In this feature:* `feature.requested.early_access` fires on every block; see SK-GATE-006.
 - **GLOBAL-025** — North-star KPIs.
-  - *In this feature:* UX advances (no bad-NL→SQL impressions); onboarding degrades by design while the gate is live. The block rate is the new telemetry surface; the lifted gate is the exit.
+  - *In this feature:* UX advances (no bad-NL→SQL impressions); onboarding is bounded to the invited crowd by design. The block rate is the telemetry surface; the deliberate public-launch decision is the exit, not an eval crossing.
 - **GLOBAL-027** — Pre-alpha gate. **This feature implements it.**
 
 ## Open questions / known unknowns
 
-- **Spider lane shipping** — Loader ([`SK-QUAL-007`](../quality-eval/FEATURE.md#sk-qual-007)) + canonical multi-CSV scorer ([`SK-QUAL-008`](../quality-eval/FEATURE.md#sk-qual-008)) shipped; all 135 `local###` rows score. Canonical `spider_accuracy` 0.1704 (2026-06-12 full 6-provider run) is in `eval-baseline.ts`; the gate stays structurally closed until it clears 0.75 (≥ 102 matches of 135).
+- **Public-launch bar (deferred)** — the un-invited door opens on a deliberate decision that re-bases off the academic Spider 0.75 backstop to a persona-bench bar aligned to GLOBAL-025's floors. Trigger: persona-bench exists + invited-crowd funnel data. Until then the door stays invite-only by design.
 - **Allowlist UI — Parked until an operator needs it** (`GLOBAL-033`, speculative-scope). Allowlisting is `wrangler kv key put` today; a dashboard tool is a founder-time nicety the data model already allows. Build on real need.
 - **Invite-code expiry — Parked until operator codes need a bound** (`GLOBAL-033`, pin-a-number). Auto-issued codes (SK-GATE-007) carry a 30-day KV TTL; operator codes are untimed (rotation = delete + re-issue). The KV value can grow `"1"` → `{expires_at}` without a migration.
 - **Removal PR** — When both lanes clear, removing the middleware is one file delete + one diff on `index.ts` + one line on `apps/api/src/gate/eval-baseline.ts` that's the trigger. Per [`SK-DOCS-005`](../docs-site/FEATURE.md#sk-docs-005) the same PR also deletes `apps/docs/src/content/docs/pre-alpha.mdx`, the `astro.config.mjs` sidebar pin, and the `<Aside type="caution">` callouts in `index.mdx` / `mcp.mdx` / `reference/http-api.mdx` plus the README callouts in `examples/{html,curl,cli}/`. A placeholder so the small follow-up PR isn't forgotten.

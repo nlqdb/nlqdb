@@ -252,15 +252,24 @@
   gated request emits `feature.requested.early_access` so the
   waitlist demand surface gets the same telemetry shape as the other
   "not yet" paths.
-- [`GLOBAL-025`](./GLOBAL-025-north-star.md) — the KPI advanced by
-  this PR is **UX** (no more accidental impressions of bad NL→SQL)
-  and **engine quality** (the gate is the forcing function that
-  surfaces the BIRD/Spider numbers to the team weekly). Onboarding
-  degrades by definition while the gate is live; the explicit deal is
-  that we trade onboarding throughput for narrative integrity until
-  the eval crosses. The KPI degradation is bounded in time (the gate
-  removes itself when both lanes clear) and the loss is
-  instrumentable via the new `gate.outcome=block` span attribute.
+- [`GLOBAL-025`](./GLOBAL-025-north-star.md) — the KPI advanced is
+  **UX** (no accidental impressions of bad NL→SQL) and **engine
+  quality** (the gate surfaces the BIRD/Spider numbers as a hard
+  product constraint). **Pre-alpha access is invite/allowlist-gated by
+  design — that is the live door, and it is open: a hand-picked crowd
+  queries end-to-end via `X-Invite-Code` / `gate:user:*` today.** The
+  BIRD ≥ 0.65 / Spider ≥ 0.75 auto-open is a deliberately high
+  *frontier backstop*, **not** a Phase floor, so it does not
+  contradict GLOBAL-025's Phase-3 Spider ≥ 15% floor — they measure
+  different things (an automatic launch ceiling vs a tracked-KPI
+  floor). Spider 0.75 sits above world SOTA (73.13), so the auto-open
+  branch stays dormant on purpose: **public launch to un-invited
+  traffic is a deliberate founder decision, not an eval crossing.**
+  When that decision is taken, the un-invited bar is re-based to a
+  user-relevant number (a persona-bench bar aligned to GLOBAL-025's
+  floors), set with evidence rather than the academic Spider figure.
+  Onboarding throughput is intentionally bounded to the invited crowd
+  until then; the loss is instrumentable via `gate.outcome=block`.
 - [`GLOBAL-026`](./GLOBAL-026-llm-strategy-byollm-hosted-premium.md)
   — the gate is measured against the **free chain** specifically.
   BYOLLM and hosted-premium are unaffected at the request layer
@@ -271,9 +280,10 @@
 
 ## Lifecycle
 
-This GLOBAL is born `active` and ends `superseded` by the same shape
-of change that retires Cmd+G: when both eval lanes clear, a follow-up
-PR removes the middleware mount, deletes the `apps/api/src/gate/`
-module, marks this decision `superseded by GLOBAL-NNN — open beta`,
-and the index in `docs/decisions.md` reflects the swap. IDs are
-sticky; the file stays.
+This GLOBAL is born `active` and ends `superseded` at the deliberate
+public-launch decision (not an automatic eval crossing): a follow-up
+PR re-bases the un-invited bar to the persona-bench number, opens the
+door to un-invited traffic, marks this decision `superseded by
+GLOBAL-NNN — open beta`, and the index in `docs/decisions.md` reflects
+the swap. IDs are sticky; the file stays. The BIRD/Spider auto-open
+branch remains a dormant frontier backstop in the meantime.

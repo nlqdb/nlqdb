@@ -4,6 +4,16 @@
 (D1, Cloudflare API), and web research on benchmark SOTA. Every number below is
 sourced. This doc raises decisions per P1; it changes nothing by itself.*
 
+> **Resolution (2026-06-12): R1 is settled — invite-only.** The
+> invite/allowlist door is already open (a hand-picked crowd queries
+> end-to-end via `X-Invite-Code`); public launch to un-invited traffic
+> is a deliberate future decision at a persona-bench bar, **not** an
+> automatic eval crossing. [`GLOBAL-027`](../decisions/GLOBAL-027-pre-alpha-gate.md)
+> now records this (the BIRD/Spider auto-open is a dormant frontier
+> backstop). The diagnosis below is the original rationale — where it
+> says "Open the door (R1)" it conflated the invite valve (done) with
+> the public-launch bar (deferred); read it with that correction.
+
 ## 0. TL;DR
 
 Your machine works. Your compass is broken — in one specific, fixable place.
@@ -241,11 +251,10 @@ Cheap techniques you haven't used (all async, $0, agent-runnable):
 ## 8. This week
 
 Founder (clicks only, ~1 hour total):
-1. Decide R1 (gate recalibration) — the one decision everything else waits on.
+1. ~~Decide R1~~ — **resolved**: invite-only; the door is open via invite/allowlist (GLOBAL-027). No action.
 2. Run the two eval `workflow_dispatch`es (or let an agent try with
    `GH_TOKEN_WORKFLOW` first).
-3. Grant the CF token `Zone Analytics:Read`; confirm the Cerebras/Mistral repo
-   secrets; submit the MCP directory form.
+3. ~~Grant the CF token `Zone Analytics:Read`~~ (**done** — verified live 2026-06-12); confirm the Cerebras/Mistral repo secrets.
 4. Approve the first Show-HN draft when lane 3 produces it.
 
 Agents (this week's reprompted routine — applies only if you adopt R2):
