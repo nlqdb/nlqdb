@@ -277,3 +277,16 @@ PR removes the middleware mount, deletes the `apps/api/src/gate/`
 module, marks this decision `superseded by GLOBAL-NNN — open beta`,
 and the index in `docs/decisions.md` reflects the swap. IDs are
 sticky; the file stays.
+
+**2026-06-12 founder resolution — the GLOBAL-025 tension.** The Spider
+≥ 0.75 bar exceeds published SOTA (best closed agentic: 73.13), so
+threshold-driven self-removal is not near. Rather than rebase the
+thresholds, the founder ruled: the waitlist auto-invite valve
+(`waitlist-invite.ts`; walked end-to-end by
+[`SK-STRG-002`](../features/stranger-test/FEATURE.md)) is the operative
+door for external users while the gate stands, and the thresholds stay
+as the public progress bar. **Agents must not re-escalate the
+mismatch**; a rebase happens only when real-user evidence (or a
+persona-bench gate, per
+[`fable-recommendation.md §2`](../research/fable-recommendation.md))
+motivates it.
