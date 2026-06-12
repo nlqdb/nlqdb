@@ -12,12 +12,6 @@ export default defineConfig({
         baseUrl: "https://github.com/nlqdb/nlqdb/edit/main/apps/docs/",
       },
       sidebar: [
-        // GLOBAL-027 — pinned first so visitors see the gate state before they paste a snippet.
-        {
-          label: "Pre-alpha access",
-          link: "/pre-alpha/",
-          badge: { text: "gated", variant: "caution" },
-        },
         { label: "Tutorials", items: [{ autogenerate: { directory: "tutorials" } }] },
         {
           label: "Reference",

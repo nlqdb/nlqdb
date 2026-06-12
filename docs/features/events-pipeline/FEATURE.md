@@ -155,7 +155,6 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 - **GLOBAL-014** — OTel span on every external call (DB, LLM, HTTP, queue).
 - **GLOBAL-021** — Each external system has one canonical owning module. *In this feature:* the events-worker owns `EVENTS_QUEUE` (consumer); `packages/events/` owns the producer types; Tinybird HTTP is owned by `packages/db/clickhouse-tinybird/`, so `SK-EVENTS-009`'s sink imports `writeQueryLog` rather than POSTing (owner-to-owner deps are GLOBAL-021-allowed).
 - **GLOBAL-024** — Demand-signal telemetry on every "not yet" path. *In this feature:* `SK-EVENTS-010` + `SK-EVENTS-011`.
-- **GLOBAL-027** — Pre-alpha gate. *In this feature:* the new `feature.requested.early_access` `ProductEvent` variant is dedup-keyed `(name, principalId, utcDay)` like its siblings and lands on the LogSnag `#north-star` channel beside the weekly eval summaries, so gate-block rate sits next to the eval delta.
 - **GLOBAL-034** — Analytics stack. *In this feature:* PostHog Cloud, when wired, is a second sink draining `EVENTS_QUEUE` server-side, no client SDK.
 
 ## Open questions / known unknowns

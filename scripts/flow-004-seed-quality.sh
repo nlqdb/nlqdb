@@ -3,23 +3,15 @@
 # docs/features/stranger-test/FEATURE.md).
 #
 # FLOW-004's own walker (scripts/flow-004-walk.sh) grades first-value
-# quality for ONE goal per run (SK-STRG-006/007) and burns one of the
-# 200/week SK-GATE-007 invites each time. That makes the doc's
-# "first-value seed quality is prompt-variable" claim an anecdote — two
-# hand-picked prompts, never a measured rate. This probe converts that
-# anecdote into a number: it mints ONE invite, then re-uses it (invite
-# codes are validated by KV existence in apps/api/src/gate/bypass.ts, not
-# consumed) to issue a `create` ask per goal across a small persona set,
-# grades each first-value with the SK-STRG-006 rubric, and reports the
-# `seeded_ok_ratio` — the single metric behind the documented engine-quality
-# bottleneck (what fraction of invited strangers get a seeded DB, not an
-# empty one).
-#
-# Composition (mirrors scripts/stranger-test-invited.sh, SK-STRG-004):
-#   1. scripts/flow-004-walk.sh with FLOW_004_INVITE_OUT=<sidecar> mints +
-#      validates the invite end-to-end (control 403 + invite 200) and writes
-#      the raw code to a mode-600 sidecar.
-#   2. This script reads-and-wipes the code, then loops the goal set.
+# quality for ONE goal per run (SK-STRG-006/007). That makes the doc's
+# "first-value seed quality is prompt-variable" claim an anecdote — one
+# hand-picked prompt, never a measured rate. This probe converts that
+# anecdote into a number: it issues a `create` ask per goal across a small
+# persona set (each on a fresh `anon_<uuid>` bearer so /v1/ask provisions a
+# new DB), grades each first-value with the SK-STRG-006 rubric, and reports
+# the `seeded_ok_ratio` — the single metric behind the documented
+# engine-quality bottleneck (what fraction of strangers get a seeded DB,
+# not an empty one).
 #
 # Each goal uses a FRESH `anon_<uuid>` bearer so /v1/ask provisions a new DB
 # (a `create`), the only shape whose seed quality is measurable.
@@ -36,12 +28,11 @@
 #     bash scripts/flow-004-seed-quality.sh               # custom goals (one per line)
 #   NLQDB_BASE_URL=https://preview.nlqdb.com bash scripts/flow-004-seed-quality.sh
 #
-# Per-run cost: ONE of the 200/week SK-GATE-007 invites + ONE Resend send +
-# (1 + N) throwaway DBs (1 from the mint walk's invite probe, N from the loop).
+# Per-run cost: N throwaway DBs (one per goal).
 #
 # Output JSON: tools/stranger-test/results/flow-004-seed-quality-<utc>.json
-# (gitignored). Shape: {utc, flow, base_url, invite_minted, total, ok,
-# degraded, provision_failed, errored, seeded_ok_ratio, goals:[{goal, kind,
+# (gitignored). Shape: {utc, flow, base_url, total, ok, degraded,
+# provision_failed, errored, seeded_ok_ratio, goals:[{goal, kind,
 # quality, tables, rows, status}], notes}. `provision_failed` counts goals
 # whose create 422'd (engine couldn't build the DB); both it and `errored`
 # are excluded from seeded_ok_ratio (which grades seed quality of a DB that
@@ -51,10 +42,7 @@
 # Exit codes:
 #   0  produced a ratio (measurement complete — even if 0/N seeded)
 #   1  could not measure (no goal returned a classifiable create)
-#   2  prereq missing (curl/jq), or invite mint failed
-#   3  mint walk partial (gate bypassed, downstream non-200)
-#   4  mint walk inconclusive (gate appears open globally — seed-quality of an
-#      invited stranger is undefined when the gate isn't gating)
+#   2  prereq missing (curl/jq)
 
 set -u
 
@@ -88,54 +76,18 @@ done
 
 mkdir -p "$RESULTS_DIR"
 
-# Sidecar holding the raw invite code; trap-removed on every exit path.
-INVITE_SIDECAR="$RESULTS_DIR/.invite-sq-${UTC_STAMP}-$$.txt"
-INVITE_CODE=""
 # Reusable temp file for per-goal response bodies. `mktemp` (not a
 # predictable `/tmp/...$$` path) avoids symlink/clobber races on a shared tmp.
 BODY_TMP="$(mktemp "${TMPDIR:-/tmp}/flow-sq-body.XXXXXX")"
 
 # shellcheck disable=SC2317  # body is invoked via `trap cleanup EXIT INT TERM`
 cleanup() {
-  if [[ -f "$INVITE_SIDECAR" ]]; then rm -f "$INVITE_SIDECAR"; fi
   if [[ -n "${BODY_TMP:-}" && -f "$BODY_TMP" ]]; then rm -f "$BODY_TMP"; fi
-  INVITE_CODE=""
 }
 trap cleanup EXIT INT TERM
 
-# --- step 1: mint invite via flow-004-walk.sh ------------------------------
-say "Step 1 — mint invite via flow-004-walk.sh"
-
-FLOW_004_OUT="$RESULTS_DIR/flow-004-seed-quality-mint-${UTC_STAMP}.json" \
-FLOW_004_INVITE_OUT="$INVITE_SIDECAR" \
-  bash scripts/flow-004-walk.sh
-MINT_EXIT=$?
-
-if (( MINT_EXIT != 0 )); then
-  # Propagate the mint walk's verdict: 2 prereq, 3 partial, 4 inconclusive.
-  fail "flow-004-walk.sh exited $MINT_EXIT" "cannot measure seed quality without a verified invite"
-  case "$MINT_EXIT" in
-    2|3|4) exit "$MINT_EXIT" ;;
-    *) exit 2 ;;
-  esac
-fi
-
-if [[ ! -s "$INVITE_SIDECAR" ]]; then
-  fail "invite sidecar missing" "flow-004 exited 0 but produced no code at $INVITE_SIDECAR"
-  exit 2
-fi
-
-INVITE_CODE="$(cat "$INVITE_SIDECAR")"
-rm -f "$INVITE_SIDECAR"
-
-if [[ ! "$INVITE_CODE" =~ ^[A-Za-z0-9_-]{16,128}$ ]]; then
-  fail "invite code shape" "did not match /[A-Za-z0-9_-]{16,128}/ (refusing to forward)"
-  exit 2
-fi
-ok "invite minted (${#INVITE_CODE} chars); sidecar wiped"
-
-# --- step 2: probe seed quality per goal -----------------------------------
-say "Step 2 — probe first-value seed quality across the goal set"
+# --- probe seed quality per goal -------------------------------------------
+say "Probe first-value seed quality across the goal set"
 
 GOAL_JSON="[]"
 TOTAL=0
@@ -159,7 +111,6 @@ while IFS= read -r GOAL; do
     -X POST "$BASE_URL/v1/ask" \
     -H "Content-Type: application/json" \
     -H "Authorization: Bearer $ANON_TOKEN" \
-    -H "X-Invite-Code: $INVITE_CODE" \
     -d "$ASK_BODY" 2>/dev/null || true)"
   STATUS="${STATUS:-0}"
   BODY="$(cat "$BODY_TMP" 2>/dev/null || true)"
@@ -192,8 +143,8 @@ while IFS= read -r GOAL; do
     # that map to 422 in apps/api/src/index.ts formatCreateJsonResponse
     # (infer_failed / compile_failed / ddl_invalid / embed_failed; the API's
     # own `provision_failed` kind is a 500 — a different leg — so it is NOT one
-    # of these). A HARDER first-value failure than `degraded`: the invited
-    # stranger got an error, not even an empty DB. Bucketed separately so it
+    # of these). A HARDER first-value failure than `degraded`: the stranger
+    # got an error, not even an empty DB. Bucketed separately so it
     # stays visible rather than hidden among true upstream blips. Still
     # excluded from seeded_ok_ratio per SK-STRG-008 (the ratio grades the seed
     # quality of a successfully-created DB, not whether the build succeeded).
@@ -224,8 +175,6 @@ while IFS= read -r GOAL; do
   sleep 2
 done <<< "$GOALS_RAW"
 
-INVITE_CODE=""
-
 # seeded_ok_ratio is over goals that returned a classifiable create
 # (ok + degraded); everything else is excluded from the ratio so no
 # non-seeding outcome masquerades as a seeding failure. The excluded set is
@@ -254,7 +203,7 @@ jq -nc \
   --argjson goals "$GOAL_JSON" \
   --arg notes "$NOTES" \
   '{utc:$utc, flow:"FLOW-004", probe:"seed-quality", base_url:$base,
-    invite_minted:true, total:$total, ok:$ok, degraded:$degraded,
+    total:$total, ok:$ok, degraded:$degraded,
     provision_failed:$provision_failed, errored:$errored,
     seeded_ok_ratio:$ratio, goals:$goals, notes:$notes}' \
   > "$OUT_PATH"

@@ -150,8 +150,6 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 - **GLOBAL-020** — No "pick a region", no config files in the first 60s.
 - **GLOBAL-023** — Trust UX baseline.
   - *In this feature:* the chat panel renders the diff inline before commit (per `SK-TRUST-001`), the trace pane sits below the answer with collapsed-by-default state (per `SK-TRUST-002`), and low-confidence refusals surface as click-to-disambiguate chips (per `SK-TRUST-003`). See [`trust-ux/FEATURE.md`](../trust-ux/FEATURE.md).
-- **GLOBAL-027** — Pre-alpha gate.
-  - *In this feature:* the legacy Cmd+G gate is gone — the hero `<CreateForm>` and "Sign in" render unconditionally; a `feature_gated` 403 renders the shared `FeatureGatedView.tsx` (BIRD/Spider progress bar + waitlist CTA → `nlqdb.com/#waitlist`), reused by the CreateForm and `ChatPanel.tsx`. See [`pre-alpha-gate/FEATURE.md`](../pre-alpha-gate/FEATURE.md).
 - **GLOBAL-034** — Analytics stack (Cloudflare Web Analytics for pageviews; PostHog Phase-2-optional).
 - **GLOBAL-032** — Top-5 user flows canonical.
   - *In this feature:* the marketing site hosts four of the canonical-five inbound surfaces (FLOW-001 hero, FLOW-002 `/solve`, FLOW-003 `/vs`, FLOW-004 waitlist), each walked daily by `stranger-test.sh` / `flow-004-walk.sh` under `acquisition-health.yml`, so a template regression surfaces within 24 h.

@@ -32,9 +32,8 @@ can't), [`SK-LLM-023`](../../llm-router/decisions/SK-LLM-023-cerebras-planner-ti
     *would* have been. That is exactly the §5 guardrail the tracker flagged
     against `SK-LLM-023` — verified true on the first post-fix run. The
     throttle separates the *capacity* axis from the *reasoning* axis so the
-    EX we report is the reasoning number the gate
-    ([`GLOBAL-027`](../../../decisions/GLOBAL-027-pre-alpha-gate.md)) cares
-    about.
+    EX we report is the reasoning number, not a free-tier rate-limit
+    artifact.
   - **Default 0 keeps PR CI and the mocked-router unit tests unchanged.**
     The pacing only fires when an operator passes the flag on a real-key
     run; the `SK-QUAL-002` mocked CI path and the 177 eval unit tests run

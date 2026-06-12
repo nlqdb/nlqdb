@@ -52,7 +52,7 @@ func keysListCmd(g *globalFlags) *cobra.Command {
 			}
 			ctx, cancel := context.WithTimeout(cmd.Context(), 30*time.Second)
 			defer cancel()
-			rows, err := api.New(g.apiURL, id).WithInviteCode(g.inviteCode).ListKeys(ctx)
+			rows, err := api.New(g.apiURL, id).ListKeys(ctx)
 			if err != nil {
 				return renderAPIError(cmd, err)
 			}
@@ -78,7 +78,7 @@ revoked key disconnect within ~1 second.`,
 			}
 			ctx, cancel := context.WithTimeout(cmd.Context(), 30*time.Second)
 			defer cancel()
-			out, err := api.New(g.apiURL, id).WithInviteCode(g.inviteCode).RevokeKey(ctx, keyID)
+			out, err := api.New(g.apiURL, id).RevokeKey(ctx, keyID)
 			if err != nil {
 				var apiErr *api.APIError
 				if errors.As(err, &apiErr) && apiErr.Status == "key_not_found" {

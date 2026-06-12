@@ -134,7 +134,7 @@ OpenRouter pins `plan` + `schema_infer` to `qwen/qwen3-coder:free`; cheap-tier o
 ### SK-LLM-023 — Cerebras (gpt-oss-120b) leads the strict-$0 planner-tier chain
 
 **Body:** [`decisions/SK-LLM-023-cerebras-planner-tier.md`](./decisions/SK-LLM-023-cerebras-planner-tier.md).
-Adds a fifth free provider (`createCerebrasProvider`, OpenAI-compatible, `CEREBRAS_API_KEY`) leading the `plan` / `schema_infer` chain with OpenAI `gpt-oss-120b`: `[cerebras, gemini, groq, workers-ai, openrouter]`. Extends — does not supersede — [`SK-LLM-003`](#sk-llm-003). Motivated by the 31.8% free-chain BIRD baseline that blocks the `GLOBAL-027` gate; the eval free lane carries the identical chain so the cron measures the delta. Routed direct; a 429 from the per-minute quota fails over to Gemini.
+Adds a fifth free provider (`createCerebrasProvider`, OpenAI-compatible, `CEREBRAS_API_KEY`) leading the `plan` / `schema_infer` chain with OpenAI `gpt-oss-120b`: `[cerebras, gemini, groq, workers-ai, openrouter]`. Extends — does not supersede — [`SK-LLM-003`](#sk-llm-003). Motivated by the 31.8% free-chain BIRD baseline well below the [`GLOBAL-025`](../../decisions/GLOBAL-025-north-star.md) Phase 2 floor; the eval free lane carries the identical chain so the cron measures the delta. Routed direct; a 429 from the per-minute quota fails over to Gemini.
 
 ### SK-LLM-024 — Deterministic greedy decoding (temperature 0) across the whole free planner chain
 

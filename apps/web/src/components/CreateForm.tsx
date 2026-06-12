@@ -35,7 +35,6 @@ import {
 import { prettifyHeader } from "../lib/text";
 import { solveChallenge } from "../lib/turnstile";
 import ErrorBoundary from "./ErrorBoundary";
-import { FeatureGatedView } from "./FeatureGatedView";
 
 interface CreateFormProps {
   apiBase: string;
@@ -190,16 +189,7 @@ function CreateFormInner({ apiBase }: CreateFormProps) {
         </button>
         {error && (
           <div className="createform__error-wrap" role="alert">
-            {error.kind === "feature_gated" ? (
-              <FeatureGatedView
-                message={error.message}
-                gate={error.gate}
-                waitlistUrl={error.waitlistUrl}
-                surface="createform"
-              />
-            ) : (
-              <p className="createform__error">{messageFor(error)}</p>
-            )}
+            <p className="createform__error">{messageFor(error)}</p>
           </div>
         )}
         {networkError && (
@@ -379,9 +369,6 @@ function messageFor(error: CreateError): string {
       return "Couldn't authenticate — clear your browser storage and reload.";
     case "goal_unclear":
       return "Try describing what you want to build, e.g. 'a messages database' or 'an orders tracker'.";
-    case "feature_gated":
-      // Rendered by FeatureGatedView; the return value is unused.
-      return error.message;
     case "server_error":
       return "Couldn't create the DB — try again.";
   }

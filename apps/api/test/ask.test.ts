@@ -52,15 +52,11 @@ describe("POST /v1/ask — principal gate", () => {
     // empty body falls through to `parseAskBody`, which returns
     // `goal_required`. That 400 (not 401) is the contract we care
     // about: anon traffic gets parsed like authed traffic.
-    // `X-Invite-Code: TEST_INVITE` clears the GLOBAL-027 pre-alpha
-    // gate (pre-seeded in `seed-gate-bypass.ts`) so the assertion
-    // remains the body-parse seam, not the gate.
     const res = await SELF.fetch("https://example.com/v1/ask", {
       method: "POST",
       headers: {
         "content-type": "application/json",
         authorization: "Bearer anon_abcdef0123456789",
-        "x-invite-code": "TEST_INVITE",
       },
       body: JSON.stringify({}),
     });
@@ -72,14 +68,12 @@ describe("POST /v1/ask — principal gate", () => {
     // SK-LLM-016 step 1 — the per-request BYOLLM key carries a raw
     // provider secret, so it is accepted only on a first-party cookie
     // session, never an anon bearer. The reject fires before the LLM
-    // hop, so this needs no real session. `X-Invite-Code` clears the
-    // GLOBAL-027 gate so the assertion lands on the BYOLLM seam.
+    // hop, so this needs no real session.
     const res = await SELF.fetch("https://example.com/v1/ask", {
       method: "POST",
       headers: {
         "content-type": "application/json",
         authorization: "Bearer anon_byollmsignedinonly",
-        "x-invite-code": "TEST_INVITE",
         "x-nlq-byollm-key": "openai:gpt-5.2:sk-should-not-be-honoured",
       },
       body: JSON.stringify({ goal: "count the orders" }),

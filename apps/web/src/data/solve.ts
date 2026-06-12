@@ -297,7 +297,7 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
     faqs: [
       {
         q: "Is nlqdb's natural-language accuracy comparable to fine-tuned text-to-SQL?",
-        a: "We publish BIRD Mini-Dev + Spider 2.0-lite scores to `docs/features/quality-eval/`. As of pre-alpha the BIRD score is below the gate threshold (which is why anonymous mode is the only open path on the marketing site today); measurement is honest and visible — not a marketing claim.",
+        a: "We publish BIRD Mini-Dev + Spider 2.0-lite scores to `docs/features/quality-eval/`; measurement is honest and visible — not a marketing claim.",
       },
       {
         q: "Do I need to write training examples like Vanna AI requires?",

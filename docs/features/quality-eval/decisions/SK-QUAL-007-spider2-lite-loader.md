@@ -37,12 +37,9 @@ evaluator.
   fetching from GitHub raw costs one extra HTTP per gold-SQL row but
   costs zero accuracy. The 24-of-135 honest subset is also the right
   near-term shape: it lets us produce a real `spider_accuracy` value
-  for the [`pre-alpha-gate`](../../pre-alpha-gate/FEATURE.md)
-  baseline file ([`SK-GATE-001`](../../pre-alpha-gate/FEATURE.md#sk-gate-001))
-  this week instead of waiting for the CSV-result scorer slice, while
-  the 0.75 lane threshold demands ≥ 18 of 24 matches before the gate
-  can lift — a defensible enough floor to publish without overfitting
-  to a 24-row subset. **Cost-of-skipping** the 111 rows on the LLM
+  this week instead of waiting for the CSV-result scorer slice — a
+  defensible enough sample to publish without overfitting to a 24-row
+  subset. **Cost-of-skipping** the 111 rows on the LLM
   budget: zero (we short-circuit before the `router.plan()` call), and
   they're visible as `gold_error` in the report so the operator can
   see exactly how much of the dataset is provisionally scored.
@@ -70,11 +67,10 @@ evaluator.
     silently misreport on a benchmark named in
     [`GLOBAL-025`](../../../decisions/GLOBAL-025-north-star.md).
   - **Skip Spider 2.0-lite entirely until the CSV-result scorer lands.**
-    Leaves [`SK-GATE-002`](../../pre-alpha-gate/FEATURE.md#sk-gate-002)'s
-    `spider_accuracy` permanently null — the pre-alpha gate stays
-    structurally closed forever, even when the BIRD lane clears. The
-    24-row subset is the smallest honest-shippable scoring surface that
-    unblocks the gate's exit condition.
+    Leaves `spider_accuracy` permanently null — the Spider KPI stays
+    unmeasured even when the BIRD lane moves. The 24-row subset is the
+    smallest honest-shippable scoring surface that produces a real
+    Spider number.
   - **Treat the 111 missing-gold-SQL rows as `no_sql` instead of
     `gold_error`.** Both outcomes are non-match; `no_sql` is for "the
     router returned empty SQL" and using it for a dataset shape issue
@@ -84,7 +80,7 @@ evaluator.
   - **Ship the CSV-result scorer in this PR.** Triples the slice scope
     (multi-CSV pandas-equivalent comparison + `condition_cols` +
     `ignore_order` plumbing) and would risk merging an incomplete eval
-    that under-reports the gate's `spider_accuracy`; a follow-up slice
+    that under-reports `spider_accuracy`; a follow-up slice
     3b PR is cleaner to review.
   - **Hand-write 111 gold SQL files for the missing rows.** Tempting
     but defeats the "comparable to published research" half of

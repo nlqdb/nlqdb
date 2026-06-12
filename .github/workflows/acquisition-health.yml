@@ -4,7 +4,7 @@
 #
 # Closes the open questions in docs/features/stranger-test/FEATURE.md:
 # (a) §1.1 stranger-test daily cron + JSON archive,
-# (b) §1.4 FLOW-004 continuous regression watch,
+# (b) §1.4 FLOW-004 continuous first-value watch,
 # and satisfies the GLOBAL-032 seven-day walker-freshness rule by
 # re-running the canonical-five walkers every 24 h.
 #
@@ -41,15 +41,15 @@ on:
         description: "Override the MCP host for the FLOW-005 walker (default: mcp.nlqdb.com)"
         required: false
       skip_flow_004:
-        description: "Skip the FLOW-004 invite-valve walk (saves 1 of 200/week SK-GATE-007 cap)"
+        description: "Skip the FLOW-004 first-value walk"
         type: boolean
         default: false
 
 permissions:
   contents: read
 
-# Cron and manual triggers share a single in-flight slot — overlapping
-# runs would race on the same mail.tm inbox API quota (8 QPS).
+# Cron and manual triggers share a single in-flight slot to avoid
+# overlapping walks against the same deployed surface.
 concurrency:
   group: acquisition-health
   cancel-in-progress: false
@@ -106,13 +106,13 @@ jobs:
             --out tools/stranger-test/results/walk-cron.json
           echo "exit_code=$?" >> "$GITHUB_OUTPUT"
 
-      - name: flow-004-walk (invite-valve end-to-end)
+      - name: flow-004-walk (first-value end-to-end)
         id: flow-004
         if: ${{ inputs.skip_flow_004 != true }}
         continue-on-error: true
         env:
-          # SK-GATE-007 invite-valve is on app.nlqdb.com; verify-flows /
-          # stranger-test hit the marketing host nlqdb.com.
+          # /v1/ask is on app.nlqdb.com; verify-flows / stranger-test hit
+          # the marketing host nlqdb.com.
           NLQDB_BASE_URL: ${{ inputs.base_url || 'https://app.nlqdb.com' }}
           FLOW_004_OUT: tools/stranger-test/results/flow-004-cron.json
         run: |
@@ -191,9 +191,6 @@ jobs:
               echo "### FLOW-004 outcome"
               jq -r '
                 "- state: " + .state,
-                "- gate_bypassed: " + (.gate_bypassed | tostring),
-                "- control_blocked: " + (.control_blocked | tostring),
-                "- email_latency_s: " + (.email_latency_s | tostring),
                 "- total_wall_s: " + (.total_wall_s | tostring),
                 "- ask_status: " + (.ask_status | tostring),
                 "- ask_error_status: " + (.ask_error_status // "" | tostring),

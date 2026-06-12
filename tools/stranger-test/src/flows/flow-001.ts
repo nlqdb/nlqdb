@@ -3,13 +3,7 @@
 
 import type { Browser } from "@playwright/test";
 
-import {
-  assertInviteCaptured,
-  openSession,
-  step,
-  withDeadline,
-  withInviteParam,
-} from "../browser.ts";
+import { openSession, step, withDeadline } from "../browser.ts";
 import type { FlowRun, StepResult } from "../types.ts";
 
 const HERO_PLACEHOLDER_RE = /orders|tracker|building/i;
@@ -22,10 +16,9 @@ export async function walkFlow001(
   baseUrl: string,
   userAgent: string,
   browser: Browser,
-  inviteCode: string | null = null,
 ): Promise<FlowRun> {
   return withDeadline(`flow-001:${prompt}`, WALK_DEADLINE_MS, () =>
-    doWalk(prompt, baseUrl, userAgent, browser, inviteCode),
+    doWalk(prompt, baseUrl, userAgent, browser),
   ).catch((e) => ({
     prompt,
     state: "failed" as const,
@@ -45,7 +38,6 @@ async function doWalk(
   baseUrl: string,
   userAgent: string,
   browser: Browser,
-  inviteCode: string | null,
 ): Promise<FlowRun> {
   const session = await openSession({ baseUrl, userAgent, browser });
   const { page, consoleErrors, httpErrors, close } = session;
@@ -55,8 +47,7 @@ async function doWalk(
   let failedStep: number | null = null;
 
   try {
-    const navPath = withInviteParam("/", inviteCode);
-    const navResp = await page.goto(`${baseUrl}${navPath}`, {
+    const navResp = await page.goto(`${baseUrl}/`, {
       waitUntil: "domcontentloaded",
       timeout: 30_000,
     });
@@ -66,12 +57,6 @@ async function doWalk(
       failedStep = 1;
     } else {
       steps.push(step(1, "GET / returns 200", "ok"));
-    }
-
-    if (inviteCode !== null && failedStep === null) {
-      const inviteStep = await assertInviteCaptured(page, 9, inviteCode);
-      steps.push(inviteStep);
-      if (inviteStep.status === "fail") failedStep = 9;
     }
 
     if (failedStep === null) {
@@ -149,21 +134,12 @@ async function doWalk(
             .catch(() => {});
         } else {
           const body = await askResp.text().catch(() => "");
-          const gateMatch = body.match(/"status":\s*"feature_gated"/);
-          // With an invite, feature_gated IS the SK-GATE-007 regression signature
-          // (header dropped, KV miss, middleware bug). Without an invite, it is
-          // the expected gate behaviour until BIRD/Spider clear.
-          const gateNote = gateMatch
-            ? inviteCode === null
-              ? "feature_gated"
-              : "feature_gated WITH invite — SK-GATE-007 regression"
-            : body.slice(0, 120);
           steps.push(
             step(
               5,
               "/v1/ask 200 + result table within 60 s",
               "fail",
-              `status=${status} ttfvMs=${ttfvMs} gate=${gateNote}`,
+              `status=${status} ttfvMs=${ttfvMs} body=${body.slice(0, 120)}`,
             ),
           );
           failedStep = 5;

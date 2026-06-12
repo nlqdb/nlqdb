@@ -19,9 +19,7 @@ export type FlowRun = {
   prompt: string;
   state: RunState;
   failedStep: number | null;
-  // Time from submit to first POST /v1/ask response. When the response is the
-  // gate 403 this is honestly "time-to-gate-block", not "time-to-value" — the
-  // §1.2 dashboard's status-split surfaces the distinction.
+  // Time from submit to first POST /v1/ask response (time-to-first-value).
   ttfvMs: number | null;
   durationMs: number;
   steps: StepResult[];
@@ -42,10 +40,6 @@ export type WalkResult = {
   startedAt: string;
   finishedAt: string;
   durationMs: number;
-  // True when the walker prepended `?invite=<c>` to the navigation URL
-  // (SK-STRG-004). The §1.2 dashboard reads this to split TTFV by mode —
-  // the gate-403 path and the invite-200 path are different distributions.
-  inviteBearing: boolean;
   flows: FlowResult[];
   summary: {
     totalRuns: number;

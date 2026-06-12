@@ -33,17 +33,9 @@ concerns you never have to see.
 nlqdb is **pre-alpha** and built in the open. The marketing site, the
 `/v1/ask` pipeline, the `<nlq-data>` / `<nlq-action>` elements, the chat
 app, the TypeScript SDK, the hosted MCP server, and the `nlq` CLI are all
-live in some form (see the surface table below).
-
-While we're proving query accuracy, the **do-work endpoints are gated**.
-Until our natural-language → SQL accuracy clears a public bar (BIRD ≥ 0.65
-and Spider 2.0 ≥ 0.75 on the free model chain), un-invited requests get a
-friendly `feature_gated` response — the current scores plus a waitlist
-link — instead of a possibly-wrong answer. **Joining the waitlist emails
-you an invite code** that opens the gate; it then removes itself
-automatically once both thresholds clear. See
-[`GLOBAL-027`](./docs/decisions/GLOBAL-027-pre-alpha-gate.md) and
-[`docs.nlqdb.com/pre-alpha/`](https://docs.nlqdb.com/pre-alpha/).
+live in some form (see the surface table below). We're actively pushing
+natural-language → SQL accuracy on the free model chain (BIRD / Spider
+2.0); track it in [`docs/progress/quality-score-source-of-truth.md`](./docs/progress/quality-score-source-of-truth.md).
 
 ## Use it
 

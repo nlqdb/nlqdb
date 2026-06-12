@@ -80,8 +80,6 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
   - *In this feature:* `nlq` prints the diff in TTY mode and as a JSON field in `--json` mode (per `SK-TRUST-001`); every `nlq ask` response prints the compiled SQL under a `─ trace ─` separator (per `SK-TRUST-002`); `low_confidence` refusals offer arrow-key disambiguation (per `SK-TRUST-003`). See [`trust-ux/FEATURE.md`](../trust-ux/FEATURE.md).
 - **GLOBAL-024** — Demand-signal telemetry on every "not yet" path.
   - *In this feature:* a bare-form `nlq "..."` invocation that hits an unknown verb (post-CLI ship) emits `feature.requested.unknown_cli_verb` via the SDK's event sink.
-- **GLOBAL-027** — Pre-alpha gate.
-  - *In this feature:* `--invite-code` is a persistent root flag with `NLQDB_INVITE_CODE` as its env-var fallback; the value flows through `Client.WithInviteCode()` onto `X-Invite-Code`. `renderAPIError` adds a `feature_gated` branch that prints "BIRD X% / 65% · Spider …" plus the waitlist URL. See [`pre-alpha-gate/FEATURE.md`](../pre-alpha-gate/FEATURE.md).
 
 ## Open questions / known unknowns
 

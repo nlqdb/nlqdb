@@ -26,8 +26,8 @@ Parent feature: [`llm-router/FEATURE.md`](../FEATURE.md).
   dialect-variation signal without a maintenance fork.
 - **Core value:** Engine quality, Free
 - **Why:** `PLAN_SYSTEM` was zero-shot; the planner is the dominant term
-  in the 0.318 free-chain BIRD-dev baseline that blocks the `GLOBAL-027`
-  gate (and so every top-5 ICP flow). Few-shot in-context exemplars are
+  in the 0.318 free-chain BIRD-dev baseline that drives every top-5 ICP
+  flow. Few-shot in-context exemplars are
   the single biggest *prompt-only* lever in the text-to-SQL literature:
   DAIL-SQL ([arXiv:2308.15363](https://arxiv.org/abs/2308.15363) / VLDB
   vol. 17 p. 1132) establishes that exemplar **format and organization**

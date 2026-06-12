@@ -112,7 +112,6 @@ jobs:
             --var "NODE_ENV:preview" \
             --var "MOCK_IDP:1" \
             --var "MOCK_STRIPE:1" \
-            --var "GATE_OPEN:1" \
             --var "BETTER_AUTH_URL:${PREVIEW_BASE_URL}" \
             --var "MAGIC_LINK_WEB_ORIGIN:${PREVIEW_BASE_URL}" \
             --var "DATABASE_URL:${DATABASE_URL}" \

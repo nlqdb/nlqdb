@@ -8,8 +8,7 @@
 >
 > **Authority.** On any conflict, the canonical sources win, in this
 > order: [`GLOBAL-025`](../decisions/GLOBAL-025-north-star.md) (KPI
-> floors) · [`GLOBAL-027`](../decisions/GLOBAL-027-pre-alpha-gate.md)
-> (gate thresholds) · [`quality-eval/FEATURE.md`](../features/quality-eval/FEATURE.md)
+> floors) · [`quality-eval/FEATURE.md`](../features/quality-eval/FEATURE.md)
 > (`Status:` line, the canonical measurement status) ·
 > [`llm-router/FEATURE.md`](../features/llm-router/FEATURE.md) (the
 > system under test). If this file disagrees with them, **they win** and
@@ -24,24 +23,24 @@
 
 ## 1. Why engine quality is the #1 acquisition lever (not just an engine nicety)
 
-The pre-alpha gate ([`GLOBAL-027`](../decisions/GLOBAL-027-pre-alpha-gate.md))
-blocks **every "do-work" surface** until the **free chain** clears **BIRD-dev
-EX ≥ 0.65 AND Spider 2.0-lite EX ≥ 0.75**. That gate sits at the end of all five
-canonical ICP acquisition flows ([`GLOBAL-032`](../decisions/GLOBAL-032-top-5-user-flows-canonical.md);
-FLOW-001…005 in [`automated-icp-validation-plan.md` §0.5](../research/automated-icp-validation-plan.md)):
-every walker today reaches the first query and **dead-ends at gate-403**
-(verified 2026-06-04). So free-chain BIRD/Spider EX is the literal valve on the
-inbound funnel — moving it is moving acquisition, and the **planner model is the
-dominant term** in that number.
+Every one of the five canonical ICP acquisition flows
+([`GLOBAL-032`](../decisions/GLOBAL-032-top-5-user-flows-canonical.md);
+FLOW-001…005 in [`automated-icp-validation-plan.md` §0.5](../research/automated-icp-validation-plan.md))
+ends at a stranger's **first query** against the free chain. If that
+first NL→SQL answer is wrong, the visitor forms a "this doesn't work"
+opinion we can't take back — so free-chain **BIRD-dev EX** and **Spider
+2.0-lite EX** are the literal quality of the inbound funnel's first
+impression. Moving them is moving acquisition, and the **planner model is
+the dominant term** in that number.
 
 ## 2. The progress bar (evidence-based; every number sourced)
 
-| KPI (free chain) | Now | Gate floor (GLOBAL-027) | Phase-2 floor (GLOBAL-025) | Source |
-|---|---|---|---|---|
-| **BIRD-dev reasoning EX** (match among questions that produced SQL — capacity-independent) | **≈ 0.52** (was **0.354**) | — | — | first post-fix run 2026-06-09: 53.4% smoke (39/73) · 54.2% paced (71/131) · 50.0% clean (21/42); baseline 159/449 (T17) |
-| BIRD-dev EX (raw — the gate metric) | **0.35** *(measured lower bound; was 0.318)* | ≥ 0.65 | ≥ 0.60 | clean 60-q run 2026-06-09, **capacity-bounded** (30% `no_sql`); canonical 500-q / 6-provider re-seed = the now-unblocked GHA dispatch (T17) |
-| Spider 2.0-lite EX (raw) | **0.12** *(first ever measured)* | ≥ 0.75 | report only (Phase-3 ≥ 0.15) | clean 40-q run 2026-06-09, capacity-bounded (35% `no_sql`); reasoning EX 0.19 (5/26 produced) |
-| free-vs-agentic-frontier delta | **null** (lane not yet run) | — | ≤ 25 pp (`SK-QUAL-004`) | `SK-QUAL-004`; agentic lane opt-in (`SK-QUAL-009`) |
+| KPI (free chain) | Now | Phase-2 floor (GLOBAL-025) | Source |
+|---|---|---|---|
+| **BIRD-dev reasoning EX** (match among questions that produced SQL — capacity-independent) | **≈ 0.52** (was **0.354**) | — | first post-fix run 2026-06-09: 53.4% smoke (39/73) · 54.2% paced (71/131) · 50.0% clean (21/42); baseline 159/449 (T17) |
+| BIRD-dev EX (raw) | **0.35** *(measured lower bound; was 0.318)* | ≥ 0.60 | clean 60-q run 2026-06-09, **capacity-bounded** (30% `no_sql`); canonical 500-q / 6-provider re-seed = the now-unblocked GHA dispatch (T17) |
+| Spider 2.0-lite EX (raw) | **0.12** *(first ever measured)* | report only (Phase-3 ≥ 0.15) | clean 40-q run 2026-06-09, capacity-bounded (35% `no_sql`); reasoning EX 0.19 (5/26 produced) |
+| free-vs-agentic-frontier delta | **null** (lane not yet run) | ≤ 25 pp (`SK-QUAL-004`) | `SK-QUAL-004`; agentic lane opt-in (`SK-QUAL-009`) |
 
 **Read the two BIRD rows together.** 2026-06-09 (T17) is the *first*
 measurement of T1–T16 (the pipeline was broken the whole window). **Reasoning
@@ -49,7 +48,7 @@ EX** — accuracy on the questions the chain answered — isolates SQL quality
 from capacity and rose **35.4% → ≈ 52%**. **Raw EX** also pays the
 chain-exhaustion `no_sql`, which the measurement env inflated to 30–70% (only
 4/6 providers + per-minute-TPM saturation on big DDL), so raw EX is a
-**conservative lower bound** the gate takes by design. Production's
+**conservative lower bound**. Production's
 6-provider chain + the T11 backstop pull `no_sql` toward the baseline's 10.2%,
 so production raw EX should sit between the rows (**est. ≈0.47, not measured**); the GHA 500-q
 dispatch re-seeds the canonical number.
@@ -159,9 +158,9 @@ implementing (`CLAUDE.md` §P4).
 - **Eval ≠ production chain.** The eval free lane MUST mirror
   `apps/api/src/llm-router.ts` (`tools/eval/src/lanes.ts` comment) — a
   divergence makes the eval measure a system we don't ship.
-- **Optimising BIRD alone.** Two thresholds force generalisation
-  (`GLOBAL-027`); BIRD-only rewards memorising its 11 schemas. Move both
-  or neither.
+- **Optimising BIRD alone.** Tracking both BIRD and Spider forces
+  generalisation (`GLOBAL-025`); BIRD-only rewards memorising its 11
+  schemas. Move both or neither.
 - **PR CI firing real keys.** Real provider calls on a PR leak the
   card-free budget and make CI flaky (`SK-QUAL-002`). Keep it mocked.
 - **A low-RPM provider at the chain *head* can starve capacity.** The
@@ -192,8 +191,8 @@ current-state view of the same levers.
 > **Next — the canonical re-seed:** a full **500-q / 6-provider** dispatch of
 > both workflows on **GitHub Actions** (all six card-free keys live, unlike
 > the 4-of-6 agent env), which pays `no_sql` at production's ~10% and produces
-> the canonical raw EX that re-seeds `baseline-2026-06-15.json` +
-> `apps/api/src/gate/eval-baseline.ts` (`SK-QUAL-005`, one-time migration).
+> the canonical raw EX that re-seeds `baseline-2026-06-15.json`
+> (`SK-QUAL-005`, one-time migration).
 > Keys + `--throttle-ms 3000` (`SK-QUAL-012`) are wired (`lanes.ts`), mirrored
 > by [`scripts/mirror-secrets-gha.sh`](../../scripts/mirror-secrets-gha.sh),
 > and the gdown breakage is fixed (T17) — so a dispatch now runs green.

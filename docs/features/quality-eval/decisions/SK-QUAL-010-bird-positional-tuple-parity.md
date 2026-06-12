@@ -34,9 +34,8 @@ Spider comparator this aligns the BIRD path with).
     into the row identity, so a correct answer whose alias or function-name
     casing differed from gold — `count(*) AS total` vs `COUNT(*)` — scored
     `mismatch`. That is a **measurement artifact**, not a model error, and
-    it depresses the free-chain BIRD EX the [`GLOBAL-027`](../../../decisions/GLOBAL-027-pre-alpha-gate.md)
-    gate reads. Removing it serves `SK-QUAL-001`'s comparability mandate
-    directly.
+    it depresses the free-chain BIRD EX we report. Removing it serves
+    `SK-QUAL-001`'s comparability mandate directly.
   - **Positional comparison is strictly more correct, both directions.**
     It recovers false-mismatches (alias/case differences on identical
     values) **and** removes a false-match the name-keyed form allowed: a
@@ -77,18 +76,17 @@ Spider comparator this aligns the BIRD path with).
     run's per-question diff (`SK-QUAL-006` McNemar / `SK-QUAL-002` 5-pp
     threshold) conflates the scorer change with any model change and must
     be read as a one-time scorer migration, not a regression. That run's
-    report re-seeds `baseline-2026-06-15.json` and
-    `apps/api/src/gate/eval-baseline.ts` (`SK-QUAL-005` / `GLOBAL-027`)
-    under the corrected scorer; thereafter diffs are model-only again.
+    report re-seeds `baseline-2026-06-15.json` (`SK-QUAL-005`) under the
+    corrected scorer; thereafter diffs are model-only again.
 
 - **Alternatives rejected:**
   - **Keep name-keyed object comparison.** Diverges from canonical BIRD,
-    depresses the gate-relevant number on a measurement artifact, and is
+    depresses the reported number on a measurement artifact, and is
     not comparable to the published leaderboard — fails `SK-QUAL-001`.
   - **Adopt full canonical `set()` (order- and duplicate-blind).** Would
     credit answers that ignore a requested ordering or collapse intended
     duplicates; raises the number on arguably-wrong predictions. The
-    conservative lower bound is the honest call while the gate is live.
+    conservative lower bound is the honest call.
   - **Normalise aliases in the SQL text before executing.** Brittle SQL
     rewriting that can't cover every alias/casing/function form; executing
     and comparing values is exactly what EX is defined to be.

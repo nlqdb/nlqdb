@@ -134,7 +134,7 @@ tests:
       If after that retry the reply STILL contains "references a table
       this database doesn't have" or "no such table", TEST_FAILED
       IMMEDIATELY — the users table is not queryable (an upstream
-      GLOBAL-027 bootstrap failure, not a read-path bug); do NOT keep
+      DB-bootstrap failure, not a read-path bug); do NOT keep
       retrying, it only burns the 300s budget.
       Verify the reply contains "Alice" (any casing) and either
       "alice@example.com" or a mention of "1 user" or a data row.
@@ -157,7 +157,7 @@ tests:
       have" or "Something went wrong"), wait 3 seconds and retry once.
       If after that retry the reply STILL contains "references a table
       this database doesn't have" or "no such table", TEST_FAILED
-      IMMEDIATELY — an upstream GLOBAL-027 bootstrap failure, not a
+      IMMEDIATELY — an upstream DB-bootstrap failure, not a
       read-path bug; do NOT keep retrying.
       Verify the reply surfaces the number 1 (or more, if multiple Alice
       rows exist from prior runs), either in summary text or a data cell.
@@ -181,7 +181,7 @@ tests:
       button), click reload and re-submit the prompt from the chat
       textarea. If the reply contains "references a table this database
       doesn't have" or "no such table", TEST_FAILED IMMEDIATELY — an
-      upstream GLOBAL-027 bootstrap failure, not a read-path bug; do
+      upstream DB-bootstrap failure, not a read-path bug; do
       NOT keep retrying.
       Verify the chat reply is NOT a bare dead-end message
       like "Something went wrong — try again."

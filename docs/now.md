@@ -8,10 +8,9 @@ If this file disagrees with them, **they win**.
 
 [`quality-eval/FEATURE.md`](./features/quality-eval/FEATURE.md). Phase 2
 slices 1–3c shipped. Next: a first manual eval run seeds
-`apps/api/src/gate/eval-baseline.ts` so
-[`GLOBAL-027`](./decisions/GLOBAL-027-pre-alpha-gate.md)'s
-BIRD ≥ 0.65 / Spider ≥ 0.75 thresholds clear and the gate removes
-itself. Headline KPI: free-vs-agentic-frontier delta per
+`tools/eval/baseline-2026-06-15.json` ([`SK-QUAL-005`](./features/quality-eval/FEATURE.md#sk-qual-005))
+toward the [`GLOBAL-025`](./decisions/GLOBAL-025-north-star.md) Phase 2
+floor (BIRD ≥ 0.65 / Spider report-only). Headline KPI: free-vs-agentic-frontier delta per
 [`SK-QUAL-004`](./features/quality-eval/decisions/SK-QUAL-004-free-vs-frontier-delta.md).
 **Progress bar** (what's tried / not-tried, every number sourced):
 [`progress/quality-score-source-of-truth.md`](./progress/quality-score-source-of-truth.md).
