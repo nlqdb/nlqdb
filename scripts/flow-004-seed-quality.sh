@@ -188,16 +188,18 @@ while IFS= read -r GOAL; do
       QUALITY="errored"
     fi
   elif [[ "$STATUS" == "422" ]]; then
-    # The engine could not build the DB at all (infer/compile/ddl/embed_failed
-    # per apps/api/src/index.ts formatCreateJsonResponse) — a HARDER first-value
-    # failure than `degraded`: the invited stranger got an error, not even an
-    # empty DB. Surfaced as its own `provision_failed` bucket so it is visible
-    # rather than hidden among true upstream blips. Still excluded from
-    # seeded_ok_ratio per SK-STRG-008 (the ratio grades the seed quality of a
-    # successfully-created DB, not whether provisioning succeeds).
+    # The engine could not build the DB at all — the four DbCreateError kinds
+    # that map to 422 in apps/api/src/index.ts formatCreateJsonResponse
+    # (infer_failed / compile_failed / ddl_invalid / embed_failed; the API's
+    # own `provision_failed` kind is a 500 — a different leg — so it is NOT one
+    # of these). A HARDER first-value failure than `degraded`: the invited
+    # stranger got an error, not even an empty DB. Bucketed separately so it
+    # stays visible rather than hidden among true upstream blips. Still
+    # excluded from seeded_ok_ratio per SK-STRG-008 (the ratio grades the seed
+    # quality of a successfully-created DB, not whether the build succeeded).
     EKIND="$(printf '%s' "$BODY" | jq -r '.error.kind // ""' 2>/dev/null || true)"
     case "$EKIND" in
-      infer_failed|compile_failed|ddl_failed|embed_failed) QUALITY="provision_failed"; KIND="$EKIND" ;;
+      infer_failed|compile_failed|ddl_invalid|embed_failed) QUALITY="provision_failed"; KIND="$EKIND" ;;
     esac
   fi
 
