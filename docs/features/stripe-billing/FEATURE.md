@@ -144,6 +144,7 @@ Canonical text in [`docs/decisions/`](../../decisions/) (index in [`docs/decisio
 - **DLQ for stuck events** — **Parked until** a `processed_at IS NULL` backlog appears (PLAN §11): the queryable signal exists; the ops cron + alert is the wiring that lands when a dispatch first slips by.
 - **Lago wiring.** Lago-on-Fly as the usage-metering layer batched into Stripe (PLAN §6); not yet wired. Phase 2 slice TBD.
 - **Dashboard + live-mode cutover.** Endpoints are inert until the Stripe Dashboard is configured (price IDs, Stripe Tax, a saved Customer-portal config — `sessions.create` errors without one) and the test→live secret rollover runs (`wrangler secret put` + Dashboard webhook endpoint update). Capture the runbook in `docs/runbook.md §6` when the flip lands.
+- **Re-subscribe against a customer deleted in Stripe** (SK-STRIPE-014). A `stripe_customer_id` manually deleted in the Dashboard surfaces as a `500 internal` on the next re-subscribe. **Parked** — it can't arise from our own flow (we never delete customers), and the operator who deleted it is the one who sees the error.
 
 ## Billing constraints and philosophy
 

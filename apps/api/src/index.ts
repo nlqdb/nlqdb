@@ -1633,9 +1633,8 @@ app.post("/v1/billing/checkout", requireSession, async (c) => {
       priceIdPro: c.env.STRIPE_PRICE_PRO ?? "",
       userId: session.user.id,
       userEmail: session.user.email,
-      // Present only on the re-subscribe path (a terminal-status row survived
-      // the guard above); reuse it so we don't orphan a Stripe customer
-      // (SK-STRIPE-014).
+      // Non-null only on the re-subscribe path (a terminal-status row survived
+      // the guard above) — SK-STRIPE-014.
       existingStripeCustomerId: existing?.stripe_customer_id ?? null,
       idempotencyKey: c.req.header("Idempotency-Key") ?? null,
     },

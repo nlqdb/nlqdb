@@ -22,10 +22,7 @@ export type CheckoutDeps = {
   priceIdPro: string;
   userId: string;
   userEmail?: string | null;
-  // The caller's existing Stripe customer id, when re-subscribing after a
-  // terminal (canceled / incomplete_expired) subscription. Reusing it keeps
-  // invoice history, saved payment methods, and tax IDs on one customer
-  // instead of orphaning them behind a fresh Stripe customer (SK-STRIPE-014).
+  // Set on re-subscribe to reuse the caller's Stripe customer (SK-STRIPE-014).
   existingStripeCustomerId?: string | null;
   idempotencyKey?: string | null;
 };
@@ -69,12 +66,10 @@ export async function createCheckoutSession(
         cancel_url: cancelUrl,
         allow_promotion_codes: true,
         automatic_tax: { enabled: true },
-        // Re-subscribe: bind to the existing Stripe customer so history,
-        // payment methods, and tax IDs stay on one customer (SK-STRIPE-014).
-        // Stripe forbids `customer` + `customer_email` together, so the email
-        // prefill is only for a brand-new customer. With an existing customer,
-        // automatic_tax requires `customer_update.address` so the address
-        // collected at checkout is written back for tax computation.
+        // Reuse the existing customer on re-subscribe (SK-STRIPE-014). Stripe
+        // forbids `customer` + `customer_email` together, and automatic_tax on
+        // an existing customer needs `customer_update.address` to save the
+        // address collected at checkout.
         ...(deps.existingStripeCustomerId
           ? {
               customer: deps.existingStripeCustomerId,
