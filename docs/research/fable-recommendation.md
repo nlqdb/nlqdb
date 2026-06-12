@@ -26,11 +26,14 @@ Your machine works. Your compass is broken — in one specific, fixable place.
    shipped blind; one aggregate measurement since they landed (2026-06-09); the canonical
    re-seed has sat in `blocked-by-human.md` waiting for a click. Agents optimize
    what they can see — merged PRs, resolved open questions — because the number
-   that matters is measured roughly never.
+   that matters is measured roughly never. *(Update, same day: the re-seed ran
+   — BIRD 0.522, Spider 0.1704 — and the newest lever wave shipped WITH
+   same-seed before/after smokes. The loop is starting to close; §8 tracks
+   what's left.)*
 
 The fix is one recalibration decision, one closed loop, and re-pointing ~3 of
-the 7 daily agents from *building* to *measuring and distributing*. Details and
-a this-week checklist below.
+the 7 daily agents from *building* to *measuring and distributing*. Status
+checklist in §8; the repeatable operating loop in §9.
 
 ## 1. Ground truth (measured 2026-06-12)
 
@@ -238,27 +241,84 @@ Cheap techniques you haven't used (all async, $0, agent-runnable):
 - **In-product micro-surveys** (Sean Ellis + "what did you expect this query
   to return?") — feedback at the moment of failure beats any interview.
 
-## 8. This week
+## 8. Status — done vs left (updated 2026-06-12, post PR #379)
 
-Founder (clicks only, ~1 hour total):
-1. Decide R1 (gate recalibration) — the one decision everything else waits on.
-2. Run the two eval `workflow_dispatch`es (or let an agent try with
-   `GH_TOKEN_WORKFLOW` first).
-3. Grant the CF token `Zone Analytics:Read`; confirm the Cerebras/Mistral repo
-   secrets; submit the MCP directory form.
-4. Approve the first Show-HN draft when lane 3 produces it.
+Done since this doc was written (same day — evidence the machine responds fast):
 
-Agents (this week's reprompted routine — applies only if you adopt R2):
-1. Build persona-bench (questions from `personas.md` over self-created schemas).
-2. Build `docs/scorecard.md` + the daily regenerator, bot-filtered.
-3. Rewrite `now.md` in the §6 format; add the 20 KB CI check.
-4. Retire the daily open-questions quota; freeze the billing lane.
-5. Start the distribution queue (one artifact/day into blocked-by-human).
+- ✅ **Canonical 6-provider eval re-seed ran.** BIRD 0.522 (261/500,
+  chain-exhaustion `no_sql` 51 → 3), Spider 0.1704. BIRD is now **12.8 pp from
+  its 0.65 gate** — plausibly closeable. Spider remains 58 pp from an
+  above-SOTA bar — §2 stands unchanged.
+- ✅ **Per-lever measurement adopted.** SK-LLM-036/037 shipped with same-seed
+  before/after smokes (BIRD 37.3 → 51.3, Spider 15 → 25) plus the
+  capacity-honest budget-stop (SK-QUAL-013). This is R2's core habit.
+- ✅ **R1 escalated, not buried** — the gate contradiction is the top P1 bullet
+  in `blocked-by-human.md`. Cerebras/Mistral secret bullets cleared.
+- ✅ `now.md` §1 trimmed toward the §6 format; this doc relocated to
+  `docs/research/`.
 
-The honest close: you haven't been failing to make progress — you've been
-making excellent progress at industrial speed toward a door you locked from
-the inside, while measuring everything except the two numbers that matter
-(does the engine answer real users' questions; does any real user exist). Open
-the door to a deliberately small crowd, close the eval loop, and the same
-seven agents that produced 50 PRs in 6 days become a growth machine instead of
-a feature factory.
+Still open — founder (clicks/decisions, ~1 hour):
+
+- ☐ **Decide R1.** Everything in §4 (growth) and §7 (research contact) waits
+  on it. Suggested shape: keep BIRD 0.65 if you want one academic bar, swap
+  the Spider lock for persona-bench ≥ 80%, keep Spider as a tracked KPI per
+  GLOBAL-025.
+- ☐ Grant the CF token `Zone Analytics:Read` (retested 2026-06-12 15:25 UTC —
+  still 403; the scorecard's funnel top stays blind until then).
+- ✅ MCP directory form — submitted by founder 2026-06-12 (first outbound
+  distribution artifact; drop the bullet from `blocked-by-human.md`).
+- ☐ Reddit OAuth app · `CF_AI_TOKEN` quoting fix + mirror re-run (both in
+  `blocked-by-human.md`).
+- ☐ Approve the first published artifact when the distribution lane drafts it.
+
+Still open — agents (the R2/R3 build-out, none started):
+
+- ☐ **Persona-bench** — the user-relevant eval (§2). Build it even before R1
+  is decided: its first score is evidence for the R1 call itself.
+- ☐ **`docs/scorecard.md` + daily regenerator** (bot-filtered funnel + engine
+  numbers + "worst number this week").
+- ☐ **Distribution queue** — zero publishable artifacts exist yet; still zero
+  external humans (D1 re-checked today).
+- ☐ In-product Sean Ellis micro-survey; 20 KB CI check; freeze the billing
+  lane; retire the daily open-questions quota.
+
+## 9. The repeatable process
+
+The loop that turns 7 agents into compounding progress — one page, no new
+tooling, start tomorrow:
+
+**Daily (agents, in order):**
+
+1. **Measure first.** Scorecard agent regenerates `docs/scorecard.md` from
+   live sources (D1 counts bot-filtered, latest eval results, CF analytics
+   once readable, LogSnag) and names the **worst number**. Until the file
+   exists, the agent creates it — that's day one's whole job.
+2. **One lever per lane, measured.** Every lane agent starts by quoting the
+   scorecard number it will move and ends with the same number re-measured:
+   engine lanes via the same-seed smoke (the SK-LLM-036/037 pattern, now
+   proven), funnel lanes via the stranger-test walkers. Δ ≥ 0 merges; Δ < 0
+   reverts with a one-line note. An agent that can't name its number does
+   deletion/cleanup (D5) instead of building.
+3. **One artifact out.** Distribution agent drafts one publishable thing
+   (post, answer, submission) into `blocked-by-human.md` for one-click
+   approval. Publishing is a daily output, not a launch event.
+4. **Review gate.** The merge agent rejects any PR whose body names no
+   measured delta — the existing §8 quality gates plus one line.
+
+**Weekly (one founder session, ~30 min, the only meeting the company has):**
+
+1. Read `docs/scorecard.md` — the trend, not the day.
+2. Clear `blocked-by-human.md` — every bullet gets decided, clicked, or
+   explicitly deferred with a trigger. Nothing sits twice.
+3. Dispatch (or let the agent dispatch) the canonical eval; the weekly delta
+   is the company's heartbeat.
+4. Pick next week's single focus number and write it at the top of the
+   scorecard. Lanes that don't serve it run at half effort.
+
+**The invariant** behind both cadences: *no change without a number, no number
+without a next change.* Measure → pick the worst number → smallest change →
+re-measure → publish or revert → repeat. Today only the engine lane can run
+this loop (it just did, +15 pp on BIRD). R1 + the scorecard extend the same
+loop to users — and then the same seven agents that moved BIRD 17 pp in one
+day are pointed at the only numbers that ultimately matter: real strangers
+reaching real first answers.
