@@ -60,7 +60,7 @@ function env(name: string): string {
 }
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const provider = buildProvider();
-console.log(`probing provider=${which} (the staging chain head is cerebras; SK-LLM-023)\n`);
+console.info(`probing provider=${which} (the staging chain head is cerebras; SK-LLM-023)\n`);
 
 // Every identifier the SQL reads after FROM/JOIN, normalised (unquoted,
 // lowercased, schema-prefix stripped) — the only question that matters is
@@ -127,7 +127,7 @@ for (let i = 1; i <= iterations; i++) {
     row.note = `error: ${err instanceof Error ? err.message : String(err)}`;
   }
   rows.push(row);
-  console.log(
+  console.info(
     `#${i} ${row.pass ? "PASS" : "FAIL"} | created=[${row.tables.join(",")}] ref=[${row.referenced.join(",")}] | ${row.note}\n    SQL: ${row.sql.replace(/\s+/g, " ")}`,
   );
   if (i < iterations) await sleep(PACE_MS);
@@ -135,5 +135,5 @@ for (let i = 1; i <= iterations; i++) {
 
 const passes = rows.filter((r) => r.pass).length;
 const created = new Set(rows.flatMap((r) => r.tables));
-console.log(`\n=== GLOBAL-027 engine round-trip: ${passes}/${iterations} pass ===`);
-console.log(`distinct created table names across runs: ${[...created].join(", ") || "(none)"}`);
+console.info(`\n=== GLOBAL-027 engine round-trip: ${passes}/${iterations} pass ===`);
+console.info(`distinct created table names across runs: ${[...created].join(", ") || "(none)"}`);
