@@ -10,14 +10,17 @@ pacing this backstops),
 - **Decision:** The budget-stop predicate is **capacity exhaustion** —
   `AllProvidersFailedError` where every attempt is `rate_limited` **or**
   `circuit_open` — not the literal all-`rate_limited` shape `SK-QUAL-011`
-  shipped. Before stopping, the runner waits once for
+  shipped. Before stopping, the runner waits once per question for
   `--capacity-wait-ms` (`RunOptions.capacityWaitMs`, default **0** ⇒
   immediate stop, PR CI unchanged; workflows pass **65 000 ms** to outlast
-  the 60 s breaker cooldown) and retries the question; a second
-  consecutive exhaustion budget-stops. The full-mode workflows cache the
-  checkpoint keyed by **commit SHA** so a re-dispatch of the same commit
-  resumes instead of re-burning quota (smoke already did; two code
-  versions must never share a canonical run's partial scores).
+  the 60 s breaker cooldown) and retries; waits are capped at **5 per
+  run** (`CAPACITY_WAITS_PER_RUN`) so a tight-quota run budget-stops
+  instead of crawling into the job's `timeout-minutes` ceiling (observed:
+  the 2026-06-12 Spider smoke was runner-cancelled at 30 min, losing the
+  slice). The full-mode workflows cache the checkpoint keyed by **commit
+  SHA** so a re-dispatch of the same commit resumes instead of re-burning
+  quota (smoke already did; two code versions must never share a
+  canonical run's partial scores).
 
 - **Core value:** Bullet-proof
 

@@ -114,6 +114,9 @@ SECRETS=(
   GRAFANA_CLOUD_API_KEY
   LOGSNAG_TOKEN
   LOGSNAG_PROJECT
+  # quality-eval-*.yml — bearer for POST /v1/events/eval; without it a
+  # full eval run silently skips the feature.eval.* emit (SK-QUAL-002).
+  EVAL_INGEST_TOKEN
   TINYBIRD_TOKEN
   TINYBIRD_API_BASE
   POSTHOG_API_KEY

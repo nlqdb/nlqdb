@@ -210,6 +210,49 @@ describe("SK-QUAL-011 — runner resume + budget stop", () => {
     expect(report.lanes.find((l) => l.lane === "free")?.no_sql).toBe(0);
   });
 
+  it("SK-QUAL-013: capacity waits are capped per run — the 6th wall budget-stops without waiting", async () => {
+    // 7 questions; every question's FIRST plan() hits a wall, the
+    // post-wait retry recovers. Budget = 5 waits ⇒ q0..q4 recover, q5's
+    // wall finds an empty budget and budget-stops the run.
+    const sevenPath = join(dir, "seven.json");
+    writeFileSync(
+      sevenPath,
+      JSON.stringify(
+        Array.from({ length: 7 }, (_, i) => ({
+          question_id: i,
+          db_id: "pets",
+          question: `How many cats? v${i}`,
+          evidence: "",
+          SQL: "SELECT COUNT(*) FROM pet WHERE species='cat'",
+        })),
+      ),
+    );
+    const walled = new Set<string>();
+    const report = await runEval({
+      dataDir: dir,
+      questionsJsonPath: sevenPath,
+      outDir,
+      runAt: "2026-06-07T00:00:00Z",
+      capacityWaitMs: 5,
+      buildLanes: () =>
+        [
+          freeLane(async (req) => {
+            if (!walled.has(req.goal)) {
+              walled.add(req.goal);
+              throw new AllProvidersFailedError("wall", [
+                { provider: "gemini", reason: "circuit_open", error: undefined },
+              ]);
+            }
+            return { sql: correctSql(req.goal), model: "free-m", confidence: 1 };
+          }),
+        ] as Lane[],
+      writeReport: async () => "stub.json",
+    });
+    expect(report.resumable).toBe(true);
+    expect(report.results).toHaveLength(5); // q0..q4 scored via budgeted waits
+    expect(report.lanes.find((l) => l.lane === "free")?.match).toBe(5);
+  });
+
   it("SK-QUAL-013: budget-stops when the chain is still exhausted after the one wait", async () => {
     const report = await runEval({
       dataDir: dir,

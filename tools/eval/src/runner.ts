@@ -35,6 +35,12 @@ import type {
 const PREDICTED_SQL_CAP = 4096;
 const ERROR_MSG_CAP = 240;
 
+// SK-QUAL-013 — per-run cap on capacity waits. Bounds the added
+// wall-clock to ~5×capacityWaitMs so a tight-quota run budget-stops
+// instead of crawling into the job's timeout-minutes ceiling (observed:
+// the 2026-06-12 Spider smoke was runner-cancelled at its 30-min cap).
+const CAPACITY_WAITS_PER_RUN = 5;
+
 export type RunOptions = {
   // Defaults to `bird-mini-dev-sqlite` for back-compat with slice-1 callers.
   dataset?: EvalDataset;
@@ -264,6 +270,7 @@ async function runOneQuestion(
   schemaCache: Map<string, string>,
   sqlTimeoutMs?: number,
   capacityWaitMs = 0,
+  waitBudget: { remaining: number } = { remaining: 0 },
 ): Promise<QuestionResult> {
   let start = Date.now();
   const ids = {
@@ -361,8 +368,9 @@ async function runOneQuestion(
       // checkpoints and resumes on the next dispatch rather than
       // recording a spurious no_sql.
       if (isChainCapacityExhausted(err)) {
-        if (capacityWaitMs > 0 && !waitedForCapacity) {
+        if (capacityWaitMs > 0 && !waitedForCapacity && waitBudget.remaining > 0) {
           waitedForCapacity = true;
+          waitBudget.remaining--;
           await new Promise((r) => setTimeout(r, capacityWaitMs));
           start = Date.now(); // the wait is harness pacing, not question latency
           continue;
@@ -433,6 +441,9 @@ export async function runEval(opts: RunOptions = {}): Promise<EvalReport> {
 
   const schemaCache = new Map<string, string>();
   const throttleMs = opts.throttleMs ?? 0;
+  // SK-QUAL-013 — shared across questions and lanes: one run gets at most
+  // CAPACITY_WAITS_PER_RUN waits before exhaustion budget-stops outright.
+  const waitBudget = { remaining: (opts.capacityWaitMs ?? 0) > 0 ? CAPACITY_WAITS_PER_RUN : 0 };
   let budgetStopped = false;
   let firstScored = true;
   for (const question of questions) {
@@ -458,6 +469,7 @@ export async function runEval(opts: RunOptions = {}): Promise<EvalReport> {
             schemaCache,
             opts.sqlTimeoutMs,
             opts.capacityWaitMs ?? 0,
+            waitBudget,
           );
           return { result };
         } catch (err) {

@@ -226,7 +226,10 @@ jobs:
     name: Smoke EX (sampled, SK-QUAL-011)
     if: inputs.mode == 'smoke'
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    # Ceiling absorbs a fixture re-download (sparse clone + Drive zip) +
+    # the bounded SK-QUAL-013 capacity waits — the 2026-06-12 smoke was
+    # runner-cancelled at 30 min before the waits were capped.
+    timeout-minutes: 45
     # Fixed smoke slice (SK-QUAL-011) — same seed + limit every run.
     env:
       SMOKE_SEED: "20260607"

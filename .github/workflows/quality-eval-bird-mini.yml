@@ -251,8 +251,9 @@ jobs:
     if: inputs.mode == 'smoke'
     runs-on: ubuntu-latest
     # 150-question sample × free chain ≈ a few min; the ceiling absorbs a
-    # slow-provider tail. A budget stop (chain rate-limited) exits early.
-    timeout-minutes: 30
+    # fixture re-download + the bounded SK-QUAL-013 capacity waits. A
+    # budget stop (chain rate-limited) exits early.
+    timeout-minutes: 45
     # Fixed smoke slice (SK-QUAL-011): same seed + limit every run so the
     # smoke EX is a stable run-to-run signal, not noise from a new slice.
     env:
