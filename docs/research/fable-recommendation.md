@@ -143,7 +143,7 @@ one-click approver:
    pain-threads; the distribution agent writes a genuinely helpful answer that
    mentions nlqdb once. This is the no-sales version of outreach.
 4. **AEO you already built:** `/solve/*`, `/vs/*`, `llms.txt`, MCP directory
-   submission (sitting in blocked-by-human — submit it). These are inbound
+   submission (form submitted 2026-06-12 — §8). These are inbound
    channels that work while you sleep, but today nothing measures whether they
    receive a single visit → see §5.
 5. **In-product Sean Ellis** instead of interview calls: after a user's Nth
