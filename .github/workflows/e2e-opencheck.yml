@@ -14,7 +14,9 @@
 #
 # FREE MODELS ONLY (GLOBAL-013). On OpenRouter ONLY a `:free` slug is $0 — a bare slug is PAID
 # (2026-05-21: a paid Mistral slug burned ~$14). Agent model (all suites): OpenRouter
-# openai/gpt-oss-120b:free — tool-call verified 2026-06-11 (usage.cost:0; OpenRouter $20.21 remaining, >$10).
+# openai/gpt-oss-120b:free — tool-call verified 2026-06-12 (usage.cost:0; OpenRouter $20.21/$40, >$10).
+# Engine (app-side /v1/ask) = the cerebras-led free chain (SK-LLM-023), NOT Groq; check the DAILY
+# (TPD/RPD) budget of the head before triggering — per-minute headers lie (opencheck-operations.md).
 # Top-5 free models + switching guide: docs/features/e2e-coverage/opencheck-operations.md
 
 name: E2E (opencheck)
