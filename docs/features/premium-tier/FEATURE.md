@@ -170,9 +170,7 @@ The 8-point BYOK decision tree that previously lived here is resolved by [`SK-PR
 
 ### Other open questions
 
-- **Hard-plan classifier confidence threshold** — Resolved by [`SK-LLM-022`](../llm-router/decisions/SK-LLM-022-hard-plan-confidence-threshold.md): `confidence < 0.75 ⇒ hard_plan`, env-tunable.
-- **OpenRouter on the AI Gateway compat endpoint** — Resolved: dropped from BYOLLM (compat doesn't serve it; `SK-LLM-021` accepts `anthropic`/`openai`/`google-ai-studio`). Amended in [`SK-PREMIUM-008`](./decisions/SK-PREMIUM-008-byollm.md) §1; OpenRouter stays reachable via the free/hosted chain.
-- **Dunning when the add-on payment fails** — Resolved per `GLOBAL-033` (cost → `GLOBAL-026` free chain forever): on Stripe `invoice.payment_failed` for the metered line, retry once (standard Stripe dunning), then **fall back to the strict-$0 free chain** — never block the product. The add-on re-enables on a successful charge. `stripe-billing/FEATURE.md` owns the dunning mechanics.
+- **Add-on payment-fail routing** — Resolved per `GLOBAL-033` (cost → `GLOBAL-026` free chain forever): on `invoice.payment_failed` for the metered LLM-tokens line, route premium-enabled DBs back to the strict-$0 free chain — never block the product — and re-enable the add-on on a successful charge. `stripe-billing` owns the dunning mechanics (`SK-STRIPE-011`/`SK-STRIPE-013` + `SK-STRIPE-005` `past_due` sync); this bullet owns only the chain-selection consequence.
 - **Anonymous-mode interaction** — Resolved per `GLOBAL-033` (UX): anon principals have no Stripe customer, so the `SK-PREMIUM-004` premium CTA does **not** render for them; the create-an-account cross-sell takes its place on that surface.
 - **Parked until the surface-parity PR (GLOBAL-003 tracked gap):** BYOLLM surfaces still unbuilt — MCP `byollm` param, `<nlq-data byollm>` (cookie-session), CLI account-store verbs, `/app/keys` UI. Header lane (`SK-LLM-021`, `SK-SDK-010`, `SK-CLI-016`) + account lane (`SK-PREMIUM-012`, `SK-SDK-011`) already shipped.
 - **Parked until `quality-eval` Phase 2:** `nlqdb.plan.quality_score` histogram (shape + judge prompt + CI) — the CTA's quality-delta pull depends on it.
