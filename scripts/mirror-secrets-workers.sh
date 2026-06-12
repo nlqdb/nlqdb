@@ -168,6 +168,14 @@ for name in "${SECRETS[@]}"; do
     suspicious_count=$((suspicious_count + 1))
     continue
   fi
+  # Same unexpanded-reference guard as mirror-secrets-gha.sh: a
+  # single-quoted `export NAME='$OTHER'` in .envrc must never reach a
+  # Worker secret (observed on CF_AI_TOKEN, 2026-06-10).
+  if [[ "$val" == \$* ]]; then
+    fail "$name" "value starts with '\$' — looks like an unexpanded reference (fix .envrc quoting)"
+    suspicious_count=$((suspicious_count + 1))
+    continue
+  fi
   names+=("$name")
   values+=("$val")
   set_count=$((set_count + 1))

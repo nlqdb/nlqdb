@@ -28,7 +28,10 @@ export type WorkersAIProviderOptions = {
 };
 
 type WorkersAIResponse = {
-  result?: { response?: string };
+  // SK-LLM-036 — `response` is a string for prose output, but the
+  // llama-3.3-70b plan model returns valid-JSON output pre-parsed as an
+  // object (verified live against the REST endpoint, 2026-06-10).
+  result?: { response?: string | Record<string, unknown> };
   success?: boolean;
   errors?: Array<{ code: number; message: string }>;
 };
@@ -85,13 +88,17 @@ async function workersAIChat(
     );
   }
   const text = parsed.result?.response;
-  if (typeof text !== "string") {
-    throw new ProviderError(
-      `POST ${url} → 200 missing result.response (got ${truncate(JSON.stringify(parsed), 120)})`,
-      "parse",
-    );
+  if (typeof text === "string") return text;
+  // SK-LLM-036 — re-serialize an object-shaped response so the shared
+  // JSON-response parsing sees the same wire shape as every other leg;
+  // rejecting it had structurally dead-ended this provider on `plan`.
+  if (text !== null && typeof text === "object" && !Array.isArray(text)) {
+    return JSON.stringify(text);
   }
-  return text;
+  throw new ProviderError(
+    `POST ${url} → 200 missing result.response (got ${truncate(JSON.stringify(parsed), 120)})`,
+    "parse",
+  );
 }
 
 export function createWorkersAIProvider(opts: WorkersAIProviderOptions): Provider {

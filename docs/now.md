@@ -7,31 +7,22 @@ If this file disagrees with them, **they win**.
 ## 1. BIRD + Spider evals → engine north-star
 
 [`quality-eval/FEATURE.md`](./features/quality-eval/FEATURE.md). Phase 2
-slices 1–3c shipped. Next: a first manual eval run seeds
-`apps/api/src/gate/eval-baseline.ts` so
+slices 1–3c shipped and the measured numbers now seed
+`apps/api/src/gate/eval-baseline.ts`; next is closing the gap to
 [`GLOBAL-027`](./decisions/GLOBAL-027-pre-alpha-gate.md)'s
-BIRD ≥ 0.65 / Spider ≥ 0.75 thresholds clear and the gate removes
-itself. Headline KPI: free-vs-agentic-frontier delta per
+BIRD ≥ 0.65 / Spider ≥ 0.75 thresholds so the gate removes itself.
+Headline KPI: free-vs-agentic-frontier delta per
 [`SK-QUAL-004`](./features/quality-eval/decisions/SK-QUAL-004-free-vs-frontier-delta.md).
-**Progress bar** (what's tried / not-tried, every number sourced):
-[`progress/quality-score-source-of-truth.md`](./progress/quality-score-source-of-truth.md).
-Latest levers: BIRD scorer parity — positional value tuples so output
-aliases/casing no longer false-mismatch correct values, matching canonical
-`evaluation.py`
-([`SK-QUAL-010`](./features/quality-eval/decisions/SK-QUAL-010-bird-positional-tuple-parity.md)),
-on top of result-shape planner directives — exact projection +
-REAL-cast ratios
-([`SK-LLM-027`](./features/llm-router/decisions/SK-LLM-027-result-shape-directives.md)),
-on top of static few-shot exemplars in the planner prompt
-([`SK-LLM-026`](./features/llm-router/decisions/SK-LLM-026-static-few-shot-plan-exemplars.md),
-DAIL-SQL) and free-chain planner robustness — greedy-decoding
-parity on the Workers AI leg
-([`SK-LLM-024`](./features/llm-router/decisions/SK-LLM-024-greedy-decoding-parity.md))
-+ a JSON-recovery fallback for the `gpt-oss-120b` reasoning head's
-preamble leaks
-([`SK-LLM-025`](./features/llm-router/decisions/SK-LLM-025-json-recovery-fallback.md)),
-and the Cerebras head
-([`SK-LLM-023`](./features/llm-router/decisions/SK-LLM-023-cerebras-planner-tier.md)).
+**Progress bar** (every lever + number, sourced):
+[`progress/quality-score-source-of-truth.md`](./progress/quality-score-source-of-truth.md)
+— its §3 table is the canonical lever list. Latest wave: the revived
+Workers-AI planner leg
+([`SK-LLM-036`](./features/llm-router/decisions/SK-LLM-036-workers-ai-structured-response.md)),
+goal-relevant schema pruning
+([`SK-LLM-037`](./features/llm-router/decisions/SK-LLM-037-goal-relevant-schema-pruning.md)),
+and the capacity-honest eval budget-stop
+([`SK-QUAL-013`](./features/quality-eval/decisions/SK-QUAL-013-capacity-honest-budget-stop.md))
+— same-seed BIRD smoke raw EX 37.3% → 51.3%, Spider 15% → 25%.
 
 ## 2. BYOLLM (every tier, 0% markup)
 

@@ -10,7 +10,7 @@ when-to-load:
 # Feature: Llm Router
 
 **One-liner:** Model selection, fallback chain, prompt strategy, per-user credit accounting; three permanent dispatch lanes per [`GLOBAL-026`](../../decisions/GLOBAL-026-llm-strategy-byollm-hosted-premium.md) — free chain, BYOLLM, hosted-premium.
-**Status:** implemented for the free chain (`SK-LLM-001..015` + `SK-LLM-018` + `SK-LLM-023..028` + `SK-LLM-030`). BYOLLM (`SK-LLM-016`) is partial — provider factory (`SK-LLM-019`) + lane selector / single-provider lane router (`SK-LLM-020`) ship, the per-request `x-nlq-byollm-key` header lane is wired on HTTP `/v1/ask` (`SK-LLM-021`), and the account-stored lane resolves on `/v1/ask` via `api_keys` `scope = "byollm"` ([`SK-PREMIUM-012`](../premium-tier/decisions/SK-PREMIUM-012-account-stored-byollm-storage.md)); `GLOBAL-003` surface parity (MCP/SDK/CLI/elements/`/app/keys`) pending (tracked in `premium-tier/FEATURE.md`). `SK-LLM-017` (hosted-premium chain) lands in Phase 2 alongside `quality-eval`; its meter stays dark until [`phase-plan.md §6`](../../phase-plan.md) trips.
+**Status:** implemented for the free chain (`SK-LLM-001..015` + `SK-LLM-018` + `SK-LLM-023..030` + `SK-LLM-032..037`). BYOLLM (`SK-LLM-016`) is partial — provider factory (`SK-LLM-019`) + lane selector (`SK-LLM-020`) ship, the per-request `x-nlq-byollm-key` header lane is wired on HTTP `/v1/ask` (`SK-LLM-021`), and the account-stored lane resolves on `/v1/ask` via `api_keys` `scope = "byollm"` ([`SK-PREMIUM-012`](../premium-tier/decisions/SK-PREMIUM-012-account-stored-byollm-storage.md)); `GLOBAL-003` surface parity (MCP/SDK/CLI/elements/`/app/keys`) pending (tracked in `premium-tier/FEATURE.md`). `SK-LLM-017` (hosted-premium chain) lands in Phase 2 alongside `quality-eval`; its meter stays dark until [`phase-plan.md §6`](../../phase-plan.md) trips.
 
 **Contribution to north-star:** Engine quality — the router is the NL→SQL accuracy lever per [`GLOBAL-025`](../../decisions/GLOBAL-025-north-star.md). Free-chain scaffolding compounds when BYOLLM or hosted-premium swaps in a frontier model; `quality-eval`'s free-vs-frontier delta measures the compounding.
 
@@ -86,7 +86,7 @@ At ~50 k queries/day, self-host cheap-tier `route` / `engine_classify` on a sing
 ### SK-LLM-014 — Hedged-request race on free-tier chains for planner-tier ops
 
 **Body:** [`decisions/SK-LLM-014-hedged-request-race.md`](./decisions/SK-LLM-014-hedged-request-race.md).
-`LLMRouterOptions.hedge` opts an op into a two-way hedged race after `afterMs` head-start; loser aborted with `HEDGE_LOST` so the breaker doesn't trip on the cancel. Free-tier chains only; prod wires `schema_infer` + `plan` at `afterMs: 800`. Rationale (Dean & Barroso "Tail at Scale", CACM 2013) + trace in the sharded body.
+`LLMRouterOptions.hedge` opts an op into a two-way hedged race after `afterMs` head-start; loser aborted with `HEDGE_LOST` so the breaker doesn't trip on the cancel. Free-tier chains only; prod wires `schema_infer` + `plan` at `afterMs: 800`. Rationale + trace in the sharded body.
 
 ### SK-LLM-016 — BYOLLM dispatch lane: per-request override → account-stored → hosted-premium → free
 
@@ -106,7 +106,7 @@ Four-step dispatch precedence per `GLOBAL-026`: per-request `x-nlq-byollm-key` h
 ### SK-LLM-021 — BYOLLM header wiring on `/v1/ask`: signed-in-only `x-nlq-byollm-key`, fail-loud, free-router fallthrough
 
 **Body:** [`decisions/SK-LLM-021-byollm-header-wiring.md`](./decisions/SK-LLM-021-byollm-header-wiring.md).
-`apps/api/src/ask/byollm.ts` wires `SK-LLM-016` step 1 into `/v1/ask`: `parseByollmHeader` (`<provider>:<model>:<key>`) + `resolveAskRouter` (header credential → `buildByollmRouter`, else the cached free router), signed-in only (anon / API-key principals get a one-sentence 400). Account-stored keys + `GLOBAL-003` parity deferred (`premium-tier/FEATURE.md`).
+`apps/api/src/ask/byollm.ts` wires `SK-LLM-016` step 1 into `/v1/ask`: `parseByollmHeader` (`<provider>:<model>:<key>`) + `resolveAskRouter`, signed-in only (anon / API-key principals get a one-sentence 400). Account-stored keys + `GLOBAL-003` parity deferred (`premium-tier/FEATURE.md`).
 
 ### SK-LLM-017 — Hosted-premium chain: separate provider list, §6-gated meter, never available on free
 
@@ -121,7 +121,7 @@ OpenRouter pins `plan` + `schema_infer` to `qwen/qwen3-coder:free`; cheap-tier o
 ### SK-LLM-018 — Schema-fidelity planner prompt + diagnostic retry framing
 
 **Body:** [`decisions/SK-LLM-018-schema-fidelity-prompt.md`](./decisions/SK-LLM-018-schema-fidelity-prompt.md).
-`PLAN_SYSTEM` gains schema-literal + verbatim-casing + dialect-strict + `Evidence:`-authoritative directives; `buildPlanUser`'s retry block reframes "different shape" as **diagnose-first, surgical-fix**. Targets the BIRD free-chain gap ([`SK-QUAL-005`](../quality-eval/FEATURE.md#sk-qual-005)).
+`PLAN_SYSTEM` gains schema-literal + verbatim-casing + dialect-strict + `Evidence:`-authoritative directives; `buildPlanUser`'s retry block reframes "different shape" as **diagnose-first, surgical-fix** ([`SK-QUAL-005`](../quality-eval/FEATURE.md#sk-qual-005)).
 
 ### SK-LLM-013 — `PlanResponse` carries `model` + `confidence` for SK-TRUST-002
 
@@ -134,7 +134,7 @@ OpenRouter pins `plan` + `schema_infer` to `qwen/qwen3-coder:free`; cheap-tier o
 ### SK-LLM-023 — Cerebras (gpt-oss-120b) leads the strict-$0 planner-tier chain
 
 **Body:** [`decisions/SK-LLM-023-cerebras-planner-tier.md`](./decisions/SK-LLM-023-cerebras-planner-tier.md).
-Adds a fifth free provider (`createCerebrasProvider`, OpenAI-compatible, `CEREBRAS_API_KEY`) leading the `plan` / `schema_infer` chain with OpenAI `gpt-oss-120b`: `[cerebras, gemini, groq, workers-ai, openrouter]`. Extends — does not supersede — [`SK-LLM-003`](#sk-llm-003). Motivated by the 31.8% free-chain BIRD baseline that blocks the `GLOBAL-027` gate; the eval free lane carries the identical chain so the cron measures the delta. Routed direct; a 429 from the per-minute quota fails over to Gemini.
+Adds Cerebras (`gpt-oss-120b`, OpenAI-compatible, card-free) at the head of the `plan` / `schema_infer` chain: `[cerebras, gemini, groq, workers-ai, openrouter]`. Extends [`SK-LLM-003`](#sk-llm-003); the eval free lane carries the identical chain. A 429 fails over to Gemini.
 
 ### SK-LLM-024 — Deterministic greedy decoding (temperature 0) across the whole free planner chain
 
@@ -175,21 +175,31 @@ Adds a fifth free provider (`createCerebrasProvider`, OpenAI-compatible, `CEREBR
 ### SK-LLM-035 — Numeric-text-cast directive in the planner prompt (cast TEXT-declared columns used numerically)
 
 **Body:** [`decisions/SK-LLM-035-numeric-text-cast-directive.md`](./decisions/SK-LLM-035-numeric-text-cast-directive.md).
-One `PLAN_DIRECTIVES` bullet for **"Implicit Type Conversion"** (C1 in the
-BIRD/Spider error study [arXiv:2501.09310](https://arxiv.org/pdf/2501.09310)),
-orthogonal to the `SK-LLM-027` REAL-cast-ratio rule: when the schema declares a
-column `TEXT` but the goal compares/orders/min-maxes it numerically, cast it
-(`CAST(<col> AS REAL)`) — SQLite gives a TEXT column text affinity and compares
-it lexicographically (`'100' < '9'`), silently returning a wrong result. The
-*numerical-use* scope keeps the cast off `INTEGER`/`REAL` columns (no false
-positives) and bounds regression (a numeric string and its number cast equal);
-`SUM`/`AVG` are out of scope (SQLite already coerces TEXT there). BIRD-weighted,
-dialect-portable ⇒ plausibly lifts Spider too. Prompt-only, ≈55 tokens,
-directive-only (keeps `SK-LLM-026`'s pending measurement clean); measured on the next eval run.
+One `PLAN_DIRECTIVES` bullet: when the schema declares a column `TEXT` but
+the goal uses it numerically, `CAST(<col> AS REAL)` — SQLite compares TEXT
+lexicographically (`'100' < '9'`). Targets *Implicit Type Conversion* (C1,
+[arXiv:2501.09310](https://arxiv.org/pdf/2501.09310)); prompt-only, ≈55 tokens.
+
+### SK-LLM-036 — Workers AI: accept the object-shaped `result.response` a JSON-emitting model returns
+
+**Body:** [`decisions/SK-LLM-036-workers-ai-structured-response.md`](./decisions/SK-LLM-036-workers-ai-structured-response.md).
+The Workers AI REST endpoint returns valid-JSON model output pre-parsed as an
+object; the string-only check rejected exactly the successful `plan` calls,
+running the free chain as 5-of-6. Accept string *or* object; re-serialize
+objects so `parseJsonResponse` stays the single JSON entry point.
+
+### SK-LLM-037 — Goal-relevant schema pruning in the planner prompt (recall-first, table-granular)
+
+**Body:** [`decisions/SK-LLM-037-goal-relevant-schema-pruning.md`](./decisions/SK-LLM-037-goal-relevant-schema-pruning.md).
+`buildPlanUser` prunes the embedded schema via the pure
+`pruneSchemaForGoal`: keep token-matched tables + their `REFERENCES`
+closure, full schema on any doubt (small schema, zero matches, ≥ 0.9 kept,
+unparseable, retry). Offline-verified on BIRD-dev 500: 99.8% gold-table
+recall, −7.1% schema chars (Spider 2.0-lite: −26.5%).
 
 ### SK-LLM-033 — Schema-inference prompt requires insertable sample rows
 
-**Body:** [`decisions/SK-LLM-033-schema-infer-insertable-sample-rows.md`](./decisions/SK-LLM-033-schema-infer-insertable-sample-rows.md). `SCHEMA_INFER_SYSTEM` gains a `sample_rows`-validity contract (parent rows first, FK values present, NOT-NULL complete) so the free chain stops emitting seed data that breaks its own plan (the 2026-06-08 FLOW-004 `sample_insert_failed` 500); deterministic no-500 floor is [`SK-HDC-018`](../hosted-db-create/decisions/SK-HDC-018-sample-insert-graceful-degradation.md).
+**Body:** [`decisions/SK-LLM-033-schema-infer-insertable-sample-rows.md`](./decisions/SK-LLM-033-schema-infer-insertable-sample-rows.md). `SCHEMA_INFER_SYSTEM` gains a `sample_rows`-validity contract (parent rows first, FK values present, NOT-NULL complete); deterministic no-500 floor is [`SK-HDC-018`](../hosted-db-create/decisions/SK-HDC-018-sample-insert-graceful-degradation.md).
 
 ## GLOBALs governing this feature
 

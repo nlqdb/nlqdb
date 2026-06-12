@@ -39,8 +39,8 @@ a this-week checklist below.
 | Company age | ~7 weeks (CF account 2026-04-24) | Cloudflare API |
 | Real registered users | **0 external** (7 rows: founder + tests) | D1 `user` table |
 | Real waitlist signups | **0 external** (66 rows: 62 bots, 3 probes, founder) | D1 `waitlist` table |
-| BIRD-dev EX (free chain) | 0.35 (lower bound, 1 run, 2026-06-09) | `apps/api/src/gate/eval-baseline.ts` |
-| Spider 2.0-lite EX (free chain) | 0.12 | same |
+| BIRD-dev EX (free chain) | 0.35 (lower bound, 1 run, 2026-06-09; re-seeded **0.522** by the 2026-06-12 canonical 6-provider run) | `apps/api/src/gate/eval-baseline.ts` |
+| Spider 2.0-lite EX (free chain) | 0.12 (re-seeded **0.1704**, 2026-06-12 — still far below the 0.75 gate, so §2 stands) | same |
 | Gate thresholds | BIRD ≥ 0.65 AND Spider ≥ 0.75 | GLOBAL-027 |
 | Spider 2.0-lite world SOTA | 73.13 (DivSkill-SQL, closed frontier agentic); 55.21 (best published, [ReFoRCE + o3](https://arxiv.org/abs/2502.00675)) | [leaderboard](https://spider2-sql.github.io/), checked 2026-06-12 |
 | BIRD-dev canonical SOTA | ~73–77 dev (frontier / agentic) | GLOBAL-025 §KPI (your own, correct) |
