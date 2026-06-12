@@ -32,6 +32,8 @@ function makeStubDeps(
     priceIdPro: overrides.priceIdPro ?? "price_pro_test",
     userId: overrides.userId ?? "user_123",
     userEmail: overrides.userEmail !== undefined ? overrides.userEmail : "user@example.com",
+    existingStripeCustomerId:
+      overrides.existingStripeCustomerId !== undefined ? overrides.existingStripeCustomerId : null,
     idempotencyKey: overrides.idempotencyKey !== undefined ? overrides.idempotencyKey : null,
   };
 
@@ -216,6 +218,53 @@ describe("createCheckoutSession", () => {
     );
 
     expect(result.status).toBe(500);
+  });
+
+  it("reuses the existing Stripe customer on re-subscribe and drops customer_email", async () => {
+    let capturedParams: Stripe.Checkout.SessionCreateParams | undefined;
+    const deps = makeStubDeps({
+      existingStripeCustomerId: "cus_existing_123",
+      stripeCreateFn: async (params) => {
+        capturedParams = params;
+        return { id: "cs_test_abc", url: "https://checkout.stripe.com/pay/cs_test_abc" };
+      },
+    });
+    mockStripeClient(deps.stripeCreateFn);
+
+    await createCheckoutSession(
+      deps,
+      "hobby",
+      "https://app.nlqdb.com/app?checkout=success",
+      "https://nlqdb.com/pricing",
+    );
+
+    expect(capturedParams?.customer).toBe("cus_existing_123");
+    // automatic_tax needs the address written back to the existing customer.
+    expect(capturedParams?.customer_update).toEqual({ address: "auto" });
+    // Stripe forbids customer + customer_email together.
+    expect(capturedParams).not.toHaveProperty("customer_email");
+  });
+
+  it("sends customer_email (no customer) for a first-time subscriber", async () => {
+    let capturedParams: Stripe.Checkout.SessionCreateParams | undefined;
+    const deps = makeStubDeps({
+      stripeCreateFn: async (params) => {
+        capturedParams = params;
+        return { id: "cs_test_abc", url: "https://checkout.stripe.com/pay/cs_test_abc" };
+      },
+    });
+    mockStripeClient(deps.stripeCreateFn);
+
+    await createCheckoutSession(
+      deps,
+      "hobby",
+      "https://app.nlqdb.com/app?checkout=success",
+      "https://nlqdb.com/pricing",
+    );
+
+    expect(capturedParams?.customer_email).toBe("user@example.com");
+    expect(capturedParams).not.toHaveProperty("customer");
+    expect(capturedParams).not.toHaveProperty("customer_update");
   });
 
   it("omits customer_email when userEmail is null", async () => {
