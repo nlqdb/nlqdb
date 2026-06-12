@@ -137,10 +137,24 @@ ordinal-aligned via `unnest`, the schema always bound as `$1`), all under one
 and fail-loud ([`GLOBAL-012`](./decisions/GLOBAL-012-one-sentence-errors.md)) on a
 query error so the caller never seals a half-read schema. It reads through the
 injected `SK-DB-006` query seam, shipped ahead of its `registerByoDb` caller.
+The render step after that introspection now also landed:
+[`SK-DB-015`](./features/db-adapter/decisions/SK-DB-015-byo-postgres-schema-render.md)'s
+`packages/db/src/render-byo-postgres.ts` — `renderByoPostgresSchema(schema)` turns the
+read-model into the two stored fields `/v1/ask` plans against: `schema_text`, rendered as
+schema-qualified `CREATE TABLE` cards (verbatim `format_type` column types, `NOT NULL`,
+trailing `PRIMARY KEY`) + unnamed, action-free `ALTER TABLE … ADD FOREIGN KEY` lines — the
+*same* DDL shape the hosted create path stores, so the planner prompt sees one schema shape
+across hosted and BYO (the engine-quality work in §1 transfers unchanged); and `schema_hash`,
+via the companion `packages/db/src/schema-fingerprint.ts`'s `fingerprintSchema` — the one
+FNV-1a content-address ([`GLOBAL-006`](./decisions/GLOBAL-006-plan-cache-content-addressing.md))
+both this path (over `schema_text`) and the hosted create path (over the `SchemaPlan` JSON, now
+delegating to it byte-for-byte) hash through, so the column is one shape, not two. Faithful, not
+inventive: no synthesized FK constraint name, no `ON DELETE`/index/`IDENTITY` introspection never
+read — and deterministic (the read-model is pre-sorted), so the same schema always renders the
+same text and hash. Pure + zero-dep per `GLOBAL-021`, shipped ahead of its `registerByoDb` caller.
 Next: `connect.ts` + `registerByoDb` wiring (validate via `validateByoConnection`
-with `createDohResolver()` → open → `introspectPostgres` → render
-`schema_text`/`schema_hash` → seal per `GLOBAL-031`) + the `GLOBAL-003` surface
-set.
+with `createDohResolver()` → open → `introspectPostgres` → `renderByoPostgresSchema` →
+seal per `GLOBAL-031` → D1 row) + the `GLOBAL-003` surface set.
 
 ## 4. BYO ClickHouse
 

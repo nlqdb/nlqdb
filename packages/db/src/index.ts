@@ -91,6 +91,9 @@ export type {
 export { introspectPostgres } from "./introspect-postgres.ts";
 export type { PostgresAdapterOptions, PostgresQueryFn } from "./postgres.ts";
 export { createPostgresAdapter } from "./postgres.ts";
+export type { RenderedSchema } from "./render-byo-postgres.ts";
+export { renderByoPostgresSchema } from "./render-byo-postgres.ts";
+export { fingerprintSchema } from "./schema-fingerprint.ts";
 export type {
   Agg,
   ClickHouseEngineMeta,
