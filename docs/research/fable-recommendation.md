@@ -283,7 +283,7 @@ tooling. Runnable form: [`.claude/commands/daily.md`](../../.claude/commands/dai
    output, not a launch event. `blocked-by-human.md` stays reserved for
    true human-only blockers.
 4. **Review gate.** The merge agent rejects any PR whose body names no
-   measured delta — the existing §8 quality gates plus one line.
+   measured delta — the existing CLAUDE.md §8 quality gates plus one line.
 
 **Weekly (one founder session, ~30 min, the only meeting the company has):**
 
