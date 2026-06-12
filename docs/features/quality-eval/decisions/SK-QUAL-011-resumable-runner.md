@@ -48,14 +48,13 @@ reverse.
   skip/append/complete, the `BudgetStopError` + `isChainCapacityExhausted`
   detector (`SK-QUAL-013`), a `resumable?: boolean` on `EvalReport`, and a `runAt`
   test-injection seam (so a resumed run and a single-shot run compare
-  identically modulo wall-clock). The smoke `mode`
-  ([`SK-QUAL-002`](./SK-QUAL-002-weekly-cron.md)) persists its
-  `*.smoke.partial.jsonl` checkpoint via `actions/cache` (rolling key), so
-  a budget-stopped smoke resumes on the next `mode: smoke` dispatch; the
-  full `run` job keeps its checkpoint only within a single dispatch, so a
-  budget-stopped full run is re-dispatched fresh after the cap resets.
+  identically modulo wall-clock). Both workflow modes persist their
+  checkpoint via `actions/cache` — smoke on a rolling key, full keyed by
+  commit SHA
+  ([`SK-QUAL-013`](./SK-QUAL-013-capacity-honest-budget-stop.md)) — so a
+  budget-stopped run resumes on the next same-mode dispatch.
   Storage choice: **CI cache, not a committed results branch** — keeps the
-  eval out of git history; a cache eviction just restarts a pending smoke,
+  eval out of git history; a cache eviction just restarts a pending run,
   which is correct, just slower.
 - **Alternatives rejected:**
   - **Restart from scratch on a token cap** — wastes the completed work
