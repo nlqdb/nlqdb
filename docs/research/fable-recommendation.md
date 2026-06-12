@@ -68,8 +68,8 @@ This was the load-bearing finding, raised per P1 — resolution at the end:
   above the best closed frontier-agentic system on Earth, and likely a
   Spider-1.0 number applied to Spider 2.0 (75–85% EX was normal on Spider 1.0).
 
-What this section missed on first writing: the §1.4 invite-valve was already
-merged and verified (`waitlist-invite.ts` — every waitlist signup is
+What this section missed on first writing: the SK-GATE-007 invite-valve was
+already merged and verified (`waitlist-invite.ts` — every waitlist signup is
 auto-emailed an invite code, 200/week cap; `scripts/flow-004-walk.sh` walks it
 end-to-end to a 200, re-verified 2026-06-12). A stranger CAN reach a first
 answer today with one email click; only the anonymous instant paths
@@ -173,8 +173,8 @@ Plumbing gaps found today, all free to fix: the CF token's
 `Zone Analytics:Read` was granted by the founder 2026-06-12 (scorecard agent
 verifies on its first pull); PostHog key is ingestion-only (per GLOBAL-034 it's Phase-2-optional — CF Web
 Analytics + D1 + LogSnag suffice for now); `GH_TOKEN_WORKFLOW` may already
-allow agents to `workflow_dispatch` the eval — test it and delete that
-blocked-by-human bullet if so.
+allow agents to `workflow_dispatch` the eval — the `/daily` scorecard step
+verifies on its first dispatch.
 
 ## 6. Docs: yes, too many — and the style optimizes for the wrong reader
 
@@ -257,8 +257,8 @@ Left — all agent-side; the founder's only standing job is the §9 weekly sessi
 - ☐ **Distribution queue** — zero publishable artifacts yet; still zero
   external humans (D1 re-checked today). One draft/day into
   `docs/research/distribution-queue.md`.
-- ☐ In-product Sean Ellis micro-survey; 20 KB CI check; freeze the billing
-  lane; retire the daily open-questions quota.
+- ☐ In-product Sean Ellis micro-survey; 20 KB CI check; retire the daily
+  open-questions quota. (Billing-lane freeze is codified — `/daily` rule 5.)
 
 ## 9. The repeatable process
 
