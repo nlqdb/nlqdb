@@ -44,7 +44,7 @@ const iterations = Number(process.argv[2] ?? 8);
 // planner+schema_infer chain is cerebras → gemini → groq → … (SK-LLM-023),
 // hedged on the head — so isolating each provider tells us which model is
 // self-consistent and whether cross-provider variance is the flake source.
-const which = (process.env.PROBE_PROVIDER ?? "cerebras").toLowerCase();
+const which = (process.env["PROBE_PROVIDER"] ?? "cerebras").toLowerCase();
 // Min ms between LLM calls to respect the provider's RPM (Cerebras = 5 RPM).
 const PACE_MS = which === "cerebras" ? 13_000 : 1_000;
 
@@ -69,7 +69,7 @@ function referencedTables(sql: string): string[] {
   const out = new Set<string>();
   const re = /\b(?:from|join)\s+([a-zA-Z0-9_."]+)/gi;
   for (const m of sql.matchAll(re)) {
-    const raw = m[1].replace(/"/g, "");
+    const raw = (m[1] ?? "").replace(/"/g, "");
     const bare = raw.includes(".") ? raw.slice(raw.lastIndexOf(".") + 1) : raw;
     out.add(bare.toLowerCase());
   }
