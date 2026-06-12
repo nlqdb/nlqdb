@@ -1608,9 +1608,11 @@ app.post("/v1/billing/checkout", requireSession, async (c) => {
     return c.json({ error: "billing_not_configured" }, 503);
   }
 
-  const existing = await c.env.DB.prepare("SELECT status FROM customers WHERE user_id = ?")
+  const existing = await c.env.DB.prepare(
+    "SELECT status, stripe_customer_id FROM customers WHERE user_id = ?",
+  )
     .bind(session.user.id)
-    .first<{ status: string }>();
+    .first<{ status: string; stripe_customer_id: string }>();
   if (blocksNewCheckout(existing?.status)) {
     // Rare by construction (the page routes subscribers to the Portal), so one
     // structured line per reject is observable without being spammy.
@@ -1631,6 +1633,9 @@ app.post("/v1/billing/checkout", requireSession, async (c) => {
       priceIdPro: c.env.STRIPE_PRICE_PRO ?? "",
       userId: session.user.id,
       userEmail: session.user.email,
+      // Non-null only on the re-subscribe path (a terminal-status row survived
+      // the guard above) — SK-STRIPE-014.
+      existingStripeCustomerId: existing?.stripe_customer_id ?? null,
       idempotencyKey: c.req.header("Idempotency-Key") ?? null,
     },
     plan as CheckoutPlan,

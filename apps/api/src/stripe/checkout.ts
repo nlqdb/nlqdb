@@ -22,6 +22,8 @@ export type CheckoutDeps = {
   priceIdPro: string;
   userId: string;
   userEmail?: string | null;
+  // Set on re-subscribe to reuse the caller's Stripe customer (SK-STRIPE-014).
+  existingStripeCustomerId?: string | null;
   idempotencyKey?: string | null;
 };
 
@@ -64,7 +66,18 @@ export async function createCheckoutSession(
         cancel_url: cancelUrl,
         allow_promotion_codes: true,
         automatic_tax: { enabled: true },
-        ...(deps.userEmail ? { customer_email: deps.userEmail } : {}),
+        // Reuse the existing customer on re-subscribe (SK-STRIPE-014). Stripe
+        // forbids `customer` + `customer_email` together, and automatic_tax on
+        // an existing customer needs `customer_update.address` to save the
+        // address collected at checkout.
+        ...(deps.existingStripeCustomerId
+          ? {
+              customer: deps.existingStripeCustomerId,
+              customer_update: { address: "auto" as const },
+            }
+          : deps.userEmail
+            ? { customer_email: deps.userEmail }
+            : {}),
       };
 
       const requestOptions: Stripe.RequestOptions = {};

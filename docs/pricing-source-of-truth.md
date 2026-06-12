@@ -218,6 +218,20 @@ API version pinned to `2026-04-22.dahlia` via the `stripe` npm SDK (see `SK-STRI
   shared with the other billing surfaces. SK-STRIPE-010's no-double-bill guard
   still holds (the CTA reuses the prorated portal path, never a 2nd Checkout).
 
+### Re-subscribe reuses the Stripe customer (SK-STRIPE-014 — this PR)
+
+- On the re-subscribe path (a terminal `canceled` / `incomplete_expired` row
+  survives the SK-STRIPE-010 guard), `POST /v1/billing/checkout` now binds the
+  Checkout Session to the caller's existing `stripe_customer_id` (`customer`)
+  and drops `customer_email`, so invoice history, saved cards, and tax IDs stay
+  on one Stripe customer instead of being orphaned behind a freshly-minted one.
+- `automatic_tax` with an existing customer requires `customer_update:
+  { address: 'auto' }`, which the session now sets. First-time subscribers are
+  unchanged (`customer_email` prefill, no `customer`).
+- The route widens its existing duplicate-guard read to
+  `SELECT status, stripe_customer_id` — no extra query. Webhook unaffected.
+  Pure hardening; inert until live keys exist.
+
 ---
 
 ## What is next
