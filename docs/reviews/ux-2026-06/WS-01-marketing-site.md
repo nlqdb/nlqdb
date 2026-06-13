@@ -70,18 +70,7 @@ no signup wall), SK-WEB-003 (runnable code above the fold), SK-WEB-008
   SK-WEB-001 (this component already ships script).
 - **Accept:** Click → visible confirmation; event still fires once.
 
-## WS01-T5 (P2) — Pricing "Manage billing" non-states look interactive
-
-- **Files:** `apps/web/src/pages/pricing.astro` (~lines 501-519 + script)
-- **Problem:** Button text becomes "No active subscription yet" / "Not
-  available yet" without the `disabled` attribute, so the `:disabled`
-  styling (opacity/cursor) never applies — read-only states look clickable.
-- **Fix:** Set `disabled` whenever the button is non-interactive (or
-  render a `<p>` for pure-text states).
-- **Accept:** Non-interactive states are visually and semantically
-  disabled; signed-in subscriber state unchanged.
-
-## WS01-T6 (P3) — Polish batch (one commit)
+## WS01-T5 (P3) — Polish batch (one commit)
 
 1. **Sitemap:** add `"/pricing"` to `STATIC_ROUTES` in
    `apps/web/src/pages/sitemap.xml.ts:12`. Keep `/app`, `/auth/*` out
