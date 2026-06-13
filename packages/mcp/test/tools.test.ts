@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { type NlqClient, NlqdbApiError } from "@nlqdb/sdk";
 import { describe, expect, it, vi } from "vitest";
 import {
@@ -9,6 +10,9 @@ import {
   handleListDatabases,
   handleQuery,
   mapSdkError,
+  PACKAGE_VERSION,
+  queryInputShape,
+  queryOutputShape,
 } from "../src/index.ts";
 
 function stubClient(overrides: Partial<NlqClient> = {}): NlqClient {
@@ -163,6 +167,44 @@ describe("handleQuery", () => {
       expect.objectContaining({ confirm: true, dbId: "users", goal: "delete inactive users" }),
       expect.any(Object),
     );
+  });
+
+  it("omits dbId when db is not provided (SK-ASK-009 goal-first auto-target)", async () => {
+    const ask = vi.fn(async () => ({
+      status: "ok" as const,
+      rows: [],
+      rowCount: 0,
+      trace: { sql: "", plan_id: "", confidence: 0, model: "", cache_hit: false },
+    }));
+    const client = stubClient({ ask });
+
+    await handleQuery(client, { q: "count users" });
+
+    // Exact match (not objectContaining) so an accidental `dbId: undefined`
+    // would fail — the request must carry only `goal`.
+    expect(ask).toHaveBeenCalledWith({ goal: "count users" }, {});
+  });
+
+  it("surfaces ambiguous_db with candidate_dbs when db is omitted on a multi-DB key", async () => {
+    const client = stubClient({
+      ask: async () => {
+        throw new NlqdbApiError("ambiguous", 409, "ambiguous_db", "/v1/ask", {
+          status: "ambiguous_db",
+          candidate_dbs: [
+            { id: "db_1", slug: "orders" },
+            { id: "db_2", slug: "inventory" },
+          ],
+        });
+      },
+    });
+
+    const result = await handleQuery(client, { q: "revenue this year" });
+
+    expect("err" in result).toBe(true);
+    if ("err" in result) {
+      expect(result.err.code).toBe("ambiguous_db");
+      expect(result.err.action).toContain("orders");
+    }
   });
 
   it("returns db_created as ok with the new dbId", async () => {
@@ -430,10 +472,24 @@ describe("mapSdkError", () => {
     expect(err.action).toBeTruthy();
   });
 
-  it("maps a 429 to rate_limited", () => {
+  it("maps a 429 to rate_limited with the documented window when no resetAt is present", () => {
     const apiErr = new NlqdbApiError("too many", 429, "rate_limited", "/v1/ask", null);
     const err = mapSdkError(apiErr);
     expect(err.code).toBe("rate_limited");
+    // No invented number — falls back to the documented 60s fixed window (SK-RL-002).
+    expect(err.action).toMatch(/60s/);
+  });
+
+  it("surfaces the real wait from resetAt on a 429 (SK-RL-004)", () => {
+    const resetAt = Math.floor(Date.now() / 1000) + 42;
+    const apiErr = new NlqdbApiError("too many", 429, "rate_limited", "/v1/ask", {
+      status: "rate_limited",
+      ...({ limit: 60, count: 61, resetAt } as Record<string, unknown>),
+    });
+    const err = mapSdkError(apiErr);
+    expect(err.code).toBe("rate_limited");
+    // Within a second of 42 either way to absorb the clock read inside mapSdkError.
+    expect(err.action).toMatch(/Wait 4[12]s before retrying/);
   });
 
   it("maps aborted to a recoverable typed error", () => {
@@ -516,5 +572,54 @@ describe("formatResult / formatQueryResult / formatError", () => {
     });
     expect(formatted.isError).toBe(true);
     expect(formatted.content[0]?.text).toBe("Need a key.\n\n→ Run nlq mcp install.");
+  });
+});
+
+// WS04-T1 — the four contract facts must live in the tool/param descriptions
+// (the agent's only manual at call time), not be learned by trial.
+describe("tool descriptions carry the contract (WS04-T1)", () => {
+  it("q gives an example and steers away from pronouns", () => {
+    expect(queryInputShape.q.description).toMatch(/example/i);
+    expect(queryInputShape.q.description).toMatch(/pronoun/i);
+  });
+
+  it("db is optional and documents the pk_live_ + ambiguous_db behaviour", () => {
+    expect(queryInputShape.db.isOptional()).toBe(true);
+    expect(queryInputShape.db.description).toMatch(/pk_live_/);
+    expect(queryInputShape.db.description).toMatch(/ambiguous_db/);
+  });
+
+  it("confirm describes the two-call destructive state machine", () => {
+    expect(queryInputShape.confirm.description).toMatch(/requires_confirm/);
+    expect(queryInputShape.confirm.description).toMatch(/confirm: true/);
+  });
+
+  it("rows documents the 200-row cap and the recovery", () => {
+    expect(queryOutputShape.rows.description).toMatch(/200/);
+    expect(queryOutputShape.rows.description).toMatch(/rowsTruncated/);
+  });
+});
+
+// WS04-T2 — name which key is for which purpose; both sk_ keys are
+// full-access per SK-APIKEYS-001, so don't imply a read-only/full split.
+describe("auth_required names each key by purpose (WS04-T2)", () => {
+  it("mentions sk_mcp_ and sk_live_ with their purpose", () => {
+    const err = mapSdkError(
+      new NlqdbApiError("unauthorized", 401, "unauthorized", "/v1/ask", null),
+    );
+    expect(err.message).toMatch(/sk_mcp_/);
+    expect(err.message).toMatch(/sk_live_/);
+    expect(err.message).toMatch(/MCP host/i);
+  });
+});
+
+// WS04-T4 — the advertised stdio version must track package.json so a host
+// never sees a version that drifted from what it actually installed.
+describe("PACKAGE_VERSION stays in sync with package.json (WS04-T4)", () => {
+  it("equals package.json#version", () => {
+    const pkg = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8")) as {
+      version: string;
+    };
+    expect(PACKAGE_VERSION).toBe(pkg.version);
   });
 });
