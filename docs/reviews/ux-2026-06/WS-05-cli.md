@@ -36,20 +36,21 @@ one-sentence error helper, machine-readable `nlq help --json`.
   is a stub (`grep -rn "nlq login" cli/internal/cmd/ | grep -v login.go`
   reviewed by hand); message stays one sentence.
 
-## WS05-T2 (P2) — Deferred commands are indistinguishable from real failures for scripts
+## WS05-T2 (P2) — `nlq login --json` is indistinguishable from a real failure for scripts
 
-- **Files:** `cli/internal/cmd/login.go:18-23`,
-  `cli/internal/cmd/mcp.go` (install path, ~lines 70-77)
-- **Problem:** `nlq login` and `nlq mcp install` exit 1 with prose. An
-  agent can't tell "not yet shipped" from "broke" without substring
-  matching stderr.
-- **Fix:** In `--json` mode emit
-  `{"status":"not_implemented","command":"login"}` (matching the
-  camelCase/JSON conventions of the other commands) before the non-zero
-  exit, for both commands. Keep exit code 1 (a distinct exit code is a
-  taxonomy decision — don't introduce one here; see WS05-T7 if tempted).
-- **Accept:** `nlq login --json; echo $?` → parseable JSON + exit 1; same
-  for `nlq mcp install --json`; human output unchanged.
+- **Files:** `cli/internal/cmd/login.go:18-23` only — `nlq mcp install`
+  already emits a structured `not_implemented` envelope in `--json` mode
+  (`mcp.go:69-78`), so `login.go` is the lone gap.
+- **Problem:** `nlq login` exits 1 with prose only. An agent can't tell
+  "not yet shipped" from "broke" without substring-matching stderr.
+- **Fix:** In `--json` mode emit a `not_implemented` envelope before the
+  non-zero exit, reusing the exact shape `nlq mcp install` already uses
+  (`{"status":"not_implemented","reason":…,"hint":…}`) so the two don't
+  drift — don't invent a different key set. Keep exit code 1 (a distinct
+  exit code is a taxonomy decision — don't introduce one here; see
+  WS05-T7 if tempted).
+- **Accept:** `nlq login --json; echo $?` → parseable JSON matching the
+  `mcp install` shape + exit 1; human output unchanged.
 
 ## WS05-T3 (P2) — Anonymous-token mint can surface a raw crypto error
 
