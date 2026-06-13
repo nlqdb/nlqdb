@@ -9,7 +9,7 @@ import { SOLVE_ENTRIES } from "../data/solve";
 // a handful.
 
 const SITE = "https://nlqdb.com";
-const STATIC_ROUTES = ["/", "/manifesto", "/vs", "/solve"];
+const STATIC_ROUTES = ["/", "/manifesto", "/pricing", "/vs", "/solve", "/privacy", "/terms"];
 
 export const GET: APIRoute = () => {
   const routes = [
