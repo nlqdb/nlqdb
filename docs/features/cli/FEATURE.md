@@ -63,6 +63,7 @@ Canonical bodies live in [`decisions/`](decisions/) — one file per `SK-CLI-NNN
 - [**SK-CLI-014**](decisions/SK-CLI-014-no-client-telemetry.md) — No client-side telemetry pipeline; events ride the SDK's API calls.
 - [**SK-CLI-015**](decisions/SK-CLI-015-update-check.md) — Background update check ≤ once/day; stderr only; auto-off in CI; explicit `nlq update` for curl-installed binaries.
 - [**SK-CLI-016**](decisions/SK-CLI-016-byollm-keychain.md) — `nlq byollm set|status|clear` stores the BYOLLM key in the keychain; `nlq ask` rides it signed-in only (SDK sibling of `SK-SDK-010`).
+- [**SK-CLI-017**](decisions/SK-CLI-017-run-dry-run.md) — `nlq run --dry-run` previews raw writes (reusing the `/v1/ask` diff) without executing; default `nlq run` stays immediate (`GLOBAL-015`). Wire/server/SDK counterpart of `SK-SDK-012`.
 
 ## GLOBALs governing this feature
 
