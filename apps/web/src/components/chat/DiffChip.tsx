@@ -30,7 +30,7 @@ export default function DiffChip({ diff, onApprove, onCancel }: DiffChipProps) {
         <button type="button" className="btn" onClick={onCancel}>
           Cancel
         </button>
-        <span className="diff-chip__hint">Press Enter to approve.</span>
+        <span className="diff-chip__hint">Press Enter to approve · Esc to cancel.</span>
       </div>
     </div>
   );

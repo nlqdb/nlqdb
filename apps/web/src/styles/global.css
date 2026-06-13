@@ -695,6 +695,12 @@ h3 {
 .feature-gate__lane--met .feature-gate__bar-fill {
   background: #6ad27c;
 }
+.feature-gate__explainer {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: #a98a4a;
+}
 .feature-gate__cta {
   align-self: flex-start;
 }

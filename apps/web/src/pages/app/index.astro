@@ -56,21 +56,41 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
   // navigate to the sign-in page with a return target so the user
   // doesn't see the chat in a broken-401 state. On hit, reveal
   // the shell so React hydration can take over.
-  import { fetchSession } from "../../lib/session";
+  import { fetchSession, invalidateSession } from "../../lib/session";
   import { fetchBillingStatus, openBillingPortal } from "../../lib/billing";
 
   const shell = document.getElementById("app-shell");
   if (shell) {
     const apiBase = (shell as HTMLElement).dataset["apiBase"];
-    void (async () => {
+
+    // Bounce to sign-in when there's no live session. Returns true when
+    // signed in. Reused on initial load and on bfcache restore (below).
+    async function requireSession(): Promise<boolean> {
       const user = await fetchSession(apiBase);
       if (!user) {
         const returnTo = `${location.pathname}${location.search}${location.hash}`;
         const signInUrl = new URL("/auth/sign-in", location.origin);
         signInUrl.searchParams.set("return_to", returnTo);
         location.replace(signInUrl.toString());
-        return;
+        return false;
       }
+      return true;
+    }
+
+    // WS02-T2: a bfcache restore keeps the revealed shell even after
+    // sign-out (here or in another tab) cleared the cookie. Re-probe the
+    // live cookie on `pageshow` (persisted) and bounce to sign-in if it's
+    // gone — invalidating session.ts's cache alone can't re-render a
+    // restored page whose guard script never re-runs.
+    window.addEventListener("pageshow", (event) => {
+      if (event.persisted) {
+        invalidateSession();
+        void requireSession();
+      }
+    });
+
+    void (async () => {
+      if (!(await requireSession())) return;
       shell.hidden = false;
 
       // Post-checkout confirmation (SK-WEB-011). Stripe Checkout redirects

@@ -64,5 +64,9 @@ function buildSnippet(goal: string, pkLive: string): string {
 
 function readAnonPkLive(): string | null {
   if (typeof window === "undefined") return null;
-  return window.localStorage.getItem("nlqdb_anon_pk");
+  // WS02-T5 shape-check: a corrupted or legacy slot must hit the
+  // "Couldn't copy" fallback, not produce a snippet whose embed 401s on
+  // its first fetch.
+  const stored = window.localStorage.getItem("nlqdb_anon_pk");
+  return stored?.startsWith("pk_live_") ? stored : null;
 }

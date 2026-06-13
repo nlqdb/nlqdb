@@ -141,6 +141,50 @@
   }
 }
 
+/* WS02-T5 — loading skeleton. Rows reuse .keys-list__row so the layout
+   matches the real list; the bars pulse to read as "loading", not empty. */
+.keys-list__row--skeleton {
+  align-items: center;
+}
+
+.keys-skeleton {
+  height: 14px;
+  border-radius: 2px;
+  background: var(--border);
+  animation: keys-skeleton-pulse 1.2s ease-in-out infinite;
+}
+
+.keys-skeleton--label {
+  width: 62%;
+}
+
+.keys-skeleton--meta {
+  width: 96px;
+  justify-self: end;
+}
+
+.keys-skeleton--action {
+  width: 60px;
+  height: 28px;
+  justify-self: end;
+}
+
+@keyframes keys-skeleton-pulse {
+  0%,
+  100% {
+    opacity: 0.4;
+  }
+  50% {
+    opacity: 0.85;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .keys-skeleton {
+    animation: none;
+  }
+}
+
 .keys-list__main {
   display: flex;
   flex-direction: column;

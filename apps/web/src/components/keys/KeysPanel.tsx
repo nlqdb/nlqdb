@@ -84,7 +84,7 @@ function KeysPanelInner({ apiBase }: KeysPanelProps) {
       </header>
 
       {state.kind === "loading" ? (
-        <p className="keys__status">Loading…</p>
+        <KeysSkeleton />
       ) : state.kind === "error" ? (
         <p className="keys__status keys__status--error" role="alert">
           {state.message}
@@ -114,6 +114,26 @@ function KeysPanelInner({ apiBase }: KeysPanelProps) {
         />
       ) : null}
     </section>
+  );
+}
+
+// WS02-T5: three pulsing rows that mirror the .keys-list__row layout so
+// the list doesn't jump when the real keys land. The skeleton itself is
+// decorative (aria-hidden); the visually-hidden status announces the load.
+function KeysSkeleton() {
+  return (
+    <div className="keys-skeleton-wrap" role="status" aria-busy="true">
+      <span className="visually-hidden">Loading your API keys…</span>
+      <ul className="keys-list" aria-hidden="true">
+        {[0, 1, 2].map((row) => (
+          <li key={row} className="keys-list__row keys-list__row--skeleton">
+            <span className="keys-skeleton keys-skeleton--label" />
+            <span className="keys-skeleton keys-skeleton--meta" />
+            <span className="keys-skeleton keys-skeleton--action" />
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
 
