@@ -895,7 +895,7 @@ describe("createClient", () => {
         withCredentials: true,
         byollm: { provider: "openai", model: "", key: "sk-test" },
       }),
-    ).toThrow(/non-empty/);
+    ).toThrow(/non-empty.*set all three/s);
   });
 
   it("createClient: throws when provider or model contains a colon (would mis-split)", () => {
@@ -904,7 +904,7 @@ describe("createClient", () => {
         withCredentials: true,
         byollm: { provider: "openai", model: "gpt:5", key: "sk-test" },
       }),
-    ).toThrow(/must not contain a colon/);
+    ).toThrow(/must not contain a colon.*bare ids/s);
   });
 
   it("createClient: throws when byollm is set with no auth at all (anonymous)", () => {
@@ -919,7 +919,7 @@ describe("createClient", () => {
         withCredentials: true,
         byollm: { provider: "openai", model: "gpt-5.2", key: "sk-test\r\nx-evil: 1" },
       }),
-    ).toThrow(/control characters/);
+    ).toThrow(/control characters.*re-paste the key/s);
   });
 
   it("ask: lower-cases the byollm provider to match the server's normalisation", async () => {

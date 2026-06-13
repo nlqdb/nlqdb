@@ -1,20 +1,32 @@
 ---
+// Accepts both `api-key` (Astro-idiomatic) and `apiKey` (React/Vue
+// spelling) so a snippet copied from another wrapper still binds the key.
 type Props = {
   goal?: string;
   db?: string;
   "api-key"?: string;
+  apiKey?: string;
   endpoint?: string;
   form?: string;
   label?: string;
   "on-success"?: string;
 };
-const { goal, db, "api-key": apiKey, endpoint, form, label, "on-success": onSuccess } = Astro.props;
+const {
+  goal,
+  db,
+  "api-key": apiKeyKebab,
+  apiKey,
+  endpoint,
+  form,
+  label,
+  "on-success": onSuccess,
+} = Astro.props;
 ---
 
 <nlq-action
   goal={goal}
   db={db}
-  api-key={apiKey}
+  api-key={apiKey ?? apiKeyKebab}
   endpoint={endpoint}
   form={form}
   label={label}
