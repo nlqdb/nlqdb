@@ -59,9 +59,17 @@ levers target it.
 almost purely **SQL reasoning** (mismatches), the territory of §4's backlog
 (retrieved few-shot, value retrieval) beyond the directive sub-classes
 T10–T16 already target. Spider's residual `no_sql` 36/135 is different:
-oversized-DDL request failures (`gemini:http_4xx` + `mistral:network` on
-its biggest schemas; Workers-AI never answers there) — deeper pruning /
-column-level linking (§4 #2) is the lever, not more providers.
+`gemini:http_4xx` + `mistral:network` rows (Workers-AI never answers
+there). The earlier "oversized-DDL" read is **falsified** (offline measure,
+2026-06-13): all 135 SQLite-subset schemas are small — ≤ 7,520 chars /
+~1,880 tok, p90 ~1,531, measured across every question (the introspected
+`sqlite_master` schema ≈ upstream `DDL.csv`), so a ~1.9 K-tok schema can't
+overflow Gemini (1 M ctx) or Mistral (128 K). The cause is in the
+per-question `error` strings the runner **already persists** (the `no_sql`
+branch of `tools/eval/src/runner.ts`) — the next Spider run buckets those
+bodies; it is not a size or capacity wall. Column-level pruning (§4 #2) can
+still help Spider via *distractor* removal (T19's table-pruning lifted the
+smoke 0.15 → 0.25 that way), but it will not reduce these 36.
 
 > **How these numbers are produced.** `tools/eval/src/runner.ts` drives
 > `router.ts::plan()` against the SQLite fixture and scores EX (BIRD
@@ -111,6 +119,9 @@ agent-runnable; promote into an `SK-*`/`GLOBAL-*` before implementing
    T19 prunes whole tables; feeding sample cell-values and pruning columns
    targets the mismatch mass directly (est. +3–6 pp). Column-level recall
    risk is per-column — needs an offline recall harness like T19's first.
+   Targets *mismatches*, not the 36 Spider `no_sql` — those are
+   `http_4xx`/`network` errors on small schemas (§2), not a size problem
+   pruning could fix.
 3. **Self-consistency majority vote (N=3, free tokens).** Sample 3 plans at
    temperature > 0 on a separate code path, execute, majority-vote the result
    set. Worth a measured ablation (`SK-QUAL-004`) — on the free chain the

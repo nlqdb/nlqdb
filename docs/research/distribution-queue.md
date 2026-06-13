@@ -5,6 +5,55 @@ One publishable artifact drafted per day by the daily agent
 publishes at the weekly session. Newest first. Delete an entry once published
 (the live URL goes into `docs/scorecard.md`).
 
+## 2026-06-13 (run 3) — dev.to / lobste.rs post
+
+**Title:** We blamed a 7 KB schema for an LLM 4xx — then we actually measured it
+
+**Body:**
+
+> Our text-to-SQL engine runs an open benchmark (Spider 2.0-lite, the
+> SQLite subset). 36 of 135 questions came back as "no SQL produced" — the
+> model never answered. Someone looked at the error tags (`gemini:http_4xx`,
+> `mistral:network`), noticed they clustered on "the biggest schemas," and
+> wrote the root cause into our progress doc: **oversized DDL — the request
+> is too big, the fix is to prune the schema harder.** It sounded right.
+> "Biggest schemas → too many tokens → 4xx" is a clean story. The next
+> engineering task practically wrote itself: build column-level schema
+> pruning.
+>
+> Before building it, I did the one thing nobody had: I measured the
+> schemas. No model calls, no GPUs — just fetch the DDL for all 30
+> databases and count characters for each of the 135 questions.
+>
+> The biggest schema in the entire set is **7,520 characters — about 1,880
+> tokens.** p90 is ~1,531. Not one schema is over 12 K characters.
+>
+> Gemini's context window is **one million** tokens. Mistral's is 128 K. A
+> 1.9 K-token schema isn't remotely close to overflowing either. The
+> "oversized DDL" root cause was **physically impossible**, and the
+> column-pruning project it justified would have moved the number by zero.
+>
+> Two lessons worth the detour:
+>
+> 1. **An unmeasured root cause is a hypothesis wearing a lab coat.** "On
+>    its biggest schemas" did a lot of quiet work in that sentence — it
+>    *felt* like evidence ("biggest" implies "too big") when it was just a
+>    correlation nobody had put a number to. The cheapest measurement
+>    (count the characters) falsified it outright.
+> 2. **The real evidence was already there.** Our eval harness persists the
+>    actual provider error string for every failed question. The "diagnosis"
+>    skipped reading them and pattern-matched on the tag instead. The next
+>    run just buckets those error bodies — the answer to *why* the 4xx
+>    happens is sitting in a field we already log.
+>
+> If you keep an engineering-quality progress doc, audit it for root causes
+> that were never measured. They're the ones that send you building the
+> wrong fix with total confidence. (This was a `/daily` run on nlqdb, where
+> every change has to name the number it moves — which is exactly the rule
+> that caught this one.)
+
+---
+
 ## 2026-06-13 (run 2) — dev.to / lobste.rs post
 
 **Title:** The NULL timestamp that broke a TTL sweep and a funnel metric at

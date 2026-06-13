@@ -6,8 +6,10 @@
 // Spider 135-q GHA dispatches, sequential, resumed across quota windows
 // per `SK-QUAL-013`): BIRD raw EX 0.522 (261/500, chain-exhaustion
 // `no_sql` 3 vs the 2026-05-18 baseline's 51), Spider raw EX 0.1704
-// (23/135; its remaining `no_sql` 36 are oversized-DDL request failures,
-// not rate-limit walls — see `quality-score-source-of-truth.md` §2).
+// (23/135; its remaining `no_sql` 36 are `gemini:http_4xx` +
+// `mistral:network` errors — not rate-limit walls and not a size problem
+// (every SQLite-subset schema ≤ ~1,880 tok, offline-measured 2026-06-13;
+// the "oversized-DDL" read was wrong) — see `quality-score-source-of-truth.md` §2).
 // Both lanes remain below target ⇒ gate stays closed.
 
 export type EvalBaseline = {
