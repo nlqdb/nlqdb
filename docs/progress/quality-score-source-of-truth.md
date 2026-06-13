@@ -64,10 +64,13 @@ there). The earlier "oversized-DDL" read is **falsified** (offline measure,
 2026-06-13): all 135 SQLite-subset schemas are small — ≤ 7,520 chars /
 ~1,880 tok, p90 ~1,531, measured across every question (the introspected
 `sqlite_master` schema ≈ upstream `DDL.csv`), so a ~1.9 K-tok schema can't
-overflow Gemini (1 M ctx) or Mistral (128 K). The cause is in the
-per-question `error` strings the runner **already persists** (the `no_sql`
-branch of `tools/eval/src/runner.ts`) — the next Spider run buckets those
-bodies; it is not a size or capacity wall. Column-level pruning (§4 #2) can
+overflow Gemini (1 M ctx) or Mistral (128 K). The cause is the HTTP status
+behind the `http_4xx` class — a `429` (quota), `403` (key/project denied),
+and `400` (bad request) need opposite fixes and the runner threw the status
+away, persisting only `gemini:http_4xx`. `SK-QUAL-014`
+(`tools/eval/src/runner.ts::describeChainFailure`) now appends each leg's
+status (`gemini:http_4xx(403)`), so the next Spider run buckets the 36 by
+status; it is not a size or capacity wall. Column-level pruning (§4 #2) can
 still help Spider via *distractor* removal (T19's table-pruning lifted the
 smoke 0.15 → 0.25 that way), but it will not reduce these 36.
 

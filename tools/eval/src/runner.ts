@@ -131,6 +131,25 @@ function trimErr(err: unknown): string {
   return msg.slice(0, ERROR_MSG_CAP);
 }
 
+// SK-QUAL-014 — bucket the chain-failure detail an `AllProvidersFailedError`
+// hides. Its `.message` lists only `provider:reason`, so a scored `no_sql`
+// row can't tell a 429 quota wall from a 400/403 — the exact ambiguity that
+// left Spider's 36 `gemini:http_4xx` rows unbucketable
+// (quality-score-source-of-truth.md §2). Rebuild the per-attempt summary with
+// each `ProviderError`'s HTTP status appended, so the persisted `error` is
+// bucketable by status, not just class. Eval-harness only: production's
+// user-facing one-sentence error (GLOBAL-012) is untouched.
+function describeChainFailure(err: unknown): string {
+  if (!(err instanceof AllProvidersFailedError)) return trimErr(err);
+  const parts = err.attempts.map((a) => {
+    const status = (a.error as { status?: number } | undefined)?.status;
+    return status === undefined
+      ? `${a.provider}:${a.reason}`
+      : `${a.provider}:${a.reason}(${status})`;
+  });
+  return `all providers failed: ${parts.join(", ")}`.slice(0, ERROR_MSG_CAP);
+}
+
 // SK-QUAL-011 — raised when a `plan()` throw means the whole provider
 // chain is rate-limited (free-tier daily cap), as opposed to a genuine
 // per-question failure. The runner catches it, checkpoints, and exits
@@ -386,7 +405,7 @@ async function runOneQuestion(
         predicted_sql: "",
         model: lane.modelHint,
         latency_ms: Date.now() - start,
-        error: trimErr(err),
+        error: describeChainFailure(err),
       };
     }
   }
@@ -679,4 +698,5 @@ export const _testing = {
   parseDatasetFlag,
   sampleQuestions,
   isChainCapacityExhausted,
+  describeChainFailure,
 };

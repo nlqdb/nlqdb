@@ -8,13 +8,13 @@ import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { PlanRequest, PlanResponse } from "@nlqdb/llm";
-import { AllProvidersFailedError } from "@nlqdb/llm";
+import { AllProvidersFailedError, ProviderError } from "@nlqdb/llm";
 import { checkpointPath } from "../src/checkpoint.ts";
 import type { Lane } from "../src/lanes.ts";
 import { _testing, runEval } from "../src/runner.ts";
 import type { EvalQuestion, EvalReport } from "../src/types.ts";
 
-const { sampleQuestions, isChainCapacityExhausted } = _testing;
+const { sampleQuestions, isChainCapacityExhausted, describeChainFailure } = _testing;
 
 const QUESTIONS = [
   {
@@ -125,6 +125,30 @@ describe("SK-QUAL-013 — isChainCapacityExhausted", () => {
     ]);
     expect(isChainCapacityExhausted(mixed)).toBe(false);
     expect(isChainCapacityExhausted(new Error("plain"))).toBe(false);
+  });
+});
+
+describe("SK-QUAL-014 — describeChainFailure buckets by HTTP status", () => {
+  it("appends each ProviderError's HTTP status so http_4xx is bucketable", () => {
+    // The Spider `no_sql` shape: the chain head is breaker-walled and the
+    // 4xx leg carries a status. Class-only (`gemini:http_4xx`) can't tell a
+    // 429 quota wall from a 400/403; the status appendix can.
+    const err = new AllProvidersFailedError("llm.plan: all providers in chain failed", [
+      { provider: "cerebras", reason: "circuit_open", error: undefined },
+      {
+        provider: "gemini",
+        reason: "http_4xx",
+        error: new ProviderError("403 denied", "http_4xx", { status: 403 }),
+      },
+      { provider: "mistral", reason: "network", error: new Error("ECONNRESET") },
+    ]);
+    expect(describeChainFailure(err)).toBe(
+      "all providers failed: cerebras:circuit_open, gemini:http_4xx(403), mistral:network",
+    );
+  });
+
+  it("falls back to the trimmed message for non-chain errors", () => {
+    expect(describeChainFailure(new Error("plain boom"))).toBe("plain boom");
   });
 });
 

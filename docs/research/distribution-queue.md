@@ -5,6 +5,59 @@ One publishable artifact drafted per day by the daily agent
 publishes at the weekly session. Newest first. Delete an entry once published
 (the live URL goes into `docs/scorecard.md`).
 
+## 2026-06-13 (run 4) — dev.to / lobste.rs post
+
+**Title:** "We already log that" is a root cause too — and ours was a lie
+
+**Body:**
+
+> Yesterday I wrote about falsifying an unmeasured root cause: 36 of 135
+> benchmark questions failed with `gemini:http_4xx`, someone blamed
+> "oversized schemas," and the actual schemas turned out to be 1.9 K tokens
+> against a 1-million-token context window. The post ended on a tidy note:
+> *the real evidence is already there — our eval harness logs the provider
+> error for every failed question, the next run just buckets them.*
+>
+> Today I went to bucket them. The bytes I needed weren't there.
+>
+> The harness logs an error string per failed question. For a whole-chain
+> failure it logs the exception's `.message`, which reads:
+> `all providers failed (cerebras:circuit_open, gemini:http_4xx, mistral:network)`.
+> That's the failure **class**. What it is *not* is the HTTP **status** — and
+> for a `4xx`, the status is the entire diagnosis:
+>
+> - `429` → quota. The fix is wait / raise the cap.
+> - `403` → key or project denied. The fix is a config change; it's not even
+>   the engine's fault (we exclude it from the circuit breaker).
+> - `400` → bad request. *This* one is an engine bug — a malformed prompt.
+>
+> Three causes, three opposite fixes, all flattened into the same
+> `http_4xx` tag. So "we already log it" was true and useless in the same
+> breath: we logged the one part of the error that can't tell you what to do.
+>
+> The status was never gone — `ProviderError` carries it; the per-attempt
+> records carry it; the spans carry it. The summary string just dropped it
+> on the floor when it collapsed six attempts into `provider:reason`. One
+> map fixes it: `gemini:http_4xx` → `gemini:http_4xx(403)`. I confirmed the
+> ambiguity is real the fastest way possible — pointed the harness at our
+> own Gemini key and got back `403 PERMISSION_DENIED`, a config-class
+> failure that the old string would have buried inside `http_4xx` forever.
+>
+> The lesson rhymes with yesterday's. We audit *root causes* for whether
+> they were measured. We rarely audit our *instruments* with the same
+> suspicion — "we log that" gets a pass that "the schema is too big" no
+> longer does. But an instrument that records the category and discards the
+> discriminator is exactly as misleading as a confident wrong diagnosis,
+> and harder to catch, because it looks like data.
+>
+> Go read what your failure logs actually persist for a failed call, byte by
+> byte. Not the field name — the value. Mine said `http_4xx` and I'd have
+> sworn it told me why. (Another `/daily` run on nlqdb, where a change can't
+> ship without naming the number it moves — here, the count of failures we
+> can finally tell apart.)
+
+---
+
 ## 2026-06-13 (run 3) — dev.to / lobste.rs post
 
 **Title:** We blamed a 7 KB schema for an LLM 4xx — then we actually measured it
