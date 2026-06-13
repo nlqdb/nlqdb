@@ -115,7 +115,7 @@ func (w *Writer) WriteDatabases(rows []api.DatabaseSummary) error {
 		return w.JSON(map[string]any{"databases": rows})
 	}
 	if len(rows) == 0 {
-		_, err := fmt.Fprintln(w.Out, "No databases yet. Try: nlq new \"<what you're building>\"")
+		_, err := fmt.Fprintln(w.Out, "No databases yet. Try: nlq \"<what you're building>\"")
 		return err
 	}
 	tw := tabwriter.NewWriter(w.Out, 0, 0, 2, ' ', 0)

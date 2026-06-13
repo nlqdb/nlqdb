@@ -124,7 +124,7 @@ func byollmClearCmd(g *globalFlags) *cobra.Command {
 // byollmNeedsSession is the one-sentence next action (GLOBAL-012) shared by
 // the local pre-emption in doAsk and the server's `byollm_requires_session`
 // envelope, so the two paths can't drift.
-const byollmNeedsSession = "your own LLM key needs a signed-in session — run `nlq login`, or `nlq byollm clear` to use the built-in models."
+const byollmNeedsSession = "your own LLM key needs a signed-in session — set NLQDB_API_KEY=<sk_live_…> (nlq login ships soon), or `nlq byollm clear` to use the built-in models."
 
 // loadByollm returns the stored credential, or false when none is set or
 // the stored value is unreadable/corrupt — a corrupt slot is treated as
