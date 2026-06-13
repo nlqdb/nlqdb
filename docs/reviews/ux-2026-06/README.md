@@ -36,7 +36,6 @@ directory when all worksheets are gone.
 | [WS-02-app-onboarding.md](WS-02-app-onboarding.md) | Signed-in app, anon flow, gate UX | Onboarding / UX |
 | [WS-03-sdk-wrappers.md](WS-03-sdk-wrappers.md) | `@nlqdb/sdk` + 8 framework wrappers | UX (DX) |
 | [WS-04-mcp.md](WS-04-mcp.md) | `packages/mcp` + `apps/mcp` | UX (agent DX) |
-| [WS-05-cli.md](WS-05-cli.md) | `cli/` (`nlq`) | UX (agent DX) |
 | [WS-06-agent-native.md](WS-06-agent-native.md) | Cross-surface: agents as primary users | Onboarding |
 
 ## Cross-cutting theme (read once, applies everywhere)

@@ -28,16 +28,20 @@ for brew / npm. dev builds are inert (SK-CLI-015).`,
 				fmt.Fprintln(cmd.OutOrStdout(), "Update via your package manager: `npm i -g @nlqdb/cli@latest`.")
 			case "curl-sh":
 				fmt.Fprintln(cmd.OutOrStdout(), "In-place curl-pipe-sh update lands in a follow-up slice; for now run the install script: `curl -fsSL https://nlqdb.com/install | sh`.")
+				// The synchronous version poll is curl-only (SK-CLI-015:
+				// `nlq update` is a no-op-with-hint on brew / npm, which own
+				// their own update path) — so we skip the network call for
+				// the package-manager and dev cases above. cmd.Context() is
+				// the signal-aware ctx from main; context.Background() here
+				// would let SIGINT during the fetch leak the goroutine past
+				// the user's Ctrl-C.
+				updatecheck.Run(cmd.Context(), os.Stderr, updatecheck.Options{
+					JSON:   false,
+					NonTTY: !isTerminal(os.Stdout),
+				})
 			default:
 				fmt.Fprintln(cmd.OutOrStdout(), "Dev build — no update path. Build from source.")
 			}
-			// cmd.Context() is the signal-aware ctx from main; using
-			// context.Background() here would let SIGINT during the
-			// fetch leak the goroutine past the user's Ctrl-C.
-			updatecheck.Run(cmd.Context(), os.Stderr, updatecheck.Options{
-				JSON:   false,
-				NonTTY: !isTerminal(os.Stdout),
-			})
 			return nil
 		},
 	}

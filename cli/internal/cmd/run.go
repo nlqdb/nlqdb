@@ -33,7 +33,9 @@ DB resolution mirrors ` + "`nlq ask`" + `:
   • Without --db the active database from ~/.config/nlqdb/state.json is
     used. ` + "`nlq use <db>`" + ` switches it.
   • Pipe SQL on stdin to skip the positional argument:
-      cat schema.sql | nlq run --db finance`,
+      cat schema.sql | nlq run --db finance
+
+Pass --json for machine-readable output.`,
 		Args: cobra.ArbitraryArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			sqlText, err := readSQL(cmd, args)

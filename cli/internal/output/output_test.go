@@ -157,8 +157,13 @@ func TestWriteDatabasesEmptyHasOnboardingHint(t *testing.T) {
 	if err := w.WriteDatabases(nil); err != nil {
 		t.Fatalf("WriteDatabases: %v", err)
 	}
-	if !strings.Contains(out.String(), "nlq new") {
-		t.Errorf("expected onboarding hint, got: %q", out.String())
+	// SK-CLI-012: the empty-state points at the bare goal-first form, not
+	// `nlq new` — the bare form is the documented onboarding path.
+	if !strings.Contains(out.String(), `nlq "<what you're building>"`) {
+		t.Errorf("expected bare-form onboarding hint, got: %q", out.String())
+	}
+	if strings.Contains(out.String(), "nlq new") {
+		t.Errorf("empty-state should not steer to `nlq new`, got: %q", out.String())
 	}
 }
 
