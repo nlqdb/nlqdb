@@ -125,7 +125,8 @@ dev.to (#sql #postgres #debugging) or lobste.rs (`databases`, `practices`).*
 > — schema pruning, plan caching, structured-output fallbacks — compounds with
 > the model, so being great on free models makes it invincible on frontier
 > ones. Current honest numbers on that bet: BIRD execution accuracy 52.2%,
-> Spider 17% (the Spider gap is mostly oversized-DDL handling, being worked).
+> Spider 17% (a third of the Spider gap is provider `4xx`/`network` errors,
+> not SQL quality — being bucketed).
 > You can also bring your own LLM key (any tier, 0% markup) — it rides
 > Cloudflare AI Gateway with the key sealed in an AES-256-GCM envelope.
 >

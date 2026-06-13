@@ -62,8 +62,10 @@
 >    inside the gate; (b) push BIRD via free-chain scaffolding work
 >    (prompt + retry-on-exec-error already wired per `SK-QUAL-009`) —
 >    target +5pp/week until 0.65; Spider's residual 36 `no_sql` are
->    oversized-DDL request failures, so deeper schema pruning is the
->    named lever.
+>    `gemini:http_4xx`/`mistral:network` errors on small schemas (the
+>    "oversized-DDL" read was falsified 2026-06-13, see
+>    [`quality-score-source-of-truth.md`](../progress/quality-score-source-of-truth.md) §2),
+>    so the named lever is bucketing those error bodies, not schema pruning.
 > 2. **§1.4 invite-valve — VERIFIED end-to-end to a 200 (deployed
 >    2026-06-09); open item is first-value seed *quality*, not
 >    reachability.** FLOW-004 via `scripts/flow-004-walk.sh`
