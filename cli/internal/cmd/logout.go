@@ -30,9 +30,9 @@ func registerLogout(root *cobra.Command, g *globalFlags) {
 				enc := json.NewEncoder(cmd.OutOrStdout())
 				enc.SetIndent("", "  ")
 				return enc.Encode(map[string]any{
-					"cleared":             true,
-					"config_dir":          p,
-					"env_api_key_present": envKeySet,
+					"cleared":          true,
+					"configDir":        p,
+					"envApiKeyPresent": envKeySet,
 				})
 			}
 			fmt.Fprintf(cmd.OutOrStdout(), "✓ Cleared anonymous + signed-in credentials (state in %s).\n", p)

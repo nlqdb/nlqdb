@@ -27,7 +27,9 @@ func registerAsk(root *cobra.Command, g *globalFlags) {
 		Long: `Ask runs the /v1/ask pipeline. With --db it pins to a specific
 database (and fails if the DB doesn't exist); without --db it resolves
 the active DB from ~/.config/nlqdb/state.json, creating a new one
-from the goal if there is none (SK-CLI-012).`,
+from the goal if there is none (SK-CLI-012).
+
+Pass --json for machine-readable output.`,
 		Args: cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx, cancel := context.WithTimeout(cmd.Context(), 120*time.Second)

@@ -189,11 +189,22 @@ const rendered = Object.fromEntries(
   const codepanelRoot = document.querySelector<HTMLElement>(".codepanel");
   const wishlistApiBase = codepanelRoot?.dataset.apiBase ?? "";
   for (const el of document.querySelectorAll<HTMLAnchorElement>("[data-wishlist]")) {
+    let noteTimer: ReturnType<typeof setTimeout> | undefined;
     el.addEventListener("click", () => {
       const surface = el.dataset.wishlist ?? "unknown";
       document.dispatchEvent(
         new CustomEvent("home.surface_wishlist", { detail: { surface } }),
       );
+      // Acknowledge the vote in place — without it the keepalive POST and
+      // mailto: are silent and the user can't tell it registered. Swap the
+      // label to "✓ noted" for ~2s; the original label is restored from the
+      // dataset so rapid re-clicks don't bake "✓ noted" in permanently.
+      el.dataset.label ??= el.textContent ?? "";
+      el.textContent = "✓ noted";
+      clearTimeout(noteTimer);
+      noteTimer = setTimeout(() => {
+        el.textContent = el.dataset.label ?? "";
+      }, 2000);
       // sendBeacon would be ideal here (survives the page navigation
       // the mailto: link triggers in some browsers), but it can't set
       // a content-type header — the API parses JSON only. Fall back to

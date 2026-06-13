@@ -85,6 +85,23 @@ func TestClearRemovesAnonAndRefresh(t *testing.T) {
 	}
 }
 
+func TestMintAnonWrapsEntropyFailure(t *testing.T) {
+	orig := randRead
+	t.Cleanup(func() { randRead = orig })
+	randRead = func([]byte) (int, error) { return 0, errors.New("no entropy") }
+
+	_, err := mintAnon()
+	if err == nil {
+		t.Fatal("expected an error when the CSPRNG fails")
+	}
+	if !strings.Contains(err.Error(), "system entropy unavailable") {
+		t.Errorf("error missing the GLOBAL-012 sentence: %v", err)
+	}
+	if !strings.Contains(err.Error(), "no entropy") {
+		t.Errorf("error should keep the wrapped cause inspectable: %v", err)
+	}
+}
+
 func TestRedactedHandlesPrefixedTokens(t *testing.T) {
 	for _, tc := range []struct {
 		in, want string

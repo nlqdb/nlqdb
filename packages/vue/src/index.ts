@@ -25,6 +25,7 @@ async function registerOnClient(): Promise<void> {
   await import("@nlqdb/elements");
 }
 
+/** Read component — renders `<nlq-data>` (a goal/query → rows view). Props are camelCase (`apiKey`); events are `@load` / `@error`. */
 export const NlqData = defineComponent({
   name: "NlqData",
   props: {
@@ -72,6 +73,7 @@ export const NlqData = defineComponent({
   },
 });
 
+/** Write component — renders `<nlq-action>` with the preview→Apply diff hop. Events: `@success` / `@confirm-required` / `@error`. */
 export const NlqAction = defineComponent({
   name: "NlqAction",
   props: {
@@ -124,6 +126,7 @@ export const NlqAction = defineComponent({
   },
 });
 
+/** Plugin install — registers `<NlqData>` / `<NlqAction>` globally and flips `isCustomElement` so raw `<nlq-*>` tags don't warn. Call once on the app. */
 export function configureNlqdb(app: App, opts: { registerCustomElement?: boolean } = {}): void {
   const registerCustomElement = opts.registerCustomElement ?? true;
   if (registerCustomElement) {

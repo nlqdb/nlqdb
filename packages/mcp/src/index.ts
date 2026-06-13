@@ -7,7 +7,7 @@ export {
   type ListDatabasesCache,
   type ServerOptions,
 } from "./server.ts";
-export { runStdio, type StdioOptions } from "./stdio.ts";
+export { PACKAGE_VERSION, runStdio, type StdioOptions } from "./stdio.ts";
 export {
   type DescribeInput,
   type DescribeOutput,
