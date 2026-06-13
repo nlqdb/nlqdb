@@ -22,9 +22,15 @@ export default defineNuxtConfig({
 
 ```vue
 <!-- pages/index.vue -->
+<script setup lang="ts">
+// `publishableKey` is a browser-safe `pk_live_*` — safe to bind into markup.
+const key = useRuntimeConfig().public.nlqdb.publishableKey;
+</script>
+
 <template>
   <NlqData
     goal="today's revenue by drink"
+    :api-key="key"
     template="table"
     refresh="60s"
     @load="({ rows, cached }) => console.info(rows, cached)"
@@ -32,14 +38,12 @@ export default defineNuxtConfig({
 
   <form id="order-form">
     <input name="customer" />
-    <NlqAction goal="log this order" form="order-form">Submit</NlqAction>
+    <NlqAction goal="log this order" :api-key="key" form="order-form">Submit</NlqAction>
   </form>
 </template>
 ```
 
-Both `<NlqData>` and `<NlqAction>` are auto-imported.
-
-The publishable key is read from `runtimeConfig.public.nlqdb.publishableKey`. Set it in `nuxt.config.ts` or override per call.
+Both `<NlqData>` and `<NlqAction>` are auto-imported. The publishable key is read from `runtimeConfig.public.nlqdb.publishableKey` (set in `nuxt.config.ts`) and bound with `:api-key`; the components don't read it implicitly, so the binding is required.
 
 ### `useNlq()` composable
 
@@ -49,7 +53,7 @@ const { data, error } = await useNlq("top 5 most-loved coffee shops in Berlin");
 </script>
 ```
 
-`useNlq()` wraps Nuxt's `useFetch`, so the response is included in the SSR payload and the client doesn't refetch on hydration.
+`useNlq()` wraps `@nlqdb/sdk`'s `client.ask()` in Nuxt's `useAsyncData`, so the response rides the SSR payload (no refetch on hydration) **and** inherits the SDK's retry, auto Idempotency-Key, and one-class `NlqdbApiError` (surfaced as `error.value`) — never a hand-rolled `fetch` (GLOBAL-001).
 
 ### SSR caveat
 

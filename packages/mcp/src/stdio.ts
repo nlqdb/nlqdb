@@ -3,8 +3,9 @@ import { createClient } from "@nlqdb/sdk";
 import { createServer } from "./server.ts";
 
 // Hand-maintained sync with package.json#version to avoid JSON-import-attribute portability across Node 20-22 + Bun.
+// A unit test pins this to package.json#version so the two can't drift silently.
 const PACKAGE_NAME = "@nlqdb/mcp";
-const PACKAGE_VERSION = "0.0.0";
+export const PACKAGE_VERSION = "0.0.0";
 
 const KEY_PREFIXES = ["pk_live_", "sk_live_", "sk_mcp_", "nlqdb_"];
 
@@ -18,7 +19,7 @@ export async function runStdio(opts: StdioOptions = {}): Promise<void> {
 
   if (!apiKey) {
     process.stderr.write(
-      '@nlqdb/mcp: NLQDB_API_KEY is not set. Run `nlq mcp install` or pass `env: { NLQDB_API_KEY: "…" }` in the host config.\n',
+      "@nlqdb/mcp: NLQDB_API_KEY is not set. Easiest: point your host at the hosted server (mcp.nlqdb.com — OAuth, no key needed). For local stdio, set env NLQDB_API_KEY=sk_mcp_… in the host config.\n",
     );
     process.exit(1);
   }

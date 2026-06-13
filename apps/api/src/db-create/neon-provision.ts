@@ -214,8 +214,18 @@ export async function provisionDb(
   try {
     await deps.d1
       .prepare(
-        "INSERT INTO databases (id, tenant_id, engine, connection_secret_ref, schema_hash, schema_text, created_at, updated_at) " +
-          "VALUES (?, ?, ?, ?, ?, ?, unixepoch(), unixepoch())",
+        // SK-ANON-002 — seed `last_queried_at` at create time. A
+        // successful create runs the planned query and returns
+        // sampleRows (the first answer), so the row HAS been queried
+        // once. Leaving it NULL broke two things: (1) the age-sweep's
+        // `last_queried_at < cutoff` never matches NULL, so anon DBs
+        // never aged out (contradicting the 90-day TTL); (2) the
+        // anon first-answer funnel metric read 0 for every created DB
+        // because the create path doesn't hit the /v1/ask touch and
+        // the 2nd anon call is auth-walled (SK-ANON-012). Migration
+        // 0009's backfill only covered rows existing at migration time.
+        "INSERT INTO databases (id, tenant_id, engine, connection_secret_ref, schema_hash, schema_text, created_at, updated_at, last_queried_at) " +
+          "VALUES (?, ?, ?, ?, ?, ?, unixepoch(), unixepoch(), unixepoch())",
       )
       .bind(args.dbId, args.tenantId, args.engine, args.secretRef, args.schemaHash, args.schemaText)
       .run();

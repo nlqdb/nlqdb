@@ -113,9 +113,13 @@ try {
 ```
 
 `err.code` mirrors the API's `error.status` discriminant (with a few
-SDK-only sentinels for transport failures — see above). Discriminate
-on `code`, not on parsing the message string. `err.httpStatus === 0`
-means no response was received.
+SDK-only sentinels for transport failures — see above). Branch on
+`err.code` (or `err.httpStatus` / `err.body`) — never on `err.message`:
+its format varies by path (`"… → 429 rate_limited"` vs `"… network
+error"`), so a UI that renders it verbatim gets unstable copy. Treat
+`err.message` as debug text; render `err.body.message` or a
+`code`-derived CTA instead. `err.httpStatus === 0` means no response was
+received.
 
 Non-JSON response bodies (HTML 503 pages from a misconfigured proxy
 etc.) deliberately do **not** echo into the thrown error message —

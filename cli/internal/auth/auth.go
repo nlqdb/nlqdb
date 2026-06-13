@@ -16,6 +16,10 @@ import (
 
 const envAPIKey = "NLQDB_API_KEY" //nolint:gosec // env var name, not a secret
 
+// randRead is a seam over crypto/rand.Read so the entropy-failure branch
+// in mintAnon is unit-testable; production always uses the CSPRNG.
+var randRead = rand.Read
+
 var ErrNoIdentity = errors.New("auth: no identity (env var unset, not signed in, no anon token)")
 
 type Kind int
@@ -86,8 +90,8 @@ func Clear() error {
 func mintAnon() (string, error) {
 	// The `anon_` prefix is what apps/api/src/principal.ts matches on.
 	buf := make([]byte, 16)
-	if _, err := rand.Read(buf); err != nil {
-		return "", fmt.Errorf("mint anon: %w", err)
+	if _, err := randRead(buf); err != nil {
+		return "", fmt.Errorf("couldn't generate an anonymous token (system entropy unavailable) — retry, or set NLQDB_API_KEY to skip anonymous setup: %w", err)
 	}
 	return "anon_" + hex.EncodeToString(buf), nil
 }

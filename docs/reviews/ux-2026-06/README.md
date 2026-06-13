@@ -33,10 +33,6 @@ directory when all worksheets are gone.
 
 | File | Surface | Default KPI (GLOBAL-025) |
 |---|---|---|
-| [WS-01-marketing-site.md](WS-01-marketing-site.md) | Home + sub pages (`apps/web` public) | Onboarding |
-| [WS-03-sdk-wrappers.md](WS-03-sdk-wrappers.md) | `@nlqdb/sdk` + 8 framework wrappers | UX (DX) |
-| [WS-04-mcp.md](WS-04-mcp.md) | `packages/mcp` + `apps/mcp` | UX (agent DX) |
-| [WS-05-cli.md](WS-05-cli.md) | `cli/` (`nlq`) | UX (agent DX) |
 | [WS-06-agent-native.md](WS-06-agent-native.md) | Cross-surface: agents as primary users | Onboarding |
 
 ## Cross-cutting theme (read once, applies everywhere)
@@ -54,8 +50,10 @@ treated as canonical product copy, not an afterthought:
 
 The review found the product architecture already agent-friendly
 (goal-first, one-call DB create, structured errors, strict `--json`); the
-gaps are almost all in these four documentation surfaces. WS-03/04/05 fix
-the first, second, and fourth; WS-06 fixes the third.
+gaps are almost all in these four documentation surfaces. The marketing,
+app, SDK, MCP, and CLI worksheets (WS-01/02/03/04/05) have shipped and were
+deleted on completion; **WS-06** remains and fixes the third surface — the
+`llms.txt` + docs site.
 
 ## What the review found is strong — do not regress
 

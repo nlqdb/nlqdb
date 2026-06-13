@@ -34,7 +34,7 @@ func registerKeys(root *cobra.Command, g *globalFlags) {
 func resolveForKeysMgmt(cmd *cobra.Command) (auth.Identity, error) {
 	id, err := auth.Resolve(false)
 	if err != nil {
-		printErr(cmd, "not signed in — run `nlq login` to manage your API keys.")
+		printErr(cmd, "not signed in — manage your API keys at app.nlqdb.com/app/keys (nlq login ships soon).")
 		return id, err
 	}
 	return id, nil
@@ -95,7 +95,7 @@ revoked key disconnect within ~1 second.`,
 			if out.AlreadyRevoked {
 				fmt.Fprintf(cmd.OutOrStdout(), "✓ Key %s was already revoked.\n", keyID)
 			} else {
-				fmt.Fprintf(cmd.OutOrStdout(), "✓ Revoked key %s.\n", keyID)
+				fmt.Fprintf(cmd.OutOrStdout(), "✓ Revoked key %s — it stops working within about a second.\n", keyID)
 			}
 			return nil
 		},

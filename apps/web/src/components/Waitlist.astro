@@ -18,6 +18,7 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
   </p>
 
   <form id="waitlist-form" class="waitlist__form" data-api-base={apiBase}>
+    <label class="visually-hidden" for="waitlist-email">Email address</label>
     <input
       id="waitlist-email"
       name="email"
@@ -26,13 +27,14 @@ const apiBase = import.meta.env.PUBLIC_API_BASE ?? "";
       required
       placeholder="you@example.com"
       class="waitlist__field"
-      aria-label="Email address"
     />
+    <label class="visually-hidden" for="waitlist-persona">
+      Which best describes you? (optional)
+    </label>
     <select
       id="waitlist-persona"
       name="persona"
       class="waitlist__field"
-      aria-label="Which best describes you? (optional)"
     >
       <option value="">Which best describes you? (optional)</option>
       <option value="solo-builder">Solo builder / founder</option>

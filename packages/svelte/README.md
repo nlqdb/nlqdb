@@ -26,6 +26,17 @@ bun add @nlqdb/svelte @nlqdb/elements
 
 The component imports `@nlqdb/elements` on mount, so the bundle is only loaded once an `<NlqData>` actually renders. SSR-safe: the dynamic import is guarded by `typeof customElements !== "undefined"`.
 
+### Event callbacks are lowercase (Svelte 5)
+
+Per Svelte 5's event-attribute convention, the callback props are **lowercase**, not React's `onLoad`/`onError` camelCase. The full set:
+
+| Component   | Callbacks |
+|-------------|-----------|
+| `<NlqData>`   | `onload`, `onerror` |
+| `<NlqAction>` | `onsuccess`, `onconfirmRequired`, `onerror` |
+
+`apiKey` stays camelCase (it's a data prop, not an event), and `onSuccessAction` is the post-write redirect config (e.g. `"reload"`), not an event callback.
+
 ## Write — `<NlqAction>`
 
 ```svelte

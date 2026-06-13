@@ -1,0 +1,71 @@
+---
+// Honest pre-alpha privacy draft. Describes only what nlqdb actually
+// collects today; no aspirational policy. Final lawyer-reviewed copy
+// is tracked in docs/blocked-by-human.md.
+import Legal from "../layouts/Legal.astro";
+---
+
+<Legal
+  title="Privacy — nlqdb"
+  description="What nlqdb collects today: waitlist email and persona, crash reports, no ad tracking and no analytics yet. A plain-English pre-alpha draft."
+  heading="Privacy"
+  canonical="/privacy"
+  updated="13 June 2026"
+>
+  <p>
+    nlqdb collects as little as it can. This page lists everything we touch
+    today &mdash; if it isn't here, we don't collect it.
+  </p>
+
+  <h2>What we collect</h2>
+  <ul>
+    <li>
+      <strong>Waitlist signup.</strong> If you join the waitlist we store the
+      <strong>email address</strong> you enter and, optionally, the
+      <strong>persona</strong> you pick from the dropdown. That's it &mdash;
+      no name, no company, no payment details.
+    </li>
+    <li>
+      <strong>Account (only if you sign in).</strong> Signing in uses Google or
+      GitHub. We receive the email address and basic profile that provider
+      shares, and store a session cookie so you stay signed in. We never see
+      your provider password.
+    </li>
+    <li>
+      <strong>Anonymous use.</strong> Before you sign in, your prompts and a
+      temporary token live in your browser's local storage on your device,
+      not on our servers. Queries you run are sent to our API to be answered.
+    </li>
+    <li>
+      <strong>Web analytics.</strong> We don't run web analytics yet. When we
+      do it will be <strong>Cloudflare Web Analytics</strong> &mdash;
+      cookieless, no personal data, aggregates only, no cross-site tracking.
+    </li>
+    <li>
+      <strong>Error reports.</strong> If a page crashes, the browser sends us
+      the error message, the URL, and your browser's user-agent string so we
+      can fix it. Best-effort and never used for tracking.
+    </li>
+  </ul>
+
+  <h2>What we don't do</h2>
+  <ul>
+    <li>No advertising or marketing trackers, no third-party ad pixels.</li>
+    <li>We don't sell or rent your data to anyone.</li>
+    <li>No cookie-consent wall, because we set no tracking cookies.</li>
+  </ul>
+
+  <h2>Email</h2>
+  <p>
+    A waitlist email gets you exactly one note when there's something to try.
+    Want off the list, or want your data deleted? Email
+    <a href="mailto:hello@nlqdb.com">hello@nlqdb.com</a> and we'll remove it.
+  </p>
+
+  <h2>Changes</h2>
+  <p>
+    As nlqdb leaves pre-alpha this draft will be replaced with a formal,
+    lawyer-reviewed policy. Material changes will be dated at the top of this
+    page.
+  </p>
+</Legal>

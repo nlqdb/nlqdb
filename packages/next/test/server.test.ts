@@ -47,4 +47,42 @@ describe("createAskRoute()", () => {
     expect(json.error.status).toBe("invalid_json");
     delete process.env["NLQDB_API_KEY"];
   });
+
+  // WS03-T3 / GLOBAL-002: the route must emit the API's error envelope
+  // byte-for-byte — no synthetic `message` from the SDK's debug text.
+  const apiEnvelopes = [
+    { status: 429, body: { error: { status: "rate_limited", limit: 60, count: 61 } } },
+    { status: 404, body: { error: { status: "db_not_found" } } },
+  ];
+  for (const { status, body } of apiEnvelopes) {
+    it(`mirrors the API ${status} error envelope without rewriting it`, async () => {
+      process.env["NLQDB_API_KEY"] = "sk_live_test";
+      const originalFetch = globalThis.fetch;
+      // The SDK surfaces 4xx immediately (no retry), so a single canned
+      // response is enough to exercise the catch-block mapping.
+      globalThis.fetch = (async () =>
+        new Response(JSON.stringify(body), {
+          status,
+          headers: { "content-type": "application/json" },
+        })) as unknown as typeof fetch;
+      try {
+        const handler = createAskRoute();
+        const res = await handler(
+          new Request("http://localhost/api/nlqdb/ask", {
+            method: "POST",
+            body: JSON.stringify({ goal: "x", dbId: "db_1" }),
+            headers: { "content-type": "application/json" },
+          }),
+        );
+        expect(res.status).toBe(status);
+        const json = await res.json();
+        // Byte-match: the route's envelope equals the API's, with no
+        // `message` key injected.
+        expect(json).toEqual(body);
+      } finally {
+        globalThis.fetch = originalFetch;
+        delete process.env["NLQDB_API_KEY"];
+      }
+    });
+  }
 });

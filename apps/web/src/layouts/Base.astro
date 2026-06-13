@@ -5,12 +5,18 @@ interface Props {
   title: string;
   description: string;
   canonical?: string;
+  /** Path or URL of the social-share image; resolved to an absolute URL.
+      Defaults to the site-wide card. Per-page images can be passed later. */
+  ogImage?: string;
+  ogImageAlt?: string;
 }
 
-const { title, description, canonical } = Astro.props;
+const { title, description, canonical, ogImage, ogImageAlt } = Astro.props;
 const canonicalURL = canonical
   ? new URL(canonical, Astro.site)
   : new URL(Astro.url.pathname, Astro.site);
+const ogImageURL = new URL(ogImage ?? "/og-default.png", Astro.site);
+const ogImageAltText = ogImageAlt ?? "nlqdb — create a database in a word, query it in English.";
 
 const jsonLd = {
   "@context": "https://schema.org",
@@ -39,7 +45,14 @@ const jsonLd = {
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
     <meta property="og:url" content={canonicalURL.toString()} />
+    <meta property="og:image" content={ogImageURL.toString()} />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:type" content="image/png" />
+    <meta property="og:image:alt" content={ogImageAltText} />
     <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:image" content={ogImageURL.toString()} />
+    <meta name="twitter:image:alt" content={ogImageAltText} />
     {/* Strips query/path from cross-origin Referer so `?invite=<code>` can't leak in the sub-100ms strip window. */}
     <meta name="referrer" content="strict-origin-when-cross-origin" />
 
