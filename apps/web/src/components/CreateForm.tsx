@@ -113,7 +113,7 @@ function CreateFormInner({ apiBase }: CreateFormProps) {
           origin: typeof window !== "undefined" ? window.location.pathname : "/",
         });
         if (typeof window !== "undefined") {
-          window.location.assign(outcome.error.signInUrl);
+          window.location.assign(withReplayFlag(outcome.error.signInUrl));
         }
         return;
       }
@@ -285,9 +285,9 @@ function CreateSnippetView({ primaryTable }: { primaryTable: string | undefined 
         <code>{snippet}</code>
       </pre>
       <p className="createresult__snippet-hint">
-        Sign in to keep this DB and reveal your <code>pk_live_</code>. Every chat answer has a{" "}
-        <strong>Copy snippet</strong> action that inlines the working key automatically. Always free
-        — no card required.
+        Sign in (free) to keep this DB — your <code>pk_live_</code> key then appears in every chat
+        reply's <strong>Copy snippet</strong> and on the <code>/app/keys</code> page. No card
+        required.
       </p>
       <a
         className="btn btn--accent createresult__snippet-cta"
@@ -363,10 +363,29 @@ function formatCell(value: string | number | boolean | null | undefined): string
   return String(value);
 }
 
+// SK-ANON-011 / WS02-T3: mark that a pending prompt is expected after
+// sign-in so the chat (/app) can acknowledge the rare case where it
+// couldn't be recovered (privacy mode / cleared storage). The flag rides
+// the URL; the prompt text never does. It lives on `return_to` —
+// sign-in.astro folds that into the post-signin `next`, and post-signin
+// preserves it on the final redirect — defaulting to /app, where the
+// composer rehydrates the pending prompt.
+function withReplayFlag(signInUrl: string): string {
+  try {
+    const url = new URL(signInUrl, window.location.origin);
+    const returnTo = new URL(url.searchParams.get("return_to") ?? "/app", window.location.origin);
+    returnTo.searchParams.set("replay", "1");
+    url.searchParams.set("return_to", returnTo.pathname + returnTo.search);
+    return url.toString();
+  } catch {
+    return signInUrl;
+  }
+}
+
 function messageFor(error: CreateError): string {
   switch (error.kind) {
     case "challenge_required":
-      return "Quick check needed — refresh and try again in a moment.";
+      return "Refresh and try again in a moment.";
     case "rate_limited":
       return error.retryAfter
         ? `Slow down — try again in ${error.retryAfter}s.`
@@ -376,13 +395,13 @@ function messageFor(error: CreateError): string {
       // blocked navigation). The pending prompt is already saved.
       return "Sign in to continue — your prompt is saved.";
     case "unauthorized":
-      return "Couldn't authenticate — clear your browser storage and reload.";
+      return "Clear your browser storage and reload to continue.";
     case "goal_unclear":
       return "Try describing what you want to build, e.g. 'a messages database' or 'an orders tracker'.";
     case "feature_gated":
       // Rendered by FeatureGatedView; the return value is unused.
       return error.message;
     case "server_error":
-      return "Couldn't create the DB — try again.";
+      return "Try again — the database couldn't be created.";
   }
 }

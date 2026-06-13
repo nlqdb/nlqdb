@@ -21,6 +21,13 @@ export function FeatureGatedView({ message, gate, waitlistUrl, surface }: Props)
         <GateLane label="BIRD" accuracy={gate.bird_accuracy} target={gate.bird_target} />
         <GateLane label="Spider" accuracy={gate.spider_accuracy} target={gate.spider_target} />
       </dl>
+      {/* The bars are the most honest screen in the product — say what
+          they measure so they don't read as jargon. Thresholds render
+          from `gate` data (GLOBAL-027); don't restate the numbers here. */}
+      <p className="feature-gate__explainer">
+        BIRD and Spider are public NL→SQL accuracy benchmarks — nlqdb opens up when it clears both
+        targets.
+      </p>
       <a
         className="btn btn--accent feature-gate__cta"
         href={waitlistUrl}

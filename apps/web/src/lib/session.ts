@@ -17,6 +17,28 @@ export function readApiBase(): string {
   return fromEnv ?? "";
 }
 
+// Drop the memoized probe so the next `fetchSession` re-hits the live
+// cookie. Sign-out is trust-critical: a cached "signed-in" promise
+// outlives the cookie after sign-out (here, or in another tab), so a
+// bfcache restore would otherwise render a stale authed shell. The dedup
+// for the initial load burst (topnav + page guard + banner all probe on
+// mount) is preserved — only explicit invalidation or a page restore
+// clears it.
+export function invalidateSession(): void {
+  cached = null;
+}
+
+if (typeof window !== "undefined") {
+  // bfcache restore: scripts don't re-run, but `pageshow` (persisted)
+  // fires on the still-registered listener — drop the cache so the
+  // page's own guard re-probe (also wired to `pageshow`) sees the live
+  // cookie. Normal navigations are full document loads (no client
+  // router), so they re-probe on their own without help here.
+  window.addEventListener("pageshow", (event) => {
+    if ((event as PageTransitionEvent).persisted) invalidateSession();
+  });
+}
+
 export function fetchSession(apiBase = readApiBase()): Promise<SessionUser | null> {
   if (cached) return cached;
   cached = (async () => {
