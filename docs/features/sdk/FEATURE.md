@@ -105,15 +105,14 @@ when-to-load:
 
 ### SK-SDK-009 — `runSql()` raw-query method; SDK-side counterpart of `nlq run` and `/v1/run`
 
-- **Decision:** The SDK exposes `runSql({ db, sql, signal?, idempotencyKey? }): Promise<{ rows: Row[]; rowCount: number; trace: Trace }>`. It POSTs to `/v1/run` (the raw-SQL escape-hatch endpoint corresponding to CLI `nlq run` per `SK-CLI-003`). The endpoint accepts the same constrained read/write verb list as `/v1/ask` (`SELECT / INSERT / UPDATE / DELETE / WITH / EXPLAIN / SHOW`). DDL is still rejected on this path; DDL only happens via the typed-plan compiler.
-- **Core value:** Creative, Bullet-proof, Goal-first
-- **Why:** [`GLOBAL-015`](../../decisions/GLOBAL-015-power-user-escape-hatch.md) requires an escape hatch on every surface. The CLI ships `nlq run` (`SK-CLI-003`); without an SDK counterpart the SDK becomes the NL-only surface — exactly the trap `GLOBAL-015` warns against — and `apps/web`, `packages/elements`, `packages/mcp` lose access to raw SQL. `GLOBAL-002` and `GLOBAL-003` make this a parity requirement, not an option. The endpoint reuses the existing SQL allow-list + executor; only the LLM steps are bypassed, so the safety surface is the same one already shipped.
-- **Consequence in code:** `packages/sdk/src/index.ts` adds `runSql` alongside `ask`. The request shape is `{ db: string; sql: string; idempotencyKey?: string }`; the response shape includes the same `trace` block specified by [`SK-TRUST-002`](../trust-ux/FEATURE.md) — even raw-SQL responses must carry the compiled SQL + plan-id + cache-hit flag so surfaces don't have to special-case the escape-hatch path. `runSql` is a mutating helper (it may run an `INSERT`); `SK-SDK-006` Idempotency-Key auto-generation applies. The wire-layer retry loop (`SK-SDK-008`) applies. The 401 silent-refresh (`SK-SDK-005`) applies. Bearer-key callers (CLI, events-worker) and `withCredentials` callers (web) both work through the same method.
-- **Alternatives rejected:**
-  - Expose raw SQL only through the CLI — contradicts `GLOBAL-002`; forces web / MCP / embed users to drop down to the CLI for an escape hatch they ought to have in the same SDK they already use.
-  - Allow DDL through `/v1/run` — contradicts `architecture.md §3.6.5` validator split; widens the prompt-injection surface and breaks the "DDL only via typed-plan compiler" invariant.
-  - Two methods (`runSelect` + `runMutation`) — the SQL allow-list is already the discriminator; doubling the method surface adds no semantic value and breaks the GLOBAL-017 "one way to do each thing" rule.
-- **Source:** canonical here · referenced from `docs/features/cli/FEATURE.md` `SK-CLI-003` and from `docs/phase-plan.md §4` Phase 2 deliverable 3.
+**Body:** [`decisions/SK-SDK-009-run-sql.md`](./decisions/SK-SDK-009-run-sql.md).
+`runSql({ db, sql, signal?, idempotencyKey? })` POSTs to `/v1/run` — the
+raw-SQL escape hatch (`GLOBAL-015`) corresponding to CLI `nlq run`
+(`SK-CLI-003`). Same constrained verb list as `/v1/ask`
+(`SELECT / INSERT / UPDATE / DELETE / WITH / EXPLAIN / SHOW`); DDL stays
+rejected. Carries the `SK-TRUST-002` `trace` block, auto-generates the
+Idempotency-Key (`SK-SDK-006`), and rides the retry + 401-refresh loops.
+Opt-in write preview: `SK-SDK-012`.
 
 ### SK-SDK-010 — `byollm` client option carries the caller's own provider key on `ask()` / `askStream()`
 
@@ -135,6 +134,17 @@ per-request `byollm` option (`SK-SDK-010`); the key is write-only (`last4`
 only). Signed-in only — the verbs throw unless built with
 `withCredentials: true` (`GLOBAL-012`).
 
+### SK-SDK-012 — `runSql({ dryRun })` + `/v1/run` `dryRun` flag preview writes without executing
+
+**Body:** [`decisions/SK-SDK-012-run-dry-run.md`](./decisions/SK-SDK-012-run-dry-run.md).
+An opt-in `dryRun` on `runSql()` / `/v1/run`: a write verb reuses
+`/v1/ask`'s `buildDiff` and returns `requires_confirm` + `diff` without
+executing (byte-identical to the ask preview hop); a read returns
+`requires_confirm: false` un-run. `dryRun` omitted leaves `/v1/run`
+immediate — the `GLOBAL-015` escape hatch is untouched. CLI surface is
+[`SK-CLI-017`](../cli/decisions/SK-CLI-017-run-dry-run.md); ships to MCP +
+`<nlq-data>` + wrappers in the same slice (`GLOBAL-003`).
+
 ## GLOBALs governing this feature
 
 Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; index in [`docs/decisions.md`](../../decisions.md)). The list below names the rules that constrain this feature; any feature-local commentary is nested under the rule.
@@ -149,7 +159,7 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 - **GLOBAL-012** — Errors are one sentence with the next action.
 - **GLOBAL-014** — OTel span on every external call (DB, LLM, HTTP, queue).
 - **GLOBAL-015** — Power users always have an escape hatch (raw SQL/Mongo/connection string).
-  - *In this feature:* the canonical SDK implementation is `SK-SDK-009`'s `runSql()`.
+  - *In this feature:* the canonical SDK implementation is `SK-SDK-009`'s `runSql()`. `SK-SDK-012` adds an opt-in `dryRun` preview on top — additive, so the default immediate path the escape hatch guarantees is unchanged.
 - **GLOBAL-022** — Recoverable failures retry to success — never surface a fixable error.
   - *In this feature:* see `SK-SDK-008` for the canonical implementation. `packages/sdk/src/index.ts` `call<T>` is the wire-layer retry loop (transport failures + transient 5xx, up to 3 attempts, reusing the auto-generated `Idempotency-Key` from `SK-SDK-006`). The 401 path stays single-retry per `SK-SDK-005`.
 - **GLOBAL-023** — Trust UX baseline.

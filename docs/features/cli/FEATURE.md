@@ -63,6 +63,7 @@ Canonical bodies live in [`decisions/`](decisions/) — one file per `SK-CLI-NNN
 - [**SK-CLI-014**](decisions/SK-CLI-014-no-client-telemetry.md) — No client-side telemetry pipeline; events ride the SDK's API calls.
 - [**SK-CLI-015**](decisions/SK-CLI-015-update-check.md) — Background update check ≤ once/day; stderr only; auto-off in CI; explicit `nlq update` for curl-installed binaries.
 - [**SK-CLI-016**](decisions/SK-CLI-016-byollm-keychain.md) — `nlq byollm set|status|clear` stores the BYOLLM key in the keychain; `nlq ask` rides it signed-in only (SDK sibling of `SK-SDK-010`).
+- [**SK-CLI-017**](decisions/SK-CLI-017-run-dry-run.md) — `nlq run --dry-run` previews raw writes (reusing the `/v1/ask` diff) without executing; default `nlq run` stays immediate (`GLOBAL-015`). Wire/server/SDK counterpart of `SK-SDK-012`.
 
 ## GLOBALs governing this feature
 
@@ -92,7 +93,6 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 - **`nlq connection <db>` for hosted Postgres.** Wants a raw `postgres://…` URL on `GET /v1/databases` rows. Today the SDK returns it on the create response only. The unblock is one API field; the CLI verb is one cobra command.
 - **Windows experience.** The bootstrap PR cross-compiled to windows/amd64 and the binary builds, but Windows shell quirks (cmd, PowerShell), the Credential Manager backend, and `~/.config` semantics under `APPDATA` need a manual round-trip on real hardware. Per-platform quirks land in `cli/AGENTS.md` once they're observed.
 - **`nlq mcp install` for hosts not yet covered by SK-CLI-011.** New MCP hosts emerge regularly. Add-a-host recipe in `cli/AGENTS.md` so the supported list grows without re-architecting `cli/internal/mcphosts/` — runbook concern, not a design decision.
-- **Preview/dry-run for `nlq run` writes.** `nlq ask` already dry-runs destructive plans (`requires_confirm` + diff until `--confirm`), but `nlq run` (the `GLOBAL-015` raw-SQL escape hatch) executes writes immediately with no preview. Should `nlq run` support a preview/dry-run for writes, and does `/v1/run` need a server-side preview mode to back it? This is a feature decision spanning the API and surface parity (`GLOBAL-003`), not a CLI-local copy fix — undecided pending the user.
 
 ## Happy path walkthrough
 
