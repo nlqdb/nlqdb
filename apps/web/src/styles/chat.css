@@ -221,6 +221,42 @@
   margin: 0 2px;
 }
 
+/* ---------- One-time notice (WS02-T3 / WS02-T5) ---------- */
+
+.chat-notice {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 8px 18px 0;
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  background: var(--bg-elev);
+  font-family: var(--mono);
+  font-size: 13px;
+}
+
+.chat-notice__text {
+  margin: 0;
+  color: var(--fg);
+  line-height: 1.4;
+}
+
+.chat-notice__dismiss {
+  flex-shrink: 0;
+  padding: 0 4px;
+  border: none;
+  background: none;
+  color: var(--fg-muted);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.chat-notice__dismiss:hover {
+  color: var(--fg);
+}
+
 /* ---------- Message list ---------- */
 
 .chat-list__load-more {

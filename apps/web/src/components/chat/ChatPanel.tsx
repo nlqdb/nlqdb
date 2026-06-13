@@ -183,6 +183,9 @@ function ChatPanelInner({ apiBase }: ChatPanelProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const [composer, setComposer] = useState("");
+  // One-time, dismissible status line for rare recoverable states
+  // (pending-prompt loss WS02-T3, stale `?db=` deep-link WS02-T5).
+  const [notice, setNotice] = useState<string | null>(null);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [tracesOpen, setTracesOpen] = useState(false);
   const inFlightRef = useRef<AbortController | null>(null);
@@ -204,7 +207,14 @@ function ChatPanelInner({ apiBase }: ChatPanelProps) {
     if (pending?.goal) {
       setComposer(pending.goal);
       clearPending();
+    } else if (readReplayExpected()) {
+      // WS02-T3: the auth wall set `?replay=1` and promised "your prompt
+      // is saved" (SK-ANON-012), but `nlqdb_pending` is gone (privacy
+      // mode / cleared storage). Acknowledge the rare loss instead of
+      // silently rendering an empty composer.
+      setNotice("Couldn't recover your previous message — re-type it here.");
     }
+    clearReplayFromUrl();
     composerRef.current?.focus();
   }, []);
 
@@ -549,9 +559,18 @@ function ChatPanelInner({ apiBase }: ChatPanelProps) {
   }
 
   function onComposerKeyDown(e: KeyboardEvent<HTMLInputElement>) {
-    if (e.key === "Enter" && pendingDiffRef.current) {
+    if (!pendingDiffRef.current) return;
+    if (e.key === "Enter") {
+      // Second Enter on a destructive plan IS the approval (SK-ONBOARD-004).
       e.preventDefault();
       approveDiff();
+    } else if (e.key === "Escape") {
+      // WS02-T5: Esc cancels the pending change — symmetric with the
+      // "Press Enter to approve" affordance the DiffChip advertises. The
+      // composer is the focused element while a diff is pending (its
+      // placeholder switches to the approve prompt), so both keys land here.
+      e.preventDefault();
+      cancelDiff();
     }
   }
 
@@ -664,7 +683,16 @@ function ChatPanelInner({ apiBase }: ChatPanelProps) {
         onLoaded={(databases) => {
           if (activeDbId) {
             const match = databases.find((db) => db.id === activeDbId);
-            if (match) setActiveDb(match);
+            if (match) {
+              setActiveDb(match);
+              return;
+            }
+            // WS02-T5: the `?db=<id>` deep link points at a DB that's gone
+            // (deleted, swept, or a stale share link). Drop the dead pin
+            // and fall back to All-databases auto-pick rather than a header
+            // that names a phantom DB whose every query 404s.
+            setNotice("That database no longer exists — showing all databases.");
+            clearSelection();
             return;
           }
           // No `?db=` in URL — auto-pin the most-recently-created DB so
@@ -687,6 +715,20 @@ function ChatPanelInner({ apiBase }: ChatPanelProps) {
             <kbd>Cmd</kbd>+<kbd>K</kbd> commands · <kbd>Cmd</kbd>+<kbd>/</kbd> trace
           </span>
         </header>
+
+        {notice ? (
+          <div className="chat-notice" role="status">
+            <p className="chat-notice__text">{notice}</p>
+            <button
+              type="button"
+              className="chat-notice__dismiss"
+              aria-label="Dismiss"
+              onClick={() => setNotice(null)}
+            >
+              &times;
+            </button>
+          </div>
+        ) : null}
 
         <ol className="chat-list" aria-live="polite">
           {hasOlder && (
@@ -1074,4 +1116,20 @@ function readDbIdFromUrl(): string | null {
   if (typeof window === "undefined") return null;
   const params = new URLSearchParams(window.location.search);
   return params.get("db");
+}
+
+// WS02-T3: the auth wall threads `?replay=1` through sign-in so the chat
+// knows a pending prompt was expected (the prompt text itself never
+// rides the URL, per SK-ANON-011).
+function readReplayExpected(): boolean {
+  if (typeof window === "undefined") return false;
+  return new URLSearchParams(window.location.search).get("replay") === "1";
+}
+
+function clearReplayFromUrl(): void {
+  if (typeof window === "undefined") return;
+  const url = new URL(window.location.href);
+  if (!url.searchParams.has("replay")) return;
+  url.searchParams.delete("replay");
+  window.history.replaceState(null, "", url.toString());
 }

@@ -34,7 +34,6 @@ directory when all worksheets are gone.
 | File | Surface | Default KPI (GLOBAL-025) |
 |---|---|---|
 | [WS-01-marketing-site.md](WS-01-marketing-site.md) | Home + sub pages (`apps/web` public) | Onboarding |
-| [WS-02-app-onboarding.md](WS-02-app-onboarding.md) | Signed-in app, anon flow, gate UX | Onboarding / UX |
 | [WS-03-sdk-wrappers.md](WS-03-sdk-wrappers.md) | `@nlqdb/sdk` + 8 framework wrappers | UX (DX) |
 | [WS-04-mcp.md](WS-04-mcp.md) | `packages/mcp` + `apps/mcp` | UX (agent DX) |
 | [WS-05-cli.md](WS-05-cli.md) | `cli/` (`nlq`) | UX (agent DX) |
