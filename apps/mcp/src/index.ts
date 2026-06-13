@@ -17,10 +17,43 @@ export type Env = BridgeEnv & {
   NLQDB_API_BASE_URL?: string;
   GRAFANA_OTLP_ENDPOINT?: string;
   GRAFANA_OTLP_AUTHORIZATION?: string;
+  // Comma-separated extra browser origins allowed past the DNS-rebinding
+  // check (e.g. a browser-based MCP host). nlqdb's own origins are
+  // always allowed; native clients send no `Origin` and pass.
+  MCP_ALLOWED_ORIGINS?: string;
   MCP_AGENT: DurableObjectNamespace;
 };
 
 export { NlqdbMcpAgent };
+
+// DNS-rebinding defense. The MCP Streamable-HTTP spec (rev 2025-11-25)
+// requires servers to validate the `Origin` header on every incoming
+// connection and reject an invalid one with 403; it is also the ~30%
+// rejection cause on the Anthropic Connectors Directory submission.
+// Only browsers send `Origin`, so a request without one (Claude Desktop,
+// Cursor, the npm stdio bridge, curl, server-to-server) passes. A
+// present `Origin` must be nlqdb's own, the consent-screen web origin,
+// or an operator-configured `MCP_ALLOWED_ORIGINS` entry — anything else
+// (a malicious page driving the user's browser) gets 403.
+function isOriginAllowed(req: Request, env: Env): boolean {
+  const origin = req.headers.get("origin");
+  if (origin === null) return true;
+  const allowed = new Set<string>([new URL(req.url).origin]);
+  for (const v of [env.NLQDB_WEB_ORIGIN, env.NLQDB_API_BASE_URL]) {
+    if (v) {
+      try {
+        allowed.add(new URL(v).origin);
+      } catch {
+        // ignore a malformed env value rather than fail the whole request
+      }
+    }
+  }
+  for (const extra of (env.MCP_ALLOWED_ORIGINS ?? "").split(",")) {
+    const trimmed = extra.trim();
+    if (trimmed) allowed.add(trimmed);
+  }
+  return allowed.has(origin);
+}
 
 const oauth = new OAuthProvider<Env>({
   apiRoute: "/mcp",
@@ -39,6 +72,14 @@ const tracer = trace.getTracer("@nlqdb/mcp-server");
 
 export default {
   async fetch(req: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+    // DNS-rebinding defense runs before everything else (telemetry,
+    // health, OAuth) so a rejected origin never reaches the agent.
+    if (!isOriginAllowed(req, env)) {
+      return Response.json(
+        { error: { status: "forbidden", message: "Origin not allowed." } },
+        { status: 403 },
+      );
+    }
     if (env.GRAFANA_OTLP_ENDPOINT && env.GRAFANA_OTLP_AUTHORIZATION) {
       const telemetry = setupTelemetry({
         serviceName: SERVICE_NAME,

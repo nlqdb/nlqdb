@@ -1,5 +1,6 @@
 import type { APIRoute } from "astro";
 import { COMPETITORS } from "../data/competitors";
+import { INTEGRATE } from "../data/integrate";
 import { SOLVE_ENTRIES } from "../data/solve";
 
 // `llms.txt` — community spec (https://llmstxt.org) the LLM-IDE
@@ -10,6 +11,7 @@ import { SOLVE_ENTRIES } from "../data/solve";
 // `/solve/<slug>` is a one-file edit, not a multi-file edit.
 
 const SITE = "https://nlqdb.com";
+const DOCS_SITE = "https://docs.nlqdb.com";
 
 const PRIMARY_LINKS = [
   { title: "Homepage", path: "/", desc: "Pitch, embed demo, live carousel." },
@@ -47,7 +49,18 @@ export const GET: APIRoute = () => {
     `the workload evolves. Five surfaces share one engine: an HTML element (` +
     `\`<nlq-data>\`), a typed SDK, a CLI (\`nlq\`), an MCP server (\`mcp.nlqdb.com\`), and a\n` +
     `chat web app at app.nlqdb.com.\n\n` +
-    `## Pages\n\n` +
+    `## Integrate\n\n` +
+    `Add nlqdb to an app. Every surface calls the same \`/v1/ask\` engine — pick one;\n` +
+    `each snippet is the smallest runnable shape, and the link is the page to read next.\n` +
+    `Full machine-readable docs index: ${DOCS_SITE}/llms.txt\n\n` +
+    INTEGRATE.map(
+      (r) =>
+        `### ${r.title}\n\n${r.sub}. [Docs →](${r.docs})\n\n` +
+        "```" +
+        `${r.lang}\n${r.snippet}\n` +
+        "```",
+    ).join("\n\n") +
+    `\n\n## Pages\n\n` +
     PRIMARY_LINKS.map((l) => `- [${l.title}](${SITE}${l.path}): ${l.desc}`).join("\n") +
     `\n\n## Comparisons\n\n` +
     COMPETITORS.map((c) => `- [nlqdb vs ${c.name}](${SITE}/vs/${c.slug}): ${c.oneLiner}`).join(

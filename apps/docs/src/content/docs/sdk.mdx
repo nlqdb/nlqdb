@@ -1,0 +1,101 @@
+---
+title: SDK (TypeScript)
+description: "@nlqdb/sdk — install, authenticate, ask / runSql, and recover from errors on err.code."
+---
+
+import { Aside } from "@astrojs/starlight/components";
+
+<Aside type="caution" title="Pre-alpha">
+  `ask` and `runSql` return `403 feature_gated` until the free LLM chain clears
+  BIRD ≥ 65% AND Spider ≥ 75%. Pass `inviteCode` to `createClient` to bypass with a
+  design-partner code. See [pre-alpha access](/pre-alpha/).
+</Aside>
+
+`@nlqdb/sdk` is the typed, zero-dependency HTTP client every other surface is built on
+(it is the **only** HTTP client — `GLOBAL-001`). It runs anywhere `fetch` exists:
+browsers, Node ≥ 18, Bun, Cloudflare Workers, Deno.
+
+The full, always-current API surface is the [SDK reference](/reference/sdk/), generated
+from the source. This page is the 60-second guide.
+
+## Install
+
+```sh
+npm i @nlqdb/sdk
+# or: bun add @nlqdb/sdk
+```
+
+## Authenticate
+
+Two mutually-exclusive modes — pick one at construction time (`SK-SDK-001`):
+
+```ts
+import { createClient } from "@nlqdb/sdk";
+
+// Server (Node / Bun / Workers): pass a bearer key.
+const server = createClient({ apiKey: process.env.NLQDB_KEY! });
+
+// Browser: ride the session cookie. NEVER ship a key to a browser bundle.
+const browser = createClient({ withCredentials: true });
+```
+
+Passing both throws; passing neither is the anonymous-mode path. Need a key? Get one in
+60 seconds at [nlqdb.com](https://nlqdb.com) → sign in → **Copy snippet**.
+
+## Ask a question
+
+```ts
+const res = await client.ask({ goal: "today's orders, newest first", dbId: "orders" });
+if (res.status === "ok") console.table(res.rows);
+```
+
+`ask` runs the NL→SQL pipeline (`POST /v1/ask`). The response carries a `trace` block of
+per-step timings (`GLOBAL-023`); wire the `onTrace` callback to stream them into a UI.
+
+## Raw SQL escape hatch
+
+When you want to hand-write the query, `runSql` is the `GLOBAL-015` escape hatch
+(`POST /v1/run`) — same allow-list as `ask` (`SELECT / INSERT / UPDATE / DELETE / WITH /
+EXPLAIN / SHOW`); DDL is rejected.
+
+```ts
+const res = await client.runSql({ db: "orders", sql: "select count(*) from orders" });
+```
+
+Pass `{ dryRun: true }` to preview a write as a diff (`requires_confirm`) without
+executing it.
+
+## Handle errors
+
+Every method throws a single `NlqdbApiError` on every failure path — non-2xx responses,
+network failures, aborts, and non-JSON proxy bodies (`SK-SDK-002`). Branch on
+`err.code`, never on `err.message`:
+
+```ts
+import { NlqdbApiError } from "@nlqdb/sdk";
+
+try {
+  await client.ask({ goal, dbId });
+} catch (err) {
+  if (err instanceof NlqdbApiError) {
+    switch (err.code) {
+      case "rate_limited":  // err.body.limit, err.body.count — wait and retry
+      case "ambiguous_db":  // err.body.candidate_dbs — pick one, resend with dbId
+      case "feature_gated": // err.body.gate, err.body.waitlist_url — terminal
+      case "network_error": // httpStatus === 0 — transport failure
+    }
+  }
+}
+```
+
+`err.code` mirrors the API's error discriminant plus a few transport-only sentinels. The
+recoverable failures (transport errors, transient 5xx) are already retried for you, with
+a reused `Idempotency-Key`, before the error ever surfaces (`SK-SDK-008`). Every code, its
+HTTP status, and whether retrying helps is enumerated in the
+[error-code reference](/reference/http-api/#error-codes).
+
+## Framework wrappers
+
+Building a UI? The [framework wrappers](/frameworks/) (React, Next, Vue, Nuxt, Svelte,
+SvelteKit, Astro, Solid) wrap the same client + the `<nlq-data>` element with your
+framework's typing idiom.

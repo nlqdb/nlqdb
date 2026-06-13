@@ -1,0 +1,125 @@
+---
+title: Framework wrappers
+description: "Typed React, Next, Vue, Nuxt, Svelte, SvelteKit, Astro, and Solid wrappers over <nlq-data>."
+---
+
+import { Aside } from "@astrojs/starlight/components";
+
+<Aside type="caution" title="Pre-alpha">
+  Wrappers call the same gated `/v1/ask` engine — calls return `403 feature_gated` until
+  the free LLM chain clears its targets. See [pre-alpha access](/pre-alpha/).
+</Aside>
+
+Each wrapper is a thin, typed adapter over the `<nlq-data>` element and
+[`@nlqdb/sdk`](/sdk/) — it adds your framework's component and typing idiom and nothing
+else (no second network layer, `SK-FW-001`). Install the one for your framework; the
+full runnable walkthrough lives in each [tutorial](/tutorials/html/).
+
+## Conventions
+
+Every wrapper exports the same two components — `<NlqData>` (read) and `<NlqAction>`
+(write, with a preview → Apply diff). What differs per framework is how event callbacks
+are named and where the server-only SDK factory lives:
+
+| Framework  | Package             | Event-callback props                                  | Server entry |
+| ---------- | ------------------- | ----------------------------------------------------- | ------------ |
+| React      | `@nlqdb/react`      | `onLoad` / `onError` / `onSuccess` / `onConfirmRequired` | — |
+| Next.js    | `@nlqdb/next`       | (React props)                                         | `@nlqdb/next/server`, `@nlqdb/next/script` |
+| Vue        | `@nlqdb/vue`        | `@load` / `@error` / `@success` / `@confirm-required` | — |
+| Nuxt       | `@nlqdb/nuxt`       | (Vue props) + `useNlq()` composable                   | — |
+| Svelte     | `@nlqdb/svelte`     | `onload` / `onerror` / `onsuccess` / `onconfirmRequired` | — |
+| SvelteKit  | `@nlqdb/sveltekit`  | (Svelte props) + `<NlqHead>`                          | `@nlqdb/sveltekit/server` |
+| Astro      | `@nlqdb/astro`      | underlying `nlq-data:*` CustomEvents (via `client:*`) | — |
+| Solid      | `@nlqdb/solid`      | `onLoad` / `onError` / `onSuccess` / `onConfirmRequired` | — |
+
+Server entries exist where a framework can statically separate server-only modules
+(`SK-FW-003`): the `sk_live_*`-keyed SDK factory ships only from those sub-paths, so it
+never reaches a browser bundle. Every wrapper registers the element lazily on mount, so
+server-side rendering stays inert (`SK-FW-002`).
+
+## React
+
+```sh
+npm i @nlqdb/react
+```
+
+```tsx
+import { NlqData } from "@nlqdb/react";
+
+<NlqData goal="today's orders, newest first" db="orders" apiKey={process.env.NEXT_PUBLIC_NLQDB_KEY} />;
+```
+
+Full walkthrough → [React tutorial](/tutorials/react/).
+
+## Next.js
+
+```sh
+npm i @nlqdb/next
+```
+
+`@nlqdb/next/script` injects the elements bundle; `@nlqdb/next/server` is the
+`import "server-only"` SDK factory for Route Handlers. Full walkthrough →
+[Next.js tutorial](/tutorials/nextjs/).
+
+## Vue
+
+```sh
+npm i @nlqdb/vue
+```
+
+```vue
+<script setup lang="ts">
+import { NlqData } from "@nlqdb/vue";
+</script>
+
+<template>
+  <NlqData goal="today's orders, newest first" db="orders" api-key="pk_live_..." />
+</template>
+```
+
+Full walkthrough → [Vue tutorial](/tutorials/vue/).
+
+## Nuxt
+
+```sh
+npm i @nlqdb/nuxt
+```
+
+Add `@nlqdb/nuxt` to `modules` — it auto-registers `<NlqData>` / `<NlqAction>` and the
+`useNlq()` composable over Nuxt's `useFetch`. Full walkthrough →
+[Nuxt tutorial](/tutorials/nuxt/).
+
+## Svelte
+
+```sh
+npm i @nlqdb/svelte
+```
+
+Full walkthrough → [Svelte tutorial](/tutorials/svelte/).
+
+## SvelteKit
+
+```sh
+npm i @nlqdb/sveltekit
+```
+
+`<NlqHead>` loads the elements CDN bundle; `@nlqdb/sveltekit/server` carries the `load()`
+helper for server-side fetches. Full walkthrough → [SvelteKit tutorial](/tutorials/sveltekit/).
+
+## Astro
+
+```sh
+npm i @nlqdb/astro
+```
+
+Add the integration to `astro.config.mjs`; it injects the elements bundle and ships a
+typed `<NlqData>` component. Full walkthrough → [Astro tutorial](/tutorials/astro/).
+
+## Solid
+
+```sh
+npm i @nlqdb/solid
+```
+
+Uses Solid's native `attr:` / `on:` namespaces. Full walkthrough →
+[Solid tutorial](/tutorials/solid/).
