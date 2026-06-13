@@ -38,6 +38,7 @@ async function registerOnClient(): Promise<void> {
   await import("@nlqdb/elements");
 }
 
+/** Read component — renders `<nlq-data>` (a goal/query → rows view). Props are camelCase (`apiKey`); events are `onLoad` / `onError`. */
 export function NlqData(props: NlqDataProps): JSX.Element {
   let ref: HTMLElement | undefined;
   onMount(() => {
@@ -85,6 +86,7 @@ export type NlqActionProps = {
   children?: JSX.Element;
 };
 
+/** Write component — renders `<nlq-action>` with the preview→Apply diff hop. Events: `onSuccess` / `onConfirmRequired` / `onError`. */
 export function NlqAction(props: NlqActionProps): JSX.Element {
   let ref: HTMLElement | undefined;
   onMount(() => {

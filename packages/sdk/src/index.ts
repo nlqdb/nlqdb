@@ -511,97 +511,160 @@ export type ByollmSetResult = {
 // nothing stored, so retrying scripts don't have to special-case it.
 export type ClearByollmResult = { ok: true; cleared: boolean };
 
-// The typed client returned by `createClient()` — the only HTTP surface per `GLOBAL-001`.
+/**
+ * The typed client returned by {@link createClient} — the only HTTP
+ * surface per `GLOBAL-001`. Every method throws {@link NlqdbApiError} on
+ * every failure path; discriminate on `err.code` (`SK-SDK-002`). Recoverable
+ * failures (transport, transient 5xx) retry up to 3× automatically
+ * (`SK-SDK-008`); a 401 on a `withCredentials` client refreshes and retries
+ * silently (`SK-SDK-005`), so surfaces never see one. Mutations
+ * auto-generate and reuse an `Idempotency-Key` across retries (`SK-SDK-006`).
+ */
 export type NlqClient = {
-  // Returns the union AskOk | AskCreateResult — callers narrow on the
-  // shape (`status === "ok"` vs `kind === "create"`). When `dbId` is
-  // present the API always returns `AskOk`; when omitted the API may
-  // route to the create path (`AskCreateResult`) per SK-ASK-009 /
-  // SK-HDC-011.
+  /**
+   * `POST /v1/ask` — answer a plain-English goal. Returns the union
+   * `AskOk | AskCreateResult`: narrow on `status === "ok"` (rows + `trace`)
+   * vs `kind === "create"` (the goal routed to DB creation). When `req.dbId`
+   * is present the API always returns `AskOk`; when omitted it may auto-target
+   * or route to create (`SK-ASK-009` / `SK-HDC-011`). Errors worth a branch:
+   * `ambiguous_db` (409, `body.candidate_dbs`), `clarify_required` (409),
+   * `rate_limited` (429), `db_not_found`, `sql_rejected`. Retries transient
+   * failures and auto-keys the POST (`SK-SDK-008`).
+   */
   ask(req: AskRequest, opts?: { signal?: AbortSignal }): Promise<AskResponse>;
-  // Streaming variant of `ask`. Resolves once the `done` event
-  // arrives with the assembled `AskOk`; rejects with
-  // `NlqdbApiError` on transport / API errors. Per-step events
-  // surface via `opts.onTrace`. Use this — not `ask` — for chat
-  // surfaces that want incremental rendering (GLOBAL-011). Note: the
-  // streaming surface does NOT cover the create branch; surfaces that
-  // need `AskCreateResult` should call `ask()` instead.
+  /**
+   * `POST /v1/ask` (SSE) — streaming variant of {@link ask}. Resolves once the
+   * `done` event arrives with the assembled `AskOk`; per-step timings surface
+   * via `opts.onTrace` (`SK-SDK-007`). Use this — not {@link ask} — for chat
+   * surfaces that want incremental rendering (`GLOBAL-011`). Not retried: a
+   * mid-stream retry would re-fire side-effects (`SK-SDK-008`). Does **not**
+   * cover the create branch — call {@link ask} when you need `AskCreateResult`.
+   */
   askStream(req: AskRequest, opts: AskStreamOptions): Promise<AskOk>;
+  /**
+   * `GET /v1/chat/messages` — the caller's persisted chat turns, oldest first.
+   * Each row's `role` discriminates user prompt vs assistant result. Read-only;
+   * not idempotency-keyed.
+   */
   listChat(opts?: { signal?: AbortSignal }): Promise<{ messages: ChatMessage[] }>;
+  /**
+   * `POST /v1/chat/messages` — run a goal and persist both the user prompt and
+   * the assistant result as a chat turn. Mutating: auto-keyed on the POST
+   * (`SK-SDK-006`). The returned `assistant.result` narrows on `kind`
+   * (`"ok"` vs `"error"`).
+   */
   postChat(
     req: AskRequest,
     opts?: { signal?: AbortSignal },
   ): Promise<{ user: ChatMessage; assistant: ChatMessage }>;
+  /**
+   * `GET /v1/databases` — the caller's databases. Each row carries its
+   * resolved `engine` and the publishable `pkLive` (or null → fall back to the
+   * anonymous device key, `SK-ANON-006`). Read-only.
+   */
   listDatabases(opts?: { signal?: AbortSignal }): Promise<{ databases: DatabaseSummary[] }>;
+  /**
+   * `POST /v1/databases` — create a database. Goal-first: `goal` drives the
+   * engine classifier; pass `engine` to override (`GLOBAL-015`). Rejects an
+   * unknown engine with `invalid_engine` (400). Mutating: pass `idempotencyKey`
+   * for cross-process replay safety, else one is auto-generated (`SK-SDK-006`).
+   */
   createDatabase(
     req: CreateDatabaseRequest,
     opts?: { signal?: AbortSignal; idempotencyKey?: string },
   ): Promise<CreateDatabaseResult>;
-  // SK-HDC-016 — destructive removal from the chat surface's delete
-  // affordance. Returns once the API has dropped the schema and
-  // registry row; surfaces remove the entry from the rail on resolve.
-  // Rejects with `db_not_found` when the dbId is unknown or belongs
-  // to a different tenant. The UI is responsible for the typed-name
-  // confirmation; the wire call assumes intent is already gathered.
+  /**
+   * `DELETE /v1/databases/:id` — destructive removal (`SK-HDC-016`); resolves
+   * once the schema and registry row are dropped. Rejects with `db_not_found`
+   * when the id is unknown or belongs to another tenant. The UI owns the
+   * typed-name confirmation — this wire call assumes intent is already
+   * gathered. Mutating: auto-keyed (`SK-SDK-006`).
+   */
   deleteDatabase(
     dbId: string,
     opts?: { signal?: AbortSignal; idempotencyKey?: string },
   ): Promise<void>;
-  // `SK-SDK-009` — raw-SQL escape hatch; same allow-list and `trace` block as `ask()`, DDL rejected.
+  /**
+   * `POST /v1/run` — raw-SQL escape hatch (`SK-SDK-009` / `GLOBAL-015`). Same
+   * allow-list and `trace` block as {@link ask}; DDL is rejected. Errors worth
+   * a branch: `forbidden` (a read-only `pk_live` tried to write), `sql_rejected`,
+   * `sql_too_long`. Mutating (may `INSERT`): auto-keyed (`SK-SDK-006`).
+   */
   runSql(
     req: RunSqlRequest,
     opts?: { signal?: AbortSignal; idempotencyKey?: string },
   ): Promise<RunSqlResult>;
-  // SK-MCP-014 — `apps/mcp/`'s `McpAgent` calls this every 1 s to
-  // re-check `sk_mcp_*` revocation. `keyHash` is the HMAC-SHA256 hex
-  // of the plaintext key (never the plaintext itself), computed via
-  // `hmacHex` in the calling Worker.
+  /**
+   * `GET /v1/keys/:hash/status` — revocation probe (`SK-MCP-014`). `apps/mcp/`'s
+   * `McpAgent` calls this every 1 s to re-check `sk_mcp_*` revocation. `keyHash`
+   * is the HMAC-SHA256 hex of the plaintext key (never the plaintext), computed
+   * via `hmacHex` in the calling Worker. Session-only, tenant-scoped.
+   */
   getKeyStatus(keyHash: string, opts?: { signal?: AbortSignal }): Promise<KeyStatus>;
-  // SK-APIKEYS-007 — mint a new `sk_live_*` or `sk_mcp_*` key. Session-
-  // only on the server side — a leaked `sk_live_` cannot bootstrap
-  // sibling keys. The returned `key` is the plaintext, present exactly
-  // once per `SK-APIKEYS-002` — callers must hand it to the user (or
-  // the host config file) on the same render.
+  /**
+   * `POST /v1/keys` — mint a new `sk_live_*` or `sk_mcp_*` key (`SK-APIKEYS-007`).
+   * Session-only (`withCredentials: true`): a leaked `sk_live_` cannot bootstrap
+   * sibling keys. The returned `key` is the plaintext, present exactly once
+   * (`SK-APIKEYS-002`) — hand it to the user or the host config on the same
+   * render. Mutating: auto-keyed (`SK-SDK-006`).
+   */
   mintKey(
     req: MintKeyRequest,
     opts?: { signal?: AbortSignal; idempotencyKey?: string },
   ): Promise<MintKeyResult>;
-  // SK-APIKEYS-010 — list the caller's keys (active + revoked, newest
-  // first; revoked rows sorted to the bottom). Session-cookie only:
-  // a leaked `sk_live_` cannot enumerate sibling keys.
+  /**
+   * `GET /v1/keys` — the caller's keys (`SK-APIKEYS-010`), active + revoked,
+   * newest first with revoked rows sorted to the bottom. Session-cookie only:
+   * a leaked `sk_live_` cannot enumerate sibling keys. Plaintext is never
+   * present — `last4` is the only display affordance.
+   */
   listKeys(opts?: { signal?: AbortSignal }): Promise<{ keys: KeyRecord[] }>;
-  // SK-APIKEYS-011 — hard-revoke. Tenant-scoped — a key id from
-  // another tenant rejects as `key_not_found` (404) just like an
-  // unknown id, so the call never leaks cross-tenant existence.
-  // Idempotent: re-DELETE returns `alreadyRevoked: true`.
+  /**
+   * `DELETE /v1/keys/:id` — hard-revoke (`SK-APIKEYS-011`). Tenant-scoped: a key
+   * id from another tenant rejects as `key_not_found` (404) just like an unknown
+   * id, so the call never leaks cross-tenant existence. Idempotent: a re-DELETE
+   * returns `alreadyRevoked: true`. Session-only; mutating: auto-keyed.
+   */
   revokeKey(
     keyId: string,
     opts?: { signal?: AbortSignal; idempotencyKey?: string },
   ): Promise<RevokeKeyResult>;
-  // SK-MCP-013 — redeem the one-shot OAuth-bridge code (Worker-to-Worker
-  // call from `apps/mcp/`'s `bridgeHandler` to `apps/api/`'s
-  // `POST /v1/oauth/mcp-callback/redeem`). The code is the auth proof;
-  // no bearer required on the client.
+  /**
+   * `POST /v1/oauth/mcp-callback/redeem` — redeem the one-shot OAuth-bridge code
+   * (`SK-MCP-013`), the Worker-to-Worker call from `apps/mcp/`'s `bridgeHandler`.
+   * The code itself is the auth proof (128-bit random, 60 s TTL, delete-on-read);
+   * no bearer required on the client.
+   */
   redeemOAuthBridgeCode(
     code: string,
     opts?: { signal?: AbortSignal },
   ): Promise<OAuthBridgeRedemption>;
-  // SK-SDK-011 — account-stored BYOLLM credential verbs (`POST/GET/DELETE
-  // /v1/keys/byollm`). Session-only: a decryptable stored key must ride a
-  // first-party cookie session, never a leakable bearer — these throw
-  // when the client was not built with `withCredentials: true`, the same
-  // signed-in guard the per-request `byollm` option enforces. `setByollm`
-  // upserts the single per-account credential; the key is sent only on
-  // this POST and is never returned by any verb.
+  /**
+   * `POST /v1/keys/byollm` — upsert the single per-account BYOLLM credential
+   * (`SK-SDK-011`), the persistent counterpart to the per-request `byollm`
+   * option (`SK-SDK-010`). **Session-only**: throws synchronously unless the
+   * client was built with `withCredentials: true` — a decryptable stored key
+   * must ride a first-party cookie, never a leakable bearer. The key is sent
+   * only on this POST and is never returned by any verb. Errors: `invalid_byollm_key`
+   * (400, mis-shaped), `byollm_unavailable` (503, deployment can't seal keys).
+   * Mutating: auto-keyed (`SK-SDK-006`).
+   */
   setByollm(
     cred: ByollmCredential,
     opts?: { signal?: AbortSignal; idempotencyKey?: string },
   ): Promise<ByollmSetResult>;
-  // Status only — never returns the key (`SK-APIKEYS-002`); `{ configured:
-  // false }` is the empty state surfaces render as "add your key".
+  /**
+   * `GET /v1/keys/byollm` — status of the stored BYOLLM credential (`SK-SDK-011`).
+   * Never returns the key (`SK-APIKEYS-002`); `{ configured: false }` is the empty
+   * "add your key" state. **Session-only**: throws unless `withCredentials: true`.
+   */
   getByollmStatus(opts?: { signal?: AbortSignal }): Promise<ByollmStatusResponse>;
-  // Hard-clear the stored credential (instant revocation, `GLOBAL-018`).
-  // Idempotent: `cleared: false` when there was nothing to clear.
+  /**
+   * `DELETE /v1/keys/byollm` — hard-clear the stored BYOLLM credential (instant
+   * revocation, `GLOBAL-018`). Idempotent: `cleared: false` when there was nothing
+   * to clear. **Session-only**: throws unless `withCredentials: true`. Mutating:
+   * auto-keyed (`SK-SDK-006`).
+   */
   clearByollm(opts?: { signal?: AbortSignal; idempotencyKey?: string }): Promise<ClearByollmResult>;
 };
 
@@ -620,9 +683,16 @@ const BYOLLM_HEADER = "x-nlq-byollm-key";
 // so end-to-end transient resilience is high without unbounded loops.
 const SDK_MAX_ATTEMPTS = 3;
 
-// Thrown on every failure path. Consumers discriminate on `code`
-// rather than parsing strings. `httpStatus === 0` signals transport-
-// level failure (network / abort) — no response was received.
+/**
+ * Thrown on every failure path (non-2xx, transport, abort, non-JSON proxy
+ * body). **Branch on `err.code`** — the stable contract is
+ * `code` / `httpStatus` / `body`. Treat `err.message` as debug text only: its
+ * format varies by path (e.g. `"nlqdb: /v1/ask → 429 rate_limited"` vs
+ * `"nlqdb: /v1/ask network error"`), so a surface that renders it verbatim
+ * gets unstable copy — render `body.message` / a `code`-derived CTA instead
+ * (`GLOBAL-012`). `httpStatus === 0` signals a transport-level failure
+ * (network / abort) — no response was received.
+ */
 export class NlqdbApiError extends Error {
   override readonly name = "NlqdbApiError";
   constructor(
@@ -637,7 +707,17 @@ export class NlqdbApiError extends Error {
   }
 }
 
-// Factory that returns the typed `NlqClient`; the only entrypoint consumers call directly.
+/**
+ * Build the typed {@link NlqClient} — the only entrypoint consumers call
+ * directly, and the only HTTP surface per `GLOBAL-001`. Pick exactly one auth
+ * mode at construction (`SK-SDK-001`): `{ apiKey }` for a server-side bearer
+ * (never ship to a browser bundle — it leaks) **or** `{ withCredentials: true }`
+ * for a browser cookie session; passing both throws. Omitting both leaves
+ * calls anonymous. The session-only verbs (`setByollm` / `getByollmStatus` /
+ * `clearByollm`) and the `byollm` option require `withCredentials: true` and
+ * throw otherwise (`SK-SDK-010` / `SK-SDK-011`). Optional `baseUrl`, a custom
+ * `fetch`, and an `inviteCode` (`GLOBAL-027`) round out the options.
+ */
 export function createClient(opts: ClientOptions = {}): NlqClient {
   // Defensive runtime guard — the union type above blocks this at
   // compile time, but JS callers (or `as any` escapes) can still slip
@@ -1209,16 +1289,22 @@ function buildByollmHeader(cred: ByollmCredential): string {
   const model = cred.model.trim();
   const key = cred.key.trim();
   if (!provider || !model || !key) {
-    throw new Error("@nlqdb/sdk: `byollm` requires non-empty `provider`, `model`, and `key`.");
+    throw new Error(
+      "@nlqdb/sdk: `byollm` requires non-empty `provider`, `model`, and `key` — set all three before constructing the client.",
+    );
   }
   if (provider.includes(":") || model.includes(":")) {
-    throw new Error("@nlqdb/sdk: `byollm.provider` and `byollm.model` must not contain a colon.");
+    throw new Error(
+      "@nlqdb/sdk: `byollm.provider` and `byollm.model` must not contain a colon — pass the bare ids (e.g. `openai`, `gpt-5.2`).",
+    );
   }
   const value = `${provider}:${model}:${key}`;
   for (let i = 0; i < value.length; i++) {
     const code = value.charCodeAt(i);
     if (code < 0x20 || code === 0x7f) {
-      throw new Error("@nlqdb/sdk: `byollm` values must not contain control characters.");
+      throw new Error(
+        "@nlqdb/sdk: `byollm` values must not contain control characters — re-paste the key without hidden CR/LF characters.",
+      );
     }
   }
   return value;

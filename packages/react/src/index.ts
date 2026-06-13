@@ -53,6 +53,7 @@ async function registerOnClient(): Promise<void> {
   await import("@nlqdb/elements");
 }
 
+/** Read component — renders `<nlq-data>` (a goal/query → rows view). Props are camelCase (`apiKey`); events are `onLoad` / `onError`. */
 export function NlqData(props: NlqDataProps) {
   const {
     goal,
@@ -132,6 +133,7 @@ export type NlqActionProps = {
   ref?: Ref<HTMLElement>;
 };
 
+/** Write component — renders `<nlq-action>` with the preview→Apply diff hop. Events: `onSuccess` / `onConfirmRequired` / `onError`. */
 export function NlqAction(props: NlqActionProps) {
   const {
     goal,
@@ -203,6 +205,7 @@ export type NlqScriptProps = {
   src?: string;
 };
 
+/** Loads the elements CDN bundle via a `<script type="module">` — drop once in your root layout instead of relying on per-component mount imports. */
 export function NlqScript({ src = "https://elements.nlqdb.com/v1.js" }: NlqScriptProps = {}) {
   return createElement(Fragment, null, createElement("script", { type: "module", src }));
 }

@@ -39,8 +39,12 @@ export function createAskRoute(opts: NlqdbServerOptions = {}) {
       return Response.json(out);
     } catch (err) {
       if (err instanceof NlqdbApiError) {
+        // Emit the canonical API envelope unchanged (GLOBAL-002 parity) — no
+        // `err.message` rewrite. `err.body` already carries `status`; if it
+        // carries a `message`, it passes through. The SDK's debug-text
+        // `err.message` stays out of the wire shape.
         return Response.json(
-          { error: { status: err.code, message: err.message, ...(err.body ?? {}) } },
+          { error: { status: err.code, ...(err.body ?? {}) } },
           { status: err.httpStatus || 500 },
         );
       }
