@@ -1,0 +1,18 @@
+-- SK-ANON-002 — backfill `last_queried_at` for rows created after
+-- migration 0009.
+--
+-- 0009 added the column and backfilled rows that existed at migration
+-- time, but the create-path INSERT (`apps/api/src/db-create/neon-provision.ts`)
+-- omitted the column, so every database provisioned since 0009 has
+-- `last_queried_at IS NULL`. That broke two invariants:
+--   1. The age-sweep deletes anon DBs WHERE `last_queried_at < cutoff`;
+--      `NULL < cutoff` is never true, so these rows never aged out —
+--      contradicting the 90-day TTL the sweep promises.
+--   2. The anon first-answer funnel metric counts DBs with a non-null
+--      `last_queried_at`; every created DB read as "never answered"
+--      even though a successful create returns sampleRows (the answer).
+--
+-- The INSERT now seeds `last_queried_at = unixepoch()`; this one-time
+-- backfill repairs the existing rows. Same idempotent shape as 0009:
+-- only touches NULLs, never overwrites a real query timestamp.
+UPDATE databases SET last_queried_at = updated_at WHERE last_queried_at IS NULL;

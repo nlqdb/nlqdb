@@ -242,6 +242,11 @@ describe("provisionDb — happy path", () => {
       "schema_v1",
       "CREATE TABLE A (id INT)\n\nCREATE TABLE B (id INT)",
     ]);
+    // SK-ANON-002 — the create seeds `last_queried_at` (a successful
+    // create returned sampleRows = the first answer) so the age-sweep
+    // can evict it after the 90-day TTL and the anon first-answer
+    // funnel metric counts it.
+    expect(d1.inserts[0]?.sql).toContain("last_queried_at");
   });
 
   it("persists the engine column verbatim from args.engine (SK-DB-010)", async () => {
