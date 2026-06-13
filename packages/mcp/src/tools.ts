@@ -29,13 +29,21 @@ export const queryInputShape = {
   db: z
     .string()
     .min(1)
-    .describe("Database id or slug. Ignored when authenticated with a pk_live_ key."),
-  q: z.string().min(1).describe("The natural-language goal — what you want from the database."),
+    .optional()
+    .describe(
+      "Target database id or slug. Optional: omit to let nlqdb pick — it auto-targets your only DB (or creates one from the goal when you have none), and on multiple DBs returns ambiguous_db with candidate ids to choose from. Ignored for pk_live_ keys (already scoped to one DB).",
+    ),
+  q: z
+    .string()
+    .min(1)
+    .describe(
+      "The natural-language goal. Example: 'top 5 customers by revenue this year'. Name tables explicitly when you know them; avoid pronouns.",
+    ),
   confirm: z
     .boolean()
     .optional()
     .describe(
-      "Set true to commit a destructive plan that previously returned requires_confirm. Default false (preview only).",
+      "Destructive writes are two calls: the first (confirm absent) returns requires_confirm: true plus a diff preview; show the diff, then re-call with confirm: true to commit. Read-only queries ignore this.",
     ),
 };
 
@@ -52,7 +60,11 @@ export const describeInputShape = {
 export type DescribeInput = z.infer<z.ZodObject<typeof describeInputShape>>;
 
 export const queryOutputShape = {
-  rows: z.array(z.record(z.string(), z.unknown())).describe("Result rows; may be empty."),
+  rows: z
+    .array(z.record(z.string(), z.unknown()))
+    .describe(
+      "Result rows, capped at 200 for response size. When rowsTruncated is true, totalRowCount holds the full count — refine the query rather than paging.",
+    ),
   rowCount: z.number().describe("Number of rows the underlying query produced."),
   rowsTruncated: z
     .boolean()
@@ -129,7 +141,8 @@ export async function handleQuery(
   try {
     const askOpts: { signal?: AbortSignal } = {};
     if (ctx.signal) askOpts.signal = ctx.signal;
-    const askReq: Parameters<NlqClient["ask"]>[0] = { goal: input.q, dbId: input.db };
+    const askReq: Parameters<NlqClient["ask"]>[0] = { goal: input.q };
+    if (input.db !== undefined) askReq.dbId = input.db;
     if (input.confirm !== undefined) askReq.confirm = input.confirm;
 
     const response = await client.ask(askReq, askOpts);
@@ -256,7 +269,10 @@ export function mapSdkError(err: unknown): ToolError {
   if (code === "unauthorized" || httpStatus === 401) {
     return {
       code: "auth_required",
-      message: "This tool requires a user-scoped key (sk_live_ or sk_mcp_).",
+      // Both sk_ keys are full-access (SK-APIKEYS-001 / SK-MCP-012); they
+      // differ by purpose, not capability — name which to mint for what.
+      message:
+        "This tool requires a user-scoped key — sk_mcp_ (minted per MCP host) or sk_live_ (a backend/server secret).",
       action:
         "Mint one at https://app.nlqdb.com/app/keys, then re-launch this host so it picks up the new credentials.",
     };
@@ -294,10 +310,17 @@ export function mapSdkError(err: unknown): ToolError {
     };
   }
   if (code === "rate_limited" || httpStatus === 429) {
+    // SK-RL-004 — the 429 body carries `resetAt` (epoch seconds). Surface
+    // the real wait when present; otherwise state the documented
+    // fixed-window behaviour (SK-RL-002: 60s window) rather than guess.
+    const retryAfter = readRetryAfterSeconds(body);
     return {
       code: "rate_limited",
       message: "Rate limit exceeded.",
-      action: "Wait briefly and retry; rate limits reset within a minute.",
+      action:
+        retryAfter !== undefined
+          ? `Wait ${retryAfter}s before retrying — the rate-limit window resets then.`
+          : "Wait up to 60s before retrying; the per-minute window resets on the minute boundary.",
     };
   }
   if (code === "aborted") {
@@ -320,4 +343,14 @@ function readAlternatives(body: NlqdbApiError["body"]): Record<string, unknown> 
   const alt = (body as unknown as { alternatives?: unknown }).alternatives;
   if (Array.isArray(alt) && alt.length > 0) return { alternatives: alt };
   return undefined;
+}
+
+// `resetAt` is on the wire (SK-RL-004) but not in the SDK's ApiErrorBody
+// type, so read it defensively like readAlternatives does. It's an epoch
+// second; return whole seconds from now until the window resets.
+function readRetryAfterSeconds(body: NlqdbApiError["body"]): number | undefined {
+  if (!body) return undefined;
+  const resetAt = (body as unknown as { resetAt?: unknown }).resetAt;
+  if (typeof resetAt !== "number" || !Number.isFinite(resetAt)) return undefined;
+  return Math.max(0, Math.round(resetAt - Date.now() / 1000));
 }
