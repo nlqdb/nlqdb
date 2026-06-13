@@ -155,7 +155,9 @@ and shares the link — in under 60 seconds, no card, no config.
 - ~ Bring-your-own-LLM dispatch — HTTP lane live; remaining surfaces in
   progress
 - ◯ CSV upload in chat
-- ◯ Docs-site reference completeness
+- ~ Docs-site reference completeness — SDK + framework-wrapper guides,
+  an enumerable error-code reference, and a build-time `/llms.txt` for
+  agents now live; tutorial polish remains
 - ◯ Custom domains for embeds
 
 ### Phase 3 — Multi-engine engine (the moat)
