@@ -1,8 +1,8 @@
 # SK-SDK-012 — `runSql({ dryRun })` and the `/v1/run` `dryRun` flag preview writes without executing
 
 Parent feature: [`sdk/FEATURE.md`](../FEATURE.md). Builds on
-[`SK-SDK-009`](../FEATURE.md) (the `runSql()` / `/v1/run` escape-hatch
-contract). Reuses the write-preview built for `/v1/ask`
+[`SK-SDK-009`](./SK-SDK-009-run-sql.md) (the `runSql()` / `/v1/run`
+escape-hatch contract). Reuses the write-preview built for `/v1/ask`
 ([`SK-TRUST-001`](../../trust-ux/FEATURE.md), `apps/api/src/ask/diff.ts`).
 CLI surface: [`SK-CLI-017`](../../cli/decisions/SK-CLI-017-run-dry-run.md).
 Parent GLOBALs:
