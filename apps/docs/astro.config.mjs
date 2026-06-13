@@ -1,5 +1,6 @@
 import starlight from "@astrojs/starlight";
 import { defineConfig } from "astro/config";
+import starlightLlmsTxt from "starlight-llms-txt";
 
 export default defineConfig({
   site: "https://docs.nlqdb.com",
@@ -11,6 +12,23 @@ export default defineConfig({
       editLink: {
         baseUrl: "https://github.com/nlqdb/nlqdb/edit/main/apps/docs/",
       },
+      // WS06-T3 — self-describing machine index for agents that land on
+      // docs.nlqdb.com. Emits /llms.txt, /llms-full.txt, /llms-small.txt
+      // at build time (starlight-llms-txt, llmstxt.org spec). The
+      // marketing /llms.txt (apps/web) links here.
+      plugins: [
+        starlightLlmsTxt({
+          projectName: "nlqdb",
+          description:
+            "A database you talk to. Create one in plain English; query it in English via the <nlq-data> HTML element, the @nlqdb/sdk client, the nlq CLI, an MCP server (mcp.nlqdb.com), or POST /v1/ask. The schema, engine, indexes, and backups stay invisible unless you ask to see them.",
+          details:
+            "Pre-alpha: the do-work endpoints return 403 feature_gated until the free LLM chain clears BIRD >= 65% and Spider >= 75% (see /pre-alpha/). Free chain forever, bring-your-own-LLM at 0% markup.",
+          optionalLinks: [
+            { label: "Marketing site", url: "https://nlqdb.com" },
+            { label: "GitHub", url: "https://github.com/nlqdb/nlqdb" },
+          ],
+        }),
+      ],
       sidebar: [
         // GLOBAL-027 — pinned first so visitors see the gate state before they paste a snippet.
         {
@@ -19,6 +37,8 @@ export default defineConfig({
           badge: { text: "gated", variant: "caution" },
         },
         { label: "Tutorials", items: [{ autogenerate: { directory: "tutorials" } }] },
+        { label: "SDK", link: "/sdk/" },
+        { label: "Framework wrappers", link: "/frameworks/" },
         {
           label: "Reference",
           items: [

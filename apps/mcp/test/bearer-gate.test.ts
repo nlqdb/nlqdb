@@ -91,3 +91,44 @@ describe("apps/mcp auth boundary (slice 3b)", () => {
     expect(await res.text()).toBe("ok");
   });
 });
+
+// WS06-T5 — DNS-rebinding defense per the MCP Streamable-HTTP spec
+// (rev 2025-11-25): validate `Origin` on every connection, 403 an
+// invalid one. Native clients send no `Origin` and must still pass.
+describe("apps/mcp Origin validation (DNS-rebinding defense)", () => {
+  it("allows requests with no Origin (native MCP clients, server-to-server)", async () => {
+    const res = await SELF.fetch("https://mcp.nlqdb.test/health");
+    expect(res.status).toBe(200);
+  });
+
+  it("allows the server's own origin", async () => {
+    const res = await SELF.fetch("https://mcp.nlqdb.test/health", {
+      headers: { origin: "https://mcp.nlqdb.test" },
+    });
+    expect(res.status).toBe(200);
+  });
+
+  it("allows the configured web origin (consent screen)", async () => {
+    // miniflare binds NLQDB_WEB_ORIGIN=https://app.nlqdb.test.
+    const res = await SELF.fetch("https://mcp.nlqdb.test/health", {
+      headers: { origin: "https://app.nlqdb.test" },
+    });
+    expect(res.status).toBe(200);
+  });
+
+  it("rejects an unknown browser origin with 403", async () => {
+    const res = await SELF.fetch("https://mcp.nlqdb.test/health", {
+      headers: { origin: "https://evil.example" },
+    });
+    expect(res.status).toBe(403);
+  });
+
+  it("rejects an unknown origin before the /mcp auth gate (403, not 401)", async () => {
+    const res = await SELF.fetch("https://mcp.nlqdb.test/mcp", {
+      method: "POST",
+      headers: { "content-type": "application/json", origin: "https://evil.example" },
+      body: JSON.stringify({ jsonrpc: "2.0", method: "ping", id: 1 }),
+    });
+    expect(res.status).toBe(403);
+  });
+});

@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256" role="img" aria-label="nlqdb">
+  <rect width="256" height="256" rx="48" fill="#0b0f0a"/>
+  <text x="50%" y="55%" text-anchor="middle" dominant-baseline="middle"
+        font-family="ui-monospace, SFMono-Regular, Menlo, monospace"
+        font-size="96" font-weight="700" letter-spacing="-4" fill="#c6f432">
+    nlq
+  </text>
+</svg>

@@ -33,3 +33,57 @@ shape that flows over the corresponding `POST /v1/<resource>` endpoint.
 
 Curl-shaped examples for `/v1/ask` (read + write + anonymous mode) live in
 the [curl tutorial](/tutorials/curl/).
+
+## Error codes
+
+Every non-2xx response carries a JSON envelope `{ "error": { "status": <code>, … } }`
+(`GLOBAL-012`). An agent can read this table *before* calling to decide which codes are
+retryable and which need a human. `status` is the discriminant the SDK exposes as
+`err.code`; the same set is the `ApiErrorCode` union in
+[`packages/sdk/src/index.ts`](/reference/sdk/), kept in lockstep by a build-time guard
+(`apps/docs/scripts/check-error-codes.ts`).
+
+| Code | HTTP | Meaning | Retryable? | Recovery action |
+| --- | --- | --- | --- | --- |
+| `db_not_found` | 404 | Pinned `dbId` doesn't exist. | No | Drop `dbId` to create from the goal, or fix the id. |
+| `schema_unavailable` | 422 | The DB's schema fingerprint isn't ready yet. | Yes | Retry shortly. |
+| `db_misconfigured` | 502 | The DB's stored config is invalid. | No | Recreate the database; if it persists, contact support. |
+| `db_unreachable` | 502 | The backing engine is unreachable. | Yes | Retry with backoff. |
+| `sql_rejected` | 400 | The SQL failed the allow-list or the engine (`body.reason`). | No | Rephrase the goal, or hand-write valid SQL via `/v1/run`. |
+| `llm_failed` | 502 | The model chain couldn't produce SQL. | Yes | Retry; if persistent, simplify the goal. |
+| `rate_limited` | 429 | Too many requests (`body.limit`, `body.count`). | Yes | Wait, honor `Retry-After`, then retry. |
+| `unauthorized` | 401 | Missing, invalid, or expired credential. | No | Sign in again, or mint a new key. |
+| `forbidden` | 403 | A read-only key tried to write via `/v1/run` (`SK-APIKEYS-003`). | No | Use a write-capable key. |
+| `feature_gated` | 403 | Pre-alpha gate (`body.gate`, `body.waitlist_url`). | No | Join the waitlist or send `X-Invite-Code`. Terminal. |
+| `ambiguous_db` | 409 | 2+ databases match; confidence below the floor. | No | Pick from `body.candidate_dbs`, resend with `dbId`. |
+| `clarify_required` | 409 | Pinned `dbId` but the goal looks like a create (`body.pinned_db`). | No | Resend without `dbId` to create, or cancel. |
+| `invalid_engine` | 400 | `engine` isn't in the allowed set. | No | Use `postgres` or `clickhouse`. |
+| `goal_required` | 400 | `goal` missing or empty. | No | Supply a non-empty `goal`. |
+| `dbId_required` | 400 | `dbId` required for this call. | No | Supply `dbId`. |
+| `sql_required` | 400 | `/v1/run` called without `sql`. | No | Supply `sql`. |
+| `sql_too_long` | 400 | `sql` exceeds the size cap. | No | Shorten the query. |
+| `db_required` | 400 | `/v1/run` called without `db`. | No | Supply `db`. |
+| `invalid_json` | 400 | Request body isn't valid JSON. | No | Fix the JSON. |
+| `invalid_body` | 400 | Body failed validation (`body.message`). | No | Fix the offending field. |
+| `invalid_email` | 400 | Email is malformed. | No | Fix the email. |
+| `invalid_byollm_key` | 400 | The BYOLLM credential is mis-shaped. | No | Fix `provider` / `model` / `key`. |
+| `byollm_unavailable` | 503 | The server can't seal keys (KEK unset). | Yes | Retry; if persistent it's an operator action. |
+| `secret_unconfigured` | 503 | The server is missing a required secret. | No | Operator action — not caller-fixable. |
+| `unknown_error` | 5xx | A 5xx with no parseable envelope. | Yes | Retry; if persistent, report it. |
+| `non_json_response` | — | A proxy/CDN returned non-JSON (SDK sentinel). | Maybe | Retry; check the network path. |
+| `network_error` | — | Transport failure, no response (SDK sentinel, `httpStatus === 0`). | Yes | Retry with backoff. |
+| `aborted` | — | The caller's `AbortSignal` fired (SDK sentinel, `httpStatus === 0`). | No | Re-issue the request if still wanted. |
+
+The last four are **SDK-only sentinels** — the API never sends them; the SDK raises them
+for transport states. Recoverable failures (transport errors and transient 5xx) are
+retried automatically by `@nlqdb/sdk` before they ever surface (`SK-SDK-008`).
+
+### Envelope fields beyond `status`
+
+Some codes carry extra fields an agent should branch on:
+
+- `candidate_dbs` — on `ambiguous_db`: `[{ id, slug }]` to render a picker.
+- `pinned_db` — on `clarify_required`: the DB that was pinned when the goal looked like a create.
+- `gate` + `waitlist_url` — on `feature_gated`: the live BIRD/Spider lane snapshot and the join link.
+- `requires_confirm` + `diff` — on a write preview (`dryRun` / destructive op): apply only after the human approves the diff (`GLOBAL-023`).
+- `limit` + `count` — on `rate_limited`: the window cap and how many you've used.
