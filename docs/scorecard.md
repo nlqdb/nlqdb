@@ -9,16 +9,18 @@ until then the daily lever targets the worst number below)*
 
 **Worst number today:** real strangers reaching a first answer = **0**
 (funnel/distribution lane) — gated by the engine (GLOBAL-027 valve), so the
-engine-side worst, Spider 0.1704 vs 0.75, owns it. Today's lever (run 4)
-makes the deferred Spider diagnosis *runnable*: the runner now buckets the
-persisted `no_sql` `provider:reason` tags into a per-lane `no_sql_reasons`
-tally (report JSON + CI log), so a run surfaces **why** the chain produced
-no SQL instead of leaving 30+ raw strings to eyeball. Applied to the
-committed BIRD baseline (3 `no_sql` rows): **`mistral:network ×3`,
-`groq:circuit_open ×3`** — every scored `no_sql` carries `mistral:network`
-(the chain-tail backstop erroring out; a pure rate-limit wall budget-stops,
-never scores `no_sql`), so the next *engine* lever is the Mistral leg
-(T11/SK-LLM-028), not the falsified column-pruner.
+engine-side worst, Spider 0.1704 vs 0.75, owns it. Today's lever (run 5)
+acts on run 4's diagnosis: every scored `no_sql` on the committed BIRD
+baseline (3/3) carries a transient `mistral:network` at the **chain tail**,
+where the Mistral capacity backstop (SK-LLM-028) has no provider to fail
+over to — so a single momentary fetch blip permanently loses a question the
+backstop exists to recover. Live probe confirms Mistral is healthy (HTTP
+200, ~0.6 s), so these are transient, not an outage. **SK-LLM-038** retries
+the chain tail once (150 ms backoff, abort-aware) on `network`/`http_5xx`
+before declaring total failure — tail-only, strictly additive (can only
+convert a would-be failure → success), zero added latency on any
+succeeding call. Next engine lever after this: the Spider `gemini:http_4xx`
+losses (run 3 obs), once freshly bucketed.
 
 | # | Metric | Value | Target / note |
 |---|--------|-------|------|
@@ -40,23 +42,22 @@ never scores `no_sql`), so the next *engine* lever is the Mistral leg
 
 ## Deltas (recent runs)
 
-- 2026-06-13 — day-one run: scorecard created; readable metrics 0 → 12.
-- 2026-06-13 (run 2) — instrument fix on #5: a `neon-provision.ts` create-path
-  bug left `last_queried_at` NULL, so recorded first answers read 0/93. Fix
-  seeds it at create + backfills (`0017_…`). **Measured: 0 → 93.** KPI:
-  onboarding; none degraded.
-- 2026-06-13 (run 3) — diagnosis correction on #7: the asserted "Spider 36
-  `no_sql` = oversized DDL" is **falsified** offline (every SQLite-subset
-  schema ≤ ~1,880 tok, so it can't overflow Gemini 1 M / Mistral 128 K). The
-  real reasons are the `provider:reason` tags the runner already persists per
-  question. Docs + one comment only; no behaviour changed ⇒ none degraded.
-  KPI: engine-quality (correct backlog).
-- 2026-06-14 (run 4) — **made run 3's deferred bucketing runnable.**
-  `summariseLane` now lifts the `provider:reason` tags out of each `no_sql`
-  row's persisted `error` into a per-lane `no_sql_reasons` tally (report JSON
-  + CI summary line); absent on a clean lane (back-compat). **Measured on the
-  committed BIRD baseline: `no_sql` reasons surfaced as buckets (was: 0 raw
-  strings aggregated) → `mistral:network ×3`, `groq:circuit_open ×3`.** Every
-  scored `no_sql` carries `mistral:network` ⇒ next engine lever is the chain
-  tail (T11), not pruning. Additive optional field; no engine/runtime
-  behaviour changed ⇒ no KPI degraded. KPI: engine-quality (measurement).
+- 2026-06-13 (runs 1–3) — day-one scorecard (metrics 0 → 12); #5 instrument
+  fix (`last_queried_at` NULL → seeded + backfilled, **0 → 93**, onboarding);
+  #7 diagnosis correction (Spider "oversized-DDL" `no_sql` **falsified** — all
+  schemas ≤ 1.9 K tok, real cause is the persisted `provider:reason` tags).
+- 2026-06-14 (run 4) — bucketed the persisted `no_sql` `provider:reason` tags
+  into a per-lane `no_sql_reasons` tally (report JSON + CI line). **Measured
+  on the BIRD baseline → `mistral:network ×3`, `groq:circuit_open ×3`** ⇒ next
+  engine lever = the chain tail (T11/SK-LLM-028), not pruning. Additive; no
+  behaviour changed ⇒ none degraded. KPI: engine-quality (measurement).
+- 2026-06-14 (run 5) — **tail transient retry (SK-LLM-038).** The chain
+  tail has no fallback, so the 3/3 BIRD-baseline `no_sql` rows that all
+  carry `mistral:network` died on a momentary blip (Mistral healthy: live
+  probe HTTP 200 / 0.6 s). The router now retries the tail once on
+  `network`/`http_5xx`. **Measured:** deterministic — 5 new router tests
+  prove recovery + bounded (≤1) retry + tail-only scoping (169/169 llm
+  tests green); on `baseline-2026-06-15.json` all 3/3 scored `no_sql` are
+  now retryable, BIRD EX **0.522 → best-case 0.528** (+0.6 pp), worst-case
+  unchanged — strictly non-regressing (tail-only, additive). KPI:
+  engine-quality. None degraded (zero latency on succeeding calls).

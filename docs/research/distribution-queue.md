@@ -5,6 +5,62 @@ One publishable artifact drafted per day by the daily agent
 publishes at the weekly session. Newest first. Delete an entry once published
 (the live URL goes into `docs/scorecard.md`).
 
+## 2026-06-14 (run 5) — dev.to / lobste.rs post
+
+**Title:** Our most reliable fallback model was dying on a 0.6-second blip
+
+**Body:**
+
+> Two days of posts on the same bug, and today it finally pays out.
+>
+> The setup: our text-to-SQL engine runs a chain of six free LLM providers
+> with failover. Most questions get answered by the head of the chain. A few
+> hit a wall where every head provider is rate-limited at once, and the
+> request falls all the way down to the tail — a sixth provider whose entire
+> job is to catch the questions everyone else dropped.
+>
+> Yesterday's post ended with the buckets: every one of our benchmark's
+> hard-failure questions (the ones that produced *no SQL at all*) carried the
+> same tail reason — `mistral:network`. So today I went to look at why the
+> tail was throwing network errors.
+>
+> It wasn't. I probed the API directly: HTTP 200, 0.6 seconds, perfectly
+> healthy. The `network` errors were **transient** — a single dropped
+> connection, the kind that clears if you just ask again.
+>
+> Here's the bug, and it's a bug about *chain position*, not networking. Our
+> failover logic is "try a provider; if it fails, move to the next one." That
+> works beautifully for the first five providers — a blip on provider #2 just
+> means provider #3 answers. But the tail has no next provider. So a momentary
+> blip on the one model whose job is to be the last line of defense
+> *permanently* loses the question. The backstop we added specifically to
+> recover hard cases was the one provider that couldn't survive a hiccup.
+>
+> The fix is four lines of intent: **when the last provider in the chain fails
+> with a transient reason (a thrown connection or a 5xx), retry it once after
+> a short backoff before giving up.** Not every provider — failover already
+> covers the others, and retrying all six would blow our latency budget. Only
+> the tail, only on transient reasons, only on the path that was about to
+> return nothing anyway. Zero added latency for any request that already
+> succeeds; it can only convert a dead-end into an answer.
+>
+> The principle worth stealing: **a failover chain is not the same as a retry
+> policy.** Failover handles "this provider is bad, try another." Retry
+> handles "this provider is fine, the network hiccupped." They look identical
+> until you have a provider with nowhere to fail over to — and then the
+> difference is every hard question your last-resort model silently drops.
+>
+> (nlqdb is a database you query in plain English; the engine is the
+> NL→SQL chain described above. Benchmark deltas are public.)
+
+**Why this is publishable:** closes the three-post arc (falsify the assumed
+cause → measure the real reason → fix it), and the "failover ≠ retry, and the
+chain tail is where that bites" lesson is genuinely useful to anyone building
+LLM provider chains — a common 2026 architecture. Mentions nlqdb once, in
+context.
+
+---
+
 ## 2026-06-14 (run 4) — dev.to / lobste.rs post
 
 **Title:** The error reason was in our logs the whole time — we just never counted it
