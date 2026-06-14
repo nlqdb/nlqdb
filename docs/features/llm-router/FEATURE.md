@@ -197,6 +197,16 @@ closure, full schema on any doubt (small schema, zero matches, ≥ 0.9 kept,
 unparseable, retry). Offline-verified on BIRD-dev 500: 99.8% gold-table
 recall, −7.1% schema chars (Spider 2.0-lite: −26.5%).
 
+### SK-LLM-038 — Retry the chain-tail provider once on a transient failure
+
+**Body:** [`decisions/SK-LLM-038-tail-transient-retry.md`](./decisions/SK-LLM-038-tail-transient-retry.md).
+When the **last** provider in a chain fails `network`/`http_5xx`, the
+router retries it once (150 ms backoff, abort-aware) before throwing.
+Closes the [`SK-LLM-028`](#sk-llm-028) tail gap — a transient
+`mistral:network` blip no longer permanently loses the request (the 3
+`no_sql` rows on `baseline-2026-06-15.json`). Strictly additive; tail-only
+⇒ zero added latency on any currently-succeeding call.
+
 ### SK-LLM-033 — Schema-inference prompt requires insertable sample rows
 
 **Body:** [`decisions/SK-LLM-033-schema-infer-insertable-sample-rows.md`](./decisions/SK-LLM-033-schema-infer-insertable-sample-rows.md). `SCHEMA_INFER_SYSTEM` gains a `sample_rows`-validity contract (parent rows first, FK values present, NOT-NULL complete); deterministic no-500 floor is [`SK-HDC-018`](../hosted-db-create/decisions/SK-HDC-018-sample-insert-graceful-degradation.md).

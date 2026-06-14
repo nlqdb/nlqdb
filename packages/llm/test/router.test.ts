@@ -302,6 +302,70 @@ describe("createLLMRouter — failover", () => {
     await expect(router.route(ROUTE_REQ)).rejects.toBeInstanceOf(NoProviderError);
   });
 
+  // SK-LLM-038 — the chain tail has no fallback, so a transient blip on
+  // it (the `mistral:network` on the planner-tier backstop, SK-LLM-028)
+  // is retried once before the router declares total failure.
+  describe("tail transient retry (SK-LLM-038)", () => {
+    const PLAN_REQ = { goal: "g", schema: "s", dialect: "postgres" as const };
+
+    it("retries the tail once on `network` and recovers", async () => {
+      let n = 0;
+      const tail = fakeProvider("mistral", {
+        plan: async () => {
+          n += 1;
+          if (n === 1) throw new ProviderError("blip", "network");
+          return { sql: "SELECT 1" };
+        },
+      });
+      const router = createLLMRouter({ providers: [tail], chains: { plan: ["mistral"] } });
+      const res = await router.plan(PLAN_REQ);
+      expect(res.sql).toBe("SELECT 1");
+      expect(tail.calls).toHaveLength(2); // first attempt + one retry
+    });
+
+    it("retries the tail once on `http_5xx` too", async () => {
+      let n = 0;
+      const tail = fakeProvider("mistral", {
+        plan: async () => {
+          n += 1;
+          if (n === 1) throw new ProviderError("503", "http_5xx", { status: 503 });
+          return { sql: "SELECT 2" };
+        },
+      });
+      const router = createLLMRouter({ providers: [tail], chains: { plan: ["mistral"] } });
+      const res = await router.plan(PLAN_REQ);
+      expect(res.sql).toBe("SELECT 2");
+      expect(tail.calls).toHaveLength(2);
+    });
+
+    it("retries at most once — a persistently failing tail still throws", async () => {
+      const tail = fakeProvider("mistral", { plan: new ProviderError("down", "network") });
+      const router = createLLMRouter({ providers: [tail], chains: { plan: ["mistral"] } });
+      await expect(router.plan(PLAN_REQ)).rejects.toBeInstanceOf(AllProvidersFailedError);
+      expect(tail.calls).toHaveLength(2); // bounded: original + single retry, no loop
+    });
+
+    it("does not retry non-transient tail reasons (http_4xx / rate_limited)", async () => {
+      const tail = fakeProvider("mistral", { plan: new ProviderError("bad", "http_4xx") });
+      const router = createLLMRouter({ providers: [tail], chains: { plan: ["mistral"] } });
+      await expect(router.plan(PLAN_REQ)).rejects.toBeInstanceOf(AllProvidersFailedError);
+      expect(tail.calls).toHaveLength(1); // request-shaped → no retry
+    });
+
+    it("only the tail retries — a mid-chain transient failure fails over instead", async () => {
+      const head = fakeProvider("gemini", { plan: new ProviderError("blip", "network") });
+      const tail = fakeProvider("groq", { plan: { sql: "SELECT 3" } });
+      const router = createLLMRouter({
+        providers: [head, tail],
+        chains: { plan: ["gemini", "groq"] },
+      });
+      const res = await router.plan(PLAN_REQ);
+      expect(res.sql).toBe("SELECT 3");
+      expect(head.calls).toHaveLength(1); // failed over, not retried in place
+      expect(tail.calls).toHaveLength(1);
+    });
+  });
+
   it("chain with no registered provider → NoConfiguredProvidersError before any attempt", async () => {
     // Dashboards should distinguish "every entry's API key is unset"
     // (config bug) from "every entry returned errors" (provider outage).

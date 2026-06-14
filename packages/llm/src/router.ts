@@ -101,6 +101,21 @@ const DEFAULT_BREAKER = { failureThreshold: 3, cooldownMs: 60_000 };
 // SK-LLM-030 — prod-safe ceiling on a 429-driven cooldown (5 min).
 const DEFAULT_MAX_RATE_LIMIT_COOLDOWN_MS = 5 * 60_000;
 
+// SK-LLM-038 — transient reasons worth a single same-provider retry at
+// the chain tail. `network` (fetch threw) and `http_5xx` (upstream
+// temporarily unavailable) are transient and fast-failing; a retry is
+// the textbook recovery. `rate_limited` / `circuit_open` are capacity
+// (failover, not retry), `http_4xx` / `parse` are request-shaped (a
+// retry reproduces them), and `timeout` already burned the full budget
+// so a retry would likely time out again — all excluded.
+const TAIL_RETRY_REASONS: ReadonlySet<FailoverReason> = new Set(["network", "http_5xx"]);
+
+// Short fixed backoff before the tail retry. Best practice is not to
+// retry a transient failure instantly (it hammers a recovering
+// upstream); 150 ms is enough to clear a momentary blip without
+// meaningfully extending an already-failed request.
+const TAIL_RETRY_BACKOFF_MS = 150;
+
 type BreakerState = {
   consecutiveFailures: number;
   // ms-epoch when the breaker was opened (>0 means open until
@@ -182,6 +197,23 @@ function asAbortError(reason: unknown): Error {
   const e = new Error(reason === undefined ? "caller cancelled" : String(reason));
   e.name = "AbortError";
   return e;
+}
+
+// SK-LLM-038 — abort-aware backoff for the tail retry. Resolves after
+// `ms` or as soon as the caller's signal aborts (the caller-abort guard
+// after the await turns that into the propagated AbortError), so a
+// cancelled request never sits out the full backoff.
+function sleep(ms: number, signal?: AbortSignal): Promise<void> {
+  if (signal?.aborted) return Promise.resolve();
+  return new Promise((resolve) => {
+    const timer = setTimeout(done, ms);
+    function done() {
+      signal?.removeEventListener("abort", done);
+      clearTimeout(timer);
+      resolve();
+    }
+    signal?.addEventListener("abort", done, { once: true });
+  });
 }
 
 // 401/403 are config bugs (bad/missing API key), not provider outages.
@@ -514,7 +546,7 @@ export function createLLMRouter(opts: LLMRouterOptions): LLMRouter {
         continue;
       }
 
-      const result = await attempt(op, provider, req, call, callerOpts, timeoutMs);
+      let result = await attempt(op, provider, req, call, callerOpts, timeoutMs);
       if (result.ok) {
         // Success resets the breaker.
         breakerState.set(name, { consecutiveFailures: 0, openedAt: 0 });
@@ -528,6 +560,33 @@ export function createLLMRouter(opts: LLMRouterOptions): LLMRouter {
       // longer wants spent.
       if (callerOpts?.signal?.aborted) {
         throw asAbortError(callerOpts.signal.reason);
+      }
+
+      // SK-LLM-038 — tail transient retry. The last provider in the
+      // chain has no fallback, so a single transient blip on it
+      // (`mistral:network` on the planner tier's capacity backstop,
+      // SK-LLM-028) permanently loses the request even though the
+      // provider is healthy. Retry it once after a short backoff before
+      // declaring total failure. Fires only here, on the
+      // already-exhausted tail — zero added latency for any request that
+      // currently succeeds, and strictly additive: it can only convert a
+      // would-be failure into a success, never regress a passing call.
+      if (!next && TAIL_RETRY_REASONS.has(result.reason)) {
+        await sleep(TAIL_RETRY_BACKOFF_MS, callerOpts?.signal);
+        if (callerOpts?.signal?.aborted) {
+          throw asAbortError(callerOpts.signal.reason);
+        }
+        const retry = await attempt(op, provider, req, call, callerOpts, timeoutMs);
+        if (retry.ok) {
+          breakerState.set(name, { consecutiveFailures: 0, openedAt: 0 });
+          return retry.value;
+        }
+        if (callerOpts?.signal?.aborted) {
+          throw asAbortError(callerOpts.signal.reason);
+        }
+        // Retry also failed — record the retry's reason as the tail's
+        // final attempt (the first failure already emitted its own span).
+        result = retry;
       }
 
       // Update breaker. Shared with the hedged path so "what counts as a
