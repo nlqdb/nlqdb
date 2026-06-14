@@ -15,7 +15,7 @@ import type { Lane } from "../src/lanes.ts";
 import { _testing, runEval } from "../src/runner.ts";
 import type { EvalReport } from "../src/types.ts";
 
-const { parseDatasetFlag } = _testing;
+const { parseDatasetFlag, noSqlReasons, summariseLane } = _testing;
 
 type StubRouter = Lane["router"];
 
@@ -692,6 +692,64 @@ describe("summariseLane — latency stats exclude gold_error (SK-QUAL-007)", () 
     // short-circuited rows are filtered out before sorting.
     expect(free?.p50_latency_ms).toBeGreaterThan(0);
     expect(free?.p95_latency_ms).toBeGreaterThan(0);
+  });
+});
+
+describe("noSqlReasons — bucket the persisted no_sql error tags (SK-QUAL-013 follow-up)", () => {
+  const noSqlRow = (question_id: number, error: string) => ({
+    question_id,
+    db_id: "x",
+    lane: "free" as const,
+    outcome: "no_sql" as const,
+    predicted_sql: "",
+    model: "free-chain",
+    latency_ms: 1,
+    error,
+  });
+
+  it("lifts each provider:reason tag out of the AllProvidersFailedError summary", () => {
+    const rows = [
+      noSqlRow(
+        1,
+        "llm.plan: all providers in chain failed (cerebras:rate_limited, gemini:rate_limited, groq:circuit_open, workers-ai:rate_limited, openrouter:rate_limited, mistral:network)",
+      ),
+      noSqlRow(
+        2,
+        "llm.plan: all providers in chain failed (cerebras:circuit_open, gemini:circuit_open, groq:circuit_open, workers-ai:circuit_open, openrouter:circuit_open, mistral:network)",
+      ),
+    ];
+    const tally = noSqlReasons(rows);
+    // mistral:network is the terminal failure in both rows — the signal the
+    // bucketing exists to surface (a scored no_sql always carries a
+    // non-capacity reason; a pure rate-limit wall budget-stops instead).
+    expect(tally["mistral:network"]).toBe(2);
+    expect(tally["cerebras:rate_limited"]).toBe(1);
+    expect(tally["cerebras:circuit_open"]).toBe(1);
+  });
+
+  it("ignores non-no_sql rows and buckets a non-chain throw under `other`", () => {
+    const rows = [
+      { ...noSqlRow(1, "boom — not a chain error"), outcome: "no_sql" as const },
+      { ...noSqlRow(2, "irrelevant"), outcome: "mismatch" as const },
+    ];
+    const tally = noSqlReasons(rows);
+    expect(tally["other"]).toBe(1);
+    expect(Object.values(tally).reduce((a, b) => a + b, 0)).toBe(1);
+  });
+
+  it("is omitted from a lane summary with zero no_sql rows", () => {
+    const summary = summariseLane("free", [
+      {
+        question_id: 1,
+        db_id: "x",
+        lane: "free",
+        outcome: "match",
+        predicted_sql: "SELECT 1",
+        model: "m",
+        latency_ms: 1,
+      },
+    ]);
+    expect(summary.no_sql_reasons).toBeUndefined();
   });
 });
 

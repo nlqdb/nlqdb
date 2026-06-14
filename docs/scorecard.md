@@ -9,13 +9,16 @@ until then the daily lever targets the worst number below)*
 
 **Worst number today:** real strangers reaching a first answer = **0**
 (funnel/distribution lane) — gated by the engine (GLOBAL-027 valve), so the
-engine-side worst, Spider 0.1704 vs 0.75, owns it. Today's lever is a
-diagnosis correction: the documented "Spider 36 `no_sql` = oversized-DDL
-request failures" is **falsified** — all 135 SQLite-subset schemas are
-≤ 1,880 tok (offline-measured), so size can't be the cause. The 36 are
-`gemini:http_4xx`/`mistral:network` errors whose per-question `error`
-strings the runner already persists; the next run buckets those, instead of
-building a column-pruner that can't help (§4 #2 reclassified).
+engine-side worst, Spider 0.1704 vs 0.75, owns it. Today's lever (run 4)
+makes the deferred Spider diagnosis *runnable*: the runner now buckets the
+persisted `no_sql` `provider:reason` tags into a per-lane `no_sql_reasons`
+tally (report JSON + CI log), so a run surfaces **why** the chain produced
+no SQL instead of leaving 30+ raw strings to eyeball. Applied to the
+committed BIRD baseline (3 `no_sql` rows): **`mistral:network ×3`,
+`groq:circuit_open ×3`** — every scored `no_sql` carries `mistral:network`
+(the chain-tail backstop erroring out; a pure rate-limit wall budget-stops,
+never scores `no_sql`), so the next *engine* lever is the Mistral leg
+(T11/SK-LLM-028), not the falsified column-pruner.
 
 | # | Metric | Value | Target / note |
 |---|--------|-------|------|
@@ -35,31 +38,25 @@ building a column-pruner that can't help (§4 #2 reclassified).
 | 11 | nlqdb-api latency p50 / p95 | 666 ms / 7.05 s | p95 dominated by LLM-bound asks; `/ask`-only split needs Grafana `metrics:read` (agent has write-only key) |
 | 12 | $ spend | ~$0 | free tiers across CF / Neon / LLM chain |
 
-## Deltas (this run)
+## Deltas (recent runs)
 
 - 2026-06-13 — day-one run: scorecard created; readable metrics 0 → 12.
-  Finding on #5: anon create→first-answer conversion looked 0%.
-- 2026-06-13 (run 2) — **instrument fix on #5.** The 0/93 was a create-path
-  bug (`neon-provision.ts` INSERT omitted `last_queried_at`; the 0009
-  backfill only covered pre-migration rows), which also broke the
-  `SK-ANON-002` age-sweep (`NULL < cutoff` never matches). Fix: seed
-  `last_queried_at` at create + backfill (`0017_…`). **Measured: recorded
-  first answers 0 → 93; `last_queried_at IS NULL` rows → 0.** KPI:
-  onboarding. No KPI degraded.
-- 2026-06-13 (run 3) — **diagnosis correction on #7 (Spider).** The
-  source-of-truth, `eval-baseline.ts`, and this card all asserted Spider's
-  36 `no_sql` were "oversized-DDL request failures" and pointed the next
-  engine lever at column-level pruning (§4 #2). Measured it offline (no
-  LLM, no binary DBs): fetched the upstream `DDL.csv` for all 30
-  SQLite-subset DBs and sized the schema for every one of the 135
-  questions. **Result: max 7,520 chars (~1,880 tok), p90 ~1,531 tok, 0
-  schemas > 12 K chars** — the introspected `sqlite_master` schema the
-  planner sees is ≤ that. A ~1.9 K-tok schema cannot overflow Gemini (1 M)
-  or Mistral (128 K), so **size is not the cause** and column pruning
-  (§4 #2) cannot reduce these 36. Before → after: root cause "oversized
-  DDL" (asserted, unmeasured) → "`http_4xx`/`network` on small schemas"
-  (measured); the real per-question reasons are already persisted in the
-  runner's `no_sql` `error` field — the next Spider run buckets them.
-  Measurement-honesty class (T20/`SK-QUAL-013`). Docs + one code comment
-  only; no engine/runtime behaviour changed ⇒ no KPI degraded. KPI:
-  engine-quality (correct backlog prioritisation).
+- 2026-06-13 (run 2) — instrument fix on #5: a `neon-provision.ts` create-path
+  bug left `last_queried_at` NULL, so recorded first answers read 0/93. Fix
+  seeds it at create + backfills (`0017_…`). **Measured: 0 → 93.** KPI:
+  onboarding; none degraded.
+- 2026-06-13 (run 3) — diagnosis correction on #7: the asserted "Spider 36
+  `no_sql` = oversized DDL" is **falsified** offline (every SQLite-subset
+  schema ≤ ~1,880 tok, so it can't overflow Gemini 1 M / Mistral 128 K). The
+  real reasons are the `provider:reason` tags the runner already persists per
+  question. Docs + one comment only; no behaviour changed ⇒ none degraded.
+  KPI: engine-quality (correct backlog).
+- 2026-06-14 (run 4) — **made run 3's deferred bucketing runnable.**
+  `summariseLane` now lifts the `provider:reason` tags out of each `no_sql`
+  row's persisted `error` into a per-lane `no_sql_reasons` tally (report JSON
+  + CI summary line); absent on a clean lane (back-compat). **Measured on the
+  committed BIRD baseline: `no_sql` reasons surfaced as buckets (was: 0 raw
+  strings aggregated) → `mistral:network ×3`, `groq:circuit_open ×3`.** Every
+  scored `no_sql` carries `mistral:network` ⇒ next engine lever is the chain
+  tail (T11), not pruning. Additive optional field; no engine/runtime
+  behaviour changed ⇒ no KPI degraded. KPI: engine-quality (measurement).
