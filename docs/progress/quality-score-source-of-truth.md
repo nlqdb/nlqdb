@@ -66,8 +66,13 @@ there). The earlier "oversized-DDL" read is **falsified** (offline measure,
 `sqlite_master` schema ≈ upstream `DDL.csv`), so a ~1.9 K-tok schema can't
 overflow Gemini (1 M ctx) or Mistral (128 K). The cause is in the
 per-question `error` strings the runner **already persists** (the `no_sql`
-branch of `tools/eval/src/runner.ts`) — the next Spider run buckets those
-bodies; it is not a size or capacity wall. Column-level pruning (§4 #2) can
+branch of `tools/eval/src/runner.ts`), now aggregated into a per-lane
+`no_sql_reasons` `provider:reason` tally (`summariseLane`) so a run surfaces
+the buckets directly — on the committed BIRD baseline they read
+`mistral:network ×3` / `groq:circuit_open ×3`, every scored `no_sql`
+carrying `mistral:network` (the T11 chain-tail backstop erroring out, a
+genuine failure — a pure rate-limit wall budget-stops, never scores
+`no_sql`). It is not a size or capacity wall. Column-level pruning (§4 #2) can
 still help Spider via *distractor* removal (T19's table-pruning lifted the
 smoke 0.15 → 0.25 that way), but it will not reduce these 36.
 

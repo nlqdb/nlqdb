@@ -199,6 +199,36 @@ export function sampleQuestions(
     .sort(byQuestionId);
 }
 
+// SK-QUAL-013 follow-up — bucket the persisted per-question `no_sql` error
+// strings into a `provider:reason` tally. The runner records the
+// `AllProvidersFailedError` summary verbatim in `error`
+// (`llm.plan: all providers in chain failed (cerebras:rate_limited,
+// gemini:http_4xx, …, mistral:network)`); here we lift each tag back out
+// and count it, so a run surfaces *why* the chain produced no SQL instead
+// of leaving 30+ raw strings for a reviewer to eyeball. A scored `no_sql`
+// always carries at least one non-capacity reason — a chain exhausted
+// purely by rate-limit/circuit-open budget-stops (SK-QUAL-013) and never
+// scores `no_sql` — so the buckets isolate the genuine failures.
+function noSqlReasons(rows: QuestionResult[]): Record<string, number> {
+  const tally: Record<string, number> = {};
+  for (const r of rows) {
+    if (r.outcome !== "no_sql") continue;
+    const err = r.error ?? "";
+    // Tags live inside the trailing `(…)`; the closing paren is optional in
+    // case the 240-char cap truncated mid-list. A non-chain throw (no
+    // `failed (`) buckets under `other` rather than minting a noisy key.
+    const m = err.match(/failed \(([^)]*)\)?/);
+    const tags = m
+      ? (m[1] ?? "")
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean)
+      : ["other"];
+    for (const tag of tags) tally[tag] = (tally[tag] ?? 0) + 1;
+  }
+  return tally;
+}
+
 function summariseLane(lane: DispatchLane, results: QuestionResult[]): LaneSummary {
   const filtered = results.filter((r) => r.lane === lane);
   const tally: Record<ScoreOutcome, number> = {
@@ -221,6 +251,7 @@ function summariseLane(lane: DispatchLane, results: QuestionResult[]): LaneSumma
   // the retry helper (gold_error short-circuits, or pre-3c baselines); count
   // them as 1 so `total_attempts` always lower-bounds `attempted`.
   const total_attempts = filtered.reduce((acc, r) => acc + (r.attempts ?? 1), 0);
+  const reasons = noSqlReasons(filtered);
   return {
     lane,
     attempted,
@@ -233,6 +264,8 @@ function summariseLane(lane: DispatchLane, results: QuestionResult[]): LaneSumma
     p50_latency_ms: percentile(sortedLatencies, 50),
     p95_latency_ms: percentile(sortedLatencies, 95),
     total_attempts,
+    // Omit on a clean lane so the summary stays byte-identical to a pre-existing baseline.
+    ...(Object.keys(reasons).length > 0 ? { no_sql_reasons: reasons } : {}),
   };
 }
 
@@ -637,6 +670,15 @@ if (import.meta.main) {
         console.info(
           `  ${label.padEnd(20)}: EA=${(ls.execution_accuracy * 100).toFixed(2)}% (match=${ls.match}/${ls.attempted}, p50=${ls.p50_latency_ms}ms${retried})`,
         );
+        // Surface why the chain produced no SQL, busiest tag first, so the
+        // GH-Actions log carries the diagnosis without opening the artifact.
+        if (ls.no_sql_reasons && Object.keys(ls.no_sql_reasons).length > 0) {
+          const buckets = Object.entries(ls.no_sql_reasons)
+            .sort((a, b) => b[1] - a[1])
+            .map(([tag, n]) => `${tag}×${n}`)
+            .join(", ");
+          console.info(`  ${"".padEnd(20)}  no_sql reasons: ${buckets}`);
+        }
       };
       console.info(`nlqdb quality-eval — ${r.dataset}`);
       console.info(`  questions           : ${r.question_count}`);
@@ -674,6 +716,7 @@ if (import.meta.main) {
 
 export const _testing = {
   summariseLane,
+  noSqlReasons,
   percentile,
   introspectSchema,
   parseDatasetFlag,

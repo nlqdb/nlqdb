@@ -89,6 +89,13 @@ export type LaneSummary = {
   // type so pre-3c baselines + synthetic test fixtures still validate;
   // the runner always populates it on fresh reports.
   total_attempts?: number;
+  // Per-`provider:reason` tally lifted back out of the `no_sql` rows'
+  // persisted error strings (the `AllProvidersFailedError` summary the
+  // runner records verbatim). Lets a reviewer see *why* the chain produced
+  // no SQL (e.g. `mistral:network`) without eyeballing each row's `error`.
+  // Absent when the lane had zero `no_sql` rows, so a clean run's summary
+  // stays byte-identical to a pre-existing baseline.
+  no_sql_reasons?: Record<string, number>;
 };
 
 export type EvalReport = {
