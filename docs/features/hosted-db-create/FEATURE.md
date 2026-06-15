@@ -187,7 +187,11 @@ Full body: [`decisions/SK-HDC-017-provision-sqlstate-fidelity.md`](decisions/SK-
 
 ### SK-HDC-018 — A constraint-violating sample row degrades to an un-seeded DB, never a 500
 
-Full body: [`decisions/SK-HDC-018-sample-insert-graceful-degradation.md`](decisions/SK-HDC-018-sample-insert-graceful-degradation.md). On `sample_insert_failed` (SQLSTATE 22/23, per SK-HDC-017) the orchestrator retries the provision **once** with `sample_rows: []` — the invited stranger gets a working un-seeded DB instead of `HTTP 500`; each attempt stays atomic (SK-HDC-012 / GLOBAL-033 untouched). Seed-quality lift: `SK-LLM-033`.
+Full body: [`decisions/SK-HDC-018-sample-insert-graceful-degradation.md`](decisions/SK-HDC-018-sample-insert-graceful-degradation.md). On `sample_insert_failed` (SQLSTATE 22/23, per SK-HDC-017) the orchestrator retries the provision **once** with `sample_rows: []` — the invited stranger gets a working un-seeded DB instead of `HTTP 500`; each attempt stays atomic (SK-HDC-012 / GLOBAL-033 untouched). Seed-quality lift: `SK-LLM-033`. The deterministic salvage that keeps the *valid* rows when only some fail is `SK-HDC-019`.
+
+### SK-HDC-019 — Pre-validate sample rows and drop only the uninsertable ones, salvaging the rest
+
+Full body: [`decisions/SK-HDC-019-deterministic-sample-row-salvage.md`](decisions/SK-HDC-019-deterministic-sample-row-salvage.md). Before provisioning, `pruneUninsertableSampleRows(plan)` (pure, `db-create/sample-rows.ts`) drops only the rows that provably can't insert against the plan's own constraints (unknown table/column, NOT-NULL gap, uncoercible type, forward/dangling FK), cascading dropped parents to their children and keeping every coercible row. One bad row of N now seeds N−1 instead of 0; a clean plan is a no-op. The deterministic complement to SK-LLM-033's prompt and the salvage layer above SK-HDC-018's all-or-nothing floor; targets the `seeded_ok_ratio` (SK-STRG-008) empty-DB tail.
 
 ## GLOBALs governing this feature
 

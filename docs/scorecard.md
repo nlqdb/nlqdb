@@ -9,21 +9,14 @@ until then the daily lever targets the worst number below)*
 
 **Worst number today:** real strangers reaching a first answer = **0**
 (funnel/distribution lane) — gated by the engine (GLOBAL-027 valve), so the
-engine-side worst, Spider 0.1704 vs 0.75, owns it. **Run 7 (measure-first):**
-the run-6 plan to recover Gemini cheaply by pinning the default model to
-`gemini-2.0-flash` is **falsified by live probe** — gemini-2.0-flash / -001
-return `429 limit: 0` for `generate_content_free_tier_requests` (stable across
-3 retries), i.e. *zero* free-tier allowance, not the transient throttle run 6
-assumed. The shared `GEMINI_API_KEY` project is off the free tier on **every**
-model (2.5 → 403 denied, 2.0 → 429 limit:0), so **no in-code model swap
-recovers the dead 6th leg** — the recovery is a Google-console action
-(→ `blocked-by-human.md`). No code lever ships this run: removing Gemini from
-the chain would touch the prod chain, whose `GEMINI_API_KEY` value the agent
-can't read to rule out a working prod key (SK-LLM-039 alt-2 caution stands),
-and the §5 eval-mirrors-prod guardrail blocks an eval-only removal. The
-delivered delta is the measurement correction (recoverable-in-code Gemini
-models: believed 1 → measured 0) propagated to its canonical homes
-(SK-LLM-039 "Why" carried the now-false "2.0 access OK" claim; corrected).
+engine-side worst, Spider 0.1704 vs 0.75, owns it. But the engine's biggest
+lever (restore the dead Gemini leg) is **human-blocked** (Google console,
+runs 6–7), there are no local BIRD/Spider fixtures + the free providers are
+rate-limited (a full eval is impractical this run), so the movable number
+this run is the **freshest first-value funnel number**: `seeded_ok_ratio`
+(SK-STRG-008) = **0.25** first run, ~0.6–0.8 after the SK-LLM-033 prompt with
+a persistent empty-DB tail. **Run 8 lever (shipped, SK-HDC-019)** attacks that
+tail — see the delta below.
 
 | # | Metric | Value | Target / note |
 |---|--------|-------|------|
@@ -45,25 +38,25 @@ models: believed 1 → measured 0) propagated to its canonical homes
 
 ## Deltas (recent runs)
 
-- 2026-06-15 (run 7) — **pin-to-2.0 lever falsified (measure-first).** Run 6
-  left "pin Gemini to `gemini-2.0-flash`" as the cheap recovery. Live re-probe
-  before touching code: 2.0-flash / -001 return `429 limit: 0` (zero free-tier
-  allowance, stable ×3), not a transient throttle — so both 2.5 (403) and 2.0
-  are unusable; no in-code swap recovers the leg. **Measured delta:**
-  recoverable-in-code Gemini models 1 → **0**. No code shipped (prod-chain
-  removal needs an unreadable prod-secret check; §5 blocks eval-only removal).
-  Correction propagated to SK-LLM-039 (false "2.0 access OK" read) +
-  `blocked-by-human.md`. KPI: engine-quality (measurement honesty). None
-  degraded.
-
-- 2026-06-15 (run 6) — **`auth_denied` reason split (SK-LLM-039).** 401/403
-  now classify as a distinct `auth_denied` reason so a dead provider reads
-  `gemini:auth_denied`, not an opaque `http_4xx`. Deterministic (+3 llm
-  tests); breaker behaviour byte-for-byte unchanged ⇒ zero EX regression.
-- 2026-06-14 (run 5) — **tail transient retry (SK-LLM-038).** Router retries
-  the chain tail once on `network`/`http_5xx`. BIRD EX **0.522 → best-case
-  0.528** (+0.6 pp), worst-case unchanged. None degraded.
+- 2026-06-15 (run 8) — **deterministic seed-row salvage (SK-HDC-019).** The
+  SK-HDC-018 floor dropped *all* sample rows on any one constraint-violating
+  row (`seeded_ok_ratio` empty-DB tail). New pure `pruneUninsertableSampleRows`
+  pre-validates and drops only the provably-uninsertable rows (unknown
+  table/column, NOT-NULL gap, uncoercible type, forward/dangling FK; cascading
+  parents). **Measured (unit test):** seeded rows on a one-bad-of-four seed set
+  **0 → 3**; clean plans no-op (happy path unchanged); +11 db-create tests, all
+  805 api tests green. KPI: onboarding + engine-quality (first-value seed
+  quality). None degraded — the change only ever drops rows that would fail to
+  insert anyway. Live ratio re-measure deferred to the deployed FLOW-004
+  seed-quality walker.
+- 2026-06-15 (run 7) — **pin-to-2.0 lever falsified (measure-first).** Live
+  re-probe before touching code: gemini-2.0-flash returns `429 limit: 0` (zero
+  free-tier allowance, ×3), so both 2.5 (403) and 2.0 are dead; no in-code swap
+  recovers the leg. Recoverable-in-code Gemini models 1 → **0**. No code
+  shipped; correction → SK-LLM-039 + `blocked-by-human.md`.
+- 2026-06-14/15 (runs 5–6) — tail transient retry (SK-LLM-038; BIRD EX
+  0.522 → 0.528 best-case) · `auth_denied` reason split (SK-LLM-039;
+  deterministic, zero EX regression).
 - 2026-06-13/14 (runs 1–4) — day-one scorecard (metrics 0 → 12); #5
-  instrument fix (`last_queried_at` **0 → 93**); Spider "oversized-DDL"
-  `no_sql` falsified; `no_sql` `provider:reason` per-lane tally bucketed.
+  instrument fix (`last_queried_at` 0 → 93); Spider `no_sql` per-lane tally.
   Full history: `progress/quality-score-verification-log.md`.
