@@ -36,7 +36,20 @@ export type DroppedSampleRow = { row: SampleRow; reason: string };
 export type SampleRowPruneResult = { rows: SampleRow[]; dropped: DroppedSampleRow[] };
 
 // Postgres boolean input accepts exactly this set (case-insensitive, trimmed).
-const BOOL_LITERALS = new Set(["t", "true", "y", "yes", "on", "1", "f", "false", "n", "no", "off", "0"]);
+const BOOL_LITERALS = new Set([
+  "t",
+  "true",
+  "y",
+  "yes",
+  "on",
+  "1",
+  "f",
+  "false",
+  "n",
+  "no",
+  "off",
+  "0",
+]);
 const UUID_RE = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
 const INT_RE = /^[+-]?\d+$/;
 const NUMERIC_RE = /^[+-]?(\d+(\.\d+)?|\.\d+)([eE][+-]?\d+)?$/;
@@ -56,7 +69,10 @@ function isInsertableValue(value: string | number | boolean, type: string): bool
       if (typeof value === "number") return true;
       if (typeof value === "string") {
         const s = value.trim();
-        return NUMERIC_RE.test(s) || ["nan", "infinity", "-infinity", "+infinity"].includes(s.toLowerCase());
+        return (
+          NUMERIC_RE.test(s) ||
+          ["nan", "infinity", "-infinity", "+infinity"].includes(s.toLowerCase())
+        );
       }
       return true;
     case "uuid":

@@ -184,10 +184,7 @@ describe("pruneUninsertableSampleRows", () => {
 
   it("drops rows for an unknown table or unknown column", () => {
     const p = plan({
-      sample_rows: [
-        row("ghosts", { id: 1 }),
-        row("customers", { id: 1, name: "Ada", nope: "x" }),
-      ],
+      sample_rows: [row("ghosts", { id: 1 }), row("customers", { id: 1, name: "Ada", nope: "x" })],
     });
     const out = pruneUninsertableSampleRows(p);
     expect(out.dropped.map((d) => d.reason)).toEqual(["unknown_table", "unknown_column"]);
