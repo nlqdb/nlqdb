@@ -23,8 +23,11 @@ HTTP-status → `FailoverReason` mapping introduced by
   as oversized DDL, then as generic 4xx). A live probe on 2026-06-15
   showed the shared `GEMINI_API_KEY` project returns 403
   `PERMISSION_DENIED` on the entire gemini-2.5 family (4/4 probes) while
-  gemini-2.0 returns 429 (access granted, quota-throttled) — i.e. Gemini
-  contributes *nothing* to every chain call. The distinct reason makes a
+  gemini-2.0-flash returns 429 `limit: 0` (a re-probe on 2026-06-15 shows a
+  *zero* free-tier allowance on this project — `generate_content_free_tier_requests`
+  `limit: 0`, stable across retries, not a transient quota throttle), so no
+  in-code model swap recovers it — i.e. Gemini contributes *nothing* to every
+  chain call. The distinct reason makes a
   dead provider legible in one token (`gemini:auth_denied`), exactly the
   "count what you log" lesson from the SK-QUAL-013 reason-bucketing work.
 - **Consequence in code:** `packages/llm/src/providers/_shared.ts`
@@ -43,9 +46,11 @@ HTTP-status → `FailoverReason` mapping introduced by
   and Gemini sits 3rd in the chain so the per-request hot-path cost of
   re-hitting it is near-zero when the head providers are healthy. (2)
   Switch the Gemini default model from `gemini-2.5-flash` to an accessible
-  one in code — rejected here: the production runtime key may differ from
-  the shared CI key, so a blind model downgrade could regress a healthy
-  prod chain; the key fix is a Google-console/billing action tracked in
-  `docs/blocked-by-human.md`. (3) Leave it as `http_4xx` — rejected: the
+  one in code — rejected, now doubly so: the 2026-06-15 re-probe shows
+  gemini-2.0-flash also returns 429 `limit: 0` (no free-tier allowance on
+  this project), so there is no accessible *free* model to switch to; and
+  the production runtime key may differ from the shared CI key, so a blind
+  swap could regress a healthy prod chain. The fix is a Google-console/billing
+  action tracked in `docs/blocked-by-human.md`. (3) Leave it as `http_4xx` — rejected: the
   whole point is to tell a whole-session denial apart from a one-off bad
   request.
