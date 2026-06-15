@@ -66,14 +66,25 @@ describe("createGeminiProvider", () => {
     expect(provider.model("plan")).toBe("gemini-2.5-flash");
   });
 
-  it("4xx becomes ProviderError reason=http_4xx", async () => {
+  it("SK-LLM-039 — 401/403 becomes ProviderError reason=auth_denied (project denied)", async () => {
     const provider = createGeminiProvider({ apiKey });
     const fetch = mockFetch([
-      { match: /generativelanguage/, respond: () => new Response("nope", { status: 401 }) },
+      { match: /generativelanguage/, respond: () => new Response("nope", { status: 403 }) },
+    ]);
+    await expect(provider.route(routeReq, { fetch })).rejects.toMatchObject({
+      reason: "auth_denied",
+      status: 403,
+    } satisfies Partial<ProviderError>);
+  });
+
+  it("a non-auth 4xx still becomes ProviderError reason=http_4xx", async () => {
+    const provider = createGeminiProvider({ apiKey });
+    const fetch = mockFetch([
+      { match: /generativelanguage/, respond: () => new Response("bad", { status: 400 }) },
     ]);
     await expect(provider.route(routeReq, { fetch })).rejects.toMatchObject({
       reason: "http_4xx",
-      status: 401,
+      status: 400,
     } satisfies Partial<ProviderError>);
   });
 

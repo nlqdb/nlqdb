@@ -207,6 +207,20 @@ Closes the [`SK-LLM-028`](#sk-llm-028) tail gap — a transient
 `no_sql` rows on `baseline-2026-06-15.json`). Strictly additive; tail-only
 ⇒ zero added latency on any currently-succeeding call.
 
+### SK-LLM-039 — Classify 401/403 as `auth_denied`, distinct from `http_4xx`
+
+**Body:** [`decisions/SK-LLM-039-auth-denied-reason.md`](./decisions/SK-LLM-039-auth-denied-reason.md).
+A 401/403 means the provider's project/key is denied access — a
+*persistent* whole-session failure, not a per-question bad request — so
+`httpError` maps it to a distinct `auth_denied` reason. A chain that
+exhausts now reads `gemini:auth_denied` (the project is locked out)
+instead of an opaque `gemini:http_4xx` lumped with per-question 400s.
+Breaker behaviour is unchanged (auth_denied stays out of the breaker, as
+401/403 did before) ⇒ pure observability gain, zero failover-behaviour
+change. Root-caused the 2026-06-12 baseline's Spider `gemini:http_4xx`
+losses: the shared `GEMINI_API_KEY` project is denied the gemini-2.5
+family (403 PERMISSION_DENIED, live-probed 2026-06-15).
+
 ### SK-LLM-033 — Schema-inference prompt requires insertable sample rows
 
 **Body:** [`decisions/SK-LLM-033-schema-infer-insertable-sample-rows.md`](./decisions/SK-LLM-033-schema-infer-insertable-sample-rows.md). `SCHEMA_INFER_SYSTEM` gains a `sample_rows`-validity contract (parent rows first, FK values present, NOT-NULL complete); deterministic no-500 floor is [`SK-HDC-018`](../hosted-db-create/decisions/SK-HDC-018-sample-insert-graceful-degradation.md).
