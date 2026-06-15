@@ -763,10 +763,11 @@ describe("createLLMRouter — rate-limit cooldown (SK-LLM-030)", () => {
   });
 
   it("a 429 (status 429) is NOT treated as an auth-bypass — the breaker opens", async () => {
-    // Regression guard: isAuthFailure keys off reason==='http_4xx' + status
-    // 401/403. A rate_limited error carries a 4xx-class status (429) but
-    // must NOT fall into the auth-bypass branch — it has to open the
-    // breaker. (If it were bypassed, gemini would be retried every call.)
+    // Regression guard: the breaker-skip keys off reason==='auth_denied'
+    // (SK-LLM-039). A rate_limited error carries a 4xx-class status (429)
+    // but its reason is not auth_denied, so it must NOT fall into the
+    // auth-bypass branch — it has to open the breaker. (If it were
+    // bypassed, gemini would be retried every call.)
     const limited = fakeProvider("gemini", {
       plan: new ProviderError("rate limited", "rate_limited", { status: 429 }),
     });
