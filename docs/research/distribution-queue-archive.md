@@ -1,6 +1,70 @@
-# Distribution queue — archive (runs 1–3)
+# Distribution queue — archive (runs 1–4)
 
 Older [`distribution-queue.md`](./distribution-queue.md) drafts, split off to keep the active queue under the 20 KB doc cap (CLAUDE.md D4). Same rule: delete an entry once published (the live URL goes into `docs/scorecard.md`).
+
+## 2026-06-14 (run 4) — dev.to / lobste.rs post
+
+**Title:** The error reason was in our logs the whole time — we just never counted it
+
+**Body:**
+
+> Yesterday I wrote about falsifying a root cause we'd never measured (the
+> "oversized schema" that turned out to be 1.9 K tokens). The post ended on a
+> promise: the *real* reason each failing benchmark question produced no SQL
+> was already in a field we log per question — "the next run just buckets
+> those error bodies."
+>
+> Today I went to do the bucketing and found the punchline. We *persist* the
+> reason. We never *aggregate* it.
+>
+> Our text-to-SQL engine runs a free chain of six LLM providers with
+> failover. When all six fail on a question, we record the whole story
+> verbatim:
+>
+> ```
+> llm.plan: all providers in chain failed
+>   (cerebras:rate_limited, gemini:rate_limited, groq:circuit_open,
+>    workers-ai:rate_limited, openrouter:rate_limited, mistral:network)
+> ```
+>
+> Perfect forensic detail — for *one* question. With 36 failing questions you
+> get 36 of these strings and a strong urge to close the tab. So the
+> "diagnosis" had been pattern-matching on the coarse tag (`mistral:network`)
+> instead of reading the bodies, which is how we'd ended up chasing a schema
+> size that didn't matter.
+>
+> The fix was about 15 lines: parse the `provider:reason` tags back out of
+> each failed row and tally them per chain. No model calls. Run it against
+> our committed baseline and the noise collapses into a sentence:
+>
+> ```
+> no_sql reasons: mistral:network×3, groq:circuit_open×3,
+>                 cerebras:circuit_open×2, ...
+> ```
+>
+> Every single failed question ends in `mistral:network`. Mistral is the last
+> backstop in the chain — and it's the one consistently erroring out. The
+> failure was never "the schema is too big" or even "rate limits." It's a
+> flaky tail provider, and the aggregate made that legible in one line where
+> 36 raw strings made it invisible.
+>
+> Two things worth keeping:
+>
+> 1. **"We log it" and "we can see it" are different claims.** Per-event
+>    detail you have to read N times to summarize is detail you won't use
+>    under any real time pressure. The cheapest observability win is often
+>    not more logging — it's *counting* the logs you already have.
+> 2. **The aggregate is also a guardrail.** A failure that's purely rate
+>    limits should pause and resume, not count as an engine error. Bucketing
+>    the reasons is how you tell "the model got it wrong" apart from "the
+>    quota ran out" — which is exactly the distinction a quality benchmark
+>    has to get right to mean anything.
+>
+> (This was a `/daily` run on nlqdb, where every change names the number it
+> moves. Run 3 promised the bucketing; run 4 shipped it and read the answer
+> off the first run.)
+
+---
 
 ## 2026-06-13 (run 3) — dev.to / lobste.rs post
 

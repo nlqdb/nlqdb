@@ -5,6 +5,71 @@ One publishable artifact drafted per day by the daily agent
 publishes at the weekly session. Newest first. Delete an entry once published
 (the live URL goes into `docs/scorecard.md`).
 
+## 2026-06-15 (run 9) — dev.to / lobste.rs post
+
+**Title:** The dead provider in the fast lane: when a hedged request races a 403
+
+**Body:**
+
+> Our text-to-SQL engine fronts six free LLM providers with a failover
+> chain: try the strongest, fall through on failure, and — for the latency-
+> sensitive planning step — *hedge*. Hedging is the trick from Dean &
+> Barroso's "The Tail at Scale": if the first provider hasn't answered in
+> 800 ms, fire the second one in parallel and take whoever finishes first.
+> On free tiers the marginal cost is zero, so racing is pure upside. That's
+> the theory.
+>
+> Here's what we actually shipped. One of the six providers had a dead key —
+> a whole-project denial that returns `403 PERMISSION_DENIED` on every single
+> call, forever, until a human fixes it in a console we don't control. We'd
+> already done the right *observability* thing: a 401/403 gets its own
+> failure reason (`auth_denied`) so a locked-out provider is legible in one
+> token instead of hiding inside a generic "4xx". And we'd made a deliberate
+> decision to keep `auth_denied` *out* of the circuit breaker — the reasoning
+> being that a config bug should stay visible on every attempt, not get
+> masked as a generic "circuit open" outage. The decision even noted, to
+> justify the cost: *"it sits 3rd in the chain, so re-hitting it is near-zero
+> when the head providers are healthy."*
+>
+> Two things were wrong with that sentence, and a 60-second live probe of all
+> six providers found both.
+>
+> **It didn't sit 3rd. It sat 2nd.** And second place is special, because
+> second place is exactly who the hedge fires. So on every planning call slow
+> enough to trigger the hedge — the precise slow tail the hedge exists to
+> cover — we were racing our healthy lead provider against a guaranteed
+> instant `403`. The hedge "fired," lost nothing worth losing, and the live
+> provider that *should* have been in that slot (3rd in line, actually
+> healthy) never got raced. We had built a fast lane and parked a dead car in
+> it.
+>
+> The fix reconciles the two goals the old decision treated as opposed. Open
+> the breaker on the first `auth_denied` — so a permanently-dead provider is
+> skipped instead of re-dialed on every request — *but* record the skip with
+> its real reason (`auth_denied`), not a generic `circuit_open`. You keep the
+> legibility (the dead provider is still obvious in the metrics) and you stop
+> paying for it (one wasted round-trip per cooldown window instead of one per
+> call), and the hedge slot rotates to the provider behind it — the live one.
+> The breaker auto-re-probes after a cooldown, so the moment someone fixes the
+> key, the provider comes back with no deploy.
+>
+> Measured the only way you can without the real key: a unit test that fires
+> five consecutive denials. Before, the dead provider was dialed five times.
+> After, once. The change is inert when a key actually works — a 200 never
+> trips the breaker — so it's safe to ship without knowing whether prod's key
+> is the same dead one.
+>
+> The lesson I keep relearning: a decision's *stated cost* is a claim about
+> the system, and claims rot. "It sits 3rd, the cost is near-zero" was true
+> of some earlier chain order and quietly became false. The cheapest audit in
+> the world is to re-read your own load-bearing justifications against what
+> the code does today — and, when you can, against a live probe. Ours took
+> one `curl` per provider and turned a paragraph of confident reasoning into
+> two off-by-one bugs.
+>
+> (A `/daily` run on nlqdb, where every change names the number it moves.
+> This one: round-trips to a dead provider per five calls, 5 → 1.)
+
 ## 2026-06-15 (run 8) — dev.to / lobste.rs post
 
 **Title:** One bad row shouldn't cost you all the rows: salvaging LLM-generated seed data
@@ -261,68 +326,4 @@ context.
 
 ---
 
-## 2026-06-14 (run 4) — dev.to / lobste.rs post
-
-**Title:** The error reason was in our logs the whole time — we just never counted it
-
-**Body:**
-
-> Yesterday I wrote about falsifying a root cause we'd never measured (the
-> "oversized schema" that turned out to be 1.9 K tokens). The post ended on a
-> promise: the *real* reason each failing benchmark question produced no SQL
-> was already in a field we log per question — "the next run just buckets
-> those error bodies."
->
-> Today I went to do the bucketing and found the punchline. We *persist* the
-> reason. We never *aggregate* it.
->
-> Our text-to-SQL engine runs a free chain of six LLM providers with
-> failover. When all six fail on a question, we record the whole story
-> verbatim:
->
-> ```
-> llm.plan: all providers in chain failed
->   (cerebras:rate_limited, gemini:rate_limited, groq:circuit_open,
->    workers-ai:rate_limited, openrouter:rate_limited, mistral:network)
-> ```
->
-> Perfect forensic detail — for *one* question. With 36 failing questions you
-> get 36 of these strings and a strong urge to close the tab. So the
-> "diagnosis" had been pattern-matching on the coarse tag (`mistral:network`)
-> instead of reading the bodies, which is how we'd ended up chasing a schema
-> size that didn't matter.
->
-> The fix was about 15 lines: parse the `provider:reason` tags back out of
-> each failed row and tally them per chain. No model calls. Run it against
-> our committed baseline and the noise collapses into a sentence:
->
-> ```
-> no_sql reasons: mistral:network×3, groq:circuit_open×3,
->                 cerebras:circuit_open×2, ...
-> ```
->
-> Every single failed question ends in `mistral:network`. Mistral is the last
-> backstop in the chain — and it's the one consistently erroring out. The
-> failure was never "the schema is too big" or even "rate limits." It's a
-> flaky tail provider, and the aggregate made that legible in one line where
-> 36 raw strings made it invisible.
->
-> Two things worth keeping:
->
-> 1. **"We log it" and "we can see it" are different claims.** Per-event
->    detail you have to read N times to summarize is detail you won't use
->    under any real time pressure. The cheapest observability win is often
->    not more logging — it's *counting* the logs you already have.
-> 2. **The aggregate is also a guardrail.** A failure that's purely rate
->    limits should pause and resume, not count as an engine error. Bucketing
->    the reasons is how you tell "the model got it wrong" apart from "the
->    quota ran out" — which is exactly the distinction a quality benchmark
->    has to get right to mean anything.
->
-> (This was a `/daily` run on nlqdb, where every change names the number it
-> moves. Run 3 promised the bucketing; run 4 shipped it and read the answer
-> off the first run.)
-
----
-
-Older drafts (runs 1–3): [`distribution-queue-archive.md`](./distribution-queue-archive.md).
+Older drafts (runs 1–4): [`distribution-queue-archive.md`](./distribution-queue-archive.md).

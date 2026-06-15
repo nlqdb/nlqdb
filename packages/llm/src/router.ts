@@ -118,6 +118,11 @@ type BreakerState = {
   // SK-LLM-030 — per-incident cooldown override (a 429's capped
   // `Retry-After` window). Undefined ⇒ use the router-wide cooldownMs.
   cooldownMsOverride?: number;
+  // SK-LLM-039 — why the breaker opened, surfaced on the skip so a
+  // provider parked by a 401/403 stays legible as `auth_denied` rather
+  // than the generic `circuit_open`. Undefined ⇒ a health/rate failure ⇒
+  // `circuit_open`.
+  openReason?: FailoverReason;
 };
 
 function makeBreakerStore(): Map<ProviderName, BreakerState> {
@@ -344,16 +349,28 @@ export function createLLMRouter(opts: LLMRouterOptions): LLMRouter {
       breakerState.set(name, { consecutiveFailures: failures, openedAt: now, cooldownMsOverride });
       return;
     }
-    // SK-LLM-039 — `auth_denied` (401/403) stays out of the breaker: a
-    // config bug (bad key, billing unlinked, abuse-flag) should keep
-    // surfacing its own reason on every attempt rather than be masked as
-    // a `circuit_open` outage. The distinct reason already makes the
-    // dead provider legible without the breaker.
+    // SK-LLM-039 — a 401/403 is a persistent project/key denial that fails
+    // identically on every call (bad key, API not enabled, billing
+    // unlinked, abuse-flag). Open the breaker for the standard cooldown so
+    // we stop burning a guaranteed-failed round-trip — and, on hedged ops,
+    // a wasted hedge slot the live provider behind it should have had — on
+    // every request. The skip still surfaces `auth_denied` (not
+    // `circuit_open`) via `openReason`, keeping the dead provider legible,
+    // and the cooldown auto-re-probes so a re-keyed provider recovers
+    // without a deploy.
+    if (result.reason === "auth_denied") {
+      const failures = (breakerState.get(name)?.consecutiveFailures ?? 0) + 1;
+      breakerState.set(name, {
+        consecutiveFailures: failures,
+        openedAt: now,
+        openReason: "auth_denied",
+      });
+      return;
+    }
     const skip =
       result.reason === "not_configured" ||
       result.reason === "parse" ||
-      result.reason === "hedge_lost" ||
-      result.reason === "auth_denied";
+      result.reason === "hedge_lost";
     if (skip) return;
     const state = breakerState.get(name);
     const failures = (state?.consecutiveFailures ?? 0) + 1;
@@ -507,6 +524,10 @@ export function createLLMRouter(opts: LLMRouterOptions): LLMRouter {
       const now = Date.now();
       const state = breakerState.get(name);
       if (breakerOpen(state, now, breaker.cooldownMs)) {
+        // SK-LLM-039 — a breaker opened by a 401/403 skips as `auth_denied`,
+        // not `circuit_open`, so a denied provider stays legible while we
+        // avoid re-hitting it. Health/rate-opened breakers keep `circuit_open`.
+        const skipReason = state?.openReason ?? "circuit_open";
         // Emit a zero-duration span so traces stay self-explanatory —
         // without this, dashboards just see "no span" and can't tell the
         // breaker rejected anything (vs. the request never happening).
@@ -525,12 +546,12 @@ export function createLLMRouter(opts: LLMRouterOptions): LLMRouter {
             },
           })
           .end();
-        attempts.push({ provider: name, reason: "circuit_open", error: undefined });
+        attempts.push({ provider: name, reason: skipReason, error: undefined });
         if (next) {
           llmFailoverTotal().add(1, {
             from_provider: name,
             to_provider: next,
-            reason: "circuit_open",
+            reason: skipReason,
           });
         }
         continue;

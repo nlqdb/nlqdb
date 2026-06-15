@@ -58,8 +58,10 @@ export type FailoverReason =
   // whole-session failure (the provider answers nothing until a human
   // fixes the key), not a per-question bad request — so a chain that
   // exhausted with `gemini:auth_denied` reads as "Gemini is locked out"
-  // rather than an opaque 4xx. Kept out of the circuit breaker (as
-  // before): a config bug should stay visible, not look like an outage.
+  // rather than an opaque 4xx. SK-LLM-039: opens the breaker on the first
+  // denial (so a dead key isn't re-hit every call) but the skip still
+  // surfaces `auth_denied` via the breaker's `openReason`, not masked as a
+  // generic `circuit_open` outage.
   | "auth_denied"
   | "rate_limited"
   | "network"

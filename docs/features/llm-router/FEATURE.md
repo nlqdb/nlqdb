@@ -203,12 +203,14 @@ router retries it once (150 ms backoff, abort-aware) before throwing —
 closes the [`SK-LLM-028`](#sk-llm-028) tail gap. Strictly additive,
 tail-only ⇒ zero added latency on any currently-succeeding call.
 
-### SK-LLM-039 — Classify 401/403 as `auth_denied`, distinct from `http_4xx`
+### SK-LLM-039 — Classify 401/403 as `auth_denied` and park the provider for a cooldown
 
 **Body:** [`decisions/SK-LLM-039-auth-denied-reason.md`](./decisions/SK-LLM-039-auth-denied-reason.md).
 `httpError` maps 401/403 to a distinct `auth_denied` reason so a chain
 exhausting on a locked-out key reads `gemini:auth_denied`, not an opaque
-`gemini:http_4xx`. Breaker unchanged — pure observability gain.
+`gemini:http_4xx`. The first denial opens the breaker (so a dead key isn't
+re-hit every call — and its hedge slot rotates to a live provider) while
+the skip still surfaces `auth_denied`, not a generic `circuit_open`.
 
 ### SK-LLM-033 — Schema-inference prompt requires insertable sample rows
 
