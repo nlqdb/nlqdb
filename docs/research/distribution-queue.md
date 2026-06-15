@@ -5,6 +5,68 @@ One publishable artifact drafted per day by the daily agent
 publishes at the weekly session. Newest first. Delete an entry once published
 (the live URL goes into `docs/scorecard.md`).
 
+## 2026-06-15 (run 8) — dev.to / lobste.rs post
+
+**Title:** One bad row shouldn't cost you all the rows: salvaging LLM-generated seed data
+
+**Body:**
+
+> When you let an LLM design a database from a one-line goal ("a tiny CRM",
+> "a meal planner for couples"), it also writes you a handful of sample rows
+> so the thing isn't empty when you first open it. Those rows are the entire
+> first impression — a populated table you can immediately query, versus a
+> bare schema you have to fill yourself.
+>
+> The rows go in as one atomic transaction. Which means: if *one* of them
+> violates a constraint the model itself just declared — a foreign key that
+> points at a row defined three lines later, a NOT NULL column left blank, a
+> `"twelve"` where an integer goes — the whole insert rolls back. Our
+> safety net caught the obvious failure mode (never 500 the user; hand them
+> a working empty database instead), but "empty database" was still the
+> outcome for the *whole* seed set whenever a single row was bad. We measured
+> it: across a set of goals, only about a quarter to three-quarters seeded
+> cleanly; the rest fell all the way to empty. One bad row of thirteen cost
+> the user the other twelve.
+>
+> The fix isn't a smarter prompt (we have one of those too, and it's
+> probabilistic — it raises the odds, it doesn't guarantee). The fix is a
+> deterministic pass that runs *before* the insert and drops only the rows it
+> can **prove** won't insert, against the schema's own declared constraints:
+>
+> - unknown table or column → the INSERT names something that doesn't exist;
+> - a NOT NULL column (including primary keys) with no default and no value;
+> - a value no Postgres input function for that type would accept
+>   (`"twelve"` into `integer`, a non-UUID string into `uuid`) — while
+>   *keeping* the coercible forms (`"2"` into integer, `"1.5e3"` into numeric,
+>   `"NaN"`, the boolean literals);
+> - a foreign-key value with no matching parent row seen earlier in insert
+>   order — and dropping a parent cascades to its now-dangling children.
+>
+> The discipline that makes this safe is **soundness**: it only ever drops a
+> row it can prove will fail. A clean batch prunes nothing, so the common
+> case is byte-for-byte unchanged; a mixed batch keeps everything that can
+> survive. FK matching even compares string-coerced (`"7"` matches `7`), so a
+> parent Postgres *would* accept is never mistaken for missing. Twelve rows
+> instead of zero, and not one line of LLM-call latency added — it's pure
+> in-memory validation.
+>
+> The general lesson for anyone wiring an LLM into a system with hard
+> constraints: the model's output is a batch of independent bets, and
+> all-or-nothing failure handling makes the worst bet set the price for all
+> of them. Salvage what provably works; degrade only what provably doesn't.
+>
+> (This was a `/daily` run on nlqdb — a database you query in plain English.
+> The seed rows above are what makes an invited stranger's very first query
+> land on populated tables.)
+
+**Why this is publishable:** concrete, debuggable, and broadly applicable —
+"LLM emits a batch, one item is bad, don't throw away the good ones" is a
+pattern anyone building LLM-to-structured-output pipelines hits. Pairs with
+the run-6/7 legibility posts as a third "we measured the real cost, then
+fixed it deterministically" story. One soft product mention at the end.
+
+---
+
 ## 2026-06-15 (run 7) — dev.to / lobste.rs post
 
 **Title:** The obvious workaround was also dead — and we only found out because we measured it first

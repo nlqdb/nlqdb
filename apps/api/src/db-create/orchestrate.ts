@@ -34,6 +34,7 @@
 import type { RecentTablesStore } from "../ask/recent-tables.ts";
 import { deriveSlug } from "../databases/list.ts";
 import type { EngineClassifyDeps, EngineClassifyResult } from "./engine-classify.ts";
+import { pruneUninsertableSampleRows } from "./sample-rows.ts";
 import type {
   CompileDdlResult,
   DbCreateArgs,
@@ -189,7 +190,24 @@ export async function orchestrateDbCreate(
   // recent-tables steps below keep using the full `plan` — they're
   // schema concerns, not seed data.)
   let provisioned: Awaited<ReturnType<typeof deps.provision>> | undefined;
-  let provisionPlan = plan;
+  // SK-HDC-019 — deterministic seed salvage. Drop only the sample rows that
+  // provably can't insert against the plan's own constraints (forward FK,
+  // missing NOT NULL, uncoercible type) so one bad LLM row no longer forces
+  // SK-HDC-018's all-or-nothing empty-DB retry. A clean plan prunes nothing,
+  // so the happy path is unchanged; the response's `sampleRows` (below) then
+  // reflects the actually-seeded set.
+  const pruned = pruneUninsertableSampleRows(plan);
+  let provisionPlan = pruned.dropped.length > 0 ? { ...plan, sample_rows: pruned.rows } : plan;
+  if (pruned.dropped.length > 0) {
+    console.warn(
+      JSON.stringify({
+        msg: "provision_sample_rows_pruned",
+        dropped: pruned.dropped.length,
+        kept: pruned.rows.length,
+        reasons: pruned.dropped.map((d) => d.reason),
+      }),
+    );
+  }
   let collided = false;
   let sampleRowsDropped = false;
   for (let attempt = 0; attempt < 3; attempt++) {
