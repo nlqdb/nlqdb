@@ -13,7 +13,8 @@ nlqdb answers. The full pitch and architecture are in
 [`docs/architecture.md`](docs/architecture.md). Design-partner research is in
 [`docs/runbook.md §10`](docs/runbook.md).
 
-**Active focus → [`docs/now.md`](docs/now.md)** — current priorities; read first.
+**Active focus → [`docs/scorecard.md`](docs/scorecard.md)** — current priorities
+(worst number + weekly focus), regenerated daily by [`/daily`](.claude/commands/daily.md); read first.
 
 ### North-star — what every PR moves
 
