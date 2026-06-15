@@ -36,6 +36,7 @@
     "typescript": "^5.9.3"
   },
   "overrides": {
+    "esbuild": "^0.28.1",
     "@modelcontextprotocol/sdk": "1.29.0",
     "hono": "^4.12.25",
     "shell-quote": "^1.8.4",
