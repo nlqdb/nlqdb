@@ -362,9 +362,9 @@ export async function orchestrateDbCreate(
       dimensions: plan.dimensions,
       foreign_keys: plan.foreign_keys,
     },
-    // The actually-provisioned seed set — empty when SK-HDC-018 dropped
-    // a constraint-violating sample row, so the response never claims
-    // rows the DB doesn't hold.
+    // The actually-provisioned seed set — pruned by SK-HDC-019 (only the
+    // uninsertable rows) or emptied by SK-HDC-018's retry, so the response
+    // never claims rows the DB doesn't hold.
     sampleRows: provisionPlan.sample_rows,
   };
 }
