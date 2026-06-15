@@ -650,14 +650,14 @@ describe("createLLMRouter — circuit breaker", () => {
       chains: { plan: ["gemini", "groq"] },
       circuitBreaker: { failureThreshold: 3, cooldownMs: 60_000 },
     });
-    await expect(router.plan({ goal: "g", schema: "s", dialect: "postgres" })).rejects.toMatchObject(
-      {
-        attempts: [
-          expect.objectContaining({ provider: "gemini", reason: "auth_denied" }),
-          expect.objectContaining({ provider: "groq", reason: "http_5xx" }),
-        ],
-      },
-    );
+    await expect(
+      router.plan({ goal: "g", schema: "s", dialect: "postgres" }),
+    ).rejects.toMatchObject({
+      attempts: [
+        expect.objectContaining({ provider: "gemini", reason: "auth_denied" }),
+        expect.objectContaining({ provider: "groq", reason: "http_5xx" }),
+      ],
+    });
   });
 
   it("SK-LLM-030 — a non-429 4xx still uses the 3-strike path (not the 429 immediate-open path)", async () => {
