@@ -9,55 +9,58 @@ until then the daily lever targets the worst number below)*
 
 **Worst number today:** real strangers reaching a first answer = **0**
 (funnel/distribution lane) — gated by the engine (GLOBAL-027 valve), so the
-engine-side worst, Spider 0.1704 vs 0.75, owns it. Today's lever (run 5)
-acts on run 4's diagnosis: every scored `no_sql` on the committed BIRD
-baseline (3/3) carries a transient `mistral:network` at the **chain tail**,
-where the Mistral capacity backstop (SK-LLM-028) has no provider to fail
-over to — so a single momentary fetch blip permanently loses a question the
-backstop exists to recover. Live probe confirms Mistral is healthy (HTTP
-200, ~0.6 s), so these are transient, not an outage. **SK-LLM-038** retries
-the chain tail once (150 ms backoff, abort-aware) on `network`/`http_5xx`
-before declaring total failure — tail-only, strictly additive (can only
-convert a would-be failure → success), zero added latency on any
-succeeding call. Next engine lever after this: the Spider `gemini:http_4xx`
-losses (run 3 obs), once freshly bucketed.
+engine-side worst, Spider 0.1704 vs 0.75, owns it. Run 6 root-causes the
+Spider `gemini:http_4xx` losses (run-3 obs, the stated next lever): a live
+probe (2026-06-15) shows the shared `GEMINI_API_KEY` project returns **403
+`PERMISSION_DENIED`** ("project denied access") on the entire gemini-2.5
+family (4/4 probes; gemini-2.0 returns 429 = access OK, quota-throttled).
+Gemini is **dead weight in the chain** — it 403s every call, so the free
+chain effectively runs 5-of-6 and `no_sql` inflates whenever the other 5
+rate-limit together. The key fix is a Google-console/billing action
+(→ `blocked-by-human.md`). This run ships **SK-LLM-039**: 401/403 now
+classify as a distinct `auth_denied` reason, so the next eval's
+`no_sql_reasons` bucket reads `gemini:auth_denied` (project locked out)
+instead of an opaque `gemini:http_4xx`. Zero failover-behaviour change.
 
 | # | Metric | Value | Target / note |
 |---|--------|-------|------|
-| | **Funnel — bot-filtered, 2026-06-13** | | walkers = `flow-004-walker` source / `nlqdb-flow004-*` emails |
-| 1 | Visits, 7d (CF Web Analytics) | 114 visits / 175 pageloads | includes browser-walker traffic; not yet splittable |
-| 2 | Waitlist rows, real | 4 of 67 | 63 walker rows; of the 4, 1 founder + 3 probe-looking (`@wshu.net`, `@example.test`) → ~0 genuine strangers |
+| | **Funnel — bot-filtered, 2026-06-15** | | walkers = `flow-004-walker` source / `nlqdb-flow004-*` emails |
+| 1 | Visits, 7d (CF Web Analytics) | 94 visits / 147 pageloads | was 114/175 (06-13); walker traffic aged out of the 7d window |
+| 2 | Waitlist rows, real | 1 of 69 | 68 walker/test/probe; the 1 is the founder → ~0 genuine strangers |
 | 3 | Registered users, real strangers | 0 | 7 total = 3 founder + 4 test/dev accounts |
-| 4 | Invite-valve crossings (KV `wl:invite-cap`) | 9 this wk / 26 last wk | cap 200/wk — no exhaustion risk; mostly walker-triggered |
-| 5 | Anon DBs with a recorded first answer | **93 of 93** (was 0) | **Instrument fixed this run.** Was 0/93 — a measurement artifact, not behaviour: the create path (`neon-provision.ts`) left `last_queried_at` NULL, and the only toucher is `/v1/ask` query mode, which anon never reaches (call #1 = create short-circuit `SK-ANON-013`; call #2 = auth-walled `SK-ANON-012`). Every successful create returns sampleRows = the answer, so all 93 *had* answered. Fix seeds `last_queried_at` at create + backfills existing rows. Genuine-stranger subset still ~0 (rows #2/#3) — that's the real worst-number, now honestly measured |
+| 4 | Invite-valve crossings (KV `wl:invite-cap`) | 9/wk (06-13, carried) | cap 200/wk — no exhaustion risk; mostly walker-triggered; not re-pulled this run |
+| 5 | Anon DBs with a recorded first answer | **101 of 101** | instrument fix (runs 1–3) holding; +8 since 06-13. Genuine-stranger subset still ~0 (rows #2/#3) — the real worst-number |
 | | **Engine — measured 2026-06-12 (fresh, < 7d)** | | `apps/api/src/gate/eval-baseline.ts` |
 | 6 | BIRD raw EX | 0.522 | target 0.65 (GLOBAL-027) |
-| 7 | Spider raw EX | 0.1704 | target 0.75; 36/135 `no_sql` = `gemini:http_4xx`/`mistral:network`, **not** size (schemas ≤1.9K tok, measured 2026-06-13) — see quality-score-source-of-truth §2 |
+| 7 | Spider raw EX | 0.1704 | target 0.75; 36/135 `no_sql` — `gemini:http_4xx` **root-caused (run 6)** = 403 `PERMISSION_DENIED`, project denied gemini-2.5 access. Not size (≤1.9K tok). SK-LLM-039 makes it legible as `gemini:auth_denied`; key fix is console/billing (blocked-by-human) |
 | 8 | persona-bench | — | not yet built |
 | 9 | free-vs-frontier delta | null | agentic lane not yet run (`SK-QUAL-004`, target ≤ 25 pp) |
 | | **Ops — 7d, CF Workers analytics** | | wall-time, all routes (not `/ask`-only) |
-| 10 | nlqdb-api requests / errors | 2,635 / 0 (0.00%) | mcp 198 req, events-worker 143 req, both 0 err |
-| 11 | nlqdb-api latency p50 / p95 | 666 ms / 7.05 s | p95 dominated by LLM-bound asks; `/ask`-only split needs Grafana `metrics:read` (agent has write-only key) |
+| 10 | nlqdb-api requests / errors | 2,268 / 0 (0.00%) | mcp 284 req, events-worker 91 req, both 0 err |
+| 11 | nlqdb-api latency p50 / p95 | 666 ms / 7.05 s (06-13) | p95 dominated by LLM-bound asks; `/ask`-only split needs Grafana `metrics:read` (agent has write-only key) |
 | 12 | $ spend | ~$0 | free tiers across CF / Neon / LLM chain |
 
 ## Deltas (recent runs)
 
 - 2026-06-13 (runs 1–3) — day-one scorecard (metrics 0 → 12); #5 instrument
   fix (`last_queried_at` NULL → seeded + backfilled, **0 → 93**, onboarding);
-  #7 diagnosis correction (Spider "oversized-DDL" `no_sql` **falsified** — all
-  schemas ≤ 1.9 K tok, real cause is the persisted `provider:reason` tags).
+  #7 diagnosis correction (Spider "oversized-DDL" `no_sql` **falsified**).
 - 2026-06-14 (run 4) — bucketed the persisted `no_sql` `provider:reason` tags
-  into a per-lane `no_sql_reasons` tally (report JSON + CI line). **Measured
-  on the BIRD baseline → `mistral:network ×3`, `groq:circuit_open ×3`** ⇒ next
-  engine lever = the chain tail (T11/SK-LLM-028), not pruning. Additive; no
-  behaviour changed ⇒ none degraded. KPI: engine-quality (measurement).
-- 2026-06-14 (run 5) — **tail transient retry (SK-LLM-038).** The chain
-  tail has no fallback, so the 3/3 BIRD-baseline `no_sql` rows that all
-  carry `mistral:network` died on a momentary blip (Mistral healthy: live
-  probe HTTP 200 / 0.6 s). The router now retries the tail once on
-  `network`/`http_5xx`. **Measured:** deterministic — 5 new router tests
-  prove recovery + bounded (≤1) retry + tail-only scoping (169/169 llm
-  tests green); on `baseline-2026-06-15.json` all 3/3 scored `no_sql` are
-  now retryable, BIRD EX **0.522 → best-case 0.528** (+0.6 pp), worst-case
-  unchanged — strictly non-regressing (tail-only, additive). KPI:
-  engine-quality. None degraded (zero latency on succeeding calls).
+  into a per-lane tally. BIRD baseline → `mistral:network ×3`,
+  `groq:circuit_open ×3`. KPI: engine-quality (measurement).
+- 2026-06-14 (run 5) — **tail transient retry (SK-LLM-038).** Router retries
+  the chain tail once on `network`/`http_5xx`. Deterministic: 5 new tests;
+  BIRD EX **0.522 → best-case 0.528** (+0.6 pp), worst-case unchanged.
+  KPI: engine-quality. None degraded.
+- 2026-06-15 (run 6) — **`auth_denied` reason split (SK-LLM-039).** Live probe
+  root-caused the Spider `gemini:http_4xx` losses: the shared `GEMINI_API_KEY`
+  project is denied gemini-2.5 access (403 `PERMISSION_DENIED`, 4/4 probes).
+  401/403 now classify as `auth_denied` so a dead provider reads
+  `gemini:auth_denied`, not an opaque `http_4xx` (the run-3/4 "make the real
+  cause legible" arc, one level deeper). **Measured:** deterministic — +3 llm
+  tests prove 401/403→`auth_denied`, non-auth 4xx still→`http_4xx`, and the
+  reason surfaces in the chain-failure summary (171/171 llm tests, 185/185
+  eval tests green). Breaker behaviour byte-for-byte unchanged ⇒ zero
+  failover/EX regression. Key fix (console/billing) → `blocked-by-human.md`.
+  KPI: engine-quality (measurement/observability). None degraded.
+</content>

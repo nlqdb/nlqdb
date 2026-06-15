@@ -55,12 +55,6 @@ export const DEFAULT_TIMEOUTS_MS: Record<LLMOperation, number> = {
   engine_classify: 1500,
 };
 
-// HTTP statuses that indicate a config bug (bad key, forbidden), not
-// a provider outage. Excluded from the circuit breaker — opening the
-// breaker on these just delays surfacing the real problem and tricks
-// dashboards into thinking the upstream is unhealthy.
-const AUTH_FAILURE_STATUSES = new Set([401, 403]);
-
 export type LLMRouterOptions = {
   providers: Provider[];
   chains: LLMChains;
@@ -216,15 +210,6 @@ function sleep(ms: number, signal?: AbortSignal): Promise<void> {
   });
 }
 
-// 401/403 are config bugs (bad/missing API key), not provider outages.
-// Excluding them from the breaker keeps a misconfigured deploy from
-// looking like an upstream problem on dashboards.
-function isAuthFailure(reason: FailoverReason, error: unknown): boolean {
-  if (reason !== "http_4xx") return false;
-  const status = (error as { status?: number } | undefined)?.status;
-  return status !== undefined && AUTH_FAILURE_STATUSES.has(status);
-}
-
 // Caller signal + per-attempt timeout, combined. AbortSignal.any is
 // stable in Workers + Bun + Node ≥19; AbortSignal.timeout same.
 function buildSignal(callerSignal: AbortSignal | undefined, timeoutMs: number): AbortSignal {
@@ -359,11 +344,16 @@ export function createLLMRouter(opts: LLMRouterOptions): LLMRouter {
       breakerState.set(name, { consecutiveFailures: failures, openedAt: now, cooldownMsOverride });
       return;
     }
+    // SK-LLM-039 — `auth_denied` (401/403) stays out of the breaker: a
+    // config bug (bad key, billing unlinked, abuse-flag) should keep
+    // surfacing its own reason on every attempt rather than be masked as
+    // a `circuit_open` outage. The distinct reason already makes the
+    // dead provider legible without the breaker.
     const skip =
       result.reason === "not_configured" ||
       result.reason === "parse" ||
       result.reason === "hedge_lost" ||
-      isAuthFailure(result.reason, result.error);
+      result.reason === "auth_denied";
     if (skip) return;
     const state = breakerState.get(name);
     const failures = (state?.consecutiveFailures ?? 0) + 1;
@@ -592,7 +582,8 @@ export function createLLMRouter(opts: LLMRouterOptions): LLMRouter {
       // Update breaker. Shared with the hedged path so "what counts as a
       // provider-health failure" lives in one place: rate_limited opens
       // immediately (SK-LLM-030); 5xx / network / timeout count toward the
-      // 3-strike threshold; not_configured / parse / 401-403 are skipped.
+      // 3-strike threshold; not_configured / parse / auth_denied (401/403,
+      // SK-LLM-039) are skipped.
       updateBreakerFromResult(name, result, now);
 
       attempts.push({ provider: name, reason: result.reason, error: result.error });

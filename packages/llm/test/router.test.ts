@@ -612,12 +612,13 @@ describe("createLLMRouter — circuit breaker", () => {
     expect(skipSpan?.name).toBe("llm.plan");
   });
 
-  it("does NOT count 401/403 as breaker failures (config bug, not outage)", async () => {
-    // A bad/missing API key surfaces as 401. Counting it against the
-    // breaker just delays surfacing the real config error AND tricks
-    // dashboards into thinking the upstream is unhealthy.
+  it("SK-LLM-039 — does NOT count auth_denied (401/403) as breaker failures (config bug, not outage)", async () => {
+    // A bad/missing API key surfaces as auth_denied. Counting it against
+    // the breaker just delays surfacing the real config error AND tricks
+    // dashboards into thinking the upstream is unhealthy. The distinct
+    // reason already makes the dead provider legible without the breaker.
     const misconfigured = fakeProvider("gemini", {
-      plan: new ProviderError("invalid_api_key", "http_4xx", { status: 401 }),
+      plan: new ProviderError("invalid_api_key", "auth_denied", { status: 401 }),
     });
     const healthy = fakeProvider("groq", { plan: { sql: "select 1" } });
     const router = createLLMRouter({
@@ -626,28 +627,37 @@ describe("createLLMRouter — circuit breaker", () => {
       circuitBreaker: { failureThreshold: 2, cooldownMs: 60_000 },
     });
 
-    // Five consecutive 401s — well past the threshold of 2. If 401
-    // counted, gemini would be skipped after request #2.
+    // Five consecutive denials — well past the threshold of 2. If
+    // auth_denied counted, gemini would be skipped after request #2.
     for (let i = 0; i < 5; i++) {
       await router.plan({ goal: "g", schema: "s", dialect: "postgres" });
     }
     expect(misconfigured.calls).toHaveLength(5);
   });
 
-  it("403 also bypasses the breaker (forbidden = config, not outage)", async () => {
-    const forbidden = fakeProvider("gemini", {
-      plan: new ProviderError("forbidden", "http_4xx", { status: 403 }),
+  it("SK-LLM-039 — a denied provider surfaces reason=auth_denied in the chain-failure summary", async () => {
+    // The observability win: when the whole chain fails, a denied
+    // provider reads as `gemini:auth_denied` (project locked out), not an
+    // opaque `gemini:http_4xx` lumped with per-question bad requests.
+    const denied = fakeProvider("gemini", {
+      plan: new ProviderError("project denied access", "auth_denied", { status: 403 }),
     });
-    const healthy = fakeProvider("groq", { plan: { sql: "select 1" } });
+    const alsoDown = fakeProvider("groq", {
+      plan: new ProviderError("boom", "http_5xx", { status: 503 }),
+    });
     const router = createLLMRouter({
-      providers: [forbidden, healthy],
+      providers: [denied, alsoDown],
       chains: { plan: ["gemini", "groq"] },
-      circuitBreaker: { failureThreshold: 2, cooldownMs: 60_000 },
+      circuitBreaker: { failureThreshold: 3, cooldownMs: 60_000 },
     });
-    for (let i = 0; i < 4; i++) {
-      await router.plan({ goal: "g", schema: "s", dialect: "postgres" });
-    }
-    expect(forbidden.calls).toHaveLength(4);
+    await expect(
+      router.plan({ goal: "g", schema: "s", dialect: "postgres" }),
+    ).rejects.toMatchObject({
+      attempts: [
+        expect.objectContaining({ provider: "gemini", reason: "auth_denied" }),
+        expect.objectContaining({ provider: "groq", reason: "http_5xx" }),
+      ],
+    });
   });
 
   it("SK-LLM-030 — a non-429 4xx still uses the 3-strike path (not the 429 immediate-open path)", async () => {
@@ -753,10 +763,11 @@ describe("createLLMRouter — rate-limit cooldown (SK-LLM-030)", () => {
   });
 
   it("a 429 (status 429) is NOT treated as an auth-bypass — the breaker opens", async () => {
-    // Regression guard: isAuthFailure keys off reason==='http_4xx' + status
-    // 401/403. A rate_limited error carries a 4xx-class status (429) but
-    // must NOT fall into the auth-bypass branch — it has to open the
-    // breaker. (If it were bypassed, gemini would be retried every call.)
+    // Regression guard: the breaker-skip keys off reason==='auth_denied'
+    // (SK-LLM-039). A rate_limited error carries a 4xx-class status (429)
+    // but its reason is not auth_denied, so it must NOT fall into the
+    // auth-bypass branch — it has to open the breaker. (If it were
+    // bypassed, gemini would be retried every call.)
     const limited = fakeProvider("gemini", {
       plan: new ProviderError("rate limited", "rate_limited", { status: 429 }),
     });

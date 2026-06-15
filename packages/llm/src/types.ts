@@ -52,6 +52,15 @@ export type LLMOperation = "route" | "plan" | "summarize" | "schema_infer" | "en
 export type FailoverReason =
   | "http_5xx"
   | "http_4xx"
+  // SK-LLM-039 — 401/403: the provider's project/key is denied access
+  // (bad/missing key, API not enabled, billing unlinked, abuse-flag).
+  // Split out from the generic `http_4xx` because it is a *persistent*
+  // whole-session failure (the provider answers nothing until a human
+  // fixes the key), not a per-question bad request — so a chain that
+  // exhausted with `gemini:auth_denied` reads as "Gemini is locked out"
+  // rather than an opaque 4xx. Kept out of the circuit breaker (as
+  // before): a config bug should stay visible, not look like an outage.
+  | "auth_denied"
   | "rate_limited"
   | "network"
   | "timeout"

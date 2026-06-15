@@ -100,4 +100,13 @@ describe("SK-LLM-030 — httpError", () => {
     expect(err.reason).toBe("http_5xx");
     expect(err.status).toBe(503);
   });
+
+  it("SK-LLM-039 — maps 401/403 to auth_denied (project/key denied, not a per-question 4xx)", async () => {
+    for (const status of [401, 403]) {
+      const err = await httpError("POST https://x/y", new Response("denied", { status }));
+      expect(err.reason).toBe("auth_denied");
+      expect(err.status).toBe(status);
+      expect(err.retryAfterMs).toBeUndefined();
+    }
+  });
 });

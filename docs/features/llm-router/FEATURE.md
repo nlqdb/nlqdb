@@ -36,7 +36,7 @@ Every LLM call routes through one `createLLMRouter()` adapter over a cost-ordere
 ### SK-LLM-003 — Day-1 strict-$0 chain: Gemini Flash → Groq → Workers-AI → OpenRouter free
 
 **Body:** [`decisions/SK-LLM-003-strict-zero-chain.md`](./decisions/SK-LLM-003-strict-zero-chain.md).
-`plan` chain `[gemini_flash_free, groq_llama70b_free, openrouter_free]` (+`workers_ai` non-US backup); `route` on `groq_llama8b_free`. Every entry has a no-card free tier (`GLOBAL-013`); env-var configured (`LLM_CHAIN_*`), rotating is a redeploy. **Current planner tier:** Cerebras (gpt-oss-120b) head per [`SK-LLM-023`](#sk-llm-023), Mistral tail per [`SK-LLM-028`](#sk-llm-028) — failover runs between them.
+`plan` chain `[gemini_flash_free, groq_llama70b_free, openrouter_free]` (+`workers_ai` non-US backup); `route` on `groq_llama8b_free`. Every entry is no-card free (`GLOBAL-013`), env-var configured (`LLM_CHAIN_*`). **Current planner tier:** Cerebras (gpt-oss-120b) head per [`SK-LLM-023`](#sk-llm-023), Mistral tail per [`SK-LLM-028`](#sk-llm-028).
 
 ### SK-LLM-004 — Cloudflare AI Gateway sits in front of every paid provider
 
@@ -134,7 +134,7 @@ OpenRouter pins `plan` + `schema_infer` to `qwen/qwen3-coder:free`; cheap-tier o
 ### SK-LLM-023 — Cerebras (gpt-oss-120b) leads the strict-$0 planner-tier chain
 
 **Body:** [`decisions/SK-LLM-023-cerebras-planner-tier.md`](./decisions/SK-LLM-023-cerebras-planner-tier.md).
-Adds Cerebras (`gpt-oss-120b`, OpenAI-compatible, card-free) at the head of the `plan` / `schema_infer` chain: `[cerebras, gemini, groq, workers-ai, openrouter]`. Extends [`SK-LLM-003`](#sk-llm-003); the eval free lane carries the identical chain. A 429 fails over to Gemini.
+Adds Cerebras (`gpt-oss-120b`, OpenAI-compatible, card-free) at the head of the `plan` / `schema_infer` chain: `[cerebras, gemini, groq, workers-ai, openrouter]`. Extends [`SK-LLM-003`](#sk-llm-003); the eval free lane carries the identical chain.
 
 ### SK-LLM-024 — Deterministic greedy decoding (temperature 0) across the whole free planner chain
 
@@ -184,28 +184,31 @@ lexicographically (`'100' < '9'`). Targets *Implicit Type Conversion* (C1,
 
 **Body:** [`decisions/SK-LLM-036-workers-ai-structured-response.md`](./decisions/SK-LLM-036-workers-ai-structured-response.md).
 The Workers AI REST endpoint returns valid-JSON model output pre-parsed as an
-object; the string-only check rejected exactly the successful `plan` calls,
-running the free chain as 5-of-6. Accept string *or* object; re-serialize
-objects so `parseJsonResponse` stays the single JSON entry point.
+object; accept string *or* object and re-serialize objects so
+`parseJsonResponse` stays the single JSON entry point.
 
 ### SK-LLM-037 — Goal-relevant schema pruning in the planner prompt (recall-first, table-granular)
 
 **Body:** [`decisions/SK-LLM-037-goal-relevant-schema-pruning.md`](./decisions/SK-LLM-037-goal-relevant-schema-pruning.md).
 `buildPlanUser` prunes the embedded schema via the pure
 `pruneSchemaForGoal`: keep token-matched tables + their `REFERENCES`
-closure, full schema on any doubt (small schema, zero matches, ≥ 0.9 kept,
-unparseable, retry). Offline-verified on BIRD-dev 500: 99.8% gold-table
-recall, −7.1% schema chars (Spider 2.0-lite: −26.5%).
+closure, full schema on any doubt. BIRD-dev 500: 99.8% gold-table recall,
+−7.1% schema chars (Spider 2.0-lite: −26.5%).
 
 ### SK-LLM-038 — Retry the chain-tail provider once on a transient failure
 
 **Body:** [`decisions/SK-LLM-038-tail-transient-retry.md`](./decisions/SK-LLM-038-tail-transient-retry.md).
 When the **last** provider in a chain fails `network`/`http_5xx`, the
-router retries it once (150 ms backoff, abort-aware) before throwing.
-Closes the [`SK-LLM-028`](#sk-llm-028) tail gap — a transient
-`mistral:network` blip no longer permanently loses the request (the 3
-`no_sql` rows on `baseline-2026-06-15.json`). Strictly additive; tail-only
-⇒ zero added latency on any currently-succeeding call.
+router retries it once (150 ms backoff, abort-aware) before throwing —
+closes the [`SK-LLM-028`](#sk-llm-028) tail gap. Strictly additive,
+tail-only ⇒ zero added latency on any currently-succeeding call.
+
+### SK-LLM-039 — Classify 401/403 as `auth_denied`, distinct from `http_4xx`
+
+**Body:** [`decisions/SK-LLM-039-auth-denied-reason.md`](./decisions/SK-LLM-039-auth-denied-reason.md).
+`httpError` maps 401/403 to a distinct `auth_denied` reason so a chain
+exhausting on a locked-out key reads `gemini:auth_denied`, not an opaque
+`gemini:http_4xx`. Breaker unchanged — pure observability gain.
 
 ### SK-LLM-033 — Schema-inference prompt requires insertable sample rows
 
