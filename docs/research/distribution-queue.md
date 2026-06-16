@@ -5,6 +5,80 @@ One publishable artifact drafted per day by the daily agent
 publishes at the weekly session. Newest first. Delete an entry once published
 (the live URL goes into `docs/scorecard.md`).
 
+## 2026-06-16 (run 11) — dev.to / lobste.rs post
+
+**Title:** Failover, retry, repair: the three error classes in an LLM text-to-SQL pipeline
+
+**Body:**
+
+> A few days ago I wrote that a failover chain is not the same as a retry
+> policy. Failover is "this provider is bad, try the next one." Retry is "this
+> provider is fine, the network hiccupped." Today I found the third member of
+> that family, and it's the one that was quietly costing us the most.
+>
+> Our text-to-SQL engine turns a plain-English question into SQL, then runs it.
+> The run step had exactly one failure mode in its head: the database is
+> unreachable. So when a query threw, it did the obvious thing — retried the
+> *same SQL* a couple of times, then gave up with "couldn't reach the
+> database."
+>
+> But look at what Postgres actually throws. `42703 column "revenue" does not
+> exist`. `42803 column must appear in the GROUP BY clause`. `42883 operator
+> does not exist: text = integer`. These are not the database being
+> unreachable. The database is right there, and it's telling you *exactly*
+> what's wrong with the query. And here's the thing that makes retry useless:
+> they're **deterministic**. The same SQL against the same schema fails the
+> same way every time. Retrying it three times is three guaranteed failures and
+> a slower error message.
+>
+> The error classes are distinct, and each wants a different response:
+>
+> - **Connection dropped / 5xx** → *retry*. Same SQL, the transient clears.
+> - **Provider down** → *failover*. Different provider, same request.
+> - **The SQL is wrong in a fixable way** → *repair*. Same goal, **re-plan
+>   with the error fed back.**
+>
+> That third one is the highest-value move in text-to-SQL, and it was the one
+> we weren't making. The fix is almost embarrassing in hindsight: when the
+> database returns a re-plannable error, hand the model its own goal plus the
+> exact error string ("you wrote `revenue`, here's why that failed") and let it
+> re-plan **once**. A wrong column becomes the right column. A missing GROUP BY
+> gets added. The model is good at this — it just never saw the error, because
+> the run step was busy treating a diagnostic message as a network blip.
+>
+> Three guardrails kept it honest:
+>
+> 1. **Bound it to one re-plan.** Execution-guided repair can loop forever if
+>    you let it. One shot, then surface the failure.
+> 2. **Only on the deterministic error classes.** A connection drop still
+>    retries; a missing *table* (vs. a missing column) is a different bug class
+>    we route elsewhere. Repair is for "the SQL is malformed but fixable."
+> 3. **Reads only.** A repaired query that comes back as a `DELETE` is rejected,
+>    never executed — repair must not smuggle a write past the preview gate.
+>
+> The payoff is asymmetric: zero added latency on every query that already
+> works (repair only fires on the failure path), and it converts a class of
+> dead-ends into answers. And it compounds with model quality for free — a
+> better model reads the error better, so the same scaffolding gets stronger
+> the moment you swap the model.
+>
+> The principle worth stealing: **before you retry, ask whether the thing that
+> failed is going to fail the same way again.** If it is, you don't have a
+> transient — you have a diagnosis. Feed it back.
+>
+> (nlqdb is a database you query in plain English; the repair loop above is in
+> the NL→SQL engine. Benchmark deltas are public.)
+
+**Why this is publishable:** completes the failover → retry → **repair**
+taxonomy from the run-5 post with the highest-value member, and the
+"deterministic error = diagnosis, not transient" framing is a genuinely useful
+lesson for anyone wiring an LLM to a real backend (DB, API, compiler).
+Execution-guided repair is well-known in the text-to-SQL literature, so the
+post lands as "here's how we wired it cleanly," not a novelty claim. Mentions
+nlqdb once, in context.
+
+---
+
 ## 2026-06-16 (run 10) — dev.to / lobste.rs post
 
 **Title:** "Auto-re-probes so it recovers without a deploy" — a comment that was quietly false
