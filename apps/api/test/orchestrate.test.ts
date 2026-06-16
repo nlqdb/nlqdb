@@ -385,6 +385,57 @@ describe("orchestrateAsk", () => {
     expect(exec).toHaveBeenCalledTimes(1);
   });
 
+  it("SK-ASK-022: a repaired cache HIT overwrites the poisoned entry — no repeat repair", async () => {
+    // A stale cached plan (the schema drifted past the column it names)
+    // now fails 42703 on a cache HIT. Repair fixes it for this request;
+    // the fix must also overwrite the poisoned entry so the NEXT identical
+    // request is served the repaired SQL — not re-paying the failed exec +
+    // repair plan call on every hit. Before this, `if (!cacheHit)` skipped
+    // the write on a repaired hit, leaving the bad SQL cached forever.
+    let stored: CachedPlan = {
+      sql: "SELECT total FROM orders",
+      schemaHash: "schema_v1",
+      model: "stale",
+      confidence: 1,
+    };
+    const cache = {
+      lookup: vi.fn(async () => stored),
+      write: vi.fn(async (_s: string, _q: string, plan: CachedPlan) => {
+        stored = plan;
+      }),
+    } satisfies PlanCache;
+    const plan = vi.fn(async () => ({
+      sql: "SELECT id FROM orders",
+      model: "m2",
+      confidence: 0.9,
+    }));
+    const llm = { ...stubLLM(), plan } as unknown as LLMRouter;
+    const exec = vi.fn(async (_db: DbRecord, sql: string) => {
+      if (sql.includes("total")) {
+        throw Object.assign(new Error('column "total" does not exist'), { code: "42703" });
+      }
+      return { rows: [{ id: 1 }], rowCount: 1 } satisfies QueryResult;
+    });
+    const deps = makeDeps({ planCache: cache, llm, exec });
+
+    const first = await orchestrateAsk(deps, { goal: "order ids", dbId: "db_1", userId: "user_1" });
+    const second = await orchestrateAsk(deps, {
+      goal: "order ids",
+      dbId: "db_1",
+      userId: "user_1",
+    });
+
+    expect(first.ok && second.ok).toBe(true);
+    // The poisoned entry was overwritten with the repaired SQL (once).
+    expect(cache.write).toHaveBeenCalledTimes(1);
+    expect(stored.sql).toBe("SELECT id FROM orders");
+    // Measured delta over two identical hits: repair plan calls 2 → 1 and
+    // failed execs 2 → 1. Request 2 is served the repaired SQL directly:
+    // exec = req1 (1 failed + 1 repaired) + req2 (1 clean) = 3, not 4.
+    expect(plan).toHaveBeenCalledTimes(1);
+    expect(exec).toHaveBeenCalledTimes(3);
+  });
+
   it("SK-ASK-019: exec PG 3F000 (schema does not exist) → schema_mismatch, no retry", async () => {
     // Orphan D1 row → schema dropped from Neon. PG raises 3F000 not 42P01
     // because the schema name in the qualified reference is gone. SELECT

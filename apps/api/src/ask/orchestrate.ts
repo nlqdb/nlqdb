@@ -438,7 +438,16 @@ export async function orchestrateAsk(
   // a plan that EXECUTES; caching the former poisons every subsequent
   // request with the same goal. KV blip on the write is still non-fatal
   // (we already have rows for this request).
-  if (!cacheHit) {
+  //
+  // SK-ASK-022 — a cache *hit* that was execution-guided-repaired also
+  // writes: the cached SQL was a poisoned entry (a stale plan whose
+  // column/grain the schema has since drifted past) that just failed
+  // exec, and the repaired SQL is what actually executed. Overwriting it
+  // de-poisons the entry so the next identical request is served the
+  // repaired SQL directly — without re-paying the failed exec + repair
+  // plan call on every hit. Consistent with SK-ASK-015 (we cache only
+  // what executed).
+  if (!cacheHit || execRepaired) {
     const fresh: CachedPlan = {
       sql: planSql,
       schemaHash,

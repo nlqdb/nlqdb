@@ -15,15 +15,14 @@ until then the daily lever targets the worst number below)*
 (funnel/distribution lane) — gated by the engine (GLOBAL-027 valve), so the
 engine-side worst, Spider 0.1704 vs 0.75, owns it. The Gemini-restore lever is
 **human-blocked** (Google console, runs 6–7) and a full eval is impractical
-in-session (no local fixtures, free providers rate-limited). **Run 11 takes a
-NOT-blocked EX lever (shipped, SK-ASK-022):** the `/v1/ask` executor never
-fed a Postgres exec error back to the planner — a re-plannable error (a wrong
-column, a GROUP BY omission, a type mismatch) was replayed identically 3× then
-surfaced `db_unreachable`. The `previousAttempt` plumbing + diagnostic re-plan
-prompt already existed (SK-LLM-018/037); the only gap was the route. Now such
-an error re-plans **once** with the DB error fed back. Execution-guided repair
-is the highest-EX technique in text-to-SQL — and unlike the Gemini leg, no
-console click gates it. The full BIRD/Spider delta lands on the next scheduled
+in-session (no local fixtures, free providers rate-limited). **Run 12 closes
+the cache half of run 11's repair (shipped, SK-ASK-022 rev):** execution-guided
+repair (run 11) fixed a re-plannable PG error in-flight, but on a cache **hit**
+the poisoned entry stayed cached (`if (!cacheHit)` skipped the write), so every
+later identical request re-failed exec + re-ran the repair plan call. A repaired
+cache hit now writes the repaired SQL back (`if (!cacheHit || execRepaired)`),
+de-poisoning the entry — consistent with SK-ASK-015 (cache only what executed).
+Not console-gated. The full BIRD/Spider delta lands on the next scheduled
 quality-eval (engine row still fresh, < 7 d); the in-session proxy is below.
 
 | # | Metric | Value | Target / note |
@@ -69,6 +68,23 @@ quality-eval (engine row still fresh, < 7 d); the in-session proxy is below.
 
 ## Deltas (recent runs)
 
+- 2026-06-16 (run 12) — **a repaired cache HIT de-poisons its entry
+  (SK-ASK-022 rev).** Run 11 fed a re-plannable PG error back to the planner,
+  but the cache-write was gated `if (!cacheHit)` — so a repair that fired on a
+  cache *hit* (a stale plan the schema has drifted past, failing 42703 on
+  lookup) fixed that one request and left the bad SQL cached. Every later
+  identical request re-paid: cache hit → failed exec → repair plan call →
+  repaired exec. Now the write fires on `!cacheHit || execRepaired`, overwriting
+  the poisoned entry with the SQL that actually executed (consistent with
+  SK-ASK-015). **Measured (orchestrator unit test, two identical cache-hit
+  requests against a poisoned entry):** repair plan calls over the pair
+  **2 → 1**, failed exec round-trips **2 → 1** (total exec 4 → 3); the second
+  request is served the repaired SQL directly. KPI: performance (GLOBAL-025),
+  with an engine-quality assist (the cache stops serving SQL the schema drifted
+  past). None degraded — failure-path only (a hit that execs clean still skips
+  the write), SK-ASK-015's miss-path gating untouched, the repaired SQL was
+  already validated + write-blocked by run 11. 809 api tests green (was 808).
+  Full BIRD/Spider EX delta → next scheduled quality-eval.
 - 2026-06-16 (run 11) — **execution-guided repair: feed a re-plannable PG
   exec error back to the planner (SK-ASK-022).** A deterministic-but-fixable
   exec error (42703 undefined_column, 42803 GROUP BY, 42883/42725 function,

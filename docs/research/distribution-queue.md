@@ -5,6 +5,55 @@ One publishable artifact drafted per day by the daily agent
 publishes at the weekly session. Newest first. Delete an entry once published
 (the live URL goes into `docs/scorecard.md`).
 
+## 2026-06-16 (run 12) — dev.to / lobste.rs post
+
+**Title:** Your query cache is lying to you the moment the schema drifts
+
+**Body:**
+
+> Yesterday I wrote about *execution-guided repair*: when a generated SQL query
+> hits a fixable database error — a wrong column, a missing GROUP BY — you hand
+> the model the error and let it re-plan once. A wrong column becomes the right
+> column. Clean win.
+>
+> Then I noticed it was winning the same fight over and over.
+>
+> We cache query plans. A plain-English goal maps to a `(schema_hash,
+> query_hash)` key, and the SQL we generated for it lives in that slot so the
+> next person asking the same thing skips the model entirely. Standard stuff.
+> And we already had the one discipline that keeps a plan cache honest: **only
+> cache SQL that actually executed.** A query the model emits and the validator
+> accepts is *not* the same as a query that ran — caching the former poisons
+> every future request. So we gate the write on a successful run.
+>
+> But schemas drift. A column gets renamed. A plan that was cached last week,
+> back when `total` existed, is still sitting in the slot — and it executed fine
+> *then*, so it passed the gate honestly. Today someone asks the same question,
+> we serve the cached SQL straight from the slot, and it throws `column "total"
+> does not exist`. Repair kicks in, fixes the column, returns the right answer.
+>
+> Here's the bug: the cache write was gated on `if (cache_miss)`. A repair that
+> fired on a cache **hit** never wrote anything back. So the poisoned entry just
+> sat there. The *next* identical request hit the same stale SQL, failed the
+> same way, and re-ran the same repair — a wasted database round-trip and a
+> wasted model call, every single time, forever.
+>
+> The fix is one boolean: write the cache when the request missed **or** when a
+> repair fired. The SQL that comes out of repair is, by definition, SQL that
+> just executed — exactly what the "only cache what ran" rule wants in the slot.
+> Overwriting the stale entry turns a per-request tax into a one-time cost: the
+> first asker pays for the repair, everyone after gets the corrected SQL for
+> free.
+>
+> The general lesson, and the part I keep relearning: a cache invariant you
+> enforce at *write* time ("only store what executed") silently rots at *read*
+> time, because the world the entry described has moved on. A self-healing read
+> path — repair on failure — is only half a fix if it doesn't write its
+> correction back. Heal the request *and* heal the cache, or you heal the same
+> request forever.
+
+---
+
 ## 2026-06-16 (run 11) — dev.to / lobste.rs post
 
 **Title:** Failover, retry, repair: the three error classes in an LLM text-to-SQL pipeline
