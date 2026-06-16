@@ -48,9 +48,9 @@ the memory-shaped primitives that make the wedge claims durable).
 
 | Area | Change | Owned by |
 |---|---|---|
-| **Docs decisions** | New **GLOBAL-036** (lead positioning, dual front door). **GLOBAL-019** wording corrected (Apache-2.0 today → FSL-1.1→Apache). This feature's `SK-PIVOT-*` carry the tactical calls. | GLOBAL-036, WS-09 |
+| **Docs decisions** | New **GLOBAL-036** (lead positioning, dual front door). **GLOBAL-019** + `architecture.md §0` wording corrected to FSL-1.1→Apache in this PR (the license is already FSL-1.1-ALv2; this only syncs the stale description). This feature's `SK-PIVOT-*` carry the tactical calls. | GLOBAL-036 |
 | **Scorecard / daily loop** | A **Pivot — agent-memory wedge** section in `docs/scorecard.md` carries **one row per worksheet** (13 WS + 7 E = 20 rows), ticked ⬜→✅ with the PR link on merge. The loop's normal *measure first → pick the worst number → smallest lever* flow surfaces the pivot through that table — **no `.claude/commands/daily.md` changes**. The weekly focus number stays founder-set. | this PR (`scorecard.md`) |
-| **Architecture** | `architecture.md §0` "Open source … Apache-2.0" corrected to FSL-1.1. `§2.1` gains the `/agents` route (a path on `nlqdb.com`, **no new domain**). `§0.1` already uses `nlqdb_query("memory", …)` — kept. | WS-09 |
+| **Architecture** | `architecture.md §0` "Open source … Apache-2.0" corrected to FSL-1.1 in this PR. `§2.1` gains the `/agents` route (a path on `nlqdb.com`, **no new domain**). `§0.1` already uses `nlqdb_query("memory", …)` — kept. | this PR (§0); WS-07 (§2.1 route) |
 | **Phase plan** | Phase 2 already targets "1 agent product publicly uses nlqdb as memory" — the wedge content is folded into Phase 2 distribution. The **self-host container** (`ghcr.io/nlqdb/api`) is pulled forward from Phase 3 so the self-host claim is true before `/agents` leads with it. | WS-10 |
 | **Home page & product/APIs** | Home reweights to agent-memory-primary with a demoted "also works for…" fold; new `/agents` deep landing; Mem0+Zep+Letta+LangMem capability matrix; sharpened solve page(s); **MCP tool + package descriptions carry the agent-memory framing** (highest-leverage agent-facing surface, today silent); on-brand demo + per-page OG images. Headline/README/llms.txt swap is **founder-gated, sequenced last**. | WS-01…WS-08, WS-11 |
 | **Engine / actual architecture** | A canonical `agent_memory_v1` schema preset (`facts` / `episodes` / `entities` / `entity_facts`) shipped as a built-in `db.create` path. **Additive** MCP tools `nlqdb_remember` + `nlqdb_recall` (existing `nlqdb_query` contract unchanged — SK-MCP-002). Compile-layer scope predicate (per-agent / per-end-user / per-thread) — security-critical, dual-gated by `sql-validate`. TTL + cron sweep (Mem0/Zep parity). pgvector hybrid recall (closes the honest gap the solve page admits today). `/agents` CreateForm uses the preset. Workload-analyzer rule routes large memory DBs to ClickHouse (Phase 3 — first auto-migration proof point). | E-01…E-07 |
@@ -231,11 +231,12 @@ the memory-shaped primitives that make the wedge claims durable).
   Leading on an unshipped claim burns trust (the exact failure the
   `ResearchReceipts` "show your work" section guards against).
 - **Consequence in code & docs:** `GLOBAL-019` and `architecture.md §0`
-  wording corrected from "Apache-2.0 today" to "FSL-1.1-ALv2 → Apache-2.0".
-  `/agents`, `README`, and the manifesto state the self-host angle in
-  FSL-accurate terms. Pulling the container forward is a larger, infra-touching
-  slice (WS-10) flagged as multi-run and founder/infra-gated — it is **not** a
-  copy-only run.
+  wording corrected from "Apache-2.0 today" to "FSL-1.1-ALv2 → Apache-2.0"
+  (done in this PR — a factual sync, the license is already FSL-1.1-ALv2).
+  `/agents`, `README` body, and the manifesto state the self-host angle in
+  FSL-accurate terms (WS-10). Pulling the container forward (`ghcr.io/nlqdb/api`)
+  is a larger, infra-touching slice (WS-11) flagged as multi-run and
+  founder/infra-gated — it is **not** a copy-only run.
 - **Alternatives rejected:** Relicense to Apache-2.0 now — reverses a
   deliberate FSL choice (Sentry/Convex pattern); a money/legal bet the founder
   declined. · Claim self-host before the image ships — over-claim, violates
@@ -249,7 +250,7 @@ index in [`docs/decisions.md`](../../decisions.md)).
 - **GLOBAL-036** — Lead positioning: analytical memory for AI agents (dual front door).
   - *In this feature:* the canonical positioning decision; every worksheet implements a slice of it.
 - **GLOBAL-019** — Free + Open Source core.
-  - *In this feature:* the anti-VC angle leans on it; WS-09 corrects its stale "Apache-2.0 today" wording to FSL-1.1→Apache.
+  - *In this feature:* the anti-VC angle leans on it; its stale "Apache-2.0 today" wording (and `architecture.md §0`) is corrected to FSL-1.1→Apache in this PR. The FSL-accurate self-host *marketing copy* is WS-10.
 - **GLOBAL-024** — Demand-signal telemetry on every "not yet" path.
   - *In this feature:* every new wedge CTA (matrix "try this", `/agents` waitlist) emits the typed event; the waitlist is the conversion, not the gated product.
 - **GLOBAL-025** — North-star KPIs (advance ≥ 1, degrade 0).

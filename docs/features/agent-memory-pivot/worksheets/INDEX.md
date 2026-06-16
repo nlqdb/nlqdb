@@ -63,7 +63,7 @@ swap.
 | [07](WS-07-agents-landing.md) | Dedicated `/agents` front door | med | ~3 | 06 | — |
 | [08](WS-08-og-images.md) | On-brand OG / social images for the wedge surfaces | low | ~2 | 07 | — |
 | [09](WS-09-blog-and-demo.md) | "Database, not a vector store" blog + live in-page demo | med | ~2 | 06 | — |
-| [10](WS-10-fsl-selfhost-messaging.md) | FSL self-host messaging + fix GLOBAL-019 / architecture §0 wording | low | 1 | — | — |
+| [10](WS-10-fsl-selfhost-messaging.md) | FSL self-host messaging (GLOBAL-019 / arch §0 doc-fix already shipped in the pivot PR) | low | 1 | — | — |
 | [11](WS-11-selfhost-container.md) | Pull the self-host container forward (`ghcr.io/nlqdb/api`) | high | multi | 10 | infra-gated |
 | [12](WS-12-home-reweight.md) | Home reweight: agent-memory primary + demote P1/P3/P4 to an "also works for…" fold | med | ~2 | 06, 07 | — |
 | [13](WS-13-headline-reposition.md) | Headline reposition (wordmark / README / llms.txt / JSON-LD lead) | high | ~2 | 07, 12 | **FOUNDER-GATED** |
@@ -89,7 +89,7 @@ Tick on merge. Keep this list as the durable pivot status (the scorecard's
 - [ ] WS-07 — `/agents` landing
 - [ ] WS-08 — OG / social images
 - [ ] WS-09 — blog + live demo
-- [ ] WS-10 — FSL self-host messaging + doc fix
+- [ ] WS-10 — FSL self-host messaging (copy only; doc-fix shipped in pivot PR)
 - [ ] WS-11 — self-host container (infra-gated)
 - [ ] WS-12 — home reweight + demote personas
 - [ ] WS-13 — headline reposition (founder-gated)

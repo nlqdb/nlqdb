@@ -272,22 +272,13 @@ The standard loop for every change:
 
 ```
 Touch path X
-  → §5 path map gives the FEATURE.md name
-  → read that FEATURE.md fully (5 fields per SK-* decision; the GLOBALs
-    section lists which GLOBAL-NNNs apply — open the relevant file under
-    docs/decisions/ alongside the feature if you need their text)
+  → §5 path map → the FEATURE.md name; read it fully (incl. its GLOBALs)
   → do the work
-  → new decision? apply P4 (D1, D2, D3): resolve open questions,
-    ensure clarity, then add SK-<PREFIX>-NNN (or promote to GLOBAL if
-    cross-cutting)
-  → changed a GLOBAL? edit the GLOBAL's file under docs/decisions/
-    (one place); update any affected feature's *In this feature:*
-    commentary if the change affects how the feature applies the rule
-  → ambiguity or unfamiliar error? web-search current best
-    practices, cite sources (P2)
-  → contradicts a documented decision? STOP, raise to user with
-    the specific ID (P1)
-  → run the §8 quality gates before opening the PR
+  → new decision? apply P4, then add SK-<PREFIX>-NNN (or promote to GLOBAL)
+  → changed a GLOBAL? edit its docs/decisions/ file + affected features (P3)
+  → ambiguity / unfamiliar error? web-search, cite sources (P2)
+  → contradicts a decision? STOP, raise with the ID (P1)
+  → run the §8 quality gates before the PR
 ```
 
 ### 10.1 Adding a new feature
@@ -317,7 +308,6 @@ Per P4 (D1–D3), if you can't fill all five, don't document it yet.
 
 ### 10.3 Tie-breakers when sources disagree
 
-- **Feature says X, code does Y** → feature wins. Fix the code (or, if the code's behaviour is correct, file a P1 to amend the feature — don't silently update either).
-- **`docs/architecture.md` (or `docs/runbook.md`) says X, feature says Y** → feature wins. If you find a stale prose passage that contradicts a feature, fix the prose. Don't change the feature to match stale prose.
-- **A feature has a `### GLOBAL-NNN` block with body text** → convention violation. `docs/feature-conventions.md` §5 says features reference GLOBALs by ID, not by copy. Replace the block with a one-liner reference under `## GLOBALs governing this feature`. The decision body lives only in `docs/decisions/GLOBAL-NNN-<slug>.md`.
-- **Two features disagree on a cross-cutting rule** → the rule should have been a `GLOBAL-NNN`. Promote it (per §10.1) and update both features to copy it.
+- **Feature vs code, or feature vs `architecture.md`/`runbook.md` prose** → the feature wins. Fix the losing side; if the code is actually right, file a P1 to amend the feature rather than silently updating either.
+- **A feature has a `### GLOBAL-NNN` body block** → convention violation (`docs/feature-conventions.md` §5): replace it with a one-line reference; the body lives only under `docs/decisions/`.
+- **Two features disagree on a cross-cutting rule** → it should be a `GLOBAL-NNN`. Promote it (§10.1) and reference it from both.

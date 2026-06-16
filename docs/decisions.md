@@ -46,7 +46,7 @@ grep -rn 'GLOBAL-007' docs/features/
 | [GLOBAL-016](./decisions/GLOBAL-016-mature-packages-no-rc.md) | Reach for small mature packages before DIY; hard-pass on RC on the critical path | every package — baseline | active |
 | [GLOBAL-017](./decisions/GLOBAL-017-one-way-to-do-things.md) | Two endpoints, two CLI verbs, one chat box — one way to do each thing | every surface | active |
 | [GLOBAL-018](./decisions/GLOBAL-018-instant-revocation.md) | Revocation is instant and visible across devices | auth, api-keys | active |
-| [GLOBAL-019](./decisions/GLOBAL-019-apache2-open-source-core.md) | Free + Open Source core (Apache-2.0); Cloud is convenience, not a moat | every package — baseline | active |
+| [GLOBAL-019](./decisions/GLOBAL-019-apache2-open-source-core.md) | Free + Open Source core (FSL-1.1-ALv2, source-available, auto-converts to Apache-2.0); Cloud is convenience, not a moat | every package — baseline | active |
 | [GLOBAL-020](./decisions/GLOBAL-020-zero-config-first-60s.md) | No "pick a region", no config files in the first 60s | web-app, cli, ask-pipeline | active |
 | [GLOBAL-021](./decisions/GLOBAL-021-external-system-ownership.md) | Each external system has one canonical owning module | every package — baseline | active |
 | [GLOBAL-022](./decisions/GLOBAL-022-recoverable-failures-retry-to-success.md) | Recoverable failures retry to success — never surface a fixable error | sdk, ask-pipeline, llm-router, idempotency, observability | active |

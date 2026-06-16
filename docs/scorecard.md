@@ -51,7 +51,7 @@ a denied provider on the first 401/403 — see the delta below.
 | WS-07 | `/agents` landing | ⬜ | med · ~3 runs · WS-06 |
 | WS-08 | on-brand OG / social images | ⬜ | low · ~2 runs · WS-07 |
 | WS-09 | "database, not a vector store" blog + live demo | ⬜ | med · ~2 runs · WS-06 (sharpens with E-01/05) |
-| WS-10 | FSL self-host messaging + GLOBAL-019 / arch §0 fix | ⬜ | low · 1 run · — |
+| WS-10 | FSL self-host messaging (GLOBAL-019 / arch §0 doc-fix shipped) | ⬜ | low · 1 run · — |
 | WS-11 | pull `ghcr.io/nlqdb/api` self-host container forward | ⬜ | high · multi · WS-10 · infra-gated |
 | WS-12 | home reweight + demote P1/P3/P4 to "also works for…" | ⬜ | med · ~2 runs · WS-06, WS-07 |
 | WS-13 | headline reposition (hero / README / llms.txt / JSON-LD) | ⬜ | high · ~2 runs · WS-07, WS-12 · 🔒 **FOUNDER-GATED** |
