@@ -651,6 +651,51 @@ describe("createLLMRouter — circuit breaker", () => {
     ).toBeUndefined();
   });
 
+  it("SK-LLM-039 — a dead key is parked for the long auth cooldown, not re-probed every 60s", async () => {
+    // The default breaker cooldown (60s) is wrong for a 401/403: the denial
+    // is human-gated and an env re-key arrives as a deploy (fresh isolate),
+    // so a 60s re-probe never observed a recovery — it just re-burned a
+    // guaranteed-failed round-trip (and the hedge slot) every minute. Park it
+    // for the long AUTH_DENIED_COOLDOWN_MS (30 min) instead. Measured here as
+    // round-trips over a ~10-min isolate window: 60s cooldown ⇒ ~10 re-probes,
+    // 30-min cooldown ⇒ 1.
+    vi.useFakeTimers();
+    try {
+      const t0 = 1_700_000_000_000;
+      vi.setSystemTime(t0);
+      const denied = fakeProvider("gemini", {
+        plan: new ProviderError("project denied access", "auth_denied", { status: 403 }),
+      });
+      const healthy = fakeProvider("groq", { plan: { sql: "select 1" } });
+      const router = createLLMRouter({
+        providers: [denied, healthy],
+        chains: { plan: ["gemini", "groq"] },
+        circuitBreaker: { failureThreshold: 2, cooldownMs: 60_000 },
+      });
+
+      // First call opens the breaker on the denial.
+      await router.plan({ goal: "g", schema: "s", dialect: "postgres" });
+      expect(denied.calls).toHaveLength(1);
+
+      // Simulate a 10-min isolate serving one plan per minute. With the
+      // default 60s cooldown the dead key would be re-probed each minute;
+      // the long auth cooldown keeps it parked the whole window.
+      for (let m = 1; m <= 10; m++) {
+        vi.setSystemTime(t0 + m * 60_000);
+        await router.plan({ goal: "g", schema: "s", dialect: "postgres" });
+      }
+      expect(denied.calls).toHaveLength(1); // parked, not re-probed
+      expect(healthy.calls).toHaveLength(11);
+
+      // Past the 30-min window the breaker re-probes (a transient 403 heals).
+      vi.setSystemTime(t0 + 31 * 60_000);
+      await router.plan({ goal: "g", schema: "s", dialect: "postgres" });
+      expect(denied.calls).toHaveLength(2);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("SK-LLM-039 — a denied provider surfaces reason=auth_denied in the chain-failure summary", async () => {
     // The observability win: when the whole chain fails, a denied
     // provider reads as `gemini:auth_denied` (project locked out), not an

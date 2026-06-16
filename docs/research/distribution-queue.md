@@ -5,6 +5,65 @@ One publishable artifact drafted per day by the daily agent
 publishes at the weekly session. Newest first. Delete an entry once published
 (the live URL goes into `docs/scorecard.md`).
 
+## 2026-06-16 (run 10) — dev.to / lobste.rs post
+
+**Title:** "Auto-re-probes so it recovers without a deploy" — a comment that was quietly false
+
+**Body:**
+
+> Yesterday I wrote about pulling a permanently-dead LLM provider out of our
+> hedged fast lane: a `403 PERMISSION_DENIED` key that we'd left *out* of the
+> circuit breaker, so it got re-dialed on every request. The fix was to open
+> the breaker on the first `auth_denied` while keeping the skip legible. Good.
+> But the fix shipped with a justification, written in the decision record and
+> the code comment, that I want to come back to — because it was wrong in a
+> way that's easy to miss:
+>
+> > *"Open the breaker for the standard cooldown … the cooldown auto-re-probes,
+> > so a re-keyed provider recovers without a deploy."*
+>
+> The "standard cooldown" is 60 seconds. The sentence sounds reasonable: park
+> the dead provider, but re-check it every minute so that the moment someone
+> fixes the key, traffic flows again — no redeploy required. Self-healing.
+> Who could argue?
+>
+> Two facts kill it. **First, a 401/403 is human-gated.** It is not a capacity
+> blip that clears on its own in 60 seconds; it clears when a person edits a
+> console — billing, an API toggle, an abuse flag. Re-probing every minute is
+> re-asking a question whose answer only changes on human time. **Second — and
+> this is the one I'd missed — for an env-keyed provider, the re-key *is* a
+> deploy.** The key lives in an environment secret. Changing it means a deploy.
+> A deploy spins up fresh worker isolates with fresh in-memory breaker state.
+> So the "recovers without a deploy" path described a recovery that, for our
+> architecture, can never happen: by the time the key is good, the breaker that
+> was supposed to re-probe it no longer exists.
+>
+> Net effect: the 60-second re-probe caught exactly zero recoveries and cost a
+> guaranteed-failed round-trip — plus, on hedged calls, the slow-path hedge
+> slot the live provider behind it should have had — once a minute, for the
+> entire life of every isolate.
+>
+> The fix is one constant. Park an `auth_denied` provider for **30 minutes**,
+> not 60 seconds. Still periodic (a genuinely transient 403 — an abuse flag
+> lifted, a gateway hiccup — still self-heals on the next probe), but a
+> permanent denial now costs ~2 probes an hour instead of ~60.
+>
+> Measured the only way you can without the real key: a unit test with a fake
+> clock, simulating a 10-minute isolate serving one planning call a minute.
+> Before: the dead provider is dialed ~10 times. After: once. Same shape as
+> yesterday's 5 → 1, one level up.
+>
+> The meta-lesson, again: the *cost claim* attached to a decision is the part
+> that rots. "Near-zero, it sits 3rd" was false because the chain reordered.
+> "Recovers without a deploy" was false because the recovery mechanism and the
+> deploy mechanism were the same mechanism. Both read as obviously-true the day
+> they were written. The cheapest audit in software is to take one load-bearing
+> justification per change and ask: *is this still true of the system I have
+> now?*
+>
+> (A `/daily` run on nlqdb, where every change names the number it moves. This
+> one: round-trips to a dead provider over a 10-minute isolate, ~10 → 1.)
+
 ## 2026-06-15 (run 9) — dev.to / lobste.rs post
 
 **Title:** The dead provider in the fast lane: when a hedged request races a 403

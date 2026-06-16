@@ -95,6 +95,18 @@ const DEFAULT_BREAKER = { failureThreshold: 3, cooldownMs: 60_000 };
 // SK-LLM-030 — prod-safe ceiling on a 429-driven cooldown (5 min).
 const DEFAULT_MAX_RATE_LIMIT_COOLDOWN_MS = 5 * 60_000;
 
+// SK-LLM-039 — a 401/403 is a persistent, human-gated denial (bad key,
+// API not enabled, billing unlinked, project abuse-flag); it does not
+// self-heal on a 60s timescale the way a rate limit does, and an env-keyed
+// provider's re-key arrives as a deploy (a fresh isolate with a fresh
+// breaker), so the default 60s re-probe never observed a recovery — it just
+// re-burned a guaranteed-failed round-trip (and, on hedged ops, the hedge
+// slot the live provider behind it should have had) every minute. Park a
+// denied provider for 30 min so the waste is once per half hour, not once
+// per minute, while a periodic re-probe still self-heals the rare genuinely
+// transient 403 (e.g. an abuse-flag lift or gateway hiccup).
+const AUTH_DENIED_COOLDOWN_MS = 30 * 60_000;
+
 // SK-LLM-038 — transient reasons worth a single same-provider retry at
 // the chain tail. `network` (fetch threw) and `http_5xx` (upstream
 // temporarily unavailable) are transient and fast-failing; a retry is
@@ -351,18 +363,20 @@ export function createLLMRouter(opts: LLMRouterOptions): LLMRouter {
     }
     // SK-LLM-039 — a 401/403 is a persistent project/key denial that fails
     // identically on every call (bad key, API not enabled, billing
-    // unlinked, abuse-flag). Open the breaker for the standard cooldown so
-    // we stop burning a guaranteed-failed round-trip — and, on hedged ops,
-    // a wasted hedge slot the live provider behind it should have had — on
-    // every request. The skip still surfaces `auth_denied` (not
-    // `circuit_open`) via `openReason`, keeping the dead provider legible,
-    // and the cooldown auto-re-probes so a re-keyed provider recovers
-    // without a deploy.
+    // unlinked, abuse-flag). Open the breaker on the first denial — for a
+    // long (AUTH_DENIED_COOLDOWN_MS) window, not the default 60s, since the
+    // denial is human-gated and won't clear in a minute — so we stop burning
+    // a guaranteed-failed round-trip (and, on hedged ops, a wasted hedge
+    // slot the live provider behind it should have had) every request. The
+    // skip still surfaces `auth_denied` (not `circuit_open`) via
+    // `openReason`, keeping the dead provider legible, and the long cooldown
+    // still re-probes periodically so a genuinely transient 403 self-heals.
     if (result.reason === "auth_denied") {
       const failures = (breakerState.get(name)?.consecutiveFailures ?? 0) + 1;
       breakerState.set(name, {
         consecutiveFailures: failures,
         openedAt: now,
+        cooldownMsOverride: AUTH_DENIED_COOLDOWN_MS,
         openReason: "auth_denied",
       });
       return;

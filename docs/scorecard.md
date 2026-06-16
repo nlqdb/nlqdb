@@ -15,13 +15,15 @@ until then the daily lever targets the worst number below)*
 (funnel/distribution lane) — gated by the engine (GLOBAL-027 valve), so the
 engine-side worst, Spider 0.1704 vs 0.75, owns it. Its biggest lever (restore
 the dead Gemini leg) is **human-blocked** (Google console, runs 6–7) and a
-full eval is impractical (no local fixtures, free providers rate-limited), so
-**run 9** takes the adjacent measured win: a 2026-06-15 live probe (cerebras
-✅ groq ✅ mistral ✅ openrouter 429 openrouter:free throttle, gemini 403) shows
-the dead Gemini key sits at chain **index 1** and is the **hedge partner** for
-`plan`/`schema_infer` — so every call burned a guaranteed-failed round-trip
-and the slow-path hedge slot. **Run 9 lever (shipped, SK-LLM-039 rev)** parks
-a denied provider on the first 401/403 — see the delta below.
+full eval is impractical (no local fixtures — BIRD DBs not in the HF repo,
+free providers rate-limited), so the recent runs take adjacent measured wins.
+A 2026-06-16 live probe re-confirms the chain: **cerebras ✅ groq ✅ mistral ✅
+openrouter 429** (`:free` throttle, transient) **gemini 403** (project denied,
+still human-blocked). **Run 10 lever (shipped, SK-LLM-039 rev):** the dead
+Gemini key was parked for only the **default 60 s** cooldown, so a busy worker
+isolate re-probed it (and burned the slow-path hedge slot) every minute even
+though a 401/403 is human-gated and an env re-key arrives as a deploy (fresh
+isolate). Park it for **30 min** instead — see the delta below.
 
 | # | Metric | Value | Target / note |
 |---|--------|-------|------|
@@ -66,6 +68,20 @@ a denied provider on the first 401/403 — see the delta below.
 
 ## Deltas (recent runs)
 
+- 2026-06-16 (run 10) — **park a denied provider for 30 min, not 60 s
+  (SK-LLM-039 rev).** Run 9 opened the breaker on the first 401/403 but left
+  the default 60 s cooldown, so a long-lived worker isolate re-probed the dead
+  Gemini key — and re-burned the slow-path hedge slot — once a minute. A
+  401/403 is human-gated (console/billing) and an env re-key arrives as a
+  deploy (which resets the in-memory breaker anyway), so the 60 s re-probe
+  never caught a recovery. New `AUTH_DENIED_COOLDOWN_MS = 30 min`.
+  **Measured (unit test, fake-clock 10-min isolate at 1 plan/min):**
+  round-trips to a dead-key provider **10 → 1** (10×), hedge slot freed for
+  the live provider for the whole window; a transient 403 still self-heals on
+  the periodic re-probe. KPI: performance (GLOBAL-025). None degraded — inert
+  when a key works (a 200 resets the breaker), EX-neutral (provider still
+  re-probed each window), legibility preserved (skip stays `auth_denied`).
+  172 llm tests green (was 171).
 - 2026-06-15 (run 9) — **park a denied provider on the first 401/403
   (SK-LLM-039 rev).** Live probe found the free chain healthy except Gemini
   (403, dead key, human-blocked) and OpenRouter (transient `:free` 429).
