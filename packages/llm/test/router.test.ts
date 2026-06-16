@@ -612,11 +612,13 @@ describe("createLLMRouter — circuit breaker", () => {
     expect(skipSpan?.name).toBe("llm.plan");
   });
 
-  it("SK-LLM-039 — does NOT count auth_denied (401/403) as breaker failures (config bug, not outage)", async () => {
-    // A bad/missing API key surfaces as auth_denied. Counting it against
-    // the breaker just delays surfacing the real config error AND tricks
-    // dashboards into thinking the upstream is unhealthy. The distinct
-    // reason already makes the dead provider legible without the breaker.
+  it("SK-LLM-039 — auth_denied opens the breaker so a dead key is re-hit once, not every call, while the skip stays legible as auth_denied", async () => {
+    // A bad/denied API key surfaces as auth_denied and fails identically on
+    // every call. Leaving it out of the breaker burned a guaranteed-failed
+    // round-trip per request (and, on hedged ops, a wasted hedge slot). Open
+    // the breaker on the first denial so subsequent calls skip it — but
+    // surface the skip as `auth_denied`, not `circuit_open`, so the dead
+    // provider stays legible (the SK-LLM-039 observability win).
     const misconfigured = fakeProvider("gemini", {
       plan: new ProviderError("invalid_api_key", "auth_denied", { status: 401 }),
     });
@@ -627,12 +629,26 @@ describe("createLLMRouter — circuit breaker", () => {
       circuitBreaker: { failureThreshold: 2, cooldownMs: 60_000 },
     });
 
-    // Five consecutive denials — well past the threshold of 2. If
-    // auth_denied counted, gemini would be skipped after request #2.
+    // Five consecutive denials. The first opens the breaker; #2–5 skip the
+    // dead provider entirely — one round-trip instead of five.
     for (let i = 0; i < 5; i++) {
       await router.plan({ goal: "g", schema: "s", dialect: "postgres" });
     }
-    expect(misconfigured.calls).toHaveLength(5);
+    expect(misconfigured.calls).toHaveLength(1);
+    expect(healthy.calls).toHaveLength(5);
+
+    // Legibility preserved: the skip surfaces `auth_denied`, never masked as
+    // a generic `circuit_open` outage.
+    await telemetry.collectMetrics();
+    const counter = metric(telemetry, "nlqdb.llm.failover.total");
+    expect(
+      counter?.dataPoints.find((dp) => dp.attributes["reason"] === "auth_denied"),
+      "expected a failover point with reason=auth_denied",
+    ).toBeDefined();
+    expect(
+      counter?.dataPoints.find((dp) => dp.attributes["reason"] === "circuit_open"),
+      "auth_denied skip must not be masked as circuit_open",
+    ).toBeUndefined();
   });
 
   it("SK-LLM-039 — a denied provider surfaces reason=auth_denied in the chain-failure summary", async () => {
