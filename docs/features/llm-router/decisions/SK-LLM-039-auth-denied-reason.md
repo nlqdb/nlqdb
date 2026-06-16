@@ -1,4 +1,4 @@
-# SK-LLM-039 — Classify 401/403 as `auth_denied` and park the provider for a cooldown
+# SK-LLM-039 — Classify 401/403 as `auth_denied` and park the provider for a long cooldown
 
 Parent feature: [`llm-router/FEATURE.md`](../FEATURE.md). Refines the
 HTTP-status → `FailoverReason` mapping introduced by
@@ -8,14 +8,16 @@ HTTP-status → `FailoverReason` mapping introduced by
 
 - **Decision:** `httpError` maps a 401/403 to a new `auth_denied`
   `FailoverReason` instead of the generic `http_4xx`. The router **opens
-  the breaker on the first `auth_denied`** (standard cooldown, like a
-  health failure but with no 3-strike wait), so subsequent calls skip the
-  denied provider instead of re-hitting it. The skip is recorded as
-  `auth_denied` (not `circuit_open`) via a per-breaker `openReason`, so the
-  dead provider stays legible in attempts, the
-  `nlqdb.llm.failover.total{reason}` metric, and the chain-failure summary.
-  The cooldown auto-re-probes, so a re-keyed provider recovers without a
-  deploy.
+  the breaker on the first `auth_denied`** (no 3-strike wait) for a **long
+  cooldown — `AUTH_DENIED_COOLDOWN_MS` = 30 min, not the default 60s** —
+  so subsequent calls skip the denied provider instead of re-hitting it.
+  The skip is recorded as `auth_denied` (not `circuit_open`) via a
+  per-breaker `openReason`, so the dead provider stays legible in attempts,
+  the `nlqdb.llm.failover.total{reason}` metric, and the chain-failure
+  summary. The long cooldown still re-probes periodically, so a genuinely
+  transient 403 (an abuse-flag lift, a gateway hiccup) self-heals; a
+  permanent denial is re-probed at most ~twice an hour instead of once a
+  minute.
 - **Core value:** Honest latency, Bullet-proof, Fast.
 - **Why:** A 401/403 is not a per-question fault — it is a persistent
   project/key denial (bad/missing key, Generative Language API not
@@ -38,13 +40,21 @@ HTTP-status → `FailoverReason` mapping introduced by
   on a dead provider instead of the live one behind it (groq). Parking it
   on the first denial fixes both: one wasted round-trip per cooldown
   window instead of one per call, and the hedge slot rotates to a live
-  provider — while `openReason` keeps the skip legible.
+  provider — while `openReason` keeps the skip legible. The cooldown is
+  **30 min, not the default 60s**, because the denial is human-gated (a
+  console/billing/key fix, not a self-healing capacity blip) and an
+  env-keyed provider's re-key arrives as a **deploy** — which spins up a
+  fresh isolate with a fresh in-memory breaker anyway — so a 60s re-probe
+  never observed a recovery; it just re-burned the round-trip (and the
+  hedge slot) every minute. 30 min collapses a ~10-probe waste over a
+  10-min isolate window down to one probe.
 - **Consequence in code:** `packages/llm/src/providers/_shared.ts`
   `httpError` returns `auth_denied` for status ∈ {401, 403};
   `packages/llm/src/types.ts` adds the `auth_denied` variant;
   `packages/llm/src/router.ts` opens the breaker on `auth_denied`
-  (`openReason: "auth_denied"` on `BreakerState`) and surfaces
-  `state.openReason ?? "circuit_open"` on the skip. The eval's
+  (`openReason: "auth_denied"` + `cooldownMsOverride: AUTH_DENIED_COOLDOWN_MS`
+  on `BreakerState`) and surfaces `state.openReason ?? "circuit_open"` on
+  the skip. The eval's
   `no_sql_reasons` bucketing (`tools/eval/src/runner.ts`) lifts the tag
   generically, so a run still surfaces `gemini:auth_denied`; it is neither
   `rate_limited` nor `circuit_open`, so `isChainCapacityExhausted` still
@@ -67,4 +77,10 @@ HTTP-status → `FailoverReason` mapping introduced by
   so there is no accessible *free* model to switch to; the
   Google-console/billing fix is tracked in `docs/blocked-by-human.md`. (4)
   Leave it as `http_4xx` — rejected: the whole point is to tell a
-  whole-session denial apart from a one-off bad request.
+  whole-session denial apart from a one-off bad request. (5) Park for the
+  **default 60s cooldown** (the original SK-LLM-039 value) — rejected: a
+  human-gated denial does not clear in 60s and an env re-key arrives as a
+  deploy (fresh isolate), so the 60s re-probe never caught a recovery; it
+  just re-burned the round-trip and hedge slot every minute. The 30-min
+  `AUTH_DENIED_COOLDOWN_MS` keeps a periodic re-probe (transient 403s still
+  heal) while cutting the waste ~10×.
