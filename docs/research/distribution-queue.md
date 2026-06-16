@@ -5,6 +5,59 @@ One publishable artifact drafted per day by the daily agent
 publishes at the weekly session. Newest first. Delete an entry once published
 (the live URL goes into `docs/scorecard.md`).
 
+## 2026-06-16 (run 10) — dev.to / lobste.rs post
+
+**Title:** Ping the model you actually ship, not the gateway: instrumenting a multi-provider LLM chain
+
+**Body:**
+
+> If you front your LLM calls with a failover chain — try the strongest
+> provider, fall through on failure — the most useful diagnostic you can own is
+> a one-command health probe. We have six free-tier providers behind our
+> text-to-SQL engine, and "which ones are alive right now?" is the first
+> question every incident starts with. For weeks we answered it by
+> reconstructing an ad-hoc `curl` from memory. That was a mistake, and not for
+> the reason you'd think.
+>
+> The naive probe pings each provider's API with *some* model and checks for a
+> 200. It'll happily tell you a provider is "up." But your chain doesn't call
+> *some* model — it calls a specific model ID per operation, and on free tiers
+> those IDs have **independent quotas**. Our planner step routes to
+> `qwen/qwen3-coder:free` on OpenRouter; a generic probe hitting
+> `llama-3.1-8b:free` returns 200 while the model your engine actually depends
+> on is returning `429`. You get a green dashboard and a broken product.
+>
+> So the probe has to mirror the chain exactly: read the per-operation model
+> IDs straight out of the provider configs and probe *those*. Ours prints a
+> table — provider, HTTP status, latency, model — and a one-line "healthy
+> planner-tier providers: N/M." Three things fall out of that for free:
+>
+> 1. **Dead key vs. transient throttle is now obvious in one token.** A
+>    `403 PERMISSION_DENIED` that's identical across runs is a key/console
+>    problem a human has to fix. A `429` that comes and goes is a free-tier
+>    rate limit your chain already fails over. Conflating them wastes hours.
+> 2. **Latency-per-provider is a live ordering signal.** When the head of your
+>    chain is 644 ms and the backstop is 935 ms, you can see whether your
+>    ordering still matches reality instead of guessing from a months-old
+>    benchmark.
+> 3. **You catch silent recoveries.** Our last full eval blamed a chunk of
+>    failures on a provider throwing network errors. The probe caught that it
+>    had quietly come back — capacity we'd have kept writing off until the next
+>    expensive benchmark run.
+>
+> Probe upstream directly, even if you proxy through a gateway in prod: the
+> gateway only forwards your auth, so the upstream's status code is the true
+> key/quota signal, and you remove the gateway as a variable. Keep it
+> read-only and a few tokens per call so it's cheap enough to run on every
+> deploy and every incident.
+>
+> The script is ~80 lines and lives in our repo (nlqdb, an open text-to-SQL
+> engine) if you want a starting point. The idea is portable to any provider
+> mix: the chain config is the source of truth; your health check should read
+> from it, not from a constant you'll forget to update.
+
+---
+
 ## 2026-06-15 (run 9) — dev.to / lobste.rs post
 
 **Title:** The dead provider in the fast lane: when a hedged request races a 403
