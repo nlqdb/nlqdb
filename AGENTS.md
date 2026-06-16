@@ -187,6 +187,7 @@ in editors that support it; otherwise read manually before editing.)
 | `apps/web/**` (onboarding, anonymous mode) | `docs/features/web-app/FEATURE.md` |
 | `apps/web/src/data/competitors.ts`, `apps/web/src/pages/vs/**`, `apps/web/src/pages/llms.txt.ts` | `docs/features/comparison-pages/FEATURE.md` |
 | `apps/web/src/data/solve.ts`, `apps/web/src/pages/solve/**` | `docs/features/solve-pages/FEATURE.md` |
+| `apps/web/src/pages/agents/**`, `apps/web/src/data/agentMemoryMatrix.ts`, agent-memory positioning / wedge messaging | `docs/features/agent-memory-pivot/FEATURE.md` |
 | `apps/web/src/onboarding/**`, signup flow, first-query path | `docs/features/onboarding/FEATURE.md` |
 | `apps/docs/**`, `docs.nlqdb.com` Starlight site | `docs/features/docs-site/FEATURE.md` |
 | `.github/workflows/**`, `nlqdb/actions/**` (CI permissions) | `docs/features/ci-permissions/FEATURE.md` |

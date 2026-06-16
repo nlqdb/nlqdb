@@ -38,6 +38,9 @@ creating it is a complete day-one run):
   Web Analytics — `Zone Analytics:Read` granted 2026-06-12), waitlist rows
   (D1 `waitlist`), registered users (D1 `user`), invite-valve crossings,
   first-answer successes.
+- **Pivot:** `N/13 wedge worksheets shipped` from the agent-memory pivot
+  tracker (`docs/features/agent-memory-pivot/worksheets/INDEX.md`) — count
+  the `✅` boxes; this is the durable wedge-progress number.
 - **Engine:** BIRD / Spider from `apps/api/src/gate/eval-baseline.ts` with
   `measured_at` (a date > 7 days old is itself an alert — dispatch the
   canonical quality-eval workflow via `GH_TOKEN_WORKFLOW` and record the run
@@ -52,6 +55,14 @@ Pick the smallest change that moves the weekly focus number (or, if none is
 set, the worst number). State the before-value, make the change, re-measure
 the same way, write the delta into the scorecard. One lever per run — not
 three.
+
+When the worst number is in the **funnel / distribution lane**, the
+**agent-memory pivot backlog** is your pre-sequenced lever list:
+[`docs/features/agent-memory-pivot/worksheets/INDEX.md`](../../docs/features/agent-memory-pivot/worksheets/INDEX.md).
+Pick the lowest-numbered `⬜` worksheet whose prereqs are `✅` (skip
+`FOUNDER-GATED` / `infra-gated` ones), do one slice, tick its box. The pivot
+is **additive and reversible** until WS-13; never re-escalate the GLOBAL-027
+gate or touch the WS-13 lead strings without a founder go.
 
 ### 3 — One artifact out
 
