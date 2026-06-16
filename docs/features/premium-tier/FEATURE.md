@@ -56,7 +56,7 @@ when-to-load:
 - **Alternatives rejected:**
   - Flat per-query premium price ($0.05/query) — opaque; bad queries that cost us $0.50 are subsidised by good ones that cost $0.005, and customers can't audit. Rejected for the pricing-honesty stance in `docs/architecture.md §5`.
   - Token-bucket "credits" sold in $10 packs — easier billing UX, but requires an internal currency that needs accounting + refund + expiration policy + tax surface. Postpone until pass-through pricing produces enough complaints to justify the extra surface.
-  - 10–30% markup — defensible eventually, but the open-source / Apache-2.0 positioning (`GLOBAL-019`) means we explicitly compete with self-hosting; +0% is the price floor that matches the value claim ("we route, you don't have to").
+  - 10–30% markup — defensible eventually, but the open-source / FSL self-host positioning (`GLOBAL-019`) means we explicitly compete with self-hosting; +0% is the price floor that matches the value claim ("we route, you don't have to").
 - **Source:** docs/architecture.md §5 · docs/architecture.md §6 · docs/features/llm-router/FEATURE.md ("How credits flow into the product without breaking UX")
 
 ### SK-PREMIUM-003 — The user-facing knob is goal-first presets, not raw model names
@@ -155,7 +155,7 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
   - *In this feature:* The `nlqdb.premium.spend_usd_cents` gauge and `nlqdb.premium.cap_hit.total` counter are wired alongside the existing `gen_ai.*` attributes on the LLM-router span; no new span is needed, only new attributes/metrics.
 - **GLOBAL-017** — Two endpoints, two CLI verbs, one chat box — one way to do each thing.
   - *In this feature:* The `model` preset is the single way to express "I want better accuracy on this DB" — no parallel `--accuracy=high` flag, no `priority=premium` overload of the existing priority hint.
-- **GLOBAL-019** — Free + Open Source core (Apache-2.0); Cloud is convenience, not a moat.
+- **GLOBAL-019** — Free + Open Source core (FSL-1.1-ALv2 → Apache-2.0); Cloud is convenience, not a moat.
   - *In this feature:* The 0% markup in `SK-PREMIUM-002` is the consequence — we explicitly compete with self-hosting. Markup is a future decision that must be re-justified, not a default that drifts upward.
 - **GLOBAL-025** — North-star: engine quality, onboarding, UX — each with explicit KPIs.
   - *In this feature:* Hosted-premium routing and BYOLLM are the levers for the engine north-star (frontier accuracy on real schemas). `SK-PREMIUM-010`'s instrumentation-first cost-per-query histogram is the input to the Phase 3 unit-economics KPI.

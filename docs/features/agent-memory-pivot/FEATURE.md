@@ -51,8 +51,8 @@ the memory-shaped primitives that make the wedge claims durable).
 | **Docs decisions** | New **GLOBAL-036** (lead positioning, dual front door). **GLOBAL-019** + `architecture.md §0` wording corrected to FSL-1.1→Apache in this PR (the license is already FSL-1.1-ALv2; this only syncs the stale description). This feature's `SK-PIVOT-*` carry the tactical calls. | GLOBAL-036 |
 | **Scorecard / daily loop** | A **Pivot — agent-memory wedge** section in `docs/scorecard.md` carries **one row per worksheet** (13 WS + 7 E = 20 rows), ticked ⬜→✅ with the PR link on merge. The loop's normal *measure first → pick the worst number → smallest lever* flow surfaces the pivot through that table — **no `.claude/commands/daily.md` changes**. The weekly focus number stays founder-set. | this PR (`scorecard.md`) |
 | **Architecture** | `architecture.md §0` "Open source … Apache-2.0" corrected to FSL-1.1 in this PR. `§2.1` gains the `/agents` route (a path on `nlqdb.com`, **no new domain**). `§0.1` already uses `nlqdb_query("memory", …)` — kept. | this PR (§0); WS-07 (§2.1 route) |
-| **Phase plan** | Phase 2 already targets "1 agent product publicly uses nlqdb as memory" — the wedge content is folded into Phase 2 distribution. The **self-host container** (`ghcr.io/nlqdb/api`) is pulled forward from Phase 3 so the self-host claim is true before `/agents` leads with it. | WS-10 |
-| **Home page & product/APIs** | Home reweights to agent-memory-primary with a demoted "also works for…" fold; new `/agents` deep landing; Mem0+Zep+Letta+LangMem capability matrix; sharpened solve page(s); **MCP tool + package descriptions carry the agent-memory framing** (highest-leverage agent-facing surface, today silent); on-brand demo + per-page OG images. Headline/README/llms.txt swap is **founder-gated, sequenced last**. | WS-01…WS-08, WS-11 |
+| **Phase plan** | Phase 2 already targets "1 agent product publicly uses nlqdb as memory" — the wedge content is folded into Phase 2 distribution. The **self-host container** (`ghcr.io/nlqdb/api`) is pulled forward from Phase 3 so the self-host claim is true before `/agents` leads with it. | WS-11 |
+| **Home page & product/APIs** | Home reweights to agent-memory-primary with a demoted "also works for…" fold; new `/agents` deep landing; Mem0+Zep+Letta+LangMem capability matrix; sharpened solve page(s); **MCP tool + package descriptions carry the agent-memory framing** (highest-leverage agent-facing surface, today silent); on-brand demo + per-page OG images. Headline/README/llms.txt swap is **founder-gated, sequenced last**. | WS-01…WS-09, WS-12, WS-13 |
 | **Engine / actual architecture** | A canonical `agent_memory_v1` schema preset (`facts` / `episodes` / `entities` / `entity_facts`) shipped as a built-in `db.create` path. **Additive** MCP tools `nlqdb_remember` + `nlqdb_recall` (existing `nlqdb_query` contract unchanged — SK-MCP-002). Compile-layer scope predicate (per-agent / per-end-user / per-thread) — security-critical, dual-gated by `sql-validate`. TTL + cron sweep (Mem0/Zep parity). pgvector hybrid recall (closes the honest gap the solve page admits today). `/agents` CreateForm uses the preset. Workload-analyzer rule routes large memory DBs to ClickHouse (Phase 3 — first auto-migration proof point). | E-01…E-07 |
 
 ## Decisions
@@ -278,7 +278,7 @@ funnel before the wedge content proves itself.
 - **Capability-matrix freshness** — competitors ship fast; a stale `✓/—` is
   worse than none. WS-06 sets a "verified-on" date on the matrix; the daily
   loop treats a date > 60 days old as an alert (mirrors the engine-row rule).
-- **Self-host container scope** — pulling `ghcr.io/nlqdb/api` forward (WS-10)
+- **Self-host container scope** — pulling `ghcr.io/nlqdb/api` forward (WS-11)
   may exceed one daily run and touches infra; the worksheet flags the
   founder/infra gate rather than assuming a copy-only diff.
 - **Headline-reposition trigger** — what evidence trips WS-12 (the gated
