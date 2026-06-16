@@ -8,25 +8,25 @@ Published distribution URLs land here when a queue entry ships.
 until then the daily lever targets the worst number below)*
 
 **Worst number today:** real strangers reaching a first answer = **0**
-(funnel/distribution lane) — gated by the engine (GLOBAL-027 valve), so the
-engine-side worst, Spider 0.1704 vs 0.75, owns it. Its biggest lever (restore
-the dead Gemini leg) is **human-blocked** (Google console, runs 6–7) and a
-full eval is impractical (no local fixtures, free providers rate-limited), so
-**run 9** takes the adjacent measured win: a 2026-06-15 live probe (cerebras
-✅ groq ✅ mistral ✅ openrouter 429 openrouter:free throttle, gemini 403) shows
-the dead Gemini key sits at chain **index 1** and is the **hedge partner** for
-`plan`/`schema_infer` — so every call burned a guaranteed-failed round-trip
-and the slow-path hedge slot. **Run 9 lever (shipped, SK-LLM-039 rev)** parks
-a denied provider on the first 401/403 — see the delta below.
+(funnel/distribution lane), re-confirmed fresh below. The upstream wall is
+distribution (≈0 genuine traffic → 0 genuine waitlist/signups), not the gate
+(GLOBAL-027 valve is open). The engine worst (Spider 0.1704 vs 0.75) is
+downstream; its biggest lever (the dead Gemini leg) stays **human-blocked**
+(Google project denial — re-probed 06-16, still `403 PERMISSION_DENIED` in
+prod *and* the agent env; not a key swap) and local EX is unmeasurable (no DB
+fixtures). **Run 10 (shipped):** the funnel numbers had been carried/eyeballed
+because the daily container firewalls Postgres TCP (:5432). `scripts/funnel-pull.sh`
+pulls every funnel source over HTTPS instead (D1 + KV query APIs, Neon `/sql`),
+bot-filtered — see the delta below.
 
 | # | Metric | Value | Target / note |
 |---|--------|-------|------|
-| | **Funnel — bot-filtered, 2026-06-15** | | walkers = `flow-004-walker` source / `nlqdb-flow004-*` emails |
-| 1 | Visits, 7d (CF Web Analytics) | 94 visits / 147 pageloads | was 114/175 (06-13); walker traffic aged out of the 7d window |
-| 2 | Waitlist rows, real | 1 of 69 | 68 walker/test/probe; the 1 is the founder → ~0 genuine strangers |
-| 3 | Registered users, real strangers | 0 | 7 total = 3 founder + 4 test/dev accounts |
-| 4 | Invite-valve crossings (KV `wl:invite-cap`) | 9/wk (06-13, carried) | cap 200/wk — no exhaustion risk; mostly walker-triggered; not re-pulled this run |
-| 5 | Anon DBs with a recorded first answer | **101 of 101** | instrument fix (runs 1–3) holding; +8 since 06-13. Genuine-stranger subset still ~0 (rows #2/#3) — the real worst-number |
+| | **Funnel — bot-filtered, 2026-06-16** | | one HTTPS pull: `bash scripts/funnel-pull.sh` |
+| 1 | Visits, 7d (CF Web Analytics) | 94/147 (06-15, carried) | RUM GraphQL field not exposed to the agent token → only source still not HTTPS-pullable here |
+| 2 | Waitlist rows, real | **0 of 70** | 48 wshu.net + 20 web-library.net (mail.tm walkers), 1 founder, 1 test → 0 genuine |
+| 3 | Registered users, real strangers | **0 of 7** | canonical D1 `user` (3 founder + 4 test/e2e); the Neon `users` copy (11, walker rows) is not the metric |
+| 4 | Invite-valve crossings (KV `wl:invite-cap`) | 12/wk (prev 26) | cap 200/wk — no exhaustion risk; mostly walker-triggered |
+| 5 | Anon DBs with a recorded first answer | **102 of 102** | +1 since 06-15. Genuine-stranger subset still 0 (rows #2/#3) — the real worst-number |
 | | **Engine — measured 2026-06-12 (fresh, < 7d)** | | `apps/api/src/gate/eval-baseline.ts` |
 | 6 | BIRD raw EX | 0.522 | target 0.65 (GLOBAL-027) |
 | 7 | Spider raw EX | 0.1704 | target 0.75; 36/135 `no_sql` — `gemini:http_4xx` root-caused = whole-project Gemini denial. Run 7 re-probe: 2.5 → 403, **2.0-flash → 429 `limit: 0`** (no free-tier allowance), so the chain is permanently 5-of-6 and no in-code swap fixes it. Recovery = console (blocked-by-human) |
@@ -39,28 +39,27 @@ a denied provider on the first 401/403 — see the delta below.
 
 ## Deltas (recent runs)
 
+- 2026-06-16 (run 10) — **HTTPS funnel puller (`scripts/funnel-pull.sh`).**
+  The daily container firewalls Postgres TCP (:5432), so funnel rows were
+  carried/eyeballed. New one-command pull hits every source over HTTPS (CF D1
+  + KV query APIs, Neon `/sql`), bot-filtered. Surfaced two correctness fixes:
+  (a) the canonical user count is D1 `user` (7), not the Neon `users` copy (11
+  walker rows); (b) freshly re-measured — waitlist 69→70, invite-valve
+  9→12/wk, anon first-answer 101→102 — all still **0 genuine strangers**. KPI:
+  onboarding/observability (the instrument that tells us if onboarding works).
+  None degraded (read-only pulls, no runtime change). Gemini re-probed 06-16:
+  still `403` in prod + agent env (human-blocked).
 - 2026-06-15 (run 9) — **park a denied provider on the first 401/403
-  (SK-LLM-039 rev).** Live probe found the free chain healthy except Gemini
-  (403, dead key, human-blocked) and OpenRouter (transient `:free` 429).
-  Gemini sat at chain index 1 — and was the hedge partner for
-  `plan`/`schema_infer` — yet `auth_denied` was kept out of the breaker, so
-  it ate a guaranteed-failed round-trip (and the slow-path hedge slot) on
-  *every* call. Now the first denial opens the breaker; the skip still
-  surfaces `auth_denied` (not masked as `circuit_open`). **Measured (unit
-  test):** round-trips to a dead-key provider over 5 calls **5 → 1**, and the
-  hedge slot rotates to the live provider behind it. KPI: performance
-  (GLOBAL-025). None degraded — inert when a key works (a 200 never trips it,
-  safe regardless of prod's key), EX-neutral (provider still attempted once
-  per cooldown), legibility preserved. 171 llm + 805 api tests green.
-- 2026-06-15 (run 8) — **deterministic seed-row salvage (SK-HDC-019).**
-  `pruneUninsertableSampleRows` drops only provably-uninsertable rows instead
-  of the SK-HDC-018 all-or-nothing floor. Seeded rows on a one-bad-of-four set
-  **0 → 3**; happy path unchanged. KPI: onboarding + engine-quality.
-- 2026-06-15 (run 7) — **pin-to-2.0 lever falsified (measure-first).**
-  gemini-2.0-flash also returns `429 limit: 0`; both 2.5 (403) and 2.0 dead,
-  no in-code swap recovers the leg. No code shipped; → SK-LLM-039.
-- 2026-06-14/15 (runs 5–6) — tail transient retry (SK-LLM-038; BIRD EX
-  0.522 → 0.528 best-case) · `auth_denied` reason split (SK-LLM-039).
-- 2026-06-13/14 (runs 1–4) — day-one scorecard (metrics 0 → 12); #5
-  instrument fix (`last_queried_at` 0 → 93); Spider `no_sql` per-lane tally.
-  Full history: `progress/quality-score-verification-log.md`.
+  (SK-LLM-039 rev).** Gemini sat at chain index 1 (the `plan`/`schema_infer`
+  hedge partner) yet `auth_denied` was kept out of the breaker, eating a
+  guaranteed-failed round-trip + hedge slot on every call. Now the first
+  denial opens the breaker, still surfacing `auth_denied` (not `circuit_open`).
+  **Measured (unit test):** dead-key round-trips over 5 calls **5 → 1**; hedge
+  slot rotates to the live provider. KPI: performance. None degraded.
+- 2026-06-15 (runs 7–8) — seed-row salvage (SK-HDC-019; seeded 0→3 on a
+  one-bad-of-four set) · pin-to-2.0 Gemini lever falsified (2.0-flash `429
+  limit:0`; no in-code swap recovers the leg → SK-LLM-039).
+- 2026-06-13/15 (runs 1–6) — day-one scorecard (metrics 0→12); #5 instrument
+  fix (`last_queried_at` 0→93); Spider `no_sql` per-lane tally; tail transient
+  retry (SK-LLM-038; BIRD EX 0.522→0.528 best-case). Full history:
+  `progress/quality-score-verification-log.md`.

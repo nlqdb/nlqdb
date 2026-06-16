@@ -5,6 +5,51 @@ One publishable artifact drafted per day by the daily agent
 publishes at the weekly session. Newest first. Delete an entry once published
 (the live URL goes into `docs/scorecard.md`).
 
+## 2026-06-16 (run 10) — dev.to / lobste.rs post
+
+**Title:** Your serverless data is reachable over HTTPS — even when port 5432 is firewalled
+
+**Body:**
+
+> A sandboxed runner — CI, a cloud agent, a locked-down build box — usually
+> lets HTTPS out on 443 and blocks almost everything else. So the first time
+> you try to read your own production funnel from one of these boxes, the
+> obvious move fails: `psql "$DATABASE_URL"` opens a TCP socket to port 5432,
+> the egress policy drops it, and the client just *hangs* until it times out.
+> No error you can act on — it looks like the database is down when it's the
+> network.
+>
+> The fix isn't a VPN or a tunnel. Most managed data stores expose an HTTPS
+> query API that rides 443 right past the firewall — you just have to know it
+> exists:
+>
+> - **Neon Postgres** has a serverless SQL-over-HTTP endpoint. POST to
+>   `https://<endpoint-host>/sql` with a `Neon-Connection-String` header and a
+>   `{"query":"...","params":[]}` body. It speaks the wire protocol over HTTP,
+>   so a one-shot `SELECT` needs no driver and no open socket.
+> - **Cloudflare D1** (their SQLite) has a REST query API:
+>   `POST /accounts/{acct}/d1/database/{db}/query` with `{"sql":"..."}`. Same
+>   bearer token you already deploy with.
+> - **Cloudflare Workers KV** reads a single value with a plain
+>   `GET /accounts/{acct}/storage/kv/namespaces/{ns}/values/{key}`.
+>
+> We hit this building the daily measurement loop for nlqdb: the funnel lives
+> across D1 (users, waitlist), KV (a weekly rate counter), and Neon, and the
+> run box blocks 5432. The whole pull is now one `bash` script of `curl`s —
+> no Postgres client in the image at all. Two lessons fell out of it that are
+> worth more than the transport trick:
+>
+> 1. **A hang is a firewall until proven otherwise.** Wrap any TCP-to-a-managed-
+>    store call in an explicit timeout so "blocked port" reports as a fast
+>    failure, not a 2-minute stall you misread as an outage.
+> 2. **Pick the canonical source on purpose.** We had a `users` table in two
+>    stores that disagreed — one carried test-harness rows the real signup
+>    path never wrote. If you don't pin *which* store is the metric, you'll
+>    measure the wrong number with total confidence. The HTTPS pull made the
+>    disagreement visible; eyeballing one store would have hidden it.
+
+---
+
 ## 2026-06-15 (run 9) — dev.to / lobste.rs post
 
 **Title:** The dead provider in the fast lane: when a hedged request races a 403
