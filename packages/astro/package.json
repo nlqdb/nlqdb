@@ -21,7 +21,7 @@
   },
   "devDependencies": {
     "@nlqdb/elements": "workspace:*",
-    "astro": "^6.4.4",
+    "astro": "^6.4.7",
     "typescript": "^5.6.0",
     "vitest": "^4.1.0"
   }
