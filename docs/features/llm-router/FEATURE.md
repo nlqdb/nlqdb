@@ -170,49 +170,50 @@ Adds Cerebras (`gpt-oss-120b`, OpenAI-compatible, card-free) at the head of the 
 
 ### SK-LLM-034 — Group-by-grain directive in the planner prompt (per-group GROUP BY alignment)
 
-**Body:** [`decisions/SK-LLM-034-group-by-grain-directive.md`](./decisions/SK-LLM-034-group-by-grain-directive.md). One `PLAN_DIRECTIVES` bullet for **Unaligned Aggregation Structure** (E5, [arXiv:2501.09310](https://arxiv.org/pdf/2501.09310)): a "per/each/by `<category>`" goal needs a `GROUP BY` on that column; a guard bounds the inverse regression.
+**Body:** [`decisions/SK-LLM-034-group-by-grain-directive.md`](./decisions/SK-LLM-034-group-by-grain-directive.md). One `PLAN_DIRECTIVES` bullet for **Unaligned Aggregation Structure** (E5, [arXiv:2501.09310](https://arxiv.org/pdf/2501.09310)): a "per/each/by `<category>`" goal needs a `GROUP BY` on that column.
 
 ### SK-LLM-035 — Numeric-text-cast directive in the planner prompt (cast TEXT-declared columns used numerically)
 
 **Body:** [`decisions/SK-LLM-035-numeric-text-cast-directive.md`](./decisions/SK-LLM-035-numeric-text-cast-directive.md).
-One `PLAN_DIRECTIVES` bullet: when the schema declares a column `TEXT` but
-the goal uses it numerically, `CAST(<col> AS REAL)` — SQLite compares TEXT
-lexicographically (`'100' < '9'`). Targets *Implicit Type Conversion* (C1,
-[arXiv:2501.09310](https://arxiv.org/pdf/2501.09310)); prompt-only, ≈55 tokens.
+One `PLAN_DIRECTIVES` bullet: `CAST(<col> AS REAL)` a `TEXT`-declared column
+used numerically — SQLite compares TEXT lexicographically (`'100' < '9'`).
+Targets *Implicit Type Conversion* (C1,
+[arXiv:2501.09310](https://arxiv.org/pdf/2501.09310)); prompt-only.
 
 ### SK-LLM-036 — Workers AI: accept the object-shaped `result.response` a JSON-emitting model returns
 
 **Body:** [`decisions/SK-LLM-036-workers-ai-structured-response.md`](./decisions/SK-LLM-036-workers-ai-structured-response.md).
-The Workers AI REST endpoint returns valid-JSON model output pre-parsed as an
-object; accept string *or* object and re-serialize objects so
-`parseJsonResponse` stays the single JSON entry point.
+The Workers AI REST endpoint returns JSON output pre-parsed as an object;
+accept string *or* object so `parseJsonResponse` stays the one entry point.
 
 ### SK-LLM-037 — Goal-relevant schema pruning in the planner prompt (recall-first, table-granular)
 
 **Body:** [`decisions/SK-LLM-037-goal-relevant-schema-pruning.md`](./decisions/SK-LLM-037-goal-relevant-schema-pruning.md).
-`buildPlanUser` prunes the embedded schema via the pure
-`pruneSchemaForGoal`: keep token-matched tables + their `REFERENCES`
-closure, full schema on any doubt. BIRD-dev 500: 99.8% gold-table recall,
-−7.1% schema chars (Spider 2.0-lite: −26.5%).
+`buildPlanUser` prunes the embedded schema via pure
+`pruneSchemaForGoal` (keep token-matched tables + their `REFERENCES`
+closure, full schema on any doubt). BIRD-dev 500: 99.8% gold-table recall.
 
 ### SK-LLM-038 — Retry the chain-tail provider once on a transient failure
 
 **Body:** [`decisions/SK-LLM-038-tail-transient-retry.md`](./decisions/SK-LLM-038-tail-transient-retry.md).
-When the **last** provider in a chain fails `network`/`http_5xx`, the
-router retries it once (150 ms backoff, abort-aware) before throwing —
-closes the [`SK-LLM-028`](#sk-llm-028) tail gap. Strictly additive,
-tail-only ⇒ zero added latency on any currently-succeeding call.
+The **last** provider in a chain retries once (150 ms backoff, abort-aware)
+on `network`/`http_5xx` before throwing — closes the
+[`SK-LLM-028`](#sk-llm-028) tail gap. Tail-only ⇒ zero added latency.
 
 ### SK-LLM-039 — Classify 401/403 as `auth_denied` and park the provider for a long cooldown
 
 **Body:** [`decisions/SK-LLM-039-auth-denied-reason.md`](./decisions/SK-LLM-039-auth-denied-reason.md).
-`httpError` maps 401/403 to a distinct `auth_denied` reason so a chain
-exhausting on a locked-out key reads `gemini:auth_denied`, not an opaque
-`gemini:http_4xx`. The first denial opens the breaker for a long
-`AUTH_DENIED_COOLDOWN_MS` (30 min, not the default 60s — the denial is
-human-gated) so a dead key isn't re-hit every minute — and its hedge slot
-rotates to a live provider — while the skip still surfaces `auth_denied`,
-not a generic `circuit_open`.
+`httpError` maps 401/403 to a distinct `auth_denied` reason (vs opaque
+`http_4xx`); the first denial opens the breaker for `AUTH_DENIED_COOLDOWN_MS`
+(30 min, human-gated) so a dead key isn't re-hit every minute.
+
+### SK-LLM-040 — Bridge-table closure: keep the M:N junction joining two kept tables
+
+**Body:** [`decisions/SK-LLM-040-bridge-table-closure.md`](./decisions/SK-LLM-040-bridge-table-closure.md).
+After `SK-LLM-037`'s forward `REFERENCES` closure, `pruneSchemaForGoal` also
+keeps any non-kept table referencing ≥ 2 distinct kept tables — the M:N
+junction whose abbreviated FK columns (`mid`, `aid`) miss the goal tokens, so
+the forward-only pass dropped it. High-precision, ratio-guarded; recall 0 → 1.
 
 ### SK-LLM-033 — Schema-inference prompt requires insertable sample rows
 

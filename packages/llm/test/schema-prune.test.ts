@@ -66,4 +66,38 @@ describe("pruneSchemaForGoal", () => {
     const blob = `not ddl at all ${"y".repeat(2100)}`;
     expect(pruneSchemaForGoal(blob, "anything")).toBe(blob);
   });
+
+  // SK-LLM-040 — the M:N junction whose abbreviated FK columns (`mid`,
+  // `aid`) don't token-match the goal. The forward-only closure dropped
+  // it (both parents reference nothing), leaving the planner unable to
+  // join actors to movies; the bridge pass keeps it.
+  const BRIDGE_SCHEMA = [
+    `CREATE TABLE movies (movie_id INTEGER PRIMARY KEY, title TEXT, year INTEGER) ${pad}`,
+    `CREATE TABLE actors (actor_id INTEGER PRIMARY KEY, name TEXT, born TEXT) ${pad}`,
+    `CREATE TABLE roles (mid INTEGER REFERENCES movies(movie_id), aid INTEGER REFERENCES actors(actor_id), character TEXT) ${pad}`,
+    `CREATE TABLE ratings (mid INTEGER REFERENCES movies(movie_id), score REAL) ${pad}`,
+    `CREATE TABLE directors (director_id INTEGER PRIMARY KEY, name TEXT) ${pad}`,
+    `CREATE TABLE studios (studio_id INTEGER PRIMARY KEY, location TEXT) ${pad}`,
+    `CREATE TABLE genres (genre_id INTEGER PRIMARY KEY, label TEXT) ${pad}`,
+  ].join(";\n");
+
+  it("keeps the M:N junction joining two goal-matched tables (SK-LLM-040)", () => {
+    const pruned = pruneSchemaForGoal(
+      BRIDGE_SCHEMA,
+      "Which actors starred in the movie Inception?",
+    );
+    // movies + actors match on name; `roles` matches nothing (mid/aid/
+    // character/roles are all goal-absent) and neither parent references
+    // it — only the bridge pass pulls it in.
+    expect(pruned).toContain("CREATE TABLE movies");
+    expect(pruned).toContain("CREATE TABLE actors");
+    expect(pruned).toContain("CREATE TABLE roles");
+    // `ratings` references only one kept table (movies) ⇒ not a bridge ⇒
+    // stays pruned (precision: detail tables aren't pulled wholesale).
+    expect(pruned).not.toContain("ratings");
+    // Unrelated subgraph stays out.
+    expect(pruned).not.toContain("directors");
+    expect(pruned).not.toContain("studios");
+    expect(pruned).not.toContain("genres");
+  });
 });

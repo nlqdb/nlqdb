@@ -1,4 +1,5 @@
 // SK-LLM-037 — goal-relevant schema pruning for the planner prompt.
+// SK-LLM-040 — bridge-table closure (keep the M:N junction below).
 //
 // Recall-first, table-granular: keep every CREATE TABLE/VIEW whose name
 // or column identifiers share a token with the goal, then close over
@@ -144,6 +145,24 @@ export function pruneSchemaForGoal(schema: string, goal: string): string {
         queue.push(ref);
       }
     }
+  }
+
+  // SK-LLM-040 — bridge/junction closure. A non-kept table that
+  // REFERENCES ≥ 2 distinct kept tables is the M:N join table (e.g.
+  // `roles(mid, aid)`, `student_course`) connecting two already-relevant
+  // entities. Its own name + FK columns are often abbreviated (`mid`,
+  // `aid`) and don't token-match the goal, so the forward closure above
+  // misses it — and without the junction the planner can't write the
+  // join. Adding it is high-precision: a table that joins two relevant
+  // tables is almost certainly the path between them (RSL-SQL
+  // arXiv:2411.00073). Evaluated against the pre-bridge `kept` set so the
+  // pass is single-shot and order-independent (no cascade); the
+  // MAX_KEPT_RATIO guard below still bounds any over-inclusion.
+  const seedKept = new Set(kept);
+  for (const t of tables) {
+    if (seedKept.has(t.name as string)) continue;
+    const linkedKept = new Set(t.references.filter((r) => seedKept.has(r)));
+    if (linkedKept.size >= 2) kept.add(t.name as string);
   }
 
   // Non-CREATE statements ride along only when their text names a kept

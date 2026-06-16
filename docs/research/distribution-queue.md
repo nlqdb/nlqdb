@@ -5,6 +5,87 @@ One publishable artifact drafted per day by the daily agent
 publishes at the weekly session. Newest first. Delete an entry once published
 (the live URL goes into `docs/scorecard.md`).
 
+## 2026-06-16 (run 12) — dev.to / lobste.rs post
+
+**Title:** Your schema-pruner is dropping the one table the query can't do without
+
+**Body:**
+
+> If you feed a database schema to an LLM and ask it for SQL, one of the
+> cheapest accuracy wins is *schema linking*: don't dump all 80 tables into the
+> prompt, send the handful the question actually touches. Small models get
+> measurably better when you remove the distractors. We ship a deterministic
+> version of this — token-overlap between the question and each table's
+> name/columns, then close over foreign keys so the joins still resolve.
+>
+> It quietly had a hole, and it's the kind of hole worth describing because the
+> shape recurs.
+>
+> Picture a movie database. "Which actors starred in *Inception*?" The pruner
+> keeps `movies` (the word "movie" is right there) and `actors` (so is
+> "actors"). Then it closes over foreign keys: from `movies`, follow its
+> references; from `actors`, follow its references. Both come back empty —
+> neither table references anything. Pruner's done. It ships `movies` and
+> `actors` to the model.
+>
+> But you can't join those two tables. The thing that connects them is a third
+> table — `roles`, or `cast_info`, or whatever the M:N junction is called —
+> with columns like `mid` and `aid`. And that table got dropped, for two
+> compounding reasons:
+>
+> 1. **Its name and columns don't match the question.** Nobody asks about
+>    "roles" or "aid"; they ask about actors and movies. So the token-overlap
+>    pass never selects it.
+> 2. **Foreign keys point the wrong way for the closure.** The junction
+>    references `movies` and `actors` — but `movies` and `actors` don't
+>    reference *it*. A closure that follows references *outward from* the kept
+>    tables walks away from the junction every time.
+>
+> So the pruner confidently hands the model exactly the two tables it named,
+> and exactly *not* the table it needs to connect them. The model writes a
+> cross join or hallucinates a foreign key, and your benchmark records a wrong
+> answer that looks like a reasoning failure but is really a context failure.
+>
+> The fix is a single extra pass with a sharp predicate: **after the normal
+> closure, also keep any table that references two or more of the
+> already-kept tables.** That's the signature of a junction — a row that exists
+> to tie two entities together. A detail table hanging off one parent (say,
+> `ratings` referencing only `movies`) references *one* kept table, so it
+> stays pruned; you don't re-inflate the prompt with every child table. Only
+> the connectors get pulled back in.
+>
+> Two things kept it safe. It's evaluated against the *pre-pass* kept set, so
+> adding one junction can't cascade into pulling its neighbours' neighbours —
+> the pass is single-shot and deterministic. And the existing "if we're keeping
+> almost everything anyway, just send the whole schema" guard still backstops
+> the rare dense case.
+>
+> Measured the way a deterministic transform should be: a unit test, no model
+> in the loop. Build the movies/actors/junction schema, prune it, assert the
+> junction is now present and the unrelated tables are still gone. Junction
+> recall on that case went from 0 to 1; the combined effect on the full
+> benchmark lands on the next scheduled eval.
+>
+> The principle worth stealing: **when you prune context for a model, the
+> failure mode that hurts most isn't sending too much — it's silently dropping
+> the one bridge that makes the rest usable.** Recall-first. The asymmetry
+> between "an extra table in the prompt" and "the join is now impossible" is
+> enormous, and it's worth a predicate sharp enough to catch the bridges.
+>
+> (nlqdb is a database you query in plain English; the pruner above feeds its
+> NL→SQL engine. The same function runs in production and in the benchmark
+> harness, so the eval measures exactly what ships.)
+
+**Why this is publishable:** schema linking / context pruning for LLM+database
+work is a 2026-common pattern, and the "forward-only FK closure drops the M:N
+junction" bug is concrete, visual (everyone gets the movies/actors example),
+and broadly applicable — anyone pruning context for a model can mis-handle the
+connectors. The lesson (*recall-first; the bridge matters more than the
+extras*) is general. One nlqdb mention, in context. Sourced from this run's
+shipped change + unit-recall measurement (SK-LLM-040).
+
+---
+
 ## 2026-06-16 (run 11) — dev.to / lobste.rs post
 
 **Title:** Failover, retry, repair: the three error classes in an LLM text-to-SQL pipeline
@@ -265,198 +346,4 @@ fixed it deterministically" story. One soft product mention at the end.
 
 ---
 
-## 2026-06-15 (run 7) — dev.to / lobste.rs post
-
-**Title:** The obvious workaround was also dead — and we only found out because we measured it first
-
-**Body:**
-
-> Quick follow-up to yesterday's post about finding a provider in our
-> text-to-SQL fallback chain that had been locked out (`403 PERMISSION_DENIED`)
-> on every call for weeks. That post ended with a tidy plan: the key was denied
-> the `gemini-2.5` family, but a quick probe showed `gemini-2.0` answered, so
-> the cheap fix was obviously to pin the default model down to `2.0-flash` and
-> move on.
->
-> It was wrong, and the reason is worth a paragraph.
->
-> Before changing a line of code, I ran the *actual* request our provider
-> sends — to `gemini-2.0-flash`, the model we were about to pin to. It came
-> back `429`. Fine, a rate limit, the chain handles those. Except the body
-> wasn't an ordinary rate limit:
->
-> ```
-> HTTP 429  "Quota exceeded for metric:
->   generativelanguage.googleapis.com/generate_content_free_tier_requests,
->   limit: 0, model: gemini-2.0-flash"
-> ```
->
-> `limit: 0`. Not "you used up your 200 requests" — the free-tier *allowance
-> itself is zero*. The day before, I'd read the same model's `429` as
-> "access OK, just throttled" and built a plan on it. Probing the workaround
-> directly — not the model we were leaving, the one we were moving *to* —
-> showed the whole project is off the free tier on every model: `2.5` returns
-> a hard 403, `2.0` returns a soft-looking 429 that's actually a 0-quota wall.
-> There was no free model to switch to. The "cheap in-code fix" was a dead end
-> dressed up as a 429.
->
-> The lesson isn't about Google's quota semantics (though `limit: 0` vs a real
-> throttle is a nasty ambiguity — both are `429`, only the body tells you
-> which). It's this: **a workaround is a hypothesis, and the cheapest place to
-> test it is before you ship it.** Once you've root-caused a problem it's
-> tempting to let the *fix* ride on an assumption you never checked as hard as
-> the diagnosis. The diagnosis was solid — the provider really is locked out.
-> The fix rested on one unverified clause ("but 2.0 works"), and it was false.
->
-> Measuring the fix cost one `curl`. Shipping it and discovering `2.0` was
-> also dead would have cost a deploy, a confusing benchmark run, and a second
-> round of "wait, why didn't that help."
->
-> (This was a `/daily` run on nlqdb, a database you query in plain English;
-> the chain above is its NL→SQL engine. The day's "win" was a change we
-> *didn't* make — and the record correction that stops the next person from
-> making it.)
-
-**Why this is publishable:** the relatable twist on the four-post legibility
-arc — the satisfying root-cause led to a confident fix that measurement
-killed. Lesson (*test the workaround with the rigor you spent on the
-diagnosis*) lands for any engineer, not just LLM-chain builders. One nlqdb
-mention, in context. Sourced from this run's live re-probe (`limit: 0`) +
-SK-LLM-039.
-
----
-
-## 2026-06-15 (run 6) — dev.to / lobste.rs post
-
-**Title:** A provider in our LLM fallback chain was locked out for weeks — the error label hid it
-
-**Body:**
-
-> This is the fourth post in an accidental series about one benchmark number
-> and the failures hiding behind it. Each post the failing questions got a
-> little more legible; this one finds a provider that had been contributing
-> *nothing* and nobody noticed, because the error code we logged was too
-> coarse to say so.
->
-> Setup, briefly: our text-to-SQL engine runs a chain of six free LLM
-> providers with failover. When a question produces no SQL at all, we now
-> tally *why* — the per-provider failure reason for every provider in the
-> chain (that was the last two posts). On our Spider benchmark, a big slice
-> of the no-SQL questions carried the same tag on one provider:
-> `gemini:http_4xx`.
->
-> `http_4xx` is "the server said 4-something." We'd already learned not to
-> guess (an earlier post falsified an "oversized schema" theory by actually
-> measuring the schemas). So this time I just called the API with the exact
-> request our provider sends. The answer was immediate and stable across
-> every probe:
->
-> ```
-> HTTP 403  { "error": { "code": 403,
->   "message": "Your project has been denied access. Please contact support.",
->   "status": "PERMISSION_DENIED" } }
-> ```
->
-> Not a bad request. Not a rate limit. The project is **denied access** to
-> the entire model family we'd pinned — a persistent, whole-session lockout
-> (it turns out this is a common Google AI Studio state: the API not enabled,
-> or no billing account linked, even on the free tier). That provider had
-> been 403-ing on *every single call*, for weeks. Failover quietly carried
-> every request to the next provider, so nothing broke loudly — we were just
-> silently running five providers where the config said six, and the
-> benchmark's hard-failure rate paid for it whenever the other five hit their
-> limits at the same moment.
->
-> Here's the bug that matters for anyone building these chains: **`401`/`403`
-> are not the same class of failure as `400`/`404`.** A 400 is "this one
-> request was malformed" — retry the next one, it might be fine. A 403
-> "denied access" is "this provider is offline for you until a human fixes a
-> key" — it will fail identically forever. Lumping both under one `4xx`
-> bucket means a dead provider looks exactly like a stream of unlucky
-> one-off errors. The number that would have screamed "your key is locked
-> out" was averaged into noise.
->
-> The fix is a one-token change with outsized payoff: classify `401`/`403`
-> as their own reason, `auth_denied`. Now the failure tally reads
-> `gemini:auth_denied` — "this provider is locked out, go fix the key" — in
-> the place it used to read an ambiguous `http_4xx`. We deliberately *didn't*
-> change the failover behavior (a config bug should stay loudly visible on
-> every attempt, not get masked as a circuit-breaker "outage"); we only made
-> the label honest.
->
-> The principle worth stealing: **your error taxonomy should split on what
-> you'd do about it, not on the HTTP spec.** "Retry the next request" and
-> "page a human to fix a key" are different actions, so they deserve
-> different labels — even though the wire protocol gives them adjacent status
-> codes. Collapse them and you get a dead dependency that hides in plain
-> sight.
->
-> (This was a `/daily` run on nlqdb, a database you query in plain English;
-> the chain above is its NL→SQL engine. Benchmark deltas are public, and
-> apparently so are our embarrassing config bugs.)
-
-**Why this is publishable:** completes the four-post "make the failure
-legible" arc with the most relatable lesson yet — *error codes should split
-on the action you'd take, not on the RFC* — which lands for anyone running
-multi-provider LLM chains, a 2026-common architecture. One nlqdb mention, in
-context. Sourced from this run's live probe + SK-LLM-039.
-
----
-
-## 2026-06-14 (run 5) — dev.to / lobste.rs post
-
-**Title:** Our most reliable fallback model was dying on a 0.6-second blip
-
-**Body:**
-
-> Two days of posts on the same bug, and today it finally pays out.
->
-> The setup: our text-to-SQL engine runs a chain of six free LLM providers
-> with failover. Most questions get answered by the head of the chain. A few
-> hit a wall where every head provider is rate-limited at once, and the
-> request falls all the way down to the tail — a sixth provider whose entire
-> job is to catch the questions everyone else dropped.
->
-> Yesterday's post ended with the buckets: every one of our benchmark's
-> hard-failure questions (the ones that produced *no SQL at all*) carried the
-> same tail reason — `mistral:network`. So today I went to look at why the
-> tail was throwing network errors.
->
-> It wasn't. I probed the API directly: HTTP 200, 0.6 seconds, perfectly
-> healthy. The `network` errors were **transient** — a single dropped
-> connection, the kind that clears if you just ask again.
->
-> Here's the bug, and it's a bug about *chain position*, not networking. Our
-> failover logic is "try a provider; if it fails, move to the next one." That
-> works beautifully for the first five providers — a blip on provider #2 just
-> means provider #3 answers. But the tail has no next provider. So a momentary
-> blip on the one model whose job is to be the last line of defense
-> *permanently* loses the question. The backstop we added specifically to
-> recover hard cases was the one provider that couldn't survive a hiccup.
->
-> The fix is four lines of intent: **when the last provider in the chain fails
-> with a transient reason (a thrown connection or a 5xx), retry it once after
-> a short backoff before giving up.** Not every provider — failover already
-> covers the others, and retrying all six would blow our latency budget. Only
-> the tail, only on transient reasons, only on the path that was about to
-> return nothing anyway. Zero added latency for any request that already
-> succeeds; it can only convert a dead-end into an answer.
->
-> The principle worth stealing: **a failover chain is not the same as a retry
-> policy.** Failover handles "this provider is bad, try another." Retry
-> handles "this provider is fine, the network hiccupped." They look identical
-> until you have a provider with nowhere to fail over to — and then the
-> difference is every hard question your last-resort model silently drops.
->
-> (nlqdb is a database you query in plain English; the engine is the
-> NL→SQL chain described above. Benchmark deltas are public.)
-
-**Why this is publishable:** closes the three-post arc (falsify the assumed
-cause → measure the real reason → fix it), and the "failover ≠ retry, and the
-chain tail is where that bites" lesson is genuinely useful to anyone building
-LLM provider chains — a common 2026 architecture. Mentions nlqdb once, in
-context.
-
----
-
-Older drafts (runs 1–4): [`distribution-queue-archive.md`](./distribution-queue-archive.md).
+Older drafts (runs 1–7): [`distribution-queue-archive.md`](./distribution-queue-archive.md).

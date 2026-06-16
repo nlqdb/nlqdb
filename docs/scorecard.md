@@ -15,16 +15,19 @@ until then the daily lever targets the worst number below)*
 (funnel/distribution lane) — gated by the engine (GLOBAL-027 valve), so the
 engine-side worst, Spider 0.1704 vs 0.75, owns it. The Gemini-restore lever is
 **human-blocked** (Google console, runs 6–7) and a full eval is impractical
-in-session (no local fixtures, free providers rate-limited). **Run 11 takes a
-NOT-blocked EX lever (shipped, SK-ASK-022):** the `/v1/ask` executor never
-fed a Postgres exec error back to the planner — a re-plannable error (a wrong
-column, a GROUP BY omission, a type mismatch) was replayed identically 3× then
-surfaced `db_unreachable`. The `previousAttempt` plumbing + diagnostic re-plan
-prompt already existed (SK-LLM-018/037); the only gap was the route. Now such
-an error re-plans **once** with the DB error fed back. Execution-guided repair
-is the highest-EX technique in text-to-SQL — and unlike the Gemini leg, no
-console click gates it. The full BIRD/Spider delta lands on the next scheduled
-quality-eval (engine row still fresh, < 7 d); the in-session proxy is below.
+in-session (no local fixtures, free providers rate-limited). **Run 12 takes a
+NOT-blocked recall lever on the schema-pruner (shipped, SK-LLM-040):**
+`pruneSchemaForGoal` (T19/SK-LLM-037) closed FKs **forward only** (a kept
+table → its `REFERENCES`), so an M:N junction table — referenced *by* nobody
+kept, with abbreviated FK columns (`mid`/`aid`) that miss the goal's tokens —
+was pruned out, leaving the planner two relevant tables and no way to join
+them. Added a single-shot bridge pass: keep any non-kept table that references
+≥ 2 distinct kept tables (the junction), evaluated against the pre-bridge set
+so it stays deterministic, with the existing kept-ratio guard still bounding
+it. Schema-linking for joins is the recognised small-model accuracy lever
+(RSL-SQL arXiv:2411.00073) and, unlike the Gemini leg, no console click gates
+it. The full BIRD/Spider EX delta lands on the next scheduled quality-eval
+(engine row still fresh, < 7 d); the deterministic in-session proxy is below.
 
 | # | Metric | Value | Target / note |
 |---|--------|-------|------|
@@ -69,6 +72,23 @@ quality-eval (engine row still fresh, < 7 d); the in-session proxy is below.
 
 ## Deltas (recent runs)
 
+- 2026-06-16 (run 12) — **bridge-table closure on the schema-pruner
+  (SK-LLM-040).** T19's `pruneSchemaForGoal` closes FKs forward-only (kept →
+  its `REFERENCES`), so the M:N junction connecting two goal-matched tables —
+  referenced *by* nobody kept, FK columns abbreviated (`mid`/`aid`) past the
+  goal's tokens — was pruned out, stranding the join the planner needed. Added
+  a single-shot pass that keeps any non-kept table referencing ≥ 2 *distinct*
+  kept tables, evaluated against the pre-bridge set (deterministic, no
+  cascade); the `MAX_KEPT_RATIO` guard still bounds over-inclusion. **Measured
+  (deterministic unit recall, no LLM):** a 7-table IMDB-shape schema where
+  `movies`/`actors` join only through `roles(mid, aid)` — gold-junction recall
+  **0 → 1** (bridge pruned-out → kept), precision held (single-parent
+  `ratings` + the unrelated `directors`/`studios`/`genres` subgraph stay
+  pruned). KPI: engine quality (GLOBAL-025). None degraded — purely additive
+  recall (keeps more, never fewer), prod + eval share the function
+  byte-for-byte via `buildPlanUser` (eval-mirrors-prod guardrail holds), zero
+  happy-path cost. 173 llm tests green (was 172). Full BIRD/Spider EX delta →
+  next scheduled quality-eval.
 - 2026-06-16 (run 11) — **execution-guided repair: feed a re-plannable PG
   exec error back to the planner (SK-ASK-022).** A deterministic-but-fixable
   exec error (42703 undefined_column, 42803 GROUP BY, 42883/42725 function,
