@@ -281,7 +281,7 @@ funnel before the wedge content proves itself.
 - **Self-host container scope** — pulling `ghcr.io/nlqdb/api` forward (WS-11)
   may exceed one daily run and touches infra; the worksheet flags the
   founder/infra gate rather than assuming a copy-only diff.
-- **Headline-reposition trigger** — what evidence trips WS-12 (the gated
+- **Headline-reposition trigger** — what evidence trips WS-13 (the gated
   swap)? Proposed default: founder call at a weekly session once the
   `/agents` page + matrix + ≥ 2 memory-competitor pages are live and the
   funnel `Pivot:` line shows non-zero wedge-sourced waitlist rows.
