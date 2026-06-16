@@ -16,9 +16,11 @@ when-to-load:
 **One-liner:** Reweight nlqdb's go-to-market so "analytical memory for AI
 agents" is the lead wedge — a real, queryable database an agent uses as
 memory — delivered as a sequence of small, reversible, daily-loop-sized
-slices rather than a relaunch.
+slices rather than a relaunch. **Two tracks ship in parallel:** messaging
+(WS-01..WS-13 — how users discover the wedge) and **engine** (E-01..E-07 —
+the memory-shaped primitives that make the wedge claims durable).
 **Status:** planned (Phase 2 distribution) — backlog ready, no slice shipped yet.
-**Owners (code):** `apps/web/src/pages/agents/**`, `apps/web/src/data/{competitors,solve,showcase-examples}.ts`, `packages/mcp/src/server.ts`, `apps/docs/src/content/docs/mcp.mdx`, `README.md`.
+**Owners (code):** `apps/web/src/pages/agents/**`, `apps/web/src/data/{competitors,solve,showcase-examples}.ts`, `apps/api/src/db-create/presets/**` (engine track), `packages/mcp/src/server.ts`, `apps/api/src/ask/**` (compile-layer scoping), `apps/docs/src/content/docs/mcp.mdx`, `README.md`.
 **Cross-refs:** `docs/research/deepseek-moat-framing.md` (the thesis) · `docs/competitors.md §4` (agent-memory landscape) · `docs/research/personas.md §P2` · GLOBAL-036 (canonical text in `docs/decisions/GLOBAL-036-lead-positioning-analytical-agent-memory.md`; index in `docs/decisions.md`).
 
 ## Touchpoints — read this feature doc before editing
@@ -34,8 +36,12 @@ slices rather than a relaunch.
 > agents start at [`worksheets/INDEX.md`](worksheets/INDEX.md): pick the
 > lowest-numbered unchecked worksheet whose prerequisites are met, do **one
 > slice = one small PR = one measured delta**, tick it, append one
-> distribution artifact. The complete "every surface a user lands on, current
-> copy → target copy" inventory is
+> distribution artifact. The **engine track** has its own
+> [`worksheets/engine/INDEX.md`](worksheets/engine/INDEX.md) (E-01..E-07);
+> the two tracks interleave (rule of thumb: pick `WS-*` when the worst
+> number is funnel/distribution, `E-*` when it is engine quality / agent
+> on-ramp / "wedge claims true"). The complete "every surface a user lands
+> on, current copy → target copy" inventory is
 > [`worksheets/messaging-surface-map.md`](worksheets/messaging-surface-map.md).
 
 ## What changes where (answers "how does each area change?")
@@ -47,6 +53,7 @@ slices rather than a relaunch.
 | **Architecture** | `architecture.md §0` "Open source … Apache-2.0" corrected to FSL-1.1. `§2.1` gains the `/agents` route (a path on `nlqdb.com`, **no new domain**). `§0.1` already uses `nlqdb_query("memory", …)` — kept. | WS-09 |
 | **Phase plan** | Phase 2 already targets "1 agent product publicly uses nlqdb as memory" — the wedge content is folded into Phase 2 distribution. The **self-host container** (`ghcr.io/nlqdb/api`) is pulled forward from Phase 3 so the self-host claim is true before `/agents` leads with it. | WS-10 |
 | **Home page & product/APIs** | Home reweights to agent-memory-primary with a demoted "also works for…" fold; new `/agents` deep landing; Mem0+Zep+Letta+LangMem capability matrix; sharpened solve page(s); **MCP tool + package descriptions carry the agent-memory framing** (highest-leverage agent-facing surface, today silent); on-brand demo + per-page OG images. Headline/README/llms.txt swap is **founder-gated, sequenced last**. | WS-01…WS-08, WS-11 |
+| **Engine / actual architecture** | A canonical `agent_memory_v1` schema preset (`facts` / `episodes` / `entities` / `entity_facts`) shipped as a built-in `db.create` path. **Additive** MCP tools `nlqdb_remember` + `nlqdb_recall` (existing `nlqdb_query` contract unchanged — SK-MCP-002). Compile-layer scope predicate (per-agent / per-end-user / per-thread) — security-critical, dual-gated by `sql-validate`. TTL + cron sweep (Mem0/Zep parity). pgvector hybrid recall (closes the honest gap the solve page admits today). `/agents` CreateForm uses the preset. Workload-analyzer rule routes large memory DBs to ClickHouse (Phase 3 — first auto-migration proof point). | E-01…E-07 |
 
 ## Decisions
 
@@ -138,6 +145,76 @@ slices rather than a relaunch.
 - **Alternatives rejected:** Commission a demo video — off-brand, expensive,
   stale on first feature change. · Screenshot the matrix as a PNG — raster
   drift + tenet-08 violation.
+
+### SK-PIVOT-006 — Engine track ships **additive** memory primitives; the existing contract is preserved
+
+- **Decision:** The architectural commitment behind the wedge ships as a
+  parallel **engine track** (`worksheets/engine/E-01..E-07`) — a canonical
+  `agent_memory_v1` schema preset, additive MCP tools (`nlqdb_remember`,
+  `nlqdb_recall`), per-agent scoping, TTL, pgvector hybrid recall, an
+  `/agents` CreateForm preset, and a workload-analyzer rule. **No existing
+  MCP tool, API, table, or surface is renamed or removed.** The existing
+  generalist `db.create` / `nlqdb_query` / `<nlq-data>` flows keep their
+  contracts; the memory shape sits alongside as a first-class opt-in.
+- **Core value:** Bullet-proof, Simple, Goal-first
+- **Why:** The framing doc's moat ("real SQL on structured memory, typed-plan
+  trust boundary") is already shipped in nlqdb's engine — but **being a
+  database isn't the same as being the memory primitive an agent reaches
+  for.** Today an agent that wants memory has to design its own schema via
+  generic `db.create`; the wedge's "zero schema design" claim is therefore
+  not yet true. The engine track makes it true without forcing an
+  incompatible rebuild: keep `SK-MCP-002`'s tool contract stable
+  (otherwise we break every host already integrated), keep `db.create`'s
+  generalist path (otherwise we break the dual-front-door commitment in
+  GLOBAL-036), and add memory-shaped tools/schemas alongside. Renames are a
+  hidden tax on early adopters; additive is the right shape pre-PMF.
+- **Consequence in code:** New `apps/api/src/db-create/presets/agent-memory-v1.ts`
+  (E-01) and a `{ preset }` field on `db.create`. New `nlqdb_remember`
+  (E-02) and `nlqdb_recall` (E-05) MCP tools alongside the three existing
+  ones. Compile-layer scope predicate (E-03) on memory-table reads, dual-
+  gated by `sql-validate.ts` (defence in depth). `expires_at` TTL with a
+  scheduled sweep (E-04). pgvector index on `facts.content` + hybrid fusion
+  in the compile layer (E-05, infra-gated). `/agents` CreateForm passes
+  `preset="agent_memory_v1"` (E-06). Workload-analyzer + migration
+  orchestrator gain a memory rule (E-07, Phase 3).
+- **Alternatives rejected:** **Rename `nlqdb_query` to memory verbs** —
+  breaks SK-MCP-002 and every integrated host for cosmetic gain. · **Replace
+  the generalist `db.create` path with the memory preset** — destroys the
+  P1/P3/P4 surfaces the dual-front-door (GLOBAL-036) is committed to. ·
+  **Skip the engine track and let agents build their own memory schema via
+  generic `db.create`** — what we have today; the "zero schema design"
+  wedge claim is then false. · **One mega-PR for the whole track** —
+  unreviewable, contradicts the daily-loop sizing rule.
+
+### SK-PIVOT-007 — Memory schema `agent_memory_v1` is the canonical shape; evolve by version, never in place
+
+- **Decision:** Agent memory has one canonical schema —
+  `agent_memory_v1`'s four tables (`facts`, `episodes`, `entities`,
+  `entity_facts`) — and it is part of the **public contract** once shipped.
+  Schema evolution happens by promoting to `agent_memory_v2` with a
+  documented compatibility note; no in-place column rename or table
+  removal on an active memory preset.
+- **Core value:** Bullet-proof, Simple
+- **Why:** Once an agent's memory lives in `agent_memory_v1`, its `WHERE`
+  predicates, MCP-host configs, and downstream analytics all assume the
+  shape. An in-place rename is a silent breaking change for every
+  integrator. The schema-widening rule (GLOBAL-004) already says logical
+  schemas only widen — versioning the preset is the application of that
+  rule to a *named* schema (rather than a user-inferred one). The
+  ClickHouse migration rule (E-07) hashes on this version to pick a
+  target.
+- **Consequence in code:** `agent_memory_v1` DDL ships from a typed module
+  whose `versionTag` flows into `schema_hash`. Adding a column (widening)
+  is allowed; renaming or removing one requires `agent_memory_v2`. The
+  scope-predicate compile rule (E-03) keys on the preset version; the
+  recall-fusion logic (E-05) keys on it too. The workload-analyzer rule
+  (E-07) keys on it. Tests pin the column set so a silent drift is
+  rejected at PR time.
+- **Alternatives rejected:** **No versioning — evolve in place** — silent
+  breakage for every integrator on the next schema change. · **Per-tenant
+  custom memory schemas** — defeats the "zero schema design" wedge; the
+  preset *is* the value. · **Defer versioning to v2 time** — versioning is
+  a contract; adding it later is harder than starting with it.
 
 ### SK-PIVOT-005 — The self-host / anti-VC angle is messaged under FSL-1.1 honestly, and the container is pulled forward to make it true
 

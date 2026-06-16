@@ -5,6 +5,22 @@ to a single `/daily` run. This is the canonical backlog. Governed by
 **GLOBAL-036**; the per-surface copy inventory is
 [`messaging-surface-map.md`](messaging-surface-map.md).
 
+**Two tracks, interleaved.** This file is the **messaging track** (WS-*).
+The **engine track** (E-*) — the actual architectural slices that make the
+wedge claims durable — lives at
+[`engine/INDEX.md`](engine/INDEX.md). Rule of thumb when picking a
+worksheet:
+
+| Worst-number lane today | Pick from |
+|---|---|
+| Funnel / distribution / waitlist conversion | this file (WS-*) |
+| Engine quality / agent on-ramp / "wedge claims true" | [`engine/INDEX.md`](engine/INDEX.md) (E-*) |
+
+Several `WS-*` worksheets sharpen once an `E-*` lands (E-01 unblocks
+WS-09's live demo; E-02 sharpens WS-04's MCP copy; E-05 lets WS-03 drop
+its honest "no native vector search yet" disclaimer). Cross-links are
+called out in each worksheet's `Cross-link` column.
+
 ## How a cold daily-loop agent picks up a slice
 
 You are the 6×/day operating agent (`.claude/commands/daily.md`). When the
