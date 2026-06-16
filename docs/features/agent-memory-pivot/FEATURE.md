@@ -141,7 +141,7 @@ the memory-shaped primitives that make the wedge claims durable).
 - **Consequence in code:** OG images are generated/authored in the brand
   palette as type-on-dark (no raster screenshots). The `/agents` demo is an
   `<nlq-data>`-driven panel or the carousel mechanism, not an `<img>`/`<video>`.
-  The blog post (WS-08) is the shareable long-form artifact.
+  The blog post (WS-09) is the shareable long-form artifact.
 - **Alternatives rejected:** Commission a demo video — off-brand, expensive,
   stale on first feature change. · Screenshot the matrix as a PNG — raster
   drift + tenet-08 violation.
