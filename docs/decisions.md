@@ -46,7 +46,7 @@ grep -rn 'GLOBAL-007' docs/features/
 | [GLOBAL-016](./decisions/GLOBAL-016-mature-packages-no-rc.md) | Reach for small mature packages before DIY; hard-pass on RC on the critical path | every package — baseline | active |
 | [GLOBAL-017](./decisions/GLOBAL-017-one-way-to-do-things.md) | Two endpoints, two CLI verbs, one chat box — one way to do each thing | every surface | active |
 | [GLOBAL-018](./decisions/GLOBAL-018-instant-revocation.md) | Revocation is instant and visible across devices | auth, api-keys | active |
-| [GLOBAL-019](./decisions/GLOBAL-019-apache2-open-source-core.md) | Free + Open Source core (Apache-2.0); Cloud is convenience, not a moat | every package — baseline | active |
+| [GLOBAL-019](./decisions/GLOBAL-019-apache2-open-source-core.md) | Free + Open Source core (FSL-1.1-ALv2, source-available, auto-converts to Apache-2.0); Cloud is convenience, not a moat | every package — baseline | active |
 | [GLOBAL-020](./decisions/GLOBAL-020-zero-config-first-60s.md) | No "pick a region", no config files in the first 60s | web-app, cli, ask-pipeline | active |
 | [GLOBAL-021](./decisions/GLOBAL-021-external-system-ownership.md) | Each external system has one canonical owning module | every package — baseline | active |
 | [GLOBAL-022](./decisions/GLOBAL-022-recoverable-failures-retry-to-success.md) | Recoverable failures retry to success — never surface a fixable error | sdk, ask-pipeline, llm-router, idempotency, observability | active |
@@ -63,6 +63,7 @@ grep -rn 'GLOBAL-007' docs/features/
 | [GLOBAL-033](./decisions/GLOBAL-033-resolution-defaults.md) | Resolution defaults — close open questions from the documented values via a default ladder; escalate only genuine money/strategy/legal bets; parked items rewritten as "Parked until `<trigger>`" | every feature | active |
 | [GLOBAL-034](./decisions/GLOBAL-034-analytics-stack.md) | Analytics stack — Cloudflare Web Analytics for pageviews (free, no SDK, no cookie banner); PostHog Cloud is a Phase-2-optional server-side product sink; Plausible self-hosted dropped | web-app, comparison-pages, solve-pages, docs-site, events-pipeline | active |
 | [GLOBAL-035](./decisions/GLOBAL-035-byo-egress-guard.md) | One shared egress guard (`packages/db/src/egress-guard.ts`) for every BYO outbound DB connection host — literal IPs in loopback / private / link-local / CGNAT / this-host / multicast / reserved ranges (incl. the IPv4-mapped/-compatible/6to4/NAT64 IPv6 forms and decimal/hex/octal encodings) rejected fail-loud; DNS names flagged for a connect-time resolve-then-recheck | db-adapter, multi-engine-adapter | active |
+| [GLOBAL-036](./decisions/GLOBAL-036-lead-positioning-analytical-agent-memory.md) | Lead positioning: analytical memory for AI agents (dual front door — generalist `nlqdb.com` reweighted + dedicated `/agents` landing); lead on the true moat (analytical SQL + typed-plan trust + FSL self-host/BYO-key), headline reposition founder-gated and sequenced last | agent-memory-pivot, web-app, comparison-pages, solve-pages, mcp-server, docs-site | active |
 
 ## Adding a new GLOBAL
 

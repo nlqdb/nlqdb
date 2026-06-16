@@ -1,8 +1,12 @@
 # Scorecard
 
 Regenerated daily by [`/daily`](../.claude/commands/daily.md) step 1 from live
-sources (D1, KV, CF GraphQL, `eval-baseline.ts`). One table, ≤ 5 KB.
-Published distribution URLs land here when a queue entry ships.
+sources (D1, KV, CF GraphQL, `eval-baseline.ts`). One table; soft 5 KB cap
+**relaxed while the agent-memory pivot is in flight** (GLOBAL-036) — the
+20-row Pivot section mirrors [`agent-memory-pivot/worksheets/INDEX.md`](features/agent-memory-pivot/worksheets/INDEX.md)
+so every WS-* / E-* status is visible at a glance; the section collapses
+back to a one-line summary once the pivot completes. Published distribution
+URLs land here when a queue entry ships.
 
 **Weekly focus number:** *(none set — founder picks at the weekly session;
 until then the daily lever targets the worst number below)*
@@ -36,6 +40,29 @@ a denied provider on the first 401/403 — see the delta below.
 | 10 | nlqdb-api requests / errors | 2,268 / 0 (0.00%) | mcp 284 req, events-worker 91 req, both 0 err |
 | 11 | nlqdb-api latency p50 / p95 | 666 ms / 7.05 s (06-13) | p95 dominated by LLM-bound asks; `/ask`-only split needs Grafana `metrics:read` (agent has write-only key) |
 | 12 | $ spend | ~$0 | free tiers across CF / Neon / LLM chain |
+| | **Pivot — agent-memory wedge** (GLOBAL-036) | 0 / 20 | tick ⬜→✅ with PR link on merge; mirrors `docs/features/agent-memory-pivot/worksheets/INDEX.md` |
+| | *Messaging track — WS-\** | 0 / 13 | pick when worst number is funnel / distribution |
+| WS-01 | competitors.md anchor (Zep / Letta / LangMem) | ⬜ | low · 1 run · — |
+| WS-02 | memory `/vs` pages (one per run) | ⬜ | low · ~3 runs · WS-01 |
+| WS-03 | solve pages — sharpen + sibling | ⬜ | low · ~2 runs · — |
+| WS-04 | MCP tool + package + docs framing | ⬜ | low · 1 run · — |
+| WS-05 | carousel analytics-over-memory slides | ⬜ | low · 1 run · — |
+| WS-06 | Mem0 \| Zep \| Letta \| nlqdb capability matrix | ⬜ | med · ~2 runs · WS-01 |
+| WS-07 | `/agents` landing | ⬜ | med · ~3 runs · WS-06 |
+| WS-08 | on-brand OG / social images | ⬜ | low · ~2 runs · WS-07 |
+| WS-09 | "database, not a vector store" blog + live demo | ⬜ | med · ~2 runs · WS-06 (sharpens with E-01/05) |
+| WS-10 | FSL self-host messaging (GLOBAL-019 / arch §0 doc-fix shipped) | ⬜ | low · 1 run · — |
+| WS-11 | pull `ghcr.io/nlqdb/api` self-host container forward | ⬜ | high · multi · WS-10 · infra-gated |
+| WS-12 | home reweight + demote P1/P3/P4 to "also works for…" | ⬜ | med · ~2 runs · WS-06, WS-07 |
+| WS-13 | headline reposition (hero / README / llms.txt / JSON-LD) | ⬜ | high · ~2 runs · WS-07, WS-12 · 🔒 **FOUNDER-GATED** |
+| | *Engine track — E-\** | 0 / 7 | pick when worst number is engine quality / agent on-ramp |
+| E-01 | `agent_memory_v1` schema preset for `db.create` | ⬜ | med · ~2 runs · — |
+| E-02 | additive MCP tool `nlqdb_remember` (no rename) | ⬜ | med · 1 run · E-01 |
+| E-03 | per-agent / end-user / thread compile-layer scoping | ⬜ | **high · security-critical** · ~2 runs · E-01 |
+| E-04 | TTL + cron sweep (`expires_at`) | ⬜ | low · 1 run · E-01 |
+| E-05 | hybrid recall — pgvector + `nlqdb_recall` | ⬜ | high · multi · E-01 · infra-gated |
+| E-06 | `/agents` CreateForm uses the preset | ⬜ | low · 1 run · E-01 + WS-07 |
+| E-07 | workload-analyzer rule: memory DBs → ClickHouse (Phase 3) | ⬜ | med · multi · E-01 + Phase-3 multi-engine |
 
 ## Deltas (recent runs)
 

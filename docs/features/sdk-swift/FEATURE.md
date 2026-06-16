@@ -90,7 +90,7 @@ Canonical text in [`docs/decisions/`](../../decisions/). The list below names th
 - **GLOBAL-014** — OTel span on every external call.
   - *In this feature:* not yet wired — Swift `os.signpost` / `swift-distributed-tracing` integration is an Open question.
 - **GLOBAL-016** — Reach for small mature packages; hard-pass on RC.
-- **GLOBAL-019** — Apache-2.0-compatible OSS core.
+- **GLOBAL-019** — Free + Open Source core (FSL-1.1-ALv2 → Apache-2.0).
 - **GLOBAL-022** — Recoverable failures retry to success.
   - *In this feature:* the retry envelope in `NlqdbClient.callDecoding` and `callVoid` matches the TS SDK's `call<T>` shape — 3 attempts on transport failures + transient 5xx, idempotency-key reused.
 

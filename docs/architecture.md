@@ -13,7 +13,7 @@ If a sentence here disagrees with a feature, **the feature wins**. This document
 Acceptance criteria for every PR. Violations don't ship.
 
 - **Free.** Sign up, build, ship to production without a credit card. Forever.
-- **Open source.** Core engine, CLI, MCP, SDKs — Apache-2.0. Cloud is a convenience, not a moat.
+- **Open source.** Core engine, CLI, MCP, SDKs — FSL-1.1-ALv2 (source-available, auto-converts to Apache-2.0). Cloud is a convenience, not a moat.
 - **Simple.** One way to do each thing. Two endpoints, two CLI verbs, one chat box. No config in the first 60 seconds. Every error is one sentence with the next action. If a feature needs a tutorial, it failed.
 - **Effortless UX.** Zero modals. Zero "are you sure" except for destructive actions. Keyboard-first. The chat is the product; everything else is a disclosure.
 - **Seamless auth — one identity, four surfaces, zero friction.**
