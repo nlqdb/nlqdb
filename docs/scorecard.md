@@ -13,17 +13,18 @@ until then the daily lever targets the worst number below)*
 
 **Worst number today:** real strangers reaching a first answer = **0**
 (funnel/distribution lane) — gated by the engine (GLOBAL-027 valve), so the
-engine-side worst, Spider 0.1704 vs 0.75, owns it. Its biggest lever (restore
-the dead Gemini leg) is **human-blocked** (Google console, runs 6–7) and a
-full eval is impractical (no local fixtures — BIRD DBs not in the HF repo,
-free providers rate-limited), so the recent runs take adjacent measured wins.
-A 2026-06-16 live probe re-confirms the chain: **cerebras ✅ groq ✅ mistral ✅
-openrouter 429** (`:free` throttle, transient) **gemini 403** (project denied,
-still human-blocked). **Run 10 lever (shipped, SK-LLM-039 rev):** the dead
-Gemini key was parked for only the **default 60 s** cooldown, so a busy worker
-isolate re-probed it (and burned the slow-path hedge slot) every minute even
-though a 401/403 is human-gated and an env re-key arrives as a deploy (fresh
-isolate). Park it for **30 min** instead — see the delta below.
+engine-side worst, Spider 0.1704 vs 0.75, owns it. The Gemini-restore lever is
+**human-blocked** (Google console, runs 6–7) and a full eval is impractical
+in-session (no local fixtures, free providers rate-limited). **Run 11 takes a
+NOT-blocked EX lever (shipped, SK-ASK-022):** the `/v1/ask` executor never
+fed a Postgres exec error back to the planner — a re-plannable error (a wrong
+column, a GROUP BY omission, a type mismatch) was replayed identically 3× then
+surfaced `db_unreachable`. The `previousAttempt` plumbing + diagnostic re-plan
+prompt already existed (SK-LLM-018/037); the only gap was the route. Now such
+an error re-plans **once** with the DB error fed back. Execution-guided repair
+is the highest-EX technique in text-to-SQL — and unlike the Gemini leg, no
+console click gates it. The full BIRD/Spider delta lands on the next scheduled
+quality-eval (engine row still fresh, < 7 d); the in-session proxy is below.
 
 | # | Metric | Value | Target / note |
 |---|--------|-------|------|
@@ -68,6 +69,25 @@ isolate). Park it for **30 min** instead — see the delta below.
 
 ## Deltas (recent runs)
 
+- 2026-06-16 (run 11) — **execution-guided repair: feed a re-plannable PG
+  exec error back to the planner (SK-ASK-022).** A deterministic-but-fixable
+  exec error (42703 undefined_column, 42803 GROUP BY, 42883/42725 function,
+  42702 ambiguous, 42P18/42804/42846 type, 22P02 cast, 42601 syntax — the set
+  lives in `exec-repair.ts`) was replayed identically 3× by SK-ASK-013's
+  transient retry, then surfaced `db_unreachable`. The planner never saw the
+  DB's own error, even though the plan prompt already diagnoses
+  `previousAttempt.error` against the full schema. Now such an error bails the
+  transient retry after one attempt and re-plans **once** with the error fed
+  back (reads only; a repaired write is rejected `write_via_repair`, never run
+  — preserves the SK-TRUST-001 preview gate). **Measured (orchestrator unit
+  tests, stubbed exec/LLM):** on a 42703 → fixed-column scenario, recovery
+  **db_unreachable → rows (0 → 1)** with exec round-trips on the deterministic
+  error **3 → 2** (1 fail + 1 repaired, vs 3 identical replays); repair bounded
+  to once; a repaired write blocked before exec. KPI: engine quality
+  (GLOBAL-025), with a performance assist (fewer doomed replays). None degraded
+  — failure-path only (zero happy-path latency, SK-ASK-002 budget untouched),
+  schema_mismatch (42P01/3F000) still bails as before. 808 api tests green
+  (was 805). Full BIRD/Spider EX delta → next scheduled quality-eval.
 - 2026-06-16 (run 10) — **park a denied provider for 30 min, not 60 s
   (SK-LLM-039 rev).** Run 9 opened the breaker on the first 401/403 but left
   the default 60 s cooldown, so a long-lived worker isolate re-probed the dead
@@ -83,25 +103,15 @@ isolate). Park it for **30 min** instead — see the delta below.
   re-probed each window), legibility preserved (skip stays `auth_denied`).
   172 llm tests green (was 171).
 - 2026-06-15 (run 9) — **park a denied provider on the first 401/403
-  (SK-LLM-039 rev).** Live probe found the free chain healthy except Gemini
-  (403, dead key, human-blocked) and OpenRouter (transient `:free` 429).
-  Gemini sat at chain index 1 — and was the hedge partner for
-  `plan`/`schema_infer` — yet `auth_denied` was kept out of the breaker, so
-  it ate a guaranteed-failed round-trip (and the slow-path hedge slot) on
-  *every* call. Now the first denial opens the breaker; the skip still
-  surfaces `auth_denied` (not masked as `circuit_open`). **Measured (unit
-  test):** round-trips to a dead-key provider over 5 calls **5 → 1**, and the
-  hedge slot rotates to the live provider behind it. KPI: performance
-  (GLOBAL-025). None degraded — inert when a key works (a 200 never trips it,
-  safe regardless of prod's key), EX-neutral (provider still attempted once
-  per cooldown), legibility preserved. 171 llm + 805 api tests green.
-- 2026-06-15 (run 8) — **deterministic seed-row salvage (SK-HDC-019).**
-  `pruneUninsertableSampleRows` drops only provably-uninsertable rows instead
-  of the SK-HDC-018 all-or-nothing floor. Seeded rows on a one-bad-of-four set
-  **0 → 3**; happy path unchanged. KPI: onboarding + engine-quality.
-- 2026-06-15 (run 7) — **pin-to-2.0 lever falsified (measure-first).**
-  gemini-2.0-flash also returns `429 limit: 0`; both 2.5 (403) and 2.0 dead,
-  no in-code swap recovers the leg. No code shipped; → SK-LLM-039.
+  (SK-LLM-039 rev).** Gemini (dead key, chain index 1, hedge partner) ate a
+  guaranteed-failed round-trip + the hedge slot on *every* call; now the first
+  denial opens the breaker (skip stays legible as `auth_denied`). Measured:
+  dead-key round-trips over 5 calls **5 → 1**, hedge rotates to a live
+  provider. KPI: performance. 171 llm + 805 api green.
+- 2026-06-15 (run 8) — **deterministic seed-row salvage (SK-HDC-019).** Drops
+  only provably-uninsertable rows; seeded rows on one-bad-of-four **0 → 3**.
+- 2026-06-15 (run 7) — **pin-to-2.0 lever falsified.** gemini-2.0-flash also
+  `429 limit: 0`; no in-code swap recovers the leg. → SK-LLM-039.
 - 2026-06-14/15 (runs 5–6) — tail transient retry (SK-LLM-038; BIRD EX
   0.522 → 0.528 best-case) · `auth_denied` reason split (SK-LLM-039).
 - 2026-06-13/14 (runs 1–4) — day-one scorecard (metrics 0 → 12); #5

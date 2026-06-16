@@ -16,6 +16,7 @@ import { cachePlanHitsTotal, cachePlanMissesTotal } from "@nlqdb/otel";
 import { type Span, SpanStatusCode, trace } from "@opentelemetry/api";
 import { deriveSlug } from "../databases/list.ts";
 import { buildDiff, isWriteVerb } from "./diff.ts";
+import { isReplannableExecError } from "./exec-repair.ts";
 import type { FirstQueryTracker } from "./first-query.ts";
 import { hashGoal, type PlanCache } from "./plan-cache.ts";
 import type { RateLimiter } from "./rate-limit.ts";
@@ -190,6 +191,10 @@ export async function orchestrateAsk(
 
   let planSql: string;
   let cacheHit: boolean;
+  // SK-ASK-022 — the compiled DDL (falling back to the hash for legacy
+  // rows; see the cache-miss branch). Hoisted out of that branch so the
+  // execution-guided repair below can re-plan on a cache *hit* too.
+  const planSchema = db.schemaText ?? schemaHash;
   // SK-TRUST-002 — `model` + `confidence` ride the response trace. On
   // cache-miss the planner emits them; on cache-hit they come from the
   // cached entry. Legacy cache rows (pre-SK-TRUST-002) carry neither —
@@ -222,8 +227,7 @@ export async function orchestrateAsk(
     // the FNV `schemaHash` fingerprint and the LLM hallucinated table
     // names from it. Legacy rows pre-migration-0010 keep `schemaText`
     // null — fall back to the hash so they still respond instead of
-    // 500'ing, even with the degraded prompt quality.
-    const planSchema = db.schemaText ?? schemaHash;
+    // 500'ing, even with the degraded prompt quality (planSchema hoisted above).
     // Last winning plan's model + confidence — captured inside the
     // retry loop so the trace reflects the attempt we actually used.
     let lastModel = "";
@@ -330,50 +334,103 @@ export async function orchestrateAsk(
     }
   }
 
+  // SK-ASK-022 — execution-guided repair. The exec stage keeps SK-ASK-013's
+  // transient retry, but a *re-plannable* PG error (a wrong column, a GROUP
+  // BY omission, a type mismatch) is deterministic — replaying the identical
+  // SQL is wasted — yet fixable by re-planning with the error fed back. On
+  // such an error we bail the transient retry after one attempt and re-plan
+  // ONCE (reads only; writes go through the SK-TRUST-001 preview gate).
   let result: QueryResult;
-  try {
-    result = await withStageRetry(
-      "exec",
-      async () => {
-        try {
-          return await deps.exec(db, planSql);
-        } catch (err) {
-          // Config errors are non-recoverable — operator has to fix
-          // the secret ref; retrying just delays surfacing the bug.
-          if (err instanceof DbConfigError) throw new Nonrecoverable("db_misconfigured", err);
-          // SK-ASK-016 / SK-ASK-019 — `42P01` (table) and `3F000` (schema)
-          // are deterministic; retry would replay the same error.
-          const schemaError = classifySchemaError(err, {
-            dbId: req.dbId,
-            goal: req.goal,
-            planSql,
-            cacheHit,
-            planModel,
-          });
-          if (schemaError) throw schemaError;
-          throw err;
-        }
-      },
-      { reasonOf: () => "db_unreachable" satisfies RetryReason },
-    );
-  } catch (err) {
-    if (err instanceof DbConfigError) {
-      // Message would contain the secret ref name — don't leak it.
-      // The span (db.query) records the exception for operator visibility.
-      return { ok: false, error: { status: "db_misconfigured" } };
-    }
-    if (err instanceof SchemaMismatchError) {
-      return {
-        ok: false,
-        error: {
-          status: "schema_mismatch",
-          referencedTables: err.referencedTables,
-          schemaTables: err.schemaTables,
+  let execRepaired = false;
+  for (;;) {
+    try {
+      result = await withStageRetry(
+        "exec",
+        async () => {
+          try {
+            return await deps.exec(db, planSql);
+          } catch (err) {
+            // Config errors are non-recoverable — operator has to fix
+            // the secret ref; retrying just delays surfacing the bug.
+            if (err instanceof DbConfigError) throw new Nonrecoverable("db_misconfigured", err);
+            // SK-ASK-016 / SK-ASK-019 — `42P01` (table) and `3F000` (schema)
+            // are deterministic; retry would replay the same error.
+            const schemaError = classifySchemaError(err, {
+              dbId: req.dbId,
+              goal: req.goal,
+              planSql,
+              cacheHit,
+              planModel,
+            });
+            if (schemaError) throw schemaError;
+            // SK-ASK-022 — deterministic-but-fixable: bail the transient
+            // retry on every pass (replaying the identical SQL can't
+            // succeed). The outer catch decides whether to re-plan, and
+            // bounds that to one repair. Writes are preview-gated, never
+            // repaired here.
+            if (!isWriteVerb(planSql) && isReplannableExecError(err)) {
+              throw new Nonrecoverable("exec_replannable", err);
+            }
+            throw err;
+          }
         },
-      };
+        { reasonOf: () => "db_unreachable" satisfies RetryReason },
+      );
+      break;
+    } catch (err) {
+      if (err instanceof DbConfigError) {
+        // Message would contain the secret ref name — don't leak it.
+        // The span (db.query) records the exception for operator visibility.
+        return { ok: false, error: { status: "db_misconfigured" } };
+      }
+      if (err instanceof SchemaMismatchError) {
+        return {
+          ok: false,
+          error: {
+            status: "schema_mismatch",
+            referencedTables: err.referencedTables,
+            schemaTables: err.schemaTables,
+          },
+        };
+      }
+      // SK-ASK-022 — one execution-guided repair: re-plan with the PG error
+      // fed back, then loop to exec the repaired SQL. The plan prompt
+      // already diagnoses `previousAttempt.error` against the full schema.
+      if (!execRepaired && !isWriteVerb(planSql) && isReplannableExecError(err)) {
+        execRepaired = true;
+        trace.getActiveSpan()?.setAttribute("nlqdb.ask.exec_repaired", true);
+        try {
+          const repair = await deps.llm.plan({
+            goal: req.goal,
+            schema: planSchema,
+            dialect: "postgres",
+            previousAttempt: {
+              sql: planSql,
+              error: err instanceof Error ? err.message : String(err),
+            },
+          });
+          const validation = validateSql(repair.sql);
+          // A repaired read must stay a read — never let repair smuggle a
+          // write past the preview gate.
+          if (!validation.ok)
+            return { ok: false, error: { status: "sql_rejected", reason: validation.reason } };
+          if (isWriteVerb(repair.sql))
+            return { ok: false, error: { status: "sql_rejected", reason: "write_via_repair" } };
+          planSql = repair.sql;
+          planModel = repair.model;
+          planConfidence = repair.confidence;
+          traceBlock.sql = planSql;
+          traceBlock.model = planModel;
+          traceBlock.confidence = planConfidence;
+          await safeEmit({ type: "plan", trace: traceBlock });
+        } catch {
+          return { ok: false, error: { status: "llm_failed" } };
+        }
+        continue;
+      }
+      // Postgres errors include schema details; keep them server-side.
+      return { ok: false, error: { status: "db_unreachable" } };
     }
-    // Postgres errors include schema details; keep them server-side.
-    return { ok: false, error: { status: "db_unreachable" } };
   }
 
   // SK-ASK-015 — plan cache writes are gated on successful exec. A plan

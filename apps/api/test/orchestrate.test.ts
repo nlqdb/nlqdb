@@ -302,6 +302,89 @@ describe("orchestrateAsk", () => {
     expect(exec).toHaveBeenCalledTimes(1);
   });
 
+  it("SK-ASK-022: a re-plannable exec error (42703) re-plans once and recovers", async () => {
+    // First plan emits a column that doesn't exist; exec raises 42703.
+    // Before SK-ASK-022 this replayed the identical SQL 3× then returned
+    // db_unreachable. Now the PG error feeds back into one re-plan that
+    // fixes the column, and exec the repaired SQL succeeds.
+    const plan = vi
+      .fn()
+      .mockResolvedValueOnce({ sql: "SELECT total FROM orders", model: "m1", confidence: 0.4 })
+      .mockResolvedValueOnce({ sql: "SELECT id FROM orders", model: "m2", confidence: 0.9 });
+    const llm = { ...stubLLM(), plan } as unknown as LLMRouter;
+    const exec = vi.fn(async (_db: DbRecord, sql: string) => {
+      if (sql.includes("total")) {
+        throw Object.assign(new Error('column "total" does not exist'), { code: "42703" });
+      }
+      return { rows: [{ id: 1 }], rowCount: 1 } satisfies QueryResult;
+    });
+    const out = await orchestrateAsk(makeDeps({ llm, exec }), {
+      goal: "order ids",
+      dbId: "db_1",
+      userId: "user_1",
+    });
+    expect(out.ok).toBe(true);
+    if (out.ok) expect(out.result.rows).toEqual([{ id: 1 }]);
+    // Measured delta: exec round-trips 0-recovery → recovered, with exactly
+    // 2 exec calls (1 failed + 1 repaired) — NOT 3 identical replays.
+    expect(plan).toHaveBeenCalledTimes(2);
+    expect(exec).toHaveBeenCalledTimes(2);
+    // The re-plan carried the PG error back as previousAttempt.
+    expect(plan.mock.calls[1]?.[0]).toMatchObject({
+      previousAttempt: { sql: "SELECT total FROM orders", error: 'column "total" does not exist' },
+    });
+  });
+
+  it("SK-ASK-022: repair is attempted at most once — a still-broken re-plan returns db_unreachable", async () => {
+    const plan = vi.fn(async () => ({
+      sql: "SELECT total FROM orders",
+      model: "m",
+      confidence: 0.3,
+    }));
+    const llm = { ...stubLLM(), plan } as unknown as LLMRouter;
+    const exec = vi.fn(async () => {
+      throw Object.assign(new Error('column "total" does not exist'), { code: "42703" });
+    });
+    const out = await orchestrateAsk(makeDeps({ llm, exec }), {
+      goal: "order ids",
+      dbId: "db_1",
+      userId: "user_1",
+    });
+    expect(out).toEqual({ ok: false, error: { status: "db_unreachable" } });
+    // One initial exec + one repaired exec, then stop — no unbounded loop.
+    expect(plan).toHaveBeenCalledTimes(2);
+    expect(exec).toHaveBeenCalledTimes(2);
+  });
+
+  it("SK-ASK-022: a repair that emits a write is rejected, never executed", async () => {
+    const plan = vi
+      .fn()
+      .mockResolvedValueOnce({ sql: "SELECT total FROM orders", model: "m1", confidence: 0.4 })
+      .mockResolvedValueOnce({
+        sql: "DELETE FROM orders WHERE id = 1",
+        model: "m2",
+        confidence: 0.9,
+      });
+    const llm = { ...stubLLM(), plan } as unknown as LLMRouter;
+    const exec = vi.fn(async (_db: DbRecord, sql: string) => {
+      if (sql.includes("total")) {
+        throw Object.assign(new Error('column "total" does not exist'), { code: "42703" });
+      }
+      return { rows: [], rowCount: 0 } satisfies QueryResult;
+    });
+    const out = await orchestrateAsk(makeDeps({ llm, exec }), {
+      goal: "order ids",
+      dbId: "db_1",
+      userId: "user_1",
+    });
+    expect(out).toEqual({
+      ok: false,
+      error: { status: "sql_rejected", reason: "write_via_repair" },
+    });
+    // The repaired DELETE never reached exec (only the failed SELECT did).
+    expect(exec).toHaveBeenCalledTimes(1);
+  });
+
   it("SK-ASK-019: exec PG 3F000 (schema does not exist) → schema_mismatch, no retry", async () => {
     // Orphan D1 row → schema dropped from Neon. PG raises 3F000 not 42P01
     // because the schema name in the qualified reference is gone. SELECT
