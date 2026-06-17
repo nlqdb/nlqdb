@@ -41,7 +41,7 @@ so every entry in §2 is also what a blocked user sees.
 |---|---|---|---|---|
 | **BIRD-dev reasoning EX** (match among questions that produced SQL — capacity-independent) | **0.525** (was 0.354 on 2026-05-18) | — | — | canonical 500-q run 2026-06-12 (261/497); post-T18/T19 smokes read 51.7% / 50.7% |
 | BIRD-dev EX (raw — the gate metric) | **0.522** (was 0.35 lower bound; 0.318 on 2026-05-18) | ≥ 0.65 | ≥ 0.60 | canonical 500-q 6-provider GHA run 2026-06-12 (261/500, `no_sql` 3; resumed across 5 quota windows per `SK-QUAL-013`); same-seed smoke A/B 0.3733 → 0.5133 |
-| Spider 2.0-lite EX (raw) | **0.1704** (was 0.12) | ≥ 0.75 | report only (Phase-3 ≥ 0.15) | canonical 135-q GHA run 2026-06-12 (23/135; reasoning EX 0.232); same-seed smoke 0.15 → 0.25 |
+| Spider 2.0-lite EX (raw) | **0.1852** (was 0.1704 on 2026-06-12; 0.12 on 2026-06-09) | ≥ 0.75 | report only (Phase-3 ≥ 0.15) | canonical 135-q GHA run 2026-06-17 after the Gemini free-tier key heal (25/135; reasoning EX 0.198; `no_sql` 36 → 9, now capacity-only); same-seed smoke 0.15 → 0.25 |
 | free-vs-agentic-frontier delta | **null** (lane not yet run) | — | ≤ 25 pp (`SK-QUAL-004`) | `SK-QUAL-004`; agentic lane opt-in (`SK-QUAL-009`) |
 
 **How to read the two BIRD rows.** Raw EX (the gate metric) also pays
@@ -58,23 +58,21 @@ levers target it.
 **mismatch 236** · exec_error 0 · `no_sql` 3 — on BIRD the loss is now
 almost purely **SQL reasoning** (mismatches), the territory of §4's backlog
 (retrieved few-shot, value retrieval) beyond the directive sub-classes
-T10–T16 already target. Spider's residual `no_sql` 36/135 is different:
-`gemini:http_4xx` + `mistral:network` rows (Workers-AI never answers
-there). The earlier "oversized-DDL" read is **falsified** (offline measure,
-2026-06-13): all 135 SQLite-subset schemas are small — ≤ 7,520 chars /
-~1,880 tok, p90 ~1,531, measured across every question (the introspected
-`sqlite_master` schema ≈ upstream `DDL.csv`), so a ~1.9 K-tok schema can't
-overflow Gemini (1 M ctx) or Mistral (128 K). The cause is in the
-per-question `error` strings the runner **already persists** (the `no_sql`
-branch of `tools/eval/src/runner.ts`), now aggregated into a per-lane
-`no_sql_reasons` `provider:reason` tally (`summariseLane`) so a run surfaces
-the buckets directly — on the committed BIRD baseline they read
-`mistral:network ×3` / `groq:circuit_open ×3`, every scored `no_sql`
-carrying `mistral:network` (the T11 chain-tail backstop erroring out, a
-genuine failure — a pure rate-limit wall budget-stops, never scores
-`no_sql`). It is not a size or capacity wall. Column-level pruning (§4 #2) can
-still help Spider via *distractor* removal (T19's table-pruning lifted the
-smoke 0.15 → 0.25 that way), but it will not reduce these 36.
+T10–T16 already target. Spider's residual `no_sql` was **36/135** on the
+2026-06-12 run — dominated by **`gemini:http_4xx`** (the shared free-tier
+`GEMINI_API_KEY` was denied; `SK-LLM-039`) plus `mistral:network`, **not** an
+oversized-DDL problem (falsified offline 2026-06-13: all 135 SQLite-subset
+schemas are ≤ 7,520 chars / ~1,880 tok, p90 ~1,531 — a ~1.9 K-tok schema
+can't overflow Gemini's 1 M ctx or Mistral's 128 K). **The 2026-06-17 re-run
+after the key was restored confirms it:** `no_sql` dropped **36 → 9** and the
+`no_sql_reasons` tally carries **no `gemini:http_4xx` / `auth_denied`** —
+Gemini now answers, and the residual 9 are capacity-only (`circuit_open`
+across providers + `mistral:network` + `workers-ai:parse`). Raw EX rose
+0.1704 → 0.1852, but the 27 newly-answered questions mostly produced *wrong*
+SQL (reasoning EX 0.232 → 0.198), so the Spider bottleneck is now **SQL
+reasoning, not availability** — §4's levers. Column-level pruning (§4 #2)
+still helps Spider via *distractor* removal (T19's table-pruning lifted the
+smoke 0.15 → 0.25), not the residual capacity `no_sql`.
 
 > **How these numbers are produced.** `tools/eval/src/runner.ts` drives
 > `router.ts::plan()` against the SQLite fixture and scores EX (BIRD
@@ -182,5 +180,9 @@ view of the same levers.
 > `SK-QUAL-013`), re-seeding `baseline-2026-06-15.json` +
 > `eval-baseline.ts`. Agents dispatch the workflows directly via the
 > workflow-scoped PAT (`GH_TOKEN_WORKFLOW`) — no human click needed.
+> **2026-06-17 — Spider re-seeded 0.1704 → 0.1852** after the shared
+> `GEMINI_API_KEY` free-tier key was restored (`no_sql` 36 → 9,
+> `gemini:http_4xx` cleared; `SK-LLM-039`), resumed across 2 windows
+> (one hit the 60-min ceiling → resumed via the `SK-QUAL-013` checkpoint).
 > **Next:** per-lever ablations (T9 static few-shot vs none; T19 prune
 > on/off) to attribute the combined gain, then §4 #1/#2.

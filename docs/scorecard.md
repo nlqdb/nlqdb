@@ -13,18 +13,14 @@ until then the daily lever targets the worst number below)*
 
 **Worst number today:** real strangers reaching a first answer = **0**
 (funnel/distribution lane) — gated by the engine (GLOBAL-027 valve), so the
-engine-side worst, Spider 0.1704 vs 0.75, owns it. The Gemini-restore lever is
-**human-blocked** (Google console, runs 6–7) and a full eval is impractical
-in-session (no local fixtures, free providers rate-limited). **Run 11 takes a
-NOT-blocked EX lever (shipped, SK-ASK-022):** the `/v1/ask` executor never
-fed a Postgres exec error back to the planner — a re-plannable error (a wrong
-column, a GROUP BY omission, a type mismatch) was replayed identically 3× then
-surfaced `db_unreachable`. The `previousAttempt` plumbing + diagnostic re-plan
-prompt already existed (SK-LLM-018/037); the only gap was the route. Now such
-an error re-plans **once** with the DB error fed back. Execution-guided repair
-is the highest-EX technique in text-to-SQL — and unlike the Gemini leg, no
-console click gates it. The full BIRD/Spider delta lands on the next scheduled
-quality-eval (engine row still fresh, < 7 d); the in-session proxy is below.
+engine-side worst, **Spider 0.1852 vs 0.75**, owns it. **The Gemini free-tier
+key was restored 2026-06-17** (fresh AI Studio key, mirrored to GHA + Worker)
+and the full canonical Spider eval re-ran on the healed chain: raw EX
+**0.1704 → 0.1852**, `no_sql` **36 → 9**, and `gemini:http_4xx`/`auth_denied`
+is gone (`SK-LLM-039`). The 27 newly-answered questions mostly mismatch (hard
+benchmark), so the engine bottleneck is now **SQL reasoning** (mismatches), not
+provider availability — the §4 levers in `quality-score-source-of-truth.md`
+target it. BIRD unchanged (0.522; Gemini wasn't its bottleneck, `no_sql` was 3).
 
 | # | Metric | Value | Target / note |
 |---|--------|-------|------|
@@ -34,9 +30,9 @@ quality-eval (engine row still fresh, < 7 d); the in-session proxy is below.
 | 3 | Registered users, real strangers | 0 | 7 total = 3 founder + 4 test/dev accounts |
 | 4 | Invite-valve crossings (KV `wl:invite-cap`) | 9/wk (06-13, carried) | cap 200/wk — no exhaustion risk; mostly walker-triggered; not re-pulled this run |
 | 5 | Anon DBs with a recorded first answer | **101 of 101** | instrument fix (runs 1–3) holding; +8 since 06-13. Genuine-stranger subset still ~0 (rows #2/#3) — the real worst-number |
-| | **Engine — measured 2026-06-12 (fresh, < 7d)** | | `apps/api/src/gate/eval-baseline.ts` |
+| | **Engine — BIRD 2026-06-12 · Spider 2026-06-17 (fresh, < 7d)** | | `apps/api/src/gate/eval-baseline.ts` |
 | 6 | BIRD raw EX | 0.522 | target 0.65 (GLOBAL-027) |
-| 7 | Spider raw EX | 0.1704 | target 0.75; 36/135 `no_sql` — `gemini:http_4xx` root-caused = whole-project Gemini denial. Run 7 re-probe: 2.5 → 403, **2.0-flash → 429 `limit: 0`** (no free-tier allowance), so the chain is permanently 5-of-6 and no in-code swap fixes it. Recovery = console (blocked-by-human) |
+| 7 | Spider raw EX | 0.1852 | target 0.75; was 0.1704 (06-12). Gemini free-tier key restored 06-17 → `no_sql` 36 → 9, `gemini:http_4xx` cleared (`SK-LLM-039`); residual 9 capacity-only. Bottleneck now SQL reasoning, not availability |
 | 8 | persona-bench | — | not yet built |
 | 9 | free-vs-frontier delta | null | agentic lane not yet run (`SK-QUAL-004`, target ≤ 25 pp) |
 | | **Ops — 7d, CF Workers analytics** | | wall-time, all routes (not `/ask`-only) |
@@ -69,6 +65,18 @@ quality-eval (engine row still fresh, < 7 d); the in-session proxy is below.
 
 ## Deltas (recent runs)
 
+- 2026-06-17 (run 12) — **Gemini free-tier key restored + Spider re-run.**
+  The shared `GEMINI_API_KEY` was rotated to a fresh free-tier AI Studio key
+  (live-probed `gemini-2.5-flash` → HTTP 200) and mirrored to GHA + Worker,
+  healing the whole-project denial behind the 2026-06-12 Spider losses
+  (`SK-LLM-039`). Re-ran the canonical 135-q Spider eval on the healed chain:
+  raw EX **0.1704 → 0.1852** (23 → 25/135), `no_sql` **36 → 9** (now
+  capacity-only — `circuit_open` + `mistral:network` + `workers-ai:parse`, no
+  `gemini:http_4xx`/`auth_denied`). The 27 newly-answered questions mostly
+  mismatch ⇒ engine bottleneck is now SQL reasoning, not availability.
+  Re-seeds `eval-baseline.ts` (Spider only; BIRD unchanged). KPI: engine
+  quality (GLOBAL-025); none degraded. Resumed across 2 windows
+  (27679511189 hit the 60-min ceiling → 27683263668 completed).
 - 2026-06-16 (run 11) — **execution-guided repair: feed a re-plannable PG
   exec error back to the planner (SK-ASK-022).** A deterministic-but-fixable
   exec error (42703 undefined_column, 42803 GROUP BY, 42883/42725 function,
