@@ -74,8 +74,15 @@ HTTP-status → `FailoverReason` mapping introduced by
   decision exists for. (3) Switch the Gemini default model from
   `gemini-2.5-flash` to an accessible one in code — rejected: the
   2026-06-15 re-probe shows gemini-2.0-flash also returns 429 `limit: 0`,
-  so there is no accessible *free* model to switch to; the
-  Google-console/billing fix is tracked in `docs/blocked-by-human.md`. (4)
+  so there is no accessible *free* model to switch to. A key denial is
+  fixed by rotating to a fresh/unflagged **free-tier** AI Studio key —
+  never by linking billing (off-policy under
+  [`GLOBAL-013`](../../../decisions/GLOBAL-013-free-tier-bundle-budget.md);
+  paid Gemini is the separate §6-gated hosted-premium lane,
+  [`SK-LLM-017`](./SK-LLM-017-hosted-premium-chain.md)). Resolved 2026-06-17
+  by such a rotation — the shared key now serves `gemini-2.5-flash` on the
+  free tier (live-probed 200), so the free chain is no longer down a
+  provider. (4)
   Leave it as `http_4xx` — rejected: the whole point is to tell a
   whole-session denial apart from a one-off bad request. (5) Park for the
   **default 60s cooldown** (the original SK-LLM-039 value) — rejected: a

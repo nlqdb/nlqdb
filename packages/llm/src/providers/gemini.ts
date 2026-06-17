@@ -1,6 +1,12 @@
 // Google AI Studio (Gemini) — strict-$0 plan workhorse + hard-plan
 // fallback. docs/architecture.md §7.1 free-tier limits: 500 RPD on Flash, 100 RPD
 // on Pro. Wire format is Google's, not OpenAI's.
+//
+// `GEMINI_API_KEY` is a FREE-TIER key (GLOBAL-013): never link billing on it
+// or switch the default model here to a paid one. A denial → rotate to a
+// fresh/unflagged free-tier AI Studio key (SK-LLM-039), not billing. Paid
+// Gemini (2.5 Pro) is the separate §6-gated hosted-premium lane (SK-LLM-017),
+// on its own credential — never this key.
 
 import { type CallOpts, type LLMOperation, type Provider, ProviderError } from "../types.ts";
 import { createChatProvider } from "./_chat-provider.ts";
