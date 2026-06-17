@@ -1,7 +1,12 @@
 # GLOBAL-013 — $0/month for the free tier; Workers free-tier bundle ≤ 3 MiB compressed
 
 - **Decision:** The free tier runs on Cloudflare Workers free plan,
-  Neon free plan, and other zero-cost services. The deployed Worker
+  Neon free plan, and other zero-cost services. Free-tier provider keys
+  (e.g. the shared `GEMINI_API_KEY`) stay on the **no-card free tier** —
+  never link billing on them or point them at a paid model; frontier/paid
+  usage routes through BYOLLM or the §6-gated hosted-premium lane
+  ([`GLOBAL-026`](./GLOBAL-026-llm-strategy-byollm-hosted-premium.md)) on
+  separate credentials. The deployed Worker
   bundle stays under 3 MiB compressed (Cloudflare's hard limit on the
   free plan is 3 MiB, paid is 10 MiB).
 - **Core value:** Free, Bullet-proof

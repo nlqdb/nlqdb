@@ -29,7 +29,11 @@ Commercial shape (Shape B: flat subscription + included monthly request allowanc
 - **Consequence in code:** `LLMRouterOptions.chains` widens to
   `{free, paid, premium}`. New `packages/llm/src/chains/premium.ts`.
   Provider modules for Anthropic / OpenAI / Gemini-Pro added; zero-
-  runtime-cost when never instantiated. `chooseChain(req)` becomes a
+  runtime-cost when never instantiated. The premium Gemini-Pro module uses
+  its **own paid credential — never the shared free `GEMINI_API_KEY`**, which
+  stays free-tier-only per
+  [`GLOBAL-013`](../../../decisions/GLOBAL-013-free-tier-bundle-budget.md).
+  `chooseChain(req)` becomes a
   three-way selector. Stripe metered subscription items
   (`nlqdb.premium_llm.tokens.<provider>.<model>`) are attached at the
   router span boundary per `SK-PREMIUM-007` (cached plans never bill).

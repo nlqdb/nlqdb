@@ -761,7 +761,7 @@ NLQDB_BACKUP_DIR=/path/to/private/folder scripts/backup-envrc.sh
 | `DATABASE_URL`         | Neon → Branches → main → Roles → `neondb_owner` → Reset password           |
 | `FLY_API_TOKEN`        | `fly tokens create org --name nlqdb-phase0-<purpose>`                      |
 | `UPSTASH_REDIS_REST_*` | console.upstash.com → DB → REST API section                                |
-| `GEMINI_API_KEY`       | https://aistudio.google.com/apikey                                         |
+| `GEMINI_API_KEY`       | https://aistudio.google.com/apikey — **free tier only**; on a denial rotate to a fresh/unflagged free-tier key, never link billing / use a paid model (`GLOBAL-013`). Paid Gemini = hosted-premium lane. |
 | `GROQ_API_KEY`         | https://console.groq.com/keys                                              |
 | `OPENROUTER_API_KEY`   | https://openrouter.ai/settings/keys                                        |
 | `SENTRY_DSN`           | Sentry → project settings → Client Keys (DSN). Project-scoped, safe-ish to re-share. |
