@@ -97,6 +97,10 @@ select_secrets() {
         CLOUDFLARE_ACCOUNT_ID
         CF_AI_TOKEN
         DATABASE_URL
+        # SK-QUAL-002 — bearer the eval runner POSTs to /v1/events/eval; the
+        # API validates the incoming token against this (index.ts). Must match
+        # the GHA-side EVAL_INGEST_TOKEN; unset ⇒ the route 503s + emit no-ops.
+        EVAL_INGEST_TOKEN
         GEMINI_API_KEY
         GH_TOKEN
         GROQ_API_KEY

@@ -10,6 +10,13 @@
 // `mistral:network` errors — not rate-limit walls and not a size problem
 // (every SQLite-subset schema ≤ ~1,880 tok, offline-measured 2026-06-13;
 // the "oversized-DDL" read was wrong) — see `quality-score-source-of-truth.md` §2).
+//
+// 2026-06-17 — Spider re-run after the shared `GEMINI_API_KEY` free-tier key
+// was restored (SK-LLM-039): raw EX 0.1704 → 0.1852 (25/135), `no_sql` 36 → 9.
+// The residual 9 are capacity-only (`circuit_open` across providers +
+// `mistral:network` + `workers-ai:parse`); `gemini:http_4xx` / `auth_denied`
+// are gone — Gemini now answers, failing only on the shared rate-limit walls.
+// BIRD unchanged (not re-run; Gemini wasn't its bottleneck — `no_sql` was 3).
 // Both lanes remain below target ⇒ gate stays closed.
 
 export type EvalBaseline = {
@@ -22,8 +29,8 @@ export type EvalBaseline = {
 
 export const EVAL_BASELINE = {
   bird_accuracy: 0.522,
-  spider_accuracy: 0.1704,
+  spider_accuracy: 0.1852,
   bird_target: 0.65,
   spider_target: 0.75,
-  measured_at: "2026-06-12T07:30:09.249Z",
+  measured_at: "2026-06-17T10:48:41.851Z",
 } as const satisfies EvalBaseline;

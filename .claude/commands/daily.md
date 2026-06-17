@@ -41,7 +41,16 @@ creating it is a complete day-one run):
 - **Engine:** BIRD / Spider from `apps/api/src/gate/eval-baseline.ts` with
   `measured_at` (a date > 7 days old is itself an alert — dispatch the
   canonical quality-eval workflow via `GH_TOKEN_WORKFLOW` and record the run
-  link); persona-bench % once it exists; free-vs-frontier delta.
+  link). **A full run spans several ~60-min windows (Spider took 4 on
+  2026-06-12), so resume — don't restart:** before dispatching, check the
+  latest run on the *current* `main` SHA; if it was cancelled / timed-out or
+  its report has `resumable: true`, re-dispatch on the **same SHA** to resume
+  from the `SK-QUAL-013` checkpoint, and loop until the report writes
+  `resumable: false`. Don't let `main` move between windows or the SHA-keyed
+  checkpoint cache misses and the run restarts from scratch. When the run
+  completes, update `eval-baseline.ts` + the GLOBAL-027 mirror with the fresh
+  number and append a `quality-score-verification-log.md` row. persona-bench %
+  once it exists; free-vs-frontier delta.
 - **Ops:** p50/p95 ask latency, error rate, $ spend (expect ~0).
 - **Top lines:** the weekly focus number (founder-set — never overwrite it),
   then "worst number today" + which lane owns it.
