@@ -9,7 +9,11 @@ its backlog (`quality-score-source-of-truth.md` §4 #2); value retrieval
   schema it embeds via the new pure `pruneSchemaForGoal(schema, goal)`
   (`packages/llm/src/schema-prune.ts`): keep every `CREATE TABLE`/`VIEW`
   whose table-name or column-name word-tokens overlap the goal's tokens,
-  close over their `REFERENCES` targets so kept joins stay plannable, and
+  then close the join graph to a fixpoint both ways — a kept table's
+  `REFERENCES` parents, **plus** any bridge table that references two-or-more
+  kept tables (the many-to-many link a token match never reaches, e.g.
+  `enrolments(sid→students, cid→courses)` for "courses per student"; ≥2 kept
+  references bounds it to genuine bridges) — so kept joins stay plannable, and
   send the **full** schema whenever pruning is not a clear win — schema
   < 2000 chars, < 5 tables, zero matches, kept ratio ≥ 0.9, unparseable
   DDL, or a **retry** (`previousAttempt` set — the failed attempt is the
@@ -27,7 +31,10 @@ its backlog (`quality-score-source-of-truth.md` §4 #2); value retrieval
   the design was verified offline before shipping: against all 500 BIRD
   Mini-Dev questions it prunes 27.8% of prompts (−7.1% schema chars) with
   **99.8% gold-table recall** (1 miss, recovered by the full-schema retry
-  path); against all 135 Spider 2.0-lite SQLite questions it prunes 67.4%
+  path; the bridge rule only ever *adds* tables, so it cannot lower that
+  recall — a synthetic multi-hop suite confirms it lifts join-path table
+  recall 4/6 → 6/6 where parent-only closure dropped the link tables);
+  against all 135 Spider 2.0-lite SQLite questions it prunes 67.4%
   (−26.5% schema chars; no gold SQL exists to check recall there — the
   guards + retry bound the risk). Production `db.create` schemas are
   typically under both floors, so `/v1/ask` behaviour only changes for

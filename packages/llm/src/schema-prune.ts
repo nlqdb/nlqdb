@@ -1,10 +1,11 @@
 // SK-LLM-037 — goal-relevant schema pruning for the planner prompt.
 //
 // Recall-first, table-granular: keep every CREATE TABLE/VIEW whose name
-// or column identifiers share a token with the goal, then close over
-// their FOREIGN KEY ... REFERENCES targets so a kept table's joins stay
-// plannable. Anything ambiguous keeps the full schema — missing a needed
-// table is far worse for SQL generation than sending extra ones
+// or column identifiers share a token with the goal, then close the join
+// graph both ways — a kept table's FOREIGN KEY ... REFERENCES parents, plus
+// any bridge table that references two-or-more kept tables (the many-to-many
+// link a token match never reaches). Anything ambiguous keeps the full schema
+// — missing a needed table is far worse for SQL generation than sending extras
 // (RSL-SQL arXiv:2411.00073; arXiv:2408.07702 measures the same
 // asymmetry). Pure + zero-dep so production `/v1/ask` and the eval
 // harness share it byte-for-byte through `buildPlanUser`.
@@ -131,17 +132,34 @@ export function pruneSchemaForGoal(schema: string, goal: string): string {
   }
   if (kept.size === 0) return schema;
 
-  // FK closure — a kept table's REFERENCES targets must be present for
-  // the model to join through them.
+  // Join-path closure to a fixpoint, two recall-first rules:
+  //  (1) Parent FK — a kept table's REFERENCES targets must be present so
+  //      the model can join through them.
+  //  (2) Bridge — a table that REFERENCES two or more already-kept tables
+  //      is the join path between them (a many-to-many link table whose own
+  //      name/columns share no goal token, so rule-1 never reaches it). Keep
+  //      it; the path A→link→B is unplannable without it. Requiring ≥2 kept
+  //      references bounds this to genuine bridges, not every child row.
   const byName = new Map(tables.map((t) => [t.name as string, t]));
-  const queue = [...kept];
-  while (queue.length > 0) {
-    const t = byName.get(queue.pop() as string);
-    if (!t) continue;
-    for (const ref of t.references) {
-      if (!kept.has(ref) && byName.has(ref)) {
-        kept.add(ref);
-        queue.push(ref);
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (const name of [...kept]) {
+      const t = byName.get(name);
+      if (!t) continue;
+      for (const ref of t.references) {
+        if (!kept.has(ref) && byName.has(ref)) {
+          kept.add(ref);
+          changed = true;
+        }
+      }
+    }
+    for (const t of tables) {
+      if (kept.has(t.name as string)) continue;
+      const linked = new Set(t.references.filter((r) => kept.has(r)));
+      if (linked.size >= 2) {
+        kept.add(t.name as string);
+        changed = true;
       }
     }
   }

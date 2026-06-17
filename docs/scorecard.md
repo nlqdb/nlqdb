@@ -21,6 +21,12 @@ is gone (`SK-LLM-039`). The 27 newly-answered questions mostly mismatch (hard
 benchmark), so the engine bottleneck is now **SQL reasoning** (mismatches), not
 provider availability — the §4 levers in `quality-score-source-of-truth.md`
 target it. BIRD unchanged (0.522; Gemini wasn't its bottleneck, `no_sql` was 3).
+**Run 13 (2026-06-17)** ships the first mismatch-targeting lever since the
+re-seed: bridge-table closure in the schema pruner (`SK-LLM-037`). Measured
+offline (no eval quota burned): join-path table recall **4/6 → 6/6** on a
+multi-hop suite where parent-only FK closure dropped many-to-many link tables.
+Recall-only (adds tables, never drops) ⇒ Spider/BIRD EX can't regress; full EX
+delta → next scheduled eval.
 
 | # | Metric | Value | Target / note |
 |---|--------|-------|------|
@@ -65,6 +71,23 @@ target it. BIRD unchanged (0.522; Gemini wasn't its bottleneck, `no_sql` was 3).
 
 ## Deltas (recent runs)
 
+- 2026-06-17 (run 13) — **bridge-table closure in the schema pruner
+  (`SK-LLM-037` refinement).** The post-re-seed bottleneck is SQL-reasoning
+  *mismatches*; the first §4-class lever against them. The pruner's FK closure
+  only followed parents, so a many-to-many link table whose own name/columns
+  share no goal token (`enrolments(sid→students, cid→courses)`) was dropped —
+  leaving the model two tables it can't join (a missing-join → mismatch). New
+  rule: keep any table referencing ≥2 already-kept tables (a genuine bridge;
+  ≥2 bounds it). **Measured offline, zero eval quota:** join-path table recall
+  **4/6 → 6/6** on a synthetic multi-hop suite (parent-only closure dropped
+  both link tables); a red→green unit test pins the bridge + the
+  one-kept-ref-stays-dropped guard. Recall-only — it can only *add* tables, so
+  the 99.8% BIRD gold-table recall floor and EX cannot regress. KPI: engine
+  quality (GLOBAL-025); none degraded (failure-mode-only, no happy-path or
+  token-budget change for already-complete schemas). 175 llm tests green (+2
+  net). Full BIRD/Spider EX delta → next scheduled quality-eval (run 12 just
+  consumed two windows; §5 forbids back-to-back dispatch). Artifact: dist-queue
+  run-13 post.
 - 2026-06-17 (run 12) — **Gemini free-tier key restored + Spider re-run.**
   The shared `GEMINI_API_KEY` was rotated to a fresh free-tier AI Studio key
   (live-probed `gemini-2.5-flash` → HTTP 200) and mirrored to GHA + Worker,

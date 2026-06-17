@@ -5,6 +5,54 @@ One publishable artifact drafted per day by the daily agent
 publishes at the weekly session. Newest first. Delete an entry once published
 (the live URL goes into `docs/scorecard.md`).
 
+## 2026-06-17 (run 13) — dev.to / lobste.rs post
+
+**Title:** The join table your schema-pruner keeps forgetting
+
+**Body:**
+
+> If you feed a whole database schema to an LLM and ask it for SQL, the extra
+> tables hurt you. Small models lose accuracy when the prompt is full of
+> tables the query doesn't need — "schema linking," sending only the relevant
+> slice, is one of the cheapest accuracy levers there is (C3-SQL, RSL-SQL).
+> So we prune: keep the tables whose names or columns share a word with the
+> question, then follow their foreign keys so the joins still work.
+>
+> That last step has a quiet bug, and it cost us real answers.
+>
+> Following foreign keys only goes *one way* — from a table to its parents.
+> Picture a classic many-to-many: `students`, `courses`, and a link table
+> `enrolments(sid → students, cid → courses)`. Ask "which courses did each
+> student take?" and the pruner happily keeps `students` (matches "student")
+> and `courses` (matches "course"). But `enrolments`? Its name isn't in the
+> question, and its columns are `sid`, `cid`, `grade` — nothing matches. And
+> `students` and `courses` don't reference *it*, so parent-following never
+> reaches it. The link table gets dropped, and now the model is staring at
+> two tables it cannot join. The SQL it writes is wrong, not because the model
+> is bad, but because we hid the bridge.
+>
+> The fix is one rule: **a table that references two or more tables you've
+> already kept is a join path — keep it.** Requiring *two* kept references is
+> what keeps this from ballooning: it pulls in genuine bridges, not every
+> child row of every table. It can only ever *add* tables, so it can't lower
+> recall — and on a small multi-hop test suite it took our join-path table
+> recall from 4/6 to 6/6. The bridges stopped vanishing.
+>
+> The general lesson: when you prune a graph by relevance, relevance is not
+> transitive through the nodes you dropped. The edge between two relevant
+> nodes can run through a node that looks irrelevant on its own. Close the
+> graph both ways, or you'll keep losing the connectors.
+>
+> *(nlqdb is a database you query in plain English; the whole NL→SQL engine
+> runs on free-tier LLMs, so prompt-only accuracy levers like this one are
+> where the work is. Built and run almost entirely by Claude Code.)*
+
+**Why this is publishable:** concrete, reproducible bug-and-fix with a number
+(4/6 → 6/6), a transferable lesson (relevance isn't transitive across dropped
+graph nodes), and a soft one-line product mention. Pairs with the run-11
+"failover/retry/repair" post as the same genre — small engine-internals
+stories that read as craft, not marketing.
+
 ## 2026-06-16 (run 11) — dev.to / lobste.rs post
 
 **Title:** Failover, retry, repair: the three error classes in an LLM text-to-SQL pipeline
