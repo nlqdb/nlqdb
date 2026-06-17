@@ -12,19 +12,20 @@ URLs land here when a queue entry ships.
 until then the daily lever targets the worst number below)*
 
 **Worst number today:** real strangers reaching a first answer = **0**
-(funnel/distribution lane) — gated by the engine (GLOBAL-027 valve), so the
-engine-side worst, Spider 0.1704 vs 0.75, owns it. The Gemini-restore lever is
-**human-blocked** (Google console, runs 6–7) and a full eval is impractical
-in-session (no local fixtures, free providers rate-limited). **Run 11 takes a
-NOT-blocked EX lever (shipped, SK-ASK-022):** the `/v1/ask` executor never
-fed a Postgres exec error back to the planner — a re-plannable error (a wrong
-column, a GROUP BY omission, a type mismatch) was replayed identically 3× then
-surfaced `db_unreachable`. The `previousAttempt` plumbing + diagnostic re-plan
-prompt already existed (SK-LLM-018/037); the only gap was the route. Now such
-an error re-plans **once** with the DB error fed back. Execution-guided repair
-is the highest-EX technique in text-to-SQL — and unlike the Gemini leg, no
-console click gates it. The full BIRD/Spider delta lands on the next scheduled
-quality-eval (engine row still fresh, < 7 d); the in-session proxy is below.
+(funnel/distribution lane) — gated by the engine (GLOBAL-027 valve). **Run 12
+re-measured the genuine-stranger first-value path** (the worst-number lane) with
+the FLOW-004 seed-quality probe and found the bottleneck has *moved*: the
+empty-DB `seeded_ok_ratio` SK-HDC-018/019 fixed is now **1.0** (was 0.25 on
+06-10), but on a harder 8-goal P1 set **3 of 8 goals hard-fail at provision
+with `infer_failed` (HTTP 422)** — the stranger gets *no DB at all*, the harshest
+first-value outcome, and the ratio hides it (provision-fails are excluded).
+Captured against prod, the deterministic slice is `plan_invalid issue_count:1`:
+the model names a column a Postgres reserved word the schema-infer prompt's short
+list doesn't cover. **Run 12 ships the NOT-blocked lever (SK-HDC-020):**
+`inferSchema` now re-infers **once** with the Zod issue fed back (the typed-plan
+analogue of run 11's SK-ASK-022), recovering the `plan_invalid` slice. The
+Gemini-restore lever stays **human-blocked** (console, runs 6–7); engine
+BIRD/Spider row still fresh (< 7 d) so no dispatch this run.
 
 | # | Metric | Value | Target / note |
 |---|--------|-------|------|
@@ -34,6 +35,7 @@ quality-eval (engine row still fresh, < 7 d); the in-session proxy is below.
 | 3 | Registered users, real strangers | 0 | 7 total = 3 founder + 4 test/dev accounts |
 | 4 | Invite-valve crossings (KV `wl:invite-cap`) | 9/wk (06-13, carried) | cap 200/wk — no exhaustion risk; mostly walker-triggered; not re-pulled this run |
 | 5 | Anon DBs with a recorded first answer | **101 of 101** | instrument fix (runs 1–3) holding; +8 since 06-13. Genuine-stranger subset still ~0 (rows #2/#3) — the real worst-number |
+| 5a | First-value seed-quality (`seeded_ok_ratio`, FLOW-004 probe) | **1.0** default 4-goal set; **1.0** over 5 classified creates on harder 8-goal set | re-measured 2026-06-17 (was 0.25 on 06-10). BUT **3/8 harder goals → `infer_failed` 422** (no DB) — the new first-value bottleneck; deterministic slice = reserved-word `plan_invalid`, fixed by SK-HDC-020 (run 12) |
 | | **Engine — measured 2026-06-12 (fresh, < 7d)** | | `apps/api/src/gate/eval-baseline.ts` |
 | 6 | BIRD raw EX | 0.522 | target 0.65 (GLOBAL-027) |
 | 7 | Spider raw EX | 0.1704 | target 0.75; 36/135 `no_sql` — `gemini:http_4xx` root-caused = whole-project Gemini denial. Run 7 re-probe: 2.5 → 403, **2.0-flash → 429 `limit: 0`** (no free-tier allowance), so the chain is permanently 5-of-6 and no in-code swap fixes it. Recovery = console (blocked-by-human) |
@@ -69,6 +71,23 @@ quality-eval (engine row still fresh, < 7 d); the in-session proxy is below.
 
 ## Deltas (recent runs)
 
+- 2026-06-17 (run 12) — **validation-guided re-inference for db.create
+  (SK-HDC-020).** The FLOW-004 seed-quality probe re-measured the genuine-
+  stranger first-value path: `seeded_ok_ratio` **0.25 (06-10) → 1.0** (the
+  SK-HDC-018/019 empty-DB fix is holding), but the harder 8-goal P1 set
+  exposed a *new* worst outcome — **3/8 goals `infer_failed` (HTTP 422), no DB
+  at all**, hidden from the ratio (provision-fails excluded). Root-caused
+  against prod: the deterministic slice is `plan_invalid issue_count:1` — a
+  column named a Postgres reserved word the schema-infer prompt's short list
+  misses. `inferSchema` returned immediately on `plan_invalid`; now it re-infers
+  **once** with the rejected plan + Zod issue fed back (via new
+  `SchemaInferRequest.previousAttempt`), the typed-plan analogue of run 11's
+  execution-guided repair (SK-ASK-022). **Measured (same-seed, Cerebras
+  gpt-oss-120b, temp 0):** the "fitness log…" goal infers valid **0/3 → repaired
+  3/3**; unit tests pin the loop (810 api tests green, was 808). KPI: engine
+  quality + onboarding (GLOBAL-025). None degraded — failure-path only (zero
+  happy-path latency/cost), `llm_failed`/`ambiguous_goal` unchanged, client
+  still sees only `issue_count` (GLOBAL-012). Live re-measure waits on a deploy.
 - 2026-06-16 (run 11) — **execution-guided repair: feed a re-plannable PG
   exec error back to the planner (SK-ASK-022).** A deterministic-but-fixable
   exec error (42703 undefined_column, 42803 GROUP BY, 42883/42725 function,

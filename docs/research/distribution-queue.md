@@ -5,6 +5,53 @@ One publishable artifact drafted per day by the daily agent
 publishes at the weekly session. Newest first. Delete an entry once published
 (the live URL goes into `docs/scorecard.md`).
 
+## 2026-06-17 (run 12) — dev.to / lobste.rs post
+
+**Title:** Our seeding success rate was 100%. 37% of users got no database at all.
+
+**Body:**
+
+> We grade our onboarding with one number: when someone says "build me a habit
+> tracker," what fraction get a *seeded* database back — real tables with real
+> sample rows — instead of an empty shell? Call it `seeded_ok_ratio`. For weeks
+> it sat at 0.25, then we shipped two fixes and it climbed to 1.0. Done, right?
+>
+> Then we ran the same probe with harder prompts — a fitness log with sets and
+> reps, a library catalog with loans, a job tracker with interview stages. The
+> ratio was still a clean 1.0. And three of eight users got **nothing**: an
+> HTTP 422, no database, the harshest possible first-value outcome.
+>
+> Both things were true at once because of how the metric was defined. The
+> ratio is `seeded_ok / classified_creates`, and a *provision failure* — the
+> engine couldn't build the database at all — was excluded from the
+> denominator. The reasoning was defensible in isolation: "this metric grades
+> the seed quality of a database that was created, not whether creation
+> succeeded." But the excluded bucket was the *worst* outcome, not a neutral
+> one. The headline number got better precisely as it stopped measuring the
+> failure that hurt most.
+>
+> The lesson that generalizes: **when a rate excludes a bucket, ask whether the
+> excluded bucket is better or worse than the ones you kept.** Excluding "didn't
+> apply" is fine. Excluding "catastrophic failure" turns your success metric
+> into a lie that improves over time. We now report `provision_failed` as a
+> first-class line next to the ratio, so a hard build failure can never again
+> hide behind a green number.
+>
+> (The root cause, once we could see it: the model named a column a Postgres
+> reserved word our prompt's example list didn't cover — deterministic, every
+> time. The fix was to feed the validator's own error back and re-infer once,
+> which recovered it 3 times out of 3. But we'd never have looked if the metric
+> hadn't stopped lying to us first.)
+>
+> (nlqdb is a database you create and query in plain English; the seeding step
+> above is the create path. The probe and its numbers are in the repo.)
+
+**Why this is publishable:** a concrete, slightly embarrassing, broadly useful
+metrics-design lesson (denominator exclusions hide your worst outcome) drawn
+from a real measurement this week, not a hypothetical. Pairs with the run-11
+"failover ≠ retry ≠ repair" post (the fix here is the same feed-the-error-back
+repair, applied one stage earlier). Mentions nlqdb once, in context.
+
 ## 2026-06-16 (run 11) — dev.to / lobste.rs post
 
 **Title:** Failover, retry, repair: the three error classes in an LLM text-to-SQL pipeline

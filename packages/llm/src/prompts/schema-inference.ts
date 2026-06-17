@@ -62,5 +62,24 @@ export const SCHEMA_INFER_SYSTEM = [
 ].join("\n");
 
 export function buildSchemaInferUser(req: SchemaInferRequest): string {
-  return `Goal: ${req.goal.trim()}`;
+  const parts = [`Goal: ${req.goal.trim()}`];
+  if (req.previousAttempt) {
+    // SK-HDC-020 — diagnostic-first re-inference framing (same shape as
+    // the planner's SK-LLM-018 retry block). The model edits exactly what
+    // the validator named instead of redesigning a schema it already got
+    // almost right; the most common cause is a reserved-word identifier.
+    parts.push(
+      [
+        "Your previous JSON failed schema validation:",
+        req.previousAttempt.plan,
+        "Validation problems:",
+        req.previousAttempt.issues,
+        "Return the FULL corrected JSON object (every required key: slug_hint,",
+        "description, tables, foreign_keys, metrics, dimensions, sample_rows).",
+        "Fix only what the problems name and keep everything else identical —",
+        "for a reserved-word identifier, rename it (e.g. append _entry).",
+      ].join("\n"),
+    );
+  }
+  return parts.join("\n\n");
 }

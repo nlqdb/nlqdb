@@ -111,7 +111,17 @@ export type SummarizeResponse = { summary: string };
 // across operations. Validation against the canonical Zod schema
 // lives at the call site (`packages/db/src/types.ts`) — keeping
 // `@nlqdb/llm` independent of the engine package avoids a cycle.
-export type SchemaInferRequest = { goal: string };
+export type SchemaInferRequest = {
+  goal: string;
+  // SK-HDC-020 — validation-guided re-inference. When the first plan
+  // failed Zod validation (e.g. a reserved-word identifier), the
+  // orchestrator re-calls once with the rejected plan + a summary of the
+  // validation issues so the model edits exactly what failed instead of
+  // the create hard-failing as `infer_failed`. Absent on first attempts;
+  // capped at the builder, so providers reuse `buildSchemaInferUser` with
+  // no per-provider plumbing (mirrors `PlanRequest.previousAttempt`).
+  previousAttempt?: { plan: string; issues: string };
+};
 export type SchemaInferResponse = { plan: Record<string, unknown> };
 
 // Engine classification (SK-DB-010 / SK-MULTIENG-002). Cheap-tier op

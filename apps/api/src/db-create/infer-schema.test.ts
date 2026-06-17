@@ -85,6 +85,31 @@ const ORDERS_PLAN: SchemaPlan = {
   ],
 };
 
+// Per-call sequence stub (SK-HDC-020 repair loop): call N returns results[N],
+// the last result repeating if more calls arrive than results provided.
+function stubLLMSeq(results: (SchemaInferResponse | Error)[]): {
+  llm: LLMRouter;
+  schemaInferMock: ReturnType<typeof vi.fn>;
+} {
+  let i = 0;
+  const schemaInferMock = vi.fn(async () => {
+    const r = results[Math.min(i, results.length - 1)];
+    i += 1;
+    if (r instanceof Error) throw r;
+    return r as SchemaInferResponse;
+  });
+  return {
+    schemaInferMock,
+    llm: {
+      route: vi.fn(),
+      plan: vi.fn(),
+      summarize: vi.fn(),
+      schemaInfer: schemaInferMock,
+      engineClassify: vi.fn(),
+    } as unknown as LLMRouter,
+  };
+}
+
 function planResponse(plan: SchemaPlan | Record<string, unknown>): SchemaInferResponse {
   return { plan: plan as Record<string, unknown> };
 }
@@ -176,6 +201,52 @@ describe("inferSchema", () => {
     expect(out.reason).toBe("plan_invalid");
     if (out.reason !== "plan_invalid") return;
     expect(out.details.issue_count).toBeGreaterThan(0);
+  });
+
+  it("SK-HDC-020: re-infers once with the validation issues fed back and recovers", async () => {
+    // First plan uses a reserved word as a column name (the measured
+    // deterministic `plan_invalid` cause); the repair call returns a clean
+    // plan. inferSchema should return ok after exactly two calls, and the
+    // second call must carry `previousAttempt` (rejected plan + issues).
+    const ordersTable = ORDERS_PLAN.tables[0];
+    if (!ordersTable) throw new Error("fixture missing orders table");
+    const reserved = {
+      ...ORDERS_PLAN,
+      tables: [
+        {
+          ...ordersTable,
+          columns: [{ ...ordersTable.columns[0], name: "order" }, ...ordersTable.columns.slice(1)],
+        },
+      ],
+    };
+    const { llm, schemaInferMock } = stubLLMSeq([
+      planResponse(reserved),
+      planResponse(ORDERS_PLAN),
+    ]);
+    const out = await inferSchema({ llm }, { goal: "an orders tracker for my coffee shop" });
+    expect(out.ok).toBe(true);
+    expect(schemaInferMock).toHaveBeenCalledTimes(2);
+    const secondArg = schemaInferMock.mock.calls[1]?.[0] as {
+      goal: string;
+      previousAttempt?: { plan: string; issues: string };
+    };
+    expect(secondArg.previousAttempt).toBeDefined();
+    expect(secondArg.previousAttempt?.issues).toContain("reserved word");
+    expect(secondArg.previousAttempt?.plan).toContain('"order"');
+  });
+
+  it("SK-HDC-020: surfaces plan_invalid after one repair attempt also fails", async () => {
+    const reserved = {
+      ...ORDERS_PLAN,
+      tables: [{ ...ORDERS_PLAN.tables[0], name: "select" }],
+    };
+    // Both calls return an invalid plan → repair exhausted → plan_invalid.
+    const { llm, schemaInferMock } = stubLLMSeq([planResponse(reserved), planResponse(reserved)]);
+    const out = await inferSchema({ llm }, { goal: "anything" });
+    expect(out.ok).toBe(false);
+    if (out.ok) return;
+    expect(out.reason).toBe("plan_invalid");
+    expect(schemaInferMock).toHaveBeenCalledTimes(2);
   });
 
   it("coerces numeric / boolean `default` values to strings (Groq llama emits bare numbers)", async () => {

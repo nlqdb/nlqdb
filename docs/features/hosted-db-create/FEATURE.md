@@ -193,6 +193,10 @@ Full body: [`decisions/SK-HDC-018-sample-insert-graceful-degradation.md`](decisi
 
 Full body: [`decisions/SK-HDC-019-deterministic-sample-row-salvage.md`](decisions/SK-HDC-019-deterministic-sample-row-salvage.md). Before provisioning, `pruneUninsertableSampleRows(plan)` (pure, `db-create/sample-rows.ts`) drops only the rows that provably can't insert against the plan's own constraints (unknown table/column, NOT-NULL gap, uncoercible type, forward/dangling FK), cascading dropped parents to their children and keeping every coercible row. One bad row of N now seeds N−1 instead of 0; a clean plan is a no-op. The deterministic complement to SK-LLM-033's prompt and the salvage layer above SK-HDC-018's all-or-nothing floor; targets the `seeded_ok_ratio` (SK-STRG-008) empty-DB tail.
 
+### SK-HDC-020 — A plan that fails Zod is re-inferred once with the validation issues fed back
+
+Full body: [`decisions/SK-HDC-020-validation-guided-reinference.md`](decisions/SK-HDC-020-validation-guided-reinference.md). On a first `plan_invalid` (Zod-rejected `SchemaPlan`), `inferSchema` re-calls `schemaInfer` **once** with the rejected plan + an issue summary fed back via `SchemaInferRequest.previousAttempt`, so the model fixes only what the validator named instead of the create hard-failing as `infer_failed`. Bounded to one repair; `llm_failed`/`ambiguous_goal` unchanged; the issue text never reaches the client (GLOBAL-012). Targets the `infer_failed` (HTTP 422) slice of first-value failures the SK-STRG-008 probe surfaced on 2026-06-17 (3/8 harder P1 goals), whose deterministic cause is a reserved-word identifier. The typed-plan-inference analogue of the planner's execution-guided repair (SK-ASK-022). Measured: the "fitness log…" goal infers valid 0/3 → repaired-to-valid 3/3 (Cerebras `gpt-oss-120b`, temp 0).
+
 ## GLOBALs governing this feature
 
 Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; index in [`docs/decisions.md`](../../decisions.md)). The list below names the rules that constrain this feature; any feature-local commentary is nested under the rule.
