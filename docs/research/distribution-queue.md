@@ -5,6 +5,82 @@ One publishable artifact drafted per day by the daily agent
 publishes at the weekly session. Newest first. Delete an entry once published
 (the live URL goes into `docs/scorecard.md`).
 
+## 2026-06-17 (run 12) — dev.to / lobste.rs post
+
+**Title:** Should your text-to-SQL eval match the leaderboard exactly — even when the leaderboard is "wrong"?
+
+**Founder note:** This post is deliberately *two-sided* — it mirrors a live,
+unresolved internal decision (SK-QUAL-010). Don't publish a one-sided "we fixed
+our scorer" version until we've actually picked a side. The honest framing is
+the open question itself.
+
+**Body:**
+
+> If you score a text-to-SQL model, you judge a generated query by what it
+> *returns*, not how it reads — Execution Accuracy (EX). Two SQL strings can
+> look nothing alike and be equally correct, so you compare result sets. Fine.
+> The whole metric then hinges on one line: *how* do you compare two result
+> sets?
+>
+> Canonical BIRD (`evaluation.py`) is exactly this:
+>
+> ```python
+> if set(predicted_res) == set(ground_truth_res):
+>     res = 1
+> ```
+>
+> `set()`. That means it is **order-insensitive** (no special case for
+> `ORDER BY`) and **duplicate-insensitive** (repeated rows collapse). Spider's
+> suite makes the same call. This is the metric every published number you'd
+> compare yourself against was computed with.
+>
+> Here's the uncomfortable part: `set()` will mark some *arguably wrong*
+> answers correct. If the question is "list customers ordered by spend,
+> descending" and the model returns the right customers in ascending order,
+> `set()` says match — the ordering the user asked for is thrown away. Same
+> story for intended duplicates: `SELECT score` vs `SELECT DISTINCT score`
+> compare equal under `set()`.
+>
+> So you're caught between two defensible positions:
+>
+> **Position A — match canonical exactly.** The entire point of EX is
+> comparability to published research. The moment your comparator is *stricter*
+> than the reference (say, a multiset comparison, or order-sensitive when gold
+> has `ORDER BY`), your number stops meaning what everyone else's number means
+> — and it does so in the *quiet* direction: you're understating your own
+> accuracy and might gate a decision on a number that's lower than the real
+> canonical one.
+>
+> **Position B — stay stricter on purpose.** If a number is driving a
+> ship/no-ship gate, you may *prefer* a conservative lower bound over crediting
+> answers that ignored a requested ordering. You lose leaderboard
+> comparability, but you stop rewarding behavior you'd consider a bug in
+> production.
+>
+> There's no universal right answer — it depends on what the number is *for*.
+> A leaderboard submission wants A. An internal release gate might rationally
+> want B, as long as everyone reading the dashboard knows it's a lower bound
+> and not the canonical figure. The trap is doing B *by accident* — labeling a
+> stricter-than-canonical number "BIRD EX" and comparing it to canonical
+> targets as if they were the same scale.
+>
+> Two things worth doing regardless of which side you land on:
+>
+> 1. **Write down which metric you're computing and why.** "We use a multiset,
+>    order-strict variant; it's a deliberate lower bound, not the leaderboard
+>    number" is one sentence that prevents months of comparing apples to
+>    oranges.
+> 2. **If you can, report both.** The canonical `set()` number for
+>    comparability *and* your stricter number for internal gating. The gap
+>    between them is itself a useful signal — it's "how many of our 'misses'
+>    are ordering/duplicate quirks rather than real errors."
+>
+> (Context: this came up in the eval harness behind nlqdb, a natural-language
+> database layer that runs BIRD + Spider against its model chain. We genuinely
+> haven't decided A vs B yet — which is exactly why it's worth writing about.)
+
+---
+
 ## 2026-06-16 (run 11) — dev.to / lobste.rs post
 
 **Title:** Failover, retry, repair: the three error classes in an LLM text-to-SQL pipeline

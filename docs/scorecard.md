@@ -15,16 +15,22 @@ until then the daily lever targets the worst number below)*
 (funnel/distribution lane) — gated by the engine (GLOBAL-027 valve), so the
 engine-side worst, Spider 0.1704 vs 0.75, owns it. The Gemini-restore lever is
 **human-blocked** (Google console, runs 6–7) and a full eval is impractical
-in-session (no local fixtures, free providers rate-limited). **Run 11 takes a
-NOT-blocked EX lever (shipped, SK-ASK-022):** the `/v1/ask` executor never
-fed a Postgres exec error back to the planner — a re-plannable error (a wrong
-column, a GROUP BY omission, a type mismatch) was replayed identically 3× then
-surfaced `db_unreachable`. The `previousAttempt` plumbing + diagnostic re-plan
-prompt already existed (SK-LLM-018/037); the only gap was the route. Now such
-an error re-plans **once** with the DB error fed back. Execution-guided repair
-is the highest-EX technique in text-to-SQL — and unlike the Gemini leg, no
-console click gates it. The full BIRD/Spider delta lands on the next scheduled
-quality-eval (engine row still fresh, < 7 d); the in-session proxy is below.
+in-session (no local fixtures, free providers rate-limited). **Run 12 finding —
+P1 STOP, no code delta:** the highest-value tractable engine lever this run
+looked like correcting the BIRD EX scorer (it compares result sets as a
+**multiset** and **order-strict when gold has ORDER BY** — both stricter than
+canonical BIRD `set(pred)==set(gold)`, web-verified against DAMO-ConvAI
+`evaluation.py`, so reported BIRD EX is an understated lower bound that
+mis-reads the GLOBAL-027 gate). **But SK-QUAL-010 *deliberately* retains that
+strictness** ("conservative lower bound… the honest call while the gate is
+live") and its rejected-alternatives list literally contains "Adopt full
+canonical `set()`." The gate is still live, so the decision's condition holds —
+per P1 this is a founder call, not an agent supersede. Built + verified the fix
+(set-equality `rowsMatch`, two false-mismatch classes flip mismatch→match), then
+**reverted it** rather than silently contradict the decision. **Founder
+decision needed** (see distribution-queue trade-off write-up): keep the
+conservative lower bound, or adopt canonical `set()` parity for leaderboard
+comparability (SK-QUAL-001)? Engine row still fresh (< 7 d).
 
 | # | Metric | Value | Target / note |
 |---|--------|-------|------|
@@ -35,7 +41,7 @@ quality-eval (engine row still fresh, < 7 d); the in-session proxy is below.
 | 4 | Invite-valve crossings (KV `wl:invite-cap`) | 9/wk (06-13, carried) | cap 200/wk — no exhaustion risk; mostly walker-triggered; not re-pulled this run |
 | 5 | Anon DBs with a recorded first answer | **101 of 101** | instrument fix (runs 1–3) holding; +8 since 06-13. Genuine-stranger subset still ~0 (rows #2/#3) — the real worst-number |
 | | **Engine — measured 2026-06-12 (fresh, < 7d)** | | `apps/api/src/gate/eval-baseline.ts` |
-| 6 | BIRD raw EX | 0.522 | target 0.65 (GLOBAL-027) |
+| 6 | BIRD raw EX | 0.522 | target 0.65 (GLOBAL-027); conservative lower bound per SK-QUAL-010 (multiset + ORDER-BY-strict, deliberately stricter than canonical `set()`) |
 | 7 | Spider raw EX | 0.1704 | target 0.75; 36/135 `no_sql` — `gemini:http_4xx` root-caused = whole-project Gemini denial. Run 7 re-probe: 2.5 → 403, **2.0-flash → 429 `limit: 0`** (no free-tier allowance), so the chain is permanently 5-of-6 and no in-code swap fixes it. Recovery = console (blocked-by-human) |
 | 8 | persona-bench | — | not yet built |
 | 9 | free-vs-frontier delta | null | agentic lane not yet run (`SK-QUAL-004`, target ≤ 25 pp) |
@@ -69,6 +75,22 @@ quality-eval (engine row still fresh, < 7 d); the in-session proxy is below.
 
 ## Deltas (recent runs)
 
+- 2026-06-17 (run 12) — **P1 STOP: BIRD-scorer canonical-`set()` lever is a
+  founder call (SK-QUAL-010), reverted; no code delta.** Identified that the
+  BIRD EX scorer (`tools/eval/src/score.ts::rowsMatch`) is multiset +
+  ORDER-BY-strict — stricter than canonical BIRD `set(pred)==set(gold)`
+  (web-verified vs DAMO-ConvAI `evaluation.py`), so reported BIRD EX is an
+  understated lower bound feeding the live GLOBAL-027 gate. Built the
+  set-equality fix and confirmed it flips two false-mismatch classes
+  (duplicate-multiplicity, row-order-under-ORDER-BY) mismatch→match, strictly
+  Δ ≥ 0 on EX. **Then found SK-QUAL-010 explicitly retains the strictness as a
+  deliberate "conservative lower bound… while the gate is live" and lists
+  "adopt full canonical `set()`" as a *rejected* alternative.** The gate is
+  still live ⇒ decision condition holds ⇒ per P1 I must not silently supersede.
+  Reverted the change (`tools/eval/` back to clean). The trade-off
+  (conservatism vs SK-QUAL-001 leaderboard parity) is queued for the founder;
+  neutral write-up in the distribution queue. KPI context: engine quality
+  (GLOBAL-025) / measurement integrity — unresolved pending the founder ruling.
 - 2026-06-16 (run 11) — **execution-guided repair: feed a re-plannable PG
   exec error back to the planner (SK-ASK-022).** A deterministic-but-fixable
   exec error (42703 undefined_column, 42803 GROUP BY, 42883/42725 function,
