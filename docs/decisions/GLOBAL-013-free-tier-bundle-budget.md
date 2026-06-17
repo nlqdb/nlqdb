@@ -2,9 +2,12 @@
 
 - **Decision:** The free tier runs on Cloudflare Workers free plan,
   Neon free plan, and other zero-cost services. Free-tier provider keys
-  (e.g. the shared `GEMINI_API_KEY`) stay on the **no-card free tier** —
-  never link billing on them or point them at a paid model; frontier/paid
-  usage routes through BYOLLM or the §6-gated hosted-premium lane
+  (e.g. the shared `GEMINI_API_KEY`) stay on the **no-card free tier — their
+  project must have NO billing account linked**: a billed project bills even
+  free-model calls (`free_tier_requests` → 0) and is suspended on non-payment
+  (this denied the Gemini key 2026-06-15→17, despite an expected $0). Never
+  link billing or point a free key at a paid model; frontier/paid usage routes
+  through BYOLLM or the §6-gated hosted-premium lane
   ([`GLOBAL-026`](./GLOBAL-026-llm-strategy-byollm-hosted-premium.md)) on
   separate credentials. The deployed Worker
   bundle stays under 3 MiB compressed (Cloudflare's hard limit on the

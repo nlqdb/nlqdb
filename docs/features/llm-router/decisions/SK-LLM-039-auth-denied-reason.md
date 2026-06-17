@@ -21,7 +21,8 @@ HTTP-status → `FailoverReason` mapping introduced by
 - **Core value:** Honest latency, Bullet-proof, Fast.
 - **Why:** A 401/403 is not a per-question fault — it is a persistent
   project/key denial (bad/missing key, Generative Language API not
-  enabled, billing unlinked, or an abuse-flag) that fails *every* call
+  enabled, **a billing-linked project billed then suspended for
+  non-payment**, or an abuse-flag) that fails *every* call
   identically until a human fixes the key in the provider console. Two
   things follow. (1) **Legibility:** lumped under `http_4xx` it is
   invisible — the 2026-06-12 canonical run's Spider `gemini:http_4xx`
@@ -74,15 +75,18 @@ HTTP-status → `FailoverReason` mapping introduced by
   decision exists for. (3) Switch the Gemini default model from
   `gemini-2.5-flash` to an accessible one in code — rejected: the
   2026-06-15 re-probe shows gemini-2.0-flash also returns 429 `limit: 0`,
-  so there is no accessible *free* model to switch to. A key denial is
-  fixed by rotating to a fresh/unflagged **free-tier** AI Studio key —
-  never by linking billing (off-policy under
+  so there is no accessible *free* model to switch to. **Root cause
+  (confirmed 2026-06-17): the shared project had a Cloud Billing account
+  linked, so it billed every call even on free models (`free_tier_requests`
+  → 0) and was suspended when the bill went unpaid ⇒ the 403** — not an
+  abuse-flag. The fix is a project with **no billing account** (it can then
+  never be charged or suspended — it rate-limits at the free caps instead),
+  never linking billing (off-policy under
   [`GLOBAL-013`](../../../decisions/GLOBAL-013-free-tier-bundle-budget.md);
   paid Gemini is the separate §6-gated hosted-premium lane,
   [`SK-LLM-017`](./SK-LLM-017-hosted-premium-chain.md)). Resolved 2026-06-17
-  by such a rotation — the shared key now serves `gemini-2.5-flash` on the
-  free tier (live-probed 200), so the free chain is no longer down a
-  provider. (4)
+  by rotating to a billing-free key — `gemini-2.5-flash` now serves on the
+  free tier (live-probed 200). (4)
   Leave it as `http_4xx` — rejected: the whole point is to tell a
   whole-session denial apart from a one-off bad request. (5) Park for the
   **default 60s cooldown** (the original SK-LLM-039 value) — rejected: a
