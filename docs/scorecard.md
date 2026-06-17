@@ -15,16 +15,20 @@ until then the daily lever targets the worst number below)*
 (funnel/distribution lane) — gated by the engine (GLOBAL-027 valve), so the
 engine-side worst, Spider 0.1704 vs 0.75, owns it. The Gemini-restore lever is
 **human-blocked** (Google console, runs 6–7) and a full eval is impractical
-in-session (no local fixtures, free providers rate-limited). **Run 11 takes a
-NOT-blocked EX lever (shipped, SK-ASK-022):** the `/v1/ask` executor never
-fed a Postgres exec error back to the planner — a re-plannable error (a wrong
-column, a GROUP BY omission, a type mismatch) was replayed identically 3× then
-surfaced `db_unreachable`. The `previousAttempt` plumbing + diagnostic re-plan
-prompt already existed (SK-LLM-018/037); the only gap was the route. Now such
-an error re-plans **once** with the DB error fed back. Execution-guided repair
-is the highest-EX technique in text-to-SQL — and unlike the Gemini leg, no
-console click gates it. The full BIRD/Spider delta lands on the next scheduled
-quality-eval (engine row still fresh, < 7 d); the in-session proxy is below.
+in-session (no local fixtures, free providers rate-limited). **Run 12 ships a
+measurement-integrity fix, not a code lever.** Runs 9–11 each deferred their
+"full BIRD/Spider EX delta" to *"the next scheduled quality-eval"* — but
+[`SK-QUAL-002`](features/quality-eval/decisions/SK-QUAL-002-weekly-cron.md)
+**retired the eval crons**; the harness is `workflow_dispatch`-only, so no
+scheduled run ever fires and that IOU never resolves on its own. Worse, the
+deferred delta was illusory: runs 9–11 were **EX-neutral by design** —
+provider-parking (SK-LLM-039) and exec-repair (SK-ASK-022) are
+failover / latency / failure-path changes, and the free-lane scorer reads the
+*winning* SQL, which a dead Gemini never produced. The honest refresh
+mechanism is the daily loop's own **> 7 d staleness trigger** (step 1) — the
+06-12 baseline is 5 d old, so the next dispatch is due **2026-06-19**, or
+on-demand after the next real engine lever lands (SK-QUAL-002's sanctioned
+cue). This run removes the phantom-"scheduled" promise wherever it appears.
 
 | # | Metric | Value | Target / note |
 |---|--------|-------|------|
@@ -34,7 +38,7 @@ quality-eval (engine row still fresh, < 7 d); the in-session proxy is below.
 | 3 | Registered users, real strangers | 0 | 7 total = 3 founder + 4 test/dev accounts |
 | 4 | Invite-valve crossings (KV `wl:invite-cap`) | 9/wk (06-13, carried) | cap 200/wk — no exhaustion risk; mostly walker-triggered; not re-pulled this run |
 | 5 | Anon DBs with a recorded first answer | **101 of 101** | instrument fix (runs 1–3) holding; +8 since 06-13. Genuine-stranger subset still ~0 (rows #2/#3) — the real worst-number |
-| | **Engine — measured 2026-06-12 (fresh, < 7d)** | | `apps/api/src/gate/eval-baseline.ts` |
+| | **Engine — measured 2026-06-12 (5 d; refresh due 06-19 via /daily >7d trigger, SK-QUAL-002 manual-only)** | | `apps/api/src/gate/eval-baseline.ts` |
 | 6 | BIRD raw EX | 0.522 | target 0.65 (GLOBAL-027) |
 | 7 | Spider raw EX | 0.1704 | target 0.75; 36/135 `no_sql` — `gemini:http_4xx` root-caused = whole-project Gemini denial. Run 7 re-probe: 2.5 → 403, **2.0-flash → 429 `limit: 0`** (no free-tier allowance), so the chain is permanently 5-of-6 and no in-code swap fixes it. Recovery = console (blocked-by-human) |
 | 8 | persona-bench | — | not yet built |
@@ -69,6 +73,25 @@ quality-eval (engine row still fresh, < 7 d); the in-session proxy is below.
 
 ## Deltas (recent runs)
 
+- 2026-06-17 (run 12) — **measurement-integrity fix: the "next scheduled
+  quality-eval" the engine row kept deferring to does not exist.**
+  [`SK-QUAL-002`](features/quality-eval/decisions/SK-QUAL-002-weekly-cron.md)
+  retired the eval crons — both `quality-eval-{bird-mini,spider2-lite}.yml`
+  are `workflow_dispatch`-only (last run 2026-06-12, dispatch #17–21; nothing
+  since, nothing scheduled). So runs 9–11's "full EX delta → next scheduled
+  quality-eval" pointed at a phantom: the IOU could never auto-resolve, and
+  the deferred delta was illusory anyway (those changes are EX-neutral on the
+  free-lane scorer — failover / latency / failure-path, not winning-SQL). A
+  silent contradiction of a documented decision living in the daily measurement
+  file (CLAUDE.md P1). **Measured:** active-doc statements contradicting
+  SK-QUAL-002 **2 → 0** (scorecard worst-number block + run-11 delta line);
+  the engine-row refresh is now correctly anchored to the daily loop's own
+  **> 7 d staleness trigger** (next due 2026-06-19) — no second, phantom
+  mechanism. KPI: engine quality (GLOBAL-025) — the *measurement* of it, made
+  honest; the number it tracks is unchanged (no code touched), so no KPI
+  degrades. Did **not** dispatch early: baseline is 5 d old (< 7 d) and
+  SK-QUAL-002 reserves the shared 1M-tok/day free cap for live `/v1/ask`; the
+  06-19 trigger owns the refresh.
 - 2026-06-16 (run 11) — **execution-guided repair: feed a re-plannable PG
   exec error back to the planner (SK-ASK-022).** A deterministic-but-fixable
   exec error (42703 undefined_column, 42803 GROUP BY, 42883/42725 function,
@@ -87,7 +110,9 @@ quality-eval (engine row still fresh, < 7 d); the in-session proxy is below.
   (GLOBAL-025), with a performance assist (fewer doomed replays). None degraded
   — failure-path only (zero happy-path latency, SK-ASK-002 budget untouched),
   schema_mismatch (42P01/3F000) still bails as before. 808 api tests green
-  (was 805). Full BIRD/Spider EX delta → next scheduled quality-eval.
+  (was 805). EX-neutral on the free-lane scorer (failure-path only); a real
+  refresh comes from the next manual dispatch, not a "scheduled" run
+  (SK-QUAL-002 retired the crons — see run 12).
 - 2026-06-16 (run 10) — **park a denied provider for 30 min, not 60 s
   (SK-LLM-039 rev).** Run 9 opened the breaker on the first 401/403 but left
   the default 60 s cooldown, so a long-lived worker isolate re-probed the dead

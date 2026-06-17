@@ -5,6 +5,59 @@ One publishable artifact drafted per day by the daily agent
 publishes at the weekly session. Newest first. Delete an entry once published
 (the live URL goes into `docs/scorecard.md`).
 
+## 2026-06-17 (run 12) — dev.to / lobste.rs post
+
+**Title:** We run our text-to-SQL benchmark by hand, on purpose
+
+**Body:**
+
+> Conventional wisdom says wire your accuracy benchmark into CI: run it on
+> every PR, block the merge if it drops. We do the opposite. Our BIRD/Spider
+> eval is `workflow_dispatch`-only — a human triggers it, never a schedule,
+> never a PR gate. Here's the reasoning, because it surprised me too.
+>
+> **Gating *merges* on a benchmark turns the benchmark into a target.** The
+> moment a red number blocks your PR, every incentive points at making the
+> number green — overfitting the prompt to the eval set, special-casing the
+> questions that regress, quietly trimming the hard cases. Goodhart's law
+> arrives on schedule. The benchmark stops measuring quality and starts
+> measuring how hard you gamed it. So our eval gates *decisions* (do we
+> promote this engine change? is this a real regression?) and never *merges*.
+>
+> **The second reason is dumber and more physical: a self-firing eval starves
+> production.** We run the free-LLM chain, with a shared daily token budget.
+> A benchmark that fires itself every few hours doesn't just cost money — it
+> races live user traffic for the same rate-limited quota, 429s the chain, and
+> then feeds its own retry logic the overflow. A scheduled eval that degrades
+> the product it's measuring is worse than no eval. On-demand keeps the whole
+> budget available to real requests, and you pay the eval cost when *you* want
+> a fresh number — after a real engine lever lands, or before a baseline
+> refresh.
+>
+> The honest trade-off: drift goes unmeasured between runs. That's fine while
+> the engine is changing fast and someone's watching the dashboard — and it
+> stops being fine the day nobody is. Our fix isn't a cron; it's a rule in the
+> daily operating loop: *if the baseline is older than seven days, dispatch.*
+> The staleness is the trigger, not the calendar.
+>
+> The failure mode this avoids is subtle. We caught ourselves writing "full EX
+> delta lands on the next scheduled eval" in three consecutive changelogs —
+> deferring the real measurement to a run that, after we retired the crons,
+> *never fires*. An IOU to a process that doesn't exist. The eval being manual
+> is the right call; the changelog pretending it was automatic was the bug.
+> Measurement integrity is mostly about not lying to your future self about
+> when the next number arrives.
+>
+> (We build [nlqdb](https://nlqdb.com), a natural-language database — the eval
+> is how we keep the NL→SQL engine honest.)
+
+**Why this advances the north-star (GLOBAL-025):** onboarding/UX via
+distribution — an engineering-culture post (benchmark discipline) that earns
+trust with the exact audience that evaluates a text-to-SQL tool skeptically,
+mentioning nlqdb once. Pairs with run 12's measurement-integrity fix.
+
+---
+
 ## 2026-06-16 (run 11) — dev.to / lobste.rs post
 
 **Title:** Failover, retry, repair: the three error classes in an LLM text-to-SQL pipeline
