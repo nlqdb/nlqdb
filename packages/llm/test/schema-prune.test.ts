@@ -62,6 +62,40 @@ describe("pruneSchemaForGoal", () => {
     expect(pruned).toContain("CREATE TABLE races"); // closure target
   });
 
+  // Generic FK column names (`a`/`b`) share no token with the goal, so the
+  // junction table is invisible to token-matching and unreachable by
+  // outbound REFERENCES closure — the recall hole the bridge pass closes.
+  const BRIDGE_SCHEMA = [
+    `CREATE TABLE student (sid INTEGER PRIMARY KEY, fullname TEXT, gpa REAL) ${pad}`,
+    `CREATE TABLE course (cid INTEGER PRIMARY KEY, title TEXT, credits INTEGER) ${pad}`,
+    `CREATE TABLE enroll (a INTEGER REFERENCES student(sid), b INTEGER REFERENCES course(cid), term TEXT) ${pad}`,
+    `CREATE TABLE faculty (fid INTEGER PRIMARY KEY, dept TEXT) ${pad}`,
+    `CREATE TABLE advises (fid INTEGER REFERENCES faculty(fid), sid INTEGER REFERENCES student(sid)) ${pad}`,
+    `CREATE TABLE building (bid INTEGER PRIMARY KEY, address TEXT) ${pad}`,
+  ].join(";\n");
+
+  it("keeps a junction table that references two goal-matched tables", () => {
+    // Goal names student + course; the link is `enroll`, whose own columns
+    // (`a`/`b`/`term`) match no goal token. Without the bridge pass the join
+    // student→enroll→course is unplannable.
+    const pruned = pruneSchemaForGoal(BRIDGE_SCHEMA, "fullname of each student and the title of every course");
+    expect(pruned).toContain("CREATE TABLE student");
+    expect(pruned).toContain("CREATE TABLE course");
+    expect(pruned).toContain("CREATE TABLE enroll");
+    // `advises` references student but not course (one endpoint) — stays out.
+    expect(pruned).not.toContain("advises");
+    expect(pruned).not.toContain("building");
+  });
+
+  it("does not pull in a table that references only one goal-matched table", () => {
+    // Only `student` is named; `enroll`/`advises` each reference it once, so
+    // neither is a bridge between two named things — distractor bound holds.
+    const pruned = pruneSchemaForGoal(BRIDGE_SCHEMA, "the gpa of each student");
+    expect(pruned).toContain("CREATE TABLE student");
+    expect(pruned).not.toContain("CREATE TABLE enroll");
+    expect(pruned).not.toContain("advises");
+  });
+
   it("returns unparseable schema text unchanged", () => {
     const blob = `not ddl at all ${"y".repeat(2100)}`;
     expect(pruneSchemaForGoal(blob, "anything")).toBe(blob);
