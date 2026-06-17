@@ -56,9 +56,18 @@ levers target it.
 
 **Where the losses are now** (canonical 500-q run, 2026-06-12): match 261 ·
 **mismatch 236** · exec_error 0 · `no_sql` 3 — on BIRD the loss is now
-almost purely **SQL reasoning** (mismatches), the territory of §4's backlog
-(retrieved few-shot, value retrieval) beyond the directive sub-classes
-T10–T16 already target. Spider's residual `no_sql` was **36/135** on the
+almost purely **SQL reasoning** (mismatches). The offline mismatch classifier
+([`SK-QUAL-014`](../features/quality-eval/decisions/SK-QUAL-014-offline-mismatch-classifier.md),
+`bun run --filter @nlqdb/eval classify-mismatches`) buckets those 236 by the
+axis predicted vs gold SQL diverge on: **table_set 72 · value_diff 62 · agg_fn
+61 · subquery 54 · distinct 48 · order_limit 23 · group_by 20** (a mismatch can
+hit several axes). The mass is **broad — no single class > ~31%** — which
+favours the broad-spectrum §4 levers (retrieved few-shot #1, value retrieval
+#2) over another narrow directive beyond T10–T16. A first ad-hoc cut put
+table_set at 57%; a quoted-identifier (`"transactions_1k"`) parse bug inflated
+it — the corrected, quote-aware classifier is pinned by tests. A date-format
+trap (plausible from spot-checks) measured small (2 separator diffs / 9
+`substr`), so it is **not** a lever. Spider's residual `no_sql` was **36/135** on the
 2026-06-12 run — dominated by **`gemini:http_4xx`** (the shared free-tier
 `GEMINI_API_KEY` was denied; `SK-LLM-039`) plus `mistral:network`, **not** an
 oversized-DDL problem (falsified offline 2026-06-13: all 135 SQLite-subset

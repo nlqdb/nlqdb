@@ -65,6 +65,23 @@ target it. BIRD unchanged (0.522; Gemini wasn't its bottleneck, `no_sql` was 3).
 
 ## Deltas (recent runs)
 
+- 2026-06-17 (run 13) — **mismatch loss-class breakdown (offline, no quota):
+  SK-QUAL-014.** Built + shipped `tools/eval/src/mismatch-classify.ts` — a
+  pure, quote-aware text diff that buckets a report's `mismatch` rows by the
+  axis predicted vs gold SQL diverge on (no DB / LLM / quota; runs on any
+  existing report). Over the canonical 500-q BIRD baseline's **236
+  mismatches**: **table_set 72 · value_diff 62 · agg_fn 61 · subquery 54 ·
+  distinct 48 · order_limit 23 · group_by 20** (a row can hit several axes).
+  **Number moved:** the mismatch loss-class distribution, previously unknown
+  ("almost purely SQL reasoning") — now measured. It is **broad (no class >
+  ~31%)**, which confirms the broad-spectrum `quality-score-source-of-truth.md`
+  §4 levers (#1 retrieved few-shot, #2 value retrieval) outrank another narrow
+  directive. A first ad-hoc cut read table_set at 57%; a quoted-identifier
+  parse bug inflated it — the corrected classifier is pinned by 6 unit tests.
+  A date-format trap measured small (2 separator diffs / 9 `substr`) ⇒ not a
+  lever. KPI: engine quality (GLOBAL-025) — sharpens the next lever pick;
+  none degraded (instrumentation only, no router/scoring change). Engine EX
+  numbers unchanged this run (rows 6/7).
 - 2026-06-17 (run 12) — **Gemini free-tier key restored + Spider re-run.**
   The shared `GEMINI_API_KEY` was rotated to a fresh free-tier AI Studio key
   (live-probed `gemini-2.5-flash` → HTTP 200) and mirrored to GHA + Worker,

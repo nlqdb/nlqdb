@@ -12,7 +12,7 @@ when-to-load:
 # Feature: Quality Eval
 
 **One-liner:** NL-to-SQL accuracy benchmarking — three-dataset canon (BIRD-dev + Spider 2.0-lite SQLite subset + internal `db.create` eval per [`SK-QUAL-003`](#sk-qual-003)) against the LLM router's free / BYOLLM / hosted-premium lanes; the **free-vs-agentic-frontier delta** (`SK-QUAL-004`) is the headline KPI for [`GLOBAL-025`](../../decisions/GLOBAL-025-north-star.md)'s engine north-star.
-**Status:** **Phase 2 — slices 1 + 2 + 3a + 3b + 3c shipped.** Slices 1 + 2 (BIRD Mini-Dev runner + EX scorer + free / single-model-frontier lanes; baseline diff against `tools/eval/baseline-2026-06-15.json`; McNemar per `SK-QUAL-006`; `feature.eval.{weekly,regression}` via `POST /v1/events/eval` → Queues → LogSnag `#north-star`; manual `workflow_dispatch` run) ran end-to-end on `main`. Slice 3a (`SK-QUAL-007`) the Spider 2.0-lite loader; 3b (`SK-QUAL-008`) the canonical multi-CSV comparator; 3c (`SK-QUAL-009`) the `withExecRetry` scaffold + `agentic-frontier` lane + the `free_vs_agentic_frontier_delta` KPI — mechanics in each SK block below. PR CI typechecks + unit-tests with a mocked router and cached fixtures; real provider keys never fire on a PR. The runner is **resumable** (`SK-QUAL-011`; full runs resume across dispatches per `SK-QUAL-013`) and runs **manually on demand** (`SK-QUAL-002`). The canonical 6-provider runs landed 2026-06-12 (BIRD raw EX 0.522, Spider 0.1704), seeding `baseline-2026-06-15.json` + `apps/api/src/gate/eval-baseline.ts`; Spider was re-seeded **0.1852** on 2026-06-17 after the shared `GEMINI_API_KEY` free-tier key was restored (`no_sql` 36 → 9, `gemini:http_4xx` cleared; `SK-LLM-039`). **Remaining for the Phase 2 exit gate:** internal `db.create` accepted-answer eval (depends on a privacy-stripped R2 export). Promotion of [`docs/future/semantic-layer.md`](../../future/semantic-layer.md) still depends on this harness.
+**Status:** **Phase 2 — slices 1 + 2 + 3a + 3b + 3c shipped.** BIRD + Spider runners, EX + multi-CSV scorers, free / single-model-frontier / agentic-frontier lanes, baseline diff + McNemar (`SK-QUAL-006`), `feature.eval.*` emit, and the `withExecRetry` scaffold (`SK-QUAL-007/008/009`) all run end-to-end on `main` — mechanics in each SK block below. PR CI mocks the router (real keys never fire). The runner is **resumable** (`SK-QUAL-011`; full runs resume across dispatches per `SK-QUAL-013`) and runs **manually on demand** (`SK-QUAL-002`). The canonical 6-provider runs landed 2026-06-12 (BIRD raw EX 0.522, Spider 0.1704), seeding `baseline-2026-06-15.json` + `apps/api/src/gate/eval-baseline.ts`; Spider re-seeded **0.1852** on 2026-06-17 after the `GEMINI_API_KEY` free-tier key was restored (`SK-LLM-039`). **Remaining for the Phase 2 exit gate:** internal `db.create` accepted-answer eval (depends on a privacy-stripped R2 export). Promotion of [`docs/future/semantic-layer.md`](../../future/semantic-layer.md) still depends on this harness.
 
 **Contribution to north-star:** Engine quality, NL→SQL layer — this feature IS the measurement instrument. The three-dataset canon (`SK-QUAL-003`) feeds the BIRD-dev / Spider 2.0-lite KPIs and the free-vs-frontier delta in the [`GLOBAL-025`](../../decisions/GLOBAL-025-north-star.md) KPI table; the on-demand run in `SK-QUAL-002` is the alert-and-decision input.
 **Owners (code):** `tools/eval/**`, `packages/llm/**`, `.github/workflows/quality-eval-bird-mini.yml`
@@ -50,21 +50,17 @@ when-to-load:
 ### SK-QUAL-001 — Benchmark canon: BIRD (real-world) + Spider 2.0 (multi-dialect); accuracy reported by tier
 
 **Body:** [`decisions/SK-QUAL-001-benchmark-canon.md`](./decisions/SK-QUAL-001-benchmark-canon.md).
-Two open benchmarks — BIRD Mini-Dev (500 SQLite questions, messy
-real-world schemas) and Spider 2.0-lite (SQLite subset only; the full-set
-BQ/Snowflake transpilation was rejected as a confound). Accuracy reports
-per router tier, never as one averaged number; results stay comparable
-to published research. The harness is a tool, not a CI gate
-(`SK-QUAL-002`).
+Two open benchmarks (BIRD Mini-Dev + Spider 2.0-lite SQLite subset — full-set
+BQ/Snowflake transpilation rejected as a confound); accuracy per router tier,
+never averaged; the harness is a tool, not a CI gate (`SK-QUAL-002`).
 
 ### SK-QUAL-003 — Three-dataset canon: BIRD-dev + Spider 2.0-lite (SQLite subset) + internal `db.create` eval (the third dataset is the one that matters most)
 
 **Body:** [`decisions/SK-QUAL-003-three-dataset-canon.md`](./decisions/SK-QUAL-003-three-dataset-canon.md).
 Three datasets in weighted order: (1) internal `db.create` accepted-answer
 eval (production-shape, internal-wins on disagreement); (2) BIRD-dev Mini-Dev
-(500 SQLite — public, comparable; **52.8% annotation errors** per VLDB/CIDR
-2026 [arXiv:2601.08778](https://arxiv.org/abs/2601.08778), corrected variants
-in `uiuc-kang-lab/text_to_sql_benchmarks`); (3) Spider 2.0-lite **SQLite
+(500 SQLite — public, comparable; **52.8% annotation errors**, corrected
+variants in `uiuc-kang-lab/text_to_sql_benchmarks`); (3) Spider 2.0-lite **SQLite
 subset only** — upstream ships **547 rows total** (180 BQ / 207 SF / 135
 SQLite / 25 GA-SF; zero Postgres). All 135 `local###` rows now score via
 the canonical multi-CSV evaluator per [`SK-QUAL-008`](#sk-qual-008); the
@@ -75,9 +71,8 @@ loader pins to GitHub raw — HF mirror was stale at 260 rows 2026-05-19.
 **Body:** [`decisions/SK-QUAL-004-free-vs-frontier-delta.md`](./decisions/SK-QUAL-004-free-vs-frontier-delta.md).
 Three lanes per [`GLOBAL-026`](../../decisions/GLOBAL-026-llm-strategy-byollm-hosted-premium.md):
 **free**, **single-model frontier** (informational, ~73% canonical
-BIRD-dev), **agentic-frontier** (~77-82% canonical SOTA — AskData+GPT-4o
-77.64%/81.95%, Agentar 74.90%/81.67%; the ~93% from ReViSQL etc. is on the
-Arcwise-corrected set, not canonical). Headline KPI is the
+BIRD-dev), **agentic-frontier** (~77-82% canonical SOTA; the ~93% figures
+are on the Arcwise-corrected set, not canonical). Headline KPI is the
 **free-vs-agentic-frontier delta** — Phase 2 ≤ 25 pp, Phase 3 ≤ 16 pp per
 [`GLOBAL-025`](../../decisions/GLOBAL-025-north-star.md). Slice 1 + 2
 shipped free + single-model-frontier; agentic lane lands in slice 3c with
@@ -87,7 +82,7 @@ shipped free + single-model-frontier; agentic lane lands in slice 3c with
 
 - **Decision:** The Phase 2 exit gate requires recorded baseline values for every engine-quality KPI in the [`GLOBAL-025`](../../decisions/GLOBAL-025-north-star.md) table by **2026-06-15**. The Phase 2 floor (BIRD-dev EM ≥ 72% free / ≥ 88% frontier; delta ≤ 22 pts) is enforced from the moment baselines exist. If baselines are below the floor on first measurement, the slice does not regress them — it ships engine work until the floor is cleared.
 - **Core value:** Bullet-proof
-- **Why:** "Phase 2 KPI floors" is meaningless without a baseline date. 2026-06-15 leaves ~one month from harness ship to baseline measurement — enough to debug the runner, not enough to drift. If we miss this date, the Phase 2 rollover is blocked per [`GLOBAL-025`](../../decisions/GLOBAL-025-north-star.md) — that is the point.
+- **Why:** "Phase 2 KPI floors" is meaningless without a baseline date; missing 2026-06-15 blocks the Phase 2 rollover per [`GLOBAL-025`](../../decisions/GLOBAL-025-north-star.md) — that is the point.
 - **Consequence in code:** `tools/eval/baseline-2026-06-15.json` is the canonical baseline snapshot. A manual eval run diffs against it. PRs that touch `packages/llm/**` add a one-line note to their description naming which KPI they're moving.
 - **Alternatives rejected:**
   - No baseline date — "soon" never happens.
@@ -103,9 +98,8 @@ delta ≤ -5 pp **or** McNemar p < 0.05, `SK-QUAL-006`) or **smoke**
 (sampled slice, no emit, resumable per `SK-QUAL-011`). Gating *decisions*
 not *merges* keeps the harness a measurement tool; on-demand (not
 scheduled) keeps the shared 1M/day free-tier cap available to live
-traffic. The prior weekly + 4h smoke **schedule** was retired; the smoke
-run is kept as a manual mode. Accepted trade-off: drift is unmeasured
-until an operator runs it. Resilience via [`SK-QUAL-011`](#sk-qual-011).
+traffic. Accepted trade-off: drift is unmeasured until an operator runs it.
+Resilience via [`SK-QUAL-011`](#sk-qual-011).
 
 ### SK-QUAL-011 — Resumable runner: checkpoint + budget-stop so a run survives a free-tier daily token cap
 
@@ -189,6 +183,17 @@ bounded `--capacity-wait-ms` wait-and-retry (workflows: 65 s; default 0).
 Full-mode workflows cache the checkpoint by commit SHA so a re-dispatch
 resumes. Fixes the 2026-06-11 500-q run scoring 246 breaker-wall rows as
 `no_sql` without a single LLM call.
+
+### SK-QUAL-014 — Offline mismatch classifier: bucket `mismatch` rows by structural divergence, no DB / no LLM
+
+**Body:** [`decisions/SK-QUAL-014-offline-mismatch-classifier.md`](./decisions/SK-QUAL-014-offline-mismatch-classifier.md).
+`tools/eval/src/mismatch-classify.ts` buckets a report's `mismatch` rows by
+the axis on which predicted vs gold SQL diverge (`table_set` / `agg_fn` /
+`distinct` / `group_by` / `order_limit` / `subquery` / `value_diff`) — a pure,
+quote-aware text diff, no DB / LLM / quota. First cut over the 236 BIRD-dev
+mismatches: table_set 72 · value_diff 62 · agg_fn 61 · subquery 54 · distinct
+48 — broad, no class > ~31%, validating the broad-spectrum §4 levers over
+another narrow directive. Runs per-report to attribute which class a lever moved.
 
 ## GLOBALs governing this feature
 
