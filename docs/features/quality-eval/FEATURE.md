@@ -190,6 +190,18 @@ Full-mode workflows cache the checkpoint by commit SHA so a re-dispatch
 resumes. Fixes the 2026-06-11 500-q run scoring 246 breaker-wall rows as
 `no_sql` without a single LLM call.
 
+### SK-QUAL-014 — Offline mismatch error-class classifier: bucket a run's loss mass so the §4 backlog is picked from evidence
+
+**Body:** [`decisions/SK-QUAL-014-mismatch-error-class-classifier.md`](./decisions/SK-QUAL-014-mismatch-error-class-classifier.md).
+Pure `classifyMismatch(predicted, gold)` + `histogram()` + a
+`bun analyze-mismatches <baseline.json> <gold.json>` CLI tag the structural
+diffs of every `mismatch` row in a saved `EvalReport` (DISTINCT/GROUP-BY/HAVING
+grain, table & column counts, aggregate-fn set, subquery shape, …). Read-only
+over the committed baseline — no keys, no quota, no chain change. Run against
+BIRD 2026-06-12 it corrected the working assumption: with quote-aware table
+parsing `fewer_tables` collapses 105 → 35, and aggregation/DISTINCT grain +
+value-grounding (§4 #2), not schema-link recall, is the dominant loss mass.
+
 ## GLOBALs governing this feature
 
 Canonical text in [`docs/decisions/`](../../decisions/).

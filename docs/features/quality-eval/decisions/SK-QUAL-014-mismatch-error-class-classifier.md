@@ -1,0 +1,61 @@
+# SK-QUAL-014 — Offline mismatch error-class classifier: bucket a run's loss mass so the §4 backlog is picked from evidence
+
+Parent feature: [`quality-eval/FEATURE.md`](../FEATURE.md). Reads the report
+[`SK-QUAL-001`](./SK-QUAL-001-benchmark-canon.md) writes; feeds the §4 backlog
+in [`quality-score-source-of-truth.md`](../../../progress/quality-score-source-of-truth.md).
+
+- **Decision:** `tools/eval/src/analyze-mismatches.ts` exports a pure
+  `classifyMismatch(predicted, gold) → string[]` that tags the **structural**
+  differences between a predicted and gold SQL (DISTINCT grain, GROUP
+  BY/HAVING, table count, projection width, aggregate-fn set, ORDER BY/LIMIT,
+  CAST, NULL-guard, subquery count; `other_predicate_or_value` when none
+  differ). `histogram(results, gold)` joins a baseline `EvalReport` to the
+  BIRD gold JSON on `question_id` and tallies the `mismatch` rows; a
+  `bun analyze-mismatches <baseline.json> <gold.json>` CLI prints it. Tags
+  are **non-exclusive** and **surface-only** — a tag is a lead to read, not a
+  proven semantic error.
+
+- **Core value:** Legible
+
+- **Why:**
+  - **The report counted mismatches but never characterised them.** A
+    canonical run records 236/500 BIRD `mismatch` rows (2026-06-12) with no
+    breakdown, so §4's lever ranking was inference, not measurement. The
+    classifier turns "mismatch 236" into a per-class histogram a reviewer can
+    act on, and re-runs on every future baseline (deterministic, no keys, no
+    quota — the only network is fetching the gold JSON the CLI is handed).
+  - **A naive parser lies in the same direction the levers chase.** The first
+    cut used a bare-word `from\s+(\w+)` table regex and reported
+    `fewer_tables` as the dominant class (105/236), pointing at schema-link
+    recall (T19/T21). Predicted SQL quotes identifiers (`FROM
+    "transactions_1k"`), so the regex undercounted tables: with quote-aware
+    parsing `fewer_tables` collapses **105 → 35** and the real mass is
+    aggregation/DISTINCT grain + subquery shape. Shipping the wrong parser
+    would have mis-aimed the next several runs — the quote-handling test is
+    the regression guard.
+  - **Surface tags expose, but don't diagnose, the root cause.** Reading the
+    flagged rows shows much of the `agg_fn_diff` / `col_count_diff` mass is
+    really value/literal/column grounding (`'discount'` vs gold `'Discount'`;
+    `Amount` vs `Price`; `'2012-01%'` vs `'201201'`) — i.e. the model lacks
+    sample cell-values — which is the §4 #2 (value-retrieval) lever, plus a
+    slice of known BIRD gold-annotation noise (§4 #5). Evidence the histogram
+    alone would have hidden.
+
+- **Consequence in code:** `tools/eval/src/analyze-mismatches.ts` (pure
+  classifier + `histogram` + `import.meta.main` CLI), `test/analyze-mismatches.test.ts`
+  (quote-handling regression + class assertions, mocked, no network), and the
+  `analyze-mismatches` script in `tools/eval/package.json`. Read-only over an
+  existing report — no change to `runner.ts`, the scorer, or the chain, so no
+  KPI can move; it is an instrument that *directs* the levers that do.
+
+- **Alternatives rejected:**
+  - **Fold the breakdown into `runner.ts` / the report JSON.** Couples a
+    diagnostic to the hot measurement path and bloats every report; the diff
+    is offline and re-runnable against any saved baseline.
+  - **Execute predicted vs gold and diff result-sets instead of SQL text.**
+    That is already what the EX scorer does to *decide* `mismatch`; the value
+    here is explaining *why* without the DB fixture, on the committed
+    baseline alone.
+  - **A semantic SQL differ (parse to AST, prove inequivalence).** Heavy, and
+    BIRD's gold-annotation noise means "structurally different" is the honest
+    ceiling — over-claiming equivalence would itself mislead.

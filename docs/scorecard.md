@@ -19,8 +19,11 @@ and the full canonical Spider eval re-ran on the healed chain: raw EX
 **0.1704 → 0.1852**, `no_sql` **36 → 9**, and `gemini:http_4xx`/`auth_denied`
 is gone (`SK-LLM-039`). The 27 newly-answered questions mostly mismatch (hard
 benchmark), so the engine bottleneck is now **SQL reasoning** (mismatches), not
-provider availability — the §4 levers in `quality-score-source-of-truth.md`
-target it. BIRD unchanged (0.522; Gemini wasn't its bottleneck, `no_sql` was 3).
+provider availability. The run-15 `SK-QUAL-014` classifier buckets the 236 BIRD
+mismatches: the mass is aggregation/DISTINCT **grain** + subquery **shape**,
+much of it **value/literal/column grounding** (→ §4 #2 value-retrieval, now the
+evidence-backed top lever); join-recall is only 35/236 (15%). BIRD unchanged
+(0.522; Gemini wasn't its bottleneck, `no_sql` was 3).
 
 | # | Metric | Value | Target / note |
 |---|--------|-------|------|
@@ -65,6 +68,28 @@ target it. BIRD unchanged (0.522; Gemini wasn't its bottleneck, `no_sql` was 3).
 
 ## Deltas (recent runs)
 
+- 2026-06-18 (run 15) — **mismatch error-class classifier + corrected loss
+  breakdown (SK-QUAL-014).** The last two runs shipped prompt levers whose EX
+  delta defers to the next eval, and Spider ran 06-17 (§5 forbids a
+  back-to-back dispatch), so this run produces a **real, deterministic,
+  no-quota measurement** instead of a third deferred lever: a committed,
+  reusable classifier (`tools/eval/src/analyze-mismatches.ts` + `bun
+  analyze-mismatches`) that buckets every `mismatch` row of a saved baseline
+  by structural diff. Run on the canonical BIRD 500-q baseline it **overturns
+  the working assumption**: a naive bare-word table regex had implied
+  join-recall dominates, but with quote-aware parsing (`FROM "transactions_1k"`
+  was being missed) `fewer_tables` collapses **105 → 35 (15%)**; the real loss
+  mass is aggregation/DISTINCT **grain** (`agg_fn_diff` 61, `missing_DISTINCT`
+  41, `extra_DISTINCT` 34) + subquery **shape** (`more_subqueries` 44), and
+  reading the rows shows much of it is **value/literal/column grounding** the
+  model can't guess (`'discount'` vs `'Discount'`; `Amount` vs `Price`) — the
+  §4 #2 value-retrieval lever, now evidence-backed as the top mismatch lever
+  (plus a slice of BIRD gold-annotation noise, §4 #5). Re-points
+  `quality-score-source-of-truth.md` §2/§4/§6. 193 eval tests green (was 185);
+  typecheck + lint clean. KPI: engine quality (GLOBAL-025) — sharper
+  instrument → evidence-driven lever selection; none degraded (read-only over
+  a saved report, no chain/scorer/runner change). EX numbers unchanged this
+  run (no eval dispatched); next scheduled run targets §4 #2.
 - 2026-06-18 (run 14) — **aggregate-filter HAVING directive (SK-LLM-040 /
   T22).** The newest eval (Spider) ran 06-17 and the §5 quota guardrail forbids
   a back-to-back dispatch, so this run ships a prompt-only engine-correctness
@@ -134,32 +159,11 @@ target it. BIRD unchanged (0.522; Gemini wasn't its bottleneck, `no_sql` was 3).
   — failure-path only (zero happy-path latency, SK-ASK-002 budget untouched),
   schema_mismatch (42P01/3F000) still bails as before. 808 api tests green
   (was 805). Full BIRD/Spider EX delta → next scheduled quality-eval.
-- 2026-06-16 (run 10) — **park a denied provider for 30 min, not 60 s
-  (SK-LLM-039 rev).** Run 9 opened the breaker on the first 401/403 but left
-  the default 60 s cooldown, so a long-lived worker isolate re-probed the dead
-  Gemini key — and re-burned the slow-path hedge slot — once a minute. A
-  401/403 is human-gated (console/billing) and an env re-key arrives as a
-  deploy (which resets the in-memory breaker anyway), so the 60 s re-probe
-  never caught a recovery. New `AUTH_DENIED_COOLDOWN_MS = 30 min`.
-  **Measured (unit test, fake-clock 10-min isolate at 1 plan/min):**
-  round-trips to a dead-key provider **10 → 1** (10×), hedge slot freed for
-  the live provider for the whole window; a transient 403 still self-heals on
-  the periodic re-probe. KPI: performance (GLOBAL-025). None degraded — inert
-  when a key works (a 200 resets the breaker), EX-neutral (provider still
-  re-probed each window), legibility preserved (skip stays `auth_denied`).
-  172 llm tests green (was 171).
-- 2026-06-15 (run 9) — **park a denied provider on the first 401/403
-  (SK-LLM-039 rev).** Gemini (dead key, chain index 1, hedge partner) ate a
-  guaranteed-failed round-trip + the hedge slot on *every* call; now the first
-  denial opens the breaker (skip stays legible as `auth_denied`). Measured:
-  dead-key round-trips over 5 calls **5 → 1**, hedge rotates to a live
-  provider. KPI: performance. 171 llm + 805 api green.
-- 2026-06-15 (run 8) — **deterministic seed-row salvage (SK-HDC-019).** Drops
-  only provably-uninsertable rows; seeded rows on one-bad-of-four **0 → 3**.
-- 2026-06-15 (run 7) — **pin-to-2.0 lever falsified.** gemini-2.0-flash also
-  `429 limit: 0`; no in-code swap recovers the leg. → SK-LLM-039.
-- 2026-06-14/15 (runs 5–6) — tail transient retry (SK-LLM-038; BIRD EX
-  0.522 → 0.528 best-case) · `auth_denied` reason split (SK-LLM-039).
-- 2026-06-13/14 (runs 1–4) — day-one scorecard (metrics 0 → 12); #5
-  instrument fix (`last_queried_at` 0 → 93); Spider `no_sql` per-lane tally.
-  Full history: `progress/quality-score-verification-log.md`.
+- 2026-06-15/16 (runs 7–10) — provider-resilience wave: pin-to-2.0 falsified
+  (run 7) → park a denied provider on the first 401/403 (run 9, SK-LLM-039)
+  with a 30-min cooldown (run 10; dead-key round-trips 10 → 1) ·
+  deterministic seed-row salvage (run 8, SK-HDC-019; 0 → 3).
+- 2026-06-13/15 (runs 1–6) — day-one scorecard (metrics 0 → 12); #5 instrument
+  fix (`last_queried_at` 0 → 93); tail transient retry (SK-LLM-038; BIRD EX
+  0.522 → 0.528 best-case). Full history:
+  `progress/quality-score-verification-log.md`.
