@@ -58,16 +58,11 @@ levers target it.
 **mismatch 236** · exec_error 0 · `no_sql` 3 — on BIRD the loss is now
 almost purely **SQL reasoning** (mismatches), the territory of §4's backlog
 (retrieved few-shot, value retrieval) beyond the directive sub-classes
-T10–T16 already target. Spider's residual `no_sql` was **36/135** on the
-2026-06-12 run — dominated by **`gemini:http_4xx`** (the shared free-tier
-`GEMINI_API_KEY` was denied; `SK-LLM-039`) plus `mistral:network`, **not** an
-oversized-DDL problem (falsified offline 2026-06-13: all 135 SQLite-subset
-schemas are ≤ 7,520 chars / ~1,880 tok, p90 ~1,531 — a ~1.9 K-tok schema
-can't overflow Gemini's 1 M ctx or Mistral's 128 K). **The 2026-06-17 re-run
-after the key was restored confirms it:** `no_sql` dropped **36 → 9** and the
-`no_sql_reasons` tally carries **no `gemini:http_4xx` / `auth_denied`** —
-Gemini now answers, and the residual 9 are capacity-only (`circuit_open`
-across providers + `mistral:network` + `workers-ai:parse`). Raw EX rose
+T10–T16 / T22 already target. Spider's residual `no_sql` fell **36 → 9**
+after the 2026-06-17 Gemini key heal (`SK-LLM-039`); the tally now carries no
+`gemini:http_4xx` / `auth_denied`, so the 9 are capacity-only (`circuit_open`
++ `mistral:network` + `workers-ai:parse`), **not** an oversized-DDL problem
+(falsified offline 2026-06-13: all 135 schemas ≤ ~1.9 K tok). Raw EX rose
 0.1704 → 0.1852, but the 27 newly-answered questions mostly produced *wrong*
 SQL (reasoning EX 0.232 → 0.198), so the Spider bottleneck is now **SQL
 reasoning, not availability** — §4's levers. Column-level pruning (§4 #2)
@@ -90,6 +85,7 @@ same-seed A/B.
 
 | # | Lever | How exactly | How much | Canonical home / status |
 |---|---|---|---|---|
+| T22 | **Aggregate-filter HAVING directive** | One `PLAN_DIRECTIVES` bullet: a threshold on a group's aggregate goes in HAVING after GROUP BY, not WHERE — `WHERE COUNT(*)>5` is a hard error (wasted exec-retry) and an omitted group filter is a silent cardinality mismatch. Covers the **HAVING half** of E5 *Unaligned Aggregation Structure* that T15 (GROUP BY half) left; "keep per-row predicates in WHERE" bounds the regression. ≈55 tok | **prompt-only; real EX delta → next scheduled eval** (T13–T16 directive precedent) | [`SK-LLM-040`](../features/llm-router/decisions/SK-LLM-040-aggregate-filter-having-directive.md) — shipped |
 | T21 | **Join-bridge recall in schema pruning** | T19's FK closure was outbound-only (`REFERENCES` *targets* of a kept table). A junction table that links two goal-matched tables — but whose own FK columns are generic (`a`/`b`/`student_ref`) and so match no goal token — was reachable by neither path and got dropped, making the multi-table join unplannable (a `mismatch`). `pruneSchemaForGoal` now also keeps any table that `REFERENCES` ≥ 2 goal-matched tables; seeded from the goal-matched set only ⇒ recall-monotonic + distractor-bounded | **measured (unit, local):** synthetic `student↔enroll↔course` (generic FK names) — bridge `enroll` dropped → kept; a one-endpoint referencer (`advises`) stays out (distractor bound holds). Recall is monotone over T19 (≥ 99.8% BIRD gold-table). Real EX delta → next scheduled quality-eval | [`SK-LLM-037`](../features/llm-router/decisions/SK-LLM-037-goal-relevant-schema-pruning.md) rev — shipped |
 | T20 | **Capacity-honest budget stop (this PR)** | Autopsy of the first full 500-q dispatch (2026-06-11, raw 0.214): 246/283 `no_sql` rows were all-`circuit_open` fast-fails — a 429 opens the breaker for its `Retry-After` window, so the all-`rate_limited` stop predicate never matched the wall; the run also overlapped three smokes (quota confound) ⇒ **discarded for scoring**. Fix: budget-stop on every-attempt ∈ {`rate_limited`,`circuit_open`}, one bounded `--capacity-wait-ms` retry (≤ 5/run), SHA-keyed full-run resume cache | **measurement honesty, not accuracy** — stops a breaker wall from scoring as engine failure; raw EX becomes resumable-complete instead of capacity-poisoned | [`SK-QUAL-013`](../features/quality-eval/decisions/SK-QUAL-013-capacity-honest-budget-stop.md) — this PR |
 | T19 | **Goal-relevant schema pruning (planner prompt)** | `buildPlanUser` prunes the embedded DDL via pure `pruneSchemaForGoal`: keep token-matched tables + `REFERENCES` closure; full schema on any doubt (< 2 KB, < 5 tables, zero matches, ≥ 0.9 kept, unparseable, retry). Offline-verified first: 99.8% gold-table recall on BIRD-dev 500, −7.1% schema chars (Spider −26.5%) | **measured (A/B with T18):** same-seed BIRD smoke raw EX **37.3% → 51.3%**, `no_sql` 47 → 1; reproduced at 48.7% next quota-day. Capacity + distractor-removal lever (C3-SQL arXiv:2307.07306, RSL-SQL arXiv:2411.00073) | [`SK-LLM-037`](../features/llm-router/decisions/SK-LLM-037-goal-relevant-schema-pruning.md) — shipped (this PR) |

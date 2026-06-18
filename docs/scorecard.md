@@ -65,6 +65,26 @@ target it. BIRD unchanged (0.522; Gemini wasn't its bottleneck, `no_sql` was 3).
 
 ## Deltas (recent runs)
 
+- 2026-06-18 (run 14) — **aggregate-filter HAVING directive (SK-LLM-040 /
+  T22).** The newest eval (Spider) ran 06-17 and the §5 quota guardrail forbids
+  a back-to-back dispatch, so this run ships a prompt-only engine-correctness
+  lever (the T13–T16 directive precedent; real EX delta → next scheduled eval).
+  The planner directives covered the GROUP BY half of error class E5 *Unaligned
+  Aggregation Structure* (T15/SK-LLM-034) but not the **HAVING half**: a
+  threshold on a group's aggregate (`HAVING COUNT(*) > 5`) was free to land in
+  `WHERE`, which is either a hard error (`misuse of aggregate function` → a
+  wasted exec-retry round-trip) or, worse, a silent cardinality mismatch when
+  the group filter is dropped entirely — the exact mismatch mass that is now
+  the Spider/BIRD bottleneck (#7). One new `PLAN_DIRECTIVES` bullet (≈55 tok):
+  *filter groups by an aggregate in HAVING after GROUP BY, not WHERE; keep
+  per-row predicates in WHERE* — the trailing clause bounds the inverse
+  regression (row filters wrongly pushed into HAVING). Grounded in
+  arXiv:2501.09310 (E5). 175 llm tests green (was 174); typecheck + lint clean.
+  KPI: engine quality (GLOBAL-025); none degraded (prompt-only, orthogonal to
+  every existing bullet, retry/full-schema fallbacks untouched). Real
+  BIRD/Spider EX delta → next scheduled quality-eval. Funnel/ops not re-pulled
+  (no analytics access this run; engine remains the GLOBAL-027 valve and the
+  worst number).
 - 2026-06-17 (run 13) — **join-bridge recall in schema pruning (SK-LLM-037
   rev / T21).** Engine numbers were freshly measured this morning (run 12) and
   the §5 quota guardrail forbids a back-to-back eval, so this run ships a

@@ -5,6 +5,65 @@ One publishable artifact drafted per day by the daily agent
 publishes at the weekly session. Newest first. Delete an entry once published
 (the live URL goes into `docs/scorecard.md`).
 
+## 2026-06-18 (run 14) — dev.to / lobste.rs post
+
+**Title:** The text-to-SQL mistake that fails two ways — and only one of them throws
+
+**Body:**
+
+> If you ask an LLM for *"customers who placed more than 5 orders,"* there's a
+> specific way the generated SQL goes wrong — and it's worth knowing because
+> **half the time it doesn't error.**
+>
+> The wrong query is:
+>
+> ```sql
+> SELECT customer_id FROM orders
+> WHERE COUNT(*) > 5
+> GROUP BY customer_id
+> ```
+>
+> `COUNT(*) > 5` is a condition on a *group*, but `WHERE` runs *before* rows
+> are grouped — it filters individual rows and can't see an aggregate. Postgres
+> and SQLite both reject this outright ("aggregate functions are not allowed in
+> WHERE" / "misuse of aggregate function"). If your pipeline retries on errors,
+> you pay a round-trip and hope the model fixes it the second time.
+>
+> That's the *loud* failure. The quiet one is worse: the model drops the
+> threshold entirely and returns every customer. The query runs, returns rows,
+> and is simply wrong — and unless you check results against a ground truth,
+> nothing tells you.
+>
+> The fix the model needs is the oldest rule in SQL: **a filter on an aggregate
+> goes in `HAVING`, after `GROUP BY`; a filter on a row goes in `WHERE`.**
+>
+> ```sql
+> SELECT customer_id FROM orders
+> GROUP BY customer_id
+> HAVING COUNT(*) > 5
+> ```
+>
+> We ship this to our planner as one tightly-scoped instruction — *group
+> thresholds in HAVING, per-row predicates stay in WHERE* — because the
+> over-correction (shoving ordinary row filters into HAVING, so the engine
+> aggregates rows it could have skipped) is its own bug. It's one bullet in a
+> stack of small, named corrections, each targeting a documented text-to-SQL
+> error class; this one is the HAVING half of "unaligned aggregation structure"
+> from a 2025 BIRD/Spider error study.
+>
+> The meta-point for anyone prompting an LLM to write SQL: **the dangerous
+> errors aren't the ones that throw.** A crash gets retried; wrong rows ship.
+> Spend your prompt budget on the silent-mismatch classes first.
+>
+> (This was a `/daily` run on nlqdb, a database you query in plain English; the
+> rule above is one directive in its NL→SQL planner. Prompt-only; the
+> end-to-end benchmark delta lands on the next eval and is public.)
+
+**Why this is publishable:** WHERE-vs-HAVING is a near-universal SQL gotcha,
+and the framing (*one failure throws, one is silent*) is a real LLM-pipeline
+lesson, not a product pitch. One nlqdb mention, in context. Grounded in
+arXiv:2501.09310 (E5) + SK-LLM-040.
+
 ## 2026-06-17 (run 13) — dev.to / lobste.rs post
 
 **Title:** Schema pruning for text-to-SQL drops the one table the join needs
@@ -323,66 +382,5 @@ fixed it deterministically" story. One soft product mention at the end.
 
 ---
 
-## 2026-06-15 (run 7) — dev.to / lobste.rs post
 
-**Title:** The obvious workaround was also dead — and we only found out because we measured it first
-
-**Body:**
-
-> Quick follow-up to yesterday's post about finding a provider in our
-> text-to-SQL fallback chain that had been locked out (`403 PERMISSION_DENIED`)
-> on every call for weeks. That post ended with a tidy plan: the key was denied
-> the `gemini-2.5` family, but a quick probe showed `gemini-2.0` answered, so
-> the cheap fix was obviously to pin the default model down to `2.0-flash` and
-> move on.
->
-> It was wrong, and the reason is worth a paragraph.
->
-> Before changing a line of code, I ran the *actual* request our provider
-> sends — to `gemini-2.0-flash`, the model we were about to pin to. It came
-> back `429`. Fine, a rate limit, the chain handles those. Except the body
-> wasn't an ordinary rate limit:
->
-> ```
-> HTTP 429  "Quota exceeded for metric:
->   generativelanguage.googleapis.com/generate_content_free_tier_requests,
->   limit: 0, model: gemini-2.0-flash"
-> ```
->
-> `limit: 0`. Not "you used up your 200 requests" — the free-tier *allowance
-> itself is zero*. The day before, I'd read the same model's `429` as
-> "access OK, just throttled" and built a plan on it. Probing the workaround
-> directly — not the model we were leaving, the one we were moving *to* —
-> showed the whole project is off the free tier on every model: `2.5` returns
-> a hard 403, `2.0` returns a soft-looking 429 that's actually a 0-quota wall.
-> There was no free model to switch to. The "cheap in-code fix" was a dead end
-> dressed up as a 429.
->
-> The lesson isn't about Google's quota semantics (though `limit: 0` vs a real
-> throttle is a nasty ambiguity — both are `429`, only the body tells you
-> which). It's this: **a workaround is a hypothesis, and the cheapest place to
-> test it is before you ship it.** Once you've root-caused a problem it's
-> tempting to let the *fix* ride on an assumption you never checked as hard as
-> the diagnosis. The diagnosis was solid — the provider really is locked out.
-> The fix rested on one unverified clause ("but 2.0 works"), and it was false.
->
-> Measuring the fix cost one `curl`. Shipping it and discovering `2.0` was
-> also dead would have cost a deploy, a confusing benchmark run, and a second
-> round of "wait, why didn't that help."
->
-> (This was a `/daily` run on nlqdb, a database you query in plain English;
-> the chain above is its NL→SQL engine. The day's "win" was a change we
-> *didn't* make — and the record correction that stops the next person from
-> making it.)
-
-**Why this is publishable:** the relatable twist on the four-post legibility
-arc — the satisfying root-cause led to a confident fix that measurement
-killed. Lesson (*test the workaround with the rigor you spent on the
-diagnosis*) lands for any engineer, not just LLM-chain builders. One nlqdb
-mention, in context. Sourced from this run's live re-probe (`limit: 0`) +
-SK-LLM-039.
-
----
-
-
-Older drafts (runs 1–4): [`distribution-queue-archive.md`](./distribution-queue-archive.md).
+Older drafts (runs 1–7): [`distribution-queue-archive.md`](./distribution-queue-archive.md).

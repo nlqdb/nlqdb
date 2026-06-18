@@ -78,6 +78,15 @@ describe("PLAN_SYSTEM (SK-LLM-018 schema-fidelity directives)", () => {
     );
   });
 
+  it("carries the SK-LLM-040 aggregate-filter directive (HAVING half of Unaligned Aggregation Structure)", () => {
+    // A threshold on a group's aggregate must use HAVING after GROUP BY.
+    expect(PLAN_SYSTEM).toMatch(/Filter groups by an aggregate in HAVING, not WHERE/);
+    // Names the mechanism so the rule is auditable, not cargo-culted.
+    expect(PLAN_SYSTEM).toMatch(/WHERE filters individual rows before aggregation/);
+    // The regression bound that keeps ordinary row predicates in WHERE.
+    expect(PLAN_SYSTEM).toMatch(/keep plain per-row predicates in WHERE/);
+  });
+
   it("carries the SK-LLM-035 numeric-text-cast directive (Implicit Type Conversion)", () => {
     // A TEXT-declared column used numerically must be cast, or SQLite
     // compares it lexicographically.
