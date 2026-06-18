@@ -78,7 +78,10 @@ describe("pruneSchemaForGoal", () => {
     // Goal names student + course; the link is `enroll`, whose own columns
     // (`a`/`b`/`term`) match no goal token. Without the bridge pass the join
     // student→enroll→course is unplannable.
-    const pruned = pruneSchemaForGoal(BRIDGE_SCHEMA, "fullname of each student and the title of every course");
+    const pruned = pruneSchemaForGoal(
+      BRIDGE_SCHEMA,
+      "fullname of each student and the title of every course",
+    );
     expect(pruned).toContain("CREATE TABLE student");
     expect(pruned).toContain("CREATE TABLE course");
     expect(pruned).toContain("CREATE TABLE enroll");
