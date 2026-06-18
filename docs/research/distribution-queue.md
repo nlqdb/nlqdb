@@ -5,6 +5,60 @@ One publishable artifact drafted per day by the daily agent
 publishes at the weekly session. Newest first. Delete an entry once published
 (the live URL goes into `docs/scorecard.md`).
 
+## 2026-06-18 (run 15) — dev.to / lobste.rs post
+
+**Title:** We thought our text-to-SQL engine couldn't join. A regex bug was lying to us.
+
+**Body:**
+
+> Our NL→SQL engine gets ~half of a hard benchmark (BIRD) wrong, and the
+> failures are *mismatches*: the query runs and returns rows, they're just the
+> wrong rows. To pick what to fix next, you have to know *how* they're wrong —
+> so I wrote a small diff that buckets each wrong query against the gold answer:
+> missing DISTINCT, wrong aggregate, fewer tables joined, and so on.
+>
+> The histogram was emphatic: **"fewer tables joined" was the #1 class, 105 of
+> 236.** Clear story — the model isn't joining to all the tables it needs, a
+> schema-linking problem. I almost shipped a week of work against it.
+>
+> Then I eyeballed the actual rows, and the story fell apart. Take a query that
+> joins three tables. My classifier said it joined two. Why? It counted tables
+> with `FROM\s+(\w+)` — and the model had written `FROM "transactions_1k"`.
+> The quotes. `\w+` doesn't match a leading `"`, so every quoted table name was
+> invisible to the counter, and "fewer tables" got credited to dozens of
+> queries that joined exactly the right tables.
+>
+> Fix the parser to handle the four quoting forms (`"x"`, `` `x` ``, `[x]`,
+> bare) and **"fewer tables" collapses from 105 to 35.** It wasn't the
+> bottleneck at all. The real mass is aggregation/DISTINCT *grain* and subquery
+> *shape* — and when you read *those* rows, a lot of them are the model
+> guessing the wrong literal: `'discount'` where the data says `'Discount'`,
+> a column called `Amount` where it's `Price`, `'2012-01%'` where the date is
+> stored `'201201'`. That's not a reasoning failure you fix with a prompt rule.
+> It's a *grounding* failure — the model never saw the actual values — and it
+> points at a completely different lever (feed sample cell-values into the
+> prompt) than the one the buggy histogram pointed at.
+>
+> Two lessons, both cheap to relearn the hard way:
+>
+> 1. **A measurement tool is code, and code has bugs that point the same
+>    direction every time.** A miscount that only ever *under*-counts tables
+>    manufactures a "can't join" signal out of nothing. Verify the instrument
+>    on a handful of hand-read cases before you trust its ranking.
+> 2. **Histograms rank; they don't explain.** The bucket said "wrong
+>    aggregate." Reading the row said "wrong string literal, and the aggregate
+>    is fine." The tag was a lead, not a verdict.
+>
+> (A `/daily` run on nlqdb, a database you query in plain English. The
+> classifier is `bun analyze-mismatches` in the open eval harness; this run
+> shipped the tool + the corrected breakdown, no benchmark number moved.)
+
+**Why this is publishable:** "your metrics tool has a bug that confirms your
+prior" is a universal data/ML lesson, and the concrete regex-vs-quoted-identifier
+miss is a satisfying, debuggable story. The grounding-vs-reasoning distinction
+is genuinely useful for anyone doing text-to-SQL. One nlqdb mention, in context.
+Sourced from this run's SK-QUAL-014 + the corrected histogram.
+
 ## 2026-06-18 (run 14) — dev.to / lobste.rs post
 
 **Title:** The text-to-SQL mistake that fails two ways — and only one of them throws
@@ -255,132 +309,23 @@ nlqdb once, in context.
 > (A `/daily` run on nlqdb, where every change names the number it moves. This
 > one: round-trips to a dead provider over a 10-minute isolate, ~10 → 1.)
 
-## 2026-06-15 (run 9) — dev.to / lobste.rs post
+## 2026-06-15 (runs 8–9) — dev.to / lobste.rs posts (condensed; full drafts in git history)
 
-**Title:** The dead provider in the fast lane: when a hedged request races a 403
-
-**Body:**
-
-> Our text-to-SQL engine fronts six free LLM providers with a failover
-> chain: try the strongest, fall through on failure, and — for the latency-
-> sensitive planning step — *hedge*. Hedging is the trick from Dean &
-> Barroso's "The Tail at Scale": if the first provider hasn't answered in
-> 800 ms, fire the second one in parallel and take whoever finishes first.
-> On free tiers the marginal cost is zero, so racing is pure upside. That's
-> the theory.
->
-> Here's what we actually shipped. One of the six providers had a dead key —
-> a whole-project denial that returns `403 PERMISSION_DENIED` on every single
-> call, forever, until a human fixes it in a console we don't control. We'd
-> already done the right *observability* thing: a 401/403 gets its own
-> failure reason (`auth_denied`) so a locked-out provider is legible in one
-> token instead of hiding inside a generic "4xx". And we'd made a deliberate
-> decision to keep `auth_denied` *out* of the circuit breaker — the reasoning
-> being that a config bug should stay visible on every attempt, not get
-> masked as a generic "circuit open" outage. The decision even noted, to
-> justify the cost: *"it sits 3rd in the chain, so re-hitting it is near-zero
-> when the head providers are healthy."*
->
-> Two things were wrong with that sentence, and a 60-second live probe of all
-> six providers found both.
->
-> **It didn't sit 3rd. It sat 2nd.** And second place is special, because
-> second place is exactly who the hedge fires. So on every planning call slow
-> enough to trigger the hedge — the precise slow tail the hedge exists to
-> cover — we were racing our healthy lead provider against a guaranteed
-> instant `403`. The hedge "fired," lost nothing worth losing, and the live
-> provider that *should* have been in that slot (3rd in line, actually
-> healthy) never got raced. We had built a fast lane and parked a dead car in
-> it.
->
-> The fix reconciles the two goals the old decision treated as opposed. Open
-> the breaker on the first `auth_denied` — so a permanently-dead provider is
-> skipped instead of re-dialed on every request — *but* record the skip with
-> its real reason (`auth_denied`), not a generic `circuit_open`. You keep the
-> legibility (the dead provider is still obvious in the metrics) and you stop
-> paying for it (one wasted round-trip per cooldown window instead of one per
-> call), and the hedge slot rotates to the provider behind it — the live one.
-> The breaker auto-re-probes after a cooldown, so the moment someone fixes the
-> key, the provider comes back with no deploy.
->
-> Measured the only way you can without the real key: a unit test that fires
-> five consecutive denials. Before, the dead provider was dialed five times.
-> After, once. The change is inert when a key actually works — a 200 never
-> trips the breaker — so it's safe to ship without knowing whether prod's key
-> is the same dead one.
->
-> The lesson I keep relearning: a decision's *stated cost* is a claim about
-> the system, and claims rot. "It sits 3rd, the cost is near-zero" was true
-> of some earlier chain order and quietly became false. The cheapest audit in
-> the world is to re-read your own load-bearing justifications against what
-> the code does today — and, when you can, against a live probe. Ours took
-> one `curl` per provider and turned a paragraph of confident reasoning into
-> two off-by-one bugs.
->
-> (A `/daily` run on nlqdb, where every change names the number it moves.
-> This one: round-trips to a dead provider per five calls, 5 → 1.)
-
-## 2026-06-15 (run 8) — dev.to / lobste.rs post
-
-**Title:** One bad row shouldn't cost you all the rows: salvaging LLM-generated seed data
-
-**Body:**
-
-> When you let an LLM design a database from a one-line goal ("a tiny CRM",
-> "a meal planner for couples"), it also writes you a handful of sample rows
-> so the thing isn't empty when you first open it. Those rows are the entire
-> first impression — a populated table you can immediately query, versus a
-> bare schema you have to fill yourself.
->
-> The rows go in as one atomic transaction. Which means: if *one* of them
-> violates a constraint the model itself just declared — a foreign key that
-> points at a row defined three lines later, a NOT NULL column left blank, a
-> `"twelve"` where an integer goes — the whole insert rolls back. Our
-> safety net caught the obvious failure mode (never 500 the user; hand them
-> a working empty database instead), but "empty database" was still the
-> outcome for the *whole* seed set whenever a single row was bad. We measured
-> it: across a set of goals, only about a quarter to three-quarters seeded
-> cleanly; the rest fell all the way to empty. One bad row of thirteen cost
-> the user the other twelve.
->
-> The fix isn't a smarter prompt (we have one of those too, and it's
-> probabilistic — it raises the odds, it doesn't guarantee). The fix is a
-> deterministic pass that runs *before* the insert and drops only the rows it
-> can **prove** won't insert, against the schema's own declared constraints:
->
-> - unknown table or column → the INSERT names something that doesn't exist;
-> - a NOT NULL column (including primary keys) with no default and no value;
-> - a value no Postgres input function for that type would accept
->   (`"twelve"` into `integer`, a non-UUID string into `uuid`) — while
->   *keeping* the coercible forms (`"2"` into integer, `"1.5e3"` into numeric,
->   `"NaN"`, the boolean literals);
-> - a foreign-key value with no matching parent row seen earlier in insert
->   order — and dropping a parent cascades to its now-dangling children.
->
-> The discipline that makes this safe is **soundness**: it only ever drops a
-> row it can prove will fail. A clean batch prunes nothing, so the common
-> case is byte-for-byte unchanged; a mixed batch keeps everything that can
-> survive. FK matching even compares string-coerced (`"7"` matches `7`), so a
-> parent Postgres *would* accept is never mistaken for missing. Twelve rows
-> instead of zero, and not one line of LLM-call latency added — it's pure
-> in-memory validation.
->
-> The general lesson for anyone wiring an LLM into a system with hard
-> constraints: the model's output is a batch of independent bets, and
-> all-or-nothing failure handling makes the worst bet set the price for all
-> of them. Salvage what provably works; degrade only what provably doesn't.
->
-> (This was a `/daily` run on nlqdb — a database you query in plain English.
-> The seed rows above are what makes an invited stranger's very first query
-> land on populated tables.)
-
-**Why this is publishable:** concrete, debuggable, and broadly applicable —
-"LLM emits a batch, one item is bad, don't throw away the good ones" is a
-pattern anyone building LLM-to-structured-output pipelines hits. Pairs with
-the run-6/7 legibility posts as a third "we measured the real cost, then
-fixed it deterministically" story. One soft product mention at the end.
-
----
-
+- **run 9 — "The dead provider in the fast lane: when a hedged request races a
+  403."** A dead-key provider (`403 PERMISSION_DENIED`) sat 2nd in the chain —
+  exactly the slot the latency hedge fires — so every slow planning call raced
+  the healthy lead against a guaranteed instant 403. Fix: open the breaker on
+  the first `auth_denied` but keep the skip legible; hedge slot rotates to the
+  live provider behind it (round-trips 5 → 1). Lesson: a decision's *stated
+  cost* is a claim that rots; re-read load-bearing justifications against the
+  code (and a live probe) today.
+- **run 8 — "One bad row shouldn't cost you all the rows: salvaging
+  LLM-generated seed data."** LLM-designed seed rows insert as one atomic txn,
+  so one constraint-violating row rolls back the whole batch → empty DB on
+  first impression. Fix: a deterministic pre-insert pass that drops *only*
+  provably-uninsertable rows (unknown col, NOT NULL gap, uncoercible type,
+  orphan FK) against the schema's own constraints; sound, zero added latency
+  (0 → 12 of 13 rows kept). Lesson: an LLM batch is independent bets — salvage
+  what provably works, degrade only what provably doesn't.
 
 Older drafts (runs 1–7): [`distribution-queue-archive.md`](./distribution-queue-archive.md).

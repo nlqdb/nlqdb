@@ -15,12 +15,11 @@
 > system under test). If this file disagrees with them, **they win** and
 > this file is the bug.
 >
-> **Scope guard.** Every entry here stays inside the **strict-$0,
-> no-credit-card** free approach per
-> [`GLOBAL-013`](../decisions/GLOBAL-013-free-tier-bundle-budget.md) /
-> [`GLOBAL-026`](../decisions/GLOBAL-026-llm-strategy-byollm-hosted-premium.md).
-> Frontier/agentic lanes are an *ablation reference* (`SK-QUAL-004`), not
-> a place we spend to inflate the headline.
+> **Scope guard.** Every entry stays inside the **strict-$0, no-credit-card**
+> free approach ([`GLOBAL-013`](../decisions/GLOBAL-013-free-tier-bundle-budget.md) /
+> [`GLOBAL-026`](../decisions/GLOBAL-026-llm-strategy-byollm-hosted-premium.md));
+> frontier/agentic lanes are an *ablation reference* (`SK-QUAL-004`), not a
+> place we spend to inflate the headline.
 
 ## 1. Why engine quality is the #1 acquisition lever (not just an engine nicety)
 
@@ -46,34 +45,38 @@ so every entry in §2 is also what a blocked user sees.
 
 **How to read the two BIRD rows.** Raw EX (the gate metric) also pays
 chain-exhaustion `no_sql`; reasoning EX isolates SQL quality from capacity.
-Until 2026-06-10 the two diverged hard (`no_sql` 30–70% in measurement envs).
-The second lever wave closed most of the divergence: the revived Workers-AI
-leg (T18) + schema pruning (T19) cut same-seed smoke `no_sql` **47 → 1** and
-lifted raw EX **37.3% → 51.3%**, and the harness now refuses to score a
-rate-limit breaker wall as `no_sql` at all (T20). The remaining gap to the
-gate floor is **SQL reasoning** (mismatches), no longer availability — §4's
-levers target it.
+The second lever wave closed most of the once-30–70% divergence: Workers-AI
+revival (T18) + schema pruning (T19) cut same-seed smoke `no_sql` **47 → 1**,
+lifted raw EX **37.3% → 51.3%**, and T20 stopped scoring breaker walls as
+`no_sql`. The remaining gap to the gate floor is **SQL reasoning**
+(mismatches), not availability — §4's levers target it.
 
-**Where the losses are now** (canonical 500-q run, 2026-06-12): match 261 ·
-**mismatch 236** · exec_error 0 · `no_sql` 3 — on BIRD the loss is now
-almost purely **SQL reasoning** (mismatches), the territory of §4's backlog
-(retrieved few-shot, value retrieval) beyond the directive sub-classes
-T10–T16 / T22 already target. Spider's residual `no_sql` fell **36 → 9**
-after the 2026-06-17 Gemini key heal (`SK-LLM-039`); the tally now carries no
-`gemini:http_4xx` / `auth_denied`, so the 9 are capacity-only (`circuit_open`
-+ `mistral:network` + `workers-ai:parse`), **not** an oversized-DDL problem
-(falsified offline 2026-06-13: all 135 schemas ≤ ~1.9 K tok). Raw EX rose
-0.1704 → 0.1852, but the 27 newly-answered questions mostly produced *wrong*
-SQL (reasoning EX 0.232 → 0.198), so the Spider bottleneck is now **SQL
-reasoning, not availability** — §4's levers. Column-level pruning (§4 #2)
-still helps Spider via *distractor* removal (T19's table-pruning lifted the
-smoke 0.15 → 0.25), not the residual capacity `no_sql`.
+**Where the losses are now** (canonical 500-q BIRD run, 2026-06-12): match 261 ·
+**mismatch 236** · exec_error 0 · `no_sql` 3 — the loss is now almost purely
+**SQL reasoning** (mismatches). The mismatch mass is bucketed by the
+`SK-QUAL-014` classifier (`bun analyze-mismatches`, tags non-exclusive):
+`agg_fn_diff` 61 · `more_subqueries` 44 · `other_predicate_or_value` 42 ·
+`missing_DISTINCT` 41 · `col_count_diff` 39 · `fewer_tables` 35 ·
+`extra_DISTINCT` 34. Reading the rows: aggregation/DISTINCT **grain** and
+subquery **shape** dominate, and much of the `agg_fn_diff`/`col_count_diff`
+mass is really **value/literal/column grounding** (wrong literal casing, wrong
+column, wrong date encoding — examples in `SK-QUAL-014`) — the §4 #2
+value-retrieval lever — with a slice of known BIRD gold-annotation noise (§4
+#5). **Schema-link recall is *not* the bottleneck:** `fewer_tables` is 35/236
+(15%), and that count is pre-T21 (the join-bridge-recall fix shipped
+2026-06-17), so T19/T21 already captured most of that headroom. The grain
+tags are the territory of directives T10–T16/T22 (now saturating) — their
+residual mass is the signal to move to retrieval-based levers (§4 #1/#2).
+Spider's residual `no_sql` is **9** (capacity-only post-Gemini-heal, §6), and
+its 27 newly-answered questions after the heal mostly produced *wrong* SQL
+(reasoning EX 0.232 → 0.198), so Spider's bottleneck is also **SQL reasoning,
+not availability** — column-level pruning (§4 #2) helps it via *distractor*
+removal (T19 lifted the smoke 0.15 → 0.25).
 
 > **How these numbers are produced.** `tools/eval/src/runner.ts` drives
 > `router.ts::plan()` against the SQLite fixture and scores EX (BIRD
-> positional-tuple multiset `SK-QUAL-010` · Spider multi-CSV `SK-QUAL-008`);
-> a manual eval run (§6) diffs `baseline-2026-06-15.json`. **PR CI never fires
-> real keys** — mocked router (`SK-QUAL-002`).
+> `SK-QUAL-010` · Spider `SK-QUAL-008`); `bun analyze-mismatches` buckets the
+> mismatch rows (`SK-QUAL-014`). **PR CI never fires real keys** (`SK-QUAL-002`).
 
 ## 3. What we have tried (with how, and how much)
 
@@ -117,11 +120,12 @@ agent-runnable; promote into an `SK-*`/`GLOBAL-*` before implementing
    hot `plan`, so it is gated on per-lever ablation of T9 (`CLAUDE.md` §P5).
 2. **Value retrieval + column-level pruning (the M-Schema half T19 left).**
    T19 prunes whole tables; feeding sample cell-values and pruning columns
-   targets the mismatch mass directly (est. +3–6 pp). Column-level recall
-   risk is per-column — needs an offline recall harness like T19's first.
-   Targets *mismatches*, not the 36 Spider `no_sql` — those are
-   `http_4xx`/`network` errors on small schemas (§2), not a size problem
-   pruning could fix.
+   targets the mismatch mass directly (est. +3–6 pp). **Now evidence-backed
+   as the top mismatch lever** — the `SK-QUAL-014` breakdown (§2) shows much
+   of the BIRD mismatch mass is value/literal/column grounding the model
+   can't guess. Column-level recall risk is per-column — needs an offline
+   recall harness like T19's first. Targets *mismatches*, not the 9 Spider
+   `no_sql` (capacity, §2).
 3. **Self-consistency majority vote (N=3, free tokens).** Sample 3 plans at
    temperature > 0 on a separate code path, execute, majority-vote the result
    set. Worth a measured ablation (`SK-QUAL-004`) — on the free chain the
@@ -170,16 +174,11 @@ The dated, evidence-referenced log of every shipped lever lives in
 (append-only; split out per `CLAUDE.md` §D4). §3 above is the current-state
 view of the same levers.
 
-> **Measurement state (2026-06-12).** T18+T19 carry a clean same-seed smoke
-> A/B (BIRD raw 37.3% → 51.3%, reproduced 48.7%), and the canonical full
-> runs landed in this PR (BIRD 500-q raw **0.522**, Spider 135-q raw
-> **0.1704**; sequential per §5, resumed across quota windows per
-> `SK-QUAL-013`), re-seeding `baseline-2026-06-15.json` +
-> `eval-baseline.ts`. Agents dispatch the workflows directly via the
-> workflow-scoped PAT (`GH_TOKEN_WORKFLOW`) — no human click needed.
-> **2026-06-17 — Spider re-seeded 0.1704 → 0.1852** after the shared
-> `GEMINI_API_KEY` free-tier key was restored (`no_sql` 36 → 9,
-> `gemini:http_4xx` cleared; `SK-LLM-039`), resumed across 2 windows
-> (one hit the 60-min ceiling → resumed via the `SK-QUAL-013` checkpoint).
-> **Next:** per-lever ablations (T9 static few-shot vs none; T19 prune
-> on/off) to attribute the combined gain, then §4 #1/#2.
+> **Measurement state.** Canonical full runs: **BIRD 500-q raw 0.522**
+> (2026-06-12), **Spider 135-q raw 0.1852** (2026-06-17, re-seeded from
+> 0.1704 after the `GEMINI_API_KEY` heal — `no_sql` 36 → 9, `SK-LLM-039`);
+> sequential per §5, resumed across quota windows (`SK-QUAL-013`), seeding
+> `baseline-2026-06-15.json` + `eval-baseline.ts`. Agents dispatch via the
+> `GH_TOKEN_WORKFLOW` PAT — no human click. **Next:** §4 #2 value-retrieval
+> (now the evidence-backed top mismatch lever per the `SK-QUAL-014`
+> breakdown), with per-lever ablations (T9, T19) to attribute prior gains.
