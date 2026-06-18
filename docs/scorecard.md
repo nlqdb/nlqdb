@@ -65,6 +65,24 @@ target it. BIRD unchanged (0.522; Gemini wasn't its bottleneck, `no_sql` was 3).
 
 ## Deltas (recent runs)
 
+- 2026-06-17 (run 13) — **join-bridge recall in schema pruning (SK-LLM-037
+  rev / T21).** Engine numbers were freshly measured this morning (run 12) and
+  the §5 quota guardrail forbids a back-to-back eval, so this run ships a
+  **locally unit-measured** engine-correctness lever (the run-8/run-11 pattern;
+  real EX delta → next scheduled eval). The pruner's FK closure was
+  *outbound-only* (`REFERENCES` targets of a kept table); a junction table that
+  links two goal-matched tables but whose own FK columns are generic (`a`/`b`)
+  matched no goal token and was reachable by neither closure direction, so it
+  was dropped — making the multi-table join unplannable (a `mismatch`, the
+  current Spider/BIRD bottleneck). `pruneSchemaForGoal` now also keeps any
+  table that `REFERENCES` ≥ 2 goal-matched tables, seeded from the goal-matched
+  set only ⇒ **recall-monotonic** (≥ T19's 99.8% BIRD gold-table) and
+  distractor-bounded (can't regress the 0.15→0.25 distractor-removal win).
+  **Measured (unit, local):** synthetic `student↔enroll↔course` with generic FK
+  names — bridge dropped → kept; a one-endpoint referencer stays out. 174 llm
+  tests green (was 172). KPI: engine quality (GLOBAL-025); none degraded
+  (add-only, retry/full-schema fallbacks untouched). Real BIRD/Spider EX delta
+  → next scheduled quality-eval.
 - 2026-06-17 (run 12) — **Gemini free-tier key restored + Spider re-run.**
   The shared `GEMINI_API_KEY` was rotated to a fresh free-tier AI Studio key
   (live-probed `gemini-2.5-flash` → HTTP 200) and mirrored to GHA + Worker,

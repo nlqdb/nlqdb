@@ -131,6 +131,30 @@ export function pruneSchemaForGoal(schema: string, goal: string): string {
   }
   if (kept.size === 0) return schema;
 
+  // Join-bridge recall: a table that REFERENCES two or more goal-matched
+  // tables is the junction the query joins *through* — even when its own
+  // columns are generic FK names (`a`, `student_ref`) that share no token
+  // with the goal. Outbound `REFERENCES` closure alone never reaches it
+  // (neither goal-matched endpoint references the bridge), so it would be
+  // dropped and the multi-table join made unplannable. Seeded from the
+  // goal-matched set only, so the keep is bounded to bridges between two
+  // things the goal explicitly named (distractor-safe).
+  const goalMatched = new Set(kept);
+  for (const t of tables) {
+    if (goalMatched.has(t.name as string)) continue;
+    let hits = 0;
+    const seen = new Set<string>();
+    for (const ref of t.references) {
+      if (goalMatched.has(ref) && !seen.has(ref)) {
+        seen.add(ref);
+        if (++hits >= 2) {
+          kept.add(t.name as string);
+          break;
+        }
+      }
+    }
+  }
+
   // FK closure — a kept table's REFERENCES targets must be present for
   // the model to join through them.
   const byName = new Map(tables.map((t) => [t.name as string, t]));

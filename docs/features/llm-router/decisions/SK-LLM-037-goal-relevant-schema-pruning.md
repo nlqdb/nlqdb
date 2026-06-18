@@ -9,7 +9,12 @@ its backlog (`quality-score-source-of-truth.md` §4 #2); value retrieval
   schema it embeds via the new pure `pruneSchemaForGoal(schema, goal)`
   (`packages/llm/src/schema-prune.ts`): keep every `CREATE TABLE`/`VIEW`
   whose table-name or column-name word-tokens overlap the goal's tokens,
-  close over their `REFERENCES` targets so kept joins stay plannable, and
+  close over their `REFERENCES` targets so kept joins stay plannable, also
+  keep any **join-bridge** table that `REFERENCES` ≥ 2 of the goal-matched
+  tables (the junction a multi-table join goes *through*, invisible to
+  token-matching when its FK columns are generic like `a`/`student_ref` —
+  recall-monotonic and seeded from the goal-matched set only, so the keep
+  is bounded to bridges between two things the goal named), and
   send the **full** schema whenever pruning is not a clear win — schema
   < 2000 chars, < 5 tables, zero matches, kept ratio ≥ 0.9, unparseable
   DDL, or a **retry** (`previousAttempt` set — the failed attempt is the
