@@ -39,6 +39,10 @@ export {
   NoProviderError,
 } from "./router.ts";
 
+// Schema pruning (SK-LLM-037) + its tokenizer — the latter is reused by the
+// SK-QUAL-015 column-coverage harness so its recall ceiling is faithful to the
+// pruner's own goal/identifier matching.
+export { pruneSchemaForGoal, wordTokens } from "./schema-prune.ts";
 export {
   type CallOpts,
   type EngineClassifyRequest,
