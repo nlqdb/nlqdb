@@ -39,8 +39,8 @@ so every entry in §2 is also what a blocked user sees.
 
 | KPI (free chain) | Now | Gate floor (GLOBAL-027) | Phase-2 floor (GLOBAL-025) | Source |
 |---|---|---|---|---|
-| **BIRD-dev reasoning EX** (match among questions that produced SQL — capacity-independent) | **0.525** (was 0.354 on 2026-05-18) | — | — | canonical 500-q run 2026-06-12 (261/497); post-T18/T19 smokes read 51.7% / 50.7% |
-| BIRD-dev EX (raw — the gate metric) | **0.522** (was 0.35 lower bound; 0.318 on 2026-05-18) | ≥ 0.65 | ≥ 0.60 | canonical 500-q 6-provider GHA run 2026-06-12 (261/500, `no_sql` 3; resumed across 5 quota windows per `SK-QUAL-013`); same-seed smoke A/B 0.3733 → 0.5133 |
+| **BIRD-dev reasoning EX** (match among questions that produced SQL — capacity-independent) | **0.526** (was 0.525 on 2026-06-12; 0.354 on 2026-05-18) | — | — | canonical 500-q post-T21 run 2026-06-18 (263/500, `no_sql` 0 ⇒ raw == reasoning) |
+| BIRD-dev EX (raw — the gate metric) | **0.526** (was 0.522 on 2026-06-12; 0.318 on 2026-05-18) | ≥ 0.65 | ≥ 0.60 | canonical 500-q 6-provider post-T21 GHA run 2026-06-18 (263/500, `no_sql` **0**; resumed across 4 quota windows per `SK-QUAL-013`). McNemar vs the 0.522 baseline b=26/c=28, p=1.0 — +0.4 pp within noise |
 | Spider 2.0-lite EX (raw) | **0.1852** (was 0.1704 on 2026-06-12; 0.12 on 2026-06-09) | ≥ 0.75 | report only (Phase-3 ≥ 0.15) | canonical 135-q GHA run 2026-06-17 after the Gemini free-tier key heal (25/135; reasoning EX 0.198; `no_sql` 36 → 9, now capacity-only); same-seed smoke 0.15 → 0.25 |
 | free-vs-agentic-frontier delta | **null** (lane not yet run) | — | ≤ 25 pp (`SK-QUAL-004`) | `SK-QUAL-004`; agentic lane opt-in (`SK-QUAL-009`) |
 
@@ -54,11 +54,14 @@ rate-limit breaker wall as `no_sql` at all (T20). The remaining gap to the
 gate floor is **SQL reasoning** (mismatches), no longer availability — §4's
 levers target it.
 
-**Where the losses are now** (canonical 500-q run, 2026-06-12): match 261 ·
-**mismatch 236** · exec_error 0 · `no_sql` 3 — on BIRD the loss is now
-almost purely **SQL reasoning** (mismatches), the territory of §4's backlog
-(retrieved few-shot, value retrieval) beyond the directive sub-classes
-T10–T16 already target. Spider's residual `no_sql` was **36/135** on the
+**Where the losses are now** (canonical 500-q post-T21 run, 2026-06-18): match 263 ·
+**mismatch 236** · exec_error 1 · `no_sql` 0 — on BIRD the loss is now
+**entirely SQL reasoning** (mismatches; `no_sql` 3 → 0 confirms a healthy full
+chain), the territory of §4's backlog (retrieved few-shot, value retrieval)
+beyond the directive sub-classes T10–T16 already target. T21 (join-bridge
+recall, the only planner lever since 2026-06-12) net +0.4 pp here — flat within
+noise (McNemar p=1.0), as its generic-FK-junction case is rare across BIRD's 11
+schemas; the mismatch mass is unchanged. Spider's residual `no_sql` was **36/135** on the
 2026-06-12 run — dominated by **`gemini:http_4xx`** (the shared free-tier
 `GEMINI_API_KEY` was denied; `SK-LLM-039`) plus `mistral:network`, **not** an
 oversized-DDL problem (falsified offline 2026-06-13: all 135 SQLite-subset
@@ -185,5 +188,12 @@ view of the same levers.
 > `GEMINI_API_KEY` free-tier key was restored (`no_sql` 36 → 9,
 > `gemini:http_4xx` cleared; `SK-LLM-039`), resumed across 2 windows
 > (one hit the 60-min ceiling → resumed via the `SK-QUAL-013` checkpoint).
+> **2026-06-18 — BIRD re-seeded 0.522 → 0.526** on the post-T21 chain
+> (263/500, `no_sql` 3 → 0; McNemar b=26/c=28, p=1.0 ⇒ +0.4 pp within noise,
+> 0 regressions), resumed across 4 windows. This attributes T21's real BIRD
+> impact — flat, as expected for a junction-recall lever on BIRD's 11 schemas.
+> `eval-baseline.ts` re-seeded; the pinned `baseline-2026-06-15.json` stays as
+> the McNemar anchor (the +0.4 pp is not significant).
 > **Next:** per-lever ablations (T9 static few-shot vs none; T19 prune
-> on/off) to attribute the combined gain, then §4 #1/#2.
+> on/off) to attribute the combined gain, then §4 #1/#2 (the mismatch mass is
+> now the sole BIRD lever).
