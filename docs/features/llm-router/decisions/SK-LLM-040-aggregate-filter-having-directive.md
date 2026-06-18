@@ -30,8 +30,8 @@ block, orthogonal to each of them.
   - **Hard error (wasted retry).** `WHERE COUNT(*) > 5` is rejected by SQLite
     ("misuse of aggregate function") and Postgres ("aggregate functions are not
     allowed in WHERE"). The exec-retry path
-    ([`SK-ASK-013`](../../ask-pipeline/decisions/SK-ASK-013-transient-retry.md) /
-    [`SK-ASK-022`](../../ask-pipeline/decisions/SK-ASK-022-execution-guided-repair.md))
+    ([`SK-ASK-013`](../../ask-pipeline/FEATURE.md#sk-ask-013) /
+    [`SK-ASK-022`](../../ask-pipeline/FEATURE.md#sk-ask-022))
     then burns a re-plan round-trip — quota the free chain can't spare — and may
     not recover if the model re-emits the same shape.
   - **Silent mismatch.** Omitting the group filter entirely (returning all
