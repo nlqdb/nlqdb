@@ -16,7 +16,15 @@
 // The residual 9 are capacity-only (`circuit_open` across providers +
 // `mistral:network` + `workers-ai:parse`); `gemini:http_4xx` / `auth_denied`
 // are gone — Gemini now answers, failing only on the shared rate-limit walls.
-// BIRD unchanged (not re-run; Gemini wasn't its bottleneck — `no_sql` was 3).
+//
+// 2026-06-18 — BIRD re-run on the T21 SHA (join-bridge recall, SK-LLM-037 rev),
+// the first canonical BIRD eval since 2026-06-12 — validates T21 + the
+// accumulated levers (SK-LLM-038/039, SK-ASK-022) against real EX: raw EX
+// 0.522 → 0.526 (263/500), `no_sql` 3 → 0 (full chain capacity — Gemini heal),
+// mismatch 236 unchanged, exec_error 1. In-report McNemar b=26/c=28, p=1 — the
+// +0.004 is within run noise, but the run is regression-free (`regressions: []`)
+// ⇒ the levers held and capacity is healthy. mismatch is flat ⇒ the bottleneck
+// is squarely SQL reasoning, not availability (quality-score-source-of-truth §2).
 // Both lanes remain below target ⇒ gate stays closed.
 
 export type EvalBaseline = {
@@ -28,9 +36,9 @@ export type EvalBaseline = {
 };
 
 export const EVAL_BASELINE = {
-  bird_accuracy: 0.522,
+  bird_accuracy: 0.526,
   spider_accuracy: 0.1852,
   bird_target: 0.65,
   spider_target: 0.75,
-  measured_at: "2026-06-17T10:48:41.851Z",
+  measured_at: "2026-06-18T03:17:34.707Z",
 } as const satisfies EvalBaseline;

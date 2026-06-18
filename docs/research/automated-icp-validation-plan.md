@@ -33,10 +33,10 @@
 >
 > **Real blocker is engine quality, not surfaces (2026-05-24 founder
 > directive).** Every advertised acquisition surface gate-403s at
-> `/v1/ask` because the free-chain BIRD raw EX is 0.522 (target 0.65) and
-> Spider is 0.1704 (target 0.75) — first complete 6-provider canonical
-> runs, 2026-06-12 (reasoning EX 0.525 BIRD / 0.232 Spider; up from raw
-> 0.35 / 0.12 lower bounds on 2026-06-09) per
+> `/v1/ask` because the free-chain BIRD raw EX is 0.526 (target 0.65) and
+> Spider is 0.1852 (target 0.75) — canonical 6-provider runs, BIRD 2026-06-18
+> on the T21 SHA (reasoning EX 0.526; was 0.522 on 06-12) / Spider 2026-06-17
+> after the Gemini key heal (reasoning EX 0.198; was 0.1704 on 06-12) per
 > [`apps/api/src/gate/eval-baseline.ts`](../../apps/api/src/gate/eval-baseline.ts) /
 > [`SK-GATE-001`](../features/pre-alpha-gate/FEATURE.md#sk-gate-001) /
 > [`SK-GATE-002`](../features/pre-alpha-gate/FEATURE.md#sk-gate-002).
@@ -182,7 +182,7 @@ This table is the single dashboard answer to "is the inbound funnel working toda
 
 | KPI | Target | Status |
 |---|---|---|
-| Free-chain BIRD accuracy | ≥ 0.65 | **raw EX 0.522** (first complete canonical 500-q 6-provider GHA run, 2026-06-12, [`eval-baseline.ts`](../../apps/api/src/gate/eval-baseline.ts); reasoning EX 0.525; was 0.35 lower bound on 2026-06-09). **Still the acquisition bottleneck** (gate stays closed); closing it lifts the gate for every surface §3 ships |
+| Free-chain BIRD accuracy | ≥ 0.65 | **raw EX 0.526** (canonical 500-q 6-provider GHA run, 2026-06-18 on the T21 SHA, [`eval-baseline.ts`](../../apps/api/src/gate/eval-baseline.ts); reasoning EX 0.526; was 0.522 on 06-12, `no_sql` 3 → 0, mismatch flat 236, McNemar p=1 / `regressions: []`). **Still the acquisition bottleneck** (gate stays closed); closing it lifts the gate for every surface §3 ships |
 | Free-chain Spider accuracy | ≥ 0.75 | **raw EX 0.1704** (first complete canonical 135-q 6-provider GHA run, 2026-06-12; reasoning EX 0.232; was 0.12 on 2026-06-09) via [`SK-QUAL-007`](../features/quality-eval/FEATURE.md) + [`SK-QUAL-008`](../features/quality-eval/FEATURE.md); run IDs + artifacts in [`quality-score-verification-log.md`](../progress/quality-score-verification-log.md) |
 | Anonymous loop completions | ≥ 50 | 0 — gate 403s every walked `/v1/ask` (2026-05-24 stranger-test); **stays 0 until BIRD/Spider clear OR §1.4 invite-valve verifies end-to-end** |
 | Signed-in users (invite-redeemed) | ≥ 10 | 0 real-user (non-walker) redemptions. FLOW-004 gate-bypass is **intact** AND `/v1/ask` returns **HTTP 200** with an invite (2026-06-12 walks) — the 2026-06-08 `sample_insert_failed` 500 stays cleared (SK-HDC-018 + SK-LLM-033 #352). First-value seed quality **lifted ~0.25 → ~0.75**: the SK-STRG-008 probe re-ran live 2026-06-12 — two same-set 4-goal runs both **`seeded_ok_ratio = 0.75`** (stable; only "a meal planner for couples" degraded), up from the 2026-06-10 single-run 0.25; a wider 8-goal run recorded **4 `provision_failed`** (HTTP 422 `infer_failed`) at ratio 0.75 (`flow-004-seed-quality-2026-06-12T02-04-02Z.json`), and across three 8-goal runs the wide ratio varied **0.6–0.8** with 3–4 `provision_failed` each (LLM variance). Lift not yet causally isolated (planner directives since 06-10 vs LLM variance). Most goals now seed, but a meaningful fraction either degrade (empty DB) or 422 (no DB) — closing that is the open SK-LLM-033 / engine-quality lift. This row stays 0 until a real stranger (not the synthetic walker) redeems an invite |

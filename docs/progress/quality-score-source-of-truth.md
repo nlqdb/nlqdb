@@ -39,8 +39,8 @@ so every entry in §2 is also what a blocked user sees.
 
 | KPI (free chain) | Now | Gate floor (GLOBAL-027) | Phase-2 floor (GLOBAL-025) | Source |
 |---|---|---|---|---|
-| **BIRD-dev reasoning EX** (match among questions that produced SQL — capacity-independent) | **0.525** (was 0.354 on 2026-05-18) | — | — | canonical 500-q run 2026-06-12 (261/497); post-T18/T19 smokes read 51.7% / 50.7% |
-| BIRD-dev EX (raw — the gate metric) | **0.522** (was 0.35 lower bound; 0.318 on 2026-05-18) | ≥ 0.65 | ≥ 0.60 | canonical 500-q 6-provider GHA run 2026-06-12 (261/500, `no_sql` 3; resumed across 5 quota windows per `SK-QUAL-013`); same-seed smoke A/B 0.3733 → 0.5133 |
+| **BIRD-dev reasoning EX** (match among questions that produced SQL — capacity-independent) | **0.526** (was 0.354 on 2026-05-18) | — | — | canonical 500-q run 2026-06-18 on the T21 SHA (263/499); post-T18/T19 smokes read 51.7% / 50.7% |
+| BIRD-dev EX (raw — the gate metric) | **0.526** (was 0.522 on 2026-06-12; 0.318 on 2026-05-18) | ≥ 0.65 | ≥ 0.60 | canonical 500-q 6-provider GHA run 2026-06-18 on the T21 SHA (263/500, `no_sql` **3 → 0**; resumed across 4 quota windows per `SK-QUAL-013`); in-report McNemar vs 06-12 b=26/c=28, p=1 (noise), `regressions: []`; same-seed smoke A/B 0.3733 → 0.5133 |
 | Spider 2.0-lite EX (raw) | **0.1852** (was 0.1704 on 2026-06-12; 0.12 on 2026-06-09) | ≥ 0.75 | report only (Phase-3 ≥ 0.15) | canonical 135-q GHA run 2026-06-17 after the Gemini free-tier key heal (25/135; reasoning EX 0.198; `no_sql` 36 → 9, now capacity-only); same-seed smoke 0.15 → 0.25 |
 | free-vs-agentic-frontier delta | **null** (lane not yet run) | — | ≤ 25 pp (`SK-QUAL-004`) | `SK-QUAL-004`; agentic lane opt-in (`SK-QUAL-009`) |
 
@@ -54,11 +54,14 @@ rate-limit breaker wall as `no_sql` at all (T20). The remaining gap to the
 gate floor is **SQL reasoning** (mismatches), no longer availability — §4's
 levers target it.
 
-**Where the losses are now** (canonical 500-q run, 2026-06-12): match 261 ·
-**mismatch 236** · exec_error 0 · `no_sql` 3 — on BIRD the loss is now
-almost purely **SQL reasoning** (mismatches), the territory of §4's backlog
+**Where the losses are now** (canonical 500-q run, 2026-06-18, T21 SHA): match
+263 · **mismatch 236** · exec_error 1 · `no_sql` **0** — on BIRD the loss is
+now almost purely **SQL reasoning** (mismatches), the territory of §4's backlog
 (retrieved few-shot, value retrieval) beyond the directive sub-classes
-T10–T16 already target. Spider's residual `no_sql` was **36/135** on the
+T10–T16 already target. The 2026-06-18 T21-SHA re-run left mismatch **flat at
+236** (T21 adds bridge tables only when junction FK columns are generic, rare on
+BIRD's endpoint-named schemas) and cleared the last 3 `no_sql` — so the mismatch
+mass is the whole gap to the gate floor. Spider's residual `no_sql` was **36/135** on the
 2026-06-12 run — dominated by **`gemini:http_4xx`** (the shared free-tier
 `GEMINI_API_KEY` was denied; `SK-LLM-039`) plus `mistral:network`, **not** an
 oversized-DDL problem (falsified offline 2026-06-13: all 135 SQLite-subset
@@ -174,16 +177,12 @@ The dated, evidence-referenced log of every shipped lever lives in
 (append-only; split out per `CLAUDE.md` §D4). §3 above is the current-state
 view of the same levers.
 
-> **Measurement state (2026-06-12).** T18+T19 carry a clean same-seed smoke
-> A/B (BIRD raw 37.3% → 51.3%, reproduced 48.7%), and the canonical full
-> runs landed in this PR (BIRD 500-q raw **0.522**, Spider 135-q raw
-> **0.1704**; sequential per §5, resumed across quota windows per
-> `SK-QUAL-013`), re-seeding `baseline-2026-06-15.json` +
-> `eval-baseline.ts`. Agents dispatch the workflows directly via the
-> workflow-scoped PAT (`GH_TOKEN_WORKFLOW`) — no human click needed.
-> **2026-06-17 — Spider re-seeded 0.1704 → 0.1852** after the shared
-> `GEMINI_API_KEY` free-tier key was restored (`no_sql` 36 → 9,
-> `gemini:http_4xx` cleared; `SK-LLM-039`), resumed across 2 windows
-> (one hit the 60-min ceiling → resumed via the `SK-QUAL-013` checkpoint).
+> **Measurement state.** Canonical full runs (sequential per §5, resumed across
+> quota windows per `SK-QUAL-013`; agents dispatch via the `GH_TOKEN_WORKFLOW`
+> PAT — no human click) seed `baseline-2026-06-15.json` + `eval-baseline.ts`.
+> Current: **BIRD 0.526** (2026-06-18, T21 SHA; was 0.522, `no_sql` 3 → 0,
+> McNemar p=1 / `regressions: []`, 4 windows) · **Spider 0.1852** (2026-06-17
+> after the `GEMINI_API_KEY` heal; was 0.1704, `no_sql` 36 → 9; `SK-LLM-039`).
+> Per-run detail in the verification log.
 > **Next:** per-lever ablations (T9 static few-shot vs none; T19 prune
-> on/off) to attribute the combined gain, then §4 #1/#2.
+> on/off) to attribute the combined gain, then §4 #1/#2 (the mismatch mass).

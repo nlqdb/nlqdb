@@ -13,14 +13,15 @@ until then the daily lever targets the worst number below)*
 
 **Worst number today:** real strangers reaching a first answer = **0**
 (funnel/distribution lane) — gated by the engine (GLOBAL-027 valve), so the
-engine-side worst, **Spider 0.1852 vs 0.75**, owns it. **The Gemini free-tier
-key was restored 2026-06-17** (fresh AI Studio key, mirrored to GHA + Worker)
-and the full canonical Spider eval re-ran on the healed chain: raw EX
-**0.1704 → 0.1852**, `no_sql` **36 → 9**, and `gemini:http_4xx`/`auth_denied`
-is gone (`SK-LLM-039`). The 27 newly-answered questions mostly mismatch (hard
-benchmark), so the engine bottleneck is now **SQL reasoning** (mismatches), not
-provider availability — the §4 levers in `quality-score-source-of-truth.md`
-target it. BIRD unchanged (0.522; Gemini wasn't its bottleneck, `no_sql` was 3).
+engine-side worst, **Spider 0.1852 vs 0.75**, owns it. **BIRD was re-measured
+2026-06-18** on the T21 SHA (the first canonical BIRD run since 06-12) to
+validate T21 + the accumulated levers (SK-LLM-038/039, SK-ASK-022) against real
+EX: raw EX **0.522 → 0.526** (263/500), `no_sql` **3 → 0** (full chain capacity),
+**mismatch flat at 236**, McNemar p=1 / `regressions: []`. The +2 is within run
+noise, but the run is regression-free and the flat mismatch mass **re-confirms
+the bottleneck is SQL reasoning, not availability** — exactly what the §4 levers
+in `quality-score-source-of-truth.md` target. (Spider 0.1852 from 06-17 after
+the Gemini free-tier key heal; `SK-LLM-039`.)
 
 | # | Metric | Value | Target / note |
 |---|--------|-------|------|
@@ -30,8 +31,8 @@ target it. BIRD unchanged (0.522; Gemini wasn't its bottleneck, `no_sql` was 3).
 | 3 | Registered users, real strangers | 0 | 7 total = 3 founder + 4 test/dev accounts |
 | 4 | Invite-valve crossings (KV `wl:invite-cap`) | 9/wk (06-13, carried) | cap 200/wk — no exhaustion risk; mostly walker-triggered; not re-pulled this run |
 | 5 | Anon DBs with a recorded first answer | **101 of 101** | instrument fix (runs 1–3) holding; +8 since 06-13. Genuine-stranger subset still ~0 (rows #2/#3) — the real worst-number |
-| | **Engine — BIRD 2026-06-12 · Spider 2026-06-17 (fresh, < 7d)** | | `apps/api/src/gate/eval-baseline.ts` |
-| 6 | BIRD raw EX | 0.522 | target 0.65 (GLOBAL-027) |
+| | **Engine — BIRD 2026-06-18 · Spider 2026-06-17 (both fresh, < 7d)** | | `apps/api/src/gate/eval-baseline.ts` |
+| 6 | BIRD raw EX | 0.526 | target 0.65 (GLOBAL-027); was 0.522 (06-12). T21 SHA re-run: `no_sql` 3 → 0, mismatch flat 236, McNemar p=1 / `regressions: []` ⇒ levers held, bottleneck = SQL reasoning |
 | 7 | Spider raw EX | 0.1852 | target 0.75; was 0.1704 (06-12). Gemini free-tier key restored 06-17 → `no_sql` 36 → 9, `gemini:http_4xx` cleared (`SK-LLM-039`); residual 9 capacity-only. Bottleneck now SQL reasoning, not availability |
 | 8 | persona-bench | — | not yet built |
 | 9 | free-vs-frontier delta | null | agentic lane not yet run (`SK-QUAL-004`, target ≤ 25 pp) |
@@ -65,6 +66,23 @@ target it. BIRD unchanged (0.522; Gemini wasn't its bottleneck, `no_sql` was 3).
 
 ## Deltas (recent runs)
 
+- 2026-06-18 (run 14) — **T21 + accumulated levers validated against real BIRD
+  EX (measure, not change).** The last three runs each shipped an engine lever
+  (T21 join-bridge recall, SK-ASK-022 exec-repair, SK-LLM-039 rev) deferring
+  real EX to "the next scheduled eval." That eval — the first canonical BIRD run
+  since 06-12 — **completed overnight on the T21 SHA** (`43e4211`, 4 windows via
+  the `SK-QUAL-013` resume), so this run folds it into every canonical home
+  instead of shipping a fourth unvalidated lever. **Measured (canonical 500-q
+  GHA):** raw EX **0.522 → 0.526** (261 → 263/500), `no_sql` **3 → 0** (full
+  chain capacity — Gemini heal held, every provider answered), **mismatch flat
+  at 236**, exec_error 1. In-report McNemar **b=26 / c=28, p=1** ⇒ the +0.004 is
+  within run noise, **but `regressions: []`** — the accumulated levers held with
+  zero degraded question class, and capacity is now fully healthy. The flat
+  mismatch mass re-confirms the bottleneck is **SQL reasoning, not availability**
+  (§4 #1/#2 territory). Re-seeds `eval-baseline.ts` + `baseline-2026-06-15.json`
+  + the GLOBAL-027 mirror + the source-of-truth §2 / verification log (BIRD only;
+  Spider unchanged). KPI: engine quality (GLOBAL-025); none degraded (Δ ≥ 0,
+  regression-free). Δ ≥ 0 ⇒ keep.
 - 2026-06-17 (run 13) — **join-bridge recall in schema pruning (SK-LLM-037
   rev / T21).** Engine numbers were freshly measured this morning (run 12) and
   the §5 quota guardrail forbids a back-to-back eval, so this run ships a

@@ -5,6 +5,46 @@ One publishable artifact drafted per day by the daily agent
 publishes at the weekly session. Newest first. Delete an entry once published
 (the live URL goes into `docs/scorecard.md`).
 
+## 2026-06-18 (run 14) — dev.to / lobste.rs post (follow-up to run 13)
+
+**Title:** We shipped a text-to-SQL recall fix. The benchmark moved +2 questions. We're publishing that anyway.
+
+**Body:**
+
+> Last week: a schema-pruning bug. When you trim a DB schema to "the tables the
+> question mentions" before asking an LLM for SQL, you can drop the *junction
+> table* the join routes through — the one the question never names. The fix:
+> also keep any table linking two tables the question did mention.
+>
+> We promised the benchmark number on the next eval run. Unedited: BIRD-dev (500
+> questions, our free open-model chain) went **0.522 → 0.526**. That's **+2
+> questions** — McNemar p = 1.0, i.e. noise. So did the fix do nothing?
+>
+> No, and the gap is the point. The fix is provably *recall-monotonic*: it only
+> adds tables, never removes one, so it can't un-write a query that was
+> writable. It barely moved BIRD because the bug only bites when a junction's
+> FK columns are *generic* (`a`, `b`, `parent_ref`) and match no word in the
+> question. BIRD mostly names them after endpoints (`student_id`), which the old
+> pruner already caught. The bug is real; this benchmark just under-samples it —
+> production schemas with generic link columns don't.
+>
+> Two takeaways for anyone running an eval loop: (1) **A monotonic, regression-
+> free change is a keep even at a noise-level delta** — shipping only headline-
+> movers quietly overfits your system to your benchmark. (2) **Publish the +2
+> anyway** — the same run showed mismatch flat at 236 and capacity failures 3 →
+> 0, which says we no longer lose questions to availability or missing tables;
+> we lose them to **SQL reasoning**. The null result *relocated the bottleneck*.
+> That's what measurement is for.
+>
+> (A `/daily` run on nlqdb — a database you query in plain English. Every number
+> is from a real, resumable GitHub Actions run on free open models; nothing
+> cherry-picked, including the parts that didn't move.)
+
+**Why publishable:** "shipped it, moved the metric by noise, telling you anyway"
+is rare, credible engineering content — models honest evaluation, keeps the
+run-13 promise publicly, plants the free-open-model positioning without a pitch.
+Sequel to the run-13 schema-pruning post.
+
 ## 2026-06-17 (run 13) — dev.to / lobste.rs post
 
 **Title:** Schema pruning for text-to-SQL drops the one table the join needs
@@ -196,6 +236,8 @@ nlqdb once, in context.
 > (A `/daily` run on nlqdb, where every change names the number it moves. This
 > one: round-trips to a dead provider over a 10-minute isolate, ~10 → 1.)
 
+---
+
 ## 2026-06-15 (run 9) — dev.to / lobste.rs post
 
 **Title:** The dead provider in the fast lane: when a hedged request races a 403
@@ -323,66 +365,6 @@ fixed it deterministically" story. One soft product mention at the end.
 
 ---
 
-## 2026-06-15 (run 7) — dev.to / lobste.rs post
-
-**Title:** The obvious workaround was also dead — and we only found out because we measured it first
-
-**Body:**
-
-> Quick follow-up to yesterday's post about finding a provider in our
-> text-to-SQL fallback chain that had been locked out (`403 PERMISSION_DENIED`)
-> on every call for weeks. That post ended with a tidy plan: the key was denied
-> the `gemini-2.5` family, but a quick probe showed `gemini-2.0` answered, so
-> the cheap fix was obviously to pin the default model down to `2.0-flash` and
-> move on.
->
-> It was wrong, and the reason is worth a paragraph.
->
-> Before changing a line of code, I ran the *actual* request our provider
-> sends — to `gemini-2.0-flash`, the model we were about to pin to. It came
-> back `429`. Fine, a rate limit, the chain handles those. Except the body
-> wasn't an ordinary rate limit:
->
-> ```
-> HTTP 429  "Quota exceeded for metric:
->   generativelanguage.googleapis.com/generate_content_free_tier_requests,
->   limit: 0, model: gemini-2.0-flash"
-> ```
->
-> `limit: 0`. Not "you used up your 200 requests" — the free-tier *allowance
-> itself is zero*. The day before, I'd read the same model's `429` as
-> "access OK, just throttled" and built a plan on it. Probing the workaround
-> directly — not the model we were leaving, the one we were moving *to* —
-> showed the whole project is off the free tier on every model: `2.5` returns
-> a hard 403, `2.0` returns a soft-looking 429 that's actually a 0-quota wall.
-> There was no free model to switch to. The "cheap in-code fix" was a dead end
-> dressed up as a 429.
->
-> The lesson isn't about Google's quota semantics (though `limit: 0` vs a real
-> throttle is a nasty ambiguity — both are `429`, only the body tells you
-> which). It's this: **a workaround is a hypothesis, and the cheapest place to
-> test it is before you ship it.** Once you've root-caused a problem it's
-> tempting to let the *fix* ride on an assumption you never checked as hard as
-> the diagnosis. The diagnosis was solid — the provider really is locked out.
-> The fix rested on one unverified clause ("but 2.0 works"), and it was false.
->
-> Measuring the fix cost one `curl`. Shipping it and discovering `2.0` was
-> also dead would have cost a deploy, a confusing benchmark run, and a second
-> round of "wait, why didn't that help."
->
-> (This was a `/daily` run on nlqdb, a database you query in plain English;
-> the chain above is its NL→SQL engine. The day's "win" was a change we
-> *didn't* make — and the record correction that stops the next person from
-> making it.)
-
-**Why this is publishable:** the relatable twist on the four-post legibility
-arc — the satisfying root-cause led to a confident fix that measurement
-killed. Lesson (*test the workaround with the rigor you spent on the
-diagnosis*) lands for any engineer, not just LLM-chain builders. One nlqdb
-mention, in context. Sourced from this run's live re-probe (`limit: 0`) +
-SK-LLM-039.
-
 ---
 
-
-Older drafts (runs 1–4): [`distribution-queue-archive.md`](./distribution-queue-archive.md).
+Older drafts (runs 1–7): [`distribution-queue-archive.md`](./distribution-queue-archive.md).
