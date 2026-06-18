@@ -65,6 +65,28 @@ target it. BIRD unchanged (0.522; Gemini wasn't its bottleneck, `no_sql` was 3).
 
 ## Deltas (recent runs)
 
+- 2026-06-18 (run 14) — **join-key directive in the planner prompt
+  (SK-LLM-040 / T22).** Engine numbers are fresh (Spider re-measured run 12,
+  06-17; BIRD 06-12, 6 d < the 7-d staleness alert) and §5 forbids a
+  back-to-back eval, so this run ships a **prompt-only, unit-measured** engine
+  lever (the T10–T16 directive pattern; real EX delta → next scheduled eval).
+  The current Spider/BIRD bottleneck is **SQL-reasoning mismatches** (BIRD
+  500-q 06-12: mismatch 236, `no_sql` 3), and **join errors** — joining on the
+  wrong foreign-key columns — are a named, prevalent category in the
+  text-to-SQL error studies (arXiv:2501.09310) not yet covered by any directive
+  (T10/T13–T16 cover projection/NULL/count/group/cast; T19/T21 keep join tables
+  *present* but don't constrain the join *predicate*). New `PLAN_DIRECTIVES`
+  bullet: join on the column pair the schema declares as `FOREIGN KEY ...
+  REFERENCES`, not a same-named / non-key column; fall back to corresponding
+  key columns when no FK is declared (Spider's SQLite subset omits them — the
+  regression bound). Grounded in the FK clauses the DDL already carries verbatim
+  (~70 tok, no new context). **Measured (unit):** prompt-render test pins the
+  declared-FK predicate + the FK-less fallback + the silent-wrong-rows
+  mechanism; 175 llm tests green (was 174). No exemplar refit (keeps
+  SK-LLM-026's pending per-lever measurement clean). KPI: engine quality
+  (GLOBAL-025); none degraded (prompt-only, orthogonal to every other bullet,
+  retry/full-schema paths untouched). Real BIRD/Spider EX delta → next
+  scheduled quality-eval.
 - 2026-06-17 (run 13) — **join-bridge recall in schema pruning (SK-LLM-037
   rev / T21).** Engine numbers were freshly measured this morning (run 12) and
   the §5 quota guardrail forbids a back-to-back eval, so this run ships a

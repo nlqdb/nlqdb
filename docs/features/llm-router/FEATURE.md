@@ -10,7 +10,7 @@ when-to-load:
 # Feature: Llm Router
 
 **One-liner:** Model selection, fallback chain, prompt strategy, per-user credit accounting; three permanent dispatch lanes per [`GLOBAL-026`](../../decisions/GLOBAL-026-llm-strategy-byollm-hosted-premium.md) — free chain, BYOLLM, hosted-premium.
-**Status:** implemented for the free chain (`SK-LLM-001..015` + `SK-LLM-018` + `SK-LLM-023..030` + `SK-LLM-032..037`). BYOLLM (`SK-LLM-016`) is partial — provider factory (`SK-LLM-019`) + lane selector (`SK-LLM-020`) ship, the per-request `x-nlq-byollm-key` header lane is wired on HTTP `/v1/ask` (`SK-LLM-021`), and the account-stored lane resolves on `/v1/ask` via `api_keys` `scope = "byollm"` ([`SK-PREMIUM-012`](../premium-tier/decisions/SK-PREMIUM-012-account-stored-byollm-storage.md)); `GLOBAL-003` surface parity (MCP/SDK/CLI/elements/`/app/keys`) pending (tracked in `premium-tier/FEATURE.md`). `SK-LLM-017` (hosted-premium chain) lands in Phase 2 alongside `quality-eval`; its meter stays dark until [`phase-plan.md §6`](../../phase-plan.md) trips.
+**Status:** implemented for the free chain (`SK-LLM-001..015` + `SK-LLM-018` + `SK-LLM-023..030` + `SK-LLM-032..040`). BYOLLM (`SK-LLM-016`) is partial — provider factory (`SK-LLM-019`) + lane selector (`SK-LLM-020`) + the per-request `x-nlq-byollm-key` header lane on `/v1/ask` (`SK-LLM-021`) ship, and the account-stored lane resolves via `api_keys` `scope = "byollm"` ([`SK-PREMIUM-012`](../premium-tier/decisions/SK-PREMIUM-012-account-stored-byollm-storage.md)); `GLOBAL-003` surface parity (MCP/SDK/CLI/elements/`/app/keys`) pending (tracked in `premium-tier/FEATURE.md`). `SK-LLM-017` (hosted-premium chain) lands in Phase 2 alongside `quality-eval`; its meter stays dark until [`phase-plan.md §6`](../../phase-plan.md) trips.
 
 **Contribution to north-star:** Engine quality — the router is the NL→SQL accuracy lever per [`GLOBAL-025`](../../decisions/GLOBAL-025-north-star.md). Free-chain scaffolding compounds when BYOLLM or hosted-premium swaps in a frontier model; `quality-eval`'s free-vs-frontier delta measures the compounding.
 
@@ -166,53 +166,39 @@ Adds Cerebras (`gpt-oss-120b`, OpenAI-compatible, card-free) at the head of the 
 
 ### SK-LLM-032 — Count-grain directive in the planner prompt (COUNT(DISTINCT) vs COUNT(\*), and SELECT DISTINCT)
 
-**Body:** [`decisions/SK-LLM-032-count-grain-directive.md`](./decisions/SK-LLM-032-count-grain-directive.md). One `PLAN_DIRECTIVES` bullet for **Wrong COUNT Object** (`COUNT(*)` vs `COUNT(DISTINCT key)`) and **Missing DISTINCT** ([arXiv:2501.09310](https://arxiv.org/pdf/2501.09310)); a guard bounds regression under `SK-QUAL-010`.
+**Body:** [`decisions/SK-LLM-032-count-grain-directive.md`](./decisions/SK-LLM-032-count-grain-directive.md). One `PLAN_DIRECTIVES` bullet for **Wrong COUNT Object** (`COUNT(*)` vs `COUNT(DISTINCT key)`) and **Missing DISTINCT** (arXiv:2501.09310); a guard bounds regression under `SK-QUAL-010`.
 
 ### SK-LLM-034 — Group-by-grain directive in the planner prompt (per-group GROUP BY alignment)
 
-**Body:** [`decisions/SK-LLM-034-group-by-grain-directive.md`](./decisions/SK-LLM-034-group-by-grain-directive.md). One `PLAN_DIRECTIVES` bullet for **Unaligned Aggregation Structure** (E5, [arXiv:2501.09310](https://arxiv.org/pdf/2501.09310)): a "per/each/by `<category>`" goal needs a `GROUP BY` on that column; a guard bounds the inverse regression.
+**Body:** [`decisions/SK-LLM-034-group-by-grain-directive.md`](./decisions/SK-LLM-034-group-by-grain-directive.md). One `PLAN_DIRECTIVES` bullet for **Unaligned Aggregation Structure** (E5, arXiv:2501.09310): a "per/each/by `<category>`" goal needs a `GROUP BY` on that column; a guard bounds the inverse regression.
 
 ### SK-LLM-035 — Numeric-text-cast directive in the planner prompt (cast TEXT-declared columns used numerically)
 
-**Body:** [`decisions/SK-LLM-035-numeric-text-cast-directive.md`](./decisions/SK-LLM-035-numeric-text-cast-directive.md).
-One `PLAN_DIRECTIVES` bullet: when the schema declares a column `TEXT` but
-the goal uses it numerically, `CAST(<col> AS REAL)` — SQLite compares TEXT
-lexicographically (`'100' < '9'`). Targets *Implicit Type Conversion* (C1,
-[arXiv:2501.09310](https://arxiv.org/pdf/2501.09310)); prompt-only, ≈55 tokens.
+**Body:** [`decisions/SK-LLM-035-numeric-text-cast-directive.md`](./decisions/SK-LLM-035-numeric-text-cast-directive.md). One `PLAN_DIRECTIVES` bullet for *Implicit Type Conversion* (C1, arXiv:2501.09310): a `TEXT`-declared column used numerically gets `CAST(<col> AS REAL)` — SQLite compares TEXT lexicographically (`'100' < '9'`).
 
 ### SK-LLM-036 — Workers AI: accept the object-shaped `result.response` a JSON-emitting model returns
 
-**Body:** [`decisions/SK-LLM-036-workers-ai-structured-response.md`](./decisions/SK-LLM-036-workers-ai-structured-response.md).
-The Workers AI REST endpoint returns valid-JSON model output pre-parsed as an
-object; accept string *or* object and re-serialize objects so
-`parseJsonResponse` stays the single JSON entry point.
+**Body:** [`decisions/SK-LLM-036-workers-ai-structured-response.md`](./decisions/SK-LLM-036-workers-ai-structured-response.md). The Workers AI REST endpoint returns valid-JSON output pre-parsed as an object; accept string *or* object and re-serialize objects so `parseJsonResponse` stays the single JSON entry point.
 
 ### SK-LLM-037 — Goal-relevant schema pruning in the planner prompt (recall-first, table-granular)
 
-**Body:** [`decisions/SK-LLM-037-goal-relevant-schema-pruning.md`](./decisions/SK-LLM-037-goal-relevant-schema-pruning.md).
-`buildPlanUser` prunes the embedded schema via the pure
-`pruneSchemaForGoal`: keep token-matched tables + their `REFERENCES`
-closure, full schema on any doubt. BIRD-dev 500: 99.8% gold-table recall,
-−7.1% schema chars (Spider 2.0-lite: −26.5%).
+**Body:** [`decisions/SK-LLM-037-goal-relevant-schema-pruning.md`](./decisions/SK-LLM-037-goal-relevant-schema-pruning.md). `buildPlanUser` prunes the embedded schema via the pure `pruneSchemaForGoal`: keep token-matched tables + their `REFERENCES` closure + join-bridges (≥2 matched references), full schema on any doubt. BIRD-dev 500: 99.8% gold-table recall, −7.1% chars (Spider: −26.5%).
 
 ### SK-LLM-038 — Retry the chain-tail provider once on a transient failure
 
 **Body:** [`decisions/SK-LLM-038-tail-transient-retry.md`](./decisions/SK-LLM-038-tail-transient-retry.md).
-When the **last** provider in a chain fails `network`/`http_5xx`, the
-router retries it once (150 ms backoff, abort-aware) before throwing —
-closes the [`SK-LLM-028`](#sk-llm-028) tail gap. Strictly additive,
-tail-only ⇒ zero added latency on any currently-succeeding call.
+When the **last** provider fails `network`/`http_5xx`, the router retries it
+once (150 ms backoff, abort-aware) before throwing — closes the
+[`SK-LLM-028`](#sk-llm-028) tail gap. Tail-only ⇒ zero added latency on any
+currently-succeeding call.
 
 ### SK-LLM-039 — Classify 401/403 as `auth_denied` and park the provider for a long cooldown
 
-**Body:** [`decisions/SK-LLM-039-auth-denied-reason.md`](./decisions/SK-LLM-039-auth-denied-reason.md).
-`httpError` maps 401/403 to a distinct `auth_denied` reason so a chain
-exhausting on a locked-out key reads `gemini:auth_denied`, not an opaque
-`gemini:http_4xx`. The first denial opens the breaker for a long
-`AUTH_DENIED_COOLDOWN_MS` (30 min, not the default 60s — the denial is
-human-gated) so a dead key isn't re-hit every minute — and its hedge slot
-rotates to a live provider — while the skip still surfaces `auth_denied`,
-not a generic `circuit_open`.
+**Body:** [`decisions/SK-LLM-039-auth-denied-reason.md`](./decisions/SK-LLM-039-auth-denied-reason.md). `httpError` maps 401/403 to a distinct `auth_denied` reason (a locked-out key reads `gemini:auth_denied`, not opaque `gemini:http_4xx`); the first denial opens the breaker for `AUTH_DENIED_COOLDOWN_MS` (30 min — denial is human-gated) so a dead key isn't re-hit and the hedge slot frees up.
+
+### SK-LLM-040 — Join-key directive in the planner prompt (join on the declared foreign key)
+
+**Body:** [`decisions/SK-LLM-040-join-key-directive.md`](./decisions/SK-LLM-040-join-key-directive.md). One `PLAN_DIRECTIVES` bullet for **Join Errors** (arXiv:2501.09310): join on the schema-declared `FOREIGN KEY ... REFERENCES` pair, not a same-named/non-key column; fall back to matching key columns when no FK is declared (Spider). Prompt-only; complements [`SK-LLM-037`](#sk-llm-037).
 
 ### SK-LLM-033 — Schema-inference prompt requires insertable sample rows
 
@@ -228,18 +214,18 @@ Canonical text in [`docs/decisions/`](../../decisions/) (index in [`docs/decisio
 - **GLOBAL-022** — Recoverable failures retry to success — never surface a fixable error.
   - *In this feature:* provider 5xx / network / timeout are failover
     signals counted by the 3-strike breaker (`SK-LLM-005`); a 429 opens
-    the breaker immediately for its `Retry-After` window (`SK-LLM-030`).
-    Both advance to the next provider rather than retry the same one.
+    the breaker for its `Retry-After` window (`SK-LLM-030`). Both advance
+    to the next provider rather than retry the same one.
 - **GLOBAL-025** — North-star: engine quality, onboarding, UX — each with explicit KPIs.
-  - *In this feature:* the router IS the engine north-star's NL→SQL mechanism; the free-vs-frontier delta KPI runs `quality-eval` against this router's free vs hosted-premium chain.
+  - *In this feature:* the router IS the engine north-star's NL→SQL mechanism; the free-vs-frontier delta KPI runs `quality-eval` against its free vs hosted-premium chain.
 - **GLOBAL-026** — LLM strategy: free chain forever, BYOLLM for everyone, hosted premium on paid.
-  - *In this feature:* owns dispatch precedence (`SK-LLM-016`) + hosted-premium chain wiring (`SK-LLM-017`); commercial shape in `premium-tier/FEATURE.md`.
+  - *In this feature:* owns dispatch precedence (`SK-LLM-016`) + hosted-premium wiring (`SK-LLM-017`); commercial shape in `premium-tier/FEATURE.md`.
 
 ## Open questions / known unknowns
 
 - **Failover when every provider in a chain fails** — Decided shape (per `GLOBAL-033` → `GLOBAL-012`): throw a structured `provider_chain_exhausted` envelope (one-sentence, actionable); **no** head-retry with backoff (a fresh `/v1/ask` re-enters the chain). **Parked until** the surfaces render it — the typed envelope isn't emitted in `packages/llm` yet.
 - **Parked until `quality-eval` Phase 2:** `nlqdb.plan.quality_score` histogram shape + LLM-as-judge prompt + "provider silently degrading" alert threshold — depends on the judge harness.
 - **Parked until Lago wiring (Phase 2):** per-user credit accounting (`architecture.md §6`); provider-level cost already covered.
-- **Parked until a debugging need forces it:** prompt-template version pinning — decided shape stamps the template version hash on `PlanResponse` + the plan-cache entry; cheap to add when a plan-provenance question arises.
-- **Parked until a leak-rate regression forces it ([`SK-LLM-025`](#sk-llm-025)):** a per-call JSON-recovery-rate counter (`nlqdb.llm.json_recovered.total{op}` at the `router.ts` boundary); the eval run already surfaces the aggregate `no_sql` → `match` shift.
-- **Parked until burst abuse shows up:** free-tier RPM queue ("queued — 2s" UX, `architecture.md §7.1`); today bursts over a provider's RPM fail-and-fall-through. Owned with `rate-limit` / `observability`.
+- **Parked until a debugging need forces it:** prompt-template version pinning — stamp the template version hash on `PlanResponse` + the plan-cache entry; cheap to add when a plan-provenance question arises.
+- **Parked until a leak-rate regression forces it ([`SK-LLM-025`](#sk-llm-025)):** a per-call JSON-recovery-rate counter (`nlqdb.llm.json_recovered.total{op}`); the eval already surfaces the aggregate `no_sql` → `match` shift.
+- **Parked until burst abuse shows up:** free-tier RPM queue ("queued — 2s" UX, `architecture.md §7.1`); today bursts over a provider's RPM fail-and-fall-through.

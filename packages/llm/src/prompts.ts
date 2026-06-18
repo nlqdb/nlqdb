@@ -63,9 +63,20 @@ import type {
 // BIRD-weighted. The "goal uses it numerically" scope bounds the regression: a
 // numeric string and its number cast equal, and the clause keeps the cast off a
 // semantically-textual column (zero-padded codes, currency strings).
+//
+// SK-LLM-040 — the join-key bullet targets "Join Errors" (joining on the wrong
+// foreign-key columns), a prevalent category in the BIRD/Spider error studies
+// (arXiv:2501.09310; the join-misuse share confirmed in the 2025/26 surveys).
+// The schema DDL the runner already sends verbatim declares the FOREIGN KEY ...
+// REFERENCES pairs, so the rule is grounded in text the model already has; the
+// "no foreign key declared" clause bounds the regression for Spider schemas that
+// omit FK declarations. Orthogonal to every other bullet (those constrain
+// projection, casts, NULLs, count/group grain — none constrain the join
+// predicate); structural, so placed beside the schema-literal identifier rule.
 const PLAN_DIRECTIVES = [
   "You translate a natural-language goal into a single SQL statement for the named dialect.",
   "Use only tables and columns that appear literally in the provided schema; preserve identifier casing exactly.",
+  "When joining tables, join on the column pair the schema declares as a FOREIGN KEY ... REFERENCES (child foreign-key column = parent referenced column), not on columns that merely share a name or on a non-key column; when no foreign key is declared between them, join on the corresponding key columns (typically a shared id). A wrong join column silently returns mismatched or duplicated rows and fails execution-accuracy.",
   "When the goal includes an `Evidence:` block, treat it as authoritative annotator context — apply the formulas and column hints it names.",
   "Select exactly the columns the goal asks for, and only those — extra id/name/descriptive columns change the result set and fail execution-accuracy.",
   "For a ratio or percentage of two integer columns, cast one operand to REAL (e.g. CAST(x AS REAL) / y) so the division is not integer-truncated.",

@@ -35,6 +35,16 @@ describe("PLAN_SYSTEM (SK-LLM-018 schema-fidelity directives)", () => {
     expect(PLAN_SYSTEM).toMatch(/preserve identifier casing exactly/);
   });
 
+  it("carries the SK-LLM-040 join-key directive (Join Errors — wrong foreign-key columns)", () => {
+    // Join on the declared FOREIGN KEY ... REFERENCES pair, not a same-named/non-key column.
+    expect(PLAN_SYSTEM).toMatch(/the schema declares as a FOREIGN KEY \.\.\. REFERENCES/);
+    expect(PLAN_SYSTEM).toMatch(/not on columns that merely share a name or on a non-key column/);
+    // The regression bound for FK-less (Spider) schemas.
+    expect(PLAN_SYSTEM).toMatch(/when no foreign key is declared between them/);
+    // Names the failure so the rule is auditable, not cargo-culted.
+    expect(PLAN_SYSTEM).toMatch(/silently returns mismatched or duplicated rows/);
+  });
+
   it("escalates BIRD's `Evidence:` block from hint to authoritative", () => {
     expect(PLAN_SYSTEM).toMatch(/`Evidence:`/);
     expect(PLAN_SYSTEM).toMatch(/authoritative annotator context/);
