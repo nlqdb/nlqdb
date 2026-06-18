@@ -51,6 +51,20 @@ import type {
 // the non-aggregated-column rule is standard SQL and removes SQLite's
 // arbitrary-row pick for bare columns (defined only for a lone MIN/MAX).
 //
+// SK-LLM-040 — the aggregate-filter bullet targets the *HAVING* half of the
+// same "Unaligned Aggregation Structure" class (E5 in arXiv:2501.09310, which
+// names "aggregate functions, GROUP BY clause, **and HAVING clause**"). T15
+// (SK-LLM-034) covered the GROUP BY half (grouping cardinality); this covers
+// the orthogonal HAVING half: a threshold on a *group's* aggregate
+// (COUNT/SUM/AVG…) must live in HAVING after GROUP BY, not in WHERE. WHERE
+// filters individual rows before aggregation and cannot reference an aggregate,
+// so `WHERE COUNT(*) > 5` is a hard error (a wasted exec-retry round-trip,
+// SK-ASK-013/022) and omitting the group filter entirely is a silent
+// cardinality mismatch that fails EX. The "keep plain per-row predicates in
+// WHERE" guard is the regression bound — it stops the rule pushing ordinary row
+// filters into HAVING (which would scan/aggregate more rows for the same
+// answer, a perf + correctness foothold).
+//
 // SK-LLM-035 — the numeric-text-cast bullet targets "Implicit Type Conversion"
 // (C1 in the same arXiv:2501.09310 taxonomy), orthogonal to the SK-LLM-027
 // REAL-cast-ratio rule: that rule casts an integer/integer *division* to avoid
@@ -73,6 +87,7 @@ const PLAN_DIRECTIVES = [
   "When selecting a single extreme row by ordering (ORDER BY <col> ... LIMIT), exclude NULLs in the ordered column (WHERE <col> IS NOT NULL) — a NULL is never the intended extreme value, and in SQLite a NULL sorts before every value, so an ascending LIMIT would return one as a false minimum.",
   "Count and list at the grain the goal asks for: use COUNT(DISTINCT <col>) — not COUNT(*) — when it asks how many distinct/different/unique entities, or when a one-to-many join repeats the counted rows; use SELECT DISTINCT when it asks for distinct values; otherwise use COUNT(*) / a plain SELECT so intended duplicates are kept.",
   "Match the aggregation grain to the goal: when it asks for an aggregate per group (per/for each/by <category>), GROUP BY that column and project it beside the aggregate so each group is one row; when it asks for one overall total, omit GROUP BY. In an aggregate query, every non-aggregated column in the SELECT must also appear in GROUP BY.",
+  "Filter groups by an aggregate in HAVING, not WHERE: a threshold on a group's aggregate (e.g. groups having more than N rows, or whose SUM/AVG exceeds a value) belongs in a HAVING clause after GROUP BY, because WHERE filters individual rows before aggregation and cannot reference an aggregate; keep plain per-row predicates in WHERE.",
   "Emit SQL valid for the named dialect — no cross-dialect features (e.g. no TOP/PIVOT for postgres or sqlite; postgres-specific casts only when dialect is postgres).",
   'Respond with strict JSON: {"sql":"<single SQL statement, no trailing semicolon>"}.',
   "No prose, no code fences, no explanation.",
