@@ -22,8 +22,12 @@ benchmark), so the engine bottleneck is now **SQL reasoning** (mismatches), not
 provider availability. The run-15 `SK-QUAL-014` classifier buckets the 236 BIRD
 mismatches: the mass is aggregation/DISTINCT **grain** + subquery **shape**,
 much of it **value/literal/column grounding** (→ §4 #2 value-retrieval, now the
-evidence-backed top lever); join-recall is only 35/236 (15%). BIRD unchanged
-(0.522; Gemini wasn't its bottleneck, `no_sql` was 3).
+evidence-backed top lever); join-recall is only 35/236 (15%). **BIRD re-run
+2026-06-19** on current main (first canonical since T20–T22 merged): raw EX
+0.522 → **0.520** (260/500), `no_sql` 3 → 1 — **statistically flat** (McNemar
+p=0.50, b=38/c=37, no regression). The directive levers (T13–T16/T22) have
+**saturated on BIRD**; the path to the gate floor is the §4 retrieval levers
+(value-retrieval first) — runs 13/14's deferred-EX debt is now discharged.
 
 | # | Metric | Value | Target / note |
 |---|--------|-------|------|
@@ -33,8 +37,8 @@ evidence-backed top lever); join-recall is only 35/236 (15%). BIRD unchanged
 | 3 | Registered users, real strangers | 0 | 7 total = 3 founder + 4 test/dev accounts |
 | 4 | Invite-valve crossings (KV `wl:invite-cap`) | 9/wk (06-13, carried) | cap 200/wk — no exhaustion risk; mostly walker-triggered; not re-pulled this run |
 | 5 | Anon DBs with a recorded first answer | **101 of 101** | instrument fix (runs 1–3) holding; +8 since 06-13. Genuine-stranger subset still ~0 (rows #2/#3) — the real worst-number |
-| | **Engine — BIRD 2026-06-12 · Spider 2026-06-17 (fresh, < 7d)** | | `apps/api/src/gate/eval-baseline.ts` |
-| 6 | BIRD raw EX | 0.522 | target 0.65 (GLOBAL-027) |
+| | **Engine — BIRD 2026-06-19 · Spider 2026-06-17 (both fresh, < 7d)** | | `apps/api/src/gate/eval-baseline.ts` |
+| 6 | BIRD raw EX | 0.520 | target 0.65; was 0.522 (06-12). Canonical re-run on current main (T20–T22): 260/500, `no_sql` 3 → 1. **Flat within variance** — McNemar b=38/c=37, p=0.50, no regression. Directive levers saturated ⇒ retrieval levers (§4 #2a) next |
 | 7 | Spider raw EX | 0.1852 | target 0.75; was 0.1704 (06-12). Gemini free-tier key restored 06-17 → `no_sql` 36 → 9, `gemini:http_4xx` cleared (`SK-LLM-039`); residual 9 capacity-only. Bottleneck now SQL reasoning, not availability |
 | 8 | persona-bench | — | not yet built |
 | 9 | free-vs-frontier delta | null | agentic lane not yet run (`SK-QUAL-004`, target ≤ 25 pp) |
@@ -68,6 +72,27 @@ evidence-backed top lever); join-recall is only 35/236 (15%). BIRD unchanged
 
 ## Deltas (recent runs)
 
+- 2026-06-19 (run 17) — **first canonical BIRD re-run since T20–T22 merged —
+  discharges 4 runs of deferred-EX debt.** Runs 13/14 shipped engine levers
+  (T21 join-bridge recall, T22 HAVING directive) and explicitly punted their
+  real EX delta to "the next scheduled eval"; this is that eval. Dispatched the
+  full 500-q BIRD run on current main (336c489) via `GH_TOKEN_WORKFLOW`,
+  resumed across **3 quota windows** (SK-QUAL-013, 407 → 479 → 500). Result:
+  raw EX **0.522 → 0.520** (261 → 260/500), `no_sql` **3 → 1**, exec_error 1.
+  The official baseline diff is **statistically flat** — McNemar b=38 (newly
+  wrong) / c=37 (newly right), **p=0.50**, `regressions: []` — i.e. the 75
+  flipped questions are pure provider-mix churn (greedy temp=0, but the free
+  chain's live-provider set varies per run), **not** a lever effect. **Finding:
+  the prompt-directive levers (T13–T16, T22) have saturated on BIRD** — three
+  canonical runs now cluster at 261/263/260 of 500 — confirming the
+  `SK-QUAL-015`/`SK-QUAL-014` read that the remaining loss is value/grounding,
+  so the path to the 0.65 gate floor is the **§4 #2a value-retrieval** lever,
+  not more directives. Re-seeds `eval-baseline.ts` + `baseline-2026-06-15.json`
+  + the GLOBAL-027 mirror; updates source-of-truth §2/§6 + verification-log.
+  KPI: engine quality (GLOBAL-025) — measurement refreshed (clears the stale
+  06-12 BIRD `measured_at`) + evidence re-confirms the lever ranking; **none
+  degraded** — the −1 question is McNemar-confirmed noise (p=0.50), and
+  `no_sql` 3 → 1 is a small availability gain. No engine/chain code changed.
 - 2026-06-18 (run 16) — **column-coverage harness (`SK-QUAL-015`) — sizes the
   two halves of the §4 #2 top lever, offline.** No eval was due (Spider fresh
   06-17, BIRD 06-12, both < 7 d) and run 15 already showed a third deferred

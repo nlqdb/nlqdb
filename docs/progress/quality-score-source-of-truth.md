@@ -35,17 +35,16 @@ is also what a blocked user sees.
 
 | KPI (free chain) | Now | Gate floor (GLOBAL-027) | Phase-2 floor (GLOBAL-025) | Source |
 |---|---|---|---|---|
-| **BIRD-dev reasoning EX** (match among questions that produced SQL — capacity-independent) | **0.525** (was 0.354 on 2026-05-18) | — | — | canonical 500-q run 2026-06-12 (261/497); post-T18/T19 smokes read 51.7% / 50.7% |
-| BIRD-dev EX (raw — the gate metric) | **0.522** (was 0.35 lower bound; 0.318 on 2026-05-18) | ≥ 0.65 | ≥ 0.60 | canonical 500-q 6-provider GHA run 2026-06-12 (261/500, `no_sql` 3; resumed across 5 quota windows per `SK-QUAL-013`); same-seed smoke A/B 0.3733 → 0.5133 |
+| **BIRD-dev reasoning EX** (match among questions that produced SQL — capacity-independent) | **0.521** (was 0.354 on 2026-05-18) | — | — | canonical 500-q run 2026-06-19 (260/499); was 0.525 (261/497) on 2026-06-12 |
+| BIRD-dev EX (raw — the gate metric) | **0.520** (was 0.522 on 2026-06-12; 0.318 on 2026-05-18) | ≥ 0.65 | ≥ 0.60 | canonical 500-q 6-provider GHA run 2026-06-19 (260/500, `no_sql` 1; 3 windows, `SK-QUAL-013`); flat vs 0.522 — McNemar b=38/c=37, p=0.50 |
 | Spider 2.0-lite EX (raw) | **0.1852** (was 0.1704 on 2026-06-12; 0.12 on 2026-06-09) | ≥ 0.75 | report only (Phase-3 ≥ 0.15) | canonical 135-q GHA run 2026-06-17 after the Gemini free-tier key heal (25/135; reasoning EX 0.198; `no_sql` 36 → 9, now capacity-only); same-seed smoke 0.15 → 0.25 |
 | free-vs-agentic-frontier delta | **null** (lane not yet run) | — | ≤ 25 pp (`SK-QUAL-004`) | `SK-QUAL-004`; agentic lane opt-in (`SK-QUAL-009`) |
 
 **How to read the two BIRD rows.** Raw EX (the gate metric) also pays
-chain-exhaustion `no_sql`; reasoning EX isolates SQL quality from capacity. The
-second lever wave closed most of the once-30–70% divergence (T18 + T19 cut
-same-seed smoke `no_sql` 47 → 1, raw EX 37.3% → 51.3%; T20 stopped scoring
-breaker walls). The remaining gap to the gate floor is **SQL reasoning**
-(mismatches), not availability — §4's levers target it.
+chain-exhaustion `no_sql`; reasoning EX isolates SQL quality from capacity. T18
++ T19 closed the once-30–70% divergence (smoke `no_sql` 47 → 1); the 06-19
+canonical `no_sql` is **1**. The remaining gap to the gate floor is **SQL
+reasoning** (mismatches), not availability — §4's levers target it.
 
 **Where the losses are now** (canonical 500-q BIRD run, 2026-06-12): match 261 ·
 **mismatch 236** · exec_error 0 · `no_sql` 3 — the loss is now almost purely
@@ -59,8 +58,9 @@ mass is really **value/literal/column grounding** (wrong casing/column/date
 encoding — `SK-QUAL-014`) — the §4 #2 value-retrieval lever — plus a slice of
 BIRD gold-annotation noise (§4 #5). **Schema-link recall is *not* the
 bottleneck:** `fewer_tables` is 35/236 (15%), pre-T21, so T19/T21 captured most
-of that headroom. The grain tags are T10–T16/T22 territory (now saturating) ⇒
-the signal to move to retrieval levers (§4 #1/#2). Spider's residual `no_sql`
+of that headroom. The grain tags are T10–T16/T22 territory — **saturated** (the
+06-19 canonical re-run is flat, McNemar p=0.50) ⇒ move to retrieval levers
+(§4 #1/#2). Spider's residual `no_sql`
 is **9** (capacity-only post-Gemini-heal, §6); its 27 newly-answered questions
 mostly produced *wrong* SQL, so its bottleneck is also SQL reasoning — column
 pruning (§4 #2b) helps it via *distractor* removal (T19: 0.15 → 0.25).
@@ -178,13 +178,15 @@ The dated, evidence-referenced log of every shipped lever lives in
 (append-only; split out per `CLAUDE.md` §D4). §3 above is the current-state
 view of the same levers.
 
-> **Measurement state.** Canonical full runs: **BIRD 500-q raw 0.522**
-> (2026-06-12), **Spider 135-q raw 0.1852** (2026-06-17, re-seeded from
-> 0.1704 after the `GEMINI_API_KEY` heal — `no_sql` 36 → 9, `SK-LLM-039`);
-> sequential per §5, resumed across quota windows (`SK-QUAL-013`), seeding
-> `baseline-2026-06-15.json` + `eval-baseline.ts`. Agents dispatch via the
-> `GH_TOKEN_WORKFLOW` PAT — no human click. **Next:** §4 **#2a
-> value-retrieval** (do first per the `SK-QUAL-015` re-ranking, 2026-06-18:
-> additive, recovers the 12.8% irreducible floor; column pruning #2b is
-> recall-gated). Per-lever ablations (T9, T19) still pending to attribute
-> prior gains.
+> **Measurement state.** Canonical full runs: **BIRD 500-q raw 0.520**
+> (2026-06-19, re-seeded from 0.522 — first BIRD run since T20–T22 merged;
+> **flat**, McNemar p=0.50/b=38/c=37, `no_sql` 3 → 1), **Spider 135-q raw
+> 0.1852** (2026-06-17, re-seeded from 0.1704 after the `GEMINI_API_KEY` heal
+> — `no_sql` 36 → 9, `SK-LLM-039`); sequential per §5, resumed across quota
+> windows (`SK-QUAL-013`), seeding `baseline-2026-06-15.json` +
+> `eval-baseline.ts`. Agents dispatch via the `GH_TOKEN_WORKFLOW` PAT — no
+> human click. The flat BIRD re-run **confirms the directive levers have
+> saturated**; remaining loss is value/grounding. **Next:** §4 **#2a
+> value-retrieval** (do first per `SK-QUAL-015`: additive, recovers the 12.8%
+> irreducible floor; column pruning #2b is recall-gated). Per-lever ablations
+> (T9, T19) still pending to attribute prior gains.

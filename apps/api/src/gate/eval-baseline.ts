@@ -16,7 +16,14 @@
 // The residual 9 are capacity-only (`circuit_open` across providers +
 // `mistral:network` + `workers-ai:parse`); `gemini:http_4xx` / `auth_denied`
 // are gone — Gemini now answers, failing only on the shared rate-limit walls.
-// BIRD unchanged (not re-run; Gemini wasn't its bottleneck — `no_sql` was 3).
+//
+// 2026-06-19 — first canonical BIRD re-run since the directive/pruner levers
+// T20–T22 merged (join-bridge recall SK-LLM-037 rev, HAVING directive
+// SK-LLM-040): raw EX 0.522 → 0.520 (260/500), `no_sql` 3 → 1. The diff vs the
+// 2026-06-12 baseline is statistically flat — McNemar b=38 / c=37, p=0.50, no
+// regression triggered — so the prompt-directive levers have saturated on BIRD;
+// the path to the gate floor is the §4 retrieval levers (value-retrieval first).
+// Resumed across 3 quota windows per SK-QUAL-013. Spider unchanged (not re-run).
 // Both lanes remain below target ⇒ gate stays closed.
 
 export type EvalBaseline = {
@@ -28,9 +35,9 @@ export type EvalBaseline = {
 };
 
 export const EVAL_BASELINE = {
-  bird_accuracy: 0.522,
+  bird_accuracy: 0.52,
   spider_accuracy: 0.1852,
   bird_target: 0.65,
   spider_target: 0.75,
-  measured_at: "2026-06-17T10:48:41.851Z",
+  measured_at: "2026-06-19T03:08:58.665Z",
 } as const satisfies EvalBaseline;
