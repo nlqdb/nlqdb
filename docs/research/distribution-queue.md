@@ -5,50 +5,76 @@ One publishable artifact drafted per day by the daily agent
 publishes at the weekly session. Newest first. Delete an entry once published
 (the live URL goes into `docs/scorecard.md`).
 
-## 2026-06-19 (run 17) — dev.to / lobste.rs post
+## 2026-06-19 (run 18) — dev.to / lobste.rs post
 
-**Title:** We shipped four fixes to our text-to-SQL engine, then measured them all at once. The benchmark didn't move — and that was the answer.
+**Title:** We were one run away from building the wrong feature. A 40-line classifier on our own benchmark output talked us out of it.
 
 **Body:**
 
-> Over two weeks we shipped a stack of small, well-motivated corrections to the
-> planner that turns plain English into SQL: count-grain (`COUNT` vs
-> `COUNT(DISTINCT)`), group-by-grain, a numeric-text `CAST` rule, a
-> `HAVING`-vs-`WHERE` rule, and a schema-pruning recall fix. Each targets a
-> documented text-to-SQL error class. Each shipped with unit tests and a "real
-> benchmark delta lands on the next eval" note.
+> For four days our top-ranked next lever for our text-to-SQL engine was *value
+> retrieval*: feed the model a few sample cell-values from each low-cardinality
+> column so it stops guessing `'Discount'` when the data says `'discount'`. We
+> had the evidence, too — an offline harness showed that **12.8%** of the
+> columns gold queries reference are named by their *values*, not their headers,
+> and no amount of schema-name pruning can recover those. Additive, zero risk,
+> obviously next. We'd even sketched the prod plumbing.
 >
-> Today we finally ran that eval — the full 500-question BIRD benchmark, on a
-> strictly-free LLM chain, end to end. The number: **260/500 = 0.520**, against
-> a 0.522 baseline from two weeks ago.
+> Before building it, we ran one more cheap check — and it killed the feature.
 >
-> Flat. And before you conclude the fixes did nothing, the interesting part is
-> *how* we know it's flat rather than a regression. 75 questions changed answer
-> between the two runs — 38 went right→wrong, 37 went wrong→right. A McNemar
-> test on that 38/37 split gives **p = 0.50**: indistinguishable from a coin
-> flip. The churn is our free provider chain answering with different models on
-> different runs (we decode greedily, but *which* of six free providers serves a
-> given question shifts with rate limits), not the prompt changes doing
-> anything.
+> The 12.8% number was measured on *column names*, in the abstract. It never
+> asked the only question that matters: **on the questions we actually get
+> wrong, would feeding sample values flip any of them to correct?** So we taught
+> our mismatch classifier one new trick — diff the string *literals* between the
+> model's SQL and the gold SQL — and ran it over all 238 wrong answers from our
+> latest 500-question BIRD run.
 >
-> So the honest read isn't "the fixes failed." It's "this *class* of fix has
-> saturated." Three independent full runs now land at 261, 263, 260 of 500 — a
-> tight cluster. The remaining ~240 wrong answers aren't grain or clause
-> mistakes a directive can fix; they're *grounding* failures — the model
-> guessing `'Discount'` when the data says `'discount'`, or reaching for a
-> column named by its values rather than its header. The next lever isn't
-> another rule. It's feeding the model sample values from the actual data.
+> The headline tag lit up: **90 of 238** wrong answers (38%) use a different
+> string literal than the gold query. Value grounding looks like the bottleneck!
+> Then the second number: of those 90, exactly **0** are *literal-only* — i.e.
+> mismatches where, if you fixed just the literal, the query would match. Every
+> single one *also* gets a table, a column, a GROUP BY, or a predicate wrong.
+> Feeding the right value into a query that's structurally broken changes
+> nothing. (And of the 90, only 6 were even casing slips; ~16 were date-format
+> mistakes, which a one-line directive fixes more cheaply than any retrieval.)
 >
-> Two things worth stealing:
+> So value retrieval, on its own, would have moved our benchmark by ~0 — after a
+> multi-file build that also meant piping customers' real cell-values into a
+> third-party LLM. We're not doing it. The real remaining loss is *structural
+> reasoning* — grain and shape — which points at self-consistency and
+> similarity-retrieved examples, not data sampling.
 >
-> 1. **Deferring measurement compounds.** We had four "measure next time" notes
->    stacked up; measuring them *together* means you can't attribute the
->    (non-)delta to any one. Measure each lever when you ship it, or accept
->    you're flying blind on which ones earn their tokens.
-> 2. **A flat benchmark is a result, not a failure — if you can prove it's
->    flat.** McNemar turns "the number didn't move" into "this approach is done,
->    move to the next class," which is a decision, not a shrug.
+> The transferable lesson: **"X% of cases involve Y" is not "fixing Y wins X%."**
+> A theoretical ceiling measured on inputs (column names) can be off by the
+> entire feature once you measure it on outputs (the actual mistakes). The check
+> cost an afternoon and a downloadable benchmark file; the feature would have
+> cost a sprint and a privacy review.
 >
+> (A `/daily` run on nlqdb, a database you query in plain English. The classifier
+> and the BIRD harness are open; every number is reproducible from the public
+> benchmark on a $0 free-LLM chain.)
+
+**Why this is publishable:** the "ceiling-on-inputs ≠ win-on-outputs" trap is a
+mistake almost everyone wiring an LLM eval makes, and the falsification is a
+crisp, reproducible story with real numbers (90 → 0). Pairs as a sequel to the
+run-17 "flat benchmark" post and *corrects* its closing claim. One nlqdb
+mention, in context. Sourced from `tools/eval/src/analyze-mismatches.ts` +
+the committed 2026-06-19 baseline.
+
+## 2026-06-19 (run 17) — dev.to / lobste.rs post — SUPERSEDED by run 18
+
+**Title:** We shipped four fixes to our text-to-SQL engine, then measured them all at once. The benchmark didn't move — and that was the answer.
+
+**Gist (condensed run 18 — full draft was here; the run-18 post is the one to
+publish):** Two weeks of prompt-directive fixes (count-grain, group-by-grain,
+TEXT-cast, HAVING-vs-WHERE, schema-prune recall), then one full 500-q BIRD run:
+**0.522 → 0.520, flat.** The value is *proving* flat — 75 answers flipped
+(38 right→wrong, 37 wrong→right), McNemar **p = 0.50** = provider-mix coin-flip,
+not a lever effect. Lesson: a flat benchmark + a paired-significance test is a
+*decision* ("this class of fix has saturated"), not a shrug; and deferring
+measurement across four levers means you can't attribute the (non-)delta to any
+one. **⚠️ Its closing line — "next lever = feed the model sample values" — was
+falsified by run 18** (0 of 238 mismatches are literal-recoverable). If
+publishing, drop that ending; the run-18 post supersedes it.
 > (A `/daily` run on nlqdb, a database you query in plain English. The eval is
 > the open BIRD harness on a $0 free-LLM chain; every number is public.)
 

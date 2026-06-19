@@ -1,6 +1,12 @@
 import { describe, expect, it } from "bun:test";
 
-import { classifyMismatch, histogram, tablesIn } from "../src/analyze-mismatches.ts";
+import {
+  classifyMismatch,
+  histogram,
+  isLiteralOnly,
+  literalsIn,
+  tablesIn,
+} from "../src/analyze-mismatches.ts";
 
 describe("tablesIn", () => {
   it("counts quoted table names (the bug that inflated fewer_tables)", () => {
@@ -47,15 +53,58 @@ describe("classifyMismatch", () => {
     expect(classifyMismatch(pred, gold)).toContain("fewer_tables");
   });
 
-  it("falls back to other_predicate_or_value when structures match (value/literal diff)", () => {
+  it("tags a casing-only constant diff as literal_case_only, not the catch-all", () => {
     const gold = "SELECT name FROM t WHERE country = 'CZE'";
     const pred = "SELECT name FROM t WHERE country = 'cze'";
-    expect(classifyMismatch(pred, gold)).toEqual(["other_predicate_or_value"]);
+    const tags = classifyMismatch(pred, gold);
+    expect(tags).toContain("literal_diff");
+    expect(tags).toContain("literal_case_only");
+    expect(tags).not.toContain("other_predicate_or_value");
+  });
+
+  it("tags a non-casing value diff as literal_diff only (date-encoding / wrong value)", () => {
+    const gold = "SELECT name FROM t WHERE d = '2019-08-20'";
+    const pred = "SELECT name FROM t WHERE d = '2019-8-20'";
+    const tags = classifyMismatch(pred, gold);
+    expect(tags).toContain("literal_diff");
+    expect(tags).not.toContain("literal_case_only");
+  });
+
+  it("does not flag literal_diff when constants are identical (pure structural)", () => {
+    const gold = "SELECT DISTINCT name FROM t WHERE country = 'CZE'";
+    const pred = "SELECT name FROM t WHERE country = 'CZE'";
+    const tags = classifyMismatch(pred, gold);
+    expect(tags).not.toContain("literal_diff");
+    expect(tags).toContain("missing_DISTINCT");
   });
 
   it("tags an empty prediction and ignores empty gold", () => {
     expect(classifyMismatch("", "SELECT 1")).toEqual(["empty_pred"]);
     expect(classifyMismatch("SELECT 1", "")).toEqual([]);
+  });
+});
+
+describe("literalsIn / isLiteralOnly", () => {
+  it("extracts string literals case-preserved", () => {
+    expect(literalsIn("WHERE a = 'SME' AND b = 'CZK'")).toEqual(["SME", "CZK"]);
+  });
+
+  it("isLiteralOnly is true when only string literals differ", () => {
+    expect(isLiteralOnly("SELECT x FROM t WHERE c = 'a'", "SELECT x FROM t WHERE c = 'b'")).toBe(
+      true,
+    );
+  });
+
+  it("isLiteralOnly is false when the structure also differs", () => {
+    expect(
+      isLiteralOnly("SELECT DISTINCT x FROM t WHERE c = 'a'", "SELECT x FROM t WHERE c = 'b'"),
+    ).toBe(false);
+  });
+
+  it("isLiteralOnly is false when literals are identical (no value error to fix)", () => {
+    expect(isLiteralOnly("SELECT x FROM t WHERE c = 'a'", "SELECT x FROM t WHERE c = 'a'")).toBe(
+      false,
+    );
   });
 });
 
