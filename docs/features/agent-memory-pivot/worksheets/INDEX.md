@@ -81,7 +81,7 @@ Tick on merge. Keep this list as the durable pivot status (the scorecard's
 `Pivot:` line is regenerated; this is not).
 
 - [x] WS-01 — competitors.md anchor (2026-06-19, run 19 — branch `claude/sharp-wozniak-y9ee5z`)
-- [~] WS-02 — memory `/vs` pages: **Zep ✅** (2026-06-20, run 20 — branch `claude/sharp-wozniak-67k9n4`); Letta + LangMem pending
+- [~] WS-02 — memory `/vs` pages: **Zep ✅** (2026-06-20, run 20 — branch `claude/sharp-wozniak-67k9n4`), **Letta ✅** (2026-06-21, run 21 — branch `claude/sharp-wozniak-sxy0yi`); LangMem pending
 - [ ] WS-03 — solve pages (sharpen + sibling)
 - [ ] WS-04 — MCP framing
 - [ ] WS-05 — carousel slides

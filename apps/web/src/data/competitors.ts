@@ -718,6 +718,107 @@ export const COMPETITORS: Competitor[] = [
       why: "The aggregation Zep's retrieval graph can't run — it returns relevant facts, not a GROUP BY / COUNT ranking; nlqdb answers it as SQL over the agent's own memory.",
     },
   },
+  {
+    slug: "letta",
+    name: "Letta",
+    url: "https://www.letta.com",
+    // Agent-memory cluster anchored in docs/competitors.md §4 (verified 2026-06-19);
+    // facts re-checked via web search 2026-06-19. Apache-2.0 agent runtime out of the
+    // 2023 Berkeley MemGPT paper; OS-style memory tiers; self-host or hosted.
+    tagline:
+      "Open-source (Apache-2.0) agent runtime with persistent memory built in — OS-style tiers: core blocks the agent self-edits, searchable recall, and an archival store queried via tool calls.",
+    persona: "P2 agent builder",
+    oneLiner:
+      "Pick Letta if you want a stateful agent runtime that manages its own memory like an OS — self-editing core blocks plus a searchable archive. Pick nlqdb if your agent also needs to aggregate that memory: GROUP BY, JOIN, and HAVING over structured rows it provisions and migrates itself in plain English.",
+    whenChooseUs: [
+      "Your agent must aggregate its memory (GROUP BY, JOIN, HAVING), not just recall facts.",
+      "You store structured rows the agent later reports over ('deals per stage this quarter').",
+      "The schema should evolve as the agent learns ('add a `priority` field') via English.",
+      "You want a data layer that drops into any runtime, not a runtime itself.",
+    ],
+    whenChooseThem: [
+      "You want a full stateful agent runtime, not just a store the agent queries.",
+      "OS-style self-editing memory (core / recall / archival tiers) is the model you need.",
+      "You want an Apache-2.0 core you can self-host with no source-available terms.",
+      "Memory is prose the agent edits and searches — relevant-fact retrieval over typed SQL.",
+    ],
+    features: [
+      { feature: "Owns the database (provisions + migrates)", us: "shipped", them: "no" },
+      {
+        feature: "Natural-language → SQL",
+        us: "shipped",
+        them: "no",
+        note: "Letta's agent reads and writes memory through tool calls (core-block edits, recall/archival search); it has no NL→SQL compiler over a relational store.",
+      },
+      {
+        feature: "Aggregations + reporting queries (GROUP BY / JOIN / HAVING over memory)",
+        us: "shipped",
+        them: "no",
+        note: "Letta can recall 'Alice has a $50k deal' but can't answer 'average deal size per stage' — there is no relational query layer over the memory tiers.",
+      },
+      {
+        feature: "OS-style self-editing memory tiers (core / recall / archival)",
+        us: "no",
+        them: "shipped",
+        note: "Editable core blocks always in context, plus searchable recall and archival, are Letta's core primitive; nlqdb stores typed rows in Postgres tables, not self-edited memory blocks.",
+      },
+      {
+        feature: "Stateful agent runtime (the agent loop itself)",
+        us: "no",
+        them: "shipped",
+        note: "Letta runs the agent; nlqdb is the data layer that any runtime — Letta included — can provision and query. They compose: Letta the runtime, nlqdb the analytical store.",
+      },
+      {
+        feature: "Auto-migration via NL ('add a `priority` field')",
+        us: "shipped",
+        them: "no",
+      },
+      {
+        feature: "MCP server (agent-callable)",
+        us: "shipped",
+        them: "partial",
+        note: "Letta supports MCP integration (it can consume MCP tools and exposes its agents over MCP); nlqdb's MCP exposes `nlqdb_query` / `nlqdb_list_databases` / `nlqdb_describe`, and `nlqdb_query` materialises Postgres on first reference.",
+      },
+      {
+        feature: "Vector / semantic recall over archived memory",
+        us: "no",
+        them: "shipped",
+        note: "Letta's archival tier indexes memory with embeddings for semantic search; nlqdb answers with structured SQL and ships no embedding-based recall today.",
+      },
+      {
+        feature: "Open source / self-hostable",
+        us: "partial",
+        them: "shipped",
+        note: "Letta is Apache-2.0 (self-host or hosted). nlqdb is source-available on FSL 1.1-ALv2, auto-converting to Apache 2.0 after two years.",
+      },
+    ],
+    faqs: [
+      {
+        q: "Can I use Letta as the agent runtime and nlqdb as the store it queries?",
+        a: "Yes — they compose. Letta runs the stateful agent and manages its OS-style memory tiers; nlqdb is the analytical store the agent provisions and queries with SQL. Use Letta for the agent loop and self-edited recall, nlqdb for 'average deal size per stage across everything the agent logged'.",
+      },
+      {
+        q: "Does nlqdb give an agent self-editing memory tiers like Letta's core / recall / archival?",
+        a: "No. nlqdb is Postgres-first — typed rows in tables, not self-edited prose blocks in a context window. If OS-style memory the agent rewrites itself is core to your design, Letta (out of the MemGPT paper) is the right shape; nlqdb's contract is relational SQL over the rows the agent provisions.",
+      },
+      {
+        q: "Letta supports MCP — how is nlqdb's MCP different?",
+        a: "Letta's MCP support lets its agent consume external tools and exposes Letta agents to MCP clients. nlqdb's MCP server (`mcp.nlqdb.com`) exposes `nlqdb_query`, `nlqdb_list_databases`, and `nlqdb_describe`; `nlqdb_query` materialises Postgres plus schema on first reference and runs aggregating SQL, so the agent reports over its memory instead of only retrieving from it.",
+      },
+      {
+        q: "Can Letta aggregate an agent's memory the way nlqdb can?",
+        a: "Not relationally. Letta's archival memory is searched semantically and recall is conversation history — both return relevant entries, not a GROUP BY / JOIN / HAVING result set. nlqdb compiles the English question to SQL and runs it over typed rows, so the agent gets a real aggregation, not a ranked list of matches.",
+      },
+      {
+        q: "Can my AI agent provision its own store with Letta the way it can with nlqdb?",
+        a: "Letta provisions an agent with memory tiers, but the archival store is backed by a database you configure — it doesn't stand up an isolated relational database the agent migrates. nlqdb's MCP `nlqdb_query` materialises a tenant-scoped Postgres plus schema on first reference, so a Claude / Cursor / Cline agent provisions and migrates its data layer end-to-end without a human in the loop.",
+      },
+    ],
+    demo: {
+      goal: "average deal size per stage across everything the agent logged this quarter",
+      why: "The relational aggregation Letta's memory tiers can't run — recall and archival search return relevant entries, not a GROUP BY / AVG result; nlqdb answers it as SQL over the agent's own memory.",
+    },
+  },
 ];
 
 export function competitorBySlug(slug: string): Competitor | undefined {

@@ -1,6 +1,6 @@
 # WS-02 — Memory-competitor `/vs` pages (Zep, Letta, LangMem)
 
-**Status:** 🟡 in progress — **Zep ✅** (run 20); Letta + LangMem pending
+**Status:** 🟡 in progress — **Zep ✅** (run 20), **Letta ✅** (run 21); LangMem pending
 **Sequence:** 2 of 13 · **Risk:** low · **Runs:** ~3 (one competitor per run) · **Prereqs:** WS-01 ✅ · **Gate:** none
 
 ## Goal
@@ -40,7 +40,11 @@ the `Pivot:` progress line: `+1 memory /vs page`.
 - Zep (run 20): ✅ `/vs/zep` builds (astro-check clean); ✅ bullets ≤ 16 words,
   no phantom MCP verbs, FAQ names Zep; ✅ slug in `verify-flows.sh` +
   `tools/stranger-test/flow-003.ts`; ✅ INDEX ticked.
-- Letta: ⬜
+- Letta (run 21): ✅ `/vs/letta` builds (astro-check 0/0/0); ✅ bullets ≤ 16 words,
+  no phantom MCP verbs, FAQ names Letta (≥ 1), facts web-verified 2026-06-19
+  (Apache-2.0, MemGPT-origin OS-style tiers, MCP support → `them: partial`);
+  ✅ slug in `verify-flows.sh` + `tools/stranger-test/src/flows/flow-003.ts`;
+  ✅ INDEX ticked.
 - LangMem: ⬜
 
 Closes when all three ship.
