@@ -13,7 +13,7 @@ Progress tracker for the pricing page and Stripe integration.
 
 ## Goal
 
-Enable users to upgrade from Free → Hobby ($10/mo) or Pro ($25/mo) via Stripe Checkout, live mode.
+Enable users to upgrade from Free → Hobby ($10/mo) or Pro ($25/mo) via Stripe Checkout. Test mode is fully wired today; live-mode go-live is the remaining step (`docs/blocked-by-human.md`).
 
 ---
 
