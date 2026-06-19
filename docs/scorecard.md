@@ -50,12 +50,12 @@ few-shot), not retrieval. Value-retrieval is demoted + privacy-gated.
 | 10 | nlqdb-api requests / errors | 2,268 / 0 (0.00%) | mcp 284 req, events-worker 91 req, both 0 err |
 | 11 | nlqdb-api latency p50 / p95 | 666 ms / 7.05 s (06-13) | p95 dominated by LLM-bound asks; `/ask`-only split needs Grafana `metrics:read` (agent has write-only key) |
 | 12 | $ spend | ~$0 | free tiers across CF / Neon / LLM chain |
-| | **Pivot — agent-memory wedge** (GLOBAL-036) | 2 / 20 + 3 memory /vs pages | tick ⬜→✅ with PR link on merge; mirrors `docs/features/agent-memory-pivot/worksheets/INDEX.md` |
-| | *Messaging track — WS-\** | 2 / 13 | pick when worst number is funnel / distribution |
+| | **Pivot — agent-memory wedge** (GLOBAL-036) | 3 / 20 + 3 memory /vs pages | tick ⬜→✅ with PR link on merge; mirrors `docs/features/agent-memory-pivot/worksheets/INDEX.md` |
+| | *Messaging track — WS-\** | 3 / 13 | pick when worst number is funnel / distribution |
 | WS-01 | competitors.md anchor (Zep / Letta / LangMem) | ✅ | run 19 — §4 + threat matrix; unblocks WS-02 |
 | WS-02 | memory `/vs` pages (one per run) | ✅ 3/3 | run 20 — **Zep ✅** (`/vs/zep`); run 21 — **Letta ✅** (`/vs/letta`); run 22 — **LangMem ✅** (`/vs/langmem`) — WS-02 closed |
 | WS-03 | solve pages — sharpen + sibling | 🟡 1/2 | run 23 — **sharpen ✅** (`give-ai-agent-persistent-memory` reframed to the analytical wedge + phantom MCP tools fixed); analytical sibling pending |
-| WS-04 | MCP tool + package + docs framing | ⬜ | low · 1 run · — |
+| WS-04 | MCP tool + package + docs framing | ✅ | run 24 — three tool descriptions + `package.json` desc + `mcp.mdx` intro now lead with "analytical memory" (copy only; SK-PIVOT-003) |
 | WS-05 | carousel analytics-over-memory slides | ⬜ | low · 1 run · — |
 | WS-06 | Mem0 \| Zep \| Letta \| nlqdb capability matrix | ⬜ | med · ~2 runs · WS-01 |
 | WS-07 | `/agents` landing | ⬜ | med · ~3 runs · WS-06 |
@@ -76,6 +76,30 @@ few-shot), not retrieval. Value-retrieval is demoted + privacy-gated.
 
 ## Deltas (recent runs)
 
+- 2026-06-19 (run 24) — **WS-04: reframed the MCP surface to "analytical
+  memory"** (Pivot messaging track 2 → **3/13**; Pivot 2 → **3/20**). Engine lane
+  blocked (BIRD 06-19 + Spider 06-17 both < 7 d; §5 forbids a back-to-back eval
+  dispatch), so the in-bounds lever is funnel/distribution. WS-02 (LangMem,
+  PR #420) and WS-03 (solve pages, PR #421) are both in flight, so per the pivot
+  INDEX pickup rule WS-04 is the lowest-numbered ⬜ with prereqs (none) met that
+  **doesn't collide** with the open PRs — it touches only `packages/mcp/` +
+  `apps/docs/mcp.mdx`, not `competitors.ts` / `solve.ts`. **Copy only**
+  (SK-PIVOT-003): prepended a memory-shaped lead clause to all three tool
+  `description`s + `title`s in `packages/mcp/src/server.ts` (`nlqdb_query`:
+  "Query your agent's structured memory in natural language — a real database it
+  can GROUP BY / JOIN / aggregate over, not just recall"), rewrote the
+  `package.json` description, and led the `mcp.mdx` intro with "the memory MCP
+  server". **No tool renamed, no schema/annotation/behaviour change** — the
+  stable `SK-MCP-002` contract is intact and the 33 MCP protocol tests stay
+  green. GLOBAL-003 parity verified: no other code surface hard-codes the old
+  blurb (`grep "Run a natural-language query"` → only server.ts + planning docs).
+  Gates: `@nlqdb/mcp` test 33/33, typecheck clean, biome lint clean on the
+  changed files. KPI: **onboarding** (GLOBAL-025) — the highest-leverage
+  agent-facing string now signals the wedge at tool-discovery time;
+  **none degraded** (copy on a stable contract — no engine, chain, scorer, or
+  request path touched; BIRD 06-19 + Spider 06-17 untouched; performance N/A).
+  Artifact: an MCP-directory listing-refresh blurb appended to the distribution
+  queue. WS-05 (carousel) is the next ⬜ messaging worksheet.
 - 2026-06-19 (run 23) — **WS-03 run 1/2: sharpened the agent-memory solve page to
   the analytical-memory wedge + fixed phantom MCP tool names.** Engine lane still
   blocked (BIRD 06-19 + Spider 06-17 both < 7 d; §5 forbids a back-to-back eval

@@ -5,7 +5,9 @@ description: Connect Claude Desktop, Cursor, Zed, Windsurf, VS Code Continue, or
 
 import { Aside } from "@astrojs/starlight/components";
 
-nlqdb speaks MCP (Model Context Protocol) so any host that supports it —
+nlqdb is the **memory MCP server**: a real database your agent can
+`GROUP BY` / `JOIN` / aggregate over in natural language, not just a recall
+store. It speaks MCP (Model Context Protocol) so any host that supports it —
 Claude Desktop, Cursor, Zed, Windsurf, VS Code Continue, Cline — can call
 `nlqdb_query`, `nlqdb_list_databases`, and `nlqdb_describe` directly.
 
