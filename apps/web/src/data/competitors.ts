@@ -625,7 +625,7 @@ export const COMPETITORS: Competitor[] = [
     oneLiner:
       "Pick Zep if your agent needs a temporal knowledge graph — point-in-time fact recall and entity resolution tuned for conversation. Pick nlqdb if your agent also needs to aggregate that memory: GROUP BY, JOIN, and HAVING over structured rows it provisions and migrates itself in plain English.",
     whenChooseUs: [
-      "Your agent needs to aggregate its memory — GROUP BY, JOIN, HAVING — not just recall facts.",
+      "Your agent must aggregate its memory (GROUP BY, JOIN, HAVING), not just recall facts.",
       "You store structured rows the agent later reports over ('deals per stage this quarter').",
       "The schema should evolve as the agent learns ('add a `priority` field') via English.",
       "One MCP server should provision, query, and migrate the agent's data layer.",
