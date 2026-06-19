@@ -166,8 +166,8 @@ note "FLOW-002 steps 5-9 require a browser (CTA click, draft hydrate, /app/new r
 
 # --- FLOW-003 — Comparison-driven inbound (steps 1, 2, 4, 9) -------------
 
-VS_SLUGS=(   "supabase" "vanna"    "mem0" "outerbase" "wrenai"  "askyourdatabase" "zep" "letta" )
-VS_TITLES=(  "Supabase" "Vanna AI" "Mem0" "Outerbase" "Wren AI" "AskYourDatabase" "Zep" "Letta" )
+VS_SLUGS=(   "supabase" "vanna"    "mem0" "outerbase" "wrenai"  "askyourdatabase" "zep" "letta" "langmem" )
+VS_TITLES=(  "Supabase" "Vanna AI" "Mem0" "Outerbase" "Wren AI" "AskYourDatabase" "Zep" "Letta" "LangMem" )
 
 say "FLOW-003 — /vs/<slug> (curl-observable subset, all ${#VS_SLUGS[@]} slugs)"
 for i in "${!VS_SLUGS[@]}"; do

@@ -12,7 +12,7 @@ when-to-load:
 # Feature: Comparison Pages
 
 **One-liner:** `/vs/<competitor>` AEO/SEO pages — honest side-by-sides driving acquisition from buyers who already named the alternative.
-**Status:** implemented (Phase 1) — 8 comparison pages shipped: Supabase (P1), Vanna AI (P3), Mem0 (P2), Outerbase (P4), Wren AI (P3), AskYourDatabase (P3), Zep (P2), Letta (P2). Single template + typed data file; adding a new comparison is a one-file edit.
+**Status:** implemented (Phase 1) — 9 comparison pages shipped: Supabase (P1), Vanna AI (P3), Mem0 (P2), Outerbase (P4), Wren AI (P3), AskYourDatabase (P3), Zep (P2), Letta (P2), LangMem (P2). Single template + typed data file; adding a new comparison is a one-file edit.
 **Owners (code):** `apps/web/src/data/competitors.ts`, `apps/web/src/pages/vs/**`, `apps/web/src/pages/llms.txt.ts`, `apps/web/src/pages/sitemap.xml.ts`
 **Cross-refs:** [`docs/research/automated-icp-validation-plan.md §3.5`](../../research/automated-icp-validation-plan.md) · [`docs/competitors.md`](../../competitors.md) · [`docs/features/web-app/FEATURE.md`](../web-app/FEATURE.md)
 

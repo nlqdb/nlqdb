@@ -50,10 +50,10 @@ few-shot), not retrieval. Value-retrieval is demoted + privacy-gated.
 | 10 | nlqdb-api requests / errors | 2,268 / 0 (0.00%) | mcp 284 req, events-worker 91 req, both 0 err |
 | 11 | nlqdb-api latency p50 / p95 | 666 ms / 7.05 s (06-13) | p95 dominated by LLM-bound asks; `/ask`-only split needs Grafana `metrics:read` (agent has write-only key) |
 | 12 | $ spend | ~$0 | free tiers across CF / Neon / LLM chain |
-| | **Pivot — agent-memory wedge** (GLOBAL-036) | 1 / 20 + 2 memory /vs pages | tick ⬜→✅ with PR link on merge; mirrors `docs/features/agent-memory-pivot/worksheets/INDEX.md` |
-| | *Messaging track — WS-\** | 1 / 13 | pick when worst number is funnel / distribution |
+| | **Pivot — agent-memory wedge** (GLOBAL-036) | 2 / 20 + 3 memory /vs pages | tick ⬜→✅ with PR link on merge; mirrors `docs/features/agent-memory-pivot/worksheets/INDEX.md` |
+| | *Messaging track — WS-\** | 2 / 13 | pick when worst number is funnel / distribution |
 | WS-01 | competitors.md anchor (Zep / Letta / LangMem) | ✅ | run 19 — §4 + threat matrix; unblocks WS-02 |
-| WS-02 | memory `/vs` pages (one per run) | 🟡 2/3 | run 20 — **Zep ✅** (`/vs/zep`); run 21 — **Letta ✅** (`/vs/letta`); LangMem pending |
+| WS-02 | memory `/vs` pages (one per run) | ✅ 3/3 | run 20 — **Zep ✅** (`/vs/zep`); run 21 — **Letta ✅** (`/vs/letta`); run 22 — **LangMem ✅** (`/vs/langmem`) — WS-02 closed |
 | WS-03 | solve pages — sharpen + sibling | ⬜ | low · ~2 runs · — |
 | WS-04 | MCP tool + package + docs framing | ⬜ | low · 1 run · — |
 | WS-05 | carousel analytics-over-memory slides | ⬜ | low · 1 run · — |
@@ -76,6 +76,35 @@ few-shot), not retrieval. Value-retrieval is demoted + privacy-gated.
 
 ## Deltas (recent runs)
 
+- 2026-06-19 (run 22) — **WS-02 slice 3/3: shipped `/vs/langmem` — WS-02 closed**
+  — the third and final agent-memory `/vs` page (Pivot `Memory /vs pages` 2 →
+  **3/3**; WS-02 ✅ → messaging track 1 → **2/13**; pivot worksheets 1 →
+  **2/20**). Engine lane still blocked (BIRD 06-19 + Spider 06-17 both < 7 d; §5
+  forbids a back-to-back eval dispatch), so the in-bounds lever is
+  funnel/distribution; per the pivot INDEX pickup rule WS-02 was the
+  lowest-numbered in-progress worksheet with its prereq (WS-01 ✅) met, and
+  "one competitor per run" (SK-PIVOT-002) makes LangMem the last slice. Added one
+  `Competitor` entry (`apps/web/src/data/competitors.ts`, persona P2) — slug
+  `langmem`, the wedge keyed on **retrieval vs analytics**: LangMem is an
+  open-source LangChain SDK whose LLM-managed semantic/episodic/procedural memory
+  *retrieves* facts by similarity (and a background manager consolidates them) but
+  has no relational query layer, so an agent can't `GROUP BY`/`JOIN`/`HAVING` over
+  its own memory; nlqdb is the real DB it aggregates over, and the two compose
+  (LangMem the memory layer inside a LangGraph agent, nlqdb the analytical store).
+  Facts web-verified 06-19; honest calls: LangMem is an **in-process Python SDK
+  with no MCP server of its own** (`them: no`, distinct from Zep/Letta which got
+  `partial`) and is **LangGraph BaseStore-coupled** (the framework-lock wedge).
+  Real tool names only (`nlqdb_query`/`nlqdb_list_databases`/`nlqdb_describe`, no
+  phantom `create_database`). Sitemap + `llms.txt` pick up the slug automatically;
+  slug wired into `verify-flows.sh` + `tools/stranger-test/src/flows/flow-003.ts`.
+  Gates: astro-check 0/0/0, web 122 tests, stranger-test typecheck, lint all
+  green. KPI: **onboarding** (GLOBAL-025) — a new AEO/decision-moment on-ramp for
+  the P2 agent-builder keyword "LangMem alternative"; **none degraded** (additive
+  content on the existing template — no code path, engine, chain, or scorer
+  touched; BIRD 06-19 + Spider 06-17 untouched; performance N/A). Artifact: an
+  r/LangChain / Show-HN nlqdb-vs-LangMem comparison draft appended to the
+  distribution queue. **WS-02 closes**; next pivot lever is the lowest-numbered ⬜
+  worksheet (WS-03 solve pages or WS-04 MCP framing, both prereq-free).
 - 2026-06-21 (run 21) — **WS-02 slice 2/3: shipped `/vs/letta`** — the second
   agent-memory `/vs` page (Pivot `Memory /vs pages` 1 → **2/3**; WS-02 🟡 1/3 →
   2/3). Engine lane still blocked (BIRD 06-19 + Spider 06-17 both < 7 d; §5

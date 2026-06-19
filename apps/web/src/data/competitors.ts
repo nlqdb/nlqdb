@@ -819,6 +819,113 @@ export const COMPETITORS: Competitor[] = [
       why: "The relational aggregation Letta's memory tiers can't run — recall and archival search return relevant entries, not a GROUP BY / AVG result; nlqdb answers it as SQL over the agent's own memory.",
     },
   },
+  {
+    slug: "langmem",
+    name: "LangMem",
+    url: "https://langchain-ai.github.io/langmem/",
+    // Agent-memory cluster anchored in docs/competitors.md §4 (verified 2026-06-19);
+    // facts re-checked via web search 2026-06-19. Open-source LangChain SDK (PyPI
+    // `langmem`); semantic/episodic/procedural memory with an LLM-managed extractor,
+    // tightly integrated with LangGraph's BaseStore / LangGraph Platform.
+    tagline:
+      "Open-source LangChain SDK for agent long-term memory — semantic, episodic, and procedural memory an LLM extracts and consolidates, persisted through LangGraph's BaseStore.",
+    persona: "P2 agent builder",
+    oneLiner:
+      "Pick LangMem if you want long-term memory wired into a LangGraph agent — semantic, episodic, and procedural memory the LLM extracts and consolidates for you. Pick nlqdb if your agent also needs to aggregate that memory: GROUP BY, JOIN, and HAVING over structured rows it provisions and migrates itself in plain English.",
+    whenChooseUs: [
+      "Your agent must aggregate its memory (GROUP BY, JOIN, HAVING), not just recall facts.",
+      "You store structured rows the agent later reports over ('deals per stage this quarter').",
+      "The schema should evolve as the agent learns ('add a `priority` field') via English.",
+      "You want a framework-agnostic data layer, not memory tools locked to LangGraph.",
+    ],
+    whenChooseThem: [
+      "You're building on LangChain / LangGraph and want memory native to that stack.",
+      "You need semantic, episodic, and procedural memory the LLM extracts and consolidates automatically.",
+      "Memory is prose facts retrieved by similarity — relevant-fact recall over typed SQL aggregation.",
+      "You want procedural memory: the agent refines its own prompts and behavior over time.",
+    ],
+    features: [
+      { feature: "Owns the database (provisions + migrates)", us: "shipped", them: "no" },
+      {
+        feature: "Natural-language → SQL",
+        us: "shipped",
+        them: "no",
+        note: "LangMem extracts and searches memories through its SDK; it has no NL→SQL compiler over a relational store.",
+      },
+      {
+        feature: "Aggregations + reporting queries (GROUP BY / JOIN / HAVING over memory)",
+        us: "shipped",
+        them: "no",
+        note: "LangMem returns the memories most similar to a query; it has no query planner to aggregate across them.",
+      },
+      {
+        feature: "Semantic / episodic / procedural memory (LLM-managed)",
+        us: "no",
+        them: "shipped",
+        note: "A unified API over fact, experience, and behavior memory is LangMem's core primitive; nlqdb stores typed rows, not LLM-extracted memory objects.",
+      },
+      {
+        feature: "Background memory manager (auto extract / consolidate / update)",
+        us: "no",
+        them: "shipped",
+        note: "LangMem's manager reviews conversations and decides what to store, update, or forget; nlqdb persists exactly the rows the agent writes.",
+      },
+      {
+        feature: "Procedural memory / prompt self-optimization",
+        us: "no",
+        them: "shipped",
+      },
+      {
+        feature: "Auto-migration via NL ('add a `priority` field')",
+        us: "shipped",
+        them: "no",
+      },
+      {
+        feature: "MCP server (agent-callable)",
+        us: "shipped",
+        them: "no",
+        note: "LangMem is an in-process Python SDK (memory tools the agent calls inside a LangGraph app), not an MCP server; nlqdb's MCP exposes `nlqdb_query` / `nlqdb_list_databases` / `nlqdb_describe`, and `nlqdb_query` materialises Postgres on first reference.",
+      },
+      {
+        feature: "Vector / semantic recall over stored memory",
+        us: "no",
+        them: "shipped",
+        note: "Similarity search over stored memories is LangMem's lane; nlqdb answers with structured SQL and ships no embedding-based recall today.",
+      },
+      {
+        feature: "Open source / self-hostable",
+        us: "partial",
+        them: "shipped",
+        note: "LangMem is an open-source LangChain SDK (PyPI `langmem`), self-hosted inside your app. nlqdb is source-available on FSL 1.1-ALv2, auto-converting to Apache 2.0 after two years.",
+      },
+    ],
+    faqs: [
+      {
+        q: "Can I use LangMem for memory management and nlqdb for analytics over the same data?",
+        a: "Yes — they compose. LangMem extracts and consolidates memories inside the LangGraph agent; nlqdb is the analytical store the agent queries with SQL. Use LangMem for 'what does the agent remember about Kendra' and nlqdb for 'average deal size per stage across everything the agent logged'.",
+      },
+      {
+        q: "Does nlqdb extract and consolidate memories automatically like LangMem?",
+        a: "No. nlqdb persists exactly the rows the agent writes; it has no LLM background manager deciding what to remember, update, or forget. If automatic semantic / episodic / procedural extraction is core to your design, LangMem is the right shape; nlqdb's contract is relational SQL over the rows the agent provisions.",
+      },
+      {
+        q: "Is nlqdb tied to LangChain / LangGraph like LangMem?",
+        a: "No. LangMem integrates most seamlessly with LangGraph's BaseStore and the LangGraph Platform. nlqdb is framework-agnostic — any runtime (Claude, Cursor, Cline, or a LangGraph agent) calls it over HTTP or MCP, so the data layer isn't coupled to one agent stack.",
+      },
+      {
+        q: "Can LangMem aggregate an agent's memory the way nlqdb can?",
+        a: "Not relationally. LangMem retrieves memories by similarity and its background manager consolidates them, but neither returns a GROUP BY / JOIN / HAVING result set. nlqdb compiles the English question to SQL and runs it over typed rows, so the agent gets a real aggregation, not a ranked list of matches.",
+      },
+      {
+        q: "Can my AI agent provision its own store with LangMem the way it can with nlqdb?",
+        a: "LangMem stores memories in a backend you configure through LangGraph's BaseStore (Postgres, a vector DB, or KV) — it doesn't stand up an isolated relational database the agent migrates. nlqdb's MCP `nlqdb_query` materialises a tenant-scoped Postgres plus schema on first reference, so a Claude / Cursor / Cline agent provisions and migrates its data layer end-to-end without a human in the loop.",
+      },
+    ],
+    demo: {
+      goal: "distinct users who asked about pricing each week this quarter",
+      why: "The aggregation LangMem's similarity search can't run — it returns the memories most relevant to a query, not a COUNT(DISTINCT) per week; nlqdb answers it as SQL over the agent's own memory.",
+    },
+  },
 ];
 
 export function competitorBySlug(slug: string): Competitor | undefined {
