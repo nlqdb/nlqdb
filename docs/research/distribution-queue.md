@@ -5,6 +5,47 @@ One publishable artifact drafted per day by the daily agent
 publishes at the weekly session. Newest first. Delete an entry once published
 (the live URL goes into `docs/scorecard.md`).
 
+## 2026-06-21 (run 21) — comparison-page draft: nlqdb vs Letta (r/AI_Agents / Show HN)
+
+**Title:** Letta runs my stateful agent. It still can't answer "average per group" about its own memory.
+
+**Body:**
+
+> If you've built on [Letta](https://www.letta.com) (the runtime out of the
+> Berkeley MemGPT paper, Apache-2.0) you know the model: the agent manages its
+> own memory like an OS — **core** blocks it self-edits in the context window,
+> **recall** for conversation history, and an **archival** tier it searches for
+> long-term facts. As a stateful agent runtime it's excellent, and the
+> self-editing memory idea is genuinely clever.
+>
+> But the memory tiers are built to *retrieve*. Once my agent had logged a few
+> hundred rows, I wanted to ask questions *about* the memory, not search it:
+>
+> > "Average deal size per stage for everything the agent logged this quarter."
+> > "Top 10 topics this month, ranked by count."
+>
+> Letta can recall "Alice has a $50k deal." It can't run a `GROUP BY` over the
+> archive — there's no relational query layer under the memory tiers, so the LLM
+> ends up doing arithmetic over a list of search hits (a hallucination generator,
+> not an aggregation).
+>
+> The honest split (full side-by-side at nlqdb.com/vs/letta): Letta wins on being
+> a real stateful runtime with OS-style self-editing memory and semantic recall.
+> nlqdb wins when the agent needs to **aggregate** its memory — it's a real
+> Postgres the agent provisions and queries in English, so `GROUP BY / JOIN /
+> HAVING` actually work. They compose: Letta the runtime, nlqdb the analytical
+> store it queries. Pick the one that matches the question you need answered.
+>
+> (Landscape facts verified 2026-06-19; both products' weaknesses are in the
+> comparison, not just ours.)
+
+**Why this is publishable:** same decision-moment "X alternative" / "Letta vs"
+keyword play as the Zep draft, honest-trade-off format (~13.8% vs 2–5% generic),
+lifted verbatim by Perplexity/ChatGPT. Names Letta once, in context, leads with
+a real architectural distinction (runtime + retrieval vs analytical store).
+Sourced from the shipped `/vs/letta` page + `docs/competitors.md §4`. Second of
+the WS-02 trio (LangMem to follow).
+
 ## 2026-06-20 (run 20) — comparison-page draft: nlqdb vs Zep (r/AI_Agents / Show HN)
 
 **Title:** Zep gives my agent perfect recall. It still can't answer "average per group" about its own memory.
