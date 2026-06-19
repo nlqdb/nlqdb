@@ -21,13 +21,17 @@ is gone (`SK-LLM-039`). The 27 newly-answered questions mostly mismatch (hard
 benchmark), so the engine bottleneck is now **SQL reasoning** (mismatches), not
 provider availability. The run-15 `SK-QUAL-014` classifier buckets the 236 BIRD
 mismatches: the mass is aggregation/DISTINCT **grain** + subquery **shape**,
-much of it **value/literal/column grounding** (→ §4 #2 value-retrieval, now the
-evidence-backed top lever); join-recall is only 35/236 (15%). **BIRD re-run
-2026-06-19** on current main (first canonical since T20–T22 merged): raw EX
-0.522 → **0.520** (260/500), `no_sql` 3 → 1 — **statistically flat** (McNemar
-p=0.50, b=38/c=37, no regression). The directive levers (T13–T16/T22) have
-**saturated on BIRD**; the path to the gate floor is the §4 retrieval levers
-(value-retrieval first) — runs 13/14's deferred-EX debt is now discharged.
+much of it value/literal/column grounding. **BIRD re-run 2026-06-19** on current
+main (first canonical since T20–T22 merged): raw EX 0.522 → **0.520** (260/500),
+`no_sql` 3 → 1 — **statistically flat** (McNemar p=0.50, b=38/c=37, no
+regression). The directive levers (T13–T16/T22) have **saturated on BIRD**.
+**2026-06-19 (run 18): the `SK-QUAL-014` literal axis falsifies value-retrieval
+as the top lever** — of the 238 BIRD mismatches, `literal_diff` is the largest
+tag (90) but `literal_case_only` is 6 and **`literal_only` is 0**: no mismatch
+is recoverable by fixing string literals alone (each co-occurs with a structural
+error). So value-sampling (§4 #2a) flips ~0 rows standalone; the path to the
+gate floor is the §4 **reasoning** levers (#3 self-consistency, #1 retrieval
+few-shot), not retrieval. Value-retrieval is demoted + privacy-gated.
 
 | # | Metric | Value | Target / note |
 |---|--------|-------|------|
@@ -72,6 +76,29 @@ p=0.50, b=38/c=37, no regression). The directive levers (T13–T16/T22) have
 
 ## Deltas (recent runs)
 
+- 2026-06-19 (run 18) — **literal-grounding axis on the `SK-QUAL-014` classifier
+  — falsifies value-retrieval (§4 #2a) as the top lever, deterministically and
+  with zero quota.** The last four runs ranked value-retrieval #1 off the
+  `SK-QUAL-015` column-*name* ceiling (12.8% of needed cols named by value,
+  *theoretical*). But that was never checked against real predicted-vs-gold
+  output. This run adds the missing axis: `classifyMismatch` now diffs
+  case-preserved string-literal multisets (`literal_diff` / `literal_case_only`)
+  and exports `isLiteralOnly(pred, gold)`. Run on the committed 06-19 BIRD
+  baseline (238 mismatches, gold joined offline): `literal_diff` is the
+  **largest** single tag (**90 / 38%**) — yet `literal_case_only` = **6** and
+  **`literal_only` = 0**. *No* mismatch is recoverable by fixing literals alone;
+  every literal error co-occurs with a structural one (the 90 split ~16
+  date-encoding `'2019-8-20'`/LIKE-shape + ~68 categorical value diffs riding
+  alongside a wrong column/predicate/grain). So a sample-value prompt flips ~0
+  rows standalone — value-retrieval is **demoted below the reasoning levers**
+  (§4 #3 self-consistency, #1 retrieval few-shot) and, on the prod side, blocked
+  on an unresolved privacy decision (feeding user cell-values to the free chain).
+  The `other_predicate_or_value` catch-all shrank 42 → 30. KPI: engine quality
+  (GLOBAL-025) — sharper instrument → evidence-driven lever selection that
+  *prevents* a large prod build for ~0 EX; **none degraded** (read-only over the
+  committed baseline + downloadable gold; no chain/scorer/runner change; EX
+  unchanged, no eval dispatched — BIRD 06-19 + Spider 06-17 both < 7 d). 18 eval
+  tests green (was 14). Re-points source-of-truth §2/§4/§6 + verification-log.
 - 2026-06-19 (run 17) — **first canonical BIRD re-run since T20–T22 merged —
   discharges 4 runs of deferred-EX debt.** Runs 13/14 shipped engine levers
   (T21 join-bridge recall, T22 HAVING directive) and explicitly punted their

@@ -21,6 +21,28 @@ const norm = (s: string): string => (s || "").replace(/\s+/g, " ").trim().toLowe
 const re = (s: string, r: RegExp): boolean => r.test(s);
 const count = (s: string, r: RegExp): number => (s.match(r) || []).length;
 
+// Single-quoted string literals, case **preserved** ('' is an escaped quote) —
+// casing is the value-grounding signal (`'SME'` vs `'Sme'`) the §4 #2a
+// value-retrieval lever targets, so we must not lowercase here.
+export function literalsIn(sql: string): string[] {
+  return [...(sql || "").matchAll(/'((?:[^']|'')*)'/g)].map((m) => m[1] ?? "");
+}
+const multiset = (xs: string[]): string => xs.slice().sort().join("");
+
+// True when masking every string literal to a placeholder makes predicted and
+// gold byte-identical (whitespace/case-normalised) **and** their literal sets
+// actually differ — i.e. the SQL structure is correct and the *only* error is
+// the string-literal values. This is the count that sizes the value-retrieval
+// lever's standalone ceiling: a `literal_only` mismatch is one a sample-value
+// prompt could flip to a match without any reasoning change.
+export function isLiteralOnly(predictedSql: string, goldSql: string): boolean {
+  const mask = (s: string): string => norm(s).replace(/'(?:[^']|'')*'/g, "'?'");
+  return (
+    multiset(literalsIn(predictedSql)) !== multiset(literalsIn(goldSql)) &&
+    mask(predictedSql) === mask(goldSql)
+  );
+}
+
 // `"name"` / `` `name` `` / `[name]` / bare — the four quoting forms our
 // dialects emit. Bare-word-only matching undercounts quoted tables.
 const TABLE_RE = /\b(?:from|join)\s+(?:"([^"]+)"|`([^`]+)`|\[([^\]]+)\]|([a-z_][\w]*))/g;
@@ -90,6 +112,22 @@ export function classifyMismatch(predictedSql: string, goldSql: string): string[
   if (gsub > psub) tags.push("fewer_subqueries");
   else if (gsub < psub) tags.push("more_subqueries");
 
+  // Literal-grounding axis (the §4 #2a value-retrieval target): the
+  // structural tags above never inspect string-literal values, so a
+  // wrong/mis-cased constant (`'Sme'` for `'SME'`) used to fall into the
+  // `other_predicate_or_value` catch-all undifferentiated. Compare the
+  // case-preserved literal multisets directly so the value-grounding mass is
+  // counted on its own. `literal_case_only` is the clean value-retrieval win
+  // (right value, wrong case); a date-shaped diff (`'2019-8-20'`) is a
+  // date-encoding error a directive, not value-sampling, fixes.
+  const gLits = literalsIn(goldSql);
+  const pLits = literalsIn(predictedSql);
+  if (multiset(gLits) !== multiset(pLits)) {
+    tags.push("literal_diff");
+    const ci = (xs: string[]): string => multiset(xs.map((x) => x.toLowerCase()));
+    if (ci(gLits) === ci(pLits)) tags.push("literal_case_only");
+  }
+
   if (tags.length === 0) tags.push("other_predicate_or_value");
   return tags;
 }
@@ -105,7 +143,7 @@ type GoldEntry = { question_id?: number; SQL?: string; sql?: string };
 export function histogram(
   results: Array<{ question_id: number; outcome: string; predicted_sql: string }>,
   gold: GoldEntry[],
-): { joined: number; total: number; tally: Array<[string, number]> } {
+): { joined: number; total: number; tally: Array<[string, number]>; literalOnly: number } {
   const goldById = new Map<number, GoldEntry>();
   gold.forEach((g, i) => {
     goldById.set(g.question_id ?? i, g);
@@ -113,11 +151,14 @@ export function histogram(
   const mism = results.filter((r) => r.outcome === "mismatch");
   const counts = new Map<string, number>();
   let joined = 0;
+  let literalOnly = 0;
   for (const r of mism) {
     const g = goldById.get(r.question_id);
     if (!g) continue;
     joined++;
-    for (const t of classifyMismatch(r.predicted_sql, g.SQL ?? g.sql ?? "")) {
+    const goldSql = g.SQL ?? g.sql ?? "";
+    if (isLiteralOnly(r.predicted_sql, goldSql)) literalOnly++;
+    for (const t of classifyMismatch(r.predicted_sql, goldSql)) {
       counts.set(t, (counts.get(t) ?? 0) + 1);
     }
   }
@@ -125,6 +166,7 @@ export function histogram(
     joined,
     total: mism.length,
     tally: [...counts.entries()].sort((a, b) => b[1] - a[1]),
+    literalOnly,
   };
 }
 
@@ -136,8 +178,11 @@ if (import.meta.main) {
   }
   const base = JSON.parse(await Bun.file(basePath).text());
   const gold = JSON.parse(await Bun.file(goldPath).text());
-  const { joined, total, tally } = histogram(base.results ?? [], gold);
+  const { joined, total, tally, literalOnly } = histogram(base.results ?? [], gold);
   console.info(`mismatches joined: ${joined} of ${total}`);
+  console.info(
+    `literal_only (recoverable by value-retrieval alone — structure correct, only string literals differ): ${literalOnly}`,
+  );
   console.info("error-class tally (tags non-exclusive):");
   for (const [k, n] of tally) console.info(`  ${String(n).padStart(3)}  ${k}`);
 }

@@ -33,17 +33,26 @@ in [`quality-score-source-of-truth.md`](../../../progress/quality-score-source-o
     aggregation/DISTINCT grain + subquery shape. Shipping the wrong parser
     would have mis-aimed the next several runs — the quote-handling test is
     the regression guard.
-  - **Surface tags expose, but don't diagnose, the root cause.** Reading the
-    flagged rows shows much of the `agg_fn_diff` / `col_count_diff` mass is
-    really value/literal/column grounding (`'discount'` vs gold `'Discount'`;
-    `Amount` vs `Price`; `'2012-01%'` vs `'201201'`) — i.e. the model lacks
-    sample cell-values — which is the §4 #2 (value-retrieval) lever, plus a
-    slice of known BIRD gold-annotation noise (§4 #5). Evidence the histogram
-    alone would have hidden.
+  - **The literal axis turns the value-grounding hypothesis into a number —
+    and re-ranks it.** The structural tags never inspect string-literal
+    *values*, so a wrong/mis-cased constant fell into `other_predicate_or_value`
+    undifferentiated. The classifier now compares the case-preserved literal
+    multisets directly (`literal_diff`, `literal_case_only`) and exports
+    `isLiteralOnly(pred, gold)` — true when masking string literals makes
+    predicted ≡ gold, i.e. the structure is correct and *only* the constants
+    differ, the case value-retrieval could flip to a match unaided. Run on the
+    2026-06-19 BIRD baseline (238 mismatches): `literal_diff` is the **largest**
+    single tag (**90**), yet `literal_case_only` is **6** and `literal_only` is
+    **0** — every literal error co-occurs with a structural one, so the §4 #2a
+    value-retrieval lever recovers **~0 mismatches standalone**. That falsifies
+    the "additive, do-first" framing the column-name ceiling (`SK-QUAL-015`)
+    implied; the remaining loss is structural reasoning (grain/shape/predicate).
 
 - **Consequence in code:** `tools/eval/src/analyze-mismatches.ts` (pure
-  classifier + `histogram` + `import.meta.main` CLI), `test/analyze-mismatches.test.ts`
-  (quote-handling regression + class assertions, mocked, no network), and the
+  classifier + `literalsIn` / `isLiteralOnly` + `histogram` + `import.meta.main`
+  CLI; the CLI prints the `literal_only` headline above the tally),
+  `test/analyze-mismatches.test.ts` (quote-handling regression + structural +
+  literal-axis class assertions, mocked, no network), and the
   `analyze-mismatches` script in `tools/eval/package.json`. Read-only over an
   existing report — no change to `runner.ts`, the scorer, or the chain, so no
   KPI can move; it is an instrument that *directs* the levers that do.

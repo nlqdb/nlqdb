@@ -236,4 +236,14 @@ Canonical text in [`docs/decisions/`](../../decisions/).
   counter (the `SK-QUAL-011`/`SK-QUAL-012` reactive controls cover it).
 - **Still open** (agentic lane shipped per [`SK-QUAL-009`](#sk-qual-009)): multi-model frontier (GPT-5 + Gemini 2.5 Pro) deferred until the Sonnet 4.6 baseline lands; BYOLLM-lane instrumentation depends on `SK-LLM-016`; pin a `xlang-ai/Spider2` SHA in the next Spider baseline.
 - **Canonical raw EX — BIRD 0.520 (2026-06-19, flat) / Spider 0.1852 (2026-06-17)**, 6-provider GHA runs (`SK-QUAL-013`). Breakdown: `quality-score-source-of-truth.md` §2.
+- **Value retrieval (§4 #2a) is demoted + prod-side privacy-gated (2026-06-19).**
+  The `SK-QUAL-014` literal axis showed `literal_only` = 0 on the 06-19 BIRD
+  baseline — value-sampling flips ~0 mismatches standalone (`source-of-truth`
+  §2/§4). Independently, building it in prod would feed **user cell-values**
+  into the free third-party LLM chain — today only schema DDL leaves the system
+  (`apps/api/src/ask/orchestrate.ts` passes `db.schemaText`). That is a new
+  data-exposure posture, not a value-decidable engine tweak: **do not build the
+  prod side until the founder rules on feeding sampled cell-values to the free
+  chain** (the eval side uses public BIRD/Spider data, so it carries no such
+  exposure). Reasoning levers (§4 #3/#1) are the unblocked path meanwhile.
 - **Corrected-set evaluation — parked until the next BIRD refresh** (`GLOBAL-033`). UIUC Kang ([arXiv:2601.08778](https://arxiv.org/abs/2601.08778)) found 52.8% BIRD annotation errors. **Adopt iff** license permits bundling **and** it stays a ~50-LOC scorer-reuse patch; else skip.

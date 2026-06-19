@@ -42,28 +42,34 @@ is also what a blocked user sees.
 
 **How to read the two BIRD rows.** Raw EX (the gate metric) also pays
 chain-exhaustion `no_sql`; reasoning EX isolates SQL quality from capacity. T18
-+ T19 closed the once-30–70% divergence (smoke `no_sql` 47 → 1); the 06-19
-canonical `no_sql` is **1**. The remaining gap to the gate floor is **SQL
-reasoning** (mismatches), not availability — §4's levers target it.
++ T19 closed the once-30–70% divergence (smoke `no_sql` 47 → 1; 06-19 canonical
+`no_sql` is **1**). The remaining gap to the floor is **SQL reasoning**
+(mismatches), not availability — §4's levers target it.
 
-**Where the losses are now** (canonical 500-q BIRD run, 2026-06-12): match 261 ·
-**mismatch 236** · exec_error 0 · `no_sql` 3 — the loss is now almost purely
-**SQL reasoning** (mismatches). The mismatch mass is bucketed by the
-`SK-QUAL-014` classifier (`bun analyze-mismatches`, tags non-exclusive):
-`agg_fn_diff` 61 · `more_subqueries` 44 · `other_predicate_or_value` 42 ·
-`missing_DISTINCT` 41 · `col_count_diff` 39 · `fewer_tables` 35 ·
-`extra_DISTINCT` 34. Reading the rows: aggregation/DISTINCT **grain** and
-subquery **shape** dominate, and much of the `agg_fn_diff`/`col_count_diff`
-mass is really **value/literal/column grounding** (wrong casing/column/date
-encoding — `SK-QUAL-014`) — the §4 #2 value-retrieval lever — plus a slice of
-BIRD gold-annotation noise (§4 #5). **Schema-link recall is *not* the
-bottleneck:** `fewer_tables` is 35/236 (15%), pre-T21, so T19/T21 captured most
-of that headroom. The grain tags are T10–T16/T22 territory — **saturated** (the
-06-19 canonical re-run is flat, McNemar p=0.50) ⇒ move to retrieval levers
-(§4 #1/#2). Spider's residual `no_sql`
-is **9** (capacity-only post-Gemini-heal, §6); its 27 newly-answered questions
-mostly produced *wrong* SQL, so its bottleneck is also SQL reasoning — column
-pruning (§4 #2b) helps it via *distractor* removal (T19: 0.15 → 0.25).
+**Where the losses are now** (canonical 500-q BIRD run, 2026-06-19): match 260 ·
+**mismatch 238** · exec_error 1 · `no_sql` 1 — the loss is now almost purely
+**SQL reasoning** (mismatches). The `SK-QUAL-014` classifier buckets the 238
+(`bun analyze-mismatches`, tags non-exclusive): `literal_diff` **90** ·
+`agg_fn_diff` 58 · `more_subqueries` 43 · `missing_DISTINCT` 42 ·
+`col_count_diff` 37 · `fewer_tables` 33 · `extra_DISTINCT` 31 ·
+`other_predicate_or_value` 30. **The literal axis re-ranks §4 #2a
+(value-retrieval) down — measured, not inferred:** `literal_diff` is the
+*largest* tag (90, 38%), but `literal_case_only` is **6** and **`literal_only`
+is 0** — i.e. *no* mismatch is recoverable by fixing string literals alone;
+every literal error co-occurs with a structural one (reading the 90: ~16
+date-encoding `'2019-8-20'`/LIKE shape errors, ~68 categorical value diffs
+*alongside* a wrong column/predicate/grain). So value-sampling alone flips ~0
+rows — it falsifies the "additive, do-first" read the `SK-QUAL-015` column-name
+ceiling (12.8%) implied. **Schema-link recall is *not* the bottleneck either**
+(`fewer_tables` 33/238, pre-T21). The dominant, addressable mass is structural
+**reasoning** (aggregation/DISTINCT grain, subquery shape) — and the grain tags
+are T10–T16/T22 territory, now **saturated** (06-19 re-run flat, McNemar
+p=0.50). The path to the gate floor is the *reasoning* levers (§4 #1
+similarity-retrieved few-shot, §4 #3 self-consistency), not retrieval. Spider's
+residual `no_sql` is **9** (capacity-only post-Gemini-heal, §6); its 27
+newly-answered questions mostly produced *wrong* SQL, so its bottleneck is also
+SQL reasoning — column pruning (§4 #2b) still helps it via *distractor* removal
+(T19: 0.15 → 0.25).
 
 > **How these numbers are produced.** `tools/eval/src/runner.ts` drives
 > `router.ts::plan()` against the SQLite fixture and scores EX (BIRD
@@ -81,11 +87,11 @@ same-seed A/B.
 
 | # | Lever | How exactly | How much | Canonical home / status |
 |---|---|---|---|---|
-| T22 | **Aggregate-filter HAVING directive** | One `PLAN_DIRECTIVES` bullet: a threshold on a group's aggregate goes in HAVING after GROUP BY, not WHERE — `WHERE COUNT(*)>5` is a hard error (wasted exec-retry) and an omitted group filter is a silent cardinality mismatch. Covers the **HAVING half** of E5 *Unaligned Aggregation Structure* that T15 (GROUP BY half) left; "keep per-row predicates in WHERE" bounds the regression. ≈55 tok | **prompt-only; real EX delta → next scheduled eval** (T13–T16 directive precedent) | [`SK-LLM-040`](../features/llm-router/decisions/SK-LLM-040-aggregate-filter-having-directive.md) — shipped |
+| T22 | **Aggregate-filter HAVING directive** | One `PLAN_DIRECTIVES` bullet: a threshold on a group's aggregate goes in HAVING after GROUP BY, not WHERE. Covers the **HAVING half** of E5 *Unaligned Aggregation Structure* that T15 (GROUP BY half) left; "keep per-row predicates in WHERE" bounds the regression. ≈55 tok | **prompt-only; saturated — 06-19 BIRD re-run flat** (McNemar p=0.50) | [`SK-LLM-040`](../features/llm-router/decisions/SK-LLM-040-aggregate-filter-having-directive.md) — shipped |
 | T21 | **Join-bridge recall in schema pruning** | T19's FK closure was outbound-only; a junction table linking two goal-matched tables via generic FK names (`a`/`b`) matched no path and got dropped, making the join unplannable. `pruneSchemaForGoal` now also keeps any table that `REFERENCES` ≥ 2 goal-matched tables, seeded from the goal-matched set only ⇒ recall-monotonic + distractor-bounded | **measured (unit):** synthetic `student↔enroll↔course` bridge dropped → kept; one-endpoint referencer stays out. Recall monotone over T19. Real EX → next eval | [`SK-LLM-037`](../features/llm-router/decisions/SK-LLM-037-goal-relevant-schema-pruning.md) rev — shipped |
-| T20 | **Capacity-honest budget stop** | The 2026-06-11 500-q dispatch scored 246 all-`circuit_open` breaker-wall rows as `no_sql` (the all-`rate_limited` predicate missed them) ⇒ discarded. Fix: budget-stop on every-attempt ∈ {`rate_limited`,`circuit_open`}, one bounded `--capacity-wait-ms` retry, SHA-keyed resume | **measurement honesty** — keeps a breaker wall out of the scores; raw EX resumable-complete, not capacity-poisoned | [`SK-QUAL-013`](../features/quality-eval/decisions/SK-QUAL-013-capacity-honest-budget-stop.md) — shipped |
-| T19 | **Goal-relevant schema pruning (planner prompt)** | `buildPlanUser` prunes the embedded DDL via pure `pruneSchemaForGoal`: keep token-matched tables + `REFERENCES` closure; full schema on any doubt (< 2 KB, < 5 tables, zero matches, ≥ 0.9 kept, unparseable, retry). Offline-verified first: 99.8% gold-table recall on BIRD-dev 500, −7.1% schema chars (Spider −26.5%) | **measured (A/B with T18):** same-seed BIRD smoke raw EX **37.3% → 51.3%**, `no_sql` 47 → 1; reproduced at 48.7% next quota-day. Capacity + distractor-removal lever (C3-SQL arXiv:2307.07306, RSL-SQL arXiv:2411.00073) | [`SK-LLM-037`](../features/llm-router/decisions/SK-LLM-037-goal-relevant-schema-pruning.md) — shipped (this PR) |
-| T18 | **Workers-AI planner leg revived (structured response)** | The REST endpoint returns valid-JSON model output **pre-parsed as an object**; the provider's string-only check rejected exactly the successful `plan` calls (`workers-ai:parse` on every chain-exhaustion row) — the free chain had effectively run 5-of-6 since the leg shipped. Accept string *or* object; re-serialize objects into the shared JSON parser | **measured (A/B with T19, above):** the leg answered 105/149 produced questions in the A/B run (0 in every prior run) — the biggest single capacity recovery so far | [`SK-LLM-036`](../features/llm-router/decisions/SK-LLM-036-workers-ai-structured-response.md) — shipped (this PR) |
+| T20 | **Capacity-honest budget stop** | Budget-stop on every-attempt ∈ {`rate_limited`,`circuit_open`}, one bounded `--capacity-wait-ms` retry, SHA-keyed resume — fixes the 2026-06-11 run scoring 246 breaker-wall rows as `no_sql` | **measurement honesty** — keeps a breaker wall out of the scores | [`SK-QUAL-013`](../features/quality-eval/decisions/SK-QUAL-013-capacity-honest-budget-stop.md) — shipped |
+| T19 | **Goal-relevant schema pruning (planner prompt)** | `buildPlanUser` prunes the embedded DDL via pure `pruneSchemaForGoal`: keep token-matched tables + `REFERENCES` closure; full schema on any doubt (< 2 KB, < 5 tables, zero matches, ≥ 0.9 kept, unparseable, retry). Offline-verified first: 99.8% gold-table recall on BIRD-dev 500, −7.1% schema chars (Spider −26.5%) | **measured (A/B with T18):** same-seed BIRD smoke raw EX **37.3% → 51.3%**, `no_sql` 47 → 1; reproduced at 48.7% next quota-day. Capacity + distractor-removal lever (C3-SQL arXiv:2307.07306, RSL-SQL arXiv:2411.00073) | [`SK-LLM-037`](../features/llm-router/decisions/SK-LLM-037-goal-relevant-schema-pruning.md) — shipped |
+| T18 | **Workers-AI planner leg revived (structured response)** | The provider's string-only check rejected exactly the successful `plan` calls (REST returns pre-parsed JSON; `workers-ai:parse` on every chain-exhaustion row) — the free chain ran 5-of-6 since the leg shipped. Accept string *or* object | **measured (A/B with T19):** the leg answered 105/149 produced questions (0 in every prior run) — biggest single capacity recovery | [`SK-LLM-036`](../features/llm-router/decisions/SK-LLM-036-workers-ai-structured-response.md) — shipped |
 | T17 | **Unblock + first-ever measurement of the eval pipeline** | gdown 6.1.0 dropped `--fuzzy` ⇒ every eval run since 2026-05-30 exit-2'd at fixture download, so T1/T9–T16 were never measured. Fix: BIRD → Aliyun OSS mirror, Spider → canonical `uc?id=` URL; `--throttle-ms` pacing ([`SK-QUAL-012`](../features/quality-eval/decisions/SK-QUAL-012-throttle-paced-measurement.md)) | **measured (first ever):** reasoning EX 35.4% → ≈ 52% (BIRD); Spider first-measured (reasoning 0.19 / raw 0.12, capacity-bounded). Verified the §5 capacity risk | #362 — shipped + measured |
 | T16 | **Numeric-text-cast directive** | One `PLAN_DIRECTIVES` bullet: CAST a `TEXT`-declared column used numerically (`'100' < '9'` lexicographic trap). ≈55 tok | targets *Implicit Type Conversion* (C1, [arXiv:2501.09310](https://arxiv.org/pdf/2501.09310)) | [`SK-LLM-035`](../features/llm-router/decisions/SK-LLM-035-numeric-text-cast-directive.md) — shipped (#356); measured combined in T17 |
 | T15 | **Group-by-grain directive** | One bullet: GROUP BY on "per/each/by" goals, omit for one total; non-aggregated SELECT columns must appear in GROUP BY. ≈45 tok | targets *Unaligned Aggregation Structure* (E5, arXiv:2501.09310) | [`SK-LLM-034`](../features/llm-router/decisions/SK-LLM-034-group-by-grain-directive.md) — shipped (#354); measured combined in T17 |
@@ -111,30 +117,35 @@ agent-runnable; promote into an `SK-*`/`GLOBAL-*` before implementing
    over an exemplar pool — is the larger remaining gain (est. +3–5 pp beyond
    static; arXiv:2308.15363). Needs an exemplar pool + similarity index on
    hot `plan`, so it is gated on per-lever ablation of T9 (`CLAUDE.md` §P5).
-2. **Value retrieval + column-level pruning (the M-Schema half T19 left).**
-   T19 prunes whole tables; the column half targets the mismatch mass (est.
-   +3–6 pp) — the `SK-QUAL-014` breakdown (§2) shows much of it is
-   value/literal/column grounding. The `SK-QUAL-015` harness (`bun
-   column-coverage`) sizes the two halves on BIRD-dev (1825 qualified gold
-   column refs): a goal-token column pruner keeps **59.8%** by name, **+27.4%**
-   are keys an FK/PK rule re-admits (→ ~87%), residual **12.8%** are
-   value/measure cols (`segment`←"SME", `currency`←"CZK", `date`) named by
-   *value* — irreducible by any pruner. **Re-ranks the two halves:**
-   - **2a. Value retrieval (do first).** Additive (feed a few sample
-     cell-values per low-cardinality column into the prompt) ⇒ **zero recall
-     risk**, and the only lever recovering the 12.8% floor. Needs sample
-     values in `PlanRequest` (prod schema-text storage + eval introspection
-     together, to hold the §5 mirror); no recall gate.
-   - **2b. Column pruning (do second, recall-gated).** Token-only pruning
-     drops 40% of needed columns ⇒ unsafe without the key-protection rule, and
-     even then ~87%-capped; its win is mainly Spider distractor removal (T19:
-     0.15→0.25). Gate: run `SK-QUAL-015` against introspected DDL on the eval
-     machine for per-column recall ≥ a T19-grade floor before wiring into
-     `buildPlanUser`. Targets mismatches, not the 9 Spider `no_sql` (§2).
-3. **Self-consistency majority vote (N=3, free tokens).** Sample 3 plans at
-   temperature > 0 on a separate code path, execute, majority-vote the result
-   set. Worth a measured ablation (`SK-QUAL-004`) — on the free chain the
-   marginal cost is quota, not money, so it trades against §5 capacity.
+2. **Value retrieval + column-level pruning (the M-Schema half T19 left) —
+   DEMOTED 2026-06-19 by the `SK-QUAL-014` literal axis.** The column-name
+   ceiling (`SK-QUAL-015`: 12.8% of needed columns named by *value*) implied
+   value-retrieval was the additive, do-first top lever. The literal-diff
+   measurement on the *real* 06-19 baseline (§2) overturns that: `literal_diff`
+   is the largest mismatch tag (90/238) but **`literal_only` = 0** — no
+   mismatch is recoverable by fixing literals alone, so a sample-value prompt
+   flips ~0 rows standalone. Value-retrieval is therefore re-ranked **below**
+   the reasoning levers (#3/#1); revisit only *coupled* with a structural lever
+   (and the prod side carries an unresolved privacy decision — feeding user
+   cell-values to the free third-party chain — so do not build it before that
+   is settled; see `quality-eval/FEATURE.md` Open questions).
+   - **2b. Column pruning (recall-gated).** Token-only pruning drops 40% of
+     needed columns ⇒ unsafe without the key-protection rule, and even then
+     ~87%-capped; its win is mainly Spider distractor removal (T19:
+     0.15→0.25). Gate: run `SK-QUAL-015` against introspected DDL for
+     per-column recall ≥ a T19-grade floor before wiring into `buildPlanUser`.
+   - **2c. Date-literal normalisation directive (new, surfaced by the literal
+     axis).** ~16 of the 90 literal diffs are date-encoding errors
+     (`'2019-8-20'` vs `'2019-08-20'`, `LIKE '2019-10-08%'` vs `=`). A single
+     `PLAN_DIRECTIVES` bullet (the T13–T16 precedent) is the cheap probe — but
+     these co-occur with structural diffs too, so size the standalone win
+     before shipping.
+3. **Self-consistency majority vote (N=3, free tokens) — now the top
+   reasoning lever.** Sample 3 plans at temperature > 0 on a separate code
+   path, execute, majority-vote the result set. Directly attacks the dominant
+   *structural-reasoning* mass (grain/shape) the §2 literal axis isolated.
+   Worth a measured ablation (`SK-QUAL-004`) — on the free chain the marginal
+   cost is quota, not money, so it trades against §5 capacity.
 4. **A second card-free tail backstop beyond Mistral (T11).** `NVIDIA_API_KEY`
    is a finite ~5,000-credit pool — a `GLOBAL-013` failure; re-rank only if
    post-T18 runs still show chain-exhaustion `no_sql`.
@@ -186,7 +197,9 @@ view of the same levers.
 > windows (`SK-QUAL-013`), seeding `baseline-2026-06-15.json` +
 > `eval-baseline.ts`. Agents dispatch via the `GH_TOKEN_WORKFLOW` PAT — no
 > human click. The flat BIRD re-run **confirms the directive levers have
-> saturated**; remaining loss is value/grounding. **Next:** §4 **#2a
-> value-retrieval** (do first per `SK-QUAL-015`: additive, recovers the 12.8%
-> irreducible floor; column pruning #2b is recall-gated). Per-lever ablations
-> (T9, T19) still pending to attribute prior gains.
+> saturated**; the `SK-QUAL-014` literal axis (2026-06-19) then **falsifies
+> value-retrieval as the top lever** — `literal_only` = 0, so the remaining
+> loss is structural *reasoning*, not grounding. **Next:** §4 **#3
+> self-consistency majority vote** (top reasoning lever) and **#1
+> similarity-retrieved few-shot**; value-retrieval (#2a) is demoted + privacy-
+> gated. Per-lever ablations (T9, T19) still pending to attribute prior gains.
