@@ -19,7 +19,7 @@ memory — delivered as a sequence of small, reversible, daily-loop-sized
 slices rather than a relaunch. **Two tracks ship in parallel:** messaging
 (WS-01..WS-13 — how users discover the wedge) and **engine** (E-01..E-07 —
 the memory-shaped primitives that make the wedge claims durable).
-**Status:** planned (Phase 2 distribution) — backlog ready, no slice shipped yet.
+**Status:** in progress (Phase 2 distribution) — backlog ready; WS-01 shipped (2026-06-19, run 19 — Zep/Letta/LangMem anchored in `docs/competitors.md §4`), 1 of 20 slices.
 **Owners (code):** `apps/web/src/pages/agents/**`, `apps/web/src/data/{competitors,solve,showcase-examples}.ts`, `apps/api/src/db-create/presets/**` (engine track), `packages/mcp/src/server.ts`, `apps/api/src/ask/**` (compile-layer scoping), `apps/docs/src/content/docs/mcp.mdx`, `README.md`.
 **Cross-refs:** `docs/research/deepseek-moat-framing.md` (the thesis) · `docs/competitors.md §4` (agent-memory landscape) · `docs/research/personas.md §P2` · GLOBAL-036 (canonical text in `docs/decisions/GLOBAL-036-lead-positioning-analytical-agent-memory.md`; index in `docs/decisions.md`).
 

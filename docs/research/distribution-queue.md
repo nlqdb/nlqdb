@@ -5,6 +5,54 @@ One publishable artifact drafted per day by the daily agent
 publishes at the weekly session. Newest first. Delete an entry once published
 (the live URL goes into `docs/scorecard.md`).
 
+## 2026-06-19 (run 19) — agent-memory landscape note (seed for the WS-09 blog post)
+
+**Title:** Your agent's memory can recall a fact. Can it answer a question *about* its facts?
+
+**Body:**
+
+> The agent-memory category in 2026 is crowded and converging on one shape.
+> **Mem0** stores a fact graph with time-decay. **Zep** (on the Graphiti engine,
+> 27k+ ⭐) stores facts as temporal knowledge-graph nodes with validity windows.
+> **Letta** (ex-MemGPT, Apache-2.0) keeps self-editing memory blocks in the
+> context window plus a searchable archive. **LangMem** (LangChain) extracts
+> semantic / episodic / procedural memories into any store. They differ in
+> sophistication — flat vectors → knowledge graph → OS-style blocks — but they
+> all answer the same question: *given a query, return the most relevant facts.*
+>
+> That leaves a whole class of question none of them can answer. Once your agent
+> has remembered 500 things, ask it:
+>
+> > "Average deal size per stage, for enterprise customers, for deals that closed
+> > this quarter."
+>
+> That's not retrieval. It's `GROUP BY ... HAVING ... WHERE`. A memory layer
+> built on a vector store or a knowledge graph has no query planner — it can hand
+> the LLM a pile of relevant facts and hope the model does the arithmetic in its
+> head (a hallucination generator, not a database). Adding real SQL semantics to
+> a vector store isn't a feature; it's a rewrite of the storage layer.
+>
+> nlqdb takes the other branch: the memory *is* a real database. The agent
+> designs the schema and queries it in plain English, and the queries compile to
+> validated SQL — `GROUP BY`, `JOIN`, `HAVING`, subqueries — not fuzzy recall.
+> Recall *and* analytics over the same store.
+>
+> The honest table (capabilities, not logos): every product above does "remember
+> this" and "recall facts about X." nlqdb's column is the one that adds "top 5 by
+> value," "average per group," and "the agent created its own schema." Pick the
+> memory layer for the question you actually need answered.
+>
+> (A `/daily` note from nlqdb — a database you talk to. Landscape facts checked
+> 2026-06-19; full threat analysis in our open competitor doc.)
+
+**Why this is publishable:** the agent-memory cluster (Mem0/Zep/Letta/LangMem) is
+a high-search-volume, decision-moment topic for P2 builders, and the
+"retrieval vs. analytics" reframe is a category distinction, not a feature
+brawl — it spreads in the same r/AI_Agents / LangChain-Discord crowd that hates
+marketing and loves a sharp architectural point. Seeds the WS-09 blog post and
+the WS-06 capability matrix; one nlqdb mention, in context. Sourced from
+`docs/competitors.md §4` (re-anchored this run) + `docs/research/deepseek-moat-framing.md`.
+
 ## 2026-06-19 (run 18) — dev.to / lobste.rs post
 
 **Title:** We were one run away from building the wrong feature. A 40-line classifier on our own benchmark output talked us out of it.

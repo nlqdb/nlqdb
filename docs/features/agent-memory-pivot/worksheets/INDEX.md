@@ -54,7 +54,7 @@ swap.
 
 | WS | Slice | Risk | Runs | Prereqs | Gate |
 |----|-------|------|------|---------|------|
-| [01](WS-01-competitors-md-anchor.md) | Anchor Zep / Letta / LangMem in `docs/competitors.md` | low | 1 | — | — |
+| [01](WS-01-competitors-md-anchor.md) ✅ | Anchor Zep / Letta / LangMem in `docs/competitors.md` | low | 1 | — | — |
 | [02](WS-02-memory-vs-pages.md) | Memory-competitor `/vs` pages (Zep, Letta, LangMem — one per run) | low | ~3 | 01 | — |
 | [03](WS-03-solve-pages.md) | Sharpen the agent-memory solve page + add an analytical-queries sibling | low | ~2 | — | — |
 | [04](WS-04-mcp-framing.md) | MCP tool + package + docs framing → "analytical memory" | low | 1 | — | — |
@@ -80,7 +80,7 @@ irreversible brand bet — is last and founder-gated.
 Tick on merge. Keep this list as the durable pivot status (the scorecard's
 `Pivot:` line is regenerated; this is not).
 
-- [ ] WS-01 — competitors.md anchor
+- [x] WS-01 — competitors.md anchor (2026-06-19, run 19 — branch `claude/sharp-wozniak-y9ee5z`)
 - [ ] WS-02 — memory `/vs` pages (Zep / Letta / LangMem)
 - [ ] WS-03 — solve pages (sharpen + sibling)
 - [ ] WS-04 — MCP framing

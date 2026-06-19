@@ -50,9 +50,9 @@ few-shot), not retrieval. Value-retrieval is demoted + privacy-gated.
 | 10 | nlqdb-api requests / errors | 2,268 / 0 (0.00%) | mcp 284 req, events-worker 91 req, both 0 err |
 | 11 | nlqdb-api latency p50 / p95 | 666 ms / 7.05 s (06-13) | p95 dominated by LLM-bound asks; `/ask`-only split needs Grafana `metrics:read` (agent has write-only key) |
 | 12 | $ spend | ~$0 | free tiers across CF / Neon / LLM chain |
-| | **Pivot — agent-memory wedge** (GLOBAL-036) | 0 / 20 | tick ⬜→✅ with PR link on merge; mirrors `docs/features/agent-memory-pivot/worksheets/INDEX.md` |
-| | *Messaging track — WS-\** | 0 / 13 | pick when worst number is funnel / distribution |
-| WS-01 | competitors.md anchor (Zep / Letta / LangMem) | ⬜ | low · 1 run · — |
+| | **Pivot — agent-memory wedge** (GLOBAL-036) | 1 / 20 | tick ⬜→✅ with PR link on merge; mirrors `docs/features/agent-memory-pivot/worksheets/INDEX.md` |
+| | *Messaging track — WS-\** | 1 / 13 | pick when worst number is funnel / distribution |
+| WS-01 | competitors.md anchor (Zep / Letta / LangMem) | ✅ | run 19 — §4 + threat matrix; unblocks WS-02 |
 | WS-02 | memory `/vs` pages (one per run) | ⬜ | low · ~3 runs · WS-01 |
 | WS-03 | solve pages — sharpen + sibling | ⬜ | low · ~2 runs · — |
 | WS-04 | MCP tool + package + docs framing | ⬜ | low · 1 run · — |
@@ -76,6 +76,29 @@ few-shot), not retrieval. Value-retrieval is demoted + privacy-gated.
 
 ## Deltas (recent runs)
 
+- 2026-06-19 (run 19) — **WS-01: anchored the agent-memory cluster (Zep / Letta /
+  LangMem) in `docs/competitors.md §4`** — the pivot's first shipped slice (Pivot
+  0/20 → **1/20**). The engine NL→SQL lane (the worst number's root cause) is
+  blocked today: BIRD ran 06-19, Spider 06-17 (both < 7 d), and §5 forbids a
+  back-to-back eval dispatch, so no engine delta is measurable this run and the
+  two next engine levers (§4 #1 retrieval few-shot, #3 self-consistency) each need
+  an eval. Per the pivot INDEX pickup rule (lowest-numbered ⬜ worksheet with all
+  prereqs ✅), the in-bounds lever is the funnel/distribution lane — WS-01, the
+  documented strategic answer to the engine-gated funnel zero. Sharpened Zep
+  (Graphiti temporal knowledge graph, 27k+ ⭐, ~$125/mo, benchmark-led) with a
+  real `Gap nlqdb exploits`; completed Letta (Apache-2.0, OS-style core/recall/
+  archival tiers); **added the missing LangMem entry** (LangChain SDK — semantic/
+  episodic/procedural, distribution moat); added Letta + LangMem threat-matrix
+  rows (Zep/Mem0 already present). Every entry keyed to **P2** with the
+  analytical-SQL wedge (`GROUP BY`/`JOIN`/`HAVING` over memory — retrieval ≠
+  analytics) as the win-zone; landscape facts web-verified 06-19 (§4 last-verified
+  bumped). **This unblocks WS-02** (memory `/vs` pages, which move the funnel
+  `Pivot:` line) — WS-01 itself moves no funnel number directly (it is the
+  measurement-enabling prerequisite, per the worksheet). KPI: **onboarding**
+  (GLOBAL-025) — a sharper single-story wedge for the P2 on-ramp; **none degraded**
+  (additive docs only — no code, no engine/chain/scorer change; BIRD 06-19 +
+  Spider 06-17 untouched; performance N/A). Artifact: an agent-memory landscape
+  note appended to the distribution queue (seeds the WS-09 blog post).
 - 2026-06-19 (run 18) — **literal-grounding axis on the `SK-QUAL-014` classifier
   — falsifies value-retrieval (§4 #2a) as the top lever, deterministically and
   with zero quota.** The last four runs ranked value-retrieval #1 off the
