@@ -13,7 +13,7 @@ Progress tracker for the pricing page and Stripe integration.
 
 ## Goal
 
-Enable users to upgrade from Free → Hobby ($10/mo) or Pro ($25/mo) via Stripe Checkout. Test mode is fully wired today; live-mode go-live is the remaining step (`docs/blocked-by-human.md`).
+Enable users to upgrade from Free → Hobby ($10/mo) or Pro ($25/mo) via Stripe Checkout. Live-mode is configured (keys, prices, webhook, Tax, portal); the prod-Worker deploy is the remaining go-live step (`docs/blocked-by-human.md`).
 
 ---
 
@@ -36,11 +36,11 @@ Enable users to upgrade from Free → Hobby ($10/mo) or Pro ($25/mo) via Stripe 
 
 | Variable | Purpose | Status |
 |---|---|---|
-| `STRIPE_SECRET_KEY` | Outbound API calls (Checkout creation) | Test mode key in env + GHA + Cloudflare |
-| `STRIPE_PUBLISHABLE_KEY` | Frontend Stripe.js (future) | Test mode key in env + GHA + Cloudflare |
-| `STRIPE_WEBHOOK_SECRET` | Webhook HMAC verification | Test mode webhook secret in env + GHA + Cloudflare |
-| `STRIPE_PRICE_HOBBY` | Stripe price ID for Hobby $10/mo | Must be set before checkout goes live |
-| `STRIPE_PRICE_PRO` | Stripe price ID for Pro $25/mo | Must be set before checkout goes live |
+| `STRIPE_SECRET_KEY` | Outbound API calls (Checkout creation) | Live key — env + GHA; Worker on next deploy |
+| `STRIPE_PUBLISHABLE_KEY` | Frontend Stripe.js (future) | Live key — env + GHA |
+| `STRIPE_WEBHOOK_SECRET` | Webhook HMAC verification | Live secret — env + GHA; Worker on next deploy |
+| `STRIPE_PRICE_HOBBY` | Stripe price ID for Hobby $10/mo | Live price — env + GHA; Worker on next deploy |
+| `STRIPE_PRICE_PRO` | Stripe price ID for Pro $25/mo | Live price — env + GHA; Worker on next deploy |
 
 API version pinned to `2026-04-22.dahlia` via the `stripe` npm SDK (see `SK-STRIPE-007`).
 
@@ -235,10 +235,10 @@ API version pinned to `2026-04-22.dahlia` via the `stripe` npm SDK (see `SK-STRI
 
 ## What is next
 
-1. **Create Stripe products and price IDs** — done in test mode: `STRIPE_PRICE_HOBBY` / `STRIPE_PRICE_PRO` are set in `.envrc` + mirrored to the Worker, so checkout no longer 503s. Still **enable Stripe Tax** in the Dashboard (`automatic_tax: { enabled: true }` is sent on every session; `sessions.create` 500s if Stripe Tax is not activated on the account).
-2. **Activate the Stripe Customer Portal** in the Dashboard (test mode → Billing → Customer portal): save a portal configuration (switchable plans, cancel behaviour, invoice history). `POST /v1/billing/portal` errors until one exists.
-3. **Set `RESEND_API_KEY` on the events-worker** (`cd apps/events-worker && bun run secrets:remote`, or the deploy workflow self-heals it) so the SK-STRIPE-013 customer dunning email actually sends in test mode. Without it the send no-ops.
-4. **Live mode flip**: create live products + price IDs, then replace test-mode keys with live-mode keys via `.envrc` + mirror scripts + update the Stripe Dashboard webhook endpoint.
-5. **Premium models add-on** (`POST /v1/billing/checkout/premium { db_id }`): gated on §6 + Phase 2 `quality-eval` baseline.
-6. **Lago wiring**: metered overage for Pro queries + premium LLM tokens (Phase 3).
-7. **R2 lifecycle policy**: configure "delete > 90 days" rule on `nlqdb-assets` (SK-STRIPE-006 open question).
+Live-mode Dashboard setup is **done**: live products + price IDs, the live webhook endpoint (5 events), Stripe Tax, and a saved Customer Portal config. Remaining:
+
+1. **Deploy to push live secrets to the prod Worker** — live keys + price IDs are in `.envrc` + GHA but not yet on the deployed Worker (a local `secrets:remote` hit Cloudflare 10214; a `deploy-api.yml` run applies them). Until then `/v1/billing/checkout` 503s in prod.
+2. **Set `RESEND_API_KEY` on the events-worker** (`cd apps/events-worker && bun run secrets:remote`, or the deploy workflow self-heals it) so the SK-STRIPE-013 customer dunning email sends. Without it the send no-ops.
+3. **Premium models add-on** (`POST /v1/billing/checkout/premium { db_id }`): gated on §6 + Phase 2 `quality-eval` baseline.
+4. **Lago wiring**: metered overage for Pro queries + premium LLM tokens (Phase 3).
+5. **R2 lifecycle policy**: configure "delete > 90 days" rule on `nlqdb-assets` (SK-STRIPE-006 open question).

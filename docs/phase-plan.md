@@ -258,8 +258,8 @@ before the signal, no spending or charging until it trips.
 
 **Reconciliation with the persona-validation plan.** The "2 convert to paid
 Hobby" criterion in [`personas.md §10.4`](./research/personas.md) is measurable
-once Stripe live-mode go-live lands ([`blocked-by-human.md`](./blocked-by-human.md));
-checkout works in test mode today. Phase 1 close requires all personas.md
+once Stripe live-mode go-live lands ([`blocked-by-human.md`](./blocked-by-human.md)).
+Phase 1 close requires all personas.md
 qualitative criteria, plus the paid-conversion check once live (or a deliberate
 decision to ship without paid validation if conversions haven't landed within
 the quarter).
