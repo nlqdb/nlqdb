@@ -40,7 +40,7 @@ in [`quality-score-source-of-truth.md`](../../../progress/quality-score-source-o
     multisets directly (`literal_diff`, `literal_case_only`) and exports
     `isLiteralOnly(pred, gold)` — true when masking string literals makes
     predicted ≡ gold, i.e. the structure is correct and *only* the constants
-    differ, the case value-retrieval could flip to a match unaided. Run on the
+    differ, the one case value-retrieval could flip to a match unaided. Run on the
     2026-06-19 BIRD baseline (238 mismatches): `literal_diff` is the **largest**
     single tag (**90**), yet `literal_case_only` is **6** and `literal_only` is
     **0** — every literal error co-occurs with a structural one, so the §4 #2a

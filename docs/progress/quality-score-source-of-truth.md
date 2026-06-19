@@ -54,18 +54,16 @@ chain-exhaustion `no_sql`; reasoning EX isolates SQL quality from capacity. T18
 `col_count_diff` 37 · `fewer_tables` 33 · `extra_DISTINCT` 31 ·
 `other_predicate_or_value` 30. **The literal axis re-ranks §4 #2a
 (value-retrieval) down — measured, not inferred:** `literal_diff` is the
-*largest* tag (90, 38%), but `literal_case_only` is **6** and **`literal_only`
-is 0** — i.e. *no* mismatch is recoverable by fixing string literals alone;
-every literal error co-occurs with a structural one (reading the 90: ~16
-date-encoding `'2019-8-20'`/LIKE shape errors, ~68 categorical value diffs
-*alongside* a wrong column/predicate/grain). So value-sampling alone flips ~0
-rows — it falsifies the "additive, do-first" read the `SK-QUAL-015` column-name
-ceiling (12.8%) implied. **Schema-link recall is *not* the bottleneck either**
-(`fewer_tables` 33/238, pre-T21). The dominant, addressable mass is structural
-**reasoning** (aggregation/DISTINCT grain, subquery shape) — and the grain tags
-are T10–T16/T22 territory, now **saturated** (06-19 re-run flat, McNemar
-p=0.50). The path to the gate floor is the *reasoning* levers (§4 #1
-similarity-retrieved few-shot, §4 #3 self-consistency), not retrieval. Spider's
+*largest* tag (90, 38%), yet `literal_case_only` is **6** and **`literal_only`
+is 0** — *no* mismatch is recoverable by fixing string literals alone (each
+co-occurs with a structural error; of the 90, ~16 date-encoding + ~68
+categorical value diffs riding a wrong column/predicate/grain). That falsifies
+the "additive, do-first" read the `SK-QUAL-015` column-name ceiling (12.8%)
+implied (§4 #2). **Schema-link recall is *not* the bottleneck either**
+(`fewer_tables` 33/238, pre-T21); the dominant mass is structural **reasoning**
+(grain, subquery shape), now **saturated** on directives (06-19 re-run flat,
+McNemar p=0.50) ⇒ the path to the floor is the *reasoning* levers (§4 #1
+similarity-retrieved few-shot, §4 #3 self-consistency). Spider's
 residual `no_sql` is **9** (capacity-only post-Gemini-heal, §6); its 27
 newly-answered questions mostly produced *wrong* SQL, so its bottleneck is also
 SQL reasoning — column pruning (§4 #2b) still helps it via *distractor* removal
@@ -120,15 +118,13 @@ agent-runnable; promote into an `SK-*`/`GLOBAL-*` before implementing
 2. **Value retrieval + column-level pruning (the M-Schema half T19 left) —
    DEMOTED 2026-06-19 by the `SK-QUAL-014` literal axis.** The column-name
    ceiling (`SK-QUAL-015`: 12.8% of needed columns named by *value*) implied
-   value-retrieval was the additive, do-first top lever. The literal-diff
-   measurement on the *real* 06-19 baseline (§2) overturns that: `literal_diff`
-   is the largest mismatch tag (90/238) but **`literal_only` = 0** — no
-   mismatch is recoverable by fixing literals alone, so a sample-value prompt
-   flips ~0 rows standalone. Value-retrieval is therefore re-ranked **below**
-   the reasoning levers (#3/#1); revisit only *coupled* with a structural lever
-   (and the prod side carries an unresolved privacy decision — feeding user
-   cell-values to the free third-party chain — so do not build it before that
-   is settled; see `quality-eval/FEATURE.md` Open questions).
+   value-retrieval was the additive, do-first top lever; the literal-diff
+   measurement on the *real* 06-19 baseline (§2: `literal_only` = 0) overturns
+   that — a sample-value prompt flips ~0 rows standalone. So value-retrieval is
+   re-ranked **below** the reasoning levers (#3/#1); revisit only *coupled* with
+   a structural lever. The prod side is additionally blocked on an unresolved
+   privacy decision — feeding user cell-values to the free third-party chain —
+   see `quality-eval/FEATURE.md` Open questions.
    - **2b. Column pruning (recall-gated).** Token-only pruning drops 40% of
      needed columns ⇒ unsafe without the key-protection rule, and even then
      ~87%-capped; its win is mainly Spider distractor removal (T19:
@@ -197,9 +193,7 @@ view of the same levers.
 > windows (`SK-QUAL-013`), seeding `baseline-2026-06-15.json` +
 > `eval-baseline.ts`. Agents dispatch via the `GH_TOKEN_WORKFLOW` PAT — no
 > human click. The flat BIRD re-run **confirms the directive levers have
-> saturated**; the `SK-QUAL-014` literal axis (2026-06-19) then **falsifies
-> value-retrieval as the top lever** — `literal_only` = 0, so the remaining
-> loss is structural *reasoning*, not grounding. **Next:** §4 **#3
-> self-consistency majority vote** (top reasoning lever) and **#1
-> similarity-retrieved few-shot**; value-retrieval (#2a) is demoted + privacy-
-> gated. Per-lever ablations (T9, T19) still pending to attribute prior gains.
+> saturated**, and the `SK-QUAL-014` literal axis (`literal_only` = 0, §2)
+> **falsifies value-retrieval as the top lever**. **Next:** §4 **#3
+> self-consistency** + **#1 similarity-retrieved few-shot**; value-retrieval
+> (#2a) demoted + privacy-gated. Per-lever ablations (T9, T19) still pending.
