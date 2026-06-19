@@ -20,6 +20,7 @@ export const SLUG_META: Readonly<Record<string, { title: string; goal: string }>
   supabase: { title: "Supabase", goal: "top 5 customers by revenue this month" },
   vanna: { title: "Vanna AI", goal: "monthly revenue trend for the last 12 months" },
   mem0: { title: "Mem0", goal: "users who logged in this week and viewed pricing" },
+  zep: { title: "Zep", goal: "top 10 topics the agent logged this month, ranked by mention count" },
 };
 
 export const VS_SLUGS = Object.keys(SLUG_META) as readonly string[];

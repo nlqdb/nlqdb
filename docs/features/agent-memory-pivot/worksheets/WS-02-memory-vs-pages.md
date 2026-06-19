@@ -1,6 +1,6 @@
 # WS-02 — Memory-competitor `/vs` pages (Zep, Letta, LangMem)
 
-**Status:** ⬜ not started
+**Status:** 🟡 in progress — **Zep ✅** (run 20); Letta + LangMem pending
 **Sequence:** 2 of 13 · **Risk:** low · **Runs:** ~3 (one competitor per run) · **Prereqs:** WS-01 ✅ · **Gate:** none
 
 ## Goal
@@ -35,12 +35,15 @@ the `Pivot:` progress line: `+1 memory /vs page`.
    `tools/stranger-test/` slug list.
 4. `bun run --filter @nlqdb/web check` (TS flags missing fields) + the web test.
 
-## Done when
+## Done when (per competitor)
 
-- [ ] `/vs/<slug>` builds; sitemap + `llms.txt` pick it up automatically.
-- [ ] Bullets ≤ 16 words; no phantom MCP verbs; FAQ names the competitor.
-- [ ] Slug added to `verify-flows.sh` + `tools/stranger-test/`.
-- [ ] INDEX tracker + this status ticked with the PR link.
+- Zep (run 20): ✅ `/vs/zep` builds (astro-check clean); ✅ bullets ≤ 16 words,
+  no phantom MCP verbs, FAQ names Zep; ✅ slug in `verify-flows.sh` +
+  `tools/stranger-test/flow-003.ts`; ✅ INDEX ticked.
+- Letta: ⬜
+- LangMem: ⬜
+
+Closes when all three ship.
 
 ## Artifact
 

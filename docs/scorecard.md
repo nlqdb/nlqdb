@@ -50,10 +50,10 @@ few-shot), not retrieval. Value-retrieval is demoted + privacy-gated.
 | 10 | nlqdb-api requests / errors | 2,268 / 0 (0.00%) | mcp 284 req, events-worker 91 req, both 0 err |
 | 11 | nlqdb-api latency p50 / p95 | 666 ms / 7.05 s (06-13) | p95 dominated by LLM-bound asks; `/ask`-only split needs Grafana `metrics:read` (agent has write-only key) |
 | 12 | $ spend | ~$0 | free tiers across CF / Neon / LLM chain |
-| | **Pivot — agent-memory wedge** (GLOBAL-036) | 1 / 20 | tick ⬜→✅ with PR link on merge; mirrors `docs/features/agent-memory-pivot/worksheets/INDEX.md` |
+| | **Pivot — agent-memory wedge** (GLOBAL-036) | 1 / 20 + 1 memory /vs page | tick ⬜→✅ with PR link on merge; mirrors `docs/features/agent-memory-pivot/worksheets/INDEX.md` |
 | | *Messaging track — WS-\** | 1 / 13 | pick when worst number is funnel / distribution |
 | WS-01 | competitors.md anchor (Zep / Letta / LangMem) | ✅ | run 19 — §4 + threat matrix; unblocks WS-02 |
-| WS-02 | memory `/vs` pages (one per run) | ⬜ | low · ~3 runs · WS-01 |
+| WS-02 | memory `/vs` pages (one per run) | 🟡 1/3 | run 20 — **Zep ✅** (`/vs/zep`); Letta + LangMem pending |
 | WS-03 | solve pages — sharpen + sibling | ⬜ | low · ~2 runs · — |
 | WS-04 | MCP tool + package + docs framing | ⬜ | low · 1 run · — |
 | WS-05 | carousel analytics-over-memory slides | ⬜ | low · 1 run · — |
@@ -76,6 +76,28 @@ few-shot), not retrieval. Value-retrieval is demoted + privacy-gated.
 
 ## Deltas (recent runs)
 
+- 2026-06-20 (run 20) — **WS-02 slice 1/3: shipped `/vs/zep`** — the first
+  agent-memory `/vs` page (Pivot `Memory /vs pages` 0 → **1/3**). Engine lane
+  blocked (BIRD 06-19 + Spider 06-17 both < 7 d; §5 forbids a back-to-back
+  eval dispatch), so the in-bounds lever is funnel/distribution; per the pivot
+  INDEX pickup rule WS-02 is the lowest-numbered ⬜ with its prereq (WS-01 ✅)
+  met. Added one `Competitor` entry (`apps/web/src/data/competitors.ts`, persona
+  P2) — slug `zep`, the wedge keyed on **retrieval vs analytics**: Zep's Graphiti
+  temporal knowledge graph recalls facts but has no query planner, so an agent
+  can't `GROUP BY`/`JOIN`/`HAVING` over its own memory; nlqdb is the real DB it
+  aggregates over. Web-verified 06-19 that Zep **does** ship an experimental
+  Graphiti MCP server (graph add/search) → the row is honest (`them: partial`,
+  not "no MCP"); differentiator is provisioning + SQL, named with real tool
+  names (`nlqdb_query`/`nlqdb_list_databases`/`nlqdb_describe`, no phantom
+  `create_database`). Sitemap + `llms.txt` pick up the slug automatically; slug
+  wired into `verify-flows.sh` + `tools/stranger-test/flow-003.ts`. Gates: astro
+  -check 0/0/0, web 122 tests, stranger-test typecheck, lint all green. KPI:
+  **onboarding** (GLOBAL-025) — a new AEO/decision-moment on-ramp for the P2
+  agent-builder keyword "Zep alternative"; **none degraded** (additive content
+  on the existing template — no code path, engine, chain, or scorer touched;
+  BIRD 06-19 + Spider 06-17 untouched; performance N/A). Artifact: an r/AI_Agents
+  / Show-HN nlqdb-vs-Zep comparison draft appended to the distribution queue.
+  Letta + LangMem are the next two WS-02 runs.
 - 2026-06-19 (run 19) — **WS-01: anchored the agent-memory cluster (Zep / Letta /
   LangMem) in `docs/competitors.md §4`** — the pivot's first shipped slice (Pivot
   0/20 → **1/20**). The engine NL→SQL lane (the worst number's root cause) is
