@@ -12,7 +12,7 @@ when-to-load:
 # Feature: Quality Eval
 
 **One-liner:** NL-to-SQL accuracy benchmarking — three-dataset canon (BIRD-dev + Spider 2.0-lite SQLite subset + internal `db.create` eval per [`SK-QUAL-003`](#sk-qual-003)) against the LLM router's free / BYOLLM / hosted-premium lanes; the **free-vs-agentic-frontier delta** (`SK-QUAL-004`) is the headline KPI for [`GLOBAL-025`](../../decisions/GLOBAL-025-north-star.md)'s engine north-star.
-**Status:** **Phase 2 — slices 1 + 2 + 3a + 3b + 3c shipped.** Slices 1 + 2 (BIRD Mini-Dev runner + EX scorer + free / single-model-frontier lanes; baseline diff against `tools/eval/baseline-2026-06-15.json`; McNemar per `SK-QUAL-006`; `feature.eval.{weekly,regression}` via `POST /v1/events/eval` → Queues → LogSnag `#north-star`; manual `workflow_dispatch` run) ran end-to-end on `main`. Slice 3a (`SK-QUAL-007`) Spider 2.0-lite loader; 3b (`SK-QUAL-008`) multi-CSV comparator; 3c (`SK-QUAL-009`) the `withExecRetry` scaffold + `agentic-frontier` lane + the `free_vs_agentic_frontier_delta` KPI — mechanics in each SK block below. PR CI typechecks + unit-tests with a mocked router; real provider keys never fire on a PR. The runner is **resumable** (`SK-QUAL-011`/`SK-QUAL-013`) and runs **manually on demand** (`SK-QUAL-002`). The canonical 6-provider runs seed `baseline-2026-06-15.json` + `apps/api/src/gate/eval-baseline.ts` (current EX in Open questions below). **Remaining for the Phase 2 exit gate:** internal `db.create` accepted-answer eval (depends on a privacy-stripped R2 export). Promotion of [`docs/future/semantic-layer.md`](../../future/semantic-layer.md) still depends on this harness.
+**Status:** **Phase 2 — slices 1 + 2 + 3a + 3b + 3c shipped.** BIRD Mini-Dev + Spider 2.0-lite runners + EX scorers; free / single-model-frontier / `agentic-frontier` lanes; baseline diff vs `tools/eval/baseline-2026-06-15.json` + McNemar (`SK-QUAL-006`); `feature.eval.{weekly,regression}` via `POST /v1/events/eval` → Queues → LogSnag `#north-star`. Slice mechanics in each SK block below. PR CI typechecks + unit-tests with a mocked router; real keys never fire on a PR. The runner is **resumable** (`SK-QUAL-011`/`SK-QUAL-013`) and runs **manually on demand** (`SK-QUAL-002`); canonical 6-provider runs seed `baseline-2026-06-15.json` + `apps/api/src/gate/eval-baseline.ts` (current EX in Open questions). **Remaining for the Phase 2 exit gate:** internal `db.create` accepted-answer eval (depends on a privacy-stripped R2 export). Promotion of [`docs/future/semantic-layer.md`](../../future/semantic-layer.md) still depends on this harness.
 
 **Contribution to north-star:** Engine quality, NL→SQL layer — this feature IS the measurement instrument. The three-dataset canon (`SK-QUAL-003`) feeds the BIRD-dev / Spider 2.0-lite KPIs and the free-vs-frontier delta in the [`GLOBAL-025`](../../decisions/GLOBAL-025-north-star.md) KPI table; the on-demand run in `SK-QUAL-002` is the alert-and-decision input.
 **Owners (code):** `tools/eval/**`, `packages/llm/**`, `.github/workflows/quality-eval-bird-mini.yml`
@@ -21,18 +21,16 @@ when-to-load:
 ## Touchpoints — read this feature before editing
 
 - `tools/eval/` — benchmark runner (slices 1 + 2 + 3a + 3b + 3c shipped):
-  - `src/runner.ts` — multi-dataset driver, CLI entry, lane loop, baseline + emit integration; wraps `plan() → score()` in `withExecRetry` for scaffolded lanes (`SK-QUAL-009`); routes Spider 2.0 rows to `scoreOneSpider2` (`SK-QUAL-008`); `--throttle-ms` paces a low-RPM free chain (`SK-QUAL-012`); `--capacity-wait-ms` + the widened budget-stop keep a rate-limit breaker wall out of the scores (`SK-QUAL-013`)
-  - `src/exec-retry.ts` — `withExecRetry({maxAttempts, plan, request, score})` (`SK-QUAL-009`): bounded retry loop on `exec_error` only; threads previous SQL + error into `PlanRequest.previousAttempt`
-  - `src/score.ts` — BIRD's multiset / sequence-strict EX scorer **plus** the Spider 2.0 multi-CSV `comparePandasTable` / `compareMultiPandasTable` port + `scoreOneSpider2` (`SK-QUAL-008`)
-  - `src/csv.ts` — minimal RFC-4180 CSV parser + per-column type inference for pandas-emitted gold CSVs (`SK-QUAL-008`)
-  - `src/lanes.ts` — three lane builders: `free` (scaffolded), `frontier` (unscaffolded reference per `SK-QUAL-004`), `agentic-frontier` (scaffolded, opt-in via `RUN_AGENTIC_FRONTIER=1`) per `SK-QUAL-009`
-  - `src/baseline.ts` — read baseline JSON + per-lane diff + McNemar (`SK-QUAL-006`)
-  - `src/significance.ts` — McNemar exact-binomial + Edwards' continuity-corrected χ² (`SK-QUAL-006`)
-  - `src/emit.ts` — POST report to `/v1/events/eval` (typed event fanout)
-  - `src/datasets/bird-mini.ts` — HuggingFace `birdsql/bird_mini_dev` loader
-  - `src/datasets/spider2-lite.ts` — Spider 2.0-lite SQLite-subset loader (`SK-QUAL-007` + `SK-QUAL-008`); hydrates per-instance gold CSV(s) + `condition_cols` / `ignore_order` from `xlang-ai/Spider2@main` (HF mirror is stale per 2026-05-19 verification)
-  - `src/output.ts` — JSON report writer
-  - `src/checkpoint.ts` — resumable-runner checkpoint (load / append / complete) per `SK-QUAL-011`
+  - `src/runner.ts` — multi-dataset driver, CLI, lane loop, baseline + emit; `withExecRetry`-wraps scaffolded lanes (`SK-QUAL-009`); `--throttle-ms` (`SK-QUAL-012`), `--capacity-wait-ms` + budget-stop (`SK-QUAL-013`)
+  - `src/exec-retry.ts` — `withExecRetry` bounded retry on `exec_error` only (`SK-QUAL-009`)
+  - `src/score.ts` — BIRD multiset/sequence-strict EX scorer + the Spider 2.0 multi-CSV port + `scoreOneSpider2` (`SK-QUAL-008`)
+  - `src/csv.ts` — minimal RFC-4180 CSV parser + type inference for gold CSVs (`SK-QUAL-008`)
+  - `src/lanes.ts` — `free` / `frontier` (`SK-QUAL-004`) / `agentic-frontier` (`RUN_AGENTIC_FRONTIER=1`) lane builders (`SK-QUAL-009`)
+  - `src/baseline.ts` + `src/significance.ts` — baseline diff + McNemar exact-binomial / Edwards' χ² (`SK-QUAL-006`)
+  - `src/emit.ts` — POST report to `/v1/events/eval`
+  - `src/analyze-mismatches.ts` — mismatch error-class classifier (`SK-QUAL-014`); `src/column-coverage.ts` — column-prune recall-ceiling harness (`SK-QUAL-015`)
+  - `src/datasets/{bird-mini,spider2-lite}.ts` — HF BIRD loader; Spider 2.0-lite loader + gold-CSV hydration from `xlang-ai/Spider2@main` (`SK-QUAL-007`/`008`)
+  - `src/output.ts` + `src/checkpoint.ts` — JSON report writer; resumable checkpoint (`SK-QUAL-011`)
   - `baseline-2026-06-15.json` — pinned canonical baseline (`SK-QUAL-005`)
 - `.github/workflows/quality-eval-bird-mini.yml` — BIRD: manual `workflow_dispatch` only (`SK-QUAL-002`), `mode: full|smoke` (smoke = sampled + resumable per `SK-QUAL-011`); `include_agentic_frontier` → `RUN_AGENTIC_FRONTIER=1` per `SK-QUAL-009`
 - `.github/workflows/quality-eval-spider2-lite.yml` — Spider: manual `workflow_dispatch` only (`SK-QUAL-002`), `mode: full|smoke`; `SK-QUAL-007` loader + `SK-QUAL-009` agentic toggle
@@ -202,6 +200,18 @@ BIRD 2026-06-12 it corrected the working assumption: with quote-aware table
 parsing `fewer_tables` collapses 105 → 35, and aggregation/DISTINCT grain +
 value-grounding (§4 #2), not schema-link recall, is the dominant loss mass.
 
+### SK-QUAL-015 — Offline column-coverage harness: measure the recall ceiling of goal-token column pruning before building it
+
+**Body:** [`decisions/SK-QUAL-015-column-coverage-harness.md`](./decisions/SK-QUAL-015-column-coverage-harness.md).
+Pure `coverage(gold)` + a `bun column-coverage <gold.json>` CLI measure, over a
+BIRD gold JSON, what fraction of qualified gold columns share a `wordTokens`
+token (the pruner's own tokenizer, re-exported from `@nlqdb/llm`) with the
+goal — the recall ceiling of the §4 #2 column-pruning sub-lever. BIRD-dev
+2026-06: **59.8%** covered, **+27.4%** key-like (FK/PK rule re-admits, → ~87%),
+**12.8%** value/measure (only value-retrieval recovers). The prerequisite
+[`SK-LLM-037`](../llm-router/decisions/SK-LLM-037-goal-relevant-schema-pruning.md)
+left open; read-only, no keys/quota/chain change.
+
 ## GLOBALs governing this feature
 
 Canonical text in [`docs/decisions/`](../../decisions/).
@@ -224,6 +234,6 @@ Canonical text in [`docs/decisions/`](../../decisions/).
 - **Deferred:** a dedicated `feature.eval.smoke` event (smoke `mode` emits no
   event today — promote when a smoke dashboard is wanted); a hard token-budget
   counter (the `SK-QUAL-011`/`SK-QUAL-012` reactive controls cover it).
-- **Still open** (agentic lane shipped per [`SK-QUAL-009`](#sk-qual-009)): multi-model frontier (GPT-5 + Gemini 2.5 Pro as separate entries) — deferrable until the Sonnet 4.6 baseline lands; BYOLLM-lane instrumentation depends on `SK-LLM-016`; pin a `xlang-ai/Spider2` commit SHA in the next Spider baseline so leaderboard churn shows as a PR diff.
-- **Canonical raw EX — BIRD 0.522 (2026-06-12) / Spider 0.1852 (2026-06-17)**, 6-provider GHA runs per `SK-QUAL-013`. The Gemini key heal (`SK-LLM-039`) cut Spider `no_sql` 36 → 9, so the bottleneck is now SQL reasoning, not availability. Full breakdown + per-lane `no_sql_reasons`: `quality-score-source-of-truth.md` §2.
-- **Corrected-set evaluation — Parked until the next BIRD baseline refresh** (`GLOBAL-033`, build-vs-adopt). UIUC Kang ([arXiv:2601.08778](https://arxiv.org/abs/2601.08778)) found 52.8% annotation errors in BIRD Mini-Dev, ship corrected variants (`uiuc-kang-lab/text_to_sql_benchmarks`). **Adopt iff** the license permits bundling **and** it stays a ~50-LOC scorer-reuse patch (join by `question_id`, report Spearman-rank deltas); else skip — canonical already moves the KPI.
+- **Still open** (agentic lane shipped per [`SK-QUAL-009`](#sk-qual-009)): multi-model frontier (GPT-5 + Gemini 2.5 Pro) deferred until the Sonnet 4.6 baseline lands; BYOLLM-lane instrumentation depends on `SK-LLM-016`; pin a `xlang-ai/Spider2` SHA in the next Spider baseline.
+- **Canonical raw EX — BIRD 0.522 (2026-06-12) / Spider 0.1852 (2026-06-17)**, 6-provider GHA runs (`SK-QUAL-013`). Full breakdown: `quality-score-source-of-truth.md` §2.
+- **Corrected-set evaluation — parked until the next BIRD refresh** (`GLOBAL-033`). UIUC Kang ([arXiv:2601.08778](https://arxiv.org/abs/2601.08778)) found 52.8% BIRD annotation errors. **Adopt iff** license permits bundling **and** it stays a ~50-LOC scorer-reuse patch; else skip.

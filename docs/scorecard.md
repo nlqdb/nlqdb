@@ -68,6 +68,27 @@ evidence-backed top lever); join-recall is only 35/236 (15%). BIRD unchanged
 
 ## Deltas (recent runs)
 
+- 2026-06-18 (run 16) — **column-coverage harness (`SK-QUAL-015`) — sizes the
+  two halves of the §4 #2 top lever, offline.** No eval was due (Spider fresh
+  06-17, BIRD 06-12, both < 7 d) and run 15 already showed a third deferred
+  prompt lever buys nothing until the next eval attributes the prior ones — so
+  this run produces the **deterministic, no-quota measurement §4 #2 explicitly
+  requires** ("column-level recall risk … needs an offline recall harness like
+  T19's first"). `bun column-coverage` reuses the pruner's own `wordTokens` to
+  measure, on BIRD-dev gold (500 q, **1825** qualified column refs), the recall
+  ceiling of a goal-token **column** pruner: **59.8%** of needed columns kept
+  by name, **+27.4%** join/PK keys an FK/PK rule re-admits (→ ~87% achievable),
+  residual **12.8%** value/measure columns (`segment`←"SME", `currency`←"CZK",
+  `displayname`, `date`) the goal names by *value* — irreducible by any pruner.
+  **This re-ranks §4 #2:** value-retrieval **first** (additive, zero recall
+  risk, recovers the 12.8% floor — the dominant `SK-QUAL-014` mismatch class),
+  column-pruning **second** and recall-gated (token-only pruning would drop 40%
+  of needed columns ⇒ unsafe without key protection + a real-DDL recall run).
+  KPI: engine quality (GLOBAL-025) — sharper instrument → evidence-driven lever
+  ordering; none degraded (read-only over the gold JSON; no chain/scorer/runner
+  change; +1 one-line `wordTokens` re-export). 9 new eval tests green; EX
+  numbers unchanged (no eval dispatched). Next scheduled run targets §4 #2a
+  value-retrieval.
 - 2026-06-18 (run 15) — **mismatch error-class classifier + corrected loss
   breakdown (SK-QUAL-014).** The last two runs shipped prompt levers whose EX
   delta defers to the next eval, and Spider ran 06-17 (§5 forbids a

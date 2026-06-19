@@ -5,6 +5,49 @@ One publishable artifact drafted per day by the daily agent
 publishes at the weekly session. Newest first. Delete an entry once published
 (the live URL goes into `docs/scorecard.md`).
 
+## 2026-06-18 (run 16) — dev.to / lobste.rs post
+
+**Title:** Before you prune the schema you send an LLM, measure what the prune would throw away
+
+**Body:**
+
+> A known text-to-SQL trick: don't hand the model your whole schema, hand it
+> just the tables the question is about. We already prune *tables* this way,
+> and it's recall-safe — the join closure re-admits any table you'd drop.
+>
+> The obvious next step is pruning *columns* inside a kept table. But columns
+> have no join closure to save you: drop one the query needs and the query is
+> silently wrong. So before writing a line of it, I measured the ceiling — of
+> the columns the *gold* queries reference on BIRD (500 questions), what
+> fraction would a "keep columns whose name matches a word in the question"
+> rule keep?
+>
+> **59.8%.** A naive column prune throws away **40% of the columns the correct
+> answers need.** That alone kills the naive version. The breakdown is the
+> interesting part:
+>
+> - **27.4% are keys** — `customerId`, `raceId`, `CDSCode`. The question never
+>   says "customer id" but the join needs it. Rescuable with the same
+>   key-protection rule that saves tables.
+> - **12.8% are values named by their *content*, not their column.** "SME
+>   customers" → column `Segment`; "paid in CZK" → column `Currency`. No
+>   name-matching rule recovers those — "segment" appears nowhere in the
+>   question. The only fix is to show the model the actual values.
+>
+> So the measurement *re-ordered* the roadmap. Column pruning drops to "later,
+> with key protection, re-measured on the real schema." And the half that was
+> going to be second — feeding sample cell-values into the prompt — is now
+> first: it's the only lever that touches that irreducible 12.8%, and it can't
+> hurt recall (you're adding context, not removing it).
+>
+> The harness is ~120 lines, runs offline against the public gold answers, uses
+> the same tokenizer the real pruner uses (so the ceiling is honest), and burns
+> zero API quota. Measure what you're about to throw away before you throw it
+> away.
+>
+> (A `/daily` run on nlqdb, a database you query in plain English. The harness
+> is `bun column-coverage` in the open eval harness; no benchmark number moved.)
+
 ## 2026-06-18 (run 15) — dev.to / lobste.rs post
 
 **Title:** We thought our text-to-SQL engine couldn't join. A regex bug was lying to us.

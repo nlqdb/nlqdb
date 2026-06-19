@@ -23,6 +23,7 @@ Before editing under `tools/eval/`:
 | `src/baseline.ts`, baseline comparison + regression detection | `docs/features/quality-eval/decisions/SK-QUAL-002-weekly-cron.md` + `decisions/SK-QUAL-006-mcnemar-paired-test.md` |
 | `src/significance.ts`, McNemar's test | `docs/features/quality-eval/decisions/SK-QUAL-006-mcnemar-paired-test.md` |
 | `src/analyze-mismatches.ts`, offline mismatch error-class classifier | `docs/features/quality-eval/decisions/SK-QUAL-014-mismatch-error-class-classifier.md` |
+| `src/column-coverage.ts`, offline column-prune recall-ceiling harness | `docs/features/quality-eval/decisions/SK-QUAL-015-column-coverage-harness.md` |
 | `src/emit.ts`, POST /v1/events/eval | `docs/features/quality-eval/decisions/SK-QUAL-002-weekly-cron.md` + `docs/features/events-pipeline/FEATURE.md` |
 | `baseline-2026-06-15.json` | `docs/features/quality-eval/FEATURE.md` (`SK-QUAL-005`) — pinned canonical baseline |
 
@@ -40,6 +41,7 @@ tools/eval/
 │   ├── emit.ts            # POST report to /v1/events/eval (typed event fanout)
 │   ├── output.ts          # JSON report writer
 │   ├── analyze-mismatches.ts # offline mismatch error-class classifier + CLI (SK-QUAL-014)
+│   ├── column-coverage.ts # offline column-prune recall-ceiling harness + CLI (SK-QUAL-015)
 │   ├── types.ts           # canonical types — EvalQuestion, EvalReport, Spider2EvalPayload
 │   └── datasets/
 │       ├── bird-mini.ts      # birdsql/bird_mini_dev loader (HF + on-disk)
