@@ -54,7 +54,7 @@ few-shot), not retrieval. Value-retrieval is demoted + privacy-gated.
 | | *Messaging track — WS-\** | 2 / 13 | pick when worst number is funnel / distribution |
 | WS-01 | competitors.md anchor (Zep / Letta / LangMem) | ✅ | run 19 — §4 + threat matrix; unblocks WS-02 |
 | WS-02 | memory `/vs` pages (one per run) | ✅ 3/3 | run 20 — **Zep ✅** (`/vs/zep`); run 21 — **Letta ✅** (`/vs/letta`); run 22 — **LangMem ✅** (`/vs/langmem`) — WS-02 closed |
-| WS-03 | solve pages — sharpen + sibling | ⬜ | low · ~2 runs · — |
+| WS-03 | solve pages — sharpen + sibling | 🟡 1/2 | run 23 — **sharpen ✅** (`give-ai-agent-persistent-memory` reframed to the analytical wedge + phantom MCP tools fixed); analytical sibling pending |
 | WS-04 | MCP tool + package + docs framing | ⬜ | low · 1 run · — |
 | WS-05 | carousel analytics-over-memory slides | ⬜ | low · 1 run · — |
 | WS-06 | Mem0 \| Zep \| Letta \| nlqdb capability matrix | ⬜ | med · ~2 runs · WS-01 |
@@ -76,6 +76,30 @@ few-shot), not retrieval. Value-retrieval is demoted + privacy-gated.
 
 ## Deltas (recent runs)
 
+- 2026-06-19 (run 23) — **WS-03 run 1/2: sharpened the agent-memory solve page to
+  the analytical-memory wedge + fixed phantom MCP tool names.** Engine lane still
+  blocked (BIRD 06-19 + Spider 06-17 both < 7 d; §5 forbids a back-to-back eval
+  dispatch), and WS-02's last slice (LangMem) is in flight on an open PR — so the
+  in-bounds, non-overlapping lever is WS-03, the next ⬜ funnel/distribution
+  worksheet with its prereqs met. Reframed `give-ai-agent-persistent-memory`
+  (`apps/web/src/data/solve.ts`, persona P2) from generic "complementary, not
+  replacement" to the wedge: the agent stores typed rows and later **aggregates**
+  them (`GROUP BY` / top-N / per-period) — retrieval ≠ analytics. `painContext`,
+  `oneLiner`, `demoGoal` (now `top 5 things the agent remembered this week by
+  frequency`), `demoWhy`, and the FAQ all lead with the analytical split; added a
+  new "Why can't a vector store answer 'average per group'?" FAQ. **Honesty fix
+  (also an `SK-PIVOT-002` rule):** the page cited **phantom MCP tools**
+  (`create_database` / `ask` / `run`) that don't exist — corrected to the real
+  three (`nlqdb_query` / `nlqdb_list_databases` / `nlqdb_describe`), with
+  provisioning honestly framed as `nlqdb_query` with no `db` set (provisions
+  Postgres from the agent's first goal). `whatItDoesnt` kept honest (no native
+  vector search → Mem0/pgvector; no per-row TTL yet). Gates: web 122 tests,
+  astro-check 0/0/0, lint clean on the edited file. KPI: **onboarding**
+  (GLOBAL-025) — a sharper P2 decision-moment on-ramp; **none degraded** (copy/data
+  on the existing template — no code path, engine, chain, or scorer touched; BIRD
+  06-19 + Spider 06-17 untouched; performance N/A). Artifact: an r/LangChain
+  "vector store can't aggregate its own memory" helpful-answer draft appended to
+  the distribution queue. The analytical-queries sibling is WS-03 run 2.
 - 2026-06-19 (run 22) — **WS-02 slice 3/3: shipped `/vs/langmem` — WS-02 closed**
   — the third and final agent-memory `/vs` page (Pivot `Memory /vs pages` 2 →
   **3/3**; WS-02 ✅ → messaging track 1 → **2/13**; pivot worksheets 1 →

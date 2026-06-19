@@ -172,14 +172,15 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
     persona: "P2 agent builder",
     searchTitle: "How do I give my AI agent persistent memory across sessions?",
     oneLiner:
-      "If your agent needs to remember user facts, prior tool calls, or task state across sessions, expose a database to it via MCP — nlqdb's MCP server ships `create_database`, `ask`, and `run` so the agent can both provision the store and query it in English.",
+      "If your agent needs to remember facts across sessions and later *aggregate* them, give it a real database via MCP — nlqdb's `nlqdb_query` tool provisions Postgres from the agent's first English goal and answers `GROUP BY` / top-N / per-period questions over what it stored. Retrieval gets you one fact; analytics gets you the report.",
     painContext:
-      "Agent builders pick between unstructured memory (vector recall over chat history, e.g. Mem0) and structured memory (rows the agent can query and aggregate later). The structured side has had no opinionated primitive — most teams stitch together a Postgres connection string, an ORM, and a hand-rolled migration loop before the agent runs its first tool call.",
-    demoGoal: "recent agent memory across threads in the last day",
+      "Agent builders pick between unstructured memory (vector recall over chat history, e.g. Mem0) and structured memory (typed rows the agent can aggregate later). Vector recall returns the top-k similar facts — but it has no query planner, so the moment the agent needs `average per group` or `top 10 this month` it ends up doing arithmetic over a list of search hits. Retrieval ≠ analytics.",
+    demoGoal: "top 5 things the agent remembered this week by frequency",
     demoWhy:
-      'The query an agent runs to recover "what did the user ask me yesterday" is the canonical structured-memory readout, and the shape an MCP-aware agent expects.',
+      "The query an agent runs to summarise its own memory — `GROUP BY` + count + top-N — is exactly what a vector store can't answer and a real database can.",
     howNlqdbAnswers: [
-      "MCP server at `mcp.nlqdb.com` exposes `create_database`, `ask`, `run` — the agent self-provisions and queries without a human in the loop.",
+      "MCP `nlqdb_query` provisions Postgres from the agent's first English goal (no `db` set → creates one when the agent has none) and answers in English — plus `nlqdb_list_databases` / `nlqdb_describe`, no human in the loop.",
+      "Memory is typed rows in real Postgres, so the agent can `GROUP BY`, rank top-N, and aggregate per-period over what it stored — not just recall a single fact by similarity.",
       'Schema evolves via English: `"add a priority column"` migrates the table; the diff is shown before apply (`SK-ONBOARD-004`).',
       "Per-(mcp_host, device_id) keys (`sk_mcp_*`) let one tenant share memory across an agent fleet without leaking other tenants' rows.",
     ],
@@ -190,11 +191,15 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
     faqs: [
       {
         q: "Is nlqdb a replacement for Mem0 for AI agent memory?",
-        a: 'Complementary, not replacement. Mem0 owns unstructured fact recall ("the user prefers Celsius"); nlqdb owns structured rows the agent later queries ("list the user\'s saved searches this week"). Both can sit behind one MCP-aware agent.',
+        a: "It's the structured, analytical half — and the only half that can answer analytical questions. Mem0 owns unstructured similarity recall (\"the user prefers Celsius\"); nlqdb owns typed rows the agent later aggregates (\"top 10 topics this month by count\"). Both can sit behind one MCP-aware agent.",
+      },
+      {
+        q: "Why can't a vector store answer \"average per group\" about agent memory?",
+        a: "A vector store returns the top-k most similar facts; it has no query planner. So an aggregation becomes the LLM doing arithmetic over a list of search hits — a hallucination generator, not a `GROUP BY`. nlqdb runs the actual aggregation in Postgres and shows the SQL.",
       },
       {
         q: "How does the agent create its own database?",
-        a: 'Via the MCP `create_database` tool — the agent passes a goal in English (`"a memory store for my research assistant"`); the server materialises Postgres + a starter schema in one call and returns connection metadata bound to the agent\'s tenant.',
+        a: 'Via `nlqdb_query` with no `db` set — the agent sends an English goal (`"a memory store for my research assistant"`); when it has no database, nlqdb provisions Postgres from the goal and answers in one call. There is no separate `create_database` tool — provisioning and querying are the same call.',
       },
       {
         q: "What about agent frameworks like LangChain or AutoGen?",
