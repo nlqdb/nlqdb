@@ -613,6 +613,111 @@ export const COMPETITORS: Competitor[] = [
       why: "An analyst question AskYourDatabase would answer via the Desktop App or embed-chat over your existing warehouse; nlqdb mints the Postgres database and renders the answer in one `<nlq-data>` element against the live schema.",
     },
   },
+  {
+    slug: "zep",
+    name: "Zep",
+    url: "https://www.getzep.com",
+    // Agent-memory cluster anchored in docs/competitors.md §4 (verified 2026-06-19).
+    // Built on Graphiti (OSS temporal knowledge-graph core); hosted platform is commercial.
+    tagline:
+      "Agent-memory platform built on Graphiti — a temporal knowledge graph storing facts as nodes with start/end validity windows plus entity resolution across conversation and business data.",
+    persona: "P2 agent builder",
+    oneLiner:
+      "Pick Zep if your agent needs a temporal knowledge graph — point-in-time fact recall and entity resolution tuned for conversation. Pick nlqdb if your agent also needs to aggregate that memory: GROUP BY, JOIN, and HAVING over structured rows it provisions and migrates itself in plain English.",
+    whenChooseUs: [
+      "Your agent needs to aggregate its memory — GROUP BY, JOIN, HAVING — not just recall facts.",
+      "You store structured rows the agent later reports over ('deals per stage this quarter').",
+      "The schema should evolve as the agent learns ('add a `priority` field') via English.",
+      "One MCP server should provision, query, and migrate the agent's data layer.",
+    ],
+    whenChooseThem: [
+      "You need a temporal knowledge graph with point-in-time fact validity and entity resolution.",
+      "Memory is conversational — relevant-fact retrieval matters more than typed SQL aggregation.",
+      "You want published memory benchmarks (LongMemEval, Deep Memory Retrieval) and a proven recall engine.",
+      "An OSS knowledge-graph core you can self-host (Graphiti) is on your shortlist.",
+    ],
+    features: [
+      { feature: "Owns the database (provisions + migrates)", us: "shipped", them: "no" },
+      {
+        feature: "Natural-language → SQL",
+        us: "shipped",
+        them: "no",
+        note: "Zep stores facts as knowledge-graph nodes; agents retrieve via graph search, not by compiling English to SQL.",
+      },
+      {
+        feature: "Aggregations + reporting queries (GROUP BY / JOIN / HAVING over memory)",
+        us: "shipped",
+        them: "no",
+        note: "Zep's graph returns the facts most relevant to a query; it has no query planner to aggregate across them.",
+      },
+      {
+        feature: "Temporal knowledge graph (point-in-time fact validity)",
+        us: "no",
+        them: "shipped",
+        note: "Graphiti's start/end validity windows are Zep's core primitive; nlqdb stores typed rows, not time-bounded graph edges.",
+      },
+      {
+        feature: "Entity resolution across conversation + business data",
+        us: "no",
+        them: "shipped",
+      },
+      {
+        feature: "Auto-migration via NL ('add a `priority` field')",
+        us: "shipped",
+        them: "no",
+      },
+      {
+        feature: "MCP server (agent-callable)",
+        us: "shipped",
+        them: "partial",
+        note: "Graphiti ships an experimental MCP server exposing graph add/search; nlqdb's MCP exposes `nlqdb_query` / `nlqdb_list_databases` / `nlqdb_describe`, and `nlqdb_query` materialises Postgres on first reference.",
+      },
+      {
+        feature: "Vector / semantic recall over conversation history",
+        us: "no",
+        them: "shipped",
+        note: "Recall is Zep's lane; nlqdb answers with structured SQL and ships no embedding-based recall today.",
+      },
+      {
+        feature: "Published recall benchmarks (LongMemEval, DMR)",
+        us: "no",
+        them: "shipped",
+        note: "Zep publishes memory-recall benchmarks; nlqdb publishes NL→SQL execution accuracy (BIRD Mini-Dev + Spider 2.0-lite) — different axes.",
+      },
+      {
+        feature: "Open source / self-hostable",
+        us: "partial",
+        them: "partial",
+        note: "Graphiti's knowledge-graph core is open source and self-hostable; the Zep platform is commercial. nlqdb is source-available on FSL 1.1-ALv2, auto-converting to Apache 2.0 after two years.",
+      },
+    ],
+    faqs: [
+      {
+        q: "Can I use Zep for conversational recall and nlqdb for analytics over the same memory?",
+        a: "Yes — they compose. Zep's temporal knowledge graph handles 'what does the agent remember about Kendra right now'; nlqdb handles 'average deal size per stage across everything the agent logged'. Run Zep as the recall layer and nlqdb as the analytical store the agent queries with SQL.",
+      },
+      {
+        q: "Does nlqdb store a knowledge graph with temporal validity like Zep?",
+        a: "No. nlqdb is Postgres-first — typed rows in tables, not graph nodes with start/end validity windows. If point-in-time fact validity and entity resolution across conversation are core to your agent, Zep (built on Graphiti) is the right shape; nlqdb's contract is relational SQL over the rows the agent provisions.",
+      },
+      {
+        q: "Zep ships a Graphiti MCP server — how is nlqdb's MCP different?",
+        a: "Graphiti's MCP server exposes graph operations — add an episode, search the graph for relevant facts. nlqdb's MCP server (`mcp.nlqdb.com`) exposes `nlqdb_query`, `nlqdb_list_databases`, and `nlqdb_describe`; `nlqdb_query` materialises Postgres plus schema on first reference and runs aggregating SQL, so the agent reports over its memory instead of only retrieving from it.",
+      },
+      {
+        q: "How does nlqdb's accuracy compare to Zep's memory benchmarks?",
+        a: "They measure different axes. Zep publishes memory-recall benchmarks (LongMemEval, Deep Memory Retrieval) — how well it returns the right fact. nlqdb publishes NL→SQL execution accuracy (BIRD Mini-Dev + Spider 2.0-lite) to `docs/features/quality-eval/` — how well it turns an English question into correct SQL. Pick the benchmark that matches the job.",
+      },
+      {
+        q: "Can my AI agent provision its own store with Zep the way it can with nlqdb?",
+        a: "Zep is a hosted memory service (with the OSS Graphiti core you can self-host) — an agent reads and writes facts but doesn't stand up its own isolated database. nlqdb's MCP `nlqdb_query` materialises a tenant-scoped Postgres plus schema on first reference, so a Claude / Cursor / Cline agent provisions and migrates its data layer end-to-end without a human in the loop.",
+      },
+    ],
+    demo: {
+      goal: "top 10 topics the agent logged this month, ranked by mention count",
+      why: "The aggregation Zep's retrieval graph can't run — it returns relevant facts, not a GROUP BY / COUNT ranking; nlqdb answers it as SQL over the agent's own memory.",
+    },
+  },
 ];
 
 export function competitorBySlug(slug: string): Competitor | undefined {
