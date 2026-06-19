@@ -47,7 +47,7 @@
      Premium dispatch is **gated** behind the existing
      [`phase-plan.md` §6](../phase-plan.md) monetization trigger —
      the architectural slot exists from day one but the meter does
-     not fire until Stripe live ships.
+     not fire until the §6 trigger trips.
 
   Dispatch precedence inside the router, highest → lowest:
 
