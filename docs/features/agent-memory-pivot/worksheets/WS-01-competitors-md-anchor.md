@@ -1,6 +1,6 @@
 # WS-01 — Anchor Zep / Letta / LangMem in `docs/competitors.md`
 
-**Status:** ⬜ not started
+**Status:** ✅ done (2026-06-19, run 19 — branch `claude/sharp-wozniak-y9ee5z`)
 **Sequence:** 1 of 13 · **Risk:** low · **Runs:** ~1 · **Prereqs:** none · **Gate:** none
 
 ## Goal
@@ -35,9 +35,9 @@ the funnel `Pivot:` line). Record it as the day's measurement-enabling slice.
 
 ## Done when
 
-- [ ] Zep, Letta, LangMem each have a `§4` prose entry + a threat-matrix row.
-- [ ] Each names the analytical-SQL gap as the nlqdb win-zone.
-- [ ] `docs/competitors.md` still passes its own freshness/format conventions.
+- [x] Zep, Letta, LangMem each have a `§4` prose entry + a threat-matrix row.
+- [x] Each names the analytical-SQL gap (`GROUP BY`/`JOIN`/`HAVING`) as the nlqdb win-zone.
+- [x] `docs/competitors.md` still passes its own freshness/format conventions (last-verified line bumped to 2026-06-19 for §4).
 
 ## Artifact (daily-loop step 3)
 

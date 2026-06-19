@@ -50,9 +50,9 @@ few-shot), not retrieval. Value-retrieval is demoted + privacy-gated.
 | 10 | nlqdb-api requests / errors | 2,268 / 0 (0.00%) | mcp 284 req, events-worker 91 req, both 0 err |
 | 11 | nlqdb-api latency p50 / p95 | 666 ms / 7.05 s (06-13) | p95 dominated by LLM-bound asks; `/ask`-only split needs Grafana `metrics:read` (agent has write-only key) |
 | 12 | $ spend | ~$0 | free tiers across CF / Neon / LLM chain |
-| | **Pivot — agent-memory wedge** (GLOBAL-036) | 0 / 20 | tick ⬜→✅ with PR link on merge; mirrors `docs/features/agent-memory-pivot/worksheets/INDEX.md` |
-| | *Messaging track — WS-\** | 0 / 13 | pick when worst number is funnel / distribution |
-| WS-01 | competitors.md anchor (Zep / Letta / LangMem) | ⬜ | low · 1 run · — |
+| | **Pivot — agent-memory wedge** (GLOBAL-036) | 1 / 20 | tick ⬜→✅ with PR link on merge; mirrors `docs/features/agent-memory-pivot/worksheets/INDEX.md` |
+| | *Messaging track — WS-\** | 1 / 13 | pick when worst number is funnel / distribution |
+| WS-01 | competitors.md anchor (Zep / Letta / LangMem) | ✅ | run 19 — §4 + threat matrix; unblocks WS-02 |
 | WS-02 | memory `/vs` pages (one per run) | ⬜ | low · ~3 runs · WS-01 |
 | WS-03 | solve pages — sharpen + sibling | ⬜ | low · ~2 runs · — |
 | WS-04 | MCP tool + package + docs framing | ⬜ | low · 1 run · — |
@@ -76,6 +76,29 @@ few-shot), not retrieval. Value-retrieval is demoted + privacy-gated.
 
 ## Deltas (recent runs)
 
+- 2026-06-19 (run 19) — **WS-01: anchored the agent-memory cluster (Zep / Letta /
+  LangMem) in `docs/competitors.md §4`** — the pivot's first shipped slice (Pivot
+  0/20 → **1/20**). The engine NL→SQL lane (the worst number's root cause) is
+  blocked today: BIRD ran 06-19, Spider 06-17 (both < 7 d), and §5 forbids a
+  back-to-back eval dispatch, so no engine delta is measurable this run and the
+  two next engine levers (§4 #1 retrieval few-shot, #3 self-consistency) each need
+  an eval. Per the pivot INDEX pickup rule (lowest-numbered ⬜ worksheet with all
+  prereqs ✅), the in-bounds lever is the funnel/distribution lane — WS-01, the
+  documented strategic answer to the engine-gated funnel zero. Sharpened Zep
+  (Graphiti temporal knowledge graph, 27k+ ⭐, ~$125/mo, benchmark-led) with a
+  real `Gap nlqdb exploits`; completed Letta (Apache-2.0, OS-style core/recall/
+  archival tiers); **added the missing LangMem entry** (LangChain SDK — semantic/
+  episodic/procedural, distribution moat); added Letta + LangMem threat-matrix
+  rows (Zep/Mem0 already present). Every entry keyed to **P2** with the
+  analytical-SQL wedge (`GROUP BY`/`JOIN`/`HAVING` over memory — retrieval ≠
+  analytics) as the win-zone; landscape facts web-verified 06-19 (§4 last-verified
+  bumped). **This unblocks WS-02** (memory `/vs` pages, which move the funnel
+  `Pivot:` line) — WS-01 itself moves no funnel number directly (it is the
+  measurement-enabling prerequisite, per the worksheet). KPI: **onboarding**
+  (GLOBAL-025) — a sharper single-story wedge for the P2 on-ramp; **none degraded**
+  (additive docs only — no code, no engine/chain/scorer change; BIRD 06-19 +
+  Spider 06-17 untouched; performance N/A). Artifact: an agent-memory landscape
+  note appended to the distribution queue (seeds the WS-09 blog post).
 - 2026-06-19 (run 18) — **literal-grounding axis on the `SK-QUAL-014` classifier
   — falsifies value-retrieval (§4 #2a) as the top lever, deterministically and
   with zero quota.** The last four runs ranked value-retrieval #1 off the
@@ -142,27 +165,14 @@ few-shot), not retrieval. Value-retrieval is demoted + privacy-gated.
   numbers unchanged (no eval dispatched). Next scheduled run targets §4 #2a
   value-retrieval.
 - 2026-06-18 (run 15) — **mismatch error-class classifier + corrected loss
-  breakdown (SK-QUAL-014).** The last two runs shipped prompt levers whose EX
-  delta defers to the next eval, and Spider ran 06-17 (§5 forbids a
-  back-to-back dispatch), so this run produces a **real, deterministic,
-  no-quota measurement** instead of a third deferred lever: a committed,
-  reusable classifier (`tools/eval/src/analyze-mismatches.ts` + `bun
-  analyze-mismatches`) that buckets every `mismatch` row of a saved baseline
-  by structural diff. Run on the canonical BIRD 500-q baseline it **overturns
-  the working assumption**: a naive bare-word table regex had implied
-  join-recall dominates, but with quote-aware parsing (`FROM "transactions_1k"`
-  was being missed) `fewer_tables` collapses **105 → 35 (15%)**; the real loss
-  mass is aggregation/DISTINCT **grain** (`agg_fn_diff` 61, `missing_DISTINCT`
-  41, `extra_DISTINCT` 34) + subquery **shape** (`more_subqueries` 44), and
-  reading the rows shows much of it is **value/literal/column grounding** the
-  model can't guess (`'discount'` vs `'Discount'`; `Amount` vs `Price`) — the
-  §4 #2 value-retrieval lever, now evidence-backed as the top mismatch lever
-  (plus a slice of BIRD gold-annotation noise, §4 #5). Re-points
-  `quality-score-source-of-truth.md` §2/§4/§6. 193 eval tests green (was 185);
-  typecheck + lint clean. KPI: engine quality (GLOBAL-025) — sharper
-  instrument → evidence-driven lever selection; none degraded (read-only over
-  a saved report, no chain/scorer/runner change). EX numbers unchanged this
-  run (no eval dispatched); next scheduled run targets §4 #2.
+  breakdown (SK-QUAL-014).** A committed, reusable classifier
+  (`tools/eval/src/analyze-mismatches.ts`) buckets every `mismatch` row of a
+  saved baseline by structural diff. On the canonical BIRD 500-q baseline,
+  quote-aware parsing collapses `fewer_tables` **105 → 35**; the real loss mass
+  is aggregation/DISTINCT **grain** + subquery **shape**, much of it
+  value/literal/column grounding (the §4 #2 value-retrieval lever). Re-points
+  `quality-score-source-of-truth.md` §2/§4/§6. 193 eval tests green. KPI: engine
+  quality (GLOBAL-025); none degraded (read-only; no eval dispatched).
 - 2026-06-18 (run 14) — **aggregate-filter HAVING directive (SK-LLM-040 /
   T22).** The newest eval (Spider) ran 06-17 and the §5 quota guardrail forbids
   a back-to-back dispatch, so this run ships a prompt-only engine-correctness
@@ -215,23 +225,13 @@ few-shot), not retrieval. Value-retrieval is demoted + privacy-gated.
   (27679511189 hit the 60-min ceiling → 27683263668 completed).
 - 2026-06-16 (run 11) — **execution-guided repair: feed a re-plannable PG
   exec error back to the planner (SK-ASK-022).** A deterministic-but-fixable
-  exec error (42703 undefined_column, 42803 GROUP BY, 42883/42725 function,
-  42702 ambiguous, 42P18/42804/42846 type, 22P02 cast, 42601 syntax — the set
-  lives in `exec-repair.ts`) was replayed identically 3× by SK-ASK-013's
-  transient retry, then surfaced `db_unreachable`. The planner never saw the
-  DB's own error, even though the plan prompt already diagnoses
-  `previousAttempt.error` against the full schema. Now such an error bails the
-  transient retry after one attempt and re-plans **once** with the error fed
-  back (reads only; a repaired write is rejected `write_via_repair`, never run
-  — preserves the SK-TRUST-001 preview gate). **Measured (orchestrator unit
-  tests, stubbed exec/LLM):** on a 42703 → fixed-column scenario, recovery
-  **db_unreachable → rows (0 → 1)** with exec round-trips on the deterministic
-  error **3 → 2** (1 fail + 1 repaired, vs 3 identical replays); repair bounded
-  to once; a repaired write blocked before exec. KPI: engine quality
-  (GLOBAL-025), with a performance assist (fewer doomed replays). None degraded
-  — failure-path only (zero happy-path latency, SK-ASK-002 budget untouched),
-  schema_mismatch (42P01/3F000) still bails as before. 808 api tests green
-  (was 805). Full BIRD/Spider EX delta → next scheduled quality-eval.
+  exec error (the set lives in `exec-repair.ts`) was replayed identically 3× by
+  SK-ASK-013's transient retry, then surfaced `db_unreachable`. Now it re-plans
+  **once** with the error fed back (reads only; a repaired write is rejected
+  `write_via_repair` — preserves the SK-TRUST-001 preview gate). Measured (unit):
+  `db_unreachable → rows (0 → 1)`, exec round-trips 3 → 2. KPI: engine quality
+  (GLOBAL-025); none degraded (failure-path only). 808 api tests green. Full EX
+  delta → next eval. Detail: `progress/quality-score-verification-log.md`.
 - 2026-06-15/16 (runs 7–10) — provider-resilience wave: pin-to-2.0 falsified
   (run 7) → park a denied provider on the first 401/403 (run 9, SK-LLM-039)
   with a 30-min cooldown (run 10; dead-key round-trips 10 → 1) ·

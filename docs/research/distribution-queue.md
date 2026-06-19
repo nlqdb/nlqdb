@@ -5,6 +5,54 @@ One publishable artifact drafted per day by the daily agent
 publishes at the weekly session. Newest first. Delete an entry once published
 (the live URL goes into `docs/scorecard.md`).
 
+## 2026-06-19 (run 19) — agent-memory landscape note (seed for the WS-09 blog post)
+
+**Title:** Your agent's memory can recall a fact. Can it answer a question *about* its facts?
+
+**Body:**
+
+> The agent-memory category in 2026 is crowded and converging on one shape.
+> **Mem0** stores a fact graph with time-decay. **Zep** (on the Graphiti engine,
+> 27k+ ⭐) stores facts as temporal knowledge-graph nodes with validity windows.
+> **Letta** (ex-MemGPT, Apache-2.0) keeps self-editing memory blocks in the
+> context window plus a searchable archive. **LangMem** (LangChain) extracts
+> semantic / episodic / procedural memories into any store. They differ in
+> sophistication — flat vectors → knowledge graph → OS-style blocks — but they
+> all answer the same question: *given a query, return the most relevant facts.*
+>
+> That leaves a whole class of question none of them can answer. Once your agent
+> has remembered 500 things, ask it:
+>
+> > "Average deal size per stage, for enterprise customers, for deals that closed
+> > this quarter."
+>
+> That's not retrieval. It's `GROUP BY ... HAVING ... WHERE`. A memory layer
+> built on a vector store or a knowledge graph has no query planner — it can hand
+> the LLM a pile of relevant facts and hope the model does the arithmetic in its
+> head (a hallucination generator, not a database). Adding real SQL semantics to
+> a vector store isn't a feature; it's a rewrite of the storage layer.
+>
+> nlqdb takes the other branch: the memory *is* a real database. The agent
+> designs the schema and queries it in plain English, and the queries compile to
+> validated SQL — `GROUP BY`, `JOIN`, `HAVING`, subqueries — not fuzzy recall.
+> Recall *and* analytics over the same store.
+>
+> The honest table (capabilities, not logos): every product above does "remember
+> this" and "recall facts about X." nlqdb's column is the one that adds "top 5 by
+> value," "average per group," and "the agent created its own schema." Pick the
+> memory layer for the question you actually need answered.
+>
+> (A `/daily` note from nlqdb — a database you talk to. Landscape facts checked
+> 2026-06-19; full threat analysis in our open competitor doc.)
+
+**Why this is publishable:** the agent-memory cluster (Mem0/Zep/Letta/LangMem) is
+a high-search-volume, decision-moment topic for P2 builders, and the
+"retrieval vs. analytics" reframe is a category distinction, not a feature
+brawl — it spreads in the same r/AI_Agents / LangChain-Discord crowd that hates
+marketing and loves a sharp architectural point. Seeds the WS-09 blog post and
+the WS-06 capability matrix; one nlqdb mention, in context. Sourced from
+`docs/competitors.md §4` (re-anchored this run) + `docs/research/deepseek-moat-framing.md`.
+
 ## 2026-06-19 (run 18) — dev.to / lobste.rs post
 
 **Title:** We were one run away from building the wrong feature. A 40-line classifier on our own benchmark output talked us out of it.
@@ -60,29 +108,12 @@ run-17 "flat benchmark" post and *corrects* its closing claim. One nlqdb
 mention, in context. Sourced from `tools/eval/src/analyze-mismatches.ts` +
 the committed 2026-06-19 baseline.
 
-## 2026-06-19 (run 17) — dev.to / lobste.rs post — SUPERSEDED by run 18
+## 2026-06-19 (run 17) — SUPERSEDED by run 18
 
-**Title:** We shipped four fixes to our text-to-SQL engine, then measured them all at once. The benchmark didn't move — and that was the answer.
-
-**Gist (condensed run 18 — full draft was here; the run-18 post is the one to
-publish):** Two weeks of prompt-directive fixes (count-grain, group-by-grain,
-TEXT-cast, HAVING-vs-WHERE, schema-prune recall), then one full 500-q BIRD run:
-**0.522 → 0.520, flat.** The value is *proving* flat — 75 answers flipped
-(38 right→wrong, 37 wrong→right), McNemar **p = 0.50** = provider-mix coin-flip,
-not a lever effect. Lesson: a flat benchmark + a paired-significance test is a
-*decision* ("this class of fix has saturated"), not a shrug; and deferring
-measurement across four levers means you can't attribute the (non-)delta to any
-one. **⚠️ Its closing line — "next lever = feed the model sample values" — was
-falsified by run 18** (0 of 238 mismatches are literal-recoverable). If
-publishing, drop that ending; the run-18 post supersedes it.
-> (A `/daily` run on nlqdb, a database you query in plain English. The eval is
-> the open BIRD harness on a $0 free-LLM chain; every number is public.)
-
-**Why this is publishable:** "we measured and it didn't move" is a rare, honest
-genre, and McNemar-for-noise-vs-signal is a technique most people wiring an LLM
-eval loop never reach for. The grounding-vs-reasoning pivot is concrete and
-useful. One nlqdb mention, in context. Sourced from this run's canonical BIRD
-re-run + baseline diff (`eval-baseline.ts`, 2026-06-19).
+"We shipped four fixes, measured at once, the BIRD benchmark didn't move
+(0.522 → 0.520) — and proving it flat (McNemar p = 0.50) was the answer." Its
+closing "next lever = sample values" was falsified by run 18; publish the run-18
+post instead.
 
 ## 2026-06-18 (run 16) — dev.to / lobste.rs post
 
@@ -240,61 +271,16 @@ and the framing (*one failure throws, one is silent*) is a real LLM-pipeline
 lesson, not a product pitch. One nlqdb mention, in context. Grounded in
 arXiv:2501.09310 (E5) + SK-LLM-040.
 
-## 2026-06-17 (run 13) — dev.to / lobste.rs post
+## 2026-06-17 (run 13) — dev.to / lobste.rs post (condensed; full draft in git history)
 
-**Title:** Schema pruning for text-to-SQL drops the one table the join needs
-
-**Body:**
-
-> If you feed an LLM a 60-table schema to write one query, most of those
-> tables are noise — and noise measurably lowers accuracy on smaller models.
-> So you prune: keep the tables the question mentions, drop the rest. We do
-> this, and it works (a clean before/after on our Spider benchmark moved a
-> smoke run from 0.15 to 0.25 just by cutting distractor tables).
->
-> But there's a trap in "keep the tables the question mentions," and it cost
-> us silently. Take *"list each student's name and the courses they're
-> enrolled in."* The question names **students** and **courses**. A naive
-> pruner keeps exactly those two tables — and produces a schema you *cannot
-> write the query against*, because the join goes `student → enrollment →
-> course` and `enrollment` is gone. The junction table is the one table the
-> question never names and the query can't live without.
->
-> Our first fix was a foreign-key closure: after keeping a matched table,
-> also keep everything it `REFERENCES`. That sounds complete. It isn't —
-> it's **directional**. `enrollment` references `student` and `course`; they
-> don't reference it back. Closure walks *outbound* from the tables you kept,
-> and the bridge is reachable only *inbound*. So it stays dropped.
->
-> You might think column-name matching saves you — `enrollment.student_id`
-> contains "student," so the table gets matched on its column. Often it does!
-> Which is exactly why this bug hides: it only bites when the junction's
-> columns are generic (`a`, `b`, `parent_ref`) or named for the relationship
-> rather than the endpoints. Then the bridge matches nothing and closure
-> can't reach it, and you only notice because some fraction of your join
-> queries quietly come back wrong.
->
-> The fix is one pass: **also keep any table that references two or more of
-> the tables the question matched.** A table linking two things you explicitly
-> asked about is the junction you join through — keep it. Seed the rule from
-> the *matched* set only, so you pull in genuine bridges and not every table
-> that happens to point at a popular dimension. It can only add tables, so it
-> can't regress the distractor-removal win; it just closes the recall hole.
->
-> The principle worth stealing: **schema relevance is not the set of tables
-> the question names — it's that set plus the connectors between them.** Prune
-> for the question and you'll drop the plumbing. Prune for the *query you'll
-> have to write* and you keep the bridge.
->
-> (This was a `/daily` run on nlqdb, a database you query in plain English;
-> the pruner above feeds its NL→SQL planner. The recall fix is unit-measured;
-> the end-to-end benchmark delta lands on the next eval and is public.)
-
-**Why this is publishable:** schema linking / pruning is a 2026-common
-text-to-SQL technique, and "outbound FK closure silently drops junction
-tables" is a concrete, non-obvious gotcha that lands for anyone building one.
-One nlqdb mention, in context. Sourced from this run's SK-LLM-037 revision +
-its unit-measured before/after.
+- **run 13 — "Schema pruning for text-to-SQL drops the one table the join
+  needs."** Pruning a big schema to "the tables the question mentions" silently
+  drops the junction table the question never names (`student → enrollment →
+  course`). A foreign-key closure doesn't save you — it walks *outbound*, and the
+  bridge is reachable only *inbound*. Fix: also keep any table that references two
+  or more matched tables. Lesson: schema relevance is the named tables *plus the
+  connectors between them*. Sourced from SK-LLM-037 revision + its unit-measured
+  before/after.
 
 ---
 
