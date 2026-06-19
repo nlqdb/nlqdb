@@ -47,7 +47,7 @@
      Premium dispatch is **gated** behind the existing
      [`phase-plan.md` §6](../phase-plan.md) monetization trigger —
      the architectural slot exists from day one but the meter does
-     not fire until Stripe live ships.
+     not fire until the §6 trigger trips.
 
   Dispatch precedence inside the router, highest → lowest:
 
@@ -176,7 +176,7 @@
   GLOBAL clarifies: the free tier *never* gets hosted premium; if
   free-tier users want premium accuracy, BYOLLM is the path.
   Bundle-size budget unchanged.
-- [`phase-plan.md` §6](../phase-plan.md) — Stripe live is still
+- [`phase-plan.md` §6](../phase-plan.md) — the hosted-premium lane is
   demand-signal-gated. This GLOBAL adds: BYOLLM can ship **before**
   §6 trips (no payment infra needed), and the architectural slot
   for premium dispatch lands now so flipping it on at §6 is a

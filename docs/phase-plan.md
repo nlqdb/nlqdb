@@ -178,7 +178,7 @@ it composes on the same auth/SDK; framework wrappers third.
    through it at 0% markup. Ships now because no payment infra is
    required; the hosted-premium lane stays dark until §6 trips.
 
-**Not in Phase 2 by default:** Stripe live, Lago, Listmonk, and the
+**Not in Phase 2 by default:** Lago, Listmonk, and the
 hosted-premium LLM lane (architectural slot landed in §10 above; meter
 stays off). These all turn on when §6 trips.
 
@@ -240,18 +240,16 @@ disappointed" ≥ 40% (PMF) — measured monthly per
 
 ## 6. Monetization + scaling trigger
 
-**Building** the payment flow is never gated — implement it, ship it in
-Stripe **test mode**, and keep the live button behind a flag. What a
-demand-signal gates is **turning it on for real users**: Stripe **live**
-mode, real charges, the exposed live pricing button, Lago metering,
+**Building** is never gated — implement it before the signal. What a
+demand-signal gates is **the cost-incurring layers**: Lago metering,
 Listmonk marketing email, and cost-incurring scaling (Cloudflare Pro,
 Neon Launch). None of those turn on by phase number; they turn on when
 one signal trips — whichever happens first:
 
 | Signal | Threshold | What it unlocks |
 |---|---|---|
-| Unsolicited inbound asking how to pay | ≥ 5 across GH / Discord / email | Revealed preference. Founder-led pricing conversation; turn the live button on (a $1 founding-supporter tier is a cheap hard-signal layer). |
-| Test-mode Stripe Checkout completion rate | ≥ 30% over 50 sessions | Strong enough to commit to Stripe live + Hobby $10 + Lago. |
+| Unsolicited inbound asking how to pay | ≥ 5 across GH / Discord / email | Revealed preference. Founder-led pricing conversation (a $1 founding-supporter tier is a cheap hard-signal layer). |
+| Checkout completion rate | ≥ 30% over 50 sessions | Strong enough to commit to Lago metering + the cost-incurring scaling layers. |
 
 Thresholds are starting heuristics, not measured truths — adjust on
 first contact with traffic. The [cost ladder](./cost-ladder.md)
@@ -259,11 +257,12 @@ first contact with traffic. The [cost ladder](./cost-ladder.md)
 before the signal, no spending or charging until it trips.
 
 **Reconciliation with the persona-validation plan.** The "2 convert to paid
-Hobby" criterion in [`personas.md §10.4`](./research/personas.md) is downstream
-of this trigger (measurable only after Stripe live ships). Phase 1 close
-therefore requires: (a) all personas.md qualitative criteria, AND (b) §6 has
-tripped and Stripe live shipped, OR (c) a deliberate decision to ship without
-paid validation if §6 hasn't tripped within the quarter.
+Hobby" criterion in [`personas.md §10.4`](./research/personas.md) is measurable
+once Stripe live-mode go-live lands ([`blocked-by-human.md`](./blocked-by-human.md));
+checkout works in test mode today. Phase 1 close requires all personas.md
+qualitative criteria, plus the paid-conversion check once live (or a deliberate
+decision to ship without paid validation if conversions haven't landed within
+the quarter).
 
 **What is *not* §6-gated.** Per
 [`GLOBAL-026`](./decisions/GLOBAL-026-llm-strategy-byollm-hosted-premium.md),

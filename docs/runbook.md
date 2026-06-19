@@ -81,7 +81,7 @@ re-enable via Cloudflare later).
 | OpenRouter       | Existing                  | Free (fallback)                   | —                                                  |
 | Google Cloud     | `omer.hochman@gmail.com`  | Free                              | Project `nlqdb`, OAuth consent screen **In production** |
 | Resend           | `omer.hochman@gmail.com`  | Free (3k emails/mo)               | API key `nlqdb-phase0`; `nlqdb.com` verified (DKIM `resend._domainkey`, SPF on `send.nlqdb.com`) |
-| Stripe           | `omer.hochman@gmail.com`  | Test mode (no card)               | Merchant: Switzerland / CHF; descriptor `NLQDB.COM`; webhook secret ⏳ Phase 0 §3 |
+| Stripe           | `omer.hochman@gmail.com`  | Test mode (no card)               | Merchant: Switzerland / CHF; descriptor `NLQDB.COM`; test mode fully configured (sk + pk + webhook secret + Hobby/Pro price IDs) |
 | Grafana Cloud    | `omer.hochman@gmail.com`  | Free                              | Stack `nlqdb` on `us-east-2`, instance `1609127`, access policy `nlqdb-phase0-telemetry` |
 | LogSnag          | `omer.hochman@gmail.com`  | Free (2,500 events/mo)            | Sole sink for `packages/events`; verified end-to-end (first `/v1/ask` produced an event) |
 | Tinybird         | `omer.hochman@gmail.com`  | Free Forever (10 GB, 1k reads/day)| Workspace `omer` (`us-east-1`, Forward). **Dual role:** the ClickHouse engine (`packages/db/clickhouse-tinybird`) **and** the `query_log` events sink (`SK-EVENTS-009`). `query_log` Data Source **live** — deploy datafiles with `scripts/tinybird-deploy.sh`. Worker token scope `DATASOURCE:APPEND` |
@@ -613,6 +613,7 @@ unmerged consumer code against the preview queue.
 | 2.5  | ~~AWS SES fallback~~               | ⏭ dropped — card-required; Resend free tier suffices pre-PMF |
 | 2.5  | Stripe (test mode) — sk + pk       | ✅            |
 | 2.5  | Stripe webhook secret              | ✅ (Slice 7 — PR #33) |
+| 2.5  | Stripe Hobby/Pro price IDs (test mode) | ✅ (set in `.envrc` + mirrored) |
 | 2.6  | Sentry DSN                         | ✅            |
 | 2.6  | Grafana Cloud OTLP                 | ✅            |
 | 2.6  | LogSnag (`LOGSNAG_TOKEN` + `LOGSNAG_PROJECT`) | ✅ (verified end-to-end: first `/v1/ask` produced a LogSnag event) |
@@ -945,7 +946,7 @@ Prisma / Drizzle / SQLAlchemy are not what we are. If they want codegen from a s
 
 For each P0 persona, before we declare Phase 1 done:
 
-- **P1 Solo Builder:** 5 design partners each ship a real project using nlqdb as the primary DB. **Paid-conversion target (≥ 2 to Hobby)** is downstream of the `docs/phase-plan.md §6` monetization trigger — measurable only after Stripe live ships. Pre-trigger, the equivalent qualitative gate is the Sean Ellis "very disappointed" check in [`docs/founder-playbook.md §2`](../docs/founder-playbook.md).
+- **P1 Solo Builder:** 5 design partners each ship a real project using nlqdb as the primary DB. **Paid-conversion target (≥ 2 to Hobby)** becomes measurable once Stripe live-mode go-live lands (`docs/blocked-by-human.md`); the equivalent qualitative gate is the Sean Ellis "very disappointed" check in [`docs/founder-playbook.md §2`](../docs/founder-playbook.md).
 - **P2 Agent Builder:** MCP server installed in 3 distinct agent frameworks in the wild. At least 1 agent product publicly integrates nlqdb as its memory layer. (MCP is the first item in the Phase 2 distribution slice — this gate is measured after MCP ships.)
 - **P3 Analyst:** 3 non-engineers complete a real analysis end-to-end in under 10 minutes, unassisted, in user tests.
 
