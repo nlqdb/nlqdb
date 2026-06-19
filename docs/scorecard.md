@@ -165,27 +165,14 @@ few-shot), not retrieval. Value-retrieval is demoted + privacy-gated.
   numbers unchanged (no eval dispatched). Next scheduled run targets §4 #2a
   value-retrieval.
 - 2026-06-18 (run 15) — **mismatch error-class classifier + corrected loss
-  breakdown (SK-QUAL-014).** The last two runs shipped prompt levers whose EX
-  delta defers to the next eval, and Spider ran 06-17 (§5 forbids a
-  back-to-back dispatch), so this run produces a **real, deterministic,
-  no-quota measurement** instead of a third deferred lever: a committed,
-  reusable classifier (`tools/eval/src/analyze-mismatches.ts` + `bun
-  analyze-mismatches`) that buckets every `mismatch` row of a saved baseline
-  by structural diff. Run on the canonical BIRD 500-q baseline it **overturns
-  the working assumption**: a naive bare-word table regex had implied
-  join-recall dominates, but with quote-aware parsing (`FROM "transactions_1k"`
-  was being missed) `fewer_tables` collapses **105 → 35 (15%)**; the real loss
-  mass is aggregation/DISTINCT **grain** (`agg_fn_diff` 61, `missing_DISTINCT`
-  41, `extra_DISTINCT` 34) + subquery **shape** (`more_subqueries` 44), and
-  reading the rows shows much of it is **value/literal/column grounding** the
-  model can't guess (`'discount'` vs `'Discount'`; `Amount` vs `Price`) — the
-  §4 #2 value-retrieval lever, now evidence-backed as the top mismatch lever
-  (plus a slice of BIRD gold-annotation noise, §4 #5). Re-points
-  `quality-score-source-of-truth.md` §2/§4/§6. 193 eval tests green (was 185);
-  typecheck + lint clean. KPI: engine quality (GLOBAL-025) — sharper
-  instrument → evidence-driven lever selection; none degraded (read-only over
-  a saved report, no chain/scorer/runner change). EX numbers unchanged this
-  run (no eval dispatched); next scheduled run targets §4 #2.
+  breakdown (SK-QUAL-014).** A committed, reusable classifier
+  (`tools/eval/src/analyze-mismatches.ts`) buckets every `mismatch` row of a
+  saved baseline by structural diff. On the canonical BIRD 500-q baseline,
+  quote-aware parsing collapses `fewer_tables` **105 → 35**; the real loss mass
+  is aggregation/DISTINCT **grain** + subquery **shape**, much of it
+  value/literal/column grounding (the §4 #2 value-retrieval lever). Re-points
+  `quality-score-source-of-truth.md` §2/§4/§6. 193 eval tests green. KPI: engine
+  quality (GLOBAL-025); none degraded (read-only; no eval dispatched).
 - 2026-06-18 (run 14) — **aggregate-filter HAVING directive (SK-LLM-040 /
   T22).** The newest eval (Spider) ran 06-17 and the §5 quota guardrail forbids
   a back-to-back dispatch, so this run ships a prompt-only engine-correctness
@@ -238,23 +225,13 @@ few-shot), not retrieval. Value-retrieval is demoted + privacy-gated.
   (27679511189 hit the 60-min ceiling → 27683263668 completed).
 - 2026-06-16 (run 11) — **execution-guided repair: feed a re-plannable PG
   exec error back to the planner (SK-ASK-022).** A deterministic-but-fixable
-  exec error (42703 undefined_column, 42803 GROUP BY, 42883/42725 function,
-  42702 ambiguous, 42P18/42804/42846 type, 22P02 cast, 42601 syntax — the set
-  lives in `exec-repair.ts`) was replayed identically 3× by SK-ASK-013's
-  transient retry, then surfaced `db_unreachable`. The planner never saw the
-  DB's own error, even though the plan prompt already diagnoses
-  `previousAttempt.error` against the full schema. Now such an error bails the
-  transient retry after one attempt and re-plans **once** with the error fed
-  back (reads only; a repaired write is rejected `write_via_repair`, never run
-  — preserves the SK-TRUST-001 preview gate). **Measured (orchestrator unit
-  tests, stubbed exec/LLM):** on a 42703 → fixed-column scenario, recovery
-  **db_unreachable → rows (0 → 1)** with exec round-trips on the deterministic
-  error **3 → 2** (1 fail + 1 repaired, vs 3 identical replays); repair bounded
-  to once; a repaired write blocked before exec. KPI: engine quality
-  (GLOBAL-025), with a performance assist (fewer doomed replays). None degraded
-  — failure-path only (zero happy-path latency, SK-ASK-002 budget untouched),
-  schema_mismatch (42P01/3F000) still bails as before. 808 api tests green
-  (was 805). Full BIRD/Spider EX delta → next scheduled quality-eval.
+  exec error (the set lives in `exec-repair.ts`) was replayed identically 3× by
+  SK-ASK-013's transient retry, then surfaced `db_unreachable`. Now it re-plans
+  **once** with the error fed back (reads only; a repaired write is rejected
+  `write_via_repair` — preserves the SK-TRUST-001 preview gate). Measured (unit):
+  `db_unreachable → rows (0 → 1)`, exec round-trips 3 → 2. KPI: engine quality
+  (GLOBAL-025); none degraded (failure-path only). 808 api tests green. Full EX
+  delta → next eval. Detail: `progress/quality-score-verification-log.md`.
 - 2026-06-15/16 (runs 7–10) — provider-resilience wave: pin-to-2.0 falsified
   (run 7) → park a denied provider on the first 401/403 (run 9, SK-LLM-039)
   with a 30-min cooldown (run 10; dead-key round-trips 10 → 1) ·
