@@ -10,7 +10,7 @@ when-to-load:
 # Feature: Stripe Billing
 
 **One-liner:** Stripe webhook ingest, subscription state, idempotent processing, R2 archive.
-**Status:** implemented (Slice 7 — PR #33; live-mode flip in Phase 2)
+**Status:** implemented (going live)
 **Owners (code):** `apps/api/src/stripe/**`, `apps/api/src/index.ts`, `POST /v1/stripe/webhook`
 **Cross-refs:** docs/architecture.md §6 (pricing) · docs/phase-plan.md (Phase 2 stripe slice) · docs/runbook.md §6 (webhook + R2 archive) · docs/performance.md §3.1 (`nlqdb.webhook.stripe` span), §4 Slice 7, §5 · `apps/api/src/stripe/webhook.ts` (canonical pipeline doc-comment)
 
@@ -139,11 +139,10 @@ Canonical text in [`docs/decisions/`](../../decisions/) (index in [`docs/decisio
 
 ## Open questions / known unknowns
 
-- **Dunning email — Resolved (`SK-STRIPE-013`).** All three halves now ship: operator alert (`SK-STRIPE-011`), in-app banner (web-app `SK-WEB-012`), and the customer reminder email from the events-worker `billing.payment_failed` sink. Inert until `RESEND_API_KEY` + live subscriptions exist; the go-live flip is config-only.
 - **R2 lifecycle policy** — Resolved (`GLOBAL-033`): **90-day retention** on the date-partitioned keys (events are Dashboard-replayable, so the bucket is a convenience cache). One-time Cloudflare R2 config; **parked until** bucket size is load-bearing.
 - **DLQ for stuck events** — **Parked until** a `processed_at IS NULL` backlog appears (PLAN §11): the queryable signal exists; the ops cron + alert is the wiring that lands when a dispatch first slips by.
 - **Lago wiring.** Lago-on-Fly as the usage-metering layer batched into Stripe (PLAN §6); not yet wired. Phase 2 slice TBD.
-- **Dashboard + live-mode cutover.** Endpoints are inert until the Stripe Dashboard is configured (price IDs, Stripe Tax, a saved Customer-portal config — `sessions.create` errors without one) and the test→live secret rollover runs (`wrangler secret put` + Dashboard webhook endpoint update). Capture the runbook in `docs/runbook.md §6` when the flip lands.
+- **Dashboard + live-mode cutover.** Going live: create live products + price IDs, save a Customer-portal config (`sessions.create` errors without one), enable Stripe Tax, then put live keys/products/webhook in `.envrc` + run the mirror scripts and update the Dashboard webhook endpoint. Operator steps tracked in [`blocked-by-human.md`](../../blocked-by-human.md); capture the runbook in `docs/runbook.md §6` when the flip lands.
 - **Re-subscribe against a customer deleted in Stripe** (SK-STRIPE-014). A `stripe_customer_id` manually deleted in the Dashboard surfaces as a `500 internal` on the next re-subscribe. **Parked** — it can't arise from our own flow (we never delete customers), and the operator who deleted it is the one who sees the error.
 
 ## Billing constraints and philosophy

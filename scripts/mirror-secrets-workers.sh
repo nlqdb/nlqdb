@@ -116,6 +116,11 @@ select_secrets() {
         GOOGLE_CLIENT_SECRET
         GRAFANA_OTLP_ENDPOINT
         STRIPE_WEBHOOK_SECRET
+        # Checkout + billing-status read these at runtime (index.ts) — without
+        # them /v1/billing/checkout 503s plan_not_configured.
+        STRIPE_SECRET_KEY
+        STRIPE_PRICE_HOBBY
+        STRIPE_PRICE_PRO
         RESEND_API_KEY
       )
       ;;

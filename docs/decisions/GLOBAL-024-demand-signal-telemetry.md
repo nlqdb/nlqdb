@@ -9,7 +9,8 @@
 - **Core value:** Bullet-proof, Honest latency, Free
 - **Why:** The phase plan's monetization and scaling triggers (see
   [`phase-plan.md` §6](../phase-plan.md)) require data-driven decisions
-  about *what to build next* and *when to ship Stripe live*. Without
+  about *what to build next* and *when to light the cost-incurring
+  layers* (Lago, Listmonk, scaling). Without
   systematic capture of unmet demand, the team can't tell whether a
   "missing feature" is real or imagined. The existing per-route /
   per-status metrics (`performance.md §3.2`) measure what *did*

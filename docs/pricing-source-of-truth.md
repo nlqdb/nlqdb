@@ -13,8 +13,7 @@ Progress tracker for the pricing page and Stripe integration.
 
 ## Goal
 
-Enable users to upgrade from Free → Hobby ($10/mo) or Pro ($25/mo) via Stripe Checkout in test mode.
-Measure checkout completion rate; when ≥30% over 50 sessions the §6 trigger fires and we flip to live mode.
+Enable users to upgrade from Free → Hobby ($10/mo) or Pro ($25/mo) via Stripe Checkout, live mode.
 
 ---
 
@@ -236,11 +235,10 @@ API version pinned to `2026-04-22.dahlia` via the `stripe` npm SDK (see `SK-STRI
 
 ## What is next
 
-1. **Create Stripe products and price IDs** in the Stripe Dashboard (test mode) and set `STRIPE_PRICE_HOBBY` / `STRIPE_PRICE_PRO` via `wrangler secret put`. Without these the checkout returns 503. Also **enable Stripe Tax** in the Dashboard (`automatic_tax: { enabled: true }` is sent on every session; `sessions.create` 500s if Stripe Tax is not activated on the account).
+1. **Create Stripe products and price IDs** — done in test mode: `STRIPE_PRICE_HOBBY` / `STRIPE_PRICE_PRO` are set in `.envrc` + mirrored to the Worker, so checkout no longer 503s. Still **enable Stripe Tax** in the Dashboard (`automatic_tax: { enabled: true }` is sent on every session; `sessions.create` 500s if Stripe Tax is not activated on the account).
 2. **Activate the Stripe Customer Portal** in the Dashboard (test mode → Billing → Customer portal): save a portal configuration (switchable plans, cancel behaviour, invoice history). `POST /v1/billing/portal` errors until one exists.
 3. **Set `RESEND_API_KEY` on the events-worker** (`cd apps/events-worker && bun run secrets:remote`, or the deploy workflow self-heals it) so the SK-STRIPE-013 customer dunning email actually sends in test mode. Without it the send no-ops.
-4. **§6 trigger measurement**: once Stripe price IDs are set and checkout is live in test mode, track completion rate toward the 30%/50-sessions threshold.
-5. **Live mode flip**: when §6 trips, replace test-mode keys with live-mode keys via `wrangler secret put` + update Stripe Dashboard webhook endpoint.
-6. **Premium models add-on** (`POST /v1/billing/checkout/premium { db_id }`): gated on §6 + Phase 2 `quality-eval` baseline.
-7. **Lago wiring**: metered overage for Pro queries + premium LLM tokens (Phase 3).
-8. **R2 lifecycle policy**: configure "delete > 90 days" rule on `nlqdb-assets` (SK-STRIPE-006 open question).
+4. **Live mode flip**: create live products + price IDs, then replace test-mode keys with live-mode keys via `.envrc` + mirror scripts + update the Stripe Dashboard webhook endpoint.
+5. **Premium models add-on** (`POST /v1/billing/checkout/premium { db_id }`): gated on §6 + Phase 2 `quality-eval` baseline.
+6. **Lago wiring**: metered overage for Pro queries + premium LLM tokens (Phase 3).
+7. **R2 lifecycle policy**: configure "delete > 90 days" rule on `nlqdb-assets` (SK-STRIPE-006 open question).
