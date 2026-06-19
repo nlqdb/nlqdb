@@ -235,5 +235,5 @@ Canonical text in [`docs/decisions/`](../../decisions/).
   event today — promote when a smoke dashboard is wanted); a hard token-budget
   counter (the `SK-QUAL-011`/`SK-QUAL-012` reactive controls cover it).
 - **Still open** (agentic lane shipped per [`SK-QUAL-009`](#sk-qual-009)): multi-model frontier (GPT-5 + Gemini 2.5 Pro) deferred until the Sonnet 4.6 baseline lands; BYOLLM-lane instrumentation depends on `SK-LLM-016`; pin a `xlang-ai/Spider2` SHA in the next Spider baseline.
-- **Canonical raw EX — BIRD 0.522 (2026-06-12) / Spider 0.1852 (2026-06-17)**, 6-provider GHA runs (`SK-QUAL-013`). Full breakdown: `quality-score-source-of-truth.md` §2.
+- **Canonical raw EX — BIRD 0.520 (2026-06-19, flat) / Spider 0.1852 (2026-06-17)**, 6-provider GHA runs (`SK-QUAL-013`). Breakdown: `quality-score-source-of-truth.md` §2.
 - **Corrected-set evaluation — parked until the next BIRD refresh** (`GLOBAL-033`). UIUC Kang ([arXiv:2601.08778](https://arxiv.org/abs/2601.08778)) found 52.8% BIRD annotation errors. **Adopt iff** license permits bundling **and** it stays a ~50-LOC scorer-reuse patch; else skip.

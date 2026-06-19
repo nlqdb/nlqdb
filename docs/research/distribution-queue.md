@@ -5,6 +5,59 @@ One publishable artifact drafted per day by the daily agent
 publishes at the weekly session. Newest first. Delete an entry once published
 (the live URL goes into `docs/scorecard.md`).
 
+## 2026-06-19 (run 17) — dev.to / lobste.rs post
+
+**Title:** We shipped four fixes to our text-to-SQL engine, then measured them all at once. The benchmark didn't move — and that was the answer.
+
+**Body:**
+
+> Over two weeks we shipped a stack of small, well-motivated corrections to the
+> planner that turns plain English into SQL: count-grain (`COUNT` vs
+> `COUNT(DISTINCT)`), group-by-grain, a numeric-text `CAST` rule, a
+> `HAVING`-vs-`WHERE` rule, and a schema-pruning recall fix. Each targets a
+> documented text-to-SQL error class. Each shipped with unit tests and a "real
+> benchmark delta lands on the next eval" note.
+>
+> Today we finally ran that eval — the full 500-question BIRD benchmark, on a
+> strictly-free LLM chain, end to end. The number: **260/500 = 0.520**, against
+> a 0.522 baseline from two weeks ago.
+>
+> Flat. And before you conclude the fixes did nothing, the interesting part is
+> *how* we know it's flat rather than a regression. 75 questions changed answer
+> between the two runs — 38 went right→wrong, 37 went wrong→right. A McNemar
+> test on that 38/37 split gives **p = 0.50**: indistinguishable from a coin
+> flip. The churn is our free provider chain answering with different models on
+> different runs (we decode greedily, but *which* of six free providers serves a
+> given question shifts with rate limits), not the prompt changes doing
+> anything.
+>
+> So the honest read isn't "the fixes failed." It's "this *class* of fix has
+> saturated." Three independent full runs now land at 261, 263, 260 of 500 — a
+> tight cluster. The remaining ~240 wrong answers aren't grain or clause
+> mistakes a directive can fix; they're *grounding* failures — the model
+> guessing `'Discount'` when the data says `'discount'`, or reaching for a
+> column named by its values rather than its header. The next lever isn't
+> another rule. It's feeding the model sample values from the actual data.
+>
+> Two things worth stealing:
+>
+> 1. **Deferring measurement compounds.** We had four "measure next time" notes
+>    stacked up; measuring them *together* means you can't attribute the
+>    (non-)delta to any one. Measure each lever when you ship it, or accept
+>    you're flying blind on which ones earn their tokens.
+> 2. **A flat benchmark is a result, not a failure — if you can prove it's
+>    flat.** McNemar turns "the number didn't move" into "this approach is done,
+>    move to the next class," which is a decision, not a shrug.
+>
+> (A `/daily` run on nlqdb, a database you query in plain English. The eval is
+> the open BIRD harness on a $0 free-LLM chain; every number is public.)
+
+**Why this is publishable:** "we measured and it didn't move" is a rare, honest
+genre, and McNemar-for-noise-vs-signal is a technique most people wiring an LLM
+eval loop never reach for. The grounding-vs-reasoning pivot is concrete and
+useful. One nlqdb mention, in context. Sourced from this run's canonical BIRD
+re-run + baseline diff (`eval-baseline.ts`, 2026-06-19).
+
 ## 2026-06-18 (run 16) — dev.to / lobste.rs post
 
 **Title:** Before you prune the schema you send an LLM, measure what the prune would throw away
@@ -219,141 +272,28 @@ its unit-measured before/after.
 
 ---
 
-## 2026-06-16 (run 11) — dev.to / lobste.rs post
+## 2026-06-15/16 (runs 8–11) — dev.to / lobste.rs posts (condensed; full drafts in git history)
 
-**Title:** Failover, retry, repair: the three error classes in an LLM text-to-SQL pipeline
-
-**Body:**
-
-> A few days ago I wrote that a failover chain is not the same as a retry
-> policy. Failover is "this provider is bad, try the next one." Retry is "this
-> provider is fine, the network hiccupped." Today I found the third member of
-> that family, and it's the one that was quietly costing us the most.
->
-> Our text-to-SQL engine turns a plain-English question into SQL, then runs it.
-> The run step had exactly one failure mode in its head: the database is
-> unreachable. So when a query threw, it did the obvious thing — retried the
-> *same SQL* a couple of times, then gave up with "couldn't reach the
-> database."
->
-> But look at what Postgres actually throws. `42703 column "revenue" does not
-> exist`. `42803 column must appear in the GROUP BY clause`. `42883 operator
-> does not exist: text = integer`. These are not the database being
-> unreachable. The database is right there, and it's telling you *exactly*
-> what's wrong with the query. And here's the thing that makes retry useless:
-> they're **deterministic**. The same SQL against the same schema fails the
-> same way every time. Retrying it three times is three guaranteed failures and
-> a slower error message.
->
-> The error classes are distinct, and each wants a different response:
->
-> - **Connection dropped / 5xx** → *retry*. Same SQL, the transient clears.
-> - **Provider down** → *failover*. Different provider, same request.
-> - **The SQL is wrong in a fixable way** → *repair*. Same goal, **re-plan
->   with the error fed back.**
->
-> That third one is the highest-value move in text-to-SQL, and it was the one
-> we weren't making. The fix is almost embarrassing in hindsight: when the
-> database returns a re-plannable error, hand the model its own goal plus the
-> exact error string ("you wrote `revenue`, here's why that failed") and let it
-> re-plan **once**. A wrong column becomes the right column. A missing GROUP BY
-> gets added. The model is good at this — it just never saw the error, because
-> the run step was busy treating a diagnostic message as a network blip.
->
-> Three guardrails kept it honest:
->
-> 1. **Bound it to one re-plan.** Execution-guided repair can loop forever if
->    you let it. One shot, then surface the failure.
-> 2. **Only on the deterministic error classes.** A connection drop still
->    retries; a missing *table* (vs. a missing column) is a different bug class
->    we route elsewhere. Repair is for "the SQL is malformed but fixable."
-> 3. **Reads only.** A repaired query that comes back as a `DELETE` is rejected,
->    never executed — repair must not smuggle a write past the preview gate.
->
-> The payoff is asymmetric: zero added latency on every query that already
-> works (repair only fires on the failure path), and it converts a class of
-> dead-ends into answers. And it compounds with model quality for free — a
-> better model reads the error better, so the same scaffolding gets stronger
-> the moment you swap the model.
->
-> The principle worth stealing: **before you retry, ask whether the thing that
-> failed is going to fail the same way again.** If it is, you don't have a
-> transient — you have a diagnosis. Feed it back.
->
-> (nlqdb is a database you query in plain English; the repair loop above is in
-> the NL→SQL engine. Benchmark deltas are public.)
-
-**Why this is publishable:** completes the failover → retry → **repair**
-taxonomy from the run-5 post with the highest-value member, and the
-"deterministic error = diagnosis, not transient" framing is a genuinely useful
-lesson for anyone wiring an LLM to a real backend (DB, API, compiler).
-Execution-guided repair is well-known in the text-to-SQL literature, so the
-post lands as "here's how we wired it cleanly," not a novelty claim. Mentions
-nlqdb once, in context.
-
----
-
-## 2026-06-16 (run 10) — dev.to / lobste.rs post
-
-**Title:** "Auto-re-probes so it recovers without a deploy" — a comment that was quietly false
-
-**Body:**
-
-> Yesterday I wrote about pulling a permanently-dead LLM provider out of our
-> hedged fast lane: a `403 PERMISSION_DENIED` key that we'd left *out* of the
-> circuit breaker, so it got re-dialed on every request. The fix was to open
-> the breaker on the first `auth_denied` while keeping the skip legible. Good.
-> But the fix shipped with a justification, written in the decision record and
-> the code comment, that I want to come back to — because it was wrong in a
-> way that's easy to miss:
->
-> > *"Open the breaker for the standard cooldown … the cooldown auto-re-probes,
-> > so a re-keyed provider recovers without a deploy."*
->
-> The "standard cooldown" is 60 seconds. The sentence sounds reasonable: park
-> the dead provider, but re-check it every minute so that the moment someone
-> fixes the key, traffic flows again — no redeploy required. Self-healing.
-> Who could argue?
->
-> Two facts kill it. **First, a 401/403 is human-gated.** It is not a capacity
-> blip that clears on its own in 60 seconds; it clears when a person edits a
-> console — billing, an API toggle, an abuse flag. Re-probing every minute is
-> re-asking a question whose answer only changes on human time. **Second — and
-> this is the one I'd missed — for an env-keyed provider, the re-key *is* a
-> deploy.** The key lives in an environment secret. Changing it means a deploy.
-> A deploy spins up fresh worker isolates with fresh in-memory breaker state.
-> So the "recovers without a deploy" path described a recovery that, for our
-> architecture, can never happen: by the time the key is good, the breaker that
-> was supposed to re-probe it no longer exists.
->
-> Net effect: the 60-second re-probe caught exactly zero recoveries and cost a
-> guaranteed-failed round-trip — plus, on hedged calls, the slow-path hedge
-> slot the live provider behind it should have had — once a minute, for the
-> entire life of every isolate.
->
-> The fix is one constant. Park an `auth_denied` provider for **30 minutes**,
-> not 60 seconds. Still periodic (a genuinely transient 403 — an abuse flag
-> lifted, a gateway hiccup — still self-heals on the next probe), but a
-> permanent denial now costs ~2 probes an hour instead of ~60.
->
-> Measured the only way you can without the real key: a unit test with a fake
-> clock, simulating a 10-minute isolate serving one planning call a minute.
-> Before: the dead provider is dialed ~10 times. After: once. Same shape as
-> yesterday's 5 → 1, one level up.
->
-> The meta-lesson, again: the *cost claim* attached to a decision is the part
-> that rots. "Near-zero, it sits 3rd" was false because the chain reordered.
-> "Recovers without a deploy" was false because the recovery mechanism and the
-> deploy mechanism were the same mechanism. Both read as obviously-true the day
-> they were written. The cheapest audit in software is to take one load-bearing
-> justification per change and ask: *is this still true of the system I have
-> now?*
->
-> (A `/daily` run on nlqdb, where every change names the number it moves. This
-> one: round-trips to a dead provider over a 10-minute isolate, ~10 → 1.)
-
-## 2026-06-15 (runs 8–9) — dev.to / lobste.rs posts (condensed; full drafts in git history)
-
+- **run 11 — "Failover, retry, repair: the three error classes in an LLM
+  text-to-SQL pipeline."** The run step had one failure mode in mind (DB
+  unreachable), so it retried the *same* SQL on a deterministic Postgres error
+  (`42703 column does not exist`, missing `GROUP BY`, type mismatch) — three
+  guaranteed failures, then a dead-end. The third error class wants *repair*:
+  feed the DB's own error back to the planner and re-plan **once** (reads only;
+  a repaired write is rejected, never run). Zero added happy-path latency;
+  converts dead-ends into answers and compounds with model quality for free.
+  Lesson: before you retry, ask whether the thing that failed will fail the same
+  way again — if so, it's a diagnosis, not a transient.
+- **run 10 — "'Auto-re-probes so it recovers without a deploy' — a comment that
+  was quietly false."** A dead `auth_denied` provider was parked for the
+  standard 60 s breaker cooldown, justified as "self-heals on the next probe."
+  False twice over: a 401/403 is human-gated (clears on a console edit, not in
+  60 s), and for an env-keyed provider the re-key *is* a deploy — which spins up
+  fresh isolates with fresh breaker state, so the re-probe never catches the
+  recovery. Fix: park `auth_denied` for 30 min, not 60 s (dead-provider
+  round-trips over a 10-min isolate ~10 → 1). Lesson: a decision's stated *cost*
+  rots; re-read one load-bearing justification per change against the system you
+  have now.
 - **run 9 — "The dead provider in the fast lane: when a hedged request races a
   403."** A dead-key provider (`403 PERMISSION_DENIED`) sat 2nd in the chain —
   exactly the slot the latency hedge fires — so every slow planning call raced

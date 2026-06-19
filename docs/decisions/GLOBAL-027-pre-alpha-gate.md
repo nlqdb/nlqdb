@@ -45,11 +45,11 @@
       "action": "Join the waitlist",
       "waitlist_url": "https://nlqdb.com/#waitlist",
       "gate": {
-        "bird_accuracy": 0.522,
+        "bird_accuracy": 0.52,
         "spider_accuracy": 0.1852,
         "bird_target": 0.65,
         "spider_target": 0.75,
-        "measured_at": "2026-06-17T10:48:41.851Z"
+        "measured_at": "2026-06-19T03:08:58.665Z"
       }
     }
   }
@@ -57,8 +57,9 @@
 
   `gate.{bird,spider}_accuracy` are `number | null`; `null` means a
   lane hasn't been measured yet (it renders honestly as "not yet
-  measured"). Both lanes carry measured values (BIRD 0.522 from the 2026-06-12
-  canonical run; Spider 0.1852 from the 2026-06-17 re-run after the Gemini
+  measured"). Both lanes carry measured values (BIRD 0.520 from the 2026-06-19
+  canonical re-run — flat within variance vs 0.522 on 2026-06-12, McNemar
+  p=0.50; Spider 0.1852 from the 2026-06-17 re-run after the Gemini
   free-tier key was restored) and both stay
   below target. Surfaces render the pair as a
   progress bar.
@@ -70,7 +71,7 @@
     [`GLOBAL-026`](./GLOBAL-026-llm-strategy-byollm-hosted-premium.md)
     bets the company on free-chain quality compounding with frontier
     models; shipping a public surface at the current free-chain BIRD
-    execution-accuracy (0.522 as of 2026-06-12,
+    execution-accuracy (0.520 as of 2026-06-19,
     `eval-baseline.ts`) burns that narrative on impressions we can't
     recover. The gate buys time
     to land the scaffolding (planner, validator, plan-cache, retrieval,
