@@ -50,13 +50,13 @@ few-shot), not retrieval. Value-retrieval is demoted + privacy-gated.
 | 10 | nlqdb-api requests / errors | 2,268 / 0 (0.00%) | mcp 284 req, events-worker 91 req, both 0 err |
 | 11 | nlqdb-api latency p50 / p95 | 666 ms / 7.05 s (06-13) | p95 dominated by LLM-bound asks; `/ask`-only split needs Grafana `metrics:read` (agent has write-only key) |
 | 12 | $ spend | ~$0 | free tiers across CF / Neon / LLM chain |
-| | **Pivot — agent-memory wedge** (GLOBAL-036) | 4 / 20 + 3 memory /vs pages | tick ⬜→✅ with PR link on merge; mirrors `docs/features/agent-memory-pivot/worksheets/INDEX.md` |
-| | *Messaging track — WS-\** | 4 / 13 | pick when worst number is funnel / distribution |
+| | **Pivot — agent-memory wedge** (GLOBAL-036) | 5 / 20 + 3 memory /vs pages | tick ⬜→✅ with PR link on merge; mirrors `docs/features/agent-memory-pivot/worksheets/INDEX.md` |
+| | *Messaging track — WS-\** | 5 / 13 | pick when worst number is funnel / distribution |
 | WS-01 | competitors.md anchor (Zep / Letta / LangMem) | ✅ | run 19 — §4 + threat matrix; unblocks WS-02 |
 | WS-02 | memory `/vs` pages (one per run) | ✅ 3/3 | run 20 — **Zep ✅** (`/vs/zep`); run 21 — **Letta ✅** (`/vs/letta`); run 22 — **LangMem ✅** (`/vs/langmem`) — WS-02 closed |
 | WS-03 | solve pages — sharpen + sibling | ✅ 2/2 | run 23 — **sharpen ✅**; run 25 — **analytical sibling ✅** (`analytical-queries-over-agent-memory`, the read-side report-over-memory wedge) |
 | WS-04 | MCP tool + package + docs framing | ✅ | run 24 — three tool descriptions + `package.json` desc + `mcp.mdx` intro now lead with "analytical memory" (copy only; SK-PIVOT-003) |
-| WS-05 | carousel analytics-over-memory slides | ⬜ | low · 1 run · — |
+| WS-05 | carousel analytics-over-memory slides | ✅ | run 26 — 2 analytics-over-memory slides (`GROUP BY category` + top-N `ORDER BY … LIMIT 5`), MCP surface; data-only `showcase-examples.ts` |
 | WS-06 | Mem0 \| Zep \| Letta \| nlqdb capability matrix | ⬜ | med · ~2 runs · WS-01 |
 | WS-07 | `/agents` landing | ⬜ | med · ~3 runs · WS-06 |
 | WS-08 | on-brand OG / social images | ⬜ | low · ~2 runs · WS-07 |
@@ -76,6 +76,25 @@ few-shot), not retrieval. Value-retrieval is demoted + privacy-gated.
 
 ## Deltas (recent runs)
 
+- 2026-06-20 (run 26) — **WS-05: analytics-over-agent-memory carousel slides**
+  (Pivot messaging track 4 → **5/13**; Pivot 4 → **5/20**). Engine lane blocked
+  (BIRD 06-19 + Spider 06-17 both < 7 d; §5 forbids a back-to-back eval
+  dispatch), so the in-bounds lever is funnel/distribution. WS-03 closed in the
+  prior run (run 25), so per the pivot INDEX pickup rule WS-05 is the
+  lowest-numbered ⬜ with prereqs (none) met — it touches only
+  `apps/web/src/data/showcase-examples.ts`. Added two `read` slides on the home
+  carousel against an `agent_memory`-style table:
+  `read-agent-memory-by-category` (`GROUP BY category … ORDER BY facts DESC`) and
+  `read-agent-memory-top-recalled` (`GROUP BY content … ORDER BY recalls DESC
+  LIMIT 5`), both MCP surface (`db_agents`). The wedge — *the math runs in
+  Postgres, not as arithmetic in the model's head* — now rotates through the
+  home's headline visual alongside the existing recall slide. **Data-only**,
+  additive, reuses the existing typewriter mechanism; brand/animation untouched.
+  `@nlqdb/web` 122 tests · astro-check 0/0/0 · biome clean. KPI: onboarding
+  / UX (carousel comprehension for the agent-builder reader); engine + perf
+  untouched (BIRD 06-19 / Spider 06-17 unchanged). Artifact: an X/Bluesky
+  "your agent's memory should be able to GROUP BY" thread appended to the
+  distribution queue. Next pivot lever is WS-06 (capability matrix).
 - 2026-06-20 (run 25) — **WS-03 run 2/2: shipped the analytical sibling solve page
   `/solve/analytical-queries-over-agent-memory` — WS-03 closed** (Pivot messaging
   track 3 → **4/13**; Pivot 3 → **4/20**; solve pages 5 → **6**). Engine lane

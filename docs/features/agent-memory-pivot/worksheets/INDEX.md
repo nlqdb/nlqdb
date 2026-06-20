@@ -58,7 +58,7 @@ swap.
 | [02](WS-02-memory-vs-pages.md) | Memory-competitor `/vs` pages (Zep, Letta, LangMem — one per run) | low | ~3 | 01 | — |
 | [03](WS-03-solve-pages.md) ✅ | Sharpen the agent-memory solve page + add an analytical-queries sibling | low | ~2 | — | — |
 | [04](WS-04-mcp-framing.md) ✅ | MCP tool + package + docs framing → "analytical memory" | low | 1 | — | — |
-| [05](WS-05-carousel-slides.md) | Carousel: analytics-over-agent-memory slides | low | 1 | — | — |
+| [05](WS-05-carousel-slides.md) ✅ | Carousel: analytics-over-agent-memory slides | low | 1 | — | — |
 | [06](WS-06-capability-matrix.md) | Mem0 \| Zep \| Letta \| nlqdb capability matrix (new surface) | med | ~2 | 01 | — |
 | [07](WS-07-agents-landing.md) | Dedicated `/agents` front door | med | ~3 | 06 | — |
 | [08](WS-08-og-images.md) | On-brand OG / social images for the wedge surfaces | low | ~2 | 07 | — |
@@ -84,7 +84,7 @@ Tick on merge. Keep this list as the durable pivot status (the scorecard's
 - [x] WS-02 — memory `/vs` pages: **Zep ✅** (2026-06-20, run 20 — branch `claude/sharp-wozniak-67k9n4`), **Letta ✅** (2026-06-21, run 21 — branch `claude/sharp-wozniak-sxy0yi`), **LangMem ✅** (2026-06-19, run 22 — branch `claude/vibrant-newton-c3pery`)
 - [x] WS-03 — solve pages: **sharpen ✅** (2026-06-19, run 23 — `give-ai-agent-persistent-memory` reframed to the analytical wedge + phantom MCP tools fixed); **analytical sibling ✅** (2026-06-20, run 25 — `analytical-queries-over-agent-memory`, the read-side wedge)
 - [x] WS-04 — MCP framing (2026-06-19, run 24 — branch `claude/vibrant-newton-rk77n7`)
-- [ ] WS-05 — carousel slides
+- [x] WS-05 — carousel slides (2026-06-20, run 26 — branch `claude/vibrant-newton-8gbdxc`; 2 analytics-over-memory slides: `read-agent-memory-by-category` GROUP BY + `read-agent-memory-top-recalled` top-N)
 - [ ] WS-06 — capability matrix
 - [ ] WS-07 — `/agents` landing
 - [ ] WS-08 — OG / social images

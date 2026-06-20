@@ -1,6 +1,6 @@
 # WS-05 — Carousel: analytics-over-agent-memory slides
 
-**Status:** ⬜ not started
+**Status:** ✅ done (2026-06-20, run 26 — branch `claude/vibrant-newton-8gbdxc`)
 **Sequence:** 5 of 13 · **Risk:** low · **Runs:** 1 · **Prereqs:** none · **Gate:** none
 
 ## Goal
@@ -33,10 +33,13 @@ in rotation lifts the agent-builder reader's comprehension. `Pivot:` boolean
 
 ## Done when
 
-- [ ] 1–2 analytical agent-memory slides in rotation, each with a real
-      aggregation in the SQL reveal.
-- [ ] Brand/animation unchanged (reuses the existing typewriter mechanism).
-- [ ] INDEX tracker + status ticked.
+- [x] 1–2 analytical agent-memory slides in rotation, each with a real
+      aggregation in the SQL reveal. (2 added: `read-agent-memory-by-category`
+      = `GROUP BY category`; `read-agent-memory-top-recalled` = `GROUP BY …
+      ORDER BY … LIMIT 5`. Both MCP surface, `db_agents`.)
+- [x] Brand/animation unchanged (reuses the existing typewriter mechanism;
+      pure `showcase-examples.ts` data addition, no markup churn).
+- [x] INDEX tracker + status ticked.
 
 ## Artifact
 
