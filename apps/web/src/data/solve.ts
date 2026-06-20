@@ -191,10 +191,10 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
     faqs: [
       {
         q: "Is nlqdb a replacement for Mem0 for AI agent memory?",
-        a: "It's the structured, analytical half — and the only half that can answer analytical questions. Mem0 owns unstructured similarity recall (\"the user prefers Celsius\"); nlqdb owns typed rows the agent later aggregates (\"top 10 topics this month by count\"). Both can sit behind one MCP-aware agent.",
+        a: 'It\'s the structured, analytical half — and the only half that can answer analytical questions. Mem0 owns unstructured similarity recall ("the user prefers Celsius"); nlqdb owns typed rows the agent later aggregates ("top 10 topics this month by count"). Both can sit behind one MCP-aware agent.',
       },
       {
-        q: "Why can't a vector store answer \"average per group\" about agent memory?",
+        q: 'Why can\'t a vector store answer "average per group" about agent memory?',
         a: "A vector store returns the top-k most similar facts; it has no query planner. So an aggregation becomes the LLM doing arithmetic over a list of search hits — a hallucination generator, not a `GROUP BY`. nlqdb runs the actual aggregation in Postgres and shows the SQL.",
       },
       {
