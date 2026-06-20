@@ -57,7 +57,7 @@ few-shot), not retrieval. Value-retrieval is demoted + privacy-gated.
 | WS-03 | solve pages — sharpen + sibling | ✅ 2/2 | run 23 — **sharpen ✅**; run 25 — **analytical sibling ✅** (`analytical-queries-over-agent-memory`, the read-side report-over-memory wedge) |
 | WS-04 | MCP tool + package + docs framing | ✅ | run 24 — three tool descriptions + `package.json` desc + `mcp.mdx` intro now lead with "analytical memory" (copy only; SK-PIVOT-003) |
 | WS-05 | carousel analytics-over-memory slides | ✅ | run 26 — 2 analytics-over-memory slides (`GROUP BY category` + top-N `ORDER BY … LIMIT 5`), MCP surface; data-only `showcase-examples.ts` |
-| WS-06 | Mem0 \| Zep \| Letta \| nlqdb capability matrix | ⬜ | med · ~2 runs · WS-01 |
+| WS-06 | Mem0 \| Zep \| Letta \| nlqdb capability matrix | 🟡 1/2 | run 27 — **data ✅** (`agentMemoryMatrix.ts`, 9 honest rows + test); render component pending |
 | WS-07 | `/agents` landing | ⬜ | med · ~3 runs · WS-06 |
 | WS-08 | on-brand OG / social images | ⬜ | low · ~2 runs · WS-07 |
 | WS-09 | "database, not a vector store" blog + live demo | ⬜ | med · ~2 runs · WS-06 (sharpens with E-01/05) |
@@ -76,6 +76,33 @@ few-shot), not retrieval. Value-retrieval is demoted + privacy-gated.
 
 ## Deltas (recent runs)
 
+- 2026-06-20 (run 27) — **WS-06 run 1/2: shipped the agent-memory capability
+  matrix data** (`apps/web/src/data/agentMemoryMatrix.ts`). WS-06 ⬜ → **🟡 1/2**
+  (data ✅, render component pending — run 2). Engine lane blocked (BIRD 06-19 +
+  Spider 06-17 both < 7 d; §5 forbids a back-to-back eval dispatch); WS-03 (#423)
+  and WS-05 (#424) merged ahead of this run, so per the pivot INDEX pickup rule
+  WS-06 is the lowest-numbered ⬜ with its prereq (WS-01 ✅) met — it adds a
+  brand-new file. New typed structure per **SK-PIVOT-001** (a four-column matrix,
+  *not* a hacked single-`them` `/vs` template): `MatrixRow { capability; mem0;
+  zep; letta; nlqdb; note? }` reusing `ComparisonClaim`, 9 honest rows +
+  `MATRIX_VERIFIED_ON = 2026-06-19`. Rows ordered so the table's shape is the
+  argument: recall is table stakes (all four ✓), the analytical wedge (top-N,
+  GROUP BY/JOIN/HAVING, per-group aggregation, time-window, schema design, diff
+  preview) is nlqdb-only. **Honesty correction vs the aspirational framing doc**
+  (P2 / AEO): the self-host row is sourced from WS-01's web-verified
+  `competitors.md §4` — Mem0 / Letta / LangMem are OSI-licensed (✓), Zep
+  self-hosts only the Graphiti engine (◐), and nlqdb is FSL source-available, not
+  yet OSI (◐, GLOBAL-019) — *not* the framing doc's "nlqdb ✓ / others ❌".
+  `agentMemoryMatrix.test.ts` locks the invariants (every cell a valid claim, ≥5
+  nlqdb-only wedge rows, recall is table stakes, verifiedOn < 60 d). Gates: web
+  **122 → 126** tests, astro-check 0/0/0, biome lint clean. KPI: **onboarding /
+  UX** (GLOBAL-025) — the matrix is the wedge's most persuasive comprehension
+  asset (renders in run 2 on `/agents` + the blog); **none degraded** (additive,
+  unreferenced file — no code path, engine, chain, or scorer touched; BIRD 06-19
+  + Spider 06-17 untouched; performance N/A). Pivot counters unchanged at
+  **5/20** + **5/13** (WS-06 is a half-step; the worksheet ticks ✅ only at run 2
+  render). Artifact: a "comparison table" Show-HN/Reddit draft appended to the
+  distribution queue (seeds the WS-09 HN post).
 - 2026-06-20 (run 26) — **WS-05: analytics-over-agent-memory carousel slides**
   (Pivot messaging track 4 → **5/13**; Pivot 4 → **5/20**). Engine lane blocked
   (BIRD 06-19 + Spider 06-17 both < 7 d; §5 forbids a back-to-back eval

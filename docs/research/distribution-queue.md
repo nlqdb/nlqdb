@@ -5,6 +5,48 @@ One publishable artifact drafted per day by the daily agent
 publishes at the weekly session. Newest first. Delete an entry once published
 (the live URL goes into `docs/scorecard.md`).
 
+## 2026-06-20 (run 27) — comparison table: "What can your agent actually DO with its memory?" (Show HN / r/AI_Agents)
+
+**Where:** a Show HN / r/AI_Agents / r/LangChain post built around the
+four-column capability matrix (Mem0 · Zep · Letta · nlqdb). Publish once the
+WS-06 render ships on `/agents`; the table is the whole post.
+
+**Title:** Mem0 vs Zep vs Letta vs nlqdb — what can your agent actually DO with its memory?
+
+**Body (the table is the argument):**
+
+> Every agent-memory tool can *remember a fact* and *recall it later*. That's
+> table stakes — Mem0, Zep, Letta, and nlqdb all do it. The question nobody puts
+> in the comparison is what happens when the agent needs to ask a question
+> **about** its memory:
+>
+> | Capability | Mem0 | Zep | Letta | nlqdb |
+> |---|:--:|:--:|:--:|:--:|
+> | Remember a fact | ✓ | ✓ | ✓ | ✓ |
+> | Recall by similarity | ✓ | ✓ | ✓ | ✓ |
+> | Top-N by value | — | — | — | ✓ |
+> | Aggregate per group | — | — | — | ✓ |
+> | GROUP BY / JOIN / HAVING | — | — | — | ✓ |
+> | Agent designs its own schema | — | — | — | ✓ |
+> | Diff preview before writes | — | — | — | ✓ |
+> | Self-hostable | ✓ | ◐ | ✓ | ◐ |
+>
+> A vector/graph store returns the top-k *similar* rows — there's no query
+> planner, so "average deal size per stage" becomes the LLM doing arithmetic
+> over search hits (a hallucination generator, not a `GROUP BY`). nlqdb's memory
+> *is* a real Postgres the agent provisions and queries in English.
+>
+> Honest, not a clean sweep: Mem0/Letta/LangMem are OSI-licensed and self-host
+> cleanly; Zep self-hosts the Graphiti engine but runs the platform hosted; and
+> **nlqdb is source-available under FSL, not yet OSI** — so the self-host row is
+> a ◐ for us too. The wedge is analytics over memory, not licensing.
+
+**Why this is publishable:** the matrix is the wedge's single most persuasive
+comprehension asset — the table does the work, one nlqdb mention in context.
+Honest-trade-off format (~13.8% vs 2–5% generic) lifted verbatim by
+Perplexity/ChatGPT. Sourced from `apps/web/src/data/agentMemoryMatrix.ts`
+(verified 2026-06-19 from `competitors.md §4`). Seeds the WS-09 HN launch post.
+
 ## 2026-06-20 (run 26) — X/Bluesky thread draft: "your agent's memory should be able to GROUP BY"
 
 **Where:** X + Bluesky (founder account), one short thread aimed at the
