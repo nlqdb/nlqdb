@@ -55,6 +55,19 @@ func TestRememberSendsTypedBody(t *testing.T) {
 	}
 }
 
+// A bigint identity must render verbatim, not as a rounded float64 in
+// scientific notation (the trap of decoding a JSON number into `any`).
+func TestRememberIDStringPreservesBigint(t *testing.T) {
+	num := &RememberResult{ID: json.RawMessage("123456789012")}
+	if got := num.IDString(); got != "123456789012" {
+		t.Errorf("numeric IDString() = %q", got)
+	}
+	str := &RememberResult{ID: json.RawMessage(`"ent_abc"`)}
+	if got := str.IDString(); got != "ent_abc" {
+		t.Errorf("string IDString() = %q", got)
+	}
+}
+
 func TestRememberWrongPreset(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusConflict)

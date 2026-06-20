@@ -2,7 +2,10 @@
 // field lands here in the same PR as the SDK addition (GLOBAL-003).
 package api
 
-import "encoding/json"
+import (
+	"encoding/json"
+	"strconv"
+)
 
 type AskRequest struct {
 	Goal    string `json:"goal"`
@@ -82,15 +85,27 @@ type RememberRequest struct {
 }
 
 // RememberResult mirrors the SDK's `RememberResult` — the materialised
-// row's identity. `ID` is `string | number` on the wire (bigint identity
-// or upserted entity id), so it round-trips as `any`. `ExpiresAt` is
+// row's identity. `ID` is `string | number` on the wire (a bigint
+// identity for facts/episodes or an upserted entity id), so it rides as
+// raw JSON: decoding a bare number into `any` yields a float64 that `%v`
+// would print in scientific notation for large bigints. `ExpiresAt` is
 // present only when the fact carried a TTL.
 type RememberResult struct {
-	Status         string `json:"status"`
-	ID             any    `json:"id"`
-	Kind           string `json:"kind"`
-	MaterialisedAt string `json:"materialised_at"`
-	ExpiresAt      string `json:"expires_at,omitempty"`
+	Status         string          `json:"status"`
+	ID             json.RawMessage `json:"id"`
+	Kind           string          `json:"kind"`
+	MaterialisedAt string          `json:"materialised_at"`
+	ExpiresAt      string          `json:"expires_at,omitempty"`
+}
+
+// IDString renders the id for human output: a numeric id verbatim (no
+// float rounding), a string id with its JSON quotes stripped.
+func (r *RememberResult) IDString() string {
+	s := string(r.ID)
+	if unquoted, err := strconv.Unquote(s); err == nil {
+		return unquoted
+	}
+	return s
 }
 
 type DatabaseSummary struct {

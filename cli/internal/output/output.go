@@ -117,7 +117,7 @@ func (w *Writer) WriteRemember(resp *api.RememberResult) error {
 	if w.Format == FormatJSON {
 		return w.JSON(resp)
 	}
-	fmt.Fprintf(w.Out, "✓ Remembered %s #%v.\n", resp.Kind, resp.ID)
+	fmt.Fprintf(w.Out, "✓ Remembered %s #%s.\n", resp.Kind, resp.IDString())
 	if resp.ExpiresAt != "" {
 		fmt.Fprintf(w.Out, "  expires %s\n", resp.ExpiresAt)
 	}
