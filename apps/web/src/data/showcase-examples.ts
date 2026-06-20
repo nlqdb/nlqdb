@@ -1,7 +1,7 @@
-// Auto-carousel content for the homepage. Twenty examples spanning
+// Auto-carousel content for the homepage. Twenty-two examples spanning
 // the surfaces nlqdb claims to cover: create-DB, schema-edit, insert,
-// aggregate, filter, join, time-bucket, write/refund, agent-memory,
-// CRM, leaderboard, feedback inbox.
+// aggregate, filter, join, time-bucket, write/refund, agent-memory
+// (recall + analytics-over-memory), CRM, leaderboard, feedback inbox.
 //
 // Kept separate from `Carousel.astro` so adding/editing an example
 // is a single-file diff with no markup churn. Each entry should
@@ -47,10 +47,10 @@
 // across verticals is the point of those four. Everywhere else,
 // the snippet is the shortest valid form.
 //
-// Distribution across the 20 slides: ~9 HTML / 4 CLI / 4 REST / 3 MCP.
+// Distribution across the 22 slides: ~9 HTML / 4 CLI / 4 REST / 5 MCP.
 // Picked per-example for the *most evocative* shape — agent-memory
-// reads land on MCP, refund-the-last-order writes land on REST,
-// schema migrations land on CLI, etc.
+// reads (recall + analytics-over-memory) land on MCP, refund-the-last-order
+// writes land on REST, schema migrations land on CLI, etc.
 
 export type ShowcaseRow = Record<string, string | number | null>;
 
@@ -408,5 +408,45 @@ export const SHOWCASE_EXAMPLES: ShowcaseExample[] = [
       { created_at: "2026-04-21", customer: "rod", drink: "espresso flight", total: 14.0 },
       { created_at: "2026-04-21", customer: "amy", drink: "cold brew growler", total: 22.5 },
     ],
+  },
+  // 21 — READ (agent-memory, ANALYTICAL — GROUP BY over what the agent stored;
+  // the wedge that separates a database from a vector store)
+  {
+    id: "read-agent-memory-by-category",
+    category: "read",
+    goal: "per category, how many facts my agent stored this week",
+    sql: "SELECT category, COUNT(*) AS facts\n  FROM agent_memory\n WHERE created_at > now() - interval '7 days'\n GROUP BY category\n ORDER BY facts DESC;",
+    embed: {
+      lang: "mcp",
+      template: 'nlqdb.ask({ db: "db_agents", goal: "{goal}" })',
+    },
+    rows: [
+      { category: "user_preference", facts: 38 },
+      { category: "task_outcome", facts: 24 },
+      { category: "entity_fact", facts: 19 },
+      { category: "tool_result", facts: 11 },
+      { category: "correction", facts: 5 },
+    ],
+    summary: "the GROUP BY runs in Postgres — not arithmetic in the model's head",
+  },
+  // 22 — READ (agent-memory, ANALYTICAL — top-N most-recalled facts; a
+  // vector store returns top-k *similar*, not top-N *by count*)
+  {
+    id: "read-agent-memory-top-recalled",
+    category: "read",
+    goal: "the 5 facts my agent recalled most across all threads",
+    sql: "SELECT content, COUNT(*) AS recalls\n  FROM agent_recall_log\n GROUP BY content\n ORDER BY recalls DESC\n LIMIT 5;",
+    embed: {
+      lang: "mcp",
+      template: 'nlqdb.ask({ db: "db_agents", goal: "{goal}" })',
+    },
+    rows: [
+      { content: "user prefers metric units", recalls: 17 },
+      { content: "primary repo is nlqdb/nlqdb", recalls: 12 },
+      { content: "deploy target is Cloudflare Workers", recalls: 9 },
+      { content: "user's timezone is Asia/Jerusalem", recalls: 8 },
+      { content: "billing lane is frozen", recalls: 6 },
+    ],
+    summary: "top-N by count across every thread — one GROUP BY, not a similarity scan",
   },
 ];

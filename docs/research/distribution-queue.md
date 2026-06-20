@@ -5,6 +5,43 @@ One publishable artifact drafted per day by the daily agent
 publishes at the weekly session. Newest first. Delete an entry once published
 (the live URL goes into `docs/scorecard.md`).
 
+## 2026-06-20 (run 26) — X/Bluesky thread draft: "your agent's memory should be able to GROUP BY"
+
+**Where:** X + Bluesky (founder account), one short thread aimed at the
+agent-builder timeline. Pin reply links the `/solve/analytical-queries-over-agent-memory`
+page once it ships.
+
+**Thread:**
+
+> 1/ Your AI agent's memory should be able to `GROUP BY`.
+>
+> Most "agent memory" is a vector store: embed a fact, retrieve the top-k
+> *similar* ones. Great for "what did the user say about X." Useless for
+> "how many things did my agent remember per category this week."
+>
+> 2/ The moment you want a *count*, a *top-N*, or a *per-period* number, a
+> vector store makes the LLM do arithmetic over search hits. That's slow,
+> unbounded, and wrong on the long tail.
+>
+> 3/ nlqdb is a real Postgres your agent talks to in plain English. Ask
+> "per category, how many facts did my agent store this week" → it runs the
+> actual `GROUP BY category … ORDER BY count DESC` and hands back the rows
+> *plus the compiled SQL*. The math is in the database, not the model's head.
+>
+> 4/ Same for "the 5 facts my agent recalled most across all threads" — one
+> `GROUP BY … ORDER BY … LIMIT 5`, not a similarity scan. Recall is top-k.
+> Analytics is top-N. Different query, different store.
+>
+> 5/ Vector recall and SQL analytics are complementary — keep your vector
+> store for semantic recall, add nlqdb when you need to *count* what's in
+> memory. mcp.nlqdb.com · honest: no native vector search yet.
+
+**Why this is publishable:** lands the WS-05 carousel wedge ("analytics over
+agent memory") as a standalone thread on the surface where agent builders live.
+Every claim maps to a real shipped slide (`read-agent-memory-by-category`,
+`read-agent-memory-top-recalled`) and the honest "no native vector search yet"
+disclaimer matches the solve-page copy — no overclaim.
+
 ## 2026-06-20 (run 25) — helpful-answer draft: "reporting over agent memory" (r/AI_Agents / r/LangChain)
 
 **Where:** a real recurring thread on r/AI_Agents / r/LangChain where someone asks
@@ -338,168 +375,30 @@ run-17 "flat benchmark" post and *corrects* its closing claim. One nlqdb
 mention, in context. Sourced from `tools/eval/src/analyze-mismatches.ts` +
 the committed 2026-06-19 baseline.
 
-## 2026-06-19 (run 17) — SUPERSEDED by run 18
+## 2026-06-18 (runs 14–16) — dev.to / lobste.rs posts (condensed; full drafts in git history)
 
-"We shipped four fixes, measured at once, the BIRD benchmark didn't move
-(0.522 → 0.520) — and proving it flat (McNemar p = 0.50) was the answer." Its
-closing "next lever = sample values" was falsified by run 18; publish the run-18
-post instead.
-
-## 2026-06-18 (run 16) — dev.to / lobste.rs post
-
-**Title:** Before you prune the schema you send an LLM, measure what the prune would throw away
-
-**Body:**
-
-> A known text-to-SQL trick: don't hand the model your whole schema, hand it
-> just the tables the question is about. We already prune *tables* this way,
-> and it's recall-safe — the join closure re-admits any table you'd drop.
->
-> The obvious next step is pruning *columns* inside a kept table. But columns
-> have no join closure to save you: drop one the query needs and the query is
-> silently wrong. So before writing a line of it, I measured the ceiling — of
-> the columns the *gold* queries reference on BIRD (500 questions), what
-> fraction would a "keep columns whose name matches a word in the question"
-> rule keep?
->
-> **59.8%.** A naive column prune throws away **40% of the columns the correct
-> answers need.** That alone kills the naive version. The breakdown is the
-> interesting part:
->
-> - **27.4% are keys** — `customerId`, `raceId`, `CDSCode`. The question never
->   says "customer id" but the join needs it. Rescuable with the same
->   key-protection rule that saves tables.
-> - **12.8% are values named by their *content*, not their column.** "SME
->   customers" → column `Segment`; "paid in CZK" → column `Currency`. No
->   name-matching rule recovers those — "segment" appears nowhere in the
->   question. The only fix is to show the model the actual values.
->
-> So the measurement *re-ordered* the roadmap. Column pruning drops to "later,
-> with key protection, re-measured on the real schema." And the half that was
-> going to be second — feeding sample cell-values into the prompt — is now
-> first: it's the only lever that touches that irreducible 12.8%, and it can't
-> hurt recall (you're adding context, not removing it).
->
-> The harness is ~120 lines, runs offline against the public gold answers, uses
-> the same tokenizer the real pruner uses (so the ceiling is honest), and burns
-> zero API quota. Measure what you're about to throw away before you throw it
-> away.
->
-> (A `/daily` run on nlqdb, a database you query in plain English. The harness
-> is `bun column-coverage` in the open eval harness; no benchmark number moved.)
-
-## 2026-06-18 (run 15) — dev.to / lobste.rs post
-
-**Title:** We thought our text-to-SQL engine couldn't join. A regex bug was lying to us.
-
-**Body:**
-
-> Our NL→SQL engine gets ~half of a hard benchmark (BIRD) wrong, and the
-> failures are *mismatches*: the query runs and returns rows, they're just the
-> wrong rows. To pick what to fix next, you have to know *how* they're wrong —
-> so I wrote a small diff that buckets each wrong query against the gold answer:
-> missing DISTINCT, wrong aggregate, fewer tables joined, and so on.
->
-> The histogram was emphatic: **"fewer tables joined" was the #1 class, 105 of
-> 236.** Clear story — the model isn't joining to all the tables it needs, a
-> schema-linking problem. I almost shipped a week of work against it.
->
-> Then I eyeballed the actual rows, and the story fell apart. Take a query that
-> joins three tables. My classifier said it joined two. Why? It counted tables
-> with `FROM\s+(\w+)` — and the model had written `FROM "transactions_1k"`.
-> The quotes. `\w+` doesn't match a leading `"`, so every quoted table name was
-> invisible to the counter, and "fewer tables" got credited to dozens of
-> queries that joined exactly the right tables.
->
-> Fix the parser to handle the four quoting forms (`"x"`, `` `x` ``, `[x]`,
-> bare) and **"fewer tables" collapses from 105 to 35.** It wasn't the
-> bottleneck at all. The real mass is aggregation/DISTINCT *grain* and subquery
-> *shape* — and when you read *those* rows, a lot of them are the model
-> guessing the wrong literal: `'discount'` where the data says `'Discount'`,
-> a column called `Amount` where it's `Price`, `'2012-01%'` where the date is
-> stored `'201201'`. That's not a reasoning failure you fix with a prompt rule.
-> It's a *grounding* failure — the model never saw the actual values — and it
-> points at a completely different lever (feed sample cell-values into the
-> prompt) than the one the buggy histogram pointed at.
->
-> Two lessons, both cheap to relearn the hard way:
->
-> 1. **A measurement tool is code, and code has bugs that point the same
->    direction every time.** A miscount that only ever *under*-counts tables
->    manufactures a "can't join" signal out of nothing. Verify the instrument
->    on a handful of hand-read cases before you trust its ranking.
-> 2. **Histograms rank; they don't explain.** The bucket said "wrong
->    aggregate." Reading the row said "wrong string literal, and the aggregate
->    is fine." The tag was a lead, not a verdict.
->
-> (A `/daily` run on nlqdb, a database you query in plain English. The
-> classifier is `bun analyze-mismatches` in the open eval harness; this run
-> shipped the tool + the corrected breakdown, no benchmark number moved.)
-
-**Why this is publishable:** "your metrics tool has a bug that confirms your
-prior" is a universal data/ML lesson, and the concrete regex-vs-quoted-identifier
-miss is a satisfying, debuggable story. The grounding-vs-reasoning distinction
-is genuinely useful for anyone doing text-to-SQL. One nlqdb mention, in context.
-Sourced from this run's SK-QUAL-014 + the corrected histogram.
-
-## 2026-06-18 (run 14) — dev.to / lobste.rs post
-
-**Title:** The text-to-SQL mistake that fails two ways — and only one of them throws
-
-**Body:**
-
-> If you ask an LLM for *"customers who placed more than 5 orders,"* there's a
-> specific way the generated SQL goes wrong — and it's worth knowing because
-> **half the time it doesn't error.**
->
-> The wrong query is:
->
-> ```sql
-> SELECT customer_id FROM orders
-> WHERE COUNT(*) > 5
-> GROUP BY customer_id
-> ```
->
-> `COUNT(*) > 5` is a condition on a *group*, but `WHERE` runs *before* rows
-> are grouped — it filters individual rows and can't see an aggregate. Postgres
-> and SQLite both reject this outright ("aggregate functions are not allowed in
-> WHERE" / "misuse of aggregate function"). If your pipeline retries on errors,
-> you pay a round-trip and hope the model fixes it the second time.
->
-> That's the *loud* failure. The quiet one is worse: the model drops the
-> threshold entirely and returns every customer. The query runs, returns rows,
-> and is simply wrong — and unless you check results against a ground truth,
-> nothing tells you.
->
-> The fix the model needs is the oldest rule in SQL: **a filter on an aggregate
-> goes in `HAVING`, after `GROUP BY`; a filter on a row goes in `WHERE`.**
->
-> ```sql
-> SELECT customer_id FROM orders
-> GROUP BY customer_id
-> HAVING COUNT(*) > 5
-> ```
->
-> We ship this to our planner as one tightly-scoped instruction — *group
-> thresholds in HAVING, per-row predicates stay in WHERE* — because the
-> over-correction (shoving ordinary row filters into HAVING, so the engine
-> aggregates rows it could have skipped) is its own bug. It's one bullet in a
-> stack of small, named corrections, each targeting a documented text-to-SQL
-> error class; this one is the HAVING half of "unaligned aggregation structure"
-> from a 2025 BIRD/Spider error study.
->
-> The meta-point for anyone prompting an LLM to write SQL: **the dangerous
-> errors aren't the ones that throw.** A crash gets retried; wrong rows ship.
-> Spend your prompt budget on the silent-mismatch classes first.
->
-> (This was a `/daily` run on nlqdb, a database you query in plain English; the
-> rule above is one directive in its NL→SQL planner. Prompt-only; the
-> end-to-end benchmark delta lands on the next eval and is public.)
-
-**Why this is publishable:** WHERE-vs-HAVING is a near-universal SQL gotcha,
-and the framing (*one failure throws, one is silent*) is a real LLM-pipeline
-lesson, not a product pitch. One nlqdb mention, in context. Grounded in
-arXiv:2501.09310 (E5) + SK-LLM-040.
+- **run 16 — "Before you prune the schema you send an LLM, measure what the
+  prune would throw away."** A name-match column-prune keeps only **59.8%** of
+  the columns the gold BIRD answers need — 27.4% are unnamed keys (rescuable
+  with key-protection), 12.8% are values named by *content* not column
+  (`Segment`, `Currency`; only fixable by showing the model sample values). The
+  offline ~120-line ceiling measurement re-ordered the roadmap: column pruning
+  drops to "later, with key protection," value-sampling moves first. Sourced
+  from `bun column-coverage`; no benchmark number moved.
+- **run 15 — "We thought our text-to-SQL engine couldn't join. A regex bug was
+  lying to us."** A mismatch classifier credited "fewer tables joined" as the #1
+  failure (105/236) — but it counted `FROM\s+(\w+)`, which misses quoted
+  identifiers (`FROM "transactions_1k"`). Fix the four quoting forms and the
+  class collapses 105 → 35; the real mass is aggregation/DISTINCT *grain* +
+  literal *grounding*. Lessons: a measurement tool is code with biased bugs;
+  histograms rank, they don't explain. Sourced from SK-QUAL-014.
+- **run 14 — "The text-to-SQL mistake that fails two ways — and only one of them
+  throws."** `WHERE COUNT(*) > 5` either errors (loud, retried) or silently
+  drops the threshold and returns every row (quiet, ships wrong). Fix: group
+  thresholds in `HAVING`, per-row predicates in `WHERE` — one planner directive,
+  the HAVING half of "unaligned aggregation structure." Meta-point: spend prompt
+  budget on the silent-mismatch classes first. Grounded in arXiv:2501.09310 (E5)
+  + SK-LLM-040.
 
 ## 2026-06-17 (run 13) — dev.to / lobste.rs post (condensed; full draft in git history)
 
