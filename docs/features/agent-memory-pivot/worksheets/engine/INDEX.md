@@ -34,7 +34,7 @@ copy with a real tool to point at), etc.
 | E | Slice | Risk | Runs | Prereqs | Gate | Cross-link |
 |----|-------|------|------|---------|------|------------|
 | [E-01](E-01-memory-schema-preset.md) ✅ | Canonical `agent_memory_v1` schema preset for `db.create` — module ✅ + request-path wiring ✅ (SK-HDC-020) | med | ~2 | — | — | unblocks E-02/04/06, sharpens WS-07/09 |
-| [E-02](E-02-remember-tool.md) | Additive MCP tool `nlqdb_remember` (no rename) | med | 1 | E-01 | — | sharpens WS-04 |
+| [E-02](E-02-remember-tool.md) ✅ | Additive MCP tool `nlqdb_remember` (no rename) — `POST /v1/memory/remember` + SDK + tool (SK-PIVOT-008) | med | 1 | E-01 | — | sharpens WS-04 |
 | [E-03](E-03-memory-scoping.md) | Per-agent / per-end-user / per-thread scoping (the security-critical slice) | high | ~2 | E-01 | — | — |
 | [E-04](E-04-ttl-decay.md) | TTL + cron sweep — `expires_at` on memory rows | low | 1 | E-01 | — | — |
 | [E-05](E-05-hybrid-recall-pgvector.md) | Hybrid recall — pgvector + `nlqdb_recall` (closes the honest gap) | high | multi | E-01 | infra-gated (Neon pgvector + free embeddings) | sharpens WS-03 |
@@ -71,7 +71,7 @@ north-star (data-engine pillar) to the wedge.
 Tick on merge.
 
 - [x] E-01 — `agent_memory_v1` schema preset: **module ✅** (2026-06-20, run 29 — `apps/api/src/db-create/presets/agent-memory-v1.ts` + contract test, branch `claude/vibrant-newton-n7v26h`; plain DDL, validator-compatible, embedding deferred to E-05); **request-path wiring ✅** (2026-06-20, run 30 — branch `claude/vibrant-newton-dw7udg`; `DbCreateArgs.preset` + orchestrator branch + `agentMemoryV1Plan()` projection + `POST /v1/databases` `{ preset }` gated behind `MEMORY_PRESET`; SK-HDC-020). One follow-on: quality-eval preset-path ablation row (Neon-branch gated).
-- [ ] E-02 — `nlqdb_remember` MCP tool (additive)
+- [x] E-02 — `nlqdb_remember` MCP tool (additive): **shipped** (2026-06-20, run 31 — branch `claude/vibrant-newton-cnjzab`; `apps/api/src/memory/remember.ts` server-built deterministic INSERT + `POST /v1/memory/remember` + `wrong_preset` guard + SDK `remember()` + `nlqdb_remember` tool; SK-PIVOT-008). Follow-ons: e2e Neon `remember → query` smoke (infra) + CLI `nlq remember` (Go).
 - [ ] E-03 — per-agent / per-end-user / per-thread scoping
 - [ ] E-04 — TTL + cron sweep
 - [ ] E-05 — hybrid recall (pgvector + `nlqdb_recall`)

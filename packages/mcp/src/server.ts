@@ -11,11 +11,15 @@ import {
   handleDescribe,
   handleListDatabases,
   handleQuery,
+  handleRemember,
   type ListDatabasesOutput,
   listDatabasesInputShape,
   type QueryInput,
   type QueryOutput,
   queryInputShape,
+  type RememberInput,
+  type RememberOutput,
+  rememberInputShape,
   type ToolError,
   type ToolResult,
 } from "./tools.ts";
@@ -122,6 +126,25 @@ export function createServer(opts: ServerOptions): McpServer {
         };
         const result = await handleDescribe(client, args, ctxWithCache);
         return formatResult<DescribeOutput>(result);
+      });
+    },
+  );
+
+  registerTool(
+    "nlqdb_remember",
+    {
+      title: "Remember something in your agent's memory",
+      description:
+        "Write a typed row into your agent's memory database — a fact to recall later, a conversation episode, or an entity (person/project/thing). Materialises directly into the agent_memory_v1 schema with no LLM in the loop, so it's deterministic. The DB must be an agent_memory_v1 preset; query it back later with nlqdb_query (which can GROUP BY / aggregate over what you remembered).",
+      inputSchema: rememberInputShape,
+      // Writes new rows; never deletes or overwrites another row (entity
+      // re-writes upsert the same row). Read+write hint stays false-destructive.
+      annotations: { destructiveHint: false },
+    },
+    async (args: RememberInput, extra: ToolExtra) => {
+      return runTool("nlqdb_remember", extra.signal, async (ctx) => {
+        const result = await handleRemember(client, args, ctx);
+        return formatResult<RememberOutput>(result);
       });
     },
   );
