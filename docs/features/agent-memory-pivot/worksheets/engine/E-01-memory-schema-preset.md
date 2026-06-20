@@ -1,6 +1,6 @@
 # E-01 — Canonical `agent_memory_v1` schema preset for `db.create`
 
-**Status:** ⬜ not started
+**Status:** 🟡 in progress — run 1/2 (preset module ✅; request-path wiring pending)
 **Sequence:** Engine 1 of 7 · **Risk:** med · **Runs:** ~2 · **Prereqs:** none · **Gate:** none
 
 ## Goal
@@ -58,11 +58,22 @@ and `episodes`; GIN on `facts.tags`; vector index left to E-05.
 
 ## Steps
 
-1. **Run 1 — preset module.** New `apps/api/src/db-create/presets/agent-memory-v1.ts`
-   exporting the four-table DDL plus a `versionTag` `"agent_memory_v1"` that
-   flows into `schema_hash`. Plain SQL, behind a feature flag `MEMORY_PRESET=true`.
-   Add a typed `{ preset: "agent_memory_v1" }` field to the `db.create` input;
-   when present, skip the classifier and run the DDL deterministically.
+1. **Run 1 — preset module. ✅ (2026-06-20, run 29).** New
+   `apps/api/src/db-create/presets/agent-memory-v1.ts` exports the four-table
+   DDL (`agentMemoryV1Ddl(schemaName)`), the `AGENT_MEMORY_V1_VERSION`
+   versionTag, and the pinned column contract (`AGENT_MEMORY_V1_COLUMNS`).
+   Plain DDL (not a `SchemaPlan` — the shape needs multi-column UNIQUE, a
+   composite-PK link table, `ON DELETE CASCADE`, `TEXT[]` + GIN, beyond the
+   inferred-plan grammar), authored to pass the **same** `sql-validate-ddl`
+   validator (asserted in the test). **Deviations from the schema block,
+   intentional:** `embedding VECTOR` is deferred to E-05 (pgvector infra-gated;
+   added later as an ADD COLUMN widen) so the preset provisions on stock
+   Postgres; `expires_at` ships now (plain nullable column, E-04 adds the
+   sweep); the `episodes` scope index orders by `occurred_at` (its time column)
+   rather than the non-existent `created_at`. The module is **additive and
+   unreferenced** this run — rollback is deleting the file. The `versionTag →
+   schema_hash` thread, the `{ preset }` input field, the `MEMORY_PRESET` flag,
+   and the classifier-skip are **run 2** (the request-path change).
 2. **Run 2 — wire + tests.** End-to-end test: `db.create` with the preset
    returns a DB whose `schema_hash` is stable and whose four tables are
    queryable via `/v1/ask`. The `quality-eval` `db.create`-internal eval gets

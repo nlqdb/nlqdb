@@ -65,8 +65,8 @@ few-shot), not retrieval. Value-retrieval is demoted + privacy-gated.
 | WS-11 | pull `ghcr.io/nlqdb/api` self-host container forward | ⬜ | high · multi · WS-10 · infra-gated |
 | WS-12 | home reweight + demote P1/P3/P4 to "also works for…" | ⬜ | med · ~2 runs · WS-06, WS-07 |
 | WS-13 | headline reposition (hero / README / llms.txt / JSON-LD) | ⬜ | high · ~2 runs · WS-07, WS-12 · 🔒 **FOUNDER-GATED** |
-| | *Engine track — E-\** | 0 / 7 | pick when worst number is engine quality / agent on-ramp |
-| E-01 | `agent_memory_v1` schema preset for `db.create` | ⬜ | med · ~2 runs · — |
+| | *Engine track — E-\** | 0 / 7 (E-01 🟡 1/2) | pick when worst number is engine quality / agent on-ramp |
+| E-01 | `agent_memory_v1` schema preset for `db.create` | 🟡 1/2 | run 29 — **module ✅** (`presets/agent-memory-v1.ts` + contract test; validator-compatible plain DDL); request-path wiring pending |
 | E-02 | additive MCP tool `nlqdb_remember` (no rename) | ⬜ | med · 1 run · E-01 |
 | E-03 | per-agent / end-user / thread compile-layer scoping | ⬜ | **high · security-critical** · ~2 runs · E-01 |
 | E-04 | TTL + cron sweep (`expires_at`) | ⬜ | low · 1 run · E-01 |
@@ -76,6 +76,21 @@ few-shot), not retrieval. Value-retrieval is demoted + privacy-gated.
 
 ## Deltas (recent runs)
 
+- 2026-06-20 (run 29) — **E-01 run 1/2: shipped the `agent_memory_v1` schema
+  preset module** (engine track 0 → **🟡 1/2**). New
+  `apps/api/src/db-create/presets/agent-memory-v1.ts`: `agentMemoryV1Ddl(schemaName)`
+  emits the four canonical tables (`facts` / `episodes` / `entities` /
+  `entity_facts`) as deterministic, schema-qualified **plain DDL** — not a
+  `SchemaPlan` (the shape needs multi-column UNIQUE, a composite-PK link table,
+  `ON DELETE CASCADE`, `TEXT[]` + GIN, beyond the LLM-inferred grammar;
+  SK-PIVOT-006/007), authored to pass the same `sql-validate-ddl` validator the
+  LLM path uses (SK-HDC-006; the test asserts `{ ok: true }`). `embedding
+  VECTOR` deferred to E-05; `AGENT_MEMORY_V1_COLUMNS` pins the contract
+  (SK-PIVOT-007). **Additive + unreferenced** (rollback = delete the file);
+  `{ preset }` input, `MEMORY_PRESET` flag, classifier-skip, and `versionTag →
+  schema_hash` are run 2. Detail in worksheet E-01. Gates: 8 new tests green,
+  typecheck + biome clean. KPI: **onboarding** (GLOBAL-025); none degraded — no
+  request path / chain / scorer / eval touched.
 - 2026-06-20 (run 28) — **WS-06 run 2/2: shipped the capability-matrix render
   component — WS-06 closed** (`apps/web/src/components/AgentMemoryMatrix.astro`).
   Pivot **6 → 7/20**; messaging track **6 → 7/13** (on top of WS-10, also run 28);
@@ -241,150 +256,15 @@ few-shot), not retrieval. Value-retrieval is demoted + privacy-gated.
   06-19 + Spider 06-17 untouched; performance N/A). Artifact: an r/LangChain
   "vector store can't aggregate its own memory" helpful-answer draft appended to
   the distribution queue. The analytical-queries sibling is WS-03 run 2.
-- 2026-06-19 (run 22) — **WS-02 slice 3/3: shipped `/vs/langmem` — WS-02 closed**
-  — the third and final agent-memory `/vs` page (Pivot `Memory /vs pages` 2 →
-  **3/3**; WS-02 ✅ → messaging track 1 → **2/13**; pivot worksheets 1 →
-  **2/20**). Engine lane still blocked (BIRD 06-19 + Spider 06-17 both < 7 d; §5
-  forbids a back-to-back eval dispatch), so the in-bounds lever is
-  funnel/distribution; per the pivot INDEX pickup rule WS-02 was the
-  lowest-numbered in-progress worksheet with its prereq (WS-01 ✅) met, and
-  "one competitor per run" (SK-PIVOT-002) makes LangMem the last slice. Added one
-  `Competitor` entry (`apps/web/src/data/competitors.ts`, persona P2) — slug
-  `langmem`, the wedge keyed on **retrieval vs analytics**: LangMem is an
-  open-source LangChain SDK whose LLM-managed semantic/episodic/procedural memory
-  *retrieves* facts by similarity (and a background manager consolidates them) but
-  has no relational query layer, so an agent can't `GROUP BY`/`JOIN`/`HAVING` over
-  its own memory; nlqdb is the real DB it aggregates over, and the two compose
-  (LangMem the memory layer inside a LangGraph agent, nlqdb the analytical store).
-  Facts web-verified 06-19; honest calls: LangMem is an **in-process Python SDK
-  with no MCP server of its own** (`them: no`, distinct from Zep/Letta which got
-  `partial`) and is **LangGraph BaseStore-coupled** (the framework-lock wedge).
-  Real tool names only (`nlqdb_query`/`nlqdb_list_databases`/`nlqdb_describe`, no
-  phantom `create_database`). Sitemap + `llms.txt` pick up the slug automatically;
-  slug wired into `verify-flows.sh` + `tools/stranger-test/src/flows/flow-003.ts`.
-  Gates: astro-check 0/0/0, web 122 tests, stranger-test typecheck, lint all
-  green. KPI: **onboarding** (GLOBAL-025) — a new AEO/decision-moment on-ramp for
-  the P2 agent-builder keyword "LangMem alternative"; **none degraded** (additive
-  content on the existing template — no code path, engine, chain, or scorer
-  touched; BIRD 06-19 + Spider 06-17 untouched; performance N/A). Artifact: an
-  r/LangChain / Show-HN nlqdb-vs-LangMem comparison draft appended to the
-  distribution queue. **WS-02 closes**; next pivot lever is the lowest-numbered ⬜
-  worksheet (WS-03 solve pages or WS-04 MCP framing, both prereq-free).
-- 2026-06-21 (run 21) — **WS-02 slice 2/3: shipped `/vs/letta`** — the second
-  agent-memory `/vs` page (Pivot `Memory /vs pages` 1 → **2/3**; WS-02 🟡 1/3 →
-  2/3). Engine lane still blocked (BIRD 06-19 + Spider 06-17 both < 7 d; §5
-  forbids a back-to-back eval dispatch), so the in-bounds lever is
-  funnel/distribution; per the pivot INDEX pickup rule WS-02 is the
-  lowest-numbered in-progress worksheet with its prereq (WS-01 ✅) met, and
-  "one competitor per run" (SK-PIVOT-002) makes Letta the next slice. Added one
-  `Competitor` entry (`apps/web/src/data/competitors.ts`, persona P2) — slug
-  `letta`, the wedge keyed on **retrieval vs analytics**: Letta is a stateful
-  agent runtime (ex-MemGPT, Apache-2.0) whose OS-style memory tiers (core /
-  recall / archival) *retrieve* facts but have no relational query layer, so an
-  agent can't `GROUP BY`/`JOIN`/`HAVING` over its own memory; nlqdb is the real
-  DB it aggregates over, and the two compose (Letta the runtime, nlqdb the
-  store). Facts web-verified 06-19 that Letta **does** support MCP integration
-  → the row is honest (`them: partial`); differentiator is provisioning + SQL,
-  named with real tool names (`nlqdb_query`/`nlqdb_list_databases`/
-  `nlqdb_describe`, no phantom `create_database`). Sitemap + `llms.txt` pick up
-  the slug automatically; slug wired into `verify-flows.sh` +
-  `tools/stranger-test/src/flows/flow-003.ts`. Gates: astro-check 0/0/0, web
-  122 tests, stranger-test typecheck, lint all green. KPI: **onboarding**
-  (GLOBAL-025) — a new AEO/decision-moment on-ramp for the P2 agent-builder
-  keyword "Letta alternative"; **none degraded** (additive content on the
-  existing template — no code path, engine, chain, or scorer touched; BIRD
-  06-19 + Spider 06-17 untouched; performance N/A). Artifact: an r/AI_Agents /
-  Show-HN nlqdb-vs-Letta comparison draft appended to the distribution queue.
-  LangMem is the last WS-02 run.
-- 2026-06-20 (run 20) — **WS-02 slice 1/3: shipped `/vs/zep`** — the first
-  agent-memory `/vs` page (Pivot `Memory /vs pages` 0 → **1/3**). Engine lane
-  blocked (BIRD 06-19 + Spider 06-17 both < 7 d; §5 forbids a back-to-back
-  eval dispatch), so the in-bounds lever is funnel/distribution; per the pivot
-  INDEX pickup rule WS-02 is the lowest-numbered ⬜ with its prereq (WS-01 ✅)
-  met. Added one `Competitor` entry (`apps/web/src/data/competitors.ts`, persona
-  P2) — slug `zep`, the wedge keyed on **retrieval vs analytics**: Zep's Graphiti
-  temporal knowledge graph recalls facts but has no query planner, so an agent
-  can't `GROUP BY`/`JOIN`/`HAVING` over its own memory; nlqdb is the real DB it
-  aggregates over. Web-verified 06-19 that Zep **does** ship an experimental
-  Graphiti MCP server (graph add/search) → the row is honest (`them: partial`,
-  not "no MCP"); differentiator is provisioning + SQL, named with real tool
-  names (`nlqdb_query`/`nlqdb_list_databases`/`nlqdb_describe`, no phantom
-  `create_database`). Sitemap + `llms.txt` pick up the slug automatically; slug
-  wired into `verify-flows.sh` + `tools/stranger-test/flow-003.ts`. Gates: astro
-  -check 0/0/0, web 122 tests, stranger-test typecheck, lint all green. KPI:
-  **onboarding** (GLOBAL-025) — a new AEO/decision-moment on-ramp for the P2
-  agent-builder keyword "Zep alternative"; **none degraded** (additive content
-  on the existing template — no code path, engine, chain, or scorer touched;
-  BIRD 06-19 + Spider 06-17 untouched; performance N/A). Artifact: an r/AI_Agents
-  / Show-HN nlqdb-vs-Zep comparison draft appended to the distribution queue.
-  Letta + LangMem are the next two WS-02 runs.
-- 2026-06-19 (run 19) — **WS-01: anchored the agent-memory cluster (Zep / Letta /
-  LangMem) in `docs/competitors.md §4`** — the pivot's first shipped slice (Pivot
-  0/20 → **1/20**). The engine NL→SQL lane (the worst number's root cause) is
-  blocked today: BIRD ran 06-19, Spider 06-17 (both < 7 d), and §5 forbids a
-  back-to-back eval dispatch, so no engine delta is measurable this run and the
-  two next engine levers (§4 #1 retrieval few-shot, #3 self-consistency) each need
-  an eval. Per the pivot INDEX pickup rule (lowest-numbered ⬜ worksheet with all
-  prereqs ✅), the in-bounds lever is the funnel/distribution lane — WS-01, the
-  documented strategic answer to the engine-gated funnel zero. Sharpened Zep
-  (Graphiti temporal knowledge graph, 27k+ ⭐, ~$125/mo, benchmark-led) with a
-  real `Gap nlqdb exploits`; completed Letta (Apache-2.0, OS-style core/recall/
-  archival tiers); **added the missing LangMem entry** (LangChain SDK — semantic/
-  episodic/procedural, distribution moat); added Letta + LangMem threat-matrix
-  rows (Zep/Mem0 already present). Every entry keyed to **P2** with the
-  analytical-SQL wedge (`GROUP BY`/`JOIN`/`HAVING` over memory — retrieval ≠
-  analytics) as the win-zone; landscape facts web-verified 06-19 (§4 last-verified
-  bumped). **This unblocks WS-02** (memory `/vs` pages, which move the funnel
-  `Pivot:` line) — WS-01 itself moves no funnel number directly (it is the
-  measurement-enabling prerequisite, per the worksheet). KPI: **onboarding**
-  (GLOBAL-025) — a sharper single-story wedge for the P2 on-ramp; **none degraded**
-  (additive docs only — no code, no engine/chain/scorer change; BIRD 06-19 +
-  Spider 06-17 untouched; performance N/A). Artifact: an agent-memory landscape
-  note appended to the distribution queue (seeds the WS-09 blog post).
-- 2026-06-19 (run 18) — **literal-grounding axis on the `SK-QUAL-014` classifier
-  — falsifies value-retrieval (§4 #2a) as the top lever, deterministically and
-  with zero quota.** The last four runs ranked value-retrieval #1 off the
-  `SK-QUAL-015` column-*name* ceiling (12.8% of needed cols named by value,
-  *theoretical*). But that was never checked against real predicted-vs-gold
-  output. This run adds the missing axis: `classifyMismatch` now diffs
-  case-preserved string-literal multisets (`literal_diff` / `literal_case_only`)
-  and exports `isLiteralOnly(pred, gold)`. Run on the committed 06-19 BIRD
-  baseline (238 mismatches, gold joined offline): `literal_diff` is the
-  **largest** single tag (**90 / 38%**) — yet `literal_case_only` = **6** and
-  **`literal_only` = 0**. *No* mismatch is recoverable by fixing literals alone;
-  every literal error co-occurs with a structural one (the 90 split ~16
-  date-encoding `'2019-8-20'`/LIKE-shape + ~68 categorical value diffs riding
-  alongside a wrong column/predicate/grain). So a sample-value prompt flips ~0
-  rows standalone — value-retrieval is **demoted below the reasoning levers**
-  (§4 #3 self-consistency, #1 retrieval few-shot) and, on the prod side, blocked
-  on an unresolved privacy decision (feeding user cell-values to the free chain).
-  The `other_predicate_or_value` catch-all shrank 42 → 30. KPI: engine quality
-  (GLOBAL-025) — sharper instrument → evidence-driven lever selection that
-  *prevents* a large prod build for ~0 EX; **none degraded** (read-only over the
-  committed baseline + downloadable gold; no chain/scorer/runner change; EX
-  unchanged, no eval dispatched — BIRD 06-19 + Spider 06-17 both < 7 d). 18 eval
-  tests green (was 14). Re-points source-of-truth §2/§4/§6 + verification-log.
-- 2026-06-19 (run 17) — **first canonical BIRD re-run since T20–T22 merged —
-  discharges 4 runs of deferred-EX debt.** Runs 13/14 shipped engine levers
-  (T21 join-bridge recall, T22 HAVING directive) and explicitly punted their
-  real EX delta to "the next scheduled eval"; this is that eval. Dispatched the
-  full 500-q BIRD run on current main (336c489) via `GH_TOKEN_WORKFLOW`,
-  resumed across **3 quota windows** (SK-QUAL-013, 407 → 479 → 500). Result:
-  raw EX **0.522 → 0.520** (261 → 260/500), `no_sql` **3 → 1**, exec_error 1.
-  The official baseline diff is **statistically flat** — McNemar b=38 (newly
-  wrong) / c=37 (newly right), **p=0.50**, `regressions: []` — i.e. the 75
-  flipped questions are pure provider-mix churn (greedy temp=0, but the free
-  chain's live-provider set varies per run), **not** a lever effect. **Finding:
-  the prompt-directive levers (T13–T16, T22) have saturated on BIRD** — three
-  canonical runs now cluster at 261/263/260 of 500 — confirming the
-  `SK-QUAL-015`/`SK-QUAL-014` read that the remaining loss is value/grounding,
-  so the path to the 0.65 gate floor is the **§4 #2a value-retrieval** lever,
-  not more directives. Re-seeds `eval-baseline.ts` + `baseline-2026-06-15.json`
-  + the GLOBAL-027 mirror; updates source-of-truth §2/§6 + verification-log.
-  KPI: engine quality (GLOBAL-025) — measurement refreshed (clears the stale
-  06-12 BIRD `measured_at`) + evidence re-confirms the lever ranking; **none
-  degraded** — the −1 question is McNemar-confirmed noise (p=0.50), and
-  `no_sql` 3 → 1 is a small availability gain. No engine/chain code changed.
+- 2026-06-19/21 (runs 19–22) — agent-memory wedge launch wave (all closed, additive content; no engine/chain/scorer touched): **WS-01** anchored the Zep / Letta / LangMem cluster in `docs/competitors.md §4` (run 19, pivot 0 → 1/20); **WS-02** shipped the three memory `/vs` pages — `/vs/zep` (run 20), `/vs/letta` (run 21), `/vs/langmem` (run 22) — each one `Competitor` entry keyed on the retrieval-vs-analytics wedge (`GROUP BY`/`JOIN`/`HAVING` over memory), facts web-verified 06-19, real tool names only. WS-02 closed → messaging track 2/13, pivot 2/20. Per-slice detail in the WS worksheets + `competitors.ts` history; comparison drafts queued in `distribution-queue.md`.
+- 2026-06-19 (runs 17–18) — canonical BIRD re-run + literal-grounding axis,
+  detailed in `progress/quality-score-verification-log.md`: the first 500-q BIRD
+  re-run since T20–T22 (run 17) came back statistically flat (EX 0.522 → 0.520,
+  McNemar p=0.50, `no_sql` 3 → 1) — the prompt-directive levers have saturated.
+  The `SK-QUAL-014` classifier then gained a literal-grounding axis (run 18)
+  which **falsified value-retrieval as the top lever** (`literal_only` = 0; every
+  literal error co-occurs with a structural one), demoting it below the reasoning
+  levers. No engine/chain code changed; no eval dispatched.
 - 2026-06-16/18 (runs 11–16) — engine-instrument + deferred-lever wave, all
   detailed in `progress/quality-score-verification-log.md`: execution-guided
   PG-error repair (run 11, SK-ASK-022; `db_unreachable → rows`) · **Gemini
