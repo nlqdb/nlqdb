@@ -628,4 +628,94 @@ describe("orchestrateDbCreate", () => {
     expect(provisionArgs?.secretRef).toBe(ARGS.secretRef);
     expect(provisionArgs?.tenantId).toBe(ARGS.tenantId);
   });
+
+  // SK-HDC-020 — the agent-memory preset path. The LLM is bypassed
+  // entirely; the deterministic preset DDL still flows through
+  // validateCompiledDdl + provision (defense-in-depth preserved).
+  describe("preset path (SK-HDC-020)", () => {
+    const PRESET_ARGS = {
+      goal: "",
+      tenantId: "user_1",
+      secretRef: "DATABASE_URL",
+      preset: "agent_memory_v1" as const,
+    };
+
+    it("provisions agent_memory_v1 without calling inferSchema/compileDdl/classifyEngine", async () => {
+      const inferSchema = stubInferSchema();
+      const compileDdl = stubCompileDdl();
+      const classifyEngine = stubClassifyEngine();
+      const validateCompiledDdl = stubValidateCompiledDdl();
+      const provision = stubProvision();
+      const deps = makeDeps({
+        inferSchema,
+        compileDdl,
+        classifyEngine,
+        validateCompiledDdl,
+        provision,
+      });
+
+      const out = await orchestrateDbCreate(deps, PRESET_ARGS);
+
+      expect(out.ok).toBe(true);
+      // LLM-backed stages are skipped on the preset path.
+      expect(inferSchema).not.toHaveBeenCalled();
+      expect(compileDdl).not.toHaveBeenCalled();
+      expect(classifyEngine).not.toHaveBeenCalled();
+      // Defense-in-depth: the hand-authored DDL is still validated + provisioned.
+      expect(validateCompiledDdl).toHaveBeenCalledTimes(1);
+      expect(provision).toHaveBeenCalledTimes(1);
+
+      if (!out.ok) throw new Error("expected ok");
+      expect(out.engine).toBe("postgres");
+      expect(out.dbId).toBe(`db_agent_memory_v1_${FIXED_SUFFIX}`);
+      expect(out.schemaName).toBe(`agent_memory_v1_${FIXED_SUFFIX}`);
+      // No seed/semantic data on the preset path.
+      expect(out.sampleRows).toEqual([]);
+      expect(out.plan.metrics).toEqual([]);
+      expect(out.plan.foreign_keys).toHaveLength(2);
+    });
+
+    it("hands the four-table preset DDL (schema-qualified) to the provisioner", async () => {
+      const provision = stubProvision();
+      const deps = makeDeps({ provision });
+
+      await orchestrateDbCreate(deps, PRESET_ARGS);
+
+      const provisionArgs = provision.mock.calls[0]?.[1] as
+        | { ddl: string[]; schemaText: string; schemaName: string; engine: string }
+        | undefined;
+      const schema = `agent_memory_v1_${FIXED_SUFFIX}`;
+      for (const table of ["facts", "episodes", "entities", "entity_facts"]) {
+        expect(
+          provisionArgs?.ddl.some((s) => s.includes(`CREATE TABLE "${schema}"."${table}"`)),
+        ).toBe(true);
+      }
+      expect(provisionArgs?.schemaText).toContain(`"${schema}"."facts"`);
+      expect(provisionArgs?.engine).toBe("postgres");
+    });
+
+    it("re-derives the schema-qualified DDL on a collision retry", async () => {
+      const suffixes = ["aaa111", "bbb222"];
+      let i = 0;
+      const randomSuffix = vi.fn(() => suffixes[i++] ?? "zzz999");
+      const provision = vi
+        .fn()
+        .mockResolvedValueOnce({ ok: false, reason: "schema_already_exists", rolled_back: false })
+        .mockImplementationOnce(async (_d, args) => ({
+          ok: true,
+          dbId: args.dbId,
+          schemaName: args.schemaName,
+        }));
+      const deps = makeDeps({ randomSuffix, provision });
+
+      const out = await orchestrateDbCreate(deps, PRESET_ARGS);
+
+      expect(out.ok).toBe(true);
+      // Second attempt re-mints the suffix AND re-qualifies the DDL to it.
+      const secondArgs = provision.mock.calls[1]?.[1] as { ddl: string[] } | undefined;
+      expect(secondArgs?.ddl.some((s) => s.includes(`"agent_memory_v1_bbb222"."facts"`))).toBe(
+        true,
+      );
+    });
+  });
 });

@@ -1,0 +1,20 @@
+# SK-HDC-020 — Opt-in `agent_memory_v1` schema preset on the create path
+
+- **Decision:** `db.create` accepts an optional `{ preset: "agent_memory_v1" }`. When set, the orchestrator (`apps/api/src/db-create/orchestrate.ts`) skips `classifyEngine`, `inferSchema`, and `compileDdl` entirely — no LLM call — and provisions a deterministic four-table memory schema (`facts` / `episodes` / `entities` / `entity_facts`) from the hand-authored DDL in `apps/api/src/db-create/presets/agent-memory-v1.ts` (E-01 run 1, `SK-PIVOT-006/007`). The preset still flows through `validateCompiledDdl` (the libpg_query DDL guard) and the provisioner, so SK-HDC-003 defense-in-depth is unchanged. Engine is pinned to `postgres`; the preset is mutually exclusive with an explicit `engine` override. The path is gated behind the `MEMORY_PRESET` env flag and is the opt-in second front door of the dual-front-door model (GLOBAL-036) — the generic goal-string create path is untouched.
+- **Core value:** Goal-first, Effortless UX, Bullet-proof
+- **Why:** An agent that wants memory shouldn't have to design (or have an LLM guess) its own schema — the memory shape is known and stable. The preset removes the inference step and its variance: `db.create { preset }` returns the same four tables + indexes every time, zero LLM tokens, zero schema-design friction (the E-01 worksheet KPI: an agent on-ramp with zero schema design). The SchemaPlan grammar can't express the shape (`TEXT[]` + GIN, a composite-PK link table, multi-column UNIQUE, `ON DELETE CASCADE`), which is why run 1 authored plain DDL; this slice wires it into the request path. Keeping it flag-gated and additive makes it a clean rollback (clear `MEMORY_PRESET`; existing DBs untouched).
+- **Consequence in code:**
+  - `DbCreateArgs.preset?: MemoryPreset` (`types.ts`); the orchestrator branches on `isPreset` to source `engine`, `plan`, and `ddl` from the preset, then shares steps 4–7 (validate → provision → MRU → embed → mint pk) with the inferred path.
+  - The preset supplies a typed `SchemaPlan` *projection* (`agentMemoryV1Plan()`) — metadata only (RLS table list, recent-tables MRU, the FK summary echoed on the response, and a deterministic version-keyed `schema_hash` whose `slug_hint` IS the version tag). A contract test pins the projection's tables/columns to `AGENT_MEMORY_V1_COLUMNS` so it can't drift from the executable DDL.
+  - `schema_hash` is shared across every `agent_memory_v1` DB (no per-DB schema name leaks into the plan), so the plan cache (GLOBAL-006) and the E-07 workload-analyzer rule key on one stable fingerprint.
+  - The DDL is schema-qualified, so the SK-HDC-012 collision retry re-derives it on each re-minted schema name (the preset is a pure function of `schemaName`).
+  - Route: `POST /v1/databases` parses `preset`, rejects it with `preset_disabled` when `MEMORY_PRESET !== "1"`, `invalid_preset` for an unknown value, and `preset_engine_conflict` when combined with `engine`; a preset request needs no `goal`/`name`.
+- **Alternatives rejected:**
+  - Infer the memory schema from a fixed English goal string ("a memory store for an AI agent") — reintroduces LLM variance and cost for a schema we already know exactly; defeats the determinism that is the whole point.
+  - Express the preset as a `SchemaPlan` and reuse `compileDdl` — the grammar can't represent `TEXT[]` + GIN, the composite-PK link table, multi-column UNIQUE, or `ON DELETE CASCADE` (the SK-PIVOT-006 finding from run 1).
+  - A separate `POST /v1/db/preset` endpoint — contradicts SK-HDC-001 / GLOBAL-017 (one create surface); the preset is one opt-in input on the existing create path.
+  - Ship unflagged — loses the clean rollback; the flag costs one env binding and keeps the path opt-in until the `/agents` on-ramp (WS-07 / E-06) leans on it.
+
+## Remaining (tracked)
+
+- The `quality-eval` preset-path ablation row (a separate eval lane that provisions via the preset and asks against the four tables) needs a Neon test branch + harness wiring — deferred to a follow-on engine slice; the unit + contract tests cover the wiring here.

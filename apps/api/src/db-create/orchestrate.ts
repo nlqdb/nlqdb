@@ -34,6 +34,7 @@
 import type { RecentTablesStore } from "../ask/recent-tables.ts";
 import { deriveSlug } from "../databases/list.ts";
 import type { EngineClassifyDeps, EngineClassifyResult } from "./engine-classify.ts";
+import { agentMemoryV1Ddl, agentMemoryV1Plan } from "./presets/agent-memory-v1.ts";
 import { pruneUninsertableSampleRows } from "./sample-rows.ts";
 import type {
   CompileDdlResult,
@@ -106,34 +107,52 @@ export async function orchestrateDbCreate(
   deps: DbCreateDeps,
   args: DbCreateArgs,
 ): Promise<DbCreateResult> {
+  // SK-HDC-020 — agent-memory preset path. When `args.preset` is set the
+  // schema is deterministic: no `classifyEngine`, no `inferSchema`, no
+  // `compileDdl` (the LLM is bypassed entirely). The DDL still flows
+  // through `validateCompiledDdl` (step 4) + the provisioner, so the
+  // SK-HDC-003 defense-in-depth posture is preserved. The branch only
+  // changes how `engine`, `plan`, and `ddl` are produced; steps 4–7 are
+  // shared with the inferred path.
+  const isPreset = args.preset !== undefined;
+
   // 0. Resolve the engine. Explicit `args.engine` (power-user
   //    override per `GLOBAL-015` / `SK-DB-010`) skips the classifier
   //    LLM call — that's the no-mock-call contract the orchestrator
   //    test enforces. When unset, fall back to the SK-MULTIENG-002
-  //    classifier with its built-in confidence floor.
+  //    classifier with its built-in confidence floor. The preset pins
+  //    `postgres` (its DDL is Postgres-only).
   let engine: Engine;
-  if (args.engine !== undefined) {
+  if (isPreset) {
+    engine = "postgres";
+  } else if (args.engine !== undefined) {
     engine = args.engine;
   } else {
     const picked = await deps.classifyEngine({ llm: deps.llm }, args.goal);
     engine = picked.engine;
   }
 
-  // 1. Infer the SchemaPlan. The LLM never emits raw DDL — only
-  //    a typed JSON plan (docs/architecture.md §3.6.2 / receipts §2;
-  //    SK-HDC-002). Zod validation lives inside `inferSchema`;
-  //    failures surface here as `infer_failed`.
-  const inferred = await deps.inferSchema(
-    { llm: deps.llm },
-    { goal: args.goal, ...(args.name !== undefined ? { name: args.name } : {}) },
-  );
-  if (!inferred.ok) {
-    if (inferred.reason === "plan_invalid") {
-      return err({ kind: "infer_failed", reason: "plan_invalid", details: inferred.details });
+  // 1. Resolve the SchemaPlan. The preset supplies a deterministic typed
+  //    projection (`agentMemoryV1Plan`); otherwise the LLM infers one and
+  //    never emits raw DDL (docs/architecture.md §3.6.2 / receipts §2;
+  //    SK-HDC-002). Zod validation lives inside `inferSchema`; failures
+  //    surface here as `infer_failed`.
+  let plan: SchemaPlan;
+  if (isPreset) {
+    plan = agentMemoryV1Plan();
+  } else {
+    const inferred = await deps.inferSchema(
+      { llm: deps.llm },
+      { goal: args.goal, ...(args.name !== undefined ? { name: args.name } : {}) },
+    );
+    if (!inferred.ok) {
+      if (inferred.reason === "plan_invalid") {
+        return err({ kind: "infer_failed", reason: "plan_invalid", details: inferred.details });
+      }
+      return err({ kind: "infer_failed", reason: inferred.reason });
     }
-    return err({ kind: "infer_failed", reason: inferred.reason });
+    plan = inferred.plan;
   }
-  const plan = inferred.plan;
 
   // 2. Mint the dbId + schema name. Format from docs/architecture.md §3.6:
   //    "db_<slug_hint>_<6-char-random>"; schema name drops the
@@ -146,23 +165,34 @@ export async function orchestrateDbCreate(
   };
   let { dbId, schemaName } = mintIds();
 
-  // 3. Deterministic compiler emits CREATE TABLE / CREATE INDEX /
-  //    FK constraints. Pure function over `plan` + schemaName.
-  const compiled = deps.compileDdl(plan, schemaName);
-  if (!compiled.ok) {
-    return err({
-      kind: "compile_failed",
-      reason: compiled.reason,
-      ...(compiled.details !== undefined ? { details: compiled.details } : {}),
-    });
+  // 3. Produce the schema-qualified DDL. The preset emits its
+  //    hand-authored `agent_memory_v1` statements; otherwise the
+  //    deterministic compiler emits CREATE TABLE / CREATE INDEX / FK
+  //    constraints from the typed plan (SK-HDC-002). Both are pure over
+  //    `schemaName`, so the collision-retry below re-derives the preset
+  //    DDL when it re-mints the schema name.
+  let ddl: string[];
+  if (isPreset) {
+    ddl = agentMemoryV1Ddl(schemaName);
+  } else {
+    const compiled = deps.compileDdl(plan, schemaName);
+    if (!compiled.ok) {
+      return err({
+        kind: "compile_failed",
+        reason: compiled.reason,
+        ...(compiled.details !== undefined ? { details: compiled.details } : {}),
+      });
+    }
+    ddl = compiled.statements;
   }
 
-  // 4. libpg_query parse-validate over the compiled DDL — the
-  //    second of two DDL guardrails (docs/architecture.md §3.6.5;
-  //    SK-HDC-003 defense-in-depth, SK-HDC-006 read/write vs DDL
-  //    split). Catches compiler bugs that smuggled a destructive
-  //    verb through.
-  const validation = deps.validateCompiledDdl(compiled.statements);
+  // 4. libpg_query parse-validate over the DDL — the second of two DDL
+  //    guardrails (docs/architecture.md §3.6.5; SK-HDC-003
+  //    defense-in-depth, SK-HDC-006 read/write vs DDL split). Catches
+  //    compiler bugs (or a hand-authored preset regression) that smuggled
+  //    a destructive verb through. Statement shape is schema-name
+  //    independent, so one validation before the retry loop suffices.
+  const validation = deps.validateCompiledDdl(ddl);
   if (!validation.ok) {
     return err({
       kind: "ddl_invalid",
@@ -213,6 +243,10 @@ export async function orchestrateDbCreate(
   for (let attempt = 0; attempt < 3; attempt++) {
     if (collided) {
       ({ dbId, schemaName } = mintIds());
+      // The DDL is schema-qualified, so re-mint requires re-deriving it.
+      // The preset is a pure function of `schemaName`; the inferred path's
+      // statements are already compiled and reused as-is.
+      if (isPreset) ddl = agentMemoryV1Ddl(schemaName);
       collided = false;
     }
     provisioned = await deps.provision(
@@ -221,16 +255,16 @@ export async function orchestrateDbCreate(
         plan: provisionPlan,
         dbId,
         schemaName,
-        ddl: compiled.statements,
+        ddl,
         tenantId: args.tenantId,
         engine,
         secretRef: args.secretRef,
         schemaHash: deps.schemaHash(plan),
-        // The compiled DDL is the smallest faithful schema description
-        // the LLM needs at /v1/ask time (table names, columns + types,
-        // foreign keys). Joined with blank lines so each statement stays
-        // legible in the plan prompt.
-        schemaText: compiled.statements.join("\n\n"),
+        // The DDL is the smallest faithful schema description the planner
+        // needs at /v1/ask time (table names, columns + types, foreign
+        // keys). Joined with blank lines so each statement stays legible
+        // in the plan prompt.
+        schemaText: ddl.join("\n\n"),
       },
     );
     if (provisioned.ok) break;

@@ -68,6 +68,7 @@ import { askFnFromDemoFixtures, DEMO_DB_ID } from "./chat/demo-shortcut.ts";
 import { postChatMessage } from "./chat/orchestrate.ts";
 import { makeChatStore } from "./chat/store.ts";
 import { deriveSlug, displayName, listDatabasesForTenant } from "./databases/list.ts";
+import { AGENT_MEMORY_V1_VERSION, type MemoryPreset } from "./db-create/presets/agent-memory-v1.ts";
 import { resolveDb } from "./db-registry.ts";
 import { sweepAnonDatabases } from "./db-sweep/sweep.ts";
 import { recordEvalReport, recordWishlist } from "./events-feature.ts";
@@ -2254,7 +2255,12 @@ app.post("/v1/databases", requireSession, gatePreAlpha, async (c) => {
     span.setAttribute("nlqdb.user.id", session.user.id);
     span.setAttribute("nlqdb.surface", "chat");
 
-    const raw = await parseJsonBody<{ name?: unknown; goal?: unknown; engine?: unknown }>(c);
+    const raw = await parseJsonBody<{
+      name?: unknown;
+      goal?: unknown;
+      engine?: unknown;
+      preset?: unknown;
+    }>(c);
     if (!raw.ok) {
       span.end();
       return c.json({ error: { status: "invalid_json" as const } }, 400);
@@ -2269,7 +2275,37 @@ app.post("/v1/databases", requireSession, gatePreAlpha, async (c) => {
         ? raw.body.goal.trim()
         : undefined;
 
-    if (!name && !goal) {
+    // SK-HDC-020 — opt-in agent-memory preset (E-01). Flag-gated so it can
+    // be rolled back by clearing `MEMORY_PRESET`; pins postgres, so it
+    // can't be combined with an explicit engine override; needs no goal
+    // (the schema is deterministic).
+    let preset: MemoryPreset | undefined;
+    if (raw.body.preset !== undefined) {
+      if (c.env.MEMORY_PRESET !== "1") {
+        span.end();
+        return c.json({ error: { status: "preset_disabled" as const } }, 400);
+      }
+      if (raw.body.preset !== AGENT_MEMORY_V1_VERSION) {
+        span.end();
+        return c.json(
+          {
+            error: {
+              status: "invalid_preset" as const,
+              value: raw.body.preset,
+              allowed: [AGENT_MEMORY_V1_VERSION],
+            },
+          },
+          400,
+        );
+      }
+      if (raw.body.engine !== undefined) {
+        span.end();
+        return c.json({ error: { status: "preset_engine_conflict" as const } }, 400);
+      }
+      preset = raw.body.preset;
+    }
+
+    if (!preset && !name && !goal) {
       span.end();
       return c.json({ error: { status: "goal_required" as const } }, 400);
     }
@@ -2332,6 +2368,7 @@ app.post("/v1/databases", requireSession, gatePreAlpha, async (c) => {
         goal: goal ?? name ?? "",
         ...(name !== undefined ? { name } : {}),
         ...(engine !== undefined ? { engine } : {}),
+        ...(preset !== undefined ? { preset } : {}),
         tenantId: session.user.id,
         secretRef,
       });

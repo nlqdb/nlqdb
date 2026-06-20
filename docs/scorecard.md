@@ -50,7 +50,7 @@ few-shot), not retrieval. Value-retrieval is demoted + privacy-gated.
 | 10 | nlqdb-api requests / errors | 2,268 / 0 (0.00%) | mcp 284 req, events-worker 91 req, both 0 err |
 | 11 | nlqdb-api latency p50 / p95 | 666 ms / 7.05 s (06-13) | p95 dominated by LLM-bound asks; `/ask`-only split needs Grafana `metrics:read` (agent has write-only key) |
 | 12 | $ spend | ~$0 | free tiers across CF / Neon / LLM chain |
-| | **Pivot — agent-memory wedge** (GLOBAL-036) | 7 / 20 + 3 memory /vs pages | tick ⬜→✅ with PR link on merge; mirrors `docs/features/agent-memory-pivot/worksheets/INDEX.md` |
+| | **Pivot — agent-memory wedge** (GLOBAL-036) | 8 / 20 + 3 memory /vs pages | tick ⬜→✅ with PR link on merge; mirrors `docs/features/agent-memory-pivot/worksheets/INDEX.md` |
 | | *Messaging track — WS-\** | 7 / 13 | pick when worst number is funnel / distribution |
 | WS-01 | competitors.md anchor (Zep / Letta / LangMem) | ✅ | run 19 — §4 + threat matrix; unblocks WS-02 |
 | WS-02 | memory `/vs` pages (one per run) | ✅ 3/3 | run 20 — **Zep ✅** (`/vs/zep`); run 21 — **Letta ✅** (`/vs/letta`); run 22 — **LangMem ✅** (`/vs/langmem`) — WS-02 closed |
@@ -65,8 +65,8 @@ few-shot), not retrieval. Value-retrieval is demoted + privacy-gated.
 | WS-11 | pull `ghcr.io/nlqdb/api` self-host container forward | ⬜ | high · multi · WS-10 · infra-gated |
 | WS-12 | home reweight + demote P1/P3/P4 to "also works for…" | ⬜ | med · ~2 runs · WS-06, WS-07 |
 | WS-13 | headline reposition (hero / README / llms.txt / JSON-LD) | ⬜ | high · ~2 runs · WS-07, WS-12 · 🔒 **FOUNDER-GATED** |
-| | *Engine track — E-\** | 0 / 7 (E-01 🟡 1/2) | pick when worst number is engine quality / agent on-ramp |
-| E-01 | `agent_memory_v1` schema preset for `db.create` | 🟡 1/2 | run 29 — **module ✅** (`presets/agent-memory-v1.ts` + contract test; validator-compatible plain DDL); request-path wiring pending |
+| | *Engine track — E-\** | 1 / 7 | pick when worst number is engine quality / agent on-ramp |
+| E-01 | `agent_memory_v1` schema preset for `db.create` | ✅ | run 29 module + run 30 wiring (SK-HDC-020): `db.create { preset: "agent_memory_v1" }` provisions the 4 tables deterministically, no LLM; gated behind `MEMORY_PRESET`. One follow-on: quality-eval ablation row (Neon-branch gated) |
 | E-02 | additive MCP tool `nlqdb_remember` (no rename) | ⬜ | med · 1 run · E-01 |
 | E-03 | per-agent / end-user / thread compile-layer scoping | ⬜ | **high · security-critical** · ~2 runs · E-01 |
 | E-04 | TTL + cron sweep (`expires_at`) | ⬜ | low · 1 run · E-01 |
@@ -106,6 +106,38 @@ few-shot), not retrieval. Value-retrieval is demoted + privacy-gated.
   "Show HN: analytical memory for AI agents" draft pointing at `/agents`
   appended to the distribution queue. Next pivot lever is WS-07 run 2 (embed
   the matrix + moat).
+- 2026-06-20 (run 30) — **E-01 run 2/2: wired the `agent_memory_v1` preset into
+  the create request path — E-01 closed** (engine track **0 → 1/7**; Pivot
+  **7 → 8/20**; E-01 🟡 1/2 → **✅**). Lever choice: the worst number is engine
+  (Spider 0.1852), but BIRD 06-19 + Spider 06-17 are both < 7 d so §5 forbids a
+  back-to-back eval dispatch; the in-bounds engine lever is the pivot **engine
+  track**, and E-01 was the lowest-numbered in-progress slice (🟡, prereqs met),
+  so run 1 (#428, the module) → run 2 (this, the wiring). **SK-HDC-020:**
+  `DbCreateArgs.preset?: MemoryPreset`; the orchestrator branches on it to skip
+  `classifyEngine`/`inferSchema`/`compileDdl` (no LLM, no token cost, zero
+  schema-design friction) and source `engine` (pinned `postgres`), the typed
+  `plan` (new `agentMemoryV1Plan()` projection — metadata only: RLS table list,
+  recent-tables MRU, FK summary, a version-keyed `schema_hash`), and the `ddl`
+  (`agentMemoryV1Ddl`) from the preset, then **shares steps 4–7**
+  (validate → provision → MRU → embed → mint) with the inferred path so
+  **SK-HDC-003 defense-in-depth is unchanged** (the hand-authored DDL still
+  passes `validateCompiledDdl` + the provisioner). `POST /v1/databases` accepts
+  `{ preset }` gated behind the **`MEMORY_PRESET`** flag (clean rollback;
+  `preset_disabled` / `invalid_preset` / `preset_engine_conflict` rejections;
+  no goal required). A contract test pins the projection's tables/columns to
+  `AGENT_MEMORY_V1_COLUMNS` so it can't drift from the executable DDL.
+  **Additive + opt-in** — the generic goal-string create path is untouched
+  (dual front door, GLOBAL-036). Gates: orchestrate (38) + preset-contract (13)
+  tests green, **824 API tests** green, typecheck + biome clean; FEATURE.md
+  net-shrunk (D4) by externalizing SK-HDC-013's body. One follow-on tracked:
+  the quality-eval preset-path ablation row (Neon-branch gated). KPI:
+  **onboarding** (GLOBAL-025 — an agent gets a working memory DB with zero
+  schema design); **none degraded** (additive, flag-gated, no engine/chain/
+  scorer/eval touched; BIRD 06-19 + Spider 06-17 untouched; performance: the
+  preset path is *faster* than inferred create — it skips two LLM calls).
+  Artifact: a "give your AI agent a real memory database in one call" dev.to /
+  Show-HN draft appended to the distribution queue. Next engine lever is **E-02**
+  (`nlqdb_remember` MCP tool, prereq E-01 now ✅).
 - 2026-06-20 (run 29) — **E-01 run 1/2: shipped the `agent_memory_v1` schema
   preset module** (engine track 0 → **🟡 1/2**). New
   `apps/api/src/db-create/presets/agent-memory-v1.ts`: `agentMemoryV1Ddl(schemaName)`
