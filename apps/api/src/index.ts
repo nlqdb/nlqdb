@@ -85,6 +85,11 @@ import { runIcpCluster } from "./icp-cluster.ts";
 import { runIcpScore } from "./icp-score.ts";
 import { runIcpScrape } from "./icp-scrape.ts";
 import { getLLMRouter } from "./llm-router.ts";
+import {
+  orchestrateRemember,
+  type RememberError,
+  validateRememberInput,
+} from "./memory/remember.ts";
 import { makeRequireSession, type RequireSessionVariables } from "./middleware.ts";
 import { handleMcpCallback, handleMcpCallbackRedeem } from "./oauth-mcp-bridge.ts";
 import {
@@ -95,11 +100,6 @@ import {
   rateLimitBucketKey,
   surfaceFromPrincipal,
 } from "./principal.ts";
-import {
-  orchestrateRemember,
-  type RememberError,
-  validateRememberInput,
-} from "./memory/remember.ts";
 import { orchestrateRun, type RunError } from "./run/orchestrate.ts";
 import {
   blocksNewCheckout,
