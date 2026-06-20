@@ -1,6 +1,6 @@
 # WS-06 — Mem0 | Zep | Letta | nlqdb capability matrix (new surface)
 
-**Status:** 🟡 run 1/2 — data shipped (render pending)
+**Status:** ✅ done (run 1 data + run 2 render shipped)
 **Sequence:** 6 of 13 · **Risk:** med · **Runs:** ~2 · **Prereqs:** WS-01 ✅ · **Gate:** none
 
 ## Goal
@@ -41,9 +41,9 @@ asset for the agent-builder reader. `Pivot:` boolean "matrix live".
 ## Done when
 
 - [x] `agentMemoryMatrix.ts` exists with honest rows + `verifiedOn` (run 1, 2026-06-20 — 9 rows, `MATRIX_VERIFIED_ON = 2026-06-19`, invariants locked by `agentMemoryMatrix.test.ts`).
-- [ ] A reusable brand-styled render component (no `<img>`).
+- [x] A reusable brand-styled render component (no `<img>`) — `apps/web/src/components/AgentMemoryMatrix.astro` (run 2, 2026-06-20): four-up glyph grid, nlqdb the accent-railed column, notes as muted sub-lines, `verifiedOn` footer. Live text (SK-PIVOT-004), `heading` prop for `/agents` (WS-07) + blog (WS-09) reuse.
 - [x] Every nlqdb `✓` is shippable today; competitor cells sourced from WS-01 (run 1 — facts from `docs/competitors.md §4`; honesty-corrected the self-host row vs the aspirational framing doc).
-- [ ] INDEX tracker + status ticked (this run: 🟡 in progress).
+- [x] INDEX tracker + status ticked (run 2: ✅ done).
 
 ## Artifact
 

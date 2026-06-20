@@ -5,6 +5,35 @@ One publishable artifact drafted per day by the daily agent
 publishes at the weekly session. Newest first. Delete an entry once published
 (the live URL goes into `docs/scorecard.md`).
 
+## 2026-06-20 (run 28) — X/Bluesky thread: the one bright column (agent-memory matrix render)
+
+**Where:** X / Bluesky, a 3-post thread whose hook is the *rendered* matrix —
+the single all-✓ nlqdb column against three columns of dashes. Screenshot the
+live component (once it's on `/agents`, WS-07) or paste the table inline. Pairs
+with the run-27 long-form Show HN post; this is the short social teaser that
+drives to it.
+
+**Thread:**
+
+> 1/ Your agent can remember things. Cool. Can it answer a question *about* what
+> it remembered? "Top 5 deals by size." "Average per stage." "What closed this
+> month." Most memory tools can't — they do top-k similarity, not SQL.
+>
+> 2/ We built the honest table. Mem0, Zep, Letta, nlqdb. Everyone wins the top
+> two rows (remember + recall). Then it's one bright column the rest of the way
+> down — because aggregation needs a query planner, and a vector store doesn't
+> have one. [matrix]
+>
+> 3/ nlqdb's memory *is* a Postgres the agent provisions in English and then
+> runs `GROUP BY` / `JOIN` / `HAVING` over. Not a vector store with a SQL
+> bolt-on — a database it talks to. The table's not a clean sweep (self-host is
+> ◐ for us today, honest) but the analytical rows are ours alone.
+
+**Why it works:** the rendered matrix is built as live text (no raster image,
+SK-PIVOT-004), so the visual punch — one lit column — survives copy-paste into
+a post and is liftable verbatim by AI search engines. The shape *is* the
+argument; the thread just points at it.
+
 ## 2026-06-20 (run 28) — note: "What FSL-1.1 actually means for self-hosting nlqdb" (dev.to / r/selfhosted)
 
 **Where:** a short dev.to / r/selfhosted / lobste.rs note for the

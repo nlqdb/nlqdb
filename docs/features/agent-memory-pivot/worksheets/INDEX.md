@@ -59,7 +59,7 @@ swap.
 | [03](WS-03-solve-pages.md) ✅ | Sharpen the agent-memory solve page + add an analytical-queries sibling | low | ~2 | — | — |
 | [04](WS-04-mcp-framing.md) ✅ | MCP tool + package + docs framing → "analytical memory" | low | 1 | — | — |
 | [05](WS-05-carousel-slides.md) ✅ | Carousel: analytics-over-agent-memory slides | low | 1 | — | — |
-| [06](WS-06-capability-matrix.md) 🟡 | Mem0 \| Zep \| Letta \| nlqdb capability matrix (new surface) — run 1/2 data ✅, render pending | med | ~2 | 01 | — |
+| [06](WS-06-capability-matrix.md) ✅ | Mem0 \| Zep \| Letta \| nlqdb capability matrix (new surface) — data ✅ + render ✅ | med | ~2 | 01 | — |
 | [07](WS-07-agents-landing.md) | Dedicated `/agents` front door | med | ~3 | 06 | — |
 | [08](WS-08-og-images.md) | On-brand OG / social images for the wedge surfaces | low | ~2 | 07 | — |
 | [09](WS-09-blog-and-demo.md) | "Database, not a vector store" blog + live in-page demo | med | ~2 | 06 | — |
@@ -85,7 +85,7 @@ Tick on merge. Keep this list as the durable pivot status (the scorecard's
 - [x] WS-03 — solve pages: **sharpen ✅** (2026-06-19, run 23 — `give-ai-agent-persistent-memory` reframed to the analytical wedge + phantom MCP tools fixed); **analytical sibling ✅** (2026-06-20, run 25 — `analytical-queries-over-agent-memory`, the read-side wedge)
 - [x] WS-04 — MCP framing (2026-06-19, run 24 — branch `claude/vibrant-newton-rk77n7`)
 - [x] WS-05 — carousel slides (2026-06-20, run 26 — branch `claude/vibrant-newton-8gbdxc`; 2 analytics-over-memory slides: `read-agent-memory-by-category` GROUP BY + `read-agent-memory-top-recalled` top-N)
-- [~] WS-06 — capability matrix: **data ✅** (2026-06-20, run 27 — `apps/web/src/data/agentMemoryMatrix.ts` + test, branch `claude/vibrant-newton-s9e2r2`); render component pending (run 2)
+- [x] WS-06 — capability matrix: **data ✅** (2026-06-20, run 27 — `apps/web/src/data/agentMemoryMatrix.ts` + test, branch `claude/vibrant-newton-s9e2r2`); **render ✅** (2026-06-20, run 28 — `apps/web/src/components/AgentMemoryMatrix.astro`, branch `claude/vibrant-newton-rldywf`)
 - [ ] WS-07 — `/agents` landing
 - [ ] WS-08 — OG / social images
 - [ ] WS-09 — blog + live demo

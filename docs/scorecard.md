@@ -50,14 +50,14 @@ few-shot), not retrieval. Value-retrieval is demoted + privacy-gated.
 | 10 | nlqdb-api requests / errors | 2,268 / 0 (0.00%) | mcp 284 req, events-worker 91 req, both 0 err |
 | 11 | nlqdb-api latency p50 / p95 | 666 ms / 7.05 s (06-13) | p95 dominated by LLM-bound asks; `/ask`-only split needs Grafana `metrics:read` (agent has write-only key) |
 | 12 | $ spend | ~$0 | free tiers across CF / Neon / LLM chain |
-| | **Pivot — agent-memory wedge** (GLOBAL-036) | 6 / 20 + 3 memory /vs pages | tick ⬜→✅ with PR link on merge; mirrors `docs/features/agent-memory-pivot/worksheets/INDEX.md` (WS-06 render is a separate open PR #426 — counted there) |
-| | *Messaging track — WS-\** | 6 / 13 | pick when worst number is funnel / distribution |
+| | **Pivot — agent-memory wedge** (GLOBAL-036) | 7 / 20 + 3 memory /vs pages | tick ⬜→✅ with PR link on merge; mirrors `docs/features/agent-memory-pivot/worksheets/INDEX.md` |
+| | *Messaging track — WS-\** | 7 / 13 | pick when worst number is funnel / distribution |
 | WS-01 | competitors.md anchor (Zep / Letta / LangMem) | ✅ | run 19 — §4 + threat matrix; unblocks WS-02 |
 | WS-02 | memory `/vs` pages (one per run) | ✅ 3/3 | run 20 — **Zep ✅** (`/vs/zep`); run 21 — **Letta ✅** (`/vs/letta`); run 22 — **LangMem ✅** (`/vs/langmem`) — WS-02 closed |
 | WS-03 | solve pages — sharpen + sibling | ✅ 2/2 | run 23 — **sharpen ✅**; run 25 — **analytical sibling ✅** (`analytical-queries-over-agent-memory`, the read-side report-over-memory wedge) |
 | WS-04 | MCP tool + package + docs framing | ✅ | run 24 — three tool descriptions + `package.json` desc + `mcp.mdx` intro now lead with "analytical memory" (copy only; SK-PIVOT-003) |
 | WS-05 | carousel analytics-over-memory slides | ✅ | run 26 — 2 analytics-over-memory slides (`GROUP BY category` + top-N `ORDER BY … LIMIT 5`), MCP surface; data-only `showcase-examples.ts` |
-| WS-06 | Mem0 \| Zep \| Letta \| nlqdb capability matrix | 🟡 1/2 | run 27 — **data ✅** (`agentMemoryMatrix.ts`, 9 honest rows + test); render component pending |
+| WS-06 | Mem0 \| Zep \| Letta \| nlqdb capability matrix | ✅ | run 27 — **data ✅** (`agentMemoryMatrix.ts`, 9 honest rows + test); run 28 — **render ✅** (`AgentMemoryMatrix.astro`, four-up glyph grid, nlqdb accent column, no `<img>`) |
 | WS-07 | `/agents` landing | ⬜ | med · ~3 runs · WS-06 |
 | WS-08 | on-brand OG / social images | ⬜ | low · ~2 runs · WS-07 |
 | WS-09 | "database, not a vector store" blog + live demo | ⬜ | med · ~2 runs · WS-06 (sharpens with E-01/05) |
@@ -76,15 +76,36 @@ few-shot), not retrieval. Value-retrieval is demoted + privacy-gated.
 
 ## Deltas (recent runs)
 
-- 2026-06-20 (run 28) — **WS-10: FSL self-host messaging shipped** (Pivot
-  messaging track 5 → **6/13**; Pivot 5 → **6/20**; WS-10 ⬜ → **✅**). Engine
-  lane blocked (BIRD 06-19 + Spider 06-17 both < 7 d; §5 forbids a back-to-back
-  eval dispatch), so the in-bounds lever is funnel/distribution. WS-06's render
-  is in flight on **open PR #426**, so WS-07/09/12 (all prereq WS-06) aren't yet
-  unblocked — per the pivot INDEX pickup rule, **WS-10** is the lowest-numbered
-  ⬜ with all prereqs met (none) that **doesn't collide** with #426 (it touches
-  only `pricing.astro` + `README.md`, not the matrix/`/agents` surface). **Copy
-  only** (SK-PIVOT-005): added a self-host band to `/pricing` (mirrors the
+- 2026-06-20 (run 28) — **WS-06 run 2/2: shipped the capability-matrix render
+  component — WS-06 closed** (`apps/web/src/components/AgentMemoryMatrix.astro`).
+  Pivot **6 → 7/20**; messaging track **6 → 7/13** (on top of WS-10, also run 28);
+  WS-06 🟡 1/2 → **✅**. Engine
+  lane still blocked (BIRD 06-19 + Spider 06-17 both < 7 d; §5 forbids a
+  back-to-back eval dispatch), so the in-bounds lever is funnel/distribution; per
+  the pivot INDEX pickup rule WS-06 was the lowest-numbered in-progress worksheet
+  (🟡, prereq WS-01 ✅) and run 1 (#425) shipped its data, so run 2 is the render.
+  Renders the run-27 `AGENT_MEMORY_MATRIX` (9 honest rows, Mem0 · Zep · Letta ·
+  nlqdb) as a **four-up glyph grid** in the brand vocabulary (acid-lime accent on
+  dark, JetBrains Mono, `✓/◐/—` shared with `/vs/<slug>`): nlqdb is the
+  accent-railed, faintly-tinted column so the all-✓ wedge reads as one bright
+  line; capability notes sit as muted sub-lines (keeps the glyph columns tight);
+  legend + `MATRIX_VERIFIED_ON` footer. **Live text, no `<img>`** (SK-PIVOT-004) —
+  the shape survives copy-paste and is liftable by AI search. Optional `heading`
+  prop for the two reuse sites (`/agents` WS-07, blog WS-09). **Additive +
+  unreferenced** until WS-07 wires it onto a page (rollback = delete the file);
+  astro-check still type-checks it. **This closes WS-06 → unblocks WS-07**
+  (`/agents` landing, prereq now met). Gates: web **126** tests (data invariants
+  unchanged), astro-check **0/0/0** (73 files), biome clean on the new component.
+  KPI: **onboarding / UX** (GLOBAL-025) — the wedge's most persuasive
+  comprehension asset is now a renderable surface; **none degraded** (additive
+  component, no code path / engine / chain / scorer touched; BIRD 06-19 + Spider
+  06-17 untouched; performance N/A — static markup). Artifact: an X/Bluesky
+  "one bright column" thread appended to the distribution queue (teaser for the
+  run-27 Show HN matrix post). Next pivot lever is WS-07 (`/agents` landing).
+- 2026-06-20 (run 28) — **WS-10: FSL self-host messaging shipped** (WS-10 ⬜ →
+  **✅**). Engine lane blocked (BIRD 06-19 + Spider 06-17 both < 7 d; §5 forbids
+  a back-to-back eval dispatch), so the in-bounds lever is funnel/distribution.
+  **Copy only** (SK-PIVOT-005): added a self-host band to `/pricing` (mirrors the
   BYOLLM callout, zero new CSS) and a "Self-host the source" line to the README
   "Models & plans" section — both stated truthfully under **FSL-1.1-ALv2**
   (source-available, self-hostable for non-competing use, BYO key 0% markup, no
