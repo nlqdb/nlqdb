@@ -83,6 +83,37 @@ a defensible decision (SK-PIVOT-009); the "don't rewrite the LLM's SQL" angle
 stands alone as a useful lesson. Honest: per-agent scoping is in-flight (E-03)
 — describes the committed mechanism, not a shipped claim; hold until E-03 lands.
 
+## 2026-06-20 (run 32) — "Give your AI agent memory from the terminal" (dev.to / r/commandline / r/AI_Agents)
+
+**Where:** dev.to / r/commandline / r/AI_Agents — the CLI/scripting crowd,
+anchored on the just-shipped `nlq remember` verb.
+
+**Title:** Your agent's memory is a database — so you can write to it from a shell
+
+**Body:**
+
+> If agent memory is a real database (in nlqdb it is — Postgres the agent
+> provisions in English), writing to it shouldn't need an SDK or a running
+> agent. So `nlq remember` now ships in the CLI:
+>
+> ```
+> nlq remember --type preference --tag ui "user prefers dark mode"
+> nlq remember --ttl 7d "promo code expires next week"
+> ```
+>
+> No SQL, no LLM in the loop: the *server* composes a deterministic
+> parameterised INSERT from your typed flags, so the trust boundary holds — you
+> control data, never the statement. It writes into an `agent_memory_v1` preset
+> DB, the same one your agent later runs `GROUP BY` over via `nlq ask`. Write
+> from a cron job, read in English — one Postgres, four surfaces (HTTP, SDK,
+> MCP, CLI).
+
+**Why it's publishable:** the terminal crowd is a real distribution channel for
+agent infra; `nlq remember` is a concrete hook. Sourced from
+`cli/internal/cmd/remember.go` (SK-CLI-018) + the E-02 write path (SK-PIVOT-008).
+Honest scope: target must be a memory-preset DB, created today via the SDK/MCP
+`db.create` preset (CLI `nlq new --preset` is the fast-follow).
+
 ## 2026-06-20 (run 30) — "Show HN: analytical memory for AI agents" (Hacker News, → `/agents`)
 
 **Where:** Hacker News Show HN, pointing at `https://nlqdb.com/agents` (the new
@@ -408,31 +439,6 @@ answers — a distinct keyword from the write-side "give my agent memory" page a
 the run-23 "can't aggregate" post. One in-context link, honest about the
 no-vector-search limit (SK-SOLVE-002 / SK-PIVOT-002), real tool name only
 (`nlqdb_query`, no phantom `create_database`).
-
-## 2026-06-19 (run 24) — MCP-directory listing refresh: "the analytical-memory MCP server"
-
-**Where:** Anthropic Connectors Directory listing for `mcp.nlqdb.com` (refresh
-the description once the submission clears review — form submitted 2026-06-12,
-awaiting review per `mcp-server/FEATURE.md`), plus any community MCP registries
-(`mcpservers.org`, `glama.ai/mcp`, `smithery.ai`) where nlqdb is or can be
-listed. Single-line directory blurb to paste:
-
-**Listing description:**
-
-> **nlqdb — analytical memory for AI agents.** A real database your agent can
-> `GROUP BY` / `JOIN` / aggregate over in natural language, not just a recall
-> store. Three tools — `nlqdb_query`, `nlqdb_list_databases`, `nlqdb_describe` —
-> materialise a Postgres database on first reference and return rows + the
-> compiled SQL. Destructive plans return a diff for confirmation before they
-> commit.
-
-**Why this is publishable:** directory listings are the single highest-leverage
-agent-facing surface — the tool list is exactly where a host (Claude Desktop,
-Cursor, VS Code) shows an agent what nlqdb *is*. The refreshed blurb mirrors the
-WS-04 in-product tool descriptions verbatim (no claim that isn't true at the tool
-boundary), and keys the "analytical memory ≠ recall" wedge to the P2 agent-builder
-search intent. Honest: names the real three tools only — no phantom
-`create_database` (SK-MCP-002 / SK-PIVOT-002), no native vector search claimed.
 
 ## 2026-06-19 (run 23) — helpful-answer draft: "vector memory can't aggregate" (r/LangChain / r/AI_Agents)
 
