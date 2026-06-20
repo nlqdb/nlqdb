@@ -33,10 +33,19 @@
 // create path E-01 extends) and
 // `docs/features/agent-memory-pivot/worksheets/engine/E-01-memory-schema-preset.md`.
 
-// The versionTag that flows into `schema_hash` (E-01 run 2 wires it),
-// so the preset path is a distinct, stable schema identity for the
-// plan cache (GLOBAL-006) and the workload-analyzer rule (E-07).
+import type { Column, ColumnType, ForeignKey, SchemaPlan, Table } from "@nlqdb/db";
+
+// The versionTag that flows into `schema_hash` (E-01 run 2 wires it via
+// the SchemaPlan projection below — `slug_hint` carries it), so the
+// preset path is a distinct, stable schema identity for the plan cache
+// (GLOBAL-006) and the workload-analyzer rule (E-07).
 export const AGENT_MEMORY_V1_VERSION = "agent_memory_v1" as const;
+
+// The opt-in `{ preset }` value `db.create` accepts (SK-HDC-020). The
+// route handler validates the request body against this and gates it
+// behind the `MEMORY_PRESET` flag; the orchestrator branches on it to
+// skip inferSchema/classifyEngine/compileDdl.
+export type MemoryPreset = typeof AGENT_MEMORY_V1_VERSION;
 
 // The canonical column set per table (SK-PIVOT-007 contract). The
 // test pins these so a silent rename/drop is rejected at PR time;
@@ -168,4 +177,126 @@ export function agentMemoryV1Ddl(schemaName: string): string[] {
     `CREATE INDEX "idx_facts__tags" ON ${q("facts")} USING GIN ("tags");`,
     `CREATE INDEX "idx_entity_facts__fact_id" ON ${q("entity_facts")} ("fact_id");`,
   ];
+}
+
+// Typed `SchemaPlan` *projection* of the v1 shape. The executable schema
+// is the hand-authored DDL above (`agentMemoryV1Ddl`) — the SchemaPlan
+// grammar can't express `TEXT[]` + GIN, a composite-PK link table,
+// multi-column UNIQUE, or `ON DELETE CASCADE` (SK-PIVOT-006), which is
+// why run 1 authored plain DDL. This projection is the metadata the
+// orchestrator still needs on the preset path, so the rest of the
+// pipeline is unchanged:
+//   • the table list → RLS policies + the recent-tables MRU (SK-ASK-012)
+//   • the FK summary → echoed on the create response
+//   • a deterministic, version-keyed `schema_hash`: `slug_hint` is the
+//     version, and no per-DB schema name leaks into the plan, so every
+//     `agent_memory_v1` database shares one plan-cache fingerprint
+//     (GLOBAL-006).
+// Column names/types mirror `agentMemoryV1Ddl`; the contract test pins
+// them to `AGENT_MEMORY_V1_COLUMNS` so the two representations can't drift.
+type ColSpec = readonly [name: string, type: ColumnType, nullable: boolean];
+
+function buildTable(name: string, pk: string[], cols: readonly ColSpec[]): Table {
+  return {
+    name,
+    description: `agent_memory_v1 ${name}`,
+    primary_key: pk,
+    columns: cols.map(
+      ([colName, type, nullable]): Column => ({
+        name: colName,
+        type,
+        nullable,
+        description: `${name}.${colName}`,
+      }),
+    ),
+  };
+}
+
+export function agentMemoryV1Plan(): SchemaPlan {
+  const tables: Table[] = [
+    buildTable(
+      "facts",
+      ["id"],
+      [
+        ["id", "bigint", false],
+        ["agent_id", "text", false],
+        ["end_user_id", "text", true],
+        ["thread_id", "text", true],
+        ["kind", "text", false],
+        ["content", "text", false],
+        ["tags", "text_array", false],
+        ["source", "jsonb", true],
+        ["created_at", "timestamp_tz", false],
+        ["expires_at", "timestamp_tz", true],
+      ],
+    ),
+    buildTable(
+      "episodes",
+      ["id"],
+      [
+        ["id", "bigint", false],
+        ["agent_id", "text", false],
+        ["end_user_id", "text", true],
+        ["thread_id", "text", true],
+        ["role", "text", false],
+        ["content", "text", false],
+        ["tool_calls", "jsonb", true],
+        ["tokens", "integer", true],
+        ["occurred_at", "timestamp_tz", false],
+      ],
+    ),
+    buildTable(
+      "entities",
+      ["id"],
+      [
+        ["id", "bigint", false],
+        ["agent_id", "text", false],
+        ["kind", "text", false],
+        ["canonical_name", "text", false],
+        ["properties", "jsonb", true],
+        ["first_seen_at", "timestamp_tz", true],
+        ["last_seen_at", "timestamp_tz", true],
+      ],
+    ),
+    buildTable(
+      "entity_facts",
+      ["entity_id", "fact_id"],
+      [
+        ["entity_id", "bigint", false],
+        ["fact_id", "bigint", false],
+      ],
+    ),
+  ];
+
+  const foreign_keys: ForeignKey[] = [
+    {
+      from_table: "entity_facts",
+      from_columns: ["entity_id"],
+      to_table: "entities",
+      to_columns: ["id"],
+      on_delete: "cascade",
+    },
+    {
+      from_table: "entity_facts",
+      from_columns: ["fact_id"],
+      to_table: "facts",
+      to_columns: ["id"],
+      on_delete: "cascade",
+    },
+  ];
+
+  return {
+    // `slug_hint` IS the version tag (lower_snake, GLOBAL-004): it drives
+    // both the dbId/schema name (`db_agent_memory_v1_<6hex>`) and the
+    // version-keyed `schema_hash`.
+    slug_hint: AGENT_MEMORY_V1_VERSION,
+    description: "Canonical agent-memory schema (facts / episodes / entities / entity_facts).",
+    tables,
+    foreign_keys,
+    // The semantic layer (SK-HDC-004) and seed rows are empty on the
+    // preset path — an agent fills its own memory at runtime.
+    metrics: [],
+    dimensions: [],
+    sample_rows: [],
+  };
 }

@@ -160,6 +160,14 @@ declare global {
       MOCK_STRIPE?: string;
       GATE_OPEN?: string;
 
+      // MEMORY_PRESET=1: enables the opt-in `agent_memory_v1` schema
+      // preset on `db.create` (E-01 / SK-HDC-020 in
+      // docs/features/hosted-db-create/FEATURE.md). When unset, a request
+      // body carrying `preset` is rejected with `preset_disabled` so the
+      // path can be rolled back by clearing the flag — existing DBs are
+      // untouched (the preset path is opt-in).
+      MEMORY_PRESET?: string;
+
       // Tinybird credentials for the W5 workload analyser (`SK-MIGRATE-001`).
       // The cron reads `query_log` via the Tinybird adapter and
       // creates Pipes via the management API. When unset, the

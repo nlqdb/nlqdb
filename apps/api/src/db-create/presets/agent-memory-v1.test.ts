@@ -9,12 +9,14 @@
 //      verb past defense-in-depth. We assert that here, before any
 //      request-path wiring exists.
 
+import { SchemaPlanSchema } from "@nlqdb/db";
 import { describe, expect, it } from "vitest";
 import { validateCompiledDdl } from "../../ask/sql-validate-ddl.ts";
 import {
   AGENT_MEMORY_V1_COLUMNS,
   AGENT_MEMORY_V1_VERSION,
   agentMemoryV1Ddl,
+  agentMemoryV1Plan,
 } from "./agent-memory-v1.ts";
 
 const SCHEMA = "agent_mem_ab12cd";
@@ -72,5 +74,41 @@ describe("agent_memory_v1 preset", () => {
   it("rejects an unsafe schema name before quoting (SK-HDC-009)", () => {
     expect(() => agentMemoryV1Ddl(`evil"; DROP SCHEMA public; --`)).toThrow(/unsafe schema name/);
     expect(() => agentMemoryV1Ddl("a".repeat(64))).toThrow(/63-char/);
+  });
+});
+
+// The typed `SchemaPlan` projection wired into the orchestrator on the
+// preset path (E-01 run 2 / SK-HDC-020). It is metadata only — the
+// executable schema is the DDL above — so the tests pin the two against
+// the same `AGENT_MEMORY_V1_COLUMNS` contract to prevent drift.
+describe("agentMemoryV1Plan", () => {
+  it("is a Zod-valid SchemaPlan", () => {
+    expect(() => SchemaPlanSchema.parse(agentMemoryV1Plan())).not.toThrow();
+  });
+
+  it("uses the version tag as slug_hint so schema_hash is version-keyed", () => {
+    expect(agentMemoryV1Plan().slug_hint).toBe(AGENT_MEMORY_V1_VERSION);
+  });
+
+  it("is deterministic — same plan every call (one shared plan-cache hash)", () => {
+    expect(JSON.stringify(agentMemoryV1Plan())).toBe(JSON.stringify(agentMemoryV1Plan()));
+  });
+
+  it("projects exactly the contract tables + columns (no drift vs the DDL)", () => {
+    const plan = agentMemoryV1Plan();
+    const planTables = Object.fromEntries(
+      plan.tables.map((t) => [t.name, t.columns.map((c) => c.name)]),
+    );
+    expect(planTables).toEqual(AGENT_MEMORY_V1_COLUMNS);
+  });
+
+  it("carries the entity_facts → entities/facts FKs and no seed/semantic rows", () => {
+    const plan = agentMemoryV1Plan();
+    expect(plan.foreign_keys).toHaveLength(2);
+    expect(plan.foreign_keys.every((fk) => fk.from_table === "entity_facts")).toBe(true);
+    expect(plan.foreign_keys.every((fk) => fk.on_delete === "cascade")).toBe(true);
+    expect(plan.sample_rows).toEqual([]);
+    expect(plan.metrics).toEqual([]);
+    expect(plan.dimensions).toEqual([]);
   });
 });

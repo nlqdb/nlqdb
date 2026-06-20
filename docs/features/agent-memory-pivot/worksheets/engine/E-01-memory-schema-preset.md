@@ -1,6 +1,6 @@
 # E-01 — Canonical `agent_memory_v1` schema preset for `db.create`
 
-**Status:** 🟡 in progress — run 1/2 (preset module ✅; request-path wiring pending)
+**Status:** ✅ wired (run 1/2 module + run 2/2 request-path; SK-HDC-020). One follow-on tracked: the quality-eval preset-path ablation row (Neon-branch gated).
 **Sequence:** Engine 1 of 7 · **Risk:** med · **Runs:** ~2 · **Prereqs:** none · **Gate:** none
 
 ## Goal
@@ -74,24 +74,33 @@ and `episodes`; GIN on `facts.tags`; vector index left to E-05.
    unreferenced** this run — rollback is deleting the file. The `versionTag →
    schema_hash` thread, the `{ preset }` input field, the `MEMORY_PRESET` flag,
    and the classifier-skip are **run 2** (the request-path change).
-2. **Run 2 — wire + tests.** End-to-end test: `db.create` with the preset
-   returns a DB whose `schema_hash` is stable and whose four tables are
-   queryable via `/v1/ask`. The `quality-eval` `db.create`-internal eval gets
-   a separate ablation row for the preset path. Update
-   `docs/features/hosted-db-create/FEATURE.md` with an `SK-HDC-*` decision
-   for the preset path.
+2. **Run 2 — wire + tests. ✅ (2026-06-20, run 30; SK-HDC-020).** `DbCreateArgs`
+   gains `preset?: MemoryPreset`; the orchestrator branches on it to skip
+   `classifyEngine`/`inferSchema`/`compileDdl` and source `engine` (pinned
+   `postgres`), the typed `plan` (`agentMemoryV1Plan()` projection), and the
+   `ddl` (`agentMemoryV1Ddl`) from the preset, then shares steps 4–7
+   (validate → provision → MRU → embed → mint) with the inferred path. The DDL
+   is re-derived on the SK-HDC-012 collision retry. `schema_hash` is
+   version-keyed via the projection's `slug_hint` and shared across every
+   preset DB (one plan-cache fingerprint, GLOBAL-006). `POST /v1/databases`
+   parses `preset` (gated behind `MEMORY_PRESET`; `preset_disabled` /
+   `invalid_preset` / `preset_engine_conflict` rejections; no goal needed).
+   Unit + contract tests cover the wiring; the **quality-eval preset-path
+   ablation row** needs a Neon test branch and is the one tracked follow-on.
 
 ## Done when
 
-- [ ] `db.create` accepts `{ preset: "agent_memory_v1" }` and provisions the
+- [x] `db.create` accepts `{ preset: "agent_memory_v1" }` and provisions the
       four tables + indexes deterministically.
-- [ ] `schema_hash` includes the preset version (existing widening rules
-      from GLOBAL-004 unchanged).
-- [ ] Hosted-db-create feature has an `SK-HDC-*` decision covering the preset
-      path; quality-eval has a preset-path ablation row.
-- [ ] `bun run typecheck && lint && test` green; integration test against
-      a Neon branch passes.
-- [ ] Engine INDEX tracker + status ticked.
+- [x] `schema_hash` includes the preset version (existing widening rules
+      from GLOBAL-004 unchanged — `slug_hint` carries the version tag).
+- [x] Hosted-db-create feature has an `SK-HDC-*` decision covering the preset
+      path (SK-HDC-020). ⬜ quality-eval preset-path ablation row (Neon-branch
+      gated — tracked in SK-HDC-020 § Remaining).
+- [x] `typecheck && lint && test` green (orchestrate + preset contract tests;
+      824 API tests green). ⬜ live integration test against a Neon branch
+      (env-gated — same skip pattern as `neon-provision.integration.test.ts`).
+- [x] Engine INDEX tracker + status ticked.
 
 ## Artifact
 

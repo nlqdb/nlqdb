@@ -159,11 +159,7 @@ when-to-load:
 
 ### SK-HDC-013 — Tail steps (recent-tables MRU, table-card embed) run via `ctx.waitUntil`
 
-- **Decision:** The orchestrator's two terminal side-effects — `recentTables.touch` and `embedTableCards` — fire into `c.executionCtx.waitUntil` instead of blocking the response. `DbCreateDeps.waitUntil` is the injection seam; when unset, the orchestrator falls back to inline-await so legacy test stubs keep working.
-- **Core value:** Honest latency, Fast, Effortless UX
-- **Why:** Trace `285b805cee6e2688768d9ffcd75a86fe` (2026-05-13) — `recentTables.touch` cost 124 ms post-COMMIT; `embedTableCards` is `noopEmbedTableCards` today but will become a real Workers AI + pgvector batch in the pgvector slice. Both produce UX-only side-effects (MRU = classifier context for the *next* `/v1/ask`; embedding = future RAG readiness). The response (`dbId`, `plan`, `sampleRows`, `pkLive`) doesn't reflect either; `waitUntil` is the canonical Workers hook for "complete before isolate freeze, but don't block the response."
-- **Consequence in code:** `orchestrate.ts` steps 5b/6 wrap their promises in `deps.waitUntil(p.catch(() => undefined))`. `buildDbCreateDeps(envBindings, waitUntil?)` accepts the optional dep; the `/v1/ask kind=create` route passes `(p) => c.executionCtx.waitUntil(p as Promise<void>)`. Embed failures in the waitUntil path no longer surface `embed_failed` (response is already 200); the typed envelope survives only via the inline-await fallback. Child spans stay attached to the request trace because SK-OBS-010 propagates context through the waitUntil promise.
-- **Alternatives rejected:** Keep awaiting inline (adds ~120-200 ms + future embed latency for zero user benefit); push only MRU and keep embed inline (forces a second revisit when pgvector lands); `setTimeout(0)` (doesn't survive isolate freeze on Workers).
+Full body: [`decisions/SK-HDC-013-waituntil-tail-steps.md`](decisions/SK-HDC-013-waituntil-tail-steps.md). The orchestrator's two terminal side-effects (`recentTables.touch`, `embedTableCards`) fire into `c.executionCtx.waitUntil` (injected via `DbCreateDeps.waitUntil`; inline-await fallback when unset) so the response doesn't block on UX-only work.
 
 ### SK-HDC-014 — Neon Free-tier keep-warm cron `*/4 13-21 * * 1-5` UTC
 
@@ -192,6 +188,10 @@ Full body: [`decisions/SK-HDC-018-sample-insert-graceful-degradation.md`](decisi
 ### SK-HDC-019 — Pre-validate sample rows and drop only the uninsertable ones, salvaging the rest
 
 Full body: [`decisions/SK-HDC-019-deterministic-sample-row-salvage.md`](decisions/SK-HDC-019-deterministic-sample-row-salvage.md). Before provisioning, `pruneUninsertableSampleRows(plan)` (pure, `db-create/sample-rows.ts`) drops only the rows that provably can't insert against the plan's own constraints (unknown table/column, NOT-NULL gap, uncoercible type, forward/dangling FK), cascading dropped parents to their children and keeping every coercible row. One bad row of N now seeds N−1 instead of 0; a clean plan is a no-op. The deterministic complement to SK-LLM-033's prompt and the salvage layer above SK-HDC-018's all-or-nothing floor; targets the `seeded_ok_ratio` (SK-STRG-008) empty-DB tail.
+
+### SK-HDC-020 — Opt-in `agent_memory_v1` schema preset on the create path
+
+Full body: [`decisions/SK-HDC-020-agent-memory-preset.md`](decisions/SK-HDC-020-agent-memory-preset.md). `db.create` accepts `{ preset: "agent_memory_v1" }` (flag-gated behind `MEMORY_PRESET`): the orchestrator skips `classifyEngine`/`inferSchema`/`compileDdl` (no LLM) and provisions the deterministic four-table memory schema from `presets/agent-memory-v1.ts` (E-01), still flowing through `validateCompiledDdl` + the provisioner (SK-HDC-003 holds). Engine pinned to `postgres`; the generic goal-string path is untouched (dual front door, GLOBAL-036).
 
 ## GLOBALs governing this feature
 

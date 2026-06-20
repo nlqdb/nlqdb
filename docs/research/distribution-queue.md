@@ -41,6 +41,48 @@ r/AI_Agents and r/LocalLLaMA.
 **Note:** hold until WS-07 run 3 ships the CTA so the Show HN lands on a
 complete page (hero + matrix + moat + waitlist), not the run-1 skeleton.
 
+## 2026-06-20 (run 30) — "Give your AI agent a real memory database in one call" (Show HN / dev.to)
+
+**Where:** a Show-HN-style post (cross-post dev.to / r/AI_Agents) anchored on
+the now-shipped one-call on-ramp — the *action*, where the run-29 page is the
+*schema reference*. Pair them: this links to that.
+
+**Title:** Show HN: One API call gives your agent a queryable memory database (not a vector blob)
+
+**Body (lead with the call, end with the query):**
+
+> Agent memory usually means a vector store: you can recall fuzzy matches, but
+> you can't ask "how many preferences did this user state this month?" — that's
+> a `GROUP BY`, and a vector index has no query planner.
+>
+> nlqdb now ships an opt-in memory preset. One call, no schema design, no
+> migration:
+>
+> ```
+> POST /v1/databases   { "preset": "agent_memory_v1" }
+> ```
+>
+> You get four plain Postgres tables (`facts` / `episodes` / `entities` /
+> `entity_facts`), scoped by `agent_id` / `end_user_id` / `thread_id`, with the
+> read indexes already in place. Then your agent talks to it in English and gets
+> SQL back:
+>
+> > *"top 5 things this user told me to remember, most-mentioned first"*
+> > → `SELECT content, count(*) … GROUP BY content ORDER BY count(*) DESC LIMIT 5`
+>
+> The schema is deterministic and versioned — same four tables every time, zero
+> LLM tokens spent designing it — and it widens (add a column) but never renames
+> in place, so your queries keep working as it grows.
+>
+> *(Honest scope: vector similarity over `facts.embedding` is a later opt-in
+> slice; today the wedge is the analytical side — the part a vector store
+> structurally can't do.)*
+
+**Why it converts:** answers the P2 agent-builder's two objections in the first
+two lines — "I don't want to design a schema" (one call, deterministic) and
+"recall isn't analytics" (the `GROUP BY` example). The call + the query are the
+whole pitch; no diagram needed.
+
 ## 2026-06-20 (run 29) — "What's in an `agent_memory_v1` database" (docs page / dev.to)
 
 **Where:** a short `apps/docs/` reference page (and a dev.to cross-post) that

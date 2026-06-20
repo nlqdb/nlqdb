@@ -23,6 +23,7 @@
 
 import type { Dimension, Engine, ForeignKey, Metric, SampleRow, SchemaPlan } from "@nlqdb/db";
 import type { LLMRouter } from "@nlqdb/llm";
+import type { MemoryPreset } from "./presets/agent-memory-v1.ts";
 
 // Re-exports for callers that consume the SchemaPlan family
 // alongside the orchestrator's surface, so the import site doesn't
@@ -210,6 +211,13 @@ export type DbCreateArgs = {
   // Resolved by the route handler from `env.DATABASE_URL` ref —
   // the orchestrator passes it through to the provisioner.
   secretRef: string;
+  // SK-HDC-020 — opt-in agent-memory preset. When set, the orchestrator
+  // skips inferSchema / classifyEngine / compileDdl and provisions the
+  // deterministic `agent_memory_v1` schema (Postgres-only in v1). The DDL
+  // still flows through `validateCompiledDdl` + the provisioner, so
+  // SK-HDC-003 defense-in-depth holds. Mutually exclusive with `engine`
+  // (the preset pins `postgres`). Gated behind `MEMORY_PRESET` at the route.
+  preset?: MemoryPreset;
 };
 
 export type DbCreatePlanSummary = {
