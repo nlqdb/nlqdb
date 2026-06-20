@@ -87,17 +87,12 @@ whole pitch; no diagram needed.
 
 ## 2026-06-20 (run 30) — launch post: "Why agent memory should be a database, not a vector store" (HN / lobste.rs / dev.to)
 
-**Where:** the WS-09 centrepiece launch post — Hacker News (Show HN / blog),
-cross-posted to lobste.rs and dev.to; points at `/agents` (WS-07) once its CTA
-ships. **Embed the live `AgentMemoryMatrix`** (WS-06, SK-PIVOT-004) not a
-screenshot, so it survives copy-paste and is AI-liftable; **no produced video**
-(superseded by the live in-page demo, run 1).
-
-**Honesty contract (do not soften past the measured eval):** the BIRD/Spider
-numbers are the canonical `eval-baseline.ts` values (0.52 / 0.1852) on the
-**free LLM chain**, both below their gate targets (0.65 / 0.75) — lead with the
-gap, not a frontier cherry-pick. Self-host is **FSL-1.1** (source-available,
-GLOBAL-019), *not* Apache-2.0 "free forever"; the matrix row is honestly ◐.
+**Where:** the WS-09 centrepiece launch post — HN (Show HN / blog), cross-posted
+to lobste.rs and dev.to; points at `/agents` (WS-07) once its CTA ships. Embed
+the live `AgentMemoryMatrix` (WS-06, SK-PIVOT-004), not a screenshot; no produced
+video (the live in-page demo supersedes it). **Don't soften past the measured
+eval:** the numbers are the canonical `eval-baseline.ts` values on the free
+chain, both sub-target — lead with the gap.
 
 **Title:** Why your AI agent's memory should be a database, not a vector store
 
@@ -197,14 +192,11 @@ GLOBAL-019), *not* Apache-2.0 "free forever"; the matrix row is honestly ◐.
 > different category. That's the part a vector store can't bolt on without
 > becoming a database. → **[/agents](https://nlqdb.com/agents)**
 
-**Why it converts:** engineering, not marketing — the HN / r/AI_Agents /
-r/LocalLLaMA / LangChain-Discord audience trusts a post that opens on a real
-incident, shows a *sub-target* benchmark, and links an open harness; the
-typed-plan section answers the "safe to let an agent near a database?" objection.
-
-**Run status:** WS-09 **run 2** (the post). Run 1 (the live `<nlq-data>` demo on
-`/agents`) lands after WS-07's page ships (#430) — hold the HN submission until
-the page has both the demo and the CTA.
+**Why it converts:** the HN / r/AI_Agents / r/LocalLLaMA / LangChain-Discord
+crowd trusts a post that opens on a real incident, shows a *sub-target*
+benchmark, and links an open harness; the typed-plan section answers the "safe
+to let an agent near a database?" objection. WS-09 **run 2**; hold the HN
+submission until WS-07's `/agents` page ships the live demo + CTA (run 1).
 
 ---
 
