@@ -93,7 +93,7 @@ export function createServer(opts: ServerOptions): McpServer {
     {
       title: "List your agent's memory databases",
       description:
-        "List the memory databases your agent can query. Enumerate databases visible to the authenticated user. Requires a user-scoped key (sk_live_ or sk_mcp_). Returns engine per row.",
+        "List the memory databases your agent can query, scoped to the authenticated user. Requires a user-scoped key (sk_live_ or sk_mcp_). Returns engine per row.",
       inputSchema: listDatabasesInputShape,
       annotations: { readOnlyHint: true },
     },
