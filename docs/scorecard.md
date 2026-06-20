@@ -84,8 +84,8 @@ few-shot), not retrieval. Value-retrieval is demoted + privacy-gated.
   lever is WS-07 run 2 — touches only `pages/agents/index.astro`. Embeds the
   WS-06 `AgentMemoryMatrix` (no `<img>`, glyphs are live text), a four-step
   **typed-plan trust-boundary** pipeline (LLM → typed JSON plan → compiler emits
-  parameterised SQL → `libpg_query` re-parse + verb/table allowlist → diff
-  preview), sourced from the Replit-wipe (Fortune) + Cortex-Analyst (Snowflake)
+  parameterised SQL → AST re-parse + verb/table allowlist (`libpg_query` on the
+  create path) → diff preview), sourced from the Replit-wipe (Fortune) + Cortex-Analyst (Snowflake)
   receipts, and an FSL-1.1/BYO-key/no-per-call-fees band (FSL-accurate per
   WS-10). Gates: astro-check **0/0/0** (74 files), web **126** tests, biome
   clean; `/agents` builds. KPI: **onboarding / UX** (GLOBAL-025); **none

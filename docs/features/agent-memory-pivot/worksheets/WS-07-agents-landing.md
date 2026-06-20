@@ -34,8 +34,9 @@ dedicated `/agents` row to the funnel once traffic lands. `Pivot:` boolean
    untouched.
 2. ✅ **Run 2 — the matrix + the moat** (2026-06-20). Embedded the WS-06
    `AgentMemoryMatrix`; added a four-step "typed-plan trust boundary" pipeline
-   (LLM → typed JSON plan → compiler emits parameterised SQL → `libpg_query`
-   re-parse + verb/table allowlist → diff preview), sourced from the Replit-wipe
+   (LLM → typed JSON plan → compiler emits parameterised SQL → AST re-parse +
+   verb/table allowlist, `libpg_query` on the create path → diff preview),
+   sourced from the Replit-wipe
    (Fortune) + Cortex-Analyst (Snowflake) receipts, and the FSL-1.1 / BYO-key /
    no-per-call-fees band (FSL-accurate per WS-10). `apps/web/src/pages/agents/index.astro`
    only — additive, no `<img>`.

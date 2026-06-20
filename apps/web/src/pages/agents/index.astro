@@ -97,7 +97,8 @@ import Base from "../../layouts/Base.astro";
           Letting an agent write SQL against your database is how a coding
           agent <a
             href="https://fortune.com/2025/07/23/ai-coding-tool-replit-wiped-database-called-it-a-catastrophic-failure/"
-            rel="nofollow">wiped a production database</a> during a code freeze
+            rel="nofollow noopener noreferrer" target="_blank">wiped a production
+            database</a> during a code freeze
           with three guardrails active. So in nlqdb the LLM never emits SQL.
         </p>
         <ol class="agents__pipeline">
@@ -112,9 +113,11 @@ import Base from "../../layouts/Base.astro";
             identifiers come only from the schema allow-list.
           </li>
           <li>
-            <span class="agents__step">libpg_query re-parse &rarr; allowlist</span>
-            The real Postgres parser re-parses the statement and checks it
-            against a verb + table allowlist before it touches your data.
+            <span class="agents__step">AST re-parse &rarr; allowlist</span>
+            A SQL parser re-parses the compiled statement and checks it
+            against a verb + table allowlist before it touches your data
+            (the create path re-parses with the real Postgres parser,
+            <code>libpg_query</code>).
           </li>
           <li>
             <span class="agents__step">diff preview &rarr; confirm</span>
@@ -125,7 +128,8 @@ import Base from "../../layouts/Base.astro";
         <p class="agents__moat-source">
           Same logic Snowflake&rsquo;s Cortex Analyst uses to hit <a
             href="https://www.snowflake.com/en/engineering-blog/cortex-analyst-text-to-sql-accuracy-bi/"
-            rel="nofollow">~2&times; single-prompt accuracy</a>: the model picks
+            rel="nofollow noopener noreferrer" target="_blank">~2&times;
+            single-prompt accuracy</a>: the model picks
           from a curated structure instead of writing raw SQL.
         </p>
       </section>
@@ -141,7 +145,8 @@ import Base from "../../layouts/Base.astro";
           <li>
             <strong>Source-available, self-hostable.</strong> The engine, CLI,
             MCP server, and SDKs are under <a
-              href="https://github.com/nlqdb/nlqdb/blob/main/LICENSE">FSL-1.1-ALv2</a>
+              href="https://github.com/nlqdb/nlqdb/blob/main/LICENSE"
+              rel="noopener noreferrer" target="_blank">FSL-1.1-ALv2</a>
             &mdash; yours to read, fork, and self-host for any non-competing use.
             It auto-converts to Apache&nbsp;2.0 two years after each release.
           </li>
@@ -210,7 +215,8 @@ import Base from "../../layouts/Base.astro";
   .agents__sub code,
   .agents__answer code,
   .agents__col code,
-  .agents__honest code {
+  .agents__honest code,
+  .agents__pipeline code {
     font-family: var(--mono);
     font-size: 0.9em;
     color: var(--fg);
