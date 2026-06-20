@@ -82,6 +82,7 @@ export default defineConfig(async () => {
               "src/ask/diff.test.ts",
               "src/ask/demand-signal.test.ts",
               "src/run/orchestrate.test.ts",
+              "src/memory/remember.test.ts",
             ],
           },
         },
