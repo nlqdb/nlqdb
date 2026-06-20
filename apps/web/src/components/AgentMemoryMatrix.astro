@@ -1,0 +1,206 @@
+---
+// The agent-memory capability matrix, rendered (WS-06 run 2/2, SK-PIVOT-001).
+// A four-up glyph grid — Mem0 · Zep · Letta · nlqdb — over the rows in
+// `data/agentMemoryMatrix.ts`. The table's SHAPE is the argument: everyone
+// recalls (table stakes, top rows); only nlqdb aggregates (the wedge rows
+// below). nlqdb is the emphasized column. No raster image — SK-PIVOT-004:
+// the glyphs are live text so AI engines lift them verbatim.
+//
+// Reused by `/agents` (WS-07) and the "database, not a vector store" blog
+// (WS-09). Brand vocabulary (acid-lime accent on dark, JetBrains Mono,
+// ✓/◐/—) is shared with the `/vs/<slug>` comparison table.
+
+import { AGENT_MEMORY_MATRIX, MATRIX_VERIFIED_ON, type MatrixRow } from "../data/agentMemoryMatrix";
+import type { ComparisonClaim } from "../data/competitors";
+
+interface Props {
+  // Optional heading override — the blog and `/agents` frame it differently.
+  heading?: string;
+}
+const { heading = "What can your agent actually DO with its memory?" } = Astro.props;
+
+const claimGlyph: Record<ComparisonClaim, string> = {
+  shipped: "✓",
+  partial: "◐",
+  no: "—",
+};
+const claimLabel: Record<ComparisonClaim, string> = {
+  shipped: "Yes",
+  partial: "Partial",
+  no: "No",
+};
+
+const columns: {
+  key: keyof Pick<MatrixRow, "mem0" | "zep" | "letta" | "nlqdb">;
+  name: string;
+  us?: boolean;
+}[] = [
+  { key: "mem0", name: "Mem0" },
+  { key: "zep", name: "Zep" },
+  { key: "letta", name: "Letta" },
+  { key: "nlqdb", name: "nlqdb", us: true },
+];
+---
+
+<section class="amm" aria-labelledby="amm-title">
+  <h2 class="amm__title" id="amm-title">{heading}</h2>
+  <div class="amm__scroll">
+    <table class="amm__table">
+      <thead>
+        <tr>
+          <th scope="col" class="amm__cap-head">Capability</th>
+          {
+            columns.map((col) => (
+              <th scope="col" class={`amm__col${col.us ? " amm__col--us" : ""}`}>
+                {col.name}
+              </th>
+            ))
+          }
+        </tr>
+      </thead>
+      <tbody>
+        {
+          AGENT_MEMORY_MATRIX.map((row) => (
+            <tr>
+              <th scope="row" class="amm__cap">
+                <span class="amm__cap-name">{row.capability}</span>
+                {row.note && <span class="amm__note">{row.note}</span>}
+              </th>
+              {
+                columns.map((col) => {
+                  const claim = row[col.key];
+                  return (
+                    <td
+                      class={`amm__claim amm__claim--${claim}${col.us ? " amm__claim--us" : ""}`}
+                      aria-label={`${col.name}: ${claimLabel[claim]}`}
+                    >
+                      <span aria-hidden="true">{claimGlyph[claim]}</span>
+                    </td>
+                  );
+                })
+              }
+            </tr>
+          ))
+        }
+      </tbody>
+    </table>
+  </div>
+  <div class="amm__footer">
+    <p class="amm__legend">
+      <span class="amm__claim amm__claim--shipped" aria-hidden="true">✓</span> shipped &nbsp;·&nbsp;
+      <span class="amm__claim amm__claim--partial" aria-hidden="true">◐</span> partial &nbsp;·&nbsp;
+      <span class="amm__claim amm__claim--no" aria-hidden="true">—</span> not shipped
+    </p>
+    <p class="amm__verified">
+      Competitor cells verified <time datetime={MATRIX_VERIFIED_ON}>{MATRIX_VERIFIED_ON}</time> against
+      published docs. Every nlqdb&nbsp;✓ is shippable today.
+    </p>
+  </div>
+</section>
+
+<style>
+  .amm {
+    margin: 0 auto;
+    max-width: 880px;
+  }
+  .amm__title {
+    font-family: var(--mono);
+    font-size: clamp(20px, 2.6vw, 28px);
+    letter-spacing: -0.01em;
+    line-height: 1.15;
+    margin: 0 0 24px;
+    max-width: 24ch;
+  }
+  .amm__scroll {
+    overflow-x: auto;
+  }
+  .amm__table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+  }
+  .amm__table th,
+  .amm__table td {
+    padding: 14px 10px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+  }
+  .amm__table thead th {
+    font-family: var(--mono);
+    color: var(--fg-dim);
+    text-transform: uppercase;
+    font-size: 12px;
+    letter-spacing: 0.06em;
+    border-bottom: 2px solid var(--border-strong);
+    text-align: center;
+  }
+  .amm__cap-head {
+    text-align: left !important;
+  }
+  .amm__col {
+    width: 64px;
+  }
+  /* The wedge: nlqdb is the column the eye lands on. */
+  .amm__col--us {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+    border-left: 2px solid var(--accent);
+    border-right: 2px solid var(--accent);
+  }
+  .amm__cap {
+    text-align: left;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    max-width: 38ch;
+  }
+  .amm__cap-name {
+    font-weight: 500;
+    color: var(--fg);
+  }
+  .amm__note {
+    color: var(--fg-dim);
+    font-size: 12px;
+    line-height: 1.45;
+  }
+  .amm__claim {
+    font-family: var(--mono);
+    text-align: center;
+    font-size: 16px;
+  }
+  .amm__claim--shipped {
+    color: var(--accent);
+  }
+  .amm__claim--partial {
+    color: var(--fg-dim);
+  }
+  .amm__claim--no {
+    color: var(--fg-dim);
+    opacity: 0.45;
+  }
+  /* nlqdb body cells carry the accent rails + a faint tint so the
+     all-✓ wedge reads as a single bright column. */
+  .amm__claim--us {
+    border-left: 2px solid var(--accent);
+    border-right: 2px solid var(--accent);
+    background: color-mix(in srgb, var(--accent) 8%, transparent);
+  }
+  .amm__table tbody tr:last-child .amm__claim--us {
+    border-bottom: 2px solid var(--accent);
+  }
+  .amm__footer {
+    margin-top: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .amm__legend,
+  .amm__verified {
+    font-size: 12px;
+    color: var(--fg-dim);
+    margin: 0;
+  }
+  .amm__legend .amm__claim {
+    font-size: 13px;
+  }
+</style>
