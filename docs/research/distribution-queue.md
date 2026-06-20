@@ -5,6 +5,38 @@ One publishable artifact drafted per day by the daily agent
 publishes at the weekly session. Newest first. Delete an entry once published
 (the live URL goes into `docs/scorecard.md`).
 
+## 2026-06-20 (run 32) — technical note: "Agent-memory scoping in nlqdb is row-level RLS, not query-rewriting" (dev.to / lobste.rs)
+
+**Where:** dev.to + lobste.rs (engineering audience); a section in the WS-09
+launch post. Answers the "one agent must never read another's memory"
+objection.
+
+**Body:**
+
+> If an agent's memory is a shared database, the first hard question is
+> isolation: agent A must never read agent B's rows. The tempting design is to
+> rewrite the model's SQL — parse it, find `FROM facts`, splice in
+> `WHERE agent_id = '…'`. Don't. The read path executes the planned SQL as a
+> string; forcing a predicate into arbitrary SQL (CTEs, JOINs, sub-selects,
+> aliases) rests your security on a parser being perfect, and one missed shape
+> is a cross-tenant breach.
+>
+> The boundary belongs in the database, not the query rewriter. nlqdb scopes
+> memory with **row-level security**: each memory table gets an
+> `agent_isolation` policy keyed on a per-request session setting
+> (`current_setting('app.agent_id')`), ANDed with the existing per-tenant
+> policy. Postgres filters every `SELECT`/`UPDATE`/`DELETE` uniformly, whatever
+> SQL the model emitted — it never sees the predicate and can't write around
+> it. Same mechanism that already isolates tenants; agent scope is one more
+> policy + one more GUC. RLS *enforces* membership; the SQL allow-list is a
+> separate guardrail for destructive verbs, not row visibility — layered
+> controls, each doing the one thing it's good at.
+
+**Why publishable:** answers the top objection to "memory as a database" with
+a defensible decision (SK-PIVOT-009); the "don't rewrite the LLM's SQL" angle
+stands alone as a useful lesson. Honest: per-agent scoping is in-flight (E-03)
+— describes the committed mechanism, not a shipped claim; hold until E-03 lands.
+
 ## 2026-06-20 (run 30) — "Show HN: analytical memory for AI agents" (Hacker News, → `/agents`)
 
 **Where:** Hacker News Show HN, pointing at `https://nlqdb.com/agents` (the new
@@ -348,43 +380,6 @@ comprehension asset — the table does the work, one nlqdb mention in context.
 Honest-trade-off format (~13.8% vs 2–5% generic) lifted verbatim by
 Perplexity/ChatGPT. Sourced from `apps/web/src/data/agentMemoryMatrix.ts`
 (verified 2026-06-19 from `competitors.md §4`). Seeds the WS-09 HN launch post.
-
-## 2026-06-20 (run 26) — X/Bluesky thread draft: "your agent's memory should be able to GROUP BY"
-
-**Where:** X + Bluesky (founder account), one short thread aimed at the
-agent-builder timeline. Pin reply links the `/solve/analytical-queries-over-agent-memory`
-page once it ships.
-
-**Thread:**
-
-> 1/ Your AI agent's memory should be able to `GROUP BY`.
->
-> Most "agent memory" is a vector store: embed a fact, retrieve the top-k
-> *similar* ones. Great for "what did the user say about X." Useless for
-> "how many things did my agent remember per category this week."
->
-> 2/ The moment you want a *count*, a *top-N*, or a *per-period* number, a
-> vector store makes the LLM do arithmetic over search hits. That's slow,
-> unbounded, and wrong on the long tail.
->
-> 3/ nlqdb is a real Postgres your agent talks to in plain English. Ask
-> "per category, how many facts did my agent store this week" → it runs the
-> actual `GROUP BY category … ORDER BY count DESC` and hands back the rows
-> *plus the compiled SQL*. The math is in the database, not the model's head.
->
-> 4/ Same for "the 5 facts my agent recalled most across all threads" — one
-> `GROUP BY … ORDER BY … LIMIT 5`, not a similarity scan. Recall is top-k.
-> Analytics is top-N. Different query, different store.
->
-> 5/ Vector recall and SQL analytics are complementary — keep your vector
-> store for semantic recall, add nlqdb when you need to *count* what's in
-> memory. mcp.nlqdb.com · honest: no native vector search yet.
-
-**Why this is publishable:** lands the WS-05 carousel wedge ("analytics over
-agent memory") as a standalone thread on the surface where agent builders live.
-Every claim maps to a real shipped slide (`read-agent-memory-by-category`,
-`read-agent-memory-top-recalled`) and the honest "no native vector search yet"
-disclaimer matches the solve-page copy — no overclaim.
 
 ## 2026-06-20 (run 25) — helpful-answer draft: "reporting over agent memory" (r/AI_Agents / r/LangChain)
 
