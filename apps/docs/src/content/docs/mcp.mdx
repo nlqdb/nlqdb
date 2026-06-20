@@ -9,7 +9,8 @@ nlqdb is the **memory MCP server**: a real database your agent can
 `GROUP BY` / `JOIN` / aggregate over in natural language, not just a recall
 store. It speaks MCP (Model Context Protocol) so any host that supports it —
 Claude Desktop, Cursor, Zed, Windsurf, VS Code Continue, Cline — can call
-`nlqdb_query`, `nlqdb_list_databases`, and `nlqdb_describe` directly.
+`nlqdb_query`, `nlqdb_list_databases`, `nlqdb_describe`, and `nlqdb_remember`
+(write a typed memory row your agent can later query) directly.
 
 <Aside type="caution" title="Pre-alpha">
   Tool calls return `feature_gated` today unless your account is allowlisted

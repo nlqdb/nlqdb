@@ -17,6 +17,7 @@ export {
   handleDescribe,
   handleListDatabases,
   handleQuery,
+  handleRemember,
   type ListDatabasesInput,
   type ListDatabasesOutput,
   listDatabasesInputShape,
@@ -26,6 +27,10 @@ export {
   type QueryOutput,
   queryInputShape,
   queryOutputShape,
+  type RememberInput,
+  type RememberOutput,
+  rememberInputShape,
+  rememberOutputShape,
   type ToolError,
   type ToolResult,
 } from "./tools.ts";

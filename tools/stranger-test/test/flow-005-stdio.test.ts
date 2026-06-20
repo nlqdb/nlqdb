@@ -23,6 +23,13 @@ const GOOD: Handshake = {
       annotations: { readOnlyHint: true },
       inputSchema: { properties: { db: {} } },
     },
+    {
+      name: "nlqdb_remember",
+      annotations: { destructiveHint: false },
+      inputSchema: {
+        properties: { db: {}, kind: {}, payload: {}, endUserId: {}, threadId: {}, ttlSeconds: {} },
+      },
+    },
   ],
 };
 
