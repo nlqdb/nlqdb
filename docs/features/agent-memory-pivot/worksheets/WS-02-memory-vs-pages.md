@@ -1,6 +1,6 @@
 # WS-02 — Memory-competitor `/vs` pages (Zep, Letta, LangMem)
 
-**Status:** 🟡 in progress — **Zep ✅** (run 20), **Letta ✅** (run 21); LangMem pending
+**Status:** ✅ done — **Zep ✅** (run 20), **Letta ✅** (run 21), **LangMem ✅** (run 22)
 **Sequence:** 2 of 13 · **Risk:** low · **Runs:** ~3 (one competitor per run) · **Prereqs:** WS-01 ✅ · **Gate:** none
 
 ## Goal
@@ -45,9 +45,14 @@ the `Pivot:` progress line: `+1 memory /vs page`.
   (Apache-2.0, MemGPT-origin OS-style tiers, MCP support → `them: partial`);
   ✅ slug in `verify-flows.sh` + `tools/stranger-test/src/flows/flow-003.ts`;
   ✅ INDEX ticked.
-- LangMem: ⬜
+- LangMem (run 22): ✅ `/vs/langmem` builds (astro-check clean); ✅ bullets ≤ 16 words,
+  no phantom MCP verbs, FAQ names LangMem (≥ 1), facts web-verified 2026-06-19
+  (open-source LangChain SDK, semantic/episodic/procedural memory, LLM-managed
+  extractor + background manager, LangGraph BaseStore-coupled, **no MCP server of
+  its own** → `them: no`); ✅ slug in `verify-flows.sh` +
+  `tools/stranger-test/src/flows/flow-003.ts`; ✅ INDEX ticked.
 
-Closes when all three ship.
+Closed — all three shipped.
 
 ## Artifact
 

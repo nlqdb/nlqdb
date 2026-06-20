@@ -25,6 +25,10 @@ export const SLUG_META: Readonly<Record<string, { title: string; goal: string }>
     title: "Letta",
     goal: "average deal size per stage across everything the agent logged this quarter",
   },
+  langmem: {
+    title: "LangMem",
+    goal: "distinct users who asked about pricing each week this quarter",
+  },
 };
 
 export const VS_SLUGS = Object.keys(SLUG_META) as readonly string[];
