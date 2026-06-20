@@ -1,6 +1,6 @@
 # WS-03 — Sharpen the agent-memory solve page + add an analytical-queries sibling
 
-**Status:** ⬜ not started
+**Status:** 🟡 in progress — run 1 done (existing page reframed to the wedge); run 2 (analytical sibling) pending
 **Sequence:** 3 of 13 · **Risk:** low · **Runs:** ~2 · **Prereqs:** none · **Gate:** none
 
 ## Goal
@@ -38,7 +38,7 @@ line `+1 solve page`.
 
 ## Done when
 
-- [ ] Existing page reframed to the wedge; `whatItDoesnt` still honest.
+- [x] Existing page reframed to the wedge; `whatItDoesnt` still honest. *(run 1 — `give-ai-agent-persistent-memory` now leads with retrieval≠analytics + fixes phantom `create_database`/`ask`/`run` MCP tools → real `nlqdb_query`/`nlqdb_list_databases`/`nlqdb_describe`.)*
 - [ ] Sibling solve page builds, passes `solve.test.ts`, flows into sitemap/llms.txt.
 - [ ] INDEX tracker + status ticked.
 

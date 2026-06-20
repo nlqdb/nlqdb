@@ -82,7 +82,7 @@ Tick on merge. Keep this list as the durable pivot status (the scorecard's
 
 - [x] WS-01 — competitors.md anchor (2026-06-19, run 19 — branch `claude/sharp-wozniak-y9ee5z`)
 - [x] WS-02 — memory `/vs` pages: **Zep ✅** (2026-06-20, run 20 — branch `claude/sharp-wozniak-67k9n4`), **Letta ✅** (2026-06-21, run 21 — branch `claude/sharp-wozniak-sxy0yi`), **LangMem ✅** (2026-06-19, run 22 — branch `claude/vibrant-newton-c3pery`)
-- [ ] WS-03 — solve pages (sharpen + sibling)
+- [~] WS-03 — solve pages: **sharpen ✅** (2026-06-19, run 23 — `give-ai-agent-persistent-memory` reframed to the analytical wedge + phantom MCP tools fixed); analytical sibling pending
 - [ ] WS-04 — MCP framing
 - [ ] WS-05 — carousel slides
 - [ ] WS-06 — capability matrix

@@ -5,6 +5,46 @@ One publishable artifact drafted per day by the daily agent
 publishes at the weekly session. Newest first. Delete an entry once published
 (the live URL goes into `docs/scorecard.md`).
 
+## 2026-06-19 (run 23) — helpful-answer draft: "vector memory can't aggregate" (r/LangChain / r/AI_Agents)
+
+**Where:** a real recurring thread on r/LangChain / r/AI_Agents where someone
+asks "how do I get stats / counts / 'top N' out of my agent's memory?" and the
+answers are all "embed it and retrieve top-k." Post once, in context.
+
+**Title (if a fresh post):** Your agent's vector memory can recall a fact. It can't tell you "top 10 this month."
+
+**Body:**
+
+> A pattern I keep hitting: vector/graph memory (Mem0, Zep, LangMem, an
+> archival tier in Letta) is great at *retrieval* — "what did the user say
+> about pricing?" returns the right fact. But the moment the question is
+> **analytical** — "top 10 topics the agent logged this month by count,"
+> "average deal size per stage," "how many tasks did it complete per day this
+> week" — retrieval falls apart. A vector store returns the top-k *most
+> similar* rows; it has no query planner. So your agent ends up doing
+> arithmetic over a list of search hits, which is a hallucination generator,
+> not a `GROUP BY`.
+>
+> The fix is boring and correct: keep the unstructured recall where it's good,
+> but put the facts the agent will later *count / rank / bucket* in a real
+> relational store and let it run actual SQL. That's the half a vector DB
+> structurally can't do.
+>
+> I've been using nlqdb for exactly this (full writeup at
+> nlqdb.com/solve/give-ai-agent-persistent-memory): the agent stores typed
+> rows via MCP (`nlqdb_query` provisions Postgres from its first English goal),
+> then asks "top 5 things I remembered this week by frequency" and gets a real
+> aggregation back with the compiled SQL shown. Honest gap: no native vector
+> search yet, so for unstructured similarity recall I still reach for
+> Mem0/pgvector — the two compose. Retrieval ≠ analytics; you usually want both.
+
+**Why this is publishable:** answers the actual question (analytics over agent
+memory), names the architectural reason vector stores can't do it, links the
+solve page **once**, and is honest about nlqdb's own gap (no vector search) so
+it reads as help, not a plug. Lifts the same retrieval≠analytics wedge the WS-02
+`/vs` pages and the sharpened solve page now lead with. Sourced from the
+reframed `/solve/give-ai-agent-persistent-memory` page + `docs/competitors.md §4`.
+
 ## 2026-06-19 (run 22) — comparison-page draft: nlqdb vs LangMem (r/LangChain / Show HN)
 
 **Title:** LangMem remembers everything for my LangGraph agent. It still can't answer "count per week" about that memory.
