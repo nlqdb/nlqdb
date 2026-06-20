@@ -25,30 +25,43 @@ explicit-forget story closed).
 
 ## Mechanism
 
-- `nlqdb_remember` already accepts `ttl_seconds` (E-02); when present, the
-  insert sets `expires_at = NOW() + ttl_seconds * INTERVAL '1 second'`.
+- **TTL is a `facts`-only concern.** Only `facts` carries an `expires_at`
+  column in the shipped E-01 DDL — `episodes` are an append-only conversation
+  log and `entities` are long-lived, so neither expires. `nlqdb_remember`
+  accepts `ttlSeconds` only for `kind: fact` (rejected on episode/entity at
+  validation, GLOBAL-012); when present the insert sets `expires_at = NOW() +
+  ttlSeconds * INTERVAL '1 second'` (already shipped in `buildRememberInsert`,
+  E-02).
 - A scheduled Cloudflare Worker (daily, low-rate) runs
-  `DELETE FROM facts WHERE expires_at < NOW()` (and the same on `episodes`)
-  for every memory-preset DB, scoped per-DB so failure is isolated.
-- Queries see only non-expired rows via the **`agent_isolation` RLS policy**
-  (E-03 / SK-PIVOT-009) gaining an `AND (expires_at IS NULL OR expires_at >
-  NOW())` clause in its `USING` expression — *not* a compile-layer predicate
-  (the read path is free-form LLM SQL; there is nothing to inject into). A
-  clean add on the same per-table policy E-03 creates.
+  `DELETE FROM facts WHERE expires_at < NOW()` for every memory-preset DB,
+  scoped per-DB so failure is isolated. **`facts` only** — `episodes` /
+  `entities` have no `expires_at` to sweep.
+- Queries see only non-expired `facts` via the **`agent_isolation` RLS policy**
+  (E-03 / SK-PIVOT-009) on the `facts` table gaining an `AND (expires_at IS
+  NULL OR expires_at > NOW())` clause in its `USING` expression — *not* a
+  compile-layer predicate (the read path is free-form LLM SQL; there is nothing
+  to inject into). A clean add on the per-table `facts` policy E-03 creates;
+  the `episodes` / `entities` policies are unchanged.
 
 ## Steps
 
-1. Migration: confirm `expires_at` exists on `facts` and `episodes` (it
-   does, from E-01's DDL).
+1. Migration: confirm `expires_at` exists on `facts` (it does, from E-01's
+   DDL). `episodes` / `entities` intentionally have no such column.
 2. RLS addition: extend E-03's `agent_isolation` `USING` clause with
-   `AND (expires_at IS NULL OR expires_at > NOW())` on the read tables (no
-   compile-layer / `sql-validate` change — RLS, not query-rewriting).
+   `AND (expires_at IS NULL OR expires_at > NOW())` **on the `facts` policy
+   only** (no compile-layer / `sql-validate` change — RLS, not
+   query-rewriting).
 3. New cron Worker (or new schedule on `events-worker`) — daily 03:00 UTC.
-   Batch `DELETE … RETURNING count(*)` per memory DB; emit
-   `nlqdb.memory.expire` span + a `nlqdb.memory.expired_rows_total` counter.
-4. CLI parity (SK-CLI): `nlq remember --ttl 7d` shorthand for `ttl_seconds`.
-5. Tests: TTL respected on read (`expires_at < NOW()` rows invisible even
-   before sweep); sweep deletes the right rows; no other DB touched.
+   Batch `DELETE FROM facts WHERE expires_at < NOW() RETURNING count(*)` per
+   memory DB; emit `nlqdb.memory.expire` span + a
+   `nlqdb.memory.expired_rows_total` counter.
+4. CLI parity (SK-CLI): `nlq remember --ttl 7d` shorthand for `ttlSeconds`
+   (**already shipped**, SK-CLI-018; rejected by the server on `--kind
+   episode|entity`).
+5. Tests: TTL respected on read (`facts` with `expires_at < NOW()` invisible
+   even before sweep); sweep deletes the right `facts` rows; no other DB
+   touched. Write-side `ttlSeconds` validation (facts-only) is covered now in
+   `remember.test.ts`.
 
 ## Done when
 

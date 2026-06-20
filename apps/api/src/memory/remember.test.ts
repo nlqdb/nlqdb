@@ -145,6 +145,25 @@ describe("validateRememberInput", () => {
     });
     expect(r.ok).toBe(false);
   });
+  it("rejects ttlSeconds on an episode (only facts carry expires_at)", () => {
+    const r = validateRememberInput({
+      db: "d",
+      kind: "episode",
+      payload: { role: "user", content: "hi" },
+      ttlSeconds: 60,
+    });
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.reason).toContain("kind: fact");
+  });
+  it("rejects ttlSeconds on an entity (only facts carry expires_at)", () => {
+    const r = validateRememberInput({
+      db: "d",
+      kind: "entity",
+      payload: { kind: "person", canonical_name: "Ada" },
+      ttlSeconds: 60,
+    });
+    expect(r.ok).toBe(false);
+  });
 });
 
 describe("orchestrateRemember", () => {

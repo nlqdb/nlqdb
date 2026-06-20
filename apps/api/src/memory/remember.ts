@@ -67,7 +67,9 @@ export type RememberArgs = {
   endUserId?: string;
   threadId?: string;
   // E-04 — TTL on a fact row; the sweep that consumes `expires_at` is
-  // that worksheet. Ignored for episodes/entities (no `expires_at`).
+  // that worksheet. Only `facts` carries `expires_at`, so a `ttlSeconds`
+  // on an episode/entity is rejected at validation (GLOBAL-012 fail-loud,
+  // not a silent drop the caller can't detect).
   ttlSeconds?: number;
 } & (
   | { kind: "fact"; payload: FactPayload }
@@ -226,6 +228,13 @@ export function validateRememberInput(body: unknown): ValidateResult {
     scope.threadId = threadId;
   }
   if (ttlSeconds !== undefined) {
+    if (kind !== "fact") {
+      return {
+        ok: false,
+        reason:
+          "`ttlSeconds` applies only to kind: fact — episodes and entities never expire; remove it or store the value as a fact.",
+      };
+    }
     if (typeof ttlSeconds !== "number" || !Number.isFinite(ttlSeconds) || ttlSeconds <= 0) {
       return { ok: false, reason: "`ttlSeconds` must be a positive number." };
     }

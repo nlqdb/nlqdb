@@ -76,6 +76,24 @@ few-shot), not retrieval. Value-retrieval is demoted + privacy-gated.
 
 ## Deltas (recent runs)
 
+- 2026-06-20 (run 34) — **Engine (memory write-path): fail-loud TTL gap +
+  phantom-column footgun in the E-04 lever, both fixed.** Worst number is engine
+  (Spider 0.1852) but BIRD 06-19 + Spider 06-17 are < 7 d (§5: no back-to-back
+  dispatch), messaging is blocked behind WS-07 (#438), and the E-track's other
+  slices are Neon/infra-gated — leaving the clean non-colliding lever: a
+  correctness gap on the memory **write** path. `validateRememberInput` parsed
+  `ttlSeconds` for every `kind` but only `facts` carries `expires_at`, so a TTL
+  on an episode/entity was **silently dropped** (GLOBAL-012 violation — the
+  agent believes it set an expiry that never existed); now rejected with a
+  one-sentence reason. The **E-04 worksheet** compounded it (told a future
+  implementer to sweep `episodes.expires_at`, absent from the shipped E-01 DDL)
+  — corrected to facts-only sweep + facts-only RLS TTL clause before the
+  Neon-gated slice is built against a phantom column. **Δ:** `remember.test.ts`
+  16 → 18; a corrected backlog lever (run-32 pattern). KPI: **engine quality** /
+  **onboarding**; **none degraded** — additive validation, no
+  engine/chain/scorer/eval touched, BIRD 06-19 + Spider 06-17 untouched, perf
+  N/A. Artifact: "How nlqdb expires agent memory (and why only facts get a TTL)"
+  queued.
 - 2026-06-20 (run 33) — **Engine: Spider external-knowledge injection shipped
   (`SK-QUAL-016`) — fixes a measured handicap on the worst number.** Worst
   number is engine (Spider 0.1852); BIRD 06-19 + Spider 06-17 both < 7 d so §5
@@ -92,58 +110,27 @@ few-shot), not retrieval. Value-retrieval is demoted + privacy-gated.
   by the next canonical Spider dispatch (`SK-QUAL-002`). KPI: **engine quality**;
   none degraded — no runner/scorer/chain change, BIRD 06-19 + Spider 06-17
   untouched, perf N/A; 29 spider2-lite tests green (was 24).
-- 2026-06-20 (run 32) — **Engine-track finding + plan correction: E-03's
-  documented scoping mechanism is infeasible; redirected to RLS before a future
-  agent builds the fragile version (SK-PIVOT-009).** Worst number is still
-  engine (Spider 0.1852) but BIRD 06-19 + Spider 06-17 are both < 7 d so §5
-  forbids an eval dispatch; the in-bounds engine lever is the pivot engine
-  track, and E-03 is the lowest-numbered ⬜ with its prereq met (E-01 ✅). Read
-  the read/query path before touching it (security-critical): the `/v1/ask`
-  pipeline emits **free-form LLM SQL as a string** and executes it via
-  `neonSql.unsafe(sql)` (`ask/build-deps.ts`) — there is **no** typed-plan
-  compiler / AST step on the query path to inject a `WHERE agent_id` predicate
-  into, so E-03's (and E-04's read-filter) "compile-layer injection" mechanism
-  can't be built without a fragile SQL-rewriter, exactly the wrong thing on a
-  boundary where a parser gap = cross-agent breach. The robust mechanism — and
-  the one the provisioner **already** uses for tenant isolation
-  (`tenant_isolation`, `neon-provision.ts`) — is **row-level RLS keyed on an
-  `app.agent_id` session GUC**. Captured as **SK-PIVOT-009** (supersedes the
-  compile-layer mechanism in SK-PIVOT-006 / the E-03 worksheet), corrected E-03
-  + E-04 worksheets + the engine INDEX, and synced every stale "compile-layer
-  scope predicate" reference in FEATURE.md. **Δ:** a measured architecture
-  finding prunes/redirects a security-critical backlog lever (same category as
-  the run-18/31 falsifications) — and stops the implementation from shipping
-  the breach-prone design. **No code shipped** — the security impl (RLS policy
-  + GUC + two-principal tests, on Neon, with a second review) is now a
-  sharply-specified E-03 run. KPI: **engine quality** (the wedge's durability);
-  **none degraded** — docs-only, no code path / engine / chain / scorer / eval
-  touched; BIRD 06-19 + Spider 06-17 untouched; perf N/A. Artifact: the
-  "scoping is RLS, not query-rewriting" technical note (queue, run 32).
+- 2026-06-20 (run 32) — **Engine-track finding (SK-PIVOT-009): E-03's documented
+  compile-layer scoping mechanism is infeasible — the `/v1/ask` path executes
+  free-form LLM SQL via `neonSql.unsafe(sql)` with no AST step to inject a
+  `WHERE agent_id` into, so a SQL-rewriter on a security boundary = breach
+  risk. Redirected E-03 (and E-04's read-filter) to row-level RLS keyed on an
+  `app.agent_id` GUC — the pattern the provisioner already uses for
+  `tenant_isolation`. Corrected E-03/E-04 worksheets + engine INDEX + FEATURE.md.
+  **Δ:** a finding prunes a security-critical backlog lever before the
+  breach-prone design ships; docs-only, no code/engine/chain/scorer touched,
+  BIRD 06-19 + Spider 06-17 untouched. Artifact: the "scoping is RLS, not
+  query-rewriting" note (queue).**
 - 2026-06-20 (run 32) — **E-02 GLOBAL-003 parity closed: shipped CLI `nlq
-  remember`** (engine track holds at 2/7 — E-02 was already ✅; this completes
-  its surface parity HTTP/SDK/MCP → **+CLI**). Lever choice: worst number is
-  engine (Spider 0.1852), but BIRD 06-19 + Spider 06-17 are both < 7 d so §5
-  forbids a back-to-back eval dispatch; the in-bounds engine lever is the pivot
-  **engine track**. The only open PR (**#435**) owns the **E-03 RLS finding** and
-  is rewriting the E-03/E-04 worksheets + engine INDEX — so E-04 would collide;
-  the clean non-colliding engine slice is E-02's tracked CLI fast-follow.
-  **SK-CLI-018:** `nlq remember [--db] [--kind fact|episode|entity] <text>` wraps
-  `POST /v1/memory/remember` — positional text is the row content, `--kind`
-  selects the table, `--type`/`--role`/`--tag`/`--ttl 7d`/`--end-user`/`--thread`
-  fill the rest; `wrong_preset` rejects non-memory DBs (GLOBAL-012). Admitted as
-  a **third data verb** under GLOBAL-017's explicit-justification clause: it
-  mirrors the already-justified third *endpoint* (SK-PIVOT-008 — memory writes
-  can't ride `nlq run`'s raw-SQL hatch without breaking the typed-plan trust
-  boundary), so it's parity, not surface bloat. **Δ:** GLOBAL-003 surface parity
-  for the memory-write verb 3/4 → **4/4 surfaces**. Gates: CLI build + `go vet`
-  clean, full `go test ./...` green (added `remember_test.go` builder/TTL units +
-  `api/remember_test.go` wire + `wrong_preset` httptest), gofmt clean. KPI:
-  **onboarding / engine quality** (GLOBAL-025) — an agent operator can now write
-  memory from a shell/cron, no SDK; **none degraded** (additive verb, no engine/
-  chain/scorer/eval touched; BIRD 06-19 + Spider 06-17 untouched; perf: one
-  parameterised INSERT, no LLM hop). Artifact: "Give your AI agent memory from
-  the terminal" dev.to/r/commandline draft queued. Next engine lever once #435
-  merges: **E-04** (TTL sweep, on the post-#435 RLS-corrected worksheet).
+  remember`** (SK-CLI-018; engine holds 2/7 — completes the memory-write verb's
+  surface parity HTTP/SDK/MCP → **+CLI**, 3/4 → **4/4**). Non-colliding engine
+  slice while #435 owned the E-03 RLS finding. `nlq remember [--db] [--kind] <text>`
+  wraps `POST /v1/memory/remember`; `wrong_preset` rejects non-memory DBs;
+  admitted as a third data verb under GLOBAL-017's explicit-justification clause
+  (mirrors the SK-PIVOT-008 third endpoint). Gates green (Go build/vet/test/fmt).
+  KPI: **onboarding / engine quality**; none degraded (additive, BIRD 06-19 +
+  Spider 06-17 untouched). Artifact: "Give your AI agent memory from the
+  terminal" queued.
 - 2026-06-20 (run 31) — three closed slices (all additive; BIRD 06-19 + Spider
   06-17 untouched): **E-02** `nlqdb_remember` write primitive shipped → E-02
   closed (engine 1 → **2/7**; pivot 8 → **9/20**; #432, SK-PIVOT-008 —
