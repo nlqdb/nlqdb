@@ -20,10 +20,10 @@ later wedge claim assumes this works.
 
 - `apps/api/src/principal.ts` — how callers get an identity today
   (`user` / `sk_live` / `sk_mcp` / `pk_live` / `anon`)
-- `docs/features/ask-pipeline/FEATURE.md` — the typed-plan compile point
-  where we'll inject the scope predicate
-- `docs/features/sql-allowlist/FEATURE.md` — the SQL validation layer
-  (must agree that the scope predicate is always present)
+- `apps/api/src/db-create/neon-provision.ts` — the `tenant_isolation` RLS
+  pattern the `agent_isolation` policy extends (SK-PIVOT-009)
+- `apps/api/src/ask/build-deps.ts` — the exec wrappers that set
+  `app.tenant_id`; this slice adds `app.agent_id` alongside
 - `docs/features/anonymous-mode/FEATURE.md` — anon principals have no
   stable `agent_id`; this slice must decide what they can/can't do with
   memory (default: writes scoped to the anon token, reads of others
@@ -87,7 +87,7 @@ For any read/write touching `agent_memory_v1` tables (`facts`, `episodes`,
 - [ ] Anon-mode rule documented (decision SK-MEM-* in
       `agent-memory-pivot/FEATURE.md` or a dedicated `memory/FEATURE.md`).
 - [ ] `bun run typecheck && lint && test` green; new tests CANNOT be
-      skipped (red without the compile-layer injection).
+      skipped (red without the `agent_isolation` RLS policy + `app.agent_id` GUC).
 - [ ] Engine INDEX tracker + status ticked. **Code-review:** request a
       second reviewer; this slice owns a security invariant.
 
