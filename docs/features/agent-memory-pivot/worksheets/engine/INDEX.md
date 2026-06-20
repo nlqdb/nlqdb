@@ -33,7 +33,7 @@ copy with a real tool to point at), etc.
 
 | E | Slice | Risk | Runs | Prereqs | Gate | Cross-link |
 |----|-------|------|------|---------|------|------------|
-| [E-01](E-01-memory-schema-preset.md) | Canonical `agent_memory_v1` schema preset for `db.create` | med | ~2 | — | — | unblocks E-02/04/06, sharpens WS-07/09 |
+| [E-01](E-01-memory-schema-preset.md) 🟡 | Canonical `agent_memory_v1` schema preset for `db.create` — run 1/2 module ✅, wiring pending | med | ~2 | — | — | unblocks E-02/04/06, sharpens WS-07/09 |
 | [E-02](E-02-remember-tool.md) | Additive MCP tool `nlqdb_remember` (no rename) | med | 1 | E-01 | — | sharpens WS-04 |
 | [E-03](E-03-memory-scoping.md) | Per-agent / per-end-user / per-thread scoping (the security-critical slice) | high | ~2 | E-01 | — | — |
 | [E-04](E-04-ttl-decay.md) | TTL + cron sweep — `expires_at` on memory rows | low | 1 | E-01 | — | — |
@@ -70,7 +70,7 @@ north-star (data-engine pillar) to the wedge.
 
 Tick on merge.
 
-- [ ] E-01 — `agent_memory_v1` schema preset
+- [~] E-01 — `agent_memory_v1` schema preset: **module ✅** (2026-06-20, run 29 — `apps/api/src/db-create/presets/agent-memory-v1.ts` + contract test, branch `claude/vibrant-newton-n7v26h`; plain DDL, validator-compatible, embedding deferred to E-05); request-path wiring (`{ preset }` input + `MEMORY_PRESET` flag + classifier-skip + `schema_hash`) pending (run 2)
 - [ ] E-02 — `nlqdb_remember` MCP tool (additive)
 - [ ] E-03 — per-agent / per-end-user / per-thread scoping
 - [ ] E-04 — TTL + cron sweep

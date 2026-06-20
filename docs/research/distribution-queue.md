@@ -5,6 +5,46 @@ One publishable artifact drafted per day by the daily agent
 publishes at the weekly session. Newest first. Delete an entry once published
 (the live URL goes into `docs/scorecard.md`).
 
+## 2026-06-20 (run 29) — "What's in an `agent_memory_v1` database" (docs page / dev.to)
+
+**Where:** a short `apps/docs/` reference page (and a dev.to cross-post) that
+shows the exact four-table shape an agent gets with `preset:
+"agent_memory_v1"` — the proof behind the "zero schema design" wedge claim.
+Publish once E-01 run 2 wires the preset into `db.create`.
+
+**Title:** Your AI agent's memory, as four Postgres tables (no schema design required)
+
+**Body (the schema is the argument):**
+
+> Most "agent memory" is an opaque vector blob you can recall from but never
+> *query*. nlqdb's memory is four plain Postgres tables your agent provisions
+> in one call — and because it's real SQL, the agent can `GROUP BY` over its
+> own history:
+>
+> - **`facts`** — typed memories (`kind`, `content`, `tags[]`, `source`,
+>   `created_at`, `expires_at`), scoped by `agent_id` / `end_user_id` /
+>   `thread_id`.
+> - **`episodes`** — the raw conversation turns (`role`, `content`,
+>   `tool_calls`, `tokens`, `occurred_at`) the facts were distilled from.
+> - **`entities`** — canonical people/things the agent has seen (unique per
+>   `agent_id` + `kind` + `canonical_name`).
+> - **`entity_facts`** — which facts mention which entity (cascading link).
+>
+> No `CREATE TABLE`, no migration, no schema design: `db.create({ preset:
+> "agent_memory_v1" })` and start remembering. The shape is versioned and
+> stable — it widens (add a column) but never renames in place, so your
+> `WHERE` clauses keep working.
+>
+> *(Honest scope: similarity search over `facts.embedding` lands in a later
+> slice — pgvector is opt-in; today the wedge is the analytical side, the part
+> a vector store structurally can't do.)*
+
+**Why it converts:** the P2 agent-builder's first objection to "use a database
+as memory" is "I don't want to design a schema." This page answers it in one
+screen — and the schema *is* the on-brand visual (type-on-dark, no diagram).
+
+---
+
 ## 2026-06-20 (run 28) — X/Bluesky thread: the one bright column (agent-memory matrix render)
 
 **Where:** X / Bluesky, a 3-post thread whose hook is the *rendered* matrix —
@@ -33,6 +73,8 @@ drives to it.
 SK-PIVOT-004), so the visual punch — one lit column — survives copy-paste into
 a post and is liftable verbatim by AI search engines. The shape *is* the
 argument; the thread just points at it.
+
+---
 
 ## 2026-06-20 (run 28) — note: "What FSL-1.1 actually means for self-hosting nlqdb" (dev.to / r/selfhosted)
 
@@ -482,81 +524,15 @@ run-17 "flat benchmark" post and *corrects* its closing claim. One nlqdb
 mention, in context. Sourced from `tools/eval/src/analyze-mismatches.ts` +
 the committed 2026-06-19 baseline.
 
-## 2026-06-18 (runs 14–16) — dev.to / lobste.rs posts (condensed; full drafts in git history)
+## 2026-06-15/18 (runs 8–16) — engine-lesson dev.to / lobste.rs posts (titles only; full drafts in git history)
 
-- **run 16 — "Before you prune the schema you send an LLM, measure what the
-  prune would throw away."** A name-match column-prune keeps only **59.8%** of
-  the columns the gold BIRD answers need — 27.4% are unnamed keys (rescuable
-  with key-protection), 12.8% are values named by *content* not column
-  (`Segment`, `Currency`; only fixable by showing the model sample values). The
-  offline ~120-line ceiling measurement re-ordered the roadmap: column pruning
-  drops to "later, with key protection," value-sampling moves first. Sourced
-  from `bun column-coverage`; no benchmark number moved.
-- **run 15 — "We thought our text-to-SQL engine couldn't join. A regex bug was
-  lying to us."** A mismatch classifier credited "fewer tables joined" as the #1
-  failure (105/236) — but it counted `FROM\s+(\w+)`, which misses quoted
-  identifiers (`FROM "transactions_1k"`). Fix the four quoting forms and the
-  class collapses 105 → 35; the real mass is aggregation/DISTINCT *grain* +
-  literal *grounding*. Lessons: a measurement tool is code with biased bugs;
-  histograms rank, they don't explain. Sourced from SK-QUAL-014.
-- **run 14 — "The text-to-SQL mistake that fails two ways — and only one of them
-  throws."** `WHERE COUNT(*) > 5` either errors (loud, retried) or silently
-  drops the threshold and returns every row (quiet, ships wrong). Fix: group
-  thresholds in `HAVING`, per-row predicates in `WHERE` — one planner directive,
-  the HAVING half of "unaligned aggregation structure." Meta-point: spend prompt
-  budget on the silent-mismatch classes first. Grounded in arXiv:2501.09310 (E5)
-  + SK-LLM-040.
-
-## 2026-06-17 (run 13) — dev.to / lobste.rs post (condensed; full draft in git history)
-
-- **run 13 — "Schema pruning for text-to-SQL drops the one table the join
-  needs."** Pruning a big schema to "the tables the question mentions" silently
-  drops the junction table the question never names (`student → enrollment →
-  course`). A foreign-key closure doesn't save you — it walks *outbound*, and the
-  bridge is reachable only *inbound*. Fix: also keep any table that references two
-  or more matched tables. Lesson: schema relevance is the named tables *plus the
-  connectors between them*. Sourced from SK-LLM-037 revision + its unit-measured
-  before/after.
-
----
-
-## 2026-06-15/16 (runs 8–11) — dev.to / lobste.rs posts (condensed; full drafts in git history)
-
-- **run 11 — "Failover, retry, repair: the three error classes in an LLM
-  text-to-SQL pipeline."** The run step had one failure mode in mind (DB
-  unreachable), so it retried the *same* SQL on a deterministic Postgres error
-  (`42703 column does not exist`, missing `GROUP BY`, type mismatch) — three
-  guaranteed failures, then a dead-end. The third error class wants *repair*:
-  feed the DB's own error back to the planner and re-plan **once** (reads only;
-  a repaired write is rejected, never run). Zero added happy-path latency;
-  converts dead-ends into answers and compounds with model quality for free.
-  Lesson: before you retry, ask whether the thing that failed will fail the same
-  way again — if so, it's a diagnosis, not a transient.
-- **run 10 — "'Auto-re-probes so it recovers without a deploy' — a comment that
-  was quietly false."** A dead `auth_denied` provider was parked for the
-  standard 60 s breaker cooldown, justified as "self-heals on the next probe."
-  False twice over: a 401/403 is human-gated (clears on a console edit, not in
-  60 s), and for an env-keyed provider the re-key *is* a deploy — which spins up
-  fresh isolates with fresh breaker state, so the re-probe never catches the
-  recovery. Fix: park `auth_denied` for 30 min, not 60 s (dead-provider
-  round-trips over a 10-min isolate ~10 → 1). Lesson: a decision's stated *cost*
-  rots; re-read one load-bearing justification per change against the system you
-  have now.
-- **run 9 — "The dead provider in the fast lane: when a hedged request races a
-  403."** A dead-key provider (`403 PERMISSION_DENIED`) sat 2nd in the chain —
-  exactly the slot the latency hedge fires — so every slow planning call raced
-  the healthy lead against a guaranteed instant 403. Fix: open the breaker on
-  the first `auth_denied` but keep the skip legible; hedge slot rotates to the
-  live provider behind it (round-trips 5 → 1). Lesson: a decision's *stated
-  cost* is a claim that rots; re-read load-bearing justifications against the
-  code (and a live probe) today.
-- **run 8 — "One bad row shouldn't cost you all the rows: salvaging
-  LLM-generated seed data."** LLM-designed seed rows insert as one atomic txn,
-  so one constraint-violating row rolls back the whole batch → empty DB on
-  first impression. Fix: a deterministic pre-insert pass that drops *only*
-  provably-uninsertable rows (unknown col, NOT NULL gap, uncoercible type,
-  orphan FK) against the schema's own constraints; sound, zero added latency
-  (0 → 12 of 13 rows kept). Lesson: an LLM batch is independent bets — salvage
-  what provably works, degrade only what provably doesn't.
+- run 16 — "Before you prune the schema you send an LLM, measure what the prune would throw away" (SK-QUAL-015).
+- run 15 — "We thought our text-to-SQL engine couldn't join. A regex bug was lying to us" (SK-QUAL-014).
+- run 14 — "The text-to-SQL mistake that fails two ways — and only one of them throws" (HAVING vs WHERE; SK-LLM-040).
+- run 13 — "Schema pruning for text-to-SQL drops the one table the join needs" (inbound junction tables; SK-LLM-037).
+- run 11 — "Failover, retry, repair: the three error classes in an LLM text-to-SQL pipeline" (SK-ASK-022).
+- run 10 — "'Auto-re-probes so it recovers without a deploy' — a comment that was quietly false" (30-min `auth_denied` cooldown).
+- run 9 — "The dead provider in the fast lane: when a hedged request races a 403" (SK-LLM-039).
+- run 8 — "One bad row shouldn't cost you all the rows: salvaging LLM-generated seed data" (SK-HDC-019).
 
 Older drafts (runs 1–7): [`distribution-queue-archive.md`](./distribution-queue-archive.md).
