@@ -50,8 +50,8 @@ few-shot), not retrieval. Value-retrieval is demoted + privacy-gated.
 | 10 | nlqdb-api requests / errors | 2,268 / 0 (0.00%) | mcp 284 req, events-worker 91 req, both 0 err |
 | 11 | nlqdb-api latency p50 / p95 | 666 ms / 7.05 s (06-13) | p95 dominated by LLM-bound asks; `/ask`-only split needs Grafana `metrics:read` (agent has write-only key) |
 | 12 | $ spend | ~$0 | free tiers across CF / Neon / LLM chain |
-| | **Pivot — agent-memory wedge** (GLOBAL-036) | 5 / 20 + 3 memory /vs pages | tick ⬜→✅ with PR link on merge; mirrors `docs/features/agent-memory-pivot/worksheets/INDEX.md` |
-| | *Messaging track — WS-\** | 5 / 13 | pick when worst number is funnel / distribution |
+| | **Pivot — agent-memory wedge** (GLOBAL-036) | 6 / 20 + 3 memory /vs pages | tick ⬜→✅ with PR link on merge; mirrors `docs/features/agent-memory-pivot/worksheets/INDEX.md` (WS-06 render is a separate open PR #426 — counted there) |
+| | *Messaging track — WS-\** | 6 / 13 | pick when worst number is funnel / distribution |
 | WS-01 | competitors.md anchor (Zep / Letta / LangMem) | ✅ | run 19 — §4 + threat matrix; unblocks WS-02 |
 | WS-02 | memory `/vs` pages (one per run) | ✅ 3/3 | run 20 — **Zep ✅** (`/vs/zep`); run 21 — **Letta ✅** (`/vs/letta`); run 22 — **LangMem ✅** (`/vs/langmem`) — WS-02 closed |
 | WS-03 | solve pages — sharpen + sibling | ✅ 2/2 | run 23 — **sharpen ✅**; run 25 — **analytical sibling ✅** (`analytical-queries-over-agent-memory`, the read-side report-over-memory wedge) |
@@ -61,7 +61,7 @@ few-shot), not retrieval. Value-retrieval is demoted + privacy-gated.
 | WS-07 | `/agents` landing | ⬜ | med · ~3 runs · WS-06 |
 | WS-08 | on-brand OG / social images | ⬜ | low · ~2 runs · WS-07 |
 | WS-09 | "database, not a vector store" blog + live demo | ⬜ | med · ~2 runs · WS-06 (sharpens with E-01/05) |
-| WS-10 | FSL self-host messaging (GLOBAL-019 / arch §0 doc-fix shipped) | ⬜ | low · 1 run · — |
+| WS-10 | FSL self-host messaging (GLOBAL-019 / arch §0 doc-fix shipped) | ✅ | run 28 — pricing self-host band + README "Models & plans" self-host line (FSL-accurate; no turnkey-image claim per WS-11 note) |
 | WS-11 | pull `ghcr.io/nlqdb/api` self-host container forward | ⬜ | high · multi · WS-10 · infra-gated |
 | WS-12 | home reweight + demote P1/P3/P4 to "also works for…" | ⬜ | med · ~2 runs · WS-06, WS-07 |
 | WS-13 | headline reposition (hero / README / llms.txt / JSON-LD) | ⬜ | high · ~2 runs · WS-07, WS-12 · 🔒 **FOUNDER-GATED** |
@@ -76,6 +76,29 @@ few-shot), not retrieval. Value-retrieval is demoted + privacy-gated.
 
 ## Deltas (recent runs)
 
+- 2026-06-20 (run 28) — **WS-10: FSL self-host messaging shipped** (Pivot
+  messaging track 5 → **6/13**; Pivot 5 → **6/20**; WS-10 ⬜ → **✅**). Engine
+  lane blocked (BIRD 06-19 + Spider 06-17 both < 7 d; §5 forbids a back-to-back
+  eval dispatch), so the in-bounds lever is funnel/distribution. WS-06's render
+  is in flight on **open PR #426**, so WS-07/09/12 (all prereq WS-06) aren't yet
+  unblocked — per the pivot INDEX pickup rule, **WS-10** is the lowest-numbered
+  ⬜ with all prereqs met (none) that **doesn't collide** with #426 (it touches
+  only `pricing.astro` + `README.md`, not the matrix/`/agents` surface). **Copy
+  only** (SK-PIVOT-005): added a self-host band to `/pricing` (mirrors the
+  BYOLLM callout, zero new CSS) and a "Self-host the source" line to the README
+  "Models & plans" section — both stated truthfully under **FSL-1.1-ALv2**
+  (source-available, self-hostable for non-competing use, BYO key 0% markup, no
+  per-call fees, auto-converts to Apache 2.0 after 2 yr). Honors the WS-11 note:
+  **no turnkey `docker compose up`/running-image claim** until the container
+  ships. Done-when box 2 ("no remaining 'Apache-2.0 today' claim about nlqdb")
+  was already clean — README license + manifesto are FSL-accurate and the
+  `competitors.ts` "Apache-2.0" mentions are factual statements about
+  *competitors* (Letta/Wren). KPI: **onboarding / UX** (GLOBAL-025) — an honest
+  self-host on-ramp for the self-hosted-agent crowd; **none degraded** (copy on
+  existing surfaces — no code path, engine, chain, or scorer touched; BIRD 06-19
+  + Spider 06-17 untouched; performance N/A). Artifact: a dev.to/r/selfhosted
+  "what FSL-1.1 means for self-hosting nlqdb" note appended to the distribution
+  queue.
 - 2026-06-20 (run 27) — **WS-06 run 1/2: shipped the agent-memory capability
   matrix data** (`apps/web/src/data/agentMemoryMatrix.ts`). WS-06 ⬜ → **🟡 1/2**
   (data ✅, render component pending — run 2). Engine lane blocked (BIRD 06-19 +

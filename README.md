@@ -89,6 +89,10 @@ underneath.
   on any tier, at no markup.
 - **Hosted premium models** on paid plans, when you'd rather not manage a
   key of your own.
+- **Self-host the source** — the engine, CLI, MCP server, and SDKs are
+  source-available under [FSL-1.1-ALv2](./LICENSE): free to self-host for
+  any non-competing use, bring your own LLM key, no per-call fees. The
+  license auto-converts to Apache 2.0 two years after each release.
 
 Paid plans aren't live yet. The full model strategy is in
 [`GLOBAL-026`](./docs/decisions/GLOBAL-026-llm-strategy-byollm-hosted-premium.md).
