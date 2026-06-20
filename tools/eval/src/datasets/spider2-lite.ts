@@ -53,7 +53,7 @@ export type LoadedSpider2Lite = {
   resolveDbPath: (db_id: string) => Promise<string | null>;
 };
 
-// `external_knowledge` points at `resource/documents/<file>.md`; capture it without fetching the body (deferred to a follow-up slice).
+// `external_knowledge` points at `resource/documents/<file>.md`; the body is fetched by `loadExternalKnowledge` (SK-QUAL-016) and injected via `EvalQuestion.evidence`.
 export type RawSpider2LiteEntry = {
   instance_id: string;
   db: string;
