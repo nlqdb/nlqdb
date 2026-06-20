@@ -267,7 +267,7 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
     sources: [
       {
         url: "https://www.reddit.com/r/AI_Agents/search/?q=memory",
-        label: 'r/AI_Agents — recurring threads on analytics / stats over agent memory.',
+        label: "r/AI_Agents — recurring threads on analytics / stats over agent memory.",
       },
       {
         url: "https://hn.algolia.com/?q=agent+memory",
