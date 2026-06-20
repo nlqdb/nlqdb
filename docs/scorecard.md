@@ -42,7 +42,7 @@ few-shot), not retrieval. Value-retrieval is demoted + privacy-gated.
 | 4 | Invite-valve crossings (KV `wl:invite-cap`) | 9/wk (06-13, carried) | cap 200/wk — no exhaustion risk; mostly walker-triggered; not re-pulled this run |
 | 5 | Anon DBs with a recorded first answer | **101 of 101** | instrument fix (runs 1–3) holding; +8 since 06-13. Genuine-stranger subset still ~0 (rows #2/#3) — the real worst-number |
 | | **Engine — BIRD 2026-06-19 · Spider 2026-06-17 (both fresh, < 7d)** | | `apps/api/src/gate/eval-baseline.ts` |
-| 6 | BIRD raw EX | 0.520 | target 0.65; was 0.522 (06-12). Canonical re-run on current main (T20–T22): 260/500, `no_sql` 3 → 1. **Flat within variance** — McNemar b=38/c=37, p=0.50, no regression. Directive levers saturated ⇒ retrieval levers (§4 #2a) next |
+| 6 | BIRD raw EX | 0.520 | target 0.65; was 0.522 (06-12). Canonical re-run on current main (T20–T22): 260/500, `no_sql` 3 → 1. **Flat within variance** — McNemar b=38/c=37, p=0.50, no regression. Directive levers saturated; literal/value (§4 #2a) + date-encoding (§4 #2c) levers both falsified standalone offline (run 31) ⇒ reasoning levers (§4 #3/#1) next |
 | 7 | Spider raw EX | 0.1852 | target 0.75; was 0.1704 (06-12). Gemini free-tier key restored 06-17 → `no_sql` 36 → 9, `gemini:http_4xx` cleared (`SK-LLM-039`); residual 9 capacity-only. Bottleneck now SQL reasoning, not availability |
 | 8 | persona-bench | — | not yet built |
 | 9 | free-vs-frontier delta | null | agentic lane not yet run (`SK-QUAL-004`, target ≤ 25 pp) |
@@ -76,6 +76,19 @@ few-shot), not retrieval. Value-retrieval is demoted + privacy-gated.
 
 ## Deltas (recent runs)
 
+- 2026-06-20 (run 31) — **Engine measurement: §4 #2c date-normalisation directive
+  FALSIFIED standalone (offline, no eval dispatch).** BIRD 06-19 + Spider 06-17
+  are both < 7 d so §5 forbids a back-to-back dispatch; the in-bounds lever is an
+  offline classifier sizing (run-18 method, `tools/eval/` only). Added a
+  date-encoding sub-axis to `SK-QUAL-014` (`canonDate` + `isDateLiteralOnly` +
+  the `date_literal_only` tag) and ran it on the committed 06-19 BIRD baseline
+  (238 mismatches): **`date_literal_only` = 2 total, 0 standalone** — every date
+  diff co-occurs with a structural error (`LIKE '…%'` vs `= '…'` needs an
+  operator change), so a date directive flips ~0 rows ⇒ #2c parked, same verdict
+  as #2a; the reasoning levers (#3/#1) are the path to the floor. **Δ:** a new
+  measured number prunes a backlog lever. KPI: **engine quality** (evidence-based
+  backlog prioritisation); none degraded — read-only, no chain/scorer/runner
+  change, EX untouched; 21 eval tests green (was 18).
 - 2026-06-20 (run 31) — **E-02: shipped the `nlqdb_remember` write primitive —
   E-02 closed** (engine track **1 → 2/7**; Pivot **8 → 9/20**; E-02 ⬜ → **✅**).
   Lever choice: the worst number is engine (Spider 0.1852), but BIRD 06-19 +
