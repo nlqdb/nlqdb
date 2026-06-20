@@ -64,4 +64,4 @@ A short post: "How nlqdb handles agent-memory expiry" → `distribution-queue.md
 ## Rollback
 
 Disable the scheduled sweep; the `expires_at` column + the
-compile-layer-read filter remain (no data loss; rows simply linger).
+`agent_isolation` RLS `USING` TTL clause remain (no data loss; rows simply linger).

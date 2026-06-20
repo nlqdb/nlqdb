@@ -66,9 +66,10 @@ vector search yet" disclaimer goes away).
    has NULL embedding; recall falls back to text-tsvector or skips
    similarity). Add an OTel span `nlqdb.memory.embed`.
 3. **Run 2 — `nlqdb_recall` + fusion.** New MCP tool + SDK parity. Compile
-   layer fuses: vector similarity top-K, then structured WHERE (scope
-   predicate from E-03, TTL filter from E-04, plus the agent's analytical
-   filters). Diff preview unchanged.
+   layer fuses: vector similarity top-K, then structured WHERE (agent
+   scope enforced by the E-03 `agent_isolation` RLS policy + `app.agent_id`
+   GUC, TTL filter from E-04, plus the agent's analytical filters). Diff
+   preview unchanged.
 4. **Run 3 — eval ablation.** `tools/eval/` gets a memory-recall ablation
    on a fixture `agent_memory` fixture set; numbers feed the WS-09 blog.
 5. **Backfill** existing memory rows on demand (background job).
