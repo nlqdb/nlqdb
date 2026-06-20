@@ -1,6 +1,6 @@
 # WS-03 — Sharpen the agent-memory solve page + add an analytical-queries sibling
 
-**Status:** 🟡 in progress — run 1 done (existing page reframed to the wedge); run 2 (analytical sibling) pending
+**Status:** ✅ done — run 1 (existing page reframed to the wedge) + run 2 (analytical sibling `analytical-queries-over-agent-memory` shipped)
 **Sequence:** 3 of 13 · **Risk:** low · **Runs:** ~2 · **Prereqs:** none · **Gate:** none
 
 ## Goal
@@ -39,8 +39,8 @@ line `+1 solve page`.
 ## Done when
 
 - [x] Existing page reframed to the wedge; `whatItDoesnt` still honest. *(run 1 — `give-ai-agent-persistent-memory` now leads with retrieval≠analytics + fixes phantom `create_database`/`ask`/`run` MCP tools → real `nlqdb_query`/`nlqdb_list_databases`/`nlqdb_describe`.)*
-- [ ] Sibling solve page builds, passes `solve.test.ts`, flows into sitemap/llms.txt.
-- [ ] INDEX tracker + status ticked.
+- [x] Sibling solve page builds, passes `solve.test.ts`, flows into sitemap/llms.txt. *(run 2 — slug `analytical-queries-over-agent-memory`, persona P2, the read-side wedge: reports — counts/top-N/averages per group — over what the agent stored; cross-links the write-side `give-ai-agent-persistent-memory`. Wired into `verify-flows.sh` SOLVE_SLUGS + `flow-002.ts` SLUG_DEMO_GOAL; fixed the run-1 demoGoal drift in that mirror.)*
+- [x] INDEX tracker + status ticked.
 
 ## Artifact
 

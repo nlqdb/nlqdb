@@ -20,7 +20,9 @@ import type { FlowRun, StepResult } from "../types.ts";
 // source of truth (avoids duplication that would silently desync).
 export const SLUG_DEMO_GOAL: Readonly<Record<string, string>> = {
   "cheap-internal-dashboard": "today's orders aggregated by drink with revenue",
-  "give-ai-agent-persistent-memory": "recent agent memory across threads in the last day",
+  "give-ai-agent-persistent-memory": "top 5 things the agent remembered this week by frequency",
+  "analytical-queries-over-agent-memory":
+    "count of facts the agent logged per category this month, highest first",
   "skip-postgres-setup-side-project": "show recent customer contacts sorted by last touch",
   "natural-language-sql-without-training-data":
     "feedback from the last 24 hours grouped by channel",
