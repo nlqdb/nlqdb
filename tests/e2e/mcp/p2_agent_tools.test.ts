@@ -23,6 +23,7 @@ function stubClient(overrides: Partial<NlqClient>): NlqClient {
     mintKey: notStubbed("mintKey"),
     revokeKey: notStubbed("revokeKey"),
     redeemOAuthBridgeCode: notStubbed("redeemOAuthBridgeCode"),
+    remember: notStubbed("remember"),
     ...overrides,
   };
 }
@@ -43,13 +44,19 @@ async function connect(client: NlqClient) {
 }
 
 describe("P2 — Agent Builder · MCP protocol contract", () => {
-  it("exposes exactly three tools in the SK-MCP-002 order", async () => {
+  it("exposes the SK-MCP-002 tools in order (+ additive nlqdb_remember, E-02)", async () => {
     const { mcpClient, teardown } = await connect(stubClient({}));
     try {
       const { tools } = await mcpClient.listTools();
       const names = tools.map((t) => t.name);
       // Tool order is part of the contract — some agent clients discover by index.
-      expect(names).toEqual(["nlqdb_query", "nlqdb_list_databases", "nlqdb_describe"]);
+      // `nlqdb_remember` is appended (SK-PIVOT-008), never reordering the stable three.
+      expect(names).toEqual([
+        "nlqdb_query",
+        "nlqdb_list_databases",
+        "nlqdb_describe",
+        "nlqdb_remember",
+      ]);
       for (const t of tools) {
         expect(t.description).toBeTruthy();
         expect(t.description?.length ?? 0).toBeGreaterThan(20);

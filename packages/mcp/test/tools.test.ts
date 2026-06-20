@@ -9,6 +9,7 @@ import {
   handleDescribe,
   handleListDatabases,
   handleQuery,
+  handleRemember,
   mapSdkError,
   PACKAGE_VERSION,
   queryInputShape,
@@ -67,6 +68,9 @@ function stubClient(overrides: Partial<NlqClient> = {}): NlqClient {
     },
     clearByollm: async () => {
       throw new Error("clearByollm not stubbed");
+    },
+    remember: async () => {
+      throw new Error("remember not stubbed");
     },
   };
   return { ...base, ...overrides };
@@ -368,6 +372,60 @@ describe("handleListDatabases", () => {
     expect(listDatabases).toHaveBeenCalledWith(
       expect.objectContaining({ signal: controller.signal }),
     );
+  });
+});
+
+describe("handleRemember", () => {
+  it("forwards the typed payload and returns the materialised row", async () => {
+    const client = stubClient({
+      remember: async (req) => {
+        expect(req.db).toBe("db_agent_memory_v1_abc123");
+        expect(req.kind).toBe("fact");
+        return {
+          status: "ok",
+          id: "42",
+          kind: "fact",
+          materialised_at: "2026-06-20T00:00:00Z",
+        };
+      },
+    });
+    const result = await handleRemember(client, {
+      db: "db_agent_memory_v1_abc123",
+      kind: "fact",
+      payload: { content: "prefers dark mode" },
+    });
+    expect(result).toEqual({
+      ok: { id: "42", kind: "fact", materialised_at: "2026-06-20T00:00:00Z" },
+    });
+  });
+
+  it("maps wrong_preset to an actionable tool error", async () => {
+    const client = stubClient({
+      remember: async () => {
+        throw new NlqdbApiError("wrong preset", 409, "wrong_preset", "/v1/memory/remember", null);
+      },
+    });
+    const result = await handleRemember(client, {
+      db: "db_orders_x",
+      kind: "fact",
+      payload: { content: "x" },
+    });
+    expect("err" in result && result.err.code).toBe("wrong_preset");
+    expect("err" in result && result.err.action).toContain("agent_memory_v1");
+  });
+
+  it("maps a read-only forbidden to the user-scoped-key hint", async () => {
+    const client = stubClient({
+      remember: async () => {
+        throw new NlqdbApiError("forbidden", 403, "forbidden", "/v1/memory/remember", null);
+      },
+    });
+    const result = await handleRemember(client, {
+      db: "db_agent_memory_v1_abc123",
+      kind: "fact",
+      payload: { content: "x" },
+    });
+    expect("err" in result && result.err.code).toBe("forbidden");
   });
 });
 

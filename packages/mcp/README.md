@@ -2,7 +2,8 @@
 
 Model Context Protocol server for nlqdb — local-stdio transport
 (slice 2 of `SK-MCP-010`). Tools: `nlqdb_query`,
-`nlqdb_list_databases`, `nlqdb_describe`. See
+`nlqdb_list_databases`, `nlqdb_describe`, `nlqdb_remember` (the
+agent-memory write verb — E-02 / SK-PIVOT-008). See
 [`docs/features/mcp-server/FEATURE.md`](../../docs/features/mcp-server/FEATURE.md)
 for the full design.
 
