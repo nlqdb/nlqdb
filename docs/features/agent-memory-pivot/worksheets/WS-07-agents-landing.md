@@ -1,6 +1,6 @@
 # WS-07 — Dedicated `/agents` front door
 
-**Status:** 🟡 in progress (run 1/3 — skeleton + hero shipped 2026-06-20)
+**Status:** 🟡 in progress (run 2/3 — matrix + moat + FSL band shipped 2026-06-20; run 1 skeleton + hero shipped 2026-06-20)
 **Sequence:** 7 of 13 · **Risk:** med · **Runs:** ~3 · **Prereqs:** WS-06 ✅ · **Gate:** none
 
 ## Goal
@@ -32,10 +32,13 @@ dedicated `/agents` row to the funnel once traffic lands. `Pivot:` boolean
    copy) — no duplicate block needed. Added `/agents` to `sitemap.xml.ts`
    `STATIC_ROUTES`. Sitewide lead strings (`Hero.astro`, README, `llms.txt`)
    untouched.
-2. **Run 2 — the matrix + the moat.** Embed the WS-06 matrix; add a "typed-plan
-   trust boundary" section (LLM→JSON→compiler→`libpg_query`→diff-preview,
-   sourced from `ResearchReceipts`) and the FSL self-host / BYO-key / no-per-call-fees
-   band (FSL-accurate wording — see WS-10).
+2. ✅ **Run 2 — the matrix + the moat** (2026-06-20). Embedded the WS-06
+   `AgentMemoryMatrix`; added a four-step "typed-plan trust boundary" pipeline
+   (LLM → typed JSON plan → compiler emits parameterised SQL → `libpg_query`
+   re-parse + verb/table allowlist → diff preview), sourced from the Replit-wipe
+   (Fortune) + Cortex-Analyst (Snowflake) receipts, and the FSL-1.1 / BYO-key /
+   no-per-call-fees band (FSL-accurate per WS-10). `apps/web/src/pages/agents/index.astro`
+   only — additive, no `<img>`.
 3. **Run 3 — CTA + demand signal.** Waitlist CTA + an agent-memory CreateForm
    variant; fire the `GLOBAL-024` typed event on CTA click (reuse the
    `vs.try_query_clicked` pattern). Link `/agents` from Topnav and the `/vs`
