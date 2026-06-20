@@ -29,7 +29,7 @@ when-to-load:
   - `src/baseline.ts` + `src/significance.ts` — baseline diff + McNemar exact-binomial / Edwards' χ² (`SK-QUAL-006`)
   - `src/emit.ts` — POST report to `/v1/events/eval`
   - `src/analyze-mismatches.ts` — mismatch error-class classifier (`SK-QUAL-014`); `src/column-coverage.ts` — column-prune recall-ceiling harness (`SK-QUAL-015`)
-  - `src/datasets/{bird-mini,spider2-lite}.ts` — HF BIRD loader; Spider 2.0-lite loader + gold-CSV hydration from `xlang-ai/Spider2@main` (`SK-QUAL-007`/`008`)
+  - `src/datasets/{bird-mini,spider2-lite}.ts` — HF BIRD loader; Spider 2.0-lite loader + gold-CSV hydration + external-knowledge injection from `xlang-ai/Spider2@main` (`SK-QUAL-007`/`008`/`016`)
   - `src/output.ts` + `src/checkpoint.ts` — JSON report writer; resumable checkpoint (`SK-QUAL-011`)
   - `baseline-2026-06-15.json` — pinned canonical baseline (`SK-QUAL-005`)
 - `.github/workflows/quality-eval-bird-mini.yml` — BIRD: manual `workflow_dispatch` only (`SK-QUAL-002`), `mode: full|smoke` (smoke = sampled + resumable per `SK-QUAL-011`); `include_agentic_frontier` → `RUN_AGENTIC_FRONTIER=1` per `SK-QUAL-009`
@@ -60,36 +60,30 @@ to published research. The harness is a tool, not a CI gate
 **Body:** [`decisions/SK-QUAL-003-three-dataset-canon.md`](./decisions/SK-QUAL-003-three-dataset-canon.md).
 Three datasets in weighted order: (1) internal `db.create` accepted-answer
 eval (production-shape, internal-wins on disagreement); (2) BIRD-dev Mini-Dev
-(500 SQLite — public, comparable; **52.8% annotation errors** per VLDB/CIDR
-2026 [arXiv:2601.08778](https://arxiv.org/abs/2601.08778), corrected variants
-in `uiuc-kang-lab/text_to_sql_benchmarks`); (3) Spider 2.0-lite **SQLite
-subset only** — upstream ships **547 rows total** (180 BQ / 207 SF / 135
-SQLite / 25 GA-SF; zero Postgres). All 135 `local###` rows now score via
-the canonical multi-CSV evaluator per [`SK-QUAL-008`](#sk-qual-008); the
-loader pins to GitHub raw — HF mirror was stale at 260 rows 2026-05-19.
+(500 SQLite — public, comparable; ~52.8% annotation errors per
+[arXiv:2601.08778](https://arxiv.org/abs/2601.08778)); (3) Spider 2.0-lite
+**SQLite subset only** — upstream ships 547 rows (135 `local###` SQLite;
+zero Postgres). All 135 score via the canonical multi-CSV evaluator per
+[`SK-QUAL-008`](#sk-qual-008); the loader pins to GitHub raw (HF mirror was
+stale 2026-05-19).
 
 ### SK-QUAL-004 — Free-vs-agentic-frontier delta is the headline KPI; single-model frontier reports informationally
 
 **Body:** [`decisions/SK-QUAL-004-free-vs-frontier-delta.md`](./decisions/SK-QUAL-004-free-vs-frontier-delta.md).
 Three lanes per [`GLOBAL-026`](../../decisions/GLOBAL-026-llm-strategy-byollm-hosted-premium.md):
 **free**, **single-model frontier** (informational, ~73% canonical
-BIRD-dev), **agentic-frontier** (~77-82% canonical SOTA — AskData+GPT-4o
-77.64%/81.95%, Agentar 74.90%/81.67%; the ~93% from ReViSQL etc. is on the
-Arcwise-corrected set, not canonical). Headline KPI is the
-**free-vs-agentic-frontier delta** — Phase 2 ≤ 25 pp, Phase 3 ≤ 16 pp per
-[`GLOBAL-025`](../../decisions/GLOBAL-025-north-star.md). Slice 1 + 2
+BIRD-dev), **agentic-frontier** (~77-82% canonical SOTA). Headline KPI is
+the **free-vs-agentic-frontier delta** — Phase 2 ≤ 25 pp, Phase 3 ≤ 16 pp
+per [`GLOBAL-025`](../../decisions/GLOBAL-025-north-star.md). Slice 1 + 2
 shipped free + single-model-frontier; agentic lane lands in slice 3c with
 `SK-LLM-017`.
 
-### SK-QUAL-005 — Baseline by 2026-06-15; first floor enforced in Phase 2 exit gate
+### SK-QUAL-005 — Baseline by 2026-06-15; Phase 2 floor enforced from first measurement
 
-- **Decision:** The Phase 2 exit gate requires recorded baseline values for every engine-quality KPI in the [`GLOBAL-025`](../../decisions/GLOBAL-025-north-star.md) table by **2026-06-15**. The Phase 2 floor (BIRD-dev EM ≥ 72% free / ≥ 88% frontier; delta ≤ 22 pts) is enforced from the moment baselines exist. If baselines are below the floor on first measurement, the slice does not regress them — it ships engine work until the floor is cleared.
+- **Decision:** Every engine-quality KPI in the [`GLOBAL-025`](../../decisions/GLOBAL-025-north-star.md) table must have a recorded baseline by **2026-06-15** (met — canonical snapshot `tools/eval/baseline-2026-06-15.json`, diffed by every manual run). The Phase 2 floor (BIRD-dev EM ≥ 72% free / ≥ 88% frontier; delta ≤ 22 pts) is enforced from that point; a below-floor first measurement ships engine work until cleared, never regresses it. PRs touching `packages/llm/**` name the KPI they move.
 - **Core value:** Bullet-proof
-- **Why:** "Phase 2 KPI floors" is meaningless without a baseline date. 2026-06-15 leaves ~one month from harness ship to baseline measurement — enough to debug the runner, not enough to drift. If we miss this date, the Phase 2 rollover is blocked per [`GLOBAL-025`](../../decisions/GLOBAL-025-north-star.md) — that is the point.
-- **Consequence in code:** `tools/eval/baseline-2026-06-15.json` is the canonical baseline snapshot. A manual eval run diffs against it. PRs that touch `packages/llm/**` add a one-line note to their description naming which KPI they're moving.
-- **Alternatives rejected:**
-  - No baseline date — "soon" never happens.
-  - Baseline floor = whatever first measurement returns — ratchets us into accepting bad numbers as the new normal.
+- **Why:** A floor is meaningless without a baseline date; missing it blocks the Phase 2 rollover per [`GLOBAL-025`](../../decisions/GLOBAL-025-north-star.md) by design.
+- **Alternatives rejected:** No date ("soon" never happens); floor = first measurement (ratchets bad numbers into the norm).
 
 ### SK-QUAL-002 — Eval cadence: manual on-demand only; never a PR gate
 
@@ -101,9 +95,8 @@ delta ≤ -5 pp **or** McNemar p < 0.05, `SK-QUAL-006`) or **smoke**
 (sampled slice, no emit, resumable per `SK-QUAL-011`). Gating *decisions*
 not *merges* keeps the harness a measurement tool; on-demand (not
 scheduled) keeps the shared 1M/day free-tier cap available to live
-traffic. The prior weekly + 4h smoke **schedule** was retired; the smoke
-run is kept as a manual mode. Accepted trade-off: drift is unmeasured
-until an operator runs it. Resilience via [`SK-QUAL-011`](#sk-qual-011).
+traffic. Accepted trade-off: drift is unmeasured until an operator runs
+it. Resilience via [`SK-QUAL-011`](#sk-qual-011).
 
 ### SK-QUAL-011 — Resumable runner: checkpoint + budget-stop so a run survives a free-tier daily token cap
 
@@ -116,8 +109,7 @@ rate-limited (`AllProvidersFailedError` all-`rate_limited`, the
 contract) the run **budget-stops**: keeps the checkpoint, marks the report
 `resumable: true`, doesn't emit, exits 0 — a daily-cap hit reads as a
 pause, not a wall of `no_sql`. The operator re-dispatches once the cap
-resets; the smoke mode's checkpoint persists via `actions/cache`, so a
-budget-stopped smoke resumes on the next `mode: smoke` dispatch.
+resets (smoke checkpoint persists via `actions/cache`).
 
 ### SK-QUAL-006 — McNemar's paired-binary test as a parallel regression trigger
 
@@ -126,13 +118,13 @@ Per-lane regression alerts fire on two parallel triggers: (1) the
 `SK-QUAL-002` 5-pp threshold on EA delta, and (2) McNemar's paired-binary
 test (α = 0.05) on per-question outcomes. Both trigger independently;
 each emits its own `feature.eval.regression`. McNemar catches small-but-real
-regressions that the threshold misses at N ≈ 500 (binomial SE ≈ 2.2 pp).
+regressions the threshold misses at N ≈ 500.
 
 ### SK-QUAL-007 — Spider 2.0-lite SQLite-subset loader (slice 3a) — superseded by `SK-QUAL-008` for the scoring contract
 
 **Body:** [`decisions/SK-QUAL-007-spider2-lite-loader.md`](./decisions/SK-QUAL-007-spider2-lite-loader.md).
 **Status:** scoring contract superseded by [`SK-QUAL-008`](#sk-qual-008); the
-file-layout / `local###` filter / path-traversal guard contracts still apply.
+file-layout / `local###` filter / path-traversal contracts still apply.
 
 ### SK-QUAL-008 — Spider 2.0-lite multi-CSV scorer (slice 3b) ports the canonical pandas comparator to TypeScript
 
@@ -147,7 +139,7 @@ from `evaluation_suite/gold/`. Two invariants pinned by tests so the
 port can't drift: `abs_tol = 1e-2` matches `math.isclose`, and the
 `ignore_order` sort key `(x is None, str(x), is-numeric)` byte-matches
 Python. The Spider workflow sparse-clones `evaluation_suite/gold/` into the
-cached `spider2_data/` so the loader resolves every gold CSV off-disk in CI.
+cached `spider2_data/` for off-disk CI resolution.
 
 ### SK-QUAL-009 — Agentic exec-retry scaffold + `agentic-frontier` lane (slice 3c)
 
@@ -158,7 +150,6 @@ in a bounded loop (`maxAttempts: 3`, exec-error-only, threads
 `agentic-frontier`); single-model `frontier` stays the unscaffolded ablation
 reference. New headline KPI `free_vs_agentic_frontier_delta` lands on
 `EvalReport` + `FeatureEvalWeeklyEvent` + the LogSnag card per `GLOBAL-025`.
-Inference-time exec-retry evidence base is in the decision body.
 
 ### SK-QUAL-010 — BIRD scorer compares positional value tuples (column names ignored), matching canonical `evaluation.py`
 
@@ -211,6 +202,19 @@ goal — the recall ceiling of the §4 #2 column-pruning sub-lever. BIRD-dev
 **12.8%** value/measure (only value-retrieval recovers). The prerequisite
 [`SK-LLM-037`](../llm-router/decisions/SK-LLM-037-goal-relevant-schema-pruning.md)
 left open; read-only, no keys/quota/chain change.
+
+### SK-QUAL-016 — Inject Spider 2.0-lite external-knowledge docs into the prompt, the way BIRD `evidence` already is
+
+**Body:** [`decisions/SK-QUAL-016-spider-external-knowledge.md`](./decisions/SK-QUAL-016-spider-external-knowledge.md).
+`loadSpider2Lite` now fetches each instance's `external_knowledge`
+(`resource/documents/<name>.md`) and rides it through `EvalQuestion.evidence`
+into the runner's existing `enrichedGoal` — the channel the BIRD lane has
+always used. Closes the `SK-QUAL-007` deferral. **13 of 135 `local###`
+questions (9.6%)** carried a doc that was being dropped (haversine, RFM,
+music-length, f1-overtake, …) — the knowledge-gated tail on the 25/135 base.
+Cache-authoritative under `dataDir`, fail-soft on a missing/404/unsafe doc,
+traversal-gated filename. EX delta measured by the next canonical Spider
+dispatch (06-17 baseline < 7 d ⇒ `SK-QUAL-002` forbids re-dispatch this run).
 
 ## GLOBALs governing this feature
 

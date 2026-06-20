@@ -17,11 +17,15 @@ const SPIDER2_LITE_RAW_BASE =
 const SPIDER2_LITE_JSONL_URL = `${SPIDER2_LITE_RAW_BASE}/spider2-lite.jsonl`;
 const SPIDER2_LITE_EVAL_JSONL_URL = `${SPIDER2_LITE_RAW_BASE}/evaluation_suite/gold/spider2lite_eval.jsonl`;
 const SPIDER2_LITE_EXEC_RESULT_URL_BASE = `${SPIDER2_LITE_RAW_BASE}/evaluation_suite/gold/exec_result/`;
+// SK-QUAL-016 — external-knowledge docs (`<name>.md`) referenced by `external_knowledge`.
+const SPIDER2_LITE_DOCUMENTS_URL_BASE = `${SPIDER2_LITE_RAW_BASE}/resource/documents/`;
 const SPIDER2_LITE_SQLITE_PREFIX = "local";
 // Canonical `local\d+` shape — gates URL construction and cache reads against a tampered upstream JSONL smuggling path-traversal sequences.
 const SPIDER2_LITE_LOCAL_RE = /^local\d+$/;
 // CSV variant suffixes per Spider 2.0's `resolve_gold_paths`: `local###.csv` (single) or `local###_<a-z>.csv` (multi).
 const SPIDER2_LITE_GOLD_CSV_RE = /^(local\d+)(?:_[a-z])?\.csv$/;
+// `external_knowledge` filenames are plain `<name>.md` — gate against a tampered JSONL smuggling traversal into the URL/cache read.
+const SPIDER2_LITE_DOC_RE = /^[A-Za-z0-9_.-]+\.md$/;
 const FETCH_TIMEOUT_MS = 30_000;
 const FETCH_RETRIES = 3;
 
@@ -221,6 +225,29 @@ async function loadGoldCsvs(
   return tables;
 }
 
+// SK-QUAL-016 — load an instance's external-knowledge doc body so it can be
+// injected into the prompt the way BIRD's `evidence` already is (the runner's
+// `enrichedGoal`). Spider 2.0 ships these docs *as task context* (the haversine
+// formula, the RFM scoring rule, …) — dropping them measured the free chain
+// against questions it cannot answer. `dataDir` set ⇒ cache-authoritative
+// (mirrors the gold-CSV contract); a missing/unsafe/404 doc degrades to the
+// no-evidence prompt, never throws.
+async function loadExternalKnowledge(
+  ekFile: string | null | undefined,
+  cachedDocsDir: string | undefined,
+  fetchImpl: typeof fetch,
+): Promise<string | null> {
+  if (!ekFile) return null;
+  const name = basename(ekFile);
+  if (name !== ekFile || !SPIDER2_LITE_DOC_RE.test(name)) return null;
+  if (cachedDocsDir) {
+    const cached = join(cachedDocsDir, name);
+    return (await fileExists(cached)) ? (await readFile(cached, "utf8")).trim() || null : null;
+  }
+  const text = await fetchTextOrNull(`${SPIDER2_LITE_DOCUMENTS_URL_BASE}${name}`, fetchImpl);
+  return text?.trim() || null;
+}
+
 async function loadEvalIndex(
   opts: Spider2LiteLoaderOptions,
   fetchImpl: typeof fetch,
@@ -292,15 +319,29 @@ export async function loadSpider2Lite(
     ? await directoryExists(cachedExecResultDir)
     : false;
   const effectiveCacheDir = haveCachedExecDir ? cachedExecResultDir : undefined;
+  // SK-QUAL-016 — `dataDir` set ⇒ docs are cache-authoritative (same model as gold CSVs).
+  const cachedDocsDir = opts.dataDir ? join(opts.dataDir, "resource", "documents") : undefined;
 
-  // Load gold CSVs + eval metadata in parallel — small N (≤135), I/O-bound.
-  const [evalIndex, goldByInstance] = await Promise.all([
+  // Load gold CSVs + eval metadata + external-knowledge docs in parallel — small N (≤135), I/O-bound.
+  const [evalIndex, goldByInstance, ekByInstance] = await Promise.all([
     loadEvalIndex(opts, fetchImpl),
     (async () => {
       const m = new Map<string, GoldTable[]>();
       await Promise.all(
         sliced.map(async (e) => {
           m.set(e.instance_id, await loadGoldCsvs(e.instance_id, effectiveCacheDir, fetchImpl));
+        }),
+      );
+      return m;
+    })(),
+    (async () => {
+      const m = new Map<string, string | null>();
+      await Promise.all(
+        sliced.map(async (e) => {
+          m.set(
+            e.instance_id,
+            await loadExternalKnowledge(e.external_knowledge, cachedDocsDir, fetchImpl),
+          );
         }),
       );
       return m;
@@ -316,7 +357,9 @@ export async function loadSpider2Lite(
       instance_id: e.instance_id,
       db_id: e.db,
       question: e.question,
-      evidence: "",
+      // SK-QUAL-016 — external-knowledge doc body flows through the same `evidence`
+      // channel BIRD uses; the runner's `enrichedGoal` injects it into the prompt.
+      evidence: ekByInstance.get(e.instance_id) ?? "",
       // Spider 2.0 scoring is multi-CSV only — gold SQL is unused even when it ships upstream.
       sql: "",
     };
@@ -342,4 +385,4 @@ export async function loadSpider2Lite(
   };
 }
 
-export const _testing = { parseQuestionsJsonl, parseEvalJsonl, isSqliteRow };
+export const _testing = { parseQuestionsJsonl, parseEvalJsonl, isSqliteRow, loadExternalKnowledge };

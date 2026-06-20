@@ -5,6 +5,52 @@ One publishable artifact drafted per day by the daily agent
 publishes at the weekly session. Newest first. Delete an entry once published
 (the live URL goes into `docs/scorecard.md`).
 
+## 2026-06-20 (run 33) — engine-lesson: "We were grading our text-to-SQL engine on questions it couldn't possibly answer" (dev.to / lobste.rs)
+
+**Where:** dev.to + lobste.rs (`databases` / `ai`), same series as the runs 8–18
+engine-lesson posts. Honest-methodology angle — the kind of post that earns
+trust from people who run their own evals.
+
+**Title:** We were grading our text-to-SQL engine on questions it couldn't possibly answer
+
+**Body:**
+
+> Spider 2.0 — one of the benchmarks we measure our NL→SQL engine on — ships
+> some questions with an *external knowledge* document attached. "Find flights
+> longer than 5,000 km" comes with `haversine_formula.md`: the great-circle
+> distance formula. "Segment customers by RFM" comes with the recency/frequency/
+> monetary scoring rule. "List the long tracks" comes with the exact definition
+> of *long*. The document isn't a hint — it's part of the task. A solver that
+> never sees it is being asked to invent a formula it has no way to know.
+>
+> Our eval loader parsed the `external_knowledge` field and then threw the body
+> away. (There was even a code comment admitting it: "capture it without
+> fetching the body — deferred.") So for those questions we were prompting the
+> model with the question and the schema, and nothing else — and then counting
+> the inevitable miss against our score. Worse, it was inconsistent: our BIRD
+> lane *does* inject the equivalent "evidence" field, so the two benchmarks
+> weren't measuring the same thing.
+>
+> We counted the blast radius before touching anything: **13 of the 135 SQLite
+> questions (9.6%)** carried a doc we were dropping, across 8 databases. On a
+> benchmark where we're only solving ~19% today, a tenth of the set being
+> unanswerable-by-construction is not noise.
+>
+> The fix is four lines of intent: fetch the doc, put it on the same `evidence`
+> channel the prompt already understands, done. The lesson isn't "we found a
+> bug" — it's that **an eval harness is software, and the most dangerous bugs in
+> it are the ones that make your numbers look honest.** Before you trust a
+> benchmark score, read how the harness builds the prompt. We log every dropped
+> field now.
+>
+> (nlqdb is a database your app — or your agent — queries in plain English. The
+> eval harness is open in the repo: `tools/eval/`.)
+
+**Why this advances the north-star:** engine-quality credibility + AEO — a
+methodology post that signals rigor to the exact audience that evaluates
+NL→SQL tools, and seeds the next Spider number's "we fixed the measurement"
+narrative. Ties to `SK-QUAL-016`.
+
 ## 2026-06-20 (run 32) — technical note: "Agent-memory scoping in nlqdb is row-level RLS, not query-rewriting" (dev.to / lobste.rs)
 
 **Where:** dev.to + lobste.rs (engineering audience); a section in the WS-09
@@ -272,72 +318,14 @@ screen — and the schema *is* the on-brand visual (type-on-dark, no diagram).
 
 ---
 
-## 2026-06-20 (run 28) — X/Bluesky thread: the one bright column (agent-memory matrix render)
+## 2026-06-20 (run 28) — agent-memory social/note drafts (titles only; full drafts in git history)
 
-**Where:** X / Bluesky, a 3-post thread whose hook is the *rendered* matrix —
-the single all-✓ nlqdb column against three columns of dashes. Screenshot the
-live component (once it's on `/agents`, WS-07) or paste the table inline. Pairs
-with the run-27 long-form Show HN post; this is the short social teaser that
-drives to it.
-
-**Thread:**
-
-> 1/ Your agent can remember things. Cool. Can it answer a question *about* what
-> it remembered? "Top 5 deals by size." "Average per stage." "What closed this
-> month." Most memory tools can't — they do top-k similarity, not SQL.
->
-> 2/ We built the honest table. Mem0, Zep, Letta, nlqdb. Everyone wins the top
-> two rows (remember + recall). Then it's one bright column the rest of the way
-> down — because aggregation needs a query planner, and a vector store doesn't
-> have one. [matrix]
->
-> 3/ nlqdb's memory *is* a Postgres the agent provisions in English and then
-> runs `GROUP BY` / `JOIN` / `HAVING` over. Not a vector store with a SQL
-> bolt-on — a database it talks to. The table's not a clean sweep (self-host is
-> ◐ for us today, honest) but the analytical rows are ours alone.
-
-**Why it works:** the rendered matrix is built as live text (no raster image,
-SK-PIVOT-004), so the visual punch — one lit column — survives copy-paste into
-a post and is liftable verbatim by AI search engines. The shape *is* the
-argument; the thread just points at it.
-
----
-
-## 2026-06-20 (run 28) — note: "What FSL-1.1 actually means for self-hosting nlqdb" (dev.to / r/selfhosted)
-
-**Where:** a short dev.to / r/selfhosted / lobste.rs note for the
-self-hosted-agent crowd who reflexively distrust "source-available." One
-honest explainer, one nlqdb mention.
-
-**Title:** "Source-available" isn't a trap if you read the license — what FSL-1.1 means for self-hosting
-
-**Body:**
-
-> If you self-host your stack, "source-available" probably sets off an alarm —
-> it's often code for "open enough to read, locked enough to bill you later."
-> So here's nlqdb's license in plain terms, because the wedge is *honesty*, not
-> a clean OSI badge:
->
-> - **FSL-1.1-ALv2** (Functional Source License — the Sentry / Convex pattern).
-> - You can **read, fork, and self-host** the engine, CLI, MCP server, and SDKs
->   for **any non-competing use** — i.e. anything except standing up a hosted
->   nlqdb competitor. Internal tools, your own agents, client work: all fine.
-> - **Bring your own LLM key at 0% markup.** No per-call fees to us, no pricing
->   page on the open core.
-> - The license **auto-converts to Apache 2.0 two years after each release** —
->   the future-license clause is in the LICENSE file, not a promise in a blog post.
->
-> What we *won't* claim yet: there is no turnkey `docker compose up` image today.
-> The container (`ghcr.io/nlqdb/api`) is on the roadmap; until it ships, "self-host"
-> means the source, not a one-command box. We'd rather under-promise the image
-> than over-claim it — same reason every answer shows you the SQL it ran.
-
-**Why this is publishable:** the self-hosted crowd is a real distribution
-channel for an agent-memory DB, and the honest "here's what we *don't* have
-yet" framing is exactly the trust signal that converts skeptics (the
-ResearchReceipts "show your work" posture). Sourced from `LICENSE` +
-`GLOBAL-019` + `SK-PIVOT-005`. The copy now lives on `/pricing` + the README
-"Models & plans" section (WS-10); this note is the long-form version.
+- X/Bluesky thread "the one bright column" — screenshot the rendered Mem0·Zep·Letta·nlqdb
+  matrix (live text, SK-PIVOT-004); everyone wins remember+recall, then one all-✓
+  nlqdb column down the analytical rows. Teaser for the run-27 Show HN post.
+- dev.to/r/selfhosted note: "'Source-available' isn't a trap if you read the license"
+  — FSL-1.1-ALv2 in plain terms (self-host non-competing, BYO key 0% markup, auto-Apache-2.0
+  after 2 yr; no turnkey image yet). Sourced from `LICENSE` + `GLOBAL-019` + `SK-PIVOT-005`.
 
 ## 2026-06-20 (run 27) — comparison table: "What can your agent actually DO with its memory?" (Show HN / r/AI_Agents)
 

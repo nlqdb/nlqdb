@@ -43,7 +43,7 @@ few-shot), not retrieval. Value-retrieval is demoted + privacy-gated.
 | 5 | Anon DBs with a recorded first answer | **101 of 101** | instrument fix (runs 1–3) holding; +8 since 06-13. Genuine-stranger subset still ~0 (rows #2/#3) — the real worst-number |
 | | **Engine — BIRD 2026-06-19 · Spider 2026-06-17 (both fresh, < 7d)** | | `apps/api/src/gate/eval-baseline.ts` |
 | 6 | BIRD raw EX | 0.520 | target 0.65; was 0.522 (06-12). Canonical re-run on current main (T20–T22): 260/500, `no_sql` 3 → 1. **Flat within variance** — McNemar b=38/c=37, p=0.50, no regression. Directive levers saturated; literal/value (§4 #2a) + date-encoding (§4 #2c) levers both falsified standalone offline (run 31) ⇒ reasoning levers (§4 #3/#1) next |
-| 7 | Spider raw EX | 0.1852 | target 0.75; was 0.1704 (06-12). Gemini free-tier key restored 06-17 → `no_sql` 36 → 9, `gemini:http_4xx` cleared (`SK-LLM-039`); residual 9 capacity-only. Bottleneck now SQL reasoning, not availability |
+| 7 | Spider raw EX | 0.1852 | target 0.75; was 0.1704 (06-12). Gemini key restored 06-17 → `no_sql` 36 → 9 (`SK-LLM-039`). **Run 33: external-knowledge injection shipped (`SK-QUAL-016`)** — 13/135 (9.6%) carried a dropped doc (haversine/RFM/…); next dispatch measures the EX delta. Residual bottleneck SQL reasoning |
 | 8 | persona-bench | — | not yet built |
 | 9 | free-vs-frontier delta | null | agentic lane not yet run (`SK-QUAL-004`, target ≤ 25 pp) |
 | | **Ops — 7d, CF Workers analytics** | | wall-time, all routes (not `/ask`-only) |
@@ -76,6 +76,22 @@ few-shot), not retrieval. Value-retrieval is demoted + privacy-gated.
 
 ## Deltas (recent runs)
 
+- 2026-06-20 (run 33) — **Engine: Spider external-knowledge injection shipped
+  (`SK-QUAL-016`) — fixes a measured handicap on the worst number.** Worst
+  number is engine (Spider 0.1852); BIRD 06-19 + Spider 06-17 both < 7 d so §5
+  forbids a back-to-back dispatch, and both open PRs own a lane (#435 E-03 RLS
+  docs, #436 `nlq remember` CLI) — the clean non-colliding engine lever is the
+  Spider loader (`tools/eval/`, untouched by either). The loader parsed
+  `external_knowledge` but **dropped the doc body**, so Spider questions got no
+  provided context while BIRD injects `evidence`. Measured offline: **13/135
+  `local###` (9.6%)** carry a dropped doc (haversine, RFM, music-length,
+  f1-overtake, …) across 8 DBs — the docs *are* the answer, so these are
+  unanswerable, not hard. `loadExternalKnowledge` now injects the `<name>.md`
+  body through `evidence` → `enrichedGoal` (cache-authoritative, fail-soft,
+  traversal-gated). **Δ:** 13/135 addressable handicap closed; EX delta measured
+  by the next canonical Spider dispatch (`SK-QUAL-002`). KPI: **engine quality**;
+  none degraded — no runner/scorer/chain change, BIRD 06-19 + Spider 06-17
+  untouched, perf N/A; 29 spider2-lite tests green (was 24).
 - 2026-06-20 (run 32) — **Engine-track finding + plan correction: E-03's
   documented scoping mechanism is infeasible; redirected to RLS before a future
   agent builds the fragile version (SK-PIVOT-009).** Worst number is still
@@ -188,111 +204,20 @@ few-shot), not retrieval. Value-retrieval is demoted + privacy-gated.
   scorecard ticks, no code path / engine / chain / scorer / eval touched;
   BIRD 06-19 + Spider 06-17 untouched; performance N/A. Artifact: the post
   itself (this entry).
-- 2026-06-20 (run 29) — **E-01 run 1/2: shipped the `agent_memory_v1` schema
-  preset module** (engine track 0 → **🟡 1/2**). New
-  `apps/api/src/db-create/presets/agent-memory-v1.ts`: `agentMemoryV1Ddl(schemaName)`
-  emits the four canonical tables (`facts` / `episodes` / `entities` /
-  `entity_facts`) as deterministic, schema-qualified **plain DDL** — not a
-  `SchemaPlan` (the shape needs multi-column UNIQUE, a composite-PK link table,
-  `ON DELETE CASCADE`, `TEXT[]` + GIN, beyond the LLM-inferred grammar;
-  SK-PIVOT-006/007), authored to pass the same `sql-validate-ddl` validator the
-  LLM path uses (SK-HDC-006; the test asserts `{ ok: true }`). `embedding
-  VECTOR` deferred to E-05; `AGENT_MEMORY_V1_COLUMNS` pins the contract
-  (SK-PIVOT-007). **Additive + unreferenced** (rollback = delete the file);
-  `{ preset }` input, `MEMORY_PRESET` flag, classifier-skip, and `versionTag →
-  schema_hash` are run 2. Detail in worksheet E-01. Gates: 8 new tests green,
-  typecheck + biome clean. KPI: **onboarding** (GLOBAL-025); none degraded — no
-  request path / chain / scorer / eval touched.
-- 2026-06-20 (run 28) — **WS-06 run 2/2: shipped the capability-matrix render
-  component — WS-06 closed** (`apps/web/src/components/AgentMemoryMatrix.astro`).
-  Pivot **6 → 7/20**; messaging track **6 → 7/13** (on top of WS-10, also run 28);
-  WS-06 🟡 1/2 → **✅**. Engine
-  lane still blocked (BIRD 06-19 + Spider 06-17 both < 7 d; §5 forbids a
-  back-to-back eval dispatch), so the in-bounds lever is funnel/distribution; per
-  the pivot INDEX pickup rule WS-06 was the lowest-numbered in-progress worksheet
-  (🟡, prereq WS-01 ✅) and run 1 (#425) shipped its data, so run 2 is the render.
-  Renders the run-27 `AGENT_MEMORY_MATRIX` (9 honest rows, Mem0 · Zep · Letta ·
-  nlqdb) as a **four-up glyph grid** in the brand vocabulary (acid-lime accent on
-  dark, JetBrains Mono, `✓/◐/—` shared with `/vs/<slug>`): nlqdb is the
-  accent-railed, faintly-tinted column so the all-✓ wedge reads as one bright
-  line; capability notes sit as muted sub-lines (keeps the glyph columns tight);
-  legend + `MATRIX_VERIFIED_ON` footer. **Live text, no `<img>`** (SK-PIVOT-004) —
-  the shape survives copy-paste and is liftable by AI search. Optional `heading`
-  prop for the two reuse sites (`/agents` WS-07, blog WS-09). **Additive +
-  unreferenced** until WS-07 wires it onto a page (rollback = delete the file);
-  astro-check still type-checks it. **This closes WS-06 → unblocks WS-07**
-  (`/agents` landing, prereq now met). Gates: web **126** tests (data invariants
-  unchanged), astro-check **0/0/0** (73 files), biome clean on the new component.
-  KPI: **onboarding / UX** (GLOBAL-025) — the wedge's most persuasive
-  comprehension asset is now a renderable surface; **none degraded** (additive
-  component, no code path / engine / chain / scorer touched; BIRD 06-19 + Spider
-  06-17 untouched; performance N/A — static markup). Artifact: an X/Bluesky
-  "one bright column" thread appended to the distribution queue (teaser for the
-  run-27 Show HN matrix post). Next pivot lever is WS-07 (`/agents` landing).
-- 2026-06-20 (run 28) — **WS-10: FSL self-host messaging shipped** (WS-10 ⬜ →
-  **✅**). Engine lane blocked (BIRD 06-19 + Spider 06-17 both < 7 d; §5 forbids
-  a back-to-back eval dispatch), so the in-bounds lever is funnel/distribution.
-  **Copy only** (SK-PIVOT-005): added a self-host band to `/pricing` (mirrors the
-  BYOLLM callout, zero new CSS) and a "Self-host the source" line to the README
-  "Models & plans" section — both stated truthfully under **FSL-1.1-ALv2**
-  (source-available, self-hostable for non-competing use, BYO key 0% markup, no
-  per-call fees, auto-converts to Apache 2.0 after 2 yr). Honors the WS-11 note:
-  **no turnkey `docker compose up`/running-image claim** until the container
-  ships. Done-when box 2 ("no remaining 'Apache-2.0 today' claim about nlqdb")
-  was already clean — README license + manifesto are FSL-accurate and the
-  `competitors.ts` "Apache-2.0" mentions are factual statements about
-  *competitors* (Letta/Wren). KPI: **onboarding / UX** (GLOBAL-025) — an honest
-  self-host on-ramp for the self-hosted-agent crowd; **none degraded** (copy on
-  existing surfaces — no code path, engine, chain, or scorer touched; BIRD 06-19
-  + Spider 06-17 untouched; performance N/A). Artifact: a dev.to/r/selfhosted
-  "what FSL-1.1 means for self-hosting nlqdb" note appended to the distribution
-  queue.
-- 2026-06-20 (run 27) — **WS-06 run 1/2: shipped the agent-memory capability
-  matrix data** (`apps/web/src/data/agentMemoryMatrix.ts`). WS-06 ⬜ → **🟡 1/2**
-  (data ✅, render component pending — run 2). Engine lane blocked (BIRD 06-19 +
-  Spider 06-17 both < 7 d; §5 forbids a back-to-back eval dispatch); WS-03 (#423)
-  and WS-05 (#424) merged ahead of this run, so per the pivot INDEX pickup rule
-  WS-06 is the lowest-numbered ⬜ with its prereq (WS-01 ✅) met — it adds a
-  brand-new file. New typed structure per **SK-PIVOT-001** (a four-column matrix,
-  *not* a hacked single-`them` `/vs` template): `MatrixRow { capability; mem0;
-  zep; letta; nlqdb; note? }` reusing `ComparisonClaim`, 9 honest rows +
-  `MATRIX_VERIFIED_ON = 2026-06-19`. Rows ordered so the table's shape is the
-  argument: recall is table stakes (all four ✓), the analytical wedge (top-N,
-  GROUP BY/JOIN/HAVING, per-group aggregation, time-window, schema design, diff
-  preview) is nlqdb-only. **Honesty correction vs the aspirational framing doc**
-  (P2 / AEO): the self-host row is sourced from WS-01's web-verified
-  `competitors.md §4` — Mem0 / Letta / LangMem are OSI-licensed (✓), Zep
-  self-hosts only the Graphiti engine (◐), and nlqdb is FSL source-available, not
-  yet OSI (◐, GLOBAL-019) — *not* the framing doc's "nlqdb ✓ / others ❌".
-  `agentMemoryMatrix.test.ts` locks the invariants (every cell a valid claim, ≥5
-  nlqdb-only wedge rows, recall is table stakes, verifiedOn < 60 d). Gates: web
-  **122 → 126** tests, astro-check 0/0/0, biome lint clean. KPI: **onboarding /
-  UX** (GLOBAL-025) — the matrix is the wedge's most persuasive comprehension
-  asset (renders in run 2 on `/agents` + the blog); **none degraded** (additive,
-  unreferenced file — no code path, engine, chain, or scorer touched; BIRD 06-19
-  + Spider 06-17 untouched; performance N/A). Pivot counters unchanged at
-  **5/20** + **5/13** (WS-06 is a half-step; the worksheet ticks ✅ only at run 2
-  render). Artifact: a "comparison table" Show-HN/Reddit draft appended to the
-  distribution queue (seeds the WS-09 HN post).
-- 2026-06-20 (run 26) — **WS-05: analytics-over-agent-memory carousel slides**
-  (Pivot messaging track 4 → **5/13**; Pivot 4 → **5/20**). Engine lane blocked
-  (BIRD 06-19 + Spider 06-17 both < 7 d; §5 forbids a back-to-back eval
-  dispatch), so the in-bounds lever is funnel/distribution. WS-03 closed in the
-  prior run (run 25), so per the pivot INDEX pickup rule WS-05 is the
-  lowest-numbered ⬜ with prereqs (none) met — it touches only
-  `apps/web/src/data/showcase-examples.ts`. Added two `read` slides on the home
-  carousel against an `agent_memory`-style table:
-  `read-agent-memory-by-category` (`GROUP BY category … ORDER BY facts DESC`) and
-  `read-agent-memory-top-recalled` (`GROUP BY content … ORDER BY recalls DESC
-  LIMIT 5`), both MCP surface (`db_agents`). The wedge — *the math runs in
-  Postgres, not as arithmetic in the model's head* — now rotates through the
-  home's headline visual alongside the existing recall slide. **Data-only**,
-  additive, reuses the existing typewriter mechanism; brand/animation untouched.
-  `@nlqdb/web` 122 tests · astro-check 0/0/0 · biome clean. KPI: onboarding
-  / UX (carousel comprehension for the agent-builder reader); engine + perf
-  untouched (BIRD 06-19 / Spider 06-17 unchanged). Artifact: an X/Bluesky
-  "your agent's memory should be able to GROUP BY" thread appended to the
-  distribution queue. Next pivot lever is WS-06 (capability matrix).
+- 2026-06-20 (runs 26–29) — agent-memory pivot wave (all closed/merged,
+  additive; no engine/chain/scorer touched; BIRD 06-19 + Spider 06-17 untouched).
+  Engine lane blocked all four (both evals < 7 d, §5), so each picked the
+  lowest-numbered in-bounds pivot slice: **WS-05** (run 26) two analytics-over-memory
+  home-carousel `read` slides (`GROUP BY`/top-N over an `agent_memory` table;
+  data-only `showcase-examples.ts`); **WS-06** (runs 27+28) the Mem0·Zep·Letta·nlqdb
+  capability matrix — data `agentMemoryMatrix.ts` (9 honest rows, SK-PIVOT-001,
+  self-host row honesty-corrected vs the framing doc) then the `AgentMemoryMatrix.astro`
+  four-up glyph render (live text, no `<img>`, SK-PIVOT-004) → WS-06 ✅, unblocks
+  WS-07; **WS-10** (run 28) FSL-1.1 self-host copy on `/pricing` + README
+  (SK-PIVOT-005, no turnkey-image claim); **E-01** (run 29) the `agent_memory_v1`
+  preset DDL module (`agent-memory-v1.ts`, plain DDL through `sql-validate-ddl`,
+  SK-PIVOT-006/007). Counters reached pivot 9/20, messaging 7/13, engine 1/2.
+  Per-slice detail in the WS/E worksheets; drafts queued in `distribution-queue.md`.
 - 2026-06-20 (run 25) — **WS-03 run 2/2: shipped the analytical sibling solve page
   `/solve/analytical-queries-over-agent-memory` — WS-03 closed** (Pivot messaging
   track 3 → **4/13**; Pivot 3 → **4/20**; solve pages 5 → **6**). Engine lane
