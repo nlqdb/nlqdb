@@ -56,7 +56,8 @@ chain-exhaustion `no_sql`; reasoning EX isolates SQL quality from capacity. T18
 (value-retrieval) down — measured, not inferred:** `literal_diff` is the
 *largest* tag (90, 38%), yet `literal_case_only` is **6** and **`literal_only`
 is 0** — *no* mismatch is recoverable by fixing string literals alone (each
-co-occurs with a structural error; of the 90, ~16 date-encoding + ~68
+co-occurs with a structural error; of the 90, the date-encoding sub-axis is
+`date_literal_only` **2** total but **0 standalone** — see §4 #2c — so ~88 are
 categorical value diffs riding a wrong column/predicate/grain). That falsifies
 the "additive, do-first" read the `SK-QUAL-015` column-name ceiling (12.8%)
 implied (§4 #2). **Schema-link recall is *not* the bottleneck either**
@@ -130,12 +131,14 @@ agent-runnable; promote into an `SK-*`/`GLOBAL-*` before implementing
      ~87%-capped; its win is mainly Spider distractor removal (T19:
      0.15→0.25). Gate: run `SK-QUAL-015` against introspected DDL for
      per-column recall ≥ a T19-grade floor before wiring into `buildPlanUser`.
-   - **2c. Date-literal normalisation directive (new, surfaced by the literal
-     axis).** ~16 of the 90 literal diffs are date-encoding errors
-     (`'2019-8-20'` vs `'2019-08-20'`, `LIKE '2019-10-08%'` vs `=`). A single
-     `PLAN_DIRECTIVES` bullet (the T13–T16 precedent) is the cheap probe — but
-     these co-occur with structural diffs too, so size the standalone win
-     before shipping.
+   - **2c. Date-literal normalisation directive — FALSIFIED standalone
+     2026-06-20.** The `SK-QUAL-014` classifier gained a date sub-axis
+     (`canonDate` + `isDateLiteralOnly`: structure mask-identical and the literal
+     diff vanishes once date heads are zero-padded / trailing-`%` stripped).
+     Offline on the same 238-mismatch 06-19 baseline: `date_literal_only` = **2**
+     total, **0 standalone** (the "~16" eyeball over-counted; e.g. `LIKE '…%'` vs
+     `= '…'` needs an operator change too). A directive flips ~0 rows ⇒ parked,
+     same verdict as #2a — the path to the floor is the reasoning levers (#3/#1).
 3. **Self-consistency majority vote (N=3, free tokens) — now the top
    reasoning lever.** Sample 3 plans at temperature > 0 on a separate code
    path, execute, majority-vote the result set. Directly attacks the dominant

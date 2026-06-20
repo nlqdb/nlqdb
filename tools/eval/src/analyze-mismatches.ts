@@ -43,6 +43,38 @@ export function isLiteralOnly(predictedSql: string, goldSql: string): boolean {
   );
 }
 
+// Canonicalise a date-shaped string literal to zero-padded `YYYY-MM-DD`,
+// stripping one trailing LIKE wildcard. Non-date literals pass through
+// unchanged. So `'2019-8-20'`, `'2019-08-20'`, and `'2019-08-20%'` all collapse
+// to `2019-08-20` — the date-encoding equivalence the §4 #2c directive targets.
+// A time component is preserved (only the date head is padded) so a date-only
+// vs datetime literal is **not** falsely equated.
+const DATE_RE = /^(\d{4})-(\d{1,2})-(\d{1,2})(.*?)%?$/;
+export function canonDate(lit: string): string {
+  const m = lit.match(DATE_RE);
+  if (!m) return lit;
+  return `${m[1]}-${(m[2] ?? "").padStart(2, "0")}-${(m[3] ?? "").padStart(2, "0")}${m[4] ?? ""}`;
+}
+
+// True when the SQL structure is correct and the *only* error is date-encoding
+// of string literals — i.e. canonicalising every literal's date head makes the
+// literal multisets match while the masked structure is already identical. This
+// sizes the §4 #2c date-normalisation directive's **standalone** ceiling: a
+// `date_literal_only` mismatch is one a single PLAN_DIRECTIVES bullet could flip
+// without any reasoning change. The masked-structure guard keeps `LIKE '…%'` vs
+// `= '…'` out — that needs an operator change too, so it is not date-only.
+export function isDateLiteralOnly(predictedSql: string, goldSql: string): boolean {
+  const mask = (s: string): string => norm(s).replace(/'(?:[^']|'')*'/g, "'?'");
+  const dc = (xs: string[]): string => multiset(xs.map(canonDate));
+  const pLits = literalsIn(predictedSql);
+  const gLits = literalsIn(goldSql);
+  return (
+    multiset(pLits) !== multiset(gLits) &&
+    dc(pLits) === dc(gLits) &&
+    mask(predictedSql) === mask(goldSql)
+  );
+}
+
 // `"name"` / `` `name` `` / `[name]` / bare — the four quoting forms our
 // dialects emit. Bare-word-only matching undercounts quoted tables.
 const TABLE_RE = /\b(?:from|join)\s+(?:"([^"]+)"|`([^`]+)`|\[([^\]]+)\]|([a-z_][\w]*))/g;
@@ -126,6 +158,11 @@ export function classifyMismatch(predictedSql: string, goldSql: string): string[
     tags.push("literal_diff");
     const ci = (xs: string[]): string => multiset(xs.map((x) => x.toLowerCase()));
     if (ci(gLits) === ci(pLits)) tags.push("literal_case_only");
+    // Date-encoding sub-class of the literal diff (§4 #2c): the whole literal
+    // diff vanishes once date heads are canonicalised (`'2019-8-20'` vs
+    // `'2019-08-20'`). A directive, not value-sampling, fixes these.
+    const dc = (xs: string[]): string => multiset(xs.map(canonDate));
+    if (dc(gLits) === dc(pLits)) tags.push("date_literal_only");
   }
 
   if (tags.length === 0) tags.push("other_predicate_or_value");
@@ -143,7 +180,13 @@ type GoldEntry = { question_id?: number; SQL?: string; sql?: string };
 export function histogram(
   results: Array<{ question_id: number; outcome: string; predicted_sql: string }>,
   gold: GoldEntry[],
-): { joined: number; total: number; tally: Array<[string, number]>; literalOnly: number } {
+): {
+  joined: number;
+  total: number;
+  tally: Array<[string, number]>;
+  literalOnly: number;
+  dateLiteralOnly: number;
+} {
   const goldById = new Map<number, GoldEntry>();
   gold.forEach((g, i) => {
     goldById.set(g.question_id ?? i, g);
@@ -152,12 +195,14 @@ export function histogram(
   const counts = new Map<string, number>();
   let joined = 0;
   let literalOnly = 0;
+  let dateLiteralOnly = 0;
   for (const r of mism) {
     const g = goldById.get(r.question_id);
     if (!g) continue;
     joined++;
     const goldSql = g.SQL ?? g.sql ?? "";
     if (isLiteralOnly(r.predicted_sql, goldSql)) literalOnly++;
+    if (isDateLiteralOnly(r.predicted_sql, goldSql)) dateLiteralOnly++;
     for (const t of classifyMismatch(r.predicted_sql, goldSql)) {
       counts.set(t, (counts.get(t) ?? 0) + 1);
     }
@@ -167,6 +212,7 @@ export function histogram(
     total: mism.length,
     tally: [...counts.entries()].sort((a, b) => b[1] - a[1]),
     literalOnly,
+    dateLiteralOnly,
   };
 }
 
@@ -178,10 +224,16 @@ if (import.meta.main) {
   }
   const base = JSON.parse(await Bun.file(basePath).text());
   const gold = JSON.parse(await Bun.file(goldPath).text());
-  const { joined, total, tally, literalOnly } = histogram(base.results ?? [], gold);
+  const { joined, total, tally, literalOnly, dateLiteralOnly } = histogram(
+    base.results ?? [],
+    gold,
+  );
   console.info(`mismatches joined: ${joined} of ${total}`);
   console.info(
     `literal_only (recoverable by value-retrieval alone — structure correct, only string literals differ): ${literalOnly}`,
+  );
+  console.info(
+    `date_literal_only (recoverable by the §4 #2c date-normalisation directive alone — structure correct, only date-encoding of literals differs): ${dateLiteralOnly}`,
   );
   console.info("error-class tally (tags non-exclusive):");
   for (const [k, n] of tally) console.info(`  ${String(n).padStart(3)}  ${k}`);
