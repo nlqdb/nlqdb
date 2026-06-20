@@ -123,18 +123,18 @@ func buildRememberRequest(dbID, text string, f *rememberFlags) (api.RememberRequ
 		req.Payload = payload
 	case "episode":
 		if f.role == "" {
-			return req, errors.New("episode needs a speaker — pass `--role user` (or assistant/tool).")
+			return req, errors.New("episode needs a speaker — pass `--role user` (or assistant/tool)")
 		}
 		req.Kind = "episode"
 		req.Payload = map[string]any{"role": f.role, "content": text}
 	case "entity":
 		if f.subType == "" {
-			return req, errors.New("entity needs a type — pass `--type person` (or project/...).")
+			return req, errors.New("entity needs a type — pass `--type person` (or project/...)")
 		}
 		req.Kind = "entity"
 		req.Payload = map[string]any{"kind": f.subType, "canonical_name": text}
 	default:
-		return req, fmt.Errorf("unknown --kind %q — use fact, episode, or entity.", f.kind)
+		return req, fmt.Errorf("unknown --kind %q — use fact, episode, or entity", f.kind)
 	}
 	return req, nil
 }
@@ -192,13 +192,13 @@ func parseTTL(s string) (int, error) {
 	if rest, ok := strings.CutSuffix(s, "d"); ok {
 		days, err := strconv.ParseFloat(rest, 64)
 		if err != nil || days <= 0 {
-			return 0, fmt.Errorf("invalid --ttl %q — try 7d, 24h, or 30m.", s)
+			return 0, fmt.Errorf("invalid --ttl %q — try 7d, 24h, or 30m", s)
 		}
 		return int(days * 24 * 60 * 60), nil
 	}
 	d, err := time.ParseDuration(s)
 	if err != nil || d <= 0 {
-		return 0, fmt.Errorf("invalid --ttl %q — try 7d, 24h, or 30m.", s)
+		return 0, fmt.Errorf("invalid --ttl %q — try 7d, 24h, or 30m", s)
 	}
 	return int(d.Seconds()), nil
 }
