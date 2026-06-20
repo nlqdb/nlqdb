@@ -64,6 +64,7 @@ func New() *cobra.Command {
 
 	registerAsk(root, g)
 	registerRun(root, g)
+	registerRemember(root, g)
 	registerNew(root, g)
 	registerDB(root, g)
 	registerKeys(root, g)

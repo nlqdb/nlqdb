@@ -19,6 +19,7 @@ import (
 var known = map[string]struct{}{
 	"ask":        {},
 	"run":        {},
+	"remember":   {},
 	"new":        {},
 	"db":         {},
 	"keys":       {},

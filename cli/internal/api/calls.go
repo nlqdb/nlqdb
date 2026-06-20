@@ -26,6 +26,19 @@ func (c *Client) Run(ctx context.Context, req RunRequest) (*RunResponse, error) 
 	return &out, nil
 }
 
+// Remember hits POST /v1/memory/remember (E-02, SK-PIVOT-008) — the
+// agent-memory write verb. The server builds the deterministic
+// parameterised INSERT; the caller only supplies typed data. Rejected
+// with `wrong_preset` (409) unless the target DB is an `agent_memory_v1`
+// preset.
+func (c *Client) Remember(ctx context.Context, req RememberRequest) (*RememberResult, error) {
+	var out RememberResult
+	if err := c.do(ctx, http.MethodPost, "/v1/memory/remember", req, &out); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
 // ListDatabases hits GET /v1/databases. Empty list means a fresh tenant
 // — the create-path will fire on the next `nlq ask` per SK-ASK-009.
 func (c *Client) ListDatabases(ctx context.Context) ([]DatabaseSummary, error) {

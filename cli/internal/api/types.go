@@ -68,6 +68,31 @@ type RunResponse struct {
 	Trace    *Trace           `json:"trace"`
 }
 
+// RememberRequest mirrors @nlqdb/sdk's `RememberRequest` (E-02,
+// SK-PIVOT-008). The scope fields ride top-level (camelCase, matching
+// `validateRememberInput`); the per-kind shape rides nested `payload`.
+// Built by `nlq remember`; the server composes the parameterised INSERT.
+type RememberRequest struct {
+	DB         string         `json:"db"`
+	Kind       string         `json:"kind"`
+	Payload    map[string]any `json:"payload"`
+	EndUserID  string         `json:"endUserId,omitempty"`
+	ThreadID   string         `json:"threadId,omitempty"`
+	TTLSeconds int            `json:"ttlSeconds,omitempty"`
+}
+
+// RememberResult mirrors the SDK's `RememberResult` — the materialised
+// row's identity. `ID` is `string | number` on the wire (bigint identity
+// or upserted entity id), so it round-trips as `any`. `ExpiresAt` is
+// present only when the fact carried a TTL.
+type RememberResult struct {
+	Status         string `json:"status"`
+	ID             any    `json:"id"`
+	Kind           string `json:"kind"`
+	MaterialisedAt string `json:"materialised_at"`
+	ExpiresAt      string `json:"expires_at,omitempty"`
+}
+
 type DatabaseSummary struct {
 	ID            string  `json:"id"`
 	Slug          string  `json:"slug"`

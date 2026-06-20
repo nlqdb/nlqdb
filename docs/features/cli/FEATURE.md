@@ -11,7 +11,7 @@ when-to-load:
 
 **One-liner:** `nlq` command-line tool — verbs, OS-keychain credentials, device-flow auth.
 **Status:** partial (Phase 2) — bootstrap PR landed:
-- `cli/go.mod` + the goal-first data verbs: `ask`, `new`, bare `nlq "<goal>"`, `db list`, `db create`, `query`, `use`, `whoami`, `logout`, `mcp detect`, `update`, `--json`, `--version`.
+- `cli/go.mod` + the goal-first data verbs: `ask`, `run`, `remember`, `new`, bare `nlq "<goal>"`, `db list`, `db create`, `query`, `use`, `whoami`, `logout`, `mcp detect`, `update`, `--json`, `--version`.
 - Credential store (keychain + AES-GCM fallback with per-user salt) per `SK-CLI-009`.
 - State (`SK-CLI-013`, file-locked load-mutate-save) + config (`SK-CLI-010`).
 - Background update check (`SK-CLI-015`).
@@ -22,6 +22,8 @@ when-to-load:
 **BYOLLM verbs:** `nlq byollm set|status|clear` ship ([`SK-CLI-016`](decisions/SK-CLI-016-byollm-keychain.md)) — store your own provider key in the keychain so `nlq ask` dispatches through it at 0% markup ([`GLOBAL-026`](../../decisions/GLOBAL-026-llm-strategy-byollm-hosted-premium.md)). Signed-in only (the `x-nlq-byollm-key` lane, [`SK-LLM-021`](../llm-router/decisions/SK-LLM-021-byollm-header-wiring.md)); the CLI half of the `GLOBAL-003` surface-parity gap, SDK sibling of [`SK-SDK-010`](../sdk/decisions/SK-SDK-010-byollm-client-option.md).
 
 **Raw-SQL escape hatch:** `nlq run [--db <id>] <sql>` ships — backed by `POST /v1/run` ([`SK-SDK-009`](../sdk/FEATURE.md), [`GLOBAL-015`](../../decisions/GLOBAL-015-power-user-escape-hatch.md)). Same allow-list as `/v1/ask` (SELECT / INSERT / UPDATE / DELETE / WITH / EXPLAIN / SHOW); DDL still rejected. SQL can ride positional args or stdin (`cat schema.sql | nlq run --db finance`). `--db` resolution mirrors `nlq ask`: explicit flag wins, else the active DB from `state.json`.
+
+**Agent-memory write verb:** `nlq remember [--db <id>] [--kind fact|episode|entity] <text>` ships — backed by `POST /v1/memory/remember` ([`SK-CLI-018`](decisions/SK-CLI-018-remember-verb.md), wire/SDK/MCP counterpart [`SK-PIVOT-008`](../agent-memory-pivot/FEATURE.md)). The CLI half of the `GLOBAL-003` parity gap the agent-memory E-02 worksheet tracked. Positional `<text>` is the row's primary content; `--kind` selects the table (default `fact`); `--type` (fact category / entity type), `--role` (episode), `--tag` (repeatable, fact), `--ttl 7d` (fact expiry), `--end-user` / `--thread` (scope). The target must be an `agent_memory_v1` preset DB or the call returns `wrong_preset`. **Third data verb** — admitted under `GLOBAL-017` because it mirrors an already-justified third *endpoint* (SK-PIVOT-008's typed-plan trust boundary forbids routing memory writes through `nlq run`).
 
 Deferred to follow-up slices — gated on server endpoints that don't exist yet:
 - `nlq login` device-flow (needs `POST /v1/auth/device` per `SK-AUTH-004`).
@@ -64,6 +66,7 @@ Canonical bodies live in [`decisions/`](decisions/) — one file per `SK-CLI-NNN
 - [**SK-CLI-015**](decisions/SK-CLI-015-update-check.md) — Background update check ≤ once/day; stderr only; auto-off in CI; explicit `nlq update` for curl-installed binaries.
 - [**SK-CLI-016**](decisions/SK-CLI-016-byollm-keychain.md) — `nlq byollm set|status|clear` stores the BYOLLM key in the keychain; `nlq ask` rides it signed-in only (SDK sibling of `SK-SDK-010`).
 - [**SK-CLI-017**](decisions/SK-CLI-017-run-dry-run.md) — `nlq run --dry-run` previews raw writes (reusing the `/v1/ask` diff) without executing; default `nlq run` stays immediate (`GLOBAL-015`). Wire/server/SDK counterpart of `SK-SDK-012`.
+- [**SK-CLI-018**](decisions/SK-CLI-018-remember-verb.md) — `nlq remember` is the CLI's third data verb (positional `<text>` is the row content, `--kind` selects the table), mirroring the already-justified `/v1/memory/remember` endpoint (`SK-PIVOT-008`) for `GLOBAL-003` parity; the third-verb justification `GLOBAL-017` requires.
 
 ## GLOBALs governing this feature
 
@@ -76,6 +79,7 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 - **GLOBAL-011** — Honest latency — show the live trace; never spinner-lie.
 - **GLOBAL-012** — Errors are one sentence with the next action.
 - **GLOBAL-017** — Two endpoints, two CLI verbs, one chat box — one way to do each thing.
+  - *In this feature:* `nlq remember` ([`SK-CLI-018`](decisions/SK-CLI-018-remember-verb.md)) is a **third** data verb, admitted under GLOBAL-017's "explicit justification" clause: it mirrors the already-justified third *endpoint* `/v1/memory/remember` (SK-PIVOT-008 — memory writes can't ride `nlq run`'s raw-SQL hatch without breaking the typed-plan trust boundary), so it's parity for an existing operation, not a new one.
 - **GLOBAL-020** — No "pick a region", no config files in the first 60s.
 - **GLOBAL-023** — Trust UX baseline.
   - *In this feature:* `nlq` prints the diff in TTY mode and as a JSON field in `--json` mode (per `SK-TRUST-001`); every `nlq ask` response prints the compiled SQL under a `─ trace ─` separator (per `SK-TRUST-002`); `low_confidence` refusals offer arrow-key disambiguation (per `SK-TRUST-003`). See [`trust-ux/FEATURE.md`](../trust-ux/FEATURE.md).
@@ -91,6 +95,7 @@ Canonical text in [`docs/decisions/`](../../decisions/) (one file per GLOBAL; in
 - **`nlq chat` REPL.** A separate slice; intentionally deferred because the typed-line UX is non-trivial and the bootstrap focuses on the goal-first single-command path.
 - **`nlq keys rotate`.** `list` + `revoke` ship. Rotation needs `POST /v1/keys/:id/rotate` plus the 60-day grace + webhook + events-pipeline rotation event per [`SK-APIKEYS-005`](../api-keys/decisions/SK-APIKEYS-005-rotation-grace.md). Lands as one slice with those.
 - **`nlq connection <db>` for hosted Postgres.** Wants a raw `postgres://…` URL on `GET /v1/databases` rows. Today the SDK returns it on the create response only. The unblock is one API field; the CLI verb is one cobra command.
+- **`nlq new --preset agent_memory_v1`.** `nlq remember` (SK-CLI-018) writes to a memory-preset DB, but `nlq new` routes through `/v1/ask`'s create branch, not the preset endpoint (`POST /v1/databases { preset }`, behind the `MEMORY_PRESET` flag — E-01/SK-HDC-020). Until the CLI calls that endpoint, a memory DB is created via the SDK/MCP `db.create` preset. The unblock is one API client call + a `--preset` flag; the natural companion slice to `remember`.
 - **Windows experience.** The bootstrap PR cross-compiled to windows/amd64 and the binary builds, but Windows shell quirks (cmd, PowerShell), the Credential Manager backend, and `~/.config` semantics under `APPDATA` need a manual round-trip on real hardware. Per-platform quirks land in `cli/AGENTS.md` once they're observed.
 - **`nlq mcp install` for hosts not yet covered by SK-CLI-011.** New MCP hosts emerge regularly. Add-a-host recipe in `cli/AGENTS.md` so the supported list grows without re-architecting `cli/internal/mcphosts/` — runbook concern, not a design decision.
 

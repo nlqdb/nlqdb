@@ -110,6 +110,20 @@ func (w *Writer) WriteRun(resp *api.RunResponse) error {
 	return nil
 }
 
+// WriteRemember renders `/v1/memory/remember` responses (E-02). Human
+// mode confirms the materialised row + any expiry; JSON mode passes the
+// envelope straight through for programmatic callers.
+func (w *Writer) WriteRemember(resp *api.RememberResult) error {
+	if w.Format == FormatJSON {
+		return w.JSON(resp)
+	}
+	fmt.Fprintf(w.Out, "✓ Remembered %s #%v.\n", resp.Kind, resp.ID)
+	if resp.ExpiresAt != "" {
+		fmt.Fprintf(w.Out, "  expires %s\n", resp.ExpiresAt)
+	}
+	return nil
+}
+
 func (w *Writer) WriteDatabases(rows []api.DatabaseSummary) error {
 	if w.Format == FormatJSON {
 		return w.JSON(map[string]any{"databases": rows})

@@ -119,91 +119,51 @@ few-shot), not retrieval. Value-retrieval is demoted + privacy-gated.
   **none degraded** — docs-only, no code path / engine / chain / scorer / eval
   touched; BIRD 06-19 + Spider 06-17 untouched; perf N/A. Artifact: the
   "scoping is RLS, not query-rewriting" technical note (queue, run 32).
-- 2026-06-20 (run 31) — **WS-07 run 2/3: embedded the matrix + trust-boundary
-  moat + FSL band on `/agents`** (#433; WS-07 🟡 1/3 → **2/3**; pivot holds at
-  8/20 until run 3). Engine lane blocked (BIRD 06-19 + Spider 06-17 < 7 d);
-  additive markup in `pages/agents/index.astro` only. Gates: astro-check
-  0/0/0 (74), web 126, biome clean. KPI: onboarding / UX; none degraded
-  (no code/engine/chain/scorer/eval touched). Next: WS-07 run 3 (CTA +
-  GLOBAL-024 demand-signal).
-- 2026-06-20 (run 31) — **§4 #2c date-normalisation directive FALSIFIED
-  standalone** (offline classifier sizing, no eval dispatch; #434). Added a
-  date-encoding sub-axis to `SK-QUAL-014`; on the 06-19 BIRD baseline
-  `date_literal_only` = 2 total, **0 standalone** — every date diff co-occurs
-  with a structural error ⇒ #2c parked (same verdict as #2a); reasoning levers
-  (#3/#1) are the path to the floor. KPI: engine quality; none degraded (EX
-  untouched, 21 eval tests green).
-- 2026-06-20 (run 31) — **E-02: `nlqdb_remember` write primitive shipped —
-  E-02 closed** (engine track 1 → **2/7**; Pivot 8 → **9/20**; #432).
-  SK-PIVOT-008: server-built deterministic parameterised `INSERT` via
-  `POST /v1/memory/remember` (never `/v1/run` — trust boundary),
-  `wrong_preset` (409) guard, `agent_id` = tenant id until E-03; SDK
-  `remember()` + `nlqdb_remember` tool (GLOBAL-003 parity), CLI fast-follow.
-  Gates: API 840 / MCP 36 / SDK 52, typecheck + biome clean. KPI: onboarding /
-  engine quality; none degraded (additive, BIRD/Spider untouched).
-- 2026-06-20 (run 30) — **WS-07 run 1/3: shipped the `/agents` skeleton + hero**
-  (`pages/agents/index.astro`): agent-memory hero, AEO direct-answer block,
-  retrieval-vs-analytics split, own SEO/canonical, added to `sitemap.xml.ts`.
-  Sitewide lead strings (`Hero.astro`, README, `llms.txt`) untouched (WS-13
-  gate). Onboarding/UX KPI; none degraded.
-- 2026-06-20 (run 30) — **E-01 run 2/2: wired the `agent_memory_v1` preset into
-  the create request path — E-01 closed** (engine track **0 → 1/7**; Pivot
-  **7 → 8/20**; E-01 🟡 1/2 → **✅**). Lever choice: the worst number is engine
-  (Spider 0.1852), but BIRD 06-19 + Spider 06-17 are both < 7 d so §5 forbids a
-  back-to-back eval dispatch; the in-bounds engine lever is the pivot **engine
-  track**, and E-01 was the lowest-numbered in-progress slice (🟡, prereqs met),
-  so run 1 (#428, the module) → run 2 (this, the wiring). **SK-HDC-020:**
-  `DbCreateArgs.preset?: MemoryPreset`; the orchestrator branches on it to skip
-  `classifyEngine`/`inferSchema`/`compileDdl` (no LLM, no token cost, zero
-  schema-design friction) and source `engine` (pinned `postgres`), the typed
-  `plan` (new `agentMemoryV1Plan()` projection — metadata only: RLS table list,
-  recent-tables MRU, FK summary, a version-keyed `schema_hash`), and the `ddl`
-  (`agentMemoryV1Ddl`) from the preset, then **shares steps 4–7**
-  (validate → provision → MRU → embed → mint) with the inferred path so
-  **SK-HDC-003 defense-in-depth is unchanged** (the hand-authored DDL still
-  passes `validateCompiledDdl` + the provisioner). `POST /v1/databases` accepts
-  `{ preset }` gated behind the **`MEMORY_PRESET`** flag (clean rollback;
-  `preset_disabled` / `invalid_preset` / `preset_engine_conflict` rejections;
-  no goal required). A contract test pins the projection's tables/columns to
-  `AGENT_MEMORY_V1_COLUMNS` so it can't drift from the executable DDL.
-  **Additive + opt-in** — the generic goal-string create path is untouched
-  (dual front door, GLOBAL-036). Gates: orchestrate (38) + preset-contract (13)
-  tests green, **824 API tests** green, typecheck + biome clean; FEATURE.md
-  net-shrunk (D4) by externalizing SK-HDC-013's body. One follow-on tracked:
-  the quality-eval preset-path ablation row (Neon-branch gated). KPI:
-  **onboarding** (GLOBAL-025 — an agent gets a working memory DB with zero
-  schema design); **none degraded** (additive, flag-gated, no engine/chain/
-  scorer/eval touched; BIRD 06-19 + Spider 06-17 untouched; performance: the
-  preset path is *faster* than inferred create — it skips two LLM calls).
-  Artifact: a "give your AI agent a real memory database in one call" dev.to /
-  Show-HN draft appended to the distribution queue. Next engine lever is **E-02**
-  (`nlqdb_remember` MCP tool, prereq E-01 now ✅).
-- 2026-06-20 (run 30) — **WS-09 run 2/2: drafted the launch post "Why agent
-  memory should be a database, not a vector store"** (WS-09 ⬜ → **🟡 1/2**;
-  blog-draft box ✅, live `/agents` demo deferred). Engine lane blocked (BIRD
-  06-19 + Spider 06-17 both < 7 d; §5 forbids a back-to-back eval dispatch) and
-  the engine track's in-progress slice (E-01) + the lowest open messaging
-  worksheet (WS-07 `/agents`) are **both in flight** on open PRs (#429, #430) —
-  so per the pivot INDEX pickup rule the in-bounds, non-colliding lever is
-  WS-09's **run 2** (the post touches only `distribution-queue.md`); run 1 (the
-  `<nlq-data>` demo) collides with the WS-07 page on #430 and is deferred until
-  it merges. The post walks the **web-verified** Replit July-2025 prod-DB-wipe
-  postmortem (P2: [Fortune](https://fortune.com/2025/07/23/ai-coding-tool-replit-wiped-database-called-it-a-catastrophic-failure/),
-  [AI Incident DB #1152](https://incidentdatabase.ai/cite/1152/)) → why vector
-  recall can't `GROUP BY` → the typed-plan trust boundary (LLM emits JSON, never
-  SQL; compiler + `libpg_query` re-parse + diff preview) → **measured**
-  BIRD 0.52 / Spider 0.1852 *with the sub-target gap shown* (from
-  `eval-baseline.ts`, not a frontier cherry-pick) → open `tools/eval/` harness;
-  embeds the WS-06 matrix and corrects the framing doc's over-claims (FSL-1.1
-  not Apache-2.0; self-host honestly ◐). Number moved: **WS-09 ⬜ → 🟡 1/2**
-  (launch-post box ✅); the messaging closed count holds at 7/13 and the pivot
-  at 8/20 — WS-09 closes (and the count ticks) at run 1 when the live demo
-  ships. KPI: **onboarding / UX**
-  (GLOBAL-025) — the wedge's centrepiece distribution artifact; **none
-  degraded** — draft-only edit to `distribution-queue.md` + worksheet/INDEX/
-  scorecard ticks, no code path / engine / chain / scorer / eval touched;
-  BIRD 06-19 + Spider 06-17 untouched; performance N/A. Artifact: the post
-  itself (this entry).
+- 2026-06-20 (run 32) — **E-02 GLOBAL-003 parity closed: shipped CLI `nlq
+  remember`** (engine track holds at 2/7 — E-02 was already ✅; this completes
+  its surface parity HTTP/SDK/MCP → **+CLI**). Lever choice: worst number is
+  engine (Spider 0.1852), but BIRD 06-19 + Spider 06-17 are both < 7 d so §5
+  forbids a back-to-back eval dispatch; the in-bounds engine lever is the pivot
+  **engine track**. The only open PR (**#435**) owns the **E-03 RLS finding** and
+  is rewriting the E-03/E-04 worksheets + engine INDEX — so E-04 would collide;
+  the clean non-colliding engine slice is E-02's tracked CLI fast-follow.
+  **SK-CLI-018:** `nlq remember [--db] [--kind fact|episode|entity] <text>` wraps
+  `POST /v1/memory/remember` — positional text is the row content, `--kind`
+  selects the table, `--type`/`--role`/`--tag`/`--ttl 7d`/`--end-user`/`--thread`
+  fill the rest; `wrong_preset` rejects non-memory DBs (GLOBAL-012). Admitted as
+  a **third data verb** under GLOBAL-017's explicit-justification clause: it
+  mirrors the already-justified third *endpoint* (SK-PIVOT-008 — memory writes
+  can't ride `nlq run`'s raw-SQL hatch without breaking the typed-plan trust
+  boundary), so it's parity, not surface bloat. **Δ:** GLOBAL-003 surface parity
+  for the memory-write verb 3/4 → **4/4 surfaces**. Gates: CLI build + `go vet`
+  clean, full `go test ./...` green (added `remember_test.go` builder/TTL units +
+  `api/remember_test.go` wire + `wrong_preset` httptest), gofmt clean. KPI:
+  **onboarding / engine quality** (GLOBAL-025) — an agent operator can now write
+  memory from a shell/cron, no SDK; **none degraded** (additive verb, no engine/
+  chain/scorer/eval touched; BIRD 06-19 + Spider 06-17 untouched; perf: one
+  parameterised INSERT, no LLM hop). Artifact: "Give your AI agent memory from
+  the terminal" dev.to/r/commandline draft queued. Next engine lever once #435
+  merges: **E-04** (TTL sweep, on the post-#435 RLS-corrected worksheet).
+- 2026-06-20 (run 31) — three closed slices (all additive; BIRD 06-19 + Spider
+  06-17 untouched): **E-02** `nlqdb_remember` write primitive shipped → E-02
+  closed (engine 1 → **2/7**; pivot 8 → **9/20**; #432, SK-PIVOT-008 —
+  server-built parameterised INSERT via `POST /v1/memory/remember`, never
+  `/v1/run`; SDK `remember()` + tool, CLI fast-follow); **WS-07 run 2/3**
+  embedded the matrix + trust-boundary moat + FSL band on `/agents` (#433,
+  WS-07 🟡 1/3 → **2/3**, markup-only); **§4 #2c date-normalisation directive
+  FALSIFIED standalone** (#434, offline classifier — `date_literal_only` 0
+  standalone, parked like #2a; reasoning levers #3/#1 next). Per-slice detail
+  in the WS/E worksheets + `progress/quality-score-verification-log.md`.
+- 2026-06-20 (run 30) — three closed slices (additive; BIRD 06-19 + Spider
+  06-17 untouched): **E-01 run 2/2** wired the `agent_memory_v1` preset into the
+  create request path → E-01 closed (engine **0 → 1/7**; pivot **7 → 8/20**;
+  SK-HDC-020 — `DbCreateArgs.preset` skips classify/infer/compile, shares the
+  validate→provision→mint tail so SK-HDC-003 holds, `POST /v1/databases
+  { preset }` behind `MEMORY_PRESET`); **WS-07 run 1/3** shipped the `/agents`
+  skeleton + hero (markup-only, WS-13 lead strings untouched); **WS-09 run 2/2**
+  drafted the "database, not a vector store" launch post (WS-09 🟡 1/2,
+  Replit-wipe → recall≠analytics → typed-plan boundary → measured BIRD 0.52 /
+  Spider 0.1852 + `tools/eval/` link). Per-slice detail in the WS/E worksheets.
 - 2026-06-20 (runs 26–29) — agent-memory pivot wave (all closed/merged,
   additive; no engine/chain/scorer touched; BIRD 06-19 + Spider 06-17 untouched).
   Engine lane blocked all four (both evals < 7 d, §5), so each picked the
