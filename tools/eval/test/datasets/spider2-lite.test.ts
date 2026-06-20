@@ -5,7 +5,7 @@ import { join } from "node:path";
 
 import { _testing, loadSpider2Lite } from "../../src/datasets/spider2-lite.ts";
 
-const { parseQuestionsJsonl, parseEvalJsonl, isSqliteRow } = _testing;
+const { parseQuestionsJsonl, parseEvalJsonl, isSqliteRow, loadExternalKnowledge } = _testing;
 
 const SAMPLE_JSONL = [
   JSON.stringify({
@@ -88,6 +88,51 @@ describe("isSqliteRow", () => {
     expect(isSqliteRow({ instance_id: "local../etc/passwd", db: "x", question: "q" })).toBe(false);
     expect(isSqliteRow({ instance_id: "local-003", db: "x", question: "q" })).toBe(false);
     expect(isSqliteRow({ instance_id: "localfoo", db: "x", question: "q" })).toBe(false);
+  });
+});
+
+describe("loadExternalKnowledge — SK-QUAL-016", () => {
+  const never = (async () =>
+    new Response("network must not be touched", { status: 500 })) as unknown as typeof fetch;
+
+  it("returns null when no external_knowledge is set", async () => {
+    expect(await loadExternalKnowledge(null, undefined, never)).toBeNull();
+    expect(await loadExternalKnowledge(undefined, undefined, never)).toBeNull();
+    expect(await loadExternalKnowledge("", undefined, never)).toBeNull();
+  });
+
+  it("rejects a path-traversal or non-.md filename without any read", async () => {
+    expect(await loadExternalKnowledge("../../etc/passwd", undefined, never)).toBeNull();
+    expect(await loadExternalKnowledge("sub/dir/doc.md", undefined, never)).toBeNull();
+    expect(await loadExternalKnowledge("haversine_formula.txt", undefined, never)).toBeNull();
+  });
+
+  it("reads the doc body from the cache dir when dataDir is set (cache-authoritative, no network)", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "nlqdb-spider2-doc-"));
+    try {
+      writeFileSync(join(dir, "RFM.md"), "  The RFM model scores R, F, M.  \n");
+      expect(await loadExternalKnowledge("RFM.md", dir, never)).toBe(
+        "The RFM model scores R, F, M.",
+      );
+      // Missing doc degrades to null without touching the (throwing) network.
+      expect(await loadExternalKnowledge("missing.md", dir, never)).toBeNull();
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("fetches the doc body from upstream when no dataDir is set; 404 degrades to null", async () => {
+    const fetchImpl = (async (input: RequestInfo | URL) => {
+      const url = input.toString();
+      if (url.endsWith("/documents/haversine_formula.md")) {
+        return new Response("# Haversine\n\nd = 2r·asin(...)\n", { status: 200 });
+      }
+      return new Response("", { status: 404 });
+    }) as unknown as typeof fetch;
+    expect(await loadExternalKnowledge("haversine_formula.md", undefined, fetchImpl)).toBe(
+      "# Haversine\n\nd = 2r·asin(...)",
+    );
+    expect(await loadExternalKnowledge("gone.md", undefined, fetchImpl)).toBeNull();
   });
 });
 
@@ -196,6 +241,23 @@ describe("loadSpider2Lite — disk cache layout (the CI cache-hit path)", () => 
     const local003 = loaded.questions.find((q) => q.instance_id === "local003");
     expect(local003?.spider2).toBeUndefined();
     expect(local003?.sql).toBe("");
+  });
+
+  it("injects the external-knowledge doc body into evidence (SK-QUAL-016), empty when none", async () => {
+    writeFileSync(join(execResultDir, "local003_a.csv"), "rfm\nA\n");
+    writeFileSync(join(execResultDir, "local005.csv"), "name\nWhisk\n");
+    const docsDir = join(dir, "resource", "documents");
+    mkdirSync(docsDir, { recursive: true });
+    writeFileSync(join(docsDir, "rfm_definition.md"), "RFM scores customers on R, F, M.\n");
+    const loaded = await loadSpider2Lite({
+      questionsJsonlPath: jsonlPath,
+      dataDir: dir,
+      fetchImpl: fetchAsserts,
+    });
+    const local003 = loaded.questions.find((q) => q.instance_id === "local003");
+    const local005 = loaded.questions.find((q) => q.instance_id === "local005");
+    expect(local003?.evidence).toBe("RFM scores customers on R, F, M.");
+    expect(local005?.evidence).toBe(""); // SAMPLE_JSONL local005 has no external_knowledge
   });
 
   it("never populates EvalQuestion.sql for Spider rows (multi-CSV-only path per SK-QUAL-008)", async () => {
