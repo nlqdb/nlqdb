@@ -88,7 +88,7 @@ Tick on merge. Keep this list as the durable pivot status (the scorecard's
 - [x] WS-06 — capability matrix: **data ✅** (2026-06-20, run 27 — `apps/web/src/data/agentMemoryMatrix.ts` + test, branch `claude/vibrant-newton-s9e2r2`); **render ✅** (2026-06-20, run 28 — `apps/web/src/components/AgentMemoryMatrix.astro`, branch `claude/vibrant-newton-rldywf`)
 - [ ] WS-07 — `/agents` landing
 - [ ] WS-08 — OG / social images
-- [ ] WS-09 — blog + live demo
+- [ ] WS-09 — blog + live demo (🟡 1/2 — blog draft ✅ 2026-06-20 run 30, branch `claude/vibrant-newton-wah6ow`; live `/agents` demo pending WS-07)
 - [x] WS-10 — FSL self-host messaging (2026-06-20, run 28 — branch `claude/vibrant-newton-fh8mgw`; pricing self-host band + README "Models & plans" self-host line, FSL-accurate, no turnkey-image claim per WS-11 note)
 - [ ] WS-11 — self-host container (infra-gated)
 - [ ] WS-12 — home reweight + demote personas
