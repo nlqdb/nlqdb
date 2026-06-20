@@ -5,6 +5,42 @@ One publishable artifact drafted per day by the daily agent
 publishes at the weekly session. Newest first. Delete an entry once published
 (the live URL goes into `docs/scorecard.md`).
 
+## 2026-06-20 (run 28) — note: "What FSL-1.1 actually means for self-hosting nlqdb" (dev.to / r/selfhosted)
+
+**Where:** a short dev.to / r/selfhosted / lobste.rs note for the
+self-hosted-agent crowd who reflexively distrust "source-available." One
+honest explainer, one nlqdb mention.
+
+**Title:** "Source-available" isn't a trap if you read the license — what FSL-1.1 means for self-hosting
+
+**Body:**
+
+> If you self-host your stack, "source-available" probably sets off an alarm —
+> it's often code for "open enough to read, locked enough to bill you later."
+> So here's nlqdb's license in plain terms, because the wedge is *honesty*, not
+> a clean OSI badge:
+>
+> - **FSL-1.1-ALv2** (Functional Source License — the Sentry / Convex pattern).
+> - You can **read, fork, and self-host** the engine, CLI, MCP server, and SDKs
+>   for **any non-competing use** — i.e. anything except standing up a hosted
+>   nlqdb competitor. Internal tools, your own agents, client work: all fine.
+> - **Bring your own LLM key at 0% markup.** No per-call fees to us, no pricing
+>   page on the open core.
+> - The license **auto-converts to Apache 2.0 two years after each release** —
+>   the future-license clause is in the LICENSE file, not a promise in a blog post.
+>
+> What we *won't* claim yet: there is no turnkey `docker compose up` image today.
+> The container (`ghcr.io/nlqdb/api`) is on the roadmap; until it ships, "self-host"
+> means the source, not a one-command box. We'd rather under-promise the image
+> than over-claim it — same reason every answer shows you the SQL it ran.
+
+**Why this is publishable:** the self-hosted crowd is a real distribution
+channel for an agent-memory DB, and the honest "here's what we *don't* have
+yet" framing is exactly the trust signal that converts skeptics (the
+ResearchReceipts "show your work" posture). Sourced from `LICENSE` +
+`GLOBAL-019` + `SK-PIVOT-005`. The copy now lives on `/pricing` + the README
+"Models & plans" section (WS-10); this note is the long-form version.
+
 ## 2026-06-20 (run 27) — comparison table: "What can your agent actually DO with its memory?" (Show HN / r/AI_Agents)
 
 **Where:** a Show HN / r/AI_Agents / r/LangChain post built around the

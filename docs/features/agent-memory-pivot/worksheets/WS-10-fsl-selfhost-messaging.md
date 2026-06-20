@@ -1,6 +1,6 @@
 # WS-10 — FSL self-host messaging
 
-**Status:** ⬜ not started
+**Status:** ✅ shipped (2026-06-20, run 28 — branch `claude/vibrant-newton-fh8mgw`)
 **Sequence:** 10 of 13 · **Risk:** low · **Runs:** 1 · **Prereqs:** none · **Gate:** none
 
 > The GLOBAL-019 + `architecture.md §0` doc-wording fix that used to live here
@@ -35,9 +35,14 @@ Distribution (resonates with the self-hosted-agent crowd) + doc-accuracy
 
 ## Done when
 
-- [ ] Self-host angle stated in FSL-accurate terms on `/agents` + pricing + README body.
-- [ ] No remaining "Apache-2.0 today" claim in user-facing copy.
-- [ ] INDEX tracker + status ticked.
+- [x] Self-host angle stated in FSL-accurate terms on pricing + README body
+  (run 28). `/agents` doesn't exist yet — WS-07 builds that page and will
+  carry this same FSL copy when it lands (it already references this worksheet).
+- [x] No remaining "Apache-2.0 today" claim about nlqdb in user-facing copy —
+  already clean: the README license + manifesto are FSL-accurate, and the
+  `competitors.ts` "Apache-2.0" mentions are factual statements about *competitors*
+  (Letta, Wren), each pairing nlqdb's own "FSL 1.1-ALv2 → Apache 2.0" line.
+- [x] INDEX tracker + status ticked.
 
 ## Artifact
 
