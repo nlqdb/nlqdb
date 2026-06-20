@@ -30,17 +30,19 @@ explicit-forget story closed).
 - A scheduled Cloudflare Worker (daily, low-rate) runs
   `DELETE FROM facts WHERE expires_at < NOW()` (and the same on `episodes`)
   for every memory-preset DB, scoped per-DB so failure is isolated.
-- Queries already see only non-expired rows via the compile-layer adding
-  `AND (expires_at IS NULL OR expires_at > NOW())` to memory-table reads
-  (a clean add — sits right next to the E-03 scope predicate).
+- Queries see only non-expired rows via the **`agent_isolation` RLS policy**
+  (E-03 / SK-PIVOT-009) gaining an `AND (expires_at IS NULL OR expires_at >
+  NOW())` clause in its `USING` expression — *not* a compile-layer predicate
+  (the read path is free-form LLM SQL; there is nothing to inject into). A
+  clean add on the same per-table policy E-03 creates.
 
 ## Steps
 
 1. Migration: confirm `expires_at` exists on `facts` and `episodes` (it
    does, from E-01's DDL).
-2. Compile-layer addition: include the `expires_at` clause on memory-table
-   reads. Update `sql-validate.ts` to allow this predicate alongside the
-   E-03 scope predicate.
+2. RLS addition: extend E-03's `agent_isolation` `USING` clause with
+   `AND (expires_at IS NULL OR expires_at > NOW())` on the read tables (no
+   compile-layer / `sql-validate` change — RLS, not query-rewriting).
 3. New cron Worker (or new schedule on `events-worker`) — daily 03:00 UTC.
    Batch `DELETE … RETURNING count(*)` per memory DB; emit
    `nlqdb.memory.expire` span + a `nlqdb.memory.expired_rows_total` counter.

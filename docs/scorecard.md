@@ -68,7 +68,7 @@ few-shot), not retrieval. Value-retrieval is demoted + privacy-gated.
 | | *Engine track — E-\** | 2 / 7 | pick when worst number is engine quality / agent on-ramp |
 | E-01 | `agent_memory_v1` schema preset for `db.create` | ✅ | run 29 module + run 30 wiring (SK-HDC-020): `db.create { preset: "agent_memory_v1" }` provisions the 4 tables deterministically, no LLM; gated behind `MEMORY_PRESET`. One follow-on: quality-eval ablation row (Neon-branch gated) |
 | E-02 | additive MCP tool `nlqdb_remember` (no rename) | ✅ | run 31 (SK-PIVOT-008): server-built deterministic parameterised INSERT via `POST /v1/memory/remember` (never `/v1/run` — trust boundary), `wrong_preset` guard, SDK `remember()`, `nlqdb_remember` tool. Follow-ons: e2e Neon smoke (infra) + CLI `nlq remember` (Go) |
-| E-03 | per-agent / end-user / thread compile-layer scoping | ⬜ | **high · security-critical** · ~2 runs · E-01 |
+| E-03 | per-agent / end-user / thread scoping — **RLS, not query-rewriting** (SK-PIVOT-009, mechanism corrected run 32) | ⬜ | **high · security-critical** · ~2 runs · E-01 · Neon-gated |
 | E-04 | TTL + cron sweep (`expires_at`) | ⬜ | low · 1 run · E-01 |
 | E-05 | hybrid recall — pgvector + `nlqdb_recall` | ⬜ | high · multi · E-01 · infra-gated |
 | E-06 | `/agents` CreateForm uses the preset | ⬜ | low · 1 run · E-01 + WS-07 |
@@ -76,68 +76,55 @@ few-shot), not retrieval. Value-retrieval is demoted + privacy-gated.
 
 ## Deltas (recent runs)
 
-- 2026-06-20 (run 31) — **WS-07 run 2/3: embedded the matrix + the moat on
-  `/agents`** (WS-07 🟡 1/3 → **2/3**; pivot count holds at 8/20 until run 3
-  closes the worksheet). Engine lane still blocked (BIRD 06-19 + Spider 06-17
-  both < 7 d) and both in-flight PRs already own a lane (#432 = E-02 engine,
-  #431 = WS-09 messaging in `distribution-queue.md`), so the lowest non-colliding
-  lever is WS-07 run 2 — touches only `pages/agents/index.astro`. Embeds the
-  WS-06 `AgentMemoryMatrix` (no `<img>`, glyphs are live text), a four-step
-  **typed-plan trust-boundary** pipeline (LLM → typed JSON plan → compiler emits
-  parameterised SQL → AST re-parse + verb/table allowlist (`libpg_query` on the
-  create path) → diff preview), sourced from the Replit-wipe (Fortune) + Cortex-Analyst (Snowflake)
-  receipts, and an FSL-1.1/BYO-key/no-per-call-fees band (FSL-accurate per
-  WS-10). Gates: astro-check **0/0/0** (74 files), web **126** tests, biome
-  clean; `/agents` builds. KPI: **onboarding / UX** (GLOBAL-025); **none
-  degraded** (additive markup, no code path / engine / chain / scorer / eval
-  touched; BIRD 06-19 + Spider 06-17 untouched; perf N/A — static). Artifact:
-  the existing run-30 "Show HN → `/agents`" queue draft (which names the matrix)
-  now has its destination; the queue edit is **deferred to avoid colliding with
-  #431's in-flight rewrite of `distribution-queue.md`** (same call as #432).
-  Next pivot lever is WS-07 run 3 (CTA + GLOBAL-024 demand-signal event).
-- 2026-06-20 (run 31) — **Engine measurement: §4 #2c date-normalisation directive
-  FALSIFIED standalone (offline, no eval dispatch).** BIRD 06-19 + Spider 06-17
-  are both < 7 d so §5 forbids a back-to-back dispatch; the in-bounds lever is an
-  offline classifier sizing (run-18 method, `tools/eval/` only). Added a
-  date-encoding sub-axis to `SK-QUAL-014` (`canonDate` + `isDateLiteralOnly` +
-  the `date_literal_only` tag) and ran it on the committed 06-19 BIRD baseline
-  (238 mismatches): **`date_literal_only` = 2 total, 0 standalone** — every date
-  diff co-occurs with a structural error (`LIKE '…%'` vs `= '…'` needs an
-  operator change), so a date directive flips ~0 rows ⇒ #2c parked, same verdict
-  as #2a; the reasoning levers (#3/#1) are the path to the floor. **Δ:** a new
-  measured number prunes a backlog lever. KPI: **engine quality** (evidence-based
-  backlog prioritisation); none degraded — read-only, no chain/scorer/runner
-  change, EX untouched; 21 eval tests green (was 18).
-- 2026-06-20 (run 31) — **E-02: shipped the `nlqdb_remember` write primitive —
-  E-02 closed** (engine track **1 → 2/7**; Pivot **8 → 9/20**; E-02 ⬜ → **✅**).
-  Lever choice: the worst number is engine (Spider 0.1852), but BIRD 06-19 +
-  Spider 06-17 are both < 7 d so §5 forbids a back-to-back eval dispatch; the
-  in-bounds engine lever is the pivot **engine track**, and E-02 was the
-  lowest-numbered ⬜ slice with its prereq met (E-01 ✅, merged #429). It also
-  **doesn't collide** with the only open PR (#431, rewriting
-  `distribution-queue.md` for WS-09) — E-02 touches `apps/api/src/memory/**` +
-  `packages/{sdk,mcp}/**`. **SK-PIVOT-008:** the memory *write* verb is a
-  dedicated `POST /v1/memory/remember` whose server (not the LLM, not the
-  caller) builds a deterministic **parameterised** `INSERT … RETURNING` from
-  the typed payload — identifiers from the fixed `AGENT_MEMORY_V1_COLUMNS`
-  allow-list, values all bound `$n`. Routing it through `/v1/run` would re-open
-  string-SQL over agent content + move SQL authorship to the caller, breaking
-  the trust boundary (SK-PIVOT-006). `wrong_preset` (409) rejects non-memory
-  DBs (id-prefix detection); entities upsert on the UNIQUE; `agent_id` = tenant
-  id until E-03. Exec reuses the read path's `set_config('app.tenant_id')`
-  transaction so RLS governs the INSERT's `WITH CHECK`. **Additive** — the
-  three existing MCP tools are unchanged (SK-MCP-002). GLOBAL-003 parity: SDK
-  `client.remember()` (auto-keyed, `SK-SDK-006`) + `nlqdb_remember` tool ship
-  the same PR; CLI `nlq remember` (Go) is the tracked fast-follow. Gates: API
-  **840** (+16 new), MCP **36** (+3), SDK **52**, typecheck + biome clean. KPI:
-  **onboarding / engine quality** (GLOBAL-025) — an agent now gets a real,
-  queryable memory *write* verb (then `nlqdb_query` can GROUP BY over it), no
-  schema design; **none degraded** (additive endpoint/tool, no engine/chain/
-  scorer/eval touched; BIRD 06-19 + Spider 06-17 untouched; perf: the write is
-  a single parameterised INSERT, no LLM hop). Artifact (the "agent memory in
-  one MCP config" gist) **deferred** to avoid colliding with #431's
-  `distribution-queue.md` rewrite; queue it once #431 merges. Next engine lever
-  is **E-04** (TTL sweep, low) or **E-03** (scoping, security-critical).
+- 2026-06-20 (run 32) — **Engine-track finding + plan correction: E-03's
+  documented scoping mechanism is infeasible; redirected to RLS before a future
+  agent builds the fragile version (SK-PIVOT-009).** Worst number is still
+  engine (Spider 0.1852) but BIRD 06-19 + Spider 06-17 are both < 7 d so §5
+  forbids an eval dispatch; the in-bounds engine lever is the pivot engine
+  track, and E-03 is the lowest-numbered ⬜ with its prereq met (E-01 ✅). Read
+  the read/query path before touching it (security-critical): the `/v1/ask`
+  pipeline emits **free-form LLM SQL as a string** and executes it via
+  `neonSql.unsafe(sql)` (`ask/build-deps.ts`) — there is **no** typed-plan
+  compiler / AST step on the query path to inject a `WHERE agent_id` predicate
+  into, so E-03's (and E-04's read-filter) "compile-layer injection" mechanism
+  can't be built without a fragile SQL-rewriter, exactly the wrong thing on a
+  boundary where a parser gap = cross-agent breach. The robust mechanism — and
+  the one the provisioner **already** uses for tenant isolation
+  (`tenant_isolation`, `neon-provision.ts`) — is **row-level RLS keyed on an
+  `app.agent_id` session GUC**. Captured as **SK-PIVOT-009** (supersedes the
+  compile-layer mechanism in SK-PIVOT-006 / the E-03 worksheet), corrected E-03
+  + E-04 worksheets + the engine INDEX, and synced every stale "compile-layer
+  scope predicate" reference in FEATURE.md. **Δ:** a measured architecture
+  finding prunes/redirects a security-critical backlog lever (same category as
+  the run-18/31 falsifications) — and stops the implementation from shipping
+  the breach-prone design. **No code shipped** — the security impl (RLS policy
+  + GUC + two-principal tests, on Neon, with a second review) is now a
+  sharply-specified E-03 run. KPI: **engine quality** (the wedge's durability);
+  **none degraded** — docs-only, no code path / engine / chain / scorer / eval
+  touched; BIRD 06-19 + Spider 06-17 untouched; perf N/A. Artifact: the
+  "scoping is RLS, not query-rewriting" technical note (queue, run 32).
+- 2026-06-20 (run 31) — **WS-07 run 2/3: embedded the matrix + trust-boundary
+  moat + FSL band on `/agents`** (#433; WS-07 🟡 1/3 → **2/3**; pivot holds at
+  8/20 until run 3). Engine lane blocked (BIRD 06-19 + Spider 06-17 < 7 d);
+  additive markup in `pages/agents/index.astro` only. Gates: astro-check
+  0/0/0 (74), web 126, biome clean. KPI: onboarding / UX; none degraded
+  (no code/engine/chain/scorer/eval touched). Next: WS-07 run 3 (CTA +
+  GLOBAL-024 demand-signal).
+- 2026-06-20 (run 31) — **§4 #2c date-normalisation directive FALSIFIED
+  standalone** (offline classifier sizing, no eval dispatch; #434). Added a
+  date-encoding sub-axis to `SK-QUAL-014`; on the 06-19 BIRD baseline
+  `date_literal_only` = 2 total, **0 standalone** — every date diff co-occurs
+  with a structural error ⇒ #2c parked (same verdict as #2a); reasoning levers
+  (#3/#1) are the path to the floor. KPI: engine quality; none degraded (EX
+  untouched, 21 eval tests green).
+- 2026-06-20 (run 31) — **E-02: `nlqdb_remember` write primitive shipped —
+  E-02 closed** (engine track 1 → **2/7**; Pivot 8 → **9/20**; #432).
+  SK-PIVOT-008: server-built deterministic parameterised `INSERT` via
+  `POST /v1/memory/remember` (never `/v1/run` — trust boundary),
+  `wrong_preset` (409) guard, `agent_id` = tenant id until E-03; SDK
+  `remember()` + `nlqdb_remember` tool (GLOBAL-003 parity), CLI fast-follow.
+  Gates: API 840 / MCP 36 / SDK 52, typecheck + biome clean. KPI: onboarding /
+  engine quality; none degraded (additive, BIRD/Spider untouched).
 - 2026-06-20 (run 30) — **WS-07 run 1/3: shipped the `/agents` skeleton + hero**
   (`pages/agents/index.astro`): agent-memory hero, AEO direct-answer block,
   retrieval-vs-analytics split, own SEO/canonical, added to `sitemap.xml.ts`.
