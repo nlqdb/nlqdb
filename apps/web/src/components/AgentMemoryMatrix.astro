@@ -10,11 +10,7 @@
 // (WS-09). Brand vocabulary (acid-lime accent on dark, JetBrains Mono,
 // ✓/◐/—) is shared with the `/vs/<slug>` comparison table.
 
-import {
-  AGENT_MEMORY_MATRIX,
-  MATRIX_VERIFIED_ON,
-  type MatrixRow,
-} from "../data/agentMemoryMatrix";
+import { AGENT_MEMORY_MATRIX, MATRIX_VERIFIED_ON, type MatrixRow } from "../data/agentMemoryMatrix";
 import type { ComparisonClaim } from "../data/competitors";
 
 interface Props {
@@ -34,7 +30,11 @@ const claimLabel: Record<ComparisonClaim, string> = {
   no: "No",
 };
 
-const columns: { key: keyof Pick<MatrixRow, "mem0" | "zep" | "letta" | "nlqdb">; name: string; us?: boolean }[] = [
+const columns: {
+  key: keyof Pick<MatrixRow, "mem0" | "zep" | "letta" | "nlqdb">;
+  name: string;
+  us?: boolean;
+}[] = [
   { key: "mem0", name: "Mem0" },
   { key: "zep", name: "Zep" },
   { key: "letta", name: "Letta" },
