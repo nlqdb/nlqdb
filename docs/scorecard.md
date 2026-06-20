@@ -51,7 +51,7 @@ few-shot), not retrieval. Value-retrieval is demoted + privacy-gated.
 | 11 | nlqdb-api latency p50 / p95 | 666 ms / 7.05 s (06-13) | p95 dominated by LLM-bound asks; `/ask`-only split needs Grafana `metrics:read` (agent has write-only key) |
 | 12 | $ spend | ~$0 | free tiers across CF / Neon / LLM chain |
 | | **Pivot — agent-memory wedge** (GLOBAL-036) | 9 / 20 + 3 memory /vs pages | tick ⬜→✅ with PR link on merge; mirrors `docs/features/agent-memory-pivot/worksheets/INDEX.md` |
-| | *Messaging track — WS-\** | 7 / 13 | pick when worst number is funnel / distribution |
+| | *Messaging track — WS-\** | 7 / 13 (WS-07 🟡 2/3, WS-09 🟡 1/2) | pick when worst number is funnel / distribution |
 | WS-01 | competitors.md anchor (Zep / Letta / LangMem) | ✅ | run 19 — §4 + threat matrix; unblocks WS-02 |
 | WS-02 | memory `/vs` pages (one per run) | ✅ 3/3 | run 20 — **Zep ✅** (`/vs/zep`); run 21 — **Letta ✅** (`/vs/letta`); run 22 — **LangMem ✅** (`/vs/langmem`) — WS-02 closed |
 | WS-03 | solve pages — sharpen + sibling | ✅ 2/2 | run 23 — **sharpen ✅**; run 25 — **analytical sibling ✅** (`analytical-queries-over-agent-memory`, the read-side report-over-memory wedge) |
@@ -60,7 +60,7 @@ few-shot), not retrieval. Value-retrieval is demoted + privacy-gated.
 | WS-06 | Mem0 \| Zep \| Letta \| nlqdb capability matrix | ✅ | run 27 — **data ✅** (`agentMemoryMatrix.ts`, 9 honest rows + test); run 28 — **render ✅** (`AgentMemoryMatrix.astro`, four-up glyph grid, nlqdb accent column, no `<img>`) |
 | WS-07 | `/agents` landing | 🟡 2/3 | run 30 — **skeleton + hero ✅**; run 31 — **matrix + moat ✅** (WS-06 matrix embedded + typed-plan trust-boundary pipeline + FSL/BYO-key band, `pages/agents/index.astro`); CTA + demand-signal (run 3) |
 | WS-08 | on-brand OG / social images | ⬜ | low · ~2 runs · WS-07 |
-| WS-09 | "database, not a vector store" blog + live demo | ⬜ | med · ~2 runs · WS-06 (sharpens with E-01/05) |
+| WS-09 | "database, not a vector store" blog + live demo | 🟡 1/2 | run 30 — **blog draft ✅** (launch post in `distribution-queue.md`: Replit incident → recall≠analytics → typed-plan boundary → measured BIRD 0.52 / Spider 0.1852 + `tools/eval/` link + WS-06 matrix); live `/agents` demo deferred (run 1, collides with WS-07 #430) |
 | WS-10 | FSL self-host messaging (GLOBAL-019 / arch §0 doc-fix shipped) | ✅ | run 28 — pricing self-host band + README "Models & plans" self-host line (FSL-accurate; no turnkey-image claim per WS-11 note) |
 | WS-11 | pull `ghcr.io/nlqdb/api` self-host container forward | ⬜ | high · multi · WS-10 · infra-gated |
 | WS-12 | home reweight + demote P1/P3/P4 to "also works for…" | ⬜ | med · ~2 runs · WS-06, WS-07 |
@@ -175,6 +175,32 @@ few-shot), not retrieval. Value-retrieval is demoted + privacy-gated.
   Artifact: a "give your AI agent a real memory database in one call" dev.to /
   Show-HN draft appended to the distribution queue. Next engine lever is **E-02**
   (`nlqdb_remember` MCP tool, prereq E-01 now ✅).
+- 2026-06-20 (run 30) — **WS-09 run 2/2: drafted the launch post "Why agent
+  memory should be a database, not a vector store"** (WS-09 ⬜ → **🟡 1/2**;
+  blog-draft box ✅, live `/agents` demo deferred). Engine lane blocked (BIRD
+  06-19 + Spider 06-17 both < 7 d; §5 forbids a back-to-back eval dispatch) and
+  the engine track's in-progress slice (E-01) + the lowest open messaging
+  worksheet (WS-07 `/agents`) are **both in flight** on open PRs (#429, #430) —
+  so per the pivot INDEX pickup rule the in-bounds, non-colliding lever is
+  WS-09's **run 2** (the post touches only `distribution-queue.md`); run 1 (the
+  `<nlq-data>` demo) collides with the WS-07 page on #430 and is deferred until
+  it merges. The post walks the **web-verified** Replit July-2025 prod-DB-wipe
+  postmortem (P2: [Fortune](https://fortune.com/2025/07/23/ai-coding-tool-replit-wiped-database-called-it-a-catastrophic-failure/),
+  [AI Incident DB #1152](https://incidentdatabase.ai/cite/1152/)) → why vector
+  recall can't `GROUP BY` → the typed-plan trust boundary (LLM emits JSON, never
+  SQL; compiler + `libpg_query` re-parse + diff preview) → **measured**
+  BIRD 0.52 / Spider 0.1852 *with the sub-target gap shown* (from
+  `eval-baseline.ts`, not a frontier cherry-pick) → open `tools/eval/` harness;
+  embeds the WS-06 matrix and corrects the framing doc's over-claims (FSL-1.1
+  not Apache-2.0; self-host honestly ◐). Number moved: **WS-09 ⬜ → 🟡 1/2**
+  (launch-post box ✅); the messaging closed count holds at 7/13 and the pivot
+  at 8/20 — WS-09 closes (and the count ticks) at run 1 when the live demo
+  ships. KPI: **onboarding / UX**
+  (GLOBAL-025) — the wedge's centrepiece distribution artifact; **none
+  degraded** — draft-only edit to `distribution-queue.md` + worksheet/INDEX/
+  scorecard ticks, no code path / engine / chain / scorer / eval touched;
+  BIRD 06-19 + Spider 06-17 untouched; performance N/A. Artifact: the post
+  itself (this entry).
 - 2026-06-20 (run 29) — **E-01 run 1/2: shipped the `agent_memory_v1` schema
   preset module** (engine track 0 → **🟡 1/2**). New
   `apps/api/src/db-create/presets/agent-memory-v1.ts`: `agentMemoryV1Ddl(schemaName)`
@@ -307,54 +333,7 @@ few-shot), not retrieval. Value-retrieval is demoted + privacy-gated.
   performance N/A). Artifact: an r/AI_Agents "reporting over agent memory"
   helpful-answer draft appended to the distribution queue. **WS-03 closes**; next
   pivot lever is WS-05 (carousel) — the lowest-numbered ⬜ with prereqs met.
-- 2026-06-19 (run 24) — **WS-04: reframed the MCP surface to "analytical
-  memory"** (Pivot messaging track 2 → **3/13**; Pivot 2 → **3/20**). Engine lane
-  blocked (BIRD 06-19 + Spider 06-17 both < 7 d; §5 forbids a back-to-back eval
-  dispatch), so the in-bounds lever is funnel/distribution. WS-02 (LangMem,
-  PR #420) and WS-03 (solve pages, PR #421) are both in flight, so per the pivot
-  INDEX pickup rule WS-04 is the lowest-numbered ⬜ with prereqs (none) met that
-  **doesn't collide** with the open PRs — it touches only `packages/mcp/` +
-  `apps/docs/mcp.mdx`, not `competitors.ts` / `solve.ts`. **Copy only**
-  (SK-PIVOT-003): prepended a memory-shaped lead clause to all three tool
-  `description`s + `title`s in `packages/mcp/src/server.ts` (`nlqdb_query`:
-  "Query your agent's structured memory in natural language — a real database it
-  can GROUP BY / JOIN / aggregate over, not just recall"), rewrote the
-  `package.json` description, and led the `mcp.mdx` intro with "the memory MCP
-  server". **No tool renamed, no schema/annotation/behaviour change** — the
-  stable `SK-MCP-002` contract is intact and the 33 MCP protocol tests stay
-  green. GLOBAL-003 parity verified: no other code surface hard-codes the old
-  blurb (`grep "Run a natural-language query"` → only server.ts + planning docs).
-  Gates: `@nlqdb/mcp` test 33/33, typecheck clean, biome lint clean on the
-  changed files. KPI: **onboarding** (GLOBAL-025) — the highest-leverage
-  agent-facing string now signals the wedge at tool-discovery time;
-  **none degraded** (copy on a stable contract — no engine, chain, scorer, or
-  request path touched; BIRD 06-19 + Spider 06-17 untouched; performance N/A).
-  Artifact: an MCP-directory listing-refresh blurb appended to the distribution
-  queue. WS-05 (carousel) is the next ⬜ messaging worksheet.
-- 2026-06-19 (run 23) — **WS-03 run 1/2: sharpened the agent-memory solve page to
-  the analytical-memory wedge + fixed phantom MCP tool names.** Engine lane still
-  blocked (BIRD 06-19 + Spider 06-17 both < 7 d; §5 forbids a back-to-back eval
-  dispatch), and WS-02's last slice (LangMem) is in flight on an open PR — so the
-  in-bounds, non-overlapping lever is WS-03, the next ⬜ funnel/distribution
-  worksheet with its prereqs met. Reframed `give-ai-agent-persistent-memory`
-  (`apps/web/src/data/solve.ts`, persona P2) from generic "complementary, not
-  replacement" to the wedge: the agent stores typed rows and later **aggregates**
-  them (`GROUP BY` / top-N / per-period) — retrieval ≠ analytics. `painContext`,
-  `oneLiner`, `demoGoal` (now `top 5 things the agent remembered this week by
-  frequency`), `demoWhy`, and the FAQ all lead with the analytical split; added a
-  new "Why can't a vector store answer 'average per group'?" FAQ. **Honesty fix
-  (also an `SK-PIVOT-002` rule):** the page cited **phantom MCP tools**
-  (`create_database` / `ask` / `run`) that don't exist — corrected to the real
-  three (`nlqdb_query` / `nlqdb_list_databases` / `nlqdb_describe`), with
-  provisioning honestly framed as `nlqdb_query` with no `db` set (provisions
-  Postgres from the agent's first goal). `whatItDoesnt` kept honest (no native
-  vector search → Mem0/pgvector; no per-row TTL yet). Gates: web 122 tests,
-  astro-check 0/0/0, lint clean on the edited file. KPI: **onboarding**
-  (GLOBAL-025) — a sharper P2 decision-moment on-ramp; **none degraded** (copy/data
-  on the existing template — no code path, engine, chain, or scorer touched; BIRD
-  06-19 + Spider 06-17 untouched; performance N/A). Artifact: an r/LangChain
-  "vector store can't aggregate its own memory" helpful-answer draft appended to
-  the distribution queue. The analytical-queries sibling is WS-03 run 2.
+- 2026-06-19/20 (runs 23–24) — agent-memory messaging wave (both closed, additive copy; no engine/chain/scorer touched; BIRD 06-19 + Spider 06-17 untouched): **WS-03 run 1/2** (run 23) sharpened `/solve/give-ai-agent-persistent-memory` to the retrieval≠analytics wedge + fixed phantom MCP tool names (real three only, SK-PIVOT-002); **WS-04** (run 24) reframed the MCP surface — three tool `description`s/`title`s + `package.json` + `mcp.mdx` lead with "analytical memory" (copy only, SK-PIVOT-003; SK-MCP-002 contract + 33 tests intact). Messaging track → 3/13, pivot → 3/20. Per-slice detail in the WS worksheets; drafts queued in `distribution-queue.md`.
 - 2026-06-19/21 (runs 19–22) — agent-memory wedge launch wave (all closed, additive content; no engine/chain/scorer touched): **WS-01** anchored the Zep / Letta / LangMem cluster in `docs/competitors.md §4` (run 19, pivot 0 → 1/20); **WS-02** shipped the three memory `/vs` pages — `/vs/zep` (run 20), `/vs/letta` (run 21), `/vs/langmem` (run 22) — each one `Competitor` entry keyed on the retrieval-vs-analytics wedge (`GROUP BY`/`JOIN`/`HAVING` over memory), facts web-verified 06-19, real tool names only. WS-02 closed → messaging track 2/13, pivot 2/20. Per-slice detail in the WS worksheets + `competitors.ts` history; comparison drafts queued in `distribution-queue.md`.
 - 2026-06-19 (runs 17–18) — canonical BIRD re-run + literal-grounding axis,
   detailed in `progress/quality-score-verification-log.md`: the first 500-q BIRD

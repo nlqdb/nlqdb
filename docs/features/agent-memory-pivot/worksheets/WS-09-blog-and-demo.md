@@ -1,6 +1,6 @@
 # WS-09 — "Database, not a vector store" blog + live in-page demo
 
-**Status:** ⬜ not started
+**Status:** 🟡 1/2 — blog draft ✅ (run 30); live `/agents` demo pending (run 1, after WS-07 page ships)
 **Sequence:** 9 of 13 · **Risk:** med · **Runs:** ~2 · **Prereqs:** WS-06 ✅ · **Gate:** none
 
 ## Goal
@@ -36,10 +36,10 @@ Distribution: the post is the HN/lobste.rs/dev.to artifact; the demo lifts
 
 ## Done when
 
-- [ ] Live demo on `/agents` runs a real aggregation with SQL reveal, gate-honest.
-- [ ] Blog draft in `distribution-queue.md` with **measured** numbers + matrix + harness link.
-- [ ] No produced video; no over-claim past the measured eval.
-- [ ] INDEX tracker + status ticked.
+- [ ] Live demo on `/agents` runs a real aggregation with SQL reveal, gate-honest. *(run 1 — deferred: collides with the in-flight WS-07 `/agents` page, PR #430; lands once that page exists.)*
+- [x] Blog draft in `distribution-queue.md` with **measured** numbers + matrix + harness link. *(run 30 — post drafted before the demo because run 1 collides with open PR #430; BIRD 0.52 / Spider 0.1852 from `eval-baseline.ts`, honest gap shown, WS-06 matrix embedded, `tools/eval/` linked.)*
+- [x] No produced video; no over-claim past the measured eval. *(live in-page demo supersedes the video; numbers shown sub-target.)*
+- [x] INDEX tracker + status ticked.
 
 ## Artifact
 
