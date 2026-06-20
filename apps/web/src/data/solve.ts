@@ -226,6 +226,60 @@ export const SOLVE_ENTRIES: SolveEntry[] = [
     ],
   },
   {
+    slug: "analytical-queries-over-agent-memory",
+    persona: "P2 agent builder",
+    searchTitle: "How do I run reports over what my AI agent remembered?",
+    oneLiner:
+      "If your agent stores what it learns and you now need *reports* over that memory — counts, top-N, averages per group — point an MCP-aware agent at nlqdb and ask in English. It runs the `GROUP BY` in Postgres and returns rows plus the SQL. A vector store recalls one fact; a database answers 'top 10 this month.'",
+    painContext:
+      "An agent that already logs what it learns hits a wall the moment the question turns analytical: 'top 10 topics this month by count', 'average deal size per stage', 'tasks completed per day this week'. Vector / graph memory (Mem0, Zep, LangMem, a Letta archival tier) returns the top-k similar rows — it has no query planner — so the rollup becomes the LLM doing arithmetic over search hits. Retrieval is the wrong tool for aggregation.",
+    demoGoal: "count of facts the agent logged per category this month, highest first",
+    demoWhy:
+      "The query an agent runs to summarise its own memory — `GROUP BY` category + count + order — is exactly what retrieval can't do and a real database can.",
+    howNlqdbAnswers: [
+      "The agent's memory is typed rows in real Postgres, so `GROUP BY`, top-N, and per-period rollups run as actual SQL — not arithmetic over a list of search hits.",
+      "Ask the report in English via MCP `nlqdb_query`; the answer returns as rows plus the compiled SQL under a trace toggle, so you audit the grain before trusting it.",
+      "Plans are content-addressed on `(goal-fingerprint, schema-hash)` (`GLOBAL-006`) — a repeated weekly rollup hits the cache and returns in single-digit ms.",
+      "Same database the agent writes to and reports over — no ETL into a separate analytics store, no second connection string to keep in sync.",
+    ],
+    whatItDoesnt: [
+      "No native vector / similarity search — the analytical half assumes the agent already chose what to store as rows; unstructured recall over chat-text is Mem0 or pgvector's job.",
+      "No prebuilt charting — nlqdb returns the aggregated table + a one-sentence summary; rendering it as a chart is the consumer's choice.",
+    ],
+    faqs: [
+      {
+        q: "How is this different from giving my agent persistent memory?",
+        a: "Persistent memory is the write side — the agent storing facts so it can recall them later (see /solve/give-ai-agent-persistent-memory). This page is the read side: running analytical reports — counts, top-N, averages per group — over what it stored. nlqdb is the same Postgres for both, so there's no second store to sync.",
+      },
+      {
+        q: 'Why can\'t my vector memory just answer "top 10 topics this month"?',
+        a: "A vector store returns the top-k most similar rows; it has no query planner. An aggregation then becomes the LLM doing arithmetic over a list of search hits — a hallucination generator, not a `GROUP BY`. nlqdb runs the aggregation in Postgres and shows you the SQL it ran.",
+      },
+      {
+        q: "What does the report query actually look like?",
+        a: "You write the goal in English — 'count of facts the agent logged per category this month, highest first' — and nlqdb compiles it to SQL over the memory table, runs it, and returns the ranked rows. The compiled SQL shows under the trace toggle (`SK-WEB-005`) so you can verify the grain.",
+      },
+      {
+        q: "Do I need a separate analytics database for this?",
+        a: "No. The agent writes its memory rows to nlqdb's Postgres and reports over the same database — no ETL pipeline, no second connection string. Phase 2's workload analyser proposes a ClickHouse migration automatically if scan volume ever crosses the threshold, without an app-side rewrite.",
+      },
+    ],
+    sources: [
+      {
+        url: "https://www.reddit.com/r/AI_Agents/search/?q=memory",
+        label: 'r/AI_Agents — recurring threads on analytics / stats over agent memory.',
+      },
+      {
+        url: "https://hn.algolia.com/?q=agent+memory",
+        label: 'HN search: "agent memory" — discussion on the retrieval-vs-aggregation split.',
+      },
+      {
+        url: "https://www.reddit.com/r/LangChain/search/?q=memory",
+        label: 'r/LangChain — "aggregate / GROUP BY over memory" recurring questions.',
+      },
+    ],
+  },
+  {
     slug: "skip-postgres-setup-side-project",
     persona: "P1 solo builder",
     searchTitle: "How do I add a database to a side project without setting up Postgres?",

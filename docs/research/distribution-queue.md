@@ -5,6 +5,46 @@ One publishable artifact drafted per day by the daily agent
 publishes at the weekly session. Newest first. Delete an entry once published
 (the live URL goes into `docs/scorecard.md`).
 
+## 2026-06-20 (run 25) — helpful-answer draft: "reporting over agent memory" (r/AI_Agents / r/LangChain)
+
+**Where:** a real recurring thread on r/AI_Agents / r/LangChain where someone asks
+how to get **counts / stats / "top N" / per-period rollups** out of their agent's
+memory (distinct from the run-23 "can't aggregate" framing — this one is the buyer
+who *already* has memory and now wants reports). Post once, in context, linking the
+new sibling solve page once.
+
+**Title (if a fresh post):** My agent logs everything it learns — how do I actually run reports over that memory?
+
+**Body:**
+
+> Once your agent is reliably *storing* what it learns, the next question is
+> almost always analytical: "top 10 topics it logged this month by count,"
+> "average deal size per stage," "how many tasks did it close per day this week."
+> That's the point where a vector / graph memory layer (Mem0, Zep, LangMem, a
+> Letta archival tier) stops helping — it returns the top-k *most similar* rows, it
+> has no query planner, so the rollup turns into the LLM doing arithmetic over a
+> list of search hits. That's a hallucination generator, not a `GROUP BY`.
+>
+> The split that's worked for me: keep the unstructured recall where it shines,
+> but put the rows the agent will later **count / rank / bucket** in a real
+> relational store and let it run actual SQL. I've been using nlqdb for the
+> reporting half (writeup:
+> nlqdb.com/solve/analytical-queries-over-agent-memory) — the agent asks the
+> report in English over MCP (`nlqdb_query`), it compiles to SQL against the
+> memory table, runs the aggregation in Postgres, and hands back the rows plus the
+> compiled SQL so you can check the grain. Same database it writes to, so there's
+> no second store to sync.
+>
+> Honest limit: nlqdb has no native vector search — it's the structured/analytical
+> half, not the similarity-recall half. The two compose.
+
+**Why this is publishable:** it targets the read-side search intent ("run reports
+over agent memory") that the new `/solve/analytical-queries-over-agent-memory` page
+answers — a distinct keyword from the write-side "give my agent memory" page and
+the run-23 "can't aggregate" post. One in-context link, honest about the
+no-vector-search limit (SK-SOLVE-002 / SK-PIVOT-002), real tool name only
+(`nlqdb_query`, no phantom `create_database`).
+
 ## 2026-06-19 (run 24) — MCP-directory listing refresh: "the analytical-memory MCP server"
 
 **Where:** Anthropic Connectors Directory listing for `mcp.nlqdb.com` (refresh

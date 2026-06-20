@@ -56,7 +56,7 @@ swap.
 |----|-------|------|------|---------|------|
 | [01](WS-01-competitors-md-anchor.md) ✅ | Anchor Zep / Letta / LangMem in `docs/competitors.md` | low | 1 | — | — |
 | [02](WS-02-memory-vs-pages.md) | Memory-competitor `/vs` pages (Zep, Letta, LangMem — one per run) | low | ~3 | 01 | — |
-| [03](WS-03-solve-pages.md) | Sharpen the agent-memory solve page + add an analytical-queries sibling | low | ~2 | — | — |
+| [03](WS-03-solve-pages.md) ✅ | Sharpen the agent-memory solve page + add an analytical-queries sibling | low | ~2 | — | — |
 | [04](WS-04-mcp-framing.md) ✅ | MCP tool + package + docs framing → "analytical memory" | low | 1 | — | — |
 | [05](WS-05-carousel-slides.md) | Carousel: analytics-over-agent-memory slides | low | 1 | — | — |
 | [06](WS-06-capability-matrix.md) | Mem0 \| Zep \| Letta \| nlqdb capability matrix (new surface) | med | ~2 | 01 | — |
@@ -82,7 +82,7 @@ Tick on merge. Keep this list as the durable pivot status (the scorecard's
 
 - [x] WS-01 — competitors.md anchor (2026-06-19, run 19 — branch `claude/sharp-wozniak-y9ee5z`)
 - [x] WS-02 — memory `/vs` pages: **Zep ✅** (2026-06-20, run 20 — branch `claude/sharp-wozniak-67k9n4`), **Letta ✅** (2026-06-21, run 21 — branch `claude/sharp-wozniak-sxy0yi`), **LangMem ✅** (2026-06-19, run 22 — branch `claude/vibrant-newton-c3pery`)
-- [~] WS-03 — solve pages: **sharpen ✅** (2026-06-19, run 23 — `give-ai-agent-persistent-memory` reframed to the analytical wedge + phantom MCP tools fixed); analytical sibling pending
+- [x] WS-03 — solve pages: **sharpen ✅** (2026-06-19, run 23 — `give-ai-agent-persistent-memory` reframed to the analytical wedge + phantom MCP tools fixed); **analytical sibling ✅** (2026-06-20, run 25 — `analytical-queries-over-agent-memory`, the read-side wedge)
 - [x] WS-04 — MCP framing (2026-06-19, run 24 — branch `claude/vibrant-newton-rk77n7`)
 - [ ] WS-05 — carousel slides
 - [ ] WS-06 — capability matrix

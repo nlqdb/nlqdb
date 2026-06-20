@@ -136,13 +136,14 @@ note "FLOW-001 steps 3-9 require a browser (anon device token, /v1/ask POST, tra
 
 # --- FLOW-002 — Pain-driven AEO inbound (steps 1, 3, 4) ------------------
 
-# The five /solve slugs shipped 2026-05-23 per SK-SOLVE-001 and the three
+# The /solve slugs (SK-SOLVE-001) and the three
 # /vs slugs from comparison-pages — kept as literal arrays on purpose: a
 # drift between this file and apps/web/src/data/{solve,competitors}.ts
 # fails the walk loudly, which is the regression detector we want.
 SOLVE_SLUGS=(
   "cheap-internal-dashboard"
   "give-ai-agent-persistent-memory"
+  "analytical-queries-over-agent-memory"
   "skip-postgres-setup-side-project"
   "natural-language-sql-without-training-data"
   "ship-leaderboard-no-sql"
