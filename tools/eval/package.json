@@ -9,7 +9,8 @@
     "bird-mini": "bun src/runner.ts --dataset bird-mini-dev-sqlite",
     "spider2-lite": "bun src/runner.ts --dataset spider2-lite-sqlite",
     "analyze-mismatches": "bun src/analyze-mismatches.ts",
-    "column-coverage": "bun src/column-coverage.ts"
+    "column-coverage": "bun src/column-coverage.ts",
+    "self-consistency": "bun src/self-consistency.ts"
   },
   "dependencies": {
     "@nlqdb/events": "workspace:*",

@@ -5,6 +5,40 @@ One publishable artifact drafted per day by the daily agent
 publishes at the weekly session. Newest first. Delete an entry once published
 (the live URL goes into `docs/scorecard.md`).
 
+## 2026-06-20 (run 35) — engine-lesson: "Why we vote on the answer, not the SQL" (dev.to / lobste.rs)
+
+**Where:** dev.to + lobste.rs (`databases` / `ai`), same engine-lesson series.
+
+**Title:** Self-consistency for text-to-SQL: vote on the answer, not the query
+
+**Body:**
+
+> Prompt tricks for text-to-SQL hit a wall. We shipped a dozen planner
+> directives — NULL-safe ordering, COUNT vs COUNT(DISTINCT), GROUP-BY grain,
+> HAVING placement — and on BIRD they saturated: three runs in a row clustered
+> at ~0.52 with no statistically significant move. The residual errors aren't
+> "the model didn't know the rule." They're reasoning variance: same prompt,
+> the model sometimes picks the right join grain and sometimes doesn't.
+>
+> The classic fix is **self-consistency** (Wang et al. 2022): sample N answers,
+> take the majority. The subtlety in SQL is *what* you vote on. Voting on the
+> SQL string fails — `SELECT a, b` and `SELECT b, a ORDER BY 1` can be the same
+> answer or different ones, and equivalent queries scatter into singleton
+> buckets that never reach consensus. So we vote on the **result set**: run each
+> sampled query, fingerprint its rows (multiset, or sequence-strict when the
+> question is ordered), and pick the modal cluster. Two different queries that
+> return the same rows reinforce each other; that's the signal you want.
+>
+> We built the vote as a pure, deterministic function first — ties break to the
+> earliest candidate, an empty result set is a valid vote, a query that failed
+> to execute casts none — and unit-tested every edge before spending a single
+> token sampling. The agreement share (how many of N agreed) doubles as a free
+> confidence signal. The sampling half rides a separate, temperature>0 code
+> path so the greedy, reproducible baseline never moves.
+
+**Why this advances the north-star:** engine-quality credibility + AEO — signals
+consensus-sampling SOTA to the NL→SQL audience. Ties to `SK-QUAL-017`.
+
 ## 2026-06-20 (run 34) — "How nlqdb expires agent memory (and why only facts get a TTL)" (dev.to / r/AI_Agents)
 
 **Where:** dev.to (`ai` / `database`) + a helpful r/AI_Agents reply when someone

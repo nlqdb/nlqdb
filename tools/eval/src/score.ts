@@ -64,6 +64,20 @@ function canonicalize(row: unknown): string {
   return `{${pairs.join(",")}}`;
 }
 
+// Stable fingerprint of an executed result set, consistent with `rowsMatch`
+// semantics: two row sets that compare equal under `rowsMatch(_, _, ordered)`
+// share a fingerprint and unequal ones differ. The self-consistency vote
+// (SK-QUAL-017) uses it to cluster N sampled plans by the *answer* they
+// return (the rows), not the SQL string. Multiset (sorted) by default so
+// order-irrelevant queries that mean the same thing agree; `ordered` keeps
+// sequence identity when the question is order-sensitive.
+export function fingerprintRows(rows: unknown[][], ordered: boolean): string {
+  const lines = rows.map((r) => canonicalize(r));
+  if (!ordered) lines.sort();
+  // Lead with the row count so `[]` and a single empty-tuple row can't collide.
+  return `${rows.length}\n${lines.join("\n")}`;
+}
+
 // Multiset equality matches BIRD's reference harness; sequence-strict when gold has ORDER BY.
 function rowsMatch(a: unknown[], b: unknown[], ordered: boolean): boolean {
   if (a.length !== b.length) return false;

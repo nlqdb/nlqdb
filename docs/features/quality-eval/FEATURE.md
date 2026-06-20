@@ -194,27 +194,30 @@ value-grounding (§4 #2), not schema-link recall, is the dominant loss mass.
 ### SK-QUAL-015 — Offline column-coverage harness: measure the recall ceiling of goal-token column pruning before building it
 
 **Body:** [`decisions/SK-QUAL-015-column-coverage-harness.md`](./decisions/SK-QUAL-015-column-coverage-harness.md).
-Pure `coverage(gold)` + a `bun column-coverage <gold.json>` CLI measure, over a
-BIRD gold JSON, what fraction of qualified gold columns share a `wordTokens`
-token (the pruner's own tokenizer, re-exported from `@nlqdb/llm`) with the
-goal — the recall ceiling of the §4 #2 column-pruning sub-lever. BIRD-dev
-2026-06: **59.8%** covered, **+27.4%** key-like (FK/PK rule re-admits, → ~87%),
-**12.8%** value/measure (only value-retrieval recovers). The prerequisite
-[`SK-LLM-037`](../llm-router/decisions/SK-LLM-037-goal-relevant-schema-pruning.md)
-left open; read-only, no keys/quota/chain change.
+Pure `coverage(gold)` + `bun column-coverage <gold.json>` measure what fraction
+of qualified gold columns share a `wordTokens` token (the pruner's tokenizer)
+with the goal — the recall ceiling of the §4 #2 column-pruning sub-lever.
+BIRD-dev 2026-06: **59.8%** covered, **+27.4%** key-like (→ ~87%), **12.8%**
+value/measure. Read-only, no keys/quota/chain change.
 
 ### SK-QUAL-016 — Inject Spider 2.0-lite external-knowledge docs into the prompt, the way BIRD `evidence` already is
 
 **Body:** [`decisions/SK-QUAL-016-spider-external-knowledge.md`](./decisions/SK-QUAL-016-spider-external-knowledge.md).
-`loadSpider2Lite` now fetches each instance's `external_knowledge`
+`loadSpider2Lite` fetches each instance's `external_knowledge`
 (`resource/documents/<name>.md`) and rides it through `EvalQuestion.evidence`
-into the runner's existing `enrichedGoal` — the channel the BIRD lane has
-always used. Closes the `SK-QUAL-007` deferral. **13 of 135 `local###`
-questions (9.6%)** carried a doc that was being dropped (haversine, RFM,
-music-length, f1-overtake, …) — the knowledge-gated tail on the 25/135 base.
-Cache-authoritative under `dataDir`, fail-soft on a missing/404/unsafe doc,
-traversal-gated filename. EX delta measured by the next canonical Spider
-dispatch (06-17 baseline < 7 d ⇒ `SK-QUAL-002` forbids re-dispatch this run).
+into the runner's `enrichedGoal` — the channel BIRD always used. Closes the
+`SK-QUAL-007` deferral. **13 of 135 `local###` questions (9.6%)** carried a
+dropped doc (haversine, RFM, music-length, …) — the knowledge-gated tail.
+Cache-authoritative, fail-soft, traversal-gated. EX delta next Spider dispatch.
+
+### SK-QUAL-017 — Self-consistency majority vote: cluster N sampled plans by the result set, vote the answer
+
+**Body:** [`decisions/SK-QUAL-017-self-consistency-majority-vote.md`](./decisions/SK-QUAL-017-self-consistency-majority-vote.md).
+Pure `majorityVote(candidates, { ordered })` + reusable `fingerprintRows`
+(score.ts) cluster N executed plans by their **result set** (the answer, not
+the SQL string), returning the modal cluster's SQL + agreement — the
+deterministic core of the §4 #3 reasoning lever. Offline, 12 unit cases;
+sampling/dispatch half is the follow-on (greedy `SK-LLM-024` untouched).
 
 ## GLOBALs governing this feature
 
@@ -234,17 +237,14 @@ Canonical text in [`docs/decisions/`](../../decisions/).
 
 ## Open questions / known unknowns
 
-- **Privacy** — Decided: no user data ever flows into the eval harness. The harness is for public benchmark data only (BIRD, Spider). Any PR that adds production schema sampling is a security defect.
-- **Deferred:** a `feature.eval.smoke` event (smoke `mode` emits none today);
-  a hard token-budget counter (`SK-QUAL-011`/`SK-QUAL-012` reactive controls
-  cover it).
-- **Still open** (agentic lane shipped per [`SK-QUAL-009`](#sk-qual-009)): multi-model frontier (GPT-5 + Gemini 2.5 Pro) deferred until the Sonnet 4.6 baseline lands; BYOLLM-lane instrumentation depends on `SK-LLM-016`; pin a `xlang-ai/Spider2` SHA next Spider baseline.
+- **Privacy** — Decided: no user data ever flows into the eval harness; public benchmark data only (BIRD, Spider). A PR adding production schema sampling is a security defect.
+- **Deferred:** a `feature.eval.smoke` event; a hard token-budget counter (`SK-QUAL-011`/`SK-QUAL-012` reactive controls cover it).
+- **Still open** (agentic lane shipped per [`SK-QUAL-009`](#sk-qual-009)): multi-model frontier (GPT-5 + Gemini 2.5 Pro) until the Sonnet 4.6 baseline lands; BYOLLM-lane instrumentation depends on `SK-LLM-016`; pin a `xlang-ai/Spider2` SHA next Spider baseline.
 - **Canonical raw EX — BIRD 0.520 (2026-06-19, flat) / Spider 0.1852 (2026-06-17)**, 6-provider GHA runs (`SK-QUAL-013`). Breakdown: `quality-score-source-of-truth.md` §2.
 - **Value retrieval (§4 #2a) is demoted + prod-side privacy-gated (2026-06-19).**
-  The `SK-QUAL-014` literal axis showed `literal_only` = 0 — value-sampling
-  flips ~0 mismatches standalone (`source-of-truth` §2/§4), so it is demoted
-  below the reasoning levers. The **prod** build needs a **founder decision**: it
-  would feed **user cell-values** into the free third-party chain, where today
-  only schema DDL leaves the system (`apps/api/src/ask/orchestrate.ts` passes
-  `db.schemaText`) — a new data-exposure posture; do not build it until ruled on.
-- **Corrected-set evaluation — parked until the next BIRD refresh** (`GLOBAL-033`). UIUC Kang ([arXiv:2601.08778](https://arxiv.org/abs/2601.08778)) found 52.8% BIRD annotation errors. **Adopt iff** license permits bundling **and** it stays a ~50-LOC scorer-reuse patch; else skip.
+  `SK-QUAL-014` literal axis: `literal_only` = 0 ⇒ value-sampling flips ~0
+  mismatches standalone, so it ranks below the reasoning levers. The **prod**
+  build needs a **founder decision** — it would feed **user cell-values** into
+  the free third-party chain (today only schema DDL leaves the system); a new
+  data-exposure posture, do not build until ruled on.
+- **Corrected-set evaluation — parked until the next BIRD refresh** (`GLOBAL-033`). UIUC Kang ([arXiv:2601.08778](https://arxiv.org/abs/2601.08778)) found 52.8% BIRD annotation errors. **Adopt iff** license permits bundling **and** it's a ~50-LOC scorer-reuse patch; else skip.
