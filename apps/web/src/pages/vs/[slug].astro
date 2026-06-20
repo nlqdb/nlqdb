@@ -158,6 +158,17 @@ const faqJsonLd = {
           <a href="mailto:hello@nlqdb.com?subject=Comparison request">Email us</a> or browse
           <a href="/vs"> all comparisons</a>.
         </p>
+        {
+          /* Agent-memory cluster (P2) → cross-link the dedicated front door
+             (agent-memory-pivot WS-07). Keyed on persona so it renders on
+             exactly the four memory comparisons (Mem0/Zep/Letta/LangMem). */
+          c.persona === "P2 agent builder" && (
+            <p class="vs__cta-meta">
+              Building an AI agent?{" "}
+              <a href="/agents">See analytical memory for agents &rarr;</a>
+            </p>
+          )
+        }
       </section>
     </main>
 
