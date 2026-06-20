@@ -1,6 +1,6 @@
 # WS-07 — Dedicated `/agents` front door
 
-**Status:** ⬜ not started
+**Status:** 🟡 in progress (run 1/3 — skeleton + hero shipped 2026-06-20)
 **Sequence:** 7 of 13 · **Risk:** med · **Runs:** ~3 · **Prereqs:** WS-06 ✅ · **Gate:** none
 
 ## Goal
@@ -24,10 +24,14 @@ dedicated `/agents` row to the funnel once traffic lands. `Pivot:` boolean
 
 ## Steps (across runs)
 
-1. **Run 1 — skeleton + hero.** `apps/web/src/pages/agents/index.astro` with
-   an agent-memory-led hero ("Memory your agent can query.") and its own
-   `title`/`description`/OG/`SoftwareApplication` JSON-LD (agent-memory copy
-   — this page may lead even though sitewide lead strings are gated to WS-13).
+1. ✅ **Run 1 — skeleton + hero** (2026-06-20). `apps/web/src/pages/agents/index.astro`:
+   agent-memory-led hero ("Memory your agent can query."), AEO direct-answer
+   block ("What is analytical agent memory?"), a retrieval-vs-analytics split,
+   and its own `title`/`description`/`canonical`. The `SoftwareApplication`
+   JSON-LD is emitted by `Base.astro` from the page `description` (agent-memory
+   copy) — no duplicate block needed. Added `/agents` to `sitemap.xml.ts`
+   `STATIC_ROUTES`. Sitewide lead strings (`Hero.astro`, README, `llms.txt`)
+   untouched.
 2. **Run 2 — the matrix + the moat.** Embed the WS-06 matrix; add a "typed-plan
    trust boundary" section (LLM→JSON→compiler→`libpg_query`→diff-preview,
    sourced from `ResearchReceipts`) and the FSL self-host / BYO-key / no-per-call-fees

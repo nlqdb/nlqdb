@@ -58,7 +58,7 @@ few-shot), not retrieval. Value-retrieval is demoted + privacy-gated.
 | WS-04 | MCP tool + package + docs framing | ✅ | run 24 — three tool descriptions + `package.json` desc + `mcp.mdx` intro now lead with "analytical memory" (copy only; SK-PIVOT-003) |
 | WS-05 | carousel analytics-over-memory slides | ✅ | run 26 — 2 analytics-over-memory slides (`GROUP BY category` + top-N `ORDER BY … LIMIT 5`), MCP surface; data-only `showcase-examples.ts` |
 | WS-06 | Mem0 \| Zep \| Letta \| nlqdb capability matrix | ✅ | run 27 — **data ✅** (`agentMemoryMatrix.ts`, 9 honest rows + test); run 28 — **render ✅** (`AgentMemoryMatrix.astro`, four-up glyph grid, nlqdb accent column, no `<img>`) |
-| WS-07 | `/agents` landing | ⬜ | med · ~3 runs · WS-06 |
+| WS-07 | `/agents` landing | 🟡 1/3 | run 30 — **skeleton + hero ✅** (`pages/agents/index.astro`, agent-memory hero + AEO answer + retrieval-vs-analytics split, own SEO/canonical, in sitemap); matrix+moat (run 2), CTA+demand-signal (run 3) |
 | WS-08 | on-brand OG / social images | ⬜ | low · ~2 runs · WS-07 |
 | WS-09 | "database, not a vector store" blog + live demo | ⬜ | med · ~2 runs · WS-06 (sharpens with E-01/05) |
 | WS-10 | FSL self-host messaging (GLOBAL-019 / arch §0 doc-fix shipped) | ✅ | run 28 — pricing self-host band + README "Models & plans" self-host line (FSL-accurate; no turnkey-image claim per WS-11 note) |
@@ -76,6 +76,36 @@ few-shot), not retrieval. Value-retrieval is demoted + privacy-gated.
 
 ## Deltas (recent runs)
 
+- 2026-06-20 (run 30) — **WS-07 run 1/3: shipped the `/agents` skeleton + hero**
+  (`apps/web/src/pages/agents/index.astro`). WS-07 ⬜ → **🟡 1/3** ("/agents
+  skeleton live" boolean flipped). Engine lane blocked (BIRD 06-19 + Spider
+  06-17 both < 7 d; §5 forbids a back-to-back eval dispatch) and the engine
+  track's in-progress slice E-01 is in flight on open PR #429 — so the
+  in-bounds lever is funnel/distribution, and per the pivot INDEX pickup rule
+  WS-07 is the lowest-numbered ⬜ messaging worksheet with its prereq (WS-06 ✅,
+  closed run 28) met; it touches only `apps/web/src/pages/agents/**` +
+  `sitemap.xml.ts` (no collision with #429). The new route is the second front
+  door (GLOBAL-036): an agent-memory-led hero ("Memory your agent can query."),
+  an AEO direct-answer block ("What is analytical agent memory?"), and a
+  retrieval-vs-analytics split (vector store returns top-k similar chunks;
+  nlqdb runs the `GROUP BY` because the memory *is* a database). On-brand
+  (acid-lime on near-black, JetBrains Mono, hard-shadow accent column, no
+  `<img>`); honest pgvector-deferred scope line; cites the manifesto
+  "not a vector store" anchor; links to `/vs`. Own `title`/`description`/
+  `canonical`; the `SoftwareApplication` JSON-LD is emitted by `Base.astro`
+  from the agent-memory `description` (no duplicate block — P5). Added
+  `/agents` to `sitemap.xml.ts` `STATIC_ROUTES` for crawler discovery.
+  **Sitewide lead strings (`Hero.astro`, README, `llms.txt`) untouched** (the
+  WS-13 gate); the WS-06 matrix + typed-plan-trust-boundary moat + FSL band are
+  run 2, the waitlist CTA + GLOBAL-024 demand-signal event are run 3. Gates:
+  astro-check **0/0/0** (74 files, +1), web **126** tests, biome clean. KPI:
+  **onboarding / UX** (GLOBAL-025) — a dedicated agent-builder on-ramp the
+  HN/Reddit/MCP-directory audience can link to; **none degraded** (additive
+  route, no code path / engine / chain / scorer / eval touched; BIRD 06-19 +
+  Spider 06-17 untouched; performance N/A — static markup). Artifact: a
+  "Show HN: analytical memory for AI agents" draft pointing at `/agents`
+  appended to the distribution queue. Next pivot lever is WS-07 run 2 (embed
+  the matrix + moat).
 - 2026-06-20 (run 29) — **E-01 run 1/2: shipped the `agent_memory_v1` schema
   preset module** (engine track 0 → **🟡 1/2**). New
   `apps/api/src/db-create/presets/agent-memory-v1.ts`: `agentMemoryV1Ddl(schemaName)`
