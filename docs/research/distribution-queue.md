@@ -87,20 +87,17 @@ whole pitch; no diagram needed.
 
 ## 2026-06-20 (run 30) — launch post: "Why agent memory should be a database, not a vector store" (HN / lobste.rs / dev.to)
 
-**Where:** the WS-09 long-form launch post — Hacker News (Show HN / blog
-submission), cross-posted to lobste.rs and dev.to. This is the pivot's
-centrepiece technical post; it points at `/agents` (WS-07) once that page's CTA
-ships. **Embed the live `AgentMemoryMatrix` component** (WS-06) rather than a
-screenshot — the table is live text (SK-PIVOT-004), so it survives copy-paste
-and is liftable by AI search. **No produced video** (the framing doc's "one
-demo video" is superseded by the live in-page demo, WS-09 run 1).
+**Where:** the WS-09 centrepiece launch post — Hacker News (Show HN / blog),
+cross-posted to lobste.rs and dev.to; points at `/agents` (WS-07) once its CTA
+ships. **Embed the live `AgentMemoryMatrix`** (WS-06, SK-PIVOT-004) not a
+screenshot, so it survives copy-paste and is AI-liftable; **no produced video**
+(superseded by the live in-page demo, run 1).
 
-**Honesty contract for this draft (do not soften past the measured eval):** the
-BIRD/Spider numbers below are the canonical `eval-baseline.ts` values
-(BIRD 0.52, Spider 0.1852) on the **free LLM chain** — both still below their
-gate targets (0.65 / 0.75). Lead with the gap, not a cherry-picked frontier
-figure. Self-host is **FSL-1.1** (source-available, GLOBAL-019), *not* Apache-2.0
-"free forever" — the framing doc overstated this; the matrix row is honestly ◐.
+**Honesty contract (do not soften past the measured eval):** the BIRD/Spider
+numbers are the canonical `eval-baseline.ts` values (0.52 / 0.1852) on the
+**free LLM chain**, both below their gate targets (0.65 / 0.75) — lead with the
+gap, not a frontier cherry-pick. Self-host is **FSL-1.1** (source-available,
+GLOBAL-019), *not* Apache-2.0 "free forever"; the matrix row is honestly ◐.
 
 **Title:** Why your AI agent's memory should be a database, not a vector store
 
@@ -200,16 +197,14 @@ figure. Self-host is **FSL-1.1** (source-available, GLOBAL-019), *not* Apache-2.
 > different category. That's the part a vector store can't bolt on without
 > becoming a database. → **[/agents](https://nlqdb.com/agents)**
 
-**Why it converts:** it's engineering, not marketing — the audience (r/AI_Agents,
-r/LocalLLaMA, LangChain Discord, HN) trusts a post that leads with a real
-incident, a *sub-target* benchmark honestly shown, and an open harness. The
-matrix does the comparison; the typed-plan section answers the "but is it safe
-to let an agent near a database?" objection the Replit story plants.
+**Why it converts:** engineering, not marketing — the HN / r/AI_Agents /
+r/LocalLLaMA / LangChain-Discord audience trusts a post that opens on a real
+incident, shows a *sub-target* benchmark, and links an open harness; the
+typed-plan section answers the "safe to let an agent near a database?" objection.
 
-**Run status:** this is WS-09 **run 2** (the post). Run 1 (the live in-page
-`<nlq-data>` demo on `/agents`) lands after WS-07's page ships (#430) — hold the
-HN submission until the page has both the demo and the CTA so the post lands on
-a complete destination.
+**Run status:** WS-09 **run 2** (the post). Run 1 (the live `<nlq-data>` demo on
+`/agents`) lands after WS-07's page ships (#430) — hold the HN submission until
+the page has both the demo and the CTA.
 
 ---
 
