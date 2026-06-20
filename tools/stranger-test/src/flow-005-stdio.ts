@@ -32,12 +32,18 @@ const HANDSHAKE_TIMEOUT_MS = 20_000;
 
 // The contract an MCP host discovers (packages/mcp/src/server.ts · SK-MCP-002).
 // `nlqdb_query` carries the implicit create ("materialised on first reference")
-// — there is no `create_database` / `ask` / `run` tool.
+// — there is no `create_database` / `ask` / `run` tool. `nlqdb_remember` is the
+// additive memory-write verb (E-02 / SK-PIVOT-008).
 type ToolSpec = { readOnly: boolean; destructive: boolean; inputKeys: string[] };
 const EXPECTED_TOOLS: Record<string, ToolSpec> = {
   nlqdb_query: { readOnly: false, destructive: true, inputKeys: ["db", "q", "confirm"] },
   nlqdb_list_databases: { readOnly: true, destructive: false, inputKeys: [] },
   nlqdb_describe: { readOnly: true, destructive: false, inputKeys: ["db"] },
+  nlqdb_remember: {
+    readOnly: false,
+    destructive: false,
+    inputKeys: ["db", "kind", "payload", "endUserId", "threadId", "ttlSeconds"],
+  },
 };
 // Names the tracker has mis-referenced as MCP tools — none may exist.
 const FORBIDDEN_TOOLS = ["create_database", "nlqdb_create_database", "ask", "run"];

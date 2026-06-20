@@ -42,7 +42,7 @@ few-shot), not retrieval. Value-retrieval is demoted + privacy-gated.
 | 4 | Invite-valve crossings (KV `wl:invite-cap`) | 9/wk (06-13, carried) | cap 200/wk — no exhaustion risk; mostly walker-triggered; not re-pulled this run |
 | 5 | Anon DBs with a recorded first answer | **101 of 101** | instrument fix (runs 1–3) holding; +8 since 06-13. Genuine-stranger subset still ~0 (rows #2/#3) — the real worst-number |
 | | **Engine — BIRD 2026-06-19 · Spider 2026-06-17 (both fresh, < 7d)** | | `apps/api/src/gate/eval-baseline.ts` |
-| 6 | BIRD raw EX | 0.520 | target 0.65; was 0.522 (06-12). Canonical re-run on current main (T20–T22): 260/500, `no_sql` 3 → 1. **Flat within variance** — McNemar b=38/c=37, p=0.50, no regression. Directive levers saturated ⇒ retrieval levers (§4 #2a) next |
+| 6 | BIRD raw EX | 0.520 | target 0.65; was 0.522 (06-12). Canonical re-run on current main (T20–T22): 260/500, `no_sql` 3 → 1. **Flat within variance** — McNemar b=38/c=37, p=0.50, no regression. Directive levers saturated; literal/value (§4 #2a) + date-encoding (§4 #2c) levers both falsified standalone offline (run 31) ⇒ reasoning levers (§4 #3/#1) next |
 | 7 | Spider raw EX | 0.1852 | target 0.75; was 0.1704 (06-12). Gemini free-tier key restored 06-17 → `no_sql` 36 → 9, `gemini:http_4xx` cleared (`SK-LLM-039`); residual 9 capacity-only. Bottleneck now SQL reasoning, not availability |
 | 8 | persona-bench | — | not yet built |
 | 9 | free-vs-frontier delta | null | agentic lane not yet run (`SK-QUAL-004`, target ≤ 25 pp) |
@@ -50,24 +50,24 @@ few-shot), not retrieval. Value-retrieval is demoted + privacy-gated.
 | 10 | nlqdb-api requests / errors | 2,268 / 0 (0.00%) | mcp 284 req, events-worker 91 req, both 0 err |
 | 11 | nlqdb-api latency p50 / p95 | 666 ms / 7.05 s (06-13) | p95 dominated by LLM-bound asks; `/ask`-only split needs Grafana `metrics:read` (agent has write-only key) |
 | 12 | $ spend | ~$0 | free tiers across CF / Neon / LLM chain |
-| | **Pivot — agent-memory wedge** (GLOBAL-036) | 8 / 20 + 3 memory /vs pages | tick ⬜→✅ with PR link on merge; mirrors `docs/features/agent-memory-pivot/worksheets/INDEX.md` |
-| | *Messaging track — WS-\** | 7 / 13 (WS-07 🟡 1/3, WS-09 🟡 1/2) | pick when worst number is funnel / distribution |
+| | **Pivot — agent-memory wedge** (GLOBAL-036) | 9 / 20 + 3 memory /vs pages | tick ⬜→✅ with PR link on merge; mirrors `docs/features/agent-memory-pivot/worksheets/INDEX.md` |
+| | *Messaging track — WS-\** | 7 / 13 (WS-07 🟡 2/3, WS-09 🟡 1/2) | pick when worst number is funnel / distribution |
 | WS-01 | competitors.md anchor (Zep / Letta / LangMem) | ✅ | run 19 — §4 + threat matrix; unblocks WS-02 |
 | WS-02 | memory `/vs` pages (one per run) | ✅ 3/3 | run 20 — **Zep ✅** (`/vs/zep`); run 21 — **Letta ✅** (`/vs/letta`); run 22 — **LangMem ✅** (`/vs/langmem`) — WS-02 closed |
 | WS-03 | solve pages — sharpen + sibling | ✅ 2/2 | run 23 — **sharpen ✅**; run 25 — **analytical sibling ✅** (`analytical-queries-over-agent-memory`, the read-side report-over-memory wedge) |
 | WS-04 | MCP tool + package + docs framing | ✅ | run 24 — three tool descriptions + `package.json` desc + `mcp.mdx` intro now lead with "analytical memory" (copy only; SK-PIVOT-003) |
 | WS-05 | carousel analytics-over-memory slides | ✅ | run 26 — 2 analytics-over-memory slides (`GROUP BY category` + top-N `ORDER BY … LIMIT 5`), MCP surface; data-only `showcase-examples.ts` |
 | WS-06 | Mem0 \| Zep \| Letta \| nlqdb capability matrix | ✅ | run 27 — **data ✅** (`agentMemoryMatrix.ts`, 9 honest rows + test); run 28 — **render ✅** (`AgentMemoryMatrix.astro`, four-up glyph grid, nlqdb accent column, no `<img>`) |
-| WS-07 | `/agents` landing | 🟡 1/3 | run 30 — **skeleton + hero ✅** (`pages/agents/index.astro`, agent-memory hero + AEO answer + retrieval-vs-analytics split, own SEO/canonical, in sitemap); matrix+moat (run 2), CTA+demand-signal (run 3) |
+| WS-07 | `/agents` landing | 🟡 2/3 | run 30 — **skeleton + hero ✅**; run 31 — **matrix + moat ✅** (WS-06 matrix embedded + typed-plan trust-boundary pipeline + FSL/BYO-key band, `pages/agents/index.astro`); CTA + demand-signal (run 3) |
 | WS-08 | on-brand OG / social images | ⬜ | low · ~2 runs · WS-07 |
 | WS-09 | "database, not a vector store" blog + live demo | 🟡 1/2 | run 30 — **blog draft ✅** (launch post in `distribution-queue.md`: Replit incident → recall≠analytics → typed-plan boundary → measured BIRD 0.52 / Spider 0.1852 + `tools/eval/` link + WS-06 matrix); live `/agents` demo deferred (run 1, collides with WS-07 #430) |
 | WS-10 | FSL self-host messaging (GLOBAL-019 / arch §0 doc-fix shipped) | ✅ | run 28 — pricing self-host band + README "Models & plans" self-host line (FSL-accurate; no turnkey-image claim per WS-11 note) |
 | WS-11 | pull `ghcr.io/nlqdb/api` self-host container forward | ⬜ | high · multi · WS-10 · infra-gated |
 | WS-12 | home reweight + demote P1/P3/P4 to "also works for…" | ⬜ | med · ~2 runs · WS-06, WS-07 |
 | WS-13 | headline reposition (hero / README / llms.txt / JSON-LD) | ⬜ | high · ~2 runs · WS-07, WS-12 · 🔒 **FOUNDER-GATED** |
-| | *Engine track — E-\** | 1 / 7 | pick when worst number is engine quality / agent on-ramp |
+| | *Engine track — E-\** | 2 / 7 | pick when worst number is engine quality / agent on-ramp |
 | E-01 | `agent_memory_v1` schema preset for `db.create` | ✅ | run 29 module + run 30 wiring (SK-HDC-020): `db.create { preset: "agent_memory_v1" }` provisions the 4 tables deterministically, no LLM; gated behind `MEMORY_PRESET`. One follow-on: quality-eval ablation row (Neon-branch gated) |
-| E-02 | additive MCP tool `nlqdb_remember` (no rename) | ⬜ | med · 1 run · E-01 |
+| E-02 | additive MCP tool `nlqdb_remember` (no rename) | ✅ | run 31 (SK-PIVOT-008): server-built deterministic parameterised INSERT via `POST /v1/memory/remember` (never `/v1/run` — trust boundary), `wrong_preset` guard, SDK `remember()`, `nlqdb_remember` tool. Follow-ons: e2e Neon smoke (infra) + CLI `nlq remember` (Go) |
 | E-03 | per-agent / end-user / thread compile-layer scoping | ⬜ | **high · security-critical** · ~2 runs · E-01 |
 | E-04 | TTL + cron sweep (`expires_at`) | ⬜ | low · 1 run · E-01 |
 | E-05 | hybrid recall — pgvector + `nlqdb_recall` | ⬜ | high · multi · E-01 · infra-gated |
@@ -76,36 +76,73 @@ few-shot), not retrieval. Value-retrieval is demoted + privacy-gated.
 
 ## Deltas (recent runs)
 
+- 2026-06-20 (run 31) — **WS-07 run 2/3: embedded the matrix + the moat on
+  `/agents`** (WS-07 🟡 1/3 → **2/3**; pivot count holds at 8/20 until run 3
+  closes the worksheet). Engine lane still blocked (BIRD 06-19 + Spider 06-17
+  both < 7 d) and both in-flight PRs already own a lane (#432 = E-02 engine,
+  #431 = WS-09 messaging in `distribution-queue.md`), so the lowest non-colliding
+  lever is WS-07 run 2 — touches only `pages/agents/index.astro`. Embeds the
+  WS-06 `AgentMemoryMatrix` (no `<img>`, glyphs are live text), a four-step
+  **typed-plan trust-boundary** pipeline (LLM → typed JSON plan → compiler emits
+  parameterised SQL → AST re-parse + verb/table allowlist (`libpg_query` on the
+  create path) → diff preview), sourced from the Replit-wipe (Fortune) + Cortex-Analyst (Snowflake)
+  receipts, and an FSL-1.1/BYO-key/no-per-call-fees band (FSL-accurate per
+  WS-10). Gates: astro-check **0/0/0** (74 files), web **126** tests, biome
+  clean; `/agents` builds. KPI: **onboarding / UX** (GLOBAL-025); **none
+  degraded** (additive markup, no code path / engine / chain / scorer / eval
+  touched; BIRD 06-19 + Spider 06-17 untouched; perf N/A — static). Artifact:
+  the existing run-30 "Show HN → `/agents`" queue draft (which names the matrix)
+  now has its destination; the queue edit is **deferred to avoid colliding with
+  #431's in-flight rewrite of `distribution-queue.md`** (same call as #432).
+  Next pivot lever is WS-07 run 3 (CTA + GLOBAL-024 demand-signal event).
+- 2026-06-20 (run 31) — **Engine measurement: §4 #2c date-normalisation directive
+  FALSIFIED standalone (offline, no eval dispatch).** BIRD 06-19 + Spider 06-17
+  are both < 7 d so §5 forbids a back-to-back dispatch; the in-bounds lever is an
+  offline classifier sizing (run-18 method, `tools/eval/` only). Added a
+  date-encoding sub-axis to `SK-QUAL-014` (`canonDate` + `isDateLiteralOnly` +
+  the `date_literal_only` tag) and ran it on the committed 06-19 BIRD baseline
+  (238 mismatches): **`date_literal_only` = 2 total, 0 standalone** — every date
+  diff co-occurs with a structural error (`LIKE '…%'` vs `= '…'` needs an
+  operator change), so a date directive flips ~0 rows ⇒ #2c parked, same verdict
+  as #2a; the reasoning levers (#3/#1) are the path to the floor. **Δ:** a new
+  measured number prunes a backlog lever. KPI: **engine quality** (evidence-based
+  backlog prioritisation); none degraded — read-only, no chain/scorer/runner
+  change, EX untouched; 21 eval tests green (was 18).
+- 2026-06-20 (run 31) — **E-02: shipped the `nlqdb_remember` write primitive —
+  E-02 closed** (engine track **1 → 2/7**; Pivot **8 → 9/20**; E-02 ⬜ → **✅**).
+  Lever choice: the worst number is engine (Spider 0.1852), but BIRD 06-19 +
+  Spider 06-17 are both < 7 d so §5 forbids a back-to-back eval dispatch; the
+  in-bounds engine lever is the pivot **engine track**, and E-02 was the
+  lowest-numbered ⬜ slice with its prereq met (E-01 ✅, merged #429). It also
+  **doesn't collide** with the only open PR (#431, rewriting
+  `distribution-queue.md` for WS-09) — E-02 touches `apps/api/src/memory/**` +
+  `packages/{sdk,mcp}/**`. **SK-PIVOT-008:** the memory *write* verb is a
+  dedicated `POST /v1/memory/remember` whose server (not the LLM, not the
+  caller) builds a deterministic **parameterised** `INSERT … RETURNING` from
+  the typed payload — identifiers from the fixed `AGENT_MEMORY_V1_COLUMNS`
+  allow-list, values all bound `$n`. Routing it through `/v1/run` would re-open
+  string-SQL over agent content + move SQL authorship to the caller, breaking
+  the trust boundary (SK-PIVOT-006). `wrong_preset` (409) rejects non-memory
+  DBs (id-prefix detection); entities upsert on the UNIQUE; `agent_id` = tenant
+  id until E-03. Exec reuses the read path's `set_config('app.tenant_id')`
+  transaction so RLS governs the INSERT's `WITH CHECK`. **Additive** — the
+  three existing MCP tools are unchanged (SK-MCP-002). GLOBAL-003 parity: SDK
+  `client.remember()` (auto-keyed, `SK-SDK-006`) + `nlqdb_remember` tool ship
+  the same PR; CLI `nlq remember` (Go) is the tracked fast-follow. Gates: API
+  **840** (+16 new), MCP **36** (+3), SDK **52**, typecheck + biome clean. KPI:
+  **onboarding / engine quality** (GLOBAL-025) — an agent now gets a real,
+  queryable memory *write* verb (then `nlqdb_query` can GROUP BY over it), no
+  schema design; **none degraded** (additive endpoint/tool, no engine/chain/
+  scorer/eval touched; BIRD 06-19 + Spider 06-17 untouched; perf: the write is
+  a single parameterised INSERT, no LLM hop). Artifact (the "agent memory in
+  one MCP config" gist) **deferred** to avoid colliding with #431's
+  `distribution-queue.md` rewrite; queue it once #431 merges. Next engine lever
+  is **E-04** (TTL sweep, low) or **E-03** (scoping, security-critical).
 - 2026-06-20 (run 30) — **WS-07 run 1/3: shipped the `/agents` skeleton + hero**
-  (`apps/web/src/pages/agents/index.astro`). WS-07 ⬜ → **🟡 1/3** ("/agents
-  skeleton live" boolean flipped). Engine lane blocked (BIRD 06-19 + Spider
-  06-17 both < 7 d; §5 forbids a back-to-back eval dispatch) and the engine
-  track's in-progress slice E-01 is in flight on open PR #429 — so the
-  in-bounds lever is funnel/distribution, and per the pivot INDEX pickup rule
-  WS-07 is the lowest-numbered ⬜ messaging worksheet with its prereq (WS-06 ✅,
-  closed run 28) met; it touches only `apps/web/src/pages/agents/**` +
-  `sitemap.xml.ts` (no collision with #429). The new route is the second front
-  door (GLOBAL-036): an agent-memory-led hero ("Memory your agent can query."),
-  an AEO direct-answer block ("What is analytical agent memory?"), and a
-  retrieval-vs-analytics split (vector store returns top-k similar chunks;
-  nlqdb runs the `GROUP BY` because the memory *is* a database). On-brand
-  (acid-lime on near-black, JetBrains Mono, hard-shadow accent column, no
-  `<img>`); honest pgvector-deferred scope line; cites the manifesto
-  "not a vector store" anchor; links to `/vs`. Own `title`/`description`/
-  `canonical`; the `SoftwareApplication` JSON-LD is emitted by `Base.astro`
-  from the agent-memory `description` (no duplicate block — P5). Added
-  `/agents` to `sitemap.xml.ts` `STATIC_ROUTES` for crawler discovery.
-  **Sitewide lead strings (`Hero.astro`, README, `llms.txt`) untouched** (the
-  WS-13 gate); the WS-06 matrix + typed-plan-trust-boundary moat + FSL band are
-  run 2, the waitlist CTA + GLOBAL-024 demand-signal event are run 3. Gates:
-  astro-check **0/0/0** (74 files, +1), web **126** tests, biome clean. KPI:
-  **onboarding / UX** (GLOBAL-025) — a dedicated agent-builder on-ramp the
-  HN/Reddit/MCP-directory audience can link to; **none degraded** (additive
-  route, no code path / engine / chain / scorer / eval touched; BIRD 06-19 +
-  Spider 06-17 untouched; performance N/A — static markup). Artifact: a
-  "Show HN: analytical memory for AI agents" draft pointing at `/agents`
-  appended to the distribution queue. Next pivot lever is WS-07 run 2 (embed
-  the matrix + moat).
+  (`pages/agents/index.astro`): agent-memory hero, AEO direct-answer block,
+  retrieval-vs-analytics split, own SEO/canonical, added to `sitemap.xml.ts`.
+  Sitewide lead strings (`Hero.astro`, README, `llms.txt`) untouched (WS-13
+  gate). Onboarding/UX KPI; none degraded.
 - 2026-06-20 (run 30) — **E-01 run 2/2: wired the `agent_memory_v1` preset into
   the create request path — E-01 closed** (engine track **0 → 1/7**; Pivot
   **7 → 8/20**; E-01 🟡 1/2 → **✅**). Lever choice: the worst number is engine

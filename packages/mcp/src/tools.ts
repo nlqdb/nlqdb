@@ -1,4 +1,4 @@
-import type { AskDiff, CandidateDb, NlqClient, NlqdbApiError } from "@nlqdb/sdk";
+import type { AskDiff, CandidateDb, NlqClient, NlqdbApiError, RememberRequest } from "@nlqdb/sdk";
 import { z } from "zod";
 
 export type ToolError = {
@@ -58,6 +58,47 @@ export const describeInputShape = {
 };
 
 export type DescribeInput = z.infer<z.ZodObject<typeof describeInputShape>>;
+
+export const rememberInputShape = {
+  db: z
+    .string()
+    .min(1)
+    .describe(
+      "The agent_memory_v1 database id (db_agent_memory_v1_…). Provision one with db.create { preset: 'agent_memory_v1' }; a non-memory DB is rejected with wrong_preset.",
+    ),
+  kind: z
+    .enum(["fact", "episode", "entity"])
+    .describe(
+      "Which memory table to write into: 'fact' (a durable statement to recall later), 'episode' (one conversation/tool turn), or 'entity' (a person/project/thing — upserts on agent+kind+name).",
+    ),
+  payload: z
+    .record(z.string(), z.unknown())
+    .describe(
+      "Kind-specific fields. fact: { content, kind?, tags?, source? }. episode: { role, content, tool_calls?, tokens? }. entity: { kind, canonical_name, properties? }.",
+    ),
+  endUserId: z.string().optional().describe("Optional end-user scope (facts / episodes)."),
+  threadId: z
+    .string()
+    .optional()
+    .describe("Optional thread/conversation scope (facts / episodes)."),
+  ttlSeconds: z
+    .number()
+    .optional()
+    .describe("Optional TTL in seconds — sets expires_at on a fact so it can be swept later."),
+};
+
+export type RememberInput = z.infer<z.ZodObject<typeof rememberInputShape>>;
+
+export const rememberOutputShape = {
+  id: z
+    .union([z.string(), z.number()])
+    .describe("Id of the materialised (or upserted) memory row."),
+  kind: z.enum(["fact", "episode", "entity"]),
+  materialised_at: z.string().describe("Server timestamp the row was written."),
+  expires_at: z.string().optional().describe("Present only when a fact TTL was set."),
+};
+
+export type RememberOutput = z.infer<z.ZodObject<typeof rememberOutputShape>>;
 
 export const queryOutputShape = {
   rows: z
@@ -238,6 +279,38 @@ export async function handleDescribe(
   }
 }
 
+export async function handleRemember(
+  client: NlqClient,
+  input: RememberInput,
+  ctx: HandlerContext = {},
+): Promise<ToolResult<RememberOutput>> {
+  try {
+    const opts: { signal?: AbortSignal } = {};
+    if (ctx.signal) opts.signal = ctx.signal;
+    // The server (`memory/remember.ts`) is the source of truth for the
+    // per-kind payload shape; the flat tool schema keeps `payload` loose
+    // and lets that validation report a one-sentence reason.
+    const req = {
+      db: input.db,
+      kind: input.kind,
+      payload: input.payload,
+      ...(input.endUserId !== undefined ? { endUserId: input.endUserId } : {}),
+      ...(input.threadId !== undefined ? { threadId: input.threadId } : {}),
+      ...(input.ttlSeconds !== undefined ? { ttlSeconds: input.ttlSeconds } : {}),
+    } as RememberRequest;
+    const res = await client.remember(req, opts);
+    const out: RememberOutput = {
+      id: res.id,
+      kind: res.kind,
+      materialised_at: res.materialised_at,
+      ...(res.expires_at ? { expires_at: res.expires_at } : {}),
+    };
+    return { ok: out };
+  } catch (err) {
+    return { err: mapSdkError(err) };
+  }
+}
+
 function traceOf(trace: { sql: string; confidence: number; cache_hit: boolean }) {
   return { sql: trace.sql, confidence: trace.confidence, cache_hit: trace.cache_hit };
 }
@@ -275,6 +348,16 @@ export function mapSdkError(err: unknown): ToolError {
         "This tool requires a user-scoped key — sk_mcp_ (minted per MCP host) or sk_live_ (a backend/server secret).",
       action:
         "Mint one at https://app.nlqdb.com/app/keys, then re-launch this host so it picks up the new credentials.",
+    };
+  }
+  // Read-only principal tried to write memory (`/v1/memory/remember` 403).
+  // Checked before the generic 403 branch so the action names the real fix.
+  if (code === "forbidden") {
+    return {
+      code: "forbidden",
+      message: "This key is read-only, so it can't write memory.",
+      action:
+        "Use a user-scoped key (sk_live_ or sk_mcp_) to write; pk_live_ embeds can only query.",
     };
   }
   if (code === "account_required" || httpStatus === 403) {
@@ -321,6 +404,15 @@ export function mapSdkError(err: unknown): ToolError {
         retryAfter !== undefined
           ? `Wait ${retryAfter}s before retrying — the rate-limit window resets then.`
           : "Wait up to 60s before retrying; the per-minute window resets on the minute boundary.",
+    };
+  }
+  if (code === "wrong_preset") {
+    return {
+      code: "wrong_preset",
+      message:
+        "That database isn't an agent-memory database, so it has no facts/episodes/entities tables.",
+      action:
+        "Provision one with the agent_memory_v1 preset (db.create { preset: 'agent_memory_v1' }), then remember into it.",
     };
   }
   if (code === "aborted") {

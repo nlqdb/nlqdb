@@ -47,10 +47,20 @@ in [`quality-score-source-of-truth.md`](../../../progress/quality-score-source-o
     value-retrieval lever recovers **~0 mismatches standalone**. That falsifies
     the "additive, do-first" framing the column-name ceiling (`SK-QUAL-015`)
     implied; the remaining loss is structural reasoning (grain/shape/predicate).
+  - **The date sub-axis falsifies the §4 #2c date-normalisation directive the
+    same way (2026-06-20).** `canonDate` (zero-pad date heads, strip one trailing
+    LIKE `%`) + `isDateLiteralOnly` (date-canonical literal multisets match **and**
+    masked structure identical) + the `date_literal_only` tag isolate the
+    date-encoding slice of `literal_diff`. On the same 238-mismatch baseline:
+    `date_literal_only` = **2** total, **0 standalone** — the run-18 "~16" eyeball
+    over-counted, and every date diff co-occurs with a structural error (`LIKE
+    '…%'` vs `= '…'` needs an operator change). A date `PLAN_DIRECTIVES` bullet
+    flips ~0 rows ⇒ #2c parked, same verdict as #2a.
 
 - **Consequence in code:** `tools/eval/src/analyze-mismatches.ts` (pure
-  classifier + `literalsIn` / `isLiteralOnly` + `histogram` + `import.meta.main`
-  CLI; the CLI prints the `literal_only` headline above the tally),
+  classifier + `literalsIn` / `isLiteralOnly` / `canonDate` / `isDateLiteralOnly`
+  + `histogram` + `import.meta.main` CLI; the CLI prints the `literal_only` +
+  `date_literal_only` headlines above the tally),
   `test/analyze-mismatches.test.ts` (quote-handling regression + structural +
   literal-axis class assertions, mocked, no network), and the
   `analyze-mismatches` script in `tools/eval/package.json`. Read-only over an

@@ -1,8 +1,10 @@
 import { describe, expect, it } from "bun:test";
 
 import {
+  canonDate,
   classifyMismatch,
   histogram,
+  isDateLiteralOnly,
   isLiteralOnly,
   literalsIn,
   tablesIn,
@@ -62,12 +64,21 @@ describe("classifyMismatch", () => {
     expect(tags).not.toContain("other_predicate_or_value");
   });
 
-  it("tags a non-casing value diff as literal_diff only (date-encoding / wrong value)", () => {
+  it("tags a date-encoding constant diff as date_literal_only, not casing (§4 #2c)", () => {
     const gold = "SELECT name FROM t WHERE d = '2019-08-20'";
     const pred = "SELECT name FROM t WHERE d = '2019-8-20'";
     const tags = classifyMismatch(pred, gold);
     expect(tags).toContain("literal_diff");
+    expect(tags).toContain("date_literal_only");
     expect(tags).not.toContain("literal_case_only");
+  });
+
+  it("does not tag date_literal_only when a literal genuinely differs (wrong value)", () => {
+    const gold = "SELECT name FROM t WHERE city = 'Paris'";
+    const pred = "SELECT name FROM t WHERE city = 'Lyon'";
+    const tags = classifyMismatch(pred, gold);
+    expect(tags).toContain("literal_diff");
+    expect(tags).not.toContain("date_literal_only");
   });
 
   it("does not flag literal_diff when constants are identical (pure structural)", () => {
@@ -105,6 +116,52 @@ describe("literalsIn / isLiteralOnly", () => {
     expect(isLiteralOnly("SELECT x FROM t WHERE c = 'a'", "SELECT x FROM t WHERE c = 'a'")).toBe(
       false,
     );
+  });
+});
+
+describe("canonDate / isDateLiteralOnly (§4 #2c date-normalisation lever)", () => {
+  it("canonicalises unpadded dates and strips one trailing LIKE wildcard", () => {
+    expect(canonDate("2019-8-20")).toBe("2019-08-20");
+    expect(canonDate("2019-08-20%")).toBe("2019-08-20");
+    expect(canonDate("2019-8-2")).toBe("2019-08-02");
+  });
+
+  it("preserves a time component (date-only must not equal a datetime)", () => {
+    expect(canonDate("2019-8-20 12:00:00")).toBe("2019-08-20 12:00:00");
+  });
+
+  it("passes non-date literals through unchanged", () => {
+    expect(canonDate("SME")).toBe("SME");
+    expect(canonDate("12-34")).toBe("12-34");
+  });
+
+  it("isDateLiteralOnly is true when only date encoding differs and structure matches", () => {
+    expect(
+      isDateLiteralOnly(
+        "SELECT x FROM t WHERE d = '2019-8-20'",
+        "SELECT x FROM t WHERE d = '2019-08-20'",
+      ),
+    ).toBe(true);
+  });
+
+  it("isDateLiteralOnly is false when an operator also differs (LIKE '…%' vs = '…')", () => {
+    // The literal diff vanishes under canonicalisation, but `LIKE` vs `=` is a
+    // structural change a date directive alone cannot make — so not date-only.
+    expect(
+      isDateLiteralOnly(
+        "SELECT x FROM t WHERE d LIKE '2019-10-08%'",
+        "SELECT x FROM t WHERE d = '2019-10-08'",
+      ),
+    ).toBe(false);
+  });
+
+  it("isDateLiteralOnly is false for a genuine wrong-value literal", () => {
+    expect(
+      isDateLiteralOnly(
+        "SELECT x FROM t WHERE d = '2019-08-21'",
+        "SELECT x FROM t WHERE d = '2019-08-20'",
+      ),
+    ).toBe(false);
   });
 });
 

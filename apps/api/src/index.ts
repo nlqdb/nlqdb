@@ -41,7 +41,7 @@ import {
   mintSkMcpKey,
   revokeKeyById,
 } from "./api-keys.ts";
-import { buildAskDeps, buildEventEmitter } from "./ask/build-deps.ts";
+import { buildAskDeps, buildEventEmitter, buildMemoryExec } from "./ask/build-deps.ts";
 import {
   BYOLLM_HEADER,
   type ByollmCredential,
@@ -85,6 +85,11 @@ import { runIcpCluster } from "./icp-cluster.ts";
 import { runIcpScore } from "./icp-score.ts";
 import { runIcpScrape } from "./icp-scrape.ts";
 import { getLLMRouter } from "./llm-router.ts";
+import {
+  orchestrateRemember,
+  type RememberError,
+  validateRememberInput,
+} from "./memory/remember.ts";
 import { makeRequireSession, type RequireSessionVariables } from "./middleware.ts";
 import { handleMcpCallback, handleMcpCallbackRedeem } from "./oauth-mcp-bridge.ts";
 import {
@@ -1396,6 +1401,107 @@ app.post("/v1/run", requirePrincipal, gatePreAlpha, async (c) => {
   });
 });
 
+// `POST /v1/memory/remember` — the agent-memory **write** primitive
+// (agent-memory pivot E-02). Materialises a typed row into the
+// `agent_memory_v1` schema (E-01) with no LLM in the loop: the payload
+// is structured, so the compiler emits a deterministic parameterised
+// INSERT itself (trust boundary preserved — `memory/remember.ts`).
+// Additive to the stable MCP tool contract (SK-MCP-002); `nlqdb_query`
+// stays the read verb. Idempotency-Key is auto-keyed by the SDK on
+// retries (SK-SDK-006) and accepted here, same posture as `/v1/run`
+// (the general dedupe middleware is the idempotency feature's open work).
+app.post("/v1/memory/remember", requirePrincipal, gatePreAlpha, async (c) => {
+  const tracer = trace.getTracer("@nlqdb/api");
+  return tracer.startActiveSpan("nlqdb.memory.remember.request", async (span) => {
+    try {
+      const principal = c.var.principal as Principal;
+      const surface = surfaceFromPrincipal(principal);
+      span.setAttribute("nlqdb.principal.kind", principal.kind);
+      span.setAttribute("nlqdb.principal.id", principal.id);
+      span.setAttribute("nlqdb.surface", surface);
+
+      // The memory write needs a user-scoped key (the MCP tool contract).
+      // pk_live_ embeds are read-only (SK-APIKEYS-003); anon principals
+      // have no memory DB (the preset create is authed behind MEMORY_PRESET).
+      if (principal.kind === "pk_live") {
+        span.setAttribute("nlqdb.memory.outcome", "forbidden_read_only");
+        return c.json({ error: { status: "forbidden", reason: "read_only_principal" } }, 403);
+      }
+      if (principal.kind === "anon") {
+        span.setAttribute("nlqdb.memory.outcome", "auth_required");
+        return c.json(
+          {
+            error: {
+              status: "auth_required" as const,
+              action: "Use a user-scoped key (sk_live_ or sk_mcp_) to write agent memory.",
+            },
+          },
+          401,
+        );
+      }
+
+      const raw = await parseJsonBody<unknown>(c);
+      if (!raw.ok) {
+        span.setAttribute("nlqdb.memory.outcome", "invalid_json");
+        return c.json({ error: { status: "invalid_json" } }, 400);
+      }
+      const validated = validateRememberInput(raw.body);
+      if (!validated.ok) {
+        span.setAttribute("nlqdb.memory.outcome", "invalid_body");
+        return c.json({ error: { status: "invalid_body", reason: validated.reason } }, 400);
+      }
+      span.setAttribute("nlqdb.memory.kind", validated.value.kind);
+
+      const askDeps = buildAskDeps(c.env);
+      const outcome = await orchestrateRemember(
+        {
+          resolveDb: askDeps.resolveDb,
+          execMemory: buildMemoryExec,
+          rateLimiter: askDeps.rateLimiter,
+        },
+        {
+          args: validated.value,
+          userId: principal.id,
+          // E-03 narrows this to a per-agent identity; until then the
+          // tenant id tags every row (the existing per-tenant isolation).
+          agentId: principal.id,
+          rateLimitBucketKey: rateLimitBucketKey(principal),
+        },
+      );
+
+      if (!outcome.ok) {
+        const httpStatus = rememberErrorStatus(outcome.error);
+        if (outcome.error.status === "rate_limited") {
+          const { limit, count, resetAt } = outcome.error;
+          const now = Math.floor(Date.now() / 1000);
+          c.header("X-RateLimit-Limit", String(limit));
+          c.header("X-RateLimit-Remaining", String(Math.max(0, limit - count)));
+          c.header("X-RateLimit-Reset", String(resetAt));
+          c.header("Retry-After", String(Math.max(0, resetAt - now)));
+        }
+        span.setAttribute("nlqdb.memory.outcome", outcome.error.status);
+        return c.json({ error: outcome.error }, httpStatus);
+      }
+
+      span.setAttribute("nlqdb.memory.outcome", "ok");
+      // Memory writes count as activity — refresh `last_queried_at`
+      // off-path so the DB surfaces in the rail's recent-activity list.
+      c.executionCtx.waitUntil(
+        c.env.DB.prepare(
+          "UPDATE databases SET last_queried_at = unixepoch() WHERE id = ? AND tenant_id = ?",
+        )
+          .bind(validated.value.db, principal.id)
+          .run()
+          .catch(() => undefined),
+      );
+
+      return c.json({ status: "ok" as const, ...outcome.result });
+    } finally {
+      span.end();
+    }
+  });
+});
+
 // `POST /v1/waitlist` — public, unauthenticated, idempotent. Backs
 // the homepage waitlist form while the chat surface is tabled.
 // Returns 200 for any well-formed email (privacy: never reveal
@@ -2658,6 +2764,13 @@ function errorStatus(status: AskError["status"]): 400 | 404 | 409 | 422 | 429 | 
 // Wraps `errorStatus` with the `forbidden` branch unique to `/v1/run` (`SK-APIKEYS-003`).
 function runErrorStatus(error: RunError): 400 | 403 | 404 | 409 | 422 | 429 | 502 {
   if (error.status === "forbidden") return 403;
+  return errorStatus(error.status);
+}
+
+// `/v1/memory/remember` adds `wrong_preset` (409 — the target DB isn't an
+// agent_memory_v1 preset); everything else maps like the ask/run paths.
+function rememberErrorStatus(error: RememberError): 400 | 404 | 409 | 422 | 429 | 502 {
+  if (error.status === "wrong_preset") return 409;
   return errorStatus(error.status);
 }
 

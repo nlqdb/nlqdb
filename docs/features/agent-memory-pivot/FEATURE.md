@@ -216,6 +216,49 @@ the memory-shaped primitives that make the wedge claims durable).
   preset *is* the value. · **Defer versioning to v2 time** — versioning is
   a contract; adding it later is harder than starting with it.
 
+### SK-PIVOT-008 — The memory **write** verb is a dedicated server endpoint that builds the SQL itself, never `/v1/run`
+
+- **Decision:** `nlqdb_remember` (E-02) writes through a dedicated
+  `POST /v1/memory/remember` endpoint. The server — not the LLM, not the
+  caller — builds the deterministic parameterised `INSERT … RETURNING`
+  from the typed payload (`apps/api/src/memory/remember.ts`
+  `buildRememberInsert`): every identifier (table + column list) is drawn
+  from the fixed `AGENT_MEMORY_V1_COLUMNS` allow-list and every value is a
+  bound `$n` parameter. It is rejected with `wrong_preset` (409) unless the
+  target DB is an `agent_memory_v1` preset (detected by the
+  `db_agent_memory_v1_` id prefix the create path mints). Entities upsert on
+  the `(agent_id, kind, canonical_name)` UNIQUE. Until E-03 ships per-agent
+  identities, `agent_id` is the tenant id (the existing isolation boundary).
+- **Core value:** Bullet-proof, Simple, Goal-first
+- **Why:** Routing the write through the `/v1/run` raw-SQL hatch would
+  re-open string-built SQL over arbitrary agent-supplied content (an
+  injection surface) and would mean the *caller* composes the statement —
+  exactly the trust boundary the typed-plan pipeline exists to keep
+  (`SK-PIVOT-006`). A dedicated endpoint with a server-side builder keeps
+  the boundary: the agent controls *data*, never *SQL*. The `wrong_preset`
+  guard means a `remember` against a non-memory DB fails loud with an
+  actionable error (GLOBAL-012) instead of a cryptic missing-table 500. The
+  exec adapter (`build-deps.ts buildMemoryExec`) reuses the read path's
+  `set_config('app.tenant_id', …)` transaction so the provisioner's RLS
+  policy governs the INSERT's `WITH CHECK` too.
+- **Consequence in code:** New `apps/api/src/memory/remember.ts`
+  (pure builder + validator + orchestrator) + `buildMemoryExec` in
+  `ask/build-deps.ts` + the `POST /v1/memory/remember` route. SDK
+  `client.remember()` (GLOBAL-003 parity, auto-keyed for idempotency like
+  `/v1/run`, `SK-SDK-006`) and the additive `nlqdb_remember` MCP tool ship
+  the same PR. `wrong_preset` joins the SDK `ApiErrorCode` union. CLI
+  `nlq remember` is the tracked fast-follow (the CLI is Go; out of this
+  TypeScript slice). Idempotency *enforcement* (dedupe store) is the
+  idempotency feature's unbuilt general middleware — `/v1/memory/remember`
+  has the same accept-the-header posture as `/v1/run` today.
+- **Alternatives rejected:** **Write via `/v1/run`** — re-opens string-SQL
+  over agent content and moves SQL authorship to the caller; breaks the
+  trust boundary. · **Let the LLM compose the INSERT** — defeats the whole
+  point of a *structured* write verb; non-deterministic + a token cost for a
+  mechanical insert. · **Generic `/v1/memory` with a `verb` field** —
+  over-abstracts three fixed shapes; an explicit `kind` discriminant is
+  simpler and self-documenting.
+
 ### SK-PIVOT-005 — The self-host / anti-VC angle is messaged under FSL-1.1 honestly, and the container is pulled forward to make it true
 
 - **Decision:** The open/free wedge is stated truthfully under **FSL-1.1**

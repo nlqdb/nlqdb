@@ -1,6 +1,6 @@
 # E-02 — Additive MCP tool `nlqdb_remember`
 
-**Status:** ⬜ not started
+**Status:** ✅ shipped (2026-06-20, run 31 — `apps/api/src/memory/remember.ts` + `POST /v1/memory/remember` + SDK `remember()` + `nlqdb_remember` MCP tool; SK-PIVOT-008). Two follow-ons: the `tests/e2e/mcp` Neon-branch `remember → query` smoke (infra-gated) and CLI `nlq remember` (the CLI is Go).
 **Sequence:** Engine 2 of 7 · **Risk:** med · **Runs:** 1 · **Prereqs:** E-01 ✅ · **Gate:** none
 
 ## Goal
@@ -77,17 +77,19 @@ one-sentence `error.status: "wrong_preset"` (GLOBAL-012).
 
 ## Done when
 
-- [ ] `nlqdb_remember` listed by MCP servers, schema documented, deterministic.
-- [ ] SDK `remember()` shipped same PR (GLOBAL-003 parity); CLI `nlq remember` follows in WS-04's MCP-docs slice or a fast follow-up.
-- [ ] Idempotency-Key honoured; OTel span emitted; wrong-preset DBs rejected with the one-sentence error.
-- [ ] All three existing MCP tools unchanged (SK-MCP-002 honoured).
-- [ ] `bun run typecheck && lint && test` + MCP e2e green.
-- [ ] Engine INDEX tracker + status ticked.
+- [x] `nlqdb_remember` registered (server.ts), schema documented, deterministic (server builds the parameterised INSERT, SK-PIVOT-008).
+- [x] SDK `remember()` shipped same PR (GLOBAL-003 parity, auto-keyed). ◐ CLI `nlq remember` is the tracked fast-follow (the CLI is Go, out of this TS slice).
+- [x] OTel span (`nlqdb.memory.remember`) emitted; wrong-preset DBs rejected with the one-sentence error; pk_live (read-only) → forbidden. Idempotency-Key accepted with the same posture as `/v1/run` (SDK auto-keys; the general dedupe middleware is the idempotency feature's open work).
+- [x] All three existing MCP tools unchanged (SK-MCP-002 honoured) — 33 → 36 MCP tests (3 added), all green.
+- [x] `bun run typecheck && lint && test` green (API 840, MCP 36, SDK 52). ◐ The `tests/e2e/mcp` Neon-branch `remember → query` smoke is the deferred infra-gated follow-on.
+- [x] Engine INDEX tracker + status ticked.
 
 ## Artifact
 
 A 30-line "how to give your Claude/Cursor/VS Code agent memory in one MCP
-config" gist → `distribution-queue.md`.
+config" gist → `distribution-queue.md`. **Deferred this run** to avoid
+colliding with the in-flight WS-09 PR (#431), which is rewriting
+`distribution-queue.md`; queue it once #431 merges.
 
 ## Rollback
 

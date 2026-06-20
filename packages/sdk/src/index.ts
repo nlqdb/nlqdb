@@ -211,6 +211,47 @@ export type RunSqlResult = {
   trace: Trace;
 };
 
+// E-02 — the agent-memory write verb. `client.remember()` materialises a
+// typed row into an `agent_memory_v1` preset DB (no LLM in the loop). The
+// MCP `nlqdb_remember` tool and `nlq remember` (fast-follow) wrap this.
+export type RememberFactPayload = {
+  content: string;
+  kind?: string;
+  tags?: string[];
+  source?: Record<string, unknown>;
+};
+export type RememberEpisodePayload = {
+  role: string;
+  content: string;
+  tool_calls?: Record<string, unknown>;
+  tokens?: number;
+};
+export type RememberEntityPayload = {
+  kind: string;
+  canonical_name: string;
+  properties?: Record<string, unknown>;
+};
+
+export type RememberRequest = {
+  db: string;
+  endUserId?: string;
+  threadId?: string;
+  ttlSeconds?: number;
+} & (
+  | { kind: "fact"; payload: RememberFactPayload }
+  | { kind: "episode"; payload: RememberEpisodePayload }
+  | { kind: "entity"; payload: RememberEntityPayload }
+);
+
+// Response from `client.remember()` — the materialised row's identity.
+export type RememberResult = {
+  status: "ok";
+  id: string | number;
+  kind: "fact" | "episode" | "entity";
+  materialised_at: string;
+  expires_at?: string;
+};
+
 // Mirror of the API's `AskError` discriminant (apps/api/src/ask/types.ts)
 // plus SDK-only sentinels. Open-ended via `(string & {})` so a new API
 // status doesn't force an SDK bump to compile — consumers still get
@@ -255,6 +296,9 @@ export type ApiErrorCode =
   // credential, 503 when the deployment can't seal keys (KEK unset).
   | "invalid_byollm_key"
   | "byollm_unavailable"
+  // E-02: `client.remember()` rejected because the target DB isn't an
+  // `agent_memory_v1` preset (409).
+  | "wrong_preset"
   // SDK-only sentinels — never sent by the API.
   | "unknown_error"
   | "non_json_response"
@@ -594,6 +638,17 @@ export type NlqClient = {
     req: RunSqlRequest,
     opts?: { signal?: AbortSignal; idempotencyKey?: string },
   ): Promise<RunSqlResult>;
+  /**
+   * `POST /v1/memory/remember` — write a typed memory row into an
+   * `agent_memory_v1` preset DB (E-02). No LLM in the loop: the payload is
+   * structured, so the server emits a deterministic parameterised INSERT.
+   * Rejects a non-preset DB with `wrong_preset` (409) and a read-only
+   * `pk_live` with `forbidden`. Mutating: auto-keyed (`SK-SDK-006`).
+   */
+  remember(
+    req: RememberRequest,
+    opts?: { signal?: AbortSignal; idempotencyKey?: string },
+  ): Promise<RememberResult>;
   /**
    * `GET /v1/keys/:hash/status` — revocation probe (`SK-MCP-014`). `apps/mcp/`'s
    * `McpAgent` calls this every 1 s to re-check `sk_mcp_*` revocation. `keyHash`
@@ -991,6 +1046,15 @@ export function createClient(opts: ClientOptions = {}): NlqClient {
     askStream: streamAsk,
     runSql: (req, callOpts) =>
       call<RunSqlResult>("/v1/run", {
+        method: "POST",
+        body: JSON.stringify(req),
+        signal: callOpts?.signal,
+        ...(callOpts?.idempotencyKey
+          ? { headers: { "idempotency-key": callOpts.idempotencyKey } }
+          : {}),
+      }),
+    remember: (req, callOpts) =>
+      call<RememberResult>("/v1/memory/remember", {
         method: "POST",
         body: JSON.stringify(req),
         signal: callOpts?.signal,
