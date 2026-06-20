@@ -1,0 +1,248 @@
+---
+import Footer from "../../components/Footer.astro";
+import Topnav from "../../components/Topnav.astro";
+import Base from "../../layouts/Base.astro";
+
+// `/agents` — the dedicated analytical-agent-memory front door
+// (GLOBAL-036, agent-memory-pivot WS-07). A new route on nlqdb.com,
+// not a new domain. This page is allowed to lead with the agent-memory
+// story even though the sitewide lead strings (Hero.astro, README,
+// llms.txt) stay gated to WS-13.
+//
+// Run 1 (this file) = skeleton + hero + AEO direct-answer. The WS-06
+// capability matrix + typed-plan-trust-boundary moat + FSL band land in
+// run 2; the waitlist CTA + demand-signal event (GLOBAL-024) land in run 3.
+---
+
+<Base
+  title="Analytical memory for AI agents — nlqdb"
+  description="Memory your AI agent can query. nlqdb gives an agent a real Postgres database as memory — so it can GROUP BY, JOIN, and aggregate over what it remembered, not just recall the top-k similar rows a vector store returns."
+  canonical="/agents"
+>
+  <div class="page">
+    <Topnav />
+
+    <main class="agents">
+      <header class="agents__head">
+        <p class="agents__kicker">For AI agents</p>
+        <h1 class="agents__title">Memory your agent can query.</h1>
+        <p class="agents__lede">
+          Give your AI agent a real database as its memory &mdash; created from
+          a goal, not a schema. It writes typed rows as it learns, and later
+          runs actual SQL over them: counts, top-N, averages per group.
+        </p>
+        <p class="agents__sub">
+          A vector store returns the <em>k</em> most similar chunks. It can
+          recall, but it can&rsquo;t answer &ldquo;how many times did this user
+          ask about pricing this month?&rdquo; &mdash; that&rsquo;s a
+          <code>GROUP BY</code>, and a similarity index has no query planner.
+          nlqdb does, because the memory <em>is</em> a database.
+        </p>
+      </header>
+
+      <section class="agents__answer" aria-label="Direct answer">
+        <p>
+          <strong>What is analytical agent memory?</strong> A real, queryable
+          database an agent uses to remember &mdash; typed rows it can
+          <code>GROUP BY</code>, <code>JOIN</code>, and aggregate over in plain
+          English, not an opaque vector blob it can only search. The agent asks
+          in natural language; nlqdb compiles the question to SQL through a
+          typed-plan trust boundary, runs it on Postgres, and returns rows plus
+          the exact SQL it ran. Recall is table stakes &mdash; <em>analysis</em>
+          over memory is the part a vector store structurally can&rsquo;t do.
+        </p>
+      </section>
+
+      <section class="agents__split" aria-labelledby="split-title">
+        <h2 class="agents__h2" id="split-title">Retrieval is not analytics.</h2>
+        <div class="agents__cols">
+          <div class="agents__col">
+            <p class="agents__col-h">A vector store gives your agent</p>
+            <ul>
+              <li>top-<em>k</em> similar chunks for a query</li>
+              <li>semantic recall of past text</li>
+              <li>no query planner &mdash; rollups become the model doing
+                arithmetic over search hits</li>
+            </ul>
+          </div>
+          <div class="agents__col agents__col--us">
+            <p class="agents__col-h">nlqdb gives your agent</p>
+            <ul>
+              <li>the same recall <em>plus</em> real SQL over its memory</li>
+              <li><code>GROUP BY</code> / <code>JOIN</code> / <code>HAVING</code>,
+                top-N, per-period &mdash; run in Postgres</li>
+              <li>the SQL it ran, every time &mdash; auditable, not a black box</li>
+            </ul>
+          </div>
+        </div>
+        <p class="agents__honest">
+          Honest scope: similarity search over an <code>embedding</code> column
+          (pgvector) is an opt-in slice still landing &mdash; today the wedge is
+          the analytical side. nlqdb is a database, not a vector store
+          (<a href="/manifesto#not-title">manifesto</a>).
+        </p>
+      </section>
+
+      <p class="agents__more">
+        The Mem0 &middot; Zep &middot; Letta &middot; nlqdb capability matrix and
+        a live demo land here next. For now, see the
+        <a href="/vs">side-by-side comparisons</a>.
+      </p>
+    </main>
+
+    <Footer />
+  </div>
+</Base>
+
+<style is:global>
+  .agents {
+    padding: clamp(48px, 8vw, 96px) 0 clamp(48px, 6vw, 80px);
+    max-width: 820px;
+    margin: 0 auto;
+  }
+
+  .agents__head {
+    margin-bottom: clamp(36px, 5vw, 56px);
+  }
+
+  .agents__kicker {
+    margin: 0 0 16px;
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+
+  .agents__title {
+    font-size: clamp(40px, 7vw, 72px);
+    letter-spacing: -0.03em;
+    line-height: 0.96;
+    margin: 0 0 24px;
+  }
+
+  .agents__lede {
+    font-family: var(--mono);
+    font-size: clamp(16px, 2vw, 19px);
+    color: var(--fg);
+    margin: 0 0 16px;
+    line-height: 1.5;
+    max-width: 60ch;
+  }
+
+  .agents__sub {
+    margin: 0;
+    color: var(--fg-dim);
+    font-size: clamp(15px, 1.7vw, 17px);
+    max-width: 64ch;
+    line-height: 1.6;
+  }
+
+  .agents__sub code,
+  .agents__answer code,
+  .agents__col code,
+  .agents__honest code {
+    font-family: var(--mono);
+    font-size: 0.9em;
+    color: var(--fg);
+  }
+
+  .agents__answer {
+    margin: 0 0 clamp(32px, 5vw, 48px);
+    padding: clamp(20px, 3vw, 28px);
+    border: 2px solid var(--accent);
+    background: var(--bg-elev);
+    font-size: clamp(15px, 1.6vw, 16px);
+    color: var(--fg);
+    line-height: 1.6;
+  }
+
+  .agents__answer p {
+    margin: 0;
+  }
+
+  .agents__answer strong {
+    color: var(--accent);
+    font-weight: 700;
+  }
+
+  .agents__h2 {
+    font-family: var(--mono);
+    font-size: clamp(20px, 3vw, 28px);
+    letter-spacing: -0.02em;
+    margin: 0 0 20px;
+  }
+
+  .agents__split {
+    margin: 0 0 clamp(32px, 5vw, 48px);
+  }
+
+  .agents__cols {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+
+  .agents__col {
+    border: 2px solid var(--border-strong);
+    background: var(--bg-elev);
+    padding: clamp(18px, 2.6vw, 24px);
+  }
+
+  .agents__col--us {
+    border-color: var(--accent);
+    box-shadow: var(--shadow-hard-accent);
+  }
+
+  .agents__col-h {
+    margin: 0 0 12px;
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+
+  .agents__col ul {
+    margin: 0;
+    padding-left: 1.1em;
+    display: grid;
+    gap: 8px;
+  }
+
+  .agents__col li {
+    color: var(--fg-dim);
+    font-size: clamp(14px, 1.6vw, 15px);
+    line-height: 1.5;
+  }
+
+  .agents__col--us li {
+    color: var(--fg);
+  }
+
+  .agents__honest {
+    margin: 16px 0 0;
+    font-size: 14px;
+    color: var(--fg-muted);
+    line-height: 1.6;
+  }
+
+  .agents__honest a,
+  .agents__more a {
+    color: var(--accent);
+  }
+
+  .agents__more {
+    margin: 0;
+    padding-top: clamp(20px, 3vw, 28px);
+    border-top: 1px solid var(--border);
+    color: var(--fg-dim);
+    font-size: clamp(14px, 1.6vw, 16px);
+  }
+
+  @media (max-width: 640px) {
+    .agents__cols {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

@@ -5,6 +5,42 @@ One publishable artifact drafted per day by the daily agent
 publishes at the weekly session. Newest first. Delete an entry once published
 (the live URL goes into `docs/scorecard.md`).
 
+## 2026-06-20 (run 30) — "Show HN: analytical memory for AI agents" (Hacker News, → `/agents`)
+
+**Where:** Hacker News Show HN, pointing at `https://nlqdb.com/agents` (the new
+front door — embed the capability matrix + live demo first, WS-07 runs 2–3, so
+the landing is complete before this posts). Cross-post the body to
+r/AI_Agents and r/LocalLLaMA.
+
+**Title:** Show HN: Analytical memory for AI agents — a database it can GROUP BY, not just recall
+
+**Body:**
+
+> Most "agent memory" is a vector store: you embed past text and recall the
+> top-k most similar chunks. That's great for "what did we say about X," but it
+> falls down the moment the agent needs to *reason over* its own history —
+> "how many times did this user ask about pricing this month," "top 5 tools I
+> called this week," "average resolution time per category." Those are
+> `GROUP BY` / `JOIN` / `HAVING` queries, and a similarity index has no query
+> planner, so the rollup degrades into the model doing arithmetic over search
+> hits.
+>
+> nlqdb gives an agent a real Postgres database as memory. It writes typed rows
+> as it learns and later asks questions in plain English; we compile the
+> question to SQL through a typed-plan trust boundary, run it, and hand back the
+> rows **plus the exact SQL** — auditable, not a black box. Recall is table
+> stakes; the analytical side is the part a vector store structurally can't do.
+>
+> It's a database, not a vector store — so similarity search over an embedding
+> column (pgvector) is an opt-in slice still landing; today the wedge is the
+> analytical half. Honest about scope on the page.
+>
+> Front door: https://nlqdb.com/agents · MCP server so your agent discovers it
+> at tool-list time. Pre-alpha, closed beta — feedback very welcome.
+
+**Note:** hold until WS-07 run 3 ships the CTA so the Show HN lands on a
+complete page (hero + matrix + moat + waitlist), not the run-1 skeleton.
+
 ## 2026-06-20 (run 29) — "What's in an `agent_memory_v1` database" (docs page / dev.to)
 
 **Where:** a short `apps/docs/` reference page (and a dev.to cross-post) that
