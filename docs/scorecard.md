@@ -77,24 +77,18 @@ few-shot), not retrieval. Value-retrieval is demoted + privacy-gated.
 ## Deltas (recent runs)
 
 - 2026-06-20 (run 31) — **Engine measurement: §4 #2c date-normalisation directive
-  FALSIFIED standalone (offline, no eval dispatch).** Worst number is engine
-  (Spider 0.1852), but BIRD 06-19 + Spider 06-17 are both < 7 d so §5 forbids a
-  back-to-back eval dispatch, and the three open PRs own engine-E02 (#432),
-  WS-07 (#433), WS-09 (#431). The in-bounds, non-colliding lever is an **offline
-  classifier sizing** (the run-18 method, `tools/eval/` only). Added a
-  date-encoding sub-axis to the `SK-QUAL-014` classifier (`canonDate` +
-  `isDateLiteralOnly` + the `date_literal_only` tag) and ran it on the committed
-  06-19 BIRD baseline (238 mismatches): **`date_literal_only` = 2 total, 0
-  standalone** — the run-18 "~16 date-encoding" eyeball over-counted; every date
+  FALSIFIED standalone (offline, no eval dispatch).** BIRD 06-19 + Spider 06-17
+  are both < 7 d so §5 forbids a back-to-back dispatch; the in-bounds lever is an
+  offline classifier sizing (run-18 method, `tools/eval/` only). Added a
+  date-encoding sub-axis to `SK-QUAL-014` (`canonDate` + `isDateLiteralOnly` +
+  the `date_literal_only` tag) and ran it on the committed 06-19 BIRD baseline
+  (238 mismatches): **`date_literal_only` = 2 total, 0 standalone** — every date
   diff co-occurs with a structural error (`LIKE '…%'` vs `= '…'` needs an
-  operator change). A `PLAN_DIRECTIVES` date bullet flips **~0 rows** ⇒ #2c
-  parked, same verdict as #2a; reconfirms the reasoning levers (#3 self-consistency,
-  #1 retrieval few-shot) are the path to the 0.65/0.75 floor. **Δ:** a new
-  measured number prunes a backlog lever (date_literal_only 0/2). KPI: **engine
-  quality** (evidence-based backlog prioritisation). None degraded — read-only
-  over committed data, no chain/scorer/runner change, EX untouched; 21 eval
-  tests green (was 18). Artifact deferred (avoids colliding with #431's in-flight
-  `distribution-queue.md` rewrite — same call #432/#433 made).
+  operator change), so a date directive flips ~0 rows ⇒ #2c parked, same verdict
+  as #2a; the reasoning levers (#3/#1) are the path to the floor. **Δ:** a new
+  measured number prunes a backlog lever. KPI: **engine quality** (evidence-based
+  backlog prioritisation); none degraded — read-only, no chain/scorer/runner
+  change, EX untouched; 21 eval tests green (was 18).
 - 2026-06-20 (run 30) — **WS-07 run 1/3: shipped the `/agents` skeleton + hero**
   (`apps/web/src/pages/agents/index.astro`). WS-07 ⬜ → **🟡 1/3** ("/agents
   skeleton live" boolean flipped). Engine lane blocked (BIRD 06-19 + Spider

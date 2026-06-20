@@ -56,9 +56,9 @@ chain-exhaustion `no_sql`; reasoning EX isolates SQL quality from capacity. T18
 (value-retrieval) down — measured, not inferred:** `literal_diff` is the
 *largest* tag (90, 38%), yet `literal_case_only` is **6** and **`literal_only`
 is 0** — *no* mismatch is recoverable by fixing string literals alone (each
-co-occurs with a structural error; of the 90, the date-encoding sub-axis is
-`date_literal_only` **2** total but **0 standalone** — see §4 #2c — so ~88 are
-categorical value diffs riding a wrong column/predicate/grain). That falsifies
+co-occurs with a structural error; of the 90, `date_literal_only` is **2**
+total / **0 standalone** (§4 #2c), so ~88 are categorical value diffs each
+riding a structural error). That falsifies
 the "additive, do-first" read the `SK-QUAL-015` column-name ceiling (12.8%)
 implied (§4 #2). **Schema-link recall is *not* the bottleneck either**
 (`fewer_tables` 33/238, pre-T21); the dominant mass is structural **reasoning**
@@ -132,13 +132,11 @@ agent-runnable; promote into an `SK-*`/`GLOBAL-*` before implementing
      0.15→0.25). Gate: run `SK-QUAL-015` against introspected DDL for
      per-column recall ≥ a T19-grade floor before wiring into `buildPlanUser`.
    - **2c. Date-literal normalisation directive — FALSIFIED standalone
-     2026-06-20.** The `SK-QUAL-014` classifier gained a date sub-axis
-     (`canonDate` + `isDateLiteralOnly`: structure mask-identical and the literal
-     diff vanishes once date heads are zero-padded / trailing-`%` stripped).
-     Offline on the same 238-mismatch 06-19 baseline: `date_literal_only` = **2**
-     total, **0 standalone** (the "~16" eyeball over-counted; e.g. `LIKE '…%'` vs
-     `= '…'` needs an operator change too). A directive flips ~0 rows ⇒ parked,
-     same verdict as #2a — the path to the floor is the reasoning levers (#3/#1).
+     2026-06-20.** The `SK-QUAL-014` date sub-axis (`canonDate` +
+     `isDateLiteralOnly`) sized it on the 238-mismatch 06-19 baseline:
+     `date_literal_only` = **2** total, **0 standalone** — every date diff
+     also carries a structural error (`LIKE '…%'` vs `= '…'` needs an operator
+     change) ⇒ #2c parked, same verdict as #2a. Rationale: `SK-QUAL-014` body.
 3. **Self-consistency majority vote (N=3, free tokens) — now the top
    reasoning lever.** Sample 3 plans at temperature > 0 on a separate code
    path, execute, majority-vote the result set. Directly attacks the dominant
@@ -188,15 +186,12 @@ The dated, evidence-referenced log of every shipped lever lives in
 (append-only; split out per `CLAUDE.md` §D4). §3 above is the current-state
 view of the same levers.
 
-> **Measurement state.** Canonical full runs: **BIRD 500-q raw 0.520**
-> (2026-06-19, re-seeded from 0.522 — first BIRD run since T20–T22 merged;
-> **flat**, McNemar p=0.50/b=38/c=37, `no_sql` 3 → 1), **Spider 135-q raw
-> 0.1852** (2026-06-17, re-seeded from 0.1704 after the `GEMINI_API_KEY` heal
-> — `no_sql` 36 → 9, `SK-LLM-039`); sequential per §5, resumed across quota
-> windows (`SK-QUAL-013`), seeding `baseline-2026-06-15.json` +
-> `eval-baseline.ts`. Agents dispatch via the `GH_TOKEN_WORKFLOW` PAT — no
-> human click. The flat BIRD re-run **confirms the directive levers have
-> saturated**, and the `SK-QUAL-014` literal axis (`literal_only` = 0, §2)
-> **falsifies value-retrieval as the top lever**. **Next:** §4 **#3
-> self-consistency** + **#1 similarity-retrieved few-shot**; value-retrieval
-> (#2a) demoted + privacy-gated. Per-lever ablations (T9, T19) still pending.
+> **Measurement state.** Canonical numbers + sourcing are in §2 (mirrored to
+> `eval-baseline.ts`); full runs are sequential per §5, resumed across quota
+> windows (`SK-QUAL-013`), dispatched via the `GH_TOKEN_WORKFLOW` PAT (no human
+> click). The flat 06-19 BIRD re-run **confirms the directive levers have
+> saturated**, and the `SK-QUAL-014` literal + date axes (`literal_only` /
+> `date_literal_only` standalone both 0, §2) **falsify value-retrieval as the
+> top lever**. **Next:** §4 **#3 self-consistency** + **#1 similarity-retrieved
+> few-shot**; value-retrieval (#2a) demoted + privacy-gated. Per-lever
+> ablations (T9, T19) still pending.

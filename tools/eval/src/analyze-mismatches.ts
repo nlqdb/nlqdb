@@ -28,6 +28,13 @@ export function literalsIn(sql: string): string[] {
   return [...(sql || "").matchAll(/'((?:[^']|'')*)'/g)].map((m) => m[1] ?? "");
 }
 const multiset = (xs: string[]): string => xs.slice().sort().join("");
+// Mask every string literal to a placeholder so two SQLs compare on structure
+// alone (whitespace/case-normalised) — the shared "is the structure identical?"
+// guard behind both `isLiteralOnly` and `isDateLiteralOnly`.
+const maskLiterals = (s: string): string => norm(s).replace(/'(?:[^']|'')*'/g, "'?'");
+// Date-canonical literal multiset — collapses the date-encoding diff so a
+// date-only mismatch is detectable; used by `isDateLiteralOnly` + the tag.
+const dateMultiset = (xs: string[]): string => multiset(xs.map(canonDate));
 
 // True when masking every string literal to a placeholder makes predicted and
 // gold byte-identical (whitespace/case-normalised) **and** their literal sets
@@ -36,10 +43,9 @@ const multiset = (xs: string[]): string => xs.slice().sort().join("");
 // lever's standalone ceiling: a `literal_only` mismatch is one a sample-value
 // prompt could flip to a match without any reasoning change.
 export function isLiteralOnly(predictedSql: string, goldSql: string): boolean {
-  const mask = (s: string): string => norm(s).replace(/'(?:[^']|'')*'/g, "'?'");
   return (
     multiset(literalsIn(predictedSql)) !== multiset(literalsIn(goldSql)) &&
-    mask(predictedSql) === mask(goldSql)
+    maskLiterals(predictedSql) === maskLiterals(goldSql)
   );
 }
 
@@ -64,14 +70,12 @@ export function canonDate(lit: string): string {
 // without any reasoning change. The masked-structure guard keeps `LIKE '…%'` vs
 // `= '…'` out — that needs an operator change too, so it is not date-only.
 export function isDateLiteralOnly(predictedSql: string, goldSql: string): boolean {
-  const mask = (s: string): string => norm(s).replace(/'(?:[^']|'')*'/g, "'?'");
-  const dc = (xs: string[]): string => multiset(xs.map(canonDate));
   const pLits = literalsIn(predictedSql);
   const gLits = literalsIn(goldSql);
   return (
     multiset(pLits) !== multiset(gLits) &&
-    dc(pLits) === dc(gLits) &&
-    mask(predictedSql) === mask(goldSql)
+    dateMultiset(pLits) === dateMultiset(gLits) &&
+    maskLiterals(predictedSql) === maskLiterals(goldSql)
   );
 }
 
@@ -161,8 +165,7 @@ export function classifyMismatch(predictedSql: string, goldSql: string): string[
     // Date-encoding sub-class of the literal diff (§4 #2c): the whole literal
     // diff vanishes once date heads are canonicalised (`'2019-8-20'` vs
     // `'2019-08-20'`). A directive, not value-sampling, fixes these.
-    const dc = (xs: string[]): string => multiset(xs.map(canonDate));
-    if (dc(gLits) === dc(pLits)) tags.push("date_literal_only");
+    if (dateMultiset(gLits) === dateMultiset(pLits)) tags.push("date_literal_only");
   }
 
   if (tags.length === 0) tags.push("other_predicate_or_value");
