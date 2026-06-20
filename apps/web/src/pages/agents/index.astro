@@ -1,4 +1,5 @@
 ---
+import AgentMemoryMatrix from "../../components/AgentMemoryMatrix.astro";
 import Footer from "../../components/Footer.astro";
 import Topnav from "../../components/Topnav.astro";
 import Base from "../../layouts/Base.astro";
@@ -9,9 +10,10 @@ import Base from "../../layouts/Base.astro";
 // story even though the sitewide lead strings (Hero.astro, README,
 // llms.txt) stay gated to WS-13.
 //
-// Run 1 (this file) = skeleton + hero + AEO direct-answer. The WS-06
-// capability matrix + typed-plan-trust-boundary moat + FSL band land in
-// run 2; the waitlist CTA + demand-signal event (GLOBAL-024) land in run 3.
+// Run 1 = skeleton + hero + AEO direct-answer. Run 2 (this edit) =
+// the WS-06 capability matrix + the typed-plan-trust-boundary moat +
+// the FSL self-host / BYO-key band (FSL-accurate per WS-10). The
+// waitlist CTA + demand-signal event (GLOBAL-024) land in run 3.
 ---
 
 <Base
@@ -83,10 +85,82 @@ import Base from "../../layouts/Base.astro";
         </p>
       </section>
 
+      <section class="agents__matrix" aria-label="Capability matrix">
+        <AgentMemoryMatrix
+          heading="What can your agent actually DO with its memory?"
+        />
+      </section>
+
+      <section class="agents__moat" aria-labelledby="moat-title">
+        <h2 class="agents__h2" id="moat-title">The moat: a typed-plan trust boundary.</h2>
+        <p class="agents__moat-lede">
+          Letting an agent write SQL against your database is how a coding
+          agent <a
+            href="https://fortune.com/2025/07/23/ai-coding-tool-replit-wiped-database-called-it-a-catastrophic-failure/"
+            rel="nofollow noopener noreferrer" target="_blank">wiped a production
+            database</a> during a code freeze
+          with three guardrails active. So in nlqdb the LLM never emits SQL.
+        </p>
+        <ol class="agents__pipeline">
+          <li>
+            <span class="agents__step">LLM &rarr; typed JSON plan</span>
+            The model picks <em>structure</em> &mdash; tables, filters,
+            aggregates &mdash; and returns it as a typed plan, not a SQL string.
+          </li>
+          <li>
+            <span class="agents__step">compiler &rarr; parameterised SQL</span>
+            nlqdb&rsquo;s code emits the SQL. Every value is a bound parameter;
+            identifiers come only from the schema allow-list.
+          </li>
+          <li>
+            <span class="agents__step">AST re-parse &rarr; allowlist</span>
+            A SQL parser re-parses the compiled statement and checks it
+            against a verb + table allowlist before it touches your data
+            (the create path re-parses with the real Postgres parser,
+            <code>libpg_query</code>).
+          </li>
+          <li>
+            <span class="agents__step">diff preview &rarr; confirm</span>
+            Destructive writes and schema changes show a diff you confirm
+            first &mdash; and the exact SQL is returned in the trace, every time.
+          </li>
+        </ol>
+        <p class="agents__moat-source">
+          Same logic Snowflake&rsquo;s Cortex Analyst uses to hit <a
+            href="https://www.snowflake.com/en/engineering-blog/cortex-analyst-text-to-sql-accuracy-bi/"
+            rel="nofollow noopener noreferrer" target="_blank">~2&times;
+            single-prompt accuracy</a>: the model picks
+          from a curated structure instead of writing raw SQL.
+        </p>
+      </section>
+
+      <section class="agents__fsl" aria-labelledby="fsl-title">
+        <h2 class="agents__h2" id="fsl-title">Your key, your infra, no per-call fees.</h2>
+        <ul class="agents__fsl-list">
+          <li>
+            <strong>BYO LLM at 0% markup.</strong> Paste an Anthropic, OpenAI,
+            Gemini, or OpenRouter key &mdash; your agent&rsquo;s memory routes
+            through it with no markup, on the free tier, no card.
+          </li>
+          <li>
+            <strong>Source-available, self-hostable.</strong> The engine, CLI,
+            MCP server, and SDKs are under <a
+              href="https://github.com/nlqdb/nlqdb/blob/main/LICENSE"
+              rel="noopener noreferrer" target="_blank">FSL-1.1-ALv2</a>
+            &mdash; yours to read, fork, and self-host for any non-competing use.
+            It auto-converts to Apache&nbsp;2.0 two years after each release.
+          </li>
+          <li>
+            <strong>No per-call fees, no &ldquo;contact sales.&rdquo;</strong>
+            Memory you can query shouldn&rsquo;t meter every recall.
+          </li>
+        </ul>
+      </section>
+
       <p class="agents__more">
-        The Mem0 &middot; Zep &middot; Letta &middot; nlqdb capability matrix and
-        a live demo land here next. For now, see the
-        <a href="/vs">side-by-side comparisons</a>.
+        A live in-page demo lands here next. For now, see the
+        <a href="/vs">side-by-side comparisons</a> or the
+        <a href="/manifesto#not-title">manifesto</a>.
       </p>
     </main>
 
@@ -141,7 +215,8 @@ import Base from "../../layouts/Base.astro";
   .agents__sub code,
   .agents__answer code,
   .agents__col code,
-  .agents__honest code {
+  .agents__honest code,
+  .agents__pipeline code {
     font-family: var(--mono);
     font-size: 0.9em;
     color: var(--fg);
@@ -230,6 +305,84 @@ import Base from "../../layouts/Base.astro";
   .agents__honest a,
   .agents__more a {
     color: var(--accent);
+  }
+
+  .agents__matrix,
+  .agents__moat,
+  .agents__fsl {
+    margin: 0 0 clamp(32px, 5vw, 48px);
+  }
+
+  .agents__moat-lede {
+    margin: 0 0 24px;
+    color: var(--fg-dim);
+    font-size: clamp(15px, 1.7vw, 17px);
+    max-width: 64ch;
+    line-height: 1.6;
+  }
+
+  .agents__moat-lede a,
+  .agents__moat-source a,
+  .agents__fsl a {
+    color: var(--accent);
+  }
+
+  .agents__pipeline {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: grid;
+    gap: 12px;
+    counter-reset: step;
+  }
+
+  .agents__pipeline li {
+    counter-increment: step;
+    border-left: 2px solid var(--accent);
+    padding: 0 0 0 16px;
+    color: var(--fg-dim);
+    font-size: clamp(14px, 1.6vw, 15px);
+    line-height: 1.55;
+  }
+
+  .agents__pipeline li::before {
+    content: counter(step);
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--accent);
+    margin-right: 8px;
+  }
+
+  .agents__step {
+    display: inline;
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--fg);
+    margin-right: 8px;
+  }
+
+  .agents__moat-source {
+    margin: 20px 0 0;
+    font-size: 14px;
+    color: var(--fg-muted);
+    line-height: 1.6;
+  }
+
+  .agents__fsl-list {
+    margin: 0;
+    padding-left: 1.1em;
+    display: grid;
+    gap: 12px;
+  }
+
+  .agents__fsl-list li {
+    color: var(--fg-dim);
+    font-size: clamp(14px, 1.6vw, 15px);
+    line-height: 1.55;
+  }
+
+  .agents__fsl-list strong {
+    color: var(--fg);
   }
 
   .agents__more {
