@@ -85,7 +85,7 @@ export const AGENT_MEMORY_MATRIX: MatrixRow[] = [
     note: "The core wedge: a real query planner over the agent's own data.",
   },
   {
-    capability: 'Agent designs its own schema',
+    capability: "Agent designs its own schema",
     mem0: "no",
     zep: "no",
     letta: "no",

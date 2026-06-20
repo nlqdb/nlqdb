@@ -27,7 +27,11 @@ describe("AGENT_MEMORY_MATRIX integrity", () => {
 
   test("recall is honestly shown as table stakes (all four ship it)", () => {
     const recall = AGENT_MEMORY_MATRIX.filter(
-      (r) => r.mem0 === "shipped" && r.zep === "shipped" && r.letta === "shipped" && r.nlqdb === "shipped",
+      (r) =>
+        r.mem0 === "shipped" &&
+        r.zep === "shipped" &&
+        r.letta === "shipped" &&
+        r.nlqdb === "shipped",
     );
     expect(recall.length).toBeGreaterThanOrEqual(2);
   });
