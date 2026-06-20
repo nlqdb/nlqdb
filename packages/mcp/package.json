@@ -2,7 +2,7 @@
   "name": "@nlqdb/mcp",
   "private": true,
   "version": "0.0.0",
-  "description": "Model Context Protocol server for nlqdb — local-stdio transport (slice 2 of SK-MCP-010).",
+  "description": "Analytical-memory MCP server for nlqdb — a real database your AI agent can GROUP BY / JOIN / aggregate over in natural language, not just recall.",
   "type": "module",
   "main": "src/index.ts",
   "exports": {

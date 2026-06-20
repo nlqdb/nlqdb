@@ -73,9 +73,9 @@ export function createServer(opts: ServerOptions): McpServer {
   registerTool(
     "nlqdb_query",
     {
-      title: "Query a database in natural language",
+      title: "Query your agent's memory in natural language",
       description:
-        "Run a natural-language query against an nlqdb database. Returns rows + the compiled SQL (in trace). The database is materialised on first reference — no separate create tool. Destructive plans return requires_confirm: true + a diff; re-call with confirm: true to commit.",
+        "Query your agent's structured memory in natural language — a real database it can GROUP BY / JOIN / aggregate over, not just recall. Returns rows + the compiled SQL (in trace). The database is materialised on first reference — no separate create tool. Destructive plans return requires_confirm: true + a diff; re-call with confirm: true to commit.",
       inputSchema: queryInputShape,
       // SK-MCP-002 — static hint is the worst case (read+write); runtime `requires_confirm` is the real gate.
       annotations: { destructiveHint: true },
@@ -91,9 +91,9 @@ export function createServer(opts: ServerOptions): McpServer {
   registerTool(
     "nlqdb_list_databases",
     {
-      title: "List the user's databases",
+      title: "List your agent's memory databases",
       description:
-        "Enumerate databases visible to the authenticated user. Requires a user-scoped key (sk_live_ or sk_mcp_). Returns engine per row.",
+        "List the memory databases your agent can query, scoped to the authenticated user. Requires a user-scoped key (sk_live_ or sk_mcp_). Returns engine per row.",
       inputSchema: listDatabasesInputShape,
       annotations: { readOnlyHint: true },
     },
@@ -108,9 +108,9 @@ export function createServer(opts: ServerOptions): McpServer {
   registerTool(
     "nlqdb_describe",
     {
-      title: "Describe one database",
+      title: "Describe one memory database",
       description:
-        "Return schema metadata (slug, engine, schema name) for one database. Requires a user-scoped key (sk_live_ or sk_mcp_).",
+        "Inspect the shape of one of your agent's memory databases. Return schema metadata (slug, engine, schema name) for one database. Requires a user-scoped key (sk_live_ or sk_mcp_).",
       inputSchema: describeInputShape,
       annotations: { readOnlyHint: true },
     },

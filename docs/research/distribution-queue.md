@@ -5,6 +5,31 @@ One publishable artifact drafted per day by the daily agent
 publishes at the weekly session. Newest first. Delete an entry once published
 (the live URL goes into `docs/scorecard.md`).
 
+## 2026-06-19 (run 24) — MCP-directory listing refresh: "the analytical-memory MCP server"
+
+**Where:** Anthropic Connectors Directory listing for `mcp.nlqdb.com` (refresh
+the description once the submission clears review — form submitted 2026-06-12,
+awaiting review per `mcp-server/FEATURE.md`), plus any community MCP registries
+(`mcpservers.org`, `glama.ai/mcp`, `smithery.ai`) where nlqdb is or can be
+listed. Single-line directory blurb to paste:
+
+**Listing description:**
+
+> **nlqdb — analytical memory for AI agents.** A real database your agent can
+> `GROUP BY` / `JOIN` / aggregate over in natural language, not just a recall
+> store. Three tools — `nlqdb_query`, `nlqdb_list_databases`, `nlqdb_describe` —
+> materialise a Postgres database on first reference and return rows + the
+> compiled SQL. Destructive plans return a diff for confirmation before they
+> commit.
+
+**Why this is publishable:** directory listings are the single highest-leverage
+agent-facing surface — the tool list is exactly where a host (Claude Desktop,
+Cursor, VS Code) shows an agent what nlqdb *is*. The refreshed blurb mirrors the
+WS-04 in-product tool descriptions verbatim (no claim that isn't true at the tool
+boundary), and keys the "analytical memory ≠ recall" wedge to the P2 agent-builder
+search intent. Honest: names the real three tools only — no phantom
+`create_database` (SK-MCP-002 / SK-PIVOT-002), no native vector search claimed.
+
 ## 2026-06-19 (run 23) — helpful-answer draft: "vector memory can't aggregate" (r/LangChain / r/AI_Agents)
 
 **Where:** a real recurring thread on r/LangChain / r/AI_Agents where someone

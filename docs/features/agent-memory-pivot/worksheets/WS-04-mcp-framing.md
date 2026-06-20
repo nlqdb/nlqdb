@@ -1,6 +1,6 @@
 # WS-04 — MCP tool + package + docs framing → "analytical memory"
 
-**Status:** ⬜ not started
+**Status:** ✅ done (2026-06-19, run 24 — branch `claude/vibrant-newton-rk77n7`)
 **Sequence:** 4 of 13 · **Risk:** low · **Runs:** 1 · **Prereqs:** none · **Gate:** none
 
 ## Goal
@@ -43,9 +43,9 @@ boolean on the `Pivot:` line. Pairs with MCP-directory resubmission.
 
 ## Done when
 
-- [ ] Three tool descriptions + package desc + `mcp.mdx` intro carry the framing.
-- [ ] No tool renamed; schemas/annotations untouched; MCP tests green.
-- [ ] INDEX tracker + status ticked.
+- [x] Three tool descriptions + package desc + `mcp.mdx` intro carry the framing.
+- [x] No tool renamed; schemas/annotations untouched; MCP tests green (33).
+- [x] INDEX tracker + status ticked.
 
 ## Artifact
 
