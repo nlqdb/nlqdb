@@ -24,6 +24,15 @@ export {
   selectExemplars,
   selectExemplarsForSchema,
 } from "./few-shot-select.ts";
+// Curated retrieval pool + the per-lever T9 ablation that wires it into the
+// planner system prompt (SK-LLM-041 half (b), DAIL §4.1).
+export {
+  buildPlanSystem,
+  PLAN_EXEMPLAR_POOL,
+  type PlanBucket,
+  type PlanExemplar,
+  retrievePlanExemplars,
+} from "./plan-exemplar-pool.ts";
 export type { ByollmProviderOptions } from "./providers/byollm.ts";
 export { createByollmProvider } from "./providers/byollm.ts";
 export type { CerebrasProviderOptions } from "./providers/cerebras.ts";

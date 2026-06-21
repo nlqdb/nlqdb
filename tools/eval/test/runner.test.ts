@@ -169,6 +169,54 @@ describe("runEval — end-to-end with mocked routers", () => {
     expect(Date.now() - start).toBeGreaterThanOrEqual(180);
   });
 
+  it("threads --retrieve-exemplars into every plan() request (SK-LLM-041 half b)", async () => {
+    // The dispatch option must reach the PlanRequest so the provider's
+    // buildPlanSystem swaps the static T9 prefix; default leaves it unset so
+    // the request shape is byte-identical to a pre-lever greedy run.
+    const seen: (number | undefined)[] = [];
+    const capturing = {
+      ...fakeRouter("SELECT 1"),
+      plan: async (req: PlanRequest): Promise<PlanResponse> => {
+        seen.push(req.retrieveExemplars);
+        return { sql: "SELECT 1", model: "stub", confidence: 1 };
+      },
+    };
+    await runEval({
+      dataDir: dir,
+      questionsJsonPath: questionsPath,
+      outDir,
+      retrieveExemplars: 3,
+      buildLanes: () => [{ lane: "free", modelHint: "f", maxAttempts: 1, router: capturing }],
+      writeReport: async () => "stub.json",
+    });
+    expect(seen.length).toBe(QUESTIONS.length);
+    expect(seen.every((k) => k === 3)).toBe(true);
+
+    // And unset ⇒ never present on the request (the SK-LLM-024 default).
+    const seenOff: (number | undefined)[] = [];
+    await runEval({
+      dataDir: dir,
+      questionsJsonPath: questionsPath,
+      outDir: join(dir, "out-off"),
+      buildLanes: () => [
+        {
+          lane: "free",
+          modelHint: "f",
+          maxAttempts: 1,
+          router: {
+            ...fakeRouter("SELECT 1"),
+            plan: async (req: PlanRequest): Promise<PlanResponse> => {
+              seenOff.push(req.retrieveExemplars);
+              return { sql: "SELECT 1", model: "stub", confidence: 1 };
+            },
+          },
+        },
+      ],
+      writeReport: async () => "stub.json",
+    });
+    expect(seenOff.every((k) => k === undefined)).toBe(true);
+  });
+
   it("reports no_sql when the router throws", async () => {
     const report = await runEval({
       dataDir: dir,

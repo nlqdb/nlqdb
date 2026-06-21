@@ -98,6 +98,14 @@ export type PlanRequest = {
   // self-consistency loop is the *only* caller that sets it > 0, and only on
   // its separate sampling code path, exactly as SK-LLM-024 anticipated.
   temperature?: number;
+  // SK-LLM-041 half (b) — the per-lever T9 few-shot ablation. When > 0, the
+  // planner SYSTEM prompt swaps the static SK-LLM-026 3-shot prefix for the `k`
+  // pool exemplars whose masked skeleton is closest to this goal
+  // (`plan-exemplar-pool.ts::buildPlanSystem`). Absent on every production call
+  // ⇒ the static prefix, byte-identical (SK-LLM-024 determinism + the SK-LLM-009
+  // cache prefix unchanged). Only the eval's `--retrieve-exemplars k` dispatch
+  // sets it, exactly like `temperature` above for SK-QUAL-017.
+  retrieveExemplars?: number;
 };
 // `model` + `confidence` populate SK-TRUST-002's response-level
 // `trace` block. `confidence` is a placeholder until the

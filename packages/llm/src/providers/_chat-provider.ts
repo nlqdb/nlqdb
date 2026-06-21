@@ -8,6 +8,7 @@
 // call my API." Adding a 5th provider becomes a config change, not a
 // copy-paste of nearly-identical methods.
 
+import { buildPlanSystem } from "../plan-exemplar-pool.ts";
 import { buildSchemaInferUser, SCHEMA_INFER_SYSTEM } from "../prompts/schema-inference.ts";
 import {
   buildEngineClassifyUser,
@@ -15,7 +16,6 @@ import {
   buildRouteUser,
   buildSummarizeUser,
   ENGINE_CLASSIFY_SYSTEM,
-  PLAN_SYSTEM,
   ROUTE_SYSTEM,
   SUMMARIZE_SYSTEM,
 } from "../prompts.ts";
@@ -74,7 +74,13 @@ export function createChatProvider(impl: ChatProviderImpl): Provider {
       const raw = await impl.callChat({
         model,
         messages: [
-          { role: "system", content: PLAN_SYSTEM },
+          // SK-LLM-041 half (b) — default (`retrieveExemplars` unset) returns
+          // the static PLAN_SYSTEM byte-for-byte (SK-LLM-024); only the eval's
+          // dispatch sets it > 0 to A/B retrieved few-shot.
+          {
+            role: "system",
+            content: buildPlanSystem(req.goal, req.schema, req.retrieveExemplars ?? 0),
+          },
           { role: "user", content: buildPlanUser(req) },
         ],
         jsonMode: true,

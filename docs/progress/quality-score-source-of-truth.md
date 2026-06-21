@@ -81,7 +81,7 @@ same-seed A/B.
 
 | # | Lever | How exactly | How much | Canonical home / status |
 |---|---|---|---|---|
-| T23 | **Similarity-retrieved few-shot — core + pool-curation mask** | Pure `few-shot-select.ts`: value masking (`val`) + masked-token Jaccard + stable top-k `selectExemplars` (drops zero-similarity, ties → earliest); **+ schema-identifier masking** (`maskSchemaIdentifiers`/`maskWithSchema`, reuses new `schemaTokens` — table/column words → `col`, so two same-shape questions over *unrelated* schemas collapse to one skeleton: DAIL §4.1's cross-domain step). §4 #1 retrieval half; ≈+3–5 pp beyond static T9. | **measured (unit):** 16 cases incl. cross-domain-twin-beats-value-distractor + schema-masked twins → similarity 1. No prod import (T8 + baselines untouched); EX → next dispatch | [`SK-LLM-041`](../features/llm-router/decisions/SK-LLM-041-similarity-retrieved-few-shot.md) — core + pool-curation mask shipped; pool rows + index + wiring (T9-ablation-gated) follow-on |
+| T23 | **Similarity-retrieved few-shot — core + mask + pool + T9 ablation** | Pure `few-shot-select.ts`: value + schema-identifier masking (`maskWithSchema`, table/column words → `col`, so same-shape questions over *unrelated* schemas collapse to one skeleton — DAIL §4.1 cross-domain) + masked-token Jaccard + schema-aware top-k `selectExemplarsForSchema`. Curated pool (10 rows, one per `SK-QUAL-014` bucket) + `buildPlanSystem(goal,schema,k)`: the per-lever **T9 ablation** — default off ⇒ static `PLAN_SYSTEM`; `k>0` (eval only) swaps in the retrieved prefix. §4 #1 retrieval half; ≈+3–5 pp beyond static T9. | **measured (offline):** precision@1 = 10/10, lift +0.592; ablation off-path byte-identical, retrieved `k=3` prefix 0.935× static (token-negative). Prod byte-identical (T8 + baselines untouched); EX → next dispatch A/B | [`SK-LLM-041`](../features/llm-router/decisions/SK-LLM-041-similarity-retrieved-few-shot.md) — core + mask + pool + T9 ablation shipped; only hot-path embedding index follows |
 | T22 | **Aggregate-filter HAVING directive** | One `PLAN_DIRECTIVES` bullet: a threshold on a group's aggregate goes in HAVING after GROUP BY, not WHERE. Covers the **HAVING half** of E5 *Unaligned Aggregation Structure* that T15 (GROUP BY half) left; "keep per-row predicates in WHERE" bounds the regression. ≈55 tok | **prompt-only; saturated — 06-19 BIRD re-run flat** (McNemar p=0.50) | [`SK-LLM-040`](../features/llm-router/decisions/SK-LLM-040-aggregate-filter-having-directive.md) — shipped |
 | T21 | **Join-bridge recall in schema pruning** | T19's FK closure was outbound-only; a junction table linking two goal-matched tables via generic FK names (`a`/`b`) matched no path and got dropped, making the join unplannable. `pruneSchemaForGoal` now also keeps any table that `REFERENCES` ≥ 2 goal-matched tables, seeded from the goal-matched set only ⇒ recall-monotonic + distractor-bounded | **measured (unit):** synthetic `student↔enroll↔course` bridge dropped → kept; one-endpoint referencer stays out. Recall monotone over T19. Real EX → next eval | [`SK-LLM-037`](../features/llm-router/decisions/SK-LLM-037-goal-relevant-schema-pruning.md) rev — shipped |
 | T20 | **Capacity-honest budget stop** | Budget-stop on every-attempt ∈ {`rate_limited`,`circuit_open`}, one bounded `--capacity-wait-ms` retry, SHA-keyed resume — fixes the 2026-06-11 run scoring 246 breaker-wall rows as `no_sql` | **measurement honesty** — keeps a breaker wall out of the scores | [`SK-QUAL-013`](../features/quality-eval/decisions/SK-QUAL-013-capacity-honest-budget-stop.md) — shipped |
@@ -95,7 +95,7 @@ same-seed A/B.
 | T12 | **BIRD scorer parity (positional value tuples)** | `scoreOne` + Spider transpose read positional tuples (`.values()`), matching canonical BIRD `set(fetchall())` — aliases/casing no longer false-mismatch; multiset + ORDER-BY strictness retained | removes scorer deflation vs the name-keyed 0.318 baseline | [`SK-QUAL-010`](../features/quality-eval/decisions/SK-QUAL-010-bird-positional-tuple-parity.md) — shipped (#340); measured combined in T17 |
 | T11 | **Mistral capacity backstop (chain tail)** | `mistral-large-latest` (card-free Experiment tier) appended behind OpenRouter on `plan`/`schema_infer`, prod + eval. Tail-only ⇒ strictly additive | **measured:** answered 5–21 questions per 150-q smoke, inverse to head availability | [`SK-LLM-028`](../features/llm-router/decisions/SK-LLM-028-mistral-capacity-backstop.md) — shipped (#338); measured combined in T17 |
 | T10 | **Result-shape directives (projection + REAL-cast)** | Two bullets: select exactly the goal's columns; cast one operand of an integer ratio to REAL. ≈40 tok | extra-column projection (Open-SQL [arXiv:2405.06674](https://arxiv.org/pdf/2405.06674)) + integer-division truncation | [`SK-LLM-027`](../features/llm-router/decisions/SK-LLM-027-result-shape-directives.md) — shipped; measured combined in T17 |
-| T9 | **Static few-shot exemplars (DAIL-SQL format half)** | `PLAN_SYSTEM` = directives + 3 static Question→strict-JSON exemplars. ≈250–350 tok/call | few-shot is the biggest prompt-only lever (DAIL-SQL [arXiv:2308.15363](https://arxiv.org/abs/2308.15363)); retrieval half still open (§4 #1) | [`SK-LLM-026`](../features/llm-router/decisions/SK-LLM-026-static-few-shot-plan-exemplars.md) — shipped; measured combined in T17 |
+| T9 | **Static few-shot exemplars (DAIL-SQL format half)** | `PLAN_SYSTEM` = directives + 3 static Question→strict-JSON exemplars. ≈250–350 tok/call | few-shot is the biggest prompt-only lever (DAIL-SQL [arXiv:2308.15363](https://arxiv.org/abs/2308.15363)); retrieval half = T23 (§4 #1) | [`SK-LLM-026`](../features/llm-router/decisions/SK-LLM-026-static-few-shot-plan-exemplars.md) — shipped; T9 ablated by T23 |
 | T7 | **JSON-recovery fallback (reasoning-head preamble leaks)** | `parseJsonResponse` extracts the first brace-balanced `{…}` after strict parse fails | recovers `parse`→`no_sql` losses from `gpt-oss-120b` preamble leaks; strictly additive | [`SK-LLM-025`](../features/llm-router/decisions/SK-LLM-025-json-recovery-fallback.md) — shipped |
 | T8 | **Greedy decoding parity (Workers-AI temperature 0)** | `{ messages, temperature: 0 }`, matching every other leg | reproducibility invariant for the `SK-QUAL-006` McNemar baseline | [`SK-LLM-024`](../features/llm-router/decisions/SK-LLM-024-greedy-decoding-parity.md) — shipped |
 | T1 | **Cerebras (gpt-oss-120b) leads the planner tier** | `plan`/`schema_infer` chain → `[cerebras, gemini, groq, workers-ai, openrouter, mistral]`, identical eval + prod | frontier-class open reasoning head, card-free; answers most questions when within its ~5 RPM | [`SK-LLM-023`](../features/llm-router/decisions/SK-LLM-023-cerebras-planner-tier.md) — shipped; measured combined in T17 |
@@ -107,14 +107,14 @@ Ranked by expected pp-per-effort on the **free chain**. Each is card-free and
 agent-runnable; promote into an `SK-*`/`GLOBAL-*` before implementing
 (`CLAUDE.md` §P4).
 
-1. **Similarity-retrieved few-shot exemplars (full DAIL-SQL).** Deterministic
-   core + the **pool-curation masking half SHIPPED 2026-06-21** (T23 /
-   `SK-LLM-041`: value + schema-identifier masking, so a pool row + the goal
-   collapse to a cross-domain skeleton; est. +3–5 pp beyond static T9,
-   arXiv:2308.15363). **Staged follow-on (not built):** the exemplar *pool rows*
-   (curated masked BIRD-dev train-split Q→SQL) + an embedding index on hot
-   `plan`, then wiring into `buildPlanUser` gated on a per-lever ablation of T9
-   (`CLAUDE.md` §P5). EX delta = next canonical dispatch.
+1. **Similarity-retrieved few-shot exemplars (full DAIL-SQL).** Core + masking +
+   schema-aware selector + the **curated pool (10 rows, precision@1 = 10/10)** +
+   the **per-lever T9 ablation `buildPlanSystem` ALL SHIPPED 2026-06-21** (T23 /
+   `SK-LLM-041`): default off ⇒ static `PLAN_SYSTEM` byte-for-byte; the eval
+   `--retrieve-exemplars k` flag swaps it for the retrieved prefix (0.935× the
+   static token budget), so the next dispatch A/Bs greedy-static vs
+   greedy-retrieved (est. +3–5 pp, arXiv:2308.15363). **Only the hot-path
+   embedding index over a larger pool remains.** EX delta = next dispatch.
 2. **Value retrieval + column-level pruning (the M-Schema half T19 left) —
    DEMOTED 2026-06-19 by the `SK-QUAL-014` literal axis.** The column-name
    ceiling (`SK-QUAL-015`: 12.8% of needed columns named by *value*) implied
@@ -131,22 +131,18 @@ agent-runnable; promote into an `SK-*`/`GLOBAL-*` before implementing
      0.15→0.25). Gate: run `SK-QUAL-015` against introspected DDL for
      per-column recall ≥ a T19-grade floor before wiring into `buildPlanUser`.
    - **2c. Date-literal normalisation directive — FALSIFIED standalone
-     2026-06-20.** The `SK-QUAL-014` date sub-axis sized it on the 06-19
-     baseline: `date_literal_only` = **2** total, **0 standalone** — every date
-     diff also carries a structural error (`LIKE '…%'` vs `= '…'`) ⇒ #2c parked,
+     2026-06-20.** `SK-QUAL-014` date sub-axis: `date_literal_only` = 2 total,
+     **0 standalone** (every date diff also carries a structural error) ⇒ parked,
      same verdict as #2a. Rationale: `SK-QUAL-014` body.
 3. **Self-consistency majority vote (N=3, free tokens) — the top reasoning
-   lever; vote core + execution half SHIPPED 2026-06-20/21 (`SK-QUAL-017`).**
+   lever; built end-to-end bar dispatch, SHIPPED 2026-06-20/21 (`SK-QUAL-017`).**
    Sample N plans at temperature > 0 on a separate code path, execute,
-   majority-vote the **result set** (the answer, not the SQL string). Directly
-   attacks the dominant *structural-reasoning* mass (grain/shape) the §2
-   literal axis isolated. Shipped + proven offline: the pure `majorityVote`
-   core (2026-06-20) **and** the execution half — `executeRows` (SQL → rows) +
-   `voteOverSamples` (executes each sample, votes; injected executor ⇒
-   offline-tested on a real SQLite fixture), the §5 "separate code path". The
-   remaining *sampling* half (`PlanRequest.temperature` + runner
-   `--self-consistency N`) + the EX-delta dispatch is the follow-on.
-   Free-chain cost is quota.
+   majority-vote the **result set** (the answer, not the SQL string) — attacks
+   the dominant *structural-reasoning* mass (grain/shape) §2 isolated. Vote core
+   + execution half + `PlanRequest.temperature` sampling + runner
+   `--self-consistency N`/`--sc-temperature T` + the smoke `workflow_dispatch`
+   vehicle (no-emit, baseline-safe) all shipped + offline-proven; only the EX
+   dispatch remains. Free-chain cost is quota.
 4. **A second card-free tail backstop beyond Mistral (T11).** `NVIDIA_API_KEY`
    is a finite ~5,000-credit pool — a `GLOBAL-013` failure; re-rank only if
    post-T18 runs still show chain-exhaustion `no_sql`.
@@ -196,9 +192,10 @@ view of the same levers.
 > click). The flat 06-19 BIRD re-run **confirms the directive levers have
 > saturated**, and the `SK-QUAL-014` literal + date axes (`literal_only` /
 > `date_literal_only` standalone both 0, §2) **falsify value-retrieval as the
-> top lever**. **Next:** the two reasoning levers' shipped cores now both need
-> their dispatch half — §4 **#3 self-consistency** (vote core `SK-QUAL-017`;
-> sampling + dispatch follow-on) and §4 **#1 similarity-retrieved few-shot**
-> (retrieval core `SK-LLM-041` shipped 2026-06-21; exemplar pool + index +
-> `buildPlanUser` wiring follow-on, gated on the T9 ablation). value-retrieval
-> (#2a) demoted + privacy-gated. Per-lever ablations (T9, T19) still pending.
+> top lever**. **Next:** both reasoning levers are now built end-to-end bar the
+> canonical dispatch — §4 **#3 self-consistency** (`SK-QUAL-017`: vote + sampling
+> + runner + smoke dispatch vehicle) and §4 **#1 similarity-retrieved few-shot**
+> (`SK-LLM-041`: core + mask + pool + the **T9 ablation `buildPlanSystem` +
+> `--retrieve-exemplars` flag shipped 2026-06-21**; only the hot-path embedding
+> index remains). Both EX deltas = the next canonical dispatch. value-retrieval
+> (#2a) demoted + privacy-gated; T19 per-lever ablation still pending.

@@ -98,6 +98,16 @@ export type RunOptions = {
   // canonical dispatch (SK-QUAL-002 forbids a back-to-back dispatch while a
   // baseline is < 7 days old).
   selfConsistency?: { samples: number; temperature: number };
+  // SK-LLM-041 half (b) — similarity-retrieved few-shot dispatch. When > 0,
+  // every plan() request carries `retrieveExemplars: k`, so the planner SYSTEM
+  // prompt swaps the static SK-LLM-026 3-shot prefix for the k pool exemplars
+  // whose masked skeleton is closest to the goal (`buildPlanSystem`). Unset/0 ⇒
+  // the static prefix everywhere (the SK-LLM-024 invariant, prod default). This
+  // is the §4 #1 DAIL-SQL retrieval lever's prod-wiring half; the EX delta is
+  // the greedy-static-vs-greedy-retrieved gap on the next canonical dispatch
+  // (SK-QUAL-002 forbids a back-to-back dispatch while a baseline is < 7 days
+  // old). Orthogonal to selfConsistency — both can be set on one dispatch.
+  retrieveExemplars?: number;
 };
 
 // Common loader shape so the runner doesn't bind to one dataset's option-bag — `loadBirdMini` / `loadSpider2Lite` both adapt to this.
@@ -315,6 +325,7 @@ async function runOneQuestion(
   capacityWaitMs = 0,
   waitBudget: { remaining: number } = { remaining: 0 },
   selfConsistency?: { samples: number; temperature: number },
+  retrieveExemplars = 0,
 ): Promise<QuestionResult> {
   let start = Date.now();
   const ids = {
@@ -417,7 +428,12 @@ async function runOneQuestion(
             throw err;
           }
         },
-        { goal: enrichedGoal, schema, dialect: "sqlite" },
+        {
+          goal: enrichedGoal,
+          schema,
+          dialect: "sqlite",
+          ...(retrieveExemplars > 0 ? { retrieveExemplars } : {}),
+        },
         selfConsistency,
       );
       if (capacityFails < selfConsistency.samples) break;
@@ -474,7 +490,12 @@ async function runOneQuestion(
       retryResult = await withExecRetry({
         maxAttempts: lane.maxAttempts,
         plan: (req) => lane.router.plan(req),
-        request: { goal: enrichedGoal, schema, dialect: "sqlite" },
+        request: {
+          goal: enrichedGoal,
+          schema,
+          dialect: "sqlite",
+          ...(retrieveExemplars > 0 ? { retrieveExemplars } : {}),
+        },
         score: scoreSql,
       });
       break;
@@ -532,6 +553,11 @@ export async function runEval(opts: RunOptions = {}): Promise<EvalReport> {
   if (opts.selfConsistency) {
     console.info(
       `quality-eval: self-consistency dispatch — N=${opts.selfConsistency.samples} @ temperature=${opts.selfConsistency.temperature} (SK-QUAL-017)`,
+    );
+  }
+  if (opts.retrieveExemplars && opts.retrieveExemplars > 0) {
+    console.info(
+      `quality-eval: retrieved few-shot dispatch — k=${opts.retrieveExemplars} (SK-LLM-041; replaces the static T9 prefix)`,
     );
   }
   const datasetName: EvalDataset = opts.dataset ?? "bird-mini-dev-sqlite";
@@ -594,6 +620,7 @@ export async function runEval(opts: RunOptions = {}): Promise<EvalReport> {
             opts.capacityWaitMs ?? 0,
             waitBudget,
             opts.selfConsistency,
+            opts.retrieveExemplars ?? 0,
           );
           return { result };
         } catch (err) {
@@ -718,6 +745,9 @@ function parseCliArgs(): RunOptions {
       // `--sc-temperature` and majority-vote (N >= 2; absent/< 2 ⇒ greedy).
       "self-consistency": { type: "string" },
       "sc-temperature": { type: "string" },
+      // SK-LLM-041 half (b) — retrieve k pool exemplars per goal (replaces the
+      // static T9 prefix); absent/0 ⇒ the static prefix (SK-LLM-024 default).
+      "retrieve-exemplars": { type: "string" },
       // SK-QUAL-002 / SK-QUAL-005 — baseline comparison + event emission.
       baseline: { type: "string" },
       // `emit-url` and `emit-token` go together; either both set (cron)
@@ -751,6 +781,12 @@ function parseCliArgs(): RunOptions {
       const t = values["sc-temperature"];
       out.selfConsistency = { samples, temperature: t ? Number.parseFloat(t) : 0.7 };
     }
+  }
+  // N < 1 ⇒ leave unset so the request shape is byte-identical to a pre-lever
+  // greedy run (the static T9 prefix, SK-LLM-024).
+  if (values["retrieve-exemplars"]) {
+    const k = Number.parseInt(values["retrieve-exemplars"], 10);
+    if (k >= 1) out.retrieveExemplars = k;
   }
   if (values.baseline) out.baselinePath = values.baseline;
   // Both flags must be set together — fail loud per GLOBAL-012 if only

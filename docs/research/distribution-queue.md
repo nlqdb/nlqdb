@@ -35,6 +35,47 @@ to the `/agents` launch. Links the reweighted home → `/agents`.
 lands on `nlqdb.com` now reads the wedge first and has a one-click path to
 `/agents`. Ties to GLOBAL-036 + WS-12.
 
+## 2026-06-21 (run 43) — engine-lesson: "Ship your LLM lever as a default-off ablation — measure before you adopt" (dev.to / lobste.rs)
+
+**Where:** dev.to + lobste.rs (`ai` / `databases`); the discipline post that
+closes the few-shot retrieval arc (runs 38–43) — how to *wire in* a new prompt
+lever without breaking the baseline you're trying to beat.
+
+**Title:** Ship your LLM lever as a default-off ablation — measure before you adopt
+
+**Body:**
+
+> You built a retrieval step: instead of a fixed few-shot prefix, you fetch the
+> examples closest to the incoming question. Tempting to just swap it into the
+> prompt and re-run the benchmark. Don't — you've now changed *two* things at
+> once (the lever **and** whichever provider answered this run), and you can't
+> tell which moved the number.
+>
+> The fix is a flag. We wired retrieval into the planner prompt as a single
+> function, `buildPlanSystem(goal, schema, k)`, with one rule: **`k = 0` returns
+> the old prompt byte-for-byte.** Every production call leaves `k` unset, so the
+> live system is provably unchanged — same prompt, same greedy decode, same
+> cached prefix. Only the eval harness sets `k > 0`, via a `--retrieve-exemplars`
+> flag, so a single dispatch can run *static vs retrieved on the same questions,
+> same seed, same provider mix* and attribute the delta to the lever alone.
+>
+> Two things you can measure before spending a cent of inference quota:
+>
+> 1. **Determinism.** A unit test asserts the off-path output is identical to the
+>    old constant. If that test is green, the lever cannot have moved your
+>    baseline — full stop.
+> 2. **Token cost.** Our retrieved 3-shot prefix came out at **3225 chars vs the
+>    static 3448** — 0.935×, actually *cheaper*. That's the number a reviewer
+>    wants before greenlighting a dispatch: the lever doesn't cost more prompt.
+>
+> The EX win (or loss) still needs a real run. But the wiring is a clean,
+> reversible, free-to-verify step — and it's the step that makes the eventual A/B
+> trustworthy. Build the toggle, prove it's inert by default, *then* spend the
+> quota.
+
+(Pairs with the runs 38–42 retrieval drafts above as the closing "how we shipped
+it safely" part.)
+
 ## 2026-06-21 (run 42) — engine-lesson: "Don't hand-pick few-shot examples — size the pool from your benchmark's error classes" (dev.to / lobste.rs)
 
 **Where:** dev.to + lobste.rs (`databases` / `ai`); the payoff post of the
@@ -130,90 +171,13 @@ masking arc (runs 38–39).
 > deterministic, zero new dependencies; the same code runs in production and the
 > eval harness. Measured delta lands next run. Code's in `packages/llm/few-shot-select.ts`.
 
-## 2026-06-21 (runs 40+42) — engine-lesson: "Self-consistency for text-to-SQL: sample at temperature > 0 without breaking your benchmark" (dev.to / lobste.rs)
+## 2026-06-21 (runs 40+42) — engine-lesson: "Self-consistency for text-to-SQL: sample at temperature > 0 without breaking your benchmark" (dev.to / lobste.rs) — title + thesis (per-request temperature defaulting to greedy; vote on executed rows not SQL strings; N-sample failures become no-vote empties with budget-stop/resume; dispatch through a no-emit smoke job so the canonical argmax baseline stays pinned). Largely subsumed by the run-43 "default-off ablation" post above; full draft in git history.
 
-**Where:** dev.to + lobste.rs (`databases` / `ai`), same engine-lesson series as
-the few-shot post (run 38); covers the full self-consistency lever (runs 35/37/40/42).
-
-**Title:** Self-consistency for text-to-SQL: how to sample at temperature > 0 without breaking your benchmark
-
-**Body:**
-
-> Self-consistency (Wang et al. 2022) is a cheap lever: instead of one greedy
-> answer, sample N at temperature > 0 and let them vote. For text-to-SQL the
-> vote is on the **executed rows**, not the SQL string
-> — many queries return the same correct rows.
->
-> The tension nobody mentions: your *production* planner should decode greedily
-> (temperature 0) — single-pass accuracy in the literature is measured under
-> argmax, and a stochastic planner makes your benchmark non-reproducible. So you
-> can't crank temperature globally.
->
-> The clean separation: make decoding temperature a **per-request** parameter
-> that **defaults to greedy when unset**. Every production call leaves it unset
-> → temperature 0, byte-identical to before; the *only* caller that sets it > 0
-> is the eval's self-consistency sampler. One optional field through each
-> provider's request body — not a global knob, not a forked planner.
->
-> One footgun, and a free-tier one: N samples is N× the quota. When a sampled
-> draw fails, record it as a *no-vote* empty sample rather than aborting — N-1
-> good draws still reach consensus. But separate that from the *whole chain*
-> being rate-limited on every draw: budget-stop + resume, so the sampler stays
-> resumable instead of burning a daily cap into a wall of empty answers. Vote on
-> what executed; ignore what didn't.
->
-> Last lesson — how to *measure* a stochastic lever without corrupting the
-> number you report. A self-consistency run is non-reproducible by design, so it
-> must never overwrite your canonical baseline. Wire dispatch through a
-> separate, **no-emit, sampled smoke job** (fixed seed + slice), not the
-> canonical run: the delta you publish is greedy-smoke vs SC-smoke on the *same*
-> slice, and your headline baseline stays pinned to the greedy argmax the
-> literature reports. Default the sample count to 1 (greedy) so the knob is
-> byte-identical until an operator opts in.
-
-## 2026-06-21 (run 39) — engine-lesson: "Mask the table and column names too, not just the values" (dev.to / lobste.rs)
-
-**Where:** dev.to + lobste.rs (`databases` / `ai`), the direct sequel to run 38's
-value-masking post — publish as a two-part series or a single combined piece.
-
-**Title:** Few-shot retrieval for text-to-SQL: mask the schema, not just the values
-
-**Body:**
-
-> Last time we masked the *values* out of a question before ranking few-shot
-> examples by similarity, so "how many albums by the artist named `<val>`"
-> stopped pulling in every example that happened to mention the same value. But
-> value masking alone only gets you halfway. Those two questions —
->
-> > how many **albums** by the **artist** named `<val>`
-> > how many **employees** at the **company** named `<val>`
->
-> are the *same query shape* over different schemas, yet after value masking they
-> still disagree on four words: `albums`/`artist` vs `employees`/`company`. The
-> domain nouns are exactly the schema's table and column names leaking into the
-> question — and they're what stop a great cross-schema example from ranking
-> first.
->
-> So mask those too. DAIL-SQL (arXiv:2308.15363 §4.1) masks *domain-specific
-> words* — table and column identifiers — alongside the literals. Both questions
-> collapse to one skeleton: "how many `<col>` by the `<col>` named `<val>`". Now
-> they score as identical, and an example mined from a music database can
-> demonstrate the right SQL shape for a question over an HR database.
->
-> The implementation is small and reuses what you already have. We parse the
-> schema once to get every table/column token (the same parser that prunes the
-> schema for the prompt), then replace any question word that names one with a
-> `col` placeholder — folding `snake_case`, `camelCase`, and plurals together so
-> `albums` matches an `Album` table. No schema → it degrades to value-only
-> masking. Pure, deterministic, zero new dependencies; the identical code runs
-> in production and in our eval harness so the benchmark can't drift.
->
-> The measured delta lands on our next benchmark run, gated behind an ablation
-> of the static prefix. Code's open in `packages/llm/few-shot-select.ts`.
+## 2026-06-21 (run 39) — engine-lesson: "Mask the table and column names too, not just the values" (dev.to / lobste.rs) — title + thesis (value masking only collapses two same-shape questions halfway; DAIL-SQL §4.1 masks domain-specific *identifiers* too, so a music-DB example demonstrates the SQL shape for an HR-DB question — reusing the schema-prune tokenizer, per-row, zero-dep, prod-identical). Folded into the run-42/43 retrieval-arc posts above; full draft in git history.
 
 ## 2026-06-21 (run 38) — engine-lesson: "Pick the few-shot example by masking the question, not matching the words" (dev.to / lobste.rs) — value-masking angle recapped in the run-39 combined piece above (publish as one part-1; full standalone draft in git history).
 
-## 2026-06-21 (run 37) — engine-lesson: "Voting on the answer needs the answer — executing N SQL samples to consensus" (dev.to / lobste.rs) — the execute-to-rows part-2 angle is folded into the combined run-40+42 self-consistency piece above (publish as part 2); full standalone draft in git history.
+## 2026-06-21 (run 37) — engine-lesson: "Voting on the answer needs the answer — executing N SQL samples to consensus" (dev.to / lobste.rs) — title + thesis (to cluster by result set you must *execute* each sampled query, sharing the scorer's exact SQLite path so vote and grade can't diverge; errors/empties cast no vote; inject the executor so the consensus path unit-tests offline). Subsumed by the SC arc above; full draft in git history. Ties to `SK-QUAL-017`.
 
 ## 2026-06-21 (run 41) — launch post: "We built a live demo: run a GROUP BY over agent memory and see the SQL" (X / Bluesky / r/AI_Agents → `/agents`)
 
