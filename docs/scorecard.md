@@ -37,8 +37,13 @@ DAIL-SQL retrieval (`SK-LLM-041`) — and #1 is now **built end-to-end bar the
 `buildPlanUser` wiring**: core (run 38) + pool-curation mask (run 39) +
 **schema-aware selector** `selectExemplarsForSchema` (run 41) that masks the
 goal against the live schema and each pool row against its own — the entry
-point that finally consumes the masking half. Both levers still need their
-prod-wiring/dispatch half, EX delta next canonical run.
+point that finally consumes the masking half. **Run 42 ships the #1 lever's
+curated pool rows (`SK-LLM-041` half (a)):** 10 hand-authored exemplars, one
+per `SK-QUAL-014` structural bucket, with an offline held-out measurement —
+**precision@1 = 10/10** + similarity **lift +0.592** (0.833 retrieved vs 0.240
+uninformed pick). #1 now needs only the embedding index + `buildPlanUser`
+wiring (T9-ablation-gated); both reasoning levers' EX delta lands next canonical
+run.
 
 | # | Metric | Value | Target / note |
 |---|--------|-------|------|
@@ -83,6 +88,32 @@ prod-wiring/dispatch half, EX delta next canonical run.
 
 ## Deltas (recent runs)
 
+- 2026-06-21 (run 42) — **Engine: curated plan-exemplar pool shipped
+  (`SK-LLM-041` half (a)) — completes the data half of the §4 #1 DAIL-SQL
+  retrieval lever; offline precision@1 = 10/10, similarity lift +0.592.** Worst
+  number is engine (Spider 0.1852, BIRD 0.520); both baselines < 7 d (no
+  back-to-back dispatch), no open PR, so the clean non-colliding slice is the
+  #1 lever's explicitly-named next half — the pool *rows* `selectExemplarsForSchema`
+  ranks. New `plan-exemplar-pool.ts`: `PLAN_EXEMPLAR_POOL`, 10 hand-authored
+  `{question, schema, SQL}` rows, **one per `SK-QUAL-014` structural mismatch
+  bucket** (group-by-count, HAVING, COUNT(DISTINCT), scalar/IN subquery,
+  join-aggregate, group-max, NULL-safe-min, REAL-cast ratio, date-range) — the
+  buckets the classifier sized as the BIRD loss mass — each `payload` rendered
+  via the newly-exported `prompts.ts::planExample` (byte-identical to the T9
+  static shape) + `retrievePlanExemplars`. **Measured offline** (10-probe
+  held-out set, each probe paraphrasing one bucket over a *different* schema):
+  **precision@1 = 10/10** (every probe retrieves its intended bucket
+  cross-domain) and **lift +0.592** — top-1 masked similarity **0.833** vs
+  **0.240** for an uninformed pool-average pick (3.46×), the offline analog of
+  DAIL's measured retrieval win. Hand-authored, **not** BIRD train (external,
+  not in repo); the embedding index + `buildPlanUser` wiring (T9-ablation-gated)
+  stay staged, so no prod path imports the pool ⇒ `SK-LLM-024` determinism +
+  BIRD 06-19 / Spider 06-17 baselines untouched, EX delta next dispatch.
+  **Δ:** §4 #1 selector → **+ the pool it ranks**; `@nlqdb/llm` tests 198 → 203
+  (5 pool cases). **KPI:** engine quality; **none degraded** — pure data +
+  one re-export, zero chain/scorer/runner/perf touch. `verification-log`
+  net-shrunk (D4). Artifact: "Ten exemplars, one per error class: a retrieval
+  pool sized from your benchmark's loss mass" queued.
 - 2026-06-21 (run 41) — **Engine: similarity-retrieved few-shot *schema-aware
   selector* shipped (`SK-LLM-041` follow-on, T23) — the §4 #1 DAIL-SQL lever is
   now built end-to-end bar the `buildPlanUser` wiring.** Worst number is engine
