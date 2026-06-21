@@ -8,7 +8,7 @@ publishes at the weekly session. Newest first. Delete an entry once published
 ## 2026-06-21 (run 40) — engine-lesson: "Self-consistency for text-to-SQL: sample at temperature > 0 without breaking your benchmark" (dev.to / lobste.rs)
 
 **Where:** dev.to + lobste.rs (`databases` / `ai`), same engine-lesson series as
-the few-shot post (run 38) and the vote post (run 35).
+the few-shot post (run 38) and the vote posts (runs 35/37).
 
 **Title:** Self-consistency for text-to-SQL: how to sample at temperature > 0 without breaking your benchmark
 
