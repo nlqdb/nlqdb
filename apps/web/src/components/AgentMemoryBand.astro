@@ -1,0 +1,104 @@
+---
+// Agent-memory band — the home page's first narrative section after the
+// hero (agent-memory-pivot WS-12, GLOBAL-036). Makes the agent-memory wedge
+// the primary story on `nlqdb.com` WITHOUT touching the gated hero lede /
+// wordmark (those are WS-13). Additive: a short wedge statement + the WS-06
+// capability matrix teaser + a `/agents` CTA that fires the GLOBAL-024
+// demand signal — mirroring the proven /vs + /solve + /agents pattern.
+//
+// The matrix is the same `AgentMemoryMatrix` component `/agents` and the
+// blog render (DRY, SK-PIVOT-004 — live type, no raster image); on the home
+// it's the teaser, and the CTA sends the reader to `/agents` for the full
+// demo + moat + self-host story.
+
+import AgentMemoryMatrix from "./AgentMemoryMatrix.astro";
+---
+
+<section class="amb" aria-labelledby="amb-title">
+  <p class="amb__kicker">For AI agents</p>
+  <h2 class="amb__title" id="amb-title">Memory your agent can query &mdash; not just recall.</h2>
+  <p class="amb__lede">
+    A vector store returns the top-<em>k</em> similar chunks. nlqdb gives your
+    agent a real database as its memory, so it can <code>GROUP BY</code>,
+    <code>JOIN</code>, and aggregate over what it remembered &mdash; the
+    analysis a similarity index structurally can&rsquo;t do.
+  </p>
+
+  <div class="amb__matrix">
+    <AgentMemoryMatrix heading="Recall is table stakes. Only one of these can aggregate." />
+  </div>
+
+  <a class="amb__cta" href="/agents">See the agent-memory story &rarr;</a>
+</section>
+
+<script>
+  // GLOBAL-024 demand signal: home → `/agents` click-through. The anchor
+  // navigates with no JS (crawlable); the listener only fires-and-forgets the
+  // signal, never preventing default. Mirrors the /agents try-query pattern.
+  import { emit } from "../lib/logsnag";
+  document.querySelectorAll<HTMLAnchorElement>(".amb__cta").forEach((a) => {
+    a.addEventListener("click", () => emit("home.agents_cta_clicked", { surface: "home_band" }));
+  });
+</script>
+
+<style>
+  .amb {
+    max-width: 880px;
+    margin: 0 auto;
+    padding: clamp(48px, 7vw, 88px) 24px;
+  }
+
+  .amb__kicker {
+    margin: 0 0 16px;
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+
+  .amb__title {
+    font-family: var(--mono);
+    font-size: clamp(26px, 4vw, 40px);
+    letter-spacing: -0.02em;
+    line-height: 1.08;
+    margin: 0 0 20px;
+    max-width: 22ch;
+  }
+
+  .amb__lede {
+    margin: 0 0 clamp(28px, 4vw, 40px);
+    color: var(--fg-dim);
+    font-size: clamp(15px, 1.8vw, 18px);
+    line-height: 1.6;
+    max-width: 62ch;
+  }
+
+  .amb__lede code {
+    font-family: var(--mono);
+    font-size: 0.9em;
+    color: var(--fg);
+  }
+
+  .amb__matrix {
+    margin: 0 0 clamp(28px, 4vw, 40px);
+  }
+
+  .amb__cta {
+    display: inline-block;
+    font-family: var(--mono);
+    font-size: clamp(14px, 1.7vw, 16px);
+    color: var(--bg);
+    background: var(--accent);
+    border: 2px solid var(--accent);
+    padding: 12px 20px;
+    line-height: 1.4;
+    text-decoration: none;
+    box-shadow: var(--shadow-hard-accent);
+  }
+
+  .amb__cta:hover {
+    background: var(--bg);
+    color: var(--accent);
+  }
+</style>

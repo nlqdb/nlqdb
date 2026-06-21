@@ -73,65 +73,41 @@ lands the next canonical dispatch (blocked today — both evals < 7 d, §5).
 
 ## Deltas (recent runs)
 
-- 2026-06-21 (run 42) — **Engine: curated plan-exemplar pool shipped
-  (`SK-LLM-041` half (a)) — completes the data half of the §4 #1 DAIL-SQL
-  retrieval lever; offline precision@1 = 10/10, similarity lift +0.592.** Worst
-  number is engine (Spider 0.1852, BIRD 0.520); both baselines < 7 d (no
-  back-to-back dispatch), no open PR, so the clean non-colliding slice is the
-  #1 lever's explicitly-named next half — the pool *rows* `selectExemplarsForSchema`
-  ranks. New `plan-exemplar-pool.ts`: `PLAN_EXEMPLAR_POOL`, 10 hand-authored
-  `{question, schema, SQL}` rows, **one per `SK-QUAL-014` structural mismatch
-  bucket** (group-by-count, HAVING, COUNT(DISTINCT), scalar/IN subquery,
-  join-aggregate, group-max, NULL-safe-min, REAL-cast ratio, date-range) — the
-  buckets the classifier sized as the BIRD loss mass — each `payload` rendered
-  via the newly-exported `prompts.ts::planExample` (byte-identical to the T9
-  static shape) + `retrievePlanExemplars`. **Measured offline** (10-probe
-  held-out set, each probe paraphrasing one bucket over a *different* schema):
-  **precision@1 = 10/10** (every probe retrieves its intended bucket
-  cross-domain) and **lift +0.592** — top-1 masked similarity **0.833** vs
-  **0.240** for an uninformed pool-average pick (3.46×), the offline analog of
-  DAIL's measured retrieval win. Hand-authored, **not** BIRD train (external,
-  not in repo); the embedding index + `buildPlanUser` wiring (T9-ablation-gated)
-  stay staged, so no prod path imports the pool ⇒ `SK-LLM-024` determinism +
-  BIRD 06-19 / Spider 06-17 baselines untouched, EX delta next dispatch.
-  **Δ:** §4 #1 selector → **+ the pool it ranks**; `@nlqdb/llm` tests 198 → 203
-  (5 pool cases). **KPI:** engine quality; **none degraded** — pure data +
-  one re-export, zero chain/scorer/runner/perf touch. `verification-log`
-  net-shrunk (D4). Artifact: "Ten exemplars, one per error class: a retrieval
-  pool sized from your benchmark's loss mass" queued.
-- 2026-06-21 (run 42) — **Distribution: WS-08 closed — on-brand OG/social
-  cards for the wedge surfaces → messaging 9 → 10/13, pivot 11 → 12/20.**
-  Worst number is engine (Spider 0.1852, BIRD 0.520), but the engine lane is
-  blocked today (both reasoning levers in flight — §4 #1 pool open PR #451, #3
-  runner merged #447 — and both evals < 7 d, §5: no back-to-back dispatch). So
-  the clean non-colliding slice is the lowest open, ungated messaging item,
-  WS-08 (prereq WS-07 ✅). Added `apps/web/scripts/og/gen-og.mjs` — a manually-run,
-  hand-authored **SVG→PNG generator** (`@resvg/resvg-js` + JetBrains Mono),
-  emitting five 1200×630 type-on-dark cards to `public/og/` (`agents` +
-  `vs-{mem0,zep,letta,langmem}`); wired through `Base.astro`'s existing
-  `ogImage` prop on `/agents` and the P2 memory `/vs` cluster (others keep
-  `og-default.png`). Generator is **out of `astro build`**; the dep is an
-  `apps/web` devDep never imported by the site, so the CF free-tier
-  build/Worker envelope (GLOBAL-013) is untouched (SK-PIVOT-012). **Δ:** WS-08
-  ⬜ → ✅; wedge links now share an on-brand "GROUP BY your agent's memory"
-  card instead of the generic default. **KPI:** onboarding (UX); **none
-  degraded** — web-only + a build-tool devDep, zero engine/chain/scorer/perf
-  touch; BIRD 06-19 + Spider 06-17 untouched. astro check 0 err, 127 web tests
-  green, lint clean, build emits the cards to `dist/og/`. Artifact: the
-  `/agents` card as the X/Bluesky launch image queued.
-- 2026-06-21 (run 42) — **Engine: self-consistency *dispatch vehicle* shipped
-  (`SK-QUAL-017` follow-on) — the §4 #3 lever is now fully dispatchable.** §4 #1
-  prod-wiring sits in open PR #451 and OG-cards in #452, so the non-colliding
-  slice is §4 #3's last bar — the CI `workflow_dispatch` input. Added
-  `self_consistency` (N) + `sc_temperature` inputs to **both** smoke jobs (passed
-  through `env`, not inlined into the shell, so dispatch input can't inject); the
-  smoke vehicle is sampled, **no-emit, never overwrites the canonical baseline**,
-  so it's allowed any time unlike a §5/`SK-QUAL-002`-gated full run. N=1 (default)
-  leaves `selfConsistency` unset ⇒ byte-identical to a pre-SC smoke. **Δ:** §4 #3
-  runner-wiring → **+ dispatch vehicle** (lever complete); EX delta is the
-  greedy-vs-SC smoke gap on the first N>=2 dispatch. **KPI:** engine quality;
-  **none degraded** — default greedy, baselines untouched, PR CI never dispatches.
-  246 eval tests green, both workflows parse.
+- 2026-06-21 (run 43) — **Distribution: WS-12 band shipped — agent-memory is
+  now the first narrative section on the home page → WS-12 🟡 1/2.** Worst
+  number is engine (Spider 0.1852, BIRD 0.520), but the engine lane is blocked
+  for a self-contained PR today: the §4 reasoning levers (#1 retrieval, #3
+  self-consistency) have their offline cores merged through run 42, and every
+  remaining half is dispatch-gated — both evals < 7 d (§5: no back-to-back
+  canonical dispatch) and a clean greedy-vs-SC smoke needs two dispatches on the
+  shared quota (a multi-day campaign, not one run). No open PR. So the clean
+  non-colliding slice is the lowest open ungated pivot item, WS-12 (prereqs
+  WS-06 ✅, WS-07 ✅; the founder-gated wordmark/headline swap is WS-13, untouched).
+  New `AgentMemoryBand.astro` inserted right after `<Hero />` in `index.astro`:
+  a wedge statement (retrieval ≠ analytics) + the WS-06 `AgentMemoryMatrix`
+  teaser (reused, DRY) + a `/agents` CTA firing `home.agents_cta_clicked`
+  (GLOBAL-024 demand signal). The CTA is a plain anchor (works no-JS, crawlable);
+  the signal is fire-and-forget enhancement. Hero lede/wordmark untouched (gated
+  to WS-13 per the messaging-surface-map lead-string list). **Δ:** WS-12 ⬜ →
+  🟡 1/2 (band ✅; demote P1/P3/P4 to an "also works for…" fold = next run).
+  **KPI:** onboarding (UX) — home → `/agents` click-through; **none degraded** —
+  web-only + additive, zero engine/chain/scorer/perf touch, BIRD 06-19 + Spider
+  06-17 untouched. astro check 0 err, 128 web tests green, biome clean, build
+  renders the band into `dist/index.html`. Artifact: "we put agent memory front
+  and centre" build-in-public note queued.
+- 2026-06-21 (run 42) — **three slices** (all merged; full detail in the
+  verification log + worksheets): **(a) §4 #1 curated plan-exemplar pool**
+  (`SK-LLM-041` half (a), `plan-exemplar-pool.ts`) — 10 hand-authored
+  `{question, schema, SQL}` rows, one per `SK-QUAL-014` structural bucket;
+  offline **precision@1 = 10/10**, similarity lift **+0.592** (0.833 vs 0.240,
+  3.46×); staged (no prod import) ⇒ baselines untouched, EX delta next dispatch;
+  `@nlqdb/llm` 198 → 203. **(b) WS-08** on-brand OG/social cards (`gen-og.mjs`
+  SVG→PNG, 5 cards, generator out of `astro build`; SK-PIVOT-012) → messaging
+  9 → 10/13, pivot 11 → 12/20. **(c) §4 #3 self-consistency dispatch vehicle**
+  (`SK-QUAL-017`) — `self_consistency`/`sc_temperature` smoke inputs (no-emit,
+  baseline-safe, allowed any time); lever now fully dispatchable, EX delta =
+  greedy-vs-SC smoke gap on first N≥2 dispatch. KPI engine quality / onboarding;
+  none degraded.
 - 2026-06-21 (run 41) — **Engine: similarity-retrieved few-shot *schema-aware
   selector* shipped (`SK-LLM-041` follow-on, T23) — the §4 #1 DAIL-SQL lever is
   now built end-to-end bar the `buildPlanUser` wiring.** Worst number is engine

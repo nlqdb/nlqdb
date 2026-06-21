@@ -5,6 +5,36 @@ One publishable artifact drafted per day by the daily agent
 publishes at the weekly session. Newest first. Delete an entry once published
 (the live URL goes into `docs/scorecard.md`).
 
+## 2026-06-21 (run 43) — build-in-public: "We put agent memory front and centre on the home page" (X / Bluesky / dev.to)
+
+**Where:** X / Bluesky build-in-public note + dev.to; the positioning companion
+to the `/agents` launch. Links the reweighted home → `/agents`.
+
+**Title:** We moved agent memory above the fold — without touching the wordmark
+
+**Body:**
+
+> We're betting that "a database your AI agent can query as memory" is the
+> sharpest way to explain nlqdb, so we made it the first thing you read on the
+> home page — a new band right under the hero: *memory your agent can query, not
+> just recall.* A vector store hands back the top-k similar chunks; nlqdb gives
+> the agent a real database, so it can `GROUP BY`, `JOIN`, and aggregate over
+> what it remembered. The band carries the same Mem0 · Zep · Letta · nlqdb
+> capability matrix from `/agents` — everyone recalls; only one column
+> aggregates.
+>
+> The discipline we're keeping: this is **additive and reversible**. The hero
+> wordmark and tagline don't change — that's a deliberate, separate, founder-only
+> call. A positioning bet should be testable before it's permanent, so we
+> reorder and add, we don't rewrite the identity. The home page stays
+> illustration-free (type on dark, live tables, no stock art), 100/100/100/100,
+> and works with JavaScript off — the `/agents` link is a plain anchor; the
+> click-through signal is fire-and-forget on top.
+
+**Why this advances the north-star:** onboarding (UX) — the agent-builder who
+lands on `nlqdb.com` now reads the wedge first and has a one-click path to
+`/agents`. Ties to GLOBAL-036 + WS-12.
+
 ## 2026-06-21 (run 42) — engine-lesson: "Don't hand-pick few-shot examples — size the pool from your benchmark's error classes" (dev.to / lobste.rs)
 
 **Where:** dev.to + lobste.rs (`databases` / `ai`); the payoff post of the
@@ -183,47 +213,7 @@ value-masking post — publish as a two-part series or a single combined piece.
 
 ## 2026-06-21 (run 38) — engine-lesson: "Pick the few-shot example by masking the question, not matching the words" (dev.to / lobste.rs) — value-masking angle recapped in the run-39 combined piece above (publish as one part-1; full standalone draft in git history).
 
-## 2026-06-21 (run 37) — engine-lesson: "Voting on the answer needs the answer — executing N SQL samples to consensus" (dev.to / lobste.rs)
-
-**Where:** dev.to + lobste.rs (`databases` / `ai`), the engine-lesson series'
-follow-up to the run-35 self-consistency post.
-
-**Title:** Self-consistency for text-to-SQL, part 2: you have to run the queries
-
-**Body:**
-
-> Last time we argued you should vote on the **result set**, not the SQL string
-> — `SELECT a, b` and `SELECT b, a ORDER BY 1` can mean the same thing, so a
-> string vote scatters equivalent answers into singleton buckets that never
-> reach consensus. The catch we glossed over: to cluster by the result set, you
-> need the result set. That means *executing* every sampled query, not just
-> generating it.
->
-> So the connective tissue between "sample N plans" and "pick the modal answer"
-> is an execute-to-rows step. Two design choices made it clean:
->
-> 1. **Execute exactly how you'd score.** The function that runs a sampled
->    query shares the same SQLite path — same read-only open, same busy-timeout,
->    same SQL normalization — as the scorer that later grades the winner. A
->    candidate that votes one way can't then score another way on a quirk of how
->    it was run. A query that errors or returns nothing casts no vote (rather
->    than crashing the round or silently counting as a wrong empty answer).
->
-> 2. **Inject the executor.** The orchestration — "run each sample, fingerprint
->    its rows, vote" — takes the execute function as an argument. In production
->    that's the real DB; in tests it's a stub mapping SQL→rows. So the entire
->    consensus path is unit-tested offline, deterministically, without a model
->    or a database — and proven once more end-to-end against a real fixture
->    (two equality/`IN`-phrased queries out-voting a wrong third).
->
-> The expensive half — actually sampling N plans at temperature>0 — rides a
-> separate code path so the greedy, reproducible baseline never moves. The
-> measured accuracy delta comes from the next full benchmark run; this slice is
-> the plumbing that makes that measurement honest.
-
-**Why this advances the north-star:** engine-quality credibility + AEO —
-"how to actually wire self-consistency for text-to-SQL" is a search-shaped gap.
-Ties to `SK-QUAL-017`.
+## 2026-06-21 (run 37) — engine-lesson: "Voting on the answer needs the answer — executing N SQL samples to consensus" (dev.to / lobste.rs) — the execute-to-rows part-2 angle is folded into the combined run-40+42 self-consistency piece above (publish as part 2); full standalone draft in git history.
 
 ## 2026-06-21 (run 41) — launch post: "We built a live demo: run a GROUP BY over agent memory and see the SQL" (X / Bluesky / r/AI_Agents → `/agents`)
 
