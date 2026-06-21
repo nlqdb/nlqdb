@@ -12,8 +12,9 @@
 // boundary to remember (E-02) — the only thing consulted is
 // `facts.expires_at` and the cutoff is a bound param, so the LLM never
 // composes this. `facts` is the only table with `expires_at`;
-// `episodes` / `entities` never expire (GLOBAL-012 — the same invariant
-// the write-side validation enforces by rejecting `ttlSeconds` on them).
+// `episodes` / `entities` are append-only / long-lived (E-01 DDL) and so
+// never expire — the same shape the write side enforces by rejecting a
+// `ttlSeconds` on them (one-sentence error, GLOBAL-012).
 //
 // Sibling: `docs/features/agent-memory-pivot/worksheets/engine/E-04-ttl-decay.md`.
 

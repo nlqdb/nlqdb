@@ -19,7 +19,7 @@ memory — delivered as a sequence of small, reversible, daily-loop-sized
 slices rather than a relaunch. **Two tracks ship in parallel:** messaging
 (WS-01..WS-13 — how users discover the wedge) and **engine** (E-01..E-07 —
 the memory-shaped primitives that make the wedge claims durable).
-**Status:** in progress (Phase 2 distribution) — backlog ready; WS-01 shipped (2026-06-19, run 19 — Zep/Letta/LangMem anchored in `docs/competitors.md §4`), 1 of 20 slices.
+**Status:** in progress (Phase 2 distribution) — backlog ready; WS-01 shipped (run 19); E-04 TTL-sweep core shipped (SK-PIVOT-011; cron + RLS clause pending).
 **Owners (code):** `apps/web/src/pages/agents/**`, `apps/web/src/data/{competitors,solve,showcase-examples}.ts`, `apps/api/src/db-create/presets/**` (engine track), `packages/mcp/src/server.ts`, `apps/api/src/db-create/neon-provision.ts` + `ask/build-deps.ts` (agent-scope RLS, SK-PIVOT-009), `apps/docs/src/content/docs/mcp.mdx`, `README.md`.
 **Cross-refs:** `docs/research/deepseek-moat-framing.md` (the thesis) · `docs/competitors.md §4` (agent-memory landscape) · `docs/research/personas.md §P2` · GLOBAL-036 (canonical text in `docs/decisions/GLOBAL-036-lead-positioning-analytical-agent-memory.md`; index in `docs/decisions.md`).
 
@@ -48,12 +48,12 @@ the memory-shaped primitives that make the wedge claims durable).
 
 | Area | Change | Owned by |
 |---|---|---|
-| **Docs decisions** | New **GLOBAL-036** (lead positioning, dual front door). **GLOBAL-019** + `architecture.md §0` wording corrected to FSL-1.1→Apache in this PR (the license is already FSL-1.1-ALv2; this only syncs the stale description). This feature's `SK-PIVOT-*` carry the tactical calls. | GLOBAL-036 |
-| **Scorecard / daily loop** | A **Pivot — agent-memory wedge** section in `docs/scorecard.md` carries **one row per worksheet** (13 WS + 7 E = 20 rows), ticked ⬜→✅ with the PR link on merge. The loop's normal *measure first → pick the worst number → smallest lever* flow surfaces the pivot through that table — **no `.claude/commands/daily.md` changes**. The weekly focus number stays founder-set. | this PR (`scorecard.md`) |
+| **Docs decisions** | New **GLOBAL-036** (lead positioning, dual front door). **GLOBAL-019** + `architecture.md §0` wording synced to FSL-1.1→Apache. This feature's `SK-PIVOT-*` carry the tactical calls. | GLOBAL-036 |
+| **Scorecard / daily loop** | A **Pivot — agent-memory wedge** section in `docs/scorecard.md` carries **one row per worksheet** (13 WS + 7 E), ticked ⬜→✅ with the PR link on merge — **no `.claude/commands/daily.md` changes**. The weekly focus number stays founder-set. | this PR (`scorecard.md`) |
 | **Architecture** | `architecture.md §0` "Open source … Apache-2.0" corrected to FSL-1.1 in this PR. `§2.1` gains the `/agents` route (a path on `nlqdb.com`, **no new domain**). `§0.1` already uses `nlqdb_query("memory", …)` — kept. | this PR (§0); WS-07 (§2.1 route) |
 | **Phase plan** | Phase 2 already targets "1 agent product publicly uses nlqdb as memory" — the wedge content is folded into Phase 2 distribution. The **self-host container** (`ghcr.io/nlqdb/api`) is pulled forward from Phase 3 so the self-host claim is true before `/agents` leads with it. | WS-11 |
 | **Home page & product/APIs** | Home reweights to agent-memory-primary with a demoted "also works for…" fold; new `/agents` landing; Mem0+Zep+Letta+LangMem matrix; sharpened solve pages; **MCP tool + package descriptions carry the agent-memory framing**; on-brand demo + OG images. Headline/README/llms.txt swap is **founder-gated, sequenced last**. | WS-01…WS-09, WS-12, WS-13 |
-| **Engine / actual architecture** | Canonical `agent_memory_v1` preset (`facts`/`episodes`/`entities`/`entity_facts`) as a `db.create` path. **Additive** MCP tools `nlqdb_remember` + `nlqdb_recall` (`nlqdb_query` unchanged — SK-MCP-002). Per-agent scope via additive row-level RLS (`app.agent_id` GUC; SK-PIVOT-009) — security-critical, not query-rewriting. TTL + cron sweep (Mem0/Zep parity). pgvector hybrid recall. Preset on-ramp on the **authed** create surface (`MEMORY_PRESET`-gated; **not** the anon `/agents` CreateForm — SK-PIVOT-010). Workload-analyzer routes large memory DBs to ClickHouse (Phase 3). | E-01…E-07 |
+| **Engine / actual architecture** | Canonical `agent_memory_v1` preset (`facts`/`episodes`/`entities`/`entity_facts`) as a `db.create` path. **Additive** MCP tools `nlqdb_remember` + `nlqdb_recall` (SK-MCP-002). Per-agent scope via row-level RLS (SK-PIVOT-009). TTL + cron sweep, `facts`-only (SK-PIVOT-011). pgvector hybrid recall. Preset on-ramp on the **authed** surface (SK-PIVOT-010). Workload-analyzer routes large memory DBs to ClickHouse (Phase 3). | E-01…E-07 |
 
 ## Decisions
 
@@ -280,10 +280,10 @@ the memory-shaped primitives that make the wedge claims durable).
 - **Core value:** Bullet-proof, Honest, Simple
 - **Why:** The preset path is authenticated-only across **three** independent
   boundaries: (1) `POST /v1/databases` is `requireSession` and rejects
-  `preset` unless `MEMORY_PRESET=1` (`apps/api/src/index.ts:2357,2390`);
+  `preset` unless `MEMORY_PRESET=1`;
   (2) the companion `POST /v1/memory/remember` write verb rejects `anon`
   (`auth_required`) and `pk_live` (`forbidden`, read-only) — only a
-  user-session key writes memory (`index.ts:1426-1433`); (3) `CreateForm` is
+  user-session key writes memory; (3) `CreateForm` is
   anon-only by contract — it always sends `credentials:"omit"` + an anon
   bearer so the device-cap → sign-in handoff works (SK-ANON-008), so it
   structurally cannot call a `requireSession` endpoint. The memory wedge is
@@ -305,34 +305,7 @@ the memory-shaped primitives that make the wedge claims durable).
 
 ### SK-PIVOT-011 — The TTL sweep is a server-built constant `DELETE`, `facts`-only, with per-DB failure isolation
 
-- **Decision:** E-04's expiry sweep is a deterministic, server-built
-  `DELETE FROM facts WHERE expires_at IS NOT NULL AND expires_at < $1` (cutoff
-  bound, never LLM-composed), run **per memory-preset DB with one DB's failure
-  isolated** so the rest still sweep. It targets `facts` only — `episodes` and
-  `entities` have no `expires_at` (GLOBAL-012). The pure core
-  (`apps/api/src/memory/expire.ts`: `buildExpirySweep` + `orchestrateSweep`)
-  ships ahead of the cron Worker (infra) and the read-side TTL-invisibility
-  clause on E-03's `facts` RLS `USING` policy (E-03-gated).
-- **Core value:** Bullet-proof, Honest, Simple
-- **Why:** Same trust boundary as the write verb (SK-PIVOT-008) — the only
-  thing consulted is `facts.expires_at` and the cutoff is a bound param, so the
-  LLM never composes the SQL. Per-DB isolation keeps one unreachable tenant DB
-  from aborting the whole nightly sweep. Proving the primitive offline (the
-  E-02 pattern) lets the EX-irrelevant infra (a Neon-reachable scheduled
-  Worker) land separately without blocking the testable spine.
-- **Consequence in code:** `expire.ts` is import-free of any prod path this run
-  (no route, no schedule), so engine/chain/scorer/BIRD+Spider baselines are
-  untouched; the cron Worker will call `orchestrateSweep` and emit
-  `nlqdb.memory.expire` + `nlqdb.memory.expired_rows_total` from
-  `SweepSummary.expiredRows`. The read-side invisibility is **not** a
-  compile-layer predicate (the read path is free-form LLM SQL — nothing to
-  inject into); it extends E-03's RLS `USING` clause.
-- **Alternatives rejected:** **One global `DELETE` across all memory DBs** —
-  cross-tenant SQL, breaks per-DB isolation and the tenant search_path model. ·
-  **A view / compile-layer TTL filter for read invisibility** — the read path
-  executes `neonSql.unsafe(sql)`; there is no AST step to inject a predicate
-  into (the SK-PIVOT-009 finding). · **Sweep `episodes`/`entities` too** —
-  they have no `expires_at` and are append-only / long-lived by design.
+**Body:** [`decisions/SK-PIVOT-011-ttl-sweep.md`](./decisions/SK-PIVOT-011-ttl-sweep.md). Server-built bound-cutoff `DELETE FROM facts` (never LLM-composed), swept per memory-preset DB with each DB's failure isolated; `facts`-only. Pure core (`expire.ts`) ships ahead of the cron Worker + read-side RLS clause.
 
 ### SK-PIVOT-005 — The self-host / anti-VC angle is messaged under FSL-1.1 honestly, and the container is pulled forward to make it true
 

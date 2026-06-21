@@ -6,7 +6,7 @@
 import { describe, expect, it } from "vitest";
 
 import { DbConfigError, type DbRecord, type QueryResult } from "../ask/types.ts";
-import { buildExpirySweep, orchestrateSweep, type MemorySweepPlan } from "./expire.ts";
+import { buildExpirySweep, type MemorySweepPlan, orchestrateSweep } from "./expire.ts";
 
 const NOW = Date.parse("2026-06-21T00:00:00Z");
 
@@ -117,10 +117,9 @@ describe("orchestrateSweep", () => {
   });
 
   it("returns an empty summary when no memory DBs exist", async () => {
-    const summary = await orchestrateSweep(
-      { execMemory: execDeleting(9), nowMs: NOW },
-      [makeDb("db_orders_xyz")],
-    );
+    const summary = await orchestrateSweep({ execMemory: execDeleting(9), nowMs: NOW }, [
+      makeDb("db_orders_xyz"),
+    ]);
     expect(summary).toEqual({ scanned: 0, swept: 0, expiredRows: 0, failures: 0, perDb: [] });
   });
 });
