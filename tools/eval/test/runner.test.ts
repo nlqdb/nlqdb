@@ -793,8 +793,8 @@ describe("runEval — self-consistency dispatch (SK-QUAL-017)", () => {
           maxAttempts: 1,
           router: {
             ...fakeRouter("SELECT 1"),
-            // biome-ignore lint/style/noNonNullAssertion: i is bounded by the 3-element draws array
             plan: async (): Promise<PlanResponse> => ({
+              // biome-ignore lint/style/noNonNullAssertion: i is bounded by the 3-element draws array
               sql: draws[i++]!,
               model: `m${i}`,
               confidence: 1,

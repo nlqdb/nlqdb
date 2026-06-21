@@ -76,7 +76,11 @@ literal/date axes falsified value-retrieval standalone.
   greedy path scores its single plan — the vote clusters under the *same*
   order-sensitivity the scorer applies to the winner (`hasOrderBy(gold)` for
   BIRD, `!ignore_order` for Spider) so an unordered cluster never elects a
-  mis-ordered member the strict scorer then rejects. It folds into the existing machinery: an
+  mis-ordered member the strict scorer then rejects. (Caveat: `fingerprintRows`
+  clustering is exact-tuple, so against the Spider2 scorer's `1e-2` numeric
+  tolerance + `condition_cols` subset the vote can *under*-cluster near-equal
+  answers — it never mis-scores a winner, only potentially understates the
+  Spider2 EX gain; revisit if Spider2 SC accuracy matters.) It folds into the existing machinery: an
   all-empty vote records `no_sql` (the greedy empty-plan outcome), a chain that
   is capacity-exhausted (SK-LLM-030) on **every** draw raises the same
   `BudgetStopError` → checkpoint + resume (SK-QUAL-013), each row carries
