@@ -273,12 +273,10 @@ the memory-shaped primitives that make the wedge claims durable).
 - **Decision:** The `agent_memory_v1` preset on-ramp (E-06) targets the
   **authenticated** create surface (`POST /v1/databases { preset }` from the
   chat left-rail / `/app/new` for a signed-in user), gated behind
-  `MEMORY_PRESET`. The anonymous `/agents` page does **not** render
-  `<CreateForm preset>`; it keeps its WS-07 "try this query" CTA → `/app/new`
-  (run 36). The original E-06 plan — render
+  `MEMORY_PRESET`. The original plan — render
   `<CreateForm preset="agent_memory_v1">` on the public `/agents` page so an
-  anonymous visitor lands directly on the preset path — is infeasible and
-  dropped.
+  anonymous visitor lands on the preset path — is dropped; `/agents` keeps its
+  WS-07 "try this query" CTA → `/app/new` (run 36).
 - **Core value:** Bullet-proof, Honest, Simple
 - **Why:** The preset path is authenticated-only across **three** independent
   boundaries: (1) `POST /v1/databases` is `requireSession` and rejects
@@ -286,27 +284,24 @@ the memory-shaped primitives that make the wedge claims durable).
   (2) the companion `POST /v1/memory/remember` write verb rejects `anon`
   (`auth_required`) and `pk_live` (`forbidden`, read-only) — only a
   user-session key writes memory (`index.ts:1426-1433`); (3) `CreateForm` is
-  deliberately anon-only by contract — it always sends `credentials:"omit"` +
-  an anon bearer so the device-cap → sign-in handoff works (SK-ANON-008), and
-  never carries a session. So an anon `/agents` visitor cannot reach the
-  preset path, and reworking CreateForm to do so would break the anon-first
-  contract. The memory wedge is authed by design — "the wedge feeds the
-  waitlist, it does not open the product" (pivot hard rule) — so the on-ramp
-  belongs where a principal exists.
+  anon-only by contract — it always sends `credentials:"omit"` + an anon
+  bearer so the device-cap → sign-in handoff works (SK-ANON-008), so it
+  structurally cannot call a `requireSession` endpoint. The memory wedge is
+  authed by design ("the wedge feeds the waitlist, it does not open the
+  product" — pivot hard rule), so the on-ramp belongs where a principal exists.
 - **Consequence in code:** E-06 is resized from "low · 1 run · anon
-  CreateForm" to "authed create surface · `MEMORY_PRESET`-gated · needs the
-  flag enabled in prod first." The anon `/agents` CTA stays as shipped (run
-  36). The result-view MCP host-config snippet (E-06 step 3) still applies,
-  but on the authed surface. The E-06 worksheet + engine INDEX are corrected;
-  **no code shipped this run** — the flag is dark in prod, so any preset UI
-  would return `preset_disabled` 400 for every visitor.
-- **Alternatives rejected:** **Rework CreateForm to send the session cookie
-  when present** — breaks SK-ANON-008 (a signed-in hero submit would skip the
-  device cap, and the anon→sign-in handoff regresses). · **Add an anonymous
-  preset-create endpoint** — opens the product to anon memory DBs, violating
-  the pivot's waitlist-feed rule and adding GLOBAL-027 gate + anon-cap surface
-  for a still-dark flag. · **Ship the `/agents` preset UI now against the dark
-  flag** — every visitor hits `preset_disabled` 400; ships a broken on-ramp.
+  CreateForm" to "authed surface · `MEMORY_PRESET`-gated · flag enabled in
+  prod first." The anon `/agents` CTA stays as shipped (run 36); the
+  result-view MCP host-config snippet (E-06 step 3) still applies, on the
+  authed surface. **No code shipped this run** — the flag is dark in prod, so
+  any preset UI would return `preset_disabled` 400. E-06 worksheet + engine
+  INDEX corrected.
+- **Alternatives rejected:** **Rework CreateForm to ride the session cookie**
+  — breaks SK-ANON-008 (a signed-in hero submit skips the device cap, the
+  anon→sign-in handoff regresses). · **Add an anonymous preset-create
+  endpoint** — opens the product to anon memory DBs, violating the pivot's
+  waitlist-feed rule. · **Ship the `/agents` preset UI now against the dark
+  flag** — every visitor hits `preset_disabled` 400; a broken on-ramp.
 
 ### SK-PIVOT-005 — The self-host / anti-VC angle is messaged under FSL-1.1 honestly, and the container is pulled forward to make it true
 
