@@ -34,7 +34,10 @@ describe("maskedTokens", () => {
 describe("questionSimilarity", () => {
   it("is 1 for questions identical after masking", () => {
     expect(
-      questionSimilarity("albums by the artist named 'Queen'", "albums by the artist named 'AC/DC'"),
+      questionSimilarity(
+        "albums by the artist named 'Queen'",
+        "albums by the artist named 'AC/DC'",
+      ),
     ).toBe(1);
   });
 
