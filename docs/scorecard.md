@@ -120,25 +120,18 @@ lands the next canonical dispatch (blocked today — both evals < 7 d, §5).
   green, lint clean, build emits the cards to `dist/og/`. Artifact: the
   `/agents` card as the X/Bluesky launch image queued.
 - 2026-06-21 (run 42) — **Engine: self-consistency *dispatch vehicle* shipped
-  (`SK-QUAL-017` follow-on) — the §4 #3 lever is now fully dispatchable.** Worst
-  number is engine (Spider 0.1852, BIRD 0.520); the §4 #1 prod-wiring half sits
-  in open PR #451 (packages/llm) and the OG-cards lane in #452 (apps/web), so
-  the clean non-colliding slice is §4 #3's explicitly-named last bar — the CI
-  `workflow_dispatch` input, in `.github/workflows/` + `tools/eval` only. Added
-  `self_consistency` (N) + `sc_temperature` inputs to **both** smoke jobs
-  (BIRD + Spider), threading `--self-consistency N --sc-temperature T` into the
-  sampled run. The smoke job is the deliberate vehicle: sampled, **no-emit, and
-  it never overwrites the canonical baseline**, so an SC dispatch is allowed any
-  time — unlike a canonical full run, which §5/`SK-QUAL-002` gate while the
-  baselines are < 7 d. N=1 (default) ⇒ the runner leaves `selfConsistency` unset
-  (greedy `SK-LLM-024`, same `.smoke` checkpoint) ⇒ byte-identical to a pre-SC
-  smoke. **Δ:** §4 #3 runner-wiring → **+ dispatch vehicle** (lever complete);
-  EX delta is the greedy-vs-SC smoke gap on the first N>=2 dispatch. **KPI:**
-  engine quality; **none degraded** — default greedy, no chain/scorer/runner-code
-  touch, BIRD 06-19 + Spider 06-17 baselines untouched, PR CI never dispatches.
-  246 eval tests green, lint clean, both workflows parse. distribution-queue
-  net-shrunk (D4). Artifact: "measure a stochastic lever without corrupting your
-  baseline" folded into the self-consistency queue entry.
+  (`SK-QUAL-017` follow-on) — the §4 #3 lever is now fully dispatchable.** §4 #1
+  prod-wiring sits in open PR #451 and OG-cards in #452, so the non-colliding
+  slice is §4 #3's last bar — the CI `workflow_dispatch` input. Added
+  `self_consistency` (N) + `sc_temperature` inputs to **both** smoke jobs (passed
+  through `env`, not inlined into the shell, so dispatch input can't inject); the
+  smoke vehicle is sampled, **no-emit, never overwrites the canonical baseline**,
+  so it's allowed any time unlike a §5/`SK-QUAL-002`-gated full run. N=1 (default)
+  leaves `selfConsistency` unset ⇒ byte-identical to a pre-SC smoke. **Δ:** §4 #3
+  runner-wiring → **+ dispatch vehicle** (lever complete); EX delta is the
+  greedy-vs-SC smoke gap on the first N>=2 dispatch. **KPI:** engine quality;
+  **none degraded** — default greedy, baselines untouched, PR CI never dispatches.
+  246 eval tests green, both workflows parse.
 - 2026-06-21 (run 41) — **Engine: similarity-retrieved few-shot *schema-aware
   selector* shipped (`SK-LLM-041` follow-on, T23) — the §4 #1 DAIL-SQL lever is
   now built end-to-end bar the `buildPlanUser` wiring.** Worst number is engine
@@ -178,37 +171,21 @@ lands the next canonical dispatch (blocked today — both evals < 7 d, §5).
   touch, BIRD 06-19 + Spider 06-17 untouched. Astro check 0 err, web 127
   tests green, tsc clean. Artifact: the `/agents` demo round-trip queued.
 - 2026-06-21 (run 41) — **Engine: self-consistency *runner main-loop wiring*
-  shipped (`SK-QUAL-017` follow-on) — the §4 #3 lever is now end-to-end bar the
-  CI dispatch input.** Worst number is engine (Spider 0.1852, BIRD 0.520); both
-  baselines < 7 d (§5 — no back-to-back dispatch), no open PR, so the clean
-  non-colliding slice is the explicitly-named last code half. `RunOptions.selfConsistency`
-  + `--self-consistency N` / `--sc-temperature T` (default T=0.7, Wang et al.
-  2022) drive a `samples >= 2` branch in `runOneQuestion` — a **separate path**
-  from `withExecRetry` so the greedy `SK-LLM-024` baseline is byte-identical:
-  `samplePlans` (N draws at temp > 0) → `voteOverSamples` over `executeRows` →
-  score the modal result-set cluster's SQL exactly as the greedy path scores its
-  single plan. Folds into the existing machinery — an all-empty vote records
-  `no_sql`; a chain capacity-exhausted (`SK-LLM-030`) on **every** draw raises
-  `BudgetStopError` → checkpoint + resume (`SK-QUAL-013`); each row carries
-  `attempts: N` so `total_attempts` reflects the N× quota cost; the checkpoint
-  variant keys on `.scN` so a greedy run never replays into an SC resume. **Δ:**
-  §4 #3 sampling-half → **+ runner wiring**; only the smoke-job
-  `workflow_dispatch` input remains, EX delta next dispatch. KPI **engine
-  quality**; **none degraded** — greedy path unchanged (default unset), BIRD
-  06-19 + Spider 06-17 + perf untouched; eval tests 241 → 244 (3 runner cases:
-  modal-vote→match, all-broken→no_sql, all-rate-limited→resumable). Artifact:
+  shipped (`SK-QUAL-017` follow-on).** `--self-consistency N` / `--sc-temperature T`
+  drive a `samples >= 2` branch in `runOneQuestion` — a **separate path** from
+  `withExecRetry` so the greedy `SK-LLM-024` baseline is byte-identical:
+  `samplePlans` → `voteOverSamples` over `executeRows` → score the modal cluster's
+  SQL. Folds into checkpoint / budget-stop / `attempts` machinery (`.scN` variant).
+  **Δ:** §4 #3 sampling-half → **+ runner wiring** (dispatch input remained). KPI
+  **engine quality**; none degraded; eval tests 241 → 244. Artifact:
   "Self-consistency for free-chain text-to-SQL" queued.
 - 2026-06-21 (run 40) — **Engine: self-consistency *temperature-sampling half*
-  shipped (`SK-QUAL-017` follow-on) — the §4 #3 lever is now wired end-to-end
-  bar the runner main loop.** No dispatch (BIRD 06-19 + Spider 06-17 both < 7 d,
-  §5). An optional per-*request* `PlanRequest.temperature` threads through every
-  provider `callChat` (`temperature ?? 0`) — **default greedy, so `SK-LLM-024`
-  is byte-identical; only the eval sampler sets it > 0** (the per-request
-  mechanism SK-LLM-024 reserved) — plus `self-consistency.ts::samplePlans`
-  (draws N plans at temp > 0; a throwing draw → no-vote empty sample so N-1 still
-  reach consensus; injected `plan` ⇒ offline-tested). **Δ:** §4 #3 +sampling-half;
-  only the runner `--self-consistency N` wiring + dispatch remain. KPI **engine
-  quality**; none degraded; `@nlqdb/llm` 186 → 189 + eval 19 → 21 green.
+  shipped (`SK-QUAL-017` follow-on).** An optional per-*request*
+  `PlanRequest.temperature` threads through every provider `callChat`
+  (`temperature ?? 0`, default greedy so `SK-LLM-024` is byte-identical; only the
+  eval sampler sets it > 0) plus `self-consistency.ts::samplePlans`. **Δ:** §4 #3
+  +sampling-half. KPI **engine quality**; none degraded; `@nlqdb/llm` 186 → 189 +
+  eval 19 → 21 green.
 - 2026-06-21 (runs 37–39) — engine + agent-memory staging wave (all offline,
   BIRD 06-19 + Spider 06-17 untouched, no prod import; full detail in the
   verification log + worksheets): **run 39** E-04 TTL-sweep core (`SK-PIVOT-011`,

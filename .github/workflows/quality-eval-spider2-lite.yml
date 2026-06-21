@@ -249,6 +249,11 @@ jobs:
     env:
       SMOKE_SEED: "20260607"
       SMOKE_LIMIT: "40"
+      # SK-QUAL-017 — pass dispatch inputs through env, never inlined into a
+      # `run:` script, so untrusted input can't inject shell (the runner
+      # re-validates with parseInt/parseFloat).
+      SC_SAMPLES: ${{ inputs.self_consistency || '1' }}
+      SC_TEMPERATURE: ${{ inputs.sc_temperature || '0.7' }}
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
       - uses: ./.github/actions/setup
@@ -314,8 +319,8 @@ jobs:
             --limit "$SMOKE_LIMIT" --sample-seed "$SMOKE_SEED" \
             --throttle-ms 3000 \
             --capacity-wait-ms 65000 \
-            --self-consistency "${{ inputs.self_consistency || '1' }}" \
-            --sc-temperature "${{ inputs.sc_temperature || '0.7' }}" \
+            --self-consistency "$SC_SAMPLES" \
+            --sc-temperature "$SC_TEMPERATURE" \
             --out eval-state
           latest=$(ls -t eval-state/*.json | head -1)
           if jq -e '.resumable == true' "$latest" >/dev/null 2>&1; then
@@ -331,7 +336,7 @@ jobs:
           set -euo pipefail
           latest="${{ steps.smoke.outputs.report }}"
           {
-            echo "## quality-eval — Spider smoke (sampled ${SMOKE_LIMIT}, seed ${SMOKE_SEED}, self-consistency N=${{ inputs.self_consistency || '1' }})"
+            echo "## quality-eval — Spider smoke (sampled ${SMOKE_LIMIT}, seed ${SMOKE_SEED}, self-consistency N=${SC_SAMPLES})"
             echo ""
             echo "Status: ${{ steps.smoke.outputs.status }}"
             if [ -n "$latest" ] && [ -f "$latest" ]; then

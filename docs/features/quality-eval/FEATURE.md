@@ -213,27 +213,16 @@ Cache-authoritative, fail-soft, traversal-gated. EX delta next Spider dispatch.
 ### SK-QUAL-017 — Self-consistency majority vote: cluster N sampled plans by the result set, vote the answer
 
 **Body:** [`decisions/SK-QUAL-017-self-consistency-majority-vote.md`](./decisions/SK-QUAL-017-self-consistency-majority-vote.md).
-Pure `majorityVote(candidates, { ordered })` + reusable `fingerprintRows`
-(score.ts) cluster N executed plans by their **result set** (the answer, not
-the SQL string), returning the modal cluster's SQL + agreement — the
-deterministic core of the §4 #3 reasoning lever. The **execution half** is now
-shipped: `score.ts::executeRows` (predicted SQL → rows, the vote's input) +
-`voteOverSamples(samples, execute, …)` (executes each sample via an injected
-executor, then votes — pure, offline-tested on a real SQLite fixture), the
-"separate code path" §5 reserves. The **sampling half ships too**: an optional
-per-request `PlanRequest.temperature` (default unset ⇒ greedy, `SK-LLM-024`
-untouched) threaded through every provider `callChat` + `samplePlans(plan, req,
-{ samples, temperature })` (draws N plans at temperature > 0; injected `plan` ⇒
-offline-tested). **The runner `--self-consistency N` / `--sc-temperature T`
-main-loop wiring now ships too** (a `samples >= 2` branch in `runOneQuestion`,
-a separate path from `withExecRetry`: `samplePlans` → `voteOverSamples` over
-`executeRows` → score the modal cluster's SQL; folds into checkpoint /
-budget-stop / `attempts` machinery, `.scN` checkpoint variant). Offline, 21
-eval unit cases + 3 provider forwarding cases + 3 runner cases. **The
-`self_consistency`/`sc_temperature` `workflow_dispatch` inputs now ship on both
-smoke jobs** (the baseline-safe vehicle; N=1 default = greedy), so the lever is
-fully dispatchable — EX delta is the greedy-vs-SC smoke gap on the first
-N>=2 dispatch.
+Pure `majorityVote` + reusable `fingerprintRows` (score.ts) cluster N executed
+plans by their **result set** (the answer, not the SQL string), returning the
+modal cluster's SQL — the deterministic core of the §4 #3 reasoning lever. **Now
+end-to-end:** `executeRows` + `voteOverSamples` (the vote), `PlanRequest.temperature`
++ `samplePlans` (the sampling, default greedy ⇒ `SK-LLM-024` byte-identical), the
+`--self-consistency N` / `--sc-temperature T` runner branch (`samples >= 2` in
+`runOneQuestion`, a separate path from `withExecRetry`, folding into checkpoint /
+budget-stop / `attempts`, `.scN` variant), and the `self_consistency`/`sc_temperature`
+`workflow_dispatch` inputs on both smoke jobs — the baseline-safe vehicle (N=1
+default = greedy). EX delta is the greedy-vs-SC smoke gap on the first N>=2 dispatch.
 
 ## GLOBALs governing this feature
 
