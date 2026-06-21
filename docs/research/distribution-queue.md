@@ -5,6 +5,37 @@ One publishable artifact drafted per day by the daily agent
 publishes at the weekly session. Newest first. Delete an entry once published
 (the live URL goes into `docs/scorecard.md`).
 
+## 2026-06-21 (run 43) — engine-lesson: "Your benchmark should look like your users' database, not a research paper's" (dev.to / lobste.rs)
+
+**Where:** dev.to + lobste.rs (`databases` / `ai`); a build-in-public note on
+measuring NL→SQL on the schemas users actually create.
+
+**Title:** Your benchmark should look like your users' database, not a research paper's
+
+**Body:**
+
+> BIRD and Spider are the standard NL→SQL benchmarks, and we run both. But
+> neither looks like what our users actually build. They're sprawling academic
+> schemas with dozens of cryptic tables; our users spin up a 4–8-table
+> side-project DB or an agent-memory store. A 52% on BIRD tells you how you'd do
+> on a research paper's data — not on the query a real user just typed.
+>
+> So we wrote our own benchmark, persona-bench: NL questions over the two
+> schema shapes our personas build. A solo-builder SaaS (plans, referrers,
+> users, orders — "how many signups in March, grouped by referrer," "who never
+> logged in," "revenue from paid orders in dollars") and an agent-memory store
+> (agents, facts with TTL, recalls — "how many facts per agent," "the 5
+> most-recalled facts," "how many expired"). The gold SQL is hand-written and
+> hand-checked, with one rule that matters: **no `date('now')`** — every date is
+> a literal bound, so the benchmark means the same thing next year as today.
+>
+> The first thing we shipped isn't an accuracy number — it's the invariant that
+> the benchmark is *sound*: every gold query executes against its seeded schema
+> and returns a non-empty, hand-verified result. 12/12. A benchmark whose own
+> gold answers don't run is just noise in your denominator. Prove the ruler is
+> straight before you measure anything with it; the model's score against it is
+> the next run. Fixture's in `tools/eval/src/datasets/persona-bench.ts`.
+
 ## 2026-06-21 (run 43) — build-in-public: "We put agent memory front and centre on the home page" (X / Bluesky / dev.to)
 
 **Where:** X / Bluesky build-in-public note + dev.to; the positioning companion
@@ -541,85 +572,14 @@ Honest-trade-off format (~13.8% vs 2–5% generic) lifted verbatim by
 Perplexity/ChatGPT. Sourced from `apps/web/src/data/agentMemoryMatrix.ts`
 (verified 2026-06-19 from `competitors.md §4`). Seeds the WS-09 HN launch post.
 
-## 2026-06-20 (run 25) — helpful-answer draft: "reporting over agent memory" (r/AI_Agents / r/LangChain)
+## 2026-06-19/20 (runs 23, 25) — helpful-answer drafts: analytics over agent memory (titles only; full drafts in git history)
 
-**Where:** a real recurring thread on r/AI_Agents / r/LangChain where someone asks
-how to get **counts / stats / "top N" / per-period rollups** out of their agent's
-memory (distinct from the run-23 "can't aggregate" framing — this one is the buyer
-who *already* has memory and now wants reports). Post once, in context, linking the
-new sibling solve page once.
+Real recurring r/LangChain / r/AI_Agents threads on getting counts / "top N" /
+rollups out of agent memory; each links one solve page once, honest about the
+no-vector-search gap (SK-PIVOT-002), real tool names only:
 
-**Title (if a fresh post):** My agent logs everything it learns — how do I actually run reports over that memory?
-
-**Body:**
-
-> Once your agent is reliably *storing* what it learns, the next question is
-> almost always analytical: "top 10 topics it logged this month by count,"
-> "average deal size per stage," "how many tasks did it close per day this week."
-> That's the point where a vector / graph memory layer (Mem0, Zep, LangMem, a
-> Letta archival tier) stops helping — it returns the top-k *most similar* rows, it
-> has no query planner, so the rollup turns into the LLM doing arithmetic over a
-> list of search hits. That's a hallucination generator, not a `GROUP BY`.
->
-> The split that's worked for me: keep the unstructured recall where it shines,
-> but put the rows the agent will later **count / rank / bucket** in a real
-> relational store and let it run actual SQL. I've been using nlqdb for the
-> reporting half (writeup:
-> nlqdb.com/solve/analytical-queries-over-agent-memory) — the agent asks the
-> report in English over MCP (`nlqdb_query`), it compiles to SQL against the
-> memory table, runs the aggregation in Postgres, and hands back the rows plus the
-> compiled SQL so you can check the grain. Same database it writes to, so there's
-> no second store to sync.
->
-> Honest limit: nlqdb has no native vector search — it's the structured/analytical
-> half, not the similarity-recall half. The two compose.
-
-**Why this is publishable:** it targets the read-side search intent ("run reports
-over agent memory") that the new `/solve/analytical-queries-over-agent-memory` page
-answers — a distinct keyword from the write-side "give my agent memory" page and
-the run-23 "can't aggregate" post. One in-context link, honest about the
-no-vector-search limit (SK-SOLVE-002 / SK-PIVOT-002), real tool name only
-(`nlqdb_query`, no phantom `create_database`).
-
-## 2026-06-19 (run 23) — helpful-answer draft: "vector memory can't aggregate" (r/LangChain / r/AI_Agents)
-
-**Where:** a real recurring thread on r/LangChain / r/AI_Agents where someone
-asks "how do I get stats / counts / 'top N' out of my agent's memory?" and the
-answers are all "embed it and retrieve top-k." Post once, in context.
-
-**Title (if a fresh post):** Your agent's vector memory can recall a fact. It can't tell you "top 10 this month."
-
-**Body:**
-
-> A pattern I keep hitting: vector/graph memory (Mem0, Zep, LangMem, an
-> archival tier in Letta) is great at *retrieval* — "what did the user say
-> about pricing?" returns the right fact. But the moment the question is
-> **analytical** — "top 10 topics the agent logged this month by count,"
-> "average deal size per stage," "how many tasks did it complete per day this
-> week" — retrieval falls apart. A vector store returns the top-k *most
-> similar* rows; it has no query planner. So your agent ends up doing
-> arithmetic over a list of search hits, which is a hallucination generator,
-> not a `GROUP BY`.
->
-> The fix is boring and correct: keep the unstructured recall where it's good,
-> but put the facts the agent will later *count / rank / bucket* in a real
-> relational store and let it run actual SQL. That's the half a vector DB
-> structurally can't do.
->
-> I've been using nlqdb for exactly this (full writeup at
-> nlqdb.com/solve/give-ai-agent-persistent-memory): the agent stores typed
-> rows via MCP (`nlqdb_query` provisions Postgres from its first English goal),
-> then asks "top 5 things I remembered this week by frequency" and gets a real
-> aggregation back with the compiled SQL shown. Honest gap: no native vector
-> search yet, so for unstructured similarity recall I still reach for
-> Mem0/pgvector — the two compose. Retrieval ≠ analytics; you usually want both.
-
-**Why this is publishable:** answers the actual question (analytics over agent
-memory), names the architectural reason vector stores can't do it, links the
-solve page **once**, and is honest about nlqdb's own gap (no vector search) so
-it reads as help, not a plug. Lifts the same retrieval≠analytics wedge the WS-02
-`/vs` pages and the sharpened solve page now lead with. Sourced from the
-reframed `/solve/give-ai-agent-persistent-memory` page + `docs/competitors.md §4`.
+- run 25 — "My agent logs everything it learns — how do I actually run reports over that memory?" (`/solve/analytical-queries-over-agent-memory`)
+- run 23 — "Your agent's vector memory can recall a fact. It can't tell you 'top 10 this month.'" (`/solve/give-ai-agent-persistent-memory`)
 
 ## 2026-06-19/21 (runs 21–22) — WS-02 comparison-page drafts (titles only; full drafts in git history)
 
