@@ -16,19 +16,23 @@
 // scores spuriously high.
 //
 // This module is the deterministic core: question masking + masked-token
-// Jaccard similarity + stable top-k selection. Pure + zero-dep so production
-// `buildPlanUser` and the eval harness can share it byte-for-byte, exactly
-// like schema-prune.ts. Two halves are staged behind it (not built here):
-//   (a) the exemplar *pool* — masked BIRD-dev train-split Question→SQL pairs —
-//       and, for the hot `plan` path, an embedding index; masked-token Jaccard
-//       is the offline, key-free stand-in DAIL's embedding cosine approximates.
+// Jaccard similarity + stable top-k selection, plus the pool-curation
+// schema-identifier mask. Pure + zero-dep so production `buildPlanUser` and the
+// eval harness can share it byte-for-byte, exactly like schema-prune.ts. Two
+// halves are still staged behind it (not built here):
+//   (a) the exemplar *pool* itself — the masked BIRD-dev train-split
+//       Question→SQL rows — and, for the hot `plan` path, an embedding index;
+//       masked-token Jaccard is the offline, key-free stand-in DAIL's embedding
+//       cosine approximates. (`maskWithSchema` below is the masking each pool
+//       row + the incoming goal pass through; the rows themselves still need
+//       curating.)
 //   (b) wiring into `buildPlanUser` behind a per-lever ablation of the static
 //       T9 prefix (CLAUDE.md §P5 — don't swap a shipped lever before the
 //       cheaper one is attributed).
 // The EX delta is the next canonical dispatch (SK-QUAL-002 — PR CI never fires
 // real keys), the same prove-the-primitive-offline staging as SK-QUAL-017.
 
-import { wordTokens } from "./schema-prune.ts";
+import { schemaTokens, wordTokens } from "./schema-prune.ts";
 
 // One exemplar in the retrieval pool: the masking compares on `question`; the
 // caller carries whatever rendered demonstration it wants in `payload` (a
@@ -54,6 +58,40 @@ export function maskQuestion(question: string): string {
     .replace(/'[^']*'/g, " val ")
     .replace(/"[^"]*"/g, " val ")
     .replace(/\b\d+(?:\.\d+)?\b/g, " val ");
+}
+
+// The pool-curation half of DAIL's mask: replace every question word that
+// *names a schema identifier* (a table or column, in any of the snake_case /
+// camelCase / plural / spaced spellings `wordTokens` folds together) with one
+// `col` placeholder. Value masking alone collapses "albums by the artist named
+// <val>" and "employees at the company named <val>" only down to "albums by the
+// `col` named val" vs "employees at the `col` named val" — the domain nouns
+// (`albums`/`artist`, `employees`/`company`) still differ; masking them too
+// yields one shared skeleton "`col` by the `col` named val", which is what lets
+// a BIRD exemplar match a query over an unrelated schema (DAIL §4.1).
+// Schema-agnostic by design: a word matches only the identifiers present in the
+// schema passed with it, so a pool row is masked against its own schema and the
+// goal against the live one. Empty/identifier-less schema ⇒ value-only mask.
+export function maskSchemaIdentifiers(question: string, schema: string): string {
+  const ids = schemaTokens(schema);
+  if (ids.size === 0) return question;
+  // Word-boundary spans only (skips the `val` placeholders, which carry no
+  // letters that overlap an identifier token anyway); a word is masked if any
+  // of its folded sub-tokens names a schema identifier.
+  return question.replace(/[A-Za-z][A-Za-z\d_]*/g, (word) => {
+    if (word === "col" || word === "val") return word;
+    for (const t of wordTokens(word)) if (ids.has(t)) return "col";
+    return word;
+  });
+}
+
+// Full DAIL question mask: literal values → `val`, then schema identifiers →
+// `col`. Values first so a quoted value that happens to equal a column name
+// stays a value slot. This is the skeleton `selectExemplars` should compare
+// when a schema is available — both the goal and each pool row are run through
+// it (each against its own schema) before similarity.
+export function maskWithSchema(question: string, schema: string): string {
+  return maskSchemaIdentifiers(maskQuestion(question), schema);
 }
 
 // Masked word-token set of a question — reuses schema-prune's tokenizer so the

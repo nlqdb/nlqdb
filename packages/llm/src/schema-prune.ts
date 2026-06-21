@@ -90,6 +90,16 @@ function statementTokens(raw: string, name: string): Set<string> {
   return tokens;
 }
 
+// Every table/view + column word-token in a schema, unioned. The
+// pool-curation half of SK-LLM-041 masks question words that name a schema
+// identifier; reusing this parser (not a second DDL walker) keeps the
+// identifier set byte-identical to what the pruner sees.
+export function schemaTokens(schema: string): Set<string> {
+  const out = new Set<string>();
+  for (const s of parseStatements(schema)) for (const t of s.tokens) out.add(t);
+  return out;
+}
+
 function parseStatements(schema: string): Statement[] {
   // DDL statements end `;\n` (sqlite_master join + our compiled
   // schema_text both use it); a final statement may omit the semicolon.
