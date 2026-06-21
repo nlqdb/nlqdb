@@ -1,6 +1,6 @@
 # WS-08 — On-brand OG / social images for the wedge surfaces
 
-**Status:** ⬜ not started
+**Status:** ✅ shipped (run 42 — generator + `/agents` + 4 memory `/vs` cards)
 **Sequence:** 8 of 13 · **Risk:** low · **Runs:** ~2 · **Prereqs:** WS-07 ✅ · **Gate:** none
 
 ## Goal
@@ -38,10 +38,23 @@ Distribution: share-click-through on the wedge links. Indirect; treat as
 
 ## Done when
 
-- [ ] Per-page `ogImage` supported in `Base.astro`.
-- [ ] `/agents` + memory `/vs` pages each set an on-brand card (no raster screenshot).
-- [ ] Bundle/build stays in the free-tier budget.
-- [ ] INDEX tracker + status ticked.
+- [x] Per-page `ogImage` supported in `Base.astro` (already wired; set on `/agents` + the P2 memory `/vs` cluster).
+- [x] `/agents` + memory `/vs` pages each set an on-brand card (no raster screenshot) — type-on-dark, brand palette, JetBrains Mono (SK-PIVOT-004/012).
+- [x] Bundle/build stays in the free-tier budget — generator is a manually-run one-off, out of `astro build`; cards are committed static PNGs (~45 KB each); `@resvg/resvg-js` is a devDep never imported by the site (SK-PIVOT-012).
+- [x] INDEX tracker + status ticked.
+
+## Outcome (run 42)
+
+`apps/web/scripts/og/gen-og.mjs` (hand-authored SVG → PNG via `@resvg/resvg-js`,
+JetBrains Mono buffers) emits five 1200×630 cards to `apps/web/public/og/`:
+`agents.png` ("GROUP BY your agent's memory" + a `SELECT … GROUP BY` type-proof
+strip) and `vs-{mem0,zep,letta,langmem}.png` ("nlqdb vs <name>" + the
+`GROUP BY · JOIN · HAVING` wedge line). Wired via the existing `ogImage` prop on
+`/agents/index.astro` and `vs/[slug].astro` (P2 cluster only; other `/vs` pages
+keep `og-default.png`). Build verified: cards land in `dist/og/`, the right
+`og:image` URL renders per page. Mem0 card added beyond the worksheet's
+named three — it is the fourth P2 memory competitor and shares the cross-link
+cluster, so its share card matters too.
 
 ## Artifact
 

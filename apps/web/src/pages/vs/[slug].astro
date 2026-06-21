@@ -23,6 +23,11 @@ const pageTitle = `nlqdb vs ${c.name} — natural-language databases`;
 const description = c.oneLiner;
 const canonical = `/vs/${c.slug}`;
 
+// The agent-memory cluster (P2) ships on-brand wedge cards (WS-08); other
+// comparisons fall back to the site-wide default until they get their own.
+const ogImage = c.persona === "P2 agent builder" ? `/og/vs-${c.slug}.png` : undefined;
+const ogImageAlt = `nlqdb vs ${c.name} — GROUP BY, JOIN, and HAVING over your agent's memory.`;
+
 const claimGlyph: Record<ComparisonClaim, string> = {
   shipped: "✓",
   partial: "◐",
@@ -44,7 +49,13 @@ const faqJsonLd = {
   })),
 };
 ---
-<Base title={pageTitle} description={description} canonical={canonical}>
+<Base
+  title={pageTitle}
+  description={description}
+  canonical={canonical}
+  ogImage={ogImage}
+  ogImageAlt={ogImage ? ogImageAlt : undefined}
+>
   <div class="page">
     <Topnav current="vs" />
 
