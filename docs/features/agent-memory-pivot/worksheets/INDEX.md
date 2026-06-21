@@ -91,5 +91,5 @@ Tick on merge. Keep this list as the durable pivot status (the scorecard's
 - [x] WS-09 — blog + live demo ✅ 2/2 — blog draft ✅ (2026-06-20, run 30, branch `claude/vibrant-newton-wah6ow`); live `/agents` demo ✅ (2026-06-21, run 41, branch `claude/vibrant-newton-36il2y` — gate-honest fixture round-trip: `agent_memory` rows → English goal → compiled `GROUP BY` SQL → result table, server-rendered, `agents.demo_run_clicked` demand signal)
 - [x] WS-10 — FSL self-host messaging (2026-06-20, run 28 — branch `claude/vibrant-newton-fh8mgw`; pricing self-host band + README "Models & plans" self-host line, FSL-accurate, no turnkey-image claim per WS-11 note)
 - [ ] WS-11 — self-host container (infra-gated)
-- [ ] WS-12 — home reweight + demote personas
+- [ ] WS-12 — home reweight + demote personas: **band ✅** (2026-06-21, run 43, branch `claude/vibrant-newton-2ou3c2` — `AgentMemoryBand.astro` inserted after `<Hero />`: wedge statement + WS-06 matrix teaser + `/agents` CTA firing `home.agents_cta_clicked`; hero lede untouched, gated to WS-13); **demote P1/P3/P4 to "also works for…" fold ⬜** next run
 - [ ] WS-13 — headline reposition (founder-gated)

@@ -1,6 +1,6 @@
 # WS-12 — Home reweight: agent-memory primary + demote P1/P3/P4 to an "also works for…" fold
 
-**Status:** ⬜ not started
+**Status:** 🟡 1/2 — band shipped (run 43); demote-to-fold next run
 **Sequence:** 12 of 13 · **Risk:** med · **Runs:** ~2 · **Prereqs:** WS-06 ✅, WS-07 ✅ · **Gate:** none
 
 ## Goal
@@ -37,7 +37,7 @@ home → `/agents` click-through. `Pivot:` "home reweighted".
 
 ## Done when
 
-- [ ] Agent-memory band is the first narrative section after the hero, with the matrix teaser + `/agents` CTA.
+- [x] Agent-memory band is the first narrative section after the hero, with the matrix teaser + `/agents` CTA. (run 43 — `AgentMemoryBand.astro` after `<Hero />`; reuses `AgentMemoryMatrix`; `/agents` CTA fires `home.agents_cta_clicked` GLOBAL-024 signal)
 - [ ] P1/P3/P4 content lives in a clearly-secondary "also works for…" fold; nothing deleted.
 - [ ] Hero wordmark/lede untouched; Lighthouse unchanged.
 - [ ] INDEX tracker + status ticked.
