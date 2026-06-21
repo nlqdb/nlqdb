@@ -18,14 +18,17 @@ reasoning** (mismatches), not provider availability (Gemini key healed 06-17,
 `SK-LLM-039`) and not value/literal grounding (`SK-QUAL-014` run 18:
 `literal_only` = 0 — no mismatch fixable by literals alone). BIRD re-run 06-19
 is **flat** (0.522 → 0.520, McNemar p=0.50) ⇒ directive levers (T13–T22)
-**saturated**; the path to the gate floor is the §4 **reasoning** levers. Both
-now built bar their dispatch half: **#3 self-consistency** runner merged (#447,
-`SK-QUAL-017`) and **#1 DAIL-SQL retrieval** — selector + masking merged through
-run 41 and the **curated pool merged (#451, `SK-LLM-041` half (a))**: 10
-hand-authored exemplars, one per `SK-QUAL-014` structural bucket, offline
-precision@1 = 10/10 + similarity lift +0.592. #1 now needs only the embedding
-index + `buildPlanUser` wiring (T9-ablation-gated). EX delta lands the next
-canonical dispatch (blocked today — both evals < 7 d, §5).
+**saturated**; the path to the gate floor is the §4 **reasoning** levers.
+**#3 self-consistency** is now **fully dispatchable**: runner merged (#447,
+`SK-QUAL-017`) + the `self_consistency`/`sc_temperature` smoke-job
+`workflow_dispatch` inputs (run 42, baseline-safe vehicle — no-emit, never
+overwrites the canonical baseline). **#1 DAIL-SQL retrieval** — selector +
+masking merged through run 41 and the **curated pool merged (#451,
+`SK-LLM-041` half (a))**: 10 hand-authored exemplars, one per `SK-QUAL-014`
+structural bucket, offline precision@1 = 10/10 + similarity lift +0.592; #1
+now needs only the embedding index + `buildPlanUser` wiring (T9-ablation-gated).
+The #3 EX delta is the greedy-vs-SC smoke gap on the first N>=2 dispatch; #1
+lands the next canonical dispatch (blocked today — both evals < 7 d, §5).
 
 | # | Metric | Value | Target / note |
 |---|--------|-------|------|
@@ -116,6 +119,26 @@ canonical dispatch (blocked today — both evals < 7 d, §5).
   touch; BIRD 06-19 + Spider 06-17 untouched. astro check 0 err, 127 web tests
   green, lint clean, build emits the cards to `dist/og/`. Artifact: the
   `/agents` card as the X/Bluesky launch image queued.
+- 2026-06-21 (run 42) — **Engine: self-consistency *dispatch vehicle* shipped
+  (`SK-QUAL-017` follow-on) — the §4 #3 lever is now fully dispatchable.** Worst
+  number is engine (Spider 0.1852, BIRD 0.520); the §4 #1 prod-wiring half sits
+  in open PR #451 (packages/llm) and the OG-cards lane in #452 (apps/web), so
+  the clean non-colliding slice is §4 #3's explicitly-named last bar — the CI
+  `workflow_dispatch` input, in `.github/workflows/` + `tools/eval` only. Added
+  `self_consistency` (N) + `sc_temperature` inputs to **both** smoke jobs
+  (BIRD + Spider), threading `--self-consistency N --sc-temperature T` into the
+  sampled run. The smoke job is the deliberate vehicle: sampled, **no-emit, and
+  it never overwrites the canonical baseline**, so an SC dispatch is allowed any
+  time — unlike a canonical full run, which §5/`SK-QUAL-002` gate while the
+  baselines are < 7 d. N=1 (default) ⇒ the runner leaves `selfConsistency` unset
+  (greedy `SK-LLM-024`, same `.smoke` checkpoint) ⇒ byte-identical to a pre-SC
+  smoke. **Δ:** §4 #3 runner-wiring → **+ dispatch vehicle** (lever complete);
+  EX delta is the greedy-vs-SC smoke gap on the first N>=2 dispatch. **KPI:**
+  engine quality; **none degraded** — default greedy, no chain/scorer/runner-code
+  touch, BIRD 06-19 + Spider 06-17 baselines untouched, PR CI never dispatches.
+  246 eval tests green, lint clean, both workflows parse. distribution-queue
+  net-shrunk (D4). Artifact: "measure a stochastic lever without corrupting your
+  baseline" folded into the self-consistency queue entry.
 - 2026-06-21 (run 41) — **Engine: similarity-retrieved few-shot *schema-aware
   selector* shipped (`SK-LLM-041` follow-on, T23) — the §4 #1 DAIL-SQL lever is
   now built end-to-end bar the `buildPlanUser` wiring.** Worst number is engine

@@ -100,10 +100,10 @@ masking arc (runs 38–39).
 > deterministic, zero new dependencies; the same code runs in production and the
 > eval harness. Measured delta lands next run. Code's in `packages/llm/few-shot-select.ts`.
 
-## 2026-06-21 (run 40) — engine-lesson: "Self-consistency for text-to-SQL: sample at temperature > 0 without breaking your benchmark" (dev.to / lobste.rs)
+## 2026-06-21 (runs 40+42) — engine-lesson: "Self-consistency for text-to-SQL: sample at temperature > 0 without breaking your benchmark" (dev.to / lobste.rs)
 
 **Where:** dev.to + lobste.rs (`databases` / `ai`), same engine-lesson series as
-the few-shot post (run 38); covers the full self-consistency lever (runs 35/37/40/41).
+the few-shot post (run 38); covers the full self-consistency lever (runs 35/37/40/42).
 
 **Title:** Self-consistency for text-to-SQL: how to sample at temperature > 0 without breaking your benchmark
 
@@ -130,8 +130,16 @@ the few-shot post (run 38); covers the full self-consistency lever (runs 35/37/4
 > good draws still reach consensus. But separate that from the *whole chain*
 > being rate-limited on every draw: budget-stop + resume, so the sampler stays
 > resumable instead of burning a daily cap into a wall of empty answers. Vote on
-> what executed; ignore what didn't. Code's pure + offline-tested (inject planner
-> + executor), open in `packages/llm/` + `tools/eval/`; EX delta next run.
+> what executed; ignore what didn't.
+>
+> Last lesson — how to *measure* a stochastic lever without corrupting the
+> number you report. A self-consistency run is non-reproducible by design, so it
+> must never overwrite your canonical baseline. Wire dispatch through a
+> separate, **no-emit, sampled smoke job** (fixed seed + slice), not the
+> canonical run: the delta you publish is greedy-smoke vs SC-smoke on the *same*
+> slice, and your headline baseline stays pinned to the greedy argmax the
+> literature reports. Default the sample count to 1 (greedy) so the knob is
+> byte-identical until an operator opts in.
 
 ## 2026-06-21 (run 39) — engine-lesson: "Mask the table and column names too, not just the values" (dev.to / lobste.rs)
 
@@ -267,8 +275,6 @@ not just recall?" thread. nlqdb mentioned once, with the live try-it link.
 > Honest scope: native vector similarity is a later opt-in slice — pair it with
 > your existing recall layer, don't replace it.
 
-## 2026-06-20 (run 35) — engine-lesson: "Why we vote on the answer, not the SQL" (dev.to / lobste.rs) — superseded by the run-37 "Voting on the answer needs the answer" draft above (same self-consistency topic, fuller execution angle); full run-35 draft in git history.
-
 ## 2026-06-21 (run 39) — "How nlqdb expires agent memory (and why only facts get a TTL)" (dev.to / r/AI_Agents)
 
 **Where:** dev.to (`ai` / `database`) + a helpful r/AI_Agents reply when someone
@@ -376,8 +382,6 @@ r/AI_Agents and r/LocalLLaMA.
 > at tool-list time. Pre-alpha, closed beta — feedback very welcome.
 
 **Note:** ready to post — `/agents` complete (hero + matrix + moat + FSL band + CTA, run 36).
-
-## 2026-06-20 (run 30) — "Give your AI agent a real memory database in one call" (Show HN / dev.to) — folded into the run-30 Show HN above (API-first angle; full draft in git history).
 
 ## 2026-06-20 (run 30) — launch post: "Why agent memory should be a database, not a vector store" (HN / lobste.rs / dev.to)
 

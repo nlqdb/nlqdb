@@ -89,12 +89,17 @@ literal/date axes falsified value-retrieval standalone.
   checkpoint variant keys on `.scN` so a greedy run's scores never replay into
   an `--self-consistency N` resume. Four runner tests (modal-vote-scores-match,
   all-broken → no_sql, all-rate-limited → resumable, wait-once-then-recover)
-  cover it offline. **Follow-on
-  (named, not built):** passing the flag through a `workflow_dispatch` input on
-  the BIRD/Spider smoke jobs (the sampled, no-emit, baseline-safe vehicle). The
-  EX delta is measured by the **next canonical dispatch**
-  ([`SK-QUAL-002`](./SK-QUAL-002-weekly-cron.md) forbids a back-to-back dispatch
-  while the BIRD/Spider baselines are < 7 days old).
+  cover it offline. **The dispatch vehicle now ships too:** a
+  `self_consistency` (N) + `sc_temperature` `workflow_dispatch` input on the
+  BIRD **and** Spider **smoke** jobs threads `--self-consistency N
+  --sc-temperature T` into the sampled run — N=1 (default) leaves the flag
+  greedy (same `.smoke` checkpoint, byte-identical to a pre-SC smoke), N>=2
+  votes. The smoke job is the deliberate vehicle: sampled, no-emit, and it
+  **never overwrites the canonical baseline**, so an SC dispatch is allowed
+  any time — unlike a canonical full run, which [`SK-QUAL-002`](./SK-QUAL-002-weekly-cron.md)
+  gates while the BIRD/Spider baselines are < 7 days old. The EX delta is the
+  greedy-smoke-vs-SC-smoke gap on the fixed (seed, slice), measured on the
+  first N>=2 smoke dispatch.
 
 - **Alternatives rejected:**
   - **Vote on the SQL string (exact or normalised).** Equivalent queries
