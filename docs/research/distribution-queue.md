@@ -5,6 +5,46 @@ One publishable artifact drafted per day by the daily agent
 publishes at the weekly session. Newest first. Delete an entry once published
 (the live URL goes into `docs/scorecard.md`).
 
+## 2026-06-21 (run 38) — engine-lesson: "Pick the few-shot example by masking the question, not matching the words" (dev.to / lobste.rs)
+
+**Where:** dev.to + lobste.rs (`databases` / `ai`), same engine-lesson series as
+the self-consistency post (run 35).
+
+**Title:** Retrieve the right few-shot example by masking the question, not matching the words
+
+**Body:**
+
+> Few-shot prompting is the biggest single lever for text-to-SQL on small,
+> free models — but *which* three examples you show matters more than the format.
+> Show the model demonstrations whose **question shape** matches the one it's
+> answering, and accuracy jumps; show three fixed examples and you're leaving
+> the gain on the table (DAIL-SQL, arXiv:2308.15363, measures ~3–5 pp from the
+> retrieval step alone).
+>
+> The trap is naive lexical matching. If you rank candidate examples by raw
+> word overlap, "how many albums by the artist named **Queen**" pulls in *every*
+> example that mentions Queen — including "list the tracks on Queen's greatest
+> hits", a totally different query shape — while missing "how many employees at
+> the company named Acme", which is the *exact* structure you want, just over a
+> different schema.
+>
+> The fix is **question masking**: before you compare, replace the literal
+> values with a placeholder. "how many albums by the artist named `<val>`" and
+> "how many employees at the company named `<val>`" become the same skeleton,
+> so similarity scores the *intent*, not the domain words — and your example
+> pool works **across schemas**, not just within one.
+>
+> You don't even need embeddings to start. We mask values, tokenize, and rank
+> by Jaccard overlap of the masked tokens — pure, deterministic, zero
+> dependencies (we run the identical code in production and in our eval
+> harness, so the benchmark can't drift from what ships). Embeddings are a
+> drop-in upgrade once the pool is large. The whole core is ~90 lines; the
+> code's open in `packages/llm/` of our repo.
+>
+> Measured impact lands on our next benchmark run — we ship the retrieval core
+> first, gated behind an ablation of the static examples so we can attribute
+> the delta cleanly.
+
 ## 2026-06-21 (run 37) — engine-lesson: "Voting on the answer needs the answer — executing N SQL samples to consensus" (dev.to / lobste.rs)
 
 **Where:** dev.to + lobste.rs (`databases` / `ai`), the engine-lesson series'

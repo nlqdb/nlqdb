@@ -31,7 +31,11 @@ tag (90) but `literal_case_only` is 6 and **`literal_only` is 0**: no mismatch
 is recoverable by fixing string literals alone (each co-occurs with a structural
 error). So value-sampling (§4 #2a) flips ~0 rows standalone; the path to the
 gate floor is the §4 **reasoning** levers (#3 self-consistency, #1 retrieval
-few-shot), not retrieval. Value-retrieval is demoted + privacy-gated.
+few-shot), not retrieval. Value-retrieval is demoted + privacy-gated. **Both
+reasoning-lever cores now ship:** #3 vote core (`SK-QUAL-017`, run 34) + #1
+DAIL-SQL retrieval core (`SK-LLM-041`, run 38 — question masking + masked-token
+similarity + top-k select); each still needs its dispatch half, EX delta next
+canonical run.
 
 | # | Metric | Value | Target / note |
 |---|--------|-------|------|
@@ -76,6 +80,29 @@ few-shot), not retrieval. Value-retrieval is demoted + privacy-gated.
 
 ## Deltas (recent runs)
 
+- 2026-06-21 (run 38) — **Engine: similarity-retrieved few-shot deterministic
+  core shipped (`SK-LLM-041`, T23) — the §4 #1 retrieval half of DAIL-SQL
+  ([arXiv:2308.15363](https://arxiv.org/abs/2308.15363)) that T9 left, the top
+  reasoning lever alongside #3.** Worst number is engine (Spider 0.1852, BIRD
+  0.520) but BIRD 06-19 + Spider 06-17 are both < 7 d (§5: no back-to-back
+  dispatch), and the two open PRs own the other lanes — #442 the §4 #3
+  self-consistency *execution half*, #441 the agent-memory E-06 docs. The clean
+  non-colliding engine slice is the **other** named reasoning lever's core. New
+  pure `packages/llm/src/few-shot-select.ts`: question **masking** (literal
+  values → one `val` placeholder ⇒ similarity scores the question skeleton, so
+  an exemplar can cross domains) + masked-token Jaccard `questionSimilarity` +
+  stable top-k `selectExemplars` (drops zero-similarity, ties → earliest for
+  run-to-run reproducibility). Proven offline by the cross-domain-twin-beats-
+  value-distractor fixture (the exact DAIL masking property). Staged ahead of
+  the exemplar *pool* + embedding index + `buildPlanUser` wiring (gated on the
+  T9 ablation, `CLAUDE.md` §P5) — no prod path imports it, so the `SK-LLM-024`
+  determinism invariant + BIRD/Spider baselines are untouched; EX delta is the
+  next canonical dispatch (`SK-QUAL-002`). **Δ:** §4 #1 backlog → retrieval core
+  shipped + proven (11 unit cases); `@nlqdb/llm` 175 → 186 tests green.
+  **KPI:** engine quality; **none degraded** — no prod chain/scorer/runner
+  change, baselines + perf untouched. `verification-log.md` net-shrunk 20161 →
+  20073 B; `scorecard.md` net-shrunk (D4). Artifact: "Retrieving the right
+  few-shot example by masking the question, not matching the words." queued.
 - 2026-06-21 (run 37) — **Engine: self-consistency *execution half* shipped
   (`SK-QUAL-017` follow-on) — the connective tissue between the vote core (run
   34) and the runner.** Worst number is engine (Spider 0.1852); BIRD 06-19 +
@@ -131,23 +158,11 @@ few-shot), not retrieval. Value-retrieval is demoted + privacy-gated.
   232 eval tests green (was 220). Artifact "Why we vote on the answer, not the
   SQL" queued.
 - 2026-06-20 (run 34) — **Engine (memory write-path): fail-loud TTL gap +
-  phantom-column footgun in the E-04 lever, both fixed.** Worst number is engine
-  (Spider 0.1852) but BIRD 06-19 + Spider 06-17 are < 7 d (§5: no back-to-back
-  dispatch), messaging is blocked behind WS-07 (#438), and the E-track's other
-  slices are Neon/infra-gated — leaving the clean non-colliding lever: a
-  correctness gap on the memory **write** path. `validateRememberInput` parsed
-  `ttlSeconds` for every `kind` but only `facts` carries `expires_at`, so a TTL
-  on an episode/entity was **silently dropped** (GLOBAL-012 violation — the
-  agent believes it set an expiry that never existed); now rejected with a
-  one-sentence reason. The **E-04 worksheet** compounded it (told a future
-  implementer to sweep `episodes.expires_at`, absent from the shipped E-01 DDL)
-  — corrected to facts-only sweep + facts-only RLS TTL clause before the
-  Neon-gated slice is built against a phantom column. **Δ:** `remember.test.ts`
-  16 → 18; a corrected backlog lever (run-32 pattern). KPI: **engine quality** /
-  **onboarding**; **none degraded** — additive validation, no
-  engine/chain/scorer/eval touched, BIRD 06-19 + Spider 06-17 untouched, perf
-  N/A. Artifact: "How nlqdb expires agent memory (and why only facts get a TTL)"
-  queued.
+  phantom-column footgun fixed.** `validateRememberInput` parsed `ttlSeconds`
+  for every `kind` but only `facts` carries `expires_at` → a TTL on an
+  episode/entity was **silently dropped** (GLOBAL-012); now rejected. E-04
+  worksheet corrected to facts-only sweep + RLS TTL. **Δ:** `remember.test.ts`
+  16 → 18. KPI engine quality / onboarding; none degraded.
 - 2026-06-20 (run 33) — **Engine: Spider external-knowledge injection shipped
   (`SK-QUAL-016`) — fixes a measured handicap on the worst number.** Worst
   number is engine (Spider 0.1852); BIRD 06-19 + Spider 06-17 both < 7 d so §5
