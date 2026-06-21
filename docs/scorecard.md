@@ -82,6 +82,22 @@ canonical run.
 
 ## Deltas (recent runs)
 
+- 2026-06-21 (run 39) — **Engine (agent-memory wedge): E-04 TTL-sweep core
+  shipped (`SK-PIVOT-011`) — `facts`-only expiry made durable.** Worst number is
+  engine (Spider 0.1852, BIRD 0.520); both evals < 7 d (§5 — no back-to-back
+  dispatch) and open PR #444 owns the §4 #3 self-consistency *sampling* lever,
+  so the clean non-colliding slice is the lowest open engine-track item, E-04
+  (prereq E-01 ✅, ungated). New pure `apps/api/src/memory/expire.ts`:
+  `buildExpirySweep` (deterministic parameterised `DELETE FROM facts WHERE
+  expires_at IS NOT NULL AND expires_at < $1`, cutoff bound, never LLM-composed)
+  + `orchestrateSweep` (memory-preset DBs only via `isAgentMemoryV1Db`, **per-DB
+  failure isolation**, aggregates the `expiredRows` metric value). Staged ahead
+  of the cron Worker (infra) + the read-side TTL `USING` clause on E-03's
+  `facts` RLS (E-03-gated) — the E-02 pattern. **Δ:** E-04 ⬜ → sweep core 🟡
+  shipped + proven (7 unit cases); apps/api memory tests 18 → 25 green. **KPI:**
+  engine quality / onboarding; **none degraded** — no prod path imports it, no
+  chain/scorer/runner change, BIRD 06-19 + Spider 06-17 + perf untouched.
+  `scorecard.md` net-shrunk (D4). Artifact: "How nlqdb expires agent memory" queued.
 - 2026-06-21 (run 39) — **Engine: similarity-retrieved few-shot *pool-curation
   masking half* shipped (`SK-LLM-041` follow-on, T23) — continues run 38's §4 #1
   DAIL-SQL retrieval lever.** Worst number is engine (Spider 0.1852, BIRD 0.520)
@@ -157,42 +173,22 @@ canonical run.
   worksheet corrected to facts-only sweep + RLS TTL. **Δ:** `remember.test.ts`
   16 → 18. KPI engine quality / onboarding; none degraded.
 - 2026-06-20 (run 33) — **Engine: Spider external-knowledge injection shipped
-  (`SK-QUAL-016`) — fixes a measured handicap on the worst number.** Worst
-  number is engine (Spider 0.1852); BIRD 06-19 + Spider 06-17 both < 7 d so §5
-  forbids a back-to-back dispatch, and both open PRs own a lane (#435 E-03 RLS
-  docs, #436 `nlq remember` CLI) — the clean non-colliding engine lever is the
-  Spider loader (`tools/eval/`, untouched by either). The loader parsed
-  `external_knowledge` but **dropped the doc body**, so Spider questions got no
-  provided context while BIRD injects `evidence`. Measured offline: **13/135
-  `local###` (9.6%)** carry a dropped doc (haversine, RFM, music-length,
-  f1-overtake, …) across 8 DBs — the docs *are* the answer, so these are
-  unanswerable, not hard. `loadExternalKnowledge` now injects the `<name>.md`
-  body through `evidence` → `enrichedGoal` (cache-authoritative, fail-soft,
-  traversal-gated). **Δ:** 13/135 addressable handicap closed; EX delta measured
-  by the next canonical Spider dispatch (`SK-QUAL-002`). KPI: **engine quality**;
-  none degraded — no runner/scorer/chain change, BIRD 06-19 + Spider 06-17
-  untouched, perf N/A; 29 spider2-lite tests green (was 24).
-- 2026-06-20 (run 32) — **Engine-track finding (SK-PIVOT-009): E-03's documented
-  compile-layer scoping mechanism is infeasible — the `/v1/ask` path executes
-  free-form LLM SQL via `neonSql.unsafe(sql)` with no AST step to inject a
-  `WHERE agent_id` into, so a SQL-rewriter on a security boundary = breach
-  risk. Redirected E-03 (and E-04's read-filter) to row-level RLS keyed on an
-  `app.agent_id` GUC — the pattern the provisioner already uses for
-  `tenant_isolation`. Corrected E-03/E-04 worksheets + engine INDEX + FEATURE.md.
-  **Δ:** a finding prunes a security-critical backlog lever before the
-  breach-prone design ships; docs-only, no code/engine/chain/scorer touched,
-  BIRD 06-19 + Spider 06-17 untouched. Artifact: the "scoping is RLS, not
-  query-rewriting" note (queue).**
-- 2026-06-20 (run 32) — **E-02 GLOBAL-003 parity closed: shipped CLI `nlq
-  remember`** (SK-CLI-018; engine holds 2/7 — completes the memory-write verb's
-  surface parity HTTP/SDK/MCP → **+CLI**, 3/4 → **4/4**). Non-colliding engine
-  slice while #435 owned the E-03 RLS finding. `nlq remember [--db] [--kind] <text>`
-  wraps `POST /v1/memory/remember`; `wrong_preset` rejects non-memory DBs;
-  admitted as a third data verb under GLOBAL-017's explicit-justification clause
-  (mirrors the SK-PIVOT-008 third endpoint). Gates green (Go build/vet/test/fmt).
-  KPI: **onboarding / engine quality**; none degraded (additive, BIRD 06-19 +
-  Spider 06-17 untouched). Artifact: "Give your AI agent memory from the
-  terminal" queued.
+  (`SK-QUAL-016`).** The Spider loader parsed `external_knowledge` but dropped
+  the doc body, so 13/135 `local###` questions (haversine, RFM, … across 8 DBs)
+  were unanswerable, not hard; `loadExternalKnowledge` now injects the `<name>.md`
+  body through `evidence` → `enrichedGoal` (fail-soft, traversal-gated). EX delta
+  next Spider dispatch. KPI engine quality; none degraded; 29 spider2-lite tests
+  (was 24). Detail in the verification log.
+- 2026-06-20 (run 32) — **Engine-track finding (SK-PIVOT-009): E-03's compile-layer
+  scoping is infeasible** — `/v1/ask` runs free-form LLM SQL via `neonSql.unsafe`
+  with no AST step, so a scope-injecting rewriter on a security boundary = breach
+  risk. Redirected E-03 (+ E-04's read-filter) to row-level RLS on an `app.agent_id`
+  GUC (the `tenant_isolation` pattern); worksheets + INDEX + FEATURE.md corrected.
+  Docs-only; no engine touched. Artifact queued.
+- 2026-06-20 (run 32) — **E-02 GLOBAL-003 parity closed: CLI `nlq remember`**
+  (SK-CLI-018) — wraps `POST /v1/memory/remember`, `wrong_preset` rejects
+  non-memory DBs, admitted as a third data verb under GLOBAL-017. Surface parity
+  HTTP/SDK/MCP → 4/4. Gates green; additive, baselines untouched. Artifact queued.
 - 2026-06-20 (runs 30–31) — six closed slices (all additive; BIRD 06-19 +
   Spider 06-17 untouched): **E-01** preset wired into the create path → closed
   (engine 0 → 1/7; SK-HDC-020, `POST /v1/databases { preset }` behind

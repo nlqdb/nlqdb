@@ -1,7 +1,20 @@
 # E-04 — TTL + cron sweep (`expires_at` on memory rows)
 
-**Status:** ⬜ not started
+**Status:** 🟡 sweep core shipped (run 39) — cron wiring (infra) + read-side RLS clause (E-03-gated) remain
 **Sequence:** Engine 4 of 7 · **Risk:** low · **Runs:** 1 · **Prereqs:** E-01 ✅ · **Gate:** none
+
+**Progress (run 39, SK-PIVOT-011):** the deterministic, offline-tested sweep
+core shipped — `apps/api/src/memory/expire.ts`: `buildExpirySweep(nowMs)` (the
+parameterised `DELETE FROM facts WHERE expires_at IS NOT NULL AND expires_at <
+$1 RETURNING id`, `facts`-only, cutoff bound so it's deterministic in tests) +
+`orchestrateSweep(deps, dbs)` (filters to memory-preset DBs via
+`isAgentMemoryV1Db`, sweeps each with the injected exec, **isolates a per-DB
+failure** so the rest still sweep, aggregates the `expiredRows` count the metric
+will report). Staged ahead of the two non-pure halves — the scheduled Worker
+that drives it (cron schedule = infra) and the read-side TTL *invisibility*
+clause on E-03's `facts` RLS policy (E-03-gated). Same shape as E-02
+(`buildRememberInsert` shipped ahead of its e2e wiring). 7 unit cases; no prod
+path imports it yet, so engine/chain/scorer/baselines are untouched.
 
 ## Goal
 
@@ -51,10 +64,13 @@ explicit-forget story closed).
    `AND (expires_at IS NULL OR expires_at > NOW())` **on the `facts` policy
    only** (no compile-layer / `sql-validate` change — RLS, not
    query-rewriting).
-3. New cron Worker (or new schedule on `events-worker`) — daily 03:00 UTC.
-   Batch `DELETE FROM facts WHERE expires_at < NOW() RETURNING count(*)` per
-   memory DB; emit `nlqdb.memory.expire` span + a
-   `nlqdb.memory.expired_rows_total` counter.
+3. **Sweep core ✅ (run 39)** — `buildExpirySweep` + `orchestrateSweep` (pure,
+   per-DB failure isolation, count aggregation). **Remaining:** a new cron
+   Worker (or new schedule on `events-worker`) — daily 03:00 UTC — drives
+   `orchestrateSweep` over the tenant's memory DBs and emits the
+   `nlqdb.memory.expire` span + `nlqdb.memory.expired_rows_total` counter from
+   the returned `SweepSummary.expiredRows`. The schedule + exec adapter are
+   infra (Neon-reachable Worker), so they land with the deploy.
 4. CLI parity (SK-CLI): `nlq remember --ttl 7d` shorthand for `ttlSeconds`
    (**already shipped**, SK-CLI-018; rejected by the server on `--kind
    episode|entity`).
