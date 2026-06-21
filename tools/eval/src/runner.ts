@@ -21,7 +21,8 @@ import { emitEvalReport } from "./emit.ts";
 import { type AttemptScore, withExecRetry } from "./exec-retry.ts";
 import { buildLanes, type Lane } from "./lanes.ts";
 import { DEFAULT_RESULTS_DIR, writeReport } from "./output.ts";
-import { scoreOne, scoreOneSpider2 } from "./score.ts";
+import { executeRows, hasOrderBy, scoreOne, scoreOneSpider2 } from "./score.ts";
+import { samplePlans, voteOverSamples } from "./self-consistency.ts";
 import type {
   DispatchLane,
   EvalDataset,
@@ -88,6 +89,15 @@ export type RunOptions = {
   readBaseline?: typeof readBaseline;
   emitEvalReport?: typeof emitEvalReport;
   loadDataset?: (opts: RunOptions) => Promise<LoadedDataset>;
+  // SK-QUAL-017 — self-consistency dispatch. When set (samples >= 2), each
+  // (question, lane) is answered by drawing N plans at `temperature` > 0,
+  // executing each, and majority-voting by result set (the modal cluster's
+  // SQL is the one scored). Unset ⇒ the greedy single-plan path (the
+  // SK-LLM-024 invariant, the default everywhere); this is the §4 #3
+  // reasoning lever's runner half, the EX delta measured by the next
+  // canonical dispatch (SK-QUAL-002 forbids a back-to-back dispatch while a
+  // baseline is < 7 days old).
+  selfConsistency?: { samples: number; temperature: number };
 };
 
 // Common loader shape so the runner doesn't bind to one dataset's option-bag — `loadBirdMini` / `loadSpider2Lite` both adapt to this.
@@ -304,6 +314,7 @@ async function runOneQuestion(
   sqlTimeoutMs?: number,
   capacityWaitMs = 0,
   waitBudget: { remaining: number } = { remaining: 0 },
+  selfConsistency?: { samples: number; temperature: number },
 ): Promise<QuestionResult> {
   let start = Date.now();
   const ids = {
@@ -383,6 +394,79 @@ async function runOneQuestion(
     }
   };
 
+  // SK-QUAL-017 — self-consistency dispatch. Draw N plans at temperature > 0,
+  // execute each, majority-vote by result set, then score the modal cluster's
+  // SQL exactly as the greedy path scores its single plan. A separate code
+  // path from `withExecRetry` so the greedy SK-LLM-024 baseline is untouched.
+  if (selfConsistency && selfConsistency.samples >= 2) {
+    // `samplePlans` swallows a per-draw throw into a no-vote empty sample so
+    // N-1 good draws still reach consensus; we count the draws that failed
+    // because the *whole* chain is capacity-exhausted (SK-LLM-030). If every
+    // draw hit that, the chain is down — budget-stop + resume (SK-QUAL-013)
+    // rather than scoring a spurious no_sql.
+    let samples: Awaited<ReturnType<typeof samplePlans>> = [];
+    let waitedForCapacity = false;
+    for (;;) {
+      let capacityFails = 0;
+      samples = await samplePlans(
+        async (req) => {
+          try {
+            return await lane.router.plan(req);
+          } catch (err) {
+            if (isChainCapacityExhausted(err)) capacityFails++;
+            throw err;
+          }
+        },
+        { goal: enrichedGoal, schema, dialect: "sqlite" },
+        selfConsistency,
+      );
+      if (capacityFails < selfConsistency.samples) break;
+      // Every draw hit a capacity-exhausted chain (SK-LLM-030). Honour the
+      // SK-QUAL-013 one bounded wait-and-retry, then budget-stop + resume —
+      // the same capacity-honest contract the greedy path uses below.
+      if (capacityWaitMs > 0 && !waitedForCapacity && waitBudget.remaining > 0) {
+        waitedForCapacity = true;
+        waitBudget.remaining--;
+        await new Promise((r) => setTimeout(r, capacityWaitMs));
+        start = Date.now(); // the wait is harness pacing, not question latency
+        continue;
+      }
+      throw new BudgetStopError();
+    }
+    // Cluster the vote under the same order-sensitivity the scorer applies to
+    // the winner — otherwise an unordered cluster can elect a mis-ordered
+    // member that then fails the strict scorer, understating the EX gain.
+    const ordered = question.spider2 ? !question.spider2.ignore_order : hasOrderBy(question.sql);
+    const vote = await voteOverSamples(samples, (sql) => executeRows(dbPath, sql, sqlTimeoutMs), {
+      ordered,
+    });
+    const latency_ms = Date.now() - start;
+    if (vote.sql.trim().length === 0) {
+      // No sample produced executable SQL — the same no_sql outcome the greedy
+      // path records for an empty plan, with the N-sample count surfaced.
+      return {
+        ...ids,
+        outcome: "no_sql",
+        predicted_sql: "",
+        model: lane.modelHint,
+        latency_ms,
+        attempts: selfConsistency.samples,
+        error: "self-consistency: no sample produced executable SQL",
+      };
+    }
+    const score = await scoreSql(vote.sql);
+    return {
+      ...ids,
+      outcome: score.outcome,
+      predicted_sql: vote.sql.slice(0, PREDICTED_SQL_CAP),
+      model: vote.model || lane.modelHint,
+      latency_ms,
+      // The N draws are real plan() calls — surface the cost in total_attempts.
+      attempts: selfConsistency.samples,
+      ...(score.error ? { error: score.error } : {}),
+    };
+  }
+
   let retryResult: Awaited<ReturnType<typeof withExecRetry>>;
   let waitedForCapacity = false;
   for (;;) {
@@ -445,6 +529,11 @@ export async function runEval(opts: RunOptions = {}): Promise<EvalReport> {
       "no dispatch lanes configured — set at least one of GEMINI_API_KEY/GROQ_API_KEY/OPENROUTER_API_KEY (free) or OPENROUTER_FRONTIER_API_KEY",
     );
   }
+  if (opts.selfConsistency) {
+    console.info(
+      `quality-eval: self-consistency dispatch — N=${opts.selfConsistency.samples} @ temperature=${opts.selfConsistency.temperature} (SK-QUAL-017)`,
+    );
+  }
   const datasetName: EvalDataset = opts.dataset ?? "bird-mini-dev-sqlite";
   const loader = opts.loadDataset ?? loadDatasetByName;
   // Deterministic sampling pulls from the full set, so don't pre-truncate
@@ -462,12 +551,13 @@ export async function runEval(opts: RunOptions = {}): Promise<EvalReport> {
   // final report.
   const outDir = opts.outDir ?? DEFAULT_RESULTS_DIR;
   // Sampled runs checkpoint separately from full runs so a sampled run and
-  // a full run never share a partial file.
-  const cpPath = checkpointPath(
-    outDir,
-    datasetName,
-    opts.sampleSeed !== undefined ? "smoke" : "full",
-  );
+  // a full run never share a partial file; a self-consistency run keys on N
+  // too, so a greedy run's scores never replay into an `--self-consistency N`
+  // resume (different dispatch, different answers).
+  const variant = `${opts.sampleSeed !== undefined ? "smoke" : "full"}${
+    opts.selfConsistency ? `.sc${opts.selfConsistency.samples}` : ""
+  }`;
+  const cpPath = checkpointPath(outDir, datasetName, variant);
   const checkpoint = await loadCheckpoint(cpPath);
   const scored = new Map<string, QuestionResult>();
   for (const r of checkpoint.results) scored.set(checkpointKey(r.question_id, r.lane), r);
@@ -503,6 +593,7 @@ export async function runEval(opts: RunOptions = {}): Promise<EvalReport> {
             opts.sqlTimeoutMs,
             opts.capacityWaitMs ?? 0,
             waitBudget,
+            opts.selfConsistency,
           );
           return { result };
         } catch (err) {
@@ -623,6 +714,10 @@ function parseCliArgs(): RunOptions {
       "throttle-ms": { type: "string" },
       // SK-QUAL-013 — one bounded wait before a capacity budget-stop (default 0).
       "capacity-wait-ms": { type: "string" },
+      // SK-QUAL-017 — self-consistency dispatch: draw N plans at
+      // `--sc-temperature` and majority-vote (N >= 2; absent/< 2 ⇒ greedy).
+      "self-consistency": { type: "string" },
+      "sc-temperature": { type: "string" },
       // SK-QUAL-002 / SK-QUAL-005 — baseline comparison + event emission.
       baseline: { type: "string" },
       // `emit-url` and `emit-token` go together; either both set (cron)
@@ -646,6 +741,17 @@ function parseCliArgs(): RunOptions {
   if (values["throttle-ms"]) out.throttleMs = Number.parseInt(values["throttle-ms"], 10);
   if (values["capacity-wait-ms"])
     out.capacityWaitMs = Number.parseInt(values["capacity-wait-ms"], 10);
+  // N < 2 is the greedy path — leave selfConsistency unset rather than
+  // sampling a single plan and "voting" over one candidate.
+  if (values["self-consistency"]) {
+    const samples = Number.parseInt(values["self-consistency"], 10);
+    if (samples >= 2) {
+      // Wang et al. 2022 (arXiv:2203.11171) sample at T≈0.7 for
+      // self-consistency; override per dispatch with --sc-temperature.
+      const t = values["sc-temperature"];
+      out.selfConsistency = { samples, temperature: t ? Number.parseFloat(t) : 0.7 };
+    }
+  }
   if (values.baseline) out.baselinePath = values.baseline;
   // Both flags must be set together — fail loud per GLOBAL-012 if only
   // one is provided, so a typo in the workflow doesn't silently drop the

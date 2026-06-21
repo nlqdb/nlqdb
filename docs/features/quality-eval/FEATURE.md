@@ -21,7 +21,7 @@ when-to-load:
 ## Touchpoints — read this feature before editing
 
 - `tools/eval/` — benchmark runner (slices 1 + 2 + 3a + 3b + 3c shipped):
-  - `src/runner.ts` — multi-dataset driver, CLI, lane loop, baseline + emit; `withExecRetry`-wraps scaffolded lanes; `--throttle-ms` (`SK-QUAL-012`), `--capacity-wait-ms` + budget-stop (`SK-QUAL-013`)
+  - `src/runner.ts` — multi-dataset driver, CLI, lane loop, baseline + emit; `withExecRetry`-wraps scaffolded lanes; `--throttle-ms` (`SK-QUAL-012`), `--capacity-wait-ms` + budget-stop (`SK-QUAL-013`); `--self-consistency N` / `--sc-temperature T` → `samplePlans`→`voteOverSamples`→score-the-winner (`SK-QUAL-017`)
   - `src/exec-retry.ts` — `withExecRetry` bounded retry on `exec_error` only (`SK-QUAL-009`)
   - `src/score.ts` — BIRD multiset/sequence-strict EX scorer + the Spider 2.0 multi-CSV port + `scoreOneSpider2` (`SK-QUAL-008`)
   - `src/csv.ts` — minimal RFC-4180 CSV parser + type inference for gold CSVs (`SK-QUAL-008`)
@@ -224,9 +224,13 @@ executor, then votes — pure, offline-tested on a real SQLite fixture), the
 per-request `PlanRequest.temperature` (default unset ⇒ greedy, `SK-LLM-024`
 untouched) threaded through every provider `callChat` + `samplePlans(plan, req,
 { samples, temperature })` (draws N plans at temperature > 0; injected `plan` ⇒
-offline-tested). Offline, 21 eval unit cases + 3 provider forwarding cases; the
-runner `--self-consistency N` main-loop wiring is the follow-on. EX delta next
-dispatch.
+offline-tested). **The runner `--self-consistency N` / `--sc-temperature T`
+main-loop wiring now ships too** (a `samples >= 2` branch in `runOneQuestion`,
+a separate path from `withExecRetry`: `samplePlans` → `voteOverSamples` over
+`executeRows` → score the modal cluster's SQL; folds into checkpoint /
+budget-stop / `attempts` machinery, `.scN` checkpoint variant). Offline, 21
+eval unit cases + 3 provider forwarding cases + 3 runner cases; only the CI
+`workflow_dispatch` input remains. EX delta next dispatch.
 
 ## GLOBALs governing this feature
 

@@ -50,7 +50,7 @@ prod-wiring/dispatch half, EX delta next canonical run.
 | 5 | Anon DBs with a recorded first answer | **101 of 101** | instrument fix (runs 1–3) holding; +8 since 06-13. Genuine-stranger subset still ~0 (rows #2/#3) — the real worst-number |
 | | **Engine — BIRD 2026-06-19 · Spider 2026-06-17 (both fresh, < 7d)** | | `apps/api/src/gate/eval-baseline.ts` |
 | 6 | BIRD raw EX | 0.520 | target 0.65; was 0.522 (06-12). Canonical re-run on current main (T20–T22): 260/500, `no_sql` 3 → 1. **Flat within variance** — McNemar b=38/c=37, p=0.50, no regression. Directive levers saturated; literal/value (§4 #2a) + date-encoding (§4 #2c) levers both falsified standalone offline (run 31) ⇒ reasoning levers (§4 #3/#1) next |
-| 7 | Spider raw EX | 0.1852 | target 0.75; was 0.1704 (06-12). Gemini key restored 06-17 → `no_sql` 36 → 9 (`SK-LLM-039`). Run 33: external-knowledge injection (`SK-QUAL-016`). **Self-consistency `SK-QUAL-017` (§4 #3): vote core (34) + execution half (37) + temperature-sampling half — per-request `PlanRequest.temperature` (default greedy, `SK-LLM-024` intact) + `samplePlans` (run 39) — all shipped; only the runner `--self-consistency N` main-loop wiring + dispatch remain. EX delta next dispatch** |
+| 7 | Spider raw EX | 0.1852 | target 0.75; was 0.1704 (06-12). Gemini key restored 06-17 → `no_sql` 36 → 9 (`SK-LLM-039`). Run 33: external-knowledge injection (`SK-QUAL-016`). **Self-consistency `SK-QUAL-017` (§4 #3): vote core (34) + execution half (37) + temperature-sampling half (run 40) + **runner `--self-consistency N` / `--sc-temperature T` main-loop wiring (run 41)** — `samples>=2` branch in `runOneQuestion` (separate from `withExecRetry`): `samplePlans`→`voteOverSamples` over `executeRows`→score-the-winner; folds into checkpoint/budget-stop/`attempts`, `.scN` checkpoint variant. The lever is now end-to-end bar the CI `workflow_dispatch` input. EX delta next dispatch** |
 | 8 | persona-bench | — | not yet built |
 | 9 | free-vs-frontier delta | null | agentic lane not yet run (`SK-QUAL-004`, target ≤ 25 pp) |
 | | **Ops — 7d, CF Workers analytics** | | wall-time, all routes (not `/ask`-only) |
@@ -121,6 +121,27 @@ prod-wiring/dispatch half, EX delta next canonical run.
   **none degraded** — frontend-only, additive, zero engine/chain/scorer/perf
   touch, BIRD 06-19 + Spider 06-17 untouched. Astro check 0 err, web 127
   tests green, tsc clean. Artifact: the `/agents` demo round-trip queued.
+- 2026-06-21 (run 41) — **Engine: self-consistency *runner main-loop wiring*
+  shipped (`SK-QUAL-017` follow-on) — the §4 #3 lever is now end-to-end bar the
+  CI dispatch input.** Worst number is engine (Spider 0.1852, BIRD 0.520); both
+  baselines < 7 d (§5 — no back-to-back dispatch), no open PR, so the clean
+  non-colliding slice is the explicitly-named last code half. `RunOptions.selfConsistency`
+  + `--self-consistency N` / `--sc-temperature T` (default T=0.7, Wang et al.
+  2022) drive a `samples >= 2` branch in `runOneQuestion` — a **separate path**
+  from `withExecRetry` so the greedy `SK-LLM-024` baseline is byte-identical:
+  `samplePlans` (N draws at temp > 0) → `voteOverSamples` over `executeRows` →
+  score the modal result-set cluster's SQL exactly as the greedy path scores its
+  single plan. Folds into the existing machinery — an all-empty vote records
+  `no_sql`; a chain capacity-exhausted (`SK-LLM-030`) on **every** draw raises
+  `BudgetStopError` → checkpoint + resume (`SK-QUAL-013`); each row carries
+  `attempts: N` so `total_attempts` reflects the N× quota cost; the checkpoint
+  variant keys on `.scN` so a greedy run never replays into an SC resume. **Δ:**
+  §4 #3 sampling-half → **+ runner wiring**; only the smoke-job
+  `workflow_dispatch` input remains, EX delta next dispatch. KPI **engine
+  quality**; **none degraded** — greedy path unchanged (default unset), BIRD
+  06-19 + Spider 06-17 + perf untouched; eval tests 241 → 244 (3 runner cases:
+  modal-vote→match, all-broken→no_sql, all-rate-limited→resumable). Artifact:
+  "Self-consistency for free-chain text-to-SQL" queued.
 - 2026-06-21 (run 40) — **Engine: self-consistency *temperature-sampling half*
   shipped (`SK-QUAL-017` follow-on) — the §4 #3 lever is now wired end-to-end
   bar the runner main loop.** No dispatch (BIRD 06-19 + Spider 06-17 both < 7 d,

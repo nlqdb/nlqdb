@@ -106,7 +106,9 @@ function normalizeSql(sql: string): string {
     .trim();
 }
 
-function hasOrderBy(sql: string): boolean {
+// Exported: the self-consistency vote clusters under the same order-sensitivity
+// the scorer applies, so it must read the gold's ORDER BY the same way.
+export function hasOrderBy(sql: string): boolean {
   return /\border\s+by\b/i.test(sql);
 }
 
@@ -377,7 +379,6 @@ export async function scoreOne(input: ScoreInput): Promise<ScoreResult> {
 export const _testing = {
   canonicalize,
   rowsMatch,
-  hasOrderBy,
   normalizeSql,
   vectorsMatch,
   cellsEqual,

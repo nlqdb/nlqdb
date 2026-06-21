@@ -9,20 +9,14 @@ import {
   _testing,
   compareMultiPandasTable,
   comparePandasTable,
+  hasOrderBy,
   normaliseConditionCols,
   scoreOne,
   scoreOneSpider2,
 } from "../src/score.ts";
 
-const {
-  canonicalize,
-  rowsMatch,
-  hasOrderBy,
-  normalizeSql,
-  vectorsMatch,
-  cellsEqual,
-  rowsToColumnMajor,
-} = _testing;
+const { canonicalize, rowsMatch, normalizeSql, vectorsMatch, cellsEqual, rowsToColumnMajor } =
+  _testing;
 
 describe("canonicalize", () => {
   it("treats null and undefined the same", () => {

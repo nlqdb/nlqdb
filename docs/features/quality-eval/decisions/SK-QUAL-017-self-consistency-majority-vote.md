@@ -68,13 +68,33 @@ literal/date axes falsified value-retrieval standalone.
   `self-consistency.ts::samplePlans(plan, req, { samples, temperature })` draws
   N plans at that temperature (injected `plan` ⇒ pure/offline-tested; a draw
   that throws is recorded as a no-vote empty sample so N-1 good draws still
-  reach consensus). **Follow-on (named, not built this run):** the runner
-  `--self-consistency N` main-loop path that wires `samplePlans` →
-  `voteOverSamples` (executor = `executeRows`) → score-the-winner alongside the
-  existing checkpoint / budget-stop machinery. The EX delta is measured by the
-  **next canonical dispatch** ([`SK-QUAL-002`](./SK-QUAL-002-weekly-cron.md)
-  forbids a back-to-back dispatch while the BIRD/Spider baselines are < 7 days
-  old).
+  reach consensus). **The runner main-loop path now ships too:** the
+  `--self-consistency N` / `--sc-temperature T` flags → `RunOptions.selfConsistency`
+  → a `runOneQuestion` branch (gated on `samples >= 2`, a *separate path* from
+  `withExecRetry`) that calls `samplePlans` → `voteOverSamples`
+  (executor = `executeRows`) → scores the modal cluster's SQL exactly as the
+  greedy path scores its single plan — the vote clusters under the *same*
+  order-sensitivity the scorer applies to the winner (`hasOrderBy(gold)` for
+  BIRD, `!ignore_order` for Spider) so an unordered cluster never elects a
+  mis-ordered member the strict scorer then rejects. (Caveat: `fingerprintRows`
+  clustering is exact-tuple, so against the Spider2 scorer's `1e-2` numeric
+  tolerance + `condition_cols` subset the vote can *under*-cluster near-equal
+  answers — it never mis-scores a winner, only potentially understates the
+  Spider2 EX gain; revisit if Spider2 SC accuracy matters.) It folds into the existing machinery: an
+  all-empty vote records `no_sql` (the greedy empty-plan outcome), a chain that
+  is capacity-exhausted (SK-LLM-030) on **every** draw honours the same one
+  bounded `--capacity-wait-ms` wait-and-retry then raises `BudgetStopError` →
+  checkpoint + resume (SK-QUAL-013, the greedy path's contract), each row carries
+  `attempts: N` so `total_attempts` reflects the N× quota cost, and the
+  checkpoint variant keys on `.scN` so a greedy run's scores never replay into
+  an `--self-consistency N` resume. Four runner tests (modal-vote-scores-match,
+  all-broken → no_sql, all-rate-limited → resumable, wait-once-then-recover)
+  cover it offline. **Follow-on
+  (named, not built):** passing the flag through a `workflow_dispatch` input on
+  the BIRD/Spider smoke jobs (the sampled, no-emit, baseline-safe vehicle). The
+  EX delta is measured by the **next canonical dispatch**
+  ([`SK-QUAL-002`](./SK-QUAL-002-weekly-cron.md) forbids a back-to-back dispatch
+  while the BIRD/Spider baselines are < 7 days old).
 
 - **Alternatives rejected:**
   - **Vote on the SQL string (exact or normalised).** Equivalent queries
