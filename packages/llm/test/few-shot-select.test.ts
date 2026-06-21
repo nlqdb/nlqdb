@@ -203,8 +203,16 @@ describe("selectExemplarsForSchema", () => {
     // identical skeleton) must beat a same-schema row of a different shape —
     // proving the per-row schema mask happens inside the selector, not by hand.
     const pool = [
-      sx("List the title of every album by the artist", ALBUM_SCHEMA, "same-schema-different-shape"),
-      sx("How many employees does the company named 'Acme' have?", COMPANY_SCHEMA, "cross-domain-twin"),
+      sx(
+        "List the title of every album by the artist",
+        ALBUM_SCHEMA,
+        "same-schema-different-shape",
+      ),
+      sx(
+        "How many employees does the company named 'Acme' have?",
+        COMPANY_SCHEMA,
+        "cross-domain-twin",
+      ),
     ];
     expect(
       selectExemplarsForSchema(
@@ -221,13 +229,22 @@ describe("selectExemplarsForSchema", () => {
     // selectExemplars shares only {how, many, named, val, have}; schema masking
     // folds the nouns to `col`, so the same row scores a perfect 1 here.
     const goal = "How many albums does the artist named 'Queen' have?";
-    const twin = sx("How many employees does the company named 'Acme' have?", COMPANY_SCHEMA, "twin");
+    const twin = sx(
+      "How many employees does the company named 'Acme' have?",
+      COMPANY_SCHEMA,
+      "twin",
+    );
     const valueOnly = questionSimilarity(goal, twin.question);
     const [picked] = selectExemplarsForSchema(goal, ALBUM_SCHEMA, [twin], 1);
     expect(picked?.payload).toBe("twin");
     // The schema-masked skeletons are identical → similarity 1, strictly above
     // the value-only score the schema-less selector would compute.
-    expect(questionSimilarity(maskWithSchema(goal, ALBUM_SCHEMA), maskWithSchema(twin.question, twin.schema))).toBe(1);
+    expect(
+      questionSimilarity(
+        maskWithSchema(goal, ALBUM_SCHEMA),
+        maskWithSchema(twin.question, twin.schema),
+      ),
+    ).toBe(1);
     expect(valueOnly).toBeLessThan(1);
   });
 

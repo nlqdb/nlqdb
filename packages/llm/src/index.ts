@@ -11,6 +11,19 @@ export {
   dispatchLaneAttributes,
   selectDispatchLane,
 } from "./byollm-dispatch.ts";
+// Similarity-retrieved few-shot exemplar selection (SK-LLM-041, DAIL §4.1).
+export {
+  type Exemplar,
+  maskedTokens,
+  maskedTokensWithSchema,
+  maskQuestion,
+  maskSchemaIdentifiers,
+  maskWithSchema,
+  questionSimilarity,
+  type SchemaExemplar,
+  selectExemplars,
+  selectExemplarsForSchema,
+} from "./few-shot-select.ts";
 export type { ByollmProviderOptions } from "./providers/byollm.ts";
 export { createByollmProvider } from "./providers/byollm.ts";
 export type { CerebrasProviderOptions } from "./providers/cerebras.ts";
@@ -38,25 +51,10 @@ export {
   NoConfiguredProvidersError,
   NoProviderError,
 } from "./router.ts";
-
 // Schema pruning (SK-LLM-037) + its tokenizer — the latter is reused by the
 // SK-QUAL-015 column-coverage harness so its recall ceiling is faithful to the
 // pruner's own goal/identifier matching.
 export { pruneSchemaForGoal, schemaTokens, wordTokens } from "./schema-prune.ts";
-
-// Similarity-retrieved few-shot exemplar selection (SK-LLM-041, DAIL §4.1).
-export {
-  type Exemplar,
-  maskedTokens,
-  maskedTokensWithSchema,
-  maskQuestion,
-  maskSchemaIdentifiers,
-  maskWithSchema,
-  questionSimilarity,
-  type SchemaExemplar,
-  selectExemplars,
-  selectExemplarsForSchema,
-} from "./few-shot-select.ts";
 export {
   type CallOpts,
   type EngineClassifyRequest,
