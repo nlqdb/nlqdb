@@ -47,6 +47,39 @@ follow-up to the run-35 self-consistency post.
 "how to actually wire self-consistency for text-to-SQL" is a search-shaped gap.
 Ties to `SK-QUAL-017`.
 
+## 2026-06-21 (run 37) — engine-lesson: "Agent memory should be authed-only — and that's an honest tradeoff" (dev.to / lobste.rs)
+
+**Where:** dev.to + lobste.rs (`databases` / `ai`), the engine-lesson series.
+
+**Title:** Your agent's memory shouldn't have an anonymous front door
+
+**Body:**
+
+> We sell an anonymous on-ramp: type a sentence, get a real database, no
+> signup. Great for a demo. Wrong for **memory**. We just killed a planned
+> feature that would have let an anonymous visitor spin up an agent-memory
+> database in one click, and the reason is worth writing down.
+>
+> A memory primitive is only useful if the agent can *write* to it across
+> sessions and read *only its own* rows back. That means a stable principal —
+> an authenticated identity the writes and the row-level scoping hang off of.
+> An anonymous, throwaway, 72-hour database has no durable identity to scope to;
+> "anonymous persistent memory" is a contradiction. So in our system the memory
+> write verb rejects anonymous callers by design, read-only embed keys can't
+> write either, and the create endpoint requires a session. Three independent
+> guards, all saying the same thing: memory is authed.
+>
+> The trap was that our anonymous create form is *deliberately* anonymous — it
+> never sends the session cookie, because that's what makes the "try it, then
+> sign in to keep it" handoff work. Bolting a memory preset onto it would have
+> meant either breaking that contract or opening an anonymous write path we'd
+> immediately have to gate again. The honest move is to put the memory on-ramp
+> where the identity already exists: behind sign-in.
+>
+> Lesson: "anonymous-first" is a great acquisition default, but some primitives
+> (memory, billing, anything per-user-scoped) need an identity to be correct.
+> Let the auth boundary tell you where the feature belongs.
+
 ## 2026-06-20 (run 36) — helpful-answer: "run a GROUP BY over your agent's memory in 30s, no signup" (r/AI_Agents / r/LocalLLaMA)
 
 **Where:** a real reply on a "how do I get my agent to *report* over its memory,
@@ -238,19 +271,9 @@ r/AI_Agents and r/LocalLLaMA.
 > Front door: https://nlqdb.com/agents · MCP server so your agent discovers it
 > at tool-list time. Pre-alpha, closed beta — feedback very welcome.
 
-**Note:** **ready to post** — WS-07 run 3 shipped the CTA (run 35), so the page
-is now complete (hero + matrix + moat + FSL band + live "try this query" CTA).
-The run-1 skeleton hold is lifted.
+**Note:** ready to post — `/agents` complete (hero + matrix + moat + FSL band + CTA, run 36).
 
-## 2026-06-20 (run 30) — "Give your AI agent a real memory database in one call" (Show HN / dev.to)
-
-**Where:** a Show-HN-style post (cross-post dev.to / r/AI_Agents) anchored on the
-one-call memory-preset on-ramp (`POST /v1/databases { "preset":
-"agent_memory_v1" }` → four plain Postgres tables, deterministic, scoped). The
-*action* companion to the run-29 schema-reference page; this links to that.
-**Folded into** the run-30 Show HN above (same `GROUP BY`-over-memory pitch) —
-keep only if the founder wants a separate API-first angle; full draft in git
-history.
+## 2026-06-20 (run 30) — "Give your AI agent a real memory database in one call" (Show HN / dev.to) — folded into the run-30 Show HN above (API-first angle; full draft in git history).
 
 ## 2026-06-20 (run 30) — launch post: "Why agent memory should be a database, not a vector store" (HN / lobste.rs / dev.to)
 
@@ -359,11 +382,9 @@ chain, both sub-target — lead with the gap.
 > different category. That's the part a vector store can't bolt on without
 > becoming a database. → **[/agents](https://nlqdb.com/agents)**
 
-**Why it converts:** the HN / r/AI_Agents / r/LocalLLaMA / LangChain-Discord
-crowd trusts a post that opens on a real incident, shows a *sub-target*
-benchmark, and links an open harness; the typed-plan section answers the "safe
-to let an agent near a database?" objection. WS-09 **run 2**; hold the HN
-submission until WS-07's `/agents` page ships the live demo + CTA (run 1).
+**Why it converts:** opens on a real incident, shows a *sub-target* benchmark,
+links an open harness; the typed-plan section answers the "safe to let an agent
+near a database?" objection. WS-09 run 2 — ready to post (WS-07 CTA shipped run 36).
 
 ---
 

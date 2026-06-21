@@ -53,7 +53,7 @@ the memory-shaped primitives that make the wedge claims durable).
 | **Architecture** | `architecture.md §0` "Open source … Apache-2.0" corrected to FSL-1.1 in this PR. `§2.1` gains the `/agents` route (a path on `nlqdb.com`, **no new domain**). `§0.1` already uses `nlqdb_query("memory", …)` — kept. | this PR (§0); WS-07 (§2.1 route) |
 | **Phase plan** | Phase 2 already targets "1 agent product publicly uses nlqdb as memory" — the wedge content is folded into Phase 2 distribution. The **self-host container** (`ghcr.io/nlqdb/api`) is pulled forward from Phase 3 so the self-host claim is true before `/agents` leads with it. | WS-11 |
 | **Home page & product/APIs** | Home reweights to agent-memory-primary with a demoted "also works for…" fold; new `/agents` landing; Mem0+Zep+Letta+LangMem matrix; sharpened solve pages; **MCP tool + package descriptions carry the agent-memory framing**; on-brand demo + OG images. Headline/README/llms.txt swap is **founder-gated, sequenced last**. | WS-01…WS-09, WS-12, WS-13 |
-| **Engine / actual architecture** | Canonical `agent_memory_v1` preset (`facts`/`episodes`/`entities`/`entity_facts`) as a `db.create` path. **Additive** MCP tools `nlqdb_remember` + `nlqdb_recall` (`nlqdb_query` unchanged — SK-MCP-002). Per-agent scope via additive row-level RLS (`app.agent_id` GUC; SK-PIVOT-009) — security-critical, not query-rewriting. TTL + cron sweep (Mem0/Zep parity). pgvector hybrid recall. `/agents` CreateForm uses the preset. Workload-analyzer routes large memory DBs to ClickHouse (Phase 3). | E-01…E-07 |
+| **Engine / actual architecture** | Canonical `agent_memory_v1` preset (`facts`/`episodes`/`entities`/`entity_facts`) as a `db.create` path. **Additive** MCP tools `nlqdb_remember` + `nlqdb_recall` (`nlqdb_query` unchanged — SK-MCP-002). Per-agent scope via additive row-level RLS (`app.agent_id` GUC; SK-PIVOT-009) — security-critical, not query-rewriting. TTL + cron sweep (Mem0/Zep parity). pgvector hybrid recall. Preset on-ramp on the **authed** create surface (`MEMORY_PRESET`-gated; **not** the anon `/agents` CreateForm — SK-PIVOT-010). Workload-analyzer routes large memory DBs to ClickHouse (Phase 3). | E-01…E-07 |
 
 ## Decisions
 
@@ -267,6 +267,46 @@ the memory-shaped primitives that make the wedge claims durable).
   **`sql-validate.ts` refuses queries lacking the predicate** — it can reject
   but not *inject*, so can't be the primary gate. · **Per-agent schema/DB** —
   defeats one shared memory DB per tenant + the zero-schema-design wedge.
+
+### SK-PIVOT-010 — E-06's preset on-ramp lives on the authed create surface, never the anonymous `/agents` CreateForm
+
+- **Decision:** The `agent_memory_v1` preset on-ramp (E-06) targets the
+  **authenticated** create surface (`POST /v1/databases { preset }` from the
+  chat left-rail / `/app/new` for a signed-in user), gated behind
+  `MEMORY_PRESET`. The anonymous `/agents` page does **not** render
+  `<CreateForm preset>`; it keeps its WS-07 "try this query" CTA → `/app/new`
+  (run 36). The original E-06 plan — render
+  `<CreateForm preset="agent_memory_v1">` on the public `/agents` page so an
+  anonymous visitor lands directly on the preset path — is infeasible and
+  dropped.
+- **Core value:** Bullet-proof, Honest, Simple
+- **Why:** The preset path is authenticated-only across **three** independent
+  boundaries: (1) `POST /v1/databases` is `requireSession` and rejects
+  `preset` unless `MEMORY_PRESET=1` (`apps/api/src/index.ts:2357,2390`);
+  (2) the companion `POST /v1/memory/remember` write verb rejects `anon`
+  (`auth_required`) and `pk_live` (`forbidden`, read-only) — only a
+  user-session key writes memory (`index.ts:1426-1433`); (3) `CreateForm` is
+  deliberately anon-only by contract — it always sends `credentials:"omit"` +
+  an anon bearer so the device-cap → sign-in handoff works (SK-ANON-008), and
+  never carries a session. So an anon `/agents` visitor cannot reach the
+  preset path, and reworking CreateForm to do so would break the anon-first
+  contract. The memory wedge is authed by design — "the wedge feeds the
+  waitlist, it does not open the product" (pivot hard rule) — so the on-ramp
+  belongs where a principal exists.
+- **Consequence in code:** E-06 is resized from "low · 1 run · anon
+  CreateForm" to "authed create surface · `MEMORY_PRESET`-gated · needs the
+  flag enabled in prod first." The anon `/agents` CTA stays as shipped (run
+  36). The result-view MCP host-config snippet (E-06 step 3) still applies,
+  but on the authed surface. The E-06 worksheet + engine INDEX are corrected;
+  **no code shipped this run** — the flag is dark in prod, so any preset UI
+  would return `preset_disabled` 400 for every visitor.
+- **Alternatives rejected:** **Rework CreateForm to send the session cookie
+  when present** — breaks SK-ANON-008 (a signed-in hero submit would skip the
+  device cap, and the anon→sign-in handoff regresses). · **Add an anonymous
+  preset-create endpoint** — opens the product to anon memory DBs, violating
+  the pivot's waitlist-feed rule and adding GLOBAL-027 gate + anon-cap surface
+  for a still-dark flag. · **Ship the `/agents` preset UI now against the dark
+  flag** — every visitor hits `preset_disabled` 400; ships a broken on-ramp.
 
 ### SK-PIVOT-005 — The self-host / anti-VC angle is messaged under FSL-1.1 honestly, and the container is pulled forward to make it true
 
