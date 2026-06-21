@@ -23,12 +23,14 @@ is **flat** (0.522 → 0.520, McNemar p=0.50) ⇒ directive levers (T13–T22)
 `SK-QUAL-017`) + the `self_consistency`/`sc_temperature` smoke-job
 `workflow_dispatch` inputs (run 42, baseline-safe vehicle — no-emit, never
 overwrites the canonical baseline). **#1 DAIL-SQL retrieval** — selector +
-masking merged through run 41 and the **curated pool merged (#451,
-`SK-LLM-041` half (a))**: 10 hand-authored exemplars, one per `SK-QUAL-014`
-structural bucket, offline precision@1 = 10/10 + similarity lift +0.592; #1
-now needs only the embedding index + `buildPlanUser` wiring (T9-ablation-gated).
-The #3 EX delta is the greedy-vs-SC smoke gap on the first N>=2 dispatch; #1
-lands the next canonical dispatch (blocked today — both evals < 7 d, §5).
+masking + the **curated pool (#451, half (a))** + now the **T9-ablation wiring
+`buildPlanSystem` (half (b), run 43)**: default off ⇒ static `PLAN_SYSTEM`
+byte-for-byte, the eval `--retrieve-exemplars k` flag swaps in the retrieved
+prefix (token-budget 0.935× of static — token-negative), so the next dispatch
+A/Bs greedy-static vs greedy-retrieved. **#1 is now built end-to-end bar the
+dispatch**; only the hot-path embedding index remains. The #3 EX delta is the
+greedy-vs-SC smoke gap on the first N>=2 dispatch; both land the next canonical
+dispatch (blocked today — both evals < 7 d, §5).
 
 | # | Metric | Value | Target / note |
 |---|--------|-------|------|
@@ -95,6 +97,34 @@ lands the next canonical dispatch (blocked today — both evals < 7 d, §5).
   06-17 untouched. astro check 0 err, 128 web tests green, biome clean, build
   renders the band into `dist/index.html`. Artifact: "we put agent memory front
   and centre" build-in-public note queued.
+- 2026-06-21 (run 43) — **Engine: §4 #1 DAIL-SQL retrieval wired into the
+  provider chain — the per-lever T9 ablation `buildPlanSystem` (`SK-LLM-041`
+  half (b)) — so #1 is now built end-to-end bar the canonical dispatch.** Worst
+  number is engine (Spider 0.1852, BIRD 0.520); both baselines < 7 d (§5: no
+  back-to-back canonical dispatch) and the only open PR owns the ungated pivot
+  slice WS-12, so the clean non-colliding slice is #1's explicitly-named next
+  half — the wiring, not the dispatch. The retrieval core + masking +
+  schema-aware selector + curated pool were all merged through run 42 as staged
+  offline halves; this run wires them in: `plan-exemplar-pool.ts::buildPlanSystem(goal, schema, k)`
+  returns the static `PLAN_SYSTEM` **byte-for-byte** when `k <= 0` (every prod
+  call — `PlanRequest.retrieveExemplars` is unset, like `temperature` for
+  `SK-QUAL-017`) and swaps the static `SK-LLM-026` 3-shot prefix for the `k`
+  retrieved exemplars (rendered via the shared, now-exported `fewShotBlock`, so
+  byte-identical in shape) when `k > 0`, falling back to static on no match.
+  `_chat-provider.ts` calls it with `req.retrieveExemplars ?? 0`; the eval's new
+  `--retrieve-exemplars k` flag threads `k` into every `plan()` request (greedy +
+  self-consistency paths), so the next dispatch runs greedy-static vs
+  greedy-retrieved as a clean A/B. **Measured offline:** the off-path is
+  byte-identical to `PLAN_SYSTEM` (`SK-LLM-024` determinism + the `SK-LLM-009`
+  cache prefix intact), and the **token budget** is **retrieved `k=3` prefix 3225
+  vs static 3448 chars (0.935×)**: retrieval is token-*negative*. Only the
+  hot-path embedding index over a larger pool remains. **Δ:** §4 #1 pool → **+ the
+  T9-ablation wiring** (lever end-to-end bar dispatch); `@nlqdb/llm` 203 → 207
+  tests, `@nlqdb/eval` 246 → 247. **KPI:** engine quality; **none degraded** —
+  prod output byte-identical (default off), zero scorer/runner-default/perf
+  touch; BIRD 06-19 + Spider 06-17 baselines untouched. EX delta next dispatch.
+  `source-of-truth` + `verification-log` net-shrunk (D4). Artifact: "Wire a
+  retrieval lever as a default-off ablation: measure before you adopt" queued.
 - 2026-06-21 (run 42) — **three slices** (all merged; full detail in the
   verification log + worksheets): **(a) §4 #1 curated plan-exemplar pool**
   (`SK-LLM-041` half (a), `plan-exemplar-pool.ts`) — 10 hand-authored
@@ -108,60 +138,20 @@ lands the next canonical dispatch (blocked today — both evals < 7 d, §5).
   baseline-safe, allowed any time); lever now fully dispatchable, EX delta =
   greedy-vs-SC smoke gap on first N≥2 dispatch. KPI engine quality / onboarding;
   none degraded.
-- 2026-06-21 (run 41) — **Engine: similarity-retrieved few-shot *schema-aware
-  selector* shipped (`SK-LLM-041` follow-on, T23) — the §4 #1 DAIL-SQL lever is
-  now built end-to-end bar the `buildPlanUser` wiring.** Worst number is engine
-  (Spider 0.1852, BIRD 0.520); both baselines < 7 d (§5: no back-to-back
-  dispatch) and open PR #447 owns the §4 #3 self-consistency runner lane, so the
-  clean non-colliding slice is #1's next staged half. Closed a real gap: run 39's
-  `maskWithSchema` had **no selector that consumed it** — a cross-schema pool
-  could only be ranked by hand-masking each row. New `SchemaExemplar<T>` (row
-  carries its own schema) + `selectExemplarsForSchema(goal, goalSchema, pool, k)`
-  masks the goal against the live schema and each row against its own, sharing a
-  factored-out top-k core with `selectExemplars` (P5: −duplication). Proven
-  offline: a cross-domain twin (different schema, same skeleton) ranks top from
-  **raw** rows, beating a same-schema different-shape row, no hand-masking.
-  Staged ahead of the curated pool *rows* + index + `buildPlanUser` wiring
-  (T9-ablation-gated); no prod import ⇒ `SK-LLM-024` determinism + baselines +
-  perf untouched, EX delta next dispatch. **Δ:** §4 #1 mask-half → **+ selector
-  that consumes it**; `@nlqdb/llm` few-shot cases 16 → 20 (suite 198 green).
-  **KPI:** engine quality; **none degraded.** `verification-log` net-shrunk (D4).
-  Artifact: "Mask each exemplar against its own schema, the goal against the
-  live one" queued.
-- 2026-06-21 (run 41) — **Distribution: WS-09 closed — live in-page demo on
-  `/agents` → messaging 8 → 9/13, pivot 10 → 11/20.** Worst number is engine
-  (Spider 0.1852), but the engine lane is fully blocked today: both reasoning
-  levers sit in open PRs (#448 §4 #1 retrieval, #447 §4 #3 self-consistency)
-  and both evals are < 7 d (§5 — no back-to-back dispatch). So the clean
-  non-colliding slice is the lowest open funnel/distribution item, WS-09's
-  deferred demo half (WS-07 page now exists → #430 collision cleared). Added a
-  **gate-honest, server-rendered** demo to `/agents`: the wedge end to end —
-  typed `agent_memory` rows → the English goal → the **compiled `GROUP BY`
-  SQL** → the result table a vector store structurally can't return. All
-  server-rendered (crawlable / no-JS, AEO) per SK-PIVOT-004 (type + brand
-  tables, no screenshot/video); the "Run this query" button replays a pulse
-  and fires `agents.demo_run_clicked` (GLOBAL-024 demand signal). No open
-  `/v1/ask` call — fixture-backed, pre-alpha-honest. **Δ:** WS-09 🟡 1/2 → ✅
-  2/2; `/agents` shows the claim *and* the proof. **KPI:** onboarding (UX);
-  **none degraded** — frontend-only, additive, zero engine/chain/scorer/perf
-  touch, BIRD 06-19 + Spider 06-17 untouched. Astro check 0 err, web 127
-  tests green, tsc clean. Artifact: the `/agents` demo round-trip queued.
-- 2026-06-21 (run 41) — **Engine: self-consistency *runner main-loop wiring*
-  shipped (`SK-QUAL-017` follow-on).** `--self-consistency N` / `--sc-temperature T`
-  drive a `samples >= 2` branch in `runOneQuestion` — a **separate path** from
-  `withExecRetry` so the greedy `SK-LLM-024` baseline is byte-identical:
-  `samplePlans` → `voteOverSamples` over `executeRows` → score the modal cluster's
-  SQL. Folds into checkpoint / budget-stop / `attempts` machinery (`.scN` variant).
-  **Δ:** §4 #3 sampling-half → **+ runner wiring** (dispatch input remained). KPI
-  **engine quality**; none degraded; eval tests 241 → 244. Artifact:
-  "Self-consistency for free-chain text-to-SQL" queued.
-- 2026-06-21 (run 40) — **Engine: self-consistency *temperature-sampling half*
-  shipped (`SK-QUAL-017` follow-on).** An optional per-*request*
-  `PlanRequest.temperature` threads through every provider `callChat`
-  (`temperature ?? 0`, default greedy so `SK-LLM-024` is byte-identical; only the
-  eval sampler sets it > 0) plus `self-consistency.ts::samplePlans`. **Δ:** §4 #3
-  +sampling-half. KPI **engine quality**; none degraded; `@nlqdb/llm` 186 → 189 +
-  eval 19 → 21 green.
+- 2026-06-21 (runs 40–41) — engine + distribution wave (full per-slice detail in
+  the verification log + worksheets): **§4 #1** the schema-aware selector
+  `selectExemplarsForSchema` (`SK-LLM-041` T23 — closed the gap where run 39's
+  `maskWithSchema` had no consumer; a cross-domain twin ranks top from raw rows;
+  `@nlqdb/llm` 16 → 20 few-shot cases); **§4 #3** self-consistency
+  `temperature`-sampling half (run 40, `PlanRequest.temperature`, default greedy
+  so `SK-LLM-024` is byte-identical) then the runner `--self-consistency N` /
+  `--sc-temperature T` main-loop wiring (run 41, `SK-QUAL-017`; a `samples>=2`
+  branch separate from `withExecRetry`, eval 19 → 21 then 241 → 244); and
+  **WS-09 closed** — the gate-honest server-rendered live demo on `/agents`
+  (rows → English goal → compiled `GROUP BY` SQL → result table; `agents.demo_run_clicked`
+  GLOBAL-024 signal) → messaging 8 → 9/13, pivot 10 → 11/20. All offline /
+  additive; BIRD 06-19 + Spider 06-17 untouched. KPI engine quality / onboarding;
+  none degraded.
 - 2026-06-21 (runs 37–39) — engine + agent-memory staging wave (all offline,
   BIRD 06-19 + Spider 06-17 untouched, no prod import; full detail in the
   verification log + worksheets): **run 39** E-04 TTL-sweep core (`SK-PIVOT-011`,

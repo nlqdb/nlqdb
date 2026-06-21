@@ -2,10 +2,12 @@ import { describe, expect, it } from "vitest";
 
 import { maskWithSchema, questionSimilarity } from "../src/few-shot-select.ts";
 import {
+  buildPlanSystem,
   PLAN_EXEMPLAR_POOL,
   type PlanBucket,
   retrievePlanExemplars,
 } from "../src/plan-exemplar-pool.ts";
+import { PLAN_DIRECTIVES, PLAN_FEW_SHOT_HEADER, PLAN_SYSTEM } from "../src/prompts.ts";
 
 // Held-out probes: each is a paraphrase of one pool bucket over a **different**
 // schema/domain, so a top-1 retrieval that lands the intended bucket is proof
@@ -137,5 +139,56 @@ describe("plan-exemplar-pool", () => {
     expect(probe).toBeDefined();
     const [top] = retrievePlanExemplars(probe?.goal ?? "", probe?.schema ?? "", 1);
     expect(top?.bucket).toBe("group-by-count");
+  });
+});
+
+describe("buildPlanSystem — SK-LLM-041 half (b), the per-lever T9 ablation", () => {
+  const probe = PROBES.find((p) => p.bucket === "group-by-count");
+  if (!probe) throw new Error("missing group-by-count probe");
+
+  it("default off (k <= 0 / NaN) returns the static PLAN_SYSTEM byte-for-byte (SK-LLM-024)", () => {
+    // Every production call leaves retrieveExemplars unset ⇒ k = 0. The off
+    // path must be the static prefix *exactly*, or the greedy baseline shifts.
+    for (const k of [0, -1, Number.NaN]) {
+      expect(buildPlanSystem(probe.goal, probe.schema, k)).toBe(PLAN_SYSTEM);
+    }
+  });
+
+  it("k > 0 swaps the static SK-LLM-026 prefix for retrieved exemplars, keeping the directives", () => {
+    const prompt = buildPlanSystem(probe.goal, probe.schema, 3);
+    // Directives untouched; few-shot header preserved (byte-identical shape).
+    expect(prompt.startsWith(`${PLAN_DIRECTIVES}\n\n${PLAN_FEW_SHOT_HEADER}`)).toBe(true);
+    // The static prefix's exemplars are gone — this is an *ablation* of T9, not
+    // an addition on top of it (the 'Queen' album demo is unique to the static
+    // prefix; no pool row mentions it).
+    expect(prompt).not.toContain("'Queen'");
+    // The retrieved demonstrations are present: the top-1 row's SQL appears.
+    const [top] = retrievePlanExemplars(probe.goal, probe.schema, 3);
+    expect(top).toBeDefined();
+    expect(prompt).toContain(top?.payload ?? "<none>");
+  });
+
+  it("a goal that retrieves nothing falls back to the static prefix (never an empty block)", () => {
+    // No structural/lexical overlap with any bucket ⇒ zero-similarity ⇒ no
+    // retrieval; buildPlanSystem must not emit a header with no examples.
+    const prompt = buildPlanSystem("xyzzy plugh", "CREATE TABLE qux (zzz INTEGER)", 3);
+    expect(prompt).toBe(PLAN_SYSTEM);
+  });
+
+  it("token budget: the retrieved k=3 prefix stays within ~1.3× the static prefix", () => {
+    // The cost number a reviewer wants before spending dispatch quota: the
+    // retrieved few-shot prefix is bounded, not unboundedly larger than T9.
+    const staticLen = PLAN_SYSTEM.length;
+    const retrievedLen = buildPlanSystem(probe.goal, probe.schema, 3).length;
+    console.info(
+      "[buildPlanSystem] prefix chars — static:",
+      staticLen,
+      "retrieved(k=3):",
+      retrievedLen,
+      "ratio:",
+      (retrievedLen / staticLen).toFixed(3),
+    );
+    expect(retrievedLen).toBeGreaterThan(PLAN_DIRECTIVES.length);
+    expect(retrievedLen).toBeLessThan(staticLen * 1.3);
   });
 });

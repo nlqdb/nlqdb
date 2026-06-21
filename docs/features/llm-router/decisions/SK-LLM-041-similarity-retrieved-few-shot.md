@@ -59,12 +59,25 @@ identifiers identically.
   hand-authored, **not** the BIRD train split — that is an external,
   download-/key-gated dataset not in the repo; an embedding-indexed BIRD pool is
   the prod hot-path follow-on. The pool's retrieval is proven offline (see
-  Consequence). This is **staged ahead of the halves it still does not build:**
-  for the hot `plan` path, an embedding index (masked-token Jaccard is the
-  offline, key-free stand-in for DAIL's embedding cosine); and (b) wiring into
-  `buildPlanUser` behind a per-lever ablation of the static `SK-LLM-026` prefix.
-  `buildPlanUser`, `PLAN_SYSTEM`, and the provider chain are **unchanged** (only
-  `planExample` is newly exported — same value).
+  Consequence).
+  And, shipped 2026-06-21 as **half (b)** — the **per-lever T9 ablation** that
+  wires the pool into the provider chain — `plan-exemplar-pool.ts::buildPlanSystem(goal, schema, k)`:
+  the static `SK-LLM-026` few-shot prefix lives in the planner **system** prompt
+  (`PLAN_SYSTEM`), so the ablation belongs there, not in `buildPlanUser`.
+  `buildPlanSystem` returns `PLAN_SYSTEM` **byte-for-byte** when `k <= 0` (every
+  production call — `PlanRequest.retrieveExemplars` is unset, like `temperature`
+  for `SK-QUAL-017`) and swaps the static prefix for the `k` retrieved exemplars
+  (rendered through the shared `fewShotBlock`, so the swapped prefix is
+  byte-identical in shape) when `k > 0`; a goal that retrieves nothing falls back
+  to the static prefix. `_chat-provider.ts` calls it with `req.retrieveExemplars
+  ?? 0`, and the eval's `--retrieve-exemplars k` flag threads `k` into every
+  `plan()` request (greedy + self-consistency paths), so the next dispatch runs
+  greedy-static vs greedy-retrieved as an A/B. **Still not built:** the hot
+  `plan`-path embedding index over a larger pool (masked-token Jaccard is the
+  offline, key-free stand-in for DAIL's embedding cosine). Production output is
+  **unchanged** — `retrieveExemplars` is never set off the eval, so `PLAN_SYSTEM`
+  + the greedy decode are byte-identical (`SK-LLM-024` + the `SK-LLM-009` cache
+  prefix intact).
 - **Core value:** Engine quality, Free
 - **Why:** The engine-quality source of truth ranks
   [§4 #1 similarity-retrieved few-shot](../../../progress/quality-score-source-of-truth.md)
@@ -101,18 +114,36 @@ identifiers identically.
   skeleton-similarity of the top-1 retrieved exemplar **0.833** vs **0.240** for
   an uninformed pool-average pick (3.46×), the offline analog of DAIL's measured
   retrieval win, proving the pool+selector is worth a dispatch before paying for
-  one. No production code path imports the pool yet (only `planExample` is newly
-  exported, same value), so the `SK-LLM-024` greedy-decoding determinism
-  invariant and the current BIRD/Spider baselines are untouched; the EX delta is
-  measured by the next canonical dispatch ([`SK-QUAL-002`](../../quality-eval/decisions/SK-QUAL-002-pr-ci-never-fires-real-keys.md)
-  — PR CI never fires real keys).
+  one. Half (b) adds `buildPlanSystem` + `prompts.ts`'s exported `PLAN_DIRECTIVES`
+  / `PLAN_FEW_SHOT_HEADER` / `fewShotBlock` (the static `PLAN_FEW_SHOT` rebuilt
+  through `fewShotBlock`, byte-identical) + the `_chat-provider.ts` system-prompt
+  call + the eval `--retrieve-exemplars` flag (`runner.ts`), with 4 new
+  `plan-exemplar-pool.test.ts` cases (off-path byte-identity for `k ∈ {0,-1,NaN}`;
+  swap-on-`k`; no-match fallback; **token budget**) and 1 `runner.test.ts` case
+  (the flag threads `k` into every `plan()` request; unset ⇒ never present). The
+  **token-budget finding**: the retrieved `k=3` prefix is **3225 chars vs the
+  static 3448** (0.935×) — retrieval is token-*negative*, so it carries no extra
+  prompt cost into a dispatch. Production output is **byte-identical** —
+  `retrieveExemplars` is never set off the eval, so `PLAN_SYSTEM` + greedy decode
+  + the BIRD/Spider baselines are untouched; the EX delta (greedy-static vs
+  greedy-retrieved) is measured by the next canonical dispatch
+  ([`SK-QUAL-002`](../../quality-eval/decisions/SK-QUAL-002-pr-ci-never-fires-real-keys.md)
+  — PR CI never fires real keys, and forbids a back-to-back dispatch while a
+  baseline is < 7 days old).
 - **Alternatives rejected:**
-  - **Wire retrieval straight into `buildPlanUser` now.** Would swap a shipped
-    lever (the `SK-LLM-026` static prefix) before a per-lever ablation
-    attributes it (`CLAUDE.md` §P5; the source-of-truth §6 "Next" lists that
-    ablation as still pending) — contaminating the very measurement that tells
-    us whether retrieval beats static. Build + prove the primitive first;
-    wire + dispatch as the named follow-on.
+  - **Flip production's default to retrieval now (no ablation toggle).** Would
+    swap a shipped lever (the `SK-LLM-026` static prefix) before a dispatch
+    attributes it (`CLAUDE.md` §P5) — contaminating the very measurement that
+    tells us whether retrieval beats static. `buildPlanSystem` is the **gated
+    ablation** instead: default off (prod byte-identical), on only under the
+    eval's `--retrieve-exemplars` dispatch, so the A/B is clean. Prod adopts
+    retrieval only after the dispatch shows an EX gain.
+  - **Inject retrieved exemplars into `buildPlanUser` (the user prompt),
+    additive on top of the static prefix.** The static `SK-LLM-026` prefix
+    lives in the **system** prompt; appending retrieved demos to the user prompt
+    would show the model two few-shot blocks in two positions and measure
+    "static + retrieved", not "retrieved vs static". The ablation *replaces* the
+    system-prompt prefix so the dispatch isolates retrieval's effect.
   - **Embedding-cosine similarity in the core.** DAIL uses masked-question
     embeddings; an embedding call is a paid/keyed external dependency that
     can't run in PR CI (`SK-QUAL-002`) and would make the core non-deterministic

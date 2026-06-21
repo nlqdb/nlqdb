@@ -19,14 +19,15 @@
 //
 // Each `payload` is rendered through `prompts.ts::planExample`, byte-identical to
 // the static `SK-LLM-026` prefix's shape — a retrieved demonstration must look
-// exactly like a static one. Pure data + zero runtime dependency; nothing in the
-// production chain imports it yet (the `buildPlanUser` wiring stays behind the
-// per-lever T9 ablation, `SK-LLM-041` §Alternatives), so the `SK-LLM-024`
-// determinism invariant and the current baselines are untouched. The EX delta is
-// the next canonical dispatch (`SK-QUAL-002`).
+// exactly like a static one. `buildPlanSystem` (below) is the per-lever T9
+// ablation that wires the pool into the provider chain: default-off (`k <= 0`)
+// returns the static `PLAN_SYSTEM` byte-for-byte, so the `SK-LLM-024` determinism
+// invariant and the current baselines stay untouched in prod; only the eval's
+// `--retrieve-exemplars` dispatch turns it on. The EX delta is the next canonical
+// dispatch (`SK-QUAL-002`).
 
 import { type SchemaExemplar, selectExemplarsForSchema } from "./few-shot-select.ts";
-import { planExample } from "./prompts.ts";
+import { fewShotBlock, PLAN_DIRECTIVES, PLAN_SYSTEM, planExample } from "./prompts.ts";
 
 // The structural classes the pool covers, named to match the `SK-QUAL-014`
 // mismatch buckets so the offline probe can assert retrieval lands the bucket
@@ -144,4 +145,22 @@ export const PLAN_EXEMPLAR_POOL: readonly PlanExemplar[] = [
 // separately.
 export function retrievePlanExemplars(goal: string, goalSchema: string, k: number): PlanExemplar[] {
   return selectExemplarsForSchema(goal, goalSchema, PLAN_EXEMPLAR_POOL, k) as PlanExemplar[];
+}
+
+// SK-LLM-041 half (b) — the per-lever T9 ablation. Build the planner SYSTEM
+// prompt for one request: `k <= 0` (every production call — `retrieveExemplars`
+// is unset) returns the static `PLAN_SYSTEM` byte-for-byte, so the `SK-LLM-024`
+// greedy-decoding determinism invariant and the `SK-LLM-009` cache prefix are
+// untouched in prod; `k > 0` (the eval's `--retrieve-exemplars` dispatch only)
+// swaps the static `SK-LLM-026` 3-shot prefix for the `k` pool exemplars whose
+// masked skeleton is closest to the goal, so the next canonical dispatch can
+// A/B static-vs-retrieved few-shot and attribute the lever before prod adopts
+// it (the prerequisite `SK-LLM-041` §Alternatives names). A goal that retrieves
+// nothing (no structural overlap with any bucket) falls back to the static
+// prefix — never an empty/degenerate few-shot block.
+export function buildPlanSystem(goal: string, goalSchema: string, k: number): string {
+  if (!Number.isFinite(k) || k <= 0) return PLAN_SYSTEM;
+  const retrieved = retrievePlanExemplars(goal, goalSchema, k);
+  if (retrieved.length === 0) return PLAN_SYSTEM;
+  return `${PLAN_DIRECTIVES}\n\n${fewShotBlock(retrieved.map((e) => e.payload))}`;
 }

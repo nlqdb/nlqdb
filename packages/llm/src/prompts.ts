@@ -77,7 +77,7 @@ import type {
 // BIRD-weighted. The "goal uses it numerically" scope bounds the regression: a
 // numeric string and its number cast equal, and the clause keeps the cast off a
 // semantically-textual column (zero-padded codes, currency strings).
-const PLAN_DIRECTIVES = [
+export const PLAN_DIRECTIVES = [
   "You translate a natural-language goal into a single SQL statement for the named dialect.",
   "Use only tables and columns that appear literally in the provided schema; preserve identifier casing exactly.",
   "When the goal includes an `Evidence:` block, treat it as authoritative annotator context — apply the formulas and column hints it names.",
@@ -118,30 +118,35 @@ export const planExample = (
 ): string =>
   [`Dialect: ${dialect}`, "Schema:", schema, `Goal: ${goal}`, JSON.stringify({ sql })].join("\n");
 
-export const PLAN_FEW_SHOT = [
-  "Examples — match this exact input→output shape:",
-  "",
+// Few-shot header + assembler, shared by the static prefix and the SK-LLM-041
+// retrieval ablation (`plan-exemplar-pool.ts::buildPlanSystem`) so a retrieved
+// prefix is byte-identical in structure to the static one — header, blank
+// line, then `planExample` payloads separated by a blank line.
+export const PLAN_FEW_SHOT_HEADER = "Examples — match this exact input→output shape:";
+
+export const fewShotBlock = (examples: string[]): string =>
+  [PLAN_FEW_SHOT_HEADER, "", examples.join("\n\n")].join("\n");
+
+export const PLAN_FEW_SHOT = fewShotBlock([
   planExample(
     "sqlite",
     'CREATE TABLE "Album" (AlbumId INTEGER, Title TEXT, ArtistId INTEGER); CREATE TABLE "Artist" (ArtistId INTEGER, Name TEXT)',
     "How many albums does the artist named 'Queen' have?",
     `SELECT COUNT(*) FROM "Album" AS T1 JOIN "Artist" AS T2 ON T1.ArtistId = T2.ArtistId WHERE T2.Name = 'Queen'`,
   ),
-  "",
   planExample(
     "sqlite",
     "CREATE TABLE income (district_id INTEGER, residents INTEGER, total_income INTEGER)",
     "What is the income per resident in district 7?\nEvidence: income per resident = total_income / residents",
     "SELECT CAST(total_income AS REAL) / residents FROM income WHERE district_id = 7",
   ),
-  "",
   planExample(
     "postgres",
     "CREATE TABLE products (id INTEGER, name TEXT, price REAL)",
     "Which product is the cheapest? Return its id.",
     "SELECT id FROM products WHERE price IS NOT NULL ORDER BY price ASC LIMIT 1",
   ),
-].join("\n");
+]);
 
 export const PLAN_SYSTEM = `${PLAN_DIRECTIVES}\n\n${PLAN_FEW_SHOT}`;
 
