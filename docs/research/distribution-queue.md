@@ -43,6 +43,32 @@ few-shot retrieval arc (runs 38–41) — the pool the retriever finally ranks.
 > which is the point: prove the cheap thing before you pay for the expensive one.
 > Code's in `packages/llm/plan-exemplar-pool.ts`.
 
+## 2026-06-21 (run 42) — launch image + post: "GROUP BY your agent's memory" (X / Bluesky)
+
+**Where:** X + Bluesky, as the `/agents` launch image. Card lives at
+`apps/web/public/og/agents.png` (auto-served as the `/agents` OG card); the four
+`vs-*.png` cards are the comparison-share images for `/vs/{mem0,zep,letta,langmem}`.
+
+**Image:** `og/agents.png` — "GROUP BY your agent's memory" on near-black, acid
+lime, JetBrains Mono, with a `SELECT category, COUNT(*) FROM memory GROUP BY
+category` type-proof strip. No screenshot/stock (SK-PIVOT-004).
+
+**Post:**
+
+> Your AI agent's memory is a database, not a vector store.
+>
+> A vector store returns the top-k rows that look like your query. It can't tell
+> you "how many facts did my agent log per category this month, highest first" —
+> that's a GROUP BY, and there's no query planner behind a similarity search.
+>
+> nlqdb gives the agent a real Postgres it provisions in plain English, then lets
+> it GROUP BY / JOIN / HAVING over what it remembered. Memory it can *query*, not
+> just recall. → nlqdb.com/agents
+
+**Why now:** WS-08 shipped the on-brand cards, so the wedge links finally render
+a message-carrying card instead of the generic default — the share-CTR lever the
+worksheet names. Founder publishes at the weekly session.
+
 ## 2026-06-21 (run 41) — engine-lesson: "Mask each example against its own schema, the goal against the live one" (dev.to / lobste.rs)
 
 **Where:** dev.to + lobste.rs (`databases` / `ai`); the close of the few-shot
@@ -637,92 +663,12 @@ it reads as help, not a plug. Lifts the same retrieval≠analytics wedge the WS-
 `/vs` pages and the sharpened solve page now lead with. Sourced from the
 reframed `/solve/give-ai-agent-persistent-memory` page + `docs/competitors.md §4`.
 
-## 2026-06-19 (run 22) — comparison-page draft: nlqdb vs LangMem (r/LangChain / Show HN)
+## 2026-06-19/21 (runs 21–22) — WS-02 comparison-page drafts (titles only; full drafts in git history)
 
-**Title:** LangMem remembers everything for my LangGraph agent. It still can't answer "count per week" about that memory.
+Honest-trade-off "X vs nlqdb" / "X alternative" posts (r/AI_Agents · r/LangChain · Show HN), each sourced from the shipped `/vs/*` page + `docs/competitors.md §4` (facts verified 2026-06-19):
 
-**Body:**
-
-> If you've used [LangMem](https://langchain-ai.github.io/langmem/) you know the
-> pitch: drop long-term memory into a LangGraph agent and an LLM does the hard
-> part for you — it extracts **semantic** (facts), **episodic** (past
-> interactions), and **procedural** (behavioral rules) memory, and a background
-> manager consolidates and updates it over time. For *learning and recall* it's a
-> genuinely clean SDK, and the procedural-memory / prompt-self-tuning angle is
-> something most memory tools don't touch.
->
-> But it's built to *retrieve*. Once my agent had logged a few hundred entries, I
-> wanted to ask questions *about* the memory, not search it:
->
-> > "Distinct users who asked about pricing each week this quarter."
-> > "Average deal size per stage across everything the agent logged."
->
-> LangMem returns the memories most similar to the query — there's no query
-> planner under it, so a `COUNT(DISTINCT … ) … GROUP BY week` becomes the LLM
-> doing arithmetic over a list of search hits (a hallucination generator, not an
-> aggregation). It's also tied to LangGraph's BaseStore, so the memory layer
-> rides one agent stack.
->
-> The honest split (full side-by-side at nlqdb.com/vs/langmem): LangMem wins on
-> automatic semantic/episodic/procedural extraction inside a LangGraph app, and on
-> procedural memory the agent uses to refine its own prompts. nlqdb wins when the
-> agent needs to **aggregate** its memory — it's a real Postgres the agent
-> provisions and queries in English over HTTP or MCP (`nlqdb_query`), framework-
-> agnostic, so `GROUP BY / JOIN / HAVING` actually work. They compose: LangMem the
-> memory layer, nlqdb the analytical store it reports over.
->
-> (Landscape facts verified 2026-06-19; both products' weaknesses are in the
-> comparison, not just ours. Note LangMem ships no MCP server of its own — it's an
-> in-process Python SDK — so the comparison says exactly that.)
-
-**Why this is publishable:** same decision-moment "LangMem alternative" / "LangMem
-vs" keyword play as the Zep + Letta drafts, honest-trade-off format (~13.8% vs
-2–5% generic), lifted verbatim by Perplexity/ChatGPT. r/LangChain is the on-target
-audience (LangMem is a LangChain SDK). Names LangMem in context, leads with a real
-architectural distinction (LLM-managed retrieval + framework-lock vs framework-
-agnostic analytical store). Sourced from the shipped `/vs/langmem` page +
-`docs/competitors.md §4`. Closes the WS-02 trio (Zep → Letta → LangMem).
-
-## 2026-06-21 (run 21) — comparison-page draft: nlqdb vs Letta (r/AI_Agents / Show HN)
-
-**Title:** Letta runs my stateful agent. It still can't answer "average per group" about its own memory.
-
-**Body:**
-
-> If you've built on [Letta](https://www.letta.com) (the runtime out of the
-> Berkeley MemGPT paper, Apache-2.0) you know the model: the agent manages its
-> own memory like an OS — **core** blocks it self-edits in the context window,
-> **recall** for conversation history, and an **archival** tier it searches for
-> long-term facts. As a stateful agent runtime it's excellent, and the
-> self-editing memory idea is genuinely clever.
->
-> But the memory tiers are built to *retrieve*. Once my agent had logged a few
-> hundred rows, I wanted to ask questions *about* the memory, not search it:
->
-> > "Average deal size per stage for everything the agent logged this quarter."
-> > "Top 10 topics this month, ranked by count."
->
-> Letta can recall "Alice has a $50k deal." It can't run a `GROUP BY` over the
-> archive — there's no relational query layer under the memory tiers, so the LLM
-> ends up doing arithmetic over a list of search hits (a hallucination generator,
-> not an aggregation).
->
-> The honest split (full side-by-side at nlqdb.com/vs/letta): Letta wins on being
-> a real stateful runtime with OS-style self-editing memory and semantic recall.
-> nlqdb wins when the agent needs to **aggregate** its memory — it's a real
-> Postgres the agent provisions and queries in English, so `GROUP BY / JOIN /
-> HAVING` actually work. They compose: Letta the runtime, nlqdb the analytical
-> store it queries. Pick the one that matches the question you need answered.
->
-> (Landscape facts verified 2026-06-19; both products' weaknesses are in the
-> comparison, not just ours.)
-
-**Why this is publishable:** same decision-moment "X alternative" / "Letta vs"
-keyword play as the Zep draft, honest-trade-off format (~13.8% vs 2–5% generic),
-lifted verbatim by Perplexity/ChatGPT. Names Letta once, in context, leads with
-a real architectural distinction (runtime + retrieval vs analytical store).
-Sourced from the shipped `/vs/letta` page + `docs/competitors.md §4`. Second of
-the WS-02 trio (LangMem to follow).
+- run 22 — "LangMem remembers everything for my LangGraph agent. It still can't answer 'count per week' about that memory." (`/vs/langmem`)
+- run 21 — "Letta runs my stateful agent. It still can't answer 'average per group' about its own memory." (`/vs/letta`)
 
 ## 2026-06-15/19 (runs 8–18) — engine-lesson dev.to / lobste.rs posts (titles only; full drafts in git history)
 

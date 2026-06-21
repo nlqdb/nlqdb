@@ -1,5 +1,10 @@
 import { describe, expect, test } from "bun:test";
+import { existsSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { COMPETITORS, competitorBySlug } from "./competitors.ts";
+
+const ogDir = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "public", "og");
 
 // Comparison-page data is loaded by 4 surfaces (page template, /vs
 // index, sitemap, llms.txt). These checks pin the invariants the
@@ -69,5 +74,15 @@ describe("COMPETITORS data integrity", () => {
   test("WS-07: the agent-memory cluster is the P2-agent-builder persona", () => {
     const p2 = COMPETITORS.filter((c) => c.persona === "P2 agent builder").map((c) => c.slug);
     expect(new Set(p2)).toEqual(new Set(["mem0", "zep", "letta", "langmem"]));
+  });
+
+  // WS-08 (SK-PIVOT-012): vs/[slug].astro sets ogImage for every P2 page, so
+  // each P2 slug must have a committed card or the social card 404s silently.
+  // Pin the wiring to the artifact so adding a P2 competitor without
+  // re-running `og:gen` fails here, not on a live share.
+  test("WS-08: every P2-agent-builder competitor has a committed OG card", () => {
+    for (const c of COMPETITORS.filter((c) => c.persona === "P2 agent builder")) {
+      expect(existsSync(join(ogDir, `vs-${c.slug}.png`))).toBe(true);
+    }
   });
 });
