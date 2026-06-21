@@ -35,6 +35,21 @@ on:
         description: "Skip POSTing the report to /v1/events/eval (full mode; default false)"
         type: boolean
         default: false
+      # SK-QUAL-017 — self-consistency dispatch on the SMOKE job only: the
+      # sampled, no-emit, baseline-never-touched vehicle (SK-QUAL-002 forbids
+      # a back-to-back CANONICAL dispatch while the baseline is < 7 days old,
+      # but a smoke run never overwrites it). N>=2 draws N plans at
+      # `sc_temperature` and majority-votes the result set; N=1 is the greedy
+      # SK-LLM-024 path (unchanged default). N× the per-question quota, so it
+      # is opt-in per dispatch like the agentic-frontier toggle.
+      self_consistency:
+        description: "Self-consistency sample count N (smoke mode; N>=2 enables SK-QUAL-017 majority-vote at N×quota; 1 = greedy)"
+        default: "1"
+        required: false
+      sc_temperature:
+        description: "Sampling temperature for self-consistency draws (smoke mode; default 0.7, Wang et al. 2022)"
+        default: "0.7"
+        required: false
 
 permissions:
   contents: read
@@ -234,6 +249,11 @@ jobs:
     env:
       SMOKE_SEED: "20260607"
       SMOKE_LIMIT: "40"
+      # SK-QUAL-017 — pass dispatch inputs through env, never inlined into a
+      # `run:` script, so untrusted input can't inject shell (the runner
+      # re-validates with parseInt/parseFloat).
+      SC_SAMPLES: ${{ inputs.self_consistency || '1' }}
+      SC_TEMPERATURE: ${{ inputs.sc_temperature || '0.7' }}
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
       - uses: ./.github/actions/setup
@@ -290,12 +310,17 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p eval-state
+          # SK-QUAL-017 — self-consistency: N>=2 votes N draws; N=1 ⇒ the
+          # runner leaves selfConsistency unset (greedy, same `.smoke`
+          # checkpoint), so the default is byte-identical to a pre-SC smoke.
           bun tools/eval/src/runner.ts \
             --dataset spider2-lite-sqlite \
             --data-dir spider2_data \
             --limit "$SMOKE_LIMIT" --sample-seed "$SMOKE_SEED" \
             --throttle-ms 3000 \
             --capacity-wait-ms 65000 \
+            --self-consistency "$SC_SAMPLES" \
+            --sc-temperature "$SC_TEMPERATURE" \
             --out eval-state
           latest=$(ls -t eval-state/*.json | head -1)
           if jq -e '.resumable == true' "$latest" >/dev/null 2>&1; then
@@ -311,7 +336,7 @@ jobs:
           set -euo pipefail
           latest="${{ steps.smoke.outputs.report }}"
           {
-            echo "## quality-eval — Spider smoke (sampled ${SMOKE_LIMIT}, seed ${SMOKE_SEED})"
+            echo "## quality-eval — Spider smoke (sampled ${SMOKE_LIMIT}, seed ${SMOKE_SEED}, self-consistency N=${SC_SAMPLES})"
             echo ""
             echo "Status: ${{ steps.smoke.outputs.status }}"
             if [ -n "$latest" ] && [ -f "$latest" ]; then
