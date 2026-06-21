@@ -1,10 +1,11 @@
 # SK-QUAL-018 — persona-bench: nlqdb's own ICP-shaped NL→SQL benchmark, gold-executable fixture first
 
 Parent feature: [`quality-eval/FEATURE.md`](../FEATURE.md). The third,
-user-relevant quality number the [`GLOBAL-027`](../../../decisions/GLOBAL-027-pre-alpha-gate.md)
-§Lifecycle resolution (founder, 2026-06-12) kept as agent work alongside
-BIRD/Spider: "~50–100 NL questions from `personas.md` over nlqdb-created
-5–20-table schemas (the actual ICP shape)." Sibling of the offline
+user-relevant quality number [`GLOBAL-027`](../../../decisions/GLOBAL-027-pre-alpha-gate.md)
+§Lifecycle kept as agent work alongside BIRD/Spider, per
+[`fable-recommendation.md §2`](../../../research/fable-recommendation.md):
+"~50–100 NL questions from `personas.md` over nlqdb-created 5–20-table
+schemas (the actual ICP shape)." Sibling of the offline
 instruments [`SK-QUAL-014`](./SK-QUAL-014-mismatch-error-class-classifier.md)
 and [`SK-QUAL-015`](./SK-QUAL-015-column-coverage-harness.md).
 
