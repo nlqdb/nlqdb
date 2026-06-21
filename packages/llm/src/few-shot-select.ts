@@ -16,16 +16,17 @@
 // scores spuriously high.
 //
 // This module is the deterministic core: question masking + masked-token
-// Jaccard similarity + stable top-k selection, plus the pool-curation
-// schema-identifier mask. Pure + zero-dep so production `buildPlanUser` and the
-// eval harness can share it byte-for-byte, exactly like schema-prune.ts. Two
-// halves are still staged behind it (not built here):
-//   (a) the exemplar *pool* itself — the masked BIRD-dev train-split
-//       Question→SQL rows — and, for the hot `plan` path, an embedding index;
-//       masked-token Jaccard is the offline, key-free stand-in DAIL's embedding
-//       cosine approximates. (`maskWithSchema` below is the masking each pool
-//       row + the incoming goal pass through; the rows themselves still need
-//       curating.)
+// Jaccard similarity + stable top-k selection, the pool-curation
+// schema-identifier mask, and `selectExemplarsForSchema` — the entry point that
+// masks the goal against the live schema and each pool row against its own,
+// closing the gap where `maskWithSchema` had no selector that consumed it. Pure
+// + zero-dep so production `buildPlanUser` and the eval harness can share it
+// byte-for-byte, exactly like schema-prune.ts. Two halves are still staged
+// behind it (not built here):
+//   (a) the exemplar *pool rows* themselves — the curated BIRD-dev train-split
+//       {question, schema, SQL} records `selectExemplarsForSchema` ranks — and,
+//       for the hot `plan` path, an embedding index; masked-token Jaccard is
+//       the offline, key-free stand-in DAIL's embedding cosine approximates.
 //   (b) wiring into `buildPlanUser` behind a per-lever ablation of the static
 //       T9 prefix (CLAUDE.md §P5 — don't swap a shipped lever before the
 //       cheaper one is attributed).
@@ -42,6 +43,13 @@ export type Exemplar<T> = {
   question: string;
   payload: T;
 };
+
+// A pool exemplar that carries its **own** schema. A real DAIL pool spans many
+// schemas (BIRD's train split is one schema per `db_id`), so each row must mask
+// its question against the identifiers *it* was written over — not the live
+// goal's schema. `selectExemplarsForSchema` masks each side against its own
+// schema before ranking, which is what makes the cross-domain match work.
+export type SchemaExemplar<T> = Exemplar<T> & { schema: string };
 
 // Replace every literal value with one placeholder so two questions that
 // differ only by their values ("named 'Queen'" vs "named 'Metallica'") read as
@@ -96,9 +104,15 @@ export function maskWithSchema(question: string, schema: string): string {
 
 // Masked word-token set of a question — reuses schema-prune's tokenizer so the
 // snake_case/camelCase/plural-stripping rules are identical across the planner
-// prompt's two pure helpers.
+// prompt's two pure helpers. `maskedTokens` is the value-only skeleton (no
+// schema); `maskedTokensWithSchema` adds the identifier mask so two same-shape
+// questions over unrelated schemas tokenize identically (the cross-domain key).
 export function maskedTokens(question: string): Set<string> {
   return wordTokens(maskQuestion(question));
+}
+
+export function maskedTokensWithSchema(question: string, schema: string): Set<string> {
+  return wordTokens(maskWithSchema(question, schema));
 }
 
 // Jaccard overlap of two token sets — |A∩B| / |A∪B|. Symmetric, in [0,1],
@@ -116,23 +130,52 @@ function jaccard(a: Set<string>, b: Set<string>): number {
   return union === 0 ? 0 : inter / union;
 }
 
-// Rank the pool by masked-question similarity to `goal` and return the top `k`
-// exemplars, most-similar first. Ties break on pool order (earliest wins) so
-// selection is reproducible run-to-run — the T8 (SK-LLM-024) determinism
-// invariant the eval baseline relies on. A candidate scoring 0 shares no
-// structure with the goal; it is dropped rather than padding the prompt with
-// an unrelated demonstration (returns fewer than k, never an irrelevant one).
+// Top-k ranking shared by both selectors: score each exemplar's masked-token
+// set against the goal's, drop zero-overlap rows (never pad the prompt with an
+// unrelated demonstration), and return the k most-similar first. Ties break on
+// pool order (earliest wins) so selection is reproducible run-to-run — the T8
+// (SK-LLM-024) determinism invariant the eval baseline relies on.
+function topK<E>(
+  goalTokens: Set<string>,
+  pool: readonly E[],
+  tokensOf: (ex: E) => Set<string>,
+  k: number,
+): E[] {
+  if (k <= 0 || pool.length === 0 || goalTokens.size === 0) return [];
+  const scored = pool
+    .map((ex, index) => ({ ex, index, score: jaccard(goalTokens, tokensOf(ex)) }))
+    .filter((s) => s.score > 0);
+  scored.sort((a, b) => b.score - a.score || a.index - b.index);
+  return scored.slice(0, k).map((s) => s.ex);
+}
+
+// Rank the pool by **value-masked** question similarity to `goal`. The
+// schema-less selector: the caller has either no schema or has already masked
+// identifiers itself.
 export function selectExemplars<T>(
   goal: string,
   pool: readonly Exemplar<T>[],
   k: number,
 ): Exemplar<T>[] {
-  if (k <= 0 || pool.length === 0) return [];
-  const goalTokens = maskedTokens(goal);
-  if (goalTokens.size === 0) return [];
-  const scored = pool
-    .map((ex, index) => ({ ex, index, score: jaccard(goalTokens, maskedTokens(ex.question)) }))
-    .filter((s) => s.score > 0);
-  scored.sort((a, b) => b.score - a.score || a.index - b.index);
-  return scored.slice(0, k).map((s) => s.ex);
+  return topK(maskedTokens(goal), pool, (ex) => maskedTokens(ex.question), k);
+}
+
+// The full DAIL §4.1 retrieval entry point: mask the goal against the **live**
+// `goalSchema` and each pool row against its **own** stored schema, then rank.
+// This is what a real cross-schema pool calls — the caller no longer pre-masks
+// each row by hand (the maskWithSchema half had no selector that consumed it),
+// and an exemplar from an unrelated schema can now rank top when its question
+// shares the goal's skeleton (the whole point of identifier masking).
+export function selectExemplarsForSchema<T>(
+  goal: string,
+  goalSchema: string,
+  pool: readonly SchemaExemplar<T>[],
+  k: number,
+): SchemaExemplar<T>[] {
+  return topK(
+    maskedTokensWithSchema(goal, goalSchema),
+    pool,
+    (ex) => maskedTokensWithSchema(ex.question, ex.schema),
+    k,
+  );
 }

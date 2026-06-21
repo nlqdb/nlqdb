@@ -33,11 +33,12 @@ error). So value-sampling (§4 #2a) flips ~0 rows standalone; the path to the
 gate floor is the §4 **reasoning** levers (#3 self-consistency, #1 retrieval
 few-shot), not retrieval. Value-retrieval is demoted + privacy-gated. **Both
 reasoning-lever cores now ship:** #3 vote core (`SK-QUAL-017`, run 34) + #1
-DAIL-SQL retrieval core (`SK-LLM-041`, run 38) — and run 39 adds #1's
-**pool-curation masking half** (`maskSchemaIdentifiers`/`maskWithSchema`:
-schema table/column words → `col`, the DAIL §4.1 cross-domain step value-masking
-can't reach alone); each lever still needs its dispatch half, EX delta next
-canonical run.
+DAIL-SQL retrieval (`SK-LLM-041`) — and #1 is now **built end-to-end bar the
+`buildPlanUser` wiring**: core (run 38) + pool-curation mask (run 39) +
+**schema-aware selector** `selectExemplarsForSchema` (run 41) that masks the
+goal against the live schema and each pool row against its own — the entry
+point that finally consumes the masking half. Both levers still need their
+prod-wiring/dispatch half, EX delta next canonical run.
 
 | # | Metric | Value | Target / note |
 |---|--------|-------|------|
@@ -82,6 +83,26 @@ canonical run.
 
 ## Deltas (recent runs)
 
+- 2026-06-21 (run 41) — **Engine: similarity-retrieved few-shot *schema-aware
+  selector* shipped (`SK-LLM-041` follow-on, T23) — the §4 #1 DAIL-SQL lever is
+  now built end-to-end bar the `buildPlanUser` wiring.** Worst number is engine
+  (Spider 0.1852, BIRD 0.520); both baselines < 7 d (§5: no back-to-back
+  dispatch) and open PR #447 owns the §4 #3 self-consistency runner lane, so the
+  clean non-colliding slice is #1's next staged half. Closed a real gap: run 39's
+  `maskWithSchema` had **no selector that consumed it** — a cross-schema pool
+  could only be ranked by hand-masking each row. New `SchemaExemplar<T>` (row
+  carries its own schema) + `selectExemplarsForSchema(goal, goalSchema, pool, k)`
+  masks the goal against the live schema and each row against its own, sharing a
+  factored-out top-k core with `selectExemplars` (P5: −duplication). Proven
+  offline: a cross-domain twin (different schema, same skeleton) ranks top from
+  **raw** rows, beating a same-schema different-shape row, no hand-masking.
+  Staged ahead of the curated pool *rows* + index + `buildPlanUser` wiring
+  (T9-ablation-gated); no prod import ⇒ `SK-LLM-024` determinism + baselines +
+  perf untouched, EX delta next dispatch. **Δ:** §4 #1 mask-half → **+ selector
+  that consumes it**; `@nlqdb/llm` few-shot cases 16 → 20 (suite 198 green).
+  **KPI:** engine quality; **none degraded.** `verification-log` net-shrunk (D4).
+  Artifact: "Mask each exemplar against its own schema, the goal against the
+  live one" queued.
 - 2026-06-21 (run 40) — **Engine: self-consistency *temperature-sampling half*
   shipped (`SK-QUAL-017` follow-on) — the §4 #3 lever is now wired end-to-end
   bar the runner main loop.** No dispatch (BIRD 06-19 + Spider 06-17 both < 7 d,
@@ -94,44 +115,21 @@ canonical run.
   only the runner `--self-consistency N` wiring + dispatch remain. KPI **engine
   quality**; none degraded; `@nlqdb/llm` 186 → 189 + eval 19 → 21 green.
 - 2026-06-21 (run 39) — **Engine (agent-memory wedge): E-04 TTL-sweep core
-  shipped (`SK-PIVOT-011`) — `facts`-only expiry made durable.** Worst number is
-  engine (Spider 0.1852, BIRD 0.520); both evals < 7 d (§5 — no back-to-back
-  dispatch) and open PR #444 owns the §4 #3 self-consistency *sampling* lever,
-  so the clean non-colliding slice is the lowest open engine-track item, E-04
-  (prereq E-01 ✅, ungated). New pure `apps/api/src/memory/expire.ts`:
+  shipped (`SK-PIVOT-011`)** — pure `apps/api/src/memory/expire.ts`:
   `buildExpirySweep` (deterministic parameterised `DELETE FROM facts WHERE
-  expires_at IS NOT NULL AND expires_at < $1`, cutoff bound, never LLM-composed)
-  + `orchestrateSweep` (memory-preset DBs only via `isAgentMemoryV1Db`, **per-DB
-  failure isolation**, aggregates the `expiredRows` metric value). Staged ahead
-  of the cron Worker (infra) + the read-side TTL `USING` clause on E-03's
-  `facts` RLS (E-03-gated) — the E-02 pattern. **Δ:** E-04 ⬜ → sweep core 🟡
-  shipped + proven (7 unit cases); apps/api memory tests 18 → 25 green. **KPI:**
-  engine quality / onboarding; **none degraded** — no prod path imports it, no
-  chain/scorer/runner change, BIRD 06-19 + Spider 06-17 + perf untouched.
-  `scorecard.md` net-shrunk (D4). Artifact: "How nlqdb expires agent memory" queued.
+  expires_at < $1`, never LLM-composed) + `orchestrateSweep` (memory-preset DBs
+  only, per-DB failure isolation). Engine lane blocked (both evals < 7 d; PR #444
+  owned §4 #3 sampling), so picked the lowest open engine-track item. **Δ:** E-04
+  ⬜ → sweep core 🟡 (7 cases); apps/api memory tests 18 → 25. KPI engine
+  quality / onboarding; none degraded (no prod import, baselines + perf untouched).
 - 2026-06-21 (run 39) — **Engine: similarity-retrieved few-shot *pool-curation
-  masking half* shipped (`SK-LLM-041` follow-on, T23) — continues run 38's §4 #1
-  DAIL-SQL retrieval lever.** Worst number is engine (Spider 0.1852, BIRD 0.520)
-  but both baselines are < 7 d (§5: no back-to-back dispatch), and the two open
-  PRs own the other lanes — #444 the §4 #3 self-consistency *sampling* half, #445
-  the agent-memory E-04 sweep. The clean non-colliding slice is #1's next staged
-  half. `few-shot-select.ts` gains `maskSchemaIdentifiers(q, schema)` (question
-  words naming a schema **table/column** → one `col`, reusing a new exported
-  `schema-prune.ts::schemaTokens` so the identifier set matches the pruner's) +
-  `maskWithSchema` (values→`val`, then identifiers→`col`). This is DAIL §4.1's
-  cross-domain step value-masking can't reach alone: "albums by the artist named
-  `val`" and "employees at the company named `val`" only collapse to one skeleton
-  once the domain nouns mask too. Proven offline: two same-shape questions over
-  *unrelated* schemas → identical skeleton (similarity 1 vs < 1 value-only); the
-  twin outranks a same-schema different-shape row. Staged ahead of the curated
-  pool *rows* + index + `buildPlanUser` wiring (T9-ablation-gated, §P5) — no prod
-  import, so `SK-LLM-024` determinism + BIRD/Spider baselines untouched, EX delta
-  next dispatch (`SK-QUAL-002`). **Δ:** §4 #1 core → core **+ pool-curation mask**
-  shipped+proven; `@nlqdb/llm` 186 → 191 tests green (16 few-shot cases, was 11).
-  **KPI:** engine quality; **none degraded** — no prod chain/scorer/runner change,
-  perf untouched. `source-of-truth` (21286 → 21266 B), `verification-log`
-  (21321 → 21242 B), `scorecard` all net-shrunk (D4). Artifact: "Mask the table
-  and column names too, not just the values" queued.
+  masking half* shipped (`SK-LLM-041` follow-on, T23)** — `maskSchemaIdentifiers`
+  / `maskWithSchema` fold schema table/column words → `col` (reusing exported
+  `schema-prune.ts::schemaTokens`), the DAIL §4.1 cross-domain step value-masking
+  can't reach alone. Proven offline: two same-shape questions over *unrelated*
+  schemas → identical skeleton (similarity 1 vs < 1 value-only). **Δ:** §4 #1
+  core → **+ pool-curation mask**; `@nlqdb/llm` 186 → 191 (16 few-shot cases).
+  KPI engine quality; none degraded (no prod import, baselines + perf untouched).
 - 2026-06-21 (run 38) — **Engine: similarity-retrieved few-shot deterministic
   core shipped (`SK-LLM-041`, T23) — the §4 #1 retrieval half of DAIL-SQL
   ([arXiv:2308.15363](https://arxiv.org/abs/2308.15363)) that T9 left.** New
