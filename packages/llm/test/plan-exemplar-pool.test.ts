@@ -2,8 +2,8 @@ import { describe, expect, it } from "vitest";
 
 import { maskWithSchema, questionSimilarity } from "../src/few-shot-select.ts";
 import {
-  type PlanBucket,
   PLAN_EXEMPLAR_POOL,
+  type PlanBucket,
   retrievePlanExemplars,
 } from "../src/plan-exemplar-pool.ts";
 
@@ -36,12 +36,14 @@ const PROBES: readonly Probe[] = [
   {
     bucket: "in-subquery",
     goal: "Which authors have written a book? Return their name.",
-    schema: "CREATE TABLE authors (id INTEGER, name TEXT);\nCREATE TABLE books (id INTEGER, author_id INTEGER)",
+    schema:
+      "CREATE TABLE authors (id INTEGER, name TEXT);\nCREATE TABLE books (id INTEGER, author_id INTEGER)",
   },
   {
     bucket: "join-aggregate",
     goal: "What is the total payment for each member? Return the member name and total.",
-    schema: "CREATE TABLE members (id INTEGER, name TEXT);\nCREATE TABLE payments (id INTEGER, member_id INTEGER, amount REAL)",
+    schema:
+      "CREATE TABLE members (id INTEGER, name TEXT);\nCREATE TABLE payments (id INTEGER, member_id INTEGER, amount REAL)",
   },
   {
     bucket: "group-max",

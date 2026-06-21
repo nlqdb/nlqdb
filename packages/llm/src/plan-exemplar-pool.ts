@@ -142,10 +142,6 @@ export const PLAN_EXEMPLAR_POOL: readonly PlanExemplar[] = [
 // point the prod wiring will call once the T9 ablation clears it. Thin wrapper
 // over `selectExemplarsForSchema` so callers don't import the pool + selector
 // separately.
-export function retrievePlanExemplars(
-  goal: string,
-  goalSchema: string,
-  k: number,
-): PlanExemplar[] {
+export function retrievePlanExemplars(goal: string, goalSchema: string, k: number): PlanExemplar[] {
   return selectExemplarsForSchema(goal, goalSchema, PLAN_EXEMPLAR_POOL, k) as PlanExemplar[];
 }
