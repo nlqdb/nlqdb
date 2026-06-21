@@ -3,11 +3,12 @@ import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-
+import type { PlanRequest, PlanResponse } from "@nlqdb/llm";
 import { executeRows, fingerprintRows } from "../src/score.ts";
 import {
   majorityVote,
   type SampledPlan,
+  samplePlans,
   type VoteCandidate,
   voteOverSamples,
 } from "../src/self-consistency.ts";
@@ -246,5 +247,39 @@ describe("executeRows + voteOverSamples — end-to-end against a real SQLite fix
     expect(res.executable).toBe(3);
     expect(res.index).toBe(0);
     expect(res.agreement).toBe(0.6667);
+  });
+});
+
+describe("samplePlans", () => {
+  const baseReq: PlanRequest = { goal: "g", schema: "s", dialect: "sqlite" };
+
+  it("draws N plans and stamps the sampling temperature onto every request", async () => {
+    const seen: Array<number | undefined> = [];
+    const plan = async (req: PlanRequest): Promise<PlanResponse> => {
+      seen.push(req.temperature);
+      return { sql: `SELECT ${seen.length}`, model: "m", confidence: 1 };
+    };
+    const out = await samplePlans(plan, baseReq, { samples: 3, temperature: 0.7 });
+    expect(out).toEqual([
+      { sql: "SELECT 1", model: "m" },
+      { sql: "SELECT 2", model: "m" },
+      { sql: "SELECT 3", model: "m" },
+    ]);
+    expect(seen).toEqual([0.7, 0.7, 0.7]);
+  });
+
+  it("records a no-vote empty sample when a draw throws, without aborting the batch", async () => {
+    let n = 0;
+    const plan = async (): Promise<PlanResponse> => {
+      n++;
+      if (n === 2) throw new Error("chain exhausted");
+      return { sql: `SELECT ${n}`, model: "m", confidence: 1 };
+    };
+    const out = await samplePlans(plan, baseReq, { samples: 3, temperature: 0.5 });
+    expect(out).toEqual([
+      { sql: "SELECT 1", model: "m" },
+      { sql: "", model: "" },
+      { sql: "SELECT 3", model: "m" },
+    ]);
   });
 });

@@ -19,6 +19,7 @@
 // the runner integration land in the follow-on; the EX delta is measured by
 // the next canonical dispatch (SK-QUAL-002).
 
+import type { PlanRequest, PlanResponse } from "@nlqdb/llm";
 import { fingerprintRows } from "./score.ts";
 
 export type VoteCandidate = {
@@ -98,6 +99,43 @@ export function majorityVote(
 // these at temperature > 0 on a separate code path (the T8 greedy invariant,
 // source-of-truth §5); `voteOverSamples` turns them into a vote.
 export type SampledPlan = { sql: string; model: string };
+
+export type SampleOptions = {
+  // How many independent plans to draw. The runner sets this from
+  // `--self-consistency N` (N >= 2; N = 1 is the greedy path, no sampling).
+  samples: number;
+  // Decoding temperature for the draws. > 0 so the N plans diverge — the
+  // whole point of consensus sampling. This is the `PlanRequest.temperature`
+  // override SK-LLM-024 reserved for this separate code path; the greedy
+  // production chain never sets it.
+  temperature: number;
+};
+
+// Draw N plans at temperature > 0 — the sampling half of SK-QUAL-017. Pure
+// orchestration: the `plan` fn is injected (the lane router in the runner, a
+// stub in tests) so this never touches the network itself, and the
+// `temperature` override rides `PlanRequest` into whichever provider answers.
+// A draw that throws (the whole chain failed for that sample) is recorded as
+// an empty-SQL sample so it casts no vote in `voteOverSamples` rather than
+// aborting the batch — N-1 good draws can still reach consensus. Draws run
+// sequentially so the inter-question throttle (SK-QUAL-012) still paces the
+// low-RPM free chain.
+export async function samplePlans(
+  plan: (req: PlanRequest) => Promise<PlanResponse>,
+  req: PlanRequest,
+  opts: SampleOptions,
+): Promise<SampledPlan[]> {
+  const sampled: SampledPlan[] = [];
+  for (let i = 0; i < opts.samples; i++) {
+    try {
+      const res = await plan({ ...req, temperature: opts.temperature });
+      sampled.push({ sql: res.sql, model: res.model });
+    } catch {
+      sampled.push({ sql: "", model: "" });
+    }
+  }
+  return sampled;
+}
 
 export type SelfConsistencyResult = VoteResult & {
   // The winning candidate's model (what the runner records). Empty when

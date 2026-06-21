@@ -44,7 +44,13 @@ Parent feature: [`llm-router/FEATURE.md`](../FEATURE.md).
     temperature today. Revisit only if self-consistency-N
     ([`quality-score-source-of-truth.md` §4 #3](../../../progress/quality-score-source-of-truth.md))
     lands, which deliberately samples at temperature > 0 on a *separate*
-    code path — it would not reuse the planner default.
+    code path — it would not reuse the planner default. **(Landed
+    2026-06-21, [`SK-QUAL-017`](../../quality-eval/decisions/SK-QUAL-017-self-consistency-majority-vote.md):
+    an optional per-*request* `PlanRequest.temperature` — not the rejected
+    per-provider env knob — threads through every `callChat`, defaulting to
+    `0` when unset. The greedy production chain never sets it, so this
+    invariant is unchanged; only the eval's self-consistency sampler overrides
+    it.)**
   - **Also enable Workers AI JSON mode (`response_format`)** — the
     native `/ai/run` endpoint requires a per-op `json_schema` (no
     schemaless `json_object`, verified against the Workers AI JSON-mode

@@ -42,7 +42,7 @@ export function createCerebrasProvider(opts: CerebrasProviderOptions): Provider 
   return createChatProvider({
     name: "cerebras",
     models: { ...DEFAULT_MODELS, ...opts.models },
-    callChat: ({ model, messages, jsonMode, opts: callOpts }) =>
+    callChat: ({ model, messages, jsonMode, temperature, opts: callOpts }) =>
       openAICompatibleChat(
         {
           url: `${baseUrl}/chat/completions`,
@@ -50,7 +50,8 @@ export function createCerebrasProvider(opts: CerebrasProviderOptions): Provider 
           model,
           messages,
           jsonResponse: jsonMode,
-          temperature: 0,
+          // Greedy (SK-LLM-024) unless the SK-QUAL-017 sampler overrides.
+          temperature: temperature ?? 0,
         },
         callOpts,
       ),

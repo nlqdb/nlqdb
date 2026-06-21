@@ -54,19 +54,27 @@ literal/date axes falsified value-retrieval standalone.
   no-vote signal `majorityVote` consumes; shares `scoreOne`'s SQLite
   loader / busy-timeout / `normalizeSql` path so a sampled candidate executes
   byte-identically to how the winner is scored); `tools/eval/test/self-consistency.test.ts`
-  (19 unit cases incl. an `executeRows` + `voteOverSamples` end-to-end against
-  a real SQLite fixture). The orchestration is the "separate code path" the
-  source-of-truth §5 guardrail reserves for §4 #3 — it never touches the
-  greedy `scoreOne`/`withExecRetry` path. **Follow-on (named, not built this
-  run):** the *sampling* half — an optional `temperature?` on `PlanRequest`
-  plumbed through the providers (default unset ⇒ greedy, so the
+  (21 unit cases incl. an `executeRows` + `voteOverSamples` end-to-end against
+  a real SQLite fixture, plus the `samplePlans` draws below). The orchestration
+  is the "separate code path" the source-of-truth §5 guardrail reserves for
+  §4 #3 — it never touches the greedy `scoreOne`/`withExecRetry` path. **The
+  *sampling* half now ships too:** an optional `temperature?` on `PlanRequest`
+  (`packages/llm/src/types.ts`) is plumbed through every plan-capable provider
+  (the shared `ChatCallArgs.temperature` + each `callChat` forwarding
+  `temperature ?? 0`) — **default unset ⇒ greedy**, so the
   [`SK-LLM-024`](../../llm-router/decisions/SK-LLM-024-greedy-decoding-parity.md)
-  baseline stays byte-identical) + a runner `--self-consistency N` path that
-  samples N plans at temperature > 0, feeds them to `voteOverSamples`
-  (executor = `executeRows`), and scores the winner. The EX delta is measured
-  by the **next canonical dispatch**
-  ([`SK-QUAL-002`](./SK-QUAL-002-weekly-cron.md) forbids a back-to-back
-  dispatch while the BIRD/Spider baselines are < 7 days old).
+  baseline stays byte-identical and only the sampler ever sets it > 0
+  (the per-request override SK-LLM-024 reserved for this code path) — and
+  `self-consistency.ts::samplePlans(plan, req, { samples, temperature })` draws
+  N plans at that temperature (injected `plan` ⇒ pure/offline-tested; a draw
+  that throws is recorded as a no-vote empty sample so N-1 good draws still
+  reach consensus). **Follow-on (named, not built this run):** the runner
+  `--self-consistency N` main-loop path that wires `samplePlans` →
+  `voteOverSamples` (executor = `executeRows`) → score-the-winner alongside the
+  existing checkpoint / budget-stop machinery. The EX delta is measured by the
+  **next canonical dispatch** ([`SK-QUAL-002`](./SK-QUAL-002-weekly-cron.md)
+  forbids a back-to-back dispatch while the BIRD/Spider baselines are < 7 days
+  old).
 
 - **Alternatives rejected:**
   - **Vote on the SQL string (exact or normalised).** Equivalent queries

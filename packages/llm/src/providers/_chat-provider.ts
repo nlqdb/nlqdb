@@ -40,6 +40,10 @@ export type ChatCallArgs = {
   // `responseMimeType`) should set it; others should still honour the
   // contract via prompting.
   jsonMode: boolean;
+  // SK-QUAL-017 — decoding temperature. Undefined on every call except the
+  // self-consistency `plan` sampling path; each provider treats undefined as
+  // greedy `0` (the SK-LLM-024 invariant).
+  temperature?: number;
   opts: CallOpts;
 };
 
@@ -74,6 +78,9 @@ export function createChatProvider(impl: ChatProviderImpl): Provider {
           { role: "user", content: buildPlanUser(req) },
         ],
         jsonMode: true,
+        // SK-QUAL-017 — only the self-consistency sampler sets this; every
+        // production plan() leaves it undefined ⇒ greedy (SK-LLM-024).
+        temperature: req.temperature,
         opts,
       });
       // SK-TRUST-002: the trace block wants the model that emitted the

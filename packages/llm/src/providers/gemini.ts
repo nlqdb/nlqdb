@@ -46,6 +46,7 @@ async function geminiChat(
   model: string,
   messages: ChatMessage[],
   jsonMode: boolean,
+  temperature: number | undefined,
   opts: CallOpts,
 ): Promise<string> {
   const fetchFn = opts.fetch ?? globalThis.fetch;
@@ -68,7 +69,8 @@ async function geminiChat(
     ...(system ? { systemInstruction: { parts: [{ text: system }] } } : {}),
     contents: [{ role: "user", parts: [{ text: userText }] }],
     generationConfig: {
-      temperature: 0,
+      // Greedy (SK-LLM-024) unless the SK-QUAL-017 sampler overrides.
+      temperature: temperature ?? 0,
       ...(jsonMode ? { responseMimeType: "application/json" } : {}),
     },
   };
@@ -113,7 +115,7 @@ export function createGeminiProvider(opts: GeminiProviderOptions): Provider {
   return createChatProvider({
     name: "gemini",
     models: { ...DEFAULT_MODELS, ...opts.models },
-    callChat: ({ model, messages, jsonMode, opts: callOpts }) =>
-      geminiChat(opts.apiKey, base, model, messages, jsonMode, callOpts),
+    callChat: ({ model, messages, jsonMode, temperature, opts: callOpts }) =>
+      geminiChat(opts.apiKey, base, model, messages, jsonMode, temperature, callOpts),
   });
 }

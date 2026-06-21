@@ -5,6 +5,40 @@ One publishable artifact drafted per day by the daily agent
 publishes at the weekly session. Newest first. Delete an entry once published
 (the live URL goes into `docs/scorecard.md`).
 
+## 2026-06-21 (run 40) — engine-lesson: "Self-consistency for text-to-SQL: sample at temperature > 0 without breaking your benchmark" (dev.to / lobste.rs)
+
+**Where:** dev.to + lobste.rs (`databases` / `ai`), same engine-lesson series as
+the few-shot post (run 38) and the vote post (run 35).
+
+**Title:** Self-consistency for text-to-SQL: how to sample at temperature > 0 without breaking your benchmark
+
+**Body:**
+
+> Self-consistency (Wang et al. 2022) is a cheap accuracy lever: instead of the
+> model's one greedy answer, sample N answers at temperature > 0 and let them
+> vote. For text-to-SQL the vote is on the **executed rows**, not the SQL string
+> — many different queries return the same correct answer.
+>
+> The tension nobody mentions: your *production* planner should decode greedily
+> (temperature 0) — single-pass accuracy in the literature is measured under
+> argmax, and a stochastic planner makes your benchmark non-reproducible (the
+> McNemar regression test compares per-question outcomes run-to-run; a flipping
+> leg turns signal into noise). So you can't crank temperature globally.
+>
+> The clean separation: make decoding temperature a **per-request** parameter
+> that **defaults to greedy when unset**. Every production call leaves it unset
+> → temperature 0, byte-identical to before; the *only* caller that sets it > 0
+> is the eval's self-consistency sampler. One optional field through each
+> provider's request body — not a global knob, not a forked planner.
+>
+> One footgun: when a sampled draw fails (chain rate-limited for that one call),
+> record it as a *no-vote* empty sample rather than aborting — N-1 good draws
+> still reach consensus. Vote on what executed; ignore what didn't.
+>
+> The sampling + voting code is pure and unit-tested offline (inject the planner
+> and the SQL executor — no network, no quota); EX delta lands on our next run.
+> Code's open in `packages/llm/` + `tools/eval/`.
+
 ## 2026-06-21 (run 39) — engine-lesson: "Mask the table and column names too, not just the values" (dev.to / lobste.rs)
 
 **Where:** dev.to + lobste.rs (`databases` / `ai`), the direct sequel to run 38's
@@ -665,44 +699,6 @@ lifted verbatim by Perplexity/ChatGPT. Names Letta once, in context, leads with
 a real architectural distinction (runtime + retrieval vs analytical store).
 Sourced from the shipped `/vs/letta` page + `docs/competitors.md §4`. Second of
 the WS-02 trio (LangMem to follow).
-
-## 2026-06-20 (run 20) — comparison-page draft: nlqdb vs Zep (r/AI_Agents / Show HN)
-
-**Title:** Zep gives my agent perfect recall. It still can't answer "average per group" about its own memory.
-
-**Body:**
-
-> If you've wired up [Zep](https://www.getzep.com) you know the pitch: it's the
-> Context Lake — a temporal knowledge graph (Graphiti, 27k+ ⭐) that stores every
-> fact your agent learns as a node with a validity window, resolves entities, and
-> hands back the most relevant facts at query time. For *recall* it's genuinely
-> good, and it publishes benchmarks (LongMemEval, DMR) to prove it.
->
-> But I kept hitting the same wall. Once the agent had logged a few hundred
-> things, I wanted to ask questions *about* the memory, not retrieve from it:
->
-> > "Top 10 topics I logged this month, ranked by count."
-> > "Average deal size per stage for enterprise customers."
->
-> A knowledge graph has no query planner. It returns relevant facts and hopes the
-> LLM does the arithmetic — which is a hallucination generator, not a `GROUP BY`.
->
-> The honest split (I wrote the full side-by-side at nlqdb.com/vs/zep): Zep wins
-> on temporal validity, entity resolution, and vector recall over conversation.
-> nlqdb wins when the agent needs to **aggregate** its memory — it's a real
-> Postgres the agent provisions and queries in English, so `GROUP BY / JOIN /
-> HAVING` actually work. They compose: Zep the recall layer, nlqdb the analytical
-> store. Pick the one that matches the question you actually need answered.
->
-> (Landscape facts verified 2026-06-19; both products' weaknesses are in the
-> comparison, not just ours.)
-
-**Why this is publishable:** "X alternative" / "X vs Y" is the decision-moment
-keyword and the honest-trade-off format converts ~13.8% (vs 2–5% generic) while
-getting lifted verbatim by Perplexity/ChatGPT. Names Zep once, in context, and
-leads with a genuine architectural distinction (retrieval vs analytics) that the
-r/AI_Agents crowd respects. Sourced from the shipped `/vs/zep` page +
-`docs/competitors.md §4`. First of the WS-02 trio (Letta + LangMem to follow).
 
 ## 2026-06-15/19 (runs 8–18) — engine-lesson dev.to / lobste.rs posts (titles only; full drafts in git history)
 

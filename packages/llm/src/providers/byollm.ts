@@ -104,7 +104,7 @@ export function createByollmProvider(opts: ByollmProviderOptions): Provider {
   return createChatProvider({
     name: "byollm",
     models,
-    callChat: async ({ model, messages, jsonMode, opts: callOpts }) => {
+    callChat: async ({ model, messages, jsonMode, temperature, opts: callOpts }) => {
       const cacheKey = await namespacedCacheKey(opts.userId, model, jsonMode, messages);
       return openAICompatibleChat(
         {
@@ -113,7 +113,8 @@ export function createByollmProvider(opts: ByollmProviderOptions): Provider {
           model,
           messages,
           jsonResponse: jsonMode,
-          temperature: 0,
+          // Greedy (SK-LLM-024) unless the SK-QUAL-017 sampler overrides.
+          temperature: temperature ?? 0,
           headers: {
             "cf-aig-cache-key": cacheKey,
             ...(opts.gatewayToken ? { "cf-aig-authorization": `Bearer ${opts.gatewayToken}` } : {}),
