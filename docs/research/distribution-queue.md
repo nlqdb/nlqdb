@@ -5,6 +5,37 @@ One publishable artifact drafted per day by the daily agent
 publishes at the weekly session. Newest first. Delete an entry once published
 (the live URL goes into `docs/scorecard.md`).
 
+## 2026-06-21 (run 41) — engine-lesson: "Mask each example against its own schema, the goal against the live one" (dev.to / lobste.rs)
+
+**Where:** dev.to + lobste.rs (`databases` / `ai`); the close of the few-shot
+masking arc (runs 38–39) — publish as the third part or fold into the combined piece.
+
+**Title:** Cross-schema few-shot retrieval: mask each example against *its own* schema
+
+**Body:**
+
+> The last two posts masked a text-to-SQL question's values and then its
+> table/column names so a few-shot example from one schema could match a question
+> over another. There's a subtlety that bites the moment your example pool is
+> real: a pool spanning many databases (one schema per `db_id`, like BIRD's train
+> split) can't be masked against *one* schema. The example "how many employees at
+> the company named `<val>`" must mask `employees`/`company` against the **HR**
+> schema it was written over; the live question masks `albums`/`artist` against
+> the **music** schema you're answering. Mask both against the same schema and you
+> get garbage — half the identifiers won't be found.
+>
+> So the masking has to be per-row: each pool example carries its own schema, the
+> incoming question uses the live one, and only after each side is masked against
+> *its* schema do you compare the skeletons. That's the difference between a demo
+> that works on a single database and a retriever that mines demonstrations from
+> any database you've seen.
+>
+> The fix is one entry point — `selectExemplarsForSchema(goal, goalSchema, pool, k)`
+> — that does the per-row masking inside, so callers pass raw rows and never
+> hand-mask, sharing one top-k ranking core with the schema-less selector. Pure,
+> deterministic, zero new dependencies; the same code runs in production and the
+> eval harness. Measured delta lands next run. Code's in `packages/llm/few-shot-select.ts`.
+
 ## 2026-06-21 (run 40) — engine-lesson: "Self-consistency for text-to-SQL: sample at temperature > 0 without breaking your benchmark" (dev.to / lobste.rs)
 
 **Where:** dev.to + lobste.rs (`databases` / `ai`), same engine-lesson series as
@@ -79,45 +110,7 @@ value-masking post — publish as a two-part series or a single combined piece.
 > The measured delta lands on our next benchmark run, gated behind an ablation
 > of the static prefix. Code's open in `packages/llm/few-shot-select.ts`.
 
-## 2026-06-21 (run 38) — engine-lesson: "Pick the few-shot example by masking the question, not matching the words" (dev.to / lobste.rs)
-
-**Where:** dev.to + lobste.rs (`databases` / `ai`), same engine-lesson series as
-the self-consistency post (run 35).
-
-**Title:** Retrieve the right few-shot example by masking the question, not matching the words
-
-**Body:**
-
-> Few-shot prompting is the biggest single lever for text-to-SQL on small,
-> free models — but *which* three examples you show matters more than the format.
-> Show the model demonstrations whose **question shape** matches the one it's
-> answering, and accuracy jumps; show three fixed examples and you're leaving
-> the gain on the table (DAIL-SQL, arXiv:2308.15363, measures ~3–5 pp from the
-> retrieval step alone).
->
-> The trap is naive lexical matching. If you rank candidate examples by raw
-> word overlap, "how many albums by the artist named **Queen**" pulls in *every*
-> example that mentions Queen — including "list the tracks on Queen's greatest
-> hits", a totally different query shape — while missing "how many employees at
-> the company named Acme", which is the *exact* structure you want, just over a
-> different schema.
->
-> The fix is **question masking**: before you compare, replace the literal
-> values with a placeholder. "how many albums by the artist named `<val>`" and
-> "how many employees at the company named `<val>`" become the same skeleton,
-> so similarity scores the *intent*, not the domain words — and your example
-> pool works **across schemas**, not just within one.
->
-> You don't even need embeddings to start. We mask values, tokenize, and rank
-> by Jaccard overlap of the masked tokens — pure, deterministic, zero
-> dependencies (we run the identical code in production and in our eval
-> harness, so the benchmark can't drift from what ships). Embeddings are a
-> drop-in upgrade once the pool is large. The whole core is ~90 lines; the
-> code's open in `packages/llm/` of our repo.
->
-> Measured impact lands on our next benchmark run — we ship the retrieval core
-> first, gated behind an ablation of the static examples so we can attribute
-> the delta cleanly.
+## 2026-06-21 (run 38) — engine-lesson: "Pick the few-shot example by masking the question, not matching the words" (dev.to / lobste.rs) — value-masking angle recapped in the run-39 combined piece above (publish as one part-1; full standalone draft in git history).
 
 ## 2026-06-21 (run 37) — engine-lesson: "Voting on the answer needs the answer — executing N SQL samples to consensus" (dev.to / lobste.rs)
 

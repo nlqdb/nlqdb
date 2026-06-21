@@ -42,7 +42,21 @@ export {
 // Schema pruning (SK-LLM-037) + its tokenizer — the latter is reused by the
 // SK-QUAL-015 column-coverage harness so its recall ceiling is faithful to the
 // pruner's own goal/identifier matching.
-export { pruneSchemaForGoal, wordTokens } from "./schema-prune.ts";
+export { pruneSchemaForGoal, schemaTokens, wordTokens } from "./schema-prune.ts";
+
+// Similarity-retrieved few-shot exemplar selection (SK-LLM-041, DAIL §4.1).
+export {
+  type Exemplar,
+  maskedTokens,
+  maskedTokensWithSchema,
+  maskQuestion,
+  maskSchemaIdentifiers,
+  maskWithSchema,
+  questionSimilarity,
+  type SchemaExemplar,
+  selectExemplars,
+  selectExemplarsForSchema,
+} from "./few-shot-select.ts";
 export {
   type CallOpts,
   type EngineClassifyRequest,

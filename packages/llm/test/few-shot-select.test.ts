@@ -7,7 +7,9 @@ import {
   maskSchemaIdentifiers,
   maskWithSchema,
   questionSimilarity,
+  type SchemaExemplar,
   selectExemplars,
+  selectExemplarsForSchema,
 } from "../src/few-shot-select.ts";
 
 const ALBUM_SCHEMA =
@@ -185,5 +187,63 @@ describe("selectExemplars", () => {
     expect(selectExemplars("how many albums", pool, 0)).toEqual([]);
     expect(selectExemplars("how many albums", [], 3)).toEqual([]);
     expect(selectExemplars("a of is", pool, 3)).toEqual([]);
+  });
+});
+
+describe("selectExemplarsForSchema", () => {
+  const sx = <T>(question: string, schema: string, payload: T): SchemaExemplar<T> => ({
+    question,
+    schema,
+    payload,
+  });
+
+  it("ranks a cross-domain twin top from raw rows — each side masked against its own schema", () => {
+    // The full DAIL §4.1 entry point: the caller passes raw (un-masked) rows,
+    // each carrying its own schema. The cross-domain twin (different schema,
+    // identical skeleton) must beat a same-schema row of a different shape —
+    // proving the per-row schema mask happens inside the selector, not by hand.
+    const pool = [
+      sx("List the title of every album by the artist", ALBUM_SCHEMA, "same-schema-different-shape"),
+      sx("How many employees does the company named 'Acme' have?", COMPANY_SCHEMA, "cross-domain-twin"),
+    ];
+    expect(
+      selectExemplarsForSchema(
+        "How many albums does the artist named 'Queen' have?",
+        ALBUM_SCHEMA,
+        pool,
+        1,
+      ).map((e) => e.payload),
+    ).toEqual(["cross-domain-twin"]);
+  });
+
+  it("beats the value-only selector: identifier masking lifts the cross-domain twin's score to 1", () => {
+    // Value-only masking leaves the domain nouns, so the twin under
+    // selectExemplars shares only {how, many, named, val, have}; schema masking
+    // folds the nouns to `col`, so the same row scores a perfect 1 here.
+    const goal = "How many albums does the artist named 'Queen' have?";
+    const twin = sx("How many employees does the company named 'Acme' have?", COMPANY_SCHEMA, "twin");
+    const valueOnly = questionSimilarity(goal, twin.question);
+    const [picked] = selectExemplarsForSchema(goal, ALBUM_SCHEMA, [twin], 1);
+    expect(picked?.payload).toBe("twin");
+    // The schema-masked skeletons are identical → similarity 1, strictly above
+    // the value-only score the schema-less selector would compute.
+    expect(questionSimilarity(maskWithSchema(goal, ALBUM_SCHEMA), maskWithSchema(twin.question, twin.schema))).toBe(1);
+    expect(valueOnly).toBeLessThan(1);
+  });
+
+  it("falls back to a value-only mask when a row's schema names no identifiers", () => {
+    // An empty/identifier-less schema ⇒ maskWithSchema is value-only, so the
+    // row still ranks on its value-masked skeleton rather than being dropped.
+    const pool = [sx("how many albums are there", "", "no-schema")];
+    expect(
+      selectExemplarsForSchema("how many albums", ALBUM_SCHEMA, pool, 1).map((e) => e.payload),
+    ).toEqual(["no-schema"]);
+  });
+
+  it("inherits the shared ranking guards (k<=0, empty pool, token-less goal)", () => {
+    const pool = [sx("how many albums", ALBUM_SCHEMA, "x")];
+    expect(selectExemplarsForSchema("how many albums", ALBUM_SCHEMA, pool, 0)).toEqual([]);
+    expect(selectExemplarsForSchema("how many albums", ALBUM_SCHEMA, [], 3)).toEqual([]);
+    expect(selectExemplarsForSchema("a of is", ALBUM_SCHEMA, pool, 3)).toEqual([]);
   });
 });
