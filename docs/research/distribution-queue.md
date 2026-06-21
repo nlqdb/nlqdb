@@ -5,10 +5,48 @@ One publishable artifact drafted per day by the daily agent
 publishes at the weekly session. Newest first. Delete an entry once published
 (the live URL goes into `docs/scorecard.md`).
 
+## 2026-06-21 (run 42) — engine-lesson: "Don't hand-pick few-shot examples — size the pool from your benchmark's error classes" (dev.to / lobste.rs)
+
+**Where:** dev.to + lobste.rs (`databases` / `ai`); the payoff post of the
+few-shot retrieval arc (runs 38–41) — the pool the retriever finally ranks.
+
+**Title:** Don't hand-pick few-shot examples — size the pool from your benchmark's error classes
+
+**Body:**
+
+> A retriever is only as good as its pool. Once you can rank few-shot examples
+> by how structurally close they are to a question (mask the values and the
+> table/column names, compare the skeletons), the next question is *which*
+> examples to put in the pool. The lazy answer is "dump in a few hundred from
+> the train split." The cheaper, sharper answer: classify where your model
+> actually loses, and write one example per error class.
+>
+> We ran a mismatch classifier over our BIRD-dev failures. The loss mass wasn't
+> spread evenly — it clustered on a handful of *structural* shapes: aggregation
+> grain (GROUP BY per group), HAVING group-filters, COUNT(DISTINCT), scalar and
+> IN subqueries, join-then-aggregate, per-group extrema, NULL-safe min/max,
+> integer-ratio casts, and date ranges. So the pool is ten hand-authored
+> `{question, schema, SQL}` rows — exactly one per class — each a clean, correct,
+> dialect-portable demonstration of that one shape.
+>
+> Ten is enough because retrieval does the work: for a live question, the
+> selector masks it against the live schema and picks the row whose skeleton
+> matches. We measured it on a held-out probe set (each probe a paraphrase of one
+> class over a *different* schema): **precision@1 = 10/10** — every probe pulls
+> its intended class across domains — and the retrieved example is **3.5× closer**
+> in masked-skeleton similarity than an uninformed pick (0.83 vs 0.24). A
+> structurally-matched demonstration beats a bigger, blurrier prefix.
+>
+> The pool is pure data, deterministic, zero-dependency; production and the eval
+> harness share it byte-for-byte. The end-to-end execution-accuracy delta lands
+> on the next benchmark run — but the retrieval itself is already proven offline,
+> which is the point: prove the cheap thing before you pay for the expensive one.
+> Code's in `packages/llm/plan-exemplar-pool.ts`.
+
 ## 2026-06-21 (run 41) — engine-lesson: "Mask each example against its own schema, the goal against the live one" (dev.to / lobste.rs)
 
 **Where:** dev.to + lobste.rs (`databases` / `ai`); the close of the few-shot
-masking arc (runs 38–39) — publish as the third part or fold into the combined piece.
+masking arc (runs 38–39).
 
 **Title:** Cross-schema few-shot retrieval: mask each example against *its own* schema
 

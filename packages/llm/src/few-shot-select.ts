@@ -21,12 +21,12 @@
 // masks the goal against the live schema and each pool row against its own,
 // closing the gap where `maskWithSchema` had no selector that consumed it. Pure
 // + zero-dep so production `buildPlanUser` and the eval harness can share it
-// byte-for-byte, exactly like schema-prune.ts. Two halves are still staged
-// behind it (not built here):
-//   (a) the exemplar *pool rows* themselves — the curated BIRD-dev train-split
-//       {question, schema, SQL} records `selectExemplarsForSchema` ranks — and,
-//       for the hot `plan` path, an embedding index; masked-token Jaccard is
-//       the offline, key-free stand-in DAIL's embedding cosine approximates.
+// byte-for-byte, exactly like schema-prune.ts. The exemplar *pool rows* now ship
+// in `plan-exemplar-pool.ts` (10 curated {question, schema, SQL} rows, proven
+// offline). Two halves are still staged (not built here):
+//   (a) for the hot `plan` path, an embedding index over a larger pool;
+//       masked-token Jaccard is the offline, key-free stand-in DAIL's embedding
+//       cosine approximates.
 //   (b) wiring into `buildPlanUser` behind a per-lever ablation of the static
 //       T9 prefix (CLAUDE.md §P5 — don't swap a shipped lever before the
 //       cheaper one is attributed).

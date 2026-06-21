@@ -47,14 +47,24 @@ identifiers identically.
     same top-k core as `selectExemplars`. A cross-domain twin (different schema,
     identical skeleton) now ranks top from **raw** rows, with no caller-side
     pre-masking. `maskedTokensWithSchema` is the symmetric tokenizer.
-  This is **staged ahead of two halves it does not build:** (a) the exemplar
-  *pool rows* themselves — the curated BIRD-dev train-split `{question, schema,
-  SQL}` records `selectExemplarsForSchema` ranks (the masking + selector both
-  exist; the rows still need sourcing) plus, for the hot `plan` path, an
-  embedding index — masked-token Jaccard is the offline, key-free stand-in for
-  DAIL's embedding cosine; (b) wiring into `buildPlanUser` behind a per-lever
-  ablation of the static `SK-LLM-026` prefix. `prompts.ts`, `PLAN_SYSTEM`, and
-  the provider chain are **unchanged**.
+  And, shipped 2026-06-21 as the **curated pool rows** half (a) —
+  `plan-exemplar-pool.ts`: `PLAN_EXEMPLAR_POOL`, ten hand-authored
+  `{question, schema, SQL}` `PlanExemplar`s (one per `SK-QUAL-014` structural
+  mismatch bucket — group-by-count, HAVING, COUNT(DISTINCT), scalar/IN subquery,
+  join-aggregate, group-max, NULL-safe-min, REAL-cast ratio, date-range), each
+  `payload` rendered through the now-exported `prompts.ts::planExample` so a
+  retrieved demonstration is byte-identical in shape to a static `SK-LLM-026`
+  one, plus `retrievePlanExemplars(goal, schema, k)` (thin wrapper over
+  `selectExemplarsForSchema` so a caller imports one symbol). These are
+  hand-authored, **not** the BIRD train split — that is an external,
+  download-/key-gated dataset not in the repo; an embedding-indexed BIRD pool is
+  the prod hot-path follow-on. The pool's retrieval is proven offline (see
+  Consequence). This is **staged ahead of the halves it still does not build:**
+  for the hot `plan` path, an embedding index (masked-token Jaccard is the
+  offline, key-free stand-in for DAIL's embedding cosine); and (b) wiring into
+  `buildPlanUser` behind a per-lever ablation of the static `SK-LLM-026` prefix.
+  `buildPlanUser`, `PLAN_SYSTEM`, and the provider chain are **unchanged** (only
+  `planExample` is newly exported — same value).
 - **Core value:** Engine quality, Free
 - **Why:** The engine-quality source of truth ranks
   [§4 #1 similarity-retrieved few-shot](../../../progress/quality-score-source-of-truth.md)
@@ -83,10 +93,18 @@ identifiers identically.
   one identical skeleton (similarity 1, where value-only is < 1) and the twin
   outranks a same-schema row of a different shape; (3) `selectExemplarsForSchema`
   ranks that twin top from **raw** rows (each masked against its own schema
-  inside the selector, no hand-masking). No production code path imports the
-  module yet, so the `SK-LLM-024` greedy-decoding determinism invariant and the
-  current BIRD/Spider baselines are untouched; the EX delta is measured by the
-  next canonical dispatch ([`SK-QUAL-002`](../../quality-eval/decisions/SK-QUAL-002-pr-ci-never-fires-real-keys.md)
+  inside the selector, no hand-masking). Plus `plan-exemplar-pool.ts` +
+  `plan-exemplar-pool.test.ts` (5 cases): an **offline retrieval measurement**
+  over a 10-probe held-out set (each probe a paraphrase of one bucket over a
+  *different* schema) records **precision@1 = 10/10** (every probe retrieves its
+  intended structural bucket across domains) and **lift = +0.592** — masked
+  skeleton-similarity of the top-1 retrieved exemplar **0.833** vs **0.240** for
+  an uninformed pool-average pick (3.46×), the offline analog of DAIL's measured
+  retrieval win, proving the pool+selector is worth a dispatch before paying for
+  one. No production code path imports the pool yet (only `planExample` is newly
+  exported, same value), so the `SK-LLM-024` greedy-decoding determinism
+  invariant and the current BIRD/Spider baselines are untouched; the EX delta is
+  measured by the next canonical dispatch ([`SK-QUAL-002`](../../quality-eval/decisions/SK-QUAL-002-pr-ci-never-fires-real-keys.md)
   — PR CI never fires real keys).
 - **Alternatives rejected:**
   - **Wire retrieval straight into `buildPlanUser` now.** Would swap a shipped

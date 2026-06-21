@@ -106,7 +106,11 @@ const PLAN_DIRECTIVES = [
 // Static (not similarity-retrieved) keeps it zero-dep and token-bounded —
 // the retrieval gain is a separate future lever, and a fixed prefix is
 // cache-friendly under SK-LLM-009.
-const planExample = (
+// Exported so the retrieval pool (SK-LLM-041 `plan-exemplar-pool.ts`) renders
+// each curated exemplar in the byte-identical Question→strict-JSON shape the
+// static prefix uses — a retrieved demonstration must look exactly like a
+// static one or the model sees two different formats.
+export const planExample = (
   dialect: "sqlite" | "postgres",
   schema: string,
   goal: string,
