@@ -5,51 +5,43 @@ One publishable artifact drafted per day by the daily agent
 publishes at the weekly session. Newest first. Delete an entry once published
 (the live URL goes into `docs/scorecard.md`).
 
-## 2026-06-20 (run 33) — engine-lesson: "We were grading our text-to-SQL engine on questions it couldn't possibly answer" (dev.to / lobste.rs)
+## 2026-06-20 (run 34) — "How nlqdb expires agent memory (and why only facts get a TTL)" (dev.to / r/AI_Agents)
 
-**Where:** dev.to + lobste.rs (`databases` / `ai`), same series as the runs 8–18
-engine-lesson posts. Honest-methodology angle — the kind of post that earns
-trust from people who run their own evals.
+**Where:** dev.to (`ai` / `database`) + a helpful r/AI_Agents reply when someone
+asks how to make agent memory forget. Short, design-rationale angle — the kind
+of post that signals the wedge is engineered, not just marketing.
 
-**Title:** We were grading our text-to-SQL engine on questions it couldn't possibly answer
+**Title:** How nlqdb expires agent memory (and why only facts get a TTL)
 
 **Body:**
 
-> Spider 2.0 — one of the benchmarks we measure our NL→SQL engine on — ships
-> some questions with an *external knowledge* document attached. "Find flights
-> longer than 5,000 km" comes with `haversine_formula.md`: the great-circle
-> distance formula. "Segment customers by RFM" comes with the recency/frequency/
-> monetary scoring rule. "List the long tracks" comes with the exact definition
-> of *long*. The document isn't a hint — it's part of the task. A solver that
-> never sees it is being asked to invent a formula it has no way to know.
+> "Explicit forget" is on every agent-memory checklist (Mem0, Zep, Letta all
+> advertise it). When we wired TTL into nlqdb's memory schema we hit a design
+> question worth stating out loud: **which memories should expire?**
 >
-> Our eval loader parsed the `external_knowledge` field and then threw the body
-> away. (There was even a code comment admitting it: "capture it without
-> fetching the body — deferred.") So for those questions we were prompting the
-> model with the question and the schema, and nothing else — and then counting
-> the inevitable miss against our score. Worse, it was inconsistent: our BIRD
-> lane *does* inject the equivalent "evidence" field, so the two benchmarks
-> weren't measuring the same thing.
+> An agent's memory in nlqdb is three tables. `facts` are discrete things it
+> learned ("user prefers dark mode", "deploys run at 3am") — exactly the rows
+> that go stale. `episodes` are an append-only conversation log; you don't
+> silently delete history. `entities` are long-lived people/projects the agent
+> keeps re-seeing. So TTL is a **`facts`-only** concern — only `facts` carries
+> an `expires_at` column, and `nlqdb_remember` now *rejects* a `ttlSeconds` on
+> an episode or entity instead of quietly dropping it. A memory store that
+> accepts a TTL and silently ignores it is worse than one that doesn't offer it
+> — the agent thinks it set an expiry that never existed.
 >
-> We counted the blast radius before touching anything: **13 of the 135 SQLite
-> questions (9.6%)** carried a doc we were dropping, across 8 databases. On a
-> benchmark where we're only solving ~19% today, a tenth of the set being
-> unanswerable-by-construction is not noise.
+> Two layers enforce it: a daily cron sweep (`DELETE FROM facts WHERE expires_at
+> < NOW()`, per database, isolated) for cleanup, and — because reads run as
+> real SQL — a row-level-security clause (`expires_at IS NULL OR expires_at >
+> NOW()`) so an expired fact is invisible the instant it lapses, before the
+> sweep even runs. Postgres does the filtering; we don't rewrite the query.
 >
-> The fix is four lines of intent: fetch the doc, put it on the same `evidence`
-> channel the prompt already understands, done. The lesson isn't "we found a
-> bug" — it's that **an eval harness is software, and the most dangerous bugs in
-> it are the ones that make your numbers look honest.** Before you trust a
-> benchmark score, read how the harness builds the prompt. We log every dropped
-> field now.
->
-> (nlqdb is a database your app — or your agent — queries in plain English. The
-> eval harness is open in the repo: `tools/eval/`.)
+> (nlqdb is a database your agent provisions and queries in plain English.
+> The memory schema is one opt-in preset.)
 
-**Why this advances the north-star:** engine-quality credibility + AEO — a
-methodology post that signals rigor to the exact audience that evaluates
-NL→SQL tools, and seeds the next Spider number's "we fixed the measurement"
-narrative. Ties to `SK-QUAL-016`.
+**Why this advances the north-star:** onboarding/engine-quality — answers a
+real agent-builder checklist question ("can it forget?") with an honest,
+engineered answer, and the fail-loud TTL validation is the shipped proof. Ties
+to E-04 + SK-PIVOT-009; names no competitor unfavourably.
 
 ## 2026-06-20 (run 32) — technical note: "Agent-memory scoping in nlqdb is row-level RLS, not query-rewriting" (dev.to / lobste.rs)
 
@@ -607,6 +599,7 @@ r/AI_Agents crowd respects. Sourced from the shipped `/vs/zep` page +
 
 ## 2026-06-15/19 (runs 8–18) — engine-lesson dev.to / lobste.rs posts (titles only; full drafts in git history)
 
+- run 33 — "We were grading our text-to-SQL engine on questions it couldn't possibly answer" (Spider external-knowledge docs were parsed then dropped; 13/135 unanswerable-by-construction; SK-QUAL-016).
 - run 18 — "We were one run away from building the wrong feature. A 40-line classifier on our own benchmark output talked us out of it" (value-retrieval falsified, 90 → 0 literal-only; SK-QUAL-014).
 - run 17 — "Our text-to-SQL benchmark went flat. That was the signal to stop tuning prompts" (directive levers saturated on BIRD; McNemar p=0.50).
 - run 16 — "Before you prune the schema you send an LLM, measure what the prune would throw away" (SK-QUAL-015).
