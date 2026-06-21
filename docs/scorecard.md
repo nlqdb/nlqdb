@@ -43,7 +43,7 @@ few-shot), not retrieval. Value-retrieval is demoted + privacy-gated.
 | 5 | Anon DBs with a recorded first answer | **101 of 101** | instrument fix (runs 1–3) holding; +8 since 06-13. Genuine-stranger subset still ~0 (rows #2/#3) — the real worst-number |
 | | **Engine — BIRD 2026-06-19 · Spider 2026-06-17 (both fresh, < 7d)** | | `apps/api/src/gate/eval-baseline.ts` |
 | 6 | BIRD raw EX | 0.520 | target 0.65; was 0.522 (06-12). Canonical re-run on current main (T20–T22): 260/500, `no_sql` 3 → 1. **Flat within variance** — McNemar b=38/c=37, p=0.50, no regression. Directive levers saturated; literal/value (§4 #2a) + date-encoding (§4 #2c) levers both falsified standalone offline (run 31) ⇒ reasoning levers (§4 #3/#1) next |
-| 7 | Spider raw EX | 0.1852 | target 0.75; was 0.1704 (06-12). Gemini key restored 06-17 → `no_sql` 36 → 9 (`SK-LLM-039`). **Run 33: external-knowledge injection shipped (`SK-QUAL-016`)** — 13/135 (9.6%) carried a dropped doc (haversine/RFM/…); next dispatch measures the EX delta. Residual bottleneck SQL reasoning |
+| 7 | Spider raw EX | 0.1852 | target 0.75; was 0.1704 (06-12). Gemini key restored 06-17 → `no_sql` 36 → 9 (`SK-LLM-039`). Run 33: external-knowledge injection (`SK-QUAL-016`, 13/135 dropped docs). **Run 34: self-consistency vote core shipped (`SK-QUAL-017`)** — the §4 #3 reasoning lever for the residual SQL-reasoning bottleneck; sampling+dispatch is the follow-on, EX delta next dispatch |
 | 8 | persona-bench | — | not yet built |
 | 9 | free-vs-frontier delta | null | agentic lane not yet run (`SK-QUAL-004`, target ≤ 25 pp) |
 | | **Ops — 7d, CF Workers analytics** | | wall-time, all routes (not `/ask`-only) |
@@ -76,6 +76,21 @@ few-shot), not retrieval. Value-retrieval is demoted + privacy-gated.
 
 ## Deltas (recent runs)
 
+- 2026-06-20 (run 35) — **Engine: self-consistency vote core shipped
+  (`SK-QUAL-017`) — the §4 #3 reasoning lever, top free-chain lever after the
+  directives saturated.** Worst number is engine (Spider 0.1852); BIRD 06-19 +
+  Spider 06-17 both < 7 d so §5 forbids a dispatch and #438 owns the messaging
+  lane, leaving the named reasoning lever's deterministic core as the
+  non-colliding engine slice. Pure `majorityVote` + `fingerprintRows`
+  (`tools/eval/`) cluster N executed plans by their **result set** (the answer,
+  not the SQL string), returning the modal cluster's SQL + agreement; ties →
+  earliest cluster (stable run-to-run). Staged ahead of the sampling/dispatch
+  half (default-greedy `SK-LLM-024` baseline untouched; runner
+  `--self-consistency N`), the SK-QUAL-014/015 prove-the-primitive pattern.
+  **Δ:** §4 #3 backlog → vote-core shipped+proven (12 unit cases); EX delta next
+  canonical dispatch. KPI: **engine quality**; none degraded — no prod
+  chain/scorer/runner change, baselines untouched, perf N/A; 232 eval tests
+  green (was 220). Artifact: "Why we vote on the answer, not the SQL" queued.
 - 2026-06-20 (run 34) — **Engine (memory write-path): fail-loud TTL gap +
   phantom-column footgun in the E-04 lever, both fixed.** Worst number is engine
   (Spider 0.1852) but BIRD 06-19 + Spider 06-17 are < 7 d (§5: no back-to-back

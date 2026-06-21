@@ -137,12 +137,13 @@ agent-runnable; promote into an `SK-*`/`GLOBAL-*` before implementing
      `date_literal_only` = **2** total, **0 standalone** — every date diff
      also carries a structural error (`LIKE '…%'` vs `= '…'` needs an operator
      change) ⇒ #2c parked, same verdict as #2a. Rationale: `SK-QUAL-014` body.
-3. **Self-consistency majority vote (N=3, free tokens) — now the top
-   reasoning lever.** Sample 3 plans at temperature > 0 on a separate code
-   path, execute, majority-vote the result set. Directly attacks the dominant
-   *structural-reasoning* mass (grain/shape) the §2 literal axis isolated.
-   Worth a measured ablation (`SK-QUAL-004`) — on the free chain the marginal
-   cost is quota, not money, so it trades against §5 capacity.
+3. **Self-consistency majority vote (N=3, free tokens) — the top reasoning
+   lever; vote core SHIPPED 2026-06-20 (`SK-QUAL-017`).** Sample N
+   plans at temperature > 0 on a separate code path, execute, majority-vote
+   the **result set** (the answer, not the SQL string). Directly attacks the
+   dominant *structural-reasoning* mass (grain/shape) the §2 literal axis
+   isolated. Pure vote shipped + proven offline; the sampling + dispatch half
+   is the follow-on; EX delta next dispatch. Free-chain cost is quota.
 4. **A second card-free tail backstop beyond Mistral (T11).** `NVIDIA_API_KEY`
    is a finite ~5,000-credit pool — a `GLOBAL-013` failure; re-rank only if
    post-T18 runs still show chain-exhaustion `no_sql`.
@@ -192,6 +193,7 @@ view of the same levers.
 > click). The flat 06-19 BIRD re-run **confirms the directive levers have
 > saturated**, and the `SK-QUAL-014` literal + date axes (`literal_only` /
 > `date_literal_only` standalone both 0, §2) **falsify value-retrieval as the
-> top lever**. **Next:** §4 **#3 self-consistency** + **#1 similarity-retrieved
-> few-shot**; value-retrieval (#2a) demoted + privacy-gated. Per-lever
-> ablations (T9, T19) still pending.
+> top lever**. **Next:** §4 **#3 self-consistency** (vote core shipped
+> 2026-06-20, `SK-QUAL-017`; sampling + dispatch follow-on) + **#1
+> similarity-retrieved few-shot**; value-retrieval (#2a) demoted +
+> privacy-gated. Per-lever ablations (T9, T19) still pending.
