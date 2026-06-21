@@ -28,7 +28,7 @@ when-to-load:
   - `src/lanes.ts` — `free` / `frontier` (`SK-QUAL-004`) / `agentic-frontier` (`RUN_AGENTIC_FRONTIER=1`) lane builders (`SK-QUAL-009`)
   - `src/baseline.ts` + `src/significance.ts` — baseline diff + McNemar exact-binomial / Edwards' χ² (`SK-QUAL-006`)
   - `src/emit.ts` — POST report to `/v1/events/eval`
-  - `src/analyze-mismatches.ts` — mismatch error-class classifier (`SK-QUAL-014`); `src/column-coverage.ts` — column-prune recall-ceiling harness (`SK-QUAL-015`)
+  - `src/analyze-mismatches.ts` — mismatch error-class classifier (`SK-QUAL-014`); `src/column-coverage.ts` — column-prune recall-ceiling harness (`SK-QUAL-015`); `src/self-consistency.ts` — `majorityVote` + `score.ts::fingerprintRows` (`SK-QUAL-017`)
   - `src/datasets/{bird-mini,spider2-lite}.ts` — HF BIRD loader; Spider 2.0-lite loader + gold-CSV hydration + external-knowledge injection from `xlang-ai/Spider2@main` (`SK-QUAL-007`/`008`/`016`)
   - `src/output.ts` + `src/checkpoint.ts` — JSON report writer; resumable checkpoint (`SK-QUAL-011`)
   - `baseline-2026-06-15.json` — pinned canonical baseline (`SK-QUAL-005`)
