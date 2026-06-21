@@ -73,7 +73,10 @@ literal/date axes falsified value-retrieval standalone.
   → a `runOneQuestion` branch (gated on `samples >= 2`, a *separate path* from
   `withExecRetry`) that calls `samplePlans` → `voteOverSamples`
   (executor = `executeRows`) → scores the modal cluster's SQL exactly as the
-  greedy path scores its single plan. It folds into the existing machinery: an
+  greedy path scores its single plan — the vote clusters under the *same*
+  order-sensitivity the scorer applies to the winner (`hasOrderBy(gold)` for
+  BIRD, `!ignore_order` for Spider) so an unordered cluster never elects a
+  mis-ordered member the strict scorer then rejects. It folds into the existing machinery: an
   all-empty vote records `no_sql` (the greedy empty-plan outcome), a chain that
   is capacity-exhausted (SK-LLM-030) on **every** draw raises the same
   `BudgetStopError` → checkpoint + resume (SK-QUAL-013), each row carries

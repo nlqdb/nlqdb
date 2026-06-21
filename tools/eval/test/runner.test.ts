@@ -758,6 +758,56 @@ describe("runEval — self-consistency dispatch (SK-QUAL-017)", () => {
     // Budget stop before any row scored — the checkpoint resumes next dispatch.
     expect(report.results).toHaveLength(0);
   });
+
+  it("clusters the vote ordered when the gold has ORDER BY, so a mis-ordered draw can't win", async () => {
+    // Gold is sequence-strict (ORDER BY name DESC → milo, whisk). Two draws
+    // return the correct order; one returns the same rows reversed (same
+    // multiset, wrong sequence). An *unordered* vote would cluster all three
+    // and elect the earliest member (the reversed one) → mismatch; an ordered
+    // vote keeps the reversed draw out of the winning cluster → match.
+    const orderQuestions = [
+      {
+        question_id: 0,
+        db_id: "pets",
+        question: "Cat names, newest first",
+        evidence: "",
+        SQL: "SELECT name FROM pet WHERE species='cat' ORDER BY name DESC",
+      },
+    ];
+    writeFileSync(questionsPath, JSON.stringify(orderQuestions));
+    const draws = [
+      "SELECT name FROM pet WHERE species='cat' ORDER BY name ASC", // reversed → wrong sequence, drawn first
+      "SELECT name FROM pet WHERE species='cat' ORDER BY name DESC",
+      "SELECT name FROM pet WHERE species='cat' ORDER BY name DESC",
+    ];
+    let i = 0;
+    const report = await runEval({
+      dataDir: dir,
+      questionsJsonPath: questionsPath,
+      outDir,
+      selfConsistency: { samples: 3, temperature: 0.7 },
+      buildLanes: () => [
+        {
+          lane: "free",
+          modelHint: "free-fake",
+          maxAttempts: 1,
+          router: {
+            ...fakeRouter("SELECT 1"),
+            // biome-ignore lint/style/noNonNullAssertion: i is bounded by the 3-element draws array
+            plan: async (): Promise<PlanResponse> => ({
+              sql: draws[i++]!,
+              model: `m${i}`,
+              confidence: 1,
+            }),
+          },
+        },
+      ],
+      writeReport: async () => "stub.json",
+    });
+    const free = report.lanes.find((l) => l.lane === "free");
+    expect(free?.match).toBe(1);
+    expect(free?.execution_accuracy).toBe(1);
+  });
 });
 
 describe("summariseLane — latency stats exclude gold_error (SK-QUAL-007)", () => {

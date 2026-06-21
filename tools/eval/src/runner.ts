@@ -21,7 +21,7 @@ import { emitEvalReport } from "./emit.ts";
 import { type AttemptScore, withExecRetry } from "./exec-retry.ts";
 import { buildLanes, type Lane } from "./lanes.ts";
 import { DEFAULT_RESULTS_DIR, writeReport } from "./output.ts";
-import { executeRows, scoreOne, scoreOneSpider2 } from "./score.ts";
+import { executeRows, hasOrderBy, scoreOne, scoreOneSpider2 } from "./score.ts";
 import { samplePlans, voteOverSamples } from "./self-consistency.ts";
 import type {
   DispatchLane,
@@ -418,7 +418,13 @@ async function runOneQuestion(
       selfConsistency,
     );
     if (capacityFails === selfConsistency.samples) throw new BudgetStopError();
-    const vote = await voteOverSamples(samples, (sql) => executeRows(dbPath, sql, sqlTimeoutMs));
+    // Cluster the vote under the same order-sensitivity the scorer applies to
+    // the winner — otherwise an unordered cluster can elect a mis-ordered
+    // member that then fails the strict scorer, understating the EX gain.
+    const ordered = question.spider2 ? !question.spider2.ignore_order : hasOrderBy(question.sql);
+    const vote = await voteOverSamples(samples, (sql) => executeRows(dbPath, sql, sqlTimeoutMs), {
+      ordered,
+    });
     const latency_ms = Date.now() - start;
     if (vote.sql.trim().length === 0) {
       // No sample produced executable SQL — the same no_sql outcome the greedy
