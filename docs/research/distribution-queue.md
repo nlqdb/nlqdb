@@ -5,6 +5,48 @@ One publishable artifact drafted per day by the daily agent
 publishes at the weekly session. Newest first. Delete an entry once published
 (the live URL goes into `docs/scorecard.md`).
 
+## 2026-06-21 (run 37) — engine-lesson: "Voting on the answer needs the answer — executing N SQL samples to consensus" (dev.to / lobste.rs)
+
+**Where:** dev.to + lobste.rs (`databases` / `ai`), the engine-lesson series'
+follow-up to the run-35 self-consistency post.
+
+**Title:** Self-consistency for text-to-SQL, part 2: you have to run the queries
+
+**Body:**
+
+> Last time we argued you should vote on the **result set**, not the SQL string
+> — `SELECT a, b` and `SELECT b, a ORDER BY 1` can mean the same thing, so a
+> string vote scatters equivalent answers into singleton buckets that never
+> reach consensus. The catch we glossed over: to cluster by the result set, you
+> need the result set. That means *executing* every sampled query, not just
+> generating it.
+>
+> So the connective tissue between "sample N plans" and "pick the modal answer"
+> is an execute-to-rows step. Two design choices made it clean:
+>
+> 1. **Execute exactly how you'd score.** The function that runs a sampled
+>    query shares the same SQLite path — same read-only open, same busy-timeout,
+>    same SQL normalization — as the scorer that later grades the winner. A
+>    candidate that votes one way can't then score another way on a quirk of how
+>    it was run. A query that errors or returns nothing casts no vote (rather
+>    than crashing the round or silently counting as a wrong empty answer).
+>
+> 2. **Inject the executor.** The orchestration — "run each sample, fingerprint
+>    its rows, vote" — takes the execute function as an argument. In production
+>    that's the real DB; in tests it's a stub mapping SQL→rows. So the entire
+>    consensus path is unit-tested offline, deterministically, without a model
+>    or a database — and proven once more end-to-end against a real fixture
+>    (two equality/`IN`-phrased queries out-voting a wrong third).
+>
+> The expensive half — actually sampling N plans at temperature>0 — rides a
+> separate code path so the greedy, reproducible baseline never moves. The
+> measured accuracy delta comes from the next full benchmark run; this slice is
+> the plumbing that makes that measurement honest.
+
+**Why this advances the north-star:** engine-quality credibility + AEO —
+"how to actually wire self-consistency for text-to-SQL" is a search-shaped gap.
+Ties to `SK-QUAL-017`.
+
 ## 2026-06-20 (run 36) — helpful-answer: "run a GROUP BY over your agent's memory in 30s, no signup" (r/AI_Agents / r/LocalLLaMA)
 
 **Where:** a real reply on a "how do I get my agent to *report* over its memory,

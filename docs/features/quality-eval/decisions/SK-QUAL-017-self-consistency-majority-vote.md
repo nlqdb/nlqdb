@@ -44,20 +44,29 @@ literal/date axes falsified value-retrieval standalone.
     and [`SK-QUAL-015`](./SK-QUAL-015-column-coverage-harness.md); the
     expensive half (sampling + dispatch) builds on a proven base.
 
-- **Consequence in code:** `tools/eval/src/self-consistency.ts` (primitive +
-  `bun self-consistency <candidates.json>` CLI, mirroring the
-  `analyze-mismatches` / `column-coverage` harness CLIs),
-  `tools/eval/src/score.ts` (`fingerprintRows` export, reused by the vote),
-  `tools/eval/test/self-consistency.test.ts` (12 unit cases). **Follow-on (named,
-  not built this run):** the sampling half — an optional `temperature?` on
-  `PlanRequest` plumbed through the providers (default unset ⇒ greedy, so the
+- **Consequence in code:** `tools/eval/src/self-consistency.ts` —
+  `majorityVote` primitive + the `voteOverSamples(samples, execute, { ordered })`
+  **execution-half orchestration** (executes each sampled plan via an *injected*
+  executor, then votes — pure, so it unit-tests offline) + the
+  `bun self-consistency <candidates.json>` CLI; `tools/eval/src/score.ts` —
+  `fingerprintRows` (reused by the vote) + `executeRows(dbPath, sql, timeoutMs)`
+  (predicted SQL → positional-tuple rows, `null` on empty/exec-error — the
+  no-vote signal `majorityVote` consumes; shares `scoreOne`'s SQLite
+  loader / busy-timeout / `normalizeSql` path so a sampled candidate executes
+  byte-identically to how the winner is scored); `tools/eval/test/self-consistency.test.ts`
+  (19 unit cases incl. an `executeRows` + `voteOverSamples` end-to-end against
+  a real SQLite fixture). The orchestration is the "separate code path" the
+  source-of-truth §5 guardrail reserves for §4 #3 — it never touches the
+  greedy `scoreOne`/`withExecRetry` path. **Follow-on (named, not built this
+  run):** the *sampling* half — an optional `temperature?` on `PlanRequest`
+  plumbed through the providers (default unset ⇒ greedy, so the
   [`SK-LLM-024`](../../llm-router/decisions/SK-LLM-024-greedy-decoding-parity.md)
-  baseline stays byte-identical; this is the "separate code path" the
-  source-of-truth §5 guardrail already reserves for §4 #3) + a runner
-  `--self-consistency N` path that samples N plans, executes each, votes, and
-  scores the winner. The EX delta is measured by the **next canonical
-  dispatch** ([`SK-QUAL-002`](./SK-QUAL-002-weekly-cron.md) forbids a
-  back-to-back dispatch while the BIRD/Spider baselines are < 7 days old).
+  baseline stays byte-identical) + a runner `--self-consistency N` path that
+  samples N plans at temperature > 0, feeds them to `voteOverSamples`
+  (executor = `executeRows`), and scores the winner. The EX delta is measured
+  by the **next canonical dispatch**
+  ([`SK-QUAL-002`](./SK-QUAL-002-weekly-cron.md) forbids a back-to-back
+  dispatch while the BIRD/Spider baselines are < 7 days old).
 
 - **Alternatives rejected:**
   - **Vote on the SQL string (exact or normalised).** Equivalent queries

@@ -28,7 +28,7 @@ when-to-load:
   - `src/lanes.ts` — `free` / `frontier` (`SK-QUAL-004`) / `agentic-frontier` (`RUN_AGENTIC_FRONTIER=1`) lane builders (`SK-QUAL-009`)
   - `src/baseline.ts` + `src/significance.ts` — baseline diff + McNemar exact-binomial / Edwards' χ² (`SK-QUAL-006`)
   - `src/emit.ts` — POST report to `/v1/events/eval`
-  - `src/analyze-mismatches.ts` — mismatch error-class classifier (`SK-QUAL-014`); `src/column-coverage.ts` — column-prune recall-ceiling harness (`SK-QUAL-015`); `src/self-consistency.ts` — `majorityVote` + `score.ts::fingerprintRows` (`SK-QUAL-017`)
+  - `src/analyze-mismatches.ts` — mismatch error-class classifier (`SK-QUAL-014`); `src/column-coverage.ts` — column-prune recall-ceiling harness (`SK-QUAL-015`); `src/self-consistency.ts` — `majorityVote` + `voteOverSamples` orchestration + `score.ts::{fingerprintRows,executeRows}` (`SK-QUAL-017`)
   - `src/datasets/{bird-mini,spider2-lite}.ts` — HF BIRD loader; Spider 2.0-lite loader + gold-CSV hydration + external-knowledge injection from `xlang-ai/Spider2@main` (`SK-QUAL-007`/`008`/`016`)
   - `src/output.ts` + `src/checkpoint.ts` — JSON report writer; resumable checkpoint (`SK-QUAL-011`)
   - `baseline-2026-06-15.json` — pinned canonical baseline (`SK-QUAL-005`)
@@ -216,8 +216,13 @@ Cache-authoritative, fail-soft, traversal-gated. EX delta next Spider dispatch.
 Pure `majorityVote(candidates, { ordered })` + reusable `fingerprintRows`
 (score.ts) cluster N executed plans by their **result set** (the answer, not
 the SQL string), returning the modal cluster's SQL + agreement — the
-deterministic core of the §4 #3 reasoning lever. Offline, 12 unit cases;
-sampling/dispatch half is the follow-on (greedy `SK-LLM-024` untouched).
+deterministic core of the §4 #3 reasoning lever. The **execution half** is now
+shipped: `score.ts::executeRows` (predicted SQL → rows, the vote's input) +
+`voteOverSamples(samples, execute, …)` (executes each sample via an injected
+executor, then votes — pure, offline-tested on a real SQLite fixture), the
+"separate code path" §5 reserves. Offline, 19 unit cases; the *sampling* half
+(`PlanRequest.temperature` + runner `--self-consistency N`) is the follow-on
+(greedy `SK-LLM-024` untouched). EX delta next dispatch.
 
 ## GLOBALs governing this feature
 

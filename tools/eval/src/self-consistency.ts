@@ -94,6 +94,42 @@ export function majorityVote(
   };
 }
 
+// A single sampled plan, before execution. The sampling loop produces N of
+// these at temperature > 0 on a separate code path (the T8 greedy invariant,
+// source-of-truth §5); `voteOverSamples` turns them into a vote.
+export type SampledPlan = { sql: string; model: string };
+
+export type SelfConsistencyResult = VoteResult & {
+  // The winning candidate's model (what the runner records). Empty when
+  // nothing executed.
+  model: string;
+  // How many plans were sampled (>= executable).
+  samples: number;
+};
+
+// Execute N sampled plans and majority-vote the result set — the connective
+// tissue between the sampling loop and the pure `majorityVote` primitive.
+// `majorityVote` needs each candidate's *rows*, which only a DB round-trip
+// supplies, so the executor is injected (score.ts::executeRows in the runner;
+// a stub in unit tests) keeping this orchestration pure and offline-testable.
+// Empty SQL never hits the DB — it carries no vote by definition. Candidate
+// order is the sample order, so the deterministic tie-break in `majorityVote`
+// (earliest cluster wins) makes the outcome stable run-to-run.
+export async function voteOverSamples(
+  samples: readonly SampledPlan[],
+  execute: (sql: string) => Promise<unknown[][] | null>,
+  opts: { ordered?: boolean } = {},
+): Promise<SelfConsistencyResult> {
+  const candidates: VoteCandidate[] = [];
+  for (const s of samples) {
+    const rows = s.sql.trim().length === 0 ? null : await execute(s.sql);
+    candidates.push({ sql: s.sql, rows });
+  }
+  const vote = majorityVote(candidates, opts);
+  const model = vote.index >= 0 ? (samples[vote.index]?.model ?? "") : "";
+  return { ...vote, model, samples: samples.length };
+}
+
 // Offline CLI — vote over a hand-supplied set of executed candidates so an
 // operator can sanity-check the consensus mechanism (and, once the sampling
 // half ships, replay a dumped N-sample run) without a dispatch. Mirrors the

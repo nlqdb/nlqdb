@@ -309,6 +309,36 @@ export async function scoreOneSpider2(input: Spider2ScoreInput): Promise<ScoreRe
   }
 }
 
+// SK-QUAL-017 — execute a predicted SQL read-only and return its
+// positional-tuple rows (the `.values()` shape `fingerprintRows` clusters
+// on), or `null` when the SQL is empty or fails to execute — the no-vote
+// signal `majorityVote` treats as a non-voting candidate. This is the
+// execution half of the self-consistency lever: the vote needs each sampled
+// plan's *rows*, which only a DB round-trip supplies. It shares the exact
+// SQLite loader / busy-timeout / `normalizeSql` path as `scoreOne`'s
+// prediction read, so a sampled candidate executes byte-identically to how
+// the winner is later scored.
+export async function executeRows(
+  dbPath: string,
+  sql: string,
+  timeoutMs = DEFAULT_TIMEOUT_MS,
+): Promise<unknown[][] | null> {
+  const normalized = normalizeSql(sql);
+  if (normalized.length === 0) return null;
+  const Database = await loadSqlite();
+  const db = new Database(dbPath, { readonly: true });
+  try {
+    db.query(`PRAGMA busy_timeout = ${Math.max(1, Math.floor(timeoutMs))}`).all();
+    try {
+      return db.query(normalized).values();
+    } catch {
+      return null;
+    }
+  } finally {
+    db.close();
+  }
+}
+
 export async function scoreOne(input: ScoreInput): Promise<ScoreResult> {
   const Database = await loadSqlite();
   const timeoutMs = input.timeoutMs ?? DEFAULT_TIMEOUT_MS;
