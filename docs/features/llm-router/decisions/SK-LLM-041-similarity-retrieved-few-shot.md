@@ -21,8 +21,9 @@ identifiers identically.
     **drop zero-similarity candidates** (never pad the prompt with an unrelated
     demonstration) and **break ties on pool order** (earliest wins) so
     selection is reproducible run-to-run.
-  Plus, shipped 2026-06-21 as the **pool-curation masking half** (the schema
-  half `maskQuestion` deferred):
+  Plus, shipped 2026-06-21 as the **pool-curation masking half** — DAIL's
+  schema-identifier mask layered on `maskQuestion`'s value mask (only the
+  exemplar pool rows themselves stay deferred — see below):
   - `maskSchemaIdentifiers(q, schema)` — replace every question word that names
     a schema **table or column** with one `col` placeholder, reusing
     `SK-LLM-037`'s `schemaTokens`/`wordTokens` so the identifier set is
