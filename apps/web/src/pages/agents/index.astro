@@ -21,6 +21,60 @@ import Base from "../../layouts/Base.astro";
 // a vector store can't run). Mirrors the /solve analytical sibling so the
 // seeded draft lands the agent-builder on the read-side story.
 const demoGoal = "Count of facts my agent logged per category this month, highest first";
+
+// WS-09 — the live in-page demo. Rendered from a fixture through the same
+// typed-plan compile path the product runs, NOT an open `/v1/ask` (the
+// public API is pre-alpha gated — gate-honest per the worksheet). It shows
+// the wedge end to end: typed memory rows the agent wrote → the English
+// question → the compiled, parameterised SQL → the GROUP BY answer a vector
+// store structurally can't return. Type + brand tables only, no screenshot
+// or produced video (SK-PIVOT-004). Everything renders server-side so the
+// proof is crawlable (AEO) and works with no JS; the button only replays a
+// pulse + fires the GLOBAL-024 demand signal.
+const demoMemoryRows = [
+  {
+    id: 412,
+    category: "user_preference",
+    content: "prefers metric units",
+    created_at: "2026-06-19",
+  },
+  {
+    id: 408,
+    category: "task_outcome",
+    content: "shipped the invoice export",
+    created_at: "2026-06-18",
+  },
+  {
+    id: 401,
+    category: "user_preference",
+    content: "timezone is Asia/Jerusalem",
+    created_at: "2026-06-17",
+  },
+  {
+    id: 396,
+    category: "entity_fact",
+    content: "primary repo is nlqdb/nlqdb",
+    created_at: "2026-06-15",
+  },
+  {
+    id: 390,
+    category: "task_outcome",
+    content: "fixed the flaky e2e test",
+    created_at: "2026-06-14",
+  },
+];
+const demoSql = `SELECT category, COUNT(*) AS facts
+  FROM agent_memory
+ WHERE created_at >= date_trunc('month', now())
+ GROUP BY category
+ ORDER BY facts DESC;`;
+const demoResult = [
+  { category: "user_preference", facts: 38 },
+  { category: "task_outcome", facts: 24 },
+  { category: "entity_fact", facts: 19 },
+  { category: "tool_result", facts: 11 },
+  { category: "correction", facts: 5 },
+];
 ---
 
 <Base
@@ -89,6 +143,76 @@ const demoGoal = "Count of facts my agent logged per category this month, highes
           (pgvector) is an opt-in slice still landing &mdash; today the wedge is
           the analytical side. nlqdb is a database, not a vector store
           (<a href="/manifesto#not-title">manifesto</a>).
+        </p>
+      </section>
+
+      <section class="agents__demo" aria-labelledby="demo-title">
+        <h2 class="agents__h2" id="demo-title">See it: a <code>GROUP BY</code> over agent memory.</h2>
+        <p class="agents__demo-lede">
+          Your agent writes typed rows as it learns. Later it asks a question
+          in English &mdash; nlqdb compiles it to SQL through the typed-plan
+          boundary and runs it on Postgres. Here is the whole round-trip.
+        </p>
+
+        <ol class="agents__demo-steps">
+          <li class="agents__demo-step">
+            <p class="agents__demo-label">1 &middot; What the agent remembered &mdash; <code>agent_memory</code></p>
+            <div class="agents__demo-tablewrap">
+              <table class="agents__demo-table">
+                <thead>
+                  <tr><th>id</th><th>category</th><th>content</th><th>created_at</th></tr>
+                </thead>
+                <tbody>
+                  {demoMemoryRows.map((r) => (
+                    <tr>
+                      <td>{r.id}</td>
+                      <td>{r.category}</td>
+                      <td>{r.content}</td>
+                      <td>{r.created_at}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <p class="agents__demo-note">Typed rows, not an opaque vector blob &mdash; 412 facts and counting.</p>
+          </li>
+
+          <li class="agents__demo-step">
+            <p class="agents__demo-label">2 &middot; The question, in English</p>
+            <p class="agents__demo-goal">&ldquo;{demoGoal}&rdquo;</p>
+            <button type="button" class="agents__demo-run" data-demo-goal={demoGoal}>
+              Run this query &rarr;
+            </button>
+            <p class="agents__demo-label agents__demo-label--sql">Compiled SQL (the exact statement nlqdb ran)</p>
+            <pre class="agents__demo-sql"><code>{demoSql}</code></pre>
+          </li>
+
+          <li class="agents__demo-step">
+            <p class="agents__demo-label">3 &middot; The answer &mdash; one <code>GROUP BY</code>, run in Postgres</p>
+            <div class="agents__demo-tablewrap" data-demo-result>
+              <table class="agents__demo-table agents__demo-table--result">
+                <thead>
+                  <tr><th>category</th><th>facts</th></tr>
+                </thead>
+                <tbody>
+                  {demoResult.map((r) => (
+                    <tr><td>{r.category}</td><td>{r.facts}</td></tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <p class="agents__demo-note">
+              A vector store would return the rows most <em>similar</em> to your
+              query text. It can&rsquo;t count them per category &mdash; that
+              needs a query planner, which an index doesn&rsquo;t have.
+            </p>
+          </li>
+        </ol>
+
+        <p class="agents__demo-honest">
+          Rendered from a fixture through the same typed-plan compile path the
+          product runs &mdash; the public demo doesn&rsquo;t hit an open
+          <code>/v1/ask</code> (pre-alpha). Numbers are illustrative.
         </p>
       </section>
 
@@ -206,6 +330,22 @@ const demoGoal = "Count of facts my agent logged per category this month, highes
         if (goal) saveDraft(goal);
         emit("agents.try_query_clicked", { goal });
         location.assign("/app/new");
+      });
+    });
+
+    // WS-09 demo "Run this query" — gate-honest replay: the result is already
+    // on the page (crawlable, no-JS), so the button just pulses the result
+    // table and fires the GLOBAL-024 demand signal for demo engagement. No
+    // network call — the public demo never hits an open `/v1/ask`.
+    const demoResultEl = document.querySelector<HTMLElement>("[data-demo-result]");
+    document.querySelectorAll<HTMLButtonElement>(".agents__demo-run").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        emit("agents.demo_run_clicked", { goal: btn.dataset["demoGoal"] ?? "" });
+        if (demoResultEl) {
+          demoResultEl.classList.remove("is-ran");
+          void demoResultEl.offsetWidth; // restart the CSS animation
+          demoResultEl.classList.add("is-ran");
+        }
       });
     });
   </script>
@@ -352,8 +492,154 @@ const demoGoal = "Count of facts my agent logged per category this month, highes
 
   .agents__matrix,
   .agents__moat,
-  .agents__fsl {
+  .agents__fsl,
+  .agents__demo {
     margin: 0 0 clamp(32px, 5vw, 48px);
+  }
+
+  .agents__demo-lede {
+    margin: 0 0 24px;
+    color: var(--fg-dim);
+    font-size: clamp(15px, 1.7vw, 17px);
+    max-width: 64ch;
+    line-height: 1.6;
+  }
+
+  .agents__demo code {
+    font-family: var(--mono);
+    font-size: 0.9em;
+    color: var(--fg);
+  }
+
+  .agents__demo-steps {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: grid;
+    gap: 16px;
+  }
+
+  .agents__demo-step {
+    border: 2px solid var(--border-strong);
+    background: var(--bg-elev);
+    padding: clamp(16px, 2.4vw, 22px);
+  }
+
+  .agents__demo-label {
+    margin: 0 0 12px;
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+
+  .agents__demo-label--sql {
+    margin-top: 20px;
+  }
+
+  .agents__demo-tablewrap {
+    overflow-x: auto;
+  }
+
+  .agents__demo-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: var(--mono);
+    font-size: clamp(12px, 1.4vw, 13px);
+  }
+
+  .agents__demo-table th {
+    text-align: left;
+    color: var(--fg-muted);
+    font-weight: 400;
+    padding: 4px 16px 8px 0;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+  }
+
+  .agents__demo-table td {
+    color: var(--fg-dim);
+    padding: 6px 16px 6px 0;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+  }
+
+  .agents__demo-table--result td:last-child {
+    color: var(--accent);
+    font-weight: 700;
+  }
+
+  .agents__demo-note {
+    margin: 12px 0 0;
+    font-size: 13px;
+    color: var(--fg-muted);
+    line-height: 1.55;
+  }
+
+  .agents__demo-goal {
+    margin: 0 0 16px;
+    font-size: clamp(15px, 1.7vw, 17px);
+    color: var(--fg);
+    line-height: 1.5;
+  }
+
+  .agents__demo-run {
+    appearance: none;
+    cursor: pointer;
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--accent);
+    background: transparent;
+    border: 2px solid var(--accent);
+    padding: 8px 16px;
+    line-height: 1.4;
+  }
+
+  .agents__demo-run:hover {
+    background: var(--accent);
+    color: var(--bg);
+  }
+
+  .agents__demo-sql {
+    margin: 0;
+    padding: clamp(14px, 2vw, 18px);
+    background: var(--bg);
+    border: 1px solid var(--border-strong);
+    overflow-x: auto;
+  }
+
+  .agents__demo-sql code {
+    font-family: var(--mono);
+    font-size: clamp(12px, 1.4vw, 13px);
+    color: var(--fg);
+    white-space: pre;
+  }
+
+  .agents__demo-tablewrap.is-ran {
+    animation: agents-demo-pulse 0.6s ease-out;
+  }
+
+  @keyframes agents-demo-pulse {
+    0% { box-shadow: 0 0 0 0 var(--accent); }
+    100% { box-shadow: 0 0 0 6px transparent; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .agents__demo-tablewrap.is-ran {
+      animation: none;
+    }
+  }
+
+  .agents__demo-honest {
+    margin: 16px 0 0;
+    font-size: 14px;
+    color: var(--fg-muted);
+    line-height: 1.6;
+  }
+
+  .agents__demo-honest code {
+    font-size: 0.9em;
   }
 
   .agents__moat-lede {

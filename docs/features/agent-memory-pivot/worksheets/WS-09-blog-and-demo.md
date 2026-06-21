@@ -1,6 +1,6 @@
 # WS-09 — "Database, not a vector store" blog + live in-page demo
 
-**Status:** 🟡 1/2 — blog draft ✅ (run 30); live `/agents` demo pending (run 1, after WS-07 page ships)
+**Status:** ✅ 2/2 — blog draft ✅ (run 30); live `/agents` demo ✅ (run 41, gate-honest fixture round-trip)
 **Sequence:** 9 of 13 · **Risk:** med · **Runs:** ~2 · **Prereqs:** WS-06 ✅ · **Gate:** none
 
 ## Goal
@@ -36,7 +36,7 @@ Distribution: the post is the HN/lobste.rs/dev.to artifact; the demo lifts
 
 ## Done when
 
-- [ ] Live demo on `/agents` runs a real aggregation with SQL reveal, gate-honest. *(run 1 — deferred: collides with the in-flight WS-07 `/agents` page, PR #430; lands once that page exists.)*
+- [x] Live demo on `/agents` runs a real aggregation with SQL reveal, gate-honest. *(run 41 — fixture round-trip: `agent_memory` rows → English goal → compiled `GROUP BY` SQL → result table, all server-rendered (crawlable / no-JS) per SK-PIVOT-004; the "Run this query" button replays a pulse + fires `agents.demo_run_clicked` (GLOBAL-024). Gate-honest: no open `/v1/ask` call. WS-07 page now exists, clearing the #430 collision.)*
 - [x] Blog draft in `distribution-queue.md` with **measured** numbers + matrix + harness link. *(run 30 — post drafted before the demo because run 1 collides with open PR #430; BIRD 0.52 / Spider 0.1852 from `eval-baseline.ts`, honest gap shown, WS-06 matrix embedded, `tools/eval/` linked.)*
 - [x] No produced video; no over-claim past the measured eval. *(live in-page demo supersedes the video; numbers shown sub-target.)*
 - [x] INDEX tracker + status ticked.

@@ -154,38 +154,32 @@ follow-up to the run-35 self-consistency post.
 "how to actually wire self-consistency for text-to-SQL" is a search-shaped gap.
 Ties to `SK-QUAL-017`.
 
-## 2026-06-21 (run 37) — engine-lesson: "Agent memory should be authed-only — and that's an honest tradeoff" (dev.to / lobste.rs)
+## 2026-06-21 (run 41) — launch post: "We built a live demo: run a GROUP BY over agent memory and see the SQL" (X / Bluesky / r/AI_Agents → `/agents`)
 
-**Where:** dev.to + lobste.rs (`databases` / `ai`), the engine-lesson series.
+**Where:** X / Bluesky launch post + r/AI_Agents; the social companion to the
+run-30 "database, not a vector store" blog. Links the live `/agents` demo.
 
-**Title:** Your agent's memory shouldn't have an anonymous front door
+**Title:** A live demo of analytical agent memory — the GROUP BY, and the SQL it ran
 
 **Body:**
 
-> We sell an anonymous on-ramp: type a sentence, get a real database, no
-> signup. Great for a demo. Wrong for **memory**. We just killed a planned
-> feature that would have let an anonymous visitor spin up an agent-memory
-> database in one click, and the reason is worth writing down.
+> Everyone shows you agent memory *recalling* text. We built a demo that shows
+> the part a vector store can't do: **analysis** over what the agent stored.
 >
-> A memory primitive is only useful if the agent can *write* to it across
-> sessions and read *only its own* rows back. That means a stable principal —
-> an authenticated identity the writes and the row-level scoping hang off of.
-> An anonymous, throwaway, 72-hour database has no durable identity to scope to;
-> "anonymous persistent memory" is a contradiction. So in our system the memory
-> write verb rejects anonymous callers by design, read-only embed keys can't
-> write either, and the create endpoint requires a session. Three independent
-> guards, all saying the same thing: memory is authed.
+> On `/agents` (no signup) you see the whole round-trip on one screen: the typed
+> rows your agent wrote to an `agent_memory` table → an English question
+> ("count of facts per category this month, highest first") → the **exact
+> `GROUP BY` SQL nlqdb compiled** → the result table. A similarity index returns
+> the top-k rows most like your query string; it has no query planner, so it
+> can't count them per category. A database can.
 >
-> The trap was that our anonymous create form is *deliberately* anonymous — it
-> never sends the session cookie, because that's what makes the "try it, then
-> sign in to keep it" handoff work. Bolting a memory preset onto it would have
-> meant either breaking that contract or opening an anonymous write path we'd
-> immediately have to gate again. The honest move is to put the memory on-ramp
-> where the identity already exists: behind sign-in.
->
-> Lesson: "anonymous-first" is a great acquisition default, but some primitives
-> (memory, billing, anything per-user-scoped) need an identity to be correct.
-> Let the auth boundary tell you where the feature belongs.
+> The SQL is on screen because that's the trust boundary: the model picks
+> *structure* (a typed plan), our compiler emits parameterised SQL, an AST
+> re-parse checks it against an allowlist — the LLM never emits a SQL string.
+> Honest scope: the public demo is fixture-backed (the API is pre-alpha), but
+> it's the same compile path the product runs. See it → nlqdb.com/agents
+
+## 2026-06-21 (run 37) — engine-lesson: "Agent memory should be authed-only" (dev.to / lobste.rs) — title + thesis (anonymous, throwaway DBs have no durable identity to scope row-level reads to; the memory write verb + create endpoint both require a session, so the on-ramp belongs behind sign-in). Full draft in git history.
 
 ## 2026-06-20 (run 36) — helpful-answer: "run a GROUP BY over your agent's memory in 30s, no signup" (r/AI_Agents / r/LocalLLaMA)
 
