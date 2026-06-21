@@ -43,7 +43,7 @@ few-shot), not retrieval. Value-retrieval is demoted + privacy-gated.
 | 5 | Anon DBs with a recorded first answer | **101 of 101** | instrument fix (runs 1–3) holding; +8 since 06-13. Genuine-stranger subset still ~0 (rows #2/#3) — the real worst-number |
 | | **Engine — BIRD 2026-06-19 · Spider 2026-06-17 (both fresh, < 7d)** | | `apps/api/src/gate/eval-baseline.ts` |
 | 6 | BIRD raw EX | 0.520 | target 0.65; was 0.522 (06-12). Canonical re-run on current main (T20–T22): 260/500, `no_sql` 3 → 1. **Flat within variance** — McNemar b=38/c=37, p=0.50, no regression. Directive levers saturated; literal/value (§4 #2a) + date-encoding (§4 #2c) levers both falsified standalone offline (run 31) ⇒ reasoning levers (§4 #3/#1) next |
-| 7 | Spider raw EX | 0.1852 | target 0.75; was 0.1704 (06-12). Gemini key restored 06-17 → `no_sql` 36 → 9 (`SK-LLM-039`). Run 33: external-knowledge injection (`SK-QUAL-016`, 13/135 dropped docs). **Run 34: self-consistency vote core shipped (`SK-QUAL-017`)** — the §4 #3 reasoning lever for the residual SQL-reasoning bottleneck; sampling+dispatch is the follow-on, EX delta next dispatch |
+| 7 | Spider raw EX | 0.1852 | target 0.75; was 0.1704 (06-12). Gemini key restored 06-17 → `no_sql` 36 → 9 (`SK-LLM-039`). Run 33: external-knowledge injection (`SK-QUAL-016`). **Self-consistency `SK-QUAL-017` (§4 #3 reasoning lever): vote core (run 34) + execution half — `executeRows` + `voteOverSamples` (run 37) — shipped; only the temperature-sampling half + dispatch remain, EX delta next dispatch** |
 | 8 | persona-bench | — | not yet built |
 | 9 | free-vs-frontier delta | null | agentic lane not yet run (`SK-QUAL-004`, target ≤ 25 pp) |
 | | **Ops — 7d, CF Workers analytics** | | wall-time, all routes (not `/ask`-only) |
@@ -76,6 +76,24 @@ few-shot), not retrieval. Value-retrieval is demoted + privacy-gated.
 
 ## Deltas (recent runs)
 
+- 2026-06-21 (run 37) — **Engine: self-consistency *execution half* shipped
+  (`SK-QUAL-017` follow-on) — the connective tissue between the vote core (run
+  34) and the runner.** Worst number is engine (Spider 0.1852); BIRD 06-19 +
+  Spider 06-17 both < 7 d so §5 forbids a dispatch, and the open PR owns the
+  agent-memory/E-06 docs lane — leaving the named §4 #3 follow-on as the clean
+  non-colliding engine slice. `majorityVote` needs each candidate's **rows**,
+  which only a DB round-trip supplies: added `score.ts::executeRows` (SQL →
+  rows, `null` on empty/exec-error; shares `scoreOne`'s SQLite path so a sample
+  scores byte-identically to the winner) + `self-consistency.ts::voteOverSamples`
+  (executes each sample via an *injected* executor, then votes — pure ⇒
+  offline-tested on a real SQLite fixture; the §5 "separate code path" that
+  never touches the greedy `scoreOne`/`withExecRetry` path). **Δ:** §4 #3
+  vote-core → vote-core **+ execution half** shipped+proven; only the
+  temperature-sampling half + dispatch remain. KPI: **engine quality**; none
+  degraded — no prod chain/scorer/runner change, baselines untouched, perf N/A;
+  239 eval tests green (was 232). Artifact: "Voting on the answer needs the
+  answer: executing N SQL samples to consensus" queued. Next: the
+  temperature-sampling half (`PlanRequest.temperature` + `--self-consistency N`).
 - 2026-06-20 (run 36) — **WS-07 closed: shipped the `/agents` conversion CTA +
   GLOBAL-024 demand signal → messaging 7 → 8/13, pivot 9 → 10/20; unblocks
   E-06.** In-bounds lever was the messaging track (engine worst but BIRD 06-19 +
@@ -95,20 +113,15 @@ few-shot), not retrieval. Value-retrieval is demoted + privacy-gated.
   "Show HN: analytical memory for AI agents" draft queued. Next: **E-06** (now
   unblocked, low/1-run).
 - 2026-06-20 (run 35) — **Engine: self-consistency vote core shipped
-  (`SK-QUAL-017`) — the §4 #3 reasoning lever, top free-chain lever after the
-  directives saturated.** Worst number is engine (Spider 0.1852); BIRD 06-19 +
-  Spider 06-17 both < 7 d so §5 forbids a dispatch and #438 owns the messaging
-  lane, leaving the named reasoning lever's deterministic core as the
-  non-colliding engine slice. Pure `majorityVote` + `fingerprintRows`
-  (`tools/eval/`) cluster N executed plans by their **result set** (the answer,
-  not the SQL string), returning the modal cluster's SQL + agreement; ties →
-  earliest cluster (stable run-to-run). Staged ahead of the sampling/dispatch
-  half (default-greedy `SK-LLM-024` baseline untouched; runner
-  `--self-consistency N`), the SK-QUAL-014/015 prove-the-primitive pattern.
-  **Δ:** §4 #3 backlog → vote-core shipped+proven (12 unit cases); EX delta next
-  canonical dispatch. KPI: **engine quality**; none degraded — no prod
-  chain/scorer/runner change, baselines untouched, perf N/A; 232 eval tests
-  green (was 220). Artifact: "Why we vote on the answer, not the SQL" queued.
+  (`SK-QUAL-017`) — the §4 #3 reasoning lever.** Non-colliding engine slice
+  (both evals < 7 d ⇒ §5 no dispatch; #438 owned messaging). Pure
+  `majorityVote` + `fingerprintRows` cluster N executed plans by their **result
+  set** (the answer, not the SQL string); deterministic ties → earliest
+  cluster. Staged ahead of the sampling half (greedy `SK-LLM-024` untouched),
+  the prove-the-primitive pattern. **Δ:** §4 #3 → vote-core shipped+proven (12
+  unit cases); EX delta next dispatch. KPI **engine quality**; none degraded;
+  232 eval tests green (was 220). Artifact "Why we vote on the answer, not the
+  SQL" queued.
 - 2026-06-20 (run 34) — **Engine (memory write-path): fail-loud TTL gap +
   phantom-column footgun in the E-04 lever, both fixed.** Worst number is engine
   (Spider 0.1852) but BIRD 06-19 + Spider 06-17 are < 7 d (§5: no back-to-back
@@ -206,29 +219,13 @@ few-shot), not retrieval. Value-retrieval is demoted + privacy-gated.
   Spider 06-17 untouched. KPI onboarding. Detail in the WS-03 worksheet.
 - 2026-06-19/20 (runs 23–24) — agent-memory messaging wave (both closed, additive copy; no engine/chain/scorer touched; BIRD 06-19 + Spider 06-17 untouched): **WS-03 run 1/2** (run 23) sharpened `/solve/give-ai-agent-persistent-memory` to the retrieval≠analytics wedge + fixed phantom MCP tool names (real three only, SK-PIVOT-002); **WS-04** (run 24) reframed the MCP surface — three tool `description`s/`title`s + `package.json` + `mcp.mdx` lead with "analytical memory" (copy only, SK-PIVOT-003; SK-MCP-002 contract + 33 tests intact). Messaging track → 3/13, pivot → 3/20. Per-slice detail in the WS worksheets; drafts queued in `distribution-queue.md`.
 - 2026-06-19/21 (runs 19–22) — agent-memory wedge launch wave (all closed, additive content; no engine/chain/scorer touched): **WS-01** anchored the Zep / Letta / LangMem cluster in `docs/competitors.md §4` (run 19, pivot 0 → 1/20); **WS-02** shipped the three memory `/vs` pages — `/vs/zep` (run 20), `/vs/letta` (run 21), `/vs/langmem` (run 22) — each one `Competitor` entry keyed on the retrieval-vs-analytics wedge (`GROUP BY`/`JOIN`/`HAVING` over memory), facts web-verified 06-19, real tool names only. WS-02 closed → messaging track 2/13, pivot 2/20. Per-slice detail in the WS worksheets + `competitors.ts` history; comparison drafts queued in `distribution-queue.md`.
-- 2026-06-19 (runs 17–18) — canonical BIRD re-run + literal-grounding axis,
-  detailed in `progress/quality-score-verification-log.md`: the first 500-q BIRD
-  re-run since T20–T22 (run 17) came back statistically flat (EX 0.522 → 0.520,
-  McNemar p=0.50, `no_sql` 3 → 1) — the prompt-directive levers have saturated.
-  The `SK-QUAL-014` classifier then gained a literal-grounding axis (run 18)
-  which **falsified value-retrieval as the top lever** (`literal_only` = 0; every
-  literal error co-occurs with a structural one), demoting it below the reasoning
-  levers. No engine/chain code changed; no eval dispatched.
-- 2026-06-16/18 (runs 11–16) — engine-instrument + deferred-lever wave, all
-  detailed in `progress/quality-score-verification-log.md`: execution-guided
-  PG-error repair (run 11, SK-ASK-022; `db_unreachable → rows`) · **Gemini
-  free-tier key restored + Spider re-run** (run 12; raw EX 0.1704 → **0.1852**,
-  `no_sql` 36 → 9) · join-bridge pruner recall (run 13, SK-LLM-037 rev / T21) ·
-  HAVING planner directive (run 14, SK-LLM-040 / T22) · mismatch error-class
-  classifier (run 15, SK-QUAL-014; `fewer_tables` 105 → 35) · column-coverage
-  harness (run 16, SK-QUAL-015; 59.8% name-recall + 27.4% key re-admit, 12.8%
-  value-only floor). Net read by run 16: value-retrieval ranks ahead of
-  column-pruning — later falsified standalone by run 18.
-- 2026-06-15/16 (runs 7–10) — provider-resilience wave: pin-to-2.0 falsified
-  (run 7) → park a denied provider on the first 401/403 (run 9, SK-LLM-039)
-  with a 30-min cooldown (run 10; dead-key round-trips 10 → 1) ·
-  deterministic seed-row salvage (run 8, SK-HDC-019; 0 → 3).
-- 2026-06-13/15 (runs 1–6) — day-one scorecard (metrics 0 → 12); #5 instrument
-  fix (`last_queried_at` 0 → 93); tail transient retry (SK-LLM-038; BIRD EX
-  0.522 → 0.528 best-case). Full history:
+- 2026-06-19 (runs 17–18) — canonical BIRD re-run flat (EX 0.522 → 0.520,
+  McNemar p=0.50) ⇒ prompt-directive levers saturated; the `SK-QUAL-014`
+  literal axis then **falsified value-retrieval as the top lever**
+  (`literal_only` = 0), demoting it below the reasoning levers. No
+  engine/chain change; no eval dispatched. Detail in the verification log.
+- 2026-06-13/18 (runs 1–16) — day-one scorecard + engine-instrument /
+  provider-resilience / deferred-lever waves (Gemini key heal + Spider re-run
+  to 0.1852, join-bridge pruner T21, HAVING directive T22, `SK-QUAL-014/015`
+  classifiers, `SK-LLM-038/039`, `SK-HDC-019`). Full per-run detail:
   `progress/quality-score-verification-log.md`.

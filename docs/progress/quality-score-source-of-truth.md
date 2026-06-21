@@ -138,12 +138,17 @@ agent-runnable; promote into an `SK-*`/`GLOBAL-*` before implementing
      also carries a structural error (`LIKE '…%'` vs `= '…'` needs an operator
      change) ⇒ #2c parked, same verdict as #2a. Rationale: `SK-QUAL-014` body.
 3. **Self-consistency majority vote (N=3, free tokens) — the top reasoning
-   lever; vote core SHIPPED 2026-06-20 (`SK-QUAL-017`).** Sample N
-   plans at temperature > 0 on a separate code path, execute, majority-vote
-   the **result set** (the answer, not the SQL string). Directly attacks the
-   dominant *structural-reasoning* mass (grain/shape) the §2 literal axis
-   isolated. Pure vote shipped + proven offline; the sampling + dispatch half
-   is the follow-on; EX delta next dispatch. Free-chain cost is quota.
+   lever; vote core + execution half SHIPPED 2026-06-20/21 (`SK-QUAL-017`).**
+   Sample N plans at temperature > 0 on a separate code path, execute,
+   majority-vote the **result set** (the answer, not the SQL string). Directly
+   attacks the dominant *structural-reasoning* mass (grain/shape) the §2
+   literal axis isolated. Shipped + proven offline: the pure `majorityVote`
+   core (2026-06-20) **and** the execution half — `executeRows` (SQL → rows) +
+   `voteOverSamples` (executes each sample, votes; injected executor ⇒
+   offline-tested on a real SQLite fixture), the §5 "separate code path". The
+   remaining *sampling* half (`PlanRequest.temperature` + runner
+   `--self-consistency N`) + the EX-delta dispatch is the follow-on.
+   Free-chain cost is quota.
 4. **A second card-free tail backstop beyond Mistral (T11).** `NVIDIA_API_KEY`
    is a finite ~5,000-credit pool — a `GLOBAL-013` failure; re-rank only if
    post-T18 runs still show chain-exhaustion `no_sql`.
