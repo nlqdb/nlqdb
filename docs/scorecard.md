@@ -71,7 +71,7 @@ few-shot), not retrieval. Value-retrieval is demoted + privacy-gated.
 | E-03 | per-agent / end-user / thread scoping — **RLS, not query-rewriting** (SK-PIVOT-009, mechanism corrected run 32) | ⬜ | **high · security-critical** · ~2 runs · E-01 · Neon-gated |
 | E-04 | TTL + cron sweep (`expires_at`) | ⬜ | low · 1 run · E-01 |
 | E-05 | hybrid recall — pgvector + `nlqdb_recall` | ⬜ | high · multi · E-01 · infra-gated |
-| E-06 | `/agents` CreateForm uses the preset | ⬜ | low · 1 run · E-01 + WS-07 |
+| E-06 | preset on-ramp — **authed** create surface (`MEMORY_PRESET`-gated) | ⬜ redirected | run 37 (SK-PIVOT-010): anon `/agents` CreateForm path infeasible (3 auth boundaries); blocked on `MEMORY_PRESET=1` in prod (dark) |
 | E-07 | workload-analyzer rule: memory DBs → ClickHouse (Phase 3) | ⬜ | med · multi · E-01 + Phase-3 multi-engine |
 
 ## Deltas (recent runs)
@@ -94,24 +94,32 @@ few-shot), not retrieval. Value-retrieval is demoted + privacy-gated.
   239 eval tests green (was 232). Artifact: "Voting on the answer needs the
   answer: executing N SQL samples to consensus" queued. Next: the
   temperature-sampling half (`PlanRequest.temperature` + `--self-consistency N`).
-- 2026-06-20 (run 36) — **WS-07 closed: shipped the `/agents` conversion CTA +
-  GLOBAL-024 demand signal → messaging 7 → 8/13, pivot 9 → 10/20; unblocks
-  E-06.** In-bounds lever was the messaging track (engine worst but BIRD 06-19 +
-  Spider 06-17 both < 7 d → §5 no back-to-back dispatch; E-pivot slices
-  Neon-gated); WS-07 was the lowest-numbered in-progress worksheet with its
-  prereq (WS-06 ✅) met. Added a memory-shaped "try this query" button to
-  `apps/web/src/pages/agents/index.astro` (demo goal = the analytical-over-memory
-  `GROUP BY` a vector store can't run) that seeds `nlqdb_draft` (SK-ANON-011),
-  fires `agents.try_query_clicked` (GLOBAL-024), and navigates to `/app/new` —
-  reusing the `/vs` + `/solve` pattern, not a new CreateForm variant (P5). Added
-  the `Agents` Topnav link and a P2-keyed `/agents` cross-link on the four memory
-  `/vs` pages (Mem0/Zep/Letta/LangMem; `competitors.test.ts` pins membership).
-  Gates: web check 0/0/0, 127 tests green (was 122), lint clean. KPI:
-  **onboarding** (GLOBAL-025); **none degraded** — additive web markup + one
-  client event; no engine/chain/scorer/eval touched; BIRD 06-19 + Spider 06-17
-  untouched; lead strings (Hero/README/llms.txt) untouched per WS-13. Artifact:
-  "Show HN: analytical memory for AI agents" draft queued. Next: **E-06** (now
-  unblocked, low/1-run).
+- 2026-06-21 (run 37) — **Engine-track finding (SK-PIVOT-010): E-06's
+  anon-`/agents`-CreateForm preset on-ramp is infeasible — redirected to the
+  authed create surface.** Worst number is engine (Spider 0.1852); BIRD 06-19 +
+  Spider 06-17 both < 7 d so §5 forbids a back-to-back dispatch, and the named
+  reasoning lever (self-consistency *sampling*, run 35's follow-on) needs a
+  dispatch to measure — so the clean in-bounds engine slice was E-06, run 36's
+  flagged "next." Investigating it (the loop's job) found the on-ramp can't
+  work as written across **three** auth boundaries: `POST /v1/databases` is
+  `requireSession` + `MEMORY_PRESET`-gated (`index.ts:2357,2390`),
+  `POST /v1/memory/remember` rejects anon+pk_live (`index.ts:1426-1433`), and
+  CreateForm is anon-only by contract (`credentials:"omit"`, SK-ANON-008). The
+  preset on-ramp moves to the **authed** create surface and is blocked on
+  `MEMORY_PRESET=1` in prod (now in `blocked-by-human.md`). **Δ:** a finding
+  prunes/resizes a backlog lever (low/1-run → med/~2 + prod-flag prereq) before
+  a broken on-ramp ships — the run-32 SK-PIVOT-009 precedent. Docs-only; no
+  code/engine/chain/scorer/eval touched; BIRD 06-19 + Spider 06-17 untouched.
+  KPI: **engine quality / onboarding** (correctness of the on-ramp design);
+  **none degraded**. Artifact: "Why agent memory is authed-only (and what that
+  costs the anon on-ramp)" queued.
+- 2026-06-20 (run 36) — **WS-07 closed: `/agents` conversion CTA + GLOBAL-024
+  demand signal → messaging 7 → 8/13, pivot 9 → 10/20.** Memory-shaped "try this
+  query" button on `/agents` seeds `nlqdb_draft` (SK-ANON-011), fires
+  `agents.try_query_clicked` (GLOBAL-024) → `/app/new` (reusing the `/vs` +
+  `/solve` pattern, P5); `Agents` Topnav link + P2-keyed `/agents` cross-link on
+  the four memory `/vs` pages. 127 tests green; additive markup only. KPI:
+  **onboarding**; none degraded; BIRD 06-19 + Spider 06-17 untouched.
 - 2026-06-20 (run 35) — **Engine: self-consistency vote core shipped
   (`SK-QUAL-017`) — the §4 #3 reasoning lever.** Non-colliding engine slice
   (both evals < 7 d ⇒ §5 no dispatch; #438 owned messaging). Pure
@@ -177,26 +185,15 @@ few-shot), not retrieval. Value-retrieval is demoted + privacy-gated.
   KPI: **onboarding / engine quality**; none degraded (additive, BIRD 06-19 +
   Spider 06-17 untouched). Artifact: "Give your AI agent memory from the
   terminal" queued.
-- 2026-06-20 (run 31) — three closed slices (all additive; BIRD 06-19 + Spider
-  06-17 untouched): **E-02** `nlqdb_remember` write primitive shipped → E-02
-  closed (engine 1 → **2/7**; pivot 8 → **9/20**; #432, SK-PIVOT-008 —
-  server-built parameterised INSERT via `POST /v1/memory/remember`, never
-  `/v1/run`; SDK `remember()` + tool, CLI fast-follow); **WS-07 run 2/3**
-  embedded the matrix + trust-boundary moat + FSL band on `/agents` (#433,
-  WS-07 🟡 1/3 → **2/3**, markup-only); **§4 #2c date-normalisation directive
-  FALSIFIED standalone** (#434, offline classifier — `date_literal_only` 0
-  standalone, parked like #2a; reasoning levers #3/#1 next). Per-slice detail
-  in the WS/E worksheets + `progress/quality-score-verification-log.md`.
-- 2026-06-20 (run 30) — three closed slices (additive; BIRD 06-19 + Spider
-  06-17 untouched): **E-01 run 2/2** wired the `agent_memory_v1` preset into the
-  create request path → E-01 closed (engine **0 → 1/7**; pivot **7 → 8/20**;
-  SK-HDC-020 — `DbCreateArgs.preset` skips classify/infer/compile, shares the
-  validate→provision→mint tail so SK-HDC-003 holds, `POST /v1/databases
-  { preset }` behind `MEMORY_PRESET`); **WS-07 run 1/3** shipped the `/agents`
-  skeleton + hero (markup-only, WS-13 lead strings untouched); **WS-09 run 2/2**
-  drafted the "database, not a vector store" launch post (WS-09 🟡 1/2,
-  Replit-wipe → recall≠analytics → typed-plan boundary → measured BIRD 0.52 /
-  Spider 0.1852 + `tools/eval/` link). Per-slice detail in the WS/E worksheets.
+- 2026-06-20 (runs 30–31) — six closed slices (all additive; BIRD 06-19 +
+  Spider 06-17 untouched): **E-01** preset wired into the create path → closed
+  (engine 0 → 1/7; SK-HDC-020, `POST /v1/databases { preset }` behind
+  `MEMORY_PRESET`); **E-02** `nlqdb_remember` write primitive → closed (engine
+  → 2/7; #432, SK-PIVOT-008, server-built INSERT via `POST /v1/memory/remember`,
+  SDK `remember()` + tool); **WS-07 runs 1–2/3** skeleton+hero then
+  matrix+moat+FSL band on `/agents` (#433); **WS-09 run 2/2** launch-post draft;
+  **§4 #2c date-normalisation directive FALSIFIED standalone** (#434, parked
+  like #2a). Per-slice detail in the WS/E worksheets + verification log.
 - 2026-06-20 (runs 26–29) — agent-memory pivot wave (all closed/merged,
   additive; no engine/chain/scorer touched; BIRD 06-19 + Spider 06-17 untouched).
   Engine lane blocked all four (both evals < 7 d, §5), so each picked the

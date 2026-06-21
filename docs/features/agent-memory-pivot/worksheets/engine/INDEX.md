@@ -38,7 +38,7 @@ copy with a real tool to point at), etc.
 | [E-03](E-03-memory-scoping.md) | Per-agent / per-end-user / per-thread scoping (the security-critical slice) | high | ~2 | E-01 | — | — |
 | [E-04](E-04-ttl-decay.md) | TTL + cron sweep — `expires_at` on memory rows | low | 1 | E-01 | — | — |
 | [E-05](E-05-hybrid-recall-pgvector.md) | Hybrid recall — pgvector + `nlqdb_recall` (closes the honest gap) | high | multi | E-01 | infra-gated (Neon pgvector + free embeddings) | sharpens WS-03 |
-| [E-06](E-06-agents-createform-preset.md) | `/agents` CreateForm uses the `agent_memory_v1` preset by default | low | 1 | E-01 ✅, WS-07 ✅ | — | now unblocked |
+| [E-06](E-06-agents-createform-preset.md) | Preset on-ramp on the **authed** create surface (`MEMORY_PRESET`-gated) — anon `/agents` CreateForm path infeasible (SK-PIVOT-010) | med | ~2 | E-01 ✅, WS-07 ✅, `MEMORY_PRESET=1` in prod (dark) | — | redirected run 37 |
 | [E-07](E-07-memory-workload-analyzer.md) | Workload-analyzer rule: memory DB above N facts → recommend ClickHouse | med | multi | E-01 | depends on `multi-engine-adapter` / `engine-migration` features (Phase 3) | — |
 
 **Why this order:** E-01 anchors everything (every later slice writes to or
@@ -47,8 +47,9 @@ security-critical slice (one agent must never read another's memory) —
 sequenced early. E-04 is cheap and high-trust ("explicit forget" parity
 with Mem0/Zep). E-05 closes the honest "no native vector search yet" gap
 that the solve page admits today — the biggest lift, but the slice that
-makes the wedge **actually complete**. E-06 lets the new `/agents` page
-land users on the memory preset, not generic. E-07 connects the engine
+makes the wedge **actually complete**. E-06 lets a signed-in user spin up the
+memory preset from the authed create surface (the anon `/agents` path is
+infeasible — SK-PIVOT-010). E-07 connects the engine
 north-star (data-engine pillar) to the wedge.
 
 ## Hard rules
@@ -75,5 +76,5 @@ Tick on merge.
 - [ ] E-03 — per-agent / per-end-user / per-thread scoping. **Mechanism corrected 2026-06-20 (run 32, SK-PIVOT-009):** row-level RLS keyed on an `app.agent_id` session GUC (the pattern the provisioner already uses for `tenant_isolation`), **not** compile-layer `WHERE`-injection — the read path executes free-form LLM SQL via `neonSql.unsafe(sql)` with no AST step to inject into. Security-critical; ships Neon-gated with a second review.
 - [ ] E-04 — TTL + cron sweep
 - [ ] E-05 — hybrid recall (pgvector + `nlqdb_recall`)
-- [ ] E-06 — `/agents` CreateForm uses the preset
+- [ ] E-06 — preset on-ramp on the **authed** create surface. **Redirected 2026-06-21 (run 37, SK-PIVOT-010):** the anon `/agents` CreateForm path is infeasible across three auth boundaries — `POST /v1/databases` is `requireSession` + `MEMORY_PRESET`-gated (`index.ts:2357,2390`), `POST /v1/memory/remember` rejects anon+pk_live (`index.ts:1426-1433`), and CreateForm is anon-only by contract (`credentials:"omit"`, SK-ANON-008). On-ramp moves to the authed create surface; **blocked on `MEMORY_PRESET=1` in prod** (dark).
 - [ ] E-07 — workload-analyzer rule for memory DBs
