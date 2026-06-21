@@ -86,6 +86,7 @@ same-seed A/B.
 
 | # | Lever | How exactly | How much | Canonical home / status |
 |---|---|---|---|---|
+| T23 | **Similarity-retrieved few-shot — deterministic core** | New pure `few-shot-select.ts`: question **masking** (literal values → one `val`), masked-token Jaccard, stable top-k `selectExemplars` (drops zero-similarity, ties → earliest). §4 #1 retrieval half; masking scores the question skeleton so an exemplar crosses domains — DAIL-SQL ≈+3–5 pp beyond static T9. | **measured (unit):** 11 cases incl. cross-domain-twin-beats-value-distractor. No prod import (T8 + baselines untouched); EX → next dispatch | [`SK-LLM-041`](../features/llm-router/decisions/SK-LLM-041-similarity-retrieved-few-shot.md) — core shipped; pool + index + wiring (T9-ablation-gated) follow-on |
 | T22 | **Aggregate-filter HAVING directive** | One `PLAN_DIRECTIVES` bullet: a threshold on a group's aggregate goes in HAVING after GROUP BY, not WHERE. Covers the **HAVING half** of E5 *Unaligned Aggregation Structure* that T15 (GROUP BY half) left; "keep per-row predicates in WHERE" bounds the regression. ≈55 tok | **prompt-only; saturated — 06-19 BIRD re-run flat** (McNemar p=0.50) | [`SK-LLM-040`](../features/llm-router/decisions/SK-LLM-040-aggregate-filter-having-directive.md) — shipped |
 | T21 | **Join-bridge recall in schema pruning** | T19's FK closure was outbound-only; a junction table linking two goal-matched tables via generic FK names (`a`/`b`) matched no path and got dropped, making the join unplannable. `pruneSchemaForGoal` now also keeps any table that `REFERENCES` ≥ 2 goal-matched tables, seeded from the goal-matched set only ⇒ recall-monotonic + distractor-bounded | **measured (unit):** synthetic `student↔enroll↔course` bridge dropped → kept; one-endpoint referencer stays out. Recall monotone over T19. Real EX → next eval | [`SK-LLM-037`](../features/llm-router/decisions/SK-LLM-037-goal-relevant-schema-pruning.md) rev — shipped |
 | T20 | **Capacity-honest budget stop** | Budget-stop on every-attempt ∈ {`rate_limited`,`circuit_open`}, one bounded `--capacity-wait-ms` retry, SHA-keyed resume — fixes the 2026-06-11 run scoring 246 breaker-wall rows as `no_sql` | **measurement honesty** — keeps a breaker wall out of the scores | [`SK-QUAL-013`](../features/quality-eval/decisions/SK-QUAL-013-capacity-honest-budget-stop.md) — shipped |
@@ -111,11 +112,12 @@ Ranked by expected pp-per-effort on the **free chain**. Each is card-free and
 agent-runnable; promote into an `SK-*`/`GLOBAL-*` before implementing
 (`CLAUDE.md` §P4).
 
-1. **Similarity-retrieved few-shot exemplars (full DAIL-SQL).** Static
-   3-shot shipped (T9); the **retrieval** half — masked-question similarity
-   over an exemplar pool — is the larger remaining gain (est. +3–5 pp beyond
-   static; arXiv:2308.15363). Needs an exemplar pool + similarity index on
-   hot `plan`, so it is gated on per-lever ablation of T9 (`CLAUDE.md` §P5).
+1. **Similarity-retrieved few-shot exemplars (full DAIL-SQL).** Deterministic
+   core **SHIPPED 2026-06-21** (T23 / `SK-LLM-041`; est. +3–5 pp beyond static
+   T9, arXiv:2308.15363). **Staged follow-on (not built):** the exemplar *pool*
+   (masked BIRD-dev train-split Q→SQL) + an embedding index on hot `plan`, then
+   wiring into `buildPlanUser` gated on a per-lever ablation of T9 (`CLAUDE.md`
+   §P5). EX delta = next canonical dispatch.
 2. **Value retrieval + column-level pruning (the M-Schema half T19 left) —
    DEMOTED 2026-06-19 by the `SK-QUAL-014` literal axis.** The column-name
    ceiling (`SK-QUAL-015`: 12.8% of needed columns named by *value*) implied
@@ -198,7 +200,9 @@ view of the same levers.
 > click). The flat 06-19 BIRD re-run **confirms the directive levers have
 > saturated**, and the `SK-QUAL-014` literal + date axes (`literal_only` /
 > `date_literal_only` standalone both 0, §2) **falsify value-retrieval as the
-> top lever**. **Next:** §4 **#3 self-consistency** (vote core shipped
-> 2026-06-20, `SK-QUAL-017`; sampling + dispatch follow-on) + **#1
-> similarity-retrieved few-shot**; value-retrieval (#2a) demoted +
-> privacy-gated. Per-lever ablations (T9, T19) still pending.
+> top lever**. **Next:** the two reasoning levers' shipped cores now both need
+> their dispatch half — §4 **#3 self-consistency** (vote core `SK-QUAL-017`;
+> sampling + dispatch follow-on) and §4 **#1 similarity-retrieved few-shot**
+> (retrieval core `SK-LLM-041` shipped 2026-06-21; exemplar pool + index +
+> `buildPlanUser` wiring follow-on, gated on the T9 ablation). value-retrieval
+> (#2a) demoted + privacy-gated. Per-lever ablations (T9, T19) still pending.

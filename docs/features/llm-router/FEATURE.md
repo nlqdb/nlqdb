@@ -10,7 +10,7 @@ when-to-load:
 # Feature: Llm Router
 
 **One-liner:** Model selection, fallback chain, prompt strategy, per-user credit accounting; three permanent dispatch lanes per [`GLOBAL-026`](../../decisions/GLOBAL-026-llm-strategy-byollm-hosted-premium.md) — free chain, BYOLLM, hosted-premium.
-**Status:** implemented for the free chain (`SK-LLM-001..015` + `SK-LLM-018` + `SK-LLM-023..030` + `SK-LLM-032..040`). BYOLLM (`SK-LLM-016`) is partial — provider factory (`SK-LLM-019`) + lane selector (`SK-LLM-020`) ship, the per-request `x-nlq-byollm-key` header lane is wired on HTTP `/v1/ask` (`SK-LLM-021`), and the account-stored lane resolves on `/v1/ask` via `api_keys` `scope = "byollm"` ([`SK-PREMIUM-012`](../premium-tier/decisions/SK-PREMIUM-012-account-stored-byollm-storage.md)); `GLOBAL-003` surface parity (MCP/SDK/CLI/elements/`/app/keys`) pending (tracked in `premium-tier/FEATURE.md`). `SK-LLM-017` (hosted-premium chain) lands in Phase 2 alongside `quality-eval`; its meter stays dark until [`phase-plan.md §6`](../../phase-plan.md) trips.
+**Status:** implemented for the free chain (`SK-LLM-001..015` + `SK-LLM-018` + `SK-LLM-023..030` + `SK-LLM-032..041`). BYOLLM (`SK-LLM-016`) is partial — provider factory (`SK-LLM-019`) + lane selector (`SK-LLM-020`) ship, the per-request `x-nlq-byollm-key` header lane is wired on HTTP `/v1/ask` (`SK-LLM-021`), and the account-stored lane resolves on `/v1/ask` via `api_keys` `scope = "byollm"` ([`SK-PREMIUM-012`](../premium-tier/decisions/SK-PREMIUM-012-account-stored-byollm-storage.md)); `GLOBAL-003` surface parity (MCP/SDK/CLI/elements/`/app/keys`) pending (tracked in `premium-tier/FEATURE.md`). `SK-LLM-017` (hosted-premium chain) lands in Phase 2 alongside `quality-eval`; its meter stays dark until [`phase-plan.md §6`](../../phase-plan.md) trips.
 
 **Contribution to north-star:** Engine quality — the router is the NL→SQL accuracy lever per [`GLOBAL-025`](../../decisions/GLOBAL-025-north-star.md). Free-chain scaffolding compounds when BYOLLM or hosted-premium swaps in a frontier model; `quality-eval`'s free-vs-frontier delta measures the compounding.
 
@@ -210,6 +210,10 @@ added latency on any succeeding call.
 ### SK-LLM-040 — Aggregate-filter directive in the planner prompt (filter groups by an aggregate in HAVING, not WHERE)
 
 **Body:** [`decisions/SK-LLM-040-aggregate-filter-having-directive.md`](./decisions/SK-LLM-040-aggregate-filter-having-directive.md). One `PLAN_DIRECTIVES` bullet: a threshold on a group's aggregate goes in HAVING after GROUP BY, not WHERE (plain per-row predicates stay in WHERE) — the *HAVING* half of *Unaligned Aggregation Structure* (E5, [arXiv:2501.09310](https://arxiv.org/pdf/2501.09310)) that [`SK-LLM-034`](#sk-llm-034) left; prompt-only, ≈55 tokens.
+
+### SK-LLM-041 — Similarity-retrieved few-shot exemplar selection (DAIL-SQL retrieval half — deterministic core)
+
+**Body:** [`decisions/SK-LLM-041-similarity-retrieved-few-shot.md`](./decisions/SK-LLM-041-similarity-retrieved-few-shot.md). The *retrieval* half of DAIL-SQL ([arXiv:2308.15363](https://arxiv.org/abs/2308.15363)) that [`SK-LLM-026`](#sk-llm-026) left — the top reasoning lever ([source-of-truth §4 #1](../../progress/quality-score-source-of-truth.md)) after the directives saturated. New pure `few-shot-select.ts`: question **masking** (literal values → one `val` placeholder, so similarity scores the question skeleton and an exemplar can cross domains) + masked-token Jaccard + stable top-k `selectExemplars`. Deterministic core only; the exemplar pool + embedding index + `buildPlanUser` wiring (behind a T9 ablation) are the staged follow-on, EX delta next dispatch ([`SK-QUAL-002`](../quality-eval/decisions/SK-QUAL-002-pr-ci-never-fires-real-keys.md)).
 
 ### SK-LLM-033 — Schema-inference prompt requires insertable sample rows
 
