@@ -52,11 +52,15 @@ describe("persona-bench gold-executability invariant (v0)", () => {
     expect(failures, JSON.stringify(failures, null, 2)).toHaveLength(0);
   });
 
-  it("the agent-memory TTL gold matches expire.ts's cutoff semantics (2 expired)", () => {
-    const checks = checkGoldExecutability(openDb, { persona: "P2" });
+  it("the agent-memory TTL gold returns the 2 facts expired before the cutoff", () => {
     // q9: facts with a non-null expires_at strictly before 2026-06-21 → facts 3 (06-10) + 7 (06-15)
-    const ttl = checks.find((c) => c.question_id === 9);
-    expect(ttl?.ok).toBe(true);
+    const schema = schemaFor("agent_memory");
+    if (!schema) throw new Error("agent_memory schema missing");
+    const db = openDb(schema);
+    for (const stmt of schema.setup) db.run(stmt);
+    const q9 = PERSONA_BENCH_QUESTIONS.find((q) => q.question_id === 9);
+    const rows = db.query(q9?.sql ?? "") as Array<Record<string, number>>;
+    expect(Object.values(rows[0] ?? {})[0]).toBe(2);
   });
 
   it("filters by persona", () => {
