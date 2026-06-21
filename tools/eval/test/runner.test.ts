@@ -3,7 +3,6 @@ import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test";
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { AllProvidersFailedError } from "@nlqdb/llm";
 import type {
   EngineClassifyRequest,
   PlanRequest,
@@ -12,6 +11,7 @@ import type {
   SchemaInferRequest,
   SummarizeRequest,
 } from "@nlqdb/llm";
+import { AllProvidersFailedError } from "@nlqdb/llm";
 import type { Lane } from "../src/lanes.ts";
 import { _testing, runEval } from "../src/runner.ts";
 import type { EvalReport } from "../src/types.ts";
